@@ -1,57 +1,32 @@
 {
   "id": "cyberpunkred-messenger",
-  "title": "CyberpunkRED Messenger",
-  "description": "A messaging system for Cyberpunk RED allowing in-character communication between players and NPCs, featuring a stylized interface inspired by Cyberpunk 2077.",
-  "version": "1.0.1",
+  "title": "Night City Messenger",
+  "description": "A comprehensive messaging system for Cyberpunk RED featuring encrypted data shards, hacking mechanics, and network architecture.",
+  "version": "2.0.0",
   "compatibility": {
     "minimum": "11",
     "verified": "11",
     "maximum": "11"
   },
-  "relationships": {
-    "requires": [
-      {
-        "id": "foundryvtt-simple-calendar",
-        "type": "module",
-        "manifest": "https://github.com/vigoren/foundryvtt-simple-calendar/releases/latest/download/module.json",
-        "compatibility": {}
-      }
-    ],
-    "recommends": [
-      {
-        "id": "cyberpunk-red-core",
-        "type": "system"
-      }
-    ]
-  },
   "authors": [
     {
-      "name": "Christian Phanthasy",
-      "discord": "thephanthasy",
-      "url": "https://phanthasy.design/"
+      "name": "Your Name",
+      "discord": "yourhandle"
     }
   ],
   "esmodules": [
-    "scripts/constants.js",
-    "scripts/settings.js",
-    "scripts/utils.js",
-    "scripts/unified-shared-message-viewer.js",
-    "scripts/hooks.js",
-    "scripts/messageViewer.js",
-    "scripts/messageComposer.js",
-    "scripts/contactManager.js",
-    "scripts/scheduledMessagesManager.js",
-    "scripts/item-inbox.js",
-    "scripts/item-inbox-config.js",
-    "scripts/GMAdminInitializer.js",
-    "scripts/theme-settings.js",
-    "scripts/app.js",
-    "scripts/module-init.js"
+    "scripts/main.js"
   ],
   "styles": [
-    "styles/messenger.css", 
-    "styles/admin-panel.css",
-    "styles/item-inbox.css"
+    "styles/base/variables.css",
+    "styles/base/reset.css",
+    "styles/base/animations.css",
+    "styles/components/message-viewer.css",
+    "styles/components/message-composer.css",
+    "styles/components/contact-manager.css",
+    "styles/components/item-inbox.css",
+    "styles/components/admin-panel.css",
+    "styles/components/dialogs.css"
   ],
   "languages": [
     {
@@ -59,5 +34,9 @@
       "name": "English",
       "path": "languages/en.json"
     }
-  ]
+  ],
+  "socket": true,
+  "url": "https://github.com/yourusername/cyberpunkred-messenger",
+  "manifest": "https://github.com/yourusername/cyberpunkred-messenger/releases/latest/download/module.json",
+  "download": "https://github.com/yourusername/cyberpunkred-messenger/archive/refs/heads/main.zip"
 }
