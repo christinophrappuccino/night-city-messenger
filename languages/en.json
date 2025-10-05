@@ -1,0 +1,149 @@
+{
+  "cyberpunkred-messenger": {
+    "title": "Night City Messenger",
+    "settings": {
+      "defaultDomain": {
+        "name": "Default Email Domain",
+        "hint": "The default domain used when generating email addresses for characters"
+      },
+      "enableSounds": {
+        "name": "Enable Sound Effects",
+        "hint": "Play sound effects when opening/closing messages and receiving notifications"
+      },
+      "enableNotifications": {
+        "name": "Enable Notifications",
+        "hint": "Show notifications when receiving new messages"
+      },
+      "gmCanSendAsAny": {
+        "name": "GM Can Send as Any Character",
+        "hint": "Allow GMs to send messages as any character or create custom senders"
+      },
+      "messagesPerPage": {
+        "name": "Messages Per Page",
+        "hint": "Number of messages to display per page in the inbox"
+      },
+      "enableSpamGeneration": {
+        "name": "Enable Spam Generation",
+        "hint": "Periodically generate spam messages for a more immersive experience"
+      },
+      "spamFrequency": {
+        "name": "Spam Frequency",
+        "hint": "How often spam messages are generated (in game days)"
+      },
+      "autoCreateJournals": {
+        "name": "Auto-create Message Journals",
+        "hint": "Automatically create message journals for new player characters"
+      },
+      "messageRetention": {
+        "name": "Message Retention Period",
+        "hint": "Number of days to keep messages in trash before permanent deletion (0 = keep forever)"
+      },
+      "debugMode": {
+        "name": "Debug Mode",
+        "hint": "Enable debug logging for troubleshooting"
+      }
+    },
+    "ui": {
+      "header": {
+        "connected": "CONNECTED to Night City CitiNet",
+        "messageComposer": "MESSAGE COMPOSER",
+        "messages": "MESSAGES",
+        "welcome": "Welcome"
+      },
+      "categories": {
+        "inbox": "Inbox",
+        "saved": "Saved",
+        "spam": "Spam",
+        "sent": "Sent",
+        "deleted": "Deleted",
+        "archived": "Archived"
+      },
+      "buttons": {
+        "directory": "Directory",
+        "add": "Add",
+        "contacts": "Contacts",
+        "changeEmail": "Change Email",
+        "preview": "Preview",
+        "edit": "Edit",
+        "send": "Send",
+        "save": "Save",
+        "unsave": "Unsave",
+        "share": "Share",
+        "spam": "Spam",
+        "unspam": "Unspam",
+        "reply": "Reply",
+        "forward": "Forward",
+        "export": "Export",
+        "apply": "Apply",
+        "reset": "Reset",
+        "cancel": "Cancel",
+        "close": "Close"
+      },
+      "placeholders": {
+        "searchMessages": "Search messages...",
+        "searchContacts": "Search contacts or enter email...",
+        "selectContacts": "Select from contacts..."
+      },
+      "labels": {
+        "from": "From:",
+        "to": "To:",
+        "date": "Date:",
+        "subject": "Subject:",
+        "filterBySender": "Filter by Sender",
+        "filterByDate": "Filter by Date",
+        "from": "From:",
+        "to": "To:",
+        "selectSender": "-- Select Sender --",
+        "unreadOnly": "Unread Only",
+        "showSpam": "Show Spam",
+        "advancedFilters": "Advanced Filters",
+        "exportAs": "Export As:",
+        "name": "Name:",
+        "encrypted": "Encrypted"
+      },
+      "messages": {
+        "noMessages": "No messages found",
+        "emptyInbox": "Your inbox is empty",
+        "noSaved": "No saved messages found",
+        "noSpam": "No spam messages found",
+        "noSent": "No sent messages found",
+        "noDeleted": "No deleted messages found",
+        "noArchived": "No archived messages found",
+        "unknownSender": "Unknown Sender",
+        "unknownRecipient": "Unknown Recipient",
+        "unknownDate": "Unknown Date",
+        "noSubject": "No Subject",
+        "noContent": "No content",
+        "noEmailSet": "No email set",
+        "forwarded": "---------- Forwarded Message ----------",
+        "endForwarded": "--------------------------------------"
+      },
+      "notifications": {
+        "messageSent": "Message sent successfully!",
+        "messageNotSent": "Failed to send message. Please try again.",
+        "contactAdded": "Contact added successfully",
+        "contactRemoved": "Contact removed successfully",
+        "emailUpdated": "Email updated successfully",
+        "requestingPermissions": "Requesting message access permissions from GM...",
+        "missingSubject": "Please enter a subject for your message.",
+        "missingContent": "Please enter content for your message.",
+        "missingRecipient": "Please select a recipient.",
+        "messageExported": "Message exported successfully",
+        "needCharacter": "You must have a character assigned to send messages."
+      },
+      "dialogs": {
+        "emailSetup": "Email Setup",
+        "editEmail": "Edit Email Address",
+        "addContact": "Add Contact",
+        "emailDirectory": "Email Directory",
+        "yourContacts": "Your Contacts",
+        "exportMessage": "Export Message",
+        "deleteMessage": "Delete Message",
+        "contactName": "Contact Name:",
+        "emailAddress": "Email Address:",
+        "confirmDelete": "Are you sure you want to delete this message?",
+        "cannotUndo": "This action cannot be undone."
+      }
+    }
+  }
+}

@@ -1,0 +1,63 @@
+{
+  "id": "cyberpunkred-messenger",
+  "title": "CyberpunkRED Messenger",
+  "description": "A messaging system for Cyberpunk RED allowing in-character communication between players and NPCs, featuring a stylized interface inspired by Cyberpunk 2077.",
+  "version": "1.0.1",
+  "compatibility": {
+    "minimum": "11",
+    "verified": "11",
+    "maximum": "11"
+  },
+  "relationships": {
+    "requires": [
+      {
+        "id": "foundryvtt-simple-calendar",
+        "type": "module",
+        "manifest": "https://github.com/vigoren/foundryvtt-simple-calendar/releases/latest/download/module.json",
+        "compatibility": {}
+      }
+    ],
+    "recommends": [
+      {
+        "id": "cyberpunk-red-core",
+        "type": "system"
+      }
+    ]
+  },
+  "authors": [
+    {
+      "name": "Christian Phanthasy",
+      "discord": "thephanthasy",
+      "url": "https://phanthasy.design/"
+    }
+  ],
+  "esmodules": [
+    "scripts/constants.js",
+    "scripts/settings.js",
+    "scripts/utils.js",
+    "scripts/unified-shared-message-viewer.js",
+    "scripts/hooks.js",
+    "scripts/messageViewer.js",
+    "scripts/messageComposer.js",
+    "scripts/contactManager.js",
+    "scripts/scheduledMessagesManager.js",
+    "scripts/item-inbox.js",
+    "scripts/item-inbox-config.js",
+    "scripts/GMAdminInitializer.js",
+    "scripts/theme-settings.js",
+    "scripts/app.js",
+    "scripts/module-init.js"
+  ],
+  "styles": [
+    "styles/messenger.css", 
+    "styles/admin-panel.css",
+    "styles/item-inbox.css"
+  ],
+  "languages": [
+    {
+      "lang": "en",
+      "name": "English",
+      "path": "languages/en.json"
+    }
+  ]
+}

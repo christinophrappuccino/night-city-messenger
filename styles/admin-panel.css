@@ -1,0 +1,585 @@
+/* ======================
+   Night City Messenger Admin Panel
+   ====================== */
+
+.cyberpunk-admin-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  color: var(--primary-color, #F65261);
+  background-color: var(--background-color, #330000);
+  font-family: 'Rajdhani', sans-serif;
+}
+
+/* Header styling */
+.cyberpunk-admin-panel .cyberpunk-header {
+  padding: 10px 15px;
+  border-bottom: 1px solid var(--primary-color, #F65261);
+}
+
+.cyberpunk-admin-panel .header-top {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 8px;
+}
+
+.cyberpunk-admin-panel .header-title {
+  font-size: 1.2em;
+  font-weight: bold;
+  text-transform: uppercase;
+  text-align: center;
+  letter-spacing: 1px;
+}
+
+.cyberpunk-admin-panel .connection-status {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--secondary-color, #19f3f7);
+  font-size: 0.8em;
+}
+
+.cyberpunk-admin-panel .connection-status i {
+  color: var(--secondary-color, #19f3f7);
+}
+
+.cyberpunk-admin-panel .current-time {
+  text-align: right;
+  font-style: italic;
+  font-size: 0.9em;
+}
+
+.cyberpunk-admin-panel .header-welcome {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cyberpunk-admin-panel .welcome-text {
+  font-size: 0.9em;
+}
+
+.cyberpunk-admin-panel .security-level {
+  font-size: 0.8em;
+  color: var(--secondary-color, #19f3f7);
+  background: rgba(25, 243, 247, 0.1);
+  padding: 2px 8px;
+  border-radius: 2px;
+  border: 1px solid rgba(25, 243, 247, 0.3);
+}
+
+/* Main content layout */
+.cyberpunk-admin-panel .admin-content {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.cyberpunk-admin-panel .admin-sidebar {
+  width: 200px;
+  border-right: 1px solid var(--primary-color, #F65261);
+  display: flex;
+  flex-direction: column;
+}
+
+.cyberpunk-admin-panel .admin-panel-content {
+  flex: 1;
+  padding: 15px;
+  overflow-y: auto;
+}
+
+/* Tab navigation */
+.cyberpunk-admin-panel .admin-tabs {
+  display: flex;
+  flex-direction: column;
+  padding: 10px 0;
+}
+
+.cyberpunk-admin-panel .admin-tab-button {
+  background: transparent;
+  border: none;
+  padding: 8px 15px;
+  margin: 2px 0;
+  text-align: left;
+  color: var(--primary-color, #F65261);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+  border-left: 3px solid transparent;
+}
+
+.cyberpunk-admin-panel .admin-tab-button:hover {
+  background: rgba(246, 82, 97, 0.1);
+}
+
+.cyberpunk-admin-panel .admin-tab-button.active {
+  background: rgba(246, 82, 97, 0.15);
+  border-left: 3px solid var(--primary-color, #F65261);
+}
+
+.cyberpunk-admin-panel .admin-tab-button i {
+  width: 18px;
+  text-align: center;
+}
+
+/* System status section */
+.cyberpunk-admin-panel .system-status {
+  margin-top: auto;
+  padding: 15px 10px;
+  background: var(--dark-background-color, #1a1a1a);
+  border-top: 1px solid var(--primary-color, #F65261);
+}
+
+.cyberpunk-admin-panel .status-item {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 5px;
+  font-size: 0.9em;
+}
+
+.cyberpunk-admin-panel .status-label {
+  color: var(--primary-color, #F65261);
+}
+
+.cyberpunk-admin-panel .status-value {
+  color: var(--secondary-color, #19f3f7);
+  font-weight: bold;
+}
+
+/* Tab content styling */
+.cyberpunk-admin-panel .tab-content {
+  height: 100%;
+}
+
+.cyberpunk-admin-panel .section-title {
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 1.3em;
+  border-bottom: 1px solid var(--primary-color, #F65261);
+  padding-bottom: 5px;
+}
+
+/* Action buttons */
+.cyberpunk-admin-panel .action-buttons {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+/* Inbox list styling */
+.cyberpunk-admin-panel .inbox-list-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  height: calc(100% - 80px);
+}
+
+.cyberpunk-admin-panel .inbox-list {
+  background: var(--dark-background-color, #1a1a1a);
+  border: 1px solid var(--primary-color, #F65261);
+  border-radius: 4px;
+  overflow-y: auto;
+  height: 100%;
+}
+
+.cyberpunk-admin-panel .character-inbox-item {
+  padding: 10px 15px;
+  border-bottom: 1px solid rgba(246, 82, 97, 0.3);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.cyberpunk-admin-panel .character-inbox-item:hover {
+  background: rgba(246, 82, 97, 0.1);
+}
+
+.cyberpunk-admin-panel .character-inbox-item.selected {
+  background: rgba(246, 82, 97, 0.15);
+  border-left: 3px solid var(--primary-color, #F65261);
+}
+
+.cyberpunk-admin-panel .inbox-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cyberpunk-admin-panel .inbox-owner {
+  font-weight: bold;
+}
+
+.cyberpunk-admin-panel .inbox-count {
+  font-size: 0.8em;
+  color: var(--secondary-color, #19f3f7);
+  background: rgba(25, 243, 247, 0.1);
+  padding: 2px 5px;
+  border-radius: 3px;
+}
+
+.cyberpunk-admin-panel .inbox-details {
+  background: var(--dark-background-color, #1a1a1a);
+  border: 1px solid var(--primary-color, #F65261);
+  border-radius: 4px;
+  padding: 15px;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.cyberpunk-admin-panel .inbox-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(246, 82, 97, 0.3);
+}
+
+.cyberpunk-admin-panel .inbox-detail-header h3 {
+  margin: 0;
+  color: var(--primary-color, #F65261);
+}
+
+.cyberpunk-admin-panel .inbox-actions {
+  display: flex;
+  gap: 10px;
+}
+
+/* Character info styling */
+.cyberpunk-admin-panel .character-info {
+  margin-bottom: 20px;
+  padding: 10px;
+  background: rgba(246, 82, 97, 0.05);
+  border-radius: 4px;
+}
+
+.cyberpunk-admin-panel .character-header {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.cyberpunk-admin-panel .character-avatar {
+  width: 60px;
+  height: 60px;
+  border: 1px solid var(--primary-color, #F65261);
+  border-radius: 4px;
+  object-fit: cover;
+}
+
+.cyberpunk-admin-panel .character-name {
+  font-size: 1.2em;
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.cyberpunk-admin-panel .character-email {
+  color: var(--secondary-color, #19f3f7);
+  font-size: 0.9em;
+}
+
+.cyberpunk-admin-panel .no-email {
+  color: #F65261;
+  opacity: 0.7;
+  font-style: italic;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cyberpunk-admin-panel .inbox-actions-panel {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.cyberpunk-admin-panel .no-inbox-selected,
+.cyberpunk-admin-panel .no-inboxes {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: rgba(246, 82, 97, 0.7);
+  text-align: center;
+  padding: 20px;
+}
+
+.cyberpunk-admin-panel .no-inbox-selected i,
+.cyberpunk-admin-panel .no-inboxes i {
+  font-size: 3em;
+  margin-bottom: 15px;
+  opacity: 0.5;
+}
+
+/* Contacts tab styling */
+.cyberpunk-admin-panel .contacts-container {
+  background: var(--dark-background-color, #1a1a1a);
+  border: 1px solid var(--primary-color, #F65261);
+  border-radius: 4px;
+  height: calc(100% - 80px);
+  overflow: hidden;
+}
+
+.cyberpunk-admin-panel .search-container {
+  padding: 10px;
+  border-bottom: 1px solid rgba(246, 82, 97, 0.3);
+}
+
+.cyberpunk-admin-panel .contact-search {
+  width: 100%;
+  padding: 8px;
+  background: var(--dark-background-color, #1a1a1a);
+  border: 1px solid var(--primary-color, #F65261);
+  color: white;
+  border-radius: 4px;
+}
+
+.cyberpunk-admin-panel .contacts-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.cyberpunk-admin-panel .contacts-table th {
+  background: rgba(246, 82, 97, 0.1);
+  padding: 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--primary-color, #F65261);
+}
+
+.cyberpunk-admin-panel .contacts-table td {
+  padding: 10px;
+  border-bottom: 1px solid rgba(246, 82, 97, 0.2);
+}
+
+.cyberpunk-admin-panel .contact-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cyberpunk-admin-panel .contact-avatar,
+.cyberpunk-admin-panel .contact-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 4px;
+  object-fit: cover;
+}
+
+.cyberpunk-admin-panel .contact-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(246, 82, 97, 0.1);
+  border: 1px solid var(--primary-color, #F65261);
+}
+
+.cyberpunk-admin-panel .contact-email {
+  color: var(--secondary-color, #19f3f7);
+  font-size: 0.9em;
+}
+
+.cyberpunk-admin-panel .contact-type {
+  font-size: 0.8em;
+  text-transform: uppercase;
+}
+
+.cyberpunk-admin-panel .contact-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.cyberpunk-admin-panel .no-contacts {
+  text-align: center;
+  padding: 20px;
+  color: rgba(246, 82, 97, 0.7);
+  font-style: italic;
+}
+
+/* Actions tab styling */
+.cyberpunk-admin-panel .action-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+
+.cyberpunk-admin-panel .action-card {
+  background: var(--dark-background-color, #1a1a1a);
+  border: 1px solid var(--primary-color, #F65261);
+  border-radius: 4px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.cyberpunk-admin-panel .action-icon {
+  font-size: 2em;
+  margin-bottom: 15px;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: rgba(246, 82, 97, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--primary-color, #F65261);
+}
+
+.cyberpunk-admin-panel .action-title {
+  font-size: 1.2em;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.cyberpunk-admin-panel .action-description {
+  margin-bottom: 15px;
+  color: #cccccc;
+  font-size: 0.9em;
+}
+
+/* Settings tab styling */
+.cyberpunk-admin-panel .settings-form {
+  background: var(--dark-background-color, #1a1a1a);
+  border: 1px solid var(--primary-color, #F65261);
+  border-radius: 4px;
+  padding: 20px;
+  max-width: 600px;
+}
+
+.cyberpunk-admin-panel .form-group {
+  margin-bottom: 15px;
+}
+
+.cyberpunk-admin-panel .form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+.cyberpunk-admin-panel .form-group input[type="text"],
+.cyberpunk-admin-panel .form-group input[type="number"] {
+  width: 100%;
+  padding: 8px;
+  background: var(--dark-background-color, #1a1a1a);
+  border: 1px solid var(--primary-color, #F65261);
+  color: white;
+  border-radius: 4px;
+}
+
+.cyberpunk-admin-panel .form-group input[type="checkbox"] {
+  margin-right: 8px;
+}
+
+.cyberpunk-admin-panel .help-text {
+  font-size: 0.8em;
+  margin-top: 5px;
+  color: #cccccc;
+}
+
+.cyberpunk-admin-panel .form-buttons {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Stats tab styling */
+.cyberpunk-admin-panel .stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 15px;
+  margin-bottom: 30px;
+}
+
+.cyberpunk-admin-panel .stat-card {
+  background: var(--dark-background-color, #1a1a1a);
+  border: 1px solid var(--primary-color, #F65261);
+  border-radius: 4px;
+  padding: 15px;
+  text-align: center;
+}
+
+.cyberpunk-admin-panel .stat-icon {
+  font-size: 2em;
+  margin-bottom: 10px;
+}
+
+.cyberpunk-admin-panel .stat-value {
+  font-size: 2em;
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.cyberpunk-admin-panel .stat-label {
+  font-size: 0.9em;
+  color: #cccccc;
+}
+
+.cyberpunk-admin-panel .stats-detail {
+  background: var(--dark-background-color, #1a1a1a);
+  border: 1px solid var(--primary-color, #F65261);
+  border-radius: 4px;
+  padding: 20px;
+}
+
+.cyberpunk-admin-panel .stats-detail h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid rgba(246, 82, 97, 0.3);
+}
+
+.cyberpunk-admin-panel .chart-bar {
+  display: grid;
+  grid-template-columns: 100px 1fr 50px;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.cyberpunk-admin-panel .bar-container {
+  height: 20px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.cyberpunk-admin-panel .bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #F65261, #ff8b98);
+  border-radius: 10px;
+}
+
+.cyberpunk-admin-panel .bar-fill.spam {
+  background: linear-gradient(90deg, #ff5722, #ff9800);
+}
+
+.cyberpunk-admin-panel .bar-fill.unread {
+  background: linear-gradient(90deg, #19f3f7, #4adaf0);
+}
+
+.cyberpunk-admin-panel .bar-value {
+  text-align: right;
+  font-weight: bold;
+}
+
+/* Custom button sizes */
+.cyber-button.micro {
+  padding: 2px 5px !important;
+  font-size: 0.7em !important;
+  height: 20px !important;
+}
+
+/* Theming overrides for light themes */
+.cyberpunk-admin-panel .status-label,
+.cyberpunk-admin-panel .section-title,
+.cyberpunk-admin-panel .admin-tab-button,
+.cyberpunk-admin-panel .inbox-detail-header h3,
+.cyberpunk-admin-panel .action-title,
+.cyberpunk-admin-panel .stat-value {
+  color: var(--primary-color, #F65261) !important;
+}

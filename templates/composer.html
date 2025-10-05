@@ -1,0 +1,126 @@
+<div class="compose-container">
+  <div class="cyberpunk-header">
+    <div class="header-top">
+      <div class="connection-status">
+        <i class="fas fa-wifi"></i> CONNECTED to Night City CitiNet
+      </div>
+      <div class="header-title">MESSAGE COMPOSER</div>
+      <div class="current-time">{{currentTime}}</div>
+    </div>
+    <div class="header-welcome">
+      <span class="welcome-text">Welcome, {{#if currentChar}}{{currentChar.name}}{{else}}{{#if isGM}}GM{{else}}User{{/if}}{{/if}}</span>
+      <div class="header-controls">
+        {{#if isGM}}
+          <div class="control-buttons">
+            <button type="button" id="manage-emails">
+              <i class="fas fa-address-book"></i> Directory
+            </button>
+            <button type="button" id="quick-add-email">
+              <i class="fas fa-plus"></i> Add
+            </button>
+          </div>
+        {{else}}
+          <div class="control-buttons">
+            <button type="button" id="view-contacts">
+              <i class="fas fa-address-book"></i> Contacts
+            </button>
+          </div>
+        {{/if}}
+      </div>
+    </div>
+  </div>
+
+  <div class="header-section">
+    <div class="header-field">
+      <label>From:</label>
+      <div class="actor-select-container">
+        <div class="portrait-container sender-portrait-container"></div>
+        <div style="flex-grow: 1;">
+          {{#if isGM}}
+            <select id="sender-select" class="actor-select">
+              {{#each characters}}
+                <option value="{{this.id}}" data-img="{{this.img}}">{{this.name}}</option>
+              {{/each}}
+              <option value="custom">Custom Sender...</option>
+            </select>
+          {{else}}
+            <select id="sender-select" class="actor-select">
+              {{#if currentChar}}
+                <option value="{{currentChar.id}}" data-img="{{currentChar.img}}">{{currentChar.name}}</option>
+              {{else}}
+                <option value="">No character assigned</option>
+              {{/if}}
+            </select>
+          {{/if}}
+          <div class="email-display-container">
+            <span id="sender-email">
+              {{currentCharEmail}}
+            </span>
+            <button type="button" class="cyber-button small" id="change-sender-email">
+              <i class="fas fa-edit"></i> Change Email
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="header-field">
+      <label>To:</label>
+      <div class="actor-select-container">
+        <div class="portrait-container recipient-portrait-container"></div>
+        <div style="flex-grow: 1;">
+          <div class="email-input-container">
+            <input type="text" 
+                  id="recipient-email-input" 
+                  class="email-search" 
+                  placeholder="Search contacts or enter email..."
+                  autocomplete="off"
+                  value="{{recipientData}}"/>
+            <div class="email-suggestions"></div>
+          </div>
+          <select id="recipient-select" class="actor-select">
+            <option value="">Select from contacts...</option>
+            {{#each contacts}}
+              <option value="{{this.email}}">{{this.name}} ({{this.email}})</option>
+            {{/each}}
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="header-field">
+      <label>Date:</label>
+      <input type="text" 
+            id="message-date" 
+            value="{{currentTime}}" 
+            {{#unless isGM}}disabled{{/unless}}/>
+    </div>
+
+    <div class="header-field">
+      <label>Subject:</label>
+      <input type="text" id="subject-input" value="{{subjectData}}"/>
+    </div>
+  </div>
+
+  <div class="message-body">
+    <div class="editor-container">
+      <div class="editor journal-page-content">
+        <div class="editor-content" data-edit="content">{{{contentData}}}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="formatted-preview"></div>
+
+  <div class="button-row">
+    <button type="button" class="cyber-button preview" id="preview-button">
+      <i class="fas fa-eye"></i> Preview
+    </button>
+    <button type="button" class="schedule-send-btn" id="schedule-button">
+      <i class="fas fa-calendar-alt"></i> Schedule
+    </button>
+    <button type="button" class="cyber-button" id="send-button">
+      <i class="fas fa-paper-plane"></i> Send
+    </button>
+  </div>
+</div>

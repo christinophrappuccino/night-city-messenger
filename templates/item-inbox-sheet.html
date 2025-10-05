@@ -1,0 +1,549 @@
+<div class="cyberpunk-data-shard {{theme}}-theme">
+  <form autocomplete="off">
+    <header class="data-shard-header">
+      <div class="data-status">
+        {{#if (isHeaderDecrypted encrypted messages item.id)}}
+          <span class="decrypted-status"><i class="fas fa-lock-open"></i> DECRYPTED</span>
+        {{else}}
+          <span class="encrypted-status"><i class="fas fa-lock"></i> ENCRYPTED</span>
+        {{/if}}
+      </div>
+      <div class="data-shard-title">
+        <h1>{{item.name}}</h1>
+      </div>
+      <div class="data-type">
+        <span>{{dataShardType}} DATA SHARD</span>
+      </div>
+    </header>
+
+    <section class="data-shard-body">
+      <nav class="sheet-tabs tabs" data-group="primary">
+        <a class="item" data-tab="messages"><i class="fas fa-envelope"></i> Messages</a>
+        <a class="item" data-tab="info"><i class="fas fa-info-circle"></i> Info</a>
+        {{#if isGM}}
+        <a class="item" data-tab="config"><i class="fas fa-cog"></i> Config</a>
+        {{/if}}
+      </nav>
+
+      <div class="sheet-body">
+        <script>
+          // Helper function to detect single/multi mode and adjust layout
+          function adjustForSingleMode() {
+            const container = document.querySelector('.messages-container');
+            if (!container) return;
+            
+            const dataShardType = container.dataset.shardType || 'multi';
+            if (dataShardType === 'single') {
+              container.classList.add('single-mode');
+              const messageList = container.querySelector('.message-list');
+              const messageDetail = container.querySelector('.message-detail');
+              
+              if (messageList) messageList.style.display = 'none';
+              if (messageDetail) {
+                messageDetail.style.gridColumn = '1 / -1';
+                messageDetail.style.width = '100%';
+              }
+            }
+          }
+          
+          // Run after render
+          setTimeout(adjustForSingleMode, 100);
+        </script>
+        <!-- Messages Tab -->
+        <div class="tab" data-tab="messages" data-group="primary">
+          {{#if lockedOut}}
+            <div class="lockout-message">
+              <i class="fas fa-ban"></i>
+              <p>DATA SHARD LOCKED</p>
+              <p>Security breach detected. Timeout active.</p>
+              <p>Time remaining: {{lockoutRemaining}} minutes</p>
+            </div>
+          {{else}}
+            {{#if isSingleMode}}
+              <!-- Single message mode - completely different layout -->
+              <div class="single-message-container">
+                {{#if selectedMessage}}
+                  <div class="message-content" data-message-id="{{selectedMessage.id}}">
+                    <div class="message-header-full">
+                      <h3>{{selectedMessage.subject}}</h3>
+                      <div class="message-metadata">
+                        <p><strong>From:</strong> {{selectedMessage.from}}</p>
+                        <p><strong>To:</strong> {{selectedMessage.to}}</p>
+                        <p><strong>Date:</strong> {{selectedMessage.date}}</p>
+                      </div>
+                    </div>
+                    
+                    {{#if isGM}}
+                      <!-- GM encryption status indicator -->
+                      {{#if encrypted}}
+                        <!-- Show encryption controls when global encryption is enabled -->
+                        <div class="gm-encryption-status">
+                          <strong>GM:</strong> This message is currently 
+                          <span class="{{#if selectedMessage.isEncrypted}}encrypted-text{{else}}decrypted-text{{/if}}">
+                            {{#if selectedMessage.isEncrypted}}ENCRYPTED{{else}}NOT ENCRYPTED{{/if}}
+                          </span>
+                        </div>
+                      {{else}}
+                        <!-- Show info when global encryption is disabled -->
+                        <div class="gm-encryption-status-disabled">
+                          <strong>GM:</strong> 
+                          <span style="color: #666; font-style: italic;">
+                            <i class="fas fa-info-circle"></i> Global encryption is disabled - all messages are accessible
+                          </span>
+                        </div>
+                      {{/if}}
+                    {{/if}}
+                    
+                    {{#if selectedMessage.isEncrypted}}
+                      <div class="encrypted-content">
+                        <div class="encrypted-overlay">
+                          <i class="fas fa-lock"></i>
+                          <h3>ENCRYPTED DATA</h3>
+                          <p>This message is encrypted and requires decryption.</p>
+                          
+                          {{#if attemptingDecryption}}
+                            <div class="decrypt-interface">
+                              <p>Attempting to decrypt with {{skillCheck}}...</p>
+                              
+                              {{#if decryptionRoll}}
+                                <div class="roll-result">
+                                  <h4>Decryption Attempt:</h4>
+                                  <p>
+                                    Dice: {{decryptionRoll.diceRoll}} + 
+                                    {{decryptionRoll.statName}}: {{decryptionRoll.statValue}} + 
+                                    Skill: {{decryptionRoll.skillValue}}
+                                    {{#if decryptionRoll.luck}} + Luck: {{decryptionRoll.luck}}{{/if}} = 
+                                    <strong>{{decryptionRoll.total}}</strong>
+                                  </p>
+                                  
+                                  {{#if decryptionRoll.success}}
+                                    <p class="success">SUCCESS! Decryption complete.</p>
+                                    {{#if showOpenMessageButton}}
+                                      <button class="open-message-btn cyber-button" style="
+                                        background: rgba(0, 255, 0, 0.2);
+                                        color: #00ff00;
+                                        border: 2px solid #00ff00;
+                                        padding: 10px 20px;
+                                        margin-top: 10px;
+                                        font-weight: bold;
+                                        text-transform: uppercase;
+                                        cursor: pointer;
+                                        border-radius: 4px;
+                                      ">
+                                        <i class="fas fa-envelope-open" style="margin-right: 8px;"></i>
+                                        OPEN MESSAGE
+                                      </button>
+                                    {{/if}}
+                                  {{else}}
+                                    <p class="failure">FAILED! DV {{dvValue}} required.</p>
+                                  {{/if}}
+                                </div>
+                              {{else}}
+                                <button type="button" class="roll-skill-check">
+                                  <i class="fas fa-dice-d10"></i> Roll {{skillCheck}} (DV {{dvValue}})
+                                </button>
+                              {{/if}}
+                            </div>
+                          {{else}}
+                          <button class="decrypt-button cyber-button" type="button">
+                            <i class="fas fa-key"></i> Attempt Decryption
+                          </button>
+                          {{/if}}
+                        </div>
+                      </div>
+                    {{else if selectedMessage.isCorrupted}}
+                      <div class="corrupted-content">
+                        <div class="corrupted-overlay">
+                          <i class="fas fa-exclamation-triangle"></i>
+                          <h3>DATA CORRUPTED</h3>
+                          <p>This message has been corrupted and cannot be recovered.</p>
+                          <p>Security protocols have permanently damaged the data.</p>
+                        </div>
+                      </div>
+                    {{else}}
+                      <div class="message-body">
+                        {{{selectedMessage.content}}}
+                      </div>
+                    {{/if}}
+                  </div>
+                  
+                  <!-- Message actions -->
+                  <div class="message-actions">
+                    <button class="action-btn export-btn" title="Export to Inbox">
+                      <i class="fas fa-download"></i> Export to Inbox
+                    </button>
+                    <button class="action-btn share-btn" title="Share to Chat">
+                      <i class="fas fa-share"></i> Share to Chat
+                    </button>
+                    {{#if isGM}}
+                    <button class="action-btn delete-btn" title="Delete Message">
+                      <i class="fas fa-trash"></i> Delete
+                    </button>
+                    {{/if}}
+                  </div>
+                {{else}}
+                  <!-- No messages at all in single mode -->
+                  <div class="no-messages">
+                    <i class="fas fa-microchip fa-2x"></i>
+                    <p>No data stored on this shard</p>
+                    <p>Use the Add Message button to store data</p>
+                  </div>
+                {{/if}}
+              </div>
+            {{else}}
+              <!-- Multi message mode - original layout -->
+              <div class="messages-container {{#if isSingleMode}}single-mode{{/if}}" {{dataShardTypeAttr}}>
+                <div class="message-list">
+                  {{#if messages.length}}
+                    {{#each messages as |message|}}
+                      <div class="message-item {{#if (eq ../selectedMessage.id message.id)}}selected{{/if}} {{#if message.isEncrypted}}encrypted{{/if}} {{#if message.isCorrupted}}corrupted{{/if}}" data-message-id="{{message.id}}">
+                        <div class="message-header">
+                          <span class="message-status">
+                            {{#if message.isEncrypted}}
+                              <i class="fas fa-lock"></i>
+                            {{else if message.isCorrupted}}
+                              <i class="fas fa-exclamation-triangle"></i>
+                            {{else}}
+                              <i class="fas fa-envelope-open"></i>
+                            {{/if}}
+                          </span>
+                          <span class="message-subject">{{message.subject}}</span>
+                        </div>
+                        <div class="message-meta">
+                          <span class="message-from">{{message.from}}</span>
+                          <span class="message-date">{{message.date}}</span>
+                        </div>
+                        
+                        {{#if ../isGM}}
+                          <!-- GM encryption controls -->
+                          {{#if ../encrypted}}
+                            <!-- Show encryption toggle when global encryption is enabled -->
+                            <div class="gm-controls">
+                              <button type="button" class="toggle-message-encryption cyber-button gm-list-btn" 
+                                      data-message-id="{{message.id}}">
+                                {{#if message.isEncrypted}}
+                                  <i class="fas fa-lock"></i> Encrypted
+                                {{else}}
+                                  <i class="fas fa-lock-open"></i> Decrypted
+                                {{/if}}
+                              </button>
+                            </div>
+                          {{else}}
+                            <!-- Show disabled state when global encryption is off -->
+                            <div class="gm-controls-disabled">
+                              <span style="font-size: 0.7em; color: #666; font-style: italic;">
+                                <i class="fas fa-info-circle"></i> Global encryption disabled
+                              </span>
+                            </div>
+                          {{/if}}
+                        {{/if}}
+                      </div>
+                    {{/each}}
+                  {{else}}
+                    <div class="no-messages">
+                      <p>No data found</p>
+                      <p>Use the Add Message button to store data on this shard</p>
+                    </div>
+                  {{/if}}
+                </div>
+                
+                <div class="message-detail">
+                  {{#if selectedMessage}}
+                    <div class="message-content" data-message-id="{{selectedMessage.id}}">
+                      <div class="message-header-full">
+                        <h3>{{selectedMessage.subject}}</h3>
+                        <div class="message-metadata">
+                          <p><strong>From:</strong> {{selectedMessage.from}}</p>
+                          <p><strong>To:</strong> {{selectedMessage.to}}</p>
+                          <p><strong>Date:</strong> {{selectedMessage.date}}</p>
+                        </div>
+                      </div>
+                      
+                      {{#if isGM}}
+                        <!-- GM encryption status indicator -->
+                        {{#if encrypted}}
+                          <!-- Show encryption controls when global encryption is enabled -->
+                          <div class="gm-encryption-status">
+                            <strong>GM:</strong> This message is currently 
+                            <span class="{{#if selectedMessage.isEncrypted}}encrypted-text{{else}}decrypted-text{{/if}}">
+                              {{#if selectedMessage.isEncrypted}}ENCRYPTED{{else}}NOT ENCRYPTED{{/if}}
+                            </span>
+                          </div>
+                        {{else}}
+                          <!-- Show info when global encryption is disabled -->
+                          <div class="gm-encryption-status-disabled">
+                            <strong>GM:</strong> 
+                            <span style="color: #666; font-style: italic;">
+                              <i class="fas fa-info-circle"></i> Global encryption is disabled - all messages are accessible
+                            </span>
+                          </div>
+                        {{/if}}
+                      {{/if}}
+                      
+                      {{#if selectedMessage.isEncrypted}}
+                        <div class="encrypted-content">
+                          <div class="encrypted-overlay">
+                            <i class="fas fa-lock"></i>
+                            <h3>ENCRYPTED DATA</h3>
+                            <p>This message is encrypted and requires decryption.</p>
+                            
+                            {{#if attemptingDecryption}}
+                              <div class="decrypt-interface">
+                                <p>Attempting to decrypt with {{skillCheck}}...</p>
+                                
+                                {{#if decryptionRoll}}
+                                  <div class="roll-result">
+                                    <h4>Decryption Attempt:</h4>
+                                    <p>
+                                      Dice: {{decryptionRoll.diceRoll}} + 
+                                      {{decryptionRoll.statName}}: {{decryptionRoll.statValue}} + 
+                                      Skill: {{decryptionRoll.skillValue}}
+                                      {{#if decryptionRoll.luck}} + Luck: {{decryptionRoll.luck}}{{/if}} = 
+                                      <strong>{{decryptionRoll.total}}</strong>
+                                    </p>
+                                    
+                                    {{#if decryptionRoll.success}}
+                                      <p class="success">SUCCESS! Decryption complete.</p>
+                                      {{#if showOpenMessageButton}}
+                                        <button class="open-message-btn cyber-button" style="
+                                          background: rgba(0, 255, 0, 0.2);
+                                          color: #00ff00;
+                                          border: 2px solid #00ff00;
+                                          padding: 10px 20px;
+                                          margin-top: 10px;
+                                          font-weight: bold;
+                                          text-transform: uppercase;
+                                          cursor: pointer;
+                                          border-radius: 4px;
+                                        ">
+                                          <i class="fas fa-envelope-open" style="margin-right: 8px;"></i>
+                                          OPEN MESSAGE
+                                        </button>
+                                      {{/if}}
+                                    {{else}}
+                                      <p class="failure">FAILED! DV {{dvValue}} required.</p>
+                                    {{/if}}
+                                  </div>
+                                {{else}}
+                                  <button type="button" class="roll-skill-check">
+                                    <i class="fas fa-dice-d10"></i> Roll {{skillCheck}} (DV {{dvValue}})
+                                  </button>
+                                {{/if}}
+                              </div>
+                            {{else}}
+                            <button class="decrypt-button" type="button">
+                              <i class="fas fa-key"></i> Attempt Decryption
+                            </button>
+                            {{/if}}
+                          </div>
+                        </div>
+                      {{else if selectedMessage.isCorrupted}}
+                        <div class="corrupted-content">
+                          <div class="corrupted-overlay">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <h3>DATA CORRUPTED</h3>
+                            <p>This message has been corrupted and cannot be recovered.</p>
+                            <p>Security protocols have permanently damaged the data.</p>
+                          </div>
+                        </div>
+                      {{else}}
+                        <div class="message-body">
+                          {{{selectedMessage.content}}}
+                        </div>
+                      {{/if}}
+                    </div>
+                    
+                    <!-- Message actions -->
+                    <div class="message-actions">
+                      <button class="action-btn export-btn" type="button">
+                        <i class="fas fa-download"></i> Export to Inbox
+                      </button>
+                        <button class="action-btn share-btn" type="button">
+                          <i class="fas fa-share"></i> Share to Chat
+                        </button>
+                      {{#if isGM}}
+                      <button class="action-btn delete-btn" type="button">
+                        <i class="fas fa-trash"></i> Delete
+                      </button>
+                      {{/if}}
+                    </div>
+                  {{else}}
+                    <div class="no-selection">
+                      <i class="fas fa-arrow-left"></i>
+                      <p>Select a message from the list to view its contents</p>
+                    </div>
+                  {{/if}}
+                </div>
+              </div>
+            {{/if}}
+
+            <div class="data-shard-footer">
+              <button type="button" class="add-message-button cyber-button">
+                <i class="fas fa-plus"></i> Add Message
+              </button>
+              {{#if (eq dataShardType "single")}}
+                <p class="single-message-note">Single message mode: Limited to one message</p>
+              {{/if}}
+            </div>
+          {{/if}}
+        </div>
+
+        <!-- Info Tab -->
+        <div class="tab" data-tab="info" data-group="primary">
+          <div class="info-container">
+            <!-- Description Section -->
+            <div class="description-section">
+              <div class="description-header">
+                <img src="{{item.img}}" class="item-image" alt="{{item.name}}">
+                <div class="description-title">
+                  <h3>Data Shard Description</h3>
+                </div>
+              </div>
+              <div class="description-content">
+                {{editor itemDescription target="system.description" button=true owner=owner editable=editable}}
+              </div>
+            </div>
+
+            <!-- Properties Section -->
+            <div class="properties-section">
+              <h3>Data Shard Properties</h3>
+              <div class="property-grid">
+                <div class="property-item">
+                  <span class="property-icon"><i class="fas fa-microchip"></i></span>
+                  <div class="property-details">
+                    <span class="property-name">Type</span>
+                    <span class="property-value">{{#if (eq dataShardType "single")}}Single Message{{else}}Multi Message{{/if}}</span>
+                  </div>
+                </div>
+                <div class="property-item">
+                  <span class="property-icon"><i class="fas fa-shield-alt"></i></span>
+                  <div class="property-details">
+                    <span class="property-name">Security</span>
+                    <span class="property-value">{{#if encrypted}}Encrypted (DV {{dvValue}}){{else}}Unencrypted{{/if}}</span>
+                  </div>
+                </div>
+                <div class="property-item">
+                  <span class="property-icon"><i class="fas fa-envelope"></i></span>
+                  <div class="property-details">
+                    <span class="property-name">Messages</span>
+                    <span class="property-value">{{messages.length}}</span>
+                  </div>
+                </div>
+                <div class="property-item">
+                  <span class="property-icon"><i class="fas fa-clock"></i></span>
+                  <div class="property-details">
+                    <span class="property-name">Last Modified</span>
+                    <span class="property-value">{{currentDate}}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Owner Section (if applicable) -->
+            {{#if item.actor}}
+            <div class="owner-section">
+              <h3>Owner Information</h3>
+              <div class="owner-details">
+                <img src="{{item.actor.img}}" class="owner-avatar">
+                <div class="owner-info">
+                  <div class="owner-name">{{item.actor.name}}</div>
+                  <div class="owner-type">{{item.actor.type}}</div>
+                </div>
+              </div>
+            </div>
+            {{/if}}
+          </div>
+        </div>
+
+        <!-- Config Tab -->
+        <div class="tab" data-tab="config" data-group="primary">
+          <div class="config-container">
+            <div class="form-group">
+              <button type="button" class="revert-to-normal-item cyber-button">
+                <i class="fas fa-undo"></i> Revert to Normal Item
+              </button>
+            </div>
+              <!-- Reset section -->
+              <div class="form-group">
+                <button type="button" class="reset-decryption-btn cyber-button">
+                  <i class="fas fa-undo"></i> Reset Decryption
+                </button>
+                <p style="font-size: 0.8em; color: #666; margin-top: 5px; font-style: italic;">
+                  Clears decryption states for this data shard only
+                </p>
+              </div>
+            <!-- Security Settings -->
+            <div class="config-section">
+              <h3>Security Settings</h3>
+              
+              <div class="form-group">
+                <label>Encryption:</label>
+                <button class="toggle-encryption cyber-button" type="button">
+                  <i class="fas fa-lock"></i> {{#if encrypted}}Disable{{else}}Enable{{/if}} Encryption
+                </button>
+              </div>
+              
+              {{#if encrypted}}
+              <div class="form-group">
+                <label>Required Skill:</label>
+                <select class="skill-select">
+                  {{selectOptions skills selected=skillCheck}}
+                </select>
+              </div>
+              
+              <div class="form-group">
+                <label>Difficulty Value (DV):</label>
+                <input type="number" class="dv-input" value="{{dvValue}}" min="10" max="30">
+              </div>
+              
+              <div class="form-group">
+                <label>Failed Decrypt Outcome:</label>
+                <select class="failure-outcome-select">
+                  {{selectOptions failureOutcomes selected=failureOutcome}}
+                </select>
+              </div>
+              {{/if}}
+            </div>
+            
+            <!-- Data Shard Settings -->
+            <div class="config-section">
+              <h3>Data Shard Settings</h3>
+              
+              <div class="form-group">
+                <label>Data Shard Type:</label>
+                <button class="toggle-data-shard-type cyber-button" type="button">
+                  <i class="fas fa-exchange-alt"></i> Toggle {{#if isSingleMode}}Multi{{else}}Single{{/if}} Mode
+                </button>
+              </div>
+              
+              <div class="form-group">
+                <label>UI Theme:</label>
+                <select class="theme-select">
+                  {{selectOptions themes selected=theme}}
+                </select>
+              </div>
+            </div>
+            
+            <!-- Item Settings -->
+            <div class="config-section">
+              <h3>Item Settings</h3>
+              
+              <div class="form-group">
+                <label>Name:</label>
+                <input type="text" name="name" value="{{item.name}}">
+              </div>
+              
+              <div class="form-group">
+                <label>Image:</label>
+                <div class="form-fields">
+                  {{filePicker target="img" type="image"}}
+                  <input class="image" type="text" name="img" placeholder="Path to image" value="{{item.img}}"/>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </form>
+</div>

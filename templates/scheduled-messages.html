@@ -1,0 +1,117 @@
+<div class="cyberpunk-scheduled-messages">
+  <div class="cyberpunk-header">
+    <div class="header-top">
+      <div class="connection-status">
+        <i class="fas fa-wifi"></i> CONNECTED to Night City CitiNet
+      </div>
+      <div class="header-title">SCHEDULED MESSAGES</div>
+      <div class="current-time">{{currentTime}}</div>
+    </div>
+    <div class="header-welcome">
+      <span class="welcome-text">Manage your scheduled outgoing messages</span>
+      <div class="header-controls">
+        <button type="button" class="cyber-button new-scheduled-btn">
+          <i class="fas fa-plus"></i> Create New Scheduled Message
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="main-content">
+    <!-- Messages list -->
+    <div class="messages-list">
+      {{#if messages.length}}
+        {{#each messages}}
+          <div class="message-item {{#if isPastDue}}past-due{{/if}}" data-message-id="{{created}}">
+            <div class="message-header">
+              <div class="message-recipient">To: {{recipient}}</div>
+              <div class="message-timing">
+                <i class="{{#if isSimpleCalendar}}fas fa-calendar-alt{{else}}fas fa-clock{{/if}}"></i>
+                {{formattedDate}}
+                {{#if isPastDue}}<span class="past-due-badge">PAST DUE</span>{{/if}}
+              </div>
+            </div>
+            <div class="message-subject">{{subject}}</div>
+            <div class="message-actions">
+              <button class="action-btn edit-message" data-message-id="{{created}}" title="Edit Schedule">
+                <i class="fas fa-edit"></i>
+              </button>
+              <button class="action-btn delete-message" data-message-id="{{created}}" title="Delete">
+                <i class="fas fa-trash"></i>
+              </button>
+              <button class="action-btn send-now" data-message-id="{{created}}" title="Send Now">
+                <i class="fas fa-paper-plane"></i>
+              </button>
+            </div>
+          </div>
+        {{/each}}
+      {{else}}
+        <div class="no-messages">
+          <p><i class="fas fa-calendar-times"></i></p>
+          <p>No scheduled messages found</p>
+          <p>Click the "Create New Scheduled Message" button to schedule a message</p>
+        </div>
+      {{/if}}
+    </div>
+
+    <!-- Message detail view -->
+    <div class="message-detail">
+      {{#if selectedMessage}}
+        <div class="message-info">
+          <h3>{{selectedMessage.subject}}</h3>
+          <div class="message-metadata">
+            <p><strong>From:</strong> {{selectedMessage.from}}</p>
+            <p><strong>To:</strong> {{selectedMessage.to}}</p>
+            <p><strong>Scheduled For:</strong> {{selectedMessage.formattedDate}}</p>
+            <p><strong>Using:</strong> 
+              {{#if selectedMessage.useSimpleCalendar}}
+              In-Game Calendar Time
+              {{else}}
+              Real-World Time
+              {{/if}}
+            </p>
+          </div>
+          <div class="message-content-preview">
+            <h4>Message Preview:</h4>
+            <div class="content-box">
+              {{{selectedMessage.content}}}
+            </div>
+          </div>
+        </div>
+
+        <!-- Edit panel -->
+        <div class="edit-panel" style="display: none;">
+          <h3>Edit Schedule</h3>
+          <div class="form-group">
+            <label>Scheduled Time:</label>
+            <input type="datetime-local" id="edit-scheduled-time" value="{{selectedMessage.scheduledTime}}">
+            <p class="preview-time">{{selectedMessage.formattedDate}}</p>
+          </div>
+
+          {{#if hasSimpleCalendar}}
+          <div class="form-group calendar-option">
+            <label>
+              <input type="checkbox" id="use-simple-calendar" {{#if selectedMessage.isSimpleCalendar}}checked{{/if}}>
+              Use In-Game Calendar Time
+            </label>
+            <p class="help-text calendar-note" {{#unless selectedMessage.isSimpleCalendar}}style="display: none;"{{/unless}}>
+              The message will be sent when the in-game time reaches the specified datetime.
+            </p>
+          </div>
+          {{/if}}
+
+          <div class="form-actions">
+            <button id="save-changes-btn" class="cyber-button">
+              <i class="fas fa-save"></i> Save Changes
+            </button>
+          </div>
+        </div>
+      {{else}}
+        <div class="no-selection">
+          <p><i class="fas fa-envelope"></i></p>
+          <p>Select a message to view details</p>
+        </div>
+      {{/if}}
+    </div>
+  </div>
+</div>
