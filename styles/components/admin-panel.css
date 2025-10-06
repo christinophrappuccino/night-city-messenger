@@ -1,0 +1,633 @@
+/* ==============================================
+   NIGHT CITY MESSENGER
+   Component: Admin Panel (GM Tools)
+   Purpose: Statistics, management, and system tools
+   Dependencies: variables.css, reset.css, animations.css
+   ============================================== */
+
+/* ==============================================
+   ADMIN PANEL WINDOW
+   ============================================== */
+
+.ncm-app.ncm-admin-panel {
+  width: var(--ncm-admin-width);
+  height: var(--ncm-admin-height);
+  min-width: 900px;
+  min-height: 700px;
+}
+
+.ncm-admin-panel__container {
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ==============================================
+   SIDEBAR NAVIGATION
+   Tab navigation for different sections
+   ============================================== */
+
+.ncm-admin-panel__sidebar {
+  flex: 0 0 var(--ncm-admin-sidebar-width);
+  background: var(--ncm-bg-surface);
+  border-right: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.ncm-admin-panel__nav {
+  display: flex;
+  flex-direction: column;
+  padding: var(--ncm-spacing-md);
+  gap: var(--ncm-spacing-xs);
+}
+
+.ncm-admin-panel__nav-item {
+  padding: var(--ncm-spacing-md);
+  background: transparent;
+  border: var(--ncm-border-width-thin) solid transparent;
+  border-radius: var(--ncm-border-radius-md);
+  color: var(--ncm-text-secondary);
+  font-size: var(--ncm-font-size-sm);
+  font-weight: var(--ncm-font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: var(--ncm-letter-spacing-wide);
+  cursor: pointer;
+  transition: all var(--ncm-transition-fast);
+  display: flex;
+  align-items: center;
+  gap: var(--ncm-spacing-sm);
+}
+
+.ncm-admin-panel__nav-item:hover {
+  background: var(--ncm-bg-hover);
+  color: var(--ncm-text-primary);
+}
+
+.ncm-admin-panel__nav-item--active {
+  background: var(--ncm-primary-alpha);
+  border-color: var(--ncm-primary);
+  color: var(--ncm-primary);
+}
+
+.ncm-admin-panel__nav-icon {
+  font-size: var(--ncm-icon-md);
+}
+
+/* ==============================================
+   MAIN CONTENT AREA
+   ============================================== */
+
+.ncm-admin-panel__content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Content header */
+.ncm-admin-panel__content-header {
+  flex: 0 0 auto;
+  background: var(--ncm-bg-secondary);
+  border-bottom: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
+  padding: var(--ncm-spacing-lg);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--ncm-spacing-md);
+}
+
+.ncm-admin-panel__content-title {
+  font-family: var(--ncm-font-primary);
+  font-size: var(--ncm-font-size-xxl);
+  font-weight: var(--ncm-font-weight-bold);
+  color: var(--ncm-primary);
+  text-transform: uppercase;
+  letter-spacing: var(--ncm-letter-spacing-wide);
+}
+
+.ncm-admin-panel__content-actions {
+  display: flex;
+  gap: var(--ncm-spacing-sm);
+}
+
+.ncm-admin-panel__action-btn {
+  padding: var(--ncm-spacing-sm) var(--ncm-spacing-lg);
+  background: var(--ncm-bg-tertiary);
+  border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
+  border-radius: var(--ncm-border-radius-md);
+  color: var(--ncm-text-primary);
+  font-size: var(--ncm-font-size-sm);
+  font-weight: var(--ncm-font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: var(--ncm-letter-spacing-wide);
+  transition: all var(--ncm-transition-normal);
+  display: flex;
+  align-items: center;
+  gap: var(--ncm-spacing-sm);
+}
+
+.ncm-admin-panel__action-btn:hover {
+  border-color: var(--ncm-primary);
+  background: var(--ncm-bg-hover);
+}
+
+.ncm-admin-panel__action-btn--primary {
+  background: var(--ncm-primary);
+  border-color: var(--ncm-primary);
+}
+
+.ncm-admin-panel__action-btn--primary:hover {
+  background: var(--ncm-primary-light);
+  box-shadow: calc(var(--ncm-enable-glow) * 1px) 0 0 calc(var(--ncm-glow-intensity) * 15px) var(--ncm-primary-alpha);
+}
+
+.ncm-admin-panel__action-btn--danger {
+  border-color: var(--ncm-error);
+  color: var(--ncm-error);
+}
+
+.ncm-admin-panel__action-btn--danger:hover {
+  background: var(--ncm-error-alpha);
+}
+
+/* Content body */
+.ncm-admin-panel__content-body {
+  flex: 1;
+  padding: var(--ncm-spacing-lg);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* ==============================================
+   STATISTICS DASHBOARD
+   ============================================== */
+
+.ncm-admin-panel__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: var(--ncm-spacing-lg);
+  margin-bottom: var(--ncm-spacing-xl);
+}
+
+.ncm-admin-panel__stat-card {
+  background: var(--ncm-bg-secondary);
+  border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
+  border-radius: var(--ncm-border-radius-lg);
+  padding: var(--ncm-spacing-lg);
+  transition: all var(--ncm-transition-normal);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ncm-spacing-md);
+}
+
+.ncm-admin-panel__stat-card:hover {
+  border-color: var(--ncm-primary);
+  box-shadow: calc(var(--ncm-enable-glow) * 1px) 0 0 calc(var(--ncm-glow-intensity) * 10px) var(--ncm-primary-alpha);
+  transform: translateY(-2px);
+}
+
+.ncm-admin-panel__stat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.ncm-admin-panel__stat-label {
+  font-size: var(--ncm-font-size-sm);
+  color: var(--ncm-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: var(--ncm-letter-spacing-wide);
+}
+
+.ncm-admin-panel__stat-icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ncm-primary-alpha);
+  border-radius: var(--ncm-border-radius-md);
+  color: var(--ncm-primary);
+  font-size: var(--ncm-icon-md);
+}
+
+.ncm-admin-panel__stat-value {
+  font-family: var(--ncm-font-primary);
+  font-size: var(--ncm-font-size-xxxl);
+  font-weight: var(--ncm-font-weight-bold);
+  color: var(--ncm-primary);
+  line-height: 1;
+}
+
+.ncm-admin-panel__stat-change {
+  font-size: var(--ncm-font-size-xs);
+  color: var(--ncm-text-tertiary);
+  display: flex;
+  align-items: center;
+  gap: var(--ncm-spacing-xs);
+}
+
+.ncm-admin-panel__stat-change--positive {
+  color: var(--ncm-success);
+}
+
+.ncm-admin-panel__stat-change--negative {
+  color: var(--ncm-error);
+}
+
+/* ==============================================
+   DATA TABLES
+   User management, message logs, etc.
+   ============================================== */
+
+.ncm-admin-panel__table-wrapper {
+  background: var(--ncm-bg-secondary);
+  border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
+  border-radius: var(--ncm-border-radius-lg);
+  overflow: hidden;
+  margin-bottom: var(--ncm-spacing-lg);
+}
+
+.ncm-admin-panel__table-header {
+  padding: var(--ncm-spacing-md) var(--ncm-spacing-lg);
+  background: var(--ncm-bg-surface);
+  border-bottom: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ncm-admin-panel__table-title {
+  font-size: var(--ncm-font-size-lg);
+  font-weight: var(--ncm-font-weight-bold);
+  color: var(--ncm-text-primary);
+  text-transform: uppercase;
+  letter-spacing: var(--ncm-letter-spacing-wide);
+}
+
+.ncm-admin-panel__table-filters {
+  display: flex;
+  gap: var(--ncm-spacing-sm);
+}
+
+.ncm-admin-panel__table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.ncm-admin-panel__table thead {
+  background: var(--ncm-bg-tertiary);
+  border-bottom: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
+}
+
+.ncm-admin-panel__table th {
+  padding: var(--ncm-spacing-md);
+  text-align: left;
+  font-size: var(--ncm-font-size-sm);
+  font-weight: var(--ncm-font-weight-bold);
+  color: var(--ncm-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: var(--ncm-letter-spacing-wide);
+}
+
+.ncm-admin-panel__table tbody tr {
+  border-bottom: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
+  transition: background-color var(--ncm-transition-fast);
+}
+
+.ncm-admin-panel__table tbody tr:hover {
+  background: var(--ncm-bg-hover);
+}
+
+.ncm-admin-panel__table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.ncm-admin-panel__table td {
+  padding: var(--ncm-spacing-md);
+  font-size: var(--ncm-font-size-sm);
+  color: var(--ncm-text-primary);
+}
+
+.ncm-admin-panel__table-actions {
+  display: flex;
+  gap: var(--ncm-spacing-xs);
+}
+
+.ncm-admin-panel__table-action-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ncm-bg-tertiary);
+  border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
+  border-radius: var(--ncm-border-radius-sm);
+  color: var(--ncm-text-secondary);
+  font-size: var(--ncm-icon-sm);
+  transition: all var(--ncm-transition-fast);
+  cursor: pointer;
+}
+
+.ncm-admin-panel__table-action-btn:hover {
+  border-color: var(--ncm-primary);
+  color: var(--ncm-primary);
+  background: var(--ncm-bg-hover);
+}
+
+.ncm-admin-panel__table-action-btn--delete:hover {
+  border-color: var(--ncm-error);
+  color: var(--ncm-error);
+  background: var(--ncm-error-alpha);
+}
+
+/* ==============================================
+   SYSTEM TOOLS GRID
+   Diagnostic and maintenance tools
+   ============================================== */
+
+.ncm-admin-panel__tools {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--ncm-spacing-lg);
+}
+
+.ncm-admin-panel__tool-card {
+  background: var(--ncm-bg-secondary);
+  border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
+  border-radius: var(--ncm-border-radius-lg);
+  padding: var(--ncm-spacing-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ncm-spacing-md);
+  transition: all var(--ncm-transition-normal);
+}
+
+.ncm-admin-panel__tool-card:hover {
+  border-color: var(--ncm-primary);
+  box-shadow: calc(var(--ncm-enable-glow) * 1px) 0 0 calc(var(--ncm-glow-intensity) * 10px) var(--ncm-primary-alpha);
+}
+
+.ncm-admin-panel__tool-card--danger {
+  border-color: var(--ncm-error);
+}
+
+.ncm-admin-panel__tool-card--danger:hover {
+  border-color: var(--ncm-error);
+  box-shadow: calc(var(--ncm-enable-glow) * 1px) 0 0 calc(var(--ncm-glow-intensity) * 10px) var(--ncm-error-alpha);
+}
+
+.ncm-admin-panel__tool-icon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ncm-primary-alpha);
+  border-radius: var(--ncm-border-radius-md);
+  color: var(--ncm-primary);
+  font-size: var(--ncm-icon-lg);
+}
+
+.ncm-admin-panel__tool-card--danger .ncm-admin-panel__tool-icon {
+  background: var(--ncm-error-alpha);
+  color: var(--ncm-error);
+}
+
+.ncm-admin-panel__tool-title {
+  font-size: var(--ncm-font-size-lg);
+  font-weight: var(--ncm-font-weight-bold);
+  color: var(--ncm-text-primary);
+  text-transform: uppercase;
+  letter-spacing: var(--ncm-letter-spacing-wide);
+}
+
+.ncm-admin-panel__tool-description {
+  font-size: var(--ncm-font-size-sm);
+  color: var(--ncm-text-secondary);
+  line-height: var(--ncm-line-height-normal);
+  flex: 1;
+}
+
+.ncm-admin-panel__tool-btn {
+  padding: var(--ncm-spacing-sm) var(--ncm-spacing-lg);
+  background: var(--ncm-primary);
+  border: var(--ncm-border-width-thin) solid var(--ncm-primary);
+  border-radius: var(--ncm-border-radius-md);
+  color: var(--ncm-text-primary);
+  font-size: var(--ncm-font-size-sm);
+  font-weight: var(--ncm-font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: var(--ncm-letter-spacing-wide);
+  transition: all var(--ncm-transition-normal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ncm-spacing-sm);
+}
+
+.ncm-admin-panel__tool-btn:hover {
+  background: var(--ncm-primary-light);
+  box-shadow: calc(var(--ncm-enable-glow) * 1px) 0 0 calc(var(--ncm-glow-intensity) * 15px) var(--ncm-primary-alpha);
+}
+
+.ncm-admin-panel__tool-card--danger .ncm-admin-panel__tool-btn {
+  background: var(--ncm-error);
+  border-color: var(--ncm-error);
+}
+
+.ncm-admin-panel__tool-card--danger .ncm-admin-panel__tool-btn:hover {
+  background: var(--ncm-error-dark);
+  box-shadow: calc(var(--ncm-enable-glow) * 1px) 0 0 calc(var(--ncm-glow-intensity) * 15px) var(--ncm-error-alpha);
+}
+
+/* ==============================================
+   DIAGNOSTIC RESULTS
+   Output from system tools
+   ============================================== */
+
+.ncm-admin-panel__diagnostics {
+  background: var(--ncm-bg-secondary);
+  border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
+  border-radius: var(--ncm-border-radius-lg);
+  padding: var(--ncm-spacing-lg);
+  margin-top: var(--ncm-spacing-lg);
+}
+
+.ncm-admin-panel__diagnostics-title {
+  font-size: var(--ncm-font-size-lg);
+  font-weight: var(--ncm-font-weight-bold);
+  color: var(--ncm-primary);
+  text-transform: uppercase;
+  letter-spacing: var(--ncm-letter-spacing-wide);
+  margin-bottom: var(--ncm-spacing-md);
+  display: flex;
+  align-items: center;
+  gap: var(--ncm-spacing-sm);
+}
+
+.ncm-admin-panel__diagnostics-output {
+  background: var(--ncm-bg-primary);
+  border: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
+  border-radius: var(--ncm-border-radius-md);
+  padding: var(--ncm-spacing-md);
+  font-family: var(--ncm-font-mono);
+  font-size: var(--ncm-font-size-sm);
+  color: var(--ncm-secondary);
+  line-height: var(--ncm-line-height-loose);
+  max-height: 400px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.ncm-admin-panel__diagnostics-line {
+  margin-bottom: var(--ncm-spacing-xs);
+}
+
+.ncm-admin-panel__diagnostics-line--error {
+  color: var(--ncm-error);
+}
+
+.ncm-admin-panel__diagnostics-line--warning {
+  color: var(--ncm-warning);
+}
+
+.ncm-admin-panel__diagnostics-line--success {
+  color: var(--ncm-success);
+}
+
+/* ==============================================
+   WARNING BANNERS
+   Important notices for dangerous actions
+   ============================================== */
+
+.ncm-admin-panel__warning {
+  background: var(--ncm-error-alpha);
+  border: var(--ncm-border-width-normal) solid var(--ncm-error);
+  border-radius: var(--ncm-border-radius-lg);
+  padding: var(--ncm-spacing-lg);
+  margin-bottom: var(--ncm-spacing-lg);
+  display: flex;
+  gap: var(--ncm-spacing-md);
+  animation: ncm-pulse calc(var(--ncm-animation-speed) * 3s) ease-in-out infinite;
+}
+
+.ncm-admin-panel__warning-icon {
+  font-size: var(--ncm-icon-xl);
+  color: var(--ncm-error);
+  flex-shrink: 0;
+}
+
+.ncm-admin-panel__warning-content {
+  flex: 1;
+}
+
+.ncm-admin-panel__warning-title {
+  font-size: var(--ncm-font-size-lg);
+  font-weight: var(--ncm-font-weight-bold);
+  color: var(--ncm-error);
+  text-transform: uppercase;
+  letter-spacing: var(--ncm-letter-spacing-wide);
+  margin-bottom: var(--ncm-spacing-sm);
+}
+
+.ncm-admin-panel__warning-text {
+  font-size: var(--ncm-font-size-sm);
+  color: var(--ncm-text-primary);
+  line-height: var(--ncm-line-height-normal);
+}
+
+/* ==============================================
+   EXPORT/IMPORT SECTIONS
+   Data management tools
+   ============================================== */
+
+.ncm-admin-panel__export {
+  background: var(--ncm-bg-secondary);
+  border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
+  border-radius: var(--ncm-border-radius-lg);
+  padding: var(--ncm-spacing-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ncm-spacing-md);
+}
+
+.ncm-admin-panel__export-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--ncm-spacing-md);
+}
+
+.ncm-admin-panel__export-option {
+  display: flex;
+  align-items: center;
+  gap: var(--ncm-spacing-sm);
+  padding: var(--ncm-spacing-md);
+  background: var(--ncm-bg-tertiary);
+  border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
+  border-radius: var(--ncm-border-radius-md);
+  cursor: pointer;
+  transition: all var(--ncm-transition-fast);
+}
+
+.ncm-admin-panel__export-option:hover {
+  border-color: var(--ncm-primary);
+  background: var(--ncm-bg-hover);
+}
+
+.ncm-admin-panel__export-option input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+}
+
+.ncm-admin-panel__export-label {
+  font-size: var(--ncm-font-size-sm);
+  color: var(--ncm-text-primary);
+}
+
+/* ==============================================
+   RESPONSIVE DESIGN
+   ============================================== */
+
+@media (max-width: 1199px) {
+  .ncm-app.ncm-admin-panel {
+    width: 95vw;
+  }
+  
+  .ncm-admin-panel__stats {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+}
+
+@media (max-width: 899px) {
+  .ncm-admin-panel__sidebar {
+    flex: 0 0 60px;
+  }
+  
+  .ncm-admin-panel__nav-item {
+    padding: var(--ncm-spacing-sm);
+    justify-content: center;
+  }
+  
+  .ncm-admin-panel__nav-item span {
+    display: none;
+  }
+  
+  .ncm-admin-panel__content-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .ncm-admin-panel__tools {
+    grid-template-columns: 1fr;
+  }
+  
+  .ncm-admin-panel__stats {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,647 @@
+/* ==============================================
+   NIGHT CITY MESSENGER
+   Component: Animations & Effects
+   Purpose: Reusable keyframe animations and cyberpunk effects
+   Dependencies: variables.css
+   ============================================== */
+
+/* ==============================================
+   GLITCH EFFECTS
+   Subtle screen distortion for cyberpunk feel
+   ============================================== */
+
+@keyframes ncm-glitch {
+  0%, 100% {
+    transform: translate(0);
+    filter: hue-rotate(0deg);
+  }
+  10% {
+    transform: translate(-2px, 2px);
+    filter: hue-rotate(5deg);
+  }
+  20% {
+    transform: translate(2px, -2px);
+    filter: hue-rotate(-5deg);
+  }
+  30% {
+    transform: translate(-1px, -1px);
+  }
+  40% {
+    transform: translate(1px, 1px);
+  }
+  50% {
+    transform: translate(0);
+  }
+}
+
+@keyframes ncm-glitch-intense {
+  0%, 100% {
+    transform: translate(0) skew(0deg);
+    opacity: 1;
+  }
+  10% {
+    transform: translate(-5px, 2px) skew(2deg);
+    opacity: 0.8;
+  }
+  20% {
+    transform: translate(3px, -4px) skew(-1deg);
+    opacity: 0.9;
+  }
+  30% {
+    transform: translate(-2px, 3px) skew(1deg);
+  }
+  40% {
+    transform: translate(4px, -1px) skew(-2deg);
+    opacity: 0.85;
+  }
+  50% {
+    transform: translate(0) skew(0deg);
+    opacity: 1;
+  }
+}
+
+@keyframes ncm-glitch-text {
+  0% {
+    text-shadow: 0 0 0 transparent;
+  }
+  2% {
+    text-shadow: -2px 0 var(--ncm-primary), 2px 0 var(--ncm-secondary);
+  }
+  4% {
+    text-shadow: 2px 0 var(--ncm-primary), -2px 0 var(--ncm-secondary);
+  }
+  6% {
+    text-shadow: 0 0 0 transparent;
+  }
+  100% {
+    text-shadow: 0 0 0 transparent;
+  }
+}
+
+/* ==============================================
+   SCANLINE EFFECTS
+   CRT monitor scanlines
+   ============================================== */
+
+@keyframes ncm-scanline {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(100%);
+  }
+}
+
+/* Scanline overlay implementation */
+.ncm-app::before,
+.ncm-dialog::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 10000;
+  opacity: calc(var(--ncm-enable-scanlines) * var(--ncm-scanline-opacity));
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.15) 0px,
+    transparent 1px,
+    transparent 2px,
+    rgba(0, 0, 0, 0.15) 3px
+  );
+  animation: ncm-scanline 8s linear infinite;
+  mix-blend-mode: overlay;
+}
+
+/* ==============================================
+   FADE ANIMATIONS
+   Smooth element appearances
+   ============================================== */
+
+@keyframes ncm-fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes ncm-fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes ncm-fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ncm-fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ==============================================
+   SLIDE ANIMATIONS
+   Smooth sliding transitions
+   ============================================== */
+
+@keyframes ncm-slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes ncm-slideInLeft {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes ncm-slideOutRight {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+@keyframes ncm-slideOutLeft {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+}
+
+/* ==============================================
+   PULSE ANIMATIONS
+   Attention-grabbing pulses
+   ============================================== */
+
+@keyframes ncm-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes ncm-pulse-scale {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.8;
+  }
+}
+
+@keyframes ncm-pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 5px var(--ncm-primary-alpha);
+  }
+  50% {
+    box-shadow: 0 0 calc(var(--ncm-glow-intensity) * 30px) var(--ncm-primary-alpha);
+  }
+}
+
+/* ==============================================
+   GLOW ANIMATIONS
+   Neon glow effects
+   ============================================== */
+
+@keyframes ncm-glow-pulse-primary {
+  0%, 100% {
+    box-shadow: 0 0 calc(var(--ncm-glow-intensity) * 10px) var(--ncm-primary-alpha);
+    border-color: var(--ncm-primary);
+  }
+  50% {
+    box-shadow: 0 0 calc(var(--ncm-glow-intensity) * 25px) var(--ncm-primary-alpha);
+    border-color: var(--ncm-primary-light);
+  }
+}
+
+@keyframes ncm-glow-pulse-secondary {
+  0%, 100% {
+    box-shadow: 0 0 calc(var(--ncm-glow-intensity) * 10px) var(--ncm-secondary-alpha);
+    border-color: var(--ncm-secondary);
+  }
+  50% {
+    box-shadow: 0 0 calc(var(--ncm-glow-intensity) * 25px) var(--ncm-secondary-alpha);
+    border-color: var(--ncm-secondary-light);
+  }
+}
+
+@keyframes ncm-glow-text {
+  0%, 100% {
+    text-shadow: 0 0 calc(var(--ncm-glow-intensity) * 5px) var(--ncm-primary);
+  }
+  50% {
+    text-shadow: 0 0 calc(var(--ncm-glow-intensity) * 15px) var(--ncm-primary);
+  }
+}
+
+/* ==============================================
+   LOADING ANIMATIONS
+   Spinners and loaders
+   ============================================== */
+
+@keyframes ncm-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes ncm-spin-reverse {
+  from {
+    transform: rotate(360deg);
+  }
+  to {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes ncm-bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes ncm-dots {
+  0%, 20% {
+    content: '.';
+  }
+  40% {
+    content: '..';
+  }
+  60%, 100% {
+    content: '...';
+  }
+}
+
+/* ==============================================
+   SHAKE ANIMATIONS
+   Error/alert emphasis
+   ============================================== */
+
+@keyframes ncm-shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  10%, 30%, 50%, 70%, 90% {
+    transform: translateX(-5px);
+  }
+  20%, 40%, 60%, 80% {
+    transform: translateX(5px);
+  }
+}
+
+@keyframes ncm-shake-rotate {
+  0%, 100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(-2deg);
+  }
+  75% {
+    transform: rotate(2deg);
+  }
+}
+
+/* ==============================================
+   MATRIX RAIN EFFECT
+   Falling characters for hacking scenes
+   ============================================== */
+
+@keyframes ncm-matrix-rain {
+  0% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh);
+    opacity: 0;
+  }
+}
+
+/* ==============================================
+   TYPING EFFECT
+   Simulated text typing
+   ============================================== */
+
+@keyframes ncm-typing {
+  from {
+    width: 0;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+@keyframes ncm-blink {
+  0%, 49% {
+    opacity: 1;
+  }
+  50%, 100% {
+    opacity: 0;
+  }
+}
+
+/* ==============================================
+   SCALE ANIMATIONS
+   Zoom effects
+   ============================================== */
+
+@keyframes ncm-scaleIn {
+  from {
+    transform: scale(0);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes ncm-scaleOut {
+  from {
+    transform: scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: scale(0);
+    opacity: 0;
+  }
+}
+
+/* ==============================================
+   FLIP ANIMATIONS
+   3D card flips
+   ============================================== */
+
+@keyframes ncm-flipIn {
+  from {
+    transform: perspective(400px) rotateY(-90deg);
+    opacity: 0;
+  }
+  to {
+    transform: perspective(400px) rotateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes ncm-flipOut {
+  from {
+    transform: perspective(400px) rotateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: perspective(400px) rotateY(90deg);
+    opacity: 0;
+  }
+}
+
+/* ==============================================
+   NOTIFICATION ANIMATIONS
+   Toast/alert entrances and exits
+   ============================================== */
+
+@keyframes ncm-toast-in {
+  from {
+    transform: translateY(-100%) translateX(-50%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) translateX(-50%);
+    opacity: 1;
+  }
+}
+
+@keyframes ncm-toast-out {
+  from {
+    transform: translateY(0) translateX(-50%);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-100%) translateX(-50%);
+    opacity: 0;
+  }
+}
+
+/* ==============================================
+   PROGRESS BAR ANIMATIONS
+   Loading bars and indicators
+   ============================================== */
+
+@keyframes ncm-progress {
+  0% {
+    width: 0%;
+  }
+  100% {
+    width: 100%;
+  }
+}
+
+@keyframes ncm-progress-indeterminate {
+  0% {
+    left: -35%;
+    right: 100%;
+  }
+  60% {
+    left: 100%;
+    right: -90%;
+  }
+  100% {
+    left: 100%;
+    right: -90%;
+  }
+}
+
+/* ==============================================
+   DATA STREAM EFFECT
+   Scrolling data for hacking/transfer
+   ============================================== */
+
+@keyframes ncm-data-stream {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* ==============================================
+   UTILITY CLASSES
+   Apply animations to elements
+   ============================================== */
+
+/* Fade animations */
+.ncm-animate-fadeIn {
+  animation: ncm-fadeIn calc(var(--ncm-animation-speed) * 300ms) var(--ncm-transition-normal);
+}
+
+.ncm-animate-fadeOut {
+  animation: ncm-fadeOut calc(var(--ncm-animation-speed) * 300ms) var(--ncm-transition-normal);
+}
+
+.ncm-animate-fadeInUp {
+  animation: ncm-fadeInUp calc(var(--ncm-animation-speed) * 400ms) var(--ncm-transition-normal);
+}
+
+/* Slide animations */
+.ncm-animate-slideInRight {
+  animation: ncm-slideInRight calc(var(--ncm-animation-speed) * 400ms) var(--ncm-transition-normal);
+}
+
+.ncm-animate-slideInLeft {
+  animation: ncm-slideInLeft calc(var(--ncm-animation-speed) * 400ms) var(--ncm-transition-normal);
+}
+
+/* Pulse animations */
+.ncm-animate-pulse {
+  animation: ncm-pulse calc(var(--ncm-animation-speed) * 2s) ease-in-out infinite;
+}
+
+.ncm-animate-pulse-glow {
+  animation: ncm-glow-pulse-primary calc(var(--ncm-animation-speed) * 2s) ease-in-out infinite;
+}
+
+/* Loading animations */
+.ncm-animate-spin {
+  animation: ncm-spin calc(var(--ncm-animation-speed) * 1s) linear infinite;
+}
+
+/* Shake animations */
+.ncm-animate-shake {
+  animation: ncm-shake calc(var(--ncm-animation-speed) * 500ms) ease-in-out;
+}
+
+/* Scale animations */
+.ncm-animate-scaleIn {
+  animation: ncm-scaleIn calc(var(--ncm-animation-speed) * 300ms) var(--ncm-transition-normal);
+}
+
+/* Glitch animations */
+.ncm-animate-glitch {
+  animation: ncm-glitch calc(var(--ncm-animation-speed) * 5s) infinite;
+}
+
+.ncm-animate-glitch-text {
+  animation: ncm-glitch-text calc(var(--ncm-animation-speed) * 10s) infinite;
+}
+
+/* ==============================================
+   CONDITIONAL ANIMATIONS
+   Only run if effects are enabled
+   ============================================== */
+
+/* Apply subtle glitch to entire app if enabled */
+.ncm-app {
+  animation: ncm-glitch calc(var(--ncm-animation-speed) * 15s) infinite;
+  animation-play-state: calc(var(--ncm-enable-glitch)) paused running;
+}
+
+/* Disable all animations if disabled */
+@media (prefers-reduced-motion: reduce) {
+  .ncm-app *,
+  .ncm-dialog *,
+  .ncm-notification * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  
+  .ncm-app::before,
+  .ncm-dialog::before {
+    animation: none !important;
+  }
+}
+
+/* Disable animations when user setting is off */
+.ncm-app[data-animations="false"] *,
+.ncm-app[data-animations="false"]::before,
+.ncm-app[data-animations="false"]::after,
+.ncm-dialog[data-animations="false"] *,
+.ncm-dialog[data-animations="false"]::before,
+.ncm-dialog[data-animations="false"]::after {
+  animation: none !important;
+  transition: none !important;
+}
+
+/* ==============================================
+   PERFORMANCE OPTIMIZATIONS
+   Use GPU acceleration for animations
+   ============================================== */
+
+.ncm-animate-fadeIn,
+.ncm-animate-fadeOut,
+.ncm-animate-fadeInUp,
+.ncm-animate-slideInRight,
+.ncm-animate-slideInLeft,
+.ncm-animate-scaleIn,
+.ncm-animate-scaleOut {
+  will-change: transform, opacity;
+}
+
+.ncm-animate-spin,
+.ncm-animate-pulse-glow {
+  will-change: transform;
+}
+
+/* Remove will-change after animation completes */
+.ncm-animate-fadeIn.animation-complete,
+.ncm-animate-slideInRight.animation-complete,
+.ncm-animate-scaleIn.animation-complete {
+  will-change: auto;
+}

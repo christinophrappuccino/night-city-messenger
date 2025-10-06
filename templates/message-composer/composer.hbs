@@ -1,0 +1,114 @@
+{{!-- Message Composer Template --}}
+{{!-- File: templates/message-composer/composer.hbs --}}
+
+<div class="ncm-composer__container">
+  
+  {{!-- Header Section --}}
+  <div class="ncm-composer__header">
+    
+    {{!-- Recipient Field --}}
+    <div class="ncm-composer__field">
+      <label class="ncm-composer__label">To:</label>
+      <div class="ncm-composer__input-wrapper">
+        <input 
+          type="text" 
+          class="ncm-composer__input" 
+          name="to" 
+          value="{{to}}"
+          placeholder="recipient@example.net"
+          data-field="to"
+        />
+        <button class="ncm-composer__contacts-btn" data-action="select-contact">
+          <i class="fas fa-address-book"></i>
+          Contacts
+        </button>
+      </div>
+    </div>
+    
+    {{!-- Subject Field --}}
+    <div class="ncm-composer__field">
+      <label class="ncm-composer__label">Subject:</label>
+      <div class="ncm-composer__input-wrapper">
+        <input 
+          type="text" 
+          class="ncm-composer__input" 
+          name="subject" 
+          value="{{subject}}"
+          placeholder="Message subject..."
+          data-field="subject"
+        />
+      </div>
+    </div>
+  </div>
+  
+  {{!-- Editor Toolbar --}}
+  <div class="ncm-composer__toolbar">
+    <div class="ncm-composer__toolbar-group">
+      <button class="ncm-composer__toolbar-btn" data-action="bold" title="Bold">
+        <i class="fas fa-bold"></i>
+      </button>
+      <button class="ncm-composer__toolbar-btn" data-action="italic" title="Italic">
+        <i class="fas fa-italic"></i>
+      </button>
+      <button class="ncm-composer__toolbar-btn" data-action="underline" title="Underline">
+        <i class="fas fa-underline"></i>
+      </button>
+    </div>
+    
+    <div class="ncm-composer__toolbar-group">
+      <button class="ncm-composer__toolbar-btn" data-action="list" title="List">
+        <i class="fas fa-list-ul"></i>
+      </button>
+      <button class="ncm-composer__toolbar-btn" data-action="code" title="Code">
+        <i class="fas fa-code"></i>
+      </button>
+    </div>
+    
+    <div class="ncm-composer__template-dropdown">
+      <button class="ncm-composer__template-btn" data-action="templates">
+        <i class="fas fa-file-alt"></i>
+        Templates
+        <i class="fas fa-caret-down"></i>
+      </button>
+    </div>
+  </div>
+  
+  {{!-- Message Editor --}}
+  <div class="ncm-composer__editor">
+    <textarea 
+      class="ncm-composer__textarea" 
+      name="content"
+      placeholder="Type your message here..."
+      data-field="content"
+    >{{content}}</textarea>
+  </div>
+  
+  {{!-- Footer --}}
+  <div class="ncm-composer__footer">
+    <span class="ncm-composer__char-count">
+      Characters: <span class="ncm-composer__char-count-value">{{charCount}}</span> / 10000
+    </span>
+    
+    <div class="ncm-composer__actions">
+      <button class="ncm-composer__action-btn" data-action="save-draft">
+        <i class="fas fa-save"></i>
+        Save Draft
+      </button>
+      
+      <button class="ncm-composer__action-btn" data-action="schedule">
+        <i class="fas fa-clock"></i>
+        Schedule
+      </button>
+      
+      <button class="ncm-composer__action-btn ncm-composer__action-btn--primary" data-action="send">
+        <i class="fas fa-paper-plane"></i>
+        Send
+      </button>
+      
+      <button class="ncm-composer__action-btn" data-action="cancel">
+        <i class="fas fa-times"></i>
+        Cancel
+      </button>
+    </div>
+  </div>
+</div>

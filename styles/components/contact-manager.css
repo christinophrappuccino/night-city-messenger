@@ -1,0 +1,586 @@
+/* ==============================================
+   NIGHT CITY MESSENGER
+   Component: Contact Manager
+   Purpose: Contact list, forms, and management
+   Dependencies: variables.css, reset.css, animations.css
+   ============================================== */
+
+/* ==============================================
+   CONTACT MANAGER WINDOW
+   ============================================== */
+
+.ncm-app.ncm-contact-manager {
+  width: var(--ncm-contact-width);
+  height: var(--ncm-contact-height);
+  min-width: 500px;
+  min-height: 400px;
+}
+
+.ncm-contact-manager__container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ==============================================
+   CONTACT MANAGER HEADER
+   Search and view controls
+   ============================================== */
+
+.ncm-contact-manager__header {
+  flex: 0 0 auto;
+  background: var(--ncm-bg-surface);
+  border-bottom: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
+  padding: var(--ncm-spacing-md);
+  display: flex;
+  align-items: center;
+  gap: var(--ncm-spacing-md);
+  flex-wrap: wrap;
+}
+
+/* Search bar */
+.ncm-contact-manager__search {
+  flex: 1;
+  min-width: 200px;
+  position: relative;
+}
+
+.ncm-contact-manager__search-input {
+  width: 100%;
+  padding: var(--ncm-padding-input);
+  padding-left: 40px;
+  background: var(--ncm-bg-tertiary);
+  border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
+  border-radius: var(--ncm-border-radius-md);
+  color: var(--ncm-text-primary);
+  font-size: var(--ncm-font-size-sm);
+  transition: border-color var(--ncm-transition-fast),
+              box-shadow var(--ncm-transition-fast);
+}
+
+.ncm-contact-manager__search-input:focus {
+  border-color: var(--ncm-primary);
+  box-shadow: calc(var(--ncm-enable-glow) * 1px) 0 0 calc(var(--ncm-glow-intensity) * 10px) var(--ncm-primary-alpha);
+}
+
+.ncm-contact-manager__search-icon {
+  position: absolute;
+  left: var(--ncm-spacing-md);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--ncm-text-secondary);
+  font-size: var(--ncm-icon-sm);
+  pointer-events: none;
+}
+
+/* View toggle */
+.ncm-contact-manager__view-toggle {
+  display: flex;
+  gap: 4px;
+  background: var(--ncm-bg-tertiary);
+  border-radius: var(--ncm-border-radius-md);
+  padding: 4px;
+}
+
+.ncm-contact-manager__view-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: var(--ncm-border-width-thin) solid transparent;
+  border-radius: var(--ncm-border-radius-sm);
+  color: var(--ncm-text-secondary);
+  font-size: var(--ncm-icon-sm);
+  transition: all var(--ncm-transition-fast);
+  cursor: pointer;
+}
+
+.ncm-contact-manager__view-btn:hover {
+  color: var(--ncm-text-primary);
+}
+
+.ncm-contact-manager__view-btn--active {
+  background: var(--ncm-primary);
+  color: var(--ncm-text-primary);
+  border-color: var(--ncm-primary);
+}
+
+/* Add button */
+.ncm-contact-manager__add-btn {
+  padding: var(--ncm-spacing-sm) var(--ncm-spacing-lg);
+  background: var(--ncm-primary);
+  color: var(--ncm-text-primary);
+  border-radius: var(--ncm-border-radius-md);
+  font-size: var(--ncm-font-size-sm);
+  font-weight: var(--ncm-font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: var(--ncm-letter-spacing-wide);
+  transition: all var(--ncm-transition-normal);
+  display: flex;
+  align-items: center;
+  gap: var(--ncm-spacing-sm);
+}
+
+.ncm-contact-manager__add-btn:hover {
+  background: var(--ncm-primary-light);
+  box-shadow: calc(var(--ncm-enable-glow) * 1px) 0 0 calc(var(--ncm-glow-intensity) * 15px) var(--ncm-primary-alpha);
+  transform: translateY(-1px);
+}
+
+.ncm-contact-manager__add-btn:active {
+  transform: translateY(0);
+}
+
+/* ==============================================
+   CATEGORY FILTERS
+   Filter contacts by category
+   ============================================== */
+
+.ncm-contact-manager__categories {
+  flex: 0 0 auto;
+  background: var(--ncm-bg-secondary);
+  border-bottom: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
+  padding: var(--ncm-spacing-sm) var(--ncm-spacing-md);
+  display: flex;
+  gap: var(--ncm-spacing-sm);
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.ncm-contact-manager__category {
+  padding: var(--ncm-spacing-xs) var(--ncm-spacing-md);
+  background: var(--ncm-bg-tertiary);
+  border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
+  border-radius: var(--ncm-border-radius-full);
+  color: var(--ncm-text-primary);
+  font-size: var(--ncm-font-size-sm);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all var(--ncm-transition-fast);
+}
+
+.ncm-contact-manager__category:hover {
+  border-color: var(--ncm-primary);
+  background: var(--ncm-bg-hover);
+}
+
+.ncm-contact-manager__category--active {
+  background: var(--ncm-primary);
+  border-color: var(--ncm-primary);
+}
+
+/* ==============================================
+   CONTACT LIST
+   Grid or list view of contacts
+   ============================================== */
+
+.ncm-contact-manager__content {
+  flex: 1;
+  padding: var(--ncm-spacing-lg);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Grid view */
+.ncm-contact-manager__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--ncm-contact-card-size), 1fr));
+  gap: var(--ncm-spacing-lg);
+}
+
+/* List view */
+.ncm-contact-manager__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ncm-spacing-sm);
+}
+
+/* Empty state */
+.ncm-contact-manager__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: var(--ncm-spacing-lg);
+  color: var(--ncm-text-tertiary);
+  text-align: center;
+}
+
+.ncm-contact-manager__empty-icon {
+  font-size: 64px;
+  color: var(--ncm-text-disabled);
+  opacity: 0.5;
+}
+
+.ncm-contact-manager__empty-text {
+  font-size: var(--ncm-font-size-lg);
+}
+
+/* ==============================================
+   CONTACT CARD (Grid View)
+   ============================================== */
+
+.ncm-contact-card {
+  background: var(--ncm-bg-secondary);
+  border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
+  border-radius: var(--ncm-border-radius-lg);
+  padding: var(--ncm-spacing-lg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ncm-spacing-md);
+  cursor: pointer;
+  transition: all var(--ncm-transition-normal);
+  position: relative;
+}
+
+.ncm-contact-card:hover {
+  border-color: var(--ncm-primary);
+  background: var(--ncm-bg-hover);
+  box-shadow: calc(var(--ncm-enable-glow) * 1px) 0 0 calc(var(--ncm-glow-intensity) * 10px) var(--ncm-primary-alpha);
+  transform: translateY(-2px);
+}
+
+/* Avatar */
+.ncm-contact-card__avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--ncm-primary-alpha);
+  border: var(--ncm-border-width-normal) solid var(--ncm-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--ncm-font-size-xxl);
+  font-weight: var(--ncm-font-weight-bold);
+  color: var(--ncm-primary);
+  text-transform: uppercase;
+}
+
+.ncm-contact-card__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+/* Contact info */
+.ncm-contact-card__name {
+  font-size: var(--ncm-font-size-base);
+  font-weight: var(--ncm-font-weight-bold);
+  color: var(--ncm-text-primary);
+  text-align: center;
+  word-break: break-word;
+}
+
+.ncm-contact-card__email {
+  font-size: var(--ncm-font-size-xs);
+  color: var(--ncm-text-secondary);
+  text-align: center;
+  word-break: break-all;
+}
+
+/* Actions */
+.ncm-contact-card__actions {
+  display: flex;
+  gap: var(--ncm-spacing-xs);
+  margin-top: auto;
+}
+
+.ncm-contact-card__action-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ncm-bg-tertiary);
+  border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
+  border-radius: var(--ncm-border-radius-md);
+  color: var(--ncm-text-secondary);
+  font-size: var(--ncm-icon-sm);
+  transition: all var(--ncm-transition-fast);
+}
+
+.ncm-contact-card__action-btn:hover {
+  border-color: var(--ncm-primary);
+  color: var(--ncm-primary);
+  background: var(--ncm-bg-hover);
+}
+
+.ncm-contact-card__action-btn--delete:hover {
+  border-color: var(--ncm-error);
+  color: var(--ncm-error);
+  background: var(--ncm-error-alpha);
+}
+
+/* ==============================================
+   CONTACT ITEM (List View)
+   ============================================== */
+
+.ncm-contact-item {
+  background: var(--ncm-bg-secondary);
+  border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
+  border-radius: var(--ncm-border-radius-md);
+  padding: var(--ncm-spacing-md);
+  display: flex;
+  align-items: center;
+  gap: var(--ncm-spacing-md);
+  cursor: pointer;
+  transition: all var(--ncm-transition-fast);
+}
+
+.ncm-contact-item:hover {
+  border-color: var(--ncm-primary);
+  background: var(--ncm-bg-hover);
+}
+
+/* Avatar */
+.ncm-contact-item__avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--ncm-primary-alpha);
+  border: var(--ncm-border-width-normal) solid var(--ncm-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--ncm-font-size-lg);
+  font-weight: var(--ncm-font-weight-bold);
+  color: var(--ncm-primary);
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.ncm-contact-item__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+/* Contact info */
+.ncm-contact-item__info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ncm-spacing-xs);
+  min-width: 0;
+}
+
+.ncm-contact-item__name {
+  font-size: var(--ncm-font-size-base);
+  font-weight: var(--ncm-font-weight-bold);
+  color: var(--ncm-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ncm-contact-item__email {
+  font-size: var(--ncm-font-size-sm);
+  color: var(--ncm-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ncm-contact-item__category {
+  font-size: var(--ncm-font-size-xs);
+  color: var(--ncm-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: var(--ncm-letter-spacing-wide);
+}
+
+/* Actions */
+.ncm-contact-item__actions {
+  display: flex;
+  gap: var(--ncm-spacing-xs);
+}
+
+.ncm-contact-item__action-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ncm-bg-tertiary);
+  border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
+  border-radius: var(--ncm-border-radius-md);
+  color: var(--ncm-text-secondary);
+  font-size: var(--ncm-icon-sm);
+  transition: all var(--ncm-transition-fast);
+}
+
+.ncm-contact-item__action-btn:hover {
+  border-color: var(--ncm-primary);
+  color: var(--ncm-primary);
+  background: var(--ncm-bg-hover);
+}
+
+.ncm-contact-item__action-btn--delete:hover {
+  border-color: var(--ncm-error);
+  color: var(--ncm-error);
+  background: var(--ncm-error-alpha);
+}
+
+/* ==============================================
+   CONTACT FORM
+   Add/Edit contact dialog content
+   ============================================== */
+
+.ncm-contact-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ncm-spacing-lg);
+  padding: var(--ncm-spacing-lg);
+}
+
+.ncm-contact-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ncm-spacing-xs);
+}
+
+.ncm-contact-form__label {
+  font-size: var(--ncm-font-size-sm);
+  font-weight: var(--ncm-font-weight-medium);
+  color: var(--ncm-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: var(--ncm-letter-spacing-wide);
+}
+
+.ncm-contact-form__label--required::after {
+  content: '*';
+  color: var(--ncm-error);
+  margin-left: 4px;
+}
+
+.ncm-contact-form__input,
+.ncm-contact-form__textarea,
+.ncm-contact-form__select {
+  padding: var(--ncm-padding-input);
+  background: var(--ncm-bg-tertiary);
+  border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
+  border-radius: var(--ncm-border-radius-md);
+  color: var(--ncm-text-primary);
+  font-size: var(--ncm-font-size-base);
+  transition: border-color var(--ncm-transition-fast),
+              box-shadow var(--ncm-transition-fast);
+}
+
+.ncm-contact-form__input:focus,
+.ncm-contact-form__textarea:focus,
+.ncm-contact-form__select:focus {
+  border-color: var(--ncm-primary);
+  box-shadow: calc(var(--ncm-enable-glow) * 1px) 0 0 calc(var(--ncm-glow-intensity) * 10px) var(--ncm-primary-alpha);
+}
+
+.ncm-contact-form__textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+.ncm-contact-form__help {
+  font-size: var(--ncm-font-size-xs);
+  color: var(--ncm-text-tertiary);
+  margin-top: var(--ncm-spacing-xs);
+}
+
+.ncm-contact-form__error {
+  font-size: var(--ncm-font-size-xs);
+  color: var(--ncm-error);
+  margin-top: var(--ncm-spacing-xs);
+}
+
+/* Avatar upload */
+.ncm-contact-form__avatar-upload {
+  display: flex;
+  align-items: center;
+  gap: var(--ncm-spacing-md);
+}
+
+.ncm-contact-form__avatar-preview {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--ncm-primary-alpha);
+  border: var(--ncm-border-width-normal) solid var(--ncm-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--ncm-font-size-xxxl);
+  font-weight: var(--ncm-font-weight-bold);
+  color: var(--ncm-primary);
+  text-transform: uppercase;
+  overflow: hidden;
+}
+
+.ncm-contact-form__avatar-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ncm-contact-form__avatar-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ncm-spacing-xs);
+}
+
+.ncm-contact-form__avatar-btn {
+  padding: var(--ncm-spacing-sm) var(--ncm-spacing-md);
+  background: var(--ncm-bg-tertiary);
+  border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
+  border-radius: var(--ncm-border-radius-md);
+  color: var(--ncm-text-primary);
+  font-size: var(--ncm-font-size-sm);
+  transition: all var(--ncm-transition-fast);
+}
+
+.ncm-contact-form__avatar-btn:hover {
+  border-color: var(--ncm-primary);
+  background: var(--ncm-bg-hover);
+}
+
+/* ==============================================
+   RESPONSIVE DESIGN
+   ============================================== */
+
+@media (max-width: 1199px) {
+  .ncm-contact-manager__grid {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  }
+}
+
+@media (max-width: 899px) {
+  .ncm-app.ncm-contact-manager {
+    width: 90vw;
+  }
+  
+  .ncm-contact-manager__header {
+    padding: var(--ncm-spacing-sm);
+  }
+  
+  .ncm-contact-manager__content {
+    padding: var(--ncm-spacing-md);
+  }
+  
+  .ncm-contact-manager__grid {
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: var(--ncm-spacing-md);
+  }
+  
+  .ncm-contact-card {
+    padding: var(--ncm-spacing-md);
+  }
+  
+  .ncm-contact-card__avatar {
+    width: 48px;
+    height: 48px;
+    font-size: var(--ncm-font-size-xl);
+  }
+}

@@ -1,0 +1,586 @@
+/* ==============================================
+   NIGHT CITY MESSENGER
+   Component: Message Composer
+   Purpose: Compose window and editor styling
+   Dependencies: variables.css, reset.css, animations.css
+   ============================================== */
+
+/* ==============================================
+   COMPOSER WINDOW
+   Modal overlay for composing messages
+   ============================================== */
+
+.ncm-app.ncm-composer {
+  width: var(--ncm-composer-width);
+  height: var(--ncm-composer-height);
+  min-width: 600px;
+  min-height: 500px;
+}
+
+.ncm-composer__container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ==============================================
+   COMPOSER HEADER
+   Recipient and subject fields
+   ============================================== */
+
+.ncm-composer__header {
+  flex: 0 0 auto;
+  background: var(--ncm-bg-surface);
+  border-bottom: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
+  padding: var(--ncm-spacing-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ncm-spacing-md);
+}
+
+/* Recipient field */
+.ncm-composer__field {
+  display: flex;
+  align-items: center;
+  gap: var(--ncm-spacing-md);
+}
+
+.ncm-composer__label {
+  flex: 0 0 60px;
+  font-size: var(--ncm-font-size-sm);
+  font-weight: var(--ncm-font-weight-medium);
+  color: var(--ncm-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: var(--ncm-letter-spacing-wide);
+}
+
+.ncm-composer__input-wrapper {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--ncm-spacing-sm);
+}
+
+.ncm-composer__input {
+  flex: 1;
+  padding: var(--ncm-padding-input);
+  background: var(--ncm-bg-tertiary);
+  border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
+  border-radius: var(--ncm-border-radius-md);
+  color: var(--ncm-text-primary);
+  font-size: var(--ncm-font-size-base);
+  transition: border-color var(--ncm-transition-fast),
+              box-shadow var(--ncm-transition-fast);
+}
+
+.ncm-composer__input:focus {
+  border-color: var(--ncm-primary);
+  box-shadow: calc(var(--ncm-enable-glow) * 1px) 0 0 calc(var(--ncm-glow-intensity) * 10px) var(--ncm-primary-alpha);
+}
+
+.ncm-composer__input::placeholder {
+  color: var(--ncm-text-tertiary);
+}
+
+/* Contacts button */
+.ncm-composer__contacts-btn {
+  flex: 0 0 auto;
+  padding: var(--ncm-spacing-sm) var(--ncm-spacing-md);
+  background: var(--ncm-bg-tertiary);
+  border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
+  border-radius: var(--ncm-border-radius-md);
+  color: var(--ncm-text-primary);
+  font-size: var(--ncm-font-size-sm);
+  transition: all var(--ncm-transition-normal);
+  display: flex;
+  align-items: center;
+  gap: var(--ncm-spacing-xs);
+}
+
+.ncm-composer__contacts-btn:hover {
+  border-color: var(--ncm-primary);
+  background: var(--ncm-bg-hover);
+}
+
+/* Recipient autocomplete */
+.ncm-composer__autocomplete {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  background: var(--ncm-bg-tertiary);
+  border: var(--ncm-border-width-thin) solid var(--ncm-primary);
+  border-radius: var(--ncm-border-radius-md);
+  box-shadow: var(--ncm-shadow-lg);
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: var(--ncm-z-dropdown);
+  animation: ncm-fadeInUp calc(var(--ncm-animation-speed) * 200ms) var(--ncm-transition-fast);
+}
+
+.ncm-composer__autocomplete-item {
+  padding: var(--ncm-spacing-md);
+  cursor: pointer;
+  transition: background-color var(--ncm-transition-fast);
+  display: flex;
+  align-items: center;
+  gap: var(--ncm-spacing-md);
+  border-bottom: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
+}
+
+.ncm-composer__autocomplete-item:last-child {
+  border-bottom: none;
+}
+
+.ncm-composer__autocomplete-item:hover,
+.ncm-composer__autocomplete-item--selected {
+  background: var(--ncm-bg-hover);
+}
+
+.ncm-composer__autocomplete-icon {
+  width: var(--ncm-icon-md);
+  height: var(--ncm-icon-md);
+  border-radius: 50%;
+  background: var(--ncm-primary-alpha);
+  color: var(--ncm-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--ncm-font-size-sm);
+}
+
+.ncm-composer__autocomplete-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ncm-composer__autocomplete-name {
+  font-size: var(--ncm-font-size-sm);
+  color: var(--ncm-text-primary);
+  font-weight: var(--ncm-font-weight-medium);
+}
+
+.ncm-composer__autocomplete-email {
+  font-size: var(--ncm-font-size-xs);
+  color: var(--ncm-text-secondary);
+}
+
+/* ==============================================
+   EDITOR TOOLBAR
+   Rich text formatting controls
+   ============================================== */
+
+.ncm-composer__toolbar {
+  flex: 0 0 var(--ncm-composer-toolbar-height);
+  background: var(--ncm-bg-secondary);
+  border-bottom: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
+  padding: var(--ncm-spacing-sm) var(--ncm-spacing-md);
+  display: flex;
+  align-items: center;
+  gap: var(--ncm-spacing-sm);
+  flex-wrap: wrap;
+}
+
+.ncm-composer__toolbar-group {
+  display: flex;
+  gap: 4px;
+  padding-right: var(--ncm-spacing-sm);
+  border-right: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
+}
+
+.ncm-composer__toolbar-group:last-child {
+  border-right: none;
+}
+
+.ncm-composer__toolbar-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: var(--ncm-border-width-thin) solid transparent;
+  border-radius: var(--ncm-border-radius-sm);
+  color: var(--ncm-text-secondary);
+  font-size: var(--ncm-font-size-base);
+  transition: all var(--ncm-transition-fast);
+  cursor: pointer;
+}
+
+.ncm-composer__toolbar-btn:hover {
+  background: var(--ncm-bg-hover);
+  color: var(--ncm-text-primary);
+  border-color: var(--ncm-border-primary);
+}
+
+.ncm-composer__toolbar-btn--active {
+  background: var(--ncm-primary-alpha);
+  color: var(--ncm-primary);
+  border-color: var(--ncm-primary);
+}
+
+/* Template dropdown */
+.ncm-composer__template-dropdown {
+  position: relative;
+  margin-left: auto;
+}
+
+.ncm-composer__template-btn {
+  padding: var(--ncm-spacing-sm) var(--ncm-spacing-md);
+  background: var(--ncm-bg-tertiary);
+  border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
+  border-radius: var(--ncm-border-radius-md);
+  color: var(--ncm-text-primary);
+  font-size: var(--ncm-font-size-sm);
+  transition: all var(--ncm-transition-fast);
+  display: flex;
+  align-items: center;
+  gap: var(--ncm-spacing-sm);
+}
+
+.ncm-composer__template-btn:hover {
+  border-color: var(--ncm-primary);
+  background: var(--ncm-bg-hover);
+}
+
+.ncm-composer__template-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  min-width: 200px;
+  background: var(--ncm-bg-tertiary);
+  border: var(--ncm-border-width-thin) solid var(--ncm-primary);
+  border-radius: var(--ncm-border-radius-md);
+  box-shadow: var(--ncm-shadow-lg);
+  z-index: var(--ncm-z-dropdown);
+  animation: ncm-fadeInDown calc(var(--ncm-animation-speed) * 200ms) var(--ncm-transition-fast);
+}
+
+.ncm-composer__template-item {
+  padding: var(--ncm-spacing-md);
+  cursor: pointer;
+  transition: background-color var(--ncm-transition-fast);
+  border-bottom: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
+}
+
+.ncm-composer__template-item:last-child {
+  border-bottom: none;
+}
+
+.ncm-composer__template-item:hover {
+  background: var(--ncm-bg-hover);
+}
+
+.ncm-composer__template-name {
+  font-size: var(--ncm-font-size-sm);
+  color: var(--ncm-text-primary);
+  font-weight: var(--ncm-font-weight-medium);
+  margin-bottom: var(--ncm-spacing-xs);
+}
+
+.ncm-composer__template-desc {
+  font-size: var(--ncm-font-size-xs);
+  color: var(--ncm-text-secondary);
+}
+
+/* ==============================================
+   MESSAGE EDITOR
+   Main content area
+   ============================================== */
+
+.ncm-composer__editor {
+  flex: 1;
+  padding: var(--ncm-spacing-lg);
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: var(--ncm-bg-primary);
+}
+
+.ncm-composer__textarea {
+  width: 100%;
+  min-height: 100%;
+  resize: none;
+  background: transparent;
+  border: none;
+  color: var(--ncm-text-primary);
+  font-size: var(--ncm-font-size-base);
+  line-height: var(--ncm-line-height-normal);
+  font-family: var(--ncm-font-secondary);
+  padding: 0;
+}
+
+.ncm-composer__textarea:focus {
+  outline: none;
+}
+
+.ncm-composer__textarea::placeholder {
+  color: var(--ncm-text-tertiary);
+}
+
+/* Rich text content */
+.ncm-composer__content {
+  width: 100%;
+  min-height: 100%;
+  outline: none;
+}
+
+.ncm-composer__content p {
+  margin-bottom: var(--ncm-spacing-md);
+}
+
+.ncm-composer__content p:last-child {
+  margin-bottom: 0;
+}
+
+.ncm-composer__content strong {
+  font-weight: var(--ncm-font-weight-bold);
+  color: var(--ncm-primary);
+}
+
+.ncm-composer__content em {
+  font-style: italic;
+  color: var(--ncm-secondary);
+}
+
+.ncm-composer__content code {
+  padding: 2px 6px;
+  background: var(--ncm-bg-tertiary);
+  border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
+  border-radius: var(--ncm-border-radius-sm);
+  font-family: var(--ncm-font-mono);
+  font-size: 0.9em;
+  color: var(--ncm-secondary);
+}
+
+.ncm-composer__content pre {
+  padding: var(--ncm-spacing-md);
+  background: var(--ncm-bg-tertiary);
+  border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
+  border-radius: var(--ncm-border-radius-md);
+  overflow-x: auto;
+  margin-bottom: var(--ncm-spacing-md);
+}
+
+.ncm-composer__content pre code {
+  padding: 0;
+  background: none;
+  border: none;
+}
+
+/* ==============================================
+   COMPOSER FOOTER
+   Character count, actions, and scheduling
+   ============================================== */
+
+.ncm-composer__footer {
+  flex: 0 0 var(--ncm-composer-footer-height);
+  background: var(--ncm-bg-secondary);
+  border-top: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
+  padding: var(--ncm-spacing-md) var(--ncm-spacing-lg);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ncm-spacing-md);
+}
+
+/* Character counter */
+.ncm-composer__char-count {
+  font-size: var(--ncm-font-size-sm);
+  color: var(--ncm-text-secondary);
+}
+
+.ncm-composer__char-count--warning {
+  color: var(--ncm-warning);
+}
+
+.ncm-composer__char-count--error {
+  color: var(--ncm-error);
+  font-weight: var(--ncm-font-weight-bold);
+}
+
+/* Action buttons */
+.ncm-composer__actions {
+  display: flex;
+  gap: var(--ncm-spacing-sm);
+  margin-left: auto;
+}
+
+.ncm-composer__action-btn {
+  padding: var(--ncm-spacing-sm) var(--ncm-spacing-lg);
+  background: var(--ncm-bg-tertiary);
+  border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
+  border-radius: var(--ncm-border-radius-md);
+  color: var(--ncm-text-primary);
+  font-size: var(--ncm-font-size-sm);
+  font-weight: var(--ncm-font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: var(--ncm-letter-spacing-wide);
+  transition: all var(--ncm-transition-normal);
+  display: flex;
+  align-items: center;
+  gap: var(--ncm-spacing-sm);
+}
+
+.ncm-composer__action-btn:hover {
+  border-color: var(--ncm-primary);
+  background: var(--ncm-bg-hover);
+}
+
+.ncm-composer__action-btn--primary {
+  background: var(--ncm-primary);
+  border-color: var(--ncm-primary);
+}
+
+.ncm-composer__action-btn--primary:hover {
+  background: var(--ncm-primary-light);
+  box-shadow: calc(var(--ncm-enable-glow) * 1px) 0 0 calc(var(--ncm-glow-intensity) * 20px) var(--ncm-primary-alpha);
+  transform: translateY(-1px);
+}
+
+.ncm-composer__action-btn--primary:active {
+  transform: translateY(0);
+}
+
+.ncm-composer__action-btn:disabled {
+  background: var(--ncm-bg-tertiary);
+  border-color: var(--ncm-border-secondary);
+  color: var(--ncm-text-disabled);
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.ncm-composer__action-btn:disabled:hover {
+  background: var(--ncm-bg-tertiary);
+  transform: none;
+  box-shadow: none;
+}
+
+/* ==============================================
+   SCHEDULING PANEL
+   Collapsible panel for scheduling messages
+   ============================================== */
+
+.ncm-composer__schedule {
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  margin-bottom: 8px;
+  width: 400px;
+  background: var(--ncm-bg-tertiary);
+  border: var(--ncm-border-width-normal) solid var(--ncm-primary);
+  border-radius: var(--ncm-border-radius-lg);
+  box-shadow: var(--ncm-shadow-lg);
+  padding: var(--ncm-spacing-lg);
+  z-index: var(--ncm-z-popover);
+  animation: ncm-fadeInUp calc(var(--ncm-animation-speed) * 300ms) var(--ncm-transition-normal);
+}
+
+.ncm-composer__schedule-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--ncm-spacing-md);
+}
+
+.ncm-composer__schedule-title {
+  font-size: var(--ncm-font-size-lg);
+  font-weight: var(--ncm-font-weight-bold);
+  color: var(--ncm-primary);
+  text-transform: uppercase;
+  letter-spacing: var(--ncm-letter-spacing-wide);
+}
+
+.ncm-composer__schedule-close {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ncm-text-secondary);
+  cursor: pointer;
+  transition: color var(--ncm-transition-fast);
+}
+
+.ncm-composer__schedule-close:hover {
+  color: var(--ncm-primary);
+}
+
+.ncm-composer__schedule-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ncm-spacing-md);
+}
+
+.ncm-composer__schedule-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ncm-spacing-xs);
+}
+
+.ncm-composer__schedule-label {
+  font-size: var(--ncm-font-size-sm);
+  color: var(--ncm-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: var(--ncm-letter-spacing-wide);
+}
+
+.ncm-composer__schedule-input {
+  padding: var(--ncm-padding-input);
+  background: var(--ncm-bg-secondary);
+  border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
+  border-radius: var(--ncm-border-radius-md);
+  color: var(--ncm-text-primary);
+  font-size: var(--ncm-font-size-base);
+  transition: border-color var(--ncm-transition-fast);
+}
+
+.ncm-composer__schedule-input:focus {
+  border-color: var(--ncm-primary);
+  box-shadow: calc(var(--ncm-enable-glow) * 1px) 0 0 calc(var(--ncm-glow-intensity) * 10px) var(--ncm-primary-alpha);
+}
+
+.ncm-composer__schedule-actions {
+  display: flex;
+  gap: var(--ncm-spacing-sm);
+  justify-content: flex-end;
+  margin-top: var(--ncm-spacing-md);
+}
+
+/* ==============================================
+   RESPONSIVE DESIGN
+   ============================================== */
+
+@media (max-width: 1199px) {
+  .ncm-app.ncm-composer {
+    width: 90vw;
+  }
+}
+
+@media (max-width: 899px) {
+  .ncm-composer__header {
+    padding: var(--ncm-spacing-md);
+  }
+  
+  .ncm-composer__toolbar {
+    padding: var(--ncm-spacing-xs) var(--ncm-spacing-md);
+  }
+  
+  .ncm-composer__editor {
+    padding: var(--ncm-spacing-md);
+  }
+  
+  .ncm-composer__footer {
+    padding: var(--ncm-spacing-sm) var(--ncm-spacing-md);
+  }
+  
+  .ncm-composer__schedule {
+    width: 90%;
+    right: 5%;
+  }
+}

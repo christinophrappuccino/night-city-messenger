@@ -1,0 +1,528 @@
+/* ==============================================
+   NIGHT CITY MESSENGER
+   Component: CSS Variables & Theme System
+   Purpose: All themeable values and preset themes
+   Dependencies: None (foundation file)
+   ============================================== */
+
+/* ==============================================
+   BASE THEME VARIABLES
+   Applied to all components via scoping
+   ============================================== */
+
+.ncm-app,
+.ncm-dialog,
+.chat-message .ncm-chat-card,
+.ncm-notification {
+  
+  /* ============================================
+     COLOR SYSTEM - Themeable
+     ============================================ */
+  
+  /* Primary Colors - Cyberpunk Red */
+  --ncm-primary: #F65261;
+  --ncm-primary-dark: #d63d4d;
+  --ncm-primary-light: #ff7a88;
+  --ncm-primary-alpha: rgba(246, 82, 97, 0.2);
+  --ncm-primary-alpha-light: rgba(246, 82, 97, 0.1);
+  
+  /* Secondary Colors - Neon Cyan */
+  --ncm-secondary: #19f3f7;
+  --ncm-secondary-dark: #00d4d8;
+  --ncm-secondary-light: #5ff9fc;
+  --ncm-secondary-alpha: rgba(25, 243, 247, 0.2);
+  --ncm-secondary-alpha-light: rgba(25, 243, 247, 0.1);
+  
+  /* Background Colors */
+  --ncm-bg-primary: #1a1a1a;
+  --ncm-bg-secondary: #2a2a2a;
+  --ncm-bg-tertiary: #3a3a3a;
+  --ncm-bg-surface: #330000;
+  --ncm-bg-overlay: rgba(0, 0, 0, 0.85);
+  --ncm-bg-hover: rgba(255, 255, 255, 0.05);
+  --ncm-bg-active: rgba(255, 255, 255, 0.1);
+  
+  /* Text Colors */
+  --ncm-text-primary: #ffffff;
+  --ncm-text-secondary: #cccccc;
+  --ncm-text-tertiary: #999999;
+  --ncm-text-disabled: #666666;
+  --ncm-text-inverse: #000000;
+  --ncm-text-muted: #888888;
+  
+  /* Border Colors */
+  --ncm-border-primary: #444444;
+  --ncm-border-secondary: #333333;
+  --ncm-border-accent: var(--ncm-primary);
+  --ncm-border-light: #555555;
+  
+  /* State Colors */
+  --ncm-success: #00ff00;
+  --ncm-success-dark: #00cc00;
+  --ncm-success-alpha: rgba(0, 255, 0, 0.2);
+  
+  --ncm-warning: #ffaa00;
+  --ncm-warning-dark: #cc8800;
+  --ncm-warning-alpha: rgba(255, 170, 0, 0.2);
+  
+  --ncm-error: #ff0000;
+  --ncm-error-dark: #cc0000;
+  --ncm-error-alpha: rgba(255, 0, 0, 0.2);
+  
+  --ncm-info: var(--ncm-secondary);
+  --ncm-info-dark: var(--ncm-secondary-dark);
+  --ncm-info-alpha: var(--ncm-secondary-alpha);
+  
+  /* Status Indicators */
+  --ncm-unread: #ff0000;
+  --ncm-encrypted: #19f3f7;
+  --ncm-malware: #ff00ff;
+  --ncm-spam: #ffaa00;
+  --ncm-saved: #00ff00;
+  --ncm-draft: #888888;
+  
+  /* Network Status Colors */
+  --ncm-network-online: #00ff00;
+  --ncm-network-degraded: #ffaa00;
+  --ncm-network-offline: #ff0000;
+  --ncm-network-dead-zone: #666666;
+  
+  /* ============================================
+     SPACING SYSTEM - Themeable
+     ============================================ */
+  
+  --ncm-spacing-xs: 4px;
+  --ncm-spacing-sm: 8px;
+  --ncm-spacing-md: 16px;
+  --ncm-spacing-lg: 24px;
+  --ncm-spacing-xl: 32px;
+  --ncm-spacing-xxl: 48px;
+  
+  /* Component-specific spacing */
+  --ncm-padding-input: 12px;
+  --ncm-padding-button: 10px 20px;
+  --ncm-padding-card: var(--ncm-spacing-md);
+  
+  /* ============================================
+     TYPOGRAPHY SYSTEM - Themeable
+     ============================================ */
+  
+  /* Font Families */
+  --ncm-font-primary: 'Rajdhani', sans-serif;
+  --ncm-font-secondary: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+  --ncm-font-mono: 'Courier New', Consolas, 'Monaco', monospace;
+  --ncm-font-display: 'Orbitron', 'Rajdhani', sans-serif;
+  
+  /* Font Sizes */
+  --ncm-font-size-xs: 0.75rem;      /* 12px */
+  --ncm-font-size-sm: 0.875rem;     /* 14px */
+  --ncm-font-size-base: 1rem;       /* 16px */
+  --ncm-font-size-lg: 1.125rem;     /* 18px */
+  --ncm-font-size-xl: 1.25rem;      /* 20px */
+  --ncm-font-size-xxl: 1.5rem;      /* 24px */
+  --ncm-font-size-xxxl: 2rem;       /* 32px */
+  
+  /* Font Weights */
+  --ncm-font-weight-normal: 400;
+  --ncm-font-weight-medium: 500;
+  --ncm-font-weight-semibold: 600;
+  --ncm-font-weight-bold: 700;
+  --ncm-font-weight-black: 900;
+  
+  /* Line Heights */
+  --ncm-line-height-tight: 1.2;
+  --ncm-line-height-normal: 1.5;
+  --ncm-line-height-loose: 1.8;
+  
+  /* Letter Spacing */
+  --ncm-letter-spacing-tight: -0.5px;
+  --ncm-letter-spacing-normal: 0;
+  --ncm-letter-spacing-wide: 1px;
+  --ncm-letter-spacing-wider: 2px;
+  
+  /* ============================================
+     SIZING SYSTEM - Themeable
+     ============================================ */
+  
+  /* Border Radius */
+  --ncm-border-radius-none: 0;
+  --ncm-border-radius-sm: 2px;
+  --ncm-border-radius-md: 4px;
+  --ncm-border-radius-lg: 8px;
+  --ncm-border-radius-xl: 12px;
+  --ncm-border-radius-full: 9999px;
+  
+  /* Border Width */
+  --ncm-border-width-thin: 1px;
+  --ncm-border-width-normal: 2px;
+  --ncm-border-width-thick: 4px;
+  
+  /* Icon Sizes */
+  --ncm-icon-sm: 16px;
+  --ncm-icon-md: 24px;
+  --ncm-icon-lg: 32px;
+  --ncm-icon-xl: 48px;
+  
+  /* ============================================
+     EFFECTS SYSTEM - Themeable
+     ============================================ */
+  
+  /* Shadows */
+  --ncm-shadow-none: none;
+  --ncm-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --ncm-shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
+  --ncm-shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.5);
+  --ncm-shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.6);
+  
+  /* Glow Shadows */
+  --ncm-shadow-glow-primary: 0 0 10px var(--ncm-primary-alpha);
+  --ncm-shadow-glow-primary-strong: 0 0 20px var(--ncm-primary-alpha);
+  --ncm-shadow-glow-secondary: 0 0 10px var(--ncm-secondary-alpha);
+  --ncm-shadow-glow-secondary-strong: 0 0 20px var(--ncm-secondary-alpha);
+  --ncm-shadow-glow-success: 0 0 10px var(--ncm-success-alpha);
+  --ncm-shadow-glow-error: 0 0 10px var(--ncm-error-alpha);
+  
+  /* Transitions */
+  --ncm-transition-fast: 150ms ease;
+  --ncm-transition-normal: 300ms ease;
+  --ncm-transition-slow: 500ms ease;
+  
+  /* Z-Index Layers */
+  --ncm-z-base: 1;
+  --ncm-z-dropdown: 1000;
+  --ncm-z-sticky: 1020;
+  --ncm-z-modal: 1040;
+  --ncm-z-popover: 1060;
+  --ncm-z-tooltip: 1080;
+  
+  /* ============================================
+     EFFECT TOGGLES - Can be disabled
+     ============================================ */
+  
+  --ncm-enable-glitch: 1;           /* 0 to disable glitch effects */
+  --ncm-enable-scanlines: 1;        /* 0 to disable scanline overlay */
+  --ncm-enable-glow: 1;             /* 0 to disable glow effects */
+  --ncm-enable-animations: 1;       /* 0 to disable all animations */
+  --ncm-enable-shadows: 1;          /* 0 to disable shadows */
+  
+  /* Effect Intensities (0-1 scale) */
+  --ncm-glitch-intensity: 0.3;
+  --ncm-glow-intensity: 0.5;
+  --ncm-scanline-opacity: 0.05;
+  --ncm-animation-speed: 1;
+  
+  /* ============================================
+     COMPONENT-SPECIFIC VARIABLES
+     ============================================ */
+  
+  /* Message Viewer */
+  --ncm-viewer-width: 900px;
+  --ncm-viewer-height: 700px;
+  --ncm-viewer-sidebar-width: 300px;
+  --ncm-viewer-header-height: 60px;
+  --ncm-viewer-footer-height: 50px;
+  
+  /* Message List */
+  --ncm-message-item-height: 80px;
+  --ncm-message-item-padding: var(--ncm-spacing-md);
+  --ncm-message-item-gap: var(--ncm-spacing-sm);
+  
+  /* Composer */
+  --ncm-composer-width: 700px;
+  --ncm-composer-height: 600px;
+  --ncm-composer-toolbar-height: 50px;
+  --ncm-composer-footer-height: 60px;
+  
+  /* Item Inbox */
+  --ncm-inbox-width: 800px;
+  --ncm-inbox-height: 700px;
+  
+  /* Contact Manager */
+  --ncm-contact-width: 600px;
+  --ncm-contact-height: 500px;
+  --ncm-contact-card-size: 120px;
+  
+  /* Admin Panel */
+  --ncm-admin-width: 1000px;
+  --ncm-admin-height: 800px;
+  --ncm-admin-sidebar-width: 200px;
+  
+  /* Dialogs */
+  --ncm-dialog-width-sm: 400px;
+  --ncm-dialog-width-md: 600px;
+  --ncm-dialog-width-lg: 800px;
+}
+
+/* ==============================================
+   THEME: CLASSIC CYBERPUNK (Default)
+   The base variables above define this theme
+   ============================================== */
+
+.ncm-theme-classic {
+  /* Already defined as base - no overrides needed */
+}
+
+/* ==============================================
+   THEME: NEON NIGHT
+   Hot pink and cyan, maximum glow
+   ============================================== */
+
+.ncm-theme-neon {
+  /* Colors */
+  --ncm-primary: #ff00ff;
+  --ncm-primary-dark: #cc00cc;
+  --ncm-primary-light: #ff66ff;
+  --ncm-primary-alpha: rgba(255, 0, 255, 0.2);
+  
+  --ncm-secondary: #00ffff;
+  --ncm-secondary-dark: #00cccc;
+  --ncm-secondary-light: #66ffff;
+  --ncm-secondary-alpha: rgba(0, 255, 255, 0.2);
+  
+  --ncm-bg-primary: #000000;
+  --ncm-bg-secondary: #1a001a;
+  --ncm-bg-tertiary: #2a002a;
+  --ncm-bg-surface: #330033;
+  
+  --ncm-border-primary: #ff00ff;
+  --ncm-border-secondary: #660066;
+  
+  /* Effects - Maximum intensity */
+  --ncm-enable-glow: 1;
+  --ncm-glow-intensity: 1;
+  --ncm-glitch-intensity: 0.5;
+  --ncm-scanline-opacity: 0.1;
+}
+
+/* ==============================================
+   THEME: CORPORATE CLEAN
+   Professional blue/green, minimal effects
+   ============================================== */
+
+.ncm-theme-corporate {
+  /* Colors */
+  --ncm-primary: #0066cc;
+  --ncm-primary-dark: #004c99;
+  --ncm-primary-light: #3385d6;
+  --ncm-primary-alpha: rgba(0, 102, 204, 0.2);
+  
+  --ncm-secondary: #00cc66;
+  --ncm-secondary-dark: #00994d;
+  --ncm-secondary-light: #33d685;
+  --ncm-secondary-alpha: rgba(0, 204, 102, 0.2);
+  
+  --ncm-bg-primary: #f5f5f5;
+  --ncm-bg-secondary: #ffffff;
+  --ncm-bg-tertiary: #e8e8e8;
+  --ncm-bg-surface: #e0e0e0;
+  --ncm-bg-hover: rgba(0, 0, 0, 0.05);
+  --ncm-bg-active: rgba(0, 0, 0, 0.1);
+  
+  --ncm-text-primary: #333333;
+  --ncm-text-secondary: #666666;
+  --ncm-text-tertiary: #999999;
+  --ncm-text-disabled: #cccccc;
+  
+  --ncm-border-primary: #cccccc;
+  --ncm-border-secondary: #dddddd;
+  
+  /* Effects - Minimal */
+  --ncm-enable-glitch: 0;
+  --ncm-enable-scanlines: 0;
+  --ncm-enable-glow: 0;
+  --ncm-shadow-md: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* ==============================================
+   THEME: MINIMALIST DARK
+   Monochrome, no effects, sharp edges
+   ============================================== */
+
+.ncm-theme-minimal {
+  /* Colors */
+  --ncm-primary: #ffffff;
+  --ncm-primary-dark: #cccccc;
+  --ncm-primary-light: #ffffff;
+  --ncm-primary-alpha: rgba(255, 255, 255, 0.2);
+  
+  --ncm-secondary: #888888;
+  --ncm-secondary-dark: #666666;
+  --ncm-secondary-light: #aaaaaa;
+  --ncm-secondary-alpha: rgba(136, 136, 136, 0.2);
+  
+  --ncm-bg-primary: #0a0a0a;
+  --ncm-bg-secondary: #1a1a1a;
+  --ncm-bg-tertiary: #2a2a2a;
+  --ncm-bg-surface: #333333;
+  
+  --ncm-border-primary: #333333;
+  --ncm-border-secondary: #222222;
+  
+  /* Sharp edges */
+  --ncm-border-radius-sm: 0;
+  --ncm-border-radius-md: 0;
+  --ncm-border-radius-lg: 0;
+  --ncm-border-radius-xl: 0;
+  
+  /* Effects - None */
+  --ncm-enable-glitch: 0;
+  --ncm-enable-scanlines: 0;
+  --ncm-enable-glow: 0;
+  --ncm-enable-shadows: 0;
+  --ncm-shadow-md: none;
+  --ncm-shadow-lg: none;
+}
+
+/* ==============================================
+   THEME: HIGH CONTRAST (Accessibility)
+   Maximum contrast, larger text, thick borders
+   ============================================== */
+
+.ncm-theme-high-contrast {
+  /* Colors - Maximum contrast */
+  --ncm-primary: #ffff00;
+  --ncm-primary-dark: #cccc00;
+  --ncm-primary-light: #ffff66;
+  --ncm-primary-alpha: rgba(255, 255, 0, 0.3);
+  
+  --ncm-secondary: #00ffff;
+  --ncm-secondary-dark: #00cccc;
+  --ncm-secondary-light: #66ffff;
+  --ncm-secondary-alpha: rgba(0, 255, 255, 0.3);
+  
+  --ncm-bg-primary: #000000;
+  --ncm-bg-secondary: #1a1a1a;
+  --ncm-bg-tertiary: #2a2a2a;
+  --ncm-bg-surface: #333333;
+  
+  --ncm-text-primary: #ffffff;
+  --ncm-border-primary: #ffffff;
+  
+  /* Larger, bolder text */
+  --ncm-font-size-xs: 0.875rem;
+  --ncm-font-size-sm: 1rem;
+  --ncm-font-size-base: 1.125rem;
+  --ncm-font-size-lg: 1.25rem;
+  --ncm-font-weight-normal: 500;
+  --ncm-font-weight-bold: 800;
+  
+  /* Thicker borders */
+  --ncm-border-width-thin: 2px;
+  --ncm-border-width-normal: 3px;
+  --ncm-border-width-thick: 5px;
+  
+  /* Effects - No visual noise */
+  --ncm-enable-glitch: 0;
+  --ncm-enable-scanlines: 0;
+}
+
+/* ==============================================
+   THEME: RETRO TERMINAL (Green on Black)
+   Classic computer terminal aesthetic
+   ============================================== */
+
+.ncm-theme-retro {
+  --ncm-primary: #00ff00;
+  --ncm-primary-dark: #00cc00;
+  --ncm-primary-light: #66ff66;
+  --ncm-primary-alpha: rgba(0, 255, 0, 0.2);
+  
+  --ncm-secondary: #00ff00;
+  --ncm-secondary-dark: #00cc00;
+  --ncm-secondary-light: #66ff66;
+  --ncm-secondary-alpha: rgba(0, 255, 0, 0.2);
+  
+  --ncm-bg-primary: #000000;
+  --ncm-bg-secondary: #001100;
+  --ncm-bg-tertiary: #002200;
+  --ncm-bg-surface: #003300;
+  
+  --ncm-text-primary: #00ff00;
+  --ncm-text-secondary: #00cc00;
+  --ncm-border-primary: #00ff00;
+  
+  --ncm-font-primary: var(--ncm-font-mono);
+  --ncm-font-secondary: var(--ncm-font-mono);
+  
+  --ncm-enable-glow: 1;
+  --ncm-glow-intensity: 0.8;
+  --ncm-enable-scanlines: 1;
+  --ncm-scanline-opacity: 0.15;
+}
+
+/* ==============================================
+   CREATING CUSTOM THEMES - Documentation
+   ============================================== */
+
+/*
+To create a custom theme:
+
+1. Define a new theme class:
+   .ncm-theme-yourname { }
+
+2. Override any CSS custom properties you want to change.
+   You only need to override what's different from the base theme.
+
+3. Apply the theme in Foundry:
+   - Via settings: Settings > Night City Messenger > Theme
+   - Via macro: game.settings.set('cyberpunkred-messenger', 'userTheme', 'yourname')
+   - Via API: game.nightcity.messenger.setTheme('yourname')
+
+4. The theme class will be applied to all NCM components automatically.
+
+EXAMPLE - Custom "Midnight Purple" Theme:
+
+.ncm-theme-midnight {
+  --ncm-primary: #9933ff;
+  --ncm-secondary: #33ffaa;
+  --ncm-bg-primary: #0a0014;
+  --ncm-bg-secondary: #1a0028;
+  --ncm-bg-surface: #2a003c;
+  --ncm-enable-glow: 1;
+  --ncm-glow-intensity: 0.8;
+}
+
+RECOMMENDED VARIABLES TO OVERRIDE:
+
+Core Branding:
+- --ncm-primary / --ncm-primary-dark / --ncm-primary-light
+- --ncm-secondary / --ncm-secondary-dark / --ncm-secondary-light
+
+Backgrounds:
+- --ncm-bg-primary (main background)
+- --ncm-bg-secondary (elevated surfaces)
+- --ncm-bg-surface (special surfaces)
+
+Text:
+- --ncm-text-primary (main text color)
+- --ncm-text-secondary (dimmed text)
+
+Effects:
+- --ncm-enable-glitch (0 or 1)
+- --ncm-enable-scanlines (0 or 1)
+- --ncm-enable-glow (0 or 1)
+- --ncm-glow-intensity (0 to 1)
+
+Typography:
+- --ncm-font-primary
+- --ncm-font-secondary
+- --ncm-font-size-base
+
+TESTING YOUR THEME:
+
+1. Create a test macro:
+   game.nightcity.messenger.setTheme('yourname')
+   
+2. Open the messenger UI to see changes
+
+3. Test all components:
+   - Message viewer
+   - Composer
+   - Item inbox
+   - Dialogs
+
+4. Verify readability and contrast
+
+5. Test with effects disabled:
+   game.settings.set('cyberpunkred-messenger', 'enableEffects', false)
+*/

@@ -23,7 +23,7 @@ export class MessageFilters {
    * @param {string} category - Category name (inbox, saved, spam, sent)
    */
   setCategory(category) {
-    const validCategories = ['inbox', 'saved', 'spam', 'sent'];
+    const validCategories = ['all', 'inbox', 'unread', 'read', 'saved', 'spam', 'sent'];
     
     if (!validCategories.includes(category)) {
       console.warn(`${MODULE_ID} | Invalid category: ${category}`);
@@ -39,8 +39,8 @@ export class MessageFilters {
     // Emit event
     this.eventBus.emit(EVENTS.STATE_FILTER_CHANGED, { category });
     
-    // Update UI
-    this._updateCategoryUI(category);
+    // Trigger parent re-render
+    this.parent.render(false);
   }
   
   /**
@@ -55,29 +55,18 @@ export class MessageFilters {
     
     // Debounce search to avoid excessive re-renders
     this.searchDebounceTimer = setTimeout(() => {
+      // Update state
       this.stateManager.update({
         searchTerm: term,
         'pagination.currentPage': 1 // Reset to first page
       });
       
+      // Emit event
       this.eventBus.emit(EVENTS.STATE_SEARCH_CHANGED, { term });
       
+      // Trigger parent re-render
       this.parent.render(false);
     }, 300);
-  }
-  
-  /**
-   * Clear search
-   */
-  clearSearch() {
-    this.stateManager.set('searchTerm', '');
-    this.parent.render(false);
-    
-    // Clear input
-    const $element = this.parent._element;
-    if ($element) {
-      $element.find('.ncm-filters__search-input').val('');
-    }
   }
   
   /**
@@ -86,91 +75,133 @@ export class MessageFilters {
   toggleAdvancedFilters() {
     this.advancedFiltersOpen = !this.advancedFiltersOpen;
     
-    const $element = this.parent._element;
-    if (!$element) return;
+    // Update state
+    this.stateManager.update({
+      showFilters: this.advancedFiltersOpen
+    });
     
-    const $panel = $element.find('.ncm-filters__advanced-panel');
-    
-    if (this.advancedFiltersOpen) {
-      $panel.slideDown(200);
-    } else {
-      $panel.slideUp(200);
-    }
+    // Trigger parent re-render
+    this.parent.render(false);
   }
   
   /**
    * Apply advanced filters
-   * @param {Object} filters - Filter object
+   * @param {Object} filters - Filter criteria
    */
   applyAdvancedFilters(filters) {
+    // Store filters in state
     this.stateManager.update({
       advancedFilters: filters,
       'pagination.currentPage': 1
     });
     
-    this.parent.render(false);
+    // Emit event
+    this.eventBus.emit(EVENTS.STATE_FILTER_CHANGED, { filters });
     
-    ui.notifications.info('Filters applied');
+    // Trigger parent re-render
+    this.parent.render(false);
   }
   
   /**
-   * Clear advanced filters
+   * Clear all filters
    */
-  clearAdvancedFilters() {
-    this.stateManager.set('advancedFilters', null);
-    this.parent.render(false);
+  clearFilters() {
+    // Reset to defaults
+    this.stateManager.update({
+      currentFilter: 'all',
+      searchTerm: '',
+      advancedFilters: null,
+      'pagination.currentPage': 1
+    });
     
-    // Clear form
-    const $element = this.parent._element;
-    if ($element) {
-      $element.find('.ncm-filters__advanced-panel form')[0]?.reset();
+    // Emit event
+    this.eventBus.emit(EVENTS.STATE_FILTER_CLEARED);
+    
+    // Trigger parent re-render
+    this.parent.render(false);
+  }
+  
+  /**
+   * Set sort order
+   * @param {string} sortBy - Sort field and direction
+   */
+  setSortOrder(sortBy) {
+    const validSorts = ['date-desc', 'date-asc', 'sender-az', 'sender-za', 'subject-az', 'subject-za'];
+    
+    if (!validSorts.includes(sortBy)) {
+      console.warn(`${MODULE_ID} | Invalid sort order: ${sortBy}`);
+      return;
     }
     
-    ui.notifications.info('Filters cleared');
-  }
-  
-  /**
-   * Update category button UI
-   * @private
-   */
-  _updateCategoryUI(activeCategory) {
-    const $element = this.parent._element;
-    if (!$element) return;
+    // Update state
+    this.stateManager.update({
+      sortOrder: sortBy
+    });
     
-    $element.find('.ncm-filters__category-btn').removeClass('ncm-filters__category-btn--active');
-    $element.find(`[data-category="${activeCategory}"]`).addClass('ncm-filters__category-btn--active');
+    // Emit event
+    this.eventBus.emit(EVENTS.STATE_SORT_CHANGED, { sortBy });
+    
+    // Trigger parent re-render
+    this.parent.render(false);
   }
   
   /**
-   * Activate event listeners
-   * @param {jQuery} html - The application HTML
+   * Get current filter state
+   * @returns {Object} Current filter state
+   */
+  getFilterState() {
+    return {
+      category: this.stateManager.get('currentFilter') || 'all',
+      searchTerm: this.stateManager.get('searchTerm') || '',
+      sortOrder: this.stateManager.get('sortOrder') || 'date-desc',
+      advancedFilters: this.stateManager.get('advancedFilters'),
+      showFilters: this.stateManager.get('showFilters') || false
+    };
+  }
+  
+  /**
+   * Activate listeners
+   * @param {jQuery} html - The rendered HTML
    */
   activateListeners(html) {
-    // Category buttons
-    html.find('.ncm-filters__category-btn').on('click', (event) => {
-      const category = $(event.currentTarget).data('category');
-      this.setCategory(category);
-      this.parent.playSound('click');
-    });
-    
     // Search input
-    html.find('.ncm-filters__search-input').on('input', (event) => {
-      const term = $(event.currentTarget).val();
-      this.setSearchTerm(term);
+    html.find('[data-action="search"]').on('input', (event) => {
+      this.setSearchTerm(event.target.value);
     });
     
-    // Clear search button
-    html.find('.ncm-filters__clear-search').on('click', () => {
-      this.clearSearch();
-      this.parent.playSound('click');
+    // Category filter select
+    html.find('[data-filter="status"]').on('change', (event) => {
+      this.setCategory(event.target.value);
     });
     
-    // Advanced filters toggle
-    html.find('.ncm-filters__advanced-toggle').on('click', () => {
+    // Sort order select
+    html.find('[data-filter="sort"]').on('change', (event) => {
+      this.setSortOrder(event.target.value);
+    });
+    
+    // Toggle filters button
+    html.find('[data-action="toggle-filters"]').on('click', () => {
       this.toggleAdvancedFilters();
-      this.parent.playSound('click');
     });
     
-    // Apply advanced filters
-    html.find('.ncm-filters__apply-advanced').on('click', (event) => {
-      event.preventDefaul
+    // Clear filters button
+    html.find('[data-action="clear-filters"]').on('click', () => {
+      this.clearFilters();
+    });
+    
+    // Refresh button
+    html.find('[data-action="refresh"]').on('click', () => {
+      this.parent.render(false);
+    });
+  }
+  
+  /**
+   * Destroy/cleanup
+   */
+  destroy() {
+    if (this.searchDebounceTimer) {
+      clearTimeout(this.searchDebounceTimer);
+      this.searchDebounceTimer = null;
+    }
+  }
+}
