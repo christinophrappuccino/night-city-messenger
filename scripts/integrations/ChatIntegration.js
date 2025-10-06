@@ -193,7 +193,12 @@ async function _forwardToMessenger(chatMessage) {
  * @private
  */
 async function _createSharedMessageChatCard(data) {
-  const { from, subject, content, recipient } = data;
+  // FIXED: Handle different property names (content vs body)
+  const { from, subject, recipient } = data;
+  const content = data.content || data.body || '';
+  
+  // Safety check - ensure content is a string
+  const safeContent = String(content || '');
   
   // Create chat message content
   const chatContent = `
@@ -203,10 +208,10 @@ async function _createSharedMessageChatCard(data) {
         <strong class="ncm-chat-card__title">Shared Message</strong>
       </div>
       <div class="ncm-chat-card__content">
-        <p><strong>From:</strong> ${from}</p>
-        <p><strong>Subject:</strong> ${subject}</p>
+        <p><strong>From:</strong> ${from || 'Unknown'}</p>
+        <p><strong>Subject:</strong> ${subject || 'No Subject'}</p>
         <hr>
-        <div class="ncm-chat-card__message">${content.substring(0, 200)}${content.length > 200 ? '...' : ''}</div>
+        <div class="ncm-chat-card__message">${safeContent.substring(0, 200)}${safeContent.length > 200 ? '...' : ''}</div>
       </div>
       ${recipient ? `<div class="ncm-chat-card__footer"><small>Shared with: ${recipient}</small></div>` : ''}
     </div>

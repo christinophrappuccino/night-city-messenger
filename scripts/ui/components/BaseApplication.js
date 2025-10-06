@@ -205,6 +205,12 @@ export class BaseApplication extends Application {
    */
   activateListeners(html) {
     super.activateListeners(html);
+
+    // Close Button
+    html.find('.header-button.close').on('click', (event) => {
+      event.preventDefault();
+      this.close();
+    });
     
     // Store jQuery reference for cleanup
     this._element = html;
@@ -225,10 +231,13 @@ export class BaseApplication extends Application {
    * Close and cleanup
    */
   async close(options = {}) {
+    console.log('🔴 CLOSE STARTING');
+    
     // Play close sound
     this.playSound('close');
     
     // Cleanup subscriptions
+    console.log('🟡 Cleaning subscriptions...');
     this._subscriptions.forEach(unsubscribe => {
       try {
         unsubscribe();
@@ -239,8 +248,9 @@ export class BaseApplication extends Application {
     this._subscriptions = [];
     
     // Cleanup components
+    console.log('🟡 Cleaning components...');
     this.components.forEach((component, name) => {
-      if (component.destroy) {
+      if (component && typeof component.destroy === 'function') {
         try {
           component.destroy();
         } catch (error) {
@@ -250,7 +260,11 @@ export class BaseApplication extends Application {
     });
     this.components.clear();
     
-    return super.close(options);
+    console.log('🟢 Calling super.close()...');
+    const result = await super.close(options);
+    console.log('✅ CLOSE COMPLETE');
+    
+    return result;
   }
   
   /**

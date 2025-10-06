@@ -184,7 +184,14 @@
   background: var(--ncm-bg-surface) !important;
   border-bottom: var(--ncm-border-width-thin) solid var(--ncm-border-primary) !important;
   color: var(--ncm-primary) !important;
-  cursor: move !important; /* Make sure it's draggable */
+  cursor: move !important;  /* Dragging */
+  display: flex !important; /* Must be visible! */
+}
+
+/* ✅ Keep close button working */
+.ncm-app .header-button.close {
+  display: block !important;
+  cursor: pointer !important;
 }
 
 .ncm-app .window-title {

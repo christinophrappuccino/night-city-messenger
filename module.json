@@ -18,6 +18,7 @@
     "scripts/main.js"
   ],
   "styles": [
+    "styles/emergency-fix.css", 
     "styles/base/variables.css",
     "styles/base/reset.css",
     "styles/base/animations.css",

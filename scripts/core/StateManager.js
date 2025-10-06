@@ -186,11 +186,37 @@ export class StateManager {
   // ========================================
   
   /**
+   * Set all messages at once (replaces existing)
+   * @param {Array} messages - Array of message objects
+   */
+  setMessages(messages) {
+    this.state.messages.clear();
+    this.state.unreadMessages.clear();
+    
+    messages.forEach(message => {
+      this.state.messages.set(message.id, message);
+      
+      // Track unread messages
+      if (!message.status?.read) {
+        this.state.unreadMessages.add(message.id);
+      }
+    });
+    
+    this.eventBus.emit(EVENTS.MESSAGES_LOADED, messages);
+  }
+  
+  /**
    * Add a message to state
    * @param {Object} message - Message object
    */
   addMessage(message) {
     this.state.messages.set(message.id, message);
+    
+    // Track unread
+    if (!message.status?.read) {
+      this.state.unreadMessages.add(message.id);
+    }
+    
     this.eventBus.emit(EVENTS.MESSAGE_RECEIVED, message);
   }
   
@@ -206,6 +232,39 @@ export class StateManager {
     if (message) {
       this.eventBus.emit(EVENTS.MESSAGE_DELETED, message);
     }
+  }
+  
+  /**
+   * Get message by ID
+   * @param {string} messageId - Message ID
+   * @returns {Object|null} Message object or null
+   */
+  getMessageById(messageId) {
+    return this.state.messages.get(messageId) || null;
+  }
+  
+  /**
+   * Get all messages
+   * @returns {Array} Array of all messages
+   */
+  getAllMessages() {
+    return Array.from(this.state.messages.values());
+  }
+  
+  /**
+   * Get saved messages
+   * @returns {Array}
+   */
+  getSavedMessages() {
+    return this.getAllMessages().filter(m => m.status?.saved);
+  }
+  
+  /**
+   * Get spam messages
+   * @returns {Array}
+   */
+  getSpamMessages() {
+    return this.getAllMessages().filter(m => m.status?.spam);
   }
   
   /**
@@ -266,7 +325,7 @@ export class StateManager {
         m.subject?.toLowerCase().includes(search) ||
         m.from?.toLowerCase().includes(search) ||
         m.to?.toLowerCase().includes(search) ||
-        m.content?.toLowerCase().includes(search)
+        m.body?.toLowerCase().includes(search)
       );
     }
     

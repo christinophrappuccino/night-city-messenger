@@ -90,6 +90,24 @@ export class SettingsManager {
       },
       onChange: value => this._onSettingChanged('themeColors', value)
     });
+
+    // UI Settings
+    game.settings.register(MODULE_ID, 'userTheme', {
+      name: 'Theme',
+      hint: 'Choose the visual theme for the messenger interface',
+      scope: 'client',
+      config: true,
+      type: String,
+      default: 'classic',
+      choices: {
+        'classic': 'Classic (Red/Black)',
+        'neon': 'Neon (Cyan/Purple)',
+        'corporate': 'Corporate (Blue/Gray)',
+        'military': 'Military (Green/Black)',
+        'custom': 'Custom Colors'
+      },
+      onChange: value => this._onSettingChanged('userTheme', value)
+    });
     
     // GM settings
     game.settings.register(MODULE_ID, 'allowPlayerCompose', {

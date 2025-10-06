@@ -41,8 +41,8 @@ export class MessageViewerApp extends BaseApplication {
   static get defaultOptions() {
     return foundry.utils.mergeObject(super.defaultOptions, {
       id: "ncm-message-viewer",
-      classes: ["ncm-app", "ncm-message-viewer"], // NCM classes for styling
-      template: "modules/cyberpunkred-messenger/templates/viewer.html",
+      classes: ["ncm-app", "ncm-message-viewer"],
+      template: "modules/cyberpunkred-messenger/templates/message-viewer/viewer.hbs",
       width: 900,
       height: 700,
       resizable: true,
@@ -71,193 +71,275 @@ export class MessageViewerApp extends BaseApplication {
     
     // Get selected message
     const selectedMessage = selectedMessageId 
-      ? this.stateManager.get('messages').get(selectedMessageId)
+      ? this.stateManager.getMessageById(selectedMessageId)
       : null;
     
     return {
       ...data,
-      journalEntry: this.journalEntry,
-      
-      // Messages
       messages: messageData.messages,
+      currentPage: messageData.currentPage,
+      totalPages: messageData.totalPages,
+      totalMessages: messageData.totalMessages,
       selectedMessage: selectedMessage,
-      
-      // Filters
       currentFilter: currentFilter,
       searchTerm: searchTerm,
-      
-      // Pagination
-      pagination: {
-        currentPage: messageData.currentPage,
-        totalPages: messageData.totalPages,
-        totalCount: messageData.totalCount,
-        hasNext: messageData.currentPage < messageData.totalPages,
-        hasPrev: messageData.currentPage > 1
-      },
-      
-      // Stats
       unreadCount: unreadCount,
-      
-      // User info
-      characterName: game.user.character?.name || game.user.name,
-      currentTime: this._getCurrentTime(),
-      
-      // Settings
-      enableSounds: this.getSetting('enableSounds')
-    };
-  }
-  
-  /**
-   * Load messages from journal into state
-   * @private
-   */
-  _loadMessages() {
-    if (!this.journalEntry || !this.journalEntry.pages) return;
-    
-    console.log(`${MODULE_ID} | Loading messages from journal:`, this.journalEntry.name);
-    
-    const messages = this.stateManager.get('messages');
-    const unreadMessages = this.stateManager.get('unreadMessages');
-    
-    this.journalEntry.pages.forEach(page => {
-      // Parse message data from page
-      const message = this._pageToMessage(page);
-      
-      // Add to state
-      messages.set(message.id, message);
-      
-      // Check if unread
-      if (!this._isMessageRead(page)) {
-        unreadMessages.add(message.id);
+      filters: {
+        all: this.stateManager.getAllMessages().length,
+        unread: unreadCount,
+        saved: this.stateManager.getSavedMessages().length,
+        spam: this.stateManager.getSpamMessages().length
       }
-    });
-    
-    console.log(`${MODULE_ID} | Loaded ${messages.size} messages, ${unreadMessages.size} unread`);
-  }
-  
-  /**
-   * Convert journal page to message object
-   * @private
-   */
-  _pageToMessage(page) {
-    const content = page.text?.content || '';
-    
-    // Extract metadata
-    const from = this._extractField(content, 'From');
-    const to = this._extractField(content, 'To');
-    const subject = this._extractField(content, 'Subject');
-    const date = this._extractField(content, 'Date');
-    
-    // Get status flags
-    const status = page.getFlag(MODULE_ID, 'status') || {
-      read: false,
-      saved: false,
-      spam: false
-    };
-    
-    return {
-      id: page.id,
-      subject: subject || page.name,
-      from: from,
-      to: to,
-      content: content,
-      timestamp: date || page.getFlag(MODULE_ID, 'createdAt'),
-      status: status,
-      page: page // Keep reference for updates
     };
   }
   
   /**
-   * Extract field from message content
-   * @private
-   */
-  _extractField(content, fieldName) {
-    const regex = new RegExp(`\\[${fieldName}\\](.+?)\\[End\\]`, 's');
-    const match = content.match(regex);
-    return match ? match[1].trim() : '';
-  }
-  
-  /**
-   * Check if message has been read
-   * @private
-   */
-  _isMessageRead(page) {
-    // Check flag
-    const status = page.getFlag(MODULE_ID, 'status');
-    if (status?.read) return true;
-    
-    // Check localStorage
-    const readKey = `${MODULE_ID}-read-${this.journalEntry.id}-${page.id}`;
-    return localStorage.getItem(readKey) === 'true';
-  }
-  
-  /**
-   * Get current time string
-   * @private
-   */
-  _getCurrentTime() {
-    // Check if SimpleCalendar is available
-    if (game.modules.get('foundryvtt-simple-calendar')?.active) {
-      try {
-        return SimpleCalendar.api.currentDateTimeDisplay().display;
-      } catch (e) {
-        console.warn(`${MODULE_ID} | SimpleCalendar error:`, e);
-      }
-    }
-    
-    // Fallback to real-world time
-    return new Date().toLocaleString();
-  }
-  
-  /**
-   * Lifecycle: First render
-   */
-  _onFirstRender() {
-    console.log(`${MODULE_ID} | Message viewer first render`);
-    
-    // Play open sound
-    this.playSound('open');
-    
-    // Emit event
-    this.eventBus.emit(EVENTS.UI_VIEWER_OPENED, {
-      journalId: this.journalEntry.id
-    });
-    
-    // Register in state
-    this.stateManager.get('activeViewers').add(this.appId);
-  }
-  
-  /**
-   * Activate listeners
+   * Activate event listeners
    */
   activateListeners(html) {
     super.activateListeners(html);
     
-    // Compose button
-    html.find('.ncm-viewer__compose-btn').on('click', () => {
-      this.eventBus.emit('composer:open', {});
-      this.playSound('click');
-    });
+    // Filter buttons
+    html.find('[data-action="filter"]').on('click', this._onFilterClick.bind(this));
     
-    // Settings button
-    html.find('.ncm-viewer__settings-btn').on('click', () => {
-      // Open settings
-      this.playSound('click');
-    });
+    // Search input
+    html.find('[data-action="search"]').on('input', this._onSearchInput.bind(this));
+    
+    // Message selection
+    html.find('[data-action="select-message"]').on('click', this._onSelectMessage.bind(this));
+    
+    // Message actions
+    html.find('[data-action="delete-message"]').on('click', this._onDeleteMessage.bind(this));
+    html.find('[data-action="mark-spam"]').on('click', this._onMarkSpam.bind(this));
+    html.find('[data-action="save-message"]').on('click', this._onSaveMessage.bind(this));
+    html.find('[data-action="reply"]').on('click', this._onReply.bind(this));
+    html.find('[data-action="share-to-chat"]').on('click', this._onShareToChat.bind(this));
+    
+    // Compose and refresh
+    html.find('[data-action="compose"]').on('click', this._onCompose.bind(this));
+    html.find('[data-action="refresh"]').on('click', this._onRefresh.bind(this));
+    
+    // Pagination
+    html.find('[data-action="prev-page"]').on('click', this._onPrevPage.bind(this));
+    html.find('[data-action="next-page"]').on('click', this._onNextPage.bind(this));
   }
   
   /**
-   * Close viewer
+   * Load messages from journal
+   * @private
    */
-  async close(options = {}) {
-    // Emit event
-    this.eventBus.emit(EVENTS.UI_VIEWER_CLOSED, {
-      journalId: this.journalEntry.id
+  _loadMessages() {
+    if (!this.journalEntry) return;
+    
+    const pages = this.journalEntry.pages.contents;
+    const messages = pages.map(page => {
+      const flags = page.flags[MODULE_ID] || {};
+      return {
+        id: page.id,
+        from: flags.from || 'Unknown',
+        to: flags.to || 'Unknown',
+        subject: flags.subject || 'No Subject',
+        body: flags.body || '',
+        timestamp: flags.timestamp || new Date().toISOString(),
+        network: flags.network || 'CITINET',
+        status: flags.status || {
+          read: false,
+          saved: false,
+          spam: false,
+          encrypted: false,
+          infected: false
+        },
+        preview: this._generatePreview(flags.body || '')
+      };
     });
     
-    // Remove from active viewers
-    this.stateManager.get('activeViewers').delete(this.appId);
+    this.stateManager.setMessages(messages);
+  }
+  
+  /**
+   * Generate message preview
+   * @private
+   */
+  _generatePreview(body) {
+    const plainText = body.replace(/<[^>]*>/g, '');
+    return plainText.length > 100 
+      ? plainText.substring(0, 100) + '...'
+      : plainText;
+  }
+  
+  /**
+   * Filter click handler
+   * @private
+   */
+  async _onFilterClick(event) {
+    event.preventDefault();
+    const filter = $(event.currentTarget).data('filter');
+    this.stateManager.set('currentFilter', filter);
+    this.stateManager.set('currentPage', 1);
+    this.render();
+  }
+  
+  /**
+   * Search input handler
+   * @private
+   */
+  async _onSearchInput(event) {
+    const searchTerm = $(event.currentTarget).val();
+    this.stateManager.set('searchTerm', searchTerm);
+    this.stateManager.set('currentPage', 1);
+    this.render();
+  }
+  
+  /**
+   * Select message handler
+   * @private
+   */
+  async _onSelectMessage(event) {
+    event.preventDefault();
+    const messageId = $(event.currentTarget).data('message-id');
     
-    return super.close(options);
+    // Mark as read
+    await this.messageList.markAsRead(messageId);
+    
+    // Select message
+    this.stateManager.set('selectedMessageId', messageId);
+    this.render();
+  }
+  
+  /**
+   * Delete message handler
+   * @private
+   */
+  async _onDeleteMessage(event) {
+    event.preventDefault();
+    const messageId = this.stateManager.get('selectedMessageId');
+    
+    if (!messageId) return;
+    
+    const confirm = await Dialog.confirm({
+      title: "Delete Message",
+      content: "<p>Are you sure you want to delete this message?</p>",
+      yes: () => true,
+      no: () => false
+    });
+    
+    if (confirm) {
+      await this.messageList.deleteMessage(messageId);
+      this.stateManager.set('selectedMessageId', null);
+      this.render();
+      ui.notifications.info('Message deleted');
+    }
+  }
+  
+  /**
+   * Mark spam handler
+   * @private
+   */
+  async _onMarkSpam(event) {
+    event.preventDefault();
+    const messageId = this.stateManager.get('selectedMessageId');
+    
+    if (!messageId) return;
+    
+    await this.messageList.toggleSpam(messageId);
+    this.render();
+    ui.notifications.info('Message marked as spam');
+  }
+  
+  /**
+   * Save message handler
+   * @private
+   */
+  async _onSaveMessage(event) {
+    event.preventDefault();
+    const messageId = this.stateManager.get('selectedMessageId');
+    
+    if (!messageId) return;
+    
+    await this.messageList.toggleSaved(messageId);
+    this.render();
+  }
+  
+  /**
+   * Reply handler
+   * @private
+   */
+  async _onReply(event) {
+    event.preventDefault();
+    const message = this.stateManager.get('selectedMessageId');
+    
+    if (!message) return;
+    
+    const messageData = this.stateManager.getMessageById(message);
+    
+    // Open composer with reply data
+    const { MessageComposerApp } = await import('../MessageComposer/MessageComposerApp.js');
+    new MessageComposerApp({
+      replyTo: messageData
+    }).render(true);
+  }
+  
+  /**
+   * Share to chat handler
+   * @private
+   */
+  async _onShareToChat(event) {
+    event.preventDefault();
+    const messageId = this.stateManager.get('selectedMessageId');
+    
+    if (!messageId) return;
+    
+    await this.messageDetail.shareToChat(messageId);
+    ui.notifications.info('Message shared to chat');
+  }
+  
+  /**
+   * Compose handler
+   * @private
+   */
+  async _onCompose(event) {
+    event.preventDefault();
+    
+    const { MessageComposerApp } = await import('../MessageComposer/MessageComposerApp.js');
+    new MessageComposerApp().render(true);
+  }
+  
+  /**
+   * Refresh handler
+   * @private
+   */
+  async _onRefresh(event) {
+    event.preventDefault();
+    this._loadMessages();
+    this.render();
+    ui.notifications.info('Messages refreshed');
+  }
+  
+  /**
+   * Previous page handler
+   * @private
+   */
+  async _onPrevPage(event) {
+    event.preventDefault();
+    const currentPage = this.stateManager.get('currentPage') || 1;
+    if (currentPage > 1) {
+      this.stateManager.set('currentPage', currentPage - 1);
+      this.render();
+    }
+  }
+  
+  /**
+   * Next page handler
+   * @private
+   */
+  async _onNextPage(event) {
+    event.preventDefault();
+    const messageData = this.messageList.getPaginatedMessages();
+    const currentPage = this.stateManager.get('currentPage') || 1;
+    
+    if (currentPage < messageData.totalPages) {
+      this.stateManager.set('currentPage', currentPage + 1);
+      this.render();
+    }
   }
 }
