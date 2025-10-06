@@ -1,0 +1,74 @@
+{{!-- Admin Panel Statistics Partial --}}
+{{!-- File: templates/admin-panel/partials/statistics.hbs --}}
+
+{{!-- Statistics Cards --}}
+<div class="ncm-admin-panel__stats">
+  <div class="ncm-admin-panel__stat-card">
+    <i class="ncm-admin-panel__stat-icon fas fa-envelope"></i>
+    <div class="ncm-admin-panel__stat-value">{{stats.totalMessages}}</div>
+    <div class="ncm-admin-panel__stat-label">Total Messages</div>
+  </div>
+  
+  <div class="ncm-admin-panel__stat-card">
+    <i class="ncm-admin-panel__stat-icon fas fa-envelope-open"></i>
+    <div class="ncm-admin-panel__stat-value">{{stats.unreadMessages}}</div>
+    <div class="ncm-admin-panel__stat-label">Unread</div>
+  </div>
+  
+  <div class="ncm-admin-panel__stat-card">
+    <i class="ncm-admin-panel__stat-icon fas fa-users"></i>
+    <div class="ncm-admin-panel__stat-value">{{stats.activeUsers}}</div>
+    <div class="ncm-admin-panel__stat-label">Active Users</div>
+  </div>
+  
+  <div class="ncm-admin-panel__stat-card">
+    <i class="ncm-admin-panel__stat-icon fas fa-network-wired"></i>
+    <div class="ncm-admin-panel__stat-value">{{stats.networksOnline}}</div>
+    <div class="ncm-admin-panel__stat-label">Networks Online</div>
+  </div>
+  
+  <div class="ncm-admin-panel__stat-card">
+    <i class="ncm-admin-panel__stat-icon fas fa-exclamation-triangle"></i>
+    <div class="ncm-admin-panel__stat-value">{{stats.spamMessages}}</div>
+    <div class="ncm-admin-panel__stat-label">Spam</div>
+  </div>
+  
+  <div class="ncm-admin-panel__stat-card">
+    <i class="ncm-admin-panel__stat-icon fas fa-virus"></i>
+    <div class="ncm-admin-panel__stat-value">{{stats.infections}}</div>
+    <div class="ncm-admin-panel__stat-label">Infections</div>
+  </div>
+</div>
+
+{{!-- Detailed Statistics --}}
+<div class="ncm-admin-panel__detailed-stats">
+  <h3>Message Statistics</h3>
+  
+  <div class="ncm-admin-panel__chart">
+    <div class="ncm-admin-panel__chart-bar">
+      <span class="ncm-admin-panel__chart-label">Total Messages</span>
+      <div class="ncm-admin-panel__bar-container">
+        <div class="ncm-admin-panel__bar-fill" style="width: 100%;"></div>
+      </div>
+      <span class="ncm-admin-panel__bar-value">{{stats.totalMessages}}</span>
+    </div>
+    
+    <div class="ncm-admin-panel__chart-bar">
+      <span class="ncm-admin-panel__chart-label">Unread</span>
+      <div class="ncm-admin-panel__bar-container">
+        <div class="ncm-admin-panel__bar-fill ncm-admin-panel__bar-fill--unread" 
+             style="width: {{calculatePercentage stats.unreadMessages stats.totalMessages}}%;"></div>
+      </div>
+      <span class="ncm-admin-panel__bar-value">{{stats.unreadMessages}}</span>
+    </div>
+    
+    <div class="ncm-admin-panel__chart-bar">
+      <span class="ncm-admin-panel__chart-label">Spam</span>
+      <div class="ncm-admin-panel__bar-container">
+        <div class="ncm-admin-panel__bar-fill ncm-admin-panel__bar-fill--spam" 
+             style="width: {{calculatePercentage stats.spamMessages stats.totalMessages}}%;"></div>
+      </div>
+      <span class="ncm-admin-panel__bar-value">{{stats.spamMessages}}</span>
+    </div>
+  </div>
+</div>

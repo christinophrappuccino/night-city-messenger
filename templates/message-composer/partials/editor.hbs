@@ -1,0 +1,43 @@
+{{!-- Editor Partial --}}
+{{!-- File: templates/message-composer/partials/editor.hbs --}}
+
+<div class="ncm-composer__editor-section">
+  {{!-- Editor Toolbar --}}
+  <div class="ncm-composer__toolbar">
+    <button class="ncm-composer__toolbar-btn" data-action="bold" title="Bold">
+      <i class="fas fa-bold"></i>
+    </button>
+    <button class="ncm-composer__toolbar-btn" data-action="italic" title="Italic">
+      <i class="fas fa-italic"></i>
+    </button>
+    <button class="ncm-composer__toolbar-btn" data-action="underline" title="Underline">
+      <i class="fas fa-underline"></i>
+    </button>
+    
+    <div class="ncm-composer__toolbar-separator"></div>
+    
+    <button class="ncm-composer__toolbar-btn" data-action="list" title="List">
+      <i class="fas fa-list-ul"></i>
+    </button>
+    <button class="ncm-composer__toolbar-btn" data-action="link" title="Link">
+      <i class="fas fa-link"></i>
+    </button>
+    <button class="ncm-composer__toolbar-btn" data-action="code" title="Code">
+      <i class="fas fa-code"></i>
+    </button>
+    
+    <div class="ncm-composer__toolbar-separator"></div>
+    
+    <button class="ncm-composer__toolbar-btn" data-action="template" title="Templates">
+      <i class="fas fa-file-alt"></i>
+    </button>
+    <button class="ncm-composer__toolbar-btn" data-action="attach" title="Attach">
+      <i class="fas fa-paperclip"></i>
+    </button>
+  </div>
+  
+  {{!-- Message Editor --}}
+  <div class="ncm-composer__editor" contenteditable="true" data-field="content">
+    {{{content}}}
+  </div>
+</div>

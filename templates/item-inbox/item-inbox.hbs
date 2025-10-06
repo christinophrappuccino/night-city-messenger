@@ -1,0 +1,166 @@
+{{!-- Item Inbox Template --}}
+{{!-- File: templates/item-inbox.hbs --}}
+{{!-- Used for Data Shards - displays on item sheet tab --}}
+
+<div class="ncm-item-sheet-tab">
+  
+  {{!-- Security Indicator --}}
+  <div class="ncm-item-inbox__security {{#if encrypted}}ncm-item-inbox__security--encrypted{{/if}} {{#if infected}}ncm-item-inbox__security--infected{{/if}}">
+    <div class="ncm-item-inbox__security-icon">
+      {{#if encrypted}}
+      <i class="fas fa-lock"></i>
+      {{else if infected}}
+      <i class="fas fa-virus"></i>
+      {{else}}
+      <i class="fas fa-hdd"></i>
+      {{/if}}
+    </div>
+    <div class="ncm-item-inbox__security-info">
+      <div class="ncm-item-inbox__security-status">
+        {{#if encrypted}}
+        ENCRYPTED DATA SHARD
+        {{else if infected}}
+        INFECTED DATA SHARD - MALWARE DETECTED
+        {{else}}
+        DATA SHARD
+        {{/if}}
+      </div>
+      <div class="ncm-item-inbox__security-level">
+        {{#if encrypted}}
+        Security Level: DV {{securityLevel}}
+        {{else if infected}}
+        Threat Level: {{malware.severity}}
+        {{else}}
+        No Security
+        {{/if}}
+      </div>
+    </div>
+  </div>
+  
+  {{!-- Malware Warning (if infected) --}}
+  {{#if infected}}
+  <div class="ncm-item-inbox__malware-warning">
+    <div class="ncm-item-inbox__malware-icon">
+      <i class="fas fa-exclamation-triangle"></i>
+    </div>
+    <div class="ncm-item-inbox__malware-content">
+      <div class="ncm-item-inbox__malware-title">Malware Detected</div>
+      <div class="ncm-item-inbox__malware-description">
+        This data shard is infected with {{malware.type}} malware.
+        Opening infected files may cause damage to your system.
+      </div>
+      <div class="ncm-item-inbox__malware-details">
+        Type: {{malware.type}} | Severity: {{malware.severity}} | Detection DV: {{malware.detectionDV}}
+      </div>
+    </div>
+  </div>
+  {{/if}}
+  
+  {{!-- Encrypted Overlay (shows if locked and not owner/gm) --}}
+  {{#if showEncryptedOverlay}}
+  <div class="ncm-item-inbox__encrypted-overlay">
+    <div class="ncm-item-inbox__lock-icon">
+      <i class="fas fa-lock"></i>
+    </div>
+    <div class="ncm-item-inbox__lock-title">ENCRYPTED</div>
+    <div class="ncm-item-inbox__lock-message">
+      This data shard is protected by ICE. 
+      You must hack it to access the contents.
+    </div>
+    <div class="ncm-item-inbox__lock-difficulty">
+      <span class="ncm-item-inbox__lock-difficulty-label">Hacking DV:</span>
+      <span class="ncm-item-inbox__lock-difficulty-value">{{securityLevel}}</span>
+    </div>
+    <div class="ncm-item-inbox__lock-actions">
+      <button class="ncm-btn ncm-btn--primary" data-action="attempt-hack">
+        <i class="fas fa-user-secret"></i> Attempt Hack
+      </button>
+      {{#if isGM}}
+      <button class="ncm-btn ncm-btn--secondary" data-action="gm-unlock">
+        <i class="fas fa-key"></i> GM Override
+      </button>
+      {{/if}}
+    </div>
+  </div>
+  {{/if}}
+  
+  {{!-- Item Inbox Content --}}
+  <div class="ncm-item-inbox__content">
+    
+    {{!-- Header --}}
+    <div class="ncm-item-inbox__header">
+      <div class="ncm-item-inbox__count">
+        <i class="fas fa-envelope"></i>
+        <span class="ncm-item-inbox__count-value">{{messageCount}}</span>
+        {{#if messageCount}}message{{#if (gt messageCount 1)}}s{{/if}}{{else}}messages{{/if}}
+      </div>
+      
+      {{#if canEdit}}
+      <button class="ncm-btn ncm-btn--small" data-action="configure-shard">
+        <i class="fas fa-cog"></i> Configure
+      </button>
+      {{/if}}
+    </div>
+    
+    {{!-- Message List --}}
+    <div class="ncm-item-inbox__list">
+      {{#if messages.length}}
+        {{#each messages}}
+        <div class="ncm-shard-message {{#if this.unread}}ncm-shard-message--unread{{/if}}" 
+             data-message-id="{{this.id}}"
+             data-action="view-message">
+          
+          <div class="ncm-shard-message__header">
+            <span class="ncm-shard-message__from">{{this.from}}</span>
+            <span class="ncm-shard-message__date">{{this.timestamp}}</span>
+          </div>
+          
+          <div class="ncm-shard-message__subject">{{this.subject}}</div>
+          
+          <div class="ncm-shard-message__preview">{{this.preview}}</div>
+        </div>
+        {{/each}}
+      {{else}}
+        {{!-- Empty State --}}
+        <div class="ncm-item-inbox__empty">
+          <i class="ncm-item-inbox__empty-icon fas fa-inbox"></i>
+          <p class="ncm-item-inbox__empty-text">No Messages</p>
+          <p class="ncm-item-inbox__empty-subtext">This data shard is empty</p>
+        </div>
+      {{/if}}
+    </div>
+  </div>
+  
+  {{!-- Action Buttons (if owner/gm) --}}
+  {{#if canEdit}}
+  <div class="ncm-item-inbox__actions">
+    <button class="ncm-btn" data-action="share-to-chat">
+      <i class="fas fa-comment"></i> Share to Chat
+    </button>
+    
+    <button class="ncm-btn" data-action="add-message">
+      <i class="fas fa-plus"></i> Add Message
+    </button>
+    
+    {{#if encrypted}}
+    <button class="ncm-btn ncm-btn--secondary" data-action="decrypt-shard">
+      <i class="fas fa-unlock"></i> Decrypt
+    </button>
+    {{else}}
+    <button class="ncm-btn ncm-btn--secondary" data-action="encrypt-shard">
+      <i class="fas fa-lock"></i> Encrypt
+    </button>
+    {{/if}}
+    
+    {{#if infected}}
+    <button class="ncm-btn ncm-btn--danger" data-action="quarantine-malware">
+      <i class="fas fa-box"></i> Quarantine
+    </button>
+    {{else}}
+    <button class="ncm-btn ncm-btn--danger" data-action="infect-shard">
+      <i class="fas fa-virus"></i> Infect
+    </button>
+    {{/if}}
+  </div>
+  {{/if}}
+</div>

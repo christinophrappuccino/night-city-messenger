@@ -1,15 +1,13 @@
 /* ==============================================
    NIGHT CITY MESSENGER
    Component: Message Composer
-   Purpose: Compose window and editor styling
+   Purpose: New message composition window
    Dependencies: variables.css, reset.css, animations.css
    ============================================== */
 
-/* ==============================================
-   COMPOSER WINDOW
-   Modal overlay for composing messages
-   ============================================== */
-
+/* ============================================
+   WINDOW CONFIGURATION
+   ============================================ */
 .ncm-app.ncm-composer {
   width: var(--ncm-composer-width);
   height: var(--ncm-composer-height);
@@ -17,184 +15,265 @@
   min-height: 500px;
 }
 
+/* ============================================
+   MAIN LAYOUT
+   ============================================ */
 .ncm-composer__container {
   display: flex;
   flex-direction: column;
   height: 100%;
   overflow: hidden;
+  padding: var(--ncm-spacing-lg);
+  gap: var(--ncm-spacing-md);
 }
 
-/* ==============================================
-   COMPOSER HEADER
-   Recipient and subject fields
-   ============================================== */
+/* Use canonical header from reset.css */
+.ncm-composer .ncm-header {
+  /* Inherits all styles from base/reset.css */
+  margin: calc(var(--ncm-spacing-lg) * -1);
+  margin-bottom: 0;
+}
 
-.ncm-composer__header {
-  flex: 0 0 auto;
-  background: var(--ncm-bg-surface);
-  border-bottom: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
-  padding: var(--ncm-spacing-lg);
+/* ============================================
+   HEADER FIELDS SECTION
+   From, To, Subject, etc.
+   ============================================ */
+.ncm-composer__header-section {
+  background: var(--ncm-bg-secondary);
+  border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
+  border-radius: var(--ncm-border-radius-md);
+  padding: var(--ncm-spacing-md);
   display: flex;
   flex-direction: column;
   gap: var(--ncm-spacing-md);
 }
 
-/* Recipient field */
+/* Individual header field (From, To, Subject) */
 .ncm-composer__field {
-  display: flex;
-  align-items: center;
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  align-items: start;
   gap: var(--ncm-spacing-md);
 }
 
 .ncm-composer__label {
-  flex: 0 0 60px;
+  padding-top: var(--ncm-spacing-xs);
+  color: var(--ncm-primary);
   font-size: var(--ncm-font-size-sm);
   font-weight: var(--ncm-font-weight-medium);
-  color: var(--ncm-text-secondary);
   text-transform: uppercase;
   letter-spacing: var(--ncm-letter-spacing-wide);
 }
 
-.ncm-composer__input-wrapper {
+.ncm-composer__field-content {
   flex: 1;
-  position: relative;
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: var(--ncm-spacing-sm);
 }
 
-.ncm-composer__input {
-  flex: 1;
-  padding: var(--ncm-padding-input);
-  background: var(--ncm-bg-tertiary);
+/* ============================================
+   ACTOR/SENDER SELECTION
+   ============================================ */
+.ncm-composer__actor-row {
+  display: flex;
+  gap: var(--ncm-spacing-sm);
+  align-items: center;
+}
+
+.ncm-composer__portrait {
+  width: 40px;
+  height: 40px;
   border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
-  border-radius: var(--ncm-border-radius-md);
-  color: var(--ncm-text-primary);
-  font-size: var(--ncm-font-size-base);
-  transition: border-color var(--ncm-transition-fast),
-              box-shadow var(--ncm-transition-fast);
+  border-radius: var(--ncm-border-radius-sm);
+  object-fit: cover;
+  flex-shrink: 0;
 }
 
-.ncm-composer__input:focus {
-  border-color: var(--ncm-primary);
-  box-shadow: calc(var(--ncm-enable-glow) * 1px) 0 0 calc(var(--ncm-glow-intensity) * 10px) var(--ncm-primary-alpha);
-}
-
-.ncm-composer__input::placeholder {
-  color: var(--ncm-text-tertiary);
-}
-
-/* Contacts button */
-.ncm-composer__contacts-btn {
-  flex: 0 0 auto;
+.ncm-composer__actor-select {
+  flex: 1;
   padding: var(--ncm-spacing-sm) var(--ncm-spacing-md);
   background: var(--ncm-bg-tertiary);
   border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
   border-radius: var(--ncm-border-radius-md);
   color: var(--ncm-text-primary);
   font-size: var(--ncm-font-size-sm);
-  transition: all var(--ncm-transition-normal);
+  cursor: pointer;
+  transition: border-color var(--ncm-transition-fast);
+}
+
+.ncm-composer__actor-select:hover {
+  border-color: var(--ncm-primary-light);
+}
+
+/* Email display and edit button */
+.ncm-composer__email-row {
   display: flex;
+  gap: var(--ncm-spacing-sm);
   align-items: center;
-  gap: var(--ncm-spacing-xs);
 }
 
-.ncm-composer__contacts-btn:hover {
+.ncm-composer__email-display {
+  flex: 1;
+  padding: var(--ncm-spacing-sm) var(--ncm-spacing-md);
+  background: var(--ncm-bg-primary);
+  border: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
+  border-radius: var(--ncm-border-radius-md);
+  color: var(--ncm-secondary);
+  font-size: var(--ncm-font-size-sm);
+  font-family: var(--ncm-font-mono);
+}
+
+/* ============================================
+   RECIPIENT INPUT WITH AUTOCOMPLETE
+   ============================================ */
+.ncm-composer__recipient-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.ncm-composer__recipient-input {
+  width: 100%;
+  min-height: var(--ncm-input-height);
+  padding: var(--ncm-input-padding);
+  background: var(--ncm-bg-tertiary);
+  border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
+  border-radius: var(--ncm-border-radius-md);
+  color: var(--ncm-text-primary);
+  font-size: var(--ncm-font-size-sm);
+  resize: vertical;
+  transition: border-color var(--ncm-transition-fast);
+}
+
+.ncm-composer__recipient-input:focus {
   border-color: var(--ncm-primary);
-  background: var(--ncm-bg-hover);
+  box-shadow: 0 0 0 2px var(--ncm-primary-alpha);
 }
 
-/* Recipient autocomplete */
-.ncm-composer__autocomplete {
+/* ============================================
+   EMAIL SUGGESTIONS DROPDOWN
+   ============================================ */
+.ncm-composer__suggestions {
   position: absolute;
   top: 100%;
   left: 0;
   right: 0;
-  margin-top: 4px;
-  background: var(--ncm-bg-tertiary);
+  max-height: 300px;
+  background: var(--ncm-bg-secondary);
   border: var(--ncm-border-width-thin) solid var(--ncm-primary);
-  border-radius: var(--ncm-border-radius-md);
-  box-shadow: var(--ncm-shadow-lg);
-  max-height: 200px;
+  border-top: none;
+  border-radius: 0 0 var(--ncm-border-radius-md) var(--ncm-border-radius-md);
   overflow-y: auto;
   z-index: var(--ncm-z-dropdown);
-  animation: ncm-fadeInUp calc(var(--ncm-animation-speed) * 200ms) var(--ncm-transition-fast);
+  box-shadow: var(--ncm-shadow-lg);
+  display: none;
 }
 
-.ncm-composer__autocomplete-item {
+.ncm-composer__suggestions--active {
+  display: block;
+}
+
+.ncm-composer__suggestion-item {
   padding: var(--ncm-spacing-md);
-  cursor: pointer;
-  transition: background-color var(--ncm-transition-fast);
   display: flex;
   align-items: center;
   gap: var(--ncm-spacing-md);
-  border-bottom: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
+  cursor: pointer;
+  border-bottom: var(--ncm-border-width-thin) solid var(--ncm-border-tertiary);
+  transition: background var(--ncm-transition-fast);
 }
 
-.ncm-composer__autocomplete-item:last-child {
-  border-bottom: none;
-}
-
-.ncm-composer__autocomplete-item:hover,
-.ncm-composer__autocomplete-item--selected {
+.ncm-composer__suggestion-item:hover {
   background: var(--ncm-bg-hover);
 }
 
-.ncm-composer__autocomplete-icon {
-  width: var(--ncm-icon-md);
-  height: var(--ncm-icon-md);
-  border-radius: 50%;
-  background: var(--ncm-primary-alpha);
-  color: var(--ncm-primary);
+.ncm-composer__suggestion-item:last-child {
+  border-bottom: none;
+}
+
+.ncm-composer__suggestion-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--ncm-border-radius-sm);
+  object-fit: cover;
+}
+
+.ncm-composer__suggestion-icon--placeholder {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: var(--ncm-font-size-sm);
+  background: var(--ncm-bg-primary);
+  border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
+  color: var(--ncm-primary);
+  font-size: var(--ncm-icon-md);
 }
 
-.ncm-composer__autocomplete-info {
+.ncm-composer__suggestion-info {
   flex: 1;
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
-.ncm-composer__autocomplete-name {
-  font-size: var(--ncm-font-size-sm);
-  color: var(--ncm-text-primary);
+.ncm-composer__suggestion-name {
   font-weight: var(--ncm-font-weight-medium);
+  color: var(--ncm-text-primary);
+  font-size: var(--ncm-font-size-sm);
 }
 
-.ncm-composer__autocomplete-email {
+.ncm-composer__suggestion-email {
+  color: var(--ncm-secondary);
   font-size: var(--ncm-font-size-xs);
-  color: var(--ncm-text-secondary);
+  font-family: var(--ncm-font-mono);
 }
 
-/* ==============================================
-   EDITOR TOOLBAR
-   Rich text formatting controls
-   ============================================== */
+.ncm-composer__suggestion-item--add-new {
+  background: var(--ncm-secondary-alpha);
+  border-top: var(--ncm-border-width-thin) solid var(--ncm-secondary);
+}
 
-.ncm-composer__toolbar {
-  flex: 0 0 var(--ncm-composer-toolbar-height);
+/* ============================================
+   SUBJECT INPUT
+   ============================================ */
+.ncm-composer__subject-input {
+  width: 100%;
+  padding: var(--ncm-input-padding);
+  height: var(--ncm-input-height);
+  background: var(--ncm-bg-tertiary);
+  border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
+  border-radius: var(--ncm-border-radius-md);
+  color: var(--ncm-text-primary);
+  font-size: var(--ncm-font-size-base);
+  transition: border-color var(--ncm-transition-fast);
+}
+
+.ncm-composer__subject-input:focus {
+  border-color: var(--ncm-primary);
+  box-shadow: 0 0 0 2px var(--ncm-primary-alpha);
+}
+
+/* ============================================
+   MESSAGE EDITOR
+   ============================================ */
+.ncm-composer__editor-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   background: var(--ncm-bg-secondary);
+  border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
+  border-radius: var(--ncm-border-radius-md);
+}
+
+/* Editor toolbar */
+.ncm-composer__toolbar {
+  flex: 0 0 auto;
+  background: var(--ncm-bg-tertiary);
   border-bottom: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
-  padding: var(--ncm-spacing-sm) var(--ncm-spacing-md);
+  padding: var(--ncm-spacing-sm);
   display: flex;
-  align-items: center;
-  gap: var(--ncm-spacing-sm);
+  gap: var(--ncm-spacing-xs);
   flex-wrap: wrap;
-}
-
-.ncm-composer__toolbar-group {
-  display: flex;
-  gap: 4px;
-  padding-right: var(--ncm-spacing-sm);
-  border-right: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
-}
-
-.ncm-composer__toolbar-group:last-child {
-  border-right: none;
 }
 
 .ncm-composer__toolbar-btn {
@@ -203,384 +282,195 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: transparent;
-  border: var(--ncm-border-width-thin) solid transparent;
+  background: var(--ncm-bg-secondary);
+  border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
   border-radius: var(--ncm-border-radius-sm);
-  color: var(--ncm-text-secondary);
-  font-size: var(--ncm-font-size-base);
-  transition: all var(--ncm-transition-fast);
+  color: var(--ncm-primary);
   cursor: pointer;
+  transition: all var(--ncm-transition-fast);
 }
 
 .ncm-composer__toolbar-btn:hover {
-  background: var(--ncm-bg-hover);
-  color: var(--ncm-text-primary);
-  border-color: var(--ncm-border-primary);
+  background: var(--ncm-primary);
+  color: var(--ncm-bg-primary);
 }
 
 .ncm-composer__toolbar-btn--active {
-  background: var(--ncm-primary-alpha);
-  color: var(--ncm-primary);
-  border-color: var(--ncm-primary);
+  background: var(--ncm-primary);
+  color: var(--ncm-bg-primary);
 }
 
-/* Template dropdown */
-.ncm-composer__template-dropdown {
-  position: relative;
-  margin-left: auto;
+.ncm-composer__toolbar-separator {
+  width: 1px;
+  background: var(--ncm-border-secondary);
+  margin: 0 var(--ncm-spacing-xs);
 }
 
-.ncm-composer__template-btn {
-  padding: var(--ncm-spacing-sm) var(--ncm-spacing-md);
-  background: var(--ncm-bg-tertiary);
-  border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
-  border-radius: var(--ncm-border-radius-md);
-  color: var(--ncm-text-primary);
-  font-size: var(--ncm-font-size-sm);
-  transition: all var(--ncm-transition-fast);
-  display: flex;
-  align-items: center;
-  gap: var(--ncm-spacing-sm);
-}
-
-.ncm-composer__template-btn:hover {
-  border-color: var(--ncm-primary);
-  background: var(--ncm-bg-hover);
-}
-
-.ncm-composer__template-menu {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  margin-top: 4px;
-  min-width: 200px;
-  background: var(--ncm-bg-tertiary);
-  border: var(--ncm-border-width-thin) solid var(--ncm-primary);
-  border-radius: var(--ncm-border-radius-md);
-  box-shadow: var(--ncm-shadow-lg);
-  z-index: var(--ncm-z-dropdown);
-  animation: ncm-fadeInDown calc(var(--ncm-animation-speed) * 200ms) var(--ncm-transition-fast);
-}
-
-.ncm-composer__template-item {
-  padding: var(--ncm-spacing-md);
-  cursor: pointer;
-  transition: background-color var(--ncm-transition-fast);
-  border-bottom: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
-}
-
-.ncm-composer__template-item:last-child {
-  border-bottom: none;
-}
-
-.ncm-composer__template-item:hover {
-  background: var(--ncm-bg-hover);
-}
-
-.ncm-composer__template-name {
-  font-size: var(--ncm-font-size-sm);
-  color: var(--ncm-text-primary);
-  font-weight: var(--ncm-font-weight-medium);
-  margin-bottom: var(--ncm-spacing-xs);
-}
-
-.ncm-composer__template-desc {
-  font-size: var(--ncm-font-size-xs);
-  color: var(--ncm-text-secondary);
-}
-
-/* ==============================================
-   MESSAGE EDITOR
-   Main content area
-   ============================================== */
-
+/* Editor content area */
 .ncm-composer__editor {
   flex: 1;
-  padding: var(--ncm-spacing-lg);
   overflow-y: auto;
-  overflow-x: hidden;
+  padding: var(--ncm-spacing-lg);
   background: var(--ncm-bg-primary);
-}
-
-.ncm-composer__textarea {
-  width: 100%;
-  min-height: 100%;
-  resize: none;
-  background: transparent;
-  border: none;
   color: var(--ncm-text-primary);
   font-size: var(--ncm-font-size-base);
-  line-height: var(--ncm-line-height-normal);
-  font-family: var(--ncm-font-secondary);
-  padding: 0;
-}
-
-.ncm-composer__textarea:focus {
+  line-height: var(--ncm-line-height-relaxed);
   outline: none;
 }
 
-.ncm-composer__textarea::placeholder {
-  color: var(--ncm-text-tertiary);
+.ncm-composer__editor:focus {
+  background: var(--ncm-bg-secondary);
 }
 
-/* Rich text content */
-.ncm-composer__content {
-  width: 100%;
+/* ProseMirror specific styles */
+.ncm-composer__editor .ProseMirror {
+  outline: none;
   min-height: 100%;
-  outline: none;
 }
 
-.ncm-composer__content p {
+.ncm-composer__editor .ProseMirror p {
   margin-bottom: var(--ncm-spacing-md);
 }
 
-.ncm-composer__content p:last-child {
+.ncm-composer__editor .ProseMirror p:last-child {
   margin-bottom: 0;
 }
 
-.ncm-composer__content strong {
-  font-weight: var(--ncm-font-weight-bold);
-  color: var(--ncm-primary);
-}
-
-.ncm-composer__content em {
-  font-style: italic;
-  color: var(--ncm-secondary);
-}
-
-.ncm-composer__content code {
-  padding: 2px 6px;
-  background: var(--ncm-bg-tertiary);
-  border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
-  border-radius: var(--ncm-border-radius-sm);
-  font-family: var(--ncm-font-mono);
-  font-size: 0.9em;
-  color: var(--ncm-secondary);
-}
-
-.ncm-composer__content pre {
-  padding: var(--ncm-spacing-md);
-  background: var(--ncm-bg-tertiary);
-  border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
-  border-radius: var(--ncm-border-radius-md);
-  overflow-x: auto;
-  margin-bottom: var(--ncm-spacing-md);
-}
-
-.ncm-composer__content pre code {
-  padding: 0;
-  background: none;
-  border: none;
-}
-
-/* ==============================================
-   COMPOSER FOOTER
-   Character count, actions, and scheduling
-   ============================================== */
-
+/* ============================================
+   FOOTER - Action buttons
+   ============================================ */
 .ncm-composer__footer {
-  flex: 0 0 var(--ncm-composer-footer-height);
-  background: var(--ncm-bg-secondary);
-  border-top: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
-  padding: var(--ncm-spacing-md) var(--ncm-spacing-lg);
+  flex: 0 0 auto;
   display: flex;
-  align-items: center;
   justify-content: space-between;
+  align-items: center;
   gap: var(--ncm-spacing-md);
 }
 
-/* Character counter */
-.ncm-composer__char-count {
-  font-size: var(--ncm-font-size-sm);
-  color: var(--ncm-text-secondary);
+.ncm-composer__footer-left {
+  display: flex;
+  gap: var(--ncm-spacing-sm);
 }
 
-.ncm-composer__char-count--warning {
-  color: var(--ncm-warning);
-}
-
-.ncm-composer__char-count--error {
-  color: var(--ncm-error);
-  font-weight: var(--ncm-font-weight-bold);
-}
-
-/* Action buttons */
-.ncm-composer__actions {
+.ncm-composer__footer-right {
   display: flex;
   gap: var(--ncm-spacing-sm);
   margin-left: auto;
 }
 
-.ncm-composer__action-btn {
-  padding: var(--ncm-spacing-sm) var(--ncm-spacing-lg);
+/* ============================================
+   ATTACHMENT SECTION
+   ============================================ */
+.ncm-composer__attachments {
+  padding: var(--ncm-spacing-md);
   background: var(--ncm-bg-tertiary);
-  border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
+  border: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
   border-radius: var(--ncm-border-radius-md);
-  color: var(--ncm-text-primary);
-  font-size: var(--ncm-font-size-sm);
-  font-weight: var(--ncm-font-weight-medium);
-  text-transform: uppercase;
-  letter-spacing: var(--ncm-letter-spacing-wide);
-  transition: all var(--ncm-transition-normal);
   display: flex;
-  align-items: center;
+  flex-wrap: wrap;
   gap: var(--ncm-spacing-sm);
 }
 
-.ncm-composer__action-btn:hover {
-  border-color: var(--ncm-primary);
-  background: var(--ncm-bg-hover);
-}
-
-.ncm-composer__action-btn--primary {
-  background: var(--ncm-primary);
-  border-color: var(--ncm-primary);
-}
-
-.ncm-composer__action-btn--primary:hover {
-  background: var(--ncm-primary-light);
-  box-shadow: calc(var(--ncm-enable-glow) * 1px) 0 0 calc(var(--ncm-glow-intensity) * 20px) var(--ncm-primary-alpha);
-  transform: translateY(-1px);
-}
-
-.ncm-composer__action-btn--primary:active {
-  transform: translateY(0);
-}
-
-.ncm-composer__action-btn:disabled {
-  background: var(--ncm-bg-tertiary);
-  border-color: var(--ncm-border-secondary);
-  color: var(--ncm-text-disabled);
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
-.ncm-composer__action-btn:disabled:hover {
-  background: var(--ncm-bg-tertiary);
-  transform: none;
-  box-shadow: none;
-}
-
-/* ==============================================
-   SCHEDULING PANEL
-   Collapsible panel for scheduling messages
-   ============================================== */
-
-.ncm-composer__schedule {
-  position: absolute;
-  bottom: 100%;
-  right: 0;
-  margin-bottom: 8px;
-  width: 400px;
-  background: var(--ncm-bg-tertiary);
-  border: var(--ncm-border-width-normal) solid var(--ncm-primary);
-  border-radius: var(--ncm-border-radius-lg);
-  box-shadow: var(--ncm-shadow-lg);
-  padding: var(--ncm-spacing-lg);
-  z-index: var(--ncm-z-popover);
-  animation: ncm-fadeInUp calc(var(--ncm-animation-speed) * 300ms) var(--ncm-transition-normal);
-}
-
-.ncm-composer__schedule-header {
+.ncm-composer__attachment-item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--ncm-spacing-md);
+  gap: var(--ncm-spacing-sm);
+  padding: var(--ncm-spacing-sm) var(--ncm-spacing-md);
+  background: var(--ncm-bg-primary);
+  border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
+  border-radius: var(--ncm-border-radius-md);
+  font-size: var(--ncm-font-size-sm);
+  color: var(--ncm-text-secondary);
 }
 
-.ncm-composer__schedule-title {
-  font-size: var(--ncm-font-size-lg);
-  font-weight: var(--ncm-font-weight-bold);
-  color: var(--ncm-primary);
-  text-transform: uppercase;
-  letter-spacing: var(--ncm-letter-spacing-wide);
-}
-
-.ncm-composer__schedule-close {
-  width: 24px;
-  height: 24px;
+.ncm-composer__attachment-remove {
+  width: 18px;
+  height: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--ncm-text-secondary);
+  background: transparent;
+  border: none;
+  color: var(--ncm-text-error);
   cursor: pointer;
   transition: color var(--ncm-transition-fast);
 }
 
-.ncm-composer__schedule-close:hover {
+.ncm-composer__attachment-remove:hover {
   color: var(--ncm-primary);
 }
 
-.ncm-composer__schedule-fields {
+/* ============================================
+   SCHEDULING PANEL
+   ============================================ */
+.ncm-composer__schedule-panel {
+  padding: var(--ncm-spacing-md);
+  background: var(--ncm-bg-tertiary);
+  border: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
+  border-radius: var(--ncm-border-radius-md);
   display: flex;
-  flex-direction: column;
   gap: var(--ncm-spacing-md);
-}
-
-.ncm-composer__schedule-field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--ncm-spacing-xs);
-}
-
-.ncm-composer__schedule-label {
-  font-size: var(--ncm-font-size-sm);
-  color: var(--ncm-text-secondary);
-  text-transform: uppercase;
-  letter-spacing: var(--ncm-letter-spacing-wide);
+  align-items: center;
 }
 
 .ncm-composer__schedule-input {
-  padding: var(--ncm-padding-input);
-  background: var(--ncm-bg-secondary);
-  border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
-  border-radius: var(--ncm-border-radius-md);
-  color: var(--ncm-text-primary);
-  font-size: var(--ncm-font-size-base);
-  transition: border-color var(--ncm-transition-fast);
+  flex: 1;
 }
 
-.ncm-composer__schedule-input:focus {
-  border-color: var(--ncm-primary);
-  box-shadow: calc(var(--ncm-enable-glow) * 1px) 0 0 calc(var(--ncm-glow-intensity) * 10px) var(--ncm-primary-alpha);
+/* ============================================
+   SPECIAL BUTTONS
+   ============================================ */
+.ncm-composer__send-btn {
+  composes: ncm-btn;
+  background: var(--ncm-primary);
+  color: var(--ncm-bg-primary);
+  font-weight: var(--ncm-font-weight-bold);
 }
 
-.ncm-composer__schedule-actions {
-  display: flex;
-  gap: var(--ncm-spacing-sm);
-  justify-content: flex-end;
-  margin-top: var(--ncm-spacing-md);
+.ncm-composer__send-btn:hover {
+  background: var(--ncm-primary-light);
+  box-shadow: var(--ncm-shadow-glow);
 }
 
-/* ==============================================
-   RESPONSIVE DESIGN
-   ============================================== */
-
-@media (max-width: 1199px) {
-  .ncm-app.ncm-composer {
-    width: 90vw;
-  }
+.ncm-composer__schedule-btn {
+  composes: ncm-btn;
+  border-color: var(--ncm-secondary);
+  color: var(--ncm-secondary);
 }
 
+.ncm-composer__schedule-btn:hover {
+  background: var(--ncm-secondary);
+  color: var(--ncm-bg-primary);
+  box-shadow: var(--ncm-shadow-glow-cyan);
+}
+
+/* ============================================
+   RESPONSIVE ADJUSTMENTS
+   ============================================ */
 @media (max-width: 899px) {
-  .ncm-composer__header {
-    padding: var(--ncm-spacing-md);
+  .ncm-app.ncm-composer {
+    width: 95vw;
+    height: 90vh;
   }
   
-  .ncm-composer__toolbar {
-    padding: var(--ncm-spacing-xs) var(--ncm-spacing-md);
+  .ncm-composer__field {
+    grid-template-columns: 1fr;
   }
   
-  .ncm-composer__editor {
-    padding: var(--ncm-spacing-md);
+  .ncm-composer__label {
+    padding-top: 0;
   }
   
   .ncm-composer__footer {
-    padding: var(--ncm-spacing-sm) var(--ncm-spacing-md);
+    flex-direction: column;
   }
   
-  .ncm-composer__schedule {
-    width: 90%;
-    right: 5%;
+  .ncm-composer__footer-right {
+    width: 100%;
+    justify-content: stretch;
+  }
+  
+  .ncm-composer__footer-right button {
+    flex: 1;
   }
 }

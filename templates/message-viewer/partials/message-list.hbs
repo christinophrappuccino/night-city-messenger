@@ -1,0 +1,26 @@
+{{!-- Message List Partial --}}
+{{!-- File: templates/message-viewer/partials/message-list.hbs --}}
+
+<div class="ncm-message-viewer__message-list">
+  {{#each messages}}
+    {{> "modules/cyberpunkred-messenger/templates/message-viewer/partials/message-item.hbs" message=this}}
+  {{else}}
+    <div class="ncm-message-viewer__empty">
+      <i class="ncm-message-viewer__empty-icon fas fa-inbox"></i>
+      <p class="ncm-message-viewer__empty-text">No Messages</p>
+      <p class="ncm-message-viewer__empty-subtext">Your inbox is empty</p>
+    </div>
+  {{/each}}
+</div>
+
+{{#if showPagination}}
+<div class="ncm-message-viewer__pagination">
+  <button class="ncm-pagination__btn" data-action="prev-page" {{#if (eq currentPage 1)}}disabled{{/if}}>
+    <i class="fas fa-chevron-left"></i>
+  </button>
+  <span class="ncm-pagination__indicator">{{currentPage}} / {{totalPages}}</span>
+  <button class="ncm-pagination__btn" data-action="next-page" {{#if (eq currentPage totalPages)}}disabled{{/if}}>
+    <i class="fas fa-chevron-right"></i>
+  </button>
+</div>
+{{/if}}

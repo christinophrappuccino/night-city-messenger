@@ -1,26 +1,47 @@
-{{!-- Message Composer Template --}}
-{{!-- File: templates/message-composer/composer.hbs --}}
+{{!-- Message Composer Template (FIXED) --}}
+{{!-- Uses canonical header structure --}}
 
 <div class="ncm-composer__container">
   
-  {{!-- Header Section --}}
-  <div class="ncm-composer__header">
+  {{!-- CANONICAL HEADER --}}
+  <div class="ncm-header">
+    <div class="ncm-header__top">
+      <div class="ncm-header__connection">
+        <i class="fas fa-wifi"></i> {{networkName}}
+      </div>
+      <div class="ncm-header__title">COMPOSE MESSAGE</div>
+      <div class="ncm-header__time">{{currentTime}}</div>
+    </div>
+    <div class="ncm-header__bottom">
+      <span class="ncm-header__welcome">From: {{senderEmail}}</span>
+      {{#if scheduled}}
+      <span class="ncm-header__badge">SCHEDULED</span>
+      {{/if}}
+    </div>
+  </div>
+  
+  {{!-- Header Fields Section --}}
+  <div class="ncm-composer__header-section">
     
     {{!-- Recipient Field --}}
     <div class="ncm-composer__field">
       <label class="ncm-composer__label">To:</label>
-      <div class="ncm-composer__input-wrapper">
-        <input 
-          type="text" 
-          class="ncm-composer__input" 
-          name="to" 
-          value="{{to}}"
-          placeholder="recipient@example.net"
-          data-field="to"
-        />
-        <button class="ncm-composer__contacts-btn" data-action="select-contact">
-          <i class="fas fa-address-book"></i>
-          Contacts
+      <div class="ncm-composer__field-content">
+        <div class="ncm-composer__recipient-wrapper">
+          <input 
+            type="text" 
+            class="ncm-composer__recipient-input" 
+            name="to" 
+            value="{{to}}"
+            placeholder="recipient@example.net"
+            data-field="to"
+            autocomplete="off"
+          />
+          {{!-- Email suggestions dropdown appears here via JS --}}
+          <div class="ncm-composer__suggestions"></div>
+        </div>
+        <button class="ncm-btn ncm-btn--small" data-action="select-contact">
+          <i class="fas fa-address-book"></i> Contacts
         </button>
       </div>
     </div>
@@ -28,10 +49,10 @@
     {{!-- Subject Field --}}
     <div class="ncm-composer__field">
       <label class="ncm-composer__label">Subject:</label>
-      <div class="ncm-composer__input-wrapper">
+      <div class="ncm-composer__field-content">
         <input 
           type="text" 
-          class="ncm-composer__input" 
+          class="ncm-composer__subject-input" 
           name="subject" 
           value="{{subject}}"
           placeholder="Message subject..."
@@ -41,9 +62,11 @@
     </div>
   </div>
   
-  {{!-- Editor Toolbar --}}
-  <div class="ncm-composer__toolbar">
-    <div class="ncm-composer__toolbar-group">
+  {{!-- Editor Section --}}
+  <div class="ncm-composer__editor-section">
+    
+    {{!-- Editor Toolbar --}}
+    <div class="ncm-composer__toolbar">
       <button class="ncm-composer__toolbar-btn" data-action="bold" title="Bold">
         <i class="fas fa-bold"></i>
       </button>
@@ -53,61 +76,55 @@
       <button class="ncm-composer__toolbar-btn" data-action="underline" title="Underline">
         <i class="fas fa-underline"></i>
       </button>
-    </div>
-    
-    <div class="ncm-composer__toolbar-group">
+      
+      <div class="ncm-composer__toolbar-separator"></div>
+      
       <button class="ncm-composer__toolbar-btn" data-action="list" title="List">
         <i class="fas fa-list-ul"></i>
+      </button>
+      <button class="ncm-composer__toolbar-btn" data-action="link" title="Link">
+        <i class="fas fa-link"></i>
       </button>
       <button class="ncm-composer__toolbar-btn" data-action="code" title="Code">
         <i class="fas fa-code"></i>
       </button>
-    </div>
-    
-    <div class="ncm-composer__template-dropdown">
-      <button class="ncm-composer__template-btn" data-action="templates">
+      
+      <div class="ncm-composer__toolbar-separator"></div>
+      
+      <button class="ncm-composer__toolbar-btn" data-action="template" title="Templates">
         <i class="fas fa-file-alt"></i>
-        Templates
-        <i class="fas fa-caret-down"></i>
       </button>
+    </div>
+    
+    {{!-- Message Editor --}}
+    <div class="ncm-composer__editor" contenteditable="true" data-field="content">
+      {{{content}}}
     </div>
   </div>
   
-  {{!-- Message Editor --}}
-  <div class="ncm-composer__editor">
-    <textarea 
-      class="ncm-composer__textarea" 
-      name="content"
-      placeholder="Type your message here..."
-      data-field="content"
-    >{{content}}</textarea>
-  </div>
-  
-  {{!-- Footer --}}
+  {{!-- Footer Actions --}}
   <div class="ncm-composer__footer">
-    <span class="ncm-composer__char-count">
-      Characters: <span class="ncm-composer__char-count-value">{{charCount}}</span> / 10000
-    </span>
+    <div class="ncm-composer__footer-left">
+      <span class="ncm-composer__char-count">
+        <span class="ncm-composer__char-count-value">{{charCount}}</span> / 10000
+      </span>
+    </div>
     
-    <div class="ncm-composer__actions">
-      <button class="ncm-composer__action-btn" data-action="save-draft">
-        <i class="fas fa-save"></i>
-        Save Draft
+    <div class="ncm-composer__footer-right">
+      <button class="ncm-btn" data-action="save-draft">
+        <i class="fas fa-save"></i> Save Draft
       </button>
       
-      <button class="ncm-composer__action-btn" data-action="schedule">
-        <i class="fas fa-clock"></i>
-        Schedule
+      <button class="ncm-btn ncm-btn--secondary" data-action="schedule">
+        <i class="fas fa-clock"></i> Schedule
       </button>
       
-      <button class="ncm-composer__action-btn ncm-composer__action-btn--primary" data-action="send">
-        <i class="fas fa-paper-plane"></i>
-        Send
+      <button class="ncm-btn ncm-btn--primary ncm-composer__send-btn" data-action="send">
+        <i class="fas fa-paper-plane"></i> Send
       </button>
       
-      <button class="ncm-composer__action-btn" data-action="cancel">
-        <i class="fas fa-times"></i>
-        Cancel
+      <button class="ncm-btn" data-action="cancel">
+        <i class="fas fa-times"></i> Cancel
       </button>
     </div>
   </div>

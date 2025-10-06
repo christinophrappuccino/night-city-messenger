@@ -1,0 +1,89 @@
+{{!-- Item Config Dialog --}}
+{{!-- File: templates/item-inbox/item-config.hbs --}}
+
+<div class="ncm-item-config">
+  <div class="ncm-item-config__section">
+    <h3 class="ncm-item-config__section-title">Security Settings</h3>
+    
+    <div class="ncm-dialog__form-group">
+      <label class="ncm-dialog__checkbox-label">
+        <input type="checkbox" name="encrypted" {{#if encrypted}}checked{{/if}} data-field="encrypted">
+        <span>Encrypt This Data Shard</span>
+      </label>
+    </div>
+    
+    <div class="ncm-item-config__grid">
+      <div class="ncm-dialog__form-group">
+        <label class="ncm-dialog__label">Security Level (DV)</label>
+        <input type="number" class="ncm-dialog__input" name="securityLevel" value="{{securityLevel}}" min="1" max="30" data-field="securityLevel">
+      </div>
+      
+      <div class="ncm-item-config__slider">
+        <div class="ncm-item-config__slider-header">
+          <span class="ncm-item-config__slider-label">Hack Difficulty</span>
+          <span class="ncm-item-config__slider-value">DV {{securityLevel}}</span>
+        </div>
+        <input type="range" class="ncm-item-config__slider-input" name="securitySlider" value="{{securityLevel}}" min="1" max="30" data-field="securityLevel">
+      </div>
+    </div>
+  </div>
+  
+  <div class="ncm-item-config__section">
+    <h3 class="ncm-item-config__section-title">Malware Settings</h3>
+    
+    <div class="ncm-dialog__form-group">
+      <label class="ncm-dialog__checkbox-label">
+        <input type="checkbox" name="infected" {{#if infected}}checked{{/if}} data-field="infected">
+        <span>Infect With Malware</span>
+      </label>
+    </div>
+    
+    <div class="ncm-dialog__form-group">
+      <label class="ncm-dialog__label">Malware Type</label>
+      <select class="ncm-dialog__select" name="malwareType" data-field="malwareType">
+        <option value="worm">Worm</option>
+        <option value="trojan">Trojan</option>
+        <option value="virus">Virus</option>
+        <option value="ransomware">Ransomware</option>
+        <option value="spyware">Spyware</option>
+      </select>
+    </div>
+    
+    <div class="ncm-dialog__form-group">
+      <label class="ncm-dialog__label">Severity</label>
+      <select class="ncm-dialog__select" name="malwareSeverity" data-field="malwareSeverity">
+        <option value="low">Low</option>
+        <option value="medium">Medium</option>
+        <option value="high">High</option>
+        <option value="critical">Critical</option>
+      </select>
+    </div>
+  </div>
+  
+  <div class="ncm-item-config__section">
+    <h3 class="ncm-item-config__section-title">Permissions</h3>
+    
+    <div class="ncm-dialog__form-group">
+      <label class="ncm-dialog__checkbox-label">
+        <input type="checkbox" name="allowPlayerHack" {{#if allowPlayerHack}}checked{{/if}} data-field="allowPlayerHack">
+        <span>Allow Players to Hack</span>
+      </label>
+    </div>
+    
+    <div class="ncm-dialog__form-group">
+      <label class="ncm-dialog__checkbox-label">
+        <input type="checkbox" name="showInChat" {{#if showInChat}}checked{{/if}} data-field="showInChat">
+        <span>Show in Chat When Opened</span>
+      </label>
+    </div>
+  </div>
+  
+  <div class="ncm-dialog__buttons">
+    <button class="ncm-dialog__btn" data-action="cancel">
+      <i class="fas fa-times"></i> Cancel
+    </button>
+    <button class="ncm-dialog__btn ncm-dialog__btn--primary" data-action="save">
+      <i class="fas fa-save"></i> Save Configuration
+    </button>
+  </div>
+</div>

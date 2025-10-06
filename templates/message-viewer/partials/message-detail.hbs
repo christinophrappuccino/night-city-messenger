@@ -1,0 +1,72 @@
+{{!-- Message Detail Partial --}}
+{{!-- File: templates/message-viewer/partials/message-detail.hbs --}}
+
+{{#if selectedMessage}}
+<div class="ncm-detail__header">
+  <h2 class="ncm-detail__subject">{{selectedMessage.subject}}</h2>
+  
+  <div class="ncm-detail__meta">
+    <div class="ncm-detail__meta-row">
+      <span class="ncm-detail__meta-label">From:</span>
+      <span class="ncm-detail__meta-value">{{selectedMessage.from}}</span>
+    </div>
+    <div class="ncm-detail__meta-row">
+      <span class="ncm-detail__meta-label">To:</span>
+      <span class="ncm-detail__meta-value">{{selectedMessage.to}}</span>
+    </div>
+    <div class="ncm-detail__meta-row">
+      <span class="ncm-detail__meta-label">Date:</span>
+      <span class="ncm-detail__meta-value">{{selectedMessage.timestamp}}</span>
+    </div>
+    {{#if selectedMessage.network}}
+    <div class="ncm-detail__meta-row">
+      <span class="ncm-detail__meta-label">Network:</span>
+      <span class="ncm-detail__meta-value">{{selectedMessage.network}}</span>
+    </div>
+    {{/if}}
+  </div>
+</div>
+
+<div class="ncm-detail__body">
+  {{{selectedMessage.body}}}
+  
+  {{#if selectedMessage.attachments}}
+  <div class="ncm-detail__attachments">
+    <h4>Attachments ({{selectedMessage.attachments.length}})</h4>
+    {{#each selectedMessage.attachments}}
+    <div class="ncm-detail__attachment">
+      <i class="fas fa-file"></i>
+      <span>{{this.name}}</span>
+    </div>
+    {{/each}}
+  </div>
+  {{/if}}
+</div>
+
+<div class="ncm-detail__footer">
+  <button class="ncm-btn ncm-btn--primary" data-action="reply">
+    <i class="fas fa-reply"></i> Reply
+  </button>
+  <button class="ncm-btn" data-action="forward">
+    <i class="fas fa-share"></i> Forward
+  </button>
+  <button class="ncm-btn" data-action="share-chat">
+    <i class="fas fa-comment"></i> Share
+  </button>
+  <button class="ncm-btn" data-action="save">
+    <i class="fas fa-star"></i> {{#if selectedMessage.saved}}Unsave{{else}}Save{{/if}}
+  </button>
+  <button class="ncm-btn ncm-btn--danger" data-action="delete">
+    <i class="fas fa-trash"></i> Delete
+  </button>
+</div>
+
+{{else}}
+
+<div class="ncm-message-viewer__empty">
+  <i class="ncm-message-viewer__empty-icon fas fa-envelope-open"></i>
+  <p class="ncm-message-viewer__empty-text">No Message Selected</p>
+  <p class="ncm-message-viewer__empty-subtext">Select a message from the list</p>
+</div>
+
+{{/if}}

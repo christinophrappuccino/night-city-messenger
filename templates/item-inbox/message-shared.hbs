@@ -1,0 +1,59 @@
+{{!-- Item Inbox Message Shared (Chat Card) --}}
+{{!-- File: templates/item-inbox/message-shared.hbs --}}
+
+<div class="ncm-chat-card ncm-chat-card--datashard">
+  <div class="ncm-chat-card__header">
+    <i class="ncm-chat-card__icon fas fa-hdd"></i>
+    <div>
+      <div class="ncm-chat-card__title">DATA SHARD</div>
+      <div class="ncm-chat-card__subtitle">{{item.name}}</div>
+    </div>
+  </div>
+  
+  <div class="ncm-chat-card__body">
+    <div class="ncm-chat-card__metadata">
+      <div class="ncm-chat-card__meta-item">
+        <div class="ncm-chat-card__meta-label">Messages</div>
+        <div class="ncm-chat-card__meta-value">{{messageCount}}</div>
+      </div>
+      
+      <div class="ncm-chat-card__meta-item">
+        <div class="ncm-chat-card__meta-label">Security</div>
+        <div class="ncm-chat-card__meta-value">
+          {{#if encrypted}}DV {{securityLevel}}{{else}}None{{/if}}
+        </div>
+      </div>
+      
+      {{#if infected}}
+      <div class="ncm-chat-card__meta-item">
+        <div class="ncm-chat-card__meta-label">Status</div>
+        <div class="ncm-chat-card__meta-value">INFECTED</div>
+      </div>
+      {{/if}}
+    </div>
+    
+    {{#if description}}
+    <div class="ncm-chat-card__content">
+      <p>{{description}}</p>
+    </div>
+    {{/if}}
+    
+    <div class="ncm-chat-card__actions">
+      {{#if encrypted}}
+      <button class="ncm-btn ncm-btn--small ncm-btn--secondary" data-action="attempt-hack" data-item-id="{{item.id}}">
+        <i class="fas fa-user-secret"></i> Hack
+      </button>
+      {{/if}}
+      
+      <button class="ncm-btn ncm-btn--small" data-action="view-shard" data-item-id="{{item.id}}">
+        <i class="fas fa-eye"></i> View
+      </button>
+      
+      {{#if canTransfer}}
+      <button class="ncm-btn ncm-btn--small" data-action="transfer-shard" data-item-id="{{item.id}}">
+        <i class="fas fa-share"></i> Transfer
+      </button>
+      {{/if}}
+    </div>
+  </div>
+</div>

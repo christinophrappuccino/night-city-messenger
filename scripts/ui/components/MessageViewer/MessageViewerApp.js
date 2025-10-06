@@ -40,13 +40,17 @@ export class MessageViewerApp extends BaseApplication {
    */
   static get defaultOptions() {
     return foundry.utils.mergeObject(super.defaultOptions, {
-      classes: ["ncm-app", "ncm-viewer"],
-      template: `modules/${MODULE_ID}/templates/message-viewer/viewer.hbs`,
+      id: "ncm-message-viewer",
+      classes: ["ncm-app", "ncm-message-viewer"], // NCM classes for styling
+      template: "modules/cyberpunkred-messenger/templates/viewer.html",
       width: 900,
       height: 700,
       resizable: true,
+      minimizable: true,
       title: "Night City Messages",
-      tabs: []
+      dragDrop: [{ dragSelector: null, dropSelector: null }],
+      tabs: [],
+      scrollY: []
     });
   }
   

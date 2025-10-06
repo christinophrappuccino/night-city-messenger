@@ -5,10 +5,9 @@
    Dependencies: variables.css, reset.css, animations.css
    ============================================== */
 
-/* ==============================================
-   ADMIN PANEL WINDOW
-   ============================================== */
-
+/* ============================================
+   WINDOW CONFIGURATION
+   ============================================ */
 .ncm-app.ncm-admin-panel {
   width: var(--ncm-admin-width);
   height: var(--ncm-admin-height);
@@ -16,17 +15,24 @@
   min-height: 700px;
 }
 
+/* ============================================
+   MAIN LAYOUT
+   ============================================ */
 .ncm-admin-panel__container {
   display: flex;
   height: 100%;
   overflow: hidden;
 }
 
-/* ==============================================
+/* Use canonical header from reset.css */
+.ncm-admin-panel .ncm-header {
+  /* Inherits all styles from base/reset.css */
+}
+
+/* ============================================
    SIDEBAR NAVIGATION
    Tab navigation for different sections
-   ============================================== */
-
+   ============================================ */
 .ncm-admin-panel__sidebar {
   flex: 0 0 var(--ncm-admin-sidebar-width);
   background: var(--ncm-bg-surface);
@@ -74,12 +80,38 @@
 
 .ncm-admin-panel__nav-icon {
   font-size: var(--ncm-icon-md);
+  width: 20px;
+  text-align: center;
 }
 
-/* ==============================================
-   MAIN CONTENT AREA
-   ============================================== */
+/* System status section at bottom of sidebar */
+.ncm-admin-panel__system-status {
+  margin-top: auto;
+  padding: var(--ncm-spacing-md);
+  background: var(--ncm-bg-primary);
+  border-top: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
+}
 
+.ncm-admin-panel__status-item {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: var(--ncm-spacing-xs);
+  font-size: var(--ncm-font-size-sm);
+}
+
+.ncm-admin-panel__status-label {
+  color: var(--ncm-text-secondary);
+}
+
+.ncm-admin-panel__status-value {
+  color: var(--ncm-secondary);
+  font-weight: var(--ncm-font-weight-bold);
+  font-family: var(--ncm-font-mono);
+}
+
+/* ============================================
+   MAIN CONTENT AREA
+   ============================================ */
 .ncm-admin-panel__content {
   flex: 1;
   display: flex;
@@ -90,7 +122,7 @@
 /* Content header */
 .ncm-admin-panel__content-header {
   flex: 0 0 auto;
-  background: var(--ncm-bg-secondary);
+  background: var(--ncm-bg-surface);
   border-bottom: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
   padding: var(--ncm-spacing-lg);
   display: flex;
@@ -113,61 +145,20 @@
   gap: var(--ncm-spacing-sm);
 }
 
-.ncm-admin-panel__action-btn {
-  padding: var(--ncm-spacing-sm) var(--ncm-spacing-lg);
-  background: var(--ncm-bg-tertiary);
-  border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
-  border-radius: var(--ncm-border-radius-md);
-  color: var(--ncm-text-primary);
-  font-size: var(--ncm-font-size-sm);
-  font-weight: var(--ncm-font-weight-medium);
-  text-transform: uppercase;
-  letter-spacing: var(--ncm-letter-spacing-wide);
-  transition: all var(--ncm-transition-normal);
-  display: flex;
-  align-items: center;
-  gap: var(--ncm-spacing-sm);
-}
-
-.ncm-admin-panel__action-btn:hover {
-  border-color: var(--ncm-primary);
-  background: var(--ncm-bg-hover);
-}
-
-.ncm-admin-panel__action-btn--primary {
-  background: var(--ncm-primary);
-  border-color: var(--ncm-primary);
-}
-
-.ncm-admin-panel__action-btn--primary:hover {
-  background: var(--ncm-primary-light);
-  box-shadow: calc(var(--ncm-enable-glow) * 1px) 0 0 calc(var(--ncm-glow-intensity) * 15px) var(--ncm-primary-alpha);
-}
-
-.ncm-admin-panel__action-btn--danger {
-  border-color: var(--ncm-error);
-  color: var(--ncm-error);
-}
-
-.ncm-admin-panel__action-btn--danger:hover {
-  background: var(--ncm-error-alpha);
-}
-
-/* Content body */
+/* Scrollable content body */
 .ncm-admin-panel__content-body {
   flex: 1;
-  padding: var(--ncm-spacing-lg);
   overflow-y: auto;
-  overflow-x: hidden;
+  padding: var(--ncm-spacing-lg);
 }
 
-/* ==============================================
-   STATISTICS DASHBOARD
-   ============================================== */
-
+/* ============================================
+   STATISTICS CARDS
+   Overview dashboard
+   ============================================ */
 .ncm-admin-panel__stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: var(--ncm-spacing-lg);
   margin-bottom: var(--ncm-spacing-xl);
 }
@@ -177,22 +168,29 @@
   border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
   border-radius: var(--ncm-border-radius-lg);
   padding: var(--ncm-spacing-lg);
-  transition: all var(--ncm-transition-normal);
-  display: flex;
-  flex-direction: column;
-  gap: var(--ncm-spacing-md);
+  text-align: center;
+  transition: all var(--ncm-transition-fast);
 }
 
 .ncm-admin-panel__stat-card:hover {
-  border-color: var(--ncm-primary);
-  box-shadow: calc(var(--ncm-enable-glow) * 1px) 0 0 calc(var(--ncm-glow-intensity) * 10px) var(--ncm-primary-alpha);
+  border-color: var(--ncm-primary-light);
   transform: translateY(-2px);
+  box-shadow: var(--ncm-shadow-glow);
 }
 
-.ncm-admin-panel__stat-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+.ncm-admin-panel__stat-icon {
+  font-size: 48px;
+  color: var(--ncm-primary);
+  margin-bottom: var(--ncm-spacing-md);
+  opacity: 0.8;
+}
+
+.ncm-admin-panel__stat-value {
+  font-size: var(--ncm-font-size-xxl);
+  font-weight: var(--ncm-font-weight-bold);
+  color: var(--ncm-secondary);
+  margin-bottom: var(--ncm-spacing-xs);
+  font-family: var(--ncm-font-mono);
 }
 
 .ncm-admin-panel__stat-label {
@@ -202,75 +200,178 @@
   letter-spacing: var(--ncm-letter-spacing-wide);
 }
 
-.ncm-admin-panel__stat-icon {
-  width: 40px;
-  height: 40px;
+/* ============================================
+   INBOX MANAGEMENT SECTION
+   ============================================ */
+.ncm-admin-panel__inbox-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--ncm-spacing-lg);
+  height: calc(100% - 100px);
+}
+
+/* Inbox list (left side) */
+.ncm-admin-panel__inbox-list {
+  background: var(--ncm-bg-secondary);
+  border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
+  border-radius: var(--ncm-border-radius-lg);
+  overflow-y: auto;
+  height: 100%;
+}
+
+.ncm-admin-panel__inbox-item {
+  padding: var(--ncm-spacing-md);
+  border-bottom: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
+  cursor: pointer;
+  transition: all var(--ncm-transition-fast);
+}
+
+.ncm-admin-panel__inbox-item:hover {
+  background: var(--ncm-bg-hover);
+}
+
+.ncm-admin-panel__inbox-item--selected {
+  background: var(--ncm-bg-active);
+  border-left: var(--ncm-border-width-thick) solid var(--ncm-primary);
+}
+
+.ncm-admin-panel__inbox-header {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  justify-content: center;
-  background: var(--ncm-primary-alpha);
-  border-radius: var(--ncm-border-radius-md);
-  color: var(--ncm-primary);
-  font-size: var(--ncm-icon-md);
+  margin-bottom: var(--ncm-spacing-xs);
 }
 
-.ncm-admin-panel__stat-value {
-  font-family: var(--ncm-font-primary);
-  font-size: var(--ncm-font-size-xxxl);
+.ncm-admin-panel__inbox-owner {
   font-weight: var(--ncm-font-weight-bold);
-  color: var(--ncm-primary);
-  line-height: 1;
+  color: var(--ncm-text-primary);
 }
 
-.ncm-admin-panel__stat-change {
+.ncm-admin-panel__inbox-count {
+  font-size: var(--ncm-font-size-xs);
+  color: var(--ncm-secondary);
+  background: var(--ncm-secondary-alpha);
+  padding: 2px 6px;
+  border-radius: var(--ncm-border-radius-sm);
+  font-family: var(--ncm-font-mono);
+}
+
+.ncm-admin-panel__inbox-email {
   font-size: var(--ncm-font-size-xs);
   color: var(--ncm-text-tertiary);
+  font-family: var(--ncm-font-mono);
+}
+
+/* Inbox details (right side) */
+.ncm-admin-panel__inbox-details {
+  background: var(--ncm-bg-secondary);
+  border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
+  border-radius: var(--ncm-border-radius-lg);
+  padding: var(--ncm-spacing-lg);
+  height: 100%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.ncm-admin-panel__inbox-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--ncm-spacing-lg);
+  padding-bottom: var(--ncm-spacing-md);
+  border-bottom: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
+}
+
+.ncm-admin-panel__inbox-actions {
+  display: flex;
+  gap: var(--ncm-spacing-sm);
+  flex-wrap: wrap;
+}
+
+/* Character info display */
+.ncm-admin-panel__character-info {
+  display: flex;
+  align-items: center;
+  gap: var(--ncm-spacing-md);
+  padding: var(--ncm-spacing-md);
+  background: var(--ncm-bg-hover);
+  border-radius: var(--ncm-border-radius-md);
+  margin-bottom: var(--ncm-spacing-lg);
+}
+
+.ncm-admin-panel__character-avatar {
+  width: 60px;
+  height: 60px;
+  border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
+  border-radius: var(--ncm-border-radius-md);
+  object-fit: cover;
+}
+
+.ncm-admin-panel__character-details {
+  flex: 1;
+}
+
+.ncm-admin-panel__character-name {
+  font-size: var(--ncm-font-size-lg);
+  font-weight: var(--ncm-font-weight-bold);
+  color: var(--ncm-text-primary);
+  margin-bottom: var(--ncm-spacing-xs);
+}
+
+.ncm-admin-panel__character-email {
+  color: var(--ncm-secondary);
+  font-size: var(--ncm-font-size-sm);
+  font-family: var(--ncm-font-mono);
+}
+
+.ncm-admin-panel__no-email {
+  color: var(--ncm-text-error);
+  font-style: italic;
   display: flex;
   align-items: center;
   gap: var(--ncm-spacing-xs);
 }
 
-.ncm-admin-panel__stat-change--positive {
-  color: var(--ncm-success);
+/* Empty states */
+.ncm-admin-panel__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--ncm-text-tertiary);
+  text-align: center;
+  padding: var(--ncm-spacing-xxl);
 }
 
-.ncm-admin-panel__stat-change--negative {
-  color: var(--ncm-error);
+.ncm-admin-panel__empty-icon {
+  font-size: 64px;
+  margin-bottom: var(--ncm-spacing-lg);
+  opacity: 0.3;
 }
 
-/* ==============================================
-   DATA TABLES
-   User management, message logs, etc.
-   ============================================== */
-
-.ncm-admin-panel__table-wrapper {
+/* ============================================
+   CONTACTS TABLE
+   ============================================ */
+.ncm-admin-panel__contacts-container {
   background: var(--ncm-bg-secondary);
   border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
   border-radius: var(--ncm-border-radius-lg);
+  height: calc(100% - 80px);
   overflow: hidden;
-  margin-bottom: var(--ncm-spacing-lg);
+  display: flex;
+  flex-direction: column;
 }
 
-.ncm-admin-panel__table-header {
-  padding: var(--ncm-spacing-md) var(--ncm-spacing-lg);
-  background: var(--ncm-bg-surface);
+.ncm-admin-panel__contacts-search {
+  padding: var(--ncm-spacing-md);
   border-bottom: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
 }
 
-.ncm-admin-panel__table-title {
-  font-size: var(--ncm-font-size-lg);
-  font-weight: var(--ncm-font-weight-bold);
-  color: var(--ncm-text-primary);
-  text-transform: uppercase;
-  letter-spacing: var(--ncm-letter-spacing-wide);
-}
-
-.ncm-admin-panel__table-filters {
-  display: flex;
-  gap: var(--ncm-spacing-sm);
+.ncm-admin-panel__contacts-table {
+  flex: 1;
+  overflow-y: auto;
 }
 
 .ncm-admin-panel__table {
@@ -279,8 +380,10 @@
 }
 
 .ncm-admin-panel__table thead {
-  background: var(--ncm-bg-tertiary);
-  border-bottom: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
+  background: var(--ncm-bg-hover);
+  position: sticky;
+  top: 0;
+  z-index: var(--ncm-z-sticky);
 }
 
 .ncm-admin-panel__table th {
@@ -288,28 +391,20 @@
   text-align: left;
   font-size: var(--ncm-font-size-sm);
   font-weight: var(--ncm-font-weight-bold);
-  color: var(--ncm-text-secondary);
+  color: var(--ncm-primary);
   text-transform: uppercase;
   letter-spacing: var(--ncm-letter-spacing-wide);
-}
-
-.ncm-admin-panel__table tbody tr {
-  border-bottom: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
-  transition: background-color var(--ncm-transition-fast);
-}
-
-.ncm-admin-panel__table tbody tr:hover {
-  background: var(--ncm-bg-hover);
-}
-
-.ncm-admin-panel__table tbody tr:last-child {
-  border-bottom: none;
+  border-bottom: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
 }
 
 .ncm-admin-panel__table td {
   padding: var(--ncm-spacing-md);
+  border-bottom: var(--ncm-border-width-thin) solid var(--ncm-border-tertiary);
   font-size: var(--ncm-font-size-sm);
-  color: var(--ncm-text-primary);
+}
+
+.ncm-admin-panel__table tr:hover {
+  background: var(--ncm-bg-hover);
 }
 
 .ncm-admin-panel__table-actions {
@@ -317,41 +412,72 @@
   gap: var(--ncm-spacing-xs);
 }
 
-.ncm-admin-panel__table-action-btn {
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--ncm-bg-tertiary);
+/* ============================================
+   DETAILED STATS SECTION
+   Charts and breakdowns
+   ============================================ */
+.ncm-admin-panel__detailed-stats {
+  background: var(--ncm-bg-secondary);
   border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
-  border-radius: var(--ncm-border-radius-sm);
+  border-radius: var(--ncm-border-radius-lg);
+  padding: var(--ncm-spacing-lg);
+  margin-bottom: var(--ncm-spacing-lg);
+}
+
+.ncm-admin-panel__chart {
+  margin-top: var(--ncm-spacing-md);
+}
+
+.ncm-admin-panel__chart-bar {
+  display: grid;
+  grid-template-columns: 120px 1fr 60px;
+  gap: var(--ncm-spacing-md);
+  align-items: center;
+  margin-bottom: var(--ncm-spacing-md);
+}
+
+.ncm-admin-panel__chart-label {
+  font-size: var(--ncm-font-size-sm);
   color: var(--ncm-text-secondary);
-  font-size: var(--ncm-icon-sm);
-  transition: all var(--ncm-transition-fast);
-  cursor: pointer;
 }
 
-.ncm-admin-panel__table-action-btn:hover {
-  border-color: var(--ncm-primary);
-  color: var(--ncm-primary);
-  background: var(--ncm-bg-hover);
+.ncm-admin-panel__bar-container {
+  height: 24px;
+  background: var(--ncm-bg-primary);
+  border-radius: var(--ncm-border-radius-md);
+  overflow: hidden;
+  border: var(--ncm-border-width-thin) solid var(--ncm-border-tertiary);
 }
 
-.ncm-admin-panel__table-action-btn--delete:hover {
-  border-color: var(--ncm-error);
-  color: var(--ncm-error);
-  background: var(--ncm-error-alpha);
+.ncm-admin-panel__bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--ncm-primary), var(--ncm-primary-light));
+  transition: width var(--ncm-transition-slow);
+  border-radius: var(--ncm-border-radius-md);
 }
 
-/* ==============================================
-   SYSTEM TOOLS GRID
-   Diagnostic and maintenance tools
-   ============================================== */
+.ncm-admin-panel__bar-fill--spam {
+  background: linear-gradient(90deg, #ff5722, #ff9800);
+}
 
+.ncm-admin-panel__bar-fill--unread {
+  background: linear-gradient(90deg, var(--ncm-secondary), var(--ncm-secondary-light));
+}
+
+.ncm-admin-panel__bar-value {
+  text-align: right;
+  font-weight: var(--ncm-font-weight-bold);
+  color: var(--ncm-text-primary);
+  font-family: var(--ncm-font-mono);
+  font-size: var(--ncm-font-size-sm);
+}
+
+/* ============================================
+   ACTION TOOLS SECTION
+   ============================================ */
 .ncm-admin-panel__tools {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: var(--ncm-spacing-lg);
 }
 
@@ -363,244 +489,35 @@
   display: flex;
   flex-direction: column;
   gap: var(--ncm-spacing-md);
-  transition: all var(--ncm-transition-normal);
-}
-
-.ncm-admin-panel__tool-card:hover {
-  border-color: var(--ncm-primary);
-  box-shadow: calc(var(--ncm-enable-glow) * 1px) 0 0 calc(var(--ncm-glow-intensity) * 10px) var(--ncm-primary-alpha);
-}
-
-.ncm-admin-panel__tool-card--danger {
-  border-color: var(--ncm-error);
-}
-
-.ncm-admin-panel__tool-card--danger:hover {
-  border-color: var(--ncm-error);
-  box-shadow: calc(var(--ncm-enable-glow) * 1px) 0 0 calc(var(--ncm-glow-intensity) * 10px) var(--ncm-error-alpha);
-}
-
-.ncm-admin-panel__tool-icon {
-  width: 48px;
-  height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--ncm-primary-alpha);
-  border-radius: var(--ncm-border-radius-md);
-  color: var(--ncm-primary);
-  font-size: var(--ncm-icon-lg);
-}
-
-.ncm-admin-panel__tool-card--danger .ncm-admin-panel__tool-icon {
-  background: var(--ncm-error-alpha);
-  color: var(--ncm-error);
 }
 
 .ncm-admin-panel__tool-title {
   font-size: var(--ncm-font-size-lg);
   font-weight: var(--ncm-font-weight-bold);
-  color: var(--ncm-text-primary);
-  text-transform: uppercase;
-  letter-spacing: var(--ncm-letter-spacing-wide);
+  color: var(--ncm-primary);
+  margin-bottom: var(--ncm-spacing-sm);
 }
 
 .ncm-admin-panel__tool-description {
   font-size: var(--ncm-font-size-sm);
   color: var(--ncm-text-secondary);
-  line-height: var(--ncm-line-height-normal);
-  flex: 1;
-}
-
-.ncm-admin-panel__tool-btn {
-  padding: var(--ncm-spacing-sm) var(--ncm-spacing-lg);
-  background: var(--ncm-primary);
-  border: var(--ncm-border-width-thin) solid var(--ncm-primary);
-  border-radius: var(--ncm-border-radius-md);
-  color: var(--ncm-text-primary);
-  font-size: var(--ncm-font-size-sm);
-  font-weight: var(--ncm-font-weight-medium);
-  text-transform: uppercase;
-  letter-spacing: var(--ncm-letter-spacing-wide);
-  transition: all var(--ncm-transition-normal);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--ncm-spacing-sm);
-}
-
-.ncm-admin-panel__tool-btn:hover {
-  background: var(--ncm-primary-light);
-  box-shadow: calc(var(--ncm-enable-glow) * 1px) 0 0 calc(var(--ncm-glow-intensity) * 15px) var(--ncm-primary-alpha);
-}
-
-.ncm-admin-panel__tool-card--danger .ncm-admin-panel__tool-btn {
-  background: var(--ncm-error);
-  border-color: var(--ncm-error);
-}
-
-.ncm-admin-panel__tool-card--danger .ncm-admin-panel__tool-btn:hover {
-  background: var(--ncm-error-dark);
-  box-shadow: calc(var(--ncm-enable-glow) * 1px) 0 0 calc(var(--ncm-glow-intensity) * 15px) var(--ncm-error-alpha);
-}
-
-/* ==============================================
-   DIAGNOSTIC RESULTS
-   Output from system tools
-   ============================================== */
-
-.ncm-admin-panel__diagnostics {
-  background: var(--ncm-bg-secondary);
-  border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
-  border-radius: var(--ncm-border-radius-lg);
-  padding: var(--ncm-spacing-lg);
-  margin-top: var(--ncm-spacing-lg);
-}
-
-.ncm-admin-panel__diagnostics-title {
-  font-size: var(--ncm-font-size-lg);
-  font-weight: var(--ncm-font-weight-bold);
-  color: var(--ncm-primary);
-  text-transform: uppercase;
-  letter-spacing: var(--ncm-letter-spacing-wide);
   margin-bottom: var(--ncm-spacing-md);
-  display: flex;
-  align-items: center;
-  gap: var(--ncm-spacing-sm);
 }
 
-.ncm-admin-panel__diagnostics-output {
-  background: var(--ncm-bg-primary);
-  border: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
-  border-radius: var(--ncm-border-radius-md);
-  padding: var(--ncm-spacing-md);
-  font-family: var(--ncm-font-mono);
-  font-size: var(--ncm-font-size-sm);
-  color: var(--ncm-secondary);
-  line-height: var(--ncm-line-height-loose);
-  max-height: 400px;
-  overflow-y: auto;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-}
-
-.ncm-admin-panel__diagnostics-line {
-  margin-bottom: var(--ncm-spacing-xs);
-}
-
-.ncm-admin-panel__diagnostics-line--error {
-  color: var(--ncm-error);
-}
-
-.ncm-admin-panel__diagnostics-line--warning {
-  color: var(--ncm-warning);
-}
-
-.ncm-admin-panel__diagnostics-line--success {
-  color: var(--ncm-success);
-}
-
-/* ==============================================
-   WARNING BANNERS
-   Important notices for dangerous actions
-   ============================================== */
-
-.ncm-admin-panel__warning {
-  background: var(--ncm-error-alpha);
-  border: var(--ncm-border-width-normal) solid var(--ncm-error);
-  border-radius: var(--ncm-border-radius-lg);
-  padding: var(--ncm-spacing-lg);
-  margin-bottom: var(--ncm-spacing-lg);
-  display: flex;
-  gap: var(--ncm-spacing-md);
-  animation: ncm-pulse calc(var(--ncm-animation-speed) * 3s) ease-in-out infinite;
-}
-
-.ncm-admin-panel__warning-icon {
-  font-size: var(--ncm-icon-xl);
-  color: var(--ncm-error);
-  flex-shrink: 0;
-}
-
-.ncm-admin-panel__warning-content {
-  flex: 1;
-}
-
-.ncm-admin-panel__warning-title {
-  font-size: var(--ncm-font-size-lg);
-  font-weight: var(--ncm-font-weight-bold);
-  color: var(--ncm-error);
-  text-transform: uppercase;
-  letter-spacing: var(--ncm-letter-spacing-wide);
-  margin-bottom: var(--ncm-spacing-sm);
-}
-
-.ncm-admin-panel__warning-text {
-  font-size: var(--ncm-font-size-sm);
-  color: var(--ncm-text-primary);
-  line-height: var(--ncm-line-height-normal);
-}
-
-/* ==============================================
-   EXPORT/IMPORT SECTIONS
-   Data management tools
-   ============================================== */
-
-.ncm-admin-panel__export {
-  background: var(--ncm-bg-secondary);
-  border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
-  border-radius: var(--ncm-border-radius-lg);
-  padding: var(--ncm-spacing-lg);
-  display: flex;
-  flex-direction: column;
-  gap: var(--ncm-spacing-md);
-}
-
-.ncm-admin-panel__export-options {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: var(--ncm-spacing-md);
-}
-
-.ncm-admin-panel__export-option {
-  display: flex;
-  align-items: center;
-  gap: var(--ncm-spacing-sm);
-  padding: var(--ncm-spacing-md);
-  background: var(--ncm-bg-tertiary);
-  border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
-  border-radius: var(--ncm-border-radius-md);
-  cursor: pointer;
-  transition: all var(--ncm-transition-fast);
-}
-
-.ncm-admin-panel__export-option:hover {
-  border-color: var(--ncm-primary);
-  background: var(--ncm-bg-hover);
-}
-
-.ncm-admin-panel__export-option input[type="checkbox"] {
-  width: 20px;
-  height: 20px;
-  cursor: pointer;
-}
-
-.ncm-admin-panel__export-label {
-  font-size: var(--ncm-font-size-sm);
-  color: var(--ncm-text-primary);
-}
-
-/* ==============================================
+/* ============================================
    RESPONSIVE DESIGN
-   ============================================== */
-
+   ============================================ */
 @media (max-width: 1199px) {
   .ncm-app.ncm-admin-panel {
     width: 95vw;
   }
   
   .ncm-admin-panel__stats {
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+  
+  .ncm-admin-panel__inbox-grid {
+    grid-template-columns: 1fr;
   }
 }
 

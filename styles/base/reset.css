@@ -1,450 +1,413 @@
 /* ==============================================
    NIGHT CITY MESSENGER
-   Component: Scoped CSS Reset
-   Purpose: Reset browser defaults ONLY within NCM components
-   Dependencies: None
+   Base: Reset & Base Styles
+   Purpose: Normalize and set foundation styles
    ============================================== */
 
-/* ==============================================
-   BOX SIZING RESET
-   Apply border-box to all NCM elements
-   ============================================== */
-
-.ncm-app,
-.ncm-app *,
-.ncm-app *::before,
-.ncm-app *::after,
-.ncm-dialog,
-.ncm-dialog *,
-.ncm-dialog *::before,
-.ncm-dialog *::after,
-.ncm-notification,
-.ncm-notification *,
-.ncm-notification *::before,
-.ncm-notification *::after {
+/* ============================================
+   ALL NCM APPS - Common Base
+   ============================================ */
+.ncm-app {
+  font-family: var(--ncm-font-primary);
+  color: var(--ncm-text-primary);
+  background: var(--ncm-bg-primary);
   box-sizing: border-box;
 }
 
-/* ==============================================
-   MARGIN & PADDING RESET
-   Remove default margins and padding
-   ============================================== */
+.ncm-app *,
+.ncm-app *::before,
+.ncm-app *::after {
+  box-sizing: inherit;
+}
+
+/* ============================================
+   WINDOW CONTENT - Override Foundry defaults
+   ============================================ */
+.ncm-app .window-content {
+  padding: 0 !important;
+  overflow: hidden !important;
+  background: var(--ncm-bg-primary) !important;
+  color: var(--ncm-text-primary) !important;
+}
+
+/* ============================================
+   TYPOGRAPHY RESETS
+   ============================================ */
+.ncm-app p {
+  margin: 0.5em 0;
+  line-height: var(--ncm-line-height-normal);
+}
 
 .ncm-app h1,
 .ncm-app h2,
 .ncm-app h3,
 .ncm-app h4,
 .ncm-app h5,
-.ncm-app h6,
-.ncm-app p,
-.ncm-app ul,
-.ncm-app ol,
-.ncm-app li,
-.ncm-app dl,
-.ncm-app dt,
-.ncm-app dd,
-.ncm-app blockquote,
-.ncm-app figure,
-.ncm-app pre,
-.ncm-dialog h1,
-.ncm-dialog h2,
-.ncm-dialog h3,
-.ncm-dialog h4,
-.ncm-dialog h5,
-.ncm-dialog h6,
-.ncm-dialog p,
-.ncm-dialog ul,
-.ncm-dialog ol,
-.ncm-dialog li,
-.ncm-dialog dl,
-.ncm-dialog dt,
-.ncm-dialog dd,
-.ncm-dialog blockquote,
-.ncm-dialog figure,
-.ncm-dialog pre {
+.ncm-app h6 {
   margin: 0;
   padding: 0;
+  font-weight: var(--ncm-font-weight-bold);
+  color: var(--ncm-primary);
 }
 
-/* ==============================================
-   LIST RESET
-   Remove list styles
-   ============================================== */
+.ncm-app h1 { font-size: var(--ncm-font-size-xxl); }
+.ncm-app h2 { font-size: var(--ncm-font-size-xl); }
+.ncm-app h3 { font-size: var(--ncm-font-size-lg); }
+.ncm-app h4 { font-size: var(--ncm-font-size-md); }
 
-.ncm-app ul,
-.ncm-app ol,
-.ncm-dialog ul,
-.ncm-dialog ol {
-  list-style: none;
-}
-
-/* ==============================================
-   BUTTON RESET
-   Remove browser button styles
-   ============================================== */
-
-.ncm-app button,
-.ncm-dialog button {
-  all: unset;
-  box-sizing: border-box;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+/* ============================================
+   BUTTON RESETS
+   ============================================ */
+.ncm-app button {
+  font-family: var(--ncm-font-primary);
   cursor: pointer;
-  font-family: inherit;
-  font-size: inherit;
-  line-height: inherit;
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0;
+  outline: none;
 }
 
-.ncm-app button:disabled,
-.ncm-dialog button:disabled {
+.ncm-app button:disabled {
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
-/* ==============================================
-   INPUT RESET
-   Normalize form inputs
-   ============================================== */
-
+/* ============================================
+   INPUT RESETS
+   ============================================ */
 .ncm-app input,
-.ncm-app textarea,
 .ncm-app select,
-.ncm-dialog input,
-.ncm-dialog textarea,
-.ncm-dialog select {
-  font-family: inherit;
-  font-size: inherit;
-  line-height: inherit;
-  color: inherit;
+.ncm-app textarea {
+  font-family: var(--ncm-font-primary);
+  outline: none;
+  border: none;
   margin: 0;
   padding: 0;
-  border: none;
-  background: none;
+}
+
+.ncm-app input:focus,
+.ncm-app select:focus,
+.ncm-app textarea:focus {
   outline: none;
 }
 
-.ncm-app input::-webkit-outer-spin-button,
-.ncm-app input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
+/* ============================================
+   LIST RESETS
+   ============================================ */
+.ncm-app ul,
+.ncm-app ol {
   margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
-.ncm-app input[type="number"],
-.ncm-dialog input[type="number"] {
-  -moz-appearance: textfield;
-}
-
-/* ==============================================
-   LINK RESET
-   Remove default link styles
-   ============================================== */
-
-.ncm-app a,
-.ncm-dialog a {
-  color: inherit;
-  text-decoration: none;
-}
-
-/* ==============================================
-   IMAGE RESET
-   Make images responsive by default
-   ============================================== */
-
-.ncm-app img,
-.ncm-dialog img {
+/* ============================================
+   IMAGE RESETS
+   ============================================ */
+.ncm-app img {
   max-width: 100%;
   height: auto;
   display: block;
 }
 
-/* ==============================================
-   TABLE RESET
-   Remove default table spacing
-   ============================================== */
-
-.ncm-app table,
-.ncm-dialog table {
-  border-collapse: collapse;
-  border-spacing: 0;
-  width: 100%;
+/* ============================================
+   SCROLLBAR STYLING
+   ============================================ */
+.ncm-app ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
 
-.ncm-app th,
-.ncm-app td,
-.ncm-dialog th,
-.ncm-dialog td {
+.ncm-app ::-webkit-scrollbar-track {
+  background: var(--ncm-bg-primary);
+}
+
+.ncm-app ::-webkit-scrollbar-thumb {
+  background: var(--ncm-primary);
+  border-radius: var(--ncm-border-radius-md);
+  border: 2px solid var(--ncm-bg-primary);
+}
+
+.ncm-app ::-webkit-scrollbar-thumb:hover {
+  background: var(--ncm-primary-light);
+}
+
+/* Firefox scrollbar */
+.ncm-app * {
+  scrollbar-width: thin;
+  scrollbar-color: var(--ncm-primary) var(--ncm-bg-primary);
+}
+
+/* ============================================
+   COMMON UTILITY CLASSES
+   ============================================ */
+.ncm-hide {
+  display: none !important;
+}
+
+.ncm-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
   padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+.ncm-text-center {
+  text-align: center;
+}
+
+.ncm-text-left {
   text-align: left;
 }
 
-/* ==============================================
-   FIELDSET RESET
-   Remove fieldset borders
-   ============================================== */
-
-.ncm-app fieldset,
-.ncm-dialog fieldset {
-  border: none;
-  margin: 0;
-  padding: 0;
+.ncm-text-right {
+  text-align: right;
 }
 
-.ncm-app legend,
-.ncm-dialog legend {
-  padding: 0;
-}
-
-/* ==============================================
-   QUOTE RESET
-   Remove quote marks
-   ============================================== */
-
-.ncm-app blockquote,
-.ncm-app q,
-.ncm-dialog blockquote,
-.ncm-dialog q {
-  quotes: none;
-}
-
-.ncm-app blockquote::before,
-.ncm-app blockquote::after,
-.ncm-app q::before,
-.ncm-app q::after,
-.ncm-dialog blockquote::before,
-.ncm-dialog blockquote::after,
-.ncm-dialog q::before,
-.ncm-dialog q::after {
-  content: '';
-  content: none;
-}
-
-/* ==============================================
-   HR RESET
-   Consistent horizontal rules
-   ============================================== */
-
-.ncm-app hr,
-.ncm-dialog hr {
-  border: none;
-  height: var(--ncm-border-width-thin);
-  background: var(--ncm-border-secondary);
-  margin: var(--ncm-spacing-md) 0;
-}
-
-/* ==============================================
-   CODE & PRE RESET
-   Preserve code formatting
-   ============================================== */
-
-.ncm-app code,
-.ncm-app pre,
-.ncm-dialog code,
-.ncm-dialog pre {
-  font-family: var(--ncm-font-mono);
-  font-size: 0.9em;
-}
-
-.ncm-app pre,
-.ncm-dialog pre {
-  overflow-x: auto;
-  white-space: pre;
-}
-
-/* ==============================================
-   SVG RESET
-   Ensure SVGs are responsive
-   ============================================== */
-
-.ncm-app svg,
-.ncm-dialog svg {
-  display: block;
-  max-width: 100%;
-  height: auto;
-}
-
-/* ==============================================
-   FOUNDRY-SPECIFIC OVERRIDES
-   Override Foundry's default styles for our windows
-   ============================================== */
-
-/* Window container */
-.window-app.ncm-app {
-  background: var(--ncm-bg-primary);
-  border: var(--ncm-border-width-normal) solid var(--ncm-primary);
+/* ============================================
+   FOUNDRY OVERRIDES - Fix Common Issues
+   ============================================ */
+.ncm-app.app.window-app {
+  background: var(--ncm-bg-primary) !important;
+  border: var(--ncm-border-width-medium) solid var(--ncm-primary) !important;
+  box-shadow: var(--ncm-shadow-lg);
   border-radius: var(--ncm-border-radius-lg);
-  box-shadow: var(--ncm-shadow-lg), 
-              calc(var(--ncm-enable-glow) * 1px) 0 0 calc(var(--ncm-glow-intensity) * 20px) var(--ncm-primary-alpha);
-  padding: 0;
-  overflow: hidden;
 }
 
-/* Window header */
-.window-app.ncm-app .window-header {
+.ncm-app .window-header {
+  background: var(--ncm-bg-surface) !important;
+  border-bottom: var(--ncm-border-width-thin) solid var(--ncm-border-primary) !important;
+  color: var(--ncm-primary) !important;
+  cursor: move !important; /* Make sure it's draggable */
+}
+
+.ncm-app .window-title {
+  font-family: var(--ncm-font-primary) !important;
+  color: var(--ncm-primary) !important;
+  text-transform: uppercase;
+  letter-spacing: var(--ncm-letter-spacing-wide);
+}
+
+.ncm-app .close {
+  color: var(--ncm-primary) !important;
+  transition: color var(--ncm-transition-fast);
+}
+
+.ncm-app .close:hover {
+  color: var(--ncm-secondary) !important;
+}
+
+/* ============================================
+   CYBERPUNK HEADER - CANONICAL DEFINITION
+   Used across ALL components
+   ============================================ */
+.ncm-header {
   background: var(--ncm-bg-surface);
-  border-bottom: var(--ncm-border-width-thin) solid var(--ncm-primary);
-  color: var(--ncm-text-primary);
-  padding: var(--ncm-spacing-sm) var(--ncm-spacing-md);
+  border-bottom: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
+  padding: var(--ncm-spacing-md);
+  flex-shrink: 0;
+}
+
+.ncm-header__top {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: var(--ncm-spacing-md);
+  margin-bottom: var(--ncm-spacing-sm);
+}
+
+.ncm-header__connection {
+  display: flex;
+  align-items: center;
+  gap: var(--ncm-spacing-xs);
+  color: var(--ncm-secondary);
+  font-size: var(--ncm-font-size-sm);
+  letter-spacing: var(--ncm-letter-spacing-wide);
+}
+
+.ncm-header__connection i {
+  font-size: var(--ncm-icon-sm);
+}
+
+.ncm-header__title {
+  font-size: var(--ncm-font-size-lg);
+  font-weight: var(--ncm-font-weight-bold);
+  color: var(--ncm-primary);
+  text-transform: uppercase;
+  text-align: center;
+  letter-spacing: var(--ncm-letter-spacing-wide);
+  position: relative;
+  padding: 0 var(--ncm-spacing-md);
+}
+
+.ncm-header__title::before,
+.ncm-header__title::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 10px;
+  height: 1px;
+  background: var(--ncm-primary);
+}
+
+.ncm-header__title::before {
+  left: 0;
+}
+
+.ncm-header__title::after {
+  right: 0;
+}
+
+.ncm-header__time {
+  text-align: right;
+  font-size: var(--ncm-font-size-sm);
+  font-style: italic;
+  color: var(--ncm-primary);
+  font-family: var(--ncm-font-mono);
+}
+
+.ncm-header__bottom {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: auto;
-  line-height: normal;
+  padding-top: var(--ncm-spacing-xs);
 }
 
-/* Window title */
-.window-app.ncm-app .window-title {
-  font-family: var(--ncm-font-primary);
-  font-weight: var(--ncm-font-weight-bold);
-  font-size: var(--ncm-font-size-lg);
+.ncm-header__welcome {
+  font-size: var(--ncm-font-size-sm);
+  color: var(--ncm-primary);
+  letter-spacing: var(--ncm-letter-spacing-normal);
+}
+
+.ncm-header__badge {
+  font-size: var(--ncm-font-size-xs);
+  color: var(--ncm-secondary);
+  background: var(--ncm-secondary-alpha);
+  padding: 2px 8px;
+  border-radius: var(--ncm-border-radius-sm);
+  border: var(--ncm-border-width-thin) solid rgba(25, 243, 247, 0.3);
+  text-transform: uppercase;
+}
+
+/* ============================================
+   COMMON BUTTON STYLES
+   ============================================ */
+.ncm-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ncm-spacing-xs);
+  padding: var(--ncm-spacing-sm) var(--ncm-spacing-lg);
+  height: var(--ncm-button-height);
+  background: var(--ncm-bg-tertiary);
+  border: var(--ncm-border-width-thin) solid var(--ncm-primary);
+  border-radius: var(--ncm-border-radius-md);
+  color: var(--ncm-primary);
+  font-size: var(--ncm-font-size-sm);
+  font-weight: var(--ncm-font-weight-medium);
   text-transform: uppercase;
   letter-spacing: var(--ncm-letter-spacing-wide);
-  color: var(--ncm-primary);
-  margin: 0;
-  padding: 0;
-  flex: 1;
+  cursor: pointer;
+  transition: all var(--ncm-transition-fast);
+  white-space: nowrap;
 }
 
-/* Window content */
-.window-app.ncm-app .window-content {
-  background: var(--ncm-bg-primary);
-  padding: 0;
-  overflow: hidden;
-  color: var(--ncm-text-primary);
-  font-family: var(--ncm-font-secondary);
+.ncm-btn:hover:not(:disabled) {
+  background: var(--ncm-primary);
+  color: var(--ncm-bg-primary);
+  box-shadow: var(--ncm-shadow-glow);
+}
+
+.ncm-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.ncm-btn--secondary {
+  border-color: var(--ncm-secondary);
+  color: var(--ncm-secondary);
+}
+
+.ncm-btn--secondary:hover:not(:disabled) {
+  background: var(--ncm-secondary);
+  color: var(--ncm-bg-primary);
+  box-shadow: var(--ncm-shadow-glow-cyan);
+}
+
+.ncm-btn--small {
+  height: var(--ncm-button-height-sm);
+  padding: var(--ncm-spacing-xs) var(--ncm-spacing-md);
+  font-size: var(--ncm-font-size-xs);
+}
+
+.ncm-btn--large {
+  height: var(--ncm-button-height-lg);
+  padding: var(--ncm-spacing-md) var(--ncm-spacing-xl);
   font-size: var(--ncm-font-size-base);
+}
+
+.ncm-btn--danger {
+  border-color: var(--ncm-text-error);
+  color: var(--ncm-text-error);
+}
+
+.ncm-btn--danger:hover:not(:disabled) {
+  background: var(--ncm-text-error);
+  color: var(--ncm-bg-primary);
+}
+
+/* ============================================
+   COMMON INPUT STYLES
+   ============================================ */
+.ncm-input {
+  width: 100%;
+  padding: var(--ncm-input-padding);
+  height: var(--ncm-input-height);
+  background: var(--ncm-bg-tertiary);
+  border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
+  border-radius: var(--ncm-border-radius-md);
+  color: var(--ncm-text-primary);
+  font-size: var(--ncm-font-size-base);
+  transition: border-color var(--ncm-transition-fast),
+              box-shadow var(--ncm-transition-fast);
+}
+
+.ncm-input:focus {
+  border-color: var(--ncm-primary);
+  box-shadow: 0 0 0 2px var(--ncm-primary-alpha);
+}
+
+.ncm-input::placeholder {
+  color: var(--ncm-text-tertiary);
+}
+
+.ncm-select {
+  composes: ncm-input;
+  cursor: pointer;
+}
+
+.ncm-textarea {
+  composes: ncm-input;
+  min-height: 100px;
+  resize: vertical;
   line-height: var(--ncm-line-height-normal);
 }
 
-/* Window controls (close button) */
-.window-app.ncm-app .window-header .close {
-  flex: 0 0 auto;
-  width: var(--ncm-icon-md);
-  height: var(--ncm-icon-md);
-  display: flex;
+/* ============================================
+   COMMON ICON STYLES
+   ============================================ */
+.ncm-icon {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: var(--ncm-text-secondary);
-  transition: color var(--ncm-transition-fast);
-  cursor: pointer;
-  margin: 0;
-  padding: 0;
-  line-height: 1;
-  font-size: var(--ncm-font-size-xl);
 }
 
-.window-app.ncm-app .window-header .close:hover {
-  color: var(--ncm-primary);
-}
-
-/* Remove Foundry's default window resizer styling */
-.window-app.ncm-app .window-resizable-handle {
-  display: none;
-}
-
-/* ==============================================
-   DIALOG-SPECIFIC OVERRIDES
-   Ensure dialogs look correct
-   ============================================== */
-
-.ncm-dialog.dialog {
-  background: var(--ncm-bg-primary);
-  border: var(--ncm-border-width-normal) solid var(--ncm-primary);
-  border-radius: var(--ncm-border-radius-lg);
-  box-shadow: var(--ncm-shadow-xl);
-  padding: 0;
-}
-
-.ncm-dialog .dialog-content {
-  background: transparent;
-  padding: var(--ncm-spacing-lg);
-  color: var(--ncm-text-primary);
-  font-family: var(--ncm-font-secondary);
-}
-
-.ncm-dialog .dialog-buttons {
-  background: transparent;
-  border-top: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
-  padding: var(--ncm-spacing-md);
-  display: flex;
-  gap: var(--ncm-spacing-sm);
-  justify-content: flex-end;
-}
-
-/* ==============================================
-   ACCESSIBILITY IMPROVEMENTS
-   Ensure keyboard focus is visible
-   ============================================== */
-
-.ncm-app *:focus-visible,
-.ncm-dialog *:focus-visible {
-  outline: var(--ncm-border-width-normal) solid var(--ncm-primary);
-  outline-offset: 2px;
-}
-
-/* Remove focus outline when clicked (not keyboard) */
-.ncm-app *:focus:not(:focus-visible),
-.ncm-dialog *:focus:not(:focus-visible) {
-  outline: none;
-}
-
-/* ==============================================
-   SELECTION STYLING
-   Custom text selection colors
-   ============================================== */
-
-.ncm-app ::selection,
-.ncm-dialog ::selection {
-  background: var(--ncm-primary-alpha);
-  color: var(--ncm-text-primary);
-}
-
-/* ==============================================
-   PLACEHOLDER STYLING
-   Consistent placeholder text
-   ============================================== */
-
-.ncm-app ::placeholder,
-.ncm-dialog ::placeholder {
-  color: var(--ncm-text-tertiary);
-  opacity: 1;
-}
-
-/* ==============================================
-   PREVENT TEXT SELECTION ON UI CHROME
-   Allow text selection in content areas only
-   ============================================== */
-
-.ncm-app .window-header,
-.ncm-app button,
-.ncm-app .ncm-toolbar,
-.ncm-app .ncm-sidebar,
-.ncm-dialog button {
-  user-select: none;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-}
-
-/* ==============================================
-   SMOOTH SCROLLING
-   Enable smooth scrolling in NCM containers
-   ============================================== */
-
-.ncm-app,
-.ncm-dialog {
-  scroll-behavior: smooth;
-}
-
-/* Disable smooth scroll when user prefers reduced motion */
-@media (prefers-reduced-motion: reduce) {
-  .ncm-app,
-  .ncm-dialog {
-    scroll-behavior: auto;
-  }
-  
-  .ncm-app *,
-  .ncm-dialog * {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
-}
+.ncm-icon--sm { font-size: var(--ncm-icon-sm); }
+.ncm-icon--md { font-size: var(--ncm-icon-md); }
+.ncm-icon--lg { font-size: var(--ncm-icon-lg); }
+.ncm-icon--xl { font-size: var(--ncm-icon-xl); }

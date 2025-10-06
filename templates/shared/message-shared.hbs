@@ -1,0 +1,75 @@
+{{!-- Shared Message Chat Card --}}
+{{!-- File: templates/shared/message-shared.hbs --}}
+
+<div class="ncm-chat-card">
+  <div class="ncm-chat-card__header">
+    <i class="ncm-chat-card__icon fas fa-envelope"></i>
+    <div>
+      <div class="ncm-chat-card__title">MESSAGE</div>
+      <div class="ncm-chat-card__subtitle">{{message.subject}}</div>
+    </div>
+  </div>
+  
+  <div class="ncm-chat-card__body">
+    <div class="ncm-chat-card__metadata">
+      <div class="ncm-chat-card__meta-item">
+        <div class="ncm-chat-card__meta-label">From</div>
+        <div class="ncm-chat-card__meta-value">{{message.from}}</div>
+      </div>
+      
+      <div class="ncm-chat-card__meta-item">
+        <div class="ncm-chat-card__meta-label">To</div>
+        <div class="ncm-chat-card__meta-value">{{message.to}}</div>
+      </div>
+      
+      <div class="ncm-chat-card__meta-item">
+        <div class="ncm-chat-card__meta-label">Date</div>
+        <div class="ncm-chat-card__meta-value">{{message.timestamp}}</div>
+      </div>
+      
+      {{#if message.network}}
+      <div class="ncm-chat-card__meta-item">
+        <div class="ncm-chat-card__meta-label">Network</div>
+        <div class="ncm-chat-card__meta-value">{{message.network}}</div>
+      </div>
+      {{/if}}
+    </div>
+    
+    {{#if showBody}}
+    <div class="ncm-chat-card__content">
+      {{{message.body}}}
+    </div>
+    {{else}}
+    <div class="ncm-chat-card__content">
+      <p><em>{{message.preview}}</em></p>
+    </div>
+    {{/if}}
+    
+    {{#if message.attachments.length}}
+    <div class="ncm-chat-card__attachments">
+      <strong>Attachments ({{message.attachments.length}}):</strong>
+      {{#each message.attachments}}
+        <span>{{this.name}}</span>{{#unless @last}}, {{/unless}}
+      {{/each}}
+    </div>
+    {{/if}}
+    
+    <div class="ncm-chat-card__actions">
+      <button class="ncm-btn ncm-btn--small ncm-btn--primary" data-action="view-message" data-message-id="{{message.id}}">
+        <i class="fas fa-eye"></i> View Full Message
+      </button>
+      
+      {{#if canReply}}
+      <button class="ncm-btn ncm-btn--small" data-action="reply-message" data-message-id="{{message.id}}">
+        <i class="fas fa-reply"></i> Reply
+      </button>
+      {{/if}}
+      
+      {{#if canExport}}
+      <button class="ncm-btn ncm-btn--small ncm-btn--secondary" data-action="export-to-inbox" data-message-id="{{message.id}}">
+        <i class="fas fa-download"></i> Export to Inbox
+      </button>
+      {{/if}}
+    </div>
+  </div>
+</div>
