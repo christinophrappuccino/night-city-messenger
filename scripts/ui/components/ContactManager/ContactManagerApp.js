@@ -1,30 +1,28 @@
 /**
- * Contact Manager Application
+ * Contact Manager Application (Complete)
  * File: scripts/ui/components/ContactManager/ContactManagerApp.js
  * Module: cyberpunkred-messenger
- * Description: Manage contacts and email addresses
+ * Description: Full contact management system
  */
 
 import { MODULE_ID } from '../../../utils/constants.js';
+import { isValidEmail } from '../../../utils/validators.js';
 import { BaseApplication } from '../BaseApplication.js';
-import { ContactRepository } from '../../../data/ContactRepository.js';
 
 export class ContactManagerApp extends BaseApplication {
   constructor(options = {}) {
     super(options);
     
-    this.contactRepository = options.contactRepository || new ContactRepository();
-    
-    this.searchQuery = '';
-    this.selectedCategory = 'all';
+    this.contacts = [];
+    this.searchTerm = '';
+    this.viewMode = 'list';
+    this.selectMode = options.selectMode || false; // If true, selecting returns contact
+    this.onSelect = options.onSelect || null; // Callback when contact selected
   }
   
-  /**
-   * Default options
-   */
   static get defaultOptions() {
     return foundry.utils.mergeObject(super.defaultOptions, {
-      classes: ["ncm-app", "ncm-contacts"],
+      classes: ["ncm-app", "ncm-contact-manager"],
       template: `modules/${MODULE_ID}/templates/contact-manager/contact-manager.hbs`,
       width: 600,
       height: 700,
@@ -33,55 +31,101 @@ export class ContactManagerApp extends BaseApplication {
     });
   }
   
-  /**
-   * Get data for template
-   */
-  getData(options = {}) {
-    const data = super.getData(options);
+  async getData(options = {}) {
+    await this._loadContacts();
     
-    // Get contacts
-    let contacts = this.searchQuery 
-      ? this.contactRepository.search(this.searchQuery)
-      : this.contactRepository.getAll();
-    
-    // Filter by category
-    if (this.selectedCategory !== 'all') {
-      contacts = contacts.filter(c => c.category === this.selectedCategory);
+    // Filter contacts by search
+    let filtered = this.contacts;
+    if (this.searchTerm) {
+      const term = this.searchTerm.toLowerCase();
+      filtered = this.contacts.filter(c => 
+        c.name.toLowerCase().includes(term) ||
+        c.email.toLowerCase().includes(term)
+      );
     }
     
-    // Sort by name
-    contacts.sort((a, b) => a.name.localeCompare(b.name));
+    // Sort alphabetically
+    filtered.sort((a, b) => a.name.localeCompare(b.name));
     
-    // Get categories
-    const categories = this.contactRepository.getCategories();
+    // Group by first letter for list view
+    const grouped = {};
+    if (this.viewMode === 'list') {
+      for (const contact of filtered) {
+        const letter = contact.name[0].toUpperCase();
+        if (!grouped[letter]) grouped[letter] = [];
+        grouped[letter].push(contact);
+      }
+    }
     
     return {
-      ...data,
-      contacts,
-      categories,
-      searchQuery: this.searchQuery,
-      selectedCategory: this.selectedCategory,
-      hasContacts: contacts.length > 0
+      ...super.getData(options),
+      contacts: filtered,
+      groupedContacts: grouped,
+      contactCount: this.contacts.length,
+      searchTerm: this.searchTerm,
+      viewMode: this.viewMode,
+      selectMode: this.selectMode
     };
   }
   
   /**
-   * Add new contact
+   * Load contacts from user flags
+   */
+  async _loadContacts() {
+    try {
+      // Get from user flags
+      this.contacts = await game.user.getFlag(MODULE_ID, "contacts") || [];
+      
+      // Also scan for actors with email addresses
+      const actorContacts = game.actors.contents
+        .filter(a => a.getFlag(MODULE_ID, "emailAddress"))
+        .map(a => ({
+          id: `actor_${a.id}`,
+          name: a.name,
+          email: a.getFlag(MODULE_ID, "emailAddress"),
+          img: a.img,
+          type: 'character',
+          readonly: true
+        }));
+      
+      // Merge, avoiding duplicates
+      const emailSet = new Set(this.contacts.map(c => c.email));
+      for (const ac of actorContacts) {
+        if (!emailSet.has(ac.email)) {
+          this.contacts.push(ac);
+          emailSet.add(ac.email);
+        }
+      }
+      
+      return this.contacts;
+    } catch (error) {
+      console.error(`${MODULE_ID} | Error loading contacts:`, error);
+      return [];
+    }
+  }
+  
+  /**
+   * Save contacts to user flags
+   */
+  async _saveContacts() {
+    // Only save non-readonly contacts
+    const toSave = this.contacts.filter(c => !c.readonly);
+    await game.user.setFlag(MODULE_ID, "contacts", toSave);
+  }
+  
+  /**
+   * Show add contact dialog
    */
   async addContact() {
     const content = `
       <form class="ncm-contact-form">
         <div class="form-group">
           <label>Name: *</label>
-          <input type="text" name="name" required />
+          <input type="text" name="name" required autocomplete="off" />
         </div>
         <div class="form-group">
           <label>Email: *</label>
-          <input type="email" name="email" required />
-        </div>
-        <div class="form-group">
-          <label>Category:</label>
-          <input type="text" name="category" placeholder="e.g., friends, work, family" />
+          <input type="email" name="email" required autocomplete="off" />
         </div>
         <div class="form-group">
           <label>Notes:</label>
@@ -98,21 +142,38 @@ export class ContactManagerApp extends BaseApplication {
           icon: '<i class="fas fa-save"></i>',
           label: 'Save',
           callback: async (html) => {
-            try {
-              const contactData = {
-                name: html.find('[name="name"]').val().trim(),
-                email: html.find('[name="email"]').val().trim(),
-                category: html.find('[name="category"]').val().trim() || 'general',
-                notes: html.find('[name="notes"]').val().trim()
-              };
-              
-              await this.contactRepository.create(contactData);
-              
-              ui.notifications.info('Contact added');
-              this.render(false);
-            } catch (error) {
-              ui.notifications.error(error.message);
+            const name = html.find('[name="name"]').val().trim();
+            const email = html.find('[name="email"]').val().trim();
+            const notes = html.find('[name="notes"]').val().trim();
+            
+            if (!name || !email) {
+              ui.notifications.error("Name and email are required.");
+              return;
             }
+            
+            if (!isValidEmail(email)) {
+              ui.notifications.error("Invalid email format.");
+              return;
+            }
+            
+            // Check for duplicate
+            if (this.contacts.some(c => c.email === email)) {
+              ui.notifications.warn("Contact with this email already exists.");
+              return;
+            }
+            
+            // Add contact
+            this.contacts.push({
+              id: foundry.utils.randomID(),
+              name,
+              email,
+              notes,
+              createdAt: new Date().toISOString()
+            });
+            
+            await this._saveContacts();
+            ui.notifications.info(`Contact "${name}" added.`);
+            this.render(false);
           }
         },
         cancel: {
@@ -129,11 +190,15 @@ export class ContactManagerApp extends BaseApplication {
   
   /**
    * Edit contact
-   * @param {string} contactId - Contact ID
    */
   async editContact(contactId) {
-    const contact = this.contactRepository.findById(contactId);
+    const contact = this.contacts.find(c => c.id === contactId);
     if (!contact) return;
+    
+    if (contact.readonly) {
+      ui.notifications.warn("Cannot edit character-linked contacts.");
+      return;
+    }
     
     const content = `
       <form class="ncm-contact-form">
@@ -144,10 +209,6 @@ export class ContactManagerApp extends BaseApplication {
         <div class="form-group">
           <label>Email: *</label>
           <input type="email" name="email" value="${contact.email}" required />
-        </div>
-        <div class="form-group">
-          <label>Category:</label>
-          <input type="text" name="category" value="${contact.category || ''}" />
         </div>
         <div class="form-group">
           <label>Notes:</label>
@@ -164,21 +225,18 @@ export class ContactManagerApp extends BaseApplication {
           icon: '<i class="fas fa-save"></i>',
           label: 'Save',
           callback: async (html) => {
-            try {
-              const updates = {
-                name: html.find('[name="name"]').val().trim(),
-                email: html.find('[name="email"]').val().trim(),
-                category: html.find('[name="category"]').val().trim() || 'general',
-                notes: html.find('[name="notes"]').val().trim()
-              };
-              
-              await this.contactRepository.update(contactId, updates);
-              
-              ui.notifications.info('Contact updated');
-              this.render(false);
-            } catch (error) {
-              ui.notifications.error(error.message);
+            contact.name = html.find('[name="name"]').val().trim();
+            contact.email = html.find('[name="email"]').val().trim();
+            contact.notes = html.find('[name="notes"]').val().trim();
+            
+            if (!isValidEmail(contact.email)) {
+              ui.notifications.error("Invalid email format.");
+              return;
             }
+            
+            await this._saveContacts();
+            ui.notifications.info("Contact updated.");
+            this.render(false);
           }
         },
         delete: {
@@ -187,14 +245,13 @@ export class ContactManagerApp extends BaseApplication {
           callback: async () => {
             const confirmed = await Dialog.confirm({
               title: 'Delete Contact',
-              content: `<p>Are you sure you want to delete <strong>${contact.name}</strong>?</p>`,
-              yes: () => true,
-              no: () => false
+              content: `<p>Delete <strong>${contact.name}</strong>?</p>`
             });
             
             if (confirmed) {
-              await this.contactRepository.delete(contactId);
-              ui.notifications.info('Contact deleted');
+              this.contacts = this.contacts.filter(c => c.id !== contactId);
+              await this._saveContacts();
+              ui.notifications.info("Contact deleted.");
               this.render(false);
             }
           }
@@ -212,65 +269,76 @@ export class ContactManagerApp extends BaseApplication {
   }
   
   /**
-   * Import contacts from actors
+   * Select contact (if in select mode)
    */
-  async importFromActors() {
-    try {
-      const count = await this.contactRepository.importFromActors();
-      
-      ui.notifications.info(`Imported ${count} contacts from actors`);
-      this.render(false);
-    } catch (error) {
-      ui.notifications.error('Failed to import contacts');
+  selectContact(contact) {
+    if (this.selectMode && this.onSelect) {
+      this.onSelect(contact);
+      this.close();
     }
   }
   
-  /**
-   * Activate listeners
-   */
   activateListeners(html) {
     super.activateListeners(html);
     
     // Add contact button
-    html.find('.ncm-contacts__add-btn').on('click', () => {
+    html.find('[data-action="add-contact"]').on('click', () => {
       this.addContact();
-      this.playSound('click');
     });
     
     // Edit contact
-    html.find('.ncm-contact__edit-btn').on('click', (event) => {
-      const contactId = $(event.currentTarget).closest('.ncm-contact-item').data('contact-id');
+    html.find('[data-action="edit-contact"]').on('click', (e) => {
+      const contactId = $(e.currentTarget).data('contact-id');
       this.editContact(contactId);
-      this.playSound('click');
     });
     
-    // Compose to contact
-    html.find('.ncm-contact__compose-btn').on('click', (event) => {
-      const email = $(event.currentTarget).closest('.ncm-contact-item').data('email');
+    // Delete contact
+    html.find('[data-action="delete-contact"]').on('click', async (e) => {
+      const contactId = $(e.currentTarget).data('contact-id');
+      const contact = this.contacts.find(c => c.id === contactId);
       
-      this.eventBus.emit('composer:open', {
-        to: email
+      if (!contact) return;
+      
+      if (contact.readonly) {
+        ui.notifications.warn("Cannot delete character-linked contacts.");
+        return;
+      }
+      
+      const confirmed = await Dialog.confirm({
+        title: 'Delete Contact',
+        content: `<p>Delete <strong>${contact.name}</strong>?</p>`
       });
       
-      this.playSound('click');
+      if (confirmed) {
+        this.contacts = this.contacts.filter(c => c.id !== contactId);
+        await this._saveContacts();
+        ui.notifications.info("Contact deleted.");
+        this.render(false);
+      }
+    });
+    
+    // Select contact (in select mode)
+    html.find('[data-action="select-contact"]').on('click', (e) => {
+      const contactId = $(e.currentTarget).data('contact-id');
+      const contact = this.contacts.find(c => c.id === contactId);
+      if (contact) this.selectContact(contact);
     });
     
     // Search
-    html.find('.ncm-contacts__search-input').on('input', (event) => {
-      this.searchQuery = $(event.currentTarget).val();
+    html.find('[data-action="search"]').on('input', (e) => {
+      this.searchTerm = $(e.currentTarget).val();
       this.render(false);
     });
     
-    // Category filter
-    html.find('.ncm-contacts__category-filter').on('change', (event) => {
-      this.selectedCategory = $(event.currentTarget).val();
+    // View mode toggle
+    html.find('[data-action="view-list"]').on('click', () => {
+      this.viewMode = 'list';
       this.render(false);
     });
     
-    // Import button
-    html.find('.ncm-contacts__import-btn').on('click', () => {
-      this.importFromActors();
-      this.playSound('click');
+    html.find('[data-action="view-grid"]').on('click', () => {
+      this.viewMode = 'grid';
+      this.render(false);
     });
   }
 }

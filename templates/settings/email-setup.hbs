@@ -1,0 +1,166 @@
+{{!-- Email Setup Template --}}
+{{!-- File: templates/settings/email-setup.hbs --}}
+
+<div class="ncm-email-setup">
+  {{#if hasCharacter}}
+    <div class="ncm-email-setup__header">
+      <i class="fas fa-envelope-open-text"></i>
+      <h2>Email Address Setup</h2>
+    </div>
+    
+    <div class="ncm-email-setup__character">
+      <strong>Character:</strong> {{characterName}}
+    </div>
+    
+    <div class="ncm-email-setup__description">
+      <p>Set up your character's email address for Night City Messenger.</p>
+      <p class="ncm-email-setup__hint">
+        This will be used as your sender address when composing messages.
+      </p>
+    </div>
+    
+    <form class="ncm-email-setup__form">
+      <div class="form-group">
+        <label for="email">Email Address:</label>
+        <input 
+          type="email" 
+          id="email" 
+          name="email" 
+          value="{{currentEmail}}"
+          placeholder="yourname@nightcity.net"
+          autocomplete="off"
+          required
+        />
+      </div>
+      
+      <div class="ncm-email-setup__examples">
+        <strong>Examples:</strong>
+        <ul>
+          <li>streetkid@nightcity.net</li>
+          <li>runner@darknet.nc</li>
+          <li>merc@corporate.net</li>
+          <li>yourname@edgerunners.nc</li>
+        </ul>
+      </div>
+    </form>
+    
+  {{else}}
+    <div class="ncm-email-setup__error">
+      <i class="fas fa-exclamation-triangle"></i>
+      <h3>No Character Assigned</h3>
+      <p>You must have a character assigned to set up email.</p>
+      <p>Ask your GM to assign you a character.</p>
+    </div>
+  {{/if}}
+</div>
+
+<style>
+.ncm-email-setup {
+  padding: 1rem;
+}
+
+.ncm-email-setup__header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  color: var(--ncm-primary, #F65261);
+}
+
+.ncm-email-setup__header i {
+  font-size: 1.5rem;
+}
+
+.ncm-email-setup__character {
+  padding: 0.75rem;
+  background: rgba(246, 82, 97, 0.1);
+  border-left: 3px solid var(--ncm-primary, #F65261);
+  margin-bottom: 1rem;
+}
+
+.ncm-email-setup__description {
+  margin-bottom: 1.5rem;
+}
+
+.ncm-email-setup__hint {
+  font-size: 0.875rem;
+  color: #999;
+  font-style: italic;
+}
+
+.ncm-email-setup__form .form-group {
+  margin-bottom: 1rem;
+}
+
+.ncm-email-setup__form label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: bold;
+}
+
+.ncm-email-setup__form input[type="email"] {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.ncm-email-setup__form input[type="email"]:focus {
+  outline: none;
+  border-color: var(--ncm-primary, #F65261);
+  box-shadow: 0 0 0 2px rgba(246, 82, 97, 0.2);
+}
+
+.ncm-email-setup__examples {
+  padding: 1rem;
+  background: rgba(25, 243, 247, 0.05);
+  border-radius: 4px;
+  font-size: 0.875rem;
+}
+
+.ncm-email-setup__examples strong {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: var(--ncm-secondary, #19f3f7);
+}
+
+.ncm-email-setup__examples ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.ncm-email-setup__examples li {
+  padding: 0.25rem 0;
+  padding-left: 1.5rem;
+  position: relative;
+}
+
+.ncm-email-setup__examples li:before {
+  content: "→";
+  position: absolute;
+  left: 0;
+  color: var(--ncm-secondary, #19f3f7);
+}
+
+.ncm-email-setup__error {
+  text-align: center;
+  padding: 2rem;
+}
+
+.ncm-email-setup__error i {
+  font-size: 3rem;
+  color: #ff6b6b;
+  margin-bottom: 1rem;
+}
+
+.ncm-email-setup__error h3 {
+  margin-bottom: 0.5rem;
+}
+
+.ncm-email-setup__error p {
+  color: #999;
+  margin: 0.5rem 0;
+}
+</style>

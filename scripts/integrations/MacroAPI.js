@@ -1,5 +1,5 @@
 /**
- * Macro API
+ * Macro API - COMPLETE & FIXED
  * File: scripts/integrations/MacroAPI.js
  * Module: cyberpunkred-messenger
  * Description: Public API for macros and other modules
@@ -25,7 +25,7 @@ export class MacroAPI {
     // ========================================
     
     /**
-     * Open message viewer
+     * Open message viewer (inbox)
      */
     game.nightcity.openInbox = async (userId = null) => {
       await this._ensureReady();
@@ -45,14 +45,19 @@ export class MacroAPI {
     /**
      * Open contact manager
      */
-    game.nightcity.openContacts = async () => {
+    game.nightcity.openContactManager = async () => {
       await this._ensureReady();
       const { openContactManager } = await import('./UIRegistry.js');
       return openContactManager();
     };
     
     /**
-     * Open admin panel
+     * Alias for convenience
+     */
+    game.nightcity.openContacts = game.nightcity.openContactManager;
+    
+    /**
+     * Open admin panel (GM only)
      */
     game.nightcity.openAdmin = async () => {
       await this._ensureReady();
@@ -61,12 +66,31 @@ export class MacroAPI {
     };
     
     /**
-     * Open item inbox
+     * Alias for admin panel
+     */
+    game.nightcity.openAdminPanel = game.nightcity.openAdmin;
+    
+    /**
+     * Open item inbox (data shard)
      */
     game.nightcity.openDataShard = async (item) => {
       await this._ensureReady();
       const { openItemInbox } = await import('./UIRegistry.js');
       return openItemInbox(item);
+    };
+    
+    /**
+     * Alias for data shard
+     */
+    game.nightcity.openItemInbox = game.nightcity.openDataShard;
+    
+    /**
+     * Open email setup dialog
+     */
+    game.nightcity.openEmailSetup = async () => {
+      await this._ensureReady();
+      const { PlayerEmailSetup } = await import('../ui/dialogs/PlayerEmailSetup.js');
+      return await PlayerEmailSetup.show();
     };
     
     console.log(`${MODULE_ID} | ✓ Macro API (early) registered`);
@@ -132,69 +156,131 @@ export class MacroAPI {
     /**
      * Send a message (shorthand)
      */
-    game.nightcity.sendMessage = async (to, subject, content) => {
-      const messageService = await game.nightcity.getMessageService();
+    game.nightcity.sendMessage = async (messageData) => {
+      const service = await game.nightcity.getMessageService();
+      return service.sendMessage(messageData);
+    };
+    
+    /**
+     * Create inbox for user
+     */
+    game.nightcity.createInbox = async (userId) => {
+      if (!game.user.isGM) {
+        ui.notifications.error('Only GMs can create inboxes');
+        return;
+      }
+      const { JournalManager } = await import('../data/JournalManager.js');
+      const manager = new JournalManager();
+      return manager.createUserInbox(userId);
+    };
+    
+    /**
+     * Flag item as data shard
+     */
+    game.nightcity.flagAsDataShard = async (item, options = {}) => {
+      if (!item) {
+        ui.notifications.error('No item provided');
+        return;
+      }
       
-      return await messageService.sendMessage({
-        to,
-        subject,
-        content
+      await item.setFlag(MODULE_ID, 'isDataShard', true);
+      
+      if (options.encrypted) {
+        await item.setFlag(MODULE_ID, 'encrypted', true);
+        await item.setFlag(MODULE_ID, 'encryptionDC', options.encryptionDC || 15);
+      }
+      
+      ui.notifications.info(`${item.name} flagged as data shard`);
+    };
+    
+    // ========================================
+    // Email & Contact Functions
+    // ========================================
+    
+    /**
+     * Get current user's email
+     */
+    game.nightcity.getMyEmail = () => {
+      const actor = game.user.character;
+      if (!actor) {
+        ui.notifications.warn("You must have a character assigned.");
+        return null;
+      }
+      return actor.getFlag(MODULE_ID, 'emailAddress') || null;
+    };
+    
+    /**
+     * Get all contacts
+     */
+    game.nightcity.getContacts = async () => {
+      const userContacts = await game.user.getFlag(MODULE_ID, 'contacts') || [];
+      
+      // Add actor emails
+      const actorContacts = game.actors.contents
+        .filter(a => a.getFlag(MODULE_ID, 'emailAddress'))
+        .map(a => ({
+          id: `actor_${a.id}`,
+          name: a.name,
+          email: a.getFlag(MODULE_ID, 'emailAddress'),
+          img: a.img,
+          type: 'character'
+        }));
+      
+      // Merge and deduplicate
+      const all = [...userContacts, ...actorContacts];
+      const unique = Array.from(new Map(all.map(c => [c.email, c])).values());
+      
+      return unique;
+    };
+    
+    /**
+     * Add a contact programmatically
+     */
+    game.nightcity.addContact = async (name, email) => {
+      if (!name || !email) {
+        ui.notifications.error("Name and email are required.");
+        return false;
+      }
+      
+      if (!email.includes('@') || !email.includes('.')) {
+        ui.notifications.error("Invalid email format.");
+        return false;
+      }
+      
+      const contacts = await game.user.getFlag(MODULE_ID, 'contacts') || [];
+      
+      // Check duplicate
+      if (contacts.some(c => c.email === email)) {
+        ui.notifications.warn("Contact already exists.");
+        return false;
+      }
+      
+      // Add
+      contacts.push({
+        id: foundry.utils.randomID(),
+        name,
+        email,
+        createdAt: new Date().toISOString()
       });
-    };
-    
-    /**
-     * Search messages
-     */
-    game.nightcity.searchMessages = async (criteria) => {
-      const messageRepository = await game.nightcity.getMessageRepository();
-      return await messageRepository.search(criteria);
-    };
-    
-    /**
-     * Get statistics
-     */
-    game.nightcity.getStatistics = async (userId = null) => {
-      const messageService = await game.nightcity.getMessageService();
-      return await messageService.getStatistics(userId);
-    };
-    
-    // ========================================
-    // Debug Functions
-    // ========================================
-    
-    /**
-     * Debug info
-     */
-    game.nightcity.debug = () => {
-      console.log('=== Night City Messenger Debug ===');
-      console.log('Ready:', game.nightcity.ready);
-      console.log('Module ID:', MODULE_ID);
-      console.log('Available APIs:', Object.keys(game.nightcity).filter(k => typeof game.nightcity[k] === 'function'));
-      console.log('=== End Debug ===');
+      
+      await game.user.setFlag(MODULE_ID, 'contacts', contacts);
+      ui.notifications.info(`Added ${name} to contacts.`);
+      return true;
     };
     
     console.log(`${MODULE_ID} | ✓ Macro API (services) registered`);
-    console.log(`${MODULE_ID} | Access via: game.nightcity`);
+    console.log(`${MODULE_ID} | Available API:`, Object.keys(game.nightcity).sort());
   }
   
   /**
-   * Wait for module to be ready
+   * Ensure game is ready
    * @private
    */
   static async _ensureReady() {
-    // If already ready, return immediately
-    if (game.nightcity.ready) return;
-    
-    // Wait for ready flag
-    return new Promise((resolve) => {
-      const checkReady = () => {
-        if (game.nightcity.ready) {
-          resolve();
-        } else {
-          setTimeout(checkReady, 100);
-        }
-      };
-      checkReady();
-    });
+    if (!game.ready) {
+      return new Promise(resolve => {
+        Hooks.once('ready', resolve);
+      });
+    }
   }
 }

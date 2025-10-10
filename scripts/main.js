@@ -64,6 +64,14 @@ moduleInitializer.register('init', async () => {
   registerItemSheetHooks();
 }, 30);
 
+// Register email settings
+moduleInitializer.register('init', async () => {
+  const { registerEmailSettings, registerActorSheetHooks } = await import('./integrations/EmailSettingsRegistration.js');
+  registerEmailSettings();
+  registerActorSheetHooks();
+}, 35);
+
+
 // ===================================================================
 // READY
 // ===================================================================
@@ -91,6 +99,12 @@ moduleInitializer.register('ready', async () => {
   const { registerSocketHandlers } = await import('./integrations/SocketHandlers.js');
   registerSocketHandlers();
 }, 20);
+
+// Register email auto-prompts (add after line ~70, with other ready tasks)
+moduleInitializer.register('ready', async () => {
+  const { registerEmailPrompts } = await import('./integrations/EmailSettingsRegistration.js');
+  registerEmailPrompts();
+}, 25);
 
 // ===================================================================
 // POST-READY

@@ -1,56 +1,174 @@
-{{!-- Message Viewer Template (FIXED) --}}
-{{!-- Uses canonical header structure from reset.css --}}
+{{!-- Message Viewer Template - IMPROVED --}}
+{{!-- File: templates/message-viewer/viewer.hbs --}}
 
 <div class="ncm-message-viewer__container">
   
-  {{!-- CANONICAL HEADER - Used across ALL components --}}
+  {{!-- CANONICAL HEADER with better info --}}
   <div class="ncm-header">
     <div class="ncm-header__top">
       <div class="ncm-header__connection">
-        <i class="fas fa-wifi"></i> {{networkName}}
+        <i class="fas fa-wifi"></i> CONNECTED to {{networkName}}
       </div>
       <div class="ncm-header__title">NIGHT CITY MESSAGES</div>
       <div class="ncm-header__time">{{currentTime}}</div>
     </div>
     <div class="ncm-header__bottom">
       <span class="ncm-header__welcome">Welcome, {{userName}}</span>
-      <span class="ncm-header__badge">{{#if encrypted}}ENCRYPTED{{else}}STANDARD{{/if}}</span>
+      {{#if isGM}}
+      <button class="ncm-btn ncm-btn--small ncm-btn--gm" data-action="open-admin" title="GM Tools">
+        <i class="fas fa-toolbox"></i> GM Tools
+      </button>
+      {{/if}}
     </div>
   </div>
   
-  {{!-- Filters Bar --}}
-  <div class="ncm-message-viewer__filters {{#if showFilters}}ncm-message-viewer__filters--active{{/if}}">
-    <div class="ncm-message-viewer__filter-group">
-      <label class="ncm-message-viewer__filter-label">Status</label>
-      <select class="ncm-message-viewer__filter-select" data-filter="status">
-        <option value="all">All Messages</option>
-        <option value="unread">Unread</option>
-        <option value="read">Read</option>
-        <option value="saved">Saved</option>
-        <option value="spam">Spam</option>
-      </select>
-    </div>
-    
-    <div class="ncm-message-viewer__search">
-      <i class="ncm-message-viewer__search-icon fas fa-search"></i>
-      <input 
-        type="text" 
-        class="ncm-message-viewer__search-input" 
-        placeholder="Search messages..."
-        value="{{searchTerm}}"
-        data-action="search"
-      />
-    </div>
-    
-    <div class="ncm-message-viewer__filter-group">
-      <button class="ncm-btn ncm-btn--primary" data-action="compose">
-        <i class="fas fa-edit"></i> Compose
+  {{!-- Category/Filter Bar (like old template) --}}
+  <div class="ncm-message-viewer__toolbar">
+    {{!-- Category Tabs --}}
+    <div class="ncm-toolbar__categories">
+      <button class="ncm-toolbar__category {{#if (eq currentFilter 'inbox')}}ncm-toolbar__category--active{{/if}}" 
+              data-action="filter" 
+              data-filter="inbox">
+        <i class="fas fa-inbox"></i> Inbox
+        {{#if filters.unread}}
+        <span class="ncm-toolbar__badge">{{filters.unread}}</span>
+        {{/if}}
       </button>
-      <button class="ncm-btn ncm-btn--secondary" data-action="refresh">
-        <i class="fas fa-sync"></i> Refresh
+      
+      <button class="ncm-toolbar__category {{#if (eq currentFilter 'saved')}}ncm-toolbar__category--active{{/if}}" 
+              data-action="filter" 
+              data-filter="saved">
+        <i class="fas fa-star"></i> Saved
+        {{#if filters.saved}}
+        <span class="ncm-toolbar__badge">{{filters.saved}}</span>
+        {{/if}}
+      </button>
+      
+      <button class="ncm-toolbar__category {{#if (eq currentFilter 'spam')}}ncm-toolbar__category--active{{/if}}" 
+              data-action="filter" 
+              data-filter="spam">
+        <i class="fas fa-exclamation-triangle"></i> Spam
+        {{#if filters.spam}}
+        <span class="ncm-toolbar__badge">{{filters.spam}}</span>
+        {{/if}}
+      </button>
+      
+      <button class="ncm-toolbar__category {{#if (eq currentFilter 'sent')}}ncm-toolbar__category--active{{/if}}" 
+              data-action="filter" 
+              data-filter="sent">
+        <i class="fas fa-paper-plane"></i> Sent
+      </button>
+      
+      <button class="ncm-toolbar__category {{#if (eq currentFilter 'scheduled')}}ncm-toolbar__category--active{{/if}}" 
+              data-action="filter" 
+              data-filter="scheduled">
+        <i class="fas fa-calendar-alt"></i> Scheduled
+      </button>
+    </div>
+    
+    {{!-- Search and Actions --}}
+    <div class="ncm-toolbar__actions">
+      <div class="ncm-toolbar__search">
+        <i class="ncm-toolbar__search-icon fas fa-search"></i>
+        <input 
+          type="text" 
+          class="ncm-toolbar__search-input" 
+          placeholder="Search messages..."
+          value="{{searchTerm}}"
+          data-action="search"
+          autocomplete="off"
+        />
+      </div>
+      
+      <button class="ncm-btn ncm-btn--icon" 
+              data-action="toggle-filters" 
+              title="Advanced Filters"
+              {{#if showAdvancedFilters}}aria-pressed="true"{{/if}}>
+        <i class="fas fa-filter"></i>
+        {{#if hasActiveFilters}}
+        <span class="ncm-btn__indicator"></span>
+        {{/if}}
+      </button>
+      
+      <button class="ncm-btn ncm-btn--icon" data-action="refresh" title="Refresh">
+        <i class="fas fa-sync"></i>
+      </button>
+      
+      <button class="ncm-btn ncm-btn--icon" data-action="open-contacts" title="Contacts">
+        <i class="fas fa-address-book"></i>
+      </button>
+      
+      <button class="ncm-btn ncm-btn--icon" data-action="open-settings" title="Settings">
+        <i class="fas fa-cog"></i>
+      </button>
+      
+      <button class="ncm-btn ncm-btn--primary" data-action="compose">
+        <i class="fas fa-pen"></i> Compose
       </button>
     </div>
   </div>
+  
+  {{!-- Advanced Filters Panel (toggleable) --}}
+  {{#if showAdvancedFilters}}
+  <div class="ncm-filters-panel">
+    <div class="ncm-filters-panel__section">
+      <h4 class="ncm-filters-panel__title">
+        <i class="fas fa-user"></i> Filter by Sender
+      </h4>
+      <select class="ncm-filters-panel__select" data-filter-field="sender">
+        <option value="">-- All Senders --</option>
+        {{#each uniqueSenders}}
+        <option value="{{this}}" {{#if (eq ../advancedFilters.sender this)}}selected{{/if}}>
+          {{this}}
+        </option>
+        {{/each}}
+      </select>
+    </div>
+    
+    <div class="ncm-filters-panel__section">
+      <h4 class="ncm-filters-panel__title">
+        <i class="fas fa-calendar-alt"></i> Filter by Date
+      </h4>
+      <div class="ncm-filters-panel__date-range">
+        <label>
+          From:
+          <input type="date" 
+                 class="ncm-filters-panel__input" 
+                 data-filter-field="dateFrom"
+                 value="{{advancedFilters.dateFrom}}" />
+        </label>
+        <label>
+          To:
+          <input type="date" 
+                 class="ncm-filters-panel__input" 
+                 data-filter-field="dateTo"
+                 value="{{advancedFilters.dateTo}}" />
+        </label>
+      </div>
+    </div>
+    
+    <div class="ncm-filters-panel__section">
+      <h4 class="ncm-filters-panel__title">
+        <i class="fas fa-envelope"></i> Message Status
+      </h4>
+      <label class="ncm-filters-panel__checkbox">
+        <input type="checkbox" 
+               data-filter-field="unreadOnly"
+               {{#if advancedFilters.unreadOnly}}checked{{/if}} />
+        Unread Only
+      </label>
+    </div>
+    
+    <div class="ncm-filters-panel__actions">
+      <button class="ncm-btn ncm-btn--primary" data-action="apply-filters">
+        <i class="fas fa-check"></i> Apply Filters
+      </button>
+      <button class="ncm-btn" data-action="reset-filters">
+        <i class="fas fa-undo"></i> Reset
+      </button>
+    </div>
+  </div>
+  {{/if}}
   
   {{!-- Main Content Area --}}
   <div class="ncm-message-viewer__content">
@@ -60,33 +178,38 @@
       {{#if messages.length}}
       <div class="ncm-message-viewer__message-list">
         {{#each messages}}
-        <div class="ncm-message-item {{#if this.unread}}ncm-message-item--unread{{/if}} {{#if this.selected}}ncm-message-item--selected{{/if}}" 
+        <div class="ncm-message-item {{#if this.status.read}}ncm-message-item--read{{else}}ncm-message-item--unread{{/if}} {{#if this.selected}}ncm-message-item--selected{{/if}}" 
              data-message-id="{{this.id}}"
              data-action="select-message">
           
           <div class="ncm-message-item__header">
             <span class="ncm-message-item__sender">{{this.from}}</span>
-            <span class="ncm-message-item__time">{{this.timestamp}}</span>
+            <span class="ncm-message-item__time">{{formatTime this.timestamp}}</span>
           </div>
           
-          <div class="ncm-message-item__subject">{{this.subject}}</div>
+          <div class="ncm-message-item__subject">
+            {{#unless this.status.read}}
+            <span class="ncm-message-item__unread-dot"></span>
+            {{/unless}}
+            {{this.subject}}
+          </div>
           
           <div class="ncm-message-item__preview">{{this.preview}}</div>
           
-          {{#if this.indicators}}
+          {{#if this.status}}
           <div class="ncm-message-item__indicators">
-            {{#if this.encrypted}}
-            <span class="ncm-message-item__indicator ncm-message-item__indicator--encrypted">
-              <i class="fas fa-lock"></i> Encrypted
+            {{#if this.status.encrypted}}
+            <span class="ncm-message-item__indicator ncm-message-item__indicator--encrypted" title="Encrypted">
+              <i class="fas fa-lock"></i>
             </span>
             {{/if}}
-            {{#if this.malware}}
-            <span class="ncm-message-item__indicator ncm-message-item__indicator--malware">
-              <i class="fas fa-virus"></i> Malware
+            {{#if this.status.infected}}
+            <span class="ncm-message-item__indicator ncm-message-item__indicator--malware" title="Malware Detected">
+              <i class="fas fa-virus"></i>
             </span>
             {{/if}}
-            {{#if this.saved}}
-            <span class="ncm-message-item__indicator ncm-message-item__indicator--saved">
+            {{#if this.status.saved}}
+            <span class="ncm-message-item__indicator ncm-message-item__indicator--saved" title="Saved">
               <i class="fas fa-star"></i>
             </span>
             {{/if}}
@@ -96,24 +219,39 @@
         {{/each}}
       </div>
       
-      {{!-- Pagination --}}
+      {{!-- Pagination at bottom of sidebar --}}
       {{#if totalPages}}
       <div class="ncm-message-viewer__pagination">
-        <button class="ncm-pagination__btn" data-action="prev-page" {{#if (eq currentPage 1)}}disabled{{/if}}>
+        <button class="ncm-pagination__btn" 
+                data-action="prev-page" 
+                {{#if (eq currentPage 1)}}disabled{{/if}}>
           <i class="fas fa-chevron-left"></i>
         </button>
-        <span class="ncm-pagination__indicator">{{currentPage}} / {{totalPages}}</span>
-        <button class="ncm-pagination__btn" data-action="next-page" {{#if (eq currentPage totalPages)}}disabled{{/if}}>
+        <span class="ncm-pagination__indicator">Page {{currentPage}} of {{totalPages}}</span>
+        <button class="ncm-pagination__btn" 
+                data-action="next-page" 
+                {{#if (eq currentPage totalPages)}}disabled{{/if}}>
           <i class="fas fa-chevron-right"></i>
         </button>
       </div>
       {{/if}}
       
       {{else}}
+      {{!-- Empty State for Sidebar --}}
       <div class="ncm-message-viewer__empty">
         <i class="ncm-message-viewer__empty-icon fas fa-inbox"></i>
-        <p class="ncm-message-viewer__empty-text">No Messages</p>
-        <p class="ncm-message-viewer__empty-subtext">Your inbox is empty</p>
+        <p class="ncm-message-viewer__empty-text">
+          {{#if (eq currentFilter "inbox")}}Your inbox is empty{{/if}}
+          {{#if (eq currentFilter "saved")}}No saved messages{{/if}}
+          {{#if (eq currentFilter "spam")}}No spam messages{{/if}}
+          {{#if (eq currentFilter "sent")}}No sent messages{{/if}}
+          {{#if (eq currentFilter "scheduled")}}No scheduled messages{{/if}}
+        </p>
+        {{#if searchTerm}}
+        <p class="ncm-message-viewer__empty-subtext">
+          No messages match: "{{searchTerm}}"
+        </p>
+        {{/if}}
       </div>
       {{/if}}
     </div>
@@ -130,6 +268,11 @@
           <div class="ncm-detail__meta-row">
             <span class="ncm-detail__meta-label">From:</span>
             <span class="ncm-detail__meta-value">{{selectedMessage.from}}</span>
+            <button class="ncm-btn ncm-btn--small ncm-btn--ghost" 
+                    data-action="add-sender-to-contacts"
+                    title="Add to Contacts">
+              <i class="fas fa-user-plus"></i>
+            </button>
           </div>
           <div class="ncm-detail__meta-row">
             <span class="ncm-detail__meta-label">To:</span>
@@ -137,8 +280,14 @@
           </div>
           <div class="ncm-detail__meta-row">
             <span class="ncm-detail__meta-label">Date:</span>
-            <span class="ncm-detail__meta-value">{{selectedMessage.timestamp}}</span>
+            <span class="ncm-detail__meta-value">{{formatDateTime selectedMessage.timestamp}}</span>
           </div>
+          {{#if selectedMessage.network}}
+          <div class="ncm-detail__meta-row">
+            <span class="ncm-detail__meta-label">Network:</span>
+            <span class="ncm-detail__meta-value">{{selectedMessage.network}}</span>
+          </div>
+          {{/if}}
         </div>
       </div>
       
@@ -155,24 +304,33 @@
         <button class="ncm-btn" data-action="forward">
           <i class="fas fa-share"></i> Forward
         </button>
-        <button class="ncm-btn" data-action="share-chat">
-          <i class="fas fa-comment"></i> Share
+        <button class="ncm-btn" data-action="share-to-chat">
+          <i class="fas fa-comment"></i> Share to Chat
         </button>
-        <button class="ncm-btn" data-action="save">
-          <i class="fas fa-star"></i> {{#if selectedMessage.saved}}Unsave{{else}}Save{{/if}}
+        <button class="ncm-btn" data-action="save-message">
+          <i class="fas fa-star"></i> {{#if selectedMessage.status.saved}}Unsave{{else}}Save{{/if}}
         </button>
-        <button class="ncm-btn ncm-btn--danger" data-action="delete">
+        <button class="ncm-btn" data-action="mark-spam">
+          <i class="fas fa-exclamation-triangle"></i> {{#if selectedMessage.status.spam}}Not Spam{{else}}Spam{{/if}}
+        </button>
+        <button class="ncm-btn ncm-btn--danger" data-action="delete-message">
           <i class="fas fa-trash"></i> Delete
         </button>
       </div>
       
       {{else}}
       
-      {{!-- No Message Selected --}}
-      <div class="ncm-message-viewer__empty">
-        <i class="ncm-message-viewer__empty-icon fas fa-envelope-open"></i>
+      {{!-- No Message Selected - Better Empty State --}}
+      <div class="ncm-message-viewer__empty ncm-message-viewer__empty--large">
+        <i class="ncm-message-viewer__empty-icon fas fa-envelope-open fa-4x"></i>
         <p class="ncm-message-viewer__empty-text">No Message Selected</p>
-        <p class="ncm-message-viewer__empty-subtext">Select a message from the list</p>
+        <p class="ncm-message-viewer__empty-subtext">Select a message from the list to view its contents</p>
+        <div class="ncm-message-viewer__empty-action">
+          <p>or</p>
+          <button class="ncm-btn ncm-btn--primary ncm-btn--large" data-action="compose">
+            <i class="fas fa-pen"></i> Compose New Message
+          </button>
+        </div>
       </div>
       
       {{/if}}

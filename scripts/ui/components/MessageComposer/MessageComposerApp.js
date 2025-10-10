@@ -1,58 +1,30 @@
 /**
- * Message Composer Application
+ * Message Composer Application (COMPLETE)
  * File: scripts/ui/components/MessageComposer/MessageComposerApp.js
  * Module: cyberpunkred-messenger
- * Description: Compose and send messages
+ * Description: Full message composer with contact integration
  */
 
 import { MODULE_ID } from '../../../utils/constants.js';
+import { isValidEmail } from '../../../utils/validators.js';
 import { BaseApplication } from '../BaseApplication.js';
-import { RecipientSelector } from './RecipientSelector.js';
-import { MessageEditor } from './MessageEditor.js';
-import { SchedulingPanel } from './SchedulingPanel.js';
-import { MessageService } from '../../../services/MessageService.js';
-import { ContactRepository } from '../../../data/ContactRepository.js';
-import { EVENTS } from '../../../core/EventBus.js';
+import { PlayerEmailSetup } from '../../dialogs/PlayerEmailSetup.js';
+import { ContactManagerApp } from '../ContactManager/ContactManagerApp.js';
 
 export class MessageComposerApp extends BaseApplication {
   constructor(options = {}) {
     super(options);
     
-    // Services
-    this.messageService = options.messageService || new MessageService();
-    this.contactRepository = options.contactRepository || new ContactRepository();
-    
-    // Composition mode
-    this.mode = options.mode || 'new'; // new, reply, forward
+    this.mode = options.mode || 'compose'; // 'compose', 'reply', 'forward'
     this.originalMessage = options.originalMessage || null;
     
-    // Form data
     this.formData = {
       to: options.to || '',
       subject: options.subject || '',
-      content: options.content || '',
-      from: this._getCurrentUserEmail()
+      content: options.content || ''
     };
-    
-    // Initialize components
-    this.recipientSelector = new RecipientSelector(this);
-    this.messageEditor = new MessageEditor(this);
-    this.schedulingPanel = new SchedulingPanel(this);
-    
-    // Register components
-    this.registerComponent('recipientSelector', this.recipientSelector);
-    this.registerComponent('messageEditor', this.messageEditor);
-    this.registerComponent('schedulingPanel', this.schedulingPanel);
-    
-    // Subscribe to composer open events
-    this.subscribe('composer:open', (data) => {
-      this._handleComposerOpen(data);
-    });
   }
   
-  /**
-   * Default options
-   */
   static get defaultOptions() {
     return foundry.utils.mergeObject(super.defaultOptions, {
       classes: ["ncm-app", "ncm-composer"],
@@ -64,319 +36,289 @@ export class MessageComposerApp extends BaseApplication {
     });
   }
   
-  /**
-   * Get data for template
-   */
-  getData(options = {}) {
-    const data = super.getData(options);
-    
-    // Get all contacts
-    const contacts = this.contactRepository.getAll();
-    
-    // Get recent recipients (from state or localStorage)
-    const recentRecipients = this._getRecentRecipients();
-    
-    // Get all actors for recipient suggestions
-    const actors = game.actors
-      .filter(a => a.type === 'character')
-      .map(a => ({
-        id: a.id,
-        name: a.name,
-        email: `${a.name.toLowerCase().replace(/\s+/g, '')}@nightcity.net`,
-        img: a.img
-      }));
+  async getData(options = {}) {
+    const actor = game.user.character;
+    const senderEmail = actor?.getFlag(MODULE_ID, "emailAddress") || "No email set";
     
     return {
-      ...data,
-      mode: this.mode,
-      formData: this.formData,
-      contacts: contacts,
-      recentRecipients: recentRecipients,
-      actorSuggestions: actors,
-      originalMessage: this.originalMessage,
-      characterName: game.user.character?.name || game.user.name,
-      userEmail: this.formData.from
+      ...super.getData(options),
+      senderEmail,
+      to: this.formData.to,
+      subject: this.formData.subject,
+      content: this.formData.content,
+      hasEmail: senderEmail !== "No email set",
+      mode: this.mode
     };
   }
   
   /**
-   * Send message
-   * @param {Object} formData - Form data
-   * @param {boolean} schedule - Whether to schedule instead of send
-   * @returns {Promise<void>}
+   * Check and prompt for email setup if needed
    */
-  async sendMessage(formData, schedule = false) {
-    try {
-      // Validate form
-      if (!formData.to || !formData.subject || !formData.content) {
-        throw new Error('Please fill in all required fields');
-      }
-      
-      // Build message data
-      const messageData = {
-        to: formData.to,
-        from: this.formData.from,
-        subject: formData.subject,
-        content: formData.content,
-        network: this.stateManager.get('currentNetwork') || 'CITINET'
-      };
-      
-      if (schedule) {
-        // Open scheduling dialog
-        this.schedulingPanel.openScheduleDialog(messageData);
-      } else {
-        // Send immediately
-        await this.messageService.sendMessage(messageData);
-        
-        // Track recipient
-        this._addRecentRecipient(formData.to);
-        
-        // Close composer
-        this.close();
-      }
-    } catch (error) {
-      console.error(`${MODULE_ID} | Error sending message:`, error);
-      ui.notifications.error(error.message);
-    }
-  }
-  
-  /**
-   * Save as draft
-   * @param {Object} formData - Form data
-   */
-  async saveDraft(formData) {
-    try {
-      // Store draft in localStorage
-      const draftKey = `${MODULE_ID}-draft-${game.user.id}`;
-      const draft = {
-        ...formData,
-        savedAt: new Date().toISOString()
-      };
-      
-      localStorage.setItem(draftKey, JSON.stringify(draft));
-      
-      ui.notifications.info('Draft saved');
-    } catch (error) {
-      console.error(`${MODULE_ID} | Error saving draft:`, error);
-      ui.notifications.error('Failed to save draft');
-    }
-  }
-  
-  /**
-   * Load draft
-   * @returns {Object|null}
-   */
-  loadDraft() {
-    try {
-      const draftKey = `${MODULE_ID}-draft-${game.user.id}`;
-      const stored = localStorage.getItem(draftKey);
-      
-      if (stored) {
-        return JSON.parse(stored);
-      }
-    } catch (error) {
-      console.error(`${MODULE_ID} | Error loading draft:`, error);
+  async _ensureEmailSetup() {
+    const actor = game.user.character;
+    
+    if (!actor) {
+      ui.notifications.error("You must have a character assigned.");
+      return false;
     }
     
-    return null;
+    const email = actor.getFlag(MODULE_ID, "emailAddress");
+    
+    if (!email) {
+      ui.notifications.warn("Please set up your email address first.");
+      const success = await PlayerEmailSetup.show();
+      
+      if (success) {
+        this.render(false); // Refresh to show new email
+      }
+      
+      return success;
+    }
+    
+    return true;
   }
   
   /**
-   * Clear draft
+   * Open contact manager for selection
    */
-  clearDraft() {
-    const draftKey = `${MODULE_ID}-draft-${game.user.id}`;
-    localStorage.removeItem(draftKey);
+  _openContactPicker() {
+    new ContactManagerApp({
+      selectMode: true,
+      onSelect: (contact) => {
+        // Update recipient field
+        const input = this.element.find('[name="to"]');
+        input.val(contact.email);
+        this.formData.to = contact.email;
+        
+        // Show brief confirmation
+        this._showContactSelected(contact);
+      }
+    }).render(true);
   }
   
   /**
-   * Activate listeners
+   * Show contact selected feedback
    */
+  _showContactSelected(contact) {
+    const suggestions = this.element.find('.ncm-composer__suggestions');
+    
+    suggestions.html(`
+      <div class="ncm-composer__suggestion-item">
+        ${contact.img ? 
+          `<img src="${contact.img}" class="ncm-composer__suggestion-icon" />` :
+          `<div class="ncm-composer__suggestion-icon--placeholder">
+            <i class="fas fa-user"></i>
+          </div>`
+        }
+        <div>
+          <div class="ncm-composer__suggestion-name">${contact.name}</div>
+          <div class="ncm-composer__suggestion-email">${contact.email}</div>
+        </div>
+      </div>
+    `).show();
+    
+    setTimeout(() => suggestions.fadeOut(), 2000);
+  }
+  
+  /**
+   * Setup autocomplete for recipient field
+   */
+  async _setupRecipientAutocomplete(input, suggestions) {
+    // Load all available contacts
+    const userContacts = await game.user.getFlag(MODULE_ID, "contacts") || [];
+    
+    // Add actor emails
+    const actorContacts = game.actors.contents
+      .filter(a => a.getFlag(MODULE_ID, "emailAddress"))
+      .map(a => ({
+        name: a.name,
+        email: a.getFlag(MODULE_ID, "emailAddress"),
+        img: a.img
+      }));
+    
+    const allContacts = [...userContacts, ...actorContacts];
+    
+    // Remove duplicates by email
+    const uniqueContacts = Array.from(
+      new Map(allContacts.map(c => [c.email, c])).values()
+    );
+    
+    input.on('input', (e) => {
+      const value = e.target.value.toLowerCase().trim();
+      
+      if (!value) {
+        suggestions.hide();
+        return;
+      }
+      
+      // Filter matching contacts
+      const matches = uniqueContacts.filter(c => 
+        c.name.toLowerCase().includes(value) ||
+        c.email.toLowerCase().includes(value)
+      ).slice(0, 5);
+      
+      if (matches.length === 0) {
+        suggestions.hide();
+        return;
+      }
+      
+      // Render suggestions
+      const html = matches.map(contact => `
+        <div class="ncm-composer__suggestion-item" data-email="${contact.email}">
+          ${contact.img ? 
+            `<img src="${contact.img}" class="ncm-composer__suggestion-icon" />` :
+            `<div class="ncm-composer__suggestion-icon--placeholder">
+              <i class="fas fa-user"></i>
+            </div>`
+          }
+          <div>
+            <div class="ncm-composer__suggestion-name">${contact.name}</div>
+            <div class="ncm-composer__suggestion-email">${contact.email}</div>
+          </div>
+        </div>
+      `).join('');
+      
+      suggestions.html(html).show();
+    });
+    
+    // Click on suggestion
+    suggestions.on('click', '.ncm-composer__suggestion-item', (e) => {
+      const email = $(e.currentTarget).data('email');
+      input.val(email);
+      this.formData.to = email;
+      suggestions.hide();
+    });
+    
+    // Hide on blur (with delay for click to register)
+    input.on('blur', () => {
+      setTimeout(() => suggestions.hide(), 200);
+    });
+  }
+  
+  /**
+   * Send the message
+   */
+  async sendMessage() {
+    const actor = game.user.character;
+    const senderEmail = actor?.getFlag(MODULE_ID, "emailAddress");
+    
+    if (!senderEmail) {
+      ui.notifications.error("You must set up your email address first.");
+      return;
+    }
+    
+    const { to, subject, content } = this.formData;
+    
+    // Validate
+    if (!to) {
+      ui.notifications.error("Please enter a recipient.");
+      return;
+    }
+    
+    if (!isValidEmail(to)) {
+      ui.notifications.error("Invalid recipient email format.");
+      return;
+    }
+    
+    if (!subject) {
+      ui.notifications.error("Please enter a subject.");
+      return;
+    }
+    
+    if (!content) {
+      ui.notifications.error("Please enter message content.");
+      return;
+    }
+    
+    try {
+      // Call your existing message sending system
+      await game.nightcity.messageManager.send({
+        from: `${actor.name} (${senderEmail})`,
+        to,
+        subject,
+        content,
+        timestamp: new Date().toISOString()
+      });
+      
+      ui.notifications.info("Message sent!");
+      this.close();
+      
+    } catch (error) {
+      console.error(`${MODULE_ID} | Error sending message:`, error);
+      ui.notifications.error("Failed to send message.");
+    }
+  }
+  
   activateListeners(html) {
     super.activateListeners(html);
     
-    // Send button
-    html.find('.ncm-composer__send-btn').on('click', (event) => {
-      event.preventDefault();
-      
-      const formData = this._getFormData(html);
-      this.sendMessage(formData, false);
-      
-      this.playSound('click');
-    });
+    // Setup email button (if no email)
+    const actor = game.user.character;
+    const email = actor?.getFlag(MODULE_ID, "emailAddress");
     
-    // Schedule button
-    html.find('.ncm-composer__schedule-btn').on('click', (event) => {
-      event.preventDefault();
-      
-      const formData = this._getFormData(html);
-      this.sendMessage(formData, true);
-      
-      this.playSound('click');
-    });
+    if (!email) {
+      const headerBottom = html.find('.ncm-header__bottom');
+      headerBottom.append(`
+        <button class="ncm-btn ncm-btn--small ncm-btn--primary" data-action="setup-email">
+          <i class="fas fa-envelope-open-text"></i> Set Up Email
+        </button>
+      `);
+    }
     
-    // Save draft button
-    html.find('.ncm-composer__draft-btn').on('click', (event) => {
-      event.preventDefault();
-      
-      const formData = this._getFormData(html);
-      this.saveDraft(formData);
-      
-      this.playSound('click');
-    });
-    
-    // Load draft button
-    html.find('.ncm-composer__load-draft-btn').on('click', (event) => {
-      event.preventDefault();
-      
-      const draft = this.loadDraft();
-      if (draft) {
-        this._populateForm(html, draft);
-        ui.notifications.info('Draft loaded');
-      } else {
-        ui.notifications.warn('No draft found');
+    html.find('[data-action="setup-email"]').on('click', async () => {
+      const success = await PlayerEmailSetup.show();
+      if (success) {
+        this.render(false);
       }
-      
-      this.playSound('click');
+    });
+    
+    // Contact selection button
+    html.find('[data-action="select-contact"]').on('click', () => {
+      this._openContactPicker();
+    });
+    
+    // Recipient autocomplete
+    const recipientInput = html.find('[name="to"]');
+    const suggestions = html.find('.ncm-composer__suggestions');
+    this._setupRecipientAutocomplete(recipientInput, suggestions);
+    
+    // Track form changes
+    html.find('[name="to"]').on('change', (e) => {
+      this.formData.to = $(e.currentTarget).val().trim();
+    });
+    
+    html.find('[name="subject"]').on('change', (e) => {
+      this.formData.subject = $(e.currentTarget).val().trim();
+    });
+    
+    html.find('[name="content"]').on('change', (e) => {
+      this.formData.content = $(e.currentTarget).val().trim();
+    });
+    
+    // Send button
+    html.find('[data-action="send"]').on('click', async (e) => {
+      e.preventDefault();
+      await this.sendMessage();
     });
     
     // Cancel button
-    html.find('.ncm-composer__cancel-btn').on('click', (event) => {
-      event.preventDefault();
+    html.find('[data-action="cancel"]').on('click', () => {
       this.close();
     });
   }
   
   /**
-   * Lifecycle: First render
+   * Override render to check email on open
    */
-  _onFirstRender() {
-    console.log(`${MODULE_ID} | Composer opened in ${this.mode} mode`);
-    
-    // Play open sound
-    this.playSound('open');
-    
-    // Emit event
-    this.eventBus.emit(EVENTS.UI_COMPOSER_OPENED, {
-      mode: this.mode
-    });
-    
-    // Register in state
-    this.stateManager.get('activeComposers').add(this.appId);
-  }
-  
-  /**
-   * Close composer
-   */
-  async close(options = {}) {
-    // Emit event
-    this.eventBus.emit(EVENTS.UI_COMPOSER_CLOSED, {
-      mode: this.mode
-    });
-    
-    // Remove from active composers
-    this.stateManager.get('activeComposers').delete(this.appId);
-    
-    return super.close(options);
-  }
-  
-  // ========================================
-  // Private Helper Methods
-  // ========================================
-  
-  /**
-   * Get current user's email
-   * @private
-   */
-  _getCurrentUserEmail() {
-    const character = game.user.character;
-    const name = character?.name || game.user.name;
-    return `${name.toLowerCase().replace(/\s+/g, '')}@nightcity.net`;
-  }
-  
-  /**
-   * Get form data from HTML
-   * @private
-   */
-  _getFormData(html) {
-    return {
-      to: html.find('[name="to"]').val().trim(),
-      subject: html.find('[name="subject"]').val().trim(),
-      content: html.find('[name="content"]').val().trim()
-    };
-  }
-  
-  /**
-   * Populate form with data
-   * @private
-   */
-  _populateForm(html, data) {
-    html.find('[name="to"]').val(data.to || '');
-    html.find('[name="subject"]').val(data.subject || '');
-    html.find('[name="content"]').val(data.content || '');
-  }
-  
-  /**
-   * Get recent recipients
-   * @private
-   */
-  _getRecentRecipients() {
-    try {
-      const key = `${MODULE_ID}-recent-recipients-${game.user.id}`;
-      const stored = localStorage.getItem(key);
-      return stored ? JSON.parse(stored) : [];
-    } catch (e) {
-      return [];
-    }
-  }
-  
-  /**
-   * Add recent recipient
-   * @private
-   */
-  _addRecentRecipient(email) {
-    const recent = this._getRecentRecipients();
-    
-    // Remove if already exists
-    const filtered = recent.filter(r => r !== email);
-    
-    // Add to front
-    filtered.unshift(email);
-    
-    // Keep only last 10
-    const limited = filtered.slice(0, 10);
-    
-    // Save
-    const key = `${MODULE_ID}-recent-recipients-${game.user.id}`;
-    localStorage.setItem(key, JSON.stringify(limited));
-  }
-  
-  /**
-   * Handle composer open event
-   * @private
-   */
-  _handleComposerOpen(data) {
-    if (data.mode) {
-      this.mode = data.mode;
+  async render(force = false, options = {}) {
+    // Check email setup before rendering
+    if (!this.rendered) {
+      const hasEmail = await this._ensureEmailSetup();
+      if (!hasEmail) {
+        return this; // Don't render if email setup was cancelled
+      }
     }
     
-    if (data.originalMessage) {
-      this.originalMessage = data.originalMessage;
-    }
-    
-    if (data.to) {
-      this.formData.to = data.to;
-    }
-    
-    if (data.subject) {
-      this.formData.subject = data.subject;
-    }
-    
-    if (data.content) {
-      this.formData.content = data.content;
-    }
-    
-    // Re-render
-    this.render(true);
+    return super.render(force, options);
   }
 }

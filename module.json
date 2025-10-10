@@ -18,7 +18,15 @@
     "scripts/main.js"
   ],
   "styles": [
-    "styles/base/variables.css"
+    "styles/base/variables.css",
+    "styles/base/reset.css",
+    "styles/base/animations.css",
+    "styles/components/message-viewer.css",
+    "styles/components/message-composer.css",
+    "styles/components/contact-manager.css",
+    "styles/components/item-inbox.css",
+    "styles/components/admin-panel.css",
+    "styles/components/dialogs.css"
   ],
   "languages": [
     {

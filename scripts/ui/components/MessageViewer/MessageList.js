@@ -1,5 +1,5 @@
 /**
- * Message List Component
+ * Message List Component - FIXED
  * File: scripts/ui/components/MessageViewer/MessageList.js
  * Module: cyberpunkred-messenger
  * Description: Handles message list rendering and interaction
@@ -65,42 +65,167 @@ export class MessageList {
   
   /**
    * Get paginated messages
-   * @returns {Object} { messages, currentPage, totalPages }
+   * @returns {Object} { messages, currentPage, totalPages, totalMessages }
    */
   getPaginatedMessages() {
-    const allMessages = this.getMessages();
-    const pagination = this.stateManager.get('pagination');
-    const { currentPage, itemsPerPage } = pagination;
+    // ✅ FIXED: this.app -> this.parent
+    const currentFilter = this.parent.stateManager.get('currentFilter') || 'inbox';
+    const searchTerm = this.parent.stateManager.get('searchTerm') || '';
+    const currentPage = this.parent.stateManager.get('currentPage') || 1;
+    const messagesPerPage = this.parent.stateManager.get('messagesPerPage') || 20;
     
-    const totalPages = Math.ceil(allMessages.length / itemsPerPage);
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
+    // Get filtered messages
+    let filtered = this._getFilteredMessages(currentFilter);
     
-    const messages = allMessages.slice(startIndex, endIndex);
+    // Apply search
+    if (searchTerm) {
+      filtered = this._searchMessages(filtered, searchTerm);
+    }
+    
+    // Apply advanced filters
+    filtered = this._applyAdvancedFilters(filtered);
+    
+    // Sort by date (newest first)
+    filtered.sort((a, b) => {
+      const dateA = new Date(a.timestamp || 0);
+      const dateB = new Date(b.timestamp || 0);
+      return dateB - dateA;
+    });
+    
+    // Calculate pagination
+    const totalMessages = filtered.length;
+    const totalPages = Math.ceil(totalMessages / messagesPerPage);
+    const startIndex = (currentPage - 1) * messagesPerPage;
+    const endIndex = startIndex + messagesPerPage;
+    
+    // Get page of messages
+    const messages = filtered.slice(startIndex, endIndex);
     
     return {
       messages,
       currentPage,
       totalPages,
-      totalCount: allMessages.length
+      totalMessages
     };
+  }
+  
+  /**
+   * Get filtered messages by category
+   * ✅ NEW: Missing method that was referenced
+   * @private
+   */
+  _getFilteredMessages(filter) {
+    const allMessages = this.stateManager.getAllMessages() || [];
+    
+    switch (filter) {
+      case 'inbox':
+        return allMessages.filter(m => !m.status?.spam && !m.status?.deleted);
+      
+      case 'unread':
+        return allMessages.filter(m => !m.status?.read && !m.status?.spam && !m.status?.deleted);
+      
+      case 'saved':
+        return allMessages.filter(m => m.status?.saved && !m.status?.deleted);
+      
+      case 'spam':
+        return allMessages.filter(m => m.status?.spam && !m.status?.deleted);
+      
+      case 'sent':
+        return allMessages.filter(m => m.status?.sent && !m.status?.deleted);
+      
+      case 'scheduled':
+        return allMessages.filter(m => m.status?.scheduled && !m.status?.deleted);
+      
+      case 'deleted':
+        return allMessages.filter(m => m.status?.deleted);
+      
+      case 'all':
+      default:
+        return allMessages.filter(m => !m.status?.deleted);
+    }
+  }
+  
+  /**
+   * Search messages by term
+   * ✅ NEW: Missing method that was referenced
+   * @private
+   */
+  _searchMessages(messages, searchTerm) {
+    if (!searchTerm || searchTerm.trim() === '') {
+      return messages;
+    }
+    
+    const term = searchTerm.toLowerCase().trim();
+    
+    return messages.filter(m => {
+      // Search in from
+      if (m.from?.toLowerCase().includes(term)) return true;
+      
+      // Search in to
+      if (m.to?.toLowerCase().includes(term)) return true;
+      
+      // Search in subject
+      if (m.subject?.toLowerCase().includes(term)) return true;
+      
+      // Search in body
+      if (m.body?.toLowerCase().includes(term)) return true;
+      
+      // Search in preview
+      if (m.preview?.toLowerCase().includes(term)) return true;
+      
+      return false;
+    });
+  }
+  
+  /**
+   * Get filtered messages based on advanced filters
+   * @private
+   */
+  _applyAdvancedFilters(messages) {
+    // ✅ FIXED: this.app -> this.parent
+    const filters = this.parent.stateManager.get('advancedFilters') || {};
+    
+    let filtered = [...messages];
+    
+    // Filter by sender
+    if (filters.sender) {
+      filtered = filtered.filter(m => m.from === filters.sender);
+    }
+    
+    // Filter by date range
+    if (filters.dateFrom) {
+      const fromDate = new Date(filters.dateFrom);
+      filtered = filtered.filter(m => new Date(m.timestamp) >= fromDate);
+    }
+    
+    if (filters.dateTo) {
+      const toDate = new Date(filters.dateTo);
+      toDate.setHours(23, 59, 59, 999); // End of day
+      filtered = filtered.filter(m => new Date(m.timestamp) <= toDate);
+    }
+    
+    // Filter by unread only
+    if (filters.unreadOnly) {
+      filtered = filtered.filter(m => !m.status?.read);
+    }
+    
+    return filtered;
   }
   
   /**
    * Select a message
    * @param {string} messageId - Message ID
    */
-  selectMessage(messageId) {
+  async selectMessage(messageId) {
     this.selectedMessageId = messageId;
     this.stateManager.set('selectedMessageId', messageId);
     
     // Mark as read
-    const message = this.stateManager.get('messages').get(messageId);
+    const messages = this.stateManager.get('messages');
+    const message = messages instanceof Map ? messages.get(messageId) : messages.find(m => m.id === messageId);
+    
     if (message && !message.status?.read) {
-      this.stateManager.markAsRead(messageId);
-      
-      // Persist read status
-      this._persistReadStatus(messageId);
+      await this.markAsRead(messageId);
     }
     
     // Update UI
@@ -111,11 +236,110 @@ export class MessageList {
   }
   
   /**
+   * Mark message as read
+   * ✅ NEW: Extracted for reusability
+   * @param {string} messageId
+   */
+  async markAsRead(messageId) {
+    // Update state
+    this.stateManager.markAsRead(messageId);
+    
+    // Persist read status
+    await this._persistReadStatus(messageId);
+    
+    // Emit event
+    this.eventBus.emit(EVENTS.MESSAGE_READ, { messageId });
+  }
+  
+  /**
+   * Toggle saved status
+   * ✅ NEW: For save button
+   * @param {string} messageId
+   */
+  async toggleSaved(messageId) {
+    const messages = this.stateManager.get('messages');
+    const message = messages instanceof Map ? messages.get(messageId) : messages.find(m => m.id === messageId);
+    
+    if (!message) return;
+    
+    const isSaved = message.status?.saved || false;
+    
+    // Update state
+    this.stateManager.updateMessageStatus(messageId, { saved: !isSaved });
+    
+    // Persist to journal
+    if (message.page) {
+      await message.page.setFlag(MODULE_ID, 'status', {
+        ...message.status,
+        saved: !isSaved
+      });
+    }
+    
+    // Emit event
+    this.eventBus.emit(EVENTS.MESSAGE_UPDATED, { messageId });
+  }
+  
+  /**
+   * Toggle spam status
+   * ✅ NEW: For spam button
+   * @param {string} messageId
+   */
+  async toggleSpam(messageId) {
+    const messages = this.stateManager.get('messages');
+    const message = messages instanceof Map ? messages.get(messageId) : messages.find(m => m.id === messageId);
+    
+    if (!message) return;
+    
+    const isSpam = message.status?.spam || false;
+    
+    // Update state
+    this.stateManager.updateMessageStatus(messageId, { spam: !isSpam });
+    
+    // Persist to journal
+    if (message.page) {
+      await message.page.setFlag(MODULE_ID, 'status', {
+        ...message.status,
+        spam: !isSpam
+      });
+    }
+    
+    // Emit event
+    this.eventBus.emit(EVENTS.MESSAGE_UPDATED, { messageId });
+  }
+  
+  /**
+   * Delete message
+   * ✅ NEW: For delete button
+   * @param {string} messageId
+   */
+  async deleteMessage(messageId) {
+    const messages = this.stateManager.get('messages');
+    const message = messages instanceof Map ? messages.get(messageId) : messages.find(m => m.id === messageId);
+    
+    if (!message || !message.page) return;
+    
+    try {
+      // Delete the journal page
+      await message.page.delete();
+      
+      // Remove from state
+      this.stateManager.removeMessage(messageId);
+      
+      // Emit event
+      this.eventBus.emit(EVENTS.MESSAGE_DELETED, { messageId });
+      
+    } catch (error) {
+      console.error(`${MODULE_ID} | Error deleting message:`, error);
+      throw error;
+    }
+  }
+  
+  /**
    * Update selected message UI
    * @private
    */
   _updateSelectedUI() {
-    const $element = this.parent._element;
+    const $element = this.parent.element;
     if (!$element) return;
     
     // Remove previous selection
@@ -133,19 +357,22 @@ export class MessageList {
    * @private
    */
   _updateMessageStatus() {
-    const $element = this.parent._element;
+    const $element = this.parent.element;
     if (!$element) return;
     
-    const unreadMessages = this.stateManager.get('unreadMessages');
+    const messages = this.stateManager.get('messages');
     
     $element.find('.ncm-message-item').each((index, item) => {
       const $item = $(item);
       const messageId = $item.data('message-id');
+      const message = messages instanceof Map ? messages.get(messageId) : messages.find(m => m.id === messageId);
       
-      if (unreadMessages.has(messageId)) {
-        $item.addClass('ncm-message-item--unread');
-      } else {
+      if (message?.status?.read) {
         $item.removeClass('ncm-message-item--unread');
+        $item.addClass('ncm-message-item--read');
+      } else {
+        $item.addClass('ncm-message-item--unread');
+        $item.removeClass('ncm-message-item--read');
       }
     });
   }
@@ -155,7 +382,9 @@ export class MessageList {
    * @private
    */
   async _persistReadStatus(messageId) {
-    const message = this.stateManager.get('messages').get(messageId);
+    const messages = this.stateManager.get('messages');
+    const message = messages instanceof Map ? messages.get(messageId) : messages.find(m => m.id === messageId);
+    
     if (!message || !message.page) return;
     
     try {
@@ -185,7 +414,9 @@ export class MessageList {
       this.selectMessage(messageId);
       
       // Play click sound
-      this.parent.playSound('click');
+      if (this.parent.playSound) {
+        this.parent.playSound('click');
+      }
     });
     
     // Unread indicator click (mark as read/unread toggle)
@@ -193,12 +424,13 @@ export class MessageList {
       event.stopPropagation();
       
       const messageId = $(event.currentTarget).closest('.ncm-message-item').data('message-id');
-      const unreadMessages = this.stateManager.get('unreadMessages');
+      const messages = this.stateManager.get('messages');
+      const message = messages instanceof Map ? messages.get(messageId) : messages.find(m => m.id === messageId);
       
-      if (unreadMessages.has(messageId)) {
-        this.stateManager.markAsRead(messageId);
-      } else {
+      if (message?.status?.read) {
         this.stateManager.markAsUnread(messageId);
+      } else {
+        this.markAsRead(messageId);
       }
       
       this._updateMessageStatus();

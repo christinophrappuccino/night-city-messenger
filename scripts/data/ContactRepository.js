@@ -2,222 +2,313 @@
  * Contact Repository
  * File: scripts/data/ContactRepository.js
  * Module: cyberpunkred-messenger
- * Description: Handles contact data operations
+ * Description: Manage contact data storage and retrieval
  */
 
 import { MODULE_ID } from '../utils/constants.js';
-import { DataValidator } from './DataValidator.js';
-import { SettingsManager } from '../core/SettingsManager.js';
 
 export class ContactRepository {
   constructor() {
-    this.settingsManager = SettingsManager.getInstance();
+    this.contacts = [];
+    this._loaded = false;
   }
   
   /**
-   * Get all contacts for current user
-   * @returns {Array<Object>}
+   * Load contacts from storage
+   * @private
    */
-  getAll() {
-    const contacts = this.settingsManager.get('contacts') || {};
-    const userId = game.user.id;
+  async _loadContacts() {
+    if (this._loaded) return;
     
-    return contacts[userId] || [];
+    try {
+      // Load from user flags (client-side storage)
+      const stored = await game.user.getFlag(MODULE_ID, 'contacts');
+      this.contacts = stored || [];
+      this._loaded = true;
+    } catch (error) {
+      console.error(`${MODULE_ID} | Error loading contacts:`, error);
+      this.contacts = [];
+    }
   }
   
   /**
-   * Find contact by email
-   * @param {string} email - Email address
-   * @returns {Object|null}
+   * Save contacts to storage
+   * @private
    */
-  findByEmail(email) {
-    const contacts = this.getAll();
-    return contacts.find(c => c.email === email) || null;
+  async _saveContacts() {
+    try {
+      await game.user.setFlag(MODULE_ID, 'contacts', this.contacts);
+    } catch (error) {
+      console.error(`${MODULE_ID} | Error saving contacts:`, error);
+      throw error;
+    }
   }
   
   /**
-   * Find contact by ID
+   * Get all contacts
+   * @returns {Promise<Array>}
+   */
+  async getAll() {
+    await this._loadContacts();
+    return [...this.contacts];
+  }
+  
+  /**
+   * Get contact by ID
    * @param {string} id - Contact ID
-   * @returns {Object|null}
+   * @returns {Promise<Object|null>}
    */
-  findById(id) {
-    const contacts = this.getAll();
-    return contacts.find(c => c.id === id) || null;
+  async getById(id) {
+    await this._loadContacts();
+    return this.contacts.find(c => c.id === id) || null;
   }
   
   /**
-   * Create a new contact
-   * @param {Object} contactData - Contact data
-   * @returns {Promise<Object>} Created contact
-   */
-  async create(contactData) {
-    // Validate
-    const validation = DataValidator.validateContact(contactData);
-    if (!validation.valid) {
-      throw new Error(`Invalid contact data: ${validation.errors.join(', ')}`);
-    }
-    
-    const data = validation.sanitized;
-    
-    // Check if already exists
-    if (this.findByEmail(data.email)) {
-      throw new Error(`Contact already exists: ${data.email}`);
-    }
-    
-    // Generate ID
-    const contact = {
-      id: foundry.utils.randomID(),
-      ...data,
-      createdAt: new Date().toISOString()
-    };
-    
-    // Save
-    const contacts = this.getAll();
-    contacts.push(contact);
-    await this._saveContacts(contacts);
-    
-    console.log(`${MODULE_ID} | Created contact: ${contact.name}`);
-    
-    return contact;
-  }
-  
-  /**
-   * Update a contact
-   * @param {string} id - Contact ID
-   * @param {Object} updates - Fields to update
-   * @returns {Promise<Object>} Updated contact
-   */
-  async update(id, updates) {
-    const contacts = this.getAll();
-    const index = contacts.findIndex(c => c.id === id);
-    
-    if (index === -1) {
-      throw new Error(`Contact not found: ${id}`);
-    }
-    
-    // Validate updates
-    const merged = { ...contacts[index], ...updates };
-    const validation = DataValidator.validateContact(merged);
-    if (!validation.valid) {
-      throw new Error(`Invalid contact data: ${validation.errors.join(', ')}`);
-    }
-    
-    // Update
-    contacts[index] = {
-      ...contacts[index],
-      ...validation.sanitized,
-      updatedAt: new Date().toISOString()
-    };
-    
-    await this._saveContacts(contacts);
-    
-    console.log(`${MODULE_ID} | Updated contact: ${id}`);
-    
-    return contacts[index];
-  }
-  
-  /**
-   * Delete a contact
-   * @param {string} id - Contact ID
-   * @returns {Promise<boolean>}
-   */
-  async delete(id) {
-    const contacts = this.getAll();
-    const filtered = contacts.filter(c => c.id !== id);
-    
-    if (filtered.length === contacts.length) {
-      return false; // Not found
-    }
-    
-    await this._saveContacts(filtered);
-    
-    console.log(`${MODULE_ID} | Deleted contact: ${id}`);
-    
-    return true;
-  }
-  
-  /**
-   * Search contacts
+   * Search contacts by name or email
    * @param {string} query - Search query
-   * @returns {Array<Object>}
+   * @returns {Promise<Array>}
    */
-  search(query) {
-    if (!query || query.trim().length === 0) {
+  async search(query) {
+    await this._loadContacts();
+    
+    if (!query || query.trim() === '') {
       return this.getAll();
     }
     
-    const queryLower = query.toLowerCase();
-    const contacts = this.getAll();
+    const searchLower = query.toLowerCase();
     
-    return contacts.filter(c => 
-      c.name.toLowerCase().includes(queryLower) ||
-      c.email.toLowerCase().includes(queryLower) ||
-      c.notes?.toLowerCase().includes(queryLower)
+    return this.contacts.filter(contact => 
+      contact.name.toLowerCase().includes(searchLower) ||
+      contact.email.toLowerCase().includes(searchLower) ||
+      (contact.notes && contact.notes.toLowerCase().includes(searchLower))
     );
   }
   
   /**
    * Get contacts by category
    * @param {string} category - Category name
-   * @returns {Array<Object>}
+   * @returns {Promise<Array>}
    */
-  getByCategory(category) {
-    const contacts = this.getAll();
-    return contacts.filter(c => c.category === category);
+  async getByCategory(category) {
+    await this._loadContacts();
+    
+    if (!category || category === 'all') {
+      return this.getAll();
+    }
+    
+    return this.contacts.filter(c => 
+      c.category && c.category.toLowerCase() === category.toLowerCase()
+    );
   }
   
   /**
-   * Get all categories
-   * @returns {Array<string>}
+   * Get all unique categories
+   * @returns {Promise<Array>}
    */
-  getCategories() {
-    const contacts = this.getAll();
-    const categories = new Set(contacts.map(c => c.category).filter(Boolean));
+  async getCategories() {
+    await this._loadContacts();
+    
+    const categories = new Set();
+    this.contacts.forEach(contact => {
+      if (contact.category) {
+        categories.add(contact.category);
+      }
+    });
+    
     return Array.from(categories).sort();
   }
   
   /**
-   * Import contacts from actors
-   * @returns {Promise<number>} Number of imported contacts
+   * Add new contact
+   * @param {Object} contactData - Contact data
+   * @returns {Promise<Object>} Created contact
    */
-  async importFromActors() {
-    const actors = game.actors.filter(a => a.type === 'character');
-    let imported = 0;
+  async add(contactData) {
+    await this._loadContacts();
     
-    for (const actor of actors) {
-      const email = `${actor.name.toLowerCase().replace(/\s+/g, '')}@nightcity.net`;
-      
-      // Skip if already exists
-      if (this.findByEmail(email)) continue;
-      
-      try {
-        await this.create({
-          name: actor.name,
-          email: email,
-          actorId: actor.id,
-          category: 'characters'
-        });
-        imported++;
-      } catch (error) {
-        console.warn(`${MODULE_ID} | Failed to import actor ${actor.name}:`, error);
-      }
+    // Validate required fields
+    if (!contactData.name || !contactData.email) {
+      throw new Error('Contact must have name and email');
     }
     
-    console.log(`${MODULE_ID} | Imported ${imported} contacts from actors`);
+    // Check for duplicate email
+    const existing = this.contacts.find(c => 
+      c.email.toLowerCase() === contactData.email.toLowerCase()
+    );
     
-    return imported;
+    if (existing) {
+      throw new Error('Contact with this email already exists');
+    }
+    
+    // Create contact
+    const contact = {
+      id: foundry.utils.randomID(),
+      name: contactData.name.trim(),
+      email: contactData.email.trim().toLowerCase(),
+      type: contactData.type || 'npc',
+      category: contactData.category || 'General',
+      notes: contactData.notes || '',
+      img: contactData.img || null,
+      createdAt: new Date().toISOString(),
+      lastContacted: null
+    };
+    
+    this.contacts.push(contact);
+    await this._saveContacts();
+    
+    return contact;
   }
   
   /**
-   * Save contacts to settings
-   * @private
+   * Update contact
+   * @param {string} id - Contact ID
+   * @param {Object} updates - Fields to update
+   * @returns {Promise<Object>} Updated contact
    */
-  async _saveContacts(contacts) {
-    const allContacts = this.settingsManager.get('contacts') || {};
-    const userId = game.user.id;
+  async update(id, updates) {
+    await this._loadContacts();
     
-    allContacts[userId] = contacts;
+    const index = this.contacts.findIndex(c => c.id === id);
     
-    await this.settingsManager.set('contacts', allContacts);
+    if (index === -1) {
+      throw new Error('Contact not found');
+    }
+    
+    // Check for email conflicts
+    if (updates.email) {
+      const conflict = this.contacts.find(c => 
+        c.id !== id && 
+        c.email.toLowerCase() === updates.email.toLowerCase()
+      );
+      
+      if (conflict) {
+        throw new Error('Another contact already has this email');
+      }
+    }
+    
+    // Update contact
+    this.contacts[index] = {
+      ...this.contacts[index],
+      ...updates,
+      id: this.contacts[index].id, // Ensure ID doesn't change
+      createdAt: this.contacts[index].createdAt // Preserve creation date
+    };
+    
+    await this._saveContacts();
+    
+    return this.contacts[index];
+  }
+  
+  /**
+   * Delete contact
+   * @param {string} id - Contact ID
+   * @returns {Promise<boolean>}
+   */
+  async delete(id) {
+    await this._loadContacts();
+    
+    const index = this.contacts.findIndex(c => c.id === id);
+    
+    if (index === -1) {
+      return false;
+    }
+    
+    this.contacts.splice(index, 1);
+    await this._saveContacts();
+    
+    return true;
+  }
+  
+  /**
+   * Update last contacted timestamp
+   * @param {string} id - Contact ID
+   * @returns {Promise<void>}
+   */
+  async touchContact(id) {
+    await this.update(id, {
+      lastContacted: new Date().toISOString()
+    });
+  }
+  
+  /**
+   * Import contacts from array
+   * @param {Array} contacts - Contacts to import
+   * @param {boolean} merge - Merge with existing or replace
+   * @returns {Promise<Object>} Import result
+   */
+  async importContacts(contacts, merge = true) {
+    await this._loadContacts();
+    
+    let added = 0;
+    let updated = 0;
+    let skipped = 0;
+    
+    for (const contactData of contacts) {
+      try {
+        const existing = this.contacts.find(c => 
+          c.email.toLowerCase() === contactData.email.toLowerCase()
+        );
+        
+        if (existing) {
+          if (merge) {
+            await this.update(existing.id, contactData);
+            updated++;
+          } else {
+            skipped++;
+          }
+        } else {
+          await this.add(contactData);
+          added++;
+        }
+      } catch (error) {
+        console.warn(`${MODULE_ID} | Error importing contact:`, error);
+        skipped++;
+      }
+    }
+    
+    return { added, updated, skipped };
+  }
+  
+  /**
+   * Export all contacts
+   * @returns {Promise<Array>}
+   */
+  async exportContacts() {
+    return this.getAll();
+  }
+  
+  /**
+   * Clear all contacts
+   * @returns {Promise<void>}
+   */
+  async clear() {
+    this.contacts = [];
+    await this._saveContacts();
+  }
+  
+  /**
+   * Get contacts grouped by category
+   * @returns {Promise<Array>}
+   */
+  async getGroupedByCategory() {
+    await this._loadContacts();
+    
+    const grouped = {};
+    
+    this.contacts.forEach(contact => {
+      const category = contact.category || 'General';
+      
+      if (!grouped[category]) {
+        grouped[category] = [];
+      }
+      
+      grouped[category].push(contact);
+    });
+    
+    // Convert to array format
+    return Object.entries(grouped).map(([category, contacts]) => ({
+      category,
+      contacts: contacts.sort((a, b) => a.name.localeCompare(b.name))
+    })).sort((a, b) => a.category.localeCompare(b.category));
   }
 }
