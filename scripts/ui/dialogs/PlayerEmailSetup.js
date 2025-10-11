@@ -12,23 +12,23 @@ export class PlayerEmailSetup {
   /**
    * Show email setup dialog for current user
    */
-  static async show() {
-    const actor = game.user.character;
+  static async show(actor = null) {
+    const targetActor = actor || game.user.character;
     
-    if (!actor) {
-      ui.notifications.warn("You must have a character assigned to set up email.");
-      return;
+    if (!targetActor) {
+      ui.notifications.warn("No character available to set up email.");
+      return false;
     }
     
-    const currentEmail = actor.getFlag(MODULE_ID, "emailAddress") || "";
+    const currentEmail = targetActor.getFlag(MODULE_ID, "emailAddress") || "";
     
     const content = `
       <div class="ncm-email-setup">
         <p class="ncm-email-setup__description">
-          Set up your character's email address for Night City Messenger.
+          Set up email address for <strong>${targetActor.name}</strong>.
         </p>
         <div class="form-group">
-          <label>Character: <strong>${actor.name}</strong></label>
+          <label>Character: <strong>${targetActor.name}</strong></label>
         </div>
         <div class="form-group">
           <label>Email Address:</label>
@@ -49,7 +49,7 @@ export class PlayerEmailSetup {
     
     return new Promise((resolve) => {
       new Dialog({
-        title: "Email Setup",
+        title: `Email Setup - ${targetActor.name}`,
         content,
         buttons: {
           save: {
@@ -70,8 +70,8 @@ export class PlayerEmailSetup {
                 return;
               }
               
-              // Set flag on actor
-              await actor.setFlag(MODULE_ID, "emailAddress", email);
+              // Set flag on the target actor
+              await targetActor.setFlag(MODULE_ID, "emailAddress", email);
               
               ui.notifications.info(`Email address set to: ${email}`);
               resolve(true);
@@ -95,16 +95,16 @@ export class PlayerEmailSetup {
   /**
    * Check if player has email set, prompt if not
    */
-  static async ensureEmailSet() {
-    const actor = game.user.character;
+  static async ensureEmailSet(actor = null) {
+    const targetActor = actor || game.user.character;
     
-    if (!actor) return false;
+    if (!targetActor) return false;
     
-    const email = actor.getFlag(MODULE_ID, "emailAddress");
+    const email = targetActor.getFlag(MODULE_ID, "emailAddress");
     
     if (!email) {
       ui.notifications.warn("You need to set up your email address first.");
-      return await this.show();
+      return await this.show(targetActor);
     }
     
     return true;

@@ -3,7 +3,7 @@
 
 <div class="ncm-message-viewer__container">
   
-  {{!-- CANONICAL HEADER with better info --}}
+  {{!-- CANONICAL HEADER --}}
   <div class="ncm-header">
     <div class="ncm-header__top">
       <div class="ncm-header__connection">
@@ -13,7 +13,49 @@
       <div class="ncm-header__time">{{currentTime}}</div>
     </div>
     <div class="ncm-header__bottom">
-      <span class="ncm-header__welcome">Welcome, {{userName}}</span>
+      {{#if showCharacterSelector}}
+        {{!-- Show selector if GM OR player with multiple characters --}}
+        <div class="ncm-header__character-selector">
+          <label for="character-select">Viewing:</label>
+          <select id="character-select" 
+                  class="ncm-header__select" 
+                  data-action="select-character">
+            <option value="">-- Select Character --</option>
+            {{#each availableActors}}
+            <option value="{{this.id}}" {{#if (eq this.id ../selectedActorId)}}selected{{/if}}>
+              {{this.name}}
+            </option>
+            {{/each}}
+          </select>
+          
+          {{#if selectedActor}}
+          <span class="ncm-header__email">
+            {{#if selectedActor.flags.cyberpunkred-messenger.emailAddress}}
+              {{selectedActor.flags.cyberpunkred-messenger.emailAddress}}
+            {{else}}
+              <span class="ncm-header__email--warning">No email set</span>
+            {{/if}}
+          </span>
+          {{/if}}
+        </div>
+      {{else}}
+        {{!-- Simple welcome for single-character players --}}
+        <span class="ncm-header__welcome">Welcome, {{userName}}</span>
+        
+        {{#if selectedActor}}
+        <span class="ncm-header__email">
+          {{#if selectedActor.flags.cyberpunkred-messenger.emailAddress}}
+            {{selectedActor.flags.cyberpunkred-messenger.emailAddress}}
+          {{else}}
+            <button class="ncm-btn ncm-btn--small ncm-btn--warning" data-action="setup-email">
+              <i class="fas fa-exclamation-triangle"></i> Set Email
+            </button>
+          {{/if}}
+        </span>
+        {{/if}}
+      {{/if}}
+      
+      {{!-- GM Tools - ALWAYS visible for GMs --}}
       {{#if isGM}}
       <button class="ncm-btn ncm-btn--small ncm-btn--gm" data-action="open-admin" title="GM Tools">
         <i class="fas fa-toolbox"></i> GM Tools

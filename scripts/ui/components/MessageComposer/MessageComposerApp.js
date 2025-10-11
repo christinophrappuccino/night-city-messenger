@@ -17,6 +17,10 @@ export class MessageComposerApp extends BaseApplication {
     
     this.mode = options.mode || 'compose'; // 'compose', 'reply', 'forward'
     this.originalMessage = options.originalMessage || null;
+
+    // Use passed actor or fallback to user's character
+    this.actor = options.actor || game.user.character;
+    this.actorId = options.actorId || this.actor?.id;
     
     this.formData = {
       to: options.to || '',
@@ -37,11 +41,12 @@ export class MessageComposerApp extends BaseApplication {
   }
   
   async getData(options = {}) {
-    const actor = game.user.character;
-    const senderEmail = actor?.getFlag(MODULE_ID, "emailAddress") || "No email set";
+    const data = super.getData(options);
+    const senderEmail = this.actor?.getFlag(MODULE_ID, "emailAddress") || "No email set";
     
     return {
-      ...super.getData(options),
+      ...data,
+      actor: this.actor,
       senderEmail,
       to: this.formData.to,
       subject: this.formData.subject,
@@ -55,21 +60,20 @@ export class MessageComposerApp extends BaseApplication {
    * Check and prompt for email setup if needed
    */
   async _ensureEmailSetup() {
-    const actor = game.user.character;
-    
-    if (!actor) {
-      ui.notifications.error("You must have a character assigned.");
+    if (!this.actor) {
+      ui.notifications.error("No character selected.");
       return false;
     }
     
-    const email = actor.getFlag(MODULE_ID, "emailAddress");
+    const email = this.actor.getFlag(MODULE_ID, "emailAddress");
     
     if (!email) {
       ui.notifications.warn("Please set up your email address first.");
-      const success = await PlayerEmailSetup.show();
+      const { PlayerEmailSetup } = await import('../../dialogs/PlayerEmailSetup.js');
+      const success = await PlayerEmailSetup.show(this.actor);
       
       if (success) {
-        this.render(false); // Refresh to show new email
+        this.render(false);
       }
       
       return success;
@@ -199,15 +203,28 @@ export class MessageComposerApp extends BaseApplication {
    * Send the message
    */
   async sendMessage() {
-    const actor = game.user.character;
-    const senderEmail = actor?.getFlag(MODULE_ID, "emailAddress");
+    const senderEmail = this.actor?.getFlag(MODULE_ID, "emailAddress");
     
     if (!senderEmail) {
       ui.notifications.error("You must set up your email address first.");
       return;
     }
     
-    const { to, subject, content } = this.formData;
+    // Read form values directly from the form
+    const form = this.element.find('form')[0];
+    
+    if (!form) {
+      console.error(`${MODULE_ID} | Form element not found`);
+      ui.notifications.error("Form not found. Please try again.");
+      return;
+    }
+    
+    // Get values from form inputs
+    const to = this.element.find('[name="to"]').val()?.trim() || '';
+    const subject = this.element.find('[name="subject"]').val()?.trim() || '';
+    const content = this.element.find('[name="content"]').val()?.trim() || '';
+    
+    console.log(`${MODULE_ID} | Sending message:`, { to, subject, contentLength: content.length });
     
     // Validate
     if (!to) {
@@ -231,21 +248,33 @@ export class MessageComposerApp extends BaseApplication {
     }
     
     try {
-      // Call your existing message sending system
-      await game.nightcity.messageManager.send({
-        from: `${actor.name} (${senderEmail})`,
+      // Check if messageManager exists
+      if (!game.nightcity?.messageManager) {
+        console.error(`${MODULE_ID} | Message manager not available`);
+        ui.notifications.error("Message system not ready. Please try again.");
+        return;
+      }
+      
+      // Send message
+      const messageData = {
+        from: `${this.actor.name} (${senderEmail})`,
         to,
         subject,
         content,
-        timestamp: new Date().toISOString()
-      });
+        timestamp: new Date().toISOString(),
+        actorId: this.actor.id
+      };
+      
+      console.log(`${MODULE_ID} | Sending message data:`, messageData);
+      
+      await game.nightcity.messageManager.send(messageData);
       
       ui.notifications.info("Message sent!");
       this.close();
       
     } catch (error) {
       console.error(`${MODULE_ID} | Error sending message:`, error);
-      ui.notifications.error("Failed to send message.");
+      ui.notifications.error(`Failed to send message: ${error.message}`);
     }
   }
   
@@ -304,6 +333,22 @@ export class MessageComposerApp extends BaseApplication {
     // Cancel button
     html.find('[data-action="cancel"]').on('click', () => {
       this.close();
+    });
+
+    // Handle Enter key in subject (focus to content)
+    html.find('[name="subject"]').on('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        html.find('[name="content"]').focus();
+      }
+    });
+    
+    // Handle Ctrl+Enter in content (send message)
+    html.find('[name="content"]').on('keydown', (e) => {
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        this.sendMessage();
+      }
     });
   }
   

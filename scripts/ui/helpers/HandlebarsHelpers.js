@@ -1,5 +1,5 @@
 /**
- * Handlebars Helpers
+ * Handlebars Helpers - CLEAN VERSION
  * File: scripts/ui/helpers/HandlebarsHelpers.js
  * Module: cyberpunkred-messenger
  * Description: All Handlebars template helpers
@@ -144,14 +144,103 @@ export class HandlebarsHelpers {
     });
     
     // ========================================
-    // Date Helpers
+    // Date/Time Helpers
     // ========================================
     
-    Handlebars.registerHelper('formatDate', function(date) {
-      if (!date) return 'Unknown';
-      return new Date(date).toLocaleString();
+    // ✅ REMOVED DUPLICATE - Only keep the detailed ones below
+    
+    // Format date and time together
+    Handlebars.registerHelper('formatDateTime', function(timestamp) {
+      if (!timestamp) return 'Unknown Date';
+      
+      try {
+        const date = new Date(timestamp);
+        
+        if (isNaN(date.getTime())) return 'Invalid Date';
+        
+        // Format: "Oct 11, 2025 14:30"
+        return date.toLocaleString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false
+        });
+      } catch (error) {
+        console.error('Error formatting date:', error);
+        return 'Invalid Date';
+      }
     });
     
+    // Format time only
+    Handlebars.registerHelper('formatTime', function(timestamp) {
+      if (!timestamp) return '';
+      
+      try {
+        const date = new Date(timestamp);
+        
+        if (isNaN(date.getTime())) return '';
+        
+        // Format: "14:30"
+        return date.toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false
+        });
+      } catch (error) {
+        console.error('Error formatting time:', error);
+        return '';
+      }
+    });
+    
+    // Format date only
+    Handlebars.registerHelper('formatDate', function(timestamp) {
+      if (!timestamp) return '';
+      
+      try {
+        const date = new Date(timestamp);
+        
+        if (isNaN(date.getTime())) return '';
+        
+        // Format: "Oct 11, 2025"
+        return date.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        });
+      } catch (error) {
+        console.error('Error formatting date:', error);
+        return '';
+      }
+    });
+    
+    // Relative time (e.g., "2 hours ago")
+    Handlebars.registerHelper('fromNow', function(timestamp) {
+      if (!timestamp) return '';
+      
+      try {
+        const date = new Date(timestamp);
+        const now = new Date();
+        const seconds = Math.floor((now - date) / 1000);
+        
+        if (seconds < 60) return 'just now';
+        if (seconds < 3600) return `${Math.floor(seconds / 60)} minutes ago`;
+        if (seconds < 86400) return `${Math.floor(seconds / 3600)} hours ago`;
+        if (seconds < 604800) return `${Math.floor(seconds / 86400)} days ago`;
+        
+        // Fall back to date format
+        return date.toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric'
+        });
+      } catch (error) {
+        console.error('Error calculating relative time:', error);
+        return '';
+      }
+    });
+    
+    // Legacy helper (kept for compatibility)
     Handlebars.registerHelper('timeAgo', function(date) {
       if (!date) return 'Unknown';
       
@@ -188,6 +277,10 @@ export class HandlebarsHelpers {
     Handlebars.registerHelper('percentage', function(value, total) {
       if (!total || total === 0) return 0;
       return Math.round((value / total) * 100);
+    });
+    
+    Handlebars.registerHelper('pluralize', function(count, singular, plural) {
+      return count === 1 ? singular : (plural || singular + 's');
     });
     
     // ========================================

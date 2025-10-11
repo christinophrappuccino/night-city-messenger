@@ -32,36 +32,105 @@ export function registerUIComponents() {
 }
 
 /**
- * Open message viewer for user
- * @param {string} userId - User ID (defaults to current user)
+ * Open message viewer (inbox)
+ * @param {string} actorId - Optional actor ID (for GM to view specific inbox)
+ * @returns {MessageViewerApp}
  */
-export async function openMessageViewer(userId = null) {
-  userId = userId || game.user.id;
+export async function openMessageViewer(actorId = null) {
+  const { MessageViewerApp } = await import('../ui/components/MessageViewer/MessageViewerApp.js');
   
-  try {
-    const { JournalManager } = await import('../data/JournalManager.js');
-    const journalManager = new JournalManager();
-    
-    // Get or create inbox
-    let inbox;
+  // Determine which actor's inbox to open
+  let targetActorId = actorId;
+  
+  // If no actor specified
+  if (!targetActorId) {
     if (game.user.isGM) {
-      inbox = await journalManager.ensureUserInbox(userId);
+      // GM: Prompt to select character or use a default
+      // For now, we'll open with no selection and let them pick
+      targetActorId = null;
     } else {
-      inbox = await journalManager.getUserInbox(userId);
+      // Player: Use their assigned character
+      targetActorId = game.user.character?.id;
       
-      if (!inbox) {
-        ui.notifications.error('No inbox found. Contact your GM.');
-        return;
+      if (!targetActorId) {
+        ui.notifications.warn("You must have a character assigned to view messages.");
+        return null;
       }
     }
-    
-    // Open viewer
-    const { MessageViewerApp } = await import('../ui/components/MessageViewer/MessageViewerApp.js');
-    new MessageViewerApp(inbox).render(true);
-  } catch (error) {
-    console.error(`${MODULE_ID} | Error opening message viewer:`, error);
-    ui.notifications.error('Failed to open messages');
   }
+  
+  // Get the actor
+  let actor = null;
+  if (targetActorId) {
+    actor = game.actors.get(targetActorId);
+    
+    if (!actor) {
+      ui.notifications.error("Character not found.");
+      return null;
+    }
+  }
+  
+  // Find or create inbox journal
+  let inbox = null;
+  
+  if (actor) {
+    const inboxName = `${actor.name}'s Messages`;
+    inbox = game.journal.getName(inboxName);
+    
+    // Create inbox if it doesn't exist (GM only)
+    if (!inbox && game.user.isGM) {
+      // Find or create Player Messages folder
+      let folder = game.folders.getName("Player Messages");
+      
+      if (!folder) {
+        folder = await Folder.create({
+          name: "Player Messages",
+          type: "JournalEntry",
+          sorting: "a"
+        });
+      }
+      
+      inbox = await JournalEntry.create({
+        name: inboxName,
+        folder: folder.id
+      });
+      
+      ui.notifications.info(`Created inbox for ${actor.name}`);
+    }
+    
+    if (!inbox) {
+      ui.notifications.error(`No inbox found for ${actor.name}. Ask your GM to create one.`);
+      return null;
+    }
+  }
+  
+  // Check for existing viewer window
+  const existingViewer = Object.values(ui.windows).find(w => 
+    w instanceof MessageViewerApp && 
+    w.journalEntry?.id === inbox?.id
+  );
+  
+  if (existingViewer) {
+    existingViewer.bringToTop();
+    return existingViewer;
+  }
+  
+  // Create new viewer
+  const viewer = new MessageViewerApp(inbox, {
+    actorId: targetActorId
+  });
+  
+  viewer.render(true);
+  
+  return viewer;
+}
+
+/**
+ * Quick helper for opening specific character's inbox
+ * @param {string} actorId - Actor ID
+ */
+export async function openInboxForActor(actorId) {
+  return openMessageViewer(actorId);
 }
 
 /**

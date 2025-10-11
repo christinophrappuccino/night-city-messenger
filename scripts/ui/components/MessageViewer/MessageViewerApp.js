@@ -18,6 +18,9 @@ export class MessageViewerApp extends BaseApplication {
     super(options);
     
     this.journalEntry = journalEntry;
+
+    // Track which actor's inbox we're viewing (for GMs)
+    this.selectedActorId = options.actorId || game.user.character?.id || null;
     
     // Initialize components
     this.messageList = new MessageList(this);
@@ -66,7 +69,16 @@ export class MessageViewerApp extends BaseApplication {
     const currentFilter = this.stateManager.get('currentFilter') || 'inbox';
     const searchTerm = this.stateManager.get('searchTerm') || '';
     const selectedMessageId = this.stateManager.get('selectedMessageId');
-    const unreadCount = this.stateManager.getUnreadCount();
+    
+    // Get all messages for counting
+    const allMessages = this.stateManager.getAllMessages() || [];
+    
+    // Calculate counts manually (StateManager might not have these methods)
+    const unreadCount = allMessages.filter(m => !m.status?.read && !m.status?.spam && !m.status?.deleted).length;
+    const savedCount = allMessages.filter(m => m.status?.saved && !m.status?.deleted).length;
+    const spamCount = allMessages.filter(m => m.status?.spam && !m.status?.deleted).length;
+    const sentCount = allMessages.filter(m => m.status?.sent && !m.status?.deleted).length;
+    const scheduledCount = allMessages.filter(m => m.status?.scheduled && !m.status?.deleted).length;
     
     // Advanced filters state
     const showAdvancedFilters = this.stateManager.get('showAdvancedFilters') || false;
@@ -74,7 +86,7 @@ export class MessageViewerApp extends BaseApplication {
     
     // Get unique senders for filter dropdown
     const uniqueSenders = [...new Set(
-      this.stateManager.getAllMessages().map(m => m.from)
+      allMessages.map(m => m.from).filter(f => f)
     )].sort();
     
     // Check if any advanced filters are active
@@ -82,8 +94,29 @@ export class MessageViewerApp extends BaseApplication {
     
     // Get selected message
     const selectedMessage = selectedMessageId 
-      ? this.stateManager.getMessageById(selectedMessageId)
+      ? allMessages.find(m => m.id === selectedMessageId)
       : null;
+
+    // Character selection data
+      const selectedActor = this.selectedActorId ? game.actors.get(this.selectedActorId) : null;
+      
+      // Get available characters based on user
+      let availableActors = [];
+      
+      if (game.user.isGM) {
+        // GM sees all player characters
+        availableActors = game.actors.contents
+          .filter(a => a.hasPlayerOwner || a.type === 'character')
+          .sort((a, b) => a.name.localeCompare(b.name));
+      } else {
+        // Player sees only their own characters
+        availableActors = game.actors.contents
+          .filter(a => a.isOwner)
+          .sort((a, b) => a.name.localeCompare(b.name));
+      }
+      
+      // Show selector if GM OR player has multiple characters
+      const showCharacterSelector = game.user.isGM || availableActors.length > 1;
     
     return {
       ...data,
@@ -102,18 +135,33 @@ export class MessageViewerApp extends BaseApplication {
       hasActiveFilters: hasActiveFilters,
       uniqueSenders: uniqueSenders,
       
+      // Category counts
       filters: {
-        all: this.stateManager.getAllMessages().length,
+        all: allMessages.filter(m => !m.status?.deleted).length,
         unread: unreadCount,
-        saved: this.stateManager.getSavedMessages().length,
-        spam: this.stateManager.getSpamMessages().length,
-        sent: this.stateManager.getSentMessages().length,
-        scheduled: this.stateManager.getScheduledMessages().length
+        saved: savedCount,
+        spam: spamCount,
+        sent: sentCount,
+        scheduled: scheduledCount
       },
       
-      // User info
-      userName: game.user.character?.name || game.user.name,
-      isGM: game.user.isGM
+      // Character data
+        isGM: game.user.isGM,
+        selectedActor: selectedActor,
+        selectedActorId: this.selectedActorId,
+        availableActors: availableActors,
+        showCharacterSelector: showCharacterSelector,
+        userName: selectedActor?.name || game.user.name,
+      
+      // Time
+      currentTime: new Date().toLocaleTimeString('en-US', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: false 
+      }),
+      
+      // Network (you might have this elsewhere)
+      networkName: this.stateManager.get('currentNetwork') || 'CITINET'
     };
   }
   
@@ -128,6 +176,12 @@ export class MessageViewerApp extends BaseApplication {
     
     // Search input
     html.find('[data-action="search"]').on('input', this._onSearchInput.bind(this));
+
+    // Character selector
+    html.find('[data-action="select-character"]').on('change', this._onCharacterSelect.bind(this));
+    
+    // Email setup button (for players without email)
+    html.find('[data-action="setup-email"]').on('click', this._onSetupEmail.bind(this));
     
     // Message selection
     html.find('[data-action="select-message"]').on('click', this._onSelectMessage.bind(this));
@@ -234,6 +288,92 @@ export class MessageViewerApp extends BaseApplication {
     this.stateManager.set('searchTerm', searchTerm);
     this.stateManager.set('currentPage', 1);
     this.render();
+  }
+
+  /**
+   * Handle character selection change (GM only)
+   * @private
+   */
+  async _onCharacterSelect(event) {
+    event.preventDefault();
+    
+    const actorId = $(event.currentTarget).val();
+    
+    if (!actorId) {
+      ui.notifications.warn("Please select a character");
+      return;
+    }
+    
+    // Update selected actor
+    this.selectedActorId = actorId;
+    
+    // Find or create inbox for this actor
+    const actor = game.actors.get(actorId);
+    if (!actor) {
+      ui.notifications.error("Character not found");
+      return;
+    }
+    
+    // Find actor's inbox journal
+    const inboxName = `${actor.name}'s Messages`;
+    let inbox = game.journal.getName(inboxName);
+    
+    // Create inbox if it doesn't exist
+    if (!inbox && game.user.isGM) {
+      inbox = await JournalEntry.create({
+        name: inboxName,
+        folder: game.folders.getName("Player Messages")?.id
+      });
+      
+      ui.notifications.info(`Created inbox for ${actor.name}`);
+    }
+    
+    if (!inbox) {
+      ui.notifications.error(`No inbox found for ${actor.name}`);
+      return;
+    }
+    
+    // Update journal entry
+    this.journalEntry = inbox;
+    
+    // Reload messages
+    this._loadMessages();
+    
+    // Reset state
+    this.stateManager.set('currentPage', 1);
+    this.stateManager.set('selectedMessageId', null);
+    
+    // Re-render
+    this.render(false);
+    
+    this.playSound?.('click');
+  }
+
+  /**
+   * Open email setup for current character
+   * @private
+   */
+  async _onSetupEmail(event) {
+    event.preventDefault();
+    
+    // Get the currently selected actor
+    const selectedActor = this.selectedActorId ? game.actors.get(this.selectedActorId) : null;
+    
+    if (!selectedActor) {
+      ui.notifications.warn("Please select a character first.");
+      return;
+    }
+    
+    const { PlayerEmailSetup } = await import('../../dialogs/PlayerEmailSetup.js');
+    
+    // Pass the selected actor
+    const success = await PlayerEmailSetup.show(selectedActor);
+    
+    if (success) {
+      this.render(false);
+    }
+    
+    this.playSound?.('click');
   }
   
   /**
@@ -346,8 +486,21 @@ export class MessageViewerApp extends BaseApplication {
   async _onCompose(event) {
     event.preventDefault();
     
+    // Get the currently selected actor
+    const selectedActor = this.selectedActorId ? game.actors.get(this.selectedActorId) : null;
+    
+    if (!selectedActor) {
+      ui.notifications.warn("Please select a character first.");
+      return;
+    }
+    
     const { MessageComposerApp } = await import('../MessageComposer/MessageComposerApp.js');
-    new MessageComposerApp().render(true);
+    
+    // Pass the selected actor context
+    new MessageComposerApp({
+      actorId: this.selectedActorId,
+      actor: selectedActor
+    }).render(true);
   }
   
   /**
@@ -368,8 +521,21 @@ export class MessageViewerApp extends BaseApplication {
   async _onOpenContacts(event) {
     event.preventDefault();
     
+    // Get the currently selected actor
+    const selectedActor = this.selectedActorId ? game.actors.get(this.selectedActorId) : null;
+    
+    if (!selectedActor) {
+      ui.notifications.warn("Please select a character first.");
+      return;
+    }
+    
     const { ContactManagerApp } = await import('../ContactManager/ContactManagerApp.js');
-    new ContactManagerApp().render(true);
+    
+    // Pass the selected actor context
+    new ContactManagerApp({
+      actorId: this.selectedActorId,
+      actor: selectedActor
+    }).render(true);
   }
 
   /**
@@ -425,10 +591,23 @@ export class MessageViewerApp extends BaseApplication {
   async _onOpenSettings(event) {
     event.preventDefault();
     
-    const { UserSettingsPanel } = await import('../Settings/UserSettingsPanel.js');
-    new UserSettingsPanel().render(true);
+    // Get the currently selected actor
+    const selectedActor = this.selectedActorId ? game.actors.get(this.selectedActorId) : null;
     
-    this.playSound('click');
+    if (!selectedActor) {
+      ui.notifications.warn("Please select a character first.");
+      return;
+    }
+    
+    const { UserSettingsPanel } = await import('../Settings/UserSettingsPanel.js');
+    
+    // Pass the selected actor context
+    new UserSettingsPanel({
+      actorId: this.selectedActorId,
+      actor: selectedActor
+    }).render(true);
+    
+    this.playSound?.('click');
   }
 
   /**

@@ -13,6 +13,9 @@ export class UserSettingsPanel extends BaseApplication {
     super(options);
     
     this.activeTab = 'general';
+    // Use passed actor or fallback to user's character
+    this.actor = options.actor || game.user.character;
+    this.actorId = options.actorId || this.actor?.id;
   }
   
   static get defaultOptions() {
@@ -37,15 +40,14 @@ export class UserSettingsPanel extends BaseApplication {
     const data = super.getData(options);
     
     // Get current settings
-    const actor = game.user.character;
     const userSettings = await this._loadUserSettings();
     
     return {
       ...data,
-      actor,
-      email: actor?.getFlag(MODULE_ID, 'emailAddress') || '',
-      hasCharacter: !!actor,
-      characterName: actor?.name || 'No character assigned',
+      actor: this.actor,
+      email: this.actor?.getFlag(MODULE_ID, 'emailAddress') || '',
+      hasCharacter: !!this.actor,
+      characterName: this.actor?.name || 'No character assigned',
       settings: userSettings,
       tabs: [
         { id: 'general', label: 'General', icon: 'fa-cog' },
@@ -183,8 +185,13 @@ export class UserSettingsPanel extends BaseApplication {
   async _onChangeEmail(event) {
     event.preventDefault();
     
+    if (!this.actor) {
+      ui.notifications.error("No character selected.");
+      return;
+    }
+    
     const { PlayerEmailSetup } = await import('../../dialogs/PlayerEmailSetup.js');
-    const success = await PlayerEmailSetup.show();
+    const success = await PlayerEmailSetup.show(this.actor);
     
     if (success) {
       this.render(false);

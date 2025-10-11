@@ -16,8 +16,12 @@ export class ContactManagerApp extends BaseApplication {
     this.contacts = [];
     this.searchTerm = '';
     this.viewMode = 'list';
-    this.selectMode = options.selectMode || false; // If true, selecting returns contact
-    this.onSelect = options.onSelect || null; // Callback when contact selected
+    this.selectMode = options.selectMode || false;
+    this.onSelect = options.onSelect || null;
+    
+    // Use passed actor or fallback to user's character
+    this.actor = options.actor || game.user.character;
+    this.actorId = options.actorId || this.actor?.id;
   }
   
   static get defaultOptions() {
@@ -73,7 +77,7 @@ export class ContactManagerApp extends BaseApplication {
    */
   async _loadContacts() {
     try {
-      // Get from user flags
+      // Load contacts from the specific actor's perspective
       this.contacts = await game.user.getFlag(MODULE_ID, "contacts") || [];
       
       // Also scan for actors with email addresses

@@ -883,6 +883,100 @@
 }
 
 /* ============================================
+   GM + PLAYER CHARACTER SELECTOR
+   ============================================ */
+.ncm-header__character-selector {
+  display: flex;
+  align-items: center;
+  gap: var(--ncm-spacing-md);
+  flex: 1;
+}
+
+.ncm-header__character-selector label {
+  color: var(--ncm-text-secondary);
+  font-size: var(--ncm-font-size-sm);
+  font-weight: 500;
+}
+
+.ncm-header__select {
+  padding: var(--ncm-spacing-xs) var(--ncm-spacing-md);
+  background: var(--ncm-bg-tertiary);
+  border: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
+  border-radius: var(--ncm-border-radius-md);
+  color: var(--ncm-text-primary);
+  font-size: var(--ncm-font-size-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--ncm-transition-fast);
+  min-width: 200px;
+}
+
+.ncm-header__select:hover {
+  border-color: var(--ncm-primary);
+}
+
+.ncm-header__select:focus {
+  border-color: var(--ncm-primary);
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ncm-primary-alpha);
+}
+
+.ncm-header__email {
+  color: var(--ncm-secondary);
+  font-family: var(--ncm-font-mono);
+  font-size: var(--ncm-font-size-sm);
+  padding: var(--ncm-spacing-xs) var(--ncm-spacing-sm);
+  background: rgba(25, 243, 247, 0.1);
+  border-radius: var(--ncm-border-radius-sm);
+  border: 1px solid var(--ncm-secondary);
+}
+
+/* Email warning state */
+.ncm-header__email--warning {
+  color: #f59e0b;
+  font-style: italic;
+}
+
+/* Email setup button for players */
+.ncm-btn--warning {
+  background: rgba(245, 158, 11, 0.2);
+  border-color: #f59e0b;
+  color: #f59e0b;
+}
+
+.ncm-btn--warning:hover {
+  background: #f59e0b;
+  color: var(--ncm-bg-primary);
+}
+
+/* Adjust spacing when no selector */
+.ncm-header__welcome {
+  flex: 1;
+}
+
+/* GM Tools button spacing */
+.ncm-btn--gm {
+  margin-left: auto;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .ncm-header__character-selector {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--ncm-spacing-xs);
+  }
+  
+  .ncm-header__select {
+    width: 100%;
+  }
+  
+  .ncm-header__email {
+    font-size: var(--ncm-font-size-xs);
+  }
+}
+
+/* ============================================
    RESPONSIVE ADJUSTMENTS
    ============================================ */
 @media (max-width: 1199px) {
