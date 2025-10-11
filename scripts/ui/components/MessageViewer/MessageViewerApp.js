@@ -191,6 +191,7 @@ export class MessageViewerApp extends BaseApplication {
     html.find('[data-action="mark-spam"]').on('click', this._onMarkSpam.bind(this));
     html.find('[data-action="save-message"]').on('click', this._onSaveMessage.bind(this));
     html.find('[data-action="reply"]').on('click', this._onReply.bind(this));
+    html.find('[data-action="forward"]').on('click', this._onForward.bind(this)); 
     html.find('[data-action="share-to-chat"]').on('click', this._onShareToChat.bind(this));
     
     // Compose and refresh
@@ -234,12 +235,32 @@ export class MessageViewerApp extends BaseApplication {
     const pages = this.journalEntry.pages.contents;
     const messages = pages.map(page => {
       const flags = page.flags[MODULE_ID] || {};
+      
+      // Get body: prefer flags.content, fallback to extracting from HTML
+      let body = flags.content || '';
+      
+      if (!body && page.text?.content) {
+        // Extract ONLY the message body from the styled HTML
+        // The body is in the second div with padding:15px style
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = page.text.content;
+        
+        // Find all divs, the last one with padding:15px contains the body
+        const contentDivs = tempDiv.querySelectorAll('div[style*="padding:15px"]');
+        if (contentDivs.length > 0) {
+          body = contentDivs[contentDivs.length - 1].innerHTML.trim();
+        } else {
+          // Fallback: strip all HTML
+          body = page.text.content.replace(/<[^>]*>/g, '').trim();
+        }
+      }
+      
       return {
         id: page.id,
         from: flags.from || 'Unknown',
         to: flags.to || 'Unknown',
         subject: flags.subject || 'No Subject',
-        body: flags.body || '',
+        body: body,
         timestamp: flags.timestamp || new Date().toISOString(),
         network: flags.network || 'CITINET',
         status: flags.status || {
@@ -249,7 +270,7 @@ export class MessageViewerApp extends BaseApplication {
           encrypted: false,
           infected: false
         },
-        preview: this._generatePreview(flags.body || '')
+        preview: this._generatePreview(body)
       };
     });
     
@@ -452,17 +473,69 @@ export class MessageViewerApp extends BaseApplication {
    */
   async _onReply(event) {
     event.preventDefault();
-    const message = this.stateManager.get('selectedMessageId');
     
-    if (!message) return;
+    const selectedActor = this.selectedActorId ? game.actors.get(this.selectedActorId) : null;
     
-    const messageData = this.stateManager.getMessageById(message);
+    if (!selectedActor) {
+      ui.notifications.warn("Please select a character first.");
+      return;
+    }
     
-    // Open composer with reply data
+    const messageId = this.stateManager.get('selectedMessageId');
+    if (!messageId) return;
+    
+    const messageData = this.stateManager.getMessageById(messageId);
+    if (!messageData) return;
+    
+    // Extract just the email address
+    const { extractEmailAddress } = await import('../../../utils/validators.js');
+    const recipientEmail = extractEmailAddress(messageData.from) || messageData.from;
+    
+    // Open composer with reply context
     const { MessageComposerApp } = await import('../MessageComposer/MessageComposerApp.js');
     new MessageComposerApp({
-      replyTo: messageData
+      actor: selectedActor,
+      actorId: this.selectedActorId,
+      mode: 'reply',
+      to: recipientEmail,  // Just email
+      subject: `Re: ${messageData.subject}`,
+      originalMessage: messageData  // Pass full message for display
     }).render(true);
+    
+    this.playSound('click');
+  }
+
+  /**
+   * Forward handler
+   * @private
+   */
+  async _onForward(event) {
+    event.preventDefault();
+    
+    const selectedActor = this.selectedActorId ? game.actors.get(this.selectedActorId) : null;
+    
+    if (!selectedActor) {
+      ui.notifications.warn("Please select a character first.");
+      return;
+    }
+    
+    const messageId = this.stateManager.get('selectedMessageId');
+    if (!messageId) return;
+    
+    const messageData = this.stateManager.getMessageById(messageId);
+    if (!messageData) return;
+    
+    // Open composer with forward context
+    const { MessageComposerApp } = await import('../MessageComposer/MessageComposerApp.js');
+    new MessageComposerApp({
+      actor: selectedActor,
+      actorId: this.selectedActorId,
+      mode: 'forward',
+      subject: `Fwd: ${messageData.subject}`,
+      originalMessage: messageData  // Pass full message for display
+    }).render(true);
+    
+    this.playSound('click');
   }
   
   /**
@@ -551,21 +624,26 @@ export class MessageViewerApp extends BaseApplication {
     const message = this.stateManager.getMessageById(messageId);
     if (!message) return;
     
-    // Parse sender - format: "Name (email@domain.net)"
-    const senderMatch = message.from.match(/^(.+?)\s*\((.+?)\)$/);
+    // Use utility to parse email (handles both formats)
+    const { extractEmailAddress } = await import('../../../utils/validators.js');
+    const email = extractEmailAddress(message.from);
     
-    if (!senderMatch) {
+    if (!email) {
       ui.notifications.warn("Could not parse sender information.");
       return;
     }
     
-    const [, name, email] = senderMatch;
+    // Extract name (everything before email markers)
+    const name = message.from
+      .replace(/\s*<[^>]+>/, '')
+      .replace(/\s*\([^)]+\)/, '')
+      .trim() || email.split('@')[0];
     
     // Get current contacts
     const contacts = await game.user.getFlag(MODULE_ID, 'contacts') || [];
     
     // Check if already exists
-    if (contacts.some(c => c.email === email.trim())) {
+    if (contacts.some(c => c.email === email)) {
       ui.notifications.info(`${name} is already in your contacts.`);
       return;
     }
@@ -573,8 +651,8 @@ export class MessageViewerApp extends BaseApplication {
     // Add contact
     contacts.push({
       id: foundry.utils.randomID(),
-      name: name.trim(),
-      email: email.trim(),
+      name: name,
+      email: email,
       createdAt: new Date().toISOString()
     });
     

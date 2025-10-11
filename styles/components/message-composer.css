@@ -255,6 +255,7 @@
 /* ============================================
    MESSAGE EDITOR
    ============================================ */
+
 .ncm-composer__editor-section {
   flex: 1;
   display: flex;
@@ -267,13 +268,37 @@
 
 /* Editor toolbar */
 .ncm-composer__toolbar {
-  flex: 0 0 auto;
-  background: var(--ncm-bg-tertiary);
-  border-bottom: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
-  padding: var(--ncm-spacing-sm);
   display: flex;
-  gap: var(--ncm-spacing-xs);
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ncm-composer__toolbar-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   flex-wrap: wrap;
+}
+
+/* Toolbar selects */
+.ncm-composer__toolbar-select {
+  padding: 4px 8px;
+  background: var(--ncm-bg-tertiary);
+  border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
+  border-radius: var(--ncm-border-radius-sm);
+  color: var(--ncm-text-primary);
+  font-size: var(--ncm-font-size-sm);
+  cursor: pointer;
+}
+
+.ncm-composer__toolbar-select:hover {
+  border-color: var(--ncm-primary);
+}
+
+/* Color wrapper for hidden color pickers */
+.ncm-composer__toolbar-color-wrapper {
+  position: relative;
+  display: inline-block;
 }
 
 .ncm-composer__toolbar-btn {
@@ -334,6 +359,61 @@
 
 .ncm-composer__editor .ProseMirror p:last-child {
   margin-bottom: 0;
+}
+
+/* ============================================
+   QUOTED MESSAGE (Reply/Forward)
+   ============================================ */
+.ncm-composer__quoted-message {
+  background: var(--ncm-bg-secondary);
+  border: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
+  border-radius: var(--ncm-border-radius-md);
+  margin-bottom: var(--ncm-spacing-md);
+  overflow: hidden;
+}
+
+.ncm-composer__quoted-header {
+  background: var(--ncm-bg-tertiary);
+  padding: var(--ncm-spacing-sm) var(--ncm-spacing-md);
+  border-bottom: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
+}
+
+.ncm-composer__quoted-label {
+  color: var(--ncm-secondary);
+  font-size: var(--ncm-font-size-sm);
+  font-weight: var(--ncm-font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: var(--ncm-letter-spacing-wide);
+}
+
+.ncm-composer__quoted-content {
+  padding: var(--ncm-spacing-md);
+}
+
+.ncm-composer__quoted-meta {
+  display: grid;
+  gap: var(--ncm-spacing-xs);
+  margin-bottom: var(--ncm-spacing-md);
+  padding-bottom: var(--ncm-spacing-md);
+  border-bottom: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
+  font-size: var(--ncm-font-size-sm);
+}
+
+.ncm-composer__quoted-meta strong {
+  color: var(--ncm-primary);
+  margin-right: var(--ncm-spacing-xs);
+}
+
+.ncm-composer__quoted-body {
+  background: var(--ncm-bg-primary);
+  border: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
+  border-radius: var(--ncm-border-radius-sm);
+  padding: var(--ncm-spacing-md);
+  max-height: 200px;
+  overflow-y: auto;
+  color: var(--ncm-text-secondary);
+  font-size: var(--ncm-font-size-sm);
+  line-height: var(--ncm-line-height-relaxed);
 }
 
 /* ============================================

@@ -51,6 +51,7 @@ export class MessageRepository {
           from: data.from,
           to: data.to,
           subject: data.subject,
+          content: data.content,
           timestamp: data.timestamp,
           network: data.network,
           encrypted: data.encrypted,
@@ -290,26 +291,37 @@ export class MessageRepository {
    * @private
    */
   async _getRecipientJournal(email) {
-    // Extract recipient name from email
-    const recipientName = email.split('@')[0];
+    // Find actor by email flag (most reliable)
+    const actor = game.actors.find(a => 
+      a.getFlag(MODULE_ID, "emailAddress") === email
+    );
     
-    // Try to find user by character name or username
+    if (actor) {
+      // Get or create inbox for this actor
+      const inboxName = `${actor.name}'s Messages`;
+      let inbox = game.journal.getName(inboxName);
+      
+      if (!inbox && game.user.isGM) {
+        // Auto-create inbox
+        const folder = await this.journalManager.ensureFolder("Player Messages");
+        inbox = await JournalEntry.create({
+          name: inboxName,
+          folder: folder.id
+        });
+        console.log(`${MODULE_ID} | Auto-created inbox for ${actor.name}`);
+      }
+      
+      return inbox;
+    }
+    
+    // Fallback: Extract name from email
+    const recipientName = email.split('@')[0];
     const user = game.users.find(u => 
-      u.character?.name.toLowerCase() === recipientName.toLowerCase() ||
-      u.name.toLowerCase() === recipientName.toLowerCase()
+      u.character?.name.toLowerCase().replace(/\s+/g, '.') === recipientName.toLowerCase()
     );
     
     if (user) {
       return await this.journalManager.ensureUserInbox(user.id);
-    }
-    
-    // Try to find actor by name
-    const actor = game.actors.find(a => 
-      a.name.toLowerCase() === recipientName.toLowerCase()
-    );
-    
-    if (actor) {
-      return await this.journalManager.getActorInbox(actor.id);
     }
     
     return null;

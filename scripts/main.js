@@ -76,6 +76,21 @@ moduleInitializer.register('init', async () => {
 // READY
 // ===================================================================
 
+// Initialize core services
+moduleInitializer.register('ready', async () => {
+  const { MessageService } = await import('./services/MessageService.js');
+  const { NotificationService } = await import('./services/NotificationService.js');
+  
+  // Initialize services as singletons
+  game.nightcity.messageService = new MessageService();
+  game.nightcity.notificationService = new NotificationService();
+  
+  // Alias for backwards compatibility
+  game.nightcity.messageManager = game.nightcity.messageService;
+  
+  console.log(`${MODULE_ID} | ✓ Core services initialized`);
+}, 3); 
+
 // Complete macro API registration
 moduleInitializer.register('ready', async () => {
   const { MacroAPI } = await import('./integrations/MacroAPI.js');

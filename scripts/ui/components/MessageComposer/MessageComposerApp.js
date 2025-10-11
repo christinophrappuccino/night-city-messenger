@@ -1,5 +1,5 @@
 /**
- * Message Composer Application (COMPLETE)
+ * Message Composer Application
  * File: scripts/ui/components/MessageComposer/MessageComposerApp.js
  * Module: cyberpunkred-messenger
  * Description: Full message composer with contact integration
@@ -15,17 +15,24 @@ export class MessageComposerApp extends BaseApplication {
   constructor(options = {}) {
     super(options);
     
-    this.mode = options.mode || 'compose'; // 'compose', 'reply', 'forward'
+    this.mode = options.mode || 'compose';
     this.originalMessage = options.originalMessage || null;
-
-    // Use passed actor or fallback to user's character
     this.actor = options.actor || game.user.character;
     this.actorId = options.actorId || this.actor?.id;
+    
+    // Build initial content
+    let initialContent = options.content || '';
+    
+    if (this.mode === 'reply' && this.originalMessage) {
+      initialContent = this._formatReplyContent(this.originalMessage);
+    } else if (this.mode === 'forward' && this.originalMessage) {
+      initialContent = this._formatForwardContent(this.originalMessage);
+    }
     
     this.formData = {
       to: options.to || '',
       subject: options.subject || '',
-      content: options.content || ''
+      content: initialContent
     };
   }
   
@@ -69,7 +76,6 @@ export class MessageComposerApp extends BaseApplication {
     
     if (!email) {
       ui.notifications.warn("Please set up your email address first.");
-      const { PlayerEmailSetup } = await import('../../dialogs/PlayerEmailSetup.js');
       const success = await PlayerEmailSetup.show(this.actor);
       
       if (success) {
@@ -83,18 +89,59 @@ export class MessageComposerApp extends BaseApplication {
   }
   
   /**
-   * Open contact manager for selection
+   * Format reply content
+   */
+  _formatReplyContent(message) {
+    const bodyText = message.body || '';
+    
+    return `
+  <div style="border-left: 4px solid #F65261; padding-left: 16px; margin: 16px 0; background-color: rgba(246, 82, 97, 0.1);">
+    <p style="color: #F65261; font-weight: bold; margin-bottom: 8px;">▸ REPLY TO MESSAGE</p>
+    <p style="margin: 4px 0;"><strong style="color: #F65261;">From:</strong> <span style="color: #19f3f7;">${message.from}</span></p>
+    <p style="margin: 4px 0;"><strong style="color: #F65261;">To:</strong> <span style="color: #19f3f7;">${message.to}</span></p>
+    <p style="margin: 4px 0;"><strong style="color: #F65261;">Date:</strong> <span style="color: #cccccc;">${message.timestamp}</span></p>
+    <p style="margin: 4px 0;"><strong style="color: #F65261;">Subject:</strong> <span style="color: #ffffff;">${message.subject}</span></p>
+    <hr style="border-color: #F65261; opacity: 0.3; margin: 8px 0;">
+    <div style="color: #999999; font-size: 0.95em;">${bodyText}</div>
+  </div>
+  <hr>
+  <p><br></p>
+  <p><br></p>
+    `;
+  }
+
+  /**
+   * Format forward content
+   */
+  _formatForwardContent(message) {
+    const bodyText = message.body || '';
+    
+    return `
+  <div style="border-left: 4px solid #19f3f7; padding-left: 16px; margin: 16px 0; background-color: rgba(25, 243, 247, 0.1);">
+    <p style="color: #19f3f7; font-weight: bold; margin-bottom: 8px;">▸ FORWARDED MESSAGE</p>
+    <p style="margin: 4px 0;"><strong style="color: #19f3f7;">From:</strong> <span style="color: #19f3f7;">${message.from}</span></p>
+    <p style="margin: 4px 0;"><strong style="color: #19f3f7;">To:</strong> <span style="color: #19f3f7;">${message.to}</span></p>
+    <p style="margin: 4px 0;"><strong style="color: #19f3f7;">Date:</strong> <span style="color: #cccccc;">${message.timestamp}</span></p>
+    <p style="margin: 4px 0;"><strong style="color: #19f3f7;">Subject:</strong> <span style="color: #ffffff;">${message.subject}</span></p>
+    <hr style="border-color: #19f3f7; opacity: 0.3; margin: 8px 0;">
+    <div style="color: #999999; font-size: 0.95em;">${bodyText}</div>
+  </div>
+  <hr>
+  <p><br></p>
+  <p><br></p>
+    `;
+  }
+  
+  /**
+   * Open contact picker
    */
   _openContactPicker() {
     new ContactManagerApp({
       selectMode: true,
       onSelect: (contact) => {
-        // Update recipient field
         const input = this.element.find('[name="to"]');
         input.val(contact.email);
         this.formData.to = contact.email;
-        
-        // Show brief confirmation
         this._showContactSelected(contact);
       }
     }).render(true);
@@ -128,10 +175,8 @@ export class MessageComposerApp extends BaseApplication {
    * Setup autocomplete for recipient field
    */
   async _setupRecipientAutocomplete(input, suggestions) {
-    // Load all available contacts
     const userContacts = await game.user.getFlag(MODULE_ID, "contacts") || [];
     
-    // Add actor emails
     const actorContacts = game.actors.contents
       .filter(a => a.getFlag(MODULE_ID, "emailAddress"))
       .map(a => ({
@@ -141,8 +186,6 @@ export class MessageComposerApp extends BaseApplication {
       }));
     
     const allContacts = [...userContacts, ...actorContacts];
-    
-    // Remove duplicates by email
     const uniqueContacts = Array.from(
       new Map(allContacts.map(c => [c.email, c])).values()
     );
@@ -155,7 +198,6 @@ export class MessageComposerApp extends BaseApplication {
         return;
       }
       
-      // Filter matching contacts
       const matches = uniqueContacts.filter(c => 
         c.name.toLowerCase().includes(value) ||
         c.email.toLowerCase().includes(value)
@@ -166,7 +208,6 @@ export class MessageComposerApp extends BaseApplication {
         return;
       }
       
-      // Render suggestions
       const html = matches.map(contact => `
         <div class="ncm-composer__suggestion-item" data-email="${contact.email}">
           ${contact.img ? 
@@ -185,7 +226,6 @@ export class MessageComposerApp extends BaseApplication {
       suggestions.html(html).show();
     });
     
-    // Click on suggestion
     suggestions.on('click', '.ncm-composer__suggestion-item', (e) => {
       const email = $(e.currentTarget).data('email');
       input.val(email);
@@ -193,14 +233,73 @@ export class MessageComposerApp extends BaseApplication {
       suggestions.hide();
     });
     
-    // Hide on blur (with delay for click to register)
     input.on('blur', () => {
       setTimeout(() => suggestions.hide(), 200);
     });
   }
+
+  /**
+   * Show emoji picker
+   */
+  _showEmojiPicker() {
+    const emojis = [
+      '😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '🙃',
+      '😉', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗', '😚', '😙',
+      '😋', '😛', '😜', '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '🤔',
+      '🤐', '🤨', '😐', '😑', '😶', '😏', '😒', '🙄', '😬', '🤥',
+      '😌', '😔', '😪', '🤤', '😴', '😷', '🤒', '🤕', '🤢', '🤮',
+      '🤧', '🥵', '🥶', '😵', '🤯', '🤠', '🥳', '😎', '🤓', '🧐',
+      '👍', '👎', '👌', '✌️', '🤞', '🤟', '🤘', '🤙', '👈', '👉',
+      '👆', '👇', '☝️', '✋', '🤚', '🖐️', '🖖', '👋', '🤝', '💪',
+      '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔',
+      '⭐', '🌟', '✨', '⚡', '🔥', '💥', '💯', '✅', '❌', '⚠️'
+    ];
+    
+    const content = `
+      <div class="ncm-emoji-picker">
+        ${emojis.map(emoji => `<button type="button" class="ncm-emoji-btn" data-emoji="${emoji}">${emoji}</button>`).join('')}
+      </div>
+      <style>
+        .ncm-emoji-picker {
+          display: grid;
+          grid-template-columns: repeat(10, 1fr);
+          gap: 4px;
+          max-height: 300px;
+          overflow-y: auto;
+        }
+        .ncm-emoji-btn {
+          font-size: 24px;
+          padding: 8px;
+          border: 1px solid #333;
+          background: #1a1a1a;
+          cursor: pointer;
+          border-radius: 4px;
+          transition: all 0.2s;
+        }
+        .ncm-emoji-btn:hover {
+          background: #F65261;
+          transform: scale(1.1);
+        }
+      </style>
+    `;
+    
+    new Dialog({
+      title: "Insert Emoji",
+      content: content,
+      buttons: {},
+      render: (html) => {
+        html.find('.ncm-emoji-btn').on('click', (e) => {
+          const emoji = $(e.currentTarget).data('emoji');
+          document.execCommand('insertText', false, emoji);
+          this.element.find('.ncm-composer__editor').focus();
+          html.closest('.app').find('.header-button.close').click();
+        });
+      }
+    }).render(true);
+  }
   
   /**
-   * Send the message
+   * Send message
    */
   async sendMessage() {
     const senderEmail = this.actor?.getFlag(MODULE_ID, "emailAddress");
@@ -210,23 +309,13 @@ export class MessageComposerApp extends BaseApplication {
       return;
     }
     
-    // Read form values directly from the form
-    const form = this.element.find('form')[0];
-    
-    if (!form) {
-      console.error(`${MODULE_ID} | Form element not found`);
-      ui.notifications.error("Form not found. Please try again.");
-      return;
-    }
-    
-    // Get values from form inputs
     const to = this.element.find('[name="to"]').val()?.trim() || '';
     const subject = this.element.find('[name="subject"]').val()?.trim() || '';
-    const content = this.element.find('[name="content"]').val()?.trim() || '';
+    const contentDiv = this.element.find('.ncm-composer__editor')[0];
+    const content = contentDiv?.innerHTML?.trim() || '';
     
-    console.log(`${MODULE_ID} | Sending message:`, { to, subject, contentLength: content.length });
+    console.log(`${MODULE_ID} | Sending:`, { to, subject, contentLength: content.length });
     
-    // Validate
     if (!to) {
       ui.notifications.error("Please enter a recipient.");
       return;
@@ -242,22 +331,21 @@ export class MessageComposerApp extends BaseApplication {
       return;
     }
     
-    if (!content) {
+    const strippedContent = content.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, '').trim();
+    if (!content || !strippedContent) {
       ui.notifications.error("Please enter message content.");
       return;
     }
     
     try {
-      // Check if messageManager exists
       if (!game.nightcity?.messageManager) {
         console.error(`${MODULE_ID} | Message manager not available`);
         ui.notifications.error("Message system not ready. Please try again.");
         return;
       }
       
-      // Send message
       const messageData = {
-        from: `${this.actor.name} (${senderEmail})`,
+        from: `${this.actor.name} <${senderEmail}>`,
         to,
         subject,
         content,
@@ -265,9 +353,7 @@ export class MessageComposerApp extends BaseApplication {
         actorId: this.actor.id
       };
       
-      console.log(`${MODULE_ID} | Sending message data:`, messageData);
-      
-      await game.nightcity.messageManager.send(messageData);
+      await game.nightcity.messageManager.sendMessage(messageData);
       
       ui.notifications.info("Message sent!");
       this.close();
@@ -281,7 +367,7 @@ export class MessageComposerApp extends BaseApplication {
   activateListeners(html) {
     super.activateListeners(html);
     
-    // Setup email button (if no email)
+    // Setup email button
     const actor = game.user.character;
     const email = actor?.getFlag(MODULE_ID, "emailAddress");
     
@@ -301,7 +387,139 @@ export class MessageComposerApp extends BaseApplication {
       }
     });
     
-    // Contact selection button
+    // Font family selector
+    html.find('[data-action="font-family"]').on('change', (e) => {
+      const font = e.target.value;
+      if (font) {
+        document.execCommand('fontName', false, font);
+        html.find('.ncm-composer__editor').focus();
+        e.target.value = ''; // Reset
+      }
+    });
+    
+    // Font size selector
+    html.find('[data-action="font-size"]').on('change', (e) => {
+      const size = e.target.value;
+      if (size) {
+        document.execCommand('fontSize', false, size);
+        html.find('.ncm-composer__editor').focus();
+        e.target.value = ''; // Reset
+      }
+    });
+    
+    // Text color
+    html.find('[data-action="text-color"]').on('click', (e) => {
+      e.preventDefault();
+      const colorPicker = $(e.currentTarget).siblings('.ncm-composer__color-picker[data-color-type="text"]');
+      colorPicker.click();
+    });
+    
+    html.find('.ncm-composer__color-picker[data-color-type="text"]').on('change', (e) => {
+      const color = e.target.value;
+      document.execCommand('foreColor', false, color);
+      html.find('.ncm-composer__editor').focus();
+    });
+    
+    // Highlight color
+    html.find('[data-action="highlight-color"]').on('click', (e) => {
+      e.preventDefault();
+      const colorPicker = $(e.currentTarget).siblings('.ncm-composer__color-picker[data-color-type="background"]');
+      colorPicker.click();
+    });
+    
+    html.find('.ncm-composer__color-picker[data-color-type="background"]').on('change', (e) => {
+      const color = e.target.value;
+      document.execCommand('hiliteColor', false, color);
+      html.find('.ncm-composer__editor').focus();
+    });
+    
+    // Standard formatting
+    html.find('[data-format]').on('click', (e) => {
+      e.preventDefault();
+      const format = $(e.currentTarget).data('format');
+      const blockType = $(e.currentTarget).data('block-type');
+      const editor = html.find('.ncm-composer__editor')[0];
+      
+      editor.focus();
+      
+      try {
+        if (blockType) {
+          document.execCommand(format, false, blockType);
+        } else {
+          document.execCommand(format, false, null);
+        }
+      } catch (error) {
+        console.warn(`${MODULE_ID} | Command ${format} not supported:`, error);
+      }
+      
+      editor.focus();
+    });
+    
+    // Insert link
+    html.find('[data-action="insert-link"]').on('click', async (e) => {
+      e.preventDefault();
+      
+      new Dialog({
+        title: "Insert Link",
+        content: `
+          <form>
+            <div class="form-group">
+              <label>URL:</label>
+              <input type="text" name="url" placeholder="https://example.com" autofocus />
+            </div>
+            <div class="form-group">
+              <label>Link Text (optional):</label>
+              <input type="text" name="text" placeholder="Click here" />
+            </div>
+          </form>
+        `,
+        buttons: {
+          insert: {
+            icon: '<i class="fas fa-check"></i>',
+            label: "Insert",
+            callback: (html) => {
+              const url = html.find('[name="url"]').val();
+              const text = html.find('[name="text"]').val();
+              
+              if (url) {
+                if (text) {
+                  document.execCommand('insertHTML', false, `<a href="${url}">${text}</a>`);
+                } else {
+                  document.execCommand('createLink', false, url);
+                }
+                this.element.find('.ncm-composer__editor').focus();
+              }
+            }
+          },
+          cancel: {
+            icon: '<i class="fas fa-times"></i>',
+            label: "Cancel"
+          }
+        },
+        default: "insert"
+      }).render(true);
+    });
+    
+    // Insert image
+    html.find('[data-action="insert-image"]').on('click', async (e) => {
+      e.preventDefault();
+      
+      new FilePicker({
+        type: "image",
+        callback: (path) => {
+          document.execCommand('insertImage', false, path);
+          this.element.find('.ncm-composer__editor').focus();
+        }
+      }).browse();
+    });
+    
+    // Insert emoji
+    html.find('[data-action="insert-emoji"]').on('click', (e) => {
+      e.preventDefault();
+      this._showEmojiPicker();
+    });
+    
+    // Contact picker
     html.find('[data-action="select-contact"]').on('click', () => {
       this._openContactPicker();
     });
@@ -310,19 +528,6 @@ export class MessageComposerApp extends BaseApplication {
     const recipientInput = html.find('[name="to"]');
     const suggestions = html.find('.ncm-composer__suggestions');
     this._setupRecipientAutocomplete(recipientInput, suggestions);
-    
-    // Track form changes
-    html.find('[name="to"]').on('change', (e) => {
-      this.formData.to = $(e.currentTarget).val().trim();
-    });
-    
-    html.find('[name="subject"]').on('change', (e) => {
-      this.formData.subject = $(e.currentTarget).val().trim();
-    });
-    
-    html.find('[name="content"]').on('change', (e) => {
-      this.formData.content = $(e.currentTarget).val().trim();
-    });
     
     // Send button
     html.find('[data-action="send"]').on('click', async (e) => {
@@ -334,20 +539,12 @@ export class MessageComposerApp extends BaseApplication {
     html.find('[data-action="cancel"]').on('click', () => {
       this.close();
     });
-
-    // Handle Enter key in subject (focus to content)
+    
+    // Handle Enter in subject
     html.find('[name="subject"]').on('keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
-        html.find('[name="content"]').focus();
-      }
-    });
-    
-    // Handle Ctrl+Enter in content (send message)
-    html.find('[name="content"]').on('keydown', (e) => {
-      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-        e.preventDefault();
-        this.sendMessage();
+        html.find('.ncm-composer__editor').focus();
       }
     });
   }
@@ -356,11 +553,10 @@ export class MessageComposerApp extends BaseApplication {
    * Override render to check email on open
    */
   async render(force = false, options = {}) {
-    // Check email setup before rendering
     if (!this.rendered) {
       const hasEmail = await this._ensureEmailSetup();
       if (!hasEmail) {
-        return this; // Don't render if email setup was cancelled
+        return this;
       }
     }
     

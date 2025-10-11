@@ -403,6 +403,8 @@
   padding: var(--ncm-spacing-lg);
   line-height: var(--ncm-line-height-relaxed);
   color: var(--ncm-text-primary);
+  user-select: text;
+  cursor: text;
 }
 
 .ncm-detail__body p {
