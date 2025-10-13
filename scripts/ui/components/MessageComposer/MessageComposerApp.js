@@ -95,17 +95,16 @@ export class MessageComposerApp extends BaseApplication {
     const bodyText = message.body || '';
     
     return `
-  <div style="border-left: 4px solid #F65261; padding-left: 16px; margin: 16px 0; background-color: rgba(246, 82, 97, 0.1);">
-    <p style="color: #F65261; font-weight: bold; margin-bottom: 8px;">▸ REPLY TO MESSAGE</p>
-    <p style="margin: 4px 0;"><strong style="color: #F65261;">From:</strong> <span style="color: #19f3f7;">${message.from}</span></p>
-    <p style="margin: 4px 0;"><strong style="color: #F65261;">To:</strong> <span style="color: #19f3f7;">${message.to}</span></p>
-    <p style="margin: 4px 0;"><strong style="color: #F65261;">Date:</strong> <span style="color: #cccccc;">${message.timestamp}</span></p>
-    <p style="margin: 4px 0;"><strong style="color: #F65261;">Subject:</strong> <span style="color: #ffffff;">${message.subject}</span></p>
+  <div style="border-left: 4px solid #F65261; padding: 12px 16px; margin: 0 0 16px 0; background-color: rgba(246, 82, 97, 0.1); user-select: text; -webkit-user-select: text; cursor: text;">
+    <p style="color: #F65261; font-weight: bold; margin: 0 0 8px 0; user-select: text;">▸ REPLY TO MESSAGE</p>
+    <p style="margin: 4px 0; user-select: text;"><strong style="color: #F65261;">From:</strong> <span style="color: #19f3f7;">${message.from}</span></p>
+    <p style="margin: 4px 0; user-select: text;"><strong style="color: #F65261;">To:</strong> <span style="color: #19f3f7;">${message.to}</span></p>
+    <p style="margin: 4px 0; user-select: text;"><strong style="color: #F65261;">Date:</strong> <span style="color: #cccccc;">${message.timestamp}</span></p>
+    <p style="margin: 4px 0; user-select: text;"><strong style="color: #F65261;">Subject:</strong> <span style="color: #ffffff;">${message.subject}</span></p>
     <hr style="border-color: #F65261; opacity: 0.3; margin: 8px 0;">
-    <div style="color: #999999; font-size: 0.95em;">${bodyText}</div>
+    <div style="color: #999999; font-size: 0.95em; margin: 8px 0 0 0; user-select: text;">${bodyText}</div>
   </div>
-  <hr>
-  <p><br></p>
+  <hr style="border: 1px solid #F65261; margin: 16px 0;">
   <p><br></p>
     `;
   }
@@ -117,17 +116,16 @@ export class MessageComposerApp extends BaseApplication {
     const bodyText = message.body || '';
     
     return `
-  <div style="border-left: 4px solid #19f3f7; padding-left: 16px; margin: 16px 0; background-color: rgba(25, 243, 247, 0.1);">
-    <p style="color: #19f3f7; font-weight: bold; margin-bottom: 8px;">▸ FORWARDED MESSAGE</p>
-    <p style="margin: 4px 0;"><strong style="color: #19f3f7;">From:</strong> <span style="color: #19f3f7;">${message.from}</span></p>
-    <p style="margin: 4px 0;"><strong style="color: #19f3f7;">To:</strong> <span style="color: #19f3f7;">${message.to}</span></p>
-    <p style="margin: 4px 0;"><strong style="color: #19f3f7;">Date:</strong> <span style="color: #cccccc;">${message.timestamp}</span></p>
-    <p style="margin: 4px 0;"><strong style="color: #19f3f7;">Subject:</strong> <span style="color: #ffffff;">${message.subject}</span></p>
+  <div style="border-left: 4px solid #19f3f7; padding: 12px 16px; margin: 0 0 16px 0; background-color: rgba(25, 243, 247, 0.1); user-select: text; -webkit-user-select: text; cursor: text;">
+    <p style="color: #19f3f7; font-weight: bold; margin: 0 0 8px 0; user-select: text;">▸ FORWARDED MESSAGE</p>
+    <p style="margin: 4px 0; user-select: text;"><strong style="color: #19f3f7;">From:</strong> <span style="color: #19f3f7;">${message.from}</span></p>
+    <p style="margin: 4px 0; user-select: text;"><strong style="color: #19f3f7;">To:</strong> <span style="color: #19f3f7;">${message.to}</span></p>
+    <p style="margin: 4px 0; user-select: text;"><strong style="color: #19f3f7;">Date:</strong> <span style="color: #cccccc;">${message.timestamp}</span></p>
+    <p style="margin: 4px 0; user-select: text;"><strong style="color: #19f3f7;">Subject:</strong> <span style="color: #ffffff;">${message.subject}</span></p>
     <hr style="border-color: #19f3f7; opacity: 0.3; margin: 8px 0;">
-    <div style="color: #999999; font-size: 0.95em;">${bodyText}</div>
+    <div style="color: #999999; font-size: 0.95em; margin: 8px 0 0 0; user-select: text;">${bodyText}</div>
   </div>
-  <hr>
-  <p><br></p>
+  <hr style="border: 1px solid #19f3f7; margin: 16px 0;">
   <p><br></p>
     `;
   }
@@ -443,7 +441,14 @@ export class MessageComposerApp extends BaseApplication {
       editor.focus();
       
       try {
-        if (blockType) {
+        // Special handling for lists
+        if (format === 'insertUnorderedList' || format === 'insertOrderedList') {
+          // Get selection
+          const selection = window.getSelection();
+          if (selection.rangeCount > 0) {
+            document.execCommand(format, false, null);
+          }
+        } else if (blockType) {
           document.execCommand(format, false, blockType);
         } else {
           document.execCommand(format, false, null);

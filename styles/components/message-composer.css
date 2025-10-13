@@ -332,6 +332,19 @@
 }
 
 /* Editor content area */
+.ncm-composer__editor,
+.ncm-composer__editor *,
+.ncm-composer__editor::before,
+.ncm-composer__editor::after {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
+  -webkit-touch-callout: text !important;
+  pointer-events: auto !important;
+}
+
+/* Main editor styling */
 .ncm-composer__editor {
   flex: 1;
   overflow-y: auto;
@@ -341,24 +354,82 @@
   font-size: var(--ncm-font-size-base);
   line-height: var(--ncm-line-height-relaxed);
   outline: none;
+  cursor: text;
+  min-height: 300px;
+  
+  /* Force selectability */
+  user-select: text !important;
+  -webkit-user-select: text !important;
 }
 
 .ncm-composer__editor:focus {
   background: var(--ncm-bg-secondary);
 }
 
-/* ProseMirror specific styles */
-.ncm-composer__editor .ProseMirror {
-  outline: none;
-  min-height: 100%;
+/* Ensure paragraphs are selectable */
+.ncm-composer__editor p,
+.ncm-composer__editor div,
+.ncm-composer__editor span,
+.ncm-composer__editor strong,
+.ncm-composer__editor em,
+.ncm-composer__editor u {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  cursor: text;
 }
 
-.ncm-composer__editor .ProseMirror p {
+/* List styling - show bullets and numbers */
+.ncm-composer__editor ul,
+.ncm-composer__editor ol {
+  margin: 8px 0 8px 20px;
+  padding-left: 10px;
+}
+
+.ncm-composer__editor ul {
+  list-style-type: disc;
+  list-style-position: outside;
+}
+
+.ncm-composer__editor ol {
+  list-style-type: decimal;
+  list-style-position: outside;
+}
+
+.ncm-composer__editor li {
+  margin: 4px 0;
+  display: list-item;
+}
+
+/* ============================================
+   MESSAGE BODY 
+   ============================================ */
+.ncm-detail__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--ncm-spacing-lg);
+  line-height: var(--ncm-line-height-relaxed);
+  color: var(--ncm-text-primary);
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  cursor: text;
+}
+
+/* Ensure ALL children are selectable */
+.ncm-detail__body *,
+.ncm-detail__body div,
+.ncm-detail__body p,
+.ncm-detail__body span,
+.ncm-detail__body strong,
+.ncm-detail__body hr {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  cursor: text !important;
+}
+
+.ncm-detail__body p {
   margin-bottom: var(--ncm-spacing-md);
-}
-
-.ncm-composer__editor .ProseMirror p:last-child {
-  margin-bottom: 0;
 }
 
 /* ============================================

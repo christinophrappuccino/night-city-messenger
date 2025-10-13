@@ -282,7 +282,17 @@ export class MessageViewerApp extends BaseApplication {
    * @private
    */
   _generatePreview(body) {
-    const plainText = body.replace(/<[^>]*>/g, '');
+    let previewText = body;
+    
+    // Strip out reply/forward quoted sections
+    // Remove anything in the styled quote divs
+    previewText = previewText.replace(/<div style="border-left:[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '');
+    previewText = previewText.replace(/<hr[^>]*>/gi, '');
+    
+    // Strip all HTML tags
+    const plainText = previewText.replace(/<[^>]*>/g, '').trim();
+    
+    // Return first 100 chars
     return plainText.length > 100 
       ? plainText.substring(0, 100) + '...'
       : plainText;

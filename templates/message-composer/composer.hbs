@@ -209,11 +209,12 @@
     {{!-- Simple contenteditable editor --}}
     <div class="ncm-composer__editor" 
          contenteditable="true" 
+         spellcheck="true"
          data-field="content"
+         style="user-select: text; -webkit-user-select: text; cursor: text;"
          placeholder="Type your message here...">
       {{{content}}}
     </div>
-  </div>
   
   {{!-- Footer Actions --}}
   <div class="ncm-composer__footer">
