@@ -147,7 +147,6 @@ export class HandlebarsHelpers {
     // Date/Time Helpers
     // ========================================
     
-    // ✅ REMOVED DUPLICATE - Only keep the detailed ones below
     
     // Format date and time together
     Handlebars.registerHelper('formatDateTime', function(timestamp) {
@@ -212,6 +211,43 @@ export class HandlebarsHelpers {
       } catch (error) {
         console.error('Error formatting date:', error);
         return '';
+      }
+    });
+
+    Handlebars.registerHelper('formatMessageTimestamp', function(timestamp) {
+      if (!timestamp) return 'Unknown';
+      
+      try {
+        const timeService = game.nightcity?.timeService;
+        if (!timeService) {
+          // Fallback if service not ready
+          const date = new Date(timestamp);
+          return date.toLocaleString();
+        }
+        
+        // Use configured format from settings
+        return timeService.formatTimestamp(timestamp);
+      } catch (error) {
+        console.error('Error formatting timestamp:', error);
+        return 'Invalid Date';
+      }
+    });
+
+    Handlebars.registerHelper('formatScheduledTime', function(scheduleData) {
+      if (!scheduleData) return 'Unknown';
+      
+      try {
+        const timeService = game.nightcity?.timeService;
+        if (!timeService) return 'Unknown';
+        
+        // Check if using SimpleCalendar
+        if (scheduleData.useSimpleCalendar && scheduleData.simpleCalendarData) {
+          return scheduleData.simpleCalendarData.display;
+        }
+        
+        return timeService.formatTimestamp(scheduleData.scheduledTime, 'full');
+      } catch (error) {
+        return 'Invalid';
       }
     });
     

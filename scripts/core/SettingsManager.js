@@ -150,6 +150,93 @@ export class SettingsManager {
       default: {},
       onChange: value => this._onSettingChanged('contacts', value)
     });
+
+    // Add these settings to SettingsManager.register() in scripts/core/SettingsManager.js
+
+    // ========================================
+    // Time System Settings
+    // ========================================
+
+    game.settings.register(MODULE_ID, 'timeSource', {
+      name: 'Time Source',
+      hint: 'Choose where to get the current time from for messages',
+      scope: 'world',
+      config: true,
+      type: String,
+      choices: {
+        'realworld': 'Real World Time',
+        'simplecalendar': 'Simple Calendar (if installed)',
+        'manual': 'Always Manual Entry (GM only)'
+      },
+      default: 'realworld',
+      onChange: value => this._onSettingChanged('timeSource', value)
+    });
+
+    game.settings.register(MODULE_ID, 'defaultSendBehavior', {
+      name: 'Default Send Behavior',
+      hint: 'What happens when you click the Send button',
+      scope: 'client',
+      config: true,
+      type: String,
+      choices: {
+        'immediate': 'Send Immediately (current time)',
+        'prompt': 'Always Prompt for Time',
+        'schedule': 'Default to Schedule Mode'
+      },
+      default: 'immediate',
+      onChange: value => this._onSettingChanged('defaultSendBehavior', value)
+    });
+
+    game.settings.register(MODULE_ID, 'timeDisplayFormat', {
+      name: 'Time Display Format',
+      hint: 'How to display timestamps in message lists',
+      scope: 'client',
+      config: true,
+      type: String,
+      choices: {
+        '12h': '12-hour (5:47 PM)',
+        '24h': '24-hour (17:47)',
+        'relative': 'Relative (5 minutes ago)',
+        'full': 'Full Date/Time'
+      },
+      default: '12h',
+      onChange: value => this._onSettingChanged('timeDisplayFormat', value)
+    });
+
+    game.settings.register(MODULE_ID, 'showTimeInComposer', {
+      name: 'Show Clock in Composer',
+      hint: 'Display current time at top of message composer',
+      scope: 'client',
+      config: true,
+      type: Boolean,
+      default: true,
+      onChange: value => this._onSettingChanged('showTimeInComposer', value)
+    });
+
+    game.settings.register(MODULE_ID, 'gmTimeOverride', {
+      name: 'GM Time Control',
+      hint: 'Allow GMs to send messages at any custom time (including past dates)',
+      scope: 'world',
+      config: true,
+      type: Boolean,
+      default: true,
+      onChange: value => this._onSettingChanged('gmTimeOverride', value)
+    });
+
+    game.settings.register(MODULE_ID, 'scheduleCheckInterval', {
+      name: 'Schedule Check Interval',
+      hint: 'How often to check for scheduled messages (in seconds)',
+      scope: 'world',
+      config: true,
+      type: Number,
+      default: 60,
+      range: {
+        min: 10,
+        max: 300,
+        step: 10
+      },
+      onChange: value => this._onSettingChanged('scheduleCheckInterval', value)
+    });
     
     this.registered = true;
     console.log(`${MODULE_ID} | Settings registered`);

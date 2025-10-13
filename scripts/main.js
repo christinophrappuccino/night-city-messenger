@@ -46,6 +46,14 @@ moduleInitializer.register('init', async () => {
   MacroAPI.registerEarly();
 }, 5);
 
+// Register time settings
+moduleInitializer.register('init', async () => {
+  console.log(`${MODULE_ID} | Initializing Time System...`);
+  const { TimeService } = await import('./services/TimeService.js');
+  TimeService.getInstance();
+  console.log(`${MODULE_ID} | ✓ Time System initialized`);
+}, 40);
+
 // Register UI components
 moduleInitializer.register('init', async () => {
   const { registerUIComponents } = await import('./integrations/UIRegistry.js');
@@ -96,6 +104,17 @@ moduleInitializer.register('ready', async () => {
   const { MacroAPI } = await import('./integrations/MacroAPI.js');
   MacroAPI.registerServices();
 }, 5);
+
+// Time Service Registration
+moduleInitializer.register('ready', async () => {
+  console.log(`${MODULE_ID} | Starting Time Service...`);
+  
+  const { TimeService } = await import('./services/TimeService.js');
+  const timeService = TimeService.getInstance();
+  game.nightcity.timeService = timeService;
+  
+  console.log(`${MODULE_ID} | ✓ Time Service ready`);
+}, 4);
 
 // Start scheduling service
 moduleInitializer.register('ready', async () => {

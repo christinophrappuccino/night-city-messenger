@@ -10,6 +10,9 @@ import { isValidEmail } from '../../../utils/validators.js';
 import { BaseApplication } from '../BaseApplication.js';
 import { PlayerEmailSetup } from '../../dialogs/PlayerEmailSetup.js';
 import { ContactManagerApp } from '../ContactManager/ContactManagerApp.js';
+import { TimeWidget } from './TimeWidget.js';
+import { ScheduleMessageDialog } from '../../dialogs/ScheduleMessageDialog.js';
+import { TimeService } from '../../../services/TimeService.js';
 
 export class MessageComposerApp extends BaseApplication {
   constructor(options = {}) {
@@ -19,6 +22,8 @@ export class MessageComposerApp extends BaseApplication {
     this.originalMessage = options.originalMessage || null;
     this.actor = options.actor || game.user.character;
     this.actorId = options.actorId || this.actor?.id;
+    this.timeWidget = new TimeWidget(this);
+    this.timeService = TimeService.getInstance();
     
     // Build initial content
     let initialContent = options.content || '';
@@ -59,7 +64,9 @@ export class MessageComposerApp extends BaseApplication {
       subject: this.formData.subject,
       content: this.formData.content,
       hasEmail: senderEmail !== "No email set",
-      mode: this.mode
+      mode: this.mode,
+      timeWidgetHtml: this.timeWidget.render(),
+      showScheduleButton: this.settingsManager.get('defaultSendBehavior') !== 'immediate'
     };
   }
   
@@ -303,7 +310,7 @@ export class MessageComposerApp extends BaseApplication {
     const senderEmail = this.actor?.getFlag(MODULE_ID, "emailAddress");
     
     if (!senderEmail) {
-      ui.notifications.error("You must set up your email address first.");
+      ui.notifications.error("Please set up your email address first.");
       return;
     }
     
@@ -312,8 +319,7 @@ export class MessageComposerApp extends BaseApplication {
     const contentDiv = this.element.find('.ncm-composer__editor')[0];
     const content = contentDiv?.innerHTML?.trim() || '';
     
-    console.log(`${MODULE_ID} | Sending:`, { to, subject, contentLength: content.length });
-    
+    // Validation
     if (!to) {
       ui.notifications.error("Please enter a recipient.");
       return;
@@ -336,29 +342,75 @@ export class MessageComposerApp extends BaseApplication {
     }
     
     try {
-      if (!game.nightcity?.messageManager) {
-        console.error(`${MODULE_ID} | Message manager not available`);
-        ui.notifications.error("Message system not ready. Please try again.");
-        return;
-      }
+      // Check default send behavior
+      const sendBehavior = this.settingsManager.get('defaultSendBehavior');
       
       const messageData = {
         from: `${this.actor.name} <${senderEmail}>`,
         to,
         subject,
         content,
-        timestamp: new Date().toISOString(),
         actorId: this.actor.id
       };
       
-      await game.nightcity.messageManager.sendMessage(messageData);
-      
-      ui.notifications.info("Message sent!");
-      this.close();
+      // Handle send behavior
+      if (sendBehavior === 'schedule' || sendBehavior === 'prompt') {
+        // Show schedule dialog
+        await this.scheduleMessage(messageData);
+      } else {
+        // Send immediately with current or custom time
+        messageData.timestamp = this.timeWidget.getSendTime();
+        
+        // Store SimpleCalendar data if applicable
+        if (this.timeService.getTimeSource() === 'simplecalendar') {
+          messageData.simpleCalendarData = this.timeService.getSimpleCalendarData();
+        }
+        
+        await game.nightcity.messageManager.sendMessage(messageData);
+        
+        ui.notifications.info("Message sent!");
+        this.close();
+      }
       
     } catch (error) {
       console.error(`${MODULE_ID} | Error sending message:`, error);
       ui.notifications.error(`Failed to send message: ${error.message}`);
+    }
+  }
+
+  /**
+   * Schedule Message
+   */
+
+  async scheduleMessage(messageData) {
+    try {
+      const result = await ScheduleMessageDialog.show(messageData, {
+        allowImmediate: true
+      });
+      
+      if (result.sendImmediately) {
+        // User chose to send now instead
+        messageData.timestamp = this.timeWidget.getSendTime();
+        
+        if (this.timeService.getTimeSource() === 'simplecalendar') {
+          messageData.simpleCalendarData = this.timeService.getSimpleCalendarData();
+        }
+        
+        await game.nightcity.messageManager.sendMessage(messageData);
+        ui.notifications.info("Message sent!");
+      } else {
+        // Message was scheduled
+        console.log(`${MODULE_ID} | Message scheduled:`, result.scheduleId);
+      }
+      
+      this.close();
+      
+    } catch (error) {
+      if (error.message === 'Cancelled') {
+        // User cancelled, do nothing
+        return;
+      }
+      throw error;
     }
   }
   
@@ -534,10 +586,45 @@ export class MessageComposerApp extends BaseApplication {
     const suggestions = html.find('.ncm-composer__suggestions');
     this._setupRecipientAutocomplete(recipientInput, suggestions);
     
+    // Activate time widget listeners
+    this.timeWidget.activateListeners(html);
+    
     // Send button
     html.find('[data-action="send"]').on('click', async (e) => {
       e.preventDefault();
       await this.sendMessage();
+    });
+    
+    // Schedule button
+    html.find('[data-action="schedule"]').on('click', async (e) => {
+      e.preventDefault();
+      
+      const senderEmail = this.actor?.getFlag(MODULE_ID, "emailAddress");
+      if (!senderEmail) {
+        ui.notifications.error("Please set up your email address first.");
+        return;
+      }
+      
+      const to = html.find('[name="to"]').val()?.trim() || '';
+      const subject = html.find('[name="subject"]').val()?.trim() || '';
+      const contentDiv = html.find('.ncm-composer__editor')[0];
+      const content = contentDiv?.innerHTML?.trim() || '';
+      
+      // Quick validation
+      if (!to || !subject || !content) {
+        ui.notifications.error("Please fill in all fields before scheduling.");
+        return;
+      }
+      
+      const messageData = {
+        from: `${this.actor.name} <${senderEmail}>`,
+        to,
+        subject,
+        content,
+        actorId: this.actor.id
+      };
+      
+      await this.scheduleMessage(messageData);
     });
     
     // Cancel button
@@ -552,6 +639,19 @@ export class MessageComposerApp extends BaseApplication {
         html.find('.ncm-composer__editor').focus();
       }
     });
+  }
+
+  /**
+   * UPDATE the close() method to cleanup
+   */
+
+  async close(options = {}) {
+    // Cleanup time widget
+    if (this.timeWidget) {
+      this.timeWidget.destroy();
+    }
+    
+    return super.close(options);
   }
   
   /**

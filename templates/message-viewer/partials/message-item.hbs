@@ -1,41 +1,56 @@
 {{!-- Message Item Partial --}}
 {{!-- File: templates/message-viewer/partials/message-item.hbs --}}
 
-<div class="ncm-message-item {{#if message.unread}}ncm-message-item--unread{{/if}} {{#if message.selected}}ncm-message-item--selected{{/if}}" 
-     data-message-id="{{message.id}}"
+<div class="ncm-message-item {{#if unread}}ncm-message-item--unread{{/if}} {{#if (eq ../selectedMessageId id)}}ncm-message-item--selected{{/if}}"
+     data-message-id="{{id}}"
      data-action="select-message">
   
+  {{#if status.spam}}
+    <div class="ncm-message-item__spam-badge">
+      <i class="fas fa-exclamation-triangle"></i> SPAM
+    </div>
+  {{/if}}
+  
   <div class="ncm-message-item__header">
-    <span class="ncm-message-item__sender">{{message.from}}</span>
-    <span class="ncm-message-item__time">{{message.timestamp}}</span>
+    <div class="ncm-message-item__from">{{from}}</div>
+    
+    {{!-- Use formatted timestamps --}}
+    <div class="ncm-message-item__time" title="{{fullTimestamp}}">
+      {{relativeTime}}
+      
+      {{!-- Show SimpleCalendar badge if present --}}
+      {{#if scDisplay}}
+        <span class="ncm-message-item__sc-badge" title="In-game time: {{scDisplay}}">
+          <i class="fas fa-calendar-alt"></i>
+        </span>
+      {{/if}}
+      
+      {{!-- Show scheduled badge if message was scheduled --}}
+      {{#if wasScheduled}}
+        <span class="ncm-message-item__scheduled-badge" title="This message was scheduled">
+          <i class="fas fa-clock"></i>
+        </span>
+      {{/if}}
+    </div>
   </div>
   
-  <div class="ncm-message-item__subject">{{message.subject}}</div>
-  
-  <div class="ncm-message-item__preview">{{message.preview}}</div>
-  
-  {{#if message.hasIndicators}}
-  <div class="ncm-message-item__indicators">
-    {{#if message.encrypted}}
-    <span class="ncm-message-item__indicator ncm-message-item__indicator--encrypted">
-      <i class="fas fa-lock"></i>
-    </span>
+  <div class="ncm-message-item__subject">
+    {{#if status.saved}}
+      <i class="fas fa-star ncm-message-item__saved-icon"></i>
     {{/if}}
-    {{#if message.malware}}
-    <span class="ncm-message-item__indicator ncm-message-item__indicator--malware">
-      <i class="fas fa-virus"></i>
-    </span>
+    {{#if encrypted}}
+      <i class="fas fa-lock ncm-message-item__encrypted-icon"></i>
     {{/if}}
-    {{#if message.saved}}
-    <span class="ncm-message-item__indicator ncm-message-item__indicator--saved">
-      <i class="fas fa-star"></i>
-    </span>
-    {{/if}}
-    {{#if message.spam}}
-    <span class="ncm-message-item__indicator ncm-message-item__indicator--spam">
-      <i class="fas fa-ban"></i>
-    </span>
-    {{/if}}
+    {{subject}}
   </div>
+  
+  <div class="ncm-message-item__preview">
+    {{truncate body 100}}
+  </div>
+  
+  {{#if network}}
+    <div class="ncm-message-item__network">
+      <i class="fas fa-wifi"></i> {{network}}
+    </div>
   {{/if}}
 </div>

@@ -24,6 +24,7 @@
     "styles/components/message-viewer.css",
     "styles/components/message-composer.css",
     "styles/components/contact-manager.css",
+    "styles/components/time-widget.css",
     "styles/components/item-inbox.css",
     "styles/components/admin-panel.css",
     "styles/components/dialogs.css"

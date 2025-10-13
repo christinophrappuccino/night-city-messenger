@@ -12,6 +12,7 @@ import { MessageDetail } from './MessageDetail.js';
 import { MessageFilters } from './MessageFilters.js';
 import { MessagePagination } from './MessagePagination.js';
 import { EVENTS } from '../../../core/EventBus.js';
+import { TimeService } from '../../../services/TimeService.js';
 
 export class MessageViewerApp extends BaseApplication {
   constructor(journalEntry, options = {}) {
@@ -21,6 +22,8 @@ export class MessageViewerApp extends BaseApplication {
 
     // Track which actor's inbox we're viewing (for GMs)
     this.selectedActorId = options.actorId || game.user.character?.id || null;
+
+    this.timeService = TimeService.getInstance();
     
     // Initialize components
     this.messageList = new MessageList(this);
@@ -69,6 +72,14 @@ export class MessageViewerApp extends BaseApplication {
     const currentFilter = this.stateManager.get('currentFilter') || 'inbox';
     const searchTerm = this.stateManager.get('searchTerm') || '';
     const selectedMessageId = this.stateManager.get('selectedMessageId');
+
+    // Format timestamps for display
+    const formattedMessages = messageData.messages.map(msg => ({
+      ...msg,
+      formattedTimestamp: this.timeService.formatTimestamp(msg.timestamp),
+      relativeTime: this.timeService.formatTimestamp(msg.timestamp, 'relative'),
+      fullTimestamp: this.timeService.formatTimestamp(msg.timestamp, 'full')
+    }));
     
     // Get all messages for counting
     const allMessages = this.stateManager.getAllMessages() || [];
@@ -120,7 +131,7 @@ export class MessageViewerApp extends BaseApplication {
     
     return {
       ...data,
-      messages: messageData.messages,
+      messages: formattedMessages,
       currentPage: messageData.currentPage,
       totalPages: messageData.totalPages,
       totalMessages: messageData.totalMessages,
@@ -782,6 +793,52 @@ export class MessageViewerApp extends BaseApplication {
     new AdminPanelApp().render(true);
     
     this.playSound('click');
+  }
+
+  /**
+   * Show detailed time info:
+   */
+  showTimeDetails(messageId) {
+    const message = this.stateManager.getMessageById(messageId);
+    if (!message) return;
+    
+    const timeInfo = [];
+    
+    // Show ISO timestamp
+    timeInfo.push(`<strong>Timestamp:</strong> ${message.timestamp}`);
+    
+    // Show formatted versions
+    timeInfo.push(`<strong>12-hour:</strong> ${this.timeService.formatTimestamp(message.timestamp, '12h')}`);
+    timeInfo.push(`<strong>24-hour:</strong> ${this.timeService.formatTimestamp(message.timestamp, '24h')}`);
+    timeInfo.push(`<strong>Relative:</strong> ${this.timeService.formatTimestamp(message.timestamp, 'relative')}`);
+    
+    // If SimpleCalendar data exists
+    if (message.simpleCalendarData) {
+      timeInfo.push(`<strong>In-Game Time:</strong> ${message.simpleCalendarData.display}`);
+    }
+    
+    // If scheduled
+    if (message.metadata?.scheduled) {
+      timeInfo.push(`<strong>Scheduled:</strong> Yes`);
+    }
+    
+    new Dialog({
+      title: 'Message Time Details',
+      content: `
+        <div class="ncm-time-details">
+          ${timeInfo.map(info => `<div class="ncm-time-details__row">${info}</div>`).join('')}
+        </div>
+      `,
+      buttons: {
+        close: {
+          icon: '<i class="fas fa-times"></i>',
+          label: 'Close'
+        }
+      }
+    }, {
+      classes: ['dialog', 'ncm-dialog'],
+      width: 500
+    }).render(true);
   }
   
   /**

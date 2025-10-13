@@ -208,6 +208,7 @@ export const EVENTS = {
   MESSAGE_DELETED: 'message:deleted',
   MESSAGE_SAVED: 'message:saved',
   MESSAGE_SPAM: 'message:spam',
+  MESSAGES_LOADED: 'messages:loaded',
   
   // UI events
   UI_VIEWER_OPENED: 'ui:viewer:opened',
@@ -231,5 +232,11 @@ export const EVENTS = {
   
   // Notification events
   NOTIFICATION_SHOW: 'notification:show',
-  NOTIFICATION_HIDE: 'notification:hide'
+  NOTIFICATION_HIDE: 'notification:hide',
+  
+  // Time events
+  TIME_CHANGED: 'time:changed',
+  TIME_SOURCE_CHANGED: 'time:source:changed',
+  TIME_SCHEDULED_MESSAGE_DUE: 'time:scheduled:due',
+  TIME_MANUAL_SET: 'time:manual:set'
 };

@@ -38,6 +38,20 @@ export class MessageRepository {
     // Format message content
     const formattedContent = this._formatMessageContent(data);
     
+    // Prepare timestamp data
+    const timestamp = data.timestamp || new Date().toISOString();
+    
+    // Prepare SimpleCalendar data if provided
+    const simpleCalendarData = data.simpleCalendarData || null;
+    
+    // Prepare metadata with scheduling info
+    const metadata = {
+      ...(data.metadata || {}),
+      scheduled: data.scheduled || false,
+      scheduledTime: data.scheduledTime || null,
+      sentVia: data.sentVia || 'manual'
+    };
+    
     // Create journal page
     const page = await JournalEntryPage.create({
       name: data.subject,
@@ -52,11 +66,18 @@ export class MessageRepository {
           to: data.to,
           subject: data.subject,
           content: data.content,
-          timestamp: data.timestamp,
+          
+          // Enhanced timestamp storage
+          timestamp,  // ISO-8601 timestamp (always present)
+          simpleCalendarData,  // SimpleCalendar data if applicable (can be null)
+          
           network: data.network,
           encrypted: data.encrypted,
           status: data.status,
-          metadata: data.metadata,
+          
+          // Enhanced metadata
+          metadata,  // Includes scheduled info
+          
           createdAt: new Date().toISOString()
         }
       }
@@ -71,6 +92,31 @@ export class MessageRepository {
     this.cache.set(message.id, message);
     
     return message;
+  }
+
+  /**
+   * Helper to check if message was scheduled
+   * @param {Object} message - Message object
+   * @returns {boolean}
+   */
+  _isScheduledMessage(message) {
+    return message.metadata?.scheduled === true;
+  }
+
+  /**
+   * Get display timestamp for message
+   * Uses SimpleCalendar format if available, otherwise ISO
+   * @param {Object} message - Message object
+   * @returns {string}
+   */
+  _getDisplayTimestamp(message) {
+    // If has SimpleCalendar data, prefer that display
+    if (message.simpleCalendarData?.display) {
+      return message.simpleCalendarData.display;
+    }
+    
+    // Otherwise return ISO timestamp
+    return message.timestamp;
   }
   
   /**

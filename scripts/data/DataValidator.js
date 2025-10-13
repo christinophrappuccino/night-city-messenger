@@ -41,6 +41,58 @@ export class DataValidator {
     } else {
       sanitized.content = this.sanitizeHTML(data.content);
     }
+
+    // Timestamp validation
+    if (data.timestamp) {
+      try {
+        const date = new Date(data.timestamp);
+        if (isNaN(date.getTime())) {
+          errors.push('Invalid timestamp format');
+        } else {
+          sanitized.timestamp = data.timestamp;
+        }
+      } catch (error) {
+        errors.push('Invalid timestamp');
+      }
+    } else {
+      // Default to current time if not provided
+      sanitized.timestamp = new Date().toISOString();
+    }
+    
+    // SimpleCalendar data (optional)
+    if (data.simpleCalendarData) {
+      if (typeof data.simpleCalendarData === 'object') {
+        sanitized.simpleCalendarData = {
+          timestamp: data.simpleCalendarData.timestamp,
+          date: data.simpleCalendarData.date,
+          display: data.simpleCalendarData.display
+        };
+      } else {
+        errors.push('SimpleCalendar data must be an object');
+      }
+    }
+    
+    // Scheduled message fields (optional)
+    if (data.scheduled !== undefined) {
+      sanitized.scheduled = Boolean(data.scheduled);
+    }
+    
+    if (data.scheduledTime) {
+      try {
+        const date = new Date(data.scheduledTime);
+        if (isNaN(date.getTime())) {
+          errors.push('Invalid scheduledTime format');
+        } else {
+          sanitized.scheduledTime = data.scheduledTime;
+        }
+      } catch (error) {
+        errors.push('Invalid scheduledTime');
+      }
+    }
+    
+    if (data.sentVia) {
+      sanitized.sentVia = String(data.sentVia);
+    }
     
     // Optional fields
     sanitized.timestamp = data.timestamp || new Date().toISOString();
@@ -143,6 +195,61 @@ export class DataValidator {
       errors,
       sanitized
     };
+  }
+
+  /**
+   * Validate scheduled message data
+   * Used by SchedulingService
+   */
+  static validateScheduledMessage(data) {
+    const errors = [];
+    
+    // Required fields
+    if (!data.from) errors.push('from is required');
+    if (!data.to) errors.push('to is required');
+    if (!data.subject) errors.push('subject is required');
+    if (!data.content) errors.push('content is required');
+    if (!data.scheduledTime) errors.push('scheduledTime is required');
+    
+    // Validate scheduledTime format
+    if (data.scheduledTime) {
+      try {
+        const date = new Date(data.scheduledTime);
+        if (isNaN(date.getTime())) {
+          errors.push('Invalid scheduledTime format');
+        }
+      } catch (error) {
+        errors.push('Invalid scheduledTime');
+      }
+    }
+    
+    // Validate email format
+    if (data.from && !this._isValidEmail(data.from)) {
+      errors.push('Invalid from email format');
+    }
+    
+    if (data.to && !this._isValidEmail(data.to)) {
+      errors.push('Invalid to email format');
+    }
+    
+    return {
+      valid: errors.length === 0,
+      errors
+    };
+  }
+
+  /**
+   * Helper to validate email format
+   * @private
+   */
+  static _isValidEmail(emailString) {
+    // Extract email from "Name <email>" format
+    const match = emailString.match(/<(.+)>/) || emailString.match(/^(.+)$/);
+    if (!match) return false;
+    
+    const email = match[1].trim();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
   }
   
   // ========================================

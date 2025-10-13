@@ -10,15 +10,24 @@ import { DataValidator } from '../data/DataValidator.js';
 import { MessageService } from './MessageService.js';
 import { SettingsManager } from '../core/SettingsManager.js';
 import { EventBus } from '../core/EventBus.js';
+import { TimeService } from './TimeService.js';
 
 export class SchedulingService {
   constructor() {
     this.settingsManager = SettingsManager.getInstance();
     this.messageService = new MessageService();
     this.eventBus = EventBus.getInstance();
-    
     this.checkInterval = null;
-    this.checkFrequency = 60000; // Check every minute
+    this.checkFrequency = 60000;
+    this.timeService = TimeService.getInstance();
+
+    // Listen for time changes from SimpleCalendar
+    this.eventBus.on(EVENTS.TIME_CHANGED, (data) => {
+      if (data.source === 'simplecalendar') {
+        console.log(`${MODULE_ID} | SimpleCalendar time changed, checking scheduled messages...`);
+        this.checkScheduledMessages();
+      }
+    });
   }
   
   /**
@@ -30,7 +39,10 @@ export class SchedulingService {
       return;
     }
     
-    console.log(`${MODULE_ID} | Starting scheduling service...`);
+    // Get check frequency from settings (convert to ms)
+    const checkFrequency = (this.settingsManager.get('scheduleCheckInterval') || 60) * 1000;
+    
+    console.log(`${MODULE_ID} | Starting scheduling service (checking every ${checkFrequency/1000}s)...`);
     
     // Check immediately
     this.checkScheduledMessages();
@@ -38,7 +50,7 @@ export class SchedulingService {
     // Then check periodically
     this.checkInterval = setInterval(() => {
       this.checkScheduledMessages();
-    }, this.checkFrequency);
+    }, checkFrequency);
   }
   
   /**
@@ -64,30 +76,88 @@ export class SchedulingService {
       throw new Error(`Invalid scheduled message: ${validation.errors.join(', ')}`);
     }
     
-    const data = validation.sanitized;
-    
-    // Generate ID
+    // Generate schedule ID
     const scheduleId = foundry.utils.randomID();
     
-    // Get all scheduled messages
-    const scheduled = this.settingsManager.get('scheduledMessages') || {};
-    
-    // Add new schedule
-    scheduled[scheduleId] = {
+    // Prepare schedule data
+    const scheduleData = {
       id: scheduleId,
-      ...data,
-      createdBy: game.user.id,
-      createdAt: new Date().toISOString(),
-      sent: false
+      from: messageData.from,
+      to: messageData.to,
+      subject: messageData.subject,
+      content: messageData.content,
+      scheduledTime: messageData.scheduledTime,
+      useSimpleCalendar: messageData.useSimpleCalendar || false,
+      actorId: messageData.actorId,
+      createdAt: this.timeService.getCurrentTimestamp(),
+      sent: false,
+      sentAt: null
     };
     
-    // Save
+    // If using SimpleCalendar, store additional data
+    if (messageData.useSimpleCalendar && this.timeService.isSimpleCalendarAvailable()) {
+      scheduleData.simpleCalendarData = this.timeService.getSimpleCalendarData();
+    }
+    
+    // Store in settings
+    const scheduled = this.settingsManager.get('scheduledMessages') || {};
+    scheduled[scheduleId] = scheduleData;
     await this.settingsManager.set('scheduledMessages', scheduled);
     
-    console.log(`${MODULE_ID} | Message scheduled for ${data.scheduledTime}`);
+    console.log(`${MODULE_ID} | Message scheduled:`, scheduleId);
+    
+    // Emit event
+    this.eventBus.emit(EVENTS.MESSAGE_SCHEDULED, scheduleData);
     
     return scheduleId;
   }
+
+  /**
+   * Get formatted time display for UI
+   */
+  getScheduleDisplayTime(schedule) {
+    if (schedule.useSimpleCalendar && schedule.simpleCalendarData) {
+      return schedule.simpleCalendarData.display;
+    }
+    
+    return this.timeService.formatTimestamp(schedule.scheduledTime, 'full');
+  }
+
+  /**
+   * GM to reschedule a message
+   */
+  async rescheduleMessage(scheduleId, newTime) {
+    if (!game.user.isGM) {
+      throw new Error('Only GMs can reschedule messages');
+    }
+    
+    const scheduled = this.settingsManager.get('scheduledMessages') || {};
+    const schedule = scheduled[scheduleId];
+    
+    if (!schedule) {
+      throw new Error('Schedule not found');
+    }
+    
+    if (schedule.sent) {
+      throw new Error('Cannot reschedule a message that was already sent');
+    }
+    
+    // Update time
+    schedule.scheduledTime = newTime;
+    
+    // Update SimpleCalendar data if applicable
+    if (schedule.useSimpleCalendar && this.timeService.isSimpleCalendarAvailable()) {
+      schedule.simpleCalendarData = this.timeService.getSimpleCalendarData();
+    }
+    
+    scheduled[scheduleId] = schedule;
+    await this.settingsManager.set('scheduledMessages', scheduled);
+    
+    console.log(`${MODULE_ID} | Message rescheduled:`, scheduleId);
+    
+    return schedule;
+  }
+
   
   /**
    * Cancel a scheduled message
@@ -132,50 +202,63 @@ export class SchedulingService {
    * @returns {Promise<number>} Number of messages sent
    */
   async checkScheduledMessages() {
-    // Only GM can send scheduled messages
-    if (!game.user.isGM) return 0;
-    
     const scheduled = this.getAllScheduled();
-    const now = new Date();
+    const now = this.timeService.getCurrentTimestamp();
     let sent = 0;
     
-    console.log(`${MODULE_ID} | Checking ${scheduled.length} scheduled messages...`);
+    console.log(`${MODULE_ID} | Checking ${scheduled.length} scheduled messages at ${now}`);
     
     for (const schedule of scheduled) {
       try {
-        const dueDate = new Date(schedule.scheduledTime);
+        // Check if message is due
+        const isDue = this.timeService.isTimeDue(schedule.scheduledTime);
         
-        // Check if SimpleCalendar mode
-        if (schedule.useSimpleCalendar && this._isSimpleCalendarAvailable()) {
-          const isDue = this._checkSimpleCalendarDue(schedule.scheduledTime);
-          if (!isDue) continue;
-        } else {
-          // Regular time check
-          if (now < dueDate) continue;
+        if (!isDue) {
+          continue;
         }
         
         // Send message
         console.log(`${MODULE_ID} | Sending scheduled message:`, schedule.id);
         
-        await this.messageService.sendMessage({
+        // Prepare message data with proper timestamp
+        const messageData = {
           from: schedule.from,
           to: schedule.to,
           subject: schedule.subject,
           content: schedule.content,
-          timestamp: schedule.scheduledTime
-        }, { skipSpamCheck: true });
+          timestamp: schedule.scheduledTime, // Use scheduled time, not current time
+          actorId: schedule.actorId
+        };
+        
+        // Include SimpleCalendar data if it was used
+        if (schedule.useSimpleCalendar && schedule.simpleCalendarData) {
+          messageData.simpleCalendarData = schedule.simpleCalendarData;
+        }
+        
+        await this.messageService.sendMessage(messageData, { 
+          skipSpamCheck: true 
+        });
         
         // Mark as sent
         await this._markAsSent(schedule.id);
         
         sent++;
+        
+        // Notify GM
+        if (game.user.isGM) {
+          ui.notifications.info(`Scheduled message sent: "${schedule.subject}"`);
+        }
       } catch (error) {
         console.error(`${MODULE_ID} | Error sending scheduled message:`, error);
+        // Could retry or notify GM
       }
     }
     
     if (sent > 0) {
       console.log(`${MODULE_ID} | Sent ${sent} scheduled messages`);
+      
+      // Emit event
+      this.eventBus.emit(EVENTS.TIME_SCHEDULED_MESSAGE_DUE, { count: sent });
     }
     
     return sent;
@@ -187,17 +270,32 @@ export class SchedulingService {
    */
   getStatistics() {
     const all = this.getAllScheduled();
-    const now = new Date();
+    const now = new Date(this.timeService.getCurrentTimestamp());
     
-    const pastDue = all.filter(msg => new Date(msg.scheduledTime) < now);
-    const upcoming = all.filter(msg => new Date(msg.scheduledTime) >= now);
+    const pastDue = all.filter(msg => {
+      const scheduledDate = new Date(msg.scheduledTime);
+      return scheduledDate < now && !msg.sent;
+    });
+    
+    const upcoming = all.filter(msg => {
+      const scheduledDate = new Date(msg.scheduledTime);
+      return scheduledDate >= now && !msg.sent;
+    });
+    
+    const sent = all.filter(msg => msg.sent);
     
     return {
       total: all.length,
       pastDue: pastDue.length,
       upcoming: upcoming.length,
+      sent: sent.length,
       nextDelivery: upcoming.length > 0 
-        ? upcoming.sort((a, b) => new Date(a.scheduledTime) - new Date(b.scheduledTime))[0].scheduledTime
+        ? this.timeService.formatTimestamp(
+            upcoming.sort((a, b) => 
+              new Date(a.scheduledTime) - new Date(b.scheduledTime)
+            )[0].scheduledTime,
+            'full'
+          )
         : null
     };
   }
