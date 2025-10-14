@@ -315,7 +315,7 @@ export class StateManager {
     } else if (this.state.currentFilter === 'spam') {
       messages = messages.filter(m => m.status?.spam);
     } else if (this.state.currentFilter === 'inbox') {
-      messages = messages.filter(m => !m.status?.spam);
+      messages = messages.filter(m => !m.status?.spam && !m.status?.deleted);
     }
     
     // Apply search

@@ -418,6 +418,23 @@
         <button class="ncm-btn ncm-btn--danger" data-action="delete-message">
           <i class="fas fa-trash"></i> Delete
         </button>
+        
+        {{!-- Reschedule button for scheduled messages --}}
+        {{#if selectedMessage.metadata.scheduleId}}
+          <div class="ncm-message-detail__scheduled-section">
+            <hr style="margin: 15px 0; border-color: var(--ncm-primary, #F65261); opacity: 0.3;">
+            <div class="ncm-message-detail__scheduled-info">
+              <span class="ncm-message-detail__scheduled-label">
+                <i class="fas fa-clock"></i>
+                <strong>Scheduled for:</strong> {{selectedMessage.formattedTimestamp}}
+              </span>
+              <button class="ncm-btn ncm-btn--secondary" data-action="reschedule-message">
+                <i class="fas fa-calendar-alt"></i>
+                Reschedule
+              </button>
+            </div>
+          </div>
+        {{/if}}
       </div>
       
       {{else}}

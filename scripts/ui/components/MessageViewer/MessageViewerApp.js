@@ -255,7 +255,6 @@ export class MessageViewerApp extends BaseApplication {
       
       if (!body && page.text?.content) {
         // Extract ONLY the message body from the styled HTML
-        // The body is in the second div with padding:15px style
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = page.text.content;
         
@@ -277,13 +276,25 @@ export class MessageViewerApp extends BaseApplication {
         body: body,
         timestamp: flags.timestamp || new Date().toISOString(),
         network: flags.network || 'CITINET',
-        status: flags.status || {
-          read: false,
-          saved: false,
-          spam: false,
-          encrypted: false,
-          infected: false
+        
+        // ✅ FIXED: Include complete status with deleted
+        status: {
+          read: flags.status?.read || false,
+          saved: flags.status?.saved || false,
+          spam: flags.status?.spam || false,
+          encrypted: flags.status?.encrypted || false,
+          infected: flags.status?.infected || false,
+          deleted: flags.status?.deleted || false, // ✅ NEW: Include deleted status
+          sent: flags.status?.sent || false,
+          scheduled: flags.status?.scheduled || false
         },
+        
+        // ✅ CRITICAL FIX: Include metadata (for reschedule button)
+        metadata: flags.metadata || {},
+        
+        // ✅ CRITICAL FIX: Keep page reference (needed for updates)
+        page: page,
+        
         preview: this._generatePreview(body)
       };
     });
