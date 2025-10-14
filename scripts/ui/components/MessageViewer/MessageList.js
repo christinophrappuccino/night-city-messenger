@@ -119,29 +119,57 @@ export class MessageList {
     
     switch (filter) {
       case 'inbox':
-        return allMessages.filter(m => !m.status?.spam && !m.status?.deleted);
+        // Inbox = NOT sent by me, NOT spam, NOT deleted
+        return allMessages.filter(m => 
+          !m.status?.sent && 
+          !m.status?.spam && 
+          !m.status?.deleted
+        );
       
       case 'unread':
-        return allMessages.filter(m => !m.status?.read && !m.status?.spam && !m.status?.deleted);
-      
-      case 'saved':
-        return allMessages.filter(m => m.status?.saved && !m.status?.deleted);
-      
-      case 'spam':
-        return allMessages.filter(m => m.status?.spam && !m.status?.deleted);
+        // Unread inbox messages
+        return allMessages.filter(m => 
+          !m.status?.read && 
+          !m.status?.sent && 
+          !m.status?.spam && 
+          !m.status?.deleted
+        );
       
       case 'sent':
-        return allMessages.filter(m => m.status?.sent && !m.status?.deleted);
+        // Messages I sent - has sent flag = true
+        return allMessages.filter(m => 
+          m.status?.sent && 
+          !m.status?.deleted
+        );
+      
+      case 'saved':
+        return allMessages.filter(m => 
+          m.status?.saved && 
+          !m.status?.deleted
+        );
+      
+      case 'spam':
+        return allMessages.filter(m => 
+          m.status?.spam && 
+          !m.status?.deleted
+        );
       
       case 'scheduled':
-        return allMessages.filter(m => m.status?.scheduled && !m.status?.deleted);
+        return allMessages.filter(m => 
+          m.status?.scheduled && 
+          !m.status?.deleted
+        );
       
       case 'deleted':
-        return allMessages.filter(m => m.status?.deleted);
+        return allMessages.filter(m => 
+          m.status?.deleted
+        );
       
       case 'all':
       default:
-        return allMessages.filter(m => !m.status?.deleted);
+        return allMessages.filter(m => 
+          !m.status?.deleted
+        );
     }
   }
   

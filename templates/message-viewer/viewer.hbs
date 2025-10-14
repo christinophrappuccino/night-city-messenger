@@ -226,7 +226,34 @@
         
         {{!-- Row 1: Sender (left) | Date/Time (right) --}}
         <div class="ncm-message-item__header">
-          <span class="ncm-message-item__sender">{{this.from}}</span>
+          <div class="ncm-message-item__sender-with-icon">
+            {{!-- Message type/status icons --}}
+            {{#if this.status.sent}}
+              <i class="fas fa-paper-plane ncm-message-item__type-icon ncm-message-item__type-icon--sent" 
+                 title="Sent by you"></i>
+            {{/if}}
+            
+            {{#if this.metadata.messageType}}
+              {{#if (eq this.metadata.messageType "reply")}}
+                <i class="fas fa-reply ncm-message-item__type-icon ncm-message-item__type-icon--reply" 
+                   title="Reply"></i>
+              {{else if (eq this.metadata.messageType "forward")}}
+                <i class="fas fa-share ncm-message-item__type-icon ncm-message-item__type-icon--forward" 
+                   title="Forwarded message"></i>
+              {{else if (eq this.metadata.messageType "scheduled")}}
+                <i class="fas fa-clock ncm-message-item__type-icon ncm-message-item__type-icon--scheduled" 
+                   title="Scheduled delivery"></i>
+              {{/if}}
+            {{/if}}
+            
+            {{#if this.status.scheduled}}
+              {{!-- Still scheduled (not delivered yet) --}}
+              <i class="fas fa-hourglass-half ncm-message-item__type-icon ncm-message-item__type-icon--pending" 
+                 title="Pending delivery"></i>
+            {{/if}}
+            
+            <span class="ncm-message-item__sender">{{this.from}}</span>
+          </div>
           
           <div class="ncm-message-item__timestamp">
             {{!-- Main date/time on top --}}

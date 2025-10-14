@@ -310,96 +310,63 @@ export class MessageComposerApp extends BaseApplication {
    * Send message
    */
   async sendMessage() {
-    event.preventDefault();
-    
-    const senderEmail = this.actor?.getFlag(MODULE_ID, "emailAddress");
-    
-    if (!senderEmail) {
-      ui.notifications.error("You must set an email address before sending messages.");
-      return;
-    }
-    
-    const to = this.element.find('[name="to"]').val()?.trim() || '';
-    const subject = this.element.find('[name="subject"]').val()?.trim() || '';
-    const contentDiv = this.element.find('.ncm-composer__editor')[0];
-    const content = contentDiv?.innerHTML?.trim() || '';
-    
-    // Validation
-    if (!to) {
-      ui.notifications.error("Please enter a recipient.");
-      return;
-    }
-    
-    if (!isValidEmail(to)) {
-      ui.notifications.error("Invalid recipient email format.");
-      return;
-    }
-    
-    if (!subject) {
-      ui.notifications.error("Please enter a subject.");
-      return;
-    }
-    
-    const strippedContent = content.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, '').trim();
-    if (!content || !strippedContent) {
-      ui.notifications.error("Please enter message content.");
-      return;
-    }
-    
-    try {
-      const sendBehavior = this.settingsManager.get('defaultSendBehavior');
+      event.preventDefault();
       
-      const messageData = {
-        from: `${this.actor.name} <${senderEmail}>`,
-        to,
-        subject,
-        content,
-        actorId: this.actor.id
-      };
+      const senderEmail = this.actor?.getFlag(MODULE_ID, "emailAddress");
       
-      // Get the send time (current or custom)
-      const sendTime = this.timeWidget.getSendTime();
-      const currentTime = this.timeService.getCurrentTimestamp();
-      const isFuture = new Date(sendTime) > new Date(currentTime);
-      
-      // Auto-schedule if time is in the future
-      if (isFuture && !game.user.isGM) {
-        // Non-GM with future time = auto-schedule
-        console.log(`${MODULE_ID} | Auto-scheduling message for future time:`, sendTime);
-        
-        messageData.scheduledTime = sendTime;
-        messageData.useSimpleCalendar = this.timeService.getTimeSource() === 'simplecalendar';
-        
-        if (messageData.useSimpleCalendar) {
-          messageData.simpleCalendarData = this.timeService.getSimpleCalendarData();
-        }
-        
-        const scheduleId = await game.nightcity.schedulingService.scheduleMessage(messageData);
-        
-        ui.notifications.info(`Message scheduled for ${this.timeService.formatTimestamp(sendTime)}`);
-        this.close();
+      if (!senderEmail) {
+        ui.notifications.error("You must set an email address before sending messages.");
         return;
       }
       
-      // GM with future time = ask what to do
-      if (isFuture && game.user.isGM) {
-        const choice = await Dialog.confirm({
-          title: 'Future Time Detected',
-          content: `
-            <p>The selected time is in the future:</p>
-            <p><strong>${this.timeService.formatTimestamp(sendTime)}</strong></p>
-            <p>Would you like to:</p>
-            <ul>
-              <li><strong>Schedule</strong> - Deliver when that time arrives</li>
-              <li><strong>Send Now</strong> - Send immediately with that timestamp</li>
-            </ul>
-          `,
-          yes: () => 'schedule',
-          no: () => 'send'
-        });
+      const to = this.element.find('[name="to"]').val()?.trim() || '';
+      const subject = this.element.find('[name="subject"]').val()?.trim() || '';
+      const contentDiv = this.element.find('.ncm-composer__editor')[0];
+      const content = contentDiv?.innerHTML?.trim() || '';
+      
+      // Validation
+      if (!to) {
+        ui.notifications.error("Please enter a recipient.");
+        return;
+      }
+      
+      if (!isValidEmail(to)) {
+        ui.notifications.error("Invalid recipient email format.");
+        return;
+      }
+      
+      if (!subject) {
+        ui.notifications.error("Please enter a subject.");
+        return;
+      }
+      
+      const strippedContent = content.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, '').trim();
+      if (!content || !strippedContent) {
+        ui.notifications.error("Please enter message content.");
+        return;
+      }
+      
+      try {
+        const sendBehavior = this.settingsManager.get('defaultSendBehavior');
         
-        if (choice === 'schedule') {
-          // Schedule it
+        const messageData = {
+          from: `${this.actor.name} <${senderEmail}>`,
+          to,
+          subject,
+          content,
+          actorId: this.actor.id
+        };
+        
+        // Get the send time (current or custom)
+        const sendTime = this.timeWidget.getSendTime();
+        const currentTime = this.timeService.getCurrentTimestamp();
+        const isFuture = new Date(sendTime) > new Date(currentTime);
+        
+        // ⚠️ NEW LOGIC: Auto-schedule if time is in the future
+        if (isFuture && !game.user.isGM) {
+          // Non-GM with future time = auto-schedule
+          console.log(`${MODULE_ID} | Auto-scheduling message for future time:`, sendTime);
+          
           messageData.scheduledTime = sendTime;
           messageData.useSimpleCalendar = this.timeService.getTimeSource() === 'simplecalendar';
           
@@ -407,43 +374,112 @@ export class MessageComposerApp extends BaseApplication {
             messageData.simpleCalendarData = this.timeService.getSimpleCalendarData();
           }
           
-          await game.nightcity.schedulingService.scheduleMessage(messageData);
+          const scheduleId = await game.nightcity.schedulingService.scheduleMessage(messageData);
+          
           ui.notifications.info(`Message scheduled for ${this.timeService.formatTimestamp(sendTime)}`);
           this.close();
           return;
         }
         
-        // Fall through to send with custom timestamp
-      }
-      
-      // Handle normal send behavior
-      if (sendBehavior === 'schedule' || sendBehavior === 'prompt') {
-        // Show schedule dialog
-        await this.scheduleMessage(messageData);
-      } else {
-        // Send immediately with current or custom time
-        messageData.timestamp = sendTime;
-        
-        // Store SimpleCalendar data if applicable
-        if (this.timeService.getTimeSource() === 'simplecalendar') {
-          messageData.simpleCalendarData = this.timeService.getSimpleCalendarData();
+        // GM with future time = ask what to do
+        if (isFuture && game.user.isGM) {
+          const choice = await new Promise((resolve) => {
+            new Dialog({
+              title: 'Future Time Detected',
+              content: `
+                <div class="ncm-dialog-content" style="padding: 15px;">
+                  <p style="margin-bottom: 15px;">The selected time is in the future:</p>
+                  <p style="text-align: center; font-weight: bold; color: var(--ncm-secondary, #19f3f7); margin: 15px 0; font-size: 1.1em;">
+                    ${this.timeService.formatTimestamp(sendTime)}
+                  </p>
+                  <p style="margin-bottom: 10px; font-weight: 600;">What would you like to do?</p>
+                  <ul style="margin: 10px 0; padding-left: 20px; line-height: 1.8;">
+                    <li><strong style="color: var(--ncm-primary, #F65261);">Schedule:</strong> Deliver automatically when that time arrives</li>
+                    <li><strong style="color: var(--ncm-secondary, #19f3f7);">Send Now:</strong> Send immediately with that timestamp (backdating)</li>
+                  </ul>
+                </div>
+              `,
+              buttons: {
+                schedule: {
+                  icon: '<i class="fas fa-clock"></i>',
+                  label: 'Schedule',
+                  callback: () => resolve('schedule')
+                },
+                send: {
+                  icon: '<i class="fas fa-paper-plane"></i>',
+                  label: 'Send Now',
+                  callback: () => resolve('send')
+                },
+                cancel: {
+                  icon: '<i class="fas fa-times"></i>',
+                  label: 'Cancel',
+                  callback: () => resolve('cancel')
+                }
+              },
+              default: 'schedule',
+              close: () => resolve('cancel')
+            }, {
+              classes: ['dialog', 'ncm-dialog'],
+              width: 500
+            }).render(true);
+          });
+          
+          if (choice === 'cancel') {
+            return; // User cancelled
+          }
+          
+          if (choice === 'schedule') {
+            // Schedule it for automatic delivery
+            messageData.scheduledTime = sendTime;
+            messageData.useSimpleCalendar = this.timeService.getTimeSource() === 'simplecalendar';
+            
+            if (messageData.useSimpleCalendar) {
+              messageData.simpleCalendarData = this.timeService.getSimpleCalendarData();
+            }
+            
+            // Set message type metadata
+            messageData.metadata = {
+              ...(messageData.metadata || {}),
+              messageType: 'scheduled'
+            };
+            
+            await game.nightcity.schedulingService.scheduleMessage(messageData);
+            ui.notifications.info(`Message scheduled for ${this.timeService.formatTimestamp(sendTime)}`);
+            this.close();
+            return;
+          }
+          
+          // Fall through to send with custom timestamp
         }
         
-        await game.nightcity.messageManager.sendMessage(messageData);
+        // Handle normal send behavior
+        if (sendBehavior === 'schedule' || sendBehavior === 'prompt') {
+          // Show schedule dialog
+          await this.scheduleMessage(messageData);
+        } else {
+          // Send immediately with current or custom time
+          messageData.timestamp = sendTime;
+          
+          // Store SimpleCalendar data if applicable
+          if (this.timeService.getTimeSource() === 'simplecalendar') {
+            messageData.simpleCalendarData = this.timeService.getSimpleCalendarData();
+          }
+          
+          await game.nightcity.messageManager.sendMessage(messageData);
+          
+          ui.notifications.info("Message sent!");
+          this.close();
+        }
         
-        ui.notifications.info("Message sent!");
-        this.close();
+      } catch (error) {
+        console.error(`${MODULE_ID} | Error sending message:`, error);
+        ui.notifications.error(`Failed to send message: ${error.message}`);
       }
-      
-    } catch (error) {
-      console.error(`${MODULE_ID} | Error sending message:`, error);
-      ui.notifications.error(`Failed to send message: ${error.message}`);
     }
 
   /**
    * Schedule Message
    */
-
   async scheduleMessage(messageData) {
     try {
       const result = await ScheduleMessageDialog.show(messageData, {

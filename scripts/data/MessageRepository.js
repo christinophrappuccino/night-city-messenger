@@ -44,15 +44,26 @@ export class MessageRepository {
     // Prepare SimpleCalendar data if provided
     const simpleCalendarData = data.simpleCalendarData || null;
     
+    // FIXED: Proper status for RECIPIENT
+    const status = data.status || {
+      read: false,
+      sent: false,      // Received message (not sent by recipient)
+      scheduled: false,
+      spam: false,
+      saved: false,
+      deleted: false
+    };
+    
     // Prepare metadata with scheduling info
     const metadata = {
       ...(data.metadata || {}),
       scheduled: data.scheduled || false,
       scheduledTime: data.scheduledTime || null,
-      sentVia: data.sentVia || 'manual'
+      sentVia: data.sentVia || 'manual',
+      messageType: data.metadata?.messageType || 'standard'
     };
     
-    // Create journal page
+    // Create journal page in RECIPIENT's inbox
     const page = await JournalEntryPage.create({
       name: data.subject,
       type: 'text',
@@ -73,7 +84,7 @@ export class MessageRepository {
           
           network: data.network,
           encrypted: data.encrypted,
-          status: data.status,
+          status: status,  // FIXED: Now properly set
           
           // Enhanced metadata
           metadata,  // Includes scheduled info
@@ -84,6 +95,11 @@ export class MessageRepository {
     }, { parent: recipientJournal });
     
     console.log(`${MODULE_ID} | Created message: ${data.subject}`);
+    
+    // FIXED: Create copy in sender's sent folder
+    if (data.actorId) {
+      await this._createSentCopy(data, timestamp, simpleCalendarData, metadata);
+    }
     
     // Convert to message object
     const message = this._pageToMessage(page);
@@ -333,28 +349,45 @@ export class MessageRepository {
   // ========================================
   
   /**
-   * Get recipient's journal
+   * Get recipient's journal - FIXED
    * @private
    */
   async _getRecipientJournal(email) {
-    // Find actor by email flag (most reliable)
+    // Find actor by email flag
     const actor = game.actors.find(a => 
       a.getFlag(MODULE_ID, "emailAddress") === email
     );
     
     if (actor) {
-      // Get or create inbox for this actor
-      const inboxName = `${actor.name}'s Messages`;
-      let inbox = game.journal.getName(inboxName);
+      // Try both formats
+      const possessiveName = `${actor.name}'s Messages`;
+      const simpleName = `${actor.name} Messages`;
+      
+      let inbox = game.journal.getName(possessiveName) || game.journal.getName(simpleName);
+      
+      // Also check by flag
+      if (!inbox) {
+        inbox = game.journal.find(j => 
+          j.getFlag(MODULE_ID, 'isInbox') && 
+          j.getFlag(MODULE_ID, 'actorId') === actor.id
+        );
+      }
       
       if (!inbox && game.user.isGM) {
         // Auto-create inbox
-        const folder = await this.journalManager.ensureFolder("Player Messages");
+        const folder = await this.journalManager.getMessageFolder(); // FIXED: was ensureFolder
         inbox = await JournalEntry.create({
-          name: inboxName,
-          folder: folder.id
+          name: possessiveName, // Use possessive format
+          folder: folder?.id || null,
+          flags: {
+            [MODULE_ID]: {
+              isInbox: true,
+              actorId: actor.id,
+              characterName: actor.name
+            }
+          }
         });
-        console.log(`${MODULE_ID} | Auto-created inbox for ${actor.name}`);
+        console.log(`${MODULE_ID} | Auto-created inbox: ${possessiveName}`);
       }
       
       return inbox;
@@ -371,6 +404,119 @@ export class MessageRepository {
     }
     
     return null;
+  }
+  
+  /**
+   * Create copy in sender's sent folder - NEW METHOD
+   * @private
+   */
+  async _createSentCopy(data, timestamp, simpleCalendarData, metadata) {
+    console.log(`${MODULE_ID} | === _createSentCopy START ===`);
+    console.log(`${MODULE_ID} | ActorId:`, data.actorId);
+    
+    try {
+      const actor = game.actors.get(data.actorId);
+      console.log(`${MODULE_ID} | Found actor:`, actor?.name);
+      
+      if (!actor) {
+        console.warn(`${MODULE_ID} | No actor found for actorId: ${data.actorId}`);
+        return;
+      }
+      
+      // Try both formats
+      const possessiveName = `${actor.name}'s Messages`;
+      const simpleName = `${actor.name} Messages`;
+      
+      console.log(`${MODULE_ID} | Looking for inbox: "${possessiveName}" or "${simpleName}"`);
+      
+      let journal = game.journal.getName(possessiveName) || game.journal.getName(simpleName);
+      
+      console.log(`${MODULE_ID} | Found by name:`, journal?.name);
+      
+      if (!journal) {
+        journal = game.journal.find(j => 
+          j.getFlag(MODULE_ID, 'isInbox') && 
+          j.getFlag(MODULE_ID, 'actorId') === actor.id
+        );
+        console.log(`${MODULE_ID} | Found by flag:`, journal?.name);
+      }
+      
+      if (!journal && game.user.isGM) {
+        console.log(`${MODULE_ID} | No inbox found - creating new one`);
+        const folder = await this.journalManager.getMessageFolder();
+        console.log(`${MODULE_ID} | Folder:`, folder?.name);
+        
+        journal = await JournalEntry.create({
+          name: possessiveName,
+          folder: folder?.id || null,
+          flags: {
+            [MODULE_ID]: {
+              isInbox: true,
+              actorId: actor.id,
+              characterName: actor.name
+            }
+          }
+        });
+        console.log(`${MODULE_ID} | Created inbox: ${journal.name}`);
+      }
+      
+      if (!journal) {
+        console.error(`${MODULE_ID} | Could not get/create inbox for sender: ${actor.name}`);
+        return;
+      }
+      
+      console.log(`${MODULE_ID} | Using journal: ${journal.name}`);
+      
+      // Format message content
+      const formattedContent = this._formatMessageContent(data);
+      
+      console.log(`${MODULE_ID} | Creating sent page...`);
+      
+      // Create sent copy with SENT status
+      const page = await JournalEntryPage.create({
+        name: data.subject,
+        type: 'text',
+        text: { 
+          content: formattedContent,
+          format: CONST.JOURNAL_ENTRY_PAGE_FORMATS.HTML
+        },
+        flags: {
+          [MODULE_ID]: {
+            from: data.from,
+            to: data.to,
+            subject: data.subject,
+            content: data.content,
+            timestamp,
+            simpleCalendarData,
+            network: data.network || 'CITINET',
+            encrypted: data.encrypted || false,
+            
+            // SENDER's copy has SENT status
+            status: {
+              read: true,
+              sent: true,      // KEY FLAG!
+              scheduled: false,
+              spam: false,
+              saved: false,
+              deleted: false
+            },
+            
+            metadata: metadata,
+            createdAt: new Date().toISOString()
+          }
+        }
+      }, { parent: journal });
+      
+      console.log(`${MODULE_ID} | ✅ Created sent copy page: ${page.name}`);
+      console.log(`${MODULE_ID} | Page ID: ${page.id}`);
+      console.log(`${MODULE_ID} | Status:`, page.flags[MODULE_ID].status);
+      
+    } catch (error) {
+      console.error(`${MODULE_ID} | ❌ Error creating sent copy:`, error);
+      console.error(`${MODULE_ID} | Stack:`, error.stack);
+    }
+    
+    console.log(`${MODULE_ID} | === _createSentCopy END ===`);
   }
   
   /**
