@@ -105,7 +105,10 @@
               data-action="filter" 
               data-filter="scheduled">
         <i class="fas fa-calendar-alt"></i> Scheduled
-      </button>
+          {{#if filters.scheduled}}
+          <span class="ncm-toolbar__badge">{{filters.scheduled}}</span>
+          {{/if}}
+        </button>
     </div>
     
     {{!-- Search and Actions --}}

@@ -88,12 +88,21 @@ export class MessageViewerApp extends BaseApplication {
     // Get all messages for counting
     const allMessages = this.stateManager.getAllMessages() || [];
     
-    // Calculate counts manually (StateManager might not have these methods)
+    // Calculate counts
     const unreadCount = allMessages.filter(m => !m.status?.read && !m.status?.spam && !m.status?.deleted).length;
     const savedCount = allMessages.filter(m => m.status?.saved && !m.status?.deleted).length;
     const spamCount = allMessages.filter(m => m.status?.spam && !m.status?.deleted).length;
     const sentCount = allMessages.filter(m => m.status?.sent && !m.status?.deleted).length;
     const scheduledCount = allMessages.filter(m => m.status?.scheduled && !m.status?.deleted).length;
+    
+    console.log(`${MODULE_ID} | Message counts:`, {
+      total: allMessages.length,
+      unread: unreadCount,
+      saved: savedCount,
+      spam: spamCount,
+      sent: sentCount,
+      scheduled: scheduledCount  // ← Log this!
+    });
     
     // Advanced filters state
     const showAdvancedFilters = this.stateManager.get('showAdvancedFilters') || false;
@@ -157,7 +166,7 @@ export class MessageViewerApp extends BaseApplication {
         saved: savedCount,
         spam: spamCount,
         sent: sentCount,
-        scheduled: scheduledCount
+        scheduled: scheduledCount 
       },
       
       // Character data
