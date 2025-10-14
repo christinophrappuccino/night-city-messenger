@@ -230,6 +230,11 @@ export class MessageViewerApp extends BaseApplication {
     html.find('[data-action="reschedule-message"]').on('click', (e) => {
       this._onRescheduleMessage(e);
     });
+    
+    // Cancel Schedule
+    html.find('[data-action="cancel-schedule"]').on('click', (e) => {
+      this._onCancelSchedule(e);
+    });
 
     // Advanced filters toggle
     html.find('[data-action="toggle-filters"]').on('click', this._onToggleFilters.bind(this));
@@ -771,6 +776,66 @@ export class MessageViewerApp extends BaseApplication {
       }
     }
   }
+
+  /**
+   * Cancel scheduled message
+   * @private
+   */
+  async _onCancelSchedule(event) {
+    event.preventDefault();
+    
+    const scheduleId = $(event.currentTarget).data('schedule-id');
+    
+    if (!scheduleId) {
+      ui.notifications.warn('No schedule ID found');
+      return;
+    }
+    
+    // Confirm cancellation
+    const confirm = await Dialog.confirm({
+      title: 'Cancel Scheduled Message',
+      content: `
+        <p>Cancel this scheduled message?</p>
+        <p style="color: #F65261; margin-top: 10px;">
+          <i class="fas fa-exclamation-triangle"></i>
+          <strong>Warning:</strong> This will permanently remove the schedule and the message will never be sent.
+        </p>
+      `
+    });
+    
+    if (!confirm) return;
+    
+    try {
+      // Get scheduling service
+      const schedulingService = game.nightcity.schedulingService;
+      
+      if (!schedulingService) {
+        throw new Error('Scheduling service not available');
+      }
+      
+      // Cancel the schedule (this also deletes the placeholder)
+      await schedulingService.cancelSchedule(scheduleId);
+      
+      ui.notifications.info('Scheduled message cancelled');
+      
+      // ✅ FIX: Use correct method name
+      // Reload messages
+      this._loadMessages();
+      
+      // Clear selection
+      this.stateManager.set('selectedMessageId', null);
+      
+      // Re-render
+      this.render(false);
+      
+      this.playSound?.('delete');
+      
+    } catch (error) {
+      console.error(`${MODULE_ID} | Error cancelling schedule:`, error);
+      ui.notifications.error(`Failed to cancel: ${error.message}`);
+    }
+  }
+
 
   /**
    * Open user settings panel

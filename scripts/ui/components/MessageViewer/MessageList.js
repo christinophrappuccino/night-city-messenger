@@ -155,10 +155,7 @@ export class MessageList {
         );
       
       case 'scheduled':
-        return allMessages.filter(m => 
-          m.status?.scheduled && 
-          !m.status?.deleted
-        );
+        return allMessages.filter(m => m.status?.scheduled);
       
       case 'deleted':
         return allMessages.filter(m => 

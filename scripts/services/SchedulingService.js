@@ -326,15 +326,54 @@ export class SchedulingService {
    */
   async cancelSchedule(scheduleId) {
     const scheduled = this.settingsManager.get('scheduledMessages') || {};
+    const schedule = scheduled[scheduleId];
     
-    if (!scheduled[scheduleId]) {
+    if (!schedule) {
+      console.warn(`${MODULE_ID} | Schedule not found: ${scheduleId}`);
       return false;
     }
     
+    console.log(`${MODULE_ID} | Cancelling schedule: ${scheduleId}`);
+    
+    // ✅ NEW: Delete the placeholder from sender's inbox
+    if (schedule.actorId) {
+      try {
+        const actor = game.actors.get(schedule.actorId);
+        if (actor) {
+          const inboxId = actor.getFlag(MODULE_ID, 'inboxJournal');
+          if (inboxId) {
+            const journal = game.journal.get(inboxId);
+            if (journal) {
+              // Find placeholder by scheduleId
+              const placeholderPage = journal.pages.find(p => {
+                const pageScheduleId = p.getFlag(MODULE_ID, 'metadata')?.scheduleId;
+                const isPlaceholder = p.getFlag(MODULE_ID, 'metadata')?.isPlaceholder;
+                return pageScheduleId === scheduleId && isPlaceholder;
+              });
+              
+              if (placeholderPage) {
+                console.log(`${MODULE_ID} | Deleting placeholder: ${placeholderPage.name}`);
+                await placeholderPage.delete();
+              } else {
+                console.warn(`${MODULE_ID} | No placeholder found for schedule ${scheduleId}`);
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error(`${MODULE_ID} | Error deleting placeholder:`, error);
+        // Continue anyway - we still want to remove the schedule
+      }
+    }
+    
+    // Remove from settings
     delete scheduled[scheduleId];
     await this.settingsManager.set('scheduledMessages', scheduled);
     
-    console.log(`${MODULE_ID} | Cancelled scheduled message: ${scheduleId}`);
+    console.log(`${MODULE_ID} | ✓ Cancelled scheduled message: ${scheduleId}`);
+    
+    // Emit event
+    this.eventBus.emit(EVENTS.SCHEDULE_CANCELLED, { scheduleId });
     
     return true;
   }

@@ -599,6 +599,243 @@
   color: var(--ncm-primary);
 }
 
+.ncm-message-detail__scheduled-section {
+  margin-top: var(--ncm-spacing-md);
+}
+
+.ncm-message-detail__scheduled-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ncm-spacing-md);
+  padding: var(--ncm-spacing-md);
+  background: rgba(25, 243, 247, 0.05);
+  border: 1px solid rgba(25, 243, 247, 0.2);
+  border-radius: var(--ncm-border-radius-md);
+}
+
+.ncm-message-detail__scheduled-label {
+  display: flex;
+  align-items: center;
+  gap: var(--ncm-spacing-sm);
+  color: var(--ncm-accent);
+  font-size: 0.95em;
+}
+
+.ncm-message-detail__scheduled-label i {
+  color: var(--ncm-accent);
+}
+
+.ncm-message-detail__scheduled-actions {
+  display: flex;
+  gap: var(--ncm-spacing-sm);
+  justify-content: flex-start;
+}
+
+.ncm-message-detail__scheduled-actions .ncm-btn {
+  flex: 0 0 auto;
+}
+
+/* Cyberpunk glow effect on hover */
+.ncm-message-detail__scheduled-actions .ncm-btn--danger:hover {
+  box-shadow: 0 0 10px rgba(246, 82, 97, 0.5);
+}
+
+.ncm-message-detail__scheduled-actions .ncm-btn--secondary:hover {
+  box-shadow: 0 0 10px rgba(25, 243, 247, 0.3);
+}
+
+/* Target messages with scheduled status */
+.ncm-message-list__item[data-scheduled="true"] {
+  position: relative;
+  background: linear-gradient(
+    135deg,
+    rgba(25, 243, 247, 0.05) 0%,
+    rgba(25, 243, 247, 0.02) 100%
+  );
+  border-left: 3px solid var(--ncm-accent, #19f3f7);
+  animation: pulse-glow 3s ease-in-out infinite;
+}
+
+/* Animated glow effect for scheduled messages */
+@keyframes pulse-glow {
+  0%, 100% {
+    border-left-color: rgba(25, 243, 247, 0.8);
+    box-shadow: 
+      0 0 5px rgba(25, 243, 247, 0.1),
+      inset 0 0 10px rgba(25, 243, 247, 0.05);
+  }
+  50% {
+    border-left-color: rgba(25, 243, 247, 1);
+    box-shadow: 
+      0 0 15px rgba(25, 243, 247, 0.2),
+      inset 0 0 20px rgba(25, 243, 247, 0.1);
+  }
+}
+
+/* Clock icon indicator for scheduled messages */
+.ncm-message-list__item[data-scheduled="true"]::before {
+  content: "\f017"; /* Font Awesome clock icon */
+  font-family: "Font Awesome 5 Free";
+  font-weight: 900;
+  position: absolute;
+  left: var(--ncm-spacing-sm);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--ncm-accent, #19f3f7);
+  font-size: 1.2em;
+  opacity: 0.8;
+  animation: spin-clock 4s linear infinite;
+}
+
+@keyframes spin-clock {
+  0% {
+    transform: translateY(-50%) rotate(0deg);
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-50%) rotate(360deg);
+    opacity: 0.8;
+  }
+}
+
+/* Adjust message content to account for icon */
+.ncm-message-list__item[data-scheduled="true"] .ncm-message-list__content {
+  padding-left: 45px;
+}
+
+/* "SCHEDULED" badge in message preview */
+.ncm-message-list__item[data-scheduled="true"] .ncm-message-list__subject::before {
+  content: "⏰ SCHEDULED";
+  display: inline-block;
+  background: var(--ncm-accent, #19f3f7);
+  color: #000;
+  font-size: 0.65em;
+  font-weight: bold;
+  padding: 2px 6px;
+  border-radius: 3px;
+  margin-right: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  vertical-align: middle;
+}
+
+/* Hover effect for scheduled messages */
+.ncm-message-list__item[data-scheduled="true"]:hover {
+  background: linear-gradient(
+    135deg,
+    rgba(25, 243, 247, 0.1) 0%,
+    rgba(25, 243, 247, 0.05) 100%
+  );
+  border-left-color: var(--ncm-accent, #19f3f7);
+}
+
+/* Selected scheduled message */
+.ncm-message-list__item[data-scheduled="true"].ncm-message-list__item--selected {
+  background: linear-gradient(
+    135deg,
+    rgba(25, 243, 247, 0.15) 0%,
+    rgba(25, 243, 247, 0.08) 100%
+  );
+  border-left-width: 4px;
+}
+
+/* ============================================
+   SCHEDULED MESSAGE DETAIL VIEW
+   ============================================ */
+
+/* Add "SCHEDULED" header to message detail */
+.ncm-detail__header[data-scheduled="true"]::before {
+  content: "";
+  display: block;
+  background: linear-gradient(
+    90deg,
+    rgba(25, 243, 247, 0.2) 0%,
+    rgba(25, 243, 247, 0.05) 50%,
+    rgba(25, 243, 247, 0.2) 100%
+  );
+  border: 1px solid var(--ncm-accent, #19f3f7);
+  border-radius: var(--ncm-border-radius-md);
+  padding: var(--ncm-spacing-sm);
+  margin-bottom: var(--ncm-spacing-md);
+  text-align: center;
+  color: var(--ncm-accent);
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 0.85em;
+  animation: pulse-text 2s ease-in-out infinite;
+}
+
+@keyframes pulse-text {
+  0%, 100% {
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Make placeholder content more distinctive */
+.ncm-scheduled-message-placeholder {
+  position: relative;
+  overflow: hidden;
+}
+
+/* Add animated scanline effect */
+.ncm-scheduled-message-placeholder::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--ncm-accent, #19f3f7) 50%,
+    transparent 100%
+  );
+  animation: scanline 3s linear infinite;
+  opacity: 0.5;
+}
+
+@keyframes scanline {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(400px);
+  }
+}
+
+/* Glitch effect on placeholder headers */
+.ncm-scheduled-message-placeholder h3 {
+  position: relative;
+  animation: glitch-text 5s infinite;
+}
+
+@keyframes glitch-text {
+  0%, 90%, 100% {
+    text-shadow: none;
+  }
+  91% {
+    text-shadow: 
+      2px 0 var(--ncm-primary, #F65261),
+      -2px 0 var(--ncm-accent, #19f3f7);
+  }
+  92% {
+    text-shadow: 
+      -2px 0 var(--ncm-primary, #F65261),
+      2px 0 var(--ncm-accent, #19f3f7);
+  }
+  93% {
+    text-shadow: none;
+  }
+}
+
 /* ============================================
    ADVANCED FILTERS PANEL
    ============================================ */
