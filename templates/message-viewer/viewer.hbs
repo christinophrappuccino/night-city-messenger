@@ -224,7 +224,7 @@
            data-message-id="{{this.id}}"
            data-action="select-message">
         
-        {{!-- Header: Sender (left) | Date/Time (right) --}}
+        {{!-- Row 1: Sender (left) | Date/Time (right) --}}
         <div class="ncm-message-item__header">
           <span class="ncm-message-item__sender">{{this.from}}</span>
           
@@ -249,22 +249,28 @@
           </div>
         </div>
         
-        {{!-- Second row: Subject (left) | Relative time (right) --}}
-        <div class="ncm-message-item__row2">
+        {{!-- Row 2: Subject (full width) - REMOVED relative time --}}
+        <div class="ncm-message-item__subject-row">
           <div class="ncm-message-item__subject">
             {{#unless this.status.read}}
             <span class="ncm-message-item__unread-dot"></span>
             {{/unless}}
             {{this.subject}}
           </div>
-          
+        </div>
+        
+        {{!-- Row 3: Message Preview (full width) --}}
+        <div class="ncm-message-item__preview">{{this.preview}}</div>
+        
+        {{!-- Row 4: Empty (left) | Relative time (right, bottom-right) --}}
+        <div class="ncm-message-item__footer">
+          <div class="ncm-message-item__spacer"></div>
           <span class="ncm-message-item__relative">
             {{this.relativeTime}}
           </span>
         </div>
         
-        <div class="ncm-message-item__preview">{{this.preview}}</div>
-        
+        {{!-- Status indicators at the bottom --}}
         {{#if this.status}}
         <div class="ncm-message-item__indicators">
           {{#if this.status.encrypted}}

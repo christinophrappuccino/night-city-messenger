@@ -68,8 +68,7 @@ export class MessageComposerApp extends BaseApplication {
       timeWidgetHtml: this.timeWidget.render(),
       showScheduleButton: this.settingsManager.get('defaultSendBehavior') !== 'immediate',
       currentTime: this.timeService.formatTimestamp(
-        this.timeService.getCurrentTimestamp(),
-        '24h' // or '12h' if you prefer
+        this.timeService.getCurrentTimestamp()
       )
     };
   }
@@ -311,10 +310,12 @@ export class MessageComposerApp extends BaseApplication {
    * Send message
    */
   async sendMessage() {
+    event.preventDefault();
+    
     const senderEmail = this.actor?.getFlag(MODULE_ID, "emailAddress");
     
     if (!senderEmail) {
-      ui.notifications.error("Please set up your email address first.");
+      ui.notifications.error("You must set an email address before sending messages.");
       return;
     }
     
@@ -346,7 +347,6 @@ export class MessageComposerApp extends BaseApplication {
     }
     
     try {
-      // Check default send behavior
       const sendBehavior = this.settingsManager.get('defaultSendBehavior');
       
       const messageData = {
@@ -357,13 +357,72 @@ export class MessageComposerApp extends BaseApplication {
         actorId: this.actor.id
       };
       
-      // Handle send behavior
+      // Get the send time (current or custom)
+      const sendTime = this.timeWidget.getSendTime();
+      const currentTime = this.timeService.getCurrentTimestamp();
+      const isFuture = new Date(sendTime) > new Date(currentTime);
+      
+      // Auto-schedule if time is in the future
+      if (isFuture && !game.user.isGM) {
+        // Non-GM with future time = auto-schedule
+        console.log(`${MODULE_ID} | Auto-scheduling message for future time:`, sendTime);
+        
+        messageData.scheduledTime = sendTime;
+        messageData.useSimpleCalendar = this.timeService.getTimeSource() === 'simplecalendar';
+        
+        if (messageData.useSimpleCalendar) {
+          messageData.simpleCalendarData = this.timeService.getSimpleCalendarData();
+        }
+        
+        const scheduleId = await game.nightcity.schedulingService.scheduleMessage(messageData);
+        
+        ui.notifications.info(`Message scheduled for ${this.timeService.formatTimestamp(sendTime)}`);
+        this.close();
+        return;
+      }
+      
+      // GM with future time = ask what to do
+      if (isFuture && game.user.isGM) {
+        const choice = await Dialog.confirm({
+          title: 'Future Time Detected',
+          content: `
+            <p>The selected time is in the future:</p>
+            <p><strong>${this.timeService.formatTimestamp(sendTime)}</strong></p>
+            <p>Would you like to:</p>
+            <ul>
+              <li><strong>Schedule</strong> - Deliver when that time arrives</li>
+              <li><strong>Send Now</strong> - Send immediately with that timestamp</li>
+            </ul>
+          `,
+          yes: () => 'schedule',
+          no: () => 'send'
+        });
+        
+        if (choice === 'schedule') {
+          // Schedule it
+          messageData.scheduledTime = sendTime;
+          messageData.useSimpleCalendar = this.timeService.getTimeSource() === 'simplecalendar';
+          
+          if (messageData.useSimpleCalendar) {
+            messageData.simpleCalendarData = this.timeService.getSimpleCalendarData();
+          }
+          
+          await game.nightcity.schedulingService.scheduleMessage(messageData);
+          ui.notifications.info(`Message scheduled for ${this.timeService.formatTimestamp(sendTime)}`);
+          this.close();
+          return;
+        }
+        
+        // Fall through to send with custom timestamp
+      }
+      
+      // Handle normal send behavior
       if (sendBehavior === 'schedule' || sendBehavior === 'prompt') {
         // Show schedule dialog
         await this.scheduleMessage(messageData);
       } else {
         // Send immediately with current or custom time
-        messageData.timestamp = this.timeWidget.getSendTime();
+        messageData.timestamp = sendTime;
         
         // Store SimpleCalendar data if applicable
         if (this.timeService.getTimeSource() === 'simplecalendar') {
@@ -380,7 +439,6 @@ export class MessageComposerApp extends BaseApplication {
       console.error(`${MODULE_ID} | Error sending message:`, error);
       ui.notifications.error(`Failed to send message: ${error.message}`);
     }
-  }
 
   /**
    * Schedule Message

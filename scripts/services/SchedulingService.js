@@ -90,13 +90,69 @@ export class SchedulingService {
       useSimpleCalendar: messageData.useSimpleCalendar || false,
       actorId: messageData.actorId,
       createdAt: this.timeService.getCurrentTimestamp(),
+      createdBy: game.user.id, // Track who scheduled it
       sent: false,
-      sentAt: null
+      sentAt: null,
+      
+      // Add status markers for filtering
+      status: {
+        scheduled: true,  // Mark as scheduled
+        sent: false,      // NOT sent yet
+        read: false,      // Will be unread when delivered
+        spam: false,
+        saved: false,
+        deleted: false
+      }
     };
     
     // If using SimpleCalendar, store additional data
     if (messageData.useSimpleCalendar && this.timeService.isSimpleCalendarAvailable()) {
       scheduleData.simpleCalendarData = this.timeService.getSimpleCalendarData();
+    }
+    
+    // Also create a preview message in the journal for "scheduled" filter
+    // This allows the message to appear in the scheduled folder
+    if (messageData.actorId) {
+      const actor = game.actors.get(messageData.actorId);
+      if (actor) {
+        const inbox = actor.getFlag(MODULE_ID, 'inboxJournal');
+        if (inbox) {
+          const journal = game.journal.get(inbox);
+          if (journal) {
+            // Create a placeholder page that will be updated when sent
+            await journal.createEmbeddedDocuments('JournalEntryPage', [{
+              name: `[SCHEDULED] ${messageData.subject}`,
+              type: 'text',
+              text: {
+                content: `
+                  <div class="ncm-scheduled-message-placeholder">
+                    <p><strong>This message is scheduled for:</strong></p>
+                    <p>${this.timeService.formatTimestamp(messageData.scheduledTime, 'full')}</p>
+                    <p><strong>From:</strong> ${messageData.from}</p>
+                    <p><strong>To:</strong> ${messageData.to}</p>
+                    <p><strong>Subject:</strong> ${messageData.subject}</p>
+                    <hr>
+                    <p><em>Preview:</em></p>
+                    ${messageData.content.substring(0, 200)}...
+                  </div>
+                `
+              },
+              flags: {
+                [MODULE_ID]: {
+                  scheduleId: scheduleId,
+                  type: 'scheduled-placeholder',
+                  status: {
+                    scheduled: true,
+                    sent: false,
+                    read: false
+                  },
+                  scheduledTime: messageData.scheduledTime
+                }
+              }
+            }]);
+          }
+        }
+      }
     }
     
     // Store in settings
@@ -111,6 +167,7 @@ export class SchedulingService {
     
     return scheduleId;
   }
+
 
   /**
    * Get formatted time display for UI
@@ -217,48 +274,82 @@ export class SchedulingService {
           continue;
         }
         
-        // Send message
-        console.log(`${MODULE_ID} | Sending scheduled message:`, schedule.id);
+        // Delete the placeholder journal page first
+        if (schedule.actorId) {
+          const actor = game.actors.get(schedule.actorId);
+          if (actor) {
+            const inbox = actor.getFlag(MODULE_ID, 'inboxJournal');
+            if (inbox) {
+              const journal = game.journal.get(inbox);
+              if (journal) {
+                // Find and delete the placeholder
+                const placeholderPage = journal.pages.find(p => 
+                  p.getFlag(MODULE_ID, 'scheduleId') === schedule.id
+                );
+                if (placeholderPage) {
+                  await placeholderPage.delete();
+                }
+              }
+            }
+          }
+        }
         
-        // Prepare message data with proper timestamp
+        // Send message NOW
         const messageData = {
           from: schedule.from,
           to: schedule.to,
           subject: schedule.subject,
           content: schedule.content,
-          timestamp: schedule.scheduledTime, // Use scheduled time, not current time
-          actorId: schedule.actorId
+          actorId: schedule.actorId,
+          timestamp: schedule.scheduledTime, // Use scheduled time as send time
+          
+          // Proper status for delivered message
+          status: {
+            scheduled: false, // No longer scheduled
+            sent: true,       // NOW it's sent
+            read: false,      // Unread
+            spam: false,
+            saved: false,
+            deleted: false
+          }
         };
         
-        // Include SimpleCalendar data if it was used
-        if (schedule.useSimpleCalendar && schedule.simpleCalendarData) {
+        if (schedule.simpleCalendarData) {
           messageData.simpleCalendarData = schedule.simpleCalendarData;
         }
         
-        await this.messageService.sendMessage(messageData, { 
-          skipSpamCheck: true 
+        // Use MessageManager to send
+        await game.nightcity.messageManager.sendMessage(messageData, {
+          skipSpamCheck: true // Don't spam-check scheduled messages
         });
         
         // Mark as sent
         await this._markAsSent(schedule.id);
-        
         sent++;
         
-        // Notify GM
-        if (game.user.isGM) {
-          ui.notifications.info(`Scheduled message sent: "${schedule.subject}"`);
+        console.log(`${MODULE_ID} | ✓ Sent scheduled message: ${schedule.id}`);
+        
+        // Notify recipient
+        const recipient = game.users.find(u => 
+          u.character?.getFlag(MODULE_ID, 'emailAddress') === schedule.to.split('<')[1]?.split('>')[0]
+        );
+        
+        if (recipient) {
+          game.socket.emit(`module.${MODULE_ID}`, {
+            type: 'notification',
+            userId: recipient.id,
+            message: `New message from ${schedule.from}`
+          });
         }
+        
       } catch (error) {
         console.error(`${MODULE_ID} | Error sending scheduled message:`, error);
-        // Could retry or notify GM
       }
     }
     
     if (sent > 0) {
       console.log(`${MODULE_ID} | Sent ${sent} scheduled messages`);
-      
-      // Emit event
-      this.eventBus.emit(EVENTS.TIME_SCHEDULED_MESSAGE_DUE, { count: sent });
+      this.eventBus.emit(EVENTS.MESSAGES_SENT, { count: sent });
     }
     
     return sent;

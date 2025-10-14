@@ -165,9 +165,8 @@ export class MessageViewerApp extends BaseApplication {
         userName: selectedActor?.name || game.user.name,
       
       // TimeService for current time
-      currentTime: this.timeService.formatTimeOnly(
-        this.timeService.getCurrentTimestamp(), 
-        false // 24-hour format
+      currentTime: this.timeService.formatTimestamp(
+        this.timeService.getCurrentTimestamp()
       ),
       
       // Network (you might have this elsewhere)

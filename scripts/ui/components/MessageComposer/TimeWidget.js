@@ -29,7 +29,10 @@ export class TimeWidget {
     const isGM = game.user.isGM;
     const gmTimeOverride = this.settingsManager.get('gmTimeOverride');
     
-    if (!showClock && !isGM) {
+    // Players can set future times, GMs can set any time (past or future)
+    const canSetTime = isGM || true; // Everyone can set time now
+    
+    if (!showClock && !canSetTime) {
       return '';
     }
     
@@ -56,12 +59,12 @@ export class TimeWidget {
           </div>
         ` : ''}
         
-        ${isGM && gmTimeOverride ? `
+        ${canSetTime ? `
           <button class="ncm-btn ncm-btn--small ncm-time-widget__set-btn" 
                   data-action="set-custom-time"
-                  title="Set custom send time (GM)">
+                  title="${isGM ? 'Set custom send time (GM can set past/future)' : 'Schedule for future time'}">
             <i class="fas fa-calendar-alt"></i>
-            ${this.customTime ? 'Custom Time' : 'Set Time'}
+            ${this.customTime ? 'Custom Time' : (isGM ? 'Set Time' : 'Schedule')}
           </button>
           ${this.customTime ? `
             <button class="ncm-btn ncm-btn--small ncm-time-widget__clear-btn"
@@ -135,18 +138,26 @@ export class TimeWidget {
    * Show custom time picker (GM only)
    */
   async showTimePicker() {
-    if (!game.user.isGM) {
-      ui.notifications.warn('Only GMs can set custom times');
-      return;
-    }
+    const isGM = game.user.isGM;
     
     try {
       const timestamp = await this.timeService.pickDateTime({
-        title: 'Set Message Send Time',
+        title: isGM ? 'Set Message Send Time' : 'Schedule Message',
         currentTime: this.customTime || this.timeService.getCurrentTimestamp(),
-        allowPast: true, // GMs can backdate
-        allowFuture: true
+        allowPast: isGM, // Only GMs can backdate
+        allowFuture: true // Everyone can schedule future
       });
+      
+      // For non-GMs, ensure the time is in the future
+      if (!isGM) {
+        const selectedTime = new Date(timestamp);
+        const now = new Date(this.timeService.getCurrentTimestamp());
+        
+        if (selectedTime <= now) {
+          ui.notifications.error('Scheduled time must be in the future');
+          return;
+        }
+      }
       
       this.customTime = timestamp;
       this.updateDisplay();
@@ -154,7 +165,8 @@ export class TimeWidget {
       // Update UI
       await this.parent.render(false);
       
-      ui.notifications.info(`Custom time set: ${this.timeService.formatTimestamp(timestamp)}`);
+      const timeLabel = isGM ? 'Custom time set' : 'Message scheduled for';
+      ui.notifications.info(`${timeLabel}: ${this.timeService.formatTimestamp(timestamp)}`);
     } catch (error) {
       if (error.message !== 'Cancelled') {
         console.error(`${MODULE_ID} | Error setting custom time:`, error);
