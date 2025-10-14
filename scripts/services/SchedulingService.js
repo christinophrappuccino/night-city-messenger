@@ -93,11 +93,11 @@ export class SchedulingService {
     // Generate schedule ID
     const scheduleId = foundry.utils.randomID();
     
-    // Store schedule data (this is what gets sent later)
+    // Store schedule data
     const scheduleData = {
       id: scheduleId,
       from: data.from,
-      to: data.to,  // Keep original - this is who receives it when sent
+      to: data.to,
       subject: data.subject,
       content: data.content,
       scheduledTime: messageData.scheduledTime,
@@ -112,25 +112,47 @@ export class SchedulingService {
     
     console.log(`${MODULE_ID} | Schedule data prepared:`, scheduleData);
     
-    // ✅ FIX: Create placeholder in SENDER's inbox (not recipient's!)
+    // ✅ FIX: Create placeholder in SENDER's inbox
     try {
       if (data.actorId) {
-        // Extract sender's email for "to" field
-        const senderEmail = data.from.match(/<(.+?)>/) ? 
-          data.from.match(/<(.+?)>/)[1] : 
-          data.from;
+        const actor = game.actors.get(data.actorId);
         
-        // Extract recipient's info for display
+        if (!actor) {
+          throw new Error(`Actor not found: ${data.actorId}`);
+        }
+        
+        console.log(`${MODULE_ID} | Checking inbox for actor: ${actor.name}`);
+        
+        // ✅ CRITICAL FIX: Ensure actor has an inbox
+        let inboxId = actor.getFlag(MODULE_ID, 'inboxJournal');
+        
+        if (!inboxId) {
+          console.warn(`${MODULE_ID} | Actor ${actor.name} has no inbox - creating one...`);
+          
+          // Create inbox (players can create their own)
+          const journalManager = this.messageService.messageRepository.journalManager;
+          const inbox = await journalManager.ensureActorInbox(actor.id);
+          inboxId = inbox.id;
+          
+          console.log(`${MODULE_ID} | ✓ Created inbox: ${inbox.name}`);
+          ui.notifications.info(`Created message inbox for ${actor.name}`);
+        }
+        
+        console.log(`${MODULE_ID} | Using inbox: ${inboxId}`);
+        
+        // Extract emails for display
+        const senderEmail = data.from.match(/<(.+?)>/) ? 
+          data.from.match(/<(.+?)>/)[1] : data.from;
+        
         const recipientEmail = data.to.match(/<(.+?)>/) ? 
-          data.to.match(/<(.+?)>/)[1] : 
-          data.to;
+          data.to.match(/<(.+?)>/)[1] : data.to;
         
         const recipientName = data.to.replace(/<.+?>/, '').trim() || recipientEmail;
         
         const placeholderData = {
-          // ✅ CRITICAL FIX: Reverse from/to so placeholder goes to SENDER's inbox
-          from: `System <system@nightcity.net>`,  // System message
-          to: data.from,  // ← SENDER receives the placeholder!
+          // Reverse from/to so placeholder goes to SENDER's inbox
+          from: `System <system@nightcity.net>`,
+          to: data.from,  // YOUR email - placeholder goes to YOU
           
           subject: `⏰ Scheduled: ${data.subject}`,
           content: this._generatePlaceholderContent({
@@ -143,9 +165,9 @@ export class SchedulingService {
           network: data.network || 'CITINET',
           
           status: {
-            scheduled: true,  // Appears in "Scheduled" filter
-            sent: true,       // ✅ NEW: Mark as sent so it's not in inbox
-            read: true,       // Don't show as unread
+            scheduled: true,   // Makes it appear in "Scheduled" filter
+            sent: false,       // Don't mark as sent
+            read: true,        // Mark as read (don't clutter unread)
             spam: false,
             saved: false,
             deleted: false
@@ -155,13 +177,13 @@ export class SchedulingService {
             messageType: 'scheduled',
             scheduleId: scheduleId,
             isPlaceholder: true,
-            originalTo: data.to,  // Store original recipient for display
+            originalTo: data.to,
             originalSubject: data.subject
           }
         };
         
-        console.log(`${MODULE_ID} | Creating placeholder in SENDER's inbox...`);
-        console.log(`${MODULE_ID} | Placeholder will go to: ${placeholderData.to}`);
+        console.log(`${MODULE_ID} | Creating placeholder...`);
+        console.log(`${MODULE_ID} | Placeholder status:`, placeholderData.status);
         
         await this.messageService.messageRepository.create(placeholderData);
         
@@ -169,7 +191,14 @@ export class SchedulingService {
       }
     } catch (error) {
       console.error(`${MODULE_ID} | Error creating placeholder:`, error);
-      ui.notifications.warn('Scheduled message saved, but preview may not appear');
+      console.error(`${MODULE_ID} | Stack:`, error.stack);
+      
+      // Show more helpful error message
+      if (error.message.includes('Cannot create inbox')) {
+        ui.notifications.error('Cannot create inbox. Please ask your GM to create an inbox for your character first.');
+      } else {
+        ui.notifications.warn('Scheduled message saved, but preview may not appear in inbox');
+      }
     }
     
     // Store in settings
@@ -198,14 +227,14 @@ export class SchedulingService {
         <div style="text-align: center; margin-bottom: 15px;">
           <i class="fas fa-clock" style="font-size: 2em; color: #19f3f7;"></i>
           <h3 style="color: #19f3f7; margin: 10px 0;">SCHEDULED MESSAGE</h3>
-          <p style="color: #cccccc; margin: 5px 0;">This message will be sent automatically</p>
+          <p style="color: #cccccc; margin: 5px 0; font-size: 0.9em;">This message will be sent automatically</p>
         </div>
         
         <div style="border-top: 2px solid #19f3f7; padding-top: 15px;">
           <table style="width: 100%; color: #ffffff; border-collapse: collapse;">
             <tr>
               <td style="padding: 8px 0; color: #F65261; font-weight: bold; width: 140px;">Scheduled For:</td>
-              <td style="padding: 8px 0; color: #19f3f7; font-weight: bold;">${deliveryTime}</td>
+              <td style="padding: 8px 0; color: #19f3f7; font-weight: bold; font-size: 1.1em;">${deliveryTime}</td>
             </tr>
             <tr>
               <td style="padding: 8px 0; color: #F65261; font-weight: bold;">Recipient:</td>
@@ -224,17 +253,17 @@ export class SchedulingService {
           <hr style="border: none; border-top: 1px solid #19f3f7; opacity: 0.3; margin: 15px 0;">
           
           <div style="margin-top: 15px;">
-            <p style="color: #cccccc; margin-bottom: 8px;"><strong>Message Preview:</strong></p>
-            <div style="background: #0a0a0a; border-left: 3px solid #19f3f7; padding: 12px; color: #999999; font-size: 0.9em; max-height: 150px; overflow: hidden;">
+            <p style="color: #cccccc; margin-bottom: 8px; font-weight: bold;">Message Preview:</p>
+            <div style="background: #0a0a0a; border-left: 3px solid #19f3f7; padding: 12px; color: #999999; font-size: 0.9em; max-height: 150px; overflow: hidden; line-height: 1.5;">
               ${data.content.substring(0, 300)}${data.content.length > 300 ? '...' : ''}
             </div>
           </div>
           
           <hr style="border: none; border-top: 1px solid #19f3f7; opacity: 0.3; margin: 15px 0;">
           
-          <div style="text-align: center; padding: 10px; background: rgba(25, 243, 247, 0.1); border-radius: 3px;">
+          <div style="text-align: center; padding: 12px; background: rgba(25, 243, 247, 0.1); border-radius: 4px; border: 1px solid rgba(25, 243, 247, 0.3);">
             <p style="color: #19f3f7; font-size: 0.9em; margin: 0;">
-              <i class="fas fa-info-circle"></i> You can view and manage scheduled messages from the Scheduled folder
+              <i class="fas fa-info-circle"></i> View this and other scheduled messages in the <strong>Scheduled</strong> folder
             </p>
           </div>
         </div>

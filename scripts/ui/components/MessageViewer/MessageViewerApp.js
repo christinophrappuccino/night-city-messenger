@@ -13,6 +13,8 @@ import { MessageFilters } from './MessageFilters.js';
 import { MessagePagination } from './MessagePagination.js';
 import { EVENTS } from '../../../core/EventBus.js';
 import { TimeService } from '../../../services/TimeService.js';
+import { MessageRepository } from '../../../data/MessageRepository.js';
+import { StateManager } from '../../../core/StateManager.js';
 
 export class MessageViewerApp extends BaseApplication {
   constructor(journalEntry, options = {}) {
@@ -22,7 +24,7 @@ export class MessageViewerApp extends BaseApplication {
 
     // Track which actor's inbox we're viewing (for GMs)
     this.selectedActorId = options.actorId || game.user.character?.id || null;
-
+    this.messageRepository = new MessageRepository();
     this.timeService = TimeService.getInstance();
     
     // Initialize components

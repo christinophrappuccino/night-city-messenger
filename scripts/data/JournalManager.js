@@ -181,6 +181,82 @@ export class JournalManager {
     
     return journal;
   }
+
+  /**
+   * ADD THIS METHOD TO: scripts/data/JournalManager.js
+   * INSERT IT AFTER: getActorInbox() method (around line 190)
+   */
+
+  /**
+   * Ensure actor has an inbox (get or create)
+   * @param {string} actorId - Actor ID
+   * @returns {Promise<JournalEntry>}
+   */
+  async ensureActorInbox(actorId) {
+    const actor = game.actors.get(actorId);
+    if (!actor) {
+      throw new Error(`Actor not found: ${actorId}`);
+    }
+    
+    // Try both name formats
+    const possessiveName = `${actor.name}'s Messages`;
+    const simpleName = `${actor.name} Messages`;
+    
+    // Find existing inbox
+    let inbox = game.journal.getName(possessiveName) || game.journal.getName(simpleName);
+    
+    // Also check by flag
+    if (!inbox) {
+      inbox = game.journal.find(j => 
+        j.getFlag(MODULE_ID, 'isInbox') && 
+        j.getFlag(MODULE_ID, 'actorId') === actor.id
+      );
+    }
+    
+    // If still not found, create it
+    if (!inbox) {
+      console.log(`${MODULE_ID} | Creating inbox for actor: ${actor.name}`);
+      
+      // Get message folder
+      const folder = await this.getMessageFolder();
+      
+      // Find the user who owns this actor
+      const ownerUser = game.users.find(u => 
+        u.character?.id === actor.id || 
+        actor.testUserPermission(u, "OWNER")
+      );
+      
+      // Set up ownership
+      const ownership = {
+        default: CONST.DOCUMENT_OWNERSHIP_LEVELS.OBSERVER
+      };
+      
+      if (ownerUser) {
+        ownership[ownerUser.id] = CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER;
+      }
+      
+      // Create inbox journal
+      inbox = await JournalEntry.create({
+        name: possessiveName,  // Use possessive format
+        folder: folder?.id || null,
+        flags: {
+          [MODULE_ID]: {
+            isInbox: true,
+            actorId: actor.id,
+            characterName: actor.name
+          }
+        },
+        ownership: ownership
+      });
+      
+      // Update actor flag to point to inbox
+      await actor.setFlag(MODULE_ID, 'inboxJournal', inbox.id);
+      
+      console.log(`${MODULE_ID} | ✓ Created inbox: ${inbox.name}`);
+    }
+    
+    return inbox;
+  }
   
   /**
    * Ensure user has an inbox (get or create)
