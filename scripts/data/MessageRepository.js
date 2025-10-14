@@ -494,8 +494,8 @@ export class MessageRepository {
             // SENDER's copy has SENT status
             status: {
               read: true,
-              sent: true,      // KEY FLAG!
-              scheduled: false,
+              sent: true,
+              scheduled: false, 
               spam: false,
               saved: false,
               deleted: false
@@ -564,14 +564,34 @@ export class MessageRepository {
       from: flags.from || '',
       to: flags.to || '',
       content: page.text?.content || '',
-      timestamp: flags.timestamp || flags.createdAt,
+      body: flags.content || page.text?.content || '', // Add body alias
+      timestamp: flags.timestamp || flags.createdAt || page.sort,
+      simpleCalendarData: flags.simpleCalendarData || null,
       network: flags.network || 'CITINET',
       encrypted: flags.encrypted || false,
-      status: flags.status || { read: false, saved: false, spam: false },
-      metadata: flags.metadata || {},
+      
+      // CRITICAL: Preserve ALL status fields including 'scheduled'
+      status: {
+        read: Boolean(flags.status?.read),
+        sent: Boolean(flags.status?.sent),
+        scheduled: Boolean(flags.status?.scheduled),
+        spam: Boolean(flags.status?.spam),
+        saved: Boolean(flags.status?.saved),
+        deleted: Boolean(flags.status?.deleted)
+      },
+      
+      metadata: {
+        ...(flags.metadata || {}),
+        messageType: flags.metadata?.messageType || flags.type || 'standard',
+        scheduleId: flags.metadata?.scheduleId || flags.scheduleId
+      },
+      
+      attachments: flags.attachments || [],
+      createdAt: flags.createdAt || page.sort,
       page: page // Keep reference for updates
     };
   }
+
   
   /**
    * Convert journal to array of messages

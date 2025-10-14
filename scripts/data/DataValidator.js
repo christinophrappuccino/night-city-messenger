@@ -55,7 +55,6 @@ export class DataValidator {
         errors.push('Invalid timestamp');
       }
     } else {
-      // Default to current time if not provided
       sanitized.timestamp = new Date().toISOString();
     }
     
@@ -94,24 +93,37 @@ export class DataValidator {
       sanitized.sentVia = String(data.sentVia);
     }
     
+    if (data.useSimpleCalendar !== undefined) {
+      sanitized.useSimpleCalendar = Boolean(data.useSimpleCalendar);
+    }
+    
     // Optional fields
-    sanitized.timestamp = data.timestamp || new Date().toISOString();
     sanitized.network = data.network || 'CITINET';
     sanitized.encrypted = Boolean(data.encrypted);
     sanitized.attachments = Array.isArray(data.attachments) ? data.attachments : [];
     
-    // Status
+    // Add actorId to sanitized output
+    if (data.actorId) {
+      sanitized.actorId = String(data.actorId);
+    }
+    
+    // Status - include ALL status fields
     sanitized.status = {
       read: Boolean(data.status?.read),
+      sent: Boolean(data.status?.sent),
+      scheduled: Boolean(data.status?.scheduled),
+      spam: Boolean(data.status?.spam),
       saved: Boolean(data.status?.saved),
-      spam: Boolean(data.status?.spam)
+      deleted: Boolean(data.status?.deleted)
     };
     
-    // Metadata
+    // Metadata - preserve ALL fields
     sanitized.metadata = {
+      ...(data.metadata || {}),
       networkTrace: data.metadata?.networkTrace || sanitized.network,
       signalStrength: this.validateNumber(data.metadata?.signalStrength, 0, 100, 100),
-      routingPath: Array.isArray(data.metadata?.routingPath) ? data.metadata.routingPath : []
+      routingPath: Array.isArray(data.metadata?.routingPath) ? data.metadata.routingPath : [],
+      messageType: data.metadata?.messageType || 'standard'
     };
     
     return {
@@ -120,6 +132,7 @@ export class DataValidator {
       sanitized
     };
   }
+
   
   /**
    * Validate contact data

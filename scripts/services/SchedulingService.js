@@ -9,7 +9,7 @@ import { MODULE_ID } from '../utils/constants.js';
 import { DataValidator } from '../data/DataValidator.js';
 import { MessageService } from './MessageService.js';
 import { SettingsManager } from '../core/SettingsManager.js';
-import { EventBus } from '../core/EventBus.js';
+import { EventBus, EVENTS } from '../core/EventBus.js';
 import { TimeService } from './TimeService.js';
 
 export class SchedulingService {
@@ -109,49 +109,95 @@ export class SchedulingService {
     if (messageData.useSimpleCalendar && this.timeService.isSimpleCalendarAvailable()) {
       scheduleData.simpleCalendarData = this.timeService.getSimpleCalendarData();
     }
-    
+    console.log(`${MODULE_ID} | About to check actorId. Value:`, messageData.actorId, `Type:`, typeof messageData.actorId);
     // Also create a preview message in the journal for "scheduled" filter
     // This allows the message to appear in the scheduled folder
     if (messageData.actorId) {
-      const actor = game.actors.get(messageData.actorId);
-      if (actor) {
-        const inbox = actor.getFlag(MODULE_ID, 'inboxJournal');
-        if (inbox) {
-          const journal = game.journal.get(inbox);
+      try {
+        const actor = game.actors.get(messageData.actorId);
+        if (actor) {
+          // Find inbox using same logic as MessageRepository
+          const possessiveName = `${actor.name}'s Messages`;
+          const simpleName = `${actor.name} Messages`;
+          
+          let journal = game.journal.getName(possessiveName) || game.journal.getName(simpleName);
+          
+          // Also check by flag
+          if (!journal) {
+            journal = game.journal.find(j => 
+              j.getFlag(MODULE_ID, 'isInbox') && 
+              j.getFlag(MODULE_ID, 'actorId') === actor.id
+            );
+          }
+          
           if (journal) {
-            // Create a placeholder page that will be updated when sent
+            console.log(`${MODULE_ID} | Creating scheduled placeholder in ${journal.name}`);
+            
+            // Create placeholder page
             await journal.createEmbeddedDocuments('JournalEntryPage', [{
-              name: `[SCHEDULED] ${messageData.subject}`,
+              name: `⏰ ${messageData.subject}`,
               type: 'text',
               text: {
                 content: `
-                  <div class="ncm-scheduled-message-placeholder">
-                    <p><strong>This message is scheduled for:</strong></p>
-                    <p>${this.timeService.formatTimestamp(messageData.scheduledTime, 'full')}</p>
-                    <p><strong>From:</strong> ${messageData.from}</p>
-                    <p><strong>To:</strong> ${messageData.to}</p>
-                    <p><strong>Subject:</strong> ${messageData.subject}</p>
-                    <hr>
-                    <p><em>Preview:</em></p>
-                    ${messageData.content.substring(0, 200)}...
+                  <div class="ncm-scheduled-message-placeholder" style="font-family: 'Rajdhani', sans-serif; background-color: #1a1a1a; border: 2px solid #19f3f7; border-radius: 5px; padding: 20px; color: #ffffff;">
+                    <div style="text-align: center; margin-bottom: 15px;">
+                      <i class="fas fa-clock" style="font-size: 2em; color: #19f3f7;"></i>
+                      <h3 style="color: #19f3f7; margin: 10px 0;">SCHEDULED FOR DELIVERY</h3>
+                    </div>
+                    <div style="border-top: 2px solid #19f3f7; padding-top: 15px;">
+                      <p><strong style="color: #F65261;">Delivery Time:</strong> <span style="color: #19f3f7;">${this.timeService.formatTimestamp(messageData.scheduledTime, 'full')}</span></p>
+                      <p><strong style="color: #F65261;">From:</strong> ${messageData.from}</p>
+                      <p><strong style="color: #F65261;">To:</strong> ${messageData.to}</p>
+                      <p><strong style="color: #F65261;">Subject:</strong> ${messageData.subject}</p>
+                      <hr style="border-color: #19f3f7; opacity: 0.3; margin: 15px 0;">
+                      <p style="color: #cccccc;"><em>Message preview:</em></p>
+                      <div style="color: #999999; font-size: 0.9em; max-height: 200px; overflow: hidden;">
+                        ${messageData.content.substring(0, 300)}${messageData.content.length > 300 ? '...' : ''}
+                      </div>
+                    </div>
                   </div>
-                `
+                `,
+                format: CONST.JOURNAL_ENTRY_PAGE_FORMATS.HTML
               },
               flags: {
                 [MODULE_ID]: {
                   scheduleId: scheduleId,
                   type: 'scheduled-placeholder',
+                  from: messageData.from,
+                  to: messageData.to,
+                  subject: messageData.subject,
+                  content: messageData.content,
+                  scheduledTime: messageData.scheduledTime,
+                  timestamp: messageData.scheduledTime,
+                  network: messageData.network || 'CITINET',
+                  
+                  // CRITICAL: Status must include 'scheduled: true'
                   status: {
-                    scheduled: true,
+                    scheduled: true,  // ← This makes it appear in "Scheduled" folder
                     sent: false,
-                    read: false
+                    read: true,       // Mark as read so it doesn't clutter unread
+                    spam: false,
+                    saved: false,
+                    deleted: false
                   },
-                  scheduledTime: messageData.scheduledTime
+                  
+                  metadata: {
+                    messageType: 'scheduled',
+                    scheduleId: scheduleId
+                  }
                 }
               }
             }]);
+            
+            console.log(`${MODULE_ID} | ✓ Created scheduled placeholder`);
+          } else {
+            console.warn(`${MODULE_ID} | No journal found for actor ${actor.name}`);
           }
         }
+      } catch (error) {
+        console.error(`${MODULE_ID} | Error creating scheduled placeholder:`, error);
+        console.error(`${MODULE_ID} | Stack:`, error.stack);
+        // Don't throw - schedule should still be saved
       }
     }
     

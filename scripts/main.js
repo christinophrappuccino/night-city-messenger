@@ -84,81 +84,265 @@ moduleInitializer.register('init', async () => {
 // READY
 // ===================================================================
 
-// Initialize core services
+// Initialize core services FIRST
 moduleInitializer.register('ready', async () => {
-  const { MessageService } = await import('./services/MessageService.js');
-  const { NotificationService } = await import('./services/NotificationService.js');
+  console.log(`${MODULE_ID} | === INITIALIZING CORE SERVICES ===`);
   
-  // Initialize services as singletons
-  game.nightcity.messageService = new MessageService();
-  game.nightcity.notificationService = new NotificationService();
-  
-  // Alias for backwards compatibility
-  game.nightcity.messageManager = game.nightcity.messageService;
-  
-  console.log(`${MODULE_ID} | ✓ Core services initialized`);
+  try {
+    const { MessageService } = await import('./services/MessageService.js');
+    const { NotificationService } = await import('./services/NotificationService.js');
+    
+    console.log(`${MODULE_ID} | Creating MessageService...`);
+    game.nightcity.messageService = new MessageService();
+    
+    console.log(`${MODULE_ID} | Creating NotificationService...`);
+    game.nightcity.notificationService = new NotificationService();
+    
+    // Alias for backwards compatibility
+    game.nightcity.messageManager = game.nightcity.messageService;
+    
+    // Verify they exist
+    if (!game.nightcity.messageManager) {
+      throw new Error('Failed to initialize messageManager');
+    }
+    if (!game.nightcity.messageService) {
+      throw new Error('Failed to initialize messageService');
+    }
+    if (!game.nightcity.notificationService) {
+      throw new Error('Failed to initialize notificationService');
+    }
+    
+    console.log(`${MODULE_ID} | ✓ Core services initialized successfully`);
+    
+  } catch (error) {
+    console.error(`${MODULE_ID} | ❌ FAILED to initialize core services:`, error);
+    console.error(`${MODULE_ID} | Stack:`, error.stack);
+    ui.notifications.error('Failed to initialize core services. Check console.');
+    throw error; // Re-throw to prevent further initialization
+  }
 }, 3); 
 
-// Complete macro API registration
+// Time Service Registration SECOND
 moduleInitializer.register('ready', async () => {
-  const { MacroAPI } = await import('./integrations/MacroAPI.js');
-  MacroAPI.registerServices();
-}, 5);
-
-// Time Service Registration
-moduleInitializer.register('ready', async () => {
-  console.log(`${MODULE_ID} | Starting Time Service...`);
+  console.log(`${MODULE_ID} | === INITIALIZING TIME SERVICE ===`);
   
-  const { TimeService } = await import('./services/TimeService.js');
-  const timeService = TimeService.getInstance();
-  game.nightcity.timeService = timeService;
-  
-  console.log(`${MODULE_ID} | ✓ Time Service ready`);
+  try {
+    const { TimeService } = await import('./services/TimeService.js');
+    const timeService = TimeService.getInstance();
+    game.nightcity.timeService = timeService;
+    
+    if (!game.nightcity.timeService) {
+      throw new Error('Failed to initialize timeService');
+    }
+    
+    console.log(`${MODULE_ID} | ✓ Time Service ready`);
+    
+  } catch (error) {
+    console.error(`${MODULE_ID} | ❌ FAILED to initialize time service:`, error);
+    console.error(`${MODULE_ID} | Stack:`, error.stack);
+    ui.notifications.error('Failed to initialize time service. Check console.');
+    throw error;
+  }
 }, 4);
 
-// Start scheduling service
+// Complete macro API registration THIRD
 moduleInitializer.register('ready', async () => {
-  const { SchedulingService } = await import('./services/SchedulingService.js');
-  const schedulingService = new SchedulingService();
+  console.log(`${MODULE_ID} | === REGISTERING MACRO API ===`);
   
-  if (game.user.isGM) {
-    schedulingService.start();
+  try {
+    const { MacroAPI } = await import('./integrations/MacroAPI.js');
+    MacroAPI.registerServices();
+    console.log(`${MODULE_ID} | ✓ Macro API registered`);
+    
+  } catch (error) {
+    console.error(`${MODULE_ID} | ⚠️ Macro API registration failed:`, error);
+    // Don't throw - this is non-critical
   }
+}, 5);
+
+// Start scheduling service FOURTH - ONLY after dependencies are ready
+moduleInitializer.register('ready', async () => {
+  console.log(`${MODULE_ID} | === INITIALIZING SCHEDULING SERVICE ===`);
   
-  game.nightcity.schedulingService = schedulingService;
+  try {
+    // Verify ALL dependencies exist
+    console.log(`${MODULE_ID} | Checking dependencies...`);
+    
+    if (!game.nightcity) {
+      throw new Error('game.nightcity namespace not initialized');
+    }
+    
+    if (!game.nightcity.messageManager) {
+      throw new Error('messageManager not available - cannot initialize scheduling');
+    }
+    
+    if (!game.nightcity.timeService) {
+      throw new Error('timeService not available - cannot initialize scheduling');
+    }
+    
+    console.log(`${MODULE_ID} | ✓ Dependencies verified`);
+    console.log(`${MODULE_ID} | - messageManager: ${!!game.nightcity.messageManager}`);
+    console.log(`${MODULE_ID} | - timeService: ${!!game.nightcity.timeService}`);
+    
+    // Import and create
+    console.log(`${MODULE_ID} | Importing SchedulingService...`);
+    const { SchedulingService } = await import('./services/SchedulingService.js');
+    
+    console.log(`${MODULE_ID} | Creating SchedulingService instance...`);
+    const schedulingService = new SchedulingService();
+    
+    // Assign to namespace
+    console.log(`${MODULE_ID} | Assigning to game.nightcity...`);
+    game.nightcity.schedulingService = schedulingService;
+    
+    // Verify assignment
+    if (!game.nightcity.schedulingService) {
+      throw new Error('Failed to assign schedulingService to game.nightcity');
+    }
+    
+    console.log(`${MODULE_ID} | ✓ SchedulingService instance created`);
+    
+    // Only start automatic checking for GM
+    if (game.user.isGM) {
+      console.log(`${MODULE_ID} | Starting automatic schedule checking (GM mode)...`);
+      schedulingService.start();
+      console.log(`${MODULE_ID} | ✓ Scheduling service started (GM mode)`);
+    } else {
+      console.log(`${MODULE_ID} | ✓ Scheduling service available (player mode)`);
+    }
+    
+    console.log(`${MODULE_ID} | === SCHEDULING SERVICE READY ===`);
+    
+  } catch (error) {
+    console.error(`${MODULE_ID} | ❌ FAILED TO INITIALIZE SCHEDULING SERVICE:`, error);
+    console.error(`${MODULE_ID} | Error name:`, error.name);
+    console.error(`${MODULE_ID} | Error message:`, error.message);
+    console.error(`${MODULE_ID} | Stack:`, error.stack);
+    
+    // Store error for better user feedback
+    game.nightcity = game.nightcity || {};
+    game.nightcity.schedulingServiceError = error.message;
+    
+    ui.notifications.error(`Scheduling service failed to initialize: ${error.message}`);
+    
+    // Don't throw - allow module to continue working without scheduling
+    console.warn(`${MODULE_ID} | Module will continue without scheduling functionality`);
+  }
 }, 10);
 
 // Register socket handlers
 moduleInitializer.register('ready', async () => {
-  const { registerSocketHandlers } = await import('./integrations/SocketHandlers.js');
-  registerSocketHandlers();
+  console.log(`${MODULE_ID} | === INITIALIZING SOCKET HANDLERS ===`);
+  
+  try {
+    const { registerSocketHandlers } = await import('./integrations/SocketHandlers.js');
+    registerSocketHandlers();
+    console.log(`${MODULE_ID} | ✓ Socket handlers registered`);
+    
+  } catch (error) {
+    console.error(`${MODULE_ID} | ⚠️ Socket handler registration failed:`, error);
+    // Don't throw - this is non-critical
+  }
 }, 20);
 
-// Register email auto-prompts (add after line ~70, with other ready tasks)
+// Register email auto-prompts
 moduleInitializer.register('ready', async () => {
-  const { registerEmailPrompts } = await import('./integrations/EmailSettingsRegistration.js');
-  registerEmailPrompts();
+  console.log(`${MODULE_ID} | === REGISTERING EMAIL PROMPTS ===`);
+  
+  try {
+    const { registerEmailPrompts } = await import('./integrations/EmailSettingsRegistration.js');
+    registerEmailPrompts();
+    console.log(`${MODULE_ID} | ✓ Email prompts registered`);
+    
+  } catch (error) {
+    console.error(`${MODULE_ID} | ⚠️ Email prompt registration failed:`, error);
+    // Don't throw - this is non-critical
+  }
 }, 25);
 
 // ===================================================================
 // POST-READY
 // ===================================================================
 
-// Verify system health
+// Verify system health and log all services
 moduleInitializer.register('postReady', async () => {
-  const { SystemVerification } = await import('./utils/SystemVerification.js');
-  await SystemVerification.run();
+  console.log(`${MODULE_ID} | === VERIFYING SYSTEM ===`);
+  
+  const services = {
+    'Core Services': {
+      messageManager: !!game.nightcity?.messageManager,
+      messageService: !!game.nightcity?.messageService,
+      notificationService: !!game.nightcity?.notificationService
+    },
+    'Timing': {
+      timeService: !!game.nightcity?.timeService
+    },
+    'Scheduling': {
+      schedulingService: !!game.nightcity?.schedulingService
+    }
+  };
+  
+  console.log(`${MODULE_ID} | Service Status:`);
+  for (const [category, categoryServices] of Object.entries(services)) {
+    console.log(`${MODULE_ID} | ${category}:`);
+    for (const [name, available] of Object.entries(categoryServices)) {
+      const status = available ? '✓' : '✗';
+      console.log(`${MODULE_ID} |   ${status} ${name}: ${available}`);
+    }
+  }
+  
+  // Check for critical failures
+  const criticalServices = [
+    'messageManager',
+    'messageService',
+    'notificationService',
+    'timeService'
+  ];
+  
+  const missingCritical = criticalServices.filter(
+    service => !game.nightcity?.[service]
+  );
+  
+  if (missingCritical.length > 0) {
+    console.error(`${MODULE_ID} | ❌ CRITICAL SERVICES MISSING:`, missingCritical);
+    ui.notifications.error(
+      `Night City Messenger: Critical services missing (${missingCritical.join(', ')}). Module may not function correctly.`
+    );
+  } else {
+    console.log(`${MODULE_ID} | ✅ All critical services initialized`);
+  }
+  
+  // Warn about optional services
+  if (!game.nightcity?.schedulingService) {
+    console.warn(`${MODULE_ID} | ⚠️ Scheduling service unavailable - scheduled messages will not work`);
+    if (game.nightcity?.schedulingServiceError) {
+      console.warn(`${MODULE_ID} | Reason: ${game.nightcity.schedulingServiceError}`);
+    }
+  }
+  
+  // Run full system verification
+  try {
+    const { SystemVerification } = await import('./utils/SystemVerification.js');
+    await SystemVerification.run();
+  } catch (error) {
+    console.error(`${MODULE_ID} | System verification failed:`, error);
+  }
+  
+  console.log(`${MODULE_ID} | === VERIFICATION COMPLETE ===`);
 }, 10);
 
 // Mark as ready
 moduleInitializer.register('postReady', () => {
   game.nightcity.ready = true;
   
+  console.log(`${MODULE_ID} | ========================================`);
+  console.log(`${MODULE_ID} | 🌃 Night City Messenger is READY!`);
+  console.log(`${MODULE_ID} | API: game.nightcity`);
+  console.log(`${MODULE_ID} | ========================================`);
+  
   if (game.user.isGM) {
-    console.log(`${MODULE_ID} | ========================================`);
-    console.log(`${MODULE_ID} | Night City Messenger is ready!`);
-    console.log(`${MODULE_ID} | Use 'game.nightcity' to access the API`);
-    console.log(`${MODULE_ID} | ========================================`);
+    // Show ready notification
+    ui.notifications.info('Night City Messenger: System initialized');
   }
 }, 100);
 
@@ -170,14 +354,19 @@ moduleInitializer.register('postReady', () => {
  * Pre-initialization
  */
 Hooks.once('init', async () => {
+  console.log(`${MODULE_ID} | ======================================`);
+  console.log(`${MODULE_ID} | 🌃 NIGHT CITY MESSENGER`);
   console.log(`${MODULE_ID} | Initializing...`);
+  console.log(`${MODULE_ID} | ======================================`);
   
   try {
     await moduleInitializer.runPreInit();
     await moduleInitializer.runInit();
+    console.log(`${MODULE_ID} | ✓ Init phase complete`);
   } catch (error) {
     console.error(`${MODULE_ID} | ❌ Initialization failed:`, error);
-    ui.notifications.error(`${MODULE_ID} initialization failed. Check console for details.`);
+    console.error(`${MODULE_ID} | Stack:`, error.stack);
+    ui.notifications.error(`Night City Messenger: Initialization failed. Check console for details.`);
   }
 });
 
@@ -185,12 +374,16 @@ Hooks.once('init', async () => {
  * Ready
  */
 Hooks.once('ready', async () => {
-  console.log(`${MODULE_ID} | Activating...`);
+  console.log(`${MODULE_ID} | ======================================`);
+  console.log(`${MODULE_ID} | Activating module...`);
+  console.log(`${MODULE_ID} | ======================================`);
   
   try {
     await moduleInitializer.runReady();
+    console.log(`${MODULE_ID} | ✓ Ready phase complete`);
   } catch (error) {
     console.error(`${MODULE_ID} | ❌ Ready phase failed:`, error);
-    ui.notifications.error(`${MODULE_ID} ready phase failed. Check console for details.`);
+    console.error(`${MODULE_ID} | Stack:`, error.stack);
+    ui.notifications.error(`Night City Messenger: Ready phase failed. Check console for details.`);
   }
 });
