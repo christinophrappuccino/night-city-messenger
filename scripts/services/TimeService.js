@@ -59,10 +59,17 @@ export class TimeService {
     const isActive = game.modules.get('foundryvtt-simple-calendar')?.active;
     const timeSource = this.settingsManager.get('timeSource');
     
-    this.useSimpleCalendar = isActive && timeSource === 'simplecalendar';
+    this.useSimpleCalendar = isActive && timeSource === 'simplecalendar' && typeof SimpleCalendar !== 'undefined';
     
-    if (isActive && timeSource === 'simplecalendar') {
-      console.log(`${MODULE_ID} | Using SimpleCalendar for time`);
+    console.log(`${MODULE_ID} | TimeService detection:`, {
+      moduleActive: isActive,
+      timeSource: timeSource,
+      scApiAvailable: typeof SimpleCalendar !== 'undefined',
+      useSimpleCalendar: this.useSimpleCalendar
+    });
+    
+    if (isActive && timeSource === 'simplecalendar' && this.useSimpleCalendar) {
+      console.log(`${MODULE_ID} | ✓ Using SimpleCalendar for time`);
     } else if (!isActive && timeSource === 'simplecalendar') {
       console.warn(`${MODULE_ID} | SimpleCalendar selected but not available, falling back to real-world time`);
       this.useSimpleCalendar = false;
@@ -123,20 +130,31 @@ export class TimeService {
    */
   _getSimpleCalendarTimestamp() {
     try {
+      if (!SimpleCalendar?.api) {
+        console.warn(`${MODULE_ID} | SimpleCalendar API not available`);
+        return new Date().toISOString();
+      }
+      
       const scTimestamp = SimpleCalendar.api.timestamp();
       const scDate = SimpleCalendar.api.timestampToDate(scTimestamp);
       
+      console.log(`${MODULE_ID} | SimpleCalendar data:`, { scTimestamp, scDate });
+      
       // Convert to JavaScript Date
+      // Note: SimpleCalendar month is 0-indexed like JavaScript Date
       const date = new Date(
         scDate.year,
-        scDate.month,
+        scDate.month, // Already 0-indexed
         scDate.day,
         scDate.hour || 0,
         scDate.minute || 0,
         scDate.second || 0
       );
       
-      return date.toISOString();
+      const isoString = date.toISOString();
+      console.log(`${MODULE_ID} | Converted to ISO:`, isoString);
+      
+      return isoString;
     } catch (error) {
       console.error(`${MODULE_ID} | Error getting SimpleCalendar time:`, error);
       return new Date().toISOString();
@@ -557,11 +575,12 @@ export class TimeService {
       console.log(`${MODULE_ID} | SimpleCalendar hooks registered`);
     }
     
-    // Listen for settings changes
-    Hooks.on(`${MODULE_ID}.settingChanged`, (key, value) => {
-      if (key === 'timeSource') {
+    // Listen for settings changes using Foundry's built-in hook
+    Hooks.on('updateSetting', (setting, data) => {
+      if (setting.key === `${MODULE_ID}.timeSource`) {
+        console.log(`${MODULE_ID} | Time source changed to:`, data.value);
         this._detectSimpleCalendar();
-        this.eventBus.emit(EVENTS.TIME_SOURCE_CHANGED, { source: value });
+        this.eventBus.emit(EVENTS.TIME_SOURCE_CHANGED, { source: data.value });
       }
     });
   }

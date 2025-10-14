@@ -215,20 +215,42 @@
   {{!-- Main Content Area --}}
   <div class="ncm-message-viewer__content">
     
-    {{!-- Message List Sidebar --}}
-    <div class="ncm-message-viewer__sidebar">
-      {{#if messages.length}}
-      <div class="ncm-message-viewer__message-list">
-        {{#each messages}}
-        <div class="ncm-message-item {{#if this.status.read}}ncm-message-item--read{{else}}ncm-message-item--unread{{/if}} {{#if this.selected}}ncm-message-item--selected{{/if}}" 
-             data-message-id="{{this.id}}"
-             data-action="select-message">
+  {{!-- Message List Sidebar --}}
+  <div class="ncm-message-viewer__sidebar">
+    {{#if messages.length}}
+    <div class="ncm-message-viewer__message-list">
+      {{#each messages}}
+      <div class="ncm-message-item {{#if this.status.read}}ncm-message-item--read{{else}}ncm-message-item--unread{{/if}} {{#if this.selected}}ncm-message-item--selected{{/if}}" 
+           data-message-id="{{this.id}}"
+           data-action="select-message">
+        
+        {{!-- Header: Sender (left) | Date/Time (right) --}}
+        <div class="ncm-message-item__header">
+          <span class="ncm-message-item__sender">{{this.from}}</span>
           
-          <div class="ncm-message-item__header">
-            <span class="ncm-message-item__sender">{{this.from}}</span>
-            <span class="ncm-message-item__time">{{formatTime this.timestamp}}</span>
+          <div class="ncm-message-item__timestamp">
+            {{!-- Main date/time on top --}}
+            <span class="ncm-message-item__datetime" title="{{this.fullTimestamp}}">
+              {{this.formattedTimestamp}}
+            </span>
+            
+            {{!-- Badges inline with date/time --}}
+            {{#if this.scDisplay}}
+            <span class="ncm-message-item__badge ncm-message-item__badge--sc" title="In-game time: {{this.scDisplay}}">
+              <i class="fas fa-calendar-alt"></i>
+            </span>
+            {{/if}}
+            
+            {{#if this.wasScheduled}}
+            <span class="ncm-message-item__badge ncm-message-item__badge--scheduled" title="This message was scheduled">
+              <i class="fas fa-clock"></i>
+            </span>
+            {{/if}}
           </div>
-          
+        </div>
+        
+        {{!-- Second row: Subject (left) | Relative time (right) --}}
+        <div class="ncm-message-item__row2">
           <div class="ncm-message-item__subject">
             {{#unless this.status.read}}
             <span class="ncm-message-item__unread-dot"></span>
@@ -236,30 +258,35 @@
             {{this.subject}}
           </div>
           
-          <div class="ncm-message-item__preview">{{this.preview}}</div>
-          
-          {{#if this.status}}
-          <div class="ncm-message-item__indicators">
-            {{#if this.status.encrypted}}
-            <span class="ncm-message-item__indicator ncm-message-item__indicator--encrypted" title="Encrypted">
-              <i class="fas fa-lock"></i>
-            </span>
-            {{/if}}
-            {{#if this.status.infected}}
-            <span class="ncm-message-item__indicator ncm-message-item__indicator--malware" title="Malware Detected">
-              <i class="fas fa-virus"></i>
-            </span>
-            {{/if}}
-            {{#if this.status.saved}}
-            <span class="ncm-message-item__indicator ncm-message-item__indicator--saved" title="Saved">
-              <i class="fas fa-star"></i>
-            </span>
-            {{/if}}
-          </div>
+          <span class="ncm-message-item__relative">
+            {{this.relativeTime}}
+          </span>
+        </div>
+        
+        <div class="ncm-message-item__preview">{{this.preview}}</div>
+        
+        {{#if this.status}}
+        <div class="ncm-message-item__indicators">
+          {{#if this.status.encrypted}}
+          <span class="ncm-message-item__indicator ncm-message-item__indicator--encrypted" title="Encrypted">
+            <i class="fas fa-lock"></i>
+          </span>
+          {{/if}}
+          {{#if this.status.infected}}
+          <span class="ncm-message-item__indicator ncm-message-item__indicator--malware" title="Malware Detected">
+            <i class="fas fa-virus"></i>
+          </span>
+          {{/if}}
+          {{#if this.status.saved}}
+          <span class="ncm-message-item__indicator ncm-message-item__indicator--saved" title="Saved">
+            <i class="fas fa-star"></i>
+          </span>
           {{/if}}
         </div>
-        {{/each}}
+        {{/if}}
       </div>
+      {{/each}}
+    </div>
       
       {{!-- Pagination at bottom of sidebar --}}
       {{#if totalPages}}

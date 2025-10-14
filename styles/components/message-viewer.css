@@ -192,7 +192,8 @@
 .ncm-message-item__header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
+  gap: var(--ncm-spacing-sm);
   margin-bottom: var(--ncm-spacing-xs);
   font-size: var(--ncm-font-size-sm);
 }
@@ -200,6 +201,11 @@
 .ncm-message-item__sender {
   color: var(--ncm-text-secondary);
   font-weight: var(--ncm-font-weight-medium);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ncm-message-item__time {
@@ -722,52 +728,64 @@
    Time Display
    ======================================== */
 
-.ncm-message-item__time {
+.ncm-message-item__time-container {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.6);
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
 }
 
-/* ========================================
-   SimpleCalendar Badge
-   ======================================== */
-
-.ncm-message-item__sc-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 6px;
-  background: rgba(25, 243, 247, 0.2);
-  border: 1px solid var(--ncm-secondary, #19f3f7);
-  border-radius: 3px;
-  font-size: 10px;
-  color: var(--ncm-secondary, #19f3f7);
+/* Main timestamp (date + time) */
+.ncm-message-item__time {
+  font-size: var(--ncm-font-size-xs);
+  font-weight: var(--ncm-font-weight-medium);
+  color: var(--ncm-secondary);
+  white-space: nowrap;
   cursor: help;
+  line-height: 1;
 }
 
-.ncm-message-item__sc-badge i {
-  font-size: 9px;
+/* Relative time ("5 minutes ago") */
+.ncm-message-item__time-relative {
+  font-size: 11px;
+  color: var(--ncm-text-secondary);
+  font-style: italic;
+  white-space: nowrap;
+  line-height: 1;
 }
 
-/* ========================================
-   Scheduled Badge
-   ======================================== */
+/* ============================================
+   Time Badges
+   ============================================ */
 
-.ncm-message-item__scheduled-badge {
+.ncm-message-item__badge {
   display: inline-flex;
   align-items: center;
-  padding: 2px 6px;
+  justify-content: center;
+  padding: 2px 4px;
+  border-radius: var(--ncm-border-radius-sm);
+  font-size: 9px;
+  line-height: 1;
+  cursor: help;
+  margin-top: 2px;
+}
+
+/* SimpleCalendar badge */
+.ncm-message-item__badge--sc {
+  background: rgba(25, 243, 247, 0.2);
+  border: 1px solid var(--ncm-secondary);
+  color: var(--ncm-secondary);
+}
+
+/* Scheduled message badge */
+.ncm-message-item__badge--scheduled {
   background: rgba(255, 152, 0, 0.2);
   border: 1px solid #FF9800;
-  border-radius: 3px;
-  font-size: 10px;
   color: #FF9800;
-  cursor: help;
 }
 
-.ncm-message-item__scheduled-badge i {
-  font-size: 9px;
+.ncm-message-item__badge--scheduled i {
   animation: pulse-schedule 2s infinite;
 }
 
@@ -776,23 +794,28 @@
   50% { opacity: 0.5; }
 }
 
-/* ========================================
+/* ============================================
    Hover Effects
-   ======================================== */
+   ============================================ */
 
 .ncm-message-item:hover .ncm-message-item__time {
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--ncm-text-primary);
 }
 
-.ncm-message-item:hover .ncm-message-item__sc-badge {
+.ncm-message-item:hover .ncm-message-item__time-relative {
+  color: var(--ncm-text-secondary);
+}
+
+.ncm-message-item:hover .ncm-message-item__badge--sc {
   background: rgba(25, 243, 247, 0.3);
   box-shadow: 0 0 8px rgba(25, 243, 247, 0.4);
 }
 
-.ncm-message-item:hover .ncm-message-item__scheduled-badge {
+.ncm-message-item:hover .ncm-message-item__badge--scheduled {
   background: rgba(255, 152, 0, 0.3);
   box-shadow: 0 0 8px rgba(255, 152, 0, 0.4);
 }
+
 
 /* ============================================
    PAGINATION IMPROVEMENTS
@@ -1104,4 +1127,23 @@
   .ncm-toolbar__category {
     padding: var(--ncm-spacing-sm);
   }
+  
+  .ncm-message-item__time-container {
+    align-items: flex-start;
+  }
+  
+  .ncm-message-item__header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .ncm-message-item__time-container {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+  }
+  
+  .ncm-message-item__badge {
+    margin-to
 }

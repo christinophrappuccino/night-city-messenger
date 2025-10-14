@@ -1,4 +1,4 @@
-{{!-- Message Composer Template (FIXED) --}}
+{{!-- Message Composer Template (FIXED WITH TIME WIDGET) --}}
 {{!-- Uses canonical header structure --}}
 
 <div class="ncm-composer__container">
@@ -14,12 +14,19 @@
     </div>
     <div class="ncm-header__bottom">
       <span class="ncm-header__welcome">From: {{senderEmail}}</span>
-      </div>
-      {{!-- Time Widget --}}
-      <div class="ncm-composer__header-actions">
-        {{{timeWidgetHtml}}}
-      </div>
+      
+      {{!-- IME WIDGET --}}
+      {{#if timeWidgetHtml}}
+        <div class="ncm-header__time-widget">
+          {{{timeWidgetHtml}}}
+        </div>
+      {{/if}}
+      
+      {{#if scheduled}}
+      <span class="ncm-header__badge">SCHEDULED</span>
+      {{/if}}
     </div>
+  </div>
   
   {{!-- Header Fields Section --}}
   <div class="ncm-composer__header-section">
@@ -220,26 +227,29 @@
   {{!-- Footer Actions --}}
   <div class="ncm-composer__footer">
     <div class="ncm-composer__footer-left">
-      {{!-- Could add attachment info here later --}}
+      <span class="ncm-composer__char-count">
+        <span class="ncm-composer__char-count-value">{{charCount}}</span> / 10000
+      </span>
     </div>
     
     <div class="ncm-composer__footer-right">
-      <button class="ncm-btn ncm-btn--secondary" data-action="cancel">
-        <i class="fas fa-times"></i>
-        Cancel
+      <button class="ncm-btn" data-action="save-draft">
+        <i class="fas fa-save"></i> Save Draft
       </button>
       
-      {{!-- Schedule button (shown based on settings) --}}
+      {{!-- Schedule button --}}
       {{#if showScheduleButton}}
-        <button class="ncm-btn ncm-btn--primary-outline" data-action="schedule">
-          <i class="fas fa-clock"></i>
-          Schedule
-        </button>
+      <button class="ncm-btn ncm-btn--secondary" data-action="schedule">
+        <i class="fas fa-clock"></i> Schedule
+      </button>
       {{/if}}
       
-      <button class="ncm-btn ncm-btn--primary" data-action="send">
-        <i class="fas fa-paper-plane"></i>
-        Send
+      <button class="ncm-btn ncm-btn--primary ncm-composer__send-btn" data-action="send">
+        <i class="fas fa-paper-plane"></i> Send
+      </button>
+      
+      <button class="ncm-btn" data-action="cancel">
+        <i class="fas fa-times"></i> Cancel
       </button>
     </div>
   </div>

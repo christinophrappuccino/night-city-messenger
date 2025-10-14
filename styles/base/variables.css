@@ -94,7 +94,7 @@
   --ncm-letter-spacing-normal: 0;
   --ncm-letter-spacing-wide: 1px;
   --ncm-letter-spacing-wider: 2px;
-  
+
   /* ============================================
      BORDERS & RADII
      ============================================ */
@@ -162,6 +162,18 @@
   --ncm-icon-md: 18px;
   --ncm-icon-lg: 24px;
   --ncm-icon-xl: 32px;
+
+  /* ============================================
+     TIME WIDGET
+     ============================================ */
+  /* Time widget specific (optional, uses existing colors) */
+  --ncm-time-widget-bg: var(--ncm-bg-tertiary);
+  --ncm-time-widget-border: var(--ncm-border-primary);
+  --ncm-time-widget-text: var(--ncm-secondary);
+  
+  /* Animation duration if not already defined */
+  --ncm-transition-fast: 0.2s ease;
+  --ncm-transition-normal: 0.3s ease;
   
   /* ============================================
      GLOW EFFECTS (can be disabled)

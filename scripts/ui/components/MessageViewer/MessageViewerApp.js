@@ -164,12 +164,11 @@ export class MessageViewerApp extends BaseApplication {
         showCharacterSelector: showCharacterSelector,
         userName: selectedActor?.name || game.user.name,
       
-      // Time
-      currentTime: new Date().toLocaleTimeString('en-US', { 
-        hour: '2-digit', 
-        minute: '2-digit',
-        hour12: false 
-      }),
+      // TimeService for current time
+      currentTime: this.timeService.formatTimeOnly(
+        this.timeService.getCurrentTimestamp(), 
+        false // 24-hour format
+      ),
       
       // Network (you might have this elsewhere)
       networkName: this.stateManager.get('currentNetwork') || 'CITINET'

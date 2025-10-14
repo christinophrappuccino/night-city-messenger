@@ -66,7 +66,11 @@ export class MessageComposerApp extends BaseApplication {
       hasEmail: senderEmail !== "No email set",
       mode: this.mode,
       timeWidgetHtml: this.timeWidget.render(),
-      showScheduleButton: this.settingsManager.get('defaultSendBehavior') !== 'immediate'
+      showScheduleButton: this.settingsManager.get('defaultSendBehavior') !== 'immediate',
+      currentTime: this.timeService.formatTimestamp(
+        this.timeService.getCurrentTimestamp(),
+        '24h' // or '12h' if you prefer
+      )
     };
   }
   

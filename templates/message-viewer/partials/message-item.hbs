@@ -14,23 +14,31 @@
   <div class="ncm-message-item__header">
     <div class="ncm-message-item__from">{{from}}</div>
     
-    {{!-- Use formatted timestamps --}}
-    <div class="ncm-message-item__time" title="{{fullTimestamp}}">
-      {{relativeTime}}
+    {{!-- Show both date and relative time --}}
+    <div class="ncm-message-item__time-container">
+      <div class="ncm-message-item__time-main" title="{{fullTimestamp}}">
+        {{formattedTimestamp}}
+      </div>
+      <div class="ncm-message-item__time-relative">
+        {{relativeTime}}
+      </div>
       
-      {{!-- Show SimpleCalendar badge if present --}}
-      {{#if scDisplay}}
-        <span class="ncm-message-item__sc-badge" title="In-game time: {{scDisplay}}">
-          <i class="fas fa-calendar-alt"></i>
-        </span>
-      {{/if}}
-      
-      {{!-- Show scheduled badge if message was scheduled --}}
-      {{#if wasScheduled}}
-        <span class="ncm-message-item__scheduled-badge" title="This message was scheduled">
-          <i class="fas fa-clock"></i>
-        </span>
-      {{/if}}
+      {{!-- Badges --}}
+      <div class="ncm-message-item__badges">
+        {{!-- Show SimpleCalendar badge if present --}}
+        {{#if scDisplay}}
+          <span class="ncm-message-item__sc-badge" title="In-game time: {{scDisplay}}">
+            <i class="fas fa-calendar-alt"></i>
+          </span>
+        {{/if}}
+        
+        {{!-- Show scheduled badge if message was scheduled --}}
+        {{#if wasScheduled}}
+          <span class="ncm-message-item__scheduled-badge" title="This message was scheduled">
+            <i class="fas fa-clock"></i>
+          </span>
+        {{/if}}
+      </div>
     </div>
   </div>
   

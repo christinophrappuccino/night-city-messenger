@@ -73,6 +73,158 @@
 }
 
 /* ============================================
+   COMPOSER HEADER TOP - Updated for Time Widget
+   ============================================ */
+.ncm-composer__header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--ncm-spacing-md);
+  background: var(--ncm-bg-secondary);
+  border-bottom: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
+  gap: var(--ncm-spacing-md);
+}
+
+.ncm-composer__sender-info {
+  display: flex;
+  align-items: center;
+  gap: var(--ncm-spacing-sm);
+  flex: 0 0 auto;
+}
+
+.ncm-composer__sender-label {
+  color: var(--ncm-primary);
+  font-size: var(--ncm-font-size-sm);
+  font-weight: var(--ncm-font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: var(--ncm-letter-spacing-wide);
+}
+
+.ncm-composer__sender-email {
+  color: var(--ncm-secondary);
+  font-size: var(--ncm-font-size-sm);
+  font-family: var(--ncm-font-mono);
+}
+
+/* ============================================
+   TIME WIDGET STYLING
+   Integrates with your existing composer
+   ============================================ */
+
+/* Make header bottom flex to accommodate time widget */
+.ncm-composer .ncm-header__bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--ncm-spacing-sm);
+}
+
+/* Time widget container in header */
+.ncm-header__time-widget {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+/* Time widget styling when in composer header */
+.ncm-composer .ncm-time-widget {
+  display: flex;
+  align-items: center;
+  gap: var(--ncm-spacing-sm);
+  padding: var(--ncm-spacing-xs) var(--ncm-spacing-sm);
+  background: rgba(0, 0, 0, 0.3);
+  border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
+  border-radius: var(--ncm-border-radius-sm);
+  font-family: var(--ncm-font-primary);
+}
+
+.ncm-composer .ncm-time-widget__display {
+  display: flex;
+  align-items: center;
+  gap: var(--ncm-spacing-xs);
+}
+
+.ncm-composer .ncm-time-widget__icon {
+  color: var(--ncm-secondary);
+  font-size: 14px;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.ncm-composer .ncm-time-widget__time {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ncm-composer .ncm-time-widget__time-value {
+  font-size: var(--ncm-font-size-sm);
+  font-weight: var(--ncm-font-weight-medium);
+  color: var(--ncm-secondary);
+  letter-spacing: 0.5px;
+  line-height: 1;
+}
+
+.ncm-composer .ncm-time-widget__date-value {
+  font-size: 11px;
+  color: var(--ncm-text-secondary);
+  line-height: 1;
+}
+
+.ncm-composer .ncm-time-widget__custom-indicator {
+  color: var(--ncm-primary);
+  font-size: 12px;
+  margin-left: 4px;
+  animation: glow-pulse 1.5s infinite;
+}
+
+@keyframes glow-pulse {
+  0%, 100% { 
+    opacity: 1; 
+    text-shadow: 0 0 5px var(--ncm-primary); 
+  }
+  50% { 
+    opacity: 0.7; 
+    text-shadow: 0 0 10px var(--ncm-primary); 
+  }
+}
+
+.ncm-composer .ncm-time-widget__set-btn,
+.ncm-composer .ncm-time-widget__clear-btn {
+  padding: 4px 8px;
+  font-size: var(--ncm-font-size-xs);
+  white-space: nowrap;
+  height: auto;
+  min-height: 24px;
+  background: var(--ncm-bg-tertiary);
+  border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
+  border-radius: var(--ncm-border-radius-sm);
+  color: var(--ncm-text-primary);
+  cursor: pointer;
+  transition: all var(--ncm-transition-fast);
+}
+
+.ncm-composer .ncm-time-widget__set-btn:hover {
+  border-color: var(--ncm-primary);
+  background: var(--ncm-primary);
+  color: var(--ncm-bg-primary);
+}
+
+.ncm-composer .ncm-time-widget__clear-btn {
+  background: rgba(255, 0, 0, 0.1);
+  border-color: #ff4444;
+  color: #ff4444;
+}
+
+.ncm-composer .ncm-time-widget__clear-btn:hover {
+  background: rgba(255, 0, 0, 0.3);
+}
+
+/* ============================================
    ACTOR/SENDER SELECTION
    ============================================ */
 .ncm-composer__actor-row {
@@ -623,5 +775,22 @@
   
   .ncm-composer__footer-right button {
     flex: 1;
+  }
+}
+
+@media (max-width: 899px) {
+  .ncm-composer .ncm-header__bottom {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .ncm-header__time-widget {
+    margin-left: 0;
+    width: 100%;
+  }
+  
+  .ncm-composer .ncm-time-widget {
+    justify-content: center;
+    width: 100%;
   }
 }
