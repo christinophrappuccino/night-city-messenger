@@ -812,11 +812,6 @@
   cursor: help;
 }
 
-/* When message is selected, make icons more vibrant */
-.ncm-message-item--selected .ncm-message-item__type-icon {
-  filter: brightness(1.3);
-}
-
 /* Spacing adjustments */
 .ncm-message-item__sender {
   color: var(--ncm-secondary);
@@ -856,6 +851,41 @@
   50% { 
     box-shadow: 0 0 8px rgba(255, 152, 0, 0.3);
   }
+}
+
+/* ============================================
+   SELECTED MESSAGE STATE (Simple Version)
+   ============================================ */
+
+.ncm-message-item--selected {
+  background: rgba(246, 82, 97, 0.2) !important;
+  border: 2px solid var(--ncm-primary) !important;
+  border-left: 4px solid var(--ncm-primary) !important;
+  opacity: 1 !important; /* Override read state darkness */
+  box-shadow: 0 2px 8px rgba(246, 82, 97, 0.4) !important;
+}
+
+.ncm-message-item--selected:hover {
+  background: rgba(246, 82, 97, 0.25) !important;
+  border-color: var(--ncm-primary) !important;
+}
+
+/* Make text always visible when selected */
+.ncm-message-item--selected .ncm-message-item__sender,
+.ncm-message-item--selected .ncm-message-item__subject {
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  opacity: 1 !important;
+}
+
+/* Override read state when selected */
+.ncm-message-item--read.ncm-message-item--selected {
+  opacity: 1 !important;
+}
+
+/* Selected unread messages get cyan border */
+.ncm-message-item--selected.ncm-message-item--unread {
+  border-left: 4px solid var(--ncm-secondary) !important;
 }
 
 /* ========================================

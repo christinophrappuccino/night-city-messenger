@@ -148,49 +148,49 @@ export class TimeWidget {
     const $widget = $(this.element);
     const isGM = game.user.isGM;
     
-    // Update "Set Time" button text
+    // ✅ FIXED: Update "Set Time" button text (replace, not append)
     const $setBtn = $widget.find('[data-action="set-custom-time"]');
     if ($setBtn.length) {
       const newText = this.customTime ? 'Custom Time' : (isGM ? 'Set Time' : 'Schedule');
-      $setBtn.find('i').siblings().remove(); // Remove old text
+      const $icon = $setBtn.find('i').clone(); // Save the icon
+      
+      // Clear button and rebuild
+      $setBtn.empty();
+      $setBtn.append($icon);
       $setBtn.append(` ${newText}`);
     }
     
     // Show/hide clear button
-    const $clearBtn = $widget.find('[data-action="clear-custom-time"]');
-    if (this.customTime) {
-      if ($clearBtn.length === 0) {
-        // Add clear button if it doesn't exist
-        $setBtn.after(`
-          <button class="ncm-btn ncm-btn--small ncm-time-widget__clear-btn"
-                  data-action="clear-custom-time"
-                  title="Clear custom time">
-            <i class="fas fa-times"></i>
-          </button>
-        `);
-        // Re-bind the event
-        $widget.find('[data-action="clear-custom-time"]').on('click', async (e) => {
-          e.preventDefault();
-          await this.clearCustomTime();
-        });
-      }
-    } else {
+    let $clearBtn = $widget.find('[data-action="clear-custom-time"]');
+    if (this.customTime && $clearBtn.length === 0) {
+      // Add clear button
+      $setBtn.after(`
+        <button class="ncm-btn ncm-btn--small ncm-time-widget__clear-btn"
+                data-action="clear-custom-time"
+                title="Clear custom time">
+          <i class="fas fa-times"></i>
+        </button>
+      `);
+      // Bind event
+      $widget.find('[data-action="clear-custom-time"]').on('click', async (e) => {
+        e.preventDefault();
+        await this.clearCustomTime();
+      });
+    } else if (!this.customTime && $clearBtn.length > 0) {
       $clearBtn.remove();
     }
     
     // Show/hide custom indicator
-    const $customIndicator = $widget.find('.ncm-time-widget__custom-indicator');
-    if (this.customTime) {
-      if ($customIndicator.length === 0) {
-        // Add indicator if it doesn't exist
-        $widget.find('.ncm-time-widget__time').append(`
-          <span class="ncm-time-widget__custom-indicator" title="Custom time set">
-            <i class="fas fa-user-clock"></i>
-          </span>
-        `);
-      }
-    } else {
-      $customIndicator.remove();
+    let $indicator = $widget.find('.ncm-time-widget__custom-indicator');
+    if (this.customTime && $indicator.length === 0) {
+      // Add indicator
+      $widget.find('.ncm-time-widget__time').append(`
+        <span class="ncm-time-widget__custom-indicator" title="Custom time set">
+          <i class="fas fa-user-clock"></i>
+        </span>
+      `);
+    } else if (!this.customTime && $indicator.length > 0) {
+      $indicator.remove();
     }
   }
   

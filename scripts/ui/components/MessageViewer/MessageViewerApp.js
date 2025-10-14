@@ -76,6 +76,10 @@ export class MessageViewerApp extends BaseApplication {
     // Format timestamps for display
     const formattedMessages = messageData.messages.map(msg => ({
       ...msg,
+      
+      // Marks the selected message
+      selected: msg.id === selectedMessageId,
+      
       formattedTimestamp: this.timeService.formatTimestamp(msg.timestamp),
       relativeTime: this.timeService.formatTimestamp(msg.timestamp, 'relative'),
       fullTimestamp: this.timeService.formatTimestamp(msg.timestamp, 'full')
