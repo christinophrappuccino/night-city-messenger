@@ -211,47 +211,6 @@ export class DataValidator {
   }
 
   /**
-   * Validate scheduled message data
-   * Used by SchedulingService
-   */
-  static validateScheduledMessage(data) {
-    const errors = [];
-    
-    // Required fields
-    if (!data.from) errors.push('from is required');
-    if (!data.to) errors.push('to is required');
-    if (!data.subject) errors.push('subject is required');
-    if (!data.content) errors.push('content is required');
-    if (!data.scheduledTime) errors.push('scheduledTime is required');
-    
-    // Validate scheduledTime format
-    if (data.scheduledTime) {
-      try {
-        const date = new Date(data.scheduledTime);
-        if (isNaN(date.getTime())) {
-          errors.push('Invalid scheduledTime format');
-        }
-      } catch (error) {
-        errors.push('Invalid scheduledTime');
-      }
-    }
-    
-    // Validate email format
-    if (data.from && !this._isValidEmail(data.from)) {
-      errors.push('Invalid from email format');
-    }
-    
-    if (data.to && !this._isValidEmail(data.to)) {
-      errors.push('Invalid to email format');
-    }
-    
-    return {
-      valid: errors.length === 0,
-      errors
-    };
-  }
-
-  /**
    * Helper to validate email format
    * @private
    */

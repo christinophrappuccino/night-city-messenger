@@ -76,129 +76,73 @@ export class SchedulingService {
       throw new Error(`Invalid scheduled message: ${validation.errors.join(', ')}`);
     }
     
+    const data = validation.sanitized;
+    
     // Generate schedule ID
     const scheduleId = foundry.utils.randomID();
     
-    // Prepare schedule data
+    // Store schedule data
     const scheduleData = {
       id: scheduleId,
-      from: messageData.from,
-      to: messageData.to,
-      subject: messageData.subject,
-      content: messageData.content,
-      scheduledTime: messageData.scheduledTime,
-      useSimpleCalendar: messageData.useSimpleCalendar || false,
-      actorId: messageData.actorId,
-      createdAt: this.timeService.getCurrentTimestamp(),
-      createdBy: game.user.id, // Track who scheduled it
-      sent: false,
-      sentAt: null,
-      
-      // Add status markers for filtering
-      status: {
-        scheduled: true,  // Mark as scheduled
-        sent: false,      // NOT sent yet
-        read: false,      // Will be unread when delivered
-        spam: false,
-        saved: false,
-        deleted: false
-      }
+      from: data.from,
+      to: data.to,
+      subject: data.subject,
+      content: data.content,
+      scheduledTime: data.scheduledTime,
+      useSimpleCalendar: data.useSimpleCalendar || false,
+      simpleCalendarData: data.simpleCalendarData || null,
+      actorId: data.actorId,
+      network: data.network || 'CITINET',
+      createdAt: new Date().toISOString(),
+      createdBy: game.user.id,
+      sent: false
     };
     
-    // If using SimpleCalendar, store additional data
-    if (messageData.useSimpleCalendar && this.timeService.isSimpleCalendarAvailable()) {
-      scheduleData.simpleCalendarData = this.timeService.getSimpleCalendarData();
-    }
-    console.log(`${MODULE_ID} | About to check actorId. Value:`, messageData.actorId, `Type:`, typeof messageData.actorId);
-    // Also create a preview message in the journal for "scheduled" filter
-    // This allows the message to appear in the scheduled folder
-    if (messageData.actorId) {
-      try {
-        const actor = game.actors.get(messageData.actorId);
-        if (actor) {
-          // Find inbox using same logic as MessageRepository
-          const possessiveName = `${actor.name}'s Messages`;
-          const simpleName = `${actor.name} Messages`;
+    console.log(`${MODULE_ID} | Scheduling message:`, scheduleData);
+    
+    // ✅ FIX 1: Create placeholder using MessageRepository (proper way)
+    try {
+      if (data.actorId) {
+        // Create placeholder that will appear in inbox
+        const placeholderData = {
+          from: data.from,
+          to: data.to,
+          subject: `⏰ ${data.subject}`,  // Clock emoji to indicate scheduled
+          content: this._generatePlaceholderContent(data),
+          timestamp: data.scheduledTime,  // Use scheduled time
+          actorId: data.actorId,
+          network: data.network || 'CITINET',
           
-          let journal = game.journal.getName(possessiveName) || game.journal.getName(simpleName);
+          // ✅ CRITICAL: Set status to scheduled
+          status: {
+            scheduled: true,  // This makes it filterable as "scheduled"
+            sent: false,
+            read: true,       // Don't clutter unread
+            spam: false,
+            saved: false,
+            deleted: false
+          },
           
-          // Also check by flag
-          if (!journal) {
-            journal = game.journal.find(j => 
-              j.getFlag(MODULE_ID, 'isInbox') && 
-              j.getFlag(MODULE_ID, 'actorId') === actor.id
-            );
+          // ✅ CRITICAL: Include scheduleId in metadata
+          metadata: {
+            messageType: 'scheduled',
+            scheduleId: scheduleId,  // Link placeholder to schedule
+            isPlaceholder: true
           }
-          
-          if (journal) {
-            console.log(`${MODULE_ID} | Creating scheduled placeholder in ${journal.name}`);
-            
-            // Create placeholder page
-            await journal.createEmbeddedDocuments('JournalEntryPage', [{
-              name: `⏰ ${messageData.subject}`,
-              type: 'text',
-              text: {
-                content: `
-                  <div class="ncm-scheduled-message-placeholder" style="font-family: 'Rajdhani', sans-serif; background-color: #1a1a1a; border: 2px solid #19f3f7; border-radius: 5px; padding: 20px; color: #ffffff;">
-                    <div style="text-align: center; margin-bottom: 15px;">
-                      <i class="fas fa-clock" style="font-size: 2em; color: #19f3f7;"></i>
-                      <h3 style="color: #19f3f7; margin: 10px 0;">SCHEDULED FOR DELIVERY</h3>
-                    </div>
-                    <div style="border-top: 2px solid #19f3f7; padding-top: 15px;">
-                      <p><strong style="color: #F65261;">Delivery Time:</strong> <span style="color: #19f3f7;">${this.timeService.formatTimestamp(messageData.scheduledTime, 'full')}</span></p>
-                      <p><strong style="color: #F65261;">From:</strong> ${messageData.from}</p>
-                      <p><strong style="color: #F65261;">To:</strong> ${messageData.to}</p>
-                      <p><strong style="color: #F65261;">Subject:</strong> ${messageData.subject}</p>
-                      <hr style="border-color: #19f3f7; opacity: 0.3; margin: 15px 0;">
-                      <p style="color: #cccccc;"><em>Message preview:</em></p>
-                      <div style="color: #999999; font-size: 0.9em; max-height: 200px; overflow: hidden;">
-                        ${messageData.content.substring(0, 300)}${messageData.content.length > 300 ? '...' : ''}
-                      </div>
-                    </div>
-                  </div>
-                `,
-                format: CONST.JOURNAL_ENTRY_PAGE_FORMATS.HTML
-              },
-              flags: {
-                [MODULE_ID]: {
-                  scheduleId: scheduleId,
-                  type: 'scheduled-placeholder',
-                  from: messageData.from,
-                  to: messageData.to,
-                  subject: messageData.subject,
-                  content: messageData.content,
-                  scheduledTime: messageData.scheduledTime,
-                  timestamp: messageData.scheduledTime,
-                  network: messageData.network || 'CITINET',
-                  
-                  // CRITICAL: Status must include 'scheduled: true'
-                  status: {
-                    scheduled: true,  // ← This makes it appear in "Scheduled" folder
-                    sent: false,
-                    read: true,       // Mark as read so it doesn't clutter unread
-                    spam: false,
-                    saved: false,
-                    deleted: false
-                  },
-                  
-                  metadata: {
-                    messageType: 'scheduled',
-                    scheduleId: scheduleId
-                  }
-                }
-              }
-            }]);
-            
-            console.log(`${MODULE_ID} | ✓ Created scheduled placeholder`);
-          } else {
-            console.warn(`${MODULE_ID} | No journal found for actor ${actor.name}`);
-          }
-        }
-      } catch (error) {
-        console.error(`${MODULE_ID} | Error creating scheduled placeholder:`, error);
-        console.error(`${MODULE_ID} | Stack:`, error.stack);
-        // Don't throw - schedule should still be saved
+        };
+        
+        console.log(`${MODULE_ID} | Creating placeholder with scheduleId=${scheduleId}`);
+        
+        // Use MessageRepository directly through MessageService
+        await this.messageService.messageRepository.create(placeholderData);
+        
+        console.log(`${MODULE_ID} | ✓ Created scheduled placeholder`);
       }
+    } catch (error) {
+      console.error(`${MODULE_ID} | Error creating scheduled placeholder:`, error);
+      console.error(`${MODULE_ID} | Stack:`, error.stack);
+      // ⚠️ Don't throw - we still want to save the schedule
+      ui.notifications.warn('Scheduled message saved, but preview may not appear in inbox');
     }
     
     // Store in settings
@@ -206,12 +150,44 @@ export class SchedulingService {
     scheduled[scheduleId] = scheduleData;
     await this.settingsManager.set('scheduledMessages', scheduled);
     
-    console.log(`${MODULE_ID} | Message scheduled:`, scheduleId);
+    console.log(`${MODULE_ID} | ✓ Message scheduled with ID: ${scheduleId}`);
     
     // Emit event
-    this.eventBus.emit(EVENTS.MESSAGE_SCHEDULED, scheduleData);
+    this.eventBus.emit(EVENTS.MESSAGE_SCHEDULED, { scheduleId, messageData: scheduleData });
     
     return scheduleId;
+  }
+
+  /**
+   * Generate placeholder content for scheduled messages
+   * @private
+   */
+  _generatePlaceholderContent(data) {
+    const deliveryTime = this.timeService.formatTimestamp(data.scheduledTime, 'full');
+    
+    return `
+      <div class="ncm-scheduled-message-placeholder" style="font-family: 'Rajdhani', sans-serif; background-color: #1a1a1a; border: 2px solid #19f3f7; border-radius: 5px; padding: 20px; color: #ffffff;">
+        <div style="text-align: center; margin-bottom: 15px;">
+          <i class="fas fa-clock" style="font-size: 2em; color: #19f3f7;"></i>
+          <h3 style="color: #19f3f7; margin: 10px 0;">SCHEDULED FOR DELIVERY</h3>
+        </div>
+        <div style="border-top: 2px solid #19f3f7; padding-top: 15px;">
+          <p><strong style="color: #F65261;">Delivery Time:</strong> <span style="color: #19f3f7;">${deliveryTime}</span></p>
+          <p><strong style="color: #F65261;">From:</strong> ${data.from}</p>
+          <p><strong style="color: #F65261;">To:</strong> ${data.to}</p>
+          <p><strong style="color: #F65261;">Subject:</strong> ${data.subject}</p>
+          <hr style="border-color: #19f3f7; opacity: 0.3; margin: 15px 0;">
+          <p style="color: #cccccc;"><em>Message preview:</em></p>
+          <div style="color: #999999; font-size: 0.9em; max-height: 200px; overflow: hidden;">
+            ${data.content.substring(0, 300)}${data.content.length > 300 ? '...' : ''}
+          </div>
+          <hr style="border-color: #19f3f7; opacity: 0.3; margin: 15px 0;">
+          <p style="text-align: center; color: #19f3f7; font-size: 0.9em;">
+            <i class="fas fa-info-circle"></i> This message will be automatically delivered at the scheduled time
+          </p>
+        </div>
+      </div>
+    `;
   }
 
 
@@ -317,30 +293,45 @@ export class SchedulingService {
         const isDue = this.timeService.isTimeDue(schedule.scheduledTime);
         
         if (!isDue) {
+          console.log(`${MODULE_ID} | Message ${schedule.id} not yet due (scheduled: ${schedule.scheduledTime}, now: ${now})`);
           continue;
         }
         
-        // Delete the placeholder journal page first
+        console.log(`${MODULE_ID} | Message ${schedule.id} is DUE - sending now!`);
+        
+        // ✅ FIX 2: Find and delete the placeholder (improved search)
         if (schedule.actorId) {
-          const actor = game.actors.get(schedule.actorId);
-          if (actor) {
-            const inbox = actor.getFlag(MODULE_ID, 'inboxJournal');
-            if (inbox) {
-              const journal = game.journal.get(inbox);
-              if (journal) {
-                // Find and delete the placeholder
-                const placeholderPage = journal.pages.find(p => 
-                  p.getFlag(MODULE_ID, 'scheduleId') === schedule.id
-                );
-                if (placeholderPage) {
-                  await placeholderPage.delete();
+          try {
+            const actor = game.actors.get(schedule.actorId);
+            if (actor) {
+              // Get inbox journal
+              const inboxId = actor.getFlag(MODULE_ID, 'inboxJournal');
+              if (inboxId) {
+                const journal = game.journal.get(inboxId);
+                if (journal) {
+                  // Find placeholder by scheduleId in metadata
+                  const placeholderPage = journal.pages.find(p => {
+                    const scheduleId = p.getFlag(MODULE_ID, 'metadata')?.scheduleId;
+                    const isPlaceholder = p.getFlag(MODULE_ID, 'metadata')?.isPlaceholder;
+                    return scheduleId === schedule.id && isPlaceholder;
+                  });
+                  
+                  if (placeholderPage) {
+                    console.log(`${MODULE_ID} | ✓ Deleting placeholder: ${placeholderPage.name}`);
+                    await placeholderPage.delete();
+                  } else {
+                    console.warn(`${MODULE_ID} | ⚠ No placeholder found for schedule ${schedule.id}`);
+                  }
                 }
               }
             }
+          } catch (error) {
+            console.error(`${MODULE_ID} | Error deleting placeholder:`, error);
+            // Continue anyway - we still want to send the message
           }
         }
         
-        // Send message NOW
+        // ✅ FIX 3: Send the actual message with proper status
         const messageData = {
           from: schedule.from,
           to: schedule.to,
@@ -348,28 +339,31 @@ export class SchedulingService {
           content: schedule.content,
           actorId: schedule.actorId,
           timestamp: schedule.scheduledTime, // Use scheduled time as send time
+          simpleCalendarData: schedule.simpleCalendarData,
           
           // Proper status for delivered message
           status: {
             scheduled: false, // No longer scheduled
-            sent: true,       // NOW it's sent
-            read: false,      // Unread
+            sent: false,      // It's received, not sent (from recipient's perspective)
+            read: false,      // Unread (new message)
             spam: false,
             saved: false,
             deleted: false
+          },
+          
+          metadata: {
+            messageType: 'standard',  // Now it's a normal message
+            sentVia: 'scheduled',
+            originalScheduleId: schedule.id
           }
         };
-        
-        if (schedule.simpleCalendarData) {
-          messageData.simpleCalendarData = schedule.simpleCalendarData;
-        }
         
         // Use MessageManager to send
         await game.nightcity.messageManager.sendMessage(messageData, {
           skipSpamCheck: true // Don't spam-check scheduled messages
         });
         
-        // Mark as sent
+        // Mark as sent in schedule data
         await this._markAsSent(schedule.id);
         sent++;
         
@@ -389,17 +383,23 @@ export class SchedulingService {
         }
         
       } catch (error) {
-        console.error(`${MODULE_ID} | Error sending scheduled message:`, error);
+        console.error(`${MODULE_ID} | ❌ Error sending scheduled message ${schedule.id}:`, error);
+        console.error(`${MODULE_ID} | Stack:`, error.stack);
+        // Continue with other messages
       }
     }
     
     if (sent > 0) {
-      console.log(`${MODULE_ID} | Sent ${sent} scheduled messages`);
+      console.log(`${MODULE_ID} | ✓ Sent ${sent} scheduled message(s)`);
       this.eventBus.emit(EVENTS.MESSAGES_SENT, { count: sent });
+      ui.notifications.info(`Sent ${sent} scheduled message${sent > 1 ? 's' : ''}`);
+    } else {
+      console.log(`${MODULE_ID} | No messages were due to send`);
     }
     
     return sent;
   }
+
   
   /**
    * Get statistics
@@ -452,6 +452,8 @@ export class SchedulingService {
       scheduled[scheduleId].sent = true;
       scheduled[scheduleId].sentAt = new Date().toISOString();
       await this.settingsManager.set('scheduledMessages', scheduled);
+      
+      console.log(`${MODULE_ID} | Marked schedule ${scheduleId} as sent`);
     }
   }
   

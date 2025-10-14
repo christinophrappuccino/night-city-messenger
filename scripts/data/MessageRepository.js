@@ -44,15 +44,23 @@ export class MessageRepository {
     // Prepare SimpleCalendar data if provided
     const simpleCalendarData = data.simpleCalendarData || null;
     
-    // FIXED: Proper status for RECIPIENT
-    const status = data.status || {
+    // ✅ FIXED: Properly merge status - preserve all provided values
+    const defaultStatus = {
       read: false,
-      sent: false,      // Received message (not sent by recipient)
+      sent: false,
       scheduled: false,
       spam: false,
       saved: false,
       deleted: false
     };
+    
+    // Merge data.status OVER defaults (so data.status takes priority)
+    const status = {
+      ...defaultStatus,
+      ...(data.status || {})
+    };
+    
+    console.log(`${MODULE_ID} | Creating message with status:`, status);
     
     // Prepare metadata with scheduling info
     const metadata = {
@@ -84,7 +92,7 @@ export class MessageRepository {
           
           network: data.network,
           encrypted: data.encrypted,
-          status: status,  // FIXED: Now properly set
+          status: status,  // ✅ Now properly preserves scheduled: true
           
           // Enhanced metadata
           metadata,  // Includes scheduled info
@@ -94,7 +102,7 @@ export class MessageRepository {
       }
     }, { parent: recipientJournal });
     
-    console.log(`${MODULE_ID} | Created message: ${data.subject}`);
+    console.log(`${MODULE_ID} | ✓ Created message: ${data.subject}, scheduled=${status.scheduled}`);
     
     // FIXED: Create copy in sender's sent folder
     if (data.actorId) {
