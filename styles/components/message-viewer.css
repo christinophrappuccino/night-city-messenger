@@ -573,6 +573,33 @@
 }
 
 /* ============================================
+   RESCHEDULE BUTTONS
+   ============================================ */
+
+.ncm-message-detail__scheduled-actions {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 15px;
+  background: rgba(255, 101, 97, 0.1);
+  border: 1px solid var(--ncm-primary);
+  border-radius: 4px;
+  margin: 15px 0;
+}
+
+.ncm-message-detail__scheduled-time {
+  color: var(--ncm-secondary);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ncm-message-detail__scheduled-time i {
+  color: var(--ncm-primary);
+}
+
+/* ============================================
    ADVANCED FILTERS PANEL
    ============================================ */
 .ncm-filters-panel {

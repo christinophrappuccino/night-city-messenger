@@ -340,25 +340,141 @@ export class MessageList {
    * ✅ NEW: For delete button
    * @param {string} messageId
    */
-  async deleteMessage(messageId) {
+  async deleteMessage(messageId, permanent = false) {
     const messages = this.stateManager.get('messages');
-    const message = messages instanceof Map ? messages.get(messageId) : messages.find(m => m.id === messageId);
+    const message = messages instanceof Map ? 
+      messages.get(messageId) : messages.find(m => m.id === messageId);
     
     if (!message || !message.page) return;
     
     try {
-      // Delete the journal page
-      await message.page.delete();
-      
-      // Remove from state
-      this.stateManager.removeMessage(messageId);
+      if (permanent && game.user.isGM) {
+        // ✅ GM ONLY: Permanent deletion
+        const confirm = await Dialog.confirm({
+          title: "Permanently Delete Message",
+          content: `
+            <p style="color: var(--ncm-primary, #F65261);">
+              <i class="fas fa-exclamation-triangle"></i> 
+              <strong>Warning: This cannot be undone!</strong>
+            </p>
+            <p>Permanently delete this message from the database?</p>
+            <p style="font-size: 0.9em; opacity: 0.7;">
+              Only use this for testing or removing corrupt data.
+            </p>
+          `
+        });
+        
+        if (!confirm) return;
+        
+        // Actually delete the journal page
+        await message.page.delete();
+        this.stateManager.removeMessage(messageId);
+        
+        ui.notifications.info('Message permanently deleted');
+      } else {
+        // ✅ DEFAULT: Soft delete (mark as deleted)
+        this.stateManager.updateMessageStatus(messageId, { deleted: true });
+        
+        // Persist to journal
+        await message.page.setFlag(MODULE_ID, 'status', {
+          ...message.status,
+          deleted: true,
+          deletedAt: new Date().toISOString(),
+          deletedBy: game.user.id
+        });
+        
+        ui.notifications.info('Message moved to trash');
+      }
       
       // Emit event
       this.eventBus.emit(EVENTS.MESSAGE_DELETED, { messageId });
       
     } catch (error) {
       console.error(`${MODULE_ID} | Error deleting message:`, error);
+      ui.notifications.error('Failed to delete message');
       throw error;
+    }
+  }
+  
+  /**
+   * Restore deleted message
+   * ✅ NEW: Restore from trash
+   */
+  async restoreMessage(messageId) {
+    const messages = this.stateManager.get('messages');
+    const message = messages instanceof Map ? 
+      messages.get(messageId) : messages.find(m => m.id === messageId);
+    
+    if (!message || !message.page) return;
+    
+    try {
+      // Update state
+      this.stateManager.updateMessageStatus(messageId, { deleted: false });
+      
+      // Persist to journal
+      await message.page.setFlag(MODULE_ID, 'status', {
+        ...message.status,
+        deleted: false,
+        restoredAt: new Date().toISOString(),
+        restoredBy: game.user.id
+      });
+      
+      ui.notifications.info('Message restored');
+      
+      // Emit event
+      this.eventBus.emit(EVENTS.MESSAGE_UPDATED, { messageId });
+      
+    } catch (error) {
+      console.error(`${MODULE_ID} | Error restoring message:`, error);
+      ui.notifications.error('Failed to restore message');
+      throw error;
+    }
+  }
+  
+  /**
+   * Empty trash (GM only)
+   * ✅ NEW: Permanently delete all trashed messages
+   */
+  async emptyTrash() {
+    if (!game.user.isGM) {
+      ui.notifications.warn('Only GMs can empty the trash');
+      return;
+    }
+    
+    const deletedMessages = this.stateManager.getAllMessages()
+      .filter(m => m.status?.deleted);
+    
+    if (deletedMessages.length === 0) {
+      ui.notifications.info('Trash is already empty');
+      return;
+    }
+    
+    const confirm = await Dialog.confirm({
+      title: "Empty Trash",
+      content: `
+        <p style="color: var(--ncm-primary, #F65261);">
+          <i class="fas fa-exclamation-triangle"></i> 
+          <strong>Warning: This cannot be undone!</strong>
+        </p>
+        <p>Permanently delete <strong>${deletedMessages.length}</strong> message(s) from trash?</p>
+      `
+    });
+    
+    if (!confirm) return;
+    
+    try {
+      for (const message of deletedMessages) {
+        if (message.page) {
+          await message.page.delete();
+          this.stateManager.removeMessage(message.id);
+        }
+      }
+      
+      ui.notifications.info(`Emptied trash: ${deletedMessages.length} messages permanently deleted`);
+      
+    } catch (error) {
+      console.error(`${MODULE_ID} | Error emptying trash:`, error);
+      ui.notifications.error('Failed to empty trash');
     }
   }
   

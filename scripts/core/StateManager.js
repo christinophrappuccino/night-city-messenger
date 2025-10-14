@@ -336,6 +336,46 @@ export class StateManager {
     
     return messages;
   }
+
+  /**
+   * Update message status
+   * @param {string} messageId - Message ID
+   * @param {Object} statusUpdates - Status fields to update
+   */
+  updateMessageStatus(messageId, statusUpdates) {
+    const message = this.state.messages.get(messageId);
+    
+    if (!message) {
+      console.warn(`StateManager | Message not found: ${messageId}`);
+      return;
+    }
+    
+    // Update status object
+    message.status = {
+      ...message.status,
+      ...statusUpdates
+    };
+    
+    // Update unread tracking if read status changed
+    if ('read' in statusUpdates) {
+      if (statusUpdates.read) {
+        this.state.unreadMessages.delete(messageId);
+      } else {
+        this.state.unreadMessages.add(messageId);
+      }
+    }
+    
+    // Emit appropriate events
+    if (statusUpdates.read !== undefined) {
+      this.eventBus?.emit(EVENTS.MESSAGE_READ, { messageId });
+    }
+    if (statusUpdates.saved !== undefined) {
+      this.eventBus?.emit(EVENTS.MESSAGE_SAVED, { messageId, saved: statusUpdates.saved });
+    }
+    if (statusUpdates.spam !== undefined) {
+      this.eventBus?.emit(EVENTS.MESSAGE_SPAM, { messageId, spam: statusUpdates.spam });
+    }
+  }
   
   // ========================================
   // Private helper methods

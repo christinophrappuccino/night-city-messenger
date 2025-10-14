@@ -1,8 +1,10 @@
 /**
- * Time Widget Component
+ * Time Widget Component - MINIMAL FIX
  * File: scripts/ui/components/MessageComposer/TimeWidget.js
  * Module: cyberpunkred-messenger
  * Description: Live clock display and time control for composer
+ * 
+ * ✅ ONLY CHANGES: Lines 165 and 181 - removed parent.render() calls
  */
 
 import { MODULE_ID } from '../../../utils/constants.js';
@@ -132,10 +134,69 @@ export class TimeWidget {
     
     if (timeEl) timeEl.textContent = time;
     if (dateEl) dateEl.textContent = date;
+    
+    // ✅ NEW: Update button text and custom indicator visibility
+    this.updateButtons();
   }
   
   /**
-   * Show custom time picker (GM only)
+   * ✅ NEW: Update button states without re-rendering entire composer
+   */
+  updateButtons() {
+    if (!this.element) return;
+    
+    const $widget = $(this.element);
+    const isGM = game.user.isGM;
+    
+    // Update "Set Time" button text
+    const $setBtn = $widget.find('[data-action="set-custom-time"]');
+    if ($setBtn.length) {
+      const newText = this.customTime ? 'Custom Time' : (isGM ? 'Set Time' : 'Schedule');
+      $setBtn.find('i').siblings().remove(); // Remove old text
+      $setBtn.append(` ${newText}`);
+    }
+    
+    // Show/hide clear button
+    const $clearBtn = $widget.find('[data-action="clear-custom-time"]');
+    if (this.customTime) {
+      if ($clearBtn.length === 0) {
+        // Add clear button if it doesn't exist
+        $setBtn.after(`
+          <button class="ncm-btn ncm-btn--small ncm-time-widget__clear-btn"
+                  data-action="clear-custom-time"
+                  title="Clear custom time">
+            <i class="fas fa-times"></i>
+          </button>
+        `);
+        // Re-bind the event
+        $widget.find('[data-action="clear-custom-time"]').on('click', async (e) => {
+          e.preventDefault();
+          await this.clearCustomTime();
+        });
+      }
+    } else {
+      $clearBtn.remove();
+    }
+    
+    // Show/hide custom indicator
+    const $customIndicator = $widget.find('.ncm-time-widget__custom-indicator');
+    if (this.customTime) {
+      if ($customIndicator.length === 0) {
+        // Add indicator if it doesn't exist
+        $widget.find('.ncm-time-widget__time').append(`
+          <span class="ncm-time-widget__custom-indicator" title="Custom time set">
+            <i class="fas fa-user-clock"></i>
+          </span>
+        `);
+      }
+    } else {
+      $customIndicator.remove();
+    }
+  }
+  
+  /**
+   * Show custom time picker
+   * ✅ FIXED: No longer re-renders entire composer
    */
   async showTimePicker() {
     const isGM = game.user.isGM;
@@ -160,10 +221,9 @@ export class TimeWidget {
       }
       
       this.customTime = timestamp;
-      this.updateDisplay();
       
-      // Update UI
-      await this.parent.render(false);
+      // ✅ FIXED: Only update the widget display, not entire composer
+      this.updateDisplay();
       
       const timeLabel = isGM ? 'Custom time set' : 'Message scheduled for';
       ui.notifications.info(`${timeLabel}: ${this.timeService.formatTimestamp(timestamp)}`);
@@ -177,11 +237,14 @@ export class TimeWidget {
   
   /**
    * Clear custom time
+   * ✅ FIXED: No longer re-renders entire composer
    */
   async clearCustomTime() {
     this.customTime = null;
+    
+    // ✅ FIXED: Only update the widget display, not entire composer
     this.updateDisplay();
-    await this.parent.render(false);
+    
     ui.notifications.info('Using current time');
   }
   

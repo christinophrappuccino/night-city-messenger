@@ -211,6 +211,11 @@ export class MessageViewerApp extends BaseApplication {
     html.find('[data-action="open-contacts"]').on('click', this._onOpenContacts.bind(this));
     html.find('[data-action="add-sender-to-contacts"]').on('click', this._onAddSenderToContacts.bind(this));
 
+    // Reschedule Message
+    html.find('[data-action="reschedule-message"]').on('click', (e) => {
+      this._onRescheduleMessage(e);
+    });
+
     // Advanced filters toggle
     html.find('[data-action="toggle-filters"]').on('click', this._onToggleFilters.bind(this));
     
@@ -679,6 +684,66 @@ export class MessageViewerApp extends BaseApplication {
     ui.notifications.info(`Added ${name} to contacts.`);
     
     this.playSound('click');
+  }
+
+  /**
+   * Reschedule a scheduled message
+   * @private
+   */
+  async _onRescheduleMessage(event) {
+    event.preventDefault();
+    
+    const messageId = this.stateManager.get('selectedMessageId');
+    if (!messageId) return;
+    
+    const messages = this.stateManager.get('messages');
+    const message = messages instanceof Map ? 
+      messages.get(messageId) : messages.find(m => m.id === messageId);
+    
+    if (!message) return;
+    
+    // Check if this is a scheduled message
+    const isScheduled = message.metadata?.messageType === 'scheduled';
+    
+    if (!isScheduled) {
+      ui.notifications.warn('This is not a scheduled message');
+      return;
+    }
+    
+    try {
+      // Get the schedule ID from the message
+      const scheduleId = message.metadata?.scheduleId;
+      
+      if (!scheduleId) {
+        ui.notifications.error('Unable to find schedule information');
+        return;
+      }
+      
+      // Open time picker
+      const newTime = await this.timeService.pickDateTime({
+        title: 'Reschedule Message',
+        currentTime: message.scheduledTime || message.timestamp,
+        allowPast: game.user.isGM,
+        allowFuture: true
+      });
+      
+      // Reschedule using the scheduling service
+      await game.nightcity.schedulingService.rescheduleMessage(scheduleId, newTime);
+      
+      // Update the message display
+      message.scheduledTime = newTime;
+      message.timestamp = newTime;
+      
+      ui.notifications.info(`Message rescheduled for ${this.timeService.formatTimestamp(newTime)}`);
+      
+      this.render(false);
+      
+    } catch (error) {
+      if (error.message !== 'Cancelled') {
+        console.error(`${MODULE_ID} | Error rescheduling message:`, error);
+        ui.notifications.error(`Failed to reschedule: ${error.message}`);
+      }
+    }
   }
 
   /**

@@ -64,6 +64,20 @@
   <button class="ncm-btn ncm-btn--danger" data-action="delete">
     <i class="fas fa-trash"></i> Delete
   </button>
+  {{#if metadata.messageType}}
+    {{#if (eq metadata.messageType "scheduled")}}
+      <div class="ncm-message-detail__scheduled-actions">
+        <button class="ncm-btn ncm-btn--secondary" data-action="reschedule-message">
+          <i class="fas fa-calendar-alt"></i>
+          Reschedule
+        </button>
+        <span class="ncm-message-detail__scheduled-time">
+          <i class="fas fa-clock"></i>
+          Scheduled for: {{formattedTimestamp}}
+        </span>
+      </div>
+    {{/if}}
+  {{/if}}
 </div>
 
 {{else}}
