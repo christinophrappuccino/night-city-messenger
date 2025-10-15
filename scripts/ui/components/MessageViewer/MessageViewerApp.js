@@ -38,7 +38,7 @@ export class MessageViewerApp extends BaseApplication {
     this.registerComponent('messageDetail', this.messageDetail);
     this.registerComponent('messageFilters', this.messageFilters);
     this.registerComponent('messagePagination', this.messagePagination);
-    
+    this._setupEventListeners();
     // Load messages into state
     this._loadMessages();
   }
@@ -188,6 +188,54 @@ export class MessageViewerApp extends BaseApplication {
       networkName: this.stateManager.get('currentNetwork') || 'CITINET'
     };
   }
+
+  /**
+   * Setup event listeners for auto-refresh
+   * @private
+   */
+  _setupEventListeners() {
+    // Listen for new messages
+    this.eventBus.on(EVENTS.MESSAGE_RECEIVED, (data) => {
+      // Only refresh if it's for this inbox
+      if (data.journalId === this.journalEntry?.id || 
+          data.actorId === this.selectedActorId) {
+        console.log(`${MODULE_ID} | New message received, refreshing viewer`);
+        this._loadMessages();
+        this.render(false);
+      }
+    });
+    
+    // Listen for scheduled messages
+    this.eventBus.on(EVENTS.MESSAGE_SCHEDULED, (data) => {
+      // Only refresh if it's for this actor
+      if (data.scheduleId || data.actorId === this.selectedActorId) {
+        console.log(`${MODULE_ID} | Message scheduled, refreshing viewer`);
+        this._loadMessages();
+        this.render(false);
+      }
+    });
+    
+    // Listen for cancelled schedules
+    this.eventBus.on(EVENTS.SCHEDULE_CANCELLED, (data) => {
+      // Only refresh if it's for this actor
+      if (data.scheduleId || data.actorId === this.selectedActorId) {
+        console.log(`${MODULE_ID} | Schedule cancelled, refreshing viewer`);
+        this._loadMessages();
+        this.render(false);
+      }
+    });
+    
+    // Listen for message sent (for when scheduled messages are sent)
+    this.eventBus.on(EVENTS.MESSAGE_SENT, (data) => {
+      // Refresh if it affects this inbox
+      if (data.journalId === this.journalEntry?.id || 
+          data.actorId === this.selectedActorId) {
+        console.log(`${MODULE_ID} | Message sent, refreshing viewer`);
+        this._loadMessages();
+        this.render(false);
+      }
+    });
+  }
   
   /**
    * Activate event listeners
@@ -302,32 +350,56 @@ export class MessageViewerApp extends BaseApplication {
         body: body,
         timestamp: flags.timestamp || new Date().toISOString(),
         network: flags.network || 'CITINET',
-        status: { /* ... */ },
+        
+        // ✅ FIXED: Properly construct status object from flags
+        status: {
+          read: Boolean(flags.status?.read),
+          sent: Boolean(flags.status?.sent),
+          scheduled: Boolean(flags.status?.scheduled),
+          spam: Boolean(flags.status?.spam),
+          saved: Boolean(flags.status?.saved),
+          deleted: Boolean(flags.status?.deleted)
+        },
+        
         metadata: flags.metadata || {},
         page: page,
         preview: this._generatePreview(body)
       };
     });
 
-    // ✅ NEW: Filter out orphaned scheduled message placeholders
+    // ✅ SAFE FIX: Only filter orphaned placeholders if we have schedule data
     const validMessages = messages.filter(message => {
-      // If it's a placeholder, check if the schedule still exists
-      if (message.metadata?.isPlaceholder && message.metadata?.scheduleId) {
-        const scheduleId = message.metadata.scheduleId;
-        
-        // Check if schedule exists in settings
-        if (game.nightcity?.schedulingService) {
-          const allScheduled = game.nightcity.schedulingService.getAllScheduled();
-          const scheduleExists = allScheduled.some(s => s.id === scheduleId);
-          
-          if (!scheduleExists) {
-            console.warn(`${MODULE_ID} | Found orphaned placeholder for schedule ${scheduleId}, filtering out`);
-            return false; // Filter out orphaned placeholder
-          }
-        }
+      // If it's NOT a placeholder, keep it
+      if (!message.metadata?.isPlaceholder || !message.metadata?.scheduleId) {
+        return true;
       }
       
-      return true; // Keep all other messages
+      const scheduleId = message.metadata.scheduleId;
+      
+      // If SchedulingService doesn't exist, keep the placeholder (fail-safe)
+      if (!game.nightcity?.schedulingService) {
+        return true;
+      }
+      
+      // Get all scheduled messages
+      const allScheduled = game.nightcity.schedulingService.getAllScheduled();
+      const scheduleExists = allScheduled.some(s => s.id === scheduleId);
+      
+      // ⚠️ CRITICAL: If we found NO schedules at all, the service might not be loaded yet
+      // Only filter out orphans if we actually have schedule data
+      if (allScheduled.length === 0) {
+        // No schedules loaded yet - keep ALL placeholders to be safe
+        return true;
+      }
+      
+      // We have schedule data and this one doesn't exist - it's truly orphaned
+      if (!scheduleExists) {
+        console.warn(`${MODULE_ID} | Found orphaned placeholder for schedule ${scheduleId}, filtering out`);
+        return false;
+      }
+      
+      // Schedule exists - keep it
+      return true;
     });
 
     this.stateManager.setMessages(validMessages);
@@ -361,8 +433,21 @@ export class MessageViewerApp extends BaseApplication {
   async _onFilterClick(event) {
     event.preventDefault();
     const filter = $(event.currentTarget).data('filter');
+    
+    // Store old filter to detect changes
+    const oldFilter = this.stateManager.get('currentFilter');
+    
+    // Update state
     this.stateManager.set('currentFilter', filter);
     this.stateManager.set('currentPage', 1);
+    
+    // ✅ FIX: Reload messages if switching filters
+    // This ensures we have fresh data from the journal
+    if (oldFilter !== filter) {
+      this._loadMessages();
+    }
+    
+    // Re-render
     this.render();
   }
   
@@ -795,21 +880,33 @@ export class MessageViewerApp extends BaseApplication {
   async _onCancelSchedule(event) {
     event.preventDefault();
     
-    const scheduleId = $(event.currentTarget).data('schedule-id');
-    
-    if (!scheduleId) {
-      ui.notifications.warn('No schedule ID found');
+    // Get selected message
+    const selectedId = this.stateManager.get('selectedMessageId');
+    if (!selectedId) {
+      ui.notifications.warn('No message selected');
       return;
     }
     
-    // Confirm cancellation
+    const message = this.stateManager.getMessageById(selectedId);
+    if (!message) {
+      ui.notifications.warn('Message not found');
+      return;
+    }
+    
+    // Verify it's a scheduled placeholder
+    if (!message.metadata?.isPlaceholder) {
+      ui.notifications.warn('This is not a scheduled message');
+      return;
+    }
+    
+    // Confirm deletion
     const confirm = await Dialog.confirm({
       title: 'Cancel Scheduled Message',
       content: `
         <p>Cancel this scheduled message?</p>
-        <p style="color: #F65261; margin-top: 10px;">
+        <p style="color: var(--ncm-primary, #F65261); margin-top: 10px;">
           <i class="fas fa-exclamation-triangle"></i>
-          <strong>Warning:</strong> This will permanently remove the schedule and the message will never be sent.
+          <strong>Warning:</strong> This will remove the scheduled message placeholder.
         </p>
       `
     });
@@ -817,37 +914,44 @@ export class MessageViewerApp extends BaseApplication {
     if (!confirm) return;
     
     try {
-      // Get scheduling service
-      const schedulingService = game.nightcity.schedulingService;
-      
-      if (!schedulingService) {
-        throw new Error('Scheduling service not available');
+      // Delete the journal page
+      if (message.page) {
+        await message.page.delete();
+        console.log(`${MODULE_ID} | Deleted scheduled message placeholder: ${message.id}`);
       }
       
-      // Cancel the schedule (this also deletes the placeholder)
-      await schedulingService.cancelSchedule(scheduleId);
+      // Remove from state
+      this.stateManager.removeMessage(selectedId);
+      
+      // Clear selection
+      this.stateManager.set('selectedMessageId', null);
+      
+      // Optionally: Try to remove from scheduling service settings too
+      // (This won't break if the service doesn't exist or schedule isn't found)
+      const scheduleId = message.metadata?.scheduleId;
+      if (scheduleId && game.nightcity?.schedulingService) {
+        try {
+          await game.nightcity.schedulingService.cancelSchedule(scheduleId);
+          console.log(`${MODULE_ID} | Also removed from scheduling service`);
+        } catch (error) {
+          console.warn(`${MODULE_ID} | Could not remove from scheduling service:`, error.message);
+          // Don't show error to user - the main goal (deleting placeholder) succeeded
+        }
+      }
       
       ui.notifications.info('Scheduled message cancelled');
       
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // Clear selection FIRST (before reload)
-      this.stateManager.set('selectedMessageId', null);
-      
-      // Reload messages (will now properly exclude deleted page)
+      // Reload and re-render
       this._loadMessages();
-      
-      // Re-render
       this.render(false);
       
       this.playSound?.('delete');
       
     } catch (error) {
-      console.error(`${MODULE_ID} | Error cancelling schedule:`, error);
+      console.error(`${MODULE_ID} | Error cancelling scheduled message:`, error);
       ui.notifications.error(`Failed to cancel: ${error.message}`);
     }
   }
-
 
   /**
    * Open user settings panel
@@ -1033,5 +1137,19 @@ export class MessageViewerApp extends BaseApplication {
       this.stateManager.set('currentPage', currentPage + 1);
       this.render();
     }
+  }
+
+  /**
+   * Cleanup when viewer is closed
+   */
+  async close(options = {}) {
+    // Clean up event listeners
+    this.eventBus.off(EVENTS.MESSAGE_RECEIVED);
+    this.eventBus.off(EVENTS.MESSAGE_SCHEDULED);
+    this.eventBus.off(EVENTS.SCHEDULE_CANCELLED);
+    this.eventBus.off(EVENTS.MESSAGE_SENT);
+    
+    // Call parent close
+    return super.close(options);
   }
 }

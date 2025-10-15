@@ -20,6 +20,13 @@ export class SchedulingService {
     this.checkInterval = null;
     this.checkFrequency = 60000;
     this.timeService = TimeService.getInstance();
+    this.ready = false; 
+  
+    //  Mark as ready after loading schedules
+    this._loadSchedulesFromSettings().then(() => {
+      this.ready = true;
+      console.log(`${MODULE_ID} | SchedulingService ready with ${this.getAllScheduled().length} scheduled messages`);
+    });
 
     // Listen for time changes from SimpleCalendar
     this.eventBus.on(EVENTS.TIME_CHANGED, (data) => {
@@ -407,6 +414,16 @@ export class SchedulingService {
   getAllScheduled() {
     const scheduled = this.settingsManager.get('scheduledMessages') || {};
     return Object.values(scheduled).filter(msg => !msg.sent);
+  }
+
+  // Method to load schedules on initialization
+  async _loadSchedulesFromSettings() {
+    try {
+      const scheduled = this.settingsManager.get('scheduledMessages') || {};
+      console.log(`${MODULE_ID} | Loaded ${Object.keys(scheduled).length} scheduled messages from settings`);
+    } catch (error) {
+      console.error(`${MODULE_ID} | Error loading scheduled messages:`, error);
+    }
   }
   
   /**

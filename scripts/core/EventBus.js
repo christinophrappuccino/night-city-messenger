@@ -209,6 +209,10 @@ export const EVENTS = {
   MESSAGE_SAVED: 'message:saved',
   MESSAGE_SPAM: 'message:spam',
   MESSAGES_LOADED: 'messages:loaded',
+
+  // Schedule Events
+  MESSAGE_SCHEDULED: 'message:scheduled',
+  SCHEDULE_CANCELLED: 'schedule:cancelled',
   
   // UI events
   UI_VIEWER_OPENED: 'ui:viewer:opened',
