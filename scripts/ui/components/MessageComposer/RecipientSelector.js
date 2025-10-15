@@ -2,12 +2,21 @@
  * Recipient Selector Component
  * File: scripts/ui/components/MessageComposer/RecipientSelector.js
  * Module: cyberpunkred-messenger
- * Description: Handles recipient selection with autocomplete
+ * Description: Handles recipient selection with autocomplete, contact suggestions, and keyboard navigation
  */
 
 import { MODULE_ID } from '../../../utils/constants.js';
 
+/**
+ * Recipient Selector Component
+ * Provides intelligent autocomplete for message recipients
+ * with support for contacts, actors, and keyboard navigation
+ */
 export class RecipientSelector {
+  /**
+   * Create a new recipient selector
+   * @param {MessageComposerApp} parent - Parent composer application
+   */
   constructor(parent) {
     this.parent = parent;
     this.contactRepository = parent.contactRepository;
@@ -18,9 +27,14 @@ export class RecipientSelector {
   }
   
   /**
-   * Get recipient suggestions
-   * @param {string} query - Search query
-   * @returns {Array}
+   * Get recipient suggestions based on search query
+   * Searches contacts, actors, and users for matching names or emails
+   * @param {string} query - Search query (minimum 2 characters)
+   * @returns {Array<Object>} Array of suggestion objects
+   * @returns {string} .type - Suggestion type: 'contact', 'actor', or 'user'
+   * @returns {string} .name - Contact name
+   * @returns {string} .email - Contact email
+   * @returns {string|null} .img - Contact image URL
    */
   getSuggestions(query) {
     if (!query || query.length < 2) {
@@ -87,9 +101,10 @@ export class RecipientSelector {
   }
   
   /**
-   * Show suggestions
-   * @param {jQuery} $input - Input element
-   * @param {Array} suggestions - Suggestions to show
+   * Show suggestions dropdown
+   * Creates or updates the dropdown with current suggestions
+   * @param {jQuery} $input - Input element to attach dropdown to
+   * @param {Array<Object>} suggestions - Suggestions to display
    */
   showSuggestions($input, suggestions) {
     this.suggestions = suggestions;
@@ -136,7 +151,7 @@ export class RecipientSelector {
   }
   
   /**
-   * Hide suggestions
+   * Hide suggestions dropdown
    */
   hideSuggestions() {
     const $dropdown = $('.ncm-recipient-dropdown');
@@ -146,9 +161,9 @@ export class RecipientSelector {
   }
   
   /**
-   * Select suggestion
-   * @param {number} index - Suggestion index
-   * @param {jQuery} $input - Input element
+   * Select a suggestion and populate input field
+   * @param {number} index - Index of suggestion in suggestions array
+   * @param {jQuery} $input - Input element to populate
    */
   selectSuggestion(index, $input) {
     if (index < 0 || index >= this.suggestions.length) return;
@@ -161,7 +176,8 @@ export class RecipientSelector {
   
   /**
    * Navigate suggestions with keyboard
-   * @param {string} direction - 'up' or 'down'
+   * Updates visual selection highlighting
+   * @param {string} direction - Navigation direction: 'up' or 'down'
    */
   navigateSuggestions(direction) {
     if (!this.suggestionsVisible || this.suggestions.length === 0) return;
@@ -182,7 +198,9 @@ export class RecipientSelector {
   }
   
   /**
-   * Activate event listeners
+   * Activate event listeners for recipient selection
+   * Handles input events, focus/blur, keyboard navigation, and contact picker
+   * @param {jQuery} html - Composer HTML element
    */
   activateListeners(html) {
     const $input = html.find('[name="to"]');
@@ -244,7 +262,8 @@ export class RecipientSelector {
   
   /**
    * Open contact picker dialog
-   * @param {jQuery} $input - Input element to populate
+   * Displays a searchable list of all contacts for selection
+   * @param {jQuery} $input - Input element to populate with selected contact
    */
   openContactPicker($input) {
     const contacts = this.contactRepository.getAll();
@@ -309,7 +328,7 @@ export class RecipientSelector {
   }
   
   /**
-   * Cleanup
+   * Cleanup component and remove event listeners
    */
   destroy() {
     this.hideSuggestions();

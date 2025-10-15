@@ -1,9 +1,13 @@
-{{!-- Message Composer Template (FIXED WITH TIME WIDGET) --}}
-{{!-- Uses canonical header structure --}}
+{{!-- ============================================
+     MESSAGE COMPOSER TEMPLATE
+     Uses canonical header structure
+     ============================================ --}}
 
 <div class="ncm-composer__container">
   
-  {{!-- CANONICAL HEADER --}}
+  {{!-- ============================================
+       CANONICAL HEADER
+       ============================================ --}}
   <div class="ncm-header">
     <div class="ncm-header__top">
       <div class="ncm-header__connection">
@@ -15,7 +19,7 @@
     <div class="ncm-header__bottom">
       <span class="ncm-header__welcome">From: {{senderEmail}}</span>
       
-      {{!-- IME WIDGET --}}
+      {{!-- TIME WIDGET --}}
       {{#if timeWidgetHtml}}
         <div class="ncm-header__time-widget">
           {{{timeWidgetHtml}}}
@@ -28,7 +32,10 @@
     </div>
   </div>
   
-  {{!-- Header Fields Section --}}
+  {{!-- ============================================
+       HEADER FIELDS SECTION
+       To, Subject, etc.
+       ============================================ --}}
   <div class="ncm-composer__header-section">
     
     {{!-- Recipient Field --}}
@@ -70,151 +77,152 @@
     </div>
   </div>
   
-  {{!-- Editor Section --}}
+  {{!-- ============================================
+       EDITOR SECTION
+       Rich text editor with toolbar
+       ============================================ --}}
   <div class="ncm-composer__editor-section">
     
-  {{!-- Comprehensive Email Toolbar --}}
-  <div class="ncm-composer__toolbar">
-    
-    {{!-- Row 1: Text Formatting --}}
-    <div class="ncm-composer__toolbar-row">
+    {{!-- Comprehensive Email Toolbar --}}
+    <div class="ncm-composer__toolbar">
       
-      {{!-- Font Family --}}
-      <select class="ncm-composer__toolbar-select" data-action="font-family">
-        <option value="">Font</option>
-        <option value="Arial">Arial</option>
-        <option value="Courier New">Courier New</option>
-        <option value="Georgia">Georgia</option>
-        <option value="Times New Roman">Times New Roman</option>
-        <option value="Verdana">Verdana</option>
-        <option value="Rajdhani">Rajdhani</option>
-        <option value="Orbitron">Orbitron</option>
-        <option value="Signika">Signika</option>
-      </select>
-      
-      {{!-- Font Size --}}
-      <select class="ncm-composer__toolbar-select" data-action="font-size">
-        <option value="">Size</option>
-        <option value="1">Small</option>
-        <option value="3">Normal</option>
-        <option value="5">Large</option>
-        <option value="7">Huge</option>
-      </select>
-      
-      <div class="ncm-composer__toolbar-separator"></div>
-      
-      {{!-- Basic Formatting --}}
-      <button class="ncm-composer__toolbar-btn" data-format="bold" title="Bold (Ctrl+B)" type="button">
-        <i class="fas fa-bold"></i>
-      </button>
-      <button class="ncm-composer__toolbar-btn" data-format="italic" title="Italic (Ctrl+I)" type="button">
-        <i class="fas fa-italic"></i>
-      </button>
-      <button class="ncm-composer__toolbar-btn" data-format="underline" title="Underline (Ctrl+U)" type="button">
-        <i class="fas fa-underline"></i>
-      </button>
-      <button class="ncm-composer__toolbar-btn" data-format="strikeThrough" title="Strikethrough" type="button">
-        <i class="fas fa-strikethrough"></i>
-      </button>
-      
-      <div class="ncm-composer__toolbar-separator"></div>
-      
-      {{!-- Colors --}}
-      <div class="ncm-composer__toolbar-color-wrapper">
-        <button class="ncm-composer__toolbar-btn" data-action="text-color" title="Text Color" type="button">
-          <i class="fas fa-font"></i>
-          <i class="fas fa-caret-down"></i>
+      {{!-- Row 1: Text Formatting --}}
+      <div class="ncm-composer__toolbar-row">
+        
+        {{!-- Font Family --}}
+        <select class="ncm-composer__toolbar-select" data-action="font-family">
+          <option value="">Font</option>
+          <option value="Arial">Arial</option>
+          <option value="Courier New">Courier New</option>
+          <option value="Georgia">Georgia</option>
+          <option value="Times New Roman">Times New Roman</option>
+          <option value="Verdana">Verdana</option>
+          <option value="Rajdhani">Rajdhani</option>
+          <option value="Orbitron">Orbitron</option>
+          <option value="Signika">Signika</option>
+        </select>
+        
+        {{!-- Font Size --}}
+        <select class="ncm-composer__toolbar-select" data-action="font-size">
+          <option value="">Size</option>
+          <option value="1">Small</option>
+          <option value="3">Normal</option>
+          <option value="5">Large</option>
+          <option value="7">Huge</option>
+        </select>
+        
+        <div class="ncm-composer__toolbar-separator"></div>
+        
+        {{!-- Basic Formatting --}}
+        <button class="ncm-composer__toolbar-btn" data-format="bold" title="Bold (Ctrl+B)" type="button">
+          <i class="fas fa-bold"></i>
         </button>
-        <input type="color" class="ncm-composer__color-picker" data-color-type="text" style="display:none;" />
+        <button class="ncm-composer__toolbar-btn" data-format="italic" title="Italic (Ctrl+I)" type="button">
+          <i class="fas fa-italic"></i>
+        </button>
+        <button class="ncm-composer__toolbar-btn" data-format="underline" title="Underline (Ctrl+U)" type="button">
+          <i class="fas fa-underline"></i>
+        </button>
+        <button class="ncm-composer__toolbar-btn" data-format="strikeThrough" title="Strikethrough" type="button">
+          <i class="fas fa-strikethrough"></i>
+        </button>
+        
+        <div class="ncm-composer__toolbar-separator"></div>
+        
+        {{!-- Colors --}}
+        <div class="ncm-composer__toolbar-color-wrapper">
+          <button class="ncm-composer__toolbar-btn" data-action="text-color" title="Text Color" type="button">
+            <i class="fas fa-font"></i>
+            <i class="fas fa-caret-down"></i>
+          </button>
+          <input type="color" class="ncm-composer__color-picker" data-color-type="text" style="display:none;" />
+        </div>
+        
+        <div class="ncm-composer__toolbar-color-wrapper">
+          <button class="ncm-composer__toolbar-btn" data-action="highlight-color" title="Highlight Color" type="button">
+            <i class="fas fa-highlighter"></i>
+            <i class="fas fa-caret-down"></i>
+          </button>
+          <input type="color" class="ncm-composer__color-picker" data-color-type="background" style="display:none;" />
+        </div>
+        
+        <div class="ncm-composer__toolbar-separator"></div>
+        
+        {{!-- Alignment --}}
+        <button class="ncm-composer__toolbar-btn" data-format="justifyLeft" title="Align Left" type="button">
+          <i class="fas fa-align-left"></i>
+        </button>
+        <button class="ncm-composer__toolbar-btn" data-format="justifyCenter" title="Align Center" type="button">
+          <i class="fas fa-align-center"></i>
+        </button>
+        <button class="ncm-composer__toolbar-btn" data-format="justifyRight" title="Align Right" type="button">
+          <i class="fas fa-align-right"></i>
+        </button>
+        <button class="ncm-composer__toolbar-btn" data-format="justifyFull" title="Justify" type="button">
+          <i class="fas fa-align-justify"></i>
+        </button>
       </div>
       
-      <div class="ncm-composer__toolbar-color-wrapper">
-        <button class="ncm-composer__toolbar-btn" data-action="highlight-color" title="Highlight Color" type="button">
-          <i class="fas fa-highlighter"></i>
-          <i class="fas fa-caret-down"></i>
+      {{!-- Row 2: Lists, Indents, Special --}}
+      <div class="ncm-composer__toolbar-row">
+        
+        {{!-- Lists --}}
+        <button class="ncm-composer__toolbar-btn" data-format="insertUnorderedList" title="Bullet List" type="button">
+          <i class="fas fa-list-ul"></i>
         </button>
-        <input type="color" class="ncm-composer__color-picker" data-color-type="background" style="display:none;" />
+        <button class="ncm-composer__toolbar-btn" data-format="insertOrderedList" title="Numbered List" type="button">
+          <i class="fas fa-list-ol"></i>
+        </button>
+        
+        <div class="ncm-composer__toolbar-separator"></div>
+        
+        {{!-- Indents --}}
+        <button class="ncm-composer__toolbar-btn" data-format="indent" title="Increase Indent" type="button">
+          <i class="fas fa-indent"></i>
+        </button>
+        <button class="ncm-composer__toolbar-btn" data-format="outdent" title="Decrease Indent" type="button">
+          <i class="fas fa-outdent"></i>
+        </button>
+        
+        <div class="ncm-composer__toolbar-separator"></div>
+        
+        {{!-- Special Formatting --}}
+        <button class="ncm-composer__toolbar-btn" data-format="formatBlock" data-block-type="blockquote" title="Quote" type="button">
+          <i class="fas fa-quote-left"></i>
+        </button>
+        <button class="ncm-composer__toolbar-btn" data-format="insertHorizontalRule" title="Horizontal Line" type="button">
+          <i class="fas fa-minus"></i>
+        </button>
+        
+        <div class="ncm-composer__toolbar-separator"></div>
+        
+        {{!-- Insert Items --}}
+        <button class="ncm-composer__toolbar-btn" data-action="insert-link" title="Insert Link" type="button">
+          <i class="fas fa-link"></i>
+        </button>
+        <button class="ncm-composer__toolbar-btn" data-action="insert-image" title="Insert Image" type="button">
+          <i class="fas fa-image"></i>
+        </button>
+        <button class="ncm-composer__toolbar-btn" data-action="insert-emoji" title="Insert Emoji" type="button">
+          <i class="fas fa-smile"></i>
+        </button>
+        
+        <div class="ncm-composer__toolbar-separator"></div>
+        
+        {{!-- Utilities --}}
+        <button class="ncm-composer__toolbar-btn" data-format="removeFormat" title="Clear Formatting" type="button">
+          <i class="fas fa-remove-format"></i>
+        </button>
+        <button class="ncm-composer__toolbar-btn" data-format="undo" title="Undo" type="button">
+          <i class="fas fa-undo"></i>
+        </button>
+        <button class="ncm-composer__toolbar-btn" data-format="redo" title="Redo" type="button">
+          <i class="fas fa-redo"></i>
+        </button>
       </div>
-      
-      <div class="ncm-composer__toolbar-separator"></div>
-      
-      {{!-- Alignment --}}
-      <button class="ncm-composer__toolbar-btn" data-format="justifyLeft" title="Align Left" type="button">
-        <i class="fas fa-align-left"></i>
-      </button>
-      <button class="ncm-composer__toolbar-btn" data-format="justifyCenter" title="Align Center" type="button">
-        <i class="fas fa-align-center"></i>
-      </button>
-      <button class="ncm-composer__toolbar-btn" data-format="justifyRight" title="Align Right" type="button">
-        <i class="fas fa-align-right"></i>
-      </button>
-      <button class="ncm-composer__toolbar-btn" data-format="justifyFull" title="Justify" type="button">
-        <i class="fas fa-align-justify"></i>
-      </button>
     </div>
     
-    {{!-- Row 2: Lists, Indents, Special --}}
-    <div class="ncm-composer__toolbar-row">
-      
-      {{!-- Lists --}}
-      <button class="ncm-composer__toolbar-btn" data-format="insertUnorderedList" title="Bullet List" type="button">
-        <i class="fas fa-list-ul"></i>
-      </button>
-      <button class="ncm-composer__toolbar-btn" data-format="insertOrderedList" title="Numbered List" type="button">
-        <i class="fas fa-list-ol"></i>
-      </button>
-      
-      <div class="ncm-composer__toolbar-separator"></div>
-      
-      {{!-- Indents --}}
-      <button class="ncm-composer__toolbar-btn" data-format="indent" title="Increase Indent" type="button">
-        <i class="fas fa-indent"></i>
-      </button>
-      <button class="ncm-composer__toolbar-btn" data-format="outdent" title="Decrease Indent" type="button">
-        <i class="fas fa-outdent"></i>
-      </button>
-      
-      <div class="ncm-composer__toolbar-separator"></div>
-      
-      {{!-- Special Formatting --}}
-      <button class="ncm-composer__toolbar-btn" data-format="formatBlock" data-block-type="blockquote" title="Quote" type="button">
-        <i class="fas fa-quote-left"></i>
-      </button>
-      <button class="ncm-composer__toolbar-btn" data-format="insertHorizontalRule" title="Horizontal Line" type="button">
-        <i class="fas fa-minus"></i>
-      </button>
-      
-      <div class="ncm-composer__toolbar-separator"></div>
-      
-      {{!-- Insert Items --}}
-      <button class="ncm-composer__toolbar-btn" data-action="insert-link" title="Insert Link" type="button">
-        <i class="fas fa-link"></i>
-      </button>
-      <button class="ncm-composer__toolbar-btn" data-action="insert-image" title="Insert Image" type="button">
-        <i class="fas fa-image"></i>
-      </button>
-      <button class="ncm-composer__toolbar-btn" data-action="insert-emoji" title="Insert Emoji" type="button">
-        <i class="fas fa-smile"></i>
-      </button>
-      
-      <div class="ncm-composer__toolbar-separator"></div>
-      
-      {{!-- Utilities --}}
-      <button class="ncm-composer__toolbar-btn" data-format="removeFormat" title="Clear Formatting" type="button">
-        <i class="fas fa-remove-format"></i>
-      </button>
-      <button class="ncm-composer__toolbar-btn" data-format="undo" title="Undo" type="button">
-        <i class="fas fa-undo"></i>
-      </button>
-      <button class="ncm-composer__toolbar-btn" data-format="redo" title="Redo" type="button">
-        <i class="fas fa-redo"></i>
-      </button>
-      
-    </div>
-    
-  </div>
-    
-    {{!-- Simple contenteditable editor --}}
+    {{!-- Content Editor --}}
     <div class="ncm-composer__editor" 
          contenteditable="true" 
          spellcheck="true"
@@ -223,10 +231,12 @@
          placeholder="Type your message here...">
       {{{content}}}
     </div>
-
   </div>
   
-  {{!-- Footer Actions --}}
+  {{!-- ============================================
+       FOOTER ACTIONS
+       Send, Schedule, Cancel buttons
+       ============================================ --}}
   <div class="ncm-composer__footer">
     <div class="ncm-composer__footer-left">
       <span class="ncm-composer__char-count">
@@ -239,7 +249,6 @@
         <i class="fas fa-save"></i> Save Draft
       </button>
       
-      {{!-- Schedule button --}}
       {{#if showScheduleButton}}
       <button class="ncm-btn ncm-btn--secondary" data-action="schedule">
         <i class="fas fa-clock"></i> Schedule
@@ -256,4 +265,3 @@
     </div>
   </div>
 </div>
-

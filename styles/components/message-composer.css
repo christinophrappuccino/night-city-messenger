@@ -106,6 +106,12 @@
   font-family: var(--ncm-font-mono);
 }
 
+.ncm-composer__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 /* ============================================
    TIME WIDGET STYLING
    Integrates with your existing composer
@@ -412,7 +418,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: auto;
   background: var(--ncm-bg-secondary);
   border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
   border-radius: var(--ncm-border-radius-md);
@@ -550,38 +556,6 @@
 .ncm-composer__editor li {
   margin: 4px 0;
   display: list-item;
-}
-
-/* ============================================
-   MESSAGE BODY 
-   ============================================ */
-.ncm-detail__body {
-  flex: 1;
-  overflow-y: auto;
-  padding: var(--ncm-spacing-lg);
-  line-height: var(--ncm-line-height-relaxed);
-  color: var(--ncm-text-primary);
-  user-select: text !important;
-  -webkit-user-select: text !important;
-  -moz-user-select: text !important;
-  cursor: text;
-}
-
-/* Ensure ALL children are selectable */
-.ncm-detail__body *,
-.ncm-detail__body div,
-.ncm-detail__body p,
-.ncm-detail__body span,
-.ncm-detail__body strong,
-.ncm-detail__body hr {
-  user-select: text !important;
-  -webkit-user-select: text !important;
-  -moz-user-select: text !important;
-  cursor: text !important;
-}
-
-.ncm-detail__body p {
-  margin-bottom: var(--ncm-spacing-md);
 }
 
 /* ============================================

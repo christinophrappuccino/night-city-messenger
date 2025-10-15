@@ -2,7 +2,7 @@
  * Message Composer Application
  * File: scripts/ui/components/MessageComposer/MessageComposerApp.js
  * Module: cyberpunkred-messenger
- * Description: Full message composer with contact integration
+ * Description: Full message composer with contact integration, scheduling, and rich text editing
  */
 
 import { MODULE_ID } from '../../../utils/constants.js';
@@ -14,7 +14,23 @@ import { TimeWidget } from './TimeWidget.js';
 import { ScheduleMessageDialog } from '../../dialogs/ScheduleMessageDialog.js';
 import { TimeService } from '../../../services/TimeService.js';
 
+/**
+ * Message Composer Application
+ * Provides rich text composition interface with contact autocomplete,
+ * scheduled sending, and reply/forward functionality
+ */
 export class MessageComposerApp extends BaseApplication {
+  /**
+   * Create a new message composer
+   * @param {Object} options - Configuration options
+   * @param {string} [options.mode='compose'] - Composer mode: 'compose', 'reply', or 'forward'
+   * @param {Object} [options.originalMessage] - Original message for reply/forward
+   * @param {Actor} [options.actor] - Actor sending the message
+   * @param {string} [options.actorId] - Actor ID sending the message
+   * @param {string} [options.to] - Pre-filled recipient email
+   * @param {string} [options.subject] - Pre-filled subject line
+   * @param {string} [options.content] - Pre-filled message content
+   */
   constructor(options = {}) {
     super(options);
     
@@ -52,6 +68,11 @@ export class MessageComposerApp extends BaseApplication {
     });
   }
   
+  /**
+   * Get template data for rendering
+   * @param {Object} options - Render options
+   * @returns {Promise<Object>} Template data
+   */
   async getData(options = {}) {
     const data = super.getData(options);
     const senderEmail = this.actor?.getFlag(MODULE_ID, "emailAddress") || "No email set";
@@ -75,6 +96,8 @@ export class MessageComposerApp extends BaseApplication {
   
   /**
    * Check and prompt for email setup if needed
+   * @returns {Promise<boolean>} True if email is set up, false otherwise
+   * @private
    */
   async _ensureEmailSetup() {
     if (!this.actor) {
@@ -99,7 +122,16 @@ export class MessageComposerApp extends BaseApplication {
   }
   
   /**
-   * Format reply content
+   * Format reply content with quoted message styling
+   * Creates a visually distinct quoted section with reply metadata
+   * @param {Object} message - Original message being replied to
+   * @param {string} message.from - Sender email
+   * @param {string} message.to - Recipient email
+   * @param {string} message.subject - Message subject
+   * @param {string} message.body - Message body HTML
+   * @param {string} message.timestamp - Message timestamp
+   * @returns {string} Formatted HTML for reply content
+   * @private
    */
   _formatReplyContent(message) {
     const bodyText = message.body || '';
@@ -120,7 +152,16 @@ export class MessageComposerApp extends BaseApplication {
   }
 
   /**
-   * Format forward content
+   * Format forward content with quoted message styling
+   * Creates a visually distinct quoted section with forward metadata
+   * @param {Object} message - Original message being forwarded
+   * @param {string} message.from - Sender email
+   * @param {string} message.to - Recipient email
+   * @param {string} message.subject - Message subject
+   * @param {string} message.body - Message body HTML
+   * @param {string} message.timestamp - Message timestamp
+   * @returns {string} Formatted HTML for forward content
+   * @private
    */
   _formatForwardContent(message) {
     const bodyText = message.body || '';
@@ -141,7 +182,9 @@ export class MessageComposerApp extends BaseApplication {
   }
   
   /**
-   * Open contact picker
+   * Open contact picker dialog for recipient selection
+   * Integrates with ContactManagerApp in select mode
+   * @private
    */
   _openContactPicker() {
     new ContactManagerApp({
@@ -156,7 +199,13 @@ export class MessageComposerApp extends BaseApplication {
   }
   
   /**
-   * Show contact selected feedback
+   * Show visual feedback when contact is selected
+   * Displays a temporary confirmation of the selected contact
+   * @param {Object} contact - Selected contact
+   * @param {string} contact.name - Contact name
+   * @param {string} contact.email - Contact email
+   * @param {string} [contact.img] - Contact image URL
+   * @private
    */
   _showContactSelected(contact) {
     const suggestions = this.element.find('.ncm-composer__suggestions');
@@ -181,6 +230,11 @@ export class MessageComposerApp extends BaseApplication {
   
   /**
    * Setup autocomplete for recipient field
+   * Provides real-time suggestions from contacts and actors
+   * @param {jQuery} input - Recipient input element
+   * @param {jQuery} suggestions - Suggestions dropdown element
+   * @returns {Promise<void>}
+   * @private
    */
   async _setupRecipientAutocomplete(input, suggestions) {
     const userContacts = await game.user.getFlag(MODULE_ID, "contacts") || [];
@@ -247,7 +301,9 @@ export class MessageComposerApp extends BaseApplication {
   }
 
   /**
-   * Show emoji picker
+   * Show emoji picker dialog
+   * Displays a grid of common emojis for insertion into message
+   * @private
    */
   _showEmojiPicker() {
     const emojis = [
@@ -307,7 +363,10 @@ export class MessageComposerApp extends BaseApplication {
   }
   
   /**
-   * Send message
+   * Send message immediately or schedule based on settings
+   * Validates all fields, handles time widget custom times,
+   * and delegates to scheduling service if needed
+   * @returns {Promise<void>}
    */
   async sendMessage() {
     const html = this.element;
@@ -361,7 +420,7 @@ export class MessageComposerApp extends BaseApplication {
       const currentTime = this.timeService.getCurrentTimestamp();
       const isFuture = new Date(sendTime) > new Date(currentTime);
       
-      // ⚠️ Auto-schedule if time is in the future (Non-GM)
+      // Auto-schedule if time is in the future (Non-GM)
       if (isFuture && !game.user.isGM) {
         console.log(`${MODULE_ID} | Auto-scheduling message for future time:`, sendTime);
         
@@ -423,11 +482,10 @@ export class MessageComposerApp extends BaseApplication {
         });
         
         if (choice === 'cancel') {
-          return; // User cancelled
+          return;
         }
         
         if (choice === 'schedule') {
-          // Schedule it for automatic delivery
           messageData.scheduledTime = sendTime;
           messageData.useSimpleCalendar = this.timeService.getTimeSource() === 'simplecalendar';
           
@@ -435,7 +493,6 @@ export class MessageComposerApp extends BaseApplication {
             messageData.simpleCalendarData = this.timeService.getSimpleCalendarData();
           }
           
-          // Set message type metadata
           messageData.metadata = {
             ...(messageData.metadata || {}),
             messageType: 'scheduled'
@@ -446,19 +503,14 @@ export class MessageComposerApp extends BaseApplication {
           this.close();
           return;
         }
-        
-        // Fall through to send with custom timestamp (choice === 'send')
       }
       
       // Handle normal send behavior
       if (sendBehavior === 'schedule' || sendBehavior === 'prompt') {
-        // Show schedule dialog
         await this.scheduleMessage(messageData);
       } else {
-        // Send immediately with current or custom time
         messageData.timestamp = sendTime;
         
-        // Store SimpleCalendar data if applicable
         if (this.timeService.getTimeSource() === 'simplecalendar') {
           messageData.simpleCalendarData = this.timeService.getSimpleCalendarData();
         }
@@ -476,7 +528,14 @@ export class MessageComposerApp extends BaseApplication {
   }
 
   /**
-   * Schedule Message
+   * Show schedule message dialog
+   * Opens the scheduling interface for delayed message delivery
+   * @param {Object} messageData - Message data to schedule
+   * @param {string} messageData.from - Sender email
+   * @param {string} messageData.to - Recipient email
+   * @param {string} messageData.subject - Message subject
+   * @param {string} messageData.content - Message body HTML
+   * @returns {Promise<void>}
    */
   async scheduleMessage(messageData) {
     try {
@@ -485,7 +544,6 @@ export class MessageComposerApp extends BaseApplication {
       });
       
       if (result.sendImmediately) {
-        // User chose to send now instead
         messageData.timestamp = this.timeWidget.getSendTime();
         
         if (this.timeService.getTimeSource() === 'simplecalendar') {
@@ -495,7 +553,6 @@ export class MessageComposerApp extends BaseApplication {
         await game.nightcity.messageManager.sendMessage(messageData);
         ui.notifications.info("Message sent!");
       } else {
-        // Message was scheduled
         console.log(`${MODULE_ID} | Message scheduled:`, result.scheduleId);
       }
       
@@ -503,13 +560,17 @@ export class MessageComposerApp extends BaseApplication {
       
     } catch (error) {
       if (error.message === 'Cancelled') {
-        // User cancelled, do nothing
         return;
       }
       throw error;
     }
   }
   
+  /**
+   * Activate event listeners for composer interface
+   * Handles all toolbar actions, formatting, and form submission
+   * @param {jQuery} html - Rendered HTML element
+   */
   activateListeners(html) {
     super.activateListeners(html);
     
@@ -539,7 +600,7 @@ export class MessageComposerApp extends BaseApplication {
       if (font) {
         document.execCommand('fontName', false, font);
         html.find('.ncm-composer__editor').focus();
-        e.target.value = ''; // Reset
+        e.target.value = '';
       }
     });
     
@@ -549,7 +610,7 @@ export class MessageComposerApp extends BaseApplication {
       if (size) {
         document.execCommand('fontSize', false, size);
         html.find('.ncm-composer__editor').focus();
-        e.target.value = ''; // Reset
+        e.target.value = '';
       }
     });
     
@@ -589,9 +650,7 @@ export class MessageComposerApp extends BaseApplication {
       editor.focus();
       
       try {
-        // Special handling for lists
         if (format === 'insertUnorderedList' || format === 'insertOrderedList') {
-          // Get selection
           const selection = window.getSelection();
           if (selection.rangeCount > 0) {
             document.execCommand(format, false, null);
@@ -706,7 +765,6 @@ export class MessageComposerApp extends BaseApplication {
       const contentDiv = html.find('.ncm-composer__editor')[0];
       const content = contentDiv?.innerHTML?.trim() || '';
       
-      // Quick validation
       if (!to || !subject || !content) {
         ui.notifications.error("Please fill in all fields before scheduling.");
         return;
@@ -738,11 +796,11 @@ export class MessageComposerApp extends BaseApplication {
   }
 
   /**
-   * UPDATE the close() method to cleanup
+   * Close the composer and cleanup resources
+   * @param {Object} options - Close options
+   * @returns {Promise<void>}
    */
-
   async close(options = {}) {
-    // Cleanup time widget
     if (this.timeWidget) {
       this.timeWidget.destroy();
     }
@@ -751,7 +809,10 @@ export class MessageComposerApp extends BaseApplication {
   }
   
   /**
-   * Override render to check email on open
+   * Override render to check email on initial open
+   * @param {boolean} force - Force render
+   * @param {Object} options - Render options
+   * @returns {Promise<Application>}
    */
   async render(force = false, options = {}) {
     if (!this.rendered) {
