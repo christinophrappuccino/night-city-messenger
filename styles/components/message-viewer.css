@@ -1,5 +1,5 @@
 /* ==============================================
-   NIGHT CITY MESSENGER
+   NIGHT CITY MESSENGER - Message Viewer
    Component: Message Viewer (Inbox)
    Purpose: Main message list and detail view
    Dependencies: variables.css, reset.css, animations.css
@@ -17,7 +17,6 @@
 
 /* ============================================
    MAIN LAYOUT
-   Header + Split view (sidebar + content)
    ============================================ */
 .ncm-message-viewer__container {
   display: flex;
@@ -26,415 +25,12 @@
   overflow: hidden;
 }
 
-/* Use canonical header from reset.css */
-.ncm-message-viewer .ncm-header {
-  /* Inherits all styles from base/reset.css */
-}
-
+/* Header inherits from reset.css */
 .ncm-message-viewer .ncm-header__controls {
   display: flex;
   gap: var(--ncm-spacing-sm);
   align-items: center;
 }
-
-/* ============================================
-   FILTER BAR (below header)
-   ============================================ */
-.ncm-message-viewer__filters {
-  background: var(--ncm-bg-secondary);
-  border-bottom: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
-  padding: var(--ncm-spacing-md);
-  display: flex;
-  align-items: center;
-  gap: var(--ncm-spacing-lg);
-  flex-wrap: wrap;
-}
-
-.ncm-message-viewer__filter-group {
-  display: flex;
-  align-items: center;
-  gap: var(--ncm-spacing-sm);
-}
-
-.ncm-message-viewer__filter-label {
-  font-size: var(--ncm-font-size-sm);
-  color: var(--ncm-text-secondary);
-  text-transform: uppercase;
-  letter-spacing: var(--ncm-letter-spacing-wide);
-}
-
-.ncm-message-viewer__filter-select {
-  padding: var(--ncm-spacing-sm) var(--ncm-spacing-md);
-  background: var(--ncm-bg-tertiary);
-  border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
-  border-radius: var(--ncm-border-radius-md);
-  color: var(--ncm-text-primary);
-  font-size: var(--ncm-font-size-sm);
-  cursor: pointer;
-  transition: border-color var(--ncm-transition-fast);
-}
-
-.ncm-message-viewer__filter-select:hover {
-  border-color: var(--ncm-primary-light);
-}
-
-/* Search bar in filter area */
-.ncm-message-viewer__search {
-  flex: 1;
-  min-width: 200px;
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.ncm-message-viewer__search-icon {
-  position: absolute;
-  left: var(--ncm-spacing-md);
-  color: var(--ncm-text-tertiary);
-  font-size: var(--ncm-icon-sm);
-  pointer-events: none;
-}
-
-.ncm-message-viewer__search-input {
-  width: 100%;
-  padding: var(--ncm-spacing-sm) var(--ncm-spacing-md);
-  padding-left: 36px;
-  background: var(--ncm-bg-tertiary);
-  border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
-  border-radius: var(--ncm-border-radius-md);
-  color: var(--ncm-text-primary);
-  font-size: var(--ncm-font-size-sm);
-  transition: border-color var(--ncm-transition-fast);
-}
-
-.ncm-message-viewer__search-input:focus {
-  border-color: var(--ncm-primary);
-  box-shadow: 0 0 0 2px var(--ncm-primary-alpha);
-}
-
-/* ============================================
-   CONTENT AREA - Split layout
-   ============================================ */
-.ncm-message-viewer__content {
-  flex: 1;
-  display: flex;
-  overflow: hidden;
-}
-
-/* ============================================
-   SIDEBAR - Message list
-   ============================================ */
-.ncm-message-viewer__sidebar {
-  flex: 0 0 var(--ncm-viewer-sidebar-width);
-  background: var(--ncm-bg-secondary);
-  border-right: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.ncm-message-viewer__sidebar--collapsed {
-  flex: 0 0 60px;
-}
-
-/* ============================================
-   MESSAGE LIST
-   ============================================ */
-.ncm-message-viewer__message-list {
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: var(--ncm-spacing-sm);
-}
-
-/* Individual message item */
-.ncm-message-item {
-  padding: var(--ncm-spacing-md);
-  margin-bottom: var(--ncm-spacing-sm);
-  background: var(--ncm-bg-tertiary);
-  border: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
-  border-radius: var(--ncm-border-radius-md);
-  cursor: pointer;
-  transition: all var(--ncm-transition-fast);
-  position: relative;
-}
-
-.ncm-message-item:hover {
-  background: var(--ncm-bg-hover);
-  border-color: var(--ncm-border-primary);
-  transform: translateX(2px);
-}
-
-.ncm-message-item--selected {
-  background: var(--ncm-bg-active);
-  border-color: var(--ncm-primary);
-  border-left-width: var(--ncm-border-width-thick);
-}
-
-.ncm-message-item--unread {
-  font-weight: var(--ncm-font-weight-bold);
-  border-left: var(--ncm-border-width-thick) solid var(--ncm-secondary);
-}
-
-.ncm-message-item--unread::before {
-  content: '';
-  position: absolute;
-  top: var(--ncm-spacing-sm);
-  right: var(--ncm-spacing-sm);
-  width: 8px;
-  height: 8px;
-  background: var(--ncm-secondary);
-  border-radius: 50%;
-  animation: ncm-pulse 2s ease-in-out infinite;
-}
-
-/* Message item header (sender + time) */
-.ncm-message-item__header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: var(--ncm-spacing-sm);
-  margin-bottom: var(--ncm-spacing-xs);
-  font-size: var(--ncm-font-size-sm);
-}
-
-.ncm-message-item__sender {
-  color: var(--ncm-text-secondary);
-  font-weight: var(--ncm-font-weight-medium);
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.ncm-message-item__time {
-  color: var(--ncm-text-tertiary);
-  font-size: var(--ncm-font-size-xs);
-  font-family: var(--ncm-font-mono);
-}
-
-/* Message subject */
-.ncm-message-item__subject {
-  font-size: var(--ncm-font-size-base);
-  color: var(--ncm-primary);
-  font-weight: var(--ncm-font-weight-medium);
-  margin-bottom: var(--ncm-spacing-xs);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Message preview */
-.ncm-message-item__preview {
-  font-size: var(--ncm-font-size-sm);
-  color: var(--ncm-text-tertiary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Message indicators (encryption, malware, etc.) */
-.ncm-message-item__indicators {
-  display: flex;
-  gap: var(--ncm-spacing-xs);
-  margin-top: var(--ncm-spacing-sm);
-  flex-wrap: wrap;
-}
-
-.ncm-message-item__indicator {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 6px;
-  font-size: var(--ncm-font-size-xs);
-  border-radius: var(--ncm-border-radius-sm);
-  background: var(--ncm-bg-primary);
-  border: var(--ncm-border-width-thin) solid var(--ncm-border-tertiary);
-}
-
-.ncm-message-item__indicator i {
-  font-size: 10px;
-}
-
-.ncm-message-item__indicator--encrypted {
-  color: var(--ncm-accent);
-  border-color: var(--ncm-accent-dark);
-}
-
-.ncm-message-item__indicator--malware {
-  color: var(--ncm-text-error);
-  border-color: var(--ncm-text-error);
-  animation: ncm-pulse 1s ease-in-out infinite;
-}
-
-.ncm-message-item__indicator--saved {
-  color: var(--ncm-secondary);
-  border-color: var(--ncm-secondary);
-}
-
-.ncm-message-item__indicator--spam {
-  color: var(--ncm-text-error);
-  border-color: var(--ncm-text-error);
-}
-
-/* ============================================
-   PAGINATION CONTROLS (bottom of sidebar)
-   ============================================ */
-.ncm-message-viewer__pagination {
-  flex: 0 0 auto;
-  background: var(--ncm-bg-secondary);
-  border-top: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
-  padding: var(--ncm-spacing-md);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: var(--ncm-spacing-md);
-}
-
-.ncm-pagination__btn {
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--ncm-bg-tertiary);
-  border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
-  border-radius: var(--ncm-border-radius-md);
-  color: var(--ncm-primary);
-  font-size: var(--ncm-font-size-sm);
-  cursor: pointer;
-  transition: all var(--ncm-transition-fast);
-}
-
-.ncm-pagination__btn:hover:not(:disabled) {
-  background: var(--ncm-primary);
-  color: var(--ncm-bg-primary);
-}
-
-.ncm-pagination__btn:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-}
-
-.ncm-pagination__indicator {
-  color: var(--ncm-text-secondary);
-  font-size: var(--ncm-font-size-sm);
-  font-family: var(--ncm-font-mono);
-}
-
-/* ============================================
-   DETAIL VIEW (right side)
-   ============================================ */
-.ncm-message-viewer__detail {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  position: relative;
-}
-
-/* Empty state when no message selected */
-.ncm-message-viewer__empty {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  color: var(--ncm-text-tertiary);
-  text-align: center;
-  padding: var(--ncm-spacing-xxl);
-}
-
-.ncm-message-viewer__empty-icon {
-  font-size: 64px;
-  margin-bottom: var(--ncm-spacing-lg);
-  opacity: 0.3;
-}
-
-.ncm-message-viewer__empty-text {
-  font-size: var(--ncm-font-size-lg);
-  margin-bottom: var(--ncm-spacing-sm);
-}
-
-.ncm-message-viewer__empty-subtext {
-  font-size: var(--ncm-font-size-sm);
-  opacity: 0.7;
-}
-
-/* ============================================
-   MESSAGE DETAIL HEADER
-   ============================================ */
-.ncm-detail__header {
-  flex: 0 0 auto;
-  background: var(--ncm-bg-surface);
-  border-bottom: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
-  padding: var(--ncm-spacing-lg);
-}
-
-.ncm-detail__subject {
-  font-size: var(--ncm-font-size-xl);
-  color: var(--ncm-primary);
-  margin-bottom: var(--ncm-spacing-md);
-}
-
-.ncm-detail__meta {
-  display: flex;
-  flex-direction: column;
-  gap: var(--ncm-spacing-xs);
-}
-
-.ncm-detail__meta-row {
-  display: flex;
-  gap: var(--ncm-spacing-sm);
-  font-size: var(--ncm-font-size-sm);
-}
-
-.ncm-detail__meta-label {
-  color: var(--ncm-text-secondary);
-  font-weight: var(--ncm-font-weight-medium);
-  min-width: 60px;
-}
-
-.ncm-detail__meta-value {
-  color: var(--ncm-text-primary);
-}
-
-/* ============================================
-   MESSAGE BODY
-   ============================================ */
-.ncm-detail__body {
-  flex: 1;
-  overflow-y: auto;
-  padding: var(--ncm-spacing-lg);
-  line-height: var(--ncm-line-height-relaxed);
-  color: var(--ncm-text-primary);
-  user-select: text;
-  cursor: text;
-}
-
-.ncm-detail__body p {
-  margin-bottom: var(--ncm-spacing-md);
-}
-
-/* ============================================
-   MESSAGE FOOTER (action buttons)
-   ============================================ */
-.ncm-detail__footer {
-  flex: 0 0 auto;
-  background: var(--ncm-bg-surface);
-  border-top: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
-  padding: var(--ncm-spacing-md);
-  display: flex;
-  gap: var(--ncm-spacing-sm);
-  align-items: center;
-}
-
-/**
- * Message Viewer - IMPROVED Styling
- * File: styles/components/message-viewer.css
- * Module: cyberpunkred-messenger
- */
 
 /* ============================================
    TOOLBAR WITH CATEGORIES
@@ -504,7 +100,7 @@
 }
 
 /* ============================================
-   TOOLBAR ACTIONS
+   TOOLBAR ACTIONS (Search, Buttons)
    ============================================ */
 .ncm-toolbar__actions {
   display: flex;
@@ -544,7 +140,6 @@
   box-shadow: 0 0 0 2px var(--ncm-primary-alpha);
 }
 
-/* Icon button with indicator */
 .ncm-btn--icon {
   position: relative;
   width: 40px;
@@ -564,276 +159,7 @@
   background: var(--ncm-secondary);
   border-radius: 50%;
   border: 2px solid var(--ncm-bg-secondary);
-  animation: pulse-indicator 2s infinite;
-}
-
-@keyframes pulse-indicator {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-}
-
-/* ============================================
-   RESCHEDULE BUTTONS
-   ============================================ */
-
-.ncm-message-detail__scheduled-actions {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  padding: 15px;
-  background: rgba(255, 101, 97, 0.1);
-  border: 1px solid var(--ncm-primary);
-  border-radius: 4px;
-  margin: 15px 0;
-}
-
-.ncm-message-detail__scheduled-time {
-  color: var(--ncm-secondary);
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.ncm-message-detail__scheduled-time i {
-  color: var(--ncm-primary);
-}
-
-.ncm-message-detail__scheduled-section {
-  margin-top: var(--ncm-spacing-md);
-}
-
-.ncm-message-detail__scheduled-info {
-  display: flex;
-  flex-direction: column;
-  gap: var(--ncm-spacing-md);
-  padding: var(--ncm-spacing-md);
-  background: rgba(25, 243, 247, 0.05);
-  border: 1px solid rgba(25, 243, 247, 0.2);
-  border-radius: var(--ncm-border-radius-md);
-}
-
-.ncm-message-detail__scheduled-label {
-  display: flex;
-  align-items: center;
-  gap: var(--ncm-spacing-sm);
-  color: var(--ncm-accent);
-  font-size: 0.95em;
-}
-
-.ncm-message-detail__scheduled-label i {
-  color: var(--ncm-accent);
-}
-
-.ncm-message-detail__scheduled-actions {
-  display: flex;
-  gap: var(--ncm-spacing-sm);
-  justify-content: flex-start;
-}
-
-.ncm-message-detail__scheduled-actions .ncm-btn {
-  flex: 0 0 auto;
-}
-
-/* Cyberpunk glow effect on hover */
-.ncm-message-detail__scheduled-actions .ncm-btn--danger:hover {
-  box-shadow: 0 0 10px rgba(246, 82, 97, 0.5);
-}
-
-.ncm-message-detail__scheduled-actions .ncm-btn--secondary:hover {
-  box-shadow: 0 0 10px rgba(25, 243, 247, 0.3);
-}
-
-/* Target messages with scheduled status */
-.ncm-message-list__item[data-scheduled="true"] {
-  position: relative;
-  background: linear-gradient(
-    135deg,
-    rgba(25, 243, 247, 0.05) 0%,
-    rgba(25, 243, 247, 0.02) 100%
-  );
-  border-left: 3px solid var(--ncm-accent, #19f3f7);
-  animation: pulse-glow 3s ease-in-out infinite;
-}
-
-/* Animated glow effect for scheduled messages */
-@keyframes pulse-glow {
-  0%, 100% {
-    border-left-color: rgba(25, 243, 247, 0.8);
-    box-shadow: 
-      0 0 5px rgba(25, 243, 247, 0.1),
-      inset 0 0 10px rgba(25, 243, 247, 0.05);
-  }
-  50% {
-    border-left-color: rgba(25, 243, 247, 1);
-    box-shadow: 
-      0 0 15px rgba(25, 243, 247, 0.2),
-      inset 0 0 20px rgba(25, 243, 247, 0.1);
-  }
-}
-
-/* Clock icon indicator for scheduled messages */
-.ncm-message-list__item[data-scheduled="true"]::before {
-  content: "\f017"; /* Font Awesome clock icon */
-  font-family: "Font Awesome 5 Free";
-  font-weight: 900;
-  position: absolute;
-  left: var(--ncm-spacing-sm);
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--ncm-accent, #19f3f7);
-  font-size: 1.2em;
-  opacity: 0.8;
-  animation: spin-clock 4s linear infinite;
-}
-
-@keyframes spin-clock {
-  0% {
-    transform: translateY(-50%) rotate(0deg);
-    opacity: 0.8;
-  }
-  50% {
-    opacity: 1;
-  }
-  100% {
-    transform: translateY(-50%) rotate(360deg);
-    opacity: 0.8;
-  }
-}
-
-/* Adjust message content to account for icon */
-.ncm-message-list__item[data-scheduled="true"] .ncm-message-list__content {
-  padding-left: 45px;
-}
-
-/* "SCHEDULED" badge in message preview */
-.ncm-message-list__item[data-scheduled="true"] .ncm-message-list__subject::before {
-  content: "⏰ SCHEDULED";
-  display: inline-block;
-  background: var(--ncm-accent, #19f3f7);
-  color: #000;
-  font-size: 0.65em;
-  font-weight: bold;
-  padding: 2px 6px;
-  border-radius: 3px;
-  margin-right: 8px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  vertical-align: middle;
-}
-
-/* Hover effect for scheduled messages */
-.ncm-message-list__item[data-scheduled="true"]:hover {
-  background: linear-gradient(
-    135deg,
-    rgba(25, 243, 247, 0.1) 0%,
-    rgba(25, 243, 247, 0.05) 100%
-  );
-  border-left-color: var(--ncm-accent, #19f3f7);
-}
-
-/* Selected scheduled message */
-.ncm-message-list__item[data-scheduled="true"].ncm-message-list__item--selected {
-  background: linear-gradient(
-    135deg,
-    rgba(25, 243, 247, 0.15) 0%,
-    rgba(25, 243, 247, 0.08) 100%
-  );
-  border-left-width: 4px;
-}
-
-/* ============================================
-   SCHEDULED MESSAGE DETAIL VIEW
-   ============================================ */
-
-/* Add "SCHEDULED" header to message detail */
-.ncm-detail__header[data-scheduled="true"]::before {
-  content: "";
-  display: block;
-  background: linear-gradient(
-    90deg,
-    rgba(25, 243, 247, 0.2) 0%,
-    rgba(25, 243, 247, 0.05) 50%,
-    rgba(25, 243, 247, 0.2) 100%
-  );
-  border: 1px solid var(--ncm-accent, #19f3f7);
-  border-radius: var(--ncm-border-radius-md);
-  padding: var(--ncm-spacing-sm);
-  margin-bottom: var(--ncm-spacing-md);
-  text-align: center;
-  color: var(--ncm-accent);
-  font-weight: bold;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  font-size: 0.85em;
-  animation: pulse-text 2s ease-in-out infinite;
-}
-
-@keyframes pulse-text {
-  0%, 100% {
-    opacity: 0.8;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-
-/* Make placeholder content more distinctive */
-.ncm-scheduled-message-placeholder {
-  position: relative;
-  overflow: hidden;
-}
-
-/* Add animated scanline effect */
-.ncm-scheduled-message-placeholder::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    var(--ncm-accent, #19f3f7) 50%,
-    transparent 100%
-  );
-  animation: scanline 3s linear infinite;
-  opacity: 0.5;
-}
-
-@keyframes scanline {
-  0% {
-    transform: translateY(0);
-  }
-  100% {
-    transform: translateY(400px);
-  }
-}
-
-/* Glitch effect on placeholder headers */
-.ncm-scheduled-message-placeholder h3 {
-  position: relative;
-  animation: glitch-text 5s infinite;
-}
-
-@keyframes glitch-text {
-  0%, 90%, 100% {
-    text-shadow: none;
-  }
-  91% {
-    text-shadow: 
-      2px 0 var(--ncm-primary, #F65261),
-      -2px 0 var(--ncm-accent, #19f3f7);
-  }
-  92% {
-    text-shadow: 
-      -2px 0 var(--ncm-primary, #F65261),
-      2px 0 var(--ncm-accent, #19f3f7);
-  }
-  93% {
-    text-shadow: none;
-  }
+  animation: ncm-pulse-indicator 2s infinite;
 }
 
 /* ============================================
@@ -845,18 +171,7 @@
   padding: var(--ncm-spacing-lg);
   background: var(--ncm-bg-tertiary);
   border-bottom: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
-  animation: slideDown 0.3s ease-out;
-}
-
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  animation: ncm-slideDown 0.3s ease-out;
 }
 
 .ncm-filters-panel__section {
@@ -914,29 +229,74 @@
 }
 
 /* ============================================
-   MESSAGE ITEM IMPROVEMENTS
+   CONTENT AREA - Split Layout
    ============================================ */
-.ncm-message-item__unread-dot {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  background: var(--ncm-secondary);
-  border-radius: 50%;
-  margin-right: var(--ncm-spacing-xs);
-  animation: pulse-dot 2s infinite;
+.ncm-message-viewer__content {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
 }
 
-@keyframes pulse-dot {
-  0%, 100% {
-    opacity: 1;
-    box-shadow: 0 0 4px var(--ncm-secondary);
-  }
-  50% {
-    opacity: 0.6;
-    box-shadow: 0 0 8px var(--ncm-secondary);
-  }
+/* ============================================
+   SIDEBAR - Message List
+   ============================================ */
+.ncm-message-viewer__sidebar {
+  flex: 0 0 var(--ncm-viewer-sidebar-width);
+  background: var(--ncm-bg-secondary);
+  border-right: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
+.ncm-message-viewer__message-list {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--ncm-spacing-sm);
+}
+
+/* ============================================
+   MESSAGE ITEM
+   ============================================ */
+.ncm-message-item {
+  padding: var(--ncm-spacing-md);
+  margin-bottom: var(--ncm-spacing-sm);
+  background: var(--ncm-bg-tertiary);
+  border: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
+  border-radius: var(--ncm-border-radius-md);
+  cursor: pointer;
+  transition: all var(--ncm-transition-fast);
+  position: relative;
+}
+
+.ncm-message-item:hover {
+  background: var(--ncm-bg-hover);
+  border-color: var(--ncm-border-primary);
+  transform: translateX(2px);
+}
+
+/* Selected state (overrides all others) */
+.ncm-message-item--selected {
+  background: rgba(246, 82, 97, 0.2) !important;
+  border: 2px solid var(--ncm-primary) !important;
+  border-left: 4px solid var(--ncm-primary) !important;
+  opacity: 1 !important;
+  box-shadow: 0 2px 8px rgba(246, 82, 97, 0.4) !important;
+}
+
+.ncm-message-item--selected:hover {
+  background: rgba(246, 82, 97, 0.25) !important;
+}
+
+.ncm-message-item--selected .ncm-message-item__sender,
+.ncm-message-item--selected .ncm-message-item__subject {
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  opacity: 1 !important;
+}
+
+/* Unread messages */
 .ncm-message-item--unread {
   background: rgba(25, 243, 247, 0.05);
   border-left: 3px solid var(--ncm-secondary);
@@ -947,50 +307,27 @@
   color: var(--ncm-text-primary);
 }
 
+/* Read messages (slightly dimmed) */
 .ncm-message-item--read {
   opacity: 0.8;
 }
 
-.ncm-message-item__indicators {
-  display: flex;
-  gap: var(--ncm-spacing-xs);
-  margin-top: var(--ncm-spacing-xs);
-}
-
-.ncm-message-item__indicator {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  padding: 2px 6px;
-  font-size: 10px;
-  border-radius: var(--ncm-border-radius-sm);
-  font-weight: 500;
-}
-
-.ncm-message-item__indicator--encrypted {
-  background: rgba(25, 243, 247, 0.2);
-  color: var(--ncm-secondary);
-}
-
-.ncm-message-item__indicator--malware {
-  background: rgba(239, 68, 68, 0.2);
-  color: #ef4444;
-  animation: pulse-danger 2s infinite;
-}
-
-@keyframes pulse-danger {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
-}
-
-.ncm-message-item__indicator--saved {
-  background: rgba(251, 191, 36, 0.2);
-  color: #fbbf24;
+/* Selected unread gets cyan border */
+.ncm-message-item--selected.ncm-message-item--unread {
+  border-left: 4px solid var(--ncm-secondary) !important;
 }
 
 /* ============================================
-   MESSAGE TYPE ICONS
+   MESSAGE ITEM STRUCTURE
    ============================================ */
+.ncm-message-item__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--ncm-spacing-sm);
+  margin-bottom: var(--ncm-spacing-xs);
+  font-size: var(--ncm-font-size-sm);
+}
 
 .ncm-message-item__sender-with-icon {
   display: flex;
@@ -1000,56 +337,6 @@
   overflow: hidden;
 }
 
-.ncm-message-item__type-icon {
-  font-size: 13px;
-  flex-shrink: 0;
-  line-height: 1;
-}
-
-/* Sent icon - green checkmark/plane */
-.ncm-message-item__type-icon--sent {
-  color: #4caf50;
-}
-
-/* Reply icon - cyan arrow */
-.ncm-message-item__type-icon--reply {
-  color: #19f3f7;
-}
-
-/* Forward icon - yellow share */
-.ncm-message-item__type-icon--forward {
-  color: #ffc107;
-}
-
-/* Scheduled delivery icon - purple clock (delivered but was scheduled) */
-.ncm-message-item__type-icon--scheduled {
-  color: #9c27b0;
-}
-
-/* Pending/waiting icon - orange hourglass (still scheduled, not delivered) */
-.ncm-message-item__type-icon--pending {
-  color: #ff9800;
-  animation: pulse-pending 2s infinite;
-}
-
-@keyframes pulse-pending {
-  0%, 100% { 
-    opacity: 1; 
-    transform: scale(1);
-  }
-  50% { 
-    opacity: 0.6; 
-    transform: scale(0.95);
-  }
-}
-
-/* Icon tooltips on hover */
-.ncm-message-item__type-icon:hover {
-  filter: brightness(1.2);
-  cursor: help;
-}
-
-/* Spacing adjustments */
 .ncm-message-item__sender {
   color: var(--ncm-secondary);
   font-weight: var(--ncm-font-weight-semibold);
@@ -1058,78 +345,9 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  margin-left: 0; /* Icons provide the spacing */
 }
 
-/* Multiple icons stack nicely */
-.ncm-message-item__type-icon + .ncm-message-item__type-icon {
-  margin-left: 2px;
-}
-
-/* Sent messages get subtle background highlight */
-.ncm-message-item:has(.ncm-message-item__type-icon--sent) {
-  background: rgba(76, 175, 80, 0.03);
-}
-
-.ncm-message-item:has(.ncm-message-item__type-icon--sent):hover {
-  background: rgba(76, 175, 80, 0.08);
-}
-
-/* Pending scheduled messages pulse the whole card */
-.ncm-message-item:has(.ncm-message-item__type-icon--pending) {
-  animation: card-pulse-pending 3s infinite;
-  background: rgba(255, 152, 0, 0.05);
-}
-
-@keyframes card-pulse-pending {
-  0%, 100% { 
-    box-shadow: 0 0 0 rgba(255, 152, 0, 0);
-  }
-  50% { 
-    box-shadow: 0 0 8px rgba(255, 152, 0, 0.3);
-  }
-}
-
-/* ============================================
-   SELECTED MESSAGE STATE (Simple Version)
-   ============================================ */
-
-.ncm-message-item--selected {
-  background: rgba(246, 82, 97, 0.2) !important;
-  border: 2px solid var(--ncm-primary) !important;
-  border-left: 4px solid var(--ncm-primary) !important;
-  opacity: 1 !important; /* Override read state darkness */
-  box-shadow: 0 2px 8px rgba(246, 82, 97, 0.4) !important;
-}
-
-.ncm-message-item--selected:hover {
-  background: rgba(246, 82, 97, 0.25) !important;
-  border-color: var(--ncm-primary) !important;
-}
-
-/* Make text always visible when selected */
-.ncm-message-item--selected .ncm-message-item__sender,
-.ncm-message-item--selected .ncm-message-item__subject {
-  color: #ffffff !important;
-  font-weight: 600 !important;
-  opacity: 1 !important;
-}
-
-/* Override read state when selected */
-.ncm-message-item--read.ncm-message-item--selected {
-  opacity: 1 !important;
-}
-
-/* Selected unread messages get cyan border */
-.ncm-message-item--selected.ncm-message-item--unread {
-  border-left: 4px solid var(--ncm-secondary) !important;
-}
-
-/* ========================================
-   Time Display
-   ======================================== */
-
-.ncm-message-item__time-container {
+.ncm-message-item__timestamp {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
@@ -1137,8 +355,7 @@
   flex-shrink: 0;
 }
 
-/* Main timestamp (date + time) */
-.ncm-message-item__time {
+.ncm-message-item__datetime {
   font-size: var(--ncm-font-size-xs);
   font-weight: var(--ncm-font-weight-medium);
   color: var(--ncm-secondary);
@@ -1147,19 +364,80 @@
   line-height: 1;
 }
 
-/* Relative time ("5 minutes ago") */
-.ncm-message-item__time-relative {
+.ncm-message-item__subject {
+  font-size: var(--ncm-font-size-base);
+  color: var(--ncm-primary);
+  font-weight: var(--ncm-font-weight-medium);
+  margin-bottom: var(--ncm-spacing-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ncm-message-item__preview {
+  font-size: var(--ncm-font-size-sm);
+  color: var(--ncm-text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ncm-message-item__footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-top: var(--ncm-spacing-xs);
+}
+
+.ncm-message-item__spacer {
+  flex: 1;
+}
+
+.ncm-message-item__relative {
   font-size: 11px;
   color: var(--ncm-text-secondary);
   font-style: italic;
   white-space: nowrap;
-  line-height: 1;
 }
 
 /* ============================================
-   Time Badges
+   MESSAGE TYPE ICONS
    ============================================ */
+.ncm-message-item__type-icon {
+  font-size: 13px;
+  flex-shrink: 0;
+  line-height: 1;
+}
 
+.ncm-message-item__type-icon--sent {
+  color: #4caf50;
+}
+
+.ncm-message-item__type-icon--reply {
+  color: #19f3f7;
+}
+
+.ncm-message-item__type-icon--forward {
+  color: #ffc107;
+}
+
+.ncm-message-item__type-icon--scheduled {
+  color: #9c27b0;
+}
+
+.ncm-message-item__type-icon--pending {
+  color: #ff9800;
+  animation: ncm-pulse-pending 2s infinite;
+}
+
+.ncm-message-item__type-icon:hover {
+  filter: brightness(1.2);
+  cursor: help;
+}
+
+/* ============================================
+   MESSAGE BADGES
+   ============================================ */
 .ncm-message-item__badge {
   display: inline-flex;
   align-items: center;
@@ -1172,39 +450,16 @@
   margin-top: 2px;
 }
 
-/* SimpleCalendar badge */
 .ncm-message-item__badge--sc {
   background: rgba(25, 243, 247, 0.2);
   border: 1px solid var(--ncm-secondary);
   color: var(--ncm-secondary);
 }
 
-/* Scheduled message badge */
 .ncm-message-item__badge--scheduled {
   background: rgba(255, 152, 0, 0.2);
   border: 1px solid #FF9800;
   color: #FF9800;
-}
-
-.ncm-message-item__badge--scheduled i {
-  animation: pulse-schedule 2s infinite;
-}
-
-@keyframes pulse-schedule {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-}
-
-/* ============================================
-   Hover Effects
-   ============================================ */
-
-.ncm-message-item:hover .ncm-message-item__time {
-  color: var(--ncm-text-primary);
-}
-
-.ncm-message-item:hover .ncm-message-item__time-relative {
-  color: var(--ncm-text-secondary);
 }
 
 .ncm-message-item:hover .ncm-message-item__badge--sc {
@@ -1217,11 +472,68 @@
   box-shadow: 0 0 8px rgba(255, 152, 0, 0.4);
 }
 
+/* ============================================
+   MESSAGE INDICATORS (encryption, malware, etc.)
+   ============================================ */
+.ncm-message-item__indicators {
+  display: flex;
+  gap: var(--ncm-spacing-xs);
+  margin-top: var(--ncm-spacing-sm);
+  flex-wrap: wrap;
+}
+
+.ncm-message-item__indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  font-size: var(--ncm-font-size-xs);
+  border-radius: var(--ncm-border-radius-sm);
+  background: var(--ncm-bg-primary);
+  border: var(--ncm-border-width-thin) solid var(--ncm-border-tertiary);
+}
+
+.ncm-message-item__indicator i {
+  font-size: 10px;
+}
+
+.ncm-message-item__indicator--encrypted {
+  color: var(--ncm-accent);
+  border-color: var(--ncm-accent-dark);
+}
+
+.ncm-message-item__indicator--malware {
+  color: var(--ncm-text-error);
+  border-color: var(--ncm-text-error);
+  animation: ncm-pulse-danger 2s infinite;
+}
+
+.ncm-message-item__indicator--saved {
+  color: var(--ncm-secondary);
+  border-color: var(--ncm-secondary);
+}
+
+.ncm-message-item__indicator--spam {
+  color: var(--ncm-text-error);
+  border-color: var(--ncm-text-error);
+}
+
+/* Unread dot indicator */
+.ncm-message-item__unread-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background: var(--ncm-secondary);
+  border-radius: 50%;
+  margin-right: var(--ncm-spacing-xs);
+  animation: ncm-pulse-dot 2s infinite;
+}
 
 /* ============================================
-   PAGINATION IMPROVEMENTS
+   PAGINATION (bottom of sidebar)
    ============================================ */
 .ncm-message-viewer__pagination {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1266,59 +578,52 @@
 }
 
 /* ============================================
-   DETAIL VIEW IMPROVEMENTS
+   DETAIL VIEW (right side)
    ============================================ */
-.ncm-detail__meta-row {
+.ncm-message-viewer__detail {
+  flex: 1;
   display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+/* ============================================
+   EMPTY STATE
+   ============================================ */
+.ncm-message-viewer__empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: var(--ncm-spacing-sm);
-  padding: var(--ncm-spacing-xs) 0;
-}
-
-.ncm-btn--ghost {
-  background: transparent;
-  border: none;
-  padding: 2px 6px;
+  justify-content: center;
   color: var(--ncm-text-tertiary);
+  text-align: center;
+  padding: var(--ncm-spacing-xxl);
 }
 
-.ncm-btn--ghost:hover {
-  background: var(--ncm-bg-hover);
-  color: var(--ncm-primary);
-}
-
-/* ============================================
-   ADD TO CONTACTS (BUTTONS)
-   ============================================ */
-/* Make add-to-contacts button subtle */
-[data-action="add-sender-to-contacts"] {
-  margin-left: 8px;
-  padding: 2px 6px;
-  font-size: 0.875rem;
-  opacity: 0.7;
-  transition: opacity 0.2s;
-}
-
-[data-action="add-sender-to-contacts"]:hover {
-  opacity: 1;
-  background: var(--ncm-primary);
-  color: white;
-}
-
-/* Contacts button in toolbar */
-[data-action="open-contacts"] {
-  margin-right: auto; /* Push compose button to the right */
-}
-/* ============================================
-   EMPTY STATE IMPROVEMENTS
-   ============================================ */
 .ncm-message-viewer__empty--large {
-  padding: var(--ncm-spacing-xl) * 2;
+  padding: calc(var(--ncm-spacing-xl) * 2);
+}
+
+.ncm-message-viewer__empty-icon {
+  font-size: 64px;
+  margin-bottom: var(--ncm-spacing-lg);
+  opacity: 0.3;
 }
 
 .ncm-message-viewer__empty--large .ncm-message-viewer__empty-icon {
   font-size: 4rem;
-  margin-bottom: var(--ncm-spacing-lg);
+}
+
+.ncm-message-viewer__empty-text {
+  font-size: var(--ncm-font-size-lg);
+  margin-bottom: var(--ncm-spacing-sm);
+}
+
+.ncm-message-viewer__empty-subtext {
+  font-size: var(--ncm-font-size-sm);
+  opacity: 0.7;
 }
 
 .ncm-message-viewer__empty-action {
@@ -1335,26 +640,143 @@
   margin: 0;
 }
 
-.ncm-btn--large {
-  padding: var(--ncm-spacing-md) var(--ncm-spacing-xl);
-  font-size: var(--ncm-font-size-lg);
+/* ============================================
+   MESSAGE DETAIL HEADER
+   ============================================ */
+.ncm-detail__header {
+  flex: 0 0 auto;
+  background: var(--ncm-bg-surface);
+  border-bottom: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
+  padding: var(--ncm-spacing-lg);
 }
 
-/* GM Tools Button */
-.ncm-btn--gm {
-  background: rgba(251, 191, 36, 0.2);
-  border-color: #fbbf24;
-  color: #fbbf24;
+.ncm-detail__subject {
+  font-size: var(--ncm-font-size-xl);
+  color: var(--ncm-primary);
+  margin-bottom: var(--ncm-spacing-md);
 }
 
-.ncm-btn--gm:hover {
-  background: #fbbf24;
-  color: var(--ncm-bg-primary);
+.ncm-detail__meta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ncm-spacing-xs);
+}
+
+.ncm-detail__meta-row {
+  display: flex;
+  align-items: center;
+  gap: var(--ncm-spacing-sm);
+  padding: var(--ncm-spacing-xs) 0;
+}
+
+.ncm-detail__meta-label {
+  color: var(--ncm-text-secondary);
+  font-weight: var(--ncm-font-weight-medium);
+  min-width: 60px;
+}
+
+.ncm-detail__meta-value {
+  color: var(--ncm-text-primary);
+}
+
+/* ============================================
+   MESSAGE BODY
+   ============================================ */
+.ncm-detail__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--ncm-spacing-lg);
+  line-height: var(--ncm-line-height-relaxed);
+  color: var(--ncm-text-primary);
+  user-select: text;
+  cursor: text;
+}
+
+.ncm-detail__body p {
+  margin-bottom: var(--ncm-spacing-md);
+}
+
+/* ============================================
+   MESSAGE FOOTER (action buttons)
+   ============================================ */
+.ncm-detail__footer {
+  flex: 0 0 auto;
+  background: var(--ncm-bg-surface);
+  border-top: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
+  padding: var(--ncm-spacing-md);
+  display: flex;
+  gap: var(--ncm-spacing-sm);
+  align-items: center;
+}
+
+/* ============================================
+   SCHEDULED MESSAGE STYLES
+   ============================================ */
+.ncm-message-detail__scheduled-section {
+  margin-top: var(--ncm-spacing-md);
+}
+
+.ncm-message-detail__scheduled-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ncm-spacing-md);
+  padding: var(--ncm-spacing-md);
+  background: rgba(25, 243, 247, 0.05);
+  border: 1px solid rgba(25, 243, 247, 0.2);
+  border-radius: var(--ncm-border-radius-md);
+}
+
+.ncm-message-detail__scheduled-label {
+  display: flex;
+  align-items: center;
+  gap: var(--ncm-spacing-sm);
+  color: var(--ncm-accent);
+  font-size: 0.95em;
+}
+
+.ncm-message-detail__scheduled-actions {
+  display: flex;
+  gap: var(--ncm-spacing-sm);
+  justify-content: flex-start;
+}
+
+.ncm-message-detail__scheduled-actions .ncm-btn {
+  flex: 0 0 auto;
+}
+
+.ncm-message-detail__scheduled-actions .ncm-btn--danger:hover {
+  box-shadow: 0 0 10px rgba(246, 82, 97, 0.5);
+}
+
+.ncm-message-detail__scheduled-actions .ncm-btn--secondary:hover {
+  box-shadow: 0 0 10px rgba(25, 243, 247, 0.3);
+}
+
+/* Placeholder content styling */
+.ncm-scheduled-message-placeholder {
+  position: relative;
+  overflow: hidden;
+}
+
+.ncm-scheduled-message-placeholder::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--ncm-accent, #19f3f7) 50%,
+    transparent 100%
+  );
+  animation: ncm-scanline 3s linear infinite;
+  opacity: 0.5;
 }
 
 /* ============================================
    QUOTED/FORWARDED MESSAGES
-   Nested message display
    ============================================ */
 .ncm-quoted-message,
 .ncm-forwarded-message {
@@ -1385,7 +807,7 @@
 }
 
 /* ============================================
-   GM + PLAYER CHARACTER SELECTOR
+   CHARACTER SELECTOR (Header)
    ============================================ */
 .ncm-header__character-selector {
   display: flex;
@@ -1433,13 +855,30 @@
   border: 1px solid var(--ncm-secondary);
 }
 
-/* Email warning state */
 .ncm-header__email--warning {
   color: #f59e0b;
   font-style: italic;
 }
 
-/* Email setup button for players */
+.ncm-header__welcome {
+  flex: 1;
+}
+
+/* ============================================
+   BUTTON VARIANTS
+   ============================================ */
+.ncm-btn--ghost {
+  background: transparent;
+  border: none;
+  padding: 2px 6px;
+  color: var(--ncm-text-tertiary);
+}
+
+.ncm-btn--ghost:hover {
+  background: var(--ncm-bg-hover);
+  color: var(--ncm-primary);
+}
+
 .ncm-btn--warning {
   background: rgba(245, 158, 11, 0.2);
   border-color: #f59e0b;
@@ -1451,30 +890,90 @@
   color: var(--ncm-bg-primary);
 }
 
-/* Adjust spacing when no selector */
-.ncm-header__welcome {
-  flex: 1;
-}
-
-/* GM Tools button spacing */
 .ncm-btn--gm {
+  background: rgba(251, 191, 36, 0.2);
+  border-color: #fbbf24;
+  color: #fbbf24;
   margin-left: auto;
 }
 
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .ncm-header__character-selector {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--ncm-spacing-xs);
+.ncm-btn--gm:hover {
+  background: #fbbf24;
+  color: var(--ncm-bg-primary);
+}
+
+.ncm-btn--large {
+  padding: var(--ncm-spacing-md) var(--ncm-spacing-xl);
+  font-size: var(--ncm-font-size-lg);
+}
+
+/* Add to contacts button styling */
+[data-action="add-sender-to-contacts"] {
+  margin-left: 8px;
+  padding: 2px 6px;
+  font-size: 0.875rem;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+[data-action="add-sender-to-contacts"]:hover {
+  opacity: 1;
+  background: var(--ncm-primary);
+  color: white;
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+@keyframes ncm-pulse-indicator {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes ncm-pulse-pending {
+  0%, 100% { 
+    opacity: 1; 
+    transform: scale(1);
   }
-  
-  .ncm-header__select {
-    width: 100%;
+  50% { 
+    opacity: 0.6; 
+    transform: scale(0.95);
   }
-  
-  .ncm-header__email {
-    font-size: var(--ncm-font-size-xs);
+}
+
+@keyframes ncm-pulse-danger {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes ncm-pulse-dot {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 0 4px var(--ncm-secondary);
+  }
+  50% {
+    opacity: 0.6;
+    box-shadow: 0 0 8px var(--ncm-secondary);
+  }
+}
+
+@keyframes ncm-slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ncm-scanline {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(400px);
   }
 }
 
@@ -1492,12 +991,8 @@
     flex: 0 0 250px;
   }
   
-  .ncm-message-viewer__filters {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  
-  .ncm-message-viewer__search {
+  .ncm-toolbar__search {
+    max-width: none;
     width: 100%;
   }
 }
@@ -1512,7 +1007,6 @@
   }
   
   .ncm-toolbar__search {
-    max-width: none;
     order: -1;
     width: 100%;
   }
@@ -1528,23 +1022,30 @@
   .ncm-toolbar__category {
     padding: var(--ncm-spacing-sm);
   }
-
-  .ncm-message-item__time-container {
-    align-items: flex-start;
-  }
   
   .ncm-message-item__header {
     flex-direction: column;
     align-items: stretch;
   }
   
-  .ncm-message-item__time-container {
+  .ncm-message-item__timestamp {
     flex-direction: row;
     flex-wrap: wrap;
     gap: 6px;
     align-items: center;
   }
   
-  .ncm-message-item__badge {
-    margin-to
+  .ncm-header__character-selector {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--ncm-spacing-xs);
+  }
+  
+  .ncm-header__select {
+    width: 100%;
+  }
+  
+  .ncm-header__email {
+    font-size: var(--ncm-font-size-xs);
+  }
 }

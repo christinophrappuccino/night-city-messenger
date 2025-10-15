@@ -5,7 +5,7 @@
  * Description: Main message viewer orchestrator
  */
 
-import { MODULE_ID } from '../../../utils/constants.js';
+import { MODULE_ID, debugLog } from '../../../utils/constants.js';
 import { BaseApplication } from '../BaseApplication.js';
 import { MessageList } from './MessageList.js';
 import { MessageDetail } from './MessageDetail.js';
@@ -15,17 +15,25 @@ import { EVENTS } from '../../../core/EventBus.js';
 import { TimeService } from '../../../services/TimeService.js';
 import { MessageRepository } from '../../../data/MessageRepository.js';
 import { StateManager } from '../../../core/StateManager.js';
+import { 
+  constructMessageStatus, 
+  extractBodyFromHTML, 
+  generatePreview,
+  calculateMessageCounts,
+  isValidScheduledPlaceholder
+} from '../../../utils/messageHelpers.js';
 
 export class MessageViewerApp extends BaseApplication {
   constructor(journalEntry, options = {}) {
     super(options);
     
     this.journalEntry = journalEntry;
-
-    // Track which actor's inbox we're viewing (for GMs)
     this.selectedActorId = options.actorId || game.user.character?.id || null;
     this.messageRepository = new MessageRepository();
     this.timeService = TimeService.getInstance();
+    
+    // Store event unsubscribers for cleanup
+    this.eventUnsubscribers = [];
     
     // Initialize components
     this.messageList = new MessageList(this);
@@ -38,14 +46,12 @@ export class MessageViewerApp extends BaseApplication {
     this.registerComponent('messageDetail', this.messageDetail);
     this.registerComponent('messageFilters', this.messageFilters);
     this.registerComponent('messagePagination', this.messagePagination);
+    
+    // Setup event listeners and load messages
     this._setupEventListeners();
-    // Load messages into state
     this._loadMessages();
   }
   
-  /**
-   * Default options
-   */
   static get defaultOptions() {
     return foundry.utils.mergeObject(super.defaultOptions, {
       id: "ncm-message-viewer",
@@ -62,7 +68,9 @@ export class MessageViewerApp extends BaseApplication {
   }
   
   /**
-   * Get data for template
+   * Get data for template rendering
+   * @param {Object} options - Render options
+   * @returns {Object} Template data
    */
   getData(options = {}) {
     const data = super.getData(options);
@@ -78,33 +86,17 @@ export class MessageViewerApp extends BaseApplication {
     // Format timestamps for display
     const formattedMessages = messageData.messages.map(msg => ({
       ...msg,
-      
-      // Marks the selected message
       selected: msg.id === selectedMessageId,
-      
       formattedTimestamp: this.timeService.formatTimestamp(msg.timestamp),
       relativeTime: this.timeService.formatTimestamp(msg.timestamp, 'relative'),
       fullTimestamp: this.timeService.formatTimestamp(msg.timestamp, 'full')
     }));
     
-    // Get all messages for counting
+    // Get all messages and calculate counts
     const allMessages = this.stateManager.getAllMessages() || [];
+    const counts = calculateMessageCounts(allMessages);
     
-    // Calculate counts
-    const unreadCount = allMessages.filter(m => !m.status?.read && !m.status?.spam && !m.status?.deleted).length;
-    const savedCount = allMessages.filter(m => m.status?.saved && !m.status?.deleted).length;
-    const spamCount = allMessages.filter(m => m.status?.spam && !m.status?.deleted).length;
-    const sentCount = allMessages.filter(m => m.status?.sent && !m.status?.deleted).length;
-    const scheduledCount = allMessages.filter(m => m.status?.scheduled && !m.status?.deleted).length;
-    
-    console.log(`${MODULE_ID} | Message counts:`, {
-      total: allMessages.length,
-      unread: unreadCount,
-      saved: savedCount,
-      spam: spamCount,
-      sent: sentCount,
-      scheduled: scheduledCount  // ← Log this!
-    });
+    debugLog('Message counts:', counts);
     
     // Advanced filters state
     const showAdvancedFilters = this.stateManager.get('showAdvancedFilters') || false;
@@ -124,25 +116,25 @@ export class MessageViewerApp extends BaseApplication {
       : null;
 
     // Character selection data
-      const selectedActor = this.selectedActorId ? game.actors.get(this.selectedActorId) : null;
-      
-      // Get available characters based on user
-      let availableActors = [];
-      
-      if (game.user.isGM) {
-        // GM sees all player characters
-        availableActors = game.actors.contents
-          .filter(a => a.hasPlayerOwner || a.type === 'character')
-          .sort((a, b) => a.name.localeCompare(b.name));
-      } else {
-        // Player sees only their own characters
-        availableActors = game.actors.contents
-          .filter(a => a.isOwner)
-          .sort((a, b) => a.name.localeCompare(b.name));
-      }
-      
-      // Show selector if GM OR player has multiple characters
-      const showCharacterSelector = game.user.isGM || availableActors.length > 1;
+    const selectedActor = this.selectedActorId ? game.actors.get(this.selectedActorId) : null;
+    
+    // Get available characters based on user
+    let availableActors = [];
+    
+    if (game.user.isGM) {
+      // GM sees all player characters
+      availableActors = game.actors.contents
+        .filter(a => a.hasPlayerOwner || a.type === 'character')
+        .sort((a, b) => a.name.localeCompare(b.name));
+    } else {
+      // Player sees only their own characters
+      availableActors = game.actors.contents
+        .filter(a => a.isOwner)
+        .sort((a, b) => a.name.localeCompare(b.name));
+    }
+    
+    // Show selector if GM OR player has multiple characters
+    const showCharacterSelector = game.user.isGM || availableActors.length > 1;
     
     return {
       ...data,
@@ -153,7 +145,7 @@ export class MessageViewerApp extends BaseApplication {
       selectedMessage: selectedMessage,
       currentFilter: currentFilter,
       searchTerm: searchTerm,
-      unreadCount: unreadCount,
+      unreadCount: counts.unread,
       
       // Filter data
       showAdvancedFilters: showAdvancedFilters,
@@ -161,30 +153,23 @@ export class MessageViewerApp extends BaseApplication {
       hasActiveFilters: hasActiveFilters,
       uniqueSenders: uniqueSenders,
       
-      // Category counts
-      filters: {
-        all: allMessages.filter(m => !m.status?.deleted).length,
-        unread: unreadCount,
-        saved: savedCount,
-        spam: spamCount,
-        sent: sentCount,
-        scheduled: scheduledCount 
-      },
+      // Category counts (use calculated counts)
+      filters: counts,
       
       // Character data
-        isGM: game.user.isGM,
-        selectedActor: selectedActor,
-        selectedActorId: this.selectedActorId,
-        availableActors: availableActors,
-        showCharacterSelector: showCharacterSelector,
-        userName: selectedActor?.name || game.user.name,
+      isGM: game.user.isGM,
+      selectedActor: selectedActor,
+      selectedActorId: this.selectedActorId,
+      availableActors: availableActors,
+      showCharacterSelector: showCharacterSelector,
+      userName: selectedActor?.name || game.user.name,
       
       // TimeService for current time
       currentTime: this.timeService.formatTimestamp(
         this.timeService.getCurrentTimestamp()
       ),
       
-      // Network (you might have this elsewhere)
+      // Network
       networkName: this.stateManager.get('currentNetwork') || 'CITINET'
     };
   }
@@ -194,71 +179,61 @@ export class MessageViewerApp extends BaseApplication {
    * @private
    */
   _setupEventListeners() {
-    // Listen for new messages
-    this.eventBus.on(EVENTS.MESSAGE_RECEIVED, (data) => {
-      // Only refresh if it's for this inbox
-      if (data.journalId === this.journalEntry?.id || 
-          data.actorId === this.selectedActorId) {
-        console.log(`${MODULE_ID} | New message received, refreshing viewer`);
-        this._loadMessages();
-        this.render(false);
-      }
-    });
+    // Store unsubscribers for proper cleanup
+    this.eventUnsubscribers.push(
+      this.eventBus.on(EVENTS.MESSAGE_RECEIVED, (data) => {
+        if (data.journalId === this.journalEntry?.id || 
+            data.actorId === this.selectedActorId) {
+          debugLog('New message received, refreshing viewer');
+          this._loadMessages();
+          this.render(false);
+        }
+      })
+    );
     
-    // Listen for scheduled messages
-    this.eventBus.on(EVENTS.MESSAGE_SCHEDULED, (data) => {
-      // Only refresh if it's for this actor
-      if (data.scheduleId || data.actorId === this.selectedActorId) {
-        console.log(`${MODULE_ID} | Message scheduled, refreshing viewer`);
-        this._loadMessages();
-        this.render(false);
-      }
-    });
+    this.eventUnsubscribers.push(
+      this.eventBus.on(EVENTS.MESSAGE_SCHEDULED, (data) => {
+        if (data.scheduleId || data.actorId === this.selectedActorId) {
+          debugLog('Message scheduled, refreshing viewer');
+          this._loadMessages();
+          this.render(false);
+        }
+      })
+    );
     
-    // Listen for cancelled schedules
-    this.eventBus.on(EVENTS.SCHEDULE_CANCELLED, (data) => {
-      // Only refresh if it's for this actor
-      if (data.scheduleId || data.actorId === this.selectedActorId) {
-        console.log(`${MODULE_ID} | Schedule cancelled, refreshing viewer`);
-        this._loadMessages();
-        this.render(false);
-      }
-    });
+    this.eventUnsubscribers.push(
+      this.eventBus.on(EVENTS.SCHEDULE_CANCELLED, (data) => {
+        if (data.scheduleId || data.actorId === this.selectedActorId) {
+          debugLog('Schedule cancelled, refreshing viewer');
+          this._loadMessages();
+          this.render(false);
+        }
+      })
+    );
     
-    // Listen for message sent (for when scheduled messages are sent)
-    this.eventBus.on(EVENTS.MESSAGE_SENT, (data) => {
-      // Refresh if it affects this inbox
-      if (data.journalId === this.journalEntry?.id || 
-          data.actorId === this.selectedActorId) {
-        console.log(`${MODULE_ID} | Message sent, refreshing viewer`);
-        this._loadMessages();
-        this.render(false);
-      }
-    });
+    this.eventUnsubscribers.push(
+      this.eventBus.on(EVENTS.MESSAGE_SENT, (data) => {
+        if (data.journalId === this.journalEntry?.id || 
+            data.actorId === this.selectedActorId) {
+          debugLog('Message sent, refreshing viewer');
+          this._loadMessages();
+          this.render(false);
+        }
+      })
+    );
   }
   
-  /**
-   * Activate event listeners
-   */
   activateListeners(html) {
     super.activateListeners(html);
     
     // Filter buttons
     html.find('[data-action="filter"]').on('click', this._onFilterClick.bind(this));
-    
-    // Search input
     html.find('[data-action="search"]').on('input', this._onSearchInput.bind(this));
-
-    // Character selector
     html.find('[data-action="select-character"]').on('change', this._onCharacterSelect.bind(this));
-    
-    // Email setup button (for players without email)
     html.find('[data-action="setup-email"]').on('click', this._onSetupEmail.bind(this));
     
-    // Message selection
+    // Message selection and actions
     html.find('[data-action="select-message"]').on('click', this._onSelectMessage.bind(this));
-    
-    // Message actions
     html.find('[data-action="delete-message"]').on('click', this._onDeleteMessage.bind(this));
     html.find('[data-action="mark-spam"]').on('click', this._onMarkSpam.bind(this));
     html.find('[data-action="save-message"]').on('click', this._onSaveMessage.bind(this));
@@ -269,37 +244,21 @@ export class MessageViewerApp extends BaseApplication {
     // Compose and refresh
     html.find('[data-action="compose"]').on('click', this._onCompose.bind(this));
     html.find('[data-action="refresh"]').on('click', this._onRefresh.bind(this));
-
-    // Contact manager integration
     html.find('[data-action="open-contacts"]').on('click', this._onOpenContacts.bind(this));
     html.find('[data-action="add-sender-to-contacts"]').on('click', this._onAddSenderToContacts.bind(this));
-
-    // Reschedule Message
-    html.find('[data-action="reschedule-message"]').on('click', (e) => {
-      this._onRescheduleMessage(e);
-    });
     
-    // Cancel Schedule
-    html.find('[data-action="cancel-schedule"]').on('click', (e) => {
-      this._onCancelSchedule(e);
-    });
-
-    // Advanced filters toggle
+    // Scheduling actions
+    html.find('[data-action="reschedule-message"]').on('click', this._onRescheduleMessage.bind(this));
+    html.find('[data-action="cancel-schedule"]').on('click', this._onCancelSchedule.bind(this));
+    
+    // Advanced filters
     html.find('[data-action="toggle-filters"]').on('click', this._onToggleFilters.bind(this));
-    
-    // Filter field changes
     html.find('[data-filter-field]').on('change', this._onFilterFieldChange.bind(this));
-    
-    // Apply filters
     html.find('[data-action="apply-filters"]').on('click', this._onApplyFilters.bind(this));
-    
-    // Reset filters
     html.find('[data-action="reset-filters"]').on('click', this._onResetFilters.bind(this));
     
-    // Open admin panel
+    // Admin and settings
     html.find('[data-action="open-admin"]').on('click', this._onOpenAdmin.bind(this));
-
-    // Settings button
     html.find('[data-action="open-settings"]').on('click', this._onOpenSettings.bind(this));
     
     // Pagination
@@ -308,7 +267,7 @@ export class MessageViewerApp extends BaseApplication {
   }
   
   /**
-   * Load messages from journal
+   * Load messages from journal and update state
    * @private
    */
   _loadMessages() {
@@ -316,9 +275,7 @@ export class MessageViewerApp extends BaseApplication {
     
     // Filter out pages that Foundry has marked as deleted
     const pages = this.journalEntry.pages.contents.filter(page => {
-      // Check if page is pending deletion in Foundry
-      // Foundry marks pages for deletion but they remain in collection temporarily
-      return !page._tombstone && page.id; // Only include non-deleted pages with valid IDs
+      return !page._tombstone && page.id;
     });
     
     const messages = pages.map(page => {
@@ -328,18 +285,7 @@ export class MessageViewerApp extends BaseApplication {
       let body = flags.content || '';
       
       if (!body && page.text?.content) {
-        // Extract ONLY the message body from the styled HTML
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = page.text.content;
-        
-        // Find all divs, the last one with padding:15px contains the body
-        const contentDivs = tempDiv.querySelectorAll('div[style*="padding:15px"]');
-        if (contentDivs.length > 0) {
-          body = contentDivs[contentDivs.length - 1].innerHTML.trim();
-        } else {
-          // Fallback: strip all HTML
-          body = page.text.content.replace(/<[^>]*>/g, '').trim();
-        }
+        body = extractBodyFromHTML(page.text.content);
       }
       
       return {
@@ -350,80 +296,20 @@ export class MessageViewerApp extends BaseApplication {
         body: body,
         timestamp: flags.timestamp || new Date().toISOString(),
         network: flags.network || 'CITINET',
-        
-        // ✅ FIXED: Properly construct status object from flags
-        status: {
-          read: Boolean(flags.status?.read),
-          sent: Boolean(flags.status?.sent),
-          scheduled: Boolean(flags.status?.scheduled),
-          spam: Boolean(flags.status?.spam),
-          saved: Boolean(flags.status?.saved),
-          deleted: Boolean(flags.status?.deleted)
-        },
-        
+        status: constructMessageStatus(flags),
         metadata: flags.metadata || {},
         page: page,
-        preview: this._generatePreview(body)
+        preview: generatePreview(body)
       };
     });
 
-    // ✅ SAFE FIX: Only filter orphaned placeholders if we have schedule data
-    const validMessages = messages.filter(message => {
-      // If it's NOT a placeholder, keep it
-      if (!message.metadata?.isPlaceholder || !message.metadata?.scheduleId) {
-        return true;
-      }
-      
-      const scheduleId = message.metadata.scheduleId;
-      
-      // If SchedulingService doesn't exist, keep the placeholder (fail-safe)
-      if (!game.nightcity?.schedulingService) {
-        return true;
-      }
-      
-      // Get all scheduled messages
-      const allScheduled = game.nightcity.schedulingService.getAllScheduled();
-      const scheduleExists = allScheduled.some(s => s.id === scheduleId);
-      
-      // ⚠️ CRITICAL: If we found NO schedules at all, the service might not be loaded yet
-      // Only filter out orphans if we actually have schedule data
-      if (allScheduled.length === 0) {
-        // No schedules loaded yet - keep ALL placeholders to be safe
-        return true;
-      }
-      
-      // We have schedule data and this one doesn't exist - it's truly orphaned
-      if (!scheduleExists) {
-        console.warn(`${MODULE_ID} | Found orphaned placeholder for schedule ${scheduleId}, filtering out`);
-        return false;
-      }
-      
-      // Schedule exists - keep it
-      return true;
-    });
+    // Filter out orphaned placeholders safely
+    const allScheduled = game.nightcity?.schedulingService?.getAllScheduled() || [];
+    const validMessages = messages.filter(message => 
+      isValidScheduledPlaceholder(message, allScheduled)
+    );
 
     this.stateManager.setMessages(validMessages);
-  }
-  
-  /**
-   * Generate message preview
-   * @private
-   */
-  _generatePreview(body) {
-    let previewText = body;
-    
-    // Strip out reply/forward quoted sections
-    // Remove anything in the styled quote divs
-    previewText = previewText.replace(/<div style="border-left:[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '');
-    previewText = previewText.replace(/<hr[^>]*>/gi, '');
-    
-    // Strip all HTML tags
-    const plainText = previewText.replace(/<[^>]*>/g, '').trim();
-    
-    // Return first 100 chars
-    return plainText.length > 100 
-      ? plainText.substring(0, 100) + '...'
-      : plainText;
   }
   
   /**
@@ -434,20 +320,16 @@ export class MessageViewerApp extends BaseApplication {
     event.preventDefault();
     const filter = $(event.currentTarget).data('filter');
     
-    // Store old filter to detect changes
     const oldFilter = this.stateManager.get('currentFilter');
     
-    // Update state
     this.stateManager.set('currentFilter', filter);
     this.stateManager.set('currentPage', 1);
     
-    // ✅ FIX: Reload messages if switching filters
-    // This ensures we have fresh data from the journal
+    // Reload messages if switching filters
     if (oldFilter !== filter) {
       this._loadMessages();
     }
     
-    // Re-render
     this.render();
   }
   
@@ -476,10 +358,8 @@ export class MessageViewerApp extends BaseApplication {
       return;
     }
     
-    // Update selected actor
     this.selectedActorId = actorId;
     
-    // Find or create inbox for this actor
     const actor = game.actors.get(actorId);
     if (!actor) {
       ui.notifications.error("Character not found");
@@ -490,7 +370,7 @@ export class MessageViewerApp extends BaseApplication {
     const inboxName = `${actor.name}'s Messages`;
     let inbox = game.journal.getName(inboxName);
     
-    // Create inbox if it doesn't exist
+    // Create inbox if it doesn't exist (GM only)
     if (!inbox && game.user.isGM) {
       inbox = await JournalEntry.create({
         name: inboxName,
@@ -505,19 +385,14 @@ export class MessageViewerApp extends BaseApplication {
       return;
     }
     
-    // Update journal entry
     this.journalEntry = inbox;
-    
-    // Reload messages
     this._loadMessages();
     
     // Reset state
     this.stateManager.set('currentPage', 1);
     this.stateManager.set('selectedMessageId', null);
     
-    // Re-render
     this.render(false);
-    
     this.playSound?.('click');
   }
 
@@ -528,7 +403,6 @@ export class MessageViewerApp extends BaseApplication {
   async _onSetupEmail(event) {
     event.preventDefault();
     
-    // Get the currently selected actor
     const selectedActor = this.selectedActorId ? game.actors.get(this.selectedActorId) : null;
     
     if (!selectedActor) {
@@ -537,8 +411,6 @@ export class MessageViewerApp extends BaseApplication {
     }
     
     const { PlayerEmailSetup } = await import('../../dialogs/PlayerEmailSetup.js');
-    
-    // Pass the selected actor
     const success = await PlayerEmailSetup.show(selectedActor);
     
     if (success) {
@@ -556,10 +428,7 @@ export class MessageViewerApp extends BaseApplication {
     event.preventDefault();
     const messageId = $(event.currentTarget).data('message-id');
     
-    // Mark as read
     await this.messageList.markAsRead(messageId);
-    
-    // Select message
     this.stateManager.set('selectedMessageId', messageId);
     this.render();
   }
@@ -638,19 +507,17 @@ export class MessageViewerApp extends BaseApplication {
     const messageData = this.stateManager.getMessageById(messageId);
     if (!messageData) return;
     
-    // Extract just the email address
     const { extractEmailAddress } = await import('../../../utils/validators.js');
     const recipientEmail = extractEmailAddress(messageData.from) || messageData.from;
     
-    // Open composer with reply context
     const { MessageComposerApp } = await import('../MessageComposer/MessageComposerApp.js');
     new MessageComposerApp({
       actor: selectedActor,
       actorId: this.selectedActorId,
       mode: 'reply',
-      to: recipientEmail,  // Just email
+      to: recipientEmail,
       subject: `Re: ${messageData.subject}`,
-      originalMessage: messageData  // Pass full message for display
+      originalMessage: messageData
     }).render(true);
     
     this.playSound('click');
@@ -676,14 +543,13 @@ export class MessageViewerApp extends BaseApplication {
     const messageData = this.stateManager.getMessageById(messageId);
     if (!messageData) return;
     
-    // Open composer with forward context
     const { MessageComposerApp } = await import('../MessageComposer/MessageComposerApp.js');
     new MessageComposerApp({
       actor: selectedActor,
       actorId: this.selectedActorId,
       mode: 'forward',
       subject: `Fwd: ${messageData.subject}`,
-      originalMessage: messageData  // Pass full message for display
+      originalMessage: messageData
     }).render(true);
     
     this.playSound('click');
@@ -710,7 +576,6 @@ export class MessageViewerApp extends BaseApplication {
   async _onCompose(event) {
     event.preventDefault();
     
-    // Get the currently selected actor
     const selectedActor = this.selectedActorId ? game.actors.get(this.selectedActorId) : null;
     
     if (!selectedActor) {
@@ -720,7 +585,6 @@ export class MessageViewerApp extends BaseApplication {
     
     const { MessageComposerApp } = await import('../MessageComposer/MessageComposerApp.js');
     
-    // Pass the selected actor context
     new MessageComposerApp({
       actorId: this.selectedActorId,
       actor: selectedActor
@@ -745,7 +609,6 @@ export class MessageViewerApp extends BaseApplication {
   async _onOpenContacts(event) {
     event.preventDefault();
     
-    // Get the currently selected actor
     const selectedActor = this.selectedActorId ? game.actors.get(this.selectedActorId) : null;
     
     if (!selectedActor) {
@@ -755,7 +618,6 @@ export class MessageViewerApp extends BaseApplication {
     
     const { ContactManagerApp } = await import('../ContactManager/ContactManagerApp.js');
     
-    // Pass the selected actor context
     new ContactManagerApp({
       actorId: this.selectedActorId,
       actor: selectedActor
@@ -775,7 +637,6 @@ export class MessageViewerApp extends BaseApplication {
     const message = this.stateManager.getMessageById(messageId);
     if (!message) return;
     
-    // Use utility to parse email (handles both formats)
     const { extractEmailAddress } = await import('../../../utils/validators.js');
     const email = extractEmailAddress(message.from);
     
@@ -784,22 +645,18 @@ export class MessageViewerApp extends BaseApplication {
       return;
     }
     
-    // Extract name (everything before email markers)
     const name = message.from
       .replace(/\s*<[^>]+>/, '')
       .replace(/\s*\([^)]+\)/, '')
       .trim() || email.split('@')[0];
     
-    // Get current contacts
     const contacts = await game.user.getFlag(MODULE_ID, 'contacts') || [];
     
-    // Check if already exists
     if (contacts.some(c => c.email === email)) {
       ui.notifications.info(`${name} is already in your contacts.`);
       return;
     }
     
-    // Add contact
     contacts.push({
       id: foundry.utils.randomID(),
       name: name,
@@ -823,13 +680,9 @@ export class MessageViewerApp extends BaseApplication {
     const messageId = this.stateManager.get('selectedMessageId');
     if (!messageId) return;
     
-    const messages = this.stateManager.get('messages');
-    const message = messages instanceof Map ? 
-      messages.get(messageId) : messages.find(m => m.id === messageId);
-    
+    const message = this.stateManager.getMessageById(messageId);
     if (!message) return;
     
-    // Check if this is a scheduled message
     const isScheduled = message.metadata?.messageType === 'scheduled';
     
     if (!isScheduled) {
@@ -838,7 +691,6 @@ export class MessageViewerApp extends BaseApplication {
     }
     
     try {
-      // Get the schedule ID from the message
       const scheduleId = message.metadata?.scheduleId;
       
       if (!scheduleId) {
@@ -846,7 +698,6 @@ export class MessageViewerApp extends BaseApplication {
         return;
       }
       
-      // Open time picker
       const newTime = await this.timeService.pickDateTime({
         title: 'Reschedule Message',
         currentTime: message.scheduledTime || message.timestamp,
@@ -854,10 +705,8 @@ export class MessageViewerApp extends BaseApplication {
         allowFuture: true
       });
       
-      // Reschedule using the scheduling service
       await game.nightcity.schedulingService.rescheduleMessage(scheduleId, newTime);
       
-      // Update the message display
       message.scheduledTime = newTime;
       message.timestamp = newTime;
       
@@ -880,7 +729,6 @@ export class MessageViewerApp extends BaseApplication {
   async _onCancelSchedule(event) {
     event.preventDefault();
     
-    // Get selected message
     const selectedId = this.stateManager.get('selectedMessageId');
     if (!selectedId) {
       ui.notifications.warn('No message selected');
@@ -888,18 +736,11 @@ export class MessageViewerApp extends BaseApplication {
     }
     
     const message = this.stateManager.getMessageById(selectedId);
-    if (!message) {
-      ui.notifications.warn('Message not found');
-      return;
-    }
-    
-    // Verify it's a scheduled placeholder
-    if (!message.metadata?.isPlaceholder) {
+    if (!message || !message.metadata?.isPlaceholder) {
       ui.notifications.warn('This is not a scheduled message');
       return;
     }
     
-    // Confirm deletion
     const confirm = await Dialog.confirm({
       title: 'Cancel Scheduled Message',
       content: `
@@ -920,31 +761,23 @@ export class MessageViewerApp extends BaseApplication {
         console.log(`${MODULE_ID} | Deleted scheduled message placeholder: ${message.id}`);
       }
       
-      // Remove from state
       this.stateManager.removeMessage(selectedId);
-      
-      // Clear selection
       this.stateManager.set('selectedMessageId', null);
       
-      // Optionally: Try to remove from scheduling service settings too
-      // (This won't break if the service doesn't exist or schedule isn't found)
+      // Optionally clean up scheduling service settings
       const scheduleId = message.metadata?.scheduleId;
       if (scheduleId && game.nightcity?.schedulingService) {
         try {
           await game.nightcity.schedulingService.cancelSchedule(scheduleId);
-          console.log(`${MODULE_ID} | Also removed from scheduling service`);
         } catch (error) {
           console.warn(`${MODULE_ID} | Could not remove from scheduling service:`, error.message);
-          // Don't show error to user - the main goal (deleting placeholder) succeeded
         }
       }
       
       ui.notifications.info('Scheduled message cancelled');
       
-      // Reload and re-render
       this._loadMessages();
       this.render(false);
-      
       this.playSound?.('delete');
       
     } catch (error) {
@@ -960,7 +793,6 @@ export class MessageViewerApp extends BaseApplication {
   async _onOpenSettings(event) {
     event.preventDefault();
     
-    // Get the currently selected actor
     const selectedActor = this.selectedActorId ? game.actors.get(this.selectedActorId) : null;
     
     if (!selectedActor) {
@@ -970,7 +802,6 @@ export class MessageViewerApp extends BaseApplication {
     
     const { UserSettingsPanel } = await import('../Settings/UserSettingsPanel.js');
     
-    // Pass the selected actor context
     new UserSettingsPanel({
       actorId: this.selectedActorId,
       actor: selectedActor
@@ -1003,7 +834,6 @@ export class MessageViewerApp extends BaseApplication {
       ? event.currentTarget.checked 
       : $(event.currentTarget).val();
     
-    // Store temporarily (apply on button click)
     const filters = this.stateManager.get('advancedFilters') || {};
     
     if (value === '' || value === false) {
@@ -1022,8 +852,6 @@ export class MessageViewerApp extends BaseApplication {
   _onApplyFilters(event) {
     event.preventDefault();
     
-    // Filters are already stored in state from field changes
-    // Just re-render to apply them
     this.stateManager.set('currentPage', 1);
     this.render(false);
     
@@ -1066,7 +894,8 @@ export class MessageViewerApp extends BaseApplication {
   }
 
   /**
-   * Show detailed time info:
+   * Show detailed time info for a message
+   * @param {string} messageId - Message ID
    */
   showTimeDetails(messageId) {
     const message = this.stateManager.getMessageById(messageId);
@@ -1074,20 +903,15 @@ export class MessageViewerApp extends BaseApplication {
     
     const timeInfo = [];
     
-    // Show ISO timestamp
     timeInfo.push(`<strong>Timestamp:</strong> ${message.timestamp}`);
-    
-    // Show formatted versions
     timeInfo.push(`<strong>12-hour:</strong> ${this.timeService.formatTimestamp(message.timestamp, '12h')}`);
     timeInfo.push(`<strong>24-hour:</strong> ${this.timeService.formatTimestamp(message.timestamp, '24h')}`);
     timeInfo.push(`<strong>Relative:</strong> ${this.timeService.formatTimestamp(message.timestamp, 'relative')}`);
     
-    // If SimpleCalendar data exists
     if (message.simpleCalendarData) {
       timeInfo.push(`<strong>In-Game Time:</strong> ${message.simpleCalendarData.display}`);
     }
     
-    // If scheduled
     if (message.metadata?.scheduled) {
       timeInfo.push(`<strong>Scheduled:</strong> Yes`);
     }
@@ -1141,13 +965,12 @@ export class MessageViewerApp extends BaseApplication {
 
   /**
    * Cleanup when viewer is closed
+   * @returns {Promise<void>}
    */
   async close(options = {}) {
-    // Clean up event listeners
-    this.eventBus.off(EVENTS.MESSAGE_RECEIVED);
-    this.eventBus.off(EVENTS.MESSAGE_SCHEDULED);
-    this.eventBus.off(EVENTS.SCHEDULE_CANCELLED);
-    this.eventBus.off(EVENTS.MESSAGE_SENT);
+    // Clean up event listeners using stored unsubscribers
+    this.eventUnsubscribers.forEach(unsubscribe => unsubscribe());
+    this.eventUnsubscribers = [];
     
     // Call parent close
     return super.close(options);

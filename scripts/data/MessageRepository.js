@@ -5,9 +5,10 @@
  * Description: Handles all message data operations (CRUD)
  */
 
-import { MODULE_ID } from '../utils/constants.js';
+import { MODULE_ID, debugLog } from '../utils/constants.js';
 import { DataValidator } from './DataValidator.js';
 import { JournalManager } from './JournalManager.js';
+import { constructMessageStatus, extractBodyFromHTML } from '../utils/messageHelpers.js';
 
 export class MessageRepository {
   constructor() {
@@ -16,7 +17,7 @@ export class MessageRepository {
   }
   
   /**
-   * Create a new message
+   * Create a new message in a journal
    * @param {Object} messageData - Message data
    * @returns {Promise<Object>} Created message object
    */
@@ -40,11 +41,9 @@ export class MessageRepository {
     
     // Prepare timestamp data
     const timestamp = data.timestamp || new Date().toISOString();
-    
-    // Prepare SimpleCalendar data if provided
     const simpleCalendarData = data.simpleCalendarData || null;
     
-    // ✅ FIXED: Properly merge status - preserve all provided values
+    // Properly merge status - preserve all provided values
     const defaultStatus = {
       read: false,
       sent: false,
@@ -54,13 +53,12 @@ export class MessageRepository {
       deleted: false
     };
     
-    // Merge data.status OVER defaults (so data.status takes priority)
     const status = {
       ...defaultStatus,
       ...(data.status || {})
     };
     
-    console.log(`${MODULE_ID} | Creating message with status:`, status);
+    debugLog('Creating message with status:', status);
     
     // Prepare metadata with scheduling info
     const metadata = {
@@ -85,26 +83,20 @@ export class MessageRepository {
           to: data.to,
           subject: data.subject,
           content: data.content,
-          
-          // Enhanced timestamp storage
-          timestamp,  // ISO-8601 timestamp (always present)
-          simpleCalendarData,  // SimpleCalendar data if applicable (can be null)
-          
+          timestamp,
+          simpleCalendarData,
           network: data.network,
           encrypted: data.encrypted,
-          status: status,  // ✅ Now properly preserves scheduled: true
-          
-          // Enhanced metadata
-          metadata,  // Includes scheduled info
-          
+          status: status,
+          metadata,
           createdAt: new Date().toISOString()
         }
       }
     }, { parent: recipientJournal });
     
-    console.log(`${MODULE_ID} | ✓ Created message: ${data.subject}, scheduled=${status.scheduled}`);
+    console.log(`${MODULE_ID} | ✓ Created message: ${data.subject}`);
     
-    // FIXED: Create copy in sender's sent folder
+    // Create copy in sender's sent folder
     if (data.actorId && !data.metadata?.isPlaceholder) {
       await this._createSentCopy(data, timestamp, simpleCalendarData, metadata);
     }
@@ -119,9 +111,10 @@ export class MessageRepository {
   }
 
   /**
-   * Helper to check if message was scheduled
+   * Check if message was scheduled
    * @param {Object} message - Message object
    * @returns {boolean}
+   * @private
    */
   _isScheduledMessage(message) {
     return message.metadata?.scheduled === true;
@@ -132,14 +125,13 @@ export class MessageRepository {
    * Uses SimpleCalendar format if available, otherwise ISO
    * @param {Object} message - Message object
    * @returns {string}
+   * @private
    */
   _getDisplayTimestamp(message) {
-    // If has SimpleCalendar data, prefer that display
     if (message.simpleCalendarData?.display) {
       return message.simpleCalendarData.display;
     }
     
-    // Otherwise return ISO timestamp
     return message.timestamp;
   }
   
@@ -194,7 +186,7 @@ export class MessageRepository {
   }
   
   /**
-   * Update message status
+   * Update message status flags
    * @param {string} messageId - Message ID
    * @param {Object} status - Status updates
    * @returns {Promise<boolean>}
@@ -222,7 +214,7 @@ export class MessageRepository {
         cached.status = newStatus;
       }
       
-      console.log(`${MODULE_ID} | Updated message status:`, messageId, newStatus);
+      debugLog('Updated message status:', messageId, newStatus);
       
       return true;
     } catch (error) {
@@ -246,10 +238,8 @@ export class MessageRepository {
     
     try {
       if (moveToDeleted) {
-        // Move to deleted messages journal
         await this._moveToDeleted(message);
       } else {
-        // Permanent delete
         await message.page.delete();
       }
       
@@ -357,16 +347,18 @@ export class MessageRepository {
   // ========================================
   
   /**
-   * Get recipient's journal - FIXED
+   * Get recipient's journal by email
+   * @param {string} emailString - Email string (can be "Name <email>" format)
+   * @returns {Promise<JournalEntry|null>}
    * @private
    */
   async _getRecipientJournal(emailString) {
-    // ✅ FIX: Extract email from "Name <email>" format
+    // Extract email from "Name <email>" format
     const email = emailString.match(/<(.+?)>/) 
       ? emailString.match(/<(.+?)>/)[1] 
       : emailString;
     
-    console.log(`${MODULE_ID} | Looking for inbox with email: ${email}`);
+    debugLog('Looking for inbox with email:', email);
     
     // Find actor by email flag
     const actor = game.actors.find(a => 
@@ -374,7 +366,6 @@ export class MessageRepository {
     );
     
     if (actor) {
-      // ✅ Now just use the fixed getActorInbox method!
       return await this.journalManager.getActorInbox(actor.id);
     }
     
@@ -382,16 +373,16 @@ export class MessageRepository {
   }
   
   /**
-   * Create copy in sender's sent folder - NEW METHOD
+   * Create copy in sender's sent folder
+   * @param {Object} data - Message data
+   * @param {string} timestamp - ISO timestamp
+   * @param {Object} simpleCalendarData - SimpleCalendar data
+   * @param {Object} metadata - Message metadata
    * @private
    */
   async _createSentCopy(data, timestamp, simpleCalendarData, metadata) {
-    console.log(`${MODULE_ID} | === _createSentCopy START ===`);
-    console.log(`${MODULE_ID} | ActorId:`, data.actorId);
-    
     try {
       const actor = game.actors.get(data.actorId);
-      console.log(`${MODULE_ID} | Found actor:`, actor?.name);
       
       if (!actor) {
         console.warn(`${MODULE_ID} | No actor found for actorId: ${data.actorId}`);
@@ -402,24 +393,17 @@ export class MessageRepository {
       const possessiveName = `${actor.name}'s Messages`;
       const simpleName = `${actor.name} Messages`;
       
-      console.log(`${MODULE_ID} | Looking for inbox: "${possessiveName}" or "${simpleName}"`);
-      
       let journal = game.journal.getName(possessiveName) || game.journal.getName(simpleName);
-      
-      console.log(`${MODULE_ID} | Found by name:`, journal?.name);
       
       if (!journal) {
         journal = game.journal.find(j => 
           j.getFlag(MODULE_ID, 'isInbox') && 
           j.getFlag(MODULE_ID, 'actorId') === actor.id
         );
-        console.log(`${MODULE_ID} | Found by flag:`, journal?.name);
       }
       
       if (!journal && game.user.isGM) {
-        console.log(`${MODULE_ID} | No inbox found - creating new one`);
         const folder = await this.journalManager.getMessageFolder();
-        console.log(`${MODULE_ID} | Folder:`, folder?.name);
         
         journal = await JournalEntry.create({
           name: possessiveName,
@@ -432,6 +416,7 @@ export class MessageRepository {
             }
           }
         });
+        
         console.log(`${MODULE_ID} | Created inbox: ${journal.name}`);
       }
       
@@ -440,12 +425,8 @@ export class MessageRepository {
         return;
       }
       
-      console.log(`${MODULE_ID} | Using journal: ${journal.name}`);
-      
       // Format message content
       const formattedContent = this._formatMessageContent(data);
-      
-      console.log(`${MODULE_ID} | Creating sent page...`);
       
       // Create sent copy with SENT status
       const page = await JournalEntryPage.create({
@@ -482,20 +463,17 @@ export class MessageRepository {
         }
       }, { parent: journal });
       
-      console.log(`${MODULE_ID} | ✅ Created sent copy page: ${page.name}`);
-      console.log(`${MODULE_ID} | Page ID: ${page.id}`);
-      console.log(`${MODULE_ID} | Status:`, page.flags[MODULE_ID].status);
+      console.log(`${MODULE_ID} | ✓ Created sent copy: ${page.name}`);
       
     } catch (error) {
-      console.error(`${MODULE_ID} | ❌ Error creating sent copy:`, error);
-      console.error(`${MODULE_ID} | Stack:`, error.stack);
+      console.error(`${MODULE_ID} | Error creating sent copy:`, error);
     }
-    
-    console.log(`${MODULE_ID} | === _createSentCopy END ===`);
   }
   
   /**
-   * Format message content for journal
+   * Format message content for journal display
+   * @param {Object} data - Message data
+   * @returns {string} Formatted HTML content
    * @private
    */
   _formatMessageContent(data) {
@@ -528,10 +506,18 @@ export class MessageRepository {
   
   /**
    * Convert journal page to message object
+   * @param {JournalEntryPage} page - Journal page
+   * @returns {Object} Message object
    * @private
    */
   _pageToMessage(page) {
     const flags = page.flags[MODULE_ID] || {};
+    
+    // Extract body from HTML if needed
+    let body = flags.content || '';
+    if (!body && page.text?.content) {
+      body = extractBodyFromHTML(page.text.content);
+    }
     
     return {
       id: page.id,
@@ -539,37 +525,27 @@ export class MessageRepository {
       from: flags.from || '',
       to: flags.to || '',
       content: page.text?.content || '',
-      body: flags.content || page.text?.content || '', // Add body alias
+      body: body,
       timestamp: flags.timestamp || flags.createdAt || page.sort,
       simpleCalendarData: flags.simpleCalendarData || null,
       network: flags.network || 'CITINET',
       encrypted: flags.encrypted || false,
-      
-      // CRITICAL: Preserve ALL status fields including 'scheduled'
-      status: {
-        read: Boolean(flags.status?.read),
-        sent: Boolean(flags.status?.sent),
-        scheduled: Boolean(flags.status?.scheduled),
-        spam: Boolean(flags.status?.spam),
-        saved: Boolean(flags.status?.saved),
-        deleted: Boolean(flags.status?.deleted)
-      },
-      
+      status: constructMessageStatus(flags),
       metadata: {
         ...(flags.metadata || {}),
         messageType: flags.metadata?.messageType || flags.type || 'standard',
         scheduleId: flags.metadata?.scheduleId || flags.scheduleId
       },
-      
       attachments: flags.attachments || [],
       createdAt: flags.createdAt || page.sort,
       page: page // Keep reference for updates
     };
   }
 
-  
   /**
    * Convert journal to array of messages
+   * @param {JournalEntry} journal - Journal entry
+   * @returns {Array<Object>} Array of messages
    * @private
    */
   _journalToMessages(journal) {
@@ -582,6 +558,7 @@ export class MessageRepository {
   
   /**
    * Get all messages from all inboxes
+   * @returns {Promise<Array<Object>>}
    * @private
    */
   async _getAllMessages() {
@@ -598,6 +575,7 @@ export class MessageRepository {
   
   /**
    * Move message to deleted folder
+   * @param {Object} message - Message object
    * @private
    */
   async _moveToDeleted(message) {
@@ -634,7 +612,7 @@ export class MessageRepository {
   }
   
   /**
-   * Clear cache
+   * Clear message cache
    */
   clearCache() {
     this.cache.clear();

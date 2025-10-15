@@ -5,7 +5,7 @@
  * Description: Handles scheduled message delivery
  */
 
-import { MODULE_ID } from '../utils/constants.js';
+import { MODULE_ID, debugLog } from '../utils/constants.js';
 import { DataValidator } from '../data/DataValidator.js';
 import { MessageService } from './MessageService.js';
 import { SettingsManager } from '../core/SettingsManager.js';
@@ -20,25 +20,21 @@ export class SchedulingService {
     this.checkInterval = null;
     this.checkFrequency = 60000;
     this.timeService = TimeService.getInstance();
-    this.ready = false; 
   
-    //  Mark as ready after loading schedules
-    this._loadSchedulesFromSettings().then(() => {
-      this.ready = true;
-      console.log(`${MODULE_ID} | SchedulingService ready with ${this.getAllScheduled().length} scheduled messages`);
-    });
+    // Load schedules asynchronously
+    this._loadSchedulesFromSettings();
 
     // Listen for time changes from SimpleCalendar
     this.eventBus.on(EVENTS.TIME_CHANGED, (data) => {
       if (data.source === 'simplecalendar') {
-        console.log(`${MODULE_ID} | SimpleCalendar time changed, checking scheduled messages...`);
+        debugLog('SimpleCalendar time changed, checking scheduled messages');
         this.checkScheduledMessages();
       }
     });
   }
   
   /**
-   * Start the scheduling service
+   * Start the scheduling service (GM only)
    */
   start() {
     if (this.checkInterval) {
@@ -46,10 +42,9 @@ export class SchedulingService {
       return;
     }
     
-    // Get check frequency from settings (convert to ms)
     const checkFrequency = (this.settingsManager.get('scheduleCheckInterval') || 60) * 1000;
     
-    console.log(`${MODULE_ID} | Starting scheduling service (checking every ${checkFrequency/1000}s)...`);
+    console.log(`${MODULE_ID} | Starting scheduling service (checking every ${checkFrequency/1000}s)`);
     
     // Check immediately
     this.checkScheduledMessages();
@@ -72,12 +67,12 @@ export class SchedulingService {
   }
   
   /**
-   * Schedule a message
+   * Schedule a message for future delivery
    * @param {Object} messageData - Message data
    * @returns {Promise<string>} Schedule ID
    */
   async scheduleMessage(messageData) {
-    console.log(`${MODULE_ID} | Scheduling message...`, messageData);
+    debugLog('Scheduling message', messageData);
     
     // Validate
     const validation = DataValidator.validateMessage(messageData);
@@ -117,92 +112,15 @@ export class SchedulingService {
       sent: false
     };
     
-    console.log(`${MODULE_ID} | Schedule data prepared:`, scheduleData);
-    
-    // ✅ FIX: Create placeholder in SENDER's inbox
+    // Create placeholder in SENDER's inbox
     try {
       if (data.actorId) {
-        const actor = game.actors.get(data.actorId);
-        
-        if (!actor) {
-          throw new Error(`Actor not found: ${data.actorId}`);
-        }
-        
-        console.log(`${MODULE_ID} | Checking inbox for actor: ${actor.name}`);
-        
-        // ✅ CRITICAL FIX: Ensure actor has an inbox
-        let inboxId = actor.getFlag(MODULE_ID, 'inboxJournal');
-        
-        if (!inboxId) {
-          console.warn(`${MODULE_ID} | Actor ${actor.name} has no inbox - creating one...`);
-          
-          const journalManager = this.messageService.messageRepository.journalManager;
-          const inbox = await journalManager.ensureActorInbox(actor.id);
-          inboxId = inbox.id;
-          
-          // ✅ CRITICAL FIX: Set the flag so actor remembers the inbox permanently
-          await actor.setFlag(MODULE_ID, 'inboxJournal', inboxId);
-          
-          console.log(`${MODULE_ID} | ✓ Created inbox: ${inbox.name}`);
-          ui.notifications.info(`Created message inbox for ${actor.name}`);
-        }
-        
-        console.log(`${MODULE_ID} | Using inbox: ${inboxId}`);
-        
-        // Extract emails for display
-        const senderEmail = data.from.match(/<(.+?)>/) ? 
-          data.from.match(/<(.+?)>/)[1] : data.from;
-        
-        const recipientEmail = data.to.match(/<(.+?)>/) ? 
-          data.to.match(/<(.+?)>/)[1] : data.to;
-        
-        const recipientName = data.to.replace(/<.+?>/, '').trim() || recipientEmail;
-        
-        const placeholderData = {
-          // Reverse from/to so placeholder goes to SENDER's inbox
-          from: `System <system@nightcity.net>`,
-          to: data.from,  // YOUR email - placeholder goes to YOU
-          
-          subject: `⏰ Scheduled: ${data.subject}`,
-          content: this._generatePlaceholderContent({
-            ...messageData,
-            recipientDisplay: recipientName,
-            recipientEmail: recipientEmail
-          }),
-          timestamp: messageData.scheduledTime,
-          actorId: data.actorId,
-          network: data.network || 'CITINET',
-          
-          status: {
-            scheduled: true,   // Makes it appear in "Scheduled" filter
-            sent: false,       // Don't mark as sent
-            read: true,        // Mark as read (don't clutter unread)
-            spam: false,
-            saved: false,
-            deleted: false
-          },
-          
-          metadata: {
-            messageType: 'scheduled',
-            scheduleId: scheduleId,
-            isPlaceholder: true,
-            originalTo: data.to,
-            originalSubject: data.subject
-          }
-        };
-        
-        console.log(`${MODULE_ID} | Creating placeholder...`);
-        console.log(`${MODULE_ID} | Placeholder status:`, placeholderData.status);
-        
-        await this.messageService.messageRepository.create(placeholderData);
-        
-        console.log(`${MODULE_ID} | ✓ Placeholder created in sender's inbox`);
+        await this._createSchedulePlaceholder(data, scheduleId, messageData);
       }
     } catch (error) {
       console.error(`${MODULE_ID} | Error creating placeholder:`, error);
-      console.error(`${MODULE_ID} | Stack:`, error.stack);
       
-      // Show more helpful error message
+      // Show helpful error
       if (error.message.includes('Cannot create inbox')) {
         ui.notifications.error('Cannot create inbox. Please ask your GM to create an inbox for your character first.');
       } else {
@@ -235,7 +153,84 @@ export class SchedulingService {
   }
 
   /**
+   * Create placeholder message in sender's inbox
+   * @param {Object} data - Sanitized message data
+   * @param {string} scheduleId - Schedule ID
+   * @param {Object} messageData - Original message data
+   * @private
+   */
+  async _createSchedulePlaceholder(data, scheduleId, messageData) {
+    const actor = game.actors.get(data.actorId);
+    
+    if (!actor) {
+      throw new Error(`Actor not found: ${data.actorId}`);
+    }
+    
+    // Ensure actor has an inbox
+    let inboxId = actor.getFlag(MODULE_ID, 'inboxJournal');
+    
+    if (!inboxId) {
+      debugLog(`Actor ${actor.name} has no inbox - creating one`);
+      
+      const journalManager = this.messageService.messageRepository.journalManager;
+      const inbox = await journalManager.ensureActorInbox(actor.id);
+      inboxId = inbox.id;
+      
+      await actor.setFlag(MODULE_ID, 'inboxJournal', inboxId);
+      
+      console.log(`${MODULE_ID} | Created inbox: ${inbox.name}`);
+      ui.notifications.info(`Created message inbox for ${actor.name}`);
+    }
+    
+    // Extract emails for display
+    const senderEmail = data.from.match(/<(.+?)>/) ? 
+      data.from.match(/<(.+?)>/)[1] : data.from;
+    
+    const recipientEmail = data.to.match(/<(.+?)>/) ? 
+      data.to.match(/<(.+?)>/)[1] : data.to;
+    
+    const recipientName = data.to.replace(/<.+?>/, '').trim() || recipientEmail;
+    
+    const placeholderData = {
+      from: `System <system@nightcity.net>`,
+      to: data.from,  // Placeholder goes to sender
+      subject: `⏰ Scheduled: ${data.subject}`,
+      content: this._generatePlaceholderContent({
+        ...messageData,
+        recipientDisplay: recipientName,
+        recipientEmail: recipientEmail
+      }),
+      timestamp: messageData.scheduledTime,
+      actorId: data.actorId,
+      network: data.network || 'CITINET',
+      
+      status: {
+        scheduled: true,
+        sent: false,
+        read: true,
+        spam: false,
+        saved: false,
+        deleted: false
+      },
+      
+      metadata: {
+        messageType: 'scheduled',
+        scheduleId: scheduleId,
+        isPlaceholder: true,
+        originalTo: data.to,
+        originalSubject: data.subject
+      }
+    };
+    
+    await this.messageService.messageRepository.create(placeholderData);
+    
+    console.log(`${MODULE_ID} | ✓ Created schedule placeholder`);
+  }
+
+  /**
    * Generate placeholder content for scheduled messages
+   * @param {Object} data - Message data
+   * @returns {string} HTML content
    * @private
    */
   _generatePlaceholderContent(data) {
@@ -292,9 +287,10 @@ export class SchedulingService {
     `;
   }
 
-
   /**
    * Get formatted time display for UI
+   * @param {Object} schedule - Schedule object
+   * @returns {string}
    */
   getScheduleDisplayTime(schedule) {
     if (schedule.useSimpleCalendar && schedule.simpleCalendarData) {
@@ -305,7 +301,10 @@ export class SchedulingService {
   }
 
   /**
-   * GM to reschedule a message
+   * Reschedule a message (GM only)
+   * @param {string} scheduleId - Schedule ID
+   * @param {string} newTime - New scheduled time (ISO format)
+   * @returns {Promise<Object>} Updated schedule
    */
   async rescheduleMessage(scheduleId, newTime) {
     if (!game.user.isGM) {
@@ -334,12 +333,11 @@ export class SchedulingService {
     scheduled[scheduleId] = schedule;
     await this.settingsManager.set('scheduledMessages', scheduled);
     
-    console.log(`${MODULE_ID} | Message rescheduled:`, scheduleId);
+    console.log(`${MODULE_ID} | Message rescheduled: ${scheduleId}`);
     
     return schedule;
   }
 
-  
   /**
    * Cancel a scheduled message
    * @param {string} scheduleId - Schedule ID
@@ -354,33 +352,10 @@ export class SchedulingService {
       return false;
     }
     
-    console.log(`${MODULE_ID} | Cancelling schedule: ${scheduleId}`);
-    
-    // ✅ NEW: Delete the placeholder from sender's inbox
+    // Delete the placeholder from sender's inbox
     if (schedule.actorId) {
       try {
-        const actor = game.actors.get(schedule.actorId);
-        if (actor) {
-          const inboxId = actor.getFlag(MODULE_ID, 'inboxJournal');
-          if (inboxId) {
-            const journal = game.journal.get(inboxId);
-            if (journal) {
-              // Find placeholder by scheduleId
-              const placeholderPage = journal.pages.find(p => {
-                const pageScheduleId = p.getFlag(MODULE_ID, 'metadata')?.scheduleId;
-                const isPlaceholder = p.getFlag(MODULE_ID, 'metadata')?.isPlaceholder;
-                return pageScheduleId === scheduleId && isPlaceholder;
-              });
-              
-              if (placeholderPage) {
-                console.log(`${MODULE_ID} | Deleting placeholder: ${placeholderPage.name}`);
-                await placeholderPage.delete();
-              } else {
-                console.warn(`${MODULE_ID} | No placeholder found for schedule ${scheduleId}`);
-              }
-            }
-          }
-        }
+        await this._deletePlaceholder(schedule.actorId, scheduleId);
       } catch (error) {
         console.error(`${MODULE_ID} | Error deleting placeholder:`, error);
         // Continue anyway - we still want to remove the schedule
@@ -391,12 +366,11 @@ export class SchedulingService {
     delete scheduled[scheduleId];
     await this.settingsManager.set('scheduledMessages', scheduled);
     
-    console.log(`${MODULE_ID} | ✓ Cancelled scheduled message: ${scheduleId}`);
+    console.log(`${MODULE_ID} | ✓ Cancelled schedule: ${scheduleId}`);
 
-    // Emit local event
+    // Emit events
     this.eventBus.emit(EVENTS.SCHEDULE_CANCELLED, { scheduleId });
 
-    // Emit socket event to refresh all users' viewers
     if (game.nightcity.socketManager) {
       game.nightcity.socketManager.emit('schedule:cancelled', {
         scheduleId,
@@ -406,21 +380,53 @@ export class SchedulingService {
 
     return true;
   }
+
+  /**
+   * Delete placeholder from actor's inbox
+   * @param {string} actorId - Actor ID
+   * @param {string} scheduleId - Schedule ID
+   * @private
+   */
+  async _deletePlaceholder(actorId, scheduleId) {
+    const actor = game.actors.get(actorId);
+    if (!actor) return;
+    
+    const inboxId = actor.getFlag(MODULE_ID, 'inboxJournal');
+    if (!inboxId) return;
+    
+    const journal = game.journal.get(inboxId);
+    if (!journal) return;
+    
+    // Find placeholder by scheduleId
+    const placeholderPage = journal.pages.find(p => {
+      const pageScheduleId = p.getFlag(MODULE_ID, 'metadata')?.scheduleId;
+      const isPlaceholder = p.getFlag(MODULE_ID, 'metadata')?.isPlaceholder;
+      return pageScheduleId === scheduleId && isPlaceholder;
+    });
+    
+    if (placeholderPage) {
+      await placeholderPage.delete();
+      debugLog('Deleted placeholder:', placeholderPage.name);
+    }
+  }
   
   /**
    * Get all scheduled messages
-   * @returns {Array}
+   * @returns {Array<Object>}
    */
   getAllScheduled() {
     const scheduled = this.settingsManager.get('scheduledMessages') || {};
     return Object.values(scheduled).filter(msg => !msg.sent);
   }
 
-  // Method to load schedules on initialization
+  /**
+   * Load schedules on initialization
+   * @private
+   */
   async _loadSchedulesFromSettings() {
     try {
       const scheduled = this.settingsManager.get('scheduledMessages') || {};
-      console.log(`${MODULE_ID} | Loaded ${Object.keys(scheduled).length} scheduled messages from settings`);
+      debugLog(`Loaded ${Object.keys(scheduled).length} scheduled messages`);
     } catch (error) {
       console.error(`${MODULE_ID} | Error loading scheduled messages:`, error);
     }
@@ -428,7 +434,7 @@ export class SchedulingService {
   
   /**
    * Get scheduled messages for current user
-   * @returns {Array}
+   * @returns {Array<Object>}
    */
   getUserScheduled() {
     const all = this.getAllScheduled();
@@ -441,61 +447,34 @@ export class SchedulingService {
    */
   async checkScheduledMessages() {
     const scheduled = this.getAllScheduled();
-    const now = this.timeService.getCurrentTimestamp();
     let sent = 0;
     
-    console.log(`${MODULE_ID} | Checking ${scheduled.length} scheduled messages at ${now}`);
+    debugLog(`Checking ${scheduled.length} scheduled messages`);
     
     for (const schedule of scheduled) {
       try {
         // Check if message is due
         const isDue = this.timeService.isTimeDue(schedule.scheduledTime);
         
-        if (!isDue) {
-          console.log(`${MODULE_ID} | Message ${schedule.id} not yet due (scheduled: ${schedule.scheduledTime}, now: ${now})`);
-          continue;
-        }
+        if (!isDue) continue;
         
-        console.log(`${MODULE_ID} | Message ${schedule.id} is DUE - sending now!`);
+        console.log(`${MODULE_ID} | Message ${schedule.id} is DUE - sending now`);
         
-        // ✅ FIX: Look for placeholder in SENDER's inbox (not recipient's!)
+        // Delete placeholder from sender's inbox
         if (schedule.actorId) {
           try {
-            const actor = game.actors.get(schedule.actorId);
-            if (actor) {
-              // Get SENDER's inbox journal
-              const inboxId = actor.getFlag(MODULE_ID, 'inboxJournal');
-              if (inboxId) {
-                const journal = game.journal.get(inboxId);
-                if (journal) {
-                  // Find placeholder by scheduleId
-                  const placeholderPage = journal.pages.find(p => {
-                    const scheduleId = p.getFlag(MODULE_ID, 'metadata')?.scheduleId;
-                    const isPlaceholder = p.getFlag(MODULE_ID, 'metadata')?.isPlaceholder;
-                    return scheduleId === schedule.id && isPlaceholder;
-                  });
-                  
-                  if (placeholderPage) {
-                    console.log(`${MODULE_ID} | ✓ Deleting placeholder from sender's inbox: ${placeholderPage.name}`);
-                    await placeholderPage.delete();
-                  } else {
-                    console.warn(`${MODULE_ID} | ⚠ No placeholder found for schedule ${schedule.id} in sender's inbox`);
-                    // Not a critical error - maybe user deleted it manually
-                  }
-                }
-              }
-            }
+            await this._deletePlaceholder(schedule.actorId, schedule.id);
           } catch (error) {
             console.error(`${MODULE_ID} | Error deleting placeholder:`, error);
-            // Continue anyway - we still want to send the message
+            // Continue anyway
           }
         }
         
-        // ✅ Send the actual message to RECIPIENT
+        // Send the actual message to RECIPIENT
         const messageData = {
           from: schedule.from,
-          to: schedule.to,  // Recipient gets the real message
-          subject: schedule.subject,  // Original subject (no ⏰)
+          to: schedule.to,
+          subject: schedule.subject,
           content: schedule.content,
           actorId: schedule.actorId,
           timestamp: schedule.scheduledTime,
@@ -503,22 +482,22 @@ export class SchedulingService {
           
           // Normal message status (received by recipient)
           status: {
-            scheduled: false,  // Not scheduled anymore
-            sent: false,       // Received (not sent by recipient)
-            read: false,       // Unread
+            scheduled: false,
+            sent: false,
+            read: false,
             spam: false,
             saved: false,
             deleted: false
           },
           
           metadata: {
-            messageType: 'standard',  // Normal message now
+            messageType: 'standard',
             sentVia: 'scheduled',
             originalScheduleId: schedule.id
           }
         };
         
-        console.log(`${MODULE_ID} | Sending message to recipient: ${schedule.to}`);
+        debugLog('Sending scheduled message to recipient:', schedule.to);
         
         // Use MessageManager to send
         await game.nightcity.messageManager.sendMessage(messageData, {
@@ -549,8 +528,7 @@ export class SchedulingService {
         }
         
       } catch (error) {
-        console.error(`${MODULE_ID} | ❌ Error sending scheduled message ${schedule.id}:`, error);
-        console.error(`${MODULE_ID} | Stack:`, error.stack);
+        console.error(`${MODULE_ID} | Error sending scheduled message ${schedule.id}:`, error);
         // Continue with other messages
       }
     }
@@ -559,15 +537,13 @@ export class SchedulingService {
       console.log(`${MODULE_ID} | ✓ Sent ${sent} scheduled message(s)`);
       this.eventBus.emit(EVENTS.MESSAGES_SENT, { count: sent });
       ui.notifications.info(`Sent ${sent} scheduled message${sent > 1 ? 's' : ''}`);
-    } else {
-      console.log(`${MODULE_ID} | No messages were due to send`);
     }
     
     return sent;
   }
 
   /**
-   * Get statistics
+   * Get statistics about scheduled messages
    * @returns {Object}
    */
   getStatistics() {
@@ -608,6 +584,7 @@ export class SchedulingService {
   
   /**
    * Mark schedule as sent
+   * @param {string} scheduleId - Schedule ID
    * @private
    */
   async _markAsSent(scheduleId) {
@@ -618,42 +595,7 @@ export class SchedulingService {
       scheduled[scheduleId].sentAt = new Date().toISOString();
       await this.settingsManager.set('scheduledMessages', scheduled);
       
-      console.log(`${MODULE_ID} | Marked schedule ${scheduleId} as sent`);
-    }
-  }
-  
-  /**
-   * Check if SimpleCalendar is available
-   * @private
-   */
-  _isSimpleCalendarAvailable() {
-    return game.modules.get('foundryvtt-simple-calendar')?.active;
-  }
-  
-  /**
-   * Check if SimpleCalendar time is due
-   * @private
-   */
-  _checkSimpleCalendarDue(scheduledTime) {
-    if (!this._isSimpleCalendarAvailable()) return false;
-    
-    try {
-      const scheduled = new Date(scheduledTime);
-      const currentTimestamp = SimpleCalendar.api.timestamp();
-      
-      const scheduledTimestamp = SimpleCalendar.api.dateToTimestamp({
-        year: scheduled.getFullYear(),
-        month: scheduled.getMonth(),
-        day: scheduled.getDate(),
-        hour: scheduled.getHours(),
-        minute: scheduled.getMinutes(),
-        second: 0
-      });
-      
-      return currentTimestamp >= scheduledTimestamp;
-    } catch (error) {
-      console.error(`${MODULE_ID} | SimpleCalendar check error:`, error);
-      return false;
+      debugLog('Marked schedule as sent:', scheduleId);
     }
   }
 }
