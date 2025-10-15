@@ -75,14 +75,23 @@ export class MessageViewerApp extends BaseApplication {
   getData(options = {}) {
     const data = super.getData(options);
     
-    // Get paginated messages
-    const messageData = this.messageList.getPaginatedMessages();
-    
-    // Get current state
+    // ========================================
+    // 1. GET STATE VALUES (declare once!)
+    // ========================================
     const currentFilter = this.stateManager.get('currentFilter') || 'inbox';
     const searchTerm = this.stateManager.get('searchTerm') || '';
+    const sortOrder = this.stateManager.get('sortOrder') || 'date-desc';
     const selectedMessageId = this.stateManager.get('selectedMessageId');
-
+    const showAdvancedFilters = this.stateManager.get('showAdvancedFilters') || false;
+    const advancedFilters = this.stateManager.get('advancedFilters') || {};
+    
+    // ========================================
+    // 2. GET MESSAGES
+    // ========================================
+    
+    // Get paginated messages (uses comprehensive filtering)
+    const messageData = this.messageList.getPaginatedMessages();
+    
     // Format timestamps for display
     const formattedMessages = messageData.messages.map(msg => ({
       ...msg,
@@ -92,31 +101,50 @@ export class MessageViewerApp extends BaseApplication {
       fullTimestamp: this.timeService.formatTimestamp(msg.timestamp, 'full')
     }));
     
+    // ========================================
+    // 3. CALCULATE COUNTS
+    // ========================================
+    
     // Get all messages and calculate counts
     const allMessages = this.stateManager.getAllMessages() || [];
     const counts = calculateMessageCounts(allMessages);
     
     debugLog('Message counts:', counts);
     
-    // Advanced filters state
-    const showAdvancedFilters = this.stateManager.get('showAdvancedFilters') || false;
-    const advancedFilters = this.stateManager.get('advancedFilters') || {};
+    // ========================================
+    // 4. FILTER STATE
+    // ========================================
     
-    // Get unique senders for filter dropdown
+    // Calculate if filters are active (check specific fields)
+    const hasActiveFilters = !!(
+      advancedFilters.sender ||
+      advancedFilters.dateFrom ||
+      advancedFilters.dateTo ||
+      advancedFilters.unreadOnly
+    );
+    
+    // Get unique senders for dropdown
     const uniqueSenders = [...new Set(
-      allMessages.map(m => m.from).filter(f => f)
+      allMessages  // ✅ Use allMessages, not this.messages
+        .map(m => m.from)
+        .filter(Boolean)
     )].sort();
     
-    // Check if any advanced filters are active
-    const hasActiveFilters = Object.keys(advancedFilters).length > 0;
+    // ========================================
+    // 5. SELECTED MESSAGE
+    // ========================================
     
-    // Get selected message
     const selectedMessage = selectedMessageId 
       ? allMessages.find(m => m.id === selectedMessageId)
       : null;
-
-    // Character selection data
-    const selectedActor = this.selectedActorId ? game.actors.get(this.selectedActorId) : null;
+    
+    // ========================================
+    // 6. CHARACTER SELECTION
+    // ========================================
+    
+    const selectedActor = this.selectedActorId 
+      ? game.actors.get(this.selectedActorId) 
+      : null;
     
     // Get available characters based on user
     let availableActors = [];
@@ -136,24 +164,31 @@ export class MessageViewerApp extends BaseApplication {
     // Show selector if GM OR player has multiple characters
     const showCharacterSelector = game.user.isGM || availableActors.length > 1;
     
+    // ========================================
+    // 7. RETURN TEMPLATE DATA
+    // ========================================
+    
     return {
       ...data,
+      
+      // Messages
       messages: formattedMessages,
       currentPage: messageData.currentPage,
       totalPages: messageData.totalPages,
       totalMessages: messageData.totalMessages,
       selectedMessage: selectedMessage,
+      
+      // Filter state
       currentFilter: currentFilter,
       searchTerm: searchTerm,
-      unreadCount: counts.unread,
-      
-      // Filter data
+      sortOrder: sortOrder,
       showAdvancedFilters: showAdvancedFilters,
       advancedFilters: advancedFilters,
       hasActiveFilters: hasActiveFilters,
       uniqueSenders: uniqueSenders,
       
-      // Category counts (use calculated counts)
+      // Counts
+      unreadCount: counts.unread,
       filters: counts,
       
       // Character data
@@ -164,12 +199,10 @@ export class MessageViewerApp extends BaseApplication {
       showCharacterSelector: showCharacterSelector,
       userName: selectedActor?.name || game.user.name,
       
-      // TimeService for current time
+      // Time & Network
       currentTime: this.timeService.formatTimestamp(
         this.timeService.getCurrentTimestamp()
       ),
-      
-      // Network
       networkName: this.stateManager.get('currentNetwork') || 'CITINET'
     };
   }
@@ -817,11 +850,16 @@ export class MessageViewerApp extends BaseApplication {
   _onToggleFilters(event) {
     event.preventDefault();
     
-    const current = this.stateManager.get('showAdvancedFilters') || false;
-    this.stateManager.set('showAdvancedFilters', !current);
+    const currentState = this.stateManager.get('showAdvancedFilters') || false;
+    this.stateManager.set('showAdvancedFilters', !currentState);
     
+    // Play sound
+    if (this.getSetting('enableSounds')) {
+      this.playSound('click');
+    }
+    
+    // Re-render to show/hide panel
     this.render(false);
-    this.playSound('click');
   }
 
   /**
@@ -830,19 +868,27 @@ export class MessageViewerApp extends BaseApplication {
    */
   _onFilterFieldChange(event) {
     const field = $(event.currentTarget).data('filter-field');
-    const value = event.currentTarget.type === 'checkbox' 
-      ? event.currentTarget.checked 
-      : $(event.currentTarget).val();
+    const value = $(event.currentTarget).val();
     
-    const filters = this.stateManager.get('advancedFilters') || {};
+    // Update just this field in advanced filters
+    const currentFilters = this.stateManager.get('advancedFilters') || {};
+    currentFilters[field] = value;
     
-    if (value === '' || value === false) {
-      delete filters[field];
-    } else {
-      filters[field] = value;
-    }
-    
-    this.stateManager.set('advancedFilters', filters);
+    this.stateManager.set('advancedFilters', currentFilters);
+  }
+
+  /**
+   * Has active filter
+   * @private
+   */
+  _hasActiveFilters() {
+    const advancedFilters = this.stateManager.get('advancedFilters') || {};
+    return !!(
+      advancedFilters.sender ||
+      advancedFilters.dateFrom ||
+      advancedFilters.dateTo ||
+      advancedFilters.unreadOnly
+    );
   }
 
   /**
@@ -852,11 +898,34 @@ export class MessageViewerApp extends BaseApplication {
   _onApplyFilters(event) {
     event.preventDefault();
     
-    this.stateManager.set('currentPage', 1);
+    const html = this.element;
+    
+    // Get filter values
+    const sender = html.find('[data-filter-field="sender"]').val();
+    const dateFrom = html.find('[data-filter-field="dateFrom"]').val();
+    const dateTo = html.find('[data-filter-field="dateTo"]').val();
+    const unreadOnly = html.find('[data-filter-field="unreadOnly"]').prop('checked');
+    
+    // Update advanced filters
+    this.stateManager.set('advancedFilters', {
+      sender: sender || null,
+      dateFrom: dateFrom || null,
+      dateTo: dateTo || null,
+      unreadOnly: unreadOnly || false
+    });
+    
+    // Close the panel
+    this.stateManager.set('showAdvancedFilters', false);
+    
+    // Play sound
+    if (this.getSetting('enableSounds')) {
+      this.playSound('click');
+    }
+    
+    // Re-render with new filters
     this.render(false);
     
     ui.notifications.info('Filters applied');
-    this.playSound('click');
   }
 
   /**
@@ -866,13 +935,19 @@ export class MessageViewerApp extends BaseApplication {
   _onResetFilters(event) {
     event.preventDefault();
     
+    // Clear all advanced filters
     this.stateManager.set('advancedFilters', {});
-    this.stateManager.set('currentPage', 1);
+    this.stateManager.set('showAdvancedFilters', false);
     
+    // Play sound
+    if (this.getSetting('enableSounds')) {
+      this.playSound('click');
+    }
+    
+    // Re-render
     this.render(false);
     
-    ui.notifications.info('Filters reset');
-    this.playSound('click');
+    ui.notifications.info('Filters cleared');
   }
 
   /**

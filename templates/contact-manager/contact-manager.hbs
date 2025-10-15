@@ -1,9 +1,9 @@
-{{!-- Contact Manager Template --}}
-{{!-- File: templates/contact-manager.hbs --}}
+{{!-- Enhanced Contact Manager Template --}}
+{{!-- File: templates/contact-manager/contact-manager.hbs --}}
 
 <div class="ncm-contact-manager__container">
   
-  {{!-- CANONICAL HEADER --}}
+  {{!-- HEADER --}}
   <div class="ncm-header">
     <div class="ncm-header__top">
       <div class="ncm-header__connection">
@@ -13,37 +13,52 @@
       <div class="ncm-header__time">{{currentTime}}</div>
     </div>
     <div class="ncm-header__bottom">
-      <span class="ncm-header__welcome">{{contactCount}} Contacts</span>
+      <span class="ncm-header__welcome">
+        {{#if showingFiltered}}
+          {{filteredCount}} of {{contactCount}} Contacts
+        {{else}}
+          {{contactCount}} Contacts
+        {{/if}}
+      </span>
       <div class="ncm-contact-manager__view-toggle">
-        <button class="ncm-contact-manager__view-btn {{#if (eq viewMode 'list')}}ncm-contact-manager__view-btn--active{{/if}}" data-action="view-list">
+        <button class="ncm-contact-manager__view-btn {{#if (eq viewMode 'list')}}ncm-contact-manager__view-btn--active{{/if}}" 
+                data-action="view-list" title="List View">
           <i class="fas fa-list"></i>
         </button>
-        <button class="ncm-contact-manager__view-btn {{#if (eq viewMode 'grid')}}ncm-contact-manager__view-btn--active{{/if}}" data-action="view-grid">
+        <button class="ncm-contact-manager__view-btn {{#if (eq viewMode 'grid')}}ncm-contact-manager__view-btn--active{{/if}}" 
+                data-action="view-grid" title="Grid View">
           <i class="fas fa-th"></i>
         </button>
       </div>
     </div>
   </div>
   
-  {{!-- Toolbar --}}
+  {{!-- TOOLBAR --}}
   <div class="ncm-contact-manager__toolbar">
+    {{!-- Search Input - FIXED --}}
     <div class="ncm-contact-manager__search">
       <i class="ncm-contact-manager__search-icon fas fa-search"></i>
       <input 
         type="text" 
         class="ncm-contact-manager__search-input" 
-        placeholder="Search contacts..."
+        placeholder="Search contacts, aliases, tags..."
         value="{{searchTerm}}"
         data-action="search"
       />
     </div>
     
+    {{!-- Type Filter Dropdown - FIXED --}}
     <select class="ncm-contact-manager__filter" data-filter="type">
-      <option value="all">All Contacts</option>
-      <option value="player">Players</option>
-      <option value="npc">NPCs</option>
-      <option value="corp">Corporations</option>
-      <option value="fixer">Fixers</option>
+      <option value="all" {{#if (eq typeFilter 'all')}}selected{{/if}}>All Types</option>
+      <option value="player" {{#if (eq typeFilter 'player')}}selected{{/if}}>Players</option>
+      <option value="npc" {{#if (eq typeFilter 'npc')}}selected{{/if}}>NPCs</option>
+      <option value="corp" {{#if (eq typeFilter 'corp')}}selected{{/if}}>Corporations</option>
+      <option value="fixer" {{#if (eq typeFilter 'fixer')}}selected{{/if}}>Fixers</option>
+      <option value="netrunner" {{#if (eq typeFilter 'netrunner')}}selected{{/if}}>Netrunners</option>
+      <option value="media" {{#if (eq typeFilter 'media')}}selected{{/if}}>Media</option>
+      <option value="law" {{#if (eq typeFilter 'law')}}selected{{/if}}>Law Enforcement</option>
+      <option value="gang" {{#if (eq typeFilter 'gang')}}selected{{/if}}>Gang Members</option>
+      <option value="other" {{#if (eq typeFilter 'other')}}selected{{/if}}>Other</option>
     </select>
     
     <button class="ncm-btn ncm-btn--primary" data-action="add-contact">
@@ -51,12 +66,23 @@
     </button>
   </div>
   
-  {{!-- Contact List --}}
+  {{!-- CHARACTER CONTEXT INFO --}}
+  {{#if hasCharacter}}
+  <div class="ncm-contact-manager__context">
+    <i class="fas fa-user-circle"></i> Viewing as: <strong>{{characterName}}</strong>
+  </div>
+  {{else}}
+  <div class="ncm-contact-manager__context ncm-contact-manager__context--warning">
+    <i class="fas fa-exclamation-triangle"></i> No character selected - select a character to send messages
+  </div>
+  {{/if}}
+  
+  {{!-- CONTACT LIST --}}
   <div class="ncm-contact-manager__list">
     {{#if contacts.length}}
       
       {{#if (eq viewMode 'list')}}
-      {{!-- List View --}}
+      {{!-- LIST VIEW --}}
       {{#each contactsByCategory}}
         <div class="ncm-contact-category">
           <div class="ncm-contact-category__header" data-action="toggle-category">
@@ -69,31 +95,65 @@
           
           <div class="ncm-contact-category__list">
             {{#each this.contacts}}
-            <div class="ncm-contact-item" data-contact-id="{{this.id}}" data-action="select-contact">
-              {{#if this.img}}
-              <img class="ncm-contact-item__avatar" src="{{this.img}}" alt="{{this.name}}" />
+            <div class="ncm-contact-item {{#if this.readonly}}ncm-contact-item--readonly{{/if}}" 
+                 data-contact-id="{{this.id}}" 
+                 data-action="select-contact">
+              
+              {{!-- Avatar --}}
+              {{#if this.customImg}}
+                <img class="ncm-contact-item__avatar" src="{{this.customImg}}" alt="{{this.name}}" />
+              {{else if this.img}}
+                <img class="ncm-contact-item__avatar" src="{{this.img}}" alt="{{this.name}}" />
               {{else}}
-              <div class="ncm-contact-item__avatar--placeholder">
-                <i class="fas fa-user"></i>
-              </div>
+                <div class="ncm-contact-item__avatar--placeholder">
+                  <i class="fas fa-user"></i>
+                </div>
               {{/if}}
               
+              {{!-- Info --}}
               <div class="ncm-contact-item__info">
-                <div class="ncm-contact-item__name">{{this.name}}</div>
+                <div class="ncm-contact-item__name">
+                  {{this.name}}
+                  {{#if this.alias}}
+                    <span class="ncm-contact-item__alias">({{this.alias}})</span>
+                  {{/if}}
+                  {{#if this.readonly}}
+                    <span class="ncm-contact-item__badge">CHARACTER</span>
+                  {{/if}}
+                </div>
                 <div class="ncm-contact-item__email">{{this.email}}</div>
-                <div class="ncm-contact-item__type">{{this.type}}</div>
+                <div class="ncm-contact-item__meta">
+                  <span class="ncm-contact-item__type">{{this.type}}</span>
+                  {{#if this.tags}}
+                    {{#each this.tags}}
+                      <span class="ncm-contact-item__tag">{{this}}</span>
+                    {{/each}}
+                  {{/if}}
+                </div>
               </div>
               
+              {{!-- Actions --}}
               <div class="ncm-contact-item__actions">
-                <button class="ncm-contact-item__action-btn" data-action="compose-to" data-contact-id="{{this.id}}" title="Send Message">
+                <button class="ncm-contact-item__action-btn" 
+                        data-action="compose-to" 
+                        data-contact-id="{{this.id}}" 
+                        title="Send Message">
                   <i class="fas fa-envelope"></i>
                 </button>
-                <button class="ncm-contact-item__action-btn" data-action="edit-contact" data-contact-id="{{this.id}}" title="Edit">
+                <button class="ncm-contact-item__action-btn" 
+                        data-action="edit-contact" 
+                        data-contact-id="{{this.id}}" 
+                        title="Edit">
                   <i class="fas fa-edit"></i>
                 </button>
-                <button class="ncm-contact-item__action-btn ncm-contact-item__action-btn--danger" data-action="delete-contact" data-contact-id="{{this.id}}" title="Delete">
+                {{#unless this.readonly}}
+                <button class="ncm-contact-item__action-btn ncm-contact-item__action-btn--danger" 
+                        data-action="delete-contact" 
+                        data-contact-id="{{this.id}}" 
+                        title="Delete">
                   <i class="fas fa-trash"></i>
                 </button>
+                {{/unless}}
               </div>
             </div>
             {{/each}}
@@ -102,31 +162,88 @@
       {{/each}}
       
       {{else}}
-      {{!-- Grid View --}}
+      {{!-- GRID VIEW - ENHANCED --}}
       <div class="ncm-contact-manager__grid">
         {{#each contacts}}
-        <div class="ncm-contact-card" data-contact-id="{{this.id}}" data-action="select-contact">
-          {{#if this.img}}
-          <img class="ncm-contact-card__avatar" src="{{this.img}}" alt="{{this.name}}" />
-          {{else}}
-          <div class="ncm-contact-card__avatar--placeholder">
-            <i class="fas fa-user"></i>
+        <div class="ncm-contact-card {{#if this.readonly}}ncm-contact-card--readonly{{/if}}" 
+             data-contact-id="{{this.id}}" 
+             data-action="select-contact">
+          
+          {{!-- Avatar --}}
+          <div class="ncm-contact-card__avatar-wrapper">
+            {{#if this.customImg}}
+              <img class="ncm-contact-card__avatar" src="{{this.customImg}}" alt="{{this.name}}" />
+            {{else if this.img}}
+              <img class="ncm-contact-card__avatar" src="{{this.img}}" alt="{{this.name}}" />
+            {{else}}
+              <div class="ncm-contact-card__avatar--placeholder">
+                <i class="fas fa-user"></i>
+              </div>
+            {{/if}}
+            
+            {{!-- Type Badge --}}
+            <div class="ncm-contact-card__type-badge">{{this.type}}</div>
           </div>
+          
+          {{!-- Name --}}
+          <div class="ncm-contact-card__name">
+            {{this.name}}
+            {{#if this.readonly}}
+              <i class="fas fa-link" title="Character-linked"></i>
+            {{/if}}
+          </div>
+          
+          {{!-- Alias --}}
+          {{#if this.alias}}
+            <div class="ncm-contact-card__alias">"{{this.alias}}"</div>
           {{/if}}
           
-          <div class="ncm-contact-card__name">{{this.name}}</div>
+          {{!-- Email --}}
           <div class="ncm-contact-card__email">{{this.email}}</div>
+          
+          {{!-- Tags --}}
+          {{#if this.tags}}
+            <div class="ncm-contact-card__tags">
+              {{#each this.tags}}
+                <span class="ncm-contact-card__tag">{{this}}</span>
+              {{/each}}
+            </div>
+          {{/if}}
+          
+          {{!-- Quick Actions --}}
+          <div class="ncm-contact-card__actions">
+            <button class="ncm-contact-card__action-btn ncm-contact-card__action-btn--primary" 
+                    data-action="compose-to" 
+                    data-contact-id="{{../this.id}}" 
+                    title="Send Message">
+              <i class="fas fa-envelope"></i>
+            </button>
+            <button class="ncm-contact-card__action-btn" 
+                    data-action="edit-contact" 
+                    data-contact-id="{{../this.id}}" 
+                    title="Edit">
+              <i class="fas fa-edit"></i>
+            </button>
+            {{#unless ../this.readonly}}
+            <button class="ncm-contact-card__action-btn ncm-contact-card__action-btn--danger" 
+                    data-action="delete-contact" 
+                    data-contact-id="{{../this.id}}" 
+                    title="Delete">
+              <i class="fas fa-trash"></i>
+            </button>
+            {{/unless}}
+          </div>
         </div>
         {{/each}}
       </div>
       {{/if}}
       
     {{else}}
-      {{!-- Empty State --}}
+      {{!-- EMPTY STATE --}}
       <div class="ncm-contact-manager__empty">
         <i class="ncm-contact-manager__empty-icon fas fa-address-book"></i>
         <p class="ncm-contact-manager__empty-text">No Contacts</p>
-        <p class="ncm-contact-manager__empty-subtext">Add contacts to start messaging</p>
+        <p class="ncm-contact-manager__empty-subtext">Add contacts to start messaging in Night City</p>
         <button class="ncm-btn ncm-btn--primary" data-action="add-contact">
           <i class="fas fa-plus"></i> Add First Contact
         </button>
@@ -134,10 +251,14 @@
     {{/if}}
   </div>
   
-  {{!-- Footer --}}
+  {{!-- FOOTER --}}
   <div class="ncm-contact-manager__footer">
     <div class="ncm-contact-manager__stats">
-      {{contactCount}} contacts total
+      {{#if showingFiltered}}
+        Showing {{filteredCount}} of {{contactCount}} contacts
+      {{else}}
+        {{contactCount}} contacts total
+      {{/if}}
     </div>
     <div class="ncm-contact-manager__actions">
       <button class="ncm-btn" data-action="import-contacts">

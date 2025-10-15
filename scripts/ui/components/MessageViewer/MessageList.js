@@ -68,29 +68,11 @@ export class MessageList {
    * @returns {Object} { messages, currentPage, totalPages, totalMessages }
    */
   getPaginatedMessages() {
-    // ✅ FIXED: this.app -> this.parent
-    const currentFilter = this.parent.stateManager.get('currentFilter') || 'inbox';
-    const searchTerm = this.parent.stateManager.get('searchTerm') || '';
-    const currentPage = this.parent.stateManager.get('currentPage') || 1;
-    const messagesPerPage = this.parent.stateManager.get('messagesPerPage') || 20;
+    const currentPage = this.stateManager.get('currentPage') || 1;
+    const messagesPerPage = this.stateManager.get('messagesPerPage') || 20;
     
-    // Get filtered messages
-    let filtered = this._getFilteredMessages(currentFilter);
-    
-    // Apply search
-    if (searchTerm) {
-      filtered = this._searchMessages(filtered, searchTerm);
-    }
-    
-    // Apply advanced filters
-    filtered = this._applyAdvancedFilters(filtered);
-    
-    // Sort by date (newest first)
-    filtered.sort((a, b) => {
-      const dateA = new Date(a.timestamp || 0);
-      const dateB = new Date(b.timestamp || 0);
-      return dateB - dateA;
-    });
+    // Comprehensive filtering (handles everything!)
+    const filtered = this.getCompleteFilteredMessages();
     
     // Calculate pagination
     const totalMessages = filtered.length;
@@ -111,7 +93,6 @@ export class MessageList {
   
   /**
    * Get filtered messages by category
-   * ✅ NEW: Missing method that was referenced
    * @private
    */
   _getFilteredMessages(filter) {
@@ -119,7 +100,6 @@ export class MessageList {
     
     switch (filter) {
       case 'inbox':
-        // Inbox = NOT sent by me, NOT spam, NOT deleted, NOT scheduled
         return allMessages.filter(m => 
           !m.status?.sent && 
           !m.status?.spam && 
@@ -128,7 +108,6 @@ export class MessageList {
         );
       
       case 'unread':
-        // Unread inbox messages (not scheduled)
         return allMessages.filter(m => 
           !m.status?.read && 
           !m.status?.sent && 
@@ -138,7 +117,6 @@ export class MessageList {
         );
       
       case 'sent':
-        // Messages I sent - has sent flag = true
         return allMessages.filter(m => 
           m.status?.sent && 
           !m.status?.deleted
@@ -159,12 +137,33 @@ export class MessageList {
       case 'scheduled':
         return allMessages.filter(m => 
           m.status?.scheduled && 
-          !m.status?.deleted  // ← ADD THIS
+          !m.status?.deleted
         );
       
       case 'deleted':
         return allMessages.filter(m => 
           m.status?.deleted
+        );
+      
+      case 'read':
+        return allMessages.filter(m => 
+          m.status?.read && 
+          !m.status?.sent && 
+          !m.status?.spam && 
+          !m.status?.deleted &&
+          !m.status?.scheduled
+        );
+      
+      case 'encrypted':
+        return allMessages.filter(m => 
+          m.status?.encrypted && 
+          !m.status?.deleted
+        );
+      
+      case 'infected':
+        return allMessages.filter(m => 
+          m.status?.infected && 
+          !m.status?.deleted
         );
       
       case 'all':
@@ -174,72 +173,145 @@ export class MessageList {
         );
     }
   }
-  
+
   /**
-   * Search messages by term
-   * ✅ NEW: Missing method that was referenced
-   * @private
+   * Comprehensive filtering with search, advanced filters, and sorting
    */
-  _searchMessages(messages, searchTerm) {
-    if (!searchTerm || searchTerm.trim() === '') {
-      return messages;
+  getCompleteFilteredMessages() {
+    // 1. Get category-filtered messages
+    const currentFilter = this.stateManager.get('currentFilter') || 'inbox';
+    let messages = this._getFilteredMessages(currentFilter);
+    
+    // 2. Apply search term
+    const searchTerm = this.stateManager.get('searchTerm');
+    if (searchTerm && searchTerm.trim() !== '') {
+      messages = this._applySearch(messages, searchTerm);
     }
     
+    // 3. Apply advanced filters
+    messages = this._applyAdvancedFilters(messages);  // Gets filters from state internally
+    
+    // 4. Apply sorting
+    const sortOrder = this.stateManager.get('sortOrder') || 'date-desc';
+    messages = this._applySorting(messages, sortOrder);
+    
+    return messages;
+  }
+
+  /**
+   * Apply search term to messages
+   * @private
+   */
+  _applySearch(messages, searchTerm) {
     const term = searchTerm.toLowerCase().trim();
     
     return messages.filter(m => {
-      // Search in from
       if (m.from?.toLowerCase().includes(term)) return true;
-      
-      // Search in to
       if (m.to?.toLowerCase().includes(term)) return true;
-      
-      // Search in subject
       if (m.subject?.toLowerCase().includes(term)) return true;
-      
-      // Search in body
       if (m.body?.toLowerCase().includes(term)) return true;
-      
-      // Search in preview
       if (m.preview?.toLowerCase().includes(term)) return true;
-      
+      if (m.id?.toLowerCase().includes(term)) return true;
       return false;
     });
   }
-  
+
   /**
    * Get filtered messages based on advanced filters
    * @private
    */
   _applyAdvancedFilters(messages) {
-    // ✅ FIXED: this.app -> this.parent
-    const filters = this.parent.stateManager.get('advancedFilters') || {};
+    const filters = this.stateManager.get('advancedFilters') || {};
+    
+    // If no filters, return as-is
+    if (Object.keys(filters).length === 0) {
+      return messages;
+    }
     
     let filtered = [...messages];
     
     // Filter by sender
-    if (filters.sender) {
-      filtered = filtered.filter(m => m.from === filters.sender);
+    if (filters.sender && filters.sender.trim() !== '') {
+      const senderLower = filters.sender.toLowerCase().trim();
+      filtered = filtered.filter(m => 
+        m.from && m.from.toLowerCase().includes(senderLower)
+      );
     }
     
-    // Filter by date range
-    if (filters.dateFrom) {
+    // Filter by date FROM
+    if (filters.dateFrom && filters.dateFrom.trim() !== '') {
       const fromDate = new Date(filters.dateFrom);
-      filtered = filtered.filter(m => new Date(m.timestamp) >= fromDate);
+      fromDate.setHours(0, 0, 0, 0);
+      filtered = filtered.filter(m => {
+        if (!m.timestamp) return false;
+        return new Date(m.timestamp) >= fromDate;
+      });
     }
     
-    if (filters.dateTo) {
+    // Filter by date TO
+    if (filters.dateTo && filters.dateTo.trim() !== '') {
       const toDate = new Date(filters.dateTo);
-      toDate.setHours(23, 59, 59, 999); // End of day
-      filtered = filtered.filter(m => new Date(m.timestamp) <= toDate);
+      toDate.setHours(23, 59, 59, 999);
+      filtered = filtered.filter(m => {
+        if (!m.timestamp) return false;
+        return new Date(m.timestamp) <= toDate;
+      });
     }
     
-    // Filter by unread only
-    if (filters.unreadOnly) {
+    // Filter unread only
+    if (filters.unreadOnly === true) {
       filtered = filtered.filter(m => !m.status?.read);
     }
     
     return filtered;
+  }
+
+  /**
+   * Apply sorting to messages
+   * @private
+   */
+  _applySorting(messages, sortOrder) {
+    const sorted = [...messages];
+    
+    switch (sortOrder) {
+      case 'date-desc':
+        sorted.sort((a, b) => 
+          new Date(b.timestamp) - new Date(a.timestamp)
+        );
+        break;
+      
+      case 'date-asc':
+        sorted.sort((a, b) => 
+          new Date(a.timestamp) - new Date(b.timestamp)
+        );
+        break;
+      
+      case 'sender-az':
+        sorted.sort((a, b) => 
+          (a.from || '').localeCompare(b.from || '')
+        );
+        break;
+      
+      case 'sender-za':
+        sorted.sort((a, b) => 
+          (b.from || '').localeCompare(a.from || '')
+        );
+        break;
+      
+      case 'subject-az':
+        sorted.sort((a, b) => 
+          (a.subject || '').localeCompare(b.subject || '')
+        );
+        break;
+      
+      case 'subject-za':
+        sorted.sort((a, b) => 
+          (b.subject || '').localeCompare(a.subject || '')
+        );
+        break;
+    }
+    
+    return sorted;
   }
   
   /**

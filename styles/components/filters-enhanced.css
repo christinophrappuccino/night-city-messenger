@@ -1,0 +1,344 @@
+/**
+ * Enhanced Filter Panel Styling
+ * File: styles/components/filters-enhanced.css
+ * Module: cyberpunkred-messenger
+ * 
+ * Cyberpunk-themed filter panel with smooth animations
+ */
+
+/* ============================================
+   FILTER TOOLBAR
+   ============================================ */
+.ncm-message-viewer__toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ncm-spacing-md);
+  padding: var(--ncm-spacing-md);
+  background: var(--ncm-bg-secondary);
+  border-bottom: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
+}
+
+/* Search Bar */
+.ncm-message-viewer__search {
+  position: relative;
+  flex: 1;
+}
+
+.ncm-message-viewer__search-icon {
+  position: absolute;
+  left: var(--ncm-spacing-md);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--ncm-secondary);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.ncm-message-viewer__search-input {
+  width: 100%;
+  padding: var(--ncm-spacing-sm) var(--ncm-spacing-md);
+  padding-left: calc(var(--ncm-spacing-md) * 3);
+  background: var(--ncm-bg-tertiary);
+  border: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
+  border-radius: var(--ncm-border-radius-md);
+  color: var(--ncm-text-primary);
+  font-size: var(--ncm-font-size-sm);
+  font-family: var(--ncm-font-mono);
+  transition: all var(--ncm-transition-fast);
+}
+
+.ncm-message-viewer__search-input:focus {
+  border-color: var(--ncm-secondary);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(25, 243, 247, 0.2);
+  background: var(--ncm-bg-primary);
+}
+
+.ncm-message-viewer__search-input::placeholder {
+  color: var(--ncm-text-tertiary);
+  font-style: italic;
+}
+
+/* Quick Filters Row */
+.ncm-message-viewer__quick-filters {
+  display: flex;
+  gap: var(--ncm-spacing-sm);
+  align-items: center;
+}
+
+.ncm-message-viewer__filter-select {
+  padding: var(--ncm-spacing-sm) var(--ncm-spacing-md);
+  background: var(--ncm-bg-tertiary);
+  border: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
+  border-radius: var(--ncm-border-radius-md);
+  color: var(--ncm-text-primary);
+  font-size: var(--ncm-font-size-sm);
+  cursor: pointer;
+  transition: all var(--ncm-transition-fast);
+  font-family: var(--ncm-font-mono);
+}
+
+.ncm-message-viewer__filter-select:hover {
+  border-color: var(--ncm-primary);
+  background: var(--ncm-bg-hover);
+}
+
+.ncm-message-viewer__filter-select:focus {
+  outline: none;
+  border-color: var(--ncm-secondary);
+  box-shadow: 0 0 0 2px rgba(25, 243, 247, 0.2);
+}
+
+/* ============================================
+   ADVANCED FILTERS PANEL
+   ============================================ */
+.ncm-filters-panel {
+  display: none;
+  background: var(--ncm-bg-surface);
+  border: var(--ncm-border-width-medium) solid var(--ncm-border-primary);
+  border-radius: var(--ncm-border-radius-lg);
+  margin: 0 var(--ncm-spacing-md);
+  margin-bottom: var(--ncm-spacing-md);
+  overflow: hidden;
+  animation: slideDown 0.3s ease;
+}
+
+.ncm-filters-panel--active {
+  display: block;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Panel Header */
+.ncm-filters-panel__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--ncm-spacing-md);
+  background: var(--ncm-bg-tertiary);
+  border-bottom: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
+}
+
+.ncm-filters-panel__header h3 {
+  margin: 0;
+  color: var(--ncm-secondary);
+  font-size: var(--ncm-font-size-lg);
+  font-family: var(--ncm-font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.ncm-filters-panel__header i {
+  margin-right: var(--ncm-spacing-sm);
+  color: var(--ncm-primary);
+}
+
+.ncm-filters-panel__close {
+  background: transparent;
+  border: none;
+  color: var(--ncm-text-secondary);
+  cursor: pointer;
+  padding: var(--ncm-spacing-xs);
+  font-size: var(--ncm-font-size-lg);
+  transition: all var(--ncm-transition-fast);
+}
+
+.ncm-filters-panel__close:hover {
+  color: var(--ncm-primary);
+  transform: scale(1.1);
+}
+
+/* Panel Body */
+.ncm-filters-panel__body {
+  padding: var(--ncm-spacing-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ncm-spacing-lg);
+}
+
+/* Filter Section */
+.ncm-filters-panel__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ncm-spacing-sm);
+}
+
+.ncm-filters-panel__title {
+  margin: 0;
+  color: var(--ncm-text-primary);
+  font-size: var(--ncm-font-size-md);
+  font-family: var(--ncm-font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.ncm-filters-panel__title i {
+  margin-right: var(--ncm-spacing-xs);
+  color: var(--ncm-secondary);
+}
+
+/* Select Dropdown */
+.ncm-filters-panel__select {
+  width: 100%;
+  padding: var(--ncm-spacing-sm) var(--ncm-spacing-md);
+  background: var(--ncm-bg-tertiary);
+  border: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
+  border-radius: var(--ncm-border-radius-md);
+  color: var(--ncm-text-primary);
+  font-size: var(--ncm-font-size-sm);
+  font-family: var(--ncm-font-mono);
+  cursor: pointer;
+  transition: all var(--ncm-transition-fast);
+}
+
+.ncm-filters-panel__select:hover {
+  border-color: var(--ncm-primary);
+  background: var(--ncm-bg-hover);
+}
+
+.ncm-filters-panel__select:focus {
+  outline: none;
+  border-color: var(--ncm-secondary);
+  box-shadow: 0 0 0 2px rgba(25, 243, 247, 0.2);
+}
+
+/* Date Range Inputs */
+.ncm-filters-panel__date-range {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--ncm-spacing-md);
+}
+
+.ncm-filters-panel__date-range label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ncm-spacing-xs);
+  color: var(--ncm-text-secondary);
+  font-size: var(--ncm-font-size-sm);
+  font-family: var(--ncm-font-mono);
+}
+
+.ncm-filters-panel__input {
+  width: 100%;
+  padding: var(--ncm-spacing-sm) var(--ncm-spacing-md);
+  background: var(--ncm-bg-tertiary);
+  border: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
+  border-radius: var(--ncm-border-radius-md);
+  color: var(--ncm-text-primary);
+  font-size: var(--ncm-font-size-sm);
+  font-family: var(--ncm-font-mono);
+  transition: all var(--ncm-transition-fast);
+}
+
+.ncm-filters-panel__input:focus {
+  outline: none;
+  border-color: var(--ncm-secondary);
+  box-shadow: 0 0 0 2px rgba(25, 243, 247, 0.2);
+  background: var(--ncm-bg-primary);
+}
+
+/* Checkboxes */
+.ncm-filters-panel__checkboxes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ncm-spacing-sm);
+}
+
+.ncm-filters-panel__checkbox {
+  display: flex;
+  align-items: center;
+  gap: var(--ncm-spacing-sm);
+  padding: var(--ncm-spacing-sm);
+  background: var(--ncm-bg-tertiary);
+  border-radius: var(--ncm-border-radius-md);
+  cursor: pointer;
+  transition: all var(--ncm-transition-fast);
+  user-select: none;
+}
+
+.ncm-filters-panel__checkbox:hover {
+  background: var(--ncm-bg-hover);
+}
+
+.ncm-filters-panel__checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  cursor: pointer;
+  accent-color: var(--ncm-primary);
+}
+
+.ncm-filters-panel__checkbox span {
+  color: var(--ncm-text-primary);
+  font-size: var(--ncm-font-size-sm);
+  font-family: var(--ncm-font-mono);
+}
+
+/* Action Buttons */
+.ncm-filters-panel__actions {
+  display: flex;
+  gap: var(--ncm-spacing-sm);
+  padding-top: var(--ncm-spacing-md);
+  border-top: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
+}
+
+.ncm-filters-panel__actions .ncm-btn {
+  flex: 1;
+}
+
+/* Filter Active Badge */
+.ncm-filter-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 8px;
+  height: 8px;
+  background: var(--ncm-primary);
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.2);
+  }
+}
+
+/* Active Filter Button */
+.ncm-btn--active {
+  background: var(--ncm-primary) !important;
+  color: white !important;
+  border-color: var(--ncm-primary) !important;
+  position: relative;
+}
+
+/* ============================================
+   RESPONSIVE DESIGN
+   ============================================ */
+@media (max-width: 899px) {
+  .ncm-message-viewer__quick-filters {
+    flex-wrap: wrap;
+  }
+  
+  .ncm-message-viewer__filter-select {
+    flex: 1 1 45%;
+  }
+  
+  .ncm-filters-panel__date-range {
+    grid-template-columns: 1fr;
+  }
+}
