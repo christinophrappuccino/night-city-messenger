@@ -71,6 +71,50 @@ export function registerSocketHandlers() {
       }
     });
   });
+
+  // ========================================
+  // Schedule Operations
+  // ========================================
+
+  /**
+   * Handle message scheduled
+   */
+  socketManager.registerHandler(SOCKET_OPERATIONS.MESSAGE_SCHEDULED, async (data) => {
+    console.log(`${MODULE_ID} | Message scheduled notification:`, data);
+    
+    // Emit local event
+    eventBus.emit(EVENTS.MESSAGE_SCHEDULED, data);
+    
+    // Refresh any open viewers for this actor
+    Object.values(ui.windows).forEach(window => {
+      if (window.constructor.name === 'MessageViewerApp' && 
+          window.selectedActorId === data.actorId) {
+        console.log(`${MODULE_ID} | Refreshing viewer for scheduled message`);
+        window._loadMessages();
+        window.render(false);
+      }
+    });
+  });
+
+  /**
+   * Handle schedule cancelled
+   */
+  socketManager.registerHandler(SOCKET_OPERATIONS.SCHEDULE_CANCELLED, async (data) => {
+    console.log(`${MODULE_ID} | Schedule cancelled notification:`, data);
+    
+    // Emit local event
+    eventBus.emit(EVENTS.SCHEDULE_CANCELLED, data);
+    
+    // Refresh any open viewers for this actor
+    Object.values(ui.windows).forEach(window => {
+      if (window.constructor.name === 'MessageViewerApp' && 
+          window.selectedActorId === data.actorId) {
+        console.log(`${MODULE_ID} | Refreshing viewer after schedule cancellation`);
+        window._loadMessages();
+        window.render(false);
+      }
+    });
+  });
   
   // ========================================
   // Deletion Operations

@@ -129,10 +129,12 @@ export class SchedulingService {
         if (!inboxId) {
           console.warn(`${MODULE_ID} | Actor ${actor.name} has no inbox - creating one...`);
           
-          // Create inbox (players can create their own)
           const journalManager = this.messageService.messageRepository.journalManager;
           const inbox = await journalManager.ensureActorInbox(actor.id);
           inboxId = inbox.id;
+          
+          // ✅ CRITICAL FIX: Set the flag so actor remembers the inbox permanently
+          await actor.setFlag(MODULE_ID, 'inboxJournal', inboxId);
           
           console.log(`${MODULE_ID} | ✓ Created inbox: ${inbox.name}`);
           ui.notifications.info(`Created message inbox for ${actor.name}`);
@@ -207,9 +209,21 @@ export class SchedulingService {
     await this.settingsManager.set('scheduledMessages', scheduled);
     
     console.log(`${MODULE_ID} | ✓ Message scheduled: ${scheduleId}`);
-    
+
+    // Emit local event
     this.eventBus.emit(EVENTS.MESSAGE_SCHEDULED, { scheduleId, messageData: scheduleData });
-    
+
+    // Emit socket event to refresh all users' viewers
+    if (game.nightcity.socketManager) {
+      game.nightcity.socketManager.emit('message:scheduled', {
+        scheduleId,
+        actorId: data.actorId,
+        from: data.from,
+        to: data.to,
+        scheduledTime: scheduleData.scheduledTime
+      });
+    }
+
     return scheduleId;
   }
 
@@ -371,10 +385,18 @@ export class SchedulingService {
     await this.settingsManager.set('scheduledMessages', scheduled);
     
     console.log(`${MODULE_ID} | ✓ Cancelled scheduled message: ${scheduleId}`);
-    
-    // Emit event
+
+    // Emit local event
     this.eventBus.emit(EVENTS.SCHEDULE_CANCELLED, { scheduleId });
-    
+
+    // Emit socket event to refresh all users' viewers
+    if (game.nightcity.socketManager) {
+      game.nightcity.socketManager.emit('schedule:cancelled', {
+        scheduleId,
+        actorId: schedule.actorId
+      });
+    }
+
     return true;
   }
   

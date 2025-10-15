@@ -105,7 +105,7 @@ export class MessageRepository {
     console.log(`${MODULE_ID} | ✓ Created message: ${data.subject}, scheduled=${status.scheduled}`);
     
     // FIXED: Create copy in sender's sent folder
-    if (data.actorId) {
+    if (data.actorId && !data.metadata?.isPlaceholder) {
       await this._createSentCopy(data, timestamp, simpleCalendarData, metadata);
     }
     
@@ -360,55 +360,22 @@ export class MessageRepository {
    * Get recipient's journal - FIXED
    * @private
    */
-  async _getRecipientJournal(email) {
+  async _getRecipientJournal(emailString) {
+    // ✅ FIX: Extract email from "Name <email>" format
+    const email = emailString.match(/<(.+?)>/) 
+      ? emailString.match(/<(.+?)>/)[1] 
+      : emailString;
+    
+    console.log(`${MODULE_ID} | Looking for inbox with email: ${email}`);
+    
     // Find actor by email flag
     const actor = game.actors.find(a => 
       a.getFlag(MODULE_ID, "emailAddress") === email
     );
     
     if (actor) {
-      // Try both formats
-      const possessiveName = `${actor.name}'s Messages`;
-      const simpleName = `${actor.name} Messages`;
-      
-      let inbox = game.journal.getName(possessiveName) || game.journal.getName(simpleName);
-      
-      // Also check by flag
-      if (!inbox) {
-        inbox = game.journal.find(j => 
-          j.getFlag(MODULE_ID, 'isInbox') && 
-          j.getFlag(MODULE_ID, 'actorId') === actor.id
-        );
-      }
-      
-      if (!inbox && game.user.isGM) {
-        // Auto-create inbox
-        const folder = await this.journalManager.getMessageFolder(); // FIXED: was ensureFolder
-        inbox = await JournalEntry.create({
-          name: possessiveName, // Use possessive format
-          folder: folder?.id || null,
-          flags: {
-            [MODULE_ID]: {
-              isInbox: true,
-              actorId: actor.id,
-              characterName: actor.name
-            }
-          }
-        });
-        console.log(`${MODULE_ID} | Auto-created inbox: ${possessiveName}`);
-      }
-      
-      return inbox;
-    }
-    
-    // Fallback: Extract name from email
-    const recipientName = email.split('@')[0];
-    const user = game.users.find(u => 
-      u.character?.name.toLowerCase().replace(/\s+/g, '.') === recipientName.toLowerCase()
-    );
-    
-    if (user) {
-      return await this.journalManager.ensureUserInbox(user.id);
+      // ✅ Now just use the fixed getActorInbox method!
+      return await this.journalManager.getActorInbox(actor.id);
     }
     
     return null;

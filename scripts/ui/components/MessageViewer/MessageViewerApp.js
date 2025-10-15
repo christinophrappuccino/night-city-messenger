@@ -266,7 +266,13 @@ export class MessageViewerApp extends BaseApplication {
   _loadMessages() {
     if (!this.journalEntry) return;
     
-    const pages = this.journalEntry.pages.contents;
+    // Filter out pages that Foundry has marked as deleted
+    const pages = this.journalEntry.pages.contents.filter(page => {
+      // Check if page is pending deletion in Foundry
+      // Foundry marks pages for deletion but they remain in collection temporarily
+      return !page._tombstone && page.id; // Only include non-deleted pages with valid IDs
+    });
+    
     const messages = pages.map(page => {
       const flags = page.flags[MODULE_ID] || {};
       
@@ -296,30 +302,35 @@ export class MessageViewerApp extends BaseApplication {
         body: body,
         timestamp: flags.timestamp || new Date().toISOString(),
         network: flags.network || 'CITINET',
-        
-        // ✅ FIXED: Include complete status with deleted
-        status: {
-          read: flags.status?.read || false,
-          saved: flags.status?.saved || false,
-          spam: flags.status?.spam || false,
-          encrypted: flags.status?.encrypted || false,
-          infected: flags.status?.infected || false,
-          deleted: flags.status?.deleted || false, // ✅ NEW: Include deleted status
-          sent: flags.status?.sent || false,
-          scheduled: flags.status?.scheduled || false
-        },
-        
-        // ✅ CRITICAL FIX: Include metadata (for reschedule button)
+        status: { /* ... */ },
         metadata: flags.metadata || {},
-        
-        // ✅ CRITICAL FIX: Keep page reference (needed for updates)
         page: page,
-        
         preview: this._generatePreview(body)
       };
     });
-    
-    this.stateManager.setMessages(messages);
+
+    // ✅ NEW: Filter out orphaned scheduled message placeholders
+    const validMessages = messages.filter(message => {
+      // If it's a placeholder, check if the schedule still exists
+      if (message.metadata?.isPlaceholder && message.metadata?.scheduleId) {
+        const scheduleId = message.metadata.scheduleId;
+        
+        // Check if schedule exists in settings
+        if (game.nightcity?.schedulingService) {
+          const allScheduled = game.nightcity.schedulingService.getAllScheduled();
+          const scheduleExists = allScheduled.some(s => s.id === scheduleId);
+          
+          if (!scheduleExists) {
+            console.warn(`${MODULE_ID} | Found orphaned placeholder for schedule ${scheduleId}, filtering out`);
+            return false; // Filter out orphaned placeholder
+          }
+        }
+      }
+      
+      return true; // Keep all other messages
+    });
+
+    this.stateManager.setMessages(validMessages);
   }
   
   /**
@@ -818,12 +829,13 @@ export class MessageViewerApp extends BaseApplication {
       
       ui.notifications.info('Scheduled message cancelled');
       
-      // ✅ FIX: Use correct method name
-      // Reload messages
-      this._loadMessages();
+      await new Promise(resolve => setTimeout(resolve, 100));
       
-      // Clear selection
+      // Clear selection FIRST (before reload)
       this.stateManager.set('selectedMessageId', null);
+      
+      // Reload messages (will now properly exclude deleted page)
+      this._loadMessages();
       
       // Re-render
       this.render(false);

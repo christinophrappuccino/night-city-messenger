@@ -175,6 +175,10 @@ export const SOCKET_OPERATIONS = {
   MESSAGE_RECEIVED: 'message:received',
   MESSAGE_STATUS_UPDATE: 'message:status:update',
   MESSAGE_DELETED: 'message:deleted',
+
+  // Scheduling operations
+  MESSAGE_SCHEDULED: 'message:scheduled',
+  SCHEDULE_CANCELLED: 'schedule:cancelled',
   
   // Inbox operations
   UPDATE_INBOX: 'updateInbox',

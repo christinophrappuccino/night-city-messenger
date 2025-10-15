@@ -119,20 +119,22 @@ export class MessageList {
     
     switch (filter) {
       case 'inbox':
-        // Inbox = NOT sent by me, NOT spam, NOT deleted
+        // Inbox = NOT sent by me, NOT spam, NOT deleted, NOT scheduled
         return allMessages.filter(m => 
           !m.status?.sent && 
           !m.status?.spam && 
-          !m.status?.deleted
+          !m.status?.deleted &&
+          !m.status?.scheduled
         );
       
       case 'unread':
-        // Unread inbox messages
+        // Unread inbox messages (not scheduled)
         return allMessages.filter(m => 
           !m.status?.read && 
           !m.status?.sent && 
           !m.status?.spam && 
-          !m.status?.deleted
+          !m.status?.deleted &&
+          !m.status?.scheduled
         );
       
       case 'sent':
@@ -155,7 +157,10 @@ export class MessageList {
         );
       
       case 'scheduled':
-        return allMessages.filter(m => m.status?.scheduled);
+        return allMessages.filter(m => 
+          m.status?.scheduled && 
+          !m.status?.deleted  // ← ADD THIS
+        );
       
       case 'deleted':
         return allMessages.filter(m => 

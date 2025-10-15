@@ -362,9 +362,29 @@ export class JournalManager {
     const actor = game.actors.get(actorId);
     if (!actor) return null;
     
-    // Find by actor name
-    const journalName = `${actor.name} Messages`;
-    return game.journal.find(j => j.name === journalName);
+    // ✅ FIX 1: Check the flag first (most reliable)
+    const inboxId = actor.getFlag(MODULE_ID, 'inboxJournal');
+    if (inboxId) {
+      const journal = game.journal.get(inboxId);
+      if (journal) return journal;
+    }
+    
+    // ✅ FIX 2: Fallback - try both name formats
+    const possessiveName = `${actor.name}'s Messages`;
+    const simpleName = `${actor.name} Messages`;
+    
+    let inbox = game.journal.getName(possessiveName) || 
+                 game.journal.getName(simpleName);
+    
+    // ✅ FIX 3: Also check by flag in journal
+    if (!inbox) {
+      inbox = game.journal.find(j => 
+        j.getFlag(MODULE_ID, 'isInbox') && 
+        j.getFlag(MODULE_ID, 'actorId') === actorId
+      );
+    }
+    
+    return inbox;
   }
   
   /**
