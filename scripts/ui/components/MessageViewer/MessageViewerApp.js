@@ -41,7 +41,7 @@ export class MessageViewerApp extends BaseApplication {
     this.timeService = TimeService.getInstance();
     
     this.eventUnsubscribers = [];
-    
+    this.stateManager.set('showAdvancedFilters', false);
     this.messageList = new MessageList(this);
     this.messageDetail = new MessageDetail(this);
     this.messageFilters = new MessageFilters(this);
@@ -416,7 +416,11 @@ export class MessageViewerApp extends BaseApplication {
       this.playSound?.('click');
     }
     
-    this.render(true);
+    // Defer render to ensure state is committed
+    setTimeout(() => {
+      this._element = null;
+      this.render(true);
+    }, 0);
   }
 
   _onFilterFieldChange(event) {

@@ -93,26 +93,25 @@
    ADVANCED FILTERS PANEL
    ============================================ */
 .ncm-filters-panel {
-  padding: var(--ncm-spacing-md);
-  background: var(--ncm-bg-surface);
-  border: var(--ncm-border-width-medium) solid var(--ncm-border-primary);
-  border-radius: var(--ncm-border-radius-lg);
-  margin: 0 var(--ncm-spacing-md);
-  margin-bottom: var(--ncm-spacing-md);
-  animation: slideDown 0.3s ease;
+  background: var(--ncm-surface);
+  border: 1px solid var(--ncm-primary);
+  border-radius: 4px;
+  padding: 1rem;
+  margin-top: 1rem;
+  /* NO display: none or display: block here! */
+  
+  /* Optional: Add animation for smooth appearance */
+  animation: ncm-filter-panel-appear 0.3s ease-out;
 }
 
-/* Animation for panel appearing */
-@keyframes slideDown {
+@keyframes ncm-filter-panel-appear {
   from {
     opacity: 0;
     transform: translateY(-10px);
-    max-height: 0;
   }
   to {
     opacity: 1;
     transform: translateY(0);
-    max-height: 800px;
   }
 }
 
