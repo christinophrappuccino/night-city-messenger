@@ -93,28 +93,26 @@
    ADVANCED FILTERS PANEL
    ============================================ */
 .ncm-filters-panel {
-  display: none;
+  padding: var(--ncm-spacing-md);
   background: var(--ncm-bg-surface);
   border: var(--ncm-border-width-medium) solid var(--ncm-border-primary);
   border-radius: var(--ncm-border-radius-lg);
   margin: 0 var(--ncm-spacing-md);
   margin-bottom: var(--ncm-spacing-md);
-  overflow: hidden;
   animation: slideDown 0.3s ease;
 }
 
-.ncm-filters-panel--active {
-  display: block;
-}
-
+/* Animation for panel appearing */
 @keyframes slideDown {
   from {
     opacity: 0;
     transform: translateY(-10px);
+    max-height: 0;
   }
   to {
     opacity: 1;
     transform: translateY(0);
+    max-height: 800px;
   }
 }
 

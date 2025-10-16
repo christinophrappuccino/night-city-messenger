@@ -148,7 +148,7 @@
     </div>
   </div>
   
-  {{!-- ============================================
+{{!-- ============================================
        ADVANCED FILTERS PANEL (toggleable)
        ============================================ --}}
   {{#if showAdvancedFilters}}
@@ -177,14 +177,14 @@
           <input type="date" 
                  class="ncm-filters-panel__input" 
                  data-filter-field="dateFrom"
-                 value="{{advancedFilters.dateFrom}}" />
+                 value="{{filterDefaults.dateFrom}}" />
         </label>
         <label>
           To:
           <input type="date" 
                  class="ncm-filters-panel__input" 
                  data-filter-field="dateTo"
-                 value="{{advancedFilters.dateTo}}" />
+                 value="{{filterDefaults.dateTo}}" />
         </label>
       </div>
     </div>
