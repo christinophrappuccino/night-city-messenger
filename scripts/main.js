@@ -72,6 +72,25 @@ moduleInitializer.register('init', async () => {
   registerItemSheetHooks();
 }, 30);
 
+// Register Item Inbox service
+moduleInitializer.register('init', async () => {
+  console.log(`${MODULE_ID} | Initializing Data Shard System...`);
+  
+  // Register Data Shard Service
+  const { DataShardService } = await import('./services/DataShardService.js');
+  game.nightcity.dataShardService = new DataShardService();
+  
+  // Register UI Components
+  const { ItemInboxApp } = await import('./ui/components/ItemInbox/ItemInboxApp.js');
+  const { ItemInboxConfig } = await import('./ui/components/ItemInbox/ItemInboxConfig.js');
+  
+  // Make available globally for macros
+  game.nightcity.ItemInboxApp = ItemInboxApp;
+  game.nightcity.ItemInboxConfig = ItemInboxConfig;
+  
+  console.log(`${MODULE_ID} | ✓ Data Shard System initialized`);
+}, 45);
+
 // Register email settings
 moduleInitializer.register('init', async () => {
   const { registerEmailSettings, registerActorSheetHooks } = await import('./integrations/EmailSettingsRegistration.js');
@@ -229,6 +248,126 @@ moduleInitializer.register('ready', async () => {
     console.warn(`${MODULE_ID} | Module will continue without scheduling functionality`);
   }
 }, 10);
+
+// Item Sheet Integration
+moduleInitializer.register('ready', async () => {
+  console.log(`${MODULE_ID} | Setting up Data Shard hooks...`);
+  
+  // Register context menu option for items
+  Hooks.on('getItemDirectoryEntryContext', (html, options) => {
+    options.push({
+      name: "Configure as Data Shard",
+      icon: '<i class="fas fa-microchip"></i>',
+      condition: li => {
+        const item = game.items.get(li.data('documentId'));
+        return item && !item.getFlag(MODULE_ID, 'isDataShard');
+      },
+      callback: li => {
+        const item = game.items.get(li.data('documentId'));
+        if (item) {
+          const { ItemInboxConfig } = game.nightcity;
+          new ItemInboxConfig(item).render(true);
+        }
+      }
+    });
+    
+    options.push({
+      name: "View Data Shard",
+      icon: '<i class="fas fa-eye"></i>',
+      condition: li => {
+        const item = game.items.get(li.data('documentId'));
+        return item && item.getFlag(MODULE_ID, 'isDataShard');
+      },
+      callback: li => {
+        const item = game.items.get(li.data('documentId'));
+        if (item) {
+          const { ItemInboxApp } = game.nightcity;
+          new ItemInboxApp(item).render(true);
+        }
+      }
+    });
+  });
+  
+  // Add button to item sheets
+  Hooks.on('renderItemSheet', (app, html, data) => {
+    const item = app.object;
+    const isDataShard = item.getFlag(MODULE_ID, 'isDataShard');
+    
+    if (!isDataShard) return;
+    
+    // Add "View Messages" button to header
+    const $header = html.find('.window-header .window-title');
+    
+    if ($header.length > 0) {
+      const $button = $(`
+        <a class="ncm-item-sheet-btn" title="View Data Shard Messages">
+          <i class="fas fa-envelope"></i> View Messages
+        </a>
+      `);
+      
+      $button.on('click', async (event) => {
+        event.preventDefault();
+        const { ItemInboxApp } = game.nightcity;
+        new ItemInboxApp(item).render(true);
+      });
+      
+      $header.after($button);
+    }
+    
+    // Add styling if not already present
+    if (!document.getElementById('ncm-item-sheet-styles')) {
+      const style = document.createElement('style');
+      style.id = 'ncm-item-sheet-styles';
+      style.textContent = `
+        .ncm-item-sheet-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          padding: 4px 8px;
+          margin-left: 10px;
+          background: #1a1a1a;
+          border: 1px solid #F65261;
+          color: #F65261;
+          border-radius: 3px;
+          cursor: pointer;
+          font-size: 0.9em;
+          transition: all 0.2s;
+        }
+        
+        .ncm-item-sheet-btn:hover {
+          background: #F65261;
+          color: #1a1a1a;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+  });
+  
+  // Handle chat message buttons for shared data shards
+  Hooks.on('renderChatMessage', (message, html, data) => {
+    const flags = message.flags[MODULE_ID] || {};
+    
+    if (!flags.sharedDataShard) return;
+    
+    // Find and setup "View Data Shard" button
+    html.find('.ncm-view-data-shard').off('click').on('click', async (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      
+      const itemId = $(ev.currentTarget).data('item-id');
+      const item = game.items.get(itemId);
+      
+      if (item) {
+        const { ItemInboxApp } = game.nightcity;
+        new ItemInboxApp(item).render(true);
+      } else {
+        ui.notifications.error("Data shard not found");
+      }
+    });
+  });
+  
+  console.log(`${MODULE_ID} | ✓ Data Shard hooks registered`);
+}, 45);
 
 // Register socket handlers
 moduleInitializer.register('ready', async () => {

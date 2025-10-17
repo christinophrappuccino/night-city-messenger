@@ -1,5 +1,5 @@
 /**
- * Item Inbox Application
+ * Item Inbox Application (Fixed)
  * File: scripts/ui/components/ItemInbox/ItemInboxApp.js
  * Module: cyberpunkred-messenger
  * Description: View messages stored in items (data shards)
@@ -7,9 +7,8 @@
 
 import { MODULE_ID } from '../../../utils/constants.js';
 import { BaseApplication } from '../BaseApplication.js';
-import { EncryptionSystem } from './EncryptionSystem.js';
-import { HackingSystem } from './HackingSystem.js';
-import { MessageRepository } from '../../../data/MessageRepository.js';
+import { DataShardService } from '../../../services/DataShardService.js';
+import { EVENTS } from '../../../core/EventBus.js';
 
 export class ItemInboxApp extends BaseApplication {
   constructor(item, options = {}) {
@@ -23,20 +22,19 @@ export class ItemInboxApp extends BaseApplication {
       throw new Error('Item is not a data shard');
     }
     
-    // Systems
-    this.encryptionSystem = new EncryptionSystem(this);
-    this.hackingSystem = new HackingSystem(this);
-    this.messageRepository = new MessageRepository();
-    
-    // Register components
-    this.registerComponent('encryption', this.encryptionSystem);
-    this.registerComponent('hacking', this.hackingSystem);
+    // Initialize service
+    this.dataShardService = new DataShardService();
     
     // State
     this.selectedMessageId = null;
+    this.messages = [];
+    this.attemptingHack = false;
     
-    // Load decryption status from localStorage
-    this._loadDecryptionStatus();
+    // Load messages
+    this._loadMessages();
+    
+    // Setup event listeners
+    this._setupEvents();
   }
   
   /**
@@ -49,7 +47,8 @@ export class ItemInboxApp extends BaseApplication {
       width: 800,
       height: 700,
       resizable: true,
-      title: "Data Shard"
+      title: "Data Shard",
+      tabs: []
     });
   }
   
@@ -63,214 +62,74 @@ export class ItemInboxApp extends BaseApplication {
   /**
    * Get data for template
    */
-  getData(options = {}) {
-    const data = super.getData(options);
+  async getData(options = {}) {
+    const data = await super.getData(options);
     
     // Get item flags
-    const flags = this.item.flags[MODULE_ID] || {};
-    const encrypted = flags.encrypted || false;
-    const encryptionDC = flags.encryptionDC || 15;
-    const encryptionType = flags.encryptionType || 'ICE';
+    const encrypted = this.item.getFlag(MODULE_ID, 'encrypted') || false;
+    const encryptionDC = this.item.getFlag(MODULE_ID, 'encryptionDC') || 15;
+    const encryptionType = this.item.getFlag(MODULE_ID, 'encryptionType') || 'ICE';
+    const theme = this.item.getFlag(MODULE_ID, 'theme') || 'default';
+    const dataShardType = this.item.getFlag(MODULE_ID, 'dataShardType') || 'single';
+    
+    // Check if decrypted
+    const decrypted = this.item.getFlag(MODULE_ID, 'decrypted') || false;
+    const locallyDecrypted = localStorage.getItem(`${MODULE_ID}-decrypted-${this.item.id}`) === 'true';
+    const isDecrypted = decrypted || locallyDecrypted || !encrypted;
+    
+    // Check lockout
+    const lockoutUntil = this.item.getFlag(MODULE_ID, 'lockoutUntil');
+    const isLockedOut = lockoutUntil && Date.now() < lockoutUntil;
+    const lockoutMinutes = isLockedOut ? Math.ceil((lockoutUntil - Date.now()) / 1000 / 60) : 0;
     
     // Get messages
-    const messageIds = flags.messageIds || [];
-    const messages = this._getMessages(messageIds);
-    
-    // Check encryption status
-    const isFullyDecrypted = this.encryptionSystem.isFullyDecrypted(messages);
-    const encryptionStatus = this.encryptionSystem.getEncryptionStatus(messages);
+    const messages = this.messages.map(msg => ({
+      ...msg,
+      isSelected: msg.id === this.selectedMessageId,
+      canView: isDecrypted || game.user.isGM
+    }));
     
     // Get selected message
     const selectedMessage = messages.find(m => m.id === this.selectedMessageId);
     
-    // Check if user can decrypt
-    const canDecrypt = this._canUserDecrypt();
+    // Check if user can attempt hack
+    const canHack = game.user.character && !isDecrypted && !isLockedOut;
+    
+    // Show encrypted overlay?
+    const showEncryptedOverlay = encrypted && !isDecrypted && !game.user.isGM;
     
     return {
       ...data,
       item: this.item,
+      itemName: this.item.name,
+      itemDescription: this.item.system.description || '',
       
-      // Encryption
+      // Configuration
       encrypted,
       encryptionDC,
       encryptionType,
-      isFullyDecrypted,
-      encryptionStatus,
-      canDecrypt,
+      theme,
+      isSingleMode: dataShardType === 'single',
+      
+      // Status
+      isDecrypted,
+      isLockedOut,
+      lockoutMinutes,
+      canHack,
+      showEncryptedOverlay,
+      attemptingHack: this.attemptingHack,
       
       // Messages
       messages,
-      hasMessages: messages.length > 0,
       messageCount: messages.length,
       selectedMessage,
+      hasMessages: messages.length > 0,
       
-      // User info
+      // Permissions
+      isOwner: this.item.isOwner,
       isGM: game.user.isGM,
-      actorName: game.user.character?.name || game.user.name
+      canAddMessage: this.item.isOwner || game.user.isGM
     };
-  }
-  
-  /**
-   * Select a message
-   * @param {string} messageId - Message ID
-   */
-  selectMessage(messageId) {
-    this.selectedMessageId = messageId;
-    this.render(false);
-  }
-  
-  /**
-   * Attempt to decrypt the data shard
-   */
-  async attemptDecryption() {
-    const actor = game.user.character;
-    
-    if (!actor) {
-      ui.notifications.error('You need a character to attempt decryption');
-      return;
-    }
-    
-    // Check if already decrypted
-    if (this.encryptionSystem.isGloballyDecrypted()) {
-      ui.notifications.info('Data shard is already decrypted');
-      return;
-    }
-    
-    // Get encryption DC
-    const dc = this.item.getFlag(MODULE_ID, 'encryptionDC') || 15;
-    
-    // Attempt hack
-    const result = await this.hackingSystem.attemptHack(actor, dc);
-    
-    if (result.success) {
-      // Decrypt globally
-      await this.item.setFlag(MODULE_ID, 'encrypted', false);
-      
-      // Mark all messages as decrypted
-      await this._decryptAllMessages();
-      
-      // Create success chat message
-      await this._createHackChatMessage(actor, result, true);
-      
-      ui.notifications.info('Data shard decrypted successfully!');
-      this.render(false);
-    } else {
-      // Create failure chat message
-      await this._createHackChatMessage(actor, result, false);
-      
-      ui.notifications.error('Decryption failed!');
-      
-      // Check for BLACK ICE
-      if (result.blackICE) {
-        ui.notifications.error(`BLACK ICE triggered! ${result.damage} damage!`);
-      }
-    }
-  }
-  
-  /**
-   * GM force decrypt
-   */
-  async forceDecrypt() {
-    if (!game.user.isGM) return;
-    
-    const confirmed = await Dialog.confirm({
-      title: 'Force Decrypt',
-      content: '<p>Bypass all encryption and reveal all messages?</p>',
-      yes: () => true,
-      no: () => false
-    });
-    
-    if (!confirmed) return;
-    
-    // Decrypt
-    await this.item.setFlag(MODULE_ID, 'encrypted', false);
-    await this._decryptAllMessages();
-    
-    ui.notifications.info('Data shard force decrypted');
-    this.render(false);
-  }
-  
-  /**
-   * Export message to character inbox
-   * @param {string} messageId - Message ID
-   */
-  async exportMessage(messageId) {
-    const actor = game.user.character;
-    
-    if (!actor) {
-      ui.notifications.error('You need a character to export messages');
-      return;
-    }
-    
-    try {
-      // Get message data
-      const messageData = this._getMessageById(messageId);
-      if (!messageData) {
-        throw new Error('Message not found');
-      }
-      
-      // Create message in character's inbox
-      await this.messageRepository.create({
-        to: `${actor.name.toLowerCase().replace(/\s+/g, '')}@nightcity.net`,
-        from: messageData.from || 'unknown@datashard.net',
-        subject: messageData.subject,
-        content: messageData.content,
-        timestamp: new Date().toISOString()
-      });
-      
-      ui.notifications.info('Message exported to your inbox');
-    } catch (error) {
-      console.error(`${MODULE_ID} | Error exporting message:`, error);
-      ui.notifications.error('Failed to export message');
-    }
-  }
-  
-  /**
-   * Share message to chat
-   * @param {string} messageId - Message ID
-   */
-  async shareToChat(messageId) {
-    const messageData = this._getMessageById(messageId);
-    if (!messageData) return;
-    
-    // Check if decrypted
-    if (messageData.isEncrypted && !messageData.isDecrypted) {
-      ui.notifications.warn('Cannot share encrypted message');
-      return;
-    }
-    
-    // Create chat message
-    const chatContent = await renderTemplate(
-      `modules/${MODULE_ID}/templates/item-inbox/message-shared.hbs`,
-      {
-        message: messageData,
-        itemName: this.item.name,
-        sharedBy: game.user.name
-      }
-    );
-    
-    await ChatMessage.create({
-      content: chatContent,
-      speaker: ChatMessage.getSpeaker({ actor: game.user.character }),
-      type: CONST.CHAT_MESSAGE_TYPES.IC,
-      flags: {
-        [MODULE_ID]: {
-          type: 'shared-datashard-message',
-          itemId: this.item.id,
-          messageId: messageId
-        }
-      }
-    });
-    
-    ui.notifications.info('Message shared to chat');
-  }
-  
-  /**
-   * Open item configuration
-   */
-  openConfiguration() {
-    const { ItemInboxConfig } = require('./ItemInboxConfig.js');
-    new ItemInboxConfig(this.item).render(true);
   }
   
   /**
@@ -280,207 +139,338 @@ export class ItemInboxApp extends BaseApplication {
     super.activateListeners(html);
     
     // Message selection
-    html.find('.ncm-inbox-message-item').on('click', (event) => {
-      const messageId = $(event.currentTarget).data('message-id');
-      this.selectMessage(messageId);
-      this.playSound('click');
-    });
+    html.find('.ncm-message-item').click(this._onMessageSelect.bind(this));
     
-    // Decrypt button
-    html.find('.ncm-inbox__decrypt-btn').on('click', () => {
-      this.attemptDecryption();
-      this.playSound('click');
-    });
+    // Hack attempt
+    html.find('.ncm-hack-button').click(this._onHackAttempt.bind(this));
     
-    // Force decrypt (GM only)
-    html.find('.ncm-inbox__force-decrypt-btn').on('click', () => {
-      this.forceDecrypt();
-      this.playSound('click');
-    });
-    
-    // Export message
-    html.find('.ncm-inbox__export-btn').on('click', () => {
-      if (this.selectedMessageId) {
-        this.exportMessage(this.selectedMessageId);
-        this.playSound('click');
-      }
-    });
+    // Add message
+    html.find('.ncm-add-message').click(this._onAddMessage.bind(this));
     
     // Share to chat
-    html.find('.ncm-inbox__share-btn').on('click', () => {
-      if (this.selectedMessageId) {
-        this.shareToChat(this.selectedMessageId);
-        this.playSound('click');
+    html.find('.ncm-share-message').click(this._onShareMessage.bind(this));
+    
+    // Delete message
+    html.find('.ncm-delete-message').click(this._onDeleteMessage.bind(this));
+    
+    // Configure
+    html.find('.ncm-configure').click(this._onConfigure.bind(this));
+  }
+  
+  // ========================================================================
+  // EVENT HANDLERS
+  // ========================================================================
+  
+  /**
+   * Handle message selection
+   * @private
+   */
+  async _onMessageSelect(event) {
+    event.preventDefault();
+    const messageId = $(event.currentTarget).data('message-id');
+    
+    this.selectedMessageId = messageId;
+    this.render(false);
+  }
+  
+  /**
+   * Handle hack attempt
+   * @private
+   */
+  async _onHackAttempt(event) {
+    event.preventDefault();
+    
+    const actor = game.user.character;
+    if (!actor) {
+      ui.notifications.error('You must have a character selected to hack');
+      return;
+    }
+    
+    // Confirm the attempt
+    const confirmed = await Dialog.confirm({
+      title: "Attempt Hack",
+      content: `
+        <p>Attempt to decrypt this data shard?</p>
+        <p><strong>Encryption:</strong> ${this.item.getFlag(MODULE_ID, 'encryptionType') || 'ICE'}</p>
+        <p><strong>Difficulty:</strong> DV ${this.item.getFlag(MODULE_ID, 'encryptionDC') || 15}</p>
+        <p><strong>Failure Mode:</strong> ${this.item.getFlag(MODULE_ID, 'failureMode') || 'Lockout'}</p>
+      `
+    });
+    
+    if (!confirmed) return;
+    
+    // Set state
+    this.attemptingHack = true;
+    this.render(false);
+    
+    try {
+      // Attempt the hack
+      const result = await this.dataShardService.attemptHack(this.item, actor);
+      
+      if (result.success) {
+        // Success! Reload messages
+        await this._loadMessages();
+        ui.notifications.info('Data shard decrypted successfully!');
+      } else {
+        ui.notifications.error(`Hack failed: ${result.consequence || 'Access denied'}`);
       }
+      
+    } catch (error) {
+      console.error(`${MODULE_ID} | Hack attempt error:`, error);
+      ui.notifications.error('Hack attempt failed');
+    } finally {
+      this.attemptingHack = false;
+      this.render(false);
+    }
+  }
+  
+  /**
+   * Handle add message
+   * @private
+   */
+  async _onAddMessage(event) {
+    event.preventDefault();
+    
+    // Import and open the advanced composer
+    const { DataShardMessageComposer } = await import('./DataShardMessageComposer.js');
+    
+    const composer = new DataShardMessageComposer(this.item, {
+      // Pre-fill if needed
+      from: game.user.character?.getFlag(MODULE_ID, 'email') || '',
+      to: '',
+      subject: '',
+      content: ''
     });
     
-    // Configure button (GM only)
-    html.find('.ncm-inbox__config-btn').on('click', () => {
-      this.openConfiguration();
-      this.playSound('click');
+    composer.render(true);
+    
+    // Listen for message added
+    composer.once('close', async () => {
+      // Reload messages
+      await this._loadMessages();
+      this.render(false);
     });
   }
   
   /**
-   * Lifecycle: First render
-   */
-  _onFirstRender() {
-    console.log(`${MODULE_ID} | Item inbox opened: ${this.item.name}`);
-    this.playSound('open');
-  }
-  
-  // ========================================
-  // Private Helper Methods
-  // ========================================
-  
-  /**
-   * Get messages from item
+   * Handle share message
    * @private
    */
-  _getMessages(messageIds) {
-    const messages = [];
-    const messagesData = this.item.getFlag(MODULE_ID, 'messages') || {};
-    const globalEncrypted = this.item.getFlag(MODULE_ID, 'encrypted') || false;
+  async _onShareMessage(event) {
+    event.preventDefault();
     
-    messageIds.forEach(id => {
-      const msgData = messagesData[id];
-      if (!msgData) return;
-      
-      // Check if message is encrypted
-      const isEncrypted = msgData.encrypted !== undefined 
-        ? msgData.encrypted 
-        : globalEncrypted;
-      
-      // Check if decrypted
-      const isDecrypted = this._isMessageDecrypted(id);
-      
-      messages.push({
-        id,
-        from: msgData.from || 'Unknown',
-        subject: msgData.subject || 'No Subject',
-        content: msgData.content || '',
-        timestamp: msgData.timestamp || '',
-        isEncrypted,
-        isDecrypted,
-        canView: !isEncrypted || isDecrypted || game.user.isGM
-      });
+    if (!this.selectedMessageId) {
+      ui.notifications.warn('No message selected');
+      return;
+    }
+    
+    const message = this.messages.find(m => m.id === this.selectedMessageId);
+    if (!message) return;
+    
+    // Share to chat
+    await this._shareToChat(message);
+  }
+  
+  /**
+   * Handle delete message
+   * @private
+   */
+  async _onDeleteMessage(event) {
+    event.preventDefault();
+    
+    if (!this.selectedMessageId) {
+      ui.notifications.warn('No message selected');
+      return;
+    }
+    
+    const confirmed = await Dialog.confirm({
+      title: "Delete Message",
+      content: "<p>Are you sure you want to delete this message?</p>"
     });
     
-    return messages;
-  }
-  
-  /**
-   * Get message by ID
-   * @private
-   */
-  _getMessageById(messageId) {
-    const messagesData = this.item.getFlag(MODULE_ID, 'messages') || {};
-    const msgData = messagesData[messageId];
+    if (!confirmed) return;
     
-    if (!msgData) return null;
-    
-    const globalEncrypted = this.item.getFlag(MODULE_ID, 'encrypted') || false;
-    const isEncrypted = msgData.encrypted !== undefined 
-      ? msgData.encrypted 
-      : globalEncrypted;
-    
-    return {
-      id: messageId,
-      from: msgData.from || 'Unknown',
-      subject: msgData.subject || 'No Subject',
-      content: msgData.content || '',
-      timestamp: msgData.timestamp || '',
-      isEncrypted,
-      isDecrypted: this._isMessageDecrypted(messageId)
-    };
-  }
-  
-  /**
-   * Check if message is decrypted
-   * @private
-   */
-  _isMessageDecrypted(messageId) {
-    // Check localStorage for local decryption state
-    const key = `${MODULE_ID}-decrypted-${this.item.id}-${messageId}`;
-    return localStorage.getItem(key) === 'true';
-  }
-  
-  /**
-   * Load decryption status from localStorage
-   * @private
-   */
-  _loadDecryptionStatus() {
-    const messageIds = this.item.getFlag(MODULE_ID, 'messageIds') || [];
-    
-    messageIds.forEach(id => {
-      const key = `${MODULE_ID}-decrypted-${this.item.id}-${id}`;
-      const decrypted = localStorage.getItem(key) === 'true';
-      
-      if (decrypted) {
-        console.log(`${MODULE_ID} | Message ${id} is decrypted`);
+    try {
+      const message = this.messages.find(m => m.id === this.selectedMessageId);
+      if (message && message.page) {
+        await message.page.delete();
+        await this._loadMessages();
+        this.selectedMessageId = null;
+        this.render(false);
+        ui.notifications.info('Message deleted');
       }
-    });
+    } catch (error) {
+      console.error(`${MODULE_ID} | Error deleting message:`, error);
+      ui.notifications.error('Failed to delete message');
+    }
   }
   
   /**
-   * Decrypt all messages
+   * Handle configure
    * @private
    */
-  async _decryptAllMessages() {
-    const messageIds = this.item.getFlag(MODULE_ID, 'messageIds') || [];
+  async _onConfigure(event) {
+    event.preventDefault();
     
-    messageIds.forEach(id => {
-      const key = `${MODULE_ID}-decrypted-${this.item.id}-${id}`;
-      localStorage.setItem(key, 'true');
-    });
+    // Import and open config dialog
+    const { ItemInboxConfig } = await import('./ItemInboxConfig.js');
+    new ItemInboxConfig(this.item, { parent: this }).render(true);
   }
   
-  /**
-   * Check if user can decrypt
-   * @private
-   */
-  _canUserDecrypt() {
-    // GM can always decrypt
-    if (game.user.isGM) return true;
-    
-    // Must have a character
-    if (!game.user.character) return false;
-    
-    // Check if character has required skills/abilities
-    // (In a full implementation, this would check actual character stats)
-    return true;
-  }
+  // ========================================================================
+  // HELPER METHODS
+  // ========================================================================
   
   /**
-   * Create hack result chat message
+   * Load messages from data shard
    * @private
    */
-  async _createHackChatMessage(actor, result, success) {
-    const content = await renderTemplate(
-      `modules/${MODULE_ID}/templates/item-inbox/hack-result.hbs`,
-      {
-        actor: actor,
-        item: this.item,
-        success: success,
-        roll: result.roll,
-        total: result.total,
-        dc: result.dc,
-        blackICE: result.blackICE,
-        damage: result.damage
+  async _loadMessages() {
+    try {
+      this.messages = await this.dataShardService.getMessages(this.item);
+      
+      // Auto-select first message in single mode
+      const dataShardType = this.item.getFlag(MODULE_ID, 'dataShardType') || 'single';
+      if (dataShardType === 'single' && this.messages.length > 0 && !this.selectedMessageId) {
+        this.selectedMessageId = this.messages[0].id;
       }
-    );
+      
+    } catch (error) {
+      console.error(`${MODULE_ID} | Error loading messages:`, error);
+      this.messages = [];
+    }
+  }
+  
+  /**
+   * Prompt for message data
+   * @private
+   */
+  async _promptMessageData() {
+    return new Promise((resolve) => {
+      new Dialog({
+        title: "Add Message",
+        content: `
+          <form>
+            <div class="form-group">
+              <label>From:</label>
+              <input type="text" name="from" value="Unknown" />
+            </div>
+            <div class="form-group">
+              <label>To:</label>
+              <input type="text" name="to" value="Unknown" />
+            </div>
+            <div class="form-group">
+              <label>Subject:</label>
+              <input type="text" name="subject" value="No Subject" />
+            </div>
+            <div class="form-group">
+              <label>Content:</label>
+              <textarea name="content" rows="8" style="width: 100%; font-family: monospace;"></textarea>
+            </div>
+          </form>
+        `,
+        buttons: {
+          add: {
+            icon: '<i class="fas fa-plus"></i>',
+            label: "Add",
+            callback: (html) => {
+              const form = html.find('form')[0];
+              const formData = new FormDataExtended(form).object;
+              resolve({
+                from: formData.from,
+                to: formData.to,
+                subject: formData.subject,
+                content: formData.content,
+                date: new Date().toISOString()
+              });
+            }
+          },
+          cancel: {
+            icon: '<i class="fas fa-times"></i>',
+            label: "Cancel",
+            callback: () => resolve(null)
+          }
+        },
+        default: "add"
+      }).render(true);
+    });
+  }
+  
+  /**
+   * Share message to chat
+   * @private
+   */
+  async _shareToChat(message) {
+    const content = `
+      <div class="ncm-shared-data-shard-message">
+        <header>
+          <i class="fas fa-microchip"></i>
+          DATA SHARD CONTENTS
+        </header>
+        <div class="ncm-message-info">
+          <div class="ncm-shard-name">${this.item.name}</div>
+          <div class="ncm-message-subject">${message.messageData.subject}</div>
+        </div>
+        <div class="ncm-message-meta">
+          <span>FROM: ${message.messageData.from}</span>
+          <span>TO: ${message.messageData.to}</span>
+          <span>DATE: ${message.messageData.date}</span>
+        </div>
+        <div class="ncm-message-content">
+          ${message.content}
+        </div>
+        <div class="ncm-message-actions">
+          <button class="ncm-view-data-shard" data-item-id="${this.item.id}" data-message-id="${message.id}">
+            <i class="fas fa-eye"></i> View Data Shard
+          </button>
+        </div>
+      </div>
+    `;
     
     await ChatMessage.create({
       content,
-      speaker: ChatMessage.getSpeaker({ actor }),
-      type: CONST.CHAT_MESSAGE_TYPES.ROLL,
+      speaker: ChatMessage.getSpeaker(),
       flags: {
         [MODULE_ID]: {
-          type: 'hack-attempt',
+          sharedDataShard: true,
           itemId: this.item.id,
-          success: success
+          messageId: message.id
         }
       }
     });
+    
+    ui.notifications.info('Message shared to chat');
+  }
+  
+  /**
+   * Setup event listeners
+   * @private
+   */
+  _setupEvents() {
+    // Listen for data shard updates
+    this.eventBus.on(EVENTS.DATA_SHARD_MESSAGE_ADDED, async (data) => {
+      if (data.item.id === this.item.id) {
+        await this._loadMessages();
+        this.render(false);
+      }
+    });
+    
+    this.eventBus.on(EVENTS.DATA_SHARD_DECRYPTED, async (data) => {
+      if (data.item.id === this.item.id) {
+        await this._loadMessages();
+        this.render(false);
+      }
+    });
+  }
+  
+  /**
+   * Close handler
+   */
+  async close(options = {}) {
+    // Cleanup
+    this.eventBus.off(EVENTS.DATA_SHARD_MESSAGE_ADDED);
+    this.eventBus.off(EVENTS.DATA_SHARD_DECRYPTED);
+    
+    return super.close(options);
   }
 }

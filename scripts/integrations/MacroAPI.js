@@ -150,6 +150,90 @@ export class MacroAPI {
     };
     
     // ========================================
+    // MACRO API FOR DATA SHARDS
+    // ========================================
+
+    /**
+     * Convert an item to a data shard
+     * Usage: game.nightcity.convertToDataShard(item, { encrypted: true, encryptionDC: 20 })
+     */
+    game.nightcity.convertToDataShard = async function(item, config = {}) {
+      if (!item) {
+        ui.notifications.error('No item provided');
+        return null;
+      }
+      
+      try {
+        return await game.nightcity.dataShardService.convertToDataShard(item, config);
+      } catch (error) {
+        console.error(`${MODULE_ID} | Error converting to data shard:`, error);
+        return null;
+      }
+    };
+
+    /**
+     * Add a message to a data shard
+     * Usage: game.nightcity.addMessageToDataShard(item, { from: 'user@email.com', subject: 'Test', content: 'Hello' })
+     */
+    game.nightcity.addMessageToDataShard = async function(item, messageData) {
+      if (!item) {
+        ui.notifications.error('No item provided');
+        return null;
+      }
+      
+      try {
+        return await game.nightcity.dataShardService.addMessage(item, messageData);
+      } catch (error) {
+        console.error(`${MODULE_ID} | Error adding message:`, error);
+        return null;
+      }
+    };
+
+    /**
+     * Open data shard viewer for an item
+     * Usage: game.nightcity.openDataShard(item)
+     */
+    game.nightcity.openDataShard = async function(item) {
+      if (!item) {
+        ui.notifications.error('No item provided');
+        return;
+      }
+      
+      const isDataShard = item.getFlag(MODULE_ID, 'isDataShard');
+      if (!isDataShard) {
+        ui.notifications.error('Item is not a data shard');
+        return;
+      }
+      
+      const { ItemInboxApp } = game.nightcity;
+      new ItemInboxApp(item).render(true);
+    };
+
+    /**
+     * Attempt to hack a data shard
+     * Usage: game.nightcity.hackDataShard(item, actor)
+     */
+    game.nightcity.hackDataShard = async function(item, actor = null) {
+      if (!item) {
+        ui.notifications.error('No item provided');
+        return null;
+      }
+      
+      const targetActor = actor || game.user.character;
+      if (!targetActor) {
+        ui.notifications.error('No character selected to perform hack');
+        return null;
+      }
+      
+      try {
+        return await game.nightcity.dataShardService.attemptHack(item, targetActor);
+      } catch (error) {
+        console.error(`${MODULE_ID} | Error during hack:`, error);
+        return null;
+      }
+    };
+
+    // ========================================
     // Utility Functions
     // ========================================
     

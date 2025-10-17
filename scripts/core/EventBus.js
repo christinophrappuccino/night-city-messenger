@@ -219,6 +219,16 @@ export const EVENTS = {
   UI_VIEWER_CLOSED: 'ui:viewer:closed',
   UI_COMPOSER_OPENED: 'ui:composer:opened',
   UI_COMPOSER_CLOSED: 'ui:composer:closed',
+
+  // Data Shard events
+  DATA_SHARD_CREATED: 'dataShard:created',
+  DATA_SHARD_MESSAGE_ADDED: 'dataShard:messageAdded',
+  DATA_SHARD_DECRYPTED: 'dataShard:decrypted',
+  DATA_SHARD_LOCKED: 'dataShard:locked',
+  DATA_SHARD_CORRUPTED: 'dataShard:corrupted',
+  DATA_SHARD_HACK_ATTEMPT: 'dataShard:hackAttempt',
+  DATA_SHARD_MESSAGE_DELETED: 'dataShard:messageDeleted',
+  DATA_SHARD_SHARED: 'dataShard:shared',
   
   // State events
   STATE_CHANGED: 'state:changed',

@@ -1,0 +1,194 @@
+{{!-- Item Inbox Configuration Template (Clean - uses data-shard.css) --}}
+{{!-- File: templates/item-inbox/item-inbox-config.hbs --}}
+
+<form class="ncm-config-form">
+  
+  <div class="ncm-config-section">
+    <h3>Data Shard Configuration</h3>
+    <p class="ncm-config-description">
+      Configure this item as a data shard to store messages. Data shards can be encrypted,
+      requiring hacking to access their contents.
+    </p>
+  </div>
+  
+  {{!-- Enable/Disable --}}
+  <div class="ncm-form-group">
+    <label class="ncm-checkbox">
+      <input type="checkbox" name="enableDataShard" {{checked isDataShard}} />
+      <span>Enable as Data Shard</span>
+    </label>
+    <p class="ncm-help-text">
+      Convert this item into a data shard that can store messages
+    </p>
+  </div>
+  
+  {{!-- Data Shard Type --}}
+  <div class="ncm-form-group">
+    <label>Data Shard Type</label>
+    <div class="ncm-radio-group">
+      <label class="ncm-radio">
+        <input type="radio" name="dataShardType" value="single" {{checked (eq dataShardType "single")}} />
+        <span>Single Message</span>
+        <p class="ncm-help-text">Stores only one message at a time</p>
+      </label>
+      <label class="ncm-radio">
+        <input type="radio" name="dataShardType" value="multi" {{checked (eq dataShardType "multi")}} />
+        <span>Multiple Messages</span>
+        <p class="ncm-help-text">Can store multiple messages</p>
+      </label>
+    </div>
+  </div>
+  
+  {{!-- Network Requirement (NEW) --}}
+  <div class="ncm-form-group">
+    <label class="ncm-checkbox">
+      <input type="checkbox" name="requiresNetwork" {{checked requiresNetwork}} />
+      <span>Requires Specific Network</span>
+    </label>
+    <p class="ncm-help-text">
+      Data shard can only be accessed when connected to a specific network
+    </p>
+  </div>
+  
+  <div class="ncm-network-options" {{#unless requiresNetwork}}style="display: none;"{{/unless}}>
+    <div class="ncm-form-group">
+      <label>Required Network</label>
+      <select name="requiredNetwork">
+        <option value="CITINET" {{#if (eq requiredNetwork "CITINET")}}selected{{/if}}>CitiNet</option>
+        <option value="CORPNET" {{#if (eq requiredNetwork "CORPNET")}}selected{{/if}}>CorpNet</option>
+        <option value="DARKNET" {{#if (eq requiredNetwork "DARKNET")}}selected{{/if}}>DarkNet</option>
+        <option value="STREETNET" {{#if (eq requiredNetwork "STREETNET")}}selected{{/if}}>StreetNet</option>
+        <option value="CUSTOM" {{#if (eq requiredNetwork "CUSTOM")}}selected{{/if}}>Custom Network</option>
+      </select>
+    </div>
+    
+    <div class="ncm-form-group" {{#unless (eq requiredNetwork "CUSTOM")}}style="display: none;"{{/unless}} data-custom-network>
+      <label>Custom Network Name</label>
+      <input type="text" name="customNetworkName" value="{{customNetworkName}}" placeholder="e.g., Arasaka Internal" />
+    </div>
+  </div>
+  
+  {{!-- Login/Password (NEW) --}}
+  <div class="ncm-form-group">
+    <label class="ncm-checkbox">
+      <input type="checkbox" name="requiresLogin" {{checked requiresLogin}} />
+      <span>Requires Login</span>
+    </label>
+    <p class="ncm-help-text">
+      Requires valid credentials before accessing messages
+    </p>
+  </div>
+  
+  <div class="ncm-login-options" {{#unless requiresLogin}}style="display: none;"{{/unless}}>
+    <div class="ncm-form-group">
+      <label>Username</label>
+      <input type="text" name="loginUser" value="{{loginUser}}" placeholder="e.g., admin" />
+    </div>
+    
+    <div class="ncm-form-group">
+      <label>Password</label>
+      <input type="text" name="loginPassword" value="{{loginPassword}}" placeholder="Enter password" />
+      <p class="ncm-help-text">Players must enter this password or brute force it</p>
+    </div>
+    
+    <div class="ncm-form-group">
+      <label>Brute Force Skill</label>
+      <select name="bruteForceSkill">
+        {{#each availableSkills}}
+        <option value="{{value}}" {{#if (eq ../bruteForceSkill value)}}selected{{/if}}>{{label}}</option>
+        {{/each}}
+      </select>
+    </div>
+    
+    <div class="ncm-form-group">
+      <label>Brute Force Difficulty (DV)</label>
+      <input type="number" name="bruteForceDC" value="{{bruteForceDC}}" min="5" max="30" />
+    </div>
+    
+    <div class="ncm-form-group">
+      <label>Max Login Attempts</label>
+      <input type="number" name="maxLoginAttempts" value="{{maxLoginAttempts}}" min="1" max="10" />
+      <p class="ncm-help-text">System locks after this many failed attempts</p>
+    </div>
+  </div>
+  
+  {{!-- Encryption --}}
+  <div class="ncm-form-group">
+    <label class="ncm-checkbox">
+      <input type="checkbox" name="encrypted" {{checked encrypted}} />
+      <span>Encrypted Data Shard</span>
+    </label>
+    <p class="ncm-help-text">
+      Requires hacking (skill check) to decrypt and access contents
+    </p>
+  </div>
+  
+  {{!-- Encryption Options --}}
+  <div class="ncm-encryption-options" {{#unless encrypted}}style="display: none;"{{/unless}}>
+    
+    <div class="ncm-form-group">
+      <label>Encryption Type</label>
+      <select name="encryptionType">
+        {{#each encryptionTypes}}
+        <option value="{{value}}" {{#if (eq ../encryptionType value)}}selected{{/if}}>
+          {{label}}
+        </option>
+        {{/each}}
+      </select>
+      <p class="ncm-help-text">Visual and narrative flavor for the encryption</p>
+    </div>
+    
+    <div class="ncm-form-group">
+      <label>Required Skill</label>
+      <select name="requiredSkill">
+        {{#each availableSkills}}
+        <option value="{{value}}" {{#if (eq ../requiredSkill value)}}selected{{/if}}>{{label}}</option>
+        {{/each}}
+      </select>
+      <p class="ncm-help-text">Which skill is required to decrypt this data shard</p>
+    </div>
+    
+    <div class="ncm-form-group">
+      <label>Encryption Difficulty (DV)</label>
+      <input type="number" name="encryptionDC" value="{{encryptionDC}}" min="5" max="30" />
+      <p class="ncm-help-text">
+        Difficulty value for the skill check (5-30, recommended 15)
+      </p>
+    </div>
+    
+    <div class="ncm-form-group">
+      <label>Failure Mode</label>
+      <select name="failureMode">
+        {{#each failureModes}}
+        <option value="{{value}}" {{#if (eq ../failureMode value)}}selected{{/if}}>
+          {{label}}
+        </option>
+        {{/each}}
+      </select>
+      <p class="ncm-help-text">What happens when a hack attempt fails</p>
+    </div>
+    
+  </div>
+  
+  {{!-- Theme --}}
+  <div class="ncm-form-group">
+    <label>Visual Theme</label>
+    <select name="theme">
+      {{#each themes}}
+      <option value="{{value}}" {{#if (eq ../theme value)}}selected{{/if}}>
+        {{label}}
+      </option>
+      {{/each}}
+    </select>
+    <p class="ncm-help-text">Visual styling for the data shard interface</p>
+  </div>
+  
+  {{!-- Save Button --}}
+  <div class="ncm-form-actions">
+    <button type="submit" class="ncm-button-primary">
+      <i class="fas fa-save"></i>
+      Save Configuration
+    </button>
+  </div>
+  
+</form>

@@ -41,6 +41,7 @@ export class TemplateManager {
       `modules/${MODULE_ID}/templates/item-inbox/item-inbox.hbs`,
       `modules/${MODULE_ID}/templates/item-inbox/item-config.hbs`,
       `modules/${MODULE_ID}/templates/item-inbox/message-shared.hbs`,
+      `modules/${MODULE_ID}/templates/item-inbox/message-composer.hbs`
       `modules/${MODULE_ID}/templates/item-inbox/hack-result.hbs`,
       
       // Shared

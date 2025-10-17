@@ -1,0 +1,124 @@
+{{!-- Data Shard Message Composer Template --}}
+{{!-- File: templates/item-inbox/message-composer.hbs --}}
+
+<form class="ncm-datashard-composer-form">
+  
+  {{!-- Template Selector --}}
+  <div class="ncm-composer-section ncm-composer-templates">
+    <label>Message Template (Optional)</label>
+    <select class="ncm-template-select">
+      <option value="">-- Blank Message --</option>
+      {{#each templates}}
+      <option value="{{id}}" {{#if (eq ../selectedTemplate.id id)}}selected{{/if}}>
+        {{name}}
+      </option>
+      {{/each}}
+    </select>
+    <p class="ncm-help-text">Choose a pre-made template or start from scratch</p>
+  </div>
+  
+  {{!-- From Field --}}
+  <div class="ncm-composer-section">
+    <label>From:</label>
+    <div class="ncm-input-with-button">
+      <input type="text" name="from" value="{{messageData.from}}" 
+             placeholder="sender@nightcity.net" 
+             {{#unless canEditAll}}disabled{{/unless}} />
+      {{#if isGM}}
+      <button type="button" class="ncm-quick-fill-from" title="Quick Fill">
+        <i class="fas fa-user"></i>
+      </button>
+      {{/if}}
+    </div>
+    {{#unless isGM}}
+    <p class="ncm-help-text">Your address: {{currentUserEmail}}</p>
+    {{/unless}}
+  </div>
+  
+  {{!-- To Field --}}
+  <div class="ncm-composer-section">
+    <label>To:</label>
+    <div class="ncm-input-with-button">
+      <input type="text" name="to" value="{{messageData.to}}" 
+             placeholder="recipient@nightcity.net" />
+      <button type="button" class="ncm-quick-fill-to" title="Quick Fill">
+        <i class="fas fa-users"></i>
+      </button>
+    </div>
+    <p class="ncm-help-text">Enter email address or select from list</p>
+  </div>
+  
+  {{!-- Subject Field --}}
+  <div class="ncm-composer-section">
+    <label>Subject:</label>
+    <input type="text" name="subject" value="{{messageData.subject}}" 
+           placeholder="Enter subject..." />
+  </div>
+  
+  {{!-- Date Field (GM only) --}}
+  {{#if isGM}}
+  <div class="ncm-composer-section">
+    <label>Date/Time:</label>
+    <input type="datetime-local" name="date" 
+           value="{{messageData.date}}" />
+    <p class="ncm-help-text">Set custom timestamp (leave blank for current time)</p>
+  </div>
+  {{/if}}
+  
+  {{!-- Content Editor --}}
+  <div class="ncm-composer-section ncm-composer-content">
+    <div class="ncm-editor-toolbar">
+      <button type="button" class="ncm-format-bold" title="Bold">
+        <i class="fas fa-bold"></i>
+      </button>
+      <button type="button" class="ncm-format-italic" title="Italic">
+        <i class="fas fa-italic"></i>
+      </button>
+      <button type="button" class="ncm-format-code" title="Code">
+        <i class="fas fa-code"></i>
+      </button>
+      <button type="button" class="ncm-format-header" title="Header">
+        <i class="fas fa-heading"></i>
+      </button>
+      <div class="ncm-toolbar-separator"></div>
+      <label>Insert Variable:</label>
+      <button type="button" class="ncm-insert-variable" data-variable="playerName" title="Player Name">
+        Player
+      </button>
+      <button type="button" class="ncm-insert-variable" data-variable="date" title="Date">
+        Date
+      </button>
+      <button type="button" class="ncm-insert-variable" data-variable="randomEddies" title="Random Eddies">
+        Eddies
+      </button>
+      <button type="button" class="ncm-insert-variable" data-variable="randomLocation" title="Random Location">
+        Location
+      </button>
+    </div>
+    
+    <label>Message Content:</label>
+    <textarea name="content" rows="12" placeholder="Enter message content...">{{messageData.content}}</textarea>
+    
+    <div class="ncm-editor-hints">
+      <p><strong>Formatting:</strong> Use HTML tags or select text and click formatting buttons</p>
+      <p><strong>Variables:</strong> Click variable buttons to insert (e.g., {{playerName}} → actual player name)</p>
+    </div>
+  </div>
+  
+  {{!-- Actions --}}
+  <div class="ncm-composer-actions">
+    <button type="button" class="ncm-preview-message ncm-button-secondary">
+      <i class="fas fa-eye"></i>
+      Preview
+    </button>
+    <button type="button" class="ncm-save-draft ncm-button-secondary">
+      <i class="fas fa-save"></i>
+      Save Draft
+    </button>
+    <button type="button" class="ncm-send-message ncm-button-primary">
+      <i class="fas fa-paper-plane"></i>
+      Add to Data Shard
+    </button>
+  </div>
+  
+</form>
