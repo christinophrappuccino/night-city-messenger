@@ -53,6 +53,38 @@ export class HandlebarsHelpers {
     Handlebars.registerHelper('not', function(value) {
       return !value;
     });
+
+
+    // ========================================
+    // Item Inbox Helpers
+    // ========================================
+
+    // Logical OR
+    Handlebars.registerHelper('or', function(...args) {
+      args.pop(); // Remove Handlebars options object
+      return args.some(Boolean);
+    });
+    
+    // Logical AND
+    Handlebars.registerHelper('and', function(...args) {
+      args.pop(); // Remove Handlebars options object
+      return args.every(Boolean);
+    });
+    
+    // Checkbox checked attribute
+    Handlebars.registerHelper('checked', function(condition) {
+      return condition ? 'checked' : '';
+    });
+    
+    // Select option selected attribute
+    Handlebars.registerHelper('selected', function(condition) {
+      return condition ? 'selected' : '';
+    });
+    
+    // Check if encryption type is lethal (BLACK_ICE or RED_ICE)
+    Handlebars.registerHelper('isLethalICE', function(encryptionType) {
+      return encryptionType === 'BLACK_ICE' || encryptionType === 'RED_ICE';
+    });
     
     // ========================================
     // Collection Helpers

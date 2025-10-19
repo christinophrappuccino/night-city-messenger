@@ -1,5 +1,5 @@
 /**
- * Item Inbox Application (Fixed)
+ * Item Inbox Application (Enhanced)
  * File: scripts/ui/components/ItemInbox/ItemInboxApp.js
  * Module: cyberpunkred-messenger
  * Description: View messages stored in items (data shards)
@@ -69,61 +69,111 @@ export class ItemInboxApp extends BaseApplication {
     const encrypted = this.item.getFlag(MODULE_ID, 'encrypted') || false;
     const encryptionDC = this.item.getFlag(MODULE_ID, 'encryptionDC') || 15;
     const encryptionType = this.item.getFlag(MODULE_ID, 'encryptionType') || 'ICE';
+    const failureMode = this.item.getFlag(MODULE_ID, 'failureMode') || 'lockout';
     const theme = this.item.getFlag(MODULE_ID, 'theme') || 'default';
     const dataShardType = this.item.getFlag(MODULE_ID, 'dataShardType') || 'single';
     
+    // Network requirements (NEW)
+    const requiresNetwork = this.item.getFlag(MODULE_ID, 'requiresNetwork') || false;
+    const requiredNetwork = this.item.getFlag(MODULE_ID, 'requiredNetwork') || 'CITINET';
+    const networkAvailable = true; // TODO: Check actual network status
+    
+    // Login requirements (NEW)
+    const requiresLogin = this.item.getFlag(MODULE_ID, 'requiresLogin') || false;
+    const isLoggedIn = this.item.getFlag(MODULE_ID, 'sessionLoggedIn') || false;
+    
     // Check if decrypted
     const decrypted = this.item.getFlag(MODULE_ID, 'decrypted') || false;
-    const locallyDecrypted = localStorage.getItem(`${MODULE_ID}-decrypted-${this.item.id}`) === 'true';
-    const isDecrypted = decrypted || locallyDecrypted || !encrypted;
+    const isDecrypted = decrypted || !encrypted;
     
     // Check lockout
     const lockoutUntil = this.item.getFlag(MODULE_ID, 'lockoutUntil');
     const isLockedOut = lockoutUntil && Date.now() < lockoutUntil;
     const lockoutMinutes = isLockedOut ? Math.ceil((lockoutUntil - Date.now()) / 1000 / 60) : 0;
     
+    // Can access? (NEW - considers all security layers)
+    const canAccess = (isDecrypted || game.user.isGM) && 
+                      (!requiresNetwork || networkAvailable || game.user.isGM) &&
+                      (!requiresLogin || isLoggedIn || game.user.isGM);
+    
     // Get messages
     const messages = this.messages.map(msg => ({
       ...msg,
       isSelected: msg.id === this.selectedMessageId,
-      canView: isDecrypted || game.user.isGM
+      canView: canAccess
     }));
     
-    // Get selected message
-    const selectedMessage = messages.find(m => m.id === this.selectedMessageId);
+    // Get selected message (NEW - with full data)
+    let selectedMessage = null;
+    if (this.selectedMessageId) {
+      const msg = messages.find(m => m.id === this.selectedMessageId);
+      if (msg) {
+        selectedMessage = {
+          ...msg,
+          messageData: msg.messageData || {},
+          content: msg.content || '',
+          canView: canAccess,
+          attachments: msg.attachments || [],
+          infected: msg.messageData?.infected || false,
+          malwareType: msg.messageData?.malwareType || null,
+          threatLevel: msg.messageData?.threatLevel || 'unknown'
+        };
+      }
+    }
     
     // Check if user can attempt hack
     const canHack = game.user.character && !isDecrypted && !isLockedOut;
+    const selectedActor = game.user.character;
     
     // Show encrypted overlay?
     const showEncryptedOverlay = encrypted && !isDecrypted && !game.user.isGM;
+    
+    // Previous hack attempts (NEW)
+    const previousAttempts = this.item.getFlag(MODULE_ID, 'hackAttempts') || [];
     
     return {
       ...data,
       item: this.item,
       itemName: this.item.name,
+      itemId: this.item.id,
       itemDescription: this.item.system.description || '',
       
       // Configuration
       encrypted,
       encryptionDC,
       encryptionType,
+      failureMode,
       theme,
       isSingleMode: dataShardType === 'single',
+      
+      // Network (NEW)
+      requiresNetwork,
+      requiredNetwork,
+      networkAvailable,
+      signalStrength: 100, // TODO: Get real signal strength
+      
+      // Login (NEW)
+      requiresLogin,
+      isLoggedIn,
       
       // Status
       isDecrypted,
       isLockedOut,
       lockoutMinutes,
       canHack,
+      canAccess, // NEW
       showEncryptedOverlay,
       attemptingHack: this.attemptingHack,
       
       // Messages
       messages,
       messageCount: messages.length,
-      selectedMessage,
+      selectedMessage, // ENHANCED
       hasMessages: messages.length > 0,
+      
+      // Hack data (NEW)
+      previousAttempts,
+      selectedActor,
       
       // Permissions
       isOwner: this.item.isOwner,
@@ -138,29 +188,24 @@ export class ItemInboxApp extends BaseApplication {
   activateListeners(html) {
     super.activateListeners(html);
     
-    // Message selection
-    html.find('.ncm-message-item').click(this._onMessageSelect.bind(this));
-    
-    // Hack attempt
-    html.find('.ncm-hack-button').click(this._onHackAttempt.bind(this));
-    
-    // Add message
-    html.find('.ncm-add-message').click(this._onAddMessage.bind(this));
-    
-    // Share to chat
-    html.find('.ncm-share-message').click(this._onShareMessage.bind(this));
-    
-    // Delete message
-    html.find('.ncm-delete-message').click(this._onDeleteMessage.bind(this));
-    
-    // Configure
-    html.find('.ncm-configure').click(this._onConfigure.bind(this));
+    html.find('[data-action="select-message"]').click(this._onMessageSelect.bind(this));
+    html.find('[data-action="attempt-hack"]').click(this._onHackAttempt.bind(this));
+    html.find('[data-action="add-message"]').click(this._onAddMessage.bind(this));
+    html.find('[data-action="share-message"]').click(this._onShareMessage.bind(this));
+    html.find('[data-action="delete-message"]').click(this._onDeleteMessage.bind(this));
+    html.find('[data-action="configure"]').click(this._onConfigure.bind(this));
+    html.find('[data-action="close"]').click(() => this.close());
+    html.find('[data-action="gm-force-decrypt"]').click(this._onGMForceDecrypt.bind(this));
+    html.find('[data-action="gm-bypass-login"]').click(this._onGMBypassLogin.bind(this));
+    html.find('[data-action="gm-override-network"]').click(this._onGMOverrideNetwork.bind(this));
+    html.find('[data-action="login"]').click(this._onLogin.bind(this));
+    html.find('[data-action="quarantine-message"]').click(this._onQuarantineMessage.bind(this));
   }
   
   // ========================================================================
   // EVENT HANDLERS
   // ========================================================================
-  
+
   /**
    * Handle message selection
    * @private
@@ -211,8 +256,14 @@ export class ItemInboxApp extends BaseApplication {
         // Success! Reload messages
         await this._loadMessages();
         ui.notifications.info('Data shard decrypted successfully!');
+        
+        // Record successful attempt
+        await this._recordHackAttempt(actor, true, result.total);
       } else {
         ui.notifications.error(`Hack failed: ${result.consequence || 'Access denied'}`);
+        
+        // Record failed attempt
+        await this._recordHackAttempt(actor, false, result.total);
       }
       
     } catch (error) {
@@ -231,11 +282,10 @@ export class ItemInboxApp extends BaseApplication {
   async _onAddMessage(event) {
     event.preventDefault();
     
-    // Import and open the advanced composer
+    // Import and open the composer
     const { DataShardMessageComposer } = await import('./DataShardMessageComposer.js');
     
     const composer = new DataShardMessageComposer(this.item, {
-      // Pre-fill if needed
       from: game.user.character?.getFlag(MODULE_ID, 'email') || '',
       to: '',
       subject: '',
@@ -244,11 +294,14 @@ export class ItemInboxApp extends BaseApplication {
     
     composer.render(true);
     
-    // Listen for message added
-    composer.once('close', async () => {
-      // Reload messages
-      await this._loadMessages();
-      this.render(false);
+    // Use Hooks instead of once()
+    const hookId = Hooks.on('closeApplication', (app) => {
+      if (app === composer) {
+        Hooks.off('closeApplication', hookId);
+        this._loadMessages().then(() => {
+          this.render(false);
+        });
+      }
     });
   }
   
@@ -317,6 +370,104 @@ export class ItemInboxApp extends BaseApplication {
     new ItemInboxConfig(this.item, { parent: this }).render(true);
   }
   
+  /**
+   * GM force decrypt (NEW)
+   * @private
+   */
+  async _onGMForceDecrypt(event) {
+    event.preventDefault();
+    
+    if (!game.user.isGM) {
+      ui.notifications.error('Only GMs can force decrypt');
+      return;
+    }
+    
+    await this.item.setFlag(MODULE_ID, 'decrypted', true);
+    await this._loadMessages();
+    this.render(false);
+    ui.notifications.info('GM Override: Data shard decrypted');
+  }
+  
+  /**
+   * GM bypass login (NEW)
+   * @private
+   */
+  async _onGMBypassLogin(event) {
+    event.preventDefault();
+    
+    if (!game.user.isGM) {
+      ui.notifications.error('Only GMs can bypass login');
+      return;
+    }
+    
+    await this.item.setFlag(MODULE_ID, 'sessionLoggedIn', true);
+    this.render(false);
+    ui.notifications.info('GM Override: Login bypassed');
+  }
+  
+  /**
+   * GM override network (NEW)
+   * @private
+   */
+  async _onGMOverrideNetwork(event) {
+    event.preventDefault();
+    
+    if (!game.user.isGM) {
+      ui.notifications.error('Only GMs can override network requirements');
+      return;
+    }
+    
+    await this.item.setFlag(MODULE_ID, 'networkOverride', true);
+    this.render(false);
+    ui.notifications.info('GM Override: Network requirement bypassed');
+  }
+  
+  /**
+   * Handle login (NEW)
+   * @private
+   */
+  async _onLogin(event) {
+    event.preventDefault();
+    
+    const html = $(event.currentTarget).closest('.ncm-item-inbox__login-form');
+    const username = html.find('input[name="username"]').val();
+    const password = html.find('input[name="password"]').val();
+    
+    const savedUsername = this.item.getFlag(MODULE_ID, 'loginUsername');
+    const savedPassword = this.item.getFlag(MODULE_ID, 'loginPassword');
+    
+    if (username === savedUsername && password === savedPassword) {
+      await this.item.setFlag(MODULE_ID, 'sessionLoggedIn', true);
+      this.render(false);
+      ui.notifications.info('Login successful!');
+    } else {
+      ui.notifications.error('Invalid credentials');
+    }
+  }
+  
+  /**
+   * Handle quarantine message (NEW)
+   * @private
+   */
+  async _onQuarantineMessage(event) {
+    event.preventDefault();
+    
+    if (!this.selectedMessageId) return;
+    
+    const message = this.messages.find(m => m.id === this.selectedMessageId);
+    if (!message || !message.page) return;
+    
+    // Update message data
+    const messageData = message.messageData;
+    messageData.quarantined = true;
+    
+    await message.page.setFlag(MODULE_ID, 'messageData', messageData);
+    await this._loadMessages();
+    this.render(false);
+    
+    ui.notifications.info('Message quarantined');
+  }
+  
   // ========================================================================
   // HELPER METHODS
   // ========================================================================
@@ -342,58 +493,20 @@ export class ItemInboxApp extends BaseApplication {
   }
   
   /**
-   * Prompt for message data
+   * Record hack attempt (NEW)
    * @private
    */
-  async _promptMessageData() {
-    return new Promise((resolve) => {
-      new Dialog({
-        title: "Add Message",
-        content: `
-          <form>
-            <div class="form-group">
-              <label>From:</label>
-              <input type="text" name="from" value="Unknown" />
-            </div>
-            <div class="form-group">
-              <label>To:</label>
-              <input type="text" name="to" value="Unknown" />
-            </div>
-            <div class="form-group">
-              <label>Subject:</label>
-              <input type="text" name="subject" value="No Subject" />
-            </div>
-            <div class="form-group">
-              <label>Content:</label>
-              <textarea name="content" rows="8" style="width: 100%; font-family: monospace;"></textarea>
-            </div>
-          </form>
-        `,
-        buttons: {
-          add: {
-            icon: '<i class="fas fa-plus"></i>',
-            label: "Add",
-            callback: (html) => {
-              const form = html.find('form')[0];
-              const formData = new FormDataExtended(form).object;
-              resolve({
-                from: formData.from,
-                to: formData.to,
-                subject: formData.subject,
-                content: formData.content,
-                date: new Date().toISOString()
-              });
-            }
-          },
-          cancel: {
-            icon: '<i class="fas fa-times"></i>',
-            label: "Cancel",
-            callback: () => resolve(null)
-          }
-        },
-        default: "add"
-      }).render(true);
+  async _recordHackAttempt(actor, success, roll) {
+    const attempts = this.item.getFlag(MODULE_ID, 'hackAttempts') || [];
+    attempts.push({
+      actorName: actor.name,
+      actorId: actor.id,
+      result: success ? 'Success' : 'Failure',
+      roll: roll || 0,
+      timestamp: new Date().toISOString()
     });
+    
+    await this.item.setFlag(MODULE_ID, 'hackAttempts', attempts);
   }
   
   /**
