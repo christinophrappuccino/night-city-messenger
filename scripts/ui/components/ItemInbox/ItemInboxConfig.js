@@ -6,13 +6,16 @@
  */
 
 import { MODULE_ID } from '../../../utils/constants.js';
+import { BaseApplication } from '../BaseApplication.js';
+import { EventBus } from '../../../core/EventBus.js';
 import { DataShardService } from '../../../services/DataShardService.js';
 
 export class ItemInboxConfig extends FormApplication {
   constructor(item, options = {}) {
     super(item, options);
     this.item = item;
-    this.dataShardService = new DataShardService();
+    const eventBus = EventBus.getInstance();
+    this.dataShardService = new DataShardService(eventBus);
   }
   
   static get defaultOptions() {
@@ -27,55 +30,82 @@ export class ItemInboxConfig extends FormApplication {
     });
   }
   
-  getData(options = {}) {
-    const data = super.getData(options);
-    
-    // Check if already configured
-    const isDataShard = this.item.getFlag(MODULE_ID, 'isDataShard') || false;
+  async getData(options = {}) {
+    const data = await super.getData(options);
     
     // Get current configuration
-    const dataShardType = this.item.getFlag(MODULE_ID, 'dataShardType') || 'multi';
+    const isDataShard = this.item.getFlag(MODULE_ID, 'isDataShard') || false;
     const encrypted = this.item.getFlag(MODULE_ID, 'encrypted') || false;
-    const encryptionDC = this.item.getFlag(MODULE_ID, 'encryptionDC') || 15;
     const encryptionType = this.item.getFlag(MODULE_ID, 'encryptionType') || 'ICE';
+    const encryptionDC = this.item.getFlag(MODULE_ID, 'encryptionDC') || 15;
+    const encryptionMode = this.item.getFlag(MODULE_ID, 'encryptionMode') || 'shard'; // NEW
+    const allowedSkills = this.item.getFlag(MODULE_ID, 'allowedSkills') || ['Interface', 'Electronics/Security Tech'];
     const failureMode = this.item.getFlag(MODULE_ID, 'failureMode') || 'lockout';
-    const theme = this.item.getFlag(MODULE_ID, 'theme') || 'default';
+    const singleMessage = this.item.getFlag(MODULE_ID, 'singleMessage') || false;
+    const theme = this.item.getFlag(MODULE_ID, 'theme') || 'classic';
+    
+    // Import constants for skill options
+    const { SKILL_PRESETS, CYBERPUNK_SKILLS } = await import('../../../utils/constants.js');
     
     return {
       ...data,
       item: this.item,
       isDataShard,
-      
-      // Configuration options
-      dataShardType,
       encrypted,
-      encryptionDC,
       encryptionType,
+      encryptionDC,
+      encryptionMode, // NEW
+      allowedSkills,
       failureMode,
+      singleMessage,
       theme,
       
-      // Options lists
+      // Encryption mode options (NEW)
+      encryptionModes: {
+        shard: {
+          value: 'shard',
+          label: 'Data Shard Level',
+          description: 'Entire inbox is encrypted - hack once to see all messages'
+        },
+        message: {
+          value: 'message',
+          label: 'Per Message',
+          description: 'Each message can be individually encrypted - hack each separately'
+        },
+        both: {
+          value: 'both',
+          label: 'Both Layers',
+          description: 'Shard is encrypted AND individual messages can be encrypted too'
+        }
+      },
+      
+      // Skill options
+      skillPresets: SKILL_PRESETS,
+      techSkills: Object.values(CYBERPUNK_SKILLS.TECH),
+      intSkills: Object.values(CYBERPUNK_SKILLS.INTELLIGENCE),
+      
+      // Encryption types
       encryptionTypes: [
-        { value: 'ICE', label: 'ICE (Standard)' },
-        { value: 'BLACKICE', label: 'BLACK ICE (Lethal)' },
-        { value: 'BASIC', label: 'Basic Encryption' },
-        { value: 'QUANTUM', label: 'Quantum Encryption' }
+        { value: 'ICE', label: 'Standard ICE', damage: 'None' },
+        { value: 'BLACK_ICE', label: 'BLACK ICE (Lethal)', damage: '3d6' },
+        { value: 'RED_ICE', label: 'RED ICE (Extreme)', damage: '5d6' }
       ],
       
+      // Failure modes
       failureModes: [
-        { value: 'lockout', label: 'Lockout (1 hour)' },
-        { value: 'traceback', label: 'Traceback (Alert owner)' },
-        { value: 'damage', label: 'EMP Damage (1d6)' },
-        { value: 'corrupt', label: 'Data Corruption' }
+        { value: 'nothing', label: 'Nothing (Can Retry)' },
+        { value: 'lockout', label: 'Temporary Lockout (1 hour)' },
+        { value: 'permanent', label: 'Permanent Lock' },
+        { value: 'destroy', label: 'Destroy Data' }
       ],
       
+      // Themes
       themes: [
-        { value: 'default', label: 'Default' },
-        { value: 'arasaka', label: 'Arasaka' },
-        { value: 'militech', label: 'Militech' },
-        { value: 'netwatch', label: 'NetWatch' },
-        { value: 'trauma', label: 'Trauma Team' },
-        { value: 'scav', label: 'Scavenger' }
+        { value: 'classic', label: 'Classic Red' },
+        { value: 'arasaka', label: 'Arasaka Corporate' },
+        { value: 'militech', label: 'Militech Military' },
+        { value: 'netwatch', label: 'NetWatch Official' },
+        { value: 'neon', label: 'Neon City' }
       ]
     };
   }
@@ -93,46 +123,51 @@ export class ItemInboxConfig extends FormApplication {
     html.find('[name="encrypted"]').trigger('change');
   }
   
+  /**
+   * Handle form submission
+   */
   async _updateObject(event, formData) {
     console.log(`${MODULE_ID} | Configuring data shard:`, formData);
     
     try {
-      // Check if enabling or disabling
-      const enableDataShard = formData.enableDataShard;
+      const eventBus = EventBus.getInstance();
+      const dataShardService = new DataShardService(eventBus);
       
-      if (enableDataShard) {
-        // Convert to data shard
-        const config = {
-          type: formData.dataShardType,
-          encrypted: formData.encrypted,
-          encryptionDC: parseInt(formData.encryptionDC),
-          encryptionType: formData.encryptionType,
-          failureMode: formData.failureMode,
-          theme: formData.theme
-        };
-        
-        await this.dataShardService.convertToDataShard(this.item, config);
-        
-        ui.notifications.info(`${this.item.name} configured as data shard!`);
-        
-        // Open the item inbox
-        setTimeout(async () => {
-          const { ItemInboxApp } = await import('./ItemInboxApp.js');
-          new ItemInboxApp(this.item).render(true);
-        }, 500);
-        
-      } else {
-        // Disable data shard
-        await this.item.unsetFlag(MODULE_ID, 'isDataShard');
-        await this.item.unsetFlag(MODULE_ID, 'dataShardType');
-        await this.item.unsetFlag(MODULE_ID, 'encrypted');
-        await this.item.unsetFlag(MODULE_ID, 'encryptionDC');
-        await this.item.unsetFlag(MODULE_ID, 'encryptionType');
-        await this.item.unsetFlag(MODULE_ID, 'failureMode');
-        await this.item.unsetFlag(MODULE_ID, 'theme');
-        
-        ui.notifications.info(`${this.item.name} is no longer a data shard`);
+      // Collect allowed skills (multiple checkboxes)
+      const allowedSkills = [];
+      if (formData.allowedSkills) {
+        if (Array.isArray(formData.allowedSkills)) {
+          allowedSkills.push(...formData.allowedSkills);
+        } else {
+          allowedSkills.push(formData.allowedSkills);
+        }
       }
+      
+      // If not a data shard yet, convert it
+      if (!this.item.getFlag(MODULE_ID, 'isDataShard')) {
+        await dataShardService.convertToDataShard(this.item, {
+          encrypted: formData.encrypted || false,
+          encryptionType: formData.encryptionType || 'ICE',
+          encryptionDC: parseInt(formData.encryptionDC) || 15,
+          encryptionMode: formData.encryptionMode || 'shard', // NEW
+          allowedSkills: allowedSkills.length > 0 ? allowedSkills : ['Interface', 'Electronics/Security Tech'],
+          failureMode: formData.failureMode || 'lockout',
+          singleMessage: formData.singleMessage || false,
+          theme: formData.theme || 'classic'
+        });
+      } else {
+        // Update existing data shard
+        await this.item.setFlag(MODULE_ID, 'encrypted', formData.encrypted || false);
+        await this.item.setFlag(MODULE_ID, 'encryptionType', formData.encryptionType || 'ICE');
+        await this.item.setFlag(MODULE_ID, 'encryptionDC', parseInt(formData.encryptionDC) || 15);
+        await this.item.setFlag(MODULE_ID, 'encryptionMode', formData.encryptionMode || 'shard'); // NEW
+        await this.item.setFlag(MODULE_ID, 'allowedSkills', allowedSkills.length > 0 ? allowedSkills : ['Interface', 'Electronics/Security Tech']);
+        await this.item.setFlag(MODULE_ID, 'failureMode', formData.failureMode || 'lockout');
+        await this.item.setFlag(MODULE_ID, 'singleMessage', formData.singleMessage || false);
+        await this.item.setFlag(MODULE_ID, 'theme', formData.theme || 'classic');
+      }
+      
+      ui.notifications.info('Data shard configuration updated');
       
     } catch (error) {
       console.error(`${MODULE_ID} | Error configuring data shard:`, error);

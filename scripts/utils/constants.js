@@ -315,6 +315,183 @@ export const NOTIFICATION_DURATION = {
 };
 
 /**
+ * Comprehensive skills for Cyberpunk RED
+ * Organized by category for UI purposes
+ * IMPORTANT: These use the actual skill names as they appear on character sheets
+ */
+export const CYBERPUNK_SKILLS = {
+  // Tech Skills - Most relevant for hacking
+  TECH: {
+    Interface: { 
+      name: 'Interface', 
+      displayName: 'Interface',
+      stat: 'INT',
+      description: 'Primary netrunning skill'
+    },
+    ElectronicsSecurity: { 
+      name: 'Electronics/Security Tech', 
+      displayName: 'Electronics/Security Tech',
+      stat: 'TECH',
+      description: 'Hardware hacking and security systems'
+    },
+    BasicTech: { 
+      name: 'Basic Tech', 
+      displayName: 'Basic Tech',
+      stat: 'TECH',
+      description: 'General technical knowledge'
+    },
+    Cybertech: { 
+      name: 'Cybertech', 
+      displayName: 'Cybertech',
+      stat: 'TECH',
+      description: 'Cyberware installation and repair'
+    },
+    FirstAid: { 
+      name: 'First Aid', 
+      displayName: 'First Aid',
+      stat: 'TECH',
+      description: 'Medical treatment'
+    },
+    Forgery: { 
+      name: 'Forgery', 
+      displayName: 'Forgery',
+      stat: 'TECH',
+      description: 'Creating false documents'
+    },
+    PickLock: { 
+      name: 'Pick Lock', 
+      displayName: 'Pick Lock',
+      stat: 'TECH',
+      description: 'Physical lock bypassing'
+    },
+    Weaponstech: { 
+      name: 'Weaponstech', 
+      displayName: 'Weaponstech',
+      stat: 'TECH',
+      description: 'Weapon maintenance and repair'
+    }
+  },
+  
+  // Intelligence Skills - Alternative approaches
+  INTELLIGENCE: {
+    Cryptography: { 
+      name: 'Cryptography', 
+      displayName: 'Cryptography',
+      stat: 'INT',
+      description: 'Code breaking and encryption'
+    },
+    Deduction: { 
+      name: 'Deduction', 
+      displayName: 'Deduction',
+      stat: 'INT',
+      description: 'Logical reasoning and pattern recognition'
+    },
+    Education: { 
+      name: 'Education', 
+      displayName: 'Education',
+      stat: 'INT',
+      description: 'General knowledge'
+    },
+    LibrarySearch: { 
+      name: 'Library Search', 
+      displayName: 'Library Search',
+      stat: 'INT',
+      description: 'Research and information gathering'
+    },
+    LocalExpert: { 
+      name: 'Local Expert', 
+      displayName: 'Local Expert',
+      stat: 'INT',
+      description: 'Area-specific knowledge'
+    },
+    Science: { 
+      name: 'Science', 
+      displayName: 'Science',
+      stat: 'INT',
+      description: 'Scientific knowledge'
+    },
+    Tactics: { 
+      name: 'Tactics', 
+      displayName: 'Tactics',
+      stat: 'INT',
+      description: 'Strategic thinking'
+    },
+    Perception: { 
+      name: 'Perception', 
+      displayName: 'Perception',
+      stat: 'INT',
+      description: 'Awareness and observation'
+    }
+  }
+};
+
+/**
+ * Preset skill combinations for different tasks
+ * Uses actual Cyberpunk RED skill names as they appear on character sheets
+ */
+export const SKILL_PRESETS = {
+  // Hacking data shards
+  HACKING: {
+    primary: ['Interface', 'Electronics/Security Tech'],
+    secondary: ['Basic Tech', 'Cryptography'],
+    description: 'Breach encrypted systems'
+  },
+  
+  // Authentication bypass
+  AUTHENTICATION: {
+    primary: ['Interface', 'Electronics/Security Tech'],
+    secondary: ['Library Search', 'Deduction', 'Education'],
+    description: 'Crack passwords and credentials'
+  },
+  
+  // Data recovery
+  RECOVERY: {
+    primary: ['Basic Tech', 'Cybertech'],
+    secondary: ['Interface', 'Electronics/Security Tech'],
+    description: 'Recover corrupted data'
+  },
+  
+  // Cryptanalysis
+  CRYPTANALYSIS: {
+    primary: ['Cryptography', 'Interface'],
+    secondary: ['Education', 'Science'],
+    description: 'Break encryption algorithms'
+  },
+  
+  // Social engineering (for password guessing)
+  SOCIAL_ENGINEERING: {
+    primary: ['Deduction', 'Local Expert'],
+    secondary: ['Education', 'Library Search', 'Human Perception'],
+    description: 'Guess passwords through knowledge'
+  }
+};
+
+/**
+ * Difficulty Classes for skill checks
+ */
+export const DIFFICULTY = {
+  EASY: 9,
+  AVERAGE: 13,
+  DIFFICULT: 15,
+  VERY_DIFFICULT: 17,
+  NEARLY_IMPOSSIBLE: 21,
+  IMPOSSIBLE: 29
+};
+
+/**
+ * Default settings for data shards
+ */
+export const DEFAULTS = {
+  ENCRYPTION_DC: 15,
+  ENCRYPTION_TYPE: 'ICE',
+  FAILURE_MODE: 'lockout',
+  THEME: 'classic',
+  ALLOWED_SKILLS: ['Interface', 'Electronics/Security Tech'], // Use actual skill names from CPR
+  MAX_HACK_ATTEMPTS: 3,
+  LOCKOUT_DURATION: 3600000 // 1 hour in milliseconds
+};
+
+/**
  * API version
  */
 export const API_VERSION = '2.0.0';

@@ -6,6 +6,7 @@
  */
 
 import { MODULE_ID } from '../../../utils/constants.js';
+import { EventBus } from '../../../core/EventBus.js';
 import { DataShardService } from '../../../services/DataShardService.js';
 
 export class DataShardMessageComposer extends Application {
@@ -13,7 +14,8 @@ export class DataShardMessageComposer extends Application {
     super(options);
     
     this.dataShard = dataShard;
-    this.dataShardService = new DataShardService();
+    const eventBus = EventBus.getInstance();
+    this.dataShardService = new DataShardService(eventBus);
     
     // Message data
     this.messageData = {
@@ -47,6 +49,13 @@ export class DataShardMessageComposer extends Application {
   async getData(options = {}) {
     const data = await super.getData(options);
     
+    // Get data shard encryption mode
+    const encryptionMode = this.dataShard.getFlag(MODULE_ID, 'encryptionMode') || 'shard';
+    const shardEncrypted = this.dataShard.getFlag(MODULE_ID, 'encrypted') || false;
+    
+    // Check if per-message encryption is allowed
+    const allowMessageEncryption = encryptionMode === 'message' || encryptionMode === 'both';
+    
     // Get all actors for sender/recipient suggestions
     const actors = game.actors.contents.map(a => ({
       id: a.id,
@@ -67,7 +76,23 @@ export class DataShardMessageComposer extends Application {
       selectedTemplate: this.selectedTemplate,
       isGM: game.user.isGM,
       canEditAll: game.user.isGM || this.dataShard.isOwner,
-      currentUserEmail: game.user.character?.getFlag(MODULE_ID, 'email') || 'unknown@nightcity.net'
+      currentUserEmail: game.user.character?.getFlag(MODULE_ID, 'email') || 'unknown@nightcity.net',
+      
+      // NEW: Encryption options
+      allowMessageEncryption,
+      shardEncrypted,
+      encryptionMode,
+      messageEncrypted: this.messageData.encrypted || false,
+      encryptionType: this.messageData.encryptionType || 'ICE',
+      encryptionDC: this.messageData.encryptionDC || 15,
+      allowedSkills: this.messageData.allowedSkills || ['Interface', 'Electronics/Security Tech'],
+      
+      // Encryption types for dropdown
+      encryptionTypes: [
+        { value: 'ICE', label: 'Standard ICE' },
+        { value: 'BLACK_ICE', label: 'BLACK ICE (3d6 damage)' },
+        { value: 'RED_ICE', label: 'RED ICE (5d6 damage)' }
+      ]
     };
   }
   
@@ -90,6 +115,9 @@ export class DataShardMessageComposer extends Application {
     // Send/Save buttons
     html.find('.ncm-send-message').click(this._onSendMessage.bind(this));
     html.find('.ncm-save-draft').click(this._onSaveDraft.bind(this));
+
+    // Toggle message encryption
+    html.find('#message-encrypted').change(this._onToggleEncryption.bind(this));
     
     // Rich text formatting
     html.find('.ncm-format-bold').click(() => this._formatText('bold'));
@@ -259,7 +287,22 @@ export class DataShardMessageComposer extends Application {
   }
   
   /**
-   * Send message (add to data shard)
+   * Handle encryption toggle
+   * @private
+   */
+  _onToggleEncryption(event) {
+    const encrypted = $(event.currentTarget).prop('checked');
+    
+    // Show/hide encryption options
+    if (encrypted) {
+      this.element.find('.ncm-encryption-options').show();
+    } else {
+      this.element.find('.ncm-encryption-options').hide();
+    }
+  }
+
+  /**
+   * Send message (updated with encryption)
    * @private
    */
   async _onSendMessage(event) {
@@ -278,8 +321,34 @@ export class DataShardMessageComposer extends Application {
       // Process variables
       formData.content = this._processVariables(formData.content);
       
+      // Add encryption data if message is encrypted
+      if (formData.messageEncrypted) {
+        formData.encrypted = true;
+        formData.encryptionType = formData.encryptionType || 'ICE';
+        formData.encryptionDC = parseInt(formData.encryptionDC) || 15;
+        
+        // Get allowed skills
+        const allowedSkills = [];
+        this.element.find('input[name="allowedSkills"]:checked').each((i, el) => {
+          allowedSkills.push($(el).val());
+        });
+        formData.allowedSkills = allowedSkills.length > 0 ? allowedSkills : ['Interface', 'Electronics/Security Tech'];
+        
+        console.log(`${MODULE_ID} | Creating encrypted message:`, {
+          encrypted: formData.encrypted,
+          type: formData.encryptionType,
+          dc: formData.encryptionDC,
+          skills: formData.allowedSkills
+        });
+      } else {
+        formData.encrypted = false;
+      }
+      
+      const eventBus = EventBus.getInstance();
+      const dataShardService = new DataShardService(eventBus);
+      
       // Add to data shard
-      await this.dataShardService.addMessage(this.dataShard, formData);
+      await dataShardService.addMessage(this.dataShard, formData);
       
       ui.notifications.info('Message added to data shard!');
       this.close();
@@ -324,7 +393,13 @@ export class DataShardMessageComposer extends Application {
       to: formData.to || '',
       subject: formData.subject || '',
       content: formData.content || '',
-      date: formData.date || new Date().toISOString()
+      date: formData.date || new Date().toISOString(),
+      
+      // NEW: Encryption fields
+      messageEncrypted: formData.messageEncrypted || false,
+      encryptionType: formData.encryptionType || 'ICE',
+      encryptionDC: formData.encryptionDC || 15,
+      allowedSkills: formData.allowedSkills || []
     };
   }
   

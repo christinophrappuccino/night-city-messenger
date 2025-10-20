@@ -229,16 +229,24 @@ export const EVENTS = {
   DATA_SHARD_HACK_ATTEMPT: 'dataShard:hackAttempt',
   DATA_SHARD_MESSAGE_DELETED: 'dataShard:messageDeleted',
   DATA_SHARD_SHARED: 'dataShard:shared',
+  DATA_SHARD_OPENED: 'dataShard:opened',
+  BLACK_ICE_TRIGGERED: 'dataShard:blackICETriggered',
   
   // State events
   STATE_CHANGED: 'state:changed',
   STATE_FILTER_CHANGED: 'state:filter:changed',
   STATE_SEARCH_CHANGED: 'state:search:changed',
   
+  // Skill events
+  SKILL_CHECK_PERFORMED: 'skill:checkPerformed',
+  SKILL_CHECK_SUCCESS: 'skill:checkSuccess',
+  SKILL_CHECK_FAILURE: 'skill:checkFailure',
+  
   // Network events
   SOCKET_MESSAGE: 'socket:message',
   SOCKET_CONNECTED: 'socket:connected',
   SOCKET_DISCONNECTED: 'socket:disconnected',
+  NETWORK_CHANGED: 'network:changed',
   
   // Settings events
   SETTINGS_CHANGED: 'settings:changed',

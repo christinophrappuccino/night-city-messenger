@@ -104,6 +104,92 @@
       <p><strong>Variables:</strong> Click variable buttons to insert (e.g., {{playerName}} → actual player name)</p>
     </div>
   </div>
+
+  {{!-- Add this section BEFORE the buttons in your message-composer.hbs --}}
+
+  {{#if allowMessageEncryption}}
+  <div class="ncm-form-section ncm-encryption-section">
+    <h3 class="ncm-section-title">
+      <i class="fas fa-lock"></i>
+      Message Encryption
+    </h3>
+    
+    <div class="ncm-form-group">
+      <label class="ncm-checkbox">
+        <input type="checkbox" id="message-encrypted" name="messageEncrypted" {{checked messageEncrypted}} />
+        <span class="ncm-checkbox-label">Encrypt This Message</span>
+      </label>
+      <p class="ncm-help-text">
+        This message will require hacking to read its content
+      </p>
+    </div>
+    
+    <div class="ncm-encryption-options" style="{{#unless messageEncrypted}}display: none;{{/unless}}">
+      
+      <div class="ncm-form-group">
+        <label class="ncm-label">Encryption Type</label>
+        <select name="encryptionType" class="ncm-select">
+          {{#each encryptionTypes}}
+            <option value="{{this.value}}" {{selected (eq ../encryptionType this.value)}}>
+              {{this.label}}
+            </option>
+          {{/each}}
+        </select>
+        <p class="ncm-help-text">
+          <span class="ncm-text-warning">
+            <i class="fas fa-skull"></i>
+            BLACK/RED ICE can kill characters on failed hacks!
+          </span>
+        </p>
+      </div>
+      
+      <div class="ncm-form-group">
+        <label class="ncm-label">Encryption Difficulty (DV)</label>
+        <div class="ncm-input-group">
+          <input type="number" name="encryptionDC" value="{{encryptionDC}}" min="9" max="29" class="ncm-input" />
+          <span class="ncm-input-suffix">DV</span>
+        </div>
+        <p class="ncm-help-text">
+          Target number for skill checks (9=Easy, 15=Difficult, 21=Nearly Impossible)
+        </p>
+      </div>
+      
+      <div class="ncm-form-group">
+        <label class="ncm-label">Allowed Skills (check multiple)</label>
+        <div class="ncm-skill-checkboxes">
+          <label class="ncm-checkbox ncm-skill-option">
+            <input type="checkbox" name="allowedSkills" value="Interface" 
+                   {{#if (includes allowedSkills "Interface")}}checked{{/if}} />
+            <span class="ncm-checkbox-label">Interface</span>
+          </label>
+          <label class="ncm-checkbox ncm-skill-option">
+            <input type="checkbox" name="allowedSkills" value="Electronics/Security Tech" 
+                   {{#if (includes allowedSkills "Electronics/Security Tech")}}checked{{/if}} />
+            <span class="ncm-checkbox-label">Electronics/Security Tech</span>
+          </label>
+          <label class="ncm-checkbox ncm-skill-option">
+            <input type="checkbox" name="allowedSkills" value="Basic Tech" 
+                   {{#if (includes allowedSkills "Basic Tech")}}checked{{/if}} />
+            <span class="ncm-checkbox-label">Basic Tech</span>
+          </label>
+          <label class="ncm-checkbox ncm-skill-option">
+            <input type="checkbox" name="allowedSkills" value="Cryptography" 
+                   {{#if (includes allowedSkills "Cryptography")}}checked{{/if}} />
+            <span class="ncm-checkbox-label">Cryptography</span>
+          </label>
+        </div>
+      </div>
+      
+    </div>
+  </div>
+  {{else}}
+    {{#if shardEncrypted}}
+      <div class="ncm-info-box">
+        <i class="fas fa-lock"></i>
+        <p>This data shard uses shard-level encryption. All messages inherit the shard's encryption settings.</p>
+      </div>
+    {{/if}}
+  {{/if}}
   
   {{!-- Actions --}}
   <div class="ncm-composer-actions">

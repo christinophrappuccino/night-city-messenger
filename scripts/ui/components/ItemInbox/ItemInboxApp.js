@@ -8,7 +8,7 @@
 import { MODULE_ID } from '../../../utils/constants.js';
 import { BaseApplication } from '../BaseApplication.js';
 import { DataShardService } from '../../../services/DataShardService.js';
-import { EVENTS } from '../../../core/EventBus.js';
+import { EVENTS, EventBus } from '../../../core/EventBus.js'; 
 
 export class ItemInboxApp extends BaseApplication {
   constructor(item, options = {}) {
@@ -23,7 +23,8 @@ export class ItemInboxApp extends BaseApplication {
     }
     
     // Initialize service
-    this.dataShardService = new DataShardService();
+    const eventBus = EventBus.getInstance();
+    this.dataShardService = new DataShardService(eventBus);
     
     // State
     this.selectedMessageId = null;
@@ -51,6 +52,20 @@ export class ItemInboxApp extends BaseApplication {
       tabs: []
     });
   }
+
+  /**
+   * Override _render to ensure messages are loaded
+   * @override
+   */
+  async _render(force = false, options = {}) {
+    // Load messages before first render
+    if (!this._messagesLoaded) {
+      await this._loadMessages();
+      this._messagesLoaded = true;
+    }
+    
+    return super._render(force, options);
+  }
   
   /**
    * Get window title
@@ -65,72 +80,140 @@ export class ItemInboxApp extends BaseApplication {
   async getData(options = {}) {
     const data = await super.getData(options);
     
-    // Get item flags
+    // ========================================================================
+    // EXISTING: Get item flags
+    // ========================================================================
     const encrypted = this.item.getFlag(MODULE_ID, 'encrypted') || false;
     const encryptionDC = this.item.getFlag(MODULE_ID, 'encryptionDC') || 15;
     const encryptionType = this.item.getFlag(MODULE_ID, 'encryptionType') || 'ICE';
+    const encryptionMode = this.item.getFlag(MODULE_ID, 'encryptionMode') || 'shard'; // NEW
     const failureMode = this.item.getFlag(MODULE_ID, 'failureMode') || 'lockout';
     const theme = this.item.getFlag(MODULE_ID, 'theme') || 'default';
     const dataShardType = this.item.getFlag(MODULE_ID, 'dataShardType') || 'single';
     
-    // Network requirements (NEW)
+    // ========================================================================
+    // EXISTING: Network requirements
+    // ========================================================================
     const requiresNetwork = this.item.getFlag(MODULE_ID, 'requiresNetwork') || false;
     const requiredNetwork = this.item.getFlag(MODULE_ID, 'requiredNetwork') || 'CITINET';
     const networkAvailable = true; // TODO: Check actual network status
     
-    // Login requirements (NEW)
+    // ========================================================================
+    // EXISTING: Login requirements
+    // ========================================================================
     const requiresLogin = this.item.getFlag(MODULE_ID, 'requiresLogin') || false;
     const isLoggedIn = this.item.getFlag(MODULE_ID, 'sessionLoggedIn') || false;
     
-    // Check if decrypted
-    const decrypted = this.item.getFlag(MODULE_ID, 'decrypted') || false;
-    const isDecrypted = decrypted || !encrypted;
+    // ========================================================================
+    // UPDATED: Check if shard is decrypted (for shard-level encryption)
+    // ========================================================================
+    const shardDecrypted = this.item.getFlag(MODULE_ID, 'decrypted') || false;
     
-    // Check lockout
+    // Determine if shard-level encryption is active
+    const shardEncryptionActive = encrypted && (encryptionMode === 'shard' || encryptionMode === 'both');
+    const isShardDecrypted = shardDecrypted || !shardEncryptionActive || game.user.isGM;
+    
+    // ========================================================================
+    // EXISTING: Check lockout
+    // ========================================================================
     const lockoutUntil = this.item.getFlag(MODULE_ID, 'lockoutUntil');
     const isLockedOut = lockoutUntil && Date.now() < lockoutUntil;
     const lockoutMinutes = isLockedOut ? Math.ceil((lockoutUntil - Date.now()) / 1000 / 60) : 0;
     
-    // Can access? (NEW - considers all security layers)
-    const canAccess = (isDecrypted || game.user.isGM) && 
-                      (!requiresNetwork || networkAvailable || game.user.isGM) &&
-                      (!requiresLogin || isLoggedIn || game.user.isGM);
+    // ========================================================================
+    // UPDATED: Can access inbox? (considers all security layers)
+    // ========================================================================
+    const canAccessInbox = (isShardDecrypted || game.user.isGM) && 
+                           (!requiresNetwork || networkAvailable || game.user.isGM) &&
+                           (!requiresLogin || isLoggedIn || game.user.isGM);
     
-    // Get messages
-    const messages = this.messages.map(msg => ({
-      ...msg,
-      isSelected: msg.id === this.selectedMessageId,
-      canView: canAccess
-    }));
+    // ========================================================================
+    // UPDATED: Get messages with per-message encryption status
+    // ========================================================================
+    const messages = this.messages.map(msg => {
+      // Check if this specific message is encrypted
+      const messageEncrypted = msg.messageData?.encrypted || false;
+      const messageDecrypted = msg.messageData?.decrypted || false;
+      
+      // Show lock icon if message is encrypted and not decrypted
+      const showLockIcon = messageEncrypted && !messageDecrypted;
+      
+      // Can decrypt this message?
+      const canDecryptMessage = messageEncrypted && !messageDecrypted && game.user.character;
+      
+      return {
+        ...msg,
+        isSelected: msg.id === this.selectedMessageId,
+        canView: canAccessInbox,
+        showLockIcon, // NEW
+        canDecrypt: canDecryptMessage // NEW
+      };
+    });
     
-    // Get selected message (NEW - with full data)
+    // ========================================================================
+    // UPDATED: Get selected message with encryption overlay logic
+    // ========================================================================
     let selectedMessage = null;
     if (this.selectedMessageId) {
       const msg = messages.find(m => m.id === this.selectedMessageId);
       if (msg) {
+        // Check if this message is encrypted
+        const messageEncrypted = msg.messageData?.encrypted || false;
+        const messageDecrypted = msg.messageData?.decrypted || false;
+        
+        // Show content if: decrypted OR not encrypted OR user is GM
+        const showContent = messageDecrypted || !messageEncrypted || game.user.isGM;
+        
+        // Show encrypted overlay if: encrypted AND not decrypted AND not GM
+        const showEncryptedOverlay = messageEncrypted && !messageDecrypted && !game.user.isGM;
+        
+        // Can decrypt this message?
+        const canDecryptMessage = messageEncrypted && !messageDecrypted && game.user.character;
+        
         selectedMessage = {
           ...msg,
           messageData: msg.messageData || {},
           content: msg.content || '',
-          canView: canAccess,
+          canView: canAccessInbox,
           attachments: msg.attachments || [],
           infected: msg.messageData?.infected || false,
           malwareType: msg.messageData?.malwareType || null,
-          threatLevel: msg.messageData?.threatLevel || 'unknown'
+          threatLevel: msg.messageData?.threatLevel || 'unknown',
+          
+          // NEW: Per-message encryption status
+          showContent, // Whether to show the actual content
+          showEncryptedOverlay, // Whether to show "ENCRYPTED" overlay
+          canDecrypt: canDecryptMessage, // Whether to show decrypt button
+          encryption: msg.encryption || null // Encryption settings
         };
       }
     }
     
-    // Check if user can attempt hack
-    const canHack = game.user.character && !isDecrypted && !isLockedOut;
+    // ========================================================================
+    // UPDATED: Check if user can attempt shard-level hack
+    // ========================================================================
+    const canHackShard = game.user.character && 
+                         !isShardDecrypted && 
+                         !isLockedOut && 
+                         shardEncryptionActive;
+    
     const selectedActor = game.user.character;
     
-    // Show encrypted overlay?
-    const showEncryptedOverlay = encrypted && !isDecrypted && !game.user.isGM;
+    // ========================================================================
+    // UPDATED: Show shard encrypted overlay?
+    // ========================================================================
+    const showShardEncryptedOverlay = shardEncryptionActive && 
+                                      !isShardDecrypted && 
+                                      !game.user.isGM;
     
-    // Previous hack attempts (NEW)
+    // ========================================================================
+    // EXISTING: Previous hack attempts
+    // ========================================================================
     const previousAttempts = this.item.getFlag(MODULE_ID, 'hackAttempts') || [];
     
+    // ========================================================================
+    // RETURN: Complete data object
+    // ========================================================================
     return {
       ...data,
       item: this.item,
@@ -142,43 +225,52 @@ export class ItemInboxApp extends BaseApplication {
       encrypted,
       encryptionDC,
       encryptionType,
+      encryptionMode, // NEW
       failureMode,
       theme,
       isSingleMode: dataShardType === 'single',
       
-      // Network (NEW)
+      // Network (EXISTING)
       requiresNetwork,
       requiredNetwork,
       networkAvailable,
       signalStrength: 100, // TODO: Get real signal strength
       
-      // Login (NEW)
+      // Login (EXISTING)
       requiresLogin,
       isLoggedIn,
       
-      // Status
-      isDecrypted,
+      // Status (UPDATED)
+      isDecrypted: isShardDecrypted, // Renamed for clarity
+      isShardDecrypted, // NEW: explicit shard decryption status
       isLockedOut,
       lockoutMinutes,
-      canHack,
-      canAccess, // NEW
-      showEncryptedOverlay,
+      canHack: canHackShard, // Renamed for clarity
+      canHackShard, // NEW: explicit shard hack ability
+      canAccessInbox, // UPDATED: renamed from canAccess
+      showEncryptedOverlay: showShardEncryptedOverlay, // UPDATED: shard-level overlay
+      showShardEncryptedOverlay, // NEW: explicit shard overlay
       attemptingHack: this.attemptingHack,
       
-      // Messages
+      // Messages (UPDATED with encryption info)
       messages,
       messageCount: messages.length,
-      selectedMessage, // ENHANCED
+      selectedMessage, // ENHANCED with per-message encryption
       hasMessages: messages.length > 0,
       
-      // Hack data (NEW)
+      // Hack data (EXISTING)
       previousAttempts,
       selectedActor,
       
-      // Permissions
+      // Permissions (EXISTING)
       isOwner: this.item.isOwner,
       isGM: game.user.isGM,
-      canAddMessage: this.item.isOwner || game.user.isGM
+      canAddMessage: this.item.isOwner || game.user.isGM,
+      
+      // NEW: Encryption mode info (for UI decisions)
+      allowsPerMessageEncryption: encryptionMode === 'message' || encryptionMode === 'both',
+      usesShardEncryption: encryptionMode === 'shard' || encryptionMode === 'both',
+      usesBothLayers: encryptionMode === 'both'
     };
   }
   
@@ -200,6 +292,7 @@ export class ItemInboxApp extends BaseApplication {
     html.find('[data-action="gm-override-network"]').click(this._onGMOverrideNetwork.bind(this));
     html.find('[data-action="login"]').click(this._onLogin.bind(this));
     html.find('[data-action="quarantine-message"]').click(this._onQuarantineMessage.bind(this));
+    html.find('[data-action="decrypt-message"]').click(this._onDecryptMessage.bind(this));
   }
   
   // ========================================================================
@@ -230,6 +323,18 @@ export class ItemInboxApp extends BaseApplication {
       ui.notifications.error('You must have a character selected to hack');
       return;
     }
+
+    // Check available skills
+    const availableSkills = this.dataShardService.getAvailableSkills(this.item, actor);
+      
+    if (availableSkills.length === 0) {
+      const allowedSkills = this.item.getFlag(MODULE_ID, 'allowedSkills') || ['Interface'];
+      ui.notifications.warn(`${actor.name} doesn't have the required skills: ${allowedSkills.join(', ')}`);
+      return;
+    }
+      
+    // Log available skills for debugging
+    console.log(`${MODULE_ID} | ${actor.name} can use:`, availableSkills.map(s => s.displayName).join(', '));
     
     // Confirm the attempt
     const confirmed = await Dialog.confirm({
@@ -272,6 +377,87 @@ export class ItemInboxApp extends BaseApplication {
     } finally {
       this.attemptingHack = false;
       this.render(false);
+    }
+  }
+
+  /**
+   * Handle decrypt message button (NEW)
+   * @private
+   */
+  async _onDecryptMessage(event) {
+    event.preventDefault();
+    
+    const messageId = $(event.currentTarget).data('message-id');
+    if (!messageId) {
+      ui.notifications.error('No message ID');
+      return;
+    }
+    
+    const message = this.messages.find(m => m.id === messageId);
+    if (!message) {
+      ui.notifications.error('Message not found');
+      return;
+    }
+    
+    const actor = game.user.character;
+    if (!actor) {
+      ui.notifications.error('You must have a character selected to decrypt');
+      return;
+    }
+    
+    // Get encryption info
+    const encryption = message.encryption;
+    if (!encryption) {
+      ui.notifications.info('Message is not encrypted');
+      return;
+    }
+    
+    // Confirm the attempt
+    const confirmed = await Dialog.confirm({
+      title: "Decrypt Message",
+      content: `
+        <div style="padding: 10px;">
+          <p>Attempt to decrypt this message?</p>
+          <p><strong>Subject:</strong> ${message.messageData.subject}</p>
+          <p><strong>Encryption:</strong> ${encryption.type}</p>
+          <p><strong>Difficulty:</strong> DV ${encryption.dc}</p>
+          <p><strong>Allowed Skills:</strong> ${encryption.allowedSkills.join(', ')}</p>
+          ${encryption.type === 'BLACK_ICE' || encryption.type === 'RED_ICE' ? `
+            <div style="background: #330000; border: 2px solid #ff0000; padding: 10px; margin-top: 10px; border-radius: 4px;">
+              <p style="color: #ff0000; font-weight: bold; margin: 0;">
+                <i class="fas fa-skull"></i> WARNING: BLACK ICE DETECTED
+              </p>
+              <p style="color: #ffffff; margin: 5px 0 0 0;">
+                Failure will trigger lethal countermeasures!
+              </p>
+            </div>
+          ` : ''}
+        </div>
+      `
+    });
+    
+    if (!confirmed) return;
+    
+    try {
+      // Attempt the decrypt
+      const result = await this.dataShardService.attemptMessageDecrypt(message.page, actor);
+      
+      if (result.success) {
+        // Success! Reload messages
+        await this._loadMessages();
+        ui.notifications.info('Message decrypted successfully!');
+      } else if (result.blackICE) {
+        ui.notifications.error(`Decryption failed! BLACK ICE dealt ${result.damage} damage!`);
+      } else if (!result.cancelled) {
+        ui.notifications.error('Decryption failed');
+      }
+      
+      // Refresh view
+      this.render(false);
+      
+    } catch (error) {
+      console.error(`${MODULE_ID} | Decrypt attempt error:`, error);
+      ui.notifications.error('Decryption attempt failed');
     }
   }
   
@@ -480,7 +666,9 @@ export class ItemInboxApp extends BaseApplication {
     try {
       this.messages = await this.dataShardService.getMessages(this.item);
       
-      // Auto-select first message in single mode
+      console.log(`${MODULE_ID} | Loaded ${this.messages.length} messages`);
+      
+      // Auto-select first message in single mode if none selected
       const dataShardType = this.item.getFlag(MODULE_ID, 'dataShardType') || 'single';
       if (dataShardType === 'single' && this.messages.length > 0 && !this.selectedMessageId) {
         this.selectedMessageId = this.messages[0].id;

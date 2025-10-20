@@ -2,375 +2,543 @@
  * Data Shard Service
  * File: scripts/services/DataShardService.js
  * Module: cyberpunkred-messenger
- * Description: Handles data shard operations (convert items, encryption, hacking)
+ * Description: Core business logic for data shard operations with flexible skill checks
  */
 
-import { MODULE_ID } from '../utils/constants.js';
-import { EventBus, EVENTS } from '../core/EventBus.js'; // ✅ EVENTS from EventBus
-import { MessageRepository } from '../data/MessageRepository.js';
+import { MODULE_ID, ENCRYPTION_TYPES, DEFAULTS } from '../utils/constants.js';
+import { EVENTS } from '../core/EventBus.js';
+import { SkillService } from './SkillService.js';
 
 export class DataShardService {
-  constructor() {
-    this.eventBus = EventBus.getInstance();
-    this.messageRepository = new MessageRepository();
+  constructor(eventBus) {
+    this.eventBus = eventBus;
+    this.skillService = new SkillService();
+    
+    console.log(`${MODULE_ID} | DataShardService initialized`);
   }
   
   /**
    * Convert an item to a data shard
    * @param {Item} item - The item to convert
-   * @param {Object} config - Configuration options
+   * @param {Object} options - Configuration options
    */
-  async convertToDataShard(item, config = {}) {
-    if (!item) throw new Error('No item provided');
+  async convertToDataShard(item, options = {}) {
+    const {
+      encrypted = false,
+      encryptionType = DEFAULTS.ENCRYPTION_TYPE,
+      encryptionDC = DEFAULTS.ENCRYPTION_DC,
+      allowedSkills = DEFAULTS.ALLOWED_SKILLS,
+      failureMode = DEFAULTS.FAILURE_MODE,
+      singleMessage = false,
+      theme = DEFAULTS.THEME,
+      requiresNetwork = false,
+      requiredNetwork = null
+    } = options;
     
-    const defaultConfig = {
-      type: 'multi',           // 'single' or 'multi' message
-      encrypted: false,
-      encryptionDC: 15,
-      encryptionType: 'ICE',
-      theme: 'default',
-      failureMode: 'lockout'  // 'lockout', 'traceback', 'damage', 'corrupt'
-    };
+    console.log(`${MODULE_ID} | Converting ${item.name} to data shard`);
     
-    const shardConfig = { ...defaultConfig, ...config };
+    await item.setFlag(MODULE_ID, 'isDataShard', true);
+    await item.setFlag(MODULE_ID, 'encrypted', encrypted);
+    await item.setFlag(MODULE_ID, 'encryptionType', encryptionType);
+    await item.setFlag(MODULE_ID, 'encryptionDC', encryptionDC);
+    await item.setFlag(MODULE_ID, 'allowedSkills', allowedSkills);
+    await item.setFlag(MODULE_ID, 'failureMode', failureMode);
+    await item.setFlag(MODULE_ID, 'singleMessage', singleMessage);
+    await item.setFlag(MODULE_ID, 'theme', theme);
+    await item.setFlag(MODULE_ID, 'requiresNetwork', requiresNetwork);
+    await item.setFlag(MODULE_ID, 'requiredNetwork', requiredNetwork);
+    await item.setFlag(MODULE_ID, 'hackAttempts', 0);
+    await item.setFlag(MODULE_ID, 'maxHackAttempts', DEFAULTS.MAX_HACK_ATTEMPTS);
     
-    console.log(`${MODULE_ID} | Converting item to data shard:`, item.name, shardConfig);
+    this.eventBus.emit(EVENTS.DATA_SHARD_OPENED, { item });
     
-    try {
-      // Set the data shard flag
-      await item.setFlag(MODULE_ID, 'isDataShard', true);
-      
-      // Set configuration
-      await item.setFlag(MODULE_ID, 'dataShardType', shardConfig.type);
-      await item.setFlag(MODULE_ID, 'encrypted', shardConfig.encrypted);
-      await item.setFlag(MODULE_ID, 'encryptionDC', shardConfig.encryptionDC);
-      await item.setFlag(MODULE_ID, 'encryptionType', shardConfig.encryptionType);
-      await item.setFlag(MODULE_ID, 'theme', shardConfig.theme);
-      await item.setFlag(MODULE_ID, 'failureMode', shardConfig.failureMode);
-      
-      // Create associated journal for messages
-      const journal = await this._ensureJournal(item);
-      
-      // Emit event
-      this.eventBus.emit(EVENTS.DATA_SHARD_CREATED, { item, journal, config: shardConfig });
-      
-      ui.notifications.info(`${item.name} converted to data shard!`);
-      
-      return { item, journal, config: shardConfig };
-      
-    } catch (error) {
-      console.error(`${MODULE_ID} | Error converting to data shard:`, error);
-      ui.notifications.error('Failed to convert item to data shard');
-      throw error;
-    }
+    ui.notifications.info(`${item.name} converted to data shard`);
   }
   
   /**
    * Add a message to a data shard
    * @param {Item} item - The data shard item
-   * @param {Object} messageData - Message content
+   * @param {Object} messageData - Message data
    */
   async addMessage(item, messageData) {
-    if (!item) throw new Error('No item provided');
+    console.log(`${MODULE_ID} | Adding message to ${item.name}:`, messageData);
     
-    const isDataShard = item.getFlag(MODULE_ID, 'isDataShard');
-    if (!isDataShard) {
+    // Validate
+    if (!item.getFlag(MODULE_ID, 'isDataShard')) {
       throw new Error('Item is not a data shard');
     }
     
-    console.log(`${MODULE_ID} | Adding message to data shard:`, item.name);
+    const singleMessage = item.getFlag(MODULE_ID, 'singleMessage');
     
-    try {
-      // Get the journal
-      const journal = await this._ensureJournal(item);
-      
-      // Check data shard type
-      const dataShardType = item.getFlag(MODULE_ID, 'dataShardType') || 'single';
-      
-      // For single message data shards, delete existing messages first
-      if (dataShardType === 'single' && journal.pages.size > 0) {
-        const confirmed = await Dialog.confirm({
-          title: "Replace Message?",
-          content: "<p>This is a single-message data shard. Adding a new message will replace the existing one.</p><p>Continue?</p>"
+    // Get or create journal
+    const journal = await this._ensureJournal(item);
+    
+    // If single message mode, delete existing
+    if (singleMessage && journal.pages.size > 0) {
+      for (const page of journal.pages.contents) {
+        await page.delete();
+      }
+    }
+    
+    // Check encryption mode
+    const encryptionMode = item.getFlag(MODULE_ID, 'encryptionMode') || 'shard';
+    const shardEncrypted = item.getFlag(MODULE_ID, 'encrypted');
+    
+    // Determine if this message is encrypted
+    let messageEncrypted = false;
+    let encryptionType = 'ICE';
+    let encryptionDC = 15;
+    let allowedSkills = ['Interface', 'Electronics/Security Tech'];
+    
+    if (encryptionMode === 'message' || encryptionMode === 'both') {
+      // Per-message encryption
+      messageEncrypted = messageData.encrypted || false;
+      if (messageEncrypted) {
+        encryptionType = messageData.encryptionType || 'ICE';
+        encryptionDC = messageData.encryptionDC || 15;
+        allowedSkills = messageData.allowedSkills || ['Interface', 'Electronics/Security Tech'];
+      }
+    } else if (encryptionMode === 'shard') {
+      // Shard-level encryption (all messages inherit)
+      messageEncrypted = shardEncrypted;
+      if (messageEncrypted) {
+        encryptionType = item.getFlag(MODULE_ID, 'encryptionType') || 'ICE';
+        encryptionDC = item.getFlag(MODULE_ID, 'encryptionDC') || 15;
+        allowedSkills = item.getFlag(MODULE_ID, 'allowedSkills') || ['Interface', 'Electronics/Security Tech'];
+      }
+    }
+    
+    // Get content
+    const content = messageData.content || messageData.body || '';
+    const timestamp = Date.now();
+    
+    console.log(`${MODULE_ID} | Creating page:`, {
+      encrypted: messageEncrypted,
+      encryptionType,
+      encryptionDC,
+      contentLength: content.length
+    });
+    
+    const pageData = {
+      name: messageData.subject || 'Untitled Message',
+      type: 'text',
+      text: {
+        content: content,
+        format: CONST.JOURNAL_ENTRY_PAGE_FORMATS.HTML
+      },
+      flags: {
+        [MODULE_ID]: {
+          messageId: foundry.utils.randomID(),
+          from: messageData.from || 'unknown@nightcity.net',
+          to: messageData.to || 'unknown@nightcity.net',
+          subject: messageData.subject || 'No Subject',
+          timestamp,
+          status: {
+            read: false,
+            encrypted: messageEncrypted,
+            decrypted: !messageEncrypted,
+            saved: false
+          },
+          // NEW: Per-message encryption settings
+          encryption: messageEncrypted ? {
+            type: encryptionType,
+            dc: encryptionDC,
+            allowedSkills: allowedSkills,
+            decryptedBy: null,
+            decryptedAt: null,
+            hackAttempts: 0
+          } : null
+        }
+      }
+    };
+    
+    const created = await journal.createEmbeddedDocuments('JournalEntryPage', [pageData]);
+    
+    console.log(`${MODULE_ID} | Created page:`, created[0].id);
+    
+    this.eventBus.emit(EVENTS.DATA_SHARD_MESSAGE_ADDED, { item, message: pageData });
+    
+    ui.notifications.info('Message added to data shard');
+  }
+
+  
+  /**
+   * Get all messages from a data shard
+   * @param {Item} item - The data shard
+   * @returns {Array} Array of message objects
+   */
+  async getMessages(item) {
+    const journal = await this._findJournal(item);
+    if (!journal) return [];
+    
+    const messages = [];
+    for (const page of journal.pages.contents) {
+      const flags = page.flags[MODULE_ID];
+      if (flags) {
+        // Get content
+        let content = '';
+        if (page.text) {
+          content = page.text.content || page.text.markdown || '';
+        }
+        
+        // Check if message is encrypted
+        const isEncrypted = flags.status?.encrypted || false;
+        const isDecrypted = flags.status?.decrypted || false;
+        
+        console.log(`${MODULE_ID} | Loading message:`, {
+          id: page.id,
+          subject: flags.subject,
+          encrypted: isEncrypted,
+          decrypted: isDecrypted,
+          hasContent: !!content,
+          contentLength: content.length
         });
         
-        if (!confirmed) return null;
-        
-        await journal.deleteEmbeddedDocuments("JournalEntryPage", 
-          journal.pages.contents.map(p => p.id)
-        );
+        messages.push({
+          id: page.id,
+          pageId: page.id,
+          page: page,
+          content: content,
+          body: content,
+          messageData: {
+            from: flags.from || 'unknown@nightcity.net',
+            to: flags.to || 'unknown@nightcity.net',
+            subject: flags.subject || 'No Subject',
+            timestamp: flags.timestamp || Date.now(),
+            date: flags.timestamp ? new Date(flags.timestamp).toLocaleString() : 'Unknown',
+            encrypted: isEncrypted,
+            decrypted: isDecrypted,
+            ...flags.status
+          },
+          // NEW: Per-message encryption info
+          encryption: flags.encryption || null
+        });
       }
-      
-      // Format the message content
-      const formattedContent = this._formatMessage(messageData);
-      
-      // Get encryption status
-      const encrypted = item.getFlag(MODULE_ID, 'encrypted') || false;
-      
-      // Create the message page
-      const pages = await journal.createEmbeddedDocuments("JournalEntryPage", [{
-        name: messageData.subject || "Data Message",
-        type: "text",
-        text: {
-          content: formattedContent
-        },
-        flags: {
-          [MODULE_ID]: {
-            messageData: {
-              from: messageData.from || 'Unknown',
-              to: messageData.to || 'Unknown',
-              subject: messageData.subject || 'No Subject',
-              date: messageData.date || new Date().toISOString()
-            },
-            status: {
-              read: false,
-              saved: false,
-              spam: false,
-              encrypted: encrypted,
-              decrypted: !encrypted
-            }
-          }
-        }
-      }]);
-      
-      const page = pages[0];
-      
-      // Emit event
-      this.eventBus.emit(EVENTS.DATA_SHARD_MESSAGE_ADDED, { item, page });
-      
-      ui.notifications.info("Message added to data shard!");
-      
-      return page;
-      
-    } catch (error) {
-      console.error(`${MODULE_ID} | Error adding message:`, error);
-      ui.notifications.error('Failed to add message to data shard');
-      throw error;
     }
+    
+    // Sort by timestamp (newest first)
+    messages.sort((a, b) => 
+      (b.messageData.timestamp || 0) - (a.messageData.timestamp || 0)
+    );
+    
+    console.log(`${MODULE_ID} | Loaded ${messages.length} messages from ${item.name}`);
+    
+    return messages;
+  }
+
+  /**
+   * Attempt to decrypt a message (NEW)
+   * @param {JournalEntryPage} page - The message page
+   * @param {Actor} actor - Actor attempting the hack
+   * @returns {Promise<Object>} Result object
+   */
+  async attemptMessageDecrypt(page, actor) {
+    const flags = page.flags[MODULE_ID];
+    if (!flags) {
+      throw new Error('Invalid message page');
+    }
+    
+    const encryption = flags.encryption;
+    if (!encryption) {
+      return { success: true, alreadyDecrypted: true };
+    }
+    
+    // Check if already decrypted
+    if (flags.status?.decrypted) {
+      return { success: true, alreadyDecrypted: true };
+    }
+    
+    console.log(`${MODULE_ID} | Attempting to decrypt message: ${flags.subject}`);
+    
+    // Perform skill check
+    const checkResult = await this.skillService.performCheck({
+      actor,
+      skills: encryption.allowedSkills,
+      dc: encryption.dc,
+      taskName: `Decrypting: ${flags.subject}`,
+      allowLuck: true,
+      autoRoll: false
+    });
+    
+    // Handle cancellation
+    if (checkResult.cancelled) {
+      return { success: false, cancelled: true };
+    }
+    
+    // Increment attempts
+    encryption.hackAttempts = (encryption.hackAttempts || 0) + 1;
+    await page.setFlag(MODULE_ID, 'encryption.hackAttempts', encryption.hackAttempts);
+    
+    // Success!
+    if (checkResult.success) {
+      await page.setFlag(MODULE_ID, 'status.decrypted', true);
+      await page.setFlag(MODULE_ID, 'status.encrypted', false);
+      await page.setFlag(MODULE_ID, 'encryption.decryptedBy', actor.id);
+      await page.setFlag(MODULE_ID, 'encryption.decryptedAt', Date.now());
+      
+      ui.notifications.info('Message decrypted successfully!');
+      
+      return {
+        success: true,
+        ...checkResult
+      };
+    }
+    
+    // Failure - handle BLACK ICE if applicable
+    if (encryption.type === 'BLACK_ICE' || encryption.type === 'RED_ICE') {
+      const diceFormula = encryption.type === 'RED_ICE' ? '5d6' : '3d6';
+      const damageRoll = new Roll(diceFormula);
+      await damageRoll.evaluate();
+      
+      const damage = damageRoll.total;
+      await this._applyDamage(actor, damage, damageRoll);
+      
+      return {
+        success: false,
+        ...checkResult,
+        blackICE: true,
+        damage
+      };
+    }
+    
+    ui.notifications.error('Failed to decrypt message');
+    
+    return {
+      success: false,
+      ...checkResult
+    };
   }
   
   /**
    * Attempt to hack/decrypt a data shard
-   * @param {Item} item - The data shard item
-   * @param {Actor} actor - The actor attempting the hack
+   * @param {Item} item - The data shard
+   * @param {Actor} actor - Actor attempting the hack
+   * @param {Object} options - Hack options
+   * @returns {Promise<Object>} Result object
    */
-  async attemptHack(item, actor) {
-    if (!item || !actor) throw new Error('Missing item or actor');
+  async attemptHack(item, actor, options = {}) {
+    console.log(`${MODULE_ID} | Hack attempt on ${item.name} by ${actor.name}`);
     
-    const isDataShard = item.getFlag(MODULE_ID, 'isDataShard');
-    if (!isDataShard) throw new Error('Item is not a data shard');
+    // GM override
+    if (game.user.isGM && options.gmOverride) {
+      console.log(`${MODULE_ID} | GM override - bypassing security`);
+      await this._decrypt(item, actor);
+      return { success: true, gmOverride: true };
+    }
     
-    const encrypted = item.getFlag(MODULE_ID, 'encrypted');
-    if (!encrypted) {
-      ui.notifications.info('This data shard is not encrypted');
+    // Check if already decrypted
+    if (await this.isDecrypted(item)) {
+      ui.notifications.info('Data shard already decrypted');
       return { success: true, alreadyDecrypted: true };
     }
     
-    console.log(`${MODULE_ID} | Attempting hack on data shard:`, item.name);
-    
-    try {
-      // Check for lockout
-      const isLockedOut = await this._checkLockout(item, actor);
-      if (isLockedOut) {
-        ui.notifications.error('System locked - Too many failed attempts');
-        return { success: false, reason: 'locked_out' };
-      }
-      
-      // Get encryption difficulty
-      const dc = item.getFlag(MODULE_ID, 'encryptionDC') || 15;
-      
-      // Perform skill check (Interface + INT + 1d10)
-      const result = await this._performHackRoll(actor, dc);
-      
-      if (result.success) {
-        // Success! Decrypt the data shard
-        await this._decrypt(item, actor);
-        
-        // Create chat message
-        await this._createHackMessage(actor, item, true, result);
-        
-        // Clear any lockouts
-        await item.unsetFlag(MODULE_ID, 'lockoutUntil');
-        await item.unsetFlag(MODULE_ID, 'failedAttempts');
-        
-        ui.notifications.info('Data shard decrypted successfully!');
-        
-        return { success: true, roll: result };
-        
-      } else {
-        // Failure - handle consequences
-        const failureMode = item.getFlag(MODULE_ID, 'failureMode') || 'lockout';
-        await this._handleHackFailure(item, actor, failureMode);
-        
-        // Create chat message
-        await this._createHackMessage(actor, item, false, result);
-        
-        return { success: false, roll: result, consequence: failureMode };
-      }
-      
-    } catch (error) {
-      console.error(`${MODULE_ID} | Error during hack attempt:`, error);
-      ui.notifications.error('Hack attempt failed');
-      throw error;
+    // Check if locked out
+    if (await this._isLockedOut(item)) {
+      const lockoutEnd = item.getFlag(MODULE_ID, 'lockoutUntil');
+      const remaining = Math.ceil((lockoutEnd - Date.now()) / 60000);
+      ui.notifications.warn(`Data shard locked out for ${remaining} more minutes`);
+      return { success: false, lockedOut: true, remaining };
     }
+    
+    // Get configuration
+    const dc = item.getFlag(MODULE_ID, 'encryptionDC') || DEFAULTS.ENCRYPTION_DC;
+    const allowedSkills = item.getFlag(MODULE_ID, 'allowedSkills') || DEFAULTS.ALLOWED_SKILLS;
+    const encryptionType = item.getFlag(MODULE_ID, 'encryptionType') || ENCRYPTION_TYPES.ICE;
+    const failureMode = item.getFlag(MODULE_ID, 'failureMode') || DEFAULTS.FAILURE_MODE;
+    
+    // Perform skill check using SkillService
+    const checkResult = await this.skillService.performCheck({
+      actor,
+      skills: allowedSkills, // Will try skills in order
+      dc,
+      taskName: `Hacking ${item.name}`,
+      allowLuck: true,
+      autoRoll: false
+    });
+    
+    // Handle cancellation
+    if (checkResult.cancelled) {
+      return { success: false, cancelled: true };
+    }
+    
+    // Increment attempts
+    const currentAttempts = item.getFlag(MODULE_ID, 'hackAttempts') || 0;
+    await item.setFlag(MODULE_ID, 'hackAttempts', currentAttempts + 1);
+    
+    // Success!
+    if (checkResult.success) {
+      await this._decrypt(item, actor);
+      
+      this.eventBus.emit(EVENTS.DATA_SHARD_HACK_ATTEMPT, { 
+        item, 
+        actor, 
+        success: true,
+        result: checkResult
+      });
+      
+      ui.notifications.info(`Successfully hacked ${item.name}!`);
+      
+      return {
+        success: true,
+        ...checkResult
+      };
+    }
+    
+    // Failure - handle consequences
+    console.log(`${MODULE_ID} | Hack failed - applying consequences`);
+    
+    const failureResult = await this._handleHackFailure(
+      item,
+      actor,
+      encryptionType,
+      failureMode,
+      currentAttempts + 1
+    );
+    
+    this.eventBus.emit(EVENTS.DATA_SHARD_HACK_ATTEMPT, { 
+      item, 
+      actor, 
+      success: false,
+      result: checkResult,
+      failure: failureResult
+    });
+    
+    return {
+      success: false,
+      ...checkResult,
+      ...failureResult
+    };
   }
   
   /**
-   * Get all messages from a data shard
-   * @param {Item} item - The data shard item
-   */
-  async getMessages(item) {
-    if (!item) return [];
-    
-    const isDataShard = item.getFlag(MODULE_ID, 'isDataShard');
-    if (!isDataShard) return [];
-    
-    try {
-      const journal = await this._ensureJournal(item);
-      if (!journal) return [];
-      
-      const messages = [];
-      
-      for (const page of journal.pages.contents) {
-        const messageData = page.getFlag(MODULE_ID, 'messageData');
-        const status = page.getFlag(MODULE_ID, 'status');
-        
-        messages.push({
-          id: page.id,
-          name: page.name,
-          content: page.text.content,
-          messageData: messageData || {},
-          status: status || {},
-          page: page
-        });
-      }
-      
-      return messages;
-      
-    } catch (error) {
-      console.error(`${MODULE_ID} | Error getting messages:`, error);
-      return [];
-    }
-  }
-  
-  // ========================================================================
-  // PRIVATE METHODS
-  // ========================================================================
-  
-  /**
-   * Ensure a journal exists for this data shard
+   * Handle hack failure consequences
    * @private
    */
-  async _ensureJournal(item) {
-    // Check for existing journal
-    const journalId = item.getFlag(MODULE_ID, 'journalId');
-    let journal = journalId ? game.journal.get(journalId) : null;
+  async _handleHackFailure(item, actor, encryptionType, failureMode, attemptCount) {
+    const result = {
+      consequence: null,
+      damage: 0,
+      locked: false
+    };
     
-    if (journal) return journal;
-    
-    // Create new journal
-    const folderName = "Data Shard Contents";
-    let folder = game.folders.find(f => f.name === folderName && f.type === "JournalEntry");
-    
-    if (!folder) {
-      folder = await Folder.create({
-        name: folderName,
-        type: "JournalEntry",
-        parent: null
+    // BLACK ICE damage
+    if (encryptionType === ENCRYPTION_TYPES.BLACK_ICE || 
+        encryptionType === ENCRYPTION_TYPES.RED_ICE) {
+      
+      const diceFormula = encryptionType === ENCRYPTION_TYPES.RED_ICE ? '5d6' : '3d6';
+      const damageRoll = new Roll(diceFormula);
+      await damageRoll.evaluate();
+      
+      result.damage = damageRoll.total;
+      result.consequence = 'BLACK ICE';
+      
+      // Apply damage
+      await this._applyDamage(actor, result.damage, damageRoll);
+      
+      this.eventBus.emit(EVENTS.BLACK_ICE_TRIGGERED, { 
+        item, 
+        actor, 
+        damage: result.damage 
       });
     }
     
-    const owner = item.actor ? item.actor.name : "Unknown";
-    const journalName = `${item.name} Data [${owner}]`;
+    // Handle failure mode
+    const maxAttempts = item.getFlag(MODULE_ID, 'maxHackAttempts') || DEFAULTS.MAX_HACK_ATTEMPTS;
     
-    journal = await JournalEntry.create({
-      name: journalName,
-      folder: folder.id,
-      flags: {
-        [MODULE_ID]: {
-          dataShardJournal: true,
-          itemId: item.id,
-          itemUuid: item.uuid
+    switch (failureMode) {
+      case 'lockout':
+        if (attemptCount >= maxAttempts) {
+          const lockoutUntil = Date.now() + DEFAULTS.LOCKOUT_DURATION;
+          await item.setFlag(MODULE_ID, 'lockoutUntil', lockoutUntil);
+          await item.setFlag(MODULE_ID, 'hackAttempts', 0);
+          result.locked = true;
+          result.consequence = result.consequence || 'LOCKOUT';
+          ui.notifications.warn(`${item.name} locked for 1 hour!`);
         }
-      }
-    });
-    
-    // Link journal to item
-    await item.setFlag(MODULE_ID, 'journalId', journal.id);
-    
-    console.log(`${MODULE_ID} | Created journal for data shard:`, journalName);
-    
-    return journal;
-  }
-  
-  /**
-   * Format message content
-   * @private
-   */
-  _formatMessage(messageData) {
-    return `
-      <div class="ncm-data-shard-message">
-        <div class="ncm-message-header">
-          <div class="ncm-message-meta">
-            <span class="ncm-meta-label">DATE:</span> ${messageData.date || 'Unknown'}
-          </div>
-          <div class="ncm-message-meta">
-            <span class="ncm-meta-label">FROM:</span> ${messageData.from || 'Unknown'}
-          </div>
-          <div class="ncm-message-meta">
-            <span class="ncm-meta-label">TO:</span> ${messageData.to || 'Unknown'}
-          </div>
-        </div>
-        <div class="ncm-message-subject">
-          ${messageData.subject || 'No Subject'}
-        </div>
-        <div class="ncm-message-body">
-          ${messageData.content || messageData.body || ''}
-        </div>
-      </div>
-    `;
-  }
-  
-  /**
-   * Perform hack roll
-   * @private
-   */
-  async _performHackRoll(actor, dc) {
-    // Get Interface skill
-    const skill = actor.items.find(i => 
-      i.type === 'skill' && 
-      i.name.toLowerCase() === 'interface'
-    );
-    
-    if (!skill) {
-      ui.notifications.warn('Actor does not have Interface skill');
-      return { success: false, message: 'Missing Interface skill' };
+        break;
+        
+      case 'permanent':
+        if (attemptCount >= maxAttempts) {
+          await item.setFlag(MODULE_ID, 'permanentlyLocked', true);
+          result.locked = true;
+          result.consequence = result.consequence || 'PERMANENT_LOCK';
+          ui.notifications.error(`${item.name} permanently locked!`);
+        }
+        break;
+        
+      case 'destroy':
+        if (attemptCount >= maxAttempts) {
+          await this._destroyMessages(item);
+          result.consequence = result.consequence || 'DATA_DESTROYED';
+          ui.notifications.error(`Data on ${item.name} destroyed!`);
+        }
+        break;
+        
+      case 'nothing':
+      default:
+        // Just stay locked, can retry
+        result.consequence = result.consequence || 'RETRY_ALLOWED';
+        break;
     }
     
-    const skillLevel = skill.system.level || 0;
+    return result;
+  }
+  
+  /**
+   * Apply damage to actor
+   * @private
+   */
+  async _applyDamage(actor, damage, damageRoll) {
+    console.log(`${MODULE_ID} | Applying ${damage} BLACK ICE damage to ${actor.name}`);
     
-    // Get INT stat
-    const int = actor.system.stats?.int?.value || 0;
-    
-    // Roll 1d10
-    const roll = new Roll('1d10');
-    await roll.evaluate();
-    
-    const dice = roll.total;
-    const total = dice + skillLevel + int;
-    const success = total >= dc;
-    
-    console.log(`${MODULE_ID} | Hack roll:`, { dice, skillLevel, int, total, dc, success });
-    
-    return {
-      success,
-      roll: total,
-      dice,
-      skill: skillLevel,
-      stat: int,
-      dc,
-      rollObject: roll
-    };
+    // For Cyberpunk RED system
+    if (game.system.id === 'cyberpunk-red-core') {
+      const currentHP = actor.system?.derivedStats?.hp?.value || 0;
+      const newHP = Math.max(0, currentHP - damage);
+      
+      await actor.update({
+        'system.derivedStats.hp.value': newHP
+      });
+      
+      // Create dramatic damage chat message
+      await ChatMessage.create({
+        content: `
+          <div class="ncm-black-ice-damage" style="
+            background: linear-gradient(135deg, #330000 0%, #000000 100%);
+            border: 2px solid #ff0000;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
+          ">
+            <h3 style="color: #ff0000; margin: 0 0 10px 0; text-shadow: 0 0 10px #ff0000;">
+              ⚡ BLACK ICE TRIGGERED ⚡
+            </h3>
+            <p style="color: #ffffff; font-size: 1.1em; margin: 5px 0;">
+              <strong>${actor.name}</strong> takes <strong style="color: #ff0000;">${damage}</strong> damage!
+            </p>
+            <p style="color: #cccccc; margin: 5px 0;">
+              HP: ${currentHP} → <strong style="color: ${newHP === 0 ? '#ff0000' : '#ffffff'};">${newHP}</strong>
+            </p>
+            ${newHP === 0 ? `
+              <p style="color: #ff0000; font-weight: bold; margin: 10px 0 0 0;">
+                💀 FLATLINED! 💀
+              </p>
+            ` : ''}
+          </div>
+        `,
+        speaker: ChatMessage.getSpeaker({ actor })
+      });
+      
+      // Show dice roll
+      await damageRoll.toMessage({
+        flavor: `<strong style="color: #ff0000;">⚡ BLACK ICE DAMAGE ⚡</strong>`,
+        speaker: ChatMessage.getSpeaker({ actor })
+      });
+      
+    } else {
+      // Generic system - just notify
+      ui.notifications.error(`${actor.name} would take ${damage} BLACK ICE damage!`);
+    }
   }
   
   /**
@@ -378,184 +546,159 @@ export class DataShardService {
    * @private
    */
   async _decrypt(item, actor) {
-    // Mark as decrypted
     await item.setFlag(MODULE_ID, 'decrypted', true);
     await item.setFlag(MODULE_ID, 'decryptedBy', actor.id);
     await item.setFlag(MODULE_ID, 'decryptedAt', Date.now());
+    await item.setFlag(MODULE_ID, 'hackAttempts', 0);
     
-    // Also store in localStorage for this user
+    // Store in localStorage for this user
     const storageKey = `${MODULE_ID}-decrypted-${item.id}`;
     localStorage.setItem(storageKey, 'true');
     
-    // Update all message pages to decrypted status
+    // Update message pages
     const journal = await this._ensureJournal(item);
     for (const page of journal.pages.contents) {
       await page.setFlag(MODULE_ID, 'status.decrypted', true);
       await page.setFlag(MODULE_ID, 'status.encrypted', false);
     }
     
-    // Emit event
     this.eventBus.emit(EVENTS.DATA_SHARD_DECRYPTED, { item, actor });
   }
   
   /**
-   * Check if actor is locked out
-   * @private
+   * Check if data shard is decrypted
    */
-  async _checkLockout(item, actor) {
-    const lockoutUntil = item.getFlag(MODULE_ID, 'lockoutUntil');
-    if (!lockoutUntil) return false;
-    
-    const now = Date.now();
-    if (now < lockoutUntil) {
-      const minutes = Math.ceil((lockoutUntil - now) / 1000 / 60);
-      console.log(`${MODULE_ID} | Actor locked out for ${minutes} more minutes`);
+  async isDecrypted(item) {
+    // Check flag
+    if (item.getFlag(MODULE_ID, 'decrypted')) {
       return true;
     }
     
-    // Lockout expired, clear it
-    await item.unsetFlag(MODULE_ID, 'lockoutUntil');
-    await item.unsetFlag(MODULE_ID, 'failedAttempts');
+    // Check localStorage (persists across sessions for this user)
+    const storageKey = `${MODULE_ID}-decrypted-${item.id}`;
+    if (localStorage.getItem(storageKey) === 'true') {
+      return true;
+    }
+    
+    // Not encrypted in the first place
+    if (!item.getFlag(MODULE_ID, 'encrypted')) {
+      return true;
+    }
+    
     return false;
   }
   
   /**
-   * Handle hack failure consequences
+   * Check if locked out
    * @private
    */
-  async _handleHackFailure(item, actor, failureMode) {
-    console.log(`${MODULE_ID} | Handling hack failure:`, failureMode);
+  async _isLockedOut(item) {
+    // Check permanent lock
+    if (item.getFlag(MODULE_ID, 'permanentlyLocked')) {
+      return true;
+    }
     
-    // Track failed attempts
-    const failedAttempts = (item.getFlag(MODULE_ID, 'failedAttempts') || 0) + 1;
-    await item.setFlag(MODULE_ID, 'failedAttempts', failedAttempts);
+    // Check temporary lockout
+    const lockoutUntil = item.getFlag(MODULE_ID, 'lockoutUntil');
+    if (lockoutUntil && Date.now() < lockoutUntil) {
+      return true;
+    }
     
-    switch (failureMode) {
-      case 'lockout':
-        // Lock out for 1 hour (game time)
-        const lockoutDuration = 60 * 60 * 1000; // 1 hour in ms
-        await item.setFlag(MODULE_ID, 'lockoutUntil', Date.now() + lockoutDuration);
-        ui.notifications.error('System locked due to failed hack attempt');
-        break;
-        
-      case 'traceback':
-        // Alert the owner
-        await this._sendTracebackAlert(item, actor);
-        ui.notifications.warn('Traceback initiated - owner has been alerted');
-        break;
-        
-      case 'damage':
-        // Deal damage to actor
-        await this._dealEMPDamage(actor, '1d6');
-        ui.notifications.error('EMP feedback detected - taking damage!');
-        break;
-        
-      case 'corrupt':
-        // Corrupt some messages
-        await this._corruptMessages(item, Math.floor(Math.random() * 3) + 1);
-        ui.notifications.warn('System corruption detected');
-        break;
+    // Clear expired lockout
+    if (lockoutUntil && Date.now() >= lockoutUntil) {
+      await item.setFlag(MODULE_ID, 'lockoutUntil', null);
+      await item.setFlag(MODULE_ID, 'hackAttempts', 0);
+    }
+    
+    return false;
+  }
+  
+  /**
+   * Destroy messages (failure consequence)
+   * @private
+   */
+  async _destroyMessages(item) {
+    const journal = await this._findJournal(item);
+    if (journal) {
+      for (const page of journal.pages.contents) {
+        await page.delete();
+      }
+    }
+    
+    await item.setFlag(MODULE_ID, 'dataDestroyed', true);
+  }
+  
+  /**
+   * Delete a message
+   */
+  async deleteMessage(item, messageId) {
+    const journal = await this._findJournal(item);
+    if (!journal) return;
+    
+    const page = journal.pages.get(messageId);
+    if (page) {
+      await page.delete();
+      this.eventBus.emit(EVENTS.MESSAGE_DELETED, { item, messageId });
     }
   }
   
   /**
-   * Send traceback alert to owner
-   * @private
+   * Get available skills for this data shard
+   * @param {Item} item - The data shard
+   * @param {Actor} actor - The actor
+   * @returns {Array} Array of available skill objects
    */
-  async _sendTracebackAlert(item, hacker) {
-    if (!item.actor) return;
+  getAvailableSkills(item, actor) {
+    const allowedSkills = item.getFlag(MODULE_ID, 'allowedSkills') || DEFAULTS.ALLOWED_SKILLS;
+    const allActorSkills = this.skillService.getAvailableSkills(actor);
     
-    const messageData = {
-      from: 'security@system.net',
-      to: item.actor.getFlag(MODULE_ID, 'email') || 'unknown',
-      subject: 'SECURITY ALERT: Unauthorized Access Attempt',
-      content: `
-        <p><strong>SECURITY BREACH DETECTED</strong></p>
-        <p>Unauthorized access attempt on secure data.</p>
-        <p><strong>Location:</strong> ${item.name}</p>
-        <p><strong>Time:</strong> ${new Date().toLocaleString()}</p>
-        <p><strong>Trace:</strong> ${hacker.name}</p>
-      `
-    };
-    
-    // Use MessageRepository to create the alert
-    await this.messageRepository.create(messageData);
-  }
-  
-  /**
-   * Deal EMP damage
-   * @private
-   */
-  async _dealEMPDamage(actor, formula) {
-    const roll = new Roll(formula);
-    await roll.evaluate();
-    
-    const currentHP = actor.system.hp?.value || 0;
-    const newHP = Math.max(0, currentHP - roll.total);
-    
-    await actor.update({
-      'system.hp.value': newHP
-    });
-    
-    await ChatMessage.create({
-      content: `
-        <div class="ncm-emp-damage">
-          <h3>⚡ EMP FEEDBACK</h3>
-          <p><strong>${actor.name}</strong> takes <strong>${roll.total}</strong> damage from system feedback!</p>
-        </div>
-      `,
-      speaker: ChatMessage.getSpeaker({ actor })
+    // Filter to only allowed skills
+    return allActorSkills.filter(skill => {
+      return allowedSkills.some(allowed => {
+        const normalized = allowed.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const skillNormalized = skill.displayName.toLowerCase().replace(/[^a-z0-9]/g, '');
+        return normalized === skillNormalized;
+      });
     });
   }
   
   /**
-   * Corrupt random messages
+   * Ensure journal exists for item
    * @private
    */
-  async _corruptMessages(item, count) {
-    const journal = await this._ensureJournal(item);
-    const pages = journal.pages.contents;
+  async _ensureJournal(item) {
+    let journal = await this._findJournal(item);
     
-    if (pages.length === 0) return;
-    
-    for (let i = 0; i < Math.min(count, pages.length); i++) {
-      const randomPage = pages[Math.floor(Math.random() * pages.length)];
-      await randomPage.setFlag(MODULE_ID, 'status.corrupted', true);
+    if (!journal) {
+      journal = await JournalEntry.create({
+        name: `${item.name} - Data`,
+        flags: {
+          [MODULE_ID]: {
+            isDataShardJournal: true,
+            itemId: item.id
+          }
+        }
+      });
+      
+      await item.setFlag(MODULE_ID, 'journalId', journal.id);
     }
+    
+    return journal;
   }
   
   /**
-   * Create hack attempt chat message
+   * Find journal for item
    * @private
    */
-  async _createHackMessage(actor, item, success, result) {
-    const content = `
-      <div class="ncm-hack-attempt ${success ? 'success' : 'failure'}">
-        <header>
-          <i class="fas fa-${success ? 'unlock' : 'lock'}"></i>
-          DATA SHARD ${success ? 'DECRYPTED' : 'HACK FAILED'}
-        </header>
-        <div class="ncm-hack-details">
-          <div class="ncm-hacker">${actor.name}</div>
-          <div class="ncm-target">${item.name}</div>
-          <div class="ncm-roll-result">
-            Roll: <strong>${result.roll}</strong> vs DV <strong>${result.dc}</strong>
-            <br>
-            <span class="ncm-roll-breakdown">
-              (${result.stat} INT + ${result.skill} Interface + ${result.dice} d10)
-            </span>
-          </div>
-        </div>
-      </div>
-    `;
+  async _findJournal(item) {
+    const journalId = item.getFlag(MODULE_ID, 'journalId');
+    if (journalId) {
+      return game.journal.get(journalId);
+    }
     
-    await ChatMessage.create({
-      content,
-      speaker: ChatMessage.getSpeaker({ actor }),
-      type: CONST.CHAT_MESSAGE_TYPES.ROLL,
-      sound: success ? 
-        `modules/${MODULE_ID}/assets/sounds/hack-success.mp3` : 
-        `modules/${MODULE_ID}/assets/sounds/hack-failure.mp3`
-    });
+    // Fallback: search by flag
+    return game.journal.find(j => 
+      j.getFlag(MODULE_ID, 'itemId') === item.id
+    );
   }
 }

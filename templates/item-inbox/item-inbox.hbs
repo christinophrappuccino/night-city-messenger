@@ -1,4 +1,4 @@
-{{!-- Item Inbox Template (Simplified) --}}
+{{!-- Item Inbox Template (Complete with Per-Message Encryption) --}}
 {{!-- File: templates/item-inbox/item-inbox.hbs --}}
 
 <div class="ncm-item-inbox ncm-theme-{{theme}}">
@@ -22,7 +22,7 @@
   <div class="ncm-item-inbox__security {{#if encrypted}}ncm-item-inbox__security--encrypted{{/if}}">
     <div class="ncm-item-inbox__security-icon">
       {{#if encrypted}}
-        {{#if isDecrypted}}
+        {{#if isShardDecrypted}}
           <i class="fas fa-unlock"></i>
         {{else}}
           <i class="fas fa-lock"></i>
@@ -34,38 +34,44 @@
     <div class="ncm-item-inbox__security-info">
       <div class="ncm-item-inbox__security-status">
         {{#if encrypted}}
-          {{#if isDecrypted}}
-            DECRYPTED
+          {{#if isShardDecrypted}}
+            SHARD DECRYPTED
           {{else}}
-            ENCRYPTED
+            SHARD ENCRYPTED
           {{/if}}
         {{else}}
           UNENCRYPTED
         {{/if}}
+        {{#if allowsPerMessageEncryption}}
+          <span class="ncm-encryption-badge">+ Per-Message Security</span>
+        {{/if}}
       </div>
       <div class="ncm-item-inbox__security-level">
         {{#if encrypted}}
-          {{#if isDecrypted}}
-            Access Granted
+          {{#if isShardDecrypted}}
+            Shard Access Granted
           {{else}}
             DV {{encryptionDC}} | {{encryptionType}}
           {{/if}}
         {{else}}
-          No Security
+          No Shard Security
         {{/if}}
       </div>
     </div>
   </div>
   
-  {{!-- Encryption Overlay --}}
-  {{#if showEncryptedOverlay}}
+  {{!-- ========================================================================
+       SHARD-LEVEL ENCRYPTION OVERLAY
+       Shows when entire shard is encrypted
+       ======================================================================== --}}
+  {{#if showShardEncryptedOverlay}}
   <div class="ncm-item-inbox__encryption-overlay">
     <div class="ncm-encryption-container">
       <div class="ncm-encryption-icon">
         <i class="fas fa-lock"></i>
       </div>
       
-      <h2 class="ncm-encryption-title">DATA ENCRYPTED</h2>
+      <h2 class="ncm-encryption-title">DATA SHARD ENCRYPTED</h2>
       
       <div class="ncm-encryption-info">
         <div class="ncm-encryption-detail">
@@ -80,19 +86,26 @@
           <span class="ncm-encryption-label">Failure:</span>
           <span class="ncm-encryption-value">{{failureMode}}</span>
         </div>
+        <div class="ncm-encryption-detail">
+          <span class="ncm-encryption-label">Mode:</span>
+          <span class="ncm-encryption-value">
+            {{#if (eq encryptionMode "shard")}}Shard Level{{/if}}
+            {{#if (eq encryptionMode "both")}}Both Layers{{/if}}
+          </span>
+        </div>
       </div>
       
-      {{#if (isLethalICE encryptionType)}}
+      {{#if (or (eq encryptionType "BLACK_ICE") (eq encryptionType "RED_ICE"))}}
       <div class="ncm-encryption-warning">
         <i class="fas fa-skull"></i>
-        <span>WARNING: LETHAL ICE</span>
+        <span>WARNING: LETHAL ICE - FAILURE WILL CAUSE DAMAGE</span>
       </div>
       {{/if}}
       
       {{#if isLockedOut}}
       <div class="ncm-lockout-warning">
         <i class="fas fa-ban"></i>
-        <p>SYSTEM LOCKED</p>
+        <p>SYSTEM LOCKED OUT</p>
         <p>Retry in {{lockoutMinutes}} minutes</p>
       </div>
       {{else}}
@@ -105,7 +118,7 @@
         {{else}}
           <div class="ncm-no-actor-warning">
             <i class="fas fa-exclamation-triangle"></i>
-            <p>Select a character to hack</p>
+            <p>Select a character to hack this data shard</p>
           </div>
         {{/if}}
         
@@ -117,14 +130,15 @@
       </div>
       {{/if}}
       
-      {{#if previousAttempts}}
+      {{#if previousAttempts.length}}
       <div class="ncm-hack-history">
-        <h4>Previous Attempts:</h4>
+        <h4>Previous Hack Attempts:</h4>
         <div class="ncm-hack-attempts">
           {{#each previousAttempts}}
           <div class="ncm-hack-attempt {{#if (eq result 'Success')}}ncm-hack-attempt--success{{else}}ncm-hack-attempt--failure{{/if}}">
             <span class="ncm-hack-actor">{{actorName}}</span>
             <span class="ncm-hack-result">{{result}}</span>
+            <span class="ncm-hack-roll">Roll: {{roll}}</span>
             <span class="ncm-hack-time">{{timestamp}}</span>
           </div>
           {{/each}}
@@ -135,10 +149,14 @@
   </div>
   {{else}}
   
-  {{!-- Main Content --}}
+  {{!-- ========================================================================
+       MAIN CONTENT (Shown when shard is decrypted or not encrypted)
+       ======================================================================== --}}
   <div class="ncm-item-inbox__content">
     
-    {{!-- Message List --}}
+    {{!-- ====================================================================
+         MESSAGE LIST (LEFT SIDE)
+         ==================================================================== --}}
     <div class="ncm-item-inbox__messages">
       <div class="ncm-item-inbox__messages-header">
         <span class="ncm-message-count">Messages ({{messageCount}})</span>
@@ -152,12 +170,20 @@
       {{#if hasMessages}}
       <div class="ncm-item-inbox__messages-list">
         {{#each messages}}
-        <div class="ncm-message-item {{#if isSelected}}ncm-message-item--selected{{/if}}" 
+        <div class="ncm-message-item {{#if isSelected}}ncm-message-item--selected{{/if}} {{#if showLockIcon}}ncm-message-item--encrypted{{/if}}" 
              data-message-id="{{id}}"
              data-action="select-message">
+          
+          {{!-- Lock icon for encrypted messages --}}
+          {{#if showLockIcon}}
+          <div class="ncm-message-lock-icon">
+            <i class="fas fa-lock"></i>
+          </div>
+          {{/if}}
+          
           <div class="ncm-message-item__header">
             <div class="ncm-message-item__subject">
-              {{#if infected}}
+              {{#if messageData.infected}}
                 <i class="fas fa-virus ncm-text-danger"></i>
               {{/if}}
               {{messageData.subject}}
@@ -187,15 +213,102 @@
       {{/if}}
     </div>
     
-    {{!-- Message Detail --}}
+    {{!-- ====================================================================
+         MESSAGE DETAIL (RIGHT SIDE)
+         ==================================================================== --}}
     {{#if selectedMessage}}
     <div class="ncm-item-inbox__detail">
       
-      <!-- Clean Header with subject and actions -->
+      {{!-- ================================================================
+           PER-MESSAGE ENCRYPTION OVERLAY
+           Shows when individual message is encrypted
+           ================================================================ --}}
+      {{#if selectedMessage.showEncryptedOverlay}}
+      <div class="ncm-message-encryption-overlay">
+        <div class="ncm-encryption-container">
+          <div class="ncm-encryption-icon">
+            <i class="fas fa-lock"></i>
+          </div>
+          
+          <h3 class="ncm-encryption-title">MESSAGE ENCRYPTED</h3>
+          
+          <div class="ncm-message-info">
+            <div class="ncm-message-subject-display">{{selectedMessage.messageData.subject}}</div>
+            <div class="ncm-message-meta-display">
+              <span>From: {{selectedMessage.messageData.from}}</span>
+              <span>Date: {{selectedMessage.messageData.date}}</span>
+            </div>
+          </div>
+          
+          {{#if selectedMessage.encryption}}
+          <div class="ncm-encryption-info">
+            <div class="ncm-encryption-detail">
+              <span class="ncm-encryption-label">Security:</span>
+              <span class="ncm-encryption-value">{{selectedMessage.encryption.type}}</span>
+            </div>
+            <div class="ncm-encryption-detail">
+              <span class="ncm-encryption-label">Difficulty:</span>
+              <span class="ncm-encryption-value">DV {{selectedMessage.encryption.dc}}</span>
+            </div>
+            <div class="ncm-encryption-detail">
+              <span class="ncm-encryption-label">Allowed Skills:</span>
+              <span class="ncm-encryption-value">{{join selectedMessage.encryption.allowedSkills ", "}}</span>
+            </div>
+            {{#if selectedMessage.encryption.hackAttempts}}
+            <div class="ncm-encryption-detail">
+              <span class="ncm-encryption-label">Failed Attempts:</span>
+              <span class="ncm-encryption-value">{{selectedMessage.encryption.hackAttempts}}</span>
+            </div>
+            {{/if}}
+          </div>
+          
+          {{#if (or (eq selectedMessage.encryption.type "BLACK_ICE") (eq selectedMessage.encryption.type "RED_ICE"))}}
+          <div class="ncm-encryption-warning">
+            <i class="fas fa-skull"></i>
+            <span>WARNING: BLACK ICE - FAILURE CAUSES DAMAGE</span>
+          </div>
+          {{/if}}
+          {{/if}}
+          
+          <div class="ncm-encryption-actions">
+            {{#if selectedMessage.canDecrypt}}
+              <button class="ncm-hack-button" 
+                      data-action="decrypt-message" 
+                      data-message-id="{{selectedMessage.id}}">
+                <i class="fas fa-user-secret"></i>
+                Attempt Decrypt ({{selectedActor.name}})
+              </button>
+            {{else}}
+              <div class="ncm-no-actor-warning">
+                <i class="fas fa-exclamation-triangle"></i>
+                <p>Select a character to decrypt this message</p>
+              </div>
+            {{/if}}
+            
+            {{#if isGM}}
+              <button class="ncm-button ncm-button-warning" 
+                      data-action="gm-force-decrypt-message"
+                      data-message-id="{{selectedMessage.id}}">
+                <i class="fas fa-crown"></i> GM Force Decrypt
+              </button>
+            {{/if}}
+          </div>
+        </div>
+      </div>
+      
+      {{!-- ================================================================
+           MESSAGE CONTENT (Shown when message is decrypted)
+           ================================================================ --}}
+      {{else}}
+      
+      <!-- Message Header with subject and actions -->
       <div class="ncm-item-inbox__detail-header">
         <div class="ncm-detail-subject">
-          {{#if selectedMessage.infected}}
-            <i class="fas fa-virus" style="color: var(--ncm-error);"></i>
+          {{#if selectedMessage.messageData.encrypted}}
+            <i class="fas fa-unlock ncm-text-success" title="Decrypted"></i>
+          {{/if}}
+          {{#if selectedMessage.messageData.infected}}
+            <i class="fas fa-virus ncm-text-danger" title="Contains Malware"></i>
           {{/if}}
           {{selectedMessage.messageData.subject}}
         </div>
@@ -211,7 +324,7 @@
         </div>
       </div>
       
-      <!-- Compact Metadata Row -->
+      <!-- Metadata -->
       <div class="ncm-item-inbox__detail-meta">
         <div class="ncm-meta-row">
           <span class="ncm-meta-from">
@@ -229,7 +342,7 @@
       </div>
       
       <!-- Malware Warning (if infected) -->
-      {{#if selectedMessage.infected}}
+      {{#if selectedMessage.messageData.infected}}
       <div class="ncm-malware-warning">
         <div class="ncm-malware-icon">
           <i class="fas fa-virus"></i>
@@ -250,7 +363,7 @@
       
       <!-- Message Body -->
       <div class="ncm-item-inbox__detail-content">
-        {{#if selectedMessage.canView}}
+        {{#if selectedMessage.showContent}}
           <div class="ncm-message-body">
             {{{selectedMessage.content}}}
           </div>
@@ -262,11 +375,21 @@
         {{/if}}
       </div>
       
+      {{/if}}
+      
     </div>
     {{else}}
+    
+    {{!-- Empty state when no message selected --}}
     <div class="ncm-item-inbox__detail-empty">
       <i class="fas fa-mouse-pointer"></i>
       <p>Select a message to view</p>
+      {{#if allowsPerMessageEncryption}}
+        <p class="ncm-help-text">
+          <i class="fas fa-lock"></i> 
+          Messages with lock icons require decryption
+        </p>
+      {{/if}}
     </div>
     {{/if}}
     
@@ -274,3 +397,55 @@
   {{/if}}
   
 </div>
+
+{{!-- Helper CSS for lock icon positioning --}}
+<style>
+.ncm-message-lock-icon {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  color: var(--ncm-primary, #F65261);
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+
+.ncm-message-item {
+  position: relative;
+}
+
+.ncm-message-item--encrypted {
+  border-left: 3px solid var(--ncm-primary, #F65261);
+}
+
+.ncm-encryption-badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  background: rgba(246, 82, 97, 0.2);
+  border-radius: 3px;
+  margin-left: 8px;
+}
+
+.ncm-message-encryption-overlay {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: var(--ncm-spacing-xl, 20px);
+}
+
+.ncm-message-subject-display {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: var(--ncm-primary, #F65261);
+  margin-bottom: 8px;
+}
+
+.ncm-message-meta-display {
+  display: flex;
+  gap: 20px;
+  font-size: 0.9rem;
+  color: var(--ncm-text-secondary, #999);
+  margin-bottom: 20px;
+}
+</style>
