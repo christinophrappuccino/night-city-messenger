@@ -4,6 +4,8 @@
    Purpose: Item sheet integration and data shard display
    Dependencies: variables.css, reset.css, animations.css
    ============================================== */
+   
+   @import url('./data-shard.css');
 
 /* ============================================
    ITEM INBOX WINDOW

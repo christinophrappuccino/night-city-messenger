@@ -15,6 +15,7 @@ export class ItemInboxApp extends BaseApplication {
     super(options);
     
     this.item = item;
+    this.gmViewAllMode = false;
     
     // Check if item is a data shard
     if (!this.item.getFlag(MODULE_ID, 'isDataShard')) {
@@ -45,11 +46,17 @@ export class ItemInboxApp extends BaseApplication {
     return foundry.utils.mergeObject(super.defaultOptions, {
       classes: ["ncm-app", "ncm-item-inbox"],
       template: `modules/${MODULE_ID}/templates/item-inbox/item-inbox.hbs`,
-      width: 800,
+      width: 900,
       height: 700,
+      minWidth: 700,
+      minHeight: 600,
       resizable: true,
-      title: "Data Shard",
-      tabs: []
+      minimizable: true,
+      left: null,
+      top: null,
+      dragDrop: [],
+      tabs: [],
+      scrollY: []
     });
   }
 
@@ -81,54 +88,63 @@ export class ItemInboxApp extends BaseApplication {
     const data = await super.getData(options);
     
     // ========================================================================
-    // EXISTING: Get item flags
+    // Get item flags
     // ========================================================================
     const encrypted = this.item.getFlag(MODULE_ID, 'encrypted') || false;
     const encryptionDC = this.item.getFlag(MODULE_ID, 'encryptionDC') || 15;
     const encryptionType = this.item.getFlag(MODULE_ID, 'encryptionType') || 'ICE';
-    const encryptionMode = this.item.getFlag(MODULE_ID, 'encryptionMode') || 'shard'; // NEW
+    const encryptionMode = this.item.getFlag(MODULE_ID, 'encryptionMode') || 'shard';
     const failureMode = this.item.getFlag(MODULE_ID, 'failureMode') || 'lockout';
     const theme = this.item.getFlag(MODULE_ID, 'theme') || 'default';
     const dataShardType = this.item.getFlag(MODULE_ID, 'dataShardType') || 'single';
     
     // ========================================================================
-    // EXISTING: Network requirements
+    // Network requirements
     // ========================================================================
     const requiresNetwork = this.item.getFlag(MODULE_ID, 'requiresNetwork') || false;
     const requiredNetwork = this.item.getFlag(MODULE_ID, 'requiredNetwork') || 'CITINET';
-    const networkAvailable = true; // TODO: Check actual network status
+    const networkAvailable = true; // TODO: Implement actual network checking
     
     // ========================================================================
-    // EXISTING: Login requirements
+    // Login requirements
     // ========================================================================
     const requiresLogin = this.item.getFlag(MODULE_ID, 'requiresLogin') || false;
     const isLoggedIn = this.item.getFlag(MODULE_ID, 'sessionLoggedIn') || false;
     
     // ========================================================================
-    // UPDATED: Check if shard is decrypted (for shard-level encryption)
+    // CRITICAL FIX: Separate "actually decrypted" from "GM can view"
     // ========================================================================
-    const shardDecrypted = this.item.getFlag(MODULE_ID, 'decrypted') || false;
     
-    // Determine if shard-level encryption is active
+    // Get the ACTUAL decryption state (true = decrypted, false = locked)
+    const shardDecrypted = this.item.getFlag(MODULE_ID, 'decrypted') !== false;
+    
+    // Check if shard-level encryption is active
     const shardEncryptionActive = encrypted && (encryptionMode === 'shard' || encryptionMode === 'both');
-    const isShardDecrypted = shardDecrypted || !shardEncryptionActive || game.user.isGM;
+    
+    // THE ACTUAL STATE (what the flag says)
+    const isActuallyDecrypted = shardDecrypted || !shardEncryptionActive;
+    
+    // WHETHER TO SHOW THE OVERLAY
+    // Show overlay if: encrypted AND not decrypted AND (not GM OR GM but view mode off)
+    const showShardEncryptedOverlay = shardEncryptionActive && 
+                                      !isActuallyDecrypted && 
+                                      (!game.user.isGM || !this.gmViewAllMode);
+    
+    // WHETHER USER CAN ACCESS CONTENT
+    // Can access if: actually decrypted OR (GM and view mode enabled)
+    const canAccessInbox = (isActuallyDecrypted || (game.user.isGM && this.gmViewAllMode)) && 
+                           (!requiresNetwork || networkAvailable || game.user.isGM) &&
+                           (!requiresLogin || isLoggedIn || game.user.isGM);
     
     // ========================================================================
-    // EXISTING: Check lockout
+    // Lockout status
     // ========================================================================
     const lockoutUntil = this.item.getFlag(MODULE_ID, 'lockoutUntil');
     const isLockedOut = lockoutUntil && Date.now() < lockoutUntil;
     const lockoutMinutes = isLockedOut ? Math.ceil((lockoutUntil - Date.now()) / 1000 / 60) : 0;
     
     // ========================================================================
-    // UPDATED: Can access inbox? (considers all security layers)
-    // ========================================================================
-    const canAccessInbox = (isShardDecrypted || game.user.isGM) && 
-                           (!requiresNetwork || networkAvailable || game.user.isGM) &&
-                           (!requiresLogin || isLoggedIn || game.user.isGM);
-    
-    // ========================================================================
-    // UPDATED: Get messages with per-message encryption status
+    // Get messages with per-message encryption status
     // ========================================================================
     const messages = this.messages.map(msg => {
       // Check if this specific message is encrypted
@@ -145,13 +161,13 @@ export class ItemInboxApp extends BaseApplication {
         ...msg,
         isSelected: msg.id === this.selectedMessageId,
         canView: canAccessInbox,
-        showLockIcon, // NEW
-        canDecrypt: canDecryptMessage // NEW
+        showLockIcon,
+        canDecrypt: canDecryptMessage
       };
     });
     
     // ========================================================================
-    // UPDATED: Get selected message with encryption overlay logic
+    // Get selected message with encryption overlay logic
     // ========================================================================
     let selectedMessage = null;
     if (this.selectedMessageId) {
@@ -161,11 +177,15 @@ export class ItemInboxApp extends BaseApplication {
         const messageEncrypted = msg.messageData?.encrypted || false;
         const messageDecrypted = msg.messageData?.decrypted || false;
         
-        // Show content if: decrypted OR not encrypted OR user is GM
-        const showContent = messageDecrypted || !messageEncrypted || game.user.isGM;
+        // Show content if: decrypted OR not encrypted OR (GM with view mode)
+        const showContent = messageDecrypted || 
+                           !messageEncrypted || 
+                           (game.user.isGM && this.gmViewAllMode);
         
-        // Show encrypted overlay if: encrypted AND not decrypted AND not GM
-        const showEncryptedOverlay = messageEncrypted && !messageDecrypted && !game.user.isGM;
+        // Show encrypted overlay if: encrypted AND not decrypted AND (not GM OR no view mode)
+        const showEncryptedOverlay = messageEncrypted && 
+                                     !messageDecrypted && 
+                                     (!game.user.isGM || !this.gmViewAllMode);
         
         // Can decrypt this message?
         const canDecryptMessage = messageEncrypted && !messageDecrypted && game.user.character;
@@ -180,39 +200,33 @@ export class ItemInboxApp extends BaseApplication {
           malwareType: msg.messageData?.malwareType || null,
           threatLevel: msg.messageData?.threatLevel || 'unknown',
           
-          // NEW: Per-message encryption status
-          showContent, // Whether to show the actual content
-          showEncryptedOverlay, // Whether to show "ENCRYPTED" overlay
-          canDecrypt: canDecryptMessage, // Whether to show decrypt button
-          encryption: msg.encryption || null // Encryption settings
+          // Per-message encryption status
+          showContent,
+          showEncryptedOverlay,
+          canDecrypt: canDecryptMessage,
+          encryption: msg.encryption || null
         };
       }
     }
     
     // ========================================================================
-    // UPDATED: Check if user can attempt shard-level hack
+    // Check if user can attempt shard-level hack
     // ========================================================================
     const canHackShard = game.user.character && 
-                         !isShardDecrypted && 
+                         !isActuallyDecrypted && 
                          !isLockedOut && 
-                         shardEncryptionActive;
+                         shardEncryptionActive &&
+                         !game.user.isGM; // GMs shouldn't need to hack
     
     const selectedActor = game.user.character;
     
     // ========================================================================
-    // UPDATED: Show shard encrypted overlay?
-    // ========================================================================
-    const showShardEncryptedOverlay = shardEncryptionActive && 
-                                      !isShardDecrypted && 
-                                      !game.user.isGM;
-    
-    // ========================================================================
-    // EXISTING: Previous hack attempts
+    // Previous hack attempts
     // ========================================================================
     const previousAttempts = this.item.getFlag(MODULE_ID, 'hackAttempts') || [];
     
     // ========================================================================
-    // RETURN: Complete data object
+    // Return complete data object
     // ========================================================================
     return {
       ...data,
@@ -225,49 +239,54 @@ export class ItemInboxApp extends BaseApplication {
       encrypted,
       encryptionDC,
       encryptionType,
-      encryptionMode, // NEW
+      encryptionMode,
       failureMode,
       theme,
       isSingleMode: dataShardType === 'single',
       
-      // Network (EXISTING)
+      // Network
       requiresNetwork,
       requiredNetwork,
       networkAvailable,
       signalStrength: 100, // TODO: Get real signal strength
       
-      // Login (EXISTING)
+      // Login
       requiresLogin,
       isLoggedIn,
       
-      // Status (UPDATED)
-      isDecrypted: isShardDecrypted, // Renamed for clarity
-      isShardDecrypted, // NEW: explicit shard decryption status
+      // CRITICAL: Two different flags for different purposes
+      isActuallyDecrypted,      // The TRUE state of the encryption flag
+      isShardDecrypted: isActuallyDecrypted, // Alias for backwards compatibility
+      
+      // Lockout
       isLockedOut,
       lockoutMinutes,
-      canHack: canHackShard, // Renamed for clarity
-      canHackShard, // NEW: explicit shard hack ability
-      canAccessInbox, // UPDATED: renamed from canAccess
-      showEncryptedOverlay: showShardEncryptedOverlay, // UPDATED: shard-level overlay
-      showShardEncryptedOverlay, // NEW: explicit shard overlay
+      
+      // Access control
+      canHackShard,
+      canAccessInbox,
+      showShardEncryptedOverlay, // Whether to show the overlay
       attemptingHack: this.attemptingHack,
       
-      // Messages (UPDATED with encryption info)
+      // Messages
       messages,
       messageCount: messages.length,
-      selectedMessage, // ENHANCED with per-message encryption
+      selectedMessage,
       hasMessages: messages.length > 0,
       
-      // Hack data (EXISTING)
+      // Hack data
       previousAttempts,
       selectedActor,
       
-      // Permissions (EXISTING)
+      // Permissions
       isOwner: this.item.isOwner,
       isGM: game.user.isGM,
       canAddMessage: this.item.isOwner || game.user.isGM,
       
-      // NEW: Encryption mode info (for UI decisions)
+      // GM controls
+      gmViewMode: this.gmViewAllMode || false, // For template to show button state
+      
+      // Encryption mode info
       allowsPerMessageEncryption: encryptionMode === 'message' || encryptionMode === 'both',
       usesShardEncryption: encryptionMode === 'shard' || encryptionMode === 'both',
       usesBothLayers: encryptionMode === 'both'
@@ -280,9 +299,7 @@ export class ItemInboxApp extends BaseApplication {
   activateListeners(html) {
     super.activateListeners(html);
     
-    html.find('[data-action="gm-reset-encryption"]').click(this._onGMResetEncryption.bind(this));
-    html.find('[data-action="gm-reset-attempts"]').click(this._onGMResetAttempts.bind(this));
-    html.find('[data-action="gm-view-all"]').click(this._onGMViewAll.bind(this));
+    // Regular actions
     html.find('[data-action="select-message"]').click(this._onMessageSelect.bind(this));
     html.find('[data-action="attempt-hack"]').click(this._onHackAttempt.bind(this));
     html.find('[data-action="add-message"]').click(this._onAddMessage.bind(this));
@@ -290,7 +307,14 @@ export class ItemInboxApp extends BaseApplication {
     html.find('[data-action="delete-message"]').click(this._onDeleteMessage.bind(this));
     html.find('[data-action="configure"]').click(this._onConfigure.bind(this));
     html.find('[data-action="close"]').click(() => this.close());
+    
+    // GM Controls
     html.find('[data-action="gm-force-decrypt"]').click(this._onGMForceDecrypt.bind(this));
+    html.find('[data-action="gm-reset-encryption"]').click(this._onGMResetEncryption.bind(this));
+    html.find('[data-action="gm-reset-attempts"]').click(this._onGMResetAttempts.bind(this));
+    html.find('[data-action="gm-view-all"]').click(this._onGMViewAll.bind(this));
+    
+    // Other existing actions
     html.find('[data-action="gm-bypass-login"]').click(this._onGMBypassLogin.bind(this));
     html.find('[data-action="gm-override-network"]').click(this._onGMOverrideNetwork.bind(this));
     html.find('[data-action="login"]').click(this._onLogin.bind(this));
@@ -560,7 +584,7 @@ export class ItemInboxApp extends BaseApplication {
   }
   
   /**
-   * GM force decrypt (NEW)
+   * GM: Force decrypt the data shard (bypass encryption)
    * @private
    */
   async _onGMForceDecrypt(event) {
@@ -571,10 +595,51 @@ export class ItemInboxApp extends BaseApplication {
       return;
     }
     
-    await this.item.setFlag(MODULE_ID, 'decrypted', true);
-    await this._loadMessages();
-    this.render(false);
-    ui.notifications.info('GM Override: Data shard decrypted');
+    const confirmed = await Dialog.confirm({
+      title: "Force Decrypt Data Shard",
+      content: `
+        <p>Bypass encryption and unlock this data shard?</p>
+        <p><strong>This is a GM override.</strong></p>
+        <p>Players will see the shard as decrypted.</p>
+      `
+    });
+    
+    if (!confirmed) return;
+    
+    try {
+      // Set the decrypted flag
+      await this.item.setFlag(MODULE_ID, 'decrypted', true);
+      
+      // Clear lockout
+      await this.item.unsetFlag(MODULE_ID, 'lockoutUntil');
+      
+      // Reset hack attempts
+      await this.item.setFlag(MODULE_ID, 'hackAttempts', 0);
+      
+      // Reload messages
+      await this._loadMessages();
+      
+      // Re-render
+      this.render(false);
+      
+      // Notification
+      ui.notifications.info('GM Override: Data shard decrypted');
+      
+      // Create chat message
+      await ChatMessage.create({
+        content: `
+          <div style="background: rgba(255, 215, 0, 0.1); border: 1px solid #FFD700; padding: 10px; border-radius: 4px;">
+            <p><strong style="color: #FFD700;"><i class="fas fa-crown"></i> GM OVERRIDE</strong></p>
+            <p>Data shard <strong>${this.item.name}</strong> was force-decrypted.</p>
+          </div>
+        `,
+        whisper: [game.user.id]
+      });
+      
+    } catch (error) {
+      console.error(`${MODULE_ID} | Error force decrypting:`, error);
+      ui.notifications.error('Failed to force decrypt');
+    }
   }
   
   /**
@@ -675,22 +740,53 @@ export class ItemInboxApp extends BaseApplication {
     
     const confirmed = await Dialog.confirm({
       title: "Reset Encryption",
-      content: "<p>Re-lock this data shard? Players will need to hack it again.</p>"
+      content: `
+        <p>Re-lock this data shard?</p>
+        <p><strong>This will:</strong></p>
+        <ul>
+          <li>Lock the data shard</li>
+          <li>Reset all hack attempts</li>
+          <li>Clear the lockout timer</li>
+          <li>Players will need to hack it again</li>
+        </ul>
+        <p><em>Useful for testing encryption mechanics.</em></p>
+      `
     });
     
     if (!confirmed) return;
     
     try {
+      // Lock the shard
       await this.item.setFlag(MODULE_ID, 'decrypted', false);
-      await this.item.setFlag(MODULE_ID, 'hackAttempts', 0);
-      await this.item.setFlag(MODULE_ID, 'lockoutUntil', null);
       
-      // Clear localStorage for all users
+      // Clear lockout
+      await this.item.unsetFlag(MODULE_ID, 'lockoutUntil');
+      
+      // Reset hack attempts
+      await this.item.setFlag(MODULE_ID, 'hackAttempts', 0);
+      
+      // Clear any localStorage decryption keys for all users
       const storageKey = `${MODULE_ID}-decrypted-${this.item.id}`;
       localStorage.removeItem(storageKey);
       
-      ui.notifications.info('Data shard re-locked');
+      // Re-render
       this.render(false);
+      
+      // Notification
+      ui.notifications.info('GM Override: Data shard re-locked');
+      
+      // Create chat message
+      await ChatMessage.create({
+        content: `
+          <div style="background: rgba(255, 215, 0, 0.1); border: 1px solid #FFD700; padding: 10px; border-radius: 4px;">
+            <p><strong style="color: #FFD700;"><i class="fas fa-crown"></i> GM OVERRIDE</strong></p>
+            <p>Data shard <strong>${this.item.name}</strong> was re-locked.</p>
+            <p><em>Encryption reset for testing.</em></p>
+          </div>
+        `,
+        whisper: [game.user.id]
+      });
+      
     } catch (error) {
       console.error(`${MODULE_ID} | Error resetting encryption:`, error);
       ui.notifications.error('Failed to reset encryption');
@@ -698,45 +794,84 @@ export class ItemInboxApp extends BaseApplication {
   }
 
   /**
-   * GM: Reset hack attempts
+   * GM: Reset failed hack attempts counter
    * @private
    */
   async _onGMResetAttempts(event) {
     event.preventDefault();
     
     if (!game.user.isGM) {
-      ui.notifications.error('Only GMs can reset attempts');
+      ui.notifications.error('Only GMs can reset hack attempts');
       return;
     }
     
+    const confirmed = await Dialog.confirm({
+      title: "Reset Hack Attempts",
+      content: `
+        <p>Reset the hack attempt counter for this data shard?</p>
+        <p>This will also clear any lockout timer.</p>
+      `
+    });
+    
+    if (!confirmed) return;
+    
     try {
+      // Reset hack attempts
       await this.item.setFlag(MODULE_ID, 'hackAttempts', 0);
-      await this.item.setFlag(MODULE_ID, 'lockoutUntil', null);
       
-      ui.notifications.info('Hack attempts reset');
+      // Clear lockout
+      await this.item.unsetFlag(MODULE_ID, 'lockoutUntil');
+      
+      // Re-render
       this.render(false);
+      
+      // Notification
+      ui.notifications.info('GM Override: Hack attempts reset');
+      
+      // Create chat message
+      await ChatMessage.create({
+        content: `
+          <div style="background: rgba(255, 215, 0, 0.1); border: 1px solid #FFD700; padding: 10px; border-radius: 4px;">
+            <p><strong style="color: #FFD700;"><i class="fas fa-crown"></i> GM OVERRIDE</strong></p>
+            <p>Hack attempts reset for <strong>${this.item.name}</strong>.</p>
+          </div>
+        `,
+        whisper: [game.user.id]
+      });
+      
     } catch (error) {
       console.error(`${MODULE_ID} | Error resetting attempts:`, error);
-      ui.notifications.error('Failed to reset attempts');
+      ui.notifications.error('Failed to reset hack attempts');
     }
   }
 
+
   /**
-   * GM: View all messages (ignore encryption)
+   * GM: Toggle "view all" mode (ignore encryption for GM)
    * @private
    */
   async _onGMViewAll(event) {
     event.preventDefault();
     
     if (!game.user.isGM) {
-      ui.notifications.error('Only GMs can use this');
+      ui.notifications.error('Only GMs can use view all mode');
       return;
     }
     
-    ui.notifications.info('GM Override: Viewing all messages');
-    // The template already checks isGM for showing content
+    // Toggle the GM view mode
+    this.gmViewAllMode = !this.gmViewAllMode;
+    
+    // Re-render to show/hide content based on mode
     this.render(false);
+    
+    // Notification
+    if (this.gmViewAllMode) {
+      ui.notifications.info('GM View All: Enabled (ignoring encryption)');
+    } else {
+      ui.notifications.info('GM View All: Disabled (respecting encryption)');
+    }
   }
+
   
   // ========================================================================
   // HELPER METHODS
