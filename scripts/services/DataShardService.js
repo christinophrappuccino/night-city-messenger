@@ -27,6 +27,7 @@ export class DataShardService {
       encrypted = false,
       encryptionType = DEFAULTS.ENCRYPTION_TYPE,
       encryptionDC = DEFAULTS.ENCRYPTION_DC,
+      encryptionMode = 'shard',
       allowedSkills = DEFAULTS.ALLOWED_SKILLS,
       failureMode = DEFAULTS.FAILURE_MODE,
       singleMessage = false,
@@ -35,12 +36,13 @@ export class DataShardService {
       requiredNetwork = null
     } = options;
     
-    console.log(`${MODULE_ID} | Converting ${item.name} to data shard`);
+    console.log(`${MODULE_ID} | Converting ${item.name} to data shard with encryption:`, encrypted);
     
     await item.setFlag(MODULE_ID, 'isDataShard', true);
     await item.setFlag(MODULE_ID, 'encrypted', encrypted);
     await item.setFlag(MODULE_ID, 'encryptionType', encryptionType);
     await item.setFlag(MODULE_ID, 'encryptionDC', encryptionDC);
+    await item.setFlag(MODULE_ID, 'encryptionMode', encryptionMode);
     await item.setFlag(MODULE_ID, 'allowedSkills', allowedSkills);
     await item.setFlag(MODULE_ID, 'failureMode', failureMode);
     await item.setFlag(MODULE_ID, 'singleMessage', singleMessage);
@@ -49,6 +51,15 @@ export class DataShardService {
     await item.setFlag(MODULE_ID, 'requiredNetwork', requiredNetwork);
     await item.setFlag(MODULE_ID, 'hackAttempts', 0);
     await item.setFlag(MODULE_ID, 'maxHackAttempts', DEFAULTS.MAX_HACK_ATTEMPTS);
+    
+    // If encrypted, mark as NOT decrypted initially
+    if (encrypted && (encryptionMode === 'shard' || encryptionMode === 'both')) {
+      await item.setFlag(MODULE_ID, 'decrypted', false);
+      console.log(`${MODULE_ID} | Shard encrypted - marked as locked`);
+    } else {
+      await item.setFlag(MODULE_ID, 'decrypted', true);
+      console.log(`${MODULE_ID} | Shard not encrypted - marked as unlocked`);
+    }
     
     this.eventBus.emit(EVENTS.DATA_SHARD_OPENED, { item });
     

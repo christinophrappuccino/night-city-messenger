@@ -280,6 +280,9 @@ export class ItemInboxApp extends BaseApplication {
   activateListeners(html) {
     super.activateListeners(html);
     
+    html.find('[data-action="gm-reset-encryption"]').click(this._onGMResetEncryption.bind(this));
+    html.find('[data-action="gm-reset-attempts"]').click(this._onGMResetAttempts.bind(this));
+    html.find('[data-action="gm-view-all"]').click(this._onGMViewAll.bind(this));
     html.find('[data-action="select-message"]').click(this._onMessageSelect.bind(this));
     html.find('[data-action="attempt-hack"]').click(this._onHackAttempt.bind(this));
     html.find('[data-action="add-message"]').click(this._onAddMessage.bind(this));
@@ -652,6 +655,87 @@ export class ItemInboxApp extends BaseApplication {
     this.render(false);
     
     ui.notifications.info('Message quarantined');
+  }
+
+  // ========================================================================
+  // GM Methods
+  // ========================================================================
+
+  /**
+   * GM: Re-lock the shard (reset encryption)
+   * @private
+   */
+  async _onGMResetEncryption(event) {
+    event.preventDefault();
+    
+    if (!game.user.isGM) {
+      ui.notifications.error('Only GMs can reset encryption');
+      return;
+    }
+    
+    const confirmed = await Dialog.confirm({
+      title: "Reset Encryption",
+      content: "<p>Re-lock this data shard? Players will need to hack it again.</p>"
+    });
+    
+    if (!confirmed) return;
+    
+    try {
+      await this.item.setFlag(MODULE_ID, 'decrypted', false);
+      await this.item.setFlag(MODULE_ID, 'hackAttempts', 0);
+      await this.item.setFlag(MODULE_ID, 'lockoutUntil', null);
+      
+      // Clear localStorage for all users
+      const storageKey = `${MODULE_ID}-decrypted-${this.item.id}`;
+      localStorage.removeItem(storageKey);
+      
+      ui.notifications.info('Data shard re-locked');
+      this.render(false);
+    } catch (error) {
+      console.error(`${MODULE_ID} | Error resetting encryption:`, error);
+      ui.notifications.error('Failed to reset encryption');
+    }
+  }
+
+  /**
+   * GM: Reset hack attempts
+   * @private
+   */
+  async _onGMResetAttempts(event) {
+    event.preventDefault();
+    
+    if (!game.user.isGM) {
+      ui.notifications.error('Only GMs can reset attempts');
+      return;
+    }
+    
+    try {
+      await this.item.setFlag(MODULE_ID, 'hackAttempts', 0);
+      await this.item.setFlag(MODULE_ID, 'lockoutUntil', null);
+      
+      ui.notifications.info('Hack attempts reset');
+      this.render(false);
+    } catch (error) {
+      console.error(`${MODULE_ID} | Error resetting attempts:`, error);
+      ui.notifications.error('Failed to reset attempts');
+    }
+  }
+
+  /**
+   * GM: View all messages (ignore encryption)
+   * @private
+   */
+  async _onGMViewAll(event) {
+    event.preventDefault();
+    
+    if (!game.user.isGM) {
+      ui.notifications.error('Only GMs can use this');
+      return;
+    }
+    
+    ui.notifications.info('GM Override: Viewing all messages');
+    // The template already checks isGM for showing content
+    this.render(false);
   }
   
   // ========================================================================
