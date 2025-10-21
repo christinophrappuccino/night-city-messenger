@@ -84,112 +84,124 @@ export class ItemInboxApp extends BaseApplication {
   /**
    * Get data for template
    */
-  async getData(options = {}) {
-    const data = await super.getData(options);
+  async getData() {
+    const data = await super.getData();
     
     // ========================================================================
-    // Get item flags
+    // Basic Item Data
     // ========================================================================
     const encrypted = this.item.getFlag(MODULE_ID, 'encrypted') || false;
     const encryptionDC = this.item.getFlag(MODULE_ID, 'encryptionDC') || 15;
     const encryptionType = this.item.getFlag(MODULE_ID, 'encryptionType') || 'ICE';
     const encryptionMode = this.item.getFlag(MODULE_ID, 'encryptionMode') || 'shard';
-    const failureMode = this.item.getFlag(MODULE_ID, 'failureMode') || 'lockout';
+    const failureMode = this.item.getFlag(MODULE_ID, 'failureMode') || 'Lockout';
+    const dataShardType = this.item.getFlag(MODULE_ID, 'dataShardType') || 'multi';
     const theme = this.item.getFlag(MODULE_ID, 'theme') || 'default';
-    const dataShardType = this.item.getFlag(MODULE_ID, 'dataShardType') || 'single';
-    data.isSingleMode = (this.item.getFlag(MODULE_ID, 'dataShardType') === 'single');
     
-    // ========================================================================
     // Network requirements
-    // ========================================================================
     const requiresNetwork = this.item.getFlag(MODULE_ID, 'requiresNetwork') || false;
     const requiredNetwork = this.item.getFlag(MODULE_ID, 'requiredNetwork') || 'CITINET';
-    const networkAvailable = true; // TODO: Implement actual network checking
+    const networkAvailable = true; // TODO: Check actual network
     
-    // ========================================================================
     // Login requirements
-    // ========================================================================
     const requiresLogin = this.item.getFlag(MODULE_ID, 'requiresLogin') || false;
-    const isLoggedIn = this.item.getFlag(MODULE_ID, 'sessionLoggedIn') || false;
+    const isLoggedIn = this.item.getFlag(MODULE_ID, 'isLoggedIn') || false;
     
     // ========================================================================
-    // CRITICAL FIX: Separate "actually decrypted" from "GM can view"
+    // CRITICAL: Encryption State
     // ========================================================================
     
-    // Get the ACTUAL decryption state (true = decrypted, false = locked)
-    const shardDecrypted = this.item.getFlag(MODULE_ID, 'decrypted') !== false;
+    // The ACTUAL decryption state of the shard
+    const isActuallyDecrypted = this.item.getFlag(MODULE_ID, 'decrypted') || false;
     
-    // Check if shard-level encryption is active
-    const shardEncryptionActive = encrypted && (encryptionMode === 'shard' || encryptionMode === 'both');
-    
-    // THE ACTUAL STATE (what the flag says)
-    const isActuallyDecrypted = shardDecrypted || !shardEncryptionActive;
-    
-    // WHETHER TO SHOW THE OVERLAY
-    // Show overlay if: encrypted AND not decrypted AND (not GM OR GM but view mode off)
-    const showShardEncryptedOverlay = shardEncryptionActive && 
-                                      !isActuallyDecrypted && 
-                                      (!game.user.isGM || !this.gmViewAllMode);
-    
-    // WHETHER USER CAN ACCESS CONTENT
-    // Can access if: actually decrypted OR (GM and view mode enabled)
-    const canAccessInbox = (isActuallyDecrypted || (game.user.isGM && this.gmViewAllMode)) && 
-                           (!requiresNetwork || networkAvailable || game.user.isGM) &&
-                           (!requiresLogin || isLoggedIn || game.user.isGM);
+    // Whether shard-level encryption is active
+    const shardEncryptionActive = encrypted && 
+                                   (encryptionMode === 'shard' || encryptionMode === 'both');
     
     // ========================================================================
-    // Lockout status
+    // Lockout State
     // ========================================================================
     const lockoutUntil = this.item.getFlag(MODULE_ID, 'lockoutUntil');
-    const isLockedOut = lockoutUntil && Date.now() < lockoutUntil;
-    const lockoutMinutes = isLockedOut ? Math.ceil((lockoutUntil - Date.now()) / 1000 / 60) : 0;
+    const isLockedOut = lockoutUntil && Date.now() < new Date(lockoutUntil).getTime();
+    const lockoutMinutes = isLockedOut 
+      ? Math.ceil((new Date(lockoutUntil).getTime() - Date.now()) / 60000)
+      : 0;
     
     // ========================================================================
-    // Get messages with per-message encryption status
+    // CRITICAL: Access Control Logic
     // ========================================================================
-    const messages = this.messages.map(msg => {
-      // Check if this specific message is encrypted
-      const messageEncrypted = msg.messageData?.encrypted || false;
-      const messageDecrypted = msg.messageData?.decrypted || false;
-      
-      // Show lock icon if message is encrypted and not decrypted
-      const showLockIcon = messageEncrypted && !messageDecrypted;
-      
-      // Can decrypt this message?
-      const canDecryptMessage = messageEncrypted && !messageDecrypted && game.user.character;
-      
-      return {
-        ...msg,
-        isSelected: msg.id === this.selectedMessageId,
-        canView: canAccessInbox,
-        showLockIcon,
-        canDecrypt: canDecryptMessage
-      };
+    
+    // Can the user access the inbox?
+    const canAccessInbox = !shardEncryptionActive ||  // No shard encryption
+                           isActuallyDecrypted ||      // Already decrypted
+                           this.gmViewAllMode ||       // GM viewing all
+                           game.user.isGM;             // GMs can always access
+    
+    // Should we show the shard-level encrypted overlay?
+    const showShardEncryptedOverlay = shardEncryptionActive &&    // Shard encryption is on
+                                       !isActuallyDecrypted &&    // Not decrypted yet
+                                       !this.gmViewAllMode;        // Not GM view mode
+    
+    // ========================================================================
+    // CRITICAL FIX: Can user attempt to hack the shard?
+    // ========================================================================
+    const hasCharacter = !!game.user.character;
+    
+    const canHackShard = hasCharacter &&              // Must have a character
+                         shardEncryptionActive &&     // Shard must be encrypted
+                         !isActuallyDecrypted &&      // Not already decrypted
+                         !isLockedOut &&              // Not locked out
+                         !game.user.isGM &&           // Players only (GMs can force)
+                         !this.gmViewAllMode;         // Not in GM view mode
+    
+    // Debug output
+    console.log(`${MODULE_ID} | getData() canHackShard calculation:`, {
+      hasCharacter,
+      shardEncryptionActive,
+      isActuallyDecrypted,
+      isLockedOut,
+      isGM: game.user.isGM,
+      gmViewAllMode: this.gmViewAllMode,
+      RESULT: canHackShard
     });
     
     // ========================================================================
-    // Get selected message with encryption overlay logic
+    // Load Messages
+    // ========================================================================
+    if (!this.messages || this.messages.length === 0) {
+      await this._loadMessages();
+    }
+    
+    const messages = this.messages || [];
+    
+    // ========================================================================
+    // Selected Message
     // ========================================================================
     let selectedMessage = null;
+    
     if (this.selectedMessageId) {
       const msg = messages.find(m => m.id === this.selectedMessageId);
+      
       if (msg) {
-        // Check if this message is encrypted
+        // Message-level encryption state
         const messageEncrypted = msg.messageData?.encrypted || false;
         const messageDecrypted = msg.messageData?.decrypted || false;
         
-        // Show content if: decrypted OR not encrypted OR (GM with view mode)
-        const showContent = messageDecrypted || 
-                           !messageEncrypted || 
-                           (game.user.isGM && this.gmViewAllMode);
+        // Can we show the content?
+        const showContent = !messageEncrypted ||     // Not encrypted
+                           messageDecrypted ||       // Decrypted
+                           this.gmViewAllMode;       // GM viewing
         
-        // Show encrypted overlay if: encrypted AND not decrypted AND (not GM OR no view mode)
+        // Should we show per-message overlay?
         const showEncryptedOverlay = messageEncrypted && 
-                                     !messageDecrypted && 
-                                     (!game.user.isGM || !this.gmViewAllMode);
+                                    !messageDecrypted && 
+                                    !this.gmViewAllMode;
         
-        // Can decrypt this message?
-        const canDecryptMessage = messageEncrypted && !messageDecrypted && game.user.character;
+        // Can user decrypt this message?
+        const canDecryptMessage = messageEncrypted && 
+                                 !messageDecrypted && 
+                                 hasCharacter &&
+                                 !game.user.isGM;
         
         selectedMessage = {
           ...msg,
@@ -211,23 +223,13 @@ export class ItemInboxApp extends BaseApplication {
     }
     
     // ========================================================================
-    // Check if user can attempt shard-level hack
+    // Hack History
     // ========================================================================
-    const canHackShard = game.user.character && 
-                         !isActuallyDecrypted && 
-                         !isLockedOut && 
-                         shardEncryptionActive &&
-                         !game.user.isGM; // GMs shouldn't need to hack
-    
+    const previousAttempts = this.item.getFlag(MODULE_ID, 'hackAttempts') || [];
     const selectedActor = game.user.character;
     
     // ========================================================================
-    // Previous hack attempts
-    // ========================================================================
-    const previousAttempts = this.item.getFlag(MODULE_ID, 'hackAttempts') || [];
-    
-    // ========================================================================
-    // Return complete data object
+    // Return Complete Data Object
     // ========================================================================
     return {
       ...data,
@@ -249,24 +251,24 @@ export class ItemInboxApp extends BaseApplication {
       requiresNetwork,
       requiredNetwork,
       networkAvailable,
-      signalStrength: 100, // TODO: Get real signal strength
+      signalStrength: 100,
       
       // Login
       requiresLogin,
       isLoggedIn,
       
-      // CRITICAL: Two different flags for different purposes
-      isActuallyDecrypted,      // The TRUE state of the encryption flag
-      isShardDecrypted: isActuallyDecrypted, // Alias for backwards compatibility
+      // Encryption state
+      isActuallyDecrypted,
+      isShardDecrypted: isActuallyDecrypted, // Alias
       
       // Lockout
       isLockedOut,
       lockoutMinutes,
       
       // Access control
-      canHackShard,
+      canHackShard,     
       canAccessInbox,
-      showShardEncryptedOverlay, // Whether to show the overlay
+      showShardEncryptedOverlay,
       attemptingHack: this.attemptingHack,
       
       // Messages
@@ -285,7 +287,7 @@ export class ItemInboxApp extends BaseApplication {
       canAddMessage: this.item.isOwner || game.user.isGM,
       
       // GM controls
-      gmViewMode: this.gmViewAllMode || false, // For template to show button state
+      gmViewMode: this.gmViewAllMode || false,
       
       // Encryption mode info
       allowsPerMessageEncryption: encryptionMode === 'message' || encryptionMode === 'both',
@@ -368,39 +370,77 @@ export class ItemInboxApp extends BaseApplication {
   async _onHackAttempt(event) {
     event.preventDefault();
     
-    console.log(`${MODULE_ID} | Hack attempt button clicked`);
+    console.log(`${MODULE_ID} | Hack attempt initiated`);
     
+    // Check for character
     const actor = game.user.character;
     if (!actor) {
       ui.notifications.error('You must have a character selected to hack');
       return;
     }
-
+    
     // Check available skills
     const availableSkills = this.dataShardService.getAvailableSkills(this.item, actor);
-      
+    
     if (availableSkills.length === 0) {
       const allowedSkills = this.item.getFlag(MODULE_ID, 'allowedSkills') || ['Interface'];
       ui.notifications.warn(`${actor.name} doesn't have the required skills: ${allowedSkills.join(', ')}`);
       return;
     }
-      
+    
     console.log(`${MODULE_ID} | ${actor.name} can use:`, availableSkills.map(s => s.displayName).join(', '));
     
-    // FIXED: Create properly positioned dialog
+    // Get encryption info
+    const encryptionType = this.item.getFlag(MODULE_ID, 'encryptionType') || 'ICE';
+    const encryptionDC = this.item.getFlag(MODULE_ID, 'encryptionDC') || 15;
+    const failureMode = this.item.getFlag(MODULE_ID, 'failureMode') || 'Lockout';
+    
+    // Show confirmation dialog
     const confirmed = await new Promise(resolve => {
-      new Dialog({
+      const dialog = new Dialog({
         title: "Attempt Data Shard Hack",
         content: `
           <div style="padding: 15px;">
-            <p><strong>Attempt to decrypt this data shard?</strong></p>
-            <hr style="margin: 15px 0;">
-            <p><strong>Encryption Type:</strong> ${this.item.getFlag(MODULE_ID, 'encryptionType') || 'ICE'}</p>
-            <p><strong>Difficulty:</strong> DV ${this.item.getFlag(MODULE_ID, 'encryptionDC') || 15}</p>
-            <p><strong>Failure Mode:</strong> ${this.item.getFlag(MODULE_ID, 'failureMode') || 'Lockout'}</p>
-            <p><strong>Available Skills:</strong> ${availableSkills.map(s => s.displayName).join(', ')}</p>
-            <hr style="margin: 15px 0;">
-            <p style="color: #F65261;"><strong>⚠ Warning:</strong> Failure may trigger security countermeasures!</p>
+            <p style="font-size: 1.1em; margin-bottom: 15px;">
+              <strong>Attempt to decrypt this data shard?</strong>
+            </p>
+            <hr style="margin: 15px 0; border-color: rgba(246, 82, 97, 0.3);">
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 15px 0;">
+              <div>
+                <strong style="color: var(--ncm-text-dim);">Encryption Type:</strong>
+                <div style="color: var(--ncm-primary); font-weight: bold;">${encryptionType}</div>
+              </div>
+              <div>
+                <strong style="color: var(--ncm-text-dim);">Difficulty:</strong>
+                <div style="color: var(--ncm-primary); font-weight: bold;">DV ${encryptionDC}</div>
+              </div>
+              <div>
+                <strong style="color: var(--ncm-text-dim);">Failure Mode:</strong>
+                <div style="color: var(--ncm-warning);">${failureMode}</div>
+              </div>
+              <div>
+                <strong style="color: var(--ncm-text-dim);">Available Skills:</strong>
+                <div style="color: var(--ncm-secondary);">${availableSkills.map(s => s.displayName).join(', ')}</div>
+              </div>
+            </div>
+            
+            <hr style="margin: 15px 0; border-color: rgba(246, 82, 97, 0.3);">
+            
+            ${encryptionType.includes('BLACK_ICE') || encryptionType.includes('RED_ICE') ? `
+              <div style="background: rgba(255, 0, 0, 0.15); border: 2px solid var(--ncm-error); padding: 12px; border-radius: 4px; margin: 10px 0;">
+                <p style="color: var(--ncm-error); font-weight: bold; margin: 0;">
+                  <i class="fas fa-skull-crossbones"></i> WARNING: LETHAL COUNTERMEASURES ACTIVE
+                </p>
+                <p style="color: var(--ncm-text); margin: 5px 0 0 0; font-size: 0.9em;">
+                  Failure may result in BLACK ICE deployment and serious injury!
+                </p>
+              </div>
+            ` : `
+              <p style="color: #F65261; margin: 10px 0;">
+                <strong>⚠ Warning:</strong> Failure may trigger security countermeasures!
+              </p>
+            `}
           </div>
         `,
         buttons: {
@@ -417,40 +457,114 @@ export class ItemInboxApp extends BaseApplication {
         },
         default: "hack",
         close: () => resolve(false)
-      }, {
-        // CRITICAL: Fix positioning
-        width: 500,
-        height: "auto",
-        left: Math.max(200, (window.innerWidth - 500) / 2),
-        top: Math.max(200, (window.innerHeight - 400) / 2),
-        resizable: false
-      }).render(true);
+      });
+      
+      // CRITICAL FIX: Position dialog after render
+      dialog.render(true, {
+        width: 520,
+        height: "auto"
+      });
+      
+      // Wait for dialog to be in DOM, then center it
+      Hooks.once('renderDialog', (app, html, data) => {
+        if (app === dialog) {
+          // Center the dialog
+          const dialogEl = html.closest('.app');
+          if (dialogEl.length) {
+            const windowWidth = window.innerWidth;
+            const windowHeight = window.innerHeight;
+            const dialogWidth = dialogEl.outerWidth();
+            const dialogHeight = dialogEl.outerHeight();
+            
+            const left = Math.max(100, (windowWidth - dialogWidth) / 2);
+            const top = Math.max(100, (windowHeight - dialogHeight) / 2);
+            
+            dialogEl.css({
+              left: `${left}px`,
+              top: `${top}px`
+            });
+            
+            console.log(`${MODULE_ID} | Dialog positioned at (${left}, ${top})`);
+          }
+        }
+      });
     });
     
-    if (!confirmed) return;
+    if (!confirmed) {
+      console.log(`${MODULE_ID} | Hack attempt cancelled by user`);
+      return;
+    }
     
-    // Set state
+    // Set hacking state
     this.attemptingHack = true;
     this.render(false);
     
     try {
-      console.log(`${MODULE_ID} | Starting hack attempt with proper SkillService`);
+      console.log(`${MODULE_ID} | Starting hack attempt with SkillService`);
       
-      // FIXED: This now properly calls SkillService with Cyberpunk rolls + Luck
+      // Attempt the hack (this will trigger Cyberpunk RED skill roll + Luck)
       const result = await this.dataShardService.attemptHack(this.item, actor);
       
       if (result.success) {
+        // Success!
         ui.notifications.info('Data shard decrypted successfully!');
         await this._loadMessages();
         await this._recordHackAttempt(actor, true, result.total);
+        
+        // Create success chat message
+        await ChatMessage.create({
+          content: `
+            <div style="background: rgba(25, 243, 247, 0.1); border: 2px solid var(--ncm-secondary); padding: 15px; border-radius: 4px;">
+              <p style="font-weight: bold; color: var(--ncm-secondary); margin-bottom: 8px;">
+                <i class="fas fa-check-circle"></i> HACK SUCCESSFUL
+              </p>
+              <p style="margin: 0;">
+                <strong>${actor.name}</strong> successfully decrypted 
+                <strong>${this.item.name}</strong> (DV ${encryptionDC})
+              </p>
+              <p style="margin: 5px 0 0 0; color: var(--ncm-text-dim); font-size: 0.9em;">
+                Roll: ${result.total} vs DV ${encryptionDC}
+              </p>
+            </div>
+          `,
+          speaker: ChatMessage.getSpeaker({ actor }),
+          type: CONST.CHAT_MESSAGE_TYPES.OTHER
+        });
+        
       } else {
+        // Failure
         ui.notifications.error(`Hack failed: ${result.consequence || 'Access denied'}`);
         await this._recordHackAttempt(actor, false, result.total);
+        
+        // Create failure chat message
+        await ChatMessage.create({
+          content: `
+            <div style="background: rgba(246, 82, 97, 0.1); border: 2px solid var(--ncm-primary); padding: 15px; border-radius: 4px;">
+              <p style="font-weight: bold; color: var(--ncm-primary); margin-bottom: 8px;">
+                <i class="fas fa-times-circle"></i> HACK FAILED
+              </p>
+              <p style="margin: 0;">
+                <strong>${actor.name}</strong> failed to decrypt 
+                <strong>${this.item.name}</strong>
+              </p>
+              <p style="margin: 5px 0 0 0; color: var(--ncm-text-dim); font-size: 0.9em;">
+                Roll: ${result.total} vs DV ${encryptionDC}
+              </p>
+              ${result.consequence ? `
+                <p style="margin: 8px 0 0 0; color: var(--ncm-error); font-weight: bold;">
+                  <i class="fas fa-exclamation-triangle"></i> ${result.consequence}
+                </p>
+              ` : ''}
+            </div>
+          `,
+          speaker: ChatMessage.getSpeaker({ actor }),
+          type: CONST.CHAT_MESSAGE_TYPES.OTHER
+        });
       }
       
     } catch (error) {
       console.error(`${MODULE_ID} | Hack attempt error:`, error);
-      ui.notifications.error('Hack attempt failed');
+      ui.notifications.error('Hack attempt failed due to an error');
     } finally {
       this.attemptingHack = false;
       this.render(false);
