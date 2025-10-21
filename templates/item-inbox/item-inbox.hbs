@@ -13,7 +13,7 @@
       {{itemName}}
     </div>
     <div class="ncm-item-inbox__actions">
-      {{#if isOwner}}
+      {{#if isGM}}
         <button class="ncm-configure" title="Configure" data-action="configure">
           <i class="fas fa-cog"></i>
           Configure
@@ -190,7 +190,7 @@
   
   {{!-- CASE 2: Shard is unlocked (show messages) --}}
   {{else}}
-  <div class="ncm-item-inbox__content">
+  <div class="ncm-item-inbox__content {{#if isSingleMode}}single-mode{{/if}}">
     
     {{!-- =======================================================================
          MESSAGE LIST (Left Panel)

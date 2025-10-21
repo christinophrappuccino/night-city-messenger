@@ -97,6 +97,7 @@ export class ItemInboxApp extends BaseApplication {
     const failureMode = this.item.getFlag(MODULE_ID, 'failureMode') || 'lockout';
     const theme = this.item.getFlag(MODULE_ID, 'theme') || 'default';
     const dataShardType = this.item.getFlag(MODULE_ID, 'dataShardType') || 'single';
+    data.isSingleMode = (this.item.getFlag(MODULE_ID, 'dataShardType') === 'single');
     
     // ========================================================================
     // Network requirements
@@ -320,6 +321,26 @@ export class ItemInboxApp extends BaseApplication {
     html.find('[data-action="login"]').click(this._onLogin.bind(this));
     html.find('[data-action="quarantine-message"]').click(this._onQuarantineMessage.bind(this));
     html.find('[data-action="decrypt-message"]').click(this._onDecryptMessage.bind(this));
+    
+    // CRITICAL FIX: Debug and rebind the attempt-hack button  
+    console.log(`${MODULE_ID} | Setting up attempt-hack button`);
+    
+    const hackButton = html.find('[data-action="attempt-hack"]');
+    console.log(`${MODULE_ID} | Found ${hackButton.length} hack buttons`);
+    
+    if (hackButton.length > 0) {
+      // Remove any existing handlers and add new one
+      hackButton.off('click').on('click', (event) => {
+        console.log(`${MODULE_ID} | Hack button clicked!`);
+        this._onHackAttempt(event);
+      });
+      console.log(`${MODULE_ID} | ✓ Hack button handler attached`);
+    } else {
+      console.warn(`${MODULE_ID} | ⚠ No hack button found in DOM`);
+    }
+    
+    // Apply layout mode
+    this._applyLayoutMode(html);
   }
   
   // ========================================================================
@@ -334,6 +355,8 @@ export class ItemInboxApp extends BaseApplication {
     event.preventDefault();
     const messageId = $(event.currentTarget).data('message-id');
     
+    console.log(`${MODULE_ID} | Message selected: ${messageId}`);
+    
     this.selectedMessageId = messageId;
     this.render(false);
   }
@@ -344,6 +367,8 @@ export class ItemInboxApp extends BaseApplication {
    */
   async _onHackAttempt(event) {
     event.preventDefault();
+    
+    console.log(`${MODULE_ID} | Hack attempt button clicked`);
     
     const actor = game.user.character;
     if (!actor) {
@@ -360,18 +385,46 @@ export class ItemInboxApp extends BaseApplication {
       return;
     }
       
-    // Log available skills for debugging
     console.log(`${MODULE_ID} | ${actor.name} can use:`, availableSkills.map(s => s.displayName).join(', '));
     
-    // Confirm the attempt
-    const confirmed = await Dialog.confirm({
-      title: "Attempt Hack",
-      content: `
-        <p>Attempt to decrypt this data shard?</p>
-        <p><strong>Encryption:</strong> ${this.item.getFlag(MODULE_ID, 'encryptionType') || 'ICE'}</p>
-        <p><strong>Difficulty:</strong> DV ${this.item.getFlag(MODULE_ID, 'encryptionDC') || 15}</p>
-        <p><strong>Failure Mode:</strong> ${this.item.getFlag(MODULE_ID, 'failureMode') || 'Lockout'}</p>
-      `
+    // FIXED: Create properly positioned dialog
+    const confirmed = await new Promise(resolve => {
+      new Dialog({
+        title: "Attempt Data Shard Hack",
+        content: `
+          <div style="padding: 15px;">
+            <p><strong>Attempt to decrypt this data shard?</strong></p>
+            <hr style="margin: 15px 0;">
+            <p><strong>Encryption Type:</strong> ${this.item.getFlag(MODULE_ID, 'encryptionType') || 'ICE'}</p>
+            <p><strong>Difficulty:</strong> DV ${this.item.getFlag(MODULE_ID, 'encryptionDC') || 15}</p>
+            <p><strong>Failure Mode:</strong> ${this.item.getFlag(MODULE_ID, 'failureMode') || 'Lockout'}</p>
+            <p><strong>Available Skills:</strong> ${availableSkills.map(s => s.displayName).join(', ')}</p>
+            <hr style="margin: 15px 0;">
+            <p style="color: #F65261;"><strong>⚠ Warning:</strong> Failure may trigger security countermeasures!</p>
+          </div>
+        `,
+        buttons: {
+          hack: {
+            icon: '<i class="fas fa-terminal"></i>',
+            label: "Attempt Hack",
+            callback: () => resolve(true)
+          },
+          cancel: {
+            icon: '<i class="fas fa-times"></i>',
+            label: "Cancel",
+            callback: () => resolve(false)
+          }
+        },
+        default: "hack",
+        close: () => resolve(false)
+      }, {
+        // CRITICAL: Fix positioning
+        width: 500,
+        height: "auto",
+        left: Math.max(200, (window.innerWidth - 500) / 2),
+        top: Math.max(200, (window.innerHeight - 400) / 2),
+        resizable: false
+      }).render(true);
     });
     
     if (!confirmed) return;
@@ -381,20 +434,17 @@ export class ItemInboxApp extends BaseApplication {
     this.render(false);
     
     try {
-      // Attempt the hack
+      console.log(`${MODULE_ID} | Starting hack attempt with proper SkillService`);
+      
+      // FIXED: This now properly calls SkillService with Cyberpunk rolls + Luck
       const result = await this.dataShardService.attemptHack(this.item, actor);
       
       if (result.success) {
-        // Success! Reload messages
-        await this._loadMessages();
         ui.notifications.info('Data shard decrypted successfully!');
-        
-        // Record successful attempt
+        await this._loadMessages();
         await this._recordHackAttempt(actor, true, result.total);
       } else {
         ui.notifications.error(`Hack failed: ${result.consequence || 'Access denied'}`);
-        
-        // Record failed attempt
         await this._recordHackAttempt(actor, false, result.total);
       }
       
@@ -581,6 +631,17 @@ export class ItemInboxApp extends BaseApplication {
     // Import and open config dialog
     const { ItemInboxConfig } = await import('./ItemInboxConfig.js');
     new ItemInboxConfig(this.item, { parent: this }).render(true);
+  }
+
+  _applyLayoutMode(html) {
+    const dataShardType = this.item.getFlag(MODULE_ID, 'dataShardType') || 'multi';
+    const contentEl = html.find('.ncm-item-inbox__content');
+    
+    if (dataShardType === 'single') {
+      contentEl.addClass('single-mode');
+    } else {
+      contentEl.removeClass('single-mode');
+    }
   }
   
   /**
