@@ -26,31 +26,28 @@
 /* ========================================================================
    FOUNDRY WINDOW FIXES
    ======================================================================== */
+/* The outer window - let Foundry handle positioning! */
 .ncm-app.ncm-item-inbox.app.window-app,
 .ncm-app.ncm-item-inbox-config.app.window-app {
-  position: fixed !important;
-  transform: none !important;
-  z-index: 100;
+  /* Let Foundry control position naturally */
   max-width: 95vw;
   max-height: 95vh;
-  margin: 0 !important;
 }
 
+/* The header should be draggable */
 .ncm-item-inbox .window-header,
 .ncm-item-inbox-config .window-header {
   cursor: move !important;
   user-select: none !important;
 }
 
+/* The INNER content div - NOT the window! */
 .ncm-item-inbox,
 .ncm-item-inbox-config {
   width: 100%;
   height: 100%;
   position: relative;
-  left: auto !important;
-  right: auto !important;
-  top: auto !important;
-  bottom: auto !important;
+  /* NO position overrides - just be a flex container! */
 }
 
 /* ========================================================================

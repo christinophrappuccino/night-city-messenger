@@ -127,51 +127,112 @@ export class ItemInboxConfig extends FormApplication {
    * Handle form submission
    */
   async _updateObject(event, formData) {
-    console.log(`${MODULE_ID} | Configuring data shard:`, formData);
+    console.log(`${MODULE_ID} | Configuring data shard with form data:`, formData);
     
     try {
       const eventBus = EventBus.getInstance();
       const dataShardService = new DataShardService(eventBus);
       
-      // Collect allowed skills (multiple checkboxes)
+      // CRITICAL FIX: Process form data to prevent duplicates
+      // FoundryVTT's FormDataExtended can create arrays for single values
+      // We need to ensure single-value fields remain single values
+      
+      // Clean up single-value fields (take first value if array)
+      const encryptionType = Array.isArray(formData.encryptionType) 
+        ? formData.encryptionType[0] 
+        : (formData.encryptionType || 'ICE');
+        
+      const failureMode = Array.isArray(formData.failureMode)
+        ? formData.failureMode[0]
+        : (formData.failureMode || 'lockout');
+        
+      const encryptionMode = Array.isArray(formData.encryptionMode)
+        ? formData.encryptionMode[0]
+        : (formData.encryptionMode || 'shard');
+        
+      const theme = Array.isArray(formData.theme)
+        ? formData.theme[0]
+        : (formData.theme || 'classic');
+      
+      // Clean up numeric fields
+      const encryptionDC = parseInt(
+        Array.isArray(formData.encryptionDC) 
+          ? formData.encryptionDC[0] 
+          : formData.encryptionDC
+      ) || 15;
+      
+      // Clean up boolean fields
+      const encrypted = Array.isArray(formData.encrypted)
+        ? formData.encrypted[0]
+        : formData.encrypted;
+        
+      const singleMessage = Array.isArray(formData.singleMessage)
+        ? formData.singleMessage[0]
+        : formData.singleMessage;
+      
+      // Collect allowed skills (this SHOULD be an array)
       const allowedSkills = [];
       if (formData.allowedSkills) {
         if (Array.isArray(formData.allowedSkills)) {
-          allowedSkills.push(...formData.allowedSkills);
-        } else {
+          allowedSkills.push(...formData.allowedSkills.filter(s => s && s !== ''));
+        } else if (formData.allowedSkills && formData.allowedSkills !== '') {
           allowedSkills.push(formData.allowedSkills);
         }
       }
       
+      // If no skills selected, use defaults
+      if (allowedSkills.length === 0) {
+        allowedSkills.push('Interface', 'Electronics/Security Tech');
+      }
+      
+      console.log(`${MODULE_ID} | Cleaned form data:`, {
+        encrypted,
+        encryptionType,
+        encryptionDC,
+        encryptionMode,
+        failureMode,
+        allowedSkills,
+        singleMessage,
+        theme
+      });
+      
       // If not a data shard yet, convert it
       if (!this.item.getFlag(MODULE_ID, 'isDataShard')) {
         await dataShardService.convertToDataShard(this.item, {
-          encrypted: formData.encrypted || false,
-          encryptionType: formData.encryptionType || 'ICE',
-          encryptionDC: parseInt(formData.encryptionDC) || 15,
-          encryptionMode: formData.encryptionMode || 'shard', // NEW
-          allowedSkills: allowedSkills.length > 0 ? allowedSkills : ['Interface', 'Electronics/Security Tech'],
-          failureMode: formData.failureMode || 'lockout',
-          singleMessage: formData.singleMessage || false,
-          theme: formData.theme || 'classic'
+          encrypted: !!encrypted,
+          encryptionType,
+          encryptionDC,
+          encryptionMode,
+          allowedSkills,
+          failureMode,
+          singleMessage: !!singleMessage,
+          theme
         });
       } else {
-        // Update existing data shard
-        await this.item.setFlag(MODULE_ID, 'encrypted', formData.encrypted || false);
-        await this.item.setFlag(MODULE_ID, 'encryptionType', formData.encryptionType || 'ICE');
-        await this.item.setFlag(MODULE_ID, 'encryptionDC', parseInt(formData.encryptionDC) || 15);
-        await this.item.setFlag(MODULE_ID, 'encryptionMode', formData.encryptionMode || 'shard'); // NEW
-        await this.item.setFlag(MODULE_ID, 'allowedSkills', allowedSkills.length > 0 ? allowedSkills : ['Interface', 'Electronics/Security Tech']);
-        await this.item.setFlag(MODULE_ID, 'failureMode', formData.failureMode || 'lockout');
-        await this.item.setFlag(MODULE_ID, 'singleMessage', formData.singleMessage || false);
-        await this.item.setFlag(MODULE_ID, 'theme', formData.theme || 'classic');
+        // Update existing data shard flags one by one
+        await this.item.setFlag(MODULE_ID, 'encrypted', !!encrypted);
+        await this.item.setFlag(MODULE_ID, 'encryptionType', encryptionType);
+        await this.item.setFlag(MODULE_ID, 'encryptionDC', encryptionDC);
+        await this.item.setFlag(MODULE_ID, 'encryptionMode', encryptionMode);
+        await this.item.setFlag(MODULE_ID, 'allowedSkills', allowedSkills);
+        await this.item.setFlag(MODULE_ID, 'failureMode', failureMode);
+        await this.item.setFlag(MODULE_ID, 'singleMessage', !!singleMessage);
+        await this.item.setFlag(MODULE_ID, 'theme', theme);
       }
       
-      ui.notifications.info('Data shard configuration updated');
+      ui.notifications.info('Data shard configuration updated!');
+      
+      // Refresh any open ItemInboxApp for this item
+      for (const app of Object.values(ui.windows)) {
+        if (app.item?.id === this.item.id) {
+          app.render(false);
+        }
+      }
       
     } catch (error) {
       console.error(`${MODULE_ID} | Error configuring data shard:`, error);
       ui.notifications.error('Failed to configure data shard');
+      throw error;
     }
   }
 }

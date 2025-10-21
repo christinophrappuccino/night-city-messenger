@@ -660,17 +660,62 @@ export class DataShardService {
    * @returns {Array} Array of available skill objects
    */
   getAvailableSkills(item, actor) {
-    const allowedSkills = item.getFlag(MODULE_ID, 'allowedSkills') || DEFAULTS.ALLOWED_SKILLS;
+    // CRITICAL FIX: Get allowedSkills and ensure it's a valid array
+    let allowedSkills = item.getFlag(MODULE_ID, 'allowedSkills') || DEFAULTS.ALLOWED_SKILLS;
+    
+    // Ensure it's an array
+    if (!Array.isArray(allowedSkills)) {
+      console.warn(`${MODULE_ID} | allowedSkills is not an array, converting:`, allowedSkills);
+      allowedSkills = [allowedSkills];
+    }
+    
+    // CRITICAL FIX: Filter out null, undefined, and empty values
+    allowedSkills = allowedSkills.filter(skill => {
+      return skill !== null && 
+             skill !== undefined && 
+             skill !== '' && 
+             typeof skill === 'string';
+    });
+    
+    // If no valid skills, use defaults
+    if (allowedSkills.length === 0) {
+      console.warn(`${MODULE_ID} | No valid allowed skills, using defaults`);
+      allowedSkills = DEFAULTS.ALLOWED_SKILLS;
+    }
+    
+    console.log(`${MODULE_ID} | Checking for skills:`, allowedSkills);
+    
+    // Get all skills from actor
     const allActorSkills = this.skillService.getAvailableSkills(actor);
     
+    console.log(`${MODULE_ID} | Actor has ${allActorSkills.length} skills`);
+    
     // Filter to only allowed skills
-    return allActorSkills.filter(skill => {
+    const availableSkills = allActorSkills.filter(skill => {
+      // Ensure skill has a displayName
+      if (!skill || !skill.displayName) {
+        console.warn(`${MODULE_ID} | Invalid skill object:`, skill);
+        return false;
+      }
+      
       return allowedSkills.some(allowed => {
-        const normalized = allowed.toLowerCase().replace(/[^a-z0-9]/g, '');
-        const skillNormalized = skill.displayName.toLowerCase().replace(/[^a-z0-9]/g, '');
-        return normalized === skillNormalized;
+        // CRITICAL FIX: Safely handle the comparison
+        try {
+          const normalized = allowed.toLowerCase().replace(/[^a-z0-9]/g, '');
+          const skillNormalized = skill.displayName.toLowerCase().replace(/[^a-z0-9]/g, '');
+          return normalized === skillNormalized;
+        } catch (error) {
+          console.error(`${MODULE_ID} | Error comparing skills:`, { allowed, skill: skill.displayName, error });
+          return false;
+        }
       });
     });
+    
+    console.log(`${MODULE_ID} | Found ${availableSkills.length} matching skills:`, 
+      availableSkills.map(s => s.displayName)
+    );
+    
+    return availableSkills;
   }
   
   /**
