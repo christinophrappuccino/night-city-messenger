@@ -52,6 +52,7 @@ export class ItemInboxApp extends BaseApplication {
       minHeight: 600,
       resizable: true,
       minimizable: true,
+      draggable: true,
       left: null,
       top: null,
       dragDrop: [],

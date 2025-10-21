@@ -25,7 +25,7 @@
    ============================================ */
 .ncm-app .window-content {
   padding: 0 !important;
-  overflow: hidden !important;
+  overflow: hidden !important; 
   background: var(--ncm-bg-primary) !important;
   color: var(--ncm-text-primary) !important;
 }
@@ -418,3 +418,17 @@
 .ncm-icon--md { font-size: var(--ncm-icon-md); }
 .ncm-icon--lg { font-size: var(--ncm-icon-lg); }
 .ncm-icon--xl { font-size: var(--ncm-icon-xl); }
+
+/* ============================================
+   FIX: Allow windows to move freely
+   Foundry sets body overflow: hidden, we need to override it
+   ============================================ */
+body.vtt.game {
+  overflow: visible !important;
+}
+
+/* Also ensure parent containers don't clip */
+#ui-middle,
+#ui-top {
+  overflow: visible !important;
+}
