@@ -1,0 +1,393 @@
+/**
+ * Cyberpunk Chat Styles
+ * File: styles/chat/cyberpunk-rolls.css
+ * Description: Styled chat messages for rolls, breaches, and events
+ */
+
+/* ========================================================================
+   CYBERPUNK ROLL CONTAINER
+   ======================================================================== */
+
+.ncm-cyberpunk-roll,
+.ncm-cyberpunk-message {
+  font-family: 'Rajdhani', sans-serif;
+  background: linear-gradient(135deg, rgba(26, 26, 26, 0.95) 0%, rgba(51, 0, 0, 0.95) 100%);
+  border: 2px solid var(--ncm-primary);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 0 20px rgba(246, 82, 97, 0.4);
+  margin: 8px 0;
+}
+
+/* ========================================================================
+   HEADER
+   ======================================================================== */
+
+.ncm-cyber-header {
+  background: rgba(246, 82, 97, 0.2);
+  padding: 15px 20px;
+  border-bottom: 2px solid var(--ncm-primary);
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.ncm-cyber-header.ncm-success-bg {
+  background: rgba(0, 255, 0, 0.2);
+  border-bottom-color: #00ff00;
+}
+
+.ncm-cyber-header.ncm-failure-bg {
+  background: rgba(255, 0, 0, 0.2);
+  border-bottom-color: #ff0000;
+}
+
+.ncm-cyber-header.ncm-danger-bg {
+  background: rgba(255, 0, 0, 0.3);
+  border-bottom-color: #ff0000;
+  animation: pulse-danger 2s ease-in-out infinite;
+}
+
+.ncm-cyber-icon {
+  font-size: 2.5em;
+  color: var(--ncm-primary);
+  filter: drop-shadow(0 0 10px rgba(246, 82, 97, 0.8));
+}
+
+.ncm-cyber-icon.ncm-pulse {
+  animation: pulse-glow 1s ease-in-out infinite;
+}
+
+.ncm-cyber-title {
+  font-size: 1.4em;
+  font-weight: bold;
+  color: var(--ncm-primary);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  text-shadow: 0 0 10px rgba(246, 82, 97, 0.8);
+  flex: 1;
+}
+
+.ncm-cyber-subtitle {
+  font-size: 1.1em;
+  color: var(--ncm-text);
+  opacity: 0.9;
+}
+
+/* ========================================================================
+   ROLL DETAILS
+   ======================================================================== */
+
+.ncm-roll-details,
+.ncm-message-body {
+  padding: 20px;
+}
+
+.ncm-roll-target {
+  text-align: center;
+  margin-bottom: 20px;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+  border: 1px solid rgba(246, 82, 97, 0.3);
+}
+
+.ncm-target-label {
+  color: var(--ncm-text-dim);
+  font-size: 0.9em;
+  margin-right: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.ncm-target-value {
+  color: var(--ncm-warning);
+  font-size: 1.4em;
+  font-weight: bold;
+  text-shadow: 0 0 10px rgba(255, 165, 0, 0.6);
+}
+
+/* ========================================================================
+   FORMULA DISPLAY
+   ======================================================================== */
+
+.ncm-roll-formula {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 20px 0;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 6px;
+  flex-wrap: wrap;
+}
+
+.ncm-formula-component {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px;
+  background: rgba(25, 243, 247, 0.1);
+  border: 1px solid var(--ncm-secondary);
+  border-radius: 4px;
+  min-width: 60px;
+}
+
+.ncm-formula-component.ncm-dice {
+  background: rgba(246, 82, 97, 0.2);
+  border-color: var(--ncm-primary);
+}
+
+.ncm-formula-component.ncm-dice i {
+  font-size: 1.8em;
+  color: var(--ncm-primary);
+  margin-bottom: 4px;
+}
+
+.ncm-formula-component.ncm-luck {
+  background: rgba(255, 215, 0, 0.2);
+  border-color: var(--ncm-warning);
+}
+
+.ncm-formula-component.ncm-luck .ncm-comp-label,
+.ncm-formula-component.ncm-luck .ncm-comp-value {
+  color: var(--ncm-warning);
+}
+
+.ncm-comp-label {
+  font-size: 0.8em;
+  color: var(--ncm-text-dim);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.ncm-comp-value {
+  font-size: 1.4em;
+  font-weight: bold;
+  color: var(--ncm-secondary);
+  text-shadow: 0 0 5px rgba(25, 243, 247, 0.6);
+}
+
+.ncm-formula-equals {
+  font-size: 2em;
+  color: var(--ncm-text-dim);
+  margin: 0 8px;
+}
+
+.ncm-formula-total {
+  font-size: 2.5em;
+  font-weight: bold;
+  color: var(--ncm-primary);
+  text-shadow: 0 0 15px rgba(246, 82, 97, 0.8);
+  padding: 8px 20px;
+  background: rgba(246, 82, 97, 0.1);
+  border: 2px solid var(--ncm-primary);
+  border-radius: 6px;
+}
+
+/* ========================================================================
+   RESULT
+   ======================================================================== */
+
+.ncm-roll-result {
+  text-align: center;
+  padding: 15px;
+  margin-top: 20px;
+  border-radius: 4px;
+  font-size: 1.3em;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.ncm-roll-result.ncm-success {
+  background: rgba(0, 255, 0, 0.2);
+  border: 2px solid #00ff00;
+  color: #00ff00;
+  text-shadow: 0 0 10px rgba(0, 255, 0, 0.8);
+}
+
+.ncm-roll-result.ncm-failure {
+  background: rgba(255, 0, 0, 0.2);
+  border: 2px solid #ff0000;
+  color: #ff0000;
+  text-shadow: 0 0 10px rgba(255, 0, 0, 0.8);
+}
+
+.ncm-roll-result i {
+  margin-right: 8px;
+  font-size: 1.2em;
+}
+
+/* ========================================================================
+   MESSAGE DETAILS
+   ======================================================================== */
+
+.ncm-breach-info,
+.ncm-message-detail {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 15px;
+  margin: 10px 0;
+  border-radius: 4px;
+  border: 1px solid rgba(246, 82, 97, 0.3);
+}
+
+.ncm-breach-detail,
+.ncm-message-detail {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(246, 82, 97, 0.2);
+}
+
+.ncm-breach-detail:last-child,
+.ncm-message-detail:last-child {
+  border-bottom: none;
+}
+
+.ncm-label {
+  color: var(--ncm-text-dim);
+  text-transform: uppercase;
+  font-size: 0.9em;
+  letter-spacing: 1px;
+}
+
+.ncm-value {
+  color: var(--ncm-secondary);
+  font-weight: bold;
+}
+
+/* ========================================================================
+   WARNING AND INFO BOXES
+   ======================================================================== */
+
+.ncm-warning-box,
+.ncm-success-box,
+.ncm-failure-box,
+.ncm-ice-warning {
+  padding: 12px;
+  margin: 15px 0;
+  border-radius: 4px;
+  text-align: center;
+  font-weight: bold;
+}
+
+.ncm-warning-box {
+  background: rgba(255, 165, 0, 0.2);
+  border: 2px solid var(--ncm-warning);
+  color: var(--ncm-warning);
+}
+
+.ncm-success-box {
+  background: rgba(0, 255, 0, 0.2);
+  border: 2px solid #00ff00;
+  color: #00ff00;
+}
+
+.ncm-failure-box {
+  background: rgba(255, 0, 0, 0.2);
+  border: 2px solid #ff0000;
+  color: #ff0000;
+}
+
+.ncm-ice-warning {
+  background: rgba(255, 0, 0, 0.3);
+  border: 2px solid #ff0000;
+  color: #ff0000;
+  font-size: 1.1em;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  animation: pulse-danger 2s ease-in-out infinite;
+}
+
+/* ========================================================================
+   BLACK ICE DAMAGE DISPLAY
+   ======================================================================== */
+
+.ncm-damage-display {
+  text-align: center;
+  margin: 20px 0;
+}
+
+.ncm-damage-value {
+  font-size: 4em;
+  font-weight: bold;
+  color: #ff0000;
+  text-shadow: 0 0 20px rgba(255, 0, 0, 1);
+  animation: pulse-danger 1s ease-in-out infinite;
+}
+
+.ncm-damage-label {
+  font-size: 1.2em;
+  color: var(--ncm-text-dim);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-top: 8px;
+}
+
+.ncm-hp-bar {
+  margin: 20px 0;
+}
+
+.ncm-hp-label {
+  text-align: center;
+  color: var(--ncm-text);
+  margin-bottom: 8px;
+  font-weight: bold;
+}
+
+.ncm-hp-bar-container {
+  height: 24px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 2px solid var(--ncm-primary);
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+}
+
+.ncm-hp-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #ff0000 0%, #ff6666 100%);
+  transition: width 0.5s ease;
+  box-shadow: 0 0 10px rgba(255, 0, 0, 0.6);
+}
+
+/* ========================================================================
+   UTILITY CLASSES
+   ======================================================================== */
+
+.ncm-text-error {
+  color: #ff0000;
+}
+
+.ncm-text-warning {
+  color: var(--ncm-warning);
+}
+
+.ncm-text-success {
+  color: #00ff00;
+}
+
+/* ========================================================================
+   ANIMATIONS
+   ======================================================================== */
+
+@keyframes pulse-danger {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 10px rgba(246, 82, 97, 0.8));
+  }
+  50% {
+    filter: drop-shadow(0 0 20px rgba(246, 82, 97, 1));
+  }
+}

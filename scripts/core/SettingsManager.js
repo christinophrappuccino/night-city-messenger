@@ -119,6 +119,17 @@ export class SettingsManager {
       default: true,
       onChange: value => this._onSettingChanged('allowPlayerCompose', value)
     });
+
+    // Network settings
+    game.settings.register(MODULE_ID, 'customNetworks', {
+      name: 'Custom Networks',
+      hint: 'Additional networks beyond CITINET, CORPNET, DARKNET, and DEAD_ZONE',
+      scope: 'world',
+      config: false,
+      type: Array,
+      default: [],
+      onChange: value => this._onSettingChanged('customNetworks', value)
+    });
     
     game.settings.register(MODULE_ID, 'spamFilterEnabled', {
       name: 'Enable Spam Filter',

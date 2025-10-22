@@ -9,41 +9,10 @@
     <i class="fas fa-microchip"></i>
     <div>
       <h2 class="ncm-config-title">Data Shard Configuration</h2>
-      <p class="ncm-config-subtitle">Configure {{itemName}} as a data storage device</p>
+      <p class="ncm-config-subtitle">Configure {{item.name}} as a data storage device</p>
     </div>
   </div>
 
-  {{!-- GM Control Panel --}}
-  {{!-- Add this RIGHT AFTER the header in item-inbox.hbs --}}
-
-  {{#if isGM}}
-  <div class="ncm-gm-controls">
-    <div class="ncm-gm-controls-header">
-      <i class="fas fa-crown"></i>
-      <span>GM Controls</span>
-    </div>
-    <div class="ncm-gm-controls-buttons">
-      {{#if encrypted}}
-        {{#if isShardDecrypted}}
-          <button class="ncm-gm-btn ncm-gm-btn-warning" data-action="gm-reset-encryption" title="Lock the shard again">
-            <i class="fas fa-lock"></i> Re-Lock Shard
-          </button>
-        {{else}}
-          <button class="ncm-gm-btn ncm-gm-btn-success" data-action="gm-force-decrypt" title="Bypass encryption">
-            <i class="fas fa-unlock"></i> Force Decrypt
-          </button>
-        {{/if}}
-        <button class="ncm-gm-btn ncm-gm-btn-danger" data-action="gm-reset-attempts" title="Reset failed hack attempts">
-          <i class="fas fa-redo"></i> Reset Attempts
-        </button>
-      {{/if}}
-      <button class="ncm-gm-btn" data-action="gm-view-all" title="View all messages (ignoring encryption)">
-        <i class="fas fa-eye"></i> View All
-      </button>
-    </div>
-  </div>
-  {{/if}}
-  
   {{!-- Enable/Disable Data Shard --}}
   <div class="ncm-config-section">
     <h3 class="ncm-section-title">
@@ -61,109 +30,130 @@
     </div>
   </div>
 
-  {{!-- Encryption Details (shown when encrypted is checked) --}}
-  <div class="ncm-encryption-options" style="{{#unless encrypted}}display: none;{{/unless}}">
+  {{!-- Encryption Configuration --}}
+  <div class="ncm-config-section {{#unless isDataShard}}ncm-disabled{{/unless}}">
+    <h3 class="ncm-section-title">
+      <i class="fas fa-lock"></i>
+      Encryption
+    </h3>
     
-    {{!-- NEW: Encryption Mode --}}
     <div class="ncm-form-group">
-      <label class="ncm-label">Encryption Mode</label>
-      <select name="encryptionMode" class="ncm-select">
-        <option value="shard" {{#if (eq encryptionMode "shard")}}selected{{/if}}>
-          Data Shard Level - Entire inbox encrypted (hack once to see all)
-        </option>
-        <option value="message" {{#if (eq encryptionMode "message")}}selected{{/if}}>
-          Per Message - Each message individually encrypted (hack each)
-        </option>
-        <option value="both" {{#if (eq encryptionMode "both")}}selected{{/if}}>
-          Both Layers - Shard + per-message encryption (maximum security)
-        </option>
-      </select>
+      <label class="ncm-checkbox">
+        <input type="checkbox" name="encrypted" {{checked encrypted}} />
+        <span class="ncm-checkbox-label">Enable Encryption</span>
+      </label>
       <p class="ncm-help-text">
-        Choose how encryption is applied to this data shard
+        Requires hacking to access.
       </p>
     </div>
     
-    <div class="ncm-form-group">
-      <label class="ncm-label">Encryption Type</label>
-      <select name="encryptionType" class="ncm-select">
-        {{#each encryptionTypes}}
-          <option value="{{this.value}}" {{#if (eq ../encryptionType this.value)}}selected{{/if}}>
-            {{this.label}}{{#if this.damage}} - {{this.damage}} damage{{/if}}
+    {{!-- Encryption Details (shown when encrypted is checked) --}}
+    <div class="ncm-encryption-options" style="{{#unless encrypted}}display: none;{{/unless}}">
+      
+      {{!-- Encryption Mode --}}
+      <div class="ncm-form-group">
+        <label class="ncm-label">Encryption Mode</label>
+        <select name="encryptionMode" class="ncm-select">
+          <option value="shard" {{#if (eq encryptionMode "shard")}}selected{{/if}}>
+            Data Shard Level - Entire inbox encrypted (hack once to see all)
           </option>
-        {{/each}}
-      </select>
-      <p class="ncm-help-text">
-        <span class="ncm-text-warning">
-          <i class="fas fa-skull"></i>
-          BLACK/RED ICE can kill characters on failed hacks!
-        </span>
-      </p>
-    </div>
-    
-    <div class="ncm-form-group">
-      <label class="ncm-label">Encryption Difficulty (DV)</label>
-      <div class="ncm-input-group">
-        <input type="number" name="encryptionDC" value="{{encryptionDC}}" min="1" max="30" class="ncm-input" />
-        <span class="ncm-input-suffix">DV</span>
-      </div>
-      <p class="ncm-help-text">
-        Target number for skill checks (9=Easy, 13=Average, 15=Difficult, 17=Very Difficult, 21=Nearly Impossible, 29=Impossible)
-      </p>
-    </div>
-    
-    <div class="ncm-form-group">
-      <label class="ncm-label">Allowed Skills (check all that apply)</label>
-      <div class="ncm-skill-checkboxes">
-        <label class="ncm-checkbox ncm-skill-option">
-          <input type="checkbox" name="allowedSkills" value="Interface" 
-                 {{#if (includes allowedSkills "Interface")}}checked{{/if}} />
-          <span class="ncm-checkbox-label">Interface (INT)</span>
-        </label>
-        <label class="ncm-checkbox ncm-skill-option">
-          <input type="checkbox" name="allowedSkills" value="Electronics/Security Tech" 
-                 {{#if (includes allowedSkills "Electronics/Security Tech")}}checked{{/if}} />
-          <span class="ncm-checkbox-label">Electronics/Security Tech (TECH)</span>
-        </label>
-        <label class="ncm-checkbox ncm-skill-option">
-          <input type="checkbox" name="allowedSkills" value="Basic Tech" 
-                 {{#if (includes allowedSkills "Basic Tech")}}checked{{/if}} />
-          <span class="ncm-checkbox-label">Basic Tech (TECH)</span>
-        </label>
-        <label class="ncm-checkbox ncm-skill-option">
-          <input type="checkbox" name="allowedSkills" value="Cryptography" 
-                 {{#if (includes allowedSkills "Cryptography")}}checked{{/if}} />
-          <span class="ncm-checkbox-label">Cryptography (INT)</span>
-        </label>
-        <label class="ncm-checkbox ncm-skill-option">
-          <input type="checkbox" name="allowedSkills" value="Education" 
-                 {{#if (includes allowedSkills "Education")}}checked{{/if}} />
-          <span class="ncm-checkbox-label">Education (INT)</span>
-        </label>
-        <label class="ncm-checkbox ncm-skill-option">
-          <input type="checkbox" name="allowedSkills" value="Library Search" 
-                 {{#if (includes allowedSkills "Library Search")}}checked{{/if}} />
-          <span class="ncm-checkbox-label">Library Search (INT)</span>
-        </label>
-      </div>
-      <p class="ncm-help-text">
-        Players can use any of these skills to hack the shard. Choose multiple for flexibility.
-      </p>
-    </div>
-    
-    <div class="ncm-form-group">
-      <label class="ncm-label">Failure Consequence</label>
-      <select name="failureMode" class="ncm-select">
-        {{#each failureModes}}
-          <option value="{{this.value}}" {{#if (eq ../failureMode this.value)}}selected{{/if}}>
-            {{this.label}}
+          <option value="message" {{#if (eq encryptionMode "message")}}selected{{/if}}>
+            Per Message - Each message individually encrypted (hack each)
           </option>
-        {{/each}}
-      </select>
-      <p class="ncm-help-text">
-        What happens when a hack attempt fails
-      </p>
+          <option value="both" {{#if (eq encryptionMode "both")}}selected{{/if}}>
+            Both Layers - Shard + per-message encryption (maximum security)
+          </option>
+        </select>
+        <p class="ncm-help-text">
+          Choose how encryption is applied to this data shard
+        </p>
+      </div>
+      
+      <div class="ncm-form-group">
+        <label class="ncm-label">Encryption Type</label>
+        <select name="encryptionType" class="ncm-select">
+          {{#each encryptionTypes}}
+            <option value="{{this.value}}" {{#if (eq ../encryptionType this.value)}}selected{{/if}}>
+              {{this.label}}{{#if this.damage}} - {{this.damage}} damage{{/if}}
+            </option>
+          {{/each}}
+        </select>
+        <p class="ncm-help-text">
+          <span class="ncm-text-warning">
+            <i class="fas fa-skull"></i>
+            BLACK/RED ICE can kill characters on failed hacks!
+          </span>
+        </p>
+      </div>
+      
+      {{!-- ================================================================
+           NEW: MULTI-SKILL CONFIGURATION WITH INDIVIDUAL DVs
+           ================================================================ --}}
+      
+      <div class="ncm-form-group">
+        <label class="ncm-label">
+          Allowed Skills & Difficulty
+          <span class="ncm-label-badge">Multi-Skill Support</span>
+        </label>
+        <p class="ncm-help-text" style="margin-bottom: 15px;">
+          Select which skills can be used to hack this shard. Each skill can have a different difficulty (DV).
+        </p>
+        
+        <div class="ncm-skill-config-list">
+          {{#each availableSkills}}
+          <div class="ncm-skill-config-item">
+            <label class="ncm-checkbox ncm-skill-checkbox">
+              <input 
+                type="checkbox" 
+                name="skillEnabled_{{this.id}}" 
+                value="{{this.id}}"
+                {{#if (includes ../allowedSkills this.id)}}checked{{/if}}
+              />
+              <span class="ncm-checkbox-content">
+                <span class="ncm-skill-name">{{this.name}}</span>
+                <span class="ncm-skill-stat">({{this.stat}})</span>
+                <span class="ncm-skill-description">{{this.description}}</span>
+              </span>
+            </label>
+            
+            <div class="ncm-skill-dc-input {{#unless (includes ../allowedSkills this.id)}}ncm-hidden{{/unless}}" 
+                 data-skill="{{this.id}}">
+              <label class="ncm-label-small">DV:</label>
+              <input 
+                type="number" 
+                name="skillDC_{{this.id}}" 
+                value="{{lookup ../skillDCs this.id}}"
+                min="1" 
+                max="30" 
+                class="ncm-input ncm-input-small"
+                placeholder="15"
+              />
+            </div>
+          </div>
+          {{/each}}
+        </div>
+        
+        <div class="ncm-skill-config-note">
+          <i class="fas fa-info-circle"></i>
+          Players will be able to choose which skill to use if multiple are selected. Different skills can have different difficulties.
+        </div>
+      </div>
+      
+      <div class="ncm-form-group">
+        <label class="ncm-label">Failure Consequence</label>
+        <select name="failureMode" class="ncm-select">
+          {{#each failureModes}}
+            <option value="{{this.value}}" {{#if (eq ../failureMode this.value)}}selected{{/if}}>
+              {{this.label}}
+            </option>
+          {{/each}}
+        </select>
+        <p class="ncm-help-text">
+          What happens when a hack attempt fails
+        </p>
+      </div>
+      
     </div>
-    
   </div>
   
   {{!-- Storage Configuration --}}
@@ -174,87 +164,13 @@
     </h3>
     
     <div class="ncm-form-group">
-      <label class="ncm-label">Data Shard Type</label>
-      <div class="ncm-radio-group">
-        <label class="ncm-radio">
-          <input type="radio" name="dataShardType" value="single" {{checked (eq dataShardType "single")}} />
-          <span class="ncm-radio-content">
-            <span class="ncm-radio-label">Single Message</span>
-            <span class="ncm-radio-description">Stores only one message. New messages overwrite old ones.</span>
-          </span>
-        </label>
-        <label class="ncm-radio">
-          <input type="radio" name="dataShardType" value="multi" {{checked (eq dataShardType "multi")}} />
-          <span class="ncm-radio-content">
-            <span class="ncm-radio-label">Multiple Messages</span>
-            <span class="ncm-radio-description">Can store multiple messages. Better for data dumps.</span>
-          </span>
-        </label>
-      </div>
-    </div>
-  </div>
-  
-  {{!-- Security Configuration --}}
-  <div class="ncm-config-section {{#unless isDataShard}}ncm-disabled{{/unless}}">
-    <h3 class="ncm-section-title">
-      <i class="fas fa-shield-alt"></i>
-      Security Settings
-    </h3>
-    
-    <div class="ncm-form-group">
       <label class="ncm-checkbox">
-        <input type="checkbox" name="encrypted" {{checked encrypted}} />
-        <span class="ncm-checkbox-label">Enable Encryption</span>
+        <input type="checkbox" name="singleMessage" {{checked singleMessage}} />
+        <span class="ncm-checkbox-label">Single Message Only</span>
       </label>
       <p class="ncm-help-text">
-        Protect this data shard with ICE. Requires hacking to access.
+        If checked, only one message can be stored. New messages overwrite old ones.
       </p>
-    </div>
-    
-    {{!-- Encryption Details (shown when encrypted is checked) --}}
-    <div class="ncm-encryption-options {{#unless encrypted}}ncm-hidden{{/unless}}">
-      
-      <div class="ncm-form-group">
-        <label class="ncm-label">Encryption Type</label>
-        <select name="encryptionType" class="ncm-select">
-          <option value="ICE" {{selected (eq encryptionType "ICE")}}>Standard ICE</option>
-          <option value="BLACK_ICE" {{selected (eq encryptionType "BLACK_ICE")}}>BLACK ICE (Lethal)</option>
-          <option value="RED_ICE" {{selected (eq encryptionType "RED_ICE")}}>RED ICE (Extreme)</option>
-          <option value="CUSTOM" {{selected (eq encryptionType "CUSTOM")}}>Custom</option>
-        </select>
-        <p class="ncm-help-text">
-          <span class="ncm-text-warning">
-            <i class="fas fa-skull"></i>
-            BLACK/RED ICE can kill characters on failed hacks!
-          </span>
-        </p>
-      </div>
-      
-      <div class="ncm-form-group">
-        <label class="ncm-label">Encryption Difficulty (DV)</label>
-        <div class="ncm-input-group">
-          <input type="number" name="encryptionDC" value="{{encryptionDC}}" min="1" max="30" class="ncm-input" />
-          <span class="ncm-input-suffix">DV</span>
-        </div>
-        <p class="ncm-help-text">
-          Target number for Electronics/Security Tech skill checks
-        </p>
-      </div>
-      
-      <div class="ncm-form-group">
-        <label class="ncm-label">Failure Consequence</label>
-        <select name="failureMode" class="ncm-select">
-          <option value="nothing" {{selected (eq failureMode "nothing")}}>Nothing (Can retry)</option>
-          <option value="lockout" {{selected (eq failureMode "lockout")}}>Temporary Lockout (1 hour)</option>
-          <option value="permanent" {{selected (eq failureMode "permanent")}}>Permanent Lock</option>
-          <option value="damage" {{selected (eq failureMode "damage")}}>BLACK ICE Damage</option>
-          <option value="destroy" {{selected (eq failureMode "destroy")}}>Destroy Data</option>
-        </select>
-        <p class="ncm-help-text">
-          What happens when a hack attempt fails
-        </p>
-      </div>
-      
     </div>
   </div>
   
@@ -279,12 +195,9 @@
       <div class="ncm-form-group">
         <label class="ncm-label">Required Network</label>
         <select name="requiredNetwork" class="ncm-select">
-          <option value="CITINET" {{selected (eq requiredNetwork "CITINET")}}>CITINET (Public)</option>
-          <option value="CORPNET" {{selected (eq requiredNetwork "CORPNET")}}>CORPNET (Corporate)</option>
-          <option value="DARKNET" {{selected (eq requiredNetwork "DARKNET")}}>DARKNET (Underground)</option>
-          {{#each customNetworks}}
-            <option value="{{this}}" {{selected (eq ../requiredNetwork this)}}>{{this}} (Custom)</option>
-          {{/each}}
+          <option value="CITINET" {{#if (eq requiredNetwork "CITINET")}}selected{{/if}}>CITINET (Public)</option>
+          <option value="CORPNET" {{#if (eq requiredNetwork "CORPNET")}}selected{{/if}}>CORPNET (Corporate)</option>
+          <option value="DARKNET" {{#if (eq requiredNetwork "DARKNET")}}selected{{/if}}>DARKNET (Underground)</option>
         </select>
       </div>
     </div>
@@ -321,6 +234,14 @@
           Players will see this in plain text if they view the item flags
         </p>
       </div>
+      
+      <div class="ncm-form-group">
+        <label class="ncm-label">Max Login Attempts</label>
+        <input type="number" name="maxLoginAttempts" value="{{maxLoginAttempts}}" min="1" max="10" class="ncm-input" />
+        <p class="ncm-help-text">
+          Account locks after this many failed attempts
+        </p>
+      </div>
     </div>
   </div>
   
@@ -333,105 +254,16 @@
     
     <div class="ncm-form-group">
       <label class="ncm-label">Data Shard Theme</label>
-      <div class="ncm-theme-grid">
-        <label class="ncm-theme-option" data-theme="default">
-          <input type="radio" name="theme" value="default" {{checked (eq theme "default")}} />
-          <div class="ncm-theme-preview ncm-theme-default">
-            <div class="ncm-theme-preview-bar"></div>
-          </div>
-          <span class="ncm-theme-name">Default</span>
-        </label>
-        
-        <label class="ncm-theme-option" data-theme="arasaka">
-          <input type="radio" name="theme" value="arasaka" {{checked (eq theme "arasaka")}} />
-          <div class="ncm-theme-preview ncm-theme-arasaka">
-            <div class="ncm-theme-preview-bar"></div>
-          </div>
-          <span class="ncm-theme-name">Arasaka</span>
-        </label>
-        
-        <label class="ncm-theme-option" data-theme="militech">
-          <input type="radio" name="theme" value="militech" {{checked (eq theme "militech")}} />
-          <div class="ncm-theme-preview ncm-theme-militech">
-            <div class="ncm-theme-preview-bar"></div>
-          </div>
-          <span class="ncm-theme-name">Militech</span>
-        </label>
-        
-        <label class="ncm-theme-option" data-theme="netwatch">
-          <input type="radio" name="theme" value="netwatch" {{checked (eq theme "netwatch")}} />
-          <div class="ncm-theme-preview ncm-theme-netwatch">
-            <div class="ncm-theme-preview-bar"></div>
-          </div>
-          <span class="ncm-theme-name">NetWatch</span>
-        </label>
-        
-        <label class="ncm-theme-option" data-theme="trauma">
-          <input type="radio" name="theme" value="trauma" {{checked (eq theme "trauma")}} />
-          <div class="ncm-theme-preview ncm-theme-trauma">
-            <div class="ncm-theme-preview-bar"></div>
-          </div>
-          <span class="ncm-theme-name">Trauma Team</span>
-        </label>
-        
-        <label class="ncm-theme-option" data-theme="scav">
-          <input type="radio" name="theme" value="scav" {{checked (eq theme "scav")}} />
-          <div class="ncm-theme-preview ncm-theme-scav">
-            <div class="ncm-theme-preview-bar"></div>
-          </div>
-          <span class="ncm-theme-name">Scavenger</span>
-        </label>
-      </div>
-    </div>
-  </div>
-  
-  {{!-- Advanced Settings --}}
-  <div class="ncm-config-section ncm-config-section--collapsible {{#unless isDataShard}}ncm-disabled{{/unless}}">
-    <h3 class="ncm-section-title ncm-collapsible-trigger">
-      <i class="fas fa-cog"></i>
-      Advanced Settings
-      <i class="fas fa-chevron-down ncm-collapse-icon"></i>
-    </h3>
-    
-    <div class="ncm-collapsible-content">
-      <div class="ncm-form-group">
-        <label class="ncm-checkbox">
-          <input type="checkbox" name="trackAccess" {{checked trackAccess}} />
-          <span class="ncm-checkbox-label">Track Access Logs</span>
-        </label>
-        <p class="ncm-help-text">
-          Record who accesses this data shard and when
-        </p>
-      </div>
-      
-      <div class="ncm-form-group">
-        <label class="ncm-checkbox">
-          <input type="checkbox" name="notifyOwner" {{checked notifyOwner}} />
-          <span class="ncm-checkbox-label">Notify Owner on Access</span>
-        </label>
-        <p class="ncm-help-text">
-          Send a chat notification when someone accesses this shard
-        </p>
-      </div>
-      
-      <div class="ncm-form-group">
-        <label class="ncm-checkbox">
-          <input type="checkbox" name="selfDestruct" {{checked selfDestruct}} />
-          <span class="ncm-checkbox-label">Self-Destruct on Failed Hack</span>
-        </label>
-        <p class="ncm-help-text ncm-text-warning">
-          <i class="fas fa-exclamation-triangle"></i>
-          Data shard will be destroyed if hacking fails
-        </p>
-      </div>
-      
-      <div class="ncm-form-group">
-        <label class="ncm-label">Custom Description</label>
-        <textarea name="customDescription" class="ncm-textarea" rows="3" placeholder="A weathered data shard with corporate markings...">{{customDescription}}</textarea>
-        <p class="ncm-help-text">
-          Appears when players examine the data shard
-        </p>
-      </div>
+      <select name="theme" class="ncm-select">
+        {{#each themes}}
+          <option value="{{this.value}}" {{#if (eq ../theme this.value)}}selected{{/if}}>
+            {{this.label}}
+          </option>
+        {{/each}}
+      </select>
+      <p class="ncm-help-text">
+        Visual style for the data shard interface
+      </p>
     </div>
   </div>
   
@@ -441,13 +273,6 @@
       <i class="fas fa-times"></i>
       Cancel
     </button>
-    
-    {{#if isDataShard}}
-    <button type="button" class="ncm-button ncm-button-danger" data-action="disable">
-      <i class="fas fa-power-off"></i>
-      Disable Data Shard
-    </button>
-    {{/if}}
     
     <button type="submit" class="ncm-button ncm-button-primary">
       <i class="fas fa-save"></i>

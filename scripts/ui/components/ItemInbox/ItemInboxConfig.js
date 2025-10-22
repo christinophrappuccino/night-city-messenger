@@ -2,7 +2,7 @@
  * Item Inbox Configuration Dialog
  * File: scripts/ui/components/ItemInbox/ItemInboxConfig.js
  * Module: cyberpunkred-messenger
- * Description: Configure an item as a data shard
+ * Description: Configure an item as a data shard with multi-skill support
  */
 
 import { MODULE_ID } from '../../../utils/constants.js';
@@ -22,7 +22,7 @@ export class ItemInboxConfig extends FormApplication {
     return foundry.utils.mergeObject(super.defaultOptions, {
       classes: ["ncm-app", "ncm-item-inbox-config"],
       template: `modules/${MODULE_ID}/templates/item-inbox/item-inbox-config.hbs`,
-      width: 500,
+      width: 600,
       height: "auto",
       title: "Configure Data Shard",
       closeOnSubmit: true,
@@ -38,14 +38,46 @@ export class ItemInboxConfig extends FormApplication {
     const encrypted = this.item.getFlag(MODULE_ID, 'encrypted') || false;
     const encryptionType = this.item.getFlag(MODULE_ID, 'encryptionType') || 'ICE';
     const encryptionDC = this.item.getFlag(MODULE_ID, 'encryptionDC') || 15;
-    const encryptionMode = this.item.getFlag(MODULE_ID, 'encryptionMode') || 'shard'; // NEW
+    const encryptionMode = this.item.getFlag(MODULE_ID, 'encryptionMode') || 'shard';
     const allowedSkills = this.item.getFlag(MODULE_ID, 'allowedSkills') || ['Interface', 'Electronics/Security Tech'];
     const failureMode = this.item.getFlag(MODULE_ID, 'failureMode') || 'lockout';
     const singleMessage = this.item.getFlag(MODULE_ID, 'singleMessage') || false;
     const theme = this.item.getFlag(MODULE_ID, 'theme') || 'classic';
     
+    // ========================================================================
+    // MULTI-SKILL CONFIGURATION - Get individual DVs for each skill
+    // ========================================================================
+    const skillDCs = this.item.getFlag(MODULE_ID, 'skillDCs') || {
+      'Interface': 15,
+      'Electronics/Security Tech': 15,
+      'Basic Tech': 17,
+      'Cryptography': 18,
+      'Education': 20,
+      'Library Search': 20
+    };
+    
+    // ========================================================================
+    // NETWORK AND LOGIN SECURITY SETTINGS
+    // ========================================================================
+    const requiresNetwork = this.item.getFlag(MODULE_ID, 'requiresNetwork') || false;
+    const requiredNetwork = this.item.getFlag(MODULE_ID, 'requiredNetwork') || 'CITINET';
+    const requiresLogin = this.item.getFlag(MODULE_ID, 'requiresLogin') || false;
+    const loginUsername = this.item.getFlag(MODULE_ID, 'loginUsername') || 'admin';
+    const loginPassword = this.item.getFlag(MODULE_ID, 'loginPassword') || 'password';
+    const maxLoginAttempts = this.item.getFlag(MODULE_ID, 'maxLoginAttempts') || 5;
+    
     // Import constants for skill options
     const { SKILL_PRESETS, CYBERPUNK_SKILLS } = await import('../../../utils/constants.js');
+    
+    // Available skills list (in order of relevance)
+    const availableSkills = [
+      { id: 'Interface', name: 'Interface', stat: 'INT', description: 'Netrunning and network infiltration' },
+      { id: 'Electronics/Security Tech', name: 'Electronics/Security Tech', stat: 'TECH', description: 'Technical hardware and security systems' },
+      { id: 'Basic Tech', name: 'Basic Tech', stat: 'TECH', description: 'General technical knowledge' },
+      { id: 'Cryptography', name: 'Cryptography', stat: 'INT', description: 'Code breaking and encryption' },
+      { id: 'Education', name: 'Education', stat: 'INT', description: 'General knowledge and research' },
+      { id: 'Library Search', name: 'Library Search', stat: 'INT', description: 'Information retrieval' }
+    ];
     
     return {
       ...data,
@@ -54,13 +86,25 @@ export class ItemInboxConfig extends FormApplication {
       encrypted,
       encryptionType,
       encryptionDC,
-      encryptionMode, // NEW
+      encryptionMode,
       allowedSkills,
+      skillDCs,
       failureMode,
       singleMessage,
       theme,
       
-      // Encryption mode options (NEW)
+      // Network and login settings
+      requiresNetwork,
+      requiredNetwork,
+      requiresLogin,
+      loginUsername,
+      loginPassword,
+      maxLoginAttempts,
+      
+      // Available skills with metadata
+      availableSkills,
+      
+      // Encryption mode options
       encryptionModes: {
         shard: {
           value: 'shard',
@@ -96,6 +140,7 @@ export class ItemInboxConfig extends FormApplication {
         { value: 'nothing', label: 'Nothing (Can Retry)' },
         { value: 'lockout', label: 'Temporary Lockout (1 hour)' },
         { value: 'permanent', label: 'Permanent Lock' },
+        { value: 'damage', label: 'BLACK ICE Damage' },
         { value: 'destroy', label: 'Destroy Data' }
       ],
       
@@ -119,8 +164,40 @@ export class ItemInboxConfig extends FormApplication {
       html.find('.ncm-encryption-options').toggle(encrypted);
     });
     
-    // Trigger initial state
+    // Toggle network options
+    html.find('[name="requiresNetwork"]').change((event) => {
+      const requiresNetwork = event.target.checked;
+      html.find('.ncm-network-options').toggle(requiresNetwork);
+    });
+    
+    // Toggle login options
+    html.find('[name="requiresLogin"]').change((event) => {
+      const requiresLogin = event.target.checked;
+      html.find('.ncm-login-options').toggle(requiresLogin);
+    });
+    
+    // ========================================================================
+    // NEW: Toggle individual skill DC inputs
+    // ========================================================================
+    html.find('[name^="skillEnabled_"]').change((event) => {
+      const skillId = event.target.value;
+      const isEnabled = event.target.checked;
+      const dcContainer = html.find(`[data-skill="${skillId}"]`);
+      
+      if (dcContainer.length) {
+        dcContainer.toggle(isEnabled);
+      }
+    });
+    
+    // Trigger initial state for all toggles
     html.find('[name="encrypted"]').trigger('change');
+    html.find('[name="requiresNetwork"]').trigger('change');
+    html.find('[name="requiresLogin"]').trigger('change');
+    
+    // Trigger initial state for skill DC inputs
+    html.find('[name^="skillEnabled_"]').each((index, element) => {
+      $(element).trigger('change');
+    });
   }
   
   /**
@@ -133,11 +210,10 @@ export class ItemInboxConfig extends FormApplication {
       const eventBus = EventBus.getInstance();
       const dataShardService = new DataShardService(eventBus);
       
-      // CRITICAL FIX: Process form data to prevent duplicates
-      // FoundryVTT's FormDataExtended can create arrays for single values
-      // We need to ensure single-value fields remain single values
+      // ========================================================================
+      // PROCESS FORM DATA - Clean up arrays
+      // ========================================================================
       
-      // Clean up single-value fields (take first value if array)
       const encryptionType = Array.isArray(formData.encryptionType) 
         ? formData.encryptionType[0] 
         : (formData.encryptionType || 'ICE');
@@ -154,35 +230,71 @@ export class ItemInboxConfig extends FormApplication {
         ? formData.theme[0]
         : (formData.theme || 'classic');
       
-      // Clean up numeric fields
       const encryptionDC = parseInt(
         Array.isArray(formData.encryptionDC) 
           ? formData.encryptionDC[0] 
           : formData.encryptionDC
       ) || 15;
       
-      // Clean up boolean fields
-      const encrypted = Array.isArray(formData.encrypted)
-        ? formData.encrypted[0]
-        : formData.encrypted;
-        
-      const singleMessage = Array.isArray(formData.singleMessage)
-        ? formData.singleMessage[0]
-        : formData.singleMessage;
+      const maxLoginAttempts = parseInt(
+        Array.isArray(formData.maxLoginAttempts)
+          ? formData.maxLoginAttempts[0]
+          : formData.maxLoginAttempts
+      ) || 5;
       
-      // Collect allowed skills (this SHOULD be an array)
+      const encrypted = !!formData.encrypted;
+      const singleMessage = !!formData.singleMessage;
+      
+      // ========================================================================
+      // NETWORK AND LOGIN SECURITY FIELDS
+      // ========================================================================
+      const requiresNetwork = !!formData.requiresNetwork;
+      const requiredNetwork = Array.isArray(formData.requiredNetwork)
+        ? formData.requiredNetwork[0]
+        : (formData.requiredNetwork || 'CITINET');
+      
+      const requiresLogin = !!formData.requiresLogin;
+      const loginUsername = Array.isArray(formData.loginUsername)
+        ? formData.loginUsername[0]
+        : (formData.loginUsername || 'admin');
+      const loginPassword = Array.isArray(formData.loginPassword)
+        ? formData.loginPassword[0]
+        : (formData.loginPassword || 'password');
+      
+      // ========================================================================
+      // NEW: MULTI-SKILL CONFIGURATION WITH INDIVIDUAL DVs
+      // ========================================================================
+      const skillDCs = {};
       const allowedSkills = [];
-      if (formData.allowedSkills) {
-        if (Array.isArray(formData.allowedSkills)) {
-          allowedSkills.push(...formData.allowedSkills.filter(s => s && s !== ''));
-        } else if (formData.allowedSkills && formData.allowedSkills !== '') {
-          allowedSkills.push(formData.allowedSkills);
+      
+      // List of available skills
+      const availableSkillIds = [
+        'Interface',
+        'Electronics/Security Tech',
+        'Basic Tech',
+        'Cryptography',
+        'Education',
+        'Library Search'
+      ];
+      
+      // Process each skill checkbox and its associated DC
+      for (const skillId of availableSkillIds) {
+        const enabled = formData[`skillEnabled_${skillId}`];
+        if (enabled) {
+          allowedSkills.push(skillId);
+          
+          // Get the DC for this skill (default to 15)
+          const dcValue = formData[`skillDC_${skillId}`];
+          const dc = parseInt(Array.isArray(dcValue) ? dcValue[0] : dcValue) || 15;
+          skillDCs[skillId] = dc;
         }
       }
       
       // If no skills selected, use defaults
       if (allowedSkills.length === 0) {
         allowedSkills.push('Interface', 'Electronics/Security Tech');
+        skillDCs['Interface'] = 15;
+        skillDCs['Electronics/Security Tech'] = 15;
       }
       
       console.log(`${MODULE_ID} | Cleaned form data:`, {
@@ -192,32 +304,56 @@ export class ItemInboxConfig extends FormApplication {
         encryptionMode,
         failureMode,
         allowedSkills,
+        skillDCs,
         singleMessage,
-        theme
+        theme,
+        requiresNetwork,
+        requiredNetwork,
+        requiresLogin,
+        loginUsername,
+        maxLoginAttempts
       });
       
-      // If not a data shard yet, convert it
+      // ========================================================================
+      // SAVE CONFIGURATION
+      // ========================================================================
+      
       if (!this.item.getFlag(MODULE_ID, 'isDataShard')) {
+        // Convert to data shard
         await dataShardService.convertToDataShard(this.item, {
-          encrypted: !!encrypted,
+          encrypted,
           encryptionType,
           encryptionDC,
           encryptionMode,
           allowedSkills,
+          skillDCs,
           failureMode,
-          singleMessage: !!singleMessage,
-          theme
+          singleMessage,
+          theme,
+          requiresNetwork,
+          requiredNetwork,
+          requiresLogin,
+          loginUsername,
+          loginPassword,
+          maxLoginAttempts
         });
       } else {
-        // Update existing data shard flags one by one
-        await this.item.setFlag(MODULE_ID, 'encrypted', !!encrypted);
+        // Update existing data shard
+        await this.item.setFlag(MODULE_ID, 'encrypted', encrypted);
         await this.item.setFlag(MODULE_ID, 'encryptionType', encryptionType);
         await this.item.setFlag(MODULE_ID, 'encryptionDC', encryptionDC);
         await this.item.setFlag(MODULE_ID, 'encryptionMode', encryptionMode);
         await this.item.setFlag(MODULE_ID, 'allowedSkills', allowedSkills);
+        await this.item.setFlag(MODULE_ID, 'skillDCs', skillDCs);
         await this.item.setFlag(MODULE_ID, 'failureMode', failureMode);
-        await this.item.setFlag(MODULE_ID, 'singleMessage', !!singleMessage);
+        await this.item.setFlag(MODULE_ID, 'singleMessage', singleMessage);
         await this.item.setFlag(MODULE_ID, 'theme', theme);
+        await this.item.setFlag(MODULE_ID, 'requiresNetwork', requiresNetwork);
+        await this.item.setFlag(MODULE_ID, 'requiredNetwork', requiredNetwork);
+        await this.item.setFlag(MODULE_ID, 'requiresLogin', requiresLogin);
+        await this.item.setFlag(MODULE_ID, 'loginUsername', loginUsername);
+        await this.item.setFlag(MODULE_ID, 'loginPassword', loginPassword);
+        await this.item.setFlag(MODULE_ID, 'maxLoginAttempts', maxLoginAttempts);
       }
       
       ui.notifications.info('Data shard configuration updated!');

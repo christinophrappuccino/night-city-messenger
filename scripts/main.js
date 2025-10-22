@@ -91,6 +91,21 @@ moduleInitializer.register('init', async () => {
   console.log(`${MODULE_ID} | ✓ Data Shard System initialized`);
 }, 45);
 
+// Register helper classes for chat messages and dialogs
+moduleInitializer.register('init', async () => {
+  console.log(`${MODULE_ID} | Registering UI Helpers...`);
+  
+  // Import helper classes
+  const { CyberpunkChatHelper } = await import('./ui/helpers/CyberpunkChatHelper.js');
+  const { DialogHelper } = await import('./ui/helpers/DialogHelper.js');
+  
+  // Make available globally
+  game.nightcity.CyberpunkChatHelper = CyberpunkChatHelper;
+  game.nightcity.DialogHelper = DialogHelper;
+  
+  console.log(`${MODULE_ID} | ✓ UI Helpers registered`);
+}, 46);
+
 // Register email settings
 moduleInitializer.register('init', async () => {
   const { registerEmailSettings, registerActorSheetHooks } = await import('./integrations/EmailSettingsRegistration.js');

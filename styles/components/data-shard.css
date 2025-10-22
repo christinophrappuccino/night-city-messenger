@@ -1003,6 +1003,54 @@
   cursor: pointer;
 }
 
+.ncm-skill-config-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin: 15px 0;
+}
+
+.ncm-skill-config-item {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(25, 243, 247, 0.3);
+  border-radius: 4px;
+}
+
+.ncm-skill-config-item .ncm-checkbox {
+  flex: 1;
+}
+
+.ncm-skill-dc-input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: rgba(25, 243, 247, 0.1);
+  border-radius: 4px;
+}
+
+.ncm-skill-dc-input.ncm-hidden {
+  display: none;
+}
+
+.ncm-input-small {
+  width: 80px;
+}
+
+.ncm-skill-config-note {
+  margin-top: 15px;
+  padding: 12px;
+  background: rgba(25, 243, 247, 0.1);
+  border: 1px solid var(--ncm-secondary);
+  border-radius: 4px;
+  font-size: 0.95em;
+  color: var(--ncm-text-dim);
+}
+
 /* ========================================================================
    ANIMATIONS
    ======================================================================== */

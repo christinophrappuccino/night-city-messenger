@@ -18,6 +18,7 @@ export class ItemInboxApp extends BaseApplication {
     
     this.item = item;
     this.gmViewAllMode = false;
+    this.gmViewAsPlayer = false;
     
     // Check if item is a data shard
     if (!this.item.getFlag(MODULE_ID, 'isDataShard')) {
@@ -176,7 +177,7 @@ export class ItemInboxApp extends BaseApplication {
     // DETERMINE WHICH OVERLAY TO SHOW (Priority Order)
     // ========================================================================
     let activeOverlay = null;
-    
+
     // Priority 1: Network (most fundamental)
     if (networkBlocked && !effectiveGmViewAllMode && !effectiveIsGM) {
       activeOverlay = 'network';
@@ -189,9 +190,13 @@ export class ItemInboxApp extends BaseApplication {
     else if (encryptionBlocked && !effectiveGmViewAllMode && !effectiveIsGM) {
       activeOverlay = 'encryption';
     }
-    
+
     // Can we access the inbox?
     const canAccessInbox = !activeOverlay || effectiveGmViewAllMode || effectiveIsGM;
+
+    // ========================================================================
+    // DETERMINE WHICH OVERLAY TO SHOW (Priority Order)
+    // ========================================================================
     
     // ========================================================================
     // MESSAGES (only load if can access)
@@ -413,203 +418,105 @@ export class ItemInboxApp extends BaseApplication {
   async _onHackAttempt(event) {
     event.preventDefault();
     
-    console.log(`${MODULE_ID} | Hack attempt initiated`);
-    
-    // Check for character
     const actor = game.user.character;
     if (!actor) {
-      ui.notifications.error('You must have a character selected to hack');
+      ui.notifications.error('You must have a character selected');
       return;
     }
     
-    // Check available skills
-    const availableSkills = this.dataShardService.getAvailableSkills(this.item, actor);
+    // Get allowed skills and their DVs
+    const allowedSkills = this.item.getFlag(MODULE_ID, 'allowedSkills') || ['Interface'];
+    const skillDCs = this.item.getFlag(MODULE_ID, 'skillDCs') || { 'Interface': 15 };
     
-    if (availableSkills.length === 0) {
-      const allowedSkills = this.item.getFlag(MODULE_ID, 'allowedSkills') || ['Interface'];
-      ui.notifications.warn(`${actor.name} doesn't have the required skills: ${allowedSkills.join(', ')}`);
-      return;
-    }
+    // Build skill options array
+    const skillOptions = allowedSkills.map(skillName => ({
+      skillName,
+      dc: skillDCs[skillName] || 15,
+      description: skillName === 'Interface' ? 'Netrunning expertise' : 'Technical knowledge'
+    }));
     
-    console.log(`${MODULE_ID} | ${actor.name} can use:`, availableSkills.map(s => s.displayName).join(', '));
-    
-    // Get encryption info
-    const encryptionType = this.item.getFlag(MODULE_ID, 'encryptionType') || 'ICE';
-    const encryptionDC = this.item.getFlag(MODULE_ID, 'encryptionDC') || 15;
-    const failureMode = this.item.getFlag(MODULE_ID, 'failureMode') || 'Lockout';
-    
-    // Show confirmation dialog
-    const confirmed = await new Promise(resolve => {
-      const dialog = new Dialog({
-        title: "Attempt Data Shard Hack",
-        content: `
-          <div style="padding: 15px;">
-            <p style="font-size: 1.1em; margin-bottom: 15px;">
-              <strong>Attempt to decrypt this data shard?</strong>
-            </p>
-            <hr style="margin: 15px 0; border-color: rgba(246, 82, 97, 0.3);">
-            
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 15px 0;">
-              <div>
-                <strong style="color: var(--ncm-text-dim);">Encryption Type:</strong>
-                <div style="color: var(--ncm-primary); font-weight: bold;">${encryptionType}</div>
-              </div>
-              <div>
-                <strong style="color: var(--ncm-text-dim);">Difficulty:</strong>
-                <div style="color: var(--ncm-primary); font-weight: bold;">DV ${encryptionDC}</div>
-              </div>
-              <div>
-                <strong style="color: var(--ncm-text-dim);">Failure Mode:</strong>
-                <div style="color: var(--ncm-warning);">${failureMode}</div>
-              </div>
-              <div>
-                <strong style="color: var(--ncm-text-dim);">Available Skills:</strong>
-                <div style="color: var(--ncm-secondary);">${availableSkills.map(s => s.displayName).join(', ')}</div>
-              </div>
-            </div>
-            
-            <hr style="margin: 15px 0; border-color: rgba(246, 82, 97, 0.3);">
-            
-            ${encryptionType.includes('BLACK_ICE') || encryptionType.includes('RED_ICE') ? `
-              <div style="background: rgba(255, 0, 0, 0.15); border: 2px solid var(--ncm-error); padding: 12px; border-radius: 4px; margin: 10px 0;">
-                <p style="color: var(--ncm-error); font-weight: bold; margin: 0;">
-                  <i class="fas fa-skull-crossbones"></i> WARNING: LETHAL COUNTERMEASURES ACTIVE
-                </p>
-                <p style="color: var(--ncm-text); margin: 5px 0 0 0; font-size: 0.9em;">
-                  Failure may result in BLACK ICE deployment and serious injury!
-                </p>
-              </div>
-            ` : `
-              <p style="color: #F65261; margin: 10px 0;">
-                <strong>⚠ Warning:</strong> Failure may trigger security countermeasures!
-              </p>
-            `}
-          </div>
-        `,
-        buttons: {
-          hack: {
-            icon: '<i class="fas fa-terminal"></i>',
-            label: "Attempt Hack",
-            callback: () => resolve(true)
-          },
-          cancel: {
-            icon: '<i class="fas fa-times"></i>',
-            label: "Cancel",
-            callback: () => resolve(false)
-          }
-        },
-        default: "hack",
-        close: () => resolve(false)
-      });
-      
-      // CRITICAL FIX: Position dialog after render
-      dialog.render(true, {
-        width: 520,
-        height: "auto"
-      });
-      
-      // Wait for dialog to be in DOM, then center it
-      Hooks.once('renderDialog', (app, html, data) => {
-        if (app === dialog) {
-          // Center the dialog
-          const dialogEl = html.closest('.app');
-          if (dialogEl.length) {
-            const windowWidth = window.innerWidth;
-            const windowHeight = window.innerHeight;
-            const dialogWidth = dialogEl.outerWidth();
-            const dialogHeight = dialogEl.outerHeight();
-            
-            const left = Math.max(100, (windowWidth - dialogWidth) / 2);
-            const top = Math.max(100, (windowHeight - dialogHeight) / 2);
-            
-            dialogEl.css({
-              left: `${left}px`,
-              top: `${top}px`
-            });
-            
-            console.log(`${MODULE_ID} | Dialog positioned at (${left}, ${top})`);
-          }
-        }
-      });
+    // Show skill selection dialog
+    const selectedSkill = await game.nightcity.DialogHelper.showSkillSelectionDialog({
+      actor,
+      skills: skillOptions,
+      targetName: this.item.name,
+      description: 'Choose which skill to use for this decryption attempt'
     });
     
-    if (!confirmed) {
-      console.log(`${MODULE_ID} | Hack attempt cancelled by user`);
-      return;
+    if (!selectedSkill) return; // User cancelled
+    
+    // Show luck dialog
+    const luck = await game.nightcity.DialogHelper.showLuckDialog(actor);
+    
+    if (luck === null) return; // User cancelled
+    
+    // Deduct luck
+    if (luck > 0) {
+      const currentLuck = actor.system.stats.luck?.value || 0;
+      await actor.update({
+        'system.stats.luck.value': currentLuck - luck
+      });
     }
     
-    // Set hacking state
-    this.attemptingHack = true;
-    this.render(false);
+    // Perform the roll
+    const roll = await new Roll('1d10').evaluate({ async: true });
     
-    try {
-      console.log(`${MODULE_ID} | Starting hack attempt with SkillService`);
+    // Get skill and stat values
+    const actorSkill = actor.items.find(i => i.type === 'skill' && i.name === selectedSkill.skillName);
+    const skillValue = actorSkill?.system?.level || 0;
+    
+    // Determine stat (simplified)
+    const statName = selectedSkill.skillName === 'Interface' ? 'INT' : 'TECH';
+    const statValue = actor.system.stats[statName.toLowerCase()]?.value || 0;
+    
+    const total = roll.total + skillValue + statValue + luck;
+    const success = total >= selectedSkill.dc;
+    
+    // Create beautiful chat message
+    await game.nightcity.CyberpunkChatHelper.createDecryptionRollMessage({
+      success,
+      total,
+      diceRoll: roll.total,
+      skillValue,
+      statValue,
+      statName,
+      luck,
+      dc: selectedSkill.dc,
+      skillName: selectedSkill.skillName
+    }, actor, roll);
+    
+    // Handle success/failure
+    if (success) {
+      await this.item.setFlag(MODULE_ID, 'decrypted', true);
+      ui.notifications.info('Decryption successful!');
+      this.render(false);
+    } else {
+      // Handle failure based on failureMode
+      const failureMode = this.item.getFlag(MODULE_ID, 'failureMode') || 'lockout';
       
-      // Attempt the hack (this will trigger Cyberpunk RED skill roll + Luck)
-      const result = await this.dataShardService.attemptHack(this.item, actor);
-      
-      if (result.success) {
-        // Success!
-        ui.notifications.info('Data shard decrypted successfully!');
-        await this._loadMessages();
-        await this._recordHackAttempt(actor, true, result.total);
+      if (failureMode === 'lockout') {
+        const lockoutTime = new Date();
+        lockoutTime.setHours(lockoutTime.getHours() + 1);
+        await this.item.setFlag(MODULE_ID, 'lockoutUntil', lockoutTime.toISOString());
+      } else if (failureMode === 'damage') {
+        // BLACK ICE damage
+        const damageRoll = await new Roll('3d6').evaluate({ async: true });
+        const currentHP = actor.system.hp.value;
+        const maxHP = actor.system.hp.max;
+        const newHP = Math.max(0, currentHP - damageRoll.total);
         
-        // Create success chat message
-        await ChatMessage.create({
-          content: `
-            <div style="background: rgba(25, 243, 247, 0.1); border: 2px solid var(--ncm-secondary); padding: 15px; border-radius: 4px;">
-              <p style="font-weight: bold; color: var(--ncm-secondary); margin-bottom: 8px;">
-                <i class="fas fa-check-circle"></i> HACK SUCCESSFUL
-              </p>
-              <p style="margin: 0;">
-                <strong>${actor.name}</strong> successfully decrypted 
-                <strong>${this.item.name}</strong> (DV ${encryptionDC})
-              </p>
-              <p style="margin: 5px 0 0 0; color: var(--ncm-text-dim); font-size: 0.9em;">
-                Roll: ${result.total} vs DV ${encryptionDC}
-              </p>
-            </div>
-          `,
-          speaker: ChatMessage.getSpeaker({ actor }),
-          type: CONST.CHAT_MESSAGE_TYPES.OTHER
-        });
+        await actor.update({ 'system.hp.value': newHP });
         
-      } else {
-        // Failure
-        ui.notifications.error(`Hack failed: ${result.consequence || 'Access denied'}`);
-        await this._recordHackAttempt(actor, false, result.total);
-        
-        // Create failure chat message
-        await ChatMessage.create({
-          content: `
-            <div style="background: rgba(246, 82, 97, 0.1); border: 2px solid var(--ncm-primary); padding: 15px; border-radius: 4px;">
-              <p style="font-weight: bold; color: var(--ncm-primary); margin-bottom: 8px;">
-                <i class="fas fa-times-circle"></i> HACK FAILED
-              </p>
-              <p style="margin: 0;">
-                <strong>${actor.name}</strong> failed to decrypt 
-                <strong>${this.item.name}</strong>
-              </p>
-              <p style="margin: 5px 0 0 0; color: var(--ncm-text-dim); font-size: 0.9em;">
-                Roll: ${result.total} vs DV ${encryptionDC}
-              </p>
-              ${result.consequence ? `
-                <p style="margin: 8px 0 0 0; color: var(--ncm-error); font-weight: bold;">
-                  <i class="fas fa-exclamation-triangle"></i> ${result.consequence}
-                </p>
-              ` : ''}
-            </div>
-          `,
-          speaker: ChatMessage.getSpeaker({ actor }),
-          type: CONST.CHAT_MESSAGE_TYPES.OTHER
+        await game.nightcity.CyberpunkChatHelper.createBlackICEMessage({
+          actor,
+          damage: damageRoll.total,
+          hp: newHP,
+          maxHP,
+          shardName: this.item.name
         });
       }
       
-    } catch (error) {
-      console.error(`${MODULE_ID} | Hack attempt error:`, error);
-      ui.notifications.error('Hack attempt failed due to an error');
-    } finally {
-      this.attemptingHack = false;
+      ui.notifications.error('Decryption failed!');
       this.render(false);
     }
   }
