@@ -52,12 +52,23 @@ export class ModuleInitializer {
       console.log(`${MODULE_ID} | Initializing core systems...`);
       
       // Event Bus (first, everything depends on it)
-      EventBus.getInstance();
+      const eventBus = EventBus.getInstance();
       console.log(`${MODULE_ID} | ✓ Event Bus initialized`);
       
       // State Manager
-      StateManager.getInstance();
+      const stateManager = StateManager.getInstance();
       console.log(`${MODULE_ID} | ✓ State Manager initialized`);
+      
+      // NEW: Ensure game.nightcity exists, then expose instances
+      game.nightcity = game.nightcity || {};  // ← THIS IS CRITICAL!
+      game.nightcity.eventBus = eventBus;
+      game.nightcity.stateManager = stateManager;
+      console.log(`${MODULE_ID} | ✓ Core instances exposed on game.nightcity`);
+      
+      // NEW: Initialize default network state
+      stateManager.set('currentNetwork', 'CITINET', true);
+      stateManager.set('signalStrength', 95, true);
+      console.log(`${MODULE_ID} | ✓ Network state initialized (CITINET, 95%)`);
       
       // Settings Manager
       const settings = SettingsManager.getInstance();
