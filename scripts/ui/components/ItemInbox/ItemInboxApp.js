@@ -8,6 +8,8 @@
 import { MODULE_ID } from '../../../utils/constants.js';
 import { BaseApplication } from '../BaseApplication.js';
 import { DataShardService } from '../../../services/DataShardService.js';
+import { SkillService } from '../../../services/SkillService.js';
+import { NetworkService } from '../../../services/NetworkService.js';
 import { EVENTS, EventBus } from '../../../core/EventBus.js'; 
 
 export class ItemInboxApp extends BaseApplication {
@@ -23,9 +25,18 @@ export class ItemInboxApp extends BaseApplication {
       throw new Error('Item is not a data shard');
     }
     
-    // Initialize service
+    // Initialize EventBus
     const eventBus = EventBus.getInstance();
+    
+    // Initialize services
     this.dataShardService = new DataShardService(eventBus);
+    this.skillService = new SkillService(eventBus); // ADD THIS
+    
+    // NEW: Initialize NetworkService
+    this.networkService = new NetworkService(
+      game.nightcity?.stateManager || this._getStateManager(),
+      eventBus
+    );
     
     // State
     this.selectedMessageId = null;
@@ -81,6 +92,29 @@ export class ItemInboxApp extends BaseApplication {
   get title() {
     return `Data Shard: ${this.item.name}`;
   }
+
+  /**
+   * Get state manager (fallback if game.nightcity not initialized)
+   * @private
+   */
+  _getStateManager() {
+    // Return a minimal state manager if needed
+    if (!game.nightcity?.stateManager) {
+      return {
+        get: (key) => {
+          const defaults = {
+            currentNetwork: 'CITINET',
+            signalStrength: 100
+          };
+          return defaults[key];
+        },
+        set: (key, value) => {
+          console.log(`${MODULE_ID} | StateManager not initialized, skipping set: ${key}`);
+        }
+      };
+    }
+    return game.nightcity.stateManager;
+  }
   
   /**
    * Get data for template
@@ -88,39 +122,49 @@ export class ItemInboxApp extends BaseApplication {
   async getData() {
     const data = await super.getData();
     
-    // ========================================================================
-    // Basic Item Data
-    // ========================================================================
+    // Basic flags
     const encrypted = this.item.getFlag(MODULE_ID, 'encrypted') || false;
     const encryptionDC = this.item.getFlag(MODULE_ID, 'encryptionDC') || 15;
     const encryptionType = this.item.getFlag(MODULE_ID, 'encryptionType') || 'ICE';
     const encryptionMode = this.item.getFlag(MODULE_ID, 'encryptionMode') || 'shard';
-    const failureMode = this.item.getFlag(MODULE_ID, 'failureMode') || 'Lockout';
-    const dataShardType = this.item.getFlag(MODULE_ID, 'dataShardType') || 'multi';
+    const failureMode = this.item.getFlag(MODULE_ID, 'failureMode') || 'lockout';
+    const dataShardType = this.item.getFlag(MODULE_ID, 'singleMessage') ? 'single' : 'multi';
     const theme = this.item.getFlag(MODULE_ID, 'theme') || 'default';
     
-    // Network requirements
-    const requiresNetwork = this.item.getFlag(MODULE_ID, 'requiresNetwork') || false;
-    const requiredNetwork = this.item.getFlag(MODULE_ID, 'requiredNetwork') || 'CITINET';
-    const networkAvailable = true; // TODO: Check actual network
+    // ========================================================================
+    // NEW: GM VIEW AS PLAYER MODE
+    // ========================================================================
+    // If GM has "view as player" enabled, treat them like a regular user
+    const gmViewAsPlayer = this.gmViewAsPlayer || false;
+    const effectiveIsGM = game.user.isGM && !gmViewAsPlayer;
+    const effectiveGmViewAllMode = this.gmViewAllMode && !gmViewAsPlayer;
     
-    // Login requirements
+    // ========================================================================
+    // SECURITY LAYER 1 - NETWORK REQUIREMENT
+    // ========================================================================
+    const networkCheck = this.networkService.checkNetworkRequirement(this.item);
+    const networkOverride = this.item.getFlag(MODULE_ID, 'networkOverride') || false;
+    const networkBlocked = networkCheck.required && 
+                           !networkCheck.accessible && 
+                           !networkOverride;
+    
+    // ========================================================================
+    // SECURITY LAYER 2 - LOGIN REQUIREMENT
+    // ========================================================================
     const requiresLogin = this.item.getFlag(MODULE_ID, 'requiresLogin') || false;
-    const isLoggedIn = this.item.getFlag(MODULE_ID, 'isLoggedIn') || false;
+    const sessionLoggedIn = this.item.getFlag(MODULE_ID, 'sessionLoggedIn') || false;
+    const loginBlocked = requiresLogin && !sessionLoggedIn;
     
     // ========================================================================
-    // CRITICAL: Encryption State
+    // SECURITY LAYER 3 - ENCRYPTION
     // ========================================================================
-    
-    // The ACTUAL decryption state of the shard
     const isActuallyDecrypted = this.item.getFlag(MODULE_ID, 'decrypted') || false;
-    
-    // Whether shard-level encryption is active
     const shardEncryptionActive = encrypted && 
                                    (encryptionMode === 'shard' || encryptionMode === 'both');
+    const encryptionBlocked = shardEncryptionActive && !isActuallyDecrypted;
     
     // ========================================================================
-    // Lockout State
+    // LOCKOUT STATE
     // ========================================================================
     const lockoutUntil = this.item.getFlag(MODULE_ID, 'lockoutUntil');
     const isLockedOut = lockoutUntil && Date.now() < new Date(lockoutUntil).getTime();
@@ -129,111 +173,104 @@ export class ItemInboxApp extends BaseApplication {
       : 0;
     
     // ========================================================================
-    // CRITICAL: Access Control Logic
+    // DETERMINE WHICH OVERLAY TO SHOW (Priority Order)
     // ========================================================================
+    let activeOverlay = null;
     
-    // Can the user access the inbox?
-    const canAccessInbox = !shardEncryptionActive ||  // No shard encryption
-                           isActuallyDecrypted ||      // Already decrypted
-                           this.gmViewAllMode ||       // GM viewing all
-                           game.user.isGM;             // GMs can always access
-    
-    // Should we show the shard-level encrypted overlay?
-    const showShardEncryptedOverlay = shardEncryptionActive &&    // Shard encryption is on
-                                       !isActuallyDecrypted &&    // Not decrypted yet
-                                       !this.gmViewAllMode;        // Not GM view mode
-    
-    // ========================================================================
-    // CRITICAL FIX: Can user attempt to hack the shard?
-    // ========================================================================
-    const hasCharacter = !!game.user.character;
-    
-    const canHackShard = hasCharacter &&              // Must have a character
-                         shardEncryptionActive &&     // Shard must be encrypted
-                         !isActuallyDecrypted &&      // Not already decrypted
-                         !isLockedOut &&              // Not locked out
-                         !game.user.isGM &&           // Players only (GMs can force)
-                         !this.gmViewAllMode;         // Not in GM view mode
-    
-    // Debug output
-    console.log(`${MODULE_ID} | getData() canHackShard calculation:`, {
-      hasCharacter,
-      shardEncryptionActive,
-      isActuallyDecrypted,
-      isLockedOut,
-      isGM: game.user.isGM,
-      gmViewAllMode: this.gmViewAllMode,
-      RESULT: canHackShard
-    });
-    
-    // ========================================================================
-    // Load Messages
-    // ========================================================================
-    if (!this.messages || this.messages.length === 0) {
-      await this._loadMessages();
+    // Priority 1: Network (most fundamental)
+    if (networkBlocked && !effectiveGmViewAllMode && !effectiveIsGM) {
+      activeOverlay = 'network';
+    }
+    // Priority 2: Login (authentication)
+    else if (loginBlocked && !effectiveGmViewAllMode && !effectiveIsGM) {
+      activeOverlay = 'login';
+    }
+    // Priority 3: Encryption (data protection)
+    else if (encryptionBlocked && !effectiveGmViewAllMode && !effectiveIsGM) {
+      activeOverlay = 'encryption';
     }
     
-    const messages = this.messages || [];
+    // Can we access the inbox?
+    const canAccessInbox = !activeOverlay || effectiveGmViewAllMode || effectiveIsGM;
     
     // ========================================================================
-    // Selected Message
+    // MESSAGES (only load if can access)
     // ========================================================================
+    let messages = [];
     let selectedMessage = null;
     
-    if (this.selectedMessageId) {
-      const msg = messages.find(m => m.id === this.selectedMessageId);
+    if (canAccessInbox) {
+      messages = await this.dataShardService.getMessages(this.item);
       
-      if (msg) {
-        // Message-level encryption state
-        const messageEncrypted = msg.messageData?.encrypted || false;
-        const messageDecrypted = msg.messageData?.decrypted || false;
-        
-        // Can we show the content?
-        const showContent = !messageEncrypted ||     // Not encrypted
-                           messageDecrypted ||       // Decrypted
-                           this.gmViewAllMode;       // GM viewing
-        
-        // Should we show per-message overlay?
-        const showEncryptedOverlay = messageEncrypted && 
-                                    !messageDecrypted && 
-                                    !this.gmViewAllMode;
-        
-        // Can user decrypt this message?
-        const canDecryptMessage = messageEncrypted && 
-                                 !messageDecrypted && 
-                                 hasCharacter &&
-                                 !game.user.isGM;
-        
-        selectedMessage = {
-          ...msg,
-          messageData: msg.messageData || {},
-          content: msg.content || '',
-          canView: canAccessInbox,
-          attachments: msg.attachments || [],
-          infected: msg.messageData?.infected || false,
-          malwareType: msg.messageData?.malwareType || null,
-          threatLevel: msg.messageData?.threatLevel || 'unknown',
+      if (this.selectedMessageId) {
+        const msg = messages.find(m => m.id === this.selectedMessageId);
+        if (msg) {
+          const messageEncrypted = msg.encryption && !msg.messageData.decrypted;
+          const messageDecrypted = msg.messageData.decrypted;
+          const hasCharacter = !!game.user.character;
           
-          // Per-message encryption status
-          showContent,
-          showEncryptedOverlay,
-          canDecrypt: canDecryptMessage,
-          encryption: msg.encryption || null
-        };
+          const showContent = !messageEncrypted || messageDecrypted || effectiveGmViewAllMode;
+          const showEncryptedOverlay = messageEncrypted && !messageDecrypted && !effectiveGmViewAllMode;
+          const canDecryptMessage = messageEncrypted && !messageDecrypted && hasCharacter && !effectiveIsGM;
+          
+          selectedMessage = {
+            ...msg,
+            messageData: msg.messageData || {},
+            content: msg.content || '',
+            canView: canAccessInbox,
+            attachments: msg.attachments || [],
+            infected: msg.messageData?.infected || false,
+            malwareType: msg.messageData?.malwareType || null,
+            threatLevel: msg.messageData?.threatLevel || 'unknown',
+            showContent,
+            showEncryptedOverlay,
+            canDecrypt: canDecryptMessage,
+            encryption: msg.encryption || null
+          };
+        }
       }
     }
     
     // ========================================================================
-    // Hack History
+    // HACK HISTORY
     // ========================================================================
-    const previousAttempts = this.item.getFlag(MODULE_ID, 'hackAttempts') || [];
+    const previousAttempts = this.item.getFlag(MODULE_ID, 'hackAttempts') || 0;
+    const maxAttempts = this.item.getFlag(MODULE_ID, 'maxHackAttempts') || 3;
     const selectedActor = game.user.character;
+    const hasCharacter = !!selectedActor;
+    
+    // Can user attempt to hack?
+    const canHackShard = hasCharacter && 
+                         encryptionBlocked && 
+                         !isLockedOut &&
+                         !effectiveGmViewAllMode &&
+                         !effectiveIsGM;
+    
+    // NEW: Can attempt network breach?
+    const canBreachNetwork = hasCharacter && 
+                            networkBlocked && 
+                            !effectiveGmViewAllMode &&
+                            !effectiveIsGM;
     
     // ========================================================================
-    // Return Complete Data Object
+    // LOGIN DATA
+    // ========================================================================
+    const loginUsername = this.item.getFlag(MODULE_ID, 'loginUsername') || 'admin';
+    const loginAttempts = this.item.getFlag(MODULE_ID, 'loginAttempts') || 0;
+    const maxLoginAttempts = this.item.getFlag(MODULE_ID, 'maxLoginAttempts') || 5;
+    const loginLockoutUntil = this.item.getFlag(MODULE_ID, 'loginLockoutUntil');
+    const isLoginLockedOut = loginLockoutUntil && Date.now() < new Date(loginLockoutUntil).getTime();
+    const loginLockoutMinutes = isLoginLockedOut 
+      ? Math.ceil((new Date(loginLockoutUntil).getTime() - Date.now()) / 60000)
+      : 0;
+    
+    // ========================================================================
+    // RETURN COMPLETE DATA
     // ========================================================================
     return {
       ...data,
+      
+      // Item info
       item: this.item,
       itemName: this.item.name,
       itemId: this.item.id,
@@ -248,29 +285,44 @@ export class ItemInboxApp extends BaseApplication {
       theme,
       isSingleMode: dataShardType === 'single',
       
-      // Network
-      requiresNetwork,
-      requiredNetwork,
-      networkAvailable,
-      signalStrength: 100,
+      // Network Layer
+      networkCheck,
+      networkBlocked,
+      networkOverride,
+      currentNetwork: networkCheck.currentNetwork,
+      requiredNetwork: networkCheck.requiredNetwork,
+      signalStrength: networkCheck.signalStrength || 100,
+      networkInfo: networkCheck.required ? this.networkService.getNetworkInfo(networkCheck.requiredNetwork) : null,
+      canBreachNetwork, // NEW
       
-      // Login
+      // Login Layer
       requiresLogin,
-      isLoggedIn,
+      sessionLoggedIn,
+      loginBlocked,
+      loginUsername,
+      loginAttempts,
+      maxLoginAttempts,
+      isLoginLockedOut,
+      loginLockoutMinutes,
       
-      // Encryption state
+      // Encryption Layer
       isActuallyDecrypted,
-      isShardDecrypted: isActuallyDecrypted, // Alias
+      encryptionBlocked,
+      isShardDecrypted: isActuallyDecrypted,
+      
+      // Active Overlay
+      activeOverlay,
+      showNetworkOverlay: activeOverlay === 'network',
+      showLoginOverlay: activeOverlay === 'login',
+      showShardEncryptedOverlay: activeOverlay === 'encryption',
       
       // Lockout
       isLockedOut,
       lockoutMinutes,
       
       // Access control
-      canHackShard,     
+      canHackShard,
       canAccessInbox,
-      showShardEncryptedOverlay,
-      attemptingHack: this.attemptingHack,
       
       // Messages
       messages,
@@ -280,6 +332,7 @@ export class ItemInboxApp extends BaseApplication {
       
       // Hack data
       previousAttempts,
+      maxAttempts,
       selectedActor,
       
       // Permissions
@@ -287,8 +340,9 @@ export class ItemInboxApp extends BaseApplication {
       isGM: game.user.isGM,
       canAddMessage: this.item.isOwner || game.user.isGM,
       
-      // GM controls
-      gmViewMode: this.gmViewAllMode || false,
+      // NEW: GM view modes
+      gmViewMode: effectiveGmViewAllMode || false,
+      gmViewAsPlayer: gmViewAsPlayer || false,
       
       // Encryption mode info
       allowsPerMessageEncryption: encryptionMode === 'message' || encryptionMode === 'both',
@@ -317,33 +371,21 @@ export class ItemInboxApp extends BaseApplication {
     html.find('[data-action="gm-reset-encryption"]').click(this._onGMResetEncryption.bind(this));
     html.find('[data-action="gm-reset-attempts"]').click(this._onGMResetAttempts.bind(this));
     html.find('[data-action="gm-view-all"]').click(this._onGMViewAll.bind(this));
+    html.find('[data-action="gm-view-as-player"]').click(this._onGMViewAsPlayer.bind(this));
+
+    // Network Controls
+    html.find('[data-action="switch-network"]').click(this._onSwitchNetwork.bind(this));
+    html.find('[data-action="gm-override-network"]').click(this._onGMOverrideNetwork.bind(this));
+    html.find('[data-action="attempt-breach-network"]').click(this._onAttemptBreachNetwork.bind(this));
+
+    // Login Controls
+    html.find('[data-action="login"]').click(this._onLogin.bind(this));
+    html.find('[data-action="attempt-breach-login"]').click(this._onAttemptBreachLogin.bind(this));
+    html.find('[data-action="gm-bypass-login"]').click(this._onGMBypassLogin.bind(this));
     
     // Other existing actions
-    html.find('[data-action="gm-bypass-login"]').click(this._onGMBypassLogin.bind(this));
-    html.find('[data-action="gm-override-network"]').click(this._onGMOverrideNetwork.bind(this));
-    html.find('[data-action="login"]').click(this._onLogin.bind(this));
     html.find('[data-action="quarantine-message"]').click(this._onQuarantineMessage.bind(this));
     html.find('[data-action="decrypt-message"]').click(this._onDecryptMessage.bind(this));
-    
-    // CRITICAL FIX: Debug and rebind the attempt-hack button  
-    console.log(`${MODULE_ID} | Setting up attempt-hack button`);
-    
-    const hackButton = html.find('[data-action="attempt-hack"]');
-    console.log(`${MODULE_ID} | Found ${hackButton.length} hack buttons`);
-    
-    if (hackButton.length > 0) {
-      // Remove any existing handlers and add new one
-      hackButton.off('click').on('click', (event) => {
-        console.log(`${MODULE_ID} | Hack button clicked!`);
-        this._onHackAttempt(event);
-      });
-      console.log(`${MODULE_ID} | ✓ Hack button handler attached`);
-    } else {
-      console.warn(`${MODULE_ID} | ⚠ No hack button found in DOM`);
-    }
-    
-    // Apply layout mode
-    this._applyLayoutMode(html);
   }
   
   // ========================================================================
@@ -819,63 +861,6 @@ export class ItemInboxApp extends BaseApplication {
   }
   
   /**
-   * GM bypass login (NEW)
-   * @private
-   */
-  async _onGMBypassLogin(event) {
-    event.preventDefault();
-    
-    if (!game.user.isGM) {
-      ui.notifications.error('Only GMs can bypass login');
-      return;
-    }
-    
-    await this.item.setFlag(MODULE_ID, 'sessionLoggedIn', true);
-    this.render(false);
-    ui.notifications.info('GM Override: Login bypassed');
-  }
-  
-  /**
-   * GM override network (NEW)
-   * @private
-   */
-  async _onGMOverrideNetwork(event) {
-    event.preventDefault();
-    
-    if (!game.user.isGM) {
-      ui.notifications.error('Only GMs can override network requirements');
-      return;
-    }
-    
-    await this.item.setFlag(MODULE_ID, 'networkOverride', true);
-    this.render(false);
-    ui.notifications.info('GM Override: Network requirement bypassed');
-  }
-  
-  /**
-   * Handle login (NEW)
-   * @private
-   */
-  async _onLogin(event) {
-    event.preventDefault();
-    
-    const html = $(event.currentTarget).closest('.ncm-item-inbox__login-form');
-    const username = html.find('input[name="username"]').val();
-    const password = html.find('input[name="password"]').val();
-    
-    const savedUsername = this.item.getFlag(MODULE_ID, 'loginUsername');
-    const savedPassword = this.item.getFlag(MODULE_ID, 'loginPassword');
-    
-    if (username === savedUsername && password === savedPassword) {
-      await this.item.setFlag(MODULE_ID, 'sessionLoggedIn', true);
-      this.render(false);
-      ui.notifications.info('Login successful!');
-    } else {
-      ui.notifications.error('Invalid credentials');
-    }
-  }
-  
-  /**
    * Handle quarantine message (NEW)
    * @private
    */
@@ -896,6 +881,387 @@ export class ItemInboxApp extends BaseApplication {
     this.render(false);
     
     ui.notifications.info('Message quarantined');
+  }
+
+  // ========================================================================
+  // NETWORK EVENT HANDLERS
+  // ========================================================================
+  
+  /**
+   * Switch networks (future: skill check required)
+   * @private
+   */
+  async _onSwitchNetwork(event) {
+    event.preventDefault();
+    
+    const requiredNetwork = this.item.getFlag(MODULE_ID, 'requiredNetwork');
+    
+    // Show network selection dialog
+    const networks = this.networkService.getAvailableNetworks();
+    
+    const buttons = {};
+    for (const network of networks) {
+      buttons[network.name] = {
+        label: network.displayName,
+        icon: `<i class="${network.icon}"></i>`,
+        callback: () => network.name
+      };
+    }
+    
+    const selectedNetwork = await Dialog.wait({
+      title: "Switch Network",
+      content: `
+        <div style="margin-bottom: 15px;">
+          <p><strong>Required:</strong> ${requiredNetwork}</p>
+          <p>Select a network to connect to:</p>
+        </div>
+      `,
+      buttons,
+      default: requiredNetwork
+    });
+    
+    if (selectedNetwork) {
+      await this.networkService.attemptNetworkSwitch(selectedNetwork);
+      this.render(false);
+    }
+  }
+  
+  /**
+   * GM override network requirement
+   * @private
+   */
+  async _onGMOverrideNetwork(event) {
+    event.preventDefault();
+    
+    if (!game.user.isGM) {
+      ui.notifications.error('Only GMs can override network requirements');
+      return;
+    }
+    
+    await this.item.setFlag(MODULE_ID, 'networkOverride', true);
+    this.render(false);
+    ui.notifications.info('GM Override: Network requirement bypassed');
+    
+    await ChatMessage.create({
+      content: `
+        <div style="background: rgba(255, 215, 0, 0.1); border: 1px solid #FFD700; padding: 10px; border-radius: 4px;">
+          <p><strong style="color: #FFD700;"><i class="fas fa-crown"></i> GM OVERRIDE</strong></p>
+          <p>Network requirement bypassed for <strong>${this.item.name}</strong>.</p>
+        </div>
+      `,
+      whisper: [game.user.id]
+    });
+  }
+
+  /**
+   * Attempt to breach network requirement via hacking
+   * @private
+   */
+  async _onAttemptBreachNetwork(event) {
+    event.preventDefault();
+    
+    const actor = game.user.character;
+    if (!actor) {
+      ui.notifications.error('You must have a character selected to breach network security');
+      return;
+    }
+    
+    const requiredNetwork = this.item.getFlag(MODULE_ID, 'requiredNetwork');
+    const currentNetwork = this.networkService.getCurrentNetwork();
+    
+    // Calculate difficulty based on network type
+    const networkDCs = {
+      'CITINET': 13,      // Public network - easier
+      'CORPNET': 17,      // Corporate - harder
+      'DARKNET': 15,      // Underground - moderate
+      'DEAD_ZONE': 21     // No network - very hard
+    };
+    
+    const dc = networkDCs[requiredNetwork] || 15;
+    
+    // Show confirmation
+    const confirmed = await Dialog.confirm({
+      title: "Breach Network Security",
+      content: `
+        <div style="font-family: 'Rajdhani', sans-serif; padding: 10px;">
+          <h3 style="color: var(--ncm-primary); margin: 0 0 15px 0;">
+            <i class="fas fa-network-wired"></i> Network Breach Attempt
+          </h3>
+          
+          <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 4px; margin-bottom: 15px;">
+            <p><strong>Target:</strong> ${this.item.name}</p>
+            <p><strong>Current Network:</strong> <span style="color: var(--ncm-error);">${currentNetwork}</span></p>
+            <p><strong>Required Network:</strong> <span style="color: var(--ncm-warning);">${requiredNetwork}</span></p>
+            <p><strong>Action:</strong> Spoof network credentials</p>
+          </div>
+          
+          <div style="background: rgba(25, 243, 247, 0.1); padding: 15px; border-radius: 4px; border: 1px solid var(--ncm-secondary);">
+            <p><strong style="color: var(--ncm-secondary);">Skill Check Required:</strong></p>
+            <p>Interface or Electronics/Security Tech</p>
+            <p><strong>Difficulty:</strong> DV ${dc}</p>
+          </div>
+          
+          <p style="color: var(--ncm-text-dim); font-size: 0.9em; margin: 15px 0 0 0; font-style: italic;">
+            <i class="fas fa-info-circle"></i> Success will temporarily bypass the network requirement.
+          </p>
+        </div>
+      `
+    });
+    
+    if (!confirmed) return;
+    
+    // Perform skill check
+    const result = await this.skillService.performCheck({
+      actor,
+      skills: ['Interface', 'Electronics/Security Tech', 'Basic Tech'],
+      dc,
+      taskName: `Breaching ${requiredNetwork}`,
+      allowLuck: true,
+      autoRoll: false
+    });
+    
+    if (result.cancelled) return;
+    
+    if (result.success) {
+      // Success! Set network override flag
+      await this.item.setFlag(MODULE_ID, 'networkOverride', true);
+      
+      this.render(false);
+      ui.notifications.info(`Network breach successful! Access granted to ${requiredNetwork}.`);
+      
+      await ChatMessage.create({
+        content: `
+          <div style="background: rgba(25, 243, 247, 0.1); border: 2px solid var(--ncm-secondary); padding: 15px; border-radius: 4px;">
+            <p style="font-weight: bold; color: var(--ncm-secondary); margin-bottom: 8px;">
+              <i class="fas fa-network-wired"></i> NETWORK BREACH SUCCESSFUL
+            </p>
+            <p style="margin: 0;">
+              <strong>${actor.name}</strong> spoofed <strong>${requiredNetwork}</strong> credentials
+            </p>
+            <p style="margin: 5px 0 0 0; color: var(--ncm-text-dim); font-size: 0.9em;">
+              Target: ${this.item.name} • Roll: ${result.total} vs DV ${dc}
+            </p>
+          </div>
+        `,
+        speaker: ChatMessage.getSpeaker({ actor }),
+        type: CONST.CHAT_MESSAGE_TYPES.OTHER
+      });
+      
+    } else {
+      // Failed
+      ui.notifications.error('Network breach failed! Access denied.');
+      
+      await ChatMessage.create({
+        content: `
+          <div style="background: rgba(246, 82, 97, 0.1); border: 2px solid var(--ncm-primary); padding: 15px; border-radius: 4px;">
+            <p style="font-weight: bold; color: var(--ncm-primary); margin-bottom: 8px;">
+              <i class="fas fa-times-circle"></i> NETWORK BREACH FAILED
+            </p>
+            <p style="margin: 0;">
+              <strong>${actor.name}</strong> failed to breach <strong>${requiredNetwork}</strong>
+            </p>
+            <p style="margin: 5px 0 0 0; color: var(--ncm-text-dim); font-size: 0.9em;">
+              Target: ${this.item.name} • Roll: ${result.total} vs DV ${dc}
+            </p>
+            <p style="margin: 8px 0 0 0; color: var(--ncm-warning); font-size: 0.9em;">
+              <i class="fas fa-exclamation-triangle"></i> Trace initiated - NetWatch may be alerted
+            </p>
+          </div>
+        `,
+        speaker: ChatMessage.getSpeaker({ actor }),
+        type: CONST.CHAT_MESSAGE_TYPES.OTHER
+      });
+    }
+  }
+
+  
+    // ========================================================================
+  // LOGIN EVENT HANDLERS
+  // ========================================================================
+  
+  /**
+   * Handle login attempt
+   * @private
+   */
+  async _onLogin(event) {
+    event.preventDefault();
+    
+    const form = $(event.currentTarget).closest('form');
+    const username = form.find('input[name="username"]').val()?.trim();
+    const password = form.find('input[name="password"]').val();
+    
+    // Check lockout
+    const loginLockoutUntil = this.item.getFlag(MODULE_ID, 'loginLockoutUntil');
+    if (loginLockoutUntil && Date.now() < new Date(loginLockoutUntil).getTime()) {
+      const remaining = Math.ceil((new Date(loginLockoutUntil).getTime() - Date.now()) / 60000);
+      ui.notifications.error(`Login locked out for ${remaining} more minutes`);
+      return;
+    }
+    
+    // Validate
+    if (!username || !password) {
+      ui.notifications.error('Please enter both username and password');
+      return;
+    }
+    
+    const savedUsername = this.item.getFlag(MODULE_ID, 'loginUsername');
+    const savedPassword = this.item.getFlag(MODULE_ID, 'loginPassword');
+    
+    console.log(`${MODULE_ID} | Login attempt - Username: ${username}`);
+    
+    if (username === savedUsername && password === savedPassword) {
+      // Success!
+      await this.item.setFlag(MODULE_ID, 'sessionLoggedIn', true);
+      await this.item.setFlag(MODULE_ID, 'loginAttempts', 0);
+      
+      this.render(false);
+      ui.notifications.info('Login successful!');
+      
+      await ChatMessage.create({
+        content: `
+          <div style="background: rgba(25, 243, 247, 0.1); border: 1px solid #19f3f7; padding: 10px; border-radius: 4px;">
+            <p><strong style="color: #19f3f7;"><i class="fas fa-unlock"></i> ACCESS GRANTED</strong></p>
+            <p><strong>${game.user.character?.name || game.user.name}</strong> logged into <strong>${this.item.name}</strong></p>
+          </div>
+        `,
+        speaker: ChatMessage.getSpeaker({ actor: game.user.character })
+      });
+      
+    } else {
+      // Failed login
+      const loginAttempts = (this.item.getFlag(MODULE_ID, 'loginAttempts') || 0) + 1;
+      const maxLoginAttempts = this.item.getFlag(MODULE_ID, 'maxLoginAttempts') || 5;
+      
+      await this.item.setFlag(MODULE_ID, 'loginAttempts', loginAttempts);
+      
+      // Check if locked out
+      if (loginAttempts >= maxLoginAttempts) {
+        const lockoutDuration = 3600000; // 1 hour
+        const lockoutUntil = Date.now() + lockoutDuration;
+        await this.item.setFlag(MODULE_ID, 'loginLockoutUntil', lockoutUntil);
+        
+        ui.notifications.error(`Too many failed attempts! Locked out for 1 hour.`);
+        
+        await ChatMessage.create({
+          content: `
+            <div style="background: rgba(246, 82, 97, 0.1); border: 1px solid #F65261; padding: 10px; border-radius: 4px;">
+              <p><strong style="color: #F65261;"><i class="fas fa-exclamation-triangle"></i> SECURITY ALERT</strong></p>
+              <p><strong>${game.user.character?.name || game.user.name}</strong> triggered login lockout on <strong>${this.item.name}</strong></p>
+            </div>
+          `,
+          speaker: ChatMessage.getSpeaker({ actor: game.user.character })
+        });
+      } else {
+        ui.notifications.error(`Incorrect credentials. ${maxLoginAttempts - loginAttempts} attempts remaining.`);
+      }
+      
+      this.render(false);
+    }
+  }
+  
+  /**
+   * Attempt breach (bypass login via hacking)
+   * @private
+   */
+  async _onAttemptBreachLogin(event) {
+    event.preventDefault();
+    
+    const actor = game.user.character;
+    if (!actor) {
+      ui.notifications.error('You must have a character selected to breach security');
+      return;
+    }
+    
+    // Show confirmation
+    const confirmed = await Dialog.confirm({
+      title: "Breach Security",
+      content: `
+        <div style="font-family: 'Rajdhani', sans-serif;">
+          <p><strong>Target:</strong> ${this.item.name}</p>
+          <p><strong>Action:</strong> Bypass authentication system</p>
+          <p><strong>Skill:</strong> Interface or Electronics/Security Tech</p>
+          <p><strong>Difficulty:</strong> DV 15</p>
+          <hr>
+          <p style="color: #F65261;">
+            <i class="fas fa-exclamation-triangle"></i> This may trigger security alerts!
+          </p>
+        </div>
+      `
+    });
+    
+    if (!confirmed) return;
+    
+    // Perform skill check
+    const result = await this.skillService.performCheck({
+      actor,
+      skills: ['Interface', 'Electronics/Security Tech'],
+      dc: 15,
+      taskName: `Breaching ${this.item.name}`,
+      allowLuck: true,
+      autoRoll: false
+    });
+    
+    if (result.cancelled) return;
+    
+    if (result.success) {
+      // Successfully breached!
+      await this.item.setFlag(MODULE_ID, 'sessionLoggedIn', true);
+      await this.item.setFlag(MODULE_ID, 'loginAttempts', 0);
+      
+      this.render(false);
+      ui.notifications.info('Security breached! Access granted.');
+      
+      await ChatMessage.create({
+        content: `
+          <div style="background: rgba(25, 243, 247, 0.1); border: 1px solid #19f3f7; padding: 10px; border-radius: 4px;">
+            <p><strong style="color: #19f3f7;"><i class="fas fa-terminal"></i> BREACH SUCCESSFUL</strong></p>
+            <p><strong>${actor.name}</strong> bypassed authentication on <strong>${this.item.name}</strong></p>
+          </div>
+        `,
+        speaker: ChatMessage.getSpeaker({ actor })
+      });
+      
+    } else {
+      // Failed breach
+      ui.notifications.error('Breach attempt failed!');
+      
+      await ChatMessage.create({
+        content: `
+          <div style="background: rgba(246, 82, 97, 0.1); border: 1px solid #F65261; padding: 10px; border-radius: 4px;">
+            <p><strong style="color: #F65261;"><i class="fas fa-times"></i> BREACH FAILED</strong></p>
+            <p><strong>${actor.name}</strong> failed to bypass authentication on <strong>${this.item.name}</strong></p>
+          </div>
+        `,
+        speaker: ChatMessage.getSpeaker({ actor })
+      });
+    }
+  }
+  
+  /**
+   * GM bypass login
+   * @private
+   */
+  async _onGMBypassLogin(event) {
+    event.preventDefault();
+    
+    if (!game.user.isGM) {
+      ui.notifications.error('Only GMs can bypass login');
+      return;
+    }
+    
+    await this.item.setFlag(MODULE_ID, 'sessionLoggedIn', true);
+    this.render(false);
+    ui.notifications.info('GM Override: Login bypassed');
+    
+    await ChatMessage.create({
+      content: `
+        <div style="background: rgba(255, 215, 0, 0.1); border: 1px solid #FFD700; padding: 10px; border-radius: 4px;">
+          <p><strong style="color: #FFD700;"><i class="fas fa-crown"></i> GM OVERRIDE</strong></p>
+          <p>Login bypassed for <strong>${this.item.name}</strong>.</p>
+        </div>
+      `,
+      whisper: [game.user.id]
+    });
   }
 
   // ========================================================================
@@ -1021,9 +1387,39 @@ export class ItemInboxApp extends BaseApplication {
     }
   }
 
+  /**
+   * GM: Toggle "view as player" mode
+   * @private
+   */
+  async _onGMViewAsPlayer(event) {
+    event.preventDefault();
+    
+    if (!game.user.isGM) {
+      ui.notifications.error('Only GMs can toggle view as player mode');
+      return;
+    }
+    
+    // Toggle the mode
+    this.gmViewAsPlayer = !this.gmViewAsPlayer;
+    
+    // If enabling "view as player", disable "view all"
+    if (this.gmViewAsPlayer) {
+      this.gmViewAllMode = false;
+    }
+    
+    // Re-render
+    this.render(false);
+    
+    // Notification
+    if (this.gmViewAsPlayer) {
+      ui.notifications.info('GM Mode: Viewing as Player (experiencing all security layers)');
+    } else {
+      ui.notifications.info('GM Mode: Normal (can bypass security)');
+    }
+  }
 
   /**
-   * GM: Toggle "view all" mode (ignore encryption for GM)
+   * GM: Toggle "view all" mode (existing method - update it)
    * @private
    */
   async _onGMViewAll(event) {
@@ -1036,6 +1432,11 @@ export class ItemInboxApp extends BaseApplication {
     
     // Toggle the GM view mode
     this.gmViewAllMode = !this.gmViewAllMode;
+    
+    // If enabling "view all", disable "view as player"
+    if (this.gmViewAllMode) {
+      this.gmViewAsPlayer = false;
+    }
     
     // Re-render to show/hide content based on mode
     this.render(false);

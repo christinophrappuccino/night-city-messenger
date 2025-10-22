@@ -1,0 +1,115 @@
+{{!-- Login Screen Overlay --}}
+{{!-- File: templates/item-inbox/partials/login-overlay.hbs --}}
+
+<div class="ncm-security-overlay ncm-login-overlay">
+  <div class="ncm-security-container">
+    
+    {{!-- Icon --}}
+    <div class="ncm-security-icon">
+      <i class="fas fa-user-lock fa-5x"></i>
+    </div>
+    
+    {{!-- Title --}}
+    <h2 class="ncm-security-title">Authentication Required</h2>
+    
+    {{!-- Lockout Warning --}}
+    {{#if isLoginLockedOut}}
+      <div class="ncm-security-warning ncm-security-warning--error">
+        <i class="fas fa-ban"></i>
+        <strong>Account Locked</strong>
+        <p>Too many failed login attempts.</p>
+        <p>Try again in <strong>{{loginLockoutMinutes}} minutes</strong>.</p>
+      </div>
+    {{else}}
+      
+      {{!-- Login Form --}}
+      <form class="ncm-login-form">
+        <div class="ncm-form-group">
+          <label class="ncm-form-label">
+            <i class="fas fa-user"></i>
+            Username
+          </label>
+          <input 
+            type="text" 
+            name="username" 
+            class="ncm-input" 
+            placeholder="Enter username"
+            autocomplete="off"
+            {{#if isLoginLockedOut}}disabled{{/if}}
+          />
+        </div>
+        
+        <div class="ncm-form-group">
+          <label class="ncm-form-label">
+            <i class="fas fa-key"></i>
+            Password
+          </label>
+          <input 
+            type="password" 
+            name="password" 
+            class="ncm-input" 
+            placeholder="Enter password"
+            autocomplete="off"
+            {{#if isLoginLockedOut}}disabled{{/if}}
+          />
+        </div>
+        
+        {{!-- Attempts Counter --}}
+        {{#if (gt loginAttempts 0)}}
+          <div class="ncm-login-attempts">
+            <i class="fas fa-exclamation-circle"></i>
+            Failed attempts: <strong>{{loginAttempts}}/{{maxLoginAttempts}}</strong>
+          </div>
+        {{/if}}
+        
+        {{!-- Login Button --}}
+        <div class="ncm-security-actions">
+          <button 
+            type="submit" 
+            class="ncm-btn ncm-btn--primary ncm-btn--block" 
+            data-action="login"
+            {{#if isLoginLockedOut}}disabled{{/if}}
+          >
+            <i class="fas fa-sign-in-alt"></i>
+            Login
+          </button>
+        </div>
+      </form>
+      
+      {{!-- Divider --}}
+      <div class="ncm-security-divider">
+        <span>OR</span>
+      </div>
+      
+      {{!-- Breach Option --}}
+      <div class="ncm-security-actions">
+        <button 
+          class="ncm-btn ncm-btn--secondary ncm-btn--block" 
+          data-action="attempt-breach-login"
+          {{#if isLoginLockedOut}}disabled{{/if}}
+        >
+          <i class="fas fa-terminal"></i>
+          Attempt Security Breach
+        </button>
+        <p class="ncm-text-hint">
+          <i class="fas fa-info-circle"></i>
+          Bypass login using Interface or Electronics/Security Tech (DV 15)
+        </p>
+      </div>
+      
+    {{/if}}
+    
+    {{!-- GM Override --}}
+    {{#if isGM}}
+      <div class="ncm-security-gm-controls">
+        <hr>
+        <h4><i class="fas fa-crown"></i> GM Controls</h4>
+        <button class="ncm-btn ncm-btn--warning" data-action="gm-bypass-login">
+          <i class="fas fa-unlock-alt"></i>
+          Bypass Login
+        </button>
+      </div>
+    {{/if}}
+    
+  </div>
+</div>

@@ -1,0 +1,114 @@
+{{!-- Encryption Overlay (Existing, now as partial) --}}
+{{!-- File: templates/item-inbox/partials/encryption-overlay.hbs --}}
+
+<div class="ncm-security-overlay ncm-encryption-overlay">
+  <div class="ncm-security-container">
+    
+    {{!-- Icon --}}
+    <div class="ncm-security-icon">
+      <i class="fas fa-lock fa-5x"></i>
+    </div>
+    
+    {{!-- Title --}}
+    <h2 class="ncm-security-title">Data Encrypted</h2>
+    
+    {{!-- Lockout Warning --}}
+    {{#if isLockedOut}}
+      <div class="ncm-security-warning ncm-security-warning--error">
+        <i class="fas fa-ban"></i>
+        <strong>System Locked</strong>
+        <p>Too many failed hack attempts.</p>
+        <p>Lockout expires in <strong>{{lockoutMinutes}} minutes</strong>.</p>
+      </div>
+    {{else}}
+      
+      {{!-- Info Box --}}
+      <div class="ncm-security-info">
+        <div class="ncm-security-detail">
+          <span class="ncm-security-label">Encryption Type:</span>
+          <span class="ncm-security-value">{{encryptionType}}</span>
+        </div>
+        
+        <div class="ncm-security-detail">
+          <span class="ncm-security-label">Difficulty:</span>
+          <span class="ncm-security-value">DV {{encryptionDC}}</span>
+        </div>
+        
+        <div class="ncm-security-detail">
+          <span class="ncm-security-label">Previous Attempts:</span>
+          <span class="ncm-security-value">{{previousAttempts}}/{{maxAttempts}}</span>
+        </div>
+        
+        {{#if selectedActor}}
+          <div class="ncm-security-detail">
+            <span class="ncm-security-label">Your Character:</span>
+            <span class="ncm-security-value">{{selectedActor.name}}</span>
+          </div>
+        {{/if}}
+      </div>
+      
+      {{!-- BLACK ICE Warning --}}
+      {{#if (or (eq encryptionType "BLACK_ICE") (eq encryptionType "RED_ICE"))}}
+        <div class="ncm-security-warning ncm-security-warning--danger">
+          <i class="fas fa-skull-crossbones"></i>
+          <strong>LETHAL COUNTERMEASURES ACTIVE</strong>
+          <p>This system is protected by {{encryptionType}}.</p>
+          <p>Failed breach attempts will result in serious physical harm!</p>
+        </div>
+      {{else}}
+        <div class="ncm-security-warning">
+          <i class="fas fa-exclamation-triangle"></i>
+          <strong>Warning:</strong> Failure may trigger security countermeasures.
+        </div>
+      {{/if}}
+      
+      {{!-- Actions --}}
+      {{#if canHackShard}}
+        <div class="ncm-security-actions">
+          <button class="ncm-btn ncm-btn--primary" data-action="attempt-hack">
+            <i class="fas fa-terminal"></i>
+            Attempt Hack
+          </button>
+        </div>
+      {{else if selectedActor}}
+        <div class="ncm-security-message">
+          <p class="ncm-text-warning">
+            <i class="fas fa-user-slash"></i>
+            {{selectedActor.name}} does not have the required skills to hack this data shard.
+          </p>
+        </div>
+      {{else}}
+        <div class="ncm-security-message">
+          <p class="ncm-text-warning">
+            <i class="fas fa-user-slash"></i>
+            You must have a character selected to attempt hacking.
+          </p>
+        </div>
+      {{/if}}
+      
+    {{/if}}
+    
+    {{!-- GM Override --}}
+    {{#if isGM}}
+      <div class="ncm-security-gm-controls">
+        <hr>
+        <h4><i class="fas fa-crown"></i> GM Controls</h4>
+        <div class="ncm-security-gm-buttons">
+          <button class="ncm-btn ncm-btn--warning" data-action="gm-force-decrypt">
+            <i class="fas fa-unlock-alt"></i>
+            Force Decrypt
+          </button>
+          <button class="ncm-btn ncm-btn--secondary" data-action="gm-reset-encryption">
+            <i class="fas fa-redo"></i>
+            Reset Encryption
+          </button>
+          <button class="ncm-btn ncm-btn--secondary" data-action="gm-reset-attempts">
+            <i class="fas fa-eraser"></i>
+            Reset Attempts
+          </button>
+        </div>
+      </div>
+    {{/if}}
+    
+  </div>
+</div>

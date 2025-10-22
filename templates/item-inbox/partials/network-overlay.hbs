@@ -1,0 +1,69 @@
+{{!-- Network Blocked Overlay --}}
+{{!-- File: templates/item-inbox/partials/network-overlay.hbs --}}
+
+<div class="ncm-security-overlay ncm-network-overlay">
+  <div class="ncm-security-container">
+    
+    {{!-- Icon --}}
+    <div class="ncm-security-icon" style="color: {{networkInfo.color}};">
+      <i class="{{networkInfo.icon}} fa-5x"></i>
+    </div>
+    
+    {{!-- Title --}}
+    <h2 class="ncm-security-title">Network Access Required</h2>
+    
+    {{!-- Info Box --}}
+    <div class="ncm-security-info">
+      <div class="ncm-security-detail">
+        <span class="ncm-security-label">Required Network:</span>
+        <span class="ncm-security-value" style="color: {{networkInfo.color}};">
+          {{networkInfo.displayName}}
+        </span>
+      </div>
+      
+      <div class="ncm-security-detail">
+        <span class="ncm-security-label">Current Network:</span>
+        <span class="ncm-security-value ncm-text-error">
+          {{currentNetwork}}
+        </span>
+      </div>
+      
+      <div class="ncm-security-detail">
+        <span class="ncm-security-label">Signal Strength:</span>
+        <span class="ncm-security-value">
+          {{signalStrength}}%
+        </span>
+      </div>
+    </div>
+    
+    {{!-- Description --}}
+    <div class="ncm-security-description">
+      <p>{{networkInfo.description}}</p>
+      <p class="ncm-text-warning">
+        <i class="fas fa-exclamation-triangle"></i>
+        This data shard can only be accessed from <strong>{{requiredNetwork}}</strong>.
+      </p>
+    </div>
+    
+    {{!-- Actions --}}
+    <div class="ncm-security-actions">
+      <button class="ncm-btn ncm-btn--primary" data-action="switch-network">
+        <i class="fas fa-network-wired"></i>
+        Switch Network
+      </button>
+    </div>
+    
+    {{!-- GM Override --}}
+    {{#if isGM}}
+      <div class="ncm-security-gm-controls">
+        <hr>
+        <h4><i class="fas fa-crown"></i> GM Controls</h4>
+        <button class="ncm-btn ncm-btn--warning" data-action="gm-override-network">
+          <i class="fas fa-unlock-alt"></i>
+          Override Network Requirement
+        </button>
+      </div>
+    {{/if}}
+    
+  </div>
+</div>

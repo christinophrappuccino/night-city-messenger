@@ -146,6 +146,18 @@
   flex-wrap: wrap;
 }
 
+.ncm-gm-btn-active {
+  background: rgba(25, 243, 247, 0.2) !important;
+  border-color: var(--ncm-secondary) !important;
+  color: var(--ncm-secondary) !important;
+  box-shadow: 0 0 15px rgba(25, 243, 247, 0.3) !important;
+}
+
+.ncm-gm-btn-active:hover {
+  background: rgba(25, 243, 247, 0.3) !important;
+  box-shadow: 0 0 20px rgba(25, 243, 247, 0.5) !important;
+}
+
 .ncm-gm-btn {
   padding: 8px 16px;
   background: rgba(0, 0, 0, 0.4);
@@ -1018,6 +1030,372 @@
   }
   100% {
     background-position: 0 100px;
+  }
+}
+
+/* ========================================================================
+   SECURITY OVERLAYS - Universal Styling
+   ======================================================================== */
+
+.ncm-security-overlay {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  text-align: center;
+  overflow-y: auto;
+  background: 
+    linear-gradient(135deg, rgba(26, 26, 26, 0.95) 0%, rgba(51, 0, 0, 0.95) 100%),
+    repeating-linear-gradient(
+      0deg,
+      rgba(246, 82, 97, 0.03) 0px,
+      transparent 2px,
+      transparent 4px,
+      rgba(246, 82, 97, 0.03) 6px
+    );
+  animation: scanlines 8s linear infinite;
+}
+
+.ncm-security-container {
+  max-width: 550px;
+  width: 100%;
+  background: rgba(26, 26, 26, 0.8);
+  border: 3px solid var(--ncm-primary);
+  padding: 40px;
+  border-radius: 8px;
+  box-shadow: 
+    0 0 30px rgba(246, 82, 97, 0.4),
+    inset 0 0 50px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(10px);
+}
+
+.ncm-security-icon {
+  color: var(--ncm-primary);
+  margin-bottom: 20px;
+  filter: drop-shadow(0 0 20px rgba(246, 82, 97, 0.8));
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.ncm-security-title {
+  font-size: 2em;
+  font-weight: bold;
+  color: var(--ncm-primary);
+  margin-bottom: 20px;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  text-shadow: 0 0 15px rgba(246, 82, 97, 0.8);
+}
+
+.ncm-security-info {
+  font-family: 'Courier New', monospace;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 20px;
+  margin-bottom: 25px;
+  border-radius: 4px;
+  text-align: left;
+  border: 1px solid rgba(246, 82, 97, 0.3);
+}
+
+.ncm-security-detail {
+  display: flex;
+  justify-content: space-between;
+  margin: 8px 0;
+  font-size: 1em;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(246, 82, 97, 0.2);
+}
+
+.ncm-security-detail:last-child {
+  border-bottom: none;
+}
+
+.ncm-security-label {
+  color: var(--ncm-text-dim);
+  text-transform: uppercase;
+  font-size: 0.9em;
+  letter-spacing: 1px;
+}
+
+.ncm-security-value {
+  color: var(--ncm-primary);
+  font-weight: bold;
+  text-shadow: 0 0 5px rgba(246, 82, 97, 0.5);
+}
+
+.ncm-security-description {
+  margin: 20px 0;
+  color: var(--ncm-text);
+  line-height: 1.6;
+}
+
+.ncm-security-description p {
+  margin: 10px 0;
+}
+
+.ncm-security-warning {
+  padding: 15px;
+  background: rgba(255, 165, 0, 0.15);
+  border: 2px solid var(--ncm-warning);
+  border-radius: 4px;
+  color: var(--ncm-warning);
+  font-weight: bold;
+  margin: 20px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  animation: pulse-warning 2s ease-in-out infinite;
+}
+
+.ncm-security-warning--danger {
+  background: rgba(255, 0, 0, 0.15);
+  border-color: var(--ncm-error);
+  color: var(--ncm-error);
+  animation: pulse-danger 1.5s ease-in-out infinite;
+}
+
+.ncm-security-warning--error {
+  background: rgba(246, 82, 97, 0.15);
+  border-color: var(--ncm-primary);
+  color: var(--ncm-primary);
+}
+
+.ncm-security-warning i {
+  font-size: 1.5em;
+}
+
+.ncm-security-warning strong {
+  font-size: 1.1em;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.ncm-security-warning p {
+  margin: 5px 0;
+  font-weight: normal;
+}
+
+.ncm-security-actions {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ncm-security-message {
+  margin-top: 20px;
+  padding: 15px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+}
+
+.ncm-security-divider {
+  margin: 20px 0;
+  text-align: center;
+  position: relative;
+}
+
+.ncm-security-divider::before,
+.ncm-security-divider::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 40%;
+  height: 1px;
+  background: rgba(246, 82, 97, 0.3);
+}
+
+.ncm-security-divider::before {
+  left: 0;
+}
+
+.ncm-security-divider::after {
+  right: 0;
+}
+
+.ncm-security-divider span {
+  color: var(--ncm-text-dim);
+  font-size: 0.9em;
+  padding: 0 15px;
+  background: rgba(26, 26, 26, 0.8);
+}
+
+/* ========================================================================
+   GM CONTROLS
+   ======================================================================== */
+
+.ncm-security-gm-controls {
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 2px solid rgba(255, 215, 0, 0.3);
+}
+
+.ncm-security-gm-controls h4 {
+  color: #FFD700;
+  margin-bottom: 15px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.ncm-security-gm-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ========================================================================
+   LOGIN OVERLAY SPECIFIC
+   ======================================================================== */
+
+.ncm-login-overlay .ncm-security-container {
+  border-color: var(--ncm-secondary);
+}
+
+.ncm-login-overlay .ncm-security-icon {
+  color: var(--ncm-secondary);
+  filter: drop-shadow(0 0 20px rgba(25, 243, 247, 0.8));
+}
+
+.ncm-login-overlay .ncm-security-title {
+  color: var(--ncm-secondary);
+  text-shadow: 0 0 15px rgba(25, 243, 247, 0.8);
+}
+
+.ncm-login-form {
+  width: 100%;
+  margin: 20px 0;
+}
+
+.ncm-form-group {
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+.ncm-form-label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--ncm-text);
+  font-weight: bold;
+  text-transform: uppercase;
+  font-size: 0.9em;
+  letter-spacing: 1px;
+}
+
+.ncm-form-label i {
+  color: var(--ncm-secondary);
+  margin-right: 8px;
+}
+
+.ncm-input {
+  width: 100%;
+  padding: 12px 15px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 2px solid rgba(25, 243, 247, 0.3);
+  border-radius: 4px;
+  color: var(--ncm-text);
+  font-family: 'Courier New', monospace;
+  font-size: 1em;
+  transition: all 0.3s ease;
+}
+
+.ncm-input:focus {
+  outline: none;
+  border-color: var(--ncm-secondary);
+  box-shadow: 0 0 15px rgba(25, 243, 247, 0.3);
+}
+
+.ncm-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ncm-input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.ncm-login-attempts {
+  padding: 10px;
+  background: rgba(246, 82, 97, 0.15);
+  border: 1px solid var(--ncm-primary);
+  border-radius: 4px;
+  color: var(--ncm-primary);
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.ncm-text-hint {
+  margin-top: 10px;
+  font-size: 0.85em;
+  color: var(--ncm-text-dim);
+  font-style: italic;
+}
+
+/* ========================================================================
+   NETWORK OVERLAY SPECIFIC
+   ======================================================================== */
+
+.ncm-network-overlay .ncm-security-container {
+  border-color: var(--ncm-warning);
+}
+
+.ncm-network-overlay .ncm-security-title {
+  color: var(--ncm-warning);
+  text-shadow: 0 0 15px rgba(255, 165, 0, 0.8);
+}
+
+/* ========================================================================
+   BUTTON MODIFIERS
+   ======================================================================== */
+
+.ncm-btn--block {
+  width: 100%;
+}
+
+.ncm-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ========================================================================
+   ANIMATIONS
+   ======================================================================== */
+
+@keyframes pulse-warning {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(255, 165, 0, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(255, 165, 0, 0.8);
+  }
+}
+
+@keyframes pulse-danger {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(255, 0, 0, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(255, 0, 0, 1);
+  }
+}
+
+@keyframes scanlines {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 0 100%;
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 20px rgba(246, 82, 97, 0.6));
+  }
+  50% {
+    filter: drop-shadow(0 0 30px rgba(246, 82, 97, 1));
   }
 }
 

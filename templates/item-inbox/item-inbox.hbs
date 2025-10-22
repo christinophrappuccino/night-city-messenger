@@ -32,6 +32,31 @@
       <span>Game Master Controls</span>
     </div>
     <div class="ncm-gm-controls-buttons">
+    {{!-- NEW: View Mode Toggle --}}
+     <button class="ncm-gm-btn {{#if gmViewAsPlayer}}ncm-gm-btn-active{{/if}}" 
+             data-action="gm-view-as-player" 
+             title="Toggle view as player mode">
+       <i class="fas fa-user{{#unless gmViewAsPlayer}}-tie{{/unless}}"></i>
+       {{#if gmViewAsPlayer}}Viewing as Player{{else}}GM Mode{{/if}}
+     </button>
+     
+      {{!-- Network Override --}}
+      {{#if networkBlocked}}
+        <button class="ncm-gm-btn ncm-gm-btn-warning" data-action="gm-override-network" title="Override network requirement">
+          <i class="fas fa-network-wired"></i>
+          Override Network
+        </button>
+      {{/if}}
+      
+      {{!-- Login Override --}}
+      {{#if loginBlocked}}
+        <button class="ncm-gm-btn ncm-gm-btn-warning" data-action="gm-bypass-login" title="Bypass login">
+          <i class="fas fa-user-unlock"></i>
+          Bypass Login
+        </button>
+      {{/if}}
+      
+      {{!-- Encryption Controls --}}
       {{#if encrypted}}
         {{#if isActuallyDecrypted}}
           <button class="ncm-gm-btn ncm-gm-btn-warning" data-action="gm-reset-encryption" title="Re-lock this data shard">
@@ -49,6 +74,7 @@
           Reset Attempts
         </button>
       {{/if}}
+      
       <button class="ncm-gm-btn" data-action="gm-view-all" title="Toggle GM view mode">
         <i class="fas fa-eye{{#if gmViewMode}}-slash{{/if}}"></i>
         {{#if gmViewMode}}Hide Encryption{{else}}View All{{/if}}
@@ -74,7 +100,11 @@
     </div>
     <div class="ncm-item-inbox__security-info">
       <div class="ncm-item-inbox__security-status">
-        {{#if encrypted}}
+        {{#if networkBlocked}}
+          <span style="color: var(--ncm-warning);">● NETWORK REQUIRED: {{requiredNetwork}}</span>
+        {{else if loginBlocked}}
+          <span style="color: var(--ncm-secondary);">● LOGIN REQUIRED</span>
+        {{else if encrypted}}
           {{#if isActuallyDecrypted}}
             <span style="color: var(--ncm-success);">● SHARD DECRYPTED</span>
           {{else}}
@@ -88,7 +118,11 @@
         {{/if}}
       </div>
       <div class="ncm-item-inbox__security-level">
-        {{#if encrypted}}
+        {{#if networkBlocked}}
+          Current: {{currentNetwork}} • Required: {{requiredNetwork}} • Signal: {{signalStrength}}%
+        {{else if loginBlocked}}
+          Authentication Required • Attempts: {{loginAttempts}}/{{maxLoginAttempts}}
+        {{else if encrypted}}
           {{#if isActuallyDecrypted}}
             Access Granted • Decrypted
           {{else}}
@@ -102,12 +136,189 @@
   </div>
   
   {{!-- ==========================================================================
-       MAIN CONTENT AREA
-       Shows ENCRYPTION OVERLAY if locked, or MESSAGES if unlocked
+       MAIN CONTENT AREA - SECURITY LAYERS (Priority Order)
        ========================================================================== --}}
   
-  {{!-- CASE 1: Shard is encrypted and locked (show overlay) --}}
-  {{#if showShardEncryptedOverlay}}
+{{!-- LAYER 1: Network Requirement - UPDATE THIS --}}
+{{#if showNetworkOverlay}}
+<div class="ncm-security-overlay ncm-network-overlay">
+  <div class="ncm-security-container">
+    
+    <div class="ncm-security-icon" style="color: {{#if networkInfo}}{{networkInfo.color}}{{else}}#FFD700{{/if}};">
+      <i class="{{#if networkInfo}}{{networkInfo.icon}}{{else}}fas fa-wifi{{/if}} fa-5x"></i>
+    </div>
+    
+    <h2 class="ncm-security-title">Network Access Required</h2>
+    
+    <div class="ncm-security-info">
+      <div class="ncm-security-detail">
+        <span class="ncm-security-label">Required Network:</span>
+        <span class="ncm-security-value" style="color: {{#if networkInfo}}{{networkInfo.color}}{{else}}#FFD700{{/if}};">
+          {{#if networkInfo}}{{networkInfo.displayName}}{{else}}{{requiredNetwork}}{{/if}}
+        </span>
+      </div>
+      
+      <div class="ncm-security-detail">
+        <span class="ncm-security-label">Current Network:</span>
+        <span class="ncm-security-value ncm-text-error">
+          {{currentNetwork}}
+        </span>
+      </div>
+      
+      <div class="ncm-security-detail">
+        <span class="ncm-security-label">Signal Strength:</span>
+        <span class="ncm-security-value">
+          {{signalStrength}}%
+        </span>
+      </div>
+    </div>
+    
+    <div class="ncm-security-description">
+      {{#if networkInfo}}
+        <p>{{networkInfo.description}}</p>
+      {{/if}}
+      <p class="ncm-text-warning">
+        <i class="fas fa-exclamation-triangle"></i>
+        This data shard can only be accessed from <strong>{{requiredNetwork}}</strong>.
+      </p>
+    </div>
+    
+    {{!-- Actions --}}
+    <div class="ncm-security-actions">
+      <button class="ncm-button ncm-button-primary" data-action="switch-network">
+        <i class="fas fa-network-wired"></i>
+        Switch Network
+      </button>
+    </div>
+    
+    {{!-- NEW: Network Breach Option --}}
+    {{#if canBreachNetwork}}
+      <div class="ncm-security-divider">
+        <span>OR</span>
+      </div>
+      
+      <div class="ncm-security-actions">
+        <button class="ncm-button ncm-button-secondary ncm-button-block" data-action="attempt-breach-network">
+          <i class="fas fa-terminal"></i>
+          Attempt Network Breach
+        </button>
+        <p class="ncm-text-hint">
+          <i class="fas fa-info-circle"></i>
+          Spoof network credentials using Interface or Electronics/Security Tech
+        </p>
+      </div>
+    {{else if selectedActor}}
+      <div class="ncm-security-message" style="margin-top: 20px;">
+        <p class="ncm-text-warning">
+          <i class="fas fa-user-slash"></i>
+          {{selectedActor.name}} does not have the required hacking skills.
+        </p>
+      </div>
+    {{else}}
+      <div class="ncm-security-message" style="margin-top: 20px;">
+        <p class="ncm-text-warning">
+          <i class="fas fa-user-slash"></i>
+          You must have a character selected to attempt network breach.
+        </p>
+      </div>
+    {{/if}}
+    
+  </div>
+</div>
+  
+  {{!-- LAYER 2: Login Requirement --}}
+  {{else if showLoginOverlay}}
+  <div class="ncm-security-overlay ncm-login-overlay">
+    <div class="ncm-security-container">
+      
+      <div class="ncm-security-icon">
+        <i class="fas fa-user-lock fa-5x"></i>
+      </div>
+      
+      <h2 class="ncm-security-title">Authentication Required</h2>
+      
+      {{#if isLoginLockedOut}}
+        <div class="ncm-security-warning ncm-security-warning--error">
+          <i class="fas fa-ban"></i>
+          <strong>Account Locked</strong>
+          <p>Too many failed login attempts.</p>
+          <p>Try again in <strong>{{loginLockoutMinutes}} minutes</strong>.</p>
+        </div>
+      {{else}}
+        
+        <form class="ncm-login-form">
+          <div class="ncm-form-group">
+            <label class="ncm-form-label">
+              <i class="fas fa-user"></i>
+              Username
+            </label>
+            <input 
+              type="text" 
+              name="username" 
+              class="ncm-input" 
+              placeholder="Enter username"
+              autocomplete="off"
+            />
+          </div>
+          
+          <div class="ncm-form-group">
+            <label class="ncm-form-label">
+              <i class="fas fa-key"></i>
+              Password
+            </label>
+            <input 
+              type="password" 
+              name="password" 
+              class="ncm-input" 
+              placeholder="Enter password"
+              autocomplete="off"
+            />
+          </div>
+          
+          {{#if (gt loginAttempts 0)}}
+            <div class="ncm-login-attempts">
+              <i class="fas fa-exclamation-circle"></i>
+              Failed attempts: <strong>{{loginAttempts}}/{{maxLoginAttempts}}</strong>
+            </div>
+          {{/if}}
+          
+          <div class="ncm-security-actions">
+            <button 
+              type="submit" 
+              class="ncm-button ncm-button-primary ncm-button-block" 
+              data-action="login"
+            >
+              <i class="fas fa-sign-in-alt"></i>
+              Login
+            </button>
+          </div>
+        </form>
+        
+        <div class="ncm-security-divider">
+          <span>OR</span>
+        </div>
+        
+        <div class="ncm-security-actions">
+          <button 
+            class="ncm-button ncm-button-secondary ncm-button-block" 
+            data-action="attempt-breach-login"
+          >
+            <i class="fas fa-terminal"></i>
+            Attempt Security Breach
+          </button>
+          <p class="ncm-text-hint">
+            <i class="fas fa-info-circle"></i>
+            Bypass login using Interface or Electronics/Security Tech (DV 15)
+          </p>
+        </div>
+        
+      {{/if}}
+      
+    </div>
+  </div>
+  
+  {{!-- LAYER 3: Encryption (YOUR EXISTING OVERLAY - UNCHANGED) --}}
+  {{else if showShardEncryptedOverlay}}
   <div class="ncm-item-inbox__encryption-overlay">
     <div class="ncm-encryption-container">
       
@@ -188,13 +399,11 @@
     </div>
   </div>
   
-  {{!-- CASE 2: Shard is unlocked (show messages) --}}
+  {{!-- ACCESS GRANTED: Show Messages (YOUR EXISTING STRUCTURE - UNCHANGED) --}}
   {{else}}
   <div class="ncm-item-inbox__content {{#if isSingleMode}}single-mode{{/if}}">
     
-    {{!-- =======================================================================
-         MESSAGE LIST (Left Panel)
-         ======================================================================= --}}
+    {{!-- YOUR EXISTING MESSAGE LIST - UNCHANGED --}}
     <div class="ncm-item-inbox__message-list">
       {{#if hasMessages}}
         {{#each messages}}
@@ -227,13 +436,10 @@
       {{/if}}
     </div>
     
-    {{!-- =======================================================================
-         MESSAGE DETAIL (Right Panel)
-         ======================================================================= --}}
+    {{!-- YOUR EXISTING MESSAGE DETAIL - UNCHANGED --}}
     <div class="ncm-item-inbox__message-detail">
       {{#if selectedMessage}}
         
-        {{!-- CASE 2A: Selected message is encrypted (show per-message overlay) --}}
         {{#if selectedMessage.showEncryptedOverlay}}
         <div class="ncm-message-encrypted-overlay">
           <div class="ncm-encryption-container" style="max-width: 450px;">
@@ -284,7 +490,6 @@
           </div>
         </div>
         
-        {{!-- CASE 2B: Selected message is decrypted (show content) --}}
         {{else}}
         
         <div class="ncm-item-inbox__message-header-detail">
@@ -338,7 +543,6 @@
         {{/if}}
         
       {{else}}
-        {{!-- No message selected --}}
         <div class="ncm-item-inbox__message-detail-empty">
           <i class="fas fa-envelope-open"></i>
           <p>Select a Message</p>
@@ -348,9 +552,7 @@
     
   </div>
   
-  {{!-- ==========================================================================
-       FOOTER (Add Message Button)
-       ========================================================================== --}}
+  {{!-- YOUR EXISTING FOOTER - UNCHANGED --}}
   <div class="ncm-item-inbox__footer">
     {{#if canAddMessage}}
     <button class="ncm-button ncm-button-primary" data-action="add-message">
