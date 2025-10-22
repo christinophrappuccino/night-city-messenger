@@ -80,41 +80,61 @@ export class CyberpunkChatHelper {
    * Create a styled network breach chat message
    * @param {Object} data - Breach data
    */
-  static async createNetworkBreachMessage(data) {
-    const { success, actor, targetNetwork, total, dc, roll } = data;
+  static async createNetworkBreachMessage(data, actor, roll) {
+    const { success, total, diceRoll, skillValue, statValue, statName, luck, dc, skillName, targetName } = data;
     
     const content = `
       <div class="ncm-cyberpunk-roll">
         <div class="ncm-cyber-header ${success ? 'ncm-success-bg' : 'ncm-failure-bg'}">
-          <i class="fas fa-network-wired ncm-cyber-icon"></i>
-          <div class="ncm-cyber-title">NETWORK BREACH ATTEMPT</div>
+          <i class="fas fa-user-secret ncm-cyber-icon ncm-pulse"></i>
+          <div class="ncm-cyber-title">${success ? 'BREACH SUCCESSFUL' : 'BREACH FAILED'}</div>
           <div class="ncm-cyber-subtitle">${actor.name}</div>
         </div>
         
         <div class="ncm-roll-details">
-          <div class="ncm-breach-info">
-            <div class="ncm-breach-detail">
-              <span class="ncm-label">Target Network:</span>
-              <span class="ncm-value ncm-text-warning">${targetNetwork}</span>
+          <div class="ncm-roll-target">
+            <span class="ncm-target-label">TARGET:</span>
+            <span class="ncm-target-value">${targetName}</span>
+          </div>
+          
+          <div class="ncm-breach-method">
+            <span class="ncm-method-label">METHOD:</span>
+            <span class="ncm-method-value">${skillName}</span>
+          </div>
+          
+          <div class="ncm-roll-formula">
+            <div class="ncm-formula-component ncm-dice">
+              <i class="fas fa-dice-d10"></i> ${diceRoll}
             </div>
-            <div class="ncm-breach-detail">
-              <span class="ncm-label">Roll:</span>
-              <span class="ncm-value">${total} vs DV ${dc}</span>
+            <div class="ncm-formula-component">
+              <span class="ncm-comp-label">${statName}</span>
+              <span class="ncm-comp-value">${statValue}</span>
             </div>
+            <div class="ncm-formula-component">
+              <span class="ncm-comp-label">${skillName}</span>
+              <span class="ncm-comp-value">${skillValue}</span>
+            </div>
+            ${luck > 0 ? `
+            <div class="ncm-formula-component ncm-luck">
+              <span class="ncm-comp-label">LUCK</span>
+              <span class="ncm-comp-value">${luck}</span>
+            </div>
+            ` : ''}
+            <div class="ncm-formula-equals">=</div>
+            <div class="ncm-formula-total">${total}</div>
           </div>
           
           <div class="ncm-roll-result ${success ? 'ncm-success' : 'ncm-failure'}">
-            ${success ? 
-              '<i class="fas fa-check-circle"></i> BREACH SUCCESSFUL - ACCESS GRANTED' : 
-              '<i class="fas fa-times-circle"></i> BREACH FAILED - TRACE INITIATED'}
+            ${success 
+              ? '<i class="fas fa-check-circle"></i> AUTHENTICATION BYPASSED' 
+              : '<i class="fas fa-times-circle"></i> SECURITY HELD FIRM'}
           </div>
           
-          ${!success ? `
-          <div class="ncm-warning-box">
-            <i class="fas fa-exclamation-triangle"></i>
-            NetWatch may have been alerted to your intrusion attempt
+          <div class="ncm-roll-margin">
+            ${success 
+              ? `<span class="ncm-success-text">Margin of Success: +${total - dc}</span>` 
+              : `<span class="ncm-failure-text">Missed by: ${dc - total}</span>`}
           </div>
-          ` : ''}
         </div>
       </div>
     `;
@@ -122,8 +142,16 @@ export class CyberpunkChatHelper {
     await ChatMessage.create({
       content,
       speaker: ChatMessage.getSpeaker({ actor }),
+      rolls: [roll],
       type: CONST.CHAT_MESSAGE_TYPES.ROLL,
-      roll
+      sound: success ? CONFIG.sounds.dice : CONFIG.sounds.lock,
+      flags: {
+        'cyberpunkred-messenger': {
+          type: 'network-breach',
+          success,
+          targetName
+        }
+      }
     });
   }
   

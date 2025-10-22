@@ -69,15 +69,75 @@ export class ItemInboxConfig extends FormApplication {
     // Import constants for skill options
     const { SKILL_PRESETS, CYBERPUNK_SKILLS } = await import('../../../utils/constants.js');
     
-    // Available skills list (in order of relevance)
-    const availableSkills = [
-      { id: 'Interface', name: 'Interface', stat: 'INT', description: 'Netrunning and network infiltration' },
-      { id: 'Electronics/Security Tech', name: 'Electronics/Security Tech', stat: 'TECH', description: 'Technical hardware and security systems' },
-      { id: 'Basic Tech', name: 'Basic Tech', stat: 'TECH', description: 'General technical knowledge' },
-      { id: 'Cryptography', name: 'Cryptography', stat: 'INT', description: 'Code breaking and encryption' },
-      { id: 'Education', name: 'Education', stat: 'INT', description: 'General knowledge and research' },
-      { id: 'Library Search', name: 'Library Search', stat: 'INT', description: 'Information retrieval' }
-    ];
+    // ========================================================================
+    // DYNAMIC SKILL LOADING - Get ALL skills from Cyberpunk RED system
+    // ========================================================================
+    const availableSkills = [];
+
+    // Check if we have a selected actor to get their skills
+    const selectedActor = game.user.character;
+
+    if (selectedActor && game.system.id === 'cyberpunk-red-core') {
+      // Get all skill items from the actor
+      const actorSkills = selectedActor.items.filter(i => i.type === 'skill');
+      
+      console.log(`${MODULE_ID} | Found ${actorSkills.length} skills on actor ${selectedActor.name}`);
+      
+      // Group skills by stat for better organization
+      const skillsBystat = {
+        'INT': [],
+        'REF': [],
+        'TECH': [],
+        'COOL': [],
+        'WILL': [],
+        'LUCK': [],
+        'MOVE': [],
+        'BODY': [],
+        'EMP': [],
+        'OTHER': []
+      };
+      
+      for (const skill of actorSkills) {
+        const skillName = skill.name;
+        const skillStat = skill.system?.stat?.toUpperCase() || 'OTHER';
+        const skillLevel = skill.system?.level || 0;
+        
+        // Create skill entry
+        skillsBystat[skillStat].push({
+          id: skillName,
+          name: skillName,
+          stat: skillStat,
+          level: skillLevel,
+          description: `${skillStat} skill (Level ${skillLevel})`
+        });
+      }
+      
+      // Add skills to availableSkills array, grouped by stat
+      const statOrder = ['INT', 'TECH', 'COOL', 'REF', 'WILL', 'EMP', 'BODY', 'LUCK', 'MOVE', 'OTHER'];
+      
+      for (const stat of statOrder) {
+        if (skillsBystat[stat].length > 0) {
+          // Sort alphabetically within each stat group
+          skillsBystat[stat].sort((a, b) => a.name.localeCompare(b.name));
+          availableSkills.push(...skillsBystat[stat]);
+        }
+      }
+      
+      console.log(`${MODULE_ID} | Loaded ${availableSkills.length} skills for configuration`);
+      
+    } else {
+      // FALLBACK: If no actor or not Cyberpunk RED, use defaults
+      console.warn(`${MODULE_ID} | No actor selected or not Cyberpunk RED system, using default skills`);
+      
+      availableSkills.push(
+        { id: 'Interface', name: 'Interface', stat: 'INT', description: 'Netrunning and network infiltration' },
+        { id: 'Electronics/Security Tech', name: 'Electronics/Security Tech', stat: 'TECH', description: 'Technical hardware and security systems' },
+        { id: 'Basic Tech', name: 'Basic Tech', stat: 'TECH', description: 'General technical knowledge' },
+        { id: 'Cryptography', name: 'Cryptography', stat: 'INT', description: 'Code breaking and encryption' },
+        { id: 'Education', name: 'Education', stat: 'INT', description: 'General knowledge and research' },
+        { id: 'Library Search', name: 'Library Search', stat: 'INT', description: 'Information retrieval' }
+      );
+    }
     
     return {
       ...data,
@@ -267,26 +327,35 @@ export class ItemInboxConfig extends FormApplication {
       const skillDCs = {};
       const allowedSkills = [];
       
-      // List of available skills
-      const availableSkillIds = [
-        'Interface',
-        'Electronics/Security Tech',
-        'Basic Tech',
-        'Cryptography',
-        'Education',
-        'Library Search'
-      ];
-      
+      // ========================================================================
+      // DYNAMIC SKILL PROCESSING - Process all skillEnabled_* checkboxes
+      // ========================================================================
+
+      // Get all field names that start with "skillEnabled_"
+      const allFormFields = Object.keys(formData);
+      const skillEnabledFields = allFormFields.filter(field => field.startsWith('skillEnabled_'));
+
+      console.log(`${MODULE_ID} | Found ${skillEnabledFields.length} skill checkboxes in form`);
+
       // Process each skill checkbox and its associated DC
-      for (const skillId of availableSkillIds) {
-        const enabled = formData[`skillEnabled_${skillId}`];
+      for (const fieldName of skillEnabledFields) {
+        const enabled = formData[fieldName];
+        
         if (enabled) {
-          allowedSkills.push(skillId);
+          // Extract skill ID from field name (e.g., "skillEnabled_Interface" → "Interface")
+          const skillId = fieldName.replace('skillEnabled_', '');
           
-          // Get the DC for this skill (default to 15)
-          const dcValue = formData[`skillDC_${skillId}`];
-          const dc = parseInt(Array.isArray(dcValue) ? dcValue[0] : dcValue) || 15;
-          skillDCs[skillId] = dc;
+          // Only add if it's a valid string (not empty)
+          if (skillId && skillId.length > 0) {
+            allowedSkills.push(skillId);
+            
+            // Get the DC for this skill (default to 15)
+            const dcValue = formData[`skillDC_${skillId}`];
+            const dc = parseInt(Array.isArray(dcValue) ? dcValue[0] : dcValue) || 15;
+            skillDCs[skillId] = dc;
+            
+            console.log(`${MODULE_ID} | Added skill: ${skillId} with DV ${dc}`);
+          }
         }
       }
       

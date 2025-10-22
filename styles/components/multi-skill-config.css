@@ -1,0 +1,254 @@
+/**
+ * Multi-Skill Configuration Styles
+ * File: styles/components/multi-skill-config.css
+ * Description: Styles for the multi-skill DV configuration interface
+ * 
+ * ADD THIS TO YOUR MAIN CSS FILE OR IMPORT IT SEPARATELY
+ */
+
+/* ========================================================================
+   SKILL CONFIGURATION LIST
+   ======================================================================== */
+
+.ncm-skill-config-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 15px 0;
+  padding: 15px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(25, 243, 247, 0.2);
+  border-radius: 6px;
+}
+
+/* ========================================================================
+   SKILL CONFIGURATION ITEM
+   ======================================================================== */
+
+.ncm-skill-config-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(25, 243, 247, 0.2);
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+.ncm-skill-config-item:hover {
+  background: rgba(25, 243, 247, 0.05);
+  border-color: rgba(25, 243, 247, 0.4);
+}
+
+/* ========================================================================
+   SKILL CHECKBOX
+   ======================================================================== */
+
+.ncm-skill-checkbox {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0;
+}
+
+.ncm-skill-checkbox input[type="checkbox"] {
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+
+.ncm-checkbox-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ncm-skill-name {
+  font-weight: bold;
+  color: var(--ncm-text);
+  font-size: 1em;
+}
+
+.ncm-skill-stat {
+  display: inline-block;
+  padding: 2px 6px;
+  background: rgba(25, 243, 247, 0.2);
+  border: 1px solid var(--ncm-secondary);
+  border-radius: 3px;
+  color: var(--ncm-secondary);
+  font-size: 0.75em;
+  font-weight: bold;
+  margin-left: 6px;
+  text-transform: uppercase;
+}
+
+.ncm-skill-description {
+  font-size: 0.85em;
+  color: var(--ncm-text-dim);
+  font-style: italic;
+  margin-top: 2px;
+}
+
+/* ========================================================================
+   SKILL DC INPUT
+   ======================================================================== */
+
+.ncm-skill-dc-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(25, 243, 247, 0.1);
+  border: 1px solid var(--ncm-secondary);
+  border-radius: 4px;
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+}
+
+.ncm-skill-dc-input.ncm-hidden {
+  display: none;
+}
+
+.ncm-skill-dc-input:hover {
+  background: rgba(25, 243, 247, 0.15);
+}
+
+.ncm-label-small {
+  color: var(--ncm-text);
+  font-size: 0.9em;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.ncm-input-small {
+  width: 70px;
+  padding: 6px 10px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--ncm-secondary);
+  border-radius: 4px;
+  color: var(--ncm-text);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1em;
+  font-weight: bold;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.ncm-input-small:focus {
+  outline: none;
+  border-color: var(--ncm-primary);
+  background: rgba(0, 0, 0, 0.6);
+  box-shadow: 0 0 10px rgba(25, 243, 247, 0.4);
+}
+
+.ncm-input-small::-webkit-outer-spin-button,
+.ncm-input-small::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.ncm-input-small[type=number] {
+  -moz-appearance: textfield;
+}
+
+/* ========================================================================
+   SKILL CONFIG NOTE
+   ======================================================================== */
+
+.ncm-skill-config-note {
+  margin-top: 15px;
+  padding: 12px;
+  background: rgba(25, 243, 247, 0.1);
+  border: 1px solid var(--ncm-secondary);
+  border-left: 4px solid var(--ncm-secondary);
+  border-radius: 4px;
+  font-size: 0.95em;
+  color: var(--ncm-text-dim);
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.ncm-skill-config-note i {
+  color: var(--ncm-secondary);
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+/* ========================================================================
+   LABEL BADGE
+   ======================================================================== */
+
+.ncm-label-badge {
+  display: inline-block;
+  padding: 3px 8px;
+  background: rgba(246, 82, 97, 0.2);
+  border: 1px solid var(--ncm-primary);
+  border-radius: 3px;
+  color: var(--ncm-primary);
+  font-size: 0.75em;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-left: 10px;
+  vertical-align: middle;
+}
+
+/* ========================================================================
+   RESPONSIVE LAYOUT
+   ======================================================================== */
+
+@media (max-width: 768px) {
+  .ncm-skill-config-item {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .ncm-skill-dc-input {
+    justify-content: space-between;
+  }
+  
+  .ncm-input-small {
+    width: auto;
+    flex: 1;
+  }
+}
+
+/* ========================================================================
+   ANIMATIONS
+   ======================================================================== */
+
+.ncm-skill-config-item {
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ========================================================================
+   DARK MODE ENHANCEMENTS
+   ======================================================================== */
+
+.ncm-skill-config-list {
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5);
+}
+
+.ncm-skill-config-item {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.ncm-skill-config-item:hover {
+  box-shadow: 0 4px 8px rgba(25, 243, 247, 0.2);
+}

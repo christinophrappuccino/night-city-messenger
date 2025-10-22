@@ -289,6 +289,46 @@
 }
 
 /* ========================================================================
+   NETWORK BREACH SPECIFIC STYLES
+   ======================================================================== */
+
+.ncm-breach-method {
+  text-align: center;
+  margin: 15px 0;
+  padding: 12px;
+  background: rgba(25, 243, 247, 0.1);
+  border: 1px solid var(--ncm-secondary);
+  border-radius: 4px;
+  font-size: 1.1em;
+}
+
+.ncm-method-label {
+  color: var(--ncm-text-dim);
+  margin-right: 10px;
+  font-size: 0.9em;
+  letter-spacing: 1px;
+}
+
+.ncm-method-value {
+  color: var(--ncm-secondary);
+  font-weight: bold;
+  font-size: 1.2em;
+  text-shadow: 0 0 8px rgba(25, 243, 247, 0.6);
+}
+
+/* Success background gradient */
+.ncm-success-bg {
+  background: rgba(0, 255, 0, 0.2);
+  border-bottom-color: #00ff00;
+}
+
+/* Failure background gradient */
+.ncm-failure-bg {
+  background: rgba(255, 0, 0, 0.2);
+  border-bottom-color: #ff0000;
+}
+
+/* ========================================================================
    TEXT UTILITIES
    ======================================================================== */
 

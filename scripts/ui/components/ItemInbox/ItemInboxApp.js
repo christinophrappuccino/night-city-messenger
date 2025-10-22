@@ -1079,38 +1079,86 @@ export class ItemInboxApp extends BaseApplication {
       return;
     }
     
-    // Show confirmation
-    const confirmed = await Dialog.confirm({
-      title: "Breach Security",
-      content: `
-        <div style="font-family: 'Rajdhani', sans-serif;">
-          <p><strong>Target:</strong> ${this.item.name}</p>
-          <p><strong>Action:</strong> Bypass authentication system</p>
-          <p><strong>Skill:</strong> Interface or Electronics/Security Tech</p>
-          <p><strong>Difficulty:</strong> DV 15</p>
-          <hr>
-          <p style="color: #F65261;">
-            <i class="fas fa-exclamation-triangle"></i> This may trigger security alerts!
-          </p>
-        </div>
-      `
+    // ========================================================================
+    // NEW: Get allowed breach skills and their DVs
+    // ========================================================================
+    const breachSkills = ['Interface', 'Electronics/Security Tech'];
+    const breachDC = 15; // Could make this configurable
+    
+    // Build skill options array
+    const skillOptions = breachSkills.map(skillName => {
+      const actorSkill = actor.items.find(i => i.type === 'skill' && i.name === skillName);
+      return {
+        skillName,
+        dc: breachDC,
+        description: skillName === 'Interface' 
+          ? 'Use netrunning to bypass authentication'
+          : 'Exploit hardware vulnerabilities'
+      };
+    }).filter(opt => {
+      // Only include skills the actor has
+      const actorSkill = actor.items.find(i => i.type === 'skill' && i.name === opt.skillName);
+      return actorSkill && actorSkill.system.level > 0;
     });
     
-    if (!confirmed) return;
+    if (skillOptions.length === 0) {
+      ui.notifications.error('You do not have the required skills to breach this system');
+      return;
+    }
     
-    // Perform skill check
-    const result = await this.skillService.performCheck({
+    // Show styled skill selection dialog
+    const selectedSkill = await game.nightcity.DialogHelper.showSkillSelectionDialog({
       actor,
-      skills: ['Interface', 'Electronics/Security Tech'],
-      dc: 15,
-      taskName: `Breaching ${this.item.name}`,
-      allowLuck: true,
-      autoRoll: false
+      skills: skillOptions,
+      targetName: this.item.name,
+      description: 'Choose your approach to bypass the authentication system. This is a risky operation!'
     });
     
-    if (result.cancelled) return;
+    if (!selectedSkill) return; // User cancelled
     
-    if (result.success) {
+    // Show luck dialog
+    const luck = await game.nightcity.DialogHelper.showLuckDialog(actor);
+    
+    if (luck === null) return; // User cancelled
+    
+    // Deduct luck
+    if (luck > 0) {
+      const currentLuck = actor.system.stats.luck?.value || 0;
+      await actor.update({
+        'system.stats.luck.value': currentLuck - luck
+      });
+    }
+    
+    // Perform the roll
+    const roll = await new Roll('1d10').evaluate({ async: true });
+    
+    // Get skill and stat values
+    const actorSkill = actor.items.find(i => i.type === 'skill' && i.name === selectedSkill.skillName);
+    const skillValue = actorSkill?.system?.level || 0;
+    
+    // Determine stat
+    const statName = selectedSkill.skillName === 'Interface' ? 'INT' : 'TECH';
+    const statValue = actor.system.stats[statName.toLowerCase()]?.value || 0;
+    
+    const total = roll.total + skillValue + statValue + luck;
+    const success = total >= selectedSkill.dc;
+    
+    // Create beautiful chat message using CyberpunkChatHelper
+    await game.nightcity.CyberpunkChatHelper.createNetworkBreachMessage({
+      success,
+      total,
+      diceRoll: roll.total,
+      skillValue,
+      statValue,
+      statName,
+      luck,
+      dc: selectedSkill.dc,
+      skillName: selectedSkill.skillName,
+      targetName: this.item.name
+    }, actor, roll);
+    
+    // Handle success/failure
+    if (success) {
       // Successfully breached!
       await this.item.setFlag(MODULE_ID, 'sessionLoggedIn', true);
       await this.item.setFlag(MODULE_ID, 'loginAttempts', 0);
@@ -1118,29 +1166,25 @@ export class ItemInboxApp extends BaseApplication {
       this.render(false);
       ui.notifications.info('Security breached! Access granted.');
       
-      await ChatMessage.create({
-        content: `
-          <div style="background: rgba(25, 243, 247, 0.1); border: 1px solid #19f3f7; padding: 10px; border-radius: 4px;">
-            <p><strong style="color: #19f3f7;"><i class="fas fa-terminal"></i> BREACH SUCCESSFUL</strong></p>
-            <p><strong>${actor.name}</strong> bypassed authentication on <strong>${this.item.name}</strong></p>
-          </div>
-        `,
-        speaker: ChatMessage.getSpeaker({ actor })
-      });
-      
     } else {
-      // Failed breach
-      ui.notifications.error('Breach attempt failed!');
+      // Failed breach - increment attempt counter
+      const loginAttempts = this.item.getFlag(MODULE_ID, 'loginAttempts') || 0;
+      await this.item.setFlag(MODULE_ID, 'loginAttempts', loginAttempts + 1);
       
-      await ChatMessage.create({
-        content: `
-          <div style="background: rgba(246, 82, 97, 0.1); border: 1px solid #F65261; padding: 10px; border-radius: 4px;">
-            <p><strong style="color: #F65261;"><i class="fas fa-times"></i> BREACH FAILED</strong></p>
-            <p><strong>${actor.name}</strong> failed to bypass authentication on <strong>${this.item.name}</strong></p>
-          </div>
-        `,
-        speaker: ChatMessage.getSpeaker({ actor })
-      });
+      const maxLoginAttempts = this.item.getFlag(MODULE_ID, 'maxLoginAttempts') || 5;
+      
+      if (loginAttempts + 1 >= maxLoginAttempts) {
+        // Lock out the user
+        const lockoutTime = new Date();
+        lockoutTime.setHours(lockoutTime.getHours() + 1);
+        await this.item.setFlag(MODULE_ID, 'loginLockoutUntil', lockoutTime.toISOString());
+        
+        ui.notifications.error('Security breach failed! System locked for 1 hour.');
+      } else {
+        ui.notifications.error(`Breach attempt failed! ${maxLoginAttempts - (loginAttempts + 1)} attempts remaining.`);
+      }
+      
+      this.render(false);
     }
   }
   
