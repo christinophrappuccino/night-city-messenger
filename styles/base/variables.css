@@ -213,6 +213,23 @@
 }
 
 /* ============================================
+   LEGACY/ALIAS VARIABLES
+   For compatibility with existing CSS files
+   ============================================ */
+:root {
+  --ncm-text: var(--ncm-text-primary);
+  --ncm-text-dim: var(--ncm-text-tertiary);
+  --ncm-text-dark: var(--ncm-text-disabled);
+  --ncm-warning: var(--ncm-accent);
+  --ncm-background: var(--ncm-bg-secondary);
+  --ncm-surface: var(--ncm-bg-surface);
+  --ncm-surface-light: var(--ncm-bg-tertiary);
+  --ncm-error: var(--ncm-text-error);
+  --ncm-success: var(--ncm-text-success);
+  --ncm-gm-gold: #FFD700;
+}
+
+/* ============================================
    DARK MODE OVERRIDES
    (Foundry already dark, but just in case)
    ============================================ */

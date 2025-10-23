@@ -74,60 +74,72 @@ export class ItemInboxConfig extends FormApplication {
     // ========================================================================
     const availableSkills = [];
 
-    // Check if we have a selected actor to get their skills
-    const selectedActor = game.user.character;
+    // Get all actors in the game
+    const allActors = game.actors.filter(a => a.type === 'character');
 
-    if (selectedActor && game.system.id === 'cyberpunk-red-core') {
-      // Get all skill items from the actor
-      const actorSkills = selectedActor.items.filter(i => i.type === 'skill');
+    if (allActors.length > 0 && game.system.id === 'cyberpunk-red-core') {
+      // Collect unique skills across all actors
+      const uniqueSkills = new Map(); // Use Map to prevent duplicates
       
-      console.log(`${MODULE_ID} | Found ${actorSkills.length} skills on actor ${selectedActor.name}`);
+      for (const actor of allActors) {
+        const actorSkills = actor.items.filter(i => i.type === 'skill');
+        
+        for (const skill of actorSkills) {
+          const skillName = skill.name;
+          
+          // Only add if we haven't seen this skill before
+          if (!uniqueSkills.has(skillName)) {
+            const skillStat = skill.system?.stat?.toUpperCase() || 'OTHER';
+            
+            uniqueSkills.set(skillName, {
+              id: skillName,
+              name: skillName,
+              stat: skillStat,
+              description: `${skillStat} skill`
+            });
+          }
+        }
+      }
       
-      // Group skills by stat for better organization
+      // Group skills by stat
       const skillsBystat = {
         'INT': [],
         'REF': [],
         'TECH': [],
         'COOL': [],
         'WILL': [],
+        'EMP': [],
+        'BODY': [],
         'LUCK': [],
         'MOVE': [],
-        'BODY': [],
-        'EMP': [],
         'OTHER': []
       };
       
-      for (const skill of actorSkills) {
-        const skillName = skill.name;
-        const skillStat = skill.system?.stat?.toUpperCase() || 'OTHER';
-        const skillLevel = skill.system?.level || 0;
-        
-        // Create skill entry
-        skillsBystat[skillStat].push({
-          id: skillName,
-          name: skillName,
-          stat: skillStat,
-          level: skillLevel,
-          description: `${skillStat} skill (Level ${skillLevel})`
-        });
+      // Add unique skills to stat groups
+      for (const skill of uniqueSkills.values()) {
+        const stat = skill.stat || 'OTHER';
+        if (skillsBystat[stat]) {
+          skillsBystat[stat].push(skill);
+        } else {
+          skillsBystat['OTHER'].push(skill);
+        }
       }
       
-      // Add skills to availableSkills array, grouped by stat
+      // Sort and add to availableSkills
       const statOrder = ['INT', 'TECH', 'COOL', 'REF', 'WILL', 'EMP', 'BODY', 'LUCK', 'MOVE', 'OTHER'];
       
       for (const stat of statOrder) {
         if (skillsBystat[stat].length > 0) {
-          // Sort alphabetically within each stat group
           skillsBystat[stat].sort((a, b) => a.name.localeCompare(b.name));
           availableSkills.push(...skillsBystat[stat]);
         }
       }
       
-      console.log(`${MODULE_ID} | Loaded ${availableSkills.length} skills for configuration`);
+      console.log(`${MODULE_ID} | Loaded ${availableSkills.length} unique skills from ${allActors.length} actors`);
       
     } else {
-      // FALLBACK: If no actor or not Cyberpunk RED, use defaults
-      console.warn(`${MODULE_ID} | No actor selected or not Cyberpunk RED system, using default skills`);
+      // FALLBACK: If no actors or not Cyberpunk RED, use defaults
+      console.warn(`${MODULE_ID} | No actors found or not Cyberpunk RED system, using default skills`);
       
       availableSkills.push(
         { id: 'Interface', name: 'Interface', stat: 'INT', description: 'Netrunning and network infiltration' },

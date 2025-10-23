@@ -20,6 +20,35 @@
 }
 
 /* ========================================================================
+   SUCCESS/FAILURE BACKGROUND COLORS
+   ======================================================================== */
+
+.ncm-success-bg {
+  background: linear-gradient(135deg, rgba(0, 255, 0, 0.2) 0%, rgba(0, 100, 0, 0.3) 100%) !important;
+  border-bottom-color: var(--ncm-success) !important;
+}
+
+.ncm-failure-bg {
+  background: linear-gradient(135deg, rgba(255, 0, 0, 0.2) 0%, rgba(100, 0, 0, 0.3) 100%) !important;
+  border-bottom-color: var(--ncm-error) !important;
+}
+
+.ncm-danger-bg {
+  background: linear-gradient(135deg, rgba(255, 0, 0, 0.3) 0%, rgba(100, 0, 0, 0.4) 100%) !important;
+  border-bottom-color: var(--ncm-error) !important;
+  animation: pulse-danger 2s ease-in-out infinite;
+}
+
+@keyframes pulse-danger {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(255, 0, 0, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(255, 0, 0, 0.6);
+  }
+}
+
+/* ========================================================================
    HEADER
    ======================================================================== */
 
@@ -352,6 +381,155 @@
   background: linear-gradient(90deg, #ff0000 0%, #ff6666 100%);
   transition: width 0.5s ease;
   box-shadow: 0 0 10px rgba(255, 0, 0, 0.6);
+}
+
+/* ========================================================================
+   BREACH METHOD DISPLAY
+   ======================================================================== */
+
+.ncm-breach-method {
+  text-align: center;
+  margin: 15px 0;
+  padding: 12px;
+  background: rgba(25, 243, 247, 0.1);
+  border: 1px solid var(--ncm-secondary);
+  border-radius: 4px;
+  font-size: 1.1em;
+}
+
+.ncm-method-label {
+  color: var(--ncm-text-dim);
+  margin-right: 10px;
+  font-size: 0.9em;
+  letter-spacing: 1px;
+}
+
+.ncm-method-value {
+  color: var(--ncm-secondary);
+  font-weight: bold;
+  font-size: 1.2em;
+  text-shadow: 0 0 8px rgba(25, 243, 247, 0.6);
+}
+
+/* Roll margin (success/failure difference) */
+.ncm-roll-margin {
+  margin-top: 15px;
+  padding: 10px;
+  text-align: center;
+  font-size: 1.1em;
+  border-radius: 4px;
+}
+
+.ncm-roll-margin .ncm-success-text {
+  color: var(--ncm-success);
+  font-weight: bold;
+}
+
+.ncm-roll-margin .ncm-failure-text {
+  color: var(--ncm-error);
+  font-weight: bold;
+}
+
+/* ========================================================================
+   LOGIN ATTEMPT STYLES
+   ======================================================================== */
+
+.ncm-login-attempts {
+  margin: 20px 0;
+  padding: 15px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(25, 243, 247, 0.3);
+  border-radius: 4px;
+}
+
+.ncm-attempt-label {
+  color: var(--ncm-text-secondary);
+  font-size: 0.9em;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 10px;
+}
+
+.ncm-attempt-bar {
+  width: 100%;
+  height: 20px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--ncm-secondary);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.ncm-attempt-progress {
+  height: 100%;
+  background: linear-gradient(90deg, var(--ncm-success) 0%, var(--ncm-warning) 50%, var(--ncm-error) 100%);
+  transition: width 0.3s ease;
+  box-shadow: 0 0 10px rgba(25, 243, 247, 0.5);
+}
+
+.ncm-attempt-count {
+  text-align: center;
+  font-size: 1.2em;
+  font-weight: bold;
+}
+
+/* ========================================================================
+   TEXT COLOR FIXES
+   ======================================================================== */
+
+/* Base container text (but not children - they have their own colors) */
+.ncm-roll-details,
+.ncm-message-body {
+  color: #ffffff;
+}
+
+/* Only fix roll numbers that appear black */
+.ncm-formula-component .ncm-comp-value {
+  color: var(--ncm-secondary);
+}
+
+/* Fix dice roll value if it appears black */
+.ncm-formula-component.ncm-dice .ncm-comp-value {
+  color: #ffffff;
+}
+
+/* Make sure the total is visible */
+.ncm-formula-total {
+  color: var(--ncm-secondary);
+  font-size: 2.5em;
+  font-weight: bold;
+  text-shadow: 0 0 15px rgba(246, 82, 97, 0.8);
+}
+
+/* Fix any paragraph text that might be black */
+.ncm-roll-details p,
+.ncm-message-body p {
+  color: #ffffff;
+}
+
+/* Fix description text in skill dialog */
+.ncm-skill-desc {
+  color: #cccccc;
+}
+
+/* Fix table cell text that might be black */
+.ncm-skill-table td {
+  color: #ffffff;
+}
+
+/* Fix any stray text nodes */
+.ncm-target-info,
+.ncm-breach-method,
+.ncm-login-attempts {
+  color: #ffffff;
+}
+
+/* Ensure labels are visible but dim */
+.ncm-comp-label,
+.ncm-target-label,
+.ncm-method-label,
+.ncm-attempt-label {
+  color: #cccccc;
 }
 
 /* ========================================================================

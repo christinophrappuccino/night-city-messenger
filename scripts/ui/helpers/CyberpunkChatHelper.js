@@ -163,35 +163,37 @@ export class CyberpunkChatHelper {
     const { success, actor, attempts, maxAttempts, shardName } = data;
     
     const content = `
-      <div class="ncm-cyberpunk-message">
+      <div class="ncm-cyberpunk-roll">
         <div class="ncm-cyber-header ${success ? 'ncm-success-bg' : 'ncm-failure-bg'}">
-          <i class="fas fa-user-lock ncm-cyber-icon"></i>
-          <div class="ncm-cyber-title">AUTHENTICATION ${success ? 'SUCCESSFUL' : 'FAILED'}</div>
+          <i class="fas fa-user-lock ncm-cyber-icon ncm-pulse"></i>
+          <div class="ncm-cyber-title">${success ? 'ACCESS GRANTED' : 'ACCESS DENIED'}</div>
           <div class="ncm-cyber-subtitle">${actor?.name || 'Unknown User'}</div>
         </div>
         
-        <div class="ncm-message-body">
-          <div class="ncm-message-detail">
-            <span class="ncm-label">Target:</span>
-            <span class="ncm-value">${shardName}</span>
-          </div>
-          <div class="ncm-message-detail">
-            <span class="ncm-label">Attempts:</span>
-            <span class="ncm-value ${attempts >= maxAttempts ? 'ncm-text-error' : ''}">${attempts}/${maxAttempts}</span>
+        <div class="ncm-roll-details">
+          <div class="ncm-roll-target">
+            <span class="ncm-target-label">TARGET:</span>
+            <span class="ncm-target-value">${shardName}</span>
           </div>
           
-          ${success ? `
-          <div class="ncm-success-box">
-            <i class="fas fa-check-circle"></i>
-            Access granted to ${shardName}
+          <div class="ncm-login-attempts">
+            <div class="ncm-attempt-label">Authentication Attempts:</div>
+            <div class="ncm-attempt-bar">
+              <div class="ncm-attempt-progress" style="width: ${(attempts/maxAttempts)*100}%"></div>
+            </div>
+            <div class="ncm-attempt-count ${attempts >= maxAttempts ? 'ncm-text-error' : 'ncm-text-success'}">
+              ${attempts} / ${maxAttempts}
+            </div>
           </div>
-          ` : `
-          <div class="ncm-failure-box">
-            <i class="fas fa-times-circle"></i>
-            Invalid credentials
-            ${attempts >= maxAttempts ? '<br><strong>ACCOUNT LOCKED</strong>' : ''}
+          
+          <div class="ncm-roll-result ${success ? 'ncm-success' : 'ncm-failure'}">
+            ${success ? `
+              <i class="fas fa-check-circle"></i> CREDENTIALS VERIFIED
+            ` : `
+              <i class="fas fa-times-circle"></i> INVALID CREDENTIALS
+              ${attempts >= maxAttempts ? '<br><strong style="color: #ff0000;">⚠️ ACCOUNT LOCKED</strong>' : ''}
+            `}
           </div>
-          `}
         </div>
       </div>
     `;
@@ -199,7 +201,13 @@ export class CyberpunkChatHelper {
     await ChatMessage.create({
       content,
       speaker: ChatMessage.getSpeaker({ actor }),
-      type: CONST.CHAT_MESSAGE_TYPES.OOC
+      type: CONST.CHAT_MESSAGE_TYPES.OOC,
+      flags: {
+        'cyberpunkred-messenger': {
+          type: 'login-attempt',
+          success
+        }
+      }
     });
   }
   

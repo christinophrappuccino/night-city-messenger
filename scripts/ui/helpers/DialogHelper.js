@@ -70,11 +70,33 @@ export class DialogHelper {
         },
         default: "roll",
         render: html => {
-          html.find('.dialog-content').css({
-            'background': 'linear-gradient(135deg, rgba(26, 26, 26, 0.95) 0%, rgba(51, 0, 0, 0.95) 100%)',
-            'border': '2px solid var(--ncm-primary)',
-            'font-family': "'Rajdhani', sans-serif"
-          });
+          // CORRECT: Target the parent dialog window
+          const dialog = html.closest('.app.dialog');
+          if (dialog.length) {
+            dialog.find('.window-content').css({
+              'background': 'linear-gradient(135deg, rgba(26, 26, 26, 0.95) 0%, rgba(51, 0, 0, 0.95) 100%)',
+              'border': '2px solid var(--ncm-primary)',
+              'font-family': "'Rajdhani', sans-serif",
+              'padding': '20px',
+              'color': '#ffffff'
+            });
+
+            dialog.find('.dialog-button').css({
+              'background': 'rgba(246, 82, 97, 0.2)',
+              'border': '1px solid var(--ncm-primary)',
+              'color': '#ffffff',
+              'font-family': "'Rajdhani', sans-serif",
+              'text-transform': 'uppercase',
+              'letter-spacing': '1px',
+              'transition': 'all 0.3s ease'
+            });
+
+            dialog.find('.dialog-button:hover').css({
+              'background': 'var(--ncm-primary)',
+              'color': '#000000',
+              'box-shadow': '0 0 15px rgba(246, 82, 97, 0.8)'
+            });
+          }
         }
       }).render(true);
     });
@@ -103,11 +125,6 @@ export class DialogHelper {
       // Create a button for each skill
       skills.forEach((skillOption, index) => {
         const { skillName, dc, description: skillDesc } = skillOption;
-        
-        // Get skill level from actor
-        const actorSkills = actor.items.filter(i => i.type === 'skill');
-        const actorSkill = actorSkills.find(s => s.name === skillName);
-        const skillLevel = actorSkill?.system?.level || 0;
         
         buttons[`skill_${index}`] = {
           icon: '<i class="fas fa-terminal"></i>',
@@ -185,11 +202,32 @@ export class DialogHelper {
         buttons,
         default: "skill_0",
         render: html => {
-          html.find('.dialog-content').css({
-            'background': 'linear-gradient(135deg, rgba(26, 26, 26, 0.95) 0%, rgba(51, 0, 0, 0.95) 100%)',
-            'border': '2px solid var(--ncm-secondary)',
-            'font-family': "'Rajdhani', sans-serif"
-          });
+          // FIX: Target the dialog window correctly
+          const dialog = html.closest('.app.dialog');
+          if (dialog.length) {
+            dialog.find('.window-content').css({
+              'background': 'linear-gradient(135deg, rgba(26, 26, 26, 0.95) 0%, rgba(51, 0, 0, 0.95) 100%)',
+              'border': '2px solid var(--ncm-secondary)',
+              'font-family': "'Rajdhani', sans-serif",
+              'padding': '20px',
+              'color': '#ffffff',
+              'max-height': '80vh',
+              'overflow': 'hidden',
+              'display': 'flex',
+              'flex-direction': 'column'
+            });
+            
+            // Style buttons
+            dialog.find('.dialog-button').css({
+              'background': 'rgba(25, 243, 247, 0.2)',
+              'border': '1px solid var(--ncm-secondary)',
+              'color': '#ffffff',
+              'font-family': "'Rajdhani', sans-serif",
+              'text-transform': 'uppercase',
+              'letter-spacing': '1px',
+              'transition': 'all 0.3s ease'
+            });
+          }
           
           // Disable buttons for skills the actor doesn't have
           skills.forEach((skillOption, index) => {
@@ -205,7 +243,9 @@ export class DialogHelper {
           });
         }
       }, {
-        width: 600
+        width: 600,
+        height: 'auto',
+        resizable: true
       }).render(true);
     });
   }
@@ -245,11 +285,33 @@ export class DialogHelper {
         },
         default: "cancel",
         render: html => {
-          html.find('.dialog-content').css({
-            'background': 'linear-gradient(135deg, rgba(26, 26, 26, 0.95) 0%, rgba(51, 0, 0, 0.95) 100%)',
-            'border': '2px solid var(--ncm-warning)',
-            'font-family': "'Rajdhani', sans-serif"
-          });
+          // CORRECT: Target the parent dialog window
+          const dialog = html.closest('.app.dialog');
+          if (dialog.length) {
+            dialog.find('.window-content').css({
+              'background': 'linear-gradient(135deg, rgba(26, 26, 26, 0.95) 0%, rgba(51, 0, 0, 0.95) 100%)',
+              'border': '2px solid var(--ncm-warning)',
+              'font-family': "'Rajdhani', sans-serif",
+              'padding': '20px',
+              'color': '#ffffff'
+            });
+
+            dialog.find('.dialog-button').css({
+              'background': 'rgba(246, 82, 97, 0.2)',
+              'border': '1px solid var(--ncm-primary)',
+              'color': '#ffffff',
+              'font-family': "'Rajdhani', sans-serif",
+              'text-transform': 'uppercase',
+              'letter-spacing': '1px',
+              'transition': 'all 0.3s ease'
+            });
+
+            dialog.find('.dialog-button:hover').css({
+              'background': 'var(--ncm-primary)',
+              'color': '#000000',
+              'box-shadow': '0 0 15px rgba(246, 82, 97, 0.8)'
+            });
+          }
         }
       }).render(true);
     });

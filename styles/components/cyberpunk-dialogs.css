@@ -141,6 +141,9 @@
 
 .ncm-skill-dialog {
   padding: 10px;
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
 }
 
 .ncm-skill-header {
@@ -167,7 +170,9 @@
 }
 
 .ncm-skill-body {
-  color: var(--ncm-text);
+  flex: 1;
+  overflow-y: auto; /* Make body scrollable */
+  min-height: 0; /* Important for flex scrolling */
 }
 
 .ncm-skill-desc {
@@ -200,8 +205,24 @@
 }
 
 .ncm-skill-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
   background: rgba(25, 243, 247, 0.2);
   border-bottom: 2px solid var(--ncm-secondary);
+}
+
+.ncm-skill-table tbody {
+  max-height: 400px; /* Limit table body height */
+  overflow-y: auto;
+  display: block;
+}
+
+.ncm-skill-table thead,
+.ncm-skill-table tbody tr {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
 }
 
 .ncm-skill-table th {
@@ -211,11 +232,13 @@
   text-transform: uppercase;
   letter-spacing: 1px;
   font-size: 0.9em;
+  background: rgba(25, 243, 247, 0.2);
 }
 
 .ncm-skill-table td {
   padding: 12px;
   border-bottom: 1px solid rgba(25, 243, 247, 0.1);
+  color: var(--ncm-text-primary);
 }
 
 .ncm-skill-table tr:last-child td {
@@ -229,6 +252,25 @@
 .ncm-skill-table tr.ncm-skill-unavailable {
   opacity: 0.5;
   background: rgba(255, 0, 0, 0.1);
+}
+
+/* Scrollbar styling for webkit browsers */
+.ncm-skill-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.ncm-skill-body::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+}
+
+.ncm-skill-body::-webkit-scrollbar-thumb {
+  background: var(--ncm-secondary);
+  border-radius: 4px;
+}
+
+.ncm-skill-body::-webkit-scrollbar-thumb:hover {
+  background: var(--ncm-primary);
 }
 
 .ncm-skill-level {
