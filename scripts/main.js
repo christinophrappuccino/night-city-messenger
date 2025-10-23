@@ -46,6 +46,45 @@ moduleInitializer.register('init', async () => {
   MacroAPI.registerEarly();
 }, 5);
 
+// Initialize Master Contact Service (GM's contact directory)
+moduleInitializer.register('ready', async () => {
+  console.log(`${MODULE_ID} | === INITIALIZING MASTER CONTACT SERVICE ===`);
+  
+  try {
+    // Import the service
+    const { MasterContactService } = await import('./services/MasterContactService.js');
+    
+    // Create instance
+    console.log(`${MODULE_ID} | Creating MasterContactService...`);
+    game.nightcity.masterContactService = new MasterContactService();
+    
+    // Initialize (loads contacts)
+    await game.nightcity.masterContactService.initialize();
+    
+    // Import and register GM Contact Manager UI
+    const { GMContactManagerApp } = await import('./ui/components/GMContactManager/GMContactManagerApp.js');
+    game.nightcity.GMContactManagerApp = GMContactManagerApp;
+    
+    // Verify initialization
+    if (!game.nightcity.masterContactService) {
+      throw new Error('Failed to initialize masterContactService');
+    }
+    
+    console.log(`${MODULE_ID} | ✓ Master Contact Service initialized`);
+    
+    // Log stats (GM only)
+    if (game.user.isGM) {
+      const contacts = game.nightcity.masterContactService.getAllContacts();
+      console.log(`${MODULE_ID} | - ${contacts.length} contacts in master list`);
+    }
+    
+  } catch (error) {
+    console.error(`${MODULE_ID} | ⚠️ Master Contact Service initialization failed:`, error);
+    console.error(`${MODULE_ID} | Stack:`, error.stack);
+    // Don't throw - this is non-critical (only affects GM features)
+  }
+}, 10); // Priority 10 - runs early but after core services
+
 // Register time settings
 moduleInitializer.register('init', async () => {
   console.log(`${MODULE_ID} | Initializing Time System...`);
@@ -433,6 +472,10 @@ moduleInitializer.register('postReady', async () => {
     },
     'Scheduling': {
       schedulingService: !!game.nightcity?.schedulingService
+    },
+    'GM Tools': {
+      masterContactService: !!game.nightcity?.masterContactService,
+      GMContactManagerApp: !!game.nightcity?.GMContactManagerApp
     }
   };
   

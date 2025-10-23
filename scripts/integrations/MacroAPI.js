@@ -92,6 +92,36 @@ export class MacroAPI {
       const { PlayerEmailSetup } = await import('../ui/dialogs/PlayerEmailSetup.js');
       return await PlayerEmailSetup.show();
     };
+
+    /**
+     * Open GM Master Contact Manager (GM only)
+     */
+    game.nightcity.openGMMasterContacts = async () => {
+      // Check if GM
+      if (!game.user.isGM) {
+        ui.notifications.error('GM Master Contact Manager is only accessible to GMs');
+        return;
+      }
+      
+      // Ensure system is ready
+      await this._ensureReady();
+      
+      // Check if GMContactManagerApp is available
+      const GMContactManagerApp = game.nightcity.GMContactManagerApp;
+      if (!GMContactManagerApp) {
+        ui.notifications.error('GM Contact Manager not loaded. Please refresh Foundry.');
+        console.error(`${MODULE_ID} | GMContactManagerApp not available in game.nightcity`);
+        return;
+      }
+      
+      // Open the manager
+      new GMContactManagerApp().render(true);
+    };
+
+    /**
+     * Alias for GM contacts
+     */
+    game.nightcity.openGMContacts = game.nightcity.openGMMasterContacts;
     
     console.log(`${MODULE_ID} | ✓ Macro API (early) registered`);
   }

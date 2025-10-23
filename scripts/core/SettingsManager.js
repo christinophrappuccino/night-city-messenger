@@ -74,6 +74,15 @@ export class SettingsManager {
       range: { min: 5, max: 100, step: 5 },
       onChange: value => this._onSettingChanged('messagesPerPage', value)
     });
+
+    game.settings.register(MODULE_ID, 'gmMasterContacts', {
+    name: 'GM Master Contact List',
+    hint: 'Private list of all email identities the GM can send/receive as',
+    scope: 'world',
+    config: false,
+    type: Array,
+    default: []
+    });
     
     // Theme settings
     game.settings.register(MODULE_ID, 'themeColors', {

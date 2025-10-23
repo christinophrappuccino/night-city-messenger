@@ -1,0 +1,190 @@
+{{!-- GM Master Contact Manager Template --}}
+{{!-- File: templates/gm-contact-manager/gm-contact-manager.hbs --}}
+
+<div class="ncm-gm-contact-manager__container">
+  
+  {{!-- HEADER --}}
+  <div class="ncm-header">
+    <div class="ncm-header__top">
+      <div class="ncm-header__connection">
+        <i class="fas fa-shield-alt"></i> GM ONLY
+      </div>
+      <div class="ncm-header__title">MASTER CONTACT DIRECTORY</div>
+      <div class="ncm-header__time">{{currentTime}}</div>
+    </div>
+    <div class="ncm-header__bottom">
+      <span class="ncm-header__welcome">
+        {{#if showingFiltered}}
+          {{filteredCount}} of {{contactCount}} Contacts
+        {{else}}
+          {{contactCount}} Total Contacts
+        {{/if}}
+        <span style="color: #19f3f7; margin-left: 12px;">
+          ({{actorCount}} <i class="fas fa-user"></i> Actors | {{customCount}} <i class="fas fa-plus-circle"></i> Custom)
+        </span>
+      </span>
+    </div>
+  </div>
+  
+  {{!-- INFO BAR --}}
+  <div class="ncm-gm-contact-manager__info">
+    <i class="fas fa-info-circle"></i>
+    <span>This is your private directory of all email identities in the world. Use the composer to send/receive as any contact.</span>
+  </div>
+  
+  {{!-- TOOLBAR --}}
+  <div class="ncm-gm-contact-manager__toolbar">
+    {{!-- Search --}}
+    <div class="ncm-gm-contact-manager__search">
+      <i class="fas fa-search"></i>
+      <input 
+        type="text" 
+        class="ncm-gm-contact-manager__search-input" 
+        placeholder="Search name, email, organization..."
+        value="{{searchTerm}}"
+        data-action="search"
+      />
+    </div>
+    
+    {{!-- Type Filter --}}
+    <select class="ncm-gm-contact-manager__filter" data-filter="type">
+      <option value="all" {{#if (eq typeFilter 'all')}}selected{{/if}}>All Contacts</option>
+      <option value="actor" {{#if (eq typeFilter 'actor')}}selected{{/if}}>Actors Only</option>
+      <option value="custom" {{#if (eq typeFilter 'custom')}}selected{{/if}}>Custom Only</option>
+    </select>
+    
+    {{!-- Actions --}}
+    <button class="ncm-btn ncm-btn--primary" data-action="add-contact">
+      <i class="fas fa-plus"></i> Add Custom Contact
+    </button>
+    
+    <button class="ncm-btn ncm-btn--ghost" data-action="refresh" title="Refresh">
+      <i class="fas fa-sync"></i>
+    </button>
+  </div>
+  
+  {{!-- CONTACT LIST --}}
+  <div class="ncm-gm-contact-manager__list">
+    {{#if contacts.length}}
+      
+      {{!-- Actor Contacts Section --}}
+      {{#if groupedContacts.actors.length}}
+      <div class="ncm-contact-section">
+        <div class="ncm-contact-section__header">
+          <i class="fas fa-user"></i> Actor-Linked Contacts ({{groupedContacts.actors.length}})
+          <span class="ncm-contact-section__hint">Synced from actor email addresses</span>
+        </div>
+        <div class="ncm-contact-section__grid">
+          {{#each groupedContacts.actors}}
+          <div class="ncm-gm-contact-card" data-contact-id="{{this.id}}">
+            <div class="ncm-gm-contact-card__avatar" style="background-image: url('{{this.img}}')"></div>
+            <div class="ncm-gm-contact-card__info">
+              <div class="ncm-gm-contact-card__name">
+                <i class="fas fa-user" style="color: #19f3f7; margin-right: 4px;"></i>
+                {{this.name}}
+              </div>
+              <div class="ncm-gm-contact-card__email">{{this.email}}</div>
+              {{#if this.organization}}
+              <div class="ncm-gm-contact-card__org">
+                <i class="fas fa-building"></i> {{this.organization}}
+              </div>
+              {{/if}}
+              {{#if this.role}}
+              <div class="ncm-gm-contact-card__role">
+                <i class="fas fa-tag"></i> {{this.role}}
+              </div>
+              {{/if}}
+            </div>
+            <div class="ncm-gm-contact-card__actions">
+              <button class="ncm-btn ncm-btn--small ncm-btn--ghost" 
+                      title="Cannot edit actor contacts here"
+                      disabled>
+                <i class="fas fa-lock"></i>
+              </button>
+            </div>
+          </div>
+          {{/each}}
+        </div>
+      </div>
+      {{/if}}
+      
+      {{!-- Custom Contacts Section --}}
+      {{#if groupedContacts.custom.length}}
+      <div class="ncm-contact-section">
+        <div class="ncm-contact-section__header">
+          <i class="fas fa-plus-circle"></i> Custom Contacts ({{groupedContacts.custom.length}})
+          <span class="ncm-contact-section__hint">Manually added NPCs and organizations</span>
+        </div>
+        <div class="ncm-contact-section__grid">
+          {{#each groupedContacts.custom}}
+          <div class="ncm-gm-contact-card" data-contact-id="{{this.id}}">
+            <div class="ncm-gm-contact-card__avatar" style="background-image: url('{{this.img}}')"></div>
+            <div class="ncm-gm-contact-card__info">
+              <div class="ncm-gm-contact-card__name">
+                {{this.name}}
+              </div>
+              <div class="ncm-gm-contact-card__email">{{this.email}}</div>
+              {{#if this.organization}}
+              <div class="ncm-gm-contact-card__org">
+                <i class="fas fa-building"></i> {{this.organization}}
+              </div>
+              {{/if}}
+              {{#if this.role}}
+              <div class="ncm-gm-contact-card__role">
+                <i class="fas fa-tag"></i> {{this.role}}
+              </div>
+              {{/if}}
+              {{#if this.notes}}
+              <div class="ncm-gm-contact-card__notes">
+                <i class="fas fa-sticky-note"></i> {{this.notes}}
+              </div>
+              {{/if}}
+            </div>
+            <div class="ncm-gm-contact-card__actions">
+              <button class="ncm-btn ncm-btn--small ncm-btn--ghost" 
+                      data-action="edit-contact"
+                      title="Edit Contact">
+                <i class="fas fa-edit"></i>
+              </button>
+              <button class="ncm-btn ncm-btn--small ncm-btn--ghost" 
+                      data-action="delete-contact"
+                      title="Delete Contact">
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
+          </div>
+          {{/each}}
+        </div>
+      </div>
+      {{/if}}
+      
+    {{else}}
+      {{!-- Empty State --}}
+      <div class="ncm-gm-contact-manager__empty">
+        <div class="ncm-gm-contact-manager__empty-icon">
+          <i class="fas fa-address-book"></i>
+        </div>
+        <div class="ncm-gm-contact-manager__empty-text">
+          No Contacts Yet
+        </div>
+        <div class="ncm-gm-contact-manager__empty-subtext">
+          Add custom contacts or create actors with email addresses
+        </div>
+        <button class="ncm-btn ncm-btn--primary ncm-btn--large" data-action="add-contact" style="margin-top: 20px;">
+          <i class="fas fa-plus"></i> Add First Contact
+        </button>
+      </div>
+    {{/if}}
+  </div>
+  
+  {{!-- FOOTER --}}
+  <div class="ncm-gm-contact-manager__footer">
+    <div class="ncm-gm-contact-manager__stats">
+      <i class="fas fa-database"></i> {{contactCount}} total contacts
+    </div>
+    <div class="ncm-gm-contact-manager__hint">
+      <i class="fas fa-lightbulb"></i> Players will discover these emails in messages and can add them to their personal contact lists
+    </div>
+  </div>
+  
+</div>

@@ -1,0 +1,311 @@
+/**
+ * GM Master Contact Manager Styles
+ * File: styles/components/gm-contact-manager.css
+ * Module: cyberpunkred-messenger
+ */
+
+/* ============================================
+   WINDOW
+   ============================================ */
+.ncm-app.ncm-gm-contact-manager {
+  width: 900px;
+  height: 700px;
+  min-width: 600px;
+  min-height: 500px;
+}
+
+/* ============================================
+   CONTAINER
+   ============================================ */
+.ncm-gm-contact-manager__container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ============================================
+   INFO BAR
+   ============================================ */
+.ncm-gm-contact-manager__info {
+  flex: 0 0 auto;
+  padding: var(--ncm-spacing-md);
+  background: rgba(251, 191, 36, 0.1);
+  border-bottom: 2px solid #fbbf24;
+  border-top: 2px solid #fbbf24;
+  color: #fbbf24;
+  display: flex;
+  align-items: center;
+  gap: var(--ncm-spacing-sm);
+  font-size: var(--ncm-font-size-sm);
+}
+
+.ncm-gm-contact-manager__info i {
+  font-size: 1.2em;
+}
+
+/* ============================================
+   TOOLBAR
+   ============================================ */
+.ncm-gm-contact-manager__toolbar {
+  flex: 0 0 auto;
+  padding: var(--ncm-spacing-md);
+  background: var(--ncm-bg-secondary);
+  border-bottom: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
+  display: flex;
+  gap: var(--ncm-spacing-sm);
+  align-items: center;
+}
+
+.ncm-gm-contact-manager__search {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.ncm-gm-contact-manager__search i {
+  position: absolute;
+  left: var(--ncm-spacing-sm);
+  color: var(--ncm-text-tertiary);
+  pointer-events: none;
+}
+
+.ncm-gm-contact-manager__search-input {
+  flex: 1;
+  padding: var(--ncm-spacing-sm) var(--ncm-spacing-sm) var(--ncm-spacing-sm) var(--ncm-spacing-xl);
+  background: var(--ncm-bg-tertiary);
+  border: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
+  border-radius: var(--ncm-border-radius-md);
+  color: var(--ncm-text-primary);
+  font-size: var(--ncm-font-size-sm);
+}
+
+.ncm-gm-contact-manager__search-input:focus {
+  border-color: var(--ncm-primary);
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ncm-primary-alpha);
+}
+
+.ncm-gm-contact-manager__filter {
+  padding: var(--ncm-spacing-sm) var(--ncm-spacing-md);
+  background: var(--ncm-bg-tertiary);
+  border: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
+  border-radius: var(--ncm-border-radius-md);
+  color: var(--ncm-text-primary);
+  font-size: var(--ncm-font-size-sm);
+  cursor: pointer;
+}
+
+.ncm-gm-contact-manager__filter:hover {
+  border-color: var(--ncm-primary);
+}
+
+/* ============================================
+   CONTACT LIST
+   ============================================ */
+.ncm-gm-contact-manager__list {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--ncm-spacing-md);
+}
+
+/* ============================================
+   CONTACT SECTIONS
+   ============================================ */
+.ncm-contact-section {
+  margin-bottom: var(--ncm-spacing-xl);
+}
+
+.ncm-contact-section__header {
+  padding: var(--ncm-spacing-md);
+  background: var(--ncm-bg-surface);
+  border-left: 4px solid var(--ncm-primary);
+  border-radius: var(--ncm-border-radius-sm);
+  margin-bottom: var(--ncm-spacing-md);
+  display: flex;
+  align-items: center;
+  gap: var(--ncm-spacing-sm);
+  font-size: var(--ncm-font-size-lg);
+  font-weight: var(--ncm-font-weight-bold);
+  color: var(--ncm-primary);
+}
+
+.ncm-contact-section__hint {
+  margin-left: auto;
+  font-size: var(--ncm-font-size-sm);
+  font-weight: normal;
+  color: var(--ncm-text-tertiary);
+  font-style: italic;
+}
+
+.ncm-contact-section__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: var(--ncm-spacing-md);
+}
+
+/* ============================================
+   CONTACT CARDS
+   ============================================ */
+.ncm-gm-contact-card {
+  padding: var(--ncm-spacing-md);
+  background: var(--ncm-bg-tertiary);
+  border: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
+  border-radius: var(--ncm-border-radius-md);
+  display: grid;
+  grid-template-columns: 60px 1fr auto;
+  gap: var(--ncm-spacing-md);
+  transition: all var(--ncm-transition-fast);
+}
+
+.ncm-gm-contact-card:hover {
+  background: var(--ncm-bg-hover);
+  border-color: var(--ncm-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px var(--ncm-primary-alpha);
+}
+
+.ncm-gm-contact-card__avatar {
+  width: 60px;
+  height: 60px;
+  background-size: cover;
+  background-position: center;
+  border-radius: var(--ncm-border-radius-md);
+  border: 2px solid var(--ncm-secondary);
+  box-shadow: 0 0 10px var(--ncm-secondary-alpha);
+}
+
+.ncm-gm-contact-card__info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ncm-spacing-xs);
+  min-width: 0; /* Allow text truncation */
+}
+
+.ncm-gm-contact-card__name {
+  font-size: var(--ncm-font-size-lg);
+  font-weight: var(--ncm-font-weight-bold);
+  color: var(--ncm-text-primary);
+  display: flex;
+  align-items: center;
+  gap: var(--ncm-spacing-xs);
+}
+
+.ncm-gm-contact-card__email {
+  font-size: var(--ncm-font-size-sm);
+  color: var(--ncm-secondary);
+  font-family: var(--ncm-font-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ncm-gm-contact-card__org,
+.ncm-gm-contact-card__role,
+.ncm-gm-contact-card__notes {
+  font-size: var(--ncm-font-size-xs);
+  color: var(--ncm-text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ncm-gm-contact-card__notes {
+  font-style: italic;
+  color: var(--ncm-text-tertiary);
+}
+
+.ncm-gm-contact-card__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ncm-spacing-xs);
+  align-items: flex-start;
+}
+
+/* ============================================
+   EMPTY STATE
+   ============================================ */
+.ncm-gm-contact-manager__empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--ncm-spacing-xxl);
+  text-align: center;
+  color: var(--ncm-text-tertiary);
+}
+
+.ncm-gm-contact-manager__empty-icon {
+  font-size: 4rem;
+  margin-bottom: var(--ncm-spacing-lg);
+  opacity: 0.3;
+}
+
+.ncm-gm-contact-manager__empty-text {
+  font-size: var(--ncm-font-size-xl);
+  color: var(--ncm-text-secondary);
+  margin-bottom: var(--ncm-spacing-sm);
+}
+
+.ncm-gm-contact-manager__empty-subtext {
+  color: var(--ncm-text-tertiary);
+  margin-bottom: var(--ncm-spacing-lg);
+}
+
+/* ============================================
+   FOOTER
+   ============================================ */
+.ncm-gm-contact-manager__footer {
+  flex: 0 0 auto;
+  padding: var(--ncm-spacing-md);
+  background: var(--ncm-bg-surface);
+  border-top: var(--ncm-border-width-thin) solid var(--ncm-border-secondary);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--ncm-spacing-md);
+}
+
+.ncm-gm-contact-manager__stats {
+  font-size: var(--ncm-font-size-sm);
+  color: var(--ncm-text-secondary);
+  font-family: var(--ncm-font-mono);
+}
+
+.ncm-gm-contact-manager__hint {
+  font-size: var(--ncm-font-size-xs);
+  color: var(--ncm-text-tertiary);
+  font-style: italic;
+  display: flex;
+  align-items: center;
+  gap: var(--ncm-spacing-xs);
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+@media (max-width: 899px) {
+  .ncm-app.ncm-gm-contact-manager {
+    width: 95vw;
+  }
+  
+  .ncm-contact-section__grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .ncm-gm-contact-manager__toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .ncm-gm-contact-manager__search {
+    width: 100%;
+  }
+  
+  .ncm-gm-contact-manager__footer {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

@@ -41,6 +41,10 @@ export class MessageComposerApp extends BaseApplication {
     this.timeWidget = new TimeWidget(this);
     this.timeService = TimeService.getInstance();
     
+    // GM can send AS any identity
+    this.showFromField = game.user.isGM;
+    this.fromEmail = options.from || '';
+    
     // Build initial content
     let initialContent = options.content || '';
     
@@ -51,6 +55,7 @@ export class MessageComposerApp extends BaseApplication {
     }
     
     this.formData = {
+      from: this.fromEmail, // 🆕 NEW
       to: options.to || '',
       subject: options.subject || '',
       content: initialContent
@@ -76,11 +81,33 @@ export class MessageComposerApp extends BaseApplication {
   async getData(options = {}) {
     const data = super.getData(options);
     const senderEmail = this.actor?.getFlag(MODULE_ID, "emailAddress") || "No email set";
+
+    // Load FROM suggestions for GMs
+    let fromSuggestions = [];
+    if (game.user.isGM && game.nightcity?.masterContactService) {
+      fromSuggestions = game.nightcity.masterContactService.getAllContacts();
+    }
+    
+    // Load TO suggestions
+    let toSuggestions = [];
+    const userContacts = await game.user.getFlag(MODULE_ID, 'contacts') || [];
+    toSuggestions = [...userContacts];
+    
+    if (game.user.isGM && game.nightcity?.masterContactService) {
+      const masterContacts = game.nightcity.masterContactService.getAllContacts();
+      const existingEmails = new Set(toSuggestions.map(c => c.email));
+      for (const contact of masterContacts) {
+        if (!existingEmails.has(contact.email)) {
+          toSuggestions.push(contact);
+        }
+      }
+    }
     
     return {
       ...data,
       actor: this.actor,
       senderEmail,
+      from: this.formData.from || senderEmail,
       to: this.formData.to,
       subject: this.formData.subject,
       content: this.formData.content,
@@ -90,7 +117,10 @@ export class MessageComposerApp extends BaseApplication {
       showScheduleButton: this.settingsManager.get('defaultSendBehavior') !== 'immediate',
       currentTime: this.timeService.formatTimestamp(
         this.timeService.getCurrentTimestamp()
-      )
+      ),
+      showFromField: this.showFromField,
+      fromSuggestions: fromSuggestions,
+      toSuggestions: toSuggestions
     };
   }
   
@@ -237,7 +267,9 @@ export class MessageComposerApp extends BaseApplication {
    * @private
    */
   async _setupRecipientAutocomplete(input, suggestions) {
-    const userContacts = await game.user.getFlag(MODULE_ID, "contacts") || [];
+    // Use pre-loaded suggestions from getData (includes master list for GMs)
+    const data = await this.getData();
+    const contacts = data.toSuggestions || [];
     
     const actorContacts = game.actors.contents
       .filter(a => a.getFlag(MODULE_ID, "emailAddress"))
@@ -730,6 +762,17 @@ export class MessageComposerApp extends BaseApplication {
       e.preventDefault();
       this._showEmojiPicker();
     });
+
+    // FROM field autocomplete (GM only)
+    if (this.showFromField) {
+      const fromInput = html.find('[name="from"]');
+      const fromSuggestions = html.find('.ncm-composer__from-suggestions');
+      this._setupFromAutocomplete(fromInput, fromSuggestions);
+      
+      html.find('[data-action="select-from-master"]').on('click', () => {
+        this._openFromPicker();
+      });
+    }
     
     // Contact picker
     html.find('[data-action="select-contact"]').on('click', () => {
@@ -738,7 +781,7 @@ export class MessageComposerApp extends BaseApplication {
     
     // Recipient autocomplete
     const recipientInput = html.find('[name="to"]');
-    const suggestions = html.find('.ncm-composer__suggestions');
+    const suggestions = html.find('.ncm-composer__to-suggestions');
     this._setupRecipientAutocomplete(recipientInput, suggestions);
     
     // Activate time widget listeners
@@ -771,7 +814,9 @@ export class MessageComposerApp extends BaseApplication {
       }
       
       const messageData = {
-        from: `${this.actor.name} <${senderEmail}>`,
+        from: this.showFromField && this.formData.from ? 
+              this.formData.from : 
+              `${this.actor.name} <${senderEmail}>`,
         to,
         subject,
         content,
@@ -806,6 +851,214 @@ export class MessageComposerApp extends BaseApplication {
     }
     
     return super.close(options);
+  }
+
+  /**
+   * Setup FROM field autocomplete (GM only)
+   * @param {jQuery} input - FROM input field
+   * @param {jQuery} suggestionContainer - Suggestions container
+   * @private
+   */
+  _setupFromAutocomplete(input, suggestionContainer) {
+    input.on('input', async () => {
+      const query = input.val().toLowerCase().trim();
+      
+      if (!query) {
+        suggestionContainer.hide();
+        return;
+      }
+      
+      // Get FROM suggestions from master contact service
+      const masterContactService = game.nightcity?.masterContactService;
+      if (!masterContactService) {
+        suggestionContainer.hide();
+        return;
+      }
+      
+      const allContacts = masterContactService.getAllContacts();
+      const filtered = allContacts.filter(c => 
+        c.name.toLowerCase().includes(query) ||
+        c.email.toLowerCase().includes(query) ||
+        (c.organization && c.organization.toLowerCase().includes(query))
+      ).slice(0, 8);
+      
+      if (filtered.length === 0) {
+        suggestionContainer.hide();
+        return;
+      }
+      
+      // Build suggestions HTML
+      const suggestionsHtml = filtered.map(contact => `
+        <div class="ncm-composer__suggestion-item" data-email="${contact.email}">
+          <img src="${contact.img || 'icons/svg/mystery-man.svg'}" 
+               class="ncm-composer__suggestion-avatar" 
+               alt="${contact.name}" />
+          <div class="ncm-composer__suggestion-info">
+            <div class="ncm-composer__suggestion-name">${contact.name}</div>
+            <div class="ncm-composer__suggestion-email">${contact.email}</div>
+            ${contact.organization ? `<div class="ncm-composer__suggestion-org">${contact.organization}</div>` : ''}
+          </div>
+        </div>
+      `).join('');
+      
+      suggestionContainer.html(suggestionsHtml).show();
+      
+      // Click handler
+      suggestionContainer.find('.ncm-composer__suggestion-item').on('click', (e) => {
+        const email = $(e.currentTarget).data('email');
+        input.val(email);
+        this.formData.from = email;
+        suggestionContainer.hide();
+      });
+    });
+    
+    // Hide suggestions when clicking outside
+    $(document).on('click', (e) => {
+      if (!$(e.target).closest('.ncm-composer__from-wrapper').length) {
+        suggestionContainer.hide();
+      }
+    });
+    
+    // Show suggestions on focus if there's content
+    input.on('focus', () => {
+      if (input.val()) {
+        input.trigger('input');
+      }
+    });
+  }
+
+  /**
+   * Open FROM picker dialog (GM only)
+   * Shows full master contact list for selection
+   * @private
+   */
+  _openFromPicker() {
+    const masterContactService = game.nightcity?.masterContactService;
+    if (!masterContactService) {
+      ui.notifications.error('Master Contact Service not available');
+      return;
+    }
+    
+    const allContacts = masterContactService.getAllContacts();
+    
+    new Dialog({
+      title: 'Select Sender Identity',
+      content: `
+        <div class="ncm-from-picker">
+          <input type="text" 
+                 class="ncm-from-picker__search" 
+                 placeholder="Search contacts..." 
+                 autofocus />
+          <div class="ncm-from-picker__list"></div>
+        </div>
+        <style>
+          .ncm-from-picker {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-height: 500px;
+          }
+          .ncm-from-picker__search {
+            padding: 8px;
+            background: #2a0000;
+            border: 1px solid #666;
+            color: white;
+            border-radius: 4px;
+          }
+          .ncm-from-picker__list {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+          }
+          .ncm-from-picker__item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px;
+            background: rgba(246, 82, 97, 0.1);
+            border: 1px solid rgba(246, 82, 97, 0.3);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+          }
+          .ncm-from-picker__item:hover {
+            background: rgba(246, 82, 97, 0.2);
+            border-color: #F65261;
+          }
+          .ncm-from-picker__item img {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 2px solid #19f3f7;
+          }
+          .ncm-from-picker__item .name {
+            font-weight: bold;
+            color: #F65261;
+          }
+          .ncm-from-picker__item .email {
+            font-size: 0.9em;
+            color: #19f3f7;
+            font-family: monospace;
+          }
+          .ncm-from-picker__item .org {
+            font-size: 0.85em;
+            color: #999;
+          }
+        </style>
+      `,
+      render: (html) => {
+        const $list = html.find('.ncm-from-picker__list');
+        const $search = html.find('.ncm-from-picker__search');
+        
+        const renderList = (query = '') => {
+          const filtered = query 
+            ? allContacts.filter(c => 
+                c.name.toLowerCase().includes(query.toLowerCase()) ||
+                c.email.toLowerCase().includes(query.toLowerCase()) ||
+                (c.organization && c.organization.toLowerCase().includes(query.toLowerCase()))
+              )
+            : allContacts;
+          
+          const listHtml = filtered.map(c => `
+            <div class="ncm-from-picker__item" data-email="${c.email}">
+              <img src="${c.img || 'icons/svg/mystery-man.svg'}" alt="${c.name}" />
+              <div>
+                <div class="name">${c.name}</div>
+                <div class="email">${c.email}</div>
+                ${c.organization ? `<div class="org">${c.organization}</div>` : ''}
+              </div>
+            </div>
+          `).join('');
+          
+          $list.html(listHtml || '<p style="color: #999; text-align: center;">No contacts found</p>');
+          
+          $list.find('.ncm-from-picker__item').on('click', (e) => {
+            const email = $(e.currentTarget).data('email');
+            this.element.find('[name="from"]').val(email);
+            this.formData.from = email;
+            html.closest('.dialog').find('.dialog-button.ok').click();
+          });
+        };
+        
+        renderList();
+        
+        $search.on('input', (e) => {
+          renderList($(e.currentTarget).val());
+        });
+      },
+      buttons: {
+        close: {
+          icon: '<i class="fas fa-times"></i>',
+          label: 'Close'
+        }
+      },
+      default: 'close'
+    }, {
+      width: 500,
+      height: 600
+    }).render(true);
   }
   
   /**
