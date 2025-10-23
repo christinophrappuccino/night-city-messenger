@@ -31,6 +31,9 @@ export class TemplateManager {
       // Contact Manager
       `modules/${MODULE_ID}/templates/contact-manager/contact-manager.hbs`,
       
+      // GM Contact Manager (GM-only)
+      `modules/${MODULE_ID}/templates/gm-contact-manager/gm-contact-manager.hbs`,
+      
       // Admin Panel
       `modules/${MODULE_ID}/templates/admin-panel/admin-panel.hbs`,
       `modules/${MODULE_ID}/templates/admin-panel/partials/statistics.hbs`,
@@ -41,7 +44,7 @@ export class TemplateManager {
       `modules/${MODULE_ID}/templates/item-inbox/item-inbox.hbs`,
       `modules/${MODULE_ID}/templates/item-inbox/item-config.hbs`,
       `modules/${MODULE_ID}/templates/item-inbox/message-shared.hbs`,
-      `modules/${MODULE_ID}/templates/item-inbox/message-composer.hbs`
+      `modules/${MODULE_ID}/templates/item-inbox/message-composer.hbs`,
       `modules/${MODULE_ID}/templates/item-inbox/hack-result.hbs`,
       
       // Shared
