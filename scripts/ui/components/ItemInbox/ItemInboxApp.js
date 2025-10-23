@@ -372,6 +372,11 @@ export class ItemInboxApp extends BaseApplication {
     html.find('[data-action="delete-message"]').click(this._onDeleteMessage.bind(this));
     html.find('[data-action="configure"]').click(this._onConfigure.bind(this));
     html.find('[data-action="close"]').click(() => this.close());
+    html.find('[data-action="add-sender-to-contacts"]').on('click', async (e) => {
+      const senderEmail = $(e.currentTarget).data('sender-email');
+      const senderName = $(e.currentTarget).data('sender-name');
+      await this._addSenderToContacts(senderEmail, senderName);
+    });
     
     // GM Controls
     html.find('[data-action="gm-force-decrypt"]').click(this._onGMForceDecrypt.bind(this));
@@ -632,6 +637,41 @@ export class ItemInboxApp extends BaseApplication {
         });
       }
     });
+  }
+
+  /**
+   * Add message sender to player's personal contacts
+   */
+  async _addSenderToContacts(email, name) {
+    if (!email) {
+      ui.notifications.warn('No sender email available');
+      return;
+    }
+    
+    // Check if already in contacts
+    const contacts = await game.user.getFlag(MODULE_ID, 'contacts') || [];
+    const exists = contacts.find(c => c.email === email);
+    
+    if (exists) {
+      ui.notifications.info(`${name || email} is already in your contacts`);
+      return;
+    }
+    
+    // Add to contacts
+    contacts.push({
+      id: foundry.utils.randomID(),
+      name: name || email,
+      email: email,
+      type: 'discovered',
+      tags: ['data-shard'],
+      notes: 'Added from data shard',
+      createdAt: new Date().toISOString()
+    });
+    
+    await game.user.setFlag(MODULE_ID, 'contacts', contacts);
+    
+    ui.notifications.info(`Added ${name || email} to your contacts`);
+    this.playSound('notification');
   }
   
   /**

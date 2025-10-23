@@ -513,20 +513,24 @@
         
         {{else}}
         
-        <div class="ncm-item-inbox__message-header-detail">
-          <div class="ncm-item-inbox__message-meta">
-            <div class="ncm-item-inbox__message-from-detail">
-              <strong>From:</strong> <span style="color: var(--ncm-secondary);">{{selectedMessage.messageData.from}}</span>
-            </div>
-            <div class="ncm-item-inbox__message-to-detail">
-              <strong>To:</strong> <span style="color: var(--ncm-secondary);">{{selectedMessage.messageData.to}}</span>
-            </div>
-            <div class="ncm-item-inbox__message-date-detail">
-              <strong>Date:</strong> {{selectedMessage.messageData.date}}
-            </div>
+        <div class="ncm-item-inbox__message-meta">
+          <div class="ncm-item-inbox__message-from-detail">
+            <strong>From:</strong> 
+            <span style="color: var(--ncm-secondary);">{{selectedMessage.messageData.from}}</span>
+            <button class="ncm-btn ncm-btn--small ncm-btn--ghost" 
+                    data-action="add-sender-to-contacts"
+                    data-sender-email="{{selectedMessage.messageData.from}}"
+                    data-sender-name="{{selectedMessage.messageData.fromName}}"
+                    title="Add to Contacts"
+                    style="margin-left: 8px;">
+              <i class="fas fa-user-plus"></i>
+            </button>
           </div>
-          <div class="ncm-item-inbox__message-subject-detail">
-            {{selectedMessage.messageData.subject}}
+          <div class="ncm-item-inbox__message-to-detail">
+            <strong>To:</strong> <span style="color: var(--ncm-secondary);">{{selectedMessage.messageData.to}}</span>
+          </div>
+          <div class="ncm-item-inbox__message-date-detail">
+            <strong>Date:</strong> {{selectedMessage.messageData.date}}
           </div>
         </div>
         
