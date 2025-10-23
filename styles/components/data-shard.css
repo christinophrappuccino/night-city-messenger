@@ -1381,6 +1381,52 @@
 }
 
 /* ========================================================================
+   LOGIN STATUS BADGE
+   ======================================================================== */
+
+.ncm-login-badge {
+  display: inline-block;
+  margin-left: 12px;
+  padding: 4px 12px;
+  background: linear-gradient(135deg, rgba(25, 243, 247, 0.2) 0%, rgba(25, 243, 247, 0.1) 100%);
+  border: 1px solid var(--ncm-secondary);
+  border-radius: 4px;
+  font-size: 0.8em;
+  color: var(--ncm-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: bold;
+  animation: pulse-glow-subtle 3s ease-in-out infinite;
+  box-shadow: 0 0 10px rgba(25, 243, 247, 0.3);
+}
+
+.ncm-login-badge i {
+  margin-right: 5px;
+  filter: drop-shadow(0 0 3px rgba(25, 243, 247, 0.8));
+}
+
+/* Authenticated security bar variant */
+.ncm-item-inbox__security--authenticated {
+  background: rgba(25, 243, 247, 0.05);
+  border-color: rgba(25, 243, 247, 0.4);
+}
+
+.ncm-item-inbox__security--authenticated .ncm-item-inbox__security-icon {
+  color: var(--ncm-secondary);
+  filter: drop-shadow(0 0 8px rgba(25, 243, 247, 0.6));
+}
+
+/* Subtle pulse animation for login badge */
+@keyframes pulse-glow-subtle {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(25, 243, 247, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 15px rgba(25, 243, 247, 0.5);
+  }
+}
+
+/* ========================================================================
    NETWORK OVERLAY SPECIFIC
    ======================================================================== */
 

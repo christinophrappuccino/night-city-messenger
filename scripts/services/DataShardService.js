@@ -51,6 +51,11 @@ export class DataShardService {
     await item.setFlag(MODULE_ID, 'requiredNetwork', requiredNetwork);
     await item.setFlag(MODULE_ID, 'hackAttempts', 0);
     await item.setFlag(MODULE_ID, 'maxHackAttempts', DEFAULTS.MAX_HACK_ATTEMPTS);
+    await item.setFlag(MODULE_ID, 'requiresLogin', requiresLogin);
+    await item.setFlag(MODULE_ID, 'loginUsername', loginUsername);
+    await item.setFlag(MODULE_ID, 'loginPassword', loginPassword);
+    await item.setFlag(MODULE_ID, 'loginDisplayName', loginDisplayName);
+    await item.setFlag(MODULE_ID, 'maxLoginAttempts', maxLoginAttempts);
     
     // If encrypted, mark as NOT decrypted initially
     if (encrypted && (encryptionMode === 'shard' || encryptionMode === 'both')) {

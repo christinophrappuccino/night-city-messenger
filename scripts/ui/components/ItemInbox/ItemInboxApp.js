@@ -261,6 +261,7 @@ export class ItemInboxApp extends BaseApplication {
     // LOGIN DATA
     // ========================================================================
     const loginUsername = this.item.getFlag(MODULE_ID, 'loginUsername') || 'admin';
+    const loginDisplayName = this.item.getFlag(MODULE_ID, 'loginDisplayName') || '';
     const loginAttempts = this.item.getFlag(MODULE_ID, 'loginAttempts') || 0;
     const maxLoginAttempts = this.item.getFlag(MODULE_ID, 'maxLoginAttempts') || 5;
     const loginLockoutUntil = this.item.getFlag(MODULE_ID, 'loginLockoutUntil');
@@ -305,6 +306,7 @@ export class ItemInboxApp extends BaseApplication {
       sessionLoggedIn,
       loginBlocked,
       loginUsername,
+      loginDisplayName, 
       loginAttempts,
       maxLoginAttempts,
       isLoginLockedOut,
@@ -1231,58 +1233,124 @@ export class ItemInboxApp extends BaseApplication {
       return;
     }
     
-    const confirmed = await Dialog.confirm({
-      title: "Reset Encryption",
-      content: `
-        <p>Re-lock this data shard?</p>
-        <p><strong>This will:</strong></p>
-        <ul>
-          <li>Lock the data shard</li>
-          <li>Reset all hack attempts</li>
-          <li>Clear the lockout timer</li>
-          <li>Players will need to hack it again</li>
-        </ul>
-        <p><em>Useful for testing encryption mechanics.</em></p>
-      `
+    // Get current configuration to show relevant options
+    const hasEncryption = this.item.getFlag(MODULE_ID, 'encrypted');
+    const hasNetworkReq = this.item.getFlag(MODULE_ID, 'requiresNetwork');
+    const hasLogin = this.item.getFlag(MODULE_ID, 'requiresLogin');
+    const requiredNetwork = this.item.getFlag(MODULE_ID, 'requiredNetwork') || 'CITINET';
+    
+    // Show options dialog
+    const content = await renderTemplate(
+      'modules/cyberpunkred-messenger/templates/dialogs/relock-options.hbs',
+      {
+        itemName: this.item.name,
+        hasEncryption,
+        hasNetworkReq,
+        hasLogin,
+        requiredNetwork
+      }
+    );
+    
+    const result = await Dialog.prompt({
+      title: "Re-Lock Data Shard",
+      content: content,
+      callback: (html) => {
+        return {
+          encryption: html.find('[name="reset-encryption"]').is(':checked'),
+          network: html.find('[name="reset-network"]').is(':checked'),
+          login: html.find('[name="reset-login"]').is(':checked'),
+          attempts: html.find('[name="reset-attempts"]').is(':checked'),
+          lockouts: html.find('[name="reset-lockouts"]').is(':checked')
+        };
+      },
+      rejectClose: false,
+      options: { width: 450 }
     });
     
-    if (!confirmed) return;
+    if (!result) return;
     
     try {
-      // Lock the shard
-      await this.item.setFlag(MODULE_ID, 'decrypted', false);
+      const resetActions = [];
       
-      // Clear lockout
-      await this.item.unsetFlag(MODULE_ID, 'lockoutUntil');
+      // ========================================================================
+      // ENCRYPTION LAYER
+      // ========================================================================
+      if (result.encryption && hasEncryption) {
+        await this.item.setFlag(MODULE_ID, 'decrypted', false);
+        const storageKey = `${MODULE_ID}-decrypted-${this.item.id}`;
+        localStorage.removeItem(storageKey);
+        resetActions.push('🔒 Encryption: <span style="color: #F65261;">LOCKED</span>');
+      }
       
-      // Reset hack attempts
-      await this.item.setFlag(MODULE_ID, 'hackAttempts', 0);
+      // ========================================================================
+      // NETWORK LAYER
+      // ========================================================================
+      if (result.network && hasNetworkReq) {
+        await this.item.unsetFlag(MODULE_ID, 'networkOverride');
+        resetActions.push('🌐 Network Override: <span style="color: #F65261;">CLEARED</span>');
+      }
       
-      // Clear any localStorage decryption keys for all users
-      const storageKey = `${MODULE_ID}-decrypted-${this.item.id}`;
-      localStorage.removeItem(storageKey);
+      // ========================================================================
+      // LOGIN LAYER
+      // ========================================================================
+      if (result.login && hasLogin) {
+        await this.item.unsetFlag(MODULE_ID, 'sessionLoggedIn');
+        resetActions.push('👤 Login Session: <span style="color: #F65261;">CLEARED</span>');
+      }
       
-      // Re-render
+      // ========================================================================
+      // ATTEMPTS (applies to both encryption and login)
+      // ========================================================================
+      if (result.attempts) {
+        await this.item.setFlag(MODULE_ID, 'hackAttempts', 0);
+        await this.item.setFlag(MODULE_ID, 'loginAttempts', 0);
+        resetActions.push('🔄 Hack Attempts: <span style="color: #F65261;">RESET TO 0</span>');
+      }
+      
+      // ========================================================================
+      // LOCKOUTS (applies to both encryption and login)
+      // ========================================================================
+      if (result.lockouts) {
+        await this.item.unsetFlag(MODULE_ID, 'lockoutUntil');
+        await this.item.unsetFlag(MODULE_ID, 'loginLockoutUntil');
+        resetActions.push('⏱️ Lockout Timers: <span style="color: #F65261;">CLEARED</span>');
+      }
+      
+      // ========================================================================
+      // RE-RENDER & NOTIFY
+      // ========================================================================
       this.render(false);
       
-      // Notification
-      ui.notifications.info('GM Override: Data shard re-locked');
-      
-      // Create chat message
-      await ChatMessage.create({
-        content: `
-          <div style="background: rgba(255, 215, 0, 0.1); border: 1px solid #FFD700; padding: 10px; border-radius: 4px;">
-            <p><strong style="color: #FFD700;"><i class="fas fa-crown"></i> GM OVERRIDE</strong></p>
-            <p>Data shard <strong>${this.item.name}</strong> was re-locked.</p>
-            <p><em>Encryption reset for testing.</em></p>
-          </div>
-        `,
-        whisper: [game.user.id]
-      });
+      if (resetActions.length > 0) {
+        ui.notifications.info(`GM Override: ${resetActions.length} security layer(s) reset`);
+        
+        // Create detailed chat message
+        await ChatMessage.create({
+          content: `
+            <div style="background: rgba(255, 215, 0, 0.1); border: 1px solid #FFD700; padding: 15px; border-radius: 4px; font-family: 'Rajdhani', sans-serif;">
+              <p style="margin: 0 0 10px 0;"><strong style="color: #FFD700; font-size: 1.1em;"><i class="fas fa-crown"></i> GM OVERRIDE</strong></p>
+              <p style="margin: 0 0 10px 0;">Security reset for <strong>${this.item.name}</strong>:</p>
+              
+              <div style="background: rgba(0,0,0,0.3); padding: 12px; border-radius: 4px; margin: 10px 0;">
+                <ul style="margin: 0; padding-left: 20px; list-style: none;">
+                  ${resetActions.map(action => `<li style="margin: 5px 0;">${action}</li>`).join('')}
+                </ul>
+              </div>
+              
+              <p style="color: rgba(255, 255, 255, 0.6); font-size: 0.9em; margin: 10px 0 0 0; font-style: italic;">
+                Players must bypass these security layers again to access the shard.
+              </p>
+            </div>
+          `,
+          whisper: [game.user.id]
+        });
+      } else {
+        ui.notifications.warn('No security layers were reset');
+      }
       
     } catch (error) {
-      console.error(`${MODULE_ID} | Error resetting encryption:`, error);
-      ui.notifications.error('Failed to reset encryption');
+      console.error(`${MODULE_ID} | Error resetting data shard:`, error);
+      ui.notifications.error('Failed to reset data shard');
     }
   }
 

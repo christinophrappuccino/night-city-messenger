@@ -64,6 +64,7 @@ export class ItemInboxConfig extends FormApplication {
     const requiresLogin = this.item.getFlag(MODULE_ID, 'requiresLogin') || false;
     const loginUsername = this.item.getFlag(MODULE_ID, 'loginUsername') || 'admin';
     const loginPassword = this.item.getFlag(MODULE_ID, 'loginPassword') || 'password';
+    const loginDisplayName = this.item.getFlag(MODULE_ID, 'loginDisplayName') || '';
     const maxLoginAttempts = this.item.getFlag(MODULE_ID, 'maxLoginAttempts') || 5;
     
     // Import constants for skill options
@@ -171,6 +172,7 @@ export class ItemInboxConfig extends FormApplication {
       requiresLogin,
       loginUsername,
       loginPassword,
+      loginDisplayName,
       maxLoginAttempts,
       
       // Available skills with metadata
@@ -332,6 +334,9 @@ export class ItemInboxConfig extends FormApplication {
       const loginPassword = Array.isArray(formData.loginPassword)
         ? formData.loginPassword[0]
         : (formData.loginPassword || 'password');
+      const loginDisplayName = Array.isArray(formData.loginDisplayName)
+        ? formData.loginDisplayName[0]
+        : (formData.loginDisplayName || '');
       
       // ========================================================================
       // NEW: MULTI-SKILL CONFIGURATION WITH INDIVIDUAL DVs
@@ -416,6 +421,7 @@ export class ItemInboxConfig extends FormApplication {
           requiresLogin,
           loginUsername,
           loginPassword,
+          loginDisplayName, 
           maxLoginAttempts
         });
       } else {
@@ -434,6 +440,7 @@ export class ItemInboxConfig extends FormApplication {
         await this.item.setFlag(MODULE_ID, 'requiresLogin', requiresLogin);
         await this.item.setFlag(MODULE_ID, 'loginUsername', loginUsername);
         await this.item.setFlag(MODULE_ID, 'loginPassword', loginPassword);
+        await this.item.setFlag(MODULE_ID, 'loginDisplayName', loginDisplayName);
         await this.item.setFlag(MODULE_ID, 'maxLoginAttempts', maxLoginAttempts);
       }
       

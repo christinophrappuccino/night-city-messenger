@@ -86,7 +86,7 @@
   {{!-- ==========================================================================
        SECURITY STATUS BAR
        ========================================================================== --}}
-  <div class="ncm-item-inbox__security {{#if encrypted}}ncm-item-inbox__security--encrypted{{/if}}">
+  <div class="ncm-item-inbox__security {{#if encrypted}}ncm-item-inbox__security--encrypted{{/if}} {{#if sessionLoggedIn}}ncm-item-inbox__security--authenticated{{/if}}">
     <div class="ncm-item-inbox__security-icon">
       {{#if encrypted}}
         {{#if isActuallyDecrypted}}
@@ -113,16 +113,37 @@
         {{else}}
           <span style="color: var(--ncm-secondary);">● UNENCRYPTED</span>
         {{/if}}
+        
+        {{!-- NEW: Show login status when authenticated --}}
+        {{#if sessionLoggedIn}}
+          <span class="ncm-login-badge">
+            <i class="fas fa-user-check"></i> ACCESS: {{#if loginDisplayName}}{{loginDisplayName}}{{else}}{{loginUsername}}{{/if}}
+          </span>
+        {{/if}}
+        
         {{#if allowsPerMessageEncryption}}
           <span class="ncm-encryption-badge">+ Per-Message Security</span>
         {{/if}}
       </div>
+      
       <div class="ncm-item-inbox__security-level">
         {{#if networkBlocked}}
           Current: {{currentNetwork}} • Required: {{requiredNetwork}} • Signal: {{signalStrength}}%
         {{else if loginBlocked}}
           Authentication Required • Attempts: {{loginAttempts}}/{{maxLoginAttempts}}
-        {{else if encrypted}}
+          {{else if sessionLoggedIn}}
+            {{!-- Show logged-in details --}}
+            <span style="color: var(--ncm-success);">
+              <i class="fas fa-check-circle"></i> Authenticated as <strong>{{#if loginDisplayName}}{{loginDisplayName}}{{else}}{{loginUsername}}{{/if}}</strong>
+            </span>
+            {{#if encrypted}}
+              {{#if isActuallyDecrypted}}
+                • Shard Decrypted
+              {{else}}
+                • Encryption: {{encryptionType}} DV {{encryptionDC}}
+              {{/if}}
+            {{/if}}
+          {{else if encrypted}}
           {{#if isActuallyDecrypted}}
             Access Granted • Decrypted
           {{else}}
