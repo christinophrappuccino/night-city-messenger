@@ -118,6 +118,13 @@ export class DataShardMessageComposer extends Application {
 
     // Toggle message encryption
     html.find('#message-encrypted').change(this._onToggleEncryption.bind(this));
+
+    // Master List button (GM only)
+    if (game.user.isGM) {
+      html.find('[data-action="select-from-master"]').on('click', () => {
+        this._openFromPicker();
+      });
+    }
     
     // Rich text formatting
     html.find('.ncm-format-bold').click(() => this._formatText('bold'));
@@ -372,6 +379,50 @@ export class DataShardMessageComposer extends Application {
     localStorage.setItem(`${MODULE_ID}-draft-${this.dataShard.id}`, JSON.stringify(formData));
     
     ui.notifications.info('Draft saved!');
+  }
+
+  /**
+   * Open FROM picker - Opens GM Contact Manager for selection
+   * ⚡ NEW: Opens the enhanced GM Contact Manager
+   * @private
+   */
+  _openFromPicker() {
+    const GMContactManagerApp = game.nightcity?.GMContactManagerApp;
+    
+    if (!GMContactManagerApp) {
+      ui.notifications.error('GM Contact Manager not available. Please reload Foundry.');
+      return;
+    }
+    
+    // Open GM Contact Manager with callback
+    const manager = new GMContactManagerApp();
+    
+    // Store reference to this composer
+    const composer = this;
+    
+    // Override the sendAsContact method to handle selection
+    const originalSendAs = manager.sendAsContact.bind(manager);
+    manager.sendAsContact = async function(contactId) {
+      const contact = this.contacts.find(c => c.id === contactId);
+      
+      if (!contact) {
+        ui.notifications.warn('Contact not found');
+        return;
+      }
+      
+      // Set the FROM field in data shard composer
+      const fromInput = composer.element.find('[name="from"]');
+      fromInput.val(contact.email);
+      composer.messageData.from = contact.email;
+      
+      // Visual feedback
+      ui.notifications.info(`Selected: ${contact.name} (${contact.email})`);
+      
+      // Close the manager
+      this.close();
+    };
+    
+    manager.render(true);
   }
   
   // =========================================================================

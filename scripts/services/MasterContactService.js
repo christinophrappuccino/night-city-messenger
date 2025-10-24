@@ -1,31 +1,22 @@
 /**
- * Master Contact List Service
+ * ENHANCED Master Contact List Service
  * File: scripts/services/MasterContactService.js
  * Module: cyberpunkred-messenger
- * Description: GM's private directory of all email identities in the world
+ * Description: GM's private directory with FULL editing, sorting, tags, and organization
  * 
- * PURPOSE:
- * - GM-only access (players never see this)
- * - Contains ALL email identities that exist in the world:
- *   * Actor-linked contacts (real characters with email addresses)
- *   * Custom NPC contacts (email identities without actors)
- *   * Corporate/organization contacts
- *   * Any other email the GM wants to send/receive as
- * 
- * USE CASE:
- * - GM can send messages AS any identity in this list
- * - GM can receive messages TO any identity in this list
- * - Players discover these emails in messages and can add to their personal lists
- * - GM effectively impersonates NPCs via email
+ * ENHANCEMENTS:
+ * - Multi-field sorting (name, email, organization, type, date)
+ * - Tag/label system for categorization
+ * - Edit actor emails (with sync back to actors)
+ * - CSV import/export
+ * - Better search and filtering
+ * - Quick "Send As" integration
  */
 
 import { MODULE_ID } from '../utils/constants.js';
 import { debugLog } from '../utils/debug.js';
 import { isValidEmail } from '../utils/validators.js';
 
-/**
- * Service for managing GM's master contact directory
- */
 export class MasterContactService {
   constructor() {
     this.contacts = [];
@@ -33,12 +24,11 @@ export class MasterContactService {
   
   /**
    * Initialize the master contact list
-   * Only loads if user is GM
    */
   async initialize() {
     if (game.user.isGM) {
       await this.loadContacts();
-      debugLog('GM Master Contact Service initialized');
+      debugLog('GM Master Contact Service initialized (ENHANCED)');
     }
   }
   
@@ -70,15 +60,17 @@ export class MasterContactService {
           organization: a.getFlag(MODULE_ID, 'organization') || '',
           role: a.getFlag(MODULE_ID, 'role') || a.type || 'character',
           img: a.img,
+          tags: a.getFlag(MODULE_ID, 'contactTags') || [],
           notes: '',
           isActor: true,
-          actorId: a.id
+          actorId: a.id,
+          createdAt: a.getFlag(MODULE_ID, 'emailCreatedAt') || new Date().toISOString()
         }));
       
       // Merge custom and actor contacts
       this.contacts = [...customContacts, ...actorContacts];
       
-      // Sort alphabetically
+      // Default sort by name
       this.contacts.sort((a, b) => a.name.localeCompare(b.name));
       
       debugLog(`GM Master List loaded: ${customContacts.length} custom + ${actorContacts.length} actors = ${this.contacts.length} total`);
@@ -114,14 +106,71 @@ export class MasterContactService {
   }
   
   /**
-   * Get all master contacts (GM only)
+   * Get all master contacts with optional sorting (GM only)
+   * @param {Object} options - Query options
+   * @param {string} options.sortBy - Field to sort by (name, email, organization, type, createdAt)
+   * @param {string} options.sortOrder - 'asc' or 'desc'
    * @returns {Array} Array of contact objects
    */
-  getAllContacts() {
+  getAllContacts(options = {}) {
     if (!game.user.isGM) {
       return [];
     }
-    return [...this.contacts];
+    
+    let contacts = [...this.contacts];
+    
+    // Apply sorting if requested
+    if (options.sortBy) {
+      contacts = this._sortContacts(contacts, options.sortBy, options.sortOrder || 'asc');
+    }
+    
+    return contacts;
+  }
+  
+  /**
+   * Sort contacts by field
+   * @private
+   */
+  _sortContacts(contacts, sortBy, sortOrder) {
+    const multiplier = sortOrder === 'desc' ? -1 : 1;
+    
+    return contacts.sort((a, b) => {
+      let aVal, bVal;
+      
+      switch (sortBy) {
+        case 'name':
+          aVal = (a.name || '').toLowerCase();
+          bVal = (b.name || '').toLowerCase();
+          break;
+        case 'email':
+          aVal = (a.email || '').toLowerCase();
+          bVal = (b.email || '').toLowerCase();
+          break;
+        case 'organization':
+          aVal = (a.organization || '').toLowerCase();
+          bVal = (b.organization || '').toLowerCase();
+          break;
+        case 'type':
+          aVal = a.isActor ? 'actor' : 'custom';
+          bVal = b.isActor ? 'actor' : 'custom';
+          break;
+        case 'createdAt':
+          aVal = a.createdAt || '';
+          bVal = b.createdAt || '';
+          break;
+        case 'role':
+          aVal = (a.role || '').toLowerCase();
+          bVal = (b.role || '').toLowerCase();
+          break;
+        default:
+          aVal = (a.name || '').toLowerCase();
+          bVal = (b.name || '').toLowerCase();
+      }
+      
+      if (aVal < bVal) return -1 * multiplier;
+      if (aVal > bVal) return 1 * multiplier;
+      return 0;
+    });
   }
   
   /**
@@ -143,8 +192,44 @@ export class MasterContactService {
       (c.name && c.name.toLowerCase().includes(term)) ||
       (c.email && c.email.toLowerCase().includes(term)) ||
       (c.organization && c.organization.toLowerCase().includes(term)) ||
-      (c.role && c.role.toLowerCase().includes(term))
+      (c.role && c.role.toLowerCase().includes(term)) ||
+      (c.tags && c.tags.some(tag => tag.toLowerCase().includes(term))) ||
+      (c.notes && c.notes.toLowerCase().includes(term))
     );
+  }
+  
+  /**
+   * Filter contacts by tags
+   * @param {Array} tags - Array of tag names
+   * @returns {Array} Filtered contacts
+   */
+  getByTags(tags) {
+    if (!game.user.isGM || !tags || tags.length === 0) {
+      return this.getAllContacts();
+    }
+    
+    return this.contacts.filter(c => 
+      c.tags && c.tags.some(tag => tags.includes(tag))
+    );
+  }
+  
+  /**
+   * Get all unique tags from all contacts
+   * @returns {Array} Array of unique tag names
+   */
+  getAllTags() {
+    if (!game.user.isGM) {
+      return [];
+    }
+    
+    const tagSet = new Set();
+    this.contacts.forEach(c => {
+      if (c.tags && Array.isArray(c.tags)) {
+        c.tags.forEach(tag => tagSet.add(tag));
+      }
+    });
+    
+    return Array.from(tagSet).sort();
   }
   
   /**
@@ -162,12 +247,6 @@ export class MasterContactService {
   /**
    * Add new custom contact to master list (GM only)
    * @param {Object} contactData - Contact data
-   * @param {string} contactData.name - Display name
-   * @param {string} contactData.email - Email address (required, must be unique)
-   * @param {string} [contactData.organization] - Organization/corp
-   * @param {string} [contactData.role] - Role/title
-   * @param {string} [contactData.img] - Avatar image
-   * @param {string} [contactData.notes] - GM notes about this contact
    * @returns {boolean} Success
    */
   async addContact(contactData) {
@@ -201,6 +280,7 @@ export class MasterContactService {
       organization: contactData.organization || '',
       role: contactData.role || '',
       img: contactData.img || 'icons/svg/mystery-man.svg',
+      tags: contactData.tags || [],
       notes: contactData.notes || '',
       isActor: false,
       createdAt: new Date().toISOString()
@@ -214,8 +294,8 @@ export class MasterContactService {
   }
   
   /**
-   * Update existing custom contact (GM only)
-   * Cannot update actor-linked contacts
+   * Update existing contact (GM only)
+   * ⚡ NEW: Can now update actor-linked contacts (syncs to actor)
    * @param {string} contactId - Contact ID
    * @param {Object} updates - Fields to update
    * @returns {boolean} Success
@@ -232,11 +312,6 @@ export class MasterContactService {
       return false;
     }
     
-    if (contact.isActor) {
-      ui.notifications.error('Cannot edit actor-linked contacts from master list. Edit the actor directly.');
-      return false;
-    }
-    
     // Validate email if being updated
     if (updates.email && updates.email !== contact.email) {
       if (!isValidEmail(updates.email)) {
@@ -244,13 +319,53 @@ export class MasterContactService {
         return false;
       }
       
-      if (this.getByEmail(updates.email)) {
+      // Check for duplicate (excluding current contact)
+      const existing = this.getByEmail(updates.email);
+      if (existing && existing.id !== contactId) {
         ui.notifications.error('Email address already exists');
         return false;
       }
     }
     
-    // Update contact
+    // ⚡ ENHANCED: Allow editing actor-linked contacts
+    if (contact.isActor) {
+      // Sync changes back to the actor
+      const actor = game.actors.get(contact.actorId);
+      
+      if (!actor) {
+        ui.notifications.error('Linked actor not found');
+        return false;
+      }
+      
+      try {
+        // Update actor flags
+        if (updates.email) {
+          await actor.setFlag(MODULE_ID, 'emailAddress', updates.email);
+        }
+        if (updates.organization !== undefined) {
+          await actor.setFlag(MODULE_ID, 'organization', updates.organization);
+        }
+        if (updates.role !== undefined) {
+          await actor.setFlag(MODULE_ID, 'role', updates.role);
+        }
+        if (updates.tags !== undefined) {
+          await actor.setFlag(MODULE_ID, 'contactTags', updates.tags);
+        }
+        
+        // Reload contacts to reflect actor changes
+        await this.loadContacts();
+        
+        ui.notifications.info(`Updated actor-linked contact "${contact.name}" (changes synced to actor)`);
+        return true;
+        
+      } catch (error) {
+        console.error(`${MODULE_ID} | Error updating actor contact:`, error);
+        ui.notifications.error('Failed to update actor contact');
+        return false;
+      }
+    }
+    
+    // Update custom contact
     Object.assign(contact, updates);
     await this.saveContacts();
     
@@ -289,8 +404,97 @@ export class MasterContactService {
   }
   
   /**
+   * ⚡ NEW: Import contacts from CSV
+   * @param {Array} csvData - Array of contact objects from CSV
+   * @param {boolean} merge - Merge or replace duplicates
+   * @returns {Object} Import statistics
+   */
+  async importFromCSV(csvData, merge = true) {
+    if (!game.user.isGM) {
+      return { added: 0, updated: 0, skipped: 0, errors: [] };
+    }
+    
+    let added = 0;
+    let updated = 0;
+    let skipped = 0;
+    const errors = [];
+    
+    for (const row of csvData) {
+      try {
+        // Validate required fields
+        if (!row.name || !row.email) {
+          errors.push(`Row missing name or email: ${JSON.stringify(row)}`);
+          skipped++;
+          continue;
+        }
+        
+        if (!isValidEmail(row.email)) {
+          errors.push(`Invalid email: ${row.email}`);
+          skipped++;
+          continue;
+        }
+        
+        // Check if exists
+        const existing = this.getByEmail(row.email);
+        
+        if (existing) {
+          if (merge) {
+            // Update existing
+            await this.updateContact(existing.id, {
+              name: row.name || existing.name,
+              organization: row.organization || existing.organization,
+              role: row.role || existing.role,
+              tags: row.tags ? row.tags.split(';').map(t => t.trim()) : existing.tags,
+              notes: row.notes || existing.notes
+            });
+            updated++;
+          } else {
+            skipped++;
+          }
+        } else {
+          // Add new
+          await this.addContact({
+            name: row.name,
+            email: row.email,
+            organization: row.organization || '',
+            role: row.role || '',
+            tags: row.tags ? row.tags.split(';').map(t => t.trim()) : [],
+            notes: row.notes || ''
+          });
+          added++;
+        }
+      } catch (error) {
+        errors.push(`Error processing row: ${error.message}`);
+        skipped++;
+      }
+    }
+    
+    return { added, updated, skipped, errors };
+  }
+  
+  /**
+   * ⚡ NEW: Export contacts to CSV format
+   * @returns {Array} Array of contact objects ready for CSV
+   */
+  exportToCSV() {
+    if (!game.user.isGM) {
+      return [];
+    }
+    
+    return this.contacts.map(c => ({
+      name: c.name,
+      email: c.email,
+      organization: c.organization || '',
+      role: c.role || '',
+      type: c.isActor ? 'actor' : 'custom',
+      tags: c.tags ? c.tags.join(';') : '',
+      notes: c.notes || '',
+      createdAt: c.createdAt || ''
+    }));
+  }
+  
+  /**
    * Refresh actor-linked contacts
-   * Called when actors are updated/added/removed
    */
   async refreshActorContacts() {
     if (!game.user.isGM) {

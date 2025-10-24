@@ -928,137 +928,52 @@ export class MessageComposerApp extends BaseApplication {
   }
 
   /**
-   * Open FROM picker dialog (GM only)
-   * Shows full master contact list for selection
+   * Open FROM picker - Opens GM Contact Manager for selection
+   * ⚡ UPDATED: Now opens the enhanced GM Contact Manager instead of inline dialog
    * @private
    */
   _openFromPicker() {
-    const masterContactService = game.nightcity?.masterContactService;
-    if (!masterContactService) {
-      ui.notifications.error('Master Contact Service not available');
+    const GMContactManagerApp = game.nightcity?.GMContactManagerApp;
+    
+    if (!GMContactManagerApp) {
+      ui.notifications.error('GM Contact Manager not available. Please reload Foundry.');
       return;
     }
     
-    const allContacts = masterContactService.getAllContacts();
+    // Open GM Contact Manager with callback
+    const manager = new GMContactManagerApp();
     
-    new Dialog({
-      title: 'Select Sender Identity',
-      content: `
-        <div class="ncm-from-picker">
-          <input type="text" 
-                 class="ncm-from-picker__search" 
-                 placeholder="Search contacts..." 
-                 autofocus />
-          <div class="ncm-from-picker__list"></div>
-        </div>
-        <style>
-          .ncm-from-picker {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            max-height: 500px;
-          }
-          .ncm-from-picker__search {
-            padding: 8px;
-            background: #2a0000;
-            border: 1px solid #666;
-            color: white;
-            border-radius: 4px;
-          }
-          .ncm-from-picker__list {
-            flex: 1;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-          }
-          .ncm-from-picker__item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 8px;
-            background: rgba(246, 82, 97, 0.1);
-            border: 1px solid rgba(246, 82, 97, 0.3);
-            border-radius: 4px;
-            cursor: pointer;
-            transition: all 0.2s;
-          }
-          .ncm-from-picker__item:hover {
-            background: rgba(246, 82, 97, 0.2);
-            border-color: #F65261;
-          }
-          .ncm-from-picker__item img {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            border: 2px solid #19f3f7;
-          }
-          .ncm-from-picker__item .name {
-            font-weight: bold;
-            color: #F65261;
-          }
-          .ncm-from-picker__item .email {
-            font-size: 0.9em;
-            color: #19f3f7;
-            font-family: monospace;
-          }
-          .ncm-from-picker__item .org {
-            font-size: 0.85em;
-            color: #999;
-          }
-        </style>
-      `,
-      render: (html) => {
-        const $list = html.find('.ncm-from-picker__list');
-        const $search = html.find('.ncm-from-picker__search');
-        
-        const renderList = (query = '') => {
-          const filtered = query 
-            ? allContacts.filter(c => 
-                c.name.toLowerCase().includes(query.toLowerCase()) ||
-                c.email.toLowerCase().includes(query.toLowerCase()) ||
-                (c.organization && c.organization.toLowerCase().includes(query.toLowerCase()))
-              )
-            : allContacts;
-          
-          const listHtml = filtered.map(c => `
-            <div class="ncm-from-picker__item" data-email="${c.email}">
-              <img src="${c.img || 'icons/svg/mystery-man.svg'}" alt="${c.name}" />
-              <div>
-                <div class="name">${c.name}</div>
-                <div class="email">${c.email}</div>
-                ${c.organization ? `<div class="org">${c.organization}</div>` : ''}
-              </div>
-            </div>
-          `).join('');
-          
-          $list.html(listHtml || '<p style="color: #999; text-align: center;">No contacts found</p>');
-          
-          $list.find('.ncm-from-picker__item').on('click', (e) => {
-            const email = $(e.currentTarget).data('email');
-            this.element.find('[name="from"]').val(email);
-            this.formData.from = email;
-            html.closest('.dialog').find('.dialog-button.ok').click();
-          });
-        };
-        
-        renderList();
-        
-        $search.on('input', (e) => {
-          renderList($(e.currentTarget).val());
-        });
-      },
-      buttons: {
-        close: {
-          icon: '<i class="fas fa-times"></i>',
-          label: 'Close'
-        }
-      },
-      default: 'close'
-    }, {
-      width: 500,
-      height: 600
-    }).render(true);
+    // Store reference to this composer
+    const composer = this;
+    
+    // Override the sendAsContact method to handle selection
+    const originalSendAs = manager.sendAsContact.bind(manager);
+    manager.sendAsContact = async function(contactId) {
+      const contact = this.contacts.find(c => c.id === contactId);
+      
+      if (!contact) {
+        ui.notifications.warn('Contact not found');
+        return;
+      }
+      
+      // Instead of opening a new composer, set the FROM field in current composer
+      const fromInput = composer.element.find('[name="from"]');
+      fromInput.val(contact.email);
+      composer.formData.from = contact.email;
+      
+      // Visual feedback
+      ui.notifications.info(`Selected: ${contact.name} (${contact.email})`);
+      
+      // Close the manager
+      this.close();
+    };
+    
+    manager.render(true);
+    
+    // Play sound
+    if (this.playSound) {
+      this.playSound('notification');
+    }
   }
   
   /**
