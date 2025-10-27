@@ -21,6 +21,7 @@ export class TemplateManager {
       `modules/${MODULE_ID}/templates/message-viewer/partials/message-item.hbs`,
       `modules/${MODULE_ID}/templates/message-viewer/partials/message-detail.hbs`,
       `modules/${MODULE_ID}/templates/message-viewer/partials/filters-panel.hbs`,
+      `modules/${MODULE_ID}/templates/message-viewer/partials/network-status-indicator.hbs`,
       
       // Message Composer
       `modules/${MODULE_ID}/templates/message-composer/composer.hbs`,
@@ -41,10 +42,10 @@ export class TemplateManager {
       `modules/${MODULE_ID}/templates/admin-panel/partials/system-tools.hbs`,
 
       // Network Selector Templates
-      'modules/cyberpunkred-messenger/templates/network-selector/network-selector.hbs',
-      'modules/cyberpunkred-messenger/templates/network-selector/partials/network-item.hbs',
-      'modules/cyberpunkred-messenger/templates/dialogs/network-auth.hbs'
-    
+      `modules/${MODULE_ID}/templates/network-selector/network-selector.hbs`,
+      `modules/${MODULE_ID}/templates/network-selector/partials/network-item.hbs`,
+      `modules/${MODULE_ID}/templates/dialogs/network-auth.hbs`,
+
       // Item Inbox
       `modules/${MODULE_ID}/templates/item-inbox/item-inbox.hbs`,
       `modules/${MODULE_ID}/templates/item-inbox/item-config.hbs`,
