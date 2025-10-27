@@ -1,9 +1,9 @@
 {{!-- 
-  Network Status Indicator for Message Viewer
+  Network Status Indicator - SIMPLIFIED
   File: templates/message-viewer/partials/network-status-indicator.hbs
   
-  This replaces the simple "Connected to CITINET" text with an
-  interactive, animated network status indicator that opens the selector
+  Shows compact indicator ONLY - no inline expansion
+  Click opens NetworkSelectorDialog instead
 --}}
 
 <div class="ncm-network-status-indicator {{#if networkStatus.connected}}connected{{else}}disconnected{{/if}}" 
@@ -48,9 +48,5 @@
   </div>
 </div>
 
-{{!-- Embedded Network Selector (shown when expanded) --}}
-{{#if networkSelector}}
-  <div class="ncm-network-selector-wrapper {{#unless networkStatus.connected}}disconnected{{/unless}}">
-    {{> "modules/cyberpunkred-messenger/templates/network-selector/network-selector.hbs" networkSelector}}
-  </div>
-{{/if}}
+{{!-- REMOVED: Embedded network selector --}}
+{{!-- Now opens as a dialog instead of expanding inline --}}

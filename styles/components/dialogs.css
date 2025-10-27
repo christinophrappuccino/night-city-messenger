@@ -394,6 +394,266 @@
   background: var(--ncm-network-offline);
 }
 
+.ncm-network-selector-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 8px;
+}
+
+/* ========================================
+   CURRENT CONNECTION DISPLAY
+   ======================================== */
+
+.current-connection {
+  background: rgba(25, 243, 247, 0.05);
+  border: 2px solid rgba(25, 243, 247, 0.3);
+  border-radius: 4px;
+  padding: 16px;
+}
+
+.current-connection-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.current-connection-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.current-network-name {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--ncm-secondary, #19f3f7);
+  text-shadow: 0 0 10px rgba(25, 243, 247, 0.5);
+  letter-spacing: 2px;
+}
+
+.current-network-status {
+  font-size: 13px;
+}
+
+.status-connected {
+  color: var(--ncm-secondary, #19f3f7);
+  font-weight: 600;
+}
+
+.status-disconnected {
+  color: #888;
+  font-weight: 600;
+}
+
+/* ========================================
+   NETWORK LIST SECTION
+   ======================================== */
+
+.network-list-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.network-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+}
+
+.network-count {
+  background: rgba(25, 243, 247, 0.2);
+  color: var(--ncm-secondary, #19f3f7);
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 10px;
+}
+
+.network-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+/* ========================================
+   NETWORK ITEMS
+   ======================================== */
+
+.ncm-network-dialog-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ncm-network-dialog-item:hover {
+  background: rgba(25, 243, 247, 0.1);
+  border-color: var(--ncm-secondary, #19f3f7);
+  transform: translateX(4px);
+}
+
+.ncm-network-dialog-item.connected {
+  background: rgba(25, 243, 247, 0.15);
+  border-color: var(--ncm-secondary, #19f3f7);
+  border-left-width: 4px;
+}
+
+.network-item-icon {
+  font-size: 24px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.network-item-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.network-item-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ncm-secondary, #19f3f7);
+  letter-spacing: 1px;
+}
+
+.connected-badge {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ncm-secondary, #19f3f7);
+  background: rgba(25, 243, 247, 0.2);
+  padding: 2px 8px;
+  border-radius: 10px;
+  letter-spacing: 0.5px;
+}
+
+.network-item-type {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.network-item-desc {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  margin-top: 4px;
+}
+
+.network-item-security {
+  font-size: 11px;
+  color: #FFD700;
+  margin-top: 4px;
+}
+
+.network-item-signal {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--ncm-secondary, #19f3f7);
+  flex-shrink: 0;
+}
+
+/* ========================================
+   EMPTY STATE
+   ======================================== */
+
+.network-list-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  color: rgba(255, 255, 255, 0.4);
+  text-align: center;
+}
+
+.network-list-empty i {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+/* ========================================
+   ACTIONS
+   ======================================== */
+
+.network-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* ========================================
+   DIALOG WINDOW OVERRIDES
+   ======================================== */
+
+.ncm-network-selector-dialog.dialog {
+  background: var(--ncm-bg-primary, #1a1a1a);
+  border: 2px solid var(--ncm-primary, #F65261);
+  border-radius: 4px;
+}
+
+.ncm-network-selector-dialog .window-content {
+  background: var(--ncm-bg-primary, #1a1a1a);
+  padding: 16px;
+}
+
+/* ========================================
+   SCROLLBAR
+   ======================================== */
+
+.network-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.network-list::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+}
+
+.network-list::-webkit-scrollbar-thumb {
+  background: var(--ncm-primary, #F65261);
+  border-radius: 4px;
+}
+
+.network-list::-webkit-scrollbar-thumb:hover {
+  background: var(--ncm-secondary, #19f3f7);
+}
+
 /* ============================================
    SCHEDULING DIALOG
    ============================================ */

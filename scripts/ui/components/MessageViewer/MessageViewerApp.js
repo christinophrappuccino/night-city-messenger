@@ -124,7 +124,6 @@ export class MessageViewerApp extends BaseApplication {
     // Network Manager and Selector
     const networkManager = game.nightcity?.networkManager;
     let networkStatus = null;
-    let networkSelector = null;
     
     if (networkManager) {
       const status = networkManager.getNetworkStatus();
@@ -138,13 +137,6 @@ export class MessageViewerApp extends BaseApplication {
           game.nightcity.NetworkUtils.generateSignalBars(status.signalStrength || 0) : '',
         isSearching: !status.connected,
         displayName: status.networkId || 'CITINET'
-      };
-      
-      networkSelector = {
-        show: true,
-        embedded: true,
-        expanded: false,
-        context: 'message-viewer'
       };
     }
     
@@ -201,7 +193,6 @@ export class MessageViewerApp extends BaseApplication {
         this.timeService.getCurrentTimestamp()
       ),
       networkStatus: networkStatus,
-      networkSelector: networkSelector,
       networkName: this.stateManager.get('currentNetwork') || 'CITINET'
     };
   }
@@ -278,37 +269,13 @@ export class MessageViewerApp extends BaseApplication {
     html.find('[data-action="add-sender-to-contacts"]').on('click', this._onAddSenderToContacts.bind(this));
 
     // Toggle network selector
-    html.find('.ncm-network-status-indicator').click(() => {
-      const currentState = this.stateManager.get('networkSelectorExpanded') || false;
-      this.stateManager.set('networkSelectorExpanded', !currentState);
-      this.render(false);
-    });
-    
-    // Network item click
-    html.find('.ncm-network-item').click(async (event) => {
-      const networkId = $(event.currentTarget).data('network-id');
-      if (!networkId) return;
+    html.find('.ncm-network-status-indicator').click(async () => {
+      // Import dialog
+      const { NetworkSelectorDialog } = await import('../../dialogs/NetworkSelectorDialog.js');
       
-      const networkManager = game.nightcity?.networkManager;
-      if (!networkManager) return;
-      
-      try {
-        await networkManager.connectToNetwork(networkId);
-        ui.notifications.info(`Connected to ${networkId}`);
-        this.render(false);
-      } catch (error) {
-        ui.notifications.error(`Failed to connect: ${error.message}`);
-      }
-    });
-    
-    // Scan networks
-    html.find('[data-action="scan-networks"]').click(async () => {
-      const networkManager = game.nightcity?.networkManager;
-      if (!networkManager) return;
-      
-      ui.notifications.info('Scanning for networks...');
-      await networkManager.scanNetworks();
-      this.render(false);
+      // Open as popup
+      const dialog = new NetworkSelectorDialog();
+      dialog.render(true);
     });
     
     // Scheduling

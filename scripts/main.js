@@ -298,6 +298,20 @@ moduleInitializer.register('ready', async () => {
   }
 }, 4.5); // Priority 4.5
 
+// Register NetworkSelectorDialog globally
+moduleInitializer.register('ready', async () => {
+  console.log(`${MODULE_ID} | Registering NetworkSelectorDialog...`);
+
+  try {
+    const { NetworkSelectorDialog } = await import('./ui/dialogs/NetworkSelectorDialog.js');
+    game.nightcity.NetworkSelectorDialog = NetworkSelectorDialog;
+
+    console.log(`${MODULE_ID} | ✓ NetworkSelectorDialog registered`);
+  } catch (error) {
+    console.error(`${MODULE_ID} | ❌ Failed to register NetworkSelectorDialog:`, error);
+  }
+}, 4.6); 
+
 // Complete macro API registration THIRD
 moduleInitializer.register('ready', async () => {
   console.log(`${MODULE_ID} | === REGISTERING MACRO API ===`);

@@ -7,28 +7,27 @@
   {{!-- ==========================================================================
        HEADER WITH NETWORK STATUS
        ========================================================================== --}}
-  <div class="ncm-item-inbox__header">
-    <div class="ncm-item-inbox__title">
-      <i class="fas fa-microchip"></i>
-      {{itemName}}
-    </div>
-    
-    {{!-- Network Status Indicator (top-right) --}}
-    {{#if networkStatus}}
-      <div class="ncm-network-status-wrapper">
-        {{> "modules/cyberpunkred-messenger/templates/message-viewer/partials/network-status-indicator.hbs"}}
-      </div>
-    {{/if}}
-    
-    <div class="ncm-item-inbox__actions">
-      {{#if isGM}}
-        <button class="ncm-configure" title="Configure" data-action="configure">
-          <i class="fas fa-cog"></i>
-          Configure
-        </button>
-      {{/if}}
-    </div>
-  </div>
+       <div class="ncm-item-inbox__header">
+         <div class="ncm-item-inbox__title">
+           <i class="fas fa-microchip"></i>
+           {{itemName}}
+         </div>
+         
+         {{!-- Network indicator with wrapper --}}
+         {{#if networkStatus}}
+           <div class="ncm-network-status-wrapper">
+             {{> "modules/cyberpunkred-messenger/templates/message-viewer/partials/network-status-indicator.hbs"}}
+           </div>
+         {{/if}}
+         
+         <div class="ncm-item-inbox__actions">
+           {{#if isGM}}
+             <button class="ncm-configure" data-action="configure">
+               <i class="fas fa-cog"></i> Configure
+             </button>
+           {{/if}}
+         </div>
+       </div>
   
   {{!-- ==========================================================================
        NETWORK WARNING BANNER (if wrong network)

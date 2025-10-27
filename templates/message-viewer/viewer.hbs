@@ -15,7 +15,7 @@
       <div class="ncm-header__title">NIGHT CITY MESSAGES</div>
       <div class="ncm-header__time">{{currentTime}}</div>
       
-      {{!-- Network Status Indicator (replaces old connection div) --}}
+      {{!-- Network Status Indicator - MOVE TO END OF ncm-header__top --}}
       {{#if networkStatus}}
         {{> "modules/cyberpunkred-messenger/templates/message-viewer/partials/network-status-indicator.hbs"}}
       {{else}}
@@ -51,22 +51,26 @@
         </div>
       {{else}}
         {{!-- Simple welcome for single-character players --}}
-        <span class="ncm-header__welcome">
-          Welcome, {{userName}}
+        <span class="ncm-header__welcome">Welcome, {{userName}}</span>
+        
+        {{#if selectedActor}}
+        <span class="ncm-header__email">
+          {{#if selectedActor.flags.cyberpunkred-messenger.emailAddress}}
+            {{selectedActor.flags.cyberpunkred-messenger.emailAddress}}
+          {{else}}
+            <button class="ncm-btn ncm-btn--small ncm-btn--warning" data-action="setup-email">
+              <i class="fas fa-exclamation-triangle"></i> Set Email
+            </button>
+          {{/if}}
         </span>
+        {{/if}}
       {{/if}}
       
-      {{!-- Filter count badge --}}
-      {{#if hasActiveFilters}}
-        <span class="ncm-header__badge ncm-header__badge--warning">
-          <i class="fas fa-filter"></i> FILTERED
-        </span>
-      {{/if}}
-      
-      {{#if unreadCount}}
-        <span class="ncm-header__badge">
-          {{unreadCount}} UNREAD
-        </span>
+      {{!-- GM Tools --}}
+      {{#if isGM}}
+      <button class="ncm-btn ncm-btn--small ncm-btn--gm" data-action="open-admin" title="GM Tools">
+        <i class="fas fa-toolbox"></i> GM Tools
+      </button>
       {{/if}}
     </div>
   </div>

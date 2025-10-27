@@ -132,19 +132,17 @@ export class ItemInboxApp extends BaseApplication {
     const encryptionMode = this.item.getFlag(MODULE_ID, 'encryptionMode') || 'shard';
     const failureMode = this.item.getFlag(MODULE_ID, 'failureMode') || 'lockout';
     const dataShardType = this.item.getFlag(MODULE_ID, 'singleMessage') ? 'Single Message' : 'Message Inbox';
+    const theme = this.item.getFlag(MODULE_ID, 'theme') || 'classic';
     
     // ========================================================================
     // NETWORK STATUS & SELECTOR - NEW SECTION
     // ========================================================================
     const networkManager = game.nightcity?.networkManager;
     let networkStatus = null;
-    let networkSelector = null;
-    let networkWarning = null;
     
     if (networkManager) {
       const status = networkManager.getNetworkStatus();
       
-      // Build network status for indicator
       networkStatus = {
         connected: status.connected,
         networkId: status.networkId || 'CITINET',
@@ -155,28 +153,6 @@ export class ItemInboxApp extends BaseApplication {
         isSearching: !status.connected,
         displayName: status.networkId || 'CITINET'
       };
-      
-      // Network selector config
-      networkSelector = {
-        show: true,
-        embedded: true,
-        expanded: this.stateManager ? this.stateManager.get('networkSelectorExpanded') || false : false,
-        context: 'item-inbox'
-      };
-      
-      // Check if data shard requires specific network
-      const requiredNetwork = this.item.getFlag(MODULE_ID, 'requiredNetwork');
-      const currentNetwork = status.networkId;
-      
-      if (requiredNetwork && currentNetwork !== requiredNetwork) {
-        networkWarning = {
-          show: true,
-          required: requiredNetwork,
-          current: currentNetwork,
-          message: `This data shard requires ${requiredNetwork}`,
-          canSwitch: true
-        };
-      }
     }
     
     // ========================================================================
@@ -337,7 +313,7 @@ export class ItemInboxApp extends BaseApplication {
       encryptionType,
       encryptionMode,
       failureMode,
-      theme,
+      theme: theme,
       isSingleMode: dataShardType === 'single',
       
       // Network Layer
@@ -350,8 +326,6 @@ export class ItemInboxApp extends BaseApplication {
       networkInfo: networkCheck.required ? this.networkService.getNetworkInfo(networkCheck.requiredNetwork) : null,
       canBreachNetwork,
       networkStatus: networkStatus,
-      networkSelector: networkSelector,
-      networkWarning: networkWarning,
       
       // Login Layer
       requiresLogin,
@@ -448,73 +422,14 @@ export class ItemInboxApp extends BaseApplication {
     html.find('[data-action="gm-bypass-login"]').click(this._onGMBypassLogin.bind(this));
 
     // Toggle network selector
-     html.find('.ncm-network-status-indicator').click(() => {
-       const currentState = this.stateManager?.get('networkSelectorExpanded') || false;
-       if (this.stateManager) {
-         this.stateManager.set('networkSelectorExpanded', !currentState);
-       }
-       this.render(false);
-     });
-     
-     // Network item click - connect to selected network
-     html.find('.ncm-network-item').click(async (event) => {
-       const networkId = $(event.currentTarget).data('network-id');
-       if (!networkId) return;
-       
-       const networkManager = game.nightcity?.networkManager;
-       if (!networkManager) {
-         ui.notifications.error('Network manager not available');
-         return;
-       }
-       
-       try {
-         // Add switching animation
-         html.find('.ncm-network-status-indicator').addClass('switching');
-         
-         await networkManager.connectToNetwork(networkId);
-         ui.notifications.info(`Connected to ${networkId}`);
-         
-         // Remove animation after delay
-         setTimeout(() => {
-           html.find('.ncm-network-status-indicator').removeClass('switching');
-         }, 500);
-         
-         this.render(false);
-       } catch (error) {
-         ui.notifications.error(`Failed to connect: ${error.message}`);
-       }
-     });
-     
-     // Scan networks button
-     html.find('[data-action="scan-networks"]').click(async () => {
-       const networkManager = game.nightcity?.networkManager;
-       if (!networkManager) return;
-       
-       ui.notifications.info('Scanning for networks...');
-       await networkManager.scanNetworks();
-       this.render(false);
-     });
-     
-     // Switch to required network (from warning banner)
-     html.find('[data-action="switch-to-required-network"]').click(async (event) => {
-       const networkId = $(event.currentTarget).data('network');
-       if (!networkId) return;
-       
-       const networkManager = game.nightcity?.networkManager;
-       if (!networkManager) {
-         ui.notifications.error('Network manager not available');
-         return;
-       }
-       
-       try {
-         ui.notifications.info(`Connecting to ${networkId}...`);
-         await networkManager.connectToNetwork(networkId);
-         ui.notifications.info(`Successfully connected to ${networkId}`);
-         this.render(false);
-       } catch (error) {
-         ui.notifications.error(`Failed to connect to ${networkId}: ${error.message}`);
-       }
-     });
+    html.find('.ncm-network-status-indicator').click(async () => {
+      // Import dialog
+      const { NetworkSelectorDialog } = await import('../../dialogs/NetworkSelectorDialog.js');
+      
+      // Open as popup
+      const dialog = new NetworkSelectorDialog();
+      dialog.render(true);
+    });
     
     // Other existing actions
     html.find('[data-action="quarantine-message"]').click(this._onQuarantineMessage.bind(this));
