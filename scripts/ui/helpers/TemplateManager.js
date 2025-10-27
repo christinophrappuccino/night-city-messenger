@@ -39,7 +39,12 @@ export class TemplateManager {
       `modules/${MODULE_ID}/templates/admin-panel/partials/statistics.hbs`,
       `modules/${MODULE_ID}/templates/admin-panel/partials/user-management.hbs`,
       `modules/${MODULE_ID}/templates/admin-panel/partials/system-tools.hbs`,
-      
+
+      // Network Selector Templates
+      'modules/cyberpunkred-messenger/templates/network-selector/network-selector.hbs',
+      'modules/cyberpunkred-messenger/templates/network-selector/partials/network-item.hbs',
+      'modules/cyberpunkred-messenger/templates/dialogs/network-auth.hbs'
+    
       // Item Inbox
       `modules/${MODULE_ID}/templates/item-inbox/item-inbox.hbs`,
       `modules/${MODULE_ID}/templates/item-inbox/item-config.hbs`,

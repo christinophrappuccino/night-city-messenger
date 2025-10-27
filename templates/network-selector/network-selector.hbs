@@ -73,7 +73,72 @@
         
         <div class="network-list-items">
           {{#each availableNetworks}}
-            {{> "modules/cyberpunkred-messenger/templates/network-selector/partials/network-item.hbs"}}
+            <div class="ncm-network-item {{#if isConnected}}connected{{/if}} {{#unless canConnect}}locked{{/unless}} {{#unless isAvailable}}unavailable{{/unless}}" 
+                 data-network-id="{{id}}"
+                 data-network-type="{{type}}"
+                 title="{{description}}">
+              
+              <div class="network-item-icon" style="color: {{color}};">
+                <i class="fas {{icon}}"></i>
+              </div>
+              
+              <div class="network-item-details">
+                <div class="network-item-name">
+                  {{displayName}}
+                  {{#if isConnected}}
+                    <span class="connected-indicator">
+                      <i class="fas fa-check-circle"></i>
+                    </span>
+                  {{/if}}
+                </div>
+                
+                <div class="network-item-meta">
+                  <span class="network-type">{{type}}</span>
+                  
+                  {{#if requiresAuth}}
+                    <span class="network-security">
+                      <i class="fas {{securityIcon}}"></i> {{securityLevel}}
+                    </span>
+                  {{/if}}
+                </div>
+                
+                {{#if isTraced}}
+                  <div class="network-warning traced">
+                    <i class="fas fa-exclamation-triangle"></i> TRACED
+                  </div>
+                {{/if}}
+                
+                {{#if isMonitored}}
+                  <div class="network-warning monitored">
+                    <i class="fas fa-eye"></i> MONITORED
+                  </div>
+                {{/if}}
+                
+                {{#if isDangerous}}
+                  <div class="network-warning dangerous">
+                    <i class="fas fa-skull-crossbones"></i> DANGEROUS
+                  </div>
+                {{/if}}
+              </div>
+              
+              <div class="network-item-signal">
+                {{{signalBars}}}
+                <span class="signal-text">{{signalStrength}}%</span>
+              </div>
+              
+              {{#if isLocked}}
+                <div class="network-item-lock">
+                  <i class="fas fa-lock"></i>
+                </div>
+              {{/if}}
+              
+              {{#unless isAvailable}}
+                <div class="network-item-overlay">
+                  <span>OUT OF RANGE</span>
+                </div>
+              {{/unless}}
+              
+            </div>
           {{/each}}
         </div>
       {{else}}
