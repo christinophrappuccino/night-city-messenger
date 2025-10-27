@@ -423,12 +423,8 @@ export class ItemInboxApp extends BaseApplication {
 
     // Toggle network selector
     html.find('.ncm-network-status-indicator').click(async () => {
-      // Import dialog
       const { NetworkSelectorDialog } = await import('../../dialogs/NetworkSelectorDialog.js');
-      
-      // Open as popup
-      const dialog = new NetworkSelectorDialog();
-      dialog.render(true);
+      await NetworkSelectorDialog.open();
     });
     
     // Other existing actions
