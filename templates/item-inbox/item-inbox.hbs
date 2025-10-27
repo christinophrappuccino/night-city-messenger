@@ -5,13 +5,21 @@
 <div class="ncm-item-inbox ncm-theme-{{theme}}">
   
   {{!-- ==========================================================================
-       HEADER
+       HEADER WITH NETWORK STATUS
        ========================================================================== --}}
   <div class="ncm-item-inbox__header">
     <div class="ncm-item-inbox__title">
       <i class="fas fa-microchip"></i>
       {{itemName}}
     </div>
+    
+    {{!-- Network Status Indicator (top-right) --}}
+    {{#if networkStatus}}
+      <div class="ncm-network-status-wrapper">
+        {{> "modules/cyberpunkred-messenger/templates/message-viewer/partials/network-status-indicator.hbs"}}
+      </div>
+    {{/if}}
+    
     <div class="ncm-item-inbox__actions">
       {{#if isGM}}
         <button class="ncm-configure" title="Configure" data-action="configure">
@@ -21,6 +29,36 @@
       {{/if}}
     </div>
   </div>
+  
+  {{!-- ==========================================================================
+       NETWORK WARNING BANNER (if wrong network)
+       ========================================================================== --}}
+  {{#if networkWarning.show}}
+    <div class="ncm-network-warning">
+      <div class="ncm-network-warning__icon">
+        <i class="fas fa-exclamation-triangle"></i>
+      </div>
+      <div class="ncm-network-warning__content">
+        <strong>NETWORK MISMATCH</strong>
+        <p>{{networkWarning.message}}</p>
+        <p class="ncm-network-warning__details">
+          Current: <span class="ncm-text-error">{{networkWarning.current}}</span> • 
+          Required: <span class="ncm-text-warning">{{networkWarning.required}}</span>
+        </p>
+      </div>
+      {{#if networkWarning.canSwitch}}
+        <button class="ncm-btn ncm-btn--warning" data-action="switch-to-required-network" data-network="{{networkWarning.required}}">
+          <i class="fas fa-network-wired"></i>
+          Connect to {{networkWarning.required}}
+        </button>
+      {{/if}}
+    </div>
+  {{/if}}
+  
+  {{!-- Rest of your template continues... --}}
+  {{!-- GM Controls, Security Overlays, Messages, etc. --}}
+
+</div>
   
   {{!-- ==========================================================================
        GM CONTROL PANEL - Shows for GMs only

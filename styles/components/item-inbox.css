@@ -430,6 +430,160 @@
   box-shadow: 0 0 0 2px var(--ncm-primary);
 }
 
+/* ========================================
+   HEADER LAYOUT WITH NETWORK STATUS
+   ======================================== */
+
+.ncm-item-inbox__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  background: var(--ncm-surface, #330000);
+  border-bottom: 2px solid var(--ncm-primary, #F65261);
+  position: relative;
+}
+
+.ncm-item-inbox__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ncm-secondary, #19f3f7);
+  text-shadow: 0 0 10px rgba(25, 243, 247, 0.5);
+}
+
+.ncm-network-status-wrapper {
+  margin-left: auto;
+  margin-right: 12px;
+}
+
+.ncm-item-inbox__actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* ========================================
+   NETWORK WARNING BANNER
+   ======================================== */
+
+.ncm-network-warning {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: rgba(255, 165, 0, 0.1);
+  border: 2px solid #FFD700;
+  border-left: 4px solid #FFD700;
+  margin: 16px;
+  border-radius: 4px;
+  animation: warningPulse 2s infinite;
+}
+
+@keyframes warningPulse {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
+  }
+}
+
+.ncm-network-warning__icon {
+  font-size: 32px;
+  color: #FFD700;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+  flex-shrink: 0;
+}
+
+.ncm-network-warning__content {
+  flex: 1;
+}
+
+.ncm-network-warning__content strong {
+  display: block;
+  font-size: 14px;
+  color: #FFD700;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ncm-network-warning__content p {
+  margin: 0;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.ncm-network-warning__details {
+  margin-top: 8px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.ncm-network-warning .ncm-btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* Text colors for warning banner */
+.ncm-text-error {
+  color: var(--ncm-primary, #F65261);
+  font-weight: 600;
+}
+
+.ncm-text-warning {
+  color: #FFD700;
+  font-weight: 600;
+}
+
+/* ========================================
+   RESPONSIVE ADJUSTMENTS
+   ======================================== */
+
+@media (max-width: 768px) {
+  .ncm-network-warning {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .ncm-network-warning__icon {
+    font-size: 24px;
+  }
+  
+  .ncm-item-inbox__header {
+    flex-wrap: wrap;
+  }
+  
+  .ncm-network-status-wrapper {
+    order: 3;
+    width: 100%;
+    margin: 12px 0 0 0;
+  }
+}
+
+/* ========================================
+   NETWORK STATUS IN ITEM INBOX HEADER
+   ======================================== */
+
+/* Ensure network indicator fits in header */
+.ncm-item-inbox .ncm-network-status-indicator {
+  min-width: 250px;
+}
+
+/* Compact mode for smaller screens */
+@media (max-width: 1024px) {
+  .ncm-item-inbox .ncm-network-status-indicator {
+    min-width: 200px;
+  }
+  
+  .ncm-network-status-indicator .signal-percentage {
+    display: none;
+  }
+}
+
+
 /* ============================================
    CHAT CARD INTEGRATION
    Shared message in chat
