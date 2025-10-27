@@ -218,6 +218,61 @@ moduleInitializer.register('ready', async () => {
   }
 }, 4);
 
+// NetworkService Registration - Priority 4 (MUST BE FIRST!)
+moduleInitializer.register('ready', async () => {
+  console.log(`${MODULE_ID} | === INITIALIZING NETWORK SERVICE ===`);
+  
+  try {
+    const { NetworkService } = await import('./services/NetworkService.js');
+    
+    const stateManager = game.nightcity.stateManager;
+    const eventBus = game.nightcity.eventBus;
+    
+    if (!stateManager || !eventBus) {
+      throw new Error('Dependencies not available');
+    }
+    
+    game.nightcity.networkService = new NetworkService(stateManager, eventBus);
+    
+    console.log(`${MODULE_ID} | ✓ Network Service initialized`);
+    
+  } catch (error) {
+    console.error(`${MODULE_ID} | ❌ NetworkService init failed:`, error);
+    throw error;
+  }
+}, 4); // Priority 4
+
+// Network Manager Registration - Priority 4.5 (AFTER NetworkService!)
+moduleInitializer.register('ready', async () => {
+  console.log(`${MODULE_ID} | === INITIALIZING NETWORK MANAGER ===`);
+  
+  try {
+    const { NetworkManager } = await import('./core/NetworkManager.js');
+    const { NetworkStorage } = await import('./core/NetworkStorage.js');
+    const { NetworkUtils } = await import('./utils/NetworkUtils.js');
+    
+    const networkService = game.nightcity.networkService;  // NOW this exists!
+    const stateManager = game.nightcity.stateManager;
+    const eventBus = game.nightcity.eventBus;
+    
+    if (!networkService) {
+      throw new Error('NetworkService not available');
+    }
+    
+    const networkManager = new NetworkManager(networkService, stateManager, eventBus);
+    await networkManager.initialize();
+    
+    game.nightcity.networkManager = networkManager;
+    game.nightcity.NetworkStorage = NetworkStorage;
+    game.nightcity.NetworkUtils = NetworkUtils;
+    
+    console.log(`${MODULE_ID} | ✓ Network Manager initialized`);
+    
+  } catch (error) {
+    console.error(`${MODULE_ID} | ❌ NetworkManager init failed:`, error);
+  }
+}, 4.5); // Priority 4.5
+
 // Complete macro API registration THIRD
 moduleInitializer.register('ready', async () => {
   console.log(`${MODULE_ID} | === REGISTERING MACRO API ===`);
