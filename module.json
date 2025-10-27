@@ -22,6 +22,8 @@
     "styles/base/reset.css",
     "styles/base/animations.css",
     "styles/chat/cyberpunk-rolls.css",
+    "styles/dialogs/network-auth.css",
+    "styles/components/network-selector.css",
     "styles/components/cyberpunk-dialogs.css",
     "styles/components/multi-skill-config.css",
     "styles/components/message-viewer.css",

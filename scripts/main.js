@@ -36,6 +36,16 @@ moduleInitializer.register('preInit', async () => {
   HandlebarsHelpers.register();
 }, 20);
 
+// Register Network Handlebars helpers
+moduleInitializer.register('preInit', async () => {
+  console.log(`${MODULE_ID} | Registering Network Helpers...`);
+  const { registerNetworkHelpers } = await import('./ui/helpers/NetworkHelpers.js');
+  registerNetworkHelpers();
+  console.log(`${MODULE_ID} | ✓ Network Helpers registered`);
+}, 30);
+
+
+
 // ===================================================================
 // INITIALIZATION
 // ===================================================================
@@ -144,6 +154,21 @@ moduleInitializer.register('init', async () => {
   
   console.log(`${MODULE_ID} | ✓ UI Helpers registered`);
 }, 46);
+
+// Register Network Selector UI Components
+moduleInitializer.register('init', async () => {
+  console.log(`${MODULE_ID} | Registering Network Selector Components...`);
+  
+  // Import UI components
+  const { NetworkSelectorApp } = await import('./ui/components/NetworkSelector/NetworkSelectorApp.js');
+  const { NetworkAuthDialog } = await import('./ui/dialogs/NetworkAuthDialog.js');
+  
+  // Make available globally for macros and other components
+  game.nightcity.NetworkSelectorApp = NetworkSelectorApp;
+  game.nightcity.NetworkAuthDialog = NetworkAuthDialog;
+  
+  console.log(`${MODULE_ID} | ✓ Network Selector Components registered`);
+}, 47);
 
 // Register email settings
 moduleInitializer.register('init', async () => {
@@ -521,6 +546,17 @@ moduleInitializer.register('postReady', async () => {
       messageManager: !!game.nightcity?.messageManager,
       messageService: !!game.nightcity?.messageService,
       notificationService: !!game.nightcity?.notificationService
+    },
+    'Network System': {
+      networkManager: !!game.nightcity?.networkManager,
+      networkStorage: !!game.nightcity?.NetworkStorage,
+      networkUtils: !!game.nightcity?.NetworkUtils,
+      eventBus: !!game.nightcity?.eventBus,
+      stateManager: !!game.nightcity?.stateManager
+    },
+    'Network UI': {
+      NetworkSelectorApp: !!game.nightcity?.NetworkSelectorApp,
+      NetworkAuthDialog: !!game.nightcity?.NetworkAuthDialog
     },
     'Timing': {
       timeService: !!game.nightcity?.timeService

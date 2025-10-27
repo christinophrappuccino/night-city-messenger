@@ -1,0 +1,721 @@
+/**
+ * Network Selector Component Styles
+ * File: styles/components/network-selector.css
+ * Module: cyberpunkred-messenger
+ * Description: Cyberpunk-themed styling for network selector UI
+ */
+
+/* ========================================
+   NETWORK SELECTOR CONTAINER
+   ======================================== */
+
+.ncm-network-selector {
+  position: relative;
+  background: var(--ncm-surface, #330000);
+  border: 1px solid var(--ncm-primary, #F65261);
+  border-radius: 4px;
+  font-family: 'Rajdhani', 'Arial', sans-serif;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.ncm-network-selector.expanded {
+  box-shadow: 0 0 20px rgba(246, 82, 97, 0.4),
+              0 4px 16px rgba(0, 0, 0, 0.5);
+  border-color: var(--ncm-secondary, #19f3f7);
+}
+
+.ncm-network-selector.embedded {
+  border-radius: 2px;
+  box-shadow: none;
+}
+
+/* Switching Animation */
+.ncm-network-selector.switching {
+  animation: glitch 0.5s;
+}
+
+/* Expanding Animation */
+.ncm-network-selector.expanding {
+  animation: pulse 0.3s ease;
+}
+
+/* Scan Pulse */
+.ncm-network-selector.scan-pulse {
+  animation: scanPulse 1s ease;
+}
+
+/* Auth Failed Shake */
+.ncm-network-selector.auth-failed {
+  animation: shake 0.5s ease;
+}
+
+/* ========================================
+   CURRENT NETWORK DISPLAY
+   ======================================== */
+
+.ncm-network-current {
+  display: flex;
+  align-items: center;
+  padding: 12px 14px;
+  gap: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: linear-gradient(
+    90deg, 
+    rgba(246, 82, 97, 0.1) 0%, 
+    transparent 100%
+  );
+  position: relative;
+}
+
+.ncm-network-current::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--ncm-primary, #F65261) 50%,
+    transparent 100%
+  );
+  opacity: 0.3;
+}
+
+.ncm-network-current:hover {
+  background: rgba(246, 82, 97, 0.15);
+  box-shadow: inset 0 0 10px rgba(246, 82, 97, 0.2);
+}
+
+.ncm-network-current:active {
+  transform: scale(0.98);
+}
+
+/* Network Icon */
+.network-icon {
+  font-size: 22px;
+  min-width: 24px;
+  text-align: center;
+  text-shadow: 0 0 10px currentColor;
+  animation: iconPulse 3s infinite;
+}
+
+.network-icon.disconnected {
+  color: #666;
+  text-shadow: none;
+  animation: none;
+}
+
+/* Network Info */
+.network-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.network-name {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--ncm-secondary, #19f3f7);
+  text-shadow: 0 0 8px rgba(25, 243, 247, 0.5);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+
+.network-name.disconnected {
+  color: #888;
+  text-shadow: none;
+}
+
+.network-status {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+}
+
+/* Network Signal */
+.network-signal {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.signal-percentage {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ncm-secondary, #19f3f7);
+  min-width: 32px;
+  text-align: right;
+}
+
+/* Network Warnings */
+.network-warning,
+.network-monitored {
+  font-size: 16px;
+  animation: warningBlink 2s infinite;
+}
+
+.network-warning {
+  color: #ffaa00;
+}
+
+.network-monitored {
+  color: #ff4444;
+}
+
+/* Expand Toggle */
+.expand-toggle {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  transition: all 0.2s ease;
+}
+
+.ncm-network-current:hover .expand-toggle {
+  color: var(--ncm-secondary, #19f3f7);
+  text-shadow: 0 0 8px rgba(25, 243, 247, 0.5);
+}
+
+/* ========================================
+   SIGNAL BARS
+   ======================================== */
+
+.signal-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 14px;
+}
+
+.signal-bar {
+  width: 3px;
+  background: #333;
+  border-radius: 1px 1px 0 0;
+  transition: all 0.3s ease;
+}
+
+.signal-bar:nth-child(1) { height: 25%; }
+.signal-bar:nth-child(2) { height: 50%; }
+.signal-bar:nth-child(3) { height: 75%; }
+.signal-bar:nth-child(4) { height: 100%; }
+
+.signal-bar.active {
+  background: var(--ncm-secondary, #19f3f7);
+  box-shadow: 0 0 5px rgba(25, 243, 247, 0.5);
+  animation: signalPulse 2s infinite;
+}
+
+/* ========================================
+   NETWORK LIST (EXPANDED)
+   ======================================== */
+
+.ncm-network-list {
+  background: rgba(0, 0, 0, 0.4);
+  border-top: 1px solid rgba(246, 82, 97, 0.3);
+  animation: slideDown 0.3s ease;
+  max-height: 400px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.network-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 14px;
+  background: rgba(246, 82, 97, 0.15);
+  border-bottom: 1px solid rgba(246, 82, 97, 0.3);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--ncm-primary, #F65261);
+  text-transform: uppercase;
+}
+
+.network-count {
+  background: var(--ncm-primary, #F65261);
+  color: #000;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+/* Network List Items */
+.network-list-items {
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-height: 280px;
+  padding: 4px;
+}
+
+.network-list-items::-webkit-scrollbar {
+  width: 6px;
+}
+
+.network-list-items::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.network-list-items::-webkit-scrollbar-thumb {
+  background: var(--ncm-primary, #F65261);
+  border-radius: 3px;
+}
+
+.network-list-items::-webkit-scrollbar-thumb:hover {
+  background: var(--ncm-secondary, #19f3f7);
+}
+
+/* Empty State */
+.network-list-empty {
+  text-align: center;
+  padding: 32px 16px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.network-list-empty i {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.3;
+}
+
+.network-list-empty p {
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* ========================================
+   NETWORK ITEM
+   ======================================== */
+
+.ncm-network-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  margin: 4px 0;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ncm-network-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--ncm-secondary, #19f3f7);
+  box-shadow: 0 0 10px rgba(25, 243, 247, 0.2);
+  transform: translateX(2px);
+}
+
+.ncm-network-item:active {
+  transform: scale(0.98);
+}
+
+/* Connected State */
+.ncm-network-item.connected {
+  background: rgba(25, 243, 247, 0.15);
+  border-color: var(--ncm-secondary, #19f3f7);
+  box-shadow: 0 0 12px rgba(25, 243, 247, 0.3);
+}
+
+.ncm-network-item.connected::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--ncm-secondary, #19f3f7);
+  box-shadow: 0 0 10px var(--ncm-secondary, #19f3f7);
+}
+
+/* Locked State */
+.ncm-network-item.locked {
+  opacity: 0.7;
+}
+
+.ncm-network-item.locked:hover {
+  opacity: 1;
+  background: rgba(246, 82, 97, 0.1);
+  border-color: var(--ncm-primary, #F65261);
+}
+
+/* Unavailable State */
+.ncm-network-item.unavailable {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.ncm-network-item.unavailable:hover {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: none;
+  transform: none;
+}
+
+/* Network Item Icon */
+.network-item-icon {
+  font-size: 20px;
+  min-width: 24px;
+  text-align: center;
+  text-shadow: 0 0 8px currentColor;
+}
+
+/* Network Item Details */
+.network-item-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.network-item-name {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.9);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 1.2;
+}
+
+.connected-indicator {
+  color: var(--ncm-secondary, #19f3f7);
+  font-size: 12px;
+  animation: pulse 2s infinite;
+}
+
+.network-item-meta {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.network-type {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.network-security {
+  color: var(--ncm-primary, #F65261);
+}
+
+/* Network Warnings in Items */
+.network-warning {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  margin-top: 4px;
+  padding: 2px 6px;
+  border-radius: 2px;
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.network-warning.traced {
+  background: rgba(255, 170, 0, 0.2);
+  color: #ffaa00;
+  border: 1px solid rgba(255, 170, 0, 0.5);
+}
+
+.network-warning.monitored {
+  background: rgba(255, 68, 68, 0.2);
+  color: #ff4444;
+  border: 1px solid rgba(255, 68, 68, 0.5);
+}
+
+.network-warning.dangerous {
+  background: rgba(157, 78, 221, 0.2);
+  color: #9D4EDD;
+  border: 1px solid rgba(157, 78, 221, 0.5);
+}
+
+/* Network Item Signal */
+.network-item-signal {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.signal-text {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+  min-width: 32px;
+  text-align: right;
+}
+
+/* Network Item Lock */
+.network-item-lock {
+  font-size: 14px;
+  color: var(--ncm-primary, #F65261);
+  flex-shrink: 0;
+}
+
+/* Unavailable Overlay */
+.network-item-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #666;
+  border-radius: 3px;
+}
+
+/* ========================================
+   NETWORK ACTIONS
+   ======================================== */
+
+.ncm-network-actions {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.ncm-network-actions button {
+  flex: 1;
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.ncm-network-actions button:hover {
+  background: var(--ncm-secondary, #19f3f7);
+  border-color: var(--ncm-secondary, #19f3f7);
+  color: #000;
+  box-shadow: 0 0 10px rgba(25, 243, 247, 0.5);
+}
+
+.ncm-network-actions button:active {
+  transform: scale(0.96);
+}
+
+.ncm-network-actions button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.ncm-network-actions button:disabled:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.8);
+  box-shadow: none;
+}
+
+.btn-manage {
+  background: rgba(246, 82, 97, 0.1);
+  border-color: var(--ncm-primary, #F65261);
+}
+
+.btn-manage:hover {
+  background: var(--ncm-primary, #F65261);
+  border-color: var(--ncm-primary, #F65261);
+}
+
+/* ========================================
+   ERROR STATE
+   ======================================== */
+
+.ncm-network-error {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px;
+  background: rgba(246, 82, 97, 0.2);
+  border: 1px solid var(--ncm-primary, #F65261);
+  color: #fff;
+  font-size: 12px;
+}
+
+.ncm-network-error i {
+  font-size: 20px;
+  color: var(--ncm-primary, #F65261);
+}
+
+/* ========================================
+   ANIMATIONS
+   ======================================== */
+
+@keyframes glitch {
+  0%, 100% { 
+    transform: translate(0); 
+    filter: none;
+  }
+  20% { 
+    transform: translate(-2px, 2px); 
+    filter: hue-rotate(90deg);
+  }
+  40% { 
+    transform: translate(-2px, -2px); 
+  }
+  60% { 
+    transform: translate(2px, 2px); 
+    filter: hue-rotate(-90deg);
+  }
+  80% { 
+    transform: translate(2px, -2px); 
+  }
+}
+
+@keyframes pulse {
+  0%, 100% { 
+    box-shadow: 0 0 0 rgba(25, 243, 247, 0);
+  }
+  50% { 
+    box-shadow: 0 0 20px rgba(25, 243, 247, 0.6);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    max-height: 0;
+    opacity: 0;
+  }
+  to {
+    max-height: 400px;
+    opacity: 1;
+  }
+}
+
+@keyframes signalPulse {
+  0%, 100% { 
+    opacity: 1; 
+    box-shadow: 0 0 5px rgba(25, 243, 247, 0.5);
+  }
+  50% { 
+    opacity: 0.6; 
+    box-shadow: 0 0 10px rgba(25, 243, 247, 0.8);
+  }
+}
+
+@keyframes iconPulse {
+  0%, 100% { 
+    text-shadow: 0 0 10px currentColor;
+  }
+  50% { 
+    text-shadow: 0 0 20px currentColor;
+  }
+}
+
+@keyframes warningBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes scanPulse {
+  0%, 100% { 
+    border-color: var(--ncm-primary, #F65261);
+    box-shadow: 0 0 0 rgba(25, 243, 247, 0);
+  }
+  50% { 
+    border-color: var(--ncm-secondary, #19f3f7);
+    box-shadow: 0 0 30px rgba(25, 243, 247, 0.8);
+  }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+  20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+/* ========================================
+   RESPONSIVE DESIGN
+   ======================================== */
+
+@media (max-width: 768px) {
+  .ncm-network-selector {
+    font-size: 12px;
+  }
+  
+  .ncm-network-current {
+    padding: 10px 12px;
+  }
+  
+  .network-name {
+    font-size: 12px;
+  }
+  
+  .network-icon {
+    font-size: 18px;
+  }
+  
+  .ncm-network-item {
+    padding: 8px 10px;
+  }
+  
+  .network-list-items {
+    max-height: 220px;
+  }
+  
+  .ncm-network-actions button {
+    font-size: 10px;
+    padding: 6px 10px;
+  }
+}
+
+/* ========================================
+   ACCESSIBILITY
+   ======================================== */
+
+.ncm-network-selector:focus-within {
+  outline: 2px solid var(--ncm-secondary, #19f3f7);
+  outline-offset: 2px;
+}
+
+.ncm-network-item:focus {
+  outline: 1px solid var(--ncm-secondary, #19f3f7);
+  outline-offset: -1px;
+}
+
+button:focus-visible {
+  outline: 2px solid var(--ncm-secondary, #19f3f7);
+  outline-offset: 2px;
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  .ncm-network-selector,
+  .ncm-network-selector * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
