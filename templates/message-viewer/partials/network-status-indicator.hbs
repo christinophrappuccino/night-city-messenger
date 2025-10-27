@@ -1,0 +1,56 @@
+{{!-- 
+  Network Status Indicator for Message Viewer
+  File: templates/message-viewer/partials/network-status-indicator.hbs
+  
+  This replaces the simple "Connected to CITINET" text with an
+  interactive, animated network status indicator that opens the selector
+--}}
+
+<div class="ncm-network-status-indicator {{#if networkStatus.connected}}connected{{else}}disconnected{{/if}}" 
+     title="Click to view available networks">
+  
+  {{!-- Network Icon with Pulse Animation --}}
+  <div class="ncm-network-icon {{#if networkStatus.connected}}pulse{{/if}}">
+    <i class="fas {{#if networkStatus.connected}}fa-wifi{{else}}fa-wifi-slash{{/if}}"></i>
+  </div>
+  
+  {{!-- Network Info --}}
+  <div class="ncm-network-info">
+    <div class="ncm-network-name">
+      {{#if networkStatus.connected}}
+        {{networkStatus.displayName}}
+      {{else}}
+        NO CONNECTION
+      {{/if}}
+    </div>
+    <div class="ncm-network-status-text">
+      {{#if networkStatus.isSearching}}
+        <span class="searching">Searching...</span>
+      {{else if networkStatus.connected}}
+        <span class="connected-text">Connected</span>
+      {{else}}
+        <span class="disconnected-text">Disconnected</span>
+      {{/if}}
+    </div>
+  </div>
+  
+  {{!-- Signal Strength Bars (only when connected) --}}
+  {{#if networkStatus.connected}}
+    <div class="ncm-network-signal">
+      {{{networkStatus.signalBars}}}
+      <span class="signal-percentage">{{networkStatus.signalStrength}}%</span>
+    </div>
+  {{/if}}
+  
+  {{!-- Expand Arrow --}}
+  <div class="ncm-network-expand">
+    <i class="fas fa-chevron-down"></i>
+  </div>
+</div>
+
+{{!-- Embedded Network Selector (shown when expanded) --}}
+{{#if networkSelector}}
+  <div class="ncm-network-selector-wrapper {{#unless networkStatus.connected}}disconnected{{/unless}}">
+    {{> "modules/cyberpunkred-messenger/templates/network-selector/network-selector.hbs" networkSelector}}
+  </div>
+{{/if}}

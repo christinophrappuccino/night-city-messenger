@@ -12,8 +12,14 @@
        ============================================ --}}
   <div class="ncm-header">
     <div class="ncm-header__top">
-      <div class="ncm-header__connection">
-        <i class="fas fa-wifi"></i> CONNECTED to {{networkName}}
+          {{#if networkStatus}}
+            {{> "modules/cyberpunkred-messenger/templates/message-viewer/partials/network-status-indicator.hbs"}}
+          {{else}}
+            <div class="ncm-header__connection">
+              <i class="fas fa-wifi"></i> {{networkName}}
+            </div>
+          {{/if}}
+        </div>
       </div>
       <div class="ncm-header__title">NIGHT CITY MESSAGES</div>
       <div class="ncm-header__time">{{currentTime}}</div>

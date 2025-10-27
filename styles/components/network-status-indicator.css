@@ -1,0 +1,396 @@
+/**
+ * Network Status Indicator Styles
+ * File: styles/components/network-status-indicator.css
+ * Module: cyberpunkred-messenger
+ * Description: Cyberpunk-styled network status indicator for MessageViewer header
+ */
+
+/* ========================================
+   NETWORK STATUS INDICATOR
+   ======================================== */
+
+.ncm-network-status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: linear-gradient(
+    90deg,
+    rgba(246, 82, 97, 0.1) 0%,
+    transparent 100%
+  );
+  border: 1px solid rgba(246, 82, 97, 0.3);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  min-width: 250px;
+}
+
+/* Scanline effect */
+.ncm-network-status-indicator::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--ncm-secondary, #19f3f7) 50%,
+    transparent 100%
+  );
+  animation: scanline 3s infinite;
+}
+
+@keyframes scanline {
+  0% { left: -100%; }
+  100% { left: 100%; }
+}
+
+/* Hover effect */
+.ncm-network-status-indicator:hover {
+  background: rgba(246, 82, 97, 0.15);
+  border-color: var(--ncm-primary, #F65261);
+  box-shadow: 0 0 15px rgba(246, 82, 97, 0.3);
+  transform: translateY(-1px);
+}
+
+/* Connected state */
+.ncm-network-status-indicator.connected {
+  border-color: var(--ncm-secondary, #19f3f7);
+  background: linear-gradient(
+    90deg,
+    rgba(25, 243, 247, 0.1) 0%,
+    transparent 100%
+  );
+}
+
+.ncm-network-status-indicator.connected:hover {
+  border-color: var(--ncm-secondary, #19f3f7);
+  box-shadow: 0 0 15px rgba(25, 243, 247, 0.4);
+}
+
+/* Disconnected state */
+.ncm-network-status-indicator.disconnected {
+  opacity: 0.7;
+  border-color: #666;
+}
+
+.ncm-network-status-indicator.disconnected .ncm-network-icon {
+  color: #666;
+  animation: none;
+}
+
+/* ========================================
+   NETWORK ICON
+   ======================================== */
+
+.ncm-network-icon {
+  font-size: 20px;
+  color: var(--ncm-secondary, #19f3f7);
+  text-shadow: 0 0 10px currentColor;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+}
+
+/* Pulse animation when connected */
+.ncm-network-icon.pulse {
+  animation: iconPulse 2s infinite;
+}
+
+@keyframes iconPulse {
+  0%, 100% {
+    text-shadow: 0 0 10px currentColor;
+    transform: scale(1);
+  }
+  50% {
+    text-shadow: 0 0 20px currentColor, 0 0 30px currentColor;
+    transform: scale(1.05);
+  }
+}
+
+/* ========================================
+   NETWORK INFO
+   ======================================== */
+
+.ncm-network-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ncm-network-name {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--ncm-secondary, #19f3f7);
+  text-shadow: 0 0 8px rgba(25, 243, 247, 0.5);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+
+.ncm-network-status-indicator.disconnected .ncm-network-name {
+  color: #888;
+  text-shadow: none;
+}
+
+.ncm-network-status-text {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  line-height: 1;
+}
+
+.connected-text {
+  color: var(--ncm-secondary, #19f3f7);
+  animation: textGlow 2s infinite;
+}
+
+@keyframes textGlow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.disconnected-text {
+  color: #888;
+}
+
+.searching {
+  color: var(--ncm-primary, #F65261);
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  0%, 50%, 100% { opacity: 1; }
+  25%, 75% { opacity: 0.5; }
+}
+
+/* ========================================
+   SIGNAL STRENGTH
+   ======================================== */
+
+.ncm-network-signal {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.signal-percentage {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ncm-secondary, #19f3f7);
+  min-width: 32px;
+  text-align: right;
+  font-family: 'Courier New', monospace;
+}
+
+/* Signal bars (from NetworkUtils) */
+.ncm-network-signal .signal-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 14px;
+}
+
+.ncm-network-signal .signal-bar {
+  width: 3px;
+  background: #333;
+  border-radius: 1px 1px 0 0;
+  transition: all 0.3s ease;
+}
+
+.ncm-network-signal .signal-bar:nth-child(1) { height: 25%; }
+.ncm-network-signal .signal-bar:nth-child(2) { height: 50%; }
+.ncm-network-signal .signal-bar:nth-child(3) { height: 75%; }
+.ncm-network-signal .signal-bar:nth-child(4) { height: 100%; }
+
+.ncm-network-signal .signal-bar.active {
+  background: var(--ncm-secondary, #19f3f7);
+  box-shadow: 0 0 5px rgba(25, 243, 247, 0.5);
+  animation: signalPulse 2s infinite;
+}
+
+@keyframes signalPulse {
+  0%, 100% { 
+    opacity: 1;
+    box-shadow: 0 0 5px rgba(25, 243, 247, 0.5);
+  }
+  50% { 
+    opacity: 0.7;
+    box-shadow: 0 0 10px rgba(25, 243, 247, 0.8);
+  }
+}
+
+/* ========================================
+   EXPAND ARROW
+   ======================================== */
+
+.ncm-network-expand {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.ncm-network-status-indicator:hover .ncm-network-expand {
+  color: var(--ncm-secondary, #19f3f7);
+  text-shadow: 0 0 8px rgba(25, 243, 247, 0.5);
+}
+
+/* Rotate when selector is expanded */
+.ncm-network-status-indicator.expanded .ncm-network-expand i {
+  transform: rotate(180deg);
+}
+
+/* ========================================
+   NETWORK SELECTOR WRAPPER
+   ======================================== */
+
+.ncm-network-selector-wrapper {
+  margin-top: 8px;
+  animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    max-height: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    max-height: 500px;
+    transform: translateY(0);
+  }
+}
+
+.ncm-network-selector-wrapper .ncm-network-selector {
+  border: 1px solid var(--ncm-primary, #F65261);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+/* Hide when not expanded */
+.ncm-network-selector-wrapper:not(.expanded) {
+  display: none;
+}
+
+/* ========================================
+   INTEGRATION WITH MESSAGE VIEWER HEADER
+   ======================================== */
+
+/* Place in header appropriately */
+.ncm-message-viewer .ncm-header__top .ncm-network-status-indicator,
+.ncm-item-inbox .ncm-header__top .ncm-network-status-indicator {
+  margin-left: auto;
+}
+
+/* Ensure it doesn't break header layout */
+.ncm-header__top {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* ========================================
+   RESPONSIVE DESIGN
+   ======================================== */
+
+@media (max-width: 768px) {
+  .ncm-network-status-indicator {
+    min-width: 200px;
+    padding: 6px 12px;
+    gap: 10px;
+  }
+  
+  .ncm-network-icon {
+    font-size: 18px;
+  }
+  
+  .ncm-network-name {
+    font-size: 12px;
+  }
+  
+  .signal-percentage {
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Simplified mobile view */
+  .ncm-network-status-indicator {
+    min-width: 150px;
+  }
+  
+  .ncm-network-signal {
+    display: none;
+  }
+}
+
+/* ========================================
+   CLICK ANIMATION
+   ======================================== */
+
+.ncm-network-status-indicator:active {
+  transform: scale(0.98);
+}
+
+.ncm-network-status-indicator.switching {
+  animation: switchGlitch 0.5s;
+}
+
+@keyframes switchGlitch {
+  0%, 100% { 
+    transform: translate(0);
+    filter: none;
+  }
+  20% { 
+    transform: translate(-2px, 2px);
+    filter: hue-rotate(90deg);
+  }
+  40% { 
+    transform: translate(-2px, -2px);
+  }
+  60% { 
+    transform: translate(2px, 2px);
+    filter: hue-rotate(-90deg);
+  }
+  80% { 
+    transform: translate(2px, -2px);
+  }
+}
+
+/* ========================================
+   ACCESSIBILITY
+   ======================================== */
+
+.ncm-network-status-indicator:focus {
+  outline: 2px solid var(--ncm-secondary, #19f3f7);
+  outline-offset: 2px;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .ncm-network-status-indicator,
+  .ncm-network-icon,
+  .ncm-network-expand,
+  .ncm-network-status-text * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  
+  .ncm-network-status-indicator::before {
+    display: none;
+  }
+}

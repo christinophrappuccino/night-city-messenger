@@ -111,7 +111,7 @@ export class MessageViewerApp extends BaseApplication {
       allMessages.map(m => m.from).filter(Boolean)
     )].sort();
     
-    // ✅ NEW: Get current date for filter defaults
+    // Get current date for filter defaults
     const currentDate = new Date(this.timeService.getCurrentTimestamp());
     const currentDateString = currentDate.toISOString().split('T')[0]; // YYYY-MM-DD format
     
@@ -120,6 +120,33 @@ export class MessageViewerApp extends BaseApplication {
       dateFrom: advancedFilters.dateFrom || currentDateString,
       dateTo: advancedFilters.dateTo || currentDateString
     };
+
+    // Network Manager and Selector
+    const networkManager = game.nightcity?.networkManager;
+    let networkStatus = null;
+    let networkSelector = null;
+    
+    if (networkManager) {
+      const status = networkManager.getNetworkStatus();
+      
+      networkStatus = {
+        connected: status.connected,
+        networkId: status.networkId || 'CITINET',
+        networkName: status.networkId || 'CITINET',
+        signalStrength: status.signalStrength || 0,
+        signalBars: game.nightcity.NetworkUtils ? 
+          game.nightcity.NetworkUtils.generateSignalBars(status.signalStrength || 0) : '',
+        isSearching: !status.connected,
+        displayName: status.networkId || 'CITINET'
+      };
+      
+      networkSelector = {
+        show: true,
+        embedded: true,
+        expanded: false,
+        context: 'message-viewer'
+      };
+    }
     
     // Get selected message
     const selectedMessage = selectedMessageId 
@@ -173,6 +200,8 @@ export class MessageViewerApp extends BaseApplication {
       currentTime: this.timeService.formatTimestamp(
         this.timeService.getCurrentTimestamp()
       ),
+      networkStatus: networkStatus,
+      networkSelector: networkSelector,
       networkName: this.stateManager.get('currentNetwork') || 'CITINET'
     };
   }
@@ -247,6 +276,40 @@ export class MessageViewerApp extends BaseApplication {
     html.find('[data-action="refresh"]').on('click', this._onRefresh.bind(this));
     html.find('[data-action="open-contacts"]').on('click', this._onOpenContacts.bind(this));
     html.find('[data-action="add-sender-to-contacts"]').on('click', this._onAddSenderToContacts.bind(this));
+
+    // Toggle network selector
+    html.find('.ncm-network-status-indicator').click(() => {
+      const currentState = this.stateManager.get('networkSelectorExpanded') || false;
+      this.stateManager.set('networkSelectorExpanded', !currentState);
+      this.render(false);
+    });
+    
+    // Network item click
+    html.find('.ncm-network-item').click(async (event) => {
+      const networkId = $(event.currentTarget).data('network-id');
+      if (!networkId) return;
+      
+      const networkManager = game.nightcity?.networkManager;
+      if (!networkManager) return;
+      
+      try {
+        await networkManager.connectToNetwork(networkId);
+        ui.notifications.info(`Connected to ${networkId}`);
+        this.render(false);
+      } catch (error) {
+        ui.notifications.error(`Failed to connect: ${error.message}`);
+      }
+    });
+    
+    // Scan networks
+    html.find('[data-action="scan-networks"]').click(async () => {
+      const networkManager = game.nightcity?.networkManager;
+      if (!networkManager) return;
+      
+      ui.notifications.info('Scanning for networks...');
+      await networkManager.scanNetworks();
+      this.render(false);
+    });
     
     // Scheduling
     html.find('[data-action="reschedule-message"]').on('click', this._onRescheduleMessage.bind(this));
