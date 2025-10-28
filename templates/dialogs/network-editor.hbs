@@ -170,22 +170,22 @@
     </div>
     
     <div class="form-group">
-      <h4>Network Features</h4>
+      <h4>Network Effects</h4>
       <div class="checkbox-grid">
         <label>
-          <input type="checkbox" name="features.anonymous" {{#if network.features.anonymous}}checked{{/if}}>
+          <input type="checkbox" name="effects.anonymous" {{#if network.effects.anonymous}}checked{{/if}}>
           <span><i class="fas fa-user-secret"></i> Anonymous Sending</span>
         </label>
         <label>
-          <input type="checkbox" name="features.encrypted" {{#if network.features.encrypted}}checked{{/if}}>
+          <input type="checkbox" name="effects.encrypted" {{#if network.effects.encrypted}}checked{{/if}}>
           <span><i class="fas fa-lock"></i> Encrypted Messages</span>
         </label>
         <label>
-          <input type="checkbox" name="features.traced" {{#if network.features.traced}}checked{{/if}}>
+          <input type="checkbox" name="effects.traced" {{#if network.effects.traced}}checked{{/if}}>
           <span><i class="fas fa-route"></i> Connection Tracing</span>
         </label>
         <label>
-          <input type="checkbox" name="features.monitored" {{#if network.features.monitored}}checked{{/if}}>
+          <input type="checkbox" name="effects.monitored" {{#if network.effects.monitored}}checked{{/if}}>
           <span><i class="fas fa-eye"></i> Monitored by NetWatch</span>
         </label>
       </div>
@@ -194,26 +194,26 @@
   
   {{!-- Coverage --}}
   <section class="form-section">
-    <h3><i class="fas fa-map"></i> Network Coverage</h3>
+    <h3><i class="fas fa-map"></i> Network Availability</h3>
     
     <div class="form-group checkbox-group">
       <label>
-        <input type="checkbox" name="coverage.global" {{#if network.coverage.global}}checked{{/if}}>
+        <input type="checkbox" name="availability.global" {{#if network.availability.global}}checked{{/if}}>
         <span>Global Network</span>
       </label>
       <small>Available in all scenes</small>
     </div>
     
-    <div class="scene-selector" style="{{#if network.coverage.global}}display: none;{{/if}}">
+    <div class="scene-selector" style="{{#if network.availability.global}}display: none;{{/if}}">
       <label>Available in Scenes:</label>
       <div class="scene-list">
         {{#each scenes}}
           <label class="scene-item">
             <input 
               type="checkbox" 
-              name="coverage.scenes" 
+              name="availability.scenes" 
               value="{{this.id}}"
-              {{#if (includes ../network.coverage.scenes this.id)}}checked{{/if}}>
+              {{#if (includes ../network.availability.scenes this.id)}}checked{{/if}}>
             <span>{{this.name}}</span>
           </label>
         {{/each}}

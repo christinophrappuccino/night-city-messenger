@@ -34,7 +34,6 @@ export class NetworkManagementApp extends Application {
       title: '🌐 Network Management',
       resizable: true,
       minimizable: true,
-      scrollY: [".tab-content"],
       tabs: [{
         navSelector: '.tabs',
         contentSelector: '.tab-content',
@@ -192,12 +191,14 @@ export class NetworkManagementApp extends Application {
           
           ui.notifications.info(`Network "${networkData.name}" created`);
           
-          // Post to chat
-          await game.nightcity.chatIntegration.postNetworkEvent({
-            type: 'network-created',
-            network: networkData,
-            user: game.user.name
-          });
+          // Post to chat (optional)
+          if (game.nightcity.chatIntegration?.postNetworkEvent) {
+            await game.nightcity.chatIntegration.postNetworkEvent({
+              type: 'network-created',
+              network: networkData,
+              user: game.user.name
+            });
+          }
           
           this._networks = null; // Clear cache
           this.render(false);

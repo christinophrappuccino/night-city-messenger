@@ -68,11 +68,12 @@ export class NetworkEditorDialog extends Dialog {
         breachDC: 10
       },
       reliability: 95,
-      coverage: {
+      signalStrength: 100,
+      availability: {
         global: true,
         scenes: []
       },
-      features: {
+      effects: {
         anonymous: false,
         encrypted: false,
         traced: false,
@@ -132,7 +133,7 @@ export class NetworkEditorDialog extends Dialog {
     html.find('select[name="security.level"]').change(this._onSecurityLevelChange.bind(this));
     
     // Coverage type change
-    html.find('input[name="coverage.global"]').change(this._onCoverageTypeChange.bind(this));
+    html.find('input[name="availability.global"]').change(this._onCoverageTypeChange.bind(this));
     
     // Color picker
     html.find('input[name="theme.color"]').change(this._onColorChange.bind(this));
@@ -294,7 +295,8 @@ export class NetworkEditorDialog extends Dialog {
         requiresAuth: true,
         security: { level: 'HIGH', password: '', iceDamage: '3d6', breachDC: 20 },
         reliability: 99,
-        features: { encrypted: true, monitored: true, traced: true },
+        signalStrength: 100,
+        effects: { encrypted: true, monitored: true, traced: true },
         theme: { color: '#0066CC', icon: 'fa-building' }
       },
       'darknet': {
@@ -303,7 +305,8 @@ export class NetworkEditorDialog extends Dialog {
         requiresAuth: true,
         security: { level: 'EXTREME', password: '', iceDamage: '5d6', breachDC: 25 },
         reliability: 70,
-        features: { anonymous: true, encrypted: true },
+        signalStrength: 85,
+        effects: { anonymous: true, encrypted: true },
         theme: { color: '#000000', icon: 'fa-user-secret' }
       },
       'public': {
@@ -312,7 +315,8 @@ export class NetworkEditorDialog extends Dialog {
         requiresAuth: false,
         security: { level: 'NONE', password: '', iceDamage: '0', breachDC: 0 },
         reliability: 85,
-        features: { monitored: true },
+        signalStrength: 100,
+        effects: { monitored: true },
         theme: { color: '#19f3f7', icon: 'fa-wifi' }
       }
     };
@@ -416,17 +420,18 @@ export class NetworkEditorDialog extends Dialog {
         breachDC: parseInt(formData.get('security.breachDC')) || 10
       },
       reliability: parseInt(formData.get('reliability')) || 95,
-      coverage: {
-        global: this.element.find('input[name="coverage.global"]').is(':checked'),
-        scenes: this.element.find('input[name="coverage.global"]').is(':checked')
+      signalStrength: 100, // Default to full signal strength
+      availability: {
+        global: this.element.find('input[name="availability.global"]').is(':checked'),
+        scenes: this.element.find('input[name="availability.global"]').is(':checked')
           ? []
-          : Array.from(this.element.find('input[name="coverage.scenes"]:checked')).map(el => el.value)
+          : Array.from(this.element.find('input[name="availability.scenes"]:checked')).map(el => el.value)
       },
-      features: {
-        anonymous: this.element.find('input[name="features.anonymous"]').is(':checked'),
-        encrypted: this.element.find('input[name="features.encrypted"]').is(':checked'),
-        traced: this.element.find('input[name="features.traced"]').is(':checked'),
-        monitored: this.element.find('input[name="features.monitored"]').is(':checked')
+      effects: {
+        anonymous: this.element.find('input[name="effects.anonymous"]').is(':checked'),
+        encrypted: this.element.find('input[name="effects.encrypted"]').is(':checked'),
+        traced: this.element.find('input[name="effects.traced"]').is(':checked'),
+        monitored: this.element.find('input[name="effects.monitored"]').is(':checked')
       },
       theme: {
         color: formData.get('theme.color') || '#F65261',

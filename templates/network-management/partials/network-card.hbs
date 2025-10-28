@@ -101,16 +101,16 @@
       </div>
       {{/if}}
       
-      {{!-- Coverage Details --}}
+      {{!-- Availability Details --}}
       <div class="detail-section">
-        <h4><i class="fas fa-map"></i> Coverage</h4>
+        <h4><i class="fas fa-map"></i> Availability</h4>
         <div class="detail-item">
           <span class="detail-label">Type:</span>
           <span class="detail-value">
-            {{#if network.coverage.global}}
+            {{#if network.availability.global}}
               Global (All Scenes)
             {{else}}
-              Scene-Specific ({{network.coverage.scenes.length}} scenes)
+              Scene-Specific ({{network.availability.scenes.length}} scenes)
             {{/if}}
           </span>
         </div>
@@ -120,24 +120,24 @@
         </div>
       </div>
       
-      {{!-- Features --}}
+      {{!-- Effects --}}
       <div class="detail-section">
-        <h4><i class="fas fa-cogs"></i> Features</h4>
+        <h4><i class="fas fa-cogs"></i> Effects</h4>
         <div class="feature-tags">
-          {{#if network.features.anonymous}}
+          {{#if network.effects.anonymous}}
             <span class="feature-tag"><i class="fas fa-user-secret"></i> Anonymous</span>
           {{/if}}
-          {{#if network.features.encrypted}}
+          {{#if network.effects.encrypted}}
             <span class="feature-tag"><i class="fas fa-lock"></i> Encrypted</span>
           {{/if}}
-          {{#if network.features.traced}}
+          {{#if network.effects.traced}}
             <span class="feature-tag"><i class="fas fa-route"></i> Traced</span>
           {{/if}}
-          {{#if network.features.monitored}}
+          {{#if network.effects.monitored}}
             <span class="feature-tag"><i class="fas fa-eye"></i> Monitored</span>
           {{/if}}
-          {{#unless (or network.features.anonymous network.features.encrypted network.features.traced network.features.monitored)}}
-            <em>No special features</em>
+          {{#unless (or network.effects.anonymous network.effects.encrypted network.effects.traced network.effects.monitored)}}
+            <em>No special effects</em>
           {{/unless}}
         </div>
       </div>
