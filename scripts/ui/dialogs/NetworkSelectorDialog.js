@@ -3,7 +3,9 @@
  * File: scripts/ui/dialogs/NetworkSelectorDialog.js
  * Module: cyberpunkred-messenger
  * 
- * FIX: getAvailableNetworks() is async - must await it!
+ * FIXES:
+ * 1. getAvailableNetworks() is async - must await it!
+ * 2. Actually show NetworkAuthDialog when auth is required (line 173)
  */
 
 import { MODULE_ID } from '../../utils/constants.js';
@@ -60,8 +62,8 @@ export class NetworkSelectorDialog {
             </div>
             <div class="network-item-type">${network.type}</div>
             ${network.description ? `<div class="network-item-desc">${network.description}</div>` : ''}
-            ${network.security?.requiresAuth ? 
-              `<div class="network-item-security">🔒 ${network.security.level || 'SECURED'}</div>` : ''}
+            ${network.security?.requiresAuth || network.requiresAuth ? 
+              `<div class="network-item-security">🔒 ${network.security?.level || 'SECURED'}</div>` : ''}
           </div>
           <div class="network-item-signal">
             ${signalBars}
@@ -82,43 +84,33 @@ export class NetworkSelectorDialog {
             <div class="current-network-name">${currentStatus.networkId || 'None'}</div>
             <div class="current-network-status">
               ${currentStatus.connected ? 
-                `<span class="status-connected">Connected • ${currentStatus.signalStrength || 100}% Signal</span>` : 
-                `<span class="status-disconnected">Disconnected</span>`
-              }
+                '<span class="status-connected">● ONLINE</span>' : 
+                '<span class="status-disconnected">● OFFLINE</span>'}
             </div>
           </div>
         </div>
         
-        <div class="network-list-section">
-          <div class="network-list-header">
+        <div class="available-networks-section">
+          <div class="available-networks-header">
             <span>AVAILABLE NETWORKS</span>
-            <span class="network-count">${networks.length}</span>
+            <button class="scan-networks-btn" data-action="scan" title="Scan for networks">
+              <i class="fas fa-radar"></i> SCAN
+            </button>
           </div>
-          
-          ${networks.length > 0 ? 
-            `<div class="network-list">${networkListHTML}</div>` :
-            `<div class="network-list-empty">
-              <i class="fas fa-satellite-dish"></i>
-              <p>No networks in range</p>
-              <p class="hint">Click "Scan Networks" to search</p>
-            </div>`
-          }
+          <div class="network-list">
+            ${networkListHTML || '<div class="no-networks">No networks available</div>'}
+          </div>
         </div>
         
-        <div class="network-actions">
-          ${currentStatus.connected ? 
-            `<button class="ncm-btn ncm-btn--secondary" data-action="disconnect">
-              <i class="fas fa-times"></i> Disconnect
-            </button>` : ''
-          }
-          <button class="ncm-btn ncm-btn--primary" data-action="scan">
-            <i class="fas fa-sync-alt"></i> Scan Networks
+        <div class="dialog-actions">
+          <button class="disconnect-btn" data-action="disconnect" ${!currentStatus.connected ? 'disabled' : ''}>
+            <i class="fas fa-unlink"></i> Disconnect
           </button>
         </div>
       </div>
     `;
     
-    // Create Foundry Dialog
+    // Show dialog
     new Dialog({
       title: "Network Selector",
       content: content,
@@ -128,11 +120,11 @@ export class NetworkSelectorDialog {
           label: "Close"
         }
       },
-      default: "close",
-      render: html => this._activateListeners(html)
+      render: (html) => this._activateListeners(html, networkManager),
+      default: "close"
     }, {
-      classes: ['dialog', 'ncm-dialog', 'ncm-network-selector-dialog'],
-      width: 500,
+      classes: ['ncm-network-selector-dialog'],
+      width: 600,
       height: 'auto'
     }).render(true);
   }
@@ -141,27 +133,77 @@ export class NetworkSelectorDialog {
    * Activate event listeners
    * @private
    */
-  _activateListeners(html) {
-    const networkManager = game.nightcity?.networkManager;
-    
-    // Network item click - connect to network
+  _activateListeners(html, networkManager) {
+    // Network item click
     html.find('.ncm-network-dialog-item').click(async function() {
       const networkId = $(this).data('network-id');
-      if (!networkId) return;
       
-      if (!networkManager) {
-        ui.notifications.error('Network system not available');
+      if (!networkId || !networkManager) {
+        ui.notifications.error('Invalid network selection');
         return;
       }
       
       try {
+        // Get the full network object
+        const networks = await networkManager.getAvailableNetworks();
+        const network = networks.find(n => n.id === networkId);
+        
+        if (!network) {
+          ui.notifications.error('Network not found');
+          return;
+        }
+        
+        // Check if authentication is required
+        const requiresAuth = network.security?.requiresAuth || network.requiresAuth;
+        
+        if (requiresAuth) {
+          console.log(`${MODULE_ID} | ${networkId} requires authentication`);
+          
+          // FIX: Actually open the authentication dialog!
+          const { NetworkAuthDialog } = await import('./NetworkAuthDialog.js');
+          
+          const authDialog = new NetworkAuthDialog(network, {
+            actor: game.user.character,
+            onSuccess: async (result) => {
+              console.log(`${MODULE_ID} | Authentication successful, connecting...`);
+              
+              // Now connect to the network
+              const connectResult = await networkManager.connectToNetwork(networkId);
+              
+              if (connectResult.success) {
+                ui.notifications.info(`Connected to ${network.name}`);
+                
+                // Close the selector dialog
+                html.closest('.dialog').find('.dialog-button.close').click();
+                
+                // Refresh any open apps
+                Object.values(ui.windows).forEach(app => {
+                  if (app.render && typeof app.render === 'function') {
+                    app.render(false);
+                  }
+                });
+              } else {
+                ui.notifications.error(connectResult.error || 'Connection failed');
+              }
+            },
+            onCancel: () => {
+              console.log(`${MODULE_ID} | Authentication cancelled`);
+              ui.notifications.info('Connection cancelled');
+            }
+          });
+          
+          authDialog.render(true);
+          return;
+        }
+        
+        // No authentication required, connect directly
         const result = await networkManager.connectToNetwork(networkId);
         
         if (result.success) {
           ui.notifications.info(`Connected to ${networkId}`);
           
           // Close dialog
-          html.closest('.dialog').find('.dialog-button').click();
+          html.closest('.dialog').find('.dialog-button.close').click();
           
           // Refresh any open apps
           Object.values(ui.windows).forEach(app => {
@@ -170,8 +212,8 @@ export class NetworkSelectorDialog {
             }
           });
         } else if (result.requiresAuth) {
+          // This shouldn't happen (we check above), but handle it
           ui.notifications.warn(`${networkId} requires authentication`);
-          // Could open auth dialog here
         } else {
           ui.notifications.error(result.error || 'Failed to connect');
         }
@@ -189,7 +231,7 @@ export class NetworkSelectorDialog {
       ui.notifications.info('Disconnected from network');
       
       // Close dialog
-      html.closest('.dialog').find('.dialog-button').click();
+      html.closest('.dialog').find('.dialog-button.close').click();
       
       // Refresh apps
       Object.values(ui.windows).forEach(app => {
@@ -208,7 +250,7 @@ export class NetworkSelectorDialog {
         ui.notifications.info('Scan complete');
         
         // Reopen dialog with new results
-        html.closest('.dialog').find('.dialog-button').click();
+        html.closest('.dialog').find('.dialog-button.close').click();
         
         // Wait a moment then reopen
         setTimeout(() => {
@@ -231,6 +273,11 @@ export class NetworkSelectorDialog {
       return network.signalStrength;
     }
     
+    // Check reliability
+    if (typeof network.reliability === 'number') {
+      return network.reliability;
+    }
+    
     // Use range to estimate signal
     const range = network.range || 100;
     if (range >= 100) return 100;
@@ -245,6 +292,11 @@ export class NetworkSelectorDialog {
    * @private
    */
   _getNetworkIcon(network) {
+    // Use custom icon if specified
+    if (network.theme?.icon) {
+      return network.theme.icon;
+    }
+    
     const iconMap = {
       'public': 'fa-wifi',
       'corporate': 'fa-building',

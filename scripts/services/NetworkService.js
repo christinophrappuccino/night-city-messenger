@@ -1,8 +1,10 @@
 /**
- * Network Service
+ * Network Service - FIXED
  * File: scripts/services/NetworkService.js
  * Module: cyberpunkred-messenger
  * Description: Manages network connections, signal strength, and access control
+ * 
+ * FIX: _isValidNetwork() now properly checks custom network IDs
  */
 
 import { MODULE_ID, NETWORKS, NETWORK_RELIABILITY } from '../utils/constants.js';
@@ -157,7 +159,9 @@ export class NetworkService {
     
     // Add custom networks from settings
     const customNetworks = game.settings.get(MODULE_ID, 'customNetworks') || [];
-    networks.push(...customNetworks);
+    // Extract just the IDs from custom networks
+    const customNetworkIds = customNetworks.map(n => n.id);
+    networks.push(...customNetworkIds);
     
     return networks.map(n => this.getNetworkInfo(n));
   }
@@ -187,18 +191,34 @@ export class NetworkService {
    * @private
    */
   _getNetworkReliability(network) {
+    // Check custom networks first
+    const customNetworks = game.settings.get(MODULE_ID, 'customNetworks') || [];
+    const customNetwork = customNetworks.find(n => n.id === network);
+    if (customNetwork && typeof customNetwork.reliability === 'number') {
+      return customNetwork.reliability;
+    }
+    
+    // Fall back to standard networks
     return NETWORK_RELIABILITY[network] || 95;
   }
   
   /**
    * Check if network is valid
    * @private
+   * 
+   * FIX: Now properly checks if custom network IDs exist
    */
   _isValidNetwork(network) {
     const standardNetworks = Object.values(NETWORKS);
-    const customNetworks = game.settings.get(MODULE_ID, 'customNetworks') || [];
     
-    return standardNetworks.includes(network) || customNetworks.includes(network);
+    // Check standard networks first
+    if (standardNetworks.includes(network)) {
+      return true;
+    }
+    
+    // Check custom networks by ID (not by object equality!)
+    const customNetworks = game.settings.get(MODULE_ID, 'customNetworks') || [];
+    return customNetworks.some(n => n.id === network);
   }
   
   /**
@@ -207,19 +227,27 @@ export class NetworkService {
    */
   _isNetworkBridged(currentNetwork, requiredNetwork) {
     // Future: Allow certain networks to access others
-    // e.g. CORPNET can access CITINET
+    // e.g., CORPNET might bridge to DARKNET in certain conditions
     return false;
   }
   
   /**
-   * Get network display name
+   * Get display name for network
    * @private
    */
   _getNetworkDisplayName(network) {
+    // Check custom networks
+    const customNetworks = game.settings.get(MODULE_ID, 'customNetworks') || [];
+    const customNetwork = customNetworks.find(n => n.id === network);
+    if (customNetwork) {
+      return customNetwork.name || network;
+    }
+    
+    // Standard network names
     const names = {
-      [NETWORKS.CITINET]: 'CitiNet (Public)',
-      [NETWORKS.CORPNET]: 'CorpNet (Corporate)',
-      [NETWORKS.DARKNET]: 'DarkNet (Underground)',
+      [NETWORKS.CITINET]: 'CitiNet',
+      [NETWORKS.CORPNET]: 'CorpNet',
+      [NETWORKS.DARKNET]: 'DarkNet',
       [NETWORKS.DEAD_ZONE]: 'Dead Zone'
     };
     
@@ -227,28 +255,42 @@ export class NetworkService {
   }
   
   /**
-   * Get network description
+   * Get description for network
    * @private
    */
   _getNetworkDescription(network) {
+    // Check custom networks
+    const customNetworks = game.settings.get(MODULE_ID, 'customNetworks') || [];
+    const customNetwork = customNetworks.find(n => n.id === network);
+    if (customNetwork) {
+      return customNetwork.description || '';
+    }
+    
     const descriptions = {
-      [NETWORKS.CITINET]: 'Public municipal network. Monitored by NCPD.',
-      [NETWORKS.CORPNET]: 'Secure corporate infrastructure. Encrypted and traced.',
-      [NETWORKS.DARKNET]: 'Underground networks. Anonymous but unstable.',
-      [NETWORKS.DEAD_ZONE]: 'No network coverage. Complete blackout.'
+      [NETWORKS.CITINET]: 'Night City\'s public network',
+      [NETWORKS.CORPNET]: 'Corporate network - high security',
+      [NETWORKS.DARKNET]: 'Underground network - anonymous',
+      [NETWORKS.DEAD_ZONE]: 'No connectivity'
     };
     
-    return descriptions[network] || 'Custom network';
+    return descriptions[network] || '';
   }
   
   /**
-   * Get network color
+   * Get color for network
    * @private
    */
   _getNetworkColor(network) {
+    // Check custom networks
+    const customNetworks = game.settings.get(MODULE_ID, 'customNetworks') || [];
+    const customNetwork = customNetworks.find(n => n.id === network);
+    if (customNetwork?.theme?.color) {
+      return customNetwork.theme.color;
+    }
+    
     const colors = {
       [NETWORKS.CITINET]: '#19f3f7',
-      [NETWORKS.CORPNET]: '#FFD700',
+      [NETWORKS.CORPNET]: '#F65261',
       [NETWORKS.DARKNET]: '#9400D3',
       [NETWORKS.DEAD_ZONE]: '#666666'
     };
@@ -257,17 +299,24 @@ export class NetworkService {
   }
   
   /**
-   * Get network icon
+   * Get icon for network
    * @private
    */
   _getNetworkIcon(network) {
+    // Check custom networks
+    const customNetworks = game.settings.get(MODULE_ID, 'customNetworks') || [];
+    const customNetwork = customNetworks.find(n => n.id === network);
+    if (customNetwork?.theme?.icon) {
+      return customNetwork.theme.icon;
+    }
+    
     const icons = {
-      [NETWORKS.CITINET]: 'fas fa-wifi',
-      [NETWORKS.CORPNET]: 'fas fa-building',
-      [NETWORKS.DARKNET]: 'fas fa-user-secret',
-      [NETWORKS.DEAD_ZONE]: 'fas fa-ban'
+      [NETWORKS.CITINET]: 'fa-wifi',
+      [NETWORKS.CORPNET]: 'fa-building',
+      [NETWORKS.DARKNET]: 'fa-user-secret',
+      [NETWORKS.DEAD_ZONE]: 'fa-ban'
     };
     
-    return icons[network] || 'fas fa-network-wired';
+    return icons[network] || 'fa-network-wired';
   }
 }
