@@ -272,6 +272,13 @@
     <button type="button" class="load-template-btn ncm-btn">
       <i class="fas fa-file-import"></i> Load Template
     </button>
+    <div style="flex: 1;"></div>
+    <button type="button" class="cancel-network-btn ncm-btn">
+      <i class="fas fa-times"></i> Cancel
+    </button>
+    <button type="button" class="save-network-btn ncm-btn ncm-btn-primary">
+      <i class="fas fa-save"></i> {{#if (eq mode 'edit')}}Update{{else}}Create{{/if}}
+    </button>
   </div>
 </form>
 

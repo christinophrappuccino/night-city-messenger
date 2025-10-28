@@ -9,14 +9,22 @@ import { MODULE_ID, NETWORK_TYPES, SECURITY_LEVELS } from '../../utils/constants
 
 export class NetworkEditorDialog extends Dialog {
   constructor(options = {}) {
+    // Store options first
+    const mode = options.mode || 'create';
+    const network = options.network || NetworkEditorDialog._getDefaultNetwork();
+    const onSaveCallback = options.onSave;
+    
     const dialogData = {
-      title: options.mode === 'edit' ? 'Edit Network' : 'Create Network',
-      content: '',
+      title: mode === 'edit' ? 'Edit Network' : 'Create Network',
+      content: '<p>Loading...</p>', // Will be replaced in render
       buttons: {
         save: {
           icon: '<i class="fas fa-save"></i>',
-          label: options.mode === 'edit' ? 'Update' : 'Create',
-          callback: html => this._onSave(html)
+          label: mode === 'edit' ? 'Update' : 'Create',
+          callback: html => {
+            // Prevent default dialog close
+            return false;
+          }
         },
         cancel: {
           icon: '<i class="fas fa-times"></i>',
@@ -29,20 +37,23 @@ export class NetworkEditorDialog extends Dialog {
     
     super(dialogData, {
       classes: ['ncm-dialog', 'ncm-network-editor'],
-      width: 700,
-      height: 'auto',
+      width: 750,
+      height: 650,
+      resizable: true,
       jQuery: true
     });
     
-    this.mode = options.mode || 'create';
-    this.network = options.network || this._getDefaultNetwork();
-    this.onSave = options.onSave;
+    this.options.buttons = false; // Hide default dialog buttons
+    
+    this.mode = mode;
+    this.network = network;
+    this.onSave = onSaveCallback;
     
     // Validation state
     this.errors = {};
   }
   
-  _getDefaultNetwork() {
+  static _getDefaultNetwork() {
     return {
       id: '',
       name: '',
@@ -95,12 +106,21 @@ export class NetworkEditorDialog extends Dialog {
     const template = `modules/${MODULE_ID}/templates/dialogs/network-editor.hbs`;
     const html = await renderTemplate(template, data);
     
+    // Replace the dialog content
     this.element.find('.dialog-content').html(html);
+    
+    // Activate listeners
     this.activateListeners(this.element);
   }
   
   activateListeners(html) {
     super.activateListeners(html);
+    
+    // Save button
+    html.find('.save-network-btn').click(this._onSaveClick.bind(this));
+    
+    // Cancel button
+    html.find('.cancel-network-btn').click(() => this.close());
     
     // Network ID generation
     html.find('input[name="name"]').on('input', this._onNameChange.bind(this));
@@ -375,39 +395,44 @@ export class NetworkEditorDialog extends Dialog {
   
   _getFormData() {
     const form = this.element.find('form')[0];
+    if (!form) {
+      console.error('Form not found!');
+      return null;
+    }
+    
     const formData = new FormData(form);
     
     const data = {
-      id: formData.get('id'),
-      name: formData.get('name'),
-      displayName: formData.get('displayName') || formData.get('name'),
-      type: formData.get('type'),
-      description: formData.get('description'),
-      requiresAuth: formData.get('requiresAuth') === 'on',
+      id: formData.get('id') || '',
+      name: formData.get('name') || '',
+      displayName: formData.get('displayName') || formData.get('name') || '',
+      type: formData.get('type') || 'CUSTOM',
+      description: formData.get('description') || '',
+      requiresAuth: this.element.find('input[name="requiresAuth"]').is(':checked'),
       security: {
-        level: formData.get('security.level'),
-        password: formData.get('security.password'),
-        iceDamage: formData.get('security.iceDamage'),
-        breachDC: parseInt(formData.get('security.breachDC'))
+        level: formData.get('security.level') || 'LOW',
+        password: formData.get('security.password') || '',
+        iceDamage: formData.get('security.iceDamage') || '1d6',
+        breachDC: parseInt(formData.get('security.breachDC')) || 10
       },
-      reliability: parseInt(formData.get('reliability')),
+      reliability: parseInt(formData.get('reliability')) || 95,
       coverage: {
-        global: formData.get('coverage.global') === 'on',
-        scenes: formData.get('coverage.global') !== 'on' 
-          ? Array.from(formData.getAll('coverage.scenes'))
-          : []
+        global: this.element.find('input[name="coverage.global"]').is(':checked'),
+        scenes: this.element.find('input[name="coverage.global"]').is(':checked')
+          ? []
+          : Array.from(this.element.find('input[name="coverage.scenes"]:checked')).map(el => el.value)
       },
       features: {
-        anonymous: formData.get('features.anonymous') === 'on',
-        encrypted: formData.get('features.encrypted') === 'on',
-        traced: formData.get('features.traced') === 'on',
-        monitored: formData.get('features.monitored') === 'on'
+        anonymous: this.element.find('input[name="features.anonymous"]').is(':checked'),
+        encrypted: this.element.find('input[name="features.encrypted"]').is(':checked'),
+        traced: this.element.find('input[name="features.traced"]').is(':checked'),
+        monitored: this.element.find('input[name="features.monitored"]').is(':checked')
       },
       theme: {
-        color: formData.get('theme.color'),
-        icon: formData.get('theme.icon')
+        color: formData.get('theme.color') || '#F65261',
+        icon: formData.get('theme.icon') || 'fa-network-wired'
       },
-      enabled: formData.get('enabled') === 'on'
+      enabled: this.element.find('input[name="enabled"]').is(':checked')
     };
     
     return data;
@@ -417,51 +442,63 @@ export class NetworkEditorDialog extends Dialog {
     const errors = {};
     
     // Required fields
-    if (!data.id) errors.id = 'Network ID is required';
-    if (!data.name) errors.name = 'Network name is required';
+    if (!data.id || data.id.trim() === '') {
+      errors.id = 'Network ID is required';
+    }
     
-    // ID format
+    if (!data.name || data.name.trim() === '') {
+      errors.name = 'Network name is required';
+    }
+    
+    // ID format (only if ID is provided)
     if (data.id && !/^[A-Z0-9_]+$/.test(data.id)) {
       errors.id = 'ID must contain only uppercase letters, numbers, and underscores';
     }
     
-    // Name length
-    if (data.name && data.name.length < 3) {
+    // Name length (only if name is provided)
+    if (data.name && data.name.trim().length < 3) {
       errors.name = 'Name must be at least 3 characters';
     }
     
     // Reliability range
-    if (data.reliability < 0 || data.reliability > 100) {
+    if (isNaN(data.reliability) || data.reliability < 0 || data.reliability > 100) {
       errors.reliability = 'Reliability must be between 0 and 100';
     }
     
     // Breach DC range
-    if (data.security.breachDC < 0 || data.security.breachDC > 50) {
+    if (isNaN(data.security.breachDC) || data.security.breachDC < 0 || data.security.breachDC > 50) {
       errors['security.breachDC'] = 'Breach DC must be between 0 and 50';
     }
     
-    // Password required for auth networks
+    // Password required for auth networks (only if requiresAuth and security level is not NONE)
     if (data.requiresAuth && data.security.level !== 'NONE' && !data.security.password) {
-      errors['security.password'] = 'Password required for authenticated networks';
-    }
-    
-    // Check for duplicate ID (only for create mode)
-    if (this.mode === 'create') {
-      // This will be checked async in _onSave
+      // Make this a warning, not an error - password is optional
+      console.warn('Network requires auth but no password set');
     }
     
     return errors;
   }
   
-  async _onSave(html) {
+  async _onSaveClick(event) {
+    event.preventDefault();
+    
     const formData = this._getFormData();
+    console.log('Form Data:', formData);
     
     // Validate
     this.errors = this._validateForm(formData);
+    console.log('Validation Errors:', this.errors);
     
     if (Object.keys(this.errors).length > 0) {
       ui.notifications.error('Please fix validation errors');
-      await this._render(true);
+      console.error('Validation failed:', this.errors);
+      
+      // Show errors in form
+      for (const [field, error] of Object.entries(this.errors)) {
+        const errorEl = this.element.find(`.field-error[data-field="${field}"]`);
+        errorEl.text(error).show();
+        this.element.find(`[name="${field}"]`).addClass('error');
+      }
       return;
     }
     
@@ -471,7 +508,9 @@ export class NetworkEditorDialog extends Dialog {
       if (existing) {
         ui.notifications.error(`Network with ID "${formData.id}" already exists`);
         this.errors.id = 'This ID is already in use';
-        await this._render(true);
+        const errorEl = this.element.find(`.field-error[data-field="id"]`);
+        errorEl.text(this.errors.id).show();
+        this.element.find(`[name="id"]`).addClass('error');
         return;
       }
     }
@@ -481,7 +520,8 @@ export class NetworkEditorDialog extends Dialog {
       await this.onSave(formData);
     }
     
-    return formData;
+    // Close the dialog
+    this.close();
   }
   
   _getAvailableIcons() {

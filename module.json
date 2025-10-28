@@ -26,6 +26,7 @@
     "styles/components/network-selector.css",
     "styles/components/cyberpunk-dialogs.css",
     "styles/components/network-management.css",
+    "styles/dialogs/network-editor.css", 
     "styles/components/network-status-indicator.css",
     "styles/components/multi-skill-config.css",
     "styles/components/message-viewer.css",
