@@ -83,14 +83,16 @@ export class NetworkAccessLogService {
     
     await this._addLog(entry);
     
-    // Post to chat for failed auth attempts
+    // Post to chat for failed auth attempts (optional)
     if (!data.success && data.method === 'password') {
-      await game.nightcity.chatIntegration.postNetworkEvent({
-        type: 'auth-failed',
-        actor: data.actor,
-        network: data.network,
-        attempts: data.attempts
-      });
+      if (game.nightcity.chatIntegration?.postNetworkEvent) {
+        await game.nightcity.chatIntegration.postNetworkEvent({
+          type: 'auth-failed',
+          actor: data.actor,
+          network: data.network,
+          attempts: data.attempts
+        });
+      }
     }
   }
   
@@ -118,14 +120,16 @@ export class NetworkAccessLogService {
     
     await this._addLog(entry);
     
-    // Always post breach attempts to chat
-    await game.nightcity.chatIntegration.postNetworkEvent({
-      type: 'breach-attempt',
-      actor: data.actor,
-      network: data.network,
-      success: data.success,
-      damage: data.iceDamage
-    });
+    // Always post breach attempts to chat (optional)
+    if (game.nightcity.chatIntegration?.postNetworkEvent) {
+      await game.nightcity.chatIntegration.postNetworkEvent({
+        type: 'breach-attempt',
+        actor: data.actor,
+        network: data.network,
+        success: data.success,
+        damage: data.iceDamage
+      });
+    }
   }
   
   /**
@@ -192,13 +196,15 @@ export class NetworkAccessLogService {
     
     await this._addLog(entry);
     
-    // Post security incidents to chat
-    await game.nightcity.chatIntegration.postNetworkEvent({
-      type: 'security-incident',
-      actor: data.actor,
-      network: data.network,
-      incident: data.incident
-    });
+    // Post security incidents to chat (optional)
+    if (game.nightcity.chatIntegration?.postNetworkEvent) {
+      await game.nightcity.chatIntegration.postNetworkEvent({
+        type: 'security-incident',
+        actor: data.actor,
+        network: data.network,
+        incident: data.incident
+      });
+    }
   }
   
   /**

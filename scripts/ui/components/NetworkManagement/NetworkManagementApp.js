@@ -253,11 +253,14 @@ export class NetworkManagementApp extends Application {
           
           ui.notifications.info(`Network "${networkData.name}" updated`);
           
-          await game.nightcity.chatIntegration.postNetworkEvent({
-            type: 'network-updated',
-            network: networkData,
-            user: game.user.name
-          });
+          // Post to chat (optional)
+          if (game.nightcity.chatIntegration?.postNetworkEvent) {
+            await game.nightcity.chatIntegration.postNetworkEvent({
+              type: 'network-updated',
+              network: networkData,
+              user: game.user.name
+            });
+          }
           
           this._networks = null;
           this.render(false);
@@ -335,11 +338,14 @@ export class NetworkManagementApp extends Application {
       
       ui.notifications.info(`Network "${network.name}" deleted`);
       
-      await game.nightcity.chatIntegration.postNetworkEvent({
-        type: 'network-deleted',
-        network: network,
-        user: game.user.name
-      });
+      // Post to chat (optional)
+      if (game.nightcity.chatIntegration?.postNetworkEvent) {
+        await game.nightcity.chatIntegration.postNetworkEvent({
+          type: 'network-deleted',
+          network: network,
+          user: game.user.name
+        });
+      }
       
       this._networks = null;
       this.render(false);

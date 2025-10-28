@@ -381,9 +381,76 @@
   text-transform: uppercase;
 }
 
-.network-type-default {
+/* Network type badges with different colors */
+.network-type-public {
   background: rgba(25, 243, 247, 0.2);
   color: var(--ncm-secondary);
+}
+
+.network-type-corporate {
+  background: rgba(0, 102, 204, 0.2);
+  color: #0066CC;
+}
+
+.network-type-darknet {
+  background: rgba(0, 0, 0, 0.6);
+  color: #999999;
+  border: 1px solid #666666;
+}
+
+.network-type-military {
+  background: rgba(85, 107, 47, 0.3);
+  color: #9ACD32;
+}
+
+.network-type-government {
+  background: rgba(46, 139, 87, 0.3);
+  color: #66CDAA;
+}
+
+.network-type-academic {
+  background: rgba(70, 130, 180, 0.25);
+  color: #87CEFA;
+}
+
+.network-type-medical {
+  background: rgba(220, 20, 60, 0.2);
+  color: #FF6F91;
+}
+
+.network-type-infrastructure {
+  background: rgba(255, 215, 0, 0.2);
+  color: #E6C200;
+}
+
+.network-type-local {
+  background: rgba(255, 170, 68, 0.2);
+  color: var(--ncm-warning);
+}
+
+.network-type-gang {
+  background: rgba(255, 68, 68, 0.2);
+  color: var(--ncm-danger);
+}
+
+.network-type-nomad {
+  background: rgba(139, 69, 19, 0.3);
+  color: #DEB887;
+}
+
+.network-type-fixer {
+  background: rgba(218, 165, 32, 0.25);
+  color: #FFD700;
+}
+
+.network-type-religious {
+  background: rgba(186, 85, 211, 0.25);
+  color: #DA70D6;
+}
+
+.network-type-private {
+  background: rgba(138, 43, 226, 0.2);
+  color: #BA55D3;
 }
 
 .network-type-custom {

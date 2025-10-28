@@ -100,8 +100,26 @@ export const NETWORK_RELIABILITY = {
  * Network Types
  */
 export const NETWORK_TYPES = [
-  { value: 'DEFAULT', label: 'Default Network' },
-  { value: 'CUSTOM', label: 'Custom Network' }
+  // Civilian and Public Nets
+  { value: 'PUBLIC', label: 'Public Access' },          // Cafés, schools, libraries
+  { value: 'LOCAL', label: 'Local Subnet' },            // Apartment complexes, community hubs
+  { value: 'PRIVATE', label: 'Private Secure' },        // Personal home, encrypted terminals
+  { value: 'CUSTOM', label: 'Custom' },                 // GM/player-defined type
+
+  // Factional & Organizational Nets
+  { value: 'CORPORATE', label: 'Corporate' },           // ArasakaNet, PetroChemGrid, etc.
+  { value: 'GOVERNMENT', label: 'Government' },         // City Hall, NCPD, NUSA servers
+  { value: 'MILITARY', label: 'Military' },             // Militech Defense Grid, orbital comms
+  { value: 'ACADEMIC', label: 'Academic / Research' },  // Night City University, Biotechnica labs
+  { value: 'MEDICAL', label: 'Medical / Trauma' },      // Trauma Team grids, clinics, hospitals
+  { value: 'INFRASTRUCTURE', label: 'Infrastructure / Utility' }, // Power grids, maglev, city control
+
+  // Underground & Subversive Nets
+  { value: 'DARKNET', label: 'Darknet' },               // Hidden mesh, netrunner hangouts
+  { value: 'GANG', label: 'Gang Network' },             // Localized encrypted street nets
+  { value: 'NOMAD', label: 'Nomad Network' },           // Mobile mesh networks, convoy relays
+  { value: 'FIXER', label: 'Fixer / Syndicate' },       // Smuggler comms, encrypted trade lines
+  { value: 'RELIGIOUS', label: 'Religious / Cult Net' } // Digital cults, AI worshippers
 ];
 
 /**
