@@ -46,6 +46,19 @@ export class TemplateManager {
       `modules/${MODULE_ID}/templates/network-selector/partials/network-item.hbs`,
       `modules/${MODULE_ID}/templates/dialogs/network-auth.hbs`,
 
+      // Network Management (ADD THESE)
+      `modules/${MODULE_ID}/templates/network-management/network-management.hbs`,
+      `modules/${MODULE_ID}/templates/network-management/partials/networks-tab.hbs`,
+      `modules/${MODULE_ID}/templates/network-management/partials/network-card.hbs`,
+      `modules/${MODULE_ID}/templates/network-management/partials/scenes-tab.hbs`,
+      `modules/${MODULE_ID}/templates/network-management/partials/events-tab.hbs`,
+      `modules/${MODULE_ID}/templates/network-management/partials/logs-tab.hbs`,
+      
+      // Network Management Dialogs
+      `modules/${MODULE_ID}/templates/dialogs/network-editor.hbs`,
+      `modules/${MODULE_ID}/templates/dialogs/scene-network-config.hbs`,
+      `modules/${MODULE_ID}/templates/dialogs/network-event.hbs`,  
+
       // Item Inbox
       `modules/${MODULE_ID}/templates/item-inbox/item-inbox.hbs`,
       `modules/${MODULE_ID}/templates/item-inbox/item-config.hbs`,

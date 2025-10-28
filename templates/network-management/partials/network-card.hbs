@@ -1,0 +1,146 @@
+{{!-- Network Card Partial --}}
+{{!-- File: templates/network-management/partials/network-card.hbs --}}
+
+<div class="network-card {{#unless network.enabled}}disabled{{/unless}} {{#if preview}}preview{{/if}}" data-network-id="{{network.id}}">
+  {{!-- Card Header --}}
+  <div class="network-card-header">
+    {{#unless preview}}
+    <input type="checkbox" class="network-checkbox" data-network-id="{{network.id}}" {{#if selected}}checked{{/if}}>
+    {{/unless}}
+    
+    <div class="network-icon" style="color: {{network.theme.color}}">
+      <i class="fas {{network.theme.icon}}"></i>
+    </div>
+    
+    <div class="network-info">
+      <div class="network-name">
+        {{network.displayName}}
+        {{#unless network.enabled}}
+          <span class="disabled-badge">DISABLED</span>
+        {{/unless}}
+      </div>
+      <div class="network-meta">
+        <span class="network-id">{{network.id}}</span>
+        <span class="network-type-badge network-type-{{lowercase network.type}}">{{network.type}}</span>
+        {{#if network.requiresAuth}}
+          <span class="network-auth-badge">
+            <i class="fas fa-lock"></i> AUTH
+          </span>
+        {{/if}}
+      </div>
+    </div>
+    
+    <div class="network-status">
+      {{#if network.requiresAuth}}
+        <div class="security-level security-{{lowercase network.security.level}}" title="Security: {{network.security.level}}">
+          <i class="fas fa-shield-alt"></i>
+          <span>{{network.security.level}}</span>
+        </div>
+      {{else}}
+        <div class="security-level security-none" title="No Security">
+          <i class="fas fa-lock-open"></i>
+          <span>OPEN</span>
+        </div>
+      {{/if}}
+      
+      <div class="reliability-indicator" title="Reliability: {{network.reliability}}%">
+        <i class="fas fa-signal"></i>
+        <span>{{network.reliability}}%</span>
+      </div>
+    </div>
+    
+    {{#unless preview}}
+    <div class="network-actions">
+      <button type="button" class="edit-network-btn" title="Edit" data-network-id="{{network.id}}">
+        <i class="fas fa-edit"></i>
+      </button>
+      <button type="button" class="duplicate-network-btn" title="Duplicate" data-network-id="{{network.id}}">
+        <i class="fas fa-copy"></i>
+      </button>
+      <button type="button" class="export-network-btn" title="Export" data-network-id="{{network.id}}">
+        <i class="fas fa-file-export"></i>
+      </button>
+      <button type="button" class="delete-network-btn" title="Delete" data-network-id="{{network.id}}">
+        <i class="fas fa-trash"></i>
+      </button>
+    </div>
+    {{/unless}}
+  </div>
+  
+  {{!-- Card Body (Expandable) --}}
+  <div class="network-card-body">
+    {{#if network.description}}
+    <div class="network-description">
+      <p>{{network.description}}</p>
+    </div>
+    {{/if}}
+    
+    <div class="network-details-grid">
+      {{!-- Security Details --}}
+      {{#if network.requiresAuth}}
+      <div class="detail-section">
+        <h4><i class="fas fa-shield-alt"></i> Security</h4>
+        <div class="detail-item">
+          <span class="detail-label">Password:</span>
+          <span class="detail-value">
+            {{#if network.security.password}}
+              <code>{{network.security.password}}</code>
+            {{else}}
+              <em>None</em>
+            {{/if}}
+          </span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Breach DC:</span>
+          <span class="detail-value">{{network.security.breachDC}}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">ICE Damage:</span>
+          <span class="detail-value">{{network.security.iceDamage}}</span>
+        </div>
+      </div>
+      {{/if}}
+      
+      {{!-- Coverage Details --}}
+      <div class="detail-section">
+        <h4><i class="fas fa-map"></i> Coverage</h4>
+        <div class="detail-item">
+          <span class="detail-label">Type:</span>
+          <span class="detail-value">
+            {{#if network.coverage.global}}
+              Global (All Scenes)
+            {{else}}
+              Scene-Specific ({{network.coverage.scenes.length}} scenes)
+            {{/if}}
+          </span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Reliability:</span>
+          <span class="detail-value">{{network.reliability}}%</span>
+        </div>
+      </div>
+      
+      {{!-- Features --}}
+      <div class="detail-section">
+        <h4><i class="fas fa-cogs"></i> Features</h4>
+        <div class="feature-tags">
+          {{#if network.features.anonymous}}
+            <span class="feature-tag"><i class="fas fa-user-secret"></i> Anonymous</span>
+          {{/if}}
+          {{#if network.features.encrypted}}
+            <span class="feature-tag"><i class="fas fa-lock"></i> Encrypted</span>
+          {{/if}}
+          {{#if network.features.traced}}
+            <span class="feature-tag"><i class="fas fa-route"></i> Traced</span>
+          {{/if}}
+          {{#if network.features.monitored}}
+            <span class="feature-tag"><i class="fas fa-eye"></i> Monitored</span>
+          {{/if}}
+          {{#unless (or network.features.anonymous network.features.encrypted network.features.traced network.features.monitored)}}
+            <em>No special features</em>
+          {{/unless}}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

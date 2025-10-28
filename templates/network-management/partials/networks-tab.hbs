@@ -1,0 +1,86 @@
+{{!-- Networks Tab Partial --}}
+{{!-- File: templates/network-management/partials/networks-tab.hbs --}}
+
+<div class="networks-tab-container">
+  {{!-- Toolbar --}}
+  <div class="networks-toolbar">
+    <div class="toolbar-left">
+      <button type="button" class="create-network-btn ncm-btn ncm-btn-primary">
+        <i class="fas fa-plus"></i> Create Network
+      </button>
+      <button type="button" class="import-network-btn ncm-btn">
+        <i class="fas fa-file-import"></i> Import
+      </button>
+    </div>
+    
+    <div class="toolbar-center">
+      <input type="text" class="network-filter" placeholder="Filter networks..." value="{{filterText}}">
+      <select class="network-sort">
+        <option value="name-asc" {{#if (and (eq sortBy 'name') (eq sortDir 'asc'))}}selected{{/if}}>Name (A-Z)</option>
+        <option value="name-desc" {{#if (and (eq sortBy 'name') (eq sortDir 'desc'))}}selected{{/if}}>Name (Z-A)</option>
+        <option value="type-asc" {{#if (and (eq sortBy 'type') (eq sortDir 'asc'))}}selected{{/if}}>Type (A-Z)</option>
+        <option value="type-desc" {{#if (and (eq sortBy 'type') (eq sortDir 'desc'))}}selected{{/if}}>Type (Z-A)</option>
+        <option value="security-asc" {{#if (and (eq sortBy 'security') (eq sortDir 'asc'))}}selected{{/if}}>Security (Low-High)</option>
+        <option value="security-desc" {{#if (and (eq sortBy 'security') (eq sortDir 'desc'))}}selected{{/if}}>Security (High-Low)</option>
+      </select>
+    </div>
+  </div>
+
+  {{!-- Bulk Operations Bar --}}
+  {{#if selectedNetworks.length}}
+  <div class="bulk-operations-bar">
+    <div class="selection-info">
+      <span class="selected-count">{{selectedNetworks.length}} selected</span>
+      <button type="button" class="deselect-all-networks">
+        <i class="fas fa-times"></i> Clear Selection
+      </button>
+    </div>
+    <div class="bulk-actions">
+      <button type="button" class="bulk-enable-btn ncm-btn ncm-btn-small">
+        <i class="fas fa-toggle-on"></i> Enable
+      </button>
+      <button type="button" class="bulk-disable-btn ncm-btn ncm-btn-small">
+        <i class="fas fa-toggle-off"></i> Disable
+      </button>
+      <button type="button" class="bulk-export-btn ncm-btn ncm-btn-small">
+        <i class="fas fa-file-export"></i> Export
+      </button>
+      <button type="button" class="bulk-delete-btn ncm-btn ncm-btn-small ncm-btn-danger">
+        <i class="fas fa-trash"></i> Delete
+      </button>
+    </div>
+  </div>
+  {{/if}}
+
+  {{!-- Networks Grid --}}
+  <div class="networks-grid">
+    {{#if networks.length}}
+      {{#each networks}}
+        {{> "modules/cyberpunkred-messenger/templates/network-management/partials/network-card.hbs" network=this selected=(includes ../selectedNetworks this.id)}}
+      {{/each}}
+    {{else}}
+      <div class="empty-state">
+        <i class="fas fa-network-wired"></i>
+        <h3>No Networks Found</h3>
+        {{#if filterText}}
+          <p>No networks match your filter.</p>
+          <button type="button" class="network-filter-clear ncm-btn">Clear Filter</button>
+        {{else}}
+          <p>Create your first network to get started.</p>
+          <button type="button" class="create-network-btn ncm-btn ncm-btn-primary">
+            <i class="fas fa-plus"></i> Create Network
+          </button>
+        {{/if}}
+      </div>
+    {{/if}}
+  </div>
+
+  {{!-- Select All at bottom --}}
+  {{#if networks.length}}
+  <div class="networks-footer">
+    <button type="button" class="select-all-networks ncm-btn ncm-btn-text">
+      <i class="fas fa-check-square"></i> Select All
+    </button>
+  </div>
+  {{/if}}
+</div>

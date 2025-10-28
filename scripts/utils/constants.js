@@ -97,6 +97,25 @@ export const NETWORK_RELIABILITY = {
 };
 
 /**
+ * Network Types
+ */
+export const NETWORK_TYPES = [
+  { value: 'DEFAULT', label: 'Default Network' },
+  { value: 'CUSTOM', label: 'Custom Network' }
+];
+
+/**
+ * Network Security Levels
+ */
+export const SECURITY_LEVELS = [
+  { value: 'NONE', label: 'None' },
+  { value: 'LOW', label: 'Low' },
+  { value: 'MEDIUM', label: 'Medium' },
+  { value: 'HIGH', label: 'High' },
+  { value: 'EXTREME', label: 'Extreme' }
+];
+
+/**
  * Encryption types
  */
 export const ENCRYPTION_TYPES = {

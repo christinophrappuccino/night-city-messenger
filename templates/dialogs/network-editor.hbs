@@ -1,0 +1,452 @@
+{{!-- Network Editor Dialog Template --}}
+{{!-- File: templates/dialogs/network-editor.hbs --}}
+
+<form class="ncm-network-editor-form">
+  {{!-- Basic Information --}}
+  <section class="form-section">
+    <h3><i class="fas fa-info-circle"></i> Basic Information</h3>
+    
+    <div class="form-row">
+      <div class="form-group">
+        <label for="network-id">Network ID <span class="required">*</span></label>
+        <input 
+          type="text" 
+          name="id" 
+          id="network-id" 
+          value="{{network.id}}" 
+          {{#if (eq mode 'edit')}}readonly{{/if}}
+          placeholder="CORP_NET_01"
+          pattern="[A-Z0-9_]+"
+          required>
+        <small>Uppercase letters, numbers, and underscores only</small>
+        <span class="field-error" data-field="id"></span>
+      </div>
+      
+      <div class="form-group">
+        <label for="network-type">Type</label>
+        <select name="type" id="network-type">
+          {{#each networkTypes}}
+            <option value="{{this.value}}" {{#if (eq this.value ../network.type)}}selected{{/if}}>
+              {{this.label}}
+            </option>
+          {{/each}}
+        </select>
+      </div>
+    </div>
+    
+    <div class="form-row">
+      <div class="form-group">
+        <label for="network-name">Display Name <span class="required">*</span></label>
+        <input 
+          type="text" 
+          name="name" 
+          id="network-name" 
+          value="{{network.name}}" 
+          placeholder="Corporate Network"
+          required>
+        <span class="field-error" data-field="name"></span>
+      </div>
+      
+      <div class="form-group">
+        <label for="network-display-name">Display Name (Optional)</label>
+        <input 
+          type="text" 
+          name="displayName" 
+          id="network-display-name" 
+          value="{{network.displayName}}" 
+          placeholder="Leave empty to use name">
+      </div>
+    </div>
+    
+    <div class="form-group">
+      <label for="network-description">Description</label>
+      <textarea 
+        name="description" 
+        id="network-description" 
+        rows="3" 
+        placeholder="A brief description of this network..."
+      >{{network.description}}</textarea>
+    </div>
+    
+    <div class="form-group checkbox-group">
+      <label>
+        <input type="checkbox" name="enabled" {{#if network.enabled}}checked{{/if}}>
+        <span>Network Enabled</span>
+      </label>
+      <small>Disabled networks are hidden from players</small>
+    </div>
+  </section>
+  
+  {{!-- Security Settings --}}
+  <section class="form-section">
+    <h3><i class="fas fa-shield-alt"></i> Security Settings</h3>
+    
+    <div class="form-group checkbox-group">
+      <label>
+        <input type="checkbox" name="requiresAuth" {{#if network.requiresAuth}}checked{{/if}}>
+        <span>Requires Authentication</span>
+      </label>
+      <small>Users must authenticate before accessing this network</small>
+    </div>
+    
+    <div class="security-settings" style="{{#unless network.requiresAuth}}display: none;{{/unless}}">
+      <div class="form-row">
+        <div class="form-group">
+          <label for="security-level">Security Level</label>
+          <select name="security.level" id="security-level">
+            {{#each securityLevels}}
+              <option value="{{this.value}}" {{#if (eq this.value ../network.security.level)}}selected{{/if}}>
+                {{this.label}}
+              </option>
+            {{/each}}
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label for="security-password">Password</label>
+          <div class="password-input">
+            <input 
+              type="password" 
+              name="security.password" 
+              id="security-password" 
+              value="{{network.security.password}}" 
+              placeholder="Enter password">
+            <button type="button" class="toggle-password" title="Show/Hide Password">
+              <i class="fas fa-eye"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label for="security-ice-damage">BLACK ICE Damage</label>
+          <input 
+            type="text" 
+            name="security.iceDamage" 
+            id="security-ice-damage" 
+            value="{{network.security.iceDamage}}" 
+            placeholder="2d6"
+            pattern="\d+d\d+">
+          <small>Dice formula (e.g., 2d6, 5d6)</small>
+        </div>
+        
+        <div class="form-group">
+          <label for="security-breach-dc">Breach DC</label>
+          <input 
+            type="number" 
+            name="security.breachDC" 
+            id="security-breach-dc" 
+            value="{{network.security.breachDC}}" 
+            min="0" 
+            max="50"
+            placeholder="15">
+          <small>Difficulty Class for breach attempts</small>
+          <span class="field-error" data-field="security.breachDC"></span>
+        </div>
+      </div>
+    </div>
+  </section>
+  
+  {{!-- Network Properties --}}
+  <section class="form-section">
+    <h3><i class="fas fa-cogs"></i> Network Properties</h3>
+    
+    <div class="form-group">
+      <label for="network-reliability">Reliability</label>
+      <div class="slider-group">
+        <input 
+          type="range" 
+          name="reliability" 
+          id="network-reliability" 
+          value="{{network.reliability}}" 
+          min="0" 
+          max="100" 
+          step="5">
+        <span class="slider-value">{{network.reliability}}%</span>
+      </div>
+      <small>Percentage chance of successful transmission</small>
+      <span class="field-error" data-field="reliability"></span>
+    </div>
+    
+    <div class="form-group">
+      <h4>Network Features</h4>
+      <div class="checkbox-grid">
+        <label>
+          <input type="checkbox" name="features.anonymous" {{#if network.features.anonymous}}checked{{/if}}>
+          <span><i class="fas fa-user-secret"></i> Anonymous Sending</span>
+        </label>
+        <label>
+          <input type="checkbox" name="features.encrypted" {{#if network.features.encrypted}}checked{{/if}}>
+          <span><i class="fas fa-lock"></i> Encrypted Messages</span>
+        </label>
+        <label>
+          <input type="checkbox" name="features.traced" {{#if network.features.traced}}checked{{/if}}>
+          <span><i class="fas fa-route"></i> Connection Tracing</span>
+        </label>
+        <label>
+          <input type="checkbox" name="features.monitored" {{#if network.features.monitored}}checked{{/if}}>
+          <span><i class="fas fa-eye"></i> Monitored by NetWatch</span>
+        </label>
+      </div>
+    </div>
+  </section>
+  
+  {{!-- Coverage --}}
+  <section class="form-section">
+    <h3><i class="fas fa-map"></i> Network Coverage</h3>
+    
+    <div class="form-group checkbox-group">
+      <label>
+        <input type="checkbox" name="coverage.global" {{#if network.coverage.global}}checked{{/if}}>
+        <span>Global Network</span>
+      </label>
+      <small>Available in all scenes</small>
+    </div>
+    
+    <div class="scene-selector" style="{{#if network.coverage.global}}display: none;{{/if}}">
+      <label>Available in Scenes:</label>
+      <div class="scene-list">
+        {{#each scenes}}
+          <label class="scene-item">
+            <input 
+              type="checkbox" 
+              name="coverage.scenes" 
+              value="{{this.id}}"
+              {{#if (includes ../network.coverage.scenes this.id)}}checked{{/if}}>
+            <span>{{this.name}}</span>
+          </label>
+        {{/each}}
+      </div>
+    </div>
+  </section>
+  
+  {{!-- Theme --}}
+  <section class="form-section">
+    <h3><i class="fas fa-palette"></i> Visual Theme</h3>
+    
+    <div class="form-row">
+      <div class="form-group">
+        <label for="theme-color">Primary Color</label>
+        <div class="color-picker-group">
+          <input 
+            type="color" 
+            name="theme.color" 
+            id="theme-color" 
+            value="{{network.theme.color}}">
+          <span class="color-preview" style="background-color: {{network.theme.color}}"></span>
+          <input 
+            type="text" 
+            value="{{network.theme.color}}" 
+            readonly 
+            class="color-hex">
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label for="theme-icon">Icon</label>
+        <div class="icon-picker-group">
+          <input 
+            type="text" 
+            name="theme.icon" 
+            id="theme-icon" 
+            value="{{network.theme.icon}}" 
+            readonly>
+          <button type="button" class="icon-picker-btn">
+            <i class="fas {{network.theme.icon}}"></i>
+            Choose Icon
+          </button>
+          <div class="icon-preview">
+            <i class="fas {{network.theme.icon}}"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  
+  {{!-- Actions --}}
+  <div class="form-actions">
+    <button type="button" class="preview-network ncm-btn">
+      <i class="fas fa-eye"></i> Preview
+    </button>
+    <button type="button" class="load-template-btn ncm-btn">
+      <i class="fas fa-file-import"></i> Load Template
+    </button>
+  </div>
+</form>
+
+<style>
+.ncm-network-editor-form {
+  padding: 1rem;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.form-section {
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.form-section:last-child {
+  border-bottom: none;
+}
+
+.form-section h3 {
+  margin-bottom: 1rem;
+  color: var(--ncm-primary, #F65261);
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.form-section h4 {
+  margin-bottom: 0.5rem;
+  color: var(--ncm-secondary, #19f3f7);
+  font-size: 0.9rem;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.form-group input[type="text"],
+.form-group input[type="number"],
+.form-group input[type="password"],
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 0.5rem;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  color: white;
+}
+
+.form-group input.error {
+  border-color: var(--ncm-primary, #F65261);
+}
+
+.form-group small {
+  display: block;
+  margin-top: 0.25rem;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.85rem;
+}
+
+.field-error {
+  display: none;
+  color: var(--ncm-primary, #F65261);
+  font-size: 0.85rem;
+  margin-top: 0.25rem;
+}
+
+.required {
+  color: var(--ncm-primary, #F65261);
+}
+
+.checkbox-group {
+  display: flex;
+  align-items: center;
+}
+
+.checkbox-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.checkbox-grid label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.password-input {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.toggle-password {
+  padding: 0.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  color: white;
+  cursor: pointer;
+}
+
+.slider-group {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.slider-group input[type="range"] {
+  flex: 1;
+}
+
+.slider-value {
+  min-width: 50px;
+  text-align: right;
+  font-weight: 600;
+  color: var(--ncm-secondary, #19f3f7);
+}
+
+.color-picker-group,
+.icon-picker-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.color-preview,
+.icon-preview {
+  width: 40px;
+  height: 40px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+}
+
+.scene-list {
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  padding: 0.5rem;
+}
+
+.scene-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem;
+  cursor: pointer;
+}
+
+.form-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-start;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+</style>

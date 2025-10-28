@@ -128,6 +128,12 @@ moduleInitializer.register('init', async () => {
   registerActorSheetHooks();
 }, 35);
 
+// Initialize Network Access Log Service
+moduleInitializer.register('init', async () => {
+  game.nightcity.NetworkAccessLogService = new NetworkAccessLogService();
+  await game.nightcity.NetworkAccessLogService.initialize();
+}, 40);
+
 // Register Item Inbox service
 moduleInitializer.register('init', async () => {
   console.log(`${MODULE_ID} | Initializing Data Shard System...`);
@@ -191,6 +197,24 @@ moduleInitializer.register('init', async () => {
     // Don't throw - module continues without security features
   }
 }, 48);
+
+// Register Network Management
+moduleInitializer.register('init', async () => {
+  const { NetworkManagementApp } = await import('./ui/components/NetworkManagement/NetworkManagementApp.js');
+  game.nightcity.NetworkManagementApp = NetworkManagementApp;
+}, 50);
+
+// Register Network Management API
+moduleInitializer.register('ready', () => {
+  game.nightcity.openNetworkManagement = function() {
+    if (!game.user.isGM) {
+      ui.notifications.warn('Only GMs can access Network Management');
+      return;
+    }
+    const app = new game.nightcity.NetworkManagementApp();
+    app.render(true);
+  };
+}, 100);
 
 
 // ===================================================================
