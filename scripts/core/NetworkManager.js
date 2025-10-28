@@ -616,6 +616,209 @@ export class NetworkManager {
   }
   
   /**
+   * Auto-switch to best network for current scene
+   * Called when scene changes and user has auto-switch enabled
+   */
+  async autoSwitchNetwork(scene) {
+    // Check if auto-switch is enabled for this scene
+    const autoSwitch = scene.getFlag(MODULE_ID, 'autoSwitch');
+    if (autoSwitch === false) return; // Default is true, so only false disables it
+    
+    // Check if user wants auto-switch (per-user setting)
+    const userAutoSwitch = game.user.getFlag(MODULE_ID, 'autoSwitchNetwork');
+    if (userAutoSwitch === false) return; // Default is true
+    
+    // Get available networks for this scene
+    const availableNetworks = await this._getAvailableNetworksForScene(scene);
+    
+    if (availableNetworks.length === 0) {
+      // No networks available - switch to DEAD_ZONE
+      await this.switchNetwork('DEAD_ZONE');
+      
+      ChatMessage.create({
+        content: `
+          <div class="ncm-chat-notification ncm-chat-notification--warning">
+            <div class="ncm-chat-notification__icon">
+              <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <div class="ncm-chat-notification__content">
+              <h4>Network Dead Zone</h4>
+              <p>Entered ${scene.name} - no network signals detected</p>
+            </div>
+          </div>
+        `,
+        whisper: [game.user.id]
+      });
+      
+      return;
+    }
+    
+    // Check for preferred network
+    const preferredNetwork = scene.getFlag(MODULE_ID, 'preferredNetwork');
+    if (preferredNetwork) {
+      const preferred = availableNetworks.find(n => n.id === preferredNetwork);
+      if (preferred) {
+        await this.switchNetwork(preferredNetwork);
+        
+        ChatMessage.create({
+          content: `
+            <div class="ncm-chat-notification ncm-chat-notification--info">
+              <div class="ncm-chat-notification__icon">
+                <i class="${preferred.theme.icon}" style="color: ${preferred.theme.color}"></i>
+              </div>
+              <div class="ncm-chat-notification__content">
+                <h4>Network Auto-Switch</h4>
+                <p>Connected to ${preferred.name} (preferred network for ${scene.name})</p>
+                <p class="ncm-hint">Signal Strength: ${preferred.signalStrength}%</p>
+              </div>
+            </div>
+          `,
+          whisper: [game.user.id]
+        });
+        
+        return;
+      }
+    }
+    
+    // No preferred network or it's unavailable - find strongest signal
+    const strongestNetwork = this._findStrongestNetwork(availableNetworks);
+    
+    if (!strongestNetwork) return; // Shouldn't happen, but safety check
+    
+    await this.switchNetwork(strongestNetwork.id);
+    
+    ChatMessage.create({
+      content: `
+        <div class="ncm-chat-notification ncm-chat-notification--success">
+          <div class="ncm-chat-notification__icon">
+            <i class="${strongestNetwork.theme.icon}" style="color: ${strongestNetwork.theme.color}"></i>
+          </div>
+          <div class="ncm-chat-notification__content">
+            <h4>Network Auto-Switch</h4>
+            <p>Connected to ${strongestNetwork.name} (strongest signal in ${scene.name})</p>
+            <p class="ncm-hint">Signal Strength: ${strongestNetwork.signalStrength}%</p>
+          </div>
+        </div>
+      `,
+      whisper: [game.user.id]
+    });
+  }
+
+  /**
+   * Get available networks for a scene
+   * @private
+   * @param {Scene} scene - The scene
+   * @returns {Promise<Array<Object>>} Available networks with scene config
+   */
+  async _getAvailableNetworksForScene(scene) {
+    const sceneNetworks = scene.getFlag(MODULE_ID, 'networks') || {};
+    const allNetworks = await this.getAllNetworks();
+    const availableNetworks = [];
+    
+    // Check each network
+    for (const network of allNetworks) {
+      const sceneConfig = sceneNetworks[network.id] || {
+        available: true,
+        signalStrength: 100,
+        override: null
+      };
+      
+      // Only include if available in this scene
+      if (sceneConfig.available) {
+        availableNetworks.push({
+          ...network,
+          signalStrength: sceneConfig.signalStrength,
+          sceneOverride: sceneConfig.override
+        });
+      }
+    }
+    
+    return availableNetworks;
+  }
+
+  /**
+   * Find network with strongest signal
+   * @private
+   * @param {Array<Object>} networks - Available networks
+   * @returns {Object|null} Network with strongest signal
+   */
+  _findStrongestNetwork(networks) {
+    if (networks.length === 0) return null;
+    
+    return networks.reduce((strongest, current) => {
+      return current.signalStrength > strongest.signalStrength ? current : strongest;
+    });
+  }
+
+  /**
+   * Get current scene network config
+   * Used by other systems to check network state in current scene
+   * @param {string} networkId - Network ID
+   * @returns {Object} Scene network configuration
+   */
+  getCurrentSceneNetworkConfig(networkId) {
+    const scene = game.scenes.active;
+    if (!scene) return null;
+    
+    const sceneNetworks = scene.getFlag(MODULE_ID, 'networks') || {};
+    return sceneNetworks[networkId] || {
+      available: true,
+      signalStrength: 100,
+      override: null
+    };
+  }
+
+  /**
+   * Apply scene-specific overrides to network config
+   * @private
+   * @param {Object} network - Base network config
+   * @param {Object} override - Scene-specific overrides
+   * @returns {Object} Merged network config
+   */
+  _applySceneOverrides(network, override) {
+    if (!override) return network;
+    
+    const merged = foundry.utils.deepClone(network);
+    
+    // Apply security overrides
+    if (override.security) {
+      merged.security = foundry.utils.mergeObject(merged.security, override.security);
+    }
+    
+    // Apply reliability override
+    if (override.reliability !== undefined) {
+      merged.reliability = override.reliability;
+    }
+    
+    // Apply feature overrides
+    if (override.features) {
+      merged.features = foundry.utils.mergeObject(merged.features, override.features);
+    }
+    
+    return merged;
+  }
+
+  /**
+   * Get effective network configuration for current scene
+   * Returns network config with scene overrides applied
+   * @param {string} networkId - Network ID
+   * @returns {Object|null} Effective network configuration
+   */
+  getEffectiveNetworkConfig(networkId) {
+    const allNetworks = this.getAllNetworks();
+    const network = allNetworks.find(n => n.id === networkId);
+    if (!network) return null;
+    
+    const scene = game.scenes.active;
+    if (!scene) return network;
+    
+    const sceneConfig = this.getCurrentSceneNetworkConfig(networkId);
+    if (!sceneConfig || !sceneConfig.override) return network;
+    
+    return this._applySceneOverrides(network, sceneConfig.override);
+  }
+  
+  /**
    * Register Foundry hooks
    * @private
    */
