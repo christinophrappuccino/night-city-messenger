@@ -34,6 +34,7 @@ export class NetworkManagementApp extends Application {
       title: '🌐 Network Management',
       resizable: true,
       minimizable: true,
+      scrollY: [".tab-content"],
       tabs: [{
         navSelector: '.tabs',
         contentSelector: '.tab-content',

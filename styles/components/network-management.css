@@ -1,5 +1,5 @@
 /**
- * Network Management Styles
+ * Network Management Styles - FIXED FOR FOUNDRY
  * File: styles/components/network-management.css
  * Module: cyberpunkred-messenger
  * Description: Styles for the Network Management interface
@@ -20,14 +20,29 @@
 }
 
 /* ===================================
-   Main Container
+   Foundry Application Overrides
    =================================== */
 
-.ncm-network-management {
+.ncm-network-management.app {
+  background: var(--ncm-background);
+}
+
+.ncm-network-management .window-header {
+  background: linear-gradient(135deg, var(--ncm-surface) 0%, var(--ncm-background) 100%);
+  border-bottom: 2px solid var(--ncm-primary);
+}
+
+.ncm-network-management .window-content {
   background: var(--ncm-background);
   color: var(--ncm-text);
+  padding: 0;
+  overflow: hidden;
   font-family: 'Rajdhani', 'Roboto', sans-serif;
 }
+
+/* ===================================
+   Main Container
+   =================================== */
 
 .ncm-network-management-container {
   display: flex;
@@ -35,6 +50,8 @@
   height: 100%;
   gap: 1rem;
   padding: 1rem;
+  background: var(--ncm-background);
+  color: var(--ncm-text);
 }
 
 /* ===================================
@@ -97,14 +114,16 @@
    Tabs
    =================================== */
 
-.ncm-network-management .tabs {
+.ncm-network-management-container .tabs {
   display: flex;
   gap: 0.5rem;
   border-bottom: 2px solid var(--ncm-border);
   margin-bottom: 1rem;
+  padding: 0;
+  list-style: none;
 }
 
-.ncm-network-management .tabs .item {
+.ncm-network-management-container .tabs .item {
   padding: 0.75rem 1.5rem;
   background: transparent;
   border: none;
@@ -115,31 +134,32 @@
   text-transform: uppercase;
   font-weight: 600;
   letter-spacing: 0.5px;
+  text-decoration: none;
 }
 
-.ncm-network-management .tabs .item:hover {
+.ncm-network-management-container .tabs .item:hover {
   color: var(--ncm-text);
   background: rgba(255, 255, 255, 0.05);
 }
 
-.ncm-network-management .tabs .item.active {
+.ncm-network-management-container .tabs .item.active {
   color: var(--ncm-primary);
   border-bottom-color: var(--ncm-primary);
   background: rgba(246, 82, 97, 0.1);
 }
 
-.ncm-network-management .tab-content {
+.tab-content {
   flex: 1;
   overflow: hidden;
 }
 
-.ncm-network-management .tab {
+.tab-content .tab {
   display: none;
   height: 100%;
   overflow-y: auto;
 }
 
-.ncm-network-management .tab.active {
+.tab-content .tab.active {
   display: block;
 }
 
@@ -318,6 +338,7 @@
   justify-content: center;
   background: rgba(0, 0, 0, 0.3);
   border-radius: 8px;
+  flex-shrink: 0;
 }
 
 .network-info {
@@ -389,6 +410,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  flex-shrink: 0;
 }
 
 .security-level {
@@ -399,6 +421,7 @@
   font-weight: 600;
   padding: 0.25rem 0.5rem;
   border-radius: 4px;
+  white-space: nowrap;
 }
 
 .security-none {
@@ -442,6 +465,7 @@
   gap: 0.5rem;
   font-size: 0.85rem;
   color: var(--ncm-text-muted);
+  white-space: nowrap;
 }
 
 /* Network Actions */
@@ -449,6 +473,7 @@
 .network-actions {
   display: flex;
   gap: 0.5rem;
+  flex-shrink: 0;
 }
 
 .network-actions button {
@@ -594,6 +619,27 @@
   text-align: center;
 }
 
+/* Placeholder Tabs */
+.coming-soon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--ncm-text-muted);
+  gap: 1rem;
+}
+
+.coming-soon i {
+  font-size: 4rem;
+  opacity: 0.5;
+}
+
+.coming-soon h3 {
+  font-size: 1.5rem;
+  color: var(--ncm-text);
+}
+
 /* ===================================
    Buttons
    =================================== */
@@ -689,20 +735,28 @@
    Scrollbar Styling
    =================================== */
 
-.ncm-network-management ::-webkit-scrollbar {
+.ncm-network-management ::-webkit-scrollbar,
+.networks-grid::-webkit-scrollbar,
+.tab::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
-.ncm-network-management ::-webkit-scrollbar-track {
+.ncm-network-management ::-webkit-scrollbar-track,
+.networks-grid::-webkit-scrollbar-track,
+.tab::-webkit-scrollbar-track {
   background: rgba(0, 0, 0, 0.3);
 }
 
-.ncm-network-management ::-webkit-scrollbar-thumb {
+.ncm-network-management ::-webkit-scrollbar-thumb,
+.networks-grid::-webkit-scrollbar-thumb,
+.tab::-webkit-scrollbar-thumb {
   background: var(--ncm-primary);
   border-radius: 4px;
 }
 
-.ncm-network-management ::-webkit-scrollbar-thumb:hover {
+.ncm-network-management ::-webkit-scrollbar-thumb:hover,
+.networks-grid::-webkit-scrollbar-thumb:hover,
+.tab::-webkit-scrollbar-thumb:hover {
   background: var(--ncm-secondary);
 }
