@@ -198,6 +198,41 @@ export class NetworkSelectorApp extends Application {
     html.find('[data-action="scan"]').click(() => this._onScan());
     html.find('[data-action="manage"]').click(() => this._onManage());
     html.find('[data-action="close"]').click(() => this.close());
+      // GM right-click menu
+      if (game.user.isGM) {
+        html.find('.ncm-network-item').on('contextmenu', async (event) => {
+          event.preventDefault();
+          
+          const networkId = $(event.currentTarget).data('network-id');
+          const actor = game.user.character;
+          
+          if (!actor) {
+            ui.notifications.warn('Select a character first');
+            return;
+          }
+          
+          const options = [
+            {
+              name: 'Force Unlock',
+              icon: '<i class="fas fa-unlock-alt"></i>',
+              callback: async () => {
+                await game.nightcity.networkManager.gmUnlockNetwork(actor, networkId);
+                this.render();
+              }
+            },
+            {
+              name: 'Reset Authentication',
+              icon: '<i class="fas fa-redo"></i>',
+              callback: async () => {
+                await game.nightcity.networkManager.gmResetAuthentication(actor, networkId);
+                this.render();
+              }
+            }
+          ];
+          
+          new ContextMenu(html, '.ncm-network-item', options);
+      });
+    }
   }
 
   async _onToggleExpand() {
@@ -211,34 +246,81 @@ export class NetworkSelectorApp extends Application {
   }
 
   async _onNetworkClick(networkId) {
-    if (!networkId) return;
     const networkManager = game.nightcity.networkManager;
     const networks = await this._getNetworks();
     const network = networks.find(n => n.id === networkId);
+    
     if (!network) {
       ui.notifications.error('Network not found');
       return;
     }
+    
+    // Check if already connected
     const status = networkManager.getNetworkStatus();
     if (status.connected && status.networkId === networkId) {
       ui.notifications.info(`Already connected to ${network.displayName || network.name}`);
       return;
     }
+    
+    // Check if available
     if (!network.available) {
       ui.notifications.warn(`${network.displayName || network.name} is out of range`);
       return;
     }
-    this._addSwitchingAnimation();
+    
+    // Check if authentication required
     if (network.requiresAuth && !this._isAuthenticated(networkId)) {
+      // Open authentication dialog
       const { NetworkAuthDialog } = await import('../../dialogs/NetworkAuthDialog.js');
       const dialog = new NetworkAuthDialog(network, {
+        actor: game.user.character,
         onSuccess: async () => {
+          // After successful auth, connect
           await this._connectToNetwork(networkId);
         }
       });
       dialog.render(true);
     } else {
+      // No auth needed or already authenticated
       await this._connectToNetwork(networkId);
+    }
+  }
+
+  // Add helper method:
+  _isAuthenticated(networkId) {
+    const actor = game.user.character;
+    if (!actor) return false;
+    
+    const securityService = game.nightcity?.networkSecurityService;
+    if (!securityService) return false;
+    
+    const status = securityService.checkAuthentication(actor, networkId);
+    return status.authenticated;
+  }
+
+  // Connect helper:
+  async _connectToNetwork(networkId) {
+    const networkManager = game.nightcity.networkManager;
+    
+    try {
+      const result = await networkManager.connectToNetwork(networkId);
+      
+      if (result.success) {
+        ui.notifications.info(`Connected to network`);
+        this.close(); // Close selector
+        
+        // Refresh any open apps
+        Object.values(ui.windows).forEach(app => {
+          if (app.render) app.render(false);
+        });
+      } else if (result.requiresAuth) {
+        ui.notifications.warn('Authentication required');
+      } else {
+        ui.notifications.error(result.error || 'Connection failed');
+      }
+    } catch (error) {
+      console.error(`${MODULE_ID} | Connection error:`, error);
+      ui.notifications.error(`Failed to connect: ${error.message}`);
     }
   }
 

@@ -5,6 +5,8 @@
  * Description: Dialog for authenticating to secured networks with password or breach attempts
  */
 
+const MODULE_ID = 'cyberpunkred-messenger';
+
 export class NetworkAuthDialog extends Dialog {
   constructor(network, options = {}) {
     const dialogData = {
@@ -17,43 +19,17 @@ export class NetworkAuthDialog extends Dialog {
     
     super(dialogData, options);
     
-    /**
-     * @property {Object} network - The network to authenticate to
-     */
     this.network = network;
-    
-    /**
-     * @property {Function} onSuccess - Callback for successful authentication
-     */
     this.onSuccess = options.onSuccess;
-    
-    /**
-     * @property {Function} onCancel - Callback for cancelled authentication
-     */
     this.onCancel = options.onCancel;
-    
-    /**
-     * @property {Actor} actor - Actor attempting authentication
-     */
     this.actor = options.actor || game.user.character;
-    
-    /**
-     * @property {number} attempts - Number of failed attempts
-     */
     this.attempts = 0;
-    
-    /**
-     * @property {number} maxAttempts - Maximum allowed attempts before lockout
-     */
     this.maxAttempts = 3;
     
-    // Check for lockout
+    // Check for lockout on creation
     this._checkLockout();
   }
 
-  /**
-   * @override
-   */
   static get defaultOptions() {
     return foundry.utils.mergeObject(super.defaultOptions, {
       classes: ['ncm-network-auth-dialog', 'dialog'],
@@ -63,17 +39,20 @@ export class NetworkAuthDialog extends Dialog {
     });
   }
 
-  /**
-   * Get data for template rendering
-   * @override
-   */
   async getData() {
     const data = await super.getData();
-    const networkManager = game.nightcity?.networkManager;
+    const securityService = game.nightcity?.networkSecurityService;
+    
+    // Get authentication status if we have an actor
+    let authStatus = null;
+    if (this.actor && securityService) {
+      authStatus = securityService.checkAuthentication(this.actor, this.network.id);
+    }
     
     // Check if user can attempt breach
     const canBreach = this._canAttemptBreach();
     const breachDV = this._getBreachDV();
+    const breachSkill = this._getBestBreachSkill();
     
     // Get lockout info
     const lockoutInfo = this._getLockoutInfo();
@@ -85,28 +64,29 @@ export class NetworkAuthDialog extends Dialog {
         name: this.network.displayName || this.network.name,
         description: this.network.description || '',
         type: this.network.type,
-        icon: game.nightcity.NetworkUtils.getNetworkTypeIcon(this.network.type),
+        icon: this._getNetworkIcon(),
         color: this.network.color || '#F65261',
         securityLevel: this.network.security?.level || 'NONE',
         securityDescription: this._getSecurityDescription(this.network.security?.level),
-        requiresAuth: this.network.requiresAuth,
+        requiresAuth: this.network.requiresAuth || this.network.security?.requiresAuth,
         isTraced: this.network.traced || false,
-        isMonitored: this.network.monitored || false
+        isMonitored: this.network.monitored || false,
+        hasBlackICE: this.network.blackICE || (this.network.security?.level === 'MAXIMUM')
       },
       
       // Actor info
       actor: this.actor ? {
         name: this.actor.name,
         id: this.actor.id,
-        hasInterface: this._hasSkill('interface'),
-        hasElectronics: this._hasSkill('electronics'),
-        hasBasicTech: this._hasSkill('basic_tech')
+        hasInterface: this._hasSkill('Interface'),
+        hasElectronics: this._hasSkill('Electronics/Security Tech'),
+        hasBasicTech: this._hasSkill('Basic Tech')
       } : null,
       
       // Breach info
       canBreach: canBreach,
       breachDV: breachDV,
-      breachSkill: this._getBestBreachSkill(),
+      breachSkill: breachSkill,
       
       // Attempt tracking
       attempts: this.attempts,
@@ -116,9 +96,9 @@ export class NetworkAuthDialog extends Dialog {
       lockoutTime: lockoutInfo.remainingTime,
       
       // Warnings
-      showTracedWarning: this.network.traced,
+      showTracedWarning: this.network.traced || authStatus?.traced,
       showMonitoredWarning: this.network.monitored,
-      showBlackICEWarning: this.network.blackICE,
+      showBlackICEWarning: this.network.blackICE || (this.network.security?.level === 'MAXIMUM'),
       
       // UI state
       passwordDisabled: lockoutInfo.isLocked,
@@ -126,10 +106,6 @@ export class NetworkAuthDialog extends Dialog {
     };
   }
 
-  /**
-   * Activate event listeners
-   * @override
-   */
   activateListeners(html) {
     super.activateListeners(html);
 
@@ -151,11 +127,13 @@ export class NetworkAuthDialog extends Dialog {
     html.find('[data-action="cancel"]').click(() => this.close());
     
     // Focus password field
-    html.find('#auth-password').focus();
+    setTimeout(() => {
+      html.find('#auth-password').focus();
+    }, 100);
   }
 
   /**
-   * Handle connect button click
+   * Handle connect button click (password auth)
    * @private
    */
   async _onConnect() {
@@ -166,68 +144,12 @@ export class NetworkAuthDialog extends Dialog {
       return;
     }
     
-    const networkManager = game.nightcity?.networkManager;
-    if (!networkManager) {
-      ui.notifications.error('Network system not available');
+    const securityService = game.nightcity?.networkSecurityService;
+    if (!securityService) {
+      ui.notifications.error('Security system not available');
       return;
     }
-    
-    // Disable form
-    this._setFormDisabled(true);
-    
-    try {
-      // Attempt authentication
-      const result = await networkManager.authenticate(this.network.id, password);
-      
-      if (result.success) {
-        // Success!
-        ui.notifications.info(`Access granted to ${this.network.displayName || this.network.name}`);
-        
-        // Call success callback
-        if (this.onSuccess) {
-          await this.onSuccess(password);
-        }
-        
-        // Close dialog
-        this.close();
-      } else {
-        // Failed attempt
-        this.attempts++;
-        
-        ui.notifications.error(`Access denied: ${result.message || 'Invalid password'}`);
-        
-        // Check if locked out
-        if (this.attempts >= this.maxAttempts) {
-          this._handleLockout();
-        } else {
-          // Re-enable form and update UI
-          this._setFormDisabled(false);
-          await this.render();
-        }
-      }
-    } catch (error) {
-      console.error('NCM | Authentication error:', error);
-      ui.notifications.error(`Authentication failed: ${error.message}`);
-      this._setFormDisabled(false);
-    }
-  }
 
-  /**
-   * Handle breach button click
-   * @private
-   */
-  async _onBreach() {
-    if (!this._canAttemptBreach()) {
-      ui.notifications.warn('You lack the skills to attempt a breach');
-      return;
-    }
-    
-    const networkManager = game.nightcity?.networkManager;
-    if (!networkManager) {
-      ui.notifications.error('Network system not available');
-      return;
-    }
-    
     if (!this.actor) {
       ui.notifications.warn('No character selected');
       return;
@@ -237,47 +159,140 @@ export class NetworkAuthDialog extends Dialog {
     this._setFormDisabled(true);
     
     try {
-      // Attempt bypass using the HackingSystem
-      const result = await networkManager.attemptBypass(this.network.id, this.actor);
+      // Attempt authentication via security service
+      const result = await securityService.attemptPasswordAuth(
+        this.actor, 
+        this.network.id, 
+        password, 
+        this.network
+      );
       
       if (result.success) {
         // Success!
-        ui.notifications.info(`Breach successful! Access granted to ${this.network.displayName || this.network.name}`);
-        
-        // NetWatch alert if traced
-        if (this.network.traced) {
-          this._triggerNetWatchAlert();
-        }
+        ui.notifications.info(`Access granted to ${this.network.displayName || this.network.name}`);
         
         // Call success callback
         if (this.onSuccess) {
-          await this.onSuccess(null);
+          await this.onSuccess();
         }
         
         // Close dialog
         this.close();
-      } else {
-        // Failed breach
+      } else if (result.reason === 'locked_out') {
+        // Locked out
+        ui.notifications.error(`Access denied! Locked out for ${result.lockedMinutes} minutes.`);
+        this.close();
+      } else if (result.reason === 'incorrect_password') {
+        // Failed attempt
         this.attempts++;
+        ui.notifications.error(`Access denied! ${result.attemptsRemaining} attempts remaining.`);
         
-        ui.notifications.error(`Breach failed: ${result.message || 'Security held'}`);
-        
-        // NetWatch alert on failed breach
-        if (this.network.monitored) {
-          this._triggerNetWatchAlert();
-        }
-        
-        // Check if locked out
-        if (this.attempts >= this.maxAttempts) {
-          this._handleLockout();
-        } else {
-          // Re-enable form and update UI
-          this._setFormDisabled(false);
-          await this.render();
-        }
+        // Re-enable form and update UI
+        this._setFormDisabled(false);
+        this.element.find('#auth-password').val('').focus();
       }
     } catch (error) {
-      console.error('NCM | Breach error:', error);
+      console.error(`${MODULE_ID} | Authentication error:`, error);
+      ui.notifications.error(`Authentication failed: ${error.message}`);
+      this._setFormDisabled(false);
+    }
+  }
+
+  /**
+   * Handle breach button click (hacking)
+   * @private
+   */
+  async _onBreach() {
+    if (!this._canAttemptBreach()) {
+      ui.notifications.warn('You lack the skills to attempt a breach');
+      return;
+    }
+    
+    const securityService = game.nightcity?.networkSecurityService;
+    if (!securityService) {
+      ui.notifications.error('Security system not available');
+      return;
+    }
+    
+    if (!this.actor) {
+      ui.notifications.warn('No character selected');
+      return;
+    }
+    
+    // Confirm the attempt
+    const confirmed = await Dialog.confirm({
+      title: "Attempt Security Breach?",
+      content: `
+        <div style="font-family: 'Rajdhani', sans-serif; padding: 10px;">
+          <p style="color: #FFC107; margin-bottom: 12px;">
+            <i class="fas fa-exclamation-triangle"></i> 
+            <strong>WARNING:</strong> This is a risky operation!
+          </p>
+          <p>Attempting to breach <strong>${this.network.name}</strong></p>
+          <p><strong>Security Level:</strong> ${this.network.security?.level || 'UNKNOWN'}</p>
+          <p><strong>Difficulty:</strong> DV ${this._getBreachDV()}</p>
+          <hr style="border-color: rgba(255,255,255,0.2); margin: 12px 0;">
+          <p style="color: #F65261; font-size: 0.9em;">
+            <strong>Failure may result in:</strong><br>
+            • BLACK ICE damage<br>
+            • Network lockout<br>
+            • NetWatch alerts<br>
+            • Being traced
+          </p>
+        </div>
+      `,
+      defaultYes: false
+    });
+    
+    if (!confirmed) return;
+    
+    // Disable form
+    this._setFormDisabled(true);
+    
+    try {
+      // Attempt bypass via security service
+      const result = await securityService.attemptBypass(
+        this.actor,
+        this.network.id,
+        this.network
+      );
+      
+      if (result.success) {
+        // Success!
+        ui.notifications.info(`Breach successful! Temporary access granted.`);
+        
+        if (result.traced) {
+          ui.notifications.warn('⚠️ Warning: Your connection may be traced!');
+        }
+        
+        // Call success callback
+        if (this.onSuccess) {
+          await this.onSuccess();
+        }
+        
+        // Close dialog
+        this.close();
+      } else if (result.reason === 'locked_out') {
+        // Was already locked
+        ui.notifications.error(`Access denied! Locked out for ${result.lockedMinutes} minutes.`);
+        this.close();
+      } else if (result.reason === 'bypass_failed') {
+        // Failed breach - dramatic!
+        ui.notifications.error('💀 BREACH FAILED! BLACK ICE activated!');
+        
+        if (result.damage && result.damage.total > 0) {
+          ui.notifications.error(`You take ${result.damage.total} damage from BLACK ICE!`);
+        }
+        
+        if (result.netWatchAlert) {
+          ui.notifications.warn('⚠️ NETWATCH ALERTED! You are being traced!');
+        }
+        
+        // Close after showing results
+        setTimeout(() => this.close(), 2000);
+      }
+    } catch (error) {
+      console.error(`${MODULE_ID} | Breach error:`, error);
       ui.notifications.error(`Breach failed: ${error.message}`);
       this._setFormDisabled(false);
     }
@@ -291,9 +306,9 @@ export class NetworkAuthDialog extends Dialog {
     if (!this.actor) return false;
     
     // Check for relevant skills
-    return this._hasSkill('interface') || 
-           this._hasSkill('electronics') || 
-           this._hasSkill('basic_tech');
+    return this._hasSkill('Interface') || 
+           this._hasSkill('Electronics/Security Tech') || 
+           this._hasSkill('Basic Tech');
   }
 
   /**
@@ -303,12 +318,12 @@ export class NetworkAuthDialog extends Dialog {
   _hasSkill(skillName) {
     if (!this.actor) return false;
     
-    // This depends on the Cyberpunk RED system structure
-    // Adjust based on actual system implementation
-    const skills = this.actor.system?.skills;
-    if (!skills) return false;
+    // Check actor items for skill
+    const skillItem = this.actor.items.find(i => 
+      i.type === 'skill' && i.name === skillName
+    );
     
-    return skills[skillName]?.value > 0 || false;
+    return skillItem && skillItem.system?.level > 0;
   }
 
   /**
@@ -318,20 +333,30 @@ export class NetworkAuthDialog extends Dialog {
   _getBestBreachSkill() {
     if (!this.actor) return null;
     
-    const skills = this.actor.system?.skills;
-    if (!skills) return null;
-    
     const relevantSkills = [
-      { name: 'Interface', key: 'interface', value: skills.interface?.value || 0 },
-      { name: 'Electronics', key: 'electronics', value: skills.electronics?.value || 0 },
-      { name: 'Basic Tech', key: 'basic_tech', value: skills.basic_tech?.value || 0 }
+      { name: 'Interface', key: 'Interface' },
+      { name: 'Electronics/Security Tech', key: 'Electronics/Security Tech' },
+      { name: 'Basic Tech', key: 'Basic Tech' }
     ];
     
-    const best = relevantSkills.reduce((prev, current) => 
-      current.value > prev.value ? current : prev
-    );
+    let bestSkill = null;
+    let bestValue = 0;
     
-    return best.value > 0 ? best : null;
+    for (const skill of relevantSkills) {
+      const skillItem = this.actor.items.find(i => 
+        i.type === 'skill' && i.name === skill.key
+      );
+      
+      if (skillItem) {
+        const value = skillItem.system?.level || 0;
+        if (value > bestValue) {
+          bestValue = value;
+          bestSkill = { name: skill.name, value: value };
+        }
+      }
+    }
+    
+    return bestSkill;
   }
 
   /**
@@ -369,6 +394,24 @@ export class NetworkAuthDialog extends Dialog {
   }
 
   /**
+   * Get network type icon
+   * @private
+   */
+  _getNetworkIcon() {
+    if (this.network.icon) return this.network.icon;
+    
+    const iconMap = {
+      'PUBLIC': 'fa-wifi',
+      'CORPORATE': 'fa-building',
+      'DARKNET': 'fa-user-secret',
+      'MILITARY': 'fa-shield-alt',
+      'CUSTOM': 'fa-network-wired'
+    };
+    
+    return iconMap[this.network.type] || 'fa-wifi';
+  }
+
+  /**
    * Check for existing lockout
    * @private
    */
@@ -376,8 +419,9 @@ export class NetworkAuthDialog extends Dialog {
     const lockoutInfo = this._getLockoutInfo();
     
     if (lockoutInfo.isLocked) {
+      const minutes = Math.ceil(lockoutInfo.remainingTime / 60);
       ui.notifications.warn(
-        `Network access locked. Try again in ${Math.ceil(lockoutInfo.remainingTime / 60)} minutes.`
+        `Network access locked. Try again in ${minutes} minute${minutes !== 1 ? 's' : ''}.`
       );
     }
   }
@@ -387,81 +431,25 @@ export class NetworkAuthDialog extends Dialog {
    * @private
    */
   _getLockoutInfo() {
-    const networkManager = game.nightcity?.networkManager;
-    if (!networkManager) return { isLocked: false, remainingTime: 0 };
-    
-    const lockouts = networkManager.authLockouts || {};
-    const lockout = lockouts[this.network.id];
-    
-    if (!lockout) return { isLocked: false, remainingTime: 0 };
-    
-    const now = Date.now();
-    const remainingTime = Math.max(0, (lockout.until - now) / 1000);
-    
-    return {
-      isLocked: remainingTime > 0,
-      remainingTime: remainingTime
-    };
-  }
-
-  /**
-   * Handle lockout after max attempts
-   * @private
-   */
-  _handleLockout() {
-    const networkManager = game.nightcity?.networkManager;
-    if (!networkManager) return;
-    
-    // Set lockout (15 minutes)
-    const lockoutDuration = 15 * 60 * 1000;
-    networkManager.authLockouts = networkManager.authLockouts || {};
-    networkManager.authLockouts[this.network.id] = {
-      until: Date.now() + lockoutDuration,
-      attempts: this.attempts
-    };
-    
-    ui.notifications.error(
-      `Access denied! Network locked for 15 minutes after ${this.maxAttempts} failed attempts.`
-    );
-    
-    // Trigger NetWatch alert
-    if (this.network.monitored || this.network.traced) {
-      this._triggerNetWatchAlert();
+    if (!this.actor) {
+      return { isLocked: false, remainingTime: 0 };
     }
     
-    // Close dialog
-    this.close();
-  }
-
-  /**
-   * Trigger NetWatch alert
-   * @private
-   */
-  _triggerNetWatchAlert() {
-    // Create chat message
-    ChatMessage.create({
-      content: `
-        <div class="ncm-netwatch-alert">
-          <h3><i class="fas fa-shield-alt"></i> NETWATCH ALERT</h3>
-          <p><strong>Unauthorized access attempt detected!</strong></p>
-          <p>Network: ${this.network.displayName || this.network.name}</p>
-          ${this.actor ? `<p>Suspect: ${this.actor.name}</p>` : ''}
-          <p class="alert-warning">NetWatch has been notified and is investigating.</p>
-        </div>
-      `,
-      type: CONST.CHAT_MESSAGE_TYPES.OOC,
-      whisper: game.user.isGM ? null : [game.user.id]
-    });
+    const securityService = game.nightcity?.networkSecurityService;
+    if (!securityService) {
+      return { isLocked: false, remainingTime: 0 };
+    }
     
-    // Visual feedback
-    ui.notifications.warn('⚠️ NetWatch has detected your intrusion attempt!');
+    const authStatus = securityService.checkAuthentication(this.actor, this.network.id);
     
-    // Emit event for GM tools
-    game.nightcity?.eventBus?.emit('network:netwatch:alert', {
-      network: this.network,
-      actor: this.actor,
-      timestamp: Date.now()
-    });
+    if (authStatus.reason === 'locked_out') {
+      return {
+        isLocked: true,
+        remainingTime: (authStatus.lockedMinutes || 0) * 60
+      };
+    }
+    
+    return { isLocked: false, remainingTime: 0 };
   }
 
   /**
@@ -470,16 +458,30 @@ export class NetworkAuthDialog extends Dialog {
    */
   _setFormDisabled(disabled) {
     const element = this.element;
-    if (!element) return;
+    if (!element || !element.length) return;
     
     element.find('input, button').prop('disabled', disabled);
     
     if (disabled) {
-      element.find('[data-action="connect"]').html('<i class="fas fa-spinner fa-spin"></i> Connecting...');
-      element.find('[data-action="breach"]').html('<i class="fas fa-spinner fa-spin"></i> Breaching...');
+      const connectBtn = element.find('[data-action="connect"]');
+      const breachBtn = element.find('[data-action="breach"]');
+      
+      if (connectBtn.length) {
+        connectBtn.html('<i class="fas fa-spinner fa-spin"></i> Connecting...');
+      }
+      if (breachBtn.length) {
+        breachBtn.html('<i class="fas fa-spinner fa-spin"></i> Breaching...');
+      }
     } else {
-      element.find('[data-action="connect"]').html('Connect');
-      element.find('[data-action="breach"]').html(`Attempt Breach (DV${this._getBreachDV()})`);
+      const connectBtn = element.find('[data-action="connect"]');
+      const breachBtn = element.find('[data-action="breach"]');
+      
+      if (connectBtn.length) {
+        connectBtn.html('<i class="fas fa-plug"></i> Connect');
+      }
+      if (breachBtn.length) {
+        breachBtn.html(`<i class="fas fa-user-secret"></i> Attempt Breach (DV${this._getBreachDV()})`);
+      }
     }
   }
 }

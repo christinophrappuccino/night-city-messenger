@@ -16,6 +16,7 @@ export class NetworkManager {
     this.eventBus = eventBus;
     
     this.authenticatedNetworks = new Set();
+    this.securityService = null;
     this.failedAttempts = new Map();
     this.knownNetworks = new Set();
     
@@ -41,6 +42,13 @@ export class NetworkManager {
     
     // Scan for available networks in current scene
     await this.scanNetworks();
+
+    // Initialize security service
+    const { NetworkSecurityService } = await import('../services/NetworkSecurityService.js');
+    this.securityService = new NetworkSecurityService();
+    game.nightcity.networkSecurityService = this.securityService;
+    
+    console.log(`${MODULE_ID} | NetworkManager initialized with security service`);
     
     // Register hooks
     this._registerHooks();
@@ -323,37 +331,33 @@ export class NetworkManager {
       return { success: false, error: 'Network not available' };
     }
     
-    // Check if authentication required
-    if (network.security.requiresAuth && !this.authenticatedNetworks.has(networkId)) {
-      if (password) {
-        const authResult = await this.authenticate(networkId, password);
-        if (!authResult.success) {
-          return authResult;
-        }
-      } else {
+    const actor = game.user.character;
+    
+    // Check authentication if required
+    if (network.security?.requiresAuth || network.requiresAuth) {
+      if (!actor) {
+        return { success: false, requiresAuth: true };
+      }
+      
+      const authStatus = this.securityService.checkAuthentication(actor, networkId);
+      
+      if (!authStatus.authenticated) {
         return { success: false, requiresAuth: true };
       }
     }
     
-    // Disconnect from current network
+    // Disconnect from current
     const currentNetwork = this.networkService.getCurrentNetwork();
     if (currentNetwork && currentNetwork !== networkId) {
       await this._disconnect();
     }
     
-    // Connect to new network using existing NetworkService
+    // Connect
     await this.networkService.setCurrentNetwork(network.id, { silent: true });
-    
-    // Save state
     await this._saveNetworkState();
-    
-    // Create chat announcement
     await this._announceConnection(network);
     
-    // Emit event
     this.eventBus.emit('network:connected', { network });
-    
-    console.log(`${MODULE_ID} | Connected to ${network.name}`);
     
     return { success: true };
   }
@@ -385,65 +389,13 @@ export class NetworkManager {
       return { success: false, error: 'Network not found' };
     }
     
-    // Check lockout
-    const lockout = this.failedAttempts.get(networkId);
-    if (lockout && lockout.lockedUntil > Date.now()) {
-      const remaining = Math.ceil((lockout.lockedUntil - Date.now()) / 1000);
-      return { 
-        success: false, 
-        locked: true,
-        error: `Locked out. Try again in ${remaining}s` 
-      };
+    const actor = game.user.character;
+    if (!actor) {
+      return { success: false, error: 'No character selected' };
     }
     
-    // GM override
-    if (game.user.isGM) {
-      this.authenticatedNetworks.add(networkId);
-      console.log(`${MODULE_ID} | GM override: authenticated to ${networkId}`);
-      return { success: true, gmOverride: true };
-    }
-    
-    // Verify password
-    const passwordHash = this._hashPassword(password);
-    if (network.security.password === passwordHash) {
-      this.authenticatedNetworks.add(networkId);
-      this.failedAttempts.delete(networkId);
-      
-      console.log(`${MODULE_ID} | Authenticated to ${networkId}`);
-      
-      return { success: true };
-    }
-    
-    // Failed attempt
-    const attempts = lockout ? lockout.attempts + 1 : 1;
-    
-    if (attempts >= network.security.attempts) {
-      // Lockout
-      this.failedAttempts.set(networkId, {
-        attempts: attempts,
-        lockedUntil: Date.now() + network.security.lockoutDuration
-      });
-      
-      console.log(`${MODULE_ID} | Network ${networkId} locked out after ${attempts} attempts`);
-      
-      return { 
-        success: false, 
-        locked: true,
-        error: `Too many failed attempts. Locked for ${network.security.lockoutDuration / 1000}s` 
-      };
-    } else {
-      this.failedAttempts.set(networkId, {
-        attempts: attempts,
-        lockedUntil: null
-      });
-      
-      return { 
-        success: false, 
-        attempts: attempts,
-        remaining: network.security.attempts - attempts,
-        error: 'Invalid access code' 
-      };
-    }
+    // Use security service for authentication
+    return await this.securityService.attemptPasswordAuth(actor, networkId, password, network);
   }
   
   /**
@@ -474,73 +426,16 @@ export class NetworkManager {
       return { success: false, error: 'Network not found' };
     }
     
-    // Import existing skill service
-    const SkillService = game.nightcity.SkillService;
-    if (!SkillService) {
-      console.error(`${MODULE_ID} | SkillService not available`);
-      return { success: false, error: 'Skill system not available' };
+    if (!actor) {
+      actor = game.user.character;
     }
     
-    // Perform skill check
-    const result = await SkillService.performCheck({
-      actor: actor,
-      skills: ['Interface', 'Electronics/Security Tech', 'Basic Tech'],
-      dc: network.security.bypassDC,
-      taskName: `Breaching ${network.name}`,
-      allowLuck: true,
-      autoRoll: false
-    });
-    
-    if (result.cancelled) {
-      return { success: false, cancelled: true };
+    if (!actor) {
+      return { success: false, error: 'No character selected' };
     }
     
-    if (result.success) {
-      // Success! Grant authentication
-      this.authenticatedNetworks.add(networkId);
-      
-      console.log(`${MODULE_ID} | ${actor.name} successfully breached ${network.name}`);
-      
-      // Create success chat message
-      await ChatMessage.create({
-        content: `
-          <div style="background: rgba(0, 255, 0, 0.1); border: 1px solid #00ff00; padding: 10px; border-radius: 4px;">
-            <h3 style="color: #00ff00; margin: 0 0 10px 0;">
-              <i class="fas fa-check-circle"></i> BREACH SUCCESSFUL
-            </h3>
-            <p><strong>${actor.name}</strong> bypassed ${network.name} security</p>
-            <p style="font-size: 0.9em;">Roll: ${result.total} vs DC ${network.security.bypassDC}</p>
-          </div>
-        `,
-        speaker: ChatMessage.getSpeaker({ actor })
-      });
-      
-      // NetWatch alert if traced
-      if (network.effects.traced) {
-        await this._triggerNetWatchAlert(actor, network);
-      }
-      
-      return { success: true, result };
-    } else {
-      // Failure
-      console.log(`${MODULE_ID} | ${actor.name} failed to breach ${network.name}`);
-      
-      await ChatMessage.create({
-        content: `
-          <div style="background: rgba(255, 0, 0, 0.1); border: 1px solid #ff0000; padding: 10px; border-radius: 4px;">
-            <h3 style="color: #ff0000; margin: 0 0 10px 0;">
-              <i class="fas fa-times-circle"></i> BREACH FAILED
-            </h3>
-            <p><strong>${actor.name}</strong> failed to bypass ${network.name}</p>
-            <p style="font-size: 0.9em;">Roll: ${result.total} vs DC ${network.security.bypassDC}</p>
-            <p class="warning" style="color: #ff9900;">ICE detected intrusion attempt</p>
-          </div>
-        `,
-        speaker: ChatMessage.getSpeaker({ actor })
-      });
-      
-      return { success: false, result };
-    }
+    // Use security service for bypass attempt
+    return await this.securityService.attemptBypass(actor, networkId, network);
   }
   
   /**
@@ -571,27 +466,89 @@ export class NetworkManager {
       });
     }
   }
+
+  /**
+   * Check if actor is authenticated:
+   * @private
+   */
+
+  isAuthenticated(actor, networkId) {
+    if (!actor || !networkId || !this.securityService) {
+      return false;
+    }
+    
+    const authStatus = this.securityService.checkAuthentication(actor, networkId);
+    return authStatus.authenticated;
+  }
+
+  /**
+   * GM tools for authentication:
+   * @private
+   */
+
+  async gmUnlockNetwork(actor, networkId) {
+    if (!game.user.isGM) {
+      throw new Error('Only GMs can force unlock networks');
+    }
+    
+    await this.securityService.gmForceUnlock(actor, networkId);
+  }
+
+  async gmResetAuthentication(actor, networkId = null) {
+    if (!game.user.isGM) {
+      throw new Error('Only GMs can reset authentication');
+    }
+    
+    await this.securityService.gmResetAuth(actor, networkId);
+  }
   
   /**
    * Create chat message announcing connection
    * @private
    */
   async _announceConnection(network) {
+    const actor = game.user.character;
+    let authStatus = '';
+    
+    if (actor && this.securityService) {
+      const status = this.securityService.checkAuthentication(actor, network.id);
+      if (status.authenticated) {
+        if (status.temporary) {
+          authStatus = ' <span style="color: #FFC107;">(Temporary Access)</span>';
+          if (status.traced) {
+            authStatus += ' <span style="color: #F65261;">[TRACED]</span>';
+          }
+        } else {
+          authStatus = ' <span style="color: #4CAF50;">(Authenticated)</span>';
+        }
+      }
+    }
+    
     await ChatMessage.create({
       content: `
-        <div style="background: rgba(25, 243, 247, 0.1); border: 1px solid #19f3f7; padding: 10px; border-radius: 4px;">
-          <p style="margin: 0;">
-            <i class="fas ${network.theme.icon}" style="color: ${network.theme.color};"></i>
-            Connected to <strong style="color: ${network.theme.color};">${network.name}</strong>
-          </p>
-          <p style="margin: 5px 0 0 0; font-size: 0.85em; color: #ccc;">
-            Signal: ${network.signalStrength}%
+        <div class="ncm-network-announcement" style="
+          background: linear-gradient(135deg, rgba(25, 243, 247, 0.1) 0%, rgba(25, 243, 247, 0.05) 100%);
+          border-left: 3px solid #19f3f7;
+          padding: 12px;
+          border-radius: 3px;
+        ">
+          <p style="margin: 0; font-family: 'Rajdhani', sans-serif;">
+            <i class="fas fa-wifi" style="color: #19f3f7;"></i>
+            <strong>Connected to ${network.displayName || network.name}</strong>${authStatus}
           </p>
         </div>
       `,
-      whisper: [game.user.id]
+      type: CONST.CHAT_MESSAGE_TYPES.OOC,
+      flags: {
+        [MODULE_ID]: {
+          type: 'network-connection',
+          networkId: network.id
+        }
+      }
     });
   }
+
+
   
   /**
    * Get current network status for UI

@@ -121,6 +121,13 @@ moduleInitializer.register('init', async () => {
   registerItemSheetHooks();
 }, 30);
 
+// Register email settings
+moduleInitializer.register('init', async () => {
+  const { registerEmailSettings, registerActorSheetHooks } = await import('./integrations/EmailSettingsRegistration.js');
+  registerEmailSettings();
+  registerActorSheetHooks();
+}, 35);
+
 // Register Item Inbox service
 moduleInitializer.register('init', async () => {
   console.log(`${MODULE_ID} | Initializing Data Shard System...`);
@@ -170,12 +177,20 @@ moduleInitializer.register('init', async () => {
   console.log(`${MODULE_ID} | ✓ Network Selector Components registered`);
 }, 47);
 
-// Register email settings
+// Register Network Security Service
 moduleInitializer.register('init', async () => {
-  const { registerEmailSettings, registerActorSheetHooks } = await import('./integrations/EmailSettingsRegistration.js');
-  registerEmailSettings();
-  registerActorSheetHooks();
-}, 35);
+  console.log(`${MODULE_ID} | Initializing Network Security System...`);
+  
+  try {
+    const { NetworkSecurityService } = await import('./services/NetworkSecurityService.js');
+    game.nightcity.networkSecurityService = new NetworkSecurityService();
+    
+    console.log(`${MODULE_ID} | ✓ Network Security System initialized`);
+  } catch (error) {
+    console.error(`${MODULE_ID} | ⚠️ Network Security System initialization failed:`, error);
+    // Don't throw - module continues without security features
+  }
+}, 48);
 
 
 // ===================================================================
@@ -565,6 +580,7 @@ moduleInitializer.register('postReady', async () => {
       networkManager: !!game.nightcity?.networkManager,
       networkStorage: !!game.nightcity?.NetworkStorage,
       networkUtils: !!game.nightcity?.NetworkUtils,
+      networkSecurityService: !!game.nightcity?.networkSecurityService,
       eventBus: !!game.nightcity?.eventBus,
       stateManager: !!game.nightcity?.stateManager
     },
