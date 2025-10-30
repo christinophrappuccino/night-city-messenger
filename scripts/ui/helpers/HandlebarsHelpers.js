@@ -1,8 +1,8 @@
 /**
- * Handlebars Helpers - CLEAN VERSION
+ * Handlebars Helpers - CORRECTED VERSION
  * File: scripts/ui/helpers/HandlebarsHelpers.js
  * Module: cyberpunkred-messenger
- * Description: All Handlebars template helpers
+ * Description: All Handlebars template helpers with FIXED SCOPING
  */
 
 import { MODULE_ID } from '../../utils/constants.js';
@@ -54,22 +54,9 @@ export class HandlebarsHelpers {
       return !value;
     });
 
-
     // ========================================
     // Item Inbox Helpers
     // ========================================
-
-    // Logical OR
-    Handlebars.registerHelper('or', function(...args) {
-      args.pop(); // Remove Handlebars options object
-      return args.some(Boolean);
-    });
-    
-    // Logical AND
-    Handlebars.registerHelper('and', function(...args) {
-      args.pop(); // Remove Handlebars options object
-      return args.every(Boolean);
-    });
     
     // Checkbox checked attribute
     Handlebars.registerHelper('checked', function(condition) {
@@ -179,7 +166,6 @@ export class HandlebarsHelpers {
     // Date/Time Helpers
     // ========================================
     
-    
     // Format date and time together
     Handlebars.registerHelper('formatDateTime', function(timestamp) {
       if (!timestamp) return 'Unknown Date';
@@ -245,365 +231,143 @@ export class HandlebarsHelpers {
         return '';
       }
     });
-
-    Handlebars.registerHelper('formatMessageTimestamp', function(timestamp) {
-      if (!timestamp) return 'Unknown';
-      
-      try {
-        const timeService = game.nightcity?.timeService;
-        if (!timeService) {
-          // Fallback if service not ready
-          const date = new Date(timestamp);
-          return date.toLocaleString();
-        }
-        
-        // Use configured format from settings
-        return timeService.formatTimestamp(timestamp);
-      } catch (error) {
-        console.error('Error formatting timestamp:', error);
-        return 'Invalid Date';
-      }
-    });
-
-    Handlebars.registerHelper('formatScheduledTime', function(scheduleData) {
-      if (!scheduleData) return 'Unknown';
-      
-      try {
-        const timeService = game.nightcity?.timeService;
-        if (!timeService) return 'Unknown';
-        
-        // Check if using SimpleCalendar
-        if (scheduleData.useSimpleCalendar && scheduleData.simpleCalendarData) {
-          return scheduleData.simpleCalendarData.display;
-        }
-        
-        return timeService.formatTimestamp(scheduleData.scheduledTime, 'full');
-      } catch (error) {
-        return 'Invalid';
-      }
-    });
     
-    // Relative time (e.g., "2 hours ago")
-    Handlebars.registerHelper('fromNow', function(timestamp) {
-      if (!timestamp) return '';
-      
-      try {
-        const date = new Date(timestamp);
-        const now = new Date();
-        const seconds = Math.floor((now - date) / 1000);
-        
-        if (seconds < 60) return 'just now';
-        if (seconds < 3600) return `${Math.floor(seconds / 60)} minutes ago`;
-        if (seconds < 86400) return `${Math.floor(seconds / 3600)} hours ago`;
-        if (seconds < 604800) return `${Math.floor(seconds / 86400)} days ago`;
-        
-        // Fall back to date format
-        return date.toLocaleDateString('en-US', {
-          month: 'short',
-          day: 'numeric'
-        });
-      } catch (error) {
-        console.error('Error calculating relative time:', error);
-        return '';
-      }
-    });
+    // ========================================
+    // Scenes Tab Helpers
+    // ========================================
     
-    // Legacy helper (kept for compatibility)
-    Handlebars.registerHelper('timeAgo', function(date) {
-      if (!date) return 'Unknown';
-      
-      const now = new Date();
-      const then = new Date(date);
-      const seconds = Math.floor((now - then) / 1000);
-      
-      if (seconds < 60) return 'Just now';
-      if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-      if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
-      return `${Math.floor(seconds / 86400)}d ago`;
-    });
-
-    // ========================================
-    // Scenes Tab Handlebars Helpers
-    // ========================================
-
     /**
-     * Register scenes-specific Handlebars helpers
+     * Generate signal bar data for visualization
+     * @param {number} signalStrength - Signal strength (0-100)
+     * @returns {Array} Array of bar objects with height and active state
      */
-    export function registerScenesHelpers() {
+    Handlebars.registerHelper('signalBars', function(signalStrength) {
+      const numBars = 5;
+      const bars = [];
+      const threshold = signalStrength / 100;
       
-      /**
-       * Generate signal bar data for visualization
-       * @param {number} signalStrength - Signal strength (0-100)
-       * @returns {Array} Array of bar objects with height and active state
-       */
-      Handlebars.registerHelper('signalBars', function(signalStrength) {
-        const numBars = 5;
-        const bars = [];
-        const threshold = signalStrength / 100;
-        
-        for (let i = 0; i < numBars; i++) {
-          const barThreshold = (i + 1) / numBars;
-          bars.push({
-            height: (i + 1) * 20, // 20%, 40%, 60%, 80%, 100%
-            active: threshold >= barThreshold
-          });
-        }
-        
-        return bars;
-      });
+      for (let i = 0; i < numBars; i++) {
+        const barThreshold = (i + 1) / numBars;
+        bars.push({
+          height: (i + 1) * 20, // 20%, 40%, 60%, 80%, 100%
+          active: threshold >= barThreshold
+        });
+      }
       
-      /**
-       * Greater than or equal comparison
-       * @param {number} a - First value
-       * @param {number} b - Second value
-       * @returns {boolean}
-       */
-      Handlebars.registerHelper('gte', function(a, b) {
-        return a >= b;
-      });
+      return bars;
+    });
+    
+    /**
+     * Get security level CSS class
+     */
+    Handlebars.registerHelper('securityLevelClass', function(level) {
+      return `security-${level}`;
+    });
+    
+    /**
+     * Format signal strength as status text
+     */
+    Handlebars.registerHelper('signalStatus', function(signalStrength) {
+      if (signalStrength >= 80) return 'Excellent';
+      if (signalStrength >= 60) return 'Good';
+      if (signalStrength >= 40) return 'Fair';
+      if (signalStrength >= 20) return 'Weak';
+      return 'Very Weak';
+    });
+    
+    /**
+     * Get signal status badge class
+     */
+    Handlebars.registerHelper('signalBadgeClass', function(signalStrength) {
+      if (signalStrength >= 80) return 'ncm-badge--success';
+      if (signalStrength >= 60) return 'ncm-badge--info';
+      if (signalStrength >= 40) return 'ncm-badge--warning';
+      return 'ncm-badge--danger';
+    });
+    
+    /**
+     * Check if network has override
+     */
+    Handlebars.registerHelper('hasOverride', function(sceneConfig) {
+      return sceneConfig?.override && Object.keys(sceneConfig.override).length > 0;
+    });
+    
+    /**
+     * Count active overrides
+     */
+    Handlebars.registerHelper('countOverrides', function(override) {
+      if (!override) return 0;
       
-      /**
-       * Less than or equal comparison
-       * @param {number} a - First value
-       * @param {number} b - Second value
-       * @returns {boolean}
-       */
-      Handlebars.registerHelper('lte', function(a, b) {
-        return a <= b;
-      });
+      let count = 0;
+      if (override.security) count++;
+      if (override.reliability !== undefined) count++;
+      if (override.features && Object.keys(override.features).length > 0) {
+        count += Object.keys(override.features).length;
+      }
       
-      /**
-       * Greater than comparison
-       * @param {number} a - First value
-       * @param {number} b - Second value
-       * @returns {boolean}
-       */
-      Handlebars.registerHelper('gt', function(a, b) {
-        return a > b;
-      });
-      
-      /**
-       * Less than comparison
-       * @param {number} a - First value
-       * @param {number} b - Second value
-       * @returns {boolean}
-       */
-      Handlebars.registerHelper('lt', function(a, b) {
-        return a < b;
-      });
-      
-      /**
-       * Equality comparison
-       * @param {*} a - First value
-       * @param {*} b - Second value
-       * @returns {boolean}
-       */
-      Handlebars.registerHelper('eq', function(a, b) {
-        return a === b;
-      });
-      
-      /**
-       * Inequality comparison
-       * @param {*} a - First value
-       * @param {*} b - Second value
-       * @returns {boolean}
-       */
-      Handlebars.registerHelper('neq', function(a, b) {
-        return a !== b;
-      });
-      
-      /**
-       * Get security level CSS class
-       * @param {string} level - Security level (LOW, MEDIUM, HIGH, EXTREME, BLACK_ICE)
-       * @returns {string} CSS class name
-       */
-      Handlebars.registerHelper('securityLevelClass', function(level) {
-        return `security-${level}`;
-      });
-      
-      /**
-       * Format signal strength as status text
-       * @param {number} signalStrength - Signal strength (0-100)
-       * @returns {string} Status text
-       */
-      Handlebars.registerHelper('signalStatus', function(signalStrength) {
-        if (signalStrength >= 80) return 'Excellent';
-        if (signalStrength >= 60) return 'Good';
-        if (signalStrength >= 40) return 'Fair';
-        if (signalStrength >= 20) return 'Weak';
-        return 'Very Weak';
-      });
-      
-      /**
-       * Get signal status badge class
-       * @param {number} signalStrength - Signal strength (0-100)
-       * @returns {string} Badge class
-       */
-      Handlebars.registerHelper('signalBadgeClass', function(signalStrength) {
-        if (signalStrength >= 80) return 'ncm-badge--success';
-        if (signalStrength >= 60) return 'ncm-badge--info';
-        if (signalStrength >= 40) return 'ncm-badge--warning';
-        return 'ncm-badge--danger';
-      });
-      
-      /**
-       * Check if network has override
-       * @param {Object} sceneConfig - Scene network configuration
-       * @returns {boolean}
-       */
-      Handlebars.registerHelper('hasOverride', function(sceneConfig) {
-        return sceneConfig?.override && Object.keys(sceneConfig.override).length > 0;
-      });
-      
-      /**
-       * Count active overrides
-       * @param {Object} override - Override configuration
-       * @returns {number}
-       */
-      Handlebars.registerHelper('countOverrides', function(override) {
-        if (!override) return 0;
-        
-        let count = 0;
-        if (override.security) count++;
-        if (override.reliability !== undefined) count++;
-        if (override.features && Object.keys(override.features).length > 0) {
-          count += Object.keys(override.features).length;
-        }
-        
-        return count;
-      });
-      
-      /**
-       * Format scene dimensions
-       * @param {number} width - Scene width
-       * @param {number} height - Scene height
-       * @returns {string} Formatted dimensions
-       */
-      Handlebars.registerHelper('formatDimensions', function(width, height) {
-        return `${width} × ${height} px`;
-      });
-      
-      /**
-       * Pluralize word based on count
-       * @param {number} count - Count
-       * @param {string} singular - Singular form
-       * @param {string} plural - Plural form (optional, adds 's' by default)
-       * @returns {string}
-       */
-      Handlebars.registerHelper('pluralize', function(count, singular, plural) {
-        if (count === 1) return singular;
-        return plural || (singular + 's');
-      });
-      
-      /**
-       * Check if array includes value
-       * @param {Array} array - Array to search
-       * @param {*} value - Value to find
-       * @returns {boolean}
-       */
-      Handlebars.registerHelper('includes', function(array, value) {
-        if (!Array.isArray(array)) return false;
-        return array.includes(value);
-      });
-      
-      /**
-       * Get network icon with fallback
-       * @param {Object} network - Network object
-       * @returns {string} Icon class
-       */
-      Handlebars.registerHelper('networkIcon', function(network) {
-        return network?.theme?.icon || 'fas fa-network-wired';
-      });
-      
-      /**
-       * Get network color with fallback
-       * @param {Object} network - Network object
-       * @returns {string} Color hex
-       */
-      Handlebars.registerHelper('networkColor', function(network) {
-        return network?.theme?.color || '#F65261';
-      });
-      
-      /**
-       * JSON stringify for debugging
-       * @param {*} obj - Object to stringify
-       * @returns {string}
-       */
-      Handlebars.registerHelper('json', function(obj) {
-        return JSON.stringify(obj, null, 2);
-      });
-      
-      /**
-       * Check if value is truthy
-       * @param {*} value - Value to check
-       * @returns {boolean}
-       */
-      Handlebars.registerHelper('isTruthy', function(value) {
-        return !!value;
-      });
-      
-      /**
-       * Check if value is falsy
-       * @param {*} value - Value to check
-       * @returns {boolean}
-       */
-      Handlebars.registerHelper('isFalsy', function(value) {
-        return !value;
-      });
-      
-      /**
-       * Logical AND
-       * @param {...*} args - Values to AND together
-       * @returns {boolean}
-       */
-      Handlebars.registerHelper('and', function(...args) {
-        // Remove options object
-        args.pop();
-        return args.every(arg => !!arg);
-      });
-      
-      /**
-       * Logical OR
-       * @param {...*} args - Values to OR together
-       * @returns {boolean}
-       */
-      Handlebars.registerHelper('or', function(...args) {
-        // Remove options object
-        args.pop();
-        return args.some(arg => !!arg);
-      });
-      
-      /**
-       * Logical NOT
-       * @param {*} value - Value to negate
-       * @returns {boolean}
-       */
-      Handlebars.registerHelper('not', function(value) {
-        return !value;
-      });
-      
-      /**
-       * Conditional block with multiple conditions
-       * @example {{#if (and condition1 condition2)}}...{{/if}}
-       */
-      Handlebars.registerHelper('cond', function(v1, operator, v2, options) {
-        switch (operator) {
-          case '==': return v1 == v2 ? options.fn(this) : options.inverse(this);
-          case '===': return v1 === v2 ? options.fn(this) : options.inverse(this);
-          case '!=': return v1 != v2 ? options.fn(this) : options.inverse(this);
-          case '!==': return v1 !== v2 ? options.fn(this) : options.inverse(this);
-          case '<': return v1 < v2 ? options.fn(this) : options.inverse(this);
-          case '<=': return v1 <= v2 ? options.fn(this) : options.inverse(this);
-          case '>': return v1 > v2 ? options.fn(this) : options.inverse(this);
-          case '>=': return v1 >= v2 ? options.fn(this) : options.inverse(this);
-          case '&&': return v1 && v2 ? options.fn(this) : options.inverse(this);
-          case '||': return v1 || v2 ? options.fn(this) : options.inverse(this);
-          default: return options.inverse(this);
-        }
-      });
-      
-      console.log('cyberpunkred-messenger | ✓ Scenes helpers registered');
-    }
+      return count;
+    });
+    
+    /**
+     * Format scene dimensions
+     */
+    Handlebars.registerHelper('formatDimensions', function(width, height) {
+      return `${width} × ${height} px`;
+    });
+    
+    /**
+     * Get network icon with fallback
+     */
+    Handlebars.registerHelper('networkIcon', function(network) {
+      return network?.theme?.icon || 'fas fa-network-wired';
+    });
+    
+    /**
+     * Get network color with fallback
+     */
+    Handlebars.registerHelper('networkColor', function(network) {
+      return network?.theme?.color || '#F65261';
+    });
+    
+    /**
+     * JSON stringify for debugging
+     */
+    Handlebars.registerHelper('json', function(obj) {
+      return JSON.stringify(obj, null, 2);
+    });
+    
+    /**
+     * Check if value is truthy
+     */
+    Handlebars.registerHelper('isTruthy', function(value) {
+      return !!value;
+    });
+    
+    /**
+     * Check if value is falsy
+     */
+    Handlebars.registerHelper('isFalsy', function(value) {
+      return !value;
+    });
+    
+    /**
+     * Conditional block with multiple conditions
+     */
+    Handlebars.registerHelper('cond', function(v1, operator, v2, options) {
+      switch (operator) {
+        case '==': return v1 == v2 ? options.fn(this) : options.inverse(this);
+        case '===': return v1 === v2 ? options.fn(this) : options.inverse(this);
+        case '!=': return v1 != v2 ? options.fn(this) : options.inverse(this);
+        case '!==': return v1 !== v2 ? options.fn(this) : options.inverse(this);
+        case '<': return v1 < v2 ? options.fn(this) : options.inverse(this);
+        case '<=': return v1 <= v2 ? options.fn(this) : options.inverse(this);
+        case '>': return v1 > v2 ? options.fn(this) : options.inverse(this);
+        case '>=': return v1 >= v2 ? options.fn(this) : options.inverse(this);
+        case '&&': return v1 && v2 ? options.fn(this) : options.inverse(this);
+        case '||': return v1 || v2 ? options.fn(this) : options.inverse(this);
+        default: return options.inverse(this);
+      }
+    });
     
     // ========================================
     // Number Helpers
