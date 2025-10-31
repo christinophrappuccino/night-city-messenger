@@ -16,6 +16,7 @@ export class NetworkManagementApp extends Application {
     this.filterText = '';
     this.sortBy = 'name'; // name, type, security
     this.sortDir = 'asc';
+    this.currentSceneId = null; 
     
     // Cache
     this._networks = null;
@@ -50,6 +51,22 @@ export class NetworkManagementApp extends Application {
     const scenes = await this._getScenes();
     const events = await this._getEvents();
     const logs = await this._getLogs();
+
+    // Get current scene if one is selected
+    let currentScene = null;
+    if (this.currentSceneId) {
+      const scene = game.scenes.get(this.currentSceneId);
+      if (scene) {
+        currentScene = {
+          id: scene.id,
+          name: scene.name,
+          active: scene.active,
+          // Include any scene flags for network config
+          networks: scene.getFlag(MODULE_ID, 'networks') || {},
+          settings: scene.getFlag(MODULE_ID, 'settings') || {}
+        };
+      }
+    }
     
     // Filter and sort networks
     let filteredNetworks = networks;
@@ -92,6 +109,8 @@ export class NetworkManagementApp extends Application {
       sortBy: this.sortBy,
       sortDir: this.sortDir,
       scenes: scenes,
+      currentScene: currentScene,
+      currentSceneId: this.currentSceneId,
       events: events,
       logs: logs,
       stats: {
@@ -134,6 +153,7 @@ export class NetworkManagementApp extends Application {
     html.find('.scene-signal-slider').on('input', this._onSceneSignalChange.bind(this));
     html.find('.scene-config-btn').click(this._onConfigureScene.bind(this));
     html.find('.copy-to-scenes-btn').click(this._onCopyToScenes.bind(this));
+    html.find('#scene-selector').change(this._onSceneSelect.bind(this));
     
     // Events tab
     html.find('.create-event-btn').click(this._onCreateEvent.bind(this));
@@ -629,6 +649,39 @@ export class NetworkManagementApp extends Application {
     
     ui.notifications.info(`Network configuration copied to ${copied} scene(s)`);
     this._scenes = null;
+    this.render(false);
+  }
+
+  /**
+   * Handle scene selection from dropdown
+   * @param {Event} event - Change event
+   * @private
+   */
+  _onSceneSelect(event) {
+    event.preventDefault();
+    
+    const sceneId = event.currentTarget.value;
+    
+    // Update current scene ID
+    this.currentSceneId = sceneId || null;
+    
+    // Re-render to show scene details
+    this.render(false);
+    
+    console.log(`${MODULE_ID} | Scene selected:`, sceneId || 'None');
+  }
+
+  _onTabChange(event) {
+    event.preventDefault();
+    
+    const tab = event.currentTarget.dataset.tab;
+    this.activeTab = tab;
+    
+    // Auto-select active scene when switching to scenes tab
+    if (tab === 'scenes' && !this.currentSceneId && game.scenes.active) {
+      this.currentSceneId = game.scenes.active.id;
+    }
+    
     this.render(false);
   }
   
