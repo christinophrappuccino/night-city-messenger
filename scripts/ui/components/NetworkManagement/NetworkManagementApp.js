@@ -186,7 +186,7 @@ export class NetworkManagementApp extends Application {
     
     // Scenes tab
     html.find('.scene-network-toggle').change(this._onSceneNetworkToggle.bind(this));
-    html.find('.scene-signal-slider').on('input', this._onSceneSignalChange.bind(this));
+    html.find('[data-action="update-signal-strength"]').on('input', this._onUpdateSignalStrength.bind(this));
     html.find('.scene-config-btn').click(this._onConfigureScene.bind(this));
     html.find('.copy-to-scenes-btn').click(this._onCopyToScenes.bind(this));
     html.find('#scene-selector').change(this._onSceneSelect.bind(this));
@@ -233,9 +233,24 @@ export class NetworkManagementApp extends Application {
   
   async _onTabChange(event) {
     event.preventDefault();
+    
     const tab = event.currentTarget.dataset.tab;
     this.activeTab = tab;
-    await this.render(false);
+    
+    // Auto-select active scene when switching to scenes tab
+    if (tab === 'scenes' && !this.currentSceneId && game.scenes.active) {
+      this.currentSceneId = game.scenes.active.id;
+    }
+    
+    this.render(false).then(() => {
+      // After render, update the dropdown value if on scenes tab
+      if (tab === 'scenes' && this.currentSceneId) {
+        const dropdown = this.element.find('#scene-selector');
+        if (dropdown.length) {
+          dropdown.val(this.currentSceneId);
+        }
+      }
+    });
   }
   
   /* -------------------------------------------- */
@@ -727,20 +742,6 @@ export class NetworkManagementApp extends Application {
     console.log(`${MODULE_ID} | Scene selected:`, sceneId || 'None');
   }
 
-  _onTabChange(event) {
-    event.preventDefault();
-    
-    const tab = event.currentTarget.dataset.tab;
-    this.activeTab = tab;
-    
-    // Auto-select active scene when switching to scenes tab
-    if (tab === 'scenes' && !this.currentSceneId && game.scenes.active) {
-      this.currentSceneId = game.scenes.active.id;
-    }
-    
-    this.render(false);
-  }
-
   /**
    * Handle configure scene button click
    * @param {Event} event
@@ -761,11 +762,8 @@ export class NetworkManagementApp extends Application {
       return;
     }
     
-    ui.notifications.info('Scene configuration dialog coming soon...');
-    
-    // TODO: Open scene configuration dialog
-    // const { SceneNetworkConfigDialog } = await import('../../dialogs/SceneNetworkConfigDialog.js');
-    // new SceneNetworkConfigDialog(scene).render(true);
+    const { SceneNetworkConfigDialog } = await import('../../dialogs/SceneNetworkConfigDialog.js');
+    new SceneNetworkConfigDialog(scene).render(true);
   }
 
   /**
@@ -1025,9 +1023,25 @@ export class NetworkManagementApp extends Application {
     
     console.log(`${MODULE_ID} | Network ${networkId} ${available ? 'enabled' : 'disabled'} for scene ${scene.name}`);
     
-    // Re-render to update UI
-    this._scenes = null;
-    this.render(false);
+    // DON'T re-render the whole app - just toggle the card's disabled state
+    const card = checkbox.closest('.ncm-scene-network-card');
+    if (card) {
+      if (available) {
+        card.classList.remove('ncm-scene-network-card--disabled');
+        // Show the body
+        const body = card.querySelector('.ncm-scene-network-card__body');
+        const disabled = card.querySelector('.ncm-scene-network-card__disabled-state');
+        if (body) body.style.display = 'flex';
+        if (disabled) disabled.style.display = 'none';
+      } else {
+        card.classList.add('ncm-scene-network-card--disabled');
+        // Hide the body
+        const body = card.querySelector('.ncm-scene-network-card__body');
+        const disabled = card.querySelector('.ncm-scene-network-card__disabled-state');
+        if (body) body.style.display = 'none';
+        if (disabled) disabled.style.display = 'block';
+      }
+    }
   }
 
   /**
@@ -1144,10 +1158,12 @@ export class NetworkManagementApp extends Application {
     const settings = scene.getFlag(MODULE_ID, 'sceneSettings') || {};
     
     settings.autoSwitch = enabled;
-    
     await scene.setFlag(MODULE_ID, 'sceneSettings', settings);
     
-    console.log(`${MODULE_ID} | Auto-switch ${enabled ? 'enabled' : 'disabled'} for scene ${scene.name}`);
+    // Add notification
+    ui.notifications.info(`Auto-switch ${enabled ? 'enabled' : 'disabled'} for ${scene.name}`);
+    
+    console.log(`${MODULE_ID} | Auto-switch ${enabled ? 'enabled' : 'disabled'}`);
   }
 
   /**
@@ -1165,10 +1181,86 @@ export class NetworkManagementApp extends Application {
     const settings = scene.getFlag(MODULE_ID, 'sceneSettings') || {};
     
     settings.preferredNetwork = networkId || null;
-    
     await scene.setFlag(MODULE_ID, 'sceneSettings', settings);
     
-    console.log(`${MODULE_ID} | Preferred network set to ${networkId || 'Auto'} for scene ${scene.name}`);
+    // Add notification
+    if (networkId) {
+      const network = await game.nightcity.networkStorage.getNetwork(networkId);
+      ui.notifications.info(`Preferred network: ${network?.name || networkId}`);
+    } else {
+      ui.notifications.info(`Preferred network: Auto (strongest signal)`);
+    }
+    
+    console.log(`${MODULE_ID} | Preferred network: ${networkId || 'Auto'}`);
+  }
+
+  /**
+   * Handle signal strength slider change
+   * @param {Event} event
+   * @private
+   */
+  async _onUpdateSignalStrength(event) {
+    event.preventDefault();
+    
+    const slider = event.currentTarget;
+    const networkId = slider.dataset.networkId;
+    const signalStrength = parseInt(slider.value);
+    
+    if (!this.currentSceneId) return;
+    
+    // Update the visual display immediately
+    const card = slider.closest('.ncm-scene-network-card');
+    const valueDisplay = card?.querySelector('.ncm-scene-network-card__signal-value');
+    if (valueDisplay) {
+      valueDisplay.textContent = `${signalStrength}%`;
+    }
+    
+    // Update signal bars
+    const bars = card?.querySelectorAll('.ncm-signal-bar');
+    if (bars) {
+      bars.forEach((bar, index) => {
+        const threshold = ((index + 1) / 5) * 100; // 5 bars
+        if (signalStrength >= threshold) {
+          bar.classList.add('ncm-signal-bar--active');
+        } else {
+          bar.classList.remove('ncm-signal-bar--active');
+        }
+      });
+    }
+    
+    // Update status badge
+    const statusBadge = card?.querySelector('.ncm-scene-network-card__signal-status');
+    if (statusBadge) {
+      let badgeHTML = '';
+      if (signalStrength >= 80) {
+        badgeHTML = '<span class="ncm-badge ncm-badge--success"><i class="fas fa-signal"></i> Excellent</span>';
+      } else if (signalStrength >= 60) {
+        badgeHTML = '<span class="ncm-badge ncm-badge--info"><i class="fas fa-signal"></i> Good</span>';
+      } else if (signalStrength >= 40) {
+        badgeHTML = '<span class="ncm-badge ncm-badge--warning"><i class="fas fa-signal"></i> Fair</span>';
+      } else if (signalStrength >= 20) {
+        badgeHTML = '<span class="ncm-badge ncm-badge--warning"><i class="fas fa-signal"></i> Weak</span>';
+      } else {
+        badgeHTML = '<span class="ncm-badge ncm-badge--danger"><i class="fas fa-exclamation-triangle"></i> Very Weak</span>';
+      }
+      statusBadge.innerHTML = badgeHTML;
+    }
+    
+    // Debounce the actual save
+    clearTimeout(this._signalUpdateTimeout);
+    this._signalUpdateTimeout = setTimeout(async () => {
+      const scene = game.scenes.get(this.currentSceneId);
+      if (!scene) return;
+      
+      const networks = scene.getFlag(MODULE_ID, 'networks') || {};
+      if (!networks[networkId]) networks[networkId] = {};
+      
+      networks[networkId].signalStrength = signalStrength;
+      
+      await scene.setFlag(MODULE_ID, 'networks', networks);
+      
+      console.log(`${MODULE_ID} | Updated signal strength for ${networkId} to ${signalStrength}%`);
+    }, 500); // Wait 500ms after user stops dragging
   }
   
   /* -------------------------------------------- */

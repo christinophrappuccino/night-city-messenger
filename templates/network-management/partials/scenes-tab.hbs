@@ -11,7 +11,8 @@
       <select id="scene-selector" class="ncm-select ncm-scene-selector">
         <option value="">-- Select Scene --</option>
         {{#each scenes}}
-          <option value="{{this.id}}" {{#if this.active}}selected{{/if}}>
+          <option value="{{this.id}}" 
+                  {{#if (eq this.id ../currentSceneId)}}selected{{/if}}>
             {{this.name}} {{#if this.active}}(Active){{/if}}
           </option>
         {{/each}}
