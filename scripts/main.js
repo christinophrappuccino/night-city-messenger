@@ -347,7 +347,7 @@ moduleInitializer.register('ready', async () => {
     const { NetworkStorage } = await import('./core/NetworkStorage.js');
     const { NetworkUtils } = await import('./utils/NetworkUtils.js');
     
-    const networkService = game.nightcity.networkService;  // NOW this exists!
+    const networkService = game.nightcity.networkService;
     const stateManager = game.nightcity.stateManager;
     const eventBus = game.nightcity.eventBus;
     
@@ -358,13 +358,10 @@ moduleInitializer.register('ready', async () => {
     const networkManager = new NetworkManager(networkService, stateManager, eventBus);
     await networkManager.initialize();
 
-    // Create NetworkStorage instance
-    const networkStorage = new NetworkStorage();
-    await networkStorage.initialize();
-
+    // Just assign the CLASS, not an instance
     game.nightcity.networkManager = networkManager;
     game.nightcity.NetworkStorage = NetworkStorage; 
-    game.nightcity.networkStorage = networkStorage; 
+    game.nightcity.networkStorage = NetworkStorage; 
     game.nightcity.NetworkUtils = NetworkUtils;
     
     console.log(`${MODULE_ID} | ✓ Network Manager initialized`);
@@ -372,7 +369,7 @@ moduleInitializer.register('ready', async () => {
   } catch (error) {
     console.error(`${MODULE_ID} | ❌ NetworkManager init failed:`, error);
   }
-}, 4.5); // Priority 4.5
+}, 4.5);
 
 // Register NetworkSelectorDialog globally
 moduleInitializer.register('ready', async () => {
