@@ -1158,12 +1158,14 @@ export class NetworkManagementApp extends Application {
     const settings = scene.getFlag(MODULE_ID, 'sceneSettings') || {};
     
     settings.autoSwitch = enabled;
+    
     await scene.setFlag(MODULE_ID, 'sceneSettings', settings);
     
-    // Add notification
     ui.notifications.info(`Auto-switch ${enabled ? 'enabled' : 'disabled'} for ${scene.name}`);
     
-    console.log(`${MODULE_ID} | Auto-switch ${enabled ? 'enabled' : 'disabled'}`);
+    console.log(`${MODULE_ID} | Auto-switch ${enabled ? 'enabled' : 'disabled'} for scene ${scene.name}`);
+    
+    // NO re-render needed!
   }
 
   /**
@@ -1181,17 +1183,19 @@ export class NetworkManagementApp extends Application {
     const settings = scene.getFlag(MODULE_ID, 'sceneSettings') || {};
     
     settings.preferredNetwork = networkId || null;
+    
     await scene.setFlag(MODULE_ID, 'sceneSettings', settings);
     
-    // Add notification
     if (networkId) {
       const network = await game.nightcity.networkStorage.getNetwork(networkId);
-      ui.notifications.info(`Preferred network: ${network?.name || networkId}`);
+      ui.notifications.info(`Preferred network set to ${network?.name || networkId} for ${scene.name}`);
     } else {
-      ui.notifications.info(`Preferred network: Auto (strongest signal)`);
+      ui.notifications.info(`Preferred network set to Auto for ${scene.name}`);
     }
     
-    console.log(`${MODULE_ID} | Preferred network: ${networkId || 'Auto'}`);
+    console.log(`${MODULE_ID} | Preferred network set to ${networkId || 'Auto'} for scene ${scene.name}`);
+    
+    // NO re-render needed!
   }
 
   /**
@@ -1498,9 +1502,60 @@ export class NetworkManagementApp extends Application {
   
   async _getNetworks() {
     if (!this._networks) {
-      this._networks = await game.nightcity.networkManager.getAvailableNetworks();
+      // Use NetworkStorage.getAllNetworks() - note the capital N
+      this._networks = await game.nightcity.NetworkStorage.getAllNetworks();
+      
+      // Ensure each network has theme properties
+      this._networks = this._networks.map(network => {
+        // Ensure theme exists
+        if (!network.theme) {
+          network.theme = {
+            color: this._getDefaultColor(network.id),
+            icon: this._getDefaultIcon(network.id)
+          };
+        }
+        
+        // Ensure all required properties exist
+        if (!network.security) {
+          network.security = {
+            level: 'MEDIUM',
+            breachDC: 15,
+            iceDamage: '3d6'
+          };
+        }
+        
+        return network;
+      });
     }
     return this._networks;
+  }
+
+  /**
+   * Get default color for network
+   * @private
+   */
+  _getDefaultColor(networkId) {
+    const colors = {
+      'CITINET': '#19f3f7',
+      'CORPNET': '#F65261',
+      'DARKNET': '#9400D3',
+      'DEAD_ZONE': '#666666'
+    };
+    return colors[networkId] || '#19f3f7';
+  }
+
+  /**
+   * Get default icon for network
+   * @private
+   */
+  _getDefaultIcon(networkId) {
+    const icons = {
+      'CITINET': 'fas fa-wifi',
+      'CORPNET': 'fas fa-building',
+      'DARKNET': 'fas fa-user-secret',
+      'DEAD_ZONE': 'fas fa-ban'
+    };
+    return icons[networkId] || 'fas fa-network-wired';
   }
   
   async _getScenes() {
