@@ -1,4 +1,5 @@
 {{!-- Scenes Tab - Scene-Based Network Configuration --}}
+{{!-- FIXED VERSION: Uses sceneNetworks instead of networks --}}
 <div class="ncm-scenes-tab">
   
   {{!-- Toolbar --}}
@@ -76,9 +77,10 @@
         </div>
       </div>
       
-      {{#if networks.length}}
+      {{!-- FIXED: Use sceneNetworks instead of networks --}}
+      {{#if sceneNetworks.length}}
         <div class="ncm-network-cards">
-          {{#each networks}}
+          {{#each sceneNetworks}}
             {{> "modules/cyberpunkred-messenger/templates/network-management/partials/scene-network-card.hbs" this}}
           {{/each}}
         </div>
@@ -119,9 +121,10 @@
           <p class="ncm-hint">If multiple networks available, prefer this one</p>
         </div>
         <div class="ncm-setting-row__control">
+          {{!-- FIXED: Use sceneNetworks for dropdown, sceneSettings for selected value --}}
           <select class="ncm-select" data-action="set-preferred-network">
             <option value="">Auto (Strongest)</option>
-            {{#each networks}}
+            {{#each sceneNetworks}}
               <option value="{{this.id}}" 
                       {{#if (eq this.id ../sceneSettings.preferredNetwork)}}selected{{/if}}>
                 {{this.name}}

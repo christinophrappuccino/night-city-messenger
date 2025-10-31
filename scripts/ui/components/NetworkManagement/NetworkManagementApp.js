@@ -47,32 +47,66 @@ export class NetworkManagementApp extends Application {
     const data = await super.getData();
     
     // Get all data needed for tabs
-    const networks = await this._getNetworks();
+    const allNetworks = await this._getNetworks();
     const scenes = await this._getScenes();
     const events = await this._getEvents();
     const logs = await this._getLogs();
 
     // Get current scene if one is selected
     let currentScene = null;
+    let sceneNetworks = [];
+    let sceneSettings = {};
+    
     if (this.currentSceneId) {
       const scene = game.scenes.get(this.currentSceneId);
       if (scene) {
+        // Get scene network configuration
+        const sceneNetworkConfig = scene.getFlag(MODULE_ID, 'networks') || {};
+        sceneSettings = scene.getFlag(MODULE_ID, 'sceneSettings') || {
+          autoSwitch: false,
+          preferredNetwork: null
+        };
+        
+        // Prepare scene data
         currentScene = {
           id: scene.id,
           name: scene.name,
           active: scene.active,
-          // Include any scene flags for network config
-          networks: scene.getFlag(MODULE_ID, 'networks') || {},
-          settings: scene.getFlag(MODULE_ID, 'settings') || {}
+          width: scene.width,
+          height: scene.height
         };
+        
+        // Prepare networks with scene-specific configuration
+        sceneNetworks = allNetworks.map(network => {
+          const config = sceneNetworkConfig[network.id] || {
+            available: false,
+            signalStrength: 0,
+            override: null
+          };
+          
+          // Calculate security level class for styling
+          let securityLevelClass = 'ncm-security-none';
+          if (network.security?.level) {
+            securityLevelClass = `ncm-security-${network.security.level.toLowerCase()}`;
+          }
+          
+          return {
+            ...network,
+            sceneConfig: config,
+            securityLevelClass,
+            // For handlebars template
+            signalPercentage: config.signalStrength || 0,
+            signalBars: Math.ceil((config.signalStrength || 0) / 20) // 0-5 bars
+          };
+        });
       }
     }
     
-    // Filter and sort networks
-    let filteredNetworks = networks;
+    // Filter and sort networks for Networks tab
+    let filteredNetworks = allNetworks;
     if (this.filterText) {
       const filter = this.filterText.toLowerCase();
-      filteredNetworks = networks.filter(n => 
+      filteredNetworks = allNetworks.filter(n => 
         n.name.toLowerCase().includes(filter) ||
         n.id.toLowerCase().includes(filter) ||
         n.type.toLowerCase().includes(filter)
@@ -103,20 +137,22 @@ export class NetworkManagementApp extends Application {
     return {
       ...data,
       activeTab: this.activeTab,
-      networks: filteredNetworks,
+      networks: filteredNetworks, // For Networks tab
       selectedNetworks: Array.from(this.selectedNetworks),
       filterText: this.filterText,
       sortBy: this.sortBy,
       sortDir: this.sortDir,
-      scenes: scenes,
-      currentScene: currentScene,
+      scenes: scenes, // For scene selector dropdown
+      currentScene: currentScene, // Currently selected scene
       currentSceneId: this.currentSceneId,
+      sceneNetworks: sceneNetworks, // Networks with scene-specific config - for Scenes tab
+      sceneSettings: sceneSettings, // Scene settings like auto-switch
       events: events,
       logs: logs,
       stats: {
-        totalNetworks: networks.length,
-        customNetworks: networks.filter(n => n.type === 'CUSTOM').length,
-        securedNetworks: networks.filter(n => n.requiresAuth).length,
+        totalNetworks: allNetworks.length,
+        customNetworks: allNetworks.filter(n => n.type === 'CUSTOM').length,
+        securedNetworks: allNetworks.filter(n => n.requiresAuth).length,
         activeEvents: events.filter(e => e.active).length,
         recentLogs: logs.slice(0, 100).length
       }
@@ -154,6 +190,26 @@ export class NetworkManagementApp extends Application {
     html.find('.scene-config-btn').click(this._onConfigureScene.bind(this));
     html.find('.copy-to-scenes-btn').click(this._onCopyToScenes.bind(this));
     html.find('#scene-selector').change(this._onSceneSelect.bind(this));
+
+    // Scenes tab - data-action buttons
+    html.find('[data-action="configure-scene"]').click(this._onConfigureScene.bind(this));
+    html.find('[data-action="copy-to-scenes"]').click(this._onCopyToScenes.bind(this));
+    html.find('[data-action="apply-template"]').click(this._onApplyTemplate.bind(this));
+    html.find('[data-action="reset-scene"]').click(this._onResetScene.bind(this));
+
+    // Scenes tab - Enable/Disable all networks
+    html.find('[data-action="enable-all"]').click(this._onEnableAllNetworks.bind(this));
+    html.find('[data-action="disable-all"]').click(this._onDisableAllNetworks.bind(this));
+
+    // Scenes tab - Network toggle and configuration
+    html.find('[data-action="toggle-network-availability"]').change(this._onToggleNetworkAvailability.bind(this));
+    html.find('[data-action="configure-network-override"]').click(this._onConfigureNetworkOverride.bind(this));
+    html.find('[data-action="view-overrides"]').click(this._onViewOverrides.bind(this));
+    html.find('[data-action="clear-overrides"]').click(this._onClearOverrides.bind(this));
+
+    // Scenes tab - Auto-switch and preferred network
+    html.find('[data-action="toggle-auto-switch"]').change(this._onToggleAutoSwitch.bind(this));
+    html.find('[data-action="set-preferred-network"]').change(this._onSetPreferredNetwork.bind(this));
     
     // Events tab
     html.find('.create-event-btn').click(this._onCreateEvent.bind(this));
@@ -683,6 +739,436 @@ export class NetworkManagementApp extends Application {
     }
     
     this.render(false);
+  }
+
+  /**
+   * Handle configure scene button click
+   * @param {Event} event
+   * @private
+   */
+  async _onConfigureScene(event) {
+    event.preventDefault();
+    
+    if (!this.currentSceneId) {
+      ui.notifications.warn('No scene selected');
+      return;
+    }
+    
+    const scene = game.scenes.get(this.currentSceneId);
+    
+    if (!scene) {
+      ui.notifications.error('Scene not found');
+      return;
+    }
+    
+    ui.notifications.info('Scene configuration dialog coming soon...');
+    
+    // TODO: Open scene configuration dialog
+    // const { SceneNetworkConfigDialog } = await import('../../dialogs/SceneNetworkConfigDialog.js');
+    // new SceneNetworkConfigDialog(scene).render(true);
+  }
+
+  /**
+   * Handle copy to scenes button click
+   * @param {Event} event
+   * @private
+   */
+  async _onCopyToScenes(event) {
+    event.preventDefault();
+    
+    if (!this.currentSceneId) {
+      ui.notifications.warn('No scene selected');
+      return;
+    }
+    
+    const sourceScene = game.scenes.get(this.currentSceneId);
+    
+    if (!sourceScene) {
+      ui.notifications.error('Scene not found');
+      return;
+    }
+    
+    const config = sourceScene.getFlag(MODULE_ID, 'networks');
+    if (!config) {
+      ui.notifications.warn('Source scene has no network configuration');
+      return;
+    }
+    
+    const confirm = await Dialog.confirm({
+      title: 'Copy Network Configuration',
+      content: `<p>Copy network configuration from <strong>${sourceScene.name}</strong> to all scenes?</p>`,
+      yes: () => true,
+      no: () => false
+    });
+    
+    if (!confirm) return;
+    
+    let copied = 0;
+    for (const scene of game.scenes) {
+      if (scene.id === this.currentSceneId) continue;
+      
+      try {
+        await scene.setFlag(MODULE_ID, 'networks', config);
+        copied++;
+      } catch (error) {
+        console.error(`${MODULE_ID} | Error copying config to scene:`, error);
+      }
+    }
+    
+    ui.notifications.info(`Network configuration copied to ${copied} scene(s)`);
+    this._scenes = null;
+    this.render(false);
+  }
+
+  /**
+   * Handle apply template button click
+   * @param {Event} event
+   * @private
+   */
+  async _onApplyTemplate(event) {
+    event.preventDefault();
+    
+    if (!this.currentSceneId) {
+      ui.notifications.warn('No scene selected');
+      return;
+    }
+    
+    // Template selection dialog
+    const templates = {
+      'combat-zone': {
+        name: 'Combat Zone',
+        description: 'High security, monitored networks',
+        config: {
+          'CITINET': { available: true, signalStrength: 50 },
+          'CORPNET': { available: false, signalStrength: 0 },
+          'DARKNET': { available: true, signalStrength: 80 },
+          'DEAD_ZONE': { available: false, signalStrength: 0 }
+        }
+      },
+      'corporate-hq': {
+        name: 'Corporate HQ',
+        description: 'Strong corporate network, weak public access',
+        config: {
+          'CITINET': { available: true, signalStrength: 60 },
+          'CORPNET': { available: true, signalStrength: 100 },
+          'DARKNET': { available: false, signalStrength: 0 },
+          'DEAD_ZONE': { available: false, signalStrength: 0 }
+        }
+      },
+      'public-area': {
+        name: 'Public Area',
+        description: 'Strong public network, no dark networks',
+        config: {
+          'CITINET': { available: true, signalStrength: 100 },
+          'CORPNET': { available: false, signalStrength: 0 },
+          'DARKNET': { available: false, signalStrength: 0 },
+          'DEAD_ZONE': { available: false, signalStrength: 0 }
+        }
+      },
+      'dead-zone': {
+        name: 'Dead Zone',
+        description: 'No network coverage',
+        config: {
+          'CITINET': { available: false, signalStrength: 0 },
+          'CORPNET': { available: false, signalStrength: 0 },
+          'DARKNET': { available: false, signalStrength: 0 },
+          'DEAD_ZONE': { available: true, signalStrength: 100 }
+        }
+      }
+    };
+    
+    const templateOptions = Object.entries(templates).map(([key, tpl]) => `
+      <option value="${key}">${tpl.name} - ${tpl.description}</option>
+    `).join('');
+    
+    const template = await Dialog.prompt({
+      title: 'Apply Network Template',
+      content: `
+        <div class="form-group">
+          <label>Select Template:</label>
+          <select id="template-select">
+            ${templateOptions}
+          </select>
+        </div>
+      `,
+      callback: (html) => html.find('#template-select').val(),
+      rejectClose: false
+    });
+    
+    if (!template) return;
+    
+    const scene = game.scenes.get(this.currentSceneId);
+    await scene.setFlag(MODULE_ID, 'networks', templates[template].config);
+    
+    ui.notifications.info(`Applied "${templates[template].name}" template to ${scene.name}`);
+    this._scenes = null;
+    this.render(false);
+  }
+
+  /**
+   * Handle reset scene button click
+   * @param {Event} event
+   * @private
+   */
+  async _onResetScene(event) {
+    event.preventDefault();
+    
+    if (!this.currentSceneId) {
+      ui.notifications.warn('No scene selected');
+      return;
+    }
+    
+    const scene = game.scenes.get(this.currentSceneId);
+    
+    const confirm = await Dialog.confirm({
+      title: 'Reset Scene Configuration',
+      content: `<p>Reset all network configuration for <strong>${scene.name}</strong>?</p>`,
+      yes: () => true,
+      no: () => false
+    });
+    
+    if (!confirm) return;
+    
+    await scene.unsetFlag(MODULE_ID, 'networks');
+    await scene.unsetFlag(MODULE_ID, 'sceneSettings');
+    
+    ui.notifications.info(`Reset network configuration for ${scene.name}`);
+    this._scenes = null;
+    this.render(false);
+  }
+
+  /**
+   * Handle enable all networks button click
+   * @param {Event} event
+   * @private
+   */
+  async _onEnableAllNetworks(event) {
+    event.preventDefault();
+    
+    if (!this.currentSceneId) return;
+    
+    const scene = game.scenes.get(this.currentSceneId);
+    const networks = scene.getFlag(MODULE_ID, 'networks') || {};
+    
+    // Get all networks from storage
+    const allNetworks = await game.nightcity.networkStorage.getAllNetworks();
+    
+    for (const network of allNetworks) {
+      if (!networks[network.id]) networks[network.id] = {};
+      networks[network.id].available = true;
+      if (!networks[network.id].signalStrength) {
+        networks[network.id].signalStrength = 100;
+      }
+    }
+    
+    await scene.setFlag(MODULE_ID, 'networks', networks);
+    
+    ui.notifications.info(`Enabled all networks for ${scene.name}`);
+    this._scenes = null;
+    this.render(false);
+  }
+
+  /**
+   * Handle disable all networks button click
+   * @param {Event} event
+   * @private
+   */
+  async _onDisableAllNetworks(event) {
+    event.preventDefault();
+    
+    if (!this.currentSceneId) return;
+    
+    const scene = game.scenes.get(this.currentSceneId);
+    const networks = scene.getFlag(MODULE_ID, 'networks') || {};
+    
+    // Get all networks from storage
+    const allNetworks = await game.nightcity.networkStorage.getAllNetworks();
+    
+    for (const network of allNetworks) {
+      if (!networks[network.id]) networks[network.id] = {};
+      networks[network.id].available = false;
+    }
+    
+    await scene.setFlag(MODULE_ID, 'networks', networks);
+    
+    ui.notifications.info(`Disabled all networks for ${scene.name}`);
+    this._scenes = null;
+    this.render(false);
+  }
+
+  /**
+   * Handle toggle network availability for scene
+   * @param {Event} event
+   * @private
+   */
+  async _onToggleNetworkAvailability(event) {
+    event.preventDefault();
+    
+    const checkbox = event.currentTarget;
+    const networkId = checkbox.dataset.networkId;
+    const available = checkbox.checked;
+    
+    if (!this.currentSceneId) return;
+    
+    const scene = game.scenes.get(this.currentSceneId);
+    const networks = scene.getFlag(MODULE_ID, 'networks') || {};
+    
+    if (!networks[networkId]) networks[networkId] = {};
+    networks[networkId].available = available;
+    
+    // Set default signal strength if enabling
+    if (available && !networks[networkId].signalStrength) {
+      networks[networkId].signalStrength = 100;
+    }
+    
+    await scene.setFlag(MODULE_ID, 'networks', networks);
+    
+    console.log(`${MODULE_ID} | Network ${networkId} ${available ? 'enabled' : 'disabled'} for scene ${scene.name}`);
+    
+    // Re-render to update UI
+    this._scenes = null;
+    this.render(false);
+  }
+
+  /**
+   * Handle configure network override button click
+   * @param {Event} event
+   * @private
+   */
+  async _onConfigureNetworkOverride(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    const networkId = event.currentTarget.dataset.networkId;
+    
+    if (!this.currentSceneId) return;
+    
+    const scene = game.scenes.get(this.currentSceneId);
+    const network = await game.nightcity.networkStorage.getNetwork(networkId);
+    
+    if (!network) {
+      ui.notifications.error('Network not found');
+      return;
+    }
+    
+    const currentConfig = scene.getFlag(MODULE_ID, 'networks')?.[networkId] || {};
+    
+    const { SceneNetworkConfigDialog } = await import('../../dialogs/SceneNetworkConfigDialog.js');
+    
+    const result = await SceneNetworkConfigDialog.show(scene, network, currentConfig);
+    
+    if (result) {
+      const networks = scene.getFlag(MODULE_ID, 'networks') || {};
+      networks[networkId] = result;
+      await scene.setFlag(MODULE_ID, 'networks', networks);
+      
+      ui.notifications.info(`Updated ${network.name} configuration for ${scene.name}`);
+      this._scenes = null;
+      this.render(false);
+    }
+  }
+
+  /**
+   * Handle view overrides button click
+   * @param {Event} event
+   * @private
+   */
+  async _onViewOverrides(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    const networkId = event.currentTarget.dataset.networkId;
+    
+    if (!this.currentSceneId) return;
+    
+    const scene = game.scenes.get(this.currentSceneId);
+    const config = scene.getFlag(MODULE_ID, 'networks')?.[networkId];
+    
+    if (!config?.override) {
+      ui.notifications.info('No overrides configured');
+      return;
+    }
+    
+    // Show in chat
+    ChatMessage.create({
+      content: `
+        <div class="ncm-chat-card">
+          <h3><i class="fas fa-cog"></i> Network Overrides</h3>
+          <p><strong>Scene:</strong> ${scene.name}</p>
+          <p><strong>Network:</strong> ${networkId}</p>
+          <pre>${JSON.stringify(config.override, null, 2)}</pre>
+        </div>
+      `,
+      whisper: [game.user.id]
+    });
+  }
+
+  /**
+   * Handle clear overrides button click
+   * @param {Event} event
+   * @private
+   */
+  async _onClearOverrides(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    const networkId = event.currentTarget.dataset.networkId;
+    
+    if (!this.currentSceneId) return;
+    
+    const scene = game.scenes.get(this.currentSceneId);
+    const networks = scene.getFlag(MODULE_ID, 'networks') || {};
+    
+    if (networks[networkId]?.override) {
+      delete networks[networkId].override;
+      await scene.setFlag(MODULE_ID, 'networks', networks);
+      
+      ui.notifications.info(`Cleared overrides for ${networkId}`);
+      this._scenes = null;
+      this.render(false);
+    }
+  }
+
+  /**
+   * Handle toggle auto-switch
+   * @param {Event} event
+   * @private
+   */
+  async _onToggleAutoSwitch(event) {
+    const checkbox = event.currentTarget;
+    const enabled = checkbox.checked;
+    
+    if (!this.currentSceneId) return;
+    
+    const scene = game.scenes.get(this.currentSceneId);
+    const settings = scene.getFlag(MODULE_ID, 'sceneSettings') || {};
+    
+    settings.autoSwitch = enabled;
+    
+    await scene.setFlag(MODULE_ID, 'sceneSettings', settings);
+    
+    console.log(`${MODULE_ID} | Auto-switch ${enabled ? 'enabled' : 'disabled'} for scene ${scene.name}`);
+  }
+
+  /**
+   * Handle set preferred network
+   * @param {Event} event
+   * @private
+   */
+  async _onSetPreferredNetwork(event) {
+    const select = event.currentTarget;
+    const networkId = select.value;
+    
+    if (!this.currentSceneId) return;
+    
+    const scene = game.scenes.get(this.currentSceneId);
+    const settings = scene.getFlag(MODULE_ID, 'sceneSettings') || {};
+    
+    settings.preferredNetwork = networkId || null;
+    
+    await scene.setFlag(MODULE_ID, 'sceneSettings', settings);
+    
+    console.log(`${MODULE_ID} | Preferred network set to ${networkId || 'Auto'} for scene ${scene.name}`);
   }
   
   /* -------------------------------------------- */
