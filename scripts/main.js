@@ -357,9 +357,14 @@ moduleInitializer.register('ready', async () => {
     
     const networkManager = new NetworkManager(networkService, stateManager, eventBus);
     await networkManager.initialize();
-    
+
+    // Create NetworkStorage instance
+    const networkStorage = new NetworkStorage();
+    await networkStorage.initialize();
+
     game.nightcity.networkManager = networkManager;
-    game.nightcity.NetworkStorage = NetworkStorage;
+    game.nightcity.NetworkStorage = NetworkStorage; 
+    game.nightcity.networkStorage = networkStorage; 
     game.nightcity.NetworkUtils = NetworkUtils;
     
     console.log(`${MODULE_ID} | ✓ Network Manager initialized`);
