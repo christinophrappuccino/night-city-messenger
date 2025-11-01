@@ -147,9 +147,16 @@ export class NetworkManagementApp extends Application {
           if (network.security?.level) {
             securityLevelClass = `ncm-security-${network.security.level.toLowerCase()}`;
           }
+
+          // Ensure theme data with fallbacks
+          const theme = {
+            icon: network.theme?.icon || this._getDefaultIcon(network.id),
+            color: network.theme?.color || this._getDefaultColor(network.id)
+          };
           
           return {
             ...network,
+            theme,
             sceneConfig: config,
             securityLevelClass,
             signalPercentage: config.signalStrength || 0,
@@ -257,8 +264,8 @@ export class NetworkManagementApp extends Application {
       html.find('[data-action="configure-network-override"]').click(this._onConfigureNetworkOverride.bind(this));
       html.find('[data-action="view-overrides"]').click(this._onViewOverrides.bind(this));
       html.find('[data-action="clear-overrides"]').click(this._onClearOverrides.bind(this));
-      html.find('[data-action="toggle-auto-switch"]').change(this._onToggleAutoSwitch.bind(this));
-      html.find('[data-action="set-preferred-network"]').change(this._onSetPreferredNetwork.bind(this));
+      html.find('[data-action="save-scene-settings"]').click(this._onSaveSceneSettings.bind(this));
+      html.find('[data-action="reset-scene-settings"]').click(this._onResetSceneSettings.bind(this));
       
       // Events tab
       html.find('.create-event-btn').click(this._onCreateEvent.bind(this));
@@ -1193,61 +1200,6 @@ export class NetworkManagementApp extends Application {
   }
 
   /**
-   * Handle toggle auto-switch
-   * @param {Event} event
-   * @private
-   */
-  async _onToggleAutoSwitch(event) {
-    const checkbox = event.currentTarget;
-    const enabled = checkbox.checked;
-    
-    if (!this.currentSceneId) return;
-    
-    const scene = game.scenes.get(this.currentSceneId);
-    const settings = scene.getFlag(MODULE_ID, 'sceneSettings') || {};
-    
-    settings.autoSwitch = enabled;
-    
-    await scene.setFlag(MODULE_ID, 'sceneSettings', settings);
-    
-    ui.notifications.info(`Auto-switch ${enabled ? 'enabled' : 'disabled'} for ${scene.name}`);
-    
-    console.log(`${MODULE_ID} | Auto-switch ${enabled ? 'enabled' : 'disabled'} for scene ${scene.name}`);
-    
-    // NO re-render needed!
-  }
-
-  /**
-   * Handle set preferred network
-   * @param {Event} event
-   * @private
-   */
-  async _onSetPreferredNetwork(event) {
-    const select = event.currentTarget;
-    const networkId = select.value;
-    
-    if (!this.currentSceneId) return;
-    
-    const scene = game.scenes.get(this.currentSceneId);
-    const settings = scene.getFlag(MODULE_ID, 'sceneSettings') || {};
-    
-    settings.preferredNetwork = networkId || null;
-    
-    await scene.setFlag(MODULE_ID, 'sceneSettings', settings);
-    
-    if (networkId) {
-      const network = await this.networkStorage.getNetwork(networkId);
-      ui.notifications.info(`Preferred network set to ${network?.name || networkId} for ${scene.name}`);
-    } else {
-      ui.notifications.info(`Preferred network set to Auto for ${scene.name}`);
-    }
-    
-    console.log(`${MODULE_ID} | Preferred network set to ${networkId || 'Auto'} for scene ${scene.name}`);
-    
-    // NO re-render needed!
-  }
-
-  /**
    * Handle signal strength slider change
    * @param {Event} event
    * @private
@@ -1414,6 +1366,68 @@ export class NetworkManagementApp extends Application {
       console.error(`${MODULE_ID} | Error triggering event:`, error);
       ui.notifications.error(`Failed to trigger event`);
     }
+  }
+
+  /**
+   * Handle save scene settings button click
+   * @param {Event} event
+   * @private
+   */
+  async _onSaveSceneSettings(event) {
+    event.preventDefault();
+    
+    if (!this.currentSceneId) return;
+    
+    const scene = game.scenes.get(this.currentSceneId);
+    const html = $(event.currentTarget).closest('.ncm-app');
+    
+    const sceneSettings = {
+      autoSwitch: html.find('#scene-auto-switch').is(':checked'),
+      preferredNetwork: html.find('#scene-preferred-network').val() || null
+    };
+    
+    await scene.setFlag(MODULE_ID, 'sceneSettings', sceneSettings);
+    
+    ui.notifications.info(`Scene settings saved for ${scene.name}`);
+    
+    // Clear cache and refresh
+    this._scenes = null;
+    this.render(false);
+  }
+
+  /**
+   * Handle reset scene settings button click
+   * @param {Event} event
+   * @private
+   */
+  async _onResetSceneSettings(event) {
+    event.preventDefault();
+    
+    if (!this.currentSceneId) return;
+    
+    const scene = game.scenes.get(this.currentSceneId);
+    
+    const confirmed = await Dialog.confirm({
+      title: "Reset Scene Settings",
+      content: `<p>Reset scene settings for <strong>${scene.name}</strong> to defaults?</p>`,
+      yes: () => true,
+      no: () => false
+    });
+    
+    if (!confirmed) return;
+    
+    const defaultSettings = {
+      autoSwitch: true,
+      preferredNetwork: null
+    };
+    
+    await scene.setFlag(MODULE_ID, 'sceneSettings', defaultSettings);
+    
+    ui.notifications.info(`Scene settings reset for ${scene.name}`);
+    
+    // Clear cache and refresh
+    this._scenes = null;
+    this.render(false);
   }
   
   /* -------------------------------------------- */

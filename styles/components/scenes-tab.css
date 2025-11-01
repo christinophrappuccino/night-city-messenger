@@ -40,6 +40,19 @@
   flex: 1;
 }
 
+/* Scene Settings Actions */
+.ncm-scene-settings__actions {
+  display: flex;
+  gap: var(--ncm-spacing-sm);
+  margin-top: var(--ncm-spacing-lg);
+  padding-top: var(--ncm-spacing-lg);
+  border-top: 1px solid var(--ncm-border-tertiary);
+}
+
+.ncm-scene-settings__actions .ncm-btn {
+  flex: 1;
+}
+
 /* ============================================
    SCENE INFO
    ============================================ */
