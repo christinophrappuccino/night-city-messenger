@@ -1002,24 +1002,46 @@ export class NetworkManagementApp extends Application {
     if (!this.currentSceneId) return;
     
     const scene = game.scenes.get(this.currentSceneId);
-    const networks = scene.getFlag(MODULE_ID, 'networks') || {};
+    const sceneNetworks = scene.getFlag(MODULE_ID, 'networks') || {};
     
     // Get all networks from storage
     const allNetworks = await this.networkStorage.getAllNetworks();
     
+    let updated = 0;
+    
     for (const network of allNetworks) {
-      if (!networks[network.id]) networks[network.id] = {};
-      networks[network.id].available = true;
-      if (!networks[network.id].signalStrength) {
-        networks[network.id].signalStrength = 100;
+      // Update scene flag
+      if (!sceneNetworks[network.id]) sceneNetworks[network.id] = {};
+      sceneNetworks[network.id].available = true;
+      if (!sceneNetworks[network.id].signalStrength) {
+        sceneNetworks[network.id].signalStrength = 100;
+      }
+      
+      // ✨ NEW: Update network availability array (if not global)
+      if (!network.availability.global) {
+        const scenes = network.availability.scenes || [];
+        if (!scenes.includes(scene.id)) {
+          scenes.push(scene.id);
+          network.availability.scenes = scenes;
+          await this.networkStorage.updateNetwork(network.id, network);
+          updated++;
+        }
       }
     }
     
-    await scene.setFlag(MODULE_ID, 'networks', networks);
+    await scene.setFlag(MODULE_ID, 'networks', sceneNetworks);
     
     ui.notifications.info(`Enabled all networks for ${scene.name}`);
+    
     this._scenes = null;
+    this._networks = null;
     this.render(false);
+    
+    // Emit hook
+    Hooks.callAll('cyberpunkred-messenger.networkAvailabilityChanged', {
+      sceneId: scene.id,
+      bulk: true
+    });
   }
 
   /**
@@ -1033,21 +1055,44 @@ export class NetworkManagementApp extends Application {
     if (!this.currentSceneId) return;
     
     const scene = game.scenes.get(this.currentSceneId);
-    const networks = scene.getFlag(MODULE_ID, 'networks') || {};
+    const sceneNetworks = scene.getFlag(MODULE_ID, 'networks') || {};
     
     // Get all networks from storage
     const allNetworks = await this.networkStorage.getAllNetworks();
     
+    let updated = 0;
+    
     for (const network of allNetworks) {
-      if (!networks[network.id]) networks[network.id] = {};
-      networks[network.id].available = false;
+      // Update scene flag
+      if (!sceneNetworks[network.id]) sceneNetworks[network.id] = {};
+      sceneNetworks[network.id].available = false;
+      
+      // ✨ NEW: Update network availability array (if not global)
+      if (!network.availability.global) {
+        const scenes = network.availability.scenes || [];
+        const index = scenes.indexOf(scene.id);
+        if (index > -1) {
+          scenes.splice(index, 1);
+          network.availability.scenes = scenes;
+          await this.networkStorage.updateNetwork(network.id, network);
+          updated++;
+        }
+      }
     }
     
-    await scene.setFlag(MODULE_ID, 'networks', networks);
+    await scene.setFlag(MODULE_ID, 'networks', sceneNetworks);
     
     ui.notifications.info(`Disabled all networks for ${scene.name}`);
+    
     this._scenes = null;
+    this._networks = null;
     this.render(false);
+    
+    // Emit hook
+    Hooks.callAll('cyberpunkred-messenger.networkAvailabilityChanged', {
+      sceneId: scene.id,
+      bulk: true
+    });
   }
 
   /**
@@ -1065,39 +1110,77 @@ export class NetworkManagementApp extends Application {
     if (!this.currentSceneId) return;
     
     const scene = game.scenes.get(this.currentSceneId);
-    const networks = scene.getFlag(MODULE_ID, 'networks') || {};
     
-    if (!networks[networkId]) networks[networkId] = {};
-    networks[networkId].available = available;
+    // ============================================
+    // 1. Update SCENE FLAG (for UI and overrides)
+    // ============================================
+    const sceneNetworks = scene.getFlag(MODULE_ID, 'networks') || {};
+    
+    if (!sceneNetworks[networkId]) sceneNetworks[networkId] = {};
+    sceneNetworks[networkId].available = available;
     
     // Set default signal strength if enabling
-    if (available && !networks[networkId].signalStrength) {
-      networks[networkId].signalStrength = 100;
+    if (available && !sceneNetworks[networkId].signalStrength) {
+      sceneNetworks[networkId].signalStrength = 100;
     }
     
-    await scene.setFlag(MODULE_ID, 'networks', networks);
+    await scene.setFlag(MODULE_ID, 'networks', sceneNetworks);
     
-    console.log(`${MODULE_ID} | Network ${networkId} ${available ? 'enabled' : 'disabled'} for scene ${scene.name}`);
+    // ============================================
+    // 2. ✨ UPDATE NETWORK AVAILABILITY ARRAY
+    //    This makes it appear in NetworkSelector!
+    // ============================================
+    const network = await this.networkStorage.getNetwork(networkId);
     
-    // DON'T re-render the whole app - just toggle the card's disabled state
-    const card = checkbox.closest('.ncm-scene-network-card');
-    if (card) {
-      if (available) {
-        card.classList.remove('ncm-scene-network-card--disabled');
-        // Show the body
-        const body = card.querySelector('.ncm-scene-network-card__body');
-        const disabled = card.querySelector('.ncm-scene-network-card__disabled-state');
-        if (body) body.style.display = 'flex';
-        if (disabled) disabled.style.display = 'none';
-      } else {
-        card.classList.add('ncm-scene-network-card--disabled');
-        // Hide the body
-        const body = card.querySelector('.ncm-scene-network-card__body');
-        const disabled = card.querySelector('.ncm-scene-network-card__disabled-state');
-        if (body) body.style.display = 'none';
-        if (disabled) disabled.style.display = 'block';
+    if (network) {
+      // Don't modify global networks (they're always available everywhere)
+      if (!network.availability.global) {
+        const scenes = network.availability.scenes || [];
+        
+        if (available) {
+          // Add scene if not already in list
+          if (!scenes.includes(scene.id)) {
+            scenes.push(scene.id);
+            network.availability.scenes = scenes;
+            await this.networkStorage.updateNetwork(networkId, network);
+            console.log(`${MODULE_ID} | Added scene ${scene.name} to ${networkId} availability`);
+          }
+        } else {
+          // Remove scene from list
+          const index = scenes.indexOf(scene.id);
+          if (index > -1) {
+            scenes.splice(index, 1);
+            network.availability.scenes = scenes;
+            await this.networkStorage.updateNetwork(networkId, network);
+            console.log(`${MODULE_ID} | Removed scene ${scene.name} from ${networkId} availability`);
+          }
+        }
       }
     }
+    
+    // ============================================
+    // 3. REFRESH UI
+    // ============================================
+    this._scenes = null;
+    this._networks = null; // Clear network cache too
+    this.render(false);
+    
+    // ============================================
+    // 4. EMIT HOOK for NetworkSelector to refresh
+    // ============================================
+    Hooks.callAll('cyberpunkred-messenger.networkAvailabilityChanged', {
+      networkId,
+      sceneId: scene.id,
+      available
+    });
+    
+    // ============================================
+    // 5. USER FEEDBACK
+    // ============================================
+    const statusText = available ? 'enabled' : 'disabled';
+    ui.notifications.info(`${networkId} ${statusText} for ${scene.name}`);
+    
+    console.log(`${MODULE_ID} | Network ${networkId} ${statusText} for scene ${scene.name}`);
   }
 
   /**

@@ -17,8 +17,19 @@ export class NetworkSelectorApp extends Application {
     this.cachedNetworks = null;
     this.cacheTimestamp = 0;
     this.CACHE_DURATION = 30000;
-    
     this._subscribeToEvents();
+
+    // Listen for availability changes and refresh
+    Hooks.on('cyberpunkred-messenger.networkAvailabilityChanged', () => {
+      // Clear cache
+      this.cachedNetworks = null;
+      this.cacheTimestamp = 0;
+      
+      // Re-render if open
+      if (this.rendered) {
+        this.render(false);
+      }
+    });
   }
 
   static get defaultOptions() {
@@ -44,6 +55,13 @@ export class NetworkSelectorApp extends Application {
     eventBus.on('network:authentication:failed', () => this._onAuthFailed());
     
     Hooks.on('canvasReady', () => this._onSceneChanged());
+    
+    Hooks.on('cyberpunkred-messenger.networkAvailabilityChanged', () => {
+      console.log('NCM | Network availability changed, clearing cache');
+      this.cachedNetworks = null;
+      this.cacheTimestamp = 0;
+      if (this.rendered) this.render(false);
+    });
   }
 
   async getData() {
