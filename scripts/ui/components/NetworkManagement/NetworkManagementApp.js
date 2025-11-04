@@ -396,7 +396,15 @@ export class NetworkManagementApp extends Application {
       network: network,
       onSave: async (networkData) => {
         try {
+          // ============================================
+          // 1. Update network object
+          // ============================================
           await this.networkStorage.updateNetwork(networkId, networkData);
+          
+          // ============================================
+          // 2.  Sync scene flags to match
+          // ============================================
+          await this._syncSceneFlagsFromNetwork(networkId, networkData);
           
           ui.notifications.info(`Network "${networkData.name}" updated`);
           
@@ -409,6 +417,14 @@ export class NetworkManagementApp extends Application {
             });
           }
           
+          // ============================================
+          // 3. Emit hook for NetworkSelector
+          // ============================================
+          Hooks.callAll('cyberpunkred-messenger.networkAvailabilityChanged', {
+            networkId,
+            source: 'network-editor'
+          });
+          
           this._networks = null;
           this.render(false);
         } catch (error) {
@@ -417,6 +433,50 @@ export class NetworkManagementApp extends Application {
         }
       }
     }).render(true);
+  }
+
+  /**
+   * Sync scene flags to match network availability
+   * When a network is edited in Network Editor, update all scene flags
+   * @private
+   */
+  async _syncSceneFlagsFromNetwork(networkId, networkData) {
+    console.log(`${MODULE_ID} | Syncing scene flags for ${networkId}`);
+    
+    const availability = networkData.availability;
+    
+    if (availability.global) {
+      // Global network - ensure all scenes have it enabled
+      for (const scene of game.scenes) {
+        const sceneNetworks = scene.getFlag(MODULE_ID, 'networks') || {};
+        if (!sceneNetworks[networkId]) sceneNetworks[networkId] = {};
+        sceneNetworks[networkId].available = true;
+        if (!sceneNetworks[networkId].signalStrength) {
+          sceneNetworks[networkId].signalStrength = 100;
+        }
+        await scene.setFlag(MODULE_ID, 'networks', sceneNetworks);
+      }
+      console.log(`${MODULE_ID} | ✅ Synced global network to all scenes`);
+    } else {
+      // Scene-specific network
+      const selectedScenes = availability.scenes || [];
+      
+      for (const scene of game.scenes) {
+        const sceneNetworks = scene.getFlag(MODULE_ID, 'networks') || {};
+        if (!sceneNetworks[networkId]) sceneNetworks[networkId] = {};
+        
+        // Set available based on whether scene is in array
+        sceneNetworks[networkId].available = selectedScenes.includes(scene.id);
+        
+        if (sceneNetworks[networkId].available && !sceneNetworks[networkId].signalStrength) {
+          sceneNetworks[networkId].signalStrength = 100;
+        }
+        
+        await scene.setFlag(MODULE_ID, 'networks', sceneNetworks);
+      }
+      
+      console.log(`${MODULE_ID} | ✅ Synced network to ${selectedScenes.length} scene(s)`);
+    }
   }
   
   async _onDuplicateNetwork(event) {

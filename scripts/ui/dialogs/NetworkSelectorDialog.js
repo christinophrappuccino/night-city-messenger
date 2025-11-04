@@ -32,13 +32,18 @@ export class NetworkSelectorDialog {
       return;
     }
     
+    // fetch fresh networks before rendering
+    console.log(`${MODULE_ID} | NetworkSelectorDialog: Fetching fresh networks...`);
+    await networkManager.scanNetworks();
+    
     // Get current status
     const currentStatus = networkManager.getNetworkStatus() || {};
     
-    // CRITICAL: Await the networks array
+    // Get networks (should be fresh now)
     const networks = await networkManager.getAvailableNetworks() || [];
     
-    console.log(`${MODULE_ID} | Found ${networks.length} networks`, networks);
+    console.log(`${MODULE_ID} | NetworkSelectorDialog: Found ${networks.length} networks`);
+    console.log(`${MODULE_ID} | Network IDs:`, networks.map(n => n.id));
     
     // Build network list HTML
     const networkListHTML = networks.map(network => {
