@@ -1007,8 +1007,6 @@ export class NetworkManagementApp extends Application {
     // Get all networks from storage
     const allNetworks = await this.networkStorage.getAllNetworks();
     
-    let updated = 0;
-    
     for (const network of allNetworks) {
       // Update scene flag
       if (!sceneNetworks[network.id]) sceneNetworks[network.id] = {};
@@ -1017,19 +1015,20 @@ export class NetworkManagementApp extends Application {
         sceneNetworks[network.id].signalStrength = 100;
       }
       
-      // ✨ NEW: Update network availability array (if not global)
+      // ✨ FIX: Update network availability array (if not global)
       if (!network.availability.global) {
-        const scenes = network.availability.scenes || [];
-        if (!scenes.includes(scene.id)) {
-          scenes.push(scene.id);
-          network.availability.scenes = scenes;
-          await this.networkStorage.updateNetwork(network.id, network);
-          updated++;
+        if (!network.availability.scenes) {
+          network.availability.scenes = [];
+        }
+        if (!network.availability.scenes.includes(scene.id)) {
+          network.availability.scenes.push(scene.id);
         }
       }
     }
     
+    // Save everything
     await scene.setFlag(MODULE_ID, 'networks', sceneNetworks);
+    await game.settings.set(MODULE_ID, 'customNetworks', allNetworks);
     
     ui.notifications.info(`Enabled all networks for ${scene.name}`);
     
@@ -1060,27 +1059,26 @@ export class NetworkManagementApp extends Application {
     // Get all networks from storage
     const allNetworks = await this.networkStorage.getAllNetworks();
     
-    let updated = 0;
-    
     for (const network of allNetworks) {
       // Update scene flag
       if (!sceneNetworks[network.id]) sceneNetworks[network.id] = {};
       sceneNetworks[network.id].available = false;
       
-      // ✨ NEW: Update network availability array (if not global)
+      // ✨ FIX: Update network availability array (if not global)
       if (!network.availability.global) {
-        const scenes = network.availability.scenes || [];
-        const index = scenes.indexOf(scene.id);
+        if (!network.availability.scenes) {
+          network.availability.scenes = [];
+        }
+        const index = network.availability.scenes.indexOf(scene.id);
         if (index > -1) {
-          scenes.splice(index, 1);
-          network.availability.scenes = scenes;
-          await this.networkStorage.updateNetwork(network.id, network);
-          updated++;
+          network.availability.scenes.splice(index, 1);
         }
       }
     }
     
+    // Save everything
     await scene.setFlag(MODULE_ID, 'networks', sceneNetworks);
+    await game.settings.set(MODULE_ID, 'customNetworks', allNetworks);
     
     ui.notifications.info(`Disabled all networks for ${scene.name}`);
     
@@ -1111,6 +1109,8 @@ export class NetworkManagementApp extends Application {
     
     const scene = game.scenes.get(this.currentSceneId);
     
+    console.log(`${MODULE_ID} | Toggle ${networkId} to ${available ? 'ON' : 'OFF'} for scene ${scene.name}`);
+    
     // ============================================
     // 1. Update SCENE FLAG (for UI and overrides)
     // ============================================
@@ -1125,44 +1125,57 @@ export class NetworkManagementApp extends Application {
     }
     
     await scene.setFlag(MODULE_ID, 'networks', sceneNetworks);
+    console.log(`${MODULE_ID} | ✅ Scene flag updated`);
     
     // ============================================
-    // 2. ✨ UPDATE NETWORK AVAILABILITY ARRAY
-    //    This makes it appear in NetworkSelector!
+    // 2. ✨ FIX: Update NETWORK AVAILABILITY ARRAY
+    //    Directly modify the settings array
     // ============================================
-    const network = await this.networkStorage.getNetwork(networkId);
+    const allNetworks = await this.networkStorage.getAllNetworks();
+    const networkIndex = allNetworks.findIndex(n => n.id === networkId);
     
-    if (network) {
+    if (networkIndex !== -1) {
+      const network = allNetworks[networkIndex];
+      
       // Don't modify global networks (they're always available everywhere)
       if (!network.availability.global) {
-        const scenes = network.availability.scenes || [];
+        // Initialize scenes array if it doesn't exist
+        if (!network.availability.scenes) {
+          network.availability.scenes = [];
+        }
         
         if (available) {
           // Add scene if not already in list
-          if (!scenes.includes(scene.id)) {
-            scenes.push(scene.id);
-            network.availability.scenes = scenes;
-            await this.networkStorage.updateNetwork(networkId, network);
-            console.log(`${MODULE_ID} | Added scene ${scene.name} to ${networkId} availability`);
+          if (!network.availability.scenes.includes(scene.id)) {
+            network.availability.scenes.push(scene.id);
+            console.log(`${MODULE_ID} | ✅ Added scene ${scene.name} (${scene.id}) to ${networkId} availability`);
+          } else {
+            console.log(`${MODULE_ID} | Scene already in availability array`);
           }
         } else {
           // Remove scene from list
-          const index = scenes.indexOf(scene.id);
+          const index = network.availability.scenes.indexOf(scene.id);
           if (index > -1) {
-            scenes.splice(index, 1);
-            network.availability.scenes = scenes;
-            await this.networkStorage.updateNetwork(networkId, network);
-            console.log(`${MODULE_ID} | Removed scene ${scene.name} from ${networkId} availability`);
+            network.availability.scenes.splice(index, 1);
+            console.log(`${MODULE_ID} | ✅ Removed scene ${scene.name} (${scene.id}) from ${networkId} availability`);
           }
         }
+        
+        // ✨ CRITICAL: Save the entire networks array back to settings
+        await game.settings.set(MODULE_ID, 'customNetworks', allNetworks);
+        console.log(`${MODULE_ID} | ✅ Settings saved. ${networkId}.availability.scenes =`, network.availability.scenes);
+      } else {
+        console.log(`${MODULE_ID} | ${networkId} is global, skipping scenes array update`);
       }
+    } else {
+      console.warn(`${MODULE_ID} | ⚠️ Network ${networkId} not found in storage`);
     }
     
     // ============================================
     // 3. REFRESH UI
     // ============================================
     this._scenes = null;
-    this._networks = null; // Clear network cache too
+    this._networks = null;
     this.render(false);
     
     // ============================================
@@ -1173,6 +1186,7 @@ export class NetworkManagementApp extends Application {
       sceneId: scene.id,
       available
     });
+    console.log(`${MODULE_ID} | ✅ Hook emitted`);
     
     // ============================================
     // 5. USER FEEDBACK
@@ -1180,7 +1194,14 @@ export class NetworkManagementApp extends Application {
     const statusText = available ? 'enabled' : 'disabled';
     ui.notifications.info(`${networkId} ${statusText} for ${scene.name}`);
     
-    console.log(`${MODULE_ID} | Network ${networkId} ${statusText} for scene ${scene.name}`);
+    // ============================================
+    // 6. VERIFY IT WORKED (diagnostic log)
+    // ============================================
+    setTimeout(async () => {
+      const verify = await this.networkStorage.getNetwork(networkId);
+      console.log(`${MODULE_ID} | VERIFICATION: ${networkId}.availability.scenes =`, verify.availability.scenes);
+      console.log(`${MODULE_ID} | Scene ${scene.id} in array?`, verify.availability.scenes.includes(scene.id));
+    }, 500);
   }
 
   /**
