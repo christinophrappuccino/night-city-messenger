@@ -1,68 +1,62 @@
-{{!-- Scenes Tab - Network availability per scene --}}
+{{!-- Scenes Tab - Scene-Based Network Configuration --}}
+{{!-- FIXED VERSION: Uses sceneNetworks instead of networks --}}
 <div class="ncm-scenes-tab">
   
   {{!-- Toolbar --}}
   <div class="ncm-scenes-tab__toolbar">
     <div class="ncm-scenes-tab__toolbar-left">
-      <div class="ncm-form-group ncm-form-group--inline">
-        <label class="ncm-label">
-          <i class="fas fa-map-marker-alt"></i> Scene:
-        </label>
-        <select class="ncm-select ncm-scene-selector" 
-                id="scene-selector" 
-                data-action="select-scene">
-          <option value="">-- Select a scene --</option>
-          {{#each scenes}}
-            <option value="{{this.id}}" 
-                    {{#if (eq this.id ../currentScene.id)}}selected{{/if}}>
-              {{this.name}}
-            </option>
-          {{/each}}
-        </select>
-      </div>
+      <label for="scene-selector" class="ncm-label">
+        <i class="fas fa-map-marked-alt"></i> Scene:
+      </label>
+      <select id="scene-selector" class="ncm-select ncm-scene-selector">
+        <option value="">-- Select Scene --</option>
+        {{#each scenes}}
+          <option value="{{this.id}}" 
+                  {{#if (eq this.id ../currentSceneId)}}selected{{/if}}>
+            {{this.name}} {{#if this.active}}(Active){{/if}}
+          </option>
+        {{/each}}
+      </select>
+      
+      {{#if currentScene}}
+        <button class="ncm-btn ncm-btn--secondary ncm-btn--sm" data-action="configure-scene">
+          <i class="fas fa-cog"></i> Configure
+        </button>
+      {{/if}}
     </div>
     
-    {{#if currentScene}}
-      <div class="ncm-scenes-tab__toolbar-right">
-        <button class="ncm-btn ncm-btn--secondary ncm-btn--sm" 
-                data-action="copy-to-scenes"
-                title="Copy this scene's network configuration to other scenes">
-          <i class="fas fa-copy"></i> Copy Config To...
+    <div class="ncm-scenes-tab__toolbar-right">
+      {{#if currentScene}}
+        <button class="ncm-btn ncm-btn--secondary ncm-btn--sm" data-action="copy-to-scenes">
+          <i class="fas fa-copy"></i> Copy To Scenes
         </button>
-        <button class="ncm-btn ncm-btn--secondary ncm-btn--sm" 
-                data-action="apply-template"
-                title="Apply a preset template to this scene">
+        <button class="ncm-btn ncm-btn--secondary ncm-btn--sm" data-action="apply-template">
           <i class="fas fa-magic"></i> Apply Template
         </button>
-        <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" 
-                data-action="reset-scene"
-                title="Reset all networks to default configuration">
-          <i class="fas fa-undo"></i> Reset Scene
+        <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="reset-scene">
+          <i class="fas fa-undo"></i> Reset
         </button>
-      </div>
-    {{/if}}
+      {{/if}}
+    </div>
   </div>
   
-  {{!-- Scene Content --}}
   {{#if currentScene}}
-    
-    {{!-- Scene Info Card --}}
+    {{!-- Scene Info --}}
     <div class="ncm-scene-info">
       <div class="ncm-scene-info__header">
         <h3 class="ncm-scene-info__title">
-          <i class="fas fa-map-marked-alt"></i> {{currentScene.name}}
+          <i class="fas fa-map-marker-alt ncm-glow"></i>
+          {{currentScene.name}}
         </h3>
-        <div class="ncm-scene-info__actions">
-          <button class="ncm-btn ncm-btn--ghost ncm-btn--xs" 
-                  data-action="enable-all"
-                  title="Enable all networks for this scene">
-            <i class="fas fa-toggle-on"></i> Enable All
-          </button>
-          <button class="ncm-btn ncm-btn--ghost ncm-btn--xs" 
-                  data-action="disable-all"
-                  title="Disable all networks for this scene">
-            <i class="fas fa-toggle-off"></i> Disable All
-          </button>
+        <div class="ncm-scene-info__meta">
+          {{#if currentScene.active}}
+            <span class="ncm-badge ncm-badge--success">
+              <i class="fas fa-check-circle"></i> Active Scene
+            </span>
+          {{/if}}
+          <span class="ncm-scene-info__dimension">
+            {{currentScene.width}} × {{currentScene.height}}
+          </span>
         </div>
       </div>
     </div>
@@ -72,24 +66,38 @@
       <div class="ncm-network-grid__header">
         <h4 class="ncm-section-title">
           <i class="fas fa-network-wired"></i>
-          Network Availability
+          Available Networks
         </h4>
-        <p class="ncm-hint">
-          Configure which networks are available in this scene and their signal strength
-        </p>
+        <div class="ncm-network-grid__actions">
+          <button class="ncm-btn ncm-btn--ghost ncm-btn--xs" data-action="enable-all">
+            <i class="fas fa-check-double"></i> Enable All
+          </button>
+          <button class="ncm-btn ncm-btn--ghost ncm-btn--xs" data-action="disable-all">
+            <i class="fas fa-ban"></i> Disable All
+          </button>
+        </div>
       </div>
       
-      <div class="ncm-network-cards">
-        {{#each sceneNetworks}}
-          {{> "modules/cyberpunkred-messenger/templates/network-management/partials/scene-network-card.hbs"}}
-        {{/each}}
-      </div>
+      {{!-- FIXED: Use sceneNetworks instead of networks --}}
+      {{#if sceneNetworks.length}}
+        <div class="ncm-network-cards">
+          {{#each sceneNetworks}}
+            {{> "modules/cyberpunkred-messenger/templates/network-management/partials/scene-network-card.hbs" this}}
+          {{/each}}
+        </div>
+      {{else}}
+        <div class="ncm-empty-state">
+          <i class="fas fa-network-wired ncm-empty-state__icon"></i>
+          <p class="ncm-empty-state__text">No networks available</p>
+          <p class="ncm-empty-state__hint">Create networks in the Networks tab first</p>
+        </div>
+      {{/if}}
     </div>
     
-    {{!-- Scene Settings --}}
+    {{!-- Auto-Switch Settings --}}
     <div class="ncm-scene-settings">
       <h4 class="ncm-section-title">
-        <i class="fas fa-cog"></i>
+        <i class="fas fa-exchange-alt"></i>
         Scene Settings
       </h4>
       
@@ -101,7 +109,7 @@
         <div class="ncm-setting-row__control">
           <label class="ncm-toggle">
             <input type="checkbox" 
-                   id="scene-auto-switch"
+                   data-action="toggle-auto-switch" 
                    {{#if sceneSettings.autoSwitch}}checked{{/if}}>
             <span class="ncm-toggle__slider"></span>
           </label>
@@ -114,7 +122,8 @@
           <p class="ncm-hint">If multiple networks available, prefer this one</p>
         </div>
         <div class="ncm-setting-row__control">
-          <select class="ncm-select" id="scene-preferred-network">
+          {{!-- FIXED: Use sceneNetworks for dropdown, sceneSettings for selected value --}}
+          <select class="ncm-select" data-action="set-preferred-network">
             <option value="">Auto (Strongest)</option>
             {{#each sceneNetworks}}
               <option value="{{this.id}}" 
@@ -124,18 +133,6 @@
             {{/each}}
           </select>
         </div>
-      </div>
-      
-      {{!-- Save/Reset Actions --}}
-      <div class="ncm-scene-settings__actions">
-        <button class="ncm-btn ncm-btn--primary" 
-                data-action="save-scene-settings">
-          <i class="fas fa-save"></i> Save Scene Settings
-        </button>
-        <button class="ncm-btn ncm-btn--ghost" 
-                data-action="reset-scene-settings">
-          <i class="fas fa-undo"></i> Reset to Defaults
-        </button>
       </div>
     </div>
     

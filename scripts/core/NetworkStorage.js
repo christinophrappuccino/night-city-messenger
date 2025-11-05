@@ -57,29 +57,12 @@ export class NetworkStorage {
       throw new Error(`Network not found: ${networkId}`);
     }
     
-    const currentNetwork = networks[index];
-    
-    // Handle availability.scenes array specially
-    if (updates.availability?.scenes !== undefined) {
-      // Replace the scenes array entirely (don't merge)
-      if (!currentNetwork.availability) {
-        currentNetwork.availability = { global: false, scenes: [] };
-      }
-      currentNetwork.availability.scenes = [...updates.availability.scenes];
-      currentNetwork.availability.global = updates.availability.global ?? currentNetwork.availability.global;
-      
-      // Remove availability from updates to avoid double-merge
-      const { availability, ...otherUpdates } = updates;
-      networks[index] = foundry.utils.mergeObject(currentNetwork, otherUpdates);
-    } else {
-      // Normal merge for other properties
-      networks[index] = foundry.utils.mergeObject(currentNetwork, updates);
-    }
+    // Merge updates
+    networks[index] = foundry.utils.mergeObject(networks[index], updates);
     
     await game.settings.set(MODULE_ID, 'customNetworks', networks);
     
-    console.log(`${MODULE_ID} | ✅ Updated network: ${networkId}`);
-    console.log(`${MODULE_ID} | availability.scenes =`, networks[index].availability.scenes);
+    console.log(`${MODULE_ID} | Updated network: ${networkId}`);
     
     // Emit event
     Hooks.call('ncm.networkUpdated', networks[index]);
