@@ -1,15 +1,12 @@
 /**
- * Network Management Application - Streamlined UI
+ * Network Management Application - Compatible with Static NetworkStorage
  * File: scripts/ui/components/NetworkManagement/NetworkManagementApp.js
  * Module: cyberpunkred-messenger
  * 
- * SIMPLIFIED ARCHITECTURE:
- * - Network Tab: Define network properties (name, type, security, theme, defaultHidden)
- * - Scene Tab: Configure where networks are available (AUTHORITATIVE)
- * - No more dual configuration - clear separation of concerns
+ * FIXED: Works with static NetworkStorage class (not instance)
  */
 
-import { MODULE_ID } from '../../../constants.js';
+import { MODULE_ID } from '../../../utils/constants.js';
 
 export class NetworkManagementApp extends Application {
   constructor(options = {}) {
@@ -17,359 +14,434 @@ export class NetworkManagementApp extends Application {
     
     this.activeTab = 'networks';
     this.selectedScene = game.scenes.current?.id || null;
+    this.selectedNetworks = new Set();
+    this.filterText = '';
+    this.sortBy = 'name';
+    this.sortDir = 'asc';
+    this.currentSceneId = null;
+    
+    // Cache
+    this._networks = null;
+    this._scenes = null;
   }
 
   static get defaultOptions() {
     return foundry.utils.mergeObject(super.defaultOptions, {
-      id: 'network-management',
-      classes: ['cyberpunkred-messenger', 'network-management'],
-      template: 'modules/cyberpunkred-messenger/templates/network-management/network-management.hbs',
-      width: 800,
-      height: 600,
+      id: 'ncm-network-management',
+      template: `modules/${MODULE_ID}/templates/network-management/network-management.hbs`,
+      classes: ['ncm-app', 'ncm-network-management'],
+      width: 1000,
+      height: 700,
+      title: '🌐 Network Management',
       resizable: true,
-      title: 'Network Management',
-      tabs: [
-        {
-          navSelector: '.tabs',
-          contentSelector: '.tab-content',
-          initial: 'networks'
-        }
-      ]
+      minimizable: true,
+      tabs: [{
+        navSelector: '.tabs',
+        contentSelector: '.tab-content',
+        initial: 'networks'
+      }]
     });
   }
 
   async getData() {
     const data = await super.getData();
-    const storage = game.nightcity.messenger.networkStorage;
     
-    // Get all networks
-    const networks = storage.getAllNetworks();
+    // Import NetworkStorage statically
+    const { NetworkStorage } = await import('../../../core/NetworkStorage.js');
     
-    // Get selected scene
-    const scene = game.scenes.get(this.selectedScene) || game.scenes.current;
-    const sceneNetworks = scene?.getFlag(MODULE_ID, 'networks') || {};
+    // Get networks using static method
+    const allNetworks = await NetworkStorage.getAllNetworks();
+    
+    // Get current scene
+    let currentScene = null;
+    let sceneNetworks = [];
+    
+    if (this.currentSceneId) {
+      const scene = game.scenes.get(this.currentSceneId);
+      if (scene) {
+        const sceneNetworkConfig = scene.getFlag(MODULE_ID, 'networks') || {};
+        
+        currentScene = {
+          id: scene.id,
+          name: scene.name,
+          active: scene.active
+        };
+        
+        sceneNetworks = allNetworks.map(network => {
+          const config = sceneNetworkConfig[network.id] || {
+            available: false,
+            signalStrength: 100,
+            override: null
+          };
+          
+          return {
+            ...network,
+            sceneConfig: config
+          };
+        });
+      }
+    }
+    
+    // Filter networks for Networks tab
+    let filteredNetworks = allNetworks;
+    if (this.filterText) {
+      const filter = this.filterText.toLowerCase();
+      filteredNetworks = allNetworks.filter(n => 
+        n.name.toLowerCase().includes(filter) ||
+        n.id.toLowerCase().includes(filter) ||
+        n.type.toLowerCase().includes(filter)
+      );
+    }
+    
+    // Sort networks
+    filteredNetworks.sort((a, b) => {
+      let aVal, bVal;
+      switch(this.sortBy) {
+        case 'type':
+          aVal = a.type;
+          bVal = b.type;
+          break;
+        case 'security':
+          aVal = a.security?.level || 'NONE';
+          bVal = b.security?.level || 'NONE';
+          break;
+        default:
+          aVal = a.name;
+          bVal = b.name;
+      }
+      
+      const comparison = aVal < bVal ? -1 : (aVal > bVal ? 1 : 0);
+      return this.sortDir === 'asc' ? comparison : -comparison;
+    });
     
     return {
       ...data,
       activeTab: this.activeTab,
-      networks: networks.map(network => ({
-        ...network,
-        // Add configuration status for this scene
-        sceneConfig: sceneNetworks[network.id] || { available: false, signalStrength: 100 }
-      })),
+      networks: filteredNetworks,
+      selectedNetworks: Array.from(this.selectedNetworks),
+      filterText: this.filterText,
+      sortBy: this.sortBy,
+      sortDir: this.sortDir,
       scenes: game.scenes.map(s => ({
         id: s.id,
         name: s.name,
         active: s.active,
-        selected: s.id === this.selectedScene
+        selected: s.id === this.currentSceneId
       })),
-      selectedScene: scene,
-      selectedSceneId: this.selectedScene,
+      currentScene: currentScene,
+      currentSceneId: this.currentSceneId,
+      sceneNetworks: sceneNetworks,
       isGM: game.user.isGM
     };
   }
 
   activateListeners(html) {
     super.activateListeners(html);
-
-    // Tab switching
-    html.find('.tabs a').click(this._onTabChange.bind(this));
     
-    // Network Tab Actions
-    html.find('[data-action="create-network"]').click(this._onCreateNetwork.bind(this));
-    html.find('[data-action="edit-network"]').click(this._onEditNetwork.bind(this));
-    html.find('[data-action="delete-network"]').click(this._onDeleteNetwork.bind(this));
-    html.find('[data-action="duplicate-network"]').click(this._onDuplicateNetwork.bind(this));
-    html.find('[data-action="enable-in-scene"]').click(this._onEnableInCurrentScene.bind(this));
+    // Tab navigation
+    html.find('.tabs .item').click(this._onTabChange.bind(this));
     
-    // Scene Tab Actions
-    html.find('[data-action="select-scene"]').change(this._onSceneSelect.bind(this));
-    html.find('[data-action="toggle-network"]').click(this._onToggleNetwork.bind(this));
-    html.find('[data-action="adjust-signal"]').change(this._onAdjustSignal.bind(this));
-    html.find('[data-action="enable-all"]').click(this._onEnableAll.bind(this));
-    html.find('[data-action="disable-all"]').click(this._onDisableAll.bind(this));
-    html.find('[data-action="reset-scene"]').click(this._onResetScene.bind(this));
+    // Networks tab
+    html.find('.network-filter').on('input', this._onFilterChange.bind(this));
+    html.find('.network-sort').change(this._onSortChange.bind(this));
+    html.find('.create-network-btn').click(this._onCreateNetwork.bind(this));
+    html.find('.network-card').click(this._onNetworkClick.bind(this));
+    html.find('.network-checkbox').change(this._onNetworkSelect.bind(this));
+    html.find('.edit-network-btn').click(this._onEditNetwork.bind(this));
+    html.find('.duplicate-network-btn').click(this._onDuplicateNetwork.bind(this));
+    html.find('.delete-network-btn').click(this._onDeleteNetwork.bind(this));
+    
+    // Scenes tab
+    html.find('#scene-selector').change(this._onSceneSelect.bind(this));
+    html.find('[data-action="toggle-network-availability"]').change(this._onToggleNetworkAvailability.bind(this));
+    html.find('[data-action="update-signal-strength"]').on('input', this._onUpdateSignalStrength.bind(this));
+    html.find('[data-action="enable-all"]').click(this._onEnableAllNetworks.bind(this));
+    html.find('[data-action="disable-all"]').click(this._onDisableAllNetworks.bind(this));
   }
 
   /* -------------------------------------------- */
-  /*  Tab Management                              */
+  /*  Event Handlers                              */
   /* -------------------------------------------- */
 
   async _onTabChange(event) {
     event.preventDefault();
     const tab = event.currentTarget.dataset.tab;
     this.activeTab = tab;
+    
+    if (tab === 'scenes' && !this.currentSceneId && game.scenes.active) {
+      this.currentSceneId = game.scenes.active.id;
+    }
+    
     await this.render(false);
   }
 
-  /* -------------------------------------------- */
-  /*  Network Tab Actions                         */
-  /* -------------------------------------------- */
+  _onFilterChange(event) {
+    this.filterText = event.target.value;
+    this.render(false);
+  }
+
+  _onSortChange(event) {
+    const [sortBy, sortDir] = event.target.value.split('-');
+    this.sortBy = sortBy;
+    this.sortDir = sortDir;
+    this.render(false);
+  }
 
   async _onCreateNetwork(event) {
     event.preventDefault();
     
-    const { default: NetworkEditorDialog } = await import('../../dialogs/NetworkEditorDialog.js');
+    const { NetworkEditorDialog } = await import('../../dialogs/NetworkEditorDialog.js');
+    const { NetworkStorage } = await import('../../../core/NetworkStorage.js');
     
     new NetworkEditorDialog({
       mode: 'create',
       onSave: async (networkData) => {
-        const storage = game.nightcity.messenger.networkStorage;
-        await storage.createNetwork(networkData);
-        
-        // Optionally enable in current scene
-        if (networkData.enableInCurrentScene && game.scenes.current) {
-          const manager = game.nightcity.messenger.networkManager;
-          await manager.setNetworkAvailability(networkData.id, true, game.scenes.current);
+        try {
+          await NetworkStorage.createNetwork(networkData);
+          ui.notifications.info(`Network "${networkData.name}" created`);
+          this._networks = null;
+          this.render(false);
+        } catch (error) {
+          console.error(`${MODULE_ID} | Error creating network:`, error);
+          ui.notifications.error(`Failed to create network: ${error.message}`);
         }
-        
-        await this.render(false);
-        ui.notifications.info(`Network "${networkData.name}" created`);
       }
     }).render(true);
   }
 
+  _onNetworkClick(event) {
+    if (event.target.closest('.network-actions')) return;
+    const card = event.currentTarget;
+    card.classList.toggle('expanded');
+  }
+
+  _onNetworkSelect(event) {
+    const checkbox = event.currentTarget;
+    const networkId = checkbox.dataset.networkId;
+    
+    if (checkbox.checked) {
+      this.selectedNetworks.add(networkId);
+    } else {
+      this.selectedNetworks.delete(networkId);
+    }
+    
+    this.render(false);
+  }
+
   async _onEditNetwork(event) {
     event.preventDefault();
-    const networkId = event.currentTarget.closest('[data-network-id]').dataset.networkId;
-    const storage = game.nightcity.messenger.networkStorage;
-    const network = storage.getNetwork(networkId);
+    event.stopPropagation();
+    
+    const { NetworkStorage } = await import('../../../core/NetworkStorage.js');
+    const networkId = event.currentTarget.closest('.network-card').dataset.networkId;
+    const network = await NetworkStorage.getNetwork(networkId);
     
     if (!network) {
-      ui.notifications.error("Network not found");
+      ui.notifications.error('Network not found');
       return;
     }
-
-    const { default: NetworkEditorDialog } = await import('../../dialogs/NetworkEditorDialog.js');
+    
+    const { NetworkEditorDialog } = await import('../../dialogs/NetworkEditorDialog.js');
     
     new NetworkEditorDialog({
       mode: 'edit',
-      network: foundry.utils.deepClone(network),
+      network: network,
       onSave: async (networkData) => {
-        await storage.updateNetwork(networkId, networkData);
-        await this.render(false);
-        ui.notifications.info(`Network "${networkData.name}" updated`);
-        
-        // Trigger hook for UI updates
-        Hooks.callAll('cyberpunkred-messenger.networkUpdated', networkData);
+        try {
+          await NetworkStorage.updateNetwork(networkId, networkData);
+          ui.notifications.info(`Network "${networkData.name}" updated`);
+          this._networks = null;
+          this.render(false);
+        } catch (error) {
+          console.error(`${MODULE_ID} | Error updating network:`, error);
+          ui.notifications.error(`Failed to update network: ${error.message}`);
+        }
+      }
+    }).render(true);
+  }
+
+  async _onDuplicateNetwork(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    const { NetworkStorage } = await import('../../../core/NetworkStorage.js');
+    const networkId = event.currentTarget.closest('.network-card').dataset.networkId;
+    const network = await NetworkStorage.getNetwork(networkId);
+    
+    if (!network) {
+      ui.notifications.error('Network not found');
+      return;
+    }
+    
+    const duplicate = foundry.utils.duplicate(network);
+    duplicate.id = `${network.id}_COPY_${Date.now()}`;
+    duplicate.name = `${network.name} (Copy)`;
+    
+    const { NetworkEditorDialog } = await import('../../dialogs/NetworkEditorDialog.js');
+    
+    new NetworkEditorDialog({
+      mode: 'create',
+      network: duplicate,
+      onSave: async (networkData) => {
+        try {
+          await NetworkStorage.createNetwork(networkData);
+          ui.notifications.info(`Network "${networkData.name}" duplicated`);
+          this._networks = null;
+          this.render(false);
+        } catch (error) {
+          console.error(`${MODULE_ID} | Error duplicating network:`, error);
+          ui.notifications.error(`Failed to duplicate network: ${error.message}`);
+        }
       }
     }).render(true);
   }
 
   async _onDeleteNetwork(event) {
     event.preventDefault();
-    const networkId = event.currentTarget.closest('[data-network-id]').dataset.networkId;
-    const storage = game.nightcity.messenger.networkStorage;
-    const network = storage.getNetwork(networkId);
+    event.stopPropagation();
     
-    if (!network) return;
-
-    // Confirmation dialog
-    const confirm = await Dialog.confirm({
-      title: `Delete ${network.name}?`,
-      content: `<p>Are you sure you want to delete the network <strong>${network.name}</strong>?</p>
-                <p class="notification warning">This will also remove this network from all scene configurations.</p>`,
-      yes: () => true,
-      no: () => false
-    });
-
-    if (!confirm) return;
-
-    // Delete network
-    await storage.deleteNetwork(networkId);
+    const { NetworkStorage } = await import('../../../core/NetworkStorage.js');
+    const networkId = event.currentTarget.closest('.network-card').dataset.networkId;
+    const network = await NetworkStorage.getNetwork(networkId);
     
-    // Clean up scene flags
-    for (const scene of game.scenes) {
-      const sceneNetworks = scene.getFlag(MODULE_ID, 'networks') || {};
-      if (sceneNetworks[networkId]) {
-        delete sceneNetworks[networkId];
-        await scene.setFlag(MODULE_ID, 'networks', sceneNetworks);
-      }
-    }
-
-    await this.render(false);
-    ui.notifications.info(`Network "${network.name}" deleted`);
-  }
-
-  async _onDuplicateNetwork(event) {
-    event.preventDefault();
-    const networkId = event.currentTarget.closest('[data-network-id]').dataset.networkId;
-    const storage = game.nightcity.messenger.networkStorage;
-    const network = storage.getNetwork(networkId);
-    
-    if (!network) return;
-
-    // Create duplicate with new ID
-    const duplicate = foundry.utils.deepClone(network);
-    duplicate.id = foundry.utils.randomID();
-    duplicate.name = `${network.name} (Copy)`;
-    
-    await storage.createNetwork(duplicate);
-    await this.render(false);
-    ui.notifications.info(`Network duplicated as "${duplicate.name}"`);
-  }
-
-  async _onEnableInCurrentScene(event) {
-    event.preventDefault();
-    const networkId = event.currentTarget.closest('[data-network-id]').dataset.networkId;
-    const scene = game.scenes.current;
-    
-    if (!scene) {
-      ui.notifications.warn("No active scene");
+    if (!network) {
+      ui.notifications.error('Network not found');
       return;
     }
-
-    const manager = game.nightcity.messenger.networkManager;
-    await manager.setNetworkAvailability(networkId, true, scene);
     
-    const network = game.nightcity.messenger.networkStorage.getNetwork(networkId);
-    ui.notifications.info(`${network.name} enabled in ${scene.name}`);
-    
-    await this.render(false);
-  }
-
-  /* -------------------------------------------- */
-  /*  Scene Tab Actions                           */
-  /* -------------------------------------------- */
-
-  async _onSceneSelect(event) {
-    event.preventDefault();
-    this.selectedScene = event.target.value;
-    await this.render(false);
-  }
-
-  async _onToggleNetwork(event) {
-    event.preventDefault();
-    const networkId = event.currentTarget.dataset.networkId;
-    const scene = game.scenes.get(this.selectedScene);
-    
-    if (!scene) return;
-
-    const sceneNetworks = scene.getFlag(MODULE_ID, 'networks') || {};
-    const current = sceneNetworks[networkId]?.available || false;
-    
-    const manager = game.nightcity.messenger.networkManager;
-    await manager.setNetworkAvailability(networkId, !current, scene);
-    
-    await this.render(false);
-  }
-
-  async _onAdjustSignal(event) {
-    event.preventDefault();
-    const networkId = event.currentTarget.dataset.networkId;
-    const strength = parseInt(event.target.value);
-    const scene = game.scenes.get(this.selectedScene);
-    
-    if (!scene) return;
-
-    const manager = game.nightcity.messenger.networkManager;
-    await manager.setSignalStrength(networkId, strength, scene);
-    
-    // Update display without full re-render
-    const display = event.currentTarget.parentElement.querySelector('.signal-value');
-    if (display) display.textContent = `${strength}%`;
-  }
-
-  async _onEnableAll(event) {
-    event.preventDefault();
-    const scene = game.scenes.get(this.selectedScene);
-    
-    if (!scene) return;
-
-    const manager = game.nightcity.messenger.networkManager;
-    await manager.enableAllNetworks(scene);
-    
-    await this.render(false);
-  }
-
-  async _onDisableAll(event) {
-    event.preventDefault();
-    const scene = game.scenes.get(this.selectedScene);
-    
-    if (!scene) return;
-
     const confirm = await Dialog.confirm({
-      title: "Disable All Networks?",
-      content: `<p>Disable all networks in <strong>${scene.name}</strong>?</p>
-                <p class="notification warning">This will create a dead zone.</p>`,
+      title: 'Delete Network',
+      content: `<p>Are you sure you want to delete <strong>${network.name}</strong>?</p>`,
       yes: () => true,
       no: () => false
     });
-
-    if (!confirm) return;
-
-    const manager = game.nightcity.messenger.networkManager;
-    await manager.disableAllNetworks(scene);
     
-    await this.render(false);
+    if (!confirm) return;
+    
+    try {
+      await NetworkStorage.deleteNetwork(networkId);
+      ui.notifications.info(`Network "${network.name}" deleted`);
+      this._networks = null;
+      this.render(false);
+    } catch (error) {
+      console.error(`${MODULE_ID} | Error deleting network:`, error);
+      ui.notifications.error(`Failed to delete network: ${error.message}`);
+    }
   }
 
-  async _onResetScene(event) {
+  _onSceneSelect(event) {
     event.preventDefault();
-    const scene = game.scenes.get(this.selectedScene);
-    
-    if (!scene) return;
-
-    const confirm = await Dialog.confirm({
-      title: "Reset Scene Configuration?",
-      content: `<p>Reset network configuration for <strong>${scene.name}</strong>?</p>
-                <p>Networks will use their default visibility settings (defaultHidden flag).</p>`,
-      yes: () => true,
-      no: () => false
-    });
-
-    if (!confirm) return;
-
-    const manager = game.nightcity.messenger.networkManager;
-    await manager.resetSceneConfig(scene);
-    
-    await this.render(false);
+    this.currentSceneId = event.currentTarget.value;
+    this.render(false);
   }
 
-  /* -------------------------------------------- */
-  /*  Helper Methods                              */
-  /* -------------------------------------------- */
+  async _onToggleNetworkAvailability(event) {
+    event.preventDefault();
+    
+    const checkbox = event.currentTarget;
+    const networkId = checkbox.dataset.networkId;
+    const available = checkbox.checked;
+    
+    if (!this.currentSceneId) return;
+    
+    const scene = game.scenes.get(this.currentSceneId);
+    const networks = scene.getFlag(MODULE_ID, 'networks') || {};
+    
+    if (!networks[networkId]) networks[networkId] = {};
+    networks[networkId].available = available;
+    
+    if (available && !networks[networkId].signalStrength) {
+      networks[networkId].signalStrength = 100;
+    }
+    
+    await scene.setFlag(MODULE_ID, 'networks', networks);
+    
+    const card = checkbox.closest('.ncm-scene-network-card');
+    if (card) {
+      if (available) {
+        card.classList.remove('ncm-scene-network-card--disabled');
+      } else {
+        card.classList.add('ncm-scene-network-card--disabled');
+      }
+    }
+  }
 
-  /**
-   * Get network configuration status for display
-   */
-  _getNetworkStatus(network, scene) {
-    const sceneNetworks = scene?.getFlag(MODULE_ID, 'networks') || {};
-    const config = sceneNetworks[network.id];
+  async _onUpdateSignalStrength(event) {
+    event.preventDefault();
     
-    if (config?.available) {
-      return {
-        status: 'enabled',
-        label: 'Enabled',
-        icon: 'fa-check-circle',
-        class: 'status-enabled'
-      };
+    const slider = event.currentTarget;
+    const networkId = slider.dataset.networkId;
+    const signalStrength = parseInt(slider.value);
+    
+    if (!this.currentSceneId) return;
+    
+    // Update display immediately
+    const card = slider.closest('.ncm-scene-network-card');
+    const valueDisplay = card?.querySelector('.ncm-scene-network-card__signal-value');
+    if (valueDisplay) {
+      valueDisplay.textContent = `${signalStrength}%`;
     }
     
-    if (config !== undefined && !config.available) {
-      return {
-        status: 'disabled',
-        label: 'Disabled',
-        icon: 'fa-times-circle',
-        class: 'status-disabled'
-      };
+    // Debounce save
+    clearTimeout(this._signalUpdateTimeout);
+    this._signalUpdateTimeout = setTimeout(async () => {
+      const scene = game.scenes.get(this.currentSceneId);
+      if (!scene) return;
+      
+      const networks = scene.getFlag(MODULE_ID, 'networks') || {};
+      if (!networks[networkId]) networks[networkId] = {};
+      
+      networks[networkId].signalStrength = signalStrength;
+      await scene.setFlag(MODULE_ID, 'networks', networks);
+      
+      console.log(`${MODULE_ID} | Updated signal strength for ${networkId} to ${signalStrength}%`);
+    }, 500);
+  }
+
+  async _onEnableAllNetworks(event) {
+    event.preventDefault();
+    
+    if (!this.currentSceneId) return;
+    
+    const { NetworkStorage } = await import('../../../core/NetworkStorage.js');
+    const scene = game.scenes.get(this.currentSceneId);
+    const networks = scene.getFlag(MODULE_ID, 'networks') || {};
+    
+    const allNetworks = await NetworkStorage.getAllNetworks();
+    
+    for (const network of allNetworks) {
+      if (!networks[network.id]) networks[network.id] = {};
+      networks[network.id].available = true;
+      if (!networks[network.id].signalStrength) {
+        networks[network.id].signalStrength = 100;
+      }
     }
     
-    // No scene configuration
-    if (network.defaultHidden) {
-      return {
-        status: 'hidden',
-        label: 'Hidden by Default',
-        icon: 'fa-eye-slash',
-        class: 'status-hidden'
-      };
+    await scene.setFlag(MODULE_ID, 'networks', networks);
+    ui.notifications.info(`Enabled all networks for ${scene.name}`);
+    this._networks = null;
+    this.render(false);
+  }
+
+  async _onDisableAllNetworks(event) {
+    event.preventDefault();
+    
+    if (!this.currentSceneId) return;
+    
+    const { NetworkStorage } = await import('../../../core/NetworkStorage.js');
+    const scene = game.scenes.get(this.currentSceneId);
+    const networks = scene.getFlag(MODULE_ID, 'networks') || {};
+    
+    const allNetworks = await NetworkStorage.getAllNetworks();
+    
+    for (const network of allNetworks) {
+      if (!networks[network.id]) networks[network.id] = {};
+      networks[network.id].available = false;
     }
     
-    return {
-      status: 'visible',
-      label: 'Visible by Default',
-      icon: 'fa-eye',
-      class: 'status-visible'
-    };
+    await scene.setFlag(MODULE_ID, 'networks', networks);
+    ui.notifications.info(`Disabled all networks for ${scene.name}`);
+    this._networks = null;
+    this.render(false);
   }
 }
