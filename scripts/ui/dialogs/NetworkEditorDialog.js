@@ -1,298 +1,556 @@
 /**
- * Network Editor Dialog - Simplified Property Editor
+ * Network Editor Dialog
  * File: scripts/ui/dialogs/NetworkEditorDialog.js
  * Module: cyberpunkred-messenger
- * 
- * SIMPLIFIED: Only edits network PROPERTIES
- * - Name, type, security, theme, colors
- * - defaultHidden status (visibility hint)
- * - Optional: Enable in current scene on creation
- * 
- * Scene availability is configured in Scene Tab only
+ * Description: Dialog for creating and editing network configurations
  */
 
-import { MODULE_ID, NETWORK_TYPES, SECURITY_LEVELS } from '../../constants.js';
+import { MODULE_ID, NETWORK_TYPES, SECURITY_LEVELS } from '../../utils/constants.js';
 
-export default class NetworkEditorDialog extends FormApplication {
+export class NetworkEditorDialog extends Dialog {
   constructor(options = {}) {
-    super({}, options);
+    // Store options first
+    const mode = options.mode || 'create';
+    const network = options.network || NetworkEditorDialog._getDefaultNetwork();
+    const onSaveCallback = options.onSave;
     
-    this.mode = options.mode || 'create'; // 'create' or 'edit'
-    this.network = options.network || this._getDefaultNetwork();
-    this.onSave = options.onSave || (() => {});
-  }
-
-  static get defaultOptions() {
-    return foundry.utils.mergeObject(super.defaultOptions, {
-      id: 'network-editor-dialog',
-      classes: ['cyberpunkred-messenger', 'network-editor'],
-      template: 'modules/cyberpunkred-messenger/templates/dialogs/network-editor.hbs',
-      width: 600,
-      height: 'auto',
-      closeOnSubmit: false,
-      submitOnChange: false
+    const dialogData = {
+      title: mode === 'edit' ? 'Edit Network' : 'Create Network',
+      content: '<p>Loading...</p>', // Will be replaced in render
+      buttons: {
+        save: {
+          icon: '<i class="fas fa-save"></i>',
+          label: mode === 'edit' ? 'Update' : 'Create',
+          callback: html => {
+            // Prevent default dialog close
+            return false;
+          }
+        },
+        cancel: {
+          icon: '<i class="fas fa-times"></i>',
+          label: 'Cancel'
+        }
+      },
+      default: 'save',
+      close: () => {}
+    };
+    
+    super(dialogData, {
+      classes: ['ncm-dialog', 'ncm-network-editor'],
+      width: 750,
+      height: 650,
+      resizable: true,
+      jQuery: true
     });
+    
+    this.options.buttons = false; // Hide default dialog buttons
+    
+    this.mode = mode;
+    this.network = network;
+    this.onSave = onSaveCallback;
+    
+    // Validation state
+    this.errors = {};
   }
-
-  get title() {
-    return this.mode === 'create' ? 'Create Network' : `Edit Network: ${this.network.name}`;
-  }
-
-  _getDefaultNetwork() {
+  
+  static _getDefaultNetwork() {
     return {
-      id: foundry.utils.randomID(),
-      name: 'New Network',
-      type: 'public',
+      id: '',
+      name: '',
+      displayName: '',
+      type: 'CUSTOM',
       description: '',
-      defaultHidden: false,
-      enableInCurrentScene: true, // Only used on creation
+      requiresAuth: false,
       security: {
-        level: 'basic',
-        encryptionStrength: 6,
-        hackDC: 15
+        level: 'LOW',
+        password: '',
+        iceDamage: '1d6',
+        breachDC: 10
+      },
+      reliability: 95,
+      signalStrength: 100,
+      availability: {
+        global: true,
+        scenes: []
+      },
+      effects: {
+        anonymous: false,
+        encrypted: false,
+        traced: false,
+        monitored: false
       },
       theme: {
-        primaryColor: '#F65261',
-        secondaryColor: '#19f3f7',
-        backgroundColor: '#1a1a1a',
-        fontFamily: 'Rajdhani'
+        color: '#F65261',
+        icon: 'fa-network-wired'
       },
-      features: {
-        encryption: true,
-        fileTransfer: true,
-        voiceCall: false,
-        videoCall: false
-      },
-      metadata: {
-        created: new Date().toISOString(),
-        createdBy: game.user.id
-      }
+      enabled: true
     };
   }
-
+  
   async getData() {
-    const data = await super.getData();
-    
     return {
-      ...data,
-      network: this.network,
       mode: this.mode,
-      isCreate: this.mode === 'create',
-      isEdit: this.mode === 'edit',
-      hasCurrentScene: !!game.scenes.current,
-      currentSceneName: game.scenes.current?.name,
-      networkTypes: Object.entries(NETWORK_TYPES).map(([key, value]) => ({
-        value: key,
-        label: value.label,
-        selected: this.network.type === key
-      })),
-      securityLevels: Object.entries(SECURITY_LEVELS).map(([key, value]) => ({
-        value: key,
-        label: value.label,
-        selected: this.network.security.level === key
-      }))
+      network: this.network,
+      networkTypes: NETWORK_TYPES,
+      securityLevels: SECURITY_LEVELS,
+      scenes: game.scenes.map(s => ({ id: s.id, name: s.name })),
+      errors: this.errors,
+      icons: this._getAvailableIcons()
     };
   }
-
+  
+  async _render(force, options) {
+    await super._render(force, options);
+    
+    // Render the template content
+    const data = await this.getData();
+    const template = `modules/${MODULE_ID}/templates/dialogs/network-editor.hbs`;
+    const html = await renderTemplate(template, data);
+    
+    // Replace the dialog content
+    this.element.find('.dialog-content').html(html);
+    
+    // Activate listeners
+    this.activateListeners(this.element);
+  }
+  
   activateListeners(html) {
     super.activateListeners(html);
-
-    // Color pickers
-    html.find('input[type="color"]').change(this._onColorChange.bind(this));
     
-    // Security level presets
+    // Save button
+    html.find('.save-network-btn').click(this._onSaveClick.bind(this));
+    
+    // Cancel button
+    html.find('.cancel-network-btn').click(() => this.close());
+    
+    // Network ID generation
+    html.find('input[name="name"]').on('input', this._onNameChange.bind(this));
+    
+    // Password toggle
+    html.find('.toggle-password').click(this._onTogglePassword.bind(this));
+    
+    // Security level change
     html.find('select[name="security.level"]').change(this._onSecurityLevelChange.bind(this));
     
-    // Network type change
-    html.find('select[name="type"]').change(this._onNetworkTypeChange.bind(this));
+    // Coverage type change
+    html.find('input[name="availability.global"]').change(this._onCoverageTypeChange.bind(this));
     
-    // Preview theme
-    html.find('[data-action="preview-theme"]').click(this._onPreviewTheme.bind(this));
+    // Color picker
+    html.find('input[name="theme.color"]').change(this._onColorChange.bind(this));
     
-    // Reset theme
-    html.find('[data-action="reset-theme"]').click(this._onResetTheme.bind(this));
+    // Icon picker
+    html.find('.icon-picker-btn').click(this._onIconPicker.bind(this));
+    
+    // Preview
+    html.find('.preview-network').click(this._onPreview.bind(this));
+    
+    // Templates
+    html.find('.load-template-btn').click(this._onLoadTemplate.bind(this));
+    
+    // Real-time validation
+    html.find('input, select, textarea').on('input change', this._validateField.bind(this));
   }
-
-  async _onColorChange(event) {
-    const input = event.currentTarget;
-    const previewElement = input.parentElement.querySelector('.color-preview');
-    if (previewElement) {
-      previewElement.style.backgroundColor = input.value;
-    }
-  }
-
-  async _onSecurityLevelChange(event) {
-    const level = event.target.value;
-    const preset = SECURITY_LEVELS[level];
+  
+  _onNameChange(event) {
+    const name = event.target.value;
     
-    if (preset) {
-      // Update security fields with preset values
-      const form = event.target.closest('form');
-      form.querySelector('[name="security.encryptionStrength"]').value = preset.encryptionStrength;
-      form.querySelector('[name="security.hackDC"]').value = preset.hackDC;
-    }
-  }
-
-  async _onNetworkTypeChange(event) {
-    const type = event.target.value;
-    const typeInfo = NETWORK_TYPES[type];
-    
-    if (typeInfo) {
-      // Update description with type info
-      const descField = event.target.closest('form').querySelector('[name="description"]');
-      if (descField && !descField.value) {
-        descField.value = typeInfo.description;
+    // Auto-generate ID if creating new network
+    if (this.mode === 'create' && name) {
+      const idField = this.element.find('input[name="id"]');
+      if (!idField.val() || idField.data('auto-generated')) {
+        const autoId = name
+          .toUpperCase()
+          .replace(/[^A-Z0-9]/g, '_')
+          .replace(/_+/g, '_')
+          .substring(0, 32);
+        
+        idField.val(autoId);
+        idField.data('auto-generated', true);
       }
-      
-      // Suggest defaultHidden based on type
-      const hiddenCheckbox = event.target.closest('form').querySelector('[name="defaultHidden"]');
-      if (hiddenCheckbox) {
-        if (type === 'darknet' || type === 'corporate' || type === 'military') {
-          hiddenCheckbox.checked = true;
+    }
+  }
+  
+  _onTogglePassword(event) {
+    event.preventDefault();
+    
+    const button = $(event.currentTarget);
+    const input = button.prev('input');
+    
+    if (input.attr('type') === 'password') {
+      input.attr('type', 'text');
+      button.find('i').removeClass('fa-eye').addClass('fa-eye-slash');
+    } else {
+      input.attr('type', 'password');
+      button.find('i').removeClass('fa-eye-slash').addClass('fa-eye');
+    }
+  }
+  
+  _onSecurityLevelChange(event) {
+    const level = event.target.value;
+    
+    // Update suggested values
+    const suggestions = {
+      'NONE': { iceDamage: '0', breachDC: 0 },
+      'LOW': { iceDamage: '1d6', breachDC: 10 },
+      'MEDIUM': { iceDamage: '2d6', breachDC: 15 },
+      'HIGH': { iceDamage: '3d6', breachDC: 20 },
+      'EXTREME': { iceDamage: '5d6', breachDC: 25 }
+    };
+    
+    const suggestion = suggestions[level];
+    if (suggestion) {
+      this.element.find('input[name="security.iceDamage"]').val(suggestion.iceDamage);
+      this.element.find('input[name="security.breachDC"]').val(suggestion.breachDC);
+    }
+  }
+  
+  _onCoverageTypeChange(event) {
+    const isGlobal = event.target.checked;
+    const sceneSelector = this.element.find('.scene-selector');
+    
+    if (isGlobal) {
+      sceneSelector.hide();
+    } else {
+      sceneSelector.show();
+    }
+  }
+  
+  _onColorChange(event) {
+    const color = event.target.value;
+    const preview = this.element.find('.color-preview');
+    preview.css('background-color', color);
+  }
+  
+  _onIconPicker(event) {
+    event.preventDefault();
+    
+    // Simple icon picker - could be enhanced with a modal
+    const icons = this._getAvailableIcons();
+    const currentIcon = this.element.find('input[name="theme.icon"]').val();
+    
+    const content = `
+      <div class="icon-picker-grid">
+        ${icons.map(icon => `
+          <button type="button" class="icon-option ${icon === currentIcon ? 'selected' : ''}" data-icon="${icon}">
+            <i class="fas ${icon}"></i>
+          </button>
+        `).join('')}
+      </div>
+    `;
+    
+    new Dialog({
+      title: 'Select Icon',
+      content: content,
+      buttons: {
+        close: {
+          icon: '<i class="fas fa-times"></i>',
+          label: 'Close'
+        }
+      },
+      render: (html) => {
+        html.find('.icon-option').click((e) => {
+          const icon = e.currentTarget.dataset.icon;
+          this.element.find('input[name="theme.icon"]').val(icon);
+          this.element.find('.icon-preview i').attr('class', `fas ${icon}`);
+        });
+      }
+    }, {
+      classes: ['ncm-dialog', 'icon-picker-dialog'],
+      width: 400
+    }).render(true);
+  }
+  
+  async _onPreview(event) {
+    event.preventDefault();
+    
+    const formData = this._getFormData();
+    
+    // Create preview card
+    const preview = await renderTemplate(
+      `modules/${MODULE_ID}/templates/network-management/partials/network-card.hbs`,
+      { network: formData, preview: true }
+    );
+    
+    new Dialog({
+      title: 'Network Preview',
+      content: `<div class="network-preview-container">${preview}</div>`,
+      buttons: {
+        close: {
+          label: 'Close'
         }
       }
-    }
+    }, {
+      classes: ['ncm-dialog', 'network-preview-dialog'],
+      width: 500
+    }).render(true);
   }
-
-  async _onPreviewTheme(event) {
+  
+  async _onLoadTemplate(event) {
     event.preventDefault();
     
-    const form = this.element.find('form')[0];
-    const formData = new FormDataExtended(form).object;
+    const templates = {
+      'corpnet': {
+        name: 'Corporate Network',
+        type: 'CUSTOM',
+        requiresAuth: true,
+        security: { level: 'HIGH', password: '', iceDamage: '3d6', breachDC: 20 },
+        reliability: 99,
+        signalStrength: 100,
+        effects: { encrypted: true, monitored: true, traced: true },
+        theme: { color: '#0066CC', icon: 'fa-building' }
+      },
+      'darknet': {
+        name: 'Dark Network',
+        type: 'CUSTOM',
+        requiresAuth: true,
+        security: { level: 'EXTREME', password: '', iceDamage: '5d6', breachDC: 25 },
+        reliability: 70,
+        signalStrength: 85,
+        effects: { anonymous: true, encrypted: true },
+        theme: { color: '#000000', icon: 'fa-user-secret' }
+      },
+      'public': {
+        name: 'Public Network',
+        type: 'CUSTOM',
+        requiresAuth: false,
+        security: { level: 'NONE', password: '', iceDamage: '0', breachDC: 0 },
+        reliability: 85,
+        signalStrength: 100,
+        effects: { monitored: true },
+        theme: { color: '#19f3f7', icon: 'fa-wifi' }
+      }
+    };
     
-    // Apply theme temporarily to dialog
-    const dialog = this.element[0];
-    dialog.style.setProperty('--ncm-primary', formData.theme.primaryColor);
-    dialog.style.setProperty('--ncm-secondary', formData.theme.secondaryColor);
-    dialog.style.setProperty('--ncm-background', formData.theme.backgroundColor);
-    dialog.style.setProperty('font-family', formData.theme.fontFamily);
+    const templateChoices = {
+      'corpnet': 'Corporate Network (High Security)',
+      'darknet': 'Dark Network (Anonymous)',
+      'public': 'Public Network (Open Access)'
+    };
     
-    ui.notifications.info("Theme preview applied to this dialog");
-  }
-
-  async _onResetTheme(event) {
-    event.preventDefault();
-    
-    const form = this.element.find('form')[0];
-    const defaults = this._getDefaultNetwork().theme;
-    
-    form.querySelector('[name="theme.primaryColor"]').value = defaults.primaryColor;
-    form.querySelector('[name="theme.secondaryColor"]').value = defaults.secondaryColor;
-    form.querySelector('[name="theme.backgroundColor"]').value = defaults.backgroundColor;
-    form.querySelector('[name="theme.fontFamily"]').value = defaults.fontFamily;
-    
-    // Update color previews
-    form.querySelectorAll('input[type="color"]').forEach(input => {
-      const preview = input.parentElement.querySelector('.color-preview');
-      if (preview) preview.style.backgroundColor = input.value;
+    const choice = await Dialog.prompt({
+      title: 'Load Template',
+      content: `
+        <form>
+          <div class="form-group">
+            <label>Select Template:</label>
+            <select name="template">
+              ${Object.entries(templateChoices).map(([key, label]) => 
+                `<option value="${key}">${label}</option>`
+              ).join('')}
+            </select>
+          </div>
+        </form>
+      `,
+      callback: (html) => html.find('select[name="template"]').val()
     });
     
-    ui.notifications.info("Theme reset to defaults");
+    if (choice && templates[choice]) {
+      this.network = { ...this.network, ...templates[choice] };
+      await this._render(true);
+    }
   }
-
-  async _updateObject(event, formData) {
-    // Validate network name
-    if (!formData.name || formData.name.trim() === '') {
-      ui.notifications.error("Network name is required");
+  
+  _validateField(event) {
+    const field = event.target;
+    const name = field.name;
+    const value = field.value;
+    
+    delete this.errors[name];
+    
+    // Validation rules
+    if (name === 'id') {
+      if (!value) {
+        this.errors[name] = 'Network ID is required';
+      } else if (!/^[A-Z0-9_]+$/.test(value)) {
+        this.errors[name] = 'ID must contain only uppercase letters, numbers, and underscores';
+      }
+    }
+    
+    if (name === 'name') {
+      if (!value || value.length < 3) {
+        this.errors[name] = 'Name must be at least 3 characters';
+      }
+    }
+    
+    if (name === 'reliability') {
+      const num = parseInt(value);
+      if (isNaN(num) || num < 0 || num > 100) {
+        this.errors[name] = 'Reliability must be between 0 and 100';
+      }
+    }
+    
+    if (name === 'security.breachDC') {
+      const num = parseInt(value);
+      if (isNaN(num) || num < 0 || num > 50) {
+        this.errors[name] = 'Breach DC must be between 0 and 50';
+      }
+    }
+    
+    // Update UI
+    const errorEl = this.element.find(`.field-error[data-field="${name}"]`);
+    if (this.errors[name]) {
+      errorEl.text(this.errors[name]).show();
+      $(field).addClass('error');
+    } else {
+      errorEl.hide();
+      $(field).removeClass('error');
+    }
+  }
+  
+  _getFormData() {
+    const form = this.element.find('form')[0];
+    if (!form) {
+      console.error('Form not found!');
+      return null;
+    }
+    
+    const formData = new FormData(form);
+    
+    const data = {
+      id: formData.get('id') || '',
+      name: formData.get('name') || '',
+      displayName: formData.get('displayName') || formData.get('name') || '',
+      type: formData.get('type') || 'CUSTOM',
+      description: formData.get('description') || '',
+      requiresAuth: this.element.find('input[name="requiresAuth"]').is(':checked'),
+      security: {
+        level: formData.get('security.level') || 'LOW',
+        password: formData.get('security.password') || '',
+        iceDamage: formData.get('security.iceDamage') || '1d6',
+        breachDC: parseInt(formData.get('security.breachDC')) || 10
+      },
+      reliability: parseInt(formData.get('reliability')) || 95,
+      signalStrength: 100, // Default to full signal strength
+      availability: {
+        global: this.element.find('input[name="availability.global"]').is(':checked'),
+        scenes: this.element.find('input[name="availability.global"]').is(':checked')
+          ? []
+          : Array.from(this.element.find('input[name="availability.scenes"]:checked')).map(el => el.value)
+      },
+      effects: {
+        anonymous: this.element.find('input[name="effects.anonymous"]').is(':checked'),
+        encrypted: this.element.find('input[name="effects.encrypted"]').is(':checked'),
+        traced: this.element.find('input[name="effects.traced"]').is(':checked'),
+        monitored: this.element.find('input[name="effects.monitored"]').is(':checked')
+      },
+      theme: {
+        color: formData.get('theme.color') || '#F65261',
+        icon: formData.get('theme.icon') || 'fa-network-wired'
+      },
+      enabled: this.element.find('input[name="enabled"]').is(':checked')
+    };
+    
+    return data;
+  }
+  
+  _validateForm(data) {
+    const errors = {};
+    
+    // Required fields
+    if (!data.id || data.id.trim() === '') {
+      errors.id = 'Network ID is required';
+    }
+    
+    if (!data.name || data.name.trim() === '') {
+      errors.name = 'Network name is required';
+    }
+    
+    // ID format (only if ID is provided)
+    if (data.id && !/^[A-Z0-9_]+$/.test(data.id)) {
+      errors.id = 'ID must contain only uppercase letters, numbers, and underscores';
+    }
+    
+    // Name length (only if name is provided)
+    if (data.name && data.name.trim().length < 3) {
+      errors.name = 'Name must be at least 3 characters';
+    }
+    
+    // Reliability range
+    if (isNaN(data.reliability) || data.reliability < 0 || data.reliability > 100) {
+      errors.reliability = 'Reliability must be between 0 and 100';
+    }
+    
+    // Breach DC range
+    if (isNaN(data.security.breachDC) || data.security.breachDC < 0 || data.security.breachDC > 50) {
+      errors['security.breachDC'] = 'Breach DC must be between 0 and 50';
+    }
+    
+    // Password required for auth networks (only if requiresAuth and security level is not NONE)
+    if (data.requiresAuth && data.security.level !== 'NONE' && !data.security.password) {
+      // Make this a warning, not an error - password is optional
+      console.warn('Network requires auth but no password set');
+    }
+    
+    return errors;
+  }
+  
+  async _onSaveClick(event) {
+    event.preventDefault();
+    
+    const formData = this._getFormData();
+    console.log('Form Data:', formData);
+    
+    // Validate
+    this.errors = this._validateForm(formData);
+    console.log('Validation Errors:', this.errors);
+    
+    if (Object.keys(this.errors).length > 0) {
+      ui.notifications.error('Please fix validation errors');
+      console.error('Validation failed:', this.errors);
+      
+      // Show errors in form
+      for (const [field, error] of Object.entries(this.errors)) {
+        const errorEl = this.element.find(`.field-error[data-field="${field}"]`);
+        errorEl.text(error).show();
+        this.element.find(`[name="${field}"]`).addClass('error');
+      }
       return;
     }
-
-    // Merge form data with existing network
-    const updatedNetwork = foundry.utils.mergeObject(this.network, formData);
     
-    // Validate security values
-    updatedNetwork.security.encryptionStrength = Math.max(1, Math.min(10, updatedNetwork.security.encryptionStrength));
-    updatedNetwork.security.hackDC = Math.max(6, Math.min(30, updatedNetwork.security.hackDC));
-    
-    // Update metadata
+    // Check for duplicate ID in create mode
     if (this.mode === 'create') {
-      updatedNetwork.metadata.created = new Date().toISOString();
-      updatedNetwork.metadata.createdBy = game.user.id;
-    } else {
-      updatedNetwork.metadata.modified = new Date().toISOString();
-      updatedNetwork.metadata.modifiedBy = game.user.id;
+      const existing = await game.nightcity.NetworkStorage.getNetwork(formData.id);
+      if (existing) {
+        ui.notifications.error(`Network with ID "${formData.id}" already exists`);
+        this.errors.id = 'This ID is already in use';
+        const errorEl = this.element.find(`.field-error[data-field="id"]`);
+        errorEl.text(this.errors.id).show();
+        this.element.find(`[name="id"]`).addClass('error');
+        return;
+      }
     }
-
-    // Call save callback
-    await this.onSave(updatedNetwork);
     
-    // Close dialog
+    // Call the callback
+    if (this.onSave) {
+      await this.onSave(formData);
+    }
+    
+    // Close the dialog
     this.close();
   }
+  
+  _getAvailableIcons() {
+    return [
+      'fa-network-wired',
+      'fa-wifi',
+      'fa-building',
+      'fa-user-secret',
+      'fa-satellite-dish',
+      'fa-server',
+      'fa-globe',
+      'fa-shield-alt',
+      'fa-lock',
+      'fa-unlock',
+      'fa-broadcast-tower',
+      'fa-signal',
+      'fa-rss',
+      'fa-ethernet',
+      'fa-database',
+      'fa-cloud',
+      'fa-microchip',
+      'fa-plug',
+      'fa-bolt',
+      'fa-exclamation-triangle'
+    ];
+  }
 }
-
-/* -------------------------------------------- */
-/*  Constants                                   */
-/* -------------------------------------------- */
-
-const NETWORK_TYPES = {
-  public: {
-    label: 'Public Network',
-    description: 'Open civilian network accessible to all. Low security, high visibility.',
-    icon: 'fa-globe',
-    suggestedSecurity: 'basic'
-  },
-  corporate: {
-    label: 'Corporate Network',
-    description: 'Private corporate subnet. Requires credentials or hacking.',
-    icon: 'fa-building',
-    suggestedSecurity: 'medium'
-  },
-  darknet: {
-    label: 'Darknet',
-    description: 'Anonymous underground network. Untraceable but monitored.',
-    icon: 'fa-user-secret',
-    suggestedSecurity: 'medium'
-  },
-  military: {
-    label: 'Military Network',
-    description: 'Secure military subnet. Heavy ICE protection.',
-    icon: 'fa-shield-alt',
-    suggestedSecurity: 'high'
-  },
-  local: {
-    label: 'Local Network',
-    description: 'Short-range local network. Limited range but secure.',
-    icon: 'fa-wifi',
-    suggestedSecurity: 'basic'
-  },
-  custom: {
-    label: 'Custom Network',
-    description: 'User-defined network with custom properties.',
-    icon: 'fa-cog',
-    suggestedSecurity: 'basic'
-  }
-};
-
-const SECURITY_LEVELS = {
-  none: {
-    label: 'None',
-    encryptionStrength: 0,
-    hackDC: 6,
-    description: 'No security. Open access.'
-  },
-  basic: {
-    label: 'Basic',
-    encryptionStrength: 3,
-    hackDC: 10,
-    description: 'Basic encryption. Easy to bypass.'
-  },
-  medium: {
-    label: 'Medium',
-    encryptionStrength: 6,
-    hackDC: 15,
-    description: 'Standard corporate security.'
-  },
-  high: {
-    label: 'High',
-    encryptionStrength: 8,
-    hackDC: 20,
-    description: 'Military-grade protection.'
-  },
-  maximum: {
-    label: 'Maximum',
-    encryptionStrength: 10,
-    hackDC: 25,
-    description: 'BLACK ICE and lethal countermeasures.'
-  }
-};

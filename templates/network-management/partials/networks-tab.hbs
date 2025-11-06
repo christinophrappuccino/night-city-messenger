@@ -1,420 +1,86 @@
-{{!--
-  Networks Tab - Define Network Properties
-  Purpose: Create and edit network definitions
-  Does NOT configure scene availability (that's in Scene Tab)
---}}
+{{!-- Networks Tab Partial --}}
+{{!-- File: templates/network-management/partials/networks-tab.hbs --}}
 
 <div class="networks-tab-container">
-  {{!-- Header with Actions --}}
-  <div class="tab-header">
-    <h2>Network Definitions</h2>
-    <p class="subtitle">Define network properties and characteristics. Configure availability in the Scenes tab.</p>
-    
-    <div class="actions">
-      <button type="button" class="btn btn-primary" data-action="create-network">
+  {{!-- Toolbar --}}
+  <div class="networks-toolbar">
+    <div class="toolbar-left">
+      <button type="button" class="create-network-btn ncm-btn ncm-btn-primary">
         <i class="fas fa-plus"></i> Create Network
       </button>
+      <button type="button" class="import-network-btn ncm-btn">
+        <i class="fas fa-file-import"></i> Import
+      </button>
+    </div>
+    
+    <div class="toolbar-center">
+      <input type="text" class="network-filter" placeholder="Filter networks..." value="{{filterText}}">
+      <select class="network-sort">
+        <option value="name-asc" {{#if (and (eq sortBy 'name') (eq sortDir 'asc'))}}selected{{/if}}>Name (A-Z)</option>
+        <option value="name-desc" {{#if (and (eq sortBy 'name') (eq sortDir 'desc'))}}selected{{/if}}>Name (Z-A)</option>
+        <option value="type-asc" {{#if (and (eq sortBy 'type') (eq sortDir 'asc'))}}selected{{/if}}>Type (A-Z)</option>
+        <option value="type-desc" {{#if (and (eq sortBy 'type') (eq sortDir 'desc'))}}selected{{/if}}>Type (Z-A)</option>
+        <option value="security-asc" {{#if (and (eq sortBy 'security') (eq sortDir 'asc'))}}selected{{/if}}>Security (Low-High)</option>
+        <option value="security-desc" {{#if (and (eq sortBy 'security') (eq sortDir 'desc'))}}selected{{/if}}>Security (High-Low)</option>
+      </select>
     </div>
   </div>
 
-  {{!-- Network Grid --}}
+  {{!-- Bulk Operations Bar --}}
+  {{#if selectedNetworks.length}}
+  <div class="bulk-operations-bar">
+    <div class="selection-info">
+      <span class="selected-count">{{selectedNetworks.length}} selected</span>
+      <button type="button" class="deselect-all-networks">
+        <i class="fas fa-times"></i> Clear Selection
+      </button>
+    </div>
+    <div class="bulk-actions">
+      <button type="button" class="bulk-enable-btn ncm-btn ncm-btn-small">
+        <i class="fas fa-toggle-on"></i> Enable
+      </button>
+      <button type="button" class="bulk-disable-btn ncm-btn ncm-btn-small">
+        <i class="fas fa-toggle-off"></i> Disable
+      </button>
+      <button type="button" class="bulk-export-btn ncm-btn ncm-btn-small">
+        <i class="fas fa-file-export"></i> Export
+      </button>
+      <button type="button" class="bulk-delete-btn ncm-btn ncm-btn-small ncm-btn-danger">
+        <i class="fas fa-trash"></i> Delete
+      </button>
+    </div>
+  </div>
+  {{/if}}
+
+  {{!-- Networks Grid --}}
   <div class="networks-grid">
-    {{#if networks}}
+    {{#if networks.length}}
       {{#each networks}}
-        <div class="network-card" data-network-id="{{this.id}}">
-          {{!-- Header --}}
-          <div class="network-card-header" style="background: linear-gradient(135deg, {{this.theme.primaryColor}} 0%, {{this.theme.secondaryColor}} 100%);">
-            <div class="network-icon">
-              <i class="fas {{#if (eq this.type 'darknet')}}fa-user-secret
-                              {{else if (eq this.type 'corporate')}}fa-building
-                              {{else if (eq this.type 'military')}}fa-shield-alt
-                              {{else if (eq this.type 'local')}}fa-wifi
-                              {{else}}fa-network-wired{{/if}}"></i>
-            </div>
-            <h3 class="network-name">{{this.name}}</h3>
-            <div class="network-type-badge">{{this.type}}</div>
-          </div>
-
-          {{!-- Body --}}
-          <div class="network-card-body">
-            {{!-- Description --}}
-            {{#if this.description}}
-              <p class="network-description">{{this.description}}</p>
-            {{/if}}
-
-            {{!-- Properties Grid --}}
-            <div class="network-properties">
-              {{!-- Security Level --}}
-              <div class="property">
-                <span class="property-label">
-                  <i class="fas fa-shield-alt"></i> Security
-                </span>
-                <span class="property-value security-{{this.security.level}}">
-                  {{#if (eq this.security.level 'none')}}None
-                  {{else if (eq this.security.level 'basic')}}Basic
-                  {{else if (eq this.security.level 'medium')}}Medium
-                  {{else if (eq this.security.level 'high')}}High
-                  {{else if (eq this.security.level 'maximum')}}Maximum
-                  {{else}}{{this.security.level}}{{/if}}
-                </span>
-              </div>
-
-              {{!-- Hack DC --}}
-              <div class="property">
-                <span class="property-label">
-                  <i class="fas fa-lock"></i> Hack DC
-                </span>
-                <span class="property-value">{{this.security.hackDC}}</span>
-              </div>
-
-              {{!-- Encryption --}}
-              <div class="property">
-                <span class="property-label">
-                  <i class="fas fa-key"></i> Encryption
-                </span>
-                <span class="property-value">{{this.security.encryptionStrength}}/10</span>
-              </div>
-
-              {{!-- Default Visibility --}}
-              <div class="property property-important">
-                <span class="property-label">
-                  <i class="fas {{#if this.defaultHidden}}fa-eye-slash{{else}}fa-eye{{/if}}"></i> 
-                  Default Visibility
-                </span>
-                <span class="property-value {{#if this.defaultHidden}}hidden-default{{else}}visible-default{{/if}}">
-                  {{#if this.defaultHidden}}Hidden{{else}}Visible{{/if}}
-                </span>
-              </div>
-            </div>
-
-            {{!-- Visibility Explanation --}}
-            <div class="visibility-hint">
-              {{#if this.defaultHidden}}
-                <i class="fas fa-info-circle"></i>
-                <span>Hidden by default in new scenes. Enable in Scene tab to make available.</span>
-              {{else}}
-                <i class="fas fa-info-circle"></i>
-                <span>Visible by default in new scenes. Can be disabled per-scene in Scene tab.</span>
-              {{/if}}
-            </div>
-
-            {{!-- Features --}}
-            {{#if this.features}}
-              <div class="network-features">
-                {{#if this.features.encryption}}
-                  <span class="feature-badge"><i class="fas fa-lock"></i> Encryption</span>
-                {{/if}}
-                {{#if this.features.fileTransfer}}
-                  <span class="feature-badge"><i class="fas fa-file"></i> File Transfer</span>
-                {{/if}}
-                {{#if this.features.voiceCall}}
-                  <span class="feature-badge"><i class="fas fa-phone"></i> Voice</span>
-                {{/if}}
-                {{#if this.features.videoCall}}
-                  <span class="feature-badge"><i class="fas fa-video"></i> Video</span>
-                {{/if}}
-              </div>
-            {{/if}}
-          </div>
-
-          {{!-- Footer Actions --}}
-          <div class="network-card-footer">
-            <button type="button" class="btn btn-sm btn-primary" data-action="enable-in-scene" title="Enable in current scene">
-              <i class="fas fa-plus-circle"></i> Enable Here
-            </button>
-            <button type="button" class="btn btn-sm" data-action="edit-network" title="Edit network properties">
-              <i class="fas fa-edit"></i> Edit
-            </button>
-            <button type="button" class="btn btn-sm" data-action="duplicate-network" title="Duplicate network">
-              <i class="fas fa-copy"></i>
-            </button>
-            <button type="button" class="btn btn-sm btn-danger" data-action="delete-network" title="Delete network">
-              <i class="fas fa-trash"></i>
-            </button>
-          </div>
-        </div>
+        {{> "modules/cyberpunkred-messenger/templates/network-management/partials/network-card.hbs" network=this selected=(includes ../selectedNetworks this.id)}}
       {{/each}}
     {{else}}
       <div class="empty-state">
-        <i class="fas fa-network-wired fa-3x"></i>
-        <h3>No Networks Defined</h3>
-        <p>Create your first network to get started</p>
-        <button type="button" class="btn btn-primary" data-action="create-network">
-          <i class="fas fa-plus"></i> Create Network
-        </button>
+        <i class="fas fa-network-wired"></i>
+        <h3>No Networks Found</h3>
+        {{#if filterText}}
+          <p>No networks match your filter.</p>
+          <button type="button" class="network-filter-clear ncm-btn">Clear Filter</button>
+        {{else}}
+          <p>Create your first network to get started.</p>
+          <button type="button" class="create-network-btn ncm-btn ncm-btn-primary">
+            <i class="fas fa-plus"></i> Create Network
+          </button>
+        {{/if}}
       </div>
     {{/if}}
   </div>
+
+  {{!-- Select All at bottom --}}
+  {{#if networks.length}}
+  <div class="networks-footer">
+    <button type="button" class="select-all-networks ncm-btn ncm-btn-text">
+      <i class="fas fa-check-square"></i> Select All
+    </button>
+  </div>
+  {{/if}}
 </div>
-
-<style>
-.networks-tab-container {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  height: 100%;
-}
-
-.tab-header {
-  padding: 0 0 20px 0;
-  border-bottom: 1px solid rgba(246, 82, 97, 0.3);
-}
-
-.tab-header h2 {
-  margin: 0 0 5px 0;
-  font-family: 'Orbitron', sans-serif;
-  font-size: 24px;
-  color: var(--ncm-primary, #F65261);
-  text-transform: uppercase;
-}
-
-.tab-header .subtitle {
-  margin: 0 0 15px 0;
-  color: var(--ncm-text-dim, #888);
-  font-size: 14px;
-}
-
-.tab-header .actions {
-  display: flex;
-  gap: 10px;
-}
-
-.networks-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-  gap: 20px;
-  flex: 1;
-  overflow-y: auto;
-}
-
-.network-card {
-  background: var(--ncm-surface, #2a2a2a);
-  border: 1px solid rgba(246, 82, 97, 0.3);
-  border-radius: 8px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  transition: all 0.3s ease;
-  height: fit-content;
-}
-
-.network-card:hover {
-  border-color: var(--ncm-primary, #F65261);
-  box-shadow: 0 0 20px rgba(246, 82, 97, 0.3);
-  transform: translateY(-2px);
-}
-
-.network-card-header {
-  padding: 20px;
-  text-align: center;
-  position: relative;
-  color: white;
-  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
-}
-
-.network-icon {
-  font-size: 32px;
-  margin-bottom: 10px;
-}
-
-.network-name {
-  margin: 0;
-  font-family: 'Orbitron', sans-serif;
-  font-size: 20px;
-  font-weight: 700;
-  text-transform: uppercase;
-}
-
-.network-type-badge {
-  display: inline-block;
-  margin-top: 8px;
-  padding: 4px 12px;
-  background: rgba(0,0,0,0.3);
-  border-radius: 12px;
-  font-size: 11px;
-  text-transform: uppercase;
-  font-weight: 600;
-  letter-spacing: 1px;
-}
-
-.network-card-body {
-  padding: 20px;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
-
-.network-description {
-  margin: 0;
-  color: var(--ncm-text-dim, #aaa);
-  font-size: 13px;
-  line-height: 1.4;
-}
-
-.network-properties {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-
-.property {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 12px;
-  background: rgba(0,0,0,0.2);
-  border-radius: 4px;
-  font-size: 13px;
-}
-
-.property-important {
-  grid-column: 1 / -1;
-  background: rgba(246, 82, 97, 0.1);
-  border: 1px solid rgba(246, 82, 97, 0.3);
-}
-
-.property-label {
-  color: var(--ncm-text-dim, #888);
-  font-weight: 600;
-}
-
-.property-label i {
-  margin-right: 6px;
-  width: 14px;
-  text-align: center;
-}
-
-.property-value {
-  color: var(--ncm-secondary, #19f3f7);
-  font-weight: 700;
-}
-
-.property-value.security-none { color: #888; }
-.property-value.security-basic { color: #4CAF50; }
-.property-value.security-medium { color: #FFC107; }
-.property-value.security-high { color: #FF5722; }
-.property-value.security-maximum { color: #F44336; }
-
-.property-value.hidden-default {
-  color: #888;
-}
-
-.property-value.visible-default {
-  color: var(--ncm-secondary, #19f3f7);
-}
-
-.visibility-hint {
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
-  padding: 10px;
-  background: rgba(25, 243, 247, 0.05);
-  border-left: 3px solid var(--ncm-secondary, #19f3f7);
-  border-radius: 4px;
-  font-size: 12px;
-  color: var(--ncm-text-dim, #aaa);
-  line-height: 1.4;
-}
-
-.visibility-hint i {
-  color: var(--ncm-secondary, #19f3f7);
-  margin-top: 2px;
-}
-
-.network-features {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.feature-badge {
-  display: inline-block;
-  padding: 4px 10px;
-  background: rgba(25, 243, 247, 0.1);
-  border: 1px solid rgba(25, 243, 247, 0.3);
-  border-radius: 12px;
-  font-size: 11px;
-  color: var(--ncm-secondary, #19f3f7);
-  font-weight: 600;
-}
-
-.feature-badge i {
-  margin-right: 4px;
-}
-
-.network-card-footer {
-  padding: 15px 20px;
-  background: rgba(0,0,0,0.2);
-  border-top: 1px solid rgba(246, 82, 97, 0.2);
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-}
-
-.btn {
-  padding: 8px 16px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-family: 'Rajdhani', sans-serif;
-  font-weight: 600;
-  text-transform: uppercase;
-  transition: all 0.2s ease;
-}
-
-.btn-sm {
-  padding: 6px 12px;
-  font-size: 12px;
-}
-
-.btn-primary {
-  background: var(--ncm-primary, #F65261);
-  color: white;
-}
-
-.btn-primary:hover {
-  background: #ff6b7a;
-  box-shadow: 0 0 10px rgba(246, 82, 97, 0.5);
-}
-
-.btn:not(.btn-primary):not(.btn-danger) {
-  background: rgba(255,255,255,0.1);
-  color: var(--ncm-text, #fff);
-}
-
-.btn:not(.btn-primary):not(.btn-danger):hover {
-  background: rgba(255,255,255,0.2);
-}
-
-.btn-danger {
-  background: rgba(244, 67, 54, 0.8);
-  color: white;
-}
-
-.btn-danger:hover {
-  background: #F44336;
-}
-
-.empty-state {
-  grid-column: 1 / -1;
-  text-align: center;
-  padding: 60px 20px;
-  color: var(--ncm-text-dim, #888);
-}
-
-.empty-state i {
-  color: rgba(246, 82, 97, 0.3);
-  margin-bottom: 20px;
-}
-
-.empty-state h3 {
-  margin: 0 0 10px 0;
-  color: var(--ncm-text, #fff);
-  font-family: 'Orbitron', sans-serif;
-}
-
-.empty-state p {
-  margin: 0 0 20px 0;
-}
-</style>
