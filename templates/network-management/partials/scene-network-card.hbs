@@ -14,6 +14,50 @@
         </span>
       </div>
     </div>
+
+    {{!-- NEW: Sync Status Indicator --}}
+    <div class="ncm-sync-status">
+      {{#if syncStatus.inSync}}
+        {{#if (eq syncStatus.type 'both-enabled')}}
+          <div class="ncm-sync-badge ncm-sync-badge--success">
+            <i class="fas fa-check-circle"></i>
+            <span>In Sync: Network allows scene, scene flag is ON</span>
+          </div>
+        {{else if (eq syncStatus.type 'both-disabled')}}
+          <div class="ncm-sync-badge ncm-sync-badge--neutral">
+            <i class="fas fa-check-circle"></i>
+            <span>In Sync: Network blocks scene, scene flag is OFF</span>
+          </div>
+        {{/if}}
+      {{else}}
+        {{#if (eq syncStatus.type 'network-allows-scene-disabled')}}
+          <div class="ncm-sync-badge ncm-sync-badge--warning">
+            <i class="fas fa-exclamation-triangle"></i>
+            <span>Network allows this scene, but scene flag is OFF</span>
+            <button class="ncm-btn ncm-btn--xs ncm-btn--primary" 
+                    data-action="sync-from-network" 
+                    data-network-id="{{id}}">
+              <i class="fas fa-sync"></i> Fix: Turn ON
+            </button>
+          </div>
+        {{else if (eq syncStatus.type 'scene-enabled-network-blocks')}}
+          <div class="ncm-sync-badge ncm-sync-badge--error">
+            <i class="fas fa-times-circle"></i>
+            <span>Scene flag is ON, but network doesn't include this scene</span>
+            <button class="ncm-btn ncm-btn--xs ncm-btn--secondary" 
+                    data-action="add-scene-to-network" 
+                    data-network-id="{{id}}">
+              <i class="fas fa-plus"></i> Add Scene to Network
+            </button>
+            <button class="ncm-btn ncm-btn--xs ncm-btn--ghost" 
+                    data-action="sync-from-network" 
+                    data-network-id="{{id}}">
+              <i class="fas fa-times"></i> Or Turn OFF
+            </button>
+          </div>
+        {{/if}}
+      {{/if}}
+    </div>
     
     <div class="ncm-scene-network-card__toggle">
       <label class="ncm-toggle ncm-toggle--sm">
@@ -28,7 +72,16 @@
   
   {{#if sceneConfig.available}}
     <div class="ncm-scene-network-card__body">
-      
+      {{!-- Network Info --}}
+      <div class="ncm-scene-network-card__info">
+        {{#if hidden}}
+          <div class="ncm-info-row">
+            <span class="ncm-info-label">Visibility:</span>
+            <span class="ncm-info-value ncm-text-warning">
+              <i class="fas fa-eye-slash"></i> Hidden (GM Override Active)
+            </span>
+          </div>
+        {{/if}}
       {{!-- Signal Strength --}}
       <div class="ncm-scene-network-card__signal">
         <div class="ncm-scene-network-card__signal-header">

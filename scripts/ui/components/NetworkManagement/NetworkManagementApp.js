@@ -1,8 +1,16 @@
 /**
- * Network Management Application
+ * Network Management Application - REVISED WITH SYNC IMPROVEMENTS
  * File: scripts/ui/components/NetworkManagement/NetworkManagementApp.js
  * Module: cyberpunkred-messenger
- * Description: GM interface for managing networks, events, logs, and configuration
+ * Description: GM interface for managing networks with sync status indicators
+ * 
+ * CHANGES:
+ * - Added _getSceneNetworksWithSync() for sync status calculation
+ * - Added _calculateSyncStatus() to determine if Network/Scene tabs match
+ * - Added _onSyncFromNetwork() handler for quick-fix sync button
+ * - Added _onAddSceneToNetwork() handler to add scenes to network arrays
+ * - Updated getData() to use sync-aware methods
+ * - All existing functionality preserved
  */
 
 import { MODULE_ID } from '../../../utils/constants.js';
@@ -118,8 +126,6 @@ export class NetworkManagementApp extends Application {
     if (this.currentSceneId) {
       const scene = game.scenes.get(this.currentSceneId);
       if (scene) {
-        // Get scene network configuration
-        const sceneNetworkConfig = scene.getFlag(MODULE_ID, 'networks') || {};
         sceneSettings = scene.getFlag(MODULE_ID, 'sceneSettings') || {
           autoSwitch: false,
           preferredNetwork: null
@@ -134,28 +140,8 @@ export class NetworkManagementApp extends Application {
           height: scene.height
         };
         
-        // Prepare networks with scene-specific configuration
-        sceneNetworks = allNetworks.map(network => {
-          const config = sceneNetworkConfig[network.id] || {
-            available: false,
-            signalStrength: 0,
-            override: null
-          };
-          
-          // Calculate security level class for styling
-          let securityLevelClass = 'ncm-security-none';
-          if (network.security?.level) {
-            securityLevelClass = `ncm-security-${network.security.level.toLowerCase()}`;
-          }
-          
-          return {
-            ...network,
-            sceneConfig: config,
-            securityLevelClass,
-            signalPercentage: config.signalStrength || 0,
-            signalBars: Math.ceil((config.signalStrength || 0) / 20)
-          };
-        });
+        // NEW: Use sync-aware method that calculates sync status
+        sceneNetworks = await this._getSceneNetworksWithSync(scene, allNetworks);
       }
     }
     
@@ -216,6 +202,108 @@ export class NetworkManagementApp extends Application {
       };
     }
   
+  /* ========================================
+     NEW: SYNC STATUS METHODS
+     ======================================== */
+  
+  /**
+   * Get scene networks with sync status indicators
+   * This method calculates whether Network Tab and Scene Tab are in sync
+   * @private
+   * @param {Scene} scene - Scene to check
+   * @param {Array} allNetworks - All available networks
+   * @returns {Array} Networks with sync status
+   */
+  async _getSceneNetworksWithSync(scene, allNetworks) {
+    const sceneNetworkConfig = scene.getFlag(MODULE_ID, 'networks') || {};
+    
+    return allNetworks.map(network => {
+      const config = sceneNetworkConfig[network.id] || {
+        available: false,
+        signalStrength: 0,
+        override: null
+      };
+      
+      // Calculate security level class for styling
+      let securityLevelClass = 'ncm-security-none';
+      if (network.security?.level) {
+        securityLevelClass = `ncm-security-${network.security.level.toLowerCase()}`;
+      }
+      
+      // NEW: Calculate sync status
+      const syncStatus = this._calculateSyncStatus(network, config, scene);
+      
+      return {
+        ...network,
+        sceneConfig: config,
+        securityLevelClass,
+        signalPercentage: config.signalStrength || 0,
+        signalBars: Math.ceil((config.signalStrength || 0) / 20),
+        syncStatus: syncStatus  // NEW: Sync status for templates
+      };
+    });
+  }
+  
+  /**
+   * Calculate sync status between Network Tab and Scene Tab
+   * Returns whether the two systems agree on network availability
+   * @private
+   * @param {Object} network - Network definition from Network Tab
+   * @param {Object} sceneConfig - Scene-specific config from Scene Tab
+   * @param {Scene} scene - Current scene
+   * @returns {Object} Sync status with type and message
+   */
+  _calculateSyncStatus(network, sceneConfig, scene) {
+    // Check if Network Tab says this network should be available in this scene
+    const networkAllowsScene = network.availability.global || 
+                                network.availability.scenes.includes(scene.id);
+    
+    // Check if Scene Tab says this network is available
+    const sceneFlagEnabled = sceneConfig.available;
+    
+    // Both enabled = in sync
+    if (networkAllowsScene && sceneFlagEnabled) {
+      return { 
+        inSync: true, 
+        type: 'both-enabled', 
+        message: 'In sync: Network allows scene, scene flag is ON'
+      };
+    }
+    
+    // Both disabled = in sync
+    if (!networkAllowsScene && !sceneFlagEnabled) {
+      return { 
+        inSync: true, 
+        type: 'both-disabled', 
+        message: 'In sync: Network blocks scene, scene flag is OFF'
+      };
+    }
+    
+    // Network allows, scene disabled = minor issue
+    if (networkAllowsScene && !sceneFlagEnabled) {
+      return { 
+        inSync: false, 
+        type: 'network-allows-scene-disabled', 
+        message: 'Network allows this scene, but scene flag is OFF'
+      };
+    }
+    
+    // Scene enabled, network blocks = major issue
+    if (!networkAllowsScene && sceneFlagEnabled) {
+      return { 
+        inSync: false, 
+        type: 'scene-enabled-network-blocks', 
+        message: 'Scene flag is ON, but network doesn\'t include this scene'
+      };
+    }
+    
+    return { inSync: true, type: 'unknown', message: '' };
+  }
+  
+  /* ========================================
+     ACTIVATE LISTENERS
+     ======================================== */
+  
     activateListeners(html) {
       super.activateListeners(html);
       
@@ -259,6 +347,10 @@ export class NetworkManagementApp extends Application {
       html.find('[data-action="clear-overrides"]').click(this._onClearOverrides.bind(this));
       html.find('[data-action="toggle-auto-switch"]').change(this._onToggleAutoSwitch.bind(this));
       html.find('[data-action="set-preferred-network"]').change(this._onSetPreferredNetwork.bind(this));
+      
+      // NEW: Sync action handlers
+      html.find('[data-action="sync-from-network"]').click(this._onSyncFromNetwork.bind(this));
+      html.find('[data-action="add-scene-to-network"]').click(this._onAddSceneToNetwork.bind(this));
       
       // Events tab
       html.find('.create-event-btn').click(this._onCreateEvent.bind(this));
@@ -657,9 +749,9 @@ export class NetworkManagementApp extends Application {
     ui.notifications.info(`Exported ${networks.length} network(s)`);
   }
   
-  /* -------------------------------------------- */
-  /*  Event Handlers - Scenes Tab                 */
-  /* -------------------------------------------- */
+  /* ========================================
+     EVENT HANDLERS - SCENES TAB
+     ======================================== */
   
   async _onSceneNetworkToggle(event) {
     const toggle = event.currentTarget;
@@ -706,99 +798,6 @@ export class NetworkManagementApp extends Application {
   async _onConfigureScene(event) {
     event.preventDefault();
     
-    const sceneId = event.currentTarget.dataset.sceneId;
-    const scene = game.scenes.get(sceneId);
-    
-    if (!scene) {
-      ui.notifications.error('Scene not found');
-      return;
-    }
-    
-    const { SceneNetworkConfigDialog } = await import('../../dialogs/SceneNetworkConfigDialog.js');
-    
-    new SceneNetworkConfigDialog({
-      scene: scene,
-      onSave: async (config) => {
-        try {
-          await scene.setFlag(MODULE_ID, 'networks', config);
-          ui.notifications.info(`Scene network configuration updated`);
-          this._scenes = null;
-          this.render(false);
-        } catch (error) {
-          console.error(`${MODULE_ID} | Error updating scene config:`, error);
-          ui.notifications.error(`Failed to update scene configuration`);
-        }
-      }
-    }).render(true);
-  }
-  
-  async _onCopyToScenes(event) {
-    event.preventDefault();
-    
-    const sourceSceneId = event.currentTarget.dataset.sceneId;
-    const sourceScene = game.scenes.get(sourceSceneId);
-    
-    if (!sourceScene) return;
-    
-    const config = sourceScene.getFlag(MODULE_ID, 'networks');
-    if (!config) {
-      ui.notifications.warn('Source scene has no network configuration');
-      return;
-    }
-    
-    const confirm = await Dialog.confirm({
-      title: 'Copy Network Configuration',
-      content: `<p>Copy network configuration from <strong>${sourceScene.name}</strong> to all scenes?</p>`,
-      yes: () => true,
-      no: () => false
-    });
-    
-    if (!confirm) return;
-    
-    let copied = 0;
-    for (const scene of game.scenes) {
-      if (scene.id === sourceSceneId) continue;
-      
-      try {
-        await scene.setFlag(MODULE_ID, 'networks', config);
-        copied++;
-      } catch (error) {
-        console.error(`${MODULE_ID} | Error copying config to scene:`, error);
-      }
-    }
-    
-    ui.notifications.info(`Network configuration copied to ${copied} scene(s)`);
-    this._scenes = null;
-    this.render(false);
-  }
-
-  /**
-   * Handle scene selection from dropdown
-   * @param {Event} event - Change event
-   * @private
-   */
-  _onSceneSelect(event) {
-    event.preventDefault();
-    
-    const sceneId = event.currentTarget.value;
-    
-    // Update current scene ID
-    this.currentSceneId = sceneId || null;
-    
-    // Re-render to show scene details
-    this.render(false);
-    
-    console.log(`${MODULE_ID} | Scene selected:`, sceneId || 'None');
-  }
-
-  /**
-   * Handle configure scene button click
-   * @param {Event} event
-   * @private
-   */
-  async _onConfigureScene(event) {
-    event.preventDefault();
-    
     if (!this.currentSceneId) {
       ui.notifications.warn('No scene selected');
       return;
@@ -814,12 +813,7 @@ export class NetworkManagementApp extends Application {
     const { SceneNetworkConfigDialog } = await import('../../dialogs/SceneNetworkConfigDialog.js');
     new SceneNetworkConfigDialog(scene).render(true);
   }
-
-  /**
-   * Handle copy to scenes button click
-   * @param {Event} event
-   * @private
-   */
+  
   async _onCopyToScenes(event) {
     event.preventDefault();
     
@@ -865,6 +859,25 @@ export class NetworkManagementApp extends Application {
     ui.notifications.info(`Network configuration copied to ${copied} scene(s)`);
     this._scenes = null;
     this.render(false);
+  }
+
+  /**
+   * Handle scene selection from dropdown
+   * @param {Event} event - Change event
+   * @private
+   */
+  _onSceneSelect(event) {
+    event.preventDefault();
+    
+    const sceneId = event.currentTarget.value;
+    
+    // Update current scene ID
+    this.currentSceneId = sceneId || null;
+    
+    // Re-render to show scene details
+    this.render(false);
+    
+    console.log(`${MODULE_ID} | Scene selected:`, sceneId || 'None');
   }
 
   /**
@@ -1094,6 +1107,84 @@ export class NetworkManagementApp extends Application {
   }
 
   /**
+   * NEW: Sync scene flag to match network definition
+   * Called when user clicks "Fix: Turn ON" or "Or Turn OFF" buttons
+   * @param {Event} event
+   * @private
+   */
+  async _onSyncFromNetwork(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    const networkId = event.currentTarget.dataset.networkId;
+    
+    if (!this.currentSceneId) return;
+    
+    const scene = game.scenes.get(this.currentSceneId);
+    const network = await this.networkStorage.getNetwork(networkId);
+    
+    if (!network) {
+      ui.notifications.error('Network not found');
+      return;
+    }
+    
+    // Determine if network definition allows this scene
+    const shouldBeAvailable = network.availability.global || 
+                               network.availability.scenes.includes(scene.id);
+    
+    // Update scene flag to match network definition
+    const networks = scene.getFlag(MODULE_ID, 'networks') || {};
+    if (!networks[networkId]) networks[networkId] = {};
+    networks[networkId].available = shouldBeAvailable;
+    
+    // Set default signal strength if enabling
+    if (shouldBeAvailable && !networks[networkId].signalStrength) {
+      networks[networkId].signalStrength = 100;
+    }
+    
+    await scene.setFlag(MODULE_ID, 'networks', networks);
+    
+    ui.notifications.info(`Synced ${network.name} with network definition`);
+    this._scenes = null;
+    this.render(false);
+  }
+
+  /**
+   * NEW: Add current scene to network's scenes array
+   * Called when user clicks "Add Scene to Network" button
+   * @param {Event} event
+   * @private
+   */
+  async _onAddSceneToNetwork(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    const networkId = event.currentTarget.dataset.networkId;
+    
+    if (!this.currentSceneId) return;
+    
+    const scene = game.scenes.get(this.currentSceneId);
+    const network = await this.networkStorage.getNetwork(networkId);
+    
+    if (!network) {
+      ui.notifications.error('Network not found');
+      return;
+    }
+    
+    // Add scene to network's scenes array if not already there
+    if (!network.availability.scenes.includes(scene.id)) {
+      network.availability.scenes.push(scene.id);
+      await this.networkStorage.updateNetwork(networkId, network);
+      
+      ui.notifications.info(`Added ${scene.name} to ${network.name}`);
+      this._networks = null;
+      this.render(false);
+    } else {
+      ui.notifications.warn(`${scene.name} already in ${network.name}'s scenes array`);
+    }
+  }
+
+  /**
    * Handle configure network override button click
    * @param {Event} event
    * @private
@@ -1213,8 +1304,6 @@ export class NetworkManagementApp extends Application {
     ui.notifications.info(`Auto-switch ${enabled ? 'enabled' : 'disabled'} for ${scene.name}`);
     
     console.log(`${MODULE_ID} | Auto-switch ${enabled ? 'enabled' : 'disabled'} for scene ${scene.name}`);
-    
-    // NO re-render needed!
   }
 
   /**
@@ -1243,8 +1332,6 @@ export class NetworkManagementApp extends Application {
     }
     
     console.log(`${MODULE_ID} | Preferred network set to ${networkId || 'Auto'} for scene ${scene.name}`);
-    
-    // NO re-render needed!
   }
 
   /**
@@ -1551,7 +1638,6 @@ export class NetworkManagementApp extends Application {
   
     async _getNetworks() {
       if (!this._networks) {
-        // Use lowercase networkStorage consistently
         const storage = this.networkStorage;
         if (!storage) {
           console.error(`${MODULE_ID} | NetworkStorage not available`);

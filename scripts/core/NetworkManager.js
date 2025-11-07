@@ -213,27 +213,44 @@ export class NetworkManager {
   /**
    * Get networks available in current scene
    */
-  async getAvailableNetworks(scene = canvas.scene) {
-    const allNetworks = await this.getAllNetworks();
-    
+  getAvailableNetworks(scene) {
     return allNetworks.filter(network => {
-      // Hidden networks don't show unless player knows about them
+      // Step 1: Check if GM explicitly configured this network
+      const isGMConfigured = this._isNetworkExplicitlyConfigured(network, scene);
+      
+      if (isGMConfigured) {
+        // GM configured = show it (hidden flag doesn't apply)
+        return true;
+      }
+      
+      // Step 2: If not GM configured, apply hidden flag
       if (network.hidden && !this._isKnownNetwork(network.id)) {
         return false;
       }
       
-      // Global networks always available
-      if (network.availability.global) {
-        return true;
-      }
-      
-      // Scene-specific networks
-      if (scene && network.availability.scenes.includes(scene.id)) {
-        return true;
-      }
+      // Step 3: Check availability
+      if (network.availability.global) return true;
+      if (scene && network.availability.scenes.includes(scene.id)) return true;
       
       return false;
     });
+  }
+
+  // NEW HELPER:
+  _isNetworkExplicitlyConfigured(network, scene) {
+    // Check 1: Global networks
+    if (network.availability.global) return true;
+    
+    // Check 2: Network Tab - scenes array
+    if (scene && network.availability.scenes.includes(scene.id)) return true;
+    
+    // Check 3: Scene Tab - scene flag
+    if (scene) {
+      const sceneConfig = scene.getFlag(MODULE_ID, 'networks')?.[network.id];
+      if (sceneConfig && sceneConfig.available === true) return true;
+    }
+    
+    return false;
   }
   
   /**

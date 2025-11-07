@@ -26,6 +26,7 @@
     "styles/components/network-selector.css",
     "styles/components/cyberpunk-dialogs.css",
     "styles/components/network-management.css",
+    "styles/components/network-sync-indicators.css",
     "styles/dialogs/network-editor.css", 
     "styles/dialogs/scene-network-config.css", 
     "styles/components/scenes-tab.css",
