@@ -355,19 +355,30 @@ moduleInitializer.register('ready', async () => {
       throw new Error('NetworkService not available');
     }
     
+    // Initialize NetworkManager
     const networkManager = new NetworkManager(networkService, stateManager, eventBus);
     await networkManager.initialize();
-
-    // Just assign the CLASS, not an instance
+    
+    // Assign instances and classes
     game.nightcity.networkManager = networkManager;
-    game.nightcity.NetworkStorage = NetworkStorage; 
-    game.nightcity.networkStorage = NetworkStorage; 
+    game.nightcity.NetworkStorage = NetworkStorage;  // Class reference
+    game.nightcity.networkStorage = NetworkStorage;  // Static class (all methods are static)
     game.nightcity.NetworkUtils = NetworkUtils;
     
+    // VERIFY NetworkStorage has expected methods
+    if (typeof NetworkStorage.getAllNetworks !== 'function') {
+      throw new Error('NetworkStorage.getAllNetworks is not a function - check NetworkStorage.js');
+    }
+    
     console.log(`${MODULE_ID} | ✓ Network Manager initialized`);
+    console.log(`${MODULE_ID} | ✓ NetworkStorage available (static class)`);
+    console.log(`${MODULE_ID} | ✓ NetworkStorage.getAllNetworks:`, typeof NetworkStorage.getAllNetworks);
     
   } catch (error) {
     console.error(`${MODULE_ID} | ❌ NetworkManager init failed:`, error);
+    console.error(`${MODULE_ID} | Stack:`, error.stack);
+    // Don't suppress the error - this is critical
+    throw error;
   }
 }, 4.5);
 
