@@ -235,7 +235,13 @@ export class NetworkManagementApp extends Application {
    * @private
    */
   async _getNetworkLogs() {
-    return game.settings.get(MODULE_ID, 'networkLogs') || [];
+    try {
+      return game.settings.get(MODULE_ID, 'networkLogs') || [];
+    } catch (error) {
+      // Setting not registered yet - return empty array
+      console.warn(`${MODULE_ID} | networkLogs setting not registered, returning empty array`);
+      return [];
+    }
   }
   
   /**

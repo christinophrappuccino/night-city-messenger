@@ -275,15 +275,15 @@ export class NetworkManager {
     
     const available = await this.getAvailableNetworks(scene);
     
-    // Update state
-    if (this.stateManager) {
+    // Update state (if stateManager supports it)
+    if (this.stateManager && typeof this.stateManager.setState === 'function') {
       this.stateManager.setState({
         availableNetworks: available.map(n => n.id)
       });
     }
     
-    // Emit event
-    if (this.eventBus) {
+    // Emit event (if eventBus supports it)
+    if (this.eventBus && typeof this.eventBus.emit === 'function') {
       this.eventBus.emit('networks:scanned', { 
         scene: scene.id, 
         networks: available 
@@ -348,8 +348,8 @@ export class NetworkManager {
       await this.networkService.connect(networkId);
     }
     
-    // Update state
-    if (this.stateManager) {
+    // Update state (if stateManager supports it)
+    if (this.stateManager && typeof this.stateManager.setState === 'function') {
       this.stateManager.setState({
         currentNetwork: networkId,
         connected: true
@@ -386,6 +386,12 @@ export class NetworkManager {
    */
   getNetworkStatus() {
     if (!this.stateManager) {
+      return { connected: false, networkId: null };
+    }
+    
+    // Check if stateManager has getState method
+    if (typeof this.stateManager.getState !== 'function') {
+      console.warn(`${MODULE_ID} | stateManager.getState not available, returning default status`);
       return { connected: false, networkId: null };
     }
     

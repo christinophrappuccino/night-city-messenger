@@ -169,6 +169,19 @@ moduleInitializer.register('init', async () => {
   console.log(`${MODULE_ID} | ✓ Auto-Switch Setting registered`);
 }, 41);
 
+// Register network logs setting
+moduleInitializer.register('init', async () => {
+  game.settings.register(MODULE_ID, 'networkLogs', {
+    name: 'Network Logs',
+    scope: 'world',
+    config: false,
+    type: Array,
+    default: []
+  });
+  
+  console.log(`${MODULE_ID} | ✓ Network logs setting registered`);
+}, 42);
+
 // Register Item Inbox service
 moduleInitializer.register('init', async () => {
   console.log(`${MODULE_ID} | Initializing Data Shard System...`);
