@@ -1,40 +1,13 @@
 /**
- * NetworkManagementApp - Network Management UI
+ * Network Management Application - REFACTORED
  * File: scripts/ui/components/NetworkManagement/NetworkManagementApp.js
  * Module: cyberpunkred-messenger
- * 
- * REFACTORED VERSION - Scene Tab is Single Source of Truth
- * 
- * Removed:
- * - _calculateSyncStatus()
- * - _getSceneNetworksWithSync()
- * - _onSyncFromNetwork()
- * - _onAddSceneToNetwork()
- * - All sync indicators and badges
- * 
- * Network Tab now shows properties ONLY
- * Scene Tab is the ONLY place to configure availability
+ * Description: Simplified GM interface - Scene Tab is single source of truth
  */
 
-const MODULE_ID = 'cyberpunkred-messenger';
+import { MODULE_ID } from '../../../utils/constants.js';
 
-import { BaseApplication } from '../../base/BaseApplication.js';
-import { NetworkStorage } from '../../../storage/NetworkStorage.js';
-
-export class NetworkManagementApp extends BaseApplication {
-  static get defaultOptions() {
-    return foundry.utils.mergeObject(super.defaultOptions, {
-      id: 'ncm-network-management',
-      title: 'Network Management',
-      template: 'modules/cyberpunkred-messenger/templates/network-management/network-management.hbs',
-      width: 900,
-      height: 700,
-      resizable: true,
-      classes: ['cyberpunkred-messenger', 'ncm-network-management'],
-      tabs: [{ navSelector: '.tabs', contentSelector: '.tab-content', initial: 'networks' }]
-    });
-  }
-
+export class NetworkManagementApp extends Application {
   constructor(options = {}) {
     super(options);
     
@@ -43,60 +16,81 @@ export class NetworkManagementApp extends BaseApplication {
     this.filterText = '';
     this.sortBy = 'name';
     this.sortDir = 'asc';
-    this.currentSceneId = game.scenes.current?.id || null;
+    this.currentSceneId = null; 
     
     // Cache
     this._networks = null;
     this._scenes = null;
-  }
-
-  async getData(options) {
-    const data = await super.getData(options);
+    this._events = null;
+    this._logs = null;
     
-    // Get all networks
-    const allNetworks = await this.networkStorage.getAllNetworks();
-    this._networks = allNetworks;
+    // Validate service availability
+    this._validateServices();
+  }
+  
+  /* ========================================
+     STATIC PROPERTIES
+     ======================================== */
+  
+  static get defaultOptions() {
+    return foundry.utils.mergeObject(super.defaultOptions, {
+      id: 'network-management',
+      classes: ['ncm-network-management'],
+      title: 'Network Management',
+      template: 'modules/cyberpunkred-messenger/templates/network-management/network-management.hbs',
+      width: 900,
+      height: 700,
+      resizable: true,
+      tabs: [{ navSelector: '.tabs', contentSelector: '.content', initial: 'networks' }]
+    });
+  }
+  
+  /* ========================================
+     DATA PREPARATION
+     ======================================== */
+  
+  /**
+   * Get data for template rendering
+   * SIMPLIFIED: No sync status calculations
+   */
+  async getData() {
+    const data = await super.getData();
+    
+    // Get all networks (properties only)
+    const allNetworks = await this._getNetworks();
     
     // Get all scenes
-    const scenes = game.scenes.map(s => ({
-      id: s.id,
-      name: s.name,
-      active: s.active,
-      width: s.width,
-      height: s.height
-    }));
-    this._scenes = scenes;
+    const scenes = await this._getScenes();
     
-    // Scene tab data - SIMPLIFIED (no sync calculation)
+    // Get events and logs
+    const events = await this._getEvents();
+    const logs = await this._getLogs();
+    
+    // Current scene and its network configuration
+    let currentScene = null;
     let sceneNetworks = [];
     let sceneSettings = {};
-    let currentScene = null;
     
-    if (this.currentSceneId) {
-      const scene = game.scenes.get(this.currentSceneId);
-      if (scene) {
-        currentScene = {
-          id: scene.id,
-          name: scene.name,
-          active: scene.active,
-          width: scene.width,
-          height: scene.height
-        };
+    if (this.activeTab === 'scenes') {
+      if (!this.currentSceneId && game.scenes.active) {
+        this.currentSceneId = game.scenes.active.id;
+      }
+      
+      if (this.currentSceneId) {
+        currentScene = game.scenes.get(this.currentSceneId);
         
-        // Get scene settings
-        sceneSettings = scene.getFlag(MODULE_ID, 'settings') || {
-          autoSwitch: true,
-          preferredNetwork: null
-        };
-        
-        // Get scene networks WITHOUT sync status
-        sceneNetworks = await this._getSceneNetworks(scene, allNetworks);
+        if (currentScene) {
+          // SIMPLIFIED: No sync status, just get scene networks
+          sceneNetworks = await this._getSceneNetworks(currentScene, allNetworks);
+          
+          // Scene settings
+          sceneSettings = {
+            autoSwitch: currentScene.getFlag(MODULE_ID, 'autoSwitch') || false,
+            preferredNetwork: currentScene.getFlag(MODULE_ID, 'preferredNetwork') || null
+          };
+        }
       }
     }
-    
-    // Events and logs (unchanged)
-    const events = await this._getNetworkEvents();
-    const logs = await this._getNetworkLogs();
     
     // Filter and sort networks for Networks tab
     let filteredNetworks = allNetworks;
@@ -147,25 +141,107 @@ export class NetworkManagementApp extends BaseApplication {
       logs: logs,
       stats: {
         totalNetworks: allNetworks.length,
-        customNetworks: allNetworks.filter(n => n.type === 'CUSTOM').length,
-        securedNetworks: allNetworks.filter(n => n.requiresAuth).length,
+        customNetworks: allNetworks.filter(n => n.type === 'custom' || n.type === 'CUSTOM').length,
+        securedNetworks: allNetworks.filter(n => n.security?.requiresAuth).length,
         activeEvents: events.filter(e => e.active).length,
         recentLogs: logs.slice(0, 100).length
       }
     };
   }
-
+  
   /* ========================================
-     SIMPLIFIED SCENE NETWORK METHOD
-     Removed: _getSceneNetworksWithSync()
+     HELPER METHODS
      ======================================== */
   
   /**
-   * Get scene networks (simplified - no sync status)
+   * Validate service availability
    * @private
-   * @param {Scene} scene - Scene to check
-   * @param {Array} allNetworks - All available networks
-   * @returns {Array} Networks with scene configuration
+   */
+  _validateServices() {
+    if (!game.nightcity?.networkStorage) {
+      console.warn(`${MODULE_ID} | NetworkStorage service not available`);
+      return false;
+    }
+    return true;
+  }
+  
+  /**
+   * Get networkStorage service
+   * @private
+   */
+  get networkStorage() {
+    return game.nightcity?.NetworkStorage || game.nightcity?.networkStorage;
+  }
+  
+  /**
+   * Get all networks from storage
+   * @private
+   */
+  async _getNetworks() {
+    if (!this._networks) {
+      this._networks = await this.networkStorage.getAllNetworks();
+    }
+    return this._networks;
+  }
+  
+  /**
+   * Get all scenes
+   * @private
+   */
+  async _getScenes() {
+    if (!this._scenes) {
+      this._scenes = game.scenes.contents.map(s => ({
+        id: s.id,
+        name: s.name,
+        active: s.active
+      }));
+    }
+    return this._scenes;
+  }
+  
+  /**
+   * Get network events
+   * @private
+   */
+  async _getEvents() {
+    if (!this._events) {
+      this._events = await this._getNetworkEvents();
+    }
+    return this._events;
+  }
+  
+  /**
+   * Get network logs
+   * @private
+   */
+  async _getLogs() {
+    if (!this._logs) {
+      this._logs = await this._getNetworkLogs();
+    }
+    return this._logs;
+  }
+  
+  /**
+   * Get network events (placeholder)
+   * @private
+   */
+  async _getNetworkEvents() {
+    // Placeholder for network events system
+    return [];
+  }
+  
+  /**
+   * Get network logs
+   * @private
+   */
+  async _getNetworkLogs() {
+    return game.settings.get(MODULE_ID, 'networkLogs') || [];
+  }
+  
+  /**
+   * Get scene networks WITHOUT sync status
+   * SIMPLIFIED: Just returns network + scene config, no sync calculations
+   * @private
    */
   async _getSceneNetworks(scene, allNetworks) {
     const sceneNetworkConfig = scene.getFlag(MODULE_ID, 'networks') || {};
@@ -189,22 +265,19 @@ export class NetworkManagementApp extends BaseApplication {
         securityLevelClass,
         signalPercentage: config.signalStrength || 0,
         signalBars: Math.ceil((config.signalStrength || 0) / 20)
+        // NO syncStatus property - removed!
       };
     });
   }
-
+  
   /* ========================================
-     REMOVED METHODS
-     These are no longer needed:
-     - _calculateSyncStatus()
-     - _onSyncFromNetwork()
-     - _onAddSceneToNetwork()
-     ======================================== */
-
-  /* ========================================
-     ACTIVATE LISTENERS
+     EVENT LISTENERS
      ======================================== */
   
+  /**
+   * Activate event listeners
+   * SIMPLIFIED: No sync action handlers
+   */
   activateListeners(html) {
     super.activateListeners(html);
     
@@ -226,8 +299,6 @@ export class NetworkManagementApp extends BaseApplication {
     html.find('.select-all-networks').click(this._onSelectAll.bind(this));
     html.find('.deselect-all-networks').click(this._onDeselectAll.bind(this));
     html.find('.bulk-delete-btn').click(this._onBulkDelete.bind(this));
-    html.find('.bulk-enable-btn').click(this._onBulkEnable.bind(this));
-    html.find('.bulk-disable-btn').click(this._onBulkDisable.bind(this));
     html.find('.bulk-export-btn').click(this._onBulkExport.bind(this));
     
     // Scenes tab
@@ -249,21 +320,146 @@ export class NetworkManagementApp extends BaseApplication {
     html.find('[data-action="toggle-auto-switch"]').change(this._onToggleAutoSwitch.bind(this));
     html.find('[data-action="set-preferred-network"]').change(this._onSetPreferredNetwork.bind(this));
     
-    // REMOVED: Sync action handlers
-    // - [data-action="sync-from-network"]
-    // - [data-action="add-scene-to-network"]
-    
     // Events tab
     html.find('.create-event-btn').click(this._onCreateEvent.bind(this));
-    html.find('.event-item').click(this._onEventClick.bind(this));
     html.find('.edit-event-btn').click(this._onEditEvent.bind(this));
     html.find('.delete-event-btn').click(this._onDeleteEvent.bind(this));
-    html.find('.toggle-event-btn').click(this._onToggleEvent.bind(this));
+    html.find('.trigger-event-btn').click(this._onTriggerEvent.bind(this));
     
     // Logs tab
-    html.find('.clear-logs-btn').click(this._onClearLogs.bind(this));
-    html.find('.export-logs-btn').click(this._onExportLogs.bind(this));
     html.find('.log-filter').on('input', this._onLogFilter.bind(this));
+    html.find('.log-export-btn').click(this._onExportLogs.bind(this));
+    html.find('.log-clear-btn').click(this._onClearLogs.bind(this));
+    html.find('.log-refresh-btn').click(this._onRefreshLogs.bind(this));
+    
+    // Import
+    html.find('.import-network-btn').click(this._onImportNetwork.bind(this));
+  }
+
+  /* ========================================
+     EVENT HANDLERS - All your existing handlers below
+     Keep everything from your code
+     ======================================== */
+  
+  async _onConfigureNetworkOverride(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    const networkId = event.currentTarget.dataset.networkId;
+    
+    if (!this.currentSceneId) return;
+    
+    const scene = game.scenes.get(this.currentSceneId);
+    const network = await this.networkStorage.getNetwork(networkId);
+    
+    if (!network) {
+      ui.notifications.error('Network not found');
+      return;
+    }
+    
+    const currentConfig = scene.getFlag(MODULE_ID, 'networks')?.[networkId] || {};
+    
+    const { SceneNetworkConfigDialog } = await import('../../dialogs/SceneNetworkConfigDialog.js');
+    const result = await SceneNetworkConfigDialog.show(scene, network, currentConfig);
+    
+    if (result) {
+      const networks = scene.getFlag(MODULE_ID, 'networks') || {};
+      networks[networkId] = result;
+      await scene.setFlag(MODULE_ID, 'networks', networks);
+      
+      ui.notifications.info(`Updated ${network.name} configuration for ${scene.name}`);
+      this._scenes = null;
+      this.render(false);
+    }
+  }
+
+  async _onViewOverrides(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    const networkId = event.currentTarget.dataset.networkId;
+    
+    if (!this.currentSceneId) return;
+    
+    const scene = game.scenes.get(this.currentSceneId);
+    const config = scene.getFlag(MODULE_ID, 'networks')?.[networkId];
+    
+    if (!config?.override) {
+      ui.notifications.info('No overrides configured for this network');
+      return;
+    }
+    
+    new Dialog({
+      title: 'Scene Network Overrides',
+      content: `<pre>${JSON.stringify(config.override, null, 2)}</pre>`,
+      buttons: {
+        close: { label: 'Close' }
+      }
+    }).render(true);
+  }
+
+  async _onClearOverrides(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    const networkId = event.currentTarget.dataset.networkId;
+    
+    if (!this.currentSceneId) return;
+    
+    const scene = game.scenes.get(this.currentSceneId);
+    const networks = scene.getFlag(MODULE_ID, 'networks') || {};
+    
+    if (networks[networkId]) {
+      delete networks[networkId].override;
+      await scene.setFlag(MODULE_ID, 'networks', networks);
+      
+      ui.notifications.info('Cleared network overrides');
+      this._scenes = null;
+      this.render(false);
+    }
+  }
+
+  async _onTriggerEvent(event) {
+    event.preventDefault();
+    ui.notifications.info('Event system coming soon!');
+  }
+
+  async _onRefreshLogs(event) {
+    event.preventDefault();
+    this._logs = null;
+    this.render(false);
+  }
+
+  async _onImportNetwork(event) {
+    event.preventDefault();
+    
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    
+    input.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      const text = await file.text();
+      try {
+        const data = JSON.parse(text);
+        const networks = Array.isArray(data) ? data : [data];
+        
+        for (const network of networks) {
+          await this.networkStorage.createNetwork(network);
+        }
+        
+        ui.notifications.info(`Imported ${networks.length} network(s)`);
+        this._networks = null;
+        this.render(false);
+      } catch (error) {
+        console.error('Import error:', error);
+        ui.notifications.error('Failed to import networks');
+      }
+    };
+    
+    input.click();
   }
 
   /* ========================================
@@ -840,21 +1036,7 @@ export class NetworkManagementApp extends BaseApplication {
   _onLogFilter(event) {
     // Implement log filtering
   }
-
-  /* ========================================
-     HELPER METHODS
-     ======================================== */
-
-  async _getNetworkEvents() {
-    // Placeholder for network events system
-    return [];
-  }
-
-  async _getNetworkLogs() {
-    return game.settings.get(MODULE_ID, 'networkLogs') || [];
-  }
-
-  get networkStorage() {
-    return NetworkStorage;
-  }
 }
+
+// CRITICAL: Export the class
+export default NetworkManagementApp;

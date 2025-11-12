@@ -138,8 +138,16 @@ moduleInitializer.register('init', async () => {
 
 // Initialize Network Access Log Service
 moduleInitializer.register('init', async () => {
-  game.nightcity.NetworkAccessLogService = new NetworkAccessLogService();
-  await game.nightcity.NetworkAccessLogService.initialize();
+  try {
+    const { NetworkAccessLogService } = await import('./services/NetworkAccessLogService.js');
+    game.nightcity.NetworkAccessLogService = new NetworkAccessLogService();
+    await game.nightcity.NetworkAccessLogService.initialize();
+    console.log(`${MODULE_ID} | ✓ Network Access Log Service initialized`);
+  } catch (error) {
+    console.warn(`${MODULE_ID} | ⚠️ Network Access Log Service failed to initialize:`, error.message);
+    console.warn(`${MODULE_ID} | Continuing without access logging...`);
+    // Don't throw - this is non-critical
+  }
 }, 40);
 
 // Register auto-switch network setting
