@@ -1,9 +1,4 @@
-{{!-- 
-  Scene Network Card - REFACTORED
-  CHANGES: Removed sync status indicators and sync action buttons
-  Simple: Checkbox for available, slider for signal strength
---}}
-
+{{!-- Scene Network Card - Individual network configuration for a scene --}}
 <div class="ncm-scene-network-card {{#unless sceneConfig.available}}ncm-scene-network-card--disabled{{/unless}}"
      data-network-id="{{id}}">
   
@@ -19,344 +14,110 @@
         </span>
       </div>
     </div>
-
-    {{!-- Availability Toggle --}}
+    
     <div class="ncm-scene-network-card__toggle">
-      <label class="ncm-toggle">
-        <input 
-          type="checkbox" 
-          data-action="toggle-network-availability"
-          data-network-id="{{id}}"
-          {{#if sceneConfig.available}}checked{{/if}}>
-        <span class="ncm-toggle-slider"></span>
+      <label class="ncm-toggle ncm-toggle--sm">
+        <input type="checkbox" 
+               data-action="toggle-network-availability" 
+               data-network-id="{{id}}"
+               {{#if sceneConfig.available}}checked{{/if}}>
+        <span class="ncm-toggle__slider"></span>
       </label>
-      <span class="ncm-toggle-label">
-        {{#if sceneConfig.available}}Available{{else}}Disabled{{/if}}
-      </span>
     </div>
   </div>
-
-  {{!-- Network Details (shown when available) --}}
+  
   {{#if sceneConfig.available}}
     <div class="ncm-scene-network-card__body">
       
       {{!-- Signal Strength --}}
-      <div class="ncm-signal-strength-control">
-        <label>
-          <i class="fas fa-signal"></i> Signal Strength:
-          <span class="ncm-signal-value">{{signalPercentage}}%</span>
-        </label>
-        
-        <div class="ncm-signal-bars">
-          {{#times 5}}
-            <div class="ncm-signal-bar {{#if (lte @index ../signalBars)}}ncm-signal-bar--active{{/if}}"></div>
-          {{/times}}
+      <div class="ncm-scene-network-card__signal">
+        <div class="ncm-scene-network-card__signal-header">
+          <label class="ncm-label">
+            <i class="fas fa-signal"></i> Signal Strength
+          </label>
+          <span class="ncm-scene-network-card__signal-value">
+            {{sceneConfig.signalStrength}}%
+          </span>
         </div>
         
-        <input 
-          type="range" 
-          min="0" 
-          max="100" 
-          step="5"
-          value="{{signalPercentage}}"
-          data-action="update-signal-strength"
-          data-network-id="{{id}}"
-          class="ncm-signal-slider">
-      </div>
-      
-      {{!-- Status Badge --}}
-      <div class="ncm-scene-network-card__signal-status">
-        {{#if (gte signalPercentage 80)}}
-          <span class="ncm-badge ncm-badge--success">
-            <i class="fas fa-signal"></i> Excellent
-          </span>
-        {{else if (gte signalPercentage 60)}}
-          <span class="ncm-badge ncm-badge--info">
-            <i class="fas fa-signal"></i> Good
-          </span>
-        {{else if (gte signalPercentage 40)}}
-          <span class="ncm-badge ncm-badge--warning">
-            <i class="fas fa-signal"></i> Fair
-          </span>
-        {{else if (gte signalPercentage 20)}}
-          <span class="ncm-badge ncm-badge--warning">
-            <i class="fas fa-signal"></i> Weak
-          </span>
-        {{else}}
-          <span class="ncm-badge ncm-badge--danger">
-            <i class="fas fa-exclamation-triangle"></i> Very Weak
-          </span>
-        {{/if}}
-      </div>
-      
-      {{!-- Network Info --}}
-      <div class="ncm-scene-network-card__info">
-        <div class="ncm-info-row">
-          <span class="ncm-info-label">Type:</span>
-          <span class="ncm-info-value">{{type}}</span>
-        </div>
-        <div class="ncm-info-row">
-          <span class="ncm-info-label">Reliability:</span>
-          <span class="ncm-info-value">{{reliability}}%</span>
-        </div>
-        {{#if security.requiresAuth}}
-          <div class="ncm-info-row">
-            <span class="ncm-info-label">Auth:</span>
-            <span class="ncm-info-value ncm-badge ncm-badge--warning">
-              <i class="fas fa-lock"></i> Required
-            </span>
+        <div class="ncm-scene-network-card__signal-slider">
+          <input type="range" 
+                 class="ncm-range ncm-signal-range" 
+                 min="0" 
+                 max="100" 
+                 step="5" 
+                 value="{{sceneConfig.signalStrength}}"
+                 data-action="update-signal-strength"
+                 data-network-id="{{id}}">
+          
+          <div class="ncm-signal-bars">
+            {{#each (signalBars sceneConfig.signalStrength)}}
+              <div class="ncm-signal-bar {{#if this.active}}ncm-signal-bar--active{{/if}}"
+                   style="height: {{this.height}}%"></div>
+            {{/each}}
           </div>
-        {{/if}}
+        </div>
+        
+        <div class="ncm-scene-network-card__signal-status">
+          {{#if (gte sceneConfig.signalStrength 80)}}
+            <span class="ncm-badge ncm-badge--success">
+              <i class="fas fa-signal"></i> Excellent
+            </span>
+          {{else if (gte sceneConfig.signalStrength 60)}}
+            <span class="ncm-badge ncm-badge--info">
+              <i class="fas fa-signal"></i> Good
+            </span>
+          {{else if (gte sceneConfig.signalStrength 40)}}
+            <span class="ncm-badge ncm-badge--warning">
+              <i class="fas fa-signal"></i> Fair
+            </span>
+          {{else if (gte sceneConfig.signalStrength 20)}}
+            <span class="ncm-badge ncm-badge--warning">
+              <i class="fas fa-signal"></i> Weak
+            </span>
+          {{else}}
+            <span class="ncm-badge ncm-badge--danger">
+              <i class="fas fa-exclamation-triangle"></i> Very Weak
+            </span>
+          {{/if}}
+        </div>
       </div>
       
-      {{!-- Actions --}}
-      <div class="ncm-scene-network-card__actions">
-        <button 
-          class="ncm-btn ncm-btn--xs ncm-btn--secondary"
-          data-action="configure-network-override"
-          data-network-id="{{id}}"
-          title="Configure scene-specific overrides">
-          <i class="fas fa-cog"></i> Configure
-        </button>
-        
-        {{#if sceneConfig.override}}
-          <button 
-            class="ncm-btn ncm-btn--xs ncm-btn--info"
-            data-action="view-overrides"
-            data-network-id="{{id}}"
-            title="View scene overrides">
-            <i class="fas fa-info-circle"></i> View Overrides
+      {{!-- Override Indicator --}}
+      {{#if sceneConfig.override}}
+        <div class="ncm-scene-network-card__override">
+          <span class="ncm-badge ncm-badge--accent">
+            <i class="fas fa-exclamation-circle"></i> Scene Overrides Active
+          </span>
+          <button class="ncm-btn ncm-btn--ghost ncm-btn--xs" 
+                  data-action="view-overrides"
+                  data-network-id="{{id}}">
+            <i class="fas fa-eye"></i> View
           </button>
-          <button 
-            class="ncm-btn ncm-btn--xs ncm-btn--danger"
-            data-action="clear-overrides"
-            data-network-id="{{id}}"
-            title="Clear scene overrides">
+          <button class="ncm-btn ncm-btn--ghost ncm-btn--xs" 
+                  data-action="clear-overrides"
+                  data-network-id="{{id}}">
             <i class="fas fa-times"></i> Clear
           </button>
-        {{/if}}
+        </div>
+      {{/if}}
+      
+      {{!-- Quick Actions --}}
+      <div class="ncm-scene-network-card__actions">
+        <button class="ncm-btn ncm-btn--secondary ncm-btn--sm ncm-btn--block" 
+                data-action="configure-network-override"
+                data-network-id="{{id}}">
+          <i class="fas fa-cog"></i> Configure Overrides
+        </button>
       </div>
       
     </div>
   {{else}}
-    {{!-- Disabled State --}}
     <div class="ncm-scene-network-card__disabled-state">
-      <p>Network is disabled in this scene. Enable it to configure signal strength and settings.</p>
+      <p class="ncm-hint">
+        <i class="fas fa-ban"></i> Network unavailable in this scene
+      </p>
     </div>
   {{/if}}
   
 </div>
-
-<style>
-.ncm-scene-network-card {
-  background: var(--ncm-surface);
-  border: 2px solid var(--ncm-border);
-  border-radius: 4px;
-  padding: 1rem;
-  transition: all 0.2s ease;
-}
-
-.ncm-scene-network-card--disabled {
-  opacity: 0.6;
-  border-style: dashed;
-}
-
-.ncm-scene-network-card__header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid var(--ncm-border);
-}
-
-.ncm-scene-network-card__title {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.ncm-scene-network-card__icon {
-  font-size: 1.5rem;
-}
-
-.ncm-scene-network-card__name-group h5 {
-  margin: 0 0 0.25rem 0;
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--ncm-text);
-}
-
-.ncm-scene-network-card__security {
-  font-size: 0.75rem;
-  padding: 0.125rem 0.5rem;
-  border-radius: 3px;
-  background: var(--ncm-background);
-}
-
-.ncm-security-none { color: #888; }
-.ncm-security-low { color: #90EE90; }
-.ncm-security-medium { color: #FFD700; }
-.ncm-security-high { color: #FF6B6B; }
-.ncm-security-black-ice { color: #FF0000; font-weight: bold; }
-
-.ncm-scene-network-card__toggle {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.ncm-toggle {
-  position: relative;
-  display: inline-block;
-  width: 50px;
-  height: 24px;
-}
-
-.ncm-toggle input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.ncm-toggle-slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: #555;
-  transition: 0.3s;
-  border-radius: 24px;
-}
-
-.ncm-toggle-slider:before {
-  position: absolute;
-  content: "";
-  height: 18px;
-  width: 18px;
-  left: 3px;
-  bottom: 3px;
-  background-color: white;
-  transition: 0.3s;
-  border-radius: 50%;
-}
-
-.ncm-toggle input:checked + .ncm-toggle-slider {
-  background-color: var(--ncm-primary);
-}
-
-.ncm-toggle input:checked + .ncm-toggle-slider:before {
-  transform: translateX(26px);
-}
-
-.ncm-toggle-label {
-  font-size: 0.85rem;
-  font-weight: 600;
-}
-
-.ncm-scene-network-card__body {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.ncm-signal-strength-control {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.ncm-signal-strength-control label {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 0.85rem;
-  font-weight: 600;
-}
-
-.ncm-signal-value {
-  color: var(--ncm-primary);
-}
-
-.ncm-signal-bars {
-  display: flex;
-  gap: 4px;
-  height: 20px;
-}
-
-.ncm-signal-bar {
-  flex: 1;
-  background: var(--ncm-background);
-  border-radius: 2px;
-  transition: background 0.2s ease;
-}
-
-.ncm-signal-bar--active {
-  background: var(--ncm-secondary);
-}
-
-.ncm-signal-slider {
-  width: 100%;
-}
-
-.ncm-scene-network-card__signal-status {
-  text-align: center;
-}
-
-.ncm-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.25rem 0.75rem;
-  border-radius: 3px;
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-
-.ncm-badge--success { background: rgba(0, 255, 0, 0.1); color: #00ff00; }
-.ncm-badge--info { background: rgba(0, 150, 255, 0.1); color: #0096ff; }
-.ncm-badge--warning { background: rgba(255, 200, 0, 0.1); color: #ffc800; }
-.ncm-badge--danger { background: rgba(255, 0, 0, 0.1); color: #ff0000; }
-
-.ncm-scene-network-card__info {
-  background: var(--ncm-background);
-  padding: 0.75rem;
-  border-radius: 3px;
-}
-
-.ncm-info-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.25rem 0;
-}
-
-.ncm-info-label {
-  font-size: 0.8rem;
-  color: var(--ncm-text-secondary);
-}
-
-.ncm-info-value {
-  font-size: 0.8rem;
-  font-weight: 600;
-}
-
-.ncm-scene-network-card__actions {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.ncm-scene-network-card__disabled-state {
-  padding: 1rem;
-  text-align: center;
-  color: var(--ncm-text-secondary);
-  font-size: 0.85rem;
-}
-
-.ncm-scene-network-card__disabled-state p {
-  margin: 0;
-}
-</style>

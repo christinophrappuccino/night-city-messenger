@@ -1,14 +1,10 @@
 /**
- * NetworkManager - REFACTORED
+ * NetworkManager
  * File: scripts/core/NetworkManager.js
  * Module: cyberpunkred-messenger
- * Description: Simplified network management with scene-based availability as single source of truth
+ * Description: Enhanced network management with custom networks, authentication, and scene-based availability
  * 
- * CHANGES FROM PREVIOUS VERSION:
- * - Removed: availability.scenes arrays from network objects
- * - Removed: hidden flag logic and _isNetworkExplicitlyConfigured()
- * - Simplified: getAvailableNetworks() now only checks scene flags
- * - Single Source of Truth: Scene flags determine availability, Network Tab stores properties only
+ * EXTENDS: NetworkService.js (maintains backward compatibility)
  */
 
 import { MODULE_ID, NETWORKS, NETWORK_RELIABILITY } from '../utils/constants.js';
@@ -24,7 +20,7 @@ export class NetworkManager {
     this.failedAttempts = new Map();
     this.knownNetworks = new Set();
     
-    console.log(`${MODULE_ID} | NetworkManager initialized (refactored - scene-based)`);
+    console.log(`${MODULE_ID} | NetworkManager initialized (enhanced)`);
   }
   
   /**
@@ -61,8 +57,7 @@ export class NetworkManager {
   }
   
   /**
-   * Get all networks (properties only, no availability logic)
-   * @returns {Promise<Array<Object>>} All network definitions
+   * Get all networks (both default and custom)
    */
   async getAllNetworks() {
     const customNetworks = await game.settings.get(MODULE_ID, 'customNetworks') || [];
@@ -70,74 +65,7 @@ export class NetworkManager {
   }
   
   /**
-   * Get networks available in current scene
-   * SIMPLIFIED: Scene flags are the single source of truth for availability
-   * @param {Scene} scene - Scene to check (defaults to current scene)
-   * @returns {Promise<Array<Object>>} Available networks
-   */
-  async getAvailableNetworks(scene = null) {
-    // Use current scene if not provided
-    if (!scene) {
-      scene = game.scenes.active;
-    }
-    
-    if (!scene) {
-      console.warn(`${MODULE_ID} | No scene available for network check`);
-      return [];
-    }
-    
-    const allNetworks = await this.getAllNetworks();
-    const sceneNetworkConfig = scene.getFlag(MODULE_ID, 'networks') || {};
-    
-    return allNetworks.filter(network => {
-      const config = sceneNetworkConfig[network.id];
-      
-      // Simple: Is this network explicitly enabled in the scene?
-      return config?.available === true;
-    });
-  }
-
-  /**
-   * Check if a specific network is available in the scene
-   * @param {string} networkId - Network ID to check
-   * @param {Scene} scene - Scene to check (defaults to current scene)
-   * @returns {Promise<boolean>} True if network is available
-   */
-  async isNetworkAvailable(networkId, scene = null) {
-    if (!scene) {
-      scene = game.scenes.active;
-    }
-    
-    if (!scene) return false;
-    
-    const sceneNetworkConfig = scene.getFlag(MODULE_ID, 'networks') || {};
-    return sceneNetworkConfig[networkId]?.available === true;
-  }
-
-  /**
-   * Get network signal strength for a scene
-   * @param {string} networkId - Network ID
-   * @param {Scene} scene - Scene to check (defaults to current scene)
-   * @returns {Promise<number>} Signal strength (0-100)
-   */
-  async getNetworkSignalStrength(networkId, scene = null) {
-    if (!scene) {
-      scene = game.scenes.active;
-    }
-    
-    if (!scene) return 0;
-    
-    const sceneNetworkConfig = scene.getFlag(MODULE_ID, 'networks') || {};
-    const config = sceneNetworkConfig[networkId];
-    
-    if (!config?.available) return 0;
-    
-    return config.signalStrength || 0;
-  }
-  
-  /**
    * Create default network definitions
-   * SIMPLIFIED: No availability arrays, properties only
    * @private
    */
   async _createDefaultNetworks() {
@@ -146,6 +74,10 @@ export class NetworkManager {
         id: 'CITINET',
         name: 'CitiNet',
         type: 'public',
+        availability: {
+          global: true,
+          scenes: []
+        },
         signalStrength: 90,
         reliability: 95,
         security: {
@@ -167,22 +99,27 @@ export class NetworkManager {
           icon: 'fa-wifi',
           glitchIntensity: 0.1
         },
-        description: 'Night City\'s public network. Standard connectivity.',
-        gmNotes: 'Default public access'
+        description: 'Night City\'s public network. Always available, never secure.',
+        hidden: false,
+        gmNotes: ''
       },
       {
         id: 'CORPNET',
         name: 'CorpNet',
         type: 'corporate',
-        signalStrength: 95,
+        availability: {
+          global: false,
+          scenes: [] // GM will assign to specific scenes
+        },
+        signalStrength: 100,
         reliability: 99,
         security: {
-          level: 'medium',
+          level: 'high',
           requiresAuth: true,
-          password: null,
-          bypassDC: 15,
+          password: null, // Will be set by GM
+          bypassDC: 17,
           attempts: 3,
-          lockoutDuration: 3600
+          lockoutDuration: 600000 // 10 minutes
         },
         effects: {
           messageDelay: 0,
@@ -193,27 +130,32 @@ export class NetworkManager {
         theme: {
           color: '#FFD700',
           icon: 'fa-building',
-          glitchIntensity: 0.05
+          glitchIntensity: 0.2
         },
-        description: 'Corporate network. Requires authentication. High security.',
-        gmNotes: 'Monitored by corp security'
+        description: 'Corporate network. High security, monitored by NetWatch.',
+        hidden: false,
+        gmNotes: 'Alert security on breach attempts'
       },
       {
         id: 'DARKNET',
         name: 'DarkNet',
-        type: 'underground',
+        type: 'darknet',
+        availability: {
+          global: false,
+          scenes: [] // Players must discover darknet nodes
+        },
         signalStrength: 60,
-        reliability: 70,
+        reliability: 80,
         security: {
-          level: 'high',
+          level: 'medium',
           requiresAuth: true,
           password: null,
-          bypassDC: 20,
+          bypassDC: 13,
           attempts: 5,
-          lockoutDuration: 7200
+          lockoutDuration: 180000 // 3 minutes
         },
         effects: {
-          messageDelay: 2000,
+          messageDelay: 2,
           traced: false,
           anonymity: true,
           canRoute: true
@@ -221,15 +163,20 @@ export class NetworkManager {
         theme: {
           color: '#9400D3',
           icon: 'fa-user-secret',
-          glitchIntensity: 0.3
+          glitchIntensity: 0.5
         },
-        description: 'Underground network. Anonymized routing. Unstable.',
-        gmNotes: 'NetWatch monitored'
+        description: 'Anonymous network. Unstable but untraceable.',
+        hidden: true, // Hidden until player discovers it
+        gmNotes: 'Players need to know about darknet nodes to connect'
       },
       {
         id: 'DEAD_ZONE',
         name: 'Dead Zone',
         type: 'none',
+        availability: {
+          global: false,
+          scenes: [] // GM assigns to dead zones
+        },
         signalStrength: 0,
         reliability: 0,
         security: {
@@ -252,6 +199,7 @@ export class NetworkManager {
           glitchIntensity: 0
         },
         description: 'No network coverage. Complete blackout.',
+        hidden: false,
         gmNotes: 'No connectivity'
       }
     ];
@@ -263,161 +211,611 @@ export class NetworkManager {
   }
   
   /**
-   * Scan for available networks in current scene
-   * @returns {Promise<Array<Object>>} Available networks
+   * Get networks available in current scene
+   */
+  async getAvailableNetworks(scene = canvas.scene) {
+    const allNetworks = await this.getAllNetworks();
+    
+    return allNetworks.filter(network => {
+      // Hidden networks don't show unless player knows about them
+      if (network.hidden && !this._isKnownNetwork(network.id)) {
+        return false;
+      }
+      
+      // Global networks always available
+      if (network.availability.global) {
+        return true;
+      }
+      
+      // Scene-specific networks
+      if (scene && network.availability.scenes.includes(scene.id)) {
+        return true;
+      }
+      
+      return false;
+    });
+  }
+  
+  /**
+   * Check if player knows about a hidden network
+   * @private
+   */
+  _isKnownNetwork(networkId) {
+    const actor = game.user.character;
+    if (!actor) return false;
+    
+    const knownNetworks = actor.getFlag(MODULE_ID, 'knownNetworks') || [];
+    return knownNetworks.includes(networkId);
+  }
+  
+  /**
+   * Reveal a hidden network to a character
+   */
+  async revealNetwork(networkId, actor) {
+    const network = (await this.getAllNetworks()).find(n => n.id === networkId);
+    if (!network || !network.hidden) return;
+    
+    const knownNetworks = actor.getFlag(MODULE_ID, 'knownNetworks') || [];
+    if (!knownNetworks.includes(networkId)) {
+      knownNetworks.push(networkId);
+      await actor.setFlag(MODULE_ID, 'knownNetworks', knownNetworks);
+      
+      ui.notifications.info(`Discovered network: ${network.name}`);
+      
+      await ChatMessage.create({
+        content: `
+          <div style="background: rgba(148, 0, 211, 0.2); border: 1px solid #9400D3; padding: 10px; border-radius: 4px;">
+            <h3 style="color: #9400D3; margin: 0 0 10px 0;">
+              <i class="fas fa-wifi"></i> NETWORK DISCOVERED
+            </h3>
+            <p><strong>${actor.name}</strong> discovered <strong>${network.name}</strong></p>
+            <p style="font-size: 0.9em; color: #ccc;">${network.description}</p>
+          </div>
+        `,
+        whisper: [game.user.id]
+      });
+    }
+  }
+  
+  /**
+   * Scan for available networks
    */
   async scanNetworks() {
-    const scene = game.scenes.active;
-    if (!scene) {
-      console.warn(`${MODULE_ID} | No active scene for network scan`);
-      return [];
+    const availableNetworks = await this.getAvailableNetworks();
+    
+    console.log(`${MODULE_ID} | Scan found ${availableNetworks.length} networks`);
+    
+    // Emit event for UI updates
+    this.eventBus.emit('network:scanned', { networks: availableNetworks });
+    
+    // Check for auto-connect favorites
+    await this._checkAutoConnect(availableNetworks);
+    
+    return availableNetworks;
+  }
+  
+  /**
+   * Auto-connect to favorite network if available
+   * @private
+   */
+  async _checkAutoConnect(availableNetworks) {
+    const actor = game.user.character;
+    if (!actor) return;
+    
+    const prefs = actor.getFlag(MODULE_ID, 'networkPreferences') || {};
+    if (!prefs.autoConnect) return;
+    
+    // Find first available favorite that we're authenticated to
+    const favorites = prefs.favorites || [];
+    for (const networkId of favorites) {
+      const network = availableNetworks.find(n => n.id === networkId);
+      if (network && this.authenticatedNetworks.has(networkId)) {
+        await this.connectToNetwork(networkId);
+        console.log(`${MODULE_ID} | Auto-connected to favorite: ${networkId}`);
+        return;
+      }
     }
-    
-    const available = await this.getAvailableNetworks(scene);
-    
-    // Update state (if stateManager supports it)
-    if (this.stateManager && typeof this.stateManager.setState === 'function') {
-      this.stateManager.setState({
-        availableNetworks: available.map(n => n.id)
-      });
-    }
-    
-    // Emit event (if eventBus supports it)
-    if (this.eventBus && typeof this.eventBus.emit === 'function') {
-      this.eventBus.emit('networks:scanned', { 
-        scene: scene.id, 
-        networks: available 
-      });
-    }
-    
-    return available;
   }
   
   /**
    * Connect to a network
-   * @param {string} networkId - Network to connect to
-   * @param {Object} options - Connection options
-   * @returns {Promise<Object>} Connection result
+   * @param {string} networkId - Network ID to connect to
+   * @param {string} password - Password (if required)
+   * @returns {Object} Result { success, requiresAuth, error }
    */
-  async connectToNetwork(networkId, options = {}) {
-    const scene = game.scenes.active;
+  async connectToNetwork(networkId, password = null) {
+    const availableNetworks = await this.getAvailableNetworks();
+    const network = availableNetworks.find(n => n.id === networkId);
     
-    // Check if network is available in current scene
-    const isAvailable = await this.isNetworkAvailable(networkId, scene);
-    
-    if (!isAvailable && !game.user.isGM) {
-      return {
-        success: false,
-        reason: 'network_unavailable',
-        message: `Network ${networkId} is not available in this location`
-      };
-    }
-    
-    // Get network definition
-    const network = await this.getNetwork(networkId);
     if (!network) {
-      return {
-        success: false,
-        reason: 'network_not_found',
-        message: `Network ${networkId} not found`
-      };
+      return { success: false, error: 'Network not available' };
     }
     
-    // Check authentication
-    if (network.security?.requiresAuth && !this.authenticatedNetworks.has(networkId)) {
-      if (game.user.isGM && !options.requireAuth) {
-        console.log(`${MODULE_ID} | GM bypassing auth for ${networkId}`);
-        return {
-          success: true,
-          gmOverride: true,
-          network: network
-        };
+    const actor = game.user.character;
+    
+    // Check authentication if required
+    if (network.security?.requiresAuth || network.requiresAuth) {
+      if (!actor) {
+        return { success: false, requiresAuth: true };
       }
       
-      return {
-        success: false,
-        reason: 'auth_required',
-        requiresAuth: true,
-        network: network,
-        message: `Network ${network.name} requires authentication`
-      };
+      const authStatus = this.securityService.checkAuthentication(actor, networkId);
+      
+      if (!authStatus.authenticated) {
+        return { success: false, requiresAuth: true };
+      }
+    }
+    
+    // Disconnect from current
+    const currentNetwork = this.networkService.getCurrentNetwork();
+    if (currentNetwork && currentNetwork !== networkId) {
+      await this._disconnect();
     }
     
     // Connect
-    if (this.networkService) {
-      await this.networkService.connect(networkId);
-    }
+    await this.networkService.setCurrentNetwork(network.id, { silent: true });
+    await this._saveNetworkState();
+    await this._announceConnection(network);
     
-    // Update state (if stateManager supports it)
-    if (this.stateManager && typeof this.stateManager.setState === 'function') {
-      this.stateManager.setState({
-        currentNetwork: networkId,
-        connected: true
-      });
-    }
+    this.eventBus.emit('network:connected', { network });
     
-    // Emit event
-    if (this.eventBus) {
-      this.eventBus.emit('network:connected', { 
-        networkId,
-        scene: scene?.id
-      });
-    }
-    
-    return {
-      success: true,
-      network: network
-    };
+    return { success: true };
   }
   
   /**
-   * Get a specific network by ID
-   * @param {string} networkId - Network ID
-   * @returns {Promise<Object|null>} Network object or null
+   * Disconnect from current network
+   * @private
    */
-  async getNetwork(networkId) {
-    const networks = await this.getAllNetworks();
-    return networks.find(n => n.id === networkId) || null;
+  async _disconnect() {
+    const currentNetwork = this.networkService.getCurrentNetwork();
+    if (!currentNetwork) return;
+    
+    console.log(`${MODULE_ID} | Disconnecting from ${currentNetwork}`);
+    
+    this.eventBus.emit('network:disconnected', { networkId: currentNetwork });
   }
   
   /**
-   * Get current network status
-   * @returns {Object} Current network status
+   * Authenticate with password
+   * @param {string} networkId - Network to authenticate to
+   * @param {string} password - Password to try
+   * @returns {Object} Result
+   */
+  async authenticate(networkId, password) {
+    const allNetworks = await this.getAllNetworks();
+    const network = allNetworks.find(n => n.id === networkId);
+    
+    if (!network) {
+      return { success: false, error: 'Network not found' };
+    }
+    
+    const actor = game.user.character;
+    if (!actor) {
+      return { success: false, error: 'No character selected' };
+    }
+    
+    // Use security service for authentication
+    return await this.securityService.attemptPasswordAuth(actor, networkId, password, network);
+  }
+  
+  /**
+   * Hash password (simple implementation for demo)
+   * @private
+   */
+  _hashPassword(password) {
+    // In production, use proper crypto
+    // For now, simple hash for proof of concept
+    let hash = 0;
+    for (let i = 0; i < password.length; i++) {
+      const char = password.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash;
+    }
+    return hash.toString(16);
+  }
+  
+  /**
+   * Attempt to bypass network security (hacking)
+   * Integrates with existing HackingSystem.js
+   */
+  async attemptBypass(networkId, actor) {
+    const allNetworks = await this.getAllNetworks();
+    const network = allNetworks.find(n => n.id === networkId);
+    
+    if (!network) {
+      return { success: false, error: 'Network not found' };
+    }
+    
+    if (!actor) {
+      actor = game.user.character;
+    }
+    
+    if (!actor) {
+      return { success: false, error: 'No character selected' };
+    }
+    
+    // Use security service for bypass attempt
+    return await this.securityService.attemptBypass(actor, networkId, network);
+  }
+  
+  /**
+   * Trigger NetWatch alert
+   * @private
+   */
+  async _triggerNetWatchAlert(actor, network) {
+    await ChatMessage.create({
+      content: `
+        <div style="background: rgba(255, 165, 0, 0.2); border: 1px solid #FFA500; padding: 10px; border-radius: 4px;">
+          <h3 style="color: #FFA500; margin: 0 0 10px 0;">
+            ⚠️ NETWATCH ALERT
+          </h3>
+          <p>Unauthorized access detected on <strong>${network.name}</strong></p>
+          <p style="font-size: 0.9em; color: #ccc;">Tracing connection...</p>
+        </div>
+      `,
+      whisper: [game.user.id]
+    });
+    
+    // Notify GM
+    if (!game.user.isGM) {
+      game.socket.emit(`module.${MODULE_ID}`, {
+        type: 'netwatch-alert',
+        actorId: actor.id,
+        networkId: network.id,
+        timestamp: Date.now()
+      });
+    }
+  }
+
+  /**
+   * Check if actor is authenticated:
+   * @private
+   */
+
+  isAuthenticated(actor, networkId) {
+    if (!actor || !networkId || !this.securityService) {
+      return false;
+    }
+    
+    const authStatus = this.securityService.checkAuthentication(actor, networkId);
+    return authStatus.authenticated;
+  }
+
+  /**
+   * GM tools for authentication:
+   * @private
+   */
+
+  async gmUnlockNetwork(actor, networkId) {
+    if (!game.user.isGM) {
+      throw new Error('Only GMs can force unlock networks');
+    }
+    
+    await this.securityService.gmForceUnlock(actor, networkId);
+  }
+
+  async gmResetAuthentication(actor, networkId = null) {
+    if (!game.user.isGM) {
+      throw new Error('Only GMs can reset authentication');
+    }
+    
+    await this.securityService.gmResetAuth(actor, networkId);
+  }
+  
+  /**
+   * Create chat message announcing connection
+   * @private
+   */
+  async _announceConnection(network) {
+    const actor = game.user.character;
+    let authStatus = '';
+    
+    if (actor && this.securityService) {
+      const status = this.securityService.checkAuthentication(actor, network.id);
+      if (status.authenticated) {
+        if (status.temporary) {
+          authStatus = ' <span style="color: #FFC107;">(Temporary Access)</span>';
+          if (status.traced) {
+            authStatus += ' <span style="color: #F65261;">[TRACED]</span>';
+          }
+        } else {
+          authStatus = ' <span style="color: #4CAF50;">(Authenticated)</span>';
+        }
+      }
+    }
+    
+    await ChatMessage.create({
+      content: `
+        <div class="ncm-network-announcement" style="
+          background: linear-gradient(135deg, rgba(25, 243, 247, 0.1) 0%, rgba(25, 243, 247, 0.05) 100%);
+          border-left: 3px solid #19f3f7;
+          padding: 12px;
+          border-radius: 3px;
+        ">
+          <p style="margin: 0; font-family: 'Rajdhani', sans-serif;">
+            <i class="fas fa-wifi" style="color: #19f3f7;"></i>
+            <strong>Connected to ${network.displayName || network.name}</strong>${authStatus}
+          </p>
+        </div>
+      `,
+      type: CONST.CHAT_MESSAGE_TYPES.OOC,
+      flags: {
+        [MODULE_ID]: {
+          type: 'network-connection',
+          networkId: network.id
+        }
+      }
+    });
+  }
+
+
+  
+  /**
+   * Get current network status for UI
    */
   getNetworkStatus() {
-    if (!this.stateManager) {
-      return { connected: false, networkId: null };
+    const currentNetworkId = this.networkService.getCurrentNetwork();
+    
+    if (!currentNetworkId) {
+      return {
+        connected: false,
+        searching: true,
+        network: null
+      };
     }
     
-    // Check if stateManager has getState method
-    if (typeof this.stateManager.getState !== 'function') {
-      console.warn(`${MODULE_ID} | stateManager.getState not available, returning default status`);
-      return { connected: false, networkId: null };
-    }
-    
-    const state = this.stateManager.getState();
     return {
-      connected: state.connected || false,
-      networkId: state.currentNetwork || null
+      connected: true,
+      networkId: currentNetworkId,
+      signalStrength: this.networkService.getSignalStrength(),
+      status: 'connected'
     };
   }
   
   /**
-   * Load network state from user flags
+   * Check if data shard is accessible on current network
+   * (Integrates with existing NetworkService)
+   */
+  canAccessDataShard(dataShard) {
+    const networkCheck = this.networkService.checkNetworkRequirement(dataShard);
+    return networkCheck.accessible;
+  }
+  
+  /**
+   * Save current network state to actor
+   * @private
+   */
+  async _saveNetworkState() {
+    const actor = game.user.character;
+    if (!actor) return;
+    
+    const currentNetwork = this.networkService.getCurrentNetwork();
+    
+    await actor.setFlag(MODULE_ID, 'network', {
+      currentNetwork: currentNetwork || null,
+      authenticatedNetworks: Array.from(this.authenticatedNetworks),
+      failedAttempts: Object.fromEntries(this.failedAttempts)
+    });
+  }
+  
+  /**
+   * Load network state from actor
    * @private
    */
   async _loadNetworkState() {
-    const currentNetwork = game.user.getFlag(MODULE_ID, 'currentNetwork');
-    const authenticated = game.user.getFlag(MODULE_ID, 'authenticatedNetworks') || [];
+    const actor = game.user.character;
+    if (!actor) return;
     
-    if (currentNetwork && this.stateManager) {
-      this.stateManager.setState({
-        currentNetwork: currentNetwork,
-        connected: true
+    const state = actor.getFlag(MODULE_ID, 'network');
+    if (!state) return;
+    
+    this.authenticatedNetworks = new Set(state.authenticatedNetworks || []);
+    this.failedAttempts = new Map(Object.entries(state.failedAttempts || {}));
+    
+    console.log(`${MODULE_ID} | Loaded network state: ${this.authenticatedNetworks.size} authenticated networks`);
+  }
+  
+  /**
+   * Auto-switch to best network for current scene
+   * Called when scene changes and user has auto-switch enabled
+   */
+  async autoSwitchNetwork(scene) {
+    // Check if auto-switch is enabled for this scene
+    const autoSwitch = scene.getFlag(MODULE_ID, 'autoSwitch');
+    if (autoSwitch === false) return; // Default is true, so only false disables it
+    
+    // Check if user wants auto-switch (per-user setting)
+    const userAutoSwitch = game.user.getFlag(MODULE_ID, 'autoSwitchNetwork');
+    if (userAutoSwitch === false) return; // Default is true
+    
+    // Get available networks for this scene
+    const availableNetworks = await this._getAvailableNetworksForScene(scene);
+    
+    if (availableNetworks.length === 0) {
+      // No networks available - switch to DEAD_ZONE
+      await this.switchNetwork('DEAD_ZONE');
+      
+      ChatMessage.create({
+        content: `
+          <div class="ncm-chat-notification ncm-chat-notification--warning">
+            <div class="ncm-chat-notification__icon">
+              <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <div class="ncm-chat-notification__content">
+              <h4>Network Dead Zone</h4>
+              <p>Entered ${scene.name} - no network signals detected</p>
+            </div>
+          </div>
+        `,
+        whisper: [game.user.id]
       });
+      
+      return;
     }
     
-    this.authenticatedNetworks = new Set(authenticated);
+    // Check for preferred network
+    const preferredNetwork = scene.getFlag(MODULE_ID, 'preferredNetwork');
+    if (preferredNetwork) {
+      const preferred = availableNetworks.find(n => n.id === preferredNetwork);
+      if (preferred) {
+        await this.switchNetwork(preferredNetwork);
+        
+        ChatMessage.create({
+          content: `
+            <div class="ncm-chat-notification ncm-chat-notification--info">
+              <div class="ncm-chat-notification__icon">
+                <i class="${preferred.theme.icon}" style="color: ${preferred.theme.color}"></i>
+              </div>
+              <div class="ncm-chat-notification__content">
+                <h4>Network Auto-Switch</h4>
+                <p>Connected to ${preferred.name} (preferred network for ${scene.name})</p>
+                <p class="ncm-hint">Signal Strength: ${preferred.signalStrength}%</p>
+              </div>
+            </div>
+          `,
+          whisper: [game.user.id]
+        });
+        
+        return;
+      }
+    }
+    
+    // No preferred network or it's unavailable - find strongest signal
+    const strongestNetwork = this._findStrongestNetwork(availableNetworks);
+    
+    if (!strongestNetwork) return; // Shouldn't happen, but safety check
+    
+    await this.switchNetwork(strongestNetwork.id);
+    
+    ChatMessage.create({
+      content: `
+        <div class="ncm-chat-notification ncm-chat-notification--success">
+          <div class="ncm-chat-notification__icon">
+            <i class="${strongestNetwork.theme.icon}" style="color: ${strongestNetwork.theme.color}"></i>
+          </div>
+          <div class="ncm-chat-notification__content">
+            <h4>Network Auto-Switch</h4>
+            <p>Connected to ${strongestNetwork.name} (strongest signal in ${scene.name})</p>
+            <p class="ncm-hint">Signal Strength: ${strongestNetwork.signalStrength}%</p>
+          </div>
+        </div>
+      `,
+      whisper: [game.user.id]
+    });
+  }
+
+  /**
+   * Get available networks for a scene
+   * @private
+   * @param {Scene} scene - The scene
+   * @returns {Promise<Array<Object>>} Available networks with scene config
+   */
+  async _getAvailableNetworksForScene(scene) {
+    const sceneNetworks = scene.getFlag(MODULE_ID, 'networks') || {};
+    const allNetworks = await this.getAllNetworks();
+    const availableNetworks = [];
+    
+    // Check each network
+    for (const network of allNetworks) {
+      const sceneConfig = sceneNetworks[network.id] || {
+        available: true,
+        signalStrength: 100,
+        override: null
+      };
+      
+      // Only include if available in this scene
+      if (sceneConfig.available) {
+        availableNetworks.push({
+          ...network,
+          signalStrength: sceneConfig.signalStrength,
+          sceneOverride: sceneConfig.override
+        });
+      }
+    }
+    
+    return availableNetworks;
+  }
+
+  /**
+   * Find network with strongest signal
+   * @private
+   * @param {Array<Object>} networks - Available networks
+   * @returns {Object|null} Network with strongest signal
+   */
+  _findStrongestNetwork(networks) {
+    if (networks.length === 0) return null;
+    
+    return networks.reduce((strongest, current) => {
+      return current.signalStrength > strongest.signalStrength ? current : strongest;
+    });
+  }
+
+  /**
+   * Get current scene network config
+   * Used by other systems to check network state in current scene
+   * @param {string} networkId - Network ID
+   * @returns {Object} Scene network configuration
+   */
+  getCurrentSceneNetworkConfig(networkId) {
+    const scene = game.scenes.active;
+    if (!scene) return null;
+    
+    const sceneNetworks = scene.getFlag(MODULE_ID, 'networks') || {};
+    return sceneNetworks[networkId] || {
+      available: true,
+      signalStrength: 100,
+      override: null
+    };
+  }
+
+  /**
+   * Apply scene-specific overrides to network config
+   * @private
+   * @param {Object} network - Base network config
+   * @param {Object} override - Scene-specific overrides
+   * @returns {Object} Merged network config
+   */
+  _applySceneOverrides(network, override) {
+    if (!override) return network;
+    
+    const merged = foundry.utils.deepClone(network);
+    
+    // Apply security overrides
+    if (override.security) {
+      merged.security = foundry.utils.mergeObject(merged.security, override.security);
+    }
+    
+    // Apply reliability override
+    if (override.reliability !== undefined) {
+      merged.reliability = override.reliability;
+    }
+    
+    // Apply feature overrides
+    if (override.features) {
+      merged.features = foundry.utils.mergeObject(merged.features, override.features);
+    }
+    
+    return merged;
+  }
+
+  /**
+   * Get effective network configuration for current scene
+   * Returns network config with scene overrides applied
+   * @param {string} networkId - Network ID
+   * @returns {Object|null} Effective network configuration
+   */
+  getEffectiveNetworkConfig(networkId) {
+    const allNetworks = this.getAllNetworks();
+    const network = allNetworks.find(n => n.id === networkId);
+    if (!network) return null;
+    
+    const scene = game.scenes.active;
+    if (!scene) return network;
+    
+    const sceneConfig = this.getCurrentSceneNetworkConfig(networkId);
+    if (!sceneConfig || !sceneConfig.override) return network;
+    
+    return this._applySceneOverrides(network, sceneConfig.override);
   }
   
   /**
@@ -425,178 +823,16 @@ export class NetworkManager {
    * @private
    */
   _registerHooks() {
-    // Re-scan networks when scene changes
-    Hooks.on('canvasReady', async (canvas) => {
-      console.log(`${MODULE_ID} | Scene changed, re-scanning networks`);
+    // Re-scan when scene changes
+    Hooks.on('canvasReady', async () => {
+      console.log(`${MODULE_ID} | Scene changed, re-scanning networks...`);
       await this.scanNetworks();
     });
-  }
-  
-  /**
-   * Create a custom network
-   * @param {Object} networkData - Network properties
-   * @returns {Promise<Object>} Created network
-   */
-  async createNetwork(networkData) {
-    if (!game.user.isGM) {
-      throw new Error('Only GMs can create networks');
-    }
     
-    // Validate required fields
-    if (!networkData.id || !networkData.name) {
-      throw new Error('Network must have id and name');
-    }
-    
-    const networks = await this.getAllNetworks();
-    
-    // Check for duplicate ID
-    if (networks.find(n => n.id === networkData.id)) {
-      throw new Error(`Network with ID ${networkData.id} already exists`);
-    }
-    
-    // Build network object (properties only, no availability)
-    const network = {
-      id: networkData.id,
-      name: networkData.name,
-      type: networkData.type || 'custom',
-      signalStrength: networkData.signalStrength || 100,
-      reliability: networkData.reliability || 100,
-      security: networkData.security || {
-        level: 'none',
-        requiresAuth: false,
-        password: null,
-        bypassDC: 0,
-        attempts: 999,
-        lockoutDuration: 0
-      },
-      effects: networkData.effects || {
-        messageDelay: 0,
-        traced: false,
-        anonymity: false,
-        canRoute: true
-      },
-      theme: networkData.theme || {
-        color: '#19f3f7',
-        icon: 'fa-wifi',
-        glitchIntensity: 0.1
-      },
-      description: networkData.description || '',
-      gmNotes: networkData.gmNotes || ''
-    };
-    
-    // Save
-    networks.push(network);
-    await game.settings.set(MODULE_ID, 'customNetworks', networks);
-    
-    console.log(`${MODULE_ID} | Created network: ${network.name}`);
-    
-    // Emit event
-    if (this.eventBus) {
-      this.eventBus.emit('network:created', { network });
-    }
-    
-    return network;
-  }
-  
-  /**
-   * Update a network
-   * @param {string} networkId - Network ID
-   * @param {Object} updates - Properties to update
-   * @returns {Promise<Object>} Updated network
-   */
-  async updateNetwork(networkId, updates) {
-    if (!game.user.isGM) {
-      throw new Error('Only GMs can update networks');
-    }
-    
-    const networks = await this.getAllNetworks();
-    const index = networks.findIndex(n => n.id === networkId);
-    
-    if (index === -1) {
-      throw new Error(`Network ${networkId} not found`);
-    }
-    
-    // Merge updates (shallow merge for now)
-    networks[index] = {
-      ...networks[index],
-      ...updates,
-      id: networkId // Ensure ID doesn't change
-    };
-    
-    await game.settings.set(MODULE_ID, 'customNetworks', networks);
-    
-    console.log(`${MODULE_ID} | Updated network: ${networkId}`);
-    
-    // Emit event
-    if (this.eventBus) {
-      this.eventBus.emit('network:updated', { 
-        networkId, 
-        network: networks[index] 
-      });
-    }
-    
-    return networks[index];
-  }
-  
-  /**
-   * Delete a network
-   * @param {string} networkId - Network ID
-   * @returns {Promise<boolean>} True if deleted
-   */
-  async deleteNetwork(networkId) {
-    if (!game.user.isGM) {
-      throw new Error('Only GMs can delete networks');
-    }
-    
-    // Prevent deleting default networks
-    const defaultIds = ['CITINET', 'CORPNET', 'DARKNET', 'DEAD_ZONE'];
-    if (defaultIds.includes(networkId)) {
-      throw new Error('Cannot delete default networks');
-    }
-    
-    const networks = await this.getAllNetworks();
-    const filtered = networks.filter(n => n.id !== networkId);
-    
-    if (filtered.length === networks.length) {
-      return false; // Network not found
-    }
-    
-    await game.settings.set(MODULE_ID, 'customNetworks', filtered);
-    
-    console.log(`${MODULE_ID} | Deleted network: ${networkId}`);
-    
-    // Emit event
-    if (this.eventBus) {
-      this.eventBus.emit('network:deleted', { networkId });
-    }
-    
-    return true;
-  }
-  
-  /**
-   * Check if user knows about a network (for discovery mechanics)
-   * @param {string} networkId - Network ID
-   * @returns {boolean} True if known
-   */
-  _isKnownNetwork(networkId) {
-    return this.knownNetworks.has(networkId);
-  }
-  
-  /**
-   * Mark a network as known to the user
-   * @param {string} networkId - Network ID
-   */
-  async discoverNetwork(networkId) {
-    this.knownNetworks.add(networkId);
-    
-    // Save to user flags
-    await game.user.setFlag(MODULE_ID, 'knownNetworks', Array.from(this.knownNetworks));
-    
-    console.log(`${MODULE_ID} | User discovered network: ${networkId}`);
-    
-    // Emit event
-    if (this.eventBus) {
-      this.eventBus.emit('network:discovered', { networkId });
-    }
+    // Re-scan when controlled token changes
+    Hooks.on('controlToken', async () => {
+      await this._loadNetworkState();
+      await this.scanNetworks();
+    });
   }
 }
