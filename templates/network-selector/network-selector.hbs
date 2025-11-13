@@ -1,101 +1,169 @@
-{{!-- Network Selector Template (Simplified) --}}
-{{!-- File: templates/network-selector.hbs --}}
+{{!-- 
+  Network Selector Template
+  File: templates/network-selector/network-selector.hbs
+  Module: cyberpunkred-messenger
+  Description: Main network selector UI with expandable network list
+--}}
 
-<div class="ncm-network-selector-content">
+<div class="ncm-network-selector {{#if expanded}}expanded{{/if}} {{#if embedded}}embedded{{/if}}" data-context="{{context}}">
   
-  {{!-- Current Status Header --}}
-  <div class="network-header">
-    {{#if connected}}
-      <div class="current-connection">
-        <i class="fas {{currentNetwork.icon}}" style="color: {{currentNetwork.color}}"></i>
-        <div class="connection-info">
-          <span class="label">Connected</span>
-          <span class="network-name">{{currentNetwork.name}}</span>
-        </div>
-        <button class="disconnect-btn" title="Disconnect">
-          <i class="fas fa-plug"></i>
-        </button>
-      </div>
-    {{else}}
-      <div class="no-connection">
-        <i class="fas fa-exclamation-triangle"></i>
-        <span>No Network Connection</span>
-      </div>
-    {{/if}}
-    
-    <div class="header-actions">
-      <button class="refresh-btn" title="Scan for networks">
-        <i class="fas fa-sync-alt"></i>
-      </button>
-      {{#if isGM}}
-        <button class="manage-btn" title="Manage Networks">
-          <i class="fas fa-cog"></i>
-        </button>
-      {{/if}}
+  {{#if error}}
+    {{!-- Error State --}}
+    <div class="ncm-network-error">
+      <i class="fas fa-exclamation-triangle"></i>
+      <span>{{errorMessage}}</span>
     </div>
-  </div>
-
-  {{!-- Network List --}}
-  <div class="network-list">
-    {{#if networks}}
-      {{#each networks}}
-        <div class="network-item {{#if isConnected}}connected{{/if}} {{#unless canConnect}}unavailable{{/unless}}"
-             data-network-id="{{id}}">
-          
-          <div class="network-icon" style="color: {{color}}">
-            <i class="fas {{icon}}"></i>
+  {{else}}
+  
+    {{!-- Current Network Display --}}
+    <div class="ncm-network-current" title="{{#if connected}}Click to view available networks{{else}}Not connected - Click to connect{{/if}}">
+      {{#if connected}}
+        {{!-- Connected State --}}
+        <div class="network-icon" style="color: {{currentNetwork.color}};">
+          <i class="fas {{currentNetwork.icon}}"></i>
+        </div>
+        
+        <div class="network-info">
+          <div class="network-name">{{currentNetwork.displayName}}</div>
+          <div class="network-status">{{currentNetwork.status}}</div>
+        </div>
+        
+        <div class="network-signal">
+          {{{currentNetwork.signalBars}}}
+          <span class="signal-percentage">{{currentNetwork.signalStrength}}%</span>
+        </div>
+        
+        {{#if currentNetwork.isTraced}}
+          <div class="network-warning" title="This network is being traced">
+            <i class="fas fa-exclamation-triangle"></i>
           </div>
-          
-          <div class="network-info">
-            <div class="network-name">
-              {{name}}
-              {{#if isConnected}}
-                <i class="fas fa-check-circle connected-badge"></i>
-              {{/if}}
-            </div>
-            
-            <div class="network-meta">
-              {{#if requiresAuth}}
-                {{#if isAuthenticated}}
-                  <span class="auth-badge authenticated">
-                    <i class="fas fa-key"></i>
-                  </span>
-                {{else}}
-                  <span class="auth-badge locked">
-                    <i class="fas fa-lock"></i>
-                  </span>
+        {{/if}}
+        
+        {{#if currentNetwork.isMonitored}}
+          <div class="network-monitored" title="This network is monitored">
+            <i class="fas fa-eye"></i>
+          </div>
+        {{/if}}
+      {{else}}
+        {{!-- Disconnected State --}}
+        <div class="network-icon disconnected">
+          <i class="fas fa-wifi-slash"></i>
+        </div>
+        
+        <div class="network-info">
+          <div class="network-name">NO CONNECTION</div>
+          <div class="network-status">Disconnected</div>
+        </div>
+      {{/if}}
+      
+      <div class="expand-toggle">
+        <i class="fas {{#if expanded}}fa-chevron-up{{else}}fa-chevron-down{{/if}}"></i>
+      </div>
+    </div>
+
+    {{!-- Network List (Expandable) --}}
+    {{#if expanded}}
+    <div class="ncm-network-list">
+      
+      {{#if hasNetworks}}
+        <div class="network-list-header">
+          <span>AVAILABLE NETWORKS</span>
+          <span class="network-count">{{availableNetworks.length}}</span>
+        </div>
+        
+        <div class="network-list-items">
+          {{#each availableNetworks}}
+            <div class="ncm-network-item {{#if isConnected}}connected{{/if}} {{#unless canConnect}}locked{{/unless}} {{#unless isAvailable}}unavailable{{/unless}}" 
+                 data-network-id="{{id}}"
+                 data-network-type="{{type}}"
+                 title="{{description}}">
+              
+              <div class="network-item-icon" style="color: {{color}};">
+                <i class="fas {{icon}}"></i>
+              </div>
+              
+              <div class="network-item-details">
+                <div class="network-item-name">
+                  {{displayName}}
+                  {{#if isConnected}}
+                    <span class="connected-indicator">
+                      <i class="fas fa-check-circle"></i>
+                    </span>
+                  {{/if}}
+                </div>
+                
+                <div class="network-item-meta">
+                  <span class="network-type">{{type}}</span>
+                  
+                  {{#if requiresAuth}}
+                    <span class="network-security">
+                      <i class="fas {{securityIcon}}"></i> {{securityLevel}}
+                    </span>
+                  {{/if}}
+                </div>
+                
+                {{#if isTraced}}
+                  <div class="network-warning traced">
+                    <i class="fas fa-exclamation-triangle"></i> TRACED
+                  </div>
                 {{/if}}
+                
+                {{#if isMonitored}}
+                  <div class="network-warning monitored">
+                    <i class="fas fa-eye"></i> MONITORED
+                  </div>
+                {{/if}}
+                
+                {{#if isDangerous}}
+                  <div class="network-warning dangerous">
+                    <i class="fas fa-skull-crossbones"></i> DANGEROUS
+                  </div>
+                {{/if}}
+              </div>
+              
+              <div class="network-item-signal">
+                {{{signalBars}}}
+                <span class="signal-text">{{signalStrength}}%</span>
+              </div>
+              
+              {{#if isLocked}}
+                <div class="network-item-lock">
+                  <i class="fas fa-lock"></i>
+                </div>
               {{/if}}
               
-              <span class="signal-quality {{signalQuality.class}}">
-                {{signalQuality.label}}
-              </span>
+              {{#unless isAvailable}}
+                <div class="network-item-overlay">
+                  <span>OUT OF RANGE</span>
+                </div>
+              {{/unless}}
+              
             </div>
-            
-            {{#if description}}
-              <div class="network-description">{{description}}</div>
-            {{/if}}
-          </div>
-          
-          <div class="network-signal">
-            {{{signalBars}}}
-            <span class="signal-percent">{{signal}}%</span>
-          </div>
+          {{/each}}
         </div>
-      {{/each}}
-    {{else}}
-      <div class="no-networks">
-        <i class="fas fa-signal-slash"></i>
-        <p>No networks available</p>
-        <small>Try moving to a different location</small>
+      {{else}}
+        <div class="network-list-empty">
+          <i class="fas fa-satellite-dish"></i>
+          <p>{{noNetworksMessage}}</p>
+        </div>
+      {{/if}}
+      
+      <div class="ncm-network-actions">
+        {{#if canScan}}
+          <button class="btn-scan" data-action="scan" title="Scan for networks">
+            <i class="fas fa-sync-alt"></i> SCAN
+          </button>
+        {{/if}}
+        
+        {{#if canManage}}
+          <button class="btn-manage" data-action="manage" title="Manage networks (GM)">
+            <i class="fas fa-cog"></i> MANAGE
+          </button>
+        {{/if}}
       </div>
-    {{/if}}
-  </div>
-
-  {{#unless hasCharacter}}
-    <div class="character-warning">
-      <i class="fas fa-user-slash"></i>
-      <small>No character selected - hacking unavailable</small>
     </div>
-  {{/unless}}
+    {{/if}}
+    
+  {{/if}}
+  
 </div>

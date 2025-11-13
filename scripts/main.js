@@ -44,13 +44,7 @@ moduleInitializer.register('preInit', async () => {
   console.log(`${MODULE_ID} | ✓ Network Helpers registered`);
 }, 30);
 
-// Register Scenes Handlebars helpers
-moduleInitializer.register('preInit', async () => {
-  console.log(`${MODULE_ID} | Registering Scenes Helpers...`);
-  const { registerScenesHelpers } = await import('./ui/helpers/ScenesHelpers.js');
-  registerScenesHelpers();
-  console.log(`${MODULE_ID} | ✓ Scenes Helpers registered`);
-}, 35);
+
 
 // ===================================================================
 // INITIALIZATION
@@ -101,7 +95,13 @@ moduleInitializer.register('ready', async () => {
   }
 }, 10); // Priority 10 - runs early but after core services
 
-
+// Register time settings
+moduleInitializer.register('init', async () => {
+  console.log(`${MODULE_ID} | Initializing Time System...`);
+  const { TimeService } = await import('./services/TimeService.js');
+  TimeService.getInstance();
+  console.log(`${MODULE_ID} | ✓ Time System initialized`);
+}, 40);
 
 // Register UI components
 moduleInitializer.register('init', async () => {
@@ -128,38 +128,11 @@ moduleInitializer.register('init', async () => {
   registerActorSheetHooks();
 }, 35);
 
-// Register time settings
-moduleInitializer.register('init', async () => {
-  console.log(`${MODULE_ID} | Initializing Time System...`);
-  const { TimeService } = await import('./services/TimeService.js');
-  TimeService.getInstance();
-  console.log(`${MODULE_ID} | ✓ Time System initialized`);
-}, 40);
-
 // Initialize Network Access Log Service
 moduleInitializer.register('init', async () => {
   game.nightcity.NetworkAccessLogService = new NetworkAccessLogService();
   await game.nightcity.NetworkAccessLogService.initialize();
 }, 40);
-
-// Register auto-switch network setting
-moduleInitializer.register('init', async () => {
-  console.log(`${MODULE_ID} | Registering Auto-Switch Setting...`);
-  
-  game.settings.register(MODULE_ID, 'userAutoSwitchNetwork', {
-    name: 'Auto-Switch Networks',
-    hint: 'Automatically switch to the strongest network when changing scenes',
-    scope: 'client', // Per-user setting
-    config: true,
-    type: Boolean,
-    default: true,
-    onChange: (value) => {
-      console.log(`${MODULE_ID} | Auto-switch networks: ${value ? 'enabled' : 'disabled'}`);
-    }
-  });
-  
-  console.log(`${MODULE_ID} | ✓ Auto-Switch Setting registered`);
-}, 41);
 
 // Register Item Inbox service
 moduleInitializer.register('init', async () => {
@@ -238,13 +211,8 @@ moduleInitializer.register('ready', () => {
       ui.notifications.warn('Only GMs can access Network Management');
       return;
     }
-    
-    // Store instance so we can update it when scene changes
-    if (!game.nightcity.networkManagementApp || !game.nightcity.networkManagementApp.rendered) {
-      game.nightcity.networkManagementApp = new game.nightcity.NetworkManagementApp();
-    }
-    
-    game.nightcity.networkManagementApp.render(true);
+    const app = new game.nightcity.NetworkManagementApp();
+    app.render(true);
   };
 }, 100);
 
@@ -338,62 +306,36 @@ moduleInitializer.register('ready', async () => {
   }
 }, 4); // Priority 4
 
-// Register network settings early
-moduleInitializer.register('init', async () => {
-  console.log(`${MODULE_ID} | Registering network settings...`);
-  
-  // Register the simplified networks setting
-  game.settings.register(MODULE_ID, 'networks', {
-    scope: 'world',
-    config: false,
-    type: Array,
-    default: []
-  });
-  
-  // Register data version for migration tracking
-  game.settings.register(MODULE_ID, 'dataVersion', {
-    scope: 'world',
-    config: false,
-    type: Number,
-    default: 0
-  });
-  
-  console.log(`${MODULE_ID} | ✓ Network settings registered`);
-}, 45); // Early in init phase
-
-// Network Manager Registration - Priority 4.5 (REPLACE THE EXISTING ONE)
+// Network Manager Registration - Priority 4.5 (AFTER NetworkService!)
 moduleInitializer.register('ready', async () => {
-  console.log(`${MODULE_ID} | === INITIALIZING NETWORK MANAGER (Streamlined) ===`);
+  console.log(`${MODULE_ID} | === INITIALIZING NETWORK MANAGER ===`);
   
   try {
-    // Get dependencies (they may or may not exist)
-    const networkService = game.nightcity.networkService || null;
-    const stateManager = game.nightcity.stateManager || null;
-    const eventBus = game.nightcity.eventBus || null;
-    
-    // Import the updated NetworkManager
     const { NetworkManager } = await import('./core/NetworkManager.js');
+    const { NetworkStorage } = await import('./core/NetworkStorage.js');
+    const { NetworkUtils } = await import('./utils/NetworkUtils.js');
     
-    // Create and initialize
+    const networkService = game.nightcity.networkService;  // NOW this exists!
+    const stateManager = game.nightcity.stateManager;
+    const eventBus = game.nightcity.eventBus;
+    
+    if (!networkService) {
+      throw new Error('NetworkService not available');
+    }
+    
     const networkManager = new NetworkManager(networkService, stateManager, eventBus);
     await networkManager.initialize();
     
-    // Register globally
     game.nightcity.networkManager = networkManager;
+    game.nightcity.NetworkStorage = NetworkStorage;
+    game.nightcity.NetworkUtils = NetworkUtils;
     
-    console.log(`${MODULE_ID} | ✓ Network Manager initialized (streamlined)`);
-    
-    // Run migration if needed (GM only)
-    if (game.user.isGM) {
-      const { NetworkMigration } = await import('./migration/NetworkMigration.js');
-      await NetworkMigration.migrate();
-    }
+    console.log(`${MODULE_ID} | ✓ Network Manager initialized`);
     
   } catch (error) {
     console.error(`${MODULE_ID} | ❌ NetworkManager init failed:`, error);
-    ui.notifications.error('Network system failed to initialize');
   }
-}, 4.5);
+}, 4.5); // Priority 4.5
 
 // Register NetworkSelectorDialog globally
 moduleInitializer.register('ready', async () => {
@@ -493,45 +435,6 @@ moduleInitializer.register('ready', async () => {
     console.warn(`${MODULE_ID} | Module will continue without scheduling functionality`);
   }
 }, 10);
-
-// Register auto-switch hook for scene changes
-moduleInitializer.register('ready', async () => {
-  console.log(`${MODULE_ID} | Registering Auto-Switch Hook...`);
-  
-  Hooks.on('canvasReady', async (canvas) => {
-    if (!game.nightcity?.networkManager) return;
-    
-    const networkManager = game.nightcity.networkManager;
-    const scene = canvas.scene;
-    
-    // Check if user has auto-switch enabled (default true)
-    const userAutoSwitch = game.user.getFlag(MODULE_ID, 'autoSwitchNetwork');
-    if (userAutoSwitch === false) return;
-    
-    // Perform auto-switch
-    try {
-      await networkManager.autoSwitchNetwork(scene);
-    } catch (error) {
-      console.warn(`${MODULE_ID} | Auto-switch failed:`, error);
-    }
-  });
-  
-  console.log(`${MODULE_ID} | ✓ Auto-Switch Hook registered`);
-}, 30);
-
-// Update Network Management App when scene changes (if it's open)
-moduleInitializer.register('ready', async () => {
-  Hooks.on('canvasReady', (canvas) => {
-    // Refresh Network Management App if it's open and showing scenes tab
-    if (game.nightcity?.networkManagementApp?.rendered) {
-      const app = game.nightcity.networkManagementApp;
-      if (app.activeTab === 'scenes') {
-        app.currentSceneId = canvas.scene.id;
-        app.render(false);
-      }
-    }
-  });
-}, 31);
 
 // Item Sheet Integration
 moduleInitializer.register('ready', async () => {
