@@ -1,77 +1,152 @@
-{{!-- Network Management Main Template --}}
-{{!-- File: templates/network-management/network-management.hbs --}}
+{{!-- Network Management Template (Simplified) --}}
+{{!-- File: templates/network-management.hbs --}}
 
-<div class="ncm-network-management-container">
-  {{!-- Header with Stats --}}
-  <div class="ncm-management-header">
-    <div class="stats-row">
-      <div class="stat-card">
-        <i class="fas fa-network-wired"></i>
-        <div class="stat-content">
-          <div class="stat-value">{{stats.totalNetworks}}</div>
-          <div class="stat-label">Total Networks</div>
-        </div>
+<div class="ncm-network-management-content">
+  
+  <div class="panel-layout">
+    
+    {{!-- Left Panel: Network List --}}
+    <div class="networks-panel">
+      <div class="panel-header">
+        <h3><i class="fas fa-network-wired"></i> Networks</h3>
+        <button class="create-network-btn">
+          <i class="fas fa-plus"></i> Create
+        </button>
       </div>
-      <div class="stat-card">
-        <i class="fas fa-plus-circle"></i>
-        <div class="stat-content">
-          <div class="stat-value">{{stats.customNetworks}}</div>
-          <div class="stat-label">Custom</div>
-        </div>
-      </div>
-      <div class="stat-card">
-        <i class="fas fa-lock"></i>
-        <div class="stat-content">
-          <div class="stat-value">{{stats.securedNetworks}}</div>
-          <div class="stat-label">Secured</div>
-        </div>
-      </div>
-      <div class="stat-card">
-        <i class="fas fa-calendar-alt"></i>
-        <div class="stat-content">
-          <div class="stat-value">{{stats.activeEvents}}</div>
-          <div class="stat-label">Active Events</div>
-        </div>
+      
+      <div class="networks-list">
+        {{#each networks}}
+          <div class="network-card {{#if selected}}selected{{/if}} {{#if isDefault}}default{{/if}}"
+               data-network-id="{{id}}">
+            
+            <div class="network-header">
+              <div class="network-icon" style="color: {{color}}">
+                <i class="fas {{icon}}"></i>
+              </div>
+              
+              <div class="network-info">
+                <div class="network-name">
+                  {{name}}
+                  {{#if isDefault}}
+                    <span class="badge default">Default</span>
+                  {{/if}}
+                </div>
+                
+                <div class="network-meta">
+                  {{#if requiresAuth}}
+                    {{#if (eq authType 'password')}}
+                      <i class="fas fa-key"></i> Password
+                    {{else}}
+                      <i class="fas fa-dice-d20"></i> DC {{hackingDC}}
+                    {{/if}}
+                  {{else}}
+                    <i class="fas fa-globe"></i> Public
+                  {{/if}}
+                </div>
+              </div>
+              
+              <div class="network-controls">
+                {{#unless isDefault}}
+                  <button class="edit-network-btn" title="Edit">
+                    <i class="fas fa-edit"></i>
+                  </button>
+                {{/unless}}
+                <button class="duplicate-network-btn" title="Duplicate">
+                  <i class="fas fa-copy"></i>
+                </button>
+                {{#unless isDefault}}
+                  <button class="delete-network-btn" title="Delete">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                {{/unless}}
+              </div>
+            </div>
+            
+            {{#if selected}}
+              <div class="network-details">
+                {{#if description}}
+                  <p class="description">{{description}}</p>
+                {{/if}}
+                
+                <div class="capabilities">
+                  {{#if canSendMessages}}
+                    <span class="capability">
+                      <i class="fas fa-envelope"></i> Messaging
+                    </span>
+                  {{/if}}
+                  {{#if canAccessShards}}
+                    <span class="capability">
+                      <i class="fas fa-microchip"></i> Data Shards
+                    </span>
+                  {{/if}}
+                </div>
+              </div>
+            {{/if}}
+          </div>
+        {{/each}}
       </div>
     </div>
-  </div>
-
-  {{!-- Tabs Navigation --}}
-  <nav class="tabs" data-group="network-management">
-    <a class="item {{#if (eq activeTab 'networks')}}active{{/if}}" data-tab="networks">
-      <i class="fas fa-network-wired"></i> Networks
-    </a>
-    <a class="item {{#if (eq activeTab 'scenes')}}active{{/if}}" data-tab="scenes">
-      <i class="fas fa-map"></i> Scenes
-    </a>
-    <a class="item {{#if (eq activeTab 'events')}}active{{/if}}" data-tab="events">
-      <i class="fas fa-calendar-alt"></i> Events
-    </a>
-    <a class="item {{#if (eq activeTab 'logs')}}active{{/if}}" data-tab="logs">
-      <i class="fas fa-clipboard-list"></i> Logs
-    </a>
-  </nav>
-
-  {{!-- Tab Content --}}
-  <div class="tab-content">
-    {{!-- Networks Tab --}}
-    <div class="tab {{#if (eq activeTab 'networks')}}active{{/if}}" data-tab="networks">
-      {{> "modules/cyberpunkred-messenger/templates/network-management/partials/networks-tab.hbs"}}
-    </div>
-
-    {{!-- Scenes Tab --}}
-    <div class="tab {{#if (eq activeTab 'scenes')}}active{{/if}}" data-tab="scenes">
-      {{> "modules/cyberpunkred-messenger/templates/network-management/partials/scenes-tab.hbs"}}
-    </div>
-
-    {{!-- Events Tab --}}
-    <div class="tab {{#if (eq activeTab 'events')}}active{{/if}}" data-tab="events">
-      {{> "modules/cyberpunkred-messenger/templates/network-management/partials/events-tab.hbs"}}
-    </div>
-
-    {{!-- Logs Tab --}}
-    <div class="tab {{#if (eq activeTab 'logs')}}active{{/if}}" data-tab="logs">
-      {{> "modules/cyberpunkred-messenger/templates/network-management/partials/logs-tab.hbs"}}
+    
+    {{!-- Right Panel: Scene Configuration --}}
+    <div class="scene-panel">
+      <div class="panel-header">
+        <h3><i class="fas fa-map"></i> Scene Configuration</h3>
+        <select class="scene-selector">
+          {{#each scenes}}
+            <option value="{{id}}" {{#if selected}}selected{{/if}}>
+              {{name}} {{#if active}}(Active){{/if}}
+            </option>
+          {{/each}}
+        </select>
+      </div>
+      
+      <div class="quick-actions">
+        <button class="enable-all-btn">
+          <i class="fas fa-check"></i> Enable All
+        </button>
+        <button class="disable-all-btn">
+          <i class="fas fa-times"></i> Disable All
+        </button>
+        <button class="copy-from-scene-btn">
+          <i class="fas fa-clone"></i> Copy From...
+        </button>
+      </div>
+      
+      <div class="scene-networks">
+        {{#each networks}}
+          <div class="scene-network-config">
+            <div class="network-toggle">
+              <label class="switch">
+                <input type="checkbox" class="network-available" 
+                       data-network-id="{{id}}"
+                       {{checked sceneConfig.available}}>
+                <span class="slider"></span>
+              </label>
+              
+              <div class="network-label">
+                <i class="fas {{icon}}" style="color: {{color}}"></i>
+                <span>{{name}}</span>
+              </div>
+            </div>
+            
+            <div class="signal-config {{#unless sceneConfig.available}}disabled{{/unless}}">
+              <label>Signal:</label>
+              <input type="range" class="signal-slider" 
+                     data-network-id="{{id}}"
+                     min="0" max="100" value="{{sceneConfig.signal}}"
+                     {{#unless sceneConfig.available}}disabled{{/unless}}>
+              <span class="signal-value">{{sceneConfig.signal}}%</span>
+            </div>
+          </div>
+        {{/each}}
+      </div>
+      
+      <div class="scene-notes">
+        <div class="note info">
+          <i class="fas fa-info-circle"></i>
+          <span>Networks are scene-specific. Players only see networks available in their current scene.</span>
+        </div>
+      </div>
     </div>
   </div>
 </div>

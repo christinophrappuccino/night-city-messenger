@@ -338,36 +338,60 @@ moduleInitializer.register('ready', async () => {
   }
 }, 4); // Priority 4
 
-// Network Manager Registration - Priority 4.5 (AFTER NetworkService!)
+// Register network settings early
+moduleInitializer.register('init', async () => {
+  console.log(`${MODULE_ID} | Registering network settings...`);
+  
+  // Register the simplified networks setting
+  game.settings.register(MODULE_ID, 'networks', {
+    scope: 'world',
+    config: false,
+    type: Array,
+    default: []
+  });
+  
+  // Register data version for migration tracking
+  game.settings.register(MODULE_ID, 'dataVersion', {
+    scope: 'world',
+    config: false,
+    type: Number,
+    default: 0
+  });
+  
+  console.log(`${MODULE_ID} | ✓ Network settings registered`);
+}, 45); // Early in init phase
+
+// Network Manager Registration - Priority 4.5 (REPLACE THE EXISTING ONE)
 moduleInitializer.register('ready', async () => {
-  console.log(`${MODULE_ID} | === INITIALIZING NETWORK MANAGER ===`);
+  console.log(`${MODULE_ID} | === INITIALIZING NETWORK MANAGER (Streamlined) ===`);
   
   try {
+    // Get dependencies (they may or may not exist)
+    const networkService = game.nightcity.networkService || null;
+    const stateManager = game.nightcity.stateManager || null;
+    const eventBus = game.nightcity.eventBus || null;
+    
+    // Import the updated NetworkManager
     const { NetworkManager } = await import('./core/NetworkManager.js');
-    const { NetworkStorage } = await import('./core/NetworkStorage.js');
-    const { NetworkUtils } = await import('./utils/NetworkUtils.js');
     
-    const networkService = game.nightcity.networkService;
-    const stateManager = game.nightcity.stateManager;
-    const eventBus = game.nightcity.eventBus;
-    
-    if (!networkService) {
-      throw new Error('NetworkService not available');
-    }
-    
+    // Create and initialize
     const networkManager = new NetworkManager(networkService, stateManager, eventBus);
     await networkManager.initialize();
-
-    // Just assign the CLASS, not an instance
-    game.nightcity.networkManager = networkManager;
-    game.nightcity.NetworkStorage = NetworkStorage; 
-    game.nightcity.networkStorage = NetworkStorage; 
-    game.nightcity.NetworkUtils = NetworkUtils;
     
-    console.log(`${MODULE_ID} | ✓ Network Manager initialized`);
+    // Register globally
+    game.nightcity.networkManager = networkManager;
+    
+    console.log(`${MODULE_ID} | ✓ Network Manager initialized (streamlined)`);
+    
+    // Run migration if needed (GM only)
+    if (game.user.isGM) {
+      const { NetworkMigration } = await import('./migration/NetworkMigration.js');
+      await NetworkMigration.migrate();
+    }
     
   } catch (error) {
     console.error(`${MODULE_ID} | ❌ NetworkManager init failed:`, error);
+    ui.notifications.error('Network system failed to initialize');
   }
 }, 4.5);
 
