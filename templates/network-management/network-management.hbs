@@ -1,77 +1,118 @@
-{{!-- Network Management Main Template --}}
+{{!-- Network Management Main Container --}}
 {{!-- File: templates/network-management/network-management.hbs --}}
+{{!-- Description: Main application window for network management --}}
 
 <div class="ncm-network-management-container">
-  {{!-- Header with Stats --}}
+  
+  {{!-- Cyberpunk Header --}}
   <div class="ncm-management-header">
-    <div class="stats-row">
-      <div class="stat-card">
+    <div class="header-title">
+      <div class="title-icon">
         <i class="fas fa-network-wired"></i>
+      </div>
+      <div class="title-content">
+        <h2>Network Management System</h2>
+        <p class="subtitle">Configure networks and scene availability</p>
+      </div>
+    </div>
+    
+    {{!-- Stats Dashboard --}}
+    <div class="stats-dashboard">
+      <div class="stat-card" data-stat="networks">
+        <div class="stat-icon">
+          <i class="fas fa-network-wired"></i>
+        </div>
         <div class="stat-content">
           <div class="stat-value">{{stats.totalNetworks}}</div>
           <div class="stat-label">Total Networks</div>
         </div>
+        <div class="stat-glow"></div>
       </div>
-      <div class="stat-card">
-        <i class="fas fa-plus-circle"></i>
+      
+      <div class="stat-card" data-stat="custom">
+        <div class="stat-icon">
+          <i class="fas fa-plus-circle"></i>
+        </div>
         <div class="stat-content">
           <div class="stat-value">{{stats.customNetworks}}</div>
-          <div class="stat-label">Custom</div>
+          <div class="stat-label">Custom Networks</div>
         </div>
+        <div class="stat-glow"></div>
       </div>
-      <div class="stat-card">
-        <i class="fas fa-lock"></i>
+      
+      <div class="stat-card" data-stat="secured">
+        <div class="stat-icon">
+          <i class="fas fa-lock"></i>
+        </div>
         <div class="stat-content">
           <div class="stat-value">{{stats.securedNetworks}}</div>
           <div class="stat-label">Secured</div>
         </div>
+        <div class="stat-glow"></div>
       </div>
-      <div class="stat-card">
-        <i class="fas fa-calendar-alt"></i>
-        <div class="stat-content">
-          <div class="stat-value">{{stats.activeEvents}}</div>
-          <div class="stat-label">Active Events</div>
+      
+      <div class="stat-card" data-stat="scenes">
+        <div class="stat-icon">
+          <i class="fas fa-map"></i>
         </div>
+        <div class="stat-content">
+          <div class="stat-value">{{stats.totalScenes}}</div>
+          <div class="stat-label">Scenes</div>
+        </div>
+        <div class="stat-glow"></div>
       </div>
     </div>
   </div>
 
-  {{!-- Tabs Navigation --}}
-  <nav class="tabs" data-group="network-management">
-    <a class="item {{#if (eq activeTab 'networks')}}active{{/if}}" data-tab="networks">
-      <i class="fas fa-network-wired"></i> Networks
+  {{!-- Navigation Tabs --}}
+  <nav class="ncm-tabs" data-group="network-management">
+    <a class="ncm-tab-item {{#if (eq activeTab 'networks')}}active{{/if}}" data-tab="networks">
+      <i class="fas fa-network-wired"></i>
+      <span>Networks</span>
+      <div class="tab-indicator"></div>
     </a>
-    <a class="item {{#if (eq activeTab 'scenes')}}active{{/if}}" data-tab="scenes">
-      <i class="fas fa-map"></i> Scenes
+    <a class="ncm-tab-item {{#if (eq activeTab 'scenes')}}active{{/if}}" data-tab="scenes">
+      <i class="fas fa-map"></i>
+      <span>Scenes</span>
+      <div class="tab-indicator"></div>
     </a>
-    <a class="item {{#if (eq activeTab 'events')}}active{{/if}}" data-tab="events">
-      <i class="fas fa-calendar-alt"></i> Events
+    <a class="ncm-tab-item {{#if (eq activeTab 'events')}}active{{/if}}" data-tab="events">
+      <i class="fas fa-calendar-alt"></i>
+      <span>Events</span>
+      <div class="tab-indicator"></div>
     </a>
-    <a class="item {{#if (eq activeTab 'logs')}}active{{/if}}" data-tab="logs">
-      <i class="fas fa-clipboard-list"></i> Logs
+    <a class="ncm-tab-item {{#if (eq activeTab 'logs')}}active{{/if}}" data-tab="logs">
+      <i class="fas fa-clipboard-list"></i>
+      <span>Logs</span>
+      <div class="tab-indicator"></div>
     </a>
   </nav>
 
-  {{!-- Tab Content --}}
-  <div class="tab-content">
+  {{!-- Tab Content Container --}}
+  <div class="ncm-tab-content">
+    
     {{!-- Networks Tab --}}
-    <div class="tab {{#if (eq activeTab 'networks')}}active{{/if}}" data-tab="networks">
+    <div class="ncm-tab-panel {{#if (eq activeTab 'networks')}}active{{/if}}" data-tab="networks">
       {{> "modules/cyberpunkred-messenger/templates/network-management/partials/networks-tab.hbs"}}
     </div>
 
     {{!-- Scenes Tab --}}
-    <div class="tab {{#if (eq activeTab 'scenes')}}active{{/if}}" data-tab="scenes">
+    <div class="ncm-tab-panel {{#if (eq activeTab 'scenes')}}active{{/if}}" data-tab="scenes">
       {{> "modules/cyberpunkred-messenger/templates/network-management/partials/scenes-tab.hbs"}}
     </div>
 
     {{!-- Events Tab --}}
-    <div class="tab {{#if (eq activeTab 'events')}}active{{/if}}" data-tab="events">
+    <div class="ncm-tab-panel {{#if (eq activeTab 'events')}}active{{/if}}" data-tab="events">
       {{> "modules/cyberpunkred-messenger/templates/network-management/partials/events-tab.hbs"}}
     </div>
 
     {{!-- Logs Tab --}}
-    <div class="tab {{#if (eq activeTab 'logs')}}active{{/if}}" data-tab="logs">
+    <div class="ncm-tab-panel {{#if (eq activeTab 'logs')}}active{{/if}}" data-tab="logs">
       {{> "modules/cyberpunkred-messenger/templates/network-management/partials/logs-tab.hbs"}}
     </div>
+    
   </div>
+  
+  {{!-- Scanline Effect Overlay --}}
+  <div class="scanlines"></div>
 </div>

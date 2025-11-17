@@ -1,8 +1,332 @@
-// scenes-tab.hbs
-<div class="scenes-tab-placeholder">
-  <div class="coming-soon">
-    <i class="fas fa-map"></i>
-    <h3>Scene Configuration</h3>
-    <p>Coming in Phase 4B</p>
+{{!-- Scenes Tab Partial --}}
+{{!-- File: templates/network-management/partials/scenes-tab.hbs --}}
+{{!-- Description: Manage network availability and signal strength per scene --}}
+
+<div class="scenes-tab-container">
+  
+  {{!-- Toolbar --}}
+  <div class="scenes-toolbar">
+    <div class="toolbar-left">
+      <button type="button" class="bulk-enable-all-btn ncm-btn ncm-btn-small ncm-btn-primary" title="Enable all networks in all scenes">
+        <i class="fas fa-toggle-on"></i> Enable All
+      </button>
+      <button type="button" class="bulk-disable-all-btn ncm-btn ncm-btn-small" title="Disable all networks in all scenes">
+        <i class="fas fa-toggle-off"></i> Disable All
+      </button>
+      <button type="button" class="reset-signals-btn ncm-btn ncm-btn-small" title="Reset all signal strengths to network defaults">
+        <i class="fas fa-undo"></i> Reset Signals
+      </button>
+    </div>
+    
+    <div class="toolbar-center">
+      <input type="text" class="scene-filter" placeholder="Filter scenes..." value="{{filterText}}">
+      <select class="network-type-filter">
+        <option value="">All Network Types</option>
+        <option value="PUBLIC" {{#if (eq filterType 'PUBLIC')}}selected{{/if}}>Public</option>
+        <option value="CORPORATE" {{#if (eq filterType 'CORPORATE')}}selected{{/if}}>Corporate</option>
+        <option value="PRIVATE" {{#if (eq filterType 'PRIVATE')}}selected{{/if}}>Private</option>
+        <option value="CUSTOM" {{#if (eq filterType 'CUSTOM')}}selected{{/if}}>Custom</option>
+      </select>
+    </div>
+    
+    <div class="toolbar-right">
+      <button type="button" class="matrix-view-btn ncm-btn ncm-btn-small active" data-view="matrix">
+        <i class="fas fa-th"></i>
+      </button>
+      <button type="button" class="list-view-btn ncm-btn ncm-btn-small" data-view="list">
+        <i class="fas fa-list"></i>
+      </button>
+    </div>
+  </div>
+  
+  {{#if (eq viewMode 'matrix')}}
+    {{!-- Matrix View: Scene x Network Grid --}}
+    <div class="scenes-matrix-view">
+      
+      {{#if scenes.length}}
+        <div class="matrix-container">
+          
+          {{!-- Matrix Header: Network Names --}}
+          <div class="matrix-header">
+            <div class="matrix-cell header-corner">
+              <strong>Scenes / Networks</strong>
+              <small>{{scenes.length}} scenes × {{networks.length}} networks</small>
+            </div>
+            {{#each networks}}
+              <div class="matrix-cell network-header" style="border-color: {{this.theme.color}}">
+                <div class="network-header-content">
+                  <i class="{{this.theme.icon}}" style="color: {{this.theme.color}}"></i>
+                  <strong>{{this.name}}</strong>
+                  {{#if this.requiresAuth}}
+                    <i class="fas fa-lock security-icon" title="Requires Authentication"></i>
+                  {{/if}}
+                  {{#unless this.enabled}}
+                    <i class="fas fa-power-off disabled-icon" title="Network Disabled"></i>
+                  {{/unless}}
+                </div>
+                <div class="network-header-actions">
+                  <button type="button" class="enable-network-all-scenes" data-network-id="{{this.id}}" title="Enable in all scenes">
+                    <i class="fas fa-check-double"></i>
+                  </button>
+                  <button type="button" class="disable-network-all-scenes" data-network-id="{{this.id}}" title="Disable in all scenes">
+                    <i class="fas fa-ban"></i>
+                  </button>
+                </div>
+              </div>
+            {{/each}}
+          </div>
+          
+          {{!-- Matrix Rows: One per Scene --}}
+          {{#each scenes}}
+            <div class="matrix-row" data-scene-id="{{this.id}}">
+              
+              {{!-- Scene Name Cell --}}
+              <div class="matrix-cell scene-header">
+                <div class="scene-header-content">
+                  <i class="fas fa-map"></i>
+                  <strong>{{this.name}}</strong>
+                  {{#if this.active}}
+                    <span class="active-badge" title="Current Scene">
+                      <i class="fas fa-circle"></i>
+                    </span>
+                  {{/if}}
+                </div>
+                <div class="scene-header-actions">
+                  <button type="button" class="enable-all-networks-scene" data-scene-id="{{this.id}}" title="Enable all networks">
+                    <i class="fas fa-check-double"></i>
+                  </button>
+                  <button type="button" class="copy-scene-config" data-scene-id="{{this.id}}" title="Copy to other scenes">
+                    <i class="fas fa-copy"></i>
+                  </button>
+                </div>
+              </div>
+              
+              {{!-- Network Availability Cells --}}
+              {{#each ../networks}}
+                <div class="matrix-cell network-cell" data-scene-id="{{../id}}" data-network-id="{{this.id}}">
+                  {{#with (lookup ../../sceneNetworks (concat ../id "." this.id))}}
+                    
+                    {{!-- Toggle Switch --}}
+                    <div class="network-toggle-container">
+                      <label class="toggle-switch compact">
+                        <input 
+                          type="checkbox" 
+                          class="scene-network-toggle"
+                          data-scene-id="{{../id}}"
+                          data-network-id="{{this.networkId}}"
+                          {{#if this.available}}checked{{/if}}
+                          {{#unless ../enabled}}disabled{{/unless}}>
+                        <span class="toggle-slider"></span>
+                      </label>
+                    </div>
+                    
+                    {{#if this.available}}
+                      {{!-- Signal Strength Slider --}}
+                      <div class="signal-strength-container">
+                        <div class="signal-indicator" style="--signal: {{this.signalStrength}}%; --network-color: {{../theme.color}}">
+                          <div class="signal-bars">
+                            <span class="bar {{#if (gte this.signalStrength 25)}}active{{/if}}"></span>
+                            <span class="bar {{#if (gte this.signalStrength 50)}}active{{/if}}"></span>
+                            <span class="bar {{#if (gte this.signalStrength 75)}}active{{/if}}"></span>
+                            <span class="bar {{#if (gte this.signalStrength 90)}}active{{/if}}"></span>
+                          </div>
+                          <span class="signal-value">{{this.signalStrength}}%</span>
+                        </div>
+                        <input 
+                          type="range" 
+                          class="scene-signal-slider"
+                          data-scene-id="{{../id}}"
+                          data-network-id="{{this.networkId}}"
+                          min="0" 
+                          max="100" 
+                          value="{{this.signalStrength}}"
+                          title="Signal Strength: {{this.signalStrength}}%">
+                      </div>
+                    {{else}}
+                      {{!-- Disabled State --}}
+                      <div class="network-disabled-state">
+                        <i class="fas fa-ban"></i>
+                        <small>Unavailable</small>
+                      </div>
+                    {{/if}}
+                    
+                  {{/with}}
+                </div>
+              {{/each}}
+            </div>
+          {{/each}}
+          
+        </div>
+        
+        {{!-- Legend --}}
+        <div class="matrix-legend">
+          <h4><i class="fas fa-info-circle"></i> Legend</h4>
+          <div class="legend-items">
+            <div class="legend-item">
+              <label class="toggle-switch compact">
+                <input type="checkbox" checked disabled>
+                <span class="toggle-slider"></span>
+              </label>
+              <span>Network Available</span>
+            </div>
+            <div class="legend-item">
+              <div class="signal-bars mini">
+                <span class="bar active"></span>
+                <span class="bar active"></span>
+                <span class="bar active"></span>
+                <span class="bar active"></span>
+              </div>
+              <span>Signal Strength</span>
+            </div>
+            <div class="legend-item">
+              <i class="fas fa-lock security-icon"></i>
+              <span>Requires Auth</span>
+            </div>
+            <div class="legend-item">
+              <i class="fas fa-circle active-badge"></i>
+              <span>Current Scene</span>
+            </div>
+          </div>
+        </div>
+        
+      {{else}}
+        {{!-- No Scenes --}}
+        <div class="empty-state">
+          <i class="fas fa-map"></i>
+          <h3>No Scenes Found</h3>
+          <p>Create some scenes in your world to configure network availability</p>
+        </div>
+      {{/if}}
+      
+    </div>
+    
+  {{else}}
+    {{!-- List View: Traditional Per-Scene Configuration --}}
+    <div class="scenes-list-view">
+      
+      {{#if scenes.length}}
+        {{#each scenes}}
+          <div class="scene-config-card" data-scene-id="{{this.id}}">
+            
+            {{!-- Scene Header --}}
+            <div class="scene-card-header">
+              <div class="scene-card-title">
+                <i class="fas fa-map"></i>
+                <h3>{{this.name}}</h3>
+                {{#if this.active}}
+                  <span class="active-badge"><i class="fas fa-circle"></i> Current</span>
+                {{/if}}
+              </div>
+              <div class="scene-card-actions">
+                <button type="button" class="enable-all-networks-scene" data-scene-id="{{this.id}}">
+                  <i class="fas fa-check-double"></i> Enable All
+                </button>
+                <button type="button" class="copy-scene-config" data-scene-id="{{this.id}}">
+                  <i class="fas fa-copy"></i> Copy Config
+                </button>
+                <button type="button" class="reset-scene-config" data-scene-id="{{this.id}}">
+                  <i class="fas fa-undo"></i> Reset
+                </button>
+              </div>
+            </div>
+            
+            {{!-- Networks List --}}
+            <div class="scene-networks-list">
+              {{#each ../networks}}
+                {{#with (lookup ../../sceneNetworks (concat ../id "." this.id))}}
+                  <div class="scene-network-item {{#unless this.available}}disabled{{/unless}}" 
+                       data-network-id="{{this.networkId}}">
+                    
+                    <div class="network-item-header">
+                      <div class="network-item-identity">
+                        <i class="{{../theme.icon}}" style="color: {{../theme.color}}"></i>
+                        <strong>{{../name}}</strong>
+                        {{#if ../requiresAuth}}
+                          <i class="fas fa-lock security-icon"></i>
+                        {{/if}}
+                        {{#unless ../enabled}}
+                          <span class="disabled-badge">Disabled</span>
+                        {{/unless}}
+                      </div>
+                      
+                      <label class="toggle-switch">
+                        <input 
+                          type="checkbox" 
+                          class="scene-network-toggle"
+                          data-scene-id="{{../id}}"
+                          data-network-id="{{this.networkId}}"
+                          {{#if this.available}}checked{{/if}}
+                          {{#unless ../enabled}}disabled{{/unless}}>
+                        <span class="toggle-slider"></span>
+                        <span class="toggle-label">{{#if this.available}}Available{{else}}Unavailable{{/if}}</span>
+                      </label>
+                    </div>
+                    
+                    {{#if this.available}}
+                      <div class="network-item-controls">
+                        <div class="signal-control">
+                          <label>
+                            <i class="fas fa-signal"></i> Signal Strength
+                            <strong>{{this.signalStrength}}%</strong>
+                          </label>
+                          <input 
+                            type="range" 
+                            class="scene-signal-slider"
+                            data-scene-id="{{../id}}"
+                            data-network-id="{{this.networkId}}"
+                            min="0" 
+                            max="100" 
+                            value="{{this.signalStrength}}">
+                        </div>
+                        
+                        {{#if ../requiresAuth}}
+                          <div class="security-warning">
+                            <i class="fas fa-shield-alt"></i>
+                            <small>Players must authenticate or hack to access this network</small>
+                          </div>
+                        {{/if}}
+                      </div>
+                    {{/if}}
+                    
+                  </div>
+                {{/with}}
+              {{/each}}
+            </div>
+            
+          </div>
+        {{/each}}
+      {{else}}
+        <div class="empty-state">
+          <i class="fas fa-map"></i>
+          <h3>No Scenes Found</h3>
+          <p>Create some scenes in your world to configure network availability</p>
+        </div>
+      {{/if}}
+      
+    </div>
+  {{/if}}
+  
+</div>
+
+{{!-- Quick Actions Panel --}}
+<div class="quick-actions-panel">
+  <h4><i class="fas fa-bolt"></i> Quick Actions</h4>
+  <div class="quick-actions-grid">
+    <button type="button" class="quick-action-btn" data-action="enable-citinet-all">
+      <i class="fas fa-wifi"></i>
+      <span>Enable CITINET Everywhere</span>
+    </button>
+    <button type="button" class="quick-action-btn" data-action="copy-current-scene">
+      <i class="fas fa-copy"></i>
+      <span>Copy Current Scene Config to All</span>
+    </button>
+    <button type="button" class="quick-action-btn" data-action="reset-all-signals">
+      <i class="fas fa-undo"></i>
+      <span>Reset All Signal Strengths</span>
+    </button>
+    <button type="button" class="quick-action-btn" data-action="export-config">
+      <i class="fas fa-file-export"></i>
+      <span>Export Scene Configurations</span>
+    </button>
   </div>
 </div>
