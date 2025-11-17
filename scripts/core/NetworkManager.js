@@ -36,6 +36,9 @@ export class NetworkManager {
       console.log(`${MODULE_ID} | No custom networks found, creating defaults...`);
       networks = await this._createDefaultNetworks();
     }
+
+    // 🆕 ADD THIS LINE: Migrate old availability system to scene-based
+    await this._migrateAvailabilityToScenes();
     
     // Load user's network state
     await this._loadNetworkState();
@@ -74,10 +77,6 @@ export class NetworkManager {
         id: 'CITINET',
         name: 'CitiNet',
         type: 'public',
-        availability: {
-          global: true,
-          scenes: []
-        },
         signalStrength: 90,
         reliability: 95,
         security: {
@@ -107,19 +106,15 @@ export class NetworkManager {
         id: 'CORPNET',
         name: 'CorpNet',
         type: 'corporate',
-        availability: {
-          global: false,
-          scenes: [] // GM will assign to specific scenes
-        },
         signalStrength: 100,
         reliability: 99,
         security: {
           level: 'high',
           requiresAuth: true,
-          password: null, // Will be set by GM
+          password: null,
           bypassDC: 17,
           attempts: 3,
-          lockoutDuration: 600000 // 10 minutes
+          lockoutDuration: 600000
         },
         effects: {
           messageDelay: 0,
@@ -140,10 +135,6 @@ export class NetworkManager {
         id: 'DARKNET',
         name: 'DarkNet',
         type: 'darknet',
-        availability: {
-          global: false,
-          scenes: [] // Players must discover darknet nodes
-        },
         signalStrength: 60,
         reliability: 80,
         security: {
@@ -152,7 +143,7 @@ export class NetworkManager {
           password: null,
           bypassDC: 13,
           attempts: 5,
-          lockoutDuration: 180000 // 3 minutes
+          lockoutDuration: 180000
         },
         effects: {
           messageDelay: 2,
@@ -166,17 +157,13 @@ export class NetworkManager {
           glitchIntensity: 0.5
         },
         description: 'Anonymous network. Unstable but untraceable.',
-        hidden: true, // Hidden until player discovers it
+        hidden: true,
         gmNotes: 'Players need to know about darknet nodes to connect'
       },
       {
         id: 'DEAD_ZONE',
         name: 'Dead Zone',
         type: 'none',
-        availability: {
-          global: false,
-          scenes: [] // GM assigns to dead zones
-        },
         signalStrength: 0,
         reliability: 0,
         security: {
@@ -214,26 +201,32 @@ export class NetworkManager {
    * Get networks available in current scene
    */
   async getAvailableNetworks(scene = canvas.scene) {
-    const allNetworks = await this.getAllNetworks();
+    if (!scene) {
+      console.warn(`${MODULE_ID} | No scene active, no networks available`);
+      return [];
+    }
     
-    return allNetworks.filter(network => {
-      // Hidden networks don't show unless player knows about them
-      if (network.hidden && !this._isKnownNetwork(network.id)) {
-        return false;
-      }
-      
-      // Global networks always available
-      if (network.availability.global) {
-        return true;
-      }
-      
-      // Scene-specific networks
-      if (scene && network.availability.scenes.includes(scene.id)) {
-        return true;
-      }
-      
-      return false;
-    });
+    const allNetworks = await this.getAllNetworks();
+    const sceneConfig = scene.getFlag(MODULE_ID, 'networks') || {};
+    
+    return allNetworks
+      .filter(network => {
+        // Hidden networks don't show unless player knows about them
+        if (network.hidden && !this._isKnownNetwork(network.id)) {
+          return false;
+        }
+        
+        return sceneConfig[network.id]?.available === true;
+      })
+      .map(network => {
+        // Merge network properties with scene-specific signal strength
+        const sceneData = sceneConfig[network.id] || {};
+        return {
+          ...network,
+          signalStrength: sceneData.signalStrength ?? network.signalStrength,
+          available: true // Already filtered to available only
+        };
+      });
   }
   
   /**
@@ -275,6 +268,45 @@ export class NetworkManager {
         whisper: [game.user.id]
       });
     }
+  }
+
+  /**
+   * Initialize default networks for a scene
+   * Call this when creating new scenes or on first setup
+   * 
+   * @param {Scene} scene - Scene to initialize
+   * @param {Object} options - Configuration options
+   * @param {boolean} options.enableCitiNet - Enable CITINET (default: true)
+   * @param {boolean} options.enableAll - Enable all non-hidden networks (default: false)
+   * @returns {Promise<Object>} Scene network config
+   */
+  async initializeSceneNetworks(scene, options = {}) {
+    const { enableCitiNet = true, enableAll = false } = options;
+    
+    const allNetworks = await this.getAllNetworks();
+    const config = {};
+    
+    for (const network of allNetworks) {
+      // Skip hidden networks unless enableAll is true
+      if (network.hidden && !enableAll) continue;
+      
+      // CITINET enabled by default in most scenes
+      const shouldEnable = enableAll || (enableCitiNet && network.id === 'CITINET');
+      
+      config[network.id] = {
+        available: shouldEnable,
+        signalStrength: shouldEnable ? network.signalStrength : 0
+      };
+    }
+    
+    await scene.setFlag(MODULE_ID, 'networks', config);
+    
+    console.log(`${MODULE_ID} | Initialized networks for scene: ${scene.name}`);
+    
+    // Emit event for UI updates
+    this.eventBus.emit('scene:networks:initialized', { scene, config });
+    
+    return config;
   }
   
   /**
@@ -632,4 +664,67 @@ export class NetworkManager {
       await this.scanNetworks();
     });
   }
+
+  /**
+   * Migrate old availability.scenes to scene flags
+   * Runs once, safe to call multiple times
+   * @private
+   */
+  async _migrateAvailabilityToScenes() {
+    // Check if already migrated
+    const migrated = await game.settings.get(MODULE_ID, 'availabilityMigrated');
+    if (migrated) {
+      console.log(`${MODULE_ID} | Network availability already migrated`);
+      return;
+    }
+    
+    console.log(`${MODULE_ID} | Migrating network availability to scene-based system...`);
+    
+    const allNetworks = await this.getAllNetworks();
+    let migratedCount = 0;
+    let sceneCount = 0;
+    
+    for (const scene of game.scenes) {
+      let sceneConfig = scene.getFlag(MODULE_ID, 'networks') || {};
+      let changed = false;
+      
+      for (const network of allNetworks) {
+        // Skip if already configured in scene
+        if (sceneConfig[network.id]?.available !== undefined) {
+          continue;
+        }
+        
+        // Check old availability system
+        const wasGlobal = network.availability?.global === true;
+        const inSceneList = network.availability?.scenes?.includes(scene.id);
+        
+        if (wasGlobal || inSceneList) {
+          sceneConfig[network.id] = {
+            available: true,
+            signalStrength: network.signalStrength || 80
+          };
+          changed = true;
+          migratedCount++;
+        }
+      }
+      
+      if (changed) {
+        await scene.setFlag(MODULE_ID, 'networks', sceneConfig);
+        sceneCount++;
+      }
+    }
+    
+    // Mark migration complete
+    await game.settings.set(MODULE_ID, 'availabilityMigrated', true);
+    
+    console.log(`${MODULE_ID} | Migration complete: ${migratedCount} configurations across ${sceneCount} scenes`);
+    
+    if (migratedCount > 0) {
+      ui.notifications.info(
+        `Network system updated: Migrated ${migratedCount} network configurations to scene-based system`,
+        { permanent: false }
+      );
+    }
+  }
+
 }

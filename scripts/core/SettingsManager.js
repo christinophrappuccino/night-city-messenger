@@ -139,6 +139,16 @@ export class SettingsManager {
       default: [],
       onChange: value => this._onSettingChanged('customNetworks', value)
     });
+
+    // Add this with your other game.settings.register() calls
+    game.settings.register('cyberpunkred-messenger', 'availabilityMigrated', {
+      name: 'Availability System Migration Status',
+      hint: 'Tracks whether the old availability system has been migrated to scene-based configuration',
+      scope: 'world',
+      config: false, // Hidden from settings UI
+      type: Boolean,
+      default: false
+    });
     
     game.settings.register(MODULE_ID, 'spamFilterEnabled', {
       name: 'Enable Spam Filter',

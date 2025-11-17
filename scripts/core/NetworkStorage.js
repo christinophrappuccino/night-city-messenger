@@ -130,12 +130,6 @@ export class NetworkStorage {
       return false;
     }
     
-    // Required objects
-    if (!network.availability || typeof network.availability !== 'object') {
-      console.error(`${MODULE_ID} | Invalid network: missing availability config`);
-      return false;
-    }
-    
     if (!network.security || typeof network.security !== 'object') {
       console.error(`${MODULE_ID} | Invalid network: missing security config`);
       return false;
@@ -198,45 +192,6 @@ export class NetworkStorage {
       hash = hash & hash;
     }
     return hash.toString(16);
-  }
-  
-  /**
-   * Add scene to network availability
-   * @param {string} networkId - Network ID
-   * @param {string} sceneId - Scene ID
-   */
-  static async addSceneToNetwork(networkId, sceneId) {
-    const network = await this.getNetwork(networkId);
-    if (!network) {
-      throw new Error(`Network not found: ${networkId}`);
-    }
-    
-    if (!network.availability.scenes.includes(sceneId)) {
-      network.availability.scenes.push(sceneId);
-      await this.updateNetwork(networkId, network);
-      
-      console.log(`${MODULE_ID} | Added scene ${sceneId} to network ${networkId}`);
-    }
-  }
-  
-  /**
-   * Remove scene from network availability
-   * @param {string} networkId - Network ID
-   * @param {string} sceneId - Scene ID
-   */
-  static async removeSceneFromNetwork(networkId, sceneId) {
-    const network = await this.getNetwork(networkId);
-    if (!network) {
-      throw new Error(`Network not found: ${networkId}`);
-    }
-    
-    const index = network.availability.scenes.indexOf(sceneId);
-    if (index > -1) {
-      network.availability.scenes.splice(index, 1);
-      await this.updateNetwork(networkId, network);
-      
-      console.log(`${MODULE_ID} | Removed scene ${sceneId} from network ${networkId}`);
-    }
   }
   
   /**
