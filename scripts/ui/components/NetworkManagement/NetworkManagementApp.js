@@ -2,26 +2,33 @@
  * Network Management Application
  * File: scripts/ui/components/NetworkManagement/NetworkManagementApp.js
  * Module: cyberpunkred-messenger
- * Description: GM interface for managing networks, events, logs, and configuration
+ * Description: GM interface for managing networks and scene configurations
+ * 
+ * FIXED: Added _syncNetworkUI() method that gets called after any scene flag changes
+ * This ensures NetworkSelector and MessageViewer stay in sync with the configuration.
  */
 
 import { MODULE_ID } from '../../../utils/constants.js';
 
 export class NetworkManagementApp extends Application {
+  
   constructor(options = {}) {
     super(options);
     
-    this.activeTab = 'networks';
-    this.selectedNetworks = new Set();
+    this.activeTab = options.activeTab || 'networks';
     this.filterText = '';
-    this.sortBy = 'name'; // name, type, security
+    this.sortBy = 'name';
     this.sortDir = 'asc';
+    this.selectedNetworks = new Set();
     
     // Cache
     this._networks = null;
     this._scenes = null;
     this._events = null;
     this._logs = null;
+    
+    // Debounce timer
+    this._signalUpdateTimeout = null;
   }
   
   static get defaultOptions() {
@@ -29,56 +36,56 @@ export class NetworkManagementApp extends Application {
       id: 'ncm-network-management',
       template: `modules/${MODULE_ID}/templates/network-management/network-management.hbs`,
       classes: ['ncm-app', 'ncm-network-management'],
-      width: 1000,
+      width: 900,
       height: 700,
-      title: '🌐 Network Management',
+      title: 'Network Management',
+      tabs: [{ navSelector: '.tabs', contentSelector: '.tab-content', initial: 'networks' }],
       resizable: true,
-      minimizable: true,
-      tabs: [{
-        navSelector: '.tabs',
-        contentSelector: '.tab-content',
-        initial: 'networks'
-      }]
+      minimizable: true
     });
   }
+  
+  /* -------------------------------------------- */
+  /*  Data Preparation                            */
+  /* -------------------------------------------- */
   
   async getData() {
     const data = await super.getData();
     
-    // Get all data needed for tabs
+    // Get all data
     const networks = await this._getNetworks();
     const scenes = await this._getScenes();
     const events = await this._getEvents();
     const logs = await this._getLogs();
     
-    // Filter and sort networks
-    let filteredNetworks = networks;
+    // Build scene-network lookup for template
+    const sceneNetworks = {};
+    for (const scene of scenes) {
+      for (const [networkId, config] of Object.entries(scene.networks || {})) {
+        sceneNetworks[`${scene.id}.${networkId}`] = {
+          networkId,
+          available: config.available || false,
+          signalStrength: config.signalStrength ?? 80
+        };
+      }
+    }
+    
+    // Filter networks
+    let filteredNetworks = [...networks];
     if (this.filterText) {
       const filter = this.filterText.toLowerCase();
-      filteredNetworks = networks.filter(n => 
+      filteredNetworks = filteredNetworks.filter(n => 
         n.name.toLowerCase().includes(filter) ||
-        n.id.toLowerCase().includes(filter) ||
-        n.type.toLowerCase().includes(filter)
+        n.id.toLowerCase().includes(filter)
       );
     }
     
     // Sort networks
     filteredNetworks.sort((a, b) => {
-      let aVal, bVal;
-      switch(this.sortBy) {
-        case 'type':
-          aVal = a.type;
-          bVal = b.type;
-          break;
-        case 'security':
-          aVal = a.security?.level || 'NONE';
-          bVal = b.security?.level || 'NONE';
-          break;
-        default: // name
-          aVal = a.name;
-          bVal = b.name;
-      }
-      
+      let aVal = a[this.sortBy] || '';
+      let bVal = b[this.sortBy] || '';
+      if (typeof aVal === 'string') aVal = aVal.toLowerCase();
+      if (typeof bVal === 'string') bVal = bVal.toLowerCase();
       const comparison = aVal < bVal ? -1 : (aVal > bVal ? 1 : 0);
       return this.sortDir === 'asc' ? comparison : -comparison;
     });
@@ -92,6 +99,7 @@ export class NetworkManagementApp extends Application {
       sortBy: this.sortBy,
       sortDir: this.sortDir,
       scenes: scenes,
+      sceneNetworks: sceneNetworks,
       events: events,
       logs: logs,
       stats: {
@@ -103,6 +111,10 @@ export class NetworkManagementApp extends Application {
       }
     };
   }
+  
+  /* -------------------------------------------- */
+  /*  Event Listeners                             */
+  /* -------------------------------------------- */
   
   activateListeners(html) {
     super.activateListeners(html);
@@ -131,35 +143,94 @@ export class NetworkManagementApp extends Application {
     
     // Scenes tab
     html.find('.scene-network-toggle').change(this._onSceneNetworkToggle.bind(this));
-    html.find('.scene-signal-slider').on('input', this._onSceneSignalChange.bind(this));
+    html.find('.scene-signal-slider').on('input', this._onSceneSignalInput.bind(this));
+    html.find('.scene-signal-slider').on('change', this._onSceneSignalChange.bind(this));
     html.find('.scene-config-btn').click(this._onConfigureScene.bind(this));
-    html.find('.copy-to-scenes-btn').click(this._onCopyToScenes.bind(this));
+    html.find('.copy-to-scenes-btn, .copy-scene-config').click(this._onCopyToScenes.bind(this));
+    html.find('.enable-all-networks-scene').click(this._onEnableAllNetworksScene.bind(this));
+    html.find('.reset-scene-config').click(this._onResetSceneConfig.bind(this));
+    
+    // Bulk scene operations
+    html.find('.bulk-enable-all-btn').click(this._onBulkEnableAllScenes.bind(this));
+    html.find('.bulk-disable-all-btn').click(this._onBulkDisableAllScenes.bind(this));
+    html.find('.reset-signals-btn').click(this._onResetAllSignals.bind(this));
     
     // Events tab
     html.find('.create-event-btn').click(this._onCreateEvent.bind(this));
+    html.find('.event-card').click(this._onEventClick.bind(this));
     html.find('.edit-event-btn').click(this._onEditEvent.bind(this));
     html.find('.delete-event-btn').click(this._onDeleteEvent.bind(this));
     html.find('.trigger-event-btn').click(this._onTriggerEvent.bind(this));
     
     // Logs tab
-    html.find('.log-filter').on('input', this._onLogFilter.bind(this));
-    html.find('.log-export-btn').click(this._onExportLogs.bind(this));
-    html.find('.log-clear-btn').click(this._onClearLogs.bind(this));
-    html.find('.log-refresh-btn').click(this._onRefreshLogs.bind(this));
+    html.find('.refresh-logs-btn').click(this._onRefreshLogs.bind(this));
+    html.find('.clear-logs-btn').click(this._onClearLogs.bind(this));
+    html.find('.export-logs-btn').click(this._onExportLogs.bind(this));
     
-    // Import
-    html.find('.import-network-btn').click(this._onImportNetwork.bind(this));
+    // Import/Export
+    html.find('.import-networks-btn').click(this._onImportNetworks.bind(this));
+    html.find('.export-all-btn').click(this._onExportAll.bind(this));
   }
   
   /* -------------------------------------------- */
-  /*  Event Handlers - Tabs                       */
+  /*  CRITICAL: Network UI Sync Method            */
   /* -------------------------------------------- */
   
-  async _onTabChange(event) {
+  /**
+   * Sync all network UI components after a configuration change
+   * This is the KEY fix - call this after any scene flag changes
+   * @param {Scene} [scene] - The scene that was modified (optional)
+   * @private
+   */
+  async _syncNetworkUI(scene = null) {
+    console.log(`${MODULE_ID} | Syncing network UI...`);
+    
+    // Only sync if this affects the active scene
+    const affectsActiveScene = !scene || scene.active || scene.id === canvas.scene?.id;
+    
+    if (!affectsActiveScene) {
+      console.log(`${MODULE_ID} | Scene ${scene?.name} is not active, skipping UI sync`);
+      return;
+    }
+    
+    // 1. Clear NetworkSelectorApp cache and re-render
+    const selectorApp = game.nightcity?.networkSelectorApp;
+    if (selectorApp) {
+      selectorApp.cachedNetworks = null;
+      selectorApp.cacheTimestamp = 0;
+      if (selectorApp.rendered) {
+        await selectorApp.render(false);
+      }
+      console.log(`${MODULE_ID} | ✓ NetworkSelectorApp refreshed`);
+    }
+    
+    // 2. Tell NetworkManager to rescan
+    const networkManager = game.nightcity?.networkManager;
+    if (networkManager?.scanNetworks) {
+      await networkManager.scanNetworks();
+      console.log(`${MODULE_ID} | ✓ NetworkManager rescanned`);
+    }
+    
+    // 3. Refresh any open MessageViewerApp
+    for (const app of Object.values(ui.windows)) {
+      if (app.constructor.name === 'MessageViewerApp' && app.rendered) {
+        await app.render(false);
+        console.log(`${MODULE_ID} | ✓ MessageViewerApp refreshed`);
+      }
+    }
+    
+    // 4. Emit event for any other listeners
+    Hooks.call('ncm.networkConfigChanged', { scene: scene?.id || canvas.scene?.id });
+  }
+  
+  /* -------------------------------------------- */
+  /*  Event Handlers - Tab Navigation             */
+  /* -------------------------------------------- */
+  
+  _onTabChange(event) {
     event.preventDefault();
     const tab = event.currentTarget.dataset.tab;
     this.activeTab = tab;
-    await this.render(false);
   }
   
   /* -------------------------------------------- */
@@ -168,13 +239,15 @@ export class NetworkManagementApp extends Application {
   
   _onFilterChange(event) {
     this.filterText = event.target.value;
+    this._networks = null;
     this.render(false);
   }
   
   _onSortChange(event) {
     const [sortBy, sortDir] = event.target.value.split('-');
     this.sortBy = sortBy;
-    this.sortDir = sortDir;
+    this.sortDir = sortDir || 'asc';
+    this._networks = null;
     this.render(false);
   }
   
@@ -188,20 +261,10 @@ export class NetworkManagementApp extends Application {
       onSave: async (networkData) => {
         try {
           await game.nightcity.NetworkStorage.createNetwork(networkData);
-          
           ui.notifications.info(`Network "${networkData.name}" created`);
-          
-          // Post to chat (optional)
-          if (game.nightcity.chatIntegration?.postNetworkEvent) {
-            await game.nightcity.chatIntegration.postNetworkEvent({
-              type: 'network-created',
-              network: networkData,
-              user: game.user.name
-            });
-          }
-          
-          this._networks = null; // Clear cache
+          this._networks = null;
           this.render(false);
+          await this._syncNetworkUI();
         } catch (error) {
           console.error(`${MODULE_ID} | Error creating network:`, error);
           ui.notifications.error(`Failed to create network: ${error.message}`);
@@ -211,10 +274,16 @@ export class NetworkManagementApp extends Application {
   }
   
   _onNetworkClick(event) {
-    if (event.target.closest('.network-actions')) return;
+    // Ignore if clicking on action buttons
+    if ($(event.target).closest('button, input').length) return;
     
-    const card = event.currentTarget;
-    card.classList.toggle('expanded');
+    const networkId = event.currentTarget.dataset.networkId;
+    if (this.selectedNetworks.has(networkId)) {
+      this.selectedNetworks.delete(networkId);
+    } else {
+      this.selectedNetworks.add(networkId);
+    }
+    this.render(false);
   }
   
   _onNetworkSelect(event) {
@@ -226,7 +295,6 @@ export class NetworkManagementApp extends Application {
     } else {
       this.selectedNetworks.delete(networkId);
     }
-    
     this.render(false);
   }
   
@@ -234,7 +302,7 @@ export class NetworkManagementApp extends Application {
     event.preventDefault();
     event.stopPropagation();
     
-    const networkId = event.currentTarget.closest('.network-card').dataset.networkId;
+    const networkId = event.currentTarget.dataset.networkId;
     const network = await game.nightcity.NetworkStorage.getNetwork(networkId);
     
     if (!network) {
@@ -250,20 +318,10 @@ export class NetworkManagementApp extends Application {
       onSave: async (networkData) => {
         try {
           await game.nightcity.NetworkStorage.updateNetwork(networkId, networkData);
-          
           ui.notifications.info(`Network "${networkData.name}" updated`);
-          
-          // Post to chat (optional)
-          if (game.nightcity.chatIntegration?.postNetworkEvent) {
-            await game.nightcity.chatIntegration.postNetworkEvent({
-              type: 'network-updated',
-              network: networkData,
-              user: game.user.name
-            });
-          }
-          
           this._networks = null;
           this.render(false);
+          await this._syncNetworkUI();
         } catch (error) {
           console.error(`${MODULE_ID} | Error updating network:`, error);
           ui.notifications.error(`Failed to update network: ${error.message}`);
@@ -276,7 +334,7 @@ export class NetworkManagementApp extends Application {
     event.preventDefault();
     event.stopPropagation();
     
-    const networkId = event.currentTarget.closest('.network-card').dataset.networkId;
+    const networkId = event.currentTarget.dataset.networkId;
     const network = await game.nightcity.NetworkStorage.getNetwork(networkId);
     
     if (!network) {
@@ -284,12 +342,12 @@ export class NetworkManagementApp extends Application {
       return;
     }
     
-    // Create duplicate with new ID
-    const duplicate = foundry.utils.duplicate(network);
-    duplicate.id = `${network.id}_COPY_${Date.now()}`;
-    duplicate.name = `${network.name} (Copy)`;
-    
     const { NetworkEditorDialog } = await import('../../dialogs/NetworkEditorDialog.js');
+    
+    // Create a copy with new ID
+    const duplicate = foundry.utils.deepClone(network);
+    duplicate.id = `${network.id}_COPY`;
+    duplicate.name = `${network.name} (Copy)`;
     
     new NetworkEditorDialog({
       mode: 'create',
@@ -297,11 +355,10 @@ export class NetworkManagementApp extends Application {
       onSave: async (networkData) => {
         try {
           await game.nightcity.NetworkStorage.createNetwork(networkData);
-          
-          ui.notifications.info(`Network "${networkData.name}" duplicated`);
-          
+          ui.notifications.info(`Network "${networkData.name}" created`);
           this._networks = null;
           this.render(false);
+          await this._syncNetworkUI();
         } catch (error) {
           console.error(`${MODULE_ID} | Error duplicating network:`, error);
           ui.notifications.error(`Failed to duplicate network: ${error.message}`);
@@ -314,19 +371,15 @@ export class NetworkManagementApp extends Application {
     event.preventDefault();
     event.stopPropagation();
     
-    const networkId = event.currentTarget.closest('.network-card').dataset.networkId;
+    const networkId = event.currentTarget.dataset.networkId;
     const network = await game.nightcity.NetworkStorage.getNetwork(networkId);
     
-    if (!network) {
-      ui.notifications.error('Network not found');
-      return;
-    }
+    if (!network) return;
     
-    // Confirm deletion
     const confirm = await Dialog.confirm({
       title: 'Delete Network',
       content: `<p>Are you sure you want to delete <strong>${network.name}</strong>?</p>
-                <p class="warning">This will also remove it from all scenes and may affect messages.</p>`,
+                <p class="warning">This will also remove it from all scene configurations.</p>`,
       yes: () => true,
       no: () => false
     });
@@ -335,20 +388,11 @@ export class NetworkManagementApp extends Application {
     
     try {
       await game.nightcity.NetworkStorage.deleteNetwork(networkId);
-      
       ui.notifications.info(`Network "${network.name}" deleted`);
-      
-      // Post to chat (optional)
-      if (game.nightcity.chatIntegration?.postNetworkEvent) {
-        await game.nightcity.chatIntegration.postNetworkEvent({
-          type: 'network-deleted',
-          network: network,
-          user: game.user.name
-        });
-      }
-      
       this._networks = null;
+      this._scenes = null;
       this.render(false);
+      await this._syncNetworkUI();
     } catch (error) {
       console.error(`${MODULE_ID} | Error deleting network:`, error);
       ui.notifications.error(`Failed to delete network: ${error.message}`);
@@ -359,27 +403,23 @@ export class NetworkManagementApp extends Application {
     event.preventDefault();
     event.stopPropagation();
     
-    const networkId = event.currentTarget.closest('.network-card').dataset.networkId;
+    const networkId = event.currentTarget.dataset.networkId;
     const network = await game.nightcity.NetworkStorage.getNetwork(networkId);
     
-    if (!network) {
-      ui.notifications.error('Network not found');
-      return;
-    }
+    if (!network) return;
     
     const exportData = {
       version: '1.0',
       module: MODULE_ID,
-      network: network,
+      networks: [network],
       exportedAt: new Date().toISOString(),
       exportedBy: game.user.name
     };
     
-    const filename = `network-${network.id.toLowerCase()}-${Date.now()}.json`;
+    const filename = `network-${network.id}-${Date.now()}.json`;
     const json = JSON.stringify(exportData, null, 2);
     
     saveDataToFile(json, 'application/json', filename);
-    ui.notifications.info(`Network "${network.name}" exported`);
   }
   
   /* -------------------------------------------- */
@@ -388,14 +428,12 @@ export class NetworkManagementApp extends Application {
   
   _onSelectAll(event) {
     event.preventDefault();
-    
-    this._networks.forEach(n => this.selectedNetworks.add(n.id));
+    this._networks?.forEach(n => this.selectedNetworks.add(n.id));
     this.render(false);
   }
   
   _onDeselectAll(event) {
     event.preventDefault();
-    
     this.selectedNetworks.clear();
     this.render(false);
   }
@@ -409,29 +447,28 @@ export class NetworkManagementApp extends Application {
     }
     
     const confirm = await Dialog.confirm({
-      title: 'Bulk Delete Networks',
-      content: `<p>Are you sure you want to delete ${this.selectedNetworks.size} network(s)?</p>
-                <p class="warning">This action cannot be undone.</p>`,
+      title: 'Delete Networks',
+      content: `<p>Delete ${this.selectedNetworks.size} selected network(s)?</p>`,
       yes: () => true,
       no: () => false
     });
     
     if (!confirm) return;
     
-    let deleted = 0;
     for (const networkId of this.selectedNetworks) {
       try {
         await game.nightcity.NetworkStorage.deleteNetwork(networkId);
-        deleted++;
       } catch (error) {
         console.error(`${MODULE_ID} | Error deleting network ${networkId}:`, error);
       }
     }
     
-    ui.notifications.info(`Deleted ${deleted} network(s)`);
+    ui.notifications.info(`Deleted ${this.selectedNetworks.size} network(s)`);
     this.selectedNetworks.clear();
     this._networks = null;
+    this._scenes = null;
     this.render(false);
+    await this._syncNetworkUI();
   }
   
   async _onBulkEnable(event) {
@@ -459,6 +496,7 @@ export class NetworkManagementApp extends Application {
     ui.notifications.info(`Enabled ${this.selectedNetworks.size} network(s)`);
     this._networks = null;
     this.render(false);
+    await this._syncNetworkUI();
   }
   
   async _onBulkDisable(event) {
@@ -486,6 +524,7 @@ export class NetworkManagementApp extends Application {
     ui.notifications.info(`Disabled ${this.selectedNetworks.size} network(s)`);
     this._networks = null;
     this.render(false);
+    await this._syncNetworkUI();
   }
   
   async _onBulkExport(event) {
@@ -518,9 +557,13 @@ export class NetworkManagementApp extends Application {
   }
   
   /* -------------------------------------------- */
-  /*  Event Handlers - Scenes Tab                 */
+  /*  Event Handlers - Scenes Tab (FIXED)         */
   /* -------------------------------------------- */
   
+  /**
+   * Handle network toggle in a scene
+   * FIXED: Now calls _syncNetworkUI() after saving
+   */
   async _onSceneNetworkToggle(event) {
     const toggle = event.currentTarget;
     const sceneId = toggle.dataset.sceneId;
@@ -530,26 +573,65 @@ export class NetworkManagementApp extends Application {
     const scene = game.scenes.get(sceneId);
     if (!scene) return;
     
+    // Get current config
     const networks = scene.getFlag(MODULE_ID, 'networks') || {};
     if (!networks[networkId]) networks[networkId] = {};
     
+    // Update availability
     networks[networkId].available = available;
+    
+    // If enabling and no signal strength set, use default
+    if (available && !networks[networkId].signalStrength) {
+      networks[networkId].signalStrength = 80;
+    }
+    
+    // Save to scene flags
     await scene.setFlag(MODULE_ID, 'networks', networks);
     
+    console.log(`${MODULE_ID} | Set ${networkId} available=${available} in scene ${scene.name}`);
     ui.notifications.info(`Network ${available ? 'enabled' : 'disabled'} for scene`);
+    
+    // Clear cache and re-render this dialog
+    this._scenes = null;
+    this.render(false);
+    
+    // CRITICAL FIX: Sync other network UI components
+    await this._syncNetworkUI(scene);
   }
   
+  /**
+   * Handle signal slider input (real-time visual feedback)
+   */
+  _onSceneSignalInput(event) {
+    const slider = event.currentTarget;
+    const value = slider.value;
+    
+    // Update the display next to the slider
+    const display = slider.nextElementSibling;
+    if (display) {
+      display.textContent = `${value}%`;
+    }
+    
+    // Update signal bars if present
+    const container = $(slider).closest('.signal-strength-container, .signal-control');
+    const bars = container.find('.signal-bars .bar');
+    bars.each((i, bar) => {
+      const threshold = (i + 1) * 25;
+      $(bar).toggleClass('active', parseInt(value) >= threshold);
+    });
+  }
+  
+  /**
+   * Handle signal slider change (save on release)
+   * FIXED: Now calls _syncNetworkUI() after saving
+   */
   async _onSceneSignalChange(event) {
     const slider = event.currentTarget;
     const sceneId = slider.dataset.sceneId;
     const networkId = slider.dataset.networkId;
     const signalStrength = parseInt(slider.value);
     
-    // Update display
-    const display = slider.nextElementSibling;
-    if (display) display.textContent = `${signalStrength}%`;
-    
-    // Debounce updates
+    // Debounce to avoid rapid updates
     clearTimeout(this._signalUpdateTimeout);
     this._signalUpdateTimeout = setTimeout(async () => {
       const scene = game.scenes.get(sceneId);
@@ -560,7 +642,17 @@ export class NetworkManagementApp extends Application {
       
       networks[networkId].signalStrength = signalStrength;
       await scene.setFlag(MODULE_ID, 'networks', networks);
-    }, 500);
+      
+      console.log(`${MODULE_ID} | Set ${networkId} signal=${signalStrength}% in scene ${scene.name}`);
+      
+      // Clear cache
+      this._scenes = null;
+      
+      // CRITICAL FIX: Sync if this is the active scene
+      if (scene.active) {
+        await this._syncNetworkUI(scene);
+      }
+    }, 300);
   }
   
   async _onConfigureScene(event) {
@@ -584,6 +676,9 @@ export class NetworkManagementApp extends Application {
           ui.notifications.info(`Scene network configuration updated`);
           this._scenes = null;
           this.render(false);
+          
+          // CRITICAL FIX: Sync UI
+          await this._syncNetworkUI(scene);
         } catch (error) {
           console.error(`${MODULE_ID} | Error updating scene config:`, error);
           ui.notifications.error(`Failed to update scene configuration`);
@@ -592,6 +687,10 @@ export class NetworkManagementApp extends Application {
     }).render(true);
   }
   
+  /**
+   * Copy network config from one scene to others
+   * FIXED: Now calls _syncNetworkUI() after saving
+   */
   async _onCopyToScenes(event) {
     event.preventDefault();
     
@@ -608,7 +707,7 @@ export class NetworkManagementApp extends Application {
     
     const confirm = await Dialog.confirm({
       title: 'Copy Network Configuration',
-      content: `<p>Copy network configuration from <strong>${sourceScene.name}</strong> to all scenes?</p>`,
+      content: `<p>Copy network configuration from <strong>${sourceScene.name}</strong> to all other scenes?</p>`,
       yes: () => true,
       no: () => false
     });
@@ -630,6 +729,173 @@ export class NetworkManagementApp extends Application {
     ui.notifications.info(`Network configuration copied to ${copied} scene(s)`);
     this._scenes = null;
     this.render(false);
+    
+    // CRITICAL FIX: Sync UI (active scene may have changed)
+    await this._syncNetworkUI();
+  }
+  
+  /**
+   * Enable all networks in a specific scene
+   * FIXED: Now calls _syncNetworkUI() after saving
+   */
+  async _onEnableAllNetworksScene(event) {
+    event.preventDefault();
+    
+    const sceneId = event.currentTarget.dataset.sceneId;
+    const scene = game.scenes.get(sceneId);
+    if (!scene) return;
+    
+    const allNetworks = await this._getNetworks();
+    const config = scene.getFlag(MODULE_ID, 'networks') || {};
+    
+    for (const network of allNetworks) {
+      if (!config[network.id]) config[network.id] = {};
+      config[network.id].available = true;
+      config[network.id].signalStrength = config[network.id].signalStrength ?? 80;
+    }
+    
+    await scene.setFlag(MODULE_ID, 'networks', config);
+    
+    ui.notifications.info(`Enabled all networks in ${scene.name}`);
+    this._scenes = null;
+    this.render(false);
+    
+    // CRITICAL FIX: Sync UI
+    await this._syncNetworkUI(scene);
+  }
+  
+  /**
+   * Reset a scene's network configuration
+   */
+  async _onResetSceneConfig(event) {
+    event.preventDefault();
+    
+    const sceneId = event.currentTarget.dataset.sceneId;
+    const scene = game.scenes.get(sceneId);
+    if (!scene) return;
+    
+    const confirm = await Dialog.confirm({
+      title: 'Reset Scene Configuration',
+      content: `<p>Reset network configuration for <strong>${scene.name}</strong>?</p>
+                <p>This will disable all networks except CITINET.</p>`,
+      yes: () => true,
+      no: () => false
+    });
+    
+    if (!confirm) return;
+    
+    // Reset to default (only CITINET enabled)
+    const config = {
+      'CITINET': { available: true, signalStrength: 80 }
+    };
+    
+    await scene.setFlag(MODULE_ID, 'networks', config);
+    
+    ui.notifications.info(`Reset network configuration for ${scene.name}`);
+    this._scenes = null;
+    this.render(false);
+    
+    await this._syncNetworkUI(scene);
+  }
+  
+  /**
+   * Enable all networks in ALL scenes
+   */
+  async _onBulkEnableAllScenes(event) {
+    event.preventDefault();
+    
+    const confirm = await Dialog.confirm({
+      title: 'Enable All Networks',
+      content: '<p>Enable all networks in ALL scenes?</p>',
+      yes: () => true,
+      no: () => false
+    });
+    
+    if (!confirm) return;
+    
+    const allNetworks = await this._getNetworks();
+    
+    for (const scene of game.scenes) {
+      const config = scene.getFlag(MODULE_ID, 'networks') || {};
+      
+      for (const network of allNetworks) {
+        if (!config[network.id]) config[network.id] = {};
+        config[network.id].available = true;
+        config[network.id].signalStrength = config[network.id].signalStrength ?? 80;
+      }
+      
+      await scene.setFlag(MODULE_ID, 'networks', config);
+    }
+    
+    ui.notifications.info('Enabled all networks in all scenes');
+    this._scenes = null;
+    this.render(false);
+    
+    await this._syncNetworkUI();
+  }
+  
+  /**
+   * Disable all networks in ALL scenes
+   */
+  async _onBulkDisableAllScenes(event) {
+    event.preventDefault();
+    
+    const confirm = await Dialog.confirm({
+      title: 'Disable All Networks',
+      content: '<p>Disable all networks in ALL scenes?</p><p class="warning">This will block all network communication!</p>',
+      yes: () => true,
+      no: () => false
+    });
+    
+    if (!confirm) return;
+    
+    for (const scene of game.scenes) {
+      const config = scene.getFlag(MODULE_ID, 'networks') || {};
+      
+      for (const networkId of Object.keys(config)) {
+        config[networkId].available = false;
+      }
+      
+      await scene.setFlag(MODULE_ID, 'networks', config);
+    }
+    
+    ui.notifications.info('Disabled all networks in all scenes');
+    this._scenes = null;
+    this.render(false);
+    
+    await this._syncNetworkUI();
+  }
+  
+  /**
+   * Reset all signal strengths to defaults
+   */
+  async _onResetAllSignals(event) {
+    event.preventDefault();
+    
+    const confirm = await Dialog.confirm({
+      title: 'Reset Signal Strengths',
+      content: '<p>Reset all signal strengths to 80%?</p>',
+      yes: () => true,
+      no: () => false
+    });
+    
+    if (!confirm) return;
+    
+    for (const scene of game.scenes) {
+      const config = scene.getFlag(MODULE_ID, 'networks') || {};
+      
+      for (const networkId of Object.keys(config)) {
+        config[networkId].signalStrength = 80;
+      }
+      
+      await scene.setFlag(MODULE_ID, 'networks', config);
+    }
+    
+    ui.notifications.info('Reset all signal strengths');
+    this._scenes = null;
+    this.render(false);
+    
+    await this._syncNetworkUI();
   }
   
   /* -------------------------------------------- */
@@ -657,87 +923,52 @@ export class NetworkManagementApp extends Application {
     }).render(true);
   }
   
+  _onEventClick(event) {
+    // Future: Show event details
+  }
+  
   async _onEditEvent(event) {
     event.preventDefault();
-    
-    const eventId = event.currentTarget.closest('.event-item').dataset.eventId;
-    const eventData = await game.nightcity.NetworkEventService.getEvent(eventId);
-    
-    if (!eventData) {
-      ui.notifications.error('Event not found');
-      return;
-    }
-    
-    const { NetworkEventDialog } = await import('../../dialogs/NetworkEventDialog.js');
-    
-    new NetworkEventDialog({
-      mode: 'edit',
-      event: eventData,
-      onSave: async (updatedData) => {
-        try {
-          await game.nightcity.NetworkEventService.updateEvent(eventId, updatedData);
-          ui.notifications.info(`Event "${updatedData.name}" updated`);
-          this._events = null;
-          this.render(false);
-        } catch (error) {
-          console.error(`${MODULE_ID} | Error updating event:`, error);
-          ui.notifications.error(`Failed to update event`);
-        }
-      }
-    }).render(true);
+    event.stopPropagation();
+    // Future implementation
   }
   
   async _onDeleteEvent(event) {
     event.preventDefault();
-    
-    const eventId = event.currentTarget.closest('.event-item').dataset.eventId;
-    const eventData = await game.nightcity.NetworkEventService.getEvent(eventId);
-    
-    if (!eventData) {
-      ui.notifications.error('Event not found');
-      return;
-    }
-    
-    const confirm = await Dialog.confirm({
-      title: 'Delete Event',
-      content: `<p>Delete event <strong>${eventData.name}</strong>?</p>`,
-      yes: () => true,
-      no: () => false
-    });
-    
-    if (!confirm) return;
-    
-    try {
-      await game.nightcity.NetworkEventService.deleteEvent(eventId);
-      ui.notifications.info(`Event deleted`);
-      this._events = null;
-      this.render(false);
-    } catch (error) {
-      console.error(`${MODULE_ID} | Error deleting event:`, error);
-      ui.notifications.error(`Failed to delete event`);
-    }
+    event.stopPropagation();
+    // Future implementation
   }
   
   async _onTriggerEvent(event) {
     event.preventDefault();
-    
-    const eventId = event.currentTarget.closest('.event-item').dataset.eventId;
-    
-    try {
-      await game.nightcity.NetworkEventService.triggerEvent(eventId);
-      ui.notifications.info(`Event triggered`);
-    } catch (error) {
-      console.error(`${MODULE_ID} | Error triggering event:`, error);
-      ui.notifications.error(`Failed to trigger event`);
-    }
+    event.stopPropagation();
+    // Future implementation
   }
   
   /* -------------------------------------------- */
   /*  Event Handlers - Logs Tab                   */
   /* -------------------------------------------- */
   
-  _onLogFilter(event) {
-    // Filter logs (implement in template with data filtering)
+  async _onRefreshLogs(event) {
+    event.preventDefault();
+    this._logs = null;
+    this.render(false);
+  }
+  
+  async _onClearLogs(event) {
+    event.preventDefault();
+    
+    const confirm = await Dialog.confirm({
+      title: 'Clear Logs',
+      content: '<p>Clear all network access logs?</p>',
+      yes: () => true,
+      no: () => false
+    });
+    
+    if (!confirm) return;
+    
+    await game.nightcity.NetworkAccessLogService?.clearLogs();
+    this._logs = null;
     this.render(false);
   }
   
@@ -749,52 +980,20 @@ export class NetworkManagementApp extends Application {
       version: '1.0',
       module: MODULE_ID,
       logs: logs,
-      exportedAt: new Date().toISOString(),
-      exportedBy: game.user.name
+      exportedAt: new Date().toISOString()
     };
     
     const filename = `network-logs-${Date.now()}.json`;
     const json = JSON.stringify(exportData, null, 2);
     
     saveDataToFile(json, 'application/json', filename);
-    ui.notifications.info(`Logs exported`);
-  }
-  
-  async _onClearLogs(event) {
-    event.preventDefault();
-    
-    const confirm = await Dialog.confirm({
-      title: 'Clear Logs',
-      content: '<p>Are you sure you want to clear all network logs?</p><p class="warning">This action cannot be undone.</p>',
-      yes: () => true,
-      no: () => false
-    });
-    
-    if (!confirm) return;
-    
-    try {
-      await game.nightcity.NetworkAccessLogService.clearLogs();
-      ui.notifications.info('Logs cleared');
-      this._logs = null;
-      this.render(false);
-    } catch (error) {
-      console.error(`${MODULE_ID} | Error clearing logs:`, error);
-      ui.notifications.error('Failed to clear logs');
-    }
-  }
-  
-  async _onRefreshLogs(event) {
-    event.preventDefault();
-    
-    this._logs = null;
-    this.render(false);
   }
   
   /* -------------------------------------------- */
-  /*  Import Handler                              */
+  /*  Event Handlers - Import/Export              */
   /* -------------------------------------------- */
   
-  async _onImportNetwork(event) {
+  async _onImportNetworks(event) {
     event.preventDefault();
     
     const input = document.createElement('input');
@@ -806,25 +1005,20 @@ export class NetworkManagementApp extends Application {
       if (!file) return;
       
       const reader = new FileReader();
-      reader.onload = async (ev) => {
+      reader.onload = async (event) => {
         try {
-          const importData = JSON.parse(ev.target.result);
+          const data = JSON.parse(event.target.result);
           
-          // Validate import
-          if (!importData.version || !importData.module || importData.module !== MODULE_ID) {
-            throw new Error('Invalid import file');
+          if (!data.networks || !Array.isArray(data.networks)) {
+            throw new Error('Invalid import file format');
           }
           
-          // Import single network or multiple
-          const networks = importData.networks || [importData.network];
           let imported = 0;
-          
-          for (const network of networks) {
+          for (const network of data.networks) {
             try {
-              // Check if network exists
               const existing = await game.nightcity.NetworkStorage.getNetwork(network.id);
+              
               if (existing) {
-                // Confirm overwrite
                 const overwrite = await Dialog.confirm({
                   title: 'Network Exists',
                   content: `<p>Network <strong>${network.name}</strong> already exists. Overwrite?</p>`,
@@ -848,6 +1042,7 @@ export class NetworkManagementApp extends Application {
           ui.notifications.info(`Imported ${imported} network(s)`);
           this._networks = null;
           this.render(false);
+          await this._syncNetworkUI();
           
         } catch (error) {
           console.error(`${MODULE_ID} | Error parsing import file:`, error);
@@ -861,13 +1056,44 @@ export class NetworkManagementApp extends Application {
     input.click();
   }
   
+  async _onExportAll(event) {
+    event.preventDefault();
+    
+    const networks = await this._getNetworks();
+    const scenes = await this._getScenes();
+    
+    const exportData = {
+      version: '1.0',
+      module: MODULE_ID,
+      networks: networks,
+      sceneConfigs: scenes.reduce((acc, scene) => {
+        acc[scene.id] = {
+          name: scene.name,
+          networks: scene.networks
+        };
+        return acc;
+      }, {}),
+      exportedAt: new Date().toISOString(),
+      exportedBy: game.user.name
+    };
+    
+    const filename = `network-config-full-${Date.now()}.json`;
+    const json = JSON.stringify(exportData, null, 2);
+    
+    saveDataToFile(json, 'application/json', filename);
+    ui.notifications.info('Exported full network configuration');
+  }
+  
   /* -------------------------------------------- */
   /*  Data Fetchers (with caching)                */
   /* -------------------------------------------- */
   
   async _getNetworks() {
     if (!this._networks) {
-      this._networks = await game.nightcity.networkManager.getAvailableNetworks();
+      // Get ALL networks from storage, not just available ones
+      this._networks = await game.nightcity.NetworkStorage?.getAllNetworks() 
+        || await game.settings.get(MODULE_ID, 'customNetworks') 
+        || [];
     }
     return this._networks;
   }
@@ -879,7 +1105,9 @@ export class NetworkManagementApp extends Application {
         return {
           id: scene.id,
           name: scene.name,
-          networks: networks
+          active: scene.active,
+          networks: networks,
+          enabled: true
         };
       });
     }

@@ -1,118 +1,129 @@
-{{!-- Network Management Main Container --}}
-{{!-- File: templates/network-management/network-management.hbs --}}
-{{!-- Description: Main application window for network management --}}
-
-<div class="ncm-network-management-container">
+{{!-- 
+  Network Management Main Container
+  File: templates/network-management/network-management.hbs
+  Module: cyberpunkred-messenger
+  Description: GM interface for managing network definitions and scene availability
   
-  {{!-- Cyberpunk Header --}}
-  <div class="ncm-management-header">
-    <div class="header-title">
-      <div class="title-icon">
-        <i class="fas fa-network-wired"></i>
+  Data Flow:
+  - Networks: Stored in game.settings ('customNetworks')
+  - Scene Config: Stored in scene flags (single source of truth)
+  - This UI syncs both for coherent management
+--}}
+
+<div class="ncm-network-management" data-mode="{{mode}}">
+  
+  {{!-- Terminal-Style Header --}}
+  <header class="ncm-nm__header">
+    <div class="ncm-nm__header-bar">
+      <div class="ncm-nm__header-left">
+        <span class="ncm-nm__status-indicator pulse"></span>
+        <span class="ncm-nm__header-label">NETWATCH ADMIN</span>
       </div>
-      <div class="title-content">
-        <h2>Network Management System</h2>
-        <p class="subtitle">Configure networks and scene availability</p>
+      <div class="ncm-nm__header-center">
+        <h1 class="ncm-nm__title">
+          <i class="fas fa-network-wired"></i>
+          NETWORK MANAGEMENT CONSOLE
+        </h1>
+      </div>
+      <div class="ncm-nm__header-right">
+        <span class="ncm-nm__timestamp">{{timestamp}}</span>
       </div>
     </div>
     
-    {{!-- Stats Dashboard --}}
-    <div class="stats-dashboard">
-      <div class="stat-card" data-stat="networks">
-        <div class="stat-icon">
-          <i class="fas fa-network-wired"></i>
-        </div>
-        <div class="stat-content">
-          <div class="stat-value">{{stats.totalNetworks}}</div>
-          <div class="stat-label">Total Networks</div>
-        </div>
-        <div class="stat-glow"></div>
+    {{!-- Quick Stats Row --}}
+    <div class="ncm-nm__stats-bar">
+      <div class="ncm-nm__stat" data-stat="total">
+        <i class="fas fa-sitemap"></i>
+        <span class="ncm-nm__stat-value">{{stats.totalNetworks}}</span>
+        <span class="ncm-nm__stat-label">Networks</span>
       </div>
-      
-      <div class="stat-card" data-stat="custom">
-        <div class="stat-icon">
-          <i class="fas fa-plus-circle"></i>
-        </div>
-        <div class="stat-content">
-          <div class="stat-value">{{stats.customNetworks}}</div>
-          <div class="stat-label">Custom Networks</div>
-        </div>
-        <div class="stat-glow"></div>
+      <div class="ncm-nm__stat" data-stat="custom">
+        <i class="fas fa-code-branch"></i>
+        <span class="ncm-nm__stat-value">{{stats.customNetworks}}</span>
+        <span class="ncm-nm__stat-label">Custom</span>
       </div>
-      
-      <div class="stat-card" data-stat="secured">
-        <div class="stat-icon">
-          <i class="fas fa-lock"></i>
-        </div>
-        <div class="stat-content">
-          <div class="stat-value">{{stats.securedNetworks}}</div>
-          <div class="stat-label">Secured</div>
-        </div>
-        <div class="stat-glow"></div>
+      <div class="ncm-nm__stat" data-stat="secured">
+        <i class="fas fa-shield-alt"></i>
+        <span class="ncm-nm__stat-value">{{stats.securedNetworks}}</span>
+        <span class="ncm-nm__stat-label">Secured</span>
       </div>
-      
-      <div class="stat-card" data-stat="scenes">
-        <div class="stat-icon">
-          <i class="fas fa-map"></i>
-        </div>
-        <div class="stat-content">
-          <div class="stat-value">{{stats.totalScenes}}</div>
-          <div class="stat-label">Scenes</div>
-        </div>
-        <div class="stat-glow"></div>
+      <div class="ncm-nm__stat" data-stat="scenes">
+        <i class="fas fa-map-marked-alt"></i>
+        <span class="ncm-nm__stat-value">{{stats.totalScenes}}</span>
+        <span class="ncm-nm__stat-label">Scenes</span>
+      </div>
+      <div class="ncm-nm__stat ncm-nm__stat--highlight" data-stat="current">
+        <i class="fas fa-broadcast-tower"></i>
+        <span class="ncm-nm__stat-value">{{currentNetwork.name}}</span>
+        <span class="ncm-nm__stat-label">Active</span>
       </div>
     </div>
-  </div>
+  </header>
 
-  {{!-- Navigation Tabs --}}
-  <nav class="ncm-tabs" data-group="network-management">
-    <a class="ncm-tab-item {{#if (eq activeTab 'networks')}}active{{/if}}" data-tab="networks">
+  {{!-- Main Navigation Tabs --}}
+  <nav class="ncm-nm__tabs">
+    <button class="ncm-nm__tab {{#if (eq activeTab 'networks')}}ncm-nm__tab--active{{/if}}" 
+            data-tab="networks">
       <i class="fas fa-network-wired"></i>
       <span>Networks</span>
-      <div class="tab-indicator"></div>
-    </a>
-    <a class="ncm-tab-item {{#if (eq activeTab 'scenes')}}active{{/if}}" data-tab="scenes">
+      <span class="ncm-nm__tab-count">{{stats.totalNetworks}}</span>
+    </button>
+    <button class="ncm-nm__tab {{#if (eq activeTab 'scenes')}}ncm-nm__tab--active{{/if}}" 
+            data-tab="scenes">
       <i class="fas fa-map"></i>
-      <span>Scenes</span>
-      <div class="tab-indicator"></div>
-    </a>
-    <a class="ncm-tab-item {{#if (eq activeTab 'events')}}active{{/if}}" data-tab="events">
-      <i class="fas fa-calendar-alt"></i>
-      <span>Events</span>
-      <div class="tab-indicator"></div>
-    </a>
-    <a class="ncm-tab-item {{#if (eq activeTab 'logs')}}active{{/if}}" data-tab="logs">
-      <i class="fas fa-clipboard-list"></i>
-      <span>Logs</span>
-      <div class="tab-indicator"></div>
-    </a>
+      <span>Scene Config</span>
+      <span class="ncm-nm__tab-count">{{stats.totalScenes}}</span>
+    </button>
   </nav>
 
-  {{!-- Tab Content Container --}}
-  <div class="ncm-tab-content">
+  {{!-- Tab Content Area --}}
+  <main class="ncm-nm__content">
     
-    {{!-- Networks Tab --}}
-    <div class="ncm-tab-panel {{#if (eq activeTab 'networks')}}active{{/if}}" data-tab="networks">
+    {{!-- Networks Tab Panel --}}
+    <section class="ncm-nm__panel {{#if (eq activeTab 'networks')}}ncm-nm__panel--active{{/if}}" 
+             data-panel="networks">
       {{> "modules/cyberpunkred-messenger/templates/network-management/partials/networks-tab.hbs"}}
-    </div>
+    </section>
 
-    {{!-- Scenes Tab --}}
-    <div class="ncm-tab-panel {{#if (eq activeTab 'scenes')}}active{{/if}}" data-tab="scenes">
+    {{!-- Scenes Tab Panel --}}
+    <section class="ncm-nm__panel {{#if (eq activeTab 'scenes')}}ncm-nm__panel--active{{/if}}" 
+             data-panel="scenes">
       {{> "modules/cyberpunkred-messenger/templates/network-management/partials/scenes-tab.hbs"}}
-    </div>
-
-    {{!-- Events Tab --}}
-    <div class="ncm-tab-panel {{#if (eq activeTab 'events')}}active{{/if}}" data-tab="events">
-      {{> "modules/cyberpunkred-messenger/templates/network-management/partials/events-tab.hbs"}}
-    </div>
-
-    {{!-- Logs Tab --}}
-    <div class="ncm-tab-panel {{#if (eq activeTab 'logs')}}active{{/if}}" data-tab="logs">
-      {{> "modules/cyberpunkred-messenger/templates/network-management/partials/logs-tab.hbs"}}
-    </div>
+    </section>
     
-  </div>
+  </main>
+
+  {{!-- Footer Actions --}}
+  <footer class="ncm-nm__footer">
+    <div class="ncm-nm__footer-left">
+      <button type="button" class="ncm-nm__btn ncm-nm__btn--secondary import-all-btn">
+        <i class="fas fa-file-import"></i>
+        Import Config
+      </button>
+      <button type="button" class="ncm-nm__btn ncm-nm__btn--secondary export-all-btn">
+        <i class="fas fa-file-export"></i>
+        Export All
+      </button>
+    </div>
+    <div class="ncm-nm__footer-center">
+      <span class="ncm-nm__sync-status">
+        <i class="fas fa-sync-alt"></i>
+        All changes sync automatically
+      </span>
+    </div>
+    <div class="ncm-nm__footer-right">
+      <button type="button" class="ncm-nm__btn ncm-nm__btn--secondary reset-defaults-btn">
+        <i class="fas fa-undo"></i>
+        Reset to Defaults
+      </button>
+      <button type="button" class="ncm-nm__btn ncm-nm__btn--primary close-btn">
+        <i class="fas fa-times"></i>
+        Close
+      </button>
+    </div>
+  </footer>
+
+  {{!-- Scanline Effect --}}
+  <div class="ncm-nm__scanlines"></div>
   
-  {{!-- Scanline Effect Overlay --}}
-  <div class="scanlines"></div>
 </div>

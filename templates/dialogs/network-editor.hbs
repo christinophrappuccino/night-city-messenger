@@ -1,441 +1,682 @@
-{{!-- Network Editor Dialog Template --}}
-{{!-- File: templates/dialogs/network-editor.hbs --}}
-{{!-- Description: Create and edit network definitions (availability managed in Scenes tab) --}}
+{{!-- 
+  Network Editor Dialog Template
+  File: templates/dialogs/network-editor.hbs
+  Module: cyberpunkred-messenger
+  Description: Create and edit network definitions
+  
+  Modes:
+  - 'create': New network with defaults
+  - 'edit': Modify existing network
+  - 'duplicate': Copy from existing
+  
+  Data Flow:
+  - Saves to game.settings ('customNetworks')
+  - Scene availability configured separately in Scenes Tab
+--}}
 
-<form class="ncm-network-editor-form">
+<form class="ncm-network-editor" autocomplete="off">
   
-  {{!-- Basic Information --}}
-  <section class="form-section">
-    <div class="section-header">
-      <h3><i class="fas fa-info-circle"></i> Network Identity</h3>
-      <p class="section-description">Define the core properties of this network</p>
-    </div>
-    
-    <div class="form-row">
-      <div class="form-group">
-        <label for="network-id">
-          Network ID <span class="required">*</span>
-          <span class="help-icon" title="Unique identifier, uppercase only">
-            <i class="fas fa-question-circle"></i>
-          </span>
-        </label>
-        <input 
-          type="text" 
-          name="id" 
-          id="network-id" 
-          value="{{network.id}}" 
-          {{#if (eq mode 'edit')}}readonly{{/if}}
-          placeholder="CORP_NET_ALPHA"
-          pattern="[A-Z0-9_]+"
-          required
-          autocomplete="off">
-        <small class="field-hint">UPPERCASE, numbers, underscores only</small>
-        <span class="field-error" data-field="id"></span>
+  {{!-- Header with Live Preview --}}
+  <header class="ncm-network-editor__header">
+    <div class="ncm-network-editor__preview" style="--preview-color: {{network.theme.color}}">
+      <div class="preview-icon">
+        <i class="fas {{network.theme.icon}}"></i>
       </div>
-      
-      <div class="form-group">
-        <label for="network-type">Network Type</label>
-        <select name="type" id="network-type">
-          {{#each networkTypes}}
-            <option value="{{this.value}}" {{#if (eq this.value ../network.type)}}selected{{/if}}>
-              {{this.label}}
-            </option>
-          {{/each}}
-        </select>
-        <small class="field-hint">Used for filtering and organization</small>
+      <div class="preview-info">
+        <span class="preview-name">{{#if network.name}}{{network.name}}{{else}}New Network{{/if}}</span>
+        <span class="preview-id">{{#if network.id}}{{network.id}}{{else}}NETWORK_ID{{/if}}</span>
+      </div>
+      <div class="preview-status">
+        {{#if network.enabled}}
+          <span class="status-online"><i class="fas fa-check-circle"></i> Online</span>
+        {{else}}
+          <span class="status-offline"><i class="fas fa-times-circle"></i> Offline</span>
+        {{/if}}
       </div>
     </div>
-    
-    <div class="form-row">
-      <div class="form-group">
-        <label for="network-name">
-          Display Name <span class="required">*</span>
-        </label>
-        <input 
-          type="text" 
-          name="name" 
-          id="network-name" 
-          value="{{network.name}}" 
-          placeholder="Arasaka Corporate Grid"
-          required>
-        <small class="field-hint">Human-readable name shown to users</small>
-        <span class="field-error" data-field="name"></span>
-      </div>
-      
-      <div class="form-group">
-        <label for="network-enabled">
-          <i class="fas fa-power-off"></i> Network Status
-        </label>
-        <div class="toggle-switch">
-          <input 
-            type="checkbox" 
-            name="enabled" 
-            id="network-enabled" 
-            {{#if network.enabled}}checked{{/if}}>
-          <label for="network-enabled">
-            <span class="toggle-slider"></span>
-            <span class="toggle-label">{{#if network.enabled}}Enabled{{else}}Disabled{{/if}}</span>
-          </label>
-        </div>
-        <small class="field-hint">Disabled networks don't appear in selectors</small>
-      </div>
-    </div>
-    
-    <div class="form-group">
-      <label for="network-description">
-        Description
-        <span class="char-count" data-target="network-description">0/500</span>
-      </label>
-      <textarea 
-        name="description" 
-        id="network-description" 
-        rows="3"
-        maxlength="500"
-        placeholder="Describe what this network represents in your world...">{{network.description}}</textarea>
-      <small class="field-hint">What players see when examining the network</small>
-    </div>
-  </section>
-  
-  {{!-- Visual Theme --}}
-  <section class="form-section">
-    <div class="section-header">
-      <h3><i class="fas fa-palette"></i> Visual Theme</h3>
-      <p class="section-description">Customize how this network appears</p>
-    </div>
-    
-    <div class="form-row">
-      <div class="form-group">
-        <label for="theme-color">Primary Color</label>
-        <div class="color-picker-group">
-          <input 
-            type="color" 
-            name="theme.color" 
-            id="theme-color" 
-            value="{{network.theme.color}}">
-          <div class="color-preview" style="background-color: {{network.theme.color}}">
-            <i class="{{network.theme.icon}}"></i>
-          </div>
-          <input 
-            type="text" 
-            name="theme.colorHex"
-            value="{{network.theme.color}}" 
-            class="color-hex"
-            pattern="#[0-9A-Fa-f]{6}">
-          <button type="button" class="color-preset-btn" data-color="#F65261" title="Cyberpunk Red">
-            <span style="background: #F65261"></span>
-          </button>
-          <button type="button" class="color-preset-btn" data-color="#19f3f7" title="Neon Cyan">
-            <span style="background: #19f3f7"></span>
-          </button>
-          <button type="button" class="color-preset-btn" data-color="#FFD700" title="Corporate Gold">
-            <span style="background: #FFD700"></span>
-          </button>
-          <button type="button" class="color-preset-btn" data-color="#9400D3" title="Darknet Purple">
-            <span style="background: #9400D3"></span>
-          </button>
-        </div>
-      </div>
-      
-      <div class="form-group">
-        <label for="theme-icon">Icon</label>
-        <div class="icon-picker-group">
-          <div class="icon-preview" style="color: {{network.theme.color}}">
-            <i class="{{network.theme.icon}}"></i>
-          </div>
-          <input 
-            type="text" 
-            name="theme.icon" 
-            id="theme-icon" 
-            value="{{network.theme.icon}}" 
-            placeholder="fa-network-wired"
-            readonly>
-          <button type="button" class="icon-picker-btn">
-            <i class="fas fa-icons"></i> Choose
-          </button>
-        </div>
-        <small class="field-hint">FontAwesome class name</small>
-      </div>
-    </div>
-  </section>
-  
-  {{!-- Performance & Reliability --}}
-  <section class="form-section">
-    <div class="section-header">
-      <h3><i class="fas fa-signal"></i> Performance</h3>
-      <p class="section-description">Define network quality and reliability</p>
-    </div>
-    
-    <div class="form-row">
-      <div class="form-group">
-        <label for="reliability">
-          Reliability
-          <span class="value-display">{{network.reliability}}%</span>
-        </label>
-        <div class="slider-container">
-          <input 
-            type="range" 
-            name="reliability" 
-            id="reliability" 
-            min="0" 
-            max="100" 
-            value="{{network.reliability}}"
-            class="ncm-slider">
-          <div class="slider-labels">
-            <span>0%</span>
-            <span>50%</span>
-            <span>100%</span>
-          </div>
-        </div>
-        <small class="field-hint">Chance of successful transmission (messages may fail)</small>
-      </div>
-      
-      <div class="form-group">
-        <label for="signalStrength">
-          Default Signal Strength
-          <span class="value-display">{{network.signalStrength}}%</span>
-        </label>
-        <div class="slider-container">
-          <input 
-            type="range" 
-            name="signalStrength" 
-            id="signalStrength" 
-            min="0" 
-            max="100" 
-            value="{{network.signalStrength}}"
-            class="ncm-slider">
-          <div class="slider-labels">
-            <span>Dead</span>
-            <span>Weak</span>
-            <span>Strong</span>
-          </div>
-        </div>
-        <small class="field-hint">Default signal when enabled in scenes (can be overridden per scene)</small>
-      </div>
-    </div>
-  </section>
-  
-  {{!-- Security Settings --}}
-  <section class="form-section">
-    <div class="section-header">
-      <h3><i class="fas fa-shield-alt"></i> Security Configuration</h3>
-      <p class="section-description">Define authentication and protection measures</p>
-    </div>
-    
-    <div class="security-toggle">
-      <label class="checkbox-label">
-        <input type="checkbox" name="requiresAuth" {{#if network.requiresAuth}}checked{{/if}}>
-        <span class="checkbox-custom"></span>
-        <strong><i class="fas fa-lock"></i> Requires Authentication</strong>
-      </label>
-      <small>Players must provide credentials or hack to access</small>
-    </div>
-    
-    <div class="security-settings {{#unless network.requiresAuth}}collapsed{{/unless}}">
-      <div class="form-row">
-        <div class="form-group">
-          <label for="security-level">Security Level</label>
-          <select name="security.level" id="security-level">
-            {{#each securityLevels}}
-              <option value="{{this.value}}" {{#if (eq this.value ../network.security.level)}}selected{{/if}}>
-                {{this.label}} (DC {{this.dc}})
-              </option>
-            {{/each}}
-          </select>
-        </div>
-        
-        <div class="form-group">
-          <label for="security-password">
-            Password (Optional)
-            <button type="button" class="toggle-password" tabindex="-1">
-              <i class="fas fa-eye"></i>
-            </button>
-          </label>
-          <input 
-            type="password" 
-            name="security.password" 
-            id="security-password" 
-            value="{{network.security.password}}"
-            placeholder="Leave empty for hack-only"
-            autocomplete="new-password">
-          <small class="field-hint">If set, players can enter password instead of hacking</small>
-        </div>
-      </div>
-      
-      <div class="form-row">
-        <div class="form-group">
-          <label for="security-dc">Breach DC (Override)</label>
-          <input 
-            type="number" 
-            name="security.breachDC" 
-            id="security-dc" 
-            value="{{network.security.breachDC}}"
-            min="1"
-            max="30"
-            placeholder="Auto (based on level)">
-          <small class="field-hint">Leave empty to use security level default</small>
-        </div>
-        
-        <div class="form-group">
-          <label for="security-ice-damage">ICE Damage Roll</label>
-          <input 
-            type="text" 
-            name="security.iceDamage" 
-            id="security-ice-damage" 
-            value="{{network.security.iceDamage}}"
-            placeholder="2d6"
-            pattern="[0-9]+d[0-9]+">
-          <small class="field-hint">Damage on failed breach attempt (e.g., 2d6)</small>
-        </div>
-      </div>
-      
-      <div class="danger-zone">
-        <label class="checkbox-label">
-          <input type="checkbox" name="security.hasBlackICE" {{#if network.security.hasBlackICE}}checked{{/if}}>
-          <span class="checkbox-custom danger"></span>
-          <strong><i class="fas fa-skull-crossbones"></i> BLACK ICE Installed</strong>
-        </label>
-        <small class="danger-text">Critical failure on breach attempt triggers lethal countermeasures</small>
-      </div>
-    </div>
-  </section>
-  
-  {{!-- Network Effects --}}
-  <section class="form-section">
-    <div class="section-header">
-      <h3><i class="fas fa-magic"></i> Special Effects</h3>
-      <p class="section-description">Unique behaviors and characteristics</p>
-    </div>
-    
-    <div class="effects-grid">
-      <label class="effect-card">
-        <input type="checkbox" name="effects.anonymous" {{#if network.effects.anonymous}}checked{{/if}}>
-        <div class="effect-content">
-          <div class="effect-icon" style="color: #9400D3;">
-            <i class="fas fa-user-secret"></i>
-          </div>
-          <div class="effect-details">
-            <strong>Anonymous Routing</strong>
-            <small>Sender identity is masked</small>
-          </div>
-        </div>
-      </label>
-      
-      <label class="effect-card">
-        <input type="checkbox" name="effects.encrypted" {{#if network.effects.encrypted}}checked{{/if}}>
-        <div class="effect-content">
-          <div class="effect-icon" style="color: #19f3f7;">
-            <i class="fas fa-lock"></i>
-          </div>
-          <div class="effect-details">
-            <strong>Auto-Encryption</strong>
-            <small>All messages encrypted by default</small>
-          </div>
-        </div>
-      </label>
-      
-      <label class="effect-card">
-        <input type="checkbox" name="effects.traced" {{#if network.effects.traced}}checked{{/if}}>
-        <div class="effect-content">
-          <div class="effect-icon" style="color: #FFD700;">
-            <i class="fas fa-route"></i>
-          </div>
-          <div class="effect-details">
-            <strong>Connection Tracing</strong>
-            <small>Activity is logged and monitored</small>
-          </div>
-        </div>
-      </label>
-      
-      <label class="effect-card">
-        <input type="checkbox" name="effects.monitored" {{#if network.effects.monitored}}checked{{/if}}>
-        <div class="effect-content">
-          <div class="effect-icon" style="color: #F65261;">
-            <i class="fas fa-eye"></i>
-          </div>
-          <div class="effect-details">
-            <strong>NetWatch Monitoring</strong>
-            <small>Suspicious activity alerts authorities</small>
-          </div>
-        </div>
-      </label>
-    </div>
-    
-    <div class="form-group">
-      <label for="effects-messageDelay">
-        Message Delay
-        <span class="value-display">{{network.effects.messageDelay}} seconds</span>
-      </label>
-      <div class="slider-container">
-        <input 
-          type="range" 
-          name="effects.messageDelay" 
-          id="effects-messageDelay" 
-          min="0" 
-          max="30" 
-          value="{{network.effects.messageDelay}}"
-          class="ncm-slider">
-        <div class="slider-labels">
-          <span>Instant</span>
-          <span>15s</span>
-          <span>30s</span>
-        </div>
-      </div>
-      <small class="field-hint">Artificial delay before messages are delivered</small>
-    </div>
-  </section>
-  
-  {{!-- GM Notes --}}
-  <section class="form-section">
-    <div class="section-header">
-      <h3><i class="fas fa-user-secret"></i> GM Notes</h3>
-      <p class="section-description">Private notes visible only to Game Master</p>
-    </div>
-    
-    <div class="form-group">
-      <textarea 
-        name="gmNotes" 
-        id="gm-notes" 
-        rows="4"
-        placeholder="Secret network details, plot hooks, security overrides...">{{network.gmNotes}}</textarea>
-      <small class="field-hint">
-        <i class="fas fa-lock"></i> These notes are never shown to players
-      </small>
-    </div>
-  </section>
-  
-  {{!-- Form Actions --}}
-  <div class="form-actions">
-    <div class="actions-left">
-      <button type="button" class="ncm-btn ncm-btn-secondary preview-network-btn">
-        <i class="fas fa-eye"></i> Preview
-      </button>
-      {{#if (eq mode 'edit')}}
-        <button type="button" class="ncm-btn ncm-btn-secondary duplicate-network-btn">
-          <i class="fas fa-copy"></i> Duplicate
-        </button>
-        <button type="button" class="ncm-btn ncm-btn-danger delete-network-btn">
-          <i class="fas fa-trash"></i> Delete
-        </button>
+    <div class="ncm-network-editor__mode-badge">
+      {{#if (eq mode 'create')}}
+        <i class="fas fa-plus-circle"></i> NEW NETWORK
+      {{else if (eq mode 'duplicate')}}
+        <i class="fas fa-copy"></i> DUPLICATE
+      {{else}}
+        <i class="fas fa-edit"></i> EDIT MODE
       {{/if}}
     </div>
+  </header>
+  
+  {{!-- Scrollable Content --}}
+  <div class="ncm-network-editor__content">
     
-    <div class="actions-right">
-      <button type="button" class="ncm-btn cancel-network-btn">
-        <i class="fas fa-times"></i> Cancel
+    {{!-- ═══════════════════════════════════════════════════
+         SECTION 1: Network Identity
+    ═══════════════════════════════════════════════════ --}}
+    <section class="ncm-editor-section ncm-editor-section--expanded" data-section="identity">
+      <button type="button" class="ncm-editor-section__header">
+        <div class="section-title">
+          <i class="fas fa-fingerprint"></i>
+          <span>Network Identity</span>
+        </div>
+        <i class="fas fa-chevron-down section-toggle"></i>
       </button>
-      <button type="button" class="ncm-btn ncm-btn-primary save-network-btn">
-        <i class="fas fa-save"></i> {{#if (eq mode 'edit')}}Update{{else}}Create{{/if}} Network
+      
+      <div class="ncm-editor-section__body">
+        
+        {{!-- Network ID & Name Row --}}
+        <div class="form-row">
+          <div class="form-group">
+            <label for="network-name">
+              Display Name <span class="required">*</span>
+            </label>
+            <input type="text" 
+                   id="network-name" 
+                   name="name" 
+                   value="{{network.name}}"
+                   placeholder="Arasaka Corporate Grid"
+                   required
+                   maxlength="50"
+                   class="input-with-counter"
+                   data-auto-id="true">
+            <small class="field-hint">Human-readable name shown to players</small>
+            <span class="field-error" data-error="name"></span>
+          </div>
+          
+          <div class="form-group">
+            <label for="network-id">
+              Network ID <span class="required">*</span>
+              <span class="help-tip" title="Unique identifier, auto-generated from name">
+                <i class="fas fa-question-circle"></i>
+              </span>
+            </label>
+            <input type="text" 
+                   id="network-id" 
+                   name="id" 
+                   value="{{network.id}}"
+                   placeholder="ARASAKA_GRID"
+                   pattern="^[A-Z0-9_]+$"
+                   required
+                   maxlength="32"
+                   {{#if (eq mode 'edit')}}readonly{{/if}}>
+            <small class="field-hint">UPPERCASE, numbers, underscores only</small>
+            <span class="field-error" data-error="id"></span>
+          </div>
+        </div>
+        
+        {{!-- Type & Status Row --}}
+        <div class="form-row">
+          <div class="form-group">
+            <label for="network-type">Network Type</label>
+            <select id="network-type" name="type">
+              <option value="public" {{#if (eq network.type 'public')}}selected{{/if}}>
+                📡 Public
+              </option>
+              <option value="corporate" {{#if (eq network.type 'corporate')}}selected{{/if}}>
+                🏢 Corporate
+              </option>
+              <option value="darknet" {{#if (eq network.type 'darknet')}}selected{{/if}}>
+                🕵️ Darknet
+              </option>
+              <option value="military" {{#if (eq network.type 'military')}}selected{{/if}}>
+                🎖️ Military
+              </option>
+              <option value="custom" {{#if (eq network.type 'custom')}}selected{{/if}}>
+                ⚡ Custom
+              </option>
+            </select>
+            <small class="field-hint">Used for filtering and default behaviors</small>
+          </div>
+          
+          <div class="form-group">
+            <label>Network Status</label>
+            <label class="toggle-switch toggle-switch--large">
+              <input type="checkbox" 
+                     name="enabled" 
+                     id="network-enabled"
+                     {{#if network.enabled}}checked{{/if}}>
+              <span class="toggle-track">
+                <span class="toggle-thumb"></span>
+              </span>
+              <span class="toggle-label">
+                {{#if network.enabled}}
+                  <i class="fas fa-power-off"></i> Enabled
+                {{else}}
+                  <i class="fas fa-power-off"></i> Disabled
+                {{/if}}
+              </span>
+            </label>
+            <small class="field-hint">Disabled networks won't appear in selectors</small>
+          </div>
+        </div>
+        
+        {{!-- Description --}}
+        <div class="form-group form-group--full">
+          <label for="network-description">
+            Description
+            <span class="char-counter" data-target="network-description">
+              <span class="current">0</span>/200
+            </span>
+          </label>
+          <textarea id="network-description" 
+                    name="description" 
+                    rows="2"
+                    maxlength="200"
+                    placeholder="A high-security corporate network serving Arasaka Tower...">{{network.description}}</textarea>
+          <small class="field-hint">Shown to players when they examine the network</small>
+        </div>
+        
+      </div>
+    </section>
+    
+    {{!-- ═══════════════════════════════════════════════════
+         SECTION 2: Visual Theme
+    ═══════════════════════════════════════════════════ --}}
+    <section class="ncm-editor-section" data-section="theme">
+      <button type="button" class="ncm-editor-section__header">
+        <div class="section-title">
+          <i class="fas fa-palette"></i>
+          <span>Visual Theme</span>
+        </div>
+        <i class="fas fa-chevron-down section-toggle"></i>
       </button>
-    </div>
+      
+      <div class="ncm-editor-section__body">
+        
+        {{!-- Icon & Color Picker Row --}}
+        <div class="form-row form-row--theme">
+          
+          {{!-- Icon Picker --}}
+          <div class="form-group">
+            <label>Network Icon</label>
+            <div class="icon-picker-container">
+              <div class="icon-preview" style="color: {{network.theme.color}}">
+                <i class="fas {{network.theme.icon}}"></i>
+              </div>
+              <input type="hidden" name="theme.icon" value="{{network.theme.icon}}">
+              <button type="button" class="ncm-nm__btn ncm-nm__btn--secondary open-icon-picker-btn">
+                <i class="fas fa-icons"></i>
+                Choose Icon
+              </button>
+            </div>
+            
+            {{!-- Quick Icon Grid --}}
+            <div class="quick-icon-grid">
+              <button type="button" class="quick-icon {{#if (eq network.theme.icon 'fa-wifi')}}active{{/if}}" 
+                      data-icon="fa-wifi" title="WiFi">
+                <i class="fas fa-wifi"></i>
+              </button>
+              <button type="button" class="quick-icon {{#if (eq network.theme.icon 'fa-building')}}active{{/if}}" 
+                      data-icon="fa-building" title="Corporate">
+                <i class="fas fa-building"></i>
+              </button>
+              <button type="button" class="quick-icon {{#if (eq network.theme.icon 'fa-user-secret')}}active{{/if}}" 
+                      data-icon="fa-user-secret" title="Darknet">
+                <i class="fas fa-user-secret"></i>
+              </button>
+              <button type="button" class="quick-icon {{#if (eq network.theme.icon 'fa-shield-alt')}}active{{/if}}" 
+                      data-icon="fa-shield-alt" title="Military">
+                <i class="fas fa-shield-alt"></i>
+              </button>
+              <button type="button" class="quick-icon {{#if (eq network.theme.icon 'fa-satellite-dish')}}active{{/if}}" 
+                      data-icon="fa-satellite-dish" title="Satellite">
+                <i class="fas fa-satellite-dish"></i>
+              </button>
+              <button type="button" class="quick-icon {{#if (eq network.theme.icon 'fa-broadcast-tower')}}active{{/if}}" 
+                      data-icon="fa-broadcast-tower" title="Tower">
+                <i class="fas fa-broadcast-tower"></i>
+              </button>
+              <button type="button" class="quick-icon {{#if (eq network.theme.icon 'fa-server')}}active{{/if}}" 
+                      data-icon="fa-server" title="Server">
+                <i class="fas fa-server"></i>
+              </button>
+              <button type="button" class="quick-icon {{#if (eq network.theme.icon 'fa-microchip')}}active{{/if}}" 
+                      data-icon="fa-microchip" title="Chip">
+                <i class="fas fa-microchip"></i>
+              </button>
+            </div>
+          </div>
+          
+          {{!-- Color Picker --}}
+          <div class="form-group">
+            <label>Primary Color</label>
+            <div class="color-picker-container">
+              <input type="color" 
+                     id="theme-color" 
+                     name="theme.color" 
+                     value="{{network.theme.color}}"
+                     class="color-input">
+              <input type="text" 
+                     id="theme-color-hex"
+                     class="color-hex-input"
+                     value="{{network.theme.color}}"
+                     pattern="^#[0-9A-Fa-f]{6}$"
+                     maxlength="7">
+            </div>
+            
+            {{!-- Color Presets --}}
+            <div class="color-preset-grid">
+              <button type="button" class="color-preset {{#if (eq network.theme.color '#19f3f7')}}active{{/if}}" 
+                      data-color="#19f3f7" title="Neon Cyan" style="background: #19f3f7"></button>
+              <button type="button" class="color-preset {{#if (eq network.theme.color '#F65261')}}active{{/if}}" 
+                      data-color="#F65261" title="Cyberpunk Red" style="background: #F65261"></button>
+              <button type="button" class="color-preset {{#if (eq network.theme.color '#FFD700')}}active{{/if}}" 
+                      data-color="#FFD700" title="Gold" style="background: #FFD700"></button>
+              <button type="button" class="color-preset {{#if (eq network.theme.color '#9400D3')}}active{{/if}}" 
+                      data-color="#9400D3" title="Purple" style="background: #9400D3"></button>
+              <button type="button" class="color-preset {{#if (eq network.theme.color '#00FF00')}}active{{/if}}" 
+                      data-color="#00FF00" title="Matrix Green" style="background: #00FF00"></button>
+              <button type="button" class="color-preset {{#if (eq network.theme.color '#FF6600')}}active{{/if}}" 
+                      data-color="#FF6600" title="Orange" style="background: #FF6600"></button>
+              <button type="button" class="color-preset {{#if (eq network.theme.color '#0088FF')}}active{{/if}}" 
+                      data-color="#0088FF" title="Blue" style="background: #0088FF"></button>
+              <button type="button" class="color-preset {{#if (eq network.theme.color '#666666')}}active{{/if}}" 
+                      data-color="#666666" title="Gray" style="background: #666666"></button>
+            </div>
+          </div>
+          
+        </div>
+        
+        {{!-- Glitch Intensity --}}
+        <div class="form-group form-group--full">
+          <label for="theme-glitch">
+            Glitch Intensity
+            <span class="slider-value" data-target="theme-glitch">{{network.theme.glitchIntensity}}</span>
+          </label>
+          <input type="range" 
+                 id="theme-glitch" 
+                 name="theme.glitchIntensity"
+                 min="0" max="1" step="0.1"
+                 value="{{network.theme.glitchIntensity}}"
+                 class="styled-range">
+          <div class="range-labels">
+            <span>None</span>
+            <span>Low</span>
+            <span>Medium</span>
+            <span>High</span>
+            <span>Extreme</span>
+          </div>
+          <small class="field-hint">Visual glitch effect intensity for this network</small>
+        </div>
+        
+      </div>
+    </section>
+    
+    {{!-- ═══════════════════════════════════════════════════
+         SECTION 3: Network Stats
+    ═══════════════════════════════════════════════════ --}}
+    <section class="ncm-editor-section" data-section="stats">
+      <button type="button" class="ncm-editor-section__header">
+        <div class="section-title">
+          <i class="fas fa-chart-bar"></i>
+          <span>Network Stats</span>
+        </div>
+        <i class="fas fa-chevron-down section-toggle"></i>
+      </button>
+      
+      <div class="ncm-editor-section__body">
+        
+        <div class="form-row">
+          {{!-- Signal Strength --}}
+          <div class="form-group">
+            <label for="signal-strength">
+              Default Signal Strength
+              <span class="slider-value" data-target="signal-strength">{{network.signalStrength}}%</span>
+            </label>
+            <input type="range" 
+                   id="signal-strength" 
+                   name="signalStrength"
+                   min="0" max="100" step="5"
+                   value="{{network.signalStrength}}"
+                   class="styled-range">
+            <div class="range-labels">
+              <span>0%</span>
+              <span>50%</span>
+              <span>100%</span>
+            </div>
+            <small class="field-hint">Base signal strength (can be overridden per-scene)</small>
+          </div>
+          
+          {{!-- Reliability --}}
+          <div class="form-group">
+            <label for="reliability">
+              Reliability
+              <span class="slider-value" data-target="reliability">{{network.reliability}}%</span>
+            </label>
+            <input type="range" 
+                   id="reliability" 
+                   name="reliability"
+                   min="0" max="100" step="5"
+                   value="{{network.reliability}}"
+                   class="styled-range">
+            <div class="range-labels">
+              <span>Unstable</span>
+              <span>Normal</span>
+              <span>Rock Solid</span>
+            </div>
+            <small class="field-hint">Chance messages are delivered successfully</small>
+          </div>
+        </div>
+        
+        {{!-- Message Delay --}}
+        <div class="form-group form-group--full">
+          <label for="message-delay">
+            Message Delay
+            <span class="slider-value" data-target="message-delay">{{network.effects.messageDelay}}s</span>
+          </label>
+          <input type="range" 
+                 id="message-delay" 
+                 name="effects.messageDelay"
+                 min="0" max="60" step="5"
+                 value="{{network.effects.messageDelay}}"
+                 class="styled-range">
+          <div class="range-labels">
+            <span>Instant</span>
+            <span>30s</span>
+            <span>1 min</span>
+          </div>
+          <small class="field-hint">Artificial delay before messages appear</small>
+        </div>
+        
+      </div>
+    </section>
+    
+    {{!-- ═══════════════════════════════════════════════════
+         SECTION 4: Security Settings
+    ═══════════════════════════════════════════════════ --}}
+    <section class="ncm-editor-section" data-section="security">
+      <button type="button" class="ncm-editor-section__header">
+        <div class="section-title">
+          <i class="fas fa-shield-alt"></i>
+          <span>Security Settings</span>
+          {{#if network.security.requiresAuth}}
+            <span class="section-badge">PROTECTED</span>
+          {{/if}}
+        </div>
+        <i class="fas fa-chevron-down section-toggle"></i>
+      </button>
+      
+      <div class="ncm-editor-section__body">
+        
+        {{!-- Requires Auth Toggle --}}
+        <div class="security-toggle-row">
+          <label class="toggle-switch toggle-switch--large">
+            <input type="checkbox" 
+                   name="security.requiresAuth" 
+                   id="requires-auth"
+                   class="security-master-toggle"
+                   {{#if network.security.requiresAuth}}checked{{/if}}>
+            <span class="toggle-track">
+              <span class="toggle-thumb"></span>
+            </span>
+            <span class="toggle-label">
+              <i class="fas fa-lock"></i>
+              Require Authentication
+            </span>
+          </label>
+          <small class="field-hint">When enabled, users must authenticate or hack to access</small>
+        </div>
+        
+        {{!-- Security Settings (shown when auth required) --}}
+        <div class="security-settings {{#unless network.security.requiresAuth}}security-settings--hidden{{/unless}}">
+          
+          {{!-- Security Level --}}
+          <div class="form-group">
+            <label for="security-level">Security Level</label>
+            <select id="security-level" name="security.level" class="security-level-select">
+              <option value="none" {{#if (eq network.security.level 'none')}}selected{{/if}}>
+                🔓 None (Open Access)
+              </option>
+              <option value="low" {{#if (eq network.security.level 'low')}}selected{{/if}}>
+                🔒 Low (DC 10)
+              </option>
+              <option value="medium" {{#if (eq network.security.level 'medium')}}selected{{/if}}>
+                🔐 Medium (DC 15)
+              </option>
+              <option value="high" {{#if (eq network.security.level 'high')}}selected{{/if}}>
+                🛡️ High (DC 20)
+              </option>
+              <option value="extreme" {{#if (eq network.security.level 'extreme')}}selected{{/if}}>
+                ⚠️ Extreme (DC 25)
+              </option>
+              <option value="black-ice" {{#if (eq network.security.level 'black-ice')}}selected{{/if}}>
+                💀 BLACK ICE (Lethal)
+              </option>
+            </select>
+          </div>
+          
+          <div class="form-row">
+            {{!-- Breach DC --}}
+            <div class="form-group">
+              <label for="breach-dc">
+                Breach DC
+                <span class="help-tip" title="Difficulty Class for Interface checks">
+                  <i class="fas fa-question-circle"></i>
+                </span>
+              </label>
+              <input type="number" 
+                     id="breach-dc" 
+                     name="security.breachDC"
+                     min="0" max="40"
+                     value="{{network.security.breachDC}}"
+                     class="number-input">
+              <small class="field-hint">Interface check DC to breach</small>
+            </div>
+            
+            {{!-- Attempts --}}
+            <div class="form-group">
+              <label for="security-attempts">Max Attempts</label>
+              <input type="number" 
+                     id="security-attempts" 
+                     name="security.attempts"
+                     min="1" max="99"
+                     value="{{network.security.attempts}}"
+                     class="number-input">
+              <small class="field-hint">Failed attempts before lockout</small>
+            </div>
+            
+            {{!-- Lockout Duration --}}
+            <div class="form-group">
+              <label for="lockout-duration">Lockout Duration</label>
+              <select id="lockout-duration" name="security.lockoutDuration">
+                <option value="0" {{#if (eq network.security.lockoutDuration 0)}}selected{{/if}}>No Lockout</option>
+                <option value="60000" {{#if (eq network.security.lockoutDuration 60000)}}selected{{/if}}>1 minute</option>
+                <option value="300000" {{#if (eq network.security.lockoutDuration 300000)}}selected{{/if}}>5 minutes</option>
+                <option value="600000" {{#if (eq network.security.lockoutDuration 600000)}}selected{{/if}}>10 minutes</option>
+                <option value="3600000" {{#if (eq network.security.lockoutDuration 3600000)}}selected{{/if}}>1 hour</option>
+              </select>
+              <small class="field-hint">Duration of lockout after max attempts</small>
+            </div>
+          </div>
+          
+          {{!-- Password --}}
+          <div class="form-group form-group--full">
+            <label for="security-password">
+              Network Password
+              <span class="optional-tag">optional</span>
+            </label>
+            <div class="password-input-group">
+              <input type="password" 
+                     id="security-password" 
+                     name="security.password"
+                     value="{{network.security.password}}"
+                     placeholder="Leave blank for no password"
+                     autocomplete="new-password">
+              <button type="button" class="toggle-password-btn">
+                <i class="fas fa-eye"></i>
+              </button>
+              <button type="button" class="generate-password-btn" title="Generate Random Password">
+                <i class="fas fa-random"></i>
+              </button>
+            </div>
+            <small class="field-hint">If set, users can bypass hacking with this password</small>
+          </div>
+          
+          {{!-- BLACK ICE Warning --}}
+          {{#if (eq network.security.level 'black-ice')}}
+          <div class="danger-zone">
+            <div class="danger-header">
+              <i class="fas fa-skull-crossbones"></i>
+              <span>BLACK ICE ACTIVE</span>
+            </div>
+            <p>Failed breach attempts will deal lethal damage to the hacker!</p>
+            <div class="form-group">
+              <label for="ice-damage">ICE Damage</label>
+              <input type="text" 
+                     id="ice-damage" 
+                     name="security.iceDamage"
+                     value="{{network.security.iceDamage}}"
+                     placeholder="5d6">
+              <small class="field-hint">Damage roll on failed breach (e.g., 5d6)</small>
+            </div>
+          </div>
+          {{/if}}
+          
+        </div>
+        
+      </div>
+    </section>
+    
+    {{!-- ═══════════════════════════════════════════════════
+         SECTION 5: Network Effects
+    ═══════════════════════════════════════════════════ --}}
+    <section class="ncm-editor-section" data-section="effects">
+      <button type="button" class="ncm-editor-section__header">
+        <div class="section-title">
+          <i class="fas fa-magic"></i>
+          <span>Network Effects</span>
+        </div>
+        <i class="fas fa-chevron-down section-toggle"></i>
+      </button>
+      
+      <div class="ncm-editor-section__body">
+        
+        <div class="effects-grid">
+          
+          {{!-- Traced --}}
+          <label class="effect-toggle {{#if network.effects.traced}}effect-toggle--active effect-toggle--warning{{/if}}">
+            <input type="checkbox" 
+                   name="effects.traced" 
+                   {{#if network.effects.traced}}checked{{/if}}>
+            <div class="effect-icon">
+              <i class="fas fa-eye"></i>
+            </div>
+            <div class="effect-info">
+              <span class="effect-name">Traced</span>
+              <span class="effect-desc">Activity is monitored</span>
+            </div>
+          </label>
+          
+          {{!-- Anonymous --}}
+          <label class="effect-toggle {{#if network.effects.anonymity}}effect-toggle--active effect-toggle--good{{/if}}">
+            <input type="checkbox" 
+                   name="effects.anonymity" 
+                   {{#if network.effects.anonymity}}checked{{/if}}>
+            <div class="effect-icon">
+              <i class="fas fa-mask"></i>
+            </div>
+            <div class="effect-info">
+              <span class="effect-name">Anonymous</span>
+              <span class="effect-desc">Identity hidden</span>
+            </div>
+          </label>
+          
+          {{!-- Can Route --}}
+          <label class="effect-toggle {{#if network.effects.canRoute}}effect-toggle--active{{/if}}">
+            <input type="checkbox" 
+                   name="effects.canRoute" 
+                   {{#if network.effects.canRoute}}checked{{/if}}>
+            <div class="effect-icon">
+              <i class="fas fa-random"></i>
+            </div>
+            <div class="effect-info">
+              <span class="effect-name">Routing</span>
+              <span class="effect-desc">Can route through other networks</span>
+            </div>
+          </label>
+          
+          {{!-- Hidden --}}
+          <label class="effect-toggle {{#if network.hidden}}effect-toggle--active{{/if}}">
+            <input type="checkbox" 
+                   name="hidden" 
+                   {{#if network.hidden}}checked{{/if}}>
+            <div class="effect-icon">
+              <i class="fas fa-ghost"></i>
+            </div>
+            <div class="effect-info">
+              <span class="effect-name">Hidden</span>
+              <span class="effect-desc">Not shown in network list</span>
+            </div>
+          </label>
+          
+        </div>
+        
+      </div>
+    </section>
+    
+    {{!-- ═══════════════════════════════════════════════════
+         SECTION 6: GM Notes
+    ═══════════════════════════════════════════════════ --}}
+    <section class="ncm-editor-section" data-section="gm-notes">
+      <button type="button" class="ncm-editor-section__header">
+        <div class="section-title">
+          <i class="fas fa-user-shield"></i>
+          <span>GM Notes</span>
+          <span class="section-badge section-badge--gm">GM ONLY</span>
+        </div>
+        <i class="fas fa-chevron-down section-toggle"></i>
+      </button>
+      
+      <div class="ncm-editor-section__body">
+        
+        <div class="form-group form-group--full">
+          <label for="gm-notes">Private Notes</label>
+          <textarea id="gm-notes" 
+                    name="gmNotes" 
+                    rows="4"
+                    placeholder="Secret network details, plot hooks, security overrides, NPC access codes...">{{network.gmNotes}}</textarea>
+          <small class="field-hint">
+            <i class="fas fa-lock"></i> 
+            These notes are never visible to players
+          </small>
+        </div>
+        
+      </div>
+    </section>
+    
   </div>
   
-  {{!-- Availability Notice --}}
-  <div class="info-banner">
-    <i class="fas fa-info-circle"></i>
-    <div>
-      <strong>Scene Availability:</strong>
-      Configure which scenes have access to this network in the <strong>Scenes Tab</strong>.
-      By default, new networks are <em>not enabled</em> in any scenes until you configure them.
+  {{!-- Footer Actions --}}
+  <footer class="ncm-network-editor__footer">
+    
+    <div class="footer-left">
+      {{#if (eq mode 'edit')}}
+        <button type="button" class="ncm-nm__btn ncm-nm__btn--danger delete-network-btn">
+          <i class="fas fa-trash"></i>
+          Delete
+        </button>
+      {{/if}}
+      <button type="button" class="ncm-nm__btn ncm-nm__btn--secondary preview-btn">
+        <i class="fas fa-eye"></i>
+        Preview
+      </button>
     </div>
-  </div>
+    
+    <div class="footer-right">
+      <button type="button" class="ncm-nm__btn cancel-btn">
+        <i class="fas fa-times"></i>
+        Cancel
+      </button>
+      <button type="submit" class="ncm-nm__btn ncm-nm__btn--primary save-btn">
+        <i class="fas fa-save"></i>
+        {{#if (eq mode 'create')}}Create Network{{else}}Save Changes{{/if}}
+      </button>
+    </div>
+    
+  </footer>
+  
 </form>
+
+{{!-- Scene Notice --}}
+<div class="ncm-network-editor__notice">
+  <i class="fas fa-info-circle"></i>
+  <span>Scene availability is configured in the <strong>Scenes Tab</strong> after saving.</span>
+</div>
