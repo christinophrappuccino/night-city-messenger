@@ -1,278 +1,86 @@
-{{!-- 
-  Networks Tab Partial
-  File: templates/network-management/partials/networks-tab.hbs
-  Module: cyberpunkred-messenger
-  Description: List and manage network definitions
---}}
+{{!-- Networks Tab Partial --}}
+{{!-- File: templates/network-management/partials/networks-tab.hbs --}}
 
-<div class="ncm-networks-tab">
-  
+<div class="networks-tab-container">
   {{!-- Toolbar --}}
-  <div class="ncm-networks-tab__toolbar">
-    
-    {{!-- Left: Create Button --}}
-    <div class="ncm-networks-tab__toolbar-left">
-      <button type="button" class="ncm-nm__btn ncm-nm__btn--primary create-network-btn">
-        <i class="fas fa-plus-circle"></i>
-        <span>New Network</span>
+  <div class="networks-toolbar">
+    <div class="toolbar-left">
+      <button type="button" class="create-network-btn ncm-btn ncm-btn-primary">
+        <i class="fas fa-plus"></i> Create Network
       </button>
-      
-      <div class="ncm-networks-tab__templates-dropdown">
-        <button type="button" class="ncm-nm__btn ncm-nm__btn--secondary template-dropdown-btn">
-          <i class="fas fa-magic"></i>
-          <span>Quick Create</span>
-          <i class="fas fa-caret-down"></i>
-        </button>
-        <div class="ncm-networks-tab__dropdown-menu" data-dropdown="templates">
-          <button type="button" data-template="public" class="dropdown-item">
-            <i class="fas fa-wifi" style="color: #19f3f7"></i>
-            Public Network
-          </button>
-          <button type="button" data-template="corporate" class="dropdown-item">
-            <i class="fas fa-building" style="color: #FFD700"></i>
-            Corporate Network
-          </button>
-          <button type="button" data-template="darknet" class="dropdown-item">
-            <i class="fas fa-user-secret" style="color: #9400D3"></i>
-            Darknet Node
-          </button>
-          <button type="button" data-template="military" class="dropdown-item">
-            <i class="fas fa-shield-alt" style="color: #F65261"></i>
-            Military Grade
-          </button>
-          <button type="button" data-template="deadzone" class="dropdown-item">
-            <i class="fas fa-ban" style="color: #666666"></i>
-            Dead Zone
-          </button>
-        </div>
-      </div>
+      <button type="button" class="import-network-btn ncm-btn">
+        <i class="fas fa-file-import"></i> Import
+      </button>
     </div>
     
-    {{!-- Center: Search & Filter --}}
-    <div class="ncm-networks-tab__toolbar-center">
-      <div class="ncm-networks-tab__search">
-        <i class="fas fa-search"></i>
-        <input type="text" 
-               class="network-filter-input" 
-               placeholder="Search networks..." 
-               value="{{filterText}}">
-        {{#if filterText}}
-          <button type="button" class="clear-filter-btn">
-            <i class="fas fa-times"></i>
-          </button>
-        {{/if}}
-      </div>
-      
-      <div class="ncm-networks-tab__type-filter">
-        <select class="network-type-select">
-          <option value="">All Types</option>
-          <option value="public" {{#if (eq typeFilter 'public')}}selected{{/if}}>Public</option>
-          <option value="corporate" {{#if (eq typeFilter 'corporate')}}selected{{/if}}>Corporate</option>
-          <option value="darknet" {{#if (eq typeFilter 'darknet')}}selected{{/if}}>Darknet</option>
-          <option value="military" {{#if (eq typeFilter 'military')}}selected{{/if}}>Military</option>
-          <option value="custom" {{#if (eq typeFilter 'custom')}}selected{{/if}}>Custom</option>
-        </select>
-      </div>
-      
-      <div class="ncm-networks-tab__sort">
-        <select class="network-sort-select">
-          <option value="name-asc" {{#if (eq sortKey 'name-asc')}}selected{{/if}}>Name (A-Z)</option>
-          <option value="name-desc" {{#if (eq sortKey 'name-desc')}}selected{{/if}}>Name (Z-A)</option>
-          <option value="security-desc" {{#if (eq sortKey 'security-desc')}}selected{{/if}}>Security ↓</option>
-          <option value="security-asc" {{#if (eq sortKey 'security-asc')}}selected{{/if}}>Security ↑</option>
-        </select>
-      </div>
-    </div>
-    
-    {{!-- Right: View Toggle --}}
-    <div class="ncm-networks-tab__toolbar-right">
-      <div class="ncm-networks-tab__view-toggle">
-        <button type="button" 
-                class="view-btn {{#if (eq viewMode 'grid')}}view-btn--active{{/if}}" 
-                data-view="grid" 
-                title="Grid View">
-          <i class="fas fa-th-large"></i>
-        </button>
-        <button type="button" 
-                class="view-btn {{#if (eq viewMode 'list')}}view-btn--active{{/if}}" 
-                data-view="list" 
-                title="List View">
-          <i class="fas fa-list"></i>
-        </button>
-      </div>
+    <div class="toolbar-center">
+      <input type="text" class="network-filter" placeholder="Filter networks..." value="{{filterText}}">
+      <select class="network-sort">
+        <option value="name-asc" {{#if (and (eq sortBy 'name') (eq sortDir 'asc'))}}selected{{/if}}>Name (A-Z)</option>
+        <option value="name-desc" {{#if (and (eq sortBy 'name') (eq sortDir 'desc'))}}selected{{/if}}>Name (Z-A)</option>
+        <option value="type-asc" {{#if (and (eq sortBy 'type') (eq sortDir 'asc'))}}selected{{/if}}>Type (A-Z)</option>
+        <option value="type-desc" {{#if (and (eq sortBy 'type') (eq sortDir 'desc'))}}selected{{/if}}>Type (Z-A)</option>
+        <option value="security-asc" {{#if (and (eq sortBy 'security') (eq sortDir 'asc'))}}selected{{/if}}>Security (Low-High)</option>
+        <option value="security-desc" {{#if (and (eq sortBy 'security') (eq sortDir 'desc'))}}selected{{/if}}>Security (High-Low)</option>
+      </select>
     </div>
   </div>
 
-  {{!-- Bulk Selection Bar (shown when items selected) --}}
+  {{!-- Bulk Operations Bar --}}
   {{#if selectedNetworks.length}}
-  <div class="ncm-networks-tab__bulk-bar">
-    <div class="bulk-info">
-      <span class="bulk-count">{{selectedNetworks.length}} selected</span>
-      <button type="button" class="clear-selection-btn">
-        <i class="fas fa-times"></i> Clear
+  <div class="bulk-operations-bar">
+    <div class="selection-info">
+      <span class="selected-count">{{selectedNetworks.length}} selected</span>
+      <button type="button" class="deselect-all-networks">
+        <i class="fas fa-times"></i> Clear Selection
       </button>
     </div>
     <div class="bulk-actions">
-      <button type="button" class="bulk-action-btn" data-action="enable">
+      <button type="button" class="bulk-enable-btn ncm-btn ncm-btn-small">
         <i class="fas fa-toggle-on"></i> Enable
       </button>
-      <button type="button" class="bulk-action-btn" data-action="disable">
+      <button type="button" class="bulk-disable-btn ncm-btn ncm-btn-small">
         <i class="fas fa-toggle-off"></i> Disable
       </button>
-      <button type="button" class="bulk-action-btn" data-action="export">
-        <i class="fas fa-download"></i> Export
+      <button type="button" class="bulk-export-btn ncm-btn ncm-btn-small">
+        <i class="fas fa-file-export"></i> Export
       </button>
-      <button type="button" class="bulk-action-btn bulk-action-btn--danger" data-action="delete">
+      <button type="button" class="bulk-delete-btn ncm-btn ncm-btn-small ncm-btn-danger">
         <i class="fas fa-trash"></i> Delete
       </button>
     </div>
   </div>
   {{/if}}
 
-  {{!-- Network Cards Grid --}}
-  <div class="ncm-networks-tab__grid {{#if (eq viewMode 'list')}}ncm-networks-tab__grid--list{{/if}}">
-    
+  {{!-- Networks Grid --}}
+  <div class="networks-grid">
     {{#if networks.length}}
       {{#each networks}}
-        <article class="ncm-network-card {{#unless this.enabled}}ncm-network-card--disabled{{/unless}}"
-                 data-network-id="{{this.id}}"
-                 style="--network-color: {{this.theme.color}}">
-          
-          {{!-- Card Header --}}
-          <header class="ncm-network-card__header">
-            <label class="ncm-network-card__select">
-              <input type="checkbox" 
-                     class="network-select-checkbox" 
-                     data-network-id="{{this.id}}"
-                     {{#if this.selected}}checked{{/if}}>
-              <span class="custom-checkbox"></span>
-            </label>
-            
-            <div class="ncm-network-card__icon" style="color: {{this.theme.color}}">
-              <i class="fas {{this.theme.icon}}"></i>
-            </div>
-            
-            <div class="ncm-network-card__title-group">
-              <h3 class="ncm-network-card__name">{{this.name}}</h3>
-              <span class="ncm-network-card__id">{{this.id}}</span>
-            </div>
-            
-            <div class="ncm-network-card__badges">
-              {{#unless this.enabled}}
-                <span class="badge badge--disabled">OFFLINE</span>
-              {{/unless}}
-              {{#if this.security.requiresAuth}}
-                <span class="badge badge--secured">
-                  <i class="fas fa-lock"></i>
-                </span>
-              {{/if}}
-              {{#if (eq this.security.level 'black-ice')}}
-                <span class="badge badge--danger">
-                  <i class="fas fa-skull"></i> ICE
-                </span>
-              {{/if}}
-            </div>
-          </header>
-          
-          {{!-- Card Body --}}
-          <div class="ncm-network-card__body">
-            
-            {{!-- Type & Security Row --}}
-            <div class="ncm-network-card__meta">
-              <span class="ncm-network-card__type type-{{lowercase this.type}}">
-                {{this.type}}
-              </span>
-              <span class="ncm-network-card__security security-{{lowercase this.security.level}}">
-                {{this.security.level}}
-              </span>
-            </div>
-            
-            {{!-- Stats Row --}}
-            <div class="ncm-network-card__stats">
-              <div class="stat">
-                <i class="fas fa-signal"></i>
-                <span>{{this.signalStrength}}%</span>
-              </div>
-              <div class="stat">
-                <i class="fas fa-chart-line"></i>
-                <span>{{this.reliability}}%</span>
-              </div>
-              {{#if this.security.requiresAuth}}
-                <div class="stat">
-                  <i class="fas fa-dice-d20"></i>
-                  <span>DC {{this.security.breachDC}}</span>
-                </div>
-              {{/if}}
-            </div>
-            
-            {{!-- Description --}}
-            {{#if this.description}}
-              <p class="ncm-network-card__description">{{this.description}}</p>
-            {{/if}}
-            
-            {{!-- Effects Tags --}}
-            <div class="ncm-network-card__effects">
-              {{#if this.effects.traced}}
-                <span class="effect-tag effect-tag--warning" title="Activity is monitored">
-                  <i class="fas fa-eye"></i> Traced
-                </span>
-              {{/if}}
-              {{#if this.effects.anonymity}}
-                <span class="effect-tag effect-tag--good" title="Identity hidden">
-                  <i class="fas fa-mask"></i> Anonymous
-                </span>
-              {{/if}}
-              {{#if this.effects.messageDelay}}
-                <span class="effect-tag" title="{{this.effects.messageDelay}}s delay">
-                  <i class="fas fa-clock"></i> Delayed
-                </span>
-              {{/if}}
-            </div>
-          </div>
-          
-          {{!-- Card Actions --}}
-          <footer class="ncm-network-card__actions">
-            <button type="button" class="action-btn edit-network-btn" title="Edit Network">
-              <i class="fas fa-edit"></i>
-            </button>
-            <button type="button" class="action-btn duplicate-network-btn" title="Duplicate">
-              <i class="fas fa-copy"></i>
-            </button>
-            <button type="button" class="action-btn toggle-network-btn" 
-                    title="{{#if this.enabled}}Disable{{else}}Enable{{/if}}">
-              <i class="fas {{#if this.enabled}}fa-toggle-on{{else}}fa-toggle-off{{/if}}"></i>
-            </button>
-            <button type="button" class="action-btn action-btn--danger delete-network-btn" title="Delete">
-              <i class="fas fa-trash"></i>
-            </button>
-          </footer>
-          
-          {{!-- Active Glow Effect --}}
-          <div class="ncm-network-card__glow"></div>
-        </article>
+        {{> "modules/cyberpunkred-messenger/templates/network-management/partials/network-card.hbs" network=this selected=(includes ../selectedNetworks this.id)}}
       {{/each}}
-      
     {{else}}
-      {{!-- Empty State --}}
-      <div class="ncm-networks-tab__empty">
-        <div class="empty-icon">
-          <i class="fas fa-network-wired"></i>
-        </div>
+      <div class="empty-state">
+        <i class="fas fa-network-wired"></i>
         <h3>No Networks Found</h3>
         {{#if filterText}}
-          <p>No networks match your search "{{filterText}}"</p>
-          <button type="button" class="ncm-nm__btn ncm-nm__btn--secondary clear-filter-btn">
-            <i class="fas fa-times"></i> Clear Filter
-          </button>
+          <p>No networks match your filter.</p>
+          <button type="button" class="network-filter-clear ncm-btn">Clear Filter</button>
         {{else}}
-          <p>Create your first custom network to get started</p>
-          <button type="button" class="ncm-nm__btn ncm-nm__btn--primary create-network-btn">
-            <i class="fas fa-plus-circle"></i> Create Network
+          <p>Create your first network to get started.</p>
+          <button type="button" class="create-network-btn ncm-btn ncm-btn-primary">
+            <i class="fas fa-plus"></i> Create Network
           </button>
         {{/if}}
       </div>
     {{/if}}
-    
   </div>
-  
+
+  {{!-- Select All at bottom --}}
+  {{#if networks.length}}
+  <div class="networks-footer">
+    <button type="button" class="select-all-networks ncm-btn ncm-btn-text">
+      <i class="fas fa-check-square"></i> Select All
+    </button>
+  </div>
+  {{/if}}
 </div>

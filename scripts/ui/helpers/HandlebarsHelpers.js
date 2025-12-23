@@ -1,8 +1,8 @@
 /**
- * Handlebars Helpers - CLEAN VERSION
+ * Handlebars Helpers - CORRECTED VERSION
  * File: scripts/ui/helpers/HandlebarsHelpers.js
  * Module: cyberpunkred-messenger
- * Description: All Handlebars template helpers
+ * Description: All Handlebars template helpers with FIXED SCOPING
  */
 
 import { MODULE_ID } from '../../utils/constants.js';
@@ -54,22 +54,9 @@ export class HandlebarsHelpers {
       return !value;
     });
 
-
     // ========================================
     // Item Inbox Helpers
     // ========================================
-
-    // Logical OR
-    Handlebars.registerHelper('or', function(...args) {
-      args.pop(); // Remove Handlebars options object
-      return args.some(Boolean);
-    });
-    
-    // Logical AND
-    Handlebars.registerHelper('and', function(...args) {
-      args.pop(); // Remove Handlebars options object
-      return args.every(Boolean);
-    });
     
     // Checkbox checked attribute
     Handlebars.registerHelper('checked', function(condition) {
@@ -179,7 +166,6 @@ export class HandlebarsHelpers {
     // Date/Time Helpers
     // ========================================
     
-    
     // Format date and time together
     Handlebars.registerHelper('formatDateTime', function(timestamp) {
       if (!timestamp) return 'Unknown Date';
@@ -245,81 +231,142 @@ export class HandlebarsHelpers {
         return '';
       }
     });
-
-    Handlebars.registerHelper('formatMessageTimestamp', function(timestamp) {
-      if (!timestamp) return 'Unknown';
-      
-      try {
-        const timeService = game.nightcity?.timeService;
-        if (!timeService) {
-          // Fallback if service not ready
-          const date = new Date(timestamp);
-          return date.toLocaleString();
-        }
-        
-        // Use configured format from settings
-        return timeService.formatTimestamp(timestamp);
-      } catch (error) {
-        console.error('Error formatting timestamp:', error);
-        return 'Invalid Date';
-      }
-    });
-
-    Handlebars.registerHelper('formatScheduledTime', function(scheduleData) {
-      if (!scheduleData) return 'Unknown';
-      
-      try {
-        const timeService = game.nightcity?.timeService;
-        if (!timeService) return 'Unknown';
-        
-        // Check if using SimpleCalendar
-        if (scheduleData.useSimpleCalendar && scheduleData.simpleCalendarData) {
-          return scheduleData.simpleCalendarData.display;
-        }
-        
-        return timeService.formatTimestamp(scheduleData.scheduledTime, 'full');
-      } catch (error) {
-        return 'Invalid';
-      }
-    });
     
-    // Relative time (e.g., "2 hours ago")
-    Handlebars.registerHelper('fromNow', function(timestamp) {
-      if (!timestamp) return '';
+    // ========================================
+    // Scenes Tab Helpers
+    // ========================================
+    
+    /**
+     * Generate signal bar data for visualization
+     * @param {number} signalStrength - Signal strength (0-100)
+     * @returns {Array} Array of bar objects with height and active state
+     */
+    Handlebars.registerHelper('signalBars', function(signalStrength) {
+      const numBars = 5;
+      const bars = [];
+      const threshold = signalStrength / 100;
       
-      try {
-        const date = new Date(timestamp);
-        const now = new Date();
-        const seconds = Math.floor((now - date) / 1000);
-        
-        if (seconds < 60) return 'just now';
-        if (seconds < 3600) return `${Math.floor(seconds / 60)} minutes ago`;
-        if (seconds < 86400) return `${Math.floor(seconds / 3600)} hours ago`;
-        if (seconds < 604800) return `${Math.floor(seconds / 86400)} days ago`;
-        
-        // Fall back to date format
-        return date.toLocaleDateString('en-US', {
-          month: 'short',
-          day: 'numeric'
+      for (let i = 0; i < numBars; i++) {
+        const barThreshold = (i + 1) / numBars;
+        bars.push({
+          height: (i + 1) * 20, // 20%, 40%, 60%, 80%, 100%
+          active: threshold >= barThreshold
         });
-      } catch (error) {
-        console.error('Error calculating relative time:', error);
-        return '';
       }
+      
+      return bars;
     });
     
-    // Legacy helper (kept for compatibility)
-    Handlebars.registerHelper('timeAgo', function(date) {
-      if (!date) return 'Unknown';
+    /**
+     * Get security level CSS class
+     */
+    Handlebars.registerHelper('securityLevelClass', function(level) {
+      return `security-${level}`;
+    });
+    
+    /**
+     * Format signal strength as status text
+     */
+    Handlebars.registerHelper('signalStatus', function(signalStrength) {
+      if (signalStrength >= 80) return 'Excellent';
+      if (signalStrength >= 60) return 'Good';
+      if (signalStrength >= 40) return 'Fair';
+      if (signalStrength >= 20) return 'Weak';
+      return 'Very Weak';
+    });
+    
+    /**
+     * Get signal status badge class
+     */
+    Handlebars.registerHelper('signalBadgeClass', function(signalStrength) {
+      if (signalStrength >= 80) return 'ncm-badge--success';
+      if (signalStrength >= 60) return 'ncm-badge--info';
+      if (signalStrength >= 40) return 'ncm-badge--warning';
+      return 'ncm-badge--danger';
+    });
+    
+    /**
+     * Check if network has override
+     */
+    Handlebars.registerHelper('hasOverride', function(sceneConfig) {
+      return sceneConfig?.override && Object.keys(sceneConfig.override).length > 0;
+    });
+    
+    /**
+     * Count active overrides
+     */
+    Handlebars.registerHelper('countOverrides', function(override) {
+      if (!override) return 0;
       
-      const now = new Date();
-      const then = new Date(date);
-      const seconds = Math.floor((now - then) / 1000);
+      let count = 0;
+      if (override.security) count++;
+      if (override.reliability !== undefined) count++;
+      if (override.features && Object.keys(override.features).length > 0) {
+        count += Object.keys(override.features).length;
+      }
       
-      if (seconds < 60) return 'Just now';
-      if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-      if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
-      return `${Math.floor(seconds / 86400)}d ago`;
+      return count;
+    });
+    
+    /**
+     * Format scene dimensions
+     */
+    Handlebars.registerHelper('formatDimensions', function(width, height) {
+      return `${width} × ${height} px`;
+    });
+    
+    /**
+     * Get network icon with fallback
+     */
+    Handlebars.registerHelper('networkIcon', function(network) {
+      return network?.theme?.icon || 'fas fa-network-wired';
+    });
+    
+    /**
+     * Get network color with fallback
+     */
+    Handlebars.registerHelper('networkColor', function(network) {
+      return network?.theme?.color || '#F65261';
+    });
+    
+    /**
+     * JSON stringify for debugging
+     */
+    Handlebars.registerHelper('json', function(obj) {
+      return JSON.stringify(obj, null, 2);
+    });
+    
+    /**
+     * Check if value is truthy
+     */
+    Handlebars.registerHelper('isTruthy', function(value) {
+      return !!value;
+    });
+    
+    /**
+     * Check if value is falsy
+     */
+    Handlebars.registerHelper('isFalsy', function(value) {
+      return !value;
+    });
+    
+    /**
+     * Conditional block with multiple conditions
+     */
+    Handlebars.registerHelper('cond', function(v1, operator, v2, options) {
+      switch (operator) {
+        case '==': return v1 == v2 ? options.fn(this) : options.inverse(this);
+        case '===': return v1 === v2 ? options.fn(this) : options.inverse(this);
+        case '!=': return v1 != v2 ? options.fn(this) : options.inverse(this);
+        case '!==': return v1 !== v2 ? options.fn(this) : options.inverse(this);
+        case '<': return v1 < v2 ? options.fn(this) : options.inverse(this);
+        case '<=': return v1 <= v2 ? options.fn(this) : options.inverse(this);
+        case '>': return v1 > v2 ? options.fn(this) : options.inverse(this);
+        case '>=': return v1 >= v2 ? options.fn(this) : options.inverse(this);
+        case '&&': return v1 && v2 ? options.fn(this) : options.inverse(this);
+        case '||': return v1 || v2 ? options.fn(this) : options.inverse(this);
+        default: return options.inverse(this);
+      }
     });
     
     // ========================================

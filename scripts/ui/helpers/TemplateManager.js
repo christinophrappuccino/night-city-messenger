@@ -12,7 +12,7 @@ export class TemplateManager {
    * Preload all templates
    */
   static async preloadTemplates() {
-    console.log(`${MODULE_ID} | Preloading templates...`);
+    console.log(`${MODULE_ID} | Preloading templates...`); 
     
     const templates = [
       // Message Viewer
@@ -51,6 +51,7 @@ export class TemplateManager {
       `modules/${MODULE_ID}/templates/network-management/partials/networks-tab.hbs`,
       `modules/${MODULE_ID}/templates/network-management/partials/network-card.hbs`,
       `modules/${MODULE_ID}/templates/network-management/partials/scenes-tab.hbs`,
+      `modules/${MODULE_ID}/templates/network-management/partials/scene-network-card.hbs`,  
       `modules/${MODULE_ID}/templates/network-management/partials/events-tab.hbs`,
       `modules/${MODULE_ID}/templates/network-management/partials/logs-tab.hbs`,
       
