@@ -1,0 +1,20 @@
+/* Glitch distortion effect — intensity controlled by --ncm-glitch-intensity */
+
+.ncm-app .ncm-glitch-target {
+  position: relative;
+}
+
+.ncm-app .ncm-glitch-active {
+  animation: ncm-glitch calc(0.3s * var(--ncm-glitch-intensity, 0.5)) ease-in-out;
+}
+
+/* Subtle continuous glitch for atmospheric elements */
+.ncm-app .ncm-glitch-ambient {
+  animation: ncm-glitch 8s ease-in-out infinite;
+  animation-duration: calc(8s / var(--ncm-glitch-intensity, 0.5));
+}
+
+[data-ncm-animation-level="reduced"] .ncm-app .ncm-glitch-ambient,
+[data-ncm-animation-level="off"] .ncm-app .ncm-glitch-ambient {
+  animation: none !important;
+}

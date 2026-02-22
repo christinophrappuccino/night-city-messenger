@@ -1,0 +1,79 @@
+/* ═══════════════════════════════════════════════════════
+   Typography — Font Faces & Text Utilities
+   Fonts loaded as local assets (no external dependencies).
+   ═══════════════════════════════════════════════════════ */
+
+/* Rajdhani — Display/Heading/Body font */
+@font-face {
+  font-family: 'Rajdhani';
+  src: local('Rajdhani');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Rajdhani';
+  src: local('Rajdhani SemiBold');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Rajdhani';
+  src: local('Rajdhani Bold');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Orbitron — UI/Label accent font */
+@font-face {
+  font-family: 'Orbitron';
+  src: local('Orbitron');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Share Tech Mono — Terminal/monospace */
+@font-face {
+  font-family: 'Share Tech Mono';
+  src: local('Share Tech Mono');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ─── Text Utility Classes ─── */
+
+.ncm-app .ncm-text-mono {
+  font-family: var(--ncm-font-mono);
+}
+.ncm-app .ncm-text-ui {
+  font-family: var(--ncm-font-ui);
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.ncm-app .ncm-text-display {
+  font-family: var(--ncm-font-display);
+  font-weight: 700;
+}
+.ncm-app .ncm-text-muted {
+  color: var(--ncm-text-muted);
+}
+.ncm-app .ncm-text-secondary {
+  color: var(--ncm-text-secondary);
+}
+.ncm-app .ncm-text-primary-color {
+  color: var(--ncm-primary);
+}
+.ncm-app .ncm-text-accent {
+  color: var(--ncm-accent);
+}
+.ncm-app .ncm-text-sm {
+  font-size: 0.8rem;
+}
+.ncm-app .ncm-text-xs {
+  font-size: 0.7rem;
+}

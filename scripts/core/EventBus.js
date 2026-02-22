@@ -1,264 +1,106 @@
 /**
- * Event Bus
- * File: scripts/core/EventBus.js
- * Module: cyberpunkred-messenger
- * Description: Centralized event system for loose coupling between components
+ * EventBus — Decoupled pub/sub communication
+ * @file scripts/core/EventBus.js
+ * @module cyberpunkred-messenger
+ * @description Singleton event bus for module-wide communication.
+ *              Supports namespaced subscriptions for guaranteed cleanup.
  */
 
+import { MODULE_SHORT } from '../utils/constants.js';
+
 export class EventBus {
-  static instance = null;
-  
-  constructor() {
-    if (EventBus.instance) {
-      return EventBus.instance;
-    }
-    
-    this.events = new Map();
-    this.debugMode = false;
-    
-    EventBus.instance = this;
-  }
-  
-  /**
-   * Get singleton instance
-   * @returns {EventBus}
-   */
+  /** @type {EventBus|null} */
+  static #instance = null;
+
+  /** @returns {EventBus} */
   static getInstance() {
-    if (!EventBus.instance) {
-      EventBus.instance = new EventBus();
+    if (!EventBus.#instance) {
+      EventBus.#instance = new EventBus();
     }
-    return EventBus.instance;
+    return EventBus.#instance;
   }
-  
+
+  constructor() {
+    if (EventBus.#instance) {
+      throw new Error('EventBus is a singleton — use EventBus.getInstance()');
+    }
+    /** @type {Map<string, Set<{ callback: Function, owner: string|null }>>} */
+    this._listeners = new Map();
+  }
+
   /**
    * Subscribe to an event
    * @param {string} event - Event name
-   * @param {Function} callback - Callback function
-   * @param {Object} context - Context for callback (optional)
-   * @returns {Function} Unsubscribe function
+   * @param {Function} callback - Handler function
+   * @param {string} [owner] - Owner ID for grouped cleanup (e.g., app instance ID)
+   * @returns {{ unsubscribe: Function }} Cleanup handle
    */
-  on(event, callback, context = null) {
-    if (typeof callback !== 'function') {
-      throw new Error('EventBus: Callback must be a function');
+  on(event, callback, owner = null) {
+    if (!this._listeners.has(event)) {
+      this._listeners.set(event, new Set());
     }
-    
-    if (!this.events.has(event)) {
-      this.events.set(event, new Set());
-    }
-    
-    const listener = { callback, context };
-    this.events.get(event).add(listener);
-    
-    if (this.debugMode) {
-      console.log(`EventBus | Subscribed to: ${event}`, listener);
-    }
-    
-    // Return unsubscribe function
-    return () => this.off(event, callback);
-  }
-  
-  /**
-   * Subscribe to an event once
-   * @param {string} event - Event name
-   * @param {Function} callback - Callback function
-   * @param {Object} context - Context for callback (optional)
-   * @returns {Function} Unsubscribe function
-   */
-  once(event, callback, context = null) {
-    const wrappedCallback = (...args) => {
-      this.off(event, wrappedCallback);
-      callback.call(context, ...args);
+    const entry = { callback, owner };
+    this._listeners.get(event).add(entry);
+
+    return {
+      unsubscribe: () => {
+        this._listeners.get(event)?.delete(entry);
+      },
     };
-    
-    return this.on(event, wrappedCallback, context);
   }
-  
+
   /**
-   * Unsubscribe from an event
+   * Emit an event to all listeners
    * @param {string} event - Event name
-   * @param {Function} callback - Callback function to remove
-   */
-  off(event, callback) {
-    if (!this.events.has(event)) return;
-    
-    const listeners = this.events.get(event);
-    
-    // Find and remove the listener
-    for (const listener of listeners) {
-      if (listener.callback === callback) {
-        listeners.delete(listener);
-        
-        if (this.debugMode) {
-          console.log(`EventBus | Unsubscribed from: ${event}`);
-        }
-        
-        break;
-      }
-    }
-    
-    // Clean up empty event sets
-    if (listeners.size === 0) {
-      this.events.delete(event);
-    }
-  }
-  
-  /**
-   * Remove all listeners for an event
-   * @param {string} event - Event name
-   */
-  offAll(event) {
-    if (this.events.has(event)) {
-      this.events.delete(event);
-      
-      if (this.debugMode) {
-        console.log(`EventBus | Removed all listeners for: ${event}`);
-      }
-    }
-  }
-  
-  /**
-   * Emit an event
-   * @param {string} event - Event name
-   * @param {*} data - Data to pass to listeners
-   * @returns {number} Number of listeners notified
+   * @param {*} data - Event payload
    */
   emit(event, data) {
-    if (!this.events.has(event)) {
-      if (this.debugMode) {
-        console.log(`EventBus | No listeners for: ${event}`);
-      }
-      return 0;
-    }
-    
-    const listeners = this.events.get(event);
-    let notified = 0;
-    
-    if (this.debugMode) {
-      console.log(`EventBus | Emitting: ${event}`, data);
-    }
-    
-    listeners.forEach(listener => {
+    const listeners = this._listeners.get(event);
+    if (!listeners || listeners.size === 0) return;
+
+    for (const { callback } of listeners) {
       try {
-        if (listener.context) {
-          listener.callback.call(listener.context, data);
-        } else {
-          listener.callback(data);
-        }
-        notified++;
+        callback(data);
       } catch (error) {
-        console.error(`EventBus | Error in event handler for ${event}:`, error);
+        console.error(`${MODULE_SHORT} | EventBus error in '${event}' handler:`, error);
       }
-    });
-    
-    return notified;
+    }
   }
-  
+
   /**
-   * Get listener count for an event
-   * @param {string} event - Event name
+   * Remove all subscriptions belonging to an owner
+   * @param {string} owner - Owner ID to clean up
+   */
+  removeByOwner(owner) {
+    for (const [event, listeners] of this._listeners) {
+      for (const entry of listeners) {
+        if (entry.owner === owner) {
+          listeners.delete(entry);
+        }
+      }
+      if (listeners.size === 0) {
+        this._listeners.delete(event);
+      }
+    }
+  }
+
+  /**
+   * Get count of listeners (for diagnostics)
    * @returns {number}
    */
-  listenerCount(event) {
-    return this.events.has(event) ? this.events.get(event).size : 0;
-  }
-  
-  /**
-   * Get all registered events
-   * @returns {Array<string>}
-   */
-  getEvents() {
-    return Array.from(this.events.keys());
-  }
-  
-  /**
-   * Clear all events
-   */
-  clear() {
-    this.events.clear();
-    
-    if (this.debugMode) {
-      console.log('EventBus | Cleared all events');
+  get listenerCount() {
+    let count = 0;
+    for (const listeners of this._listeners.values()) {
+      count += listeners.size;
     }
+    return count;
   }
-  
+
   /**
-   * Enable debug mode
+   * Get all registered event names (for diagnostics)
+   * @returns {string[]}
    */
-  enableDebug() {
-    this.debugMode = true;
-  }
-  
-  /**
-   * Disable debug mode
-   */
-  disableDebug() {
-    this.debugMode = false;
+  get eventNames() {
+    return [...this._listeners.keys()];
   }
 }
-
-// Export singleton instance
-export const eventBus = EventBus.getInstance();
-
-// Event name constants for type safety
-export const EVENTS = {
-  // Message events
-  MESSAGE_SENT: 'message:sent',
-  MESSAGE_RECEIVED: 'message:received',
-  MESSAGE_READ: 'message:read',
-  MESSAGE_DELETED: 'message:deleted',
-  MESSAGE_SAVED: 'message:saved',
-  MESSAGE_SPAM: 'message:spam',
-  MESSAGES_LOADED: 'messages:loaded',
-
-  // Schedule Events
-  MESSAGE_SCHEDULED: 'message:scheduled',
-  SCHEDULE_CANCELLED: 'schedule:cancelled',
-  
-  // UI events
-  UI_VIEWER_OPENED: 'ui:viewer:opened',
-  UI_VIEWER_CLOSED: 'ui:viewer:closed',
-  UI_COMPOSER_OPENED: 'ui:composer:opened',
-  UI_COMPOSER_CLOSED: 'ui:composer:closed',
-
-  // Data Shard events
-  DATA_SHARD_CREATED: 'dataShard:created',
-  DATA_SHARD_MESSAGE_ADDED: 'dataShard:messageAdded',
-  DATA_SHARD_DECRYPTED: 'dataShard:decrypted',
-  DATA_SHARD_LOCKED: 'dataShard:locked',
-  DATA_SHARD_CORRUPTED: 'dataShard:corrupted',
-  DATA_SHARD_HACK_ATTEMPT: 'dataShard:hackAttempt',
-  DATA_SHARD_MESSAGE_DELETED: 'dataShard:messageDeleted',
-  DATA_SHARD_SHARED: 'dataShard:shared',
-  DATA_SHARD_OPENED: 'dataShard:opened',
-  BLACK_ICE_TRIGGERED: 'dataShard:blackICETriggered',
-  
-  // State events
-  STATE_CHANGED: 'state:changed',
-  STATE_FILTER_CHANGED: 'state:filter:changed',
-  STATE_SEARCH_CHANGED: 'state:search:changed',
-  
-  // Skill events
-  SKILL_CHECK_PERFORMED: 'skill:checkPerformed',
-  SKILL_CHECK_SUCCESS: 'skill:checkSuccess',
-  SKILL_CHECK_FAILURE: 'skill:checkFailure',
-  
-  // Network events
-  SOCKET_MESSAGE: 'socket:message',
-  SOCKET_CONNECTED: 'socket:connected',
-  SOCKET_DISCONNECTED: 'socket:disconnected',
-  NETWORK_CHANGED: 'network:changed',
-  
-  // Settings events
-  SETTINGS_CHANGED: 'settings:changed',
-  THEME_CHANGED: 'theme:changed',
-  
-  // Notification events
-  NOTIFICATION_SHOW: 'notification:show',
-  NOTIFICATION_HIDE: 'notification:hide',
-  
-  // Time events
-  TIME_CHANGED: 'time:changed',
-  TIME_SOURCE_CHANGED: 'time:source:changed',
-  TIME_SCHEDULED_MESSAGE_DUE: 'time:scheduled:due',
-  TIME_MANUAL_SET: 'time:manual:set'
-};

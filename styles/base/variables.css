@@ -1,240 +1,57 @@
-/* ==============================================
-   NIGHT CITY MESSENGER
-   Base: CSS Variables
-   Purpose: Color scheme, spacing, typography
-   ============================================== */
+/* ═══════════════════════════════════════════════════════
+   Night City Messenger — Design Tokens
+   All colors are CSS custom properties, overridable by
+   ThemeService at runtime.
+   ═══════════════════════════════════════════════════════ */
 
-:root {
-  /* ============================================
-     PRIMARY COLORS - Cyberpunk Red Theme
-     ============================================ */
+.ncm-app {
+  /* ─── Core Palette ─── */
   --ncm-primary: #F65261;
-  --ncm-primary-dark: #cc2636;
-  --ncm-primary-light: #ff8b98;
-  --ncm-primary-alpha: rgba(246, 82, 97, 0.2);
-  
   --ncm-secondary: #19f3f7;
-  --ncm-secondary-dark: #00c9cd;
-  --ncm-secondary-light: #66ffff;
-  --ncm-secondary-alpha: rgba(25, 243, 247, 0.2);
-  
-  --ncm-accent: #FFD700;
-  --ncm-accent-dark: #ccaa00;
-  --ncm-accent-alpha: rgba(255, 215, 0, 0.2);
-  
-  /* ============================================
-     BACKGROUND COLORS
-     ============================================ */
-  --ncm-bg-primary: #330000;
-  --ncm-bg-secondary: #1a1a1a;
-  --ncm-bg-tertiary: #1c1c1c;
-  --ncm-bg-surface: #2a0000;
-  --ncm-bg-hover: rgba(246, 82, 97, 0.1);
-  --ncm-bg-active: rgba(246, 82, 97, 0.15);
-  
-  /* ============================================
-     TEXT COLORS
-     ============================================ */
-  --ncm-text-primary: #ffffff;
-  --ncm-text-secondary: #cccccc;
-  --ncm-text-tertiary: #999999;
-  --ncm-text-disabled: #666666;
-  --ncm-text-error: #ff6666;
-  --ncm-text-success: #66ff66;
-  
-  /* ============================================
-     BORDER COLORS
-     ============================================ */
-  --ncm-border-primary: #F65261;
-  --ncm-border-secondary: rgba(246, 82, 97, 0.3);
-  --ncm-border-tertiary: rgba(246, 82, 97, 0.1);
-  
-  /* ============================================
-     NETWORK STATUS COLORS
-     ============================================ */
-  --ncm-network-online: #00ff00;
-  --ncm-network-degraded: #ffaa00;
-  --ncm-network-offline: #ff0000;
-  --ncm-network-dead-zone: #666666;
-  
-  /* ============================================
-     SPACING SYSTEM (8px base)
-     ============================================ */
-  --ncm-spacing-xs: 4px;
-  --ncm-spacing-sm: 8px;
-  --ncm-spacing-md: 12px;
-  --ncm-spacing-lg: 16px;
-  --ncm-spacing-xl: 24px;
-  --ncm-spacing-xxl: 32px;
-  
-  /* ============================================
-     TYPOGRAPHY
-     ============================================ */
-  --ncm-font-primary: 'Rajdhani', sans-serif;
-  --ncm-font-secondary: 'Orbitron', sans-serif;
-  --ncm-font-mono: 'Courier New', monospace;
-  
-  --ncm-font-size-xs: 0.7em;
-  --ncm-font-size-sm: 0.85em;
-  --ncm-font-size-base: 1em;
-  --ncm-font-size-md: 1.1em;
-  --ncm-font-size-lg: 1.2em;
-  --ncm-font-size-xl: 1.5em;
-  --ncm-font-size-xxl: 2em;
-  
-  --ncm-font-weight-normal: 400;
-  --ncm-font-weight-medium: 500;
-  --ncm-font-weight-bold: 700;
-  
-  --ncm-line-height-tight: 1.2;
-  --ncm-line-height-normal: 1.4;
-  --ncm-line-height-relaxed: 1.6;
-  
-  --ncm-letter-spacing-tight: -0.5px;
-  --ncm-letter-spacing-normal: 0;
-  --ncm-letter-spacing-wide: 1px;
-  --ncm-letter-spacing-wider: 2px;
+  --ncm-accent: #f7c948;
+  --ncm-success: #4CAF50;
+  --ncm-danger: #F65261;
 
-  /* ============================================
-     BORDERS & RADII
-     ============================================ */
-  --ncm-border-width-thin: 1px;
-  --ncm-border-width-medium: 2px;
-  --ncm-border-width-thick: 3px;
-  
-  --ncm-border-radius-sm: 2px;
-  --ncm-border-radius-md: 4px;
-  --ncm-border-radius-lg: 8px;
-  --ncm-border-radius-xl: 12px;
-  --ncm-border-radius-full: 9999px;
-  
-  /* ============================================
-     SHADOWS
-     ============================================ */
-  --ncm-shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
-  --ncm-shadow-md: 0 4px 8px rgba(0, 0, 0, 0.4);
-  --ncm-shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.5);
-  --ncm-shadow-glow: 0 0 10px rgba(246, 82, 97, 0.5);
-  --ncm-shadow-glow-cyan: 0 0 10px rgba(25, 243, 247, 0.5);
-  
-  /* ============================================
-     Z-INDEX LAYERS
-     ============================================ */
-  --ncm-z-base: 1;
-  --ncm-z-dropdown: 10;
-  --ncm-z-sticky: 50;
-  --ncm-z-fixed: 100;
-  --ncm-z-modal-backdrop: 500;
-  --ncm-z-modal: 1000;
-  --ncm-z-popover: 1500;
-  --ncm-z-tooltip: 2000;
-  
-  /* ============================================
-     TRANSITIONS
-     ============================================ */
-  --ncm-transition-fast: 0.2s ease;
-  --ncm-transition-normal: 0.3s ease;
-  --ncm-transition-slow: 0.5s ease;
-  
-  /* ============================================
-     ANIMATIONS
-     ============================================ */
-  --ncm-animation-duration-fast: 0.2s;
-  --ncm-animation-duration-normal: 0.5s;
-  --ncm-animation-duration-slow: 1s;
-  
-  /* ============================================
-     COMPONENT-SPECIFIC SIZES
-     ============================================ */
-  --ncm-header-height: 100px;
-  --ncm-sidebar-width: 300px;
-  --ncm-toolbar-height: 50px;
-  
-  --ncm-button-height: 38px;
-  --ncm-button-height-sm: 28px;
-  --ncm-button-height-lg: 48px;
-  
-  --ncm-input-height: 38px;
-  --ncm-input-padding: 8px 12px;
-  --ncm-padding-input: 8px 12px;
-  
-  --ncm-icon-sm: 14px;
-  --ncm-icon-md: 18px;
-  --ncm-icon-lg: 24px;
-  --ncm-icon-xl: 32px;
+  /* ─── Surfaces (darkest → lightest) ─── */
+  --ncm-bg-deep: #0a0a0f;
+  --ncm-bg-base: #12121a;
+  --ncm-bg-surface: #1a1a2e;
+  --ncm-bg-elevated: #252540;
+  --ncm-bg-overlay: rgba(0, 0, 0, 0.85);
 
-  /* ============================================
-     TIME WIDGET
-     ============================================ */
-  /* Time widget specific (optional, uses existing colors) */
-  --ncm-time-widget-bg: var(--ncm-bg-tertiary);
-  --ncm-time-widget-border: var(--ncm-border-primary);
-  --ncm-time-widget-text: var(--ncm-secondary);
-  
-  /* Animation duration if not already defined */
-  --ncm-transition-fast: 0.2s ease;
-  --ncm-transition-normal: 0.3s ease;
-  
-  /* ============================================
-     GLOW EFFECTS (can be disabled)
-     ============================================ */
-  --ncm-enable-glow: 1;
-  --ncm-glow-intensity: 0.5;
-  --ncm-scanline-opacity: 0.05;
-  --ncm-animation-speed: 1;
-  
-  /* ============================================
-     COMPONENT DIMENSIONS
-     ============================================ */
-  --ncm-viewer-width: 900px;
-  --ncm-viewer-height: 700px;
-  --ncm-viewer-sidebar-width: 300px;
-  --ncm-viewer-header-height: 60px;
-  --ncm-viewer-footer-height: 50px;
-  
-  --ncm-composer-width: 700px;
-  --ncm-composer-height: 600px;
-  --ncm-composer-toolbar-height: 50px;
-  --ncm-composer-footer-height: 60px;
-  
-  --ncm-inbox-width: 800px;
-  --ncm-inbox-height: 700px;
-  
-  --ncm-contact-width: 600px;
-  --ncm-contact-height: 500px;
-  
-  --ncm-admin-width: 1000px;
-  --ncm-admin-height: 800px;
-  --ncm-admin-sidebar-width: 200px;
-  
-  --ncm-dialog-width-sm: 400px;
-  --ncm-dialog-width-md: 600px;
-  --ncm-dialog-width-lg: 800px;
-}
+  /* ─── Text ─── */
+  --ncm-text-primary: #e0e0e8;
+  --ncm-text-secondary: #8888a0;
+  --ncm-text-muted: #555570;
+  --ncm-text-inverse: #0a0a0f;
 
-/* ============================================
-   LEGACY/ALIAS VARIABLES
-   For compatibility with existing CSS files
-   ============================================ */
-:root {
-  --ncm-text: var(--ncm-text-primary);
-  --ncm-text-dim: var(--ncm-text-tertiary);
-  --ncm-text-dark: var(--ncm-text-disabled);
-  --ncm-warning: var(--ncm-accent);
-  --ncm-background: var(--ncm-bg-secondary);
-  --ncm-surface: var(--ncm-bg-surface);
-  --ncm-surface-light: var(--ncm-bg-tertiary);
-  --ncm-error: var(--ncm-text-error);
-  --ncm-success: var(--ncm-text-success);
-  --ncm-gm-gold: #FFD700;
-}
+  /* ─── Borders ─── */
+  --ncm-border: #2a2a45;
+  --ncm-border-focus: var(--ncm-secondary);
+  --ncm-border-radius: 3px;
 
-/* ============================================
-   DARK MODE OVERRIDES
-   (Foundry already dark, but just in case)
-   ============================================ */
-@media (prefers-color-scheme: dark) {
-  :root {
-    /* Already dark by default */
-  }
+  /* ─── Glow ─── */
+  --ncm-glow-primary: 0 0 10px rgba(246, 82, 97, 0.4);
+  --ncm-glow-secondary: 0 0 10px rgba(25, 243, 247, 0.4);
+  --ncm-glow-accent: 0 0 10px rgba(247, 201, 72, 0.3);
+
+  /* ─── Typography ─── */
+  --ncm-font-display: 'Rajdhani', 'Segoe UI', sans-serif;
+  --ncm-font-mono: 'Share Tech Mono', 'Courier New', monospace;
+  --ncm-font-ui: 'Orbitron', 'Rajdhani', sans-serif;
+  --ncm-font-body: 'Rajdhani', sans-serif;
+
+  /* ─── Spacing ─── */
+  --ncm-space-xs: 4px;
+  --ncm-space-sm: 8px;
+  --ncm-space-md: 12px;
+  --ncm-space-lg: 16px;
+  --ncm-space-xl: 24px;
+  --ncm-space-2xl: 32px;
+
+  /* ─── Effects ─── */
+  --ncm-glitch-intensity: 0.5;
+  --ncm-transition-fast: 150ms ease;
+  --ncm-transition-normal: 250ms ease;
+  --ncm-transition-slow: 400ms ease;
 }

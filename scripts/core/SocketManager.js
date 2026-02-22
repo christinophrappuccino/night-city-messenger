@@ -1,194 +1,98 @@
 /**
- * Socket Manager
- * File: scripts/core/SocketManager.js
- * Module: cyberpunkred-messenger
- * Description: Handles socket communication for multi-user functionality
+ * SocketManager — Module Socket Communication
+ * @file scripts/core/SocketManager.js
+ * @module cyberpunkred-messenger
+ * @description Singleton wrapper around Foundry's module socket.
+ *              Routes incoming operations to registered handlers.
  */
 
 import { MODULE_ID } from '../utils/constants.js';
-import { EventBus, EVENTS } from './EventBus.js';
+import { log } from '../utils/helpers.js';
 
 export class SocketManager {
-  static instance = null;
-  
-  constructor() {
-    if (SocketManager.instance) {
-      return SocketManager.instance;
-    }
-    
-    this.eventBus = EventBus.getInstance();
-    this.handlers = new Map();
-    this.socketActive = false;
-    
-    SocketManager.instance = this;
-  }
-  
-  /**
-   * Get singleton instance
-   * @returns {SocketManager}
-   */
+  static #instance = null;
+
   static getInstance() {
-    if (!SocketManager.instance) {
-      SocketManager.instance = new SocketManager();
+    if (!SocketManager.#instance) {
+      SocketManager.#instance = new SocketManager();
     }
-    return SocketManager.instance;
+    return SocketManager.#instance;
   }
-  
+
+  constructor() {
+    if (SocketManager.#instance) {
+      throw new Error('SocketManager is a singleton — use SocketManager.getInstance()');
+    }
+    /** @type {Map<string, Function>} */
+    this._handlers = new Map();
+    this._initialized = false;
+  }
+
   /**
-   * Initialize socket listeners
+   * Initialize the socket listener. Called during ready hook.
    */
   initialize() {
-    if (this.socketActive) {
-      console.warn(`${MODULE_ID} | Socket already initialized`);
-      return;
-    }
-    
-    game.socket.on(`module.${MODULE_ID}`, this._handleSocketMessage.bind(this));
-    this.socketActive = true;
-    
-    console.log(`${MODULE_ID} | Socket manager initialized`);
-    this.eventBus.emit(EVENTS.SOCKET_CONNECTED);
+    if (this._initialized) return;
+
+    game.socket.on(`module.${MODULE_ID}`, (data) => {
+      this._onMessage(data);
+    });
+
+    this._initialized = true;
+    log.info('Socket initialized');
   }
-  
+
   /**
-   * Register a handler for a specific operation
-   * @param {string} operation - Operation name
-   * @param {Function} handler - Handler function
+   * Register a handler for a socket operation
+   * @param {string} operation - Operation name (from SOCKET_OPS)
+   * @param {Function} handler - Handler function receiving (data)
    */
-  registerHandler(operation, handler) {
-    if (typeof handler !== 'function') {
-      throw new Error('Handler must be a function');
-    }
-    
-    this.handlers.set(operation, handler);
-    console.log(`${MODULE_ID} | Registered socket handler: ${operation}`);
+  register(operation, handler) {
+    this._handlers.set(operation, handler);
   }
-  
+
   /**
-   * Unregister a handler
+   * Emit a socket message to all other clients
    * @param {string} operation - Operation name
+   * @param {object} data - Payload
    */
-  unregisterHandler(operation) {
-    this.handlers.delete(operation);
-  }
-  
-  /**
-   * Emit a socket message
-   * @param {string} operation - Operation name
-   * @param {Object} data - Data to send
-   * @param {Array<string>} targetUsers - Specific user IDs (optional)
-   */
-  emit(operation, data = {}, targetUsers = null) {
-    const payload = {
+  emit(operation, data = {}) {
+    game.socket.emit(`module.${MODULE_ID}`, {
       operation,
-      senderId: game.user.id,
+      data,
+      sender: game.user.id,
       timestamp: Date.now(),
-      ...data
-    };
-    
-    // If targeting specific users, add that info
-    if (targetUsers) {
-      payload.targetUsers = Array.isArray(targetUsers) ? targetUsers : [targetUsers];
-    }
-    
-    console.log(`${MODULE_ID} | Emitting socket message:`, operation, payload);
-    
-    game.socket.emit(`module.${MODULE_ID}`, payload);
-    
-    // Also emit to local event bus
-    this.eventBus.emit(EVENTS.SOCKET_MESSAGE, { operation, data: payload });
+    });
   }
-  
+
   /**
-   * Emit to specific user
-   * @param {string} userId - Target user ID
-   * @param {string} operation - Operation name
-   * @param {Object} data - Data to send
-   */
-  emitToUser(userId, operation, data = {}) {
-    this.emit(operation, data, [userId]);
-  }
-  
-  /**
-   * Emit to GM
-   * @param {string} operation - Operation name
-   * @param {Object} data - Data to send
-   */
-  emitToGM(operation, data = {}) {
-    const gmUsers = game.users.filter(u => u.isGM).map(u => u.id);
-    this.emit(operation, data, gmUsers);
-  }
-  
-  /**
-   * Handle incoming socket messages
+   * Internal message router
+   * @param {object} message
    * @private
    */
-  async _handleSocketMessage(data) {
-    console.log(`${MODULE_ID} | Received socket message:`, data);
-    
-    // Check if message is targeted and if we're a target
-    if (data.targetUsers && !data.targetUsers.includes(game.user.id)) {
-      console.log(`${MODULE_ID} | Message not for this user, ignoring`);
-      return;
-    }
-    
-    const { operation } = data;
-    
-    // Check for registered handler
-    if (this.handlers.has(operation)) {
+  _onMessage(message) {
+    const { operation, data, sender } = message;
+
+    // Don't process own messages
+    if (sender === game.user.id) return;
+
+    const handler = this._handlers.get(operation);
+    if (handler) {
       try {
-        const handler = this.handlers.get(operation);
-        await handler(data);
+        handler(data, sender);
       } catch (error) {
-        console.error(`${MODULE_ID} | Error in socket handler for ${operation}:`, error);
+        log.error(`Socket handler error for '${operation}':`, error);
       }
     } else {
-      console.warn(`${MODULE_ID} | No handler registered for operation: ${operation}`);
+      log.debug(`No handler for socket operation: ${operation}`);
     }
-    
-    // Emit to event bus for any listeners
-    this.eventBus.emit(`socket:${operation}`, data);
   }
-  
+
   /**
-   * Cleanup
+   * Check if socket is active
+   * @returns {boolean}
    */
-  destroy() {
-    if (this.socketActive) {
-      game.socket.off(`module.${MODULE_ID}`);
-      this.socketActive = false;
-      this.handlers.clear();
-      
-      console.log(`${MODULE_ID} | Socket manager destroyed`);
-      this.eventBus.emit(EVENTS.SOCKET_DISCONNECTED);
-    }
+  get isActive() {
+    return this._initialized;
   }
 }
-
-// Export singleton instance
-export const socketManager = SocketManager.getInstance();
-
-// Socket operation constants
-export const SOCKET_OPERATIONS = {
-  // Message operations
-  MESSAGE_SENT: 'message:sent',
-  MESSAGE_RECEIVED: 'message:received',
-  MESSAGE_STATUS_UPDATE: 'message:status:update',
-  MESSAGE_DELETED: 'message:deleted',
-
-  // Scheduling operations
-  MESSAGE_SCHEDULED: 'message:scheduled',
-  SCHEDULE_CANCELLED: 'schedule:cancelled',
-  
-  // Inbox operations
-  UPDATE_INBOX: 'updateInbox',
-  
-  // System operations
-  DELETED_MESSAGES_STRUCTURE_READY: 'deletedMessagesStructureReady',
-  CREATE_DELETED_MESSAGES_STRUCTURE: 'createDeletedMessagesStructure',
-  DELETION_REQUEST: 'deletionRequest',
-  
-  // Sync operations
-  SYNC_REQUEST: 'sync:request',
-  SYNC_RESPONSE: 'sync:response'
-};

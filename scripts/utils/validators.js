@@ -1,82 +1,41 @@
 /**
- * Email Validators
- * File: scripts/utils/validators.js
- * Module: cyberpunkred-messenger
- * Description: Validation utilities for email addresses
+ * Data Validators
+ * @file scripts/utils/validators.js
+ * @module cyberpunkred-messenger
+ * @description Validation functions for messages, contacts, networks, and shards
  */
 
 /**
- * Validate email format
- * @param {string} email - Email to validate
- * @returns {boolean} True if valid
+ * Validate a message object has required fields
+ * @param {object} msg
+ * @returns {{ valid: boolean, errors: string[] }}
+ */
+export function validateMessage(msg) {
+  const errors = [];
+  if (!msg.from) errors.push('Missing sender (from)');
+  if (!msg.to) errors.push('Missing recipient (to)');
+  if (!msg.toActorId) errors.push('Missing recipient actor ID (toActorId)');
+  if (!msg.subject && !msg.body) errors.push('Message must have subject or body');
+  return { valid: errors.length === 0, errors };
+}
+
+/**
+ * Validate a contact object
+ * @param {object} contact
+ * @returns {{ valid: boolean, errors: string[] }}
+ */
+export function validateContact(contact) {
+  const errors = [];
+  if (!contact.name) errors.push('Contact must have a name');
+  if (!contact.email) errors.push('Contact must have an email');
+  return { valid: errors.length === 0, errors };
+}
+
+/**
+ * Validate an email format (basic)
+ * @param {string} email
+ * @returns {boolean}
  */
 export function isValidEmail(email) {
-  if (!email || typeof email !== 'string') return false;
-  
-  // Basic email regex
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email.trim());
-}
-
-/**
- * Extract email from "Name (email@domain.net)" format
- * @param {string} str - String containing email
- * @returns {string|null} Email or null
- */
-export function extractEmailAddress(str) {
-  if (!str) return null;
-  
-  // Check for parentheses format: "Name (email@domain.net)"
-  const parenMatch = str.match(/\(([^)]+@[^)]+)\)/);
-  if (parenMatch) {
-    return parenMatch[1].trim();
-  }
-  
-  // Check for angle bracket format: "Name <email@domain.net>"
-  const angleMatch = str.match(/<([^>]+@[^>]+)>/);
-  if (angleMatch) {
-    return angleMatch[1].trim();
-  }
-  
-  // If string is just an email
-  if (isValidEmail(str)) {
-    return str.trim();
-  }
-  
-  return null;
-}
-
-/**
- * Format email with name: "Name (email@domain.net)"
- * @param {string} name - Display name
- * @param {string} email - Email address
- * @returns {string} Formatted string
- */
-export function formatEmailWithName(name, email) {
-  if (!email) return name || '';
-  if (!name) return email;
-  return `${name} (${email})`;
-}
-
-/**
- * Parse email string into parts
- * @param {string} str - Email string
- * @returns {Object} { name, email }
- */
-export function parseEmail(str) {
-  if (!str) return { name: '', email: '' };
-  
-  const email = extractEmailAddress(str);
-  
-  if (!email) {
-    return { name: str.trim(), email: '' };
-  }
-  
-  // Extract name from "Name (email)" or "Name <email>"
-  const name = str
-    .replace(/\([^)]+\)/, '')
-    .replace(/<[^>]+>/, '')
-    .trim();
-  
-  return { name: name || email, email };
+  return typeof email === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }

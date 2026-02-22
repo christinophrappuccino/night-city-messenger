@@ -1,0 +1,31 @@
+/* Neon glow effects — toggled by .ncm-neon-glow on <body> */
+
+.ncm-neon-glow .ncm-app h1,
+.ncm-neon-glow .ncm-app h2 {
+  text-shadow: var(--ncm-glow-secondary);
+}
+
+.ncm-neon-glow .ncm-app .ncm-status-bar {
+  text-shadow: var(--ncm-glow-secondary);
+}
+
+.ncm-neon-glow .ncm-app .ncm-message-item.selected {
+  box-shadow: var(--ncm-glow-primary);
+}
+
+.ncm-neon-glow .ncm-app .ncm-button--primary:hover {
+  box-shadow: var(--ncm-glow-primary), 0 0 20px rgba(246, 82, 97, 0.3);
+}
+
+.ncm-neon-glow .ncm-app .ncm-button--secondary:hover {
+  box-shadow: var(--ncm-glow-secondary), 0 0 20px rgba(25, 243, 247, 0.2);
+}
+
+.ncm-neon-glow .ncm-app input:focus,
+.ncm-neon-glow .ncm-app textarea:focus {
+  box-shadow: var(--ncm-glow-secondary), 0 0 15px rgba(25, 243, 247, 0.15);
+}
+
+.ncm-neon-glow .ncm-app .ncm-badge {
+  box-shadow: var(--ncm-glow-primary);
+}

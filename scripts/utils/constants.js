@@ -1,557 +1,225 @@
 /**
- * Constants
- * File: scripts/utils/constants.js
- * Module: cyberpunkred-messenger
- * Description: Module-wide constants and configuration
+ * Module Constants
+ * @file scripts/utils/constants.js
+ * @module cyberpunkred-messenger
+ * @description Single source of truth for all module constants
  */
 
-/**
- * Module ID - must match module.json id
- */
 export const MODULE_ID = 'cyberpunkred-messenger';
+export const MODULE_TITLE = 'Night City Messenger';
+export const MODULE_SHORT = 'NCM';
 
-/**
- * Module display name
- */
-export const MODULE_NAME = 'Night City Messenger';
+// ─── EventBus Event Names ───
 
-/**
- * Template paths for Handlebars templates
- */
-export const TEMPLATES = {
-  // Message Viewer
-  VIEWER: `modules/${MODULE_ID}/templates/message-viewer/viewer.hbs`,
-  MESSAGE_LIST: `modules/${MODULE_ID}/templates/message-viewer/partials/message-list.hbs`,
-  MESSAGE_ITEM: `modules/${MODULE_ID}/templates/message-viewer/partials/message-item.hbs`,
-  MESSAGE_DETAIL: `modules/${MODULE_ID}/templates/message-viewer/partials/message-detail.hbs`,
-  FILTERS_PANEL: `modules/${MODULE_ID}/templates/message-viewer/partials/filters-panel.hbs`,
-  
-  // Message Composer
-  COMPOSER: `modules/${MODULE_ID}/templates/message-composer/composer.hbs`,
-  RECIPIENT_FIELD: `modules/${MODULE_ID}/templates/message-composer/partials/recipient-field.hbs`,
-  EDITOR: `modules/${MODULE_ID}/templates/message-composer/partials/editor.hbs`,
-  SCHEDULING_PANEL: `modules/${MODULE_ID}/templates/message-composer/partials/scheduling-panel.hbs`,
-  
-  // Contact Manager
-  CONTACT_MANAGER: `modules/${MODULE_ID}/templates/contact-manager/contact-manager.hbs`,
-  
-  // Admin Panel
-  ADMIN_PANEL: `modules/${MODULE_ID}/templates/admin-panel/admin-panel.hbs`,
-  STATISTICS: `modules/${MODULE_ID}/templates/admin-panel/partials/statistics.hbs`,
-  USER_MANAGEMENT: `modules/${MODULE_ID}/templates/admin-panel/partials/user-management.hbs`,
-  SYSTEM_TOOLS: `modules/${MODULE_ID}/templates/admin-panel/partials/system-tools.hbs`,
-  
-  // Item Inbox
-  ITEM_INBOX: `modules/${MODULE_ID}/templates/item-inbox/item-inbox.hbs`,
-  ITEM_CONFIG: `modules/${MODULE_ID}/templates/item-inbox/item-config.hbs`,
-  MESSAGE_SHARED: `modules/${MODULE_ID}/templates/item-inbox/message-shared.hbs`,
-  HACK_RESULT: `modules/${MODULE_ID}/templates/item-inbox/hack-result.hbs`,
-  
-  // Shared
-  SHARED_MESSAGE: `modules/${MODULE_ID}/templates/shared/message-shared.hbs`,
-  NOTIFICATION: `modules/${MODULE_ID}/templates/shared/notification.hbs`
-};
+export const EVENTS = Object.freeze({
+  MESSAGE_SENT: 'message:sent',
+  MESSAGE_RECEIVED: 'message:received',
+  MESSAGE_READ: 'message:read',
+  MESSAGE_DELETED: 'message:deleted',
+  MESSAGE_SCHEDULED: 'message:scheduled',
 
-/**
- * Folder names for organization
- */
-export const FOLDERS = {
-  ROOT: 'Night City Messages',
-  INBOXES: 'User Inboxes',
-  CONTACTS: 'Contacts',
-  DELETED: 'Deleted Messages',
-  SPAM: 'Spam',
-  DRAFTS: 'Drafts'
-};
+  NETWORK_CHANGED: 'network:changed',
+  NETWORK_CONNECTED: 'network:connected',
+  NETWORK_DISCONNECTED: 'network:disconnected',
+  NETWORK_AUTH_SUCCESS: 'network:authSuccess',
+  NETWORK_AUTH_FAILURE: 'network:authFailure',
+  NETWORK_LOCKOUT: 'network:lockout',
 
-/**
- * Message status constants
- */
-export const MESSAGE_STATUS = {
-  UNREAD: 'unread',
-  READ: 'read',
-  SAVED: 'saved',
-  SPAM: 'spam',
-  DELETED: 'deleted',
-  DRAFT: 'draft'
-};
+  SHARD_CREATED: 'shard:created',
+  SHARD_OPENED: 'shard:opened',
+  SHARD_HACK_ATTEMPT: 'shard:hackAttempt',
+  SHARD_DECRYPTED: 'shard:decrypted',
+  SHARD_BLACK_ICE: 'shard:blackICE',
+  SHARD_KEY_ITEM_PRESENTED: 'shard:keyItemPresented',
+  SHARD_KEY_ITEM_FAILED: 'shard:keyItemFailed',
+  SHARD_LOGIN_SUCCESS: 'shard:loginSuccess',
+  SHARD_LOGIN_FAILURE: 'shard:loginFailure',
+  SHARD_RELOCKED: 'shard:relocked',
 
-/**
- * Network types
- */
-export const NETWORKS = {
-  CITINET: 'CITINET',
-  CORPNET: 'CORPNET',
-  DARKNET: 'DARKNET',
-  DEAD_ZONE: 'DEAD_ZONE'
-};
+  UI_VIEWER_OPENED: 'ui:viewerOpened',
+  UI_COMPOSER_OPENED: 'ui:composerOpened',
+  COMPOSER_OPEN: 'composer:open',
 
-/**
- * Network reliability percentages
- */
-export const NETWORK_RELIABILITY = {
-  [NETWORKS.CITINET]: 95,
-  [NETWORKS.CORPNET]: 99,
-  [NETWORKS.DARKNET]: 85,
-  [NETWORKS.DEAD_ZONE]: 0
-};
+  THEME_CHANGED: 'theme:changed',
+});
 
-/**
- * Network Types
- */
-export const NETWORK_TYPES = [
-  // Civilian and Public Nets
-  { value: 'PUBLIC', label: 'Public Access' },          // Cafés, schools, libraries
-  { value: 'LOCAL', label: 'Local Subnet' },            // Apartment complexes, community hubs
-  { value: 'PRIVATE', label: 'Private Secure' },        // Personal home, encrypted terminals
-  { value: 'CUSTOM', label: 'Custom' },                 // GM/player-defined type
+// ─── Socket Operations ───
 
-  // Factional & Organizational Nets
-  { value: 'CORPORATE', label: 'Corporate' },           // ArasakaNet, PetroChemGrid, etc.
-  { value: 'GOVERNMENT', label: 'Government' },         // City Hall, NCPD, NUSA servers
-  { value: 'MILITARY', label: 'Military' },             // Militech Defense Grid, orbital comms
-  { value: 'ACADEMIC', label: 'Academic / Research' },  // Night City University, Biotechnica labs
-  { value: 'MEDICAL', label: 'Medical / Trauma' },      // Trauma Team grids, clinics, hospitals
-  { value: 'INFRASTRUCTURE', label: 'Infrastructure / Utility' }, // Power grids, maglev, city control
+export const SOCKET_OPS = Object.freeze({
+  MESSAGE_RELAY: 'message:relay',
+  MESSAGE_DELIVERED: 'message:delivered',
+  MESSAGE_NOTIFY: 'message:notify',
+  MESSAGE_STATUS_UPDATE: 'message:statusUpdate',
+  SCHEDULE_SYNC: 'schedule:sync',
+  INBOX_REFRESH: 'inbox:refresh',
+  NETWORK_STATE_CHANGED: 'network:stateChanged',
+  SHARD_STATE_CHANGED: 'shard:stateChanged',
+});
 
-  // Underground & Subversive Nets
-  { value: 'DARKNET', label: 'Darknet' },               // Hidden mesh, netrunner hangouts
-  { value: 'GANG', label: 'Gang Network' },             // Localized encrypted street nets
-  { value: 'NOMAD', label: 'Nomad Network' },           // Mobile mesh networks, convoy relays
-  { value: 'FIXER', label: 'Fixer / Syndicate' },       // Smuggler comms, encrypted trade lines
-  { value: 'RELIGIOUS', label: 'Religious / Cult Net' } // Digital cults, AI worshippers
-];
+// ─── Network Types ───
 
-/**
- * Network Security Levels
- */
-export const SECURITY_LEVELS = [
-  { value: 'NONE', label: 'None' },
-  { value: 'LOW', label: 'Low' },
-  { value: 'MEDIUM', label: 'Medium' },
-  { value: 'HIGH', label: 'High' },
-  { value: 'EXTREME', label: 'Extreme' }
-];
+export const NETWORK_TYPES = Object.freeze({
+  PUBLIC: 'PUBLIC', CORPORATE: 'CORPORATE', UNDERGROUND: 'UNDERGROUND',
+  GOVERNMENT: 'GOVERNMENT', CUSTOM: 'CUSTOM',
+});
 
-/**
- * Encryption types
- */
-export const ENCRYPTION_TYPES = {
-  ICE: 'ICE',
-  BLACK_ICE: 'BLACK_ICE',
-  RED_ICE: 'RED_ICE',
-  CUSTOM: 'CUSTOM'
-};
+export const SECURITY_LEVELS = Object.freeze({
+  NONE: 'NONE', LOW: 'LOW', MEDIUM: 'MEDIUM', HIGH: 'HIGH', MAXIMUM: 'MAXIMUM',
+});
 
-/**
- * Default encryption DCs by type
- */
-export const ENCRYPTION_DCS = {
-  [ENCRYPTION_TYPES.ICE]: 15,
-  [ENCRYPTION_TYPES.BLACK_ICE]: 20,
-  [ENCRYPTION_TYPES.RED_ICE]: 25,
-  [ENCRYPTION_TYPES.CUSTOM]: 15
-};
+export const NETWORKS = Object.freeze({
+  CITINET: 'CITINET', CORPNET: 'CORPNET', DARKNET: 'DARKNET',
+  GOVNET: 'GOVNET', DATA_POOL: 'DATA_POOL',
+});
 
-/**
- * BLACK ICE damage rolls
- */
-export const BLACK_ICE_DAMAGE = {
-  [ENCRYPTION_TYPES.BLACK_ICE]: '5d6',
-  [ENCRYPTION_TYPES.RED_ICE]: '8d6'
-};
+// ─── Encryption / Priority / Failure ───
 
-/**
- * Malware types
- */
-export const MALWARE_TYPES = {
-  VIRUS: 'virus',
-  WORM: 'worm',
-  TROJAN: 'trojan',
-  SPYWARE: 'spyware',
-  RANSOMWARE: 'ransomware'
-};
+export const ENCRYPTION_TYPES = Object.freeze({ ICE: 'ICE', BLACK_ICE: 'BLACK_ICE', RED_ICE: 'RED_ICE' });
+export const ENCRYPTION_MODES = Object.freeze({ SHARD: 'shard', MESSAGE: 'message' });
+export const MESSAGE_PRIORITY = Object.freeze({ NORMAL: 'normal', URGENT: 'urgent', CRITICAL: 'critical' });
+export const FAILURE_MODES = Object.freeze({ NOTHING: 'nothing', LOCKOUT: 'lockout', PERMANENT: 'permanent', DAMAGE: 'damage', DESTROY: 'destroy' });
 
-/**
- * Failure outcomes for decryption attempts
- */
-export const FAILURE_OUTCOMES = {
-  LOCKED: 'locked',            // Just stays locked
-  BLACK_ICE: 'blackice',       // Takes damage
-  CORRUPTED: 'corrupted',      // Messages deleted
-  TRACED: 'traced',            // NetWatch notified
-  DISABLED: 'disabled'         // Item disabled for X time
-};
+// ─── Skill Map ───
 
-/**
- * Skills available for decryption checks
- */
-export const DECRYPTION_SKILLS = {
-  INTERFACE: 'Interface',
-  ELECTRONICS_SECURITY: 'ElectronicsSecurity',
-  BASIC_TECH: 'BasicTech',
-  EDUCATION: 'Education'
-};
+export const SKILL_MAP = Object.freeze({
+  'Interface':                  { stat: 'tech', category: 'TECH' },
+  'Electronics/Security Tech':  { stat: 'tech', category: 'TECH' },
+  'Basic Tech':                 { stat: 'tech', category: 'TECH' },
+  'Cybertech':                  { stat: 'tech', category: 'TECH' },
+  'Weaponstech':                { stat: 'tech', category: 'TECH' },
+  'Forgery':                    { stat: 'tech', category: 'TECH' },
+  'Demolitions':                { stat: 'tech', category: 'TECH' },
+  'Pick Lock':                  { stat: 'tech', category: 'TECH' },
+  'Cryptography':               { stat: 'int', category: 'INT' },
+  'Library Search':             { stat: 'int', category: 'INT' },
+  'Deduction':                  { stat: 'int', category: 'INT' },
+  'Education':                  { stat: 'int', category: 'INT' },
+  'Science':                    { stat: 'int', category: 'INT' },
+  'Perception':                 { stat: 'int', category: 'INT' },
+  'Bureaucracy':                { stat: 'int', category: 'INT' },
+  'Business':                   { stat: 'int', category: 'INT' },
+  'Accounting':                 { stat: 'int', category: 'INT' },
+  'Persuasion':                 { stat: 'cool', category: 'COOL' },
+  'Bribery':                    { stat: 'cool', category: 'COOL' },
+  'Interrogation':              { stat: 'cool', category: 'COOL' },
+  'Streetwise':                 { stat: 'cool', category: 'COOL' },
+  'Trading':                    { stat: 'cool', category: 'COOL' },
+  'Wardrobe & Style':           { stat: 'cool', category: 'COOL' },
+  'Concentration':              { stat: 'will', category: 'WILL' },
+  'Endurance':                  { stat: 'will', category: 'WILL' },
+  'Resist Torture/Drugs':       { stat: 'will', category: 'WILL' },
+  'Stealth':                    { stat: 'dex', category: 'DEX' },
+  'Contortionist':              { stat: 'dex', category: 'DEX' },
+  'Pick Pocket':                { stat: 'dex', category: 'DEX' },
+  'Conversation':               { stat: 'emp', category: 'EMP' },
+  'Human Perception':           { stat: 'emp', category: 'EMP' },
+});
 
-/**
- * Themes
- */
-export const THEMES = {
-  CLASSIC: 'classic',
-  NEON: 'neon',
-  CORPORATE: 'corporate',
-  MINIMAL: 'minimal',
-  HIGH_CONTRAST: 'high-contrast',
-  RETRO: 'retro'
-};
+// ─── Skill Presets ───
 
-/**
- * Permission levels
- */
-export const PERMISSIONS = {
-  NONE: 0,
-  LIMITED: 1,
-  OBSERVER: 2,
-  OWNER: 3
-};
+export const SKILL_PRESETS = Object.freeze({
+  HACKING:             { skills: ['Interface', 'Electronics/Security Tech'], description: 'Direct ICE breach' },
+  CRYPTANALYSIS:       { skills: ['Cryptography', 'Science', 'Education'], description: 'Code breaking' },
+  RESEARCH:            { skills: ['Library Search', 'Deduction', 'Perception'], description: 'Info gathering' },
+  SOCIAL_ENGINEERING:  { skills: ['Persuasion', 'Bribery', 'Interrogation', 'Streetwise'], description: 'Social manipulation' },
+  CORPORATE:           { skills: ['Bureaucracy', 'Business', 'Accounting', 'Forgery'], description: 'Corp procedures' },
+  PHYSICAL_BYPASS:     { skills: ['Pick Lock', 'Electronics/Security Tech', 'Demolitions'], description: 'Physical bypass' },
+  FULL_SPECTRUM:       { skills: ['Interface', 'Electronics/Security Tech', 'Cryptography', 'Persuasion', 'Library Search', 'Forgery', 'Pick Lock'], description: 'Any approach' },
+});
 
-/**
- * Sort options for message lists
- */
-export const SORT_OPTIONS = {
-  DATE_DESC: 'date-desc',
-  DATE_ASC: 'date-asc',
-  SENDER_AZ: 'sender-az',
-  SENDER_ZA: 'sender-za',
-  SUBJECT_AZ: 'subject-az',
-  SUBJECT_ZA: 'subject-za'
-};
+// ─── Theme Presets ───
 
-/**
- * Filter options
- */
-export const FILTERS = {
-  ALL: 'all',
-  UNREAD: 'unread',
-  READ: 'read',
-  SAVED: 'saved',
-  ENCRYPTED: 'encrypted',
-  MALWARE: 'malware',
-  SPAM: 'spam'
-};
+export const THEME_PRESETS = Object.freeze({
+  classic:    { label: 'Classic',     primary: '#F65261', secondary: '#19f3f7', accent: '#f7c948', bgDeep: '#0a0a0f', bgBase: '#12121a', bgSurface: '#1a1a2e', bgElevated: '#252540', textPrimary: '#e0e0e8', textSecondary: '#8888a0' },
+  netrunner:  { label: 'Netrunner',   primary: '#00ff41', secondary: '#19f3f7', accent: '#88ff88', bgDeep: '#0a0f0a', bgBase: '#0d1a0d', bgSurface: '#142814', bgElevated: '#1e3d1e', textPrimary: '#c0ffc0', textSecondary: '#608860' },
+  corporate:  { label: 'Corporate',   primary: '#4488ff', secondary: '#cccccc', accent: '#ffaa00', bgDeep: '#0a0a14', bgBase: '#101020', bgSurface: '#181830', bgElevated: '#222245', textPrimary: '#d0d0e8', textSecondary: '#7878a0' },
+  arasaka:    { label: 'Arasaka',     primary: '#ff2020', secondary: '#ffffff', accent: '#ff6666', bgDeep: '#0a0000', bgBase: '#1a0808', bgSurface: '#2a1010', bgElevated: '#3a1818', textPrimary: '#f0d0d0', textSecondary: '#a06060' },
+  street:     { label: 'Street',      primary: '#ff6600', secondary: '#ffcc00', accent: '#ff9933', bgDeep: '#0f0a05', bgBase: '#1a1408', bgSurface: '#2a2010', bgElevated: '#3a2c18', textPrimary: '#e8d8c0', textSecondary: '#a08860' },
+  chrome:     { label: 'Chrome',      primary: '#c0c0c0', secondary: '#e0e0e0', accent: '#ffffff', bgDeep: '#080808', bgBase: '#141414', bgSurface: '#1e1e1e', bgElevated: '#2a2a2a', textPrimary: '#e0e0e0', textSecondary: '#888888' },
+  neon:       { label: 'Neon',        primary: '#ff00ff', secondary: '#00ffff', accent: '#ff66ff', bgDeep: '#0a0014', bgBase: '#140028', bgSurface: '#1e0040', bgElevated: '#2a0058', textPrimary: '#e0c0f0', textSecondary: '#8860a8' },
+  traumaTeam: { label: 'Trauma Team', primary: '#ff3366', secondary: '#ffffff', accent: '#ff6699', bgDeep: '#0a0008', bgBase: '#1a0010', bgSurface: '#2a0820', bgElevated: '#3a1030', textPrimary: '#f0d0d8', textSecondary: '#a06878' },
+});
 
-/**
- * Pagination settings
- */
-export const PAGINATION = {
-  DEFAULT_PAGE_SIZE: 20,
-  PAGE_SIZE_OPTIONS: [10, 20, 50, 100]
-};
+// ─── Sound Paths ───
 
-/**
- * Character limits
- */
-export const LIMITS = {
-  SUBJECT_MAX_LENGTH: 200,
-  MESSAGE_MAX_LENGTH: 10000,
-  CONTACT_NAME_MAX_LENGTH: 100,
-  EMAIL_MAX_LENGTH: 255
-};
+export const SOUND_PATHS = Object.freeze({
+  'open': 'ui/open.ogg', 'close': 'ui/close.ogg', 'click': 'ui/click.ogg',
+  'hover': 'ui/hover.ogg', 'keystroke': 'ui/keystroke.ogg',
+  'receive': 'messages/receive.ogg', 'receive-urgent': 'messages/receive-urgent.ogg',
+  'send': 'messages/send.ogg', 'queue-flush': 'messages/queue-flush.ogg',
+  'connect': 'network/connect.ogg', 'disconnect': 'network/disconnect.ogg',
+  'switch': 'network/switch.ogg', 'dead-zone': 'network/dead-zone.ogg',
+  'hack-start': 'security/hack-start.ogg', 'hack-progress': 'security/hack-progress.ogg',
+  'hack-success': 'security/hack-success.ogg', 'hack-fail': 'security/hack-fail.ogg',
+  'black-ice': 'security/black-ice.ogg', 'lockout': 'security/lockout.ogg',
+  'login-success': 'security/login-success.ogg', 'login-fail': 'security/login-fail.ogg',
+  'key-accepted': 'security/key-accepted.ogg', 'key-rejected': 'security/key-rejected.ogg',
+  'shard-insert': 'shard/insert.ogg', 'shard-decrypt': 'shard/decrypt.ogg',
+  'shard-relock': 'shard/relock.ogg', 'terminal-hum': 'ambient/terminal-hum.ogg',
+});
 
-/**
- * Time constants (in milliseconds)
- */
-export const TIME = {
-  SECOND: 1000,
-  MINUTE: 60 * 1000,
-  HOUR: 60 * 60 * 1000,
-  DAY: 24 * 60 * 60 * 1000,
-  WEEK: 7 * 24 * 60 * 60 * 1000
-};
+export const ESSENTIAL_EFFECTS = Object.freeze(['ncm-fade-in', 'ncm-fade-out']);
 
-/**
- * Scheduling options
- */
-export const SCHEDULING = {
-  CHECK_INTERVAL: 1 * TIME.MINUTE,  // Check every minute for scheduled messages
-  MAX_FUTURE_DAYS: 365               // Can't schedule more than 1 year ahead
-};
+// ─── Template Paths ───
 
-/**
- * Animation durations (in milliseconds)
- */
-export const ANIMATIONS = {
-  FAST: 150,
-  NORMAL: 300,
-  SLOW: 500
-};
+const T = `modules/${MODULE_ID}/templates`;
+export const TEMPLATES = Object.freeze({
+  MESSAGE_VIEWER: `${T}/message-viewer/message-viewer.hbs`,
+  MESSAGE_LIST_ITEM: `${T}/message-viewer/message-list-item.hbs`,
+  MESSAGE_DETAIL: `${T}/message-viewer/message-detail.hbs`,
+  MESSAGE_COMPOSER: `${T}/message-composer/message-composer.hbs`,
+  CONTACT_MANAGER: `${T}/contact-manager/contact-manager.hbs`,
+  GM_CONTACT_MANAGER: `${T}/gm-contact-manager/gm-contact-manager.hbs`,
+  ITEM_INBOX: `${T}/item-inbox/item-inbox.hbs`,
+  SECURITY_OVERLAY_NETWORK: `${T}/item-inbox/security-overlay-network.hbs`,
+  SECURITY_OVERLAY_KEYITEM: `${T}/item-inbox/security-overlay-keyitem.hbs`,
+  SECURITY_OVERLAY_LOGIN: `${T}/item-inbox/security-overlay-login.hbs`,
+  SECURITY_OVERLAY_ENCRYPTION: `${T}/item-inbox/security-overlay-encryption.hbs`,
+  HACKING_SEQUENCE: `${T}/item-inbox/hacking-sequence.hbs`,
+  NETWORK_MANAGEMENT: `${T}/network-management/network-management.hbs`,
+  ADMIN_PANEL: `${T}/admin-panel/admin-panel.hbs`,
+  THEME_CUSTOMIZER: `${T}/theme-customizer/theme-customizer.hbs`,
+  NETWORK_AUTH_DIALOG: `${T}/dialogs/network-auth-dialog.hbs`,
+  PLAYER_EMAIL_SETUP: `${T}/dialogs/player-email-setup.hbs`,
+  CHAT_MESSAGE_CARD: `${T}/chat/message-card.hbs`,
+  CHAT_HACK_RESULT: `${T}/chat/hack-result.hbs`,
+  CHAT_NETWORK_EVENT: `${T}/chat/network-event.hbs`,
+});
 
-/**
- * Contact categories
- */
-export const CONTACT_CATEGORIES = {
-  ALL: 'all',
-  FRIENDS: 'friends',
-  FIXERS: 'fixers',
-  CORPO: 'corpo',
-  CREW: 'crew',
-  MEDIA: 'media',
-  NETRUNNER: 'netrunner',
-  SOLO: 'solo',
-  TECH: 'tech',
-  ROCKERBOY: 'rockerboy',
-  NOMAD: 'nomad',
-  MEDTECH: 'medtech',
-  LAWMAN: 'lawman',
-  EXEC: 'exec',
-  FIXER: 'fixer',
-  CUSTOM: 'custom'
-};
+// ─── Default Configs ───
 
-/**
- * Data shard types (item types that can be inboxes)
- */
-export const DATA_SHARD_TYPES = [
-  'cyberdeck',
-  'cyberware',
-  'gear',
-  'weapon',
-  'armor',
-  'vehicle',
-  'drug'
-];
-
-/**
- * Export formats
- */
-export const EXPORT_FORMATS = {
-  JOURNAL: 'journal',
-  ITEM: 'item',
-  JSON: 'json',
-  TEXT: 'text'
-};
-
-/**
- * Notification types
- */
-export const NOTIFICATION_TYPES = {
-  INFO: 'info',
-  SUCCESS: 'success',
-  WARNING: 'warning',
-  ERROR: 'error'
-};
-
-/**
- * Notification durations (in milliseconds)
- */
-export const NOTIFICATION_DURATION = {
-  SHORT: 3000,
-  NORMAL: 5000,
-  LONG: 8000,
-  PERMANENT: 0
-};
-
-/**
- * Comprehensive skills for Cyberpunk RED
- * Organized by category for UI purposes
- * IMPORTANT: These use the actual skill names as they appear on character sheets
- */
-export const CYBERPUNK_SKILLS = {
-  // Tech Skills - Most relevant for hacking
-  TECH: {
-    Interface: { 
-      name: 'Interface', 
-      displayName: 'Interface',
-      stat: 'INT',
-      description: 'Primary netrunning skill'
-    },
-    ElectronicsSecurity: { 
-      name: 'Electronics/Security Tech', 
-      displayName: 'Electronics/Security Tech',
-      stat: 'TECH',
-      description: 'Hardware hacking and security systems'
-    },
-    BasicTech: { 
-      name: 'Basic Tech', 
-      displayName: 'Basic Tech',
-      stat: 'TECH',
-      description: 'General technical knowledge'
-    },
-    Cybertech: { 
-      name: 'Cybertech', 
-      displayName: 'Cybertech',
-      stat: 'TECH',
-      description: 'Cyberware installation and repair'
-    },
-    FirstAid: { 
-      name: 'First Aid', 
-      displayName: 'First Aid',
-      stat: 'TECH',
-      description: 'Medical treatment'
-    },
-    Forgery: { 
-      name: 'Forgery', 
-      displayName: 'Forgery',
-      stat: 'TECH',
-      description: 'Creating false documents'
-    },
-    PickLock: { 
-      name: 'Pick Lock', 
-      displayName: 'Pick Lock',
-      stat: 'TECH',
-      description: 'Physical lock bypassing'
-    },
-    Weaponstech: { 
-      name: 'Weaponstech', 
-      displayName: 'Weaponstech',
-      stat: 'TECH',
-      description: 'Weapon maintenance and repair'
-    }
+export const DEFAULTS = Object.freeze({
+  PLAYER_THEME: {
+    preset: 'classic',
+    colors: { primary: null, secondary: null, accent: null, bgDeep: null, bgBase: null, bgSurface: null, bgElevated: null, textPrimary: null, textSecondary: null },
+    scanlines: true, glitchIntensity: 0.5, animationLevel: 'full', neonGlow: true,
+    messageDensity: 'normal', sidebarWidth: 300, defaultSort: 'newest', showAvatars: true, wallpaper: null,
+    soundEnabled: true, soundVolume: 0.5, ambientEnabled: false,
   },
-  
-  // Intelligence Skills - Alternative approaches
-  INTELLIGENCE: {
-    Cryptography: { 
-      name: 'Cryptography', 
-      displayName: 'Cryptography',
-      stat: 'INT',
-      description: 'Code breaking and encryption'
-    },
-    Deduction: { 
-      name: 'Deduction', 
-      displayName: 'Deduction',
-      stat: 'INT',
-      description: 'Logical reasoning and pattern recognition'
-    },
-    Education: { 
-      name: 'Education', 
-      displayName: 'Education',
-      stat: 'INT',
-      description: 'General knowledge'
-    },
-    LibrarySearch: { 
-      name: 'Library Search', 
-      displayName: 'Library Search',
-      stat: 'INT',
-      description: 'Research and information gathering'
-    },
-    LocalExpert: { 
-      name: 'Local Expert', 
-      displayName: 'Local Expert',
-      stat: 'INT',
-      description: 'Area-specific knowledge'
-    },
-    Science: { 
-      name: 'Science', 
-      displayName: 'Science',
-      stat: 'INT',
-      description: 'Scientific knowledge'
-    },
-    Tactics: { 
-      name: 'Tactics', 
-      displayName: 'Tactics',
-      stat: 'INT',
-      description: 'Strategic thinking'
-    },
-    Perception: { 
-      name: 'Perception', 
-      displayName: 'Perception',
-      stat: 'INT',
-      description: 'Awareness and observation'
-    }
-  }
-};
-
-/**
- * Preset skill combinations for different tasks
- * Uses actual Cyberpunk RED skill names as they appear on character sheets
- */
-export const SKILL_PRESETS = {
-  // Hacking data shards
-  HACKING: {
-    primary: ['Interface', 'Electronics/Security Tech'],
-    secondary: ['Basic Tech', 'Cryptography'],
-    description: 'Breach encrypted systems'
+  SHARD_CONFIG: {
+    encrypted: false, encryptionType: 'ICE', encryptionDC: 15, encryptionMode: 'shard',
+    allowedSkills: ['Interface'], skillDCs: {}, failureMode: 'lockout',
+    maxHackAttempts: 3, lockoutDuration: 3600000,
+    requiresLogin: false, loginUsername: '', loginPassword: '', loginDisplayName: '', maxLoginAttempts: 3,
+    requiresKeyItem: false, keyItemName: null, keyItemId: null, keyItemTag: null,
+    keyItemDisplayName: '', keyItemIcon: 'fa-id-card', keyItemBypassLogin: true,
+    keyItemBypassEncryption: false, keyItemConsumeOnUse: false,
+    requiresNetwork: false, requiredNetwork: null, theme: 'classic', singleMessage: false,
   },
-  
-  // Authentication bypass
-  AUTHENTICATION: {
-    primary: ['Interface', 'Electronics/Security Tech'],
-    secondary: ['Library Search', 'Deduction', 'Education'],
-    description: 'Crack passwords and credentials'
-  },
-  
-  // Data recovery
-  RECOVERY: {
-    primary: ['Basic Tech', 'Cybertech'],
-    secondary: ['Interface', 'Electronics/Security Tech'],
-    description: 'Recover corrupted data'
-  },
-  
-  // Cryptanalysis
-  CRYPTANALYSIS: {
-    primary: ['Cryptography', 'Interface'],
-    secondary: ['Education', 'Science'],
-    description: 'Break encryption algorithms'
-  },
-  
-  // Social engineering (for password guessing)
-  SOCIAL_ENGINEERING: {
-    primary: ['Deduction', 'Local Expert'],
-    secondary: ['Education', 'Library Search', 'Human Perception'],
-    description: 'Guess passwords through knowledge'
-  }
-};
+  SHARD_STATE: { decrypted: false, sessions: {} },
+  ACTOR_SESSION: { loggedIn: false, keyItemUsed: false, hackAttempts: 0, lockoutUntil: null, loginAttempts: 0 },
+  SCENE_NETWORK: { networkAvailability: {}, defaultNetwork: 'CITINET', deadZone: false },
+  CORE_NETWORKS: [
+    { id: 'CITINET', name: 'CitiNet', type: 'PUBLIC', isCore: true, availability: { global: true, scenes: [] }, signalStrength: 75, reliability: 90, security: { level: 'LOW', requiresAuth: false }, effects: { messageDelay: 0, traced: false, anonymity: false, canRoute: true }, theme: { color: '#19f3f7', icon: 'fa-wifi', glitchIntensity: 0.1 }, description: 'Night City public network' },
+    { id: 'CORPNET', name: 'CorpNet', type: 'CORPORATE', isCore: true, availability: { global: false, scenes: [] }, signalStrength: 95, reliability: 99, security: { level: 'HIGH', requiresAuth: true }, effects: { messageDelay: 0, traced: true, anonymity: false, canRoute: true }, theme: { color: '#4488ff', icon: 'fa-building', glitchIntensity: 0 }, description: 'Corporate communications' },
+    { id: 'DARKNET', name: 'DarkNet', type: 'UNDERGROUND', isCore: true, availability: { global: false, scenes: [] }, signalStrength: 50, reliability: 70, security: { level: 'NONE', requiresAuth: false }, effects: { messageDelay: 500, traced: false, anonymity: true, canRoute: true }, theme: { color: '#00ff41', icon: 'fa-mask', glitchIntensity: 0.4 }, description: 'Underground network' },
+    { id: 'GOVNET', name: 'GovNet', type: 'GOVERNMENT', isCore: true, availability: { global: false, scenes: [] }, signalStrength: 100, reliability: 99, security: { level: 'MAXIMUM', requiresAuth: true }, effects: { messageDelay: 0, traced: true, anonymity: false, canRoute: false }, theme: { color: '#ff6600', icon: 'fa-shield-halved', glitchIntensity: 0 }, description: 'Government secure comms' },
+    { id: 'DATA_POOL', name: 'Data Pool', type: 'PUBLIC', isCore: true, availability: { global: true, scenes: [] }, signalStrength: 60, reliability: 80, security: { level: 'NONE', requiresAuth: false }, effects: { messageDelay: 200, traced: false, anonymity: false, canRoute: true }, theme: { color: '#f7c948', icon: 'fa-database', glitchIntensity: 0.2 }, description: 'Public data sharing' },
+  ],
+});
 
-/**
- * Difficulty Classes for skill checks
- */
-export const DIFFICULTY = {
-  EASY: 9,
-  AVERAGE: 13,
-  DIFFICULT: 15,
-  VERY_DIFFICULT: 17,
-  NEARLY_IMPOSSIBLE: 21,
-  IMPOSSIBLE: 29
-};
-
-/**
- * Default settings for data shards
- */
-export const DEFAULTS = {
-  ENCRYPTION_DC: 15,
-  ENCRYPTION_TYPE: 'ICE',
-  FAILURE_MODE: 'lockout',
-  THEME: 'classic',
-  ALLOWED_SKILLS: ['Interface', 'Electronics/Security Tech'], // Use actual skill names from CPR
-  MAX_HACK_ATTEMPTS: 3,
-  LOCKOUT_DURATION: 3600000 // 1 hour in milliseconds
-};
-
-/**
- * API version
- */
-export const API_VERSION = '2.0.0';
-
-/**
- * Debug mode (set via module settings)
- */
-export let DEBUG_MODE = false;
-
-/**
- * Set debug mode
- * @param {boolean} enabled - Whether debug mode is enabled
- */
-export function setDebugMode(enabled) {
-  DEBUG_MODE = enabled;
-}
-
-/**
- * Log debug message (only if debug mode is enabled)
- * @param {...any} args - Arguments to log
- */
-export function debugLog(...args) {
-  if (DEBUG_MODE) {
-    console.log(`${MODULE_ID} | [DEBUG]`, ...args);
-  }
-}
+export const COLOR_VAR_MAP = Object.freeze({
+  primary: '--ncm-primary', secondary: '--ncm-secondary', accent: '--ncm-accent',
+  bgDeep: '--ncm-bg-deep', bgBase: '--ncm-bg-base', bgSurface: '--ncm-bg-surface',
+  bgElevated: '--ncm-bg-elevated', textPrimary: '--ncm-text-primary', textSecondary: '--ncm-text-secondary',
+});

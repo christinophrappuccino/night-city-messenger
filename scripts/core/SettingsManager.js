@@ -1,346 +1,124 @@
 /**
- * Settings Manager
- * File: scripts/core/SettingsManager.js
- * Module: cyberpunkred-messenger
- * Description: Centralized settings management with reactive updates
+ * SettingsManager — FoundryVTT Settings Registration & Access
+ * @file scripts/core/SettingsManager.js
+ * @module cyberpunkred-messenger
+ * @description Singleton that registers all module settings and provides
+ *              typed getter/setter access. Wraps game.settings.
  */
 
-import { MODULE_ID } from '../utils/constants.js';
-import { EventBus, EVENTS } from './EventBus.js';
+import { MODULE_ID, DEFAULTS } from '../utils/constants.js';
+import { log } from '../utils/helpers.js';
 
 export class SettingsManager {
-  static instance = null;
-  
-  constructor() {
-    if (SettingsManager.instance) {
-      return SettingsManager.instance;
-    }
-    
-    this.eventBus = EventBus.getInstance();
-    this.cache = new Map();
-    this.registered = false;
-    
-    SettingsManager.instance = this;
-  }
-  
-  /**
-   * Get singleton instance
-   * @returns {SettingsManager}
-   */
+  static #instance = null;
+
   static getInstance() {
-    if (!SettingsManager.instance) {
-      SettingsManager.instance = new SettingsManager();
+    if (!SettingsManager.#instance) {
+      SettingsManager.#instance = new SettingsManager();
     }
-    return SettingsManager.instance;
+    return SettingsManager.#instance;
   }
-  
-  /**
-   * Register all module settings
-   */
-  register() {
-    if (this.registered) {
-      console.warn(`${MODULE_ID} | Settings already registered`);
-      return;
+
+  constructor() {
+    if (SettingsManager.#instance) {
+      throw new Error('SettingsManager is a singleton — use SettingsManager.getInstance()');
     }
-    
-    // Core settings
-    game.settings.register(MODULE_ID, 'enableSounds', {
-      name: 'Enable Sound Effects',
-      hint: 'Play cyberpunk-themed sounds for interface interactions',
-      scope: 'client',
-      config: true,
-      type: Boolean,
-      default: true,
-      onChange: value => this._onSettingChanged('enableSounds', value)
-    });
-    
-    game.settings.register(MODULE_ID, 'enableNotifications', {
-      name: 'Enable Notifications',
-      hint: 'Show desktop-style notifications for new messages',
-      scope: 'client',
-      config: true,
-      type: Boolean,
-      default: true,
-      onChange: value => this._onSettingChanged('enableNotifications', value)
-    });
-    
-    game.settings.register(MODULE_ID, 'messagesPerPage', {
-      name: 'Messages Per Page',
-      hint: 'Number of messages to display per page',
-      scope: 'client',
-      config: true,
-      type: Number,
-      default: 20,
-      range: { min: 5, max: 100, step: 5 },
-      onChange: value => this._onSettingChanged('messagesPerPage', value)
-    });
+    this._registered = false;
+  }
 
-    game.settings.register(MODULE_ID, 'gmMasterContacts', {
-    name: 'GM Master Contact List',
-    hint: 'Private list of all email identities the GM can send/receive as',
-    scope: 'world',
-    config: false,
-    type: Array,
-    default: []
-    });
-    
-    // Theme settings
-    game.settings.register(MODULE_ID, 'themeColors', {
-      name: 'Theme Colors',
-      hint: 'Custom color scheme for the messenger interface',
-      scope: 'client',
-      config: false, // Hidden, managed through UI
-      type: Object,
-      default: {
-        primary: '#F65261',
-        secondary: '#19f3f7',
-        background: '#330000',
-        darkBackground: '#1a1a1a'
-      },
-      onChange: value => this._onSettingChanged('themeColors', value)
-    });
+  /**
+   * Register all module settings. Called once during init hook.
+   */
+  registerAll() {
+    if (this._registered) return;
+    log.info('Registering settings...');
 
-    // UI Settings
-    game.settings.register(MODULE_ID, 'userTheme', {
-      name: 'Theme',
-      hint: 'Choose the visual theme for the messenger interface',
-      scope: 'client',
-      config: true,
-      type: String,
-      default: 'classic',
-      choices: {
-        'classic': 'Classic (Red/Black)',
-        'neon': 'Neon (Cyan/Purple)',
-        'corporate': 'Corporate (Blue/Gray)',
-        'military': 'Military (Green/Black)',
-        'custom': 'Custom Colors'
-      },
-      onChange: value => this._onSettingChanged('userTheme', value)
-    });
-    
-    // GM settings
-    game.settings.register(MODULE_ID, 'allowPlayerCompose', {
-      name: 'Allow Player Compose',
-      hint: 'Allow players to send messages to NPCs and other players',
-      scope: 'world',
-      config: true,
-      type: Boolean,
-      default: true,
-      onChange: value => this._onSettingChanged('allowPlayerCompose', value)
-    });
+    // ─── World Settings (GM only) ───
 
-    // Network settings
     game.settings.register(MODULE_ID, 'customNetworks', {
-      name: 'Custom Networks',
-      hint: 'Additional networks beyond CITINET, CORPNET, DARKNET, and DEAD_ZONE',
+      name: 'NCM.Settings.CustomNetworks.Name',
+      hint: 'NCM.Settings.CustomNetworks.Hint',
       scope: 'world',
       config: false,
       type: Array,
       default: [],
-      onChange: value => this._onSettingChanged('customNetworks', value)
     });
-    
-    game.settings.register(MODULE_ID, 'spamFilterEnabled', {
-      name: 'Enable Spam Filter',
-      hint: 'Automatically detect and mark spam messages',
-      scope: 'world',
-      config: true,
-      type: Boolean,
-      default: true,
-      onChange: value => this._onSettingChanged('spamFilterEnabled', value)
-    });
-    
-    // Data storage
+
     game.settings.register(MODULE_ID, 'scheduledMessages', {
-      name: 'Scheduled Messages',
-      hint: 'Storage for scheduled message data',
+      name: 'NCM.Settings.ScheduledMessages.Name',
+      hint: 'NCM.Settings.ScheduledMessages.Hint',
       scope: 'world',
       config: false,
-      type: Object,
-      default: {},
-      onChange: value => this._onSettingChanged('scheduledMessages', value)
-    });
-    
-    game.settings.register(MODULE_ID, 'contacts', {
-      name: 'Saved Contacts',
-      hint: 'Storage for contact data',
-      scope: 'client',
-      config: false,
-      type: Object,
-      default: {},
-      onChange: value => this._onSettingChanged('contacts', value)
+      type: Array,
+      default: [],
     });
 
-    // Add these settings to SettingsManager.register() in scripts/core/SettingsManager.js
-
-    // ========================================
-    // Time System Settings
-    // ========================================
-
-    game.settings.register(MODULE_ID, 'timeSource', {
-      name: 'Time Source',
-      hint: 'Choose where to get the current time from for messages',
+    game.settings.register(MODULE_ID, 'masterContacts', {
+      name: 'NCM.Settings.MasterContacts.Name',
+      hint: 'NCM.Settings.MasterContacts.Hint',
       scope: 'world',
-      config: true,
-      type: String,
-      choices: {
-        'realworld': 'Real World Time',
-        'simplecalendar': 'Simple Calendar (if installed)',
-        'manual': 'Always Manual Entry (GM only)'
-      },
-      default: 'realworld',
-      onChange: value => this._onSettingChanged('timeSource', value)
+      config: false,
+      type: Array,
+      default: [],
     });
 
-    game.settings.register(MODULE_ID, 'defaultSendBehavior', {
-      name: 'Default Send Behavior',
-      hint: 'What happens when you click the Send button',
-      scope: 'client',
-      config: true,
-      type: String,
-      choices: {
-        'immediate': 'Send Immediately (current time)',
-        'prompt': 'Always Prompt for Time',
-        'schedule': 'Default to Schedule Mode'
-      },
-      default: 'immediate',
-      onChange: value => this._onSettingChanged('defaultSendBehavior', value)
-    });
-
-    game.settings.register(MODULE_ID, 'timeDisplayFormat', {
-      name: 'Time Display Format',
-      hint: 'How to display timestamps in message lists',
-      scope: 'client',
-      config: true,
-      type: String,
-      choices: {
-        '12h': '12-hour (5:47 PM)',
-        '24h': '24-hour (17:47)',
-        'relative': 'Relative (5 minutes ago)',
-        'full': 'Full Date/Time'
-      },
-      default: '12h',
-      onChange: value => this._onSettingChanged('timeDisplayFormat', value)
-    });
-
-    game.settings.register(MODULE_ID, 'showTimeInComposer', {
-      name: 'Show Clock in Composer',
-      hint: 'Display current time at top of message composer',
-      scope: 'client',
-      config: true,
-      type: Boolean,
-      default: true,
-      onChange: value => this._onSettingChanged('showTimeInComposer', value)
-    });
-
-    game.settings.register(MODULE_ID, 'gmTimeOverride', {
-      name: 'GM Time Control',
-      hint: 'Allow GMs to send messages at any custom time (including past dates)',
+    game.settings.register(MODULE_ID, 'debugMode', {
+      name: 'NCM.Settings.DebugMode.Name',
+      hint: 'NCM.Settings.DebugMode.Hint',
       scope: 'world',
       config: true,
       type: Boolean,
-      default: true,
-      onChange: value => this._onSettingChanged('gmTimeOverride', value)
+      default: false,
     });
 
-    game.settings.register(MODULE_ID, 'scheduleCheckInterval', {
-      name: 'Schedule Check Interval',
-      hint: 'How often to check for scheduled messages (in seconds)',
-      scope: 'world',
-      config: true,
-      type: Number,
-      default: 60,
-      range: {
-        min: 10,
-        max: 300,
-        step: 10
-      },
-      onChange: value => this._onSettingChanged('scheduleCheckInterval', value)
+    // ─── Client Settings (per-player) ───
+
+    game.settings.register(MODULE_ID, 'playerTheme', {
+      name: 'NCM.Settings.PlayerTheme.Name',
+      hint: 'NCM.Settings.PlayerTheme.Hint',
+      scope: 'client',
+      config: false,
+      type: Object,
+      default: foundry.utils.deepClone(DEFAULTS.PLAYER_THEME),
     });
-    
-    this.registered = true;
-    console.log(`${MODULE_ID} | Settings registered`);
+
+    this._registered = true;
+    log.info('Settings registered');
   }
-  
+
   /**
-   * Get a setting value (with caching)
-   * @param {string} key - Setting key
+   * Get a setting value
+   * @param {string} key
    * @returns {*}
    */
   get(key) {
-    if (this.cache.has(key)) {
-      return this.cache.get(key);
-    }
-    
-    try {
-      const value = game.settings.get(MODULE_ID, key);
-      this.cache.set(key, value);
-      return value;
-    } catch (error) {
-      console.error(`${MODULE_ID} | Error getting setting ${key}:`, error);
-      return null;
-    }
+    return game.settings.get(MODULE_ID, key);
   }
-  
+
   /**
    * Set a setting value
-   * @param {string} key - Setting key
-   * @param {*} value - New value
-   * @returns {Promise<void>}
+   * @param {string} key
+   * @param {*} value
    */
   async set(key, value) {
-    try {
-      await game.settings.set(MODULE_ID, key, value);
-      this.cache.set(key, value);
-    } catch (error) {
-      console.error(`${MODULE_ID} | Error setting ${key}:`, error);
-      throw error;
-    }
+    return game.settings.set(MODULE_ID, key, value);
   }
-  
+
   /**
-   * Subscribe to setting changes
-   * @param {string} key - Setting key
-   * @param {Function} callback - Callback function
-   * @returns {Function} Unsubscribe function
+   * Get player theme preferences (convenience)
+   * @returns {object}
    */
-  subscribe(key, callback) {
-    return this.eventBus.on(`${EVENTS.SETTINGS_CHANGED}:${key}`, callback);
+  getTheme() {
+    return this.get('playerTheme');
   }
-  
+
   /**
-   * Clear cache for a setting
-   * @param {string} key - Setting key
+   * Update player theme (merges with existing)
+   * @param {object} updates
    */
-  clearCache(key) {
-    if (key) {
-      this.cache.delete(key);
-    } else {
-      this.cache.clear();
-    }
-  }
-  
-  /**
-   * Handle setting change
-   * @private
-   */
-  _onSettingChanged(key, value) {
-    this.cache.set(key, value);
-    
-    console.log(`${MODULE_ID} | Setting changed: ${key}`, value);
-    
-    // Emit specific event
-    this.eventBus.emit(`${EVENTS.SETTINGS_CHANGED}:${key}`, { key, value });
-    
-    // Emit general event
-    this.eventBus.emit(EVENTS.SETTINGS_CHANGED, { key, value });
-    
-    // Special handling for theme changes
-    if (key === 'themeColors') {
-      this.eventBus.emit(EVENTS.THEME_CHANGED, value);
-    }
+  async setTheme(updates) {
+    const current = this.getTheme();
+    const merged = foundry.utils.mergeObject(current, updates, { inplace: false });
+    return this.set('playerTheme', merged);
   }
 }
-
-// Export singleton instance
-export const settingsManager = SettingsManager.getInstance();

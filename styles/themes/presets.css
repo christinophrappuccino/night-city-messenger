@@ -1,0 +1,95 @@
+/* ═══════════════════════════════════════════════════════════
+ * Theme Presets
+ * @file styles/themes/presets.css
+ * @module cyberpunkred-messenger
+ *
+ * Built-in theme presets applied via ThemeService.
+ * Runtime injection via CSS custom properties takes precedence,
+ * so these serve as documentation and static fallback.
+ * ═══════════════════════════════════════════════════════════ */
+
+/* The actual theme application is done via ThemeService.applyTheme()
+   which sets CSS custom properties directly on :root.
+   
+   This file provides class-based presets as an alternative path
+   and for static rendering contexts. */
+
+.ncm-theme-classic {
+  --ncm-primary: #F65261;
+  --ncm-secondary: #19f3f7;
+  --ncm-accent: #f7c948;
+  --ncm-bg-deep: #0a0a0f;
+  --ncm-bg-base: #12121a;
+  --ncm-bg-surface: #1a1a2e;
+  --ncm-bg-elevated: #252540;
+}
+
+.ncm-theme-netrunner {
+  --ncm-primary: #00ff41;
+  --ncm-secondary: #19f3f7;
+  --ncm-accent: #f7c948;
+  --ncm-bg-deep: #0a0f0a;
+  --ncm-bg-base: #0d1a0d;
+  --ncm-bg-surface: #142814;
+  --ncm-bg-elevated: #1e3d1e;
+}
+
+.ncm-theme-corporate {
+  --ncm-primary: #4488ff;
+  --ncm-secondary: #cccccc;
+  --ncm-accent: #f7c948;
+  --ncm-bg-deep: #0a0a14;
+  --ncm-bg-base: #101020;
+  --ncm-bg-surface: #1a1a35;
+  --ncm-bg-elevated: #252550;
+}
+
+.ncm-theme-arasaka {
+  --ncm-primary: #ff2020;
+  --ncm-secondary: #ffffff;
+  --ncm-accent: #ff6666;
+  --ncm-bg-deep: #0a0000;
+  --ncm-bg-base: #1a0808;
+  --ncm-bg-surface: #2a1010;
+  --ncm-bg-elevated: #3a1818;
+}
+
+.ncm-theme-street {
+  --ncm-primary: #ff6600;
+  --ncm-secondary: #ffcc00;
+  --ncm-accent: #ff9933;
+  --ncm-bg-deep: #0f0a05;
+  --ncm-bg-base: #1a1408;
+  --ncm-bg-surface: #2a2010;
+  --ncm-bg-elevated: #3a2c18;
+}
+
+.ncm-theme-chrome {
+  --ncm-primary: #c0c0c0;
+  --ncm-secondary: #e0e0e0;
+  --ncm-accent: #ffffff;
+  --ncm-bg-deep: #080808;
+  --ncm-bg-base: #141414;
+  --ncm-bg-surface: #1e1e1e;
+  --ncm-bg-elevated: #2a2a2a;
+}
+
+.ncm-theme-neon {
+  --ncm-primary: #ff00ff;
+  --ncm-secondary: #00ffff;
+  --ncm-accent: #ffff00;
+  --ncm-bg-deep: #0a0014;
+  --ncm-bg-base: #140028;
+  --ncm-bg-surface: #1e0040;
+  --ncm-bg-elevated: #2a0058;
+}
+
+.ncm-theme-trauma-team {
+  --ncm-primary: #ff3366;
+  --ncm-secondary: #ffffff;
+  --ncm-accent: #ff6699;
+  --ncm-bg-deep: #0a0008;
+  --ncm-bg-base: #1a0010;
+  --ncm-bg-surface: #2a0820;
+  --ncm-bg-elevated: #3a1030;
+}

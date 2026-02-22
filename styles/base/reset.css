@@ -1,17 +1,14 @@
-/* ==============================================
-   NIGHT CITY MESSENGER
-   Base: Reset & Base Styles
-   Purpose: Normalize and set foundation styles
-   ============================================== */
+/* ═══════════════════════════════════════════════════════
+   NCM-Scoped Reset
+   Only affects elements inside .ncm-app — never Foundry core.
+   ═══════════════════════════════════════════════════════ */
 
-/* ============================================
-   ALL NCM APPS - Common Base
-   ============================================ */
 .ncm-app {
-  font-family: var(--ncm-font-primary);
-  color: var(--ncm-text-primary);
-  background: var(--ncm-bg-primary);
   box-sizing: border-box;
+  color: var(--ncm-text-primary);
+  font-family: var(--ncm-font-body);
+  font-size: 14px;
+  line-height: 1.5;
 }
 
 .ncm-app *,
@@ -20,415 +17,52 @@
   box-sizing: inherit;
 }
 
-/* ============================================
-   WINDOW CONTENT - Override Foundry defaults
-   ============================================ */
-.ncm-app .window-content {
-  padding: 0 !important;
-  overflow: hidden !important; 
-  background: var(--ncm-bg-primary) !important;
-  color: var(--ncm-text-primary) !important;
-}
-
-/* ============================================
-   TYPOGRAPHY RESETS
-   ============================================ */
-.ncm-app p {
-  margin: 0.5em 0;
-  line-height: var(--ncm-line-height-normal);
-}
-
 .ncm-app h1,
 .ncm-app h2,
 .ncm-app h3,
-.ncm-app h4,
-.ncm-app h5,
-.ncm-app h6 {
-  margin: 0;
-  padding: 0;
-  font-weight: var(--ncm-font-weight-bold);
-  color: var(--ncm-primary);
-}
-
-.ncm-app h1 { font-size: var(--ncm-font-size-xxl); }
-.ncm-app h2 { font-size: var(--ncm-font-size-xl); }
-.ncm-app h3 { font-size: var(--ncm-font-size-lg); }
-.ncm-app h4 { font-size: var(--ncm-font-size-md); }
-
-/* ============================================
-   BUTTON RESETS
-   ============================================ */
-.ncm-app button {
-  font-family: var(--ncm-font-primary);
-  cursor: pointer;
-  border: none;
-  background: none;
-  padding: 0;
-  margin: 0;
-  outline: none;
-}
-
-.ncm-app button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* ============================================
-   INPUT RESETS
-   ============================================ */
-.ncm-app input,
-.ncm-app select,
-.ncm-app textarea {
-  font-family: var(--ncm-font-primary);
-  outline: none;
-  border: none;
-  margin: 0;
-  padding: 0;
-}
-
-.ncm-app input:focus,
-.ncm-app select:focus,
-.ncm-app textarea:focus {
-  outline: none;
-}
-
-/* ============================================
-   LIST RESETS
-   ============================================ */
-.ncm-app ul,
-.ncm-app ol {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-/* ============================================
-   IMAGE RESETS
-   ============================================ */
-.ncm-app img {
-  max-width: 100%;
-  height: auto;
-  display: block;
-}
-
-/* ============================================
-   SCROLLBAR STYLING
-   ============================================ */
-.ncm-app ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-.ncm-app ::-webkit-scrollbar-track {
-  background: var(--ncm-bg-primary);
-}
-
-.ncm-app ::-webkit-scrollbar-thumb {
-  background: var(--ncm-primary);
-  border-radius: var(--ncm-border-radius-md);
-  border: 2px solid var(--ncm-bg-primary);
-}
-
-.ncm-app ::-webkit-scrollbar-thumb:hover {
-  background: var(--ncm-primary-light);
-}
-
-/* Firefox scrollbar */
-.ncm-app * {
-  scrollbar-width: thin;
-  scrollbar-color: var(--ncm-primary) var(--ncm-bg-primary);
-}
-
-/* ============================================
-   COMMON UTILITY CLASSES
-   ============================================ */
-.ncm-hide {
-  display: none !important;
-}
-
-.ncm-sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border-width: 0;
-}
-
-.ncm-text-center {
-  text-align: center;
-}
-
-.ncm-text-left {
-  text-align: left;
-}
-
-.ncm-text-right {
-  text-align: right;
-}
-
-/* ============================================
-   FOUNDRY OVERRIDES - Fix Common Issues
-   ============================================ */
-.ncm-app.app.window-app {
-  background: var(--ncm-bg-primary) !important;
-  border: var(--ncm-border-width-medium) solid var(--ncm-primary) !important;
-  box-shadow: var(--ncm-shadow-lg);
-  border-radius: var(--ncm-border-radius-lg);
-}
-
-.ncm-app .window-header {
-  background: var(--ncm-bg-surface) !important;
-  border-bottom: var(--ncm-border-width-thin) solid var(--ncm-border-primary) !important;
-  color: var(--ncm-primary) !important;
-  cursor: move !important;  /* Dragging */
-  display: flex !important; /* Must be visible! */
-}
-
-/* ✅ Keep close button working */
-.ncm-app .header-button.close {
-  display: block !important;
-  cursor: pointer !important;
-}
-
-.ncm-app .window-title {
-  font-family: var(--ncm-font-primary) !important;
-  color: var(--ncm-primary) !important;
-  text-transform: uppercase;
-  letter-spacing: var(--ncm-letter-spacing-wide);
-}
-
-.ncm-app .close {
-  color: var(--ncm-primary) !important;
-  transition: color var(--ncm-transition-fast);
-}
-
-.ncm-app .close:hover {
-  color: var(--ncm-secondary) !important;
-}
-
-/* ============================================
-   CYBERPUNK HEADER - CANONICAL DEFINITION
-   Used across ALL components
-   ============================================ */
-.ncm-header {
-  background: var(--ncm-bg-surface);
-  border-bottom: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
-  padding: var(--ncm-spacing-md);
-  flex-shrink: 0;
-}
-
-.ncm-header__top {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  gap: var(--ncm-spacing-md);
-  margin-bottom: var(--ncm-spacing-sm);
-}
-
-.ncm-header__connection {
-  display: flex;
-  align-items: center;
-  gap: var(--ncm-spacing-xs);
-  color: var(--ncm-secondary);
-  font-size: var(--ncm-font-size-sm);
-  letter-spacing: var(--ncm-letter-spacing-wide);
-}
-
-.ncm-header__connection i {
-  font-size: var(--ncm-icon-sm);
-}
-
-.ncm-header__title {
-  font-size: var(--ncm-font-size-lg);
-  font-weight: var(--ncm-font-weight-bold);
-  color: var(--ncm-primary);
-  text-transform: uppercase;
-  text-align: center;
-  letter-spacing: var(--ncm-letter-spacing-wide);
-  position: relative;
-  padding: 0 var(--ncm-spacing-md);
-}
-
-.ncm-header__title::before,
-.ncm-header__title::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  width: 10px;
-  height: 1px;
-  background: var(--ncm-primary);
-}
-
-.ncm-header__title::before {
-  left: 0;
-}
-
-.ncm-header__title::after {
-  right: 0;
-}
-
-.ncm-header__time {
-  text-align: right;
-  font-size: var(--ncm-font-size-sm);
-  font-style: italic;
-  color: var(--ncm-primary);
-  font-family: var(--ncm-font-mono);
-}
-
-.ncm-header__bottom {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-top: var(--ncm-spacing-xs);
-}
-
-.ncm-header__welcome {
-  font-size: var(--ncm-font-size-sm);
-  color: var(--ncm-primary);
-  letter-spacing: var(--ncm-letter-spacing-normal);
-}
-
-.ncm-header__badge {
-  font-size: var(--ncm-font-size-xs);
-  color: var(--ncm-secondary);
-  background: var(--ncm-secondary-alpha);
-  padding: 2px 8px;
-  border-radius: var(--ncm-border-radius-sm);
-  border: var(--ncm-border-width-thin) solid rgba(25, 243, 247, 0.3);
-  text-transform: uppercase;
-}
-
-/* ============================================
-   COMMON BUTTON STYLES
-   ============================================ */
-.ncm-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--ncm-spacing-xs);
-  padding: var(--ncm-spacing-sm) var(--ncm-spacing-lg);
-  height: var(--ncm-button-height);
-  background: var(--ncm-bg-tertiary);
-  border: var(--ncm-border-width-thin) solid var(--ncm-primary);
-  border-radius: var(--ncm-border-radius-md);
-  color: var(--ncm-primary);
-  font-size: var(--ncm-font-size-sm);
-  font-weight: var(--ncm-font-weight-medium);
-  text-transform: uppercase;
-  letter-spacing: var(--ncm-letter-spacing-wide);
-  cursor: pointer;
-  transition: all var(--ncm-transition-fast);
-  white-space: nowrap;
-}
-
-.ncm-btn:hover:not(:disabled) {
-  background: var(--ncm-primary);
-  color: var(--ncm-bg-primary);
-  box-shadow: var(--ncm-shadow-glow);
-}
-
-.ncm-btn:active:not(:disabled) {
-  transform: translateY(1px);
-}
-
-.ncm-btn--secondary {
-  border-color: var(--ncm-secondary);
-  color: var(--ncm-secondary);
-}
-
-.ncm-btn--secondary:hover:not(:disabled) {
-  background: var(--ncm-secondary);
-  color: var(--ncm-bg-primary);
-  box-shadow: var(--ncm-shadow-glow-cyan);
-}
-
-.ncm-btn--small {
-  height: var(--ncm-button-height-sm);
-  padding: var(--ncm-spacing-xs) var(--ncm-spacing-md);
-  font-size: var(--ncm-font-size-xs);
-}
-
-.ncm-btn--large {
-  height: var(--ncm-button-height-lg);
-  padding: var(--ncm-spacing-md) var(--ncm-spacing-xl);
-  font-size: var(--ncm-font-size-base);
-}
-
-.ncm-btn--danger {
-  border-color: var(--ncm-text-error);
-  color: var(--ncm-text-error);
-}
-
-.ncm-btn--danger:hover:not(:disabled) {
-  background: var(--ncm-text-error);
-  color: var(--ncm-bg-primary);
-}
-
-/* ============================================
-   COMMON INPUT STYLES
-   ============================================ */
-.ncm-input {
-  width: 100%;
-  padding: var(--ncm-input-padding);
-  height: var(--ncm-input-height);
-  background: var(--ncm-bg-tertiary);
-  border: var(--ncm-border-width-thin) solid var(--ncm-border-primary);
-  border-radius: var(--ncm-border-radius-md);
+.ncm-app h4 {
+  font-family: var(--ncm-font-display);
+  font-weight: 600;
+  margin: 0 0 var(--ncm-space-sm) 0;
   color: var(--ncm-text-primary);
-  font-size: var(--ncm-font-size-base);
-  transition: border-color var(--ncm-transition-fast),
-              box-shadow var(--ncm-transition-fast);
 }
 
-.ncm-input:focus {
-  border-color: var(--ncm-primary);
-  box-shadow: 0 0 0 2px var(--ncm-primary-alpha);
+.ncm-app h1 { font-size: 1.5rem; }
+.ncm-app h2 { font-size: 1.25rem; }
+.ncm-app h3 { font-size: 1.1rem; }
+.ncm-app h4 { font-size: 1rem; }
+
+.ncm-app p { margin: 0 0 var(--ncm-space-sm) 0; }
+
+.ncm-app a {
+  color: var(--ncm-secondary);
+  text-decoration: none;
+}
+.ncm-app a:hover {
+  text-decoration: underline;
 }
 
-.ncm-input::placeholder {
-  color: var(--ncm-text-tertiary);
+.ncm-app input,
+.ncm-app textarea,
+.ncm-app select,
+.ncm-app button {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
 }
 
-.ncm-select {
-  composes: ncm-input;
-  cursor: pointer;
+/* ─── Scrollbar ─── */
+.ncm-app ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
 }
-
-.ncm-textarea {
-  composes: ncm-input;
-  min-height: 100px;
-  resize: vertical;
-  line-height: var(--ncm-line-height-normal);
+.ncm-app ::-webkit-scrollbar-track {
+  background: transparent;
 }
-
-/* ============================================
-   COMMON ICON STYLES
-   ============================================ */
-.ncm-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+.ncm-app ::-webkit-scrollbar-thumb {
+  background: var(--ncm-bg-elevated);
+  border-radius: 3px;
 }
-
-.ncm-icon--sm { font-size: var(--ncm-icon-sm); }
-.ncm-icon--md { font-size: var(--ncm-icon-md); }
-.ncm-icon--lg { font-size: var(--ncm-icon-lg); }
-.ncm-icon--xl { font-size: var(--ncm-icon-xl); }
-
-/* ============================================
-   FIX: Allow windows to move freely
-   Foundry sets body overflow: hidden, we need to override it
-   ============================================ */
-body.vtt.game {
-  overflow: visible !important;
-}
-
-/* Also ensure parent containers don't clip */
-#ui-middle,
-#ui-top {
-  overflow: visible !important;
+.ncm-app ::-webkit-scrollbar-thumb:hover {
+  background: var(--ncm-text-muted);
 }

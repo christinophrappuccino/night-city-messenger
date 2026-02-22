@@ -1,0 +1,32 @@
+/* Night City Messenger — CSS Entry Point */
+/* Single file loaded by module.json */
+
+/* Base */
+@import 'base/variables.css';
+@import 'base/reset.css';
+@import 'base/typography.css';
+@import 'base/animations.css';
+
+/* Effects */
+@import 'effects/scanlines.css';
+@import 'effects/glitch.css';
+@import 'effects/neon-glow.css';
+@import 'effects/matrix-rain.css';
+
+/* Themes */
+@import 'themes/presets.css';
+
+/* Components */
+@import 'components/message-viewer.css';
+@import 'components/message-composer.css';
+@import 'components/contact-manager.css';
+@import 'components/item-inbox.css';
+@import 'components/security-overlays.css';
+@import 'components/network-management.css';
+@import 'components/admin-panel.css';
+@import 'components/theme-customizer.css';
+@import 'components/notifications.css';
+@import 'components/dialogs.css';
+
+/* Chat */
+@import 'chat/chat-cards.css';

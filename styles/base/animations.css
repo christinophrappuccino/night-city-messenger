@@ -1,456 +1,97 @@
-/* ==============================================
-   NIGHT CITY MESSENGER
-   Base: Animations & Effects
-   Purpose: Cyberpunk-themed animations and transitions
-   ============================================== */
+/* ═══════════════════════════════════════════════════════════
+ * Animation Catalog
+ * @file styles/base/animations.css
+ * @module cyberpunkred-messenger
+ * ═══════════════════════════════════════════════════════════ */
 
-/* ============================================
-   KEYFRAME ANIMATIONS
-   ============================================ */
+@keyframes ncm-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ncm-fade-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes ncm-slide-in-right { from { transform: translateX(20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+@keyframes ncm-slide-in-top { from { transform: translateY(-10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes ncm-scale-up { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes ncm-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+@keyframes ncm-pulse-scale { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+@keyframes ncm-border-pulse { 0%, 100% { border-left-color: var(--ncm-primary); } 50% { border-left-color: transparent; } }
 
-/* Pulse effect for notifications and indicators */
-@keyframes ncm-pulse {
-  0%, 100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.7;
-    transform: scale(1.05);
-  }
-}
-
-/* Glow pulse for important elements */
-@keyframes ncm-glow-pulse {
-  0%, 100% {
-    box-shadow: 0 0 5px var(--ncm-primary);
-  }
-  50% {
-    box-shadow: 0 0 20px var(--ncm-primary), 0 0 30px var(--ncm-primary-alpha);
-  }
-}
-
-/* Glitch effect for data corruption */
 @keyframes ncm-glitch {
-  0% { transform: translate(0); }
-  20% { transform: translate(-2px, 2px); }
-  40% { transform: translate(-2px, -2px); }
-  60% { transform: translate(2px, 2px); }
-  80% { transform: translate(2px, -2px); }
-  100% { transform: translate(0); }
+  0%, 100% { clip-path: inset(0 0 0 0); transform: translate(0); }
+  20% { clip-path: inset(20% 0 60% 0); transform: translate(-2px, 0); }
+  40% { clip-path: inset(60% 0 10% 0); transform: translate(2px, 0); }
+  60% { clip-path: inset(40% 0 30% 0); transform: translate(-1px, 0); }
+  80% { clip-path: inset(10% 0 80% 0); transform: translate(1px, 0); }
 }
 
-/* Scan line effect */
-@keyframes ncm-scanline {
-  0% { transform: translateY(-100%); }
-  100% { transform: translateY(100%); }
+@keyframes ncm-screen-shake {
+  0%, 100% { transform: translate(0, 0); }
+  10% { transform: translate(-3px, -2px); }
+  20% { transform: translate(3px, 2px); }
+  30% { transform: translate(-2px, 3px); }
+  40% { transform: translate(2px, -3px); }
+  50% { transform: translate(-3px, 1px); }
+  60% { transform: translate(3px, -1px); }
+  70% { transform: translate(-1px, 3px); }
+  80% { transform: translate(1px, -2px); }
+  90% { transform: translate(-2px, 2px); }
 }
 
-/* Matrix-style text cascade */
-@keyframes ncm-matrix-fall {
-  0% {
-    transform: translateY(-100%);
-    opacity: 0;
-  }
-  10% {
-    opacity: 1;
-  }
-  90% {
-    opacity: 1;
-  }
-  100% {
-    transform: translateY(100%);
-    opacity: 0;
-  }
+@keyframes ncm-scanline-sweep { from { background-position: 0 -100%; } to { background-position: 0 100%; } }
+@keyframes ncm-type-in { from { width: 0; } to { width: 100%; } }
+@keyframes ncm-data-flow { 0% { background-position: 0% 50%; } 100% { background-position: 200% 50%; } }
+@keyframes ncm-blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }
+@keyframes ncm-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes ncm-float-up { from { transform: translateY(0); opacity: 1; } to { transform: translateY(-40px); opacity: 0; } }
+
+@keyframes ncm-collapse {
+  from { max-height: 100px; opacity: 1; padding: var(--ncm-space-sm); }
+  to { max-height: 0; opacity: 0; padding: 0; }
 }
 
-/* Slide in from right (notifications) */
-@keyframes ncm-slide-in-right {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
+@keyframes ncm-crt-off {
+  0% { transform: scaleY(1); filter: brightness(1); }
+  60% { transform: scaleY(0.005); filter: brightness(2); }
+  100% { transform: scaleY(0); filter: brightness(0); }
 }
 
-/* Slide out to right */
-@keyframes ncm-slide-out-right {
-  from {
-    transform: translateX(0);
-    opacity: 1;
-  }
-  to {
-    transform: translateX(100%);
-    opacity: 0;
-  }
+@keyframes ncm-crt-on {
+  0% { transform: scaleY(0); filter: brightness(0); }
+  40% { transform: scaleY(0.005); filter: brightness(2); }
+  100% { transform: scaleY(1); filter: brightness(1); }
 }
 
-/* Fade in */
-@keyframes ncm-fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+@keyframes ncm-neon-flash {
+  0%, 100% { box-shadow: none; }
+  50% { box-shadow: var(--ncm-glow-secondary); }
 }
 
-/* Fade out */
-@keyframes ncm-fade-out {
-  from { opacity: 1; }
-  to { opacity: 0; }
-}
+/* ─── Utility Classes ───────────────────────────────────── */
+.ncm-app .ncm-fade-in { animation: ncm-fade-in var(--ncm-transition-slow) ease forwards; }
+.ncm-app .ncm-fade-out { animation: ncm-fade-out var(--ncm-transition-base) ease forwards; }
+.ncm-app .ncm-slide-in { animation: ncm-slide-in-right 0.4s ease forwards; }
+.ncm-app .ncm-scale-up { animation: ncm-scale-up 0.4s ease forwards; }
+.ncm-app .ncm-glitch { animation: ncm-glitch 0.3s ease-in-out; }
+.ncm-app .ncm-shake { animation: ncm-screen-shake 0.4s ease-in-out; }
+.ncm-app .ncm-pulse { animation: ncm-pulse 2s ease-in-out infinite; }
+.ncm-app .ncm-pulse-scale { animation: ncm-pulse-scale 0.3s ease; }
+.ncm-app .ncm-blink { animation: ncm-blink 1s step-end infinite; }
+.ncm-app .ncm-spin { animation: ncm-spin 1s linear infinite; }
+.ncm-app .ncm-collapse { animation: ncm-collapse 0.35s ease forwards; overflow: hidden; }
+.ncm-app .ncm-neon-flash { animation: ncm-neon-flash 0.4s ease; }
 
-/* Highlight flash for new messages */
-@keyframes ncm-highlight-flash {
-  0% {
-    background-color: var(--ncm-primary-alpha);
-  }
-  50% {
-    background-color: rgba(246, 82, 97, 0.4);
-  }
-  100% {
-    background-color: transparent;
-  }
-}
+/* ─── Animation Level Gating ────────────────────────────── */
+[data-ncm-animation-level="reduced"] .ncm-app .ncm-slide-in,
+[data-ncm-animation-level="reduced"] .ncm-app .ncm-scale-up { animation: ncm-fade-in 0.15s ease forwards; }
 
-/* Shake animation for errors */
-@keyframes ncm-shake {
-  0%, 100% { transform: translateX(0); }
-  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
-  20%, 40%, 60%, 80% { transform: translateX(5px); }
-}
+[data-ncm-animation-level="reduced"] .ncm-app .ncm-glitch,
+[data-ncm-animation-level="reduced"] .ncm-app .ncm-shake,
+[data-ncm-animation-level="reduced"] .ncm-app .ncm-pulse,
+[data-ncm-animation-level="reduced"] .ncm-app .ncm-neon-flash { animation: none !important; }
 
-/* Spin animation */
-@keyframes ncm-spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
+[data-ncm-animation-level="reduced"] .ncm-app .ncm-collapse { animation: ncm-fade-out 0.15s ease forwards; }
 
-/* Gradient movement for loading bars */
-@keyframes ncm-gradient-move {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
+[data-ncm-animation-level="off"] .ncm-app,
+[data-ncm-animation-level="off"] .ncm-app * { animation: none !important; transition: none !important; }
 
-/* Flicker effect for damaged systems */
-@keyframes ncm-flicker {
-  0%, 100% { opacity: 1; }
-  41% { opacity: 1; }
-  42% { opacity: 0.8; }
-  43% { opacity: 1; }
-  45% { opacity: 0.2; }
-  46% { opacity: 1; }
-}
-
-/* Typing indicator dots */
-@keyframes ncm-typing-dot {
-  0%, 60%, 100% {
-    transform: translateY(0);
-  }
-  30% {
-    transform: translateY(-10px);
-  }
-}
-
-/* Border glow animation */
-@keyframes ncm-border-glow {
-  0%, 100% {
-    border-color: var(--ncm-primary);
-  }
-  50% {
-    border-color: var(--ncm-primary-light);
-    box-shadow: 0 0 10px var(--ncm-primary-alpha);
-  }
-}
-
-/* ============================================
-   UTILITY ANIMATION CLASSES
-   ============================================ */
-
-.ncm-animate-pulse {
-  animation: ncm-pulse calc(var(--ncm-animation-speed) * 2s) ease-in-out infinite;
-}
-
-.ncm-animate-glow {
-  animation: ncm-glow-pulse calc(var(--ncm-animation-speed) * 2s) ease-in-out infinite;
-}
-
-.ncm-animate-glitch {
-  animation: ncm-glitch calc(var(--ncm-animation-speed) * 0.3s) infinite alternate;
-}
-
-.ncm-animate-slide-in {
-  animation: ncm-slide-in-right 0.3s ease-out;
-}
-
-.ncm-animate-slide-out {
-  animation: ncm-slide-out-right 0.3s ease-in;
-}
-
-.ncm-animate-fade-in {
-  animation: ncm-fade-in 0.3s ease-in;
-}
-
-.ncm-animate-fade-out {
-  animation: ncm-fade-out 0.3s ease-out;
-}
-
-.ncm-animate-shake {
-  animation: ncm-shake 0.5s ease-in-out;
-}
-
-.ncm-animate-spin {
-  animation: ncm-spin 1s linear infinite;
-}
-
-.ncm-animate-flicker {
-  animation: ncm-flicker 0.1s infinite;
-}
-
-/* ============================================
-   SCANLINE EFFECT OVERLAY
-   Applied to containers for atmosphere
-   ============================================ */
-.ncm-scanlines {
-  position: relative;
-  overflow: hidden;
-}
-
-.ncm-scanlines::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(
-    to bottom,
-    transparent 0%,
-    rgba(255, 255, 255, calc(var(--ncm-scanline-opacity) * 1)) 50%,
-    transparent 100%
-  );
-  animation: ncm-scanline calc(var(--ncm-animation-speed) * 8s) linear infinite;
-  pointer-events: none;
-  z-index: var(--ncm-z-tooltip);
-}
-
-/* ============================================
-   CRT SCREEN EFFECT
-   Optional full-screen overlay
-   ============================================ */
-.ncm-crt-effect {
-  position: relative;
-}
-
-.ncm-crt-effect::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    rgba(0, 0, 0, 0.15) 0px,
-    transparent 1px,
-    transparent 2px,
-    rgba(0, 0, 0, 0.15) 3px
-  );
-  pointer-events: none;
-  z-index: var(--ncm-z-tooltip);
-}
-
-/* ============================================
-   MATRIX RAIN EFFECT
-   For backgrounds or loading states
-   ============================================ */
-.ncm-matrix-bg {
-  position: relative;
-  overflow: hidden;
-}
-
-.ncm-matrix-bg::before {
-  content: '01010101010101010101010101010101';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  color: var(--ncm-secondary);
-  opacity: 0.1;
-  font-family: var(--ncm-font-mono);
-  font-size: 12px;
-  line-height: 1.5;
-  word-wrap: break-word;
-  pointer-events: none;
-  animation: ncm-matrix-fall calc(var(--ncm-animation-speed) * 10s) linear infinite;
-}
-
-/* ============================================
-   LOADING STATES
-   ============================================ */
-.ncm-loading {
-  position: relative;
-  pointer-events: none;
-  opacity: 0.6;
-}
-
-.ncm-loading::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 40px;
-  height: 40px;
-  margin: -20px 0 0 -20px;
-  border: 3px solid var(--ncm-primary-alpha);
-  border-top-color: var(--ncm-primary);
-  border-radius: 50%;
-  animation: ncm-spin 1s linear infinite;
-}
-
-/* Skeleton loading for content */
-.ncm-skeleton {
-  background: linear-gradient(
-    90deg,
-    var(--ncm-bg-tertiary) 0%,
-    var(--ncm-bg-hover) 50%,
-    var(--ncm-bg-tertiary) 100%
-  );
-  background-size: 200% 100%;
-  animation: ncm-gradient-move 1.5s ease-in-out infinite;
-  border-radius: var(--ncm-border-radius-md);
-}
-
-/* ============================================
-   HOVER EFFECTS
-   ============================================ */
-.ncm-hover-lift {
-  transition: transform var(--ncm-transition-fast);
-}
-
-.ncm-hover-lift:hover {
-  transform: translateY(-2px);
-}
-
-.ncm-hover-glow {
-  transition: box-shadow var(--ncm-transition-fast);
-}
-
-.ncm-hover-glow:hover {
-  box-shadow: var(--ncm-shadow-glow);
-}
-
-/* ============================================
-   TRANSITION UTILITIES
-   ============================================ */
-.ncm-transition-all {
-  transition: all var(--ncm-transition-normal);
-}
-
-.ncm-transition-fast {
-  transition: all var(--ncm-transition-fast);
-}
-
-.ncm-transition-slow {
-  transition: all var(--ncm-transition-slow);
-}
-
-/* ============================================
-   NOTIFICATION BADGE PULSE
-   ============================================ */
-.ncm-badge-pulse {
-  position: relative;
-}
-
-.ncm-badge-pulse::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 100%;
-  height: 100%;
-  transform: translate(-50%, -50%);
-  background: var(--ncm-primary);
-  border-radius: 50%;
-  animation: ncm-pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-@keyframes ncm-pulse-ring {
-  0% {
-    opacity: 0.6;
-    transform: translate(-50%, -50%) scale(1);
-  }
-  100% {
-    opacity: 0;
-    transform: translate(-50%, -50%) scale(2);
-  }
-}
-
-/* ============================================
-   TYPING INDICATOR
-   ============================================ */
-.ncm-typing-indicator {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.ncm-typing-indicator__dot {
-  width: 6px;
-  height: 6px;
-  background: var(--ncm-primary);
-  border-radius: 50%;
-  animation: ncm-typing-dot 1.4s ease-in-out infinite;
-}
-
-.ncm-typing-indicator__dot:nth-child(2) {
-  animation-delay: 0.2s;
-}
-
-.ncm-typing-indicator__dot:nth-child(3) {
-  animation-delay: 0.4s;
-}
-
-/* ============================================
-   PROGRESS BAR ANIMATION
-   ============================================ */
-.ncm-progress-bar {
-  position: relative;
-  overflow: hidden;
-  background: var(--ncm-bg-tertiary);
-  border-radius: var(--ncm-border-radius-md);
-}
-
-.ncm-progress-bar__fill {
-  height: 100%;
-  background: linear-gradient(
-    90deg,
-    var(--ncm-primary),
-    var(--ncm-primary-light),
-    var(--ncm-primary)
-  );
-  background-size: 200% 100%;
-  animation: ncm-gradient-move 2s linear infinite;
-  transition: width var(--ncm-transition-normal);
-}
-
-/* ============================================
-   DISABLE ANIMATIONS (Accessibility)
-   ============================================ */
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
-  
-  .ncm-scanlines::before,
-  .ncm-crt-effect::after,
-  .ncm-matrix-bg::before {
-    display: none !important;
-  }
+  .ncm-app .ncm-glitch, .ncm-app .ncm-shake, .ncm-app .ncm-pulse { animation: none !important; }
+  .ncm-app .ncm-slide-in, .ncm-app .ncm-scale-up { animation: ncm-fade-in 0.15s ease forwards; }
 }

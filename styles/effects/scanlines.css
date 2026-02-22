@@ -1,0 +1,24 @@
+/* Scanline CRT overlay — toggled by .ncm-scanlines on <body> */
+
+.ncm-scanlines .ncm-app {
+  position: relative;
+}
+
+.ncm-scanlines .ncm-app::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.08) 0px,
+    rgba(0, 0, 0, 0.08) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  z-index: var(--ncm-z-scanlines, 1000);
+}
+
+[data-ncm-animation-level="off"] .ncm-scanlines .ncm-app::after {
+  display: none;
+}
