@@ -226,3 +226,4 @@ export const COLOR_VAR_MAP = Object.freeze({
   bgDeep: '--ncm-bg-deep', bgBase: '--ncm-bg-base', bgSurface: '--ncm-bg-surface',
   bgElevated: '--ncm-bg-elevated', textPrimary: '--ncm-text-primary', textSecondary: '--ncm-text-secondary',
 });
+

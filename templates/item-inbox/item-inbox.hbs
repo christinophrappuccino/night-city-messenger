@@ -1,1 +1,145 @@
-{{!-- Placeholder template: item-inbox/item-inbox.hbs --}}<div class="ncm-placeholder"></div>
+{{!-- Item Inbox / Data Shard Viewer --}}
+<div class="ncm-item-inbox ncm-shard-theme-{{themeKey}}" data-item-id="{{item.id}}">
+
+  {{!-- Header Bar --}}
+  <div class="ncm-shard-header">
+    <div class="ncm-shard-header-info">
+      <i class="fas {{theme.icon}} ncm-shard-icon"></i>
+      <span class="ncm-shard-title">{{itemName}}</span>
+    </div>
+    <div class="ncm-shard-badges">
+      {{#if isEncrypted}}
+        <span class="ncm-badge ncm-badge-encryption" title="{{encryptionType}}">
+          <i class="fas fa-lock"></i> {{encryptionType}}
+        </span>
+      {{/if}}
+      {{#if requiresNetwork}}
+        <span class="ncm-badge ncm-badge-network" title="Requires: {{requiredNetworkName}}">
+          <i class="fas fa-network-wired"></i> {{requiredNetworkName}}
+        </span>
+      {{/if}}
+      {{#if isDecrypted}}
+        <span class="ncm-badge ncm-badge-decrypted"><i class="fas fa-unlock"></i> DECRYPTED</span>
+      {{/if}}
+    </div>
+    {{#if isGM}}
+      <div class="ncm-shard-gm-controls">
+        <button type="button" data-action="openConfig" title="Configure Shard" class="ncm-btn-icon"><i class="fas fa-cog"></i></button>
+        <button type="button" data-action="addMessage" title="Add Message" class="ncm-btn-icon"><i class="fas fa-plus"></i></button>
+        {{#if isDecrypted}}
+          <button type="button" data-action="relockShard" title="Relock" class="ncm-btn-icon ncm-btn-danger"><i class="fas fa-lock"></i></button>
+        {{else}}
+          <button type="button" data-action="forceDecrypt" title="Force Decrypt" class="ncm-btn-icon ncm-btn-gm"><i class="fas fa-unlock-keyhole"></i></button>
+        {{/if}}
+      </div>
+    {{/if}}
+  </div>
+
+  {{!-- Content Area --}}
+  <div class="ncm-shard-content">
+    {{#if isDestroyed}}
+      <div class="ncm-shard-destroyed">
+        <i class="fas fa-skull-crossbones"></i>
+        <p>DATA CORRUPTED</p>
+        <p class="ncm-text-muted">Shard contents have been destroyed.</p>
+      </div>
+
+    {{else if showNetworkOverlay}}
+      {{> "modules/cyberpunkred-messenger/templates/item-inbox/security-overlay-network.hbs"}}
+
+    {{else if showKeyitemOverlay}}
+      {{> "modules/cyberpunkred-messenger/templates/item-inbox/security-overlay-keyitem.hbs"}}
+
+    {{else if showLoginOverlay}}
+      {{> "modules/cyberpunkred-messenger/templates/item-inbox/security-overlay-login.hbs"}}
+
+    {{else if showEncryptionOverlay}}
+      {{> "modules/cyberpunkred-messenger/templates/item-inbox/security-overlay-encryption.hbs"}}
+
+    {{else if hackingActive}}
+      {{> "modules/cyberpunkred-messenger/templates/item-inbox/hacking-sequence.hbs"}}
+
+    {{else}}
+      {{!-- Unlocked Content --}}
+      <div class="ncm-shard-messages">
+        {{#if hasMessages}}
+          {{#if singleMessage}}
+            {{#with firstMessage}}
+              <div class="ncm-shard-message-detail">
+                <div class="ncm-msg-header">
+                  <span class="ncm-msg-from">FROM: {{from}}</span>
+                  <span class="ncm-msg-date">{{formattedDate}}</span>
+                </div>
+                <h3 class="ncm-msg-subject">{{subject}}</h3>
+                <div class="ncm-msg-body">{{{body}}}</div>
+              </div>
+            {{/with}}
+          {{else}}
+            <div class="ncm-shard-split">
+              <div class="ncm-shard-list">
+                {{#each messages}}
+                  <div class="ncm-shard-list-item {{#if isSelected}}selected{{/if}} {{#if isLocked}}encrypted{{/if}}"
+                       data-message-id="{{id}}" data-action="selectMessage">
+                    {{#if isLocked}}<i class="fas fa-lock ncm-msg-lock-icon"></i>{{/if}}
+                    <div class="ncm-msg-preview">
+                      <span class="ncm-msg-from">{{from}}</span>
+                      <span class="ncm-msg-subject-preview">{{subject}}</span>
+                    </div>
+                    <span class="ncm-msg-date-small">{{formattedDate}}</span>
+                  </div>
+                {{/each}}
+              </div>
+              <div class="ncm-shard-detail">
+                {{#if selectedMessage}}
+                  {{#if selectedMessage.isLocked}}
+                    <div class="ncm-msg-encrypted-overlay">
+                      <i class="fas fa-lock"></i>
+                      <p>MESSAGE ENCRYPTED</p>
+                      <button type="button" data-action="decryptMessage" data-message-id="{{selectedMessage.id}}" class="ncm-btn ncm-btn-primary">
+                        <i class="fas fa-terminal"></i> DECRYPT
+                      </button>
+                    </div>
+                  {{else}}
+                    <div class="ncm-shard-message-detail">
+                      <div class="ncm-msg-header">
+                        <span class="ncm-msg-from">FROM: {{selectedMessage.from}}</span>
+                        <span class="ncm-msg-date">{{selectedMessage.formattedDate}}</span>
+                        {{#if isGM}}
+                          <button type="button" data-action="removeMessage" data-message-id="{{selectedMessage.id}}"
+                                  class="ncm-btn-icon ncm-btn-danger" title="Delete"><i class="fas fa-trash"></i></button>
+                        {{/if}}
+                      </div>
+                      <h3 class="ncm-msg-subject">{{selectedMessage.subject}}</h3>
+                      <div class="ncm-msg-body">{{{selectedMessage.body}}}</div>
+                    </div>
+                  {{/if}}
+                {{else}}
+                  <div class="ncm-shard-empty-detail">
+                    <i class="fas fa-microchip"></i>
+                    <p>Select a data fragment to view</p>
+                    <p class="ncm-text-muted">{{messageCount}} fragment(s) stored</p>
+                  </div>
+                {{/if}}
+              </div>
+            </div>
+          {{/if}}
+        {{else}}
+          <div class="ncm-shard-empty">
+            <i class="fas fa-database"></i>
+            <p>SHARD EMPTY</p>
+            <p class="ncm-text-muted">No data fragments stored.</p>
+            {{#if isGM}}
+              <button type="button" data-action="addMessage" class="ncm-btn ncm-btn-primary"><i class="fas fa-plus"></i> Add Data Fragment</button>
+            {{/if}}
+          </div>
+        {{/if}}
+      </div>
+    {{/if}}
+  </div>
+
+  {{!-- Status Bar --}}
+  <div class="ncm-shard-status-bar">
+    <span><i class="fas fa-database"></i> {{messageCount}} fragment(s)</span>
+    {{#if hasActor}}<span><i class="fas fa-user"></i> {{actorName}}</span>{{/if}}
+  </div>
+</div>

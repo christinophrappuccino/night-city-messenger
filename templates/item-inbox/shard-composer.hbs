@@ -1,0 +1,66 @@
+{{!--
+  Data Shard Composer
+  @file templates/item-inbox/shard-composer.hbs
+  @module cyberpunkred-messenger
+  @description Dialog for adding messages to data shards.
+--}}
+<div class="ncm-shard-composer">
+  <h3 class="ncm-composer-title">
+    <i class="fas fa-microchip"></i> Add Message to: {{shardName}}
+  </h3>
+
+  <div class="ncm-form-group">
+    <label for="ncm-msg-from">From</label>
+    <input type="text" name="from" id="ncm-msg-from" class="ncm-input" placeholder="sender@corp.net" value="">
+  </div>
+
+  <div class="ncm-form-group">
+    <label for="ncm-msg-subject">Subject</label>
+    <input type="text" name="subject" id="ncm-msg-subject" class="ncm-input" placeholder="Re: Classified Intel">
+  </div>
+
+  <div class="ncm-form-group">
+    <label for="ncm-msg-body">Body</label>
+    <textarea name="body" id="ncm-msg-body" class="ncm-textarea" rows="8" placeholder="Message content..."></textarea>
+  </div>
+
+  <div class="ncm-form-group">
+    <label for="ncm-msg-timestamp">Timestamp (ISO)</label>
+    <input type="text" name="timestamp" id="ncm-msg-timestamp" class="ncm-input"
+           placeholder="Leave blank for current time">
+  </div>
+
+  {{#if isMessageMode}}
+    <fieldset class="ncm-fieldset">
+      <legend><i class="fas fa-lock"></i> Per-Message Encryption</legend>
+      <div class="ncm-form-row">
+        <label class="ncm-checkbox-label">
+          <input type="checkbox" name="encrypted"> Encrypt this message
+        </label>
+      </div>
+      <div class="ncm-form-row">
+        <div class="ncm-form-group ncm-form-half">
+          <label>Encryption DC</label>
+          <input type="number" name="encryptionDC" class="ncm-input" value="{{defaultDC}}" min="1">
+        </div>
+        <div class="ncm-form-group ncm-form-half">
+          <label>ICE Type</label>
+          <select name="encryptionType" class="ncm-select">
+            {{#each encryptionTypes}}
+              <option value="{{this.value}}" {{#if this.selected}}selected{{/if}}>{{this.label}}</option>
+            {{/each}}
+          </select>
+        </div>
+      </div>
+    </fieldset>
+  {{/if}}
+
+  <div class="ncm-composer-actions">
+    <button type="button" data-action="save" class="ncm-btn ncm-btn-primary">
+      <i class="fas fa-save"></i> Save Message
+    </button>
+    <button type="button" data-action="cancel" class="ncm-btn ncm-btn-secondary">
+      Cancel
+    </button>
+  </div>
+</div>

@@ -1,1 +1,21 @@
-{{!-- Placeholder template: item-inbox/security-overlay-network.hbs --}}<div class="ncm-placeholder"></div>
+{{!-- Security Overlay: Network Layer --}}
+<div class="ncm-security-overlay ncm-security-overlay-network">
+  <div class="ncm-overlay-backdrop ncm-static-noise"></div>
+  <div class="ncm-overlay-card">
+    <div class="ncm-overlay-icon"><i class="fas fa-network-wired"></i></div>
+    <h3 class="ncm-overlay-title">NETWORK ACCESS REQUIRED</h3>
+    <div class="ncm-overlay-info">
+      <p>This data shard requires connection to:</p>
+      <p class="ncm-overlay-highlight">{{requiredNetworkName}}</p>
+      <p class="ncm-text-muted">Connect to the required network to access this shard.</p>
+    </div>
+    {{#if isGM}}
+      <div class="ncm-overlay-gm">
+        <div class="ncm-gm-divider">GM CONTROLS</div>
+        <button type="button" data-action="forceDecrypt" class="ncm-btn ncm-btn-gm">
+          <i class="fas fa-unlock-keyhole"></i> Bypass All Security
+        </button>
+      </div>
+    {{/if}}
+  </div>
+</div>

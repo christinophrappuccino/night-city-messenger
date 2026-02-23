@@ -1,6 +1,661 @@
 /* ═══════════════════════════════════════════════════════════
- * security-overlays component styles
+ * Security Overlays
  * @file styles/components/security-overlays.css
  * @module cyberpunkred-messenger
- * Populated in later build phases.
+ * @description Layered security overlay styles for data shards.
+ *              Includes backdrop animations (static, scanlines, matrix rain),
+ *              hacking sequence, BLACK ICE effects, and screen shake.
  * ═══════════════════════════════════════════════════════════ */
+
+/* ─── Overlay Container ─── */
+
+.ncm-security-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  animation: ncm-overlay-appear 0.4s ease;
+}
+
+@keyframes ncm-overlay-appear {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ─── Overlay Backdrops ─── */
+
+.ncm-overlay-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+/* Static Noise (Network layer) */
+.ncm-static-noise {
+  background:
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(255, 255, 255, 0.02) 2px,
+      rgba(255, 255, 255, 0.02) 4px
+    );
+  animation: ncm-static 0.15s steps(3) infinite;
+}
+
+@keyframes ncm-static {
+  0% { background-position: 0 0; }
+  33% { background-position: -1px 2px; }
+  66% { background-position: 1px -1px; }
+  100% { background-position: 0 0; }
+}
+
+.ncm-overlay-network .ncm-overlay-backdrop::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 0, 0, 0.05);
+  animation: ncm-pulse-red 2s ease-in-out infinite;
+}
+
+@keyframes ncm-pulse-red {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.8; }
+}
+
+/* Slow Scanlines (Key Item layer) */
+.ncm-scanline-slow {
+  background: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 8px,
+    rgba(255, 255, 255, 0.015) 8px,
+    rgba(255, 255, 255, 0.015) 9px
+  );
+  animation: ncm-scanline-drift 4s linear infinite;
+}
+
+@keyframes ncm-scanline-drift {
+  from { background-position: 0 0; }
+  to { background-position: 100px 100px; }
+}
+
+/* Green Scanlines (Login layer) */
+.ncm-scanline-green {
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 3px,
+    rgba(0, 255, 65, 0.03) 3px,
+    rgba(0, 255, 65, 0.03) 4px
+  );
+}
+
+/* Matrix Rain placeholder (Encryption layer — real canvas in JS) */
+.ncm-matrix-rain {
+  background: radial-gradient(ellipse at center, rgba(0, 255, 200, 0.05) 0%, transparent 70%);
+}
+
+.ncm-matrix-rain::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 20px,
+      rgba(25, 243, 247, 0.015) 20px,
+      rgba(25, 243, 247, 0.015) 21px
+    );
+  animation: ncm-data-flow 2s linear infinite;
+}
+
+@keyframes ncm-data-flow {
+  from { transform: translateY(-20px); }
+  to { transform: translateY(0); }
+}
+
+/* ─── Security Card ─── */
+
+.ncm-security-card {
+  position: relative;
+  z-index: 1;
+  background: var(--ncm-bg-base, #12121a);
+  border: 1px solid var(--ncm-bg-elevated, #252540);
+  border-radius: 6px;
+  padding: 24px 28px;
+  max-width: 380px;
+  width: 90%;
+  text-align: center;
+  box-shadow:
+    0 0 20px rgba(0, 0, 0, 0.5),
+    0 0 1px var(--ncm-primary, #F65261);
+  animation: ncm-card-appear 0.4s ease;
+}
+
+@keyframes ncm-card-appear {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Layer-specific card accents */
+.ncm-overlay-network .ncm-security-card {
+  border-color: #ff4444;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5), 0 0 2px #ff4444;
+}
+
+.ncm-overlay-keyitem .ncm-security-card {
+  border-color: var(--ncm-accent, #f7c948);
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5), 0 0 2px var(--ncm-accent, #f7c948);
+}
+
+.ncm-overlay-login .ncm-security-card {
+  border-color: #00ff41;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5), 0 0 2px #00ff41;
+}
+
+.ncm-overlay-encryption .ncm-security-card {
+  border-color: var(--ncm-secondary, #19f3f7);
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5), 0 0 2px var(--ncm-secondary, #19f3f7);
+}
+
+.ncm-security-icon {
+  font-size: 28px;
+  margin-bottom: 8px;
+}
+
+.ncm-overlay-network .ncm-security-icon { color: #ff4444; }
+.ncm-overlay-keyitem .ncm-security-icon { color: var(--ncm-accent, #f7c948); animation: ncm-pulse-icon 2s ease-in-out infinite; }
+.ncm-overlay-login .ncm-security-icon { color: #00ff41; }
+.ncm-overlay-encryption .ncm-security-icon { color: var(--ncm-secondary, #19f3f7); }
+
+@keyframes ncm-pulse-icon {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(0.95); }
+}
+
+.ncm-security-title {
+  font-family: var(--ncm-font-display, 'Orbitron', monospace);
+  font-size: 16px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin: 0 0 8px 0;
+}
+
+.ncm-security-detail {
+  font-size: 13px;
+  color: var(--ncm-text-secondary, #8888a0);
+  margin: 0 0 4px 0;
+}
+
+.ncm-security-status {
+  font-family: var(--ncm-font-mono, monospace);
+  font-size: 12px;
+  color: #ff4444;
+  margin-top: 8px;
+}
+
+.ncm-security-warning {
+  font-size: 12px;
+  color: var(--ncm-accent, #f7c948);
+  margin: 4px 0;
+}
+
+.ncm-security-error {
+  font-size: 13px;
+  color: #ff2020;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* ─── ICE Labels ─── */
+
+.ncm-ice-label { font-weight: 700; }
+.ncm-ice-ICE { color: #ffcc00; }
+.ncm-ice-BLACK_ICE { color: #ff0000; }
+.ncm-ice-RED_ICE { color: #ff2222; }
+
+/* ─── Attempt Counter ─── */
+
+.ncm-attempt-counter {
+  font-family: var(--ncm-font-mono, monospace);
+  font-size: 12px;
+  color: var(--ncm-text-secondary);
+  margin: 8px 0;
+}
+
+.ncm-lockout-timer {
+  color: #ff4444;
+  font-weight: 700;
+  margin-left: 8px;
+}
+
+/* ─── Skill Selection ─── */
+
+.ncm-skill-list {
+  margin: 10px 0;
+  text-align: left;
+}
+
+.ncm-skill-list h4 {
+  font-size: 12px;
+  color: var(--ncm-text-secondary);
+  margin: 0 0 6px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ncm-skill-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  margin-bottom: 4px;
+  background: var(--ncm-bg-surface, #1a1a2e);
+  border: 1px solid var(--ncm-bg-elevated, #252540);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-size: 12px;
+  text-align: left;
+  color: var(--ncm-text-primary, #e0e0e8);
+}
+
+.ncm-skill-option:hover {
+  border-color: var(--ncm-secondary, #19f3f7);
+  background: var(--ncm-bg-elevated, #252540);
+}
+
+.ncm-skill-option.ncm-selected {
+  border-color: var(--ncm-secondary, #19f3f7);
+  background: rgba(25, 243, 247, 0.1);
+  box-shadow: 0 0 4px rgba(25, 243, 247, 0.3);
+}
+
+.ncm-skill-name {
+  font-weight: 600;
+  flex: 1;
+}
+
+.ncm-skill-info {
+  font-family: var(--ncm-font-mono, monospace);
+  font-size: 10px;
+  color: var(--ncm-text-secondary);
+}
+
+.ncm-skill-dc {
+  font-family: var(--ncm-font-mono, monospace);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ncm-primary, #F65261);
+}
+
+/* ─── Luck Controls ─── */
+
+.ncm-luck-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0;
+  font-size: 12px;
+}
+
+.ncm-luck-controls label {
+  color: var(--ncm-accent, #f7c948);
+}
+
+/* ─── Hack Progress ─── */
+
+.ncm-hack-progress {
+  margin: 12px 0;
+}
+
+.ncm-hack-progress-bar {
+  height: 6px;
+  background: var(--ncm-bg-deep, #0a0a0f);
+  border: 1px solid var(--ncm-bg-elevated, #252540);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.ncm-hack-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--ncm-secondary, #19f3f7), var(--ncm-primary, #F65261));
+  border-radius: 3px;
+  transition: width 2s ease-in-out;
+}
+
+.ncm-hack-status {
+  font-family: var(--ncm-font-mono, monospace);
+  font-size: 11px;
+  color: var(--ncm-secondary, #19f3f7);
+  text-align: center;
+  margin-top: 4px;
+  animation: ncm-blink 1s steps(1) infinite;
+}
+
+@keyframes ncm-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* Active hacking state */
+.ncm-hacking-active .ncm-matrix-rain::before {
+  animation-duration: 0.5s;
+}
+
+.ncm-hacking-active .ncm-security-card {
+  box-shadow: 0 0 30px rgba(25, 243, 247, 0.3), 0 0 2px var(--ncm-secondary, #19f3f7);
+}
+
+/* ─── Breach Button ─── */
+
+.ncm-btn-hack {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  margin-top: 10px;
+  font-family: var(--ncm-font-display, 'Orbitron', monospace);
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  background: linear-gradient(135deg, var(--ncm-primary, #F65261), #cc2244);
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ncm-btn-hack:hover:not(:disabled) {
+  box-shadow: 0 0 12px rgba(246, 82, 97, 0.5);
+  transform: translateY(-1px);
+}
+
+.ncm-btn-hack:disabled,
+.ncm-btn-hack.ncm-btn-disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* ─── Login Form ─── */
+
+.ncm-login-form {
+  text-align: left;
+  margin-top: 8px;
+}
+
+.ncm-login-form .ncm-form-group {
+  margin-bottom: 8px;
+}
+
+.ncm-login-form label {
+  display: block;
+  font-size: 11px;
+  color: #00ff41;
+  font-family: var(--ncm-font-mono, monospace);
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
+.ncm-login-form .ncm-input {
+  font-family: var(--ncm-font-mono, monospace);
+}
+
+.ncm-login-meta {
+  font-size: 11px;
+  color: var(--ncm-text-secondary);
+  margin-bottom: 8px;
+  text-align: right;
+}
+
+/* ─── ICE Shatter Animation (hack success) ─── */
+
+.ncm-ice-shatter {
+  animation: ncm-shatter 0.8s ease forwards;
+}
+
+@keyframes ncm-shatter {
+  0% {
+    opacity: 1;
+    clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%);
+  }
+  30% {
+    clip-path: polygon(5% 0%, 45% 0%, 50% 50%, 0% 45%);
+  }
+  60% {
+    opacity: 0.5;
+    clip-path: polygon(10% 0%, 30% 0%, 35% 30%, 5% 25%);
+  }
+  100% {
+    opacity: 0;
+    clip-path: polygon(50% 50%, 50% 50%, 50% 50%, 50% 50%);
+  }
+}
+
+/* ─── Screen Shake (BLACK ICE) ─── */
+
+.ncm-screen-shake {
+  animation: ncm-shake-heavy 0.5s ease;
+}
+
+@keyframes ncm-shake-heavy {
+  0%, 100% { transform: translate(0, 0); }
+  10% { transform: translate(-4px, 2px); }
+  20% { transform: translate(3px, -3px); }
+  30% { transform: translate(-2px, 4px); }
+  40% { transform: translate(4px, -1px); }
+  50% { transform: translate(-3px, 3px); }
+  60% { transform: translate(2px, -4px); }
+  70% { transform: translate(-4px, 1px); }
+  80% { transform: translate(3px, 3px); }
+  90% { transform: translate(-1px, -2px); }
+}
+
+/* Card shake (login fail) */
+.ncm-shake {
+  animation: ncm-shake-light 0.3s ease;
+}
+
+@keyframes ncm-shake-light {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-2px); }
+  40% { transform: translateX(2px); }
+  60% { transform: translateX(-2px); }
+  80% { transform: translateX(2px); }
+}
+
+/* ─── Flash Effects ─── */
+
+.ncm-flash-red {
+  animation: ncm-red-flash 0.5s ease;
+}
+
+@keyframes ncm-red-flash {
+  0% { box-shadow: inset 0 0 0 rgba(255, 0, 0, 0); }
+  30% { box-shadow: inset 0 0 60px rgba(255, 0, 0, 0.4); }
+  100% { box-shadow: inset 0 0 0 rgba(255, 0, 0, 0); }
+}
+
+/* ─── Damage Float ─── */
+
+.ncm-damage-float {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: var(--ncm-font-display, 'Orbitron', monospace);
+  font-size: 36px;
+  font-weight: 900;
+  color: #ff0000;
+  text-shadow: 0 0 10px rgba(255, 0, 0, 0.8);
+  z-index: 100;
+  pointer-events: none;
+  animation: ncm-damage-rise 1s ease-out forwards;
+}
+
+@keyframes ncm-damage-rise {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(0.5);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(-50%, -70%) scale(1.2);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -120%) scale(1);
+  }
+}
+
+/* ─── Hacking Sequence (full overlay) ─── */
+
+.ncm-hacking-sequence {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.ncm-hack-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.9);
+}
+
+.ncm-matrix-canvas {
+  width: 100%;
+  height: 100%;
+  opacity: 0.3;
+}
+
+.ncm-hack-panel {
+  position: relative;
+  z-index: 1;
+  padding: 20px;
+}
+
+.ncm-hack-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.ncm-hack-title {
+  font-family: var(--ncm-font-display, 'Orbitron', monospace);
+  font-size: 16px;
+  color: var(--ncm-secondary, #19f3f7);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.ncm-hack-target {
+  font-family: var(--ncm-font-mono, monospace);
+  font-size: 12px;
+  color: var(--ncm-primary, #F65261);
+}
+
+.ncm-hack-code-window {
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(25, 243, 247, 0.2);
+  border-radius: 4px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  font-family: var(--ncm-font-mono, monospace);
+  font-size: 11px;
+  line-height: 1.8;
+}
+
+.ncm-code-line {
+  color: var(--ncm-text-secondary, #8888a0);
+}
+
+.ncm-code-keyword {
+  color: var(--ncm-secondary, #19f3f7);
+  font-weight: 700;
+}
+
+.ncm-code-active {
+  color: var(--ncm-accent, #f7c948);
+  animation: ncm-blink 1s steps(1) infinite;
+}
+
+.ncm-hack-progress-label {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--ncm-font-mono, monospace);
+  font-size: 11px;
+  margin-top: 4px;
+}
+
+.ncm-hack-percent { color: var(--ncm-secondary, #19f3f7); }
+.ncm-hack-status-text { color: var(--ncm-text-secondary); }
+
+.ncm-hack-stats {
+  display: flex;
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.ncm-hack-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.ncm-stat-label {
+  font-family: var(--ncm-font-mono, monospace);
+  font-size: 9px;
+  color: var(--ncm-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.ncm-stat-value {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.ncm-stat-luck .ncm-stat-value { color: var(--ncm-accent, #f7c948); }
+
+/* ─── Reduced Motion ─── */
+
+@media (prefers-reduced-motion: reduce) {
+  .ncm-security-overlay,
+  .ncm-security-card,
+  .ncm-static-noise,
+  .ncm-scanline-slow,
+  .ncm-scanline-green,
+  .ncm-matrix-rain::before,
+  .ncm-overlay-network .ncm-overlay-backdrop::after,
+  .ncm-hack-progress-fill,
+  .ncm-hacking-active .ncm-matrix-rain::before {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .ncm-ice-shatter,
+  .ncm-screen-shake,
+  .ncm-shake,
+  .ncm-flash-red,
+  .ncm-damage-float {
+    animation: none !important;
+  }
+}

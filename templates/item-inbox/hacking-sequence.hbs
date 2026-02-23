@@ -1,1 +1,21 @@
-{{!-- Placeholder template: item-inbox/hacking-sequence.hbs --}}<div class="ncm-placeholder"></div>
+{{!-- Hacking Sequence Animation --}}
+<div class="ncm-hacking-sequence">
+  <div class="ncm-hack-backdrop ncm-matrix-rain-intense"></div>
+  <div class="ncm-hack-content">
+    <h3 class="ncm-hack-header ncm-typewriter">BREACHING ICE...</h3>
+    <div class="ncm-hack-progress">
+      <div class="ncm-hack-progress-bar">
+        <div class="ncm-hack-progress-fill"></div>
+      </div>
+    </div>
+    <div class="ncm-hack-code-display">
+      <div class="ncm-code-line">Initializing breach protocol...</div>
+      <div class="ncm-code-line">Scanning ICE architecture...</div>
+      <div class="ncm-code-line">Injecting exploit vector...</div>
+      <div class="ncm-code-line">Rolling dice...</div>
+    </div>
+    {{#if hackingSkill}}
+      <div class="ncm-hack-skill-label">SKILL: {{hackingSkill}}</div>
+    {{/if}}
+  </div>
+</div>

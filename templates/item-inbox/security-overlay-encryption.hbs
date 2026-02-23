@@ -1,1 +1,61 @@
-{{!-- Placeholder template: item-inbox/security-overlay-encryption.hbs --}}<div class="ncm-placeholder"></div>
+{{!-- Security Overlay: Encryption Layer --}}
+<div class="ncm-security-overlay ncm-security-overlay-encryption">
+  <div class="ncm-overlay-backdrop ncm-matrix-rain"></div>
+  <div class="ncm-overlay-card">
+    <div class="ncm-overlay-icon"><i class="fas fa-shield-halved"></i></div>
+    <h3 class="ncm-overlay-title">ACCESS DENIED</h3>
+    <div class="ncm-overlay-info">
+      <p>Encryption: <strong>{{encryptionType}}</strong></p>
+      <p>Default DV: <strong>{{encryptionDC}}</strong></p>
+      <p>Attempts: <strong>{{hackAttempts}}/{{maxHackAttempts}}</strong></p>
+    </div>
+
+    {{#if isLockedOut}}
+      <div class="ncm-lockout-display">
+        <i class="fas fa-ban"></i>
+        <p>SYSTEM LOCKED</p>
+        {{#if isPermanentlyLocked}}
+          <p class="ncm-text-danger">PERMANENT LOCKOUT</p>
+        {{else}}
+          <p class="ncm-lockout-timer">{{lockoutRemaining}}s</p>
+        {{/if}}
+      </div>
+    {{else if hasActor}}
+      {{!-- Skill Selection --}}
+      <div class="ncm-skill-select">
+        <p class="ncm-text-muted">Select skill for breach:</p>
+        {{#each availableSkills}}
+          <button type="button" data-action="selectSkill" data-skill="{{name}}"
+                  class="ncm-btn ncm-btn-skill {{#if ../hackingSkillIs}}{{#if (this.name)}}{{/if}}{{/if}}"
+                  title="{{stat}}({{statValue}}) + {{name}}({{level}}) = {{total}} + 1d10 vs DV {{dc}}">
+            <span class="ncm-skill-label">{{name}}</span>
+            <span class="ncm-skill-stats">{{stat}} {{total}} // DV {{dc}}</span>
+          </button>
+        {{/each}}
+      </div>
+
+      {{!-- Action Buttons --}}
+      <div class="ncm-hack-actions">
+        <button type="button" data-action="attemptBreach" class="ncm-btn ncm-btn-primary ncm-btn-breach">
+          <i class="fas fa-terminal"></i> ATTEMPT BREACH
+        </button>
+        {{#if hasLuck}}
+          <button type="button" data-action="spendLuck" class="ncm-btn ncm-btn-secondary">
+            <i class="fas fa-dice"></i> Spend Luck ({{availableLuck}})
+          </button>
+        {{/if}}
+      </div>
+    {{else}}
+      <p class="ncm-text-muted">No character assigned.</p>
+    {{/if}}
+
+    {{#if isGM}}
+      <div class="ncm-overlay-gm">
+        <div class="ncm-gm-divider">GM CONTROLS</div>
+        <button type="button" data-action="forceDecrypt" class="ncm-btn ncm-btn-gm">
+          <i class="fas fa-unlock-keyhole"></i> Force Decrypt
+        </button>
+      </div>
+    {{/if}}
+  </div>
+</div>

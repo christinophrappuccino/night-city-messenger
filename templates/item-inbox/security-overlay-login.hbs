@@ -1,1 +1,41 @@
-{{!-- Placeholder template: item-inbox/security-overlay-login.hbs --}}<div class="ncm-placeholder"></div>
+{{!-- Security Overlay: Login Layer --}}
+<div class="ncm-security-overlay ncm-security-overlay-login">
+  <div class="ncm-overlay-backdrop ncm-scanline-green"></div>
+  <div class="ncm-overlay-card">
+    <div class="ncm-overlay-icon"><i class="fas fa-terminal"></i></div>
+    <h3 class="ncm-overlay-title">{{loginDisplayName}}</h3>
+
+    {{#if isLockedOut}}
+      <div class="ncm-lockout-display">
+        <i class="fas fa-ban"></i>
+        <p>SYSTEM LOCKED</p>
+        <p class="ncm-lockout-timer" data-seconds="{{lockoutRemaining}}">
+          {{lockoutRemaining}}s
+        </p>
+      </div>
+    {{else}}
+      <div class="ncm-login-form">
+        <div class="ncm-form-group">
+          <label><i class="fas fa-user"></i> Username</label>
+          <input type="text" name="login-username" placeholder="username" autocomplete="off" />
+        </div>
+        <div class="ncm-form-group">
+          <label><i class="fas fa-key"></i> Password</label>
+          <input type="password" name="login-password" placeholder="••••••••" autocomplete="off" />
+        </div>
+        <button type="button" data-action="submitLogin" class="ncm-btn ncm-btn-primary">
+          <i class="fas fa-sign-in-alt"></i> AUTHENTICATE
+        </button>
+      </div>
+    {{/if}}
+
+    {{#if isGM}}
+      <div class="ncm-overlay-gm">
+        <div class="ncm-gm-divider">GM CONTROLS</div>
+        <button type="button" data-action="forceDecrypt" class="ncm-btn ncm-btn-gm">
+          <i class="fas fa-unlock-keyhole"></i> Bypass All Security
+        </button>
+      </div>
+    {{/if}}
+  </div>
+</div>

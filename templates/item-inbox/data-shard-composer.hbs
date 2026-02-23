@@ -1,0 +1,36 @@
+{{!-- Data Shard Composer — Add message to shard --}}
+{{#if hasItem}}
+<form class="ncm-shard-composer" autocomplete="off">
+  <h3><i class="fas fa-file-medical"></i> Add to: {{shardName}}</h3>
+  <div class="ncm-form-group">
+    <label>From:</label>
+    <input type="text" name="from" placeholder="sender@corp.net" />
+  </div>
+  <div class="ncm-form-group">
+    <label>Subject:</label>
+    <input type="text" name="subject" placeholder="Data Fragment" />
+  </div>
+  <div class="ncm-form-group">
+    <label>Body:</label>
+    <textarea name="body" rows="8" placeholder="Message content..."></textarea>
+  </div>
+  <div class="ncm-form-group">
+    <label>Timestamp (ISO):</label>
+    <input type="text" name="timestamp" placeholder="2045-03-15T14:30:00Z" />
+  </div>
+  {{#if isPerMessageEncryption}}
+    <div class="ncm-form-group">
+      <label><input type="checkbox" name="encrypted" checked /> Encrypted</label>
+    </div>
+    <div class="ncm-form-group">
+      <label>DV Override: <input type="number" name="encryptionDC" value="{{defaultDC}}" min="1" max="30" /></label>
+    </div>
+  {{/if}}
+  <div class="ncm-composer-actions">
+    <button type="button" data-action="saveMessage" class="ncm-btn ncm-btn-primary"><i class="fas fa-save"></i> Add</button>
+    <button type="button" data-action="cancel" class="ncm-btn ncm-btn-secondary">Cancel</button>
+  </div>
+</form>
+{{else}}
+  <p>No shard selected.</p>
+{{/if}}

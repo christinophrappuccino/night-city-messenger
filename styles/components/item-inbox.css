@@ -1,6 +1,493 @@
 /* ═══════════════════════════════════════════════════════════
- * item-inbox component styles
+ * Item Inbox / Data Shard Viewer Styles
  * @file styles/components/item-inbox.css
  * @module cyberpunkred-messenger
- * Populated in later build phases.
  * ═══════════════════════════════════════════════════════════ */
+
+/* ─── Layout ─── */
+
+.ncm-app .ncm-item-inbox {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--ncm-bg-base, #0a0a0a);
+  color: var(--ncm-text-primary, #e0e0e0);
+  font-family: var(--ncm-font-body, 'Rajdhani', sans-serif);
+  overflow: hidden;
+}
+
+/* ─── Header ─── */
+
+.ncm-app .ncm-shard-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--ncm-bg-deep, #050505);
+  border-bottom: 1px solid var(--ncm-shard-accent, var(--ncm-color-primary, #f65261));
+  flex-shrink: 0;
+}
+
+.ncm-app .ncm-shard-header-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.ncm-app .ncm-shard-icon {
+  color: var(--ncm-shard-accent, var(--ncm-color-primary));
+  font-size: 1rem;
+}
+
+.ncm-app .ncm-shard-title {
+  font-family: var(--ncm-font-display, 'Orbitron', monospace);
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ncm-app .ncm-shard-badges {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.ncm-app .ncm-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  border-radius: 2px;
+  font-size: 0.65rem;
+  font-family: var(--ncm-font-mono, 'ShareTechMono', monospace);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.ncm-app .ncm-badge-encryption {
+  background: rgba(255, 0, 50, 0.2);
+  border: 1px solid rgba(255, 0, 50, 0.5);
+  color: #ff3355;
+}
+
+.ncm-app .ncm-badge-network {
+  background: rgba(25, 243, 247, 0.15);
+  border: 1px solid rgba(25, 243, 247, 0.4);
+  color: #19f3f7;
+}
+
+.ncm-app .ncm-badge-decrypted {
+  background: rgba(0, 255, 100, 0.15);
+  border: 1px solid rgba(0, 255, 100, 0.4);
+  color: #00ff64;
+}
+
+.ncm-app .ncm-shard-gm-controls {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+/* ─── Content Area ─── */
+
+.ncm-app .ncm-shard-content {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+/* ─── Split View ─── */
+
+.ncm-app .ncm-shard-split {
+  display: flex;
+  height: 100%;
+}
+
+.ncm-app .ncm-shard-list {
+  width: 220px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--ncm-bg-elevated, #1a1a1a);
+  overflow-y: auto;
+  background: var(--ncm-bg-deep, #050505);
+}
+
+.ncm-app .ncm-shard-list-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  transition: background 0.15s;
+}
+
+.ncm-app .ncm-shard-list-item:hover {
+  background: var(--ncm-bg-surface, #141414);
+}
+
+.ncm-app .ncm-shard-list-item.selected {
+  background: var(--ncm-bg-surface, #141414);
+  border-left: 2px solid var(--ncm-shard-accent, var(--ncm-color-primary));
+}
+
+.ncm-app .ncm-shard-list-item.encrypted {
+  opacity: 0.7;
+}
+
+.ncm-app .ncm-msg-lock-icon {
+  color: #ff3355;
+  font-size: 0.7rem;
+  flex-shrink: 0;
+}
+
+.ncm-app .ncm-msg-preview {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ncm-app .ncm-msg-from {
+  font-family: var(--ncm-font-mono, 'ShareTechMono', monospace);
+  font-size: 0.75rem;
+  color: var(--ncm-shard-accent, var(--ncm-color-secondary, #19f3f7));
+}
+
+.ncm-app .ncm-msg-subject-preview {
+  font-size: 0.72rem;
+  color: var(--ncm-text-secondary, #888);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ncm-app .ncm-msg-date-small {
+  font-size: 0.6rem;
+  color: var(--ncm-text-secondary, #666);
+  font-family: var(--ncm-font-mono, 'ShareTechMono', monospace);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ─── Detail Pane ─── */
+
+.ncm-app .ncm-shard-detail {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.ncm-app .ncm-shard-message-detail .ncm-msg-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 10px;
+}
+
+.ncm-app .ncm-shard-message-detail .ncm-msg-from {
+  font-size: 0.8rem;
+  flex: 1;
+}
+
+.ncm-app .ncm-shard-message-detail .ncm-msg-date {
+  font-size: 0.7rem;
+  color: var(--ncm-text-secondary, #888);
+  font-family: var(--ncm-font-mono, 'ShareTechMono', monospace);
+}
+
+.ncm-app .ncm-msg-subject {
+  font-family: var(--ncm-font-display, 'Orbitron', monospace);
+  font-size: 0.95rem;
+  margin: 0 0 10px;
+  color: var(--ncm-text-primary, #e0e0e0);
+}
+
+.ncm-app .ncm-msg-body {
+  font-size: 0.82rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ─── Empty / Destroyed States ─── */
+
+.ncm-app .ncm-shard-empty,
+.ncm-app .ncm-shard-empty-detail,
+.ncm-app .ncm-shard-destroyed {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 8px;
+  color: var(--ncm-text-secondary, #666);
+  text-align: center;
+}
+
+.ncm-app .ncm-shard-empty i,
+.ncm-app .ncm-shard-empty-detail i,
+.ncm-app .ncm-shard-destroyed i {
+  font-size: 2rem;
+  opacity: 0.4;
+}
+
+.ncm-app .ncm-shard-destroyed {
+  color: #ff3355;
+}
+
+/* ─── Per-Message Encryption Overlay ─── */
+
+.ncm-app .ncm-msg-encrypted-overlay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 12px;
+  color: #ff3355;
+}
+
+.ncm-app .ncm-msg-encrypted-overlay i {
+  font-size: 2rem;
+}
+
+/* ─── Status Bar ─── */
+
+.ncm-app .ncm-shard-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 10px;
+  background: var(--ncm-bg-deep, #050505);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 0.65rem;
+  font-family: var(--ncm-font-mono, 'ShareTechMono', monospace);
+  color: var(--ncm-text-secondary, #666);
+  flex-shrink: 0;
+}
+
+/* ─── Buttons ─── */
+
+.ncm-app .ncm-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+  background: var(--ncm-bg-elevated, #1a1a1a);
+  color: var(--ncm-text-primary, #e0e0e0);
+  font-family: var(--ncm-font-display, 'Orbitron', monospace);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.ncm-app .ncm-btn:hover {
+  background: var(--ncm-bg-surface, #222);
+  border-color: var(--ncm-shard-accent, var(--ncm-color-primary));
+}
+
+.ncm-app .ncm-btn-primary {
+  background: rgba(246, 82, 97, 0.2);
+  border-color: var(--ncm-color-primary, #f65261);
+  color: var(--ncm-color-primary, #f65261);
+}
+
+.ncm-app .ncm-btn-primary:hover {
+  background: rgba(246, 82, 97, 0.35);
+}
+
+.ncm-app .ncm-btn-secondary {
+  background: rgba(25, 243, 247, 0.1);
+  border-color: var(--ncm-color-secondary, #19f3f7);
+  color: var(--ncm-color-secondary, #19f3f7);
+}
+
+.ncm-app .ncm-btn-gm {
+  background: rgba(255, 170, 0, 0.15);
+  border-color: #ffaa00;
+  color: #ffaa00;
+}
+
+.ncm-app .ncm-btn-danger {
+  color: #ff3355;
+  border-color: #ff3355;
+}
+
+.ncm-app .ncm-btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  background: transparent;
+  color: var(--ncm-text-secondary, #888);
+  cursor: pointer;
+  font-size: 0.75rem;
+  transition: color 0.15s, background 0.15s;
+}
+
+.ncm-app .ncm-btn-icon:hover {
+  color: var(--ncm-text-primary, #e0e0e0);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.ncm-app .ncm-btn-icon.ncm-btn-gm { color: #ffaa00; }
+.ncm-app .ncm-btn-icon.ncm-btn-danger { color: #ff3355; }
+
+.ncm-app .ncm-text-muted { color: var(--ncm-text-secondary, #666); font-size: 0.75rem; }
+.ncm-app .ncm-text-danger { color: #ff3355; }
+
+/* ─── Shard Visual Themes ─── */
+
+.ncm-app .ncm-shard-theme-arasaka { --ncm-shard-accent: #ff0033; }
+.ncm-app .ncm-shard-theme-militech { --ncm-shard-accent: #3388ff; }
+.ncm-app .ncm-shard-theme-biotechnica { --ncm-shard-accent: #00cc88; }
+.ncm-app .ncm-shard-theme-kang-tao { --ncm-shard-accent: #ffaa00; }
+.ncm-app .ncm-shard-theme-trauma-team { --ncm-shard-accent: #ff3366; }
+.ncm-app .ncm-shard-theme-darknet { --ncm-shard-accent: #00ff41; }
+.ncm-app .ncm-shard-theme-netwatch { --ncm-shard-accent: #ff8800; }
+
+/* ─── Config Dialog ─── */
+
+.ncm-app .ncm-shard-config {
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  height: 100%;
+}
+
+.ncm-app .ncm-fieldset {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  padding: 8px;
+  margin: 0;
+}
+
+.ncm-app .ncm-fieldset legend {
+  font-family: var(--ncm-font-display, 'Orbitron', monospace);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: var(--ncm-color-secondary, #19f3f7);
+  padding: 0 4px;
+}
+
+.ncm-app .ncm-form-row {
+  margin-bottom: 4px;
+}
+
+.ncm-app .ncm-form-row label {
+  font-size: 0.78rem;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ncm-app .ncm-form-row input[type="text"],
+.ncm-app .ncm-form-row input[type="number"],
+.ncm-app .ncm-form-row input[type="password"],
+.ncm-app .ncm-form-row select {
+  background: var(--ncm-bg-deep, #050505);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--ncm-text-primary, #e0e0e0);
+  padding: 3px 6px;
+  font-size: 0.78rem;
+  border-radius: 2px;
+  font-family: var(--ncm-font-mono, 'ShareTechMono', monospace);
+}
+
+.ncm-app .ncm-form-row input[type="number"] {
+  width: 60px;
+}
+
+.ncm-app .ncm-skill-entry {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 0;
+}
+
+.ncm-app .ncm-skill-entry .ncm-skill-name {
+  flex: 1;
+  font-size: 0.78rem;
+}
+
+.ncm-app .ncm-skill-dc {
+  width: 50px;
+}
+
+.ncm-app .ncm-add-skill {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.ncm-app .ncm-add-skill select {
+  flex: 1;
+}
+
+.ncm-app .ncm-config-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* ─── Composer ─── */
+
+.ncm-app .ncm-shard-composer {
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: 100%;
+}
+
+.ncm-app .ncm-shard-composer .ncm-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ncm-app .ncm-shard-composer .ncm-form-group label {
+  font-size: 0.75rem;
+  color: var(--ncm-color-secondary, #19f3f7);
+  font-family: var(--ncm-font-display, 'Orbitron', monospace);
+  text-transform: uppercase;
+}
+
+.ncm-app .ncm-shard-composer input,
+.ncm-app .ncm-shard-composer textarea {
+  background: var(--ncm-bg-deep, #050505);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--ncm-text-primary, #e0e0e0);
+  padding: 6px 8px;
+  font-size: 0.82rem;
+  border-radius: 2px;
+  font-family: var(--ncm-font-mono, 'ShareTechMono', monospace);
+  resize: vertical;
+}
+
+.ncm-app .ncm-composer-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: auto;
+}

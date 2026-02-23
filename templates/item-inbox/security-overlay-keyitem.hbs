@@ -1,1 +1,27 @@
-{{!-- Placeholder template: item-inbox/security-overlay-keyitem.hbs --}}<div class="ncm-placeholder"></div>
+{{!-- Security Overlay: Key Item Layer --}}
+<div class="ncm-security-overlay ncm-security-overlay-keyitem">
+  <div class="ncm-overlay-backdrop ncm-scanline-slow"></div>
+  <div class="ncm-overlay-card">
+    <div class="ncm-overlay-icon ncm-pulse"><i class="fas {{keyItemIcon}}"></i></div>
+    <h3 class="ncm-overlay-title">ACCESS TOKEN REQUIRED</h3>
+    <div class="ncm-overlay-info">
+      <p>Present the required access token:</p>
+      <p class="ncm-overlay-highlight">{{keyItemDisplayName}}</p>
+    </div>
+    {{#if hasActor}}
+      <button type="button" data-action="presentKeyItem" class="ncm-btn ncm-btn-primary">
+        <i class="fas fa-id-card"></i> PRESENT TOKEN
+      </button>
+    {{else}}
+      <p class="ncm-text-muted">No character assigned.</p>
+    {{/if}}
+    {{#if isGM}}
+      <div class="ncm-overlay-gm">
+        <div class="ncm-gm-divider">GM CONTROLS</div>
+        <button type="button" data-action="forceDecrypt" class="ncm-btn ncm-btn-gm">
+          <i class="fas fa-unlock-keyhole"></i> Bypass All Security
+        </button>
+      </div>
+    {{/if}}
+  </div>
+</div>
