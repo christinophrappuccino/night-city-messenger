@@ -1,10 +1,458 @@
 /**
- * MessageRepository
+ * Message Repository
  * @file scripts/data/MessageRepository.js
  * @module cyberpunkred-messenger
- * @description Journal-based message CRUD — Phase 2 implementation.
+ * @description Journal-based CRUD operations for messages.
+ * Each actor has one inbox journal. Messages are stored as journal pages with flags.
+ * Inbox journals are keyed by actor ID with naming convention: NCM-Inbox-{actorId}
  */
 
+import { MODULE_ID, EVENTS } from '../utils/constants.js';
+
 export class MessageRepository {
-  // Phase 2
+  constructor() {
+    /** @type {Map<string, JournalEntry>} Cache of actor ID → inbox journal */
+    this._inboxCache = new Map();
+  }
+
+  // ─── Service Accessors ────────────────────────────────────
+
+  get eventBus() { return game.nightcity.eventBus; }
+  get timeService() { return game.nightcity.timeService; }
+
+  // ─── Inbox Journal Management ─────────────────────────────
+
+  /**
+   * Get or create the inbox journal for an actor.
+   * Player characters get journals owned by the player's user.
+   * NPCs get journals owned by the GM.
+   * @param {string} actorId 
+   * @returns {Promise<JournalEntry>}
+   */
+  async getInboxJournal(actorId) {
+    // Check cache first
+    if (this._inboxCache.has(actorId)) {
+      const cached = this._inboxCache.get(actorId);
+      // Validate the journal still exists
+      if (game.journal.get(cached.id)) return cached;
+      this._inboxCache.delete(actorId);
+    }
+
+    const journalName = `NCM-Inbox-${actorId}`;
+
+    // Search existing journals
+    let journal = game.journal.find(j => j.name === journalName);
+
+    if (!journal) {
+      // Only GM can create journals
+      if (!game.user.isGM) {
+        console.warn(`${MODULE_ID} | Non-GM cannot create inbox for actor ${actorId}`);
+        return null;
+      }
+
+      const actor = game.actors.get(actorId);
+      if (!actor) {
+        console.error(`${MODULE_ID} | Actor ${actorId} not found`);
+        return null;
+      }
+
+      // Determine ownership — player characters owned by their user, NPCs by GM
+      const ownership = { default: 0 };
+      if (actor.hasPlayerOwner) {
+        for (const [userId, level] of Object.entries(actor.ownership)) {
+          if (level === CONST.DOCUMENT_PERMISSION_LEVELS.OWNER && userId !== 'default') {
+            ownership[userId] = CONST.DOCUMENT_PERMISSION_LEVELS.OWNER;
+          }
+        }
+      }
+      // GM always has implicit ownership
+
+      journal = await JournalEntry.create({
+        name: journalName,
+        ownership,
+        flags: {
+          [MODULE_ID]: {
+            type: 'inbox',
+            actorId,
+            createdAt: new Date().toISOString(),
+          }
+        }
+      });
+
+      console.log(`${MODULE_ID} | Created inbox journal for actor ${actorId}`);
+    }
+
+    this._inboxCache.set(actorId, journal);
+    return journal;
+  }
+
+  // ─── Message CRUD ─────────────────────────────────────────
+
+  /**
+   * Create a message in the recipient's inbox journal.
+   * @param {string} recipientActorId 
+   * @param {Object} messageData
+   * @returns {Promise<{success: boolean, messageId?: string, page?: JournalEntryPage}>}
+   */
+  async createMessage(recipientActorId, messageData) {
+    try {
+      const journal = await this.getInboxJournal(recipientActorId);
+      if (!journal) {
+        return { success: false, error: 'Could not access inbox journal' };
+      }
+
+      const messageId = messageData.messageId || foundry.utils.randomID();
+      const timestamp = messageData.timestamp || this._getTimestamp();
+
+      const flags = {
+        [MODULE_ID]: {
+          messageId,
+          threadId: messageData.threadId || messageId,
+          inReplyTo: messageData.inReplyTo || null,
+
+          from: messageData.from || '',
+          fromActorId: messageData.fromActorId || '',
+          to: messageData.to || '',
+          toActorId: recipientActorId,
+
+          subject: messageData.subject || '(no subject)',
+          body: messageData.body || '',
+          priority: messageData.priority || 'normal',
+
+          timestamp,
+          simpleCalendarData: messageData.simpleCalendarData || null,
+          readAt: null,
+
+          network: messageData.network || 'CITINET',
+
+          status: {
+            read: messageData.status?.read || false,
+            saved: false,
+            spam: false,
+            encrypted: false,
+            infected: false,
+            deleted: false,
+            sent: messageData.status?.sent || false,
+            scheduled: false,
+          },
+
+          encryption: null,
+
+          metadata: {
+            networkTrace: messageData.metadata?.networkTrace || null,
+            signalStrength: messageData.metadata?.signalStrength || 100,
+            routingPath: messageData.metadata?.routingPath || [],
+            scheduledDelivery: messageData.metadata?.scheduledDelivery || null,
+            deliveredAt: messageData.metadata?.deliveredAt || null,
+          },
+
+          attachments: messageData.attachments || [],
+          malware: null,
+        }
+      };
+
+      const page = await journal.createEmbeddedDocuments('JournalEntryPage', [{
+        name: `MSG-${messageId}`,
+        type: 'text',
+        text: { content: messageData.body || '', format: 1 },
+        flags,
+      }]);
+
+      return { success: true, messageId, page: page[0] };
+    } catch (error) {
+      console.error(`${MODULE_ID} | MessageRepository.createMessage:`, error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Get all messages for an actor with optional filtering.
+   * @param {string} actorId 
+   * @param {Object} [options]
+   * @param {string} [options.filter] - 'inbox' | 'sent' | 'saved' | 'deleted' | 'all'
+   * @param {boolean} [options.includeDeleted] - Include soft-deleted messages
+   * @param {string} [options.sortBy] - 'newest' | 'oldest' | 'unread'
+   * @param {number} [options.limit] - Max messages to return
+   * @param {number} [options.offset] - Pagination offset
+   * @returns {Promise<Array>}
+   */
+  async getMessages(actorId, options = {}) {
+    try {
+      const journal = await this.getInboxJournal(actorId);
+      if (!journal) return [];
+
+      const filter = options.filter || 'inbox';
+      const includeDeleted = options.includeDeleted || false;
+
+      let messages = journal.pages.contents
+        .map(page => this._pageToMessage(page))
+        .filter(msg => msg !== null);
+
+      // Apply filters
+      switch (filter) {
+        case 'inbox':
+          messages = messages.filter(m => !m.status.sent && !m.status.deleted);
+          break;
+        case 'sent':
+          messages = messages.filter(m => m.status.sent && !m.status.deleted);
+          break;
+        case 'saved':
+          messages = messages.filter(m => m.status.saved && !m.status.deleted);
+          break;
+        case 'deleted':
+          messages = messages.filter(m => m.status.deleted);
+          break;
+        case 'all':
+          if (!includeDeleted) {
+            messages = messages.filter(m => !m.status.deleted);
+          }
+          break;
+      }
+
+      // Sort
+      const sortBy = options.sortBy || 'newest';
+      switch (sortBy) {
+        case 'newest':
+          messages.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+          break;
+        case 'oldest':
+          messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+          break;
+        case 'unread':
+          messages.sort((a, b) => {
+            if (a.status.read !== b.status.read) return a.status.read ? 1 : -1;
+            return new Date(b.timestamp) - new Date(a.timestamp);
+          });
+          break;
+      }
+
+      // Pagination
+      if (options.offset) messages = messages.slice(options.offset);
+      if (options.limit) messages = messages.slice(0, options.limit);
+
+      return messages;
+    } catch (error) {
+      console.error(`${MODULE_ID} | MessageRepository.getMessages:`, error);
+      return [];
+    }
+  }
+
+  /**
+   * Get a single message by ID from an actor's inbox.
+   * @param {string} actorId 
+   * @param {string} messageId 
+   * @returns {Promise<Object|null>}
+   */
+  async getMessage(actorId, messageId) {
+    try {
+      const journal = await this.getInboxJournal(actorId);
+      if (!journal) return null;
+
+      const page = journal.pages.find(p => {
+        const flags = p.flags?.[MODULE_ID];
+        return flags?.messageId === messageId;
+      });
+
+      return page ? this._pageToMessage(page) : null;
+    } catch (error) {
+      console.error(`${MODULE_ID} | MessageRepository.getMessage:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Update a message's flags (batch update).
+   * @param {string} actorId 
+   * @param {string} messageId 
+   * @param {Object} updates - Partial flag updates to merge
+   * @returns {Promise<{success: boolean}>}
+   */
+  async updateMessage(actorId, messageId, updates) {
+    try {
+      const journal = await this.getInboxJournal(actorId);
+      if (!journal) return { success: false, error: 'Inbox not found' };
+
+      const page = journal.pages.find(p => {
+        return p.flags?.[MODULE_ID]?.messageId === messageId;
+      });
+      if (!page) return { success: false, error: 'Message not found' };
+
+      // Build batch update object
+      const flagUpdates = {};
+      for (const [key, value] of Object.entries(updates)) {
+        flagUpdates[`flags.${MODULE_ID}.${key}`] = value;
+      }
+
+      await page.update(flagUpdates);
+      return { success: true };
+    } catch (error) {
+      console.error(`${MODULE_ID} | MessageRepository.updateMessage:`, error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Mark a message as read.
+   * @param {string} actorId 
+   * @param {string} messageId 
+   * @returns {Promise<{success: boolean}>}
+   */
+  async markAsRead(actorId, messageId) {
+    return this.updateMessage(actorId, messageId, {
+      'status.read': true,
+      readAt: new Date().toISOString(),
+    });
+  }
+
+  /**
+   * Soft-delete a message (sets deleted flag, preserves data).
+   * @param {string} actorId 
+   * @param {string} messageId 
+   * @returns {Promise<{success: boolean}>}
+   */
+  async softDeleteMessage(actorId, messageId) {
+    return this.updateMessage(actorId, messageId, {
+      'status.deleted': true,
+    });
+  }
+
+  /**
+   * Hard-delete a message (removes the journal page). GM only.
+   * @param {string} actorId 
+   * @param {string} messageId 
+   * @returns {Promise<{success: boolean}>}
+   */
+  async hardDeleteMessage(actorId, messageId) {
+    try {
+      if (!game.user.isGM) return { success: false, error: 'GM only' };
+
+      const journal = await this.getInboxJournal(actorId);
+      if (!journal) return { success: false, error: 'Inbox not found' };
+
+      const page = journal.pages.find(p => {
+        return p.flags?.[MODULE_ID]?.messageId === messageId;
+      });
+      if (!page) return { success: false, error: 'Message not found' };
+
+      await journal.deleteEmbeddedDocuments('JournalEntryPage', [page.id]);
+      return { success: true };
+    } catch (error) {
+      console.error(`${MODULE_ID} | MessageRepository.hardDeleteMessage:`, error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Toggle saved/starred status on a message.
+   * @param {string} actorId 
+   * @param {string} messageId 
+   * @returns {Promise<{success: boolean, saved?: boolean}>}
+   */
+  async toggleSaved(actorId, messageId) {
+    const msg = await this.getMessage(actorId, messageId);
+    if (!msg) return { success: false };
+    const newSaved = !msg.status.saved;
+    const result = await this.updateMessage(actorId, messageId, {
+      'status.saved': newSaved,
+    });
+    return { ...result, saved: newSaved };
+  }
+
+  /**
+   * Get unread count for an actor's inbox.
+   * @param {string} actorId 
+   * @returns {Promise<number>}
+   */
+  async getUnreadCount(actorId) {
+    const messages = await this.getMessages(actorId, { filter: 'inbox' });
+    return messages.filter(m => !m.status.read).length;
+  }
+
+  /**
+   * Get messages in a thread.
+   * @param {string} actorId 
+   * @param {string} threadId 
+   * @returns {Promise<Array>}
+   */
+  async getThread(actorId, threadId) {
+    const all = await this.getMessages(actorId, { filter: 'all' });
+    return all
+      .filter(m => m.threadId === threadId)
+      .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+  }
+
+  // ─── Helpers ──────────────────────────────────────────────
+
+  /**
+   * Convert a journal page to a message object.
+   * @param {JournalEntryPage} page 
+   * @returns {Object|null}
+   */
+  _pageToMessage(page) {
+    const flags = page.flags?.[MODULE_ID];
+    if (!flags?.messageId) return null;
+
+    return {
+      // Foundry references
+      _pageId: page.id,
+      _journalId: page.parent?.id,
+
+      // Identity
+      messageId: flags.messageId,
+      threadId: flags.threadId,
+      inReplyTo: flags.inReplyTo,
+
+      // Routing
+      from: flags.from,
+      fromActorId: flags.fromActorId,
+      to: flags.to,
+      toActorId: flags.toActorId,
+
+      // Content
+      subject: flags.subject,
+      body: flags.body,
+      priority: flags.priority || 'normal',
+
+      // Timing
+      timestamp: flags.timestamp,
+      simpleCalendarData: flags.simpleCalendarData,
+      readAt: flags.readAt,
+
+      // Context
+      network: flags.network,
+
+      // Status
+      status: { ...flags.status },
+
+      // Encryption
+      encryption: flags.encryption ? { ...flags.encryption } : null,
+
+      // Metadata
+      metadata: { ...flags.metadata },
+
+      // Future
+      attachments: flags.attachments || [],
+      malware: flags.malware,
+    };
+  }
+
+  /**
+   * Get current timestamp via TimeService or fallback.
+   * @returns {string} ISO timestamp
+   */
+  _getTimestamp() {
+    try {
+      if (this.timeService) {
+        return this.timeService.getCurrentTime();
+      }
+    } catch (e) { /* fallback */ }
+    return new Date().toISOString();
+  }
+
+  /**
+   * Clear the inbox journal cache (useful on world reload).
+   */
+  clearCache() {
+    this._inboxCache.clear();
+  }
 }

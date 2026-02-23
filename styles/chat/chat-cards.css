@@ -1,51 +1,149 @@
-/* ═══════════════════════════════════════════════════════════
+/**
  * Chat Card Styles
  * @file styles/chat/chat-cards.css
  * @module cyberpunkred-messenger
- * Styles for NCM chat messages posted to Foundry chat.
- * Populated in Phase 2.
- * ═══════════════════════════════════════════════════════════ */
+ */
 
-/* Chat card wrapper */
 .ncm-chat-card {
   background: var(--ncm-bg-surface, #1a1a2e);
   border: 1px solid var(--ncm-border, #2a2a45);
   border-left: 3px solid var(--ncm-secondary, #19f3f7);
-  border-radius: var(--ncm-border-radius, 3px);
-  padding: 8px 12px;
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  border-radius: 4px;
+  overflow: hidden;
+  font-family: 'Rajdhani', sans-serif;
+}
+
+.ncm-chat-card__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--ncm-bg-base, #12121a);
+  border-bottom: 1px solid var(--ncm-border, #2a2a45);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ncm-chat-card__header i {
+  color: var(--ncm-secondary, #19f3f7);
+}
+
+.ncm-chat-card__badge {
+  font-family: 'Orbitron', sans-serif;
+  color: var(--ncm-secondary, #19f3f7);
+  font-weight: 600;
+}
+
+.ncm-chat-card__shared-by {
+  color: var(--ncm-text-muted, #555570);
+  margin-left: auto;
+}
+
+.ncm-chat-card__content {
+  padding: 10px;
+}
+
+.ncm-chat-card__field {
+  display: flex;
+  gap: 6px;
+  padding: 1px 0;
+}
+
+.ncm-chat-card__label {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 9px;
+  color: var(--ncm-text-muted, #555570);
+  text-transform: uppercase;
+  width: 40px;
+  flex-shrink: 0;
+}
+
+.ncm-chat-card__value {
+  font-family: 'Share Tech Mono', monospace;
   font-size: 12px;
+  color: var(--ncm-text-secondary, #8888a0);
+}
+
+.ncm-chat-card__subject {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
   color: var(--ncm-text-primary, #e0e0e8);
-}
-
-.ncm-chat-card .ncm-chat-header {
-  font-family: var(--ncm-font-ui, 'Orbitron', sans-serif);
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: var(--ncm-secondary, #19f3f7);
-  margin-bottom: 4px;
-}
-
-.ncm-chat-card .ncm-chat-body {
-  color: var(--ncm-text-primary, #e0e0e8);
-  line-height: 1.4;
-}
-
-.ncm-chat-card button {
-  font-family: var(--ncm-font-ui, 'Orbitron', sans-serif);
-  font-size: 10px;
-  text-transform: uppercase;
-  padding: 3px 8px;
-  background: var(--ncm-bg-elevated, #252540);
-  border: 1px solid var(--ncm-border, #2a2a45);
-  color: var(--ncm-secondary, #19f3f7);
-  border-radius: 2px;
-  cursor: pointer;
   margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--ncm-border, #2a2a45);
 }
 
-.ncm-chat-card button:hover {
-  border-color: var(--ncm-secondary, #19f3f7);
-  box-shadow: 0 0 6px rgba(25, 243, 247, 0.2);
+.ncm-chat-card__body {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ncm-text-primary, #e0e0e8);
+  margin-top: 6px;
+  padding: 8px;
+  background: var(--ncm-bg-deep, #0a0a0f);
+  border-radius: 3px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.ncm-chat-card__priority {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.ncm-chat-card__priority--urgent {
+  background: rgba(247, 201, 72, 0.15);
+  color: var(--ncm-accent, #f7c948);
+  border: 1px solid var(--ncm-accent, #f7c948);
+}
+
+.ncm-chat-card__priority--critical {
+  background: rgba(246, 82, 97, 0.15);
+  color: var(--ncm-primary, #F65261);
+  border: 1px solid var(--ncm-primary, #F65261);
+}
+
+.ncm-chat-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background: var(--ncm-bg-base, #12121a);
+  border-top: 1px solid var(--ncm-border, #2a2a45);
+}
+
+.ncm-chat-card__network {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  color: var(--ncm-text-muted, #555570);
+}
+
+.ncm-chat-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  background: transparent;
+  border: 1px solid var(--ncm-secondary, #19f3f7);
+  border-radius: 3px;
+  color: var(--ncm-secondary, #19f3f7);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.ncm-chat-btn:hover {
+  background: rgba(25, 243, 247, 0.1);
 }

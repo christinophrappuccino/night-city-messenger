@@ -1,6 +1,227 @@
-/* ═══════════════════════════════════════════════════════════
- * contact-manager component styles
+/**
+ * Contact Manager Styles
  * @file styles/components/contact-manager.css
  * @module cyberpunkred-messenger
- * Populated in later build phases.
- * ═══════════════════════════════════════════════════════════ */
+ */
+
+.ncm-app .ncm-contacts {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--ncm-bg-deep);
+}
+
+.ncm-app .ncm-contacts__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: var(--ncm-bg-base);
+  border-bottom: 1px solid var(--ncm-border);
+}
+
+.ncm-app .ncm-contacts__header-left {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.ncm-app .ncm-contacts__title {
+  font-family: var(--ncm-font-display);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ncm-text-primary);
+  margin: 0;
+}
+
+.ncm-app .ncm-contacts__title i {
+  color: var(--ncm-secondary);
+  margin-right: 4px;
+}
+
+.ncm-app .ncm-contacts__count {
+  font-family: var(--ncm-font-mono);
+  font-size: 11px;
+  color: var(--ncm-text-muted);
+}
+
+.ncm-app .ncm-contacts__header-right {
+  display: flex;
+  gap: 6px;
+}
+
+.ncm-app .ncm-contacts__search {
+  position: relative;
+  padding: 8px 16px;
+  background: var(--ncm-bg-base);
+  border-bottom: 1px solid var(--ncm-border);
+}
+
+.ncm-app .ncm-contact-search {
+  width: 100%;
+  padding-left: 28px;
+}
+
+/* ─── Contact List ────────────────────────────────────── */
+
+.ncm-app .ncm-contact-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.ncm-app .ncm-contact-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--ncm-border);
+  transition: background 0.15s;
+}
+
+.ncm-app .ncm-contact-item:hover {
+  background: var(--ncm-bg-surface);
+}
+
+.ncm-app .ncm-contact-item__img {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--ncm-border);
+  flex-shrink: 0;
+}
+
+.ncm-app .ncm-contact-item__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.ncm-app .ncm-contact-item__name {
+  font-family: var(--ncm-font-body);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ncm-text-primary);
+}
+
+.ncm-app .ncm-contact-item__alias {
+  font-weight: 400;
+  color: var(--ncm-secondary);
+  font-size: 12px;
+  margin-left: 6px;
+}
+
+.ncm-app .ncm-contact-item__email {
+  font-size: 12px;
+  color: var(--ncm-text-secondary);
+}
+
+.ncm-app .ncm-contact-item__org {
+  font-family: var(--ncm-font-body);
+  font-size: 11px;
+  color: var(--ncm-text-muted);
+}
+
+.ncm-app .ncm-contact-item__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.ncm-app .ncm-tag {
+  display: inline-block;
+  padding: 1px 8px;
+  background: var(--ncm-bg-elevated);
+  border: 1px solid var(--ncm-border);
+  border-radius: 10px;
+  font-family: var(--ncm-font-mono);
+  font-size: 10px;
+  color: var(--ncm-text-secondary);
+}
+
+.ncm-app .ncm-contact-item__actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.ncm-app .ncm-contact-item:hover .ncm-contact-item__actions {
+  opacity: 1;
+}
+
+/* ─── Contact Form ────────────────────────────────────── */
+
+.ncm-app .ncm-contact-form-wrapper {
+  padding: 12px 16px;
+  background: var(--ncm-bg-surface);
+  border-bottom: 1px solid var(--ncm-border);
+}
+
+.ncm-app .ncm-form-title {
+  font-family: var(--ncm-font-display);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ncm-secondary);
+  margin: 0 0 8px;
+}
+
+.ncm-app .ncm-form-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ncm-app .ncm-field--half {
+  flex: 1 1 calc(50% - 3px);
+  min-width: 180px;
+}
+
+.ncm-app .ncm-field--full {
+  flex: 1 1 100%;
+}
+
+.ncm-app .ncm-contact-form .ncm-field {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+}
+
+.ncm-app .ncm-contact-form .ncm-field__label {
+  width: auto;
+}
+
+.ncm-app .ncm-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.ncm-app .ncm-contact-form--inline {
+  padding: 10px;
+  background: var(--ncm-bg-surface);
+  border-radius: var(--ncm-border-radius);
+}
+
+.ncm-app .ncm-import-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.ncm-app .ncm-import-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px;
+  cursor: pointer;
+}
+
+.ncm-app .ncm-import-item:hover {
+  background: var(--ncm-bg-surface);
+}

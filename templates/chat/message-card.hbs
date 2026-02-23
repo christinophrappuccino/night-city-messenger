@@ -1,1 +1,38 @@
-{{!-- Placeholder template: chat/message-card.hbs --}}<div class="ncm-placeholder"></div>
+{{!-- Chat Card — Shared Message --}}
+<div class="ncm-chat-card">
+  <div class="ncm-chat-card__header">
+    <i class="fas fa-envelope"></i>
+    <span class="ncm-chat-card__badge">SHARED MESSAGE</span>
+    <span class="ncm-chat-card__shared-by">via {{sharedBy}}</span>
+  </div>
+  <div class="ncm-chat-card__content">
+    <div class="ncm-chat-card__field">
+      <span class="ncm-chat-card__label">FROM:</span>
+      <span class="ncm-chat-card__value">{{message.from}}</span>
+    </div>
+    <div class="ncm-chat-card__field">
+      <span class="ncm-chat-card__label">TO:</span>
+      <span class="ncm-chat-card__value">{{message.to}}</span>
+    </div>
+    <div class="ncm-chat-card__subject">{{message.subject}}</div>
+    <div class="ncm-chat-card__body">
+      {{{message.body}}}
+    </div>
+    {{#if message.priority}}
+    {{#unless (eq message.priority "normal")}}
+    <div class="ncm-chat-card__priority ncm-chat-card__priority--{{message.priority}}">
+      <i class="fas fa-exclamation-triangle"></i> {{message.priority}}
+    </div>
+    {{/unless}}
+    {{/if}}
+  </div>
+  <div class="ncm-chat-card__footer">
+    <span class="ncm-chat-card__network ncm-mono">{{message.network}}</span>
+    <div class="ncm-chat-card__actions">
+      <button class="ncm-chat-btn" data-action="ncm-reply" 
+              data-from-actor-id="{{message.fromActorId}}" data-message-id="{{message.messageId}}">
+        <i class="fas fa-reply"></i> Reply
+      </button>
+    </div>
+  </div>
+</div>

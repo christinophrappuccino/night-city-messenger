@@ -1,1 +1,178 @@
-{{!-- Placeholder template: contact-manager/contact-manager.hbs --}}<div class="ncm-placeholder"></div>
+{{!-- Contact Manager — View / Add / Edit / Delete contacts --}}
+<div class="ncm-contacts">
+
+  {{!-- Header --}}
+  <div class="ncm-contacts__header">
+    <div class="ncm-contacts__header-left">
+      <h2 class="ncm-contacts__title">
+        <i class="fas fa-address-book"></i> Contacts
+      </h2>
+      <span class="ncm-contacts__count">{{contactCount}} contacts</span>
+    </div>
+    <div class="ncm-contacts__header-right">
+      <button class="ncm-btn ncm-btn--small" data-action="importActor" data-tooltip="Import from actors">
+        <i class="fas fa-user-plus"></i> Import
+      </button>
+      <button class="ncm-btn ncm-btn--primary ncm-btn--small" data-action="addContact">
+        <i class="fas fa-plus"></i> Add
+      </button>
+    </div>
+  </div>
+
+  {{!-- Search --}}
+  <div class="ncm-contacts__search">
+    <i class="fas fa-search ncm-search-icon"></i>
+    <input type="text" class="ncm-contact-search ncm-input" 
+           placeholder="Search contacts..." value="{{searchTerm}}">
+  </div>
+
+  {{!-- Add/Edit Form --}}
+  {{#if isAdding}}
+  <div class="ncm-contact-form-wrapper">
+    <h3 class="ncm-form-title">New Contact</h3>
+    <form class="ncm-contact-form">
+      <div class="ncm-form-grid">
+        <div class="ncm-field ncm-field--half">
+          <label class="ncm-field__label">Name *</label>
+          <input type="text" name="name" class="ncm-input" placeholder="Contact name" required>
+        </div>
+        <div class="ncm-field ncm-field--half">
+          <label class="ncm-field__label">Email</label>
+          <input type="text" name="email" class="ncm-input" placeholder="handle@domain.net">
+        </div>
+        <div class="ncm-field ncm-field--half">
+          <label class="ncm-field__label">Alias</label>
+          <input type="text" name="alias" class="ncm-input" placeholder="Street name">
+        </div>
+        <div class="ncm-field ncm-field--half">
+          <label class="ncm-field__label">Organization</label>
+          <input type="text" name="organization" class="ncm-input" placeholder="Corp / Gang / Fixer">
+        </div>
+        <div class="ncm-field ncm-field--half">
+          <label class="ncm-field__label">Phone</label>
+          <input type="text" name="phone" class="ncm-input" placeholder="(555) 2077">
+        </div>
+        <div class="ncm-field ncm-field--half">
+          <label class="ncm-field__label">Type</label>
+          <select name="type" class="ncm-input">
+            <option value="npc">NPC</option>
+            <option value="player">Player</option>
+            <option value="fixer">Fixer</option>
+            <option value="corp">Corp</option>
+          </select>
+        </div>
+        <div class="ncm-field ncm-field--full">
+          <label class="ncm-field__label">Tags (comma-separated)</label>
+          <input type="text" name="tags" class="ncm-input" placeholder="friend, fixer, dangerous">
+        </div>
+        <div class="ncm-field ncm-field--full">
+          <label class="ncm-field__label">Notes</label>
+          <textarea name="notes" class="ncm-textarea ncm-textarea--small" placeholder="Additional notes..."></textarea>
+        </div>
+      </div>
+      <div class="ncm-form-actions">
+        <button type="button" class="ncm-btn ncm-btn--ghost" data-action="cancelEdit">Cancel</button>
+        <button type="button" class="ncm-btn ncm-btn--primary" data-action="saveContact">
+          <i class="fas fa-save"></i> Save
+        </button>
+      </div>
+    </form>
+  </div>
+  {{/if}}
+
+  {{!-- Contact List --}}
+  <div class="ncm-contact-list">
+    {{#if isEmpty}}
+    <div class="ncm-empty-state">
+      <i class="fas fa-user-slash ncm-empty-state__icon"></i>
+      <p class="ncm-empty-state__text">No contacts yet</p>
+      <p class="ncm-empty-state__sub">Add contacts to start messaging.</p>
+    </div>
+    {{else}}
+    {{#each contacts}}
+    <div class="ncm-contact-item" data-contact-id="{{id}}">
+      {{#if isEditing}}
+      {{!-- Inline Edit Form --}}
+      <form class="ncm-contact-form ncm-contact-form--inline">
+        <div class="ncm-form-grid">
+          <div class="ncm-field ncm-field--half">
+            <label class="ncm-field__label">Name</label>
+            <input type="text" name="name" class="ncm-input" value="{{name}}">
+          </div>
+          <div class="ncm-field ncm-field--half">
+            <label class="ncm-field__label">Email</label>
+            <input type="text" name="email" class="ncm-input" value="{{email}}">
+          </div>
+          <div class="ncm-field ncm-field--half">
+            <label class="ncm-field__label">Alias</label>
+            <input type="text" name="alias" class="ncm-input" value="{{alias}}">
+          </div>
+          <div class="ncm-field ncm-field--half">
+            <label class="ncm-field__label">Organization</label>
+            <input type="text" name="organization" class="ncm-input" value="{{organization}}">
+          </div>
+          <div class="ncm-field ncm-field--half">
+            <label class="ncm-field__label">Phone</label>
+            <input type="text" name="phone" class="ncm-input" value="{{phone}}">
+          </div>
+          <div class="ncm-field ncm-field--half">
+            <label class="ncm-field__label">Type</label>
+            <select name="type" class="ncm-input">
+              <option value="npc" {{#if (eq type "npc")}}selected{{/if}}>NPC</option>
+              <option value="player" {{#if (eq type "player")}}selected{{/if}}>Player</option>
+              <option value="fixer" {{#if (eq type "fixer")}}selected{{/if}}>Fixer</option>
+              <option value="corp" {{#if (eq type "corp")}}selected{{/if}}>Corp</option>
+            </select>
+          </div>
+          <div class="ncm-field ncm-field--full">
+            <label class="ncm-field__label">Tags</label>
+            <input type="text" name="tags" class="ncm-input" value="{{displayTags}}">
+          </div>
+          <div class="ncm-field ncm-field--full">
+            <label class="ncm-field__label">Notes</label>
+            <textarea name="notes" class="ncm-textarea ncm-textarea--small">{{notes}}</textarea>
+          </div>
+        </div>
+        <div class="ncm-form-actions">
+          <button type="button" class="ncm-btn ncm-btn--ghost" data-action="cancelEdit">Cancel</button>
+          <button type="button" class="ncm-btn ncm-btn--primary" data-action="saveContact">Save</button>
+        </div>
+      </form>
+      {{else}}
+      {{!-- Contact Display --}}
+      <img src="{{img}}" class="ncm-contact-item__img" alt="{{name}}">
+      <div class="ncm-contact-item__info">
+        <div class="ncm-contact-item__name">{{name}}
+          {{#if alias}}<span class="ncm-contact-item__alias">"{{alias}}"</span>{{/if}}
+        </div>
+        <div class="ncm-contact-item__email ncm-mono">{{email}}</div>
+        {{#if organization}}
+        <div class="ncm-contact-item__org">{{organization}}</div>
+        {{/if}}
+        {{#if displayTags}}
+        <div class="ncm-contact-item__tags">
+          {{#each tags}}
+          <span class="ncm-tag">{{this}}</span>
+          {{/each}}
+        </div>
+        {{/if}}
+      </div>
+      <div class="ncm-contact-item__actions">
+        {{#if actorId}}
+        <button class="ncm-btn ncm-btn--icon ncm-btn--tiny" data-action="sendMessage" data-tooltip="Send message">
+          <i class="fas fa-envelope"></i>
+        </button>
+        {{/if}}
+        <button class="ncm-btn ncm-btn--icon ncm-btn--tiny" data-action="editContact" data-tooltip="Edit">
+          <i class="fas fa-edit"></i>
+        </button>
+        <button class="ncm-btn ncm-btn--icon ncm-btn--tiny ncm-btn--danger" data-action="deleteContact" data-tooltip="Delete">
+          <i class="fas fa-trash"></i>
+        </button>
+      </div>
+      {{/if}}
+    </div>
+    {{/each}}
+    {{/if}}
+  </div>
+</div>

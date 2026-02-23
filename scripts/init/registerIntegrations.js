@@ -6,21 +6,17 @@
  */
 
 import { log } from '../utils/helpers.js';
+import { ChatIntegration } from '../integrations/ChatIntegration.js';
 
 export function registerIntegrations(initializer) {
   initializer.register('init', 30, 'Chat integration', () => {
-    // Delegated event listener on chat log for NCM chat cards
-    Hooks.once('renderChatLog', (app, html) => {
-      const chatLog = html[0] ?? html;
-      chatLog.addEventListener('click', (e) => {
-        const action = e.target.closest('[data-ncm-action]');
-        if (!action) return;
-
-        const actionName = action.dataset.ncmAction;
-        log.debug(`Chat card action: ${actionName}`);
-        // Phase 2: route to appropriate handler
-      });
-    });
+    ChatIntegration.register();
     log.info('Chat integration registered');
+  });
+
+  // Phase 5: Item sheet hooks for email field on actor sheets
+  initializer.register('init', 40, 'Item sheet hooks', () => {
+    // Phase 5: EmailSettingsIntegration
+    log.debug('Item sheet hooks (Phase 5 — stub)');
   });
 }

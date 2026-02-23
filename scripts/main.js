@@ -12,6 +12,7 @@ import { ModuleInitializer } from './core/ModuleInitializer.js';
 import { registerCoreServices } from './init/registerCoreServices.js';
 import { registerTemplates } from './init/registerTemplates.js';
 import { registerUIComponents } from './init/registerUIComponents.js';
+import { registerMessagingSystem } from './init/registerMessagingSystem.js';
 import { registerNetworkSystem } from './init/registerNetworkSystem.js';
 import { registerDataShardSystem } from './init/registerDataShardSystem.js';
 import { registerIntegrations } from './init/registerIntegrations.js';
@@ -24,6 +25,7 @@ const initializer = new ModuleInitializer();
 registerCoreServices(initializer);
 registerTemplates(initializer);
 registerUIComponents(initializer);
+registerMessagingSystem(initializer);      // Phase 2: Messaging
 registerNetworkSystem(initializer);
 registerDataShardSystem(initializer);
 registerIntegrations(initializer);

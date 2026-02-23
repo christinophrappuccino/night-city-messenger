@@ -1,6 +1,262 @@
-/* ═══════════════════════════════════════════════════════════
- * message-composer component styles
+/**
+ * Message Composer Styles
  * @file styles/components/message-composer.css
  * @module cyberpunkred-messenger
- * Populated in later build phases.
- * ═══════════════════════════════════════════════════════════ */
+ */
+
+.ncm-app .ncm-composer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--ncm-bg-deep);
+}
+
+.ncm-app .ncm-composer__header {
+  padding: 10px 16px;
+  background: var(--ncm-bg-base);
+  border-bottom: 1px solid var(--ncm-border);
+}
+
+.ncm-app .ncm-composer__title {
+  font-family: var(--ncm-font-display);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ncm-text-primary);
+  margin: 0;
+}
+
+.ncm-app .ncm-composer__title i {
+  color: var(--ncm-secondary);
+  margin-right: 6px;
+}
+
+/* ─── Fields ──────────────────────────────────────────── */
+
+.ncm-app .ncm-composer__fields {
+  padding: 8px 16px;
+  background: var(--ncm-bg-base);
+}
+
+.ncm-app .ncm-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.ncm-app .ncm-field__label {
+  font-family: var(--ncm-font-ui);
+  font-size: 10px;
+  color: var(--ncm-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  width: 60px;
+  flex-shrink: 0;
+}
+
+.ncm-app .ncm-field__value {
+  flex: 1;
+  position: relative;
+}
+
+.ncm-app .ncm-input,
+.ncm-app .ncm-from-select {
+  width: 100%;
+  padding: 6px 10px;
+  background: var(--ncm-bg-surface);
+  border: 1px solid var(--ncm-border);
+  border-radius: var(--ncm-border-radius);
+  color: var(--ncm-text-primary);
+  font-family: var(--ncm-font-mono);
+  font-size: 12px;
+  box-sizing: border-box;
+}
+
+.ncm-app .ncm-input:focus,
+.ncm-app .ncm-from-select:focus {
+  border-color: var(--ncm-border-focus);
+  outline: none;
+  box-shadow: var(--ncm-glow-secondary);
+}
+
+/* ─── Recipient Search / Selected ─────────────────────── */
+
+.ncm-app .ncm-recipient-field {
+  position: relative;
+}
+
+.ncm-app .ncm-selected-recipient {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  background: var(--ncm-bg-surface);
+  border: 1px solid var(--ncm-secondary);
+  border-radius: var(--ncm-border-radius);
+}
+
+.ncm-app .ncm-selected-recipient__img {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.ncm-app .ncm-selected-recipient__name {
+  font-family: var(--ncm-font-body);
+  font-size: 13px;
+  color: var(--ncm-text-primary);
+}
+
+.ncm-app .ncm-selected-recipient__email {
+  font-family: var(--ncm-font-mono);
+  font-size: 11px;
+  color: var(--ncm-text-muted);
+}
+
+.ncm-app .ncm-recipient-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--ncm-bg-elevated);
+  border: 1px solid var(--ncm-border);
+  border-radius: var(--ncm-border-radius);
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 100;
+  display: none;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+}
+
+.ncm-app .ncm-recipient-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.ncm-app .ncm-recipient-option:hover {
+  background: var(--ncm-bg-surface);
+}
+
+.ncm-app .ncm-recipient-option__img {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.ncm-app .ncm-recipient-option__info {
+  display: flex;
+  flex-direction: column;
+}
+
+.ncm-app .ncm-recipient-option__name {
+  font-family: var(--ncm-font-body);
+  font-size: 13px;
+  color: var(--ncm-text-primary);
+}
+
+.ncm-app .ncm-recipient-option__email {
+  font-family: var(--ncm-font-mono);
+  font-size: 11px;
+  color: var(--ncm-text-muted);
+}
+
+/* ─── Priority Selector ───────────────────────────────── */
+
+.ncm-app .ncm-priority-selector {
+  display: flex;
+  gap: 4px;
+}
+
+.ncm-app .ncm-priority-pill {
+  padding: 3px 12px;
+  background: var(--ncm-bg-surface);
+  border: 1px solid var(--ncm-border);
+  border-radius: 12px;
+  color: var(--ncm-text-secondary);
+  font-family: var(--ncm-font-ui);
+  font-size: 10px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.ncm-app .ncm-priority-pill:hover {
+  border-color: var(--ncm-text-muted);
+}
+
+.ncm-app .ncm-priority-pill--active.ncm-priority-pill--normal {
+  background: var(--ncm-bg-elevated);
+  border-color: var(--ncm-secondary);
+  color: var(--ncm-secondary);
+}
+
+.ncm-app .ncm-priority-pill--active.ncm-priority-pill--urgent {
+  background: rgba(247, 201, 72, 0.15);
+  border-color: var(--ncm-accent);
+  color: var(--ncm-accent);
+}
+
+.ncm-app .ncm-priority-pill--active.ncm-priority-pill--critical {
+  background: rgba(246, 82, 97, 0.15);
+  border-color: var(--ncm-primary);
+  color: var(--ncm-primary);
+}
+
+/* ─── Body ────────────────────────────────────────────── */
+
+.ncm-app .ncm-composer__body {
+  flex: 1;
+  padding: 0 16px;
+  display: flex;
+}
+
+.ncm-app .ncm-textarea {
+  width: 100%;
+  flex: 1;
+  padding: 12px;
+  background: var(--ncm-bg-surface);
+  border: 1px solid var(--ncm-border);
+  border-radius: var(--ncm-border-radius);
+  color: var(--ncm-text-primary);
+  font-family: var(--ncm-font-mono);
+  font-size: 13px;
+  line-height: 1.5;
+  resize: none;
+  box-sizing: border-box;
+}
+
+.ncm-app .ncm-textarea:focus {
+  border-color: var(--ncm-border-focus);
+  outline: none;
+  box-shadow: var(--ncm-glow-secondary);
+}
+
+.ncm-app .ncm-textarea--small {
+  min-height: 60px;
+  max-height: 120px;
+  resize: vertical;
+}
+
+/* ─── Footer ──────────────────────────────────────────── */
+
+.ncm-app .ncm-composer__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: var(--ncm-bg-base);
+  border-top: 1px solid var(--ncm-border);
+}
+
+.ncm-app .ncm-composer__footer-left,
+.ncm-app .ncm-composer__footer-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}

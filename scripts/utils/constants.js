@@ -17,6 +17,9 @@ export const EVENTS = Object.freeze({
   MESSAGE_READ: 'message:read',
   MESSAGE_DELETED: 'message:deleted',
   MESSAGE_SCHEDULED: 'message:scheduled',
+  MESSAGE_STATUS_CHANGED: 'message:statusChanged',
+  INBOX_REFRESH: 'inbox:refresh',
+  QUEUE_FLUSHED: 'queue:flushed',
 
   NETWORK_CHANGED: 'network:changed',
   NETWORK_CONNECTED: 'network:connected',

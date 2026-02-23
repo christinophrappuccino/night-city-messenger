@@ -1,6 +1,433 @@
-/* ═══════════════════════════════════════════════════════════
- * message-viewer component styles
+/**
+ * Message Viewer Styles
  * @file styles/components/message-viewer.css
  * @module cyberpunkred-messenger
- * Populated in later build phases.
- * ═══════════════════════════════════════════════════════════ */
+ */
+
+/* ─── Layout ──────────────────────────────────────────── */
+
+.ncm-app .ncm-viewer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--ncm-bg-deep);
+  overflow: hidden;
+}
+
+/* ─── Status Bar ──────────────────────────────────────── */
+
+.ncm-app .ncm-status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  background: var(--ncm-bg-base);
+  border-bottom: 1px solid var(--ncm-border);
+  font-family: var(--ncm-font-ui);
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--ncm-text-secondary);
+  min-height: 36px;
+}
+
+.ncm-app .ncm-status-bar__left,
+.ncm-app .ncm-status-bar__right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ncm-app .ncm-status-bar__center {
+  flex: 1;
+  max-width: 300px;
+  margin: 0 12px;
+}
+
+.ncm-app .ncm-status-bar__network {
+  color: var(--ncm-secondary);
+}
+
+.ncm-app .ncm-status-bar__unread {
+  color: var(--ncm-primary);
+}
+
+/* ─── Search ──────────────────────────────────────────── */
+
+.ncm-app .ncm-search-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.ncm-app .ncm-search-icon {
+  position: absolute;
+  left: 8px;
+  color: var(--ncm-text-muted);
+  font-size: 11px;
+  pointer-events: none;
+}
+
+.ncm-app .ncm-search-input {
+  width: 100%;
+  padding: 4px 8px 4px 26px;
+  background: var(--ncm-bg-surface);
+  border: 1px solid var(--ncm-border);
+  border-radius: var(--ncm-border-radius);
+  color: var(--ncm-text-primary);
+  font-family: var(--ncm-font-mono);
+  font-size: 12px;
+}
+
+.ncm-app .ncm-search-input:focus {
+  border-color: var(--ncm-border-focus);
+  outline: none;
+  box-shadow: var(--ncm-glow-secondary);
+}
+
+/* ─── Filter Tabs ─────────────────────────────────────── */
+
+.ncm-app .ncm-filter-tabs {
+  display: flex;
+  background: var(--ncm-bg-base);
+  border-bottom: 1px solid var(--ncm-border);
+  padding: 0 8px;
+}
+
+.ncm-app .ncm-filter-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--ncm-text-secondary);
+  font-family: var(--ncm-font-body);
+  font-size: 13px;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.ncm-app .ncm-filter-tab:hover {
+  color: var(--ncm-text-primary);
+}
+
+.ncm-app .ncm-filter-tab--active {
+  color: var(--ncm-secondary);
+  border-bottom-color: var(--ncm-secondary);
+}
+
+/* ─── Split Panel ─────────────────────────────────────── */
+
+.ncm-app .ncm-split-panel {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ─── Message List ────────────────────────────────────── */
+
+.ncm-app .ncm-message-list {
+  width: 300px;
+  min-width: 240px;
+  max-width: 400px;
+  border-right: 1px solid var(--ncm-border);
+  overflow-y: auto;
+  background: var(--ncm-bg-base);
+}
+
+.ncm-app .ncm-message-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--ncm-border);
+  border-left: 3px solid transparent;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.ncm-app .ncm-message-item:hover {
+  background: var(--ncm-bg-surface);
+}
+
+.ncm-app .ncm-message-item--selected {
+  background: var(--ncm-bg-surface);
+  border-left-color: var(--ncm-secondary);
+}
+
+.ncm-neon-glow .ncm-app .ncm-message-item--selected {
+  box-shadow: inset 3px 0 8px -2px rgba(25, 243, 247, 0.2);
+}
+
+.ncm-app .ncm-message-item--unread {
+  background: var(--ncm-bg-surface);
+}
+
+.ncm-app .ncm-message-item--unread .ncm-message-item__from,
+.ncm-app .ncm-message-item--unread .ncm-message-item__subject {
+  color: var(--ncm-text-primary);
+  font-weight: 600;
+}
+
+/* Priority borders */
+.ncm-app .ncm-priority--urgent {
+  border-left-color: var(--ncm-accent);
+}
+
+.ncm-app .ncm-priority--critical {
+  border-left-color: var(--ncm-primary);
+  animation: ncm-pulse-border 2s infinite;
+}
+
+@keyframes ncm-pulse-border {
+  0%, 100% { border-left-color: var(--ncm-primary); }
+  50% { border-left-color: transparent; }
+}
+
+.ncm-app .ncm-message-item__indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 12px;
+  flex-shrink: 0;
+  padding-top: 4px;
+}
+
+.ncm-app .ncm-unread-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ncm-secondary);
+}
+
+.ncm-app .ncm-saved-star {
+  color: var(--ncm-accent);
+  font-size: 10px;
+}
+
+.ncm-app .ncm-message-item__avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  object-fit: cover;
+  border: 1px solid var(--ncm-border);
+}
+
+.ncm-app .ncm-message-item__content {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.ncm-app .ncm-message-item__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.ncm-app .ncm-message-item__from {
+  font-family: var(--ncm-font-body);
+  font-size: 13px;
+  color: var(--ncm-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ncm-app .ncm-message-item__date {
+  font-family: var(--ncm-font-mono);
+  font-size: 10px;
+  color: var(--ncm-text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.ncm-app .ncm-message-item__subject {
+  font-family: var(--ncm-font-body);
+  font-size: 13px;
+  color: var(--ncm-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+
+.ncm-app .ncm-message-item__preview {
+  font-family: var(--ncm-font-mono);
+  font-size: 11px;
+  color: var(--ncm-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+
+.ncm-app .ncm-priority-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.ncm-app .ncm-priority-badge--urgent {
+  background: var(--ncm-accent);
+  color: var(--ncm-text-inverse);
+}
+
+.ncm-app .ncm-priority-badge--critical {
+  background: var(--ncm-primary);
+  color: #fff;
+}
+
+/* ─── Message Detail ──────────────────────────────────── */
+
+.ncm-app .ncm-message-detail {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  background: var(--ncm-bg-base);
+  padding: 16px;
+}
+
+.ncm-app .ncm-detail-header__row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 2px 0;
+}
+
+.ncm-app .ncm-detail-label {
+  font-family: var(--ncm-font-ui);
+  font-size: 10px;
+  color: var(--ncm-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  width: 60px;
+  flex-shrink: 0;
+}
+
+.ncm-app .ncm-detail-value {
+  font-family: var(--ncm-font-body);
+  font-size: 13px;
+  color: var(--ncm-text-primary);
+}
+
+.ncm-app .ncm-detail-subject {
+  font-family: var(--ncm-font-display);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ncm-text-primary);
+  margin: 8px 0 4px;
+}
+
+.ncm-app .ncm-detail-divider {
+  height: 1px;
+  background: var(--ncm-border);
+  margin: 12px 0;
+}
+
+.ncm-app .ncm-detail-body {
+  flex: 1;
+  font-family: var(--ncm-font-mono);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--ncm-text-primary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ─── Action Bar ──────────────────────────────────────── */
+
+.ncm-app .ncm-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.ncm-app .ncm-quick-replies {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+/* ─── Empty States ────────────────────────────────────── */
+
+.ncm-app .ncm-empty-state,
+.ncm-app .ncm-detail-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.ncm-app .ncm-empty-state__icon,
+.ncm-app .ncm-detail-empty__icon {
+  font-size: 48px;
+  color: var(--ncm-text-muted);
+  margin-bottom: 12px;
+  opacity: 0.5;
+}
+
+.ncm-app .ncm-empty-state__text {
+  font-family: var(--ncm-font-display);
+  font-size: 16px;
+  color: var(--ncm-text-secondary);
+}
+
+.ncm-app .ncm-empty-state__sub {
+  font-family: var(--ncm-font-mono);
+  font-size: 12px;
+  color: var(--ncm-text-muted);
+  margin-top: 4px;
+}
+
+.ncm-app .ncm-detail-empty {
+  color: var(--ncm-text-muted);
+  font-family: var(--ncm-font-mono);
+  font-size: 13px;
+}
+
+/* ─── Footer ──────────────────────────────────────────── */
+
+.ncm-app .ncm-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--ncm-bg-base);
+  border-top: 1px solid var(--ncm-border);
+}
+
+.ncm-app .ncm-footer__pagination {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ncm-app .ncm-footer__page {
+  font-family: var(--ncm-font-mono);
+  font-size: 11px;
+  color: var(--ncm-text-muted);
+}
+
+/* ─── Mono utility ────────────────────────────────────── */
+
+.ncm-app .ncm-mono {
+  font-family: var(--ncm-font-mono);
+}
