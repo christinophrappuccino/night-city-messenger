@@ -1,0 +1,297 @@
+/**
+ * Network Auth Dialog Styles
+ * File: styles/components/network-auth.css
+ * Module: cyberpunkred-messenger
+ * Description: Styles for the player-facing network authentication dialog.
+ *              Cyberpunk terminal aesthetic with neon accents and glitch effects.
+ */
+
+/* ═══════════════════════════════════════════════════════
+   Dialog Container
+   ═══════════════════════════════════════════════════════ */
+
+.ncm-network-auth-dialog .window-content {
+  background: var(--ncm-bg-deep, #0a0a0a);
+  border: 1px solid var(--ncm-bg-elevated, #2a2a2a);
+  padding: 0;
+}
+
+.ncm-network-auth {
+  padding: var(--ncm-spacing-md, 12px) var(--ncm-spacing-lg, 16px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ncm-spacing-md, 12px);
+}
+
+/* ═══════════════════════════════════════════════════════
+   Header
+   ═══════════════════════════════════════════════════════ */
+
+.ncm-network-auth__header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-bottom: var(--ncm-spacing-sm, 8px);
+  border-bottom: 1px solid var(--ncm-bg-elevated, #2a2a2a);
+}
+
+.ncm-network-auth__icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  flex-shrink: 0;
+  box-shadow: 0 0 12px currentColor;
+  animation: ncm-auth-icon-pulse 2s ease-in-out infinite;
+}
+
+@keyframes ncm-auth-icon-pulse {
+  0%, 100% { box-shadow: 0 0 8px currentColor; }
+  50% { box-shadow: 0 0 16px currentColor; }
+}
+
+[data-ncm-animation-level="reduced"] .ncm-network-auth__icon,
+[data-ncm-animation-level="off"] .ncm-network-auth__icon {
+  animation: none;
+}
+
+.ncm-network-auth__title-group {
+  flex: 1;
+}
+
+.ncm-network-auth__title {
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--ncm-text-primary, #e0e0e0);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.ncm-network-auth__subtitle {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ncm-text-secondary, #888);
+}
+
+.ncm-network-auth__description {
+  font-size: 0.82rem;
+  color: var(--ncm-text-secondary, #888);
+  margin: 0;
+  font-style: italic;
+}
+
+/* ═══════════════════════════════════════════════════════
+   Mode Switcher
+   ═══════════════════════════════════════════════════════ */
+
+.ncm-auth-mode-switcher {
+  display: flex;
+  gap: 2px;
+  background: var(--ncm-bg-surface, #1e1e1e);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.ncm-auth-mode-btn {
+  flex: 1;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  color: var(--ncm-text-secondary, #888);
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.ncm-auth-mode-btn:hover {
+  background: var(--ncm-bg-elevated, #2a2a2a);
+  color: var(--ncm-text-primary, #e0e0e0);
+}
+
+.ncm-auth-mode-btn--active {
+  background: var(--ncm-bg-elevated, #2a2a2a);
+  color: var(--ncm-secondary, #19f3f7);
+  box-shadow: inset 0 -2px 0 var(--ncm-secondary, #19f3f7);
+}
+
+/* ═══════════════════════════════════════════════════════
+   Attempts Counter
+   ═══════════════════════════════════════════════════════ */
+
+.ncm-auth-attempts {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  background: var(--ncm-bg-surface, #1e1e1e);
+  border-radius: 3px;
+  font-size: 0.75rem;
+}
+
+.ncm-auth-attempts__label {
+  color: var(--ncm-text-secondary, #888);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-weight: 600;
+}
+
+.ncm-auth-attempts__count {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  color: var(--ncm-text-primary, #e0e0e0);
+  font-weight: 700;
+}
+
+/* ═══════════════════════════════════════════════════════
+   Auth Error
+   ═══════════════════════════════════════════════════════ */
+
+.ncm-auth-error {
+  animation: ncm-auth-shake 0.3s ease-out;
+}
+
+@keyframes ncm-auth-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  50% { transform: translateX(4px); }
+  75% { transform: translateX(-2px); }
+}
+
+[data-ncm-animation-level="off"] .ncm-auth-error {
+  animation: none;
+}
+
+/* ═══════════════════════════════════════════════════════
+   Password Mode — Terminal Prompt
+   ═══════════════════════════════════════════════════════ */
+
+.ncm-auth-panel--password {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ncm-spacing-md, 12px);
+}
+
+.ncm-terminal-prompt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--ncm-bg-surface, #1e1e1e);
+  border: 1px solid var(--ncm-bg-elevated, #2a2a2a);
+  border-radius: 4px;
+  padding: 10px 12px;
+}
+
+.ncm-terminal-prompt__prefix {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 0.82rem;
+  color: var(--ncm-secondary, #19f3f7);
+  flex-shrink: 0;
+  text-shadow: 0 0 6px var(--ncm-secondary, #19f3f7);
+}
+
+.ncm-terminal-prompt .ncm-field--inline {
+  flex: 1;
+  margin: 0;
+}
+
+.ncm-terminal-prompt .ncm-input--glow {
+  background: transparent;
+  border: none;
+  color: var(--ncm-text-primary, #e0e0e0);
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 0.9rem;
+  padding: 0;
+  outline: none;
+  caret-color: var(--ncm-secondary, #19f3f7);
+}
+
+.ncm-terminal-prompt .ncm-input--glow::placeholder {
+  color: var(--ncm-text-secondary, #888);
+  opacity: 0.5;
+}
+
+/* ═══════════════════════════════════════════════════════
+   Skill Mode — Skill Buttons
+   ═══════════════════════════════════════════════════════ */
+
+.ncm-auth-panel--skill {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ncm-spacing-md, 12px);
+}
+
+.ncm-auth-panel__info {
+  font-size: 0.82rem;
+  color: var(--ncm-text-secondary, #888);
+  margin: 0;
+  text-align: center;
+}
+
+.ncm-skill-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ncm-btn--skill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--ncm-bg-surface, #1e1e1e);
+  border: 1px solid var(--ncm-bg-elevated, #2a2a2a);
+  border-radius: 4px;
+  color: var(--ncm-text-primary, #e0e0e0);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.ncm-btn--skill:hover {
+  background: var(--ncm-bg-elevated, #2a2a2a);
+  border-color: var(--ncm-secondary, #19f3f7);
+}
+
+.ncm-btn--skill i {
+  color: var(--ncm-secondary, #19f3f7);
+  font-size: 1rem;
+}
+
+.ncm-btn--skill__name {
+  flex: 1;
+  text-align: left;
+}
+
+.ncm-btn--skill__dc {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 0.75rem;
+  color: var(--ncm-text-secondary, #888);
+  padding: 2px 8px;
+  background: var(--ncm-bg-deep, #0a0a0a);
+  border-radius: 3px;
+}
+
+/* ═══════════════════════════════════════════════════════
+   Form Actions
+   ═══════════════════════════════════════════════════════ */
+
+.ncm-form-actions--center {
+  justify-content: center;
+}

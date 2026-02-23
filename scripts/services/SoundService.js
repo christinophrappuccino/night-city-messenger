@@ -10,6 +10,14 @@
 import { MODULE_ID, SOUND_PATHS } from '../utils/constants.js';
 import { log } from '../utils/helpers.js';
 
+/**
+ * Safe reference to AudioHelper (v12 namespaced path)
+ * @returns {typeof AudioHelper}
+ */
+function getAudioHelper() {
+  return foundry.audio?.AudioHelper ?? globalThis.AudioHelper;
+}
+
 export class SoundService {
   /**
    * @param {SettingsManager} settingsManager
@@ -20,10 +28,11 @@ export class SoundService {
   }
 
   /**
-   * Initialize — preload common sounds
+   * Initialize — kick off preload (non-blocking)
    */
   async initialize() {
-    await this._preload();
+    // Fire-and-forget preload — never block initialization
+    this._preload().catch(() => {});
     log.info('SoundService initialized');
   }
 
@@ -49,7 +58,8 @@ export class SoundService {
     const vol = (volume ?? 1.0) * (prefs.soundVolume ?? 0.5);
 
     try {
-      await AudioHelper.play({ src, volume: vol, loop: !!loop }, false);
+      const AH = getAudioHelper();
+      await AH.play({ src, volume: vol, loop: !!loop }, false);
     } catch (error) {
       // Sound files may not exist yet — fail silently
       log.debug(`Sound not available: ${soundId}`);
@@ -72,11 +82,20 @@ export class SoundService {
   }
 
   /**
-   * Preload commonly-used sounds to avoid first-play delay
+   * Preload commonly-used sounds to avoid first-play delay.
+   * Each preload is individually timeout-protected so a missing
+   * file can never hang the process.
    * @private
    */
   async _preload() {
     if (this._preloaded) return;
+
+    const AH = getAudioHelper();
+    if (!AH?.preloadSound) {
+      log.debug('AudioHelper.preloadSound not available — skipping preload');
+      this._preloaded = true;
+      return;
+    }
 
     const prioritySounds = ['click', 'receive', 'send', 'open', 'close'];
     for (const id of prioritySounds) {
@@ -84,7 +103,11 @@ export class SoundService {
       if (relativePath) {
         const src = `modules/${MODULE_ID}/assets/sounds/${relativePath}`;
         try {
-          await AudioHelper.preloadSound(src);
+          // Timeout protection: never wait more than 2s per sound
+          await Promise.race([
+            AH.preloadSound(src),
+            new Promise(resolve => setTimeout(resolve, 2000)),
+          ]);
         } catch {
           // Sound files may not exist yet
         }

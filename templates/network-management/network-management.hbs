@@ -1,1 +1,418 @@
-{{!-- Placeholder template: network-management/network-management.hbs --}}<div class="ncm-placeholder"></div>
+{{!--
+  Network Management Panel
+  File: templates/network-management/network-management.hbs
+  Module: cyberpunkred-messenger
+  Description: GM tool for managing custom networks, scene availability,
+               and reviewing access logs.
+--}}
+
+<div class="ncm-network-mgmt">
+
+  {{!-- Tab Bar --}}
+  <nav class="ncm-tab-bar">
+    <button class="ncm-tab-btn {{#if isNetworksTab}}ncm-tab-btn--active{{/if}}"
+            data-action="switchTab" data-tab="networks">
+      <i class="fas fa-network-wired"></i> Networks
+    </button>
+    <button class="ncm-tab-btn {{#if isScenesTab}}ncm-tab-btn--active{{/if}}"
+            data-action="switchTab" data-tab="scenes">
+      <i class="fas fa-map"></i> Scenes
+    </button>
+    <button class="ncm-tab-btn {{#if isLogsTab}}ncm-tab-btn--active{{/if}}"
+            data-action="switchTab" data-tab="logs">
+      <i class="fas fa-clipboard-list"></i> Logs
+      {{#if logCount}}<span class="ncm-badge">{{logCount}}</span>{{/if}}
+    </button>
+  </nav>
+
+  {{!-- ═══════════════════════════════════════════════════════
+       TAB: Networks
+       ═══════════════════════════════════════════════════════ --}}
+  {{#if isNetworksTab}}
+  <div class="ncm-tab-content ncm-tab-content--networks">
+
+    <div class="ncm-split-panel">
+
+      {{!-- Network List (Left) --}}
+      <div class="ncm-split-panel__list">
+        <div class="ncm-list-header">
+          <h3 class="ncm-list-title">Subnet Registry</h3>
+          <button class="ncm-btn ncm-btn--sm ncm-btn--primary" data-action="createNetwork">
+            <i class="fas fa-plus"></i> New
+          </button>
+        </div>
+
+        <div class="ncm-network-list">
+          {{#each networks}}
+          <div class="ncm-network-list-item {{#if isSelected}}ncm-network-list-item--selected{{/if}} {{#if isCurrent}}ncm-network-list-item--current{{/if}}"
+               data-action="selectNetwork" data-network-id="{{id}}">
+            <div class="ncm-network-list-item__icon" style="color: {{theme.color}}">
+              <i class="fas {{theme.icon}}"></i>
+            </div>
+            <div class="ncm-network-list-item__info">
+              <span class="ncm-network-list-item__name">{{name}}</span>
+              <span class="ncm-network-list-item__meta">
+                {{type}}
+                {{#if isCore}}<span class="ncm-tag ncm-tag--dim">CORE</span>{{/if}}
+                {{#if security.requiresAuth}}<i class="fas fa-lock ncm-text--warn"></i>{{/if}}
+              </span>
+            </div>
+            <div class="ncm-network-list-item__status">
+              {{#if isAvailable}}<span class="ncm-dot ncm-dot--green"></span>
+              {{else}}<span class="ncm-dot ncm-dot--red"></span>{{/if}}
+            </div>
+          </div>
+          {{/each}}
+        </div>
+      </div>
+
+      {{!-- Network Detail / Editor (Right) --}}
+      <div class="ncm-split-panel__detail">
+        {{#if isEditing}}
+        <form class="ncm-network-form">
+          <h3 class="ncm-form-title">
+            {{#if isCreating}}// CREATE NETWORK{{else}}// EDIT: {{selectedNetwork.name}}{{/if}}
+          </h3>
+
+          {{!-- Basic Info --}}
+          <fieldset class="ncm-fieldset">
+            <legend class="ncm-fieldset__legend"><i class="fas fa-info-circle"></i> Identity</legend>
+            <div class="ncm-field-grid">
+              <div class="ncm-field">
+                <label class="ncm-field__label">Network Name</label>
+                <input type="text" name="name" class="ncm-input"
+                       value="{{#if isCreating}}{{else}}{{selectedNetwork.name}}{{/if}}"
+                       placeholder="Arasaka Internal" required>
+              </div>
+              <div class="ncm-field">
+                <label class="ncm-field__label">Type</label>
+                <select name="type" class="ncm-input">
+                  {{#each ../networkTypes}}
+                  <option value="{{value}}" {{#if (ncm-eq value ../selectedNetwork.type)}}selected{{/if}}>{{label}}</option>
+                  {{/each}}
+                </select>
+              </div>
+              <div class="ncm-field ncm-field--full">
+                <label class="ncm-field__label">Description</label>
+                <input type="text" name="description" class="ncm-input"
+                       value="{{selectedNetwork.description}}"
+                       placeholder="Short description for players">
+              </div>
+              <div class="ncm-field ncm-field--full">
+                <label class="ncm-field__label">Lore Notes (GM only)</label>
+                <textarea name="lore" class="ncm-textarea ncm-textarea--small"
+                          placeholder="Behind-the-scenes info...">{{selectedNetwork.lore}}</textarea>
+              </div>
+            </div>
+          </fieldset>
+
+          {{!-- Signal & Reliability --}}
+          <fieldset class="ncm-fieldset">
+            <legend class="ncm-fieldset__legend"><i class="fas fa-signal"></i> Signal</legend>
+            <div class="ncm-field-grid">
+              <div class="ncm-field">
+                <label class="ncm-field__label">Signal Strength (0–100)</label>
+                <input type="number" name="signalStrength" class="ncm-input" min="0" max="100"
+                       value="{{#if isCreating}}75{{else}}{{selectedNetwork.signalStrength}}{{/if}}">
+              </div>
+              <div class="ncm-field">
+                <label class="ncm-field__label">Reliability % (0–100)</label>
+                <input type="number" name="reliability" class="ncm-input" min="0" max="100"
+                       value="{{#if isCreating}}85{{else}}{{selectedNetwork.reliability}}{{/if}}">
+              </div>
+              <div class="ncm-field">
+                <label class="ncm-field__label">
+                  <input type="checkbox" name="globalAvailability" value="true"
+                         {{#if selectedNetwork.availability.global}}checked{{/if}}>
+                  Globally Available
+                </label>
+              </div>
+            </div>
+          </fieldset>
+
+          {{!-- Security --}}
+          <fieldset class="ncm-fieldset">
+            <legend class="ncm-fieldset__legend"><i class="fas fa-shield-halved"></i> Security</legend>
+            <div class="ncm-field-grid">
+              <div class="ncm-field">
+                <label class="ncm-field__label">Security Level</label>
+                <select name="securityLevel" class="ncm-input">
+                  {{#each ../securityLevels}}
+                  <option value="{{value}}" {{#if (ncm-eq value ../selectedNetwork.security.level)}}selected{{/if}}>{{label}}</option>
+                  {{/each}}
+                </select>
+              </div>
+              <div class="ncm-field">
+                <label class="ncm-field__label">
+                  <input type="checkbox" name="requiresAuth" value="true"
+                         {{#if selectedNetwork.security.requiresAuth}}checked{{/if}}>
+                  Requires Authentication
+                </label>
+              </div>
+              <div class="ncm-field">
+                <label class="ncm-field__label">Password</label>
+                <input type="text" name="password" class="ncm-input ncm-input--mono"
+                       value="{{selectedNetwork.security.password}}"
+                       placeholder="Leave empty for no password">
+              </div>
+              <div class="ncm-field">
+                <label class="ncm-field__label">Bypass DC</label>
+                <input type="number" name="bypassDC" class="ncm-input" min="1" max="50"
+                       value="{{#if isCreating}}15{{else}}{{selectedNetwork.security.bypassDC}}{{/if}}">
+              </div>
+              <div class="ncm-field ncm-field--full">
+                <label class="ncm-field__label">Bypass Skills (comma-separated)</label>
+                <input type="text" name="bypassSkills" class="ncm-input"
+                       value="{{#if selectedNetwork.security.bypassSkills}}{{#each selectedNetwork.security.bypassSkills}}{{#unless @first}}, {{/unless}}{{this}}{{/each}}{{/if}}"
+                       placeholder="Interface, Electronics/Security Tech">
+              </div>
+              <div class="ncm-field">
+                <label class="ncm-field__label">Max Attempts</label>
+                <input type="number" name="maxAttempts" class="ncm-input" min="1" max="20"
+                       value="{{#if isCreating}}3{{else}}{{selectedNetwork.security.maxAttempts}}{{/if}}">
+              </div>
+              <div class="ncm-field">
+                <label class="ncm-field__label">Lockout (minutes)</label>
+                <input type="number" name="lockoutMinutes" class="ncm-input" min="1" max="1440"
+                       value="{{#if isCreating}}60{{else}}{{selectedNetwork.lockoutMinutes}}{{/if}}">
+              </div>
+            </div>
+          </fieldset>
+
+          {{!-- Effects --}}
+          <fieldset class="ncm-fieldset">
+            <legend class="ncm-fieldset__legend"><i class="fas fa-bolt"></i> Network Effects</legend>
+            <div class="ncm-field-grid">
+              <div class="ncm-field">
+                <label class="ncm-field__label">Message Delay (ms)</label>
+                <input type="number" name="messageDelay" class="ncm-input" min="0" max="30000"
+                       value="{{#if isCreating}}0{{else}}{{selectedNetwork.effects.messageDelay}}{{/if}}">
+              </div>
+              <div class="ncm-field">
+                <label class="ncm-field__label">
+                  <input type="checkbox" name="traced" value="true"
+                         {{#if selectedNetwork.effects.traced}}checked{{/if}}>
+                  Messages Traced (NetWatch)
+                </label>
+              </div>
+              <div class="ncm-field">
+                <label class="ncm-field__label">
+                  <input type="checkbox" name="anonymity" value="true"
+                         {{#if selectedNetwork.effects.anonymity}}checked{{/if}}>
+                  Anonymous Mode
+                </label>
+              </div>
+              <div class="ncm-field">
+                <label class="ncm-field__label">
+                  <input type="checkbox" name="canRoute" value="true"
+                         {{#unless isCreating}}{{#if selectedNetwork.effects.canRoute}}checked{{/if}}{{else}}checked{{/unless}}>
+                  Can Route to Other Networks
+                </label>
+              </div>
+            </div>
+          </fieldset>
+
+          {{!-- Theme --}}
+          <fieldset class="ncm-fieldset">
+            <legend class="ncm-fieldset__legend"><i class="fas fa-palette"></i> Appearance</legend>
+            <div class="ncm-field-grid">
+              <div class="ncm-field">
+                <label class="ncm-field__label">Color</label>
+                <input type="color" name="themeColor" class="ncm-input ncm-input--color"
+                       value="{{#if isCreating}}#19f3f7{{else}}{{selectedNetwork.theme.color}}{{/if}}">
+              </div>
+              <div class="ncm-field">
+                <label class="ncm-field__label">Icon (FontAwesome)</label>
+                <input type="text" name="themeIcon" class="ncm-input"
+                       value="{{#if isCreating}}fa-wifi{{else}}{{selectedNetwork.theme.icon}}{{/if}}"
+                       placeholder="fa-wifi">
+              </div>
+              <div class="ncm-field">
+                <label class="ncm-field__label">Glitch Intensity (0–1)</label>
+                <input type="number" name="glitchIntensity" class="ncm-input"
+                       min="0" max="1" step="0.1"
+                       value="{{#if isCreating}}0.1{{else}}{{selectedNetwork.theme.glitchIntensity}}{{/if}}">
+              </div>
+            </div>
+          </fieldset>
+
+          {{!-- Actions --}}
+          <div class="ncm-form-actions">
+            <button type="button" class="ncm-btn ncm-btn--ghost" data-action="cancelEdit">Cancel</button>
+            {{#unless isCreating}}
+              {{#unless selectedNetwork.isCore}}
+              <button type="button" class="ncm-btn ncm-btn--danger" data-action="deleteNetwork">
+                <i class="fas fa-trash"></i> Delete
+              </button>
+              {{/unless}}
+            {{/unless}}
+            <button type="button" class="ncm-btn ncm-btn--primary" data-action="saveNetwork">
+              <i class="fas fa-save"></i> {{#if isCreating}}Create{{else}}Save{{/if}}
+            </button>
+          </div>
+        </form>
+
+        {{else}}
+        <div class="ncm-empty-state">
+          <i class="fas fa-network-wired ncm-empty-state__icon"></i>
+          <p class="ncm-empty-state__text">Select a network to edit</p>
+          <p class="ncm-empty-state__sub">Or create a new custom network.</p>
+        </div>
+        {{/if}}
+      </div>
+    </div>
+  </div>
+  {{/if}}
+
+  {{!-- ═══════════════════════════════════════════════════════
+       TAB: Scenes
+       ═══════════════════════════════════════════════════════ --}}
+  {{#if isScenesTab}}
+  <div class="ncm-tab-content ncm-tab-content--scenes">
+    <h3 class="ncm-section-title">Scene Network Configuration</h3>
+
+    {{#if scenes.length}}
+    <div class="ncm-scene-list">
+      {{#each scenes}}
+      <div class="ncm-scene-config-card" data-scene-id="{{id}}">
+        <div class="ncm-scene-config-card__header">
+          <span class="ncm-scene-config-card__name">
+            {{#if isViewed}}<i class="fas fa-eye ncm-text--cyan"></i>{{/if}}
+            {{name}}
+          </span>
+          <button class="ncm-btn ncm-btn--sm {{#if deadZone}}ncm-btn--danger{{else}}ncm-btn--ghost{{/if}}"
+                  data-action="toggleDeadZone">
+            <i class="fas fa-signal"></i> {{#if deadZone}}DEAD ZONE{{else}}Signal OK{{/if}}
+          </button>
+        </div>
+
+        <div class="ncm-scene-config-card__body">
+          <div class="ncm-field">
+            <label class="ncm-field__label">Default Network</label>
+            <select name="defaultNetwork" class="ncm-input">
+              <option value="">— None —</option>
+              {{#each ../allNetworks}}
+              <option value="{{id}}" {{#if (ncm-eq id ../defaultNetwork)}}selected{{/if}}>{{name}}</option>
+              {{/each}}
+            </select>
+          </div>
+
+          <div class="ncm-field">
+            <label class="ncm-field__label">Available Networks</label>
+            <div class="ncm-checkbox-group">
+              {{#each ../allNetworks}}
+              <label class="ncm-checkbox-label">
+                <input type="checkbox" name="netAvail_{{id}}"
+                       {{#if availability.global}}checked disabled title="Globally available"
+                       {{else}}
+                         {{#if (lookup ../networkAvailability id)}}checked{{/if}}
+                       {{/if}}>
+                <i class="fas {{theme.icon}}" style="color: {{theme.color}}"></i>
+                {{name}}
+                {{#if availability.global}}<span class="ncm-tag ncm-tag--dim">GLOBAL</span>{{/if}}
+              </label>
+              {{/each}}
+            </div>
+          </div>
+        </div>
+
+        <div class="ncm-scene-config-card__footer">
+          <button class="ncm-btn ncm-btn--sm ncm-btn--primary" data-action="saveSceneConfig">
+            <i class="fas fa-save"></i> Save
+          </button>
+        </div>
+      </div>
+      {{/each}}
+    </div>
+    {{else}}
+    <div class="ncm-empty-state">
+      <i class="fas fa-map ncm-empty-state__icon"></i>
+      <p class="ncm-empty-state__text">No scenes found</p>
+    </div>
+    {{/if}}
+  </div>
+  {{/if}}
+
+  {{!-- ═══════════════════════════════════════════════════════
+       TAB: Logs
+       ═══════════════════════════════════════════════════════ --}}
+  {{#if isLogsTab}}
+  <div class="ncm-tab-content ncm-tab-content--logs">
+
+    {{!-- Active Lockouts --}}
+    {{#if hasLockouts}}
+    <div class="ncm-lockout-section">
+      <h3 class="ncm-section-title ncm-text--danger"><i class="fas fa-ban"></i> Active Lockouts</h3>
+      <div class="ncm-lockout-list">
+        {{#each lockouts}}
+        <div class="ncm-lockout-item">
+          <span class="ncm-lockout-item__actor">{{actorName}}</span>
+          <span class="ncm-lockout-item__target">→ {{targetName}}</span>
+          <span class="ncm-lockout-item__time ncm-text--warn">{{remainingFormatted}}</span>
+          <button class="ncm-btn ncm-btn--xs ncm-btn--ghost"
+                  data-action="resetSecurity" data-actor-id="{{actorId}}" data-target-id="{{targetId}}">
+            <i class="fas fa-unlock"></i>
+          </button>
+        </div>
+        {{/each}}
+      </div>
+    </div>
+    {{/if}}
+
+    {{!-- Log Actions --}}
+    <div class="ncm-log-actions">
+      <h3 class="ncm-section-title">Access Log ({{logCount}} entries)</h3>
+      <div>
+        <button class="ncm-btn ncm-btn--sm ncm-btn--ghost" data-action="exportLogs">
+          <i class="fas fa-download"></i> Export
+        </button>
+        <button class="ncm-btn ncm-btn--sm ncm-btn--danger" data-action="clearLogs">
+          <i class="fas fa-trash"></i> Clear
+        </button>
+      </div>
+    </div>
+
+    {{!-- Log Table --}}
+    {{#if logEntries.length}}
+    <div class="ncm-log-table-wrap">
+      <table class="ncm-log-table">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Event</th>
+            <th>Network</th>
+            <th>User</th>
+            <th>Details</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#each logEntries}}
+          <tr class="ncm-log-row ncm-log-row--{{type}}">
+            <td class="ncm-log-cell--time">{{displayTime}}</td>
+            <td>
+              <i class="fas {{typeIcon}}"></i> {{typeLabel}}
+            </td>
+            <td>{{networkName}}</td>
+            <td>{{userName}}</td>
+            <td class="ncm-log-cell--detail">
+              {{#if method}}{{method}}{{/if}}
+              {{#if skillName}} ({{skillName}}){{/if}}
+              {{#if rollTotal}} Roll: {{rollTotal}} vs DC {{dc}}{{/if}}
+              {{#if reason}} — {{reason}}{{/if}}
+            </td>
+          </tr>
+          {{/each}}
+        </tbody>
+      </table>
+    </div>
+    {{else}}
+    <div class="ncm-empty-state">
+      <i class="fas fa-clipboard-list ncm-empty-state__icon"></i>
+      <p class="ncm-empty-state__text">No log entries</p>
+      <p class="ncm-empty-state__sub">Network events will appear here.</p>
+    </div>
+    {{/if}}
+  </div>
+  {{/if}}
+
+</div>

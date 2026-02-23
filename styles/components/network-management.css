@@ -1,6 +1,504 @@
-/* ═══════════════════════════════════════════════════════════
- * network-management component styles
- * @file styles/components/network-management.css
- * @module cyberpunkred-messenger
- * Populated in later build phases.
- * ═══════════════════════════════════════════════════════════ */
+/**
+ * Network Management Styles
+ * File: styles/components/network-management.css
+ * Module: cyberpunkred-messenger
+ * Description: Styles for the GM network management panel — tabs, split panel,
+ *              network editor form, scene config, and access log table.
+ */
+
+/* ═══════════════════════════════════════════════════════
+   Layout
+   ═══════════════════════════════════════════════════════ */
+
+.ncm-network-mgmt {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ─── Tab Bar ─── */
+
+.ncm-tab-bar {
+  display: flex;
+  gap: 2px;
+  padding: 0 var(--ncm-spacing-sm, 8px);
+  border-bottom: 1px solid var(--ncm-bg-elevated, #2a2a2a);
+  background: var(--ncm-bg-deep, #0a0a0a);
+  flex-shrink: 0;
+}
+
+.ncm-tab-btn {
+  padding: 8px 16px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--ncm-text-secondary, #888);
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ncm-tab-btn:hover {
+  color: var(--ncm-text-primary, #e0e0e0);
+}
+
+.ncm-tab-btn--active {
+  color: var(--ncm-secondary, #19f3f7);
+  border-bottom-color: var(--ncm-secondary, #19f3f7);
+}
+
+/* ─── Tab Content ─── */
+
+.ncm-tab-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--ncm-spacing-md, 12px);
+}
+
+/* ═══════════════════════════════════════════════════════
+   Networks Tab — Split Panel
+   ═══════════════════════════════════════════════════════ */
+
+.ncm-split-panel {
+  display: flex;
+  gap: 1px;
+  height: 100%;
+  background: var(--ncm-bg-elevated, #2a2a2a);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.ncm-split-panel__list {
+  width: 260px;
+  flex-shrink: 0;
+  background: var(--ncm-bg-base, #141414);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.ncm-split-panel__detail {
+  flex: 1;
+  background: var(--ncm-bg-base, #141414);
+  overflow-y: auto;
+  padding: var(--ncm-spacing-md, 12px);
+}
+
+/* ─── List Header ─── */
+
+.ncm-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--ncm-bg-elevated, #2a2a2a);
+}
+
+.ncm-list-title {
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ncm-text-secondary, #888);
+  margin: 0;
+}
+
+/* ─── Network List Items ─── */
+
+.ncm-network-list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.ncm-network-list-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--ncm-bg-surface, #1e1e1e);
+  transition: background 0.15s;
+}
+
+.ncm-network-list-item:hover {
+  background: var(--ncm-bg-surface, #1e1e1e);
+}
+
+.ncm-network-list-item--selected {
+  background: var(--ncm-bg-elevated, #2a2a2a);
+  border-left: 3px solid var(--ncm-secondary, #19f3f7);
+}
+
+.ncm-network-list-item--current {
+  position: relative;
+}
+
+.ncm-network-list-item--current::after {
+  content: 'ACTIVE';
+  position: absolute;
+  top: 4px;
+  right: 8px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--ncm-secondary, #19f3f7);
+  text-transform: uppercase;
+}
+
+.ncm-network-list-item__icon {
+  font-size: 1.1rem;
+  width: 24px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.ncm-network-list-item__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.ncm-network-list-item__name {
+  display: block;
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--ncm-text-primary, #e0e0e0);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ncm-network-list-item__meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.7rem;
+  color: var(--ncm-text-secondary, #888);
+  text-transform: uppercase;
+}
+
+.ncm-network-list-item__status {
+  flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════════════
+   Network Form
+   ═══════════════════════════════════════════════════════ */
+
+.ncm-network-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ncm-spacing-md, 12px);
+}
+
+.ncm-form-title {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 0.85rem;
+  color: var(--ncm-secondary, #19f3f7);
+  margin: 0 0 8px 0;
+  letter-spacing: 0.05em;
+}
+
+.ncm-fieldset {
+  border: 1px solid var(--ncm-bg-elevated, #2a2a2a);
+  border-radius: 4px;
+  padding: 12px;
+  margin: 0;
+}
+
+.ncm-fieldset__legend {
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ncm-text-secondary, #888);
+  padding: 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ncm-field-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 12px;
+}
+
+.ncm-field--full {
+  grid-column: 1 / -1;
+}
+
+/* ═══════════════════════════════════════════════════════
+   Scenes Tab
+   ═══════════════════════════════════════════════════════ */
+
+.ncm-scene-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ncm-spacing-md, 12px);
+}
+
+.ncm-scene-config-card {
+  background: var(--ncm-bg-surface, #1e1e1e);
+  border: 1px solid var(--ncm-bg-elevated, #2a2a2a);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.ncm-scene-config-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background: var(--ncm-bg-elevated, #2a2a2a);
+}
+
+.ncm-scene-config-card__name {
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--ncm-text-primary, #e0e0e0);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ncm-scene-config-card__body {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ncm-scene-config-card__footer {
+  padding: 8px 12px;
+  border-top: 1px solid var(--ncm-bg-elevated, #2a2a2a);
+  text-align: right;
+}
+
+.ncm-checkbox-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+}
+
+.ncm-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  color: var(--ncm-text-primary, #e0e0e0);
+  cursor: pointer;
+}
+
+.ncm-checkbox-label input[type="checkbox"]:disabled + i {
+  opacity: 0.5;
+}
+
+/* ═══════════════════════════════════════════════════════
+   Logs Tab
+   ═══════════════════════════════════════════════════════ */
+
+.ncm-log-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--ncm-spacing-sm, 8px);
+}
+
+.ncm-log-actions > div {
+  display: flex;
+  gap: 6px;
+}
+
+/* Lockout section */
+
+.ncm-lockout-section {
+  margin-bottom: var(--ncm-spacing-md, 12px);
+  padding: 10px;
+  background: rgba(255, 0, 0, 0.05);
+  border: 1px solid rgba(255, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+.ncm-lockout-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.ncm-lockout-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  background: var(--ncm-bg-surface, #1e1e1e);
+  border-radius: 3px;
+  font-size: 0.82rem;
+}
+
+.ncm-lockout-item__actor {
+  font-weight: 600;
+  color: var(--ncm-text-primary, #e0e0e0);
+}
+
+.ncm-lockout-item__target {
+  color: var(--ncm-text-secondary, #888);
+  flex: 1;
+}
+
+.ncm-lockout-item__time {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 0.8rem;
+}
+
+/* Log table */
+
+.ncm-log-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--ncm-bg-elevated, #2a2a2a);
+  border-radius: 4px;
+}
+
+.ncm-log-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+
+.ncm-log-table thead {
+  background: var(--ncm-bg-elevated, #2a2a2a);
+}
+
+.ncm-log-table th {
+  padding: 6px 10px;
+  text-align: left;
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-weight: 600;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ncm-text-secondary, #888);
+  border-bottom: 1px solid var(--ncm-bg-elevated, #2a2a2a);
+}
+
+.ncm-log-table td {
+  padding: 5px 10px;
+  border-bottom: 1px solid var(--ncm-bg-surface, #1e1e1e);
+  color: var(--ncm-text-primary, #e0e0e0);
+}
+
+.ncm-log-cell--time {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  color: var(--ncm-text-secondary, #888);
+  white-space: nowrap;
+}
+
+.ncm-log-cell--detail {
+  font-size: 0.75rem;
+  color: var(--ncm-text-secondary, #888);
+}
+
+.ncm-log-row--auth_failure td {
+  color: var(--ncm-primary, #f65261);
+}
+
+.ncm-log-row--auth_success td:nth-child(2) {
+  color: #00ff41;
+}
+
+.ncm-log-row--lockout td {
+  color: var(--ncm-primary, #f65261);
+  font-weight: 600;
+}
+
+.ncm-log-row--disconnect td {
+  opacity: 0.7;
+}
+
+/* ═══════════════════════════════════════════════════════
+   Shared Utilities
+   ═══════════════════════════════════════════════════════ */
+
+.ncm-section-title {
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ncm-text-secondary, #888);
+  margin: 0 0 var(--ncm-spacing-sm, 8px) 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ncm-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.ncm-dot--green { background: #00ff41; box-shadow: 0 0 4px #00ff41; }
+.ncm-dot--red { background: var(--ncm-primary, #f65261); box-shadow: 0 0 4px var(--ncm-primary, #f65261); }
+
+.ncm-tag {
+  display: inline-block;
+  padding: 1px 5px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  border-radius: 2px;
+  background: var(--ncm-bg-elevated, #2a2a2a);
+  color: var(--ncm-text-secondary, #888);
+}
+
+.ncm-tag--dim { opacity: 0.6; }
+
+.ncm-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  border-radius: 9px;
+  background: var(--ncm-primary, #f65261);
+  color: #fff;
+}
+
+.ncm-text--cyan { color: var(--ncm-secondary, #19f3f7); }
+.ncm-text--warn { color: #f7c948; }
+.ncm-text--danger { color: var(--ncm-primary, #f65261); }
+
+.ncm-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 4px;
+  font-size: 0.82rem;
+}
+
+.ncm-alert--danger {
+  background: rgba(246, 82, 97, 0.08);
+  border: 1px solid rgba(246, 82, 97, 0.3);
+  color: var(--ncm-primary, #f65261);
+}
+
+.ncm-alert i { margin-top: 2px; }
