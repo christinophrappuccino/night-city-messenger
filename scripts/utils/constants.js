@@ -168,8 +168,10 @@ export const ESSENTIAL_EFFECTS = Object.freeze(['ncm-fade-in', 'ncm-fade-out']);
 const T = `modules/${MODULE_ID}/templates`;
 export const TEMPLATES = Object.freeze({
   MESSAGE_VIEWER: `${T}/message-viewer/message-viewer.hbs`,
-  MESSAGE_LIST_ITEM: `${T}/message-viewer/message-list-item.hbs`,
-  MESSAGE_DETAIL: `${T}/message-viewer/message-detail.hbs`,
+  MESSAGE_LIST_ITEM: `${T}/message-viewer/partials/message-list-item.hbs`,
+  MESSAGE_DETAIL: `${T}/message-viewer/partials/message-detail.hbs`,
+  EMPTY_STATE_LIST: `${T}/message-viewer/partials/empty-state-list.hbs`,
+  EMPTY_STATE_DETAIL: `${T}/message-viewer/partials/empty-state-detail.hbs`,
   MESSAGE_COMPOSER: `${T}/message-composer/message-composer.hbs`,
   CONTACT_MANAGER: `${T}/contact-manager/contact-manager.hbs`,
   GM_CONTACT_MANAGER: `${T}/gm-contact-manager/gm-contact-manager.hbs`,

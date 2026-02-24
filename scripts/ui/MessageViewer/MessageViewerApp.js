@@ -7,6 +7,8 @@
  *   bulk actions, resizable sidebar, keyboard navigation, and quick-reply shortcuts.
  */
 
+import { BaseApplication } from '../BaseApplication.js';
+
 const MODULE_ID = 'cyberpunkred-messenger';
 const MESSAGES_PER_PAGE = 25;
 const DEBOUNCE_SEARCH_MS = 250;

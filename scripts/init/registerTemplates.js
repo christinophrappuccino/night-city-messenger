@@ -1,124 +1,133 @@
 /**
- * Template Helpers — Handlebars Registration
+ * Register Templates & Handlebars Helpers
  * @file scripts/init/registerTemplates.js
  * @module cyberpunkred-messenger
- * @description Registers Handlebars helpers and preloads template partials.
+ * @description Preloads Handlebars templates and registers custom helpers.
+ *              All comparison/logic helpers work as BOTH:
+ *                - Block helpers:    {{#eq a b}}yes{{else}}no{{/eq}}
+ *                - Subexpressions:   {{#if (eq a b)}}yes{{/if}}
  */
 
-const MODULE_ID = 'cyberpunkred-messenger';
+import { TEMPLATES, MODULE_ID } from '../utils/constants.js';
+import { log, formatCyberDate, truncate } from '../utils/helpers.js';
 
 /**
- * Register custom Handlebars helpers for NCM templates.
- * Called during the Foundry `init` hook.
+ * Check if the last argument is a Handlebars options object (block mode)
+ * vs a plain value (subexpression mode).
  */
-export function registerHandlebarsHelpers() {
-
-  // ── Comparison Helpers ──
-
-  /** Equality check: {{#eq a b}}...{{/eq}} */
-  Handlebars.registerHelper('eq', function (a, b, options) {
-    if (arguments.length === 3) {
-      // Block helper: {{#eq a b}}...{{else}}...{{/eq}}
-      return a === b ? options.fn(this) : options.inverse(this);
-    }
-    // Inline: {{eq a b}} → boolean
-    return a === b;
-  });
-
-  /** Not-equal: {{#neq a b}}...{{/neq}} */
-  Handlebars.registerHelper('neq', function (a, b, options) {
-    return a !== b ? options.fn(this) : options.inverse(this);
-  });
-
-  /** Greater than: {{#gt a b}}...{{/gt}} */
-  Handlebars.registerHelper('gt', function (a, b, options) {
-    if (arguments.length === 3) {
-      return a > b ? options.fn(this) : options.inverse(this);
-    }
-    return a > b;
-  });
-
-  /** Less than: {{#lt a b}}...{{/lt}} */
-  Handlebars.registerHelper('lt', function (a, b, options) {
-    if (arguments.length === 3) {
-      return a < b ? options.fn(this) : options.inverse(this);
-    }
-    return a < b;
-  });
-
-  /** Greater than or equal: {{#gte a b}} */
-  Handlebars.registerHelper('gte', function (a, b, options) {
-    return a >= b ? options.fn(this) : options.inverse(this);
-  });
-
-  // ── Logical Helpers ──
-
-  /** And: {{#and a b}}...{{/and}} */
-  Handlebars.registerHelper('and', function () {
-    const args = Array.from(arguments);
-    const options = args.pop();
-    return args.every(Boolean) ? options.fn(this) : options.inverse(this);
-  });
-
-  /** Or: {{#or a b}}...{{/or}} */
-  Handlebars.registerHelper('or', function () {
-    const args = Array.from(arguments);
-    const options = args.pop();
-    return args.some(Boolean) ? options.fn(this) : options.inverse(this);
-  });
-
-  /** Not: {{#not val}}...{{/not}} */
-  Handlebars.registerHelper('not', function (val, options) {
-    return !val ? options.fn(this) : options.inverse(this);
-  });
-
-  // ── String Helpers ──
-
-  /** Truncate: {{truncate text 100}} */
-  Handlebars.registerHelper('truncate', function (str, len) {
-    if (!str) return '';
-    if (str.length <= len) return str;
-    return str.substring(0, len) + '…';
-  });
-
-  /** Lowercase: {{lower text}} */
-  Handlebars.registerHelper('lower', function (str) {
-    return (str || '').toLowerCase();
-  });
-
-  /** Uppercase: {{upper text}} */
-  Handlebars.registerHelper('upper', function (str) {
-    return (str || '').toUpperCase();
-  });
-
-  // ── Math Helpers ──
-
-  /** Add: {{add a b}} */
-  Handlebars.registerHelper('add', function (a, b) {
-    return (a || 0) + (b || 0);
-  });
-
-  /** Subtract: {{sub a b}} */
-  Handlebars.registerHelper('sub', function (a, b) {
-    return (a || 0) - (b || 0);
-  });
-
-  console.log(`${MODULE_ID} | Handlebars helpers registered`);
+function _isBlock(options) {
+  return options && typeof options === 'object' && typeof options.fn === 'function';
 }
 
-/**
- * Preload template partials for fast rendering.
- * Called during the Foundry `init` hook.
- */
-export async function preloadTemplates() {
-  const paths = [
-    `modules/${MODULE_ID}/templates/message-viewer/message-viewer.hbs`,
-    `modules/${MODULE_ID}/templates/message-viewer/partials/message-list-item.hbs`,
-    `modules/${MODULE_ID}/templates/message-viewer/partials/message-detail.hbs`,
-    `modules/${MODULE_ID}/templates/message-viewer/partials/empty-state-list.hbs`,
-    `modules/${MODULE_ID}/templates/message-viewer/partials/empty-state-detail.hbs`,
-    // Add more partials as they're created in future sprints
-  ];
+export function registerTemplates(initializer) {
+  initializer.register('preInit', 20, 'Template preloading', async () => {
+    // Collect all template paths that exist
+    const paths = Object.values(TEMPLATES);
 
-  return loadTemplates(paths);
+    // Preload — Foundry will skip any that don't exist on disk yet
+    try {
+      await loadTemplates(paths);
+      log.info(`Templates preloaded (${paths.length} registered)`);
+    } catch (error) {
+      // Non-fatal — templates load lazily on first render too
+      log.warn('Template preloading had errors (this is OK during early development):', error.message);
+    }
+
+    // ─── Comparison Helpers (block + subexpression safe) ───
+
+    Handlebars.registerHelper('eq', function (a, b, options) {
+      const result = a === b;
+      if (_isBlock(options)) return result ? options.fn(this) : options.inverse(this);
+      return result;
+    });
+
+    Handlebars.registerHelper('neq', function (a, b, options) {
+      const result = a !== b;
+      if (_isBlock(options)) return result ? options.fn(this) : options.inverse(this);
+      return result;
+    });
+
+    Handlebars.registerHelper('gt', function (a, b, options) {
+      const result = a > b;
+      if (_isBlock(options)) return result ? options.fn(this) : options.inverse(this);
+      return result;
+    });
+
+    Handlebars.registerHelper('lt', function (a, b, options) {
+      const result = a < b;
+      if (_isBlock(options)) return result ? options.fn(this) : options.inverse(this);
+      return result;
+    });
+
+    Handlebars.registerHelper('gte', function (a, b, options) {
+      const result = a >= b;
+      if (_isBlock(options)) return result ? options.fn(this) : options.inverse(this);
+      return result;
+    });
+
+    Handlebars.registerHelper('lte', function (a, b, options) {
+      const result = a <= b;
+      if (_isBlock(options)) return result ? options.fn(this) : options.inverse(this);
+      return result;
+    });
+
+    // ─── Logic Helpers (block + subexpression safe) ───
+
+    Handlebars.registerHelper('and', function () {
+      const args = Array.from(arguments);
+      const last = args[args.length - 1];
+      if (_isBlock(last)) {
+        args.pop();
+        return args.every(Boolean) ? last.fn(this) : last.inverse(this);
+      }
+      return args.every(Boolean);
+    });
+
+    Handlebars.registerHelper('or', function () {
+      const args = Array.from(arguments);
+      const last = args[args.length - 1];
+      if (_isBlock(last)) {
+        args.pop();
+        return args.some(Boolean) ? last.fn(this) : last.inverse(this);
+      }
+      return args.some(Boolean);
+    });
+
+    Handlebars.registerHelper('not', function (val, options) {
+      const result = !val;
+      if (_isBlock(options)) return result ? options.fn(this) : options.inverse(this);
+      return result;
+    });
+
+    // ─── NCM-Prefixed Aliases (backwards compatibility) ───
+
+    Handlebars.registerHelper('ncm-eq', (a, b) => a === b);
+    Handlebars.registerHelper('ncm-neq', (a, b) => a !== b);
+    Handlebars.registerHelper('ncm-gt', (a, b) => a > b);
+    Handlebars.registerHelper('ncm-or', (...args) => { args.pop(); return args.some(Boolean); });
+    Handlebars.registerHelper('ncm-and', (...args) => { args.pop(); return args.every(Boolean); });
+
+    // ─── Utility Helpers ───
+
+    Handlebars.registerHelper('ncm-date', (timestamp) => formatCyberDate(timestamp));
+
+    Handlebars.registerHelper('ncm-truncate', (str, len) => {
+      return truncate(str, typeof len === 'number' ? len : 50);
+    });
+
+    Handlebars.registerHelper('truncate', function (str, len) {
+      if (!str) return '';
+      if (str.length <= len) return str;
+      return str.substring(0, len) + '…';
+    });
+
+    Handlebars.registerHelper('lower', (str) => (str || '').toLowerCase());
+    Handlebars.registerHelper('upper', (str) => (str || '').toUpperCase());
+    Handlebars.registerHelper('add', (a, b) => (a || 0) + (b || 0));
+    Handlebars.registerHelper('sub', (a, b) => (a || 0) - (b || 0));
+    Handlebars.registerHelper('ncm-json', (context) => JSON.stringify(context, null, 2));
+    Handlebars.registerHelper('ncm-isGM', () => game.user?.isGM);
+
+    log.info('Handlebars helpers registered');
+  });
 }
