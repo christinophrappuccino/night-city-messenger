@@ -1,0 +1,28 @@
+{{!--
+  Empty State — Message Detail
+  Module: cyberpunkred-messenger
+  Description: Displayed in the right panel when no message is selected.
+               Atmospheric cyberpunk placeholder with subtle scanline effect.
+--}}
+
+<div class="ncm-empty-state ncm-empty-detail">
+  <div class="ncm-empty-terminal">
+    <div class="ncm-terminal-line ncm-terminal-prompt">
+      <span class="ncm-prompt-char">&gt;</span>
+      <span class="ncm-prompt-text">SELECT MESSAGE TO READ</span>
+      <span class="ncm-cursor-blink">_</span>
+    </div>
+    <div class="ncm-terminal-line ncm-terminal-dim">
+      <span class="ncm-prompt-char">&gt;</span>
+      <span>INBOX READY // {{viewingAsName}} @ {{currentNetwork.name}}</span>
+    </div>
+    <div class="ncm-terminal-line ncm-terminal-dim">
+      <span class="ncm-prompt-char">&gt;</span>
+      <span>{{totalMessages}} messages loaded // {{unreadCount}} unread</span>
+    </div>
+    <div class="ncm-terminal-line ncm-terminal-hint">
+      <span class="ncm-prompt-char">&gt;</span>
+      <span>Use ↑↓ arrows to navigate • R to reply • N for new message</span>
+    </div>
+  </div>
+</div>

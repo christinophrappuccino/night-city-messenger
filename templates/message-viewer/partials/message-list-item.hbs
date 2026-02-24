@@ -1,0 +1,93 @@
+{{!--
+  Message List Item — Partial
+  Module: cyberpunkred-messenger
+  Description: Single message row in the inbox list. Supports 3 density modes
+               (compact, normal, comfortable), priority indicators, unread state,
+               sender avatar, network badge, and bulk selection checkbox.
+--}}
+
+<div class="ncm-message-item 
+            {{#if this.selected}}selected{{/if}} 
+            {{#unless this.status.read}}unread{{/unless}}
+            {{#if this.status.encrypted}}encrypted{{/if}}
+            {{#if this.status.infected}}infected{{/if}}"
+     data-message-id="{{this.messageId}}"
+     data-priority="{{this.priority}}"
+     data-network="{{this.network}}"
+     data-action="select-message"
+     role="option"
+     aria-selected="{{this.selected}}"
+     tabindex="-1">
+
+  {{!-- Priority Left Border (rendered via CSS data-priority attribute) --}}
+
+  {{!-- Bulk Selection Checkbox --}}
+  <div class="ncm-msg-checkbox">
+    <input type="checkbox" 
+           class="ncm-bulk-check" 
+           data-action="toggle-select" 
+           data-message-id="{{this.messageId}}"
+           {{#if this.bulkSelected}}checked{{/if}}
+           aria-label="Select message" />
+  </div>
+
+  {{!-- Unread Indicator Dot --}}
+  {{#unless this.status.read}}
+    <span class="ncm-unread-dot" aria-label="Unread"></span>
+  {{/unless}}
+
+  {{!-- Avatar / Sender Icon --}}
+  <div class="ncm-msg-avatar" title="{{this.from}}">
+    {{#if this.contactAvatar}}
+      <img src="{{this.contactAvatar}}" alt="{{this.fromDisplay}}" class="ncm-avatar-img" />
+    {{else}}
+      <span class="ncm-avatar-letter">{{this.fromInitial}}</span>
+    {{/if}}
+  </div>
+
+  {{!-- Message Content --}}
+  <div class="ncm-msg-content">
+    {{!-- Top Row: Sender + Timestamp --}}
+    <div class="ncm-msg-top-row">
+      <span class="ncm-msg-sender">{{this.fromDisplay}}</span>
+      <span class="ncm-msg-timestamp" title="{{this.timestampFull}}">{{this.timestampFormatted}}</span>
+    </div>
+
+    {{!-- Middle Row: Subject --}}
+    <div class="ncm-msg-subject-row">
+      {{#if this.status.encrypted}}
+        <i class="fas fa-lock ncm-encrypted-icon" title="Encrypted"></i>
+      {{/if}}
+      {{#if this.status.saved}}
+        <i class="fas fa-bookmark ncm-saved-icon" title="Saved"></i>
+      {{/if}}
+      <span class="ncm-msg-subject">{{this.subject}}</span>
+    </div>
+
+    {{!-- Bottom Row: Body Preview (visible in normal + comfortable density) --}}
+    <div class="ncm-msg-preview-row">
+      <span class="ncm-msg-preview">{{this.bodyPreview}}</span>
+    </div>
+  </div>
+
+  {{!-- Right Side: Priority + Network Badge --}}
+  <div class="ncm-msg-meta">
+    {{!-- Priority Badge --}}
+    {{#eq this.priority "urgent"}}
+      <span class="ncm-priority-badge urgent" title="Urgent">
+        <i class="fas fa-exclamation"></i>
+      </span>
+    {{/eq}}
+    {{#eq this.priority "critical"}}
+      <span class="ncm-priority-badge critical" title="Critical">
+        <i class="fas fa-bolt"></i>
+      </span>
+    {{/eq}}
+
+    {{!-- Network Pill --}}
+    <span class="ncm-network-pill" data-network="{{this.network}}" title="via {{this.network}}">
+      {{this.networkShort}}
+    </span>
+  </div>
+
+</div>

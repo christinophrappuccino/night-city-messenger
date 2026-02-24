@@ -1,0 +1,84 @@
+{{!--
+  Empty State — Message List
+  Module: cyberpunkred-messenger
+  Description: Displayed when the message list is empty for the current filter.
+               Shows contextual messages based on which filter/category is active.
+--}}
+
+<div class="ncm-empty-state ncm-empty-list">
+  <div class="ncm-empty-icon">
+    {{#eq currentFilter "inbox"}}
+      <i class="fas fa-inbox"></i>
+    {{else}}
+      {{#eq currentFilter "unread"}}
+        <i class="fas fa-check-double"></i>
+      {{else}}
+        {{#eq currentFilter "sent"}}
+          <i class="fas fa-paper-plane"></i>
+        {{else}}
+          {{#eq currentFilter "saved"}}
+            <i class="fas fa-bookmark"></i>
+          {{else}}
+            {{#eq currentFilter "spam"}}
+              <i class="fas fa-shield-alt"></i>
+            {{else}}
+              {{#eq currentFilter "trash"}}
+                <i class="fas fa-recycle"></i>
+              {{else}}
+                <i class="fas fa-inbox"></i>
+              {{/eq}}
+            {{/eq}}
+          {{/eq}}
+        {{/eq}}
+      {{/eq}}
+    {{/eq}}
+  </div>
+
+  <p class="ncm-empty-title">
+    {{#eq currentFilter "inbox"}}
+      No messages in your inbox, choom.
+    {{else}}
+      {{#eq currentFilter "unread"}}
+        All caught up. Zero unread.
+      {{else}}
+        {{#eq currentFilter "sent"}}
+          No sent messages yet.
+        {{else}}
+          {{#eq currentFilter "saved"}}
+            Nothing saved. Bookmark messages to keep them here.
+          {{else}}
+            {{#eq currentFilter "spam"}}
+              Spam folder is clean. ICE is holding.
+            {{else}}
+              {{#eq currentFilter "trash"}}
+                Trash is empty. Nothing to recover.
+              {{else}}
+                No messages found.
+              {{/eq}}
+            {{/eq}}
+          {{/eq}}
+        {{/eq}}
+      {{/eq}}
+    {{/eq}}
+  </p>
+
+  {{#if searchTerm}}
+    <p class="ncm-empty-subtitle">
+      No results for "<strong>{{searchTerm}}</strong>". Try different keywords.
+    </p>
+  {{/if}}
+
+  <p class="ncm-empty-hint">
+    {{#eq currentFilter "inbox"}}
+      The Net is quiet... for now.
+    {{else}}
+      {{#eq currentFilter "unread"}}
+        Check back when new traffic comes in.
+      {{else}}
+        {{#eq currentFilter "sent"}}
+          Hit <strong>Compose</strong> to send your first message.
+        {{/eq}}
+      {{/eq}}
+    {{/eq}}
+  </p>
+</div>

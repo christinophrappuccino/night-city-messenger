@@ -1,0 +1,169 @@
+{{!--
+  Message Detail — Partial
+  Module: cyberpunkred-messenger
+  Description: Full message detail view shown in the right panel when a 
+               message is selected. Includes header metadata card, rendered body,
+               action buttons, quick-reply shortcuts, and thread indicator.
+--}}
+
+<article class="ncm-message-detail" data-message-id="{{message.messageId}}">
+
+  {{!-- ── Header Card ── --}}
+  <header class="ncm-detail-header">
+    <div class="ncm-detail-header-grid">
+
+      {{!-- From --}}
+      <div class="ncm-detail-field">
+        <label class="ncm-detail-label">FROM</label>
+        <div class="ncm-detail-value ncm-detail-from">
+          {{#if message.contactAvatar}}
+            <img src="{{message.contactAvatar}}" alt="" class="ncm-detail-avatar" />
+          {{else}}
+            <span class="ncm-detail-avatar-letter">{{message.fromInitial}}</span>
+          {{/if}}
+          <span class="ncm-detail-email">{{message.from}}</span>
+          {{#if message.fromActorName}}
+            <span class="ncm-detail-actor-name">({{message.fromActorName}})</span>
+          {{/if}}
+        </div>
+      </div>
+
+      {{!-- To --}}
+      <div class="ncm-detail-field">
+        <label class="ncm-detail-label">TO</label>
+        <span class="ncm-detail-value ncm-detail-email">{{message.to}}</span>
+      </div>
+
+      {{!-- Date + Network Row --}}
+      <div class="ncm-detail-field-row">
+        <div class="ncm-detail-field">
+          <label class="ncm-detail-label">DATE</label>
+          <span class="ncm-detail-value ncm-detail-timestamp">{{message.timestampFull}}</span>
+        </div>
+        <div class="ncm-detail-field">
+          <label class="ncm-detail-label">NETWORK</label>
+          <span class="ncm-detail-value">
+            <span class="ncm-network-pill" data-network="{{message.network}}">{{message.network}}</span>
+            {{#if message.metadata.networkTrace}}
+              <span class="ncm-trace-badge" title="Trace detected: {{message.metadata.networkTrace}}">
+                <i class="fas fa-route"></i> traced
+              </span>
+            {{/if}}
+          </span>
+        </div>
+      </div>
+
+      {{!-- Priority --}}
+      {{#unless (eq message.priority "normal")}}
+      <div class="ncm-detail-field">
+        <label class="ncm-detail-label">PRIORITY</label>
+        <span class="ncm-detail-value ncm-priority-indicator {{message.priority}}">
+          {{#eq message.priority "urgent"}}
+            <i class="fas fa-exclamation-triangle"></i> URGENT
+          {{/eq}}
+          {{#eq message.priority "critical"}}
+            <i class="fas fa-bolt"></i> CRITICAL
+          {{/eq}}
+        </span>
+      </div>
+      {{/unless}}
+
+      {{!-- Subject --}}
+      <div class="ncm-detail-field ncm-detail-subject-field">
+        <label class="ncm-detail-label">SUBJECT</label>
+        <span class="ncm-detail-value ncm-detail-subject">{{message.subject}}</span>
+      </div>
+
+    </div>
+  </header>
+
+  {{!-- ── Thread Indicator ── --}}
+  {{#if message.threadInfo}}
+  <div class="ncm-thread-indicator" data-action="toggle-thread">
+    <i class="fas fa-stream"></i>
+    <span>Part of thread ({{message.threadInfo.count}} messages)</span>
+    <i class="fas fa-chevron-{{#if message.threadInfo.expanded}}up{{else}}down{{/if}} ncm-thread-chevron"></i>
+  </div>
+  {{/if}}
+
+  {{!-- ── Per-Message Encryption Lock ── --}}
+  {{#if message.status.encrypted}}
+    {{#unless message.isDecrypted}}
+    <div class="ncm-message-encrypted-overlay">
+      <i class="fas fa-lock ncm-encrypted-lock-icon"></i>
+      <p class="ncm-encrypted-label">MESSAGE ENCRYPTED</p>
+      <p class="ncm-encrypted-detail">
+        {{message.encryption.type}} — DV {{message.encryption.dc}}
+      </p>
+      <button class="ncm-btn ncm-btn-primary" data-action="decrypt-message" data-message-id="{{message.messageId}}">
+        <i class="fas fa-unlock-alt"></i> Attempt Decrypt
+      </button>
+      {{#if isGM}}
+        <button class="ncm-btn ncm-btn-gm" data-action="force-decrypt-message" data-message-id="{{message.messageId}}">
+          <i class="fas fa-key"></i> Force Decrypt
+        </button>
+      {{/if}}
+    </div>
+    {{/unless}}
+  {{/if}}
+
+  {{!-- ── Message Body ── --}}
+  <div class="ncm-detail-body">
+    {{{message.bodyRendered}}}
+  </div>
+
+  {{!-- ── Attachments ── --}}
+  {{#if message.attachments.length}}
+  <div class="ncm-detail-attachments">
+    <label class="ncm-detail-label">ATTACHMENTS</label>
+    <div class="ncm-attachment-list">
+      {{#each message.attachments}}
+      <div class="ncm-attachment-item" data-action="open-attachment" data-index="{{@index}}">
+        <i class="fas fa-file-alt"></i>
+        <span>{{this.name}}</span>
+      </div>
+      {{/each}}
+    </div>
+  </div>
+  {{/if}}
+
+  {{!-- ── Action Bar ── --}}
+  <div class="ncm-detail-actions">
+    <button class="ncm-action-btn" data-action="reply" title="Reply (R)">
+      <i class="fas fa-reply"></i>
+      <span>Reply</span>
+    </button>
+    <button class="ncm-action-btn" data-action="forward" title="Forward">
+      <i class="fas fa-share"></i>
+      <span>Forward</span>
+    </button>
+    <button class="ncm-action-btn" data-action="toggle-saved" title="{{#if message.status.saved}}Unsave{{else}}Save{{/if}}">
+      <i class="fas fa-bookmark {{#if message.status.saved}}ncm-active{{/if}}"></i>
+      <span>{{#if message.status.saved}}Saved{{else}}Save{{/if}}</span>
+    </button>
+    <button class="ncm-action-btn" data-action="share-to-chat" title="Share to Chat">
+      <i class="fas fa-external-link-alt"></i>
+      <span>Share</span>
+    </button>
+    <button class="ncm-action-btn" data-action="mark-spam" title="{{#if message.status.spam}}Not Spam{{else}}Mark Spam{{/if}}">
+      <i class="fas fa-ban {{#if message.status.spam}}ncm-active{{/if}}"></i>
+    </button>
+    <button class="ncm-action-btn ncm-action-danger" data-action="delete-message" title="Delete">
+      <i class="fas fa-trash-alt"></i>
+    </button>
+  </div>
+
+  {{!-- ── Quick Reply Bar ── --}}
+  <div class="ncm-quick-reply-bar">
+    <span class="ncm-quick-reply-label"><i class="fas fa-bolt"></i></span>
+    {{#each quickReplies}}
+    <button class="ncm-quick-reply-btn" data-action="quick-reply" data-reply="{{this}}">
+      {{this}}
+    </button>
+    {{/each}}
+    <button class="ncm-quick-reply-btn ncm-quick-custom" data-action="quick-reply-custom" title="Custom quick reply">
+      <i class="fas fa-plus"></i>
+    </button>
+  </div>
+
+</article>
