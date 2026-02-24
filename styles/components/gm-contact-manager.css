@@ -1,0 +1,332 @@
+/* ═══════════════════════════════════════════════════════════
+ * GM Contact Manager Component Styles
+ * @file styles/components/gm-contact-manager.css
+ * @module cyberpunkred-messenger
+ * ═══════════════════════════════════════════════════════════ */
+
+/* ─── Layout ─── */
+
+.ncm-app .ncm-gm-contacts {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.ncm-app .ncm-gm-contacts-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--ncm-primary);
+  background: var(--ncm-bg-deep);
+  flex-shrink: 0;
+}
+
+.ncm-app .ncm-gm-contacts-title {
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-size: 1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ncm-primary);
+  margin: 0;
+}
+
+.ncm-app .ncm-gm-contacts-header-actions {
+  display: flex;
+  gap: 6px;
+}
+
+/* ─── Body: Split Panel ─── */
+
+.ncm-app .ncm-gm-contacts-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+/* ─── Left Panel: Contact List ─── */
+
+.ncm-app .ncm-gm-contacts-list-panel {
+  width: 320px;
+  min-width: 260px;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--ncm-bg-elevated);
+  background: var(--ncm-bg-deep);
+}
+
+.ncm-app .ncm-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--ncm-bg-elevated);
+}
+
+.ncm-app .ncm-search-bar i {
+  color: var(--ncm-text-secondary);
+  font-size: 0.85rem;
+}
+
+.ncm-app .ncm-contact-search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--ncm-text-primary);
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 0.85rem;
+  outline: none;
+}
+
+.ncm-app .ncm-contact-search-input::placeholder {
+  color: var(--ncm-text-secondary);
+  opacity: 0.6;
+}
+
+/* ─── Filter Pills ─── */
+
+.ncm-app .ncm-filter-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--ncm-bg-elevated);
+}
+
+.ncm-app .ncm-pill {
+  padding: 2px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--ncm-bg-elevated);
+  background: transparent;
+  color: var(--ncm-text-secondary);
+  font-size: 0.7rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.ncm-app .ncm-pill:hover {
+  border-color: var(--ncm-secondary);
+  color: var(--ncm-secondary);
+}
+
+.ncm-app .ncm-pill--active {
+  background: var(--ncm-secondary);
+  color: var(--ncm-bg-deep);
+  border-color: var(--ncm-secondary);
+}
+
+.ncm-app .ncm-pill--clear {
+  border-color: var(--ncm-primary);
+  color: var(--ncm-primary);
+}
+
+/* ─── Contact List ─── */
+
+.ncm-app .ncm-contact-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.ncm-app .ncm-contact-list-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+  transition: background 0.15s;
+  border-left: 3px solid transparent;
+}
+
+.ncm-app .ncm-contact-list-item:hover {
+  background: var(--ncm-bg-surface);
+}
+
+.ncm-app .ncm-contact-list-item--selected {
+  background: var(--ncm-bg-surface);
+  border-left-color: var(--ncm-primary);
+}
+
+.ncm-app .ncm-contact-list-item-checkbox {
+  flex-shrink: 0;
+}
+
+.ncm-app .ncm-contact-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 3px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.ncm-app .ncm-contact-avatar--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ncm-bg-elevated);
+  color: var(--ncm-text-secondary);
+  font-size: 0.9rem;
+}
+
+.ncm-app .ncm-contact-list-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.ncm-app .ncm-contact-list-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ncm-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ncm-app .ncm-contact-list-email {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 0.7rem;
+  color: var(--ncm-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ncm-app .ncm-contact-org-badge {
+  font-size: 0.65rem;
+  color: var(--ncm-accent);
+  border: 1px solid var(--ncm-accent);
+  border-radius: 2px;
+  padding: 1px 5px;
+  white-space: nowrap;
+}
+
+/* ─── Bulk Actions ─── */
+
+.ncm-app .ncm-bulk-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  border-top: 1px solid var(--ncm-bg-elevated);
+  background: var(--ncm-bg-deep);
+  gap: 6px;
+}
+
+.ncm-app .ncm-bulk-sync {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.ncm-app .ncm-select--small {
+  font-size: 0.75rem;
+  padding: 2px 6px;
+  max-width: 140px;
+}
+
+/* ─── Right Panel: Editor ─── */
+
+.ncm-app .ncm-gm-contacts-editor-panel {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 16px;
+  background: var(--ncm-bg-base);
+}
+
+.ncm-app .ncm-editor-title {
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--ncm-secondary);
+  margin: 0 0 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.ncm-app .ncm-editor-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--ncm-text-secondary);
+  opacity: 0.6;
+  text-align: center;
+}
+
+.ncm-app .ncm-editor-placeholder i {
+  font-size: 2rem;
+  margin-bottom: 8px;
+}
+
+/* ─── Contact Form ─── */
+
+.ncm-app .ncm-contact-form .ncm-form-row {
+  margin-bottom: 10px;
+}
+
+.ncm-app .ncm-contact-form label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--ncm-text-secondary);
+  margin-bottom: 3px;
+}
+
+.ncm-app .ncm-contact-form .ncm-required {
+  color: var(--ncm-primary);
+}
+
+.ncm-app .ncm-contact-form input[type="text"],
+.ncm-app .ncm-contact-form select,
+.ncm-app .ncm-contact-form textarea {
+  width: 100%;
+  padding: 6px 8px;
+  background: var(--ncm-bg-surface);
+  border: 1px solid var(--ncm-bg-elevated);
+  border-radius: 3px;
+  color: var(--ncm-text-primary);
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 0.85rem;
+  transition: border-color 0.15s;
+}
+
+.ncm-app .ncm-contact-form input:focus,
+.ncm-app .ncm-contact-form select:focus,
+.ncm-app .ncm-contact-form textarea:focus {
+  border-color: var(--ncm-secondary);
+  outline: none;
+}
+
+.ncm-app .ncm-form-row--half {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+/* ─── Push Row ─── */
+
+.ncm-app .ncm-push-row .ncm-push-controls {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.ncm-app .ncm-push-row .ncm-select {
+  flex: 1;
+}
+
+/* ─── Form Actions ─── */
+
+.ncm-app .ncm-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--ncm-bg-elevated);
+}

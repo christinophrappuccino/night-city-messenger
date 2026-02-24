@@ -16,6 +16,7 @@ import { registerMessagingSystem } from './init/registerMessagingSystem.js';
 import { registerNetworkSystem } from './init/registerNetworkSystem.js';
 import { registerDataShardSystem } from './init/registerDataShardSystem.js';
 import { registerIntegrations } from './init/registerIntegrations.js';
+import { registerGMTools } from './init/registerGMTools.js';
 import { registerReadyServices } from './init/registerReadyServices.js';
 import { SystemVerification } from './tests/SystemVerification.js';
 
@@ -30,6 +31,7 @@ registerNetworkSystem(initializer);
 registerDataShardSystem(initializer);
 registerIntegrations(initializer);
 registerReadyServices(initializer);
+registerGMTools(initializer);  
 
 // ─── Foundry Hooks ───
 

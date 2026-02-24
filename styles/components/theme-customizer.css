@@ -1,6 +1,311 @@
 /* ═══════════════════════════════════════════════════════════
- * theme-customizer component styles
+ * Theme Customizer Component Styles
  * @file styles/components/theme-customizer.css
  * @module cyberpunkred-messenger
- * Populated in later build phases.
  * ═══════════════════════════════════════════════════════════ */
+
+/* ─── Layout ─── */
+
+.ncm-app .ncm-theme-customizer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.ncm-app .ncm-theme-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--ncm-primary);
+  background: var(--ncm-bg-deep);
+  flex-shrink: 0;
+}
+
+.ncm-app .ncm-theme-title {
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-size: 1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ncm-primary);
+  margin: 0;
+}
+
+.ncm-app .ncm-theme-current {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 0.75rem;
+  color: var(--ncm-secondary);
+  padding: 2px 8px;
+  border: 1px solid var(--ncm-secondary);
+  border-radius: 2px;
+}
+
+/* ─── Sections ─── */
+
+.ncm-app .ncm-theme-section {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--ncm-bg-elevated);
+  overflow-y: auto;
+}
+
+.ncm-app .ncm-theme-section:last-of-type {
+  border-bottom: none;
+}
+
+.ncm-app .ncm-theme-section-title {
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ncm-text-secondary);
+  margin: 0 0 8px;
+}
+
+/* ─── Preset Grid ─── */
+
+.ncm-app .ncm-preset-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.ncm-app .ncm-preset-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px;
+  background: var(--ncm-bg-surface);
+  border: 2px solid var(--ncm-bg-elevated);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.ncm-app .ncm-preset-btn:hover {
+  border-color: var(--ncm-secondary);
+  background: var(--ncm-bg-elevated);
+}
+
+.ncm-app .ncm-preset-btn--active {
+  border-color: var(--ncm-primary);
+  background: var(--ncm-bg-elevated);
+}
+
+.ncm-app .ncm-preset-swatch {
+  display: flex;
+  gap: 2px;
+  width: 100%;
+  height: 20px;
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+
+.ncm-app .ncm-swatch-stripe {
+  flex: 1;
+}
+
+.ncm-app .ncm-swatch-bg {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+}
+
+.ncm-app .ncm-preset-label {
+  font-size: 0.65rem;
+  color: var(--ncm-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.ncm-app .ncm-preset-btn--active .ncm-preset-label {
+  color: var(--ncm-primary);
+  font-weight: 700;
+}
+
+/* ─── Color Grid ─── */
+
+.ncm-app .ncm-color-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 12px;
+}
+
+.ncm-app .ncm-color-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.ncm-app .ncm-color-label {
+  font-size: 0.75rem;
+  color: var(--ncm-text-secondary);
+  white-space: nowrap;
+}
+
+.ncm-app .ncm-color-input-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ncm-app .ncm-color-picker {
+  width: 28px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--ncm-bg-elevated);
+  border-radius: 2px;
+  cursor: pointer;
+  background: none;
+}
+
+.ncm-app .ncm-color-picker::-webkit-color-swatch-wrapper {
+  padding: 1px;
+}
+
+.ncm-app .ncm-color-picker::-webkit-color-swatch {
+  border: none;
+  border-radius: 1px;
+}
+
+.ncm-app .ncm-color-hex {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 0.65rem;
+  color: var(--ncm-text-secondary);
+  min-width: 55px;
+}
+
+.ncm-app .ncm-color-override-badge {
+  color: var(--ncm-primary);
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+
+/* ─── Toggle Row ─── */
+
+.ncm-app .ncm-toggle-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+}
+
+.ncm-app .ncm-toggle-row label {
+  font-size: 0.85rem;
+  color: var(--ncm-text-primary);
+}
+
+.ncm-app .ncm-toggle {
+  padding: 3px 12px;
+  border-radius: 3px;
+  border: 1px solid var(--ncm-bg-elevated);
+  background: var(--ncm-bg-surface);
+  color: var(--ncm-text-secondary);
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  min-width: 40px;
+  text-align: center;
+}
+
+.ncm-app .ncm-toggle--on {
+  background: var(--ncm-secondary);
+  color: var(--ncm-bg-deep);
+  border-color: var(--ncm-secondary);
+}
+
+/* ─── Slider Row ─── */
+
+.ncm-app .ncm-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.ncm-app .ncm-slider-row label {
+  font-size: 0.85rem;
+  color: var(--ncm-text-primary);
+  min-width: 100px;
+}
+
+.ncm-app .ncm-slider {
+  flex: 1;
+  height: 4px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--ncm-bg-elevated);
+  border-radius: 2px;
+  outline: none;
+}
+
+.ncm-app .ncm-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--ncm-secondary);
+  cursor: pointer;
+  border: 2px solid var(--ncm-bg-deep);
+}
+
+.ncm-app .ncm-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--ncm-secondary);
+  cursor: pointer;
+  border: 2px solid var(--ncm-bg-deep);
+}
+
+.ncm-app .ncm-slider-value {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 0.75rem;
+  color: var(--ncm-secondary);
+  min-width: 35px;
+  text-align: right;
+}
+
+/* ─── Button Group ─── */
+
+.ncm-app .ncm-btn-group {
+  display: flex;
+  gap: 4px;
+}
+
+.ncm-app .ncm-btn-group .ncm-btn {
+  flex: 1;
+}
+
+/* ─── Footer ─── */
+
+.ncm-app .ncm-theme-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  border-top: 1px solid var(--ncm-primary);
+  background: var(--ncm-bg-deep);
+  flex-shrink: 0;
+}
+
+.ncm-app .ncm-theme-footer-right {
+  display: flex;
+  gap: 6px;
+}
+
+.ncm-app .ncm-btn--disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
