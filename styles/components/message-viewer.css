@@ -387,19 +387,26 @@
    §19  NETWORK-THEMED MESSAGES — Sprint 2C (§2.10)
    Each message carries a network theme class from getNetworkThemeClass().
    CITINET = clean default, DARKNET = purple menace, CORPNET = corporate gold.
+
+   Specificity note: All rules use .ncm-message-viewer ancestor to beat
+   depth.css §D2 border resets. Selected+network combos at the bottom
+   ensure cyan always wins when a themed message is selected.
    ═══════════════════════════════════════════════════════════ */
 
-/* ── CITINET (default) — clean, no tint, standard left border on selected ── */
+
+/* ── CITINET (default) — clean, no tint ── */
+
 .ncm-app .ncm-message-viewer .ncm-message-item.ncm-msg--citinet {
   border-left: 3px solid transparent;
 }
 
 .ncm-app .ncm-message-viewer .ncm-message-item.ncm-msg--citinet.ncm-message-item--selected {
-  border-left-color: var(--ncm-secondary);
+  border-left-color: var(--ncm-secondary) !important;
 }
 
 
 /* ── DARKNET — purple tint, menacing ── */
+
 .ncm-app .ncm-message-viewer .ncm-message-item.ncm-msg--darknet {
   border-left: 3px solid rgba(180, 77, 255, 0.5) !important;
   background: linear-gradient(
@@ -409,12 +416,16 @@
   );
 }
 
-.ncm-app .ncm-message-viewer .ncm-message-item.ncm-msg--darknet.ncm-message-item--selected {
-  border-left-color: #b44dff !important;
-  box-shadow: inset 4px 0 12px rgba(180, 77, 255, 0.1) !important;
+.ncm-app .ncm-message-viewer .ncm-message-item.ncm-msg--darknet:hover {
+  background: linear-gradient(
+    90deg,
+    rgba(180, 77, 255, 0.07) 0%,
+    var(--ncm-bg-surface) 40%
+  );
 }
 
-.ncm-app .ncm-message-item.ncm-msg--darknet::before {
+/* Right-edge purple fade */
+.ncm-app .ncm-message-viewer .ncm-message-item.ncm-msg--darknet::before {
   content: '';
   position: absolute;
   top: 0;
@@ -425,27 +436,25 @@
   pointer-events: none;
 }
 
-.ncm-app .ncm-message-item.ncm-msg--darknet:hover {
-  background: linear-gradient(
-    90deg,
-    rgba(180, 77, 255, 0.07) 0%,
-    var(--ncm-bg-surface) 40%
-  );
-}
-
-/* Darknet avatar border */
-.ncm-app .ncm-message-item.ncm-msg--darknet .ncm-message-item__avatar {
+/* Avatar */
+.ncm-app .ncm-message-viewer .ncm-message-item.ncm-msg--darknet .ncm-message-item__avatar {
   border-color: rgba(180, 77, 255, 0.5);
 }
 
-/* Darknet selected left border glow */
-.ncm-app .ncm-message-item.ncm-msg--darknet.ncm-message-item--selected .ncm-message-item__avatar {
+/* Selected */
+.ncm-app .ncm-message-viewer .ncm-message-item.ncm-msg--darknet.ncm-message-item--selected {
+  border-left-color: #b44dff !important;
+  box-shadow: inset 4px 0 12px rgba(180, 77, 255, 0.1) !important;
+}
+
+.ncm-app .ncm-message-viewer .ncm-message-item.ncm-msg--darknet.ncm-message-item--selected .ncm-message-item__avatar {
   border-color: #b44dff;
   box-shadow: 0 0 6px rgba(180, 77, 255, 0.3);
 }
 
 
 /* ── CORPNET — gold tint, corporate ── */
+
 .ncm-app .ncm-message-viewer .ncm-message-item.ncm-msg--corpnet {
   border-left: 3px solid rgba(247, 201, 72, 0.5) !important;
   background: linear-gradient(
@@ -455,12 +464,7 @@
   );
 }
 
-.ncm-app .ncm-message-viewer .ncm-message-item.ncm-msg--corpnet.ncm-message-item--selected {
-  border-left-color: var(--ncm-accent) !important;
-  box-shadow: inset 4px 0 12px rgba(247, 201, 72, 0.08) !important;
-}
-
-.ncm-app .ncm-message-item.ncm-msg--corpnet:hover {
+.ncm-app .ncm-message-viewer .ncm-message-item.ncm-msg--corpnet:hover {
   background: linear-gradient(
     90deg,
     rgba(247, 201, 72, 0.06) 0%,
@@ -468,16 +472,42 @@
   );
 }
 
-/* Corpnet avatar border */
-.ncm-app .ncm-message-item.ncm-msg--corpnet .ncm-message-item__avatar {
+/* Right-edge gold fade */
+.ncm-app .ncm-message-viewer .ncm-message-item.ncm-msg--corpnet::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 60px;
+  background: linear-gradient(90deg, transparent, rgba(247, 201, 72, 0.015));
+  pointer-events: none;
+}
+
+/* Avatar */
+.ncm-app .ncm-message-viewer .ncm-message-item.ncm-msg--corpnet .ncm-message-item__avatar {
   border-color: rgba(247, 201, 72, 0.5);
 }
 
-.ncm-app .ncm-message-item.ncm-msg--corpnet.ncm-message-item--selected .ncm-message-item__avatar {
+/* Selected */
+.ncm-app .ncm-message-viewer .ncm-message-item.ncm-msg--corpnet.ncm-message-item--selected {
+  border-left-color: var(--ncm-accent) !important;
+  box-shadow: inset 4px 0 12px rgba(247, 201, 72, 0.08) !important;
+}
+
+.ncm-app .ncm-message-viewer .ncm-message-item.ncm-msg--corpnet.ncm-message-item--selected .ncm-message-item__avatar {
   border-color: var(--ncm-accent, #f7c948);
   box-shadow: 0 0 6px rgba(247, 201, 72, 0.25);
 }
 
+
+/* ── SELECTED + NETWORK COMBINED — cyan border always wins ── */
+
+.ncm-app .ncm-message-viewer .ncm-message-item.ncm-message-item--selected.ncm-msg--darknet,
+.ncm-app .ncm-message-viewer .ncm-message-item.ncm-message-item--selected.ncm-msg--corpnet {
+  border-left-color: var(--ncm-secondary) !important;
+  box-shadow: inset 4px 0 12px rgba(25, 243, 247, 0.06) !important;
+}
 
 /* ═══════════════════════════════════════════════════════════
    §20  THREAT / DAEMON BADGES — Sprint 2C (§2.7)
@@ -818,6 +848,30 @@
   color: var(--ncm-primary);
 }
 
+/* Sort control — prevent Foundry form styling */
+.ncm-app .ncm-tab-controls .ncm-sort-control {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  font-family: var(--ncm-font-display);
+  font-size: 10px;
+  color: var(--ncm-text-muted);
+  cursor: pointer;
+  border-radius: 2px;
+  border: none;
+  background: none;
+  position: relative;
+  transition: all 0.15s;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+}
+
+.ncm-app .ncm-tab-controls .ncm-sort-control:hover {
+  color: var(--ncm-text-secondary);
+  background: var(--ncm-bg-surface);
+}
 
 /* ═══════════════════════════════════════════════════════════
    §5  BULK ACTIONS BAR
@@ -1297,6 +1351,14 @@
   border-top: 1px solid var(--ncm-border);
   flex-shrink: 0;
   overflow-x: auto;
+}
+
+.ncm-app .ncm-detail-actions .ncm-btn {
+  flex: 0 0 auto !important;
+  width: auto !important;
+  display: inline-flex !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
 }
 
 /* Primary button (Reply) — red filled */

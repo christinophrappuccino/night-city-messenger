@@ -84,7 +84,18 @@
    ═══════════════════════════════════════════════════════════ */
 
 /* ── Base borders ── */
-.ncm-app .ncm-message-item,
+
+/* Message items  */
+.ncm-app .ncm-message-item {
+  border-top: 1px solid var(--ncm-border);
+  border-right: 1px solid var(--ncm-border);
+  border-bottom: 1px solid var(--ncm-border);
+  transition: background var(--ncm-transition-fast, 150ms ease),
+              border-color var(--ncm-transition-fast, 150ms ease),
+              box-shadow var(--ncm-transition-fast, 150ms ease);
+}
+
+/* Everything else keeps the shorthand */
 .ncm-app .ncm-stat-card,
 .ncm-app .ncm-entity-card,
 .ncm-app .ncm-card,
@@ -119,7 +130,7 @@
 
 /* ── Panel separator borders ── */
 .ncm-app .ncm-inbox-header {
-  border-bottom: 1px solid var(--ncm-primary);
+  border-bottom: 1px solid var(--ncm-border);
 }
 
 .ncm-app .ncm-inbox-tabs {
