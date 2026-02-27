@@ -4,23 +4,36 @@
   @module cyberpunkred-messenger
   @description Single message row in the inbox list. Supports 3 density modes
     (compact, normal, comfortable), priority indicators, unread state,
-    sender avatar, network badge, and bulk selection checkbox.
+    sender avatar with color-coding, network-themed styling, threat badges,
+    and bulk selection checkbox.
     Density is controlled by the parent [data-density] attribute on .ncm-message-viewer.
+
+  Sprint 2C additions:
+    - §2.9 Color-coded avatar via avatarColor (inline style)
+    - §2.10 Network theme class via networkThemeClass (e.g. ncm-msg--darknet)
+    - §2.10 Network accent border on avatar via networkAccentColor
+    - §2.10 Network tag badge on non-default-network messages
+    - §2.7 Threat badge for malware-infected messages
+    - §2.7 Red tint on infected message items
 
   Expected context (per message from _enrichMessages):
     messageId, from, to, subject, body, timestamp, network, priority,
     status: { read, saved, spam, encrypted, infected, deleted, sent },
     fromDisplay, fromInitial, fromPortrait, bodyPreview,
     formattedTime, networkLabel, priorityVariant,
-    selected, bulkSelected
+    selected, bulkSelected,
+    — Sprint 2C:
+    avatarColor, networkThemeClass, networkAccentColor,
+    showNetworkBadge, networkBadgeLabel, threatBadge
 --}}
 
-<div class="ncm-message-item
+<div class="ncm-message-item {{networkThemeClass}}
   {{~#unless status.read}} ncm-message-item--unread{{/unless~}}
   {{~#if selected}} ncm-message-item--selected{{/if~}}
   {{~#if bulkSelected}} ncm-message-item--bulk-selected{{/if~}}
   {{~#if status.infected}} ncm-message-item--infected{{/if~}}
-  {{~#if status.encrypted}} ncm-message-item--encrypted{{/if~}}"
+  {{~#if status.encrypted}} ncm-message-item--encrypted{{/if~}}
+  {{~#if threatBadge}} ncm-message-item--threat{{/if~}}"
      data-message-id="{{messageId}}"
      data-priority="{{priority}}"
      data-action="select-message">
@@ -41,21 +54,39 @@
     <div class="ncm-message-item__unread-dot" data-ncm-tooltip="Unread"></div>
   {{/unless}}
 
-  {{!-- Avatar --}}
-  <div class="ncm-message-item__avatar">
+  {{!-- Avatar — §2.9 Color-coded, §2.10 Network accent border --}}
+  <div class="ncm-message-item__avatar"
+    {{~#if networkAccentColor}} style="border-color: {{networkAccentColor}}"{{/if~}}>
     {{#if fromPortrait}}
       <img class="ncm-message-item__portrait" src="{{fromPortrait}}" alt="{{fromDisplay}}" />
     {{else}}
-      <div class="ncm-message-item__initials">{{fromInitial}}</div>
+      <div class="ncm-message-item__initials" style="color: {{avatarColor}}">{{fromInitial}}</div>
     {{/if}}
   </div>
 
   {{!-- Content Area --}}
   <div class="ncm-message-item__content">
 
-    {{!-- Top Row: Sender + Meta --}}
+    {{!-- Top Row: Sender + Badges + Meta --}}
     <div class="ncm-message-item__top-row">
       <span class="ncm-message-item__sender">{{fromDisplay}}</span>
+
+      {{!-- §2.7 Threat Badge --}}
+      {{#if threatBadge}}
+        <span class="ncm-badge ncm-badge--threat" data-ncm-tooltip="{{threatBadge.label}} detected">
+          <i class="{{threatBadge.icon}}"></i>
+          <span>{{threatBadge.label}}</span>
+        </span>
+      {{/if}}
+
+      {{!-- §2.10 Network Tag Badge (non-default networks only) --}}
+      {{#if showNetworkBadge}}
+        <span class="ncm-badge ncm-badge--network ncm-badge--network-{{networkBadgeVariant}}"
+              data-ncm-tooltip="Via {{networkBadgeLabel}}">
+          <i class="fas fa-network-wired"></i>
+          <span>{{networkBadgeLabel}}</span>
+        </span>
+      {{/if}}
 
       {{!-- Status Icons --}}
       <span class="ncm-message-item__status-icons">
@@ -68,15 +99,10 @@
              data-ncm-tooltip="Encrypted"></i>
         {{/if}}
         {{#if status.infected}}
-          <i class="fas fa-biohazard ncm-message-item__icon ncm-message-item__icon--infected"
-             data-ncm-tooltip="Infected"></i>
+          <i class="fas fa-virus ncm-message-item__icon ncm-message-item__icon--infected"
+             data-ncm-tooltip="Malware detected"></i>
         {{/if}}
       </span>
-
-      {{!-- Network Badge --}}
-      {{#if networkLabel}}
-        <span class="ncm-badge ncm-badge--network ncm-badge--sm">{{networkLabel}}</span>
-      {{/if}}
 
       {{!-- Timestamp --}}
       <span class="ncm-message-item__time">{{formattedTime}}</span>
@@ -84,21 +110,24 @@
 
     {{!-- Subject Row --}}
     <div class="ncm-message-item__subject-row">
-      <span class="ncm-message-item__subject">
-        {{#if subject}}{{subject}}{{else}}<em>(No Subject)</em>{{/if}}
-      </span>
-      {{!-- Priority Badge --}}
-      {{#if (neq priority "normal")}}
-        {{> "modules/cyberpunkred-messenger/templates/partials/tag-badge.hbs"
-            label=priority variant=priorityVariant size="sm" }}
-      {{/if}}
+      <span class="ncm-message-item__subject">{{subject}}</span>
+
+      {{!-- Priority badge (urgent/critical only) --}}
+      {{#unless (eq priority "normal")}}
+        {{#if priority}}
+          <span class="ncm-badge ncm-badge--{{priorityVariant}}" data-ncm-tooltip="{{priority}} priority">
+            {{#if (eq priority "critical")}}<i class="fas fa-triangle-exclamation"></i>{{/if}}
+            {{#if (eq priority "urgent")}}<i class="fas fa-bolt"></i>{{/if}}
+            <span>{{priority}}</span>
+          </span>
+        {{/if}}
+      {{/unless}}
     </div>
 
-    {{!-- Preview Row (visible in comfortable density) --}}
-    <div class="ncm-message-item__preview-row">
-      <span class="ncm-message-item__preview">{{bodyPreview}}</span>
-    </div>
+    {{!-- Body Preview (visible in comfortable density) --}}
+    {{#if bodyPreview}}
+      <div class="ncm-message-item__preview">{{bodyPreview}}</div>
+    {{/if}}
 
   </div>
-
 </div>

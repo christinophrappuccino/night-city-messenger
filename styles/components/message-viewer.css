@@ -18,6 +18,12 @@
  *  §2a  Identity Cluster
  *  §2b  Header Dividers
  *  §2c  Network Badge (with signal bars)
+   *  §19  Network-Themed Messages
+   *  §20  Threat / Daemon Badges
+   *  §21  Color-Coded Avatar Enhancements
+   *  §22  Network Tag Badges
+   *  §23  Animation Keyframes (2C)
+   *  §24  Animation Gating (2C)
  *  §2d  Inline Stat Counters
  *  §2e  Header Actions + Close Button
  *  §3   Tightened HUD Strip (Sprint 2A)
@@ -332,6 +338,288 @@
   border-color: var(--ncm-primary);
   background: rgba(246, 82, 97, 0.1);
 }
+
+/* ═══════════════════════════════════════════════════════════
+   §19  NETWORK-THEMED MESSAGES — Sprint 2C (§2.10)
+   Each message carries a network theme class from getNetworkThemeClass().
+   CITINET = clean default, DARKNET = purple menace, CORPNET = corporate gold.
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── CITINET (default) — clean, no tint, standard left border on selected ── */
+.ncm-app .ncm-message-item.ncm-msg--citinet {
+  /* No additional styling — base rules apply */
+}
+
+.ncm-app .ncm-message-item.ncm-msg--citinet.ncm-message-item--selected {
+  border-left-color: var(--ncm-secondary);
+}
+
+
+/* ── DARKNET — purple tint, menacing ── */
+.ncm-app .ncm-message-item.ncm-msg--darknet {
+  background: linear-gradient(
+    90deg,
+    rgba(180, 77, 255, 0.04) 0%,
+    transparent 40%
+  );
+}
+
+.ncm-app .ncm-message-item.ncm-msg--darknet::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 60px;
+  background: linear-gradient(90deg, transparent, rgba(180, 77, 255, 0.02));
+  pointer-events: none;
+}
+
+.ncm-app .ncm-message-item.ncm-msg--darknet.ncm-message-item--selected {
+  border-left-color: #b44dff;
+  box-shadow: inset 4px 0 12px rgba(180, 77, 255, 0.1);
+}
+
+.ncm-app .ncm-message-item.ncm-msg--darknet:hover {
+  background: linear-gradient(
+    90deg,
+    rgba(180, 77, 255, 0.07) 0%,
+    var(--ncm-bg-surface) 40%
+  );
+}
+
+/* Darknet avatar border */
+.ncm-app .ncm-message-item.ncm-msg--darknet .ncm-message-item__avatar {
+  border-color: rgba(180, 77, 255, 0.5);
+}
+
+/* Darknet selected left border glow */
+.ncm-app .ncm-message-item.ncm-msg--darknet.ncm-message-item--selected .ncm-message-item__avatar {
+  border-color: #b44dff;
+  box-shadow: 0 0 6px rgba(180, 77, 255, 0.3);
+}
+
+
+/* ── CORPNET — gold tint, corporate ── */
+.ncm-app .ncm-message-item.ncm-msg--corpnet {
+  background: linear-gradient(
+    90deg,
+    rgba(247, 201, 72, 0.03) 0%,
+    transparent 40%
+  );
+}
+
+.ncm-app .ncm-message-item.ncm-msg--corpnet.ncm-message-item--selected {
+  border-left-color: var(--ncm-accent, #f7c948);
+  box-shadow: inset 4px 0 12px rgba(247, 201, 72, 0.08);
+}
+
+.ncm-app .ncm-message-item.ncm-msg--corpnet:hover {
+  background: linear-gradient(
+    90deg,
+    rgba(247, 201, 72, 0.06) 0%,
+    var(--ncm-bg-surface) 40%
+  );
+}
+
+/* Corpnet avatar border */
+.ncm-app .ncm-message-item.ncm-msg--corpnet .ncm-message-item__avatar {
+  border-color: rgba(247, 201, 72, 0.5);
+}
+
+.ncm-app .ncm-message-item.ncm-msg--corpnet.ncm-message-item--selected .ncm-message-item__avatar {
+  border-color: var(--ncm-accent, #f7c948);
+  box-shadow: 0 0 6px rgba(247, 201, 72, 0.25);
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   §20  THREAT / DAEMON BADGES — Sprint 2C (§2.7)
+   Messages carrying malware get a pulsing red threat badge
+   and a subtle red background tint on the entire list item.
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Threat badge (reusable .ncm-badge--threat) ── */
+.ncm-app .ncm-badge--threat {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  background: rgba(255, 0, 51, 0.15);
+  color: var(--ncm-danger, #ff0033);
+  border: 1px solid rgba(255, 0, 51, 0.3);
+  border-radius: 2px;
+  font-family: var(--ncm-font-mono);
+  font-size: 8px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  animation: ncm-threat-pulse 1.5s ease-in-out infinite;
+}
+
+.ncm-app .ncm-badge--threat i {
+  font-size: 7px;
+}
+
+/* ── Threat message item tint ── */
+.ncm-app .ncm-message-item--threat {
+  background: rgba(255, 0, 51, 0.02);
+}
+
+.ncm-app .ncm-message-item--threat:hover {
+  background: rgba(255, 0, 51, 0.05);
+}
+
+.ncm-app .ncm-message-item--threat.ncm-message-item--selected {
+  background: rgba(255, 0, 51, 0.04);
+  border-left-color: var(--ncm-danger, #ff0033);
+  box-shadow: inset 4px 0 12px rgba(255, 0, 51, 0.1);
+}
+
+/* Threat overrides network theme when both present */
+.ncm-app .ncm-message-item--threat.ncm-msg--darknet,
+.ncm-app .ncm-message-item--threat.ncm-msg--corpnet {
+  background: rgba(255, 0, 51, 0.03);
+}
+
+/* Infected icon styling in status icons */
+.ncm-app .ncm-message-item__icon--infected {
+  color: var(--ncm-danger, #ff0033);
+  animation: ncm-threat-pulse 1.5s ease-in-out infinite;
+}
+
+/* ── Saved icon styling ── */
+.ncm-app .ncm-message-item__icon--saved {
+  color: var(--ncm-accent, #f7c948);
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   §21  COLOR-CODED AVATAR ENHANCEMENTS — Sprint 2C (§2.9)
+   Avatar initials use inline style="color: ${avatarColor}" from
+   getAvatarColor(). The CSS provides the structural support:
+   container sizing, background, border, and optional glow.
+   Network accent borders are set via inline style on the avatar wrapper.
+   ═══════════════════════════════════════════════════════════ */
+
+/* Base avatar — structure already in §7, these are 2C refinements */
+.ncm-app .ncm-message-item__avatar {
+  position: relative;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Initials get their color from inline style — ensure we don't override */
+.ncm-app .ncm-message-item__initials {
+  /* color is set via inline style from avatarColor */
+  text-shadow: 0 0 6px currentColor;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* Unread messages: slightly brighter avatar glow */
+.ncm-app .ncm-message-item--unread .ncm-message-item__initials {
+  text-shadow: 0 0 8px currentColor, 0 0 14px currentColor;
+}
+
+/* Selected message avatar: add a subtle ring glow matching the avatar color */
+.ncm-app .ncm-message-item--selected .ncm-message-item__initials {
+  text-shadow: 0 0 8px currentColor, 0 0 16px currentColor;
+}
+
+/* Portrait images: network border applies to wrapper, img stays round */
+.ncm-app .ncm-message-item__portrait {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   §22  NETWORK TAG BADGES — Sprint 2C (§2.10)
+   Small inline badge on messages from non-default networks.
+   Color matches the network theme.
+   ═══════════════════════════════════════════════════════════ */
+
+/* Base network badge */
+.ncm-app .ncm-badge--network {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 5px;
+  border-radius: 2px;
+  font-family: var(--ncm-font-mono);
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  background: rgba(25, 243, 247, 0.08);
+  color: var(--ncm-secondary);
+  border: 1px solid rgba(25, 243, 247, 0.2);
+}
+
+.ncm-app .ncm-badge--network i {
+  font-size: 7px;
+}
+
+/* Network badge color variants */
+.ncm-app .ncm-badge--network-darknet {
+  background: rgba(180, 77, 255, 0.12);
+  color: #b44dff;
+  border-color: rgba(180, 77, 255, 0.3);
+}
+
+.ncm-app .ncm-badge--network-corpnet {
+  background: rgba(247, 201, 72, 0.1);
+  color: var(--ncm-accent, #f7c948);
+  border-color: rgba(247, 201, 72, 0.25);
+}
+
+/* Default (unknown custom networks) uses base cyan style */
+.ncm-app .ncm-badge--network-default {
+  /* Uses base .ncm-badge--network styling */
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   §23  ANIMATION KEYFRAMES — Sprint 2C
+   ═══════════════════════════════════════════════════════════ */
+
+/* Threat badge pulse — opacity oscillation */
+@keyframes ncm-threat-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.6; }
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   §24  ANIMATION GATING — Sprint 2C
+   Respect user preference for reduced/no animation.
+   ═══════════════════════════════════════════════════════════ */
+
+/* Reduced animations: disable pulse, keep static badge */
+[data-ncm-animation-level="reduced"] .ncm-app .ncm-badge--threat {
+  animation: none;
+}
+
+[data-ncm-animation-level="reduced"] .ncm-app .ncm-message-item__icon--infected {
+  animation: none;
+}
+
+/* Off: no transitions on network-themed items either */
+[data-ncm-animation-level="off"] .ncm-app .ncm-message-item__avatar {
+  transition: none;
+}
+
+[data-ncm-animation-level="off"] .ncm-app .ncm-badge--threat {
+  animation: none;
+}
+
+[data-ncm-animation-level="off"] .ncm-app .ncm-message-item__icon--infected {
+  animation: none;
+}
+
 
 
 /* ═══════════════════════════════════════════════════════════

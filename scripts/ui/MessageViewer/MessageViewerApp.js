@@ -15,6 +15,12 @@
  *     - _getEnrichedMessage() adds security strip data, classified attachments
  *     - _onDelegatedClick() adds breach-attachment, gm-force-breach, open-attachment handlers
  *     - New methods: _breachAttachment(), _gmForceBreachAttachment(), _openAttachment()
+ *
+ *   Sprint 2C changes:
+ *     - Import getAvatarColor, getNetworkThemeClass, getNetworkAccentColor, getThreatBadgeData
+ *     - _enrichMessageDisplay() adds avatarColor, networkThemeClass, networkAccentColor,
+ *       showNetworkBadge, networkBadgeLabel, networkBadgeVariant, threatBadge
+ *     - _enrichMessages() passes currentNetworkName for network badge visibility logic
  */
 
 import { BaseApplication } from '../BaseApplication.js';
@@ -25,6 +31,10 @@ import {
   getSecurityStripData,
   classifyAttachments,
   getFileIcon,
+  getAvatarColor,
+  getNetworkThemeClass,
+  getNetworkAccentColor,
+  getThreatBadgeData,
 } from '../../utils/designHelpers.js';
 
 const MODULE_ID = 'cyberpunkred-messenger';
@@ -71,88 +81,150 @@ export class MessageViewerApp extends BaseApplication {
 
   // ─────────────── Instance State (per-window, not global) ───────────────
 
-  /** @type {string|null} ID of the currently selected message */
-  selectedMessageId = null;
-
-  /** @type {string} Current filter category: inbox, unread, sent, saved, spam, trash */
-  currentFilter = 'inbox';
-
-  /** @type {string} Current sort mode */
-  currentSort = 'newest';
-
-  /** @type {string} Current search term */
-  searchTerm = '';
-
-  /** @type {boolean} Whether the search input is expanded */
-  searchActive = false;
-
-  /** @type {string|null} Network filter (null = all networks) */
-  networkFilter = null;
-
-  /** @type {number} Current page (1-indexed) */
-  currentPage = 1;
-
-  /** @type {string} Message density: compact, normal, comfortable */
-  density = 'normal';
-
-  /** @type {number} Sidebar width in px */
-  sidebarWidth = DEFAULT_SIDEBAR_WIDTH;
-
-  /** @type {Set<string>} Message IDs selected for bulk operations */
-  bulkSelected = new Set();
-
-  /** @type {string|null} Actor ID whose inbox we are viewing */
+  /** @type {string|null} ID of the currently viewing actor */
   actorId = null;
 
-  /** @type {number|null} Debounce timer for search */
+  /** @type {string|null} Currently selected message ID */
+  selectedMessageId = null;
+
+  /** @type {string} Active category filter */
+  currentFilter = 'inbox';
+
+  /** @type {string} Active sort mode */
+  currentSort = 'newest';
+
+  /** @type {number} Current page */
+  currentPage = 1;
+
+  /** @type {string} Search term */
+  searchTerm = '';
+
+  /** @type {boolean} Whether search bar is expanded */
+  searchActive = false;
+
+  /** @type {string|null} Network filter */
+  networkFilter = null;
+
+  /** @type {string} Density mode: compact | normal | comfortable */
+  density = 'normal';
+
+  /** @type {number} Sidebar width in pixels */
+  sidebarWidth = DEFAULT_SIDEBAR_WIDTH;
+
+  /** @type {Set<string>} IDs of bulk-selected messages */
+  bulkSelected = new Set();
+
+  /** @type {Array|null} Cached messages from last load */
+  _cachedMessages = null;
+
+  /** @type {number|null} Search debounce timer */
   _searchDebounce = null;
-
-  /** @type {boolean} Is the user currently dragging the divider? */
-  _isDragging = false;
-
-  // ─────────────── Constructor ───────────────
-
-  constructor(options = {}) {
-    super(options);
-
-    // Accept actorId from options or determine from user's character
-    this.actorId = options.actorId || this._getDefaultActorId();
-
-    // Load persisted preferences
-    this._loadPreferences();
-  }
 
   // ─────────────── Service Accessors ───────────────
 
   get messageService() { return game.nightcity?.messageService; }
-  get networkService() { return game.nightcity?.networkService; }
-  get themeService() { return game.nightcity?.themeService; }
-  get soundService() { return game.nightcity?.soundService; }
-  get timeService() { return game.nightcity?.timeService; }
   get contactRepository() { return game.nightcity?.contactRepository; }
-  get eventBus() { return game.nightcity?.eventBus; }
-  get settingsManager() { return game.nightcity?.settingsManager; }
-
-  // ─────────────── Data Preparation ───────────────
+  get networkService() { return game.nightcity?.networkService; }
+  get timeService() { return game.nightcity?.timeService; }
+  get soundService() { return game.nightcity?.soundService; }
+  get stateManager() { return game.nightcity?.stateManager; }
 
   // ═══════════════════════════════════════════════════════════
-  //  HUD Helpers
+  //  Lifecycle
   // ═══════════════════════════════════════════════════════════
 
-  /**
-   * Derive connection status from signal strength and network state.
-   * @param {number} signal — 0-100
-   * @param {object} network — current network data
-   * @returns {"CONNECTED"|"DEGRADED"|"NO_SIGNAL"}
-   */
+  constructor(options = {}) {
+    super(options);
+    this.actorId = options.actorId || game.user?.character?.id || null;
+    this._loadPreferences();
+    this._setupEventSubscriptions();
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Helper Utilities
+  // ═══════════════════════════════════════════════════════════
+
+  _getViewingAsName() {
+    if (!this.actorId) return 'Unknown';
+    const actor = game.actors?.get(this.actorId);
+    return actor?.name || 'Unknown';
+  }
+
+  _findContact(address) {
+    if (!address || !this.contactRepository) return null;
+    try {
+      return this.contactRepository.findByEmail?.(address)
+        || this.contactRepository.findByAddress?.(address)
+        || null;
+    } catch {
+      return null;
+    }
+  }
+
+  _getThemePrefs() {
+    try {
+      return game.nightcity?.settingsManager?.getTheme?.() || {};
+    } catch {
+      return {};
+    }
+  }
+
+  _loadPreferences() {
+    try {
+      const prefs = game.nightcity?.settingsManager?.getInboxPrefs?.(this.actorId);
+      if (prefs) {
+        this.density = prefs.density || 'normal';
+        this.currentSort = prefs.sort || 'newest';
+        this.sidebarWidth = prefs.sidebarWidth || DEFAULT_SIDEBAR_WIDTH;
+      }
+    } catch { /* defaults are fine */ }
+  }
+
+  _savePreferences() {
+    try {
+      game.nightcity?.settingsManager?.setInboxPrefs?.(this.actorId, {
+        density: this.density,
+        sort: this.currentSort,
+        sidebarWidth: this.sidebarWidth,
+      });
+    } catch { /* non-critical */ }
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Network Helpers
+  // ═══════════════════════════════════════════════════════════
+
+  _getCurrentNetworkData() {
+    try {
+      return this.networkService?.getCurrentNetwork?.() || { name: 'CITINET', id: 'citinet' };
+    } catch {
+      return { name: 'CITINET', id: 'citinet' };
+    }
+  }
+
+  _getAvailableNetworks() {
+    try {
+      return this.networkService?.getAvailableNetworks?.() || [];
+    } catch {
+      return [];
+    }
+  }
+
+  _signalToLevel(strength) {
+    if (strength === 0) return 'dead';
+    if (strength <= 25) return 'weak';
+    if (strength <= 50) return 'fair';
+    return 'strong';
+  }
+
   _deriveConnectionStatus(signal, network) {
-    if (!network || network.id === 'DEAD_ZONE' || signal <= 0) return 'NO_SIGNAL';
-    if (signal < 30) return 'DEGRADED';
+    if (!network || signal === 0) return 'NO_SIGNAL';
+    if (signal <= 30) return 'DEGRADED';
     return 'CONNECTED';
   }
 
   /**
-   * Derive decorative latency from network properties.
+   * Derive decorative latency value.
    * Not real latency — atmospheric flavor based on network type and signal.
    * @param {object} network
    * @param {number} signal — 0-100
@@ -194,7 +266,10 @@ export class MessageViewerApp extends BaseApplication {
     const filtered = this._applyFilters(allMessages);
     const sorted = this._applySorting(filtered);
     const paginated = this._applyPagination(sorted);
-    const enriched = await this._enrichMessages(paginated);
+
+    // §2C: Pass current network name for network badge visibility logic
+    const currentNetwork = this._getCurrentNetworkData();
+    const enriched = await this._enrichMessages(paginated, currentNetwork?.name);
 
     // ── Actor identity for inbox header ──
     const viewingActor = this.actorId ? game.actors?.get(this.actorId) : null;
@@ -219,7 +294,6 @@ export class MessageViewerApp extends BaseApplication {
     }
 
     // ── Network state ──
-    const currentNetwork = this._getCurrentNetworkData();
     const availableNetworks = this._getAvailableNetworks();
     const signalStrength = this.networkService?.getSignalStrength?.() ?? 100;
     const signalLevel = this._signalToLevel(signalStrength);
@@ -304,7 +378,9 @@ export class MessageViewerApp extends BaseApplication {
     };
   }
 
-  // ─────────────── Event Binding ───────────────
+  // ═══════════════════════════════════════════════════════════
+  //  Event Binding
+  // ═══════════════════════════════════════════════════════════
 
   /** @override */
   _onRender(context, options) {
@@ -319,24 +395,34 @@ export class MessageViewerApp extends BaseApplication {
     // Search input
     const searchInput = html.querySelector('.ncm-search-input');
     if (searchInput) {
-      searchInput.addEventListener('input', (e) => this._onSearchInput(e));
+      searchInput.addEventListener('input', (event) => this._onSearchInput(event));
+      searchInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') this._toggleSearch();
+      });
     }
 
-    // Setup event subscriptions on first render
-    if (!this._subscriptionsReady) {
-      this._setupEventSubscriptions();
-      this._subscriptionsReady = true;
+    // Sidebar resize
+    const divider = html.querySelector('.ncm-panel-divider');
+    if (divider) {
+      divider.addEventListener('mousedown', (event) => this._onDividerDrag(event));
+      divider.addEventListener('dblclick', () => {
+        this.sidebarWidth = DIVIDER_RESET_WIDTH;
+        this._savePreferences();
+        this.render();
+      });
     }
   }
 
-  // ─────────────── Action Dispatch ───────────────
+  // ═══════════════════════════════════════════════════════════
+  //  Delegated Click Router
+  // ═══════════════════════════════════════════════════════════
 
   _onDelegatedClick(event) {
     const target = event.target.closest('[data-action]');
     if (!target) return;
 
     const action = target.dataset.action;
-    const messageId = target.dataset.messageId || target.closest('[data-message-id]')?.dataset.messageId;
+    const messageId = target.closest('[data-message-id]')?.dataset.messageId;
 
     switch (action) {
       // ── Navigation ──
@@ -349,53 +435,63 @@ export class MessageViewerApp extends BaseApplication {
       case 'set-sort':
         this._setSort(target.dataset.sort);
         break;
-      case 'next-page':
-        this._setPage(this.currentPage + 1);
-        break;
-      case 'prev-page':
-        this._setPage(this.currentPage - 1);
-        break;
-
-      // ── Search & Dropdowns ──
-      case 'toggle-search':
-        this._toggleSearch();
+      case 'toggle-sort-dropdown':
+        this._toggleDropdown('.ncm-sort-dropdown', target);
         break;
       case 'toggle-network-dropdown':
         this._toggleDropdown('.ncm-network-dropdown', target);
         break;
-      case 'toggle-sort-dropdown':
-        this._toggleDropdown('.ncm-sort-dropdown', target);
-        break;
       case 'toggle-network-filter':
         this._toggleDropdown('.ncm-network-filter-dropdown', target);
         break;
-
-      // ── Network ──
-      case 'select-network':
-        this._selectNetwork(target.dataset.networkId);
+      case 'switch-network':
+        this._switchNetwork(target.dataset.networkId);
         break;
-      case 'set-network-filter':
-        this._setNetworkFilter(target.dataset.network || null);
+      case 'filter-network':
+        this._setNetworkFilter(target.dataset.network);
+        break;
+      case 'toggle-search':
+        this._toggleSearch();
+        break;
+      case 'prev-page':
+        this._setPage(this.currentPage - 1);
+        break;
+      case 'next-page':
+        this._setPage(this.currentPage + 1);
         break;
 
       // ── Message Actions ──
-      case 'reply-message':
+      case 'reply':
         this._replyToMessage(messageId);
         break;
-      case 'forward-message':
+      case 'forward':
         this._forwardMessage(messageId);
-        break;
-      case 'save-message':
-        this._saveMessage(messageId);
         break;
       case 'delete-message':
         this._deleteMessage(messageId);
         break;
+      case 'save-message':
+        this._toggleSave(messageId);
+        break;
+      case 'mark-spam':
+        this._markSpam(messageId);
+        break;
       case 'share-to-chat':
         this._shareToChat(messageId);
         break;
+
+      // ── Quick Reply ──
       case 'quick-reply':
-        this._sendQuickReply(target.dataset.text, messageId);
+        this._sendQuickReply(target.dataset.reply);
+        break;
+      case 'send-reply':
+        this._sendCustomReply();
+        break;
+
+      // ── Compose ──
+      case 'compose-new':
+      case 'compose-message':
+        game.nightcity?.messenger?.composeMessage?.({ actorId: this.actorId });
         break;
 
       // ── Encryption (original) ──
@@ -425,22 +521,29 @@ export class MessageViewerApp extends BaseApplication {
         this._selectAll();
         break;
       case 'bulk-read':
+      case 'bulk-mark-read':
         this._bulkMarkRead();
         break;
       case 'bulk-delete':
         this._bulkDelete();
         break;
       case 'bulk-cancel':
+      case 'bulk-clear':
         this.bulkSelected.clear();
         this.render();
+        break;
+      case 'bulk-mark-spam':
+        this._bulkMarkSpam();
         break;
 
       // ── Layout ──
       case 'set-density':
         this._setDensity(target.dataset.density);
         break;
-      case 'compose-message':
-        game.nightcity?.messenger?.composeMessage?.({ actorId: this.actorId });
+
+      // ── Settings / GM ──
+      case 'open-settings':
+        game.nightcity?.openAdmin?.();
         break;
 
       // ── Thread ──
@@ -455,7 +558,9 @@ export class MessageViewerApp extends BaseApplication {
     }
   }
 
-  // ─────────────── Search ───────────────
+  // ═══════════════════════════════════════════════════════════
+  //  Search
+  // ═══════════════════════════════════════════════════════════
 
   _onSearchInput(event) {
     const value = event.target.value;
@@ -482,7 +587,9 @@ export class MessageViewerApp extends BaseApplication {
     }
   }
 
-  // ─────────────── Filtering ───────────────
+  // ═══════════════════════════════════════════════════════════
+  //  Filtering
+  // ═══════════════════════════════════════════════════════════
 
   _applyFilters(messages) {
     let result = [...messages];
@@ -545,7 +652,20 @@ export class MessageViewerApp extends BaseApplication {
     this.soundService?.play?.('click');
   }
 
-  // ─────────────── Sorting ───────────────
+  _switchNetwork(networkId) {
+    this.networkService?.switchNetwork?.(networkId);
+    this.render();
+  }
+
+  _setNetworkFilter(network) {
+    this.networkFilter = network || null;
+    this.currentPage = 1;
+    this.render();
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Sorting
+  // ═══════════════════════════════════════════════════════════
 
   _applySorting(messages) {
     const sorted = [...messages];
@@ -579,7 +699,9 @@ export class MessageViewerApp extends BaseApplication {
     return sorted;
   }
 
-  // ─────────────── Pagination ───────────────
+  // ═══════════════════════════════════════════════════════════
+  //  Pagination
+  // ═══════════════════════════════════════════════════════════
 
   _applyPagination(messages) {
     const start = (this.currentPage - 1) * MESSAGES_PER_PAGE;
@@ -587,12 +709,14 @@ export class MessageViewerApp extends BaseApplication {
   }
 
   _setPage(page) {
-    const maxPage = Math.max(1, Math.ceil(this._cachedMessages?.length || 0 / MESSAGES_PER_PAGE));
+    const maxPage = Math.max(1, Math.ceil((this._cachedMessages?.length || 0) / MESSAGES_PER_PAGE));
     this.currentPage = Math.max(1, Math.min(page, maxPage));
     this.render();
   }
 
-  // ─────────────── Message Selection ───────────────
+  // ═══════════════════════════════════════════════════════════
+  //  Message Selection
+  // ═══════════════════════════════════════════════════════════
 
   _selectMessage(messageId) {
     if (!messageId) return;
@@ -605,7 +729,9 @@ export class MessageViewerApp extends BaseApplication {
     this.soundService?.play?.('click');
   }
 
-  // ─────────────── Bulk Selection ───────────────
+  // ═══════════════════════════════════════════════════════════
+  //  Bulk Selection
+  // ═══════════════════════════════════════════════════════════
 
   _toggleBulkSelect(messageId) {
     if (this.bulkSelected.has(messageId)) {
@@ -642,13 +768,21 @@ export class MessageViewerApp extends BaseApplication {
       await this.messageService?.deleteMessage?.(id, this.actorId);
     }
     this.bulkSelected.clear();
-    if (this.bulkSelected.has(this.selectedMessageId)) {
-      this.selectedMessageId = null;
-    }
+    this.selectedMessageId = null;
     this.render();
   }
 
-  // ─────────────── Message Actions ───────────────
+  async _bulkMarkSpam() {
+    for (const id of this.bulkSelected) {
+      await this.messageService?.markSpam?.(id, this.actorId);
+    }
+    this.bulkSelected.clear();
+    this.render();
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Message Actions
+  // ═══════════════════════════════════════════════════════════
 
   _replyToMessage(messageId) {
     const msg = this._getSelectedMessage();
@@ -656,7 +790,7 @@ export class MessageViewerApp extends BaseApplication {
     game.nightcity?.messenger?.composeMessage?.({
       actorId: this.actorId,
       to: msg.from,
-      subject: msg.subject?.startsWith('RE:') ? msg.subject : `RE: ${msg.subject || ''}`,
+      subject: `RE: ${msg.subject || ''}`,
       inReplyTo: msg.messageId,
       threadId: msg.threadId || msg.messageId,
     });
@@ -667,63 +801,109 @@ export class MessageViewerApp extends BaseApplication {
     if (!msg) return;
     game.nightcity?.messenger?.composeMessage?.({
       actorId: this.actorId,
-      subject: msg.subject?.startsWith('FWD:') ? msg.subject : `FWD: ${msg.subject || ''}`,
-      body: `\n\n--- Forwarded Message ---\nFrom: ${msg.from}\nDate: ${msg.timestamp}\n\n${msg.body || ''}`,
+      subject: `FWD: ${msg.subject || ''}`,
+      body: `\n\n--- Forwarded ---\nFrom: ${msg.from}\n${msg.body || ''}`,
     });
-  }
-
-  async _saveMessage(messageId) {
-    if (!messageId) return;
-    await this.messageService?.toggleSaved?.(messageId, this.actorId);
-    this.render();
   }
 
   async _deleteMessage(messageId) {
     if (!messageId) return;
     await this.messageService?.deleteMessage?.(messageId, this.actorId);
-    if (this.selectedMessageId === messageId) {
-      this.selectedMessageId = null;
-    }
+    if (this.selectedMessageId === messageId) this.selectedMessageId = null;
     this.render();
   }
 
-  _shareToChat(messageId) {
-    const msg = this._getSelectedMessage();
-    if (!msg) return;
-    game.nightcity?.messenger?.shareToChat?.(msg);
-    this.soundService?.play?.('click');
+  async _toggleSave(messageId) {
+    if (!messageId) return;
+    await this.messageService?.toggleSave?.(messageId, this.actorId);
+    this.render();
   }
 
-  _sendQuickReply(text, messageId) {
+  async _markSpam(messageId) {
+    if (!messageId) return;
+    await this.messageService?.markSpam?.(messageId, this.actorId);
+    this.render();
+  }
+
+  async _shareToChat(messageId) {
     const msg = this._getSelectedMessage();
-    if (!msg || !text) return;
+    if (!msg) return;
+    game.nightcity?.chatIntegration?.shareMessage?.(msg);
+  }
+
+  _sendQuickReply(replyText) {
+    if (!replyText || !this.selectedMessageId) return;
+    const msg = this._getSelectedMessage();
+    if (!msg) return;
+
     game.nightcity?.messenger?.sendMessage?.({
-      from: this.contactRepository?.getActorEmail?.(this.actorId),
-      to: msg.from,
-      subject: msg.subject?.startsWith('RE:') ? msg.subject : `RE: ${msg.subject || ''}`,
-      body: text,
       actorId: this.actorId,
+      to: msg.from,
+      subject: `RE: ${msg.subject || ''}`,
+      body: replyText,
       inReplyTo: msg.messageId,
       threadId: msg.threadId || msg.messageId,
     });
     this.soundService?.play?.('send');
   }
 
-  // ─────────────── Network Selection ───────────────
+  _sendCustomReply() {
+    const input = this.element?.querySelector('.ncm-quick-reply-input');
+    const text = input?.value?.trim();
+    if (!text) return;
+    this._sendQuickReply(text);
+    if (input) input.value = '';
+  }
 
-  _selectNetwork(networkId) {
-    if (!networkId || !game.user.isGM) return;
-    this.networkService?.setCurrentNetwork?.(networkId);
+  async _decryptMessage(messageId) {
+    if (!messageId) return;
+    game.nightcity?.messenger?.attemptDecrypt?.(messageId, this.actorId);
+  }
+
+  async _forceDecryptMessage(messageId) {
+    if (!messageId || !game.user.isGM) return;
+    await this.messageService?.forceDecrypt?.(messageId);
     this.render();
   }
 
-  _setNetworkFilter(network) {
-    this.networkFilter = network || null;
-    this.currentPage = 1;
+  _toggleThread() {
+    // Toggle thread expansion in detail view — implementation depends on thread UI
     this.render();
   }
 
-  // ─────────────── Density ───────────────
+  // ═══════════════════════════════════════════════════════════
+  //  Sprint 2B: Attachment Actions
+  // ═══════════════════════════════════════════════════════════
+
+  async _breachAttachment(messageId, attachmentIndex) {
+    if (!messageId || attachmentIndex == null) return;
+    game.nightcity?.messenger?.attemptBreachAttachment?.(
+      messageId, parseInt(attachmentIndex), this.actorId
+    );
+  }
+
+  async _gmForceBreachAttachment(messageId, attachmentIndex) {
+    if (!messageId || attachmentIndex == null || !game.user.isGM) return;
+    await this.messageService?.forceBreachAttachment?.(messageId, parseInt(attachmentIndex));
+    this.render();
+  }
+
+  _openAttachment(messageId, attachmentIndex) {
+    if (!messageId || attachmentIndex == null) return;
+    const msg = this._getSelectedMessage();
+    const att = msg?.attachments?.[parseInt(attachmentIndex)];
+    if (!att) return;
+
+    // Delegate to Foundry's file viewer or trigger download
+    if (att.path || att.url) {
+      const fileUrl = att.path || att.url;
+      window.open(fileUrl, '_blank');
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Density
+  // ═══════════════════════════════════════════════════════════
 
   _setDensity(density) {
     this.density = density || 'normal';
@@ -731,7 +911,9 @@ export class MessageViewerApp extends BaseApplication {
     this.render();
   }
 
-  // ─────────────── Dropdown Management ───────────────
+  // ═══════════════════════════════════════════════════════════
+  //  Dropdown Management
+  // ═══════════════════════════════════════════════════════════
 
   /**
    * Toggle a dropdown menu.
@@ -751,14 +933,44 @@ export class MessageViewerApp extends BaseApplication {
       });
 
     // Find the dropdown relative to the trigger
-    const container = triggerEl.closest('.ncm-network-badge, .ncm-tab-control, .ncm-network-filter-control');
+    const container = triggerEl.closest('.ncm-network-badge, .ncm-inbox-network, .ncm-tab-control, .ncm-sort-control, .ncm-network-filter-control');
     const dropdown = container?.querySelector(selector);
     if (dropdown) {
       dropdown.classList.toggle('ncm-hidden');
     }
   }
 
-  // ─────────────── EventBus Subscriptions ───────────────
+  // ═══════════════════════════════════════════════════════════
+  //  Sidebar Resize
+  // ═══════════════════════════════════════════════════════════
+
+  _onDividerDrag(event) {
+    event.preventDefault();
+    const startX = event.clientX;
+    const startWidth = this.sidebarWidth;
+    const html = this.element;
+    const panel = html?.querySelector('.ncm-message-list-panel');
+
+    const onMouseMove = (e) => {
+      const delta = e.clientX - startX;
+      const newWidth = Math.max(MIN_SIDEBAR_WIDTH, Math.min(MAX_SIDEBAR_WIDTH, startWidth + delta));
+      if (panel) panel.style.width = `${newWidth}px`;
+      this.sidebarWidth = newWidth;
+    };
+
+    const onMouseUp = () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      this._savePreferences();
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  EventBus Subscriptions
+  // ═══════════════════════════════════════════════════════════
 
   _setupEventSubscriptions() {
     // Subscribe via BaseApplication's managed subscription (auto-cleanup)
@@ -769,7 +981,9 @@ export class MessageViewerApp extends BaseApplication {
     this.subscribe?.('theme:changed', () => this.render());
   }
 
-  // ─────────────── Data Loading Helpers ───────────────
+  // ═══════════════════════════════════════════════════════════
+  //  Data Loading & Enrichment
+  // ═══════════════════════════════════════════════════════════
 
   async _loadMessages() {
     if (!this.messageService || !this.actorId) return [];
@@ -782,8 +996,6 @@ export class MessageViewerApp extends BaseApplication {
   }
 
   _getSelectedMessage() {
-    // This is a synchronous accessor for the cached message data
-    // Used by action handlers that need quick access
     return this._cachedMessages?.find(m => m.messageId === this.selectedMessageId) || null;
   }
 
@@ -817,35 +1029,52 @@ export class MessageViewerApp extends BaseApplication {
     };
   }
 
-  async _enrichMessages(messages) {
+  /**
+   * Enrich a page of messages for list display.
+   * Sprint 2C: Now receives currentNetworkName for network badge logic.
+   *
+   * @param {Array} messages — Paginated message array
+   * @param {string} [currentNetworkName] — Current active network name
+   * @returns {Array} Enriched messages with display data
+   */
+  async _enrichMessages(messages, currentNetworkName) {
     this._cachedMessages = messages;
 
     return messages.map(msg => ({
       ...msg,
-      ...this._enrichMessageDisplay(msg),
+      ...this._enrichMessageDisplay(msg, currentNetworkName),
       selected: msg.messageId === this.selectedMessageId,
       bulkSelected: this.bulkSelected.has(msg.messageId),
     }));
   }
 
-  _enrichMessageDisplay(msg) {
-    // Sender display name
+  /**
+   * Compute display fields for a single message.
+   * Sprint 2C: Adds avatarColor, networkThemeClass, networkAccentColor,
+   *   showNetworkBadge, networkBadgeLabel, networkBadgeVariant, threatBadge.
+   *
+   * @param {object} msg — Raw message data
+   * @param {string} [currentNetworkName] — Active network for badge comparison
+   * @returns {object} Display enrichment fields
+   */
+  _enrichMessageDisplay(msg, currentNetworkName) {
+    // ── Sender display name ──
     const contact = this._findContact(msg.from);
     const fromDisplay = contact?.name || msg.from?.split('@')[0] || 'Unknown';
     const fromInitial = (fromDisplay[0] || '?').toUpperCase();
     const fromPortrait = contact?.portrait || null;
 
-    // Recipient display name
+    // ── Recipient display name ──
     const toContact = this._findContact(msg.to);
     const toDisplay = toContact?.name || msg.to?.split('@')[0] || 'Unknown';
 
-    // Priority badge variant for tag-badge partial
+    // ── Priority badge variant for tag-badge partial ──
     const priorityVariant = getPriorityBadgeVariant(msg.priority || 'normal');
 
-    // Network label (short name for badge)
+    // ── Network label (short name for badge) ──
     const networkLabel = msg.network || '';
 
-    // Formatted time using TimeService or fallback
+    // ── Formatted time using TimeService or fallback ──
     let formattedTime = '';
     try {
       if (this.timeService?.formatCyberDate) {
@@ -863,10 +1092,36 @@ export class MessageViewerApp extends BaseApplication {
       formattedTime = msg.timestamp || '';
     }
 
-    // Body preview (for comfortable density)
+    // ── Body preview (for comfortable density) ──
     const bodyPreview = msg.body
-      ? msg.body.replace(/<[^>]*>/g, '').substring(0, 120)
+      ? msg.body.replace(/<[^>]+>/g, '').substring(0, 120)
       : '';
+
+    // ══════════════════════════════════════════════════════
+    //  Sprint 2C — Visual personality enrichment
+    // ══════════════════════════════════════════════════════
+
+    // §2.9 — Color-coded avatar
+    const avatarColor = getAvatarColor(fromDisplay, contact);
+
+    // §2.10 — Network theme class
+    const networkThemeClass = getNetworkThemeClass(msg.network);
+
+    // §2.10 — Network accent color for avatar border
+    const networkAccentColor = getNetworkAccentColor(msg.network);
+
+    // §2.10 — Network tag badge (show only when message network differs from current)
+    const msgNetworkNorm = (msg.network || '').toLowerCase().trim();
+    const curNetworkNorm = (currentNetworkName || '').toLowerCase().trim();
+    const showNetworkBadge = !!(msg.network && msgNetworkNorm !== curNetworkNorm && msgNetworkNorm !== 'citinet');
+    const networkBadgeLabel = msg.network || '';
+    // Derive badge variant suffix for color matching
+    let networkBadgeVariant = 'default';
+    if (msgNetworkNorm.includes('dark')) networkBadgeVariant = 'darknet';
+    else if (msgNetworkNorm.includes('corp')) networkBadgeVariant = 'corpnet';
+
+    // §2.7 — Threat badge for malware
+    const threatBadge = getThreatBadgeData(msg);
 
     return {
       fromDisplay,
@@ -877,295 +1132,61 @@ export class MessageViewerApp extends BaseApplication {
       networkLabel,
       formattedTime,
       bodyPreview,
+      // Sprint 2C
+      avatarColor,
+      networkThemeClass,
+      networkAccentColor,
+      showNetworkBadge,
+      networkBadgeLabel,
+      networkBadgeVariant,
+      threatBadge,
     };
   }
 
-  _computeCounts(messages) {
-    const inbox = messages.filter(m => !m.status.deleted && !m.status.spam && !m.status.sent).length;
-    const unread = messages.filter(m => !m.status.read && !m.status.deleted && !m.status.spam && !m.status.sent).length;
-    const sent = messages.filter(m => m.status.sent && !m.status.deleted).length;
-    const saved = messages.filter(m => m.status.saved && !m.status.deleted).length;
-    const spam = messages.filter(m => m.status.spam && !m.status.deleted).length;
-    const trash = messages.filter(m => m.status.deleted).length;
-    const total = messages.length;
-
-    return { total, inbox, unread, sent, saved, spam, trash };
-  }
-
-  // ─────────────── Display Formatting Helpers ───────────────
-
-  _formatTimestamp(timestamp) {
-    if (!timestamp) return '—';
-
-    // Try TimeService for in-world time first
-    if (this.timeService?.formatTime) {
-      return this.timeService.formatTime(timestamp);
-    }
-
-    // Fallback: cyberpunk-style format
-    const date = new Date(timestamp);
-    if (isNaN(date.getTime())) return '—';
-
-    const y = date.getFullYear();
-    const mo = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
-    const h = String(date.getHours()).padStart(2, '0');
-    const mi = String(date.getMinutes()).padStart(2, '0');
-
-    return `${y}.${mo}.${d} // ${h}:${mi}`;
-  }
-
-  _formatTimestampFull(timestamp) {
-    if (!timestamp) return '—';
-    const date = new Date(timestamp);
-    if (isNaN(date.getTime())) return '—';
-
-    const y = date.getFullYear();
-    const mo = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
-    const h = String(date.getHours()).padStart(2, '0');
-    const mi = String(date.getMinutes()).padStart(2, '0');
-    const s = String(date.getSeconds()).padStart(2, '0');
-
-    return `${y}.${mo}.${d} // ${h}:${mi}:${s}`;
-  }
-
-  _stripHtml(html) {
-    const tmp = document.createElement('div');
-    tmp.innerHTML = html;
-    return tmp.textContent || tmp.innerText || '';
-  }
-
   _renderMessageBody(body) {
-    // Allow basic HTML but sanitize dangerous content
-    if (!body) return '<p class="ncm-body-empty">[ No content ]</p>';
-    // Wrap plain text in paragraph tags if no HTML detected
-    if (!body.includes('<')) {
-      return body.split('\n').filter(Boolean).map(p => `<p>${p}</p>`).join('');
-    }
+    if (!body) return '';
+    // Basic HTML pass-through — Foundry will sanitize
     return body;
-  }
-
-  _signalToLevel(strength) {
-    if (strength >= 80) return 5;
-    if (strength >= 60) return 4;
-    if (strength >= 40) return 3;
-    if (strength >= 20) return 2;
-    if (strength > 0) return 1;
-    return 0;
   }
 
   _getThreadInfo(msg, allMessages) {
     if (!msg.threadId) return null;
-    const threadMessages = allMessages.filter(m => m.threadId === msg.threadId);
-    if (threadMessages.length <= 1) return null;
-    return { count: threadMessages.length, expanded: false };
+    const thread = allMessages.filter(m => m.threadId === msg.threadId && m.messageId !== msg.messageId);
+    if (thread.length === 0) return null;
+    return {
+      count: thread.length,
+      latest: thread.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0],
+    };
   }
 
-  // ─────────────── Network Data Helpers ───────────────
+  _computeCounts(messages) {
+    const counts = {
+      total: 0,
+      unread: 0,
+      sent: 0,
+      saved: 0,
+      spam: 0,
+      trash: 0,
+    };
 
-  _getCurrentNetworkData() {
-    const networkService = this.networkService;
-    if (!networkService) {
-      return { id: 'CITINET', name: 'CITINET', icon: 'fas fa-wifi', requiresAuth: false };
-    }
-    const current = networkService.getCurrentNetwork?.();
-    return current || { id: 'CITINET', name: 'CITINET', icon: 'fas fa-wifi', requiresAuth: false };
-  }
-
-  _getAvailableNetworks() {
-    const networkService = this.networkService;
-    if (!networkService) return [];
-    const networks = networkService.getAvailableNetworks?.() || [];
-    const currentId = networkService.getCurrentNetwork?.()?.id;
-    return networks.map(n => ({ ...n, active: n.id === currentId }));
-  }
-
-  // ─────────────── Contact Lookup ───────────────
-
-  _findContact(email) {
-    if (!email || !this.contactRepository) return null;
-    const contacts = this.contactRepository.getContacts?.(this.actorId) || [];
-    return contacts.find(c => c.email === email) || null;
-  }
-
-  // ─────────────── Actor / Identity Helpers ───────────────
-
-  _getDefaultActorId() {
-    // Player's assigned character, or first owned actor
-    if (game.user?.character?.id) return game.user.character.id;
-    const owned = game.actors?.filter(a => a.isOwner);
-    return owned?.[0]?.id || null;
-  }
-
-  _getViewingAsName() {
-    if (!this.actorId) return 'Unknown';
-    const actor = game.actors?.get(this.actorId);
-    return actor?.name || 'Unknown';
-  }
-
-  _getThemePrefs() {
-    try {
-      return game.settings?.get(MODULE_ID, 'playerTheme') || {};
-    } catch {
-      return {};
-    }
-  }
-
-  // ─────────────── Preference Persistence ───────────────
-
-  _loadPreferences() {
-    const prefs = this._getThemePrefs();
-    this.density = prefs.messageDensity || 'normal';
-    this.sidebarWidth = prefs.sidebarWidth || DEFAULT_SIDEBAR_WIDTH;
-    this.currentSort = prefs.defaultSort || 'newest';
-  }
-
-  _savePreferences() {
-    try {
-      const current = this._getThemePrefs();
-      game.settings?.set(MODULE_ID, 'playerTheme', {
-        ...current,
-        messageDensity: this.density,
-        sidebarWidth: this.sidebarWidth,
-        defaultSort: this.currentSort,
-      });
-    } catch (err) {
-      console.warn(`${MODULE_ID} | Failed to save preferences:`, err);
-    }
-  }
-
-  // ─────────────── Encryption Handlers ───────────────
-
-  async _decryptMessage(messageId) {
-    if (!messageId) return;
-    try {
-      const result = await game.nightcity?.dataShardService?.attemptMessageDecrypt?.(messageId, this.actorId);
-      if (result?.success) {
-        this.soundService?.play?.('hack-success');
-      } else {
-        this.soundService?.play?.('hack-fail');
+    for (const m of messages) {
+      if (m.status.deleted) {
+        counts.trash++;
+        continue;
       }
-      this.render();
-    } catch (err) {
-      console.error(`${MODULE_ID} | Decrypt failed:`, err);
-    }
-  }
-
-  async _forceDecryptMessage(messageId) {
-    if (!messageId || !game.user.isGM) return;
-    try {
-      await game.nightcity?.messageService?.forceDecryptMessage?.(messageId);
-      this.render();
-    } catch (err) {
-      console.error(`${MODULE_ID} | Force decrypt failed:`, err);
-    }
-  }
-
-  // ─────────────── Sprint 2B: Attachment Handlers ───────────────
-
-  /**
-   * §2.6 — Attempt to breach an encrypted attachment via EventBus → attemptHack flow.
-   * @param {string} messageId — Parent message ID
-   * @param {string|number} attachmentIndex — Index of the attachment
-   */
-  async _breachAttachment(messageId, attachmentIndex) {
-    if (!messageId || attachmentIndex == null) return;
-    const idx = Number(attachmentIndex);
-
-    try {
-      this.soundService?.play?.('click');
-
-      // Emit breach attempt via EventBus — DataShardService listens
-      const result = await game.nightcity?.dataShardService?.attemptAttachmentBreach?.(
-        messageId,
-        idx,
-        this.actorId
-      );
-
-      if (result?.success) {
-        this.soundService?.play?.('hack-success');
-        ui.notifications.info('Attachment breach successful. Data unlocked.');
-      } else {
-        this.soundService?.play?.('hack-fail');
-        const reason = result?.reason || 'ICE countermeasure activated.';
-        ui.notifications.warn(`Breach failed: ${reason}`);
+      if (m.status.spam) {
+        counts.spam++;
+        continue;
       }
-
-      this.render();
-    } catch (err) {
-      console.error(`${MODULE_ID} | Attachment breach error:`, err);
-      ui.notifications.error('Breach attempt encountered an error.');
-    }
-  }
-
-  /**
-   * §2.6 — GM force-breach an encrypted attachment (bypasses checks).
-   * @param {string} messageId — Parent message ID
-   * @param {string|number} attachmentIndex — Index of the attachment
-   */
-  async _gmForceBreachAttachment(messageId, attachmentIndex) {
-    if (!messageId || attachmentIndex == null || !game.user.isGM) return;
-    const idx = Number(attachmentIndex);
-
-    try {
-      await game.nightcity?.messageService?.forceDecryptAttachment?.(messageId, idx);
-      this.soundService?.play?.('hack-success');
-      ui.notifications.info('GM: Attachment force-decrypted.');
-      this.render();
-    } catch (err) {
-      console.error(`${MODULE_ID} | GM force breach error:`, err);
-    }
-  }
-
-  /**
-   * §2.8 — Open a regular (non-encrypted) attachment.
-   * Delegates to Foundry's journal viewer, image viewer, or download.
-   * @param {string} messageId — Parent message ID
-   * @param {string|number} attachmentIndex — Index of the attachment
-   */
-  _openAttachment(messageId, attachmentIndex) {
-    if (attachmentIndex == null) return;
-    const idx = Number(attachmentIndex);
-
-    const msg = this._getSelectedMessage();
-    if (!msg) return;
-
-    const attachment = msg.attachments?.[idx];
-    if (!attachment) return;
-
-    // If encrypted and not decrypted, don't open
-    if (attachment.encrypted && !attachment.decrypted) {
-      ui.notifications.warn('This attachment is ICE-protected. Breach required.');
-      return;
-    }
-
-    // Delegate to the file viewer based on type
-    if (attachment.journalId) {
-      // Journal-linked attachment — open in Foundry journal
-      const journal = game.journal?.get(attachment.journalId);
-      journal?.sheet?.render(true);
-    } else if (attachment.url) {
-      // Direct URL — open in new tab or image viewer
-      const ext = attachment.name?.split('.').pop()?.toLowerCase() || '';
-      const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp'];
-
-      if (imageExts.includes(ext)) {
-        new ImagePopout(attachment.url, { title: attachment.name }).render(true);
-      } else {
-        window.open(attachment.url, '_blank');
+      if (m.status.sent) {
+        counts.sent++;
+        continue;
       }
-    } else {
-      ui.notifications.info(`File: ${attachment.name || 'Unknown file'}`);
+      counts.total++;
+      if (!m.status.read) counts.unread++;
+      if (m.status.saved) counts.saved++;
     }
 
-    this.soundService?.play?.('click');
-  }
-
-  // ─────────────── Thread Toggle ───────────────
-
-  _toggleThread() {
-    // Future: expand/collapse thread view
-    ui.notifications.info('Thread view coming soon.');
+    return counts;
   }
 }

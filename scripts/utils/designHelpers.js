@@ -10,7 +10,16 @@
  *     - getFileIcon(extension)        — §2.8 Attachment chip file type icons
  *     - getSecurityStripData(message)  — §2.4 Security verification strip data
  *     - classifyAttachments(attachments) — §2.6/2.8 Split encrypted vs regular
+ *
+ *   Sprint 2C additions:
+ *     - getAvatarColor(name, contact)  — §2.9 Color-coded avatar hash
+ *     - getNetworkThemeClass(network)  — §2.10 Network-themed message classes
+ *     - getThreatBadgeData(message)    — §2.7 Daemon / threat badge data
  */
+
+// ═══════════════════════════════════════════════════════════════
+//  Sprint 0 — Core Design System Helpers
+// ═══════════════════════════════════════════════════════════════
 
 /**
  * Compute signal bar data for the signal-bar.hbs partial.
@@ -212,137 +221,278 @@ export function getFileIcon(filename) {
  * §2.4 — Compute security verification strip data from message flags.
  * Returns an object ready for the security strip template.
  *
- * @param {object} msg — Raw message data with flags
- * @param {object|null} contact — Contact entry if sender is known, null otherwise
- * @returns {object} Security strip context
- *
- * @example
- *   const security = getSecurityStripData(msg, contact);
- *   // → {
- *   //     verifiedSender: true,
- *   //     verifiedVariant: 'ok',
- *   //     encrypted: true,
- *   //     encryptedVariant: 'ok',
- *   //     attachmentScan: 'clean',
- *   //     attachmentScanVariant: 'ok',
- *   //     attachmentScanLabel: 'ATTACHMENTS CLEAN',
- *   //     routeHops: 3,
- *   //     securityLevel: 'ok'    // Worst-of: 'ok' | 'warn' | 'danger'
- *   //   }
+ * @param {object} message — Message data with flags
+ * @param {object} [contact] — Matched contact, if any
+ * @returns {{
+ *   variant: string,
+ *   items: Array<{ icon: string, label: string, status: string }>,
+ *   hasThreat: boolean
+ * }}
  */
-export function getSecurityStripData(msg, contact = null) {
-  if (!msg) return null;
+export function getSecurityStripData(message, contact) {
+  const items = [];
+  let variant = 'ok'; // ok | warn | danger
 
-  const status = msg.status || {};
-  const metadata = msg.metadata || {};
-  const malware = msg.malware || null;
-  const attachments = msg.attachments || [];
-
-  // Verified sender: known contact = ok, unknown = muted
-  const verifiedSender = !!(contact || metadata.verified);
-  const verifiedVariant = verifiedSender ? 'ok' : 'muted';
+  // Sender verification
+  const verified = contact && contact.verified !== false;
+  items.push({
+    icon: verified ? 'fas fa-user-check' : 'fas fa-user-xmark',
+    label: verified ? 'VERIFIED' : 'UNKNOWN',
+    status: verified ? 'ok' : 'warn',
+  });
 
   // Encryption status
-  const encrypted = !!status.encrypted;
-  const encryptedVariant = encrypted ? 'ok' : 'muted';
+  const encrypted = message.status?.encrypted;
+  items.push({
+    icon: encrypted ? 'fas fa-lock' : 'fas fa-lock-open',
+    label: encrypted ? 'ENCRYPTED' : 'CLEARTEXT',
+    status: encrypted ? 'ok' : 'neutral',
+  });
 
-  // Attachment scan — check for encrypted or malware attachments
-  const hasEncryptedAttachments = attachments.some(a => a.encrypted);
-  const hasMalware = !!malware || status.infected;
-
-  let attachmentScan, attachmentScanVariant, attachmentScanLabel;
-
-  if (hasMalware) {
-    attachmentScan = 'danger';
-    attachmentScanVariant = 'danger';
-    const malwareType = (typeof malware === 'object' ? malware.type : malware) || 'DAEMON';
-    attachmentScanLabel = `⚠ ${malwareType.toUpperCase()} DETECTED`;
-  } else if (hasEncryptedAttachments) {
-    const iceCount = attachments.filter(a => a.encrypted).length;
-    attachmentScan = 'warn';
-    attachmentScanVariant = 'warn';
-    attachmentScanLabel = `${iceCount} ICE ATTACHMENT${iceCount > 1 ? 'S' : ''}`;
-  } else if (attachments.length > 0) {
-    attachmentScan = 'clean';
-    attachmentScanVariant = 'ok';
-    attachmentScanLabel = 'ATTACHMENTS CLEAN';
-  } else {
-    attachmentScan = 'none';
-    attachmentScanVariant = 'muted';
-    attachmentScanLabel = 'NO ATTACHMENTS';
+  // Attachment scan
+  const hasAttachments = (message.attachments?.length ?? 0) > 0;
+  if (hasAttachments) {
+    const infected = message.status?.infected || message.malware;
+    items.push({
+      icon: infected ? 'fas fa-virus' : 'fas fa-shield-check',
+      label: infected ? 'THREAT DETECTED' : 'ATTACHMENTS CLEAN',
+      status: infected ? 'danger' : 'ok',
+    });
+    if (infected) variant = 'danger';
   }
 
-  // Route hops from routing path
-  const routeHops = metadata.routingPath?.length || 1;
-
-  // Overall security level = worst of all items
-  let securityLevel = 'ok';
-  if (hasMalware) {
-    securityLevel = 'danger';
-  } else if (hasEncryptedAttachments || !verifiedSender) {
-    securityLevel = 'warn';
+  // Route hops (decorative — number of routing path entries)
+  const hops = message.metadata?.routingPath?.length ?? 0;
+  if (hops > 0) {
+    items.push({
+      icon: 'fas fa-route',
+      label: `${hops} HOP${hops > 1 ? 'S' : ''}`,
+      status: hops > 3 ? 'warn' : 'ok',
+    });
+    if (hops > 3 && variant !== 'danger') variant = 'warn';
   }
 
-  return {
-    verifiedSender,
-    verifiedVariant,
-    encrypted,
-    encryptedVariant,
-    attachmentScan,
-    attachmentScanVariant,
-    attachmentScanLabel,
-    routeHops,
-    securityLevel,
-  };
+  // Malware / daemon detection
+  const hasThreat = !!(message.status?.infected || message.malware);
+  if (hasThreat) variant = 'danger';
+
+  // Unknown sender warning
+  if (!verified && variant !== 'danger') variant = 'warn';
+
+  return { variant, items, hasThreat };
 }
 
 /**
  * §2.6/2.8 — Split attachments into encrypted and regular categories.
- * Enriches each attachment with icon and extension data.
  *
- * @param {Array} attachments — Raw attachment array from message flags
+ * @param {Array} attachments — Array of attachment objects
  * @returns {{ encrypted: Array, regular: Array }}
- *
- * @example
- *   const { encrypted, regular } = classifyAttachments(msg.attachments);
- *   // encrypted: [{ name, size, encrypted: true, dv: 15, icon, ... }]
- *   // regular:   [{ name, size, icon: 'fas fa-image', extension: 'png', ... }]
  */
 export function classifyAttachments(attachments) {
-  if (!attachments || !Array.isArray(attachments) || attachments.length === 0) {
-    return { encrypted: [], regular: [] };
-  }
+  if (!attachments?.length) return { encrypted: [], regular: [] };
 
   const encrypted = [];
   const regular = [];
 
-  attachments.forEach((att, index) => {
-    const name = att.name || 'unknown_file';
-    const extension = name.includes('.') ? name.split('.').pop().toLowerCase() : '';
-    const icon = getFileIcon(name);
-    const size = att.size || '';
-
-    const enriched = {
-      ...att,
-      name,
-      size,
-      icon,
-      extension,
-      index,
-    };
-
-    if (att.encrypted) {
+  for (const att of attachments) {
+    if (att.encrypted || att.ice) {
       encrypted.push({
-        ...enriched,
-        dv: att.dv || att.encryptionDC || 15,
-        decrypted: !!att.decrypted,
-        breachFailed: !!att.breachFailed,
-        breaching: !!att.breaching,
+        ...att,
+        fileIcon: getFileIcon(att.filename || att.name),
+        dv: att.dv ?? att.ice?.dv ?? 15,
       });
     } else {
-      regular.push(enriched);
+      regular.push({
+        ...att,
+        fileIcon: getFileIcon(att.filename || att.name),
+      });
     }
-  });
+  }
 
   return { encrypted, regular };
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+//  Sprint 2C Additions
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * §2.9 — Cyberpunk avatar color palette.
+ * 10 distinct neon/cyberpunk colors for name-hashed avatar backgrounds.
+ * @type {string[]}
+ */
+const AVATAR_PALETTE = [
+  '#19f3f7', // cyan
+  '#F65261', // red
+  '#f7c948', // gold
+  '#b44dff', // purple
+  '#00ff41', // green
+  '#ff6a13', // orange
+  '#ff69b4', // pink
+  '#00bcd4', // teal
+  '#8bc34a', // lime
+  '#ff5722', // deep orange
+];
+
+/**
+ * §2.9 — Faction-to-color override map.
+ * If a contact has a faction/role flag, this takes precedence over the name hash.
+ * @type {Record<string, string>}
+ */
+const FACTION_COLORS = {
+  fixer:       '#F65261', // red
+  netrunner:   '#19f3f7', // cyan
+  corp:        '#f7c948', // gold
+  corporate:   '#f7c948', // gold (alias)
+  gang:        '#b44dff', // purple
+  ncpd:        '#4a9eff', // blue
+  police:      '#4a9eff', // blue (alias)
+  traumateam:  '#00ff41', // green
+  'trauma team': '#00ff41', // green (alias)
+  solo:        '#ff6a13', // orange
+  media:       '#ff69b4', // pink
+  techie:      '#00bcd4', // teal
+  tech:        '#00bcd4', // teal (alias)
+  nomad:       '#8bc34a', // lime
+  rockerboy:   '#ff5722', // deep orange
+  medtech:     '#00ff41', // green
+  lawman:      '#4a9eff', // blue
+  exec:        '#f7c948', // gold
+};
+
+/**
+ * §2.9 — Compute a deterministic avatar color from a sender name.
+ * Uses a simple char-code hash modulo palette length so the same name
+ * always maps to the same color. If the contact has a faction/role flag,
+ * faction color takes precedence.
+ *
+ * @param {string} name — Sender display name
+ * @param {object} [contact] — Optional contact with faction/role data
+ * @returns {string} Hex color string (e.g. '#19f3f7')
+ *
+ * @example
+ *   getAvatarColor('V')                          // → '#ff6a13'  (hash-based)
+ *   getAvatarColor('Rogue', { faction: 'fixer' }) // → '#F65261'  (faction override)
+ */
+export function getAvatarColor(name, contact) {
+  // Faction override — check contact role/faction
+  if (contact) {
+    const faction = (contact.faction || contact.role || '').toLowerCase().trim();
+    if (faction && FACTION_COLORS[faction]) {
+      return FACTION_COLORS[faction];
+    }
+  }
+
+  // Name hash — sum of char codes modulo palette length
+  if (!name) return AVATAR_PALETTE[0];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = ((hash << 5) - hash + name.charCodeAt(i)) | 0; // djb2-ish hash
+  }
+  const index = Math.abs(hash) % AVATAR_PALETTE.length;
+  return AVATAR_PALETTE[index];
+}
+
+/**
+ * §2.10 — Known network theme map.
+ * Maps canonical network names (lowercased) to CSS theme class suffixes.
+ * @type {Record<string, string>}
+ */
+const NETWORK_THEME_MAP = {
+  citinet:  'citinet',
+  darknet:  'darknet',
+  corpnet:  'corpnet',
+  'dark net': 'darknet',
+  'corp net': 'corpnet',
+  'citi net': 'citinet',
+};
+
+/**
+ * §2.10 — Determine the network theme CSS class for a message.
+ * Returns a class like 'ncm-msg--darknet' for known networks,
+ * or 'ncm-msg--citinet' (default) for unknown/custom networks.
+ *
+ * @param {string} networkName — Network identifier from message flags
+ * @returns {string} Full CSS class (e.g. 'ncm-msg--darknet')
+ *
+ * @example
+ *   getNetworkThemeClass('DARKNET')   // → 'ncm-msg--darknet'
+ *   getNetworkThemeClass('MyCustom')  // → 'ncm-msg--citinet'
+ *   getNetworkThemeClass('')          // → 'ncm-msg--citinet'
+ */
+export function getNetworkThemeClass(networkName) {
+  if (!networkName) return 'ncm-msg--citinet';
+  const key = networkName.toLowerCase().trim();
+  const suffix = NETWORK_THEME_MAP[key] || 'citinet';
+  return `ncm-msg--${suffix}`;
+}
+
+/**
+ * §2.10 — Get the network theme color for avatar border tinting.
+ * Returns a hex color for the network's accent or null for default (citinet).
+ *
+ * @param {string} networkName — Network identifier
+ * @returns {string|null} Hex color or null
+ */
+export function getNetworkAccentColor(networkName) {
+  if (!networkName) return null;
+  const key = networkName.toLowerCase().trim();
+  switch (NETWORK_THEME_MAP[key]) {
+    case 'darknet': return '#b44dff';
+    case 'corpnet': return '#f7c948';
+    default:        return null; // citinet uses default styling
+  }
+}
+
+/**
+ * §2.7 — Build threat badge data for messages carrying malware.
+ * Returns null if no threat is present, or an object with badge rendering data.
+ *
+ * @param {object} message — Message with status and malware flags
+ * @returns {null | {
+ *   label: string,
+ *   icon: string,
+ *   type: string,
+ *   variant: string
+ * }}
+ *
+ * @example
+ *   getThreatBadgeData({ malware: { type: 'DAEMON' } })
+ *   // → { label: 'DAEMON', icon: 'fas fa-virus', type: 'DAEMON', variant: 'threat' }
+ *
+ *   getThreatBadgeData({ status: { infected: false } })
+ *   // → null
+ */
+export function getThreatBadgeData(message) {
+  if (!message) return null;
+
+  // Check for explicit malware data
+  const malware = message.malware;
+  const isInfected = message.status?.infected;
+
+  if (!malware && !isInfected) return null;
+
+  // Determine malware type label
+  const type = malware?.type || 'UNKNOWN';
+  const typeUpper = type.toUpperCase();
+
+  // Icon varies by malware type for extra visual flair
+  const iconMap = {
+    DAEMON:    'fas fa-ghost',
+    WORM:      'fas fa-bug',
+    TROJAN:    'fas fa-horse-head',
+    VIRUS:     'fas fa-virus',
+    RANSOMWARE:'fas fa-lock',
+    'BLACK ICE': 'fas fa-skull-crossbones',
+    BLACKICE:  'fas fa-skull-crossbones',
+    UNKNOWN:   'fas fa-virus',
+  };
+
+  return {
+    label: typeUpper === 'UNKNOWN' ? 'THREAT' : typeUpper,
+    icon: iconMap[typeUpper] || 'fas fa-virus',
+    type: typeUpper,
+    variant: 'threat',
+  };
 }
