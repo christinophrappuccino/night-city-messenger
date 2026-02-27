@@ -132,11 +132,6 @@ export class MessageViewerApp extends BaseApplication {
     const viewingAsInitial = getInitials(viewingActor?.name || 'Unknown');
     const viewingAsEmail = this.contactRepository?.getActorEmail?.(this.actorId) || '';
 
-    // Signal bar data for design system partial
-    const signalData = computeSignalBar(signalStrength);
-    const signalQuality = signalData.quality;
-    const signalSegments = signalData.segments;
-
     // Sort options for dropdown template
     const sortOptions = Object.entries(SORT_LABELS).map(([id, label]) => ({
       id,
@@ -158,6 +153,11 @@ export class MessageViewerApp extends BaseApplication {
     const availableNetworks = this._getAvailableNetworks();
     const signalStrength = this.networkService?.getSignalStrength?.() ?? 100;
     const signalLevel = this._signalToLevel(signalStrength);
+
+    // Signal bar data for design system partial
+    const signalData = computeSignalBar(signalStrength);
+    const signalQuality = signalData.quality;
+    const signalSegments = signalData.segments;
 
     // Unique networks present in messages (for network filter)
     const messageNetworks = [...new Set(allMessages.map(m => m.network).filter(Boolean))].sort();
