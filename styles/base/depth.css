@@ -336,30 +336,6 @@
    for windows that don't use the atmosphere pseudo-element.
    ═══════════════════════════════════════════════════════════ */
 
-/* Direct application on .ncm-message-viewer — top edge accent */
-.ncm-app .ncm-message-viewer::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(
-    90deg,
-    var(--ncm-primary),
-    var(--ncm-accent),
-    var(--ncm-primary)
-  );
-  opacity: 0.7;
-  z-index: var(--ncm-z-sticky, 200);
-  pointer-events: none;
-}
-
-/* Ensure viewer is positioned for the ::before */
-.ncm-app .ncm-message-viewer {
-  position: relative;
-}
-
 /* Other NCM windows — same gradient bar */
 .ncm-app .ncm-message-composer::before,
 .ncm-app .ncm-contact-manager::before,

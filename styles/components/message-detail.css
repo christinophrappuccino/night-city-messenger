@@ -64,30 +64,37 @@
 .ncm-app .ncm-detail-meta__row-inline {
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 14px; 
   padding: 4px 18px 10px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;   
+  overflow: hidden;
 }
 
 .ncm-app .ncm-detail-meta-item {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px; 
+  flex-shrink: 1;
+  min-width: 0;
 }
 
 .ncm-app .ncm-detail-meta-label {
   font-family: var(--ncm-font-mono);
-  font-size: 9px;
+  font-size: 8px;  
   color: var(--ncm-text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
+  flex-shrink: 0;
 }
 
 .ncm-app .ncm-detail-meta-value {
   font-family: var(--ncm-font-display);
-  font-size: 12px;
+  font-size: 11px;  
   color: var(--ncm-text-secondary);
   font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .ncm-app .ncm-detail-meta-value--mono {
