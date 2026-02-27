@@ -1,33 +1,34 @@
 {{!--
-  Message Viewer (Inbox) — Sprint 1 + Sprint 1.5.4
+  Message Viewer (Inbox) — Sprint 2A: Inbox Layout Redesign
   @file templates/message-viewer/message-viewer.hbs
   @module cyberpunkred-messenger
-  @description Main inbox template with cyberdeck terminal aesthetic.
-    Layout: HUD strip → header bar → stat cards → category tabs →
-    message list | detail panel → status footer.
+  @description Main inbox template with condensed cyberdeck terminal layout.
+    Layout: Condensed Header (identity + network + stats + actions) →
+    Tightened HUD strip → Tabs with counts + controls →
+    Split panel (list | detail) → Smart Footer with keyboard hints.
 
-  Sprint 1.5.4 additions:
-    - HUD strip at top (monospace system readout)
-    - Stat cards row (TOTAL / UNREAD / SAVED / SPAM)
-    - Network indicator badge with connection dot
-    - Uses Sprint 0 design system components throughout.
+  Sprint 2A changes:
+    - Condensed header merges identity, network badge, stat counters, and actions
+      into a single ~52px row
+    - HUD strip tightened to ~20px
+    - Tabs absorb count badges from old stat cards
+    - Smart footer with persistent info + context-aware shortcuts
+    - Old stat cards row REMOVED
+    - Old separate search/unread badge REMOVED from header (moved to tab controls)
+
+  CRITICAL CSS RULE:
+    NEVER set properties on .ncm-app root — it IS Foundry's window frame.
+    All styling targets .ncm-app > .window-content and descendants.
 --}}
 
 <div class="ncm-message-viewer" data-density="{{density}}">
 
-  {{!-- ═══════ HUD STRIP — Sprint 1.5.4 ═══════ --}}
-  {{> "modules/cyberpunkred-messenger/templates/partials/hud-strip.hbs"
-      networkName=currentNetwork.name
-      signalPercent=signalStrength
-      queuedCount=queuedMessageCount
-      encryptionCipher=encryptionCipher
-      latencyMs=latencyMs
-      connectionStatus=connectionStatus }}
-
-  {{!-- ═══════ HEADER BAR ═══════ --}}
+  {{!-- ═══════ CONDENSED HEADER BAR — Sprint 2A ═══════
+       Single ~52px row: [Avatar Name/Email] | [● NET ▼ ████] | [12 TOTAL 3 UNREAD 2 SAVED] | [Compose] [⚙] [×]
+  --}}
   <header class="ncm-inbox-header">
 
-    {{!-- Character Identity --}}
+    {{!-- Identity Cluster --}}
     <div class="ncm-inbox-identity">
       {{#if viewingAsPortrait}}
         <img class="ncm-inbox-identity__portrait" src="{{viewingAsPortrait}}" alt="{{viewingAsName}}" />
@@ -42,19 +43,23 @@
       </div>
     </div>
 
-    {{!-- Network Indicator Badge — Sprint 1.5.4: connection dot --}}
-    <div class="ncm-inbox-network" data-action="toggle-network-dropdown">
-      <span class="ncm-inbox-network__indicator ncm-inbox-network__indicator--{{connectionStatus}}"></span>
-      <i class="fas fa-satellite-dish ncm-inbox-network__icon"></i>
-      <span class="ncm-inbox-network__name">{{currentNetwork.name}}</span>
-      {{#if currentNetwork.requiresAuth}}
-        <i class="fas fa-lock ncm-inbox-network__lock" data-ncm-tooltip="Authenticated"></i>
-      {{/if}}
-      <i class="fas fa-caret-down ncm-inbox-network__caret"></i>
+    {{!-- Divider --}}
+    <div class="ncm-header-divider"></div>
 
-      {{!-- Signal Bar (Sprint 0 partial) --}}
-      {{> "modules/cyberpunkred-messenger/templates/partials/signal-bar.hbs"
-          strength=signalStrength quality=signalQuality segments=signalSegments }}
+    {{!-- Network Badge — compact clickable pill --}}
+    <div class="ncm-inbox-network" data-action="toggle-network-dropdown">
+      <span class="ncm-inbox-network__dot ncm-inbox-network__dot--{{connectionStatus}}"></span>
+      <span class="ncm-inbox-network__name">{{currentNetwork.name}}</span>
+
+      {{!-- Signal Bars (inline, 4 bars) --}}
+      <div class="ncm-inbox-network__signal" title="Signal: {{signalStrength}}%">
+        <div class="ncm-signal-bar-mini ncm-signal-bar-mini--1 {{#if (gte signalStrength 20)}}ncm-signal-bar-mini--active{{/if}}"></div>
+        <div class="ncm-signal-bar-mini ncm-signal-bar-mini--2 {{#if (gte signalStrength 40)}}ncm-signal-bar-mini--active{{/if}}"></div>
+        <div class="ncm-signal-bar-mini ncm-signal-bar-mini--3 {{#if (gte signalStrength 60)}}ncm-signal-bar-mini--active{{/if}}"></div>
+        <div class="ncm-signal-bar-mini ncm-signal-bar-mini--4 {{#if (gte signalStrength 80)}}ncm-signal-bar-mini--active{{/if}}"></div>
+      </div>
+
+      <i class="fas fa-caret-down ncm-inbox-network__caret"></i>
 
       {{!-- Network Dropdown --}}
       <div class="ncm-network-dropdown ncm-hidden">
@@ -72,39 +77,33 @@
       </div>
     </div>
 
-    {{!-- Unread Badge --}}
-    <div class="ncm-inbox-unread {{#if (gt unreadCount 0)}}ncm-inbox-unread--active{{/if}}"
-         data-action="jump-to-unread"
-         data-ncm-tooltip="{{unreadCount}} unread messages">
-      <span class="ncm-inbox-unread__label">UNREAD</span>
-      <span class="ncm-inbox-unread__count">{{unreadCount}}</span>
+    {{!-- Divider --}}
+    <div class="ncm-header-divider"></div>
+
+    {{!-- Inline Stat Counters --}}
+    <div class="ncm-header-stats">
+      <div class="ncm-header-stat" data-action="set-filter" data-filter="inbox"
+           data-ncm-tooltip="Show all messages">
+        <span class="ncm-header-stat__value ncm-header-stat__value--total">{{counts.total}}</span>
+        <span class="ncm-header-stat__label">TOTAL</span>
+      </div>
+      <div class="ncm-header-stat" data-action="set-filter" data-filter="unread"
+           data-ncm-tooltip="Show unread messages">
+        <span class="ncm-header-stat__value ncm-header-stat__value--unread">{{counts.unread}}</span>
+        <span class="ncm-header-stat__label">UNREAD</span>
+      </div>
+      <div class="ncm-header-stat" data-action="set-filter" data-filter="saved"
+           data-ncm-tooltip="Show saved messages">
+        <span class="ncm-header-stat__value ncm-header-stat__value--saved">{{counts.saved}}</span>
+        <span class="ncm-header-stat__label">SAVED</span>
+      </div>
     </div>
 
     {{!-- Spacer --}}
-    <div class="ncm-inbox-header__spacer"></div>
-
-    {{!-- Search --}}
-    <div class="ncm-inbox-search {{#if searchActive}}ncm-inbox-search--expanded{{/if}}">
-      {{#if searchActive}}
-        <input type="text"
-               class="ncm-input ncm-search-input"
-               placeholder="Search messages..."
-               value="{{searchTerm}}"
-               autofocus />
-        <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="toggle-search"
-                data-ncm-tooltip="Close search (Esc)">
-          <i class="fas fa-times"></i>
-        </button>
-      {{else}}
-        <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="toggle-search"
-                data-ncm-tooltip="Search (/)">
-          <i class="fas fa-search"></i>
-        </button>
-      {{/if}}
-    </div>
+    <div class="ncm-header-spacer"></div>
 
     {{!-- Header Actions --}}
-    <div class="ncm-inbox-header__actions">
+    <div class="ncm-header-actions">
       <button class="ncm-btn ncm-btn--primary ncm-btn--sm" data-action="compose-new"
               data-ncm-tooltip="Compose new message">
         <i class="fas fa-pen-to-square"></i>
@@ -116,41 +115,55 @@
           <i class="fas fa-gear"></i>
         </button>
       {{/if}}
+      <button class="ncm-close-btn" data-action="close-window"
+              data-ncm-tooltip="Close">
+        <i class="fas fa-xmark"></i>
+      </button>
     </div>
   </header>
 
-  {{!-- ═══════ STAT CARDS ROW — Sprint 1.5.4 ═══════ --}}
-  <div class="ncm-inbox-stats">
-    <div class="ncm-stat-grid ncm-stat-grid--4">
-      <div class="ncm-stat-card ncm-stat-card--clickable"
-           data-action="set-filter" data-filter="inbox"
-           data-ncm-tooltip="Show all messages">
-        <span class="ncm-stat-card__label">TOTAL</span>
-        <span class="ncm-stat-card__value">{{counts.total}}</span>
-      </div>
-      <div class="ncm-stat-card ncm-stat-card--primary ncm-stat-card--clickable
-        {{~#if (gt counts.unread 0)}} ncm-stat-card--pulse{{/if}}"
-           data-action="set-filter" data-filter="unread"
-           data-ncm-tooltip="Show unread messages">
-        <span class="ncm-stat-card__label">UNREAD</span>
-        <span class="ncm-stat-card__value">{{counts.unread}}</span>
-      </div>
-      <div class="ncm-stat-card ncm-stat-card--secondary ncm-stat-card--clickable"
-           data-action="set-filter" data-filter="saved"
-           data-ncm-tooltip="Show saved messages">
-        <span class="ncm-stat-card__label">SAVED</span>
-        <span class="ncm-stat-card__value">{{counts.saved}}</span>
-      </div>
-      <div class="ncm-stat-card ncm-stat-card--warning ncm-stat-card--clickable"
-           data-action="set-filter" data-filter="spam"
-           data-ncm-tooltip="Show spam messages">
-        <span class="ncm-stat-card__label">SPAM</span>
-        <span class="ncm-stat-card__value">{{counts.spam}}</span>
-      </div>
-    </div>
+  {{!-- ═══════ HUD STRIP — Tightened Sprint 2A ═══════
+       3px padding, 9px mono font. NET // SIG // LAT // QUEUE // ENC // ONLINE
+  --}}
+  <div class="ncm-hud-strip ncm-hud-strip--tight">
+    <span class="ncm-hud-strip__item">
+      <span class="ncm-hud-strip__label">NET</span>
+      <span class="ncm-hud-strip__value ncm-hud-strip__value--network">{{currentNetwork.name}}</span>
+    </span>
+    <span class="ncm-hud-strip__sep">//</span>
+    <span class="ncm-hud-strip__item">
+      <span class="ncm-hud-strip__label">SIG</span>
+      <span class="ncm-hud-strip__value">{{signalStrength}}%</span>
+    </span>
+    <span class="ncm-hud-strip__sep">//</span>
+    <span class="ncm-hud-strip__item">
+      <span class="ncm-hud-strip__label">LAT</span>
+      <span class="ncm-hud-strip__value">{{latencyMs}}ms</span>
+    </span>
+    <span class="ncm-hud-strip__sep">//</span>
+    <span class="ncm-hud-strip__item">
+      <span class="ncm-hud-strip__label">QUEUE</span>
+      <span class="ncm-hud-strip__value {{#if (gt queuedMessageCount 0)}}ncm-hud-strip__value--alert{{/if}}">{{queuedMessageCount}}</span>
+    </span>
+    <span class="ncm-hud-strip__sep">//</span>
+    <span class="ncm-hud-strip__item ncm-hud-strip__item--accent">
+      <span class="ncm-hud-strip__label">ENC</span>
+      <span class="ncm-hud-strip__value">{{encryptionCipher}}</span>
+    </span>
+
+    {{!-- Right-aligned connection status --}}
+    <span class="ncm-hud-strip__spacer"></span>
+    <span class="ncm-hud-strip__status ncm-hud-strip__status--{{connectionStatus}}">
+      <span class="ncm-hud-strip__status-dot"></span>
+      <span class="ncm-hud-strip__status-text">
+        {{#if (eq connectionStatus "CONNECTED")}}ONLINE{{/if}}
+        {{#if (eq connectionStatus "DEGRADED")}}DEGRADED{{/if}}
+        {{#if (eq connectionStatus "NO_SIGNAL")}}OFFLINE{{/if}}
+      </span>
+    </span>
   </div>
 
-  {{!-- ═══════ CATEGORY TABS ═══════ --}}
+  {{!-- ═══════ TABS — Sprint 2A: Embedded Counts + Tab Controls ═══════ --}}
   <nav class="ncm-inbox-tabs">
     <div class="ncm-tabs">
       <button class="ncm-tab {{#if (eq currentFilter 'inbox')}}ncm-tab--active{{/if}}"
@@ -161,9 +174,9 @@
       </button>
       <button class="ncm-tab {{#if (eq currentFilter 'unread')}}ncm-tab--active{{/if}}"
               data-action="set-filter" data-filter="unread">
-        <i class="fas fa-circle"></i>
+        <i class="fas fa-envelope"></i>
         <span>Unread</span>
-        {{#if counts.unread}}<span class="ncm-tab__count">{{counts.unread}}</span>{{/if}}
+        {{#if counts.unread}}<span class="ncm-tab__count ncm-tab__count--alert">{{counts.unread}}</span>{{/if}}
       </button>
       <button class="ncm-tab {{#if (eq currentFilter 'sent')}}ncm-tab--active{{/if}}"
               data-action="set-filter" data-filter="sent">
@@ -181,7 +194,7 @@
               data-action="set-filter" data-filter="spam">
         <i class="fas fa-shield-halved"></i>
         <span>Spam</span>
-        {{#if counts.spam}}<span class="ncm-tab__count">{{counts.spam}}</span>{{/if}}
+        {{#if counts.spam}}<span class="ncm-tab__count ncm-tab__count--alert">{{counts.spam}}</span>{{/if}}
       </button>
       <button class="ncm-tab {{#if (eq currentFilter 'trash')}}ncm-tab--active{{/if}}"
               data-action="set-filter" data-filter="trash">
@@ -191,30 +204,9 @@
       </button>
     </div>
 
-    {{!-- Tab Controls: Sort + Network Filter --}}
-    <div class="ncm-inbox-tab-controls">
-      {{!-- Network Filter --}}
-      {{#if showNetworkFilter}}
-        <div class="ncm-network-filter-control" data-action="toggle-network-filter">
-          <i class="fas fa-tower-broadcast"></i>
-          <span>{{#if networkFilter}}{{networkFilter}}{{else}}All Networks{{/if}}</span>
-          <i class="fas fa-caret-down"></i>
-          <div class="ncm-network-filter-dropdown ncm-hidden">
-            <div class="ncm-network-filter-option {{#unless networkFilter}}ncm-network-filter-option--active{{/unless}}"
-                 data-action="set-network-filter" data-network="">
-              All Networks
-            </div>
-            {{#each messageNetworks}}
-            <div class="ncm-network-filter-option {{#if (eq this ../networkFilter)}}ncm-network-filter-option--active{{/if}}"
-                 data-action="set-network-filter" data-network="{{this}}">
-              {{this}}
-            </div>
-            {{/each}}
-          </div>
-        </div>
-      {{/if}}
-
-      {{!-- Sort Control --}}
+    {{!-- Tab Controls: Sort + Search (right-aligned) --}}
+    <div class="ncm-tab-controls">
+      {{!-- Sort --}}
       <div class="ncm-sort-control" data-action="toggle-sort-dropdown">
         <i class="fas fa-arrow-down-short-wide"></i>
         <span>{{sortLabel}}</span>
@@ -222,12 +214,32 @@
         <div class="ncm-sort-dropdown ncm-hidden">
           {{#each sortOptions}}
           <div class="ncm-sort-option {{#if this.active}}ncm-sort-option--active{{/if}}"
-               data-action="set-sort" data-sort="{{this.key}}">
+               data-action="set-sort" data-sort="{{this.id}}">
             {{this.label}}
           </div>
           {{/each}}
         </div>
       </div>
+
+      {{!-- Search Toggle --}}
+      {{#if searchActive}}
+        <div class="ncm-tab-search ncm-tab-search--expanded">
+          <input type="text"
+                 class="ncm-search-input"
+                 placeholder="Search messages..."
+                 value="{{searchTerm}}"
+                 autofocus />
+          <button class="ncm-tab-control" data-action="toggle-search"
+                  data-ncm-tooltip="Close search (Esc)">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      {{else}}
+        <button class="ncm-tab-control" data-action="toggle-search"
+                data-ncm-tooltip="Search (/)">
+          <i class="fas fa-search"></i>
+        </button>
+      {{/if}}
     </div>
   </nav>
 
@@ -309,20 +321,40 @@
     </div>
   </div>
 
-  {{!-- ═══════ STATUS FOOTER ═══════ --}}
+  {{!-- ═══════ SMART FOOTER — Sprint 2A ═══════
+       Left: message count + actor + network
+       Right: context-aware keyboard shortcuts
+  --}}
   <footer class="ncm-inbox-footer">
-    <span class="ncm-footer-count">
-      <i class="fas fa-database"></i>
-      {{totalMessages}} message{{#if (neq totalMessages 1)}}s{{/if}}
-    </span>
-    <span class="ncm-footer-identity">
-      <i class="fas fa-user"></i>
-      {{viewingAsName}}
-    </span>
-    <span class="ncm-footer-network">
-      <i class="fas fa-satellite-dish"></i>
-      {{currentNetwork.name}}
-    </span>
+    <div class="ncm-footer-info">
+      <span class="ncm-footer-item">
+        <i class="fas fa-database"></i>
+        {{totalMessages}} MESSAGE{{#if (neq totalMessages 1)}}S{{/if}}
+      </span>
+      <span class="ncm-footer-item">
+        <i class="fas fa-user"></i>
+        {{viewingAsName}}
+      </span>
+      <span class="ncm-footer-item">
+        <i class="fas fa-network-wired"></i>
+        {{currentNetwork.name}}
+      </span>
+    </div>
+    <div class="ncm-footer-shortcuts">
+      <span class="ncm-footer-item">
+        <i class="fas fa-keyboard"></i>
+        {{!-- Default to list-focused shortcuts. JS will swap based on focus context --}}
+        <span class="ncm-shortcut-hint" data-context="list">
+          / SEARCH &nbsp; ↑↓ NAV &nbsp; ENTER SELECT
+        </span>
+        <span class="ncm-shortcut-hint ncm-hidden" data-context="detail">
+          R REPLY &nbsp; F FORWARD &nbsp; S SAVE &nbsp; DEL TRASH
+        </span>
+        <span class="ncm-shortcut-hint ncm-hidden" data-context="composer">
+          CTRL+ENTER SEND &nbsp; ESC CANCEL
+        </span>
+      </span>
+    </div>
   </footer>
 
 </div>

@@ -1,10 +1,17 @@
 /**
- * MessageViewerApp — Inbox UX (Sprint 1 Enhancement)
+ * MessageViewerApp — Inbox UX (Sprint 2A: Structural Layout Redesign)
  * @file scripts/ui/MessageViewer/MessageViewerApp.js
  * @module cyberpunkred-messenger
- * @description Full-featured inbox with split-panel layout, inline network selector,
+ * @description Full-featured inbox with condensed header bar, tightened HUD strip,
+ *   tab bar with count badges, split-panel layout, inline network selector,
  *   real-time search, category filtering, sort control, pagination, density modes,
- *   bulk actions, resizable sidebar, keyboard navigation, and quick-reply shortcuts.
+ *   bulk actions, resizable sidebar, keyboard navigation, quick-reply shortcuts,
+ *   and context-aware smart footer.
+ *
+ *   Sprint 2A changes:
+ *     - _toggleDropdown() updated for new container classes (.ncm-network-badge, .ncm-tab-control)
+ *     - _onDelegatedClick() adds 'close-window' action, fixes bulk action case names
+ *     - _prepareContext() unchanged — already provides all data the new template needs
  */
 
 import { BaseApplication } from '../BaseApplication.js';
@@ -119,7 +126,7 @@ export class MessageViewerApp extends BaseApplication {
   // ─────────────── Data Preparation ───────────────
 
   // ═══════════════════════════════════════════════════════════
-  //  HUD Helpers 
+  //  HUD Helpers
   // ═══════════════════════════════════════════════════════════
 
   /**
@@ -221,7 +228,7 @@ export class MessageViewerApp extends BaseApplication {
     const themePrefs = this._getThemePrefs();
     const quickReplies = themePrefs.quickReplies || QUICK_REPLIES_DEFAULT;
 
-    // ── HUD strip data (Sprint 1.5.4) ──
+    // ── HUD strip data ──
     const connectionStatus = this._deriveConnectionStatus(signalStrength, currentNetwork);
     const queuedMessageCount = this.stateManager?.get('queuedMessageCount') ?? 0;
     const encryptionCipher = this._deriveEncryptionCipher(currentNetwork);
@@ -244,7 +251,7 @@ export class MessageViewerApp extends BaseApplication {
       signalQuality,
       signalSegments,
 
-      // HUD Strip (Sprint 1.5.4)
+      // HUD Strip
       connectionStatus,
       queuedMessageCount,
       encryptionCipher,
@@ -370,7 +377,7 @@ export class MessageViewerApp extends BaseApplication {
     const action = actionEl.dataset.action;
 
     switch (action) {
-      // ── Status Bar ──
+      // ── Header Bar (Sprint 2A) ──
       case 'toggle-network-dropdown':
         event.stopPropagation();
         this._toggleDropdown('.ncm-network-dropdown', actionEl);
@@ -379,6 +386,10 @@ export class MessageViewerApp extends BaseApplication {
       case 'switch-network':
         event.stopPropagation();
         this._switchNetwork(actionEl.dataset.networkId);
+        break;
+
+      case 'close-window':
+        this.close();
         break;
 
       case 'jump-to-unread':
@@ -442,12 +453,12 @@ export class MessageViewerApp extends BaseApplication {
         this._toggleBulkSelect(actionEl.dataset.messageId);
         break;
 
-      // ── Bulk Actions ──
+      // ── Bulk Actions (Sprint 2A: names match template) ──
       case 'select-all':
         this._selectAll(actionEl.checked);
         break;
 
-      case 'bulk-read':
+      case 'bulk-mark-read':
         this._bulkMarkRead();
         break;
 
@@ -455,8 +466,13 @@ export class MessageViewerApp extends BaseApplication {
         this._bulkDelete();
         break;
 
-      case 'bulk-spam':
+      case 'bulk-mark-spam':
         this._bulkMarkSpam();
+        break;
+
+      case 'bulk-clear':
+        this.bulkSelected.clear();
+        this.render();
         break;
 
       // ── Pagination ──
@@ -514,7 +530,7 @@ export class MessageViewerApp extends BaseApplication {
         this._openCustomQuickReply();
         break;
 
-      // ── Footer ──
+      // ── Footer / Compose ──
       case 'compose-new':
         game.nightcity?.composeMessage?.();
         break;
@@ -608,11 +624,19 @@ export class MessageViewerApp extends BaseApplication {
     this.soundService?.play?.('click');
   }
 
-  // ─────────────── Sorting ───────────────
+  _setSort(sortKey) {
+    this.currentSort = sortKey;
+    this.currentPage = 1;
+    this._savePreferences();
+    this.render();
+    this.soundService?.play?.('click');
+
+    // Close dropdown
+    this.element?.querySelector('.ncm-sort-dropdown')?.classList.add('ncm-hidden');
+  }
 
   _applySorting(messages) {
     const sorted = [...messages];
-
     switch (this.currentSort) {
       case 'newest':
         sorted.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
@@ -639,22 +663,8 @@ export class MessageViewerApp extends BaseApplication {
         });
         break;
     }
-
     return sorted;
   }
-
-  _setSort(sort) {
-    this.currentSort = sort;
-    this.currentPage = 1;
-
-    // Close dropdown
-    this.element?.querySelector('.ncm-sort-dropdown')?.classList.add('ncm-hidden');
-
-    this.render();
-    this.soundService?.play?.('click');
-  }
-
-  // ─────────────── Pagination ───────────────
 
   _applyPagination(messages) {
     const start = (this.currentPage - 1) * MESSAGES_PER_PAGE;
@@ -663,28 +673,22 @@ export class MessageViewerApp extends BaseApplication {
 
   // ─────────────── Message Selection ───────────────
 
-  async _selectMessage(messageId) {
-    if (this.selectedMessageId === messageId) return;
-
+  _selectMessage(messageId) {
+    if (!messageId) return;
     this.selectedMessageId = messageId;
 
     // Mark as read
-    try {
-      await this.messageService?.markAsRead?.(messageId, this.actorId);
-    } catch (err) {
-      console.error(`${MODULE_ID} | Failed to mark message read:`, err);
-    }
+    this.messageService?.markAsRead?.(messageId, this.actorId);
 
-    this.soundService?.play?.('click');
     this.render();
+    this.soundService?.play?.('click');
   }
 
   _jumpToFirstUnread() {
-    // Find first unread message in current filtered view
-    // For now, just switch to unread filter
-    this.currentFilter = 'unread';
-    this.currentPage = 1;
-    this.render();
+    const unread = this._cachedMessages?.find(m => !m.status.read);
+    if (unread) {
+      this._selectMessage(unread.messageId);
+    }
   }
 
   // ─────────────── Bulk Selection ───────────────
@@ -700,11 +704,7 @@ export class MessageViewerApp extends BaseApplication {
 
   _selectAll(checked) {
     if (checked) {
-      const items = this.element?.querySelectorAll('.ncm-message-item');
-      items?.forEach(item => {
-        const id = item.dataset.messageId;
-        if (id) this.bulkSelected.add(id);
-      });
+      (this._cachedMessages || []).forEach(m => this.bulkSelected.add(m.messageId));
     } else {
       this.bulkSelected.clear();
     }
@@ -723,10 +723,10 @@ export class MessageViewerApp extends BaseApplication {
     for (const id of this.bulkSelected) {
       await this.messageService?.deleteMessage?.(id, this.actorId);
     }
-    this.bulkSelected.clear();
     if (this.bulkSelected.has(this.selectedMessageId)) {
       this.selectedMessageId = null;
     }
+    this.bulkSelected.clear();
     this.render();
   }
 
@@ -742,12 +742,13 @@ export class MessageViewerApp extends BaseApplication {
 
   _replyToSelected() {
     if (!this.selectedMessageId) return;
+    const msg = this._getSelectedMessage();
     this.eventBus?.emit?.('composer:open', {
       mode: 'reply',
       inReplyTo: this.selectedMessageId,
-      toActorId: this._getSelectedMessage()?.fromActorId,
-      to: this._getSelectedMessage()?.from,
-      subject: `RE: ${this._getSelectedMessage()?.subject || ''}`,
+      toActorId: msg?.fromActorId,
+      to: msg?.from,
+      subject: `RE: ${msg?.subject || ''}`,
     });
   }
 
@@ -982,6 +983,13 @@ export class MessageViewerApp extends BaseApplication {
 
   // ─────────────── Dropdown Toggle Utility ───────────────
 
+  /**
+   * Toggle a dropdown menu, closing all others first.
+   * Sprint 2A: Updated container selectors for new layout.
+   *   .ncm-network-badge (was .ncm-network-selector)
+   *   .ncm-tab-control   (was .ncm-sort-control)
+   *   .ncm-network-filter-control (unchanged)
+   */
   _toggleDropdown(selector, triggerEl) {
     const html = this.element;
     if (!html) return;
@@ -993,7 +1001,9 @@ export class MessageViewerApp extends BaseApplication {
       });
 
     // Find the dropdown relative to the trigger
-    const container = triggerEl.closest('.ncm-network-selector, .ncm-sort-control, .ncm-network-filter-control');
+    // Sprint 2A: .ncm-network-badge replaces .ncm-network-selector,
+    //            .ncm-tab-control replaces .ncm-sort-control
+    const container = triggerEl.closest('.ncm-network-badge, .ncm-tab-control, .ncm-network-filter-control');
     const dropdown = container?.querySelector(selector);
     if (dropdown) {
       dropdown.classList.toggle('ncm-hidden');
@@ -1051,25 +1061,6 @@ export class MessageViewerApp extends BaseApplication {
       selected: msg.messageId === this.selectedMessageId,
       bulkSelected: this.bulkSelected.has(msg.messageId),
     }));
-  }
-
-  _getThreadInfo(msg, allMessages) {
-    if (!msg.threadId) return { count: 0 };
-    const threadMessages = allMessages.filter(m => m.threadId === msg.threadId);
-    return {
-      count: threadMessages.length > 1 ? threadMessages.length : 0,
-      threadId: msg.threadId,
-    };
-  }
-
-  _renderMessageBody(body) {
-    if (!body) return '';
-    // Basic HTML pass-through — Foundry already sanitizes journal content
-    // Wrap plain text in paragraph tags if no HTML detected
-    if (!body.includes('<')) {
-      return body.split('\n').filter(Boolean).map(p => `<p>${p}</p>`).join('');
-    }
-    return body;
   }
 
   _enrichMessageDisplay(msg) {
@@ -1183,7 +1174,10 @@ export class MessageViewerApp extends BaseApplication {
   _renderMessageBody(body) {
     // Allow basic HTML but sanitize dangerous content
     if (!body) return '<p class="ncm-body-empty">[ No content ]</p>';
-    // FoundryVTT sanitizes via TextEditor if available
+    // Wrap plain text in paragraph tags if no HTML detected
+    if (!body.includes('<')) {
+      return body.split('\n').filter(Boolean).map(p => `<p>${p}</p>`).join('');
+    }
     return body;
   }
 

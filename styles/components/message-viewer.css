@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
- * Message Viewer — Sprint 1: Inbox UX Overhaul
+ * Message Viewer — Sprint 2A: Inbox Layout Redesign
  * @file styles/components/message-viewer.css
  * @module cyberpunkred-messenger
  *
@@ -7,27 +7,36 @@
  * All colors use CSS custom properties from variables.css.
  * Animation-gated via [data-ncm-animation-level].
  *
- * ─── SECTION INDEX ───
- *  §1  Layout Shell
- *  §2  Header Bar
- *  §3  Category Tabs
- *  §4  Bulk Actions
- *  §5  Split Panel
- *  §6  Message List Items
- *  §7  Density Modes
- *  §8  Message Detail Panel
- *  §9  Quick Reply Bar
- *  §10 Detail Action Bar
- *  §11 Pagination
- *  §12 Status Footer
- *  §13 Dropdowns
- *  §14 Empty States (list + detail terminal)
- *  §15 Animation Overrides
- *  §16 Responsive
+ * CRITICAL: NEVER set properties on `.ncm-app` root — it IS Foundry's window frame.
+ *           ONLY exception: `position: fixed !important` in window-chrome.css.
+ *           All styling targets `.ncm-app > .window-content` and descendants.
+ *           CSS custom properties on `.ncm-app` are OK (variables only).
  *
- * FIXES (post-Sprint 1):
- *  - §3: tabs overflow hidden + scrollbar suppression to prevent horizontal bar
- *  - §14: Added styles for empty-state-list.hbs and empty-state-detail.hbs
+ * ─── SECTION INDEX ───
+ *  §1   Layout Shell
+ *  §2   Condensed Header Bar (Sprint 2A)
+ *  §2a  Identity Cluster
+ *  §2b  Header Dividers
+ *  §2c  Network Badge (with signal bars)
+ *  §2d  Inline Stat Counters
+ *  §2e  Header Actions + Close Button
+ *  §3   Tightened HUD Strip (Sprint 2A)
+ *  §4   Tabs with Embedded Counts (Sprint 2A)
+ *  §4a  Tab Controls (Sort + Search)
+ *  §5   Bulk Actions
+ *  §6   Split Panel
+ *  §7   Message List Items
+ *  §8   Density Modes
+ *  §9   Message Detail Panel
+ *  §10  Quick Reply Bar
+ *  §11  Detail Action Bar
+ *  §12  Pagination
+ *  §13  Smart Footer (Sprint 2A)
+ *  §14  Dropdowns
+ *  §15  Empty States
+ *  §16  Animation Overrides
+ *  §17  Responsive
+ *  §18  Utility
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 
@@ -47,55 +56,70 @@
 
 
 /* ═══════════════════════════════════════════════════════════
-   §2  HEADER BAR
+   §2  CONDENSED HEADER BAR — Sprint 2A
+   Single ~52px row merging identity + network + stats + actions.
    ═══════════════════════════════════════════════════════════ */
 
 .ncm-app .ncm-inbox-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
+  gap: 12px;
+  padding: 8px 14px;
   background: var(--ncm-bg-base);
-  border-bottom: 1px solid var(--ncm-primary);
+  border-bottom: 1px solid var(--ncm-border);
   flex-shrink: 0;
-  min-height: 44px;
+  min-height: 52px;
   overflow: hidden;
 }
 
-/* ── Character Identity ── */
+
+/* ── §2a Identity Cluster ── */
 
 .ncm-app .ncm-inbox-identity {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   flex-shrink: 0;
   min-width: 0;
 }
 
 .ncm-app .ncm-inbox-identity__portrait {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  border: 2px solid var(--ncm-border);
+  border: 2px solid var(--ncm-border-active, #3a3a5a);
   object-fit: cover;
-  background: var(--ncm-bg-deep);
+  background: var(--ncm-bg-surface);
   flex-shrink: 0;
+  position: relative;
 }
 
 .ncm-app .ncm-inbox-identity__initials {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  border: 2px solid var(--ncm-secondary);
+  border: 2px solid var(--ncm-border-active, #3a3a5a);
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: var(--ncm-font-display);
-  font-size: var(--ncm-text-sm);
+  font-size: 14px;
   font-weight: 700;
-  color: var(--ncm-secondary);
+  color: var(--ncm-primary);
   background: var(--ncm-bg-surface);
   flex-shrink: 0;
+  position: relative;
+}
+
+/* Outer glow ring on avatar */
+.ncm-app .ncm-inbox-identity__portrait::after,
+.ncm-app .ncm-inbox-identity__initials::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 1px solid rgba(25, 243, 247, 0.12);
+  pointer-events: none;
 }
 
 .ncm-app .ncm-inbox-identity__info {
@@ -107,9 +131,10 @@
 
 .ncm-app .ncm-inbox-identity__name {
   font-family: var(--ncm-font-display);
-  font-size: var(--ncm-text-sm);
+  font-size: 15px;
   font-weight: 700;
   color: var(--ncm-text-primary);
+  line-height: 1.1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -117,150 +142,227 @@
 
 .ncm-app .ncm-inbox-identity__email {
   font-family: var(--ncm-font-mono);
-  font-size: var(--ncm-text-2xs);
+  font-size: 10px;
   color: var(--ncm-text-muted);
+  letter-spacing: 0.03em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* ── Network Selector ── */
+
+/* ── §2b Header Dividers ── */
+
+.ncm-app .ncm-header-divider {
+  width: 1px;
+  height: 28px;
+  background: var(--ncm-border);
+  flex-shrink: 0;
+}
+
+
+/* ── §2c Network Badge ── */
 
 .ncm-app .ncm-inbox-network {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 3px 8px;
+  gap: 6px;
+  padding: 4px 10px;
   background: var(--ncm-bg-surface);
   border: 1px solid var(--ncm-border);
-  border-radius: var(--ncm-radius-md);
+  border-radius: 2px;
   cursor: pointer;
-  position: relative;
-  transition: border-color 0.15s ease;
+  transition: border-color 0.15s;
   flex-shrink: 0;
+  position: relative;
 }
 
 .ncm-app .ncm-inbox-network:hover {
   border-color: var(--ncm-secondary);
 }
 
-.ncm-app .ncm-inbox-network__icon {
-  color: var(--ncm-secondary);
-  font-size: 11px;
+/* Connection dot */
+.ncm-app .ncm-inbox-network__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
+.ncm-app .ncm-inbox-network__dot--CONNECTED {
+  background: var(--ncm-success);
+  box-shadow: 0 0 6px rgba(0, 255, 65, 0.5);
+  animation: ncm-pulse-dot 2s ease-in-out infinite;
+}
+
+.ncm-app .ncm-inbox-network__dot--DEGRADED {
+  background: var(--ncm-warning);
+  box-shadow: 0 0 6px rgba(255, 171, 0, 0.5);
+  animation: ncm-pulse-dot 1.5s ease-in-out infinite;
+}
+
+.ncm-app .ncm-inbox-network__dot--NO_SIGNAL {
+  background: var(--ncm-danger);
+  box-shadow: 0 0 6px rgba(255, 0, 51, 0.5);
+}
+
+@keyframes ncm-pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Network name */
 .ncm-app .ncm-inbox-network__name {
   font-family: var(--ncm-font-display);
-  font-size: var(--ncm-text-xs);
+  font-size: 11px;
   font-weight: 600;
-  color: var(--ncm-text-primary);
+  color: var(--ncm-secondary);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.08em;
 }
 
-.ncm-app .ncm-inbox-network__lock {
-  color: var(--ncm-accent);
-  font-size: 9px;
+/* Inline signal bars (4-bar mini indicator) */
+.ncm-app .ncm-inbox-network__signal {
+  display: flex;
+  gap: 1px;
+  align-items: flex-end;
 }
 
+.ncm-app .ncm-signal-bar-mini {
+  width: 3px;
+  border-radius: 1px;
+  background: var(--ncm-bg-elevated);
+  transition: background 0.2s;
+}
+
+.ncm-app .ncm-signal-bar-mini--1 { height: 4px; }
+.ncm-app .ncm-signal-bar-mini--2 { height: 7px; }
+.ncm-app .ncm-signal-bar-mini--3 { height: 10px; }
+.ncm-app .ncm-signal-bar-mini--4 { height: 13px; }
+
+.ncm-app .ncm-signal-bar-mini--active {
+  background: var(--ncm-success);
+}
+
+/* Caret */
 .ncm-app .ncm-inbox-network__caret {
+  font-size: 8px;
   color: var(--ncm-text-muted);
-  font-size: 9px;
-  margin-left: 2px;
 }
 
-/* ── Unread Badge ── */
 
-.ncm-app .ncm-inbox-unread {
+/* ── §2d Inline Stat Counters ── */
+
+.ncm-app .ncm-header-stats {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.ncm-app .ncm-header-stat {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 2px 8px;
-  background: var(--ncm-bg-surface);
-  border: 1px solid var(--ncm-border);
-  border-radius: var(--ncm-radius-md);
+  padding: 2px 12px;
+  min-width: 48px;
   cursor: pointer;
-  transition: all 0.15s ease;
-  flex-shrink: 0;
-  min-width: 40px;
+  border-radius: 2px;
+  transition: background 0.15s;
 }
 
-.ncm-app .ncm-inbox-unread--active {
-  border-color: var(--ncm-secondary);
-  background: rgba(25, 243, 247, 0.05);
+.ncm-app .ncm-header-stat:hover {
+  background: var(--ncm-bg-surface);
 }
 
-.ncm-app .ncm-inbox-unread--active .ncm-inbox-unread__count {
-  color: var(--ncm-secondary);
-  text-shadow: 0 0 8px rgba(25, 243, 247, 0.4);
-  animation: ncm-unread-pulse 2s ease-in-out infinite;
-}
-
-@keyframes ncm-unread-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
-}
-
-.ncm-app .ncm-inbox-unread__label {
-  font-family: var(--ncm-font-ui);
-  font-size: 7px;
-  letter-spacing: 0.1em;
-  color: var(--ncm-text-muted);
-  text-transform: uppercase;
-}
-
-.ncm-app .ncm-inbox-unread__count {
+.ncm-app .ncm-header-stat__value {
   font-family: var(--ncm-font-display);
-  font-size: var(--ncm-text-base);
+  font-size: 18px;
   font-weight: 700;
-  color: var(--ncm-text-secondary);
   line-height: 1;
 }
 
-/* ── Header Spacer ── */
+.ncm-app .ncm-header-stat__value--total { color: var(--ncm-text-primary); }
+.ncm-app .ncm-header-stat__value--unread { color: var(--ncm-primary); }
+.ncm-app .ncm-header-stat__value--saved { color: var(--ncm-accent, #f7c948); }
 
-.ncm-app .ncm-inbox-header__spacer {
-  flex: 1;
-  min-width: 0;
+.ncm-app .ncm-header-stat__label {
+  font-family: var(--ncm-font-mono);
+  font-size: 8px;
+  color: var(--ncm-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
 }
 
-/* ── Search ── */
 
-.ncm-app .ncm-inbox-search {
+/* ── Spacer ── */
+
+.ncm-app .ncm-header-spacer {
+  flex: 1;
+}
+
+
+/* ── §2e Header Actions + Close Button ── */
+
+.ncm-app .ncm-header-actions {
   display: flex;
   align-items: center;
   gap: 4px;
   flex-shrink: 0;
 }
 
-.ncm-app .ncm-inbox-search--expanded {
-  flex: 0 1 200px;
-}
-
-.ncm-app .ncm-inbox-search--expanded .ncm-search-input {
-  flex: 1;
-}
-
-/* ── Header Actions ── */
-
-.ncm-app .ncm-inbox-header__actions {
+/* Close button — 28px square */
+.ncm-app .ncm-close-btn {
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
-  gap: 4px;
-  flex-shrink: 0;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  color: var(--ncm-text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-left: 4px;
+}
+
+.ncm-app .ncm-close-btn:hover {
+  color: var(--ncm-primary);
+  border-color: var(--ncm-primary);
+  background: rgba(246, 82, 97, 0.1);
 }
 
 
 /* ═══════════════════════════════════════════════════════════
-   §3  CATEGORY TABS
-   FIX: overflow:hidden on outer container prevents horizontal
-   scrollbar bleed. Inner .ncm-tabs scrolls with hidden scrollbar.
+   §3  TIGHTENED HUD STRIP — Sprint 2A
+   ~20px instead of ~28px. 3px vertical padding, 9px font.
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-hud-strip--tight {
+  height: auto;
+  min-height: 20px;
+  padding: 3px 14px;
+  font-size: 9px;
+}
+
+.ncm-app .ncm-hud-strip--tight .ncm-hud-strip__sep {
+  padding: 0 5px;
+}
+
+/* Accent variant for ENC item (gold) */
+.ncm-app .ncm-hud-strip__item--accent .ncm-hud-strip__value {
+  color: var(--ncm-accent, #f7c948);
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   §4  TABS — Sprint 2A: Embedded Counts + Controls
    ═══════════════════════════════════════════════════════════ */
 
 .ncm-app .ncm-inbox-tabs {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  align-items: stretch;
   background: var(--ncm-bg-base);
   border-bottom: 1px solid var(--ncm-border);
   flex-shrink: 0;
@@ -274,40 +376,40 @@
   flex: 1;
   min-width: 0;
   overflow-x: auto;
-  scrollbar-width: none;           /* Firefox */
+  scrollbar-width: none;
 }
 
 .ncm-app .ncm-inbox-tabs .ncm-tabs::-webkit-scrollbar {
-  display: none;                   /* Chrome/Safari */
+  display: none;
 }
 
 .ncm-app .ncm-inbox-tabs .ncm-tab {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 6px 8px;
+  gap: 6px;
+  padding: 8px 16px;
   background: transparent;
   border: none;
   border-bottom: 2px solid transparent;
-  color: var(--ncm-text-secondary);
+  color: var(--ncm-text-muted);
   font-family: var(--ncm-font-display);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.15s;
   white-space: nowrap;
   flex-shrink: 0;
 }
 
 .ncm-app .ncm-inbox-tabs .ncm-tab i {
-  font-size: 9px;
+  font-size: 10px;
 }
 
 .ncm-app .ncm-inbox-tabs .ncm-tab:hover {
-  color: var(--ncm-text-primary);
-  background: rgba(25, 243, 247, 0.03);
+  color: var(--ncm-text-secondary);
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .ncm-app .ncm-inbox-tabs .ncm-tab--active {
@@ -315,99 +417,155 @@
   border-bottom-color: var(--ncm-secondary);
 }
 
+/* Tab count badge */
 .ncm-app .ncm-tab__count {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 14px;
-  height: 14px;
-  padding: 0 3px;
-  border-radius: var(--ncm-radius-pill);
+  min-width: 18px;
+  height: 16px;
+  padding: 1px 5px;
+  border-radius: 2px;
   background: var(--ncm-bg-elevated);
   font-family: var(--ncm-font-mono);
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 700;
+  color: var(--ncm-text-secondary);
+  text-align: center;
   line-height: 1;
 }
 
 .ncm-app .ncm-tab--active .ncm-tab__count {
-  background: rgba(25, 243, 247, 0.15);
+  background: rgba(25, 243, 247, 0.1);
   color: var(--ncm-secondary);
 }
 
-/* ── Tab Controls (Sort + Network Filter) ── */
-
-.ncm-app .ncm-inbox-tab-controls {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding-right: 8px;
-  flex-shrink: 0;
+/* Alert count (red-tinted for Unread, Spam) */
+.ncm-app .ncm-tab__count--alert {
+  background: rgba(246, 82, 97, 0.15);
+  color: var(--ncm-primary);
 }
 
-.ncm-app .ncm-sort-control,
-.ncm-app .ncm-network-filter-control {
+
+/* ── §4a Tab Controls (Sort + Search, right-aligned) ── */
+
+.ncm-app .ncm-tab-controls {
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 6px;
+  margin-left: auto;
+  padding: 0 10px;
+  flex-shrink: 0;
+}
+
+.ncm-app .ncm-tab-control {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  font-family: var(--ncm-font-display);
+  font-size: 10px;
+  color: var(--ncm-text-muted);
+  cursor: pointer;
+  border-radius: 2px;
+  transition: all 0.15s;
+  border: none;
+  background: none;
+}
+
+.ncm-app .ncm-tab-control:hover {
+  color: var(--ncm-text-secondary);
+  background: var(--ncm-bg-surface);
+}
+
+.ncm-app .ncm-tab-control i {
+  font-size: 9px;
+}
+
+/* Sort control */
+.ncm-app .ncm-sort-control {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
   cursor: pointer;
   position: relative;
   font-family: var(--ncm-font-display);
   font-size: 10px;
+  color: var(--ncm-text-muted);
+  border-radius: 2px;
+  transition: all 0.15s;
+  border: none;
+  background: none;
+}
+
+.ncm-app .ncm-sort-control:hover {
   color: var(--ncm-text-secondary);
-  border: 1px solid transparent;
-  border-radius: var(--ncm-radius-sm);
-  transition: all 0.15s ease;
+  background: var(--ncm-bg-surface);
 }
 
-.ncm-app .ncm-sort-control:hover,
-.ncm-app .ncm-network-filter-control:hover {
-  color: var(--ncm-text-primary);
-  border-color: var(--ncm-border);
-}
-
-.ncm-app .ncm-sort-control i,
-.ncm-app .ncm-network-filter-control i {
+.ncm-app .ncm-sort-control i {
   font-size: 9px;
+}
+
+/* Search input in tab controls */
+.ncm-app .ncm-tab-search {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ncm-app .ncm-tab-search--expanded {
+  background: var(--ncm-bg-surface);
+  border: 1px solid var(--ncm-border);
+  border-radius: 2px;
+  padding: 2px 4px;
+}
+
+.ncm-app .ncm-search-input {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--ncm-text-primary);
+  font-family: var(--ncm-font-mono);
+  font-size: 10px;
+  width: 140px;
+  padding: 2px 4px;
+}
+
+.ncm-app .ncm-search-input::placeholder {
+  color: var(--ncm-text-muted);
 }
 
 
 /* ═══════════════════════════════════════════════════════════
-   §4  BULK ACTIONS BAR
+   §5  BULK ACTIONS BAR
    ═══════════════════════════════════════════════════════════ */
 
-.ncm-app .ncm-bulk-actions {
+.ncm-app .ncm-bulk-bar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 8px;
   padding: 6px 12px;
   background: rgba(25, 243, 247, 0.05);
   border-bottom: 1px solid var(--ncm-secondary);
-  font-family: var(--ncm-font-ui);
+  font-family: var(--ncm-font-display);
   font-size: 11px;
   color: var(--ncm-secondary);
   flex-shrink: 0;
 }
 
-.ncm-app .ncm-bulk-select-all {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-}
-
-.ncm-app .ncm-bulk-buttons {
-  display: flex;
-  gap: 4px;
+.ncm-app .ncm-bulk-bar__count {
+  font-weight: 600;
+  margin-right: auto;
 }
 
 
 /* ═══════════════════════════════════════════════════════════
-   §5  SPLIT PANEL
+   §6  SPLIT PANEL
    ═══════════════════════════════════════════════════════════ */
 
-.ncm-app .ncm-split-panel {
+.ncm-app .ncm-inbox-split-panel {
   display: flex;
   flex: 1;
   overflow: hidden;
@@ -487,7 +645,7 @@
 
 
 /* ═══════════════════════════════════════════════════════════
-   §6  MESSAGE LIST ITEMS
+   §7  MESSAGE LIST ITEMS
    ═══════════════════════════════════════════════════════════ */
 
 .ncm-app .ncm-message-item {
@@ -524,47 +682,20 @@
   font-weight: 700;
 }
 
-.ncm-app .ncm-message-item--unread .ncm-message-item__subject {
-  color: var(--ncm-text-primary);
-  font-weight: 600;
-}
-
-/* Priority borders */
-.ncm-app .ncm-message-item[data-priority="urgent"] {
-  border-left: 3px solid var(--ncm-accent);
-}
-
-.ncm-app .ncm-message-item[data-priority="critical"] {
-  border-left: 3px solid var(--ncm-danger);
-  animation: ncm-priority-pulse 2s ease-in-out infinite;
-}
-
-@keyframes ncm-priority-pulse {
-  0%, 100% { border-left-color: var(--ncm-danger); }
-  50% { border-left-color: rgba(255, 0, 51, 0.3); }
-}
-
-/* Infected */
-.ncm-app .ncm-message-item--infected {
-  border-left-color: #8b00ff;
-}
-
-/* ── Message Item Inner Elements ── */
-
-.ncm-app .ncm-message-item__unread-dot {
-  width: 6px;
-  height: 6px;
+/* Unread dot indicator */
+.ncm-app .ncm-message-item--unread::after {
+  content: '';
+  position: absolute;
+  right: 8px;
+  top: 12px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
   background: var(--ncm-secondary);
-  flex-shrink: 0;
-  margin-top: 6px;
-  box-shadow: 0 0 6px rgba(25, 243, 247, 0.4);
+  box-shadow: 0 0 6px rgba(25, 243, 247, 0.5);
 }
 
-.ncm-app .ncm-message-item__unread-dot--hidden {
-  visibility: hidden;
-}
-
+/* Avatar */
 .ncm-app .ncm-message-item__avatar {
   width: 28px;
   height: 28px;
@@ -574,20 +705,14 @@
   align-items: center;
   justify-content: center;
   font-family: var(--ncm-font-display);
-  font-size: 10px;
+  font-size: var(--ncm-text-2xs);
   font-weight: 700;
-  color: var(--ncm-text-secondary);
+  color: var(--ncm-secondary);
   background: var(--ncm-bg-elevated);
   flex-shrink: 0;
-  overflow: hidden;
 }
 
-.ncm-app .ncm-message-item__avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
+/* Content wrapper */
 .ncm-app .ncm-message-item__content {
   flex: 1;
   min-width: 0;
@@ -596,15 +721,18 @@
   gap: 2px;
 }
 
-.ncm-app .ncm-message-item__top-row {
+/* Top row: sender + time */
+.ncm-app .ncm-message-item__header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 6px;
+  min-width: 0;
 }
 
 .ncm-app .ncm-message-item__sender {
   font-family: var(--ncm-font-display);
-  font-size: var(--ncm-text-sm);
+  font-size: 12px;
   font-weight: 600;
   color: var(--ncm-text-secondary);
   white-space: nowrap;
@@ -618,60 +746,78 @@
   font-family: var(--ncm-font-mono);
   font-size: 9px;
   color: var(--ncm-text-muted);
-  white-space: nowrap;
   flex-shrink: 0;
+}
+
+.ncm-app .ncm-message-item__icons {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.ncm-app .ncm-message-item__icon {
+  font-size: 9px;
+  color: var(--ncm-text-muted);
+}
+
+.ncm-app .ncm-message-item__icon--encrypted { color: var(--ncm-accent, #f7c948); }
+.ncm-app .ncm-message-item__icon--infected { color: var(--ncm-danger); }
+
+/* Subject row */
+.ncm-app .ncm-message-item__subject-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .ncm-app .ncm-message-item__subject {
   font-family: var(--ncm-font-display);
-  font-size: var(--ncm-text-xs);
-  font-weight: 400;
+  font-size: 11px;
   color: var(--ncm-text-secondary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  opacity: 0.8;
 }
 
-.ncm-app .ncm-message-item__badges {
-  display: flex;
-  gap: 4px;
-  align-items: center;
-  flex-wrap: nowrap;
-}
-
+/* Preview row */
 .ncm-app .ncm-message-item__preview-row {
+  display: none;
+}
+
+.ncm-app .ncm-message-item__preview {
   font-family: var(--ncm-font-mono);
-  font-size: var(--ncm-text-2xs);
+  font-size: 9px;
   color: var(--ncm-text-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* Bulk selection checkbox */
-.ncm-app .ncm-message-item__checkbox {
-  margin-top: 4px;
-  flex-shrink: 0;
-  cursor: pointer;
-  accent-color: var(--ncm-secondary);
+/* Badges */
+.ncm-app .ncm-message-item__badges {
+  display: flex;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+/* Priority left-border accents */
+.ncm-app .ncm-message-item[data-priority="urgent"] {
+  border-left-color: var(--ncm-warning);
+}
+
+.ncm-app .ncm-message-item[data-priority="critical"] {
+  border-left-color: var(--ncm-danger);
 }
 
 
 /* ═══════════════════════════════════════════════════════════
-   §7  DENSITY MODES
+   §8  DENSITY MODES
    ═══════════════════════════════════════════════════════════ */
 
-/* ── Compact: Single line, no subject row ── */
-
+/* Compact: Tight spacing, no preview */
 .ncm-app .ncm-message-viewer[data-density="compact"] .ncm-message-item {
   padding: 4px 10px;
   gap: 6px;
-}
-
-.ncm-app .ncm-message-viewer[data-density="compact"] .ncm-message-item__subject,
-.ncm-app .ncm-message-viewer[data-density="compact"] .ncm-message-item__badges,
-.ncm-app .ncm-message-viewer[data-density="compact"] .ncm-message-item__preview-row {
-  display: none;
 }
 
 .ncm-app .ncm-message-viewer[data-density="compact"] .ncm-message-item__avatar {
@@ -680,14 +826,16 @@
   font-size: 8px;
 }
 
-/* ── Normal: Two lines — sender + subject. No preview. ── */
+.ncm-app .ncm-message-viewer[data-density="compact"] .ncm-message-item__preview-row {
+  display: none;
+}
 
+/* Normal: Default. No preview. */
 .ncm-app .ncm-message-viewer[data-density="normal"] .ncm-message-item__preview-row {
   display: none;
 }
 
-/* ── Comfortable: Three lines — includes body preview ── */
-
+/* Comfortable: Three lines — includes body preview */
 .ncm-app .ncm-message-viewer[data-density="comfortable"] .ncm-message-item__preview-row {
   display: block;
 }
@@ -698,7 +846,7 @@
 
 
 /* ═══════════════════════════════════════════════════════════
-   §8  MESSAGE DETAIL PANEL
+   §9  MESSAGE DETAIL PANEL
    ═══════════════════════════════════════════════════════════ */
 
 .ncm-app .ncm-message-detail {
@@ -729,8 +877,8 @@
 }
 
 .ncm-app .ncm-detail-meta__label {
-  font-family: var(--ncm-font-ui);
-  font-size: var(--ncm-text-2xs);
+  font-family: var(--ncm-font-display);
+  font-size: var(--ncm-text-2xs, 9px);
   font-weight: 600;
   letter-spacing: 0.1em;
   color: var(--ncm-text-muted);
@@ -740,140 +888,114 @@
 }
 
 .ncm-app .ncm-detail-meta__value {
-  font-family: var(--ncm-font-body);
-  font-size: var(--ncm-text-sm);
+  font-family: var(--ncm-font-display);
+  font-size: var(--ncm-text-sm, 13px);
   color: var(--ncm-text-primary);
   min-width: 0;
 }
 
 .ncm-app .ncm-detail-meta__value--mono {
   font-family: var(--ncm-font-mono);
-  font-size: var(--ncm-text-xs);
+  font-size: var(--ncm-text-xs, 11px);
 }
 
 .ncm-app .ncm-detail-meta__value--subject {
   font-family: var(--ncm-font-display);
-  font-size: var(--ncm-text-md);
+  font-size: var(--ncm-text-md, 15px);
   font-weight: 700;
   color: var(--ncm-text-primary);
 }
 
-/* FROM row with inline avatar */
-
-.ncm-app .ncm-detail-meta__from {
+/* FROM row with portrait */
+.ncm-app .ncm-detail-meta__sender-row {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.ncm-app .ncm-detail-meta__avatar {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  border: 1px solid var(--ncm-border);
-  object-fit: cover;
-  background: var(--ncm-bg-deep);
-}
-
-.ncm-app .ncm-detail-meta__avatar-initials {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  border: 1px solid var(--ncm-border);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--ncm-font-display);
-  font-size: 9px;
-  font-weight: 700;
-  color: var(--ncm-text-secondary);
-  background: var(--ncm-bg-elevated);
-}
-
-/* ── Body ── */
+/* ── Message Body ── */
 
 .ncm-app .ncm-detail-body {
   flex: 1;
-  padding: 16px;
+  padding: 18px;
   overflow-y: auto;
-}
-
-.ncm-app .ncm-detail-body__content {
   font-family: var(--ncm-font-mono);
-  font-size: var(--ncm-text-sm);
-  line-height: 1.6;
-  color: var(--ncm-text-primary);
-  background: var(--ncm-bg-surface);
-  border: 1px solid var(--ncm-border);
-  border-radius: var(--ncm-radius-md);
-  padding: 16px;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--ncm-text-secondary);
+  scrollbar-width: thin;
+  scrollbar-color: var(--ncm-bg-elevated) transparent;
 }
 
-/* ── Encrypted Overlay ── */
-
-.ncm-app .ncm-detail-encrypted {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  gap: var(--ncm-space-md);
-  opacity: 0.8;
-}
-
-.ncm-app .ncm-detail-encrypted__icon {
-  font-size: 2.5rem;
-  color: var(--ncm-primary);
-}
-
-.ncm-app .ncm-detail-encrypted__text {
-  font-family: var(--ncm-font-display);
-  font-size: var(--ncm-text-base);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--ncm-primary);
+.ncm-app .ncm-detail-body p {
+  margin-bottom: 12px;
 }
 
 
 /* ═══════════════════════════════════════════════════════════
-   §9  QUICK REPLY BAR
+   §10  QUICK REPLY BAR
    ═══════════════════════════════════════════════════════════ */
 
-.ncm-app .ncm-quick-reply {
+.ncm-app .ncm-quick-reply-bar {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
+  gap: 4px;
+  padding: 6px 12px;
   border-top: 1px solid var(--ncm-border);
   background: var(--ncm-bg-base);
   flex-shrink: 0;
-  flex-wrap: wrap;
 }
 
-.ncm-app .ncm-quick-reply__btn {
-  font-size: 10px;
+.ncm-app .ncm-quick-reply-bar__label {
+  font-family: var(--ncm-font-mono);
+  font-size: 9px;
+  color: var(--ncm-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-right: 4px;
+}
+
+.ncm-app .ncm-quick-reply-btn {
+  font-family: var(--ncm-font-mono);
+  font-size: 9px;
   padding: 3px 8px;
+  background: var(--ncm-bg-surface);
+  border: 1px solid var(--ncm-border);
+  border-radius: 2px;
+  color: var(--ncm-text-muted);
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.ncm-app .ncm-quick-reply-btn:hover {
+  border-color: var(--ncm-secondary);
+  color: var(--ncm-secondary);
+  background: rgba(25, 243, 247, 0.05);
 }
 
 
 /* ═══════════════════════════════════════════════════════════
-   §10  DETAIL ACTION BAR
+   §11  DETAIL ACTION BAR
    ═══════════════════════════════════════════════════════════ */
 
 .ncm-app .ncm-detail-actions {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 6px 16px;
-  border-top: 1px solid var(--ncm-border);
+  gap: 6px;
+  padding: 8px 14px;
   background: var(--ncm-bg-base);
+  border-top: 1px solid var(--ncm-border);
   flex-shrink: 0;
+}
+
+.ncm-app .ncm-detail-actions .ncm-btn {
+  font-size: 10px;
+  padding: 5px 10px;
 }
 
 
 /* ═══════════════════════════════════════════════════════════
-   §11  PAGINATION
+   §12  PAGINATION
    ═══════════════════════════════════════════════════════════ */
 
 .ncm-app .ncm-inbox-pagination {
@@ -881,7 +1003,7 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 4px 0;
+  padding: 6px 10px;
   border-top: 1px solid var(--ncm-border);
   background: var(--ncm-bg-base);
   flex-shrink: 0;
@@ -889,84 +1011,101 @@
 
 .ncm-app .ncm-pagination-info {
   font-family: var(--ncm-font-mono);
-  font-size: var(--ncm-text-2xs);
-  color: var(--ncm-text-muted);
-}
-
-
-/* ═══════════════════════════════════════════════════════════
-   §12  STATUS FOOTER
-   ═══════════════════════════════════════════════════════════ */
-
-.ncm-app .ncm-inbox-footer {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 4px 12px;
-  background: var(--ncm-bg-base);
-  border-top: 1px solid var(--ncm-border);
-  flex-shrink: 0;
-  min-height: 24px;
-}
-
-.ncm-app .ncm-inbox-footer span {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-family: var(--ncm-font-mono);
-  font-size: var(--ncm-text-2xs);
-  color: var(--ncm-text-muted);
-}
-
-.ncm-app .ncm-inbox-footer i {
   font-size: 9px;
   color: var(--ncm-text-muted);
 }
 
 
 /* ═══════════════════════════════════════════════════════════
-   §13  DROPDOWNS
+   §13  SMART FOOTER — Sprint 2A
+   Left: message count + actor + network
+   Right: context-aware keyboard shortcuts
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-inbox-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 14px;
+  background: var(--ncm-bg-deep);
+  border-top: 1px solid rgba(42, 42, 69, 0.5);
+  flex-shrink: 0;
+}
+
+.ncm-app .ncm-footer-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.ncm-app .ncm-footer-shortcuts {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+}
+
+.ncm-app .ncm-footer-item {
+  font-family: var(--ncm-font-mono);
+  font-size: 9px;
+  color: var(--ncm-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.ncm-app .ncm-footer-item i {
+  font-size: 8px;
+  opacity: 0.6;
+}
+
+.ncm-app .ncm-shortcut-hint {
+  font-family: var(--ncm-font-mono);
+  font-size: 9px;
+  color: var(--ncm-text-muted);
+  letter-spacing: 0.02em;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   §14  DROPDOWNS
    ═══════════════════════════════════════════════════════════ */
 
 .ncm-app .ncm-network-dropdown,
-.ncm-app .ncm-sort-dropdown,
-.ncm-app .ncm-network-filter-dropdown {
+.ncm-app .ncm-sort-dropdown {
   position: absolute;
   top: 100%;
   left: 0;
   min-width: 160px;
   background: var(--ncm-bg-elevated);
   border: 1px solid var(--ncm-border);
-  border-radius: var(--ncm-radius-md);
-  box-shadow: var(--ncm-shadow-elevated);
+  border-radius: 2px;
+  box-shadow: var(--ncm-shadow-elevated, 0 4px 16px rgba(0, 0, 0, 0.4));
   z-index: var(--ncm-z-dropdown, 100);
   overflow: hidden;
 }
 
 .ncm-app .ncm-network-option,
-.ncm-app .ncm-sort-option,
-.ncm-app .ncm-network-filter-option {
+.ncm-app .ncm-sort-option {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
   cursor: pointer;
   font-family: var(--ncm-font-display);
-  font-size: var(--ncm-text-xs);
+  font-size: var(--ncm-text-xs, 11px);
   color: var(--ncm-text-secondary);
   transition: all 0.1s ease;
 }
 
 .ncm-app .ncm-network-option:hover,
-.ncm-app .ncm-sort-option:hover,
-.ncm-app .ncm-network-filter-option:hover {
+.ncm-app .ncm-sort-option:hover {
   background: var(--ncm-bg-surface);
   color: var(--ncm-text-primary);
 }
 
 .ncm-app .ncm-network-option--active,
-.ncm-app .ncm-sort-option--active,
-.ncm-app .ncm-network-filter-option--active {
+.ncm-app .ncm-sort-option--active {
   color: var(--ncm-secondary);
   background: rgba(25, 243, 247, 0.05);
 }
@@ -978,7 +1117,7 @@
 
 .ncm-app .ncm-network-option__lock {
   margin-left: auto;
-  color: var(--ncm-accent);
+  color: var(--ncm-accent, #f7c948);
 }
 
 .ncm-app .ncm-network-option__name {
@@ -988,106 +1127,82 @@
 
 
 /* ═══════════════════════════════════════════════════════════
-   §14  EMPTY STATES
-   Styles for both list and detail empty state partials.
+   §15  EMPTY STATES
    ═══════════════════════════════════════════════════════════ */
 
-/* ── Empty State: Message List (empty-state-list.hbs) ── */
+/* ── Empty List State (terminal-style) ── */
 
-.ncm-app .ncm-empty-list {
+.ncm-app .ncm-empty-state {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--ncm-space-md);
-  padding: var(--ncm-space-2xl) var(--ncm-space-lg);
+  padding: 32px 24px;
   text-align: center;
-  height: 100%;
-  min-height: 180px;
-  opacity: 0.7;
+  min-height: 120px;
 }
 
-.ncm-app .ncm-empty-list .ncm-empty-icon {
-  font-size: 2rem;
+.ncm-app .ncm-empty-state__icon {
+  font-size: 28px;
   color: var(--ncm-text-muted);
+  opacity: 0.3;
+  margin-bottom: 12px;
 }
 
-.ncm-app .ncm-empty-list .ncm-empty-icon i {
-  font-size: inherit;
-  color: inherit;
-}
-
-.ncm-app .ncm-empty-list .ncm-empty-title {
+.ncm-app .ncm-empty-state__title {
   font-family: var(--ncm-font-display);
-  font-size: var(--ncm-text-sm);
+  font-size: 12px;
   font-weight: 700;
-  color: var(--ncm-text-secondary);
+  color: var(--ncm-text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin: 0;
+  letter-spacing: 0.1em;
+  margin-bottom: 6px;
 }
 
-.ncm-app .ncm-empty-list .ncm-empty-subtitle {
+.ncm-app .ncm-empty-state__message {
   font-family: var(--ncm-font-mono);
-  font-size: var(--ncm-text-2xs);
+  font-size: 10px;
   color: var(--ncm-text-muted);
-  margin: 0;
+  opacity: 0.6;
 }
 
-.ncm-app .ncm-empty-list .ncm-empty-hint {
-  font-family: var(--ncm-font-mono);
-  font-size: var(--ncm-text-2xs);
-  color: var(--ncm-text-muted);
-  margin: 0;
-  opacity: 0.7;
-}
-
-/* ── Empty State: Detail Terminal (empty-state-detail.hbs) ── */
-
-.ncm-app .ncm-empty-detail {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  padding: var(--ncm-space-2xl);
-}
+/* ── Detail Empty — Terminal readout ── */
 
 .ncm-app .ncm-empty-terminal {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  max-width: 420px;
-  width: 100%;
+  padding: 24px;
+  max-width: 400px;
 }
 
 .ncm-app .ncm-terminal-line {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
   font-family: var(--ncm-font-mono);
-  font-size: var(--ncm-text-sm);
-  line-height: 1.4;
+  font-size: 11px;
+  line-height: 1.8;
+  color: var(--ncm-text-secondary);
+}
+
+.ncm-app .ncm-terminal-prompt .ncm-prompt-text {
+  color: var(--ncm-secondary);
+}
+
+.ncm-app .ncm-terminal-dim {
+  color: var(--ncm-text-muted);
+  opacity: 0.5;
+}
+
+.ncm-app .ncm-terminal-hint {
+  color: var(--ncm-text-muted);
+  opacity: 0.4;
+  font-size: 10px;
 }
 
 .ncm-app .ncm-prompt-char {
   color: var(--ncm-secondary);
-  flex-shrink: 0;
-  font-weight: 700;
-}
-
-.ncm-app .ncm-terminal-prompt {
-  color: var(--ncm-text-primary);
-}
-
-.ncm-app .ncm-prompt-text {
-  font-weight: 700;
-  color: var(--ncm-secondary);
-  letter-spacing: 0.06em;
+  margin-right: 6px;
 }
 
 .ncm-app .ncm-cursor-blink {
-  color: var(--ncm-secondary);
   animation: ncm-blink 1s step-end infinite;
+  color: var(--ncm-secondary);
 }
 
 @keyframes ncm-blink {
@@ -1095,29 +1210,22 @@
   50% { opacity: 0; }
 }
 
-.ncm-app .ncm-terminal-dim {
-  color: var(--ncm-text-muted);
-  font-size: var(--ncm-text-xs);
-}
-
-.ncm-app .ncm-terminal-hint {
-  color: var(--ncm-text-muted);
-  font-size: var(--ncm-text-2xs);
-  opacity: 0.6;
-  margin-top: 8px;
-}
-
 
 /* ═══════════════════════════════════════════════════════════
-   §15  ANIMATION LEVEL OVERRIDES
+   §16  ANIMATION OVERRIDES
    ═══════════════════════════════════════════════════════════ */
 
-/* Reduced: Only opacity + background transitions */
+/* Reduced animations */
 [data-ncm-animation-level="reduced"] .ncm-app .ncm-message-item {
-  transition: opacity 0.15s ease, background 0.15s ease;
+  transition: opacity 0.15s ease;
 }
 
-[data-ncm-animation-level="reduced"] .ncm-app .ncm-inbox-unread--active .ncm-inbox-unread__count,
+[data-ncm-animation-level="reduced"] .ncm-app .ncm-inbox-network__dot--CONNECTED,
+[data-ncm-animation-level="reduced"] .ncm-app .ncm-inbox-network__dot--DEGRADED {
+  animation: none;
+  opacity: 1;
+}
+
 [data-ncm-animation-level="reduced"] .ncm-app .ncm-message-item[data-priority="critical"] {
   animation: none;
 }
@@ -1137,11 +1245,11 @@
 
 
 /* ═══════════════════════════════════════════════════════════
-   §16  RESPONSIVE: Narrow Window
+   §17  RESPONSIVE: Narrow Window
    ═══════════════════════════════════════════════════════════ */
 
 @container (max-width: 600px) {
-  .ncm-app .ncm-split-panel {
+  .ncm-app .ncm-inbox-split-panel {
     flex-direction: column;
   }
 
@@ -1156,28 +1264,58 @@
     display: none;
   }
 
+  /* Hide identity text, keep avatar */
   .ncm-app .ncm-inbox-identity__info {
     display: none;
   }
 
-  .ncm-app .ncm-inbox-header__actions span {
+  /* Hide compose label, keep icon */
+  .ncm-app .ncm-header-actions span {
+    display: none;
+  }
+
+  /* Hide stat labels, keep numbers */
+  .ncm-app .ncm-header-stat__label {
+    display: none;
+  }
+
+  /* Hide header dividers */
+  .ncm-app .ncm-header-divider {
+    display: none;
+  }
+
+  /* Compact header gap */
+  .ncm-app .ncm-inbox-header {
+    gap: 6px;
+    padding: 6px 8px;
+  }
+
+  /* Hide footer shortcuts */
+  .ncm-app .ncm-footer-shortcuts {
     display: none;
   }
 }
 
 @container (max-width: 450px) {
-  .ncm-app .ncm-inbox-tabs .ncm-tab span {
+  /* Tab text hidden, icons only */
+  .ncm-app .ncm-inbox-tabs .ncm-tab span:not(.ncm-tab__count) {
     display: none;
   }
 
-  .ncm-app .ncm-inbox-tab-controls span {
+  /* Hide sort label */
+  .ncm-app .ncm-sort-control span {
+    display: none;
+  }
+
+  /* Hide HUD strip */
+  .ncm-app .ncm-hud-strip--tight {
     display: none;
   }
 }
 
 
 /* ═══════════════════════════════════════════════════════════
-   UTILITY
+   §18  UTILITY
    ═══════════════════════════════════════════════════════════ */
 
 .ncm-app .ncm-hidden {
