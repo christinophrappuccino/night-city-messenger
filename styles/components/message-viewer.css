@@ -21,8 +21,13 @@
  *  §11 Pagination
  *  §12 Status Footer
  *  §13 Dropdowns
- *  §14 Animation Overrides
- *  §15 Responsive
+ *  §14 Empty States (list + detail terminal)
+ *  §15 Animation Overrides
+ *  §16 Responsive
+ *
+ * FIXES (post-Sprint 1):
+ *  - §3: tabs overflow hidden + scrollbar suppression to prevent horizontal bar
+ *  - §14: Added styles for empty-state-list.hbs and empty-state-detail.hbs
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 
@@ -48,12 +53,13 @@
 .ncm-app .ncm-inbox-header {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px 12px;
+  gap: 8px;
+  padding: 6px 10px;
   background: var(--ncm-bg-base);
   border-bottom: 1px solid var(--ncm-primary);
   flex-shrink: 0;
-  min-height: 48px;
+  min-height: 44px;
+  overflow: hidden;
 }
 
 /* ── Character Identity ── */
@@ -63,6 +69,7 @@
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
+  min-width: 0;
 }
 
 .ncm-app .ncm-inbox-identity__portrait {
@@ -72,6 +79,7 @@
   border: 2px solid var(--ncm-border);
   object-fit: cover;
   background: var(--ncm-bg-deep);
+  flex-shrink: 0;
 }
 
 .ncm-app .ncm-inbox-identity__initials {
@@ -87,6 +95,7 @@
   font-weight: 700;
   color: var(--ncm-secondary);
   background: var(--ncm-bg-surface);
+  flex-shrink: 0;
 }
 
 .ncm-app .ncm-inbox-identity__info {
@@ -98,7 +107,7 @@
 
 .ncm-app .ncm-inbox-identity__name {
   font-family: var(--ncm-font-display);
-  font-size: var(--ncm-text-base);
+  font-size: var(--ncm-text-sm);
   font-weight: 700;
   color: var(--ncm-text-primary);
   white-space: nowrap;
@@ -120,8 +129,8 @@
 .ncm-app .ncm-inbox-network {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
+  gap: 4px;
+  padding: 3px 8px;
   background: var(--ncm-bg-surface);
   border: 1px solid var(--ncm-border);
   border-radius: var(--ncm-radius-md);
@@ -137,12 +146,12 @@
 
 .ncm-app .ncm-inbox-network__icon {
   color: var(--ncm-secondary);
-  font-size: var(--ncm-text-sm);
+  font-size: 11px;
 }
 
 .ncm-app .ncm-inbox-network__name {
   font-family: var(--ncm-font-display);
-  font-size: var(--ncm-text-sm);
+  font-size: var(--ncm-text-xs);
   font-weight: 600;
   color: var(--ncm-text-primary);
   text-transform: uppercase;
@@ -151,12 +160,12 @@
 
 .ncm-app .ncm-inbox-network__lock {
   color: var(--ncm-accent);
-  font-size: 10px;
+  font-size: 9px;
 }
 
 .ncm-app .ncm-inbox-network__caret {
   color: var(--ncm-text-muted);
-  font-size: 10px;
+  font-size: 9px;
   margin-left: 2px;
 }
 
@@ -166,14 +175,14 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 4px 10px;
+  padding: 2px 8px;
   background: var(--ncm-bg-surface);
   border: 1px solid var(--ncm-border);
   border-radius: var(--ncm-radius-md);
   cursor: pointer;
   transition: all 0.15s ease;
   flex-shrink: 0;
-  min-width: 48px;
+  min-width: 40px;
 }
 
 .ncm-app .ncm-inbox-unread--active {
@@ -194,7 +203,7 @@
 
 .ncm-app .ncm-inbox-unread__label {
   font-family: var(--ncm-font-ui);
-  font-size: 8px;
+  font-size: 7px;
   letter-spacing: 0.1em;
   color: var(--ncm-text-muted);
   text-transform: uppercase;
@@ -202,14 +211,17 @@
 
 .ncm-app .ncm-inbox-unread__count {
   font-family: var(--ncm-font-display);
-  font-size: var(--ncm-text-lg);
+  font-size: var(--ncm-text-base);
   font-weight: 700;
   color: var(--ncm-text-secondary);
   line-height: 1;
 }
 
+/* ── Header Spacer ── */
+
 .ncm-app .ncm-inbox-header__spacer {
   flex: 1;
+  min-width: 0;
 }
 
 /* ── Search ── */
@@ -222,7 +234,7 @@
 }
 
 .ncm-app .ncm-inbox-search--expanded {
-  flex: 0 1 240px;
+  flex: 0 1 200px;
 }
 
 .ncm-app .ncm-inbox-search--expanded .ncm-search-input {
@@ -241,6 +253,8 @@
 
 /* ═══════════════════════════════════════════════════════════
    §3  CATEGORY TABS
+   FIX: overflow:hidden on outer container prevents horizontal
+   scrollbar bleed. Inner .ncm-tabs scrolls with hidden scrollbar.
    ═══════════════════════════════════════════════════════════ */
 
 .ncm-app .ncm-inbox-tabs {
@@ -250,7 +264,8 @@
   background: var(--ncm-bg-base);
   border-bottom: 1px solid var(--ncm-border);
   flex-shrink: 0;
-  overflow-x: auto;
+  overflow: hidden;
+  min-height: 0;
 }
 
 .ncm-app .ncm-inbox-tabs .ncm-tabs {
@@ -259,22 +274,27 @@
   flex: 1;
   min-width: 0;
   overflow-x: auto;
+  scrollbar-width: none;           /* Firefox */
+}
+
+.ncm-app .ncm-inbox-tabs .ncm-tabs::-webkit-scrollbar {
+  display: none;                   /* Chrome/Safari */
 }
 
 .ncm-app .ncm-inbox-tabs .ncm-tab {
   display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 8px 12px;
+  gap: 4px;
+  padding: 6px 8px;
   background: transparent;
   border: none;
   border-bottom: 2px solid transparent;
   color: var(--ncm-text-secondary);
   font-family: var(--ncm-font-display);
-  font-size: var(--ncm-text-xs);
+  font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
   cursor: pointer;
   transition: all 0.15s ease;
   white-space: nowrap;
@@ -282,7 +302,7 @@
 }
 
 .ncm-app .ncm-inbox-tabs .ncm-tab i {
-  font-size: 10px;
+  font-size: 9px;
 }
 
 .ncm-app .ncm-inbox-tabs .ncm-tab:hover {
@@ -299,13 +319,13 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 16px;
-  height: 16px;
-  padding: 0 4px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
   border-radius: var(--ncm-radius-pill);
   background: var(--ncm-bg-elevated);
   font-family: var(--ncm-font-mono);
-  font-size: 9px;
+  font-size: 8px;
   font-weight: 700;
   line-height: 1;
 }
@@ -320,7 +340,7 @@
 .ncm-app .ncm-inbox-tab-controls {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   padding-right: 8px;
   flex-shrink: 0;
 }
@@ -330,11 +350,11 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 8px;
+  padding: 4px 6px;
   cursor: pointer;
   position: relative;
   font-family: var(--ncm-font-display);
-  font-size: var(--ncm-text-xs);
+  font-size: 10px;
   color: var(--ncm-text-secondary);
   border: 1px solid transparent;
   border-radius: var(--ncm-radius-sm);
@@ -349,7 +369,7 @@
 
 .ncm-app .ncm-sort-control i,
 .ncm-app .ncm-network-filter-control i {
-  font-size: 10px;
+  font-size: 9px;
 }
 
 
@@ -529,88 +549,44 @@
   border-left-color: #8b00ff;
 }
 
-/* Encrypted */
-.ncm-app .ncm-message-item--encrypted {
-  opacity: 0.85;
-}
-
-/* Bulk selected */
-.ncm-app .ncm-message-item--bulk-selected {
-  background: rgba(25, 243, 247, 0.06);
-}
-
-/* ── Checkbox ── */
-
-.ncm-app .ncm-message-item__checkbox {
-  display: flex;
-  align-items: center;
-  padding-top: 3px;
-  flex-shrink: 0;
-  opacity: 0;
-  transition: opacity 0.1s ease;
-}
-
-.ncm-app .ncm-message-item:hover .ncm-message-item__checkbox,
-.ncm-app .ncm-message-item--bulk-selected .ncm-message-item__checkbox,
-.ncm-app .ncm-message-viewer[data-has-bulk-selection] .ncm-message-item__checkbox {
-  opacity: 1;
-}
-
-.ncm-app .ncm-bulk-check {
-  width: 14px;
-  height: 14px;
-  accent-color: var(--ncm-secondary);
-  cursor: pointer;
-}
-
-/* ── Unread Dot ── */
+/* ── Message Item Inner Elements ── */
 
 .ncm-app .ncm-message-item__unread-dot {
-  position: absolute;
-  left: 7px;
-  top: 50%;
-  transform: translateY(-50%);
   width: 6px;
   height: 6px;
-  background: var(--ncm-secondary);
   border-radius: 50%;
-  box-shadow: 0 0 6px rgba(25, 243, 247, 0.5);
+  background: var(--ncm-secondary);
   flex-shrink: 0;
-  z-index: 1;
+  margin-top: 6px;
+  box-shadow: 0 0 6px rgba(25, 243, 247, 0.4);
 }
 
-/* ── Avatar ── */
+.ncm-app .ncm-message-item__unread-dot--hidden {
+  visibility: hidden;
+}
 
 .ncm-app .ncm-message-item__avatar {
-  flex-shrink: 0;
-  margin-top: 2px;
-}
-
-.ncm-app .ncm-message-item__portrait {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: 1px solid var(--ncm-border);
-  object-fit: cover;
-  background: var(--ncm-bg-deep);
-}
-
-.ncm-app .ncm-message-item__initials {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   border: 1px solid var(--ncm-border);
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: var(--ncm-font-display);
-  font-size: var(--ncm-text-xs);
+  font-size: 10px;
   font-weight: 700;
-  color: var(--ncm-secondary);
-  background: var(--ncm-bg-surface);
+  color: var(--ncm-text-secondary);
+  background: var(--ncm-bg-elevated);
+  flex-shrink: 0;
+  overflow: hidden;
 }
 
-/* ── Content ── */
+.ncm-app .ncm-message-item__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
 
 .ncm-app .ncm-message-item__content {
   flex: 1;
@@ -620,13 +596,10 @@
   gap: 2px;
 }
 
-/* ── Top Row: Sender + Meta ── */
-
 .ncm-app .ncm-message-item__top-row {
   display: flex;
   align-items: center;
   gap: 6px;
-  min-width: 0;
 }
 
 .ncm-app .ncm-message-item__sender {
@@ -637,75 +610,50 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  flex-shrink: 1;
-  min-width: 0;
-}
-
-.ncm-app .ncm-message-item__status-icons {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  flex-shrink: 0;
-}
-
-.ncm-app .ncm-message-item__icon {
-  font-size: 9px;
-}
-
-.ncm-app .ncm-message-item__icon--saved {
-  color: var(--ncm-accent);
-}
-
-.ncm-app .ncm-message-item__icon--encrypted {
-  color: var(--ncm-accent);
-}
-
-.ncm-app .ncm-message-item__icon--infected {
-  color: #8b00ff;
-}
-
-.ncm-app .ncm-message-item__time {
-  font-family: var(--ncm-font-mono);
-  font-size: var(--ncm-text-2xs);
-  color: var(--ncm-text-muted);
-  white-space: nowrap;
-  flex-shrink: 0;
-  margin-left: auto;
-}
-
-/* ── Subject Row ── */
-
-.ncm-app .ncm-message-item__subject-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-}
-
-.ncm-app .ncm-message-item__subject {
-  font-family: var(--ncm-font-body);
-  font-size: var(--ncm-text-sm);
-  color: var(--ncm-text-secondary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   flex: 1;
   min-width: 0;
 }
 
-/* ── Preview Row ── */
-
-.ncm-app .ncm-message-item__preview-row {
-  display: none; /* Controlled by density */
+.ncm-app .ncm-message-item__time {
+  font-family: var(--ncm-font-mono);
+  font-size: 9px;
+  color: var(--ncm-text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
-.ncm-app .ncm-message-item__preview {
+.ncm-app .ncm-message-item__subject {
+  font-family: var(--ncm-font-display);
+  font-size: var(--ncm-text-xs);
+  font-weight: 400;
+  color: var(--ncm-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ncm-app .ncm-message-item__badges {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  flex-wrap: nowrap;
+}
+
+.ncm-app .ncm-message-item__preview-row {
   font-family: var(--ncm-font-mono);
   font-size: var(--ncm-text-2xs);
   color: var(--ncm-text-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Bulk selection checkbox */
+.ncm-app .ncm-message-item__checkbox {
+  margin-top: 4px;
+  flex-shrink: 0;
+  cursor: pointer;
+  accent-color: var(--ncm-secondary);
 }
 
 
@@ -713,35 +661,23 @@
    §7  DENSITY MODES
    ═══════════════════════════════════════════════════════════ */
 
-/* ── Compact: Single line, no avatar, no preview ── */
+/* ── Compact: Single line, no subject row ── */
 
-.ncm-app .ncm-message-viewer[data-density="compact"] .ncm-message-item__avatar {
-  display: none;
+.ncm-app .ncm-message-viewer[data-density="compact"] .ncm-message-item {
+  padding: 4px 10px;
+  gap: 6px;
 }
 
+.ncm-app .ncm-message-viewer[data-density="compact"] .ncm-message-item__subject,
+.ncm-app .ncm-message-viewer[data-density="compact"] .ncm-message-item__badges,
 .ncm-app .ncm-message-viewer[data-density="compact"] .ncm-message-item__preview-row {
   display: none;
 }
 
-.ncm-app .ncm-message-viewer[data-density="compact"] .ncm-message-item {
-  padding: 4px 12px;
-  align-items: center;
-}
-
-.ncm-app .ncm-message-viewer[data-density="compact"] .ncm-message-item__content {
-  flex-direction: row;
-  align-items: center;
-  gap: 8px;
-}
-
-.ncm-app .ncm-message-viewer[data-density="compact"] .ncm-message-item__top-row {
-  flex-shrink: 0;
-  width: auto;
-}
-
-.ncm-app .ncm-message-viewer[data-density="compact"] .ncm-message-item__subject-row {
-  flex: 1;
-  min-width: 0;
+.ncm-app .ncm-message-viewer[data-density="compact"] .ncm-message-item__avatar {
+  width: 22px;
+  height: 22px;
+  font-size: 8px;
 }
 
 /* ── Normal: Two lines — sender + subject. No preview. ── */
@@ -843,155 +779,60 @@
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  border: 1px solid var(--ncm-secondary);
+  border: 1px solid var(--ncm-border);
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: var(--ncm-font-display);
-  font-size: var(--ncm-text-2xs);
+  font-size: 9px;
   font-weight: 700;
-  color: var(--ncm-secondary);
-  background: var(--ncm-bg-surface);
-  flex-shrink: 0;
-}
-
-.ncm-app .ncm-detail-meta__from-name {
-  font-weight: 600;
-  color: var(--ncm-text-primary);
-}
-
-.ncm-app .ncm-detail-meta__from-email {
-  font-family: var(--ncm-font-mono);
-  font-size: var(--ncm-text-2xs);
-  color: var(--ncm-text-muted);
-}
-
-/* ── Thread Indicator ── */
-
-.ncm-app .ncm-thread-indicator {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  font-family: var(--ncm-font-ui);
-  font-size: 11px;
   color: var(--ncm-text-secondary);
-  border-bottom: 1px solid var(--ncm-border);
-  cursor: pointer;
-  transition: background 0.15s ease;
+  background: var(--ncm-bg-elevated);
 }
 
-.ncm-app .ncm-thread-indicator:hover {
-  background: var(--ncm-bg-surface);
-  color: var(--ncm-secondary);
-}
-
-.ncm-app .ncm-thread-chevron {
-  margin-left: auto;
-  font-size: 10px;
-}
-
-/* ── Message Body ── */
+/* ── Body ── */
 
 .ncm-app .ncm-detail-body {
   flex: 1;
   padding: 16px;
+  overflow-y: auto;
+}
+
+.ncm-app .ncm-detail-body__content {
   font-family: var(--ncm-font-mono);
   font-size: var(--ncm-text-sm);
-  line-height: 1.65;
+  line-height: 1.6;
   color: var(--ncm-text-primary);
-  overflow-y: auto;
-  background: var(--ncm-bg-deep);
-}
-
-.ncm-app .ncm-detail-body p {
-  margin-bottom: 0.8em;
-}
-
-.ncm-app .ncm-detail-body__empty {
-  color: var(--ncm-text-muted);
-}
-
-/* ── Attachments ── */
-
-.ncm-app .ncm-detail-attachments {
-  padding: 8px 16px;
-  border-top: 1px solid var(--ncm-border);
-  background: var(--ncm-bg-base);
-}
-
-.ncm-app .ncm-attachment-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 4px;
-}
-
-.ncm-app .ncm-attachment-item {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
   background: var(--ncm-bg-surface);
   border: 1px solid var(--ncm-border);
   border-radius: var(--ncm-radius-md);
-  cursor: pointer;
-  font-family: var(--ncm-font-mono);
-  font-size: 11px;
-  color: var(--ncm-text-secondary);
-  transition: all 0.15s ease;
+  padding: 16px;
 }
 
-.ncm-app .ncm-attachment-item:hover {
-  border-color: var(--ncm-secondary);
-  color: var(--ncm-text-primary);
-}
+/* ── Encrypted Overlay ── */
 
-/* ── Encryption Overlay ── */
-
-.ncm-app .ncm-message-encrypted-overlay {
+.ncm-app .ncm-detail-encrypted {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 48px 24px;
-  text-align: center;
-  gap: 16px;
-  flex: 1;
+  height: 100%;
+  gap: var(--ncm-space-md);
+  opacity: 0.8;
 }
 
-.ncm-app .ncm-encrypted-icon {
-  font-size: 40px;
-  color: var(--ncm-accent);
-  text-shadow: 0 0 20px rgba(247, 201, 72, 0.3);
+.ncm-app .ncm-detail-encrypted__icon {
+  font-size: 2.5rem;
+  color: var(--ncm-primary);
 }
 
-.ncm-app .ncm-encrypted-title {
-  font-family: var(--ncm-font-ui);
-  font-size: var(--ncm-text-md);
+.ncm-app .ncm-detail-encrypted__text {
+  font-family: var(--ncm-font-display);
+  font-size: var(--ncm-text-base);
   font-weight: 700;
-  letter-spacing: 0.12em;
-  color: var(--ncm-accent);
   text-transform: uppercase;
-}
-
-.ncm-app .ncm-encrypted-subtitle {
-  font-family: var(--ncm-font-mono);
-  font-size: var(--ncm-text-xs);
-  color: var(--ncm-text-muted);
-  max-width: 280px;
-}
-
-.ncm-app .ncm-encrypted-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 8px;
-}
-
-/* ── Malware Warning ── */
-
-.ncm-app .ncm-message-detail .ncm-alert {
-  margin: 8px 16px;
+  letter-spacing: 0.1em;
+  color: var(--ncm-primary);
 }
 
 
@@ -999,14 +840,20 @@
    §9  QUICK REPLY BAR
    ═══════════════════════════════════════════════════════════ */
 
-.ncm-app .ncm-quick-reply-bar {
+.ncm-app .ncm-quick-reply {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 4px;
+  gap: 6px;
   padding: 8px 16px;
   border-top: 1px solid var(--ncm-border);
   background: var(--ncm-bg-base);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.ncm-app .ncm-quick-reply__btn {
+  font-size: 10px;
+  padding: 3px 8px;
 }
 
 
@@ -1014,18 +861,14 @@
    §10  DETAIL ACTION BAR
    ═══════════════════════════════════════════════════════════ */
 
-.ncm-app .ncm-detail-action-bar {
+.ncm-app .ncm-detail-actions {
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 8px 16px;
+  padding: 6px 16px;
   border-top: 1px solid var(--ncm-border);
-  background: var(--ncm-bg-surface);
+  background: var(--ncm-bg-base);
   flex-shrink: 0;
-}
-
-.ncm-app .ncm-detail-action-bar__spacer {
-  flex: 1;
 }
 
 
@@ -1038,7 +881,7 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 6px 12px;
+  padding: 4px 0;
   border-top: 1px solid var(--ncm-border);
   background: var(--ncm-bg-base);
   flex-shrink: 0;
@@ -1063,7 +906,7 @@
   background: var(--ncm-bg-base);
   border-top: 1px solid var(--ncm-border);
   flex-shrink: 0;
-  min-height: 28px;
+  min-height: 24px;
 }
 
 .ncm-app .ncm-inbox-footer span {
@@ -1145,7 +988,128 @@
 
 
 /* ═══════════════════════════════════════════════════════════
-   §14  ANIMATION LEVEL OVERRIDES
+   §14  EMPTY STATES
+   Styles for both list and detail empty state partials.
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Empty State: Message List (empty-state-list.hbs) ── */
+
+.ncm-app .ncm-empty-list {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ncm-space-md);
+  padding: var(--ncm-space-2xl) var(--ncm-space-lg);
+  text-align: center;
+  height: 100%;
+  min-height: 180px;
+  opacity: 0.7;
+}
+
+.ncm-app .ncm-empty-list .ncm-empty-icon {
+  font-size: 2rem;
+  color: var(--ncm-text-muted);
+}
+
+.ncm-app .ncm-empty-list .ncm-empty-icon i {
+  font-size: inherit;
+  color: inherit;
+}
+
+.ncm-app .ncm-empty-list .ncm-empty-title {
+  font-family: var(--ncm-font-display);
+  font-size: var(--ncm-text-sm);
+  font-weight: 700;
+  color: var(--ncm-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 0;
+}
+
+.ncm-app .ncm-empty-list .ncm-empty-subtitle {
+  font-family: var(--ncm-font-mono);
+  font-size: var(--ncm-text-2xs);
+  color: var(--ncm-text-muted);
+  margin: 0;
+}
+
+.ncm-app .ncm-empty-list .ncm-empty-hint {
+  font-family: var(--ncm-font-mono);
+  font-size: var(--ncm-text-2xs);
+  color: var(--ncm-text-muted);
+  margin: 0;
+  opacity: 0.7;
+}
+
+/* ── Empty State: Detail Terminal (empty-state-detail.hbs) ── */
+
+.ncm-app .ncm-empty-detail {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: var(--ncm-space-2xl);
+}
+
+.ncm-app .ncm-empty-terminal {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 420px;
+  width: 100%;
+}
+
+.ncm-app .ncm-terminal-line {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-family: var(--ncm-font-mono);
+  font-size: var(--ncm-text-sm);
+  line-height: 1.4;
+}
+
+.ncm-app .ncm-prompt-char {
+  color: var(--ncm-secondary);
+  flex-shrink: 0;
+  font-weight: 700;
+}
+
+.ncm-app .ncm-terminal-prompt {
+  color: var(--ncm-text-primary);
+}
+
+.ncm-app .ncm-prompt-text {
+  font-weight: 700;
+  color: var(--ncm-secondary);
+  letter-spacing: 0.06em;
+}
+
+.ncm-app .ncm-cursor-blink {
+  color: var(--ncm-secondary);
+  animation: ncm-blink 1s step-end infinite;
+}
+
+@keyframes ncm-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.ncm-app .ncm-terminal-dim {
+  color: var(--ncm-text-muted);
+  font-size: var(--ncm-text-xs);
+}
+
+.ncm-app .ncm-terminal-hint {
+  color: var(--ncm-text-muted);
+  font-size: var(--ncm-text-2xs);
+  opacity: 0.6;
+  margin-top: 8px;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   §15  ANIMATION LEVEL OVERRIDES
    ═══════════════════════════════════════════════════════════ */
 
 /* Reduced: Only opacity + background transitions */
@@ -1158,6 +1122,11 @@
   animation: none;
 }
 
+[data-ncm-animation-level="reduced"] .ncm-app .ncm-cursor-blink {
+  animation: none;
+  opacity: 1;
+}
+
 /* Off: No animations at all */
 [data-ncm-animation-level="off"] .ncm-app .ncm-message-viewer *,
 [data-ncm-animation-level="off"] .ncm-app .ncm-message-viewer *::before,
@@ -1168,7 +1137,7 @@
 
 
 /* ═══════════════════════════════════════════════════════════
-   §15  RESPONSIVE: Narrow Window
+   §16  RESPONSIVE: Narrow Window
    ═══════════════════════════════════════════════════════════ */
 
 @container (max-width: 600px) {

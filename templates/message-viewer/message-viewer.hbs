@@ -5,6 +5,11 @@
   @description Main inbox template with cyberdeck terminal aesthetic.
     Split-panel layout: header bar → category tabs → message list | detail panel.
     Uses Sprint 0 design system components throughout.
+
+  FIXES (post-Sprint 1):
+    - Empty state list: uses dedicated empty-state-list.hbs partial (context-aware per filter)
+    - Empty state detail: uses dedicated empty-state-detail.hbs partial (terminal readout)
+    - Tab bar: overflow hidden to prevent horizontal scrollbar bleed
 --}}
 
 <div class="ncm-message-viewer" data-density="{{density}}">
@@ -220,11 +225,8 @@
             {{> "modules/cyberpunkred-messenger/templates/message-viewer/partials/message-list-item.hbs" }}
           {{/each}}
         {{else}}
-          {{!-- Empty State --}}
-          {{> "modules/cyberpunkred-messenger/templates/partials/empty-state.hbs"
-              icon="fas fa-inbox"
-              title="NO MESSAGES"
-              message="Your inbox is empty. Awaiting transmissions..." }}
+          {{!-- FIX: Use dedicated context-aware empty state partial --}}
+          {{> "modules/cyberpunkred-messenger/templates/message-viewer/partials/empty-state-list.hbs" }}
         {{/if}}
       </div>
 
@@ -259,13 +261,8 @@
         {{> "modules/cyberpunkred-messenger/templates/message-viewer/partials/message-detail.hbs"
             message=selectedMessage quickReplies=quickReplies isGM=isGM }}
       {{else}}
-        {{!-- Empty Detail State --}}
-        <div class="ncm-detail-empty">
-          {{> "modules/cyberpunkred-messenger/templates/partials/empty-state.hbs"
-              icon="fas fa-terminal"
-              title="AWAITING INPUT"
-              message="> SELECT MESSAGE TO READ_" }}
-        </div>
+        {{!-- FIX: Use dedicated terminal readout empty state --}}
+        {{> "modules/cyberpunkred-messenger/templates/message-viewer/partials/empty-state-detail.hbs" }}
       {{/if}}
     </div>
   </div>
