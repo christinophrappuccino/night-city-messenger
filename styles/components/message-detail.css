@@ -38,6 +38,67 @@
   line-height: 1.3;
 }
 
+.ncm-app .ncm-detail-subject {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 18px 4px;
+  flex-wrap: wrap;
+}
+
+.ncm-app .ncm-detail-subject__text {
+  font-family: var(--ncm-font-display);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--ncm-text-primary);
+  line-height: 1.2;
+}
+
+/* ── Horizontal Meta Row: FROM / TO / DATE / NET ── */
+
+.ncm-app .ncm-detail-meta {
+  border-bottom: 1px solid var(--ncm-border);
+  flex-shrink: 0;
+}
+
+.ncm-app .ncm-detail-meta__row-inline {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 4px 18px 10px;
+  flex-wrap: wrap;
+}
+
+.ncm-app .ncm-detail-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ncm-app .ncm-detail-meta-label {
+  font-family: var(--ncm-font-mono);
+  font-size: 9px;
+  color: var(--ncm-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.ncm-app .ncm-detail-meta-value {
+  font-family: var(--ncm-font-display);
+  font-size: 12px;
+  color: var(--ncm-text-secondary);
+  font-weight: 500;
+}
+
+.ncm-app .ncm-detail-meta-value--mono {
+  font-family: var(--ncm-font-mono);
+  font-size: 11px;
+}
+
+.ncm-app .ncm-detail-meta-value--highlight {
+  color: var(--ncm-secondary);
+}
+
 /* Thread Badge Pill — inline with subject */
 .ncm-app .ncm-thread-badge {
   display: inline-flex;
@@ -458,4 +519,36 @@
 @keyframes ncm-breach-pulse {
   0%, 100% { border-color: var(--ncm-secondary); }
   50% { border-color: rgba(25, 243, 247, 0.3); }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   §D9  MALWARE BANNER GLOW
+   Pulsing red glow on danger alerts within message detail.
+   Animation gated by preference level.
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-message-detail .ncm-alert.ncm-alert--danger {
+  box-shadow: 0 0 12px rgba(255, 0, 51, 0.15);
+  animation: ncm-threat-pulse 1.5s ease-in-out infinite;
+  margin: 8px 14px;
+}
+
+@keyframes ncm-threat-pulse {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 0 12px rgba(255, 0, 51, 0.15);
+  }
+  50% {
+    opacity: 0.85;
+    box-shadow: 0 0 20px rgba(255, 0, 51, 0.25);
+  }
+}
+
+[data-ncm-animation-level="reduced"] .ncm-app .ncm-message-detail .ncm-alert.ncm-alert--danger {
+  animation: none;
+}
+
+[data-ncm-animation-level="off"] .ncm-app .ncm-message-detail .ncm-alert.ncm-alert--danger {
+  animation: none;
+  box-shadow: none;
 }

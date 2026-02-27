@@ -4,8 +4,7 @@
   @module cyberpunkred-messenger
   @description Single message row in the inbox list. Supports 3 density modes
     (compact, normal, comfortable), priority indicators, unread state,
-    sender avatar with color-coding, network-themed styling, threat badges,
-    and bulk selection checkbox.
+    sender avatar with color-coding, network-themed styling, threat badges.
     Density is controlled by the parent [data-density] attribute on .ncm-message-viewer.
 
   Sprint 2C additions:
@@ -16,6 +15,10 @@
     - §2.7 Threat badge for malware-infected messages
     - §2.7 Red tint on infected message items
 
+  Visual Audit Fixes:
+    - Removed bulk selection checkbox (Fix 2B) — will be re-added
+      when a "bulk select" mode toggle is implemented
+
   Expected context (per message from _enrichMessages):
     messageId, from, to, subject, body, timestamp, network, priority,
     status: { read, saved, spam, encrypted, infected, deleted, sent },
@@ -24,7 +27,7 @@
     selected, bulkSelected,
     — Sprint 2C:
     avatarColor, networkThemeClass, networkAccentColor,
-    showNetworkBadge, networkBadgeLabel, threatBadge
+    showNetworkBadge, networkBadgeLabel, networkBadgeVariant, threatBadge
 --}}
 
 <div class="ncm-message-item {{networkThemeClass}}
@@ -39,15 +42,6 @@
      data-action="select-message">
 
   {{!-- Priority Left Border is handled by CSS [data-priority] --}}
-
-  {{!-- Bulk Selection Checkbox --}}
-  <div class="ncm-message-item__checkbox">
-    <input type="checkbox"
-           class="ncm-bulk-check"
-           data-action="toggle-select"
-           data-message-id="{{messageId}}"
-           {{#if bulkSelected}}checked{{/if}} />
-  </div>
 
   {{!-- Unread Indicator Dot --}}
   {{#unless status.read}}

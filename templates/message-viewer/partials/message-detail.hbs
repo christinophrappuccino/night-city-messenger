@@ -11,6 +11,12 @@
     - Interactive encrypted attachments via partial (§2.6)
     - Attachment chips via partial (§2.8)
 
+  Visual Audit Fixes:
+    - Metadata restructured: Subject as heading, FROM/TO/DATE/NET in horizontal
+      flex row matching mockup (Fix 2A)
+    - Alert partial param fixed: message= → text= (Fix 3A)
+    - Quick reply pills remain as <span> with .ncm-quick-pill class (Fix 1B — CSS)
+
   Expected context:
     message — enriched message object from _getEnrichedMessage()
       { messageId, from, to, subject, body, bodyRendered, timestamp, network,
@@ -57,72 +63,53 @@
     </div>
   {{else}}
 
-    {{!-- ═══ Message Metadata ═══ --}}
+    {{!-- ═══ Message Metadata — Restructured (Fix 2A) ═══
+         Subject as large heading row (with thread badge).
+         Then FROM / TO / DATE / NET as a compact horizontal flex row.
+    --}}
     <div class="ncm-detail-meta">
 
-      {{!-- FROM --}}
-      <div class="ncm-detail-meta__row">
-        <span class="ncm-detail-meta__label">FROM</span>
-        <div class="ncm-detail-meta__value ncm-detail-meta__from">
-          {{#if message.fromPortrait}}
-            <img class="ncm-detail-meta__avatar" src="{{message.fromPortrait}}" alt="{{message.fromDisplay}}" />
-          {{else}}
-            <div class="ncm-detail-meta__avatar-initials">{{message.fromInitial}}</div>
-          {{/if}}
-          <span class="ncm-detail-meta__from-name">{{message.fromDisplay}}</span>
-          <span class="ncm-detail-meta__from-email">{{message.from}}</span>
-        </div>
-      </div>
-
-      {{!-- TO --}}
-      <div class="ncm-detail-meta__row">
-        <span class="ncm-detail-meta__label">TO</span>
-        <span class="ncm-detail-meta__value">
-          {{#if message.toDisplay}}{{message.toDisplay}}{{else}}{{message.to}}{{/if}}
+      {{!-- Subject Heading Row --}}
+      <div class="ncm-detail-subject">
+        <span class="ncm-detail-subject__text">
+          {{#if message.subject}}{{message.subject}}{{else}}<em>(No Subject)</em>{{/if}}
         </span>
-      </div>
 
-      {{!-- DATE --}}
-      <div class="ncm-detail-meta__row">
-        <span class="ncm-detail-meta__label">DATE</span>
-        <span class="ncm-detail-meta__value ncm-detail-meta__value--mono">{{message.formattedTime}}</span>
-      </div>
-
-      {{!-- NETWORK --}}
-      <div class="ncm-detail-meta__row">
-        <span class="ncm-detail-meta__label">NETWORK</span>
-        <span class="ncm-detail-meta__value">
+        {{!-- Priority badge (inline with subject) --}}
+        {{#if (neq message.priority "normal")}}
           {{> "modules/cyberpunkred-messenger/templates/partials/tag-badge.hbs"
-              label=message.network variant="network" icon="fas fa-tower-broadcast" }}
-        </span>
+              label=message.priority variant=message.priorityVariant }}
+        {{/if}}
+
+        {{!-- §2.5 Thread Badge Pill --}}
+        {{#if message.threadInfo.count}}
+          <div class="ncm-thread-badge" data-action="toggle-thread">
+            <i class="fas fa-code-branch"></i>
+            <span class="ncm-thread-badge__label">THREAD</span>
+            <span class="ncm-thread-badge__count">{{message.threadInfo.count}}</span>
+          </div>
+        {{/if}}
       </div>
 
-      {{!-- PRIORITY (if not normal) --}}
-      {{#if (neq message.priority "normal")}}
-        <div class="ncm-detail-meta__row">
-          <span class="ncm-detail-meta__label">PRIORITY</span>
-          <span class="ncm-detail-meta__value">
-            {{> "modules/cyberpunkred-messenger/templates/partials/tag-badge.hbs"
-                label=message.priority variant=message.priorityVariant }}
+      {{!-- Compact Horizontal Meta Row --}}
+      <div class="ncm-detail-meta__row-inline">
+        <div class="ncm-detail-meta-item">
+          <span class="ncm-detail-meta-label">FROM</span>
+          <span class="ncm-detail-meta-value">{{message.fromDisplay}}</span>
+        </div>
+        <div class="ncm-detail-meta-item">
+          <span class="ncm-detail-meta-label">TO</span>
+          <span class="ncm-detail-meta-value">
+            {{#if message.toDisplay}}{{message.toDisplay}}{{else}}{{message.to}}{{/if}}
           </span>
         </div>
-      {{/if}}
-
-      {{!-- Subject + Thread Badge --}}
-      <div class="ncm-detail-meta__row ncm-detail-meta__row--subject">
-        <span class="ncm-detail-meta__label">SUBJECT</span>
-        <div class="ncm-detail-meta__value ncm-detail-meta__value--subject-row">
-          <span class="ncm-detail-meta__subject-text">
-            {{#if message.subject}}{{message.subject}}{{else}}<em>(No Subject)</em>{{/if}}
-          </span>
-          {{!-- §2.5 Thread Badge Pill --}}
-          {{#if message.threadInfo.count}}
-            <div class="ncm-thread-badge" data-action="toggle-thread">
-              <i class="fas fa-code-branch"></i>
-              <span class="ncm-thread-badge__label">THREAD</span>
-              <span class="ncm-thread-badge__count">{{message.threadInfo.count}}</span>
-            </div>
-          {{/if}}
+        <div class="ncm-detail-meta-item">
+          <span class="ncm-detail-meta-label">DATE</span>
+          <span class="ncm-detail-meta-value ncm-detail-meta-value--mono">{{message.formattedTime}}</span>
+        </div>
+        <div class="ncm-detail-meta-item">
+          <span class="ncm-detail-meta-label">NET</span>
+          <span class="ncm-detail-meta-value ncm-detail-meta-value--highlight">{{message.network}}</span>
         </div>
       </div>
     </div>
@@ -198,13 +185,13 @@
       {{/if}}
     </div>
 
-    {{!-- ═══ Malware Warning ═══ --}}
+    {{!-- ═══ Malware Warning (Fix 3A — param: text= not message=) ═══ --}}
     {{#if message.status.infected}}
       {{> "modules/cyberpunkred-messenger/templates/partials/alert-panel.hbs"
           variant="danger"
           icon="fas fa-biohazard"
           title="MALWARE DETECTED"
-          message="This message contains a hostile daemon. Proceed with caution."
+          text="This message contains a hostile daemon. Proceed with caution."
       }}
     {{/if}}
 

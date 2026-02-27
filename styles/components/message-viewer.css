@@ -339,6 +339,50 @@
   background: rgba(246, 82, 97, 0.1);
 }
 
+/* Compose button — outline style, Foundry override protection */
+.ncm-app .ncm-header-actions .ncm-btn.ncm-btn--primary {
+  background: transparent !important;
+  color: var(--ncm-primary) !important;
+  border: 1px solid var(--ncm-primary) !important;
+  font-family: var(--ncm-font-display);
+  font-weight: 600;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 3px 8px;
+  gap: 4px;
+  border-radius: 2px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+  white-space: nowrap;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.ncm-app .ncm-header-actions .ncm-btn.ncm-btn--primary:hover {
+  background: rgba(246, 82, 97, 0.1) !important;
+  box-shadow: 0 0 12px rgba(246, 82, 97, 0.2);
+}
+
+.ncm-app .ncm-header-actions .ncm-btn.ncm-btn--ghost {
+  background: transparent !important;
+  color: var(--ncm-text-secondary) !important;
+  border: 1px solid transparent !important;
+  padding: 3px 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.ncm-app .ncm-header-actions .ncm-btn.ncm-btn--ghost:hover {
+  color: var(--ncm-text-primary) !important;
+  background: var(--ncm-bg-surface) !important;
+}
+
 /* ═══════════════════════════════════════════════════════════
    §19  NETWORK-THEMED MESSAGES — Sprint 2C (§2.10)
    Each message carries a network theme class from getNetworkThemeClass().
@@ -347,7 +391,7 @@
 
 /* ── CITINET (default) — clean, no tint, standard left border on selected ── */
 .ncm-app .ncm-message-item.ncm-msg--citinet {
-  /* No additional styling — base rules apply */
+  border-left: 3px solid transparent;
 }
 
 .ncm-app .ncm-message-item.ncm-msg--citinet.ncm-message-item--selected {
@@ -357,6 +401,7 @@
 
 /* ── DARKNET — purple tint, menacing ── */
 .ncm-app .ncm-message-item.ncm-msg--darknet {
+  border-left: 3px solid rgba(180, 77, 255, 0.5);
   background: linear-gradient(
     90deg,
     rgba(180, 77, 255, 0.04) 0%,
@@ -402,6 +447,7 @@
 
 /* ── CORPNET — gold tint, corporate ── */
 .ncm-app .ncm-message-item.ncm-msg--corpnet {
+  border-left: 3px solid rgba(247, 201, 72, 0.5);
   background: linear-gradient(
     90deg,
     rgba(247, 201, 72, 0.03) 0%,
@@ -650,21 +696,22 @@
 
 .ncm-app .ncm-inbox-tabs {
   display: flex;
-  align-items: stretch;
+  align-items: center;
   background: var(--ncm-bg-base);
   border-bottom: 1px solid var(--ncm-border);
   flex-shrink: 0;
-  overflow: hidden;
-  min-height: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .ncm-app .ncm-inbox-tabs .ncm-tabs {
-  display: flex;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
   gap: 0;
   flex: 1;
   min-width: 0;
-  overflow-x: auto;
-  scrollbar-width: none;
+  overflow: visible;
 }
 
 .ncm-app .ncm-inbox-tabs .ncm-tabs::-webkit-scrollbar {
@@ -672,23 +719,27 @@
 }
 
 .ncm-app .ncm-inbox-tabs .ncm-tab {
-  display: flex;
+  display: inline-flex !important;
   align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid transparent;
-  color: var(--ncm-text-muted);
+  gap: 4px;
+  padding: 8px 12px;
   font-family: var(--ncm-font-display);
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
+  color: var(--ncm-text-muted);
+  background: transparent !important;
+  border: none !important;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: color 0.15s, border-color 0.15s;
   white-space: nowrap;
   flex-shrink: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  line-height: 1;
 }
 
 .ncm-app .ncm-inbox-tabs .ncm-tab i {
@@ -697,43 +748,41 @@
 
 .ncm-app .ncm-inbox-tabs .ncm-tab:hover {
   color: var(--ncm-text-secondary);
-  background: rgba(255, 255, 255, 0.02);
 }
 
-.ncm-app .ncm-inbox-tabs .ncm-tab--active {
+.ncm-app .ncm-inbox-tabs .ncm-tab.ncm-tab--active {
   color: var(--ncm-secondary);
   border-bottom-color: var(--ncm-secondary);
 }
 
 /* Tab count badge */
-.ncm-app .ncm-tab__count {
+.ncm-app .ncm-inbox-tabs .ncm-tab__count {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 18px;
+  min-width: 16px;
   height: 16px;
-  padding: 1px 5px;
-  border-radius: 2px;
+  padding: 0 4px;
+  border-radius: 8px;
   background: var(--ncm-bg-elevated);
   font-family: var(--ncm-font-mono);
   font-size: 9px;
   font-weight: 700;
-  color: var(--ncm-text-secondary);
+  color: var(--ncm-secondary);
   text-align: center;
   line-height: 1;
 }
 
-.ncm-app .ncm-tab--active .ncm-tab__count {
+.ncm-app .ncm-inbox-tabs .ncm-tab.ncm-tab--active .ncm-tab__count {
   background: rgba(25, 243, 247, 0.1);
   color: var(--ncm-secondary);
 }
 
 /* Alert count (red-tinted for Unread, Spam) */
-.ncm-app .ncm-tab__count--alert {
+.ncm-app .ncm-inbox-tabs .ncm-tab__count.ncm-tab__count--alert {
   background: rgba(246, 82, 97, 0.15);
   color: var(--ncm-primary);
 }
-
 
 /* ── §4a Tab Controls (Sort + Search, right-aligned) ── */
 
@@ -936,6 +985,17 @@
    §7  MESSAGE LIST ITEMS
    ═══════════════════════════════════════════════════════════ */
 
+/* Hide checkboxes by default — re-enable via [data-bulk-mode="true"] */
+.ncm-app .ncm-message-item__checkbox {
+  display: none !important;
+}
+
+.ncm-app .ncm-message-viewer[data-bulk-mode="true"] .ncm-message-item__checkbox {
+  display: flex !important;
+  align-items: center;
+  flex-shrink: 0;
+}
+
 .ncm-app .ncm-message-item {
   display: flex;
   align-items: flex-start;
@@ -954,10 +1014,15 @@
 }
 
 /* Selected */
-.ncm-app .ncm-message-item--selected {
-  background: var(--ncm-bg-surface);
-  border-left-color: var(--ncm-secondary);
-  box-shadow: inset 4px 0 12px rgba(25, 243, 247, 0.08);
+.ncm-app .ncm-message-item.ncm-message-item--selected {
+  background: var(--ncm-bg-surface) !important;
+  border-left: 3px solid var(--ncm-secondary) !important;
+  box-shadow: inset 4px 0 12px rgba(25, 243, 247, 0.06);
+}
+
+.ncm-app .ncm-message-item.ncm-message-item--selected:hover {
+  background: var(--ncm-bg-surface) !important;
+  border-left-color: var(--ncm-secondary) !important;
 }
 
 /* Unread */
@@ -1224,26 +1289,21 @@
    §10  QUICK REPLY BAR
    ═══════════════════════════════════════════════════════════ */
 
-.ncm-app .ncm-quick-reply-bar {
+.ncm-app .ncm-quick-reply {
   display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 4px;
-  padding: 6px 12px;
-  border-top: 1px solid var(--ncm-border);
-  background: var(--ncm-bg-base);
-  flex-shrink: 0;
+  gap: 6px;
+  margin-left: auto;
+  padding-left: 8px;
+  border-left: 1px solid var(--ncm-border);
 }
 
-.ncm-app .ncm-quick-reply-bar__label {
-  font-family: var(--ncm-font-mono);
-  font-size: 9px;
-  color: var(--ncm-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin-right: 4px;
-}
-
-.ncm-app .ncm-quick-reply-btn {
+.ncm-app .ncm-quick-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-family: var(--ncm-font-mono);
   font-size: 9px;
   padding: 3px 8px;
@@ -1252,13 +1312,24 @@
   border-radius: 2px;
   color: var(--ncm-text-muted);
   cursor: pointer;
-  transition: all 0.12s;
+  transition: all 0.12s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  line-height: 1;
+  appearance: none;
+  -webkit-appearance: none;
 }
 
-.ncm-app .ncm-quick-reply-btn:hover {
+.ncm-app .ncm-quick-pill:hover {
   border-color: var(--ncm-secondary);
   color: var(--ncm-secondary);
   background: rgba(25, 243, 247, 0.05);
+}
+
+.ncm-app .ncm-quick-pill:active {
+  transform: scale(0.97);
+  background: rgba(25, 243, 247, 0.1);
 }
 
 
@@ -1276,9 +1347,48 @@
   flex-shrink: 0;
 }
 
-.ncm-app .ncm-detail-actions .ncm-btn {
+/* Primary button (Reply) — red filled */
+.ncm-app .ncm-detail-actions .ncm-btn.ncm-btn--primary {
+  background: var(--ncm-primary) !important;
+  color: #fff !important;
+  border-color: var(--ncm-primary) !important;
+  font-family: var(--ncm-font-display);
+  font-weight: 600;
   font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   padding: 5px 10px;
+  cursor: pointer;
+}
+
+.ncm-app .ncm-detail-actions .ncm-btn.ncm-btn--primary:hover {
+  filter: brightness(1.15);
+  box-shadow: 0 0 12px rgba(246, 82, 97, 0.4);
+}
+
+/* Ghost buttons (Forward, Save, Chat, GM edit) */
+.ncm-app .ncm-detail-actions .ncm-btn.ncm-btn--ghost {
+  background: transparent !important;
+  color: var(--ncm-text-secondary) !important;
+  border-color: transparent !important;
+  font-family: var(--ncm-font-display);
+  font-weight: 600;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 5px 8px;
+  cursor: pointer;
+}
+
+.ncm-app .ncm-detail-actions .ncm-btn.ncm-btn--ghost:hover {
+  color: var(--ncm-text-primary) !important;
+  background: var(--ncm-bg-elevated) !important;
+}
+
+/* Icons inherit color */
+.ncm-app .ncm-detail-actions .ncm-btn i {
+  font-size: inherit;
+  color: inherit;
 }
 
 
