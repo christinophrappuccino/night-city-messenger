@@ -1,0 +1,454 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Night City Messenger — Composer & Dialog Atmosphere
+ * @file styles/components/composer-atmosphere.css
+ * @module cyberpunkred-messenger
+ * @description Atmosphere layer for the message composer and all NCM dialogs
+ *   (network auth, player email setup, confirmation dialogs). Applies bracket
+ *   headers, terminal-styled inputs, depth layering, and neon glow to every
+ *   NCM window beyond the inbox.
+ *
+ *   Sprint 1.5.7 — Composer & Dialog Atmosphere
+ *
+ *   Additive file — import after message-composer.css. Does not duplicate
+ *   base component rules, only adds atmosphere treatment.
+ *
+ * ─── SECTION INDEX ───
+ *  §C1  Composer Header (Bracket Header)
+ *  §C2  Composer Field Labels (Typography)
+ *  §C3  Terminal Input Prompt
+ *  §C4  Composer Body Container (Depth)
+ *  §C5  Composer Network Info Bar
+ *  §C6  Priority Pills (Neon Glow)
+ *  §C7  Dialog Window Chrome (Shared)
+ *  §C8  Network Auth Dialog
+ *  §C9  Email Setup Dialog
+ *  §C10 Confirmation Dialogs
+ *  §C11 Alert Compact Variant
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+
+/* ═══════════════════════════════════════════════════════════
+   §C1  COMPOSER HEADER — Bracket Header
+   Replace the plain h2 with a bracket-framed section header.
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-composer__header {
+  padding: var(--ncm-space-xs) var(--ncm-space-md);
+  background: var(--ncm-bg-base);
+  border-bottom: 1px solid var(--ncm-primary);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  position: relative;
+  z-index: var(--ncm-z-sticky, 200);
+}
+
+/* Kill old title styles — bracket header handles it */
+.ncm-app .ncm-composer__header .ncm-composer__title {
+  display: none;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   §C2  COMPOSER FIELD LABELS — Typography Tightening
+   Enforce design-system label treatment on field labels.
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-field__label {
+  font-family: var(--ncm-font-display);
+  font-weight: 600;
+  font-size: var(--ncm-text-2xs);
+  text-transform: uppercase;
+  letter-spacing: var(--ncm-tracking-wide, 0.08em);
+  color: var(--ncm-text-muted);
+  line-height: var(--ncm-leading-tight, 1.1);
+  width: 56px;
+  min-width: 56px;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   §C3  TERMINAL INPUT PROMPT
+   The ">" prompt prefix on password and email inputs.
+   Monospace, blinking cursor, feels like a terminal line.
+   Used in: network auth dialog, email setup dialog.
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-terminal-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: var(--ncm-bg-deep);
+  border: 1px solid var(--ncm-border);
+  border-radius: var(--ncm-radius-md);
+  overflow: hidden;
+  transition:
+    border-color var(--ncm-transition-fast, 150ms ease),
+    box-shadow var(--ncm-transition-fast, 150ms ease);
+}
+
+.ncm-app .ncm-terminal-input-wrap:focus-within {
+  border-color: var(--ncm-secondary);
+  box-shadow: 0 0 8px rgba(25, 243, 247, 0.2);
+}
+
+.ncm-app .ncm-terminal-input-prompt {
+  font-family: var(--ncm-font-mono);
+  font-size: var(--ncm-text-sm);
+  color: var(--ncm-secondary);
+  padding: 6px 0 6px 10px;
+  user-select: none;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.ncm-app .ncm-terminal-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 6px 10px 6px 4px;
+  font-family: var(--ncm-font-mono);
+  font-size: var(--ncm-text-sm);
+  color: var(--ncm-text-primary);
+  letter-spacing: var(--ncm-tracking-tight, 0.04em);
+  outline: none;
+  box-shadow: none;
+}
+
+.ncm-app .ncm-terminal-input::placeholder {
+  color: var(--ncm-text-muted);
+  opacity: 0.6;
+}
+
+/* Blinking cursor effect on the placeholder via the wrapper */
+.ncm-app .ncm-terminal-input-wrap:not(:focus-within)::after {
+  content: '_';
+  font-family: var(--ncm-font-mono);
+  font-size: var(--ncm-text-sm);
+  color: var(--ncm-secondary);
+  animation: ncm-blink 1s step-end infinite;
+  padding-right: 10px;
+  line-height: 1;
+}
+
+/* Hide fake cursor when real input has focus */
+.ncm-app .ncm-terminal-input-wrap:focus-within::after {
+  display: none;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   §C4  COMPOSER BODY CONTAINER — Depth
+   Textarea sits in a recessed container with inset shadow.
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-compose-body-container {
+  flex: 1;
+  display: flex;
+  background: var(--ncm-bg-deep);
+  border: 1px solid var(--ncm-border);
+  border-radius: var(--ncm-radius-md);
+  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+}
+
+.ncm-app .ncm-compose-body-container .ncm-textarea {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.ncm-app .ncm-compose-body-container .ncm-textarea:focus {
+  box-shadow: none;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   §C5  COMPOSER NETWORK INFO BAR
+   Small network status display in the footer-left.
+   Shows connection dot + network name + signal %.
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-composer__network-info {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--ncm-font-mono);
+  font-size: var(--ncm-text-2xs);
+  color: var(--ncm-text-muted);
+  letter-spacing: var(--ncm-tracking-tight, 0.04em);
+  text-transform: uppercase;
+}
+
+.ncm-app .ncm-composer__network-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.ncm-app .ncm-composer__network-dot--CONNECTED {
+  background: var(--ncm-success);
+  box-shadow: 0 0 4px rgba(0, 255, 65, 0.5);
+}
+
+.ncm-app .ncm-composer__network-dot--DEGRADED {
+  background: var(--ncm-warning);
+  box-shadow: 0 0 4px rgba(255, 171, 0, 0.5);
+}
+
+.ncm-app .ncm-composer__network-dot--NO_SIGNAL {
+  background: var(--ncm-danger);
+  box-shadow: 0 0 4px rgba(255, 0, 51, 0.5);
+}
+
+/* Footer depth */
+.ncm-app .ncm-composer__footer {
+  box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.2);
+  position: relative;
+  z-index: var(--ncm-z-sticky, 200);
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   §C6  PRIORITY PILLS — Neon Glow
+   Active priority pills get neon glow when neon is enabled.
+   ═══════════════════════════════════════════════════════════ */
+
+[data-ncm-neon="true"].ncm-app .ncm-priority-pill--active.ncm-priority-pill--normal,
+[data-ncm-neon="true"] .ncm-app .ncm-priority-pill--active.ncm-priority-pill--normal {
+  box-shadow: 0 0 8px rgba(25, 243, 247, 0.2);
+}
+
+[data-ncm-neon="true"].ncm-app .ncm-priority-pill--active.ncm-priority-pill--urgent,
+[data-ncm-neon="true"] .ncm-app .ncm-priority-pill--active.ncm-priority-pill--urgent {
+  box-shadow: 0 0 8px rgba(247, 201, 72, 0.25);
+}
+
+[data-ncm-neon="true"].ncm-app .ncm-priority-pill--active.ncm-priority-pill--critical,
+[data-ncm-neon="true"] .ncm-app .ncm-priority-pill--active.ncm-priority-pill--critical {
+  box-shadow: 0 0 8px rgba(246, 82, 97, 0.25);
+}
+
+/* Priority pill transition */
+.ncm-app .ncm-priority-pill {
+  transition:
+    background var(--ncm-transition-fast, 150ms ease),
+    border-color var(--ncm-transition-fast, 150ms ease),
+    color var(--ncm-transition-fast, 150ms ease),
+    box-shadow var(--ncm-transition-fast, 150ms ease);
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   §C7  DIALOG WINDOW CHROME (Shared)
+   All NCM dialog windows get consistent depth, typography,
+   and border treatment. These selectors target the dialog
+   root containers.
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-network-auth,
+.ncm-app .ncm-email-setup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ncm-space-md);
+  padding: var(--ncm-space-md);
+  background: var(--ncm-bg-deep);
+  color: var(--ncm-text-primary);
+  height: 100%;
+}
+
+/* Dialog section spacing */
+.ncm-app .ncm-network-auth__section,
+.ncm-app .ncm-email-setup__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ncm-space-sm);
+}
+
+/* Dialog footer — action bar at bottom */
+.ncm-app .ncm-network-auth__actions,
+.ncm-app .ncm-email-setup__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--ncm-space-sm);
+  padding-top: var(--ncm-space-sm);
+  border-top: 1px solid var(--ncm-border);
+  margin-top: auto;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   §C8  NETWORK AUTH DIALOG
+   Terminal-styled authentication with icon, title, and
+   attempt counter.
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-network-auth__identity {
+  display: flex;
+  align-items: center;
+  gap: var(--ncm-space-md);
+  padding: var(--ncm-space-sm);
+  background: var(--ncm-bg-surface);
+  border: 1px solid var(--ncm-border);
+  border-radius: var(--ncm-radius-md);
+}
+
+.ncm-app .ncm-network-auth__icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid;
+  border-radius: var(--ncm-radius-md);
+  font-size: var(--ncm-text-lg);
+  flex-shrink: 0;
+}
+
+.ncm-app .ncm-network-auth__title {
+  margin: 0;
+  font-size: var(--ncm-text-base);
+}
+
+.ncm-app .ncm-network-auth__subtitle {
+  display: block;
+}
+
+.ncm-app .ncm-network-auth__description {
+  padding: var(--ncm-space-sm);
+  background: var(--ncm-bg-surface);
+  border-left: 2px solid var(--ncm-border);
+  margin: 0;
+}
+
+.ncm-app .ncm-network-auth__error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--ncm-font-mono);
+  font-size: var(--ncm-text-xs);
+  color: var(--ncm-danger);
+  padding: var(--ncm-space-xs) 0;
+}
+
+.ncm-app .ncm-network-auth__attempts {
+  padding: var(--ncm-space-xs) 0;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   §C9  EMAIL SETUP DIALOG
+   Actor identity card + email input with suggestions.
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-email-setup__identity {
+  display: flex;
+  align-items: center;
+  gap: var(--ncm-space-md);
+  padding: var(--ncm-space-sm);
+  background: var(--ncm-bg-surface);
+  border: 1px solid var(--ncm-border);
+  border-radius: var(--ncm-radius-md);
+}
+
+.ncm-app .ncm-email-setup__avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid var(--ncm-border);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.ncm-app .ncm-email-setup__avatar-initials {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid var(--ncm-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--ncm-font-display);
+  font-weight: 700;
+  font-size: var(--ncm-text-sm);
+  color: var(--ncm-secondary);
+  background: var(--ncm-bg-surface);
+  flex-shrink: 0;
+}
+
+.ncm-app .ncm-email-setup__name {
+  font-family: var(--ncm-font-display);
+  font-weight: 700;
+  font-size: var(--ncm-text-sm);
+  color: var(--ncm-text-primary);
+}
+
+.ncm-app .ncm-email-setup__suggestions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ncm-space-xs);
+}
+
+.ncm-app .ncm-email-setup__suggestion-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   §C10  CONFIRMATION DIALOGS
+   Generic confirm/cancel dialogs get dark surface + border.
+   Alert variant (red border) for destructive actions.
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-confirm-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ncm-space-md);
+  padding: var(--ncm-space-md);
+  background: var(--ncm-bg-deep);
+}
+
+.ncm-app .ncm-confirm-dialog__message {
+  font-family: var(--ncm-font-mono);
+  font-size: var(--ncm-text-sm);
+  color: var(--ncm-text-primary);
+  line-height: var(--ncm-leading-normal, 1.4);
+  padding: var(--ncm-space-sm);
+  background: var(--ncm-bg-surface);
+  border: 1px solid var(--ncm-border);
+  border-radius: var(--ncm-radius-md);
+}
+
+/* Destructive confirmation — red left accent */
+.ncm-app .ncm-confirm-dialog--danger .ncm-confirm-dialog__message {
+  border-left: 3px solid var(--ncm-danger);
+  background: rgba(255, 0, 51, 0.05);
+}
+
+.ncm-app .ncm-confirm-dialog__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--ncm-space-sm);
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   §C11  ALERT COMPACT VARIANT
+   Tighter alert panel for inline use in dialogs.
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-alert--compact {
+  padding: var(--ncm-space-xs) var(--ncm-space-sm);
+  font-size: var(--ncm-text-xs);
+  gap: 6px;
+}
+
+.ncm-app .ncm-alert--compact i {
+  font-size: var(--ncm-text-xs);
+}

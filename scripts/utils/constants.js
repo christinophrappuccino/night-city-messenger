@@ -200,6 +200,8 @@ export const TEMPLATES = Object.freeze({
   PARTIAL_ALERT_PANEL:    `${T}/partials/alert-panel.hbs`,
   PARTIAL_EMPTY_STATE:    `${T}/partials/empty-state.hbs`,
   PARTIAL_ACTION_BAR:     `${T}/partials/action-bar.hbs`,
+  PARTIAL_HUD_STRIP: `${T}/partials/hud-strip.hbs`,
+  PARTIAL_METADATA_READOUT: `${T}/partials/metadata-readout.hbs`,
 });
 
 // ─── Default Configs ───

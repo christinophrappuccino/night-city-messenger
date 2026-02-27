@@ -1,0 +1,561 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Night City Messenger — Micro-Interactions (Non-Motion)
+ * @file styles/base/interactions.css
+ * @module cyberpunkred-messenger
+ * @description State changes on hover/focus/click that make the UI feel
+ *   responsive and alive. No temporal animations (those are Sprint 4).
+ *   All transitions use CSS transition properties gated by animation level.
+ *
+ *   Sprint 1.5.6 — Micro-Interactions
+ *
+ *   Layers on top of components.css base rules. Does not duplicate —
+ *   only adds what's missing or needs refinement.
+ *
+ * ─── SECTION INDEX ───
+ *  §I1  Button Active/Press Refinements
+ *  §I2  Success Button Variant
+ *  §I3  Input Focus Polish
+ *  §I4  Card & List Item Hover Refinements
+ *  §I5  Tab Hover/Active Polish
+ *  §I6  Badge Hover (Interactive Badges)
+ *  §I7  Checkbox & Toggle
+ *  §I8  Scrollbar Auto-Hide
+ *  §I9  Tooltip Upgrade
+ *  §I10 Disabled States
+ *  §I11 Transition Gating (Animation Level)
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+
+/* ═══════════════════════════════════════════════════════════
+   §I1  BUTTON ACTIVE/PRESS REFINEMENTS
+   Components.css has :active { scale(0.97) }.
+   Add per-variant background darkening on press for
+   tactile feel. Faster transition on press (50ms).
+   ═══════════════════════════════════════════════════════════ */
+
+/* Press state — background darkens */
+.ncm-app .ncm-btn--primary:active {
+  filter: brightness(0.85);
+  transform: scale(0.97);
+  box-shadow: none;
+}
+
+.ncm-app .ncm-btn--secondary:active {
+  background: rgba(25, 243, 247, 0.15);
+  transform: scale(0.97);
+  box-shadow: none;
+}
+
+.ncm-app .ncm-btn--danger:active {
+  background: rgba(255, 0, 51, 0.2);
+  transform: scale(0.97);
+  box-shadow: none;
+}
+
+.ncm-app .ncm-btn--ghost:active {
+  background: rgba(255, 255, 255, 0.05);
+  transform: scale(0.97);
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   §I2  SUCCESS BUTTON VARIANT
+   Missing from components.css — green confirm/accept button.
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-btn--success {
+  background: transparent;
+  color: var(--ncm-success);
+  border-color: var(--ncm-success);
+}
+
+.ncm-app .ncm-btn--success:hover {
+  background: rgba(0, 255, 65, 0.1);
+  box-shadow: 0 0 10px rgba(0, 255, 65, 0.2);
+}
+
+.ncm-app .ncm-btn--success:active {
+  background: rgba(0, 255, 65, 0.15);
+  transform: scale(0.97);
+  box-shadow: none;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   §I3  INPUT FOCUS POLISH
+   Components.css has basic focus (border + glow).
+   Add label color change and placeholder dim on focus.
+   ═══════════════════════════════════════════════════════════ */
+
+/* Label brightens when sibling input is focused */
+.ncm-app .ncm-form-group:focus-within .ncm-label {
+  color: var(--ncm-secondary);
+}
+
+/* Placeholder dims further on focus to not compete with typed text */
+.ncm-app .ncm-input:focus::placeholder,
+.ncm-app .ncm-textarea:focus::placeholder {
+  color: rgba(85, 85, 112, 0.5);
+}
+
+/* Textarea resize handle — subtle */
+.ncm-app .ncm-textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+
+/* Search input — icon brightens on focus */
+.ncm-app .ncm-search:focus-within .ncm-search__icon {
+  color: var(--ncm-secondary);
+}
+
+/* Invalid/error state */
+.ncm-app .ncm-input--error,
+.ncm-app .ncm-textarea--error {
+  border-color: var(--ncm-danger);
+}
+
+.ncm-app .ncm-input--error:focus,
+.ncm-app .ncm-textarea--error:focus {
+  border-color: var(--ncm-danger);
+  box-shadow: 0 0 8px rgba(255, 0, 51, 0.2);
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   §I4  CARD & LIST ITEM HOVER REFINEMENTS
+   depth.css handles the bg/border transitions. This adds
+   the subtle Y-translate lift on interactive cards.
+   ═══════════════════════════════════════════════════════════ */
+
+/* Stat card lift on hover */
+.ncm-app .ncm-stat-card--clickable:hover {
+  transform: translateY(-1px);
+}
+
+/* Entity card lift */
+.ncm-app .ncm-entity-card:hover {
+  transform: translateY(-1px);
+}
+
+/* Contact card lift */
+.ncm-app .ncm-contact-card:hover {
+  transform: translateY(-1px);
+}
+
+/* Message item — no lift (too many in a row, would look jittery),
+   just the border/bg change from depth.css plus a subtle left
+   border brightening */
+.ncm-app .ncm-message-item:hover {
+  border-left-color: var(--ncm-text-muted);
+}
+
+/* Don't override priority border colors on hover */
+.ncm-app .ncm-message-item[data-priority="urgent"]:hover {
+  border-left-color: var(--ncm-warning);
+}
+
+.ncm-app .ncm-message-item[data-priority="critical"]:hover {
+  border-left-color: var(--ncm-danger);
+}
+
+/* Selected message — don't change border on hover */
+.ncm-app .ncm-message-item--selected:hover,
+.ncm-app .ncm-message-item.selected:hover {
+  border-left-color: var(--ncm-secondary);
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   §I5  TAB HOVER/ACTIVE POLISH
+   Components.css has basic tab hover. Add underline
+   transition and icon color change.
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-tab {
+  transition:
+    color var(--ncm-transition-fast, 150ms ease),
+    border-color var(--ncm-transition-fast, 150ms ease),
+    background var(--ncm-transition-fast, 150ms ease);
+}
+
+/* Hover: icon matches text color */
+.ncm-app .ncm-tab:hover .ncm-tab__icon {
+  color: var(--ncm-text-primary);
+}
+
+/* Active tab icon */
+.ncm-app .ncm-tab--active .ncm-tab__icon {
+  color: var(--ncm-secondary);
+}
+
+/* Active tab count */
+.ncm-app .ncm-tab--active .ncm-tab__count {
+  color: var(--ncm-secondary);
+}
+
+/* Admin tabs */
+.ncm-app .ncm-admin-tab {
+  transition:
+    color var(--ncm-transition-fast, 150ms ease),
+    border-color var(--ncm-transition-fast, 150ms ease),
+    background var(--ncm-transition-fast, 150ms ease);
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   §I6  BADGE HOVER (Interactive Badges)
+   Filter pills and clickable badges brighten and lift.
+   Non-interactive badges (status indicators) are unaffected.
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-badge--interactive {
+  cursor: pointer;
+  transition:
+    transform var(--ncm-transition-fast, 150ms ease),
+    filter var(--ncm-transition-fast, 150ms ease),
+    box-shadow var(--ncm-transition-fast, 150ms ease);
+}
+
+.ncm-app .ncm-badge--interactive:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.15);
+}
+
+.ncm-app .ncm-badge--interactive:active {
+  transform: translateY(0);
+  filter: brightness(0.9);
+}
+
+/* Network filter pills are interactive */
+.ncm-app .ncm-network-filter-option {
+  cursor: pointer;
+  transition:
+    background var(--ncm-transition-fast, 150ms ease),
+    color var(--ncm-transition-fast, 150ms ease),
+    border-color var(--ncm-transition-fast, 150ms ease);
+}
+
+/* Sort option hover */
+.ncm-app .ncm-sort-option {
+  cursor: pointer;
+  transition:
+    background var(--ncm-transition-fast, 150ms ease),
+    color var(--ncm-transition-fast, 150ms ease),
+    border-color var(--ncm-transition-fast, 150ms ease);
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   §I7  CHECKBOX & TOGGLE
+   Custom checkbox: dark bg, cyan check mark, scale pulse.
+   Custom toggle: sliding pill, color transition.
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Custom Checkbox ── */
+.ncm-app input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--ncm-border);
+  border-radius: var(--ncm-radius-sm);
+  background: var(--ncm-bg-deep);
+  cursor: pointer;
+  position: relative;
+  flex-shrink: 0;
+  transition:
+    background var(--ncm-transition-fast, 150ms ease),
+    border-color var(--ncm-transition-fast, 150ms ease);
+}
+
+.ncm-app input[type="checkbox"]:hover {
+  border-color: var(--ncm-border-active, #3a3a5a);
+}
+
+.ncm-app input[type="checkbox"]:checked {
+  background: var(--ncm-secondary);
+  border-color: var(--ncm-secondary);
+}
+
+/* Checkmark via ::after */
+.ncm-app input[type="checkbox"]:checked::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 0px;
+  width: 5px;
+  height: 9px;
+  border: solid var(--ncm-bg-deep);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+/* Focus ring */
+.ncm-app input[type="checkbox"]:focus-visible {
+  box-shadow:
+    0 0 0 2px rgba(25, 243, 247, 0.4),
+    0 0 6px rgba(25, 243, 247, 0.2);
+}
+
+/* ── Toggle Switch ── */
+.ncm-app .ncm-toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.ncm-app .ncm-toggle__track {
+  width: 32px;
+  height: 16px;
+  border-radius: var(--ncm-radius-pill);
+  background: var(--ncm-bg-elevated);
+  border: 1px solid var(--ncm-border);
+  position: relative;
+  transition:
+    background var(--ncm-transition-fast, 150ms ease),
+    border-color var(--ncm-transition-fast, 150ms ease);
+}
+
+.ncm-app .ncm-toggle__thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--ncm-text-muted);
+  transition: transform var(--ncm-transition-fast, 150ms ease),
+              background var(--ncm-transition-fast, 150ms ease);
+}
+
+/* Checked state */
+.ncm-app .ncm-toggle input:checked ~ .ncm-toggle__track {
+  background: rgba(25, 243, 247, 0.15);
+  border-color: var(--ncm-secondary);
+}
+
+.ncm-app .ncm-toggle input:checked ~ .ncm-toggle__track .ncm-toggle__thumb {
+  transform: translateX(16px);
+  background: var(--ncm-secondary);
+}
+
+/* Hide the actual checkbox */
+.ncm-app .ncm-toggle input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.ncm-app .ncm-toggle__label {
+  font-family: var(--ncm-font-display);
+  font-weight: 600;
+  font-size: var(--ncm-text-2xs);
+  text-transform: uppercase;
+  letter-spacing: var(--ncm-tracking-wide, 0.08em);
+  color: var(--ncm-text-secondary);
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   §I8  SCROLLBAR AUTO-HIDE
+   Scrollbar thumb only visible when hovering over the
+   scrollable container. Fades in/out smoothly.
+   Uses opacity on the thumb rather than width to avoid
+   layout shift.
+   ═══════════════════════════════════════════════════════════ */
+
+/* Auto-hide: thumb starts transparent */
+.ncm-app .ncm-scrollbar::-webkit-scrollbar-thumb {
+  background: transparent;
+  transition: background 0.3s ease;
+}
+
+/* Show thumb on container hover or active scroll */
+.ncm-app .ncm-scrollbar:hover::-webkit-scrollbar-thumb {
+  background: var(--ncm-bg-elevated);
+}
+
+.ncm-app .ncm-scrollbar:hover::-webkit-scrollbar-thumb:hover {
+  background: var(--ncm-text-muted);
+}
+
+/* Firefox: can't auto-hide, but keep thin */
+.ncm-app .ncm-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--ncm-bg-elevated) transparent;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   §I9  TOOLTIP UPGRADE
+   Replaces components.css §15 tooltip with elevated bg,
+   mono font, border-active border, arrow, and 400ms delay.
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-app [data-ncm-tooltip] {
+  position: relative;
+}
+
+/* Tooltip bubble */
+.ncm-app [data-ncm-tooltip]::after {
+  content: attr(data-ncm-tooltip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  padding: 4px 10px;
+  background: var(--ncm-bg-elevated);
+  border: 1px solid var(--ncm-border-active, #3a3a5a);
+  border-radius: var(--ncm-radius-sm);
+  font-family: var(--ncm-font-mono);
+  font-size: 10px;
+  letter-spacing: var(--ncm-tracking-tight, 0.04em);
+  color: var(--ncm-text-primary);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition:
+    opacity var(--ncm-transition-fast, 150ms ease) 0.4s,
+    transform var(--ncm-transition-fast, 150ms ease) 0.4s;
+  z-index: var(--ncm-z-tooltip, 600);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* Arrow */
+.ncm-app [data-ncm-tooltip]::before {
+  content: '';
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  border: 4px solid transparent;
+  border-top-color: var(--ncm-border-active, #3a3a5a);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--ncm-transition-fast, 150ms ease) 0.4s;
+  z-index: var(--ncm-z-tooltip, 600);
+}
+
+/* Show on hover */
+.ncm-app [data-ncm-tooltip]:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.ncm-app [data-ncm-tooltip]:hover::before {
+  opacity: 1;
+}
+
+/* Tooltip below variant */
+.ncm-app [data-ncm-tooltip-pos="bottom"]::after {
+  bottom: auto;
+  top: calc(100% + 8px);
+  transform: translateX(-50%) translateY(-4px);
+}
+
+.ncm-app [data-ncm-tooltip-pos="bottom"]:hover::after {
+  transform: translateX(-50%) translateY(0);
+}
+
+.ncm-app [data-ncm-tooltip-pos="bottom"]::before {
+  bottom: auto;
+  top: calc(100% + 0px);
+  border-top-color: transparent;
+  border-bottom-color: var(--ncm-border-active, #3a3a5a);
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   §I10  DISABLED STATES
+   Consistent disabled treatment across all interactive
+   elements. Desaturated, dimmed, no pointer events.
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-btn:disabled,
+.ncm-app .ncm-btn[disabled],
+.ncm-app .ncm-btn--disabled {
+  opacity: 0.35;
+  filter: grayscale(50%);
+  cursor: not-allowed;
+  pointer-events: none;
+  box-shadow: none;
+}
+
+.ncm-app .ncm-input:disabled,
+.ncm-app .ncm-select:disabled,
+.ncm-app .ncm-textarea:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background: var(--ncm-bg-surface);
+}
+
+.ncm-app .ncm-tab--disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.ncm-app input[type="checkbox"]:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   §I11  TRANSITION GATING (Animation Level)
+   Controls whether CSS transitions fire based on the
+   data-ncm-animation-level attribute set by BaseApplication.
+
+   "full"    — All transitions at normal speed (150ms)
+   "reduced" — Faster transitions (100ms), no transforms
+   "off"     — Instant state changes, zero transitions
+
+   This is THE critical system that makes all micro-interactions
+   respect user preference.
+   ═══════════════════════════════════════════════════════════ */
+
+/* Full — default, no overrides needed.
+   Transitions already defined with var(--ncm-transition-fast). */
+
+/* Reduced — faster transitions, kill transforms */
+[data-ncm-animation-level="reduced"].ncm-app,
+[data-ncm-animation-level="reduced"] .ncm-app {
+  --ncm-transition-fast: 100ms ease;
+  --ncm-transition-base: 150ms ease;
+  --ncm-transition-normal: 150ms ease;
+  --ncm-transition-slow: 200ms ease;
+}
+
+[data-ncm-animation-level="reduced"].ncm-app .ncm-btn:active,
+[data-ncm-animation-level="reduced"] .ncm-app .ncm-btn:active {
+  transform: none;
+}
+
+[data-ncm-animation-level="reduced"].ncm-app .ncm-stat-card--clickable:hover,
+[data-ncm-animation-level="reduced"].ncm-app .ncm-entity-card:hover,
+[data-ncm-animation-level="reduced"].ncm-app .ncm-contact-card:hover,
+[data-ncm-animation-level="reduced"].ncm-app .ncm-badge--interactive:hover,
+[data-ncm-animation-level="reduced"] .ncm-app .ncm-stat-card--clickable:hover,
+[data-ncm-animation-level="reduced"] .ncm-app .ncm-entity-card:hover,
+[data-ncm-animation-level="reduced"] .ncm-app .ncm-contact-card:hover,
+[data-ncm-animation-level="reduced"] .ncm-app .ncm-badge--interactive:hover {
+  transform: none;
+}
+
+/* Off — kill ALL transitions and transforms */
+[data-ncm-animation-level="off"].ncm-app *,
+[data-ncm-animation-level="off"] .ncm-app * {
+  transition-duration: 0ms !important;
+  transition-delay: 0ms !important;
+  animation: none !important;
+}
+
+[data-ncm-animation-level="off"].ncm-app .ncm-btn:active,
+[data-ncm-animation-level="off"] .ncm-app .ncm-btn:active {
+  transform: none;
+}

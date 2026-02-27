@@ -1,20 +1,26 @@
-{{!-- Message Composer — Compose / Reply / Forward --}}
+{{!--
+  Message Composer — Sprint 1 + Sprint 1.5.7 Atmosphere
+  @file templates/message-composer/message-composer.hbs
+  @module cyberpunkred-messenger
+  @description Compose / Reply / Forward dialog with cyberdeck terminal aesthetic.
+    Sprint 1.5.7: bracket header, network info bar, design-system typography,
+    terminal-styled body container with inset shadow.
+--}}
+
 <div class="ncm-composer">
 
-  {{!-- Header --}}
+  {{!-- ═══ Bracket Header ═══ --}}
   <div class="ncm-composer__header">
-    <h2 class="ncm-composer__title">
-      <i class="fas fa-{{#if (eq mode 'reply')}}reply{{else if (eq mode 'forward')}}share{{else}}pen{{/if}}"></i>
-      {{modeLabel}} Message
-    </h2>
+    {{> "modules/cyberpunkred-messenger/templates/partials/section-header.hbs"
+        title=(concat modeLabel " MESSAGE") size="small" align="left" }}
   </div>
 
-  {{!-- Form Fields --}}
+  {{!-- ═══ Form Fields ═══ --}}
   <div class="ncm-composer__fields">
 
     {{!-- FROM --}}
     <div class="ncm-field">
-      <label class="ncm-field__label">FROM:</label>
+      <label class="ncm-field__label ncm-label">FROM</label>
       <div class="ncm-field__value">
         <select class="ncm-from-select ncm-input">
           {{#each ownedActors}}
@@ -28,7 +34,7 @@
 
     {{!-- TO --}}
     <div class="ncm-field">
-      <label class="ncm-field__label">TO:</label>
+      <label class="ncm-field__label ncm-label">TO</label>
       <div class="ncm-field__value ncm-recipient-field">
         {{#if toActor}}
         <div class="ncm-selected-recipient">
@@ -40,7 +46,7 @@
           </button>
         </div>
         {{else}}
-        <input type="text" class="ncm-recipient-search ncm-input" 
+        <input type="text" class="ncm-recipient-search ncm-input"
                placeholder="Search contacts..." autocomplete="off">
         <div class="ncm-recipient-dropdown"></div>
         {{/if}}
@@ -49,16 +55,16 @@
 
     {{!-- SUBJECT --}}
     <div class="ncm-field">
-      <label class="ncm-field__label">SUBJ:</label>
+      <label class="ncm-field__label ncm-label">SUBJ</label>
       <div class="ncm-field__value">
-        <input type="text" name="subject" class="ncm-input" value="{{subject}}" 
+        <input type="text" name="subject" class="ncm-input" value="{{subject}}"
                placeholder="Subject line...">
       </div>
     </div>
 
     {{!-- PRIORITY --}}
     <div class="ncm-field">
-      <label class="ncm-field__label">PRIORITY:</label>
+      <label class="ncm-field__label ncm-label">PRIORITY</label>
       <div class="ncm-field__value ncm-priority-selector">
         {{#each priorities}}
         <button class="ncm-priority-pill {{#if active}}ncm-priority-pill--active{{/if}} ncm-priority-pill--{{id}}"
@@ -70,19 +76,26 @@
     </div>
   </div>
 
-  {{!-- Body --}}
+  {{!-- ═══ Body ═══ --}}
   <div class="ncm-composer__body">
-    <textarea name="body" class="ncm-textarea" placeholder="Type your message...">{{body}}</textarea>
+    <div class="ncm-compose-body-container">
+      <textarea name="body" class="ncm-textarea" placeholder="> Type your message...">{{body}}</textarea>
+    </div>
   </div>
 
-  {{!-- Footer --}}
+  {{!-- ═══ Footer ═══ --}}
   <div class="ncm-composer__footer">
     <div class="ncm-composer__footer-left">
-      {{!-- Future: Attach, Schedule buttons --}}
+      {{!-- Network info --}}
+      <span class="ncm-composer__network-info">
+        <span class="ncm-composer__network-dot ncm-composer__network-dot--{{connectionStatus}}"></span>
+        <span class="ncm-data">{{networkName}}</span>
+        <span class="ncm-metadata">{{signalStrength}}%</span>
+      </span>
     </div>
     <div class="ncm-composer__footer-right">
       <button class="ncm-btn ncm-btn--ghost" data-action="cancel">Cancel</button>
-      <button class="ncm-btn ncm-btn--primary ncm-btn--send" data-action="send" 
+      <button class="ncm-btn ncm-btn--primary ncm-btn--send" data-action="send"
               {{#if sending}}disabled{{/if}}>
         {{#if sending}}
         <i class="fas fa-spinner fa-spin"></i> Sending...

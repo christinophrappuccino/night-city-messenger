@@ -1,123 +1,103 @@
 {{!--
-  Network Authentication Dialog
-  File: templates/dialogs/network-auth-dialog.hbs
-  Module: cyberpunkred-messenger
-  Description: Player-facing dialog for authenticating to secured networks.
-               Supports password entry and skill check bypass modes.
+  Network Authentication Dialog — Sprint 1.5.7 Atmosphere
+  @file templates/dialogs/network-auth-dialog.hbs
+  @module cyberpunkred-messenger
+  @description Player-facing dialog for authenticating to secured networks.
+    Supports password entry and skill check bypass modes.
+    Sprint 1.5.7: bracket header, terminal-styled password field with
+    blinking cursor, design-system typography, depth layering.
 --}}
 
 <div class="ncm-network-auth">
 
-  {{!-- Network Header --}}
-  <div class="ncm-network-auth__header">
+  {{!-- ═══ Bracket Header ═══ --}}
+  {{> "modules/cyberpunkred-messenger/templates/partials/section-header.hbs"
+      title="AUTHENTICATE" size="small" align="left" }}
+
+  {{!-- ═══ Network Identity ═══ --}}
+  <div class="ncm-network-auth__identity">
     <div class="ncm-network-auth__icon" style="color: {{network.color}}; border-color: {{network.color}}">
       <i class="fas {{network.icon}}"></i>
     </div>
     <div class="ncm-network-auth__title-group">
-      <h2 class="ncm-network-auth__title">{{network.name}}</h2>
-      <span class="ncm-network-auth__subtitle">
-        SECURITY: <span class="ncm-text--warn">{{network.securityLevel}}</span>
+      <h2 class="ncm-network-auth__title ncm-accent-title">{{network.name}}</h2>
+      <span class="ncm-network-auth__subtitle ncm-metadata">
+        SECURITY: <span class="ncm-text-warning">{{network.securityLevel}}</span>
       </span>
     </div>
   </div>
 
   {{#if network.description}}
-  <p class="ncm-network-auth__description">{{network.description}}</p>
+  <p class="ncm-network-auth__description ncm-data">{{network.description}}</p>
   {{/if}}
 
-  {{!-- Lockout State --}}
+  {{!-- ═══ Lockout State ═══ --}}
   {{#if isLockedOut}}
   <div class="ncm-alert ncm-alert--danger">
     <i class="fas fa-ban"></i>
     <div>
       <strong>SYSTEM LOCKED</strong>
-      <p>Too many failed attempts. Lockout expires in: <strong>{{lockoutRemaining}}</strong></p>
+      <p>Too many failed attempts. Retry in <span class="ncm-data--bright">{{lockoutRemaining}}</span>.</p>
     </div>
   </div>
-
-  <div class="ncm-form-actions ncm-form-actions--center">
-    <button type="button" class="ncm-btn ncm-btn--ghost" data-action="cancel">
-      Disconnect
-    </button>
-  </div>
-
   {{else}}
 
-  {{!-- Mode Switcher (only if both modes available) --}}
-  {{#if hasBothModes}}
-  <div class="ncm-auth-mode-switcher">
-    <button class="ncm-auth-mode-btn {{#if isPasswordMode}}ncm-auth-mode-btn--active{{/if}}"
-            data-action="switchMode" data-mode="password">
-      <i class="fas fa-key"></i> Password
+  {{!-- ═══ Auth Method: Password ═══ --}}
+  {{#if showPasswordField}}
+  <div class="ncm-network-auth__section">
+    <label class="ncm-label">ACCESS KEY</label>
+    <div class="ncm-terminal-input-wrap">
+      <span class="ncm-terminal-input-prompt">&gt;</span>
+      <input type="password" name="password" class="ncm-input ncm-terminal-input"
+             placeholder="Enter access key..." autocomplete="off" spellcheck="false"
+             autofocus />
+    </div>
+    {{#if authError}}
+    <div class="ncm-network-auth__error">
+      <i class="fas fa-exclamation-triangle"></i>
+      <span>{{authError}}</span>
+    </div>
+    {{/if}}
+    <div class="ncm-network-auth__attempts ncm-metadata">
+      ATTEMPTS: <span class="ncm-data--bright">{{attempts}}</span> / {{maxAttempts}}
+    </div>
+  </div>
+  {{/if}}
+
+  {{!-- ═══ Auth Method: Skill Check ═══ --}}
+  {{#if showSkillCheck}}
+  <div class="ncm-network-auth__section">
+    <label class="ncm-label">SKILL BYPASS</label>
+    <p class="ncm-data">Attempt to bypass security using {{skillName}} (DV {{skillDV}}).</p>
+    <button class="ncm-btn ncm-btn--secondary" data-action="attemptSkillCheck">
+      <i class="fas fa-terminal"></i>
+      <span>Attempt {{skillName}} Check</span>
     </button>
-    <button class="ncm-auth-mode-btn {{#if isSkillMode}}ncm-auth-mode-btn--active{{/if}}"
-            data-action="switchMode" data-mode="skill">
-      <i class="fas fa-microchip"></i> Skill Bypass
+  </div>
+  {{/if}}
+
+  {{!-- ═══ Auth Actions ═══ --}}
+  <div class="ncm-network-auth__actions">
+    <button class="ncm-btn ncm-btn--ghost" data-action="cancel">
+      <i class="fas fa-times"></i> Disconnect
     </button>
+    {{#if showPasswordField}}
+    <button class="ncm-btn ncm-btn--primary" data-action="submitPassword"
+            {{#if isSubmitting}}disabled{{/if}}>
+      {{#if isSubmitting}}
+      <i class="fas fa-spinner fa-spin"></i> Authenticating...
+      {{else}}
+      <i class="fas fa-key"></i> Authenticate
+      {{/if}}
+    </button>
+    {{/if}}
+    {{#if isGM}}
+    <button class="ncm-btn ncm-btn--ghost" data-action="gmBypass"
+            data-ncm-tooltip="GM: Bypass authentication">
+      <i class="fas fa-shield-halved"></i> GM Override
+    </button>
+    {{/if}}
   </div>
+
   {{/if}}
-
-  {{!-- Error Message --}}
-  {{#if hasError}}
-  <div class="ncm-alert ncm-alert--danger ncm-auth-error">
-    <i class="fas fa-exclamation-triangle"></i>
-    <span>{{errorMessage}}</span>
-  </div>
-  {{/if}}
-
-  {{!-- Attempts Counter --}}
-  <div class="ncm-auth-attempts">
-    <span class="ncm-auth-attempts__label">Attempts remaining:</span>
-    <span class="ncm-auth-attempts__count {{#if (ncm-eq remainingAttempts 1)}}ncm-text--danger{{/if}}">
-      {{remainingAttempts}} / {{maxAttempts}}
-    </span>
-  </div>
-
-  {{!-- Password Mode --}}
-  {{#if isPasswordMode}}
-  <div class="ncm-auth-panel ncm-auth-panel--password">
-    <div class="ncm-terminal-prompt">
-      <span class="ncm-terminal-prompt__prefix">ACCESS&gt;</span>
-      <div class="ncm-field ncm-field--inline">
-        <input type="password" name="password" class="ncm-input ncm-input--mono ncm-input--glow"
-               placeholder="Enter access code..." autofocus>
-      </div>
-    </div>
-    <div class="ncm-form-actions">
-      <button type="button" class="ncm-btn ncm-btn--ghost" data-action="cancel">
-        <i class="fas fa-xmark"></i> Abort
-      </button>
-      <button type="button" class="ncm-btn ncm-btn--primary" data-action="submitPassword">
-        <i class="fas fa-right-to-bracket"></i> Authenticate
-      </button>
-    </div>
-  </div>
-  {{/if}}
-
-  {{!-- Skill Bypass Mode --}}
-  {{#if isSkillMode}}
-  <div class="ncm-auth-panel ncm-auth-panel--skill">
-    <p class="ncm-auth-panel__info">
-      Bypass DC: <strong class="ncm-text--cyan">{{bypassDC}}</strong>
-    </p>
-
-    <div class="ncm-skill-list">
-      {{#each bypassSkills}}
-      <button class="ncm-btn ncm-btn--skill" data-action="attemptSkillCheck" data-skill="{{name}}">
-        <i class="fas fa-microchip"></i>
-        <span class="ncm-btn--skill__name">{{name}}</span>
-        <span class="ncm-btn--skill__dc">DC {{dc}}</span>
-      </button>
-      {{/each}}
-    </div>
-
-    <div class="ncm-form-actions">
-      <button type="button" class="ncm-btn ncm-btn--ghost" data-action="cancel">
-        <i class="fas fa-xmark"></i> Abort
-      </button>
-    </div>
-  </div>
-  {{/if}}
-
-  {{/if}} {{!-- /isLockedOut --}}
 </div>

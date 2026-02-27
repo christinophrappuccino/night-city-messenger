@@ -17,6 +17,7 @@
 @import 'base/animations.css';
 @import 'base/atmosphere.css';
 @import 'base/depth.css'; 
+@import 'base/interactions.css';
 
 /* Effects — visual atmosphere layers */
 @import 'effects/scanlines.css';  /* Legacy compat — atmosphere.css is canonical */
@@ -31,6 +32,7 @@
 @import 'components/message-viewer.css';
 @import 'components/message-viewer-hud.css'; 
 @import 'components/message-composer.css';
+@import 'components/composer-atmosphere.css'; 
 @import 'components/contact-manager.css';
 @import 'components/gm-contact-manager.css';
 @import 'components/item-inbox.css';

@@ -1,53 +1,73 @@
-{{!-- Player Email Setup — Email Address Dialog --}}
-{{!-- @file templates/dialogs/player-email-setup.hbs --}}
-{{!-- @module cyberpunkred-messenger --}}
+{{!--
+  Player Email Setup — Sprint 1.5.7 Atmosphere
+  @file templates/dialogs/player-email-setup.hbs
+  @module cyberpunkred-messenger
+  @description Dialog for players to set their character's email address.
+    Sprint 1.5.7: bracket header, terminal-styled input, design-system
+    typography, suggestion badges.
+--}}
 
 <div class="ncm-email-setup">
-  {{!-- Header --}}
-  <div class="ncm-email-setup-header">
+
+  {{!-- ═══ Bracket Header ═══ --}}
+  {{> "modules/cyberpunkred-messenger/templates/partials/section-header.hbs"
+      title="NET-MAIL SETUP" size="small" align="left" }}
+
+  {{!-- ═══ Actor Identity ═══ --}}
+  <div class="ncm-email-setup__identity">
     {{#if actorImg}}
-    <img class="ncm-email-setup-avatar" src="{{actorImg}}" alt="" />
+    <img class="ncm-email-setup__avatar" src="{{actorImg}}" alt="" />
+    {{else}}
+    <div class="ncm-email-setup__avatar-initials">{{actorInitial}}</div>
     {{/if}}
-    <div class="ncm-email-setup-header-text">
-      <h3>Set Up Net-Mail</h3>
-      <p class="ncm-text-muted">Configure email address for <strong>{{actorName}}</strong></p>
+    <div class="ncm-email-setup__info">
+      <span class="ncm-email-setup__name">{{actorName}}</span>
+      <span class="ncm-metadata">Configure net-mail address</span>
     </div>
   </div>
 
-  {{!-- Email Input --}}
-  <div class="ncm-email-setup-body">
-    <div class="ncm-form-row">
-      <label>
+  {{!-- ═══ Email Input ═══ --}}
+  <div class="ncm-email-setup__body">
+    <div class="ncm-form-group">
+      <label class="ncm-label">
         <i class="fas fa-at"></i> Email Address
       </label>
-      <input type="text" name="email" value="{{emailValue}}"
-             placeholder="handle@nightcity.net"
-             class="ncm-input ncm-input--mono"
-             autocomplete="off" spellcheck="false" />
+      <div class="ncm-terminal-input-wrap">
+        <span class="ncm-terminal-input-prompt">&gt;</span>
+        <input type="text" name="email" value="{{emailValue}}"
+               placeholder="handle@nightcity.net"
+               class="ncm-input ncm-terminal-input"
+               autocomplete="off" spellcheck="false"
+               autofocus />
+      </div>
     </div>
 
-    {{!-- Error Message --}}
+    {{!-- Error --}}
     {{#if errorMessage}}
-    <div class="ncm-email-error">
-      <i class="fas fa-exclamation-triangle"></i> {{errorMessage}}
+    <div class="ncm-alert ncm-alert--danger ncm-alert--compact">
+      <i class="fas fa-exclamation-triangle"></i>
+      <span>{{errorMessage}}</span>
     </div>
     {{/if}}
 
     {{!-- Suggestions --}}
     {{#if suggestions.length}}
-    <div class="ncm-email-suggestions">
-      <span class="ncm-suggestions-label">Suggestions:</span>
-      {{#each suggestions}}
-      <button class="ncm-suggestion-btn" data-action="useSuggestion" data-suggestion="{{this}}">
-        {{this}}
-      </button>
-      {{/each}}
+    <div class="ncm-email-setup__suggestions">
+      <span class="ncm-label--small">SUGGESTIONS</span>
+      <div class="ncm-email-setup__suggestion-list">
+        {{#each suggestions}}
+        <button class="ncm-badge ncm-badge--network ncm-badge--interactive"
+                data-action="useSuggestion" data-suggestion="{{this}}">
+          {{this}}
+        </button>
+        {{/each}}
+      </div>
     </div>
     {{/if}}
   </div>
 
-  {{!-- Footer --}}
-  <div class="ncm-email-setup-footer">
+  {{!-- ═══ Footer ═══ --}}
+  <div class="ncm-email-setup__footer">
     <button class="ncm-btn ncm-btn--ghost" data-action="cancel">Cancel</button>
     <button class="ncm-btn ncm-btn--primary" data-action="confirm">
       <i class="fas fa-check"></i> Set Email
