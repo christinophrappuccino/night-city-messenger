@@ -18,6 +18,17 @@
  *   ╚══════════════════════════════════════════════════════════════════╝
  * ═══════════════════════════════════════════════════════════════════════════ */
 
+/* ═══════════════════════════════════════════════════════════
+   §0  WINDOW POSITIONING — CRITICAL
+   ApplicationV2 does not set position:fixed inline.
+   Without this, left/top are relative to document flow,
+   not viewport, causing the window to fly off-screen.
+   This is the ONE property we must set on .ncm-app root.
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-app {
+  position: fixed !important;
+}
 
 /* ═══════════════════════════════════════════════════════════
    §1  FOUNDRY WINDOW HEADER → CYBERPUNK TITLE BAR

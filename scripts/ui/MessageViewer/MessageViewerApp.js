@@ -36,7 +36,7 @@ export class MessageViewerApp extends BaseApplication {
   static DEFAULT_OPTIONS = {
     id: 'ncm-message-viewer',
     classes: ['ncm-app', 'ncm-message-viewer-window'],
-    position: { width: 820, height: 600, top: 80, left: 200 },
+    position: { width: 820, height: 600 },
     window: {
       title: 'Night City Messenger',
       icon: 'fas fa-satellite-dish',
