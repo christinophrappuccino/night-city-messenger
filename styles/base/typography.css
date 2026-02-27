@@ -3,16 +3,25 @@
    @file styles/base/typography.css
    @module cyberpunkred-messenger
    @description Font face declarations, text utility classes, and typography
-     rules matching the Style Checker design system.
+     rules matching the Style Checker / GM Dashboard design system.
      Fonts loaded locally (no external CDN dependencies).
 
    Font roles:
-     Rajdhani      — Section headers, labels, buttons, body text (display)
-     Orbitron      — Stat values, accent UI elements
-     Share Tech Mono — Messages, code, timestamps, metadata (terminal text)
+     Rajdhani        — Section headers, labels, buttons, body text (display)
+     Orbitron        — Stat values, window titles, network names (accent ONLY)
+     Share Tech Mono — Timestamps, addresses, counts, metadata, message body
+
+   Sprint 1.5.3 — Typography Tightening:
+     • Line-heights tightened to 1.1-1.2 on labels, stats, tabs, headers
+     • Letter-spacing standardized: 0.08-0.12em on all uppercase text
+     • Monospace enforced on all data values (timestamps, addresses, counts)
+     • Orbitron usage restricted to accent elements only
+     • Message preview density compressed for log-entry feel
+     • Font size audit: xs = 11px (was 12px), metadata uses 2xs/xs
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* ─── Font Face Declarations ────────────────────────────── */
+
+/* ─── Font Face Declarations ────────────────────────────────────────────── */
 
 /* Rajdhani — Display / Heading / Body / Buttons / Labels */
 @font-face {
@@ -47,7 +56,7 @@
   font-display: swap;
 }
 
-/* Orbitron — UI accent / stat values */
+/* Orbitron — UI accent / stat values / window titles / network names ONLY */
 @font-face {
   font-family: 'Orbitron';
   src: local('Orbitron');
@@ -64,7 +73,7 @@
   font-display: swap;
 }
 
-/* Share Tech Mono — Terminal / monospace / message body */
+/* Share Tech Mono — Terminal / monospace / message body / all data values */
 @font-face {
   font-family: 'Share Tech Mono';
   src: local('Share Tech Mono');
@@ -74,42 +83,101 @@
 }
 
 
-/* ─── Base Typography Rules ─────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════════════
+   BASE RULES
+   Root typography applied to all .ncm-app windows.
+   ═══════════════════════════════════════════════════════════════════════════ */
 
 .ncm-app {
   font-family: var(--ncm-font-display);
-  font-size: var(--ncm-text-sm);
+  font-size: var(--ncm-text-sm);         /* 13px — tighter than typical 14-16px */
   color: var(--ncm-text-primary);
-  line-height: 1.4;
+  line-height: var(--ncm-leading-normal); /* 1.4 for body text */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 
-/* ─── Text Utility Classes ──────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════════════
+   FONT FAMILY UTILITIES
+   Semantic shortcuts for the three font roles.
+   ═══════════════════════════════════════════════════════════════════════════ */
 
-/* Font family shortcuts */
-.ncm-app .ncm-text-display { font-family: var(--ncm-font-display); font-weight: 700; }
-.ncm-app .ncm-text-mono    { font-family: var(--ncm-font-mono); }
-.ncm-app .ncm-text-ui      { font-family: var(--ncm-font-ui); font-size: var(--ncm-text-xs); letter-spacing: 0.05em; text-transform: uppercase; }
+/* Rajdhani — headers, labels, buttons, body */
+.ncm-app .ncm-text-display {
+  font-family: var(--ncm-font-display);
+  font-weight: 700;
+}
 
-/* Font size utilities */
-.ncm-app .ncm-text-2xs  { font-size: var(--ncm-text-2xs); }
-.ncm-app .ncm-text-xs   { font-size: var(--ncm-text-xs); }
-.ncm-app .ncm-text-sm   { font-size: var(--ncm-text-sm); }
-.ncm-app .ncm-text-base { font-size: var(--ncm-text-base); }
-.ncm-app .ncm-text-md   { font-size: var(--ncm-text-md); }
-.ncm-app .ncm-text-lg   { font-size: var(--ncm-text-lg); }
-.ncm-app .ncm-text-xl   { font-size: var(--ncm-text-xl); }
-.ncm-app .ncm-text-2xl  { font-size: var(--ncm-text-2xl); }
+/* Share Tech Mono — all data, metadata, terminal text */
+.ncm-app .ncm-text-mono {
+  font-family: var(--ncm-font-mono);
+  letter-spacing: var(--ncm-tracking-tight);
+}
 
-/* Font weight */
+/* Orbitron — ACCENT ONLY: stat values, window title, network names */
+.ncm-app .ncm-text-ui {
+  font-family: var(--ncm-font-ui);
+  font-size: var(--ncm-text-xs);
+  letter-spacing: var(--ncm-tracking-wide);
+  text-transform: uppercase;
+  line-height: var(--ncm-leading-tight);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FONT SIZE UTILITIES
+   Map to the token scale in variables.css.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-text-2xs  { font-size: var(--ncm-text-2xs); }   /* 10px */
+.ncm-app .ncm-text-xs   { font-size: var(--ncm-text-xs); }    /* 11px */
+.ncm-app .ncm-text-sm   { font-size: var(--ncm-text-sm); }    /* 13px */
+.ncm-app .ncm-text-base { font-size: var(--ncm-text-base); }  /* 14px */
+.ncm-app .ncm-text-md   { font-size: var(--ncm-text-md); }    /* 16px */
+.ncm-app .ncm-text-lg   { font-size: var(--ncm-text-lg); }    /* 18px */
+.ncm-app .ncm-text-xl   { font-size: var(--ncm-text-xl); }    /* 20px */
+.ncm-app .ncm-text-2xl  { font-size: var(--ncm-text-2xl); }   /* 24px */
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LINE-HEIGHT UTILITIES
+   Sprint 1.5.3: Dense line-heights for terminal/HUD density.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-leading-none    { line-height: var(--ncm-leading-none); }     /* 1.0 */
+.ncm-app .ncm-leading-tight   { line-height: var(--ncm-leading-tight); }    /* 1.1 */
+.ncm-app .ncm-leading-snug    { line-height: var(--ncm-leading-snug); }     /* 1.2 */
+.ncm-app .ncm-leading-normal  { line-height: var(--ncm-leading-normal); }   /* 1.4 */
+.ncm-app .ncm-leading-relaxed { line-height: var(--ncm-leading-relaxed); }  /* 1.6 */
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LETTER-SPACING UTILITIES
+   Sprint 1.5.3: Standardized tracking presets.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-tracking-tight   { letter-spacing: var(--ncm-tracking-tight); }    /* 0.04em */
+.ncm-app .ncm-tracking-normal  { letter-spacing: var(--ncm-tracking-normal); }   /* 0.06em */
+.ncm-app .ncm-tracking-wide    { letter-spacing: var(--ncm-tracking-wide); }     /* 0.08em */
+.ncm-app .ncm-tracking-wider   { letter-spacing: var(--ncm-tracking-wider); }    /* 0.10em */
+.ncm-app .ncm-tracking-widest  { letter-spacing: var(--ncm-tracking-widest); }   /* 0.12em */
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FONT WEIGHT UTILITIES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 .ncm-app .ncm-font-normal   { font-weight: 400; }
 .ncm-app .ncm-font-medium   { font-weight: 500; }
 .ncm-app .ncm-font-semibold { font-weight: 600; }
 .ncm-app .ncm-font-bold     { font-weight: 700; }
 
-/* Text color shortcuts */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TEXT COLOR UTILITIES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 .ncm-app .ncm-text-primary-color { color: var(--ncm-primary); }
 .ncm-app .ncm-text-secondary-color { color: var(--ncm-secondary); }
 .ncm-app .ncm-text-accent { color: var(--ncm-accent); }
@@ -119,10 +187,324 @@
 .ncm-app .ncm-text-warning { color: var(--ncm-warning); }
 .ncm-app .ncm-text-danger { color: var(--ncm-danger); }
 
-/* Text transform */
-.ncm-app .ncm-uppercase { text-transform: uppercase; letter-spacing: 0.06em; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TEXT TRANSFORM UTILITIES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Sprint 1.5.3: uppercase now uses --ncm-tracking-wide (was 0.06em → 0.08em) */
+.ncm-app .ncm-uppercase {
+  text-transform: uppercase;
+  letter-spacing: var(--ncm-tracking-wide);
+}
+
 .ncm-app .ncm-truncate {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.ncm-app .ncm-nowrap {
+  white-space: nowrap;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SEMANTIC TYPOGRAPHY ROLES — Sprint 1.5.3
+   Composites that enforce the font hierarchy across the module.
+   Apply these classes instead of combining individual utilities.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ─── Data Values ─────────────────────────────────────────────────────── */
+/* Timestamps, email addresses, network IDs, IP addresses, page numbers,
+   message counts — anything that's "technical readout" data.
+   ALWAYS monospace. Critical for the terminal feel. */
+
+.ncm-app .ncm-data,
+.ncm-app [data-ncm-role="data"] {
+  font-family: var(--ncm-font-mono);
+  font-size: var(--ncm-text-xs);
+  letter-spacing: var(--ncm-tracking-tight);
+  color: var(--ncm-text-secondary);
+  line-height: var(--ncm-leading-tight);
+}
+
+/* Dim data — less important metadata like routing paths, latency */
+.ncm-app .ncm-data--dim {
+  font-size: var(--ncm-text-2xs);
+  color: var(--ncm-text-muted);
+}
+
+/* Bright data — emphasized values like unread counts, signal % */
+.ncm-app .ncm-data--bright {
+  color: var(--ncm-text-primary);
+}
+
+
+/* ─── Metadata Line ───────────────────────────────────────────────────── */
+/* Compact single-line metadata: "rogue@darknet.nc • 2045.03.15 // 14:30" */
+
+.ncm-app .ncm-metadata {
+  font-family: var(--ncm-font-mono);
+  font-size: var(--ncm-text-2xs);
+  color: var(--ncm-text-muted);
+  letter-spacing: var(--ncm-tracking-tight);
+  line-height: var(--ncm-leading-tight);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+
+/* ─── Label ───────────────────────────────────────────────────────────── */
+/* Uppercase labels for form fields, stat cards, HUD readouts.
+   Rajdhani 600, tight line-height, standardized tracking. */
+
+.ncm-app .ncm-label {
+  font-family: var(--ncm-font-display);
+  font-weight: 600;
+  font-size: var(--ncm-text-2xs);
+  text-transform: uppercase;
+  letter-spacing: var(--ncm-tracking-wide);
+  color: var(--ncm-text-secondary);
+  line-height: var(--ncm-leading-tight);
+  user-select: none;
+}
+
+/* Small label — for inline stat pairs, HUD strip items */
+.ncm-app .ncm-label--small {
+  font-size: 9px;
+  letter-spacing: var(--ncm-tracking-widest);
+}
+
+
+/* ─── Accent Title ────────────────────────────────────────────────────── */
+/* Orbitron — ONLY for: window main title, network name in header,
+   stat card large values. Never for body text or labels. */
+
+.ncm-app .ncm-accent-title {
+  font-family: var(--ncm-font-ui);
+  font-weight: 700;
+  font-size: var(--ncm-text-sm);
+  text-transform: uppercase;
+  letter-spacing: var(--ncm-tracking-wider);
+  line-height: var(--ncm-leading-none);
+}
+
+
+/* ─── HUD Readout ─────────────────────────────────────────────────────── */
+/* Monospace, very small, dim — for the HUD status bar strip */
+
+.ncm-app .ncm-hud-text {
+  font-family: var(--ncm-font-mono);
+  font-size: var(--ncm-text-2xs);
+  color: var(--ncm-text-muted);
+  letter-spacing: var(--ncm-tracking-tight);
+  line-height: var(--ncm-leading-none);
+  text-transform: uppercase;
+}
+
+
+/* ─── Message Subject ─────────────────────────────────────────────────── */
+/* Tighter than body text. Rajdhani 600 at sm size. */
+
+.ncm-app .ncm-msg-subject {
+  font-family: var(--ncm-font-display);
+  font-weight: 600;
+  font-size: var(--ncm-text-sm);
+  color: var(--ncm-text-primary);
+  line-height: var(--ncm-leading-snug);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Unread subject — bolder, brighter */
+.ncm-app .ncm-msg-subject--unread {
+  font-weight: 700;
+  color: #ffffff;
+}
+
+
+/* ─── Message Body ────────────────────────────────────────────────────── */
+/* Terminal monospace for actual message content. Relaxed line-height. */
+
+.ncm-app .ncm-msg-body {
+  font-family: var(--ncm-font-mono);
+  font-size: var(--ncm-text-sm);
+  color: var(--ncm-text-primary);
+  line-height: var(--ncm-leading-relaxed);
+}
+
+
+/* ─── Message Preview ─────────────────────────────────────────────────── */
+/* Compressed preview text in the message list. One line, dim. */
+
+.ncm-app .ncm-msg-preview {
+  font-family: var(--ncm-font-mono);
+  font-size: var(--ncm-text-2xs);
+  color: var(--ncm-text-muted);
+  line-height: var(--ncm-leading-tight);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MESSAGE LIST DENSITY — Sprint 1.5.3
+   Message list items should feel like log entries, not email previews.
+   Controlled by data-density attribute on .ncm-message-viewer.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Compact density — tightest */
+[data-density="compact"] .ncm-msg-subject {
+  font-size: var(--ncm-text-xs);
+}
+
+[data-density="compact"] .ncm-metadata,
+[data-density="compact"] .ncm-msg-preview {
+  font-size: 9px;
+}
+
+/* Normal density (default) — already set by base rules above */
+
+/* Comfortable density — slightly more breathing room */
+[data-density="comfortable"] .ncm-msg-subject {
+  font-size: var(--ncm-text-base);
+  line-height: var(--ncm-leading-normal);
+}
+
+[data-density="comfortable"] .ncm-msg-body {
+  font-size: var(--ncm-text-base);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   COMPONENT TYPOGRAPHY OVERRIDES — Sprint 1.5.3
+   Enforce consistent typography rules on design system components.
+   These cascade on top of components.css definitions.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Section header — already has letter-spacing: 0.12em, tighten line-height */
+.ncm-app .ncm-section-header {
+  line-height: var(--ncm-leading-snug);
+}
+
+/* Stat card label — tighter line-height + standardized tracking */
+.ncm-app .ncm-stat-card__label {
+  line-height: var(--ncm-leading-tight);
+  letter-spacing: var(--ncm-tracking-wide);
+}
+
+/* Stat card value — Orbitron, single-line, no wrapping */
+.ncm-app .ncm-stat-card__value {
+  line-height: var(--ncm-leading-none);
+  letter-spacing: var(--ncm-tracking-tight);
+}
+
+/* Badge text — tighter tracking + line-height */
+.ncm-app .ncm-badge {
+  letter-spacing: var(--ncm-tracking-wide);
+  line-height: var(--ncm-leading-tight);
+}
+
+/* Tab labels — snug line-height + wider tracking */
+.ncm-app .ncm-tab {
+  line-height: var(--ncm-leading-snug);
+  letter-spacing: var(--ncm-tracking-wide);
+}
+
+/* Tab count — mono, tight */
+.ncm-app .ncm-tab__count {
+  letter-spacing: var(--ncm-tracking-tight);
+  line-height: var(--ncm-leading-none);
+}
+
+/* Button labels — snug line-height + consistent tracking */
+.ncm-app .ncm-btn {
+  line-height: var(--ncm-leading-snug);
+  letter-spacing: var(--ncm-tracking-wide);
+}
+
+/* Header bar identity — name is display, email is mono data */
+.ncm-app .ncm-inbox-identity__name {
+  font-family: var(--ncm-font-display);
+  font-weight: 700;
+  font-size: var(--ncm-text-sm);
+  line-height: var(--ncm-leading-tight);
+  letter-spacing: var(--ncm-tracking-normal);
+}
+
+.ncm-app .ncm-inbox-identity__email {
+  font-family: var(--ncm-font-mono);
+  font-size: var(--ncm-text-2xs);
+  color: var(--ncm-text-muted);
+  letter-spacing: var(--ncm-tracking-tight);
+  line-height: var(--ncm-leading-none);
+}
+
+/* Network name in header — Orbitron accent */
+.ncm-app .ncm-inbox-network__name {
+  font-family: var(--ncm-font-ui);
+  font-size: var(--ncm-text-xs);
+  letter-spacing: var(--ncm-tracking-wider);
+  line-height: var(--ncm-leading-tight);
+  text-transform: uppercase;
+}
+
+/* Unread badge in header */
+.ncm-app .ncm-inbox-unread__label {
+  font-family: var(--ncm-font-display);
+  font-weight: 600;
+  font-size: var(--ncm-text-2xs);
+  text-transform: uppercase;
+  letter-spacing: var(--ncm-tracking-wide);
+  line-height: var(--ncm-leading-tight);
+}
+
+.ncm-app .ncm-inbox-unread__count {
+  font-family: var(--ncm-font-ui);
+  font-weight: 700;
+  font-size: var(--ncm-text-sm);
+  line-height: var(--ncm-leading-none);
+}
+
+/* Alert panel text */
+.ncm-app .ncm-alert {
+  font-size: var(--ncm-text-xs);
+  line-height: var(--ncm-leading-snug);
+}
+
+/* Form input labels */
+.ncm-app label {
+  font-family: var(--ncm-font-display);
+  font-weight: 600;
+  font-size: var(--ncm-text-2xs);
+  text-transform: uppercase;
+  letter-spacing: var(--ncm-tracking-wide);
+  color: var(--ncm-text-secondary);
+  line-height: var(--ncm-leading-tight);
+}
+
+/* Form inputs — mono for typed data */
+.ncm-app input,
+.ncm-app select,
+.ncm-app textarea {
+  font-family: var(--ncm-font-mono);
+  font-size: var(--ncm-text-sm);
+  line-height: var(--ncm-leading-normal);
+}
+
+/* Empty state text */
+.ncm-app .ncm-empty-state__text {
+  font-family: var(--ncm-font-display);
+  font-size: var(--ncm-text-sm);
+  line-height: var(--ncm-leading-normal);
+}
+
+.ncm-app .ncm-empty-state__hint {
+  font-family: var(--ncm-font-mono);
+  font-size: var(--ncm-text-2xs);
+  color: var(--ncm-text-muted);
 }

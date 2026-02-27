@@ -118,37 +118,90 @@ export class MessageViewerApp extends BaseApplication {
 
   // ─────────────── Data Preparation ───────────────
 
+  // ═══════════════════════════════════════════════════════════
+  //  HUD Helpers 
+  // ═══════════════════════════════════════════════════════════
+
+  /**
+   * Derive connection status from signal strength and network state.
+   * @param {number} signal — 0-100
+   * @param {object} network — current network data
+   * @returns {"CONNECTED"|"DEGRADED"|"NO_SIGNAL"}
+   */
+  _deriveConnectionStatus(signal, network) {
+    if (!network || network.id === 'DEAD_ZONE' || signal <= 0) return 'NO_SIGNAL';
+    if (signal < 30) return 'DEGRADED';
+    return 'CONNECTED';
+  }
+
+  /**
+   * Derive decorative latency from network properties.
+   * Not real latency — atmospheric flavor based on network type and signal.
+   * @param {object} network
+   * @param {number} signal — 0-100
+   * @returns {number} ms
+   */
+  _deriveLatency(network, signal = 100) {
+    if (!network) return 999;
+    const base = network.effects?.messageDelay ?? 0;
+    const jitter = Math.floor(Math.random() * 40) + 12;
+    // Worse signal = higher latency
+    const signalPenalty = Math.floor((100 - signal) * 0.8);
+    return Math.max(jitter, Math.floor(base * 0.1) + jitter + signalPenalty);
+  }
+
+  /**
+   * Derive decorative encryption cipher label from network security level.
+   * @param {object} network
+   * @returns {string}
+   */
+  _deriveEncryptionCipher(network) {
+    if (!network) return 'NONE';
+    switch (network.security?.level) {
+      case 'MAXIMUM': return 'RSA-4096';
+      case 'HIGH':    return 'AES-256';
+      case 'LOW':     return 'XOR-128';
+      case 'NONE':    return 'NONE';
+      default:        return 'AES-256';
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Context Preparation
+  // ═══════════════════════════════════════════════════════════
+
   /** @override */
   async _prepareContext(options) {
+    // ── Messages: load → filter → sort → paginate → enrich ──
     const allMessages = await this._loadMessages();
     const filtered = this._applyFilters(allMessages);
     const sorted = this._applySorting(filtered);
     const paginated = this._applyPagination(sorted);
     const enriched = await this._enrichMessages(paginated);
 
-    // Actor identity fields for inbox header
+    // ── Actor identity for inbox header ──
     const viewingActor = this.actorId ? game.actors?.get(this.actorId) : null;
     const viewingAsPortrait = viewingActor?.img || null;
     const viewingAsInitial = getInitials(viewingActor?.name || 'Unknown');
     const viewingAsEmail = this.contactRepository?.getActorEmail?.(this.actorId) || '';
 
-    // Sort options for dropdown template
+    // ── Sort options for dropdown template ──
     const sortOptions = Object.entries(SORT_LABELS).map(([id, label]) => ({
       id,
       label,
       active: id === this.currentSort,
     }));
 
-    // Counts for category badges
+    // ── Category counts ──
     const counts = this._computeCounts(allMessages);
 
-    // Selected message enrichment
+    // ── Selected message enrichment ──
     let selectedMessage = null;
     if (this.selectedMessageId) {
       selectedMessage = await this._getEnrichedMessage(this.selectedMessageId, allMessages);
     }
 
-    // Network state
+    // ── Network state ──
     const currentNetwork = this._getCurrentNetworkData();
     const availableNetworks = this._getAvailableNetworks();
     const signalStrength = this.networkService?.getSignalStrength?.() ?? 100;
@@ -159,15 +212,22 @@ export class MessageViewerApp extends BaseApplication {
     const signalQuality = signalData.quality;
     const signalSegments = signalData.segments;
 
-    // Unique networks present in messages (for network filter)
-    const messageNetworks = [...new Set(allMessages.map(m => m.network).filter(Boolean))].sort();
+    // Unique networks present in messages (for network filter dropdown)
+    const messageNetworks = [...new Set(
+      allMessages.map(m => m.network).filter(Boolean)
+    )].sort();
 
-    // Player theme preferences
+    // ── Player preferences ──
     const themePrefs = this._getThemePrefs();
-
-    // Quick replies
     const quickReplies = themePrefs.quickReplies || QUICK_REPLIES_DEFAULT;
 
+    // ── HUD strip data (Sprint 1.5.4) ──
+    const connectionStatus = this._deriveConnectionStatus(signalStrength, currentNetwork);
+    const queuedMessageCount = this.stateManager?.get('queuedMessageCount') ?? 0;
+    const encryptionCipher = this._deriveEncryptionCipher(currentNetwork);
+    const latencyMs = this._deriveLatency(currentNetwork, signalStrength);
+
+    // ── Assemble context ──
     return {
       // Identity
       viewingAsName: this._getViewingAsName(),
@@ -182,7 +242,13 @@ export class MessageViewerApp extends BaseApplication {
       signalStrength,
       signalLevel,
       signalQuality,
-      signalSegments,        
+      signalSegments,
+
+      // HUD Strip (Sprint 1.5.4)
+      connectionStatus,
+      queuedMessageCount,
+      encryptionCipher,
+      latencyMs,
 
       // Messages
       messages: enriched,
@@ -208,14 +274,15 @@ export class MessageViewerApp extends BaseApplication {
       sidebarWidth: this.sidebarWidth,
 
       // Bulk Actions
-      hasBulkSelection: this.bulkSelected.size > 0,
-      selectedCount: this.bulkSelected.size,
-      allSelected: enriched.length > 0 && enriched.every(m => this.bulkSelected.has(m.messageId)),
+      showBulkActions: this.bulkSelected.size > 0,
+      bulkCount: this.bulkSelected.size,
+      allSelected: enriched.length > 0
+        && enriched.every(m => this.bulkSelected.has(m.messageId)),
 
       // Quick Reply
       quickReplies,
 
-      // Unread count for status bar
+      // Status Bar
       unreadCount: counts.unread || 0,
     };
   }
@@ -1060,10 +1127,13 @@ export class MessageViewerApp extends BaseApplication {
   _computeCounts(messages) {
     const inbox = messages.filter(m => !m.status.deleted && !m.status.spam && !m.status.sent).length;
     const unread = messages.filter(m => !m.status.read && !m.status.deleted && !m.status.spam && !m.status.sent).length;
+    const sent = messages.filter(m => m.status.sent && !m.status.deleted).length;
     const saved = messages.filter(m => m.status.saved && !m.status.deleted).length;
     const spam = messages.filter(m => m.status.spam && !m.status.deleted).length;
+    const trash = messages.filter(m => m.status.deleted).length;
+    const total = messages.length;
 
-    return { inbox, unread, saved, spam };
+    return { total, inbox, unread, sent, saved, spam, trash };
   }
 
   // ─────────────── Display Formatting Helpers ───────────────

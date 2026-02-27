@@ -1,31 +1,348 @@
-/* Neon glow effects — toggled by .ncm-neon-glow on <body> */
+/* ═══════════════════════════════════════════════════════════════════════════
+   Night City Messenger — Neon Glow & Light Bleed
+   @file styles/effects/neon-glow.css
+   @module cyberpunkred-messenger
+   @description Neon glow effects for headers, active elements, buttons,
+     focus rings, and stat values. Gated by [data-ncm-neon="true"] attribute
+     (set by BaseApplication._applyAtmosphere()).
 
-.ncm-neon-glow .ncm-app h1,
-.ncm-neon-glow .ncm-app h2 {
+   Sprint 1.5.2 — Light bleed on every interactive surface.
+   Visual references: GM Dashboard bracket headers, Danger Score stat glow,
+   Cyberpunk 2077 phone UI highlight states.
+
+   §1  Bracket Header Glow
+   §2  Active / Selected Element Glow
+   §3  Button Hover Glow
+   §4  Focus Ring Glow (replaces browser default)
+   §5  Stat Card Value Glow
+   §6  Badge & Misc Glow
+   §7  Legacy Body-Class Fallback
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §1  BRACKET HEADER GLOW
+   [ SECTION TITLE ] — cyan text-shadow with dimmer bracket glow.
+   Matches GM Dashboard's [ SCENE GATE ] and [ FACTION TENSION SCANNER ].
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+[data-ncm-neon="true"].ncm-app .ncm-section-header,
+[data-ncm-neon="true"] .ncm-app .ncm-section-header {
+  text-shadow:
+    0 0 8px rgba(25, 243, 247, 0.5),
+    0 0 20px rgba(25, 243, 247, 0.15);
+}
+
+/* Brackets get a dimmer glow — they frame, not compete */
+[data-ncm-neon="true"].ncm-app .ncm-section-header::before,
+[data-ncm-neon="true"].ncm-app .ncm-section-header::after,
+[data-ncm-neon="true"] .ncm-app .ncm-section-header::before,
+[data-ncm-neon="true"] .ncm-app .ncm-section-header::after {
+  text-shadow:
+    0 0 6px rgba(25, 243, 247, 0.25),
+    0 0 12px rgba(25, 243, 247, 0.08);
+}
+
+/* Primary-colored header variant (red glow) */
+[data-ncm-neon="true"].ncm-app .ncm-section-header--primary,
+[data-ncm-neon="true"] .ncm-app .ncm-section-header--primary {
+  text-shadow:
+    0 0 8px rgba(246, 82, 97, 0.5),
+    0 0 20px rgba(246, 82, 97, 0.15);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §2  ACTIVE / SELECTED ELEMENT GLOW
+   Selected cards, active list items, and highlighted entities get a cyan
+   box-shadow glow ring with subtle inset bleed.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+[data-ncm-neon="true"].ncm-app .ncm-card--selected,
+[data-ncm-neon="true"].ncm-app .ncm-card--active,
+[data-ncm-neon="true"].ncm-app .ncm-entity-card--selected,
+[data-ncm-neon="true"] .ncm-app .ncm-card--selected,
+[data-ncm-neon="true"] .ncm-app .ncm-card--active,
+[data-ncm-neon="true"] .ncm-app .ncm-entity-card--selected {
+  box-shadow:
+    0 0 12px rgba(25, 243, 247, 0.15),
+    inset 0 0 8px rgba(25, 243, 247, 0.05);
+}
+
+/* Selected message in list */
+[data-ncm-neon="true"].ncm-app .ncm-message-item.selected,
+[data-ncm-neon="true"].ncm-app .ncm-message-item--selected,
+[data-ncm-neon="true"] .ncm-app .ncm-message-item.selected,
+[data-ncm-neon="true"] .ncm-app .ncm-message-item--selected {
+  box-shadow:
+    0 0 10px rgba(25, 243, 247, 0.12),
+    inset 0 0 6px rgba(25, 243, 247, 0.04);
+}
+
+/* Danger-variant selected (e.g., spam, infected) */
+[data-ncm-neon="true"].ncm-app .ncm-card--danger.ncm-card--selected,
+[data-ncm-neon="true"] .ncm-app .ncm-card--danger.ncm-card--selected {
+  box-shadow:
+    0 0 12px rgba(255, 0, 51, 0.2),
+    inset 0 0 8px rgba(255, 0, 51, 0.06);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §3  BUTTON HOVER GLOW
+   Each button variant glows in its own color on hover. The glow is a
+   box-shadow halo that appears on :hover and intensifies on :active.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Primary (red) */
+[data-ncm-neon="true"].ncm-app .ncm-btn--primary:hover,
+[data-ncm-neon="true"] .ncm-app .ncm-btn--primary:hover {
+  box-shadow:
+    0 0 10px rgba(246, 82, 97, 0.35),
+    0 0 25px rgba(246, 82, 97, 0.12);
+}
+
+[data-ncm-neon="true"].ncm-app .ncm-btn--primary:active,
+[data-ncm-neon="true"] .ncm-app .ncm-btn--primary:active {
+  box-shadow:
+    0 0 6px rgba(246, 82, 97, 0.5),
+    inset 0 0 4px rgba(246, 82, 97, 0.15);
+}
+
+/* Secondary (cyan) */
+[data-ncm-neon="true"].ncm-app .ncm-btn--secondary:hover,
+[data-ncm-neon="true"] .ncm-app .ncm-btn--secondary:hover {
+  box-shadow:
+    0 0 10px rgba(25, 243, 247, 0.3),
+    0 0 25px rgba(25, 243, 247, 0.1);
+}
+
+[data-ncm-neon="true"].ncm-app .ncm-btn--secondary:active,
+[data-ncm-neon="true"] .ncm-app .ncm-btn--secondary:active {
+  box-shadow:
+    0 0 6px rgba(25, 243, 247, 0.45),
+    inset 0 0 4px rgba(25, 243, 247, 0.12);
+}
+
+/* Danger (red, stronger) */
+[data-ncm-neon="true"].ncm-app .ncm-btn--danger:hover,
+[data-ncm-neon="true"] .ncm-app .ncm-btn--danger:hover {
+  box-shadow:
+    0 0 10px rgba(255, 0, 51, 0.35),
+    0 0 25px rgba(255, 0, 51, 0.12);
+}
+
+[data-ncm-neon="true"].ncm-app .ncm-btn--danger:active,
+[data-ncm-neon="true"] .ncm-app .ncm-btn--danger:active {
+  box-shadow:
+    0 0 6px rgba(255, 0, 51, 0.5),
+    inset 0 0 4px rgba(255, 0, 51, 0.15);
+}
+
+/* Ghost — subtle background glow, no halo */
+[data-ncm-neon="true"].ncm-app .ncm-btn--ghost:hover,
+[data-ncm-neon="true"] .ncm-app .ncm-btn--ghost:hover {
+  box-shadow:
+    0 0 8px rgba(25, 243, 247, 0.1);
+}
+
+/* Success (green) */
+[data-ncm-neon="true"].ncm-app .ncm-btn--success:hover,
+[data-ncm-neon="true"] .ncm-app .ncm-btn--success:hover {
+  box-shadow:
+    0 0 10px rgba(0, 255, 65, 0.3),
+    0 0 25px rgba(0, 255, 65, 0.1);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §4  FOCUS RING GLOW
+   Replaces the browser default focus ring with a neon outline.
+   All focusable elements within .ncm-app get the treatment.
+   Uses :focus-visible so mouse clicks don't trigger the ring.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Remove browser default within NCM */
+[data-ncm-neon="true"].ncm-app *:focus,
+[data-ncm-neon="true"] .ncm-app *:focus {
+  outline: none;
+}
+
+/* Neon focus ring — keyboard nav only */
+[data-ncm-neon="true"].ncm-app *:focus-visible,
+[data-ncm-neon="true"] .ncm-app *:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px rgba(25, 243, 247, 0.45),
+    0 0 8px rgba(25, 243, 247, 0.2);
+}
+
+/* Input-specific focus — border change + glow */
+[data-ncm-neon="true"].ncm-app .ncm-input:focus,
+[data-ncm-neon="true"].ncm-app .ncm-select:focus,
+[data-ncm-neon="true"].ncm-app .ncm-textarea:focus,
+[data-ncm-neon="true"].ncm-app input:focus,
+[data-ncm-neon="true"].ncm-app select:focus,
+[data-ncm-neon="true"].ncm-app textarea:focus,
+[data-ncm-neon="true"] .ncm-app .ncm-input:focus,
+[data-ncm-neon="true"] .ncm-app .ncm-select:focus,
+[data-ncm-neon="true"] .ncm-app .ncm-textarea:focus,
+[data-ncm-neon="true"] .ncm-app input:focus,
+[data-ncm-neon="true"] .ncm-app select:focus,
+[data-ncm-neon="true"] .ncm-app textarea:focus {
+  border-color: var(--ncm-secondary);
+  box-shadow:
+    0 0 0 1px rgba(25, 243, 247, 0.3),
+    0 0 12px rgba(25, 243, 247, 0.15);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §5  STAT CARD VALUE GLOW
+   Large stat values glow in their color variant. Matches the Danger Score's
+   glowing "56" threat number.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Default stat value — subtle cyan */
+[data-ncm-neon="true"].ncm-app .ncm-stat-card__value,
+[data-ncm-neon="true"] .ncm-app .ncm-stat-card__value {
+  text-shadow:
+    0 0 8px rgba(25, 243, 247, 0.3),
+    0 0 20px rgba(25, 243, 247, 0.1);
+}
+
+/* Primary variant — red glow */
+[data-ncm-neon="true"].ncm-app .ncm-stat-card--primary .ncm-stat-card__value,
+[data-ncm-neon="true"] .ncm-app .ncm-stat-card--primary .ncm-stat-card__value {
+  text-shadow:
+    0 0 10px rgba(246, 82, 97, 0.5),
+    0 0 25px rgba(246, 82, 97, 0.15);
+}
+
+/* Secondary variant — cyan glow (stronger) */
+[data-ncm-neon="true"].ncm-app .ncm-stat-card--secondary .ncm-stat-card__value,
+[data-ncm-neon="true"] .ncm-app .ncm-stat-card--secondary .ncm-stat-card__value {
+  text-shadow:
+    0 0 10px rgba(25, 243, 247, 0.5),
+    0 0 25px rgba(25, 243, 247, 0.15);
+}
+
+/* Success variant — green glow */
+[data-ncm-neon="true"].ncm-app .ncm-stat-card--success .ncm-stat-card__value,
+[data-ncm-neon="true"] .ncm-app .ncm-stat-card--success .ncm-stat-card__value {
+  text-shadow:
+    0 0 10px rgba(0, 255, 65, 0.45),
+    0 0 25px rgba(0, 255, 65, 0.12);
+}
+
+/* Warning variant — amber glow */
+[data-ncm-neon="true"].ncm-app .ncm-stat-card--warning .ncm-stat-card__value,
+[data-ncm-neon="true"] .ncm-app .ncm-stat-card--warning .ncm-stat-card__value {
+  text-shadow:
+    0 0 10px rgba(255, 171, 0, 0.45),
+    0 0 25px rgba(255, 171, 0, 0.12);
+}
+
+/* Danger variant — red glow (intense) */
+[data-ncm-neon="true"].ncm-app .ncm-stat-card--danger .ncm-stat-card__value,
+[data-ncm-neon="true"] .ncm-app .ncm-stat-card--danger .ncm-stat-card__value {
+  text-shadow:
+    0 0 10px rgba(255, 0, 51, 0.5),
+    0 0 25px rgba(255, 0, 51, 0.15);
+}
+
+/* Pulsing stat card label also gets dim glow */
+[data-ncm-neon="true"].ncm-app .ncm-stat-card--pulse .ncm-stat-card__label,
+[data-ncm-neon="true"] .ncm-app .ncm-stat-card--pulse .ncm-stat-card__label {
+  text-shadow:
+    0 0 6px rgba(246, 82, 97, 0.25);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §6  BADGE & MISC GLOW
+   Interactive badges, tab indicators, status bar, and misc glowing elements.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Badges */
+[data-ncm-neon="true"].ncm-app .ncm-badge,
+[data-ncm-neon="true"] .ncm-app .ncm-badge {
+  box-shadow: 0 0 6px rgba(246, 82, 97, 0.2);
+}
+
+[data-ncm-neon="true"].ncm-app .ncm-badge--secondary,
+[data-ncm-neon="true"] .ncm-app .ncm-badge--secondary {
+  box-shadow: 0 0 6px rgba(25, 243, 247, 0.2);
+}
+
+[data-ncm-neon="true"].ncm-app .ncm-badge--success,
+[data-ncm-neon="true"] .ncm-app .ncm-badge--success {
+  box-shadow: 0 0 6px rgba(0, 255, 65, 0.2);
+}
+
+[data-ncm-neon="true"].ncm-app .ncm-badge--warning,
+[data-ncm-neon="true"] .ncm-app .ncm-badge--warning {
+  box-shadow: 0 0 6px rgba(255, 171, 0, 0.2);
+}
+
+/* Status bar text */
+[data-ncm-neon="true"].ncm-app .ncm-status-bar,
+[data-ncm-neon="true"].ncm-app .ncm-hud-strip,
+[data-ncm-neon="true"] .ncm-app .ncm-status-bar,
+[data-ncm-neon="true"] .ncm-app .ncm-hud-strip {
+  text-shadow:
+    0 0 6px rgba(25, 243, 247, 0.25),
+    0 0 15px rgba(25, 243, 247, 0.08);
+}
+
+/* Active tab underline glow */
+[data-ncm-neon="true"].ncm-app .ncm-tab--active,
+[data-ncm-neon="true"] .ncm-app .ncm-tab--active {
+  text-shadow: 0 0 8px rgba(25, 243, 247, 0.35);
+}
+
+/* Network name in header */
+[data-ncm-neon="true"].ncm-app .ncm-inbox-network__name,
+[data-ncm-neon="true"] .ncm-app .ncm-inbox-network__name {
+  text-shadow:
+    0 0 6px rgba(25, 243, 247, 0.3),
+    0 0 15px rgba(25, 243, 247, 0.1);
+}
+
+/* Unread count badge glow */
+[data-ncm-neon="true"].ncm-app .ncm-inbox-unread--active .ncm-inbox-unread__count,
+[data-ncm-neon="true"] .ncm-app .ncm-inbox-unread--active .ncm-inbox-unread__count {
+  text-shadow:
+    0 0 8px rgba(246, 82, 97, 0.5),
+    0 0 20px rgba(246, 82, 97, 0.2);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §7  LEGACY BODY-CLASS FALLBACK
+   Retained for windows that haven't been updated to data-attribute approach.
+   Will be removed in a future cleanup sprint.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ncm-neon-glow .ncm-app:not([data-ncm-neon]) h1,
+.ncm-neon-glow .ncm-app:not([data-ncm-neon]) h2,
+.ncm-neon-glow .ncm-app:not([data-ncm-neon]) .ncm-section-header {
   text-shadow: var(--ncm-glow-secondary);
 }
 
-.ncm-neon-glow .ncm-app .ncm-status-bar {
-  text-shadow: var(--ncm-glow-secondary);
-}
-
-.ncm-neon-glow .ncm-app .ncm-message-item.selected {
+.ncm-neon-glow .ncm-app:not([data-ncm-neon]) .ncm-message-item.selected {
   box-shadow: var(--ncm-glow-primary);
 }
 
-.ncm-neon-glow .ncm-app .ncm-button--primary:hover {
+.ncm-neon-glow .ncm-app:not([data-ncm-neon]) .ncm-btn--primary:hover {
   box-shadow: var(--ncm-glow-primary), 0 0 20px rgba(246, 82, 97, 0.3);
 }
 
-.ncm-neon-glow .ncm-app .ncm-button--secondary:hover {
+.ncm-neon-glow .ncm-app:not([data-ncm-neon]) .ncm-btn--secondary:hover {
   box-shadow: var(--ncm-glow-secondary), 0 0 20px rgba(25, 243, 247, 0.2);
 }
 
-.ncm-neon-glow .ncm-app input:focus,
-.ncm-neon-glow .ncm-app textarea:focus {
+.ncm-neon-glow .ncm-app:not([data-ncm-neon]) input:focus,
+.ncm-neon-glow .ncm-app:not([data-ncm-neon]) textarea:focus {
   box-shadow: var(--ncm-glow-secondary), 0 0 15px rgba(25, 243, 247, 0.15);
-}
-
-.ncm-neon-glow .ncm-app .ncm-badge {
-  box-shadow: var(--ncm-glow-primary);
 }

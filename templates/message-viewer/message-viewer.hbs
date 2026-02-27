@@ -1,18 +1,28 @@
 {{!--
-  Message Viewer (Inbox) — Sprint 1: Inbox UX Overhaul
+  Message Viewer (Inbox) — Sprint 1 + Sprint 1.5.4
   @file templates/message-viewer/message-viewer.hbs
   @module cyberpunkred-messenger
   @description Main inbox template with cyberdeck terminal aesthetic.
-    Split-panel layout: header bar → category tabs → message list | detail panel.
-    Uses Sprint 0 design system components throughout.
+    Layout: HUD strip → header bar → stat cards → category tabs →
+    message list | detail panel → status footer.
 
-  FIXES (post-Sprint 1):
-    - Empty state list: uses dedicated empty-state-list.hbs partial (context-aware per filter)
-    - Empty state detail: uses dedicated empty-state-detail.hbs partial (terminal readout)
-    - Tab bar: overflow hidden to prevent horizontal scrollbar bleed
+  Sprint 1.5.4 additions:
+    - HUD strip at top (monospace system readout)
+    - Stat cards row (TOTAL / UNREAD / SAVED / SPAM)
+    - Network indicator badge with connection dot
+    - Uses Sprint 0 design system components throughout.
 --}}
 
 <div class="ncm-message-viewer" data-density="{{density}}">
+
+  {{!-- ═══════ HUD STRIP — Sprint 1.5.4 ═══════ --}}
+  {{> "modules/cyberpunkred-messenger/templates/partials/hud-strip.hbs"
+      networkName=currentNetwork.name
+      signalPercent=signalStrength
+      queuedCount=queuedMessageCount
+      encryptionCipher=encryptionCipher
+      latencyMs=latencyMs
+      connectionStatus=connectionStatus }}
 
   {{!-- ═══════ HEADER BAR ═══════ --}}
   <header class="ncm-inbox-header">
@@ -32,8 +42,9 @@
       </div>
     </div>
 
-    {{!-- Network Selector --}}
+    {{!-- Network Indicator Badge — Sprint 1.5.4: connection dot --}}
     <div class="ncm-inbox-network" data-action="toggle-network-dropdown">
+      <span class="ncm-inbox-network__indicator ncm-inbox-network__indicator--{{connectionStatus}}"></span>
       <i class="fas fa-satellite-dish ncm-inbox-network__icon"></i>
       <span class="ncm-inbox-network__name">{{currentNetwork.name}}</span>
       {{#if currentNetwork.requiresAuth}}
@@ -108,6 +119,37 @@
     </div>
   </header>
 
+  {{!-- ═══════ STAT CARDS ROW — Sprint 1.5.4 ═══════ --}}
+  <div class="ncm-inbox-stats">
+    <div class="ncm-stat-grid ncm-stat-grid--4">
+      <div class="ncm-stat-card ncm-stat-card--clickable"
+           data-action="set-filter" data-filter="inbox"
+           data-ncm-tooltip="Show all messages">
+        <span class="ncm-stat-card__label">TOTAL</span>
+        <span class="ncm-stat-card__value">{{counts.total}}</span>
+      </div>
+      <div class="ncm-stat-card ncm-stat-card--primary ncm-stat-card--clickable
+        {{~#if (gt counts.unread 0)}} ncm-stat-card--pulse{{/if}}"
+           data-action="set-filter" data-filter="unread"
+           data-ncm-tooltip="Show unread messages">
+        <span class="ncm-stat-card__label">UNREAD</span>
+        <span class="ncm-stat-card__value">{{counts.unread}}</span>
+      </div>
+      <div class="ncm-stat-card ncm-stat-card--secondary ncm-stat-card--clickable"
+           data-action="set-filter" data-filter="saved"
+           data-ncm-tooltip="Show saved messages">
+        <span class="ncm-stat-card__label">SAVED</span>
+        <span class="ncm-stat-card__value">{{counts.saved}}</span>
+      </div>
+      <div class="ncm-stat-card ncm-stat-card--warning ncm-stat-card--clickable"
+           data-action="set-filter" data-filter="spam"
+           data-ncm-tooltip="Show spam messages">
+        <span class="ncm-stat-card__label">SPAM</span>
+        <span class="ncm-stat-card__value">{{counts.spam}}</span>
+      </div>
+    </div>
+  </div>
+
   {{!-- ═══════ CATEGORY TABS ═══════ --}}
   <nav class="ncm-inbox-tabs">
     <div class="ncm-tabs">
@@ -180,7 +222,7 @@
         <div class="ncm-sort-dropdown ncm-hidden">
           {{#each sortOptions}}
           <div class="ncm-sort-option {{#if this.active}}ncm-sort-option--active{{/if}}"
-               data-action="set-sort" data-sort="{{this.id}}">
+               data-action="set-sort" data-sort="{{this.key}}">
             {{this.label}}
           </div>
           {{/each}}
@@ -189,44 +231,39 @@
     </div>
   </nav>
 
-  {{!-- ═══════ BULK ACTIONS BAR (conditional) ═══════ --}}
-  {{#if hasBulkSelection}}
-  <div class="ncm-bulk-actions">
-    <label class="ncm-bulk-select-all">
-      <input type="checkbox" class="ncm-bulk-check" data-action="select-all"
-             {{#if allSelected}}checked{{/if}} />
-      <span>{{selectedCount}} selected</span>
-    </label>
-    <div class="ncm-bulk-buttons">
-      <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="bulk-read"
-              data-ncm-tooltip="Mark as read">
-        <i class="fas fa-envelope-open"></i>
+  {{!-- ═══════ BULK ACTIONS (visible when items selected) ═══════ --}}
+  {{#if showBulkActions}}
+    <div class="ncm-bulk-bar">
+      <span class="ncm-bulk-bar__count">{{bulkCount}} selected</span>
+      <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="bulk-mark-read">
+        <i class="fas fa-check-double"></i> Mark Read
       </button>
-      <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="bulk-spam"
-              data-ncm-tooltip="Mark as spam">
-        <i class="fas fa-shield-halved"></i>
+      <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="bulk-mark-spam">
+        <i class="fas fa-shield-halved"></i> Spam
       </button>
-      <button class="ncm-btn ncm-btn--danger ncm-btn--sm" data-action="bulk-delete"
-              data-ncm-tooltip="Delete selected">
-        <i class="fas fa-trash"></i>
+      <button class="ncm-btn ncm-btn--danger ncm-btn--sm" data-action="bulk-delete">
+        <i class="fas fa-trash"></i> Delete
+      </button>
+      <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="bulk-clear">
+        <i class="fas fa-times"></i> Clear
       </button>
     </div>
-  </div>
   {{/if}}
 
-  {{!-- ═══════ SPLIT PANEL: Message List | Detail ═══════ --}}
-  <div class="ncm-split-panel">
+  {{!-- ═══════ SPLIT PANEL: List + Detail ═══════ --}}
+  <div class="ncm-inbox-split-panel">
 
     {{!-- Left: Message List --}}
-    <div class="ncm-message-list-panel" style="width: {{sidebarWidth}}px;" tabindex="0">
-      <div class="ncm-message-list ncm-scrollbar">
+    <div class="ncm-message-list-panel ncm-scrollbar" style="width: {{sidebarWidth}}px;">
+      <div class="ncm-message-list">
         {{#if messages.length}}
           {{#each messages}}
             {{> "modules/cyberpunkred-messenger/templates/message-viewer/partials/message-list-item.hbs" }}
           {{/each}}
         {{else}}
-          {{!-- FIX: Use dedicated context-aware empty state partial --}}
-          {{> "modules/cyberpunkred-messenger/templates/message-viewer/partials/empty-state-list.hbs" }}
+          {{> "modules/cyberpunkred-messenger/templates/partials/empty-state.hbs"
+              icon="fas fa-inbox" title="NO MESSAGES"
+              message="Awaiting transmissions..." }}
         {{/if}}
       </div>
 
@@ -261,8 +298,13 @@
         {{> "modules/cyberpunkred-messenger/templates/message-viewer/partials/message-detail.hbs"
             message=selectedMessage quickReplies=quickReplies isGM=isGM }}
       {{else}}
-        {{!-- FIX: Use dedicated terminal readout empty state --}}
-        {{> "modules/cyberpunkred-messenger/templates/message-viewer/partials/empty-state-detail.hbs" }}
+        {{!-- Empty Detail State --}}
+        <div class="ncm-detail-empty">
+          {{> "modules/cyberpunkred-messenger/templates/partials/empty-state.hbs"
+              icon="fas fa-terminal"
+              title="AWAITING INPUT"
+              message="> SELECT MESSAGE TO READ_" }}
+        </div>
       {{/if}}
     </div>
   </div>

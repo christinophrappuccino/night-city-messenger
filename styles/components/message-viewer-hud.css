@@ -1,0 +1,392 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Message Viewer — Sprint 1.5.4: HUD Readout Elements
+ * @file styles/components/message-viewer-hud.css
+ * @module cyberpunkred-messenger
+ *
+ * Additive styles for Sprint 1.5.4 HUD elements. Designed to be appended to
+ * message-viewer.css or imported separately. All rules scoped under .ncm-app.
+ *
+ * ─── SECTION INDEX ───
+ *  §H1  HUD Strip
+ *  §H2  Stat Cards Row
+ *  §H3  Network Indicator Badge
+ *  §H4  Metadata Readout
+ *  §H5  Priority / Threat Indicators
+ *  §H6  Unread Dot Pulse
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+
+/* ═══════════════════════════════════════════════════════════
+   §H1  HUD STRIP
+   Thin monospace status bar at the very top of the inbox.
+   Shows live system data: network, signal, latency, queue, encryption.
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-hud-strip {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 0 var(--ncm-space-md);
+  height: 26px;
+  min-height: 26px;
+  background: var(--ncm-bg-deep);
+  border-bottom: 1px solid rgba(42, 42, 69, 0.5);
+  font-family: var(--ncm-font-mono);
+  font-size: var(--ncm-text-2xs);
+  color: var(--ncm-text-muted);
+  letter-spacing: var(--ncm-tracking-tight, 0.04em);
+  line-height: 1;
+  text-transform: uppercase;
+  user-select: none;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.ncm-app .ncm-hud-strip__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.ncm-app .ncm-hud-strip__label {
+  color: var(--ncm-text-muted);
+  opacity: 0.6;
+}
+
+.ncm-app .ncm-hud-strip__value {
+  color: var(--ncm-text-secondary);
+}
+
+.ncm-app .ncm-hud-strip__value--network {
+  color: var(--ncm-secondary);
+  font-weight: 700;
+}
+
+.ncm-app .ncm-hud-strip__value--alert {
+  color: var(--ncm-warning);
+}
+
+.ncm-app .ncm-hud-strip__sep {
+  padding: 0 6px;
+  color: var(--ncm-text-muted);
+  opacity: 0.3;
+}
+
+.ncm-app .ncm-hud-strip__spacer {
+  flex: 1;
+}
+
+/* ── Connection Status Indicator ── */
+
+.ncm-app .ncm-hud-strip__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ncm-app .ncm-hud-strip__status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.ncm-app .ncm-hud-strip__status--CONNECTED .ncm-hud-strip__status-dot {
+  background: var(--ncm-success);
+  box-shadow: 0 0 4px rgba(0, 255, 65, 0.5);
+}
+
+.ncm-app .ncm-hud-strip__status--CONNECTED .ncm-hud-strip__status-text {
+  color: var(--ncm-success);
+}
+
+.ncm-app .ncm-hud-strip__status--DEGRADED .ncm-hud-strip__status-dot {
+  background: var(--ncm-warning);
+  box-shadow: 0 0 4px rgba(255, 171, 0, 0.5);
+}
+
+.ncm-app .ncm-hud-strip__status--DEGRADED .ncm-hud-strip__status-text {
+  color: var(--ncm-warning);
+}
+
+.ncm-app .ncm-hud-strip__status--NO_SIGNAL .ncm-hud-strip__status-dot {
+  background: var(--ncm-danger);
+  box-shadow: 0 0 4px rgba(255, 0, 51, 0.5);
+}
+
+.ncm-app .ncm-hud-strip__status--NO_SIGNAL .ncm-hud-strip__status-text {
+  color: var(--ncm-danger);
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   §H2  STAT CARDS ROW
+   4-column grid below header: TOTAL / UNREAD / SAVED / SPAM.
+   Clickable — each card acts as a filter shortcut.
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-inbox-stats {
+  padding: var(--ncm-space-sm) var(--ncm-space-md);
+  background: var(--ncm-bg-base);
+  border-bottom: 1px solid var(--ncm-border);
+  flex-shrink: 0;
+}
+
+/* Clickable stat card — cursor + hover treatment */
+.ncm-app .ncm-stat-card--clickable {
+  cursor: pointer;
+  transition: all var(--ncm-transition-fast, 150ms ease);
+}
+
+.ncm-app .ncm-stat-card--clickable:hover {
+  background: var(--ncm-bg-elevated);
+  border-color: var(--ncm-border-active, #3a3a5a);
+  transform: translateY(-1px);
+}
+
+.ncm-app .ncm-stat-card--clickable:active {
+  transform: scale(0.97);
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   §H3  NETWORK INDICATOR BADGE
+   Colored dot in the header network selector showing connection status.
+   Green = connected, Yellow = degraded, Red = dead zone.
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-inbox-network__indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.ncm-app .ncm-inbox-network__indicator--CONNECTED {
+  background: var(--ncm-success);
+  box-shadow: 0 0 6px rgba(0, 255, 65, 0.5);
+}
+
+.ncm-app .ncm-inbox-network__indicator--DEGRADED {
+  background: var(--ncm-warning);
+  box-shadow: 0 0 6px rgba(255, 171, 0, 0.5);
+  animation: ncm-indicator-blink 2s ease-in-out infinite;
+}
+
+.ncm-app .ncm-inbox-network__indicator--NO_SIGNAL {
+  background: var(--ncm-danger);
+  box-shadow: 0 0 6px rgba(255, 0, 51, 0.6);
+  animation: ncm-indicator-blink 1s ease-in-out infinite;
+}
+
+@keyframes ncm-indicator-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* Kill blink at reduced/off animation */
+[data-ncm-animation-level="reduced"] .ncm-app .ncm-inbox-network__indicator,
+[data-ncm-animation-level="off"] .ncm-app .ncm-inbox-network__indicator {
+  animation: none;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   §H4  METADATA READOUT
+   Structured label-value pair block for message detail pane.
+   Replaces free-flowing paragraphs with terminal-style readout.
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-metadata-readout {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: var(--ncm-space-sm) 0;
+  border-bottom: 1px solid var(--ncm-border);
+}
+
+.ncm-app .ncm-metadata-readout__row {
+  display: flex;
+  align-items: center;
+  gap: var(--ncm-space-sm);
+  padding: 3px 0;
+  min-height: 22px;
+}
+
+.ncm-app .ncm-metadata-readout__label {
+  font-family: var(--ncm-font-display);
+  font-weight: 600;
+  font-size: var(--ncm-text-2xs);
+  text-transform: uppercase;
+  letter-spacing: var(--ncm-tracking-wide, 0.08em);
+  color: var(--ncm-text-muted);
+  line-height: 1;
+  min-width: 60px;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.ncm-app .ncm-metadata-readout__value {
+  font-family: var(--ncm-font-display);
+  font-size: var(--ncm-text-xs);
+  color: var(--ncm-text-primary);
+  line-height: var(--ncm-leading-tight, 1.1);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ncm-app .ncm-metadata-readout__value--mono {
+  font-family: var(--ncm-font-mono);
+  letter-spacing: var(--ncm-tracking-tight, 0.04em);
+  color: var(--ncm-text-secondary);
+}
+
+.ncm-app .ncm-metadata-readout__value--badge {
+  overflow: visible;
+}
+
+.ncm-app .ncm-metadata-readout__icon {
+  font-size: 9px;
+  color: var(--ncm-text-muted);
+  margin-right: 2px;
+  width: 12px;
+  text-align: center;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   §H5  PRIORITY / THREAT INDICATORS
+   Messages with priority flags get a colored left-border accent
+   and a small priority badge in the message list.
+   Controlled by data-priority attribute on .ncm-message-item.
+   ═══════════════════════════════════════════════════════════ */
+
+/* Normal priority — no left accent */
+.ncm-app .ncm-message-item[data-priority="normal"] {
+  border-left: 3px solid transparent;
+}
+
+/* Urgent — amber left border */
+.ncm-app .ncm-message-item[data-priority="urgent"] {
+  border-left: 3px solid var(--ncm-warning);
+}
+
+/* Critical — red left border, pulsing */
+.ncm-app .ncm-message-item[data-priority="critical"] {
+  border-left: 3px solid var(--ncm-danger);
+}
+
+/* Glow on priority borders when neon is on */
+[data-ncm-neon="true"].ncm-app .ncm-message-item[data-priority="urgent"],
+[data-ncm-neon="true"] .ncm-app .ncm-message-item[data-priority="urgent"] {
+  box-shadow: inset 3px 0 8px -2px rgba(255, 171, 0, 0.15);
+}
+
+[data-ncm-neon="true"].ncm-app .ncm-message-item[data-priority="critical"],
+[data-ncm-neon="true"] .ncm-app .ncm-message-item[data-priority="critical"] {
+  box-shadow: inset 3px 0 8px -2px rgba(255, 0, 51, 0.2);
+}
+
+/* Priority badge within message list item subject row */
+.ncm-app .ncm-message-item__priority-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  font-family: var(--ncm-font-display);
+  font-weight: 700;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: var(--ncm-tracking-wide, 0.08em);
+  line-height: 1;
+  border-radius: var(--ncm-radius-sm);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.ncm-app .ncm-message-item__priority-badge--urgent {
+  background: rgba(255, 171, 0, 0.15);
+  color: var(--ncm-warning);
+  border: 1px solid rgba(255, 171, 0, 0.3);
+}
+
+.ncm-app .ncm-message-item__priority-badge--critical {
+  background: rgba(255, 0, 51, 0.15);
+  color: var(--ncm-danger);
+  border: 1px solid rgba(255, 0, 51, 0.3);
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   §H6  UNREAD DOT PULSE
+   6px pulsing dot on unread message subjects.
+   Pulses gently when neon is on, static when off.
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-message-item__unread-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ncm-secondary);
+  flex-shrink: 0;
+  margin-right: 2px;
+}
+
+/* Pulse animation when neon is on + animation is full */
+[data-ncm-neon="true"][data-ncm-animation-level="full"] .ncm-app .ncm-message-item__unread-dot,
+[data-ncm-neon="true"] [data-ncm-animation-level="full"] .ncm-app .ncm-message-item__unread-dot {
+  animation: ncm-unread-pulse 2s ease-in-out infinite;
+  box-shadow: 0 0 4px rgba(25, 243, 247, 0.5);
+}
+
+@keyframes ncm-unread-pulse {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 0 4px rgba(25, 243, 247, 0.5);
+  }
+  50% {
+    opacity: 0.6;
+    box-shadow: 0 0 8px rgba(25, 243, 247, 0.3);
+  }
+}
+
+/* No pulse at reduced/off */
+[data-ncm-animation-level="reduced"] .ncm-app .ncm-message-item__unread-dot,
+[data-ncm-animation-level="off"] .ncm-app .ncm-message-item__unread-dot {
+  animation: none;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   PAGINATION INFO — monospace data styling
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-pagination-info {
+  font-family: var(--ncm-font-mono);
+  font-size: var(--ncm-text-2xs);
+  color: var(--ncm-text-muted);
+  letter-spacing: var(--ncm-tracking-tight, 0.04em);
+  line-height: 1;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   STATUS FOOTER — tightened for terminal feel
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-inbox-footer {
+  font-family: var(--ncm-font-mono);
+  font-size: var(--ncm-text-2xs);
+  color: var(--ncm-text-muted);
+  letter-spacing: var(--ncm-tracking-tight, 0.04em);
+  text-transform: uppercase;
+}
+
+.ncm-app .ncm-footer-count,
+.ncm-app .ncm-footer-identity,
+.ncm-app .ncm-footer-network {
+  font-family: var(--ncm-font-mono);
+}

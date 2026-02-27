@@ -1,10 +1,24 @@
-/* Scanline CRT overlay — toggled by .ncm-scanlines on <body> */
+/* ═══════════════════════════════════════════════════════════════════════════
+   Night City Messenger — Scanlines (Legacy Compat)
+   @file styles/effects/scanlines.css
+   @module cyberpunkred-messenger
+   @description Original scanline overlay, now supplementary to atmosphere.css.
+     Primary CRT textures (scanlines, vignette, noise, flicker) live in
+     styles/base/atmosphere.css and are gated via data-ncm-scanlines attribute.
 
-.ncm-scanlines .ncm-app {
-  position: relative;
-}
+     This file retains the body-class approach (.ncm-scanlines) as a fallback
+     for any windows that don't yet have the data attribute applied.
 
-.ncm-scanlines .ncm-app::after {
+   @deprecated Prefer data-ncm-scanlines="true" attribute (set by BaseApplication).
+     This body-class fallback will be removed in a future cleanup sprint.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+
+/* ─── Body-Class Fallback ───────────────────────────────────────────────── */
+/* Only applies if the data attribute is NOT present (legacy path).
+   When BaseApplication sets data-ncm-scanlines, atmosphere.css takes over. */
+
+.ncm-scanlines .ncm-app:not([data-ncm-scanlines])::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -16,9 +30,10 @@
     transparent 1px,
     transparent 3px
   );
-  z-index: var(--ncm-z-scanlines, 1000);
+  z-index: var(--ncm-z-overlay, 300);
 }
 
-[data-ncm-animation-level="off"] .ncm-scanlines .ncm-app::after {
+/* Kill scanlines at animation level off (legacy path) */
+[data-ncm-animation-level="off"] .ncm-scanlines .ncm-app:not([data-ncm-scanlines])::after {
   display: none;
 }

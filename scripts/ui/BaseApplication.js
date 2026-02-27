@@ -5,9 +5,14 @@
  * @description Base class for all NCM UI windows. Provides:
  *              - EventBus subscription management with auto-cleanup
  *              - Theme integration (CSS class application)
+ *              - Atmosphere data-attribute injection (scanlines, neon, animation level)
  *              - Sound integration helpers
  *              - Animation level checking
  *              - Consistent window behavior
+ *
+ * Sprint 1.5.1: Added _applyAtmosphere() — reads theme prefs and sets
+ * data-ncm-scanlines, data-ncm-neon, data-ncm-animation-level on the
+ * rendered element. This enables per-window atmosphere gating in CSS.
  */
 
 import { MODULE_ID, ESSENTIAL_EFFECTS } from '../utils/constants.js';
@@ -60,6 +65,7 @@ export class BaseApplication extends HandlebarsApplicationMixin(ApplicationV2) {
    */
   _onRender(context, options) {
     super._onRender(context, options);
+    this._applyAtmosphere();
     this._setupEventSubscriptions();
   }
 
@@ -79,6 +85,48 @@ export class BaseApplication extends HandlebarsApplicationMixin(ApplicationV2) {
   async close(options = {}) {
     this._cleanupSubscriptions();
     return super.close(options);
+  }
+
+  // ─── Atmosphere ───
+
+  /**
+   * Apply atmosphere data attributes to the rendered element.
+   * Reads theme preferences from SettingsManager/ThemeService and sets:
+   *   data-ncm-scanlines  = "true" | "false"
+   *   data-ncm-neon       = "true" | "false"
+   *   data-ncm-animation-level = "full" | "reduced" | "off"
+   *
+   * These attributes gate CSS atmosphere layers in atmosphere.css and
+   * neon-glow.css without requiring body-class toggling.
+   *
+   * @protected
+   */
+  _applyAtmosphere() {
+    const el = this.element;
+    if (!el) return;
+
+    try {
+      const prefs = this.settingsManager?.getTheme?.() ?? {};
+
+      // Scanlines / CRT texture
+      const scanlines = prefs.scanlines !== false; // default ON
+      el.dataset.ncmScanlines = String(scanlines);
+
+      // Neon glow
+      const neonGlow = prefs.neonGlow !== false; // default ON
+      el.dataset.ncmNeon = String(neonGlow);
+
+      // Animation level
+      const animLevel = prefs.animationLevel || 'full';
+      el.dataset.ncmAnimationLevel = animLevel;
+
+    } catch (err) {
+      // Non-fatal — atmosphere is progressive enhancement
+      log.debug('BaseApplication._applyAtmosphere(): prefs unavailable, using defaults');
+      el.dataset.ncmScanlines = 'true';
+      el.dataset.ncmNeon = 'true';
+      el.dataset.ncmAnimationLevel = 'full';
+    }
   }
 
   // ─── EventBus Helpers ───

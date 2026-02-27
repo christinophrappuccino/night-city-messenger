@@ -5,6 +5,8 @@
    @description All colors, spacing, typography, shadows, borders, and z-index
      tokens. Overridable by ThemeService at runtime via CSS custom properties.
      Sprint 0 audit: added radius, shadow, font-size, z-index, and warning scales.
+     Sprint 1.5.3: Added line-height scale, letter-spacing presets, density
+       spacing, border-active, and HUD-specific tokens.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .ncm-app {
@@ -33,6 +35,7 @@
   /* ─── Borders ───────────────────────────────────────────── */
   --ncm-border: #2a2a45;
   --ncm-border-focus: var(--ncm-secondary);
+  --ncm-border-active: #3a3a5a;          /* Sprint 1.5: hover/active border brightening */
 
   /* ─── Border Radius ─────────────────────────────────────── */
   --ncm-radius-sm: 2px;
@@ -53,15 +56,15 @@
   --ncm-shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.5);
   --ncm-shadow-inset: inset 0 1px 3px rgba(0, 0, 0, 0.3);
 
-  /* ─── Typography ────────────────────────────────────────── */
+  /* ─── Typography — Font Stacks ──────────────────────────── */
   --ncm-font-display: 'Rajdhani', 'Segoe UI', sans-serif;
   --ncm-font-mono: 'Share Tech Mono', 'Courier New', monospace;
   --ncm-font-ui: 'Orbitron', 'Rajdhani', sans-serif;
   --ncm-font-body: 'Rajdhani', sans-serif;
 
-  /* Font size scale */
+  /* ─── Typography — Font Size Scale ──────────────────────── */
   --ncm-text-2xs: 0.625rem;   /*  10px */
-  --ncm-text-xs: 0.75rem;     /*  12px */
+  --ncm-text-xs: 0.6875rem;   /*  11px — Sprint 1.5.3: tightened from 12px */
   --ncm-text-sm: 0.8125rem;   /*  13px */
   --ncm-text-base: 0.875rem;  /*  14px */
   --ncm-text-md: 1rem;        /*  16px */
@@ -69,6 +72,22 @@
   --ncm-text-xl: 1.25rem;     /*  20px */
   --ncm-text-2xl: 1.5rem;     /*  24px */
   --ncm-text-3xl: 1.875rem;   /*  30px */
+
+  /* ─── Typography — Line-Height Scale ────────────────────── */
+  /* Sprint 1.5.3: Dense line-heights for terminal/HUD density */
+  --ncm-leading-none: 1;              /* stat values, single-line data */
+  --ncm-leading-tight: 1.1;           /* stat labels, badges, compact headers */
+  --ncm-leading-snug: 1.2;            /* tabs, button labels, header bars */
+  --ncm-leading-normal: 1.4;          /* body text, descriptions */
+  --ncm-leading-relaxed: 1.6;         /* message body, readable paragraphs */
+
+  /* ─── Typography — Letter-Spacing Presets ───────────────── */
+  /* Sprint 1.5.3: Standardized tracking for uppercase/data text */
+  --ncm-tracking-tight: 0.04em;       /* mono data, counts */
+  --ncm-tracking-normal: 0.06em;      /* general uppercase */
+  --ncm-tracking-wide: 0.08em;        /* badge labels, button text */
+  --ncm-tracking-wider: 0.1em;        /* section headers, titles */
+  --ncm-tracking-widest: 0.12em;      /* bracket headers, HUD readouts */
 
   /* ─── Spacing ───────────────────────────────────────────── */
   --ncm-space-xs: 4px;
@@ -85,6 +104,13 @@
   --ncm-spacing-lg: var(--ncm-space-lg);
   --ncm-spacing-xl: var(--ncm-space-xl);
   --ncm-spacing-2xl: var(--ncm-space-2xl);
+
+  /* ─── Density Spacing — Sprint 1.5.3 ───────────────────── */
+  /* Tighter padding values for message list items, HUD elements */
+  --ncm-density-compact-y: 4px;        /* compact vertical padding */
+  --ncm-density-compact-x: 8px;        /* compact horizontal padding */
+  --ncm-density-normal-y: 8px;         /* normal vertical padding */
+  --ncm-density-normal-x: 12px;        /* normal horizontal padding */
 
   /* ─── Z-Index Scale ─────────────────────────────────────── */
   --ncm-z-base: 1;

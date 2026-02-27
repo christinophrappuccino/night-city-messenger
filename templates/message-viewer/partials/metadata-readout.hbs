@@ -1,0 +1,47 @@
+{{!--
+  Metadata Readout — Structured label-value pair block
+  @file templates/partials/metadata-readout.hbs
+  @module cyberpunkred-messenger
+  @description Renders a compact structured readout of label-value pairs.
+    Uses monospace font for values, muted labels. Designed for message detail
+    metadata (From, To, Date, Network, Route) and any technical readout display.
+    Matches the GM Dashboard's stat-pair layout pattern.
+
+  Sprint 1.5.4 — HUD Readout Elements
+
+  Expected context:
+    fields — Array of { label, value, mono?, badge?, icon?, variant? }
+      label   — uppercase label text (e.g. "FROM")
+      value   — display value (e.g. "rogue@darknet.nc")
+      mono    — if true, value uses monospace font (default true)
+      badge   — if true, value renders as an ncm-badge
+      icon    — optional FontAwesome icon class for the value
+      variant — badge variant if badge=true (e.g. "network")
+
+  @example
+    {{> "modules/cyberpunkred-messenger/templates/partials/metadata-readout.hbs"
+        fields=(array
+          (hash label="FROM"    value="rogue@darknet.nc" icon="fas fa-user")
+          (hash label="TO"      value="v@nightcity.net")
+          (hash label="DATE"    value="2045.03.15 // 14:30" icon="fas fa-clock")
+          (hash label="NETWORK" value="DARKNET" badge=true variant="network" icon="fas fa-tower-broadcast")
+          (hash label="ROUTE"   value="PROXY → TOR3 → EXIT" mono=true)
+        ) }}
+--}}
+<div class="ncm-metadata-readout">
+  {{#each fields}}
+  <div class="ncm-metadata-readout__row">
+    <span class="ncm-metadata-readout__label">{{this.label}}</span>
+    <span class="ncm-metadata-readout__value
+      {{~#if this.badge}} ncm-metadata-readout__value--badge{{/if~}}
+      {{~#unless this.badge}}{{#unless (eq this.mono false)}} ncm-metadata-readout__value--mono{{/unless}}{{/unless~}}">
+      {{#if this.icon}}<i class="{{this.icon}} ncm-metadata-readout__icon"></i>{{/if}}
+      {{#if this.badge}}
+        <span class="ncm-badge ncm-badge--{{this.variant}} ncm-badge--sm">{{this.value}}</span>
+      {{else}}
+        {{this.value}}
+      {{/if}}
+    </span>
+  </div>
+  {{/each}}
+</div>

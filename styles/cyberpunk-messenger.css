@@ -3,19 +3,23 @@
  * @file styles/cyberpunk-messenger.css
  * @module cyberpunkred-messenger
  * @description Single file loaded by module.json. All imports ordered by
- *   dependency: tokens → reset → typography → components → effects → themes
- *   → feature-specific styles → chat cards.
+ *   dependency: tokens → reset → typography → components → atmosphere →
+ *   effects → themes → feature-specific styles → chat cards.
+ *
+ * Sprint 1.5.1: Added atmosphere.css import (CRT texture layer).
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 /* Base — design tokens and resets (must load first) */
 @import 'base/variables.css';
 @import 'base/reset.css';
 @import 'base/typography.css';
-@import 'base/components.css';    /* Sprint 0: Design System component library */
+@import 'base/components.css';
 @import 'base/animations.css';
+@import 'base/atmosphere.css';
+@import 'base/depth.css'; 
 
 /* Effects — visual atmosphere layers */
-@import 'effects/scanlines.css';
+@import 'effects/scanlines.css';  /* Legacy compat — atmosphere.css is canonical */
 @import 'effects/glitch.css';
 @import 'effects/neon-glow.css';
 @import 'effects/matrix-rain.css';
@@ -25,6 +29,7 @@
 
 /* Components — feature-specific UI styles */
 @import 'components/message-viewer.css';
+@import 'components/message-viewer-hud.css'; 
 @import 'components/message-composer.css';
 @import 'components/contact-manager.css';
 @import 'components/gm-contact-manager.css';

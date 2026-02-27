@@ -1,0 +1,394 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Night City Messenger — Depth & Surface Layering
+ * @file styles/base/depth.css
+ * @module cyberpunkred-messenger
+ * @description Enforces the four-layer depth system across all NCM surfaces.
+ *   Adds border consistency, left accent selection indicators, inset shadow
+ *   on recessed containers, and top gradient bar on window chrome.
+ *
+ *   Sprint 1.5.5 — Depth & Surface Layering
+ *
+ *   Visual reference: GM Dashboard's clear visual depth —
+ *     outer window is darkest, content cards are lighter, active/hovered
+ *     cards lighter still, borders creating separation at every edge.
+ *
+ *   Depth tiers:
+ *     Layer 0 (deep):     --ncm-bg-deep     #0a0a0f — Window chrome, outermost
+ *     Layer 1 (base):     --ncm-bg-base     #12121a — Primary content area
+ *     Layer 2 (surface):  --ncm-bg-surface  #1a1a2e — Cards, list items, panels
+ *     Layer 3 (elevated): --ncm-bg-elevated #252540 — Hover, active, dropdowns
+ *     Layer 4 (overlay):  --ncm-bg-overlay  rgba(0,0,0,0.85) — Modals
+ *
+ * ─── SECTION INDEX ───
+ *  §D1  Four-Layer Depth Audit
+ *  §D2  Border Consistency
+ *  §D3  Left Accent Borders (Selection Indicator)
+ *  §D4  Inset Shadows on Recessed Containers
+ *  §D5  Edge Highlights (Surface Separation)
+ *  §D6  Dropdown / Popover Elevation
+ *  §D7  Top Gradient Bar (moved from atmosphere.css for consolidation)
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+
+/* ═══════════════════════════════════════════════════════════
+   §D1  FOUR-LAYER DEPTH AUDIT
+   Ensure every major surface sits on the correct tier.
+   These are enforcement overrides — they win over any
+   component-level background that may be wrong.
+   ═══════════════════════════════════════════════════════════ */
+
+/* Layer 0 — Window chrome / outermost */
+.ncm-app .ncm-message-viewer,
+.ncm-app .ncm-message-composer,
+.ncm-app .ncm-contact-manager,
+.ncm-app .ncm-admin-panel,
+.ncm-app .ncm-item-inbox,
+.ncm-app .ncm-network-management,
+.ncm-app .ncm-theme-customizer {
+  background: var(--ncm-bg-deep);
+}
+
+/* Layer 1 — Primary content areas */
+.ncm-app .ncm-inbox-header,
+.ncm-app .ncm-inbox-tabs,
+.ncm-app .ncm-inbox-stats,
+.ncm-app .ncm-inbox-footer,
+.ncm-app .ncm-admin-header,
+.ncm-app .ncm-admin-tabs,
+.ncm-app .ncm-bulk-bar,
+.ncm-app .ncm-detail-action-bar,
+.ncm-app .ncm-quick-reply-bar {
+  background: var(--ncm-bg-base);
+}
+
+/* Layer 2 — Cards, list items, panels */
+.ncm-app .ncm-message-item,
+.ncm-app .ncm-stat-card,
+.ncm-app .ncm-entity-card,
+.ncm-app .ncm-card,
+.ncm-app .ncm-alert,
+.ncm-app .ncm-shard-list-item,
+.ncm-app .ncm-contact-card,
+.ncm-app .ncm-actor-stat-row,
+.ncm-app .ncm-metadata-readout {
+  background: var(--ncm-bg-surface);
+}
+
+/* Layer 3 — Hover / active / elevated states handled in §D2 and §D6 */
+
+
+/* ═══════════════════════════════════════════════════════════
+   §D2  BORDER CONSISTENCY
+   All card/panel borders use 1px solid --ncm-border at rest.
+   Hover transitions to --ncm-border-active (brightened).
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Base borders ── */
+.ncm-app .ncm-message-item,
+.ncm-app .ncm-stat-card,
+.ncm-app .ncm-entity-card,
+.ncm-app .ncm-card,
+.ncm-app .ncm-alert,
+.ncm-app .ncm-contact-card,
+.ncm-app .ncm-shard-list-item {
+  border: 1px solid var(--ncm-border);
+  transition: background var(--ncm-transition-fast, 150ms ease),
+              border-color var(--ncm-transition-fast, 150ms ease),
+              box-shadow var(--ncm-transition-fast, 150ms ease);
+}
+
+/* ── Hover: border brightens, background elevates ── */
+.ncm-app .ncm-message-item:hover,
+.ncm-app .ncm-entity-card:hover,
+.ncm-app .ncm-card:hover,
+.ncm-app .ncm-contact-card:hover,
+.ncm-app .ncm-shard-list-item:hover {
+  border-color: var(--ncm-border-active, #3a3a5a);
+  background: var(--ncm-bg-elevated);
+}
+
+/* ── Selected: secondary-tinted border ── */
+.ncm-app .ncm-message-item--selected,
+.ncm-app .ncm-message-item.selected,
+.ncm-app .ncm-entity-card--selected,
+.ncm-app .ncm-card--selected,
+.ncm-app .ncm-shard-list-item.selected {
+  border-color: rgba(25, 243, 247, 0.3);
+  background: var(--ncm-bg-elevated);
+}
+
+/* ── Panel separator borders ── */
+.ncm-app .ncm-inbox-header {
+  border-bottom: 1px solid var(--ncm-primary);
+}
+
+.ncm-app .ncm-inbox-tabs {
+  border-bottom: 1px solid var(--ncm-border);
+}
+
+.ncm-app .ncm-inbox-stats {
+  border-bottom: 1px solid var(--ncm-border);
+}
+
+.ncm-app .ncm-inbox-footer {
+  border-top: 1px solid var(--ncm-border);
+}
+
+.ncm-app .ncm-bulk-bar {
+  border-bottom: 1px solid var(--ncm-border);
+}
+
+.ncm-app .ncm-detail-action-bar {
+  border-top: 1px solid var(--ncm-border);
+}
+
+.ncm-app .ncm-quick-reply-bar {
+  border-top: 1px solid var(--ncm-border);
+}
+
+.ncm-app .ncm-metadata-readout {
+  border-bottom: 1px solid var(--ncm-border);
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   §D3  LEFT ACCENT BORDERS (Selection Indicator)
+   The GM Dashboard's signature selection pattern: a 3px
+   left border in --ncm-secondary on the active element.
+   Applied to: selected message, active tab, active network.
+   ═══════════════════════════════════════════════════════════ */
+
+/* Selected message — cyan left accent */
+.ncm-app .ncm-message-item--selected,
+.ncm-app .ncm-message-item.selected {
+  border-left: 3px solid var(--ncm-secondary);
+  /* Compensate for extra 2px so content doesn't shift */
+  padding-left: calc(var(--ncm-density-normal-x, 12px) - 2px);
+}
+
+/* Active tab — bottom border already set in components.css,
+   add left accent on the active tab for extra emphasis */
+.ncm-app .ncm-tab--active {
+  border-bottom-color: var(--ncm-secondary);
+}
+
+/* Active network in dropdown */
+.ncm-app .ncm-network-option--active {
+  border-left: 3px solid var(--ncm-secondary);
+  background: var(--ncm-bg-elevated);
+}
+
+/* Active admin tab */
+.ncm-app .ncm-admin-tab--active {
+  border-bottom-color: var(--ncm-primary);
+}
+
+/* Selected shard list item */
+.ncm-app .ncm-shard-list-item.selected {
+  border-left: 3px solid var(--ncm-secondary);
+}
+
+/* Selected contact card */
+.ncm-app .ncm-contact-card--selected {
+  border-left: 3px solid var(--ncm-secondary);
+}
+
+/* Active network filter option */
+.ncm-app .ncm-network-filter-option--active {
+  border-left: 3px solid var(--ncm-secondary);
+  color: var(--ncm-secondary);
+}
+
+/* Active sort option */
+.ncm-app .ncm-sort-option--active {
+  border-left: 3px solid var(--ncm-secondary);
+  color: var(--ncm-secondary);
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   §D4  INSET SHADOWS ON RECESSED CONTAINERS
+   Message list panel and detail pane feel recessed into the
+   terminal — not floating on top. Subtle inset shadow creates
+   depth without darkening content.
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-message-list-panel {
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.ncm-app .ncm-message-detail-panel {
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Shard split panels */
+.ncm-app .ncm-shard-list {
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+.ncm-app .ncm-shard-detail {
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+/* Admin content area */
+.ncm-app .ncm-admin-content {
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+/* Contact list panel */
+.ncm-app .ncm-contact-list {
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+/* Composer body textarea container */
+.ncm-app .ncm-compose-body-container {
+  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   §D5  EDGE HIGHLIGHTS (Surface Separation)
+   Each elevation step adds a faint border-top highlight
+   (1px, 5% white) to simulate light hitting a raised surface.
+   These are additive — they layer on top of existing borders.
+   ═══════════════════════════════════════════════════════════ */
+
+/* Cards and list items get a top-edge highlight */
+.ncm-app .ncm-message-item,
+.ncm-app .ncm-stat-card,
+.ncm-app .ncm-entity-card,
+.ncm-app .ncm-card,
+.ncm-app .ncm-contact-card {
+  border-top-color: rgba(255, 255, 255, 0.03);
+}
+
+/* Panels get a left-edge highlight (light catching the edge) */
+.ncm-app .ncm-message-detail-panel {
+  border-left: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+/* Panel divider grip — faint center line */
+.ncm-app .ncm-panel-divider {
+  background: var(--ncm-bg-deep);
+  border-left: 1px solid rgba(255, 255, 255, 0.02);
+  border-right: 1px solid rgba(255, 255, 255, 0.02);
+}
+
+/* Header bar bottom edge — already primary-colored, add subtle
+   shadow to make it feel like a ledge */
+.ncm-app .ncm-inbox-header {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  position: relative;
+  z-index: var(--ncm-z-sticky, 200);
+}
+
+/* HUD strip sits above header — tiny bottom shadow */
+.ncm-app .ncm-hud-strip {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  position: relative;
+  z-index: calc(var(--ncm-z-sticky, 200) + 1);
+}
+
+/* Footer floats above content */
+.ncm-app .ncm-inbox-footer {
+  box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.2);
+  position: relative;
+  z-index: var(--ncm-z-sticky, 200);
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   §D6  DROPDOWN / POPOVER ELEVATION
+   Dropdowns and popovers sit at Layer 3 (elevated) with
+   a strong shadow to float above content.
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-network-dropdown,
+.ncm-app .ncm-network-filter-dropdown,
+.ncm-app .ncm-sort-dropdown {
+  background: var(--ncm-bg-elevated);
+  border: 1px solid var(--ncm-border);
+  box-shadow: var(--ncm-shadow-elevated, 0 4px 16px rgba(0, 0, 0, 0.5));
+  border-radius: var(--ncm-radius-md);
+}
+
+/* Dropdown items hover state */
+.ncm-app .ncm-network-option:hover,
+.ncm-app .ncm-network-filter-option:hover,
+.ncm-app .ncm-sort-option:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* Tooltip elevation */
+.ncm-app .ncm-tooltip {
+  background: var(--ncm-bg-elevated);
+  border: 1px solid var(--ncm-border);
+  box-shadow: var(--ncm-shadow-elevated);
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   §D7  TOP GRADIENT BAR
+   Thin 2-3px gradient bar across the very top of every NCM
+   window. Linear gradient from primary → accent → primary.
+   Already defined in atmosphere.css via ::before on
+   .ncm-app > :first-child — this section provides a fallback
+   for windows that don't use the atmosphere pseudo-element.
+   ═══════════════════════════════════════════════════════════ */
+
+/* Direct application on .ncm-message-viewer — top edge accent */
+.ncm-app .ncm-message-viewer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    var(--ncm-primary),
+    var(--ncm-accent),
+    var(--ncm-primary)
+  );
+  opacity: 0.7;
+  z-index: var(--ncm-z-sticky, 200);
+  pointer-events: none;
+}
+
+/* Ensure viewer is positioned for the ::before */
+.ncm-app .ncm-message-viewer {
+  position: relative;
+}
+
+/* Other NCM windows — same gradient bar */
+.ncm-app .ncm-message-composer::before,
+.ncm-app .ncm-contact-manager::before,
+.ncm-app .ncm-admin-panel::before,
+.ncm-app .ncm-item-inbox::before,
+.ncm-app .ncm-network-management::before,
+.ncm-app .ncm-theme-customizer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    var(--ncm-primary),
+    var(--ncm-accent),
+    var(--ncm-primary)
+  );
+  opacity: 0.7;
+  z-index: var(--ncm-z-sticky, 200);
+  pointer-events: none;
+}
+
+.ncm-app .ncm-message-composer,
+.ncm-app .ncm-contact-manager,
+.ncm-app .ncm-admin-panel,
+.ncm-app .ncm-item-inbox,
+.ncm-app .ncm-network-management,
+.ncm-app .ncm-theme-customizer {
+  position: relative;
+}

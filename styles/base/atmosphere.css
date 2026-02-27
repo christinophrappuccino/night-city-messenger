@@ -1,0 +1,153 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Night City Messenger — Atmosphere Layer
+   @file styles/base/atmosphere.css
+   @module cyberpunkred-messenger
+   @description CRT terminal texture: scanlines, noise grain, vignette edge
+     darkening, and screen flicker. Applied as pseudo-element overlays on
+     .ncm-app, gated by data-ncm-scanlines attribute.
+
+   Sprint 1.5.1 — makes every NCM window feel like a physical display,
+   not a flat CSS panel.
+
+   Layers (bottom → top):
+     1. Vignette  — ::before — radial darkening at edges
+     2. Content   — normal flow
+     3. Noise     — ::after (first layer) — faint static grain
+     4. Scanlines — ::after (combined) — CRT horizontal lines
+
+   Preference gate:
+     [data-ncm-scanlines="true"]  → all textures ON
+     [data-ncm-scanlines="false"] → clean window, no overlays
+     Attribute set by BaseApplication._onRender() from ThemeService prefs.
+
+   Animation gate:
+     Screen flicker requires [data-ncm-animation-level="full"]
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+
+/* ─── Base Positioning ──────────────────────────────────────────────────── */
+
+/* Ensure .ncm-app is a positioned container for pseudo-elements */
+.ncm-app {
+  position: relative;
+}
+
+
+/* ─── 1. Vignette — Edge Darkening ──────────────────────────────────────── */
+/* Simulates curved CRT display with darkened edges/corners.
+   Uses ::before so it sits BEHIND scanlines but OVER the background. */
+
+.ncm-app[data-ncm-scanlines="true"]::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: var(--ncm-z-overlay, 300);
+  background: radial-gradient(
+    ellipse 80% 70% at 50% 50%,
+    transparent 50%,
+    rgba(0, 0, 0, 0.15) 80%,
+    rgba(0, 0, 0, 0.35) 100%
+  );
+  /* Slightly lower than scanlines so glow can peek through */
+  opacity: 1;
+}
+
+
+/* ─── 2. Scanlines + Noise Grain — Combined ::after ─────────────────────── */
+/* Both textures composited into a single pseudo-element for performance.
+   Scanlines: repeating horizontal dark bands (2px interval, 0.06 opacity)
+   Noise: layered SVG-style grain via multiple gradients */
+
+.ncm-app[data-ncm-scanlines="true"]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: calc(var(--ncm-z-overlay, 300) + 1);
+
+  /* Scanline pattern — 2px transparent, 1px dark band */
+  background:
+    /* Layer 1: CRT scanlines */
+    repeating-linear-gradient(
+      0deg,
+      transparent 0px,
+      transparent 2px,
+      rgba(0, 0, 0, 0.06) 2px,
+      rgba(0, 0, 0, 0.06) 3px
+    ),
+    /* Layer 2: Faint noise grain (cross-hatch approximation) */
+    repeating-linear-gradient(
+      90deg,
+      transparent 0px,
+      transparent 3px,
+      rgba(255, 255, 255, 0.008) 3px,
+      rgba(255, 255, 255, 0.008) 4px
+    ),
+    /* Layer 3: Secondary noise at offset angle */
+    repeating-linear-gradient(
+      45deg,
+      transparent 0px,
+      transparent 5px,
+      rgba(255, 255, 255, 0.005) 5px,
+      rgba(255, 255, 255, 0.005) 6px
+    );
+
+  mix-blend-mode: multiply;
+}
+
+
+/* ─── 3. Screen Flicker — Very Slow Brightness Oscillation ──────────────── */
+/* Subtle 0.98→1.0→0.98 over 6s. ONLY at animation level "full".
+   At "reduced" or "off", no flicker. Pure atmosphere, never obstructs. */
+
+@keyframes ncm-screen-flicker {
+  0%, 100% { filter: brightness(0.98); }
+  50%      { filter: brightness(1.0); }
+}
+
+/* Flicker only when BOTH scanlines are on AND animation is full */
+.ncm-app[data-ncm-scanlines="true"][data-ncm-animation-level="full"] {
+  animation: ncm-screen-flicker 6s ease-in-out infinite;
+}
+
+
+/* ─── 4. Top Gradient Bar — Thin Accent Strip ───────────────────────────── */
+/* A 2px red-to-orange gradient across the very top edge of every NCM window.
+   Gives the "powered on" device feel. Always visible when scanlines are on. */
+
+.ncm-app[data-ncm-scanlines="true"] > :first-child::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    var(--ncm-primary, #F65261) 0%,
+    var(--ncm-accent, #f7c948) 50%,
+    var(--ncm-primary, #F65261) 100%
+  );
+  z-index: calc(var(--ncm-z-overlay, 300) + 2);
+  opacity: 0.7;
+}
+
+
+/* ─── 5. Disabled / Off States ──────────────────────────────────────────── */
+
+/* When scanlines preference is off — no textures whatsoever */
+.ncm-app[data-ncm-scanlines="false"]::before,
+.ncm-app[data-ncm-scanlines="false"]::after {
+  display: none;
+}
+
+/* Animation level "off" kills flicker but keeps static textures */
+.ncm-app[data-ncm-animation-level="off"] {
+  animation: none !important;
+}
+
+/* Animation level "reduced" also kills flicker */
+.ncm-app[data-ncm-animation-level="reduced"] {
+  animation: none !important;
+}

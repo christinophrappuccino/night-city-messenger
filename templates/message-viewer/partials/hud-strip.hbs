@@ -1,0 +1,60 @@
+{{!--
+  HUD Status Strip — Reusable thin monospace status bar
+  @file templates/partials/hud-strip.hbs
+  @module cyberpunkred-messenger
+  @description Thin 24-28px bar showing system-status data in monospace.
+    Data is real where available (network, signal, queued), decorative where not
+    (latency, encryption cipher). Used at the top of inbox and other NCM windows.
+
+  Sprint 1.5.4 — HUD Readout Elements
+
+  Expected context:
+    networkName   — current network ID/name (e.g. "CITINET")
+    signalPercent — signal strength as number (0-100)
+    queuedCount   — number of queued messages (0 if none)
+    encryptionCipher — display string (e.g. "AES-256") — decorative
+    latencyMs     — display latency in ms — decorative
+    connectionStatus — "CONNECTED" | "DEGRADED" | "NO_SIGNAL"
+
+  @example
+    {{> "modules/cyberpunkred-messenger/templates/partials/hud-strip.hbs"
+        networkName="CITINET" signalPercent=78 queuedCount=0
+        encryptionCipher="AES-256" latencyMs=42 connectionStatus="CONNECTED" }}
+--}}
+<div class="ncm-hud-strip">
+  <span class="ncm-hud-strip__item">
+    <span class="ncm-hud-strip__label">NET</span>
+    <span class="ncm-hud-strip__value ncm-hud-strip__value--network">{{networkName}}</span>
+  </span>
+  <span class="ncm-hud-strip__sep">//</span>
+  <span class="ncm-hud-strip__item">
+    <span class="ncm-hud-strip__label">SIG</span>
+    <span class="ncm-hud-strip__value">{{signalPercent}}%</span>
+  </span>
+  <span class="ncm-hud-strip__sep">//</span>
+  <span class="ncm-hud-strip__item">
+    <span class="ncm-hud-strip__label">LAT</span>
+    <span class="ncm-hud-strip__value">{{latencyMs}}ms</span>
+  </span>
+  <span class="ncm-hud-strip__sep">//</span>
+  <span class="ncm-hud-strip__item">
+    <span class="ncm-hud-strip__label">QUEUE</span>
+    <span class="ncm-hud-strip__value {{#if (gt queuedCount 0)}}ncm-hud-strip__value--alert{{/if}}">{{queuedCount}}</span>
+  </span>
+  <span class="ncm-hud-strip__sep">//</span>
+  <span class="ncm-hud-strip__item">
+    <span class="ncm-hud-strip__label">ENC</span>
+    <span class="ncm-hud-strip__value">{{encryptionCipher}}</span>
+  </span>
+
+  {{!-- Right-aligned connection status --}}
+  <span class="ncm-hud-strip__spacer"></span>
+  <span class="ncm-hud-strip__status ncm-hud-strip__status--{{connectionStatus}}">
+    <span class="ncm-hud-strip__status-dot"></span>
+    <span class="ncm-hud-strip__status-text">
+      {{#if (eq connectionStatus "CONNECTED")}}ONLINE{{/if}}
+      {{#if (eq connectionStatus "DEGRADED")}}DEGRADED{{/if}}
+      {{#if (eq connectionStatus "NO_SIGNAL")}}OFFLINE{{/if}}
+    </span>
+  </span>
+</div>
