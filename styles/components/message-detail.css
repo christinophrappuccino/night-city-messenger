@@ -1,0 +1,461 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Message Detail — Sprint 2B Component Styles
+ * @file styles/components/message-detail.css
+ * @module cyberpunkred-messenger
+ *
+ * Additive styles for Sprint 2B features. Import alongside message-viewer.css
+ * or append to a combined stylesheet. All rules scoped under .ncm-app.
+ *
+ * ─── SECTION INDEX ───
+ *  §D1  Detail Meta — subject row with thread badge
+ *  §D2  Security Verification Strip
+ *  §D3  Thread Indicator Bar
+ *  §D4  Detail Body Overrides
+ *  §D5  Encrypted Attachment Blocks
+ *  §D6  Attachment Chips
+ *  §D7  Lock Glow Animation
+ *  §D8  Encrypted Block State Transitions
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+
+/* ═══════════════════════════════════════════════════════════
+   §D1  DETAIL META — Subject Row with Thread Badge
+   Subject line displays inline with thread badge pill.
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-detail-meta__value--subject-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ncm-app .ncm-detail-meta__subject-text {
+  font-family: var(--ncm-font-display);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ncm-text-primary);
+  line-height: 1.3;
+}
+
+/* Thread Badge Pill — inline with subject */
+.ncm-app .ncm-thread-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background: var(--ncm-bg-surface);
+  border: 1px solid var(--ncm-border);
+  border-radius: 2px;
+  font-family: var(--ncm-font-mono);
+  font-size: 9px;
+  color: var(--ncm-text-muted);
+  cursor: pointer;
+  transition: border-color 0.2s ease, color 0.2s ease;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.ncm-app .ncm-thread-badge:hover {
+  border-color: var(--ncm-secondary);
+  color: var(--ncm-text-secondary);
+}
+
+.ncm-app .ncm-thread-badge i {
+  font-size: 8px;
+  color: var(--ncm-secondary);
+}
+
+.ncm-app .ncm-thread-badge__label {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.ncm-app .ncm-thread-badge__count {
+  color: var(--ncm-secondary);
+  font-weight: 600;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   §D2  SECURITY VERIFICATION STRIP
+   Thin bar below message metadata. Shows sender verification,
+   encryption, attachment scan, route hops. Color tints by threat level.
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-security-strip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 18px;
+  background: rgba(0, 255, 65, 0.03);
+  border-bottom: 1px solid rgba(0, 255, 65, 0.08);
+  flex-shrink: 0;
+}
+
+/* Warn variant — ICE attachment present */
+.ncm-app .ncm-security-strip--warn {
+  background: rgba(247, 201, 72, 0.04);
+  border-bottom-color: rgba(247, 201, 72, 0.1);
+}
+
+/* Danger variant — daemon/malware detected */
+.ncm-app .ncm-security-strip--danger {
+  background: rgba(255, 0, 51, 0.04);
+  border-bottom-color: rgba(255, 0, 51, 0.1);
+}
+
+/* Default "ok" variant uses base green — no extra class needed */
+.ncm-app .ncm-security-strip--ok {
+  background: rgba(0, 255, 65, 0.03);
+  border-bottom-color: rgba(0, 255, 65, 0.08);
+}
+
+/* Individual security items */
+.ncm-app .ncm-security-item {
+  font-family: var(--ncm-font-mono);
+  font-size: 9px;
+  color: var(--ncm-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.ncm-app .ncm-security-item i {
+  font-size: 8px;
+}
+
+/* Status variants */
+.ncm-app .ncm-security-item--ok {
+  color: var(--ncm-success);
+}
+.ncm-app .ncm-security-item--ok i {
+  color: var(--ncm-success);
+}
+
+.ncm-app .ncm-security-item--warn {
+  color: var(--ncm-accent);
+}
+.ncm-app .ncm-security-item--warn i {
+  color: var(--ncm-accent);
+}
+
+.ncm-app .ncm-security-item--danger {
+  color: var(--ncm-danger);
+}
+.ncm-app .ncm-security-item--danger i {
+  color: var(--ncm-danger);
+}
+
+.ncm-app .ncm-security-item--muted {
+  color: var(--ncm-text-muted);
+  opacity: 0.6;
+}
+
+/* Route hops — pushed right */
+.ncm-app .ncm-security-item--route {
+  margin-left: auto;
+  color: var(--ncm-text-muted);
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   §D3  THREAD INDICATOR BAR
+   Clickable bar below security strip showing thread count.
+   Existing style from Sprint 2A — kept for compatibility.
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-thread-indicator {
+  font-family: var(--ncm-font-mono);
+  font-size: 9px;
+  color: var(--ncm-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 18px;
+  background: var(--ncm-bg-surface);
+  border-bottom: 1px solid var(--ncm-border);
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.ncm-app .ncm-thread-indicator:hover {
+  background: var(--ncm-bg-elevated);
+}
+
+.ncm-app .ncm-thread-indicator span {
+  color: var(--ncm-secondary);
+}
+
+.ncm-app .ncm-thread-chevron {
+  margin-left: auto;
+  font-size: 8px;
+  color: var(--ncm-text-muted);
+  transition: transform 0.2s ease;
+}
+
+.ncm-app .ncm-thread-indicator:hover .ncm-thread-chevron {
+  transform: translateX(2px);
+}
+
+/* Expanded state (future use) */
+.ncm-app .ncm-thread-indicator--expanded .ncm-thread-chevron {
+  transform: rotate(90deg);
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   §D4  DETAIL BODY OVERRIDES
+   Adjustments for attachment rendering within body area.
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-detail-body {
+  flex: 1;
+  padding: 18px;
+  overflow-y: auto;
+  font-family: var(--ncm-font-mono);
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--ncm-text-secondary);
+  scrollbar-width: thin;
+  scrollbar-color: var(--ncm-bg-elevated) transparent;
+}
+
+.ncm-app .ncm-detail-body p {
+  margin-bottom: 12px;
+}
+
+.ncm-app .ncm-detail-body__empty {
+  color: var(--ncm-text-muted);
+  text-align: center;
+  padding: 40px 0;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   §D5  ENCRYPTED ATTACHMENT BLOCKS
+   Interactive ICE-protected file blocks with lock glow.
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-encrypted-block {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  margin: 16px 0;
+  background: var(--ncm-bg-surface);
+  border: 1px solid var(--ncm-accent);
+  border-radius: 2px;
+  transition: border-color 0.3s ease, background-color 0.3s ease;
+}
+
+/* Lock icon square */
+.ncm-app .ncm-encrypted-block__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  background: rgba(247, 201, 72, 0.08);
+  border: 1px solid rgba(247, 201, 72, 0.2);
+  border-radius: 2px;
+  color: var(--ncm-accent);
+  font-size: 16px;
+}
+
+/* Animated glow on the icon — gated by animationLevel */
+[data-ncm-animation="full"] .ncm-app .ncm-encrypted-block:not(.ncm-encrypted-block--decrypted) .ncm-encrypted-block__icon,
+.ncm-app[data-ncm-animation="full"] .ncm-encrypted-block:not(.ncm-encrypted-block--decrypted) .ncm-encrypted-block__icon {
+  animation: ncm-lock-glow 2s ease-in-out infinite;
+}
+
+/* File info */
+.ncm-app .ncm-encrypted-block__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.ncm-app .ncm-encrypted-block__title {
+  font-family: var(--ncm-font-display);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--ncm-accent);
+  letter-spacing: 0.04em;
+  margin-bottom: 2px;
+}
+
+.ncm-app .ncm-encrypted-block__subtitle {
+  font-family: var(--ncm-font-mono);
+  font-size: 9px;
+  color: var(--ncm-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Action area (right side) */
+.ncm-app .ncm-encrypted-block__action {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* ACCESS DENIED label (failed state) */
+.ncm-app .ncm-encrypted-block__denied {
+  font-family: var(--ncm-font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--ncm-danger);
+  letter-spacing: 0.06em;
+  padding: 6px 12px;
+}
+
+/* GM force-breach button — small icon only */
+.ncm-app .ncm-encrypted-block__btn--gm {
+  padding: 4px 6px;
+  font-size: 10px;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   §D6  ATTACHMENT CHIPS
+   Clickable file chips for regular (non-encrypted) attachments.
+   ═══════════════════════════════════════════════════════════ */
+
+/* Container */
+.ncm-app .ncm-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 0;
+  margin: 8px 0;
+}
+
+/* Individual chip */
+.ncm-app .ncm-attachment-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  background: var(--ncm-bg-surface);
+  border: 1px solid var(--ncm-border);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+  max-width: 260px;
+}
+
+.ncm-app .ncm-attachment-chip:hover {
+  border-color: var(--ncm-secondary);
+  background: var(--ncm-bg-elevated);
+}
+
+.ncm-app .ncm-attachment-chip__icon {
+  font-size: 10px;
+  color: var(--ncm-accent);
+  flex-shrink: 0;
+}
+
+.ncm-app .ncm-attachment-chip__name {
+  font-family: var(--ncm-font-mono);
+  font-size: 10px;
+  color: var(--ncm-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.ncm-app .ncm-attachment-chip__size {
+  font-family: var(--ncm-font-mono);
+  font-size: 8px;
+  color: var(--ncm-text-muted);
+  flex-shrink: 0;
+  margin-left: auto;
+  opacity: 0.7;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   §D7  LOCK GLOW ANIMATION
+   Outer glow pulse on the encrypted attachment lock icon.
+   2s infinite, gated by animation preference.
+   ═══════════════════════════════════════════════════════════ */
+
+@keyframes ncm-lock-glow {
+  0%, 100% {
+    box-shadow: 0 0 4px rgba(247, 201, 72, 0.15);
+    transform: scale(1.0);
+  }
+  50% {
+    box-shadow: 0 0 12px rgba(247, 201, 72, 0.35), 0 0 24px rgba(247, 201, 72, 0.1);
+    transform: scale(1.08);
+  }
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   §D8  ENCRYPTED BLOCK STATE TRANSITIONS
+   Visual changes for decrypted, failed, and breaching states.
+   ═══════════════════════════════════════════════════════════ */
+
+/* Decrypted — green accent, calm */
+.ncm-app .ncm-encrypted-block--decrypted {
+  border-color: var(--ncm-success);
+  background: rgba(0, 255, 65, 0.02);
+}
+
+.ncm-app .ncm-encrypted-block--decrypted .ncm-encrypted-block__icon {
+  background: rgba(0, 255, 65, 0.08);
+  border-color: rgba(0, 255, 65, 0.2);
+  color: var(--ncm-success);
+  animation: none;
+}
+
+.ncm-app .ncm-encrypted-block--decrypted .ncm-encrypted-block__title {
+  color: var(--ncm-success);
+}
+
+/* Failed — red flash */
+.ncm-app .ncm-encrypted-block--failed {
+  border-color: var(--ncm-danger);
+  animation: ncm-access-denied-flash 0.4s ease;
+}
+
+.ncm-app .ncm-encrypted-block--failed .ncm-encrypted-block__icon {
+  background: rgba(255, 0, 51, 0.08);
+  border-color: rgba(255, 0, 51, 0.25);
+  color: var(--ncm-danger);
+}
+
+@keyframes ncm-access-denied-flash {
+  0% { background-color: rgba(255, 0, 51, 0.12); }
+  100% { background-color: var(--ncm-bg-surface); }
+}
+
+/* Breaching — pulsing border */
+.ncm-app .ncm-encrypted-block--breaching {
+  border-color: var(--ncm-secondary);
+}
+
+.ncm-app .ncm-encrypted-block--breaching .ncm-encrypted-block__icon {
+  background: rgba(25, 243, 247, 0.08);
+  border-color: rgba(25, 243, 247, 0.2);
+  color: var(--ncm-secondary);
+}
+
+[data-ncm-animation="full"] .ncm-app .ncm-encrypted-block--breaching,
+.ncm-app[data-ncm-animation="full"] .ncm-encrypted-block--breaching {
+  animation: ncm-breach-pulse 0.8s ease-in-out infinite;
+}
+
+@keyframes ncm-breach-pulse {
+  0%, 100% { border-color: var(--ncm-secondary); }
+  50% { border-color: rgba(25, 243, 247, 0.3); }
+}

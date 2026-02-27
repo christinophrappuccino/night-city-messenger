@@ -1,0 +1,111 @@
+{{!--
+  Encrypted Attachment — Interactive ICE-protected file block
+  @file templates/partials/encrypted-attachment.hbs
+  @module cyberpunkred-messenger
+  @description Renders an encrypted attachment as an interactive block with
+    animated lock icon, file metadata, DV requirement, and BREACH button.
+    Reusable across inbox detail and data shard views.
+
+  Sprint 2B §2.6 — Interactive Encrypted Attachments
+
+  States:
+    - locked   (default): Lock icon glows, BREACH button active
+    - breaching: Lock icon spins, button shows "BREACHING…"
+    - decrypted: Unlock icon, green border, "DECRYPTED" label
+    - failed:   Red flash, "ACCESS DENIED", button re-enables after cooldown
+
+  Expected context:
+    attachment — {
+      name: string,         — Filename ("chrome_manifest.dat")
+      size: string,         — Human-readable size ("2.4 KB")
+      encrypted: boolean,   — Always true for this partial
+      decrypted: boolean,   — Has it been breached?
+      breachFailed: boolean, — Did the last attempt fail?
+      breaching: boolean,   — Currently rolling?
+      dv: number,           — Difficulty Value for Interface check
+      index: number         — Attachment index within message
+    }
+    messageId — Parent message ID
+    isGM — boolean
+--}}
+
+<div class="ncm-encrypted-block
+  {{~#if attachment.decrypted}} ncm-encrypted-block--decrypted{{/if~}}
+  {{~#if attachment.breachFailed}} ncm-encrypted-block--failed{{/if~}}
+  {{~#if attachment.breaching}} ncm-encrypted-block--breaching{{/if~}}"
+     data-attachment-index="{{attachment.index}}"
+     data-message-id="{{messageId}}">
+
+  {{!-- Lock Icon Square --}}
+  <div class="ncm-encrypted-block__icon">
+    {{#if attachment.decrypted}}
+      <i class="fas fa-unlock"></i>
+    {{else}}
+      <i class="fas fa-lock"></i>
+    {{/if}}
+  </div>
+
+  {{!-- File Info --}}
+  <div class="ncm-encrypted-block__info">
+    <div class="ncm-encrypted-block__title">
+      {{#if attachment.decrypted}}
+        DECRYPTED ATTACHMENT
+      {{else}}
+        ICE-PROTECTED ATTACHMENT
+      {{/if}}
+    </div>
+    <div class="ncm-encrypted-block__subtitle">
+      {{attachment.name}}
+      {{#if attachment.size}} — {{attachment.size}}{{/if}}
+      {{#unless attachment.decrypted}}
+        {{#if attachment.dv}} — Interface check DV {{attachment.dv}}{{/if}}
+      {{/unless}}
+    </div>
+  </div>
+
+  {{!-- Action Area --}}
+  <div class="ncm-encrypted-block__action">
+    {{#if attachment.decrypted}}
+      {{!-- Decrypted: open the file --}}
+      <button class="ncm-btn ncm-btn--ghost ncm-encrypted-block__btn--open"
+              data-action="open-attachment"
+              data-attachment-index="{{attachment.index}}"
+              data-message-id="{{messageId}}">
+        <i class="fas fa-folder-open"></i>
+        <span>Open</span>
+      </button>
+    {{else if attachment.breaching}}
+      {{!-- Currently rolling --}}
+      <button class="ncm-btn ncm-btn--secondary" disabled>
+        <i class="fas fa-spinner fa-spin"></i>
+        <span>Breaching…</span>
+      </button>
+    {{else if attachment.breachFailed}}
+      {{!-- Failed state --}}
+      <span class="ncm-encrypted-block__denied">ACCESS DENIED</span>
+    {{else}}
+      {{!-- Ready to breach --}}
+      <button class="ncm-btn ncm-btn--secondary"
+              data-action="breach-attachment"
+              data-attachment-index="{{attachment.index}}"
+              data-message-id="{{messageId}}">
+        <i class="fas fa-terminal"></i>
+        <span>Breach</span>
+      </button>
+    {{/if}}
+
+    {{!-- GM Force Decrypt --}}
+    {{#if isGM}}
+      {{#unless attachment.decrypted}}
+        <button class="ncm-btn ncm-btn--ghost ncm-encrypted-block__btn--gm"
+                data-action="gm-force-breach"
+                data-attachment-index="{{attachment.index}}"
+                data-message-id="{{messageId}}"
+                data-ncm-tooltip="GM: Force decrypt">
+          <i class="fas fa-shield-halved"></i>
+        </button>
+      {{/unless}}
+    {{/if}}
+  </div>
+
+</div>

@@ -1,21 +1,31 @@
 /**
- * MessageViewerApp — Inbox UX (Sprint 2A: Structural Layout Redesign)
+ * Message Viewer Application
  * @file scripts/ui/MessageViewer/MessageViewerApp.js
  * @module cyberpunkred-messenger
- * @description Full-featured inbox with condensed header bar, tightened HUD strip,
- *   tab bar with count badges, split-panel layout, inline network selector,
- *   real-time search, category filtering, sort control, pagination, density modes,
- *   bulk actions, resizable sidebar, keyboard navigation, quick-reply shortcuts,
- *   and context-aware smart footer.
+ * @description Inbox window: message list (filterable, sortable, paginated),
+ *   message detail panel, and quick-reply bar.
  *
  *   Sprint 2A changes:
  *     - _toggleDropdown() updated for new container classes (.ncm-network-badge, .ncm-tab-control)
  *     - _onDelegatedClick() adds 'close-window' action, fixes bulk action case names
  *     - _prepareContext() unchanged — already provides all data the new template needs
+ *
+ *   Sprint 2B changes:
+ *     - Import getSecurityStripData, classifyAttachments, getFileIcon from designHelpers
+ *     - _getEnrichedMessage() adds security strip data, classified attachments
+ *     - _onDelegatedClick() adds breach-attachment, gm-force-breach, open-attachment handlers
+ *     - New methods: _breachAttachment(), _gmForceBreachAttachment(), _openAttachment()
  */
 
 import { BaseApplication } from '../BaseApplication.js';
-import { computeSignalBar, getInitials, getPriorityBadgeVariant } from '../../utils/designHelpers.js';
+import {
+  computeSignalBar,
+  getInitials,
+  getPriorityBadgeVariant,
+  getSecurityStripData,
+  classifyAttachments,
+  getFileIcon,
+} from '../../utils/designHelpers.js';
 
 const MODULE_ID = 'cyberpunkred-messenger';
 const MESSAGES_PER_PAGE = 25;
@@ -303,241 +313,144 @@ export class MessageViewerApp extends BaseApplication {
     const html = this.element;
     if (!html) return;
 
-    // ── Delegated click handler ──
-    html.addEventListener('click', this._onDelegatedClick.bind(this));
+    // Delegated click handler
+    html.addEventListener('click', (event) => this._onDelegatedClick(event));
 
-    // ── Search input with debounce ──
+    // Search input
     const searchInput = html.querySelector('.ncm-search-input');
     if (searchInput) {
-      searchInput.addEventListener('input', this._onSearchInput.bind(this));
-      searchInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-          this.searchTerm = '';
-          this.searchActive = false;
-          this.currentPage = 1;
-          this.render();
-        }
-      });
+      searchInput.addEventListener('input', (e) => this._onSearchInput(e));
     }
 
-    // ── Keyboard navigation on message list ──
-    const messageList = html.querySelector('.ncm-message-list');
-    if (messageList) {
-      messageList.addEventListener('keydown', this._onMessageListKeydown.bind(this));
-    }
-
-    // ── Global keyboard shortcuts ──
-    this._keyHandler = this._onKeydown.bind(this);
-    document.addEventListener('keydown', this._keyHandler);
-
-    // ── Resizable divider ──
-    this._setupResizableDivider(html);
-
-    // ── Close dropdowns on outside click ──
-    this._outsideClickHandler = (e) => {
-      if (!html.contains(e.target)) return;
-      const dropdowns = html.querySelectorAll('.ncm-network-dropdown, .ncm-sort-dropdown, .ncm-network-filter-dropdown');
-      const clickedDropdownParent = e.target.closest('[data-action="toggle-network-dropdown"], [data-action="toggle-sort-dropdown"], [data-action="toggle-network-filter"]');
-      if (!clickedDropdownParent) {
-        dropdowns.forEach(d => d.classList.add('ncm-hidden'));
-      }
-    };
-    html.addEventListener('click', this._outsideClickHandler, true);
-
-    // ── EventBus subscriptions ──
-    this._setupEventSubscriptions();
-
-    // ── Focus the message list for immediate keyboard nav ──
-    if (messageList && !this.selectedMessageId) {
-      messageList.focus();
+    // Setup event subscriptions on first render
+    if (!this._subscriptionsReady) {
+      this._setupEventSubscriptions();
+      this._subscriptionsReady = true;
     }
   }
 
-  /** @override */
-  close(options = {}) {
-    // Clean up global keyboard handler
-    if (this._keyHandler) {
-      document.removeEventListener('keydown', this._keyHandler);
-      this._keyHandler = null;
-    }
-
-    // Persist sidebar width
-    this._savePreferences();
-
-    return super.close(options);
-  }
-
-  // ─────────────── Delegated Click Handler ───────────────
+  // ─────────────── Action Dispatch ───────────────
 
   _onDelegatedClick(event) {
-    const target = event.target;
-    const actionEl = target.closest('[data-action]');
-    if (!actionEl) return;
+    const target = event.target.closest('[data-action]');
+    if (!target) return;
 
-    const action = actionEl.dataset.action;
+    const action = target.dataset.action;
+    const messageId = target.dataset.messageId || target.closest('[data-message-id]')?.dataset.messageId;
 
     switch (action) {
-      // ── Header Bar (Sprint 2A) ──
-      case 'toggle-network-dropdown':
-        event.stopPropagation();
-        this._toggleDropdown('.ncm-network-dropdown', actionEl);
+      // ── Navigation ──
+      case 'select-message':
+        this._selectMessage(messageId);
+        break;
+      case 'set-filter':
+        this._setFilter(target.dataset.filter);
+        break;
+      case 'set-sort':
+        this._setSort(target.dataset.sort);
+        break;
+      case 'next-page':
+        this._setPage(this.currentPage + 1);
+        break;
+      case 'prev-page':
+        this._setPage(this.currentPage - 1);
         break;
 
-      case 'switch-network':
-        event.stopPropagation();
-        this._switchNetwork(actionEl.dataset.networkId);
-        break;
-
-      case 'close-window':
-        this.close();
-        break;
-
-      case 'jump-to-unread':
-        this._jumpToFirstUnread();
-        break;
-
+      // ── Search & Dropdowns ──
       case 'toggle-search':
         this._toggleSearch();
         break;
-
-      case 'clear-search':
-        this.searchTerm = '';
-        this.searchActive = false;
-        this.currentPage = 1;
-        this.render();
+      case 'toggle-network-dropdown':
+        this._toggleDropdown('.ncm-network-dropdown', target);
         break;
-
-      case 'cycle-density':
-        this._cycleDensity();
-        break;
-
-      case 'open-settings':
-        game.nightcity?.openThemeCustomizer?.();
-        break;
-
-      // ── Category Tabs ──
-      case 'set-filter':
-        this._setFilter(actionEl.dataset.filter);
-        break;
-
-      // ── Sort ──
       case 'toggle-sort-dropdown':
-        event.stopPropagation();
-        this._toggleDropdown('.ncm-sort-dropdown', actionEl);
+        this._toggleDropdown('.ncm-sort-dropdown', target);
         break;
-
-      case 'set-sort':
-        this._setSort(actionEl.dataset.sort);
-        break;
-
-      // ── Network Filter ──
       case 'toggle-network-filter':
-        event.stopPropagation();
-        this._toggleDropdown('.ncm-network-filter-dropdown', actionEl);
+        this._toggleDropdown('.ncm-network-filter-dropdown', target);
         break;
 
+      // ── Network ──
+      case 'select-network':
+        this._selectNetwork(target.dataset.networkId);
+        break;
       case 'set-network-filter':
-        this.networkFilter = actionEl.dataset.network || null;
-        this.currentPage = 1;
-        this.render();
+        this._setNetworkFilter(target.dataset.network || null);
         break;
 
-      // ── Message List ──
-      case 'select-message':
-        event.stopPropagation();
-        this._selectMessage(actionEl.dataset.messageId);
+      // ── Message Actions ──
+      case 'reply-message':
+        this._replyToMessage(messageId);
+        break;
+      case 'forward-message':
+        this._forwardMessage(messageId);
+        break;
+      case 'save-message':
+        this._saveMessage(messageId);
+        break;
+      case 'delete-message':
+        this._deleteMessage(messageId);
+        break;
+      case 'share-to-chat':
+        this._shareToChat(messageId);
+        break;
+      case 'quick-reply':
+        this._sendQuickReply(target.dataset.text, messageId);
         break;
 
+      // ── Encryption (original) ──
+      case 'decrypt-message':
+        this._decryptMessage(messageId);
+        break;
+      case 'force-decrypt-message':
+        this._forceDecryptMessage(messageId);
+        break;
+
+      // ── Sprint 2B: Attachment Actions ──
+      case 'breach-attachment':
+        this._breachAttachment(messageId, target.dataset.attachmentIndex);
+        break;
+      case 'gm-force-breach':
+        this._gmForceBreachAttachment(messageId, target.dataset.attachmentIndex);
+        break;
+      case 'open-attachment':
+        this._openAttachment(messageId, target.dataset.attachmentIndex);
+        break;
+
+      // ── Bulk Actions ──
       case 'toggle-select':
-        event.stopPropagation();
-        this._toggleBulkSelect(actionEl.dataset.messageId);
+        this._toggleBulkSelect(target.dataset.messageId);
         break;
-
-      // ── Bulk Actions (Sprint 2A: names match template) ──
       case 'select-all':
-        this._selectAll(actionEl.checked);
+        this._selectAll();
         break;
-
-      case 'bulk-mark-read':
+      case 'bulk-read':
         this._bulkMarkRead();
         break;
-
       case 'bulk-delete':
         this._bulkDelete();
         break;
-
-      case 'bulk-mark-spam':
-        this._bulkMarkSpam();
-        break;
-
-      case 'bulk-clear':
+      case 'bulk-cancel':
         this.bulkSelected.clear();
         this.render();
         break;
 
-      // ── Pagination ──
-      case 'prev-page':
-        if (this.currentPage > 1) {
-          this.currentPage--;
-          this.render();
-        }
+      // ── Layout ──
+      case 'set-density':
+        this._setDensity(target.dataset.density);
         break;
-
-      case 'next-page':
-        this.currentPage++;
-        this.render();
-        break;
-
-      // ── Message Detail Actions ──
-      case 'reply':
-        this._replyToSelected();
-        break;
-
-      case 'forward':
-        this._forwardSelected();
-        break;
-
-      case 'toggle-saved':
-        this._toggleSaved();
-        break;
-
-      case 'share-to-chat':
-        this._shareToChat();
-        break;
-
-      case 'mark-spam':
-        this._toggleSpam();
-        break;
-
-      case 'delete-message':
-        this._deleteSelected();
-        break;
-
-      case 'decrypt-message':
-        this._decryptMessage(actionEl.dataset.messageId);
-        break;
-
-      case 'force-decrypt-message':
-        this._forceDecryptMessage(actionEl.dataset.messageId);
-        break;
-
-      // ── Quick Reply ──
-      case 'quick-reply':
-        this._sendQuickReply(actionEl.dataset.reply);
-        break;
-
-      case 'quick-reply-custom':
-        this._openCustomQuickReply();
-        break;
-
-      // ── Footer / Compose ──
-      case 'compose-new':
-        game.nightcity?.composeMessage?.();
+      case 'compose-message':
+        game.nightcity?.messenger?.composeMessage?.({ actorId: this.actorId });
         break;
 
       // ── Thread ──
       case 'toggle-thread':
         this._toggleThread();
+        break;
+
+      // ── Window ──
+      case 'close-window':
+        this.close();
         break;
     }
   }
@@ -630,13 +543,13 @@ export class MessageViewerApp extends BaseApplication {
     this._savePreferences();
     this.render();
     this.soundService?.play?.('click');
-
-    // Close dropdown
-    this.element?.querySelector('.ncm-sort-dropdown')?.classList.add('ncm-hidden');
   }
+
+  // ─────────────── Sorting ───────────────
 
   _applySorting(messages) {
     const sorted = [...messages];
+
     switch (this.currentSort) {
       case 'newest':
         sorted.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
@@ -646,9 +559,8 @@ export class MessageViewerApp extends BaseApplication {
         break;
       case 'unread':
         sorted.sort((a, b) => {
-          if (!a.status.read && b.status.read) return -1;
-          if (a.status.read && !b.status.read) return 1;
-          return new Date(b.timestamp) - new Date(a.timestamp);
+          if (a.status.read === b.status.read) return new Date(b.timestamp) - new Date(a.timestamp);
+          return a.status.read ? 1 : -1;
         });
         break;
       case 'sender':
@@ -663,32 +575,34 @@ export class MessageViewerApp extends BaseApplication {
         });
         break;
     }
+
     return sorted;
   }
+
+  // ─────────────── Pagination ───────────────
 
   _applyPagination(messages) {
     const start = (this.currentPage - 1) * MESSAGES_PER_PAGE;
     return messages.slice(start, start + MESSAGES_PER_PAGE);
   }
 
+  _setPage(page) {
+    const maxPage = Math.max(1, Math.ceil(this._cachedMessages?.length || 0 / MESSAGES_PER_PAGE));
+    this.currentPage = Math.max(1, Math.min(page, maxPage));
+    this.render();
+  }
+
   // ─────────────── Message Selection ───────────────
 
   _selectMessage(messageId) {
     if (!messageId) return;
+
     this.selectedMessageId = messageId;
+    this.render();
 
     // Mark as read
-    this.messageService?.markAsRead?.(messageId, this.actorId);
-
-    this.render();
+    this.messageService?.markRead?.(messageId, this.actorId);
     this.soundService?.play?.('click');
-  }
-
-  _jumpToFirstUnread() {
-    const unread = this._cachedMessages?.find(m => !m.status.read);
-    if (unread) {
-      this._selectMessage(unread.messageId);
-    }
   }
 
   // ─────────────── Bulk Selection ───────────────
@@ -702,18 +616,22 @@ export class MessageViewerApp extends BaseApplication {
     this.render();
   }
 
-  _selectAll(checked) {
-    if (checked) {
-      (this._cachedMessages || []).forEach(m => this.bulkSelected.add(m.messageId));
-    } else {
+  _selectAll() {
+    if (!this._cachedMessages) return;
+    const allIds = this._cachedMessages.map(m => m.messageId);
+    const allSelected = allIds.every(id => this.bulkSelected.has(id));
+
+    if (allSelected) {
       this.bulkSelected.clear();
+    } else {
+      allIds.forEach(id => this.bulkSelected.add(id));
     }
     this.render();
   }
 
   async _bulkMarkRead() {
     for (const id of this.bulkSelected) {
-      await this.messageService?.markAsRead?.(id, this.actorId);
+      await this.messageService?.markRead?.(id, this.actorId);
     }
     this.bulkSelected.clear();
     this.render();
@@ -723,268 +641,100 @@ export class MessageViewerApp extends BaseApplication {
     for (const id of this.bulkSelected) {
       await this.messageService?.deleteMessage?.(id, this.actorId);
     }
+    this.bulkSelected.clear();
     if (this.bulkSelected.has(this.selectedMessageId)) {
       this.selectedMessageId = null;
     }
-    this.bulkSelected.clear();
-    this.render();
-  }
-
-  async _bulkMarkSpam() {
-    for (const id of this.bulkSelected) {
-      await this.messageService?.toggleSpam?.(id, this.actorId);
-    }
-    this.bulkSelected.clear();
     this.render();
   }
 
   // ─────────────── Message Actions ───────────────
 
-  _replyToSelected() {
-    if (!this.selectedMessageId) return;
-    const msg = this._getSelectedMessage();
-    this.eventBus?.emit?.('composer:open', {
-      mode: 'reply',
-      inReplyTo: this.selectedMessageId,
-      toActorId: msg?.fromActorId,
-      to: msg?.from,
-      subject: `RE: ${msg?.subject || ''}`,
-    });
-  }
-
-  _forwardSelected() {
-    if (!this.selectedMessageId) return;
-    const msg = this._getSelectedMessage();
-    this.eventBus?.emit?.('composer:open', {
-      mode: 'forward',
-      subject: `FWD: ${msg?.subject || ''}`,
-      body: `\n\n--- Forwarded Message ---\nFrom: ${msg?.from}\nDate: ${msg?.timestamp}\n\n${msg?.body || ''}`,
-    });
-  }
-
-  async _toggleSaved() {
-    if (!this.selectedMessageId) return;
-    await this.messageService?.toggleSaved?.(this.selectedMessageId, this.actorId);
-    this.render();
-  }
-
-  async _shareToChat() {
-    if (!this.selectedMessageId) return;
-    const msg = this._getSelectedMessage();
-    if (msg) {
-      await game.nightcity?.shareToChat?.(msg);
-    }
-  }
-
-  async _toggleSpam() {
-    if (!this.selectedMessageId) return;
-    await this.messageService?.toggleSpam?.(this.selectedMessageId, this.actorId);
-    this.render();
-  }
-
-  async _deleteSelected() {
-    if (!this.selectedMessageId) return;
-    await this.messageService?.deleteMessage?.(this.selectedMessageId, this.actorId);
-    this.selectedMessageId = null;
-    this.render();
-  }
-
-  // ─────────────── Quick Reply ───────────────
-
-  async _sendQuickReply(replyText) {
-    if (!this.selectedMessageId) return;
+  _replyToMessage(messageId) {
     const msg = this._getSelectedMessage();
     if (!msg) return;
-
-    try {
-      await game.nightcity?.sendMessage?.({
-        toActorId: msg.fromActorId,
-        fromActorId: this.actorId,
-        subject: `RE: ${msg.subject || ''}`,
-        body: replyText,
-        priority: 'normal',
-        inReplyTo: msg.messageId,
-        threadId: msg.threadId,
-      });
-      this.soundService?.play?.('send');
-      ui.notifications.info(`Quick reply sent: "${replyText}"`);
-    } catch (err) {
-      console.error(`${MODULE_ID} | Quick reply failed:`, err);
-      ui.notifications.error('Failed to send quick reply.');
-    }
+    game.nightcity?.messenger?.composeMessage?.({
+      actorId: this.actorId,
+      to: msg.from,
+      subject: msg.subject?.startsWith('RE:') ? msg.subject : `RE: ${msg.subject || ''}`,
+      inReplyTo: msg.messageId,
+      threadId: msg.threadId || msg.messageId,
+    });
   }
 
-  _openCustomQuickReply() {
-    // Open composer in reply mode (simpler than a custom dialog)
-    this._replyToSelected();
+  _forwardMessage(messageId) {
+    const msg = this._getSelectedMessage();
+    if (!msg) return;
+    game.nightcity?.messenger?.composeMessage?.({
+      actorId: this.actorId,
+      subject: msg.subject?.startsWith('FWD:') ? msg.subject : `FWD: ${msg.subject || ''}`,
+      body: `\n\n--- Forwarded Message ---\nFrom: ${msg.from}\nDate: ${msg.timestamp}\n\n${msg.body || ''}`,
+    });
   }
 
-  // ─────────────── Network Switching ───────────────
-
-  async _switchNetwork(networkId) {
-    if (!networkId) return;
-
-    // Close dropdown
-    this.element?.querySelector('.ncm-network-dropdown')?.classList.add('ncm-hidden');
-
-    try {
-      await game.nightcity?.setNetwork?.(networkId);
-      this.soundService?.play?.('switch');
-    } catch (err) {
-      console.error(`${MODULE_ID} | Network switch failed:`, err);
-      ui.notifications.error('Network switch failed.');
-    }
-
+  async _saveMessage(messageId) {
+    if (!messageId) return;
+    await this.messageService?.toggleSaved?.(messageId, this.actorId);
     this.render();
   }
 
-  // ─────────────── Density Cycling ───────────────
-
-  _cycleDensity() {
-    const modes = ['compact', 'normal', 'comfortable'];
-    const idx = modes.indexOf(this.density);
-    this.density = modes[(idx + 1) % modes.length];
-    this._savePreferences();
+  async _deleteMessage(messageId) {
+    if (!messageId) return;
+    await this.messageService?.deleteMessage?.(messageId, this.actorId);
+    if (this.selectedMessageId === messageId) {
+      this.selectedMessageId = null;
+    }
     this.render();
+  }
+
+  _shareToChat(messageId) {
+    const msg = this._getSelectedMessage();
+    if (!msg) return;
+    game.nightcity?.messenger?.shareToChat?.(msg);
     this.soundService?.play?.('click');
   }
 
-  // ─────────────── Keyboard Navigation ───────────────
-
-  _onMessageListKeydown(event) {
-    const items = Array.from(this.element?.querySelectorAll('.ncm-message-item') || []);
-    if (!items.length) return;
-
-    const currentIdx = items.findIndex(el => el.dataset.messageId === this.selectedMessageId);
-
-    switch (event.key) {
-      case 'ArrowDown': {
-        event.preventDefault();
-        const nextIdx = Math.min(currentIdx + 1, items.length - 1);
-        const nextId = items[nextIdx]?.dataset.messageId;
-        if (nextId) this._selectMessage(nextId);
-        items[nextIdx]?.focus();
-        break;
-      }
-      case 'ArrowUp': {
-        event.preventDefault();
-        const prevIdx = Math.max(currentIdx - 1, 0);
-        const prevId = items[prevIdx]?.dataset.messageId;
-        if (prevId) this._selectMessage(prevId);
-        items[prevIdx]?.focus();
-        break;
-      }
-      case 'Enter':
-      case ' ': {
-        event.preventDefault();
-        if (currentIdx >= 0) {
-          this._selectMessage(items[currentIdx].dataset.messageId);
-        }
-        break;
-      }
-    }
-  }
-
-  _onKeydown(event) {
-    // Don't capture if user is typing in an input
-    if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') return;
-    // Only respond when this window is active/visible
-    if (!this.element || !document.contains(this.element)) return;
-
-    switch (event.key) {
-      case 'n':
-      case 'N':
-        if (!event.ctrlKey && !event.metaKey) {
-          event.preventDefault();
-          game.nightcity?.composeMessage?.();
-        }
-        break;
-
-      case 'r':
-      case 'R':
-        if (!event.ctrlKey && !event.metaKey) {
-          event.preventDefault();
-          this._replyToSelected();
-        }
-        break;
-
-      case 'Delete':
-        event.preventDefault();
-        this._deleteSelected();
-        break;
-
-      case 'Escape':
-        if (this.searchActive) {
-          this.searchTerm = '';
-          this.searchActive = false;
-          this.currentPage = 1;
-          this.render();
-        } else if (this.selectedMessageId) {
-          this.selectedMessageId = null;
-          this.render();
-        }
-        break;
-
-      case '/':
-        if (!event.ctrlKey && !event.metaKey) {
-          event.preventDefault();
-          this._toggleSearch();
-        }
-        break;
-    }
-  }
-
-  // ─────────────── Resizable Divider ───────────────
-
-  _setupResizableDivider(html) {
-    const divider = html.querySelector('.ncm-panel-divider');
-    const listPanel = html.querySelector('.ncm-message-list-panel');
-    if (!divider || !listPanel) return;
-
-    let startX = 0;
-    let startWidth = 0;
-
-    const onMouseMove = (e) => {
-      if (!this._isDragging) return;
-      const dx = e.clientX - startX;
-      const newWidth = Math.max(MIN_SIDEBAR_WIDTH, Math.min(MAX_SIDEBAR_WIDTH, startWidth + dx));
-      listPanel.style.width = `${newWidth}px`;
-      this.sidebarWidth = newWidth;
-    };
-
-    const onMouseUp = () => {
-      if (!this._isDragging) return;
-      this._isDragging = false;
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
-      this._savePreferences();
-    };
-
-    divider.addEventListener('mousedown', (e) => {
-      e.preventDefault();
-      this._isDragging = true;
-      startX = e.clientX;
-      startWidth = listPanel.offsetWidth;
-      document.body.style.cursor = 'col-resize';
-      document.body.style.userSelect = 'none';
-      document.addEventListener('mousemove', onMouseMove);
-      document.addEventListener('mouseup', onMouseUp);
+  _sendQuickReply(text, messageId) {
+    const msg = this._getSelectedMessage();
+    if (!msg || !text) return;
+    game.nightcity?.messenger?.sendMessage?.({
+      from: this.contactRepository?.getActorEmail?.(this.actorId),
+      to: msg.from,
+      subject: msg.subject?.startsWith('RE:') ? msg.subject : `RE: ${msg.subject || ''}`,
+      body: text,
+      actorId: this.actorId,
+      inReplyTo: msg.messageId,
+      threadId: msg.threadId || msg.messageId,
     });
-
-    // Double-click to reset
-    divider.addEventListener('dblclick', () => {
-      this.sidebarWidth = DIVIDER_RESET_WIDTH;
-      listPanel.style.width = `${DIVIDER_RESET_WIDTH}px`;
-      this._savePreferences();
-    });
+    this.soundService?.play?.('send');
   }
 
-  // ─────────────── Dropdown Toggle Utility ───────────────
+  // ─────────────── Network Selection ───────────────
+
+  _selectNetwork(networkId) {
+    if (!networkId || !game.user.isGM) return;
+    this.networkService?.setCurrentNetwork?.(networkId);
+    this.render();
+  }
+
+  _setNetworkFilter(network) {
+    this.networkFilter = network || null;
+    this.currentPage = 1;
+    this.render();
+  }
+
+  // ─────────────── Density ───────────────
+
+  _setDensity(density) {
+    this.density = density || 'normal';
+    this._savePreferences();
+    this.render();
+  }
+
+  // ─────────────── Dropdown Management ───────────────
 
   /**
-   * Toggle a dropdown menu, closing all others first.
+   * Toggle a dropdown menu.
    * Sprint 2A: Updated container selectors for new layout.
    *   .ncm-network-badge (was .ncm-network-selector)
    *   .ncm-tab-control   (was .ncm-sort-control)
@@ -1001,8 +751,6 @@ export class MessageViewerApp extends BaseApplication {
       });
 
     // Find the dropdown relative to the trigger
-    // Sprint 2A: .ncm-network-badge replaces .ncm-network-selector,
-    //            .ncm-tab-control replaces .ncm-sort-control
     const container = triggerEl.closest('.ncm-network-badge, .ncm-tab-control, .ncm-network-filter-control');
     const dropdown = container?.querySelector(selector);
     if (dropdown) {
@@ -1039,16 +787,33 @@ export class MessageViewerApp extends BaseApplication {
     return this._cachedMessages?.find(m => m.messageId === this.selectedMessageId) || null;
   }
 
+  /**
+   * Build the full enriched message for the detail panel.
+   * Sprint 2B: Now includes security strip data and classified attachments.
+   */
   async _getEnrichedMessage(messageId, allMessages) {
     const msg = allMessages.find(m => m.messageId === messageId);
     if (!msg) return null;
 
+    const displayData = this._enrichMessageDisplay(msg);
+    const contact = this._findContact(msg.from);
+    const attachments = msg.attachments || [];
+
+    // §2.4 — Security verification strip
+    const security = getSecurityStripData(msg, contact);
+
+    // §2.6/2.8 — Classify attachments into encrypted vs regular
+    const classified = classifyAttachments(attachments);
+
     return {
       ...msg,
-      ...this._enrichMessageDisplay(msg),
+      ...displayData,
       bodyRendered: this._renderMessageBody(msg.body),
       threadInfo: this._getThreadInfo(msg, allMessages),
-      attachments: msg.attachments || [],
+      attachments,
+      security,
+      encryptedAttachments: classified.encrypted,
+      regularAttachments: classified.regular,
     };
   }
 
@@ -1295,6 +1060,106 @@ export class MessageViewerApp extends BaseApplication {
     } catch (err) {
       console.error(`${MODULE_ID} | Force decrypt failed:`, err);
     }
+  }
+
+  // ─────────────── Sprint 2B: Attachment Handlers ───────────────
+
+  /**
+   * §2.6 — Attempt to breach an encrypted attachment via EventBus → attemptHack flow.
+   * @param {string} messageId — Parent message ID
+   * @param {string|number} attachmentIndex — Index of the attachment
+   */
+  async _breachAttachment(messageId, attachmentIndex) {
+    if (!messageId || attachmentIndex == null) return;
+    const idx = Number(attachmentIndex);
+
+    try {
+      this.soundService?.play?.('click');
+
+      // Emit breach attempt via EventBus — DataShardService listens
+      const result = await game.nightcity?.dataShardService?.attemptAttachmentBreach?.(
+        messageId,
+        idx,
+        this.actorId
+      );
+
+      if (result?.success) {
+        this.soundService?.play?.('hack-success');
+        ui.notifications.info('Attachment breach successful. Data unlocked.');
+      } else {
+        this.soundService?.play?.('hack-fail');
+        const reason = result?.reason || 'ICE countermeasure activated.';
+        ui.notifications.warn(`Breach failed: ${reason}`);
+      }
+
+      this.render();
+    } catch (err) {
+      console.error(`${MODULE_ID} | Attachment breach error:`, err);
+      ui.notifications.error('Breach attempt encountered an error.');
+    }
+  }
+
+  /**
+   * §2.6 — GM force-breach an encrypted attachment (bypasses checks).
+   * @param {string} messageId — Parent message ID
+   * @param {string|number} attachmentIndex — Index of the attachment
+   */
+  async _gmForceBreachAttachment(messageId, attachmentIndex) {
+    if (!messageId || attachmentIndex == null || !game.user.isGM) return;
+    const idx = Number(attachmentIndex);
+
+    try {
+      await game.nightcity?.messageService?.forceDecryptAttachment?.(messageId, idx);
+      this.soundService?.play?.('hack-success');
+      ui.notifications.info('GM: Attachment force-decrypted.');
+      this.render();
+    } catch (err) {
+      console.error(`${MODULE_ID} | GM force breach error:`, err);
+    }
+  }
+
+  /**
+   * §2.8 — Open a regular (non-encrypted) attachment.
+   * Delegates to Foundry's journal viewer, image viewer, or download.
+   * @param {string} messageId — Parent message ID
+   * @param {string|number} attachmentIndex — Index of the attachment
+   */
+  _openAttachment(messageId, attachmentIndex) {
+    if (attachmentIndex == null) return;
+    const idx = Number(attachmentIndex);
+
+    const msg = this._getSelectedMessage();
+    if (!msg) return;
+
+    const attachment = msg.attachments?.[idx];
+    if (!attachment) return;
+
+    // If encrypted and not decrypted, don't open
+    if (attachment.encrypted && !attachment.decrypted) {
+      ui.notifications.warn('This attachment is ICE-protected. Breach required.');
+      return;
+    }
+
+    // Delegate to the file viewer based on type
+    if (attachment.journalId) {
+      // Journal-linked attachment — open in Foundry journal
+      const journal = game.journal?.get(attachment.journalId);
+      journal?.sheet?.render(true);
+    } else if (attachment.url) {
+      // Direct URL — open in new tab or image viewer
+      const ext = attachment.name?.split('.').pop()?.toLowerCase() || '';
+      const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp'];
+
+      if (imageExts.includes(ext)) {
+        new ImagePopout(attachment.url, { title: attachment.name }).render(true);
+      } else {
+        window.open(attachment.url, '_blank');
+      }
+    } else {
+      ui.notifications.info(`File: ${attachment.name || 'Unknown file'}`);
+    }
+
+    this.soundService?.play?.('click');
   }
 
   // ─────────────── Thread Toggle ───────────────

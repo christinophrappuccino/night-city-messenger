@@ -1,0 +1,32 @@
+{{!--
+  Attachment Chip — clickable file attachment chip
+  @file templates/partials/attachment-chip.hbs
+  @module cyberpunkred-messenger
+  @description Renders a single file attachment as a compact clickable chip
+    with file type icon, filename, and size. Used inside .ncm-attachments
+    container in the message detail body.
+
+  Sprint 2B §2.8 — Attachment Chips
+
+  Expected context:
+    attachment — {
+      name: string,       — Filename ("clinic_map.png")
+      size: string,       — Human-readable size ("148 KB")
+      icon: string,       — FontAwesome icon class (from getFileIcon())
+      extension: string,  — File extension ("png")
+    }
+    messageId — Parent message ID
+    index — Attachment index within message
+--}}
+
+<div class="ncm-attachment-chip"
+     data-action="open-attachment"
+     data-attachment-index="{{index}}"
+     data-message-id="{{messageId}}"
+     data-ncm-tooltip="Open {{attachment.name}}">
+  <i class="{{attachment.icon}} ncm-attachment-chip__icon"></i>
+  <span class="ncm-attachment-chip__name">{{attachment.name}}</span>
+  {{#if attachment.size}}
+    <span class="ncm-attachment-chip__size">{{attachment.size}}</span>
+  {{/if}}
+</div>

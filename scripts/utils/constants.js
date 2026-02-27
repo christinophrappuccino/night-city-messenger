@@ -202,6 +202,8 @@ export const TEMPLATES = Object.freeze({
   PARTIAL_ACTION_BAR:     `${T}/partials/action-bar.hbs`,
   PARTIAL_HUD_STRIP: `${T}/partials/hud-strip.hbs`,
   PARTIAL_METADATA_READOUT: `${T}/partials/metadata-readout.hbs`,
+  PARTIAL_ENCRYPTED_ATTACHMENT: `${T}/partials/encrypted-attachment.hbs`,
+  PARTIAL_ATTACHMENT_CHIP:      `${T}/partials/attachment-chip.hbs`,
 });
 
 // ─── Default Configs ───

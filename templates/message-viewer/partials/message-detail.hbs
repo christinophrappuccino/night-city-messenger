@@ -5,11 +5,21 @@
   @description Displays a selected message with full metadata, body, actions,
     and quick-reply bar. Uses Sprint 0 design system components.
 
+  Sprint 2B additions:
+    - Security verification strip below metadata (§2.4)
+    - Thread badge pill in subject row (§2.5)
+    - Interactive encrypted attachments via partial (§2.6)
+    - Attachment chips via partial (§2.8)
+
   Expected context:
     message — enriched message object from _getEnrichedMessage()
       { messageId, from, to, subject, body, bodyRendered, timestamp, network,
         priority, priorityVariant, fromDisplay, fromInitial, fromPortrait,
-        toDisplay, formattedTime, status, threadInfo, attachments }
+        toDisplay, formattedTime, status, threadInfo, attachments,
+        security (Sprint 2B):
+          { verifiedSender, verifiedVariant, encrypted, encryptedVariant,
+            attachmentScan, attachmentScanVariant, attachmentScanLabel,
+            routeHops, securityLevel } }
     quickReplies — array of quick-reply strings
     isGM — boolean
 --}}
@@ -98,16 +108,57 @@
         </div>
       {{/if}}
 
-      {{!-- Subject --}}
+      {{!-- Subject + Thread Badge --}}
       <div class="ncm-detail-meta__row ncm-detail-meta__row--subject">
         <span class="ncm-detail-meta__label">SUBJECT</span>
-        <span class="ncm-detail-meta__value ncm-detail-meta__value--subject">
-          {{#if message.subject}}{{message.subject}}{{else}}<em>(No Subject)</em>{{/if}}
-        </span>
+        <div class="ncm-detail-meta__value ncm-detail-meta__value--subject-row">
+          <span class="ncm-detail-meta__subject-text">
+            {{#if message.subject}}{{message.subject}}{{else}}<em>(No Subject)</em>{{/if}}
+          </span>
+          {{!-- §2.5 Thread Badge Pill --}}
+          {{#if message.threadInfo.count}}
+            <div class="ncm-thread-badge" data-action="toggle-thread">
+              <i class="fas fa-code-branch"></i>
+              <span class="ncm-thread-badge__label">THREAD</span>
+              <span class="ncm-thread-badge__count">{{message.threadInfo.count}}</span>
+            </div>
+          {{/if}}
+        </div>
       </div>
     </div>
 
-    {{!-- ═══ Thread Indicator ═══ --}}
+    {{!-- ═══ §2.4 Security Verification Strip ═══ --}}
+    {{#if message.security}}
+      <div class="ncm-security-strip ncm-security-strip--{{message.security.securityLevel}}">
+
+        {{!-- Verified Sender --}}
+        <div class="ncm-security-item ncm-security-item--{{message.security.verifiedVariant}}">
+          <i class="fas fa-shield-check"></i>
+          <span>{{#if message.security.verifiedSender}}VERIFIED SENDER{{else}}UNKNOWN SENDER{{/if}}</span>
+        </div>
+
+        {{!-- E2E Encryption --}}
+        <div class="ncm-security-item ncm-security-item--{{message.security.encryptedVariant}}">
+          <i class="fas fa-lock"></i>
+          <span>{{#if message.security.encrypted}}E2E ENCRYPTED{{else}}CLEARTEXT{{/if}}</span>
+        </div>
+
+        {{!-- Attachment Scan --}}
+        <div class="ncm-security-item ncm-security-item--{{message.security.attachmentScanVariant}}">
+          <i class="fas fa-paperclip"></i>
+          <span>{{message.security.attachmentScanLabel}}</span>
+        </div>
+
+        {{!-- Route Hops (pushed right) --}}
+        <div class="ncm-security-item ncm-security-item--route">
+          <i class="fas fa-route"></i>
+          <span>ROUTE: {{message.security.routeHops}} HOP{{#if (gt message.security.routeHops 1)}}S{{/if}}</span>
+        </div>
+
+      </div>
+    {{/if}}
+
+    {{!-- ═══ Thread Indicator (expanded bar below strip) ═══ --}}
     {{#if message.threadInfo.count}}
       <div class="ncm-thread-indicator" data-action="toggle-thread">
         <i class="fas fa-code-branch"></i>
@@ -125,23 +176,27 @@
           <em>// No message body //</em>
         </p>
       {{/if}}
-    </div>
 
-    {{!-- ═══ Attachments ═══ --}}
-    {{#if message.attachments.length}}
-      <div class="ncm-detail-attachments">
-        {{> "modules/cyberpunkred-messenger/templates/partials/section-header.hbs"
-            title="ATTACHMENTS" count=message.attachments.length size="small" align="left" }}
-        <div class="ncm-attachment-list">
-          {{#each message.attachments}}
-          <div class="ncm-attachment-item" data-action="open-attachment" data-index="{{@index}}">
-            <i class="fas fa-file-alt"></i>
-            <span>{{this.name}}</span>
-          </div>
+      {{!-- ═══ §2.6 Encrypted Attachments (inline in body) ═══ --}}
+      {{#each message.encryptedAttachments}}
+        {{> "modules/cyberpunkred-messenger/templates/partials/encrypted-attachment.hbs"
+            attachment=this
+            messageId=../message.messageId
+            isGM=../isGM }}
+      {{/each}}
+
+      {{!-- ═══ §2.8 Attachment Chips (inline in body) ═══ --}}
+      {{#if message.regularAttachments.length}}
+        <div class="ncm-attachments">
+          {{#each message.regularAttachments}}
+            {{> "modules/cyberpunkred-messenger/templates/partials/attachment-chip.hbs"
+                attachment=this
+                messageId=../message.messageId
+                index=@index }}
           {{/each}}
         </div>
-      </div>
-    {{/if}}
+      {{/if}}
+    </div>
 
     {{!-- ═══ Malware Warning ═══ --}}
     {{#if message.status.infected}}
@@ -149,58 +204,41 @@
           variant="danger"
           icon="fas fa-biohazard"
           title="MALWARE DETECTED"
-          message="This message contains a hostile daemon. Proceed with caution." }}
+          message="This message contains a hostile daemon. Proceed with caution."
+      }}
     {{/if}}
 
-    {{!-- ═══ Quick Reply Bar ═══ --}}
-    <div class="ncm-quick-reply-bar">
-      {{#each quickReplies}}
-        <button class="ncm-btn ncm-btn--secondary ncm-btn--sm" data-action="quick-reply"
-                data-reply="{{this}}">
-          <i class="fas fa-bolt"></i>
-          <span>{{this}}</span>
-        </button>
-      {{/each}}
-      <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="quick-reply-custom"
-              data-ncm-tooltip="Custom quick reply">
-        <i class="fas fa-plus"></i>
-      </button>
-    </div>
-
     {{!-- ═══ Action Bar ═══ --}}
-    <div class="ncm-detail-action-bar">
-      <button class="ncm-btn ncm-btn--secondary ncm-btn--sm" data-action="reply"
-              data-ncm-tooltip="Reply (R)">
-        <i class="fas fa-reply"></i>
-        <span>Reply</span>
+    <div class="ncm-detail-actions">
+      <button class="ncm-btn ncm-btn--primary" data-action="reply-message">
+        <i class="fas fa-reply"></i> Reply
       </button>
-      <button class="ncm-btn ncm-btn--secondary ncm-btn--sm" data-action="forward"
-              data-ncm-tooltip="Forward">
-        <i class="fas fa-share"></i>
-        <span>Forward</span>
+      <button class="ncm-btn ncm-btn--ghost" data-action="forward-message">
+        <i class="fas fa-share"></i> Forward
       </button>
-      <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="toggle-saved"
-              data-ncm-tooltip="{{#if message.status.saved}}Unsave{{else}}Save{{/if}}">
-        <i class="fas {{#if message.status.saved}}fa-bookmark{{else}}fa-bookmark{{/if}}"></i>
-        <span>{{#if message.status.saved}}Unsave{{else}}Save{{/if}}</span>
+      <button class="ncm-btn ncm-btn--ghost" data-action="save-message">
+        <i class="fas fa-bookmark"></i> Save
       </button>
-      <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="share-to-chat"
-              data-ncm-tooltip="Share to chat">
-        <i class="fas fa-comment-dots"></i>
-        <span>Share</span>
+      <button class="ncm-btn ncm-btn--ghost" data-action="share-to-chat">
+        <i class="fas fa-share-from-square"></i> Chat
       </button>
+      {{#if isGM}}
+        <button class="ncm-btn ncm-btn--ghost" data-action="gm-edit-message"
+                data-ncm-tooltip="GM: Edit message flags">
+          <i class="fas fa-pen-to-square"></i>
+        </button>
+      {{/if}}
 
-      <div class="ncm-detail-action-bar__spacer"></div>
-
-      <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="mark-spam"
-              data-ncm-tooltip="Mark as spam">
-        <i class="fas fa-shield-halved"></i>
-      </button>
-      <button class="ncm-btn ncm-btn--danger ncm-btn--sm" data-action="delete-message"
-              data-ncm-tooltip="Delete (Del)">
-        <i class="fas fa-trash"></i>
-      </button>
+      {{!-- Quick Reply Pills --}}
+      {{#if quickReplies.length}}
+        <div class="ncm-quick-reply">
+          {{#each quickReplies}}
+            <span class="ncm-quick-pill" data-action="quick-reply" data-text="{{this}}">{{this}}</span>
+          {{/each}}
+        </div>
+      {{/if}}
     </div>
 
-  {{/if}}
+  {{/if}}{{!-- /else encrypted --}}
+
 </div>
