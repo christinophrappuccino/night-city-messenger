@@ -1,0 +1,145 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Night City Messenger — Window Chrome
+ * @file styles/base/window-chrome.css
+ * @module cyberpunkred-messenger
+ * @description Restyles Foundry's ApplicationV2 window chrome to match the
+ *   cyberdeck terminal aesthetic.
+ *
+ *   ╔══════════════════════════════════════════════════════════════════╗
+ *   ║  ZERO properties on .ncm-app root. EVER.                       ║
+ *   ║  .ncm-app IS Foundry's window frame element. Foundry sets      ║
+ *   ║  position, left, top, width, height, border, background as     ║
+ *   ║  inline styles. ANY CSS on .ncm-app fights those and breaks    ║
+ *   ║  drag, positioning, and centering.                              ║
+ *   ║                                                                 ║
+ *   ║  Style ONLY: .ncm-app > .window-header                         ║
+ *   ║              .ncm-app > .window-content                         ║
+ *   ║              .ncm-app > .window-resize-handle                   ║
+ *   ╚══════════════════════════════════════════════════════════════════╝
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+
+/* ═══════════════════════════════════════════════════════════
+   §1  FOUNDRY WINDOW HEADER → CYBERPUNK TITLE BAR
+   Restyle, don't hide. Keeps native drag + window controls.
+   Slim dark bar with gradient top-edge accent.
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-app > .window-header {
+  background: var(--ncm-bg-base, #12121a);
+  border-bottom: 1px solid var(--ncm-border, #2a2a45);
+  padding: 0 8px;
+  min-height: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: grab;
+  user-select: none;
+  position: relative;
+}
+
+.ncm-app > .window-header:active {
+  cursor: grabbing;
+}
+
+/* Top gradient accent bar — the signature NCM edge */
+.ncm-app > .window-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    var(--ncm-primary, #F65261),
+    var(--ncm-accent, #f7c948),
+    var(--ncm-primary, #F65261)
+  );
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+/* Window icon — small, cyberpunk tint */
+.ncm-app > .window-header .window-icon {
+  font-size: 10px;
+  color: var(--ncm-secondary, #19f3f7);
+  flex-shrink: 0;
+}
+
+/* Window title — uppercase, tracked, muted */
+.ncm-app > .window-header .window-title {
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ncm-text-secondary, #8888a0);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 28px;
+  margin: 0;
+  padding: 0;
+}
+
+/* Window control buttons (close, minimize) */
+.ncm-app > .window-header .header-control {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background: transparent;
+  border: none;
+  border-radius: 2px;
+  color: var(--ncm-text-muted, #555570);
+  font-size: 10px;
+  cursor: pointer;
+  transition: color 150ms ease, background 150ms ease;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.ncm-app > .window-header .header-control:hover {
+  color: var(--ncm-text-primary, #e0e0e8);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* Close button — red hover */
+.ncm-app > .window-header .header-control.close:hover {
+  color: var(--ncm-primary, #F65261);
+  background: rgba(246, 82, 97, 0.1);
+}
+
+/* Hide Foundry's button label text (keep just the icon) */
+.ncm-app > .window-header .header-control > span {
+  display: none;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   §2  WINDOW CONTENT
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-app > .window-content {
+  background: var(--ncm-bg-deep, #0a0a0f);
+  padding: 0;
+  overflow: hidden;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   §3  RESIZE HANDLE
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-app > .window-resize-handle {
+  border-color: var(--ncm-text-muted, #555570);
+  opacity: 0.3;
+}
+
+.ncm-app > .window-resize-handle:hover {
+  opacity: 0.7;
+}

@@ -1,9 +1,19 @@
 /* ═══════════════════════════════════════════════════════
    NCM-Scoped Reset
-   Only affects elements inside .ncm-app — never Foundry core.
+   @file styles/base/reset.css
+   @module cyberpunkred-messenger
+   @description Normalizes styles inside NCM windows.
+
+   ╔══════════════════════════════════════════════════════╗
+   ║  NEVER style .ncm-app directly for box-model,       ║
+   ║  font-size, or line-height. It IS Foundry's window  ║
+   ║  frame. Foundry uses its computed styles for         ║
+   ║  positioning math. Style .window-content instead.    ║
+   ╚══════════════════════════════════════════════════════╝
    ═══════════════════════════════════════════════════════ */
 
-.ncm-app {
+/* Scope ALL resets to window-content and below */
+.ncm-app > .window-content {
   box-sizing: border-box;
   color: var(--ncm-text-primary);
   font-family: var(--ncm-font-body);
@@ -11,58 +21,58 @@
   line-height: 1.5;
 }
 
-.ncm-app *,
-.ncm-app *::before,
-.ncm-app *::after {
-  box-sizing: inherit;
+.ncm-app > .window-content *,
+.ncm-app > .window-content *::before,
+.ncm-app > .window-content *::after {
+  box-sizing: border-box;
 }
 
-.ncm-app h1,
-.ncm-app h2,
-.ncm-app h3,
-.ncm-app h4 {
+.ncm-app > .window-content h1,
+.ncm-app > .window-content h2,
+.ncm-app > .window-content h3,
+.ncm-app > .window-content h4 {
   font-family: var(--ncm-font-display);
   font-weight: 600;
   margin: 0 0 var(--ncm-space-sm) 0;
   color: var(--ncm-text-primary);
 }
 
-.ncm-app h1 { font-size: 1.5rem; }
-.ncm-app h2 { font-size: 1.25rem; }
-.ncm-app h3 { font-size: 1.1rem; }
-.ncm-app h4 { font-size: 1rem; }
+.ncm-app > .window-content h1 { font-size: 1.5rem; }
+.ncm-app > .window-content h2 { font-size: 1.25rem; }
+.ncm-app > .window-content h3 { font-size: 1.1rem; }
+.ncm-app > .window-content h4 { font-size: 1rem; }
 
-.ncm-app p { margin: 0 0 var(--ncm-space-sm) 0; }
+.ncm-app > .window-content p { margin: 0 0 var(--ncm-space-sm) 0; }
 
-.ncm-app a {
+.ncm-app > .window-content a {
   color: var(--ncm-secondary);
   text-decoration: none;
 }
-.ncm-app a:hover {
+.ncm-app > .window-content a:hover {
   text-decoration: underline;
 }
 
-.ncm-app input,
-.ncm-app textarea,
-.ncm-app select,
-.ncm-app button {
+.ncm-app > .window-content input,
+.ncm-app > .window-content textarea,
+.ncm-app > .window-content select,
+.ncm-app > .window-content button {
   font-family: inherit;
   font-size: inherit;
   color: inherit;
 }
 
-/* ─── Scrollbar ─── */
-.ncm-app ::-webkit-scrollbar {
+/* ─── Scrollbar (scoped to content area) ─── */
+.ncm-app > .window-content ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
-.ncm-app ::-webkit-scrollbar-track {
+.ncm-app > .window-content ::-webkit-scrollbar-track {
   background: transparent;
 }
-.ncm-app ::-webkit-scrollbar-thumb {
+.ncm-app > .window-content ::-webkit-scrollbar-thumb {
   background: var(--ncm-bg-elevated);
   border-radius: 3px;
 }
-.ncm-app ::-webkit-scrollbar-thumb:hover {
+.ncm-app > .window-content ::-webkit-scrollbar-thumb:hover {
   background: var(--ncm-text-muted);
 }

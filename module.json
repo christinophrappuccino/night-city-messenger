@@ -17,13 +17,7 @@
   },
   "esmodules": ["scripts/main.js"],
   "styles": [
-    "styles/components/message-viewer.css",
-    "styles/components/message-composer.css",
-    "styles/components/contact-manager.css",
-    "styles/components/notifications.css",
-    "styles/chat/chat-cards.css",
-    "styles/components/network-management.css",
-    "styles/components/network-auth.css"
+    "styles/cyberpunk-messenger.css"
   ],
   "languages": [{ "lang": "en", "name": "English", "path": "languages/en.json" }],
   "socket": true

@@ -3,16 +3,27 @@
  * @file scripts/ui/BaseApplication.js
  * @module cyberpunkred-messenger
  * @description Base class for all NCM UI windows. Provides:
- *              - EventBus subscription management with auto-cleanup
- *              - Theme integration (CSS class application)
- *              - Atmosphere data-attribute injection (scanlines, neon, animation level)
- *              - Sound integration helpers
- *              - Animation level checking
- *              - Consistent window behavior
+ *   - EventBus subscription management with auto-cleanup
+ *   - Atmosphere data-attribute injection (scanlines, neon, animation level)
+ *   - Sound + animation helpers respecting user prefs
+ *   - Consistent lifecycle management
  *
- * Sprint 1.5.1: Added _applyAtmosphere() — reads theme prefs and sets
- * data-ncm-scanlines, data-ncm-neon, data-ncm-animation-level on the
- * rendered element. This enables per-window atmosphere gating in CSS.
+ * ╔══════════════════════════════════════════════════════════════════════╗
+ * ║  RULES FOR ALL NCM APPLICATIONS                                    ║
+ * ║                                                                    ║
+ * ║  1. NEVER touch this.element in the constructor — it doesn't       ║
+ * ║     exist yet. Foundry creates it during render().                 ║
+ * ║                                                                    ║
+ * ║  2. NEVER set position/left/top/width/height/padding/margin via    ║
+ * ║     CSS !important on .ncm-app. Foundry sets these as inline       ║
+ * ║     styles. Fighting them breaks drag + positioning.               ║
+ * ║                                                                    ║
+ * ║  3. NEVER override render(). Use _onRender() for post-render       ║
+ * ║     logic. Foundry's render pipeline is complex — let it work.     ║
+ * ║                                                                    ║
+ * ║  4. All DOM manipulation happens in _onRender() or later.          ║
+ * ║     Atmosphere, event listeners, custom controls — all post-render.║
+ * ╚══════════════════════════════════════════════════════════════════════╝
  */
 
 import { MODULE_ID, ESSENTIAL_EFFECTS } from '../utils/constants.js';
@@ -25,15 +36,20 @@ const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
  */
 export class BaseApplication extends HandlebarsApplicationMixin(ApplicationV2) {
 
-  /** @type {Array<{unsubscribe: Function}>} */
+  /** @type {Array<{unsubscribe: Function}>} Managed EventBus subscriptions */
   #subscriptions = [];
+
+  /** @type {boolean} Whether _onFirstRender has fired */
+  #hasRenderedOnce = false;
 
   /** Unique owner ID for EventBus cleanup */
   get ownerId() {
     return `${this.constructor.name}-${this.id}`;
   }
 
-  // ─── Service Accessors ───
+  // ═══════════════════════════════════════════════════════════
+  //  Service Accessors
+  // ═══════════════════════════════════════════════════════════
 
   get eventBus() { return game.nightcity?.eventBus; }
   get stateManager() { return game.nightcity?.stateManager; }
@@ -41,7 +57,9 @@ export class BaseApplication extends HandlebarsApplicationMixin(ApplicationV2) {
   get themeService() { return game.nightcity?.themeService; }
   get soundService() { return game.nightcity?.soundService; }
 
-  // ─── Default Options ───
+  // ═══════════════════════════════════════════════════════════
+  //  Static Configuration
+  // ═══════════════════════════════════════════════════════════
 
   static DEFAULT_OPTIONS = {
     classes: ['ncm-app'],
@@ -56,30 +74,58 @@ export class BaseApplication extends HandlebarsApplicationMixin(ApplicationV2) {
     },
   };
 
-  // ─── Lifecycle ───
+  // ═══════════════════════════════════════════════════════════
+  //  Lifecycle — _onRender
+  //  This is THE place for all post-render DOM work.
+  //  Called after every render (initial + subsequent).
+  // ═══════════════════════════════════════════════════════════
 
   /**
-   * Called after the application is rendered to the DOM
-   * @param {object} context
-   * @param {object} options
+   * Called after the application is rendered to the DOM.
+   * @param {object} context — Template context data
+   * @param {object} options — Render options
    */
   _onRender(context, options) {
+    // Let Foundry/parent do its thing first
     super._onRender(context, options);
+
+    // Apply atmosphere data attributes (scanlines, neon, animation level)
     this._applyAtmosphere();
-    this._setupEventSubscriptions();
+
+    // First render only: one-time setup
+    if (!this.#hasRenderedOnce) {
+      this.#hasRenderedOnce = true;
+      this._setupEventSubscriptions();
+      this._onFirstRender(context, options);
+    }
+  }
+
+  /**
+   * Called only on the very first render. Override in subclasses for
+   * one-time DOM setup (event listeners, drag handles, etc).
+   * @param {object} context
+   * @param {object} options
+   * @protected
+   */
+  _onFirstRender(context, options) {
+    // Override in subclasses
   }
 
   /**
    * Override to set up EventBus subscriptions.
-   * Subclasses should call this.subscribe() here.
+   * Called once on first render. Subclasses should call this.subscribe().
    * @protected
    */
   _setupEventSubscriptions() {
     // Override in subclasses
   }
 
+  // ═══════════════════════════════════════════════════════════
+  //  Lifecycle — Close
+  // ═══════════════════════════════════════════════════════════
+
   /**
-   * Called when the application is closed
+   * Close the application and clean up all subscriptions.
    * @param {object} options
    */
   async close(options = {}) {
@@ -87,18 +133,20 @@ export class BaseApplication extends HandlebarsApplicationMixin(ApplicationV2) {
     return super.close(options);
   }
 
-  // ─── Atmosphere ───
+  // ═══════════════════════════════════════════════════════════
+  //  Atmosphere — Data Attribute Injection
+  // ═══════════════════════════════════════════════════════════
 
   /**
-   * Apply atmosphere data attributes to the rendered element.
-   * Reads theme preferences from SettingsManager/ThemeService and sets:
-   *   data-ncm-scanlines  = "true" | "false"
-   *   data-ncm-neon       = "true" | "false"
+   * Apply atmosphere data attributes to the application element.
+   * These gate CSS atmosphere layers without body-class toggling.
+   *
+   * Sets on this.element:
+   *   data-ncm-scanlines       = "true" | "false"
+   *   data-ncm-neon            = "true" | "false"
    *   data-ncm-animation-level = "full" | "reduced" | "off"
    *
-   * These attributes gate CSS atmosphere layers in atmosphere.css and
-   * neon-glow.css without requiring body-class toggling.
-   *
+   * Safe to call repeatedly — fails silently if element or prefs missing.
    * @protected
    */
   _applyAtmosphere() {
@@ -108,17 +156,9 @@ export class BaseApplication extends HandlebarsApplicationMixin(ApplicationV2) {
     try {
       const prefs = this.settingsManager?.getTheme?.() ?? {};
 
-      // Scanlines / CRT texture
-      const scanlines = prefs.scanlines !== false; // default ON
-      el.dataset.ncmScanlines = String(scanlines);
-
-      // Neon glow
-      const neonGlow = prefs.neonGlow !== false; // default ON
-      el.dataset.ncmNeon = String(neonGlow);
-
-      // Animation level
-      const animLevel = prefs.animationLevel || 'full';
-      el.dataset.ncmAnimationLevel = animLevel;
+      el.dataset.ncmScanlines = String(prefs.scanlines !== false);
+      el.dataset.ncmNeon = String(prefs.neonGlow !== false);
+      el.dataset.ncmAnimationLevel = prefs.animationLevel || 'full';
 
     } catch (err) {
       // Non-fatal — atmosphere is progressive enhancement
@@ -129,12 +169,14 @@ export class BaseApplication extends HandlebarsApplicationMixin(ApplicationV2) {
     }
   }
 
-  // ─── EventBus Helpers ───
+  // ═══════════════════════════════════════════════════════════
+  //  EventBus Helpers
+  // ═══════════════════════════════════════════════════════════
 
   /**
-   * Subscribe to an EventBus event with auto-cleanup
-   * @param {string} event
-   * @param {Function} callback
+   * Subscribe to an EventBus event with auto-cleanup on close.
+   * @param {string} event — Event name
+   * @param {Function} callback — Handler function
    */
   subscribe(event, callback) {
     if (!this.eventBus) {
@@ -146,32 +188,38 @@ export class BaseApplication extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   /**
-   * Clean up all EventBus subscriptions
+   * Clean up all EventBus subscriptions.
    * @private
    */
   _cleanupSubscriptions() {
     for (const handle of this.#subscriptions) {
-      handle.unsubscribe();
+      try {
+        handle.unsubscribe();
+      } catch (err) {
+        log.debug(`Subscription cleanup error: ${err.message}`);
+      }
     }
     this.#subscriptions = [];
 
     // Belt-and-suspenders: also clean by owner ID
-    if (this.eventBus) {
+    if (this.eventBus?.removeByOwner) {
       this.eventBus.removeByOwner(this.ownerId);
     }
   }
 
-  // ─── Animation Helpers ───
+  // ═══════════════════════════════════════════════════════════
+  //  Animation Helpers
+  // ═══════════════════════════════════════════════════════════
 
   /**
-   * Play a CSS animation effect, respecting animation level
-   * @param {HTMLElement} element
-   * @param {string} effectClass - CSS class to add/remove
-   * @param {number} duration - ms
+   * Play a CSS animation effect, respecting animation level preference.
+   * @param {HTMLElement} element — Target element
+   * @param {string} effectClass — CSS class to toggle
+   * @param {number} duration — Duration in ms
    * @returns {Promise<void>}
    */
   playEffect(element, effectClass, duration) {
-    const level = this.themeService?.getAnimationLevel() || 'full';
+    const level = this.themeService?.getAnimationLevel?.() || 'full';
 
     if (level === 'off') return Promise.resolve();
     if (level === 'reduced' && !ESSENTIAL_EFFECTS.includes(effectClass)) {
@@ -188,11 +236,31 @@ export class BaseApplication extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   /**
-   * Play a sound via SoundService
-   * @param {string} soundId
-   * @param {object} [options]
+   * Play a sound via SoundService.
+   * @param {string} soundId — Sound identifier from SOUND_PATHS
+   * @param {object} [options] — { volume, loop }
    */
   playSound(soundId, options) {
     this.soundService?.play(soundId, options);
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Utility
+  // ═══════════════════════════════════════════════════════════
+
+  /**
+   * Get the current animation level.
+   * @returns {'full'|'reduced'|'off'}
+   */
+  get animationLevel() {
+    return this.themeService?.getAnimationLevel?.() || 'full';
+  }
+
+  /**
+   * Check if animations are enabled (full or reduced).
+   * @returns {boolean}
+   */
+  get animationsEnabled() {
+    return this.animationLevel !== 'off';
   }
 }

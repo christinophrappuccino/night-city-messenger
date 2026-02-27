@@ -12,6 +12,7 @@
 /* Base — design tokens and resets (must load first) */
 @import 'base/variables.css';
 @import 'base/reset.css';
+@import 'base/window-chrome.css';
 @import 'base/typography.css';
 @import 'base/components.css';
 @import 'base/animations.css';
