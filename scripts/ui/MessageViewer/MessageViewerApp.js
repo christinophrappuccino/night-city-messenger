@@ -8,6 +8,7 @@
  */
 
 import { BaseApplication } from '../BaseApplication.js';
+import { computeSignalBar, getInitials, getPriorityBadgeVariant } from '../../utils/designHelpers.js';
 
 const MODULE_ID = 'cyberpunkred-messenger';
 const MESSAGES_PER_PAGE = 25;
@@ -125,6 +126,24 @@ export class MessageViewerApp extends BaseApplication {
     const paginated = this._applyPagination(sorted);
     const enriched = await this._enrichMessages(paginated);
 
+    // Actor identity fields for inbox header
+    const viewingActor = this.actorId ? game.actors?.get(this.actorId) : null;
+    const viewingAsPortrait = viewingActor?.img || null;
+    const viewingAsInitial = getInitials(viewingActor?.name || 'Unknown');
+    const viewingAsEmail = this.contactRepository?.getActorEmail?.(this.actorId) || '';
+
+    // Signal bar data for design system partial
+    const signalData = computeSignalBar(signalStrength);
+    const signalQuality = signalData.quality;
+    const signalSegments = signalData.segments;
+
+    // Sort options for dropdown template
+    const sortOptions = Object.entries(SORT_LABELS).map(([id, label]) => ({
+      id,
+      label,
+      active: id === this.currentSort,
+    }));
+
     // Counts for category badges
     const counts = this._computeCounts(allMessages);
 
@@ -152,6 +171,9 @@ export class MessageViewerApp extends BaseApplication {
     return {
       // Identity
       viewingAsName: this._getViewingAsName(),
+      viewingAsPortrait,
+      viewingAsInitial,
+      viewingAsEmail
       isGM: game.user.isGM,
 
       // Network
@@ -159,6 +181,8 @@ export class MessageViewerApp extends BaseApplication {
       availableNetworks,
       signalStrength,
       signalLevel,
+      signalQuality,
+      signalSegments,        
 
       // Messages
       messages: enriched,
@@ -169,6 +193,7 @@ export class MessageViewerApp extends BaseApplication {
 
       // Filtering & Sorting
       currentFilter: this.currentFilter,
+      sortOptions,
       currentSort: this.currentSort,
       sortLabel: SORT_LABELS[this.currentSort] || 'Sort',
       searchTerm: this.searchTerm,
@@ -961,35 +986,74 @@ export class MessageViewerApp extends BaseApplication {
     }));
   }
 
+  _getThreadInfo(msg, allMessages) {
+    if (!msg.threadId) return { count: 0 };
+    const threadMessages = allMessages.filter(m => m.threadId === msg.threadId);
+    return {
+      count: threadMessages.length > 1 ? threadMessages.length : 0,
+      threadId: msg.threadId,
+    };
+  }
+
+  _renderMessageBody(body) {
+    if (!body) return '';
+    // Basic HTML pass-through — Foundry already sanitizes journal content
+    // Wrap plain text in paragraph tags if no HTML detected
+    if (!body.includes('<')) {
+      return body.split('\n').filter(Boolean).map(p => `<p>${p}</p>`).join('');
+    }
+    return body;
+  }
+
   _enrichMessageDisplay(msg) {
     // Sender display name
     const contact = this._findContact(msg.from);
     const fromDisplay = contact?.name || msg.from?.split('@')[0] || 'Unknown';
     const fromInitial = (fromDisplay[0] || '?').toUpperCase();
-    const contactAvatar = contact?.avatar || null;
+    const fromPortrait = contact?.portrait || null;
 
-    // Timestamp formatting (in-world style: 2045.03.15 // 14:30)
-    const timestampFormatted = this._formatTimestamp(msg.timestamp);
-    const timestampFull = this._formatTimestampFull(msg.timestamp);
+    // Recipient display name
+    const toContact = this._findContact(msg.to);
+    const toDisplay = toContact?.name || msg.to?.split('@')[0] || 'Unknown';
 
-    // Body preview (first line, stripped of HTML)
-    const bodyPreview = this._stripHtml(msg.body || '').substring(0, 120);
+    // Priority badge variant for tag-badge partial
+    const priorityVariant = getPriorityBadgeVariant(msg.priority || 'normal');
 
-    // Network short name
-    const networkShort = (msg.network || 'NET').substring(0, 8);
+    // Network label (short name for badge)
+    const networkLabel = msg.network || '';
 
-    // Actor name from actorId
-    const fromActorName = msg.fromActorId ? game.actors?.get(msg.fromActorId)?.name : null;
+    // Formatted time using TimeService or fallback
+    let formattedTime = '';
+    try {
+      if (this.timeService?.formatCyberDate) {
+        formattedTime = this.timeService.formatCyberDate(msg.timestamp);
+      } else if (msg.timestamp) {
+        const d = new Date(msg.timestamp);
+        const yr = d.getFullYear();
+        const mo = String(d.getMonth() + 1).padStart(2, '0');
+        const dy = String(d.getDate()).padStart(2, '0');
+        const hr = String(d.getHours()).padStart(2, '0');
+        const mn = String(d.getMinutes()).padStart(2, '0');
+        formattedTime = `${yr}.${mo}.${dy} // ${hr}:${mn}`;
+      }
+    } catch {
+      formattedTime = msg.timestamp || '';
+    }
+
+    // Body preview (for comfortable density)
+    const bodyPreview = msg.body
+      ? msg.body.replace(/<[^>]*>/g, '').substring(0, 120)
+      : '';
 
     return {
       fromDisplay,
       fromInitial,
-      contactAvatar,
-      fromActorName,
-      timestampFormatted,
-      timestampFull,
+      fromPortrait,
+      toDisplay,
+      priorityVariant,
+      networkLabel,
+      formattedTime,
       bodyPreview,
-      networkShort,
     };
   }
 

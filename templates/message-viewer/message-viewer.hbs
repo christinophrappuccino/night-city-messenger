@@ -1,46 +1,55 @@
 {{!--
   Message Viewer (Inbox) — Sprint 1: Inbox UX Overhaul
-  Module: cyberpunkred-messenger
-  Description: Main inbox template with split-panel layout, status bar,
-               category tabs, message list, detail panel, and pagination footer.
+  @file templates/message-viewer/message-viewer.hbs
+  @module cyberpunkred-messenger
+  @description Main inbox template with cyberdeck terminal aesthetic.
+    Split-panel layout: header bar → category tabs → message list | detail panel.
+    Uses Sprint 0 design system components throughout.
 --}}
 
 <div class="ncm-message-viewer" data-density="{{density}}">
 
-  {{!-- ═══════ STATUS BAR ═══════ --}}
-  <header class="ncm-status-bar">
+  {{!-- ═══════ HEADER BAR ═══════ --}}
+  <header class="ncm-inbox-header">
 
-    {{!-- Network Selector (inline dropdown) --}}
-    <div class="ncm-network-selector" data-action="toggle-network-dropdown">
-      <i class="fas fa-satellite-dish ncm-network-icon"></i>
-      <span class="ncm-network-name">{{currentNetwork.name}}</span>
-      {{#if currentNetwork.requiresAuth}}
-        <i class="fas fa-lock ncm-network-lock" title="Authenticated"></i>
+    {{!-- Character Identity --}}
+    <div class="ncm-inbox-identity">
+      {{#if viewingAsPortrait}}
+        <img class="ncm-inbox-identity__portrait" src="{{viewingAsPortrait}}" alt="{{viewingAsName}}" />
+      {{else}}
+        <div class="ncm-inbox-identity__initials">{{viewingAsInitial}}</div>
       {{/if}}
-      <i class="fas fa-caret-down ncm-dropdown-caret"></i>
-
-      {{!-- Signal Strength Bars --}}
-      <div class="ncm-signal-bars" data-strength="{{signalLevel}}" title="Signal: {{signalStrength}}%">
-        <span class="ncm-signal-bar" data-bar="1"></span>
-        <span class="ncm-signal-bar" data-bar="2"></span>
-        <span class="ncm-signal-bar" data-bar="3"></span>
-        <span class="ncm-signal-bar" data-bar="4"></span>
-        <span class="ncm-signal-bar" data-bar="5"></span>
+      <div class="ncm-inbox-identity__info">
+        <span class="ncm-inbox-identity__name">{{viewingAsName}}</span>
+        {{#if viewingAsEmail}}
+          <span class="ncm-inbox-identity__email">{{viewingAsEmail}}</span>
+        {{/if}}
       </div>
+    </div>
 
-      {{!-- Network Dropdown (hidden by default) --}}
+    {{!-- Network Selector --}}
+    <div class="ncm-inbox-network" data-action="toggle-network-dropdown">
+      <i class="fas fa-satellite-dish ncm-inbox-network__icon"></i>
+      <span class="ncm-inbox-network__name">{{currentNetwork.name}}</span>
+      {{#if currentNetwork.requiresAuth}}
+        <i class="fas fa-lock ncm-inbox-network__lock" data-ncm-tooltip="Authenticated"></i>
+      {{/if}}
+      <i class="fas fa-caret-down ncm-inbox-network__caret"></i>
+
+      {{!-- Signal Bar (Sprint 0 partial) --}}
+      {{> "modules/cyberpunkred-messenger/templates/partials/signal-bar.hbs"
+          strength=signalStrength quality=signalQuality segments=signalSegments }}
+
+      {{!-- Network Dropdown --}}
       <div class="ncm-network-dropdown ncm-hidden">
         {{#each availableNetworks}}
-        <div class="ncm-network-option {{#if this.active}}active{{/if}} {{#if this.requiresAuth}}locked{{/if}}"
+        <div class="ncm-network-option {{#if this.active}}ncm-network-option--active{{/if}}"
              data-action="switch-network"
              data-network-id="{{this.id}}">
-          <i class="{{this.icon}} ncm-net-type-icon"></i>
-          <span class="ncm-net-option-name">{{this.name}}</span>
-          <div class="ncm-net-option-signal" data-strength="{{this.signalLevel}}">
-            <span></span><span></span><span></span>
-          </div>
+          <i class="{{this.icon}} ncm-network-option__icon"></i>
+          <span class="ncm-network-option__name">{{this.name}}</span>
           {{#if this.requiresAuth}}
-            <i class="fas fa-lock ncm-net-option-lock"></i>
+            <i class="fas fa-lock ncm-network-option__lock"></i>
           {{/if}}
         </div>
         {{/each}}
@@ -48,227 +57,233 @@
     </div>
 
     {{!-- Unread Badge --}}
-    <div class="ncm-unread-badge {{#if unreadCount}}has-unread{{/if}}" 
+    <div class="ncm-inbox-unread {{#if (gt unreadCount 0)}}ncm-inbox-unread--active{{/if}}"
          data-action="jump-to-unread"
-         title="{{unreadCount}} unread messages">
-      <i class="fas fa-envelope"></i>
-      {{#if unreadCount}}
-        <span class="ncm-unread-count">{{unreadCount}}</span>
-      {{/if}}
+         data-ncm-tooltip="{{unreadCount}} unread messages">
+      <span class="ncm-inbox-unread__label">UNREAD</span>
+      <span class="ncm-inbox-unread__count">{{unreadCount}}</span>
     </div>
 
     {{!-- Spacer --}}
-    <div class="ncm-status-spacer"></div>
+    <div class="ncm-inbox-header__spacer"></div>
 
-    {{!-- Search Bar (expandable) --}}
-    <div class="ncm-search-container {{#if searchActive}}expanded{{/if}}">
-      <button class="ncm-search-toggle" data-action="toggle-search" title="Search messages">
-        <i class="fas fa-search"></i>
-      </button>
-      <input type="text" 
-             class="ncm-search-input" 
-             placeholder="Search subject, sender, body..." 
-             value="{{searchTerm}}"
-             data-action="search-input"
-             autocomplete="off"
-             spellcheck="false" />
-      {{#if searchTerm}}
-        <button class="ncm-search-clear" data-action="clear-search" title="Clear search">
+    {{!-- Search --}}
+    <div class="ncm-inbox-search {{#if searchActive}}ncm-inbox-search--expanded{{/if}}">
+      {{#if searchActive}}
+        <input type="text"
+               class="ncm-input ncm-search-input"
+               placeholder="Search messages..."
+               value="{{searchTerm}}"
+               autofocus />
+        <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="toggle-search"
+                data-ncm-tooltip="Close search (Esc)">
           <i class="fas fa-times"></i>
+        </button>
+      {{else}}
+        <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="toggle-search"
+                data-ncm-tooltip="Search (/)">
+          <i class="fas fa-search"></i>
         </button>
       {{/if}}
     </div>
 
-    {{!-- Density Toggle --}}
-    <button class="ncm-density-toggle" data-action="cycle-density" title="Message density: {{density}}">
-      {{#eq density "compact"}}
-        <i class="fas fa-bars"></i>
-      {{else}}
-        {{#eq density "comfortable"}}
-          <i class="fas fa-th-list"></i>
-        {{else}}
-          <i class="fas fa-list"></i>
-        {{/eq}}
-      {{/eq}}
-    </button>
-
-    {{!-- Settings Gear --}}
-    <button class="ncm-settings-btn" data-action="open-settings" title="Theme & Settings">
-      <i class="fas fa-cog"></i>
-    </button>
-
+    {{!-- Header Actions --}}
+    <div class="ncm-inbox-header__actions">
+      <button class="ncm-btn ncm-btn--primary ncm-btn--sm" data-action="compose-new"
+              data-ncm-tooltip="Compose new message">
+        <i class="fas fa-pen-to-square"></i>
+        <span>Compose</span>
+      </button>
+      {{#if isGM}}
+        <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="open-settings"
+                data-ncm-tooltip="Settings">
+          <i class="fas fa-gear"></i>
+        </button>
+      {{/if}}
+    </div>
   </header>
 
   {{!-- ═══════ CATEGORY TABS ═══════ --}}
-  <nav class="ncm-category-tabs">
-    <button class="ncm-tab {{#eq currentFilter 'inbox'}}active{{/eq}}" 
-            data-action="set-filter" data-filter="inbox">
-      <i class="fas fa-inbox"></i>
-      <span>Inbox</span>
-      {{#if counts.inbox}}<span class="ncm-tab-badge">{{counts.inbox}}</span>{{/if}}
-    </button>
-    <button class="ncm-tab {{#eq currentFilter 'unread'}}active{{/eq}}" 
-            data-action="set-filter" data-filter="unread">
-      <i class="fas fa-eye-slash"></i>
-      <span>Unread</span>
-      {{#if counts.unread}}<span class="ncm-tab-badge ncm-badge-primary">{{counts.unread}}</span>{{/if}}
-    </button>
-    <button class="ncm-tab {{#eq currentFilter 'sent'}}active{{/eq}}" 
-            data-action="set-filter" data-filter="sent">
-      <i class="fas fa-paper-plane"></i>
-      <span>Sent</span>
-    </button>
-    <button class="ncm-tab {{#eq currentFilter 'saved'}}active{{/eq}}" 
-            data-action="set-filter" data-filter="saved">
-      <i class="fas fa-bookmark"></i>
-      <span>Saved</span>
-      {{#if counts.saved}}<span class="ncm-tab-badge">{{counts.saved}}</span>{{/if}}
-    </button>
-    <button class="ncm-tab {{#eq currentFilter 'spam'}}active{{/eq}}" 
-            data-action="set-filter" data-filter="spam">
-      <i class="fas fa-ban"></i>
-      <span>Spam</span>
-      {{#if counts.spam}}<span class="ncm-tab-badge ncm-badge-warning">{{counts.spam}}</span>{{/if}}
-    </button>
-    <button class="ncm-tab {{#eq currentFilter 'trash'}}active{{/eq}}" 
-            data-action="set-filter" data-filter="trash">
-      <i class="fas fa-trash-alt"></i>
-      <span>Trash</span>
-    </button>
-
-    {{!-- Sort Dropdown (right-aligned) --}}
-    <div class="ncm-sort-control">
-      <button class="ncm-sort-btn" data-action="toggle-sort-dropdown" title="Sort messages">
-        <i class="fas fa-sort-amount-down"></i>
-        <span class="ncm-sort-label">{{sortLabel}}</span>
+  <nav class="ncm-inbox-tabs">
+    <div class="ncm-tabs">
+      <button class="ncm-tab {{#if (eq currentFilter 'inbox')}}ncm-tab--active{{/if}}"
+              data-action="set-filter" data-filter="inbox">
+        <i class="fas fa-inbox"></i>
+        <span>Inbox</span>
+        {{#if counts.inbox}}<span class="ncm-tab__count">{{counts.inbox}}</span>{{/if}}
       </button>
-      <div class="ncm-sort-dropdown ncm-hidden">
-        <div class="ncm-sort-option {{#eq currentSort 'newest'}}active{{/eq}}" 
-             data-action="set-sort" data-sort="newest">
-          <i class="fas fa-arrow-down"></i> Newest First
-        </div>
-        <div class="ncm-sort-option {{#eq currentSort 'oldest'}}active{{/eq}}" 
-             data-action="set-sort" data-sort="oldest">
-          <i class="fas fa-arrow-up"></i> Oldest First
-        </div>
-        <div class="ncm-sort-option {{#eq currentSort 'unread'}}active{{/eq}}" 
-             data-action="set-sort" data-sort="unread">
-          <i class="fas fa-circle"></i> Unread First
-        </div>
-        <div class="ncm-sort-option {{#eq currentSort 'sender'}}active{{/eq}}" 
-             data-action="set-sort" data-sort="sender">
-          <i class="fas fa-user"></i> By Sender
-        </div>
-        <div class="ncm-sort-option {{#eq currentSort 'priority'}}active{{/eq}}" 
-             data-action="set-sort" data-sort="priority">
-          <i class="fas fa-exclamation-triangle"></i> By Priority
-        </div>
-      </div>
+      <button class="ncm-tab {{#if (eq currentFilter 'unread')}}ncm-tab--active{{/if}}"
+              data-action="set-filter" data-filter="unread">
+        <i class="fas fa-circle"></i>
+        <span>Unread</span>
+        {{#if counts.unread}}<span class="ncm-tab__count">{{counts.unread}}</span>{{/if}}
+      </button>
+      <button class="ncm-tab {{#if (eq currentFilter 'sent')}}ncm-tab--active{{/if}}"
+              data-action="set-filter" data-filter="sent">
+        <i class="fas fa-paper-plane"></i>
+        <span>Sent</span>
+        {{#if counts.sent}}<span class="ncm-tab__count">{{counts.sent}}</span>{{/if}}
+      </button>
+      <button class="ncm-tab {{#if (eq currentFilter 'saved')}}ncm-tab--active{{/if}}"
+              data-action="set-filter" data-filter="saved">
+        <i class="fas fa-bookmark"></i>
+        <span>Saved</span>
+        {{#if counts.saved}}<span class="ncm-tab__count">{{counts.saved}}</span>{{/if}}
+      </button>
+      <button class="ncm-tab {{#if (eq currentFilter 'spam')}}ncm-tab--active{{/if}}"
+              data-action="set-filter" data-filter="spam">
+        <i class="fas fa-shield-halved"></i>
+        <span>Spam</span>
+        {{#if counts.spam}}<span class="ncm-tab__count">{{counts.spam}}</span>{{/if}}
+      </button>
+      <button class="ncm-tab {{#if (eq currentFilter 'trash')}}ncm-tab--active{{/if}}"
+              data-action="set-filter" data-filter="trash">
+        <i class="fas fa-trash"></i>
+        <span>Trash</span>
+        {{#if counts.trash}}<span class="ncm-tab__count">{{counts.trash}}</span>{{/if}}
+      </button>
     </div>
 
-    {{!-- Network Filter --}}
-    {{#if showNetworkFilter}}
-    <div class="ncm-network-filter-control">
-      <button class="ncm-network-filter-btn {{#if networkFilter}}active{{/if}}" 
-              data-action="toggle-network-filter" title="Filter by network">
-        <i class="fas fa-network-wired"></i>
-      </button>
-      <div class="ncm-network-filter-dropdown ncm-hidden">
-        <div class="ncm-sort-option {{#unless networkFilter}}active{{/unless}}" 
-             data-action="set-network-filter" data-network="">
-          All Networks
+    {{!-- Tab Controls: Sort + Network Filter --}}
+    <div class="ncm-inbox-tab-controls">
+      {{!-- Network Filter --}}
+      {{#if showNetworkFilter}}
+        <div class="ncm-network-filter-control" data-action="toggle-network-filter">
+          <i class="fas fa-tower-broadcast"></i>
+          <span>{{#if networkFilter}}{{networkFilter}}{{else}}All Networks{{/if}}</span>
+          <i class="fas fa-caret-down"></i>
+          <div class="ncm-network-filter-dropdown ncm-hidden">
+            <div class="ncm-network-filter-option {{#unless networkFilter}}ncm-network-filter-option--active{{/unless}}"
+                 data-action="set-network-filter" data-network="">
+              All Networks
+            </div>
+            {{#each messageNetworks}}
+            <div class="ncm-network-filter-option {{#if (eq this ../networkFilter)}}ncm-network-filter-option--active{{/if}}"
+                 data-action="set-network-filter" data-network="{{this}}">
+              {{this}}
+            </div>
+            {{/each}}
+          </div>
         </div>
-        {{#each messageNetworks}}
-        <div class="ncm-sort-option {{#eq ../networkFilter this}}active{{/eq}}" 
-             data-action="set-network-filter" data-network="{{this}}">
-          {{this}}
-        </div>
-        {{/each}}
-      </div>
-    </div>
-    {{/if}}
-  </nav>
-
-  {{!-- ═══════ MAIN CONTENT AREA (Split Panel) ═══════ --}}
-  <div class="ncm-split-panel">
-
-    {{!-- LEFT: Message List --}}
-    <section class="ncm-message-list-panel" style="width: {{sidebarWidth}}px">
-
-      {{!-- Bulk Action Bar (visible when items selected) --}}
-      {{#if hasBulkSelection}}
-      <div class="ncm-bulk-actions">
-        <label class="ncm-bulk-select-all">
-          <input type="checkbox" data-action="select-all" {{#if allSelected}}checked{{/if}} />
-          <span>{{selectedCount}} selected</span>
-        </label>
-        <div class="ncm-bulk-buttons">
-          <button data-action="bulk-read" title="Mark read"><i class="fas fa-eye"></i></button>
-          <button data-action="bulk-delete" title="Delete"><i class="fas fa-trash"></i></button>
-          <button data-action="bulk-spam" title="Mark spam"><i class="fas fa-ban"></i></button>
-        </div>
-      </div>
       {{/if}}
 
-      {{!-- Message Items --}}
-      <div class="ncm-message-list" role="listbox" aria-label="Messages" tabindex="0">
+      {{!-- Sort Control --}}
+      <div class="ncm-sort-control" data-action="toggle-sort-dropdown">
+        <i class="fas fa-arrow-down-short-wide"></i>
+        <span>{{sortLabel}}</span>
+        <i class="fas fa-caret-down"></i>
+        <div class="ncm-sort-dropdown ncm-hidden">
+          {{#each sortOptions}}
+          <div class="ncm-sort-option {{#if this.active}}ncm-sort-option--active{{/if}}"
+               data-action="set-sort" data-sort="{{this.id}}">
+            {{this.label}}
+          </div>
+          {{/each}}
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  {{!-- ═══════ BULK ACTIONS BAR (conditional) ═══════ --}}
+  {{#if hasBulkSelection}}
+  <div class="ncm-bulk-actions">
+    <label class="ncm-bulk-select-all">
+      <input type="checkbox" class="ncm-bulk-check" data-action="select-all"
+             {{#if allSelected}}checked{{/if}} />
+      <span>{{selectedCount}} selected</span>
+    </label>
+    <div class="ncm-bulk-buttons">
+      <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="bulk-read"
+              data-ncm-tooltip="Mark as read">
+        <i class="fas fa-envelope-open"></i>
+      </button>
+      <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="bulk-spam"
+              data-ncm-tooltip="Mark as spam">
+        <i class="fas fa-shield-halved"></i>
+      </button>
+      <button class="ncm-btn ncm-btn--danger ncm-btn--sm" data-action="bulk-delete"
+              data-ncm-tooltip="Delete selected">
+        <i class="fas fa-trash"></i>
+      </button>
+    </div>
+  </div>
+  {{/if}}
+
+  {{!-- ═══════ SPLIT PANEL: Message List | Detail ═══════ --}}
+  <div class="ncm-split-panel">
+
+    {{!-- Left: Message List --}}
+    <div class="ncm-message-list-panel" style="width: {{sidebarWidth}}px;" tabindex="0">
+      <div class="ncm-message-list ncm-scrollbar">
         {{#if messages.length}}
           {{#each messages}}
-            {{> "modules/cyberpunkred-messenger/templates/message-viewer/partials/message-list-item.hbs"}}
+            {{> "modules/cyberpunkred-messenger/templates/message-viewer/partials/message-list-item.hbs" }}
           {{/each}}
         {{else}}
-          {{> "modules/cyberpunkred-messenger/templates/message-viewer/partials/empty-state-list.hbs"}}
+          {{!-- Empty State --}}
+          {{> "modules/cyberpunkred-messenger/templates/partials/empty-state.hbs"
+              icon="fas fa-inbox"
+              title="NO MESSAGES"
+              message="Your inbox is empty. Awaiting transmissions..." }}
         {{/if}}
       </div>
-    </section>
 
-    {{!-- DIVIDER (draggable) --}}
-    <div class="ncm-panel-divider" data-action="resize-divider" title="Drag to resize. Double-click to reset.">
+      {{!-- Pagination Footer --}}
+      {{#if (gt totalPages 1)}}
+      <div class="ncm-inbox-pagination">
+        <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="prev-page"
+                {{#if (eq currentPage 1)}}disabled{{/if}}>
+          <i class="fas fa-chevron-left"></i>
+        </button>
+        <span class="ncm-pagination-info">
+          Page {{currentPage}} of {{totalPages}}
+        </span>
+        <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="next-page"
+                {{#if (eq currentPage totalPages)}}disabled{{/if}}>
+          <i class="fas fa-chevron-right"></i>
+        </button>
+      </div>
+      {{/if}}
+    </div>
+
+    {{!-- Divider --}}
+    <div class="ncm-panel-divider">
       <div class="ncm-divider-grip">
         <span></span><span></span><span></span>
       </div>
     </div>
 
-    {{!-- RIGHT: Message Detail --}}
-    <section class="ncm-message-detail-panel">
+    {{!-- Right: Message Detail --}}
+    <div class="ncm-message-detail-panel ncm-scrollbar">
       {{#if selectedMessage}}
-        {{> "modules/cyberpunkred-messenger/templates/message-viewer/partials/message-detail.hbs" message=selectedMessage}}
+        {{> "modules/cyberpunkred-messenger/templates/message-viewer/partials/message-detail.hbs"
+            message=selectedMessage quickReplies=quickReplies isGM=isGM }}
       {{else}}
-        {{> "modules/cyberpunkred-messenger/templates/message-viewer/partials/empty-state-detail.hbs"}}
+        {{!-- Empty Detail State --}}
+        <div class="ncm-detail-empty">
+          {{> "modules/cyberpunkred-messenger/templates/partials/empty-state.hbs"
+              icon="fas fa-terminal"
+              title="AWAITING INPUT"
+              message="> SELECT MESSAGE TO READ_" }}
+        </div>
       {{/if}}
-    </section>
-
+    </div>
   </div>
 
-  {{!-- ═══════ FOOTER ═══════ --}}
+  {{!-- ═══════ STATUS FOOTER ═══════ --}}
   <footer class="ncm-inbox-footer">
-    <div class="ncm-pagination">
-      {{#if (gt totalPages 1)}}
-        <button class="ncm-page-btn" data-action="prev-page" {{#if (eq currentPage 1)}}disabled{{/if}}>
-          <i class="fas fa-chevron-left"></i>
-        </button>
-        <span class="ncm-page-indicator">
-          Page <strong>{{currentPage}}</strong> / {{totalPages}}
-        </span>
-        <button class="ncm-page-btn" data-action="next-page" {{#if (eq currentPage totalPages)}}disabled{{/if}}>
-          <i class="fas fa-chevron-right"></i>
-        </button>
-      {{/if}}
-      <span class="ncm-message-count">{{totalMessages}} messages</span>
-    </div>
-
-    <div class="ncm-footer-actions">
-      {{!-- Viewing-as indicator --}}
-      <span class="ncm-viewing-as">
-        <i class="fas fa-user-circle"></i>
-        {{viewingAsName}}
-      </span>
-
-      <button class="ncm-compose-btn" data-action="compose-new" title="Compose new message">
-        <i class="fas fa-pen"></i>
-        <span>Compose</span>
-      </button>
-    </div>
+    <span class="ncm-footer-count">
+      <i class="fas fa-database"></i>
+      {{totalMessages}} message{{#if (neq totalMessages 1)}}s{{/if}}
+    </span>
+    <span class="ncm-footer-identity">
+      <i class="fas fa-user"></i>
+      {{viewingAsName}}
+    </span>
+    <span class="ncm-footer-network">
+      <i class="fas fa-satellite-dish"></i>
+      {{currentNetwork.name}}
+    </span>
   </footer>
 
 </div>
