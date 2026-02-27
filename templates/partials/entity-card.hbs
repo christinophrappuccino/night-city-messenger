@@ -1,0 +1,64 @@
+{{!--
+  Entity Card — portrait + name + details
+  @file templates/partials/entity-card.hbs
+  @module cyberpunkred-messenger
+  @description Renders a character/contact card with portrait (or initials fallback),
+    name, subtitle, role badge, and optional stat pairs.
+    Uses .ncm-entity-card from components.css.
+
+  @param {string}  name         — Display name
+  @param {string}  [portrait]   — Image URL; falls back to initials if absent
+  @param {string}  [initials]   — 1-2 letter fallback (auto-derived from name if omitted)
+  @param {string}  [subtitle]   — Email or secondary info line (monospace)
+  @param {string}  [role]       — Role badge variant (e.g. "fixer", "netrunner")
+  @param {string}  [roleLabel]  — Role badge text (defaults to role if omitted)
+  @param {Array}   [stats]      — Array of { label, value } stat pairs
+  @param {boolean} [selected]   — Applies selected visual state
+  @param {string}  [portraitSize] — "sm" (32px) or "lg" (64px)
+  @param {string}  [dataId]     — data-id attribute for click handlers
+
+  @example
+    {{> "modules/cyberpunkred-messenger/templates/partials/entity-card.hbs"
+        name="Rogue Amendiares" portrait="/img/rogue.webp"
+        subtitle="rogue@afterlife.nc" role="fixer"
+        stats=(array (hash label="MSGS" value="23") (hash label="LAST" value="2h ago")) }}
+--}}
+<div class="ncm-entity-card{{#if selected}} ncm-entity-card--selected{{/if}}"
+     {{#if dataId}}data-id="{{dataId}}"{{/if}}>
+
+  {{!-- Portrait or initials fallback --}}
+  {{#if portrait}}
+    <img class="ncm-entity-card__portrait{{#if portraitSize}} ncm-entity-card__portrait--{{portraitSize}}{{/if}}"
+         src="{{portrait}}" alt="{{name}}" loading="lazy" />
+  {{else}}
+    <div class="ncm-entity-card__initials">
+      {{#if initials}}{{initials}}{{else}}{{substring name 0 1}}{{/if}}
+    </div>
+  {{/if}}
+
+  <div class="ncm-entity-card__body">
+    <span class="ncm-entity-card__name">{{name}}</span>
+
+    {{#if subtitle}}
+      <span class="ncm-entity-card__subtitle">{{subtitle}}</span>
+    {{/if}}
+
+    <div class="ncm-entity-card__meta">
+      {{#if role}}
+        <span class="ncm-badge ncm-badge--{{role}} ncm-badge--sm">
+          {{#if roleLabel}}{{roleLabel}}{{else}}{{role}}{{/if}}
+        </span>
+      {{/if}}
+
+      {{#each stats}}
+        <span class="ncm-entity-card__stat">
+          {{this.label}}: <span class="ncm-entity-card__stat-value">{{this.value}}</span>
+        </span>
+      {{/each}}
+    </div>
+  </div>
+
+  <div class="ncm-entity-card__actions">
+    {{!-- Quick-action buttons injected by parent template --}}
+  </div>
+</div>

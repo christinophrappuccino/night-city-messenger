@@ -1,0 +1,24 @@
+{{!--
+  Section Header — [ TITLE ] bracket pattern
+  @file templates/partials/section-header.hbs
+  @module cyberpunkred-messenger
+  @description Renders a centered bracket header with optional item count.
+    Uses .ncm-section-header from components.css.
+
+  @param {string} title     — Header text (will be uppercased via CSS)
+  @param {number} [count]   — Optional count to display after title
+  @param {string} [size]    — "small" for sub-section variant
+  @param {string} [align]   — "left" for left-aligned variant
+
+  @example
+    {{> "modules/cyberpunkred-messenger/templates/partials/section-header.hbs"
+        title="INBOX" count=12 }}
+    {{> "modules/cyberpunkred-messenger/templates/partials/section-header.hbs"
+        title="Details" size="small" align="left" }}
+--}}
+<div class="ncm-section-header
+  {{~#if (eq size 'small')}} ncm-section-header--small{{/if~}}
+  {{~#if (eq align 'left')}} ncm-section-header--left{{/if~}}">
+  {{title}}
+  {{#if count}}<span class="ncm-section-header__count">({{count}})</span>{{/if}}
+</div>

@@ -1,0 +1,34 @@
+{{!--
+  Alert Panel — warning / danger / info / success
+  @file templates/partials/alert-panel.hbs
+  @module cyberpunkred-messenger
+  @description Renders a tinted alert panel with icon, title, and detail text.
+    Uses .ncm-alert from components.css.
+
+  @param {string} variant    — "warning" | "danger" | "info" | "success"
+  @param {string} [icon]     — FontAwesome icon class (defaults per variant)
+  @param {string} title      — Bold title text
+  @param {string} [text]     — Detail text below title
+
+  @example
+    {{> "modules/cyberpunkred-messenger/templates/partials/alert-panel.hbs"
+        variant="warning" title="Dead Zone Detected"
+        text="No signal available. Messages will be queued." }}
+    {{> "modules/cyberpunkred-messenger/templates/partials/alert-panel.hbs"
+        variant="danger" icon="fas fa-skull-crossbones" title="BLACK ICE ACTIVE" }}
+--}}
+<div class="ncm-alert ncm-alert--{{variant}}">
+  <i class="ncm-alert__icon
+    {{~#if icon}} {{icon}}
+    {{~else~}}
+      {{~#if (eq variant 'warning')}} fas fa-exclamation-triangle{{/if~}}
+      {{~#if (eq variant 'danger')}} fas fa-radiation{{/if~}}
+      {{~#if (eq variant 'info')}} fas fa-info-circle{{/if~}}
+      {{~#if (eq variant 'success')}} fas fa-check-circle{{/if~}}
+    {{~/if~}}
+  "></i>
+  <div class="ncm-alert__body">
+    <div class="ncm-alert__title">{{title}}</div>
+    {{#if text}}<div class="ncm-alert__text">{{text}}</div>{{/if}}
+  </div>
+</div>

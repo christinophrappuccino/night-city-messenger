@@ -1,47 +1,76 @@
-/* ═══════════════════════════════════════════════════════
+/* ═══════════════════════════════════════════════════════════════════════════
    Night City Messenger — Design Tokens
-   All colors are CSS custom properties, overridable by
-   ThemeService at runtime.
-   ═══════════════════════════════════════════════════════ */
+   @file styles/base/variables.css
+   @module cyberpunkred-messenger
+   @description All colors, spacing, typography, shadows, borders, and z-index
+     tokens. Overridable by ThemeService at runtime via CSS custom properties.
+     Sprint 0 audit: added radius, shadow, font-size, z-index, and warning scales.
+   ═══════════════════════════════════════════════════════════════════════════ */
 
 .ncm-app {
-  /* ─── Core Palette ─── */
+
+  /* ─── Core Palette ───────────────────────────────────────── */
   --ncm-primary: #F65261;
   --ncm-secondary: #19f3f7;
   --ncm-accent: #f7c948;
-  --ncm-success: #4CAF50;
-  --ncm-danger: #F65261;
+  --ncm-success: #00ff41;
+  --ncm-warning: #ffab00;
+  --ncm-danger: #ff0033;
 
-  /* ─── Surfaces (darkest → lightest) ─── */
+  /* ─── Surfaces (darkest → lightest) ─────────────────────── */
   --ncm-bg-deep: #0a0a0f;
   --ncm-bg-base: #12121a;
   --ncm-bg-surface: #1a1a2e;
   --ncm-bg-elevated: #252540;
   --ncm-bg-overlay: rgba(0, 0, 0, 0.85);
 
-  /* ─── Text ─── */
+  /* ─── Text ──────────────────────────────────────────────── */
   --ncm-text-primary: #e0e0e8;
   --ncm-text-secondary: #8888a0;
   --ncm-text-muted: #555570;
   --ncm-text-inverse: #0a0a0f;
 
-  /* ─── Borders ─── */
+  /* ─── Borders ───────────────────────────────────────────── */
   --ncm-border: #2a2a45;
   --ncm-border-focus: var(--ncm-secondary);
-  --ncm-border-radius: 3px;
 
-  /* ─── Glow ─── */
+  /* ─── Border Radius ─────────────────────────────────────── */
+  --ncm-radius-sm: 2px;
+  --ncm-radius-md: 4px;
+  --ncm-radius-lg: 8px;
+  --ncm-radius-pill: 999px;
+  --ncm-border-radius: var(--ncm-radius-md);     /* legacy compat */
+
+  /* ─── Glow / Shadows ────────────────────────────────────── */
   --ncm-glow-primary: 0 0 10px rgba(246, 82, 97, 0.4);
   --ncm-glow-secondary: 0 0 10px rgba(25, 243, 247, 0.4);
   --ncm-glow-accent: 0 0 10px rgba(247, 201, 72, 0.3);
 
-  /* ─── Typography ─── */
+  --ncm-shadow-card: 0 2px 8px rgba(0, 0, 0, 0.4);
+  --ncm-shadow-glow: 0 0 12px rgba(25, 243, 247, 0.15);
+  --ncm-shadow-neon: 0 0 20px rgba(25, 243, 247, 0.25),
+                     0 0 40px rgba(25, 243, 247, 0.1);
+  --ncm-shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.5);
+  --ncm-shadow-inset: inset 0 1px 3px rgba(0, 0, 0, 0.3);
+
+  /* ─── Typography ────────────────────────────────────────── */
   --ncm-font-display: 'Rajdhani', 'Segoe UI', sans-serif;
   --ncm-font-mono: 'Share Tech Mono', 'Courier New', monospace;
   --ncm-font-ui: 'Orbitron', 'Rajdhani', sans-serif;
   --ncm-font-body: 'Rajdhani', sans-serif;
 
-  /* ─── Spacing ─── */
+  /* Font size scale */
+  --ncm-text-2xs: 0.625rem;   /*  10px */
+  --ncm-text-xs: 0.75rem;     /*  12px */
+  --ncm-text-sm: 0.8125rem;   /*  13px */
+  --ncm-text-base: 0.875rem;  /*  14px */
+  --ncm-text-md: 1rem;        /*  16px */
+  --ncm-text-lg: 1.125rem;    /*  18px */
+  --ncm-text-xl: 1.25rem;     /*  20px */
+  --ncm-text-2xl: 1.5rem;     /*  24px */
+  --ncm-text-3xl: 1.875rem;   /*  30px */
+
+  /* ─── Spacing ───────────────────────────────────────────── */
   --ncm-space-xs: 4px;
   --ncm-space-sm: 8px;
   --ncm-space-md: 12px;
@@ -49,9 +78,29 @@
   --ncm-space-xl: 24px;
   --ncm-space-2xl: 32px;
 
-  /* ─── Effects ─── */
-  --ncm-glitch-intensity: 0.5;
+  /* Aliases matching the plan's naming (both conventions work) */
+  --ncm-spacing-xs: var(--ncm-space-xs);
+  --ncm-spacing-sm: var(--ncm-space-sm);
+  --ncm-spacing-md: var(--ncm-space-md);
+  --ncm-spacing-lg: var(--ncm-space-lg);
+  --ncm-spacing-xl: var(--ncm-space-xl);
+  --ncm-spacing-2xl: var(--ncm-space-2xl);
+
+  /* ─── Z-Index Scale ─────────────────────────────────────── */
+  --ncm-z-base: 1;
+  --ncm-z-dropdown: 100;
+  --ncm-z-sticky: 200;
+  --ncm-z-overlay: 300;
+  --ncm-z-modal: 400;
+  --ncm-z-toast: 500;
+  --ncm-z-tooltip: 600;
+
+  /* ─── Transitions ───────────────────────────────────────── */
   --ncm-transition-fast: 150ms ease;
-  --ncm-transition-normal: 250ms ease;
+  --ncm-transition-base: 250ms ease;
+  --ncm-transition-normal: 250ms ease;    /* alias */
   --ncm-transition-slow: 400ms ease;
+
+  /* ─── Effects ───────────────────────────────────────────── */
+  --ncm-glitch-intensity: 0.5;
 }

@@ -57,6 +57,17 @@ export const SOCKET_OPS = Object.freeze({
   INBOX_REFRESH: 'inbox:refresh',
   NETWORK_STATE_CHANGED: 'network:stateChanged',
   SHARD_STATE_CHANGED: 'shard:stateChanged',
+    // Partials — Design System Components
+  PARTIAL_SECTION_HEADER: `${T}/partials/section-header.hbs`,
+  PARTIAL_STAT_CARD:      `${T}/partials/stat-card.hbs`,
+  PARTIAL_STAT_GRID:      `${T}/partials/stat-grid.hbs`,
+  PARTIAL_TAG_BADGE:      `${T}/partials/tag-badge.hbs`,
+  PARTIAL_ENTITY_CARD:    `${T}/partials/entity-card.hbs`,
+  PARTIAL_SIGNAL_BAR:     `${T}/partials/signal-bar.hbs`,
+  PARTIAL_PROGRESS_BAR:   `${T}/partials/progress-bar.hbs`,
+  PARTIAL_ALERT_PANEL:    `${T}/partials/alert-panel.hbs`,
+  PARTIAL_EMPTY_STATE:    `${T}/partials/empty-state.hbs`,
+  PARTIAL_ACTION_BAR:     `${T}/partials/action-bar.hbs`,
 });
 
 // ─── Network Types ───

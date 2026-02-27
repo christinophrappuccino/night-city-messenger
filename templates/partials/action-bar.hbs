@@ -1,0 +1,39 @@
+{{!--
+  Action Bar — row of action buttons
+  @file templates/partials/action-bar.hbs
+  @module cyberpunkred-messenger
+  @description Renders a horizontal row of buttons. Used in detail panels,
+    dialog footers, and form actions.
+    Uses .ncm-action-bar from components.css.
+
+  @param {string} [align]     — "right" | "between" | "center" (default: left)
+  @param {Array}  buttons     — Array of button objects:
+    {
+      label: string,           — Button text
+      action: string,          — data-action attribute for ApplicationV2
+      icon: string,            — FontAwesome icon class (optional)
+      variant: string,         — "primary" | "secondary" | "danger" | "ghost"
+      size: string,            — "sm" | "lg" (optional)
+      disabled: boolean        — Disable the button (optional)
+    }
+
+  @example
+    {{> "modules/cyberpunkred-messenger/templates/partials/action-bar.hbs"
+        align="between"
+        buttons=(array
+          (hash label="Reply" action="reply" icon="fas fa-reply" variant="secondary")
+          (hash label="Delete" action="delete" icon="fas fa-trash" variant="danger")
+          (hash label="Share" action="share" icon="fas fa-share" variant="ghost")
+        ) }}
+--}}
+<div class="ncm-action-bar{{#if align}} ncm-action-bar--{{align}}{{/if}}">
+  {{#each buttons}}
+  <button class="ncm-btn ncm-btn--{{this.variant}}{{#if this.size}} ncm-btn--{{this.size}}{{/if}}"
+          data-action="{{this.action}}"
+          {{#if this.disabled}}disabled{{/if}}
+          {{#if this.tooltip}}data-ncm-tooltip="{{this.tooltip}}"{{/if}}>
+    {{#if this.icon}}<i class="{{this.icon}}"></i>{{/if}}
+    {{#if this.label}}{{this.label}}{{/if}}
+  </button>
+  {{/each}}
+</div>

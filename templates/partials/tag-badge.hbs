@@ -1,0 +1,29 @@
+{{!--
+  Tag Badge — colored pill
+  @file templates/partials/tag-badge.hbs
+  @module cyberpunkred-messenger
+  @description Renders a rounded pill badge with optional icon.
+    Uses .ncm-badge from components.css.
+
+  @param {string} label       — Badge text
+  @param {string} [variant]   — Role: solo|netrunner|tech|medtech|media|lawman|exec|fixer|nomad|
+                                       rockerboy|gang|corp
+                                 Context: network|priority-normal|priority-urgent|priority-critical|
+                                          status-online|status-offline|status-encrypted
+  @param {string} [icon]      — FontAwesome icon class (e.g. "fas fa-wifi")
+  @param {string} [size]      — "sm" or "lg"
+  @param {boolean} [interactive] — Adds cursor pointer and hover effect
+
+  @example
+    {{> "modules/cyberpunkred-messenger/templates/partials/tag-badge.hbs"
+        label="FIXER" variant="fixer" }}
+    {{> "modules/cyberpunkred-messenger/templates/partials/tag-badge.hbs"
+        label="CITINET" variant="network" icon="fas fa-wifi" }}
+--}}
+<span class="ncm-badge
+  {{~#if variant}} ncm-badge--{{variant}}{{/if~}}
+  {{~#if size}} ncm-badge--{{size}}{{/if~}}
+  {{~#if interactive}} ncm-badge--interactive{{/if~}}">
+  {{#if icon}}<i class="{{icon}}"></i>{{/if}}
+  {{label}}
+</span>

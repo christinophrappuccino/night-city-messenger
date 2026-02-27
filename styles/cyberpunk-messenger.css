@@ -1,22 +1,29 @@
-/* Night City Messenger — CSS Entry Point */
-/* Single file loaded by module.json */
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Night City Messenger — CSS Entry Point
+ * @file styles/cyberpunk-messenger.css
+ * @module cyberpunkred-messenger
+ * @description Single file loaded by module.json. All imports ordered by
+ *   dependency: tokens → reset → typography → components → effects → themes
+ *   → feature-specific styles → chat cards.
+ * ═══════════════════════════════════════════════════════════════════════════ */
 
-/* Base */
+/* Base — design tokens and resets (must load first) */
 @import 'base/variables.css';
 @import 'base/reset.css';
 @import 'base/typography.css';
+@import 'base/components.css';    /* Sprint 0: Design System component library */
 @import 'base/animations.css';
 
-/* Effects */
+/* Effects — visual atmosphere layers */
 @import 'effects/scanlines.css';
 @import 'effects/glitch.css';
 @import 'effects/neon-glow.css';
 @import 'effects/matrix-rain.css';
 
-/* Themes */
+/* Themes — preset color overrides */
 @import 'themes/presets.css';
 
-/* Components */
+/* Components — feature-specific UI styles */
 @import 'components/message-viewer.css';
 @import 'components/message-composer.css';
 @import 'components/contact-manager.css';
@@ -29,5 +36,5 @@
 @import 'components/notifications.css';
 @import 'components/dialogs.css';
 
-/* Chat */
+/* Chat — Foundry chat card styling */
 @import 'chat/chat-cards.css';

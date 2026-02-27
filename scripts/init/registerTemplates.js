@@ -121,6 +121,11 @@ export function registerTemplates(initializer) {
       return str.substring(0, len) + '…';
     });
 
+    Handlebars.registerHelper('substring', (str, start, end) => {
+      if (!str) return '';
+      return String(str).substring(start, end);
+    });
+
     Handlebars.registerHelper('lower', (str) => (str || '').toLowerCase());
     Handlebars.registerHelper('upper', (str) => (str || '').toUpperCase());
     Handlebars.registerHelper('add', (a, b) => (a || 0) + (b || 0));

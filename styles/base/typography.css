@@ -1,9 +1,20 @@
-/* ═══════════════════════════════════════════════════════
-   Typography — Font Faces & Text Utilities
-   Fonts loaded as local assets (no external dependencies).
-   ═══════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════════════
+   Night City Messenger — Typography
+   @file styles/base/typography.css
+   @module cyberpunkred-messenger
+   @description Font face declarations, text utility classes, and typography
+     rules matching the Style Checker design system.
+     Fonts loaded locally (no external CDN dependencies).
 
-/* Rajdhani — Display/Heading/Body font */
+   Font roles:
+     Rajdhani      — Section headers, labels, buttons, body text (display)
+     Orbitron      — Stat values, accent UI elements
+     Share Tech Mono — Messages, code, timestamps, metadata (terminal text)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ─── Font Face Declarations ────────────────────────────── */
+
+/* Rajdhani — Display / Heading / Body / Buttons / Labels */
 @font-face {
   font-family: 'Rajdhani';
   src: local('Rajdhani');
@@ -11,6 +22,15 @@
   font-style: normal;
   font-display: swap;
 }
+
+@font-face {
+  font-family: 'Rajdhani';
+  src: local('Rajdhani Medium');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
 @font-face {
   font-family: 'Rajdhani';
   src: local('Rajdhani SemiBold');
@@ -18,6 +38,7 @@
   font-style: normal;
   font-display: swap;
 }
+
 @font-face {
   font-family: 'Rajdhani';
   src: local('Rajdhani Bold');
@@ -26,7 +47,7 @@
   font-display: swap;
 }
 
-/* Orbitron — UI/Label accent font */
+/* Orbitron — UI accent / stat values */
 @font-face {
   font-family: 'Orbitron';
   src: local('Orbitron');
@@ -35,7 +56,15 @@
   font-display: swap;
 }
 
-/* Share Tech Mono — Terminal/monospace */
+@font-face {
+  font-family: 'Orbitron';
+  src: local('Orbitron Bold');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Share Tech Mono — Terminal / monospace / message body */
 @font-face {
   font-family: 'Share Tech Mono';
   src: local('Share Tech Mono');
@@ -44,36 +73,56 @@
   font-display: swap;
 }
 
-/* ─── Text Utility Classes ─── */
 
-.ncm-app .ncm-text-mono {
-  font-family: var(--ncm-font-mono);
-}
-.ncm-app .ncm-text-ui {
-  font-family: var(--ncm-font-ui);
-  font-size: 0.75rem;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-.ncm-app .ncm-text-display {
+/* ─── Base Typography Rules ─────────────────────────────── */
+
+.ncm-app {
   font-family: var(--ncm-font-display);
-  font-weight: 700;
+  font-size: var(--ncm-text-sm);
+  color: var(--ncm-text-primary);
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
-.ncm-app .ncm-text-muted {
-  color: var(--ncm-text-muted);
-}
-.ncm-app .ncm-text-secondary {
-  color: var(--ncm-text-secondary);
-}
-.ncm-app .ncm-text-primary-color {
-  color: var(--ncm-primary);
-}
-.ncm-app .ncm-text-accent {
-  color: var(--ncm-accent);
-}
-.ncm-app .ncm-text-sm {
-  font-size: 0.8rem;
-}
-.ncm-app .ncm-text-xs {
-  font-size: 0.7rem;
+
+
+/* ─── Text Utility Classes ──────────────────────────────── */
+
+/* Font family shortcuts */
+.ncm-app .ncm-text-display { font-family: var(--ncm-font-display); font-weight: 700; }
+.ncm-app .ncm-text-mono    { font-family: var(--ncm-font-mono); }
+.ncm-app .ncm-text-ui      { font-family: var(--ncm-font-ui); font-size: var(--ncm-text-xs); letter-spacing: 0.05em; text-transform: uppercase; }
+
+/* Font size utilities */
+.ncm-app .ncm-text-2xs  { font-size: var(--ncm-text-2xs); }
+.ncm-app .ncm-text-xs   { font-size: var(--ncm-text-xs); }
+.ncm-app .ncm-text-sm   { font-size: var(--ncm-text-sm); }
+.ncm-app .ncm-text-base { font-size: var(--ncm-text-base); }
+.ncm-app .ncm-text-md   { font-size: var(--ncm-text-md); }
+.ncm-app .ncm-text-lg   { font-size: var(--ncm-text-lg); }
+.ncm-app .ncm-text-xl   { font-size: var(--ncm-text-xl); }
+.ncm-app .ncm-text-2xl  { font-size: var(--ncm-text-2xl); }
+
+/* Font weight */
+.ncm-app .ncm-font-normal   { font-weight: 400; }
+.ncm-app .ncm-font-medium   { font-weight: 500; }
+.ncm-app .ncm-font-semibold { font-weight: 600; }
+.ncm-app .ncm-font-bold     { font-weight: 700; }
+
+/* Text color shortcuts */
+.ncm-app .ncm-text-primary-color { color: var(--ncm-primary); }
+.ncm-app .ncm-text-secondary-color { color: var(--ncm-secondary); }
+.ncm-app .ncm-text-accent { color: var(--ncm-accent); }
+.ncm-app .ncm-text-muted { color: var(--ncm-text-muted); }
+.ncm-app .ncm-text-secondary { color: var(--ncm-text-secondary); }
+.ncm-app .ncm-text-success { color: var(--ncm-success); }
+.ncm-app .ncm-text-warning { color: var(--ncm-warning); }
+.ncm-app .ncm-text-danger { color: var(--ncm-danger); }
+
+/* Text transform */
+.ncm-app .ncm-uppercase { text-transform: uppercase; letter-spacing: 0.06em; }
+.ncm-app .ncm-truncate {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

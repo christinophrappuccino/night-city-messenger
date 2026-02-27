@@ -1,0 +1,22 @@
+{{!--
+  Stat Card — label + large value
+  @file templates/partials/stat-card.hbs
+  @module cyberpunkred-messenger
+  @description Renders a stat card with a small muted label and large colored value.
+    Uses .ncm-stat-card from components.css.
+
+  @param {string} label     — Small uppercase label (e.g. "UNREAD")
+  @param {string|number} value — Large display value
+  @param {string} [color]   — Color variant: primary|secondary|success|warning|danger
+  @param {boolean} [pulse]  — Pulsing animation for attention
+
+  @example
+    {{> "modules/cyberpunkred-messenger/templates/partials/stat-card.hbs"
+        label="UNREAD" value=3 color="primary" pulse=true }}
+--}}
+<div class="ncm-stat-card
+  {{~#if color}} ncm-stat-card--{{color}}{{/if~}}
+  {{~#if pulse}} ncm-stat-card--pulse{{/if~}}">
+  <span class="ncm-stat-card__label">{{label}}</span>
+  <span class="ncm-stat-card__value">{{value}}</span>
+</div>

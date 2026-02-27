@@ -1,0 +1,1084 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Night City Messenger — Design System Components
+ * @file styles/base/components.css
+ * @module cyberpunkred-messenger
+ * @description Reusable UI component classes used across all NCM interfaces.
+ *   Based on the Style Checker design language: bracket headers, stat grids,
+ *   tag badges, entity cards, signal bars, alert panels, and dark surface cards.
+ *   Every subsequent sprint builds on these primitives.
+ *
+ * ─── COMPONENT INDEX ───
+ *  §1  Section Header   [ TITLE ]
+ *  §2  Stat Card        label + large value
+ *  §3  Tag Badge        colored pill
+ *  §4  Entity Card      portrait + name + details
+ *  §5  Progress / Signal Bar
+ *  §6  Buttons          primary / secondary / danger / ghost
+ *  §7  Alert Panel      warning / danger / info
+ *  §8  Tab Navigation
+ *  §9  Header Bar       full-width identity + stats + actions
+ *  §10 Dark Surface Cards
+ *  §11 Form Elements    inputs, selects, textareas
+ *  §12 Action Bar       row of action buttons
+ *  §13 Empty State      placeholder with icon + message
+ *  §14 Scrollbar
+ *  §15 Tooltip
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §1  SECTION HEADER — [ TITLE ]
+   Bracket-framed, uppercase, centered, cyan accent. Rajdhani 700.
+   Usage: {{> "modules/cyberpunkred-messenger/templates/partials/section-header.hbs"
+            title="INBOX" count=12 }}
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ncm-space-sm);
+  padding: var(--ncm-space-sm) var(--ncm-space-md);
+  font-family: var(--ncm-font-display);
+  font-weight: 700;
+  font-size: var(--ncm-text-base);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--ncm-secondary);
+  user-select: none;
+}
+
+.ncm-app .ncm-section-header::before {
+  content: '[';
+  color: var(--ncm-text-muted);
+  font-weight: 400;
+}
+
+.ncm-app .ncm-section-header::after {
+  content: ']';
+  color: var(--ncm-text-muted);
+  font-weight: 400;
+}
+
+.ncm-app .ncm-section-header__count {
+  font-family: var(--ncm-font-mono);
+  font-size: var(--ncm-text-xs);
+  color: var(--ncm-text-secondary);
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* Left-aligned variant */
+.ncm-app .ncm-section-header--left {
+  justify-content: flex-start;
+}
+
+/* Small variant for sub-sections */
+.ncm-app .ncm-section-header--small {
+  font-size: var(--ncm-text-sm);
+  padding: var(--ncm-space-xs) var(--ncm-space-sm);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §2  STAT CARD — label + large value
+   Small muted label above, large colored value below, dark card bg.
+   Usage: {{> stat-card label="UNREAD" value=3 color="primary" }}
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-stat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: var(--ncm-space-sm) var(--ncm-space-md);
+  background: var(--ncm-bg-surface);
+  border: 1px solid var(--ncm-border);
+  border-radius: var(--ncm-radius-md);
+  min-width: 72px;
+  text-align: center;
+}
+
+.ncm-app .ncm-stat-card__label {
+  font-family: var(--ncm-font-display);
+  font-weight: 600;
+  font-size: var(--ncm-text-2xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ncm-text-secondary);
+  line-height: 1;
+}
+
+.ncm-app .ncm-stat-card__value {
+  font-family: var(--ncm-font-ui);
+  font-weight: 700;
+  font-size: var(--ncm-text-xl);
+  color: var(--ncm-text-primary);
+  line-height: 1;
+}
+
+/* Color variants */
+.ncm-app .ncm-stat-card--primary .ncm-stat-card__value { color: var(--ncm-primary); }
+.ncm-app .ncm-stat-card--secondary .ncm-stat-card__value { color: var(--ncm-secondary); }
+.ncm-app .ncm-stat-card--success .ncm-stat-card__value { color: var(--ncm-success); }
+.ncm-app .ncm-stat-card--warning .ncm-stat-card__value { color: var(--ncm-warning); }
+.ncm-app .ncm-stat-card--danger .ncm-stat-card__value { color: var(--ncm-danger); }
+
+/* Pulsing variant for attention */
+.ncm-app .ncm-stat-card--pulse .ncm-stat-card__value {
+  animation: ncm-pulse 2s ease-in-out infinite;
+}
+
+/* Stat grid: auto-fill responsive layout for stat cards */
+.ncm-app .ncm-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: var(--ncm-space-sm);
+}
+
+/* Fixed-column variants */
+.ncm-app .ncm-stat-grid--2 { grid-template-columns: repeat(2, 1fr); }
+.ncm-app .ncm-stat-grid--3 { grid-template-columns: repeat(3, 1fr); }
+.ncm-app .ncm-stat-grid--4 { grid-template-columns: repeat(4, 1fr); }
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §3  TAG BADGE — colored pill
+   Rounded pill with colored bg, white text, role-specific palette.
+   Usage: {{> tag-badge label="FIXER" variant="fixer" }}
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 8px;
+  font-family: var(--ncm-font-display);
+  font-weight: 600;
+  font-size: var(--ncm-text-2xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  line-height: 1.6;
+  border-radius: var(--ncm-radius-pill);
+  white-space: nowrap;
+  user-select: none;
+  color: #fff;
+  background: var(--ncm-bg-elevated);
+}
+
+/* Role badges — distinct identities from the CPR universe */
+.ncm-app .ncm-badge--solo       { background: #c0392b; }
+.ncm-app .ncm-badge--netrunner  { background: #0e7c7b; }
+.ncm-app .ncm-badge--tech       { background: #d68910; }
+.ncm-app .ncm-badge--medtech    { background: #27ae60; }
+.ncm-app .ncm-badge--media      { background: #8e44ad; }
+.ncm-app .ncm-badge--lawman     { background: #2c3e50; }
+.ncm-app .ncm-badge--exec       { background: #1a5276; }
+.ncm-app .ncm-badge--fixer      { background: #b7950b; color: #1a1a1a; }
+.ncm-app .ncm-badge--nomad      { background: #a04000; }
+.ncm-app .ncm-badge--rockerboy  { background: #cb2276; }
+.ncm-app .ncm-badge--gang       { background: #922b21; }
+.ncm-app .ncm-badge--corp       { background: #1b4f72; }
+
+/* Context badges */
+.ncm-app .ncm-badge--network {
+  background: rgba(25, 243, 247, 0.15);
+  color: var(--ncm-secondary);
+  border: 1px solid rgba(25, 243, 247, 0.3);
+}
+
+.ncm-app .ncm-badge--priority-normal {
+  background: var(--ncm-bg-elevated);
+  color: var(--ncm-text-secondary);
+}
+
+.ncm-app .ncm-badge--priority-urgent {
+  background: rgba(255, 171, 0, 0.2);
+  color: var(--ncm-warning);
+  border: 1px solid rgba(255, 171, 0, 0.4);
+}
+
+.ncm-app .ncm-badge--priority-critical {
+  background: rgba(255, 0, 51, 0.2);
+  color: #ff0033;
+  border: 1px solid rgba(255, 0, 51, 0.4);
+  animation: ncm-pulse 1.5s ease-in-out infinite;
+}
+
+.ncm-app .ncm-badge--status-online {
+  background: rgba(0, 255, 65, 0.15);
+  color: #00ff41;
+}
+
+.ncm-app .ncm-badge--status-offline {
+  background: rgba(136, 136, 136, 0.15);
+  color: var(--ncm-text-muted);
+}
+
+.ncm-app .ncm-badge--status-encrypted {
+  background: rgba(247, 201, 72, 0.15);
+  color: var(--ncm-accent);
+}
+
+/* Size variants */
+.ncm-app .ncm-badge--sm {
+  font-size: 9px;
+  padding: 0 6px;
+}
+
+.ncm-app .ncm-badge--lg {
+  font-size: var(--ncm-text-xs);
+  padding: 2px 10px;
+}
+
+/* Interactive badge (filter pills) */
+.ncm-app .ncm-badge--interactive {
+  cursor: pointer;
+  transition: all var(--ncm-transition-fast);
+  border: 1px solid transparent;
+}
+
+.ncm-app .ncm-badge--interactive:hover {
+  filter: brightness(1.2);
+  transform: translateY(-1px);
+}
+
+.ncm-app .ncm-badge--interactive.active {
+  border-color: var(--ncm-secondary);
+  box-shadow: 0 0 6px rgba(25, 243, 247, 0.3);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §4  ENTITY CARD — portrait + name + details
+   Character card pattern from the Style Checker. Used for contacts, admin
+   user list, NPC quick-send grid.
+   Usage: {{> entity-card portrait=img name=name details=details }}
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-entity-card {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ncm-space-sm);
+  padding: var(--ncm-space-sm) var(--ncm-space-md);
+  background: var(--ncm-bg-surface);
+  border: 1px solid var(--ncm-border);
+  border-radius: var(--ncm-radius-md);
+  cursor: pointer;
+  transition: all var(--ncm-transition-fast);
+}
+
+.ncm-app .ncm-entity-card:hover {
+  background: var(--ncm-bg-elevated);
+  border-color: var(--ncm-secondary);
+  box-shadow: 0 0 8px rgba(25, 243, 247, 0.1);
+}
+
+.ncm-app .ncm-entity-card--selected {
+  background: var(--ncm-bg-elevated);
+  border-left: 3px solid var(--ncm-secondary);
+  box-shadow: 0 0 12px rgba(25, 243, 247, 0.15);
+}
+
+.ncm-app .ncm-entity-card__portrait {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 2px solid var(--ncm-border);
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--ncm-bg-deep);
+}
+
+.ncm-app .ncm-entity-card__portrait--sm {
+  width: 32px;
+  height: 32px;
+}
+
+.ncm-app .ncm-entity-card__portrait--lg {
+  width: 64px;
+  height: 64px;
+}
+
+/* Initials fallback when no portrait */
+.ncm-app .ncm-entity-card__initials {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 2px solid var(--ncm-border);
+  background: var(--ncm-bg-elevated);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-family: var(--ncm-font-display);
+  font-weight: 700;
+  font-size: var(--ncm-text-base);
+  color: var(--ncm-secondary);
+  text-transform: uppercase;
+}
+
+.ncm-app .ncm-entity-card__body {
+  flex: 1;
+  min-width: 0; /* prevent text overflow */
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ncm-app .ncm-entity-card__name {
+  font-family: var(--ncm-font-display);
+  font-weight: 700;
+  font-size: var(--ncm-text-sm);
+  color: var(--ncm-text-primary);
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ncm-app .ncm-entity-card__subtitle {
+  font-family: var(--ncm-font-mono);
+  font-size: var(--ncm-text-2xs);
+  color: var(--ncm-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ncm-app .ncm-entity-card__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--ncm-space-xs);
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+
+/* Stat pair inside entity card: label + value inline */
+.ncm-app .ncm-entity-card__stat {
+  font-family: var(--ncm-font-mono);
+  font-size: var(--ncm-text-2xs);
+  color: var(--ncm-text-muted);
+}
+
+.ncm-app .ncm-entity-card__stat-value {
+  color: var(--ncm-text-secondary);
+  font-weight: 600;
+}
+
+/* Quick actions on hover */
+.ncm-app .ncm-entity-card__actions {
+  display: none;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.ncm-app .ncm-entity-card:hover .ncm-entity-card__actions {
+  display: flex;
+}
+
+/* Entity grid: auto-fill responsive card grid */
+.ncm-app .ncm-entity-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--ncm-space-sm);
+}
+
+/* List variant (single column) */
+.ncm-app .ncm-entity-grid--list {
+  grid-template-columns: 1fr;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §5  PROGRESS BAR / SIGNAL BAR
+   Colored bar on dark track. Segmented green signal indicator for networks.
+   Usage: {{> progress-bar label="SIGNAL" value=75 max=100 }}
+          {{> signal-bar strength=4 max=5 }}
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ─── Progress Bar ─── */
+
+.ncm-app .ncm-progress-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--ncm-space-sm);
+  width: 100%;
+}
+
+.ncm-app .ncm-progress-bar__label {
+  font-family: var(--ncm-font-display);
+  font-weight: 600;
+  font-size: var(--ncm-text-2xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ncm-text-secondary);
+  white-space: nowrap;
+  min-width: 48px;
+}
+
+.ncm-app .ncm-progress-bar__track {
+  flex: 1;
+  height: 6px;
+  background: var(--ncm-bg-deep);
+  border-radius: var(--ncm-radius-sm);
+  overflow: hidden;
+  position: relative;
+}
+
+.ncm-app .ncm-progress-bar__fill {
+  height: 100%;
+  border-radius: var(--ncm-radius-sm);
+  background: var(--ncm-secondary);
+  transition: width var(--ncm-transition-normal);
+}
+
+.ncm-app .ncm-progress-bar__value {
+  font-family: var(--ncm-font-mono);
+  font-size: var(--ncm-text-2xs);
+  color: var(--ncm-text-secondary);
+  white-space: nowrap;
+  min-width: 32px;
+  text-align: right;
+}
+
+/* Color variants */
+.ncm-app .ncm-progress-bar--success .ncm-progress-bar__fill { background: var(--ncm-success); }
+.ncm-app .ncm-progress-bar--warning .ncm-progress-bar__fill { background: var(--ncm-warning); }
+.ncm-app .ncm-progress-bar--danger .ncm-progress-bar__fill  { background: var(--ncm-danger); }
+
+/* ─── Signal Bar (segmented) ─── */
+
+.ncm-app .ncm-signal-bar {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 16px;
+  vertical-align: middle;
+}
+
+.ncm-app .ncm-signal-bar__segment {
+  width: 4px;
+  border-radius: 1px;
+  background: var(--ncm-bg-elevated);
+  transition: background var(--ncm-transition-fast);
+}
+
+/* 5 segments at increasing heights */
+.ncm-app .ncm-signal-bar__segment:nth-child(1) { height: 4px; }
+.ncm-app .ncm-signal-bar__segment:nth-child(2) { height: 7px; }
+.ncm-app .ncm-signal-bar__segment:nth-child(3) { height: 10px; }
+.ncm-app .ncm-signal-bar__segment:nth-child(4) { height: 13px; }
+.ncm-app .ncm-signal-bar__segment:nth-child(5) { height: 16px; }
+
+/* Active segments */
+.ncm-app .ncm-signal-bar__segment--active { background: #00ff41; }
+
+/* Signal quality colors */
+.ncm-app .ncm-signal-bar--weak .ncm-signal-bar__segment--active   { background: #ff0033; }
+.ncm-app .ncm-signal-bar--fair .ncm-signal-bar__segment--active   { background: var(--ncm-warning); }
+.ncm-app .ncm-signal-bar--strong .ncm-signal-bar__segment--active { background: #00ff41; }
+
+/* Dead — all segments dark, pulsing red */
+.ncm-app .ncm-signal-bar--dead .ncm-signal-bar__segment {
+  background: rgba(255, 0, 51, 0.3);
+  animation: ncm-pulse 1.5s ease-in-out infinite;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §6  BUTTONS
+   Primary (filled red/orange), Secondary (border teal), Danger, Ghost.
+   All scoped under .ncm-app for isolation.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: var(--ncm-space-sm) var(--ncm-space-md);
+  font-family: var(--ncm-font-display);
+  font-weight: 600;
+  font-size: var(--ncm-text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  border: 1px solid transparent;
+  border-radius: var(--ncm-radius-md);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  transition: all var(--ncm-transition-fast);
+  text-decoration: none;
+  background: none;
+  color: var(--ncm-text-primary);
+}
+
+.ncm-app .ncm-btn:active {
+  transform: scale(0.97);
+}
+
+.ncm-app .ncm-btn:disabled,
+.ncm-app .ncm-btn[disabled] {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ─── Primary: filled with brand color ─── */
+.ncm-app .ncm-btn--primary {
+  background: var(--ncm-primary);
+  color: #fff;
+  border-color: var(--ncm-primary);
+}
+
+.ncm-app .ncm-btn--primary:hover {
+  filter: brightness(1.15);
+  box-shadow: 0 0 12px rgba(246, 82, 97, 0.4);
+}
+
+/* ─── Secondary: outlined teal ─── */
+.ncm-app .ncm-btn--secondary {
+  background: transparent;
+  color: var(--ncm-secondary);
+  border-color: var(--ncm-secondary);
+}
+
+.ncm-app .ncm-btn--secondary:hover {
+  background: rgba(25, 243, 247, 0.1);
+  box-shadow: 0 0 10px rgba(25, 243, 247, 0.2);
+}
+
+/* ─── Danger: red destructive ─── */
+.ncm-app .ncm-btn--danger {
+  background: transparent;
+  color: #ff0033;
+  border-color: #ff0033;
+}
+
+.ncm-app .ncm-btn--danger:hover {
+  background: rgba(255, 0, 51, 0.15);
+  box-shadow: 0 0 10px rgba(255, 0, 51, 0.3);
+}
+
+/* ─── Ghost: minimal, for icon-only or low-emphasis ─── */
+.ncm-app .ncm-btn--ghost {
+  background: transparent;
+  color: var(--ncm-text-secondary);
+  border-color: transparent;
+  padding: var(--ncm-space-xs) var(--ncm-space-sm);
+}
+
+.ncm-app .ncm-btn--ghost:hover {
+  color: var(--ncm-text-primary);
+  background: var(--ncm-bg-elevated);
+}
+
+/* ─── Size variants ─── */
+.ncm-app .ncm-btn--sm {
+  padding: 3px 8px;
+  font-size: 10px;
+  gap: 4px;
+}
+
+.ncm-app .ncm-btn--lg {
+  padding: var(--ncm-space-md) var(--ncm-space-lg);
+  font-size: var(--ncm-text-sm);
+}
+
+/* ─── Icon-only ─── */
+.ncm-app .ncm-btn--icon {
+  padding: var(--ncm-space-xs);
+  min-width: 28px;
+  min-height: 28px;
+  border-radius: var(--ncm-radius-sm);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §7  ALERT PANEL — warning / danger / info
+   Tinted background, icon, bold title, detail text.
+   Usage: {{> alert-panel variant="warning" icon="fa-exclamation-triangle"
+            title="Dead Zone" text="No signal detected." }}
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ncm-space-sm);
+  padding: var(--ncm-space-sm) var(--ncm-space-md);
+  border-radius: var(--ncm-radius-md);
+  border-left: 3px solid var(--ncm-border);
+  background: var(--ncm-bg-surface);
+}
+
+.ncm-app .ncm-alert__icon {
+  font-size: var(--ncm-text-base);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.ncm-app .ncm-alert__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.ncm-app .ncm-alert__title {
+  font-family: var(--ncm-font-display);
+  font-weight: 700;
+  font-size: var(--ncm-text-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  line-height: 1.3;
+}
+
+.ncm-app .ncm-alert__text {
+  font-family: var(--ncm-font-mono);
+  font-size: var(--ncm-text-2xs);
+  color: var(--ncm-text-secondary);
+  margin-top: 2px;
+  line-height: 1.4;
+}
+
+/* ─── Variants ─── */
+.ncm-app .ncm-alert--warning {
+  background: rgba(255, 171, 0, 0.08);
+  border-left-color: var(--ncm-warning);
+}
+.ncm-app .ncm-alert--warning .ncm-alert__icon,
+.ncm-app .ncm-alert--warning .ncm-alert__title { color: var(--ncm-warning); }
+
+.ncm-app .ncm-alert--danger {
+  background: rgba(255, 0, 51, 0.08);
+  border-left-color: #ff0033;
+}
+.ncm-app .ncm-alert--danger .ncm-alert__icon,
+.ncm-app .ncm-alert--danger .ncm-alert__title { color: #ff0033; }
+
+.ncm-app .ncm-alert--info {
+  background: rgba(25, 243, 247, 0.06);
+  border-left-color: var(--ncm-secondary);
+}
+.ncm-app .ncm-alert--info .ncm-alert__icon,
+.ncm-app .ncm-alert--info .ncm-alert__title { color: var(--ncm-secondary); }
+
+.ncm-app .ncm-alert--success {
+  background: rgba(0, 255, 65, 0.06);
+  border-left-color: #00ff41;
+}
+.ncm-app .ncm-alert--success .ncm-alert__icon,
+.ncm-app .ncm-alert--success .ncm-alert__title { color: #00ff41; }
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §8  TAB NAVIGATION
+   Horizontal tabs with icon + text, cyan underline active, uppercase.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border-bottom: 1px solid var(--ncm-border);
+  padding: 0 var(--ncm-space-sm);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.ncm-app .ncm-tabs::-webkit-scrollbar { display: none; }
+
+.ncm-app .ncm-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: var(--ncm-space-sm) var(--ncm-space-md);
+  font-family: var(--ncm-font-display);
+  font-weight: 600;
+  font-size: var(--ncm-text-2xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ncm-text-secondary);
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--ncm-transition-fast);
+  user-select: none;
+  background: none;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+}
+
+.ncm-app .ncm-tab:hover {
+  color: var(--ncm-text-primary);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.ncm-app .ncm-tab--active {
+  color: var(--ncm-secondary);
+  border-bottom-color: var(--ncm-secondary);
+}
+
+.ncm-app .ncm-tab__count {
+  font-family: var(--ncm-font-mono);
+  font-size: 9px;
+  color: var(--ncm-text-muted);
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.ncm-app .ncm-tab--active .ncm-tab__count {
+  color: var(--ncm-secondary);
+}
+
+.ncm-app .ncm-tab__icon {
+  font-size: 11px;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §9  HEADER BAR
+   Full-width header with portrait, name, key stats, and action buttons.
+   Used at the top of inbox, shard viewer, admin panel.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-header-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--ncm-space-md);
+  padding: var(--ncm-space-sm) var(--ncm-space-md);
+  background: var(--ncm-bg-deep);
+  border-bottom: 1px solid var(--ncm-border);
+  flex-shrink: 0;
+}
+
+.ncm-app .ncm-header-bar__portrait {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid var(--ncm-border);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.ncm-app .ncm-header-bar__identity {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.ncm-app .ncm-header-bar__name {
+  font-family: var(--ncm-font-display);
+  font-weight: 700;
+  font-size: var(--ncm-text-sm);
+  color: var(--ncm-text-primary);
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ncm-app .ncm-header-bar__subtitle {
+  font-family: var(--ncm-font-mono);
+  font-size: var(--ncm-text-2xs);
+  color: var(--ncm-text-secondary);
+}
+
+.ncm-app .ncm-header-bar__stats {
+  display: flex;
+  align-items: center;
+  gap: var(--ncm-space-sm);
+  margin-left: auto;
+}
+
+.ncm-app .ncm-header-bar__actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §10 DARK SURFACE CARDS
+   Elevated surfaces with border and optional glow.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-card {
+  background: var(--ncm-bg-surface);
+  border: 1px solid var(--ncm-border);
+  border-radius: var(--ncm-radius-md);
+  padding: var(--ncm-space-md);
+  transition: all var(--ncm-transition-fast);
+}
+
+.ncm-app .ncm-card--hoverable:hover {
+  background: var(--ncm-bg-elevated);
+  border-color: rgba(25, 243, 247, 0.3);
+}
+
+.ncm-app .ncm-card--active {
+  border-color: var(--ncm-secondary);
+  box-shadow: 0 0 12px rgba(25, 243, 247, 0.15);
+}
+
+.ncm-app .ncm-card--selected {
+  background: var(--ncm-bg-elevated);
+  border-left: 3px solid var(--ncm-secondary);
+}
+
+.ncm-app .ncm-card--flush {
+  padding: 0;
+}
+
+.ncm-app .ncm-card--danger {
+  border-color: rgba(255, 0, 51, 0.4);
+  box-shadow: 0 0 8px rgba(255, 0, 51, 0.1);
+}
+
+.ncm-app .ncm-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: var(--ncm-space-sm);
+  border-bottom: 1px solid var(--ncm-border);
+  margin-bottom: var(--ncm-space-sm);
+}
+
+.ncm-app .ncm-card__title {
+  font-family: var(--ncm-font-display);
+  font-weight: 700;
+  font-size: var(--ncm-text-sm);
+  color: var(--ncm-text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ncm-app .ncm-card__body {
+  font-family: var(--ncm-font-mono);
+  font-size: var(--ncm-text-xs);
+  color: var(--ncm-text-secondary);
+  line-height: 1.5;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §11 FORM ELEMENTS
+   Inputs, selects, textareas — dark-themed, cyan focus glow.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-input,
+.ncm-app .ncm-select,
+.ncm-app .ncm-textarea {
+  width: 100%;
+  padding: var(--ncm-space-sm) var(--ncm-space-md);
+  background: var(--ncm-bg-deep);
+  border: 1px solid var(--ncm-border);
+  border-radius: var(--ncm-radius-md);
+  color: var(--ncm-text-primary);
+  font-family: var(--ncm-font-mono);
+  font-size: var(--ncm-text-xs);
+  transition: border-color var(--ncm-transition-fast),
+              box-shadow var(--ncm-transition-fast);
+  box-sizing: border-box;
+}
+
+.ncm-app .ncm-input:focus,
+.ncm-app .ncm-select:focus,
+.ncm-app .ncm-textarea:focus {
+  outline: none;
+  border-color: var(--ncm-secondary);
+  box-shadow: 0 0 8px rgba(25, 243, 247, 0.2);
+}
+
+.ncm-app .ncm-input::placeholder {
+  color: var(--ncm-text-muted);
+}
+
+.ncm-app .ncm-select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238888a0'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  padding-right: 24px;
+}
+
+/* Form label */
+.ncm-app .ncm-label {
+  display: block;
+  font-family: var(--ncm-font-display);
+  font-weight: 600;
+  font-size: var(--ncm-text-2xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ncm-text-secondary);
+  margin-bottom: 4px;
+}
+
+/* Search input with icon */
+.ncm-app .ncm-search {
+  position: relative;
+}
+
+.ncm-app .ncm-search__icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--ncm-text-muted);
+  font-size: 11px;
+  pointer-events: none;
+}
+
+.ncm-app .ncm-search .ncm-input {
+  padding-left: 30px;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §12 ACTION BAR — row of action buttons
+   Used at the bottom of detail panels, dialogs, forms.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-action-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--ncm-space-sm);
+  padding: var(--ncm-space-sm) var(--ncm-space-md);
+  background: var(--ncm-bg-base);
+  border-top: 1px solid var(--ncm-border);
+  flex-shrink: 0;
+}
+
+.ncm-app .ncm-action-bar--right {
+  justify-content: flex-end;
+}
+
+.ncm-app .ncm-action-bar--between {
+  justify-content: space-between;
+}
+
+.ncm-app .ncm-action-bar--center {
+  justify-content: center;
+}
+
+/* Group within action bar */
+.ncm-app .ncm-action-bar__group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §13 EMPTY STATE — placeholder with icon + message
+   Terminal cursor aesthetic for empty panels.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ncm-space-md);
+  padding: var(--ncm-space-2xl);
+  text-align: center;
+  opacity: 0.6;
+  height: 100%;
+  min-height: 120px;
+}
+
+.ncm-app .ncm-empty-state__icon {
+  font-size: 2rem;
+  color: var(--ncm-text-muted);
+}
+
+.ncm-app .ncm-empty-state__text {
+  font-family: var(--ncm-font-mono);
+  font-size: var(--ncm-text-sm);
+  color: var(--ncm-text-muted);
+  line-height: 1.4;
+}
+
+/* Terminal cursor variant */
+.ncm-app .ncm-empty-state__cursor {
+  font-family: var(--ncm-font-mono);
+  font-size: var(--ncm-text-sm);
+  color: var(--ncm-secondary);
+}
+
+.ncm-app .ncm-empty-state__cursor::after {
+  content: '_';
+  animation: ncm-blink 1s step-end infinite;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §14 SCROLLBAR
+   Thin, dark, matches NCM surfaces.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ncm-app ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.ncm-app ::-webkit-scrollbar-track {
+  background: var(--ncm-bg-deep);
+}
+
+.ncm-app ::-webkit-scrollbar-thumb {
+  background: var(--ncm-bg-elevated);
+  border-radius: 3px;
+}
+
+.ncm-app ::-webkit-scrollbar-thumb:hover {
+  background: var(--ncm-text-muted);
+}
+
+.ncm-app {
+  scrollbar-width: thin;
+  scrollbar-color: var(--ncm-bg-elevated) var(--ncm-bg-deep);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §15 TOOLTIP
+   Dark surface, monospace, positioned above element.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ncm-app [data-ncm-tooltip] {
+  position: relative;
+}
+
+.ncm-app [data-ncm-tooltip]::after {
+  content: attr(data-ncm-tooltip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 8px;
+  background: var(--ncm-bg-deep);
+  border: 1px solid var(--ncm-border);
+  border-radius: var(--ncm-radius-sm);
+  font-family: var(--ncm-font-mono);
+  font-size: 10px;
+  color: var(--ncm-text-primary);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease 0.4s;
+  z-index: var(--ncm-z-tooltip);
+}
+
+.ncm-app [data-ncm-tooltip]:hover::after {
+  opacity: 1;
+}

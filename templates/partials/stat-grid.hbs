@@ -1,0 +1,30 @@
+{{!--
+  Stat Grid — responsive grid wrapper for stat cards
+  @file templates/partials/stat-grid.hbs
+  @module cyberpunkred-messenger
+  @description Wraps stat cards in an auto-fill grid layout.
+    Uses .ncm-stat-grid from components.css.
+
+  @param {number} [columns]  — Fixed columns: 2, 3, or 4. Omit for auto-fill.
+  @param {Array}  stats      — Array of { label, value, color?, pulse? } objects
+
+  @example
+    {{> "modules/cyberpunkred-messenger/templates/partials/stat-grid.hbs"
+        columns=4
+        stats=(array
+          (hash label="TOTAL" value=12)
+          (hash label="UNREAD" value=3 color="primary" pulse=true)
+          (hash label="SENT" value=45)
+          (hash label="ONLINE" value=5 color="success")
+        ) }}
+--}}
+<div class="ncm-stat-grid{{#if columns}} ncm-stat-grid--{{columns}}{{/if}}">
+  {{#each stats}}
+  <div class="ncm-stat-card
+    {{~#if this.color}} ncm-stat-card--{{this.color}}{{/if~}}
+    {{~#if this.pulse}} ncm-stat-card--pulse{{/if~}}">
+    <span class="ncm-stat-card__label">{{this.label}}</span>
+    <span class="ncm-stat-card__value">{{this.value}}</span>
+  </div>
+  {{/each}}
+</div>

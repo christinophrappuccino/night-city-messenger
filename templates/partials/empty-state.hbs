@@ -1,0 +1,33 @@
+{{!--
+  Empty State — placeholder with icon + message
+  @file templates/partials/empty-state.hbs
+  @module cyberpunkred-messenger
+  @description Renders a centered empty-state placeholder with icon and text.
+    Terminal cursor variant available for cyberdeck aesthetic.
+    Uses .ncm-empty-state from components.css.
+
+  @param {string} [icon]     — FontAwesome icon class (e.g. "fas fa-inbox")
+  @param {string} text       — Descriptive text
+  @param {boolean} [cursor]  — Show blinking terminal cursor after text
+  @param {string} [prompt]   — Custom prompt text with blinking cursor (overrides text)
+
+  @example
+    {{> "modules/cyberpunkred-messenger/templates/partials/empty-state.hbs"
+        icon="fas fa-inbox" text="No messages found." }}
+    {{> "modules/cyberpunkred-messenger/templates/partials/empty-state.hbs"
+        prompt="> SELECT MESSAGE TO READ" }}
+--}}
+<div class="ncm-empty-state">
+  {{#if icon}}
+    <i class="ncm-empty-state__icon {{icon}}"></i>
+  {{/if}}
+
+  {{#if prompt}}
+    <span class="ncm-empty-state__cursor">{{prompt}}</span>
+  {{else}}
+    <span class="ncm-empty-state__text">{{text}}</span>
+    {{#if cursor}}
+      <span class="ncm-empty-state__cursor">&gt;</span>
+    {{/if}}
+  {{/if}}
+</div>

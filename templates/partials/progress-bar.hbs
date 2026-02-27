@@ -1,0 +1,25 @@
+{{!--
+  Progress Bar — colored bar on dark track
+  @file templates/partials/progress-bar.hbs
+  @module cyberpunkred-messenger
+  @description Renders a labeled progress bar with optional value display.
+    Uses .ncm-progress-bar from components.css.
+
+  @param {string} [label]    — Left-side label (e.g. "SIGNAL")
+  @param {number} value      — Current value (0-100)
+  @param {string} [display]  — Value display text (defaults to "value%")
+  @param {string} [color]    — Color variant: success|warning|danger (default: secondary/cyan)
+
+  @example
+    {{> "modules/cyberpunkred-messenger/templates/partials/progress-bar.hbs"
+        label="SIGNAL" value=75 display="75%" }}
+--}}
+<div class="ncm-progress-bar{{#if color}} ncm-progress-bar--{{color}}{{/if}}">
+  {{#if label}}
+    <span class="ncm-progress-bar__label">{{label}}</span>
+  {{/if}}
+  <div class="ncm-progress-bar__track">
+    <div class="ncm-progress-bar__fill" style="width: {{value}}%"></div>
+  </div>
+  <span class="ncm-progress-bar__value">{{#if display}}{{display}}{{else}}{{value}}%{{/if}}</span>
+</div>

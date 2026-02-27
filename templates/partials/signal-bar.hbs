@@ -1,0 +1,32 @@
+{{!--
+  Signal Bar — segmented signal strength indicator
+  @file templates/partials/signal-bar.hbs
+  @module cyberpunkred-messenger
+  @description Renders a 5-segment signal strength bar. Pre-compute segment
+    state in _prepareContext() before passing to this partial.
+    Uses .ncm-signal-bar from components.css.
+
+  @param {number} strength    — Signal strength 0-100 (for tooltip)
+  @param {string} quality     — "strong" | "fair" | "weak" | "dead"
+  @param {Array}  segments    — Array of 5 booleans: [true, true, true, false, false]
+                                 Pre-compute in JS:
+                                   const active = Math.ceil(strength / 20);
+                                   const segments = [1,2,3,4,5].map(i => i <= active);
+
+  @example — in _prepareContext():
+    const strength = networkService.getSignalStrength();
+    const active = Math.ceil(strength / 20);
+    const quality = strength === 0 ? 'dead' : strength <= 25 ? 'weak' : strength <= 50 ? 'fair' : 'strong';
+    const segments = [1,2,3,4,5].map(i => i <= active);
+
+  @example — in template:
+    {{> "modules/cyberpunkred-messenger/templates/partials/signal-bar.hbs"
+        strength=signalStrength quality=signalQuality segments=signalSegments }}
+--}}
+<div class="ncm-signal-bar ncm-signal-bar--{{quality}}"
+     title="Signal: {{strength}}%"
+     data-ncm-tooltip="Signal: {{strength}}%">
+  {{#each segments}}
+  <div class="ncm-signal-bar__segment{{#if this}} ncm-signal-bar__segment--active{{/if}}"></div>
+  {{/each}}
+</div>
