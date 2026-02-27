@@ -173,7 +173,7 @@ export class MessageViewerApp extends BaseApplication {
       viewingAsName: this._getViewingAsName(),
       viewingAsPortrait,
       viewingAsInitial,
-      viewingAsEmail
+      viewingAsEmail,
       isGM: game.user.isGM,
 
       // Network
