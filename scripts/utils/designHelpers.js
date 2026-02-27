@@ -477,22 +477,36 @@ export function getThreatBadgeData(message) {
   const type = malware?.type || 'UNKNOWN';
   const typeUpper = type.toUpperCase();
 
-  // Icon varies by malware type for extra visual flair
+  // Icon varies by malware type
   const iconMap = {
-    DAEMON:    'fas fa-ghost',
-    WORM:      'fas fa-bug',
-    TROJAN:    'fas fa-horse-head',
-    VIRUS:     'fas fa-virus',
-    RANSOMWARE:'fas fa-lock',
-    'BLACK ICE': 'fas fa-skull-crossbones',
-    BLACKICE:  'fas fa-skull-crossbones',
-    UNKNOWN:   'fas fa-virus',
+    DAEMON:      'fas fa-virus',
+    WORM:        'fas fa-bug',
+    TROJAN:      'fas fa-mask',
+    VIRUS:       'fas fa-virus',
+    RANSOMWARE:  'fas fa-lock',
+    BLACK_ICE:   'fas fa-skull',
+    BLACKICE:    'fas fa-skull',
+    'BLACK ICE': 'fas fa-skull',
+    UNKNOWN:     'fas fa-virus',
+  };
+
+  // Badge class suffix — matches CSS .ncm-badge--{class}
+  const classMap = {
+    DAEMON:      'daemon',
+    WORM:        'worm',
+    TROJAN:      'trojan',
+    VIRUS:       'daemon',
+    RANSOMWARE:  'trojan',
+    BLACK_ICE:   'black-ice',
+    BLACKICE:    'black-ice',
+    'BLACK ICE': 'black-ice',
+    UNKNOWN:     'threat',
   };
 
   return {
     label: typeUpper === 'UNKNOWN' ? 'THREAT' : typeUpper,
     icon: iconMap[typeUpper] || 'fas fa-virus',
     type: typeUpper,
-    variant: 'threat',
+    variant: classMap[typeUpper] || 'threat',
   };
 }

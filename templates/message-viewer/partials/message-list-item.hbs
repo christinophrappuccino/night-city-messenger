@@ -67,7 +67,7 @@
 
       {{!-- §2.7 Threat Badge --}}
       {{#if threatBadge}}
-        <span class="ncm-badge ncm-badge--threat" data-ncm-tooltip="{{threatBadge.label}} detected">
+        <span class="ncm-badge ncm-badge--threat ncm-badge--{{threatBadge.variant}}" data-ncm-tooltip="{{threatBadge.label}} detected">
           <i class="{{threatBadge.icon}}"></i>
           <span>{{threatBadge.label}}</span>
         </span>

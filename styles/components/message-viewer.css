@@ -516,26 +516,57 @@
    ═══════════════════════════════════════════════════════════ */
 
 /* ── Threat badge (reusable .ncm-badge--threat) ── */
+/* ── Base threat badge — shared structure ── */
 .ncm-app .ncm-badge--threat {
   display: inline-flex;
   align-items: center;
   gap: 3px;
   padding: 1px 6px;
+  border-radius: 2px;
+  font-family: var(--ncm-font-display);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+  /* Default threat styling (fallback) */
   background: rgba(255, 0, 51, 0.15);
   color: var(--ncm-danger, #ff0033);
   border: 1px solid rgba(255, 0, 51, 0.3);
-  border-radius: 2px;
-  font-family: var(--ncm-font-mono);
-  font-size: 8px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  white-space: nowrap;
-  animation: ncm-threat-pulse 1.5s ease-in-out infinite;
 }
 
 .ncm-app .ncm-badge--threat i {
-  font-size: 7px;
+  font-size: 8px;
+}
+
+/* ── BLACK ICE — most dangerous, pulsing red glow ── */
+.ncm-app .ncm-badge--black-ice {
+  background: rgba(255, 0, 0, 0.2);
+  border: 1px solid rgba(255, 0, 0, 0.6);
+  color: #ffffff;
+  animation: ncm-threat-glow 1.5s ease-in-out infinite;
+}
+
+/* ── DAEMON — dangerous, subtle pulse ── */
+.ncm-app .ncm-badge--daemon {
+  background: rgba(255, 0, 51, 0.15);
+  border: 1px solid rgba(255, 0, 51, 0.4);
+  color: var(--ncm-primary, #F65261);
+  animation: ncm-threat-glow-subtle 2s ease-in-out infinite;
+}
+
+/* ── WORM — spreading, orange ── */
+.ncm-app .ncm-badge--worm {
+  background: rgba(255, 100, 0, 0.12);
+  border: 1px solid rgba(255, 100, 0, 0.35);
+  color: #ff6a13;
+}
+
+/* ── TROJAN — hidden, amber ── */
+.ncm-app .ncm-badge--trojan {
+  background: rgba(255, 170, 0, 0.1);
+  border: 1px solid rgba(255, 170, 0, 0.3);
+  color: #ffaa00;
 }
 
 /* ── Threat message item tint ── */
@@ -676,9 +707,16 @@
    ═══════════════════════════════════════════════════════════ */
 
 /* Threat badge pulse — opacity oscillation */
-@keyframes ncm-threat-pulse {
-  0%, 100% { opacity: 1; }
-  50%      { opacity: 0.6; }
+/* BLACK ICE — strong red glow pulse */
+@keyframes ncm-threat-glow {
+  0%, 100% { box-shadow: 0 0 4px rgba(255, 0, 0, 0.2); }
+  50% { box-shadow: 0 0 12px rgba(255, 0, 0, 0.5), 0 0 24px rgba(255, 0, 0, 0.15); }
+}
+
+/* DAEMON — subtle red pulse */
+@keyframes ncm-threat-glow-subtle {
+  0%, 100% { box-shadow: 0 0 2px rgba(255, 0, 51, 0.1); }
+  50% { box-shadow: 0 0 8px rgba(255, 0, 51, 0.3); }
 }
 
 
@@ -687,8 +725,13 @@
    Respect user preference for reduced/no animation.
    ═══════════════════════════════════════════════════════════ */
 
-/* Reduced animations: disable pulse, keep static badge */
-[data-ncm-animation-level="reduced"] .ncm-app .ncm-badge--threat {
+[data-ncm-animation-level="reduced"] .ncm-app .ncm-badge--black-ice,
+[data-ncm-animation-level="reduced"] .ncm-app .ncm-badge--daemon {
+  animation-duration: 3s;
+}
+
+[data-ncm-animation-level="off"] .ncm-app .ncm-badge--black-ice,
+[data-ncm-animation-level="off"] .ncm-app .ncm-badge--daemon {
   animation: none;
 }
 
@@ -696,19 +739,13 @@
   animation: none;
 }
 
-/* Off: no transitions on network-themed items either */
-[data-ncm-animation-level="off"] .ncm-app .ncm-message-item__avatar {
-  transition: none;
-}
-
-[data-ncm-animation-level="off"] .ncm-app .ncm-badge--threat {
-  animation: none;
-}
-
 [data-ncm-animation-level="off"] .ncm-app .ncm-message-item__icon--infected {
   animation: none;
 }
 
+[data-ncm-animation-level="off"] .ncm-app .ncm-message-item__avatar {
+  transition: none;
+}
 
 
 /* ═══════════════════════════════════════════════════════════
@@ -744,7 +781,7 @@
   background: var(--ncm-bg-base);
   border-bottom: 1px solid var(--ncm-border);
   flex-shrink: 0;
-  overflow-x: auto;
+  overflow-x: hidden !important;
   overflow-y: hidden;
   height: auto !important;
   min-height: 0 !important;
@@ -873,6 +910,43 @@
   background: var(--ncm-bg-surface);
 }
 
+.ncm-app .ncm-tab-controls {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* Tab control buttons — Foundry override */
+.ncm-app .ncm-inbox-tabs .ncm-tab-control,
+.ncm-app .ncm-tab-controls .ncm-tab-control,
+.ncm-app .ncm-tab-controls button.ncm-tab-control {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 4px 6px;
+  font-family: var(--ncm-font-display);
+  font-size: 11px;
+  color: var(--ncm-text-muted) !important;
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.15s;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  width: auto !important;
+  height: auto !important;
+}
+
+.ncm-app .ncm-tab-controls .ncm-tab-control:hover {
+  color: var(--ncm-secondary) !important;
+  background: var(--ncm-bg-surface) !important;
+}
+
 /* ═══════════════════════════════════════════════════════════
    §5  BULK ACTIONS BAR
    ═══════════════════════════════════════════════════════════ */
@@ -978,6 +1052,9 @@
   height: 100%;
 }
 
+.ncm-app .ncm-message-list-panel {
+  overflow-x: hidden;
+}
 
 /* ═══════════════════════════════════════════════════════════
    §7  MESSAGE LIST ITEMS
@@ -1292,7 +1369,7 @@
 .ncm-app .ncm-quick-reply {
   display: flex !important;
   flex-direction: row !important;
-  flex-wrap: nowrap !important;
+  flex-wrap: wrap !important;
   align-items: center;
   gap: 4px;
   margin-left: auto;
@@ -1344,13 +1421,13 @@
   display: flex !important;
   flex-direction: row !important;
   align-items: center !important;
-  flex-wrap: nowrap !important;
+  flex-wrap: wrap !important;
   gap: 6px;
   padding: 8px 14px;
   background: var(--ncm-bg-base);
   border-top: 1px solid var(--ncm-border);
   flex-shrink: 0;
-  overflow-x: auto;
+  overflow-x: hidden !important;
 }
 
 .ncm-app .ncm-detail-actions .ncm-btn {
@@ -1361,11 +1438,42 @@
   -webkit-appearance: none !important;
 }
 
+/* Decrypt buttons — same Foundry override pattern */
+.ncm-app .ncm-message-detail .ncm-encrypted-actions .ncm-btn {
+  flex: 0 0 auto !important;
+  width: auto !important;
+  display: inline-flex !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+}
+
+.ncm-app .ncm-message-detail .ncm-encrypted-actions .ncm-btn.ncm-btn--secondary {
+  color: var(--ncm-secondary) !important;
+  border-color: var(--ncm-secondary) !important;
+  background: rgba(25, 243, 247, 0.05) !important;
+}
+
+.ncm-app .ncm-message-detail .ncm-encrypted-actions .ncm-btn.ncm-btn--secondary:hover {
+  background: rgba(25, 243, 247, 0.12) !important;
+  box-shadow: 0 0 12px rgba(25, 243, 247, 0.15);
+}
+
+.ncm-app .ncm-message-detail .ncm-encrypted-actions .ncm-btn.ncm-btn--ghost {
+  color: var(--ncm-text-muted) !important;
+  border-color: var(--ncm-border) !important;
+  background: transparent !important;
+}
+
+.ncm-app .ncm-message-detail .ncm-encrypted-actions .ncm-btn.ncm-btn--ghost:hover {
+  color: var(--ncm-text-secondary) !important;
+  border-color: var(--ncm-text-muted) !important;
+}
+
 /* Primary button (Reply) — red filled */
 .ncm-app .ncm-detail-actions .ncm-btn.ncm-btn--primary {
-  background: var(--ncm-primary) !important;
-  color: #fff !important;
-  border-color: var(--ncm-primary) !important;
+  background: transparent !important;
+  color: var(--ncm-primary) !important;
+  border: 1px solid var(--ncm-primary) !important;
   font-family: var(--ncm-font-display);
   font-weight: 600;
   font-size: 10px;
@@ -1377,8 +1485,8 @@
 }
 
 .ncm-app .ncm-detail-actions .ncm-btn.ncm-btn--primary:hover {
-  filter: brightness(1.15);
-  box-shadow: 0 0 12px rgba(246, 82, 97, 0.4);
+  background: rgba(246, 82, 97, 0.1) !important;
+  box-shadow: 0 0 10px rgba(246, 82, 97, 0.15), inset 0 0 10px rgba(246, 82, 97, 0.03);
 }
 
 /* Ghost buttons (Forward, Save, Chat, GM edit) */
