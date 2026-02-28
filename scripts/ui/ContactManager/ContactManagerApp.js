@@ -558,13 +558,20 @@ export class ContactManagerApp extends BaseApplication {
   /**
    * Share contact with another player (Sprint 3.4 — stub).
    */
-  static _onShareContact(event, target) {
+  static async _onShareContact(event, target) {
     event.stopPropagation();
     const contactId = target.closest('[data-contact-id]')?.dataset.contactId;
     if (!contactId) return;
 
-    // TODO: Sprint 3.4 — Open share dialog with Data Drop
-    ui.notifications.info('Contact sharing coming in Sprint 3.4.');
+    const contact = this._contacts.find(c => c.id === contactId);
+    if (!contact) return;
+
+    // Dynamic import to keep initial bundle light
+    const { ContactShareDialog } = await import('./ContactShareDialog.js');
+    new ContactShareDialog({
+      senderActorId: this.actorId,
+      contact,
+    }).render(true);
   }
 
   /**

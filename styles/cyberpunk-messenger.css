@@ -36,6 +36,8 @@
 @import 'components/message-composer.css';
 @import 'components/composer-atmosphere.css'; 
 @import 'components/contact-manager.css';
+@import 'components/contact-share-dialog.css';
+@import 'components/data-drop-overlay.css';
 @import 'components/gm-contact-manager.css';
 @import 'components/item-inbox.css';
 @import 'components/security-overlays.css';

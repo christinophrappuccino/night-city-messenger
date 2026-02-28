@@ -1,0 +1,117 @@
+{{!--
+  Contact Share Dialog — Data Drop
+  @file templates/contact-share/contact-share-dialog.hbs
+  @module cyberpunkred-messenger
+  @description Share a contact with other players. Matches mockup View 3.
+
+  Context:
+    hasData       — boolean, false if missing contact/sender
+    contact       — source contact object
+    portrait      — resolved portrait URL/base64 or null
+    avatarColor   — CSS color string for initials fallback
+    initials      — 1-2 char initials
+    contactMeta   — "email · ROLE · org" string
+    recipients    — array of { actorId, name, portrait, initials, avatarColor, selected, ownerName }
+    hasRecipients — boolean
+    canSend       — boolean (has recipients selected & not sending)
+    sending       — boolean (operation in progress)
+    selectedCount — number of selected recipients
+    options       — { includePortrait, includeNotes, includeTags }
+--}}
+
+{{#if hasData}}
+
+  {{!-- ═══ Contact Being Shared ═══ --}}
+  <div class="ncm-share__contact">
+    <div class="ncm-share__contact-avatar"
+         style="border-color: {{avatarColor}}33;">
+      {{#if portrait}}
+        <img src="{{portrait}}" alt="{{contact.name}}">
+      {{else}}
+        <span style="color: {{avatarColor}};">{{initials}}</span>
+      {{/if}}
+    </div>
+    <div class="ncm-share__contact-info">
+      <div class="ncm-share__contact-name">{{contact.name}}</div>
+      {{#if contactMeta}}
+        <div class="ncm-share__contact-email">{{contactMeta}}</div>
+      {{/if}}
+    </div>
+  </div>
+
+  {{!-- ═══ Recipient Selector ═══ --}}
+  <div class="ncm-share__body">
+    <div class="ncm-share__label">Send to:</div>
+
+    {{#if hasRecipients}}
+      <div class="ncm-share__recipients">
+        {{#each recipients}}
+          <div class="ncm-share__recipient {{#if this.selected}}ncm-share__recipient--selected{{/if}}"
+               data-action="toggleRecipient" data-actor-id="{{this.actorId}}">
+            <div class="ncm-share__recipient-avatar"
+                 style="color: {{this.avatarColor}}; border-color: {{this.avatarColor}}33;">
+              {{#if this.portrait}}
+                <img src="{{this.portrait}}" alt="{{this.name}}">
+              {{else}}
+                {{this.initials}}
+              {{/if}}
+            </div>
+            <span class="ncm-share__recipient-name">
+              {{this.name}}
+              {{#if this.ownerName}}
+                <span class="ncm-share__recipient-owner">({{this.ownerName}})</span>
+              {{/if}}
+            </span>
+            <div class="ncm-share__recipient-check">
+              <i class="fas fa-check"></i>
+            </div>
+          </div>
+        {{/each}}
+      </div>
+    {{else}}
+      <div class="ncm-share__empty">
+        <i class="fas fa-users-slash"></i>
+        <span>No eligible recipients found</span>
+      </div>
+    {{/if}}
+
+    {{!-- ═══ Share Options ═══ --}}
+    <div class="ncm-share__options">
+      <div class="ncm-share__option {{#if options.includePortrait}}ncm-share__option--active{{/if}}"
+           data-action="toggleOption" data-option="includePortrait">
+        <div class="ncm-share__option-box"><i class="fas fa-check"></i></div>
+        Include portrait
+      </div>
+      <div class="ncm-share__option {{#if options.includeNotes}}ncm-share__option--active{{/if}}"
+           data-action="toggleOption" data-option="includeNotes">
+        <div class="ncm-share__option-box"><i class="fas fa-check"></i></div>
+        Include notes
+      </div>
+      <div class="ncm-share__option {{#if options.includeTags}}ncm-share__option--active{{/if}}"
+           data-action="toggleOption" data-option="includeTags">
+        <div class="ncm-share__option-box"><i class="fas fa-check"></i></div>
+        Include tags
+      </div>
+    </div>
+  </div>
+
+  {{!-- ═══ Footer ═══ --}}
+  <div class="ncm-share__footer">
+    <button class="ncm-btn ncm-btn--ghost" data-action="cancelShare">Cancel</button>
+    <button class="ncm-btn ncm-btn--accent {{#unless canSend}}ncm-btn--disabled{{/unless}}"
+            data-action="sendDataDrop"
+            {{#unless canSend}}disabled{{/unless}}>
+      {{#if sending}}
+        <i class="fas fa-spinner fa-spin"></i> Transmitting...
+      {{else}}
+        <i class="fas fa-share-nodes"></i> Data Drop{{#if selectedCount}} ({{selectedCount}}){{/if}}
+      {{/if}}
+    </button>
+  </div>
+
+{{else}}
+  <div class="ncm-share__empty" style="padding: 24px;">
+    <i class="fas fa-exclamation-triangle"></i>
+    <span>Missing contact or sender data.</span>
+  </div>
+{{/if}}

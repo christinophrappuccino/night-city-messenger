@@ -1,0 +1,398 @@
+/**
+ * Data Drop Overlay Styles — Sprint 3.8
+ * @file styles/components/data-drop-overlay.css
+ * @module cyberpunkred-messenger
+ * @description Animated overlay for the Data Drop contact transmission sequence.
+ *   Route visualization, phase text, progress bar, card materialization, and status flash.
+ *   Matches mockup View 4.
+ */
+
+/* ═══════════════════════════════════════════
+   OVERLAY CONTAINER
+   ═══════════════════════════════════════════ */
+
+.ncm-datadrop {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10001;
+
+  background: var(--ncm-bg-deep, #0a0a0f);
+  border: 1px solid var(--ncm-border, #2a2a45);
+  border-radius: 2px;
+  padding: 24px 32px;
+  width: 380px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+
+  overflow: hidden;
+
+  /* Start invisible */
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Active state (JS adds this) */
+.ncm-datadrop--active {
+  opacity: 1;
+  pointer-events: auto;
+  animation: ncm-datadrop-fade-in 0.3s ease forwards;
+}
+
+/* Exit state */
+.ncm-datadrop--exiting {
+  animation: ncm-datadrop-fade-out 0.3s ease forwards;
+}
+
+@keyframes ncm-datadrop-fade-in {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.95); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+@keyframes ncm-datadrop-fade-out {
+  from { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  to   { opacity: 0; transform: translate(-50%, -50%) scale(0.95); }
+}
+
+/* Scan line effect */
+.ncm-datadrop::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--ncm-secondary, #19f3f7), transparent);
+  animation: ncm-datadrop-scanline 2s linear infinite;
+}
+
+@keyframes ncm-datadrop-scanline {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* Backdrop dimming */
+.ncm-datadrop--active::after {
+  content: '';
+  position: fixed;
+  top: -200vh;
+  left: -200vw;
+  width: 500vw;
+  height: 500vh;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* ═══════════════════════════════════════════
+   ROUTE VISUALIZATION
+   ═══════════════════════════════════════════ */
+
+.ncm-datadrop__route {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 8px;
+  justify-content: center;
+}
+
+.ncm-datadrop__node {
+  padding: 2px 6px;
+  border: 1px solid var(--ncm-border, #2a2a45);
+  border-radius: 2px;
+  color: var(--ncm-text-muted, #555570);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.ncm-datadrop__node--active {
+  color: var(--ncm-secondary, #19f3f7);
+  border-color: rgba(25, 243, 247, 0.3);
+  box-shadow: 0 0 8px rgba(25, 243, 247, 0.2);
+}
+
+.ncm-datadrop__node--done {
+  color: var(--ncm-success, #00ff41);
+  border-color: rgba(0, 255, 65, 0.3);
+  box-shadow: 0 0 6px rgba(0, 255, 65, 0.15);
+}
+
+.ncm-datadrop__hop {
+  color: var(--ncm-text-muted, #555570);
+  flex-shrink: 0;
+  font-size: 7px;
+  letter-spacing: -0.5px;
+  transition: color 0.3s ease;
+}
+
+.ncm-datadrop__hop--active {
+  color: var(--ncm-secondary, #19f3f7);
+}
+
+/* ═══════════════════════════════════════════
+   PHASE TEXT
+   ═══════════════════════════════════════════ */
+
+.ncm-datadrop__phases {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ncm-datadrop__phase {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 9px;
+  color: var(--ncm-text-muted, #555570);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  transition: color 0.3s ease;
+  opacity: 0.4;
+}
+
+.ncm-datadrop__phase--active {
+  color: var(--ncm-secondary, #19f3f7);
+  opacity: 1;
+}
+
+.ncm-datadrop__phase--done {
+  color: var(--ncm-success, #00ff41);
+  opacity: 1;
+}
+
+.ncm-datadrop__phase--done::before {
+  content: '✓ ';
+}
+
+/* ═══════════════════════════════════════════
+   PROGRESS BAR
+   ═══════════════════════════════════════════ */
+
+.ncm-datadrop__progress {
+  width: 100%;
+  height: 3px;
+  background: var(--ncm-bg-elevated, #252540);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.ncm-datadrop__progress-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--ncm-secondary, #19f3f7);
+  border-radius: 2px;
+  box-shadow: 0 0 8px rgba(25, 243, 247, 0.4);
+  /* transition set by JS: width Xms ease */
+}
+
+/* ═══════════════════════════════════════════
+   MATERIALIZING CONTACT CARD
+   ═══════════════════════════════════════════ */
+
+.ncm-datadrop__card {
+  background: var(--ncm-bg-surface, #1a1a2e);
+  border: 1px solid rgba(25, 243, 247, 0.2);
+  border-radius: 2px;
+  padding: 16px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+
+  /* Hidden initially */
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.ncm-datadrop__card--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Avatar */
+.ncm-datadrop__card-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 2px solid rgba(25, 243, 247, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--ncm-secondary, #19f3f7);
+  flex-shrink: 0;
+  overflow: hidden;
+  background: var(--ncm-bg-elevated, #252540);
+
+  /* Hidden initially */
+  opacity: 0;
+  transform: scale(0.5);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.ncm-datadrop__card-avatar--visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.ncm-datadrop__card-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Info container */
+.ncm-datadrop__card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Name — typing reveal effect */
+.ncm-datadrop__card-name {
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ncm-text-primary, #e0e0e8);
+  overflow: hidden;
+  white-space: nowrap;
+
+  /* Hidden initially — typing reveal activated via JS class */
+  width: 0;
+}
+
+.ncm-datadrop__card-name--reveal {
+  border-right: 2px solid var(--ncm-secondary, #19f3f7);
+  animation: ncm-datadrop-typing 0.8s steps(16) forwards, ncm-datadrop-blink-caret 0.4s step-end 3;
+}
+
+@keyframes ncm-datadrop-typing {
+  from { width: 0; }
+  to   { width: 100%; }
+}
+
+@keyframes ncm-datadrop-blink-caret {
+  50% { border-color: transparent; }
+}
+
+/* Email */
+.ncm-datadrop__card-email {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 10px;
+  color: var(--ncm-text-muted, #555570);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  /* Hidden initially */
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.ncm-datadrop__card-email--visible {
+  opacity: 1;
+}
+
+/* Badges */
+.ncm-datadrop__card-badges {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+
+  /* Hidden initially */
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.ncm-datadrop__card-badges--visible {
+  opacity: 1;
+}
+
+.ncm-datadrop__card-badges .ncm-badge {
+  font-size: 8px;
+}
+
+/* ═══════════════════════════════════════════
+   STATUS TEXT
+   ═══════════════════════════════════════════ */
+
+.ncm-datadrop__status {
+  font-family: var(--ncm-font-title, 'Orbitron', sans-serif);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--ncm-success, #00ff41);
+
+  /* Hidden initially */
+  opacity: 0;
+  transform: scale(0.8);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.ncm-datadrop__status--visible {
+  opacity: 1;
+  transform: scale(1);
+  text-shadow: 0 0 12px rgba(0, 255, 65, 0.4);
+  animation: ncm-datadrop-status-glow 1s ease;
+}
+
+@keyframes ncm-datadrop-status-glow {
+  0%  { text-shadow: 0 0 0 rgba(0, 255, 65, 0); }
+  50% { text-shadow: 0 0 20px rgba(0, 255, 65, 0.6); }
+  100% { text-shadow: 0 0 12px rgba(0, 255, 65, 0.4); }
+}
+
+/* ═══════════════════════════════════════════
+   ANIMATION LEVEL GATES
+   ═══════════════════════════════════════════ */
+
+/* Reduced: no animations, instant transitions */
+[data-ncm-animation-level="reduced"] .ncm-datadrop {
+  animation: none;
+}
+
+[data-ncm-animation-level="reduced"] .ncm-datadrop--active {
+  opacity: 1;
+  animation: none;
+  transform: translate(-50%, -50%);
+}
+
+[data-ncm-animation-level="reduced"] .ncm-datadrop::before {
+  animation: none;
+  display: none;
+}
+
+[data-ncm-animation-level="reduced"] .ncm-datadrop__node,
+[data-ncm-animation-level="reduced"] .ncm-datadrop__phase,
+[data-ncm-animation-level="reduced"] .ncm-datadrop__card,
+[data-ncm-animation-level="reduced"] .ncm-datadrop__card-avatar,
+[data-ncm-animation-level="reduced"] .ncm-datadrop__card-name,
+[data-ncm-animation-level="reduced"] .ncm-datadrop__card-email,
+[data-ncm-animation-level="reduced"] .ncm-datadrop__card-badges,
+[data-ncm-animation-level="reduced"] .ncm-datadrop__status {
+  transition-duration: 0s;
+}
+
+[data-ncm-animation-level="reduced"] .ncm-datadrop__card-name--reveal {
+  animation: none;
+  width: 100%;
+  border-right: none;
+}
+
+/* Off: no overlay at all (handled by JS returning early) */
+[data-ncm-animation-level="off"] .ncm-datadrop {
+  display: none;
+}

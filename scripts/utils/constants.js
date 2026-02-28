@@ -23,6 +23,7 @@ export const EVENTS = Object.freeze({
 
   CONTACT_BURNED:        'contacts:burned',
   CONTACT_SHARED:        'contacts:shared',
+  CONTACT_SHARE_STARTED: 'contacts:shareStarted',
   CONTACT_TRUST_CHANGED: 'contacts:trustChanged',
   CONTACT_TAGS_UPDATED:  'contacts:tagsUpdated',
 
@@ -67,6 +68,9 @@ export const SOCKET_OPS = Object.freeze({
   INBOX_REFRESH: 'inbox:refresh',
   NETWORK_STATE_CHANGED: 'network:stateChanged',
   SHARD_STATE_CHANGED: 'shard:stateChanged',
+  CONTACT_SHARE_RELAY:   'contact:shareRelay',
+  CONTACT_SHARE_NOTIFY:  'contact:shareNotify',
+  CONTACT_SHARE_CONFIRM: 'contact:shareConfirm',
 });
 
 // ─── Network Types ───
@@ -216,6 +220,8 @@ export const TEMPLATES = Object.freeze({
   PARTIAL_ACTION_BAR:     `${T}/partials/action-bar.hbs`,
   PARTIAL_HUD_STRIP: `${T}/partials/hud-strip.hbs`,
   PARTIAL_TOAST: `${T}/partials/toast.hbs`,
+  CONTACT_SHARE_DIALOG:  `${T}/contact-share/contact-share-dialog.hbs`,
+  DATA_DROP_OVERLAY:     `${T}/data-drop/data-drop-overlay.hbs`,
   PARTIAL_METADATA_READOUT: `${T}/partials/metadata-readout.hbs`,
   PARTIAL_ENCRYPTED_ATTACHMENT: `${T}/partials/encrypted-attachment.hbs`,
   PARTIAL_ATTACHMENT_CHIP:      `${T}/partials/attachment-chip.hbs`,

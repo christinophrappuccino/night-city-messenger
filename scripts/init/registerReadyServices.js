@@ -44,6 +44,13 @@ export function registerReadyServices(initializer) {
     log.info('PortraitService initialized');
   });
 
+  // ─── ContactShareService ───
+  initializer.register('ready', 84, 'ContactShareService', async () => {
+    const { ContactShareService } = await import('../services/ContactShareService.js');
+    game.nightcity.contactShareService = new ContactShareService();
+    log.info('ContactShareService initialized');
+  });
+
   // ─── SocketManager init ───
   initializer.register('ready', 100, 'SocketManager init', () => {
     game.nightcity.socketManager.initialize();

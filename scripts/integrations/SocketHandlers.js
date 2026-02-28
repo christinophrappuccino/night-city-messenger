@@ -69,6 +69,32 @@ export class SocketHandlers {
       }
     });
 
+    // ─── Contact Share Relay (Player → GM) ────────────────
+    socketManager.register(SOCKET_OPS.CONTACT_SHARE_RELAY, async (data) => {
+      if (!game.user.isGM) return;
+      log.debug('Socket: contact:shareRelay received', data.shareId);
+      const shareService = game.nightcity?.contactShareService;
+      if (shareService) {
+        await shareService.handleShareRelay(data);
+      }
+    });
+
+    // ─── Contact Share Notification (GM → Recipient) ──────
+    socketManager.register(SOCKET_OPS.CONTACT_SHARE_NOTIFY, async (data) => {
+      const shareService = game.nightcity?.contactShareService;
+      if (shareService) {
+        await shareService.handleShareNotification(data);
+      }
+    });
+
+    // ─── Contact Share Confirmation (GM → Sender) ─────────
+    socketManager.register(SOCKET_OPS.CONTACT_SHARE_CONFIRM, (data) => {
+      const shareService = game.nightcity?.contactShareService;
+      if (shareService) {
+        shareService.handleShareConfirmation(data);
+      }
+    });
+
     log.info('Socket handlers registered');
   }
 }

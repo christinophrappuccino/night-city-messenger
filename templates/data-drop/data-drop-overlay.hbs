@@ -1,0 +1,83 @@
+{{!--
+  Data Drop Overlay — Animated Contact Transmission
+  @file templates/data-drop/data-drop-overlay.hbs
+  @module cyberpunkred-messenger
+  @description Full-screen overlay showing the Data Drop animation.
+    Route visualization, phase text, progress bar, and contact card materialization.
+    Matches mockup View 4.
+
+  Animation phases (JS adds classes over ~3.5s):
+    1. Route nodes light up: --done / --active
+    2. Phase text progresses: --active → --done
+    3. Progress bar fills
+    4. Card materializes: avatar → name (typing reveal) → email → badges
+    5. Status flashes: "CONTACT ACQUIRED" / "CONTACT TRANSMITTED"
+
+  Context:
+    senderName    — Display name of sender
+    recipientName — Display name of recipient
+    relayName     — Relay node label (e.g. "CITINET RELAY")
+    contactName   — Name of the contact being shared
+    contactEmail  — Email of the contact
+    portrait      — Portrait URL/base64 or null
+    avatarColor   — CSS color for initials fallback
+    initials      — 1-2 char initials
+    role          — Uppercase role string (e.g. "FIXER")
+    tags          — Array of tag strings (max 3)
+    isSender      — Boolean
+    statusText    — "CONTACT ACQUIRED" or "CONTACT TRANSMITTED"
+--}}
+
+<div class="ncm-datadrop">
+  {{!-- Scan line effect (CSS ::before) --}}
+
+  {{!-- ═══ Route Visualization ═══ --}}
+  <div class="ncm-datadrop__route">
+    <span class="ncm-datadrop__node">{{senderName}}</span>
+    <span class="ncm-datadrop__hop">→→→</span>
+    <span class="ncm-datadrop__node">{{relayName}}</span>
+    <span class="ncm-datadrop__hop">→→→</span>
+    <span class="ncm-datadrop__node">{{recipientName}}</span>
+  </div>
+
+  {{!-- ═══ Phase Text ═══ --}}
+  <div class="ncm-datadrop__phases">
+    <div class="ncm-datadrop__phase">Establishing connection...</div>
+    <div class="ncm-datadrop__phase">Authenticating sender...</div>
+    <div class="ncm-datadrop__phase">Transmitting contact data...</div>
+  </div>
+
+  {{!-- ═══ Progress Bar ═══ --}}
+  <div class="ncm-datadrop__progress">
+    <div class="ncm-datadrop__progress-fill" style="width: 0%;"></div>
+  </div>
+
+  {{!-- ═══ Materializing Contact Card ═══ --}}
+  <div class="ncm-datadrop__card">
+    <div class="ncm-datadrop__card-avatar"
+         style="color: {{avatarColor}}; border-color: {{avatarColor}}33;">
+      {{#if portrait}}
+        <img src="{{portrait}}" alt="{{contactName}}">
+      {{else}}
+        {{initials}}
+      {{/if}}
+    </div>
+    <div class="ncm-datadrop__card-info">
+      <div class="ncm-datadrop__card-name">{{contactName}}</div>
+      <div class="ncm-datadrop__card-email">{{contactEmail}}</div>
+      <div class="ncm-datadrop__card-badges">
+        {{#if role}}
+          <span class="ncm-badge">{{role}}</span>
+        {{/if}}
+        {{#each tags}}
+          <span class="ncm-badge">{{this}}</span>
+        {{/each}}
+      </div>
+    </div>
+  </div>
+
+  {{!-- ═══ Status Text ═══ --}}
+  <div class="ncm-datadrop__status">
+    <i class="fas fa-circle-check"></i> {{statusText}}
+  </div>
+</div>
