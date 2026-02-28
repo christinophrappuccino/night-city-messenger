@@ -77,8 +77,8 @@
 
         {{!-- Priority badge (inline with subject) --}}
         {{#if (neq message.priority "normal")}}
-          {{> "modules/cyberpunkred-messenger/templates/partials/tag-badge.hbs"
-              label=message.priority variant=message.priorityVariant }}
+        {{> "modules/cyberpunkred-messenger/templates/partials/tag-badge.hbs"
+            label=message.priority variant=message.priorityVariant icon=message.priorityIcon }}
         {{/if}}
 
         {{!-- §2.5 Thread Badge Pill --}}

@@ -513,11 +513,14 @@
    §20  THREAT / DAEMON BADGES — Sprint 2C (§2.7)
    Messages carrying malware get a pulsing red threat badge
    and a subtle red background tint on the entire list item.
+
+   SPECIFICITY NOTE: All variant rules use double-class selectors
+   (.ncm-badge.ncm-badge--X) to guarantee they override the base
+   .ncm-badge rule in components.css (specificity 0,2,0 → 0,3,0).
    ═══════════════════════════════════════════════════════════ */
 
-/* ── Threat badge (reusable .ncm-badge--threat) ── */
-/* ── Base threat badge — shared structure ── */
-.ncm-app .ncm-badge--threat {
+/* ── Base threat badge — shared structure + fallback ── */
+.ncm-app .ncm-badge.ncm-badge--threat {
   display: inline-flex;
   align-items: center;
   gap: 3px;
@@ -529,7 +532,7 @@
   text-transform: uppercase;
   letter-spacing: 0.1em;
   white-space: nowrap;
-  /* Default threat styling (fallback) */
+  /* Fallback for unknown threat types */
   background: rgba(255, 0, 51, 0.15);
   color: var(--ncm-danger, #ff0033);
   border: 1px solid rgba(255, 0, 51, 0.3);
@@ -539,34 +542,74 @@
   font-size: 8px;
 }
 
-/* ── BLACK ICE — most dangerous, pulsing red glow ── */
-.ncm-app .ncm-badge--black-ice {
+/* ── BLACK ICE — most dangerous, pulsing red glow, white text ── */
+.ncm-app .ncm-badge.ncm-badge--threat.ncm-badge--black-ice {
   background: rgba(255, 0, 0, 0.2);
   border: 1px solid rgba(255, 0, 0, 0.6);
   color: #ffffff;
   animation: ncm-threat-glow 1.5s ease-in-out infinite;
 }
 
-/* ── DAEMON — dangerous, subtle pulse ── */
-.ncm-app .ncm-badge--daemon {
+/* ── DAEMON — dangerous, subtle pulse, red text ── */
+.ncm-app .ncm-badge.ncm-badge--threat.ncm-badge--daemon {
   background: rgba(255, 0, 51, 0.15);
   border: 1px solid rgba(255, 0, 51, 0.4);
   color: var(--ncm-primary, #F65261);
   animation: ncm-threat-glow-subtle 2s ease-in-out infinite;
 }
 
-/* ── WORM — spreading, orange ── */
-.ncm-app .ncm-badge--worm {
+/* ── WORM — spreading, orange, no animation ── */
+.ncm-app .ncm-badge.ncm-badge--threat.ncm-badge--worm {
   background: rgba(255, 100, 0, 0.12);
   border: 1px solid rgba(255, 100, 0, 0.35);
   color: #ff6a13;
+  animation: none;
 }
 
-/* ── TROJAN — hidden, amber ── */
-.ncm-app .ncm-badge--trojan {
+/* ── TROJAN — hidden, amber, no animation ── */
+.ncm-app .ncm-badge.ncm-badge--threat.ncm-badge--trojan {
   background: rgba(255, 170, 0, 0.1);
   border: 1px solid rgba(255, 170, 0, 0.3);
   color: #ffaa00;
+  animation: none;
+}
+
+/* ── NETWORK BADGES — double-class for specificity ── */
+.ncm-app .ncm-badge.ncm-badge--network-darknet {
+  background: rgba(180, 77, 255, 0.15);
+  border: 1px solid rgba(180, 77, 255, 0.4);
+  color: #b44dff;
+}
+
+.ncm-app .ncm-badge.ncm-badge--network-corpnet {
+  background: rgba(247, 201, 72, 0.12);
+  border: 1px solid rgba(247, 201, 72, 0.35);
+  color: #f7c948;
+}
+
+.ncm-app .ncm-badge.ncm-badge--network-citinet {
+  background: rgba(25, 243, 247, 0.1);
+  border: 1px solid rgba(25, 243, 247, 0.3);
+  color: #19f3f7;
+}
+
+/* ── PRIORITY BADGES — target both naming conventions ── */
+.ncm-app .ncm-badge.ncm-badge--critical,
+.ncm-app .ncm-badge.ncm-badge--priority-critical {
+  background: rgba(255, 0, 51, 0.12);
+  border: 1px solid rgba(255, 0, 51, 0.4);
+  color: #F65261;
+  border-radius: 1px;
+  animation: none;
+}
+
+.ncm-app .ncm-badge.ncm-badge--urgent,
+.ncm-app .ncm-badge.ncm-badge--priority-urgent {
+  background: rgba(255, 170, 0, 0.1);
+  border: 1px solid rgba(255, 170, 0, 0.35);
+  color: #ffaa00;
+  border-radius: 1px;
+  animation: none;
 }
 
 /* ── Threat message item tint ── */
@@ -590,17 +633,15 @@
   background: rgba(255, 0, 51, 0.03);
 }
 
-/* Infected icon styling in status icons */
+/* ── Status icon styling ── */
 .ncm-app .ncm-message-item__icon--infected {
   color: var(--ncm-danger, #ff0033);
   animation: ncm-threat-pulse 1.5s ease-in-out infinite;
 }
 
-/* ── Saved icon styling ── */
 .ncm-app .ncm-message-item__icon--saved {
   color: var(--ncm-accent, #f7c948);
 }
-
 
 /* ═══════════════════════════════════════════════════════════
    §21  COLOR-CODED AVATAR ENHANCEMENTS — Sprint 2C (§2.9)

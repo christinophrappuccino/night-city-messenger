@@ -1120,6 +1120,21 @@ export class MessageViewerApp extends BaseApplication {
     if (msgNetworkNorm.includes('dark')) networkBadgeVariant = 'darknet';
     else if (msgNetworkNorm.includes('corp')) networkBadgeVariant = 'corpnet';
 
+    // Network badge icon — distinct per network
+    const networkIconMap = {
+      'darknet': 'fa-user-secret',
+      'corpnet': 'fa-building',
+      'citinet': 'fa-wifi',
+    };
+    const networkBadgeIcon = networkIconMap[networkBadgeVariant] || 'fa-network-wired';
+
+    // Priority icon for detail panel tag-badge partial
+    const priorityIconMap = {
+      'critical': 'fas fa-triangle-exclamation',
+      'urgent': 'fas fa-bolt',
+    };
+    const priorityIcon = priorityIconMap[(msg.priority || '').toLowerCase()] || '';
+
     // §2.7 — Threat badge for malware
     const threatBadge = getThreatBadgeData(msg);
 
@@ -1139,6 +1154,7 @@ export class MessageViewerApp extends BaseApplication {
       showNetworkBadge,
       networkBadgeLabel,
       networkBadgeVariant,
+      networkBadgeIcon, 
       threatBadge,
     };
   }
