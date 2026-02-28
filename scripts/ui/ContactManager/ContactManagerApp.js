@@ -250,7 +250,7 @@ export class ContactManagerApp extends BaseApplication {
     this._setupSearchInput();
     this._setupKeyboardShortcuts();
     if (game.user.isGM) {
-      this._setupTrustHoverPreview(options.element);
+      this._setupTrustHoverPreview(this.element);
     }
   }
 
@@ -728,15 +728,13 @@ export class ContactManagerApp extends BaseApplication {
 
     if (result.success) {
       // ── SUCCESS: Unscramble animation ──
-      _playUnscrambleAnimation(overlayEl, cardEl, () => {
-        this.render();
-      });
+      this._playUnscrambleAnimation(overlayEl, cardEl, () => { this.render(); });
     } else if (result.error) {
       // Service-level error (not a failed roll)
       ui.notifications.error(result.error);
     } else {
       // ── FAILED ROLL: Denied animation ──
-      _playDeniedAnimation(overlayEl);
+      this._playDeniedAnimation(overlayEl);
     }
   }
 
@@ -999,7 +997,7 @@ export class ContactManagerApp extends BaseApplication {
       const cardEl = this.element?.querySelector(`[data-contact-id="${contactId}"]`);
 
       if (overlayEl) {
-        _playUnscrambleAnimation(overlayEl, cardEl, () => this.render());
+        this._playUnscrambleAnimation(overlayEl, cardEl, () => { this.render(); });
       } else {
         this.render();
       }
@@ -1029,7 +1027,7 @@ export class ContactManagerApp extends BaseApplication {
    * @param {HTMLElement} cardEl    — The parent card element
    * @param {Function}    onComplete — Called when animation finishes
    */
-  function _playUnscrambleAnimation(overlayEl, cardEl, onComplete) {
+  _playUnscrambleAnimation(overlayEl, cardEl, onComplete) {
     if (!overlayEl) {
       onComplete?.();
       return;
@@ -1057,7 +1055,7 @@ export class ContactManagerApp extends BaseApplication {
    *
    * @param {HTMLElement} overlayEl — The .ncm-encrypted-overlay element
    */
-  function _playDeniedAnimation(overlayEl) {
+  _playDeniedAnimation(overlayEl) {
     if (!overlayEl) return;
 
     // Inject ACCESS DENIED text if not present
