@@ -68,6 +68,7 @@ export class ContactManagerApp extends BaseApplication {
   get networkService() { return game.nightcity?.networkService; }
   get messageService() { return game.nightcity?.messageService; }
   get portraitService() { return game.nightcity?.portraitService; }
+  get contactBreachService() { return game.nightcity?.contactBreachService; }
 
   // ═══════════════════════════════════════════════════════════
   //  ApplicationV2 Configuration
@@ -110,6 +111,11 @@ export class ContactManagerApp extends BaseApplication {
       uploadPortrait: ContactManagerApp._onUploadPortrait,
       breachContact:  ContactManagerApp._onBreachContact,
       removePortrait: ContactManagerApp._onRemovePortrait,
+      setTrustLevel:    ContactManagerApp._onSetTrustLevel,
+      burnContact:      ContactManagerApp._onBurnContact,
+      restoreContact:   ContactManagerApp._onRestoreContact,
+      breachContact:    ContactManagerApp._onBreachContact,
+      forceDecrypt:     ContactManagerApp._onForceDecrypt,
 
       // ─── Other ───
       openSettings:   ContactManagerApp._onOpenSettings,
@@ -243,6 +249,36 @@ export class ContactManagerApp extends BaseApplication {
     super._onRender(context, options);
     this._setupSearchInput();
     this._setupKeyboardShortcuts();
+    if (game.user.isGM) {
+      this._setupTrustHoverPreview(options.element);
+    }
+  }
+
+  /**
+   * Set up hover preview on interactive trust segments.
+   * When hovering segment N, all segments 1..N light up with preview class.
+   * @param {HTMLElement} element
+   */
+  _setupTrustHoverPreview(element) {
+    const interactiveBars = element.querySelectorAll('.ncm-trust-detail__bar--interactive');
+
+    for (const bar of interactiveBars) {
+      const segments = [...bar.querySelectorAll('.ncm-trust-detail__segment')];
+
+      bar.addEventListener('mouseover', (e) => {
+        const seg = e.target.closest('.ncm-trust-detail__segment');
+        if (!seg) return;
+        const idx = segments.indexOf(seg);
+        if (idx < 0) return;
+        segments.forEach((s, i) => {
+          s.classList.toggle('ncm-trust-detail__segment--preview', i <= idx);
+        });
+      });
+
+      bar.addEventListener('mouseleave', () => {
+        segments.forEach(s => s.classList.remove('ncm-trust-detail__segment--preview'));
+      });
+    }
   }
 
   /**
@@ -301,6 +337,8 @@ export class ContactManagerApp extends BaseApplication {
     this.subscribe(EVENTS.CONTACT_SHARED, () => this.render());
     this.subscribe(EVENTS.CONTACT_TRUST_CHANGED, () => this.render());
     this.subscribe(EVENTS.CONTACT_TAGS_UPDATED, () => this.render());
+    this.subscribe(EVENTS.CONTACT_DECRYPTED, () => this.render());
+    this.subscribe(EVENTS.CONTACT_BREACH_FAILED, () => {});
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -647,15 +685,327 @@ export class ContactManagerApp extends BaseApplication {
 
 
   /**
-   * Attempt to breach an encrypted contact (Sprint 3.7 — stub).
+   * Player clicks encrypted overlay → attempt breach via ContactBreachService.
+   * Handles success (unscramble animation) and failure (denied animation).
+   * @static
    */
-  static _onBreachContact(event, target) {
+  async function _onBreachContact(event, target) {
     event.stopPropagation();
+
     const contactId = target.closest('[data-contact-id]')?.dataset.contactId;
     if (!contactId) return;
 
-    // TODO: Sprint 3.7 — Trigger hack flow via SkillService
-    ui.notifications.info('ICE breach coming in Sprint 3.7.');
+    // Get the actor performing the breach
+    const actor = game.user?.character;
+    if (!actor) {
+      ui.notifications.warn('Select a character to attempt the breach.');
+      return;
+    }
+
+    const breachService = this.contactBreachService;
+    if (!breachService) {
+      ui.notifications.error('Breach service not available.');
+      return;
+    }
+
+    // Find the overlay element for animation
+    const overlayEl = target.closest('.ncm-encrypted-overlay') || target;
+    const cardEl = overlayEl.closest('[data-contact-id]');
+
+    // Show breaching state
+    overlayEl.classList.add('ncm-encrypted-overlay--breaching');
+
+    // Attempt breach
+    const result = await breachService.attemptBreach(
+      this.actorId,
+      contactId,
+      actor,
+      { luckSpend: 0 } // TODO: Add luck dialog option in future
+    );
+
+    // Remove breaching indicator
+    overlayEl.classList.remove('ncm-encrypted-overlay--breaching');
+
+    if (result.success) {
+      // ── SUCCESS: Unscramble animation ──
+      _playUnscrambleAnimation(overlayEl, cardEl, () => {
+        this.render();
+      });
+    } else if (result.error) {
+      // Service-level error (not a failed roll)
+      ui.notifications.error(result.error);
+    } else {
+      // ── FAILED ROLL: Denied animation ──
+      _playDeniedAnimation(overlayEl);
+    }
+  }
+
+  /**
+   * GM sets trust level by clicking a segment in the trust detail panel.
+   * data-trust-value is 0-5 (0 = reset to unknown).
+   * @static
+   */
+  async function _onSetTrustLevel(event, target) {
+    event.stopPropagation();
+
+    if (!game.user.isGM) {
+      ui.notifications.warn('Only the GM can modify trust levels.');
+      return;
+    }
+
+    const contactId = target.closest('[data-contact-id]')?.dataset.contactId
+      || target.dataset.contactId;
+    const trustValue = parseInt(target.dataset.trustValue, 10);
+
+    if (!contactId || isNaN(trustValue)) return;
+
+    const contactRepo = this.contactRepo;
+    if (!contactRepo) return;
+
+    // Get contact name for feedback
+    const contacts = await contactRepo.getContacts(this.actorId);
+    const contact = contacts.find(c => c.id === contactId);
+    if (!contact) return;
+
+    // Set trust
+    const result = await contactRepo.setTrust(this.actorId, contactId, trustValue);
+    if (!result.success) {
+      ui.notifications.error(`Failed to update trust: ${result.error}`);
+      return;
+    }
+
+    // Determine trust label for toast
+    const labels = {
+      0: 'UNKNOWN', 1: 'LOW', 2: 'LOW', 3: 'MEDIUM', 4: 'HIGH', 5: 'HIGH'
+    };
+    const label = labels[trustValue] || 'UNKNOWN';
+
+    // Toast feedback
+    const notificationService = game.nightcity?.notificationService;
+    notificationService?.showToast(
+      'Trust Updated',
+      `${contact.name} → ${label}`,
+      trustValue >= 4 ? 'success' : trustValue >= 3 ? 'warning' : trustValue >= 1 ? 'error' : 'info',
+      3000
+    );
+
+    // EventBus for cross-component refresh
+    const eventBus = game.nightcity?.eventBus;
+    eventBus?.emit(EVENTS.CONTACT_TRUST_CHANGED, {
+      actorId: this.actorId,
+      contactId,
+      contactName: contact.name,
+      trust: trustValue,
+    });
+
+    // Sound
+    game.nightcity?.soundService?.play('notification');
+
+    // Re-render
+    this.render();
+  }
+
+  /**
+   * GM burns a contact. Shows confirmation dialog first.
+   * On confirm: sets burned=true, auto-drops trust to 1 if higher,
+   * fires events, shows toast, plays burn transition animation.
+   * @static
+   */
+  async function _onBurnContact(event, target) {
+    event.stopPropagation();
+
+    if (!game.user.isGM) {
+      ui.notifications.warn('Only the GM can burn contacts.');
+      return;
+    }
+
+    const contactId = target.closest('[data-contact-id]')?.dataset.contactId
+      || target.dataset.contactId;
+    if (!contactId) return;
+
+    const contactRepo = this.contactRepo;
+    if (!contactRepo) return;
+
+    // Get contact for confirmation
+    const contacts = await contactRepo.getContacts(this.actorId);
+    const contact = contacts.find(c => c.id === contactId);
+    if (!contact) return;
+
+    // Already burned? Shouldn't happen but guard
+    if (contact.burned) {
+      ui.notifications.info(`${contact.name} is already burned.`);
+      return;
+    }
+
+    // ── Confirmation Dialog ──
+    const confirmed = await Dialog.confirm({
+      title: 'Burn Contact',
+      content: `
+        <div style="font-family: 'Rajdhani', sans-serif; padding: 8px 0;">
+          <p style="color: #ff0033; font-weight: 700; font-size: 14px; margin-bottom: 6px;">
+            <i class="fas fa-fire"></i> Burn ${contact.name}?
+          </p>
+          <p style="color: #8888a0; font-size: 12px; line-height: 1.5;">
+            This marks the contact as compromised. Their identity is blown —
+            trust will drop to LOW and the contact will be flagged across all views.
+          </p>
+          <p style="color: #555570; font-size: 10px; margin-top: 8px;">
+            This action is reversible via "Restore Contact".
+          </p>
+        </div>
+      `,
+      yes: { icon: 'fas fa-fire', label: 'Burn' },
+      no: { icon: 'fas fa-times', label: 'Cancel' },
+      defaultYes: false,
+    });
+
+    if (!confirmed) return;
+
+    // ── Execute Burn ──
+
+    // Set burned flag
+    const burnResult = await contactRepo.setBurned(this.actorId, contactId, true);
+    if (!burnResult.success) {
+      ui.notifications.error(`Failed to burn contact: ${burnResult.error}`);
+      return;
+    }
+
+    // Auto-drop trust to 1 if currently higher
+    if (contact.trust > 1) {
+      await contactRepo.setTrust(this.actorId, contactId, 1);
+    }
+
+    // ── Play burn transition animation ──
+    // Find the card/list-item in the DOM and add transition classes
+    const app = this;
+    const cardEl = app.element?.querySelector(`[data-contact-id="${contactId}"]`);
+    if (cardEl) {
+      // Add flash + transition classes
+      cardEl.classList.add('ncm-card--burn-flash', 'ncm-card--burn-transition');
+
+      // Clean up after animation
+      setTimeout(() => {
+        cardEl.classList.remove('ncm-card--burn-flash', 'ncm-card--burn-transition');
+        app.render(); // Full re-render with burned state
+      }, 600);
+    } else {
+      // No DOM element found (maybe list view or off-screen), just re-render
+      this.render();
+    }
+
+    // Sound
+    game.nightcity?.soundService?.play('hack-fail');
+
+    // Toast
+    game.nightcity?.notificationService?.showContactBurned({
+      contactName: contact.name,
+      actorId: this.actorId,
+      contactId,
+    });
+
+    // EventBus
+    game.nightcity?.eventBus?.emit(EVENTS.CONTACT_BURNED, {
+      actorId: this.actorId,
+      contactId,
+      contactName: contact.name,
+      burned: true,
+    });
+  }
+
+  /**
+   * GM restores a burned contact. Reverses the burned flag
+   * but does NOT auto-restore trust level.
+   * @static
+   */
+  async function _onRestoreContact(event, target) {
+    event.stopPropagation();
+
+    if (!game.user.isGM) {
+      ui.notifications.warn('Only the GM can restore contacts.');
+      return;
+    }
+
+    const contactId = target.closest('[data-contact-id]')?.dataset.contactId
+      || target.dataset.contactId;
+    if (!contactId) return;
+
+    const contactRepo = this.contactRepo;
+    if (!contactRepo) return;
+
+    const contacts = await contactRepo.getContacts(this.actorId);
+    const contact = contacts.find(c => c.id === contactId);
+    if (!contact) return;
+
+    if (!contact.burned) {
+      ui.notifications.info(`${contact.name} is not burned.`);
+      return;
+    }
+
+    // Restore
+    const result = await contactRepo.setBurned(this.actorId, contactId, false);
+    if (!result.success) {
+      ui.notifications.error(`Failed to restore contact: ${result.error}`);
+      return;
+    }
+
+    // Toast
+    game.nightcity?.notificationService?.showToast(
+      'Contact Restored',
+      `${contact.name} — identity restored. Trust level unchanged.`,
+      'info',
+      4000
+    );
+
+    // Sound
+    game.nightcity?.soundService?.play('notification');
+
+    // EventBus
+    game.nightcity?.eventBus?.emit(EVENTS.CONTACT_BURNED, {
+      actorId: this.actorId,
+      contactId,
+      contactName: contact.name,
+      burned: false,
+    });
+
+    // Re-render
+    this.render();
+  }
+
+  /**
+   * GM force-decrypts an encrypted contact (bypasses ICE).
+   * @static
+   */
+  async function _onForceDecrypt(event, target) {
+    event.stopPropagation();
+
+    if (!game.user.isGM) return;
+
+    const contactId = target.closest('[data-contact-id]')?.dataset.contactId
+      || target.dataset.contactId;
+    if (!contactId) return;
+
+    const breachService = this.contactBreachService;
+    if (!breachService) {
+      ui.notifications.error('Breach service not available.');
+      return;
+    }
+
+    const result = await breachService.forceDecrypt(this.actorId, contactId);
+    if (result.success) {
+      // Find overlay for animation
+      const overlayEl = this.element?.querySelector(
+        `[data-contact-id="${contactId}"] .ncm-encrypted-overlay`
+      );
+      const cardEl = this.element?.querySelector(`[data-contact-id="${contactId}"]`);
+
+      if (overlayEl) {
+        _playUnscrambleAnimation(overlayEl, cardEl, () => this.render());
+      } else {
+        this.render();
+      }
+    } else {
+      ui.notifications.error(`Force decrypt failed: ${result.error}`);
+    }
   }
 
   /**
@@ -665,6 +1015,71 @@ export class ContactManagerApp extends BaseApplication {
     if (game.nightcity?.openThemeCustomizer) {
       game.nightcity.openThemeCustomizer();
     }
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Animation Helpers
+  // ═══════════════════════════════════════════════════════════
+
+  /**
+   * Play the unscramble/glitch-dissolve animation on the encrypted overlay.
+   * Overlay glitch-scrambles away, card does a resolve animation.
+   *
+   * @param {HTMLElement} overlayEl — The .ncm-encrypted-overlay element
+   * @param {HTMLElement} cardEl    — The parent card element
+   * @param {Function}    onComplete — Called when animation finishes
+   */
+  function _playUnscrambleAnimation(overlayEl, cardEl, onComplete) {
+    if (!overlayEl) {
+      onComplete?.();
+      return;
+    }
+
+    // Phase 1: Overlay glitch-dissolves (500ms)
+    overlayEl.classList.add('ncm-encrypted-overlay--unscramble');
+
+    // Phase 2: Card resolve animation (starts at 400ms, runs 300ms)
+    if (cardEl) {
+      setTimeout(() => {
+        cardEl.classList.add('ncm-card--decrypted-resolve');
+      }, 400);
+    }
+
+    // Phase 3: Clean up and re-render (after total ~800ms)
+    setTimeout(() => {
+      onComplete?.();
+    }, 800);
+  }
+
+  /**
+   * Play the denied animation on the encrypted overlay.
+   * Red flash + shake + ACCESS DENIED text.
+   *
+   * @param {HTMLElement} overlayEl — The .ncm-encrypted-overlay element
+   */
+  function _playDeniedAnimation(overlayEl) {
+    if (!overlayEl) return;
+
+    // Inject ACCESS DENIED text if not present
+    let deniedText = overlayEl.querySelector('.ncm-encrypted-overlay__denied-text');
+    if (!deniedText) {
+      deniedText = document.createElement('span');
+      deniedText.className = 'ncm-encrypted-overlay__denied-text';
+      deniedText.textContent = 'ACCESS DENIED';
+      overlayEl.appendChild(deniedText);
+    }
+
+    // Add animation classes
+    overlayEl.classList.add('ncm-encrypted-overlay--denied', 'ncm-encrypted-overlay--shake');
+
+    // Clean up after animation
+    setTimeout(() => {
+      overlayEl.classList.remove('ncm-encrypted-overlay--denied', 'ncm-encrypted-overlay--shake');
+      // Remove denied text after it fades
+      setTimeout(() => {
+        deniedText?.remove();
+      }, 1200);
+    }, 500);
   }
 
   // ═══════════════════════════════════════════════════════════

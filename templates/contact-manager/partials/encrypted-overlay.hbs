@@ -1,20 +1,32 @@
 {{!--
-  Encrypted Overlay — ICE lock display for encrypted contacts
+  Encrypted Overlay — ICE lock display for encrypted contacts (Sprint 3.7 update)
   @file templates/contact-manager/partials/encrypted-overlay.hbs
   @module cyberpunkred-messenger
   @description Dark overlay with pulsing lock icon, shown on encrypted contact cards.
-    Clicking triggers the breach/hack flow.
+    Clicking triggers the breach/hack flow. GM sees a force-decrypt bypass button.
 
-  @param {number} encryptionDV    — Difficulty value for the hack check
-  @param {string} encryptionSkill — Required skill (e.g. "Interface")
+  @param {number}  encryptionDV    — Difficulty value for the hack check
+  @param {string}  encryptionSkill — Required skill (e.g. "Interface")
+  @param {boolean} [isGM]          — Whether current user is GM (shows bypass)
+  @param {string}  [contactId]     — Contact ID (for force-decrypt data attribute)
 
   @example
     {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/encrypted-overlay.hbs"
-        encryptionDV=15 encryptionSkill="Interface" }}
+        encryptionDV=15 encryptionSkill="Interface" isGM=isGM contactId=contact.id }}
 --}}
 
 <div class="ncm-encrypted-overlay" data-action="breachContact">
   <i class="fas fa-lock"></i>
   <span class="ncm-encrypted-overlay__text">ICE Protected</span>
   <span class="ncm-encrypted-overlay__dv">DV {{encryptionDV}} · {{encryptionSkill}}</span>
+
+  {{!-- GM force-decrypt bypass --}}
+  {{#if isGM}}
+    <button class="ncm-encrypted-overlay__gm-bypass"
+            data-action="forceDecrypt"
+            data-contact-id="{{contactId}}"
+            title="GM: Force decrypt (bypass ICE)">
+      <i class="fas fa-shield-halved"></i> GM BYPASS
+    </button>
+  {{/if}}
 </div>

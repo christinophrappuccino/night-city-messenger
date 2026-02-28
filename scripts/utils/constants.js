@@ -26,6 +26,8 @@ export const EVENTS = Object.freeze({
   CONTACT_SHARE_STARTED: 'contacts:shareStarted',
   CONTACT_TRUST_CHANGED: 'contacts:trustChanged',
   CONTACT_TAGS_UPDATED:  'contacts:tagsUpdated',
+  CONTACT_DECRYPTED:      'contacts:decrypted',
+  CONTACT_BREACH_FAILED:  'contacts:breachFailed',
 
   NETWORK_CHANGED: 'network:changed',
   NETWORK_CONNECTED: 'network:connected',
@@ -206,6 +208,7 @@ export const TEMPLATES = Object.freeze({
   CONTACT_CARD:           `${T}/contact-manager/partials/contact-card.hbs`,
   CONTACT_LIST_ITEM:      `${T}/contact-manager/partials/contact-list-item.hbs`,
   CONTACT_TRUST_METER:    `${T}/contact-manager/partials/trust-meter.hbs`,
+  CONTACT_TRUST_DETAIL: `${T}/contact-manager/partials/trust-detail.hbs`,
   CONTACT_ENCRYPTED:      `${T}/contact-manager/partials/encrypted-overlay.hbs`,
   // Partials — Design System Components
   PARTIAL_SECTION_HEADER: `${T}/partials/section-header.hbs`,

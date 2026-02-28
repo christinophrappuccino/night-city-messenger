@@ -1,0 +1,72 @@
+{{!--
+  Trust Detail — Expanded trust meter for detail panels
+  @file templates/contact-manager/partials/trust-detail.hbs
+  @module cyberpunkred-messenger
+  @description Expanded trust display for the GM split-view detail panel
+    (and optionally player detail expand). Shows larger 18×6px segments,
+    a trust level text label, and for GMs: clickable segments to set trust.
+
+  @param {string}  trustClass    — CSS class: ncm-trust--high|med|low|unknown
+  @param {Array}   trustSegments — Array of 5 booleans, true = active segment
+  @param {boolean} isUnverified  — If true, shows UNVERIFIED label
+  @param {string}  trustDescription — Full trust text: "HIGH — Reliable, proven track record"
+  @param {number}  trustLevel    — Numeric trust value (0-5)
+  @param {boolean} isGM          — Whether current user is GM (enables click-to-set)
+  @param {string}  contactId     — Contact ID (for data attributes on GM controls)
+
+  @example
+    {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/trust-detail.hbs"
+        trustClass=trustClass trustSegments=trustSegments isUnverified=isUnverified
+        trustDescription=trustData.description trustLevel=contact.trust
+        isGM=isGM contactId=contact.id }}
+--}}
+
+<div class="ncm-trust-detail {{trustClass}}" data-contact-id="{{contactId}}">
+  <div class="ncm-trust-detail__header">
+    <span class="ncm-trust-detail__label">TRUST LEVEL</span>
+  </div>
+
+  <div class="ncm-trust-detail__meter">
+    {{!-- Segments: clickable for GM, display-only for players --}}
+    <div class="ncm-trust-detail__bar {{#if isGM}}ncm-trust-detail__bar--interactive{{/if}}">
+      {{!-- trustSegmentsDetail: [{value:1,active:true}, {value:2,active:true}, ...] --}}
+      {{#each trustSegmentsDetail}}
+        <div class="ncm-trust-detail__segment {{#if active}}active{{/if}}"
+             data-segment-index="{{@index}}"
+             {{#if ../isGM}}
+               data-action="setTrustLevel"
+               data-trust-value="{{value}}"
+               data-contact-id="{{../contactId}}"
+               title="Set trust to {{value}}"
+             {{/if}}>
+        </div>
+      {{/each}}
+    </div>
+
+    {{!-- Trust level text --}}
+    {{#if isUnverified}}
+      <span class="ncm-trust-detail__text ncm-trust-detail__text--unknown">
+        UNKNOWN — No established history
+      </span>
+    {{else}}
+      <span class="ncm-trust-detail__text ncm-trust-detail__text--{{trustData.level}}">
+        {{trustDescription}}
+      </span>
+    {{/if}}
+  </div>
+
+  {{!-- GM: Reset to unknown button --}}
+  {{#if isGM}}
+    <div class="ncm-trust-detail__gm-controls">
+      {{#if (gt trustLevel 0)}}
+        <button class="ncm-trust-detail__reset"
+                data-action="setTrustLevel"
+                data-trust-value="0"
+                data-contact-id="{{contactId}}"
+                title="Reset to UNKNOWN">
+          <i class="fas fa-rotate-left"></i> Reset
+        </button>
+      {{/if}}
+    </div>
+  {{/if}}
+</div>

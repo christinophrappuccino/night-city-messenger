@@ -1,5 +1,5 @@
 {{!--
-  Contact Card — Grid view card for a single contact
+  Contact Card — Grid view card for a single contact (Sprint 3.7 update)
   @file templates/contact-manager/partials/contact-card.hbs
   @module cyberpunkred-messenger
   @description Renders a single contact as a card in the grid view.
@@ -7,11 +7,9 @@
     custom tag chips, network indicator, and hover quick actions.
     Handles burned, encrypted, and selected states.
 
-  @param {object} contact — Enriched contact object from enrichContactForDisplay()
+    Sprint 3.7 update: passes isGM + contactId to encrypted overlay for GM bypass.
 
-  @example
-    {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/contact-card.hbs"
-        contact=this }}
+  @param {object} contact — Enriched contact object from enrichContactForDisplay()
 --}}
 
 <div class="{{cardClasses}}" data-contact-id="{{id}}" data-action="selectContact">
@@ -19,7 +17,8 @@
   {{!-- Encrypted overlay --}}
   {{#if isEncrypted}}
     {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/encrypted-overlay.hbs"
-        encryptionDV=encryptionDV encryptionSkill=encryptionSkill }}
+        encryptionDV=encryptionDV encryptionSkill=encryptionSkill
+        isGM=../isGM contactId=id }}
   {{/if}}
 
   {{!-- Hover quick actions --}}

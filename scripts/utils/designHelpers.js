@@ -541,12 +541,14 @@ const ROLE_ICONS = {
  */
 export function getTrustData(trust) {
   const segments = [1, 2, 3, 4, 5].map(i => i <= trust);
+  const segmentsDetail = [1, 2, 3, 4, 5].map(value => ({ value, active: value <= trust }));
 
   if (trust >= 4) {
     return {
       level: 'high', class: 'ncm-trust--high',
       description: 'HIGH — Reliable, proven track record',
       segments,
+      segmentsDetail,
     };
   }
   if (trust === 3) {
@@ -554,6 +556,7 @@ export function getTrustData(trust) {
       level: 'med', class: 'ncm-trust--med',
       description: 'MEDIUM — Proceed with caution',
       segments,
+      segmentsDetail,
     };
   }
   if (trust >= 1) {
@@ -561,12 +564,14 @@ export function getTrustData(trust) {
       level: 'low', class: 'ncm-trust--low',
       description: 'LOW — Known risk, verify everything',
       segments,
+      segmentsDetail,
     };
   }
   return {
     level: 'unknown', class: 'ncm-trust--unknown',
     description: 'UNKNOWN — No established history',
     segments,
+    segmentsDetail,
   };
 }
 
@@ -623,7 +628,7 @@ export function getContactNetworkClass(network) {
  * Takes raw contact data and adds all display-computed fields.
  *
  * @param {object} contact — Raw contact from ContactRepository
- * @param {object} [options] — { selectedId, currentNetwork }
+ * @param {object} [options] — { selectedId, currentNetwork, isGM }
  * @returns {object} Enriched contact ready for Handlebars
  */
 export function enrichContactForDisplay(contact, options = {}) {
@@ -687,6 +692,12 @@ export function enrichContactForDisplay(contact, options = {}) {
     isEncrypted: contact.encrypted,
     isFavorite: contact.favorite,
     isSelected: contact.id === options.selectedId,
+
+    // Trust detail segments
+    trustSegmentsDetail: trustData.segmentsDetail,
+
+    // GM flag for overlay bypass button
+    isGM: options.isGM ?? game.user?.isGM ?? false,
 
     // Card CSS classes (composed)
     cardClasses: [

@@ -10,6 +10,8 @@ import { log } from '../utils/helpers.js';
 import { TimeService } from '../services/TimeService.js';
 import { ThemeService } from '../services/ThemeService.js';
 import { SoundService } from '../services/SoundService.js';
+import { ContactBreachService } from '../services/ContactBreachService.js';
+
 
 export function registerReadyServices(initializer) {
 
@@ -35,6 +37,12 @@ export function registerReadyServices(initializer) {
     const soundService = new SoundService(game.nightcity.settingsManager);
     await soundService.initialize();
     game.nightcity.soundService = soundService;
+  });
+
+  //  ─── ContactBreachService ───
+  initializer.register('ready', 83, 'ContactBreachService', async () => {
+    game.nightcity.contactBreachService = new ContactBreachService();
+    log.info('ContactBreachService initialized');
   });
 
   // ─── PortraitService ───
