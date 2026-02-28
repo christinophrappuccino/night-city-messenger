@@ -332,12 +332,11 @@ export class ContactManagerApp extends BaseApplication {
   // ═══════════════════════════════════════════════════════════
 
   _setupEventSubscriptions() {
-    // Re-render when contacts are modified externally (e.g. GM push)
     this.subscribe(EVENTS.CONTACT_BURNED, () => this.render());
     this.subscribe(EVENTS.CONTACT_SHARED, () => this.render());
     this.subscribe(EVENTS.CONTACT_TRUST_CHANGED, () => this.render());
     this.subscribe(EVENTS.CONTACT_TAGS_UPDATED, () => this.render());
-    this.subscribe(EVENTS.CONTACT_DECRYPTED, () => this.render());
+    this.subscribe(EVENTS.CONTACT_DECRYPTED, () => {});
     this.subscribe(EVENTS.CONTACT_BREACH_FAILED, () => {});
   }
 
@@ -1033,20 +1032,33 @@ export class ContactManagerApp extends BaseApplication {
       return;
     }
 
-    // Phase 1: Overlay glitch-dissolves (500ms)
+    // Inject ACCESS GRANTED text
+    let grantedText = overlayEl.querySelector('.ncm-encrypted-overlay__granted-text');
+    if (!grantedText) {
+      grantedText = document.createElement('span');
+      grantedText.className = 'ncm-encrypted-overlay__granted-text';
+      grantedText.textContent = 'ACCESS GRANTED';
+      overlayEl.appendChild(grantedText);
+    }
+
+    // Hide GM bypass button during animation
+    const gmBypass = overlayEl.querySelector('.ncm-encrypted-overlay__gm-bypass');
+    if (gmBypass) gmBypass.style.display = 'none';
+
+    // Phase 1: Overlay shatter (900ms)
     overlayEl.classList.add('ncm-encrypted-overlay--unscramble');
 
-    // Phase 2: Card resolve animation (starts at 400ms, runs 300ms)
+    // Phase 2: Card resolve (starts at 700ms)
     if (cardEl) {
       setTimeout(() => {
         cardEl.classList.add('ncm-card--decrypted-resolve');
-      }, 400);
+      }, 700);
     }
 
-    // Phase 3: Clean up and re-render (after total ~800ms)
+    // Phase 3: Cleanup + re-render (1300ms)
     setTimeout(() => {
       onComplete?.();
-    }, 800);
+    }, 1300);
   }
 
   /**
