@@ -689,7 +689,7 @@ export class ContactManagerApp extends BaseApplication {
    * Handles success (unscramble animation) and failure (denied animation).
    * @static
    */
-  async function _onBreachContact(event, target) {
+  static async _onBreachContact(event, target) {
     event.stopPropagation();
 
     const contactId = target.closest('[data-contact-id]')?.dataset.contactId;
@@ -745,7 +745,7 @@ export class ContactManagerApp extends BaseApplication {
    * data-trust-value is 0-5 (0 = reset to unknown).
    * @static
    */
-  async function _onSetTrustLevel(event, target) {
+  static async _onSetTrustLevel(event, target) {
     event.stopPropagation();
 
     if (!game.user.isGM) {
@@ -811,7 +811,7 @@ export class ContactManagerApp extends BaseApplication {
    * fires events, shows toast, plays burn transition animation.
    * @static
    */
-  async function _onBurnContact(event, target) {
+  static async _onBurnContact(event, target) {
     event.stopPropagation();
 
     if (!game.user.isGM) {
@@ -917,7 +917,7 @@ export class ContactManagerApp extends BaseApplication {
    * but does NOT auto-restore trust level.
    * @static
    */
-  async function _onRestoreContact(event, target) {
+  static async _onRestoreContact(event, target) {
     event.stopPropagation();
 
     if (!game.user.isGM) {
@@ -975,7 +975,7 @@ export class ContactManagerApp extends BaseApplication {
    * GM force-decrypts an encrypted contact (bypasses ICE).
    * @static
    */
-  async function _onForceDecrypt(event, target) {
+  static async _onForceDecrypt(event, target) {
     event.stopPropagation();
 
     if (!game.user.isGM) return;
