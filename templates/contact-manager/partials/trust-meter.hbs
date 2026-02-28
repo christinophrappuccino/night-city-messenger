@@ -1,0 +1,31 @@
+{{!--
+  Trust Meter — 5-segment bar with level coloring
+  @file templates/contact-manager/partials/trust-meter.hbs
+  @module cyberpunkred-messenger
+  @description Renders the trust/reputation meter for contacts.
+    Shows colored segments for known trust levels, or "UNVERIFIED" text for unknown.
+
+  @param {string} trustClass  — CSS class: ncm-trust--high|med|low|unknown
+  @param {Array}  trustSegments — Array of 5 booleans, true = active segment
+  @param {boolean} isUnverified — If true, shows UNVERIFIED label instead of bar
+  @param {string} [size]       — "compact" for list view (smaller segments)
+
+  @example
+    {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/trust-meter.hbs"
+        trustClass=trustClass trustSegments=trustSegments isUnverified=isUnverified }}
+--}}
+
+{{#if isUnverified}}
+  <span class="ncm-unverified">UNVERIFIED</span>
+{{else}}
+  <div class="ncm-trust {{trustClass}}">
+    {{#unless (eq size "compact")}}
+      <span class="ncm-trust__label">Trust</span>
+    {{/unless}}
+    <div class="ncm-trust__bar">
+      {{#each trustSegments}}
+        <div class="ncm-trust__segment {{#if this}}active{{/if}}"></div>
+      {{/each}}
+    </div>
+  </div>
+{{/if}}

@@ -1,178 +1,152 @@
-{{!-- Contact Manager — View / Add / Edit / Delete contacts --}}
-<div class="ncm-contacts">
+{{!--
+  Contact Manager — Sprint 3 Player Directory
+  @file templates/contact-manager/contact-manager.hbs
+  @module cyberpunkred-messenger
+  @description Player contact directory with grid/list toggle, custom tag filtering,
+    search, trust meters, portraits, burned/encrypted states.
+    Matches ncm-contacts-mockup-v3.html spec.
+--}}
 
-  {{!-- Header --}}
-  <div class="ncm-contacts__header">
-    <div class="ncm-contacts__header-left">
-      <h2 class="ncm-contacts__title">
-        <i class="fas fa-address-book"></i> Contacts
-      </h2>
-      <span class="ncm-contacts__count">{{contactCount}} contacts</span>
-    </div>
-    <div class="ncm-contacts__header-right">
-      <button class="ncm-btn ncm-btn--small" data-action="importActor" data-tooltip="Import from actors">
-        <i class="fas fa-user-plus"></i> Import
-      </button>
-      <button class="ncm-btn ncm-btn--primary ncm-btn--small" data-action="addContact">
-        <i class="fas fa-plus"></i> Add
-      </button>
-    </div>
-  </div>
+<div class="ncm-contacts-v3">
 
-  {{!-- Search --}}
-  <div class="ncm-contacts__search">
-    <i class="fas fa-search ncm-search-icon"></i>
-    <input type="text" class="ncm-contact-search ncm-input" 
-           placeholder="Search contacts..." value="{{searchTerm}}">
-  </div>
-
-  {{!-- Add/Edit Form --}}
-  {{#if isAdding}}
-  <div class="ncm-contact-form-wrapper">
-    <h3 class="ncm-form-title">New Contact</h3>
-    <form class="ncm-contact-form">
-      <div class="ncm-form-grid">
-        <div class="ncm-field ncm-field--half">
-          <label class="ncm-field__label">Name *</label>
-          <input type="text" name="name" class="ncm-input" placeholder="Contact name" required>
-        </div>
-        <div class="ncm-field ncm-field--half">
-          <label class="ncm-field__label">Email</label>
-          <input type="text" name="email" class="ncm-input" placeholder="handle@domain.net">
-        </div>
-        <div class="ncm-field ncm-field--half">
-          <label class="ncm-field__label">Alias</label>
-          <input type="text" name="alias" class="ncm-input" placeholder="Street name">
-        </div>
-        <div class="ncm-field ncm-field--half">
-          <label class="ncm-field__label">Organization</label>
-          <input type="text" name="organization" class="ncm-input" placeholder="Corp / Gang / Fixer">
-        </div>
-        <div class="ncm-field ncm-field--half">
-          <label class="ncm-field__label">Phone</label>
-          <input type="text" name="phone" class="ncm-input" placeholder="(555) 2077">
-        </div>
-        <div class="ncm-field ncm-field--half">
-          <label class="ncm-field__label">Type</label>
-          <select name="type" class="ncm-input">
-            <option value="npc">NPC</option>
-            <option value="player">Player</option>
-            <option value="fixer">Fixer</option>
-            <option value="corp">Corp</option>
-          </select>
-        </div>
-        <div class="ncm-field ncm-field--full">
-          <label class="ncm-field__label">Tags (comma-separated)</label>
-          <input type="text" name="tags" class="ncm-input" placeholder="friend, fixer, dangerous">
-        </div>
-        <div class="ncm-field ncm-field--full">
-          <label class="ncm-field__label">Notes</label>
-          <textarea name="notes" class="ncm-textarea ncm-textarea--small" placeholder="Additional notes..."></textarea>
-        </div>
+  {{!-- ═══ Condensed Header ═══ --}}
+  <div class="ncm-header">
+    <div class="ncm-header__identity">
+      <div class="ncm-header__avatar" style="color: {{ownerAvatarColor}};">
+        {{#if ownerPortrait}}
+          <img src="{{ownerPortrait}}" alt="{{ownerName}}">
+        {{else}}
+          {{ownerInitials}}
+        {{/if}}
       </div>
-      <div class="ncm-form-actions">
-        <button type="button" class="ncm-btn ncm-btn--ghost" data-action="cancelEdit">Cancel</button>
-        <button type="button" class="ncm-btn ncm-btn--primary" data-action="saveContact">
-          <i class="fas fa-save"></i> Save
+      <div class="ncm-header__info">
+        <span class="ncm-header__name">{{ownerName}}</span>
+        <span class="ncm-header__email">{{ownerEmail}}</span>
+      </div>
+    </div>
+    <div class="ncm-header__divider"></div>
+    <div class="ncm-header__stats">
+      <div class="ncm-stat">
+        <span class="ncm-stat__value">{{contactCount}}</span>
+        <span class="ncm-stat__label">Contacts</span>
+      </div>
+      <div class="ncm-stat">
+        <span class="ncm-stat__value ncm-stat__value--success">{{onlineCount}}</span>
+        <span class="ncm-stat__label">Online</span>
+      </div>
+      <div class="ncm-stat">
+        <span class="ncm-stat__value ncm-stat__value--accent">{{favoriteCount}}</span>
+        <span class="ncm-stat__label">Favs</span>
+      </div>
+    </div>
+    <div class="ncm-header__actions">
+      <button class="ncm-btn ncm-btn--secondary" data-action="addContact">
+        <i class="fas fa-user-plus"></i> Add
+      </button>
+      <button class="ncm-btn ncm-btn--ghost" data-action="openSettings">
+        <i class="fas fa-gear"></i>
+      </button>
+    </div>
+  </div>
+
+  {{!-- ═══ Toolbar: Search + Filter Pills + View Toggle ═══ --}}
+  <div class="ncm-toolbar">
+
+    {{!-- Search row --}}
+    <div class="ncm-search-row">
+      <i class="fas fa-search"></i>
+      <input class="ncm-search-input ncm-contact-search" type="text"
+             placeholder="Search contacts..." value="{{searchTerm}}">
+      <span class="ncm-search-count">{{filteredCount}} contact{{#if (neq filteredCount 1)}}s{{/if}}</span>
+    </div>
+
+    {{!-- Filter pills + view toggle --}}
+    <div class="ncm-filter-row">
+
+      {{!-- ALL pill --}}
+      <span class="ncm-pill ncm-pill--all {{#unless hasActiveTagFilter}}ncm-pill--active{{/unless}}"
+            data-action="clearTagFilter">ALL</span>
+
+      {{!-- Custom tag pills --}}
+      {{#each allTags}}
+        <span class="ncm-pill ncm-pill--tag {{#if this.active}}ncm-pill--active{{/if}}"
+              data-action="toggleTagFilter" data-tag="{{this.name}}">
+          {{this.name}}
+          {{#if this.active}}
+            <span class="ncm-pill__remove" data-action="removeTagFilter" data-tag="{{this.name}}">×</span>
+          {{/if}}
+        </span>
+      {{/each}}
+
+      {{!-- Add tag button --}}
+      <span class="ncm-pill ncm-pill--add" data-action="startAddTag" title="Create new tag">
+        <i class="fas fa-plus"></i> TAG
+      </span>
+
+      {{!-- Grid / List toggle --}}
+      <div class="ncm-view-toggle">
+        <button class="ncm-view-btn {{#if (eq viewMode 'grid')}}ncm-view-btn--active{{/if}}"
+                data-action="setViewMode" data-mode="grid" title="Grid view">
+          <i class="fas fa-grip"></i>
+        </button>
+        <button class="ncm-view-btn {{#if (eq viewMode 'list')}}ncm-view-btn--active{{/if}}"
+                data-action="setViewMode" data-mode="list" title="List view">
+          <i class="fas fa-list"></i>
         </button>
       </div>
-    </form>
+    </div>
   </div>
-  {{/if}}
 
-  {{!-- Contact List --}}
-  <div class="ncm-contact-list">
+  {{!-- ═══ Content Area: Grid or List ═══ --}}
+  <div class="ncm-content">
     {{#if isEmpty}}
-    <div class="ncm-empty-state">
-      <i class="fas fa-user-slash ncm-empty-state__icon"></i>
-      <p class="ncm-empty-state__text">No contacts yet</p>
-      <p class="ncm-empty-state__sub">Add contacts to start messaging.</p>
-    </div>
+
+      {{!-- Empty state --}}
+      <div class="ncm-empty">
+        {{#if hasSearch}}
+          <i class="fas fa-search"></i>
+          <div class="ncm-empty__text">No matches found</div>
+          <div class="ncm-empty__sub">Try adjusting your search or filters</div>
+        {{else}}
+          <i class="fas fa-user-slash"></i>
+          <div class="ncm-empty__text">No contacts yet</div>
+          <div class="ncm-empty__sub">Add contacts to start messaging</div>
+        {{/if}}
+      </div>
+
+    {{else if (eq viewMode "grid")}}
+
+      {{!-- Grid view --}}
+      <div class="ncm-grid">
+        {{#each contacts}}
+          {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/contact-card.hbs" }}
+        {{/each}}
+      </div>
+
     {{else}}
-    {{#each contacts}}
-    <div class="ncm-contact-item" data-contact-id="{{id}}">
-      {{#if isEditing}}
-      {{!-- Inline Edit Form --}}
-      <form class="ncm-contact-form ncm-contact-form--inline">
-        <div class="ncm-form-grid">
-          <div class="ncm-field ncm-field--half">
-            <label class="ncm-field__label">Name</label>
-            <input type="text" name="name" class="ncm-input" value="{{name}}">
-          </div>
-          <div class="ncm-field ncm-field--half">
-            <label class="ncm-field__label">Email</label>
-            <input type="text" name="email" class="ncm-input" value="{{email}}">
-          </div>
-          <div class="ncm-field ncm-field--half">
-            <label class="ncm-field__label">Alias</label>
-            <input type="text" name="alias" class="ncm-input" value="{{alias}}">
-          </div>
-          <div class="ncm-field ncm-field--half">
-            <label class="ncm-field__label">Organization</label>
-            <input type="text" name="organization" class="ncm-input" value="{{organization}}">
-          </div>
-          <div class="ncm-field ncm-field--half">
-            <label class="ncm-field__label">Phone</label>
-            <input type="text" name="phone" class="ncm-input" value="{{phone}}">
-          </div>
-          <div class="ncm-field ncm-field--half">
-            <label class="ncm-field__label">Type</label>
-            <select name="type" class="ncm-input">
-              <option value="npc" {{#if (eq type "npc")}}selected{{/if}}>NPC</option>
-              <option value="player" {{#if (eq type "player")}}selected{{/if}}>Player</option>
-              <option value="fixer" {{#if (eq type "fixer")}}selected{{/if}}>Fixer</option>
-              <option value="corp" {{#if (eq type "corp")}}selected{{/if}}>Corp</option>
-            </select>
-          </div>
-          <div class="ncm-field ncm-field--full">
-            <label class="ncm-field__label">Tags</label>
-            <input type="text" name="tags" class="ncm-input" value="{{displayTags}}">
-          </div>
-          <div class="ncm-field ncm-field--full">
-            <label class="ncm-field__label">Notes</label>
-            <textarea name="notes" class="ncm-textarea ncm-textarea--small">{{notes}}</textarea>
-          </div>
-        </div>
-        <div class="ncm-form-actions">
-          <button type="button" class="ncm-btn ncm-btn--ghost" data-action="cancelEdit">Cancel</button>
-          <button type="button" class="ncm-btn ncm-btn--primary" data-action="saveContact">Save</button>
-        </div>
-      </form>
-      {{else}}
-      {{!-- Contact Display --}}
-      <img src="{{img}}" class="ncm-contact-item__img" alt="{{name}}">
-      <div class="ncm-contact-item__info">
-        <div class="ncm-contact-item__name">{{name}}
-          {{#if alias}}<span class="ncm-contact-item__alias">"{{alias}}"</span>{{/if}}
-        </div>
-        <div class="ncm-contact-item__email ncm-mono">{{email}}</div>
-        {{#if organization}}
-        <div class="ncm-contact-item__org">{{organization}}</div>
-        {{/if}}
-        {{#if displayTags}}
-        <div class="ncm-contact-item__tags">
-          {{#each tags}}
-          <span class="ncm-tag">{{this}}</span>
-          {{/each}}
-        </div>
-        {{/if}}
+
+      {{!-- List view --}}
+      <div class="ncm-list">
+        {{#each contacts}}
+          {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/contact-list-item.hbs" }}
+        {{/each}}
       </div>
-      <div class="ncm-contact-item__actions">
-        {{#if actorId}}
-        <button class="ncm-btn ncm-btn--icon ncm-btn--tiny" data-action="sendMessage" data-tooltip="Send message">
-          <i class="fas fa-envelope"></i>
-        </button>
-        {{/if}}
-        <button class="ncm-btn ncm-btn--icon ncm-btn--tiny" data-action="editContact" data-tooltip="Edit">
-          <i class="fas fa-edit"></i>
-        </button>
-        <button class="ncm-btn ncm-btn--icon ncm-btn--tiny ncm-btn--danger" data-action="deleteContact" data-tooltip="Delete">
-          <i class="fas fa-trash"></i>
-        </button>
-      </div>
-      {{/if}}
-    </div>
-    {{/each}}
+
     {{/if}}
+  </div>
+
+  {{!-- ═══ Context-Aware Footer ═══ --}}
+  <div class="ncm-footer">
+    <div class="ncm-footer__info">
+      <span><i class="fas fa-address-book"></i> {{filteredCount}} CONTACTS</span>
+      <span><i class="fas fa-user"></i> {{ownerName}}</span>
+      <span><i class="fas fa-wifi"></i> {{currentNetwork}}</span>
+    </div>
+    <div class="ncm-footer__shortcuts">
+      <kbd>/</kbd> SEARCH &nbsp;
+      <kbd>↑↓</kbd> NAV &nbsp;
+      <kbd>N</kbd> NEW &nbsp;
+      <kbd>S</kbd> SHARE
+    </div>
   </div>
 </div>

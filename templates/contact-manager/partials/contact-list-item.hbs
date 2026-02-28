@@ -1,0 +1,102 @@
+{{!--
+  Contact List Item — List view row for a single contact
+  @file templates/contact-manager/partials/contact-list-item.hbs
+  @module cyberpunkred-messenger
+  @description Renders a single contact as a dense row in list view.
+    Shows avatar + status, name + role badge, email + org,
+    custom tag chips, trust meter, and hover actions.
+    Network tinting via left border color.
+
+  @param {object} contact — Enriched contact object from enrichContactForDisplay()
+
+  @example
+    {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/contact-list-item.hbs"
+        contact=this }}
+--}}
+
+<div class="{{listClasses}}" data-contact-id="{{id}}" data-action="selectContact">
+
+  {{!-- Avatar with status dot --}}
+  <div class="ncm-list-item__avatar" style="color: {{avatarColor}}; border-color: {{avatarBorderColor}};">
+    {{#if hasPortrait}}
+      <img src="{{portraitSrc}}" alt="{{name}}">
+    {{else}}
+      {{initials}}
+    {{/if}}
+    <div class="ncm-list-item__status {{listStatusClass}}"></div>
+  </div>
+
+  {{!-- Body --}}
+  <div class="ncm-list-item__body">
+
+    {{!-- Top line: name + badge + unverified --}}
+    <div class="ncm-list-item__top">
+      <span class="ncm-list-item__name">{{name}}</span>
+      {{#if isBurned}}
+        <span class="ncm-badge ncm-badge--burned" style="font-size:7px; padding:0 5px;">
+          <i class="fas fa-triangle-exclamation"></i> BURNED
+        </span>
+      {{else}}
+        <span class="ncm-badge ncm-badge--{{role}}" style="font-size:7px; padding:0 5px;">
+          {{roleLabel}}
+        </span>
+      {{/if}}
+      {{#if isUnverified}}
+        <span class="ncm-list-item__unverified">UNVERIFIED</span>
+      {{/if}}
+    </div>
+
+    {{!-- Bottom line: email + org --}}
+    <div class="ncm-list-item__bottom">
+      <span class="ncm-list-item__email">{{email}}</span>
+      {{#if organization}}
+        <span class="ncm-list-item__org">· {{#if isBurned}}COMPROMISED{{else}}{{organization}}{{/if}}</span>
+      {{/if}}
+    </div>
+
+    {{!-- Tags --}}
+    {{#if hasTags}}
+      <div class="ncm-list-item__tags">
+        {{#each tags}}
+          <span class="ncm-card__tag">{{this}}</span>
+        {{/each}}
+      </div>
+    {{/if}}
+  </div>
+
+  {{!-- Right side: trust + actions --}}
+  <div class="ncm-list-item__right">
+
+    {{!-- Compact trust meter --}}
+    <div class="ncm-list-item__trust ncm-list-item__trust--{{trustData.level}}"
+         {{#if isUnverified}}style="opacity: 0.3;"{{/if}}>
+      {{#each trustSegments}}
+        <div class="ncm-list-item__trust-seg {{#if this}}active{{/if}}"></div>
+      {{/each}}
+    </div>
+
+    {{!-- Hover actions --}}
+    <div class="ncm-list-item__actions">
+      {{#if isBurned}}
+        <button class="ncm-list-item__action" title="Delete"
+                style="color: var(--primary);"
+                data-action="deleteContact" data-contact-id="{{id}}">
+          <i class="fas fa-trash"></i>
+        </button>
+      {{else}}
+        <button class="ncm-list-item__action" title="Share"
+                data-action="shareContact" data-contact-id="{{id}}">
+          <i class="fas fa-share-nodes"></i>
+        </button>
+        <button class="ncm-list-item__action" title="Message"
+                data-action="sendMessage" data-contact-id="{{id}}">
+          <i class="fas fa-envelope"></i>
+        </button>
+        <button class="ncm-list-item__action" title="Edit"
+                data-action="editContact" data-contact-id="{{id}}">
+          <i class="fas fa-pen"></i>
+        </button>
+      {{/if}}
+    </div>
+  </div>
+</div>

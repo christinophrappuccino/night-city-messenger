@@ -21,6 +21,11 @@ export const EVENTS = Object.freeze({
   INBOX_REFRESH: 'inbox:refresh',
   QUEUE_FLUSHED: 'queue:flushed',
 
+  CONTACT_BURNED:        'contacts:burned',
+  CONTACT_SHARED:        'contacts:shared',
+  CONTACT_TRUST_CHANGED: 'contacts:trustChanged',
+  CONTACT_TAGS_UPDATED:  'contacts:tagsUpdated',
+
   NETWORK_CHANGED: 'network:changed',
   NETWORK_CONNECTED: 'network:connected',
   NETWORK_DISCONNECTED: 'network:disconnected',
@@ -189,6 +194,10 @@ export const TEMPLATES = Object.freeze({
   CHAT_MESSAGE_CARD: `${T}/chat/message-card.hbs`,
   CHAT_HACK_RESULT: `${T}/chat/hack-result.hbs`,
   CHAT_NETWORK_EVENT: `${T}/chat/network-event.hbs`,
+  CONTACT_CARD:           `${T}/contact-manager/partials/contact-card.hbs`,
+  CONTACT_LIST_ITEM:      `${T}/contact-manager/partials/contact-list-item.hbs`,
+  CONTACT_TRUST_METER:    `${T}/contact-manager/partials/trust-meter.hbs`,
+  CONTACT_ENCRYPTED:      `${T}/contact-manager/partials/encrypted-overlay.hbs`,
   // Partials — Design System Components
   PARTIAL_SECTION_HEADER: `${T}/partials/section-header.hbs`,
   PARTIAL_STAT_CARD:      `${T}/partials/stat-card.hbs`,

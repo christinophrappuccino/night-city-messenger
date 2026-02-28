@@ -510,3 +510,201 @@ export function getThreatBadgeData(message) {
     variant: classMap[typeUpper] || 'threat',
   };
 }
+
+// ═══════════════════════════════════════════════════════════════
+//  Sprint 3 — Contact Display Helpers
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Role icon mapping — Cyberpunk RED roles to FontAwesome icons.
+ * @type {Record<string, string>}
+ */
+const ROLE_ICONS = {
+  fixer:     'fa-crosshairs',
+  netrunner: 'fa-terminal',
+  solo:      'fa-gun',
+  tech:      'fa-screwdriver-wrench',
+  medtech:   'fa-kit-medical',
+  media:     'fa-camera',
+  exec:      'fa-building',
+  lawman:    'fa-shield-halved',
+  nomad:     'fa-van-shuttle',
+  rockerboy: 'fa-guitar',
+  corp:      'fa-building',
+  gang:      'fa-skull',
+};
+
+/**
+ * §3.5 — Get trust level class and description for display.
+ * @param {number} trust — 0-5
+ * @returns {{ level: string, class: string, description: string, segments: boolean[] }}
+ */
+export function getTrustData(trust) {
+  const segments = [1, 2, 3, 4, 5].map(i => i <= trust);
+
+  if (trust >= 4) {
+    return {
+      level: 'high', class: 'ncm-trust--high',
+      description: 'HIGH — Reliable, proven track record',
+      segments,
+    };
+  }
+  if (trust === 3) {
+    return {
+      level: 'med', class: 'ncm-trust--med',
+      description: 'MEDIUM — Proceed with caution',
+      segments,
+    };
+  }
+  if (trust >= 1) {
+    return {
+      level: 'low', class: 'ncm-trust--low',
+      description: 'LOW — Known risk, verify everything',
+      segments,
+    };
+  }
+  return {
+    level: 'unknown', class: 'ncm-trust--unknown',
+    description: 'UNKNOWN — No established history',
+    segments,
+  };
+}
+
+/**
+ * §3.1 — Get the icon class for a Cyberpunk RED role.
+ * @param {string} role — Role name (case-insensitive)
+ * @returns {string} FontAwesome icon class
+ */
+export function getRoleIcon(role) {
+  if (!role) return 'fa-user';
+  return ROLE_ICONS[role.toLowerCase().trim()] || 'fa-user';
+}
+
+/**
+ * §3.1 — Derive contact status for display.
+ * Priority: statusOverride > linked actor online state > 'offline'.
+ * @param {object} contact — Contact data
+ * @returns {string} Status key: 'active'|'online'|'idle'|'offline'|'dead-zone'
+ */
+export function getContactStatus(contact) {
+  // Explicit override set by GM
+  if (contact.statusOverride) return contact.statusOverride;
+
+  // Burned contacts always show dead-zone
+  if (contact.burned) return 'dead-zone';
+
+  // If linked to an actor, check if that actor's owner is online
+  if (contact.actorId) {
+    const actor = game.actors.get(contact.actorId);
+    if (actor) {
+      const ownerUser = game.users.find(u => !u.isGM && actor.testUserPermission(u, 'OWNER'));
+      if (ownerUser?.active) return 'online';
+    }
+  }
+
+  return 'offline';
+}
+
+/**
+ * §3.1 — Get network class suffix for a contact's network.
+ * @param {string} network — Network name
+ * @returns {string} CSS class suffix: 'citinet'|'darknet'|'corpnet'
+ */
+export function getContactNetworkClass(network) {
+  if (!network) return 'citinet';
+  const key = network.toLowerCase().trim();
+  if (key === 'darknet' || key === 'dark net') return 'darknet';
+  if (key === 'corpnet' || key === 'corp net') return 'corpnet';
+  return 'citinet';
+}
+
+/**
+ * §3.1 — Full contact enrichment for template rendering.
+ * Takes raw contact data and adds all display-computed fields.
+ *
+ * @param {object} contact — Raw contact from ContactRepository
+ * @param {object} [options] — { selectedId, currentNetwork }
+ * @returns {object} Enriched contact ready for Handlebars
+ */
+export function enrichContactForDisplay(contact, options = {}) {
+  const avatarColor = getAvatarColor(contact.name, contact);
+  const trustData = getTrustData(contact.trust);
+  const status = getContactStatus(contact);
+  const networkClass = getContactNetworkClass(contact.network);
+  const roleIcon = getRoleIcon(contact.role);
+  const initials = getInitials(contact.name);
+
+  // Portrait fallback chain: custom portrait > linked actor img > initials
+  let portraitSrc = contact.portrait || '';
+  if (!portraitSrc && contact.actorId) {
+    const actor = game.actors.get(contact.actorId);
+    if (actor?.img && actor.img !== 'icons/svg/mystery-man.svg') {
+      portraitSrc = actor.img;
+    }
+  }
+
+  // Avatar border color: network-themed or avatar-color based
+  let avatarBorderColor;
+  if (contact.burned) {
+    avatarBorderColor = 'rgba(255, 0, 51, 0.4)';
+  } else if (networkClass === 'darknet') {
+    avatarBorderColor = 'rgba(180, 77, 255, 0.5)';
+  } else if (networkClass === 'corpnet') {
+    avatarBorderColor = 'rgba(247, 201, 72, 0.5)';
+  } else {
+    avatarBorderColor = avatarColor + '40'; // 25% opacity hex
+  }
+
+  return {
+    ...contact,
+
+    // Display fields
+    avatarColor,
+    avatarBorderColor,
+    initials,
+    portraitSrc,
+    hasPortrait: !!portraitSrc,
+    roleIcon,
+    roleLabel: (contact.role || 'unknown').toUpperCase(),
+
+    // Trust
+    trustData,
+    trustClass: trustData.class,
+    trustSegments: trustData.segments,
+    isUnverified: contact.trust === 0 && !contact.encrypted,
+
+    // Status
+    status,
+    statusClass: `ncm-card__status--${status}`,
+    listStatusClass: `ncm-list-item__status--${status}`,
+
+    // Network
+    networkClass,
+    cardNetworkClass: `ncm-card__network--${networkClass}`,
+
+    // State flags
+    isBurned: contact.burned,
+    isEncrypted: contact.encrypted,
+    isFavorite: contact.favorite,
+    isSelected: contact.id === options.selectedId,
+
+    // Card CSS classes (composed)
+    cardClasses: [
+      'ncm-card',
+      contact.id === options.selectedId ? 'ncm-card--selected' : '',
+      contact.burned ? 'ncm-card--burned' : '',
+      contact.encrypted ? 'ncm-card--encrypted' : '',
+    ].filter(Boolean).join(' '),
+
+    listClasses: [
+      'ncm-list-item',
+      contact.id === options.selectedId ? 'ncm-list-item--selected' : '',
+      contact.burned ? 'ncm-list-item--burned' : '',
+      !contact.burned && networkClass !== 'citinet' ? `ncm-list-item--${networkClass}` : '',
+    ].filter(Boolean).join(' '),
+
+    // Tags display
+    hasTags: contact.tags && contact.tags.length > 0,
+    displayTags: contact.tags ? contact.tags.join(', ') : '',
+  };
+}

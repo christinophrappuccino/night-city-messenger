@@ -1,27 +1,69 @@
 /**
- * Contact Repository
+ * Contact Repository — Sprint 3 Update
  * @file scripts/data/ContactRepository.js
  * @module cyberpunkred-messenger
  * @description Actor flag-based contact storage. Contacts are stored in
  * actor.flags['cyberpunkred-messenger'].contacts as an array.
+ *
+ * Sprint 3 additions:
+ *   - trust (0-5), burned, encrypted, encryptionDV, encryptionSkill
+ *   - portrait (base64 or path), favorite, status override
+ *   - Custom tag aggregation across all contacts
+ *   - Actor-level tag storage for filter persistence
  */
 
 import { MODULE_ID } from '../utils/constants.js';
 
+/**
+ * Default contact shape — ensures all fields exist even on legacy data.
+ * @param {object} data — Incoming contact data (partial)
+ * @returns {object} Normalized contact with all fields
+ */
+function _normalizeContact(data) {
+  return {
+    id: data.id || foundry.utils.randomID(),
+    name: data.name || 'Unknown',
+    email: data.email || '',
+    organization: data.organization || '',
+    phone: data.phone || '',
+    alias: data.alias || '',
+    tags: Array.isArray(data.tags) ? data.tags : [],
+    customImg: data.customImg || '',
+    notes: data.notes || '',
+    actorId: data.actorId || null,
+    type: data.type || 'npc',
+
+    // ── Sprint 3 fields ──
+    portrait: data.portrait || '',
+    trust: typeof data.trust === 'number' ? Math.max(0, Math.min(5, data.trust)) : 0,
+    burned: !!data.burned,
+    encrypted: !!data.encrypted,
+    encryptionDV: data.encryptionDV || 15,
+    encryptionSkill: data.encryptionSkill || 'Interface',
+    favorite: !!data.favorite,
+    role: data.role || '',
+    network: data.network || 'citinet',
+    statusOverride: data.statusOverride || null, // null = auto-derive, or 'active'|'online'|'idle'|'offline'|'dead-zone'
+  };
+}
+
 export class ContactRepository {
 
-  // ─── Contact CRUD ─────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════
+  //  Contact CRUD
+  // ═══════════════════════════════════════════════════════════
 
   /**
-   * Get all contacts for an actor.
-   * @param {string} actorId 
+   * Get all contacts for an actor, normalized to current schema.
+   * @param {string} actorId
    * @returns {Promise<Array>}
    */
   async getContacts(actorId) {
     try {
       const actor = game.actors.get(actorId);
       if (!actor) return [];
-      return actor.getFlag(MODULE_ID, 'contacts') || [];
+      const raw = actor.getFlag(MODULE_ID, 'contacts') || [];
+      return raw.map(_normalizeContact);
     } catch (error) {
       console.error(`${MODULE_ID} | ContactRepository.getContacts:`, error);
       return [];
@@ -38,8 +80,6 @@ export class ContactRepository {
     try {
       const actor = game.actors.get(actorId);
       if (!actor) return { success: false, error: 'Actor not found' };
-
-      // Check permission — must own the actor or be GM
       if (!actor.isOwner && !game.user.isGM) {
         return { success: false, error: 'No permission to modify contacts' };
       }
@@ -51,20 +91,7 @@ export class ContactRepository {
         return { success: false, error: 'Contact with this email already exists' };
       }
 
-      const contact = {
-        id: foundry.utils.randomID(),
-        name: contactData.name || 'Unknown',
-        email: contactData.email || '',
-        organization: contactData.organization || '',
-        phone: contactData.phone || '',
-        alias: contactData.alias || '',
-        tags: contactData.tags || [],
-        customImg: contactData.customImg || '',
-        notes: contactData.notes || '',
-        actorId: contactData.actorId || null,
-        type: contactData.type || 'npc',
-      };
-
+      const contact = _normalizeContact({ ...contactData, id: foundry.utils.randomID() });
       contacts.push(contact);
       await actor.setFlag(MODULE_ID, 'contacts', contacts);
 
@@ -94,8 +121,8 @@ export class ContactRepository {
       const index = contacts.findIndex(c => c.id === contactId);
       if (index === -1) return { success: false, error: 'Contact not found' };
 
-      // Merge updates, preserving id
-      contacts[index] = { ...contacts[index], ...updates, id: contactId };
+      // Merge updates, preserving id, re-normalize
+      contacts[index] = _normalizeContact({ ...contacts[index], ...updates, id: contactId });
       await actor.setFlag(MODULE_ID, 'contacts', contacts);
 
       return { success: true, contact: contacts[index] };
@@ -131,7 +158,7 @@ export class ContactRepository {
   }
 
   /**
-   * Find a contact by email address across an actor's contacts.
+   * Find a contact by email address.
    * @param {string} actorId
    * @param {string} email
    * @returns {Promise<Object|null>}
@@ -142,7 +169,7 @@ export class ContactRepository {
   }
 
   /**
-   * Search contacts by query string (matches name, email, alias, tags).
+   * Search contacts by query string (matches name, email, alias, org, tags).
    * @param {string} actorId
    * @param {string} query
    * @returns {Promise<Array>}
@@ -153,36 +180,181 @@ export class ContactRepository {
     const contacts = await this.getContacts(actorId);
     const q = query.toLowerCase();
 
-    return contacts.filter(c => {
-      return (
-        c.name?.toLowerCase().includes(q) ||
-        c.email?.toLowerCase().includes(q) ||
-        c.alias?.toLowerCase().includes(q) ||
-        c.organization?.toLowerCase().includes(q) ||
-        c.tags?.some(t => t.toLowerCase().includes(q))
-      );
+    return contacts.filter(c =>
+      c.name?.toLowerCase().includes(q) ||
+      c.email?.toLowerCase().includes(q) ||
+      c.alias?.toLowerCase().includes(q) ||
+      c.organization?.toLowerCase().includes(q) ||
+      c.role?.toLowerCase().includes(q) ||
+      c.tags?.some(t => t.toLowerCase().includes(q))
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Sprint 3 — Trust, Burned, Encrypted, Favorites
+  // ═══════════════════════════════════════════════════════════
+
+  /**
+   * Set trust level for a contact (GM action).
+   * @param {string} actorId
+   * @param {string} contactId
+   * @param {number} trust — 0-5
+   * @returns {Promise<{success: boolean}>}
+   */
+  async setTrust(actorId, contactId, trust) {
+    return this.updateContact(actorId, contactId, {
+      trust: Math.max(0, Math.min(5, trust)),
     });
   }
 
-  // ─── Actor Email Management ───────────────────────────────
+  /**
+   * Mark a contact as burned (GM action).
+   * @param {string} actorId
+   * @param {string} contactId
+   * @param {boolean} burned
+   * @returns {Promise<{success: boolean}>}
+   */
+  async setBurned(actorId, contactId, burned = true) {
+    return this.updateContact(actorId, contactId, { burned });
+  }
 
   /**
-   * Get the email address configured for an actor.
+   * Mark a contact as encrypted (GM action — for pushed contacts).
    * @param {string} actorId
-   * @returns {string}
+   * @param {string} contactId
+   * @param {object} encryptionData — { encrypted, encryptionDV, encryptionSkill }
+   * @returns {Promise<{success: boolean}>}
    */
+  async setEncryption(actorId, contactId, encryptionData) {
+    return this.updateContact(actorId, contactId, {
+      encrypted: encryptionData.encrypted ?? true,
+      encryptionDV: encryptionData.encryptionDV ?? 15,
+      encryptionSkill: encryptionData.encryptionSkill ?? 'Interface',
+    });
+  }
+
+  /**
+   * Decrypt a contact (after successful hack).
+   * @param {string} actorId
+   * @param {string} contactId
+   * @returns {Promise<{success: boolean}>}
+   */
+  async decryptContact(actorId, contactId) {
+    return this.updateContact(actorId, contactId, { encrypted: false });
+  }
+
+  /**
+   * Toggle favorite status.
+   * @param {string} actorId
+   * @param {string} contactId
+   * @returns {Promise<{success: boolean, favorite?: boolean}>}
+   */
+  async toggleFavorite(actorId, contactId) {
+    const contacts = await this.getContacts(actorId);
+    const contact = contacts.find(c => c.id === contactId);
+    if (!contact) return { success: false, error: 'Contact not found' };
+
+    const result = await this.updateContact(actorId, contactId, { favorite: !contact.favorite });
+    return { ...result, favorite: !contact.favorite };
+  }
+
+  /**
+   * Set portrait for a contact.
+   * @param {string} actorId
+   * @param {string} contactId
+   * @param {string} portraitData — Base64 string or file path
+   * @returns {Promise<{success: boolean}>}
+   */
+  async setPortrait(actorId, contactId, portraitData) {
+    return this.updateContact(actorId, contactId, { portrait: portraitData });
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Sprint 3 — Tag Management
+  // ═══════════════════════════════════════════════════════════
+
+  /**
+   * Get all unique tags across an actor's contacts.
+   * @param {string} actorId
+   * @returns {Promise<string[]>}
+   */
+  async getAllTags(actorId) {
+    const contacts = await this.getContacts(actorId);
+    const tagSet = new Set();
+    for (const c of contacts) {
+      if (c.tags) c.tags.forEach(t => tagSet.add(t));
+    }
+
+    // Also include actor-level custom tags (user-created, may not be on any contact yet)
+    const actor = game.actors.get(actorId);
+    const customTags = actor?.getFlag(MODULE_ID, 'contactTags') || [];
+    customTags.forEach(t => tagSet.add(t));
+
+    return [...tagSet].sort();
+  }
+
+  /**
+   * Add a custom tag to the actor's tag list (persists even if no contacts use it).
+   * @param {string} actorId
+   * @param {string} tag
+   * @returns {Promise<{success: boolean}>}
+   */
+  async addCustomTag(actorId, tag) {
+    try {
+      const actor = game.actors.get(actorId);
+      if (!actor) return { success: false, error: 'Actor not found' };
+      if (!actor.isOwner && !game.user.isGM) {
+        return { success: false, error: 'No permission' };
+      }
+
+      const tags = actor.getFlag(MODULE_ID, 'contactTags') || [];
+      const normalized = tag.toUpperCase().trim();
+      if (!normalized || tags.includes(normalized)) return { success: true }; // Already exists
+
+      tags.push(normalized);
+      await actor.setFlag(MODULE_ID, 'contactTags', tags);
+      return { success: true };
+    } catch (error) {
+      console.error(`${MODULE_ID} | ContactRepository.addCustomTag:`, error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Remove a custom tag from the actor's tag list.
+   * Does NOT remove the tag from individual contacts.
+   * @param {string} actorId
+   * @param {string} tag
+   * @returns {Promise<{success: boolean}>}
+   */
+  async removeCustomTag(actorId, tag) {
+    try {
+      const actor = game.actors.get(actorId);
+      if (!actor) return { success: false, error: 'Actor not found' };
+      if (!actor.isOwner && !game.user.isGM) {
+        return { success: false, error: 'No permission' };
+      }
+
+      let tags = actor.getFlag(MODULE_ID, 'contactTags') || [];
+      tags = tags.filter(t => t !== tag);
+      await actor.setFlag(MODULE_ID, 'contactTags', tags);
+      return { success: true };
+    } catch (error) {
+      console.error(`${MODULE_ID} | ContactRepository.removeCustomTag:`, error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Actor Email Management (unchanged from Phase 2)
+  // ═══════════════════════════════════════════════════════════
+
   getActorEmail(actorId) {
     const actor = game.actors.get(actorId);
     if (!actor) return '';
     return actor.getFlag(MODULE_ID, 'email') || '';
   }
 
-  /**
-   * Set the email address for an actor.
-   * @param {string} actorId
-   * @param {string} email
-   * @returns {Promise<{success: boolean}>}
-   */
   async setActorEmail(actorId, email) {
     try {
       const actor = game.actors.get(actorId);
@@ -198,24 +370,16 @@ export class ContactRepository {
     }
   }
 
-  /**
-   * Get the quick-reply templates for an actor.
-   * @param {string} actorId
-   * @returns {Array<string>}
-   */
   getQuickReplies(actorId) {
     const actor = game.actors.get(actorId);
     if (!actor) return ['ACK', 'WILCO', 'NEGATIVE'];
     return actor.getFlag(MODULE_ID, 'quickReplies') || ['ACK', 'WILCO', 'NEGATIVE', 'On my way', 'Hold position'];
   }
 
-  // ─── Bulk Operations ──────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════
+  //  Bulk Operations (unchanged from Phase 2)
+  // ═══════════════════════════════════════════════════════════
 
-  /**
-   * Build a global contact lookup from all actors (for recipient autocomplete).
-   * Returns actors with configured email addresses.
-   * @returns {Array<{actorId: string, name: string, email: string, img: string}>}
-   */
   getGlobalActorDirectory() {
     const directory = [];
     for (const actor of game.actors) {
@@ -234,11 +398,6 @@ export class ContactRepository {
     return directory;
   }
 
-  /**
-   * Get all actors the current user owns (for FROM dropdown).
-   * GM gets all actors.
-   * @returns {Array<{actorId: string, name: string, email: string, img: string}>}
-   */
   getOwnedActorsWithEmail() {
     const actors = [];
     for (const actor of game.actors) {

@@ -1,0 +1,101 @@
+{{!--
+  Contact Card — Grid view card for a single contact
+  @file templates/contact-manager/partials/contact-card.hbs
+  @module cyberpunkred-messenger
+  @description Renders a single contact as a card in the grid view.
+    Includes avatar (portrait or initials), role badge, trust meter,
+    custom tag chips, network indicator, and hover quick actions.
+    Handles burned, encrypted, and selected states.
+
+  @param {object} contact — Enriched contact object from enrichContactForDisplay()
+
+  @example
+    {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/contact-card.hbs"
+        contact=this }}
+--}}
+
+<div class="{{cardClasses}}" data-contact-id="{{id}}" data-action="selectContact">
+
+  {{!-- Encrypted overlay --}}
+  {{#if isEncrypted}}
+    {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/encrypted-overlay.hbs"
+        encryptionDV=encryptionDV encryptionSkill=encryptionSkill }}
+  {{/if}}
+
+  {{!-- Hover quick actions --}}
+  {{#if isBurned}}
+    <div class="ncm-card__actions">
+      <button class="ncm-card__action ncm-card__action--danger"
+              title="Delete" data-action="deleteContact" data-contact-id="{{id}}">
+        <i class="fas fa-trash"></i>
+      </button>
+    </div>
+  {{else}}
+    {{#unless isEncrypted}}
+      <div class="ncm-card__actions">
+        <button class="ncm-card__action ncm-card__action--share"
+                title="Share" data-action="shareContact" data-contact-id="{{id}}">
+          <i class="fas fa-share-nodes"></i>
+        </button>
+        <button class="ncm-card__action"
+                title="Message" data-action="sendMessage" data-contact-id="{{id}}">
+          <i class="fas fa-envelope"></i>
+        </button>
+        <button class="ncm-card__action"
+                title="Edit" data-action="editContact" data-contact-id="{{id}}">
+          <i class="fas fa-pen"></i>
+        </button>
+      </div>
+    {{/unless}}
+  {{/if}}
+
+  {{!-- Avatar --}}
+  <div class="ncm-card__avatar" style="color: {{avatarColor}}; border-color: {{avatarBorderColor}};">
+    {{#if hasPortrait}}
+      <img src="{{portraitSrc}}" alt="{{name}}">
+    {{else}}
+      {{initials}}
+    {{/if}}
+    <div class="ncm-card__status {{statusClass}}"></div>
+    {{#unless isEncrypted}}
+      <div class="ncm-card__avatar-upload" data-action="uploadPortrait" data-contact-id="{{id}}">
+        <i class="fas fa-camera"></i>
+      </div>
+    {{/unless}}
+  </div>
+
+  {{!-- Name --}}
+  <span class="ncm-card__name">{{name}}</span>
+
+  {{!-- Role badge --}}
+  {{#if isBurned}}
+    <span class="ncm-badge ncm-badge--burned">
+      <i class="fas fa-triangle-exclamation"></i> BURNED
+    </span>
+  {{else}}
+    <span class="ncm-badge ncm-badge--{{role}}">
+      <i class="fas {{roleIcon}}"></i> {{roleLabel}}
+    </span>
+  {{/if}}
+
+  {{!-- Email --}}
+  <span class="ncm-card__email">{{email}}</span>
+
+  {{!-- Custom tags --}}
+  {{#if hasTags}}
+    <div class="ncm-card__tags">
+      {{#each tags}}
+        <span class="ncm-card__tag">{{this}}</span>
+      {{/each}}
+    </div>
+  {{/if}}
+
+  {{!-- Trust meter --}}
+  {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/trust-meter.hbs"
+      trustClass=trustClass trustSegments=trustSegments isUnverified=isUnverified }}
+
+  {{!-- Network bottom bar --}}
+  {{#unless isBurned}}
+    <div class="ncm-card__network {{cardNetworkClass}}"></div>
+  {{/unless}}
+</div>
