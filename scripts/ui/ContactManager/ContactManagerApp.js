@@ -707,9 +707,12 @@ export class ContactManagerApp extends BaseApplication {
       return;
     }
 
-    // Find the overlay element for animation
-    const overlayEl = target.closest('.ncm-encrypted-overlay') || target;
+    // Find the overlay element for animation (grid or list view)
+    const overlayEl = target.closest('.ncm-encrypted-overlay')
+      || target.closest('.ncm-list-item__ice-overlay')
+      || target;
     const cardEl = overlayEl.closest('[data-contact-id]');
+    const isListView = overlayEl.classList.contains('ncm-list-item__ice-overlay');
 
     // Show breaching state
     overlayEl.classList.add('ncm-encrypted-overlay--breaching');
@@ -727,13 +730,21 @@ export class ContactManagerApp extends BaseApplication {
 
     if (result.success) {
       // ── SUCCESS: Unscramble animation ──
-      this._playUnscrambleAnimation(overlayEl, cardEl, () => { this.render(); });
+      if (isListView) {
+        this._playListUnscrambleAnimation(overlayEl, cardEl, () => { this.render(); });
+      } else {
+        this._playUnscrambleAnimation(overlayEl, cardEl, () => { this.render(); });
+      }
     } else if (result.error) {
       // Service-level error (not a failed roll)
       ui.notifications.error(result.error);
     } else {
       // ── FAILED ROLL: Denied animation ──
-      this._playDeniedAnimation(overlayEl);
+      if (isListView) {
+        this._playListDeniedAnimation(overlayEl);
+      } else {
+        this._playDeniedAnimation(overlayEl);
+      }
     }
   }
 
@@ -990,13 +1001,17 @@ export class ContactManagerApp extends BaseApplication {
     const result = await breachService.forceDecrypt(this.actorId, contactId);
     if (result.success) {
       // Find overlay for animation
-      const overlayEl = this.element?.querySelector(
-        `[data-contact-id="${contactId}"] .ncm-encrypted-overlay`
-      );
       const cardEl = this.element?.querySelector(`[data-contact-id="${contactId}"]`);
+      const overlayEl = cardEl?.querySelector('.ncm-encrypted-overlay')
+        || cardEl?.querySelector('.ncm-list-item__ice-overlay');
+      const isListView = overlayEl?.classList.contains('ncm-list-item__ice-overlay');
 
       if (overlayEl) {
-        this._playUnscrambleAnimation(overlayEl, cardEl, () => { this.render(); });
+        if (isListView) {
+          this._playListUnscrambleAnimation(overlayEl, cardEl, () => { this.render(); });
+        } else {
+          this._playUnscrambleAnimation(overlayEl, cardEl, () => { this.render(); });
+        }
       } else {
         this.render();
       }
@@ -1086,6 +1101,79 @@ export class ContactManagerApp extends BaseApplication {
     setTimeout(() => {
       overlayEl.classList.remove('ncm-encrypted-overlay--denied', 'ncm-encrypted-overlay--shake');
       // Remove denied text after it fades
+      setTimeout(() => {
+        deniedText?.remove();
+      }, 1200);
+    }, 500);
+  }
+
+  /**
+   * Play unscramble animation on list view ICE overlay.
+   * Overlay shatters horizontally, row gets cyan flash.
+   *
+   * @param {HTMLElement} overlayEl — The .ncm-list-item__ice-overlay element
+   * @param {HTMLElement} rowEl     — The parent .ncm-list-item element
+   * @param {Function}    onComplete — Called when animation finishes
+   */
+  _playListUnscrambleAnimation(overlayEl, rowEl, onComplete) {
+    if (!overlayEl) {
+      onComplete?.();
+      return;
+    }
+
+    // Inject ACCESS GRANTED text
+    let grantedText = overlayEl.querySelector('.ncm-list-item__ice-granted-text');
+    if (!grantedText) {
+      grantedText = document.createElement('span');
+      grantedText.className = 'ncm-list-item__ice-granted-text';
+      grantedText.textContent = 'ACCESS GRANTED';
+      overlayEl.appendChild(grantedText);
+    }
+
+    // Hide GM bypass during animation
+    const gmBypass = overlayEl.querySelector('.ncm-list-item__ice-gm-bypass');
+    if (gmBypass) gmBypass.style.display = 'none';
+
+    // Phase 1: Overlay shatters (900ms)
+    overlayEl.classList.add('ncm-list-item__ice-overlay--unscramble');
+
+    // Phase 2: Row resolve flash (starts at 700ms)
+    if (rowEl) {
+      setTimeout(() => {
+        rowEl.classList.add('ncm-list-item--decrypted-resolve');
+      }, 700);
+    }
+
+    // Phase 3: Cleanup + re-render (1300ms)
+    setTimeout(() => {
+      onComplete?.();
+    }, 1300);
+  }
+
+  /**
+   * Play denied animation on list view ICE overlay.
+   * Red flash + shake + ACCESS DENIED text.
+   *
+   * @param {HTMLElement} overlayEl — The .ncm-list-item__ice-overlay element
+   */
+  _playListDeniedAnimation(overlayEl) {
+    if (!overlayEl) return;
+
+    // Inject ACCESS DENIED text
+    let deniedText = overlayEl.querySelector('.ncm-list-item__ice-denied-text');
+    if (!deniedText) {
+      deniedText = document.createElement('span');
+      deniedText.className = 'ncm-list-item__ice-denied-text';
+      deniedText.textContent = 'ACCESS DENIED';
+      overlayEl.appendChild(deniedText);
+    }
+
+    // Add animation classes
+    overlayEl.classList.add('ncm-list-item__ice-overlay--denied', 'ncm-list-item__ice-overlay--shake');
+
+    // Clean up after animation
+    setTimeout(() => {
+      overlayEl.classList.remove('ncm-list-item__ice-overlay--denied', 'ncm-list-item__ice-overlay--shake');
       setTimeout(() => {
         deniedText?.remove();
       }, 1200);

@@ -6,6 +6,10 @@
     Shows avatar + status, name + role badge, email + org,
     custom tag chips, trust meter, and hover actions.
     Network tinting via left border color.
+    Handles burned and encrypted states.
+
+    Sprint 3.10 update: adds encrypted list item state with ICE overlay,
+    scrambled name, lock badge, DV chip, and breach click target.
 
   @param {object} contact — Enriched contact object from enrichContactForDisplay()
 
@@ -15,6 +19,45 @@
 --}}
 
 <div class="{{listClasses}}" data-contact-id="{{id}}" data-action="selectContact">
+
+  {{!-- ═══ ENCRYPTED: ICE overlay covers the entire row ═══ --}}
+  {{#if isEncrypted}}
+    <div class="ncm-list-item__ice-overlay" data-action="breachContact">
+
+      {{!-- Lock avatar --}}
+      <div class="ncm-list-item__ice-avatar">
+        <i class="fas fa-lock"></i>
+      </div>
+
+      {{!-- Scrambled info --}}
+      <div class="ncm-list-item__ice-body">
+        <div class="ncm-list-item__ice-top">
+          <span class="ncm-list-item__ice-name">████████</span>
+          <span class="ncm-badge ncm-badge--encrypted" style="font-size:7px; padding:0 5px;">
+            <i class="fas fa-lock"></i> ICE
+          </span>
+        </div>
+        <div class="ncm-list-item__ice-bottom">
+          <span class="ncm-list-item__ice-dv">DV {{encryptionDV}} · {{encryptionSkill}}</span>
+        </div>
+      </div>
+
+      {{!-- Right: GM bypass --}}
+      <div class="ncm-list-item__ice-right">
+        {{#if ../isGM}}
+          <button class="ncm-list-item__ice-gm-bypass"
+                  data-action="forceDecrypt"
+                  data-contact-id="{{id}}"
+                  title="GM: Force decrypt (bypass ICE)">
+            <i class="fas fa-shield-halved"></i> GM
+          </button>
+        {{/if}}
+      </div>
+
+    </div>
+  {{/if}}
+
+  {{!-- ═══ NORMAL CONTENT (hidden behind ICE overlay when encrypted) ═══ --}}
 
   {{!-- Avatar with status dot --}}
   <div class="ncm-list-item__avatar" style="color: {{avatarColor}}; border-color: {{avatarBorderColor}};">

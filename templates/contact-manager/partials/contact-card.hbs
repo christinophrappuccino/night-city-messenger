@@ -1,13 +1,15 @@
 {{!--
-  Contact Card — Grid view card for a single contact (Sprint 3.7 update)
+  Contact Card — Grid view card for a single contact
   @file templates/contact-manager/partials/contact-card.hbs
   @module cyberpunkred-messenger
-  @description Renders a single contact as a card in the grid view.
+  @description Renders a single contact as a card in grid view.
     Includes avatar (portrait or initials), role badge, trust meter,
     custom tag chips, network indicator, and hover quick actions.
     Handles burned, encrypted, and selected states.
 
     Sprint 3.7 update: passes isGM + contactId to encrypted overlay for GM bypass.
+    Sprint 3.7b update: encrypted cards show redacted content (████████ name,
+    ? avatar, hidden email/tags/trust) so nothing leaks through the overlay.
 
   @param {object} contact — Enriched contact object from enrichContactForDisplay()
 --}}
@@ -21,7 +23,7 @@
         isGM=../isGM contactId=id }}
   {{/if}}
 
-  {{!-- Hover quick actions --}}
+  {{!-- Hover quick actions (hidden when encrypted) --}}
   {{#if isBurned}}
     <div class="ncm-card__actions">
       <button class="ncm-card__action ncm-card__action--danger"
@@ -48,53 +50,77 @@
     {{/unless}}
   {{/if}}
 
-  {{!-- Avatar --}}
-  <div class="ncm-card__avatar" style="color: {{avatarColor}}; border-color: {{avatarBorderColor}};">
-    {{#if hasPortrait}}
-      <img src="{{portraitSrc}}" alt="{{name}}">
-    {{else}}
-      {{initials}}
-    {{/if}}
-    <div class="ncm-card__status {{statusClass}}"></div>
-    {{#unless isEncrypted}}
+  {{!-- ═══ ENCRYPTED: Redacted content ═══ --}}
+  {{#if isEncrypted}}
+
+    {{!-- Avatar: neutral ? --}}
+    <div class="ncm-card__avatar ncm-card__avatar--redacted">
+      <span>?</span>
+    </div>
+
+    {{!-- Name: scrambled --}}
+    <span class="ncm-card__name ncm-card__name--redacted">████████</span>
+
+    {{!-- Badge: unknown --}}
+    <span class="ncm-badge ncm-badge--encrypted">
+      <i class="fas fa-lock"></i> ENCRYPTED
+    </span>
+
+    {{!-- Email: null --}}
+    <span class="ncm-card__email ncm-card__email--redacted">enc.data@null</span>
+
+    {{!-- No tags, no trust, no network bar --}}
+
+  {{!-- ═══ NORMAL: Real content ═══ --}}
+  {{else}}
+
+    {{!-- Avatar --}}
+    <div class="ncm-card__avatar" style="color: {{avatarColor}}; border-color: {{avatarBorderColor}};">
+      {{#if hasPortrait}}
+        <img src="{{portraitSrc}}" alt="{{name}}">
+      {{else}}
+        {{initials}}
+      {{/if}}
+      <div class="ncm-card__status {{statusClass}}"></div>
       <div class="ncm-card__avatar-upload" data-action="uploadPortrait" data-contact-id="{{id}}">
         <i class="fas fa-camera"></i>
       </div>
-    {{/unless}}
-  </div>
-
-  {{!-- Name --}}
-  <span class="ncm-card__name">{{name}}</span>
-
-  {{!-- Role badge --}}
-  {{#if isBurned}}
-    <span class="ncm-badge ncm-badge--burned">
-      <i class="fas fa-triangle-exclamation"></i> BURNED
-    </span>
-  {{else}}
-    <span class="ncm-badge ncm-badge--{{role}}">
-      <i class="fas {{roleIcon}}"></i> {{roleLabel}}
-    </span>
-  {{/if}}
-
-  {{!-- Email --}}
-  <span class="ncm-card__email">{{email}}</span>
-
-  {{!-- Custom tags --}}
-  {{#if hasTags}}
-    <div class="ncm-card__tags">
-      {{#each tags}}
-        <span class="ncm-card__tag">{{this}}</span>
-      {{/each}}
     </div>
+
+    {{!-- Name --}}
+    <span class="ncm-card__name">{{name}}</span>
+
+    {{!-- Role badge --}}
+    {{#if isBurned}}
+      <span class="ncm-badge ncm-badge--burned">
+        <i class="fas fa-triangle-exclamation"></i> BURNED
+      </span>
+    {{else}}
+      <span class="ncm-badge ncm-badge--{{role}}">
+        <i class="fas {{roleIcon}}"></i> {{roleLabel}}
+      </span>
+    {{/if}}
+
+    {{!-- Email --}}
+    <span class="ncm-card__email">{{email}}</span>
+
+    {{!-- Custom tags --}}
+    {{#if hasTags}}
+      <div class="ncm-card__tags">
+        {{#each tags}}
+          <span class="ncm-card__tag">{{this}}</span>
+        {{/each}}
+      </div>
+    {{/if}}
+
+    {{!-- Trust meter --}}
+    {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/trust-meter.hbs"
+        trustClass=trustClass trustSegments=trustSegments isUnverified=isUnverified }}
+
+    {{!-- Network bottom bar --}}
+    {{#unless isBurned}}
+      <div class="ncm-card__network {{cardNetworkClass}}"></div>
+    {{/unless}}
+
   {{/if}}
-
-  {{!-- Trust meter --}}
-  {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/trust-meter.hbs"
-      trustClass=trustClass trustSegments=trustSegments isUnverified=isUnverified }}
-
-  {{!-- Network bottom bar --}}
-  {{#unless isBurned}}
-    <div class="ncm-card__network {{cardNetworkClass}}"></div>
-  {{/unless}}
 </div>

@@ -1002,6 +1002,31 @@
   }
 }
 
+/* ─── Redacted avatar: neutral amber circle with ? ─── */
+
+.ncm-contacts-v3 .ncm-card__avatar--redacted {
+  color: rgba(247, 201, 72, 0.25) !important;
+  border-color: rgba(247, 201, 72, 0.12) !important;
+  background: rgba(247, 201, 72, 0.03);
+  font-size: 22px;
+  font-weight: 400;
+}
+
+/* ─── Redacted name: dim amber block characters ─── */
+
+.ncm-contacts-v3 .ncm-card__name--redacted {
+  color: rgba(247, 201, 72, 0.12);
+  letter-spacing: 0.15em;
+  font-size: 12px;
+}
+
+/* ─── Redacted email: dim ─── */
+
+.ncm-contacts-v3 .ncm-card__email--redacted {
+  color: rgba(247, 201, 72, 0.08);
+  font-style: normal;
+}
+
 /* ─── Card Avatar ─── */
 
 .ncm-contacts-v3 .ncm-card__avatar {
@@ -1332,6 +1357,420 @@
 
 .ncm-contacts-v3 .ncm-list-item--burned:hover .ncm-list-item__name {
   color: rgba(255, 0, 51, 0.6);
+}
+
+/* ─────────────────────────────────────────
+   List Item — Encrypted base state
+   ───────────────────────────────────────── */
+
+.ncm-contacts-v3 .ncm-list-item--encrypted {
+  position: relative;
+  overflow: hidden;
+  border-left: 3px solid var(--ncm-accent, #f7c948);
+  padding-left: 13px;
+
+  /* Amber breathing border */
+  animation: ncm-ice-list-pulse 3s ease-in-out infinite;
+}
+
+@keyframes ncm-ice-list-pulse {
+  0%, 100% {
+    border-left-color: rgba(247, 201, 72, 0.5);
+    box-shadow: inset 0 0 10px rgba(247, 201, 72, 0.03);
+  }
+  50% {
+    border-left-color: rgba(247, 201, 72, 0.8);
+    box-shadow: inset 0 0 15px rgba(247, 201, 72, 0.06);
+  }
+}
+
+/* Hide the normal content behind the overlay */
+.ncm-contacts-v3 .ncm-list-item--encrypted > .ncm-list-item__avatar,
+.ncm-contacts-v3 .ncm-list-item--encrypted > .ncm-list-item__body,
+.ncm-contacts-v3 .ncm-list-item--encrypted > .ncm-list-item__right {
+  opacity: 0;
+  pointer-events: none;
+}
+
+
+/* ─────────────────────────────────────────
+   ICE Overlay — Covers the list row
+   ───────────────────────────────────────── */
+
+.ncm-list-item__ice-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px 0 0;
+  cursor: pointer;
+
+  /* Layered depth background */
+  background:
+    radial-gradient(
+      ellipse at 30% 50%,
+      rgba(10, 10, 15, 0.82) 0%,
+      rgba(10, 10, 15, 0.90) 60%,
+      rgba(5, 5, 8, 0.95) 100%
+    );
+
+  transition: background 0.2s;
+}
+
+
+/* ─── Data stream scanlines on overlay ─── */
+
+.ncm-list-item__ice-overlay::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.08;
+
+  background-image:
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 24px,
+      rgba(247, 201, 72, 0.15) 24px,
+      rgba(247, 201, 72, 0.15) 25px
+    );
+
+  background-size: 100% 200%;
+  animation: ncm-data-scroll 8s linear infinite;
+}
+
+/* Reuse the same keyframe from the grid card */
+/* @keyframes ncm-data-scroll already defined in encrypted-enhanced.css */
+
+
+/* ─── Corner brackets (top-left + bottom-right only for compact row) ─── */
+
+.ncm-list-item__ice-overlay::after {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  pointer-events: none;
+  z-index: 1;
+  border: 1px solid rgba(247, 201, 72, 0.10);
+
+  clip-path: polygon(
+    /* Top-left corner */
+    0% 0%, 12% 0%, 12% 1px, 1px 1px, 1px 30%, 0% 30%,
+    /* Bottom-right corner */
+    88% 100%, 100% 100%, 100% 70%, calc(100% - 1px) 70%, calc(100% - 1px) calc(100% - 1px), 88% calc(100% - 1px)
+  );
+
+  animation: ncm-bracket-pulse 3s ease-in-out infinite;
+}
+
+/* @keyframes ncm-bracket-pulse already defined in encrypted-enhanced.css */
+
+
+/* ─── Lock Avatar ─── */
+
+.ncm-list-item__ice-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid rgba(247, 201, 72, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 2;
+  background: rgba(247, 201, 72, 0.04);
+}
+
+.ncm-list-item__ice-avatar i.fa-lock {
+  font-size: 13px;
+  color: var(--ncm-accent, #f7c948);
+  animation: ncm-lock-glow-enhanced 2.5s ease-in-out infinite;
+}
+
+/* @keyframes ncm-lock-glow-enhanced already defined in encrypted-enhanced.css */
+
+
+/* ─── Scrambled Info ─── */
+
+.ncm-list-item__ice-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  position: relative;
+  z-index: 2;
+}
+
+.ncm-list-item__ice-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ncm-list-item__ice-name {
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(247, 201, 72, 0.35);
+  letter-spacing: 0.1em;
+}
+
+.ncm-list-item__ice-bottom {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ncm-list-item__ice-dv {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 8px;
+  color: rgba(247, 201, 72, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+
+  /* Badge chip */
+  background: rgba(247, 201, 72, 0.06);
+  border: 1px solid rgba(247, 201, 72, 0.15);
+  border-radius: 2px;
+  padding: 0 6px;
+}
+
+/* Blinking cursor after DV */
+.ncm-list-item__ice-dv::after {
+  content: '█';
+  font-size: 7px;
+  margin-left: 3px;
+  animation: ncm-cursor-blink 1s step-end infinite;
+  color: rgba(247, 201, 72, 0.4);
+}
+
+/* @keyframes ncm-cursor-blink already defined in encrypted-enhanced.css */
+
+
+/* ─── ICE Badge ─── */
+
+.ncm-badge--encrypted {
+  background: rgba(247, 201, 72, 0.08) !important;
+  border-color: rgba(247, 201, 72, 0.25) !important;
+  color: var(--ncm-accent, #f7c948) !important;
+}
+
+
+/* ─── Right Side: GM Bypass ─── */
+
+.ncm-list-item__ice-right {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  position: relative;
+  z-index: 5;
+}
+
+.ncm-list-item__ice-gm-bypass {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 7px;
+  color: var(--ncm-danger, #ff0033);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.5;
+  cursor: pointer;
+  padding: 2px 6px;
+  border: 1px solid rgba(255, 0, 51, 0.2);
+  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.4);
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.ncm-list-item__ice-gm-bypass:hover {
+  opacity: 1;
+  border-color: rgba(255, 0, 51, 0.5);
+  background: rgba(255, 0, 51, 0.12);
+}
+
+
+/* ─── Hover: ICE warms up ─── */
+
+.ncm-contacts-v3 .ncm-list-item--encrypted:hover {
+  background: transparent;
+}
+
+.ncm-list-item__ice-overlay:hover {
+  background:
+    radial-gradient(
+      ellipse at 30% 50%,
+      rgba(10, 10, 15, 0.75) 0%,
+      rgba(10, 10, 15, 0.84) 60%,
+      rgba(5, 5, 8, 0.92) 100%
+    );
+}
+
+.ncm-list-item__ice-overlay:hover .ncm-list-item__ice-avatar {
+  border-color: rgba(247, 201, 72, 0.4);
+}
+
+.ncm-list-item__ice-overlay:hover .ncm-list-item__ice-avatar i.fa-lock {
+  text-shadow:
+    0 0 10px rgba(247, 201, 72, 0.6),
+    0 0 20px rgba(247, 201, 72, 0.3);
+}
+
+.ncm-list-item__ice-overlay:hover .ncm-list-item__ice-name {
+  color: rgba(247, 201, 72, 0.5);
+}
+
+.ncm-list-item__ice-overlay:hover .ncm-list-item__ice-dv {
+  color: rgba(247, 201, 72, 0.8);
+  border-color: rgba(247, 201, 72, 0.3);
+  background: rgba(247, 201, 72, 0.10);
+}
+
+.ncm-list-item__ice-overlay:hover::after {
+  border-color: rgba(247, 201, 72, 0.25);
+}
+
+
+/* ─── Breach animation states on list items ─── */
+
+/* Breaching in progress */
+.ncm-list-item--encrypted .ncm-list-item__ice-overlay--breaching {
+  pointer-events: none;
+}
+
+.ncm-list-item--encrypted .ncm-list-item__ice-overlay--breaching .fa-lock {
+  animation: ncm-lock-pulse 0.4s ease-in-out infinite alternate;
+}
+
+/* Success: Overlay glitch-shatters away */
+.ncm-list-item--encrypted .ncm-list-item__ice-overlay--unscramble {
+  animation: ncm-list-ice-shatter 0.9s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  pointer-events: none;
+}
+
+@keyframes ncm-list-ice-shatter {
+  0% {
+    transform: translateX(0);
+    opacity: 1;
+    filter: brightness(1);
+  }
+  15% {
+    transform: translateX(-4px) skewX(-1deg);
+    filter: brightness(1.6) hue-rotate(60deg);
+  }
+  30% {
+    transform: translateX(6px) skewX(2deg);
+    opacity: 0.8;
+    filter: brightness(0.6);
+  }
+  50% {
+    transform: translateX(-3px);
+    opacity: 0.5;
+    filter: brightness(1.4) hue-rotate(120deg);
+  }
+  70% {
+    transform: translateX(8px) skewX(-3deg);
+    opacity: 0.25;
+    filter: brightness(0.5);
+    clip-path: polygon(
+      0% 0%, 100% 3%, 98% 25%, 2% 30%,
+      0% 50%, 100% 48%, 97% 75%, 3% 78%,
+      0% 95%, 100% 100%
+    );
+  }
+  100% {
+    transform: translateX(-10px);
+    opacity: 0;
+    filter: brightness(2);
+    clip-path: polygon(50% 50%, 50% 50%, 50% 50%, 50% 50%);
+  }
+}
+
+/* Success: Row gets a brief cyan flash */
+.ncm-list-item--encrypted.ncm-list-item--decrypted-resolve {
+  animation: ncm-list-resolve 0.5s ease-out both;
+}
+
+@keyframes ncm-list-resolve {
+  0% {
+    box-shadow: inset 0 0 0 rgba(25, 243, 247, 0);
+    background: transparent;
+  }
+  30% {
+    box-shadow: inset 0 0 20px rgba(25, 243, 247, 0.1);
+    background: rgba(25, 243, 247, 0.03);
+  }
+  100% {
+    box-shadow: none;
+    background: transparent;
+  }
+}
+
+/* Failure: Denied flash + shake on the overlay */
+.ncm-list-item--encrypted .ncm-list-item__ice-overlay--denied {
+  animation: ncm-list-ice-denied 0.5s ease-out;
+}
+
+@keyframes ncm-list-ice-denied {
+  0%   { background: rgba(10, 10, 15, 0.90); }
+  25%  { background: rgba(255, 0, 51, 0.08); }
+  50%  { background: rgba(255, 0, 51, 0.04); }
+  100% { background: rgba(10, 10, 15, 0.90); }
+}
+
+.ncm-list-item--encrypted .ncm-list-item__ice-overlay--shake {
+  animation: ncm-shake 0.3s ease-out;
+}
+
+/* ACCESS DENIED text in list overlay */
+.ncm-list-item__ice-overlay .ncm-list-item__ice-denied-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ncm-danger, #ff0033);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  text-shadow: 0 0 8px rgba(255, 0, 51, 0.6);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 15;
+  white-space: nowrap;
+}
+
+.ncm-list-item__ice-overlay--denied .ncm-list-item__ice-denied-text {
+  animation: ncm-denied-text-appear 1.5s ease-out forwards;
+}
+
+/* ACCESS GRANTED text in list overlay */
+.ncm-list-item__ice-overlay .ncm-list-item__ice-granted-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ncm-secondary, #19f3f7);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  text-shadow: 0 0 10px rgba(25, 243, 247, 0.6);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 15;
+  white-space: nowrap;
+}
+
+.ncm-list-item__ice-overlay--unscramble .ncm-list-item__ice-granted-text {
+  animation: ncm-granted-text-appear 0.8s ease-out 0.2s forwards;
 }
 
 /* List avatar */

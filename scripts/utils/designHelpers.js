@@ -711,7 +711,8 @@ export function enrichContactForDisplay(contact, options = {}) {
       'ncm-list-item',
       contact.id === options.selectedId ? 'ncm-list-item--selected' : '',
       contact.burned ? 'ncm-list-item--burned' : '',
-      !contact.burned && networkClass !== 'citinet' ? `ncm-list-item--${networkClass}` : '',
+      contact.encrypted ? 'ncm-list-item--encrypted' : '',
+      !contact.burned && !contact.encrypted && networkClass !== 'citinet' ? `ncm-list-item--${networkClass}` : '',
     ].filter(Boolean).join(' '),
 
     // Tags display
