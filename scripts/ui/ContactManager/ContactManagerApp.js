@@ -67,6 +67,7 @@ export class ContactManagerApp extends BaseApplication {
   get contactRepo() { return game.nightcity?.contactRepository; }
   get networkService() { return game.nightcity?.networkService; }
   get messageService() { return game.nightcity?.messageService; }
+  get portraitService() { return game.nightcity?.portraitService; }
 
   // ═══════════════════════════════════════════════════════════
   //  ApplicationV2 Configuration
@@ -108,6 +109,7 @@ export class ContactManagerApp extends BaseApplication {
       shareContact:   ContactManagerApp._onShareContact,
       uploadPortrait: ContactManagerApp._onUploadPortrait,
       breachContact:  ContactManagerApp._onBreachContact,
+      removePortrait: ContactManagerApp._onRemovePortrait,
 
       // ─── Other ───
       openSettings:   ContactManagerApp._onOpenSettings,
@@ -567,29 +569,75 @@ export class ContactManagerApp extends BaseApplication {
 
   /**
    * Upload a portrait image for a contact.
+   * Offers choice between FilePicker (Foundry paths) and native file input.
+   * Processes image via PortraitService (resize/crop to 128×128).
    */
-  static _onUploadPortrait(event, target) {
+  static async _onUploadPortrait(event, target) {
     event.stopPropagation();
     const contactId = target.closest('[data-contact-id]')?.dataset.contactId;
     if (!contactId) return;
 
-    // Create a file picker for image upload
-    const fp = new FilePicker({
-      type: 'image',
-      current: '',
-      callback: async (path) => {
-        if (path) {
-          const result = await this.contactRepo.setPortrait(this.actorId, contactId, path);
-          if (result.success) {
-            this.render();
-          } else {
-            ui.notifications.error('Failed to set portrait.');
-          }
-        }
-      },
+    // Permission check
+    const portraitService = this.portraitService;
+    if (!portraitService?.canUploadPortrait(this.actorId)) {
+      ui.notifications.warn('You do not have permission to modify this contact.');
+      return;
+    }
+
+    // Offer choice: FilePicker vs native upload
+    const useFilePicker = await Dialog.confirm({
+      title: 'Upload Portrait',
+      content: `
+        <p style="font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--ncm-text-secondary, #8888a0);">
+          Choose image source:
+        </p>
+        <p style="font-family: 'Share Tech Mono', monospace; font-size: 10px; color: var(--ncm-text-muted, #555570);">
+          <strong>Yes</strong> — Browse Foundry files (world/module images)<br>
+          <strong>No</strong> — Upload from your computer (auto-resized to 128×128)
+        </p>`,
+      yes: 'Browse Files',
+      no: 'Upload Local',
+      defaultYes: true,
     });
-    fp.browse();
+
+    let result;
+
+    if (useFilePicker) {
+      // FilePicker approach — stores file path (lighter on flags)
+      result = await portraitService.uploadViaFilePicker(
+        this.actorId, contactId, { useBase64: false }
+      );
+    } else {
+      // Native file input — processes to base64
+      result = await portraitService.uploadViaFileInput(this.actorId, contactId);
+    }
+
+    if (result.success) {
+      ui.notifications.info('Portrait updated.');
+      this.render();
+    } else if (result.error && result.error !== 'No file selected' && result.error !== 'Upload cancelled') {
+      ui.notifications.error(`Portrait upload failed: ${result.error}`);
+    }
   }
+
+  /**
+   * Remove portrait from a contact (revert to initials).
+   */
+  static async _onRemovePortrait(event, target) {
+    event.stopPropagation();
+    const contactId = target.closest('[data-contact-id]')?.dataset.contactId;
+    if (!contactId) return;
+
+    const portraitService = this.portraitService;
+    if (!portraitService) return;
+
+    const result = await portraitService.removePortrait(this.actorId, contactId);
+    if (result.success) {
+      ui.notifications.info('Portrait removed.');
+      this.render();
+    }
+  }
+
 
   /**
    * Attempt to breach an encrypted contact (Sprint 3.7 — stub).

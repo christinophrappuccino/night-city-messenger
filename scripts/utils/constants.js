@@ -44,6 +44,11 @@ export const EVENTS = Object.freeze({
   SHARD_LOGIN_FAILURE: 'shard:loginFailure',
   SHARD_RELOCKED: 'shard:relocked',
 
+  TOAST_SHOW: 'toast:show',
+  TOAST_DISMISS: 'toast:dismiss',
+  TOAST_ACTION: 'toast:action',
+
+
   UI_VIEWER_OPENED: 'ui:viewerOpened',
   UI_COMPOSER_OPENED: 'ui:composerOpened',
   COMPOSER_OPEN: 'composer:open',
@@ -210,6 +215,7 @@ export const TEMPLATES = Object.freeze({
   PARTIAL_EMPTY_STATE:    `${T}/partials/empty-state.hbs`,
   PARTIAL_ACTION_BAR:     `${T}/partials/action-bar.hbs`,
   PARTIAL_HUD_STRIP: `${T}/partials/hud-strip.hbs`,
+  PARTIAL_TOAST: `${T}/partials/toast.hbs`,
   PARTIAL_METADATA_READOUT: `${T}/partials/metadata-readout.hbs`,
   PARTIAL_ENCRYPTED_ATTACHMENT: `${T}/partials/encrypted-attachment.hbs`,
   PARTIAL_ATTACHMENT_CHIP:      `${T}/partials/attachment-chip.hbs`,

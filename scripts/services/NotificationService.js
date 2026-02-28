@@ -2,11 +2,49 @@
  * Notification Service
  * @file scripts/services/NotificationService.js
  * @module cyberpunkred-messenger
- * @description Manages toast notifications for new messages, unread badge counts
- * on scene controls, and notification stacking/dismissal logic.
+ * @description Manages toast notifications, unread badge counts on scene controls,
+ *   and notification stacking/dismissal logic.
+ *
  */
 
-import { MODULE_ID, EVENTS } from '../utils/constants.js';
+import { MODULE_ID, EVENTS, TEMPLATES } from '../utils/constants.js';
+
+/**
+ * Toast type definitions.
+ * Maps type key → { icon, titleIcon }
+ * Accent colors handled via CSS variant classes (ncm-toast--{type}).
+ * @type {Record<string, {icon: string, titleIcon: string|null}>}
+ */
+const TOAST_TYPES = {
+  'info': {
+    icon: 'fas fa-info-circle',
+    titleIcon: null,
+  },
+  'success': {
+    icon: 'fas fa-check-circle',
+    titleIcon: null,
+  },
+  'warning': {
+    icon: 'fas fa-exclamation-circle',
+    titleIcon: null,
+  },
+  'error': {
+    icon: 'fas fa-exclamation-triangle',
+    titleIcon: null,
+  },
+  'message': {
+    icon: 'fas fa-envelope',
+    titleIcon: null,
+  },
+  'contact-acquired': {
+    icon: 'fas fa-user-plus',
+    titleIcon: 'fas fa-download',
+  },
+  'contact-burned': {
+    icon: 'fas fa-triangle-exclamation',
+    titleIcon: 'fas fa-fire',
+  },
+};
 
 export class NotificationService {
   constructor() {
@@ -25,7 +63,9 @@ export class NotificationService {
   get eventBus() { return game.nightcity.eventBus; }
   get soundService() { return game.nightcity.soundService; }
 
-  // ─── Initialization ───────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════
+  //  Initialization
+  // ═══════════════════════════════════════════════════════════
 
   /**
    * Initialize the notification system — creates toast container, sets up events.
@@ -37,7 +77,92 @@ export class NotificationService {
     console.log(`${MODULE_ID} | NotificationService initialized`);
   }
 
-  // ─── Toast Notifications ──────────────────────────────────
+  // ═══════════════════════════════════════════════════════════
+  //  Toast API — Sprint 3.9
+  // ═══════════════════════════════════════════════════════════
+
+  /**
+   * Show a toast notification (Sprint 3.9 full API).
+   *
+   * @param {object} data — Toast configuration
+   * @param {string} data.type — Toast type: 'info'|'success'|'warning'|'error'|'message'|'contact-acquired'|'contact-burned'
+   * @param {string} data.title — Header text
+   * @param {string} [data.detail] — Body text
+   * @param {string} [data.icon] — Override icon class
+   * @param {string} [data.titleIcon] — Override title icon class
+   * @param {string} [data.accentColor] — Override accent color (CSS value)
+   * @param {string} [data.actionLabel] — Action button text (e.g. "VIEW")
+   * @param {string} [data.actionId] — Data attribute for action routing
+   * @param {Function} [data.onAction] — Callback when action button clicked
+   * @param {number} [data.duration=5000] — Auto-dismiss ms (0 = no auto-dismiss)
+   * @param {string} [data.priority] — 'normal'|'urgent'|'critical'
+   * @returns {string} Toast ID
+   */
+  showToastV2(data) {
+    const id = foundry.utils.randomID();
+    const typeDef = TOAST_TYPES[data.type] || TOAST_TYPES.info;
+
+    const toast = {
+      id,
+      type: data.type || 'info',
+      title: data.title || '',
+      detail: data.detail || '',
+      icon: data.icon || typeDef.icon,
+      titleIcon: data.titleIcon || typeDef.titleIcon,
+      accentColor: data.accentColor || null,
+      actionLabel: data.actionLabel || null,
+      actionId: data.actionId || 'toast-action',
+      onAction: data.onAction || null,
+      duration: data.duration ?? 5000,
+      priority: data.priority || 'normal',
+      timestamp: Date.now(),
+      _dismissTimer: null,
+    };
+
+    this._addToast(toast);
+    return id;
+  }
+
+  /**
+   * Show a "Contact Acquired" toast.
+   * @param {object} data — { contactName, senderName, network, actorId, contactId }
+   * @returns {string} Toast ID
+   */
+  showContactAcquired(data) {
+    return this.showToastV2({
+      type: 'contact-acquired',
+      title: 'New Contact Acquired',
+      detail: `${data.contactName} — shared by ${data.senderName} via ${data.network || 'CITINET'}`,
+      actionLabel: 'VIEW',
+      onAction: () => {
+        if (game.nightcity?.openContacts) {
+          game.nightcity.openContacts(data.actorId, data.contactId);
+        }
+      },
+      duration: 6000,
+    });
+  }
+
+  /**
+   * Show a "Contact Burned" toast.
+   * @param {object} data — { contactName, actorId, contactId }
+   * @returns {string} Toast ID
+   */
+  showContactBurned(data) {
+    return this.showToastV2({
+      type: 'contact-burned',
+      title: 'Contact Burned',
+      detail: `${data.contactName} — identity compromised. Use caution.`,
+      actionLabel: 'VIEW',
+      onAction: () => {
+        if (game.nightcity?.openContacts) {
+          game.nightcity.openContacts(data.actorId, data.contactId);
+        }
+      },
+      duration: 8000,
+      priority: 'urgent',
+    });
+  }
 
   /**
    * Show a new message notification toast.
@@ -50,44 +175,51 @@ export class NotificationService {
    * @param {string} data.toActorId
    */
   showMessageNotification(data) {
-    const toast = {
-      id: foundry.utils.randomID(),
-      type: 'message',
-      from: data.from || 'Unknown',
-      subject: data.subject || '(no subject)',
-      preview: data.preview || '',
-      priority: data.priority || 'normal',
-      messageId: data.messageId,
-      toActorId: data.toActorId,
-      timestamp: Date.now(),
-    };
+    const preview = data.preview
+      ? `"${data.preview.substring(0, 60)}..."`
+      : '';
 
-    this._addToast(toast);
+    this.showToastV2({
+      type: 'message',
+      title: 'New Message',
+      detail: `${data.from || 'Unknown'} — ${data.subject || '(no subject)'}${preview ? ` ${preview}` : ''}`,
+      actionLabel: 'View',
+      onAction: () => {
+        game.nightcity.openInbox?.(data.toActorId, data.messageId);
+      },
+      duration: data.priority === 'critical' ? 0 : (data.priority === 'urgent' ? 8000 : 5000),
+      priority: data.priority || 'normal',
+    });
+
     this._updateUnreadBadge(data.toActorId);
   }
 
   /**
-   * Show a generic notification toast.
+   * Show a generic notification toast (legacy compat).
+   * Wraps showToastV2() — keeps backward compatibility with existing callers.
+   *
    * @param {string} title
    * @param {string} message
    * @param {string} [type='info'] - info/warning/error/success
    * @param {number} [duration=4000]
+   * @returns {string} Toast ID
    */
   showToast(title, message, type = 'info', duration = 4000) {
-    const toast = {
-      id: foundry.utils.randomID(),
+    return this.showToastV2({
       type,
       title,
-      message,
-      timestamp: Date.now(),
+      detail: message,
       duration,
-    };
-    this._addToast(toast);
+    });
   }
 
+  // ═══════════════════════════════════════════════════════════
+  //  Toast Queue Management
+  // ═══════════════════════════════════════════════════════════
+
   /**
-   * Add a toast to the stack.
-   * @param {Object} toast
+   * Add a toast to the stack with queue management.
+   * @param {object} toast
    */
   _addToast(toast) {
     this._toasts.push(toast);
@@ -96,104 +228,188 @@ export class NotificationService {
     while (this._toasts.length > this._maxToasts) {
       const oldest = this._toasts.shift();
       this._removeToastElement(oldest.id);
+      if (oldest._dismissTimer) clearTimeout(oldest._dismissTimer);
     }
 
     this._renderToast(toast);
 
-    // Auto-dismiss (critical messages stay longer)
-    const duration = toast.priority === 'critical' ? 8000 : (toast.duration || 4000);
-    if (toast.priority !== 'critical') {
-      setTimeout(() => this.dismissToast(toast.id), duration);
+    // Auto-dismiss (unless duration is 0 or priority is critical)
+    if (toast.duration > 0 && toast.priority !== 'critical') {
+      const effectiveDuration = toast.priority === 'urgent'
+        ? Math.round(toast.duration * 1.5)
+        : toast.duration;
+      toast._dismissTimer = setTimeout(() => this.dismissToast(toast.id), effectiveDuration);
     }
   }
 
   /**
-   * Dismiss a toast notification.
+   * Dismiss a toast notification with exit animation.
    * @param {string} toastId
    */
   dismissToast(toastId) {
+    const toast = this._toasts.find(t => t.id === toastId);
+    if (toast?._dismissTimer) clearTimeout(toast._dismissTimer);
+
     this._toasts = this._toasts.filter(t => t.id !== toastId);
     this._removeToastElement(toastId);
   }
 
+  // ═══════════════════════════════════════════════════════════
+  //  Toast Rendering
+  // ═══════════════════════════════════════════════════════════
+
   /**
-   * Render a toast element in the container.
-   * @param {Object} toast
+   * Render a toast. Tries Handlebars template first, falls back to raw DOM.
+   * @param {object} toast
    */
-  _renderToast(toast) {
+  async _renderToast(toast) {
     if (!this._container) this._createToastContainer();
 
-    const el = document.createElement('div');
-    el.classList.add('ncm-toast', `ncm-toast--${toast.type}`);
-    if (toast.priority === 'urgent' || toast.priority === 'critical') {
-      el.classList.add('ncm-toast--urgent');
+    try {
+      // Attempt template-based rendering
+      const html = await renderTemplate(TEMPLATES.PARTIAL_TOAST, {
+        id: toast.id,
+        type: toast.type,
+        title: toast.title,
+        detail: toast.detail,
+        icon: toast.icon,
+        titleIcon: toast.titleIcon,
+        accentColor: toast.accentColor,
+        actionLabel: toast.actionLabel,
+        actionId: toast.actionId,
+        duration: toast.duration > 0 ? toast.duration : null,
+      });
+
+      const wrapper = document.createElement('div');
+      wrapper.innerHTML = html.trim();
+      const el = wrapper.firstElementChild;
+
+      if (!el) throw new Error('Template rendered empty');
+
+      // Add urgent class if needed
+      if (toast.priority === 'urgent' || toast.priority === 'critical') {
+        el.classList.add('ncm-toast--urgent');
+      }
+
+      this._wireToastEvents(el, toast);
+      this._container.appendChild(el);
+      this._startProgressBar(el, toast);
+
+    } catch (error) {
+      // Fallback: render raw DOM if template not available
+      console.warn(`${MODULE_ID} | Toast template render failed, using fallback:`, error.message);
+      this._renderToastFallback(toast);
     }
-    el.dataset.toastId = toast.id;
-
-    if (toast.type === 'message') {
-      el.innerHTML = `
-        <div class="ncm-toast__icon"><i class="fas fa-envelope"></i></div>
-        <div class="ncm-toast__content">
-          <div class="ncm-toast__title">New Message</div>
-          <div class="ncm-toast__from">${this._escapeHtml(toast.from)}</div>
-          <div class="ncm-toast__subject">${this._escapeHtml(toast.subject)}</div>
-          ${toast.preview ? `<div class="ncm-toast__preview">"${this._escapeHtml(toast.preview.substring(0, 60))}..."</div>` : ''}
-        </div>
-        <div class="ncm-toast__actions">
-          <button class="ncm-toast__btn ncm-toast__btn--view" data-action="view-message" 
-                  data-message-id="${toast.messageId}" data-actor-id="${toast.toActorId}">View</button>
-          <button class="ncm-toast__btn ncm-toast__btn--close" data-action="dismiss">×</button>
-        </div>
-      `;
-    } else {
-      el.innerHTML = `
-        <div class="ncm-toast__icon"><i class="fas fa-${toast.type === 'error' ? 'exclamation-triangle' : toast.type === 'warning' ? 'exclamation-circle' : 'info-circle'}"></i></div>
-        <div class="ncm-toast__content">
-          <div class="ncm-toast__title">${this._escapeHtml(toast.title)}</div>
-          <div class="ncm-toast__message">${this._escapeHtml(toast.message)}</div>
-        </div>
-        <div class="ncm-toast__actions">
-          <button class="ncm-toast__btn ncm-toast__btn--close" data-action="dismiss">×</button>
-        </div>
-      `;
-    }
-
-    // Event listeners
-    el.querySelector('[data-action="dismiss"]')?.addEventListener('click', () => {
-      this.dismissToast(toast.id);
-    });
-
-    el.querySelector('[data-action="view-message"]')?.addEventListener('click', (e) => {
-      const { messageId, actorId } = e.currentTarget.dataset;
-      this.dismissToast(toast.id);
-      // Open inbox to this message
-      game.nightcity.openInbox?.(actorId, messageId);
-    });
-
-    // Slide-in animation
-    el.style.transform = 'translateX(120%)';
-    el.style.opacity = '0';
-    this._container.appendChild(el);
-
-    requestAnimationFrame(() => {
-      el.style.transition = 'all 0.3s ease';
-      el.style.transform = 'translateX(0)';
-      el.style.opacity = '1';
-    });
   }
 
   /**
-   * Remove a toast element from DOM.
+   * Fallback raw DOM renderer (works even if toast.hbs isn't preloaded).
+   * @param {object} toast
+   */
+  _renderToastFallback(toast) {
+    const el = document.createElement('div');
+    el.classList.add('ncm-toast', `ncm-toast--${toast.type}`);
+    el.dataset.toastId = toast.id;
+
+    if (toast.priority === 'urgent' || toast.priority === 'critical') {
+      el.classList.add('ncm-toast--urgent');
+    }
+
+    el.innerHTML = `
+      <div class="ncm-toast__icon"><i class="${toast.icon}"></i></div>
+      <div class="ncm-toast__body">
+        <div class="ncm-toast__title">
+          ${toast.titleIcon ? `<i class="${toast.titleIcon}"></i> ` : ''}${this._escapeHtml(toast.title)}
+        </div>
+        ${toast.detail ? `<div class="ncm-toast__detail">${this._escapeHtml(toast.detail)}</div>` : ''}
+      </div>
+      ${toast.actionLabel ? `<button class="ncm-toast__action" data-action="${toast.actionId}" data-toast-id="${toast.id}">${toast.actionLabel}</button>` : ''}
+      <button class="ncm-toast__dismiss" data-action="dismiss-toast" data-toast-id="${toast.id}"><i class="fas fa-xmark"></i></button>
+      ${toast.duration > 0 ? `<div class="ncm-toast__progress"><div class="ncm-toast__progress-fill"></div></div>` : ''}
+    `;
+
+    this._wireToastEvents(el, toast);
+    this._container.appendChild(el);
+    this._startProgressBar(el, toast);
+  }
+
+  /**
+   * Wire event listeners on a rendered toast element.
+   * @param {HTMLElement} el
+   * @param {object} toast
+   */
+  _wireToastEvents(el, toast) {
+    // Dismiss button
+    el.querySelector('[data-action="dismiss-toast"]')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.dismissToast(toast.id);
+    });
+
+    // Action button
+    const actionBtn = el.querySelector('.ncm-toast__action');
+    if (actionBtn && toast.onAction) {
+      actionBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toast.onAction();
+        this.dismissToast(toast.id);
+      });
+    }
+
+    // Pause auto-dismiss on hover (timer management)
+    if (toast.duration > 0 && toast.priority !== 'critical') {
+      let remainingTime = toast.priority === 'urgent'
+        ? Math.round(toast.duration * 1.5)
+        : toast.duration;
+      let enterTime = 0;
+
+      el.addEventListener('mouseenter', () => {
+        enterTime = Date.now();
+        if (toast._dismissTimer) clearTimeout(toast._dismissTimer);
+      });
+
+      el.addEventListener('mouseleave', () => {
+        const elapsed = Date.now() - enterTime;
+        remainingTime = Math.max(remainingTime - elapsed, 1000);
+        toast._dismissTimer = setTimeout(() => this.dismissToast(toast.id), remainingTime);
+      });
+    }
+  }
+
+  /**
+   * Start the progress bar countdown animation on a toast element.
+   * @param {HTMLElement} el
+   * @param {object} toast
+   */
+  _startProgressBar(el, toast) {
+    if (toast.duration <= 0) return;
+
+    const fill = el.querySelector('.ncm-toast__progress-fill');
+    if (!fill) return;
+
+    const effectiveDuration = toast.priority === 'urgent'
+      ? Math.round(toast.duration * 1.5)
+      : toast.duration;
+
+    fill.style.setProperty('--toast-duration', `${effectiveDuration}ms`);
+    // Trigger reflow before adding animation class
+    void fill.offsetHeight;
+    fill.classList.add('ncm-toast__progress--active');
+  }
+
+  /**
+   * Remove a toast element from DOM with exit animation.
    * @param {string} toastId
    */
   _removeToastElement(toastId) {
     const el = this._container?.querySelector(`[data-toast-id="${toastId}"]`);
     if (!el) return;
 
-    el.style.transition = 'all 0.2s ease';
-    el.style.transform = 'translateX(120%)';
-    el.style.opacity = '0';
-    setTimeout(() => el.remove(), 200);
+    // Add exit animation class
+    el.classList.add('ncm-toast--exiting');
+
+    // Remove after animation (or immediately if animations are off)
+    const animDuration = document.body.dataset.ncmAnimationLevel === 'off' ? 0 : 250;
+    setTimeout(() => el.remove(), animDuration);
   }
 
   /**
@@ -209,7 +425,9 @@ export class NotificationService {
     document.body.appendChild(this._container);
   }
 
-  // ─── Unread Badge ─────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════
+  //  Unread Badge
+  // ═══════════════════════════════════════════════════════════
 
   /**
    * Public method to refresh the unread badge for all owned actors.
@@ -276,7 +494,9 @@ export class NotificationService {
     const total = this.getTotalUnreadCount();
 
     // Find the NCM scene control button
-    const controlBtn = document.querySelector(`[data-tool="ncm-inbox"], .scene-control[data-control="ncm-controls"]`);
+    const controlBtn = document.querySelector(
+      `[data-tool="ncm-inbox"], .scene-control[data-control="ncm-controls"]`
+    );
     if (!controlBtn) return;
 
     // Remove existing badge
@@ -296,7 +516,9 @@ export class NotificationService {
     }
   }
 
-  // ─── Event Listeners ──────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════
+  //  Event Listeners
+  // ═══════════════════════════════════════════════════════════
 
   _setupEventListeners() {
     if (!this.eventBus) return;
@@ -310,13 +532,19 @@ export class NotificationService {
     });
 
     this.eventBus.on(EVENTS.MESSAGE_DELETED, () => {
-      // Refresh all counts
       this._refreshAllUnreadCounts();
     });
   }
 
-  // ─── Helpers ──────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════
+  //  Helpers
+  // ═══════════════════════════════════════════════════════════
 
+  /**
+   * Escape HTML entities in a string.
+   * @param {string} str
+   * @returns {string}
+   */
   _escapeHtml(str) {
     if (!str) return '';
     const div = document.createElement('div');
@@ -325,9 +553,13 @@ export class NotificationService {
   }
 
   /**
-   * Clean up — remove container from DOM.
+   * Clean up — remove container from DOM, clear timers.
    */
   destroy() {
+    // Clear all pending dismiss timers
+    for (const toast of this._toasts) {
+      if (toast._dismissTimer) clearTimeout(toast._dismissTimer);
+    }
     this._container?.remove();
     this._toasts = [];
   }

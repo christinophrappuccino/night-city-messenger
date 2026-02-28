@@ -44,6 +44,7 @@
 @import 'components/theme-customizer.css';
 @import 'components/notifications.css';
 @import 'components/dialogs.css';
+@import 'components/toast.css';
 
 /* Chat — Foundry chat card styling */
 @import 'chat/chat-cards.css';

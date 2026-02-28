@@ -1,0 +1,78 @@
+{{!--
+  Toast Notification — Cyberpunk-styled notification popup
+  @file templates/partials/toast.hbs
+  @module cyberpunkred-messenger
+  @description Renders a single toast notification with accent bar, icon circle,
+    title, detail text, optional action button, and progress bar for auto-dismiss.
+    Matches ncm-contacts-mockup-v2.html toast spec.
+
+  Toast types:
+    - info        — Cyan accent, info-circle icon
+    - success     — Green accent, check icon
+    - warning     — Amber accent, exclamation icon
+    - error       — Red accent, exclamation-triangle icon
+    - contact-acquired — Cyan accent, user-plus icon + download indicator
+    - contact-burned   — Red accent, triangle-exclamation icon + fire indicator
+    - message     — Cyan accent, envelope icon (existing)
+
+  @param {string} id            — Unique toast ID
+  @param {string} type          — Toast type key
+  @param {string} title         — Header text (Rajdhani 11px 700 uppercase)
+  @param {string} [detail]      — Body text (mono 9px muted)
+  @param {string} [titleIcon]   — Optional icon class before title text
+  @param {string} icon          — Icon class for the left circle
+  @param {string} [accentColor] — CSS color for accent bar + icon
+  @param {string} [actionLabel] — Optional action button label (e.g. "VIEW")
+  @param {string} [actionId]    — Data attribute for action routing
+  @param {number} [duration]    — Auto-dismiss ms (0 = no auto-dismiss)
+
+  @example
+    {{> "modules/cyberpunkred-messenger/templates/partials/toast.hbs"
+        id="abc123" type="contact-acquired"
+        icon="fas fa-user-plus" title="New Contact Acquired"
+        detail="Rogue Amendiares — shared by V via CITINET"
+        actionLabel="VIEW" actionId="view-contact" duration=5000 }}
+--}}
+
+<div class="ncm-toast ncm-toast--{{type}}" data-toast-id="{{id}}">
+
+  {{!-- Left accent bar is via CSS ::before --}}
+
+  {{!-- Icon circle --}}
+  <div class="ncm-toast__icon"
+       {{#if accentColor}}style="color: {{accentColor}}; border-color: {{accentColor}}33;"{{/if}}>
+    <i class="{{icon}}"></i>
+  </div>
+
+  {{!-- Body --}}
+  <div class="ncm-toast__body">
+    <div class="ncm-toast__title"
+         {{#if accentColor}}style="color: {{accentColor}};"{{/if}}>
+      {{#if titleIcon}}<i class="{{titleIcon}}"></i> {{/if}}{{title}}
+    </div>
+    {{#if detail}}
+      <div class="ncm-toast__detail">{{detail}}</div>
+    {{/if}}
+  </div>
+
+  {{!-- Action button --}}
+  {{#if actionLabel}}
+    <button class="ncm-toast__action" data-action="{{actionId}}" data-toast-id="{{id}}">
+      {{actionLabel}}
+    </button>
+  {{/if}}
+
+  {{!-- Dismiss button --}}
+  <button class="ncm-toast__dismiss" data-action="dismiss-toast" data-toast-id="{{id}}">
+    <i class="fas fa-xmark"></i>
+  </button>
+
+  {{!-- Auto-dismiss progress bar --}}
+  {{#if duration}}
+    <div class="ncm-toast__progress">
+      <div class="ncm-toast__progress-fill"
+           {{#if accentColor}}style="background: {{accentColor}};"{{/if}}
+           data-duration="{{duration}}"></div>
+    </div>
+  {{/if}}
+</div>

@@ -1,0 +1,311 @@
+/**
+ * Toast Notification Styles — Sprint 3.9 Redesign
+ * @file styles/components/toast.css
+ * @module cyberpunkred-messenger
+ * @description Cyberpunk toast notifications matching ncm-contacts-mockup-v2.html.
+ *   Positioned overlay with auto-dismiss progress bar, accent-colored left bar,
+ *   circular icon, title/detail text, action button, and queue stacking.
+ *
+ *   This REPLACES the toast-related portions of notifications.css.
+ *   The unread badge styles from notifications.css are NOT affected.
+ */
+
+/* ═══════════════════════════════════════════
+   TOAST CONTAINER
+   ═══════════════════════════════════════════ */
+
+.ncm-toast-container {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+  max-width: 400px;
+}
+
+/* ═══════════════════════════════════════════
+   TOAST BASE
+   ═══════════════════════════════════════════ */
+
+.ncm-toast {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--ncm-bg-deep, #0a0a0f);
+  border: 1px solid rgba(25, 243, 247, 0.3);
+  border-radius: 2px;
+  padding: 10px 12px 10px 16px;
+  position: relative;
+  overflow: hidden;
+  width: 380px;
+  pointer-events: all;
+  cursor: default;
+
+  /* Entry animation */
+  animation: ncm-toast-slide-in 0.3s ease forwards;
+}
+
+.ncm-toast.ncm-toast--exiting {
+  animation: ncm-toast-slide-out 0.25s ease forwards;
+}
+
+@keyframes ncm-toast-slide-in {
+  0% { transform: translateX(120%); opacity: 0; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes ncm-toast-slide-out {
+  0% { transform: translateX(0); opacity: 1; }
+  100% { transform: translateX(120%); opacity: 0; }
+}
+
+/* Left accent bar (via ::before) */
+.ncm-toast::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--ncm-secondary, #19f3f7);
+}
+
+/* ═══════════════════════════════════════════
+   TOAST ICON
+   ═══════════════════════════════════════════ */
+
+.ncm-toast__icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(25, 243, 247, 0.2);
+  border-radius: 50%;
+  flex-shrink: 0;
+  color: var(--ncm-secondary, #19f3f7);
+  font-size: 14px;
+}
+
+/* ═══════════════════════════════════════════
+   TOAST BODY
+   ═══════════════════════════════════════════ */
+
+.ncm-toast__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.ncm-toast__title {
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ncm-secondary, #19f3f7);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  line-height: 1.3;
+}
+
+.ncm-toast__title i {
+  margin-right: 4px;
+  font-size: 10px;
+}
+
+.ncm-toast__detail {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 9px;
+  color: var(--ncm-text-muted, #555570);
+  margin-top: 2px;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ═══════════════════════════════════════════
+   TOAST ACTION BUTTON
+   ═══════════════════════════════════════════ */
+
+.ncm-toast__action {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 8px;
+  color: var(--ncm-text-muted, #555570);
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 3px 6px;
+  border: 1px solid var(--ncm-border, #2a2a45);
+  border-radius: 2px;
+  background: transparent;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  transition: all 0.15s;
+}
+
+.ncm-toast__action:hover {
+  color: var(--ncm-secondary, #19f3f7);
+  border-color: rgba(25, 243, 247, 0.3);
+}
+
+/* ═══════════════════════════════════════════
+   TOAST DISMISS
+   ═══════════════════════════════════════════ */
+
+.ncm-toast__dismiss {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--ncm-text-muted, #555570);
+  font-size: 8px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+}
+
+.ncm-toast:hover .ncm-toast__dismiss {
+  opacity: 1;
+}
+
+.ncm-toast__dismiss:hover {
+  color: var(--ncm-text-primary, #e0e0e8);
+}
+
+/* ═══════════════════════════════════════════
+   PROGRESS BAR (auto-dismiss countdown)
+   ═══════════════════════════════════════════ */
+
+.ncm-toast__progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: transparent;
+}
+
+.ncm-toast__progress-fill {
+  height: 100%;
+  width: 100%;
+  background: var(--ncm-secondary, #19f3f7);
+  opacity: 0.4;
+  transform-origin: left;
+  /* Animation set via JS: scaleX(1) → scaleX(0) over duration */
+}
+
+.ncm-toast__progress-fill.ncm-toast__progress--active {
+  animation: ncm-toast-countdown var(--toast-duration) linear forwards;
+}
+
+@keyframes ncm-toast-countdown {
+  0% { transform: scaleX(1); }
+  100% { transform: scaleX(0); }
+}
+
+/* Pause countdown on hover */
+.ncm-toast:hover .ncm-toast__progress-fill {
+  animation-play-state: paused;
+}
+
+/* ═══════════════════════════════════════════
+   TYPE VARIANTS
+   ═══════════════════════════════════════════ */
+
+/* ── Info (default / cyan) ── */
+.ncm-toast--info::before { background: var(--ncm-secondary, #19f3f7); }
+.ncm-toast--info .ncm-toast__icon { color: var(--ncm-secondary, #19f3f7); border-color: rgba(25, 243, 247, 0.2); }
+.ncm-toast--info .ncm-toast__title { color: var(--ncm-secondary, #19f3f7); }
+
+/* ── Success (green) ── */
+.ncm-toast--success { border-color: rgba(0, 255, 65, 0.3); }
+.ncm-toast--success::before { background: var(--ncm-success, #00ff41); }
+.ncm-toast--success .ncm-toast__icon { color: var(--ncm-success, #00ff41); border-color: rgba(0, 255, 65, 0.2); }
+.ncm-toast--success .ncm-toast__title { color: var(--ncm-success, #00ff41); }
+.ncm-toast--success .ncm-toast__progress-fill { background: var(--ncm-success, #00ff41); }
+.ncm-toast--success .ncm-toast__action:hover { color: var(--ncm-success, #00ff41); border-color: rgba(0, 255, 65, 0.3); }
+
+/* ── Warning (amber) ── */
+.ncm-toast--warning { border-color: rgba(255, 171, 0, 0.3); }
+.ncm-toast--warning::before { background: var(--ncm-warning, #ffab00); }
+.ncm-toast--warning .ncm-toast__icon { color: var(--ncm-warning, #ffab00); border-color: rgba(255, 171, 0, 0.2); }
+.ncm-toast--warning .ncm-toast__title { color: var(--ncm-warning, #ffab00); }
+.ncm-toast--warning .ncm-toast__progress-fill { background: var(--ncm-warning, #ffab00); }
+.ncm-toast--warning .ncm-toast__action:hover { color: var(--ncm-warning, #ffab00); border-color: rgba(255, 171, 0, 0.3); }
+
+/* ── Error (red) ── */
+.ncm-toast--error { border-color: rgba(255, 0, 51, 0.3); }
+.ncm-toast--error::before { background: var(--ncm-primary, #F65261); }
+.ncm-toast--error .ncm-toast__icon { color: var(--ncm-primary, #F65261); border-color: rgba(255, 0, 51, 0.2); }
+.ncm-toast--error .ncm-toast__title { color: var(--ncm-primary, #F65261); }
+.ncm-toast--error .ncm-toast__progress-fill { background: var(--ncm-primary, #F65261); }
+.ncm-toast--error .ncm-toast__action:hover { color: var(--ncm-primary, #F65261); border-color: rgba(255, 0, 51, 0.3); }
+
+/* ── Contact Acquired (cyan + download indicator) ── */
+.ncm-toast--contact-acquired { border-color: rgba(25, 243, 247, 0.3); }
+.ncm-toast--contact-acquired::before { background: var(--ncm-secondary, #19f3f7); }
+.ncm-toast--contact-acquired .ncm-toast__icon { color: var(--ncm-secondary, #19f3f7); border-color: rgba(25, 243, 247, 0.2); }
+.ncm-toast--contact-acquired .ncm-toast__title { color: var(--ncm-secondary, #19f3f7); }
+
+/* ── Contact Burned (red + fire) ── */
+.ncm-toast--contact-burned { border-color: rgba(255, 0, 51, 0.3); }
+.ncm-toast--contact-burned::before { background: var(--ncm-danger, #ff0033); }
+.ncm-toast--contact-burned .ncm-toast__icon { color: var(--ncm-danger, #ff0033); border-color: rgba(255, 0, 51, 0.2); }
+.ncm-toast--contact-burned .ncm-toast__title { color: var(--ncm-danger, #ff0033); }
+.ncm-toast--contact-burned .ncm-toast__progress-fill { background: var(--ncm-danger, #ff0033); }
+.ncm-toast--contact-burned .ncm-toast__action:hover { color: var(--ncm-danger, #ff0033); border-color: rgba(255, 0, 51, 0.3); }
+
+/* ── Message (cyan, existing compat) ── */
+.ncm-toast--message { border-color: rgba(25, 243, 247, 0.3); }
+.ncm-toast--message::before { background: var(--ncm-secondary, #19f3f7); }
+.ncm-toast--message .ncm-toast__icon { color: var(--ncm-secondary, #19f3f7); border-color: rgba(25, 243, 247, 0.2); }
+.ncm-toast--message .ncm-toast__title { color: var(--ncm-secondary, #19f3f7); }
+
+/* ═══════════════════════════════════════════
+   URGENT / CRITICAL
+   ═══════════════════════════════════════════ */
+
+.ncm-toast--urgent {
+  border-color: rgba(246, 82, 97, 0.4);
+  animation: ncm-toast-slide-in 0.3s ease forwards, ncm-toast-urgent-pulse 1.5s ease 0.3s infinite;
+}
+
+@keyframes ncm-toast-urgent-pulse {
+  0%, 100% { border-color: rgba(246, 82, 97, 0.4); }
+  50% { border-color: rgba(247, 201, 72, 0.5); }
+}
+
+/* ═══════════════════════════════════════════
+   ANIMATION LEVEL GATES
+   ═══════════════════════════════════════════ */
+
+/* Reduced: no slide, instant appear */
+[data-ncm-animation-level="reduced"] .ncm-toast {
+  animation: none;
+  transform: translateX(0);
+  opacity: 1;
+}
+
+[data-ncm-animation-level="reduced"] .ncm-toast.ncm-toast--exiting {
+  animation: none;
+  display: none;
+}
+
+/* Off: no animations at all */
+[data-ncm-animation-level="off"] .ncm-toast,
+[data-ncm-animation-level="off"] .ncm-toast.ncm-toast--exiting {
+  animation: none;
+  transform: translateX(0);
+  opacity: 1;
+}
+
+[data-ncm-animation-level="off"] .ncm-toast__progress-fill {
+  animation: none !important;
+}

@@ -37,6 +37,13 @@ export function registerReadyServices(initializer) {
     game.nightcity.soundService = soundService;
   });
 
+  // ─── PortraitService ───
+  initializer.register('ready', 82, 'PortraitService', async () => {
+    const { PortraitService } = await import('../services/PortraitService.js');
+    game.nightcity.portraitService = new PortraitService();
+    log.info('PortraitService initialized');
+  });
+
   // ─── SocketManager init ───
   initializer.register('ready', 100, 'SocketManager init', () => {
     game.nightcity.socketManager.initialize();
