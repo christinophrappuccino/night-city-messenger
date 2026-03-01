@@ -1,0 +1,158 @@
+{{!--
+  Contact Form — Shared Create/Edit partial
+  @file templates/contact-manager/partials/contact-form.hbs
+  @module cyberpunkred-messenger
+  @description Unified form used by both player ContactManagerApp and
+    GM GMContactManagerApp for creating/editing contacts.
+    GM-only fields (notes, relationship, linked actor) are gated by {{#if isGM}}.
+
+  @param {object|null} contact       — Contact data (null for create mode)
+  @param {boolean}     isCreating    — True when creating a new contact
+  @param {boolean}     isGM          — Whether current user is GM
+  @param {Array}       [availableActors] — All actors for linking (GM only)
+
+  @example Player usage:
+    {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/contact-form.hbs"
+        contact=editingContact isCreating=isAdding isGM=false }}
+
+  @example GM usage:
+    {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/contact-form.hbs"
+        contact=selectedContact isCreating=isCreating isGM=true availableActors=availableActors }}
+--}}
+
+<form class="ncm-contact-form">
+
+  {{!-- ── Name + Alias ── --}}
+  <div class="ncm-form-row ncm-form-row--half">
+    <div class="ncm-form-group">
+      <label class="ncm-form-label">Name <span class="ncm-form-required">*</span></label>
+      <input type="text" name="name" value="{{contact.name}}"
+             placeholder="Rogue Amendiares" required class="ncm-form-input" />
+    </div>
+    <div class="ncm-form-group">
+      <label class="ncm-form-label">Alias / Subtitle</label>
+      <input type="text" name="alias" value="{{contact.alias}}"
+             placeholder="The Queen of the Afterlife" class="ncm-form-input" />
+    </div>
+  </div>
+
+  {{!-- ── Email + Phone ── --}}
+  <div class="ncm-form-row ncm-form-row--half">
+    <div class="ncm-form-group">
+      <label class="ncm-form-label">Email</label>
+      <input type="text" name="email" value="{{contact.email}}"
+             placeholder="rogue@afterlife.nc" class="ncm-form-input ncm-form-input--mono" />
+    </div>
+    <div class="ncm-form-group">
+      <label class="ncm-form-label">Phone</label>
+      <input type="text" name="phone" value="{{contact.phone}}"
+             placeholder="+1-NC-555-0147" class="ncm-form-input ncm-form-input--mono" />
+    </div>
+  </div>
+
+  {{!-- ── Role / Type + Organization ── --}}
+  <div class="ncm-form-row ncm-form-row--half">
+    <div class="ncm-form-group">
+      <label class="ncm-form-label">Role / Type</label>
+      <select name="role" class="ncm-form-select">
+        <option value="npc" {{#if (eq contact.type 'npc')}}selected{{/if}}>NPC</option>
+        <option value="fixer" {{#if (eq contact.type 'fixer')}}selected{{/if}}>Fixer</option>
+        <option value="solo" {{#if (eq contact.type 'solo')}}selected{{/if}}>Solo</option>
+        <option value="netrunner" {{#if (eq contact.type 'netrunner')}}selected{{/if}}>Netrunner</option>
+        <option value="tech" {{#if (eq contact.type 'tech')}}selected{{/if}}>Tech</option>
+        <option value="medtech" {{#if (eq contact.type 'medtech')}}selected{{/if}}>Medtech</option>
+        <option value="media" {{#if (eq contact.type 'media')}}selected{{/if}}>Media</option>
+        <option value="exec" {{#if (eq contact.type 'exec')}}selected{{/if}}>Exec</option>
+        <option value="lawman" {{#if (eq contact.type 'lawman')}}selected{{/if}}>Lawman</option>
+        <option value="nomad" {{#if (eq contact.type 'nomad')}}selected{{/if}}>Nomad</option>
+        <option value="rockerboy" {{#if (eq contact.type 'rockerboy')}}selected{{/if}}>Rockerboy</option>
+        <option value="corp" {{#if (eq contact.type 'corp')}}selected{{/if}}>Corp</option>
+        <option value="gang" {{#if (eq contact.type 'gang')}}selected{{/if}}>Gang</option>
+      </select>
+    </div>
+    <div class="ncm-form-group">
+      <label class="ncm-form-label">Organization</label>
+      <input type="text" name="organization" value="{{contact.organization}}"
+             placeholder="Afterlife Bar" class="ncm-form-input" />
+    </div>
+  </div>
+
+  {{!-- ── Portrait Path ── --}}
+  <div class="ncm-form-row">
+    <div class="ncm-form-group">
+      <label class="ncm-form-label">Portrait</label>
+      <input type="text" name="portrait" value="{{contact.portrait}}"
+             placeholder="path/to/image.png" class="ncm-form-input ncm-form-input--mono" />
+    </div>
+  </div>
+
+  {{!-- ── Tags ── --}}
+  <div class="ncm-form-row">
+    <div class="ncm-form-group">
+      <label class="ncm-form-label">Tags <span class="ncm-form-hint">(comma-separated, auto-uppercased)</span></label>
+      <input type="text" name="tags"
+             value="{{#each contact.tags}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}"
+             placeholder="HEIST CREW, TRUSTED, ARASAKA"
+             class="ncm-form-input ncm-form-input--mono" />
+    </div>
+  </div>
+
+  {{!-- ═══════════════════════════════════════════
+       GM-ONLY FIELDS — Hidden for players
+       ═══════════════════════════════════════════ --}}
+  {{#if isGM}}
+
+    {{!-- ── Relationship ── --}}
+    <div class="ncm-form-row">
+      <div class="ncm-form-group">
+        <label class="ncm-form-label">Relationship</label>
+        <select name="relationship" class="ncm-form-select">
+          <option value="" {{#unless contact.relationship}}selected{{/unless}}>— None —</option>
+          <option value="ally" {{#if (eq contact.relationship 'ally')}}selected{{/if}}>ALLY</option>
+          <option value="hostile" {{#if (eq contact.relationship 'hostile')}}selected{{/if}}>HOSTILE</option>
+          <option value="owes-you" {{#if (eq contact.relationship 'owes-you')}}selected{{/if}}>OWES YOU</option>
+          <option value="you-owe" {{#if (eq contact.relationship 'you-owe')}}selected{{/if}}>YOU OWE</option>
+        </select>
+      </div>
+    </div>
+
+    {{!-- ── Linked Actor ── --}}
+    <div class="ncm-form-row">
+      <div class="ncm-form-group">
+        <label class="ncm-form-label">Linked Actor</label>
+        <select name="actorId" class="ncm-form-select">
+          <option value="">— None —</option>
+          {{#each availableActors}}
+            <option value="{{id}}" {{#if (eq id ../contact.actorId)}}selected{{/if}}>
+              {{name}} {{#if hasPlayerOwner}}(Player){{/if}}
+            </option>
+          {{/each}}
+        </select>
+      </div>
+    </div>
+
+    {{!-- ── GM Notes ── --}}
+    <div class="ncm-form-row">
+      <div class="ncm-form-group">
+        <label class="ncm-form-label">
+          GM Notes
+          <span class="ncm-form-hint ncm-form-hint--danger">(GM only — never shared to players)</span>
+        </label>
+        <textarea name="notes" rows="3" placeholder="Private GM notes..."
+                  class="ncm-form-textarea">{{contact.notes}}</textarea>
+      </div>
+    </div>
+
+  {{/if}}
+
+  {{!-- ── Form Actions ── --}}
+  <div class="ncm-form-actions">
+    <button type="button" class="ncm-btn ncm-btn--ghost" data-action="cancelEdit">
+      <i class="fas fa-times"></i> Cancel
+    </button>
+    <button type="button" class="ncm-btn ncm-btn--accent" data-action="saveContact">
+      <i class="fas fa-save"></i> {{#if isCreating}}Create Contact{{else}}Save Changes{{/if}}
+    </button>
+  </div>
+
+</form>

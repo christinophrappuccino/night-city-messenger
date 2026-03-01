@@ -145,8 +145,8 @@
           <div class="ncm-gm-section-header">
             <i class="fas fa-plus"></i> NEW CONTACT
           </div>
-          {{> "modules/cyberpunkred-messenger/templates/gm-contact-manager/partials/gm-contact-form.hbs"
-              contact=null isCreating=true availableActors=availableActors relationshipOptions=relationshipOptions }}
+          {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/contact-form.hbs"
+              contact=null isCreating=true isGM=true availableActors=availableActors }}
         </div>
 
       {{!-- ═══ EDIT FORM ═══ --}}
@@ -155,8 +155,8 @@
           <div class="ncm-gm-section-header">
             <i class="fas fa-pen"></i> EDIT — {{selectedContact.name}}
           </div>
-          {{> "modules/cyberpunkred-messenger/templates/gm-contact-manager/partials/gm-contact-form.hbs"
-              contact=selectedContact isCreating=false availableActors=availableActors relationshipOptions=relationshipOptions }}
+          {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/contact-form.hbs"
+              contact=selectedContact isCreating=false isGM=true availableActors=availableActors }}
         </div>
 
       {{!-- ═══ DETAIL VIEW ═══ --}}

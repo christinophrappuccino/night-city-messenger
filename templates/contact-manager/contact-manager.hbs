@@ -40,6 +40,12 @@
       </div>
     </div>
     <div class="ncm-header__actions">
+      {{#if isGM}}
+        <button class="ncm-btn ncm-btn--ghost ncm-btn--sm"
+                data-action="openGMContacts" title="GM Master Contact Directory">
+          <i class="fas fa-shield-halved"></i> GM
+        </button>
+      {{/if}}
       <button class="ncm-btn ncm-btn--secondary" data-action="addContact">
         <i class="fas fa-user-plus"></i> Add
       </button>
@@ -97,43 +103,62 @@
     </div>
   </div>
 
-  {{!-- ═══ Content Area: Grid or List ═══ --}}
-  <div class="ncm-content">
-    {{#if isEmpty}}
+  {{!-- ═══ Content Area: Form / Grid / List ═══ --}}
+    <div class="ncm-content">
+
+      {{!-- Add form --}}
+      {{#if isAdding}}
+        <div class="ncm-content__form">
+          <div class="ncm-gm-section-header">
+            <i class="fas fa-plus"></i> NEW CONTACT
+          </div>
+          {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/contact-form.hbs"
+              contact=null isCreating=true isGM=isGM }}
+        </div>
+
+      {{!-- Edit form --}}
+      {{else if editingContact}}
+        <div class="ncm-content__form">
+          <div class="ncm-gm-section-header">
+            <i class="fas fa-pen"></i> EDIT — {{editingContact.name}}
+          </div>
+          {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/contact-form.hbs"
+              contact=editingContact isCreating=false isGM=isGM }}
+        </div>
 
       {{!-- Empty state --}}
-      <div class="ncm-empty">
-        {{#if hasSearch}}
-          <i class="fas fa-search"></i>
-          <div class="ncm-empty__text">No matches found</div>
-          <div class="ncm-empty__sub">Try adjusting your search or filters</div>
+      {{else if isEmpty}}
+        <div class="ncm-empty">
+          {{#if hasSearch}}
+            <i class="fas fa-search"></i>
+            <div class="ncm-empty__text">No matches found</div>
+            <div class="ncm-empty__sub">Try adjusting your search or filters</div>
+          {{else}}
+            <i class="fas fa-user-slash"></i>
+            <div class="ncm-empty__text">No contacts yet</div>
+            <div class="ncm-empty__sub">Add contacts to start messaging</div>
+          {{/if}}
+        </div>
+
+      {{!-- Grid or List --}}
+      {{else}}
+        {{#if isGridView}}
+          <div class="ncm-grid">
+            {{#each contacts}}
+              {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/contact-card.hbs" }}
+            {{/each}}
+          </div>
         {{else}}
-          <i class="fas fa-user-slash"></i>
-          <div class="ncm-empty__text">No contacts yet</div>
-          <div class="ncm-empty__sub">Add contacts to start messaging</div>
+          <div class="ncm-list">
+            {{#each contacts}}
+              {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/contact-list-item.hbs" }}
+            {{/each}}
+          </div>
         {{/if}}
-      </div>
+      {{/if}}
 
-    {{else if (eq viewMode "grid")}}
+    </div>
 
-      {{!-- Grid view --}}
-      <div class="ncm-grid">
-        {{#each contacts}}
-          {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/contact-card.hbs" }}
-        {{/each}}
-      </div>
-
-    {{else}}
-
-      {{!-- List view --}}
-      <div class="ncm-list">
-        {{#each contacts}}
-          {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/contact-list-item.hbs" }}
-        {{/each}}
-      </div>
-
-    {{/if}}
-  </div>
 
   {{!-- ═══ Context-Aware Footer ═══ --}}
   <div class="ncm-footer">

@@ -104,6 +104,7 @@ export class ContactManagerApp extends BaseApplication {
       deleteContact:  ContactManagerApp._onDeleteContact,
       saveContact:    ContactManagerApp._onSaveContact,
       cancelEdit:     ContactManagerApp._onCancelEdit,
+      openGMContacts: ContactManagerApp._onOpenGMContacts,
 
       // ─── Contact actions ───
       sendMessage:    ContactManagerApp._onSendMessage,
@@ -201,6 +202,13 @@ export class ContactManagerApp extends BaseApplication {
       active: this.activeTagFilters.includes(tag),
     }));
 
+    // ── Resolve editing contact for form population ──
+    let editingContact = null;
+    if (this.editingContactId) {
+      const raw = this._contacts.find(c => c.id === this.editingContactId);
+      if (raw) editingContact = enrichContactForDisplay(raw, { isGM: game.user.isGM });
+    }
+
     return {
       // Owner
       ownerName,
@@ -225,6 +233,10 @@ export class ContactManagerApp extends BaseApplication {
       // Contacts
       contacts: enriched,
       isEmpty: enriched.length === 0,
+
+      // Edit Contact
+      editingContact,
+      isGridView: this.viewMode === 'grid',
 
       // Tags
       allTags: tagPills,
@@ -565,6 +577,16 @@ export class ContactManagerApp extends BaseApplication {
     this.render();
   }
 
+  /**
+   * Open GM Master Contact Directory.
+   */
+  static _onOpenGMContacts(event, target) {
+    if (!game.user.isGM) return;
+    if (game.nightcity?.gmContactManager) {
+      game.nightcity.gmContactManager.render(true);
+    }
+  }
+  
   // ═══════════════════════════════════════════════════════════
   //  Action Handlers — Contact Actions
   // ═══════════════════════════════════════════════════════════

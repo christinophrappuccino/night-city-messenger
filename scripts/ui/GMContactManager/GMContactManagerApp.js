@@ -534,7 +534,7 @@ export class GMContactManagerApp extends BaseApplication {
    * Save a new or edited contact from the form.
    */
   static async _onSaveContact(event, target) {
-    const form = this.element?.querySelector('.ncm-gm-contact-form');
+    const form = this.element?.querySelector('.ncm-contact-form');
     if (!form) return;
 
     const formData = new FormData(form);
@@ -547,7 +547,7 @@ export class GMContactManagerApp extends BaseApplication {
       portrait: formData.get('portrait')?.trim(),
       notes: formData.get('notes')?.trim(),
       actorId: formData.get('actorId') || null,
-      type: formData.get('type') || 'npc',
+      role: formData.get('role') || 'npc',
       relationship: formData.get('relationship') || '',
       tags: (formData.get('tags') || '').split(',').map(t => t.trim().toUpperCase()).filter(Boolean),
     };
