@@ -210,6 +210,7 @@ export const TEMPLATES = Object.freeze({
   CONTACT_TRUST_METER:    `${T}/contact-manager/partials/trust-meter.hbs`,
   CONTACT_TRUST_DETAIL: `${T}/contact-manager/partials/trust-detail.hbs`,
   CONTACT_ENCRYPTED:      `${T}/contact-manager/partials/encrypted-overlay.hbs`,
+  CONTACT_FORM:          `${T}/contact-manager/partials/contact-form.hbs`,
   // Partials — Design System Components
   PARTIAL_SECTION_HEADER: `${T}/partials/section-header.hbs`,
   PARTIAL_STAT_CARD:      `${T}/partials/stat-card.hbs`,

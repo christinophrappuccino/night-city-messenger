@@ -1,332 +1,1034 @@
-/* ═══════════════════════════════════════════════════════════
- * GM Contact Manager Component Styles
+/**
+ * GM Master Contact Directory — Sprint 3.10 Styles
  * @file styles/components/gm-contact-manager.css
  * @module cyberpunkred-messenger
- * ═══════════════════════════════════════════════════════════ */
+ * @description Dedicated styles for the GM contact management interface.
+ *   Split-view layout, GM control bar, contact list, detail panel,
+ *   info grid, GM notes, push controls, form styles.
+ *
+ *   Uses NCM design tokens (--ncm-*) for full theme compatibility.
+ *   Visual reference: ncm-contacts-mockup-v2.html — View 2
+ */
 
-/* ─── Layout ─── */
+/* ═══════════════════════════════════════════
+   LAYOUT — Full-height flexbox container
+   ═══════════════════════════════════════════ */
 
-.ncm-app .ncm-gm-contacts {
+.ncm-gm-contacts {
   display: flex;
   flex-direction: column;
   height: 100%;
-  overflow: hidden;
+  min-height: 0;
+  background: var(--ncm-bg-deep, #0a0a0f);
+  color: var(--ncm-text-primary, #e0e0e8);
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
 }
 
-.ncm-app .ncm-gm-contacts-header {
+/* ═══════════════════════════════════════════
+   GM CONTROL BAR — Red-tinted header
+   ═══════════════════════════════════════════ */
+
+.ncm-gm-bar {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--ncm-primary);
-  background: var(--ncm-bg-deep);
+  gap: 6px;
+  padding: 6px 16px;
+  background: rgba(246, 82, 97, 0.03);
+  border-bottom: 1px solid rgba(246, 82, 97, 0.1);
   flex-shrink: 0;
 }
 
-.ncm-app .ncm-gm-contacts-title {
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 1rem;
-  font-weight: 700;
+.ncm-gm-bar__label {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 8px;
+  color: var(--ncm-primary, #F65261);
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: var(--ncm-primary);
-  margin: 0;
 }
 
-.ncm-app .ncm-gm-contacts-header-actions {
+.ncm-gm-bar__label i {
+  margin-right: 4px;
+}
+
+.ncm-gm-bar__actions {
   display: flex;
-  gap: 6px;
+  gap: 4px;
+  align-items: center;
+  margin-left: auto;
 }
 
-/* ─── Body: Split Panel ─── */
+.ncm-gm-bar__push-select {
+  background: var(--ncm-bg-surface, #1a1a2e);
+  border: 1px solid var(--ncm-border, #2a2a45);
+  color: var(--ncm-text-secondary, #8888a0);
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 9px;
+  padding: 2px 6px;
+  border-radius: 2px;
+  max-width: 120px;
+}
 
-.ncm-app .ncm-gm-contacts-body {
+/* ═══════════════════════════════════════════
+   TOOLBAR — Search + Tag Filter Pills
+   ═══════════════════════════════════════════ */
+
+.ncm-gm-toolbar {
+  display: flex;
+  flex-direction: column;
+  background: var(--ncm-bg-base, #12121a);
+  border-bottom: 1px solid var(--ncm-border, #2a2a45);
+  flex-shrink: 0;
+}
+
+.ncm-gm-search-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+}
+
+.ncm-gm-search-row i {
+  color: var(--ncm-text-muted, #555570);
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.ncm-gm-search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--ncm-text-primary, #e0e0e8);
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 11px;
+  outline: none;
+  caret-color: var(--ncm-secondary, #19f3f7);
+}
+
+.ncm-gm-search-input::placeholder {
+  color: var(--ncm-text-muted, #555570);
+}
+
+.ncm-gm-search-count {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 9px;
+  color: var(--ncm-text-muted, #555570);
+  flex-shrink: 0;
+}
+
+.ncm-gm-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 16px 8px;
+  flex-wrap: wrap;
+}
+
+/* ═══════════════════════════════════════════
+   SPLIT VIEW
+   ═══════════════════════════════════════════ */
+
+.ncm-gm-split {
   display: flex;
   flex: 1;
   min-height: 0;
 }
 
-/* ─── Left Panel: Contact List ─── */
-
-.ncm-app .ncm-gm-contacts-list-panel {
-  width: 320px;
-  min-width: 260px;
+.ncm-gm-split__list {
+  width: 280px;
+  min-width: 240px;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid var(--ncm-bg-elevated);
-  background: var(--ncm-bg-deep);
+  border-right: 1px solid var(--ncm-border, #2a2a45);
+  overflow: hidden;
 }
 
-.ncm-app .ncm-search-bar {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--ncm-bg-elevated);
-}
-
-.ncm-app .ncm-search-bar i {
-  color: var(--ncm-text-secondary);
-  font-size: 0.85rem;
-}
-
-.ncm-app .ncm-contact-search-input {
+.ncm-gm-split__detail {
   flex: 1;
-  background: transparent;
-  border: none;
-  color: var(--ncm-text-primary);
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 0.85rem;
-  outline: none;
-}
-
-.ncm-app .ncm-contact-search-input::placeholder {
-  color: var(--ncm-text-secondary);
-  opacity: 0.6;
-}
-
-/* ─── Filter Pills ─── */
-
-.ncm-app .ncm-filter-pills {
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  padding: 6px 10px;
-  border-bottom: 1px solid var(--ncm-bg-elevated);
-}
-
-.ncm-app .ncm-pill {
-  padding: 2px 8px;
-  border-radius: 10px;
-  border: 1px solid var(--ncm-bg-elevated);
-  background: transparent;
-  color: var(--ncm-text-secondary);
-  font-size: 0.7rem;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.ncm-app .ncm-pill:hover {
-  border-color: var(--ncm-secondary);
-  color: var(--ncm-secondary);
-}
-
-.ncm-app .ncm-pill--active {
-  background: var(--ncm-secondary);
-  color: var(--ncm-bg-deep);
-  border-color: var(--ncm-secondary);
-}
-
-.ncm-app .ncm-pill--clear {
-  border-color: var(--ncm-primary);
-  color: var(--ncm-primary);
-}
-
-/* ─── Contact List ─── */
-
-.ncm-app .ncm-contact-list {
-  flex: 1;
+  flex-direction: column;
   overflow-y: auto;
-  padding: 4px 0;
+  min-width: 0;
 }
 
-.ncm-app .ncm-contact-list-item {
+/* ═══════════════════════════════════════════
+   CONTACT LIST (Left Panel)
+   ═══════════════════════════════════════════ */
+
+.ncm-gm-list {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.ncm-gm-list-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
+  gap: 12px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--ncm-border, #2a2a45);
   cursor: pointer;
   transition: background 0.15s;
-  border-left: 3px solid transparent;
 }
 
-.ncm-app .ncm-contact-list-item:hover {
-  background: var(--ncm-bg-surface);
+.ncm-gm-list-item:hover {
+  background: var(--ncm-bg-surface, #1a1a2e);
 }
 
-.ncm-app .ncm-contact-list-item--selected {
-  background: var(--ncm-bg-surface);
-  border-left-color: var(--ncm-primary);
+/* Selected state */
+.ncm-gm-list-item--selected {
+  background: rgba(25, 243, 247, 0.04);
+  border-left: 3px solid var(--ncm-secondary, #19f3f7);
+  padding-left: 13px;
 }
 
-.ncm-app .ncm-contact-list-item-checkbox {
-  flex-shrink: 0;
+/* Burned state in list */
+.ncm-gm-list-item--burned {
+  border-left: 3px solid var(--ncm-danger, #ff0033);
+  padding-left: 13px;
+  background: rgba(255, 0, 51, 0.02);
 }
 
-.ncm-app .ncm-contact-avatar {
+.ncm-gm-list-item--burned.ncm-gm-list-item--selected {
+  border-left-color: var(--ncm-danger, #ff0033);
+  background: rgba(255, 0, 51, 0.04);
+}
+
+/* Bulk selected */
+.ncm-gm-list-item--bulk-selected {
+  background: rgba(247, 201, 72, 0.04);
+  border-left: 3px solid var(--ncm-accent, #f7c948);
+  padding-left: 13px;
+}
+
+/* ── List item Avatar ── */
+
+.ncm-gm-list-item__avatar {
   width: 32px;
   height: 32px;
-  border-radius: 3px;
-  object-fit: cover;
-  flex-shrink: 0;
-}
-
-.ncm-app .ncm-contact-avatar--placeholder {
+  border-radius: 50%;
+  border: 2px solid var(--ncm-border, #2a2a45);
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--ncm-bg-elevated);
-  color: var(--ncm-text-secondary);
-  font-size: 0.9rem;
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-weight: 700;
+  font-size: 13px;
+  flex-shrink: 0;
+  overflow: hidden;
+  background: var(--ncm-bg-elevated, #252540);
 }
 
-.ncm-app .ncm-contact-list-info {
+.ncm-gm-list-item__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* ── List item Info ── */
+
+.ncm-gm-list-item__info {
   flex: 1;
   min-width: 0;
 }
 
-.ncm-app .ncm-contact-list-name {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--ncm-text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.ncm-app .ncm-contact-list-email {
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 0.7rem;
-  color: var(--ncm-text-secondary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.ncm-app .ncm-contact-org-badge {
-  font-size: 0.65rem;
-  color: var(--ncm-accent);
-  border: 1px solid var(--ncm-accent);
-  border-radius: 2px;
-  padding: 1px 5px;
-  white-space: nowrap;
-}
-
-/* ─── Bulk Actions ─── */
-
-.ncm-app .ncm-bulk-actions {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 6px 10px;
-  border-top: 1px solid var(--ncm-bg-elevated);
-  background: var(--ncm-bg-deep);
-  gap: 6px;
-}
-
-.ncm-app .ncm-bulk-sync {
-  display: flex;
-  gap: 4px;
-  align-items: center;
-}
-
-.ncm-app .ncm-select--small {
-  font-size: 0.75rem;
-  padding: 2px 6px;
-  max-width: 140px;
-}
-
-/* ─── Right Panel: Editor ─── */
-
-.ncm-app .ncm-gm-contacts-editor-panel {
-  flex: 1;
-  overflow-y: auto;
-  padding: 12px 16px;
-  background: var(--ncm-bg-base);
-}
-
-.ncm-app .ncm-editor-title {
+.ncm-gm-list-item__name {
   font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--ncm-secondary);
-  margin: 0 0 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ncm-text-primary, #e0e0e8);
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.ncm-app .ncm-editor-placeholder {
+.ncm-gm-list-item__name--burned {
+  text-decoration: line-through;
+  text-decoration-color: rgba(255, 0, 51, 0.5);
+}
+
+.ncm-gm-list-item__detail {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 9px;
+  color: var(--ncm-text-muted, #555570);
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ═══════════════════════════════════════════
+   DETAIL PANEL (Right Panel)
+   ═══════════════════════════════════════════ */
+
+.ncm-gm-detail {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Empty state (no selection) */
+.ncm-gm-detail--empty {
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  color: var(--ncm-text-muted, #555570);
+}
+
+.ncm-gm-detail--empty i {
+  font-size: 42px;
+  opacity: 0.2;
+  margin-bottom: 12px;
+}
+
+/* Form mode */
+.ncm-gm-detail--form {
+  overflow-y: auto;
+}
+
+/* ── Detail Header: Avatar + Name + Badges ── */
+
+.ncm-gm-detail__header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.ncm-gm-detail__avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 2px solid var(--ncm-border, #2a2a45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-weight: 700;
+  font-size: 24px;
+  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+  background: var(--ncm-bg-elevated, #252540);
+}
+
+.ncm-gm-detail__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Upload overlay on detail avatar hover */
+.ncm-gm-detail__avatar-upload {
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 10, 15, 0.75);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 100%;
-  color: var(--ncm-text-secondary);
-  opacity: 0.6;
-  text-align: center;
+  gap: 3px;
+  opacity: 0;
+  transition: opacity 0.15s;
+  cursor: pointer;
+  border-radius: 50%;
 }
 
-.ncm-app .ncm-editor-placeholder i {
-  font-size: 2rem;
-  margin-bottom: 8px;
+.ncm-gm-detail__avatar-upload i {
+  color: var(--ncm-secondary, #19f3f7);
+  font-size: 16px;
 }
 
-/* ─── Contact Form ─── */
-
-.ncm-app .ncm-contact-form .ncm-form-row {
-  margin-bottom: 10px;
-}
-
-.ncm-app .ncm-contact-form label {
-  display: block;
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--ncm-text-secondary);
-  margin-bottom: 3px;
-}
-
-.ncm-app .ncm-contact-form .ncm-required {
-  color: var(--ncm-primary);
-}
-
-.ncm-app .ncm-contact-form input[type="text"],
-.ncm-app .ncm-contact-form select,
-.ncm-app .ncm-contact-form textarea {
-  width: 100%;
-  padding: 6px 8px;
-  background: var(--ncm-bg-surface);
-  border: 1px solid var(--ncm-bg-elevated);
-  border-radius: 3px;
-  color: var(--ncm-text-primary);
+.ncm-gm-detail__avatar-upload span {
   font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 0.85rem;
-  transition: border-color 0.15s;
+  font-size: 7px;
+  color: var(--ncm-secondary, #19f3f7);
+  text-transform: uppercase;
 }
 
-.ncm-app .ncm-contact-form input:focus,
-.ncm-app .ncm-contact-form select:focus,
-.ncm-app .ncm-contact-form textarea:focus {
-  border-color: var(--ncm-secondary);
+.ncm-gm-detail__avatar:hover .ncm-gm-detail__avatar-upload {
+  opacity: 1;
+}
+
+.ncm-gm-detail__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.ncm-gm-detail__name {
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--ncm-text-primary, #e0e0e8);
+}
+
+.ncm-gm-detail__subtitle {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 11px;
+  color: var(--ncm-text-muted, #555570);
+  margin-top: 2px;
+  font-style: italic;
+}
+
+.ncm-gm-detail__badges {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+/* ── Section Divider ── */
+
+.ncm-gm-section {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 9px;
+  color: var(--ncm-text-muted, #555570);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ncm-gm-section::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--ncm-border, #2a2a45);
+}
+
+/* Section header in form mode */
+.ncm-gm-section-header {
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ncm-text-primary, #e0e0e8);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--ncm-border, #2a2a45);
+}
+
+.ncm-gm-section-header i {
+  color: var(--ncm-secondary, #19f3f7);
+  margin-right: 6px;
+}
+
+/* ═══════════════════════════════════════════
+   INFO GRID — Contact details in key/value pairs
+   ═══════════════════════════════════════════ */
+
+.ncm-info-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 16px;
+}
+
+.ncm-info-label {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 9px;
+  color: var(--ncm-text-muted, #555570);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.ncm-info-value {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 11px;
+  color: var(--ncm-text-secondary, #8888a0);
+}
+
+.ncm-info-value--email {
+  color: var(--ncm-secondary, #19f3f7);
+}
+
+.ncm-info-value--phone {
+  color: var(--ncm-accent, #f7c948);
+}
+
+/* Tag chips in info grid */
+.ncm-tag-chip {
+  display: inline-flex;
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 8px;
+  padding: 0 5px;
+  color: var(--ncm-accent, #f7c948);
+  background: rgba(247, 201, 72, 0.06);
+  border: 1px dashed rgba(247, 201, 72, 0.2);
+  border-radius: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-right: 3px;
+}
+
+/* ═══════════════════════════════════════════
+   RELATIONSHIP SELECTOR
+   ═══════════════════════════════════════════ */
+
+.ncm-relationship-row {
+  display: flex;
+  gap: 8px;
+}
+
+.ncm-relationship-select {
+  flex: 1;
+  max-width: 200px;
+  background: var(--ncm-bg-surface, #1a1a2e);
+  border: 1px solid var(--ncm-border, #2a2a45);
+  color: var(--ncm-text-secondary, #8888a0);
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 10px;
+  padding: 4px 8px;
+  border-radius: 2px;
+}
+
+.ncm-relationship-select:focus {
+  border-color: rgba(25, 243, 247, 0.3);
   outline: none;
 }
 
-.ncm-app .ncm-form-row--half {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+/* ═══════════════════════════════════════════
+   LINKED ACTOR BADGE
+   ═══════════════════════════════════════════ */
+
+.ncm-linked-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 8px;
+  color: var(--ncm-success, #00ff41);
+  border: 1px solid rgba(0, 255, 65, 0.2);
+  background: rgba(0, 255, 65, 0.05);
+  border-radius: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* ═══════════════════════════════════════════
+   GM NOTES
+   ═══════════════════════════════════════════ */
+
+.ncm-gm-notes {
+  background: var(--ncm-bg-surface, #1a1a2e);
+  border: 1px solid var(--ncm-border, #2a2a45);
+  border-radius: 2px;
+  padding: 12px 10px 10px;
+  position: relative;
+}
+
+.ncm-gm-notes__label {
+  position: absolute;
+  top: -8px;
+  left: 8px;
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 8px;
+  color: var(--ncm-primary, #F65261);
+  background: var(--ncm-bg-surface, #1a1a2e);
+  padding: 0 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.ncm-gm-notes__textarea {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: var(--ncm-text-secondary, #8888a0);
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 10px;
+  line-height: 1.5;
+  resize: vertical;
+  outline: none;
+  min-height: 50px;
+}
+
+.ncm-gm-notes__textarea::placeholder {
+  color: var(--ncm-text-muted, #555570);
+  opacity: 0.5;
+}
+
+/* ═══════════════════════════════════════════
+   PUSH TO PLAYER
+   ═══════════════════════════════════════════ */
+
+.ncm-push-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.ncm-push-select {
+  flex: 1;
+  background: var(--ncm-bg-surface, #1a1a2e);
+  border: 1px solid var(--ncm-border, #2a2a45);
+  color: var(--ncm-text-secondary, #8888a0);
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 10px;
+  padding: 4px 8px;
+  border-radius: 2px;
+}
+
+.ncm-push-select:focus {
+  border-color: rgba(25, 243, 247, 0.3);
+  outline: none;
+}
+
+.ncm-push-portrait-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--ncm-border, #2a2a45);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.15s;
+  color: var(--ncm-text-muted, #555570);
+  font-size: 11px;
+}
+
+.ncm-push-portrait-toggle input {
+  display: none;
+}
+
+.ncm-push-portrait-toggle:has(input:checked) {
+  color: var(--ncm-accent, #f7c948);
+  border-color: rgba(247, 201, 72, 0.3);
+  background: rgba(247, 201, 72, 0.06);
+}
+
+/* ═══════════════════════════════════════════
+   DETAIL ACTION BUTTONS
+   ═══════════════════════════════════════════ */
+
+.ncm-gm-detail__actions {
+  display: flex;
+  gap: 6px;
+  padding-top: 12px;
+  border-top: 1px solid var(--ncm-border, #2a2a45);
+  flex-wrap: wrap;
+}
+
+/* ═══════════════════════════════════════════
+   EMPTY STATE
+   ═══════════════════════════════════════════ */
+
+.ncm-gm-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 40px 20px;
+  color: var(--ncm-text-muted, #555570);
+}
+
+.ncm-gm-empty i {
+  font-size: 36px;
+  opacity: 0.2;
+}
+
+.ncm-gm-empty__text {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.ncm-gm-empty__sub {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 9px;
+  opacity: 0.5;
+}
+
+.ncm-gm-empty__sub kbd {
+  font-family: inherit;
+  color: var(--ncm-text-secondary, #8888a0);
+  background: var(--ncm-bg-surface, #1a1a2e);
+  border: 1px solid var(--ncm-border, #2a2a45);
+  padding: 0 3px;
+  border-radius: 2px;
+}
+
+/* ═══════════════════════════════════════════
+   FOOTER
+   ═══════════════════════════════════════════ */
+
+.ncm-gm-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 16px;
+  background: var(--ncm-bg-deep, #0a0a0f);
+  border-top: 1px solid var(--ncm-border, #2a2a45);
+  flex-shrink: 0;
+}
+
+.ncm-gm-footer__info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 9px;
+  color: var(--ncm-text-muted, #555570);
+}
+
+.ncm-gm-footer__info i {
+  margin-right: 3px;
+}
+
+.ncm-gm-footer__shortcuts {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 9px;
+  color: var(--ncm-text-muted, #555570);
+  letter-spacing: 0.04em;
+}
+
+.ncm-gm-footer__shortcuts kbd {
+  font-family: inherit;
+  color: var(--ncm-text-secondary, #8888a0);
+  background: var(--ncm-bg-surface, #1a1a2e);
+  border: 1px solid var(--ncm-border, #2a2a45);
+  padding: 0 3px;
+  border-radius: 2px;
+  margin-right: 1px;
+}
+
+/* ═══════════════════════════════════════════
+   FORM STYLES — Create/Edit mode
+   ═══════════════════════════════════════════ */
+
+.ncm-gm-contact-form {
+  display: flex;
+  flex-direction: column;
   gap: 10px;
 }
 
-/* ─── Push Row ─── */
-
-.ncm-app .ncm-push-row .ncm-push-controls {
+.ncm-form-row {
   display: flex;
-  gap: 6px;
-  align-items: center;
+  flex-direction: column;
+  gap: 4px;
 }
 
-.ncm-app .ncm-push-row .ncm-select {
+.ncm-form-row--half {
+  flex-direction: row;
+  gap: 10px;
+}
+
+.ncm-form-row--half > .ncm-form-group {
   flex: 1;
+  min-width: 0;
 }
 
-/* ─── Form Actions ─── */
-
-.ncm-app .ncm-form-actions {
+.ncm-form-group {
   display: flex;
-  justify-content: flex-end;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ncm-form-label {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 9px;
+  color: var(--ncm-text-muted, #555570);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.ncm-form-required {
+  color: var(--ncm-primary, #F65261);
+}
+
+.ncm-form-hint {
+  font-size: 8px;
+  color: var(--ncm-text-muted, #555570);
+  opacity: 0.6;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.ncm-form-input,
+.ncm-form-select,
+.ncm-form-textarea {
+  background: var(--ncm-bg-surface, #1a1a2e);
+  border: 1px solid var(--ncm-border, #2a2a45);
+  border-radius: 2px;
+  color: var(--ncm-text-primary, #e0e0e8);
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-size: 12px;
+  padding: 5px 8px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.ncm-form-input--mono {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 11px;
+}
+
+.ncm-form-input:focus,
+.ncm-form-select:focus,
+.ncm-form-textarea:focus {
+  border-color: rgba(25, 243, 247, 0.4);
+  box-shadow: 0 0 6px rgba(25, 243, 247, 0.1);
+  outline: none;
+}
+
+.ncm-form-select {
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.ncm-form-textarea {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 10px;
+  resize: vertical;
+  line-height: 1.5;
+  min-height: 50px;
+}
+
+.ncm-form-actions {
+  display: flex;
   gap: 6px;
-  margin-top: 16px;
+  justify-content: flex-end;
   padding-top: 12px;
-  border-top: 1px solid var(--ncm-bg-elevated);
+  border-top: 1px solid var(--ncm-border, #2a2a45);
+  margin-top: 4px;
+}
+
+/* ═══════════════════════════════════════════
+   SHARED COMPONENT OVERRIDES
+   Styles for reused partials within GM context
+   ═══════════════════════════════════════════ */
+
+/* Ensure trust detail bar fits in the detail panel */
+.ncm-gm-detail .ncm-trust-detail {
+  padding: 6px 0;
+}
+
+/* Reduce gap on info grid in GM context */
+.ncm-gm-detail .ncm-info-grid {
+  gap: 5px 14px;
+}
+
+/* ═══════════════════════════════════════════
+   BUTTON STYLES (supplement base .ncm-btn)
+   ═══════════════════════════════════════════ */
+
+.ncm-gm-contacts .ncm-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: 1px solid transparent;
+  white-space: nowrap;
+  background: transparent;
+}
+
+.ncm-gm-contacts .ncm-btn--primary {
+  color: var(--ncm-primary, #F65261);
+  border-color: var(--ncm-primary, #F65261);
+}
+.ncm-gm-contacts .ncm-btn--primary:hover {
+  background: rgba(246, 82, 97, 0.1);
+  box-shadow: 0 0 10px rgba(246, 82, 97, 0.15);
+}
+
+.ncm-gm-contacts .ncm-btn--secondary {
+  color: var(--ncm-secondary, #19f3f7);
+  border-color: var(--ncm-secondary, #19f3f7);
+}
+.ncm-gm-contacts .ncm-btn--secondary:hover {
+  background: rgba(25, 243, 247, 0.08);
+  box-shadow: 0 0 10px rgba(25, 243, 247, 0.12);
+}
+
+.ncm-gm-contacts .ncm-btn--ghost {
+  color: var(--ncm-text-muted, #555570);
+  border-color: var(--ncm-border, #2a2a45);
+}
+.ncm-gm-contacts .ncm-btn--ghost:hover {
+  color: var(--ncm-text-secondary, #8888a0);
+  border-color: var(--ncm-text-muted, #555570);
+}
+
+.ncm-gm-contacts .ncm-btn--accent {
+  color: var(--ncm-accent, #f7c948);
+  border-color: rgba(247, 201, 72, 0.4);
+}
+.ncm-gm-contacts .ncm-btn--accent:hover {
+  background: rgba(247, 201, 72, 0.08);
+}
+
+.ncm-gm-contacts .ncm-btn--success {
+  color: var(--ncm-success, #00ff41);
+  border-color: rgba(0, 255, 65, 0.3);
+}
+.ncm-gm-contacts .ncm-btn--success:hover {
+  background: rgba(0, 255, 65, 0.06);
+}
+
+.ncm-gm-contacts .ncm-btn--sm {
+  padding: 3px 8px;
+  font-size: 9px;
+}
+
+/* ═══════════════════════════════════════════
+   PILL STYLES (filter pills)
+   ═══════════════════════════════════════════ */
+
+.ncm-gm-contacts .ncm-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ncm-text-muted, #555570);
+  background: transparent;
+  border: 1px solid var(--ncm-border, #2a2a45);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.ncm-gm-contacts .ncm-pill:hover {
+  color: var(--ncm-text-secondary, #8888a0);
+  border-color: var(--ncm-text-muted, #555570);
+}
+
+.ncm-gm-contacts .ncm-pill--active {
+  color: var(--ncm-secondary, #19f3f7);
+  border-color: rgba(25, 243, 247, 0.4);
+  background: rgba(25, 243, 247, 0.06);
+}
+
+.ncm-gm-contacts .ncm-pill--all {
+  color: var(--ncm-text-secondary, #8888a0);
+  border-color: var(--ncm-text-muted, #555570);
+}
+
+.ncm-gm-contacts .ncm-pill--custom {
+  border-style: dashed;
+  color: var(--ncm-accent, #f7c948);
+  border-color: rgba(247, 201, 72, 0.3);
+}
+
+.ncm-gm-contacts .ncm-pill--custom.ncm-pill--active {
+  color: var(--ncm-accent, #f7c948);
+  border-color: rgba(247, 201, 72, 0.5);
+  background: rgba(247, 201, 72, 0.06);
+  border-style: solid;
+}
+
+.ncm-gm-contacts .ncm-pill--add {
+  border-style: dashed;
+  color: var(--ncm-text-muted, #555570);
+  opacity: 0.6;
+}
+
+.ncm-gm-contacts .ncm-pill--add:hover {
+  opacity: 1;
+  color: var(--ncm-secondary, #19f3f7);
+  border-color: rgba(25, 243, 247, 0.3);
+}
+
+/* ═══════════════════════════════════════════
+   BADGE STYLES — Relationship badges
+   (supplement base .ncm-badge from contact-manager.css)
+   ═══════════════════════════════════════════ */
+
+.ncm-gm-contacts .ncm-badge--ally {
+  background: rgba(25, 243, 247, 0.08);
+  color: var(--ncm-secondary, #19f3f7);
+  border: 1px solid rgba(25, 243, 247, 0.2);
+}
+
+.ncm-gm-contacts .ncm-badge--hostile {
+  background: rgba(255, 0, 51, 0.08);
+  color: var(--ncm-danger, #ff0033);
+  border: 1px solid rgba(255, 0, 51, 0.2);
+}
+
+.ncm-gm-contacts .ncm-badge--owes-you {
+  background: rgba(0, 255, 65, 0.08);
+  color: var(--ncm-success, #00ff41);
+  border: 1px solid rgba(0, 255, 65, 0.2);
+}
+
+.ncm-gm-contacts .ncm-badge--you-owe {
+  background: rgba(255, 171, 0, 0.08);
+  color: var(--ncm-warning, #ffab00);
+  border: 1px solid rgba(255, 171, 0, 0.2);
+}
+
+/* ═══════════════════════════════════════════
+   SCROLLBAR STYLING (Thin cyberpunk scrollbars)
+   ═══════════════════════════════════════════ */
+
+.ncm-gm-list::-webkit-scrollbar,
+.ncm-gm-split__detail::-webkit-scrollbar {
+  width: 4px;
+}
+
+.ncm-gm-list::-webkit-scrollbar-track,
+.ncm-gm-split__detail::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.ncm-gm-list::-webkit-scrollbar-thumb,
+.ncm-gm-split__detail::-webkit-scrollbar-thumb {
+  background: var(--ncm-border, #2a2a45);
+  border-radius: 2px;
+}
+
+.ncm-gm-list::-webkit-scrollbar-thumb:hover,
+.ncm-gm-split__detail::-webkit-scrollbar-thumb:hover {
+  background: var(--ncm-text-muted, #555570);
+}
+
+/* Firefox */
+.ncm-gm-list,
+.ncm-gm-split__detail {
+  scrollbar-width: thin;
+  scrollbar-color: var(--ncm-border, #2a2a45) transparent;
+}
+
+/* ═══════════════════════════════════════════
+   TOP ACCENT LINE (cyberpunk gradient)
+   ═══════════════════════════════════════════ */
+
+.ncm-gm-contacts::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg,
+    var(--ncm-primary, #F65261),
+    transparent 40%,
+    transparent 60%,
+    var(--ncm-secondary, #19f3f7)
+  );
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* Position context for the gradient line */
+.ncm-gm-contact-manager .window-content {
+  position: relative;
 }
