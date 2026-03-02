@@ -433,9 +433,9 @@ export class AdminPanelApp extends BaseApplication {
     const networks = [];
 
     try {
-      const allNetworks = this.networkService?.getNetworks?.() ?? [];
+      const allNetworks = this.networkService?.getAllNetworks?.() ?? [];
       const currentSceneId = canvas.scene?.id;
-      const sceneNetworks = canvas.scene?.getFlag(MODULE_ID, 'availableNetworks') ?? [];
+      const sceneNetworks = canvas.scene?.getFlag(MODULE_ID, 'networkAvailability') ?? [];
 
       // Icon mapping for known network types
       const iconMap = {
@@ -455,9 +455,9 @@ export class AdminPanelApp extends BaseApplication {
 
         // Auth type detection
         let authClass = 'open', authIcon = 'lock-open', authLabel = 'Open access';
-        if (net.auth?.type === 'password' || net.requiresPassword) {
+        if (net.security?.requiresAuth === 'password' || net.security?.password) {
           authClass = 'password'; authIcon = 'key'; authLabel = 'Password required';
-        } else if (net.auth?.type === 'skill' || net.requiresSkillCheck) {
+        } else if (net.security?.requiresAuth === 'skill' || net.requiresSkillCheck) {
           const skillName = net.auth?.skill || net.skillName || 'Interface';
           const dv = net.auth?.dv || net.skillDV || 14;
           authClass = 'skill'; authIcon = 'dice-d20'; authLabel = `${skillName} DV ${dv}`;
@@ -468,7 +468,7 @@ export class AdminPanelApp extends BaseApplication {
         // Gather scenes where this network appears
         const scenes = [];
         for (const scene of game.scenes) {
-          const sNets = scene.getFlag(MODULE_ID, 'availableNetworks') ?? [];
+          const sNets = scene.getFlag(MODULE_ID, 'networkAvailability') ?? [];
           if (sNets.includes(net.id) || sNets.includes(net.name)) {
             scenes.push({
               id: scene.id,
@@ -483,8 +483,8 @@ export class AdminPanelApp extends BaseApplication {
           name: net.name || net.id,
           type: known.type,
           enabled: isEnabled,
-          signal: net.signal ?? (isEnabled ? 85 : 0),
-          noSignal: (net.signal ?? (isEnabled ? 85 : 0)) === 0,
+          signal: net.signalStrength ?? (isEnabled ? 85 : 0),
+          noSignal: (net.signalStrength ?? (isEnabled ? 85 : 0)) === 0,
           reliability: net.reliability ?? (netId === 'deadzone' ? undefined : 85),
           userCount: net.userCount ?? 0,
           icon: known.icon,
@@ -989,7 +989,7 @@ export class AdminPanelApp extends BaseApplication {
       return;
     }
 
-    const current = scene.getFlag(MODULE_ID, 'availableNetworks') ?? [];
+    const current = scene.getFlag(MODULE_ID, 'networkAvailability') ?? [];
     let updated;
 
     if (current.includes(networkId)) {
