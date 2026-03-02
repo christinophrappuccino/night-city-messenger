@@ -1,40 +1,78 @@
-{{!-- Admin Panel — GM Dashboard --}}
+{{!-- Admin Panel — GM Dashboard (Sprint 4: 6-Tab Rewrite) --}}
 {{!-- @file templates/admin-panel/admin-panel.hbs --}}
 {{!-- @module cyberpunkred-messenger --}}
+{{!-- Tabs: Overview | Messages | Contacts | Networks | Data Shards | Tools --}}
 
 {{#if isGM}}
 <div class="ncm-admin-panel">
 
-  {{!-- Header --}}
+  {{!-- ═══ CONDENSED HEADER ═══ --}}
   <div class="ncm-admin-header">
-    <h2 class="ncm-admin-title">
-      <i class="fas fa-terminal"></i> SYSTEM ADMIN
-    </h2>
-    <div class="ncm-admin-header-actions">
-      <span class="ncm-admin-network-badge">
-        <i class="fas fa-wifi"></i> {{currentNetwork}}
-      </span>
-      <button class="ncm-btn ncm-btn--ghost ncm-btn--small" data-action="toggleCompactMode"
-              title="{{#if compactMode}}Disable{{else}}Enable{{/if}} Compact Mode">
-        <i class="fas fa-{{#if compactMode}}expand{{else}}compress{{/if}}"></i>
-      </button>
+    <div class="ncm-admin-header__identity">
+      <div class="ncm-admin-header__icon-ring"><i class="fas fa-shield-halved"></i></div>
+      <div class="ncm-admin-header__label">
+        <span class="ncm-admin-header__title">GM Dashboard</span>
+        <span class="ncm-admin-header__subtitle">ADMIN CLEARANCE // FULL ACCESS</span>
+      </div>
+    </div>
+    <div class="ncm-admin-header__sep"></div>
+    <div class="ncm-admin-header__stats">
+      <div class="ncm-admin-header__stat">
+        <span class="ncm-admin-header__stat-value ncm-admin-header__stat-value--cyan">{{stats.totalMessages}}</span>
+        <span class="ncm-admin-header__stat-label">Messages</span>
+      </div>
+      <div class="ncm-admin-header__stat">
+        <span class="ncm-admin-header__stat-value ncm-admin-header__stat-value--red">{{stats.unreadMessages}}</span>
+        <span class="ncm-admin-header__stat-label">Unread</span>
+      </div>
+      <div class="ncm-admin-header__stat">
+        <span class="ncm-admin-header__stat-value ncm-admin-header__stat-value--gold">{{scheduledCount}}</span>
+        <span class="ncm-admin-header__stat-label">Scheduled</span>
+      </div>
+      <div class="ncm-admin-header__stat">
+        <span class="ncm-admin-header__stat-value ncm-admin-header__stat-value--green">{{onlineCount}}</span>
+        <span class="ncm-admin-header__stat-label">Online</span>
+      </div>
+    </div>
+    <div class="ncm-admin-header__network">
+      <div class="ncm-admin-header__network-dot"></div>
+      <span class="ncm-admin-header__network-name">{{currentNetwork}}</span>
     </div>
   </div>
 
-  {{!-- Tab Navigation --}}
+  {{!-- ═══ HUD STRIP ═══ --}}
+  <div class="ncm-hud-strip">
+    <div class="ncm-hud-strip__item">ACTORS <span>{{hudCounts.actors}}</span></div>
+    <div class="ncm-hud-strip__item">CONTACTS <span>{{hudCounts.contacts}}</span></div>
+    <div class="ncm-hud-strip__item">NETWORKS <span>{{hudCounts.networks}}</span></div>
+    <div class="ncm-hud-strip__item ncm-hud-strip__item--gold">SHARDS <span>{{hudCounts.shards}}</span></div>
+    <div class="ncm-hud-strip__online">
+      <div class="ncm-hud-strip__online-dot"></div> SYSTEM NOMINAL
+    </div>
+  </div>
+
+  {{!-- ═══ TAB NAVIGATION — 6 Tabs ═══ --}}
   <nav class="ncm-admin-tabs">
-    <button class="ncm-admin-tab {{#if (eq activeTab 'stats')}}ncm-admin-tab--active{{/if}}"
-            data-action="switchTab" data-tab="stats">
-      <i class="fas fa-chart-bar"></i> Stats
+    <button class="ncm-admin-tab {{#if (eq activeTab 'overview')}}ncm-admin-tab--active{{/if}}"
+            data-action="switchTab" data-tab="overview">
+      <i class="fas fa-chart-bar"></i> Overview
     </button>
-    <button class="ncm-admin-tab {{#if (eq activeTab 'scheduled')}}ncm-admin-tab--active{{/if}}"
-            data-action="switchTab" data-tab="scheduled">
-      <i class="fas fa-clock"></i> Scheduled
-      {{#if scheduledCount}}<span class="ncm-badge">{{scheduledCount}}</span>{{/if}}
+    <button class="ncm-admin-tab {{#if (eq activeTab 'messages')}}ncm-admin-tab--active{{/if}}"
+            data-action="switchTab" data-tab="messages">
+      <i class="fas fa-envelope"></i> Messages
+      {{#if stats.unreadMessages}}<span class="ncm-admin-tab__count">{{stats.unreadMessages}}</span>{{/if}}
     </button>
-    <button class="ncm-admin-tab {{#if (eq activeTab 'connections')}}ncm-admin-tab--active{{/if}}"
-            data-action="switchTab" data-tab="connections">
-      <i class="fas fa-users"></i> Connections
+    <button class="ncm-admin-tab {{#if (eq activeTab 'contacts')}}ncm-admin-tab--active{{/if}}"
+            data-action="switchTab" data-tab="contacts">
+      <i class="fas fa-address-book"></i> Contacts
+    </button>
+    <button class="ncm-admin-tab {{#if (eq activeTab 'networks')}}ncm-admin-tab--active{{/if}}"
+            data-action="switchTab" data-tab="networks">
+      <i class="fas fa-network-wired"></i> Networks
+    </button>
+    <button class="ncm-admin-tab {{#if (eq activeTab 'shards')}}ncm-admin-tab--active{{/if}}"
+            data-action="switchTab" data-tab="shards">
+      <i class="fas fa-database"></i> Shards
     </button>
     <button class="ncm-admin-tab {{#if (eq activeTab 'tools')}}ncm-admin-tab--active{{/if}}"
             data-action="switchTab" data-tab="tools">
@@ -42,170 +80,392 @@
     </button>
   </nav>
 
-  {{!-- Tab Content --}}
+  {{!-- ═══ TAB CONTENT ═══ --}}
   <div class="ncm-admin-content">
 
-    {{!-- ═══ STATS TAB ═══ --}}
-    {{#if (eq activeTab 'stats')}}
-    <div class="ncm-admin-tab-content ncm-admin-stats">
-      <div class="ncm-stats-grid">
-        <div class="ncm-stat-card">
-          <div class="ncm-stat-value">{{stats.totalMessages}}</div>
-          <div class="ncm-stat-label">Total Messages</div>
-        </div>
-        <div class="ncm-stat-card ncm-stat-card--accent">
-          <div class="ncm-stat-value">{{stats.unreadMessages}}</div>
-          <div class="ncm-stat-label">Unread</div>
-        </div>
-        <div class="ncm-stat-card">
-          <div class="ncm-stat-value">{{stats.scheduledPending}}</div>
-          <div class="ncm-stat-label">Scheduled</div>
-        </div>
-        <div class="ncm-stat-card">
-          <div class="ncm-stat-value">{{stats.messagesByPriority.urgent}}</div>
-          <div class="ncm-stat-label">Urgent</div>
-        </div>
-      </div>
+    {{!-- ──────────────────────────────────────────
+         TAB 1: OVERVIEW
+         ────────────────────────────────────────── --}}
+    {{#if (eq activeTab 'overview')}}
 
-      <h3 class="ncm-section-title"><i class="fas fa-inbox"></i> Inboxes by Actor</h3>
-      <div class="ncm-actor-stats-list">
-        {{#each stats.actorStats}}
-        <div class="ncm-actor-stat-row" data-actor-id="{{actorId}}">
-          <img class="ncm-actor-stat-avatar" src="{{actorImg}}" alt="" />
-          <span class="ncm-actor-stat-name {{#if hasPlayerOwner}}ncm-player{{/if}}">{{actorName}}</span>
-          <span class="ncm-actor-stat-count">{{totalMessages}} msgs</span>
-          {{#if unreadMessages}}
-          <span class="ncm-badge ncm-badge--small">{{unreadMessages}} unread</span>
+    {{!-- Actor Inbox Cards --}}
+    <div class="ncm-section-title">
+      <i class="fas fa-inbox"></i> Actor Inboxes
+      <button class="ncm-section-title__action" data-action="openAllInboxes">Open All →</button>
+    </div>
+    {{#if stats.actorStats.length}}
+    <div class="ncm-actor-grid">
+      {{#each stats.actorStats}}
+      <div class="ncm-actor-card {{#if this.hasPlayerOwner}}ncm-actor-card--player{{else}}ncm-actor-card--npc{{/if}} {{#if this.unreadMessages}}ncm-actor-card--alert{{/if}}"
+           data-action="openInbox" data-actor-id="{{this.actorId}}">
+        <div class="ncm-actor-card__avatar" style="color: {{this.avatarColor}}; border-color: {{this.avatarBorderColor}};">
+          {{#if this.actorImg}}
+          <img src="{{this.actorImg}}" alt="{{this.actorName}}">
+          {{else}}
+          {{this.initial}}
           {{/if}}
-          <button class="ncm-btn-icon" data-action="openInbox" data-actor-id="{{actorId}}" title="Open Inbox">
-            <i class="fas fa-envelope-open"></i>
-          </button>
         </div>
-        {{else}}
-        <div class="ncm-empty-state">No messages in any inbox yet.</div>
-        {{/each}}
+        <div class="ncm-actor-card__info">
+          <div class="ncm-actor-card__name">{{this.actorName}}</div>
+          <div class="ncm-actor-card__meta">
+            {{#if this.ownerName}}<span><i class="fas fa-user"></i> {{this.ownerName}}</span>{{/if}}
+            <span><i class="fas fa-wifi"></i> {{../currentNetwork}}</span>
+          </div>
+        </div>
+        <div class="ncm-actor-card__stats">
+          <div class="ncm-actor-card__msg-count">{{this.totalMessages}}</div>
+          {{#if this.unreadMessages}}
+          <div class="ncm-actor-card__unread">{{this.unreadMessages}} unread</div>
+          {{else}}
+          <div class="ncm-actor-card__last-active">{{this.lastActive}}</div>
+          {{/if}}
+        </div>
       </div>
+      {{/each}}
+    </div>
+    {{else}}
+    <div class="ncm-admin-empty"><i class="fas fa-inbox"></i> No actors with messages yet.</div>
+    {{/if}}
 
-      <div class="ncm-admin-actions-bar">
-        <button class="ncm-btn ncm-btn--ghost ncm-btn--small" data-action="refreshStats">
-          <i class="fas fa-sync-alt"></i> Refresh
-        </button>
+    {{!-- Active Connections --}}
+    <div class="ncm-section-title"><i class="fas fa-signal"></i> Active Connections</div>
+    <div class="ncm-connection-list">
+      {{#each connections}}
+      <div class="ncm-connection-row">
+        <div class="ncm-connection-row__dot {{#if this.isGM}}ncm-connection-row__dot--gm{{else}}ncm-connection-row__dot--online{{/if}}"></div>
+        <span class="ncm-connection-row__name">{{this.userName}}</span>
+        <span class="ncm-connection-row__role {{#if this.isGM}}ncm-connection-row__role--gm{{else}}ncm-connection-row__role--player{{/if}}">{{#if this.isGM}}GM{{else}}Player{{/if}}</span>
+        <span class="ncm-connection-row__actor">{{this.actorNames}}</span>
+        {{#unless this.isGM}}<span class="ncm-connection-row__network">{{../currentNetwork}}</span>{{/unless}}
+        <span class="ncm-connection-row__session">{{this.sessionTime}}</span>
       </div>
+      {{/each}}
+    </div>
+
+    {{/if}}
+
+    {{!-- ──────────────────────────────────────────
+         TAB 2: MESSAGES
+         ────────────────────────────────────────── --}}
+    {{#if (eq activeTab 'messages')}}
+
+    {{!-- NPC Quick-Send --}}
+    <div class="ncm-section-title">
+      <i class="fas fa-paper-plane"></i> Send As NPC
+      <button class="ncm-section-title__action" data-action="openComposer"><i class="fas fa-plus"></i> Compose →</button>
+    </div>
+    {{#if npcActors.length}}
+    <div class="ncm-quicksend-grid">
+      {{#each npcActors}}
+      <div class="ncm-quicksend-card" data-action="quickSend" data-actor-id="{{this.id}}">
+        <div class="ncm-quicksend-card__avatar" style="color: {{this.color}};">{{this.initial}}</div>
+        <div class="ncm-quicksend-card__info">
+          <div class="ncm-quicksend-card__name">{{this.name}}</div>
+          <div class="ncm-quicksend-card__last">{{#if this.lastMessage}}{{this.lastMessage}}{{else}}No messages sent{{/if}}</div>
+        </div>
+        <div class="ncm-quicksend-card__send"><i class="fas fa-paper-plane"></i></div>
+      </div>
+      {{/each}}
+    </div>
+    {{else}}
+    <div class="ncm-admin-empty"><i class="fas fa-user-slash"></i> No NPC actors configured.</div>
+    {{/if}}
+
+    {{!-- Scheduled Deliveries --}}
+    <div class="ncm-section-title">
+      <i class="fas fa-clock"></i> Scheduled Deliveries
+      {{#if scheduledCount}}<span class="ncm-admin-tab__count" style="margin-left: 4px;">{{scheduledCount}}</span>{{/if}}
+    </div>
+    {{#if scheduledEntries.length}}
+    <div class="ncm-scheduled-list">
+      {{#each scheduledEntries}}
+      <div class="ncm-scheduled-item">
+        <div class="ncm-scheduled-item__time">
+          <div class="ncm-scheduled-item__countdown {{#if this.isSoon}}ncm-scheduled-item__countdown--soon{{/if}}">{{this.countdown}}</div>
+          <div class="ncm-scheduled-item__date">{{this.deliveryDate}}</div>
+        </div>
+        <div class="ncm-scheduled-item__route">
+          <div class="ncm-scheduled-item__from-to">
+            <span style="color: {{this.fromColor}};">{{this.fromName}}</span>
+            <span class="arrow">→</span>
+            <span>{{this.toName}}</span>
+          </div>
+          <div class="ncm-scheduled-item__subject">"{{this.subject}}"</div>
+        </div>
+        <div class="ncm-scheduled-item__priority ncm-scheduled-item__priority--{{this.priority}}">{{this.priority}}</div>
+        <div class="ncm-scheduled-item__actions">
+          <button class="ncm-admin-action-btn" data-action="editScheduled" data-schedule-id="{{this.scheduleId}}" title="Edit"><i class="fas fa-pen"></i></button>
+          <button class="ncm-admin-action-btn ncm-admin-action-btn--danger" data-action="cancelScheduled" data-schedule-id="{{this.scheduleId}}" title="Cancel"><i class="fas fa-xmark"></i></button>
+        </div>
+      </div>
+      {{/each}}
+    </div>
+    {{else}}
+    <div class="ncm-admin-empty"><i class="fas fa-clock"></i> No scheduled messages pending.</div>
+    {{/if}}
+
+    {{/if}}
+
+    {{!-- ──────────────────────────────────────────
+         TAB 3: CONTACTS
+         ────────────────────────────────────────── --}}
+    {{#if (eq activeTab 'contacts')}}
+
+    <div class="ncm-section-title">
+      <i class="fas fa-address-book"></i> Master Contacts ({{contactSummary.total}})
+      <button class="ncm-section-title__action" data-action="openGMContacts">Open Full Editor →</button>
+    </div>
+    {{#if contactSummary.contacts.length}}
+    <div class="ncm-contact-mini-grid">
+      {{#each contactSummary.contacts}}
+      <div class="ncm-contact-mini {{#if this.burned}}ncm-contact-mini--burned{{/if}} {{#if this.encrypted}}ncm-contact-mini--encrypted{{/if}}"
+           data-contact-id="{{this.id}}">
+        <div class="ncm-contact-mini__avatar" style="color: {{this.avatarColor}}; border-color: {{this.avatarBorderColor}};">{{this.initial}}</div>
+        <div class="ncm-contact-mini__info">
+          <div class="ncm-contact-mini__name {{#if this.burned}}ncm-contact-mini__name--burned{{/if}}">{{this.name}}</div>
+          <div class="ncm-contact-mini__detail">{{this.email}}</div>
+        </div>
+        {{!-- Trust meter (5 segments — pre-computed in JS) --}}
+        {{#unless this.burned}}
+        {{#unless this.encrypted}}
+        {{#if this.trustSegments}}
+        <div class="ncm-contact-mini__trust ncm-contact-mini__trust--{{this.trustLevel}}">
+          {{#each this.trustSegments}}
+          <div class="ncm-contact-mini__trust-seg {{#if this}}active{{/if}}"></div>
+          {{/each}}
+        </div>
+        {{/if}}
+        {{/unless}}
+        {{/unless}}
+        {{!-- Status badges --}}
+        {{#if this.burned}}
+        <span class="ncm-contact-mini__badge ncm-contact-mini__badge--burned"><i class="fas fa-fire" style="font-size: 6px;"></i> Burned</span>
+        {{else if this.encrypted}}
+        <span class="ncm-contact-mini__badge ncm-contact-mini__badge--ice"><i class="fas fa-lock" style="font-size: 6px;"></i> ICE DV{{this.encryptionDV}}</span>
+        {{else if this.roleBadge}}
+        <span class="ncm-contact-mini__badge ncm-contact-mini__badge--{{this.roleBadgeClass}}">{{this.roleBadge}}</span>
+        {{/if}}
+      </div>
+      {{/each}}
+    </div>
+    {{else}}
+    <div class="ncm-admin-empty"><i class="fas fa-address-book"></i> No contacts in master directory.</div>
+    {{/if}}
+
+    {{!-- Recent Pushes --}}
+    {{#if pushLog.length}}
+    <div class="ncm-section-title"><i class="fas fa-arrow-up-from-bracket"></i> Recent Pushes</div>
+    <div class="ncm-push-log">
+      {{#each pushLog}}
+      <div class="ncm-push-log__entry">
+        <i class="fas fa-check"></i>
+        {{{this.text}}}
+        <span class="ncm-push-log__entry__time">{{this.time}}</span>
+      </div>
+      {{/each}}
     </div>
     {{/if}}
 
-    {{!-- ═══ SCHEDULED TAB ═══ --}}
-    {{#if (eq activeTab 'scheduled')}}
-    <div class="ncm-admin-tab-content ncm-admin-scheduled">
-      {{#if scheduledEntries.length}}
-      <div class="ncm-scheduled-list">
-        {{#each scheduledEntries}}
-        <div class="ncm-scheduled-entry" data-schedule-id="{{scheduleId}}">
-          <div class="ncm-scheduled-info">
-            <div class="ncm-scheduled-subject">{{subject}}</div>
-            <div class="ncm-scheduled-route">
-              <span class="ncm-from">{{fromName}}</span>
-              <i class="fas fa-arrow-right"></i>
-              <span class="ncm-to">{{toName}}</span>
-            </div>
-            <div class="ncm-scheduled-time">
-              <i class="fas fa-clock"></i> {{deliveryTime}}
-            </div>
+    {{/if}}
+
+    {{!-- ──────────────────────────────────────────
+         TAB 4: NETWORKS
+         ────────────────────────────────────────── --}}
+    {{#if (eq activeTab 'networks')}}
+
+    <div class="ncm-section-title">
+      <i class="fas fa-network-wired"></i> Active Networks
+      <button class="ncm-section-title__action" data-action="openNetworkManager">Open Full Manager →</button>
+    </div>
+    {{#if networks.length}}
+    <div class="ncm-network-grid">
+      {{#each networks}}
+      <div class="ncm-network-card {{#if this.enabled}}ncm-network-card--active{{else}}ncm-network-card--disabled{{/if}}"
+           data-network-id="{{this.id}}">
+        <div class="ncm-network-card__header">
+          <div class="ncm-network-card__icon ncm-network-card__icon--{{this.iconClass}}">
+            <i class="fas fa-{{this.icon}}"></i>
           </div>
-          <div class="ncm-scheduled-actions">
-            <button class="ncm-btn-icon" data-action="editScheduled" data-schedule-id="{{scheduleId}}" title="Edit">
-              <i class="fas fa-edit"></i>
-            </button>
-            <button class="ncm-btn-icon ncm-btn-icon--danger" data-action="cancelScheduled" data-schedule-id="{{scheduleId}}" title="Cancel">
-              <i class="fas fa-times"></i>
-            </button>
+          <div class="ncm-network-card__title-area">
+            <div class="ncm-network-card__name">{{this.name}}</div>
+            <div class="ncm-network-card__type">{{this.type}}</div>
+          </div>
+          <div class="ncm-network-card__toggle {{#if this.enabled}}ncm-network-card__toggle--on{{/if}}"
+               data-action="toggleNetwork" data-network-id="{{this.id}}"></div>
+        </div>
+        <div class="ncm-network-card__stats">
+          <span>Signal <span class="val {{#if this.noSignal}}val--danger{{/if}}">{{this.signal}}%</span></span>
+          <span>Users <span class="val">{{this.userCount}}</span></span>
+          {{#if this.reliability}}<span>Reliability <span class="val">{{this.reliability}}%</span></span>{{/if}}
+        </div>
+        {{#if this.scenes.length}}
+        <div class="ncm-network-card__scenes">
+          {{#each this.scenes}}
+          <span class="ncm-network-card__scene {{#if this.isCurrent}}ncm-network-card__scene--current{{/if}}">{{this.name}}</span>
+          {{/each}}
+        </div>
+        {{/if}}
+        <div class="ncm-network-card__auth ncm-network-card__auth--{{this.authClass}}">
+          <i class="fas fa-{{this.authIcon}}"></i> {{this.authLabel}}
+        </div>
+      </div>
+      {{/each}}
+    </div>
+    {{else}}
+    <div class="ncm-admin-empty"><i class="fas fa-network-wired"></i> No networks defined.</div>
+    {{/if}}
+
+    {{/if}}
+
+    {{!-- ──────────────────────────────────────────
+         TAB 5: DATA SHARDS
+         ────────────────────────────────────────── --}}
+    {{#if (eq activeTab 'shards')}}
+
+    <div class="ncm-section-title">
+      <i class="fas fa-database"></i> All Data Shards ({{shards.length}})
+      <button class="ncm-section-title__action" data-action="convertItemToShard"><i class="fas fa-plus"></i> Convert Item →</button>
+    </div>
+    {{#if shards.length}}
+    <div class="ncm-shard-grid">
+      {{#each shards}}
+      <div class="ncm-shard-card ncm-shard-card--{{this.status}}"
+           data-action="openShardItem" data-item-id="{{this.itemId}}">
+        <div class="ncm-shard-card__header">
+          <div class="ncm-shard-card__icon {{this.iconClass}}"><i class="fas fa-{{this.icon}}"></i></div>
+          <div class="ncm-shard-card__title-area">
+            <div class="ncm-shard-card__name">{{this.name}}</div>
+            <div class="ncm-shard-card__owner">Owner: {{this.owner}}</div>
           </div>
         </div>
-        {{/each}}
+        <div class="ncm-shard-card__security">
+          {{#each this.securityLayers}}
+          <span class="ncm-shard-card__layer ncm-shard-card__layer--{{this.type}}">{{this.label}}</span>
+          {{/each}}
+        </div>
+        <div class="ncm-shard-card__meta">
+          <span><i class="fas fa-envelope"></i> {{this.messageCount}} message{{#unless (eq this.messageCount 1)}}s{{/unless}}</span>
+          {{#if this.breachedBy}}
+          <span><i class="fas fa-check" style="color: var(--ncm-success);"></i> Breached by {{this.breachedBy}}</span>
+          {{else}}
+          <span><i class="fas fa-clock"></i> {{this.attemptCount}} attempt{{#unless (eq this.attemptCount 1)}}s{{/unless}}</span>
+          {{/if}}
+        </div>
       </div>
-      {{else}}
-      <div class="ncm-empty-state">
-        <i class="fas fa-clock"></i>
-        <p>No scheduled messages.</p>
+      {{/each}}
+    </div>
+    {{else}}
+    <div class="ncm-admin-empty"><i class="fas fa-database"></i> No data shards in the world.</div>
+    {{/if}}
+
+    {{!-- Access Log --}}
+    {{#if accessLog.length}}
+    <div class="ncm-section-title"><i class="fas fa-clipboard-list"></i> Recent Access Log</div>
+    <div class="ncm-access-log">
+      {{#each accessLog}}
+      <div class="ncm-access-log__entry ncm-access-log__entry--{{this.type}}">
+        <i class="fas fa-{{this.icon}}"></i>
+        <span class="ncm-access-log__entry__text">{{{this.text}}}</span>
+        <span class="ncm-access-log__entry__time">{{this.time}}</span>
       </div>
-      {{/if}}
+      {{/each}}
     </div>
     {{/if}}
 
-    {{!-- ═══ CONNECTIONS TAB ═══ --}}
-    {{#if (eq activeTab 'connections')}}
-    <div class="ncm-admin-tab-content ncm-admin-connections">
-      <div class="ncm-connection-list">
-        {{#each connections}}
-        <div class="ncm-connection-entry">
-          <div class="ncm-connection-user">
-            <span class="ncm-connection-dot" style="background-color: {{color}};"></span>
-            <span class="ncm-connection-name">{{userName}}</span>
-            {{#if isGM}}<span class="ncm-badge ncm-badge--small">GM</span>{{/if}}
-          </div>
-          <div class="ncm-connection-actors">
-            {{#each actors}}
-            <div class="ncm-connection-actor" data-actor-id="{{id}}">
-              <img src="{{img}}" alt="" class="ncm-connection-actor-img" />
-              <span>{{name}}</span>
-              <button class="ncm-btn-icon" data-action="openInbox" data-actor-id="{{id}}" title="Open Inbox">
-                <i class="fas fa-envelope"></i>
-              </button>
-              <button class="ncm-btn-icon" data-action="quickSend" data-actor-id="{{id}}" title="Send As">
-                <i class="fas fa-paper-plane"></i>
-              </button>
-            </div>
-            {{else}}
-            <span class="ncm-text-muted">No characters</span>
-            {{/each}}
-          </div>
-        </div>
-        {{/each}}
-      </div>
-    </div>
     {{/if}}
 
-    {{!-- ═══ TOOLS TAB ═══ --}}
+    {{!-- ──────────────────────────────────────────
+         TAB 6: TOOLS
+         ────────────────────────────────────────── --}}
     {{#if (eq activeTab 'tools')}}
-    <div class="ncm-admin-tab-content ncm-admin-tools">
 
-      <h3 class="ncm-section-title"><i class="fas fa-paper-plane"></i> Quick Send (as NPC)</h3>
-      <div class="ncm-quick-send-grid">
-        {{#each npcActors}}
-        <button class="ncm-quick-send-btn" data-action="quickSend" data-actor-id="{{id}}" title="Send as {{name}}">
-          <img src="{{img}}" alt="" class="ncm-quick-send-avatar" />
-          <span class="ncm-quick-send-name">{{name}}</span>
-        </button>
-        {{/each}}
+    <div class="ncm-section-title"><i class="fas fa-cog"></i> System Tools</div>
+    <div class="ncm-tools-grid">
+      <div class="ncm-tool-card" data-action="openThemeCustomizer">
+        <i class="fas fa-palette ncm-tool-card__icon ncm-tool-card__icon--gold"></i>
+        <span class="ncm-tool-card__name">Themes</span>
+        <span class="ncm-tool-card__desc">Colors, fonts &amp; effects</span>
       </div>
-
-      <h3 class="ncm-section-title"><i class="fas fa-cog"></i> System Tools</h3>
-      <div class="ncm-tools-grid">
-        <button class="ncm-tool-btn" data-action="openContacts">
-          <i class="fas fa-address-book"></i>
-          <span>GM Contacts</span>
-        </button>
-        <button class="ncm-tool-btn" data-action="openNetworks">
-          <i class="fas fa-network-wired"></i>
-          <span>Networks</span>
-        </button>
-        <button class="ncm-tool-btn" data-action="openThemeCustomizer">
-          <i class="fas fa-palette"></i>
-          <span>Themes</span>
-        </button>
-        <button class="ncm-tool-btn" data-action="forceRefreshAll">
-          <i class="fas fa-broadcast-tower"></i>
-          <span>Force Refresh All</span>
-        </button>
+      <div class="ncm-tool-card" data-action="forceRefreshAll">
+        <i class="fas fa-broadcast-tower ncm-tool-card__icon ncm-tool-card__icon--green"></i>
+        <span class="ncm-tool-card__name">Force Refresh</span>
+        <span class="ncm-tool-card__desc">Sync all clients</span>
+      </div>
+      <div class="ncm-tool-card" data-action="exportLogs">
+        <i class="fas fa-file-export ncm-tool-card__icon"></i>
+        <span class="ncm-tool-card__name">Export Logs</span>
+        <span class="ncm-tool-card__desc">Download message JSON</span>
+      </div>
+      <div class="ncm-tool-card" data-action="healthCheck">
+        <i class="fas fa-heartbeat ncm-tool-card__icon ncm-tool-card__icon--green"></i>
+        <span class="ncm-tool-card__name">Health Check</span>
+        <span class="ncm-tool-card__desc">Run diagnostics</span>
+      </div>
+      <div class="ncm-tool-card" data-action="openTimeSettings">
+        <i class="fas fa-clock-rotate-left ncm-tool-card__icon ncm-tool-card__icon--gold"></i>
+        <span class="ncm-tool-card__name">Time Settings</span>
+        <span class="ncm-tool-card__desc">SimpleCalendar config</span>
+      </div>
+      <div class="ncm-tool-card" data-action="openSoundSettings">
+        <i class="fas fa-volume-high ncm-tool-card__icon"></i>
+        <span class="ncm-tool-card__name">Sound Settings</span>
+        <span class="ncm-tool-card__desc">Notification audio</span>
       </div>
     </div>
+
+    <div class="ncm-danger-zone">
+      <div class="ncm-section-title"><i class="fas fa-triangle-exclamation"></i> Danger Zone</div>
+      <div class="ncm-tools-grid">
+        <div class="ncm-tool-card" data-action="purgeMessages">
+          <i class="fas fa-trash ncm-tool-card__icon"></i>
+          <span class="ncm-tool-card__name">Purge Messages</span>
+          <span class="ncm-tool-card__desc">Delete all for an actor</span>
+        </div>
+        <div class="ncm-tool-card" data-action="resetModule">
+          <i class="fas fa-rotate-left ncm-tool-card__icon"></i>
+          <span class="ncm-tool-card__name">Reset Module</span>
+          <span class="ncm-tool-card__desc">Clear all data (irreversible)</span>
+        </div>
+        <div class="ncm-tool-card" data-action="rebuildIndex">
+          <i class="fas fa-hammer ncm-tool-card__icon"></i>
+          <span class="ncm-tool-card__name">Rebuild Index</span>
+          <span class="ncm-tool-card__desc">Reindex journals &amp; contacts</span>
+        </div>
+      </div>
+    </div>
+
     {{/if}}
 
+  </div>{{!-- /ncm-admin-content --}}
+
+  {{!-- ═══ FOOTER ═══ --}}
+  <div class="ncm-admin-footer">
+    <div class="ncm-admin-footer__info">
+      <span><i class="fas fa-shield-halved"></i> GM ADMIN</span>
+      {{#if (eq activeTab 'overview')}}<span><i class="fas fa-inbox"></i> {{stats.totalMessages}} MESSAGES</span><span><i class="fas fa-wifi"></i> {{currentNetwork}}</span>{{/if}}
+      {{#if (eq activeTab 'messages')}}<span><i class="fas fa-clock"></i> {{scheduledCount}} SCHEDULED</span>{{/if}}
+      {{#if (eq activeTab 'contacts')}}<span><i class="fas fa-address-book"></i> {{contactSummary.total}} CONTACTS</span>{{#if contactSummary.burned}}<span style="color: var(--ncm-danger);"><i class="fas fa-fire"></i> {{contactSummary.burned}} BURNED</span>{{/if}}{{/if}}
+      {{#if (eq activeTab 'networks')}}<span><i class="fas fa-network-wired"></i> {{networkSummary.active}}/{{networks.length}} NETWORKS ACTIVE</span>{{/if}}
+      {{#if (eq activeTab 'shards')}}<span><i class="fas fa-database"></i> {{shards.length}} SHARDS</span>{{#if shardSummary.locked}}<span style="color: var(--ncm-accent);"><i class="fas fa-lock"></i> {{shardSummary.locked}} LOCKED</span>{{/if}}{{#if shardSummary.blackice}}<span style="color: var(--ncm-danger);"><i class="fas fa-skull-crossbones"></i> {{shardSummary.blackice}} BLACK ICE</span>{{/if}}{{/if}}
+      {{#if (eq activeTab 'tools')}}<span><i class="fas fa-code-branch"></i> NCM v4.1</span>{{/if}}
+    </div>
+    <div class="ncm-admin-footer__shortcuts">
+      {{#if (eq activeTab 'overview')}}<kbd>TAB</kbd> SWITCH &nbsp; <kbd>R</kbd> REFRESH{{/if}}
+      {{#if (eq activeTab 'messages')}}<kbd>N</kbd> NEW MESSAGE &nbsp; <kbd>S</kbd> SCHEDULE{{/if}}
+      {{#if (eq activeTab 'contacts')}}<kbd>CLICK</kbd> EDIT &nbsp; <kbd>P</kbd> PUSH &nbsp; <kbd>N</kbd> NEW{{/if}}
+      {{#if (eq activeTab 'networks')}}<kbd>CLICK</kbd> TOGGLE &nbsp; <kbd>E</kbd> EDIT &nbsp; <kbd>N</kbd> NEW NETWORK{{/if}}
+      {{#if (eq activeTab 'shards')}}<kbd>CLICK</kbd> OPEN SHARD &nbsp; <kbd>F</kbd> FORCE DECRYPT &nbsp; <kbd>R</kbd> RELOCK{{/if}}
+      {{#if (eq activeTab 'tools')}}<kbd>CLICK</kbd> TOOL → OPEN &nbsp; <kbd>ESC</kbd> CLOSE{{/if}}
+    </div>
   </div>
-</div>
+
+</div>{{!-- /ncm-admin-panel --}}
+
 {{else}}
-<div class="ncm-admin-panel ncm-access-denied">
-  <i class="fas fa-lock"></i>
-  <p>ACCESS DENIED — GM CLEARANCE REQUIRED</p>
+<div class="ncm-admin-panel">
+  <div class="ncm-admin-empty">
+    <i class="fas fa-lock"></i>
+    Access denied — GM clearance required.
+  </div>
 </div>
 {{/if}}
