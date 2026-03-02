@@ -237,9 +237,6 @@ export class MasterContactService {
 
     this.eventBus?.emit('contacts:masterUpdated', { action: 'remove', contactId });
     log.info(`Master contact removed: ${removed.name} (${contactId})`);
-
-    this.eventBus?.emit('contacts:masterUpdated', { action: 'remove', contactId });
-    log.info(`Master contact removed: ${removed.name} (${contactId})`);
     await this._onMasterListChanged();
     return { success: true };
   }

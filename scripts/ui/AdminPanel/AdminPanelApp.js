@@ -820,7 +820,7 @@ export class AdminPanelApp extends BaseApplication {
     if (!actor) return;
 
     game.nightcity?.openInbox?.(actor);
-    log(`Admin: Opening inbox for ${actor.name}`);
+    log.info(`Admin: Opening inbox for ${actor.name}`);
   }
 
   static _onOpenAllInboxes(event, target) {
@@ -847,7 +847,7 @@ export class AdminPanelApp extends BaseApplication {
 
     // Open composer pre-filled with this NPC as sender
     game.nightcity?.openComposer?.({ fromActorId: actorId, fromName: actor.name });
-    log(`Admin: Quick-send as ${actor.name}`);
+    log.info(`Admin: Quick-send as ${actor.name}`);
   }
 
   static _onOpenComposer(event, target) {
@@ -893,7 +893,7 @@ export class AdminPanelApp extends BaseApplication {
 
   static _onOpenGMContacts(event, target) {
     game.nightcity?.openGMContacts?.();
-    log('Admin: Opening GM Contact Manager');
+    log.info('Admin: Opening GM Contact Manager');
   }
 
   static async _onPushContact(event, target) {
@@ -994,10 +994,10 @@ export class AdminPanelApp extends BaseApplication {
 
     if (current.includes(networkId)) {
       updated = current.filter(id => id !== networkId);
-      log(`Admin: Disabled network ${networkId} on scene ${scene.name}`);
+      log.info(`Admin: Disabled network ${networkId} on scene ${scene.name}`);
     } else {
       updated = [...current, networkId];
-      log(`Admin: Enabled network ${networkId} on scene ${scene.name}`);
+      log.info(`Admin: Enabled network ${networkId} on scene ${scene.name}`);
     }
 
     await scene.setFlag(MODULE_ID, 'availableNetworks', updated);
@@ -1006,7 +1006,7 @@ export class AdminPanelApp extends BaseApplication {
 
   static _onOpenNetworkManager(event, target) {
     game.nightcity?.openNetworkManager?.();
-    log('Admin: Opening Network Manager');
+    log.info('Admin: Opening Network Manager');
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -1021,7 +1021,7 @@ export class AdminPanelApp extends BaseApplication {
     if (!item) return;
 
     item.sheet.render(true);
-    log(`Admin: Opening shard ${item.name}`);
+    log.info(`Admin: Opening shard ${item.name}`);
   }
 
   static async _onForceDecrypt(event, target) {
@@ -1079,7 +1079,7 @@ export class AdminPanelApp extends BaseApplication {
 
   static _onOpenThemeCustomizer(event, target) {
     game.nightcity?.openThemeCustomizer?.();
-    log('Admin: Opening Theme Customizer');
+    log.info('Admin: Opening Theme Customizer');
   }
 
   static async _onForceRefreshAll(event, target) {
