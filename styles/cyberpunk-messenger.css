@@ -44,6 +44,7 @@
 @import 'components/item-inbox.css';
 @import 'components/security-overlays.css';
 @import 'components/network-management.css';
+@import 'components/network-auth-dialog.css';
 @import 'components/admin-panel.css';
 @import 'components/theme-customizer.css';
 @import 'components/notifications.css';

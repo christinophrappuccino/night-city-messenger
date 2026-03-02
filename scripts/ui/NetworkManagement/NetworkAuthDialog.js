@@ -53,6 +53,8 @@ export class NetworkAuthDialog extends BaseApplication {
     actions: {
       submitPassword: NetworkAuthDialog._onSubmitPassword,
       attemptSkillCheck: NetworkAuthDialog._onAttemptSkillCheck,
+      togglePasswordVisibility: NetworkAuthDialog._onTogglePasswordVisibility,
+      gmBypass: NetworkAuthDialog._onGMBypass,
       switchMode: NetworkAuthDialog._onSwitchMode,
       cancel: NetworkAuthDialog._onCancel,
     },
@@ -116,6 +118,86 @@ export class NetworkAuthDialog extends BaseApplication {
       ? this.securityService?.getRemainingAttempts(actorId, this.networkId)
       : 3;
 
+    // --- Attempt Pips ---
+    const usedAttempts = maxAttempts - remainingAttempts;
+    const attemptPips = [];
+    for (let i = 0; i < maxAttempts; i++) {
+      if (i < usedAttempts) {
+        attemptPips.push({ state: 'used' });
+      } else if (i === usedAttempts) {
+        attemptPips.push({ state: 'current' });
+      } else {
+        attemptPips.push({ state: 'unused' });
+      }
+    }
+
+    // If locked out, all pips are 'used' (override)
+    if (isLockedOut) {
+      attemptPips.length = 0;
+      for (let i = 0; i < maxAttempts; i++) {
+        attemptPips.push({ state: 'used' });
+      }
+    }
+
+
+  // --- Network Type Label & Security Tag Class ---
+    const typeLabels = {
+      public: 'Public Subnet',
+      hidden: 'Hidden Subnet',
+      corporate: 'Corporate Subnet',
+      government: 'Government Subnet',
+      custom: 'Custom Subnet',
+    };
+    const networkTypeLabel = typeLabels[network.type] || 'Subnet';
+
+    const securityTagMap = {
+      none: 'green',
+      low: 'cyan',
+      standard: 'warn',
+      advanced: 'purple',
+      maximum: 'danger',
+    };
+    const securityTagClass = securityTagMap[(network.security.level || 'standard').toLowerCase()] || 'warn';
+
+
+// --- Skill Breakdown (for skill check mode) ---
+// This attempts to pull the actor's relevant stat + skill values.
+// Falls back to null if no actor is assigned.
+
+    let skillBreakdown = null;
+    if (this._authMode === 'skill' && hasSkillBypass) {
+      const actor = game.user?.character;
+      const primarySkill = network.security.bypassSkills?.[0];
+      if (actor && primarySkill) {
+        // CPR system: stats are in actor.system.stats, skills in actor.system.skills
+        // The exact paths depend on the Cyberpunk RED system module.
+        // Common pattern: INT stat is actor.system.stats.int.value
+        const statName = 'INT';
+        const statValue = actor.system?.stats?.int?.value ?? 0;
+
+        // Skill value — try to find it in the actor's skills
+        // CPR system uses different structures; this is a best-effort lookup
+        let skillValue = 0;
+        const skillKey = primarySkill.toLowerCase().replace(/\s+/g, '');
+        if (actor.system?.skills?.[skillKey]?.level !== undefined) {
+          skillValue = actor.system.skills[skillKey].level;
+        }
+
+        const total = statValue + skillValue;
+        const dc = network.security.bypassDC ?? 15;
+        const needed = Math.max(1, dc - total);
+
+        skillBreakdown = {
+          statName,
+          statValue,
+          skillName: primarySkill,
+          skillValue,
+          total,
+          needed,
+        };
+      }
+    }
+
     return {
       network: {
         id: network.id,
@@ -125,6 +207,8 @@ export class NetworkAuthDialog extends BaseApplication {
         color: network.theme?.color ?? '#19f3f7',
         securityLevel: network.security.level,
         description: network.description,
+        typeLabel: networkTypeLabel,
+        securityTagClass: securityTagClass,
       },
 
       hasPassword,
@@ -145,8 +229,13 @@ export class NetworkAuthDialog extends BaseApplication {
       remainingAttempts,
       maxAttempts: network.security.maxAttempts ?? 3,
 
+      attemptPips,
+      skillBreakdown,
+
       errorMessage: this._errorMessage,
       hasError: !!this._errorMessage,
+
+      isGM: game.user?.isGM ?? false,
 
       MODULE_ID,
     };
@@ -294,6 +383,36 @@ export class NetworkAuthDialog extends BaseApplication {
     }
   }
 
+  /**
+   * Toggle password field visibility between password/text.
+   */
+  static _onTogglePasswordVisibility(event, target) {
+    const input = this.element.querySelector('.ncm-auth__password-input');
+    if (!input) return;
+
+    const isPassword = input.type === 'password';
+    input.type = isPassword ? 'text' : 'password';
+
+    // Swap icon
+    const icon = target.querySelector('i');
+    if (icon) {
+      icon.classList.toggle('fa-eye', !isPassword);
+      icon.classList.toggle('fa-eye-slash', isPassword);
+    }
+  }
+
+  /**
+   * GM bypass — skip auth entirely.
+   */
+  static _onGMBypass(event, target) {
+    if (!game.user?.isGM) return;
+    if (this._resolve) {
+      this._resolve({ success: true, method: 'gm_bypass' });
+      this._resolve = null;
+    }
+    this.close();
+  }
+
   static _onSwitchMode(event, target) {
     const mode = target.dataset.mode;
     if (mode === 'password' || mode === 'skill') {
@@ -317,5 +436,29 @@ export class NetworkAuthDialog extends BaseApplication {
     if (hours > 0) return `${hours}h ${minutes % 60}m`;
     if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
     return `${seconds}s`;
+  }
+
+  /**
+   * After render, set data-auth-state for CSS accent bar color.
+   */
+  _onRender(context, options) {
+    super._onRender?.(context, options);
+
+    // Set auth state attribute for accent bar color
+    if (context.isLockedOut) {
+      this.element.dataset.authState = 'lockout';
+    } else if (context.isSkillMode) {
+      this.element.dataset.authState = 'skill';
+    } else {
+      this.element.dataset.authState = 'password';
+    }
+
+    // Auto-focus password input if in password mode
+    if (context.isPasswordMode && !context.isLockedOut) {
+      requestAnimationFrame(() => {
+        const input = this.element.querySelector('.ncm-auth__password-input');
+        input?.focus();
+      });
+    }
   }
 }

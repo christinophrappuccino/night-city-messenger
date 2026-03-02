@@ -1,0 +1,779 @@
+/**
+ * Network Authentication Dialog — WP-3 Redesign
+ * @file styles/components/network-auth-dialog.css
+ * @module cyberpunkred-messenger
+ * @description Styles for NetworkAuthDialog covering 4 states:
+ *   password entry, error, skill check bypass, lockout.
+ *   Extracted from ncm-network-dialogs-mockup.html.
+ *
+ *   Scoped under .ncm-network-auth-dialog (ApplicationV2 wrapper class).
+ *   Uses ncm-auth__ BEM prefix for all internal elements.
+ */
+
+
+/* ═══════════════════════════════════════════════════════════
+   Design Tokens
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-network-auth-dialog {
+  --nad-primary: var(--ncm-primary, #F65261);
+  --nad-secondary: var(--ncm-secondary, #19f3f7);
+  --nad-accent: var(--ncm-accent, #f7c948);
+  --nad-success: var(--ncm-success, #00ff41);
+  --nad-danger: var(--ncm-danger, #ff0033);
+  --nad-purple: #a855f7;
+
+  --nad-bg-deep: var(--ncm-bg-deep, #0a0a0f);
+  --nad-bg-base: var(--ncm-bg-base, #12121a);
+  --nad-bg-surface: var(--ncm-bg-surface, #1a1a2e);
+  --nad-bg-elevated: var(--ncm-bg-elevated, #252540);
+
+  --nad-border: var(--ncm-border, #2a2a45);
+  --nad-border-active: #3a3a5a;
+
+  --nad-text-primary: var(--ncm-text-primary, #e0e0e8);
+  --nad-text-secondary: var(--ncm-text-secondary, #8888a0);
+  --nad-text-muted: #555570;
+
+  --nad-font-display: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  --nad-font-mono: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  --nad-font-title: 'Orbitron', var(--ncm-font-display, 'Rajdhani', sans-serif);
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   App Container / Window Overrides
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-network-auth-dialog {
+  background: var(--nad-bg-deep);
+  border: 1px solid var(--nad-border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+/* Top accent bar — gold for password, purple for skill, red for lockout */
+.ncm-network-auth-dialog::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--nad-accent);
+  z-index: 10;
+}
+
+/* Scanline overlay */
+.ncm-network-auth-dialog::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 100;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent, transparent 2px,
+    rgba(0, 0, 0, 0.03) 2px, rgba(0, 0, 0, 0.03) 4px
+  );
+}
+
+.ncm-network-auth-dialog .window-content {
+  padding: 0 !important;
+  background: var(--nad-bg-deep) !important;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   Main Dialog Body
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-auth-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  font-family: var(--nad-font-display);
+  position: relative;
+  z-index: 1;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   Network Identity Block
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-auth__identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--nad-border);
+}
+
+.ncm-auth__icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.ncm-auth__title-group {
+  flex: 1;
+  min-width: 0;
+}
+
+.ncm-auth__name {
+  font-family: var(--nad-font-display);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--nad-text-primary);
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+
+.ncm-auth__meta {
+  font-family: var(--nad-font-mono);
+  font-size: 9px;
+  color: var(--nad-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 1px;
+}
+
+
+/* ─── Security Tag ─── */
+
+.ncm-auth-dialog .ncm-tag {
+  font-family: var(--nad-font-mono);
+  font-size: 7px;
+  padding: 1px 5px;
+  border-radius: 1px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.ncm-auth-dialog .ncm-tag i {
+  font-size: 7px;
+}
+
+.ncm-auth-dialog .ncm-tag--warn {
+  background: rgba(247, 201, 72, 0.1);
+  color: var(--nad-accent);
+  border: 1px solid rgba(247, 201, 72, 0.2);
+}
+
+.ncm-auth-dialog .ncm-tag--cyan {
+  background: rgba(25, 243, 247, 0.08);
+  color: var(--nad-secondary);
+  border: 1px solid rgba(25, 243, 247, 0.15);
+}
+
+.ncm-auth-dialog .ncm-tag--purple {
+  background: rgba(168, 85, 247, 0.08);
+  color: var(--nad-purple);
+  border: 1px solid rgba(168, 85, 247, 0.15);
+}
+
+.ncm-auth-dialog .ncm-tag--danger {
+  background: rgba(255, 0, 51, 0.12);
+  color: var(--nad-danger);
+  border: 1px solid rgba(255, 0, 51, 0.2);
+}
+
+.ncm-auth-dialog .ncm-tag--green {
+  background: rgba(0, 255, 65, 0.06);
+  color: var(--nad-success);
+  border: 1px solid rgba(0, 255, 65, 0.12);
+}
+
+
+/* ─── Description ─── */
+
+.ncm-auth__desc {
+  font-family: var(--nad-font-mono);
+  font-size: 9px;
+  color: var(--nad-text-secondary);
+  line-height: 1.5;
+  padding: 6px 0;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   Error Message
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-auth__error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 2px;
+  background: rgba(255, 0, 51, 0.06);
+  border: 1px solid rgba(255, 0, 51, 0.15);
+  font-family: var(--nad-font-mono);
+  font-size: 9px;
+  color: var(--nad-danger);
+  animation: ncm-auth-shake 0.3s ease;
+}
+
+.ncm-auth__error i {
+  flex-shrink: 0;
+  font-size: 10px;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   Password Mode
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-auth__field-label {
+  font-family: var(--nad-font-mono);
+  font-size: 8px;
+  color: var(--nad-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 4px;
+}
+
+.ncm-auth__password-wrap {
+  display: flex;
+  align-items: center;
+  background: var(--nad-bg-deep);
+  border: 1px solid var(--nad-border);
+  border-radius: 2px;
+  padding: 0 10px;
+  height: 36px;
+  gap: 8px;
+  transition: all 0.15s;
+}
+
+.ncm-auth__password-wrap:focus-within {
+  border-color: var(--nad-secondary);
+  box-shadow: 0 0 0 1px rgba(25, 243, 247, 0.12),
+              inset 0 0 12px rgba(25, 243, 247, 0.03);
+}
+
+.ncm-auth__password-wrap--error {
+  border-color: rgba(255, 0, 51, 0.3);
+}
+
+.ncm-auth__password-wrap--error:focus-within {
+  border-color: rgba(255, 0, 51, 0.5);
+  box-shadow: 0 0 0 1px rgba(255, 0, 51, 0.12),
+              inset 0 0 12px rgba(255, 0, 51, 0.03);
+}
+
+.ncm-auth__password-prefix {
+  font-family: var(--nad-font-mono);
+  font-size: 10px;
+  color: var(--nad-text-muted);
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.ncm-auth__password-prefix--error {
+  color: var(--nad-danger);
+}
+
+.ncm-auth__password-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: var(--nad-font-mono);
+  font-size: 12px;
+  color: var(--nad-secondary);
+  letter-spacing: 0.15em;
+  min-width: 0;
+}
+
+.ncm-auth__password-input::placeholder {
+  color: var(--nad-text-muted);
+  letter-spacing: 0.05em;
+}
+
+.ncm-auth__password-input--error {
+  color: var(--nad-danger);
+}
+
+.ncm-auth__cursor {
+  width: 7px;
+  height: 14px;
+  background: var(--nad-secondary);
+  animation: ncm-auth-blink 0.8s step-end infinite;
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.ncm-auth__cursor--error {
+  background: var(--nad-danger);
+}
+
+/* Hide cursor when input is focused (real caret is visible) */
+.ncm-auth__password-wrap:focus-within .ncm-auth__cursor {
+  display: none;
+}
+
+.ncm-auth__password-toggle {
+  background: transparent;
+  border: none;
+  color: var(--nad-text-muted);
+  cursor: pointer;
+  font-size: 11px;
+  padding: 4px;
+  transition: color 0.12s;
+  flex-shrink: 0;
+}
+
+.ncm-auth__password-toggle:hover {
+  color: var(--nad-text-secondary);
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   Skill Check Mode
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-auth__skill-panel {
+  background: var(--nad-bg-surface);
+  border: 1px solid var(--nad-border);
+  border-radius: 2px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ncm-auth__skill-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ncm-auth__skill-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  background: rgba(168, 85, 247, 0.08);
+  border: 1px solid rgba(168, 85, 247, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: var(--nad-purple);
+  flex-shrink: 0;
+}
+
+.ncm-auth__skill-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.ncm-auth__skill-name {
+  font-family: var(--nad-font-display);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--nad-text-primary);
+  text-transform: uppercase;
+}
+
+.ncm-auth__skill-formula {
+  font-family: var(--nad-font-mono);
+  font-size: 9px;
+  color: var(--nad-text-muted);
+}
+
+.ncm-auth__dv {
+  font-family: var(--nad-font-title);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--nad-accent);
+  line-height: 1;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.ncm-auth__dv-label {
+  font-family: var(--nad-font-mono);
+  font-size: 7px;
+  color: var(--nad-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+
+/* ─── Stat Breakdown Grid ─── */
+
+.ncm-auth__skill-breakdown {
+  display: flex;
+  gap: 8px;
+  padding: 6px 0;
+  font-family: var(--nad-font-mono);
+  font-size: 9px;
+}
+
+.ncm-auth__skill-stat {
+  background: var(--nad-bg-deep);
+  border: 1px solid var(--nad-border);
+  border-radius: 2px;
+  padding: 4px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+}
+
+.ncm-auth__skill-stat--total {
+  border-color: rgba(25, 243, 247, 0.2);
+}
+
+.ncm-auth__skill-stat-val {
+  font-family: var(--nad-font-title);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--nad-text-primary);
+}
+
+.ncm-auth__skill-stat-val--stat {
+  color: var(--nad-secondary);
+}
+
+.ncm-auth__skill-stat-val--skill {
+  color: var(--nad-purple);
+}
+
+.ncm-auth__skill-stat-val--dice {
+  color: var(--nad-accent);
+}
+
+.ncm-auth__skill-stat-val--total {
+  color: var(--nad-secondary);
+}
+
+.ncm-auth__skill-stat-label {
+  font-family: var(--nad-font-mono);
+  font-size: 7px;
+  color: var(--nad-text-muted);
+  text-transform: uppercase;
+}
+
+
+/* ─── Skill Hint Text ─── */
+
+.ncm-auth__skill-hint {
+  font-family: var(--nad-font-mono);
+  font-size: 8px;
+  color: var(--nad-text-muted);
+  text-align: center;
+}
+
+.ncm-auth__skill-hint--needed {
+  color: var(--nad-accent);
+}
+
+.ncm-auth__skill-hint--success {
+  color: var(--nad-success);
+}
+
+.ncm-auth__skill-hint--fail {
+  color: var(--nad-danger);
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   Attempt Pips
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-auth__attempts {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--nad-font-mono);
+  font-size: 9px;
+}
+
+.ncm-auth__attempts-label {
+  color: var(--nad-text-muted);
+}
+
+.ncm-auth__attempts-pips {
+  display: flex;
+  gap: 4px;
+}
+
+.ncm-auth__attempts-pips--center {
+  justify-content: center;
+  margin-top: 4px;
+}
+
+.ncm-auth__pip {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  border: 1px solid var(--nad-border);
+  background: var(--nad-bg-elevated);
+  transition: all 0.2s;
+}
+
+.ncm-auth__pip--used {
+  border-color: rgba(255, 0, 51, 0.3);
+  background: rgba(255, 0, 51, 0.2);
+}
+
+.ncm-auth__pip--current {
+  border-color: var(--nad-secondary);
+  background: rgba(25, 243, 247, 0.1);
+  animation: ncm-auth-pulse 1.5s ease infinite;
+}
+
+/* unused = default styling, no modifier needed */
+
+.ncm-auth__attempts-count {
+  font-size: 8px;
+  color: var(--nad-text-muted);
+  margin-left: 4px;
+}
+
+.ncm-auth__attempts-count--error {
+  color: var(--nad-danger);
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   Mode Switcher
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-auth__mode-switch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--nad-font-mono);
+  font-size: 8px;
+  color: var(--nad-text-muted);
+  padding-top: 6px;
+  border-top: 1px solid var(--nad-border);
+}
+
+.ncm-auth__mode-switch-icon--skill {
+  font-size: 9px;
+  color: var(--nad-purple);
+}
+
+.ncm-auth__mode-switch-icon--password {
+  font-size: 9px;
+  color: var(--nad-accent);
+}
+
+.ncm-auth__mode-link {
+  color: var(--nad-secondary);
+  cursor: pointer;
+  text-decoration: none;
+  transition: color 0.12s;
+}
+
+.ncm-auth__mode-link:hover {
+  color: var(--nad-text-primary);
+  text-decoration: underline;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   Lockout State
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-auth__lockout {
+  text-align: center;
+  padding: 20px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.ncm-auth__lockout-icon {
+  font-size: 32px;
+  color: var(--nad-danger);
+  opacity: 0.8;
+  animation: ncm-auth-pulse 2s ease infinite;
+}
+
+.ncm-auth__lockout-title {
+  font-family: var(--nad-font-title);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--nad-danger);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.ncm-auth__lockout-msg {
+  font-family: var(--nad-font-mono);
+  font-size: 9px;
+  color: var(--nad-text-muted);
+  line-height: 1.5;
+  max-width: 280px;
+}
+
+.ncm-auth__lockout-msg strong {
+  color: var(--nad-text-primary);
+}
+
+.ncm-auth__lockout-timer {
+  font-family: var(--nad-font-title);
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--nad-primary);
+  letter-spacing: 0.1em;
+}
+
+.ncm-auth__lockout-timer-label {
+  font-family: var(--nad-font-mono);
+  font-size: 7px;
+  color: var(--nad-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-top: -6px;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   Footer Actions
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-auth__footer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-top: 10px;
+  border-top: 1px solid var(--nad-border);
+  margin-top: 2px;
+}
+
+.ncm-auth__footer-spacer {
+  flex: 1;
+}
+
+
+/* ─── Buttons ─── */
+
+.ncm-auth__btn {
+  padding: 6px 14px;
+  border-radius: 2px;
+  font-family: var(--nad-font-display);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  transition: all 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  line-height: 1;
+}
+
+.ncm-auth__btn--ghost {
+  background: transparent;
+  border: 1px solid var(--nad-border);
+  color: var(--nad-text-secondary);
+}
+
+.ncm-auth__btn--ghost:hover {
+  border-color: var(--nad-border-active);
+  color: var(--nad-text-primary);
+}
+
+.ncm-auth__btn--primary {
+  background: rgba(25, 243, 247, 0.08);
+  border: 1px solid rgba(25, 243, 247, 0.3);
+  color: var(--nad-secondary);
+}
+
+.ncm-auth__btn--primary:hover {
+  background: rgba(25, 243, 247, 0.15);
+  border-color: var(--nad-secondary);
+}
+
+.ncm-auth__btn--purple {
+  background: rgba(168, 85, 247, 0.08);
+  border: 1px solid rgba(168, 85, 247, 0.25);
+  color: var(--nad-purple);
+}
+
+.ncm-auth__btn--purple:hover {
+  background: rgba(168, 85, 247, 0.15);
+  border-color: var(--nad-purple);
+}
+
+.ncm-auth__btn--danger {
+  background: rgba(255, 0, 51, 0.06);
+  border: 1px solid rgba(255, 0, 51, 0.2);
+  color: var(--nad-danger);
+}
+
+.ncm-auth__btn--danger:hover {
+  background: rgba(255, 0, 51, 0.12);
+  border-color: var(--nad-danger);
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   Animations
+   ═══════════════════════════════════════════════════════════ */
+
+@keyframes ncm-auth-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+@keyframes ncm-auth-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+@keyframes ncm-auth-shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 50%, 90% { transform: translateX(-2px); }
+  30%, 70% { transform: translateX(2px); }
+}
+
+@keyframes ncm-auth-glitch {
+  0%, 100% { opacity: 1; transform: translate(0); }
+  20% { opacity: 0.8; transform: translate(-1px, 1px); }
+  40% { opacity: 1; transform: translate(1px, -1px); }
+  60% { opacity: 0.9; transform: translate(-1px, 0); }
+  80% { opacity: 1; transform: translate(0, 1px); }
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   Accent Bar Overrides by State
+   ═══════════════════════════════════════════════════════════
+
+   The accent bar color can be driven by a data attribute on the
+   outer wrapper set by the JS. Defaults to gold (password mode).
+
+   Usage in NetworkAuthDialog.js _onRender:
+     this.element.dataset.authState = 'password' | 'skill' | 'lockout';
+*/
+
+.ncm-network-auth-dialog[data-auth-state="skill"]::before {
+  background: var(--nad-purple);
+}
+
+.ncm-network-auth-dialog[data-auth-state="lockout"]::before {
+  background: var(--nad-danger);
+}
+
+.ncm-network-auth-dialog[data-auth-state="password"]::before {
+  background: var(--nad-accent);
+}
