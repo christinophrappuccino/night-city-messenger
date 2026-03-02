@@ -28,6 +28,9 @@ export const EVENTS = Object.freeze({
   CONTACT_TAGS_UPDATED:  'contacts:tagsUpdated',
   CONTACT_DECRYPTED:      'contacts:decrypted',
   CONTACT_BREACH_FAILED:  'contacts:breachFailed',
+  CONTACTS_REVERIFIED:          'contacts:reverified',
+  CONTACT_VERIFIED:             'contacts:verified',
+  CONTACT_VERIFICATION_FAILED:  'contacts:verificationFailed',
 
   NETWORK_CHANGED: 'network:changed',
   NETWORK_CONNECTED: 'network:connected',

@@ -184,7 +184,7 @@ export class MasterContactService {
 
     this.eventBus?.emit('contacts:masterUpdated', { action: 'add', contactId: contact.id });
     log.info(`Master contact added: ${contact.name} (${contact.id})`);
-
+    await this._onMasterListChanged();
     return { success: true, contact };
   }
 
@@ -214,11 +214,10 @@ export class MasterContactService {
       }
     }
     contact.updatedAt = new Date().toISOString();
-
     await this._persistContacts();
     this.eventBus?.emit('contacts:masterUpdated', { action: 'update', contactId });
     log.info(`Master contact updated: ${contact.name} (${contactId})`);
-
+    if (updates.email) await this._onMasterListChanged(); 
     return { success: true, contact };
   }
 
@@ -239,6 +238,9 @@ export class MasterContactService {
     this.eventBus?.emit('contacts:masterUpdated', { action: 'remove', contactId });
     log.info(`Master contact removed: ${removed.name} (${contactId})`);
 
+    this.eventBus?.emit('contacts:masterUpdated', { action: 'remove', contactId });
+    log.info(`Master contact removed: ${removed.name} (${contactId})`);
+    await this._onMasterListChanged();
     return { success: true };
   }
 
@@ -258,6 +260,7 @@ export class MasterContactService {
       await this._persistContacts();
       this.eventBus?.emit('contacts:masterUpdated', { action: 'bulkRemove', count: removed });
       log.info(`Bulk removed ${removed} master contacts`);
+      await this._onMasterListChanged();
     }
 
     return { success: true, removed };
@@ -349,6 +352,43 @@ export class MasterContactService {
 
     log.info(`Imported ${imported} contacts from actors`);
     return { success: true, imported };
+  }
+
+  /**
+   * Re-verify all player contacts after a master list change.
+   * When the GM adds/removes/edits a master contact, any player who
+   * already typed in that email gets auto-verified or auto-unverified.
+   * @private
+   */
+  async _onMasterListChanged() {
+    if (!isGM()) return;
+
+    const contactRepo = game.nightcity?.contactRepository;
+    if (!contactRepo?.reverifyAllContacts) return;
+
+    let totalUpdated = 0;
+
+    for (const actor of game.actors) {
+      // Only re-verify player-owned actors — NPC contacts are GM-managed
+      if (!actor.hasPlayerOwner) continue;
+
+      try {
+        const result = await contactRepo.reverifyAllContacts(actor.id);
+        if (result.updated > 0) {
+          totalUpdated += result.updated;
+          log.info(`Re-verified contacts for ${actor.name}: `
+            + `${result.nowVerified} newly verified, ${result.nowUnverified} newly unverified`);
+        }
+      } catch (error) {
+        console.error(`${MODULE_ID} | Failed to re-verify contacts for ${actor.name}:`, error);
+      }
+    }
+
+    if (totalUpdated > 0) {
+      // Notify open ContactManagers to refresh
+      this.eventBus?.emit(EVENTS.CONTACTS_REVERIFIED, { updated: totalUpdated });
+      log.info(`Master list change triggered ${totalUpdated} contact verification updates`);
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════

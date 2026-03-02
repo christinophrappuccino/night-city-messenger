@@ -26,6 +26,7 @@ import { MasterContactService } from '../services/MasterContactService.js';
 import { MacroAPI } from '../integrations/MacroAPI.js';
 import { EmailSettingsIntegration } from '../integrations/EmailSettingsIntegration.js';
 import { Phase5Verification } from '../tests/Phase5Verification.js';
+import { ContactManagerApp } from '../ui/ContactManager/ContactManagerApp.js';
 
 /**
  * Register all Phase 5 GM tools and customization components.
@@ -146,6 +147,34 @@ export function registerGMTools(initializer) {
       return _openSingleton('gm-contacts', () =>
         import('../ui/GMContactManager/GMContactManagerApp.js')
       );
+    };
+
+    // ── Store the class reference for AdminPanel's GM inspect mode ──
+    ns._ContactManagerApp = ContactManagerApp;
+
+    // ── openContacts (updated to accept gmInspectMode) ──
+    ns.openContacts = (actorId, options = {}) => {
+      if (!actorId) {
+        const owned = game.actors.find(a => a.isOwner && a.getFlag(MODULE_ID, 'email'));
+        actorId = owned?.id;
+      }
+      if (!actorId) {
+        ui.notifications.warn('No actor with email found.');
+        return;
+      }
+
+      // GM inspect mode always opens a fresh window (not singleton)
+      if (options.gmInspectMode) {
+        const app = new ContactManagerApp({
+          actorId,
+          gmInspectMode: true,
+        });
+        app.render(true);
+        return;
+      }
+
+      // Normal player mode — singleton per actor
+      _openSingleton(`contacts-${actorId}`, ContactManagerApp, { actorId });
     };
 
     // ─── Theme Customizer (all players) ───

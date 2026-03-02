@@ -73,6 +73,9 @@ export class AdminPanelApp extends BaseApplication {
       // Contacts actions
       openGMContacts: AdminPanelApp._onOpenGMContacts,
       pushContact: AdminPanelApp._onPushContact,
+      viewPlayerContacts: AdminPanelApp._onViewPlayerContacts,
+      gmVerifyContact:    AdminPanelApp._onGMVerifyContact,
+      gmUnverifyContact:  AdminPanelApp._onGMUnverifyContact,
 
       // Networks actions
       toggleNetwork: AdminPanelApp._onToggleNetwork,
@@ -899,6 +902,74 @@ export class AdminPanelApp extends BaseApplication {
 
     // TODO: Implement push dialog — select target actor
     ui.notifications.info('Push contact feature coming soon.');
+  }
+
+  /**
+   * Open a player's contact list in GM Inspect Mode.
+   * Full edit + verify/unverify access.
+   */
+  static _onViewPlayerContacts(event, target) {
+    const actorId = target.closest('[data-actor-id]')?.dataset.actorId;
+    if (!actorId || !game.user.isGM) return;
+
+    const actor = game.actors.get(actorId);
+    if (!actor) {
+      ui.notifications.warn('Actor not found.');
+      return;
+    }
+
+    // Import ContactManagerApp dynamically to avoid circular deps
+    const ContactManagerApp = game.nightcity?._ContactManagerApp;
+    if (!ContactManagerApp) {
+      // Fallback: try opening via the standard launch function
+      game.nightcity?.openContacts?.(actorId, { gmInspectMode: true });
+      return;
+    }
+
+    const app = new ContactManagerApp({
+      actorId,
+      gmInspectMode: true,
+    });
+    app.render(true);
+  }
+
+  /**
+   * GM force-verifies a contact from the admin panel context.
+   * (Delegates to ContactRepository)
+   */
+  static async _onGMVerifyContact(event, target) {
+    const actorId = target.closest('[data-actor-id]')?.dataset.actorId;
+    const contactId = target.closest('[data-contact-id]')?.dataset.contactId;
+    if (!actorId || !contactId || !game.user.isGM) return;
+
+    const contactRepo = game.nightcity?.contactRepository;
+    const result = await contactRepo?.gmOverrideVerification(actorId, contactId, true);
+
+    if (result?.success) {
+      ui.notifications.info('Contact force-verified.');
+      this.render(true);
+    } else {
+      ui.notifications.error(result?.error || 'Verification failed.');
+    }
+  }
+
+  /**
+   * GM revokes verification from the admin panel context.
+   */
+  static async _onGMUnverifyContact(event, target) {
+    const actorId = target.closest('[data-actor-id]')?.dataset.actorId;
+    const contactId = target.closest('[data-contact-id]')?.dataset.contactId;
+    if (!actorId || !contactId || !game.user.isGM) return;
+
+    const contactRepo = game.nightcity?.contactRepository;
+    const result = await contactRepo?.gmOverrideVerification(actorId, contactId, false);
+
+    if (result?.success) {
+      ui.notifications.info('Verification revoked.');
+      this.render(true);
+    } else {
+      ui.notifications.error(result?.error || 'Failed to unverify.');
+    }
   }
 
   // ═══════════════════════════════════════════════════════════

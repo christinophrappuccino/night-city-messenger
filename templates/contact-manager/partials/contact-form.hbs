@@ -24,11 +24,42 @@
 
   {{!-- ── Name + Alias ── --}}
   <div class="ncm-form-row ncm-form-row--half">
-    <div class="ncm-form-group">
-      <label class="ncm-form-label">Name <span class="ncm-form-required">*</span></label>
-      <input type="text" name="name" value="{{contact.name}}"
-             placeholder="Rogue Amendiares" required class="ncm-form-input" />
+  {{!-- ── Email (with live verification) ── --}}
+  <div class="ncm-form-group">
+    <label class="ncm-form-label">Email</label>
+    <div class="ncm-form-input-wrapper">
+      <input type="text" name="email" value="{{contact.email}}"
+             placeholder="rogue@afterlife.nc"
+             class="ncm-form-input ncm-form-input--mono ncm-email-verify-input"
+             autocomplete="off" />
+      <span class="ncm-email-verify-indicator" data-verify-status="{{#if contact.email}}{{#if contact.verified}}verified{{else if contact.verifiedOverride}}verified{{else}}unverified{{/if}}{{else}}unknown{{/if}}">
+        {{#if contact.email}}
+          {{#if contact.verified}}
+            <i class="fas fa-circle-check"></i>
+          {{else if contact.verifiedOverride}}
+            <i class="fas fa-shield-check"></i>
+          {{else}}
+            <i class="fas fa-triangle-exclamation"></i>
+          {{/if}}
+        {{else}}
+          <i class="fas fa-circle-question"></i>
+        {{/if}}
+      </span>
     </div>
+    <span class="ncm-form-hint ncm-email-verify-hint {{#if contact.email}}{{#if contact.verified}}ncm-form-hint--success{{else unless contact.verifiedOverride}}ncm-form-hint--danger{{/if}}{{/if}}">
+      {{#if contact.email}}
+        {{#if contact.verified}}
+          CONNECTION ESTABLISHED — Address verified.
+        {{else if contact.verifiedOverride}}
+          GM AUTHORIZED — Override active.
+        {{else}}
+          NO SIGNAL — Address not found in directory. Contact will be unverified.
+        {{/if}}
+      {{else}}
+        Enter the contact's net address. The system will verify it.
+      {{/if}}
+    </span>
+  </div>
     <div class="ncm-form-group">
       <label class="ncm-form-label">Alias / Subtitle</label>
       <input type="text" name="alias" value="{{contact.alias}}"

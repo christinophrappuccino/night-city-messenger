@@ -97,7 +97,7 @@
     <div class="ncm-actor-grid">
       {{#each stats.actorStats}}
       <div class="ncm-actor-card {{#if this.hasPlayerOwner}}ncm-actor-card--player{{else}}ncm-actor-card--npc{{/if}} {{#if this.unreadMessages}}ncm-actor-card--alert{{/if}}"
-           data-action="openInbox" data-actor-id="{{this.actorId}}">
+           data-actor-id="{{this.actorId}}">
         <div class="ncm-actor-card__avatar" style="color: {{this.avatarColor}}; border-color: {{this.avatarBorderColor}};">
           {{#if this.actorImg}}
           <img src="{{this.actorImg}}" alt="{{this.actorName}}">
@@ -119,6 +119,14 @@
           {{else}}
           <div class="ncm-actor-card__last-active">{{this.lastActive}}</div>
           {{/if}}
+        </div>
+        <div class="ncm-actor-card__actions">
+          <button class="ncm-actor-card__action" data-action="openInbox" data-actor-id="{{this.actorId}}" title="Open Inbox">
+            <i class="fas fa-envelope"></i>
+          </button>
+          <button class="ncm-actor-card__action ncm-actor-card__action--contacts" data-action="viewPlayerContacts" data-actor-id="{{this.actorId}}" title="View Contacts">
+            <i class="fas fa-address-book"></i>
+          </button>
         </div>
       </div>
       {{/each}}

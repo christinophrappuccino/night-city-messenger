@@ -7,7 +7,25 @@
       "CustomNetworks": { "Name": "Custom Networks", "Hint": "GM-defined custom networks" },
       "ScheduledMessages": { "Name": "Scheduled Messages", "Hint": "Messages awaiting delivery" },
       "MasterContacts": { "Name": "Master Contact List", "Hint": "GM global contact directory" },
-      "DebugMode": { "Name": "Debug Mode", "Hint": "Enable verbose console logging" }
+      "DebugMode": { "Name": "Debug Mode", "Hint": "Enable verbose console logging" },
+      "RequireContactVerification": "Require Contact Verification",
+      "RequireContactVerificationHint": "When enabled, players can only message contacts whose email matches the master contact directory or a registered actor. Disable for a more casual experience."
+    },
+
+    "Contacts": {
+      "Verified": "VERIFIED",
+      "Unverified": "UNVERIFIED",
+      "GMVerified": "GM VERIFIED",
+      "VerificationSuccess": "CONNECTION ESTABLISHED — Address verified.",
+      "VerificationFailed": "NO SIGNAL — Address not found in directory.",
+      "VerificationChecking": "Checking address...",
+      "CannotSendUnverified": "UNVERIFIED CONTACT — Cannot establish connection.",
+      "CannotSendBurned": "CONTACT BURNED — Connection refused.",
+      "CannotSendNoContact": "CONTACT NOT FOUND — Add to address book first.",
+      "GMInspectBanner": "VIEWING: {name}'S CONTACTS",
+      "ForceVerify": "Force Verify (GM)",
+      "ForceUnverify": "Revoke Verification (GM)",
+      "ViewContacts": "View Contacts"
     },
 
     "SceneControls": {

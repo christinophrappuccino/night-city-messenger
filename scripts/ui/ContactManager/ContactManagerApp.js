@@ -106,6 +106,10 @@ export class ContactManagerApp extends BaseApplication {
       cancelEdit:     ContactManagerApp._onCancelEdit,
       openGMContacts: ContactManagerApp._onOpenGMContacts,
 
+      // ─── Gm Verify Contact ───
+      gmVerifyContact:   ContactManagerApp._onGMVerifyContact,
+      gmUnverifyContact: ContactManagerApp._onGMUnverifyContact,
+
       // ─── Contact actions ───
       sendMessage:    ContactManagerApp._onSendMessage,
       shareContact:   ContactManagerApp._onShareContact,
@@ -136,6 +140,16 @@ export class ContactManagerApp extends BaseApplication {
   constructor(options = {}) {
     super(options);
     this.actorId = options.actorId || null;
+    this.gmInspectMode = options.gmInspectMode || false;
+  }
+
+  // ── Dynamic window title ──────────────────────────────
+  get title() {
+    if (this.gmInspectMode) {
+      const actorName = game.actors.get(this.actorId)?.name || 'Unknown';
+      return `NCM Contacts — ${actorName} [GM]`;
+    }
+    return game.i18n.localize('NCM.ContactManager.Title');
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -144,6 +158,39 @@ export class ContactManagerApp extends BaseApplication {
 
   async _prepareContext(options) {
     await this._loadContacts();
+
+    // ── Stamp verification display data onto each contact ──
+    const requireVerification = game.settings.get(MODULE_ID, 'requireContactVerification') ?? true;
+
+    for (const contact of this._contacts) {
+      // Verification class for CSS
+      if (contact.burned) {
+        contact._verifyClass = 'burned';
+        contact._verifyLabel = 'BURNED';
+        contact._canMessage = false;
+      } else if (contact.verifiedOverride) {
+        contact._verifyClass = 'gm-verified';
+        contact._verifyLabel = 'GM VERIFIED';
+        contact._canMessage = true;
+      } else if (contact.verified) {
+        contact._verifyClass = 'verified';
+        contact._verifyLabel = 'VERIFIED';
+        contact._canMessage = true;
+      } else {
+        contact._verifyClass = 'unverified';
+        contact._verifyLabel = 'UNVERIFIED';
+        // Can still message if verification is disabled globally
+        contact._canMessage = !requireVerification;
+      }
+    }
+
+    // ── Verification counts ──
+    const verifiedCount = this._contacts.filter(
+      c => c.verified || c.verifiedOverride
+    ).length;
+    const unverifiedCount = this._contacts.filter(
+      c => !c.verified && !c.verifiedOverride && !c.burned
+    ).length;
 
     // ── Owner info ──
     const actor = this.actorId ? game.actors.get(this.actorId) : null;
@@ -244,6 +291,15 @@ export class ContactManagerApp extends BaseApplication {
       // Network
       currentNetwork,
 
+      // Verification context
+      gmInspectMode: this.gmInspectMode,
+      inspectedActorName: this.gmInspectMode
+        ? game.actors.get(this.actorId)?.name || 'Unknown'
+        : null,
+      verifiedCount,
+      unverifiedCount,
+      requireVerification,
+
       // Editing state (for future add/edit form integration)
       isAdding: this.isAdding,
       editingContactId: this.editingContactId,
@@ -261,6 +317,7 @@ export class ContactManagerApp extends BaseApplication {
     super._onRender(context, options);
     this._setupSearchInput();
     this._setupKeyboardShortcuts();
+    this._setupEmailVerification(); 
     if (game.user.isGM) {
       this._setupTrustHoverPreview(this.element);
     }
@@ -340,6 +397,127 @@ export class ContactManagerApp extends BaseApplication {
   }
 
   // ═══════════════════════════════════════════════════════════
+  //  Email Verification
+  // ═══════════════════════════════════════════════════════════
+
+  /**
+   * Live email verification on the contact form.
+   * Debounces input, checks against master directory,
+   * updates the indicator icon and hint text in real time.
+   * @private
+   */
+  _setupEmailVerification() {
+    const emailInput = this.element?.querySelector('.ncm-email-verify-input');
+    const indicator = this.element?.querySelector('.ncm-email-verify-indicator');
+    const hint = this.element?.querySelector('.ncm-email-verify-hint');
+    if (!emailInput || !indicator) return;
+
+    let debounceTimer;
+
+    emailInput.addEventListener('input', (e) => {
+      clearTimeout(debounceTimer);
+      const email = e.target.value.trim();
+
+      if (!email) {
+        indicator.dataset.verifyStatus = 'unknown';
+        indicator.innerHTML = '<i class="fas fa-circle-question"></i>';
+        if (hint) {
+          hint.textContent = "Enter the contact's net address. The system will verify it.";
+          hint.classList.remove('ncm-form-hint--danger', 'ncm-form-hint--success');
+        }
+        return;
+      }
+
+      // Show checking state
+      indicator.dataset.verifyStatus = 'checking';
+      indicator.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+      debounceTimer = setTimeout(() => {
+        const contactRepo = game.nightcity?.contactRepository;
+        if (!contactRepo?.verifyContact) return;
+
+        const result = contactRepo.verifyContact(email);
+
+        if (result.verified) {
+          indicator.dataset.verifyStatus = 'verified';
+          indicator.innerHTML = '<i class="fas fa-circle-check"></i>';
+          if (hint) {
+            hint.textContent = 'CONNECTION ESTABLISHED — Address verified.';
+            hint.classList.remove('ncm-form-hint--danger');
+            hint.classList.add('ncm-form-hint--success');
+          }
+
+          // Auto-populate name if the field is empty
+          const nameInput = this.element?.querySelector('[name="name"]');
+          const masterContact = game.nightcity?.masterContactService?.getByEmail(email);
+          if (masterContact && nameInput && !nameInput.value.trim()) {
+            nameInput.value = masterContact.name;
+          }
+        } else {
+          indicator.dataset.verifyStatus = 'unverified';
+          indicator.innerHTML = '<i class="fas fa-triangle-exclamation"></i>';
+          if (hint) {
+            hint.textContent = 'NO SIGNAL — Address not found in directory. Contact will be unverified.';
+            hint.classList.remove('ncm-form-hint--success');
+            hint.classList.add('ncm-form-hint--danger');
+          }
+        }
+      }, 400);
+    });
+  }
+
+  /**
+   * GM force-verifies an unverified contact in the inspected player's book.
+   */
+  static async _onGMVerifyContact(event, target) {
+    event.stopPropagation();
+    if (!game.user.isGM) return;
+
+    const contactId = target.closest('[data-contact-id]')?.dataset.contactId;
+    if (!contactId) return;
+
+    const contactRepo = game.nightcity?.contactRepository;
+    const result = await contactRepo?.gmOverrideVerification(this.actorId, contactId, true);
+
+    if (result?.success) {
+      const contact = this._contacts.find(c => c.id === contactId);
+      ui.notifications.info(`Contact "${contact?.name || contactId}" force-verified.`);
+      this.render(true);
+    } else {
+      ui.notifications.error(result?.error || 'Failed to verify contact.');
+    }
+  }
+
+  /**
+   * GM revokes verification from a contact.
+   */
+  static async _onGMUnverifyContact(event, target) {
+    event.stopPropagation();
+    if (!game.user.isGM) return;
+
+    const contactId = target.closest('[data-contact-id]')?.dataset.contactId;
+    if (!contactId) return;
+
+    const contact = this._contacts.find(c => c.id === contactId);
+    const confirmed = await Dialog.confirm({
+      title: 'Revoke Verification',
+      content: `<p>Revoke verification for <strong>${contact?.name || 'this contact'}</strong>?`
+        + `<br>The player will no longer be able to message them.</p>`,
+    });
+    if (!confirmed) return;
+
+    const contactRepo = game.nightcity?.contactRepository;
+    const result = await contactRepo?.gmOverrideVerification(this.actorId, contactId, false);
+
+    if (result?.success) {
+      ui.notifications.info(`Verification revoked for "${contact?.name}".`);
+      this.render(true);
+    } else {
+      ui.notifications.error(result?.error || 'Failed to unverify contact.');
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════
   //  Event Subscriptions
   // ═══════════════════════════════════════════════════════════
 
@@ -350,6 +528,10 @@ export class ContactManagerApp extends BaseApplication {
     this.subscribe(EVENTS.CONTACT_TAGS_UPDATED, () => this.render());
     this.subscribe(EVENTS.CONTACT_DECRYPTED, () => {});
     this.subscribe(EVENTS.CONTACT_BREACH_FAILED, () => {});
+    this.subscribe(EVENTS.CONTACTS_REVERIFIED, () => {
+       this._loadContacts();
+       this.render(true);
+     });
   }
 
   // ═══════════════════════════════════════════════════════════

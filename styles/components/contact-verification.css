@@ -1,0 +1,231 @@
+/**
+ * Contact Verification CSS
+ * @file styles/components/contact-verification.css
+ * @module cyberpunkred-messenger
+ *
+ * Add this file to your CSS imports, or append these rules
+ * to the existing contact-manager.css
+ */
+
+/* ═══════════════════════════════════════════════════════════
+   CONTACT CARD — VERIFICATION STATUS MODIFIERS
+   Applied via .ncm-card--verified / --unverified / --gm-verified
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Verified: solid green left border, full opacity ── */
+.ncm-card--verified {
+  border-left: 3px solid var(--ncm-success, #00ff41);
+}
+.ncm-card--verified .ncm-card__verify-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ncm-success, #00ff41);
+  box-shadow: 0 0 6px var(--ncm-success, #00ff41);
+  position: absolute;
+  top: 8px;
+  right: 8px;
+}
+
+/* ── Unverified: dashed red border, dimmed, email struck through ── */
+.ncm-card--unverified {
+  border-left: 3px dashed var(--ncm-danger, #ff0033);
+  opacity: 0.65;
+}
+.ncm-card--unverified:hover {
+  opacity: 0.85;
+}
+.ncm-card--unverified .ncm-card__email {
+  text-decoration: line-through;
+  color: var(--ncm-text-muted, #555);
+}
+.ncm-card--unverified .ncm-card__verify-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ncm-danger, #ff0033);
+  box-shadow: 0 0 4px rgba(255, 0, 51, 0.5);
+  position: absolute;
+  top: 8px;
+  right: 8px;
+}
+
+/* ── GM-Verified: gold left border, gold authority stamp ── */
+.ncm-card--gm-verified {
+  border-left: 3px solid var(--ncm-accent, #f7c948);
+}
+.ncm-card--gm-verified .ncm-card__verify-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ncm-accent, #f7c948);
+  box-shadow: 0 0 6px var(--ncm-accent, #f7c948);
+  position: absolute;
+  top: 8px;
+  right: 8px;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   VERIFICATION STATUS BADGE — inline on contact cards
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-verify-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--ncm-font-mono, 'Courier New', monospace);
+  font-size: 8px;
+  padding: 1px 6px;
+  border-radius: 1px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  line-height: 1.5;
+}
+
+.ncm-verify-badge--verified {
+  background: rgba(0, 255, 65, 0.1);
+  border: 1px solid rgba(0, 255, 65, 0.25);
+  color: var(--ncm-success, #00ff41);
+}
+
+.ncm-verify-badge--unverified {
+  background: rgba(255, 0, 51, 0.1);
+  border: 1px solid rgba(255, 0, 51, 0.25);
+  color: var(--ncm-danger, #ff0033);
+}
+
+.ncm-verify-badge--gm-verified {
+  background: rgba(247, 201, 72, 0.1);
+  border: 1px solid rgba(247, 201, 72, 0.25);
+  color: var(--ncm-accent, #f7c948);
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   GM INSPECT MODE — banner + controls
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-gm-inspect-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: rgba(247, 201, 72, 0.08);
+  border: 1px solid rgba(247, 201, 72, 0.2);
+  border-radius: 2px;
+  margin-bottom: 8px;
+  font-family: var(--ncm-font-mono, 'Courier New', monospace);
+  font-size: 10px;
+  color: var(--ncm-accent, #f7c948);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.ncm-gm-inspect-banner i {
+  color: var(--ncm-accent, #f7c948);
+  font-size: 12px;
+}
+.ncm-gm-inspect-banner__name {
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--ncm-text-primary, #e0e0e0);
+}
+
+/* GM verify/unverify buttons on contact cards */
+.ncm-card__action--gm-verify {
+  color: var(--ncm-success, #00ff41) !important;
+}
+.ncm-card__action--gm-verify:hover {
+  background: rgba(0, 255, 65, 0.15);
+}
+
+.ncm-card__action--gm-unverify {
+  color: var(--ncm-danger, #ff0033) !important;
+}
+.ncm-card__action--gm-unverify:hover {
+  background: rgba(255, 0, 51, 0.15);
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   EMAIL FORM FIELD — Live Verification Indicator
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-form-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.ncm-form-input-wrapper .ncm-form-input {
+  padding-right: 34px;
+  flex: 1;
+}
+
+.ncm-email-verify-indicator {
+  position: absolute;
+  right: 10px;
+  font-size: 14px;
+  transition: color 0.2s ease;
+  pointer-events: none;
+}
+.ncm-email-verify-indicator[data-verify-status="unknown"]   { color: var(--ncm-text-muted, #555); }
+.ncm-email-verify-indicator[data-verify-status="checking"]  { color: var(--ncm-secondary, #19f3f7); }
+.ncm-email-verify-indicator[data-verify-status="verified"]  { color: var(--ncm-success, #00ff41); }
+.ncm-email-verify-indicator[data-verify-status="unverified"]{ color: var(--ncm-danger, #ff0033); }
+
+.ncm-form-hint--success {
+  color: var(--ncm-success, #00ff41) !important;
+}
+.ncm-form-hint--danger {
+  color: var(--ncm-danger, #ff0033) !important;
+}
+
+/* Subtle pulse on verified state */
+@keyframes ncm-verify-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+.ncm-email-verify-indicator[data-verify-status="checking"] i {
+  animation: ncm-verify-pulse 1s ease infinite;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   LIST VIEW — Verification Indicators
+   Same states but for compact list rows
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-list-item--unverified {
+  border-left: 2px dashed var(--ncm-danger, #ff0033);
+  opacity: 0.65;
+}
+
+.ncm-list-item--verified {
+  border-left: 2px solid var(--ncm-success, #00ff41);
+}
+
+.ncm-list-item--gm-verified {
+  border-left: 2px solid var(--ncm-accent, #f7c948);
+}
+
+/* Disabled message button for unverified contacts */
+.ncm-card__action:disabled,
+.ncm-card__action[disabled] {
+  opacity: 0.3;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   ADMIN PANEL — View Contacts Button on Actor Cards
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-actor-card__action--contacts {
+  color: var(--ncm-secondary, #19f3f7);
+}
+.ncm-actor-card__action--contacts:hover {
+  color: var(--ncm-accent, #f7c948);
+}

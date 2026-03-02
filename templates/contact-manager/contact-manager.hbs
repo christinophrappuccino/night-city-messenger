@@ -38,6 +38,16 @@
         <span class="ncm-stat__value ncm-stat__value--accent">{{favoriteCount}}</span>
         <span class="ncm-stat__label">Favs</span>
       </div>
+      {{#if requireVerification}}
+        <span class="ncm-header__stat">
+          <i class="fas fa-circle-check" style="color: var(--ncm-success);"></i>
+          {{verifiedCount}}
+        </span>
+        <span class="ncm-header__stat">
+          <i class="fas fa-triangle-exclamation" style="color: var(--ncm-danger);"></i>
+          {{unverifiedCount}}
+        </span>
+      {{/if}}
     </div>
     <div class="ncm-header__actions">
       {{#if isGM}}
@@ -54,6 +64,17 @@
       </button>
     </div>
   </div>
+
+  {{#if gmInspectMode}}
+    <div class="ncm-gm-inspect-banner">
+      <i class="fas fa-shield-halved"></i>
+      <span>GM ADMIN — VIEWING:</span>
+      <span class="ncm-gm-inspect-banner__name">{{inspectedActorName}}'S CONTACTS</span>
+      <span style="margin-left: auto; opacity: 0.6;">
+        {{verifiedCount}} VERIFIED · {{unverifiedCount}} UNVERIFIED
+      </span>
+    </div>
+  {{/if}}
 
   {{!-- ═══ Toolbar: Search + Filter Pills + View Toggle ═══ --}}
   <div class="ncm-toolbar">

@@ -21,6 +21,7 @@ import { MODULE_ID } from '../utils/constants.js';
  */
 function _normalizeContact(data) {
   return {
+    // ── Existing fields  ──
     id: data.id || foundry.utils.randomID(),
     name: data.name || 'Unknown',
     email: data.email || '',
@@ -43,7 +44,13 @@ function _normalizeContact(data) {
     favorite: !!data.favorite,
     role: data.role || '',
     network: data.network || 'citinet',
-    statusOverride: data.statusOverride || null, // null = auto-derive, or 'active'|'online'|'idle'|'offline'|'dead-zone'
+    statusOverride: data.statusOverride || null,
+
+    // ── Verification fields ──
+    verified: !!data.verified,
+    masterContactId: data.masterContactId || null,
+    linkedActorId: data.linkedActorId || data.actorId || null,
+    verifiedOverride: !!data.verifiedOverride,   // true = GM force-verified
   };
 }
 
@@ -91,11 +98,21 @@ export class ContactRepository {
         return { success: false, error: 'Contact with this email already exists' };
       }
 
-      const contact = _normalizeContact({ ...contactData, id: foundry.utils.randomID() });
+      // ── Verify against master directory ──
+      const verification = this.verifyContact(contactData.email);
+
+      const contact = _normalizeContact({
+        ...contactData,
+        id: foundry.utils.randomID(),
+        verified: verification.verified,
+        masterContactId: verification.masterContactId || null,
+        linkedActorId: verification.actorId || contactData.actorId || null,
+      });
+
       contacts.push(contact);
       await actor.setFlag(MODULE_ID, 'contacts', contacts);
 
-      return { success: true, contact };
+      return { success: true, contact, verified: verification.verified };
     } catch (error) {
       console.error(`${MODULE_ID} | ContactRepository.addContact:`, error);
       return { success: false, error: error.message };
@@ -121,6 +138,18 @@ export class ContactRepository {
       const index = contacts.findIndex(c => c.id === contactId);
       if (index === -1) return { success: false, error: 'Contact not found' };
 
+      // ── Re-verify if email changed ──
+      if (updates.email && updates.email !== contacts[index].email) {
+        const verification = this.verifyContact(updates.email);
+        updates.verified = verification.verified;
+        updates.masterContactId = verification.masterContactId || null;
+        updates.linkedActorId = verification.actorId || updates.actorId || contacts[index].linkedActorId || null;
+        // Clear GM override when email changes — new address needs fresh verification
+        if (!game.user.isGM) {
+          updates.verifiedOverride = false;
+        }
+      }
+
       // Merge updates, preserving id, re-normalize
       contacts[index] = _normalizeContact({ ...contacts[index], ...updates, id: contactId });
       await actor.setFlag(MODULE_ID, 'contacts', contacts);
@@ -130,6 +159,115 @@ export class ContactRepository {
       console.error(`${MODULE_ID} | ContactRepository.updateContact:`, error);
       return { success: false, error: error.message };
     }
+  }
+
+/**
+ * Verify a contact's email against the master contact directory
+ * and registered actor emails.
+ * @param {string} email - Email to verify
+ * @returns {{ verified: boolean, masterContactId?: string, actorId?: string }}
+ */
+  verifyContact(email) {
+    if (!email) return { verified: false };
+
+    const normalized = email.toLowerCase().trim();
+
+    // ── Check 1: Master contact directory ──
+    const masterService = game.nightcity?.masterContactService;
+    if (masterService) {
+      const masterContact = masterService.getByEmail(normalized);
+      if (masterContact) {
+        return {
+          verified: true,
+          masterContactId: masterContact.id,
+          actorId: masterContact.actorId || null,
+        };
+      }
+    }
+
+    // ── Check 2: Actor email flags (for player characters not in master list) ──
+    for (const actor of game.actors) {
+      const actorEmail = actor.getFlag(MODULE_ID, 'email');
+      if (actorEmail && actorEmail.toLowerCase().trim() === normalized) {
+        return {
+          verified: true,
+          masterContactId: null,
+          actorId: actor.id,
+        };
+      }
+    }
+
+    return { verified: false };
+  }
+
+  /**
+   * Re-verify all contacts for an actor against the current master list.
+   * Called when the master contact list changes so players get auto-verified
+   * when a GM adds a matching NPC mid-session.
+   * Skips GM-overridden contacts.
+   * @param {string} actorId
+   * @returns {Promise<{ updated: number, nowVerified: number, nowUnverified: number }>}
+   */
+  async reverifyAllContacts(actorId) {
+    const actor = game.actors.get(actorId);
+    if (!actor) return { updated: 0, nowVerified: 0, nowUnverified: 0 };
+
+    const contacts = await this.getContacts(actorId);
+    let updated = 0, nowVerified = 0, nowUnverified = 0;
+
+    for (const contact of contacts) {
+      // Never overwrite a GM override
+      if (contact.verifiedOverride) continue;
+
+      const result = this.verifyContact(contact.email);
+      const wasVerified = contact.verified;
+
+      contact.verified = result.verified;
+      contact.masterContactId = result.masterContactId || null;
+      contact.linkedActorId = result.actorId || contact.linkedActorId;
+
+      if (wasVerified !== result.verified) {
+        updated++;
+        if (result.verified) nowVerified++;
+        else nowUnverified++;
+      }
+    }
+
+    if (updated > 0) {
+      await actor.setFlag(MODULE_ID, 'contacts', contacts);
+    }
+
+    return { updated, nowVerified, nowUnverified };
+  }
+
+  /**
+   * GM override: force-verify or force-unverify a contact.
+   * @param {string} actorId - Owner actor
+   * @param {string} contactId - Contact to override
+   * @param {boolean} verified - true = force verify, false = force unverify
+   * @returns {Promise<{success: boolean}>}
+   */
+  async gmOverrideVerification(actorId, contactId, verified) {
+    if (!game.user.isGM) return { success: false, error: 'GM only' };
+
+    const actor = game.actors.get(actorId);
+    if (!actor) return { success: false, error: 'Actor not found' };
+
+    const contacts = await this.getContacts(actorId);
+    const contact = contacts.find(c => c.id === contactId);
+    if (!contact) return { success: false, error: 'Contact not found' };
+
+    contact.verified = verified;
+    contact.verifiedOverride = verified; // Only set override flag when forcing ON
+    // If GM is explicitly unverifying, clear the override flag too
+    if (!verified) contact.verifiedOverride = false;
+
+    await actor.setFlag(MODULE_ID, 'contacts', contacts);
+
+    console.log(`${MODULE_ID} | GM ${verified ? 'verified' : 'unverified'} contact `
+      + `${contact.name} (${contact.email}) for actor ${actor.name}`);
+
+    return { success: true };
   }
 
   /**

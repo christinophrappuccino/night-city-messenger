@@ -62,6 +62,19 @@ export class SettingsManager {
       default: [],
     });
 
+    game.settings.register(MODULE_ID, 'requireContactVerification', {
+      name: 'NCM.Settings.RequireContactVerification',
+      hint: 'NCM.Settings.RequireContactVerificationHint',
+      scope: 'world',       // GM-controlled, affects all players
+      config: true,          // Visible in module settings
+      type: Boolean,
+      default: true,
+      onChange: () => {
+        // Refresh any open contact managers
+        game.nightcity?.eventBus?.emit(EVENTS.CONTACTS_REVERIFIED);
+      },
+    });
+
     game.settings.register(MODULE_ID, 'debugMode', {
       name: 'NCM.Settings.DebugMode.Name',
       hint: 'NCM.Settings.DebugMode.Hint',

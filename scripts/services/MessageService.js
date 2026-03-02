@@ -51,31 +51,76 @@ export class MessageService {
       // Sanitize body
       data.body = DataValidator.sanitizeBody(data.body);
 
-      // Resolve email addresses from actor IDs
+      // Resolve actors
       const fromActor = game.actors.get(data.fromActorId);
       const toActor = game.actors.get(data.toActorId);
       if (!fromActor) return { success: false, error: 'Sender actor not found' };
       if (!toActor) return { success: false, error: 'Recipient actor not found' };
 
-      data.from = data.from || this._contactRepo.getActorEmail(data.fromActorId) || `${fromActor.name.toLowerCase().replace(/\s+/g, '.')}@nightcity.net`;
-      data.to = data.to || this._contactRepo.getActorEmail(data.toActorId) || `${toActor.name.toLowerCase().replace(/\s+/g, '.')}@nightcity.net`;
+      // Contact Verification Gate
+      const requireVerification = game.settings.get(MODULE_ID, 'requireContactVerification') ?? true;
 
-      // Generate IDs
+      if (!game.user.isGM && requireVerification) {
+        const contactRepo = this._contactRepo;
+        const senderContacts = await contactRepo.getContacts(data.fromActorId);
+
+        // Find the recipient in sender's address book
+        const recipientEmail = data.to || contactRepo.getActorEmail(data.toActorId);
+        const recipientContact = senderContacts.find(c =>
+          c.linkedActorId === data.toActorId ||
+          c.actorId === data.toActorId ||
+          (c.email && recipientEmail && c.email.toLowerCase() === recipientEmail.toLowerCase())
+        );
+
+        if (!recipientContact) {
+          this.soundService?.play('error');
+          return {
+            success: false,
+            error: 'CONTACT NOT FOUND — Add this contact to your address book before sending.',
+            errorCode: 'NO_CONTACT',
+          };
+        }
+
+        if (recipientContact.burned) {
+          this.soundService?.play('error');
+          return {
+            success: false,
+            error: 'CONTACT BURNED — This address has been compromised. Connection refused.',
+            errorCode: 'BURNED',
+          };
+        }
+
+        if (!recipientContact.verified && !recipientContact.verifiedOverride) {
+          this.soundService?.play('error');
+          return {
+            success: false,
+            error: 'UNVERIFIED CONTACT — Cannot establish connection. Verify the address and try again.',
+            errorCode: 'UNVERIFIED',
+          };
+        }
+      }
+      // GM always bypasses — send-as-anyone capability
+      // ════════════════════════════════════════════════════════
+
+      // Resolve email addresses from actor IDs (existing code continues here)
+      data.from = data.from || this._contactRepo.getActorEmail(data.fromActorId)
+        || `${fromActor.name.toLowerCase().replace(/\s+/g, '.')}@nightcity.net`;
+      data.to = data.to || this._contactRepo.getActorEmail(data.toActorId)
+        || `${toActor.name.toLowerCase().replace(/\s+/g, '.')}@nightcity.net`;
+
+      // Generate IDs (existing code continues unchanged...)
       const messageId = foundry.utils.randomID();
       data.messageId = messageId;
       if (!data.threadId) {
-        data.threadId = data.inReplyTo ? undefined : messageId; // Will be set by reply logic
+        data.threadId = data.inReplyTo ? undefined : messageId;
       }
 
-      // Add timestamp
       data.timestamp = this._getTimestamp();
 
-      // If we are the GM, deliver directly
       if (game.user.isGM) {
         return this._deliverMessage(data);
       }
 
-      // Otherwise, relay through GM via socket
       return this._relayMessage(data);
     } catch (error) {
       console.error(`${MODULE_ID} | MessageService.sendMessage:`, error);
