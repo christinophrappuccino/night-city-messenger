@@ -174,6 +174,9 @@ export function registerNetworkSystem(initializer) {
       _managementApp.render(true);
     };
 
+    // Network Manager Alias
+    ns.openNetworkManager = ns.openNetworkManagement;
+
     // ─── Network Public API Functions ───────────────────────
     ns.getCurrentNetwork = () => ns.networkService?.currentNetwork ?? null;
     ns.getSignalStrength = () => ns.networkService?.signalStrength ?? 0;

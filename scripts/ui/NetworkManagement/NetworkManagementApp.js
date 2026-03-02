@@ -221,12 +221,6 @@ export class NetworkManagementApp extends BaseApplication {
       selectedNetwork,
       isCreating: this._isCreating,
       isEditing: this._isEditMode || this._isCreating,
-        ? false  // detail view by default; editor via editNetwork action
-        : this._isCreating,
-
-      // NOTE: The above isEditing logic needs refinement.
-      // Better approach: add a `_isEditMode` boolean property.
-      // isEditing: this._isEditMode || this._isCreating,
 
       // Enums for form selects
       networkTypes: Object.entries(NETWORK_TYPES).map(([k, v]) => ({
