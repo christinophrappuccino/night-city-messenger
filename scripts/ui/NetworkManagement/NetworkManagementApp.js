@@ -24,6 +24,9 @@ export class NetworkManagementApp extends BaseApplication {
   /** @type {string} Current tab: 'networks', 'scenes', 'logs' */
   _activeTab = 'networks';
 
+  _isEditMode = false;
+  _logFilter = 'all';
+
   // ─── Service Accessors ───
 
   get networkService() { return game.nightcity?.networkService; }
@@ -50,6 +53,9 @@ export class NetworkManagementApp extends BaseApplication {
       createNetwork: NetworkManagementApp._onCreateNetwork,
       saveNetwork: NetworkManagementApp._onSaveNetwork,
       deleteNetwork: NetworkManagementApp._onDeleteNetwork,
+      editNetwork: NetworkManagementApp._onEditNetwork,
+      filterLogs: NetworkManagementApp._onFilterLogs,
+      refreshScenes: NetworkManagementApp._onRefreshScenes,
       cancelEdit: NetworkManagementApp._onCancelEdit,
       toggleDeadZone: NetworkManagementApp._onToggleDeadZone,
       saveSceneConfig: NetworkManagementApp._onSaveSceneConfig,
@@ -71,35 +77,123 @@ export class NetworkManagementApp extends BaseApplication {
     const networks = this.networkService?.getAllNetworks() ?? [];
     const available = this.networkService?.getAvailableNetworks() ?? [];
     const currentNetId = this.networkService?.currentNetworkId;
+    const currentNetwork = this.networkService?.currentNetwork ?? null;
 
-    // Selected network details
+    // ─── Header Stats ───
+    const securedCount = networks.filter(n => n.security?.requiresAuth).length;
+    const deadZoneScenes = (game.scenes?.contents ?? []).filter(s =>
+      s.getFlag(MODULE_ID, 'deadZone')
+    ).length;
+
+    const headerStats = {
+      totalNetworks: networks.length,
+      activeCount: available.length,
+      securedCount,
+      deadZoneCount: deadZoneScenes,
+    };
+
+    // ─── Icon Options (for editor dropdown) ───
+    const iconChoices = [
+      'fa-wifi', 'fa-mask', 'fa-building', 'fa-tower-broadcast',
+      'fa-landmark', 'fa-server', 'fa-satellite-dish', 'fa-shield-halved',
+      'fa-database', 'fa-microchip', 'fa-globe', 'fa-signal',
+      'fa-lock', 'fa-eye', 'fa-skull-crossbones', 'fa-robot',
+    ];
+    const selectedIcon = this._isCreating
+      ? 'fa-wifi'
+      : (this._selectedNetworkId
+        ? this.networkService?.getNetwork(this._selectedNetworkId)?.theme?.icon
+        : null);
+
+    const iconOptions = iconChoices.map(ic => ({
+      value: ic,
+      label: ic,
+      selected: ic === selectedIcon,
+    }));
+
+    // ─── Enrich Networks for sidebar ───
+    const enrichedNetworks = networks.map(n => {
+      const typeClass = this._getNetworkTypeClass(n);
+      const signalBars = this._computeSignalBars(n.signalStrength ?? 0);
+      const typeLabel = (n.type ?? 'custom').charAt(0).toUpperCase() + (n.type ?? 'custom').slice(1);
+
+      return {
+        ...n,
+        isAvailable: available.some(a => a.id === n.id),
+        isCurrent: n.id === currentNetId,
+        isSelected: n.id === this._selectedNetworkId,
+        sceneCount: this._countNetworkScenes(n),
+        networkTypeClass: typeClass,
+        signalBars,
+        typeLabel,
+      };
+    });
+
+    // ─── Selected network details ───
     let selectedNetwork = null;
     if (this._selectedNetworkId) {
       const raw = this.networkService?.getNetwork(this._selectedNetworkId);
       if (raw) {
+        const typeClass = this._getNetworkTypeClass(raw);
+        const typeLabel = (raw.type ?? 'custom').charAt(0).toUpperCase() + (raw.type ?? 'custom').slice(1);
+        const lockoutMinutes = Math.round((raw.security?.lockoutDuration ?? 3600000) / 60000);
+        const sceneCount = this._countNetworkScenes(raw);
+
+        // Auth badge info
+        const { authBadgeClass, authIcon, authLabel, authValueColor } = this._getAuthInfo(raw);
+
+        // Signal/reliability meter classes
+        const signalMeterClass = this._getMeterClass(raw.signalStrength ?? 0);
+        const reliabilityMeterClass = this._getMeterClass(raw.reliability ?? 0);
+
+        // Scene pills for availability section
+        const scenePills = this._buildScenePills(raw);
+
         selectedNetwork = {
           ...raw,
-          lockoutMinutes: Math.round((raw.security?.lockoutDuration ?? 3600000) / 60000),
+          lockoutMinutes,
+          sceneCount,
+          networkTypeClass: typeClass,
+          typeLabel,
+          authBadgeClass,
+          authIcon,
+          authLabel,
+          authValueColor,
+          signalMeterClass,
+          reliabilityMeterClass,
+          scenePills,
         };
       }
     }
 
-    // Scene list for scene tab
-    const scenes = game.scenes?.contents.map(s => ({
+    // ─── Scene list ───
+    const scenes = (game.scenes?.contents ?? []).map(s => ({
       id: s.id,
       name: s.name,
-      isViewed: s.id === game.scenes.viewed?.id,
+      isViewed: s.id === game.scenes?.viewed?.id,
       deadZone: s.getFlag(MODULE_ID, 'deadZone') ?? false,
       defaultNetwork: s.getFlag(MODULE_ID, 'defaultNetwork') ?? '',
       networkAvailability: s.getFlag(MODULE_ID, 'networkAvailability') ?? {},
-    })) ?? [];
+    }));
 
-    // Access log entries
-    const logEntries = this.accessLogService?.getEntries({ limit: 50 }) ?? [];
-    const logStats = this.accessLogService?.getStats() ?? {};
+    // ─── Access log entries ───
+    const rawLog = this.accessLogService?.getEntries?.({ limit: 50 }) ?? [];
+    const logEntries = rawLog
+      .filter(e => this._logFilter === 'all' || this._matchesLogFilter(e, this._logFilter))
+      .map(e => ({
+        ...e,
+        displayTime: this._formatLogTime(e.timestamp),
+        typeIcon: this._getLogTypeIcon(e.type),
+        typeClass: this._getLogTypeClass(e.type),
+        actorName: e.actorName ?? game.actors?.get(e.actorId)?.name ?? 'System',
+        networkName: e.networkName ?? this.networkService?.getNetwork(e.networkId)?.name ?? e.networkId ?? '—',
+        message: e.message ?? e.action ?? '',
+      }));
 
-    // Active lockouts
-    const lockouts = this.securityService?.getActiveLockouts() ?? [];
+    const logStats = this.accessLogService?.getStats?.() ?? {};
+
+    // ─── Active lockouts ───
+    const lockouts = this.securityService?.getActiveLockouts?.() ?? [];
     const enrichedLockouts = lockouts.map(l => ({
       ...l,
       actorName: game.actors?.get(l.actorId)?.name ?? 'Unknown',
@@ -115,38 +209,47 @@ export class NetworkManagementApp extends BaseApplication {
       isScenesTab: this._activeTab === 'scenes',
       isLogsTab: this._activeTab === 'logs',
 
-      // Networks
-      networks: networks.map(n => ({
-        ...n,
-        isAvailable: available.some(a => a.id === n.id),
-        isCurrent: n.id === currentNetId,
-        isSelected: n.id === this._selectedNetworkId,
-        sceneCount: n.availability.scenes?.length ?? 0,
-      })),
+      // Header
+      headerStats,
+      currentNetwork: currentNetwork ? {
+        name: currentNetwork.name,
+        id: currentNetwork.id,
+      } : null,
 
+      // Networks
+      networks: enrichedNetworks,
       selectedNetwork,
       isCreating: this._isCreating,
-      isEditing: !!this._selectedNetworkId || this._isCreating,
+      isEditing: this._isEditMode || this._isCreating,
+        ? false  // detail view by default; editor via editNetwork action
+        : this._isCreating,
+
+      // NOTE: The above isEditing logic needs refinement.
+      // Better approach: add a `_isEditMode` boolean property.
+      // isEditing: this._isEditMode || this._isCreating,
 
       // Enums for form selects
-      networkTypes: Object.entries(NETWORK_TYPES).map(([k, v]) => ({ value: v, label: k })),
-      securityLevels: Object.entries(SECURITY_LEVELS).map(([k, v]) => ({ value: v, label: k })),
+      networkTypes: Object.entries(NETWORK_TYPES).map(([k, v]) => ({
+        value: v,
+        label: k.charAt(0) + k.slice(1).toLowerCase(),
+      })),
+      securityLevels: Object.entries(SECURITY_LEVELS).map(([k, v]) => ({
+        value: v,
+        label: k.charAt(0) + k.slice(1).toLowerCase(),
+      })),
+      iconOptions,
 
       // Scenes
       scenes,
       allNetworks: networks,
 
       // Logs
-      logEntries: logEntries.map(e => ({
-        ...e,
-        displayTime: this._formatLogTime(e.timestamp),
-        typeIcon: this._getLogTypeIcon(e.type),
-        typeLabel: this._getLogTypeLabel(e.type),
-      })),
+      logEntries,
       logStats,
-      logCount: this.accessLogService?.entryCount ?? 0,
+      logCount: rawLog.length,
+      logFilter: this._logFilter,
 
-      // Security
+      // Lockouts
       lockouts: enrichedLockouts,
       hasLockouts: enrichedLockouts.length > 0,
 
@@ -182,6 +285,7 @@ export class NetworkManagementApp extends BaseApplication {
     if (networkId) {
       this._selectedNetworkId = networkId;
       this._isCreating = false;
+      this._isEditMode = false;
       this.render();
     }
   }
@@ -189,6 +293,7 @@ export class NetworkManagementApp extends BaseApplication {
   static _onCreateNetwork() {
     this._selectedNetworkId = null;
     this._isCreating = true;
+    this._isEditMode = true;
     this.render();
   }
 
@@ -259,6 +364,36 @@ export class NetworkManagementApp extends BaseApplication {
     this.render();
   }
 
+  /**
+   * Switch from detail view to editor mode for the selected network.
+   * Triggered by the "Edit" button in the detail header.
+   */
+  static _onEditNetwork() {
+    if (!this._selectedNetworkId) return;
+    const net = this.networkService?.getNetwork(this._selectedNetworkId);
+    if (!net || net.isCore) return;
+    this._isEditMode = true;
+    this.render();
+  }
+
+  /**
+   * Apply log filter.
+   */
+  static _onFilterLogs(event, target) {
+    const filter = target.dataset.filter;
+    if (filter) {
+      this._logFilter = filter;
+      this.render();
+    }
+  }
+
+  /**
+   * Refresh the scenes tab.
+   */
+  static _onRefreshScenes() {
+    this.render();
+  }
+
   static async _onDeleteNetwork(event, target) {
     const networkId = this._selectedNetworkId;
     if (!networkId) return;
@@ -284,8 +419,11 @@ export class NetworkManagementApp extends BaseApplication {
   }
 
   static _onCancelEdit() {
-    this._selectedNetworkId = null;
-    this._isCreating = false;
+    this._isEditMode = false;
+    if (this._isCreating) {
+      this._isCreating = false;
+      this._selectedNetworkId = null;
+    }
     this.render();
   }
 
@@ -397,4 +535,206 @@ export class NetworkManagementApp extends BaseApplication {
     };
     return labels[type] ?? type;
   }
+
+  /**
+   * Compute signal bar states for the sidebar list.
+   * Returns array of 4 bars with height, active state, and level class.
+   * @param {number} signal - 0-100
+   * @returns {Array<{height: number, active: boolean, level: string}>}
+   */
+  _computeSignalBars(signal) {
+    const heights = [4, 7, 10, 14];
+    const activeBars = signal >= 75 ? 4
+      : signal >= 50 ? 3
+      : signal >= 25 ? 2
+      : signal > 0  ? 1
+      : 0;
+
+    const level = signal >= 60 ? 'high'
+      : signal >= 30 ? 'med'
+      : signal > 0   ? 'low'
+      : 'dead';
+
+    return heights.map((h, i) => ({
+      height: h,
+      active: i < activeBars,
+      level: i < activeBars ? level : '',
+    }));
+  }
+
+  /**
+   * Map network to a CSS type class for icon styling.
+   * Uses network ID for core networks, falls back to type.
+   * @param {object} net
+   * @returns {string}
+   */
+  _getNetworkTypeClass(net) {
+    // Core network IDs get direct mappings
+    const idMap = {
+      'CITINET': 'citinet',
+      'citinet': 'citinet',
+      'DARKNET': 'darknet',
+      'darknet': 'darknet',
+      'CORPNET': 'corpnet',
+      'corpnet': 'corpnet',
+      'GOVNET': 'govnet',
+      'govnet': 'govnet',
+      'DATA_POOL': 'citinet',
+      'dead_zone': 'deadzone',
+      'DEAD_ZONE': 'deadzone',
+    };
+    if (idMap[net.id]) return idMap[net.id];
+
+    // Type-based fallback
+    const typeMap = {
+      'public': 'citinet',
+      'PUBLIC': 'citinet',
+      'hidden': 'darknet',
+      'HIDDEN': 'darknet',
+      'underground': 'darknet',
+      'UNDERGROUND': 'darknet',
+      'corporate': 'corpnet',
+      'CORPORATE': 'corpnet',
+      'government': 'govnet',
+      'GOVERNMENT': 'govnet',
+    };
+    return typeMap[net.type] || 'custom';
+  }
+
+  /**
+   * Get meter fill class based on percentage.
+   * @param {number} value - 0-100
+   * @returns {string} 'high', 'med', or 'low'
+   */
+  _getMeterClass(value) {
+    if (value >= 60) return 'high';
+    if (value >= 30) return 'med';
+    return 'low';
+  }
+
+  /**
+   * Get auth badge info for detail view.
+   * @param {object} net
+   * @returns {{authBadgeClass: string, authIcon: string, authLabel: string, authValueColor: string}}
+   */
+  _getAuthInfo(net) {
+    if (!net.security?.requiresAuth) {
+      return {
+        authBadgeClass: 'open',
+        authIcon: 'fa-lock-open',
+        authLabel: 'Open Access',
+        authValueColor: 'green',
+      };
+    }
+
+    if (net.security.password) {
+      return {
+        authBadgeClass: 'password',
+        authIcon: 'fa-key',
+        authLabel: 'Password Required',
+        authValueColor: 'gold',
+      };
+    }
+
+    return {
+      authBadgeClass: 'skill',
+      authIcon: 'fa-brain',
+      authLabel: 'Skill Check Required',
+      authValueColor: 'purple',
+    };
+  }
+
+  /**
+   * Build scene pills for the availability section in detail view.
+   * @param {object} net
+   * @returns {Array<{name: string, isCurrent: boolean}>}
+   */
+  _buildScenePills(net) {
+    if (net.availability?.global) return []; // Global shown separately
+
+    const pills = [];
+    const sceneAvailMap = {};
+
+    // Check all scenes for this network's availability
+    for (const scene of game.scenes?.contents ?? []) {
+      const avail = scene.getFlag(MODULE_ID, 'networkAvailability') ?? {};
+      if (avail[net.id]) {
+        pills.push({
+          name: scene.name,
+          isCurrent: scene.id === game.scenes?.viewed?.id,
+        });
+      }
+    }
+
+    // Also include scenes from the network's own availability.scenes array
+    for (const sceneId of net.availability?.scenes ?? []) {
+      if (!pills.some(p => p.name === game.scenes?.get(sceneId)?.name)) {
+        const scene = game.scenes?.get(sceneId);
+        if (scene) {
+          pills.push({
+            name: scene.name,
+            isCurrent: scene.id === game.scenes?.viewed?.id,
+          });
+        }
+      }
+    }
+
+    return pills;
+  }
+
+  /**
+   * Count how many scenes this network is available in.
+   * @param {object} net
+   * @returns {number}
+   */
+  _countNetworkScenes(net) {
+    if (net.availability?.global) return game.scenes?.contents?.length ?? 0;
+
+    let count = 0;
+    for (const scene of game.scenes?.contents ?? []) {
+      const avail = scene.getFlag(MODULE_ID, 'networkAvailability') ?? {};
+      if (avail[net.id]) count++;
+    }
+    // Include explicit scene IDs too
+    count = Math.max(count, net.availability?.scenes?.length ?? 0);
+    return count;
+  }
+
+  /**
+   * Get log entry type CSS class.
+   * @param {string} type
+   * @returns {string}
+   */
+  _getLogTypeClass(type) {
+    const map = {
+      'auth_success': 'success',
+      'auth_failure': 'fail',
+      'auth_fail': 'fail',
+      'switch': 'switch',
+      'connect': 'success',
+      'disconnect': 'fail',
+      'lockout': 'lockout',
+      'dead_zone': 'deadzone',
+      'hack': 'auth',
+      'system': 'system',
+    };
+    return map[type] || 'switch';
+  }
+
+  /**
+   * Check if a log entry matches the current filter.
+   * @param {object} entry
+   * @param {string} filter
+   * @returns {boolean}
+   */
+  _matchesLogFilter(entry, filter) {
+    const filterMap = {
+      'auth': ['auth_success', 'auth_failure', 'auth_fail'],
+      'switch': ['switch', 'connect', 'disconnect'],
+      'lockout': ['lockout'],
+      'hack': ['hack'],
+    };
+    return (filterMap[filter] ?? []).includes(entry.type);
+  }
+
 }

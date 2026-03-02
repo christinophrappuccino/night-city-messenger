@@ -435,7 +435,7 @@ export class AdminPanelApp extends BaseApplication {
     try {
       const allNetworks = this.networkService?.getAllNetworks?.() ?? [];
       const currentSceneId = canvas.scene?.id;
-      const sceneNetworks = canvas.scene?.getFlag(MODULE_ID, 'networkAvailability') ?? [];
+      const sceneNetworks = canvas.scene?.getFlag(MODULE_ID, 'networkAvailability') ?? {};
 
       // Icon mapping for known network types
       const iconMap = {
@@ -451,7 +451,7 @@ export class AdminPanelApp extends BaseApplication {
         const known = iconMap[netId] || { icon: 'network-wired', iconClass: 'default', type: net.type || 'Custom subnet' };
 
         // Determine if network is enabled on current scene
-        const isEnabled = sceneNetworks.includes(net.id) || sceneNetworks.includes(net.name);
+        const isEnabled = !!sceneNetworks[net.id] || !!sceneNetworks[net.name];
 
         // Auth type detection
         let authClass = 'open', authIcon = 'lock-open', authLabel = 'Open access';
@@ -468,8 +468,8 @@ export class AdminPanelApp extends BaseApplication {
         // Gather scenes where this network appears
         const scenes = [];
         for (const scene of game.scenes) {
-          const sNets = scene.getFlag(MODULE_ID, 'networkAvailability') ?? [];
-          if (sNets.includes(net.id) || sNets.includes(net.name)) {
+          const sNets = scene.getFlag(MODULE_ID, 'networkAvailability') ?? {};
+          if (sNets[net.id] || sNets[net.name]) {
             scenes.push({
               id: scene.id,
               name: scene.name,
@@ -980,7 +980,8 @@ export class AdminPanelApp extends BaseApplication {
     event.preventDefault();
     event.stopPropagation();
 
-    const networkId = target.closest('[data-network-id]')?.dataset.networkId;
+    const networkId = target.closest('[data-network-id]')?.dataset.networkId
+                   || target.dataset.networkId;
     if (!networkId) return;
 
     const scene = canvas.scene;
@@ -989,18 +990,10 @@ export class AdminPanelApp extends BaseApplication {
       return;
     }
 
-    const current = scene.getFlag(MODULE_ID, 'networkAvailability') ?? [];
-    let updated;
+    const current = scene.getFlag(MODULE_ID, 'networkAvailability') ?? {};
+    const updated = { ...current, [networkId]: !current[networkId] };
 
-    if (current.includes(networkId)) {
-      updated = current.filter(id => id !== networkId);
-      log.info(`Admin: Disabled network ${networkId} on scene ${scene.name}`);
-    } else {
-      updated = [...current, networkId];
-      log.info(`Admin: Enabled network ${networkId} on scene ${scene.name}`);
-    }
-
-    await scene.setFlag(MODULE_ID, 'availableNetworks', updated);
+    await scene.setFlag(MODULE_ID, 'networkAvailability', updated);
     this.render(true);
   }
 

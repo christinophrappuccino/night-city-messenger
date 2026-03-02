@@ -1,417 +1,751 @@
 {{!--
-  Network Management Panel
+  Network Management Panel — Redesigned v2
   File: templates/network-management/network-management.hbs
   Module: cyberpunkred-messenger
   Description: GM tool for managing custom networks, scene availability,
-               and reviewing access logs.
+               authentication, dead zones, and access logs.
+               3-tab split-panel layout matching NCM design system.
+  Mockup ref: ncm-network-manager-mockup-v2.html
 --}}
 
-<div class="ncm-network-mgmt">
+<div class="ncm-netmgr">
 
-  {{!-- Tab Bar --}}
-  <nav class="ncm-tab-bar">
-    <button class="ncm-tab-btn {{#if isNetworksTab}}ncm-tab-btn--active{{/if}}"
+  {{!-- ═══════════════════════════════════════════
+       CONDENSED HEADER — Network Status Bar
+       ═══════════════════════════════════════════ --}}
+  <div class="ncm-netmgr__header">
+    <div class="ncm-netmgr__header-icon-ring">
+      <i class="fas fa-network-wired"></i>
+    </div>
+    <div class="ncm-netmgr__header-identity">
+      <div class="ncm-netmgr__header-title">Subnet Control</div>
+      <div class="ncm-netmgr__header-subtitle">GM Clearance // Network Operations</div>
+    </div>
+    <div class="ncm-netmgr__header-sep"></div>
+    <div class="ncm-netmgr__header-stats">
+      <div class="ncm-netmgr__header-stat">
+        <span class="ncm-netmgr__header-stat-value ncm-netmgr__header-stat-value--cyan">{{headerStats.totalNetworks}}</span>
+        <span class="ncm-netmgr__header-stat-label">Subnets</span>
+      </div>
+      <div class="ncm-netmgr__header-stat">
+        <span class="ncm-netmgr__header-stat-value ncm-netmgr__header-stat-value--green">{{headerStats.activeCount}}</span>
+        <span class="ncm-netmgr__header-stat-label">Active</span>
+      </div>
+      <div class="ncm-netmgr__header-stat">
+        <span class="ncm-netmgr__header-stat-value ncm-netmgr__header-stat-value--gold">{{headerStats.securedCount}}</span>
+        <span class="ncm-netmgr__header-stat-label">Secured</span>
+      </div>
+      <div class="ncm-netmgr__header-stat">
+        <span class="ncm-netmgr__header-stat-value ncm-netmgr__header-stat-value--red">{{headerStats.deadZoneCount}}</span>
+        <span class="ncm-netmgr__header-stat-label">Dead Zones</span>
+      </div>
+    </div>
+    <div class="ncm-netmgr__header-sep"></div>
+    {{#if currentNetwork}}
+    <div class="ncm-netmgr__header-active-net">
+      <div class="ncm-netmgr__header-active-dot"></div>
+      <span class="ncm-netmgr__header-active-name">{{currentNetwork.name}}</span>
+    </div>
+    {{/if}}
+  </div>
+
+  {{!-- ═══════════════════════════════════════════
+       TAB BAR
+       ═══════════════════════════════════════════ --}}
+  <nav class="ncm-netmgr__tabs">
+    <button class="ncm-netmgr__tab {{#if isNetworksTab}}ncm-netmgr__tab--active{{/if}}"
             data-action="switchTab" data-tab="networks">
-      <i class="fas fa-network-wired"></i> Networks
+      <i class="fas fa-network-wired"></i> Subnets
     </button>
-    <button class="ncm-tab-btn {{#if isScenesTab}}ncm-tab-btn--active{{/if}}"
+    <button class="ncm-netmgr__tab {{#if isScenesTab}}ncm-netmgr__tab--active{{/if}}"
             data-action="switchTab" data-tab="scenes">
       <i class="fas fa-map"></i> Scenes
     </button>
-    <button class="ncm-tab-btn {{#if isLogsTab}}ncm-tab-btn--active{{/if}}"
+    <button class="ncm-netmgr__tab {{#if isLogsTab}}ncm-netmgr__tab--active{{/if}}"
             data-action="switchTab" data-tab="logs">
       <i class="fas fa-clipboard-list"></i> Logs
-      {{#if logCount}}<span class="ncm-badge">{{logCount}}</span>{{/if}}
+      {{#if logCount}}<span class="ncm-netmgr__tab-count">{{logCount}}</span>{{/if}}
     </button>
   </nav>
 
+
   {{!-- ═══════════════════════════════════════════════════════
-       TAB: Networks
+       TAB 1: SUBNET REGISTRY — Split Panel
        ═══════════════════════════════════════════════════════ --}}
   {{#if isNetworksTab}}
-  <div class="ncm-tab-content ncm-tab-content--networks">
+  <div class="ncm-netmgr__content ncm-netmgr__content--no-pad">
+    <div class="ncm-netmgr__split">
 
-    <div class="ncm-split-panel">
-
-      {{!-- Network List (Left) --}}
-      <div class="ncm-split-panel__list">
-        <div class="ncm-list-header">
-          <h3 class="ncm-list-title">Subnet Registry</h3>
-          <button class="ncm-btn ncm-btn--sm ncm-btn--primary" data-action="createNetwork">
-            <i class="fas fa-plus"></i> New
+      {{!-- LEFT: Network List Sidebar --}}
+      <div class="ncm-netmgr__split-list">
+        <div class="ncm-netmgr__split-list-header">
+          <span class="ncm-netmgr__split-list-title">Subnets</span>
+          <button class="ncm-netmgr__btn-add" data-action="createNetwork" title="Create custom network">
+            <i class="fas fa-plus"></i>
           </button>
         </div>
 
-        <div class="ncm-network-list">
+        <div class="ncm-netmgr__net-list">
           {{#each networks}}
-          <div class="ncm-network-list-item {{#if isSelected}}ncm-network-list-item--selected{{/if}} {{#if isCurrent}}ncm-network-list-item--current{{/if}}"
+          <div class="ncm-netmgr__net-item {{#if isSelected}}ncm-netmgr__net-item--selected{{/if}} {{#if isCurrent}}ncm-netmgr__net-item--current{{/if}}"
                data-action="selectNetwork" data-network-id="{{id}}">
-            <div class="ncm-network-list-item__icon" style="color: {{theme.color}}">
+
+            {{!-- Network Icon Badge --}}
+            <div class="ncm-netmgr__net-item-icon ncm-netmgr__net-item-icon--{{networkTypeClass}}"
+                 {{#if theme.color}}style="--net-color: {{theme.color}};"{{/if}}>
               <i class="fas {{theme.icon}}"></i>
             </div>
-            <div class="ncm-network-list-item__info">
-              <span class="ncm-network-list-item__name">{{name}}</span>
-              <span class="ncm-network-list-item__meta">
-                {{type}}
-                {{#if isCore}}<span class="ncm-tag ncm-tag--dim">CORE</span>{{/if}}
-                {{#if security.requiresAuth}}<i class="fas fa-lock ncm-text--warn"></i>{{/if}}
-              </span>
+
+            {{!-- Network Info --}}
+            <div class="ncm-netmgr__net-item-info">
+              <div class="ncm-netmgr__net-item-name {{#if isCurrent}}ncm-netmgr__net-item-name--active{{/if}}">
+                {{name}}
+              </div>
+              <div class="ncm-netmgr__net-item-meta">
+                {{typeLabel}}
+                {{#if isCore}}
+                  <span class="ncm-netmgr__tag ncm-netmgr__tag--core">Core</span>
+                {{else}}
+                  <span class="ncm-netmgr__tag ncm-netmgr__tag--custom">Custom</span>
+                {{/if}}
+                {{#if security.requiresAuth}}
+                  <i class="fas fa-lock ncm-netmgr__net-item-lock"></i>
+                {{/if}}
+              </div>
             </div>
-            <div class="ncm-network-list-item__status">
-              {{#if isAvailable}}<span class="ncm-dot ncm-dot--green"></span>
-              {{else}}<span class="ncm-dot ncm-dot--red"></span>{{/if}}
+
+            {{!-- Signal Strength Bars --}}
+            <div class="ncm-netmgr__signal-bars">
+              {{#each signalBars}}
+              <div class="ncm-netmgr__signal-bar {{#if active}}ncm-netmgr__signal-bar--{{level}}{{/if}}"
+                   style="height: {{height}}px;"></div>
+              {{/each}}
             </div>
           </div>
           {{/each}}
         </div>
       </div>
 
-      {{!-- Network Detail / Editor (Right) --}}
-      <div class="ncm-split-panel__detail">
+      {{!-- RIGHT: Detail / Editor / Empty State --}}
+      <div class="ncm-netmgr__split-detail">
+
+        {{!-- ─── EDITOR MODE (Create or Edit) ─── --}}
         {{#if isEditing}}
-        <form class="ncm-network-form">
-          <h3 class="ncm-form-title">
-            {{#if isCreating}}// CREATE NETWORK{{else}}// EDIT: {{selectedNetwork.name}}{{/if}}
-          </h3>
+        <form class="ncm-netmgr__editor ncm-network-form">
 
-          {{!-- Basic Info --}}
-          <fieldset class="ncm-fieldset">
-            <legend class="ncm-fieldset__legend"><i class="fas fa-info-circle"></i> Identity</legend>
-            <div class="ncm-field-grid">
-              <div class="ncm-field">
-                <label class="ncm-field__label">Network Name</label>
-                <input type="text" name="name" class="ncm-input"
-                       value="{{#if isCreating}}{{else}}{{selectedNetwork.name}}{{/if}}"
-                       placeholder="Arasaka Internal" required>
+          {{!-- Identity Fieldset --}}
+          <div class="ncm-netmgr__fieldset">
+            <div class="ncm-netmgr__fieldset-legend"><i class="fas fa-id-card"></i> Identity</div>
+            <div class="ncm-netmgr__fieldset-body">
+              <div class="ncm-netmgr__field-row">
+                <div class="ncm-netmgr__field">
+                  <label class="ncm-netmgr__field-label">Network Name</label>
+                  <input class="ncm-netmgr__input" type="text" name="name"
+                         value="{{#unless isCreating}}{{selectedNetwork.name}}{{/unless}}"
+                         placeholder="Network name...">
+                </div>
+                <div class="ncm-netmgr__field">
+                  <label class="ncm-netmgr__field-label">Type</label>
+                  <select class="ncm-netmgr__select" name="type">
+                    {{#each networkTypes}}
+                    <option value="{{value}}"
+                      {{#if (eq value ../selectedNetwork.type)}}selected{{/if}}
+                      {{#if (and ../isCreating (eq value "custom"))}}selected{{/if}}>
+                      {{label}}
+                    </option>
+                    {{/each}}
+                  </select>
+                </div>
               </div>
-              <div class="ncm-field">
-                <label class="ncm-field__label">Type</label>
-                <select name="type" class="ncm-input">
-                  {{#each ../networkTypes}}
-                  <option value="{{value}}" {{#if (ncm-eq value ../selectedNetwork.type)}}selected{{/if}}>{{label}}</option>
-                  {{/each}}
-                </select>
+              <div class="ncm-netmgr__field">
+                <label class="ncm-netmgr__field-label">Description</label>
+                <input class="ncm-netmgr__input" type="text" name="description"
+                       value="{{#unless isCreating}}{{selectedNetwork.description}}{{/unless}}"
+                       placeholder="In-world description...">
               </div>
-              <div class="ncm-field ncm-field--full">
-                <label class="ncm-field__label">Description</label>
-                <input type="text" name="description" class="ncm-input"
-                       value="{{selectedNetwork.description}}"
-                       placeholder="Short description for players">
-              </div>
-              <div class="ncm-field ncm-field--full">
-                <label class="ncm-field__label">Lore Notes (GM only)</label>
-                <textarea name="lore" class="ncm-textarea ncm-textarea--small"
-                          placeholder="Behind-the-scenes info...">{{selectedNetwork.lore}}</textarea>
+              <div class="ncm-netmgr__field">
+                <label class="ncm-netmgr__field-label">Lore / Notes</label>
+                <input class="ncm-netmgr__input" type="text" name="lore"
+                       value="{{#unless isCreating}}{{selectedNetwork.lore}}{{/unless}}"
+                       placeholder="GM-only notes...">
               </div>
             </div>
-          </fieldset>
+          </div>
 
-          {{!-- Signal & Reliability --}}
-          <fieldset class="ncm-fieldset">
-            <legend class="ncm-fieldset__legend"><i class="fas fa-signal"></i> Signal</legend>
-            <div class="ncm-field-grid">
-              <div class="ncm-field">
-                <label class="ncm-field__label">Signal Strength (0–100)</label>
-                <input type="number" name="signalStrength" class="ncm-input" min="0" max="100"
-                       value="{{#if isCreating}}75{{else}}{{selectedNetwork.signalStrength}}{{/if}}">
+          {{!-- Signal & Reliability Fieldset --}}
+          <div class="ncm-netmgr__fieldset">
+            <div class="ncm-netmgr__fieldset-legend"><i class="fas fa-signal"></i> Signal</div>
+            <div class="ncm-netmgr__fieldset-body">
+              <div class="ncm-netmgr__field-row ncm-netmgr__field-row--3">
+                <div class="ncm-netmgr__field">
+                  <label class="ncm-netmgr__field-label">Signal Strength</label>
+                  <input class="ncm-netmgr__input" type="number" name="signalStrength"
+                         value="{{#if isCreating}}75{{else}}{{selectedNetwork.signalStrength}}{{/if}}"
+                         min="0" max="100">
+                </div>
+                <div class="ncm-netmgr__field">
+                  <label class="ncm-netmgr__field-label">Reliability %</label>
+                  <input class="ncm-netmgr__input" type="number" name="reliability"
+                         value="{{#if isCreating}}85{{else}}{{selectedNetwork.reliability}}{{/if}}"
+                         min="0" max="100">
+                </div>
+                <div class="ncm-netmgr__field">
+                  <label class="ncm-netmgr__field-label">Message Delay (ms)</label>
+                  <input class="ncm-netmgr__input" type="number" name="messageDelay"
+                         value="{{#if isCreating}}0{{else}}{{selectedNetwork.effects.messageDelay}}{{/if}}"
+                         min="0">
+                </div>
               </div>
-              <div class="ncm-field">
-                <label class="ncm-field__label">Reliability % (0–100)</label>
-                <input type="number" name="reliability" class="ncm-input" min="0" max="100"
-                       value="{{#if isCreating}}85{{else}}{{selectedNetwork.reliability}}{{/if}}">
-              </div>
-              <div class="ncm-field">
-                <label class="ncm-field__label">
-                  <input type="checkbox" name="globalAvailability" value="true"
-                         {{#if selectedNetwork.availability.global}}checked{{/if}}>
-                  Globally Available
-                </label>
-              </div>
+              <label class="ncm-netmgr__checkbox-row">
+                <input type="checkbox" name="globalAvailability" value="true"
+                       {{#if selectedNetwork.availability.global}}checked{{/if}}>
+                Globally Available (all scenes)
+              </label>
             </div>
-          </fieldset>
+          </div>
 
-          {{!-- Security --}}
-          <fieldset class="ncm-fieldset">
-            <legend class="ncm-fieldset__legend"><i class="fas fa-shield-halved"></i> Security</legend>
-            <div class="ncm-field-grid">
-              <div class="ncm-field">
-                <label class="ncm-field__label">Security Level</label>
-                <select name="securityLevel" class="ncm-input">
-                  {{#each ../securityLevels}}
-                  <option value="{{value}}" {{#if (ncm-eq value ../selectedNetwork.security.level)}}selected{{/if}}>{{label}}</option>
-                  {{/each}}
-                </select>
+          {{!-- Security Fieldset --}}
+          <div class="ncm-netmgr__fieldset">
+            <div class="ncm-netmgr__fieldset-legend"><i class="fas fa-shield-halved"></i> Security</div>
+            <div class="ncm-netmgr__fieldset-body">
+              <div class="ncm-netmgr__field-row">
+                <div class="ncm-netmgr__field">
+                  <label class="ncm-netmgr__field-label">Security Level</label>
+                  <select class="ncm-netmgr__select" name="securityLevel">
+                    {{#each securityLevels}}
+                    <option value="{{value}}"
+                      {{#if (eq value ../selectedNetwork.security.level)}}selected{{/if}}>
+                      {{label}}
+                    </option>
+                    {{/each}}
+                  </select>
+                </div>
+                <div class="ncm-netmgr__field">
+                  <label class="ncm-netmgr__field-label">Authentication</label>
+                  <select class="ncm-netmgr__select" name="requiresAuth">
+                    <option value="false" {{#unless selectedNetwork.security.requiresAuth}}selected{{/unless}}>None (open)</option>
+                    <option value="true" {{#if selectedNetwork.security.requiresAuth}}selected{{/if}}>Required</option>
+                  </select>
+                </div>
               </div>
-              <div class="ncm-field">
-                <label class="ncm-field__label">
-                  <input type="checkbox" name="requiresAuth" value="true"
-                         {{#if selectedNetwork.security.requiresAuth}}checked{{/if}}>
-                  Requires Authentication
-                </label>
+              <div class="ncm-netmgr__field-row">
+                <div class="ncm-netmgr__field">
+                  <label class="ncm-netmgr__field-label">Password</label>
+                  <input class="ncm-netmgr__input" type="text" name="password"
+                         value="{{selectedNetwork.security.password}}"
+                         placeholder="Network password...">
+                </div>
+                <div class="ncm-netmgr__field">
+                  <label class="ncm-netmgr__field-label">Max Attempts / Lockout (min)</label>
+                  <div class="ncm-netmgr__field-pair">
+                    <input class="ncm-netmgr__input" type="number" name="maxAttempts"
+                           value="{{#if isCreating}}3{{else}}{{selectedNetwork.security.maxAttempts}}{{/if}}"
+                           min="1">
+                    <input class="ncm-netmgr__input" type="number" name="lockoutMinutes"
+                           value="{{#if isCreating}}60{{else}}{{selectedNetwork.lockoutMinutes}}{{/if}}"
+                           min="1">
+                  </div>
+                </div>
               </div>
-              <div class="ncm-field">
-                <label class="ncm-field__label">Password</label>
-                <input type="text" name="password" class="ncm-input ncm-input--mono"
-                       value="{{selectedNetwork.security.password}}"
-                       placeholder="Leave empty for no password">
+              <div class="ncm-netmgr__field-row">
+                <div class="ncm-netmgr__field">
+                  <label class="ncm-netmgr__field-label">Bypass Skills (comma-separated)</label>
+                  <input class="ncm-netmgr__input" type="text" name="bypassSkills"
+                         value="{{#if selectedNetwork.security.bypassSkills}}{{join selectedNetwork.security.bypassSkills ","}}{{/if}}"
+                         placeholder="interface, electronics">
+                </div>
+                <div class="ncm-netmgr__field">
+                  <label class="ncm-netmgr__field-label">Bypass DV</label>
+                  <input class="ncm-netmgr__input" type="number" name="bypassDC"
+                         value="{{#if isCreating}}15{{else}}{{selectedNetwork.security.bypassDC}}{{/if}}"
+                         min="1">
+                </div>
               </div>
-              <div class="ncm-field">
-                <label class="ncm-field__label">Bypass DC</label>
-                <input type="number" name="bypassDC" class="ncm-input" min="1" max="50"
-                       value="{{#if isCreating}}15{{else}}{{selectedNetwork.security.bypassDC}}{{/if}}">
-              </div>
-              <div class="ncm-field ncm-field--full">
-                <label class="ncm-field__label">Bypass Skills (comma-separated)</label>
-                <input type="text" name="bypassSkills" class="ncm-input"
-                       value="{{#if selectedNetwork.security.bypassSkills}}{{#each selectedNetwork.security.bypassSkills}}{{#unless @first}}, {{/unless}}{{this}}{{/each}}{{/if}}"
-                       placeholder="Interface, Electronics/Security Tech">
-              </div>
-              <div class="ncm-field">
-                <label class="ncm-field__label">Max Attempts</label>
-                <input type="number" name="maxAttempts" class="ncm-input" min="1" max="20"
-                       value="{{#if isCreating}}3{{else}}{{selectedNetwork.security.maxAttempts}}{{/if}}">
-              </div>
-              <div class="ncm-field">
-                <label class="ncm-field__label">Lockout (minutes)</label>
-                <input type="number" name="lockoutMinutes" class="ncm-input" min="1" max="1440"
-                       value="{{#if isCreating}}60{{else}}{{selectedNetwork.lockoutMinutes}}{{/if}}">
-              </div>
-            </div>
-          </fieldset>
-
-          {{!-- Effects --}}
-          <fieldset class="ncm-fieldset">
-            <legend class="ncm-fieldset__legend"><i class="fas fa-bolt"></i> Network Effects</legend>
-            <div class="ncm-field-grid">
-              <div class="ncm-field">
-                <label class="ncm-field__label">Message Delay (ms)</label>
-                <input type="number" name="messageDelay" class="ncm-input" min="0" max="30000"
-                       value="{{#if isCreating}}0{{else}}{{selectedNetwork.effects.messageDelay}}{{/if}}">
-              </div>
-              <div class="ncm-field">
-                <label class="ncm-field__label">
+              <div class="ncm-netmgr__field-row">
+                <label class="ncm-netmgr__checkbox-row">
                   <input type="checkbox" name="traced" value="true"
                          {{#if selectedNetwork.effects.traced}}checked{{/if}}>
-                  Messages Traced (NetWatch)
+                  Traced (messages can be monitored)
                 </label>
-              </div>
-              <div class="ncm-field">
-                <label class="ncm-field__label">
+                <label class="ncm-netmgr__checkbox-row">
                   <input type="checkbox" name="anonymity" value="true"
                          {{#if selectedNetwork.effects.anonymity}}checked{{/if}}>
-                  Anonymous Mode
+                  Anonymous (hide sender identity)
                 </label>
               </div>
-              <div class="ncm-field">
-                <label class="ncm-field__label">
-                  <input type="checkbox" name="canRoute" value="true"
-                         {{#unless isCreating}}{{#if selectedNetwork.effects.canRoute}}checked{{/if}}{{else}}checked{{/unless}}>
-                  Can Route to Other Networks
-                </label>
+              <label class="ncm-netmgr__checkbox-row">
+                <input type="checkbox" name="canRoute" value="true"
+                       {{#unless isCreating}}
+                         {{#if selectedNetwork.effects.canRoute}}checked{{/if}}
+                       {{else}}
+                         checked
+                       {{/unless}}>
+                Can Route to Other Networks
+              </label>
+            </div>
+          </div>
+
+          {{!-- Theme Fieldset --}}
+          <div class="ncm-netmgr__fieldset">
+            <div class="ncm-netmgr__fieldset-legend"><i class="fas fa-palette"></i> Theme</div>
+            <div class="ncm-netmgr__fieldset-body">
+              <div class="ncm-netmgr__field-row ncm-netmgr__field-row--3">
+                <div class="ncm-netmgr__field">
+                  <label class="ncm-netmgr__field-label">Color</label>
+                  <div class="ncm-netmgr__color-picker">
+                    <input type="color" name="themeColor" class="ncm-netmgr__color-swatch"
+                           value="{{#if isCreating}}#19f3f7{{else}}{{selectedNetwork.theme.color}}{{/if}}">
+                    <input class="ncm-netmgr__input" type="text" name="themeColorText"
+                           value="{{#if isCreating}}#19f3f7{{else}}{{selectedNetwork.theme.color}}{{/if}}"
+                           style="width:80px;">
+                  </div>
+                </div>
+                <div class="ncm-netmgr__field">
+                  <label class="ncm-netmgr__field-label">Icon</label>
+                  <select class="ncm-netmgr__select" name="themeIcon">
+                    {{#each iconOptions}}
+                    <option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>
+                    {{/each}}
+                  </select>
+                </div>
+                <div class="ncm-netmgr__field">
+                  <label class="ncm-netmgr__field-label">Glitch Intensity</label>
+                  <input class="ncm-netmgr__input" type="number" name="glitchIntensity"
+                         value="{{#if isCreating}}0.1{{else}}{{selectedNetwork.theme.glitchIntensity}}{{/if}}"
+                         min="0" max="1" step="0.1">
+                </div>
               </div>
             </div>
-          </fieldset>
+          </div>
 
-          {{!-- Theme --}}
-          <fieldset class="ncm-fieldset">
-            <legend class="ncm-fieldset__legend"><i class="fas fa-palette"></i> Appearance</legend>
-            <div class="ncm-field-grid">
-              <div class="ncm-field">
-                <label class="ncm-field__label">Color</label>
-                <input type="color" name="themeColor" class="ncm-input ncm-input--color"
-                       value="{{#if isCreating}}#19f3f7{{else}}{{selectedNetwork.theme.color}}{{/if}}">
-              </div>
-              <div class="ncm-field">
-                <label class="ncm-field__label">Icon (FontAwesome)</label>
-                <input type="text" name="themeIcon" class="ncm-input"
-                       value="{{#if isCreating}}fa-wifi{{else}}{{selectedNetwork.theme.icon}}{{/if}}"
-                       placeholder="fa-wifi">
-              </div>
-              <div class="ncm-field">
-                <label class="ncm-field__label">Glitch Intensity (0–1)</label>
-                <input type="number" name="glitchIntensity" class="ncm-input"
-                       min="0" max="1" step="0.1"
-                       value="{{#if isCreating}}0.1{{else}}{{selectedNetwork.theme.glitchIntensity}}{{/if}}">
-              </div>
-            </div>
-          </fieldset>
-
-          {{!-- Actions --}}
-          <div class="ncm-form-actions">
-            <button type="button" class="ncm-btn ncm-btn--ghost" data-action="cancelEdit">Cancel</button>
+          {{!-- Editor Actions --}}
+          <div class="ncm-netmgr__editor-actions">
+            <button type="button" class="ncm-netmgr__btn-sm" data-action="cancelEdit">
+              <i class="fas fa-times"></i> Cancel
+            </button>
             {{#unless isCreating}}
               {{#unless selectedNetwork.isCore}}
-              <button type="button" class="ncm-btn ncm-btn--danger" data-action="deleteNetwork">
+              <button type="button" class="ncm-netmgr__btn-sm ncm-netmgr__btn-sm--danger" data-action="deleteNetwork">
                 <i class="fas fa-trash"></i> Delete
               </button>
               {{/unless}}
             {{/unless}}
-            <button type="button" class="ncm-btn ncm-btn--primary" data-action="saveNetwork">
-              <i class="fas fa-save"></i> {{#if isCreating}}Create{{else}}Save{{/if}}
+            <div class="ncm-netmgr__editor-spacer"></div>
+            <button type="button" class="ncm-netmgr__btn-sm ncm-netmgr__btn-sm--primary" data-action="saveNetwork">
+              <i class="fas fa-save"></i> {{#if isCreating}}Create Network{{else}}Save Network{{/if}}
             </button>
           </div>
         </form>
 
+        {{!-- ─── DETAIL VIEW (Read-only) ─── --}}
+        {{else if selectedNetwork}}
+        <div class="ncm-netmgr__detail">
+
+          {{!-- Detail Header --}}
+          <div class="ncm-netmgr__detail-header">
+            <div class="ncm-netmgr__detail-header-icon ncm-netmgr__net-item-icon--{{selectedNetwork.networkTypeClass}}"
+                 {{#if selectedNetwork.theme.color}}style="--net-color: {{selectedNetwork.theme.color}};"{{/if}}>
+              <i class="fas {{selectedNetwork.theme.icon}}"></i>
+            </div>
+            <div class="ncm-netmgr__detail-header-info">
+              <div class="ncm-netmgr__detail-header-name">{{selectedNetwork.name}}</div>
+              <div class="ncm-netmgr__detail-header-type">
+                {{selectedNetwork.typeLabel}} Subnet
+                {{#if selectedNetwork.isCore}}
+                  <span class="ncm-netmgr__tag ncm-netmgr__tag--core">Core</span>
+                {{else}}
+                  <span class="ncm-netmgr__tag ncm-netmgr__tag--custom">Custom</span>
+                {{/if}}
+                <span class="ncm-netmgr__auth-badge ncm-netmgr__auth-badge--{{selectedNetwork.authBadgeClass}}">
+                  <i class="fas {{selectedNetwork.authIcon}}"></i> {{selectedNetwork.authLabel}}
+                </span>
+              </div>
+            </div>
+            <div class="ncm-netmgr__detail-header-actions">
+              {{#if selectedNetwork.isCore}}
+              <button class="ncm-netmgr__btn-sm ncm-netmgr__btn-sm--primary" disabled
+                      title="Core networks cannot be edited">
+                <i class="fas fa-pen"></i> Edit
+              </button>
+              {{else}}
+              <button class="ncm-netmgr__btn-sm ncm-netmgr__btn-sm--primary"
+                      data-action="editNetwork">
+                <i class="fas fa-pen"></i> Edit
+              </button>
+              {{/if}}
+            </div>
+          </div>
+
+          {{!-- Stats Grid --}}
+          <div class="ncm-netmgr__stats-grid">
+            <div class="ncm-netmgr__stat ncm-netmgr__stat--cyan">
+              <div class="ncm-netmgr__stat-value ncm-netmgr__stat-value--cyan">
+                {{selectedNetwork.signalStrength}}<span class="ncm-netmgr__stat-unit">%</span>
+              </div>
+              <div class="ncm-netmgr__signal-meter">
+                <div class="ncm-netmgr__signal-meter-fill ncm-netmgr__signal-meter-fill--{{selectedNetwork.signalMeterClass}}"
+                     style="width: {{selectedNetwork.signalStrength}}%;"></div>
+              </div>
+              <div class="ncm-netmgr__stat-label">Signal</div>
+            </div>
+            <div class="ncm-netmgr__stat ncm-netmgr__stat--green">
+              <div class="ncm-netmgr__stat-value ncm-netmgr__stat-value--green">
+                {{selectedNetwork.reliability}}<span class="ncm-netmgr__stat-unit">%</span>
+              </div>
+              <div class="ncm-netmgr__signal-meter">
+                <div class="ncm-netmgr__signal-meter-fill ncm-netmgr__signal-meter-fill--{{selectedNetwork.reliabilityMeterClass}}"
+                     style="width: {{selectedNetwork.reliability}}%;"></div>
+              </div>
+              <div class="ncm-netmgr__stat-label">Reliability</div>
+            </div>
+            <div class="ncm-netmgr__stat ncm-netmgr__stat--gold">
+              <div class="ncm-netmgr__stat-value ncm-netmgr__stat-value--gold">
+                {{selectedNetwork.effects.messageDelay}}
+              </div>
+              <div class="ncm-netmgr__stat-label">Delay (ms)</div>
+            </div>
+            <div class="ncm-netmgr__stat ncm-netmgr__stat--red">
+              <div class="ncm-netmgr__stat-value ncm-netmgr__stat-value--red">
+                {{selectedNetwork.sceneCount}}
+              </div>
+              <div class="ncm-netmgr__stat-label">Scenes</div>
+            </div>
+          </div>
+
+          {{!-- Properties --}}
+          <div class="ncm-netmgr__props">
+
+            {{!-- Security & Auth --}}
+            <div class="ncm-netmgr__prop-group">
+              <div class="ncm-netmgr__prop-group-title"><i class="fas fa-shield-halved"></i> Security & Auth</div>
+              <div class="ncm-netmgr__prop-row">
+                <span class="ncm-netmgr__prop-label">Authentication</span>
+                <span class="ncm-netmgr__prop-value ncm-netmgr__prop-value--{{selectedNetwork.authValueColor}}">
+                  {{selectedNetwork.authLabel}}
+                </span>
+              </div>
+              <div class="ncm-netmgr__prop-row">
+                <span class="ncm-netmgr__prop-label">Security Level</span>
+                <span class="ncm-netmgr__prop-value">{{selectedNetwork.security.level}}</span>
+              </div>
+              <div class="ncm-netmgr__prop-row">
+                <span class="ncm-netmgr__prop-label">Max Auth Attempts</span>
+                <span class="ncm-netmgr__prop-value">{{selectedNetwork.security.maxAttempts}}</span>
+              </div>
+              <div class="ncm-netmgr__prop-row">
+                <span class="ncm-netmgr__prop-label">Lockout Duration</span>
+                <span class="ncm-netmgr__prop-value">{{selectedNetwork.lockoutMinutes}} min</span>
+              </div>
+            </div>
+
+            {{!-- Effects --}}
+            <div class="ncm-netmgr__prop-group">
+              <div class="ncm-netmgr__prop-group-title"><i class="fas fa-bolt"></i> Effects</div>
+              <div class="ncm-netmgr__prop-row">
+                <span class="ncm-netmgr__prop-label">Message Delay</span>
+                <span class="ncm-netmgr__prop-value">{{selectedNetwork.effects.messageDelay}} ms</span>
+              </div>
+              <div class="ncm-netmgr__prop-row">
+                <span class="ncm-netmgr__prop-label">Traced</span>
+                {{#if selectedNetwork.effects.traced}}
+                <span class="ncm-netmgr__prop-value ncm-netmgr__prop-value--red">
+                  <i class="fas fa-eye"></i> Yes
+                </span>
+                {{else}}
+                <span class="ncm-netmgr__prop-value ncm-netmgr__prop-value--green">No</span>
+                {{/if}}
+              </div>
+              <div class="ncm-netmgr__prop-row">
+                <span class="ncm-netmgr__prop-label">Anonymous</span>
+                {{#if selectedNetwork.effects.anonymity}}
+                <span class="ncm-netmgr__prop-value ncm-netmgr__prop-value--purple">
+                  <i class="fas fa-user-secret"></i> Yes
+                </span>
+                {{else}}
+                <span class="ncm-netmgr__prop-value ncm-netmgr__prop-value--green">No</span>
+                {{/if}}
+              </div>
+              <div class="ncm-netmgr__prop-row">
+                <span class="ncm-netmgr__prop-label">Can Route</span>
+                {{#if selectedNetwork.effects.canRoute}}
+                <span class="ncm-netmgr__prop-value ncm-netmgr__prop-value--green">
+                  <i class="fas fa-check"></i> Yes
+                </span>
+                {{else}}
+                <span class="ncm-netmgr__prop-value ncm-netmgr__prop-value--red">
+                  <i class="fas fa-times"></i> No
+                </span>
+                {{/if}}
+              </div>
+            </div>
+
+            {{!-- Availability --}}
+            <div class="ncm-netmgr__prop-group">
+              <div class="ncm-netmgr__prop-group-title"><i class="fas fa-map-marker-alt"></i> Availability</div>
+              <div class="ncm-netmgr__prop-group-body-pad">
+                <div class="ncm-netmgr__scene-pills">
+                  {{#if selectedNetwork.availability.global}}
+                  <span class="ncm-netmgr__scene-pill ncm-netmgr__scene-pill--global">
+                    <i class="fas fa-globe"></i> Global
+                  </span>
+                  {{/if}}
+                  {{#each selectedNetwork.scenePills}}
+                  <span class="ncm-netmgr__scene-pill {{#if isCurrent}}ncm-netmgr__scene-pill--current{{/if}}">
+                    {{name}}
+                  </span>
+                  {{/each}}
+                  {{#unless selectedNetwork.availability.global}}
+                    {{#unless selectedNetwork.scenePills.length}}
+                    <span class="ncm-netmgr__scene-pill ncm-netmgr__scene-pill--none">No scenes assigned</span>
+                    {{/unless}}
+                  {{/unless}}
+                </div>
+              </div>
+            </div>
+
+            {{!-- Lore (if any) --}}
+            {{#if selectedNetwork.lore}}
+            <div class="ncm-netmgr__prop-group">
+              <div class="ncm-netmgr__prop-group-title"><i class="fas fa-book"></i> Lore</div>
+              <div class="ncm-netmgr__prop-group-body-pad">
+                <span class="ncm-netmgr__lore-text">{{selectedNetwork.lore}}</span>
+              </div>
+            </div>
+            {{/if}}
+          </div>
+
+          {{!-- Detail Footer --}}
+          <div class="ncm-netmgr__detail-footer">
+            {{#if selectedNetwork.isCore}}
+            <span class="ncm-netmgr__detail-footer-note">
+              <i class="fas fa-lock"></i> Core networks cannot be edited or deleted
+            </span>
+            {{else}}
+            <span class="ncm-netmgr__detail-footer-note">
+              <i class="fas fa-cube"></i> Custom network — fully editable
+            </span>
+            {{/if}}
+          </div>
+        </div>
+
+        {{!-- ─── EMPTY STATE ─── --}}
         {{else}}
-        <div class="ncm-empty-state">
-          <i class="fas fa-network-wired ncm-empty-state__icon"></i>
-          <p class="ncm-empty-state__text">Select a network to edit</p>
-          <p class="ncm-empty-state__sub">Or create a new custom network.</p>
+        <div class="ncm-netmgr__empty-state">
+          <i class="fas fa-network-wired ncm-netmgr__empty-state-icon"></i>
+          <span class="ncm-netmgr__empty-state-text">Select a subnet to inspect</span>
+          <span class="ncm-netmgr__empty-state-sub">Or press [N] to create a new custom network.</span>
         </div>
         {{/if}}
+
       </div>
     </div>
   </div>
+
+  {{!-- Subnet Tab Shortcuts --}}
+  <div class="ncm-netmgr__shortcuts">
+    <div class="ncm-netmgr__shortcut"><span class="ncm-netmgr__shortcut-key">↑↓</span> Navigate</div>
+    <div class="ncm-netmgr__shortcut"><span class="ncm-netmgr__shortcut-key">Enter</span> Select</div>
+    <div class="ncm-netmgr__shortcut"><span class="ncm-netmgr__shortcut-key">N</span> New network</div>
+    <div class="ncm-netmgr__shortcut"><span class="ncm-netmgr__shortcut-key">Del</span> Delete</div>
+    <div class="ncm-netmgr__shortcut"><span class="ncm-netmgr__shortcut-key">Esc</span> Close</div>
+  </div>
   {{/if}}
 
+
   {{!-- ═══════════════════════════════════════════════════════
-       TAB: Scenes
+       TAB 2: SCENE CONFIGURATION
        ═══════════════════════════════════════════════════════ --}}
   {{#if isScenesTab}}
-  <div class="ncm-tab-content ncm-tab-content--scenes">
-    <h3 class="ncm-section-title">Scene Network Configuration</h3>
+  <div class="ncm-netmgr__content">
+    <div class="ncm-netmgr__section-title">
+      <i class="fas fa-map"></i> Scene Network Configuration
+      <button class="ncm-netmgr__section-action" data-action="refreshScenes">
+        <i class="fas fa-sync"></i> Refresh
+      </button>
+    </div>
 
     {{#if scenes.length}}
-    <div class="ncm-scene-list">
+    <div class="ncm-netmgr__scene-grid">
       {{#each scenes}}
-      <div class="ncm-scene-config-card" data-scene-id="{{id}}">
-        <div class="ncm-scene-config-card__header">
-          <span class="ncm-scene-config-card__name">
-            {{#if isViewed}}<i class="fas fa-eye ncm-text--cyan"></i>{{/if}}
+      <div class="ncm-netmgr__scene-card {{#if isViewed}}ncm-netmgr__scene-card--current{{/if}} {{#if deadZone}}ncm-netmgr__scene-card--dead{{/if}}"
+           data-scene-id="{{id}}">
+
+        {{!-- Scene Card Header --}}
+        <div class="ncm-netmgr__scene-card-header">
+          <div class="ncm-netmgr__scene-card-dot {{#if deadZone}}ncm-netmgr__scene-card-dot--dead{{else if isViewed}}ncm-netmgr__scene-card-dot--live{{else}}ncm-netmgr__scene-card-dot--inactive{{/if}}"></div>
+          <span class="ncm-netmgr__scene-card-name {{#if deadZone}}ncm-netmgr__scene-card-name--dead{{/if}}">
             {{name}}
           </span>
-          <button class="ncm-btn ncm-btn--sm {{#if deadZone}}ncm-btn--danger{{else}}ncm-btn--ghost{{/if}}"
+          {{#if deadZone}}
+          <span class="ncm-netmgr__scene-card-dead-tag">
+            <i class="fas fa-ban"></i> Dead Zone
+          </span>
+          {{/if}}
+          <button class="ncm-netmgr__scene-toggle-dead {{#if deadZone}}ncm-netmgr__scene-toggle-dead--on{{else}}ncm-netmgr__scene-toggle-dead--off{{/if}}"
                   data-action="toggleDeadZone">
-            <i class="fas fa-signal"></i> {{#if deadZone}}DEAD ZONE{{else}}Signal OK{{/if}}
+            {{#if deadZone}}
+            <i class="fas fa-signal"></i> Restore Signal
+            {{else}}
+            <i class="fas fa-signal"></i> Signal OK
+            {{/if}}
           </button>
         </div>
 
-        <div class="ncm-scene-config-card__body">
-          <div class="ncm-field">
-            <label class="ncm-field__label">Default Network</label>
-            <select name="defaultNetwork" class="ncm-input">
+        {{!-- Scene Card Body --}}
+        <div class="ncm-netmgr__scene-card-body {{#if deadZone}}ncm-netmgr__scene-card-body--disabled{{/if}}">
+
+          {{!-- Default Network --}}
+          <div>
+            <div class="ncm-netmgr__scene-card-field-label">Default Network</div>
+            {{#if deadZone}}
+            <select class="ncm-netmgr__select" disabled style="width:100%;">
+              <option>— Dead Zone — No Networks —</option>
+            </select>
+            {{else}}
+            <select class="ncm-netmgr__select" name="defaultNetwork" style="width:100%;">
               <option value="">— None —</option>
               {{#each ../allNetworks}}
-              <option value="{{id}}" {{#if (ncm-eq id ../defaultNetwork)}}selected{{/if}}>{{name}}</option>
+              <option value="{{id}}" {{#if (eq id ../defaultNetwork)}}selected{{/if}}>{{name}}</option>
               {{/each}}
             </select>
+            {{/if}}
           </div>
 
-          <div class="ncm-field">
-            <label class="ncm-field__label">Available Networks</label>
-            <div class="ncm-checkbox-group">
+          {{!-- Available Networks --}}
+          <div>
+            <div class="ncm-netmgr__scene-card-field-label">Available Networks</div>
+            {{#if deadZone}}
+            <div class="ncm-netmgr__scene-dead-notice">
+              <i class="fas fa-ban"></i> All signals jammed — Dead Zone active
+            </div>
+            {{else}}
+            <div class="ncm-netmgr__scene-net-list">
               {{#each ../allNetworks}}
-              <label class="ncm-checkbox-label">
-                <input type="checkbox" name="netAvail_{{id}}"
-                       {{#if availability.global}}checked disabled title="Globally available"
-                       {{else}}
-                         {{#if (lookup ../networkAvailability id)}}checked{{/if}}
-                       {{/if}}>
-                <i class="fas {{theme.icon}}" style="color: {{theme.color}}"></i>
+              {{#if availability.global}}
+              <label class="ncm-netmgr__scene-net-check ncm-netmgr__scene-net-check--active ncm-netmgr__scene-net-check--global">
+                <input type="checkbox" name="netAvail_{{id}}" checked disabled>
+                <span class="ncm-netmgr__scene-net-check-icon" style="color: {{theme.color}};">
+                  <i class="fas {{theme.icon}}"></i>
+                </span>
                 {{name}}
-                {{#if availability.global}}<span class="ncm-tag ncm-tag--dim">GLOBAL</span>{{/if}}
+                <span class="ncm-netmgr__tag ncm-netmgr__tag--core" style="font-size:6px; margin-left:2px;">GLOBAL</span>
               </label>
+              {{else}}
+              <label class="ncm-netmgr__scene-net-check {{#if (lookup ../networkAvailability id)}}ncm-netmgr__scene-net-check--active{{/if}}">
+                <input type="checkbox" name="netAvail_{{id}}"
+                       {{#if (lookup ../networkAvailability id)}}checked{{/if}}>
+                <span class="ncm-netmgr__scene-net-check-icon" style="color: {{theme.color}};">
+                  <i class="fas {{theme.icon}}"></i>
+                </span>
+                {{name}}
+              </label>
+              {{/if}}
               {{/each}}
             </div>
+            {{/if}}
           </div>
         </div>
 
-        <div class="ncm-scene-config-card__footer">
-          <button class="ncm-btn ncm-btn--sm ncm-btn--primary" data-action="saveSceneConfig">
+        {{!-- Scene Card Footer --}}
+        {{#unless deadZone}}
+        <div class="ncm-netmgr__scene-card-footer">
+          <button class="ncm-netmgr__btn-sm ncm-netmgr__btn-sm--primary" data-action="saveSceneConfig">
             <i class="fas fa-save"></i> Save
           </button>
         </div>
+        {{/unless}}
       </div>
       {{/each}}
     </div>
     {{else}}
-    <div class="ncm-empty-state">
-      <i class="fas fa-map ncm-empty-state__icon"></i>
-      <p class="ncm-empty-state__text">No scenes found</p>
+    <div class="ncm-netmgr__empty-state">
+      <i class="fas fa-map ncm-netmgr__empty-state-icon"></i>
+      <span class="ncm-netmgr__empty-state-text">No scenes found</span>
+      <span class="ncm-netmgr__empty-state-sub">Create scenes in Foundry to configure network availability.</span>
     </div>
     {{/if}}
   </div>
+
+  {{!-- Scene Tab Shortcuts --}}
+  <div class="ncm-netmgr__shortcuts">
+    <div class="ncm-netmgr__shortcut"><span class="ncm-netmgr__shortcut-key">Ctrl+S</span> Save all</div>
+    <div class="ncm-netmgr__shortcut"><span class="ncm-netmgr__shortcut-key">Esc</span> Close</div>
+  </div>
   {{/if}}
 
+
   {{!-- ═══════════════════════════════════════════════════════
-       TAB: Logs
+       TAB 3: ACCESS LOGS
        ═══════════════════════════════════════════════════════ --}}
   {{#if isLogsTab}}
-  <div class="ncm-tab-content ncm-tab-content--logs">
+  <div class="ncm-netmgr__content">
 
-    {{!-- Active Lockouts --}}
+    {{!-- Lockout Banner --}}
     {{#if hasLockouts}}
-    <div class="ncm-lockout-section">
-      <h3 class="ncm-section-title ncm-text--danger"><i class="fas fa-ban"></i> Active Lockouts</h3>
-      <div class="ncm-lockout-list">
-        {{#each lockouts}}
-        <div class="ncm-lockout-item">
-          <span class="ncm-lockout-item__actor">{{actorName}}</span>
-          <span class="ncm-lockout-item__target">→ {{targetName}}</span>
-          <span class="ncm-lockout-item__time ncm-text--warn">{{remainingFormatted}}</span>
-          <button class="ncm-btn ncm-btn--xs ncm-btn--ghost"
-                  data-action="resetSecurity" data-actor-id="{{actorId}}" data-target-id="{{targetId}}">
-            <i class="fas fa-unlock"></i>
-          </button>
+    <div class="ncm-netmgr__lockout-banner">
+      <i class="fas fa-lock ncm-netmgr__lockout-banner-icon"></i>
+      <span class="ncm-netmgr__lockout-banner-text">
+        Active lockouts detected — players blocked from network access
+      </span>
+      <span class="ncm-netmgr__lockout-banner-count">{{lockouts.length}}</span>
+      <button class="ncm-netmgr__btn-sm ncm-netmgr__btn-sm--danger" data-action="resetSecurity">
+        <i class="fas fa-unlock"></i> Clear All
+      </button>
+    </div>
+    {{/if}}
+
+    {{!-- Log Toolbar --}}
+    <div class="ncm-netmgr__log-toolbar">
+      <div class="ncm-netmgr__log-filter-group">
+        <button class="ncm-netmgr__log-filter-btn ncm-netmgr__log-filter-btn--active"
+                data-action="filterLogs" data-filter="all">All</button>
+        <button class="ncm-netmgr__log-filter-btn"
+                data-action="filterLogs" data-filter="auth">Auth</button>
+        <button class="ncm-netmgr__log-filter-btn"
+                data-action="filterLogs" data-filter="switch">Switch</button>
+        <button class="ncm-netmgr__log-filter-btn"
+                data-action="filterLogs" data-filter="lockout">Lockout</button>
+        <button class="ncm-netmgr__log-filter-btn"
+                data-action="filterLogs" data-filter="hack">Hack</button>
+      </div>
+      <div class="ncm-netmgr__log-toolbar-spacer"></div>
+      <button class="ncm-netmgr__btn-sm" data-action="exportLogs">
+        <i class="fas fa-file-export"></i> Export
+      </button>
+      <button class="ncm-netmgr__btn-sm ncm-netmgr__btn-sm--danger" data-action="clearLogs">
+        <i class="fas fa-trash"></i> Clear
+      </button>
+    </div>
+
+    {{!-- Log Entries --}}
+    <div class="ncm-netmgr__log-list">
+      {{#if logEntries.length}}
+        {{#each logEntries}}
+        <div class="ncm-netmgr__log-entry">
+          <span class="ncm-netmgr__log-entry-time">{{displayTime}}</span>
+          <span class="ncm-netmgr__log-entry-icon ncm-netmgr__log-entry-icon--{{typeClass}}">
+            <i class="fas {{typeIcon}}"></i>
+          </span>
+          <span class="ncm-netmgr__log-entry-actor">{{actorName}}</span>
+          <span class="ncm-netmgr__log-entry-action">{{message}}</span>
+          <span class="ncm-netmgr__log-entry-network">{{networkName}}</span>
         </div>
         {{/each}}
-      </div>
+      {{else}}
+        <div class="ncm-netmgr__empty-state" style="padding: 40px 0;">
+          <i class="fas fa-clipboard-list ncm-netmgr__empty-state-icon"></i>
+          <span class="ncm-netmgr__empty-state-text">No log entries</span>
+          <span class="ncm-netmgr__empty-state-sub">Network activity will appear here.</span>
+        </div>
+      {{/if}}
     </div>
-    {{/if}}
+  </div>
 
-    {{!-- Log Actions --}}
-    <div class="ncm-log-actions">
-      <h3 class="ncm-section-title">Access Log ({{logCount}} entries)</h3>
-      <div>
-        <button class="ncm-btn ncm-btn--sm ncm-btn--ghost" data-action="exportLogs">
-          <i class="fas fa-download"></i> Export
-        </button>
-        <button class="ncm-btn ncm-btn--sm ncm-btn--danger" data-action="clearLogs">
-          <i class="fas fa-trash"></i> Clear
-        </button>
-      </div>
-    </div>
-
-    {{!-- Log Table --}}
-    {{#if logEntries.length}}
-    <div class="ncm-log-table-wrap">
-      <table class="ncm-log-table">
-        <thead>
-          <tr>
-            <th>Time</th>
-            <th>Event</th>
-            <th>Network</th>
-            <th>User</th>
-            <th>Details</th>
-          </tr>
-        </thead>
-        <tbody>
-          {{#each logEntries}}
-          <tr class="ncm-log-row ncm-log-row--{{type}}">
-            <td class="ncm-log-cell--time">{{displayTime}}</td>
-            <td>
-              <i class="fas {{typeIcon}}"></i> {{typeLabel}}
-            </td>
-            <td>{{networkName}}</td>
-            <td>{{userName}}</td>
-            <td class="ncm-log-cell--detail">
-              {{#if method}}{{method}}{{/if}}
-              {{#if skillName}} ({{skillName}}){{/if}}
-              {{#if rollTotal}} Roll: {{rollTotal}} vs DC {{dc}}{{/if}}
-              {{#if reason}} — {{reason}}{{/if}}
-            </td>
-          </tr>
-          {{/each}}
-        </tbody>
-      </table>
-    </div>
-    {{else}}
-    <div class="ncm-empty-state">
-      <i class="fas fa-clipboard-list ncm-empty-state__icon"></i>
-      <p class="ncm-empty-state__text">No log entries</p>
-      <p class="ncm-empty-state__sub">Network events will appear here.</p>
-    </div>
-    {{/if}}
+  {{!-- Log Tab Shortcuts --}}
+  <div class="ncm-netmgr__shortcuts">
+    <div class="ncm-netmgr__shortcut"><span class="ncm-netmgr__shortcut-key">F</span> Filter</div>
+    <div class="ncm-netmgr__shortcut"><span class="ncm-netmgr__shortcut-key">Ctrl+E</span> Export</div>
+    <div class="ncm-netmgr__shortcut"><span class="ncm-netmgr__shortcut-key">Esc</span> Close</div>
   </div>
   {{/if}}
 
