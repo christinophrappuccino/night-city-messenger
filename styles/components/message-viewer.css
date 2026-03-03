@@ -45,6 +45,12 @@
  *  §18  Utility
  * ═══════════════════════════════════════════════════════════════════════════ */
 
+/* ═══════════════════════════════════════════════════════════
+   §0  FOUNDRY WINDOW OVERRIDE
+   ═══════════════════════════════════════════════════════════ */
+.ncm-app > .window-content {
+  overflow: visible;
+}
 
 /* ═══════════════════════════════════════════════════════════
    §1  LAYOUT SHELL
@@ -56,7 +62,7 @@
   height: 100%;
   background: var(--ncm-bg-deep);
   color: var(--ncm-text-primary);
-  overflow: hidden;
+  overflow: visible;
   container-type: inline-size;
 }
 
@@ -75,7 +81,7 @@
   border-bottom: 1px solid var(--ncm-border);
   flex-shrink: 0;
   min-height: 52px;
-  overflow: hidden;
+  overflow: visible;
 }
 
 
@@ -181,6 +187,7 @@
   transition: border-color 0.15s;
   flex-shrink: 0;
   position: relative;
+  z-index: var(--ncm-z-dropdown, 100);
 }
 
 .ncm-app .ncm-inbox-network:hover {
@@ -1634,7 +1641,7 @@
    §14  DROPDOWNS
    ═══════════════════════════════════════════════════════════ */
 
-.ncm-app .ncm-network-dropdown,
+/* ── Sort Dropdown (inbox tab bar) ── */
 .ncm-app .ncm-sort-dropdown {
   position: absolute;
   top: 100%;
@@ -1648,7 +1655,6 @@
   overflow: hidden;
 }
 
-.ncm-app .ncm-network-option,
 .ncm-app .ncm-sort-option {
   display: flex;
   align-items: center;
@@ -1661,31 +1667,22 @@
   transition: all 0.1s ease;
 }
 
-.ncm-app .ncm-network-option:hover,
 .ncm-app .ncm-sort-option:hover {
   background: var(--ncm-bg-surface);
   color: var(--ncm-text-primary);
 }
 
-.ncm-app .ncm-network-option--active,
 .ncm-app .ncm-sort-option--active {
   color: var(--ncm-secondary);
   background: rgba(25, 243, 247, 0.05);
 }
 
-.ncm-app .ncm-network-option__icon,
-.ncm-app .ncm-network-option__lock {
-  font-size: 10px;
-}
-
-.ncm-app .ncm-network-option__lock {
-  margin-left: auto;
-  color: var(--ncm-accent, #f7c948);
-}
-
-.ncm-app .ncm-network-option__name {
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
+/* ── Network Selector Wrapper (WP-5 — styles in network-selector.css) ── */
+.ncm-app .ncm-net-selector-wrap {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: var(--ncm-z-dropdown, 100);
 }
 
 

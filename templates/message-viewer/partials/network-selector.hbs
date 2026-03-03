@@ -1,0 +1,109 @@
+{{!--
+  Network Selector — Player Dropdown Popup
+  @file templates/message-viewer/partials/network-selector.hbs
+  @module cyberpunkred-messenger
+  @description Compact popup for switching networks from the inbox header.
+    Mockup reference: ncm-network-dialogs-mockup.html — Section 2.
+
+    Two states:
+      A) Normal — lists available, locked, and unavailable networks
+      B) Dead zone — empty state with queued message count
+
+    Data contract — supplied by MessageViewerApp._prepareContext():
+      isDeadZone           boolean
+      selectorNetworks     [{ id, name, type, typeLabel, icon, color,
+                              signalStrength, state: 'active'|'locked'|'unavailable',
+                              requiresAuth, isAuthenticated }]
+      currentNetwork       { id, name }
+      signalStrength       number (0-100)
+      queuedMessageCount   number
+      currentSceneName     string
+      availableCount       number
+--}}
+
+<div class="ncm-net-selector {{#if isDeadZone}}ncm-net-selector--deadzone{{/if}}">
+
+  {{!-- ── Accent stripe at top (CSS handles color) ── --}}
+
+  {{!-- ── Header ── --}}
+  <div class="ncm-net-selector__header {{#if isDeadZone}}ncm-net-selector__header--deadzone{{/if}}">
+    {{#if isDeadZone}}
+      <span class="ncm-net-selector__header-label ncm-net-selector__header-label--danger">No Signal</span>
+    {{else}}
+      <span class="ncm-net-selector__header-label">Available Networks</span>
+    {{/if}}
+    <div class="ncm-net-selector__signal">
+      <div class="ncm-net-selector__signal-bar {{#if (gte signalStrength 20)}}ncm-net-selector__signal-bar--active{{/if}} {{#if isDeadZone}}ncm-net-selector__signal-bar--dead{{/if}}" style="height:3px"></div>
+      <div class="ncm-net-selector__signal-bar {{#if (gte signalStrength 40)}}ncm-net-selector__signal-bar--active{{/if}}" style="height:6px"></div>
+      <div class="ncm-net-selector__signal-bar {{#if (gte signalStrength 60)}}ncm-net-selector__signal-bar--active{{/if}}" style="height:9px"></div>
+      <div class="ncm-net-selector__signal-bar {{#if (gte signalStrength 80)}}ncm-net-selector__signal-bar--active{{/if}}" style="height:12px"></div>
+    </div>
+  </div>
+
+  {{!-- ── Dead Zone Empty State ── --}}
+  {{#if isDeadZone}}
+    <div class="ncm-net-selector__deadzone-body">
+      <div class="ncm-net-selector__deadzone-icon"><i class="fas fa-ban"></i></div>
+      <div class="ncm-net-selector__deadzone-title">Dead Zone</div>
+      <div class="ncm-net-selector__deadzone-msg">All signals jammed in this area.</div>
+      {{#if queuedMessageCount}}
+        <div class="ncm-net-selector__deadzone-queue">
+          <i class="fas fa-clock"></i> {{queuedMessageCount}} message{{#if (gt queuedMessageCount 1)}}s{{/if}} queued for delivery
+        </div>
+      {{/if}}
+    </div>
+
+  {{else}}
+    {{!-- ── Network List ── --}}
+    <div class="ncm-net-selector__list">
+      {{#each selectorNetworks}}
+        <div class="ncm-net-option ncm-net-option--{{this.state}}"
+             data-action="selectNetwork"
+             data-network-id="{{this.id}}"
+             title="{{this.name}} — {{this.typeLabel}}">
+
+          {{!-- Left color border handled by CSS based on --state class --}}
+
+          {{!-- Icon Badge --}}
+          <div class="ncm-net-option__icon"
+               style="background: {{this.color}}14; color: {{this.color}}; border: 1px solid {{this.color}}26;">
+            <i class="fas {{this.icon}}"></i>
+          </div>
+
+          {{!-- Info --}}
+          <div class="ncm-net-option__info">
+            <div class="ncm-net-option__name">{{this.name}}</div>
+            <div class="ncm-net-option__type">
+              {{#if (eq this.state 'unavailable')}}
+                Not available in this area
+              {{else}}
+                {{this.typeLabel}} — {{this.signalStrength}}% signal
+              {{/if}}
+            </div>
+          </div>
+
+          {{!-- State Badge --}}
+          <div class="ncm-net-option__badges">
+            {{#if (eq this.state 'active')}}
+              <i class="fas fa-check ncm-net-option__check"></i>
+            {{/if}}
+            {{#if (eq this.state 'locked')}}
+              <i class="fas fa-lock ncm-net-option__lock"></i>
+            {{/if}}
+          </div>
+        </div>
+      {{/each}}
+    </div>
+  {{/if}}
+
+  {{!-- ── Footer: Scene Context ── --}}
+  <div class="ncm-net-selector__footer {{#if isDeadZone}}ncm-net-selector__footer--deadzone{{/if}}">
+    <i class="fas fa-map-marker-alt {{#if isDeadZone}}ncm-net-selector__footer-icon--danger{{/if}}"></i>
+    {{#if isDeadZone}}
+      <span class="ncm-net-selector__footer-text--danger">{{currentSceneName}} — DEAD ZONE</span>
+    {{else}}
+      {{currentSceneName}} — {{availableCount}} network{{#if (gt availableCount 1)}}s{{/if}} available
+    {{/if}}
+  </div>
+
+</div>

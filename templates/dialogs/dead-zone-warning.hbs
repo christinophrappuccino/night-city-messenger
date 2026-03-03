@@ -1,0 +1,64 @@
+{{!--
+  Dead Zone Warning Overlay
+  @file templates/dialogs/dead-zone-warning.hbs
+  @module cyberpunkred-messenger
+  @description Full-width alert shown when a player enters a dead zone scene.
+    Mockup reference: ncm-network-dialogs-mockup.html — Section 3.
+
+    Data contract — supplied by DeadZoneWarningApp._prepareContext():
+      sceneName            string
+      queuedMessageCount   number
+      hasQueuedMessages    boolean
+--}}
+
+<div class="ncm-deadzone-overlay">
+
+  <div class="ncm-deadzone__body">
+
+    {{!-- Pulsing Icon Ring --}}
+    <div class="ncm-deadzone__icon-ring">
+      <i class="fas fa-signal-slash"></i>
+    </div>
+
+    {{!-- Glitch Title --}}
+    <div class="ncm-deadzone__title">// NO SIGNAL //</div>
+
+    {{!-- Scene Name --}}
+    <div class="ncm-deadzone__scene">Entering: {{sceneName}}</div>
+
+    {{!-- Message --}}
+    <div class="ncm-deadzone__msg">
+      All wireless signals are jammed in this area.<br>
+      Your device cannot send or receive transmissions until you leave the dead zone.
+    </div>
+
+    {{!-- Effect Tags --}}
+    <div class="ncm-deadzone__effects">
+      <span class="ncm-deadzone__effect"><i class="fas fa-envelope-slash"></i> No messaging</span>
+      <span class="ncm-deadzone__effect"><i class="fas fa-wifi-slash"></i> No network</span>
+      <span class="ncm-deadzone__effect"><i class="fas fa-database"></i> No shard sync</span>
+    </div>
+
+    {{!-- Queue Notice --}}
+    {{#if hasQueuedMessages}}
+      <div class="ncm-deadzone__queue-notice">
+        <i class="fas fa-clock"></i>
+        {{queuedMessageCount}} outgoing message{{#if (gt queuedMessageCount 1)}}s{{/if}} queued for delivery when signal is restored.
+      </div>
+    {{else}}
+      <div class="ncm-deadzone__queue-notice">
+        <i class="fas fa-clock"></i>
+        Outgoing messages will be queued and delivered when signal is restored.
+      </div>
+    {{/if}}
+
+  </div>
+
+  {{!-- Footer --}}
+  <div class="ncm-deadzone__footer">
+    <button type="button" class="ncm-btn ncm-btn--danger ncm-btn--sm" data-action="acknowledge">
+      <i class="fas fa-check"></i> Acknowledged
+    </button>
+  </div>
+
+</div>

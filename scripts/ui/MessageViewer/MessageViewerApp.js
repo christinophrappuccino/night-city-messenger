@@ -24,6 +24,7 @@
  */
 
 import { BaseApplication } from '../BaseApplication.js';
+import { NetworkAuthDialog } from '../NetworkManagement/NetworkAuthDialog.js';
 import {
   computeSignalBar,
   getInitials,
@@ -36,6 +37,7 @@ import {
   getNetworkAccentColor,
   getThreatBadgeData,
 } from '../../utils/designHelpers.js';
+import { EVENTS } from '../../utils/constants.js';
 
 const MODULE_ID = 'cyberpunkred-messenger';
 const MESSAGES_PER_PAGE = 25;
@@ -210,6 +212,77 @@ export class MessageViewerApp extends BaseApplication {
     }
   }
 
+  /**
+   * Build enriched network list for the selector dropdown.
+   * Each network gets a `state` property: 'active' | 'locked' | 'unavailable'.
+   * Shows ALL known networks so players can see what's unavailable in this scene.
+   * @returns {{ selectorNetworks: object[], availableCount: number }}
+   */
+  _buildSelectorNetworks() {
+    const networkService = this.networkService;
+    if (!networkService) return { selectorNetworks: [], availableCount: 0 };
+
+    const isDeadZone = networkService.isDeadZone;
+    if (isDeadZone) return { selectorNetworks: [], availableCount: 0 };
+
+    const allNetworks = networkService.getAllNetworks?.() ?? [];
+    const availableIds = new Set(
+      (networkService.getAvailableNetworks?.() ?? []).map(n => n.id)
+    );
+    const currentId = networkService.currentNetworkId;
+
+    const typeLabels = {
+      public: 'Public Subnet',
+      hidden: 'Hidden Subnet',
+      corporate: 'Corporate Subnet',
+      government: 'Government Subnet',
+      custom: 'Custom Subnet',
+    };
+
+    let availableCount = 0;
+
+    const selectorNetworks = allNetworks.map(net => {
+      const isAvailable = availableIds.has(net.id);
+      const isActive = net.id === currentId;
+      const requiresAuth = net.security?.requiresAuth ?? false;
+      const isAuthenticated = networkService.isAuthenticated?.(net.id) ?? false;
+      const isGM = game.user?.isGM ?? false;
+
+      let state;
+      if (!isAvailable) {
+        state = 'unavailable';
+      } else if (isActive) {
+        state = 'active';
+        availableCount++;
+      } else if (requiresAuth && !isAuthenticated && !isGM) {
+        state = 'locked';
+        availableCount++;
+      } else {
+        state = 'available';
+        availableCount++;
+      }
+
+      return {
+        id: net.id,
+        name: net.name,
+        type: net.type,
+        typeLabel: typeLabels[net.type] || 'Subnet',
+        icon: net.theme?.icon ?? 'fa-wifi',
+        color: net.theme?.color ?? '#19f3f7',
+        signalStrength: net.signalStrength ?? 75,
+        state,
+        requiresAuth,
+        isAuthenticated,
+      };
+    });
+
+    // Sort: active first, then available, then locked, then unavailable
+    const stateOrder = { active: 0, available: 1, locked: 2, unavailable: 3 };
+    selectorNetworks.sort((a, b) => (stateOrder[a.state] ?? 9) - (stateOrder[b.state] ?? 9));
+
+    return { selectorNetworks, availableCount };
+  }
+
   _signalToLevel(strength) {
     if (strength === 0) return 'dead';
     if (strength <= 25) return 'weak';
@@ -297,6 +370,9 @@ export class MessageViewerApp extends BaseApplication {
     const availableNetworks = this._getAvailableNetworks();
     const signalStrength = this.networkService?.getSignalStrength?.() ?? 100;
     const signalLevel = this._signalToLevel(signalStrength);
+    const isDeadZone = this.networkService?.isDeadZone ?? false;
+    const { selectorNetworks, availableCount } = this._buildSelectorNetworks();
+    const currentSceneName = game.scenes?.viewed?.name || 'Unknown Area';
 
     // Signal bar data for design system partial
     const signalData = computeSignalBar(signalStrength);
@@ -334,6 +410,10 @@ export class MessageViewerApp extends BaseApplication {
       signalLevel,
       signalQuality,
       signalSegments,
+      isDeadZone,
+      selectorNetworks,
+      availableCount,
+      currentSceneName,
 
       // HUD Strip
       connectionStatus,
@@ -385,9 +465,19 @@ export class MessageViewerApp extends BaseApplication {
   /** @override */
   _onRender(context, options) {
     super._onRender?.(context, options);
-
     const html = this.element;
     if (!html) return;
+
+    // ── Re-render on network state changes ──
+    if (!this._networkChangeListenerBound) {
+      const eventBus = game.nightcity?.eventBus;
+      if (eventBus) {
+        eventBus.on(EVENTS.NETWORK_CHANGED, () => this.render());
+        eventBus.on(EVENTS.NETWORK_CONNECTED, () => this.render());
+        eventBus.on(EVENTS.NETWORK_DISCONNECTED, () => this.render());
+        this._networkChangeListenerBound = true;
+      }
+    }
 
     // Delegated click handler
     html.addEventListener('click', (event) => this._onDelegatedClick(event));
@@ -438,14 +528,14 @@ export class MessageViewerApp extends BaseApplication {
       case 'toggle-sort-dropdown':
         this._toggleDropdown('.ncm-sort-dropdown', target);
         break;
-      case 'toggle-network-dropdown':
-        this._toggleDropdown('.ncm-network-dropdown', target);
+      case 'toggleNetworkSelector':
+        this._toggleNetworkSelector(target);
         break;
       case 'toggle-network-filter':
         this._toggleDropdown('.ncm-network-filter-dropdown', target);
         break;
-      case 'switch-network':
-        this._switchNetwork(target.dataset.networkId);
+      case 'selectNetwork':
+        this._onSelectNetwork(target.dataset.networkId);
         break;
       case 'filter-network':
         this._setNetworkFilter(target.dataset.network);
@@ -652,8 +742,39 @@ export class MessageViewerApp extends BaseApplication {
     this.soundService?.play?.('click');
   }
 
-  _switchNetwork(networkId) {
-    this.networkService?.switchNetwork?.(networkId);
+  /**
+   * Handle network selection from the selector dropdown.
+   * If the network requires auth and the player isn't authenticated,
+   * shows the NetworkAuthDialog first. On success, switches.
+   * @param {string} networkId
+   */
+  async _onSelectNetwork(networkId) {
+    if (!networkId) return;
+    this._closeNetworkSelector();
+
+    const networkService = this.networkService;
+    if (!networkService) return;
+
+    const network = networkService.getNetwork?.(networkId);
+    if (!network) return;
+
+    // Check if auth is required
+    const requiresAuth = network.security?.requiresAuth ?? false;
+    const isAuthenticated = networkService.isAuthenticated?.(networkId) ?? false;
+    const isGM = game.user?.isGM ?? false;
+
+    if (requiresAuth && !isAuthenticated && !isGM) {
+      // Show auth dialog
+      const result = await NetworkAuthDialog.show(networkId);
+      if (!result.success) return; // Cancelled or failed
+    }
+
+    // Switch to the network
+    const switchResult = networkService.switchNetwork?.(networkId);
+    if (switchResult?.success === false) {
+      ui.notifications.warn(`NCM | Could not switch to ${network.name}: ${switchResult.reason || 'unknown error'}`);
+    }
+
     this.render();
   }
 
@@ -927,17 +1048,46 @@ export class MessageViewerApp extends BaseApplication {
     if (!html) return;
 
     // Close all other dropdowns first
-    html.querySelectorAll('.ncm-network-dropdown, .ncm-sort-dropdown, .ncm-network-filter-dropdown')
+    html.querySelectorAll('.ncm-net-selector-wrap, .ncm-sort-dropdown, .ncm-network-filter-dropdown')
       .forEach(d => {
         if (!d.matches(selector)) d.classList.add('ncm-hidden');
       });
 
     // Find the dropdown relative to the trigger
-    const container = triggerEl.closest('.ncm-network-badge, .ncm-inbox-network, .ncm-tab-control, .ncm-sort-control, .ncm-network-filter-control');
+    const container = triggerEl.closest('.ncm-inbox-network, .ncm-tab-control, .ncm-sort-control, .ncm-network-filter-control');
     const dropdown = container?.querySelector(selector);
     if (dropdown) {
       dropdown.classList.toggle('ncm-hidden');
     }
+  }
+
+  /**
+   * Toggle the WP-5 network selector dropdown.
+   * Closes all other dropdowns first.
+   * @param {HTMLElement} triggerEl
+   */
+  _toggleNetworkSelector(triggerEl) {
+    const html = this.element;
+    if (!html) return;
+
+    // Close other dropdowns
+    html.querySelectorAll('.ncm-sort-dropdown, .ncm-network-filter-dropdown')
+      .forEach(d => d.classList.add('ncm-hidden'));
+
+    // Find the selector wrap
+    const container = triggerEl.closest('.ncm-inbox-network');
+    const selectorWrap = container?.querySelector('.ncm-net-selector-wrap');
+    if (selectorWrap) {
+      selectorWrap.classList.toggle('ncm-hidden');
+    }
+  }
+
+  /**
+   * Close the network selector dropdown.
+   */
+  _closeNetworkSelector() {
+    const wrap = this.element?.querySelector('.ncm-net-selector-wrap');
+    wrap?.classList.add('ncm-hidden');
   }
 
   // ═══════════════════════════════════════════════════════════

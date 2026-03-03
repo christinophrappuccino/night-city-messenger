@@ -46,8 +46,8 @@
     {{!-- Divider --}}
     <div class="ncm-header-divider"></div>
 
-    {{!-- Network Badge — compact clickable pill --}}
-    <div class="ncm-inbox-network" data-action="toggle-network-dropdown">
+    {{!-- Network Badge — compact clickable pill with full selector dropdown --}}
+    <div class="ncm-inbox-network" data-action="toggleNetworkSelector">
       <span class="ncm-inbox-network__dot ncm-inbox-network__dot--{{connectionStatus}}"></span>
       <span class="ncm-inbox-network__name">{{currentNetwork.name}}</span>
 
@@ -61,19 +61,9 @@
 
       <i class="fas fa-caret-down ncm-inbox-network__caret"></i>
 
-      {{!-- Network Dropdown --}}
-      <div class="ncm-network-dropdown ncm-hidden">
-        {{#each availableNetworks}}
-        <div class="ncm-network-option {{#if this.active}}ncm-network-option--active{{/if}}"
-             data-action="switch-network"
-             data-network-id="{{this.id}}">
-          <i class="{{this.icon}} ncm-network-option__icon"></i>
-          <span class="ncm-network-option__name">{{this.name}}</span>
-          {{#if this.requiresAuth}}
-            <i class="fas fa-lock ncm-network-option__lock"></i>
-          {{/if}}
-        </div>
-        {{/each}}
+      {{!-- WP-5: Full Network Selector Dropdown --}}
+      <div class="ncm-net-selector-wrap ncm-hidden">
+        {{> "modules/cyberpunkred-messenger/templates/message-viewer/partials/network-selector.hbs"}}
       </div>
     </div>
 

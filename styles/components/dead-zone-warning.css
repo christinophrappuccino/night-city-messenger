@@ -1,0 +1,217 @@
+/**
+ * Dead Zone Warning Overlay
+ * @file styles/components/dead-zone-warning.css
+ * @module cyberpunkred-messenger
+ * @description Full-screen alert overlay for dead zone scene entry.
+ *              Mockup reference: ncm-network-dialogs-mockup.html — Section 3.
+ *
+ *              CSS scoped under .ncm-app .ncm-deadzone-overlay.
+ */
+
+/* ═══════════════════════════════════════════════════════════
+   Container
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-deadzone-overlay {
+  padding: 0;
+  background: var(--ncm-bg-deep, #0a0a0f);
+  border: 1px solid rgba(255, 0, 51, 0.25);
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Red accent stripe */
+.ncm-app .ncm-deadzone-overlay::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--ncm-danger, #ff0033);
+  z-index: 10;
+}
+
+/* Scanline + subtle red gradient overlay */
+.ncm-app .ncm-deadzone-overlay::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 50;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      transparent, transparent 2px,
+      rgba(0, 0, 0, 0.06) 2px, rgba(0, 0, 0, 0.06) 4px
+    ),
+    linear-gradient(180deg, transparent 0%, rgba(255, 0, 51, 0.03) 100%);
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   Body
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-deadzone__body {
+  padding: 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+  z-index: 1;
+}
+
+
+/* ── Pulsing Icon Ring ── */
+
+.ncm-app .ncm-deadzone__icon-ring {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(255, 0, 51, 0.06);
+  border: 2px solid rgba(255, 0, 51, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  color: var(--ncm-danger, #ff0033);
+  animation: ncm-dz-pulse 2s ease infinite;
+  position: relative;
+}
+
+.ncm-app .ncm-deadzone__icon-ring::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 0, 51, 0.1);
+  animation: ncm-dz-pulse 2s ease infinite 0.5s;
+}
+
+.ncm-app .ncm-deadzone__icon-ring i {
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes ncm-dz-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+
+/* ── Title ── */
+
+.ncm-app .ncm-deadzone__title {
+  font-family: var(--ncm-font-title, 'Orbitron', sans-serif);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ncm-danger, #ff0033);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  animation: ncm-dz-glitch 3s infinite;
+}
+
+@keyframes ncm-dz-glitch {
+  0%, 100% { opacity: 1; transform: translate(0); }
+  20% { opacity: 0.8; transform: translate(-1px, 1px); }
+  40% { opacity: 1; transform: translate(1px, -1px); }
+  60% { opacity: 0.9; transform: translate(-1px, 0); }
+  80% { opacity: 1; transform: translate(0, 1px); }
+}
+
+
+/* ── Scene Name ── */
+
+.ncm-app .ncm-deadzone__scene {
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ncm-text-primary, #e0e0e8);
+}
+
+
+/* ── Message ── */
+
+.ncm-app .ncm-deadzone__msg {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 9px;
+  color: var(--ncm-text-muted, #555570);
+  line-height: 1.6;
+  max-width: 300px;
+}
+
+
+/* ── Effect Tags ── */
+
+.ncm-app .ncm-deadzone__effects {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.ncm-app .ncm-deadzone__effect {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 8px;
+  padding: 3px 8px;
+  border-radius: 2px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255, 0, 51, 0.04);
+  border: 1px solid rgba(255, 0, 51, 0.12);
+  color: var(--ncm-danger, #ff0033);
+}
+
+.ncm-app .ncm-deadzone__effect i {
+  font-size: 8px;
+}
+
+
+/* ── Queue Notice ── */
+
+.ncm-app .ncm-deadzone__queue-notice {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 9px;
+  color: var(--ncm-accent, #f7c948);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border-radius: 2px;
+  background: rgba(247, 201, 72, 0.04);
+  border: 1px solid rgba(247, 201, 72, 0.12);
+  margin-top: 4px;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   Footer
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-deadzone__footer {
+  padding: 8px 16px;
+  border-top: 1px solid rgba(255, 0, 51, 0.12);
+  background: var(--ncm-bg-base, #12121a);
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  position: relative;
+  z-index: 1;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   Reduced Animations
+   ═══════════════════════════════════════════════════════════ */
+
+[data-ncm-animation-level="reduced"] .ncm-app .ncm-deadzone__icon-ring,
+[data-ncm-animation-level="reduced"] .ncm-app .ncm-deadzone__icon-ring::after {
+  animation: none;
+}
+
+[data-ncm-animation-level="reduced"] .ncm-app .ncm-deadzone__title {
+  animation: none;
+}

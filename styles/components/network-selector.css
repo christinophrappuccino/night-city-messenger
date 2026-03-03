@@ -1,0 +1,318 @@
+/**
+ * Network Selector — Player Dropdown Popup
+ * @file styles/components/network-selector.css
+ * @module cyberpunkred-messenger
+ * @description Compact network selector dropdown triggered from inbox header.
+ *              Mockup reference: ncm-network-dialogs-mockup.html — Section 2.
+ *
+ *              CSS scoped under .ncm-app .ncm-net-selector to avoid
+ *              conflicts with Foundry core or other modules.
+ */
+
+/* ═══════════════════════════════════════════════════════════
+   Container
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-net-selector {
+  width: 280px;
+  background: var(--ncm-bg-deep, #0a0a0f);
+  border: 1px solid var(--ncm-border, #2a2a45);
+  border-radius: 2px;
+  overflow: hidden;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: var(--ncm-z-dropdown, 100);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3);
+  animation: ncm-net-sel-open 0.15s ease;
+}
+
+.ncm-app .ncm-net-selector::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--ncm-secondary, #19f3f7), transparent 60%);
+  z-index: 10;
+}
+
+/* Dead zone variant — red border + accent */
+.ncm-app .ncm-net-selector--deadzone {
+  border-color: rgba(255, 0, 51, 0.2);
+}
+.ncm-app .ncm-net-selector--deadzone::before {
+  background: var(--ncm-danger, #ff0033);
+}
+
+@keyframes ncm-net-sel-open {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   Header
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-net-selector__header {
+  padding: 8px 12px;
+  background: var(--ncm-bg-base, #12121a);
+  border-bottom: 1px solid var(--ncm-border, #2a2a45);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ncm-app .ncm-net-selector__header--deadzone {
+  background: rgba(255, 0, 51, 0.03);
+}
+
+.ncm-app .ncm-net-selector__header-label {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 8px;
+  color: var(--ncm-text-muted, #555570);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  flex: 1;
+}
+
+.ncm-app .ncm-net-selector__header-label--danger {
+  color: var(--ncm-danger, #ff0033);
+}
+
+
+/* ── Signal Bars ── */
+
+.ncm-app .ncm-net-selector__signal {
+  display: flex;
+  align-items: flex-end;
+  gap: 1px;
+  height: 12px;
+}
+
+.ncm-app .ncm-net-selector__signal-bar {
+  width: 3px;
+  border-radius: 1px;
+  background: var(--ncm-bg-elevated, #252540);
+}
+
+.ncm-app .ncm-net-selector__signal-bar--active {
+  background: var(--ncm-success, #00ff41);
+}
+
+.ncm-app .ncm-net-selector__signal-bar--dead {
+  background: var(--ncm-danger, #ff0033);
+  opacity: 0.3;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   Network List
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-net-selector__list {
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+/* 4px scrollbar */
+.ncm-app .ncm-net-selector__list::-webkit-scrollbar { width: 4px; }
+.ncm-app .ncm-net-selector__list::-webkit-scrollbar-track { background: transparent; }
+.ncm-app .ncm-net-selector__list::-webkit-scrollbar-thumb {
+  background: var(--ncm-border, #2a2a45);
+  border-radius: 2px;
+}
+
+
+/* ── Network Option Row ── */
+
+.ncm-app .ncm-net-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(42, 42, 69, 0.3);
+  transition: all 0.12s;
+  position: relative;
+}
+
+/* Left accent border */
+.ncm-app .ncm-net-option::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: transparent;
+  transition: background 0.12s;
+}
+
+.ncm-app .ncm-net-option:hover {
+  background: var(--ncm-bg-surface, #1a1a2e);
+}
+
+/* Active network */
+.ncm-app .ncm-net-option--active {
+  background: var(--ncm-bg-surface, #1a1a2e);
+}
+.ncm-app .ncm-net-option--active::before {
+  background: var(--ncm-success, #00ff41);
+}
+
+/* Locked network */
+.ncm-app .ncm-net-option--locked {
+  opacity: 0.6;
+}
+.ncm-app .ncm-net-option--locked:hover {
+  opacity: 0.8;
+}
+
+/* Unavailable network */
+.ncm-app .ncm-net-option--unavailable {
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+
+/* ── Icon Badge ── */
+
+.ncm-app .ncm-net-option__icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+/* Unavailable icon loses color */
+.ncm-app .ncm-net-option--unavailable .ncm-net-option__icon {
+  color: var(--ncm-text-muted, #555570) !important;
+  background: rgba(136, 136, 160, 0.05) !important;
+  border-color: rgba(136, 136, 160, 0.1) !important;
+}
+
+
+/* ── Info ── */
+
+.ncm-app .ncm-net-option__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.ncm-app .ncm-net-option__name {
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ncm-text-primary, #e0e0e8);
+  text-transform: uppercase;
+}
+
+.ncm-app .ncm-net-option--unavailable .ncm-net-option__name {
+  color: var(--ncm-text-muted, #555570);
+}
+
+.ncm-app .ncm-net-option__type {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 7px;
+  color: var(--ncm-text-muted, #555570);
+  text-transform: uppercase;
+}
+
+
+/* ── State Badges ── */
+
+.ncm-app .ncm-net-option__badges {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.ncm-app .ncm-net-option__lock {
+  font-size: 9px;
+  color: var(--ncm-accent, #f7c948);
+}
+
+.ncm-app .ncm-net-option__check {
+  font-size: 9px;
+  color: var(--ncm-success, #00ff41);
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   Dead Zone Empty State
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-net-selector__deadzone-body {
+  padding: 24px;
+  text-align: center;
+}
+
+.ncm-app .ncm-net-selector__deadzone-icon {
+  font-size: 24px;
+  color: var(--ncm-danger, #ff0033);
+  opacity: 0.4;
+  margin-bottom: 8px;
+}
+
+.ncm-app .ncm-net-selector__deadzone-title {
+  font-family: var(--ncm-font-title, 'Orbitron', sans-serif);
+  font-size: 11px;
+  color: var(--ncm-danger, #ff0033);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.ncm-app .ncm-net-selector__deadzone-msg {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 8px;
+  color: var(--ncm-text-muted, #555570);
+  margin-top: 4px;
+}
+
+.ncm-app .ncm-net-selector__deadzone-queue {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 8px;
+  color: var(--ncm-accent, #f7c948);
+  margin-top: 8px;
+}
+
+.ncm-app .ncm-net-selector__deadzone-queue i {
+  margin-right: 3px;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   Footer: Scene Context
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-net-selector__footer {
+  padding: 6px 12px;
+  background: var(--ncm-bg-base, #12121a);
+  border-top: 1px solid var(--ncm-border, #2a2a45);
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 8px;
+  color: var(--ncm-text-muted, #555570);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ncm-app .ncm-net-selector__footer i {
+  font-size: 7px;
+}
+
+.ncm-app .ncm-net-selector__footer--deadzone {
+  border-color: rgba(255, 0, 51, 0.1);
+}
+
+.ncm-app .ncm-net-selector__footer-icon--danger {
+  color: var(--ncm-danger, #ff0033);
+}
+
+.ncm-app .ncm-net-selector__footer-text--danger {
+  color: var(--ncm-danger, #ff0033);
+}

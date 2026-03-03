@@ -44,6 +44,26 @@ const TOAST_TYPES = {
     icon: 'fas fa-triangle-exclamation',
     titleIcon: 'fas fa-fire',
   },
+  'net-switch': {
+    icon: 'fas fa-arrows-rotate',
+    titleIcon: null,
+  },
+  'net-connect': {
+    icon: 'fas fa-plug',
+    titleIcon: null,
+  },
+  'net-disconnect': {
+    icon: 'fas fa-plug-circle-xmark',
+    titleIcon: null,
+  },
+  'net-auth': {
+    icon: 'fas fa-lock',
+    titleIcon: null,
+  },
+  'net-queue': {
+    icon: 'fas fa-paper-plane',
+    titleIcon: null,
+  },
 };
 
 export class NotificationService {
@@ -210,6 +230,132 @@ export class NotificationService {
       title,
       detail: message,
       duration,
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Network Event Toasts
+  // ═══════════════════════════════════════════════════════════
+
+  /**
+   * Show a "Network Switched" toast.
+   * Triggered by EVENTS.NETWORK_CHANGED when switching between networks.
+   * @param {object} data — EventBus payload
+   * @param {string} data.previousNetworkId
+   * @param {string} data.currentNetworkId
+   * @param {object} data.network — Full network object
+   * @param {number} data.signalStrength
+   * @returns {string} Toast ID
+   */
+  showNetworkSwitch(data) {
+    const networkService = game.nightcity?.networkService;
+    const prevNetwork = networkService?.getNetwork?.(data.previousNetworkId);
+    const prevName = prevNetwork?.name || 'Unknown';
+    const newName = data.network?.name || 'Unknown';
+    const signal = data.signalStrength ?? 0;
+
+    return this.showToastV2({
+      type: 'net-switch',
+      title: 'Network Switched',
+      detail: `${prevName} → ${newName} // Signal ${signal}%`,
+      duration: 4000,
+    });
+  }
+
+  /**
+   * Show a "Connected" toast.
+   * Triggered by EVENTS.NETWORK_CONNECTED (e.g. leaving dead zone,
+   * successful auth, or manual reconnect).
+   * @param {object} data
+   * @param {string} data.networkId
+   * @returns {string} Toast ID
+   */
+  showNetworkConnect(data) {
+    const networkService = game.nightcity?.networkService;
+    const network = networkService?.getNetwork?.(data.networkId);
+    const name = network?.name || 'Unknown';
+    const signal = network?.signalStrength ?? 0;
+
+    return this.showToastV2({
+      type: 'net-connect',
+      title: 'Connected',
+      detail: `Authenticated to ${name} // Signal ${signal}%`,
+      duration: 4000,
+    });
+  }
+
+  /**
+   * Show a "Signal Lost" toast.
+   * Triggered by EVENTS.NETWORK_DISCONNECTED.
+   * @param {object} data
+   * @param {string} data.reason — 'dead_zone' | 'auth_revoked' | etc.
+   * @returns {string} Toast ID
+   */
+  showNetworkDisconnect(data) {
+    const reason = data?.reason || 'unknown';
+    let detail;
+
+    switch (reason) {
+      case 'dead_zone':
+        detail = 'Entered dead zone — messages queued';
+        break;
+      case 'auth_revoked':
+        detail = 'Authentication revoked by network admin';
+        break;
+      default:
+        detail = 'Connection lost — attempting to reconnect';
+    }
+
+    return this.showToastV2({
+      type: 'net-disconnect',
+      title: 'Signal Lost',
+      detail,
+      duration: 5000,
+      priority: 'urgent',
+    });
+  }
+
+  /**
+   * Show an "Auth Required" toast.
+   * Typically triggered when switchNetwork returns reason: 'auth_required',
+   * or can be called directly.
+   * @param {object} data
+   * @param {string} data.networkName — Network name
+   * @param {string} [data.networkId] — Network ID for action routing
+   * @returns {string} Toast ID
+   */
+  showNetworkAuthRequired(data) {
+    const name = data?.networkName || data?.network?.name || 'Unknown';
+    const networkId = data?.networkId || data?.network?.id;
+
+    return this.showToastV2({
+      type: 'net-auth',
+      title: 'Auth Required',
+      detail: `${name} requires authentication to connect`,
+      duration: 5000,
+      actionLabel: networkId ? 'AUTH' : null,
+      onAction: networkId ? () => {
+        game.nightcity?.connectToNetwork?.(networkId);
+      } : null,
+    });
+  }
+
+  /**
+   * Show a "Queue Delivered" toast.
+   * Triggered by EVENTS.QUEUE_FLUSHED when signal is restored.
+   * @param {object} data
+   * @param {number} data.count — Number of messages delivered
+   * @returns {string} Toast ID
+   */
+  showQueueFlush(data) {
+    const count = data?.count ?? 0;
+    if (count === 0) return null;
+
+    return this.showToastV2({
+      type: 'net-queue',
+      title: 'Queue Delivered',
+      detail: `${count} queued message${count !== 1 ? 's' : ''} sent on signal restore`,
+      duration: 5000,
     });
   }
 
@@ -533,6 +679,37 @@ export class NotificationService {
 
     this.eventBus.on(EVENTS.MESSAGE_DELETED, () => {
       this._refreshAllUnreadCounts();
+    });
+
+    // ── Network Event Toasts ──
+
+    this.eventBus.on(EVENTS.NETWORK_CHANGED, (data) => {
+      // Only show toast for actual network switches (not create/update/delete)
+      if (data.previousNetworkId && data.currentNetworkId
+          && data.previousNetworkId !== data.currentNetworkId
+          && data.network) {
+        this.showNetworkSwitch(data);
+      }
+    });
+
+    this.eventBus.on(EVENTS.NETWORK_CONNECTED, (data) => {
+      this.showNetworkConnect(data);
+    });
+
+    this.eventBus.on(EVENTS.NETWORK_DISCONNECTED, (data) => {
+      this.showNetworkDisconnect(data);
+    });
+
+    // NOTE: NETWORK_AUTH_SUCCESS is intentionally NOT wired here.
+    // The auth dialog provides its own success feedback (closes + sound),
+    // and the subsequent switchNetwork() call emits NETWORK_CHANGED which
+    // triggers the switch toast. Wiring auth success would cause a
+    // duplicate "Connected" + "Switched" toast pair within milliseconds.
+    // If you want a standalone auth toast without switching, call
+    // notificationService.showNetworkConnect() manually.
+
+    this.eventBus.on(EVENTS.QUEUE_FLUSHED, (data) => {
+      this.showQueueFlush(data);
     });
   }
 

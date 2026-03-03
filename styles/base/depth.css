@@ -290,14 +290,13 @@
 .ncm-app .ncm-inbox-header {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   position: relative;
-  z-index: var(--ncm-z-sticky, 200);
 }
 
 /* HUD strip sits above header — tiny bottom shadow */
 .ncm-app .ncm-hud-strip {
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
   position: relative;
-  z-index: calc(var(--ncm-z-sticky, 200) + 1);
+  z-index: var(--ncm-z-sticky, 200);
 }
 
 /* Footer floats above content */
@@ -314,7 +313,7 @@
    a strong shadow to float above content.
    ═══════════════════════════════════════════════════════════ */
 
-.ncm-app .ncm-network-dropdown,
+.ncm-app .ncm-net-selector-wrap,
 .ncm-app .ncm-network-filter-dropdown,
 .ncm-app .ncm-sort-dropdown {
   background: var(--ncm-bg-elevated);
@@ -324,7 +323,7 @@
 }
 
 /* Dropdown items hover state */
-.ncm-app .ncm-network-option:hover,
+.ncm-app .ncm-net-option:hover,
 .ncm-app .ncm-network-filter-option:hover,
 .ncm-app .ncm-sort-option:hover {
   background: rgba(255, 255, 255, 0.05);
