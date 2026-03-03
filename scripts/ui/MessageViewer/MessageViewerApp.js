@@ -784,7 +784,6 @@ export class MessageViewerApp extends BaseApplication {
       ui.notifications.warn(`NCM | Could not switch to ${network.name}: ${switchResult.reason || 'unknown error'}`);
     }
 
-    this.render();
   }
 
   _setNetworkFilter(network) {
