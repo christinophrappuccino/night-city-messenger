@@ -257,6 +257,32 @@
   background: var(--ncm-success);
 }
 
+/* ── Dead Zone Badge State ── */
+.ncm-app .ncm-inbox-network--dead {
+  border-color: rgba(255, 0, 51, 0.4);
+  background: rgba(255, 0, 51, 0.08);
+}
+
+.ncm-app .ncm-inbox-network--dead .ncm-inbox-network__name {
+  color: var(--ncm-danger, #ff0033);
+  letter-spacing: 0.05em;
+}
+
+.ncm-app .ncm-inbox-network__dead-icon {
+  font-size: 10px;
+  color: var(--ncm-danger, #ff0033);
+  animation: ncm-dead-blink 2s ease infinite;
+}
+
+@keyframes ncm-dead-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+[data-ncm-animation-level="reduced"] .ncm-app .ncm-inbox-network__dead-icon {
+  animation: none;
+}
+
 /* Caret */
 .ncm-app .ncm-inbox-network__caret {
   font-size: 8px;

@@ -291,6 +291,8 @@ export class MessageViewerApp extends BaseApplication {
   }
 
   _deriveConnectionStatus(signal, network) {
+    const isDeadZone = this.networkService?.isDeadZone ?? false;
+    if (isDeadZone) return 'NO_SIGNAL';
     if (!network || signal === 0) return 'NO_SIGNAL';
     if (signal <= 30) return 'DEGRADED';
     return 'CONNECTED';
@@ -340,10 +342,6 @@ export class MessageViewerApp extends BaseApplication {
     const sorted = this._applySorting(filtered);
     const paginated = this._applyPagination(sorted);
 
-    // §2C: Pass current network name for network badge visibility logic
-    const currentNetwork = this._getCurrentNetworkData();
-    const enriched = await this._enrichMessages(paginated, currentNetwork?.name);
-
     // ── Actor identity for inbox header ──
     const viewingActor = this.actorId ? game.actors?.get(this.actorId) : null;
     const viewingAsPortrait = viewingActor?.img || null;
@@ -367,10 +365,15 @@ export class MessageViewerApp extends BaseApplication {
     }
 
     // ── Network state ──
+    const currentNetwork = this._getCurrentNetworkData();
+    const enriched = await this._enrichMessages(paginated, currentNetwork?.name);
     const availableNetworks = this._getAvailableNetworks();
-    const signalStrength = this.networkService?.getSignalStrength?.() ?? 100;
+    const signalStrength = this.networkService?.signalStrength ?? 100;
     const signalLevel = this._signalToLevel(signalStrength);
     const isDeadZone = this.networkService?.isDeadZone ?? false;
+    const displayNetwork = isDeadZone
+      ? { name: 'NO SIGNAL', id: 'dead_zone' }
+      : currentNetwork;
     const { selectorNetworks, availableCount } = this._buildSelectorNetworks();
     const currentSceneName = game.scenes?.viewed?.name || 'Unknown Area';
 
@@ -404,7 +407,8 @@ export class MessageViewerApp extends BaseApplication {
       isGM: game.user.isGM,
 
       // Network
-      currentNetwork,
+      currentNetwork: displayNetwork,
+      realNetwork: currentNetwork,
       availableNetworks,
       signalStrength,
       signalLevel,
@@ -468,7 +472,7 @@ export class MessageViewerApp extends BaseApplication {
     const html = this.element;
     if (!html) return;
 
-    // ── Re-render on network state changes ──
+    // ── Re-render on network state changes (bind once) ──
     if (!this._networkChangeListenerBound) {
       const eventBus = game.nightcity?.eventBus;
       if (eventBus) {
@@ -479,27 +483,32 @@ export class MessageViewerApp extends BaseApplication {
       }
     }
 
-    // Delegated click handler
-    html.addEventListener('click', (event) => this._onDelegatedClick(event));
+    // Delegated click handler (bind once — element persists across renders)
+    if (!this._delegatedClickBound) {
+      html.addEventListener('click', (event) => this._onDelegatedClick(event));
+      this._delegatedClickBound = true;
+    }
 
     // Search input
     const searchInput = html.querySelector('.ncm-search-input');
-    if (searchInput) {
+    if (searchInput && !searchInput._ncmBound) {
       searchInput.addEventListener('input', (event) => this._onSearchInput(event));
       searchInput.addEventListener('keydown', (event) => {
         if (event.key === 'Escape') this._toggleSearch();
       });
+      searchInput._ncmBound = true;
     }
 
     // Sidebar resize
     const divider = html.querySelector('.ncm-panel-divider');
-    if (divider) {
+    if (divider && !divider._ncmBound) {
       divider.addEventListener('mousedown', (event) => this._onDividerDrag(event));
       divider.addEventListener('dblclick', () => {
         this.sidebarWidth = DIVIDER_RESET_WIDTH;
         this._savePreferences();
         this.render();
       });
+      divider._ncmBound = true;
     }
   }
 

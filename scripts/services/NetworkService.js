@@ -30,6 +30,10 @@ export class NetworkService {
     this._currentNetworkId = NETWORKS.CITINET;
     /** @type {boolean} Dead zone flag */
     this._isDeadZone = false;
+    /** @type {boolean} Dead zone flag */
+    this._isDeadZone = false;
+    /** @type {string|null} Network ID before entering dead zone (for restore) */
+    this._preDeadZoneNetworkId = null;
     /** @type {number} Current signal strength 0-100 */
     this._signalStrength = 75;
     /** @type {Set<string>} Networks the current user is authenticated to */
@@ -597,17 +601,35 @@ export class NetworkService {
     this._isDeadZone = isDead;
 
     if (isDead && !wasDead) {
-      // Entering dead zone
+      // Entering dead zone — save current network for later restore
+      this._preDeadZoneNetworkId = this._currentNetworkId;
       this._signalStrength = 0;
       this.soundService?.play('dead-zone');
       this.eventBus.emit(EVENTS.NETWORK_DISCONNECTED, { reason: 'dead_zone' });
-      log.info('Entered dead zone — NO SIGNAL');
+      log.info(`Entered dead zone — NO SIGNAL (was: ${this._preDeadZoneNetworkId})`);
     } else if (!isDead && wasDead) {
-      // Leaving dead zone
-      this._signalStrength = this.currentNetwork?.signalStrength ?? 75;
+      // Leaving dead zone — restore previous network
+      const restoreId = this._preDeadZoneNetworkId || this._currentNetworkId;
+      this._preDeadZoneNetworkId = null;
+
+      // Check if the previous network is still available in this scene
+      const available = this.getAvailableNetworks();
+      const canRestore = available.some(n => n.id === restoreId);
+
+      if (canRestore) {
+        this._currentNetworkId = restoreId;
+        this._signalStrength = this.currentNetwork?.signalStrength ?? 75;
+        log.info(`Left dead zone — restored to ${restoreId}`);
+      } else {
+        // Fall back to first available or CITINET
+        const fallback = available[0]?.id || NETWORKS.CITINET;
+        this._currentNetworkId = fallback;
+        this._signalStrength = this.currentNetwork?.signalStrength ?? 75;
+        log.info(`Left dead zone — ${restoreId} unavailable, fell back to ${fallback}`);
+      }
+
       this.soundService?.play('connect');
       this.eventBus.emit(EVENTS.NETWORK_CONNECTED, { networkId: this._currentNetworkId });
-      log.info('Left dead zone — signal restored');
 
       // Trigger queue flush via MessageService
       game.nightcity.messageService?.flushQueue();

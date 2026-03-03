@@ -66,6 +66,7 @@ export function registerMessagingSystem(initializer) {
 
   initializer.register('ready', 52, 'NotificationService', () => {
     const notificationService = new NotificationService();
+    notificationService.init();
     game.nightcity.notificationService = notificationService;
     log.info('NotificationService initialized');
   });
