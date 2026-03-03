@@ -779,7 +779,7 @@ export class MessageViewerApp extends BaseApplication {
     }
 
     // Switch to the network
-    const switchResult = networkService.switchNetwork?.(networkId);
+    const switchResult = await networkService.switchNetwork?.(networkId);
     if (switchResult?.success === false) {
       ui.notifications.warn(`NCM | Could not switch to ${network.name}: ${switchResult.reason || 'unknown error'}`);
     }
