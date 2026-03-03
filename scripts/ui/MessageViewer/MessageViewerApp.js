@@ -198,7 +198,7 @@ export class MessageViewerApp extends BaseApplication {
 
   _getCurrentNetworkData() {
     try {
-      return this.networkService?.getCurrentNetwork?.() || { name: 'CITINET', id: 'citinet' };
+      return this.networkService?.currentNetwork || { name: 'CITINET', id: 'citinet' };
     } catch {
       return { name: 'CITINET', id: 'citinet' };
     }

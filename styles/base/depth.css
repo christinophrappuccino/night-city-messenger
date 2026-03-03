@@ -296,7 +296,6 @@
 .ncm-app .ncm-hud-strip {
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
   position: relative;
-  z-index: var(--ncm-z-sticky, 200);
 }
 
 /* Footer floats above content */

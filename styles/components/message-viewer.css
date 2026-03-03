@@ -1682,7 +1682,7 @@
   position: absolute;
   top: 100%;
   left: 0;
-  z-index: var(--ncm-z-dropdown, 100);
+  z-index: 300;
 }
 
 
