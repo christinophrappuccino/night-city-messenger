@@ -288,6 +288,17 @@
                        {{/unless}}>
                 Can Route to Other Networks
               </label>
+              <label class="ncm-netmgr__checkbox-row">
+                <input type="checkbox" name="restrictedAccess" value="true"
+                       {{#if selectedNetwork.effects.restrictedAccess}}checked{{/if}}>
+                Restricted Access (messages only readable on this network)
+              </label>
+              <div class="ncm-netmgr__field">
+                <label class="ncm-netmgr__field-label">Allowed Recipient Networks (comma-separated IDs)</label>
+                <input class="ncm-netmgr__input" type="text" name="allowedRecipientNetworks"
+                       value="{{#if selectedNetwork.effects.allowedRecipientNetworks}}{{join selectedNetwork.effects.allowedRecipientNetworks ","}}{{/if}}"
+                       placeholder="Leave empty for unrestricted">
+              </div>
             </div>
           </div>
 
@@ -483,6 +494,24 @@
                 </span>
                 {{/if}}
               </div>
+              <div class="ncm-netmgr__prop-row">
+                <span class="ncm-netmgr__prop-label">Restricted Access</span>
+                {{#if selectedNetwork.effects.restrictedAccess}}
+                <span class="ncm-netmgr__prop-value ncm-netmgr__prop-value--gold">
+                  <i class="fas fa-lock"></i> Yes
+                </span>
+                {{else}}
+                <span class="ncm-netmgr__prop-value ncm-netmgr__prop-value--green">No</span>
+                {{/if}}
+              </div>
+              {{#if selectedNetwork.effects.allowedRecipientNetworks.length}}
+              <div class="ncm-netmgr__prop-row">
+                <span class="ncm-netmgr__prop-label">Allowed Recipients</span>
+                <span class="ncm-netmgr__prop-value">
+                  {{join selectedNetwork.effects.allowedRecipientNetworks ", "}}
+                </span>
+              </div>
+              {{/if}}
             </div>
 
             {{!-- Availability --}}

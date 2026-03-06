@@ -295,6 +295,34 @@ export class MessageRepository {
   }
 
   /**
+     * Update specific flags on a message.
+     * @param {string} actorId - Inbox owner
+     * @param {string} messageId
+     * @param {object} flagUpdates - Partial flag updates to merge
+     * @returns {Promise<{ success: boolean, error?: string }>}
+     */
+    async updateMessageFlags(actorId, messageId, flagUpdates) {
+      try {
+        const journal = await this.getInboxJournal(actorId);
+        if (!journal) return { success: false, error: 'Inbox not found' };
+
+        const page = journal.pages.find(p =>
+          p.flags?.[MODULE_ID]?.messageId === messageId
+        );
+        if (!page) return { success: false, error: 'Message not found' };
+
+        const currentFlags = page.flags?.[MODULE_ID] ?? {};
+        const merged = foundry.utils.mergeObject(currentFlags, flagUpdates, { inplace: false });
+
+        await page.update({ [`flags.${MODULE_ID}`]: merged });
+        return { success: true };
+      } catch (error) {
+        console.error(`${MODULE_ID} | MessageRepository.updateMessageFlags:`, error);
+        return { success: false, error: error.message };
+      }
+    }
+
+  /**
    * Mark a message as read.
    * @param {string} actorId 
    * @param {string} messageId 

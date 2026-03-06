@@ -45,6 +45,13 @@ export function registerReadyServices(initializer) {
     log.info('ContactBreachService initialized');
   });
 
+  // ─── MessageAccessService ───
+  initializer.register('ready', 85, 'MessageAccessService', async () => {
+    const { MessageAccessService } = await import('../services/MessageAccessService.js');
+    game.nightcity.messageAccessService = new MessageAccessService();
+    log.info('MessageAccessService initialized');
+  });
+
   // ─── PortraitService ───
   initializer.register('ready', 82, 'PortraitService', async () => {
     const { PortraitService } = await import('../services/PortraitService.js');

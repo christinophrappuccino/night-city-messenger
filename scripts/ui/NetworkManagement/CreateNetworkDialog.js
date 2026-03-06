@@ -417,6 +417,8 @@ export class CreateNetworkDialog extends BaseApplication {
         traced: data.traced,
         anonymity: data.anonymous,
         canRoute: true,
+        restrictedAccess: false,
+        allowedRecipientNetworks: [],
       },
       theme: {
         color: data.theme.color || '#19f3f7',

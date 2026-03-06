@@ -161,6 +161,65 @@ export class NetworkService {
   }
 
   /**
+     * Check if the current network allows sending to a specific target network.
+     * @param {string} targetNetworkId
+     * @returns {{ allowed: boolean, reason?: string }}
+     */
+    canSendToNetwork(targetNetworkId) {
+      const current = this.currentNetwork;
+      if (!current) return { allowed: false, reason: 'No active network' };
+      if (current.id === targetNetworkId) return { allowed: true };
+
+      if (!current.effects?.canRoute) {
+        return {
+          allowed: false,
+          reason: `${current.name} does not permit cross-network routing`,
+        };
+      }
+
+      const allowed = current.effects?.allowedRecipientNetworks ?? [];
+      if (allowed.length > 0 && !allowed.includes(targetNetworkId)) {
+        return {
+          allowed: false,
+          reason: `${current.name} cannot route to ${targetNetworkId}`,
+        };
+      }
+
+      return { allowed: true };
+    }
+
+    /**
+     * Check if the current network satisfies a message's access requirement.
+     * @param {object} accessControl - The message's accessControl block
+     * @returns {boolean}
+     */
+    satisfiesMessageAccess(accessControl) {
+      if (!accessControl?.restricted) return true;
+      return this.isOnNetwork(accessControl.requiredNetwork);
+    }
+
+    /**
+     * Get all network IDs reachable from the current network.
+     * Used by composer to filter recipient list.
+     * @returns {string[]}
+     */
+    getReachableNetworkIds() {
+      const current = this.currentNetwork;
+      if (!current) return [];
+
+      if (!current.effects?.canRoute) {
+        return [current.id];
+      }
+
+      const allowed = current.effects?.allowedRecipientNetworks ?? [];
+      if (allowed.length > 0) {
+        return [...new Set([current.id, ...allowed])];
+      }
+
+      return this.getAllNetworks().map(n => n.id);
+    }
+
+  /**
    * Check if the current user is authenticated to a network.
    * @param {string} networkId
    * @returns {boolean}
@@ -559,6 +618,8 @@ export class NetworkService {
         traced: data.effects?.traced ?? false,
         anonymity: data.effects?.anonymity ?? false,
         canRoute: data.effects?.canRoute ?? true,
+        restrictedAccess: data.effects?.restrictedAccess ?? false,
+        allowedRecipientNetworks: data.effects?.allowedRecipientNetworks ?? [],
       },
       theme: {
         color: data.theme?.color ?? '#19f3f7',

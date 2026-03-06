@@ -18,6 +18,9 @@ export const EVENTS = Object.freeze({
   MESSAGE_DELETED: 'message:deleted',
   MESSAGE_SCHEDULED: 'message:scheduled',
   MESSAGE_STATUS_CHANGED: 'message:statusChanged',
+  MESSAGE_ACCESS_GRANTED: 'message:access:granted',
+  MESSAGE_ACCESS_REVOKED: 'message:access:revoked',
+  MESSAGE_ACCESS_DENIED: 'message:access:denied',
   INBOX_REFRESH: 'inbox:refresh',
   QUEUE_FLUSHED: 'queue:flushed',
 
