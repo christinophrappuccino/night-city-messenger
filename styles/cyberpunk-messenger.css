@@ -45,7 +45,7 @@
 @import 'components/security-overlays.css';
 @import 'components/network-management.css';
 @import 'components/network-auth-dialog.css';
-@import 'components/create-network-dialog';
+@import 'components/create-network-dialog.css';
 @import 'components/network-selector.css';
 @import 'components/network-toasts.css';
 @import 'components/dead-zone-warning.css';

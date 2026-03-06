@@ -792,7 +792,7 @@ export class ContactManagerApp extends BaseApplication {
     if (game.nightcity?.composeMessage) {
       game.nightcity.composeMessage({
         fromActorId: this.actorId,
-        to: contact.email,
+        toActorId: contact.actorId || null,
       });
     }
   }

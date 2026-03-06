@@ -143,7 +143,7 @@ export function registerMessagingSystem(initializer) {
      * @param {object} [options.originalMessage] — For reply/forward
      */
     ns.composeMessage = (options = {}) => {
-      const fromActorId = _resolveActorId(options.fromActorId);
+      const fromActorId = _resolveActorId(options.fromActorId || options.actorId);
       if (!fromActorId && !isGM()) return;
 
       const composerId = foundry.utils.randomID(8);
@@ -170,6 +170,14 @@ export function registerMessagingSystem(initializer) {
       composer.render(true);
       return composer;
     };
+
+    // Bridge: also expose on ns.messenger for callers using that path
+    if (ns.messenger) {
+      ns.messenger.composeMessage = ns.composeMessage;
+    }
+
+    // Alias: openComposer → composeMessage (used by admin panel)
+    ns.openComposer = ns.composeMessage;
 
     /**
      * Open the contact manager for an actor.

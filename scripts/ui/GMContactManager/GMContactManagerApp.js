@@ -982,7 +982,7 @@ export class GMContactManagerApp extends BaseApplication {
     }
 
     if (game.nightcity?.composeMessage) {
-      game.nightcity.composeMessage({ to: contact.email });
+      game.nightcity.composeMessage({ toActorId: contact.actorId || null });
     }
   }
 

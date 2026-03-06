@@ -28,43 +28,10 @@
 
 
 /* ═══════════════════════════════════════════════════════════
-   §C1  COMPOSER HEADER — Bracket Header
-   Replace the plain h2 with a bracket-framed section header.
+   §C1-C2 — REMOVED in Sprint 4.5
+   Old composer header + field label overrides replaced by
+   new message-composer.css with scoped .ncm-composer rules.
    ═══════════════════════════════════════════════════════════ */
-
-.ncm-app .ncm-composer__header {
-  padding: var(--ncm-space-xs) var(--ncm-space-md);
-  background: var(--ncm-bg-base);
-  border-bottom: 1px solid var(--ncm-primary);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-  position: relative;
-  z-index: var(--ncm-z-sticky, 200);
-}
-
-/* Kill old title styles — bracket header handles it */
-.ncm-app .ncm-composer__header .ncm-composer__title {
-  display: none;
-}
-
-
-/* ═══════════════════════════════════════════════════════════
-   §C2  COMPOSER FIELD LABELS — Typography Tightening
-   Enforce design-system label treatment on field labels.
-   ═══════════════════════════════════════════════════════════ */
-
-.ncm-app .ncm-field__label {
-  font-family: var(--ncm-font-display);
-  font-weight: 600;
-  font-size: var(--ncm-text-2xs);
-  text-transform: uppercase;
-  letter-spacing: var(--ncm-tracking-wide, 0.08em);
-  color: var(--ncm-text-muted);
-  line-height: var(--ncm-leading-tight, 1.1);
-  width: 56px;
-  min-width: 56px;
-  flex-shrink: 0;
-  user-select: none;
-}
 
 
 /* ═══════════════════════════════════════════════════════════
@@ -138,107 +105,10 @@
 
 
 /* ═══════════════════════════════════════════════════════════
-   §C4  COMPOSER BODY CONTAINER — Depth
-   Textarea sits in a recessed container with inset shadow.
+   §C4-C6 — REMOVED in Sprint 4.5
+   Old composer body container, network info bar, and priority
+   pill neon glow overrides replaced by new message-composer.css.
    ═══════════════════════════════════════════════════════════ */
-
-.ncm-app .ncm-compose-body-container {
-  flex: 1;
-  display: flex;
-  background: var(--ncm-bg-deep);
-  border: 1px solid var(--ncm-border);
-  border-radius: var(--ncm-radius-md);
-  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.3);
-  overflow: hidden;
-}
-
-.ncm-app .ncm-compose-body-container .ncm-textarea {
-  border: none;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-}
-
-.ncm-app .ncm-compose-body-container .ncm-textarea:focus {
-  box-shadow: none;
-}
-
-
-/* ═══════════════════════════════════════════════════════════
-   §C5  COMPOSER NETWORK INFO BAR
-   Small network status display in the footer-left.
-   Shows connection dot + network name + signal %.
-   ═══════════════════════════════════════════════════════════ */
-
-.ncm-app .ncm-composer__network-info {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-family: var(--ncm-font-mono);
-  font-size: var(--ncm-text-2xs);
-  color: var(--ncm-text-muted);
-  letter-spacing: var(--ncm-tracking-tight, 0.04em);
-  text-transform: uppercase;
-}
-
-.ncm-app .ncm-composer__network-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.ncm-app .ncm-composer__network-dot--CONNECTED {
-  background: var(--ncm-success);
-  box-shadow: 0 0 4px rgba(0, 255, 65, 0.5);
-}
-
-.ncm-app .ncm-composer__network-dot--DEGRADED {
-  background: var(--ncm-warning);
-  box-shadow: 0 0 4px rgba(255, 171, 0, 0.5);
-}
-
-.ncm-app .ncm-composer__network-dot--NO_SIGNAL {
-  background: var(--ncm-danger);
-  box-shadow: 0 0 4px rgba(255, 0, 51, 0.5);
-}
-
-/* Footer depth */
-.ncm-app .ncm-composer__footer {
-  box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.2);
-  position: relative;
-  z-index: var(--ncm-z-sticky, 200);
-}
-
-
-/* ═══════════════════════════════════════════════════════════
-   §C6  PRIORITY PILLS — Neon Glow
-   Active priority pills get neon glow when neon is enabled.
-   ═══════════════════════════════════════════════════════════ */
-
-[data-ncm-neon="true"].ncm-app .ncm-priority-pill--active.ncm-priority-pill--normal,
-[data-ncm-neon="true"] .ncm-app .ncm-priority-pill--active.ncm-priority-pill--normal {
-  box-shadow: 0 0 8px rgba(25, 243, 247, 0.2);
-}
-
-[data-ncm-neon="true"].ncm-app .ncm-priority-pill--active.ncm-priority-pill--urgent,
-[data-ncm-neon="true"] .ncm-app .ncm-priority-pill--active.ncm-priority-pill--urgent {
-  box-shadow: 0 0 8px rgba(247, 201, 72, 0.25);
-}
-
-[data-ncm-neon="true"].ncm-app .ncm-priority-pill--active.ncm-priority-pill--critical,
-[data-ncm-neon="true"] .ncm-app .ncm-priority-pill--active.ncm-priority-pill--critical {
-  box-shadow: 0 0 8px rgba(246, 82, 97, 0.25);
-}
-
-/* Priority pill transition */
-.ncm-app .ncm-priority-pill {
-  transition:
-    background var(--ncm-transition-fast, 150ms ease),
-    border-color var(--ncm-transition-fast, 150ms ease),
-    color var(--ncm-transition-fast, 150ms ease),
-    box-shadow var(--ncm-transition-fast, 150ms ease);
-}
 
 
 /* ═══════════════════════════════════════════════════════════

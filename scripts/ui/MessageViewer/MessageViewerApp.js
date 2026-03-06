@@ -590,7 +590,7 @@ export class MessageViewerApp extends BaseApplication {
       // ── Compose ──
       case 'compose-new':
       case 'compose-message':
-        game.nightcity?.messenger?.composeMessage?.({ actorId: this.actorId });
+        game.nightcity?.composeMessage?.({ fromActorId: this.actorId });
         break;
 
       // ── Encryption (original) ──
@@ -916,22 +916,20 @@ export class MessageViewerApp extends BaseApplication {
   _replyToMessage(messageId) {
     const msg = this._getSelectedMessage();
     if (!msg) return;
-    game.nightcity?.messenger?.composeMessage?.({
-      actorId: this.actorId,
-      to: msg.from,
-      subject: `RE: ${msg.subject || ''}`,
-      inReplyTo: msg.messageId,
-      threadId: msg.threadId || msg.messageId,
+    game.nightcity?.composeMessage?.({
+      mode: 'reply',
+      fromActorId: this.actorId,
+      originalMessage: msg,
     });
   }
 
   _forwardMessage(messageId) {
     const msg = this._getSelectedMessage();
     if (!msg) return;
-    game.nightcity?.messenger?.composeMessage?.({
-      actorId: this.actorId,
-      subject: `FWD: ${msg.subject || ''}`,
-      body: `\n\n--- Forwarded ---\nFrom: ${msg.from}\n${msg.body || ''}`,
+    game.nightcity?.composeMessage?.({
+      mode: 'forward',
+      fromActorId: this.actorId,
+      originalMessage: msg,
     });
   }
 
