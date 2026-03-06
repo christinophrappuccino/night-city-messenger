@@ -148,6 +148,9 @@ export class MessageRepository {
 
           attachments: messageData.attachments || [],
           malware: null,
+
+          // Network Access Control (restricted network messaging)
+          accessControl: messageData.accessControl || null,
         }
       };
 
@@ -433,6 +436,9 @@ export class MessageRepository {
       // Future
       attachments: flags.attachments || [],
       malware: flags.malware,
+
+      // Network Access Control
+      accessControl: flags.accessControl || null,
     };
   }
 

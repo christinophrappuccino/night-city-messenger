@@ -131,6 +131,36 @@ export class NetworkService {
   }
 
   /**
+   * Get the access control block to stamp on a message being sent.
+   * Returns null if the network has no restrictions.
+   * @returns {object|null}
+   */
+  getMessageAccessControl() {
+    const network = this.currentNetwork;
+    if (!network) return null;
+    if (!network.effects?.restrictedAccess) return null;
+
+    return {
+      restricted: true,
+      requiredNetwork: network.id,
+      requiredNetworkName: network.name,
+      bypassable: true,
+      bypass: {
+        allowPassword: network.security?.requiresAuth ?? false,
+        password: network.security?.password ?? '',
+        allowSkillCheck: (network.security?.bypassSkills?.length ?? 0) > 0,
+        bypassSkills: network.security?.bypassSkills ?? [],
+        bypassDC: network.security?.bypassDC ?? 15,
+        allowKeyItem: false,
+        keyItemName: null,
+        keyItemId: null,
+        keyItemTag: null,
+        keyItemConsume: false,
+      },
+    };
+  }
+
+  /**
    * Check if the current user is authenticated to a network.
    * @param {string} networkId
    * @returns {boolean}

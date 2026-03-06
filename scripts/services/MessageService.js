@@ -115,6 +115,18 @@ export class MessageService {
         data.threadId = data.inReplyTo ? undefined : messageId;
       }
 
+      // ── Network access control stamping ──
+      const networkService = game.nightcity.networkService;
+
+      // Stamp access control if network is restricted
+      const accessControl = networkService?.getMessageAccessControl() ?? null;
+      if (accessControl) {
+        data.accessControl = accessControl;
+      }
+
+      // Ensure sending network is recorded
+      data.network = networkService?.currentNetworkId || data.network || 'CITINET';
+      
       data.timestamp = this._getTimestamp();
 
       if (game.user.isGM) {

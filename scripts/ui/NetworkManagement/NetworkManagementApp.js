@@ -337,6 +337,10 @@ export class NetworkManagementApp extends BaseApplication {
         traced: formData.traced === 'true' || formData.traced === true,
         anonymity: formData.anonymity === 'true' || formData.anonymity === true,
         canRoute: formData.canRoute !== 'false' && formData.canRoute !== false,
+        restrictedAccess: formData.restrictedAccess === 'true' || formData.restrictedAccess === true,
+        allowedRecipientNetworks: formData.allowedRecipientNetworks
+          ? formData.allowedRecipientNetworks.split(',').map(s => s.trim()).filter(Boolean)
+          : [],
       },
       theme: {
         color: formData.themeColor || '#19f3f7',
