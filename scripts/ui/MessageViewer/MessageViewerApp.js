@@ -138,7 +138,6 @@ export class MessageViewerApp extends BaseApplication {
   constructor(options = {}) {
     super(options);
     this.actorId = options.actorId || game.user?.character?.id || null;
-    this.subscribe(EVENTS.CONTACT_UPDATED, () => this.render());
     this._loadPreferences();
     this._setupEventSubscriptions();
   }
@@ -1137,6 +1136,7 @@ export class MessageViewerApp extends BaseApplication {
     this.subscribe?.('message:deleted', () => this._debouncedRender());
     this.subscribe?.('network:changed', () => this._debouncedRender());
     this.subscribe?.('theme:changed', () => this._debouncedRender());
+    this.subscribe?.(EVENTS.CONTACT_UPDATED, () => this._debouncedRender());
   }
 
   // ═══════════════════════════════════════════════════════════

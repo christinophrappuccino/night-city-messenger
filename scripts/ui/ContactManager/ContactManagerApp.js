@@ -522,6 +522,7 @@ export class ContactManagerApp extends BaseApplication {
   // ═══════════════════════════════════════════════════════════
 
   _setupEventSubscriptions() {
+    this.subscribe(EVENTS.CONTACT_UPDATED, () => this._debouncedRender());
     this.subscribe(EVENTS.CONTACT_BURNED, () => this.render());
     this.subscribe(EVENTS.CONTACT_SHARED, () => this.render());
     this.subscribe(EVENTS.CONTACT_TRUST_CHANGED, () => this.render());

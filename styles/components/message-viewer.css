@@ -49,7 +49,7 @@
    §0  FOUNDRY WINDOW OVERRIDE
    ═══════════════════════════════════════════════════════════ */
 .ncm-app > .window-content {
-  overflow: visible;
+  overflow: hidden;
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -62,7 +62,7 @@
   height: 100%;
   background: var(--ncm-bg-deep);
   color: var(--ncm-text-primary);
-  overflow: visible;
+  overflow: hidden;
   container-type: inline-size;
 }
 
