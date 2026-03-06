@@ -1493,6 +1493,28 @@
 
 .ncm-app .ncm-composer .ncm-hidden { display: none !important; }
 
+/* Send animation — button flash */
+.ncm-app .ncm-composer .ncm-send-flash {
+  animation: ncm-sendFlash 0.4s ease-out;
+}
+
+@keyframes ncm-sendFlash {
+  0% { box-shadow: 0 0 0 rgba(246, 82, 97, 0); }
+  30% { box-shadow: 0 0 20px rgba(246, 82, 97, 0.6), 0 0 40px rgba(246, 82, 97, 0.3); }
+  100% { box-shadow: 0 0 0 rgba(246, 82, 97, 0); }
+}
+
+/* Send animation — composer pulse overlay */
+.ncm-app .ncm-composer.ncm-send-pulse {
+  animation: ncm-sendPulse 0.4s ease-out;
+}
+
+@keyframes ncm-sendPulse {
+  0% { box-shadow: inset 0 0 0 rgba(25, 243, 247, 0); }
+  30% { box-shadow: inset 0 0 30px rgba(25, 243, 247, 0.08); }
+  100% { box-shadow: inset 0 0 0 rgba(25, 243, 247, 0); }
+}
+
 /* Foundry v12 button reset — prevent stretch/min-height on all composer buttons */
 .ncm-app .ncm-composer button {
   width: auto !important;

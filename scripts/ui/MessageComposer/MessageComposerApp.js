@@ -161,6 +161,8 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
   get networkService() { return game.nightcity?.networkService; }
   get soundService() { return game.nightcity?.soundService; }
   get eventBus() { return game.nightcity?.eventBus; }
+  get schedulingService() { return game.nightcity?.schedulingService; }
+  get timeService() { return game.nightcity?.timeService; }
 
   // ─── Constructor ──────────────────────────────────────────
 
@@ -205,6 +207,9 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
 
     // Priority applies to all modes
     if (options.priority) this.priority = options.priority;
+
+    // Restore draft if opening fresh compose with no pre-filled data
+    this._restoreDraft();
   }
 
   // ─── Lifecycle ────────────────────────────────────────────
@@ -497,10 +502,29 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     const avatarColor = getAvatarColor(name);
     const initials = getInitials(name);
 
-    // Network mismatch check
+    // Network mismatch check — look up contact's network from contact repo
     const reachableIds = this.networkService?.getReachableNetworkIds() || [];
-    // TODO: check contact's primary network against reachable list
-    // For now, no mismatch detection (requires contact network data)
+    let mismatch = false;
+    let mismatchTooltip = '';
+    let unreachable = false;
+
+    if (this.fromActorId && reachableIds.length > 0) {
+      const contacts = this.contactRepo?.getContacts?.(this.fromActorId);
+      const contact = contacts instanceof Promise ? null : contacts?.find(c => c.actorId === actorId);
+      const contactNetwork = contact?.network?.toUpperCase() || '';
+
+      if (contactNetwork && !reachableIds.includes(contactNetwork)) {
+        // Contact is on an unreachable network
+        const currentNetId = this.networkService?.currentNetworkId || '';
+        if (this.networkService?.currentNetwork?.effects?.canRoute === false) {
+          unreachable = true;
+          mismatchTooltip = `Unreachable: ${contactNetwork} — no cross-routing on current network`;
+        } else {
+          mismatch = true;
+          mismatchTooltip = `Cross-net: ${contactNetwork} — delivery may be delayed`;
+        }
+      }
+    }
 
     this.recipients.push({
       actorId,
@@ -508,9 +532,9 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       email,
       avatarColor,
       initials,
-      mismatch: false,
-      mismatchTooltip: '',
-      unreachable: false,
+      mismatch,
+      mismatchTooltip,
+      unreachable,
       locked,
     });
 
@@ -521,7 +545,30 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
   }
 
   _removeRecipient(actorId) {
-    this.recipients = this.recipients.filter(r => r.actorId !== actorId);
+    this.recipients = this.recipients.filter(r =>
+      r.isRaw ? r.email !== actorId : r.actorId !== actorId
+    );
+  }
+
+  _addRawRecipient(rawAddress) {
+    if (!rawAddress) return;
+    const email = rawAddress.trim();
+    if (this.recipients.find(r => r.email === email)) return;
+
+    this.recipients.push({
+      actorId: null,
+      name: email,
+      email,
+      avatarColor: getAvatarColor(email),
+      initials: '@',
+      mismatch: false,
+      mismatchTooltip: '',
+      unreachable: false,
+      locked: false,
+      isRaw: true,
+    });
+
+    if (this._errors.to) delete this._errors.to;
   }
 
   // ─── Recipient Autocomplete (WP-4.5.4) ───────────────────
@@ -588,30 +635,45 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       )
     ).slice(0, 6);
 
-    // Also search contacts for from actor
+    // Also search contacts for from actor — merge contact network data
+    const contactsByActor = new Map();
     if (this.fromActorId) {
       const contacts = await this.contactRepo?.searchContacts(this.fromActorId, query) || [];
       for (const contact of contacts) {
-        if (contact.actorId && !existingIds.has(contact.actorId) && !results.find(r => r.actorId === contact.actorId)) {
-          results.push({
-            actorId: contact.actorId,
-            name: contact.name,
-            email: contact.email,
-            img: contact.customImg || null,
-          });
+        if (contact.actorId) {
+          contactsByActor.set(contact.actorId, contact);
+          if (!existingIds.has(contact.actorId) && !results.find(r => r.actorId === contact.actorId)) {
+            results.push({
+              actorId: contact.actorId,
+              name: contact.name,
+              email: contact.email,
+              img: contact.customImg || null,
+            });
+          }
         }
       }
     }
 
-    // Mark reachability
-    results = results.map(r => ({
-      ...r,
-      initials: getInitials(r.name),
-      avatarColor: getAvatarColor(r.name),
-      // TODO: determine contact's network to check reachability
-      greyed: false,
-      unreachableLabel: null,
-    }));
+    // Mark reachability using contact network field
+    results = results.map(r => {
+      const contact = contactsByActor.get(r.actorId);
+      const contactNetwork = contact?.network?.toUpperCase() || '';
+      let greyed = false;
+      let unreachableLabel = null;
+
+      if (contactNetwork && reachableIds.length > 0 && !reachableIds.includes(contactNetwork)) {
+        greyed = true;
+        unreachableLabel = `${contactNetwork} only`;
+      }
+
+      return {
+        ...r,
+        initials: getInitials(r.name),
+        avatarColor: getAvatarColor(r.name),
+        greyed,
+        unreachableLabel,
+      };
+    });
 
     this._searchResults = results;
     this._selectedResultIndex = results.length > 0 ? 0 : -1;
@@ -659,9 +721,10 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       item.addEventListener('click', () => {
         const idx = parseInt(item.dataset.index);
         if (item.dataset.raw) {
-          // Raw address — treat as name
-          // For now, just close (raw address support would need extended data model)
+          // Raw address — add as unverified recipient
+          this._addRawRecipient(item.dataset.raw);
           this._closeAutocomplete();
+          this.render(true);
         } else {
           this._selectAutocompleteResult(idx);
         }
@@ -781,6 +844,9 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     const editor = this.element?.querySelector('[data-id="editor-content"]');
     if (editor) this.body = editor.innerHTML;
 
+    const subjectInput = this.element?.querySelector('[data-id="subject-input"]');
+    if (subjectInput) this.subject = subjectInput.value;
+
     // Save draft timestamp
     const now = new Date();
     this.autoSaveTime = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -791,7 +857,72 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       indicator.innerHTML = `<i class="fas fa-check-circle"></i> Draft saved ${this.autoSaveTime}`;
     }
 
-    // TODO: persist draft to actor flags for recovery
+    // Persist draft to actor flags
+    const actor = game.actors.get(this.fromActorId);
+    if (actor?.isOwner || game.user.isGM) {
+      const draftData = {
+        mode: this.mode,
+        recipients: this.recipients.map(r => ({ actorId: r.actorId, email: r.email, isRaw: r.isRaw || false })),
+        subject: this.subject,
+        body: this.body,
+        priority: this.priority,
+        encryptionEnabled: this.encryptionEnabled,
+        encryptionDV: this.encryptionDV,
+        encryptionType: this.encryptionType,
+        selfDestructEnabled: this.selfDestructEnabled,
+        selfDestructMode: this.selfDestructMode,
+        savedAt: now.toISOString(),
+      };
+      actor.setFlag(MODULE_ID, 'composerDraft', draftData).catch(() => {});
+    }
+  }
+
+  /**
+   * Restore a previously auto-saved draft from actor flags.
+   * Only restores for 'compose' mode (not reply/forward).
+   */
+  _restoreDraft() {
+    if (this.mode !== 'compose') return;
+    if (this.recipients.length > 0 || this.subject || this.body) return; // Already has content
+
+    const actor = game.actors.get(this.fromActorId);
+    if (!actor) return;
+
+    const draft = actor.getFlag(MODULE_ID, 'composerDraft');
+    if (!draft || !draft.savedAt) return;
+
+    // Only restore if draft is < 24 hours old
+    const age = Date.now() - new Date(draft.savedAt).getTime();
+    if (age > 86400000) return;
+
+    // Restore fields
+    if (draft.recipients?.length) {
+      for (const r of draft.recipients) {
+        if (r.isRaw) {
+          this._addRawRecipient(r.email);
+        } else if (r.actorId) {
+          this._addRecipient(r.actorId, false);
+        }
+      }
+    }
+    this.subject = draft.subject || '';
+    this.body = draft.body || '';
+    this.priority = draft.priority || 'normal';
+    this.encryptionEnabled = draft.encryptionEnabled || false;
+    this.encryptionDV = draft.encryptionDV || 12;
+    this.encryptionType = draft.encryptionType || 'ICE';
+    this.selfDestructEnabled = draft.selfDestructEnabled || false;
+    this.selfDestructMode = draft.selfDestructMode || 'after_read';
+  }
+
+  /**
+   * Clear the saved draft from actor flags (called after successful send).
+   */
+  async _clearDraft() {
+    const actor = game.actors.get(this.fromActorId);
+    if (actor && (actor.isOwner || game.user.isGM)) {
+      await actor.unsetFlag(MODULE_ID, 'composerDraft').catch(() => {});
+    }
   }
 
   // ─── GM Send-As (WP-4.5.6) ───────────────────────────────
@@ -864,13 +995,16 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     this.render(true);
 
     try {
-      // Build message data
-      const toActorId = this.recipients.length === 1
-        ? this.recipients[0].actorId
-        : this.recipients.map(r => r.actorId);
+      // Build recipient — handle raw addresses and multi-recipient
+      const actorRecipients = this.recipients.filter(r => r.actorId);
+      const rawRecipients = this.recipients.filter(r => r.isRaw);
+      const toActorId = actorRecipients.length === 1
+        ? actorRecipients[0].actorId
+        : actorRecipients.map(r => r.actorId);
 
       const messageData = {
-        toActorId,
+        toActorId: toActorId || null,
+        to: rawRecipients.length > 0 ? rawRecipients[0].email : undefined,
         fromActorId: this.fromActorId,
         subject: this.subject,
         body: this.body,
@@ -879,9 +1013,6 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
         inReplyTo: this.inReplyTo,
         attachments: this.attachments.filter(a => !a.isEddies),
         eddies: this.eddiesAmount || 0,
-        metadata: {
-          scheduledDelivery: this.scheduleEnabled ? this.scheduledTime : null,
-        },
       };
 
       // Encryption
@@ -901,11 +1032,43 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
         };
       }
 
-      const result = await this.messageService?.sendMessage(messageData);
+      let result;
+
+      // Route through SchedulingService if schedule is enabled
+      if (this.scheduleEnabled && this.scheduledTime) {
+        // Resolve delivery time — use game time if toggled
+        let deliveryTime = this.scheduledTime;
+        if (this.scheduleGameTime && this.timeService) {
+          // scheduledTime is user-entered game-time string; pass as-is
+          // SchedulingService uses useGameTime flag for comparison
+        }
+
+        result = await this.schedulingService?.scheduleMessage(
+          messageData,
+          deliveryTime,
+          { useGameTime: this.scheduleGameTime }
+        );
+
+        if (result?.success) {
+          ui.notifications.info(`Message scheduled for delivery at ${this.scheduledTime}.`);
+        }
+      } else {
+        // Immediate send
+        result = await this.messageService?.sendMessage(messageData);
+      }
 
       if (result?.success) {
-        ui.notifications.info(result.queued ? 'Message queued for delivery.' : 'Message sent.');
+        if (!this.scheduleEnabled) {
+          ui.notifications.info(result.queued ? 'Message queued for delivery.' : 'Message sent.');
+        }
         this.soundService?.play('send');
+
+        // Send animation — flash the composer
+        await this._playSendAnimation();
+
+        // Clear draft
+        await this._clearDraft();
+
         this.close();
       } else {
         ui.notifications.error(`Send failed: ${result?.error || 'Unknown error'}`);
@@ -976,6 +1139,22 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
 
   static _onToggleGameTime(event, target) {
     this.scheduleGameTime = !this.scheduleGameTime;
+
+    // Pre-fill with current game time when toggling ON
+    if (this.scheduleGameTime && this.timeService) {
+      const gameTime = this.timeService.getCurrentTime();
+      if (gameTime) {
+        // Format as the cyberpunk date style: DD.MM.YYYY // HH:MM
+        const dt = new Date(gameTime);
+        const dd = String(dt.getDate()).padStart(2, '0');
+        const mm = String(dt.getMonth() + 1).padStart(2, '0');
+        const yyyy = dt.getFullYear();
+        const hh = String(dt.getHours()).padStart(2, '0');
+        const min = String(dt.getMinutes()).padStart(2, '0');
+        this.scheduledTime = `${dd}.${mm}.${yyyy} // ${hh}:${min}`;
+      }
+    }
+
     this.render(true);
   }
 
@@ -1053,43 +1232,138 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
   }
 
   static _onAttachFile(event, target) {
-    // TODO: file picker dialog integration
-    ui.notifications.info('File attachment coming in a future update.');
+    // Foundry FilePicker for generic file attachments
+    new FilePicker({
+      type: 'any',
+      callback: (path) => {
+        const name = path.split('/').pop();
+        this.attachments.push({
+          name,
+          size: '',
+          icon: 'fa-paperclip',
+          path,
+          isEddies: false,
+          encrypted: this.encryptionEnabled,
+        });
+        this.render(true);
+      },
+    }).render(true);
   }
 
   static _onAttachShard(event, target) {
-    // TODO: data shard picker integration
-    ui.notifications.info('Data shard attachment coming in a future update.');
-  }
+    // Show items with NCM shard config from the game
+    const shardItems = game.items?.filter(i =>
+      i.getFlag(MODULE_ID, 'shardConfig') || i.getFlag(MODULE_ID, 'config')
+    ) || [];
 
-  static _onAttachEddies(event, target) {
-    // Simple prompt for now
+    // Also check actor inventory
     const actor = game.actors.get(this.fromActorId);
-    const currentEddies = actor?.system?.wealth?.value ?? 0;
+    const actorShards = actor?.items?.filter(i =>
+      i.getFlag(MODULE_ID, 'shardConfig') || i.getFlag(MODULE_ID, 'config')
+    ) || [];
 
-    const amount = parseInt(prompt(`Enter eddies amount (you have ${currentEddies} eb):`));
-    if (isNaN(amount) || amount <= 0) return;
+    const allShards = [...shardItems, ...actorShards];
 
-    if (amount > currentEddies) {
-      ui.notifications.warn('Insufficient eddies.');
+    if (allShards.length === 0) {
+      ui.notifications.info('No data shards available to attach.');
       return;
     }
 
-    // Remove existing eddies attachment
-    this.attachments = this.attachments.filter(a => !a.isEddies);
+    // Build selection dialog
+    const content = `<div style="max-height:200px;overflow-y:auto;">
+      ${allShards.map(s => `
+        <div style="display:flex;align-items:center;gap:8px;padding:4px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.1);"
+             class="ncm-shard-pick" data-item-id="${s.id}">
+          <i class="fas fa-microchip" style="color:var(--ncm-secondary);"></i>
+          <span>${s.name}</span>
+        </div>
+      `).join('')}
+    </div>`;
 
-    this.eddiesAmount = amount;
-    this.attachments.push({
-      name: 'Eddies',
-      size: '',
-      icon: 'fa-coins',
-      isEddies: true,
-      eddiesAmount: amount,
-      eddiesFormatted: `${amount.toLocaleString()} eb`,
-      encrypted: false,
-    });
+    new Dialog({
+      title: 'Attach Data Shard',
+      content,
+      buttons: { cancel: { label: 'Cancel' } },
+      render: (html) => {
+        html.find('.ncm-shard-pick').on('click', (e) => {
+          const itemId = e.currentTarget.dataset.itemId;
+          const item = allShards.find(s => s.id === itemId);
+          if (!item) return;
 
-    this.render(true);
+          // Prevent duplicate
+          if (this.attachments.find(a => a.itemId === itemId)) {
+            ui.notifications.warn('Shard already attached.');
+            return;
+          }
+
+          this.attachments.push({
+            name: `${item.name}.shard`,
+            size: '',
+            icon: 'fa-microchip',
+            itemId: item.id,
+            isEddies: false,
+            encrypted: this.encryptionEnabled,
+          });
+          this.render(true);
+
+          // Close dialog
+          const app = Object.values(ui.windows).find(w => w.title === 'Attach Data Shard');
+          app?.close();
+        });
+      },
+    }).render(true);
+  }
+
+  static _onAttachEddies(event, target) {
+    // Prompt for eddies amount
+    const actor = game.actors.get(this.fromActorId);
+
+    // CPR system: try common wealth paths
+    const currentEddies = actor?.system?.wealth?.value
+      ?? actor?.system?.eurobucks?.value
+      ?? actor?.system?.lifestyle?.cash
+      ?? 0;
+
+    const content = `<div class="form-group">
+      <label>Eddies to attach${currentEddies ? ` (you have ${currentEddies.toLocaleString()} eb)` : ''}:</label>
+      <input type="number" name="amount" value="100" min="1" style="width:100%;" />
+    </div>`;
+
+    new Dialog({
+      title: 'Attach Eddies',
+      content,
+      buttons: {
+        attach: {
+          label: 'Attach',
+          callback: (html) => {
+            const amount = parseInt(html.find('[name=amount]').val()) || 0;
+            if (amount <= 0) return;
+
+            if (currentEddies > 0 && amount > currentEddies) {
+              ui.notifications.warn('Insufficient eddies.');
+              return;
+            }
+
+            // Remove existing eddies attachment
+            this.attachments = this.attachments.filter(a => !a.isEddies);
+
+            this.eddiesAmount = amount;
+            this.attachments.push({
+              name: 'Eddies',
+              size: '',
+              icon: 'fa-coins',
+              isEddies: true,
+              eddiesAmount: amount,
+              eddiesFormatted: `${amount.toLocaleString()} eb`,
+              encrypted: false,
+            });
+            this.render(true);
+          },
+        },
+        cancel: { label: 'Cancel' },
+      },
+      default: 'attach',
+    }).render(true);
   }
 
   // ── Editor Commands ──
@@ -1144,6 +1418,32 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     if (game.user.character) return game.user.character.id;
     const owned = game.actors?.find(a => a.isOwner);
     return owned?.id || null;
+  }
+
+  // ─── Send Animation ────────────────────────────────────────
+
+  async _playSendAnimation() {
+    const el = this.element;
+    if (!el) return;
+
+    // Flash the send button
+    const sendBtn = el.querySelector('.ncm-btn--send, .ncm-btn--schedule');
+    if (sendBtn) {
+      sendBtn.classList.add('ncm-send-flash');
+    }
+
+    // Brief overlay flash on the composer
+    const composer = el.querySelector('.ncm-composer');
+    if (composer) {
+      composer.classList.add('ncm-send-pulse');
+    }
+
+    // Wait for animation
+    await new Promise(r => setTimeout(r, 400));
+
+    // Clean up (window will close shortly after)
+    sendBtn?.classList.remove('ncm-send-flash');
+    composer?.classList.remove('ncm-send-pulse');
   }
 
   _computeExpiry() {
