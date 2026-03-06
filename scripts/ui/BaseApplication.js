@@ -188,6 +188,20 @@ export class BaseApplication extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   /**
+   * Debounced render — coalesces rapid EventBus events into
+   * a single render pass. Use in subscriptions instead of
+   * () => this.render() when the event source may fire in bursts
+   * (e.g. GM toggling multiple networks, bulk message operations).
+   *
+   * 150ms: fast enough to feel instant, slow enough to batch.
+   * @type {Function}
+   * @protected
+   */
+  _debouncedRender = foundry.utils.debounce(() => {
+    if (this.rendered) this.render();
+  }, 150);
+
+  /**
    * Clean up all EventBus subscriptions.
    * @private
    */

@@ -1,0 +1,373 @@
+/**
+ * Create Network Dialog — Styles
+ * File: styles/components/create-network-dialog.css
+ * Module: cyberpunkred-messenger
+ * Mockup: ncm-network-dialogs-mockup.html — Section 5
+ *
+ * All selectors scoped with .ncm-create-net prefix.
+ * Uses NCM design system variables from variables.css.
+ */
+
+/* ═══════════════════════════════════════════
+   CONTAINER
+   ═══════════════════════════════════════════ */
+
+.ncm-create-net {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+}
+
+/* ═══════════════════════════════════════════
+   TEMPLATE PRESETS
+   ═══════════════════════════════════════════ */
+
+.ncm-create-net__presets-label {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 8px;
+  color: var(--ncm-text-muted, #555570);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 4px;
+}
+
+.ncm-create-net__presets {
+  display: flex;
+  gap: 6px;
+  padding: 6px 0;
+  flex-wrap: wrap;
+}
+
+.ncm-create-net__preset {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 2px;
+  background: var(--ncm-bg-deep, #0a0a0f);
+  border: 1px solid var(--ncm-border, #2a2a45);
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 8px;
+  color: var(--ncm-text-secondary, #8888a0);
+  cursor: pointer;
+  transition: all 0.12s;
+  text-transform: uppercase;
+}
+
+.ncm-create-net__preset:hover {
+  border-color: var(--ncm-border-active, #3a3a5a);
+  color: var(--ncm-text-primary, #e0e0e8);
+}
+
+.ncm-create-net__preset--active {
+  border-color: var(--ncm-secondary, #19f3f7);
+  color: var(--ncm-secondary, #19f3f7);
+  background: rgba(25, 243, 247, 0.04);
+}
+
+.ncm-create-net__preset i {
+  font-size: 9px;
+}
+
+/* ═══════════════════════════════════════════
+   FORM SECTIONS
+   ═══════════════════════════════════════════ */
+
+.ncm-create-net__section {
+  background: var(--ncm-bg-surface, #1a1a2e);
+  border: 1px solid var(--ncm-border, #2a2a45);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.ncm-create-net__section-title {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 9px;
+  color: var(--ncm-text-secondary, #8888a0);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 5px 10px;
+  background: var(--ncm-bg-base, #12121a);
+  border-bottom: 1px solid var(--ncm-border, #2a2a45);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.ncm-create-net__section-title i {
+  font-size: 8px;
+  color: var(--ncm-secondary, #19f3f7);
+}
+
+.ncm-create-net__section-body {
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ═══════════════════════════════════════════
+   FIELD LAYOUT
+   ═══════════════════════════════════════════ */
+
+.ncm-create-net__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.ncm-create-net__row--3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+
+.ncm-create-net__field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ncm-create-net__label {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 8px;
+  color: var(--ncm-text-muted, #555570);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ═══════════════════════════════════════════
+   INPUTS & SELECTS
+   ═══════════════════════════════════════════ */
+
+.ncm-create-net__input {
+  background: var(--ncm-bg-deep, #0a0a0f);
+  border: 1px solid var(--ncm-border, #2a2a45);
+  border-radius: 2px;
+  padding: 5px 8px;
+  color: var(--ncm-text-primary, #e0e0e8);
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 10px;
+  transition: all 0.15s;
+  outline: none;
+  width: 100%;
+}
+
+.ncm-create-net__input:focus {
+  border-color: var(--ncm-secondary, #19f3f7);
+  box-shadow: 0 0 0 1px rgba(25, 243, 247, 0.12);
+}
+
+.ncm-create-net__input::placeholder {
+  color: var(--ncm-text-muted, #555570);
+}
+
+.ncm-create-net__input--color {
+  width: 75px;
+}
+
+/* Error flash animation for validation */
+.ncm-create-net__input--error {
+  border-color: var(--ncm-danger, #ff0033);
+  box-shadow: 0 0 0 1px rgba(255, 0, 51, 0.2);
+  animation: ncm-create-net-shake 0.3s ease;
+}
+
+.ncm-create-net__select {
+  background: var(--ncm-bg-deep, #0a0a0f);
+  border: 1px solid var(--ncm-border, #2a2a45);
+  border-radius: 2px;
+  padding: 5px 8px;
+  color: var(--ncm-text-primary, #e0e0e8);
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 10px;
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%23555570'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  padding-right: 20px;
+  width: 100%;
+}
+
+.ncm-create-net__select:focus {
+  border-color: var(--ncm-secondary, #19f3f7);
+}
+
+/* ═══════════════════════════════════════════
+   CHECKBOXES
+   ═══════════════════════════════════════════ */
+
+.ncm-create-net__flags {
+  display: flex;
+  gap: 16px;
+}
+
+.ncm-create-net__checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 9px;
+  color: var(--ncm-text-secondary, #8888a0);
+  cursor: pointer;
+}
+
+.ncm-create-net__checkbox input[type="checkbox"] {
+  accent-color: var(--ncm-secondary, #19f3f7);
+  cursor: pointer;
+}
+
+/* ═══════════════════════════════════════════
+   APPEARANCE — Icon Preview & Color Swatch
+   ═══════════════════════════════════════════ */
+
+.ncm-create-net__appearance-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ncm-create-net__icon-preview {
+  width: 36px;
+  height: 36px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.ncm-create-net__color-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ncm-create-net__swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 3px;
+  border: 1px solid var(--ncm-border, #2a2a45);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+
+/* ═══════════════════════════════════════════
+   FOOTER
+   ═══════════════════════════════════════════ */
+
+.ncm-create-net__footer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 0 0;
+  border-top: 1px solid var(--ncm-border, #2a2a45);
+  margin-top: 4px;
+}
+
+.ncm-create-net__footer-spacer {
+  flex: 1;
+}
+
+/* ═══════════════════════════════════════════
+   BUTTONS
+   ═══════════════════════════════════════════ */
+
+.ncm-create-net__btn {
+  padding: 6px 14px;
+  border-radius: 2px;
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  transition: all 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.ncm-create-net__btn--ghost {
+  background: transparent;
+  border: 1px solid var(--ncm-border, #2a2a45);
+  color: var(--ncm-text-secondary, #8888a0);
+}
+
+.ncm-create-net__btn--ghost:hover {
+  border-color: var(--ncm-border-active, #3a3a5a);
+  color: var(--ncm-text-primary, #e0e0e8);
+}
+
+.ncm-create-net__btn--primary {
+  background: rgba(25, 243, 247, 0.08);
+  border: 1px solid rgba(25, 243, 247, 0.3);
+  color: var(--ncm-secondary, #19f3f7);
+}
+
+.ncm-create-net__btn--primary:hover {
+  background: rgba(25, 243, 247, 0.15);
+  border-color: var(--ncm-secondary, #19f3f7);
+}
+
+/* ═══════════════════════════════════════════
+   DIALOG WINDOW OVERRIDES
+   Scoped to .ncm-create-network-dialog
+   ═══════════════════════════════════════════ */
+
+.ncm-create-network-dialog {
+  background: var(--ncm-bg-deep, #0a0a0f);
+  border: 1px solid var(--ncm-border, #2a2a45);
+}
+
+.ncm-create-network-dialog .window-content {
+  background: var(--ncm-bg-deep, #0a0a0f);
+  padding: 14px;
+}
+
+/* Scanline overlay for atmosphere */
+.ncm-create-network-dialog::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 100;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.03) 2px,
+    rgba(0, 0, 0, 0.03) 4px
+  );
+}
+
+/* Top accent stripe */
+.ncm-create-network-dialog .window-header {
+  border-bottom: 2px solid var(--ncm-secondary, #19f3f7);
+}
+
+/* ═══════════════════════════════════════════
+   ANIMATIONS
+   ═══════════════════════════════════════════ */
+
+@keyframes ncm-create-net-shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 50%, 90% { transform: translateX(-2px); }
+  30%, 70% { transform: translateX(2px); }
+}
+
+/* Fade-in for sections on preset switch */
+.ncm-create-net__section {
+  animation: ncm-create-net-fadein 0.2s ease;
+}
+
+@keyframes ncm-create-net-fadein {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}

@@ -430,78 +430,100 @@ export class AdminPanelApp extends BaseApplication {
    * @private
    */
   _gatherNetworkData() {
-    const networks = [];
+     const networks = [];
 
-    try {
-      const allNetworks = this.networkService?.getAllNetworks?.() ?? [];
-      const currentSceneId = canvas.scene?.id;
-      const sceneNetworks = canvas.scene?.getFlag(MODULE_ID, 'networkAvailability') ?? {};
+     try {
+       const allNetworks = this.networkService?.getAllNetworks?.() ?? [];
+       const currentSceneId = canvas.scene?.id;
+       const sceneNetworks = canvas.scene?.getFlag(MODULE_ID, 'networkAvailability') ?? {};
 
-      // Icon mapping for known network types
-      const iconMap = {
-        citinet: { icon: 'wifi', iconClass: 'citinet', type: 'Public subnet' },
-        darknet: { icon: 'mask', iconClass: 'darknet', type: 'Hidden subnet' },
-        corpnet: { icon: 'building', iconClass: 'corpnet', type: 'Corporate subnet' },
-        deadzone: { icon: 'ban', iconClass: 'deadzone', type: 'No signal region' },
-        dead_zone: { icon: 'ban', iconClass: 'deadzone', type: 'No signal region' },
-      };
+       // Icon mapping for known network types
+       const iconMap = {
+         citinet:   { icon: 'wifi',     iconClass: 'citinet',  type: 'Public subnet' },
+         darknet:   { icon: 'mask',     iconClass: 'darknet',  type: 'Hidden subnet' },
+         corpnet:   { icon: 'building', iconClass: 'corpnet',  type: 'Corporate subnet' },
+         govnet:    { icon: 'landmark', iconClass: 'govnet',   type: 'Government subnet' },
+         deadzone:  { icon: 'ban',      iconClass: 'deadzone', type: 'No signal region' },
+         dead_zone: { icon: 'ban',      iconClass: 'deadzone', type: 'No signal region' },
+       };
 
-      for (const net of allNetworks) {
-        const netId = (net.id || net.name || '').toLowerCase().replace(/\s+/g, '_');
-        const known = iconMap[netId] || { icon: 'network-wired', iconClass: 'default', type: net.type || 'Custom subnet' };
+       for (const net of allNetworks) {
+         const netId = (net.id || net.name || '').toLowerCase().replace(/\s+/g, '_');
+         const known = iconMap[netId] || {
+           icon: net.theme?.icon?.replace('fa-', '') || 'network-wired',
+           iconClass: 'default',
+           type: net.type || 'Custom subnet',
+         };
 
-        // Determine if network is enabled on current scene
-        const isEnabled = !!sceneNetworks[net.id] || !!sceneNetworks[net.name];
+         // ─── Account for global availability ───
+         const isGlobal = net.availability?.global === true;
+         const isSceneEnabled = !!sceneNetworks[net.id] || !!sceneNetworks[net.name];
+         const isEnabled = isGlobal || isSceneEnabled;
 
-        // Auth type detection
-        let authClass = 'open', authIcon = 'lock-open', authLabel = 'Open access';
-        if (net.security?.requiresAuth === 'password' || net.security?.password) {
-          authClass = 'password'; authIcon = 'key'; authLabel = 'Password required';
-        } else if (net.security?.requiresAuth === 'skill' || net.requiresSkillCheck) {
-          const skillName = net.auth?.skill || net.skillName || 'Interface';
-          const dv = net.auth?.dv || net.skillDV || 14;
-          authClass = 'skill'; authIcon = 'dice-d20'; authLabel = `${skillName} DV ${dv}`;
-        } else if (netId === 'deadzone' || netId === 'dead_zone') {
-          authClass = 'blocked'; authIcon = 'xmark'; authLabel = 'All signals blocked';
-        }
+         // ─── Auth type detection using correct property types ───
+         let authClass = 'open', authIcon = 'lock-open', authLabel = 'Open access';
 
-        // Gather scenes where this network appears
-        const scenes = [];
-        for (const scene of game.scenes) {
-          const sNets = scene.getFlag(MODULE_ID, 'networkAvailability') ?? {};
-          if (sNets[net.id] || sNets[net.name]) {
-            scenes.push({
-              id: scene.id,
-              name: scene.name,
-              isCurrent: scene.id === currentSceneId,
-            });
-          }
-        }
+         if (net.security?.requiresAuth) {
+           // requiresAuth is boolean — check what type of auth
+           if (net.security.password) {
+             authClass = 'password';
+             authIcon = 'key';
+             authLabel = 'Password required';
+           } else if (net.security.bypassSkills?.length > 0) {
+             const skillName = net.security.bypassSkills[0] || 'Interface';
+             const dv = net.security.bypassDC || 15;
+             authClass = 'skill';
+             authIcon = 'dice-d20';
+             authLabel = `${skillName} DV ${dv}`;
+           } else {
+             authClass = 'locked';
+             authIcon = 'lock';
+             authLabel = 'Auth required';
+           }
+         } else if (netId === 'deadzone' || netId === 'dead_zone') {
+           authClass = 'blocked';
+           authIcon = 'xmark';
+           authLabel = 'All signals blocked';
+         }
 
-        networks.push({
-          id: net.id || net.name,
-          name: net.name || net.id,
-          type: known.type,
-          enabled: isEnabled,
-          signal: net.signalStrength ?? (isEnabled ? 85 : 0),
-          noSignal: (net.signalStrength ?? (isEnabled ? 85 : 0)) === 0,
-          reliability: net.reliability ?? (netId === 'deadzone' ? undefined : 85),
-          userCount: net.userCount ?? 0,
-          icon: known.icon,
-          iconClass: known.iconClass,
-          authClass,
-          authIcon,
-          authLabel,
-          scenes,
-          isCurrent: this.networkService?.currentNetworkId === (net.id || net.name),
-        });
-      }
-    } catch (error) {
-      console.error(`${MODULE_ID} | AdminPanelApp._gatherNetworkData:`, error);
-    }
+         // Gather scenes where this network appears
+         const scenes = [];
+         for (const scene of game.scenes) {
+           const sNets = scene.getFlag(MODULE_ID, 'networkAvailability') ?? {};
+           if (sNets[net.id] || sNets[net.name] || isGlobal) {
+             scenes.push({
+               id: scene.id,
+               name: scene.name,
+               isCurrent: scene.id === currentSceneId,
+             });
+           }
+         }
 
-    return networks;
-  }
+         networks.push({
+           id: net.id || net.name,
+           name: net.name || net.id,
+           type: known.type,
+           enabled: isEnabled,
+           isGlobal,
+           signal: net.signalStrength ?? (isEnabled ? 85 : 0),
+           noSignal: (net.signalStrength ?? (isEnabled ? 85 : 0)) === 0,
+           reliability: net.reliability ?? (netId === 'deadzone' ? undefined : 85),
+           userCount: net.userCount ?? 0,
+           icon: known.icon,
+           iconClass: known.iconClass,
+           authClass,
+           authIcon,
+           authLabel,
+           scenes,
+           isCurrent: this.networkService?.currentNetworkId === (net.id || net.name),
+         });
+       }
+     } catch (error) {
+       console.error(`${MODULE_ID} | AdminPanelApp._gatherNetworkData:`, error);
+     }
+
+     return networks;
+   }
 
   /**
    * Gather data shard summary for the Shards tab.
@@ -759,11 +781,13 @@ export class AdminPanelApp extends BaseApplication {
     this.subscribe(EVENTS.MESSAGE_RECEIVED, () => this._refreshIfTab('overview', 'messages'));
     this.subscribe(EVENTS.MESSAGE_SCHEDULED, () => this._refreshIfTab('messages'));
     this.subscribe(EVENTS.MESSAGE_DELETED, () => this._refreshIfTab('overview', 'messages'));
+    this.subscribe('schedule:updated', () => this._refreshIfTab('messages'));
 
     // Contacts
     this.subscribe(EVENTS.CONTACT_TRUST_CHANGED, () => this._refreshIfTab('contacts'));
     this.subscribe(EVENTS.CONTACT_BURNED, () => this._refreshIfTab('contacts'));
     this.subscribe(EVENTS.CONTACT_SHARED, () => this._refreshIfTab('contacts'));
+    this.subscribe(EVENTS.CONTACT_UPDATED, () => this._debouncedRender());
 
     // Networks
     this.subscribe(EVENTS.NETWORK_CHANGED, () => this._refreshIfTab('networks', 'overview'));
@@ -775,6 +799,7 @@ export class AdminPanelApp extends BaseApplication {
     this.subscribe(EVENTS.SHARD_RELOCKED, () => this._refreshIfTab('shards'));
     this.subscribe(EVENTS.SHARD_HACK_ATTEMPT, () => this._refreshIfTab('shards'));
     this.subscribe(EVENTS.SHARD_CREATED, () => this._refreshIfTab('shards'));
+    this.subscribe(EVENTS.SHARD_STATE_CHANGED, () => this._debouncedRender());
   }
 
   /**
@@ -984,9 +1009,19 @@ export class AdminPanelApp extends BaseApplication {
                    || target.dataset.networkId;
     if (!networkId) return;
 
+    // Check if this is a global network
+    const network = this.networkService?.getNetwork(networkId);
+    if (network?.availability?.global) {
+      ui.notifications.info(
+        `NCM | "${network.name}" is globally available. ` +
+        `Use the Network Manager to change its availability scope.`
+      );
+      return;
+    }
+
     const scene = canvas.scene;
     if (!scene) {
-      ui.notifications.warn('No active scene to modify network availability.');
+      ui.notifications.warn('NCM | No active scene to modify network availability.');
       return;
     }
 
@@ -994,6 +1029,9 @@ export class AdminPanelApp extends BaseApplication {
     const updated = { ...current, [networkId]: !current[networkId] };
 
     await scene.setFlag(MODULE_ID, 'networkAvailability', updated);
+    ui.notifications.info(
+      `NCM | ${network?.name || networkId} ${updated[networkId] ? 'enabled' : 'disabled'} on ${scene.name}.`
+    );
     this.render(true);
   }
 

@@ -80,7 +80,12 @@
       <div class="ncm-netmgr__split-list">
         <div class="ncm-netmgr__split-list-header">
           <span class="ncm-netmgr__split-list-title">Subnets</span>
-          <button class="ncm-netmgr__btn-add" data-action="createNetwork" title="Create custom network">
+          <button class="ncm-netmgr__btn-sm ncm-netmgr__btn-sm--primary"
+                  data-action="quickCreate"
+                  title="Quick-create with template presets">
+            <i class="fas fa-bolt"></i>
+          </button>
+          <button class="ncm-netmgr__btn-add" data-action="createNetwork" title="Create custom network (inline)">
             <i class="fas fa-plus"></i>
           </button>
         </div>
@@ -132,6 +137,7 @@
         {{!-- ─── EDITOR MODE (Create or Edit) ─── --}}
         {{#if isEditing}}
         <form class="ncm-netmgr__editor ncm-network-form">
+          <div class="ncm-netmgr__editor-body">
 
           {{!-- Identity Fieldset --}}
           <div class="ncm-netmgr__fieldset">
@@ -316,7 +322,7 @@
                 </div>
               </div>
             </div>
-          </div>
+          </div>{{!-- /.ncm-netmgr__editor-body --}}
 
           {{!-- Editor Actions --}}
           <div class="ncm-netmgr__editor-actions">

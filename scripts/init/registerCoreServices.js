@@ -11,6 +11,7 @@ import { EventBus } from '../core/EventBus.js';
 import { StateManager } from '../core/StateManager.js';
 import { SettingsManager } from '../core/SettingsManager.js';
 import { SocketManager } from '../core/SocketManager.js';
+import { DocumentSyncBridge } from '../integrations/DocumentSyncBridge.js';
 
 export function registerCoreServices(initializer) {
   // ─── preInit: Create singletons ───
@@ -69,5 +70,14 @@ export function registerCoreServices(initializer) {
     };
 
     log.info('game.nightcity namespace created');
+  });
+
+  // ─── ready: Document Sync Bridge ───
+  initializer.register('ready', 105, 'Document sync bridge', () => {
+    const eventBus = game.nightcity.eventBus;
+    if (eventBus) {
+      DocumentSyncBridge.register(eventBus);
+      log.info('DocumentSyncBridge registered');
+    }
   });
 }

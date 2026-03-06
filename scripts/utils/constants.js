@@ -50,10 +50,15 @@ export const EVENTS = Object.freeze({
   SHARD_LOGIN_FAILURE: 'shard:loginFailure',
   SHARD_RELOCKED: 'shard:relocked',
 
+  SHARD_STATE_CHANGED: 'shard:stateChanged',
+  CONTACT_UPDATED: 'contact:updated',
+  INBOX_REFRESH: 'inbox:refresh',
+  MESSAGE_STATUS_CHANGED: 'message:statusChanged',
+  SCHEDULE_UPDATED: 'schedule:updated',
+
   TOAST_SHOW: 'toast:show',
   TOAST_DISMISS: 'toast:dismiss',
   TOAST_ACTION: 'toast:action',
-
 
   UI_VIEWER_OPENED: 'ui:viewerOpened',
   UI_COMPOSER_OPENED: 'ui:composerOpened',
@@ -204,6 +209,7 @@ export const TEMPLATES = Object.freeze({
   ADMIN_PANEL: `${T}/admin-panel/admin-panel.hbs`,
   THEME_CUSTOMIZER: `${T}/theme-customizer/theme-customizer.hbs`,
   NETWORK_AUTH_DIALOG: `${T}/dialogs/network-auth-dialog.hbs`,
+  CREATE_NETWORK_DIALOG: `${T}/dialogs/create-network.hbs`,
   DEAD_ZONE_WARNING: `${T}/dialogs/dead-zone-warning.hbs`,
   NETWORK_SELECTOR: `${T}/message-viewer/partials/network-selector.hbs`,
   PLAYER_EMAIL_SETUP: `${T}/dialogs/player-email-setup.hbs`,

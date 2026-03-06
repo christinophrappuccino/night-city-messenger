@@ -12,6 +12,7 @@
 import { MODULE_ID, EVENTS, TEMPLATES, NETWORK_TYPES, SECURITY_LEVELS } from '../../utils/constants.js';
 import { log, isGM } from '../../utils/helpers.js';
 import { BaseApplication } from '../BaseApplication.js';
+import { CreateNetworkDialog } from './CreateNetworkDialog.js';
 
 export class NetworkManagementApp extends BaseApplication {
 
@@ -51,6 +52,7 @@ export class NetworkManagementApp extends BaseApplication {
       switchTab: NetworkManagementApp._onSwitchTab,
       selectNetwork: NetworkManagementApp._onSelectNetwork,
       createNetwork: NetworkManagementApp._onCreateNetwork,
+      quickCreate: NetworkManagementApp._onQuickCreate,
       saveNetwork: NetworkManagementApp._onSaveNetwork,
       deleteNetwork: NetworkManagementApp._onDeleteNetwork,
       editNetwork: NetworkManagementApp._onEditNetwork,
@@ -258,7 +260,7 @@ export class NetworkManagementApp extends BaseApplication {
   _setupEventSubscriptions() {
     if (!this.eventBus) return;
 
-    this.subscribe(EVENTS.NETWORK_CHANGED, () => this.render());
+    this.subscribe(EVENTS.NETWORK_CHANGED, () => this._debouncedRender());
     this.subscribe(EVENTS.NETWORK_AUTH_SUCCESS, () => this.render());
     this.subscribe(EVENTS.NETWORK_AUTH_FAILURE, () => this.render());
     this.subscribe(EVENTS.NETWORK_LOCKOUT, () => this.render());
@@ -289,6 +291,20 @@ export class NetworkManagementApp extends BaseApplication {
     this._isCreating = true;
     this._isEditMode = true;
     this.render();
+  }
+
+  /**
+  * Open the Quick Create dialog. On success, select the new network.
+  * Triggered by the "+ Quick Create" button in the sidebar header.
+   */
+  static async _onQuickCreate() {
+  const network = await CreateNetworkDialog.show();
+      if (network) {
+        this._selectedNetworkId = network.id;
+        this._isCreating = false;
+        this._isEditMode = false;
+      this.render();
+    }
   }
 
   static async _onSaveNetwork(event, target) {

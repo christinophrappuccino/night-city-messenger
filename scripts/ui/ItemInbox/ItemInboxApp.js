@@ -262,7 +262,6 @@ export class ItemInboxApp extends BaseApplication {
   }
 
   _setupEventSubscriptions() {
-    // Re-render when shard state changes
     this.subscribe(EVENTS.SHARD_DECRYPTED, (data) => {
       if (data.itemId === this.item?.id) this.render();
     });
@@ -271,6 +270,9 @@ export class ItemInboxApp extends BaseApplication {
         this.selectedMessageId = null;
         this.render();
       }
+    });
+    this.subscribe(EVENTS.SHARD_STATE_CHANGED, (data) => {
+      if (data.itemId === this.item?.id) this._debouncedRender();
     });
     this.subscribe(EVENTS.SHARD_KEY_ITEM_PRESENTED, (data) => {
       if (data.itemId === this.item?.id) this.render();
@@ -281,8 +283,7 @@ export class ItemInboxApp extends BaseApplication {
     this.subscribe(EVENTS.SHARD_BLACK_ICE, (data) => {
       if (data.itemId === this.item?.id) this._playBlackICEEffect(data.damage);
     });
-    // Network changes may affect the network overlay
-    this.subscribe(EVENTS.NETWORK_CHANGED, () => this.render());
+    this.subscribe(EVENTS.NETWORK_CHANGED, () => this._debouncedRender());
   }
 
   // ─── Lockout Timer ───

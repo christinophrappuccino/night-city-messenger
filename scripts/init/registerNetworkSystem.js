@@ -24,6 +24,7 @@ import { NetworkAccessLogService } from '../services/NetworkAccessLogService.js'
 // UI Applications
 import { NetworkManagementApp } from '../ui/NetworkManagement/NetworkManagementApp.js';
 import { NetworkAuthDialog } from '../ui/NetworkManagement/NetworkAuthDialog.js';
+import { CreateNetworkDialog } from '../ui/NetworkManagement/CreateNetworkDialog.js';
 import { DeadZoneWarningApp } from '../ui/NetworkManagement/DeadZoneWarningApp.js';
 
 // Verification
@@ -228,9 +229,12 @@ export function registerNetworkSystem(initializer) {
       return { success: false, reason: 'auth_failed' };
     };
 
-    // ─── WP-5: Dead Zone Warning Overlay ────────────────────
+    // ─── Dead Zone Warning Overlay ────────────────────
     DeadZoneWarningApp.registerListeners();
     ns.showDeadZoneWarning = (sceneName) => DeadZoneWarningApp.show(sceneName);
+
+    // ─── Quick Create Network Dialog ────────────────
+    ns.createNetwork = (options) => CreateNetworkDialog.show(options);
 
     // ─── Phase 3 Verification ───────────────────────────────
     ns.verifyPhase3 = () => Phase3Verification.run();

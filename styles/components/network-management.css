@@ -48,6 +48,87 @@
   --nm-net-deadzone: #ff0033;
 }
 
+/* ─── Foundry Override: Force editor input/select visibility ─── */
+
+.ncm-network-management .ncm-netmgr__input,
+.ncm-network-management input.ncm-netmgr__input,
+.ncm-network-management .ncm-netmgr__editor input[type="text"],
+.ncm-network-management .ncm-netmgr__editor input[type="number"],
+.ncm-network-management .ncm-netmgr__editor textarea {
+  background: var(--nm-bg-deep);
+  border: 1px solid var(--nm-border);
+  color: var(--nm-text-primary);
+  font-family: var(--nm-font-mono);
+  font-size: 10px;
+  padding: 5px 8px;
+  border-radius: 2px;
+  outline: none;
+  box-shadow: none;
+  height: auto;
+  line-height: normal;
+  margin: 0;
+}
+
+.ncm-network-management .ncm-netmgr__input:focus,
+.ncm-network-management .ncm-netmgr__editor input:focus,
+.ncm-network-management .ncm-netmgr__editor textarea:focus {
+  border-color: var(--nm-secondary);
+  box-shadow: 0 0 0 1px rgba(25, 243, 247, 0.15);
+  outline: none;
+}
+
+.ncm-network-management .ncm-netmgr__select,
+.ncm-network-management select.ncm-netmgr__select,
+.ncm-network-management .ncm-netmgr__editor select {
+  background: var(--nm-bg-deep);
+  border: 1px solid var(--nm-border);
+  color: var(--nm-text-primary);
+  font-family: var(--nm-font-mono);
+  font-size: 10px;
+  padding: 5px 8px;
+  padding-right: 20px;
+  border-radius: 2px;
+  outline: none;
+  box-shadow: none;
+  height: auto;
+  line-height: normal;
+  margin: 0;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%23e0e0e8'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+}
+
+.ncm-network-management .ncm-netmgr__select:focus,
+.ncm-network-management .ncm-netmgr__editor select:focus {
+  border-color: var(--nm-secondary);
+  box-shadow: 0 0 0 1px rgba(25, 243, 247, 0.15);
+}
+
+/* Also fix select option text in dark theme */
+.ncm-network-management .ncm-netmgr__select option,
+.ncm-network-management .ncm-netmgr__editor select option {
+  background: var(--nm-bg-base);
+  color: var(--nm-text-primary);
+}
+
+/* Fix placeholder visibility */
+.ncm-network-management .ncm-netmgr__input::placeholder,
+.ncm-network-management .ncm-netmgr__editor input::placeholder {
+  color: var(--nm-text-muted);
+  opacity: 1;
+}
+
+/* Fix color swatch input */
+.ncm-network-management input[type="color"].ncm-netmgr__color-swatch {
+  background: transparent;
+  border: 1px solid var(--nm-border);
+  padding: 0;
+  cursor: pointer;
+}
 
 /* ═══════════════════════════════════════════════════════════
    APP CONTAINER
@@ -974,11 +1055,20 @@
    ═══════════════════════════════════════════════════════════ */
 
 .ncm-netmgr__editor {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.ncm-netmgr__editor-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   padding: 14px;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  overflow-y: auto;
 }
 
 /* Fieldsets */
@@ -986,7 +1076,7 @@
 .ncm-netmgr__fieldset {
   border: 1px solid var(--nm-border);
   border-radius: 2px;
-  overflow: hidden;
+  flex-shrink: 0;
 }
 
 .ncm-netmgr__fieldset-legend {
@@ -1134,13 +1224,13 @@
 }
 
 /* Editor Actions */
-
 .ncm-netmgr__editor-actions {
   display: flex;
   gap: 6px;
-  padding-top: 8px;
+  padding: 8px 14px;
   border-top: 1px solid var(--nm-border);
-  margin-top: auto;
+  background: var(--nm-bg-deep);
+  flex-shrink: 0;
 }
 
 .ncm-netmgr__editor-spacer {

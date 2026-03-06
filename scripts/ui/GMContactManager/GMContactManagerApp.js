@@ -289,7 +289,7 @@ export class GMContactManagerApp extends BaseApplication {
   // ═══════════════════════════════════════════════════════════
 
   _setupEventSubscriptions() {
-    this.subscribe('contacts:masterUpdated', () => this.render());
+    this.subscribe('contacts:masterUpdated', () => this._debouncedRender());
     this.subscribe(EVENTS.CONTACT_TRUST_CHANGED, () => this.render());
     this.subscribe(EVENTS.CONTACT_BURNED, () => this.render());
   }

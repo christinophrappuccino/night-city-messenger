@@ -138,6 +138,7 @@ export class MessageViewerApp extends BaseApplication {
   constructor(options = {}) {
     super(options);
     this.actorId = options.actorId || game.user?.character?.id || null;
+    this.subscribe(EVENTS.CONTACT_UPDATED, () => this.render());
     this._loadPreferences();
     this._setupEventSubscriptions();
   }
@@ -1131,12 +1132,11 @@ export class MessageViewerApp extends BaseApplication {
   // ═══════════════════════════════════════════════════════════
 
   _setupEventSubscriptions() {
-    // Subscribe via BaseApplication's managed subscription (auto-cleanup)
-    this.subscribe?.('message:received', () => this.render());
-    this.subscribe?.('message:read', () => this.render());
-    this.subscribe?.('message:deleted', () => this.render());
-    this.subscribe?.('network:changed', () => this.render());
-    this.subscribe?.('theme:changed', () => this.render());
+    this.subscribe?.('message:received', () => this._debouncedRender());
+    this.subscribe?.('message:read', () => this._debouncedRender());
+    this.subscribe?.('message:deleted', () => this._debouncedRender());
+    this.subscribe?.('network:changed', () => this._debouncedRender());
+    this.subscribe?.('theme:changed', () => this._debouncedRender());
   }
 
   // ═══════════════════════════════════════════════════════════

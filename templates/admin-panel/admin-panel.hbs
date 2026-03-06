@@ -298,8 +298,14 @@
             <div class="ncm-network-card__name">{{this.name}}</div>
             <div class="ncm-network-card__type">{{this.type}}</div>
           </div>
-          <div class="ncm-network-card__toggle {{#if this.enabled}}ncm-network-card__toggle--on{{/if}}"
-               data-action="toggleNetwork" data-network-id="{{this.id}}"></div>
+           {{#if this.isGlobal}}
+             <span class="ncm-network-card__global-badge">
+               <i class="fas fa-globe"></i> GLOBAL
+             </span>
+             {{else}}
+            <div class="ncm-network-card__toggle {{#if this.enabled}}ncm-network-card__toggle--on{{/if}}"
+                data-action="toggleNetwork" data-network-id="{{this.id}}"></div>
+         {{/if}}
         </div>
         <div class="ncm-network-card__stats">
           <span>Signal <span class="val {{#if this.noSignal}}val--danger{{/if}}">{{this.signal}}%</span></span>
