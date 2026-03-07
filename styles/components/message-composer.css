@@ -1010,6 +1010,34 @@
   background: var(--ncm-bg-base);
   border-bottom: 1px solid var(--ncm-border);
   flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+/* Format row — standard height */
+.ncm-app .ncm-composer .ncm-editor-toolbar--format {
+  border-bottom: 1px solid rgba(42, 42, 69, 0.4);
+}
+
+/* Actions row — slightly different bg for visual separation */
+.ncm-app .ncm-composer .ncm-editor-toolbar--actions {
+  background: var(--ncm-bg-deep);
+  padding: 3px 8px;
+  gap: 2px;
+}
+
+/* Tiny labels next to action buttons */
+.ncm-app .ncm-composer .ncm-editor-toolbar__label {
+  font-family: var(--ncm-font-mono);
+  font-size: 8px;
+  color: var(--ncm-text-muted);
+  text-transform: uppercase;
+  letter-spacing: var(--ncm-tracking-tight);
+  margin-right: 4px;
+  user-select: none;
+}
+
+.ncm-app .ncm-composer .ncm-editor-toolbar__label--eddies {
+  color: var(--ncm-success);
 }
 
 .ncm-app .ncm-composer .ncm-editor-tool {
@@ -1084,6 +1112,102 @@
   text-transform: uppercase;
   letter-spacing: var(--ncm-tracking-tight);
   pointer-events: none;
+}
+
+/* Encrypted text block inside editor content */
+.ncm-app .ncm-composer .ncm-encrypted-text-block {
+  position: relative;
+  margin: 8px 0;
+  padding: 10px 12px 10px 14px;
+  background: rgba(247, 201, 72, 0.04);
+  border: 1px solid rgba(247, 201, 72, 0.2);
+  border-left: 3px solid var(--ncm-accent);
+  border-radius: 0 var(--ncm-radius-sm) var(--ncm-radius-sm) 0;
+  font-family: var(--ncm-font-mono);
+  color: var(--ncm-accent);
+}
+
+.ncm-app .ncm-composer .ncm-encrypted-text-block::before {
+  content: attr(data-label);
+  display: block;
+  font-family: var(--ncm-font-mono);
+  font-size: 8px;
+  color: var(--ncm-accent);
+  text-transform: uppercase;
+  letter-spacing: var(--ncm-tracking-normal);
+  margin-bottom: 4px;
+  opacity: 0.7;
+}
+
+/* Editor content — rich text formatting */
+.ncm-app .ncm-composer .ncm-editor-content a {
+  color: var(--ncm-secondary);
+  text-decoration: underline;
+  text-decoration-color: rgba(25, 243, 247, 0.4);
+}
+
+.ncm-app .ncm-composer .ncm-editor-content a:hover {
+  text-decoration-color: var(--ncm-secondary);
+}
+
+.ncm-app .ncm-composer .ncm-editor-content pre {
+  background: var(--ncm-bg-deep);
+  border: 1px solid var(--ncm-border);
+  border-radius: var(--ncm-radius-sm);
+  padding: 6px 10px;
+  margin: 6px 0;
+  font-family: var(--ncm-font-mono);
+  font-size: 12px;
+  color: var(--ncm-success);
+  overflow-x: auto;
+}
+
+.ncm-app .ncm-composer .ncm-editor-content blockquote {
+  border-left: 3px solid var(--ncm-border-active);
+  margin: 6px 0;
+  padding: 4px 10px;
+  color: var(--ncm-text-secondary);
+  font-style: italic;
+}
+
+.ncm-app .ncm-composer .ncm-editor-content ul,
+.ncm-app .ncm-composer .ncm-editor-content ol {
+  padding-left: 20px;
+  margin: 4px 0;
+}
+
+.ncm-app .ncm-composer .ncm-editor-content li {
+  margin: 2px 0;
+}
+
+.ncm-app .ncm-composer .ncm-editor-content hr {
+  border: none;
+  border-top: 1px solid var(--ncm-border);
+  margin: 8px 0;
+}
+
+.ncm-app .ncm-composer .ncm-editor-content s {
+  color: var(--ncm-text-muted);
+}
+
+/* Inline tags inserted by toolbar actions */
+.ncm-app .ncm-composer .ncm-editor-content .ncm-timestamp-tag,
+.ncm-app .ncm-composer .ncm-editor-content .ncm-location-tag {
+  display: inline;
+  padding: 1px 4px;
+  background: rgba(25, 243, 247, 0.05);
+  border: 1px solid rgba(25, 243, 247, 0.1);
+  border-radius: 2px;
+  white-space: nowrap;
+}
+
+.ncm-app .ncm-composer .ncm-editor-content .ncm-location-tag {
+  background: rgba(255, 171, 0, 0.05);
+  border-color: rgba(255, 171, 0, 0.1);
+}
+
+.ncm-app .ncm-composer .ncm-editor-content .ncm-signature {
+  opacity: 0.7;
 }
 
 

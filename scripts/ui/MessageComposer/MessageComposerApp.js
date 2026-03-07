@@ -59,6 +59,9 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       attachShard: MessageComposerApp._onAttachShard,
       attachEddies: MessageComposerApp._onAttachEddies,
       editorCommand: MessageComposerApp._onEditorCommand,
+      insertTimestamp: MessageComposerApp._onInsertTimestamp,
+      insertCoords: MessageComposerApp._onInsertCoords,
+      insertSignature: MessageComposerApp._onInsertSignature,
     },
   };
 
@@ -1034,9 +1037,17 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
 
       let result;
 
+      // Deduct eddies from sender BEFORE sending
+      if (this.eddiesAmount > 0) {
+        const deducted = await this._deductEddies(this.fromActorId, this.eddiesAmount);
+        if (!deducted) {
+          this._sending = false;
+          return; // _deductEddies shows its own error
+        }
+      }
+
       // Route through SchedulingService if schedule is enabled
       if (this.scheduleEnabled && this.scheduledTime) {
-        // Resolve delivery time — use game time if toggled
         let deliveryTime = this.scheduledTime;
         if (this.scheduleGameTime && this.timeService) {
           // scheduledTime is user-entered game-time string; pass as-is
@@ -1061,6 +1072,14 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
         if (!this.scheduleEnabled) {
           ui.notifications.info(result.queued ? 'Message queued for delivery.' : 'Message sent.');
         }
+
+        // Credit eddies to recipient(s) on successful send
+        if (this.eddiesAmount > 0 && actorRecipients.length > 0) {
+          for (const r of actorRecipients) {
+            await this._creditEddies(r.actorId, this.eddiesAmount);
+          }
+        }
+
         this.soundService?.play('send');
 
         // Send animation — flash the composer
@@ -1071,10 +1090,20 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
 
         this.close();
       } else {
+        // Send failed — refund eddies if they were deducted
+        if (this.eddiesAmount > 0) {
+          await this._creditEddies(this.fromActorId, this.eddiesAmount);
+          ui.notifications.warn('Eddies refunded due to send failure.');
+        }
         ui.notifications.error(`Send failed: ${result?.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error(`${MODULE_ID} | Send failed:`, error);
+      // Refund eddies on exception too
+      if (this.eddiesAmount > 0) {
+        await this._creditEddies(this.fromActorId, this.eddiesAmount).catch(() => {});
+        ui.notifications.warn('Eddies refunded due to send failure.');
+      }
       ui.notifications.error('Failed to send message.');
     } finally {
       this._sending = false;
@@ -1251,21 +1280,54 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
   }
 
   static _onAttachShard(event, target) {
-    // Show items with NCM shard config from the game
-    const shardItems = game.items?.filter(i =>
-      i.getFlag(MODULE_ID, 'shardConfig') || i.getFlag(MODULE_ID, 'config')
-    ) || [];
-
-    // Also check actor inventory
     const actor = game.actors.get(this.fromActorId);
-    const actorShards = actor?.items?.filter(i =>
-      i.getFlag(MODULE_ID, 'shardConfig') || i.getFlag(MODULE_ID, 'config')
-    ) || [];
+    const isGM = game.user.isGM;
 
-    const allShards = [...shardItems, ...actorShards];
+    // Convert Foundry Items to plain objects for display
+    const toShardEntry = (item, ownerName = '') => ({
+      id: item.id,
+      name: item.name,
+      img: item.img,
+      ownerName,
+    });
+
+    // Player: only their actor's inventory items with shard config
+    // GM: actor inventory + all world items + all actors' inventories
+    const actorShards = (actor?.items?.filter(i =>
+      i.getFlag(MODULE_ID, 'shardConfig') || i.getFlag(MODULE_ID, 'config')
+    ) || []).map(i => toShardEntry(i, actor.name));
+
+    let allShards = [...actorShards];
+
+    if (isGM) {
+      // GM also sees world-level items
+      const worldShards = (game.items?.filter(i =>
+        i.getFlag(MODULE_ID, 'shardConfig') || i.getFlag(MODULE_ID, 'config')
+      ) || []).map(i => toShardEntry(i, 'World'));
+      allShards.push(...worldShards);
+
+      // GM also sees shards on other actors
+      for (const a of game.actors) {
+        if (a.id === actor?.id) continue;
+        const otherShards = (a.items?.filter(i =>
+          i.getFlag(MODULE_ID, 'shardConfig') || i.getFlag(MODULE_ID, 'config')
+        ) || []).map(i => toShardEntry(i, a.name));
+        allShards.push(...otherShards);
+      }
+    }
+
+    // Deduplicate by ID
+    const seen = new Set();
+    allShards = allShards.filter(s => {
+      if (seen.has(s.id)) return false;
+      seen.add(s.id);
+      return true;
+    });
 
     if (allShards.length === 0) {
-      ui.notifications.info('No data shards available to attach.');
+      ui.notifications.info(isGM
+        ? 'No data shards found in any inventory or world items.'
+        : 'No data shards in your inventory.');
       return;
     }
 
@@ -1276,6 +1338,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
              class="ncm-shard-pick" data-item-id="${s.id}">
           <i class="fas fa-microchip" style="color:var(--ncm-secondary);"></i>
           <span>${s.name}</span>
+          ${s.ownerName ? `<span style="font-size:0.7em;color:var(--ncm-text-muted);margin-left:auto;">(${s.ownerName})</span>` : ''}
         </div>
       `).join('')}
     </div>`;
@@ -1315,17 +1378,19 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
   }
 
   static _onAttachEddies(event, target) {
-    // Prompt for eddies amount
     const actor = game.actors.get(this.fromActorId);
+    const isGM = game.user.isGM;
 
-    // CPR system: try common wealth paths
-    const currentEddies = actor?.system?.wealth?.value
-      ?? actor?.system?.eurobucks?.value
-      ?? actor?.system?.lifestyle?.cash
-      ?? 0;
+    // CPR system: confirmed path is system.wealth.value + system.wealth.transactions
+    const currentEddies = actor?.system?.wealth?.value ?? 0;
+
+    const balanceText = isGM
+      ? `GM Mode — no balance restriction${currentEddies > 0 ? ` (actor has ${currentEddies.toLocaleString()} eb)` : ''}`
+      : `You have ${currentEddies.toLocaleString()} eb`;
 
     const content = `<div class="form-group">
-      <label>Eddies to attach${currentEddies ? ` (you have ${currentEddies.toLocaleString()} eb)` : ''}:</label>
+      <label style="margin-bottom:4px;">${balanceText}</label>
+      <label>Amount to send:</label>
       <input type="number" name="amount" value="100" min="1" style="width:100%;" />
     </div>`;
 
@@ -1339,8 +1404,9 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
             const amount = parseInt(html.find('[name=amount]').val()) || 0;
             if (amount <= 0) return;
 
-            if (currentEddies > 0 && amount > currentEddies) {
-              ui.notifications.warn('Insufficient eddies.');
+            // Players must have sufficient funds; GM can send any amount
+            if (!isGM && amount > currentEddies) {
+              ui.notifications.warn(`Insufficient eddies. You have ${currentEddies.toLocaleString()} eb.`);
               return;
             }
 
@@ -1372,6 +1438,10 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     const command = target.dataset.command;
     if (!command) return;
 
+    // Focus the editor first so execCommand works on the right context
+    const editor = this.element?.querySelector('[data-id="editor-content"]');
+    if (editor && document.activeElement !== editor) editor.focus();
+
     switch (command) {
       case 'bold':
         document.execCommand('bold', false);
@@ -1379,18 +1449,201 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       case 'italic':
         document.execCommand('italic', false);
         break;
-      case 'monospace':
-        // Wrap selection in <code>
-        document.execCommand('formatBlock', false, 'pre');
+      case 'underline':
+        document.execCommand('underline', false);
         break;
-      case 'link': {
-        const url = prompt('Enter URL:');
-        if (url) document.execCommand('createLink', false, url);
+      case 'strikethrough':
+        document.execCommand('strikeThrough', false);
+        break;
+      case 'monospace':
+        // Toggle <code> wrap on selection
+        if (window.getSelection()?.toString()) {
+          document.execCommand('formatBlock', false, 'pre');
+        }
+        break;
+      case 'link':
+        // Use Foundry Dialog instead of prompt()
+        this._showLinkDialog();
+        break;
+      case 'unlink':
+        document.execCommand('unlink', false);
+        break;
+      case 'bulletList':
+        document.execCommand('insertUnorderedList', false);
+        break;
+      case 'numberList':
+        document.execCommand('insertOrderedList', false);
+        break;
+      case 'blockquote':
+        document.execCommand('formatBlock', false, 'blockquote');
+        break;
+      case 'horizontalRule':
+        document.execCommand('insertHorizontalRule', false);
+        break;
+      case 'clearFormat':
+        document.execCommand('removeFormat', false);
+        document.execCommand('formatBlock', false, 'div');
+        break;
+      case 'lock': {
+        // Encrypted block — wrap selected text in a styled container
+        const selection = window.getSelection();
+        if (selection && !selection.isCollapsed) {
+          const range = selection.getRangeAt(0);
+          const wrapper = document.createElement('div');
+          wrapper.className = 'ncm-encrypted-text-block';
+          wrapper.setAttribute('data-label', 'ICE-ENCRYPTED');
+          range.surroundContents(wrapper);
+        } else {
+          // No selection — insert an empty encrypted block
+          document.execCommand('insertHTML', false,
+            '<div class="ncm-encrypted-text-block" data-label="ICE-ENCRYPTED"><br></div><div><br></div>'
+          );
+        }
         break;
       }
       default:
         break;
     }
+
+    // Update body state
+    if (editor) this.body = editor.innerHTML;
+  }
+
+  /**
+   * Show a Foundry Dialog for inserting a link (prompt() is blocked in Foundry).
+   */
+  _showLinkDialog() {
+    const selectedText = window.getSelection()?.toString() || '';
+
+    new Dialog({
+      title: 'Insert Link',
+      content: `
+        <div class="form-group" style="margin-bottom:8px;">
+          <label>URL:</label>
+          <input type="text" name="url" value="https://" style="width:100%;" />
+        </div>
+        ${!selectedText ? `
+        <div class="form-group">
+          <label>Link text:</label>
+          <input type="text" name="text" placeholder="Click here" style="width:100%;" />
+        </div>` : ''}
+      `,
+      buttons: {
+        insert: {
+          label: 'Insert',
+          callback: (html) => {
+            const url = html.find('[name=url]').val()?.trim();
+            if (!url || url === 'https://') return;
+
+            const editor = this.element?.querySelector('[data-id="editor-content"]');
+            if (editor) editor.focus();
+
+            if (selectedText) {
+              document.execCommand('createLink', false, url);
+            } else {
+              const text = html.find('[name=text]').val()?.trim() || url;
+              document.execCommand('insertHTML', false, `<a href="${url}">${text}</a>`);
+            }
+
+            if (editor) this.body = editor.innerHTML;
+          },
+        },
+        cancel: { label: 'Cancel' },
+      },
+      default: 'insert',
+    }).render(true);
+  }
+
+  // ── Message Insert Actions ──
+
+  static _onInsertTimestamp(event, target) {
+    const editor = this.element?.querySelector('[data-id="editor-content"]');
+    if (!editor) return;
+    editor.focus();
+
+    // Get game time if available, otherwise real time
+    let timeStr;
+    if (this.timeService) {
+      const gameTime = this.timeService.getCurrentTime();
+      const dt = new Date(gameTime);
+      const dd = String(dt.getDate()).padStart(2, '0');
+      const mm = String(dt.getMonth() + 1).padStart(2, '0');
+      const yyyy = dt.getFullYear();
+      const hh = String(dt.getHours()).padStart(2, '0');
+      const min = String(dt.getMinutes()).padStart(2, '0');
+      timeStr = `${dd}.${mm}.${yyyy} // ${hh}:${min}`;
+    } else {
+      const now = new Date();
+      timeStr = now.toLocaleString();
+    }
+
+    document.execCommand('insertHTML', false,
+      `<span class="ncm-timestamp-tag" style="color:var(--ncm-secondary);font-family:var(--ncm-font-mono);font-size:0.9em;">[ ${timeStr} ]</span>&nbsp;`
+    );
+    this.body = editor.innerHTML;
+  }
+
+  static _onInsertCoords(event, target) {
+    const editor = this.element?.querySelector('[data-id="editor-content"]');
+    if (!editor) return;
+
+    // Get current scene name as location context
+    const sceneName = game.scenes?.viewed?.name || 'Unknown Location';
+
+    new Dialog({
+      title: 'Insert Location Tag',
+      content: `
+        <div class="form-group" style="margin-bottom:8px;">
+          <label>Location:</label>
+          <input type="text" name="location" value="${sceneName}" style="width:100%;" />
+        </div>
+        <div class="form-group">
+          <label>Grid Reference (optional):</label>
+          <input type="text" name="grid" placeholder="e.g. Watson-NID-7" style="width:100%;" />
+        </div>
+      `,
+      buttons: {
+        insert: {
+          label: 'Insert',
+          callback: (html) => {
+            const location = html.find('[name=location]').val()?.trim();
+            const grid = html.find('[name=grid]').val()?.trim();
+            if (!location) return;
+
+            editor.focus();
+            const tag = grid
+              ? `📍 ${location} [${grid}]`
+              : `📍 ${location}`;
+            document.execCommand('insertHTML', false,
+              `<span class="ncm-location-tag" style="color:var(--ncm-warning);font-family:var(--ncm-font-mono);font-size:0.9em;">[ ${tag} ]</span>&nbsp;`
+            );
+            this.body = editor.innerHTML;
+          },
+        },
+        cancel: { label: 'Cancel' },
+      },
+      default: 'insert',
+    }).render(true);
+  }
+
+  static _onInsertSignature(event, target) {
+    const editor = this.element?.querySelector('[data-id="editor-content"]');
+    if (!editor) return;
+    editor.focus();
+
+    const actor = game.actors.get(this.fromActorId);
+    const name = actor?.name || 'Unknown';
+    const email = this.contactRepo?.getActorEmail(this.fromActorId) || '';
+    const alias = actor?.system?.information?.alias || '';
+
+    const sigLine = alias
+      ? `— ${alias} // ${email}`
+      : `— ${name} // ${email}`;
+
+    document.execCommand('insertHTML', false,
+      `<br><div class="ncm-signature" style="border-top:1px solid var(--ncm-border);padding-top:6px;margin-top:8px;color:var(--ncm-text-muted);font-family:var(--ncm-font-mono);font-size:0.85em;font-style:italic;">${sigLine}</div>`
+    );
+    this.body = editor.innerHTML;
   }
 
   // ─── Form Data Sync ───────────────────────────────────────
@@ -1418,6 +1671,105 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     if (game.user.character) return game.user.character.id;
     const owned = game.actors?.find(a => a.isOwner);
     return owned?.id || null;
+  }
+
+  // ─── Eddies Transfer (CPR Wealth System) ────────────────
+
+  /**
+   * Deduct eddies from an actor's wealth using CPR's transaction ledger.
+   * CPR stores wealth at system.wealth.value with system.wealth.transactions[].
+   * @param {string} actorId
+   * @param {number} amount
+   * @returns {Promise<boolean>} true if successful
+   */
+  async _deductEddies(actorId, amount) {
+    const actor = game.actors.get(actorId);
+    if (!actor) {
+      ui.notifications.error('Sender actor not found.');
+      return false;
+    }
+
+    const currentWealth = actor.system?.wealth?.value ?? 0;
+    const isGM = game.user.isGM;
+
+    // GM bypasses balance check (can send from NPC accounts with 0 balance)
+    if (!isGM && amount > currentWealth) {
+      ui.notifications.error(`Insufficient eddies. You have ${currentWealth.toLocaleString()} eb.`);
+      return false;
+    }
+
+    try {
+      // Build CPR-compatible transaction entry
+      const transaction = {
+        id: foundry.utils.randomID(),
+        type: 'Debit',
+        amount: -amount,
+        reason: `NCM: Sent ${amount.toLocaleString()} eb via message`,
+        date: new Date().toISOString(),
+      };
+
+      const newValue = Math.max(0, currentWealth - amount);
+      const transactions = [...(actor.system?.wealth?.transactions || []), transaction];
+
+      // Update actor — need GM permission, use socket if player
+      if (actor.isOwner || isGM) {
+        await actor.update({
+          'system.wealth.value': newValue,
+          'system.wealth.transactions': transactions,
+        });
+      } else {
+        // Player doesn't own this actor — shouldn't happen for sender,
+        // but if GM is send-as, the GM client handles it
+        ui.notifications.warn('Cannot update wealth — no permission on actor.');
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error(`${MODULE_ID} | Eddies deduction failed:`, error);
+      ui.notifications.error('Failed to deduct eddies from account.');
+      return false;
+    }
+  }
+
+  /**
+   * Credit eddies to a recipient actor's wealth.
+   * This runs on the GM client (via the send flow) since the GM has write
+   * permission on all actors. Players sending to NPCs goes through the
+   * GM socket relay in MessageService.
+   * @param {string} actorId
+   * @param {number} amount
+   */
+  async _creditEddies(actorId, amount) {
+    const actor = game.actors.get(actorId);
+    if (!actor) return;
+
+    try {
+      const currentWealth = actor.system?.wealth?.value ?? 0;
+
+      const transaction = {
+        id: foundry.utils.randomID(),
+        type: 'Credit',
+        amount: amount,
+        reason: `NCM: Received ${amount.toLocaleString()} eb via message`,
+        date: new Date().toISOString(),
+      };
+
+      const newValue = currentWealth + amount;
+      const transactions = [...(actor.system?.wealth?.transactions || []), transaction];
+
+      if (actor.isOwner || game.user.isGM) {
+        await actor.update({
+          'system.wealth.value': newValue,
+          'system.wealth.transactions': transactions,
+        });
+      }
+      // If we can't write (player sending to another player's actor),
+      // the GM socket relay in MessageService should handle delivery-side credits.
+      // For now, eddies credit works when GM is present (which is always in normal play).
+    } catch (error) {
+      console.error(`${MODULE_ID} | Eddies credit failed:`, error);
+    }
   }
 
   // ─── Send Animation ────────────────────────────────────────

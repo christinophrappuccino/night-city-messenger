@@ -307,34 +307,86 @@
 
     {{!-- EDITOR --}}
     <div class="ncm-editor-wrap {{#if encryptionEnabled}}ncm-editor-wrap--encrypted{{/if}}">
-      <div class="ncm-editor-toolbar">
-        <button class="ncm-editor-tool" data-action="editorCommand" data-command="bold" title="Bold">
+      {{!-- Editor toolbar — two rows --}}
+      <div class="ncm-editor-toolbar ncm-editor-toolbar--format">
+        {{!-- Text formatting --}}
+        <button class="ncm-editor-tool" data-action="editorCommand" data-command="bold" title="Bold (Ctrl+B)">
           <i class="fas fa-bold"></i>
         </button>
-        <button class="ncm-editor-tool" data-action="editorCommand" data-command="italic" title="Italic">
+        <button class="ncm-editor-tool" data-action="editorCommand" data-command="italic" title="Italic (Ctrl+I)">
           <i class="fas fa-italic"></i>
         </button>
-        <button class="ncm-editor-tool" data-action="editorCommand" data-command="monospace" title="Monospace">
+        <button class="ncm-editor-tool" data-action="editorCommand" data-command="underline" title="Underline (Ctrl+U)">
+          <i class="fas fa-underline"></i>
+        </button>
+        <button class="ncm-editor-tool" data-action="editorCommand" data-command="strikethrough" title="Strikethrough">
+          <i class="fas fa-strikethrough"></i>
+        </button>
+        <button class="ncm-editor-tool" data-action="editorCommand" data-command="monospace" title="Code / Monospace">
           <i class="fas fa-code"></i>
+        </button>
+        <div class="ncm-editor-tool-sep"></div>
+        <button class="ncm-editor-tool" data-action="editorCommand" data-command="bulletList" title="Bullet List">
+          <i class="fas fa-list-ul"></i>
+        </button>
+        <button class="ncm-editor-tool" data-action="editorCommand" data-command="numberList" title="Numbered List">
+          <i class="fas fa-list-ol"></i>
+        </button>
+        <button class="ncm-editor-tool" data-action="editorCommand" data-command="blockquote" title="Blockquote">
+          <i class="fas fa-quote-right"></i>
+        </button>
+        <button class="ncm-editor-tool" data-action="editorCommand" data-command="horizontalRule" title="Divider Line">
+          <i class="fas fa-minus"></i>
         </button>
         <div class="ncm-editor-tool-sep"></div>
         <button class="ncm-editor-tool" data-action="editorCommand" data-command="link" title="Insert Link">
           <i class="fas fa-link"></i>
         </button>
-        <button class="ncm-editor-tool {{#if encryptionEnabled}}ncm-editor-tool--active{{/if}}"
-                data-action="editorCommand" data-command="lock" title="Encrypted Block">
-          <i class="fas fa-lock"></i>
+        <button class="ncm-editor-tool" data-action="editorCommand" data-command="unlink" title="Remove Link">
+          <i class="fas fa-link-slash"></i>
         </button>
         <div class="ncm-editor-tool-sep"></div>
+        <button class="ncm-editor-tool" data-action="editorCommand" data-command="clearFormat" title="Clear Formatting">
+          <i class="fas fa-eraser"></i>
+        </button>
+      </div>
+      <div class="ncm-editor-toolbar ncm-editor-toolbar--actions">
+        {{!-- Security --}}
+        <button class="ncm-editor-tool {{#if encryptionEnabled}}ncm-editor-tool--active{{/if}}"
+                data-action="editorCommand" data-command="lock" title="Insert Encrypted Text Block">
+          <i class="fas fa-lock"></i>
+        </button>
+        <span class="ncm-editor-toolbar__label">ICE Block</span>
+        <div class="ncm-editor-tool-sep"></div>
+
+        {{!-- Attachments --}}
         <button class="ncm-editor-tool" data-action="attachShard" title="Attach Data Shard">
           <i class="fas fa-microchip"></i>
         </button>
+        <span class="ncm-editor-toolbar__label">Shard</span>
         <button class="ncm-editor-tool" data-action="attachFile" title="Attach File">
           <i class="fas fa-paperclip"></i>
         </button>
+        <span class="ncm-editor-toolbar__label">File</span>
         <button class="ncm-editor-tool ncm-editor-tool--eddies" data-action="attachEddies" title="Attach Eddies">
           <i class="fas fa-coins"></i>
         </button>
+        <span class="ncm-editor-toolbar__label ncm-editor-toolbar__label--eddies">Eddies</span>
+        <div class="ncm-editor-tool-sep"></div>
+
+        {{!-- Message features --}}
+        <button class="ncm-editor-tool" data-action="insertTimestamp" title="Insert Timestamp">
+          <i class="fas fa-clock"></i>
+        </button>
+        <span class="ncm-editor-toolbar__label">Time</span>
+        <button class="ncm-editor-tool" data-action="insertCoords" title="Insert Location Tag">
+          <i class="fas fa-location-dot"></i>
+        </button>
+        <span class="ncm-editor-toolbar__label">Location</span>
+        <button class="ncm-editor-tool" data-action="insertSignature" title="Insert Signature">
+          <i class="fas fa-signature"></i>
+        </button>
+        <span class="ncm-editor-toolbar__label">Sig</span>
       </div>
       <div class="ncm-editor-content" data-id="editor-content" contenteditable="true"
            data-placeholder="> Type your message...">{{{body}}}</div>
