@@ -17,6 +17,7 @@
 
 import { MODULE_ID, EVENTS } from '../../utils/constants.js';
 import { getInitials, getAvatarColor } from '../../utils/designHelpers.js';
+import { formatCyberDate } from '../../utils/helpers.js';
 
 export class MessageComposerApp extends foundry.applications.api.HandlebarsApplicationMixin(
   foundry.applications.api.ApplicationV2
@@ -78,6 +79,9 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
 
   /** @type {string|null} From actor ID */
   fromActorId = null;
+
+  /** @type {Object|null} From master contact (when no actor linked) — { id, name, email, portrait } */
+  fromContact = null;
 
   /** @type {Array<{actorId: string, name: string, email: string, avatarColor: string, initials: string, mismatch: boolean, mismatchTooltip: string, unreachable: boolean, locked: boolean}>} */
   recipients = [];
@@ -230,15 +234,17 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     const activeBars = isDeadZone ? 0 : Math.ceil((signalStrength / 100) * barCount);
     const signalBars = Array.from({ length: barCount }, (_, i) => i < activeBars);
 
-    // From actor
-    const fromActor = game.actors.get(this.fromActorId);
-    const fromName = fromActor?.name || 'Unknown';
-    const fromEmail = this.contactRepo?.getActorEmail(this.fromActorId) || '';
-    const fromAvatarColor = fromActor ? getAvatarColor(fromActor.name) : null;
+    // From actor — or master contact fallback
+    const fromActor = this.fromActorId ? game.actors.get(this.fromActorId) : null;
+    const fromName = fromActor?.name || this.fromContact?.name || 'Unknown';
+    const fromEmail = fromActor
+      ? (this.contactRepo?.getActorEmail(this.fromActorId) || '')
+      : (this.fromContact?.email || '');
+    const fromAvatarColor = getAvatarColor(fromName);
 
     // Mode label
     const isGM = game.user.isGM;
-    const isGMSendAs = isGM && this.fromActorId !== this._getDefaultFromActor();
+    const isGMSendAs = isGM && (this.fromContact || this.fromActorId !== this._getDefaultFromActor());
     let modeLabelText, modeLabelIcon, modeLabelIconColor, modeLabelClass;
 
     if (isGMSendAs) {
@@ -353,7 +359,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       // Header
       fromName,
       fromEmail,
-      fromImg: fromActor?.img || null,
+      fromImg: fromActor?.img || this.fromContact?.portrait || null,
       fromAvatarColor,
       networkName,
       networkThemeColor,
@@ -369,6 +375,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       hudNetClass, hudSigClass, hudToClass, hudPriClass, hudEncClass,
       hudToLabel, hudFromLabel, hudPriLabel, hudEncLabel,
       hudStatusText, hudStatusColor, hudStatusIcon,
+      currentGameTime: formatCyberDate(this.timeService?.getCurrentTime?.() || new Date().toISOString()),
 
       // Effects
       effectTags,
@@ -392,6 +399,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       // Schedule
       scheduleEnabled: this.scheduleEnabled,
       scheduledTime: this.scheduledTime,
+      scheduledTimeLocal: this._formatForDatetimeLocal(this.scheduledTime),
       scheduleGameTime: this.scheduleGameTime,
 
       // Editor
@@ -424,6 +432,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     this._setupFormSync();
     this._setupKeyboardShortcuts();
     this._startAutoSave();
+    this._setupSendAsList();
 
     // Focus recipient input on new compose, editor on reply
     requestAnimationFrame(() => {
@@ -637,6 +646,21 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
         a.email?.toLowerCase().includes(q)
       )
     ).slice(0, 6);
+
+    // GM: also search master contact directory
+    if (game.user.isGM) {
+      const masterContacts = game.nightcity?.masterContactService?.search?.(query) || [];
+      for (const mc of masterContacts) {
+        if (mc.actorId && !existingIds.has(mc.actorId) && !results.find(r => r.actorId === mc.actorId)) {
+          results.push({
+            actorId: mc.actorId,
+            name: mc.name,
+            email: mc.email,
+            img: mc.portrait || null,
+          });
+        }
+      }
+    }
 
     // Also search contacts for from actor — merge contact network data
     const contactsByActor = new Map();
@@ -934,41 +958,60 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     const list = this.element?.querySelector('[data-id="sendas-list"]');
     if (!list) return;
 
-    const allActors = game.actors.filter(a => {
-      const email = this.contactRepo?.getActorEmail(a.id);
-      return email; // Only actors with email
+    // Pull from GM Master Contact Directory (the authoritative NPC list)
+    const masterService = game.nightcity?.masterContactService;
+    const masterContacts = masterService?.getAll?.() || [];
+
+    // Also include any actors with emails not in master (fallback)
+    const masterActorIds = new Set(masterContacts.filter(c => c.actorId).map(c => c.actorId));
+    const extraActors = game.actors.filter(a => {
+      if (masterActorIds.has(a.id)) return false;
+      return this.contactRepo?.getActorEmail(a.id);
     });
+
+    // Build combined list: master contacts first, then extras
+    const combined = [
+      ...masterContacts.map(c => ({
+        actorId: c.actorId || '',
+        contactId: c.id || '',
+        name: c.name,
+        email: c.email,
+        type: c.type || 'npc',
+        org: c.organization || '',
+        isMaster: true,
+      })),
+      ...extraActors.map(a => ({
+        actorId: a.id,
+        contactId: '',
+        name: a.name,
+        email: this.contactRepo?.getActorEmail(a.id) || '',
+        type: a.type || '',
+        org: '',
+        isMaster: false,
+      })),
+    ];
 
     const q = filter.toLowerCase();
     const filtered = q
-      ? allActors.filter(a => a.name.toLowerCase().includes(q) || (this.contactRepo?.getActorEmail(a.id) || '').toLowerCase().includes(q))
-      : allActors;
+      ? combined.filter(c => c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q) || c.org.toLowerCase().includes(q))
+      : combined;
 
-    list.innerHTML = filtered.slice(0, 20).map(a => {
-      const email = this.contactRepo?.getActorEmail(a.id) || '';
-      const isActive = a.id === this.fromActorId;
-      const color = getAvatarColor(a.name);
-      const initials = getInitials(a.name);
+    list.innerHTML = filtered.slice(0, 30).map(c => {
+      const isActive = (c.actorId && c.actorId === this.fromActorId) || (c.contactId && c.contactId === this.fromContact?.id);
+      const color = getAvatarColor(c.name);
+      const initials = getInitials(c.name);
       return `
-        <div class="ncm-sendas-item ${isActive ? 'ncm-sendas-item--active' : ''}" data-actor-id="${a.id}">
+        <div class="ncm-sendas-item ${isActive ? 'ncm-sendas-item--active' : ''}"
+             data-ncm-sendas-pick="${c.actorId}" data-ncm-contact-id="${c.contactId}">
           <div class="ncm-sendas-item__avatar" style="color: ${color};">${initials}</div>
           <div class="ncm-sendas-item__info">
-            <div class="ncm-sendas-item__name">${a.name}</div>
-            <div class="ncm-sendas-item__email">${email}</div>
+            <div class="ncm-sendas-item__name">${c.name}${c.org ? ` <span style="color:var(--ncm-text-muted);font-size:0.85em;">— ${c.org}</span>` : ''}</div>
+            <div class="ncm-sendas-item__email">${c.email}</div>
           </div>
-          <span class="ncm-sendas-item__type">${a.type || 'NPC'}</span>
+          <span class="ncm-sendas-item__type">${c.isMaster ? 'MASTER' : c.type || 'NPC'}</span>
         </div>
       `;
     }).join('');
-
-    // Click handlers
-    list.querySelectorAll('.ncm-sendas-item').forEach(item => {
-      item.addEventListener('click', () => {
-        this.fromActorId = item.dataset.actorId;
-        this.sendAsDropdownOpen = false;
-        this.render(true);
-      });
-    });
   }
 
   // ─── Action Handlers ──────────────────────────────────────
@@ -1008,7 +1051,9 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       const messageData = {
         toActorId: toActorId || null,
         to: rawRecipients.length > 0 ? rawRecipients[0].email : undefined,
-        fromActorId: this.fromActorId,
+        fromActorId: this.fromActorId || null,
+        from: this.fromContact?.email || undefined, // Pre-set from email for contactOnly senders
+        fromName: this.fromContact?.name || undefined,
         subject: this.subject,
         body: this.body,
         priority: this.priority,
@@ -1037,8 +1082,8 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
 
       let result;
 
-      // Deduct eddies from sender BEFORE sending
-      if (this.eddiesAmount > 0) {
+      // Deduct eddies from sender BEFORE sending (skip for contact-only senders)
+      if (this.eddiesAmount > 0 && this.fromActorId) {
         const deducted = await this._deductEddies(this.fromActorId, this.eddiesAmount);
         if (!deducted) {
           this._sending = false;
@@ -1163,27 +1208,27 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
 
   static _onToggleSchedule(event, target) {
     this.scheduleEnabled = !this.scheduleEnabled;
+    // Pre-fill with current time + 1 hour when enabling
+    if (this.scheduleEnabled && !this.scheduledTime) {
+      const now = this.timeService?.getCurrentTime?.() || new Date().toISOString();
+      const d = new Date(now);
+      d.setHours(d.getHours() + 1);
+      this.scheduledTime = d.toISOString();
+    }
     this.render(true);
   }
 
   static _onToggleGameTime(event, target) {
     this.scheduleGameTime = !this.scheduleGameTime;
-
-    // Pre-fill with current game time when toggling ON
+    // Re-fill with game time if toggling on
     if (this.scheduleGameTime && this.timeService) {
       const gameTime = this.timeService.getCurrentTime();
       if (gameTime) {
-        // Format as the cyberpunk date style: DD.MM.YYYY // HH:MM
-        const dt = new Date(gameTime);
-        const dd = String(dt.getDate()).padStart(2, '0');
-        const mm = String(dt.getMonth() + 1).padStart(2, '0');
-        const yyyy = dt.getFullYear();
-        const hh = String(dt.getHours()).padStart(2, '0');
-        const min = String(dt.getMinutes()).padStart(2, '0');
-        this.scheduledTime = `${dd}.${mm}.${yyyy} // ${hh}:${min}`;
+        const d = new Date(gameTime);
+        d.setHours(d.getHours() + 1);
+        this.scheduledTime = d.toISOString();
       }
     }
-
     this.render(true);
   }
 
@@ -1199,7 +1244,6 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     if (this.sendAsDropdownOpen) {
       dropdown.classList.remove('ncm-hidden');
       this._renderSendAsList();
-      // Setup search
       const searchInput = dropdown.querySelector('[data-id="sendas-search"]');
       if (searchInput) {
         searchInput.focus();
@@ -1210,6 +1254,46 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     } else {
       dropdown.classList.add('ncm-hidden');
     }
+  }
+
+  static _onSelectSendAs(event, target) {
+    // Unused — handled by _setupSendAsList instead
+  }
+
+  /**
+   * Attach a direct click listener on the send-as dropdown list.
+   * Bypasses ApplicationV2's action system to avoid event conflicts.
+   */
+  _setupSendAsList() {
+    const listEl = this.element?.querySelector('[data-id="sendas-list"]');
+    if (!listEl || listEl._ncmBound) return;
+
+    listEl.addEventListener('click', (e) => {
+      e.stopImmediatePropagation();
+      const item = e.target.closest('[data-ncm-sendas-pick]');
+      if (!item) return;
+
+      const actorId = item.dataset.ncmSendasPick || '';
+      const contactId = item.dataset.ncmContactId || '';
+
+      if (actorId) {
+        // Actor-backed contact
+        this.fromActorId = actorId;
+        this.fromContact = null;
+      } else if (contactId) {
+        // Master contact without actor — use contact identity
+        const mc = game.nightcity?.masterContactService?.getContact?.(contactId);
+        if (mc) {
+          this.fromActorId = null;
+          this.fromContact = { id: mc.id, name: mc.name, email: mc.email, portrait: mc.portrait };
+        }
+      }
+
+      this.sendAsDropdownOpen = false;
+      this.render();
+    }, true);
+
+    listEl._ncmBound = true;
   }
 
   // ── CC ──
@@ -1632,8 +1716,8 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     editor.focus();
 
     const actor = game.actors.get(this.fromActorId);
-    const name = actor?.name || 'Unknown';
-    const email = this.contactRepo?.getActorEmail(this.fromActorId) || '';
+    const name = actor?.name || this.fromContact?.name || 'Unknown';
+    const email = actor ? (this.contactRepo?.getActorEmail(this.fromActorId) || '') : (this.fromContact?.email || '');
     const alias = actor?.system?.information?.alias || '';
 
     const sigLine = alias
@@ -1662,7 +1746,10 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     if (dv) this.encryptionDV = parseInt(dv.value) || 12;
 
     const schedule = el.querySelector('[data-id="schedule-input"]');
-    if (schedule) this.scheduledTime = schedule.value;
+    if (schedule && schedule.value) {
+      // datetime-local returns YYYY-MM-DDTHH:MM — convert to ISO
+      this.scheduledTime = new Date(schedule.value).toISOString();
+    }
   }
 
   // ─── Helpers ──────────────────────────────────────────────
@@ -1699,27 +1786,17 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     }
 
     try {
-      // Build CPR-compatible transaction entry
-      const transaction = {
-        id: foundry.utils.randomID(),
-        type: 'Debit',
-        amount: -amount,
-        reason: `NCM: Sent ${amount.toLocaleString()} eb via message`,
-        date: new Date().toISOString(),
-      };
-
-      const newValue = Math.max(0, currentWealth - amount);
-      const transactions = [...(actor.system?.wealth?.transactions || []), transaction];
+      // CPR system: deepClone wealth, push [description, reason] array
+      const wealth = foundry.utils.deepClone(actor.system.wealth);
+      wealth.value = Math.max(0, wealth.value - amount);
+      const transaction = `Decreased by ${amount} to ${wealth.value}`;
+      const reason = `NCM: Sent ${amount.toLocaleString()} eb via message`;
+      wealth.transactions.push([transaction, reason]);
 
       // Update actor — need GM permission, use socket if player
       if (actor.isOwner || isGM) {
-        await actor.update({
-          'system.wealth.value': newValue,
-          'system.wealth.transactions': transactions,
-        });
+        await actor.update({ 'system.wealth': wealth });
       } else {
-        // Player doesn't own this actor — shouldn't happen for sender,
-        // but if GM is send-as, the GM client handles it
         ui.notifications.warn('Cannot update wealth — no permission on actor.');
         return false;
       }
@@ -1745,28 +1822,15 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     if (!actor) return;
 
     try {
-      const currentWealth = actor.system?.wealth?.value ?? 0;
-
-      const transaction = {
-        id: foundry.utils.randomID(),
-        type: 'Credit',
-        amount: amount,
-        reason: `NCM: Received ${amount.toLocaleString()} eb via message`,
-        date: new Date().toISOString(),
-      };
-
-      const newValue = currentWealth + amount;
-      const transactions = [...(actor.system?.wealth?.transactions || []), transaction];
+      const wealth = foundry.utils.deepClone(actor.system.wealth);
+      wealth.value += amount;
+      const transaction = `Increased by ${amount} to ${wealth.value}`;
+      const reason = `NCM: Received ${amount.toLocaleString()} eb via message`;
+      wealth.transactions.push([transaction, reason]);
 
       if (actor.isOwner || game.user.isGM) {
-        await actor.update({
-          'system.wealth.value': newValue,
-          'system.wealth.transactions': transactions,
-        });
+        await actor.update({ 'system.wealth': wealth });
       }
-      // If we can't write (player sending to another player's actor),
-      // the GM socket relay in MessageService should handle delivery-side credits.
-      // For now, eddies credit works when GM is present (which is always in normal play).
     } catch (error) {
       console.error(`${MODULE_ID} | Eddies credit failed:`, error);
     }
@@ -1806,6 +1870,25 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       case '24h': return new Date(now + 86400000).toISOString();
       case 'after_read':
       default: return null; // handled on read
+    }
+  }
+
+  /**
+   * Convert an ISO string to the format needed by input[type=datetime-local]: YYYY-MM-DDTHH:MM
+   */
+  _formatForDatetimeLocal(isoStr) {
+    if (!isoStr) return '';
+    try {
+      const d = new Date(isoStr);
+      if (isNaN(d.getTime())) return '';
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      const hh = String(d.getHours()).padStart(2, '0');
+      const min = String(d.getMinutes()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
+    } catch {
+      return '';
     }
   }
 }

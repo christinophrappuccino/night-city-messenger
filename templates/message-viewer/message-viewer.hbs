@@ -152,6 +152,11 @@
       <span class="ncm-hud-strip__label">ENC</span>
       <span class="ncm-hud-strip__value">{{encryptionCipher}}</span>
     </span>
+    <span class="ncm-hud-strip__sep">//</span>
+    <span class="ncm-hud-strip__item">
+      <span class="ncm-hud-strip__label">TIME</span>
+      <span class="ncm-hud-strip__value ncm-hud-strip__value--time">{{currentGameTime}}</span>
+    </span>
 
     {{!-- Right-aligned connection status --}}
     <span class="ncm-hud-strip__spacer"></span>
@@ -191,6 +196,24 @@
         <i class="fas fa-bookmark"></i>
         <span>Saved</span>
         {{#if counts.saved}}<span class="ncm-tab__count">{{counts.saved}}</span>{{/if}}
+      </button>
+      <button class="ncm-tab {{#if (eq currentFilter 'drafts')}}ncm-tab--active{{/if}}"
+              data-action="set-filter" data-filter="drafts">
+        <i class="fas fa-file-pen"></i>
+        <span>Drafts</span>
+        {{#if counts.drafts}}<span class="ncm-tab__count">{{counts.drafts}}</span>{{/if}}
+      </button>
+      <button class="ncm-tab ncm-tab--accent {{#if (eq currentFilter 'scheduled')}}ncm-tab--active{{/if}}"
+              data-action="set-filter" data-filter="scheduled">
+        <i class="fas fa-clock"></i>
+        <span>Scheduled</span>
+        {{#if counts.scheduled}}<span class="ncm-tab__count">{{counts.scheduled}}</span>{{/if}}
+      </button>
+      <button class="ncm-tab {{#if (eq currentFilter 'shards')}}ncm-tab--active{{/if}}"
+              data-action="set-filter" data-filter="shards">
+        <i class="fas fa-microchip"></i>
+        <span>Shards</span>
+        {{#if counts.shards}}<span class="ncm-tab__count">{{counts.shards}}</span>{{/if}}
       </button>
       <button class="ncm-tab {{#if (eq currentFilter 'spam')}}ncm-tab--active{{/if}}"
               data-action="set-filter" data-filter="spam">
@@ -264,8 +287,116 @@
     </div>
   {{/if}}
 
-  {{!-- ═══════ SPLIT PANEL: List + Detail ═══════ --}}
-  <div class="ncm-inbox-split-panel">
+  {{!-- ═══════ TRASH / SPAM MANAGEMENT BAR ═══════ --}}
+  {{#if (eq currentFilter 'trash')}}
+    <div class="ncm-filter-action-bar">
+      <i class="fas fa-trash" style="color: var(--ncm-danger); margin-right: 4px;"></i>
+      <span class="ncm-filter-action-bar__label">Trash — messages here will be permanently deleted when emptied</span>
+      <button class="ncm-btn ncm-btn--danger ncm-btn--sm" data-action="empty-trash">
+        <i class="fas fa-fire"></i> Empty Trash
+      </button>
+    </div>
+  {{/if}}
+  {{#if (eq currentFilter 'spam')}}
+    <div class="ncm-filter-action-bar">
+      <i class="fas fa-ban" style="color: var(--ncm-warning); margin-right: 4px;"></i>
+      <span class="ncm-filter-action-bar__label">Spam — flagged as unwanted</span>
+      <button class="ncm-btn ncm-btn--danger ncm-btn--sm" data-action="empty-spam">
+        <i class="fas fa-fire"></i> Empty Spam
+      </button>
+    </div>
+  {{/if}}
+
+  {{!-- ═══════ TAB-SPECIFIC CONTENT ═══════ --}}
+
+  {{#if (eq currentFilter 'scheduled')}}
+    {{!-- SCHEDULED TAB — full-width list --}}
+    <div class="ncm-tab-content-list">
+      {{#if scheduledMessages.length}}
+        {{#each scheduledMessages}}
+          <div class="ncm-scheduled-item" data-schedule-id="{{this.scheduleId}}">
+            <i class="fas fa-clock ncm-scheduled-item__icon"></i>
+            <div class="ncm-scheduled-item__info">
+              <div class="ncm-scheduled-item__to">→ {{this.toName}}</div>
+              <div class="ncm-scheduled-item__subject">{{this.subject}}</div>
+            </div>
+            <div style="text-align: right;">
+              <div class="ncm-scheduled-item__time">{{this.deliveryTime}}</div>
+              <div class="ncm-scheduled-item__time-label">{{#if this.useGameTime}}Game Time{{else}}Real Time{{/if}}</div>
+            </div>
+            <button data-action="edit-scheduled" data-schedule-id="{{this.scheduleId}}" class="ncm-scheduled-item__cancel" style="color: var(--ncm-secondary); border-color: rgba(25,243,247,0.3);">Edit</button>
+            <button data-action="cancel-scheduled" data-schedule-id="{{this.scheduleId}}" class="ncm-scheduled-item__cancel">Cancel</button>
+          </div>
+        {{/each}}
+      {{else}}
+        <div class="ncm-tab-content-empty">
+          <i class="fas fa-clock"></i>
+          <p>No scheduled messages</p>
+        </div>
+      {{/if}}
+    </div>
+
+  {{else if (eq currentFilter 'drafts')}}
+    {{!-- DRAFTS TAB — full-width list --}}
+    <div class="ncm-tab-content-list">
+      {{#if draftItems.length}}
+        {{#each draftItems}}
+          <div class="ncm-scheduled-item" data-action="open-draft" data-actor-id="{{this.actorId}}">
+            <i class="fas fa-file-pen ncm-scheduled-item__icon" style="color: var(--ncm-text-muted);"></i>
+            <div class="ncm-scheduled-item__info">
+              <div class="ncm-scheduled-item__to">{{#if this.recipientName}}→ {{this.recipientName}}{{else}}(no recipient){{/if}}</div>
+              <div class="ncm-scheduled-item__subject">{{#if this.subject}}{{this.subject}}{{else}}(no subject){{/if}}</div>
+            </div>
+            <div style="text-align: right;">
+              <div class="ncm-scheduled-item__time">{{this.savedAt}}</div>
+              <div class="ncm-scheduled-item__time-label">Last saved</div>
+            </div>
+            <button data-action="delete-draft" data-actor-id="{{this.actorId}}" class="ncm-scheduled-item__cancel">Delete</button>
+          </div>
+        {{/each}}
+      {{else}}
+        <div class="ncm-tab-content-empty">
+          <i class="fas fa-file-pen"></i>
+          <p>No drafts</p>
+        </div>
+      {{/if}}
+    </div>
+
+  {{else if (eq currentFilter 'shards')}}
+    {{!-- SHARDS TAB — full-width list --}}
+    <div class="ncm-tab-content-list">
+      {{#if shardItems.length}}
+        {{#each shardItems}}
+          <div class="ncm-shard-item" data-action="open-shard" data-item-id="{{this.id}}">
+            <div class="ncm-shard-item__icon {{#if this.isReceived}}ncm-shard-item__icon--received{{/if}}">
+              <i class="fas fa-microchip"></i>
+            </div>
+            <div class="ncm-shard-item__info">
+              <div class="ncm-shard-item__name">{{this.name}}</div>
+              <div class="ncm-shard-item__meta">
+                {{#if this.fragmentCount}}<span>{{this.fragmentCount}} fragment(s)</span>{{/if}}
+                {{#if this.fromName}}<span>From: {{this.fromName}}</span>{{/if}}
+              </div>
+            </div>
+            <span class="ncm-shard-item__badge {{#if this.isReceived}}ncm-shard-item__badge--received{{else}}ncm-shard-item__badge--inventory{{/if}}">
+              {{#if this.isReceived}}Received{{else}}Inventory{{/if}}
+            </span>
+            {{#if this.isEncrypted}}
+              <span class="ncm-shard-item__badge ncm-shard-item__badge--encrypted"><i class="fas fa-lock" style="margin-right:2px;"></i> ICE</span>
+            {{/if}}
+          </div>
+        {{/each}}
+      {{else}}
+        <div class="ncm-tab-content-empty">
+          <i class="fas fa-microchip"></i>
+          <p>No data shards found</p>
+        </div>
+      {{/if}}
+    </div>
+
+  {{else}}
+    {{!-- NORMAL TABS — Split panel --}}
+    <div class="ncm-inbox-split-panel">
 
     {{!-- Left: Message List --}}
     <div class="ncm-message-list-panel ncm-scrollbar" style="width: {{sidebarWidth}}px;">
@@ -310,7 +441,7 @@
     <div class="ncm-message-detail-panel ncm-scrollbar">
       {{#if selectedMessage}}
         {{> "modules/cyberpunkred-messenger/templates/message-viewer/partials/message-detail.hbs"
-            message=selectedMessage quickReplies=quickReplies isGM=isGM }}
+            message=selectedMessage quickReplies=quickReplies isGM=isGM currentFilter=currentFilter }}
       {{else}}
         {{!-- Empty Detail State --}}
         <div class="ncm-detail-empty">
@@ -322,6 +453,7 @@
       {{/if}}
     </div>
   </div>
+  {{/if}}{{!-- /normal tabs --}}
 
   {{!-- ═══════ SMART FOOTER — Sprint 2A ═══════
        Left: message count + actor + network

@@ -38,6 +38,7 @@ import {
   getThreatBadgeData,
 } from '../../utils/designHelpers.js';
 import { EVENTS } from '../../utils/constants.js';
+import { formatCyberDate } from '../../utils/helpers.js';
 
 const MODULE_ID = 'cyberpunkred-messenger';
 const MESSAGES_PER_PAGE = 25;
@@ -358,6 +359,27 @@ export class MessageViewerApp extends BaseApplication {
     // ── Category counts ──
     const counts = this._computeCounts(allMessages);
 
+    // ── Feature 6: Scheduled messages ──
+    const scheduledRaw = game.nightcity?.schedulingService?.getPending?.() || [];
+    const scheduledMessages = scheduledRaw
+      .filter(e => e.messageData?.fromActorId === this.actorId)
+      .map(e => ({
+        scheduleId: e.scheduleId,
+        toName: game.actors.get(e.messageData.toActorId)?.name || e.messageData.to || 'Unknown',
+        subject: e.messageData.subject || '(no subject)',
+        deliveryTime: e.deliveryTime || '',
+        useGameTime: e.useGameTime || false,
+      }));
+    counts.scheduled = scheduledMessages.length;
+
+    // ── Feature 7: Data shards (inventory + received) ──
+    const shardItems = this._buildShardItems(allMessages);
+    counts.shards = shardItems.length;
+
+    // ── Feature: Drafts ──
+    const draftItems = this._buildDraftItems();
+    counts.drafts = draftItems.length;
+
     // ── Selected message enrichment ──
     let selectedMessage = null;
     if (this.selectedMessageId) {
@@ -424,6 +446,7 @@ export class MessageViewerApp extends BaseApplication {
       queuedMessageCount,
       encryptionCipher,
       latencyMs,
+      currentGameTime: formatCyberDate(this.timeService?.getCurrentTime?.() || new Date().toISOString()),
 
       // Messages
       messages: enriched,
@@ -443,6 +466,11 @@ export class MessageViewerApp extends BaseApplication {
       showNetworkFilter: messageNetworks.length > 1,
       messageNetworks,
       counts,
+
+      // Feature 6-7: Special tab data
+      scheduledMessages,
+      shardItems,
+      draftItems,
 
       // Layout
       density: this.density,
@@ -510,6 +538,34 @@ export class MessageViewerApp extends BaseApplication {
       });
       divider._ncmBound = true;
     }
+
+    // Feature 4 — Self-destruct timer update
+    if (this._destructTimer) clearInterval(this._destructTimer);
+    const destructEl = html.querySelector('[data-id="destruct-timer"]');
+    if (destructEl) {
+      const msg = this._getSelectedMessage();
+      if (msg?.selfDestruct?.expiresAt) {
+        this._destructTimer = setInterval(async () => {
+          const remaining = new Date(msg.selfDestruct.expiresAt).getTime() - Date.now();
+          if (remaining <= 0) {
+            clearInterval(this._destructTimer);
+            destructEl.innerHTML = '<i class="fas fa-skull-crossbones"></i> EXPIRED';
+            // Auto-delete the message
+            await this.messageService?.deleteMessage?.(this.actorId, msg.messageId);
+            ui.notifications.warn('Self-destruct message expired and deleted.');
+            setTimeout(() => {
+              this.selectedMessageId = null;
+              this.render();
+            }, 1500);
+            return;
+          }
+          const h = Math.floor(remaining / 3600000);
+          const m = Math.floor((remaining % 3600000) / 60000);
+          const s = Math.floor((remaining % 60000) / 1000);
+          destructEl.innerHTML = `<i class="fas fa-hourglass-half" style="margin-right:3px;"></i> ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+        }, 1000);
+      }
+    }
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -560,10 +616,10 @@ export class MessageViewerApp extends BaseApplication {
         break;
 
       // ── Message Actions ──
-      case 'reply':
+      case 'reply-message':
         this._replyToMessage(messageId);
         break;
-      case 'forward':
+      case 'forward-message':
         this._forwardMessage(messageId);
         break;
       case 'delete-message':
@@ -577,6 +633,18 @@ export class MessageViewerApp extends BaseApplication {
         break;
       case 'share-to-chat':
         this._shareToChat(messageId);
+        break;
+      case 'empty-trash':
+        this._emptyTrash();
+        break;
+      case 'empty-spam':
+        this._emptySpam();
+        break;
+      case 'permanent-delete':
+        this._permanentDelete(messageId);
+        break;
+      case 'restore-message':
+        this._restoreMessage(messageId);
         break;
 
       // ── Quick Reply ──
@@ -599,6 +667,37 @@ export class MessageViewerApp extends BaseApplication {
         break;
       case 'force-decrypt-message':
         this._forceDecryptMessage(messageId);
+        break;
+
+      // ── Feature 1: Eddies Claim ──
+      case 'claim-eddies':
+        this._claimEddies(target.dataset.messageId, parseInt(target.dataset.amount));
+        break;
+
+      // ── Feature 2: Encrypted Block Decrypt ──
+      case 'decrypt-block':
+        this._decryptBlock(target.dataset.blockKey);
+        break;
+
+      // ── Feature 6: Scheduled Messages ──
+      case 'cancel-scheduled':
+        this._cancelScheduled(target.dataset.scheduleId);
+        break;
+      case 'edit-scheduled':
+        this._editScheduled(target.dataset.scheduleId);
+        break;
+
+      // ── Feature 7: Data Shards ──
+      case 'open-shard':
+        this._openShard(target.closest('[data-item-id]')?.dataset.itemId);
+        break;
+
+      // ── Drafts ──
+      case 'open-draft':
+        this._openDraft(target.closest('[data-actor-id]')?.dataset.actorId);
+        break;
+      case 'delete-draft':
+        this._deleteDraft(target.closest('[data-actor-id]')?.dataset.actorId);
         break;
 
       // ── Sprint 2B: Attachment Actions ──
@@ -712,6 +811,12 @@ export class MessageViewerApp extends BaseApplication {
         break;
       case 'trash':
         result = result.filter(m => m.status.deleted);
+        break;
+      case 'scheduled':
+      case 'shards':
+      case 'drafts':
+        // These tabs have their own content — return empty message list
+        result = [];
         break;
     }
 
@@ -854,7 +959,7 @@ export class MessageViewerApp extends BaseApplication {
     this.render();
 
     // Mark as read
-    this.messageService?.markRead?.(messageId, this.actorId);
+    this.messageService?.markAsRead?.(this.actorId, messageId);
     this.soundService?.play?.('click');
   }
 
@@ -886,7 +991,7 @@ export class MessageViewerApp extends BaseApplication {
 
   async _bulkMarkRead() {
     for (const id of this.bulkSelected) {
-      await this.messageService?.markRead?.(id, this.actorId);
+      await this.messageService?.markAsRead?.(this.actorId, id);
     }
     this.bulkSelected.clear();
     this.render();
@@ -894,7 +999,7 @@ export class MessageViewerApp extends BaseApplication {
 
   async _bulkDelete() {
     for (const id of this.bulkSelected) {
-      await this.messageService?.deleteMessage?.(id, this.actorId);
+      await this.messageService?.deleteMessage?.(this.actorId, id);
     }
     this.bulkSelected.clear();
     this.selectedMessageId = null;
@@ -903,7 +1008,7 @@ export class MessageViewerApp extends BaseApplication {
 
   async _bulkMarkSpam() {
     for (const id of this.bulkSelected) {
-      await this.messageService?.markSpam?.(id, this.actorId);
+      await this.messageService?.markSpam?.(this.actorId, id);
     }
     this.bulkSelected.clear();
     this.render();
@@ -935,27 +1040,247 @@ export class MessageViewerApp extends BaseApplication {
 
   async _deleteMessage(messageId) {
     if (!messageId) return;
-    await this.messageService?.deleteMessage?.(messageId, this.actorId);
+    await this.messageService?.deleteMessage?.(this.actorId, messageId);
     if (this.selectedMessageId === messageId) this.selectedMessageId = null;
     this.render();
   }
 
   async _toggleSave(messageId) {
     if (!messageId) return;
-    await this.messageService?.toggleSave?.(messageId, this.actorId);
+    await this.messageService?.toggleSaved?.(this.actorId, messageId);
     this.render();
   }
 
   async _markSpam(messageId) {
     if (!messageId) return;
-    await this.messageService?.markSpam?.(messageId, this.actorId);
+    await this.messageService?.markSpam?.(this.actorId, messageId);
+    this.render();
+  }
+
+  async _restoreMessage(messageId) {
+    if (!messageId) return;
+    if (this.currentFilter === 'spam') {
+      await this.messageService?.unmarkSpam?.(this.actorId, messageId);
+    } else {
+      await this.messageService?.restoreFromTrash?.(this.actorId, messageId);
+    }
+    this.render();
+  }
+
+  async _permanentDelete(messageId) {
+    if (!messageId) return;
+    const confirm = await Dialog.confirm({
+      title: 'Permanently Delete',
+      content: '<p>This message will be <strong>permanently deleted</strong>. This cannot be undone.</p>',
+    });
+    if (!confirm) return;
+    await this.messageService?.permanentDelete?.(this.actorId, messageId);
+    if (this.selectedMessageId === messageId) this.selectedMessageId = null;
+    this.render();
+  }
+
+  async _restoreFromTrash(messageId) {
+    if (!messageId) return;
+    await this.messageService?.restoreFromTrash?.(this.actorId, messageId);
+    this.render();
+  }
+
+  async _emptyTrash() {
+    const confirm = await Dialog.confirm({
+      title: 'Empty Trash',
+      content: '<p>Permanently delete <strong>all messages in Trash</strong>? This cannot be undone.</p>',
+    });
+    if (!confirm) return;
+    const result = await this.messageService?.emptyTrash?.(this.actorId);
+    if (result?.count > 0) {
+      ui.notifications.info(`${result.count} message(s) permanently deleted.`);
+    }
+    this.selectedMessageId = null;
+    this.render();
+  }
+
+  async _emptySpam() {
+    const confirm = await Dialog.confirm({
+      title: 'Empty Spam',
+      content: '<p>Permanently delete <strong>all spam messages</strong>? This cannot be undone.</p>',
+    });
+    if (!confirm) return;
+    const result = await this.messageService?.emptySpam?.(this.actorId);
+    if (result?.count > 0) {
+      ui.notifications.info(`${result.count} spam message(s) permanently deleted.`);
+    }
+    this.selectedMessageId = null;
+    this.render();
+  }
+
+  // ── Feature 1: Eddies Claim ──
+
+  async _claimEddies(messageId, amount) {
+    if (!messageId || !amount || amount <= 0) return;
+
+    // Prevent claiming on your own sent messages
+    const msg = this._getSelectedMessage();
+    if (msg?.status?.sent) {
+      ui.notifications.warn('Cannot claim eddies from your own sent message.');
+      return;
+    }
+
+    const actor = game.actors.get(this.actorId);
+    if (!actor) {
+      ui.notifications.warn('No character assigned.');
+      return;
+    }
+
+    // Show loading state
+    const claimEl = this.element?.querySelector(`.ncm-eddies-claim[data-message-id="${messageId}"]`);
+    const progress = claimEl?.querySelector('[data-id="eddies-progress"]');
+    if (claimEl) claimEl.classList.add('ncm-eddies-claim--loading');
+
+    // Animate progress bar
+    if (progress) {
+      progress.style.width = '30%';
+      await new Promise(r => setTimeout(r, 300));
+      progress.style.width = '70%';
+      await new Promise(r => setTimeout(r, 400));
+      progress.style.width = '100%';
+      await new Promise(r => setTimeout(r, 300));
+    }
+
+    // Credit to actor's wealth (CPR system — deepClone + array transaction format)
+    try {
+      const wealth = foundry.utils.deepClone(actor.system.wealth);
+      wealth.value += amount;
+      const transaction = `Increased by ${amount} to ${wealth.value}`;
+      const reason = `NCM: Received ${amount.toLocaleString()} eb via message`;
+      wealth.transactions.push([transaction, reason]);
+
+      if (actor.isOwner || game.user.isGM) {
+        await actor.update({ 'system.wealth': wealth });
+      }
+
+      // Mark as claimed on message flags
+      await this.messageService?.updateMessageFlags?.(this.actorId, messageId, {
+        status: { eddiesClaimed: true, eddiesClaimedAt: formatCyberDate(this.timeService?.getCurrentTime?.() || new Date().toISOString()) },
+      });
+
+      ui.notifications.info(`${amount.toLocaleString()} eb claimed successfully.`);
+      this.soundService?.play?.('receive');
+    } catch (error) {
+      console.error('NCM | Eddies claim failed:', error);
+      ui.notifications.error('Failed to claim eddies.');
+    }
+
+    this.render();
+  }
+
+  // ── Feature 2: Encrypted Block Decrypt ──
+
+  _decryptBlock(blockKey) {
+    if (!blockKey) return;
+
+    if (!this._decryptedBlocks) this._decryptedBlocks = new Set();
+
+    // For now: instant decrypt (future: skill check)
+    this._decryptedBlocks.add(blockKey);
+    ui.notifications.info('Block decrypted.');
+    this.render();
+  }
+
+  // ── Feature 6: Cancel Scheduled Message ──
+
+  async _cancelScheduled(scheduleId) {
+    if (!scheduleId) return;
+    const confirm = await Dialog.confirm({
+      title: 'Cancel Scheduled Message',
+      content: '<p>Cancel this scheduled message? It will not be delivered.</p>',
+    });
+    if (!confirm) return;
+
+    const result = await game.nightcity?.schedulingService?.cancelScheduled?.(scheduleId);
+    if (result?.success) {
+      ui.notifications.info('Scheduled message cancelled.');
+    } else {
+      ui.notifications.error(`Failed to cancel: ${result?.error || 'Unknown error'}`);
+    }
+    this.render();
+  }
+
+  async _editScheduled(scheduleId) {
+    if (!scheduleId) return;
+    const entry = game.nightcity?.schedulingService?.getScheduled?.(scheduleId);
+    if (!entry) {
+      ui.notifications.warn('Scheduled message not found.');
+      return;
+    }
+
+    // Warn user — cancelling is permanent, they need to re-schedule after editing
+    const confirm = await Dialog.confirm({
+      title: 'Edit Scheduled Message',
+      content: `<p>This will <strong>cancel the scheduled delivery</strong> and open the message in the composer for editing.</p>
+        <p>You'll need to re-send or re-schedule after making changes.</p>`,
+    });
+    if (!confirm) return;
+
+    // Cancel the pending scheduled message
+    await game.nightcity?.schedulingService?.cancelScheduled?.(scheduleId);
+
+    // Open composer pre-filled with the message data
+    const msgData = entry.messageData || {};
+    game.nightcity?.composeMessage?.({
+      fromActorId: msgData.fromActorId || this.actorId,
+      toActorId: msgData.toActorId,
+      subject: msgData.subject || '',
+      body: msgData.body || '',
+      priority: msgData.priority || 'normal',
+    });
+
+    this.render();
+  }
+
+  // ── Feature 7: Open Data Shard ──
+
+  _openShard(itemId) {
+    if (!itemId) return;
+    const item = game.items.get(itemId)
+      || game.actors.get(this.actorId)?.items.get(itemId);
+    if (item) {
+      game.nightcity?.openDataShard?.(item);
+    } else {
+      ui.notifications.warn('Data shard not found.');
+    }
+  }
+
+  // ── Drafts ──
+
+  _openDraft(actorId) {
+    if (!actorId) return;
+    const actor = game.actors.get(actorId);
+    if (!actor) return;
+
+    const draft = actor.getFlag('cyberpunkred-messenger', 'composerDraft');
+    if (!draft) {
+      ui.notifications.warn('Draft not found or expired.');
+      return;
+    }
+
+    // Open composer — it will auto-restore the draft via _restoreDraft()
+    game.nightcity?.composeMessage?.({ fromActorId: actorId });
+  }
+
+  async _deleteDraft(actorId) {
+    if (!actorId) return;
+    const actor = game.actors.get(actorId);
+    if (!actor) return;
+
+    await actor.unsetFlag('cyberpunkred-messenger', 'composerDraft').catch(() => {});
+    ui.notifications.info('Draft deleted.');
     this.render();
   }
 
   async _shareToChat(messageId) {
     const msg = this._getSelectedMessage();
     if (!msg) return;
-    game.nightcity?.chatIntegration?.shareMessage?.(msg);
+    await this.messageService?.shareToChat?.(msg, this.actorId);
   }
 
   _sendQuickReply(replyText) {
@@ -963,14 +1288,7 @@ export class MessageViewerApp extends BaseApplication {
     const msg = this._getSelectedMessage();
     if (!msg) return;
 
-    game.nightcity?.messenger?.sendMessage?.({
-      actorId: this.actorId,
-      to: msg.from,
-      subject: `RE: ${msg.subject || ''}`,
-      body: replyText,
-      inReplyTo: msg.messageId,
-      threadId: msg.threadId || msg.messageId,
-    });
+    this.messageService?.sendQuickReply?.(msg, this.actorId, replyText);
     this.soundService?.play?.('send');
   }
 
@@ -1021,9 +1339,50 @@ export class MessageViewerApp extends BaseApplication {
     const att = msg?.attachments?.[parseInt(attachmentIndex)];
     if (!att) return;
 
-    // Delegate to Foundry's file viewer or trigger download
-    if (att.path || att.url) {
-      const fileUrl = att.path || att.url;
+    // Data shard — open in ItemInboxApp
+    if (att.itemId) {
+      const item = game.items.get(att.itemId)
+        || game.actors.get(this.actorId)?.items.get(att.itemId);
+      if (item) {
+        game.nightcity?.openDataShard?.(item);
+      } else {
+        ui.notifications.warn('Data shard not found in inventory.');
+      }
+      return;
+    }
+
+    // File attachment — use Foundry's viewers
+    const fileUrl = att.path || att.url;
+    if (!fileUrl) return;
+
+    const ext = fileUrl.split('.').pop()?.toLowerCase();
+
+    // Images — Foundry ImagePopout
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext)) {
+      new ImagePopout(fileUrl, { title: att.name || 'Attachment' }).render(true);
+      return;
+    }
+
+    // PDFs — Foundry's built-in PDF viewer (v12+)
+    if (ext === 'pdf') {
+      const journalSheet = new JournalSheet(
+        new JournalEntry({ name: att.name || 'PDF', pages: [] }),
+        { editable: false }
+      );
+      // Fallback: open in Foundry frame
+      const frame = new FrameViewer(fileUrl, { title: att.name || 'PDF' });
+      frame.render(true);
+      return;
+    }
+
+    // Everything else — open in a Foundry FrameViewer (stays in app)
+    try {
+      const frame = new FrameViewer(fileUrl, {
+        title: att.name || 'Attachment',
+      });
+      frame.render(true);
+    } catch {
+      // FrameViewer not available in this Foundry version — fallback
       window.open(fileUrl, '_blank');
     }
   }
@@ -1144,7 +1503,11 @@ export class MessageViewerApp extends BaseApplication {
   async _loadMessages() {
     if (!this.messageService || !this.actorId) return [];
     try {
-      return await this.messageService.getMessages(this.actorId) || [];
+      // Fetch ALL messages — viewer handles filtering via _applyFilters
+      return await this.messageService.getMessages(this.actorId, {
+        filter: 'all',
+        includeDeleted: true,
+      }) || [];
     } catch (err) {
       console.error(`${MODULE_ID} | Failed to load messages:`, err);
       return [];
@@ -1173,15 +1536,60 @@ export class MessageViewerApp extends BaseApplication {
     // §2.6/2.8 — Classify attachments into encrypted vs regular
     const classified = classifyAttachments(attachments);
 
+    // Feature 1 — Eddies data (different display for sent vs received)
+    let eddiesData = null;
+    if (msg.eddies && msg.eddies > 0) {
+      const isSent = !!msg.status?.sent;
+      const claimed = msg.status?.eddiesClaimed || false;
+      eddiesData = {
+        amount: msg.eddies,
+        formatted: `${msg.eddies.toLocaleString()} eb`,
+        claimed: isSent ? true : claimed, // Sent copies always show as "completed"
+        claimedAt: isSent ? 'Sent' : (msg.status?.eddiesClaimedAt || ''),
+        isSentCopy: isSent,
+      };
+    }
+
+    // Feature 3 — Build attachment card data for thumbnails
+    const attachmentCards = this._buildAttachmentCards(attachments, msg.eddies);
+
+    // Feature 4 — Self-destruct data (not on sent copies — sender doesn't need countdown)
+    let selfDestructActive = false;
+    let selfDestructDisplay = '';
+    if (msg.selfDestruct && !msg.status?.sent) {
+      if (msg.selfDestruct.mode === 'after_read' && msg.status?.read) {
+        selfDestructActive = true;
+        selfDestructDisplay = 'After close';
+      } else if (msg.selfDestruct.expiresAt) {
+        const remaining = new Date(msg.selfDestruct.expiresAt).getTime() - Date.now();
+        if (remaining > 0) {
+          selfDestructActive = true;
+          const h = Math.floor(remaining / 3600000);
+          const m2 = Math.floor((remaining % 3600000) / 60000);
+          const s = Math.floor((remaining % 60000) / 1000);
+          selfDestructDisplay = `${String(h).padStart(2,'0')}:${String(m2).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+        }
+      }
+    }
+
+    // Feature 2 — Transform encrypted text blocks in body
+    const bodyRendered = this._renderMessageBody(msg.body, msg.messageId);
+
     return {
       ...msg,
       ...displayData,
-      bodyRendered: this._renderMessageBody(msg.body),
+      bodyRendered,
       threadInfo: this._getThreadInfo(msg, allMessages),
       attachments,
       security,
       encryptedAttachments: classified.encrypted,
       regularAttachments: classified.regular,
+      eddiesData,
+      attachmentCards,
+      hasAttachmentCards: attachmentCards.length > 0,
+      selfDestructActive,
+      selfDestructDisplay,
+      isSent: !!msg.status?.sent,
     };
   }
 
@@ -1230,19 +1638,11 @@ export class MessageViewerApp extends BaseApplication {
     // ── Network label (short name for badge) ──
     const networkLabel = msg.network || '';
 
-    // ── Formatted time using TimeService or fallback ──
+    // ── Formatted time using formatCyberDate helper ──
     let formattedTime = '';
     try {
-      if (this.timeService?.formatCyberDate) {
-        formattedTime = this.timeService.formatCyberDate(msg.timestamp);
-      } else if (msg.timestamp) {
-        const d = new Date(msg.timestamp);
-        const yr = d.getFullYear();
-        const mo = String(d.getMonth() + 1).padStart(2, '0');
-        const dy = String(d.getDate()).padStart(2, '0');
-        const hr = String(d.getHours()).padStart(2, '0');
-        const mn = String(d.getMinutes()).padStart(2, '0');
-        formattedTime = `${yr}.${mo}.${dy} // ${hr}:${mn}`;
+      if (msg.timestamp) {
+        formattedTime = formatCyberDate(msg.timestamp);
       }
     } catch {
       formattedTime = msg.timestamp || '';
@@ -1315,10 +1715,86 @@ export class MessageViewerApp extends BaseApplication {
     };
   }
 
-  _renderMessageBody(body) {
+  _renderMessageBody(body, messageId) {
     if (!body) return '';
-    // Basic HTML pass-through — Foundry will sanitize
-    return body;
+
+    // Feature 2 — Transform ncm-encrypted-text-block into interactive locked/decrypted blocks
+    const decryptedBlocks = this._decryptedBlocks || new Set();
+    let rendered = body.replace(
+      /<div\s+class="ncm-encrypted-text-block"[^>]*data-label="([^"]*)"[^>]*>([\s\S]*?)<\/div>/gi,
+      (match, label, content, offset) => {
+        // Generate a block index from position for tracking
+        const blockIdx = body.indexOf(match);
+        const blockKey = `${messageId}-${blockIdx}`;
+        const isDecrypted = decryptedBlocks.has(blockKey);
+
+        if (isDecrypted) {
+          return `<div class="ncm-encrypted-block ncm-encrypted-block--decrypted">
+            <div class="ncm-encrypted-block__label"><i class="fas fa-unlock"></i> DECRYPTED</div>
+            <div class="ncm-encrypted-block__content">${content}</div>
+          </div>`;
+        } else {
+          return `<div class="ncm-encrypted-block ncm-encrypted-block--locked" data-block-key="${blockKey}">
+            <div class="ncm-encrypted-block__label"><i class="fas fa-shield-halved"></i> ${label || 'ICE-ENCRYPTED BLOCK'}</div>
+            <div class="ncm-encrypted-block__content">${content}</div>
+            <div class="ncm-encrypted-block__overlay">
+              <i class="fas fa-lock"></i>
+              <span class="ncm-encrypted-block__overlay-text">Encrypted Content</span>
+              <button class="ncm-encrypted-block__decrypt-btn" data-action="decrypt-block" data-block-key="${blockKey}">
+                <i class="fas fa-terminal" style="margin-right:3px;"></i> Decrypt
+              </button>
+            </div>
+          </div>`;
+        }
+      }
+    );
+
+    return rendered;
+  }
+
+  /**
+   * Build attachment card data for the thumbnail grid (Feature 3).
+   */
+  _buildAttachmentCards(attachments, eddiesAmount) {
+    const cards = [];
+
+    for (let i = 0; i < attachments.length; i++) {
+      const att = attachments[i];
+      if (att.isEddies) continue; // Handled by eddies claim block
+
+      const ext = (att.name || att.path || '').split('.').pop()?.toLowerCase() || '';
+      const isImage = ['jpg','jpeg','png','gif','webp','svg'].includes(ext);
+      const isShard = !!att.itemId;
+
+      cards.push({
+        action: isShard ? 'open-shard' : 'open-attachment',
+        itemId: att.itemId || '',
+        name: att.name || 'Unknown',
+        meta: isShard ? `DATA SHARD${att.size ? ` • ${att.size}` : ''}` : `${ext.toUpperCase() || 'FILE'}${att.size ? ` • ${att.size}` : ''}`,
+        metaClass: isShard ? 'ncm-attach-card__meta--shard' : '',
+        thumbClass: isShard ? 'ncm-attach-card__thumb--shard' : isImage ? 'ncm-attach-card__thumb--image' : '',
+        thumbIcon: isShard ? 'fas fa-microchip' : isImage ? 'fas fa-image' : (att.icon || 'fas fa-file'),
+        thumbSrc: isImage && att.path ? att.path : null,
+        nameStyle: '',
+      });
+    }
+
+    // Add eddies as a card too (visual only — claim handled separately)
+    if (eddiesAmount && eddiesAmount > 0) {
+      cards.push({
+        action: '',
+        itemId: '',
+        name: `${eddiesAmount.toLocaleString()} eb`,
+        meta: 'EDDIES TRANSFER',
+        metaClass: 'ncm-attach-card__meta--eddies',
+        thumbClass: 'ncm-attach-card__thumb--eddies',
+        thumbIcon: 'fas fa-coins',
+        thumbSrc: null,
+        nameStyle: 'color: var(--ncm-success, #00ff41);',
+      });
+    }
+
+    return cards;
   }
 
   _getThreadInfo(msg, allMessages) {
@@ -1329,6 +1805,106 @@ export class MessageViewerApp extends BaseApplication {
       count: thread.length,
       latest: thread.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0],
     };
+  }
+
+  /**
+   * Build draft items from actors with saved composerDraft flags.
+   */
+  _buildDraftItems() {
+    const MODULE_ID_LOCAL = 'cyberpunkred-messenger';
+    const items = [];
+
+    // Check current viewing actor
+    const actor = game.actors.get(this.actorId);
+    if (actor) {
+      const draft = actor.getFlag(MODULE_ID_LOCAL, 'composerDraft');
+      if (draft?.savedAt) {
+        const age = Date.now() - new Date(draft.savedAt).getTime();
+        if (age < 86400000) { // < 24 hours
+          const recipientName = draft.recipients?.[0]?.email
+            || (draft.recipients?.[0]?.actorId ? game.actors.get(draft.recipients[0].actorId)?.name : null)
+            || null;
+          items.push({
+            actorId: this.actorId,
+            recipientName,
+            subject: draft.subject || '',
+            savedAt: formatCyberDate(draft.savedAt),
+          });
+        }
+      }
+    }
+
+    // GM: also check other actors they might have drafted as
+    if (game.user.isGM) {
+      for (const a of game.actors) {
+        if (a.id === this.actorId) continue;
+        const draft = a.getFlag(MODULE_ID_LOCAL, 'composerDraft');
+        if (draft?.savedAt) {
+          const age = Date.now() - new Date(draft.savedAt).getTime();
+          if (age < 86400000) {
+            items.push({
+              actorId: a.id,
+              recipientName: draft.recipients?.[0]?.email || null,
+              subject: draft.subject ? `[${a.name}] ${draft.subject}` : `[${a.name}] (no subject)`,
+              savedAt: formatCyberDate(draft.savedAt),
+            });
+          }
+        }
+      }
+    }
+
+    return items;
+  }
+
+  /**
+   * Build combined shard items list for the Shards tab (Feature 7).
+   * Includes actor inventory shards + shards received as message attachments.
+   */
+  _buildShardItems(allMessages) {
+    const MODULE_ID_LOCAL = 'cyberpunkred-messenger';
+    const items = [];
+    const seenIds = new Set();
+
+    // Actor inventory shards
+    const actor = game.actors.get(this.actorId);
+    if (actor) {
+      for (const item of actor.items) {
+        const config = item.getFlag(MODULE_ID_LOCAL, 'shardConfig') || item.getFlag(MODULE_ID_LOCAL, 'config');
+        if (!config) continue;
+        seenIds.add(item.id);
+        const messages = game.nightcity?.dataShardService?.getShardMessages?.(item) || [];
+        items.push({
+          id: item.id,
+          name: item.name,
+          img: item.img,
+          isReceived: false,
+          isEncrypted: config.encrypted || false,
+          fragmentCount: messages.length,
+          fromName: null,
+        });
+      }
+    }
+
+    // Shards received as message attachments
+    for (const msg of allMessages) {
+      if (!msg.attachments) continue;
+      for (const att of msg.attachments) {
+        if (!att.itemId || seenIds.has(att.itemId)) continue;
+        seenIds.add(att.itemId);
+        const item = game.items?.get(att.itemId) || actor?.items?.get(att.itemId);
+        items.push({
+          id: att.itemId,
+          name: att.name || item?.name || 'Unknown Shard',
+          img: item?.img || null,
+          isReceived: true,
+          isEncrypted: att.encrypted || false,
+          fragmentCount: null,
+          fromName: msg.from || msg.fromActorId ? (game.actors.get(msg.fromActorId)?.name || msg.from) : null,
+        });
+      }
+    }
+
+    return items;
   }
 
   _computeCounts(messages) {
@@ -1360,5 +1936,10 @@ export class MessageViewerApp extends BaseApplication {
     }
 
     return counts;
+  }
+
+  async close(options) {
+    if (this._destructTimer) clearInterval(this._destructTimer);
+    return super.close(options);
   }
 }

@@ -1114,9 +1114,10 @@
 
 .ncm-app .ncm-message-detail-panel {
   flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .ncm-app .ncm-detail-empty {
@@ -1502,14 +1503,20 @@
   border-top: 1px solid var(--ncm-border);
   flex-shrink: 0;
   overflow-x: hidden !important;
+  position: relative;
+  z-index: 5;
 }
 
 .ncm-app .ncm-detail-actions .ncm-btn {
   flex: 0 0 auto !important;
   width: auto !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
   display: inline-flex !important;
   appearance: none !important;
   -webkit-appearance: none !important;
+  line-height: 1.2 !important;
+  box-shadow: none !important;
 }
 
 /* Decrypt buttons — same Foundry override pattern */
@@ -1901,9 +1908,276 @@
 
 
 /* ═══════════════════════════════════════════════════════════
-   §18  UTILITY
+   §18  TRASH / SPAM MANAGEMENT BAR
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-filter-action-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  background: var(--ncm-bg-deep);
+  border-bottom: 1px solid var(--ncm-border);
+  flex-shrink: 0;
+}
+
+.ncm-app .ncm-filter-action-bar__label {
+  font-family: var(--ncm-font-mono);
+  font-size: 10px;
+  color: var(--ncm-text-muted);
+  flex: 1;
+}
+
+/* Danger text variant for delete button in normal action bar */
+.ncm-app .ncm-detail-actions .ncm-btn--danger-text {
+  color: var(--ncm-danger) !important;
+}
+
+.ncm-app .ncm-detail-actions .ncm-btn--danger-text:hover {
+  background: rgba(255, 0, 51, 0.08) !important;
+  border-color: rgba(255, 0, 51, 0.3) !important;
+}
+
+/* Filter action bar buttons — Foundry reset + styled */
+.ncm-app .ncm-filter-action-bar .ncm-btn {
+  width: auto !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  padding: 5px 14px !important;
+  background: transparent !important;
+  color: var(--ncm-danger) !important;
+  border: 1px solid rgba(255, 0, 51, 0.3) !important;
+  border-radius: var(--ncm-radius-sm) !important;
+  font-family: var(--ncm-font-display) !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.06em !important;
+  cursor: pointer !important;
+  margin-left: auto;
+  flex-shrink: 0;
+  line-height: 1.2 !important;
+  box-shadow: none !important;
+}
+
+.ncm-app .ncm-filter-action-bar .ncm-btn:hover {
+  background: rgba(255, 0, 51, 0.1) !important;
+  box-shadow: 0 0 8px rgba(255, 0, 51, 0.2) !important;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   §19  FEATURE 1 — EDDIES CLAIM
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-eddies-claim {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px; margin: 12px 0;
+  background: rgba(0, 255, 65, 0.04); border: 1px solid rgba(0, 255, 65, 0.15);
+  border-radius: 2px; position: relative; overflow: hidden;
+}
+.ncm-app .ncm-eddies-claim__icon { font-size: 20px; color: var(--ncm-success, #00ff41); flex-shrink: 0; }
+.ncm-app .ncm-eddies-claim__info { flex: 1; }
+.ncm-app .ncm-eddies-claim__amount { font-family: var(--ncm-font-display); font-size: 18px; font-weight: 700; color: var(--ncm-success, #00ff41); }
+.ncm-app .ncm-eddies-claim__label { font-family: var(--ncm-font-mono); font-size: 9px; color: var(--ncm-text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.ncm-app .ncm-eddies-claim__btn {
+  font-family: var(--ncm-font-display) !important; font-size: 11px !important; font-weight: 600 !important;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  padding: 6px 18px !important; background: transparent !important; color: var(--ncm-success, #00ff41) !important;
+  border: 1px solid rgba(0, 255, 65, 0.4) !important; border-radius: 2px !important;
+  cursor: pointer !important; width: auto !important; min-width: 0 !important; min-height: 0 !important;
+  box-shadow: none !important; line-height: 1.2 !important;
+}
+.ncm-app .ncm-eddies-claim__btn:hover { background: rgba(0, 255, 65, 0.1) !important; box-shadow: 0 0 12px rgba(0, 255, 65, 0.25) !important; }
+.ncm-app .ncm-eddies-claim--claimed { border-color: rgba(0, 255, 65, 0.08); opacity: 0.6; }
+.ncm-app .ncm-eddies-claim--claimed .ncm-eddies-claim__btn { display: none; }
+.ncm-app .ncm-eddies-claim__status { font-family: var(--ncm-font-mono); font-size: 9px; color: var(--ncm-success, #00ff41); text-transform: uppercase; }
+.ncm-app .ncm-eddies-claim__progress {
+  position: absolute; bottom: 0; left: 0; height: 2px;
+  background: var(--ncm-success, #00ff41); box-shadow: 0 0 8px rgba(0, 255, 65, 0.5);
+  width: 0; transition: width 0.3s ease;
+}
+.ncm-app .ncm-eddies-claim--loading .ncm-eddies-claim__btn { pointer-events: none; opacity: 0.5; }
+
+/* ═══════════════════════════════════════════════════════════
+   §20  FEATURE 2 — ENCRYPTED TEXT BLOCKS
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-encrypted-block {
+  position: relative; margin: 12px 0; padding: 14px 16px;
+  background: var(--ncm-bg-surface, #1a1a2e); border: 1px solid rgba(247, 201, 72, 0.2);
+  border-left: 3px solid var(--ncm-accent, #f7c948); border-radius: 0 2px 2px 0; overflow: hidden;
+}
+.ncm-app .ncm-encrypted-block__label {
+  font-family: var(--ncm-font-mono); font-size: 8px; color: var(--ncm-accent, #f7c948);
+  text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px;
+  display: flex; align-items: center; gap: 4px;
+}
+.ncm-app .ncm-encrypted-block--locked .ncm-encrypted-block__content {
+  filter: blur(6px); user-select: none; pointer-events: none;
+}
+.ncm-app .ncm-encrypted-block--locked::after {
+  content: ''; position: absolute; inset: 0;
+  background: repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(247,201,72,0.03) 4px, rgba(247,201,72,0.03) 8px);
+  pointer-events: none;
+}
+.ncm-app .ncm-encrypted-block__overlay {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  gap: 10px; z-index: 2; background: rgba(10, 10, 15, 0.7);
+}
+.ncm-app .ncm-encrypted-block__overlay i { font-size: 16px; color: var(--ncm-accent, #f7c948); }
+.ncm-app .ncm-encrypted-block__overlay-text {
+  font-family: var(--ncm-font-mono); font-size: 10px; color: var(--ncm-accent, #f7c948);
+  text-transform: uppercase; letter-spacing: 0.06em;
+}
+.ncm-app .ncm-encrypted-block__decrypt-btn {
+  font-family: var(--ncm-font-mono) !important; font-size: 9px !important; padding: 4px 12px !important;
+  background: transparent !important; color: var(--ncm-accent, #f7c948) !important;
+  border: 1px solid rgba(247,201,72,0.3) !important; border-radius: 2px !important;
+  cursor: pointer !important; text-transform: uppercase; width: auto !important;
+  min-width: 0 !important; min-height: 0 !important; box-shadow: none !important;
+}
+.ncm-app .ncm-encrypted-block__decrypt-btn:hover { background: rgba(247,201,72,0.08) !important; }
+.ncm-app .ncm-encrypted-block--decrypted { border-color: rgba(0, 255, 65, 0.15); }
+.ncm-app .ncm-encrypted-block--decrypted .ncm-encrypted-block__label { color: var(--ncm-success, #00ff41); }
+.ncm-app .ncm-encrypted-block__content {
+  font-family: var(--ncm-font-mono); font-size: 11px; color: var(--ncm-text-secondary); line-height: 1.6;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   §21  FEATURE 3 — ATTACHMENT THUMBNAILS
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-attachments-grid {
+  display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0;
+  padding-top: 10px; border-top: 1px solid rgba(42,42,69,0.4);
+}
+.ncm-app .ncm-attach-card {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px; background: var(--ncm-bg-surface, #1a1a2e);
+  border: 1px solid var(--ncm-border); border-radius: 2px;
+  cursor: pointer; transition: all 0.15s; min-width: 180px; flex: 0 1 auto;
+}
+.ncm-app .ncm-attach-card:hover { border-color: var(--ncm-secondary); background: var(--ncm-bg-elevated); }
+.ncm-app .ncm-attach-card__thumb {
+  width: 36px; height: 36px; border-radius: 2px; border: 1px solid var(--ncm-border);
+  display: flex; align-items: center; justify-content: center;
+  background: var(--ncm-bg-deep); flex-shrink: 0; overflow: hidden;
+}
+.ncm-app .ncm-attach-card__thumb img { width: 100%; height: 100%; object-fit: cover; }
+.ncm-app .ncm-attach-card__thumb i { font-size: 14px; color: var(--ncm-text-muted); }
+.ncm-app .ncm-attach-card__thumb--shard i { color: var(--ncm-secondary, #19f3f7); }
+.ncm-app .ncm-attach-card__thumb--image { border-color: rgba(25,243,247,0.2); }
+.ncm-app .ncm-attach-card__thumb--eddies i { color: var(--ncm-success, #00ff41); }
+.ncm-app .ncm-attach-card__info { flex: 1; min-width: 0; }
+.ncm-app .ncm-attach-card__name {
+  font-family: var(--ncm-font-mono); font-size: 10px; color: var(--ncm-text-primary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ncm-app .ncm-attach-card__meta {
+  font-family: var(--ncm-font-mono); font-size: 8px; color: var(--ncm-text-muted); text-transform: uppercase;
+}
+.ncm-app .ncm-attach-card__meta--shard { color: var(--ncm-secondary); }
+.ncm-app .ncm-attach-card__meta--eddies { color: var(--ncm-success, #00ff41); }
+
+/* ═══════════════════════════════════════════════════════════
+   §22  FEATURE 4 — SELF-DESTRUCT BANNER
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-destruct-banner {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 16px; background: rgba(255, 0, 51, 0.06);
+  border-bottom: 1px solid rgba(255, 0, 51, 0.15); flex-shrink: 0;
+}
+.ncm-app .ncm-destruct-banner__icon { font-size: 12px; color: var(--ncm-danger, #ff0033); animation: ncm-pulse-danger 1.5s ease-in-out infinite; }
+@keyframes ncm-pulse-danger { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+.ncm-app .ncm-destruct-banner__text {
+  font-family: var(--ncm-font-mono); font-size: 10px; color: var(--ncm-danger, #ff0033);
+  text-transform: uppercase; letter-spacing: 0.06em;
+}
+.ncm-app .ncm-destruct-banner__timer {
+  font-family: var(--ncm-font-mono); font-size: 12px; font-weight: 700; color: var(--ncm-danger, #ff0033);
+  margin-left: auto;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   §23  FEATURES 6-7 — SCHEDULED + SHARD TAB ITEMS
+   ═══════════════════════════════════════════════════════════ */
+
+/* Scheduled items */
+.ncm-app .ncm-scheduled-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 16px; border-bottom: 1px solid rgba(42,42,69,0.4);
+  cursor: pointer; transition: background 0.1s;
+}
+.ncm-app .ncm-scheduled-item:hover { background: var(--ncm-bg-surface); }
+.ncm-app .ncm-scheduled-item__icon { font-size: 14px; color: var(--ncm-accent, #f7c948); }
+.ncm-app .ncm-scheduled-item__info { flex: 1; }
+.ncm-app .ncm-scheduled-item__to { font-family: var(--ncm-font-display); font-size: 12px; color: var(--ncm-text-primary); font-weight: 600; }
+.ncm-app .ncm-scheduled-item__subject { font-family: var(--ncm-font-mono); font-size: 10px; color: var(--ncm-text-muted); }
+.ncm-app .ncm-scheduled-item__time { font-family: var(--ncm-font-mono); font-size: 10px; color: var(--ncm-accent, #f7c948); text-align: right; }
+.ncm-app .ncm-scheduled-item__time-label { font-size: 8px; color: var(--ncm-text-muted); text-transform: uppercase; }
+.ncm-app .ncm-scheduled-item__cancel {
+  font-family: var(--ncm-font-mono) !important; font-size: 8px !important; color: var(--ncm-danger) !important;
+  padding: 3px 8px !important; border: 1px solid rgba(255,0,51,0.3) !important; border-radius: 2px !important;
+  background: transparent !important; cursor: pointer !important; text-transform: uppercase;
+  width: auto !important; min-width: 0 !important; min-height: 0 !important; box-shadow: none !important;
+}
+
+/* Shard items */
+.ncm-app .ncm-shard-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 16px; border-bottom: 1px solid rgba(42,42,69,0.4);
+  cursor: pointer; transition: background 0.1s;
+}
+.ncm-app .ncm-shard-item:hover { background: var(--ncm-bg-surface); }
+.ncm-app .ncm-shard-item__icon {
+  width: 36px; height: 36px; border-radius: 2px; background: var(--ncm-bg-surface);
+  border: 1px solid var(--ncm-border); display: flex; align-items: center; justify-content: center;
+  font-size: 14px; color: var(--ncm-secondary);
+}
+.ncm-app .ncm-shard-item__icon--received { color: var(--ncm-accent, #f7c948); border-color: rgba(247,201,72,0.2); }
+.ncm-app .ncm-shard-item__info { flex: 1; }
+.ncm-app .ncm-shard-item__name { font-family: var(--ncm-font-display); font-size: 12px; color: var(--ncm-text-primary); font-weight: 600; }
+.ncm-app .ncm-shard-item__meta { font-family: var(--ncm-font-mono); font-size: 9px; color: var(--ncm-text-muted); display: flex; gap: 8px; }
+.ncm-app .ncm-shard-item__badge {
+  font-family: var(--ncm-font-mono); font-size: 7px; padding: 1px 5px;
+  border-radius: 1px; text-transform: uppercase; flex-shrink: 0;
+}
+.ncm-app .ncm-shard-item__badge--inventory { background: rgba(25,243,247,0.08); color: var(--ncm-secondary); border: 1px solid rgba(25,243,247,0.15); }
+.ncm-app .ncm-shard-item__badge--received { background: rgba(247,201,72,0.08); color: var(--ncm-accent, #f7c948); border: 1px solid rgba(247,201,72,0.15); }
+.ncm-app .ncm-shard-item__badge--encrypted { background: rgba(246,82,97,0.08); color: var(--ncm-color-primary); border: 1px solid rgba(246,82,97,0.15); }
+
+/* Tab accent for new tabs */
+.ncm-app .ncm-tab--accent { color: var(--ncm-accent, #f7c948) !important; }
+.ncm-app .ncm-tab--accent.ncm-tab--active { border-bottom-color: var(--ncm-accent, #f7c948) !important; }
+
+/* Special tab content area */
+.ncm-app .ncm-tab-content-list {
+  flex: 1; overflow-y: auto;
+}
+.ncm-app .ncm-tab-content-empty {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  height: 100%; gap: 8px; color: var(--ncm-text-muted); text-align: center; padding: 20px;
+}
+.ncm-app .ncm-tab-content-empty i { font-size: 2rem; opacity: 0.3; }
+.ncm-app .ncm-tab-content-empty p { font-family: var(--ncm-font-mono); font-size: 11px; }
+
+
+/* ═══════════════════════════════════════════════════════════
+   §24  UTILITY
    ═══════════════════════════════════════════════════════════ */
 
 .ncm-app .ncm-hidden {
   display: none !important;
+}
+
+/* Global Foundry button reset for all NCM viewer buttons */
+.ncm-app .ncm-bulk-bar button,
+.ncm-app .ncm-filter-action-bar button,
+.ncm-app .ncm-detail-actions button {
+  width: auto !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  box-shadow: none !important;
 }

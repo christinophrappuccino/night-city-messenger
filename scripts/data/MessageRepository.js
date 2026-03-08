@@ -129,14 +129,20 @@ export class MessageRepository {
             read: messageData.status?.read || false,
             saved: false,
             spam: false,
-            encrypted: false,
+            encrypted: messageData.status?.encrypted || !!messageData.encryption || false,
             infected: false,
             deleted: false,
             sent: messageData.status?.sent || false,
             scheduled: false,
+            eddiesClaimed: false,
+            eddiesClaimedAt: null,
           },
 
-          encryption: null,
+          encryption: messageData.encryption || null,
+
+          // Composer features
+          eddies: messageData.eddies || 0,
+          selfDestruct: messageData.selfDestruct || null,
 
           metadata: {
             networkTrace: messageData.metadata?.networkTrace || null,
@@ -355,10 +361,13 @@ export class MessageRepository {
    */
   async hardDeleteMessage(actorId, messageId) {
     try {
-      if (!game.user.isGM) return { success: false, error: 'GM only' };
-
       const journal = await this.getInboxJournal(actorId);
       if (!journal) return { success: false, error: 'Inbox not found' };
+
+      // Allow if user is GM or owns the inbox journal
+      if (!game.user.isGM && !journal.isOwner) {
+        return { success: false, error: 'No permission to delete from this inbox' };
+      }
 
       const page = journal.pages.find(p => {
         return p.flags?.[MODULE_ID]?.messageId === messageId;
@@ -464,6 +473,10 @@ export class MessageRepository {
       // Future
       attachments: flags.attachments || [],
       malware: flags.malware,
+
+      // Composer features
+      eddies: flags.eddies || 0,
+      selfDestruct: flags.selfDestruct || null,
 
       // Network Access Control
       accessControl: flags.accessControl || null,

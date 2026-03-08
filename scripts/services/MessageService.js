@@ -52,9 +52,13 @@ export class MessageService {
       data.body = DataValidator.sanitizeBody(data.body);
 
       // Resolve actors
-      const fromActor = game.actors.get(data.fromActorId);
+      const fromActor = data.fromActorId ? game.actors.get(data.fromActorId) : null;
       const toActor = game.actors.get(data.toActorId);
-      if (!fromActor) return { success: false, error: 'Sender actor not found' };
+
+      // GM can send as a master contact without a linked actor
+      if (!fromActor && !game.user.isGM) {
+        return { success: false, error: 'Sender actor not found' };
+      }
       if (!toActor) return { success: false, error: 'Recipient actor not found' };
 
       // Contact Verification Gate
@@ -102,9 +106,17 @@ export class MessageService {
       // GM always bypasses — send-as-anyone capability
       // ════════════════════════════════════════════════════════
 
-      // Resolve email addresses from actor IDs (existing code continues here)
-      data.from = data.from || this._contactRepo.getActorEmail(data.fromActorId)
-        || `${fromActor.name.toLowerCase().replace(/\s+/g, '.')}@nightcity.net`;
+      // Resolve email addresses from actor IDs or pre-set values
+      if (!data.from) {
+        if (fromActor) {
+          data.from = this._contactRepo.getActorEmail(data.fromActorId)
+            || `${fromActor.name.toLowerCase().replace(/\s+/g, '.')}@nightcity.net`;
+        } else {
+          data.from = data.fromName
+            ? `${data.fromName.toLowerCase().replace(/\s+/g, '.')}@nightcity.net`
+            : 'unknown@nightcity.net';
+        }
+      }
       data.to = data.to || this._contactRepo.getActorEmail(data.toActorId)
         || `${toActor.name.toLowerCase().replace(/\s+/g, '.')}@nightcity.net`;
 
@@ -152,9 +164,15 @@ export class MessageService {
       const result = await this._messageRepo.createMessage(data.toActorId, data);
       if (!result.success) return result;
 
-      // Create sent copy in sender's outbox
-      const sentCopy = { ...data, status: { sent: true, read: true } };
-      await this._messageRepo.createMessage(data.fromActorId, sentCopy);
+      // Create sent copy in sender's outbox (only if sender has an actor inbox)
+      if (data.fromActorId) {
+        const sentCopy = {
+          ...data,
+          messageId: `${data.messageId}-sent`,
+          status: { sent: true, read: true, eddiesClaimed: true },
+        };
+        await this._messageRepo.createMessage(data.fromActorId, sentCopy);
+      }
 
       // Emit events
       this.eventBus.emit(EVENTS.MESSAGE_SENT, {
@@ -351,6 +369,87 @@ export class MessageService {
     return this._messageRepo.toggleSaved(actorId, messageId);
   }
 
+  /**
+   * Mark a message as spam.
+   * @param {string} actorId
+   * @param {string} messageId
+   * @returns {Promise<{success: boolean}>}
+   */
+  async markSpam(actorId, messageId) {
+    return this._messageRepo.updateMessageFlags(actorId, messageId, {
+      status: { spam: true },
+    });
+  }
+
+  /**
+   * Remove spam flag from a message.
+   * @param {string} actorId
+   * @param {string} messageId
+   * @returns {Promise<{success: boolean}>}
+   */
+  async unmarkSpam(actorId, messageId) {
+    return this._messageRepo.updateMessageFlags(actorId, messageId, {
+      status: { spam: false },
+    });
+  }
+
+  /**
+   * Restore a soft-deleted message from trash.
+   * @param {string} actorId
+   * @param {string} messageId
+   * @returns {Promise<{success: boolean}>}
+   */
+  async restoreFromTrash(actorId, messageId) {
+    return this._messageRepo.updateMessageFlags(actorId, messageId, {
+      status: { deleted: false },
+    });
+  }
+
+  /**
+   * Permanently delete a message (hard delete).
+   * @param {string} actorId
+   * @param {string} messageId
+   * @returns {Promise<{success: boolean}>}
+   */
+  async permanentDelete(actorId, messageId) {
+    return this._messageRepo.hardDeleteMessage(actorId, messageId);
+  }
+
+  /**
+   * Empty all trashed messages for an actor (permanent delete).
+   * @param {string} actorId
+   * @returns {Promise<{success: boolean, count: number}>}
+   */
+  async emptyTrash(actorId) {
+    const messages = await this._messageRepo.getMessages(actorId, {
+      filter: 'all',
+      includeDeleted: true,
+    });
+    const trashed = messages.filter(m => m.status?.deleted);
+    let count = 0;
+    for (const msg of trashed) {
+      const result = await this._messageRepo.hardDeleteMessage(actorId, msg.messageId);
+      if (result.success) count++;
+    }
+    return { success: true, count };
+  }
+
+  /**
+   * Empty all spam messages for an actor (permanent delete).
+   * @param {string} actorId
+   * @returns {Promise<{success: boolean, count: number}>}
+   */
+  async emptySpam(actorId) {
+    const messages = await this._messageRepo.getMessages(actorId);
+    const spam = messages.filter(m => m.status?.spam && !m.status?.deleted);
+    let count = 0;
+    for (const msg of spam) {
+      const result = await this._messageRepo.hardDeleteMessage(actorId, msg.messageId);
+      if (result.success) count++;
+    }
+    return { success: true, count };
+  }
+
   // ─── Query Methods ────────────────────────────────────────
 
   /**
@@ -387,6 +486,17 @@ export class MessageService {
    */
   async getThread(actorId, threadId) {
     return this._messageRepo.getThread(actorId, threadId);
+  }
+
+  /**
+   * Update specific flags on a message.
+   * @param {string} actorId
+   * @param {string} messageId
+   * @param {object} flagUpdates
+   * @returns {Promise<{success: boolean}>}
+   */
+  async updateMessageFlags(actorId, messageId, flagUpdates) {
+    return this._messageRepo.updateMessageFlags(actorId, messageId, flagUpdates);
   }
 
   // ─── GM Operations ────────────────────────────────────────

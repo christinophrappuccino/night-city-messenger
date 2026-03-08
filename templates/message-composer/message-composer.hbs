@@ -98,6 +98,8 @@
     <div class="ncm-hud-item {{hudPriClass}}">PRI <span>{{hudPriLabel}}</span></div>
     <div class="ncm-hud-sep">//</div>
     <div class="ncm-hud-item {{hudEncClass}}">ENC <span>{{hudEncLabel}}</span></div>
+    <div class="ncm-hud-sep">//</div>
+    <div class="ncm-hud-item">TIME <span>{{currentGameTime}}</span></div>
 
     <div class="ncm-hud-right">
       <span style="font-size: 8px; color: {{hudStatusColor}};">
@@ -282,8 +284,8 @@
     <div class="ncm-schedule-bar">
       <i class="fas fa-clock ncm-schedule-bar__icon"></i>
       <span class="ncm-schedule-bar__label">Deliver at:</span>
-      <input class="ncm-schedule-input" data-id="schedule-input" type="text"
-             value="{{scheduledTime}}" placeholder="DD.MM.YYYY // HH:MM" />
+      <input class="ncm-schedule-input" data-id="schedule-input" type="datetime-local"
+             value="{{scheduledTimeLocal}}" />
       <div class="ncm-schedule-toggle" data-action="toggleGameTime">
         <div class="ncm-toggle-mini {{#if scheduleGameTime}}ncm-toggle-mini--on{{/if}}"></div>
         Game Time
@@ -298,7 +300,7 @@
       <div class="ncm-quote-block__header">
         <i class="fas fa-quote-left"></i> {{quoteBlock.sender}} — {{quoteBlock.time}} // {{quoteBlock.network}}
       </div>
-      <div class="ncm-quote-block__body" data-id="quote-body">{{quoteBlock.body}}</div>
+      <div class="ncm-quote-block__body" data-id="quote-body">{{{quoteBlock.body}}}</div>
       <div class="ncm-quote-block__expand" data-action="toggleQuote">
         <i class="fas fa-chevron-down"></i> Show full message
       </div>
