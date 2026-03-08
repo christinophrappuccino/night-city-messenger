@@ -172,6 +172,17 @@ export class MessageViewerApp extends BaseApplication {
     }
   }
 
+  /**
+   * Save the current scroll position of the message list before re-render.
+   * Restored in _onRender() via this._savedScrollTop.
+   */
+  _saveScrollPosition() {
+    const listEl = this.element?.querySelector('.ncm-message-list');
+    if (listEl) {
+      this._savedScrollTop = listEl.scrollTop;
+    }
+  }
+
   _loadPreferences() {
     try {
       const prefs = game.nightcity?.settingsManager?.getInboxPrefs?.(this.actorId);
@@ -500,14 +511,12 @@ export class MessageViewerApp extends BaseApplication {
     const html = this.element;
     if (!html) return;
 
-    // ── Re-render on network state changes (bind once) ──
-    if (!this._networkChangeListenerBound) {
-      const eventBus = game.nightcity?.eventBus;
-      if (eventBus) {
-        eventBus.on(EVENTS.NETWORK_CHANGED, () => this.render());
-        eventBus.on(EVENTS.NETWORK_CONNECTED, () => this.render());
-        eventBus.on(EVENTS.NETWORK_DISCONNECTED, () => this.render());
-        this._networkChangeListenerBound = true;
+    // ── Scroll preservation — restore saved scroll position ──
+    if (this._savedScrollTop != null) {
+      const listEl = html.querySelector('.ncm-message-list');
+      if (listEl) {
+        listEl.scrollTop = this._savedScrollTop;
+        this._savedScrollTop = null;
       }
     }
 
@@ -537,6 +546,18 @@ export class MessageViewerApp extends BaseApplication {
         this.render();
       });
       divider._ncmBound = true;
+    }
+
+    // ── Real-time clock — tick TIME display every second ──
+    if (this._clockInterval) clearInterval(this._clockInterval);
+    const timeEl = html.querySelector('.ncm-hud-strip__value--time');
+    if (timeEl) {
+      this._clockInterval = setInterval(() => {
+        try {
+          const now = this.timeService?.getCurrentTime?.() || new Date().toISOString();
+          timeEl.textContent = formatCyberDate(now);
+        } catch { /* non-critical */ }
+      }, 1000);
     }
 
     // Feature 4 — Self-destruct timer update
@@ -709,6 +730,11 @@ export class MessageViewerApp extends BaseApplication {
         break;
       case 'open-attachment':
         this._openAttachment(messageId, target.dataset.attachmentIndex);
+        break;
+
+      // ── Quick Wins: Add Contact from message ──
+      case 'add-contact':
+        this._addContactFromMessage();
         break;
 
       // ── Bulk Actions ──
@@ -954,6 +980,9 @@ export class MessageViewerApp extends BaseApplication {
 
   _selectMessage(messageId) {
     if (!messageId) return;
+
+    // Preserve scroll position before re-render
+    this._saveScrollPosition();
 
     this.selectedMessageId = messageId;
     this.render();
@@ -1283,6 +1312,55 @@ export class MessageViewerApp extends BaseApplication {
     await this.messageService?.shareToChat?.(msg, this.actorId);
   }
 
+  /**
+   * Quick-add the sender of the selected message as a contact.
+   * Creates a new contact entry using the sender's email and display name.
+   */
+  async _addContactFromMessage() {
+    const msg = this._getSelectedMessage();
+    if (!msg?.from) return;
+
+    const contact = this._findContact(msg.from);
+    if (contact) {
+      ui.notifications.info(`${msg.from} is already in your contacts.`);
+      return;
+    }
+
+    const displayName = msg.from.split('@')[0] || 'Unknown';
+
+    try {
+      // Try the contact repository's add method
+      const repo = this.contactRepository;
+      if (repo?.addContact) {
+        await repo.addContact({
+          actorId: this.actorId,
+          name: displayName,
+          email: msg.from,
+          network: msg.network || 'CITINET',
+          trust: 'neutral',
+          notes: `Added from message: "${msg.subject || '(no subject)'}"`,
+        });
+      } else if (repo?.createContact) {
+        await repo.createContact({
+          actorId: this.actorId,
+          name: displayName,
+          email: msg.from,
+          network: msg.network || 'CITINET',
+        });
+      } else {
+        ui.notifications.warn('Contact system unavailable.');
+        return;
+      }
+
+      ui.notifications.info(`Added "${displayName}" (${msg.from}) to contacts.`);
+      this.soundService?.play?.('receive');
+      this.render();
+    } catch (error) {
+      console.error('NCM | Failed to add contact:', error);
+      ui.notifications.error('Failed to add contact.');
+    }
+  }
+
   _sendQuickReply(replyText) {
     if (!replyText || !this.selectedMessageId) return;
     const msg = this._getSelectedMessage();
@@ -1488,11 +1566,23 @@ export class MessageViewerApp extends BaseApplication {
   // ═══════════════════════════════════════════════════════════
 
   _setupEventSubscriptions() {
-    this.subscribe?.('message:received', () => this._debouncedRender());
-    this.subscribe?.('message:read', () => this._debouncedRender());
-    this.subscribe?.('message:deleted', () => this._debouncedRender());
-    this.subscribe?.('network:changed', () => this._debouncedRender());
-    this.subscribe?.('theme:changed', () => this._debouncedRender());
+    // ── Message events (real-time inbox updates via DocumentSyncBridge) ──
+    this.subscribe?.(EVENTS.MESSAGE_RECEIVED, () => this._debouncedRender());
+    this.subscribe?.(EVENTS.MESSAGE_SENT, () => this._debouncedRender());
+    this.subscribe?.(EVENTS.MESSAGE_READ, () => this._debouncedRender());
+    this.subscribe?.(EVENTS.MESSAGE_DELETED, () => this._debouncedRender());
+    this.subscribe?.(EVENTS.MESSAGE_STATUS_CHANGED, () => this._debouncedRender());
+    this.subscribe?.(EVENTS.INBOX_REFRESH, () => this._debouncedRender());
+    this.subscribe?.(EVENTS.QUEUE_FLUSHED, () => this._debouncedRender());
+    this.subscribe?.(EVENTS.SCHEDULE_UPDATED, () => this._debouncedRender());
+
+    // ── Network events ──
+    this.subscribe?.(EVENTS.NETWORK_CHANGED, () => this._debouncedRender());
+    this.subscribe?.(EVENTS.NETWORK_CONNECTED, () => this._debouncedRender());
+    this.subscribe?.(EVENTS.NETWORK_DISCONNECTED, () => this._debouncedRender());
+
+    // ── UI / theme events ──
+    this.subscribe?.(EVENTS.THEME_CHANGED, () => this._debouncedRender());
     this.subscribe?.(EVENTS.CONTACT_UPDATED, () => this._debouncedRender());
   }
 
@@ -1530,11 +1620,32 @@ export class MessageViewerApp extends BaseApplication {
     const contact = this._findContact(msg.from);
     const attachments = msg.attachments || [];
 
-    // §2.4 — Security verification strip
+    // §2.4 — Security verification strip (items array format)
     const security = getSecurityStripData(msg, contact);
 
     // §2.6/2.8 — Classify attachments into encrypted vs regular
     const classified = classifyAttachments(attachments);
+
+    // ── Quick win: sender contact check for "Add to Contacts" button ──
+    const senderIsContact = !!contact;
+
+    // ── Network-locked check: is the message's network accessible? ──
+    let isNetworkLocked = false;
+    let lockedNetworkName = '';
+    if (msg.network && !msg.status?.sent) {
+      const availableNetworks = this._getAvailableNetworks();
+      const availableIds = new Set(availableNetworks.map(n => (n.name || '').toLowerCase()));
+      const availableIdSet = new Set(availableNetworks.map(n => (n.id || '').toLowerCase()));
+      const msgNetNorm = (msg.network || '').toLowerCase();
+      // Only lock if it's not on a universally available network and not in available list
+      if (msgNetNorm !== 'citinet' && !availableIds.has(msgNetNorm) && !availableIdSet.has(msgNetNorm)) {
+        // GM always has access
+        if (!game.user?.isGM) {
+          isNetworkLocked = true;
+          lockedNetworkName = msg.network;
+        }
+      }
+    }
 
     // Feature 1 — Eddies data (different display for sent vs received)
     let eddiesData = null;
@@ -1590,6 +1701,9 @@ export class MessageViewerApp extends BaseApplication {
       selfDestructActive,
       selfDestructDisplay,
       isSent: !!msg.status?.sent,
+      senderIsContact,
+      isNetworkLocked,
+      lockedNetworkName,
     };
   }
 
@@ -1604,12 +1718,30 @@ export class MessageViewerApp extends BaseApplication {
   async _enrichMessages(messages, currentNetworkName) {
     this._cachedMessages = messages;
 
-    return messages.map(msg => ({
-      ...msg,
-      ...this._enrichMessageDisplay(msg, currentNetworkName),
-      selected: msg.messageId === this.selectedMessageId,
-      bulkSelected: this.bulkSelected.has(msg.messageId),
-    }));
+    // Pre-compute available network names for lock check
+    const availableNetworks = this._getAvailableNetworks();
+    const availableNameSet = new Set(availableNetworks.map(n => (n.name || '').toLowerCase()));
+    const availableIdSet = new Set(availableNetworks.map(n => (n.id || '').toLowerCase()));
+    const isGM = game.user?.isGM ?? false;
+
+    return messages.map(msg => {
+      // Network-locked check for list items
+      let isNetworkLocked = false;
+      if (msg.network && !msg.status?.sent && !isGM) {
+        const msgNetNorm = (msg.network || '').toLowerCase();
+        if (msgNetNorm !== 'citinet' && !availableNameSet.has(msgNetNorm) && !availableIdSet.has(msgNetNorm)) {
+          isNetworkLocked = true;
+        }
+      }
+
+      return {
+        ...msg,
+        ...this._enrichMessageDisplay(msg, currentNetworkName),
+        selected: msg.messageId === this.selectedMessageId,
+        bulkSelected: this.bulkSelected.has(msg.messageId),
+        isNetworkLocked,
+      };
+    });
   }
 
   /**
@@ -1700,6 +1832,7 @@ export class MessageViewerApp extends BaseApplication {
       fromPortrait,
       toDisplay,
       priorityVariant,
+      priorityIcon,
       networkLabel,
       formattedTime,
       bodyPreview,
@@ -1940,6 +2073,7 @@ export class MessageViewerApp extends BaseApplication {
 
   async close(options) {
     if (this._destructTimer) clearInterval(this._destructTimer);
+    if (this._clockInterval) clearInterval(this._clockInterval);
     return super.close(options);
   }
 }

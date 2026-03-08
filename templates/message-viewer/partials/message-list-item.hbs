@@ -36,7 +36,8 @@
   {{~#if bulkSelected}} ncm-message-item--bulk-selected{{/if~}}
   {{~#if status.infected}} ncm-message-item--infected{{/if~}}
   {{~#if status.encrypted}} ncm-message-item--encrypted{{/if~}}
-  {{~#if threatBadge}} ncm-message-item--threat{{/if~}}"
+  {{~#if threatBadge}} ncm-message-item--threat{{/if~}}
+  {{~#if isNetworkLocked}} ncm-message-item--network-locked{{/if~}}"
      data-message-id="{{messageId}}"
      data-priority="{{priority}}"
      data-action="select-message">
@@ -47,6 +48,13 @@
   {{#unless status.read}}
     <div class="ncm-message-item__unread-dot" data-ncm-tooltip="Unread"></div>
   {{/unless}}
+
+  {{!-- Network-locked indicator --}}
+  {{#if isNetworkLocked}}
+    <div class="ncm-message-item__lock-indicator" data-ncm-tooltip="Requires {{network}} access">
+      <i class="fas fa-lock"></i>
+    </div>
+  {{/if}}
 
   {{!-- Avatar — §2.9 Color-coded, §2.10 Network accent border --}}
   <div class="ncm-message-item__avatar"

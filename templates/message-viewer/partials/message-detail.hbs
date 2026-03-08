@@ -6,28 +6,29 @@
     and quick-reply bar. Uses Sprint 0 design system components.
 
   Sprint 2B additions:
-    - Security verification strip below metadata (§2.4)
+    - Security verification strip below metadata (§2.4) — uses items[] array
     - Thread badge pill in subject row (§2.5)
     - Interactive encrypted attachments via partial (§2.6)
     - Attachment chips via partial (§2.8)
 
-  Visual Audit Fixes:
-    - Metadata restructured: Subject as heading, FROM/TO/DATE/NET in horizontal
-      flex row matching mockup (Fix 2A)
-    - Alert partial param fixed: message= → text= (Fix 3A)
-    - Quick reply pills remain as <span> with .ncm-quick-pill class (Fix 1B — CSS)
+  Viewer Polish additions:
+    - Network-locked overlay (messages from inaccessible networks)
+    - Enhanced encrypted overlay with DV/type metadata
+    - "Add to Contacts" inline button for unknown senders
+    - Security strip iterates over items[] from getSecurityStripData()
+    - Threat alert marker in security strip
 
   Expected context:
     message — enriched message object from _getEnrichedMessage()
       { messageId, from, to, subject, body, bodyRendered, timestamp, network,
-        priority, priorityVariant, fromDisplay, fromInitial, fromPortrait,
-        toDisplay, formattedTime, status, threadInfo, attachments,
-        security (Sprint 2B):
-          { verifiedSender, verifiedVariant, encrypted, encryptedVariant,
-            attachmentScan, attachmentScanVariant, attachmentScanLabel,
-            routeHops, securityLevel } }
+        priority, priorityVariant, priorityIcon, fromDisplay, fromInitial,
+        fromPortrait, toDisplay, formattedTime, status, threadInfo, attachments,
+        senderIsContact, isNetworkLocked, lockedNetworkName,
+        security: { variant, items: [{icon, label, status}...], hasThreat },
+        encryption: { type, dc } | null }
     quickReplies — array of quick-reply strings
     isGM — boolean
+    currentFilter — active filter tab name
 --}}
 
 <div class="ncm-message-detail" data-message-id="{{message.messageId}}">
@@ -36,17 +37,47 @@
   {{> "modules/cyberpunkred-messenger/templates/partials/section-header.hbs"
       title="MESSAGE DETAIL" size="small" align="left" }}
 
+  {{!-- ═══ Network-Locked Overlay (message from inaccessible network) ═══ --}}
+  {{#if message.isNetworkLocked}}
+    <div class="ncm-message-locked-overlay ncm-message-locked-overlay--network">
+      <div class="ncm-locked-overlay__icon">
+        <i class="fas fa-tower-broadcast"></i>
+      </div>
+      <div class="ncm-locked-overlay__title">NETWORK RESTRICTED</div>
+      <div class="ncm-locked-overlay__subtitle">
+        This message was transmitted on <strong>{{message.lockedNetworkName}}</strong>.
+        Connect to this network to access content.
+      </div>
+      <div class="ncm-locked-overlay__net-badge">
+        <i class="fas fa-lock"></i> REQUIRES {{message.lockedNetworkName}} ACCESS
+      </div>
+    </div>
+
   {{!-- ═══ Encryption Overlay (if encrypted & not decrypted) ═══ --}}
-  {{#if message.status.encrypted}}
-    <div class="ncm-message-encrypted-overlay">
-      <div class="ncm-encrypted-icon">
+  {{else if message.status.encrypted}}
+    <div class="ncm-message-locked-overlay ncm-message-locked-overlay--encrypted">
+      <div class="ncm-locked-overlay__icon">
         <i class="fas fa-lock"></i>
       </div>
-      <div class="ncm-encrypted-title">MESSAGE ENCRYPTED</div>
-      <div class="ncm-encrypted-subtitle">
+      <div class="ncm-locked-overlay__title">MESSAGE ENCRYPTED</div>
+      <div class="ncm-locked-overlay__subtitle">
         ICE-protected transmission. Requires decryption to access content.
       </div>
-      <div class="ncm-encrypted-actions">
+      {{#if message.encryption}}
+        <div class="ncm-locked-overlay__meta">
+          {{#if message.encryption.type}}
+            <span class="ncm-locked-overlay__meta-item">
+              <i class="fas fa-shield-halved"></i> {{message.encryption.type}}
+            </span>
+          {{/if}}
+          {{#if message.encryption.dc}}
+            <span class="ncm-locked-overlay__meta-item">
+              <i class="fas fa-dice-d20"></i> DV {{message.encryption.dc}}
+            </span>
+          {{/if}}
+        </div>
+      {{/if}}
+      <div class="ncm-locked-overlay__actions">
         <button class="ncm-btn ncm-btn--secondary" data-action="decrypt-message"
                 data-message-id="{{message.messageId}}">
           <i class="fas fa-unlock-keyhole"></i>
@@ -63,10 +94,7 @@
     </div>
   {{else}}
 
-    {{!-- ═══ Message Metadata — Restructured (Fix 2A) ═══
-         Subject as large heading row (with thread badge).
-         Then FROM / TO / DATE / NET as a compact horizontal flex row.
-    --}}
+    {{!-- ═══ Message Metadata ═══ --}}
     <div class="ncm-detail-meta">
 
       {{!-- Subject Heading Row --}}
@@ -95,7 +123,19 @@
       <div class="ncm-detail-meta__row-inline">
         <div class="ncm-detail-meta-item">
           <span class="ncm-detail-meta-label">FROM</span>
-          <span class="ncm-detail-meta-value">{{message.fromDisplay}}</span>
+          <span class="ncm-detail-meta-value">
+            {{message.fromDisplay}}
+            {{!-- Add to Contacts button for unknown senders --}}
+            {{#unless message.senderIsContact}}
+              {{#unless message.isSent}}
+                <button class="ncm-btn-inline ncm-btn-inline--add-contact"
+                        data-action="add-contact"
+                        data-ncm-tooltip="Add to contacts">
+                  <i class="fas fa-user-plus"></i>
+                </button>
+              {{/unless}}
+            {{/unless}}
+          </span>
         </div>
         <div class="ncm-detail-meta-item">
           <span class="ncm-detail-meta-label">TO</span>
@@ -114,34 +154,21 @@
       </div>
     </div>
 
-    {{!-- ═══ §2.4 Security Verification Strip ═══ --}}
+    {{!-- ═══ §2.4 Security Verification Strip (items array) ═══ --}}
     {{#if message.security}}
-      <div class="ncm-security-strip ncm-security-strip--{{message.security.securityLevel}}">
-
-        {{!-- Verified Sender --}}
-        <div class="ncm-security-item ncm-security-item--{{message.security.verifiedVariant}}">
-          <i class="fas fa-shield-check"></i>
-          <span>{{#if message.security.verifiedSender}}VERIFIED SENDER{{else}}UNKNOWN SENDER{{/if}}</span>
-        </div>
-
-        {{!-- E2E Encryption --}}
-        <div class="ncm-security-item ncm-security-item--{{message.security.encryptedVariant}}">
-          <i class="fas fa-lock"></i>
-          <span>{{#if message.security.encrypted}}E2E ENCRYPTED{{else}}CLEARTEXT{{/if}}</span>
-        </div>
-
-        {{!-- Attachment Scan --}}
-        <div class="ncm-security-item ncm-security-item--{{message.security.attachmentScanVariant}}">
-          <i class="fas fa-paperclip"></i>
-          <span>{{message.security.attachmentScanLabel}}</span>
-        </div>
-
-        {{!-- Route Hops (pushed right) --}}
-        <div class="ncm-security-item ncm-security-item--route">
-          <i class="fas fa-route"></i>
-          <span>ROUTE: {{message.security.routeHops}} HOP{{#if (gt message.security.routeHops 1)}}S{{/if}}</span>
-        </div>
-
+      <div class="ncm-security-strip ncm-security-strip--{{message.security.variant}}">
+        {{#each message.security.items}}
+          <div class="ncm-security-item ncm-security-item--{{this.status}}">
+            <i class="{{this.icon}}"></i>
+            <span>{{this.label}}</span>
+          </div>
+        {{/each}}
+        {{#if message.security.hasThreat}}
+          <div class="ncm-security-item ncm-security-item--danger ncm-security-item--threat-alert">
+            <i class="fas fa-skull-crossbones"></i>
+            <span>THREAT</span>
+          </div>
+        {{/if}}
       </div>
     {{/if}}
 
@@ -231,7 +258,7 @@
       {{/if}}
     </div>
 
-    {{!-- ═══ Malware Warning (Fix 3A — param: text= not message=) ═══ --}}
+    {{!-- ═══ Malware Warning ═══ --}}
     {{#if message.status.infected}}
       {{> "modules/cyberpunkred-messenger/templates/partials/alert-panel.hbs"
           variant="danger"
