@@ -633,7 +633,18 @@
   border: 1px solid rgba(255, 0, 51, 0.4);
   color: #F65261;
   border-radius: 1px;
-  animation: none;
+  animation: ncm-critical-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes ncm-critical-pulse {
+  0%, 100% {
+    background: rgba(255, 0, 51, 0.12);
+    box-shadow: none;
+  }
+  50% {
+    background: rgba(255, 0, 51, 0.2);
+    box-shadow: 0 0 8px rgba(255, 0, 51, 0.2);
+  }
 }
 
 .ncm-app .ncm-badge.ncm-badge--urgent,
@@ -643,6 +654,23 @@
   color: #ffaa00;
   border-radius: 1px;
   animation: none;
+}
+
+/* Priority left-border — critical gets glow */
+.ncm-app .ncm-message-item[data-priority="critical"] {
+  border-left-color: var(--ncm-danger);
+  box-shadow: inset 4px 0 8px rgba(255, 0, 51, 0.06);
+}
+
+/* Respect animation preferences for critical pulse */
+[data-ncm-animation-level="reduced"] .ncm-app .ncm-badge.ncm-badge--critical,
+[data-ncm-animation-level="reduced"] .ncm-app .ncm-badge.ncm-badge--priority-critical {
+  animation: none;
+}
+[data-ncm-animation-level="off"] .ncm-app .ncm-badge.ncm-badge--critical,
+[data-ncm-animation-level="off"] .ncm-app .ncm-badge.ncm-badge--priority-critical {
+  animation: none;
+  box-shadow: none;
 }
 
 /* ── Threat message item tint ── */
@@ -754,7 +782,7 @@
 }
 
 .ncm-app .ncm-badge--network i {
-  font-size: 7px;
+  font-size: 8px;
 }
 
 /* Network badge color variants */
@@ -1225,6 +1253,37 @@
   gap: 2px;
 }
 
+/* Top row: sender + badges + status icons + time */
+.ncm-app .ncm-message-item__top-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* Status icon cluster (saved/encrypted/infected indicators) */
+.ncm-app .ncm-message-item__status-icons {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+/* Unread dot element (complements the ::after pseudo-dot) */
+.ncm-app .ncm-message-item__unread-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ncm-secondary);
+  box-shadow: 0 0 6px rgba(25, 243, 247, 0.5);
+  flex-shrink: 0;
+}
+
+/* Hide the ::after pseudo-dot when the element dot is present */
+.ncm-app .ncm-message-item--unread:has(.ncm-message-item__unread-dot)::after {
+  display: none;
+}
+
 /* Top row: sender + time */
 .ncm-app .ncm-message-item__header {
   display: flex;
@@ -1283,14 +1342,11 @@
   opacity: 0.8;
 }
 
-/* Preview row */
-.ncm-app .ncm-message-item__preview-row {
-  display: none;
-}
-
+/* Preview row — hidden by default, shown in comfortable density */
 .ncm-app .ncm-message-item__preview {
+  display: none;
   font-family: var(--ncm-font-mono);
-  font-size: 9px;
+  font-size: 10px;
   color: var(--ncm-text-muted);
   white-space: nowrap;
   overflow: hidden;
@@ -1304,13 +1360,9 @@
   margin-top: 2px;
 }
 
-/* Priority left-border accents */
+/* Priority left-border — urgent accent */
 .ncm-app .ncm-message-item[data-priority="urgent"] {
   border-left-color: var(--ncm-warning);
-}
-
-.ncm-app .ncm-message-item[data-priority="critical"] {
-  border-left-color: var(--ncm-danger);
 }
 
 
@@ -1330,17 +1382,17 @@
   font-size: 8px;
 }
 
-.ncm-app .ncm-message-viewer[data-density="compact"] .ncm-message-item__preview-row {
+.ncm-app .ncm-message-viewer[data-density="compact"] .ncm-message-item__preview {
   display: none;
 }
 
 /* Normal: Default. No preview. */
-.ncm-app .ncm-message-viewer[data-density="normal"] .ncm-message-item__preview-row {
+.ncm-app .ncm-message-viewer[data-density="normal"] .ncm-message-item__preview {
   display: none;
 }
 
 /* Comfortable: Three lines — includes body preview */
-.ncm-app .ncm-message-viewer[data-density="comfortable"] .ncm-message-item__preview-row {
+.ncm-app .ncm-message-viewer[data-density="comfortable"] .ncm-message-item__preview {
   display: block;
 }
 
@@ -2141,7 +2193,7 @@
 .ncm-app .ncm-shard-item__name { font-family: var(--ncm-font-display); font-size: 12px; color: var(--ncm-text-primary); font-weight: 600; }
 .ncm-app .ncm-shard-item__meta { font-family: var(--ncm-font-mono); font-size: 9px; color: var(--ncm-text-muted); display: flex; gap: 8px; }
 .ncm-app .ncm-shard-item__badge {
-  font-family: var(--ncm-font-mono); font-size: 7px; padding: 1px 5px;
+  font-family: var(--ncm-font-mono); font-size: 8px; padding: 1px 5px;
   border-radius: 1px; text-transform: uppercase; flex-shrink: 0;
 }
 .ncm-app .ncm-shard-item__badge--inventory { background: rgba(25,243,247,0.08); color: var(--ncm-secondary); border: 1px solid rgba(25,243,247,0.15); }
