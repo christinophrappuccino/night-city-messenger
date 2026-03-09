@@ -229,23 +229,8 @@
       </button>
     </div>
 
-    {{!-- Tab Controls: Sort + Search (right-aligned) --}}
+    {{!-- Tab Controls: Search (right-aligned) --}}
     <div class="ncm-tab-controls">
-      {{!-- Sort --}}
-      <div class="ncm-sort-control" data-action="toggle-sort-dropdown">
-        <i class="fas fa-arrow-down-short-wide"></i>
-        <span>{{sortLabel}}</span>
-        <i class="fas fa-caret-down"></i>
-        <div class="ncm-sort-dropdown ncm-hidden">
-          {{#each sortOptions}}
-          <div class="ncm-sort-option {{#if this.active}}ncm-sort-option--active{{/if}}"
-               data-action="set-sort" data-sort="{{this.id}}">
-            {{this.label}}
-          </div>
-          {{/each}}
-        </div>
-      </div>
-
       {{!-- Search Toggle --}}
       {{#if searchActive}}
         <div class="ncm-tab-search ncm-tab-search--expanded">
@@ -400,6 +385,70 @@
 
     {{!-- Left: Message List --}}
     <div class="ncm-message-list-panel ncm-scrollbar" style="width: {{sidebarWidth}}px;">
+
+      {{!-- List Toolbar: Count + Sort + Network Filter --}}
+      <div class="ncm-list-toolbar">
+        <span class="ncm-list-toolbar__count">
+          {{totalMessages}} msg{{#if (neq totalMessages 1)}}s{{/if}}
+        </span>
+
+        {{!-- Sort Dropdown --}}
+        <div class="ncm-sort-control" data-action="toggle-sort-dropdown">
+          <i class="fas fa-arrow-down-short-wide"></i>
+          <span>{{sortLabel}}</span>
+          <i class="fas fa-caret-down"></i>
+          <div class="ncm-sort-dropdown ncm-hidden">
+            {{#each sortOptions}}
+            <div class="ncm-sort-option {{#if this.active}}ncm-sort-option--active{{/if}}"
+                 data-action="set-sort" data-sort="{{this.id}}">
+              {{this.label}}
+            </div>
+            {{/each}}
+          </div>
+        </div>
+
+        {{!-- Network Filter (only if messages span multiple networks) --}}
+        {{#if showNetworkFilter}}
+          <div class="ncm-network-filter-control" data-action="toggle-network-filter">
+            <i class="fas fa-network-wired"></i>
+            <span>{{#if networkFilter}}{{networkFilter}}{{else}}All Nets{{/if}}</span>
+            <i class="fas fa-caret-down"></i>
+            <div class="ncm-network-filter-dropdown ncm-hidden">
+              <div class="ncm-sort-option {{#unless networkFilter}}ncm-sort-option--active{{/unless}}"
+                   data-action="filter-network" data-network="">
+                All Networks
+              </div>
+              {{#each messageNetworks}}
+                <div class="ncm-sort-option {{#if (eq this ../networkFilter)}}ncm-sort-option--active{{/if}}"
+                     data-action="filter-network" data-network="{{this}}">
+                  {{this}}
+                </div>
+              {{/each}}
+            </div>
+          </div>
+        {{/if}}
+
+        {{!-- Density Toggle (pushed right) --}}
+        <div class="ncm-list-toolbar__spacer"></div>
+        <div class="ncm-density-toggle">
+          <button class="ncm-density-btn {{#if (eq density 'compact')}}ncm-density-btn--active{{/if}}"
+                  data-action="set-density" data-density="compact"
+                  data-ncm-tooltip="Compact">
+            <i class="fas fa-bars"></i>
+          </button>
+          <button class="ncm-density-btn {{#if (eq density 'normal')}}ncm-density-btn--active{{/if}}"
+                  data-action="set-density" data-density="normal"
+                  data-ncm-tooltip="Normal">
+            <i class="fas fa-list"></i>
+          </button>
+          <button class="ncm-density-btn {{#if (eq density 'comfortable')}}ncm-density-btn--active{{/if}}"
+                  data-action="set-density" data-density="comfortable"
+                  data-ncm-tooltip="Comfortable">
+            <i class="fas fa-th-list"></i>
+          </button>
+        </div>
+      </div>
+
       <div class="ncm-message-list">
         {{#if messages.length}}
           {{#each messages}}
