@@ -27,6 +27,11 @@
         <i class="fas fa-download"></i> Import Actors
       </button>
 
+      <button class="ncm-btn ncm-btn--ghost ncm-btn--sm"
+              data-action="exportContacts" title="Export all contacts as JSON">
+        <i class="fas fa-file-export"></i> Export
+      </button>
+
       {{!-- Push All — with target selector --}}
       <select name="pushAllTargetActor" class="ncm-gm-bar__push-select">
         <option value="">Push all to...</option>
@@ -205,10 +210,15 @@
                   </span>
                 {{/if}}
 
-                {{!-- Linked actor badge --}}
+                {{!-- Linked actor badge with player info --}}
                 {{#if selectedContact.actorId}}
                   <span class="ncm-linked-badge">
                     <i class="fas fa-link"></i> LINKED: {{selectedContact.actorName}}
+                    {{#if selectedContact.playerOwnerName}}
+                      <span class="ncm-linked-badge__player">
+                        <i class="fas fa-user"></i> {{selectedContact.playerOwnerName}}
+                      </span>
+                    {{/if}}
                   </span>
                 {{/if}}
               </div>
@@ -304,6 +314,16 @@
             <button class="ncm-btn ncm-btn--secondary"
                     data-action="composeToContact">
               <i class="fas fa-envelope"></i> Message
+            </button>
+            <button class="ncm-btn ncm-btn--secondary"
+                    data-action="sendAsContact"
+                    title="Open composer as this contact">
+              <i class="fas fa-paper-plane"></i> Send As
+            </button>
+            <button class="ncm-btn ncm-btn--ghost"
+                    data-action="openContactInbox"
+                    title="View this contact's virtual inbox">
+              <i class="fas fa-inbox"></i> Inbox
             </button>
             <button class="ncm-btn ncm-btn--ghost"
                     data-action="editContact">

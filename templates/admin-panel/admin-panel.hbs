@@ -221,8 +221,29 @@
 
     <div class="ncm-section-title">
       <i class="fas fa-address-book"></i> Master Contacts ({{contactSummary.total}})
-      <button class="ncm-section-title__action" data-action="openGMContacts">Open Full Editor →</button>
+      <button class="ncm-section-title__action" data-action="openGMContacts">
+        <i class="fas fa-expand"></i> Full Editor
+      </button>
     </div>
+
+    {{!-- Quick Actions Bar --}}
+    <div class="ncm-contacts-toolbar">
+      <button class="ncm-admin-action-btn" data-action="openGMContacts" data-ncm-tooltip="Open Full Editor">
+        <i class="fas fa-address-book"></i>
+      </button>
+      <button class="ncm-admin-action-btn" data-action="importActorsAsContacts" data-ncm-tooltip="Import Actors">
+        <i class="fas fa-download"></i>
+      </button>
+      <button class="ncm-admin-action-btn" data-action="exportContacts" data-ncm-tooltip="Export Contacts JSON">
+        <i class="fas fa-file-export"></i>
+      </button>
+      <span class="ncm-contacts-toolbar__count">
+        {{contactSummary.total}} total
+        {{#if contactSummary.linked}} · {{contactSummary.linked}} linked{{/if}}
+        {{#if contactSummary.burned}} · <span style="color: var(--ncm-danger);">{{contactSummary.burned}} burned</span>{{/if}}
+      </span>
+    </div>
+
     {{#if contactSummary.contacts.length}}
     <div class="ncm-contact-mini-grid">
       {{#each contactSummary.contacts}}
@@ -232,8 +253,19 @@
         <div class="ncm-contact-mini__info">
           <div class="ncm-contact-mini__name {{#if this.burned}}ncm-contact-mini__name--burned{{/if}}">{{this.name}}</div>
           <div class="ncm-contact-mini__detail">{{this.email}}</div>
+          {{!-- Show linked actor + player owner --}}
+          {{#if this.actorName}}
+            <div class="ncm-contact-mini__linked">
+              <i class="fas fa-link"></i> {{this.actorName}}
+              {{#if this.playerOwnerName}}
+                <span class="ncm-contact-mini__player">
+                  <i class="fas fa-user"></i> {{this.playerOwnerName}}
+                </span>
+              {{/if}}
+            </div>
+          {{/if}}
         </div>
-        {{!-- Trust meter (5 segments — pre-computed in JS) --}}
+        {{!-- Trust meter --}}
         {{#unless this.burned}}
         {{#unless this.encrypted}}
         {{#if this.trustSegments}}
@@ -247,12 +279,24 @@
         {{/unless}}
         {{!-- Status badges --}}
         {{#if this.burned}}
-        <span class="ncm-contact-mini__badge ncm-contact-mini__badge--burned"><i class="fas fa-fire" style="font-size: 6px;"></i> Burned</span>
+        <span class="ncm-contact-mini__badge ncm-contact-mini__badge--burned"><i class="fas fa-fire"></i> Burned</span>
         {{else if this.encrypted}}
-        <span class="ncm-contact-mini__badge ncm-contact-mini__badge--ice"><i class="fas fa-lock" style="font-size: 6px;"></i> ICE DV{{this.encryptionDV}}</span>
+        <span class="ncm-contact-mini__badge ncm-contact-mini__badge--ice"><i class="fas fa-lock"></i> ICE DV{{this.encryptionDV}}</span>
         {{else if this.roleBadge}}
         <span class="ncm-contact-mini__badge ncm-contact-mini__badge--{{this.roleBadgeClass}}">{{this.roleBadge}}</span>
         {{/if}}
+        {{!-- Per-contact action icons --}}
+        <div class="ncm-contact-mini__actions">
+          <button class="ncm-contact-mini__action" data-action="sendAsContact" data-contact-id="{{this.id}}" data-ncm-tooltip="Send As">
+            <i class="fas fa-paper-plane"></i>
+          </button>
+          <button class="ncm-contact-mini__action" data-action="openContactInbox" data-contact-id="{{this.id}}" data-ncm-tooltip="Inbox">
+            <i class="fas fa-inbox"></i>
+          </button>
+          <button class="ncm-contact-mini__action" data-action="composeToContact" data-contact-id="{{this.id}}" data-ncm-tooltip="Message">
+            <i class="fas fa-envelope"></i>
+          </button>
+        </div>
       </div>
       {{/each}}
     </div>

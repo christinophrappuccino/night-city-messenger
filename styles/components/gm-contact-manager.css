@@ -507,6 +507,16 @@
   letter-spacing: 0.06em;
 }
 
+.ncm-linked-badge__player {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--ncm-accent, #f7c948);
+  margin-left: 4px;
+  padding-left: 4px;
+  border-left: 1px solid rgba(0, 255, 65, 0.15);
+}
+
 /* ═══════════════════════════════════════════
    GM NOTES
    ═══════════════════════════════════════════ */
@@ -888,55 +898,62 @@
    ═══════════════════════════════════════════ */
 
 .ncm-gm-contacts .ncm-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 9px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--ncm-text-muted, #555570);
-  background: transparent;
-  border: 1px solid var(--ncm-border, #2a2a45);
-  border-radius: 2px;
-  cursor: pointer;
-  transition: all 0.15s;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  padding: 2px 8px !important;
+  font-family: var(--ncm-font-display) !important;
+  font-size: 9px !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.08em !important;
+  color: var(--ncm-text-muted) !important;
+  background: transparent !important;
+  border: 1px solid var(--ncm-border) !important;
+  border-radius: 2px !important;
+  cursor: pointer !important;
+  transition: all 0.15s !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  box-shadow: none !important;
+  width: auto !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  line-height: 1.2 !important;
 }
 
 .ncm-gm-contacts .ncm-pill:hover {
-  color: var(--ncm-text-secondary, #8888a0);
-  border-color: var(--ncm-text-muted, #555570);
+  color: var(--ncm-text-secondary) !important;
+  border-color: var(--ncm-text-muted) !important;
 }
 
 .ncm-gm-contacts .ncm-pill--active {
-  color: var(--ncm-secondary, #19f3f7);
-  border-color: rgba(25, 243, 247, 0.4);
-  background: rgba(25, 243, 247, 0.06);
+  color: var(--ncm-secondary) !important;
+  border-color: rgba(25, 243, 247, 0.4) !important;
+  background: rgba(25, 243, 247, 0.06) !important;
 }
 
 .ncm-gm-contacts .ncm-pill--all {
-  color: var(--ncm-text-secondary, #8888a0);
-  border-color: var(--ncm-text-muted, #555570);
+  color: var(--ncm-text-secondary) !important;
+  border-color: var(--ncm-text-muted) !important;
 }
 
 .ncm-gm-contacts .ncm-pill--custom {
-  border-style: dashed;
-  color: var(--ncm-accent, #f7c948);
-  border-color: rgba(247, 201, 72, 0.3);
+  border-style: dashed !important;
+  color: var(--ncm-accent) !important;
+  border-color: rgba(247, 201, 72, 0.3) !important;
 }
 
 .ncm-gm-contacts .ncm-pill--custom.ncm-pill--active {
-  color: var(--ncm-accent, #f7c948);
-  border-color: rgba(247, 201, 72, 0.5);
-  background: rgba(247, 201, 72, 0.06);
-  border-style: solid;
+  color: var(--ncm-accent) !important;
+  border-color: rgba(247, 201, 72, 0.5) !important;
+  background: rgba(247, 201, 72, 0.06) !important;
+  border-style: solid !important;
 }
 
 .ncm-gm-contacts .ncm-pill--add {
-  border-style: dashed;
-  color: var(--ncm-text-muted, #555570);
+  border-style: dashed !important;
+  color: var(--ncm-text-muted) !important;
   opacity: 0.6;
 }
 
@@ -1031,4 +1048,190 @@
 /* Position context for the gradient line */
 .ncm-gm-contact-manager .window-content {
   position: relative;
+}
+
+/* ═══════════════════════════════════════════
+   FOUNDRY BUTTON OVERRIDES
+   ═══════════════════════════════════════════ */
+
+/* All buttons in GM contacts */
+.ncm-app .ncm-gm-contacts button,
+.ncm-app .ncm-gm-contacts .ncm-btn {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  box-shadow: none !important;
+  width: auto !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  outline: none !important;
+}
+
+/* GM bar buttons */
+.ncm-app .ncm-gm-bar .ncm-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  padding: 3px 8px !important;
+  font-family: var(--ncm-font-display) !important;
+  font-size: 9px !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.06em !important;
+  background: transparent !important;
+  border-radius: 2px !important;
+  cursor: pointer !important;
+  line-height: 1.2 !important;
+}
+
+.ncm-app .ncm-gm-bar .ncm-btn--primary {
+  color: var(--ncm-primary) !important;
+  border: 1px solid var(--ncm-primary) !important;
+}
+.ncm-app .ncm-gm-bar .ncm-btn--primary:hover {
+  background: rgba(246, 82, 97, 0.1) !important;
+}
+
+.ncm-app .ncm-gm-bar .ncm-btn--ghost {
+  color: var(--ncm-text-muted) !important;
+  border: 1px solid var(--ncm-border) !important;
+}
+.ncm-app .ncm-gm-bar .ncm-btn--ghost:hover {
+  color: var(--ncm-text-secondary) !important;
+  border-color: var(--ncm-border-active) !important;
+}
+
+/* Detail panel action buttons */
+.ncm-app .ncm-gm-detail__actions .ncm-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  padding: 5px 12px !important;
+  font-family: var(--ncm-font-display) !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.06em !important;
+  background: transparent !important;
+  border-radius: 2px !important;
+  cursor: pointer !important;
+  line-height: 1.2 !important;
+}
+
+/* Push row button */
+.ncm-app .ncm-push-row .ncm-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  background: transparent !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  box-shadow: none !important;
+}
+
+/* Form action buttons */
+.ncm-app .ncm-gm-contacts .ncm-form-actions .ncm-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  padding: 6px 14px !important;
+  font-family: var(--ncm-font-display) !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.06em !important;
+  background: transparent !important;
+  border-radius: 2px !important;
+  cursor: pointer !important;
+  line-height: 1.2 !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  box-shadow: none !important;
+}
+
+.ncm-app .ncm-gm-contacts .ncm-form-actions .ncm-btn--accent {
+  color: var(--ncm-accent) !important;
+  border: 1px solid var(--ncm-accent) !important;
+}
+.ncm-app .ncm-gm-contacts .ncm-form-actions .ncm-btn--accent:hover {
+  background: rgba(247, 201, 72, 0.08) !important;
+}
+
+.ncm-app .ncm-gm-contacts .ncm-form-actions .ncm-btn--ghost {
+  color: var(--ncm-text-muted) !important;
+  border: 1px solid var(--ncm-border) !important;
+}
+.ncm-app .ncm-gm-contacts .ncm-form-actions .ncm-btn--ghost:hover {
+  color: var(--ncm-text-secondary) !important;
+}
+
+/* Filter pills */
+.ncm-app .ncm-gm-contacts .ncm-pill,
+.ncm-app .ncm-gm-contacts button.ncm-pill {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  box-shadow: none !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  outline: none !important;
+  border-radius: 2px !important;
+  cursor: pointer !important;
+}
+
+/* Form inputs/selects/textareas */
+.ncm-app .ncm-gm-contacts input,
+.ncm-app .ncm-gm-contacts select,
+.ncm-app .ncm-gm-contacts textarea {
+  font-family: var(--ncm-font-mono) !important;
+  font-size: 10px !important;
+  color: var(--ncm-text-primary) !important;
+  background: var(--ncm-bg-surface) !important;
+  border: 1px solid var(--ncm-border) !important;
+  border-radius: 2px !important;
+  padding: 4px 8px !important;
+  outline: none !important;
+  box-shadow: none !important;
+  height: auto !important;
+  min-height: 0 !important;
+  line-height: 1.4 !important;
+}
+
+.ncm-app .ncm-gm-contacts input:focus,
+.ncm-app .ncm-gm-contacts select:focus,
+.ncm-app .ncm-gm-contacts textarea:focus {
+  border-color: var(--ncm-secondary) !important;
+}
+
+.ncm-app .ncm-gm-contacts select option {
+  background: var(--ncm-bg-elevated);
+  color: var(--ncm-text-primary);
+}
+
+.ncm-app .ncm-gm-contacts input::placeholder,
+.ncm-app .ncm-gm-contacts textarea::placeholder {
+  color: var(--ncm-text-muted);
+  opacity: 0.5;
+}
+
+/* Portrait upload overlay button */
+.ncm-app .ncm-gm-detail__avatar-upload {
+  cursor: pointer !important;
+}
+
+/* Push select dropdown */
+.ncm-app .ncm-gm-bar__push-select,
+.ncm-app .ncm-push-select,
+.ncm-app .ncm-relationship-select {
+  font-family: var(--ncm-font-mono) !important;
+  font-size: 9px !important;
+  color: var(--ncm-text-primary) !important;
+  background: var(--ncm-bg-surface) !important;
+  border: 1px solid var(--ncm-border) !important;
+  border-radius: 2px !important;
+  padding: 3px 6px !important;
+  outline: none !important;
+  box-shadow: none !important;
+  height: auto !important;
+  min-height: 0 !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  cursor: pointer !important;
 }

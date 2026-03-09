@@ -76,6 +76,11 @@ export class AdminPanelApp extends BaseApplication {
       viewPlayerContacts: AdminPanelApp._onViewPlayerContacts,
       gmVerifyContact:    AdminPanelApp._onGMVerifyContact,
       gmUnverifyContact:  AdminPanelApp._onGMUnverifyContact,
+      sendAsContact:      AdminPanelApp._onSendAsContact,
+      openContactInbox:   AdminPanelApp._onOpenContactInbox,
+      composeToContact:   AdminPanelApp._onComposeToContact,
+      exportContacts:     AdminPanelApp._onExportContacts,
+      importActorsAsContacts: AdminPanelApp._onImportActorsAsContacts,
 
       // Networks actions
       toggleNetwork: AdminPanelApp._onToggleNetwork,
@@ -372,6 +377,7 @@ export class AdminPanelApp extends BaseApplication {
       total: contacts.length,
       burned: contacts.filter(c => c.burned).length,
       encrypted: contacts.filter(c => c.encrypted).length,
+      linked: contacts.filter(c => c.actorId).length,
       contacts: contacts.map(c => {
         const trust = c.trust ?? 3;
         let trustLevel = 'med';
@@ -401,6 +407,22 @@ export class AdminPanelApp extends BaseApplication {
                            c.encrypted ? '#f7c948' :
                            '#8888a0';
 
+        // Resolve linked actor name and player owner
+        let actorName = null;
+        let playerOwnerName = null;
+        if (c.actorId) {
+          const actor = game.actors?.get(c.actorId);
+          actorName = actor?.name || null;
+          if (actor?.hasPlayerOwner) {
+            const ownerEntry = Object.entries(actor.ownership || {}).find(
+              ([uid, level]) => uid !== 'default' && level === CONST.DOCUMENT_PERMISSION_LEVELS.OWNER
+            );
+            if (ownerEntry) {
+              playerOwnerName = game.users.get(ownerEntry[0])?.name || null;
+            }
+          }
+        }
+
         return {
           id: c.id,
           name: c.name,
@@ -408,12 +430,13 @@ export class AdminPanelApp extends BaseApplication {
           role: c.role,
           trust,
           trustLevel,
-          // Pre-computed trust segments: array of 5 booleans for template
           trustSegments: [trust >= 1, trust >= 2, trust >= 3, trust >= 4, trust >= 5],
           burned: c.burned ?? false,
           encrypted: c.encrypted ?? false,
           encryptionDV: c.encryptionDV,
           linkedActorId: c.linkedActorId,
+          actorName,
+          playerOwnerName,
           initial: (c.name || '?').charAt(0).toUpperCase(),
           avatarColor,
           avatarBorderColor: `${avatarColor}66`,
@@ -994,6 +1017,100 @@ export class AdminPanelApp extends BaseApplication {
       this.render(true);
     } else {
       ui.notifications.error(result?.error || 'Failed to unverify.');
+    }
+  }
+
+  /**
+   * Open composer as a specific master contact (Send As).
+   */
+  static _onSendAsContact(event, target) {
+    const contactId = target.closest('[data-contact-id]')?.dataset.contactId;
+    if (!contactId) return;
+
+    const contact = game.nightcity?.masterContactService?.getContact(contactId);
+    if (!contact) return;
+
+    if (contact.actorId) {
+      game.nightcity?.composeMessage?.({ fromActorId: contact.actorId });
+    } else {
+      game.nightcity?.composeMessage?.({
+        fromContact: {
+          id: contact.id,
+          name: contact.name,
+          email: contact.email,
+          portrait: contact.portrait || null,
+        },
+      });
+    }
+  }
+
+  /**
+   * Open the virtual inbox for a master contact.
+   */
+  static _onOpenContactInbox(event, target) {
+    const contactId = target.closest('[data-contact-id]')?.dataset.contactId;
+    if (!contactId) return;
+
+    const contact = game.nightcity?.masterContactService?.getContact(contactId);
+    if (!contact) return;
+
+    const inboxId = contact.actorId || contactId;
+    game.nightcity?.openInbox?.({ actorId: inboxId });
+  }
+
+  /**
+   * Open composer to message a specific contact.
+   */
+  static _onComposeToContact(event, target) {
+    const contactId = target.closest('[data-contact-id]')?.dataset.contactId;
+    if (!contactId) return;
+
+    const contact = game.nightcity?.masterContactService?.getContact(contactId);
+    if (!contact) return;
+
+    game.nightcity?.composeMessage?.({
+      toActorId: contact.actorId || null,
+      to: contact.email,
+    });
+  }
+
+  /**
+   * Export all master contacts as JSON.
+   */
+  static _onExportContacts(event, target) {
+    const svc = game.nightcity?.masterContactService;
+    if (!svc) return;
+
+    const contacts = svc.getAllContacts?.() || [];
+    const data = JSON.stringify(contacts, null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ncm-master-contacts-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    ui.notifications.info(`Exported ${contacts.length} contacts.`);
+  }
+
+  /**
+   * Import NPC actors as master contacts.
+   */
+  static async _onImportActorsAsContacts(event, target) {
+    const svc = game.nightcity?.masterContactService;
+    if (!svc?.importFromActors) {
+      ui.notifications.warn('Master contact service not available.');
+      return;
+    }
+
+    const result = await svc.importFromActors();
+    if (result?.imported > 0) {
+      ui.notifications.info(`Imported ${result.imported} actor(s) as contacts.`);
+      this.render(true);
+    } else {
+      ui.notifications.info('No new actors to import.');
     }
   }
 

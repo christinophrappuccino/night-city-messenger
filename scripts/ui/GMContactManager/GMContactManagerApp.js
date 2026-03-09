@@ -119,6 +119,9 @@ export class GMContactManagerApp extends BaseApplication {
 
       // ─── Contact actions ───
       composeToContact: GMContactManagerApp._onComposeToContact,
+      sendAsContact:    GMContactManagerApp._onSendAsContact,
+      openContactInbox: GMContactManagerApp._onOpenContactInbox,
+      exportContacts:   GMContactManagerApp._onExportContacts,
 
       // ─── Bulk ───
       bulkToggle:       GMContactManagerApp._onBulkToggle,
@@ -191,11 +194,22 @@ export class GMContactManagerApp extends BaseApplication {
           isGM: true,
         });
 
-        // Resolve linked actor info
+        // Resolve linked actor info + player owner
         if (selectedContact.actorId) {
           const actor = game.actors.get(selectedContact.actorId);
           selectedEnriched.actorName = actor?.name ?? '(unknown actor)';
           selectedEnriched.actorImg = actor?.img;
+
+          // Find player owner name
+          if (actor?.hasPlayerOwner) {
+            const ownerEntry = Object.entries(actor.ownership || {}).find(
+              ([uid, level]) => uid !== 'default' && level === CONST.DOCUMENT_PERMISSION_LEVELS.OWNER
+            );
+            if (ownerEntry) {
+              const ownerUser = game.users.get(ownerEntry[0]);
+              selectedEnriched.playerOwnerName = ownerUser?.name || null;
+            }
+          }
         }
 
         // Trust detail data (for expanded panel)
@@ -984,6 +998,82 @@ export class GMContactManagerApp extends BaseApplication {
     if (game.nightcity?.composeMessage) {
       game.nightcity.composeMessage({ toActorId: contact.actorId || null });
     }
+  }
+
+  /**
+   * Open the composer as this contact (send-as identity).
+   * Uses the contact's email and name as the sender.
+   */
+  static _onSendAsContact(event, target) {
+    const contactId = this._selectedContactId;
+    if (!contactId) return;
+
+    const contact = this.masterContactService?.getContact(contactId);
+    if (!contact) return;
+
+    if (game.nightcity?.composeMessage) {
+      // If the contact has a linked actor, use that; otherwise use contact identity
+      if (contact.actorId) {
+        game.nightcity.composeMessage({ fromActorId: contact.actorId });
+      } else {
+        game.nightcity.composeMessage({
+          fromContact: {
+            id: contact.id,
+            name: contact.name,
+            email: contact.email,
+            portrait: contact.portrait || null,
+          },
+        });
+      }
+    }
+  }
+
+  /**
+   * Open the viewer showing this contact's virtual inbox.
+   * Uses the contactId for actor-less contacts or actorId for linked ones.
+   */
+  static _onOpenContactInbox(event, target) {
+    const contactId = this._selectedContactId;
+    if (!contactId) return;
+
+    const contact = this.masterContactService?.getContact(contactId);
+    if (!contact) return;
+
+    // Use linked actor inbox if available, otherwise contact virtual inbox
+    const inboxId = contact.actorId || contactId;
+
+    if (game.nightcity?.openInbox) {
+      game.nightcity.openInbox({ actorId: inboxId });
+    } else {
+      // Fallback — try to open MessageViewerApp directly
+      const viewerClass = game.nightcity?.MessageViewerApp;
+      if (viewerClass) {
+        new viewerClass({ actorId: inboxId }).render(true);
+      } else {
+        ui.notifications.warn('Message viewer not available.');
+      }
+    }
+  }
+
+  /**
+   * Export all master contacts as JSON file.
+   */
+  static _onExportContacts(event, target) {
+    const svc = this.masterContactService;
+    if (!svc) return;
+
+    const contacts = svc.getAllContacts?.() || [];
+    const data = JSON.stringify(contacts, null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ncm-master-contacts-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    ui.notifications.info(`Exported ${contacts.length} contacts.`);
   }
 
   // ═══════════════════════════════════════════════════════════
