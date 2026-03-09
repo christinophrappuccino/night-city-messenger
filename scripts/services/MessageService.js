@@ -51,25 +51,69 @@ export class MessageService {
       // Sanitize body
       data.body = DataValidator.sanitizeBody(data.body);
 
-      // Resolve actors
+      // ── Resolve sender identity ──
       const fromActor = data.fromActorId ? game.actors.get(data.fromActorId) : null;
-      const toActor = game.actors.get(data.toActorId);
+      const fromContact = !fromActor && data.fromContactId
+        ? game.nightcity?.masterContactService?.getContact(data.fromContactId)
+        : null;
 
       // GM can send as a master contact without a linked actor
-      if (!fromActor && !game.user.isGM) {
+      if (!fromActor && !fromContact && !game.user.isGM) {
         return { success: false, error: 'Sender actor not found' };
       }
-      if (!toActor) return { success: false, error: 'Recipient actor not found' };
 
-      // Contact Verification Gate
+      // ── Resolve recipient identity ──
+      // Try actorId first, then contactId, then email lookup
+      let toActor = data.toActorId ? game.actors.get(data.toActorId) : null;
+      let toContact = null;
+      let recipientInboxId = data.toActorId; // The ID used for inbox storage
+
+      if (!toActor) {
+        // Try resolving via contactId
+        if (data.toContactId) {
+          toContact = game.nightcity?.masterContactService?.getContact(data.toContactId);
+          if (toContact) {
+            // If the contact has a linked actor, use that
+            if (toContact.actorId) {
+              toActor = game.actors.get(toContact.actorId);
+              data.toActorId = toContact.actorId;
+              recipientInboxId = toContact.actorId;
+            } else {
+              recipientInboxId = data.toContactId;
+            }
+          }
+        }
+        // Try resolving via email in master contacts
+        if (!toActor && !toContact && data.to) {
+          toContact = game.nightcity?.masterContactService?.getByEmail(data.to);
+          if (toContact) {
+            data.toContactId = toContact.id;
+            if (toContact.actorId) {
+              toActor = game.actors.get(toContact.actorId);
+              data.toActorId = toContact.actorId;
+              recipientInboxId = toContact.actorId;
+            } else {
+              recipientInboxId = toContact.id;
+            }
+          }
+        }
+
+        if (!toActor && !toContact) {
+          return { success: false, error: 'Recipient not found — no matching actor or contact.' };
+        }
+      }
+
+      // Store the resolved inbox target for delivery
+      data._recipientInboxId = recipientInboxId;
+
+      // ── Contact Verification Gate (players only) ──
       const requireVerification = game.settings.get(MODULE_ID, 'requireContactVerification') ?? true;
 
       if (!game.user.isGM && requireVerification) {
         const contactRepo = this._contactRepo;
         const senderContacts = await contactRepo.getContacts(data.fromActorId);
 
-        // Find the recipient in sender's address book
-        const recipientEmail = data.to || contactRepo.getActorEmail(data.toActorId);
+        const recipientEmail = data.to || (toActor ? contactRepo.getActorEmail(data.toActorId) : toContact?.email);
         const recipientContact = senderContacts.find(c =>
           c.linkedActorId === data.toActorId ||
           c.actorId === data.toActorId ||
@@ -103,24 +147,30 @@ export class MessageService {
           };
         }
       }
-      // GM always bypasses — send-as-anyone capability
-      // ════════════════════════════════════════════════════════
 
-      // Resolve email addresses from actor IDs or pre-set values
+      // ── Resolve email addresses ──
       if (!data.from) {
         if (fromActor) {
           data.from = this._contactRepo.getActorEmail(data.fromActorId)
             || `${fromActor.name.toLowerCase().replace(/\s+/g, '.')}@nightcity.net`;
+        } else if (fromContact) {
+          data.from = fromContact.email || `${fromContact.name.toLowerCase().replace(/\s+/g, '.')}@nightcity.net`;
         } else {
           data.from = data.fromName
             ? `${data.fromName.toLowerCase().replace(/\s+/g, '.')}@nightcity.net`
             : 'unknown@nightcity.net';
         }
       }
-      data.to = data.to || this._contactRepo.getActorEmail(data.toActorId)
-        || `${toActor.name.toLowerCase().replace(/\s+/g, '.')}@nightcity.net`;
+      if (!data.to) {
+        if (toActor) {
+          data.to = this._contactRepo.getActorEmail(data.toActorId)
+            || `${toActor.name.toLowerCase().replace(/\s+/g, '.')}@nightcity.net`;
+        } else if (toContact) {
+          data.to = toContact.email || `${toContact.name.toLowerCase().replace(/\s+/g, '.')}@nightcity.net`;
+        }
+      }
 
-      // Generate IDs (existing code continues unchanged...)
+      // Generate IDs
       const messageId = foundry.utils.randomID();
       data.messageId = messageId;
       if (!data.threadId) {
@@ -129,16 +179,12 @@ export class MessageService {
 
       // ── Network access control stamping ──
       const networkService = game.nightcity.networkService;
-
-      // Stamp access control if network is restricted
       const accessControl = networkService?.getMessageAccessControl() ?? null;
       if (accessControl) {
         data.accessControl = accessControl;
       }
 
-      // Ensure sending network is recorded
       data.network = networkService?.currentNetworkId || data.network || 'CITINET';
-      
       data.timestamp = this._getTimestamp();
 
       if (game.user.isGM) {
@@ -155,47 +201,61 @@ export class MessageService {
   /**
    * Direct delivery (GM client). Creates message in recipient's inbox
    * and a sent copy in sender's outbox.
+   * Supports both actor-backed and contact-only inboxes.
    * @param {Object} data
    * @returns {Promise<{success: boolean, messageId?: string}>}
    */
   async _deliverMessage(data) {
     try {
+      // Resolve recipient inbox: actorId, contactId, or pre-resolved _recipientInboxId
+      const recipientInboxId = data._recipientInboxId || data.toActorId || data.toContactId;
+      if (!recipientInboxId) {
+        return { success: false, error: 'No recipient inbox target' };
+      }
+
       // Create message in recipient's inbox
-      const result = await this._messageRepo.createMessage(data.toActorId, data);
+      const result = await this._messageRepo.createMessage(recipientInboxId, data);
       if (!result.success) return result;
 
-      // Create sent copy in sender's outbox (only if sender has an actor inbox)
-      if (data.fromActorId) {
+      // Create sent copy in sender's outbox
+      // Resolve sender inbox: actor or contact
+      const senderInboxId = data.fromActorId || data.fromContactId;
+      if (senderInboxId) {
         const sentCopy = {
           ...data,
           messageId: `${data.messageId}-sent`,
           status: { sent: true, read: true, eddiesClaimed: true },
         };
-        await this._messageRepo.createMessage(data.fromActorId, sentCopy);
+        delete sentCopy._recipientInboxId; // Don't persist internal field
+        await this._messageRepo.createMessage(senderInboxId, sentCopy);
       }
 
       // Emit events
       this.eventBus.emit(EVENTS.MESSAGE_SENT, {
         messageId: data.messageId,
         toActorId: data.toActorId,
+        toContactId: data.toContactId,
         fromActorId: data.fromActorId,
+        fromContactId: data.fromContactId,
       });
 
-      // Notify recipient via socket
-      this.socketManager.emit(SOCKET_OPS.MESSAGE_NOTIFY, {
-        messageId: data.messageId,
-        toActorId: data.toActorId,
-        fromActorId: data.fromActorId,
-        from: data.from,
-        subject: data.subject,
-        priority: data.priority || 'normal',
-        preview: data.body?.substring(0, 100) || '',
-      });
+      // Notify recipient via socket (only for actor-backed recipients — contacts are GM-local)
+      if (data.toActorId) {
+        this.socketManager.emit(SOCKET_OPS.MESSAGE_NOTIFY, {
+          messageId: data.messageId,
+          toActorId: data.toActorId,
+          fromActorId: data.fromActorId,
+          from: data.from,
+          subject: data.subject,
+          priority: data.priority || 'normal',
+          preview: data.body?.substring(0, 100) || '',
+        });
+      }
 
       // Play send sound
       this.soundService?.play('send');
 
-      console.log(`${MODULE_ID} | Message ${data.messageId} delivered to actor ${data.toActorId}`);
+      console.log(`${MODULE_ID} | Message ${data.messageId} delivered to inbox ${recipientInboxId}`);
       return { success: true, messageId: data.messageId };
     } catch (error) {
       console.error(`${MODULE_ID} | MessageService._deliverMessage:`, error);
@@ -274,14 +334,14 @@ export class MessageService {
 
   /**
    * Build reply data from an original message.
+   * Handles both actor-backed and contact-only senders.
    * @param {Object} originalMessage
    * @param {string} fromActorId - The replying actor
    * @param {string} replyBody
    * @returns {Object} Message data ready for sendMessage()
    */
   buildReply(originalMessage, fromActorId, replyBody) {
-    return {
-      toActorId: originalMessage.fromActorId,
+    const reply = {
       fromActorId,
       subject: originalMessage.subject?.startsWith('RE: ')
         ? originalMessage.subject
@@ -291,6 +351,19 @@ export class MessageService {
       inReplyTo: originalMessage.messageId,
       priority: 'normal',
     };
+
+    // Resolve reply target — actor or contact
+    if (originalMessage.fromActorId) {
+      reply.toActorId = originalMessage.fromActorId;
+    } else if (originalMessage.fromContactId) {
+      reply.toContactId = originalMessage.fromContactId;
+      reply.to = originalMessage.from; // Use the email directly
+    } else if (originalMessage.from) {
+      // Last resort: try to find by email
+      reply.to = originalMessage.from;
+    }
+
+    return reply;
   }
 
   /**

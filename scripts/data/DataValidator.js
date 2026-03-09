@@ -18,10 +18,10 @@ export class DataValidator {
   static validateMessage(data) {
     const errors = [];
 
-    if (!data.toActorId && !data.to) {
+    if (!data.toActorId && !data.toContactId && !data.to) {
       errors.push('Recipient is required');
     }
-    if (!data.fromActorId && !data.from) {
+    if (!data.fromActorId && !data.fromContactId && !data.from) {
       errors.push('Sender is required');
     }
     if (!data.subject?.trim() && !data.body?.trim()) {

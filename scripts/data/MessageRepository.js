@@ -23,66 +23,84 @@ export class MessageRepository {
   // ─── Inbox Journal Management ─────────────────────────────
 
   /**
-   * Get or create the inbox journal for an actor.
+   * Get or create the inbox journal for an actor OR a master contact.
+   * Resolves the owner transparently:
+   *   - If ownerId matches a Foundry actor → actor inbox (NCM-Inbox-{actorId})
+   *   - If ownerId matches a master contact → contact inbox (NCM-Inbox-Contact-{contactId})
    * Player characters get journals owned by the player's user.
-   * NPCs get journals owned by the GM.
-   * @param {string} actorId 
-   * @returns {Promise<JournalEntry>}
+   * NPCs and contacts get journals owned by the GM.
+   * @param {string} ownerId - Actor ID or master contact ID
+   * @returns {Promise<JournalEntry|null>}
    */
-  async getInboxJournal(actorId) {
+  async getInboxJournal(ownerId) {
+    if (!ownerId) return null;
+
     // Check cache first
-    if (this._inboxCache.has(actorId)) {
-      const cached = this._inboxCache.get(actorId);
-      // Validate the journal still exists
+    if (this._inboxCache.has(ownerId)) {
+      const cached = this._inboxCache.get(ownerId);
       if (game.journal.get(cached.id)) return cached;
-      this._inboxCache.delete(actorId);
+      this._inboxCache.delete(ownerId);
     }
 
-    const journalName = `NCM-Inbox-${actorId}`;
+    // ── Determine inbox type ──
+    const actor = game.actors?.get(ownerId);
+    const isActorInbox = !!actor;
 
-    // Search existing journals
+    let journalName;
+    let ownerLabel;
+
+    if (isActorInbox) {
+      journalName = `NCM-Inbox-${ownerId}`;
+      ownerLabel = actor.name;
+    } else {
+      // Check if it's a master contact ID
+      const contact = game.nightcity?.masterContactService?.getContact(ownerId);
+      if (!contact) {
+        console.warn(`${MODULE_ID} | No actor or master contact found for ID "${ownerId}"`);
+        return null;
+      }
+      journalName = `NCM-Inbox-Contact-${ownerId}`;
+      ownerLabel = contact.name;
+    }
+
+    // ── Search existing journals ──
     let journal = game.journal.find(j => j.name === journalName);
 
     if (!journal) {
       // Only GM can create journals
       if (!game.user.isGM) {
-        console.warn(`${MODULE_ID} | Non-GM cannot create inbox for actor ${actorId}`);
+        console.warn(`${MODULE_ID} | Non-GM cannot create inbox for ${ownerLabel} (${ownerId})`);
         return null;
       }
 
-      const actor = game.actors.get(actorId);
-      if (!actor) {
-        console.error(`${MODULE_ID} | Actor ${actorId} not found`);
-        return null;
-      }
-
-      // Determine ownership — player characters owned by their user, NPCs by GM
+      // Determine ownership
       const ownership = { default: 0 };
-      if (actor.hasPlayerOwner) {
+      if (isActorInbox && actor.hasPlayerOwner) {
         for (const [userId, level] of Object.entries(actor.ownership)) {
           if (level === CONST.DOCUMENT_PERMISSION_LEVELS.OWNER && userId !== 'default') {
             ownership[userId] = CONST.DOCUMENT_PERMISSION_LEVELS.OWNER;
           }
         }
       }
-      // GM always has implicit ownership
+      // GM always has implicit ownership; contacts are GM-only
 
       journal = await JournalEntry.create({
         name: journalName,
         ownership,
         flags: {
           [MODULE_ID]: {
-            type: 'inbox',
-            actorId,
+            type: isActorInbox ? 'inbox' : 'contactInbox',
+            actorId: isActorInbox ? ownerId : null,
+            contactId: isActorInbox ? null : ownerId,
             createdAt: new Date().toISOString(),
           }
         }
       });
 
-      console.log(`${MODULE_ID} | Created inbox journal for actor ${actorId}`);
+      console.log(`${MODULE_ID} | Created ${isActorInbox ? 'actor' : 'contact'} inbox journal for ${ownerLabel} (${ownerId})`);
     }
 
-    this._inboxCache.set(actorId, journal);
+    this._inboxCache.set(ownerId, journal);
     return journal;
   }
 
@@ -90,13 +108,13 @@ export class MessageRepository {
 
   /**
    * Create a message in the recipient's inbox journal.
-   * @param {string} recipientActorId 
+   * @param {string} recipientId - Actor ID or master contact ID (both resolve via getInboxJournal)
    * @param {Object} messageData
    * @returns {Promise<{success: boolean, messageId?: string, page?: JournalEntryPage}>}
    */
-  async createMessage(recipientActorId, messageData) {
+  async createMessage(recipientId, messageData) {
     try {
-      const journal = await this.getInboxJournal(recipientActorId);
+      const journal = await this.getInboxJournal(recipientId);
       if (!journal) {
         return { success: false, error: 'Could not access inbox journal' };
       }
@@ -112,8 +130,10 @@ export class MessageRepository {
 
           from: messageData.from || '',
           fromActorId: messageData.fromActorId || '',
+          fromContactId: messageData.fromContactId || '',
           to: messageData.to || '',
-          toActorId: recipientActorId,
+          toActorId: messageData.toActorId || (game.actors?.get(recipientId) ? recipientId : ''),
+          toContactId: messageData.toContactId || (!game.actors?.get(recipientId) ? recipientId : ''),
 
           subject: messageData.subject || '(no subject)',
           body: messageData.body || '',
@@ -445,8 +465,10 @@ export class MessageRepository {
       // Routing
       from: flags.from,
       fromActorId: flags.fromActorId,
+      fromContactId: flags.fromContactId || '',
       to: flags.to,
       toActorId: flags.toActorId,
+      toContactId: flags.toContactId || '',
 
       // Content
       subject: flags.subject,

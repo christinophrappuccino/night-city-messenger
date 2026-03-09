@@ -1383,9 +1383,9 @@ export class MessageViewerApp extends BaseApplication {
     const msg = this._getSelectedMessage();
     if (!msg) return;
 
-    // Ensure we have a valid target actor to reply to
-    if (!msg.fromActorId) {
-      ui.notifications.warn('Cannot reply — sender has no linked character.');
+    // Verify we have a reply target (actor or contact)
+    if (!msg.fromActorId && !msg.fromContactId && !msg.from) {
+      ui.notifications.warn('Cannot reply — no sender identity to reply to.');
       return;
     }
 
@@ -1394,7 +1394,6 @@ export class MessageViewerApp extends BaseApplication {
       if (result?.success) {
         this.soundService?.play?.('send');
         ui.notifications.info(`Reply sent: "${replyText}"`);
-        // Re-render after a short delay to let the sent copy propagate
         setTimeout(() => this.render(), 300);
       } else {
         this.soundService?.play?.('error');
