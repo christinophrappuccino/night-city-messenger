@@ -720,21 +720,20 @@
 
 /* ══════════════════════════════════════════════════════════
    MICRO-BADGES — compact list-item-only pills
-   6px mono font, 0px vertical / 3px horizontal padding,
-   1px border, no border-radius. Terminal readout aesthetic.
+   8px mono font, 1px/4px padding, 1px border. Terminal readout aesthetic.
    ═══════════════════════════════════════════════════════════ */
 
 .ncm-app .ncm-micro-badge {
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  padding: 0 3px;
+  padding: 1px 4px;
   font-family: var(--ncm-font-mono);
-  font-size: 6px;
+  font-size: 8px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  line-height: 1.5;
+  line-height: 1.4;
   white-space: nowrap;
   border: 1px solid;
   border-radius: 0;
@@ -742,66 +741,66 @@
 }
 
 .ncm-app .ncm-micro-badge i {
-  font-size: 6px;
+  font-size: 7px;
 }
 
 /* Threat variants */
 .ncm-app .ncm-micro-badge--black-ice {
-  color: #ff3333;
-  border-color: rgba(255, 0, 0, 0.4);
-  background: rgba(255, 0, 0, 0.1);
-  text-shadow: 0 0 3px rgba(255, 0, 0, 0.4);
+  color: #ff4444;
+  border-color: rgba(255, 0, 0, 0.5);
+  background: rgba(255, 0, 0, 0.15);
+  text-shadow: 0 0 4px rgba(255, 0, 0, 0.5);
 }
 
 .ncm-app .ncm-micro-badge--daemon {
-  color: var(--ncm-primary, #F65261);
-  border-color: rgba(246, 82, 97, 0.3);
-  background: rgba(246, 82, 97, 0.06);
+  color: #F65261;
+  border-color: rgba(246, 82, 97, 0.4);
+  background: rgba(246, 82, 97, 0.1);
 }
 
 .ncm-app .ncm-micro-badge--worm {
-  color: #ff6a13;
-  border-color: rgba(255, 100, 0, 0.25);
-  background: rgba(255, 100, 0, 0.05);
+  color: #ff7a2e;
+  border-color: rgba(255, 100, 0, 0.35);
+  background: rgba(255, 100, 0, 0.08);
 }
 
 .ncm-app .ncm-micro-badge--trojan {
-  color: #ffaa00;
-  border-color: rgba(255, 170, 0, 0.2);
-  background: rgba(255, 170, 0, 0.04);
+  color: #ffbb33;
+  border-color: rgba(255, 170, 0, 0.3);
+  background: rgba(255, 170, 0, 0.08);
 }
 
 /* Network variants */
 .ncm-app .ncm-micro-badge--network-darknet {
-  color: #a855f7;
-  border-color: rgba(168, 85, 247, 0.25);
-  background: rgba(168, 85, 247, 0.06);
+  color: #b97aff;
+  border-color: rgba(168, 85, 247, 0.35);
+  background: rgba(168, 85, 247, 0.1);
 }
 
 .ncm-app .ncm-micro-badge--network-corpnet {
-  color: var(--ncm-accent, #f7c948);
-  border-color: rgba(247, 201, 72, 0.2);
-  background: rgba(247, 201, 72, 0.04);
+  color: #f7c948;
+  border-color: rgba(247, 201, 72, 0.3);
+  background: rgba(247, 201, 72, 0.08);
 }
 
 .ncm-app .ncm-micro-badge--network-default {
   color: var(--ncm-secondary);
-  border-color: rgba(25, 243, 247, 0.15);
-  background: rgba(25, 243, 247, 0.03);
+  border-color: rgba(25, 243, 247, 0.25);
+  background: rgba(25, 243, 247, 0.06);
 }
 
 /* Priority variants */
 .ncm-app .ncm-micro-badge--critical {
   color: #F65261;
-  border-color: rgba(246, 82, 97, 0.35);
-  background: rgba(246, 82, 97, 0.08);
+  border-color: rgba(246, 82, 97, 0.45);
+  background: rgba(246, 82, 97, 0.12);
   animation: ncm-critical-pulse 1.8s ease-in-out infinite;
 }
 
 .ncm-app .ncm-micro-badge--urgent {
-  color: #ffaa00;
-  border-color: rgba(255, 170, 0, 0.25);
-  background: rgba(255, 170, 0, 0.05);
+  color: #ffbb33;
+  border-color: rgba(255, 170, 0, 0.35);
+  background: rgba(255, 170, 0, 0.08);
 }
 
 /* ═══════════════════════════════════════════════════════════
