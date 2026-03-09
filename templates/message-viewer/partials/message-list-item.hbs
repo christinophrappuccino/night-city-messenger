@@ -69,36 +69,19 @@
   {{!-- Content Area --}}
   <div class="ncm-message-item__content">
 
-    {{!-- Top Row: Sender + Badges + Meta --}}
+    {{!-- Top Row: Sender + Time --}}
     <div class="ncm-message-item__top-row">
       <span class="ncm-message-item__sender">{{fromDisplay}}</span>
 
-      {{!-- §2.7 Threat Badge --}}
-      {{#if threatBadge}}
-        <span class="ncm-badge ncm-badge--threat ncm-badge--{{threatBadge.variant}}" data-ncm-tooltip="{{threatBadge.label}} detected">
-          <i class="{{threatBadge.icon}}"></i>
-          <span>{{threatBadge.label}}</span>
-        </span>
-      {{/if}}
-
-      {{!-- §2.10 Network Tag Badge (non-default networks only) --}}
-      {{#if showNetworkBadge}}
-        <span class="ncm-badge ncm-badge--network ncm-badge--network-{{networkBadgeVariant}}"
-              data-ncm-tooltip="Via {{networkBadgeLabel}}">
-            <i class="fas {{networkBadgeIcon}}"></i>
-          <span>{{networkBadgeLabel}}</span>
-        </span>
-      {{/if}}
-
-      {{!-- Status Icons --}}
+      {{!-- Inline indicators (compact icon cluster) --}}
       <span class="ncm-message-item__status-icons">
-        {{#if status.saved}}
-          <i class="fas fa-bookmark ncm-message-item__icon ncm-message-item__icon--saved"
-             data-ncm-tooltip="Saved"></i>
-        {{/if}}
         {{#if status.encrypted}}
           <i class="fas fa-lock ncm-message-item__icon ncm-message-item__icon--encrypted"
              data-ncm-tooltip="Encrypted"></i>
+        {{/if}}
+        {{#if status.saved}}
+          <i class="fas fa-bookmark ncm-message-item__icon ncm-message-item__icon--saved"
+             data-ncm-tooltip="Saved"></i>
         {{/if}}
         {{#if status.infected}}
           <i class="fas fa-virus ncm-message-item__icon ncm-message-item__icon--infected"
@@ -114,16 +97,29 @@
     <div class="ncm-message-item__subject-row">
       <span class="ncm-message-item__subject">{{subject}}</span>
 
-      {{!-- Priority badge (urgent/critical only) --}}
-      {{#unless (eq priority "normal")}}
-        {{#if priority}}
-          <span class="ncm-badge ncm-badge--{{priorityVariant}}" data-ncm-tooltip="{{priority}} priority">
-            {{#if (eq priority "critical")}}<i class="fas fa-triangle-exclamation"></i>{{/if}}
-            {{#if (eq priority "urgent")}}<i class="fas fa-bolt"></i>{{/if}}
-            <span>{{priority}}</span>
+      {{!-- Compact badge cluster (pushed right) --}}
+      <span class="ncm-message-item__badges">
+        {{#if threatBadge}}
+          <span class="ncm-micro-badge ncm-micro-badge--{{threatBadge.variant}}" data-ncm-tooltip="{{threatBadge.label}}">
+            <i class="{{threatBadge.icon}}"></i>{{threatBadge.label}}
           </span>
         {{/if}}
-      {{/unless}}
+        {{#if showNetworkBadge}}
+          <span class="ncm-micro-badge ncm-micro-badge--network-{{networkBadgeVariant}}" data-ncm-tooltip="Via {{networkBadgeLabel}}">
+            <i class="fas {{networkBadgeIcon}}"></i>{{networkBadgeLabel}}
+          </span>
+        {{/if}}
+        {{#if (eq priority "critical")}}
+          <span class="ncm-micro-badge ncm-micro-badge--critical">
+            <i class="fas fa-triangle-exclamation"></i>CRIT
+          </span>
+        {{/if}}
+        {{#if (eq priority "urgent")}}
+          <span class="ncm-micro-badge ncm-micro-badge--urgent">
+            <i class="fas fa-bolt"></i>URG
+          </span>
+        {{/if}}
+      </span>
     </div>
 
     {{!-- Body Preview (visible in comfortable density) --}}

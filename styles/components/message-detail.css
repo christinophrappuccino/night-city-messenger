@@ -52,6 +52,8 @@
   font-weight: 700;
   color: var(--ncm-text-primary);
   line-height: 1.2;
+  user-select: text;
+  cursor: text;
 }
 
 /* ── Horizontal Meta Row: FROM / TO / DATE / NET ── */
@@ -95,6 +97,8 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  user-select: text;
+  cursor: text;
 }
 
 .ncm-app .ncm-detail-meta-value--mono {
@@ -289,6 +293,19 @@
   color: var(--ncm-text-secondary);
   scrollbar-width: thin;
   scrollbar-color: var(--ncm-bg-elevated) transparent;
+  user-select: text;
+  cursor: text;
+}
+
+.ncm-app .ncm-detail-body * {
+  user-select: text;
+}
+
+/* Exclude interactive elements from text cursor */
+.ncm-app .ncm-detail-body button,
+.ncm-app .ncm-detail-body [data-action] {
+  user-select: none;
+  cursor: pointer;
 }
 
 .ncm-app .ncm-detail-body p {
@@ -758,4 +775,85 @@
   color: var(--ncm-secondary);
   font-size: 9px;
   opacity: 0.8;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   §D14  QUICK REPLY BAR
+   Compact reply strip below action bar: pill shortcuts + text input.
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-quick-reply-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 14px;
+  background: var(--ncm-bg-deep);
+  border-top: 1px solid var(--ncm-border);
+  flex-shrink: 0;
+}
+
+.ncm-app .ncm-quick-reply-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.ncm-app .ncm-quick-reply-input-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.ncm-app .ncm-quick-reply-input {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 8px !important;
+  font-family: var(--ncm-font-mono) !important;
+  font-size: 10px !important;
+  color: var(--ncm-text-primary) !important;
+  background: var(--ncm-bg-surface) !important;
+  border: 1px solid var(--ncm-border) !important;
+  border-radius: 2px !important;
+  outline: none !important;
+  box-shadow: none !important;
+  height: auto !important;
+  line-height: 1.3 !important;
+  transition: border-color 0.15s ease;
+}
+
+.ncm-app .ncm-quick-reply-input:focus {
+  border-color: var(--ncm-secondary) !important;
+}
+
+.ncm-app .ncm-quick-reply-input::placeholder {
+  color: var(--ncm-text-muted);
+  opacity: 0.6;
+}
+
+.ncm-app .ncm-quick-reply-send {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 28px !important;
+  height: 24px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: transparent !important;
+  border: 1px solid var(--ncm-border) !important;
+  border-radius: 2px !important;
+  color: var(--ncm-secondary) !important;
+  font-size: 10px !important;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  box-shadow: none !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+}
+
+.ncm-app .ncm-quick-reply-send:hover {
+  background: rgba(25, 243, 247, 0.08) !important;
+  border-color: var(--ncm-secondary) !important;
 }

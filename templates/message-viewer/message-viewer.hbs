@@ -21,7 +21,7 @@
     All styling targets .ncm-app > .window-content and descendants.
 --}}
 
-<div class="ncm-message-viewer" data-density="{{density}}">
+<div class="ncm-message-viewer" data-density="{{density}}" data-filter="{{currentFilter}}">
 
   {{!-- ═══════ CONDENSED HEADER BAR — Sprint 2A ═══════
        Single ~52px row: [Avatar Name/Email] | [● NET ▼ ████] | [12 TOTAL 3 UNREAD 2 SAVED] | [Compose] [⚙] [×]
@@ -526,15 +526,11 @@
     <div class="ncm-footer-shortcuts">
       <span class="ncm-footer-item">
         <i class="fas fa-keyboard"></i>
-        {{!-- Default to list-focused shortcuts. JS will swap based on focus context --}}
         <span class="ncm-shortcut-hint" data-context="list">
           / SEARCH &nbsp; ↑↓ NAV &nbsp; ENTER SELECT
         </span>
         <span class="ncm-shortcut-hint ncm-hidden" data-context="detail">
           R REPLY &nbsp; F FORWARD &nbsp; S SAVE &nbsp; DEL TRASH
-        </span>
-        <span class="ncm-shortcut-hint ncm-hidden" data-context="composer">
-          CTRL+ENTER SEND &nbsp; ESC CANCEL
         </span>
       </span>
     </div>

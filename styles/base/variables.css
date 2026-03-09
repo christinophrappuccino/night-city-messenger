@@ -27,9 +27,9 @@
   --ncm-bg-overlay: rgba(0, 0, 0, 0.85);
 
   /* ─── Text ──────────────────────────────────────────────── */
-  --ncm-text-primary: #e0e0e8;
-  --ncm-text-secondary: #a8a8be;
-  --ncm-text-muted: #7a7a95;
+  --ncm-text-primary: #ededf0;
+  --ncm-text-secondary: #bdbdd0;
+  --ncm-text-muted: #8e8ea8;
   --ncm-text-inverse: #0a0a0f;
 
   /* ─── Borders ───────────────────────────────────────────── */

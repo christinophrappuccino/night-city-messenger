@@ -143,6 +143,15 @@ export class MessageViewerApp extends BaseApplication {
     this._setupEventSubscriptions();
   }
 
+  /**
+   * @override Save scroll position before every re-render.
+   * Covers selectMessage, EventBus-triggered renders, filter changes, etc.
+   */
+  async render(options) {
+    this._saveScrollPosition();
+    return super.render(options);
+  }
+
   // ═══════════════════════════════════════════════════════════
   //  Helper Utilities
   // ═══════════════════════════════════════════════════════════
@@ -534,6 +543,18 @@ export class MessageViewerApp extends BaseApplication {
         if (event.key === 'Escape') this._toggleSearch();
       });
       searchInput._ncmBound = true;
+    }
+
+    // Quick reply input — Enter to send
+    const replyInput = html.querySelector('.ncm-quick-reply-input');
+    if (replyInput && !replyInput._ncmBound) {
+      replyInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          this._sendCustomReply();
+        }
+      });
+      replyInput._ncmBound = true;
     }
 
     // Sidebar resize
@@ -980,10 +1001,6 @@ export class MessageViewerApp extends BaseApplication {
 
   _selectMessage(messageId) {
     if (!messageId) return;
-
-    // Preserve scroll position before re-render
-    this._saveScrollPosition();
-
     this.selectedMessageId = messageId;
     this.render();
 
@@ -1361,20 +1378,39 @@ export class MessageViewerApp extends BaseApplication {
     }
   }
 
-  _sendQuickReply(replyText) {
+  async _sendQuickReply(replyText) {
     if (!replyText || !this.selectedMessageId) return;
     const msg = this._getSelectedMessage();
     if (!msg) return;
 
-    this.messageService?.sendQuickReply?.(msg, this.actorId, replyText);
-    this.soundService?.play?.('send');
+    // Ensure we have a valid target actor to reply to
+    if (!msg.fromActorId) {
+      ui.notifications.warn('Cannot reply — sender has no linked character.');
+      return;
+    }
+
+    try {
+      const result = await this.messageService?.sendQuickReply?.(msg, this.actorId, replyText);
+      if (result?.success) {
+        this.soundService?.play?.('send');
+        ui.notifications.info(`Reply sent: "${replyText}"`);
+        // Re-render after a short delay to let the sent copy propagate
+        setTimeout(() => this.render(), 300);
+      } else {
+        this.soundService?.play?.('error');
+        ui.notifications.warn(`Reply failed: ${result?.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('NCM | Quick reply failed:', error);
+      ui.notifications.error('Failed to send reply.');
+    }
   }
 
-  _sendCustomReply() {
+  async _sendCustomReply() {
     const input = this.element?.querySelector('.ncm-quick-reply-input');
     const text = input?.value?.trim();
     if (!text) return;
-    this._sendQuickReply(text);
+    await this._sendQuickReply(text);
     if (input) input.value = '';
   }
 

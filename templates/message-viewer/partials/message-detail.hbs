@@ -329,6 +329,22 @@
       {{/if}}
     </div>
 
+    {{!-- ═══ Quick Reply Bar (inbox/unread/saved only) ═══ --}}
+    {{#unless message.isSent}}
+      {{#unless (eq currentFilter 'trash')}}
+        {{#unless (eq currentFilter 'spam')}}
+          <div class="ncm-quick-reply-bar">
+            <div class="ncm-quick-reply-input-row">
+              <input type="text" class="ncm-quick-reply-input" placeholder="Quick reply..." />
+              <button class="ncm-quick-reply-send" data-action="send-reply">
+                <i class="fas fa-paper-plane"></i>
+              </button>
+            </div>
+          </div>
+        {{/unless}}
+      {{/unless}}
+    {{/unless}}
+
   {{/if}}{{!-- /else encrypted --}}
 
 </div>
