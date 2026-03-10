@@ -201,7 +201,12 @@ export class MasterContactService {
     if (!contact) return { success: false, error: 'Contact not found' };
 
     // Apply updates (whitelist fields)
-    const allowed = ['name', 'email', 'alias', 'organization', 'phone', 'portrait', 'tags', 'notes', 'actorId', 'type'];
+    const allowed = [
+      'name', 'email', 'alias', 'organization', 'phone', 'portrait',
+      'tags', 'notes', 'actorId', 'type',
+      'relationship', 'trust', 'burned',
+      'encrypted', 'encryptionDV', 'blackIce', 'blackIceDamage',
+    ];
     for (const key of allowed) {
       if (key in updates) {
         if (key === 'tags' && Array.isArray(updates.tags)) {

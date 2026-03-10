@@ -799,6 +799,36 @@
   min-height: 50px;
 }
 
+/* Trust Edit Row (form inline) */
+.ncm-trust-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ncm-form-select--trust {
+  flex: 1;
+}
+
+.ncm-trust-edit-bar {
+  display: flex;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.ncm-trust-edit-seg {
+  width: 6px;
+  height: 14px;
+  background: var(--ncm-bg-elevated, #252540);
+  border-radius: 1px;
+  transition: background 0.15s;
+}
+
+.ncm-trust-edit-seg--active {
+  background: var(--ncm-success, #00ff41);
+  box-shadow: 0 0 4px rgba(0, 255, 65, 0.3);
+}
+
 .ncm-form-actions {
   display: flex;
   gap: 6px;

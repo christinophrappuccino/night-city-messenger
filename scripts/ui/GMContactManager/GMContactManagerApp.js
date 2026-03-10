@@ -98,15 +98,16 @@ export class GMContactManagerApp extends BaseApplication {
       restoreContact:   GMContactManagerApp._onRestoreContact,
 
       // ─── Relationship ───
-      setRelationship:  GMContactManagerApp._onSetRelationship,
+      // (handled by change event listener in _setupRelationshipSelect)
 
       // ─── Push / Share ───
       pushToPlayer:     GMContactManagerApp._onPushToPlayer,
       pushAllToPlayer:  GMContactManagerApp._onPushAllToPlayer,
 
       // ─── Import / Link ───
-      importFromActors: GMContactManagerApp._onImportFromActors,
+      importContactsJSON: GMContactManagerApp._onImportContactsJSON,
       linkActor:        GMContactManagerApp._onLinkActor,
+      unlinkActor:      GMContactManagerApp._onUnlinkActor,
 
       // ─── Portrait ───
       uploadPortrait:   GMContactManagerApp._onUploadPortrait,
@@ -243,14 +244,27 @@ export class GMContactManagerApp extends BaseApplication {
       .sort((a, b) => a.name.localeCompare(b.name));
 
     const playerActors = game.actors
-      .filter(a => a.hasPlayerOwner)
       .map(a => ({
         id: a.id,
         name: a.name,
         img: a.img,
+        isPlayer: a.hasPlayerOwner,
+        ownerName: a.hasPlayerOwner
+          ? Object.entries(a.ownership || {}).reduce((name, [uid, level]) => {
+              if (uid !== 'default' && level === CONST.DOCUMENT_PERMISSION_LEVELS.OWNER) {
+                return game.users.get(uid)?.name || name;
+              }
+              return name;
+            }, null)
+          : null,
         initials: getInitials(a.name),
         avatarColor: getAvatarColor(a.name),
-      }));
+      }))
+      .sort((a, b) => {
+        // Players first, then alphabetical
+        if (a.isPlayer !== b.isPlayer) return a.isPlayer ? -1 : 1;
+        return a.name.localeCompare(b.name);
+      });
 
     // ── Stats ──
     const totalCount = svc.getAll().length;
@@ -314,6 +328,8 @@ export class GMContactManagerApp extends BaseApplication {
     this._setupTrustHoverPreview();
     this._setupGMNotesAutosave();
     this._setupKeyboardShortcuts();
+    this._setupRelationshipSelect();
+    this._setupPushSelect();
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -434,6 +450,31 @@ export class GMContactManagerApp extends BaseApplication {
 
     this.element?.removeEventListener('keydown', handler);
     this.element?.addEventListener('keydown', handler);
+  }
+
+  /**
+   * Wire up relationship select with change event (not data-action, which fires on click).
+   */
+  _setupRelationshipSelect() {
+    const select = this.element?.querySelector('.ncm-relationship-select');
+    if (!select || !this._selectedContactId) return;
+
+    select.addEventListener('change', async (e) => {
+      const relationship = e.target.value;
+      const contactId = this._selectedContactId;
+      if (!contactId) return;
+
+      await this.masterContactService?.updateContact(contactId, { relationship });
+      ui.notifications.info(`Relationship updated.`);
+      this.render(true);
+    });
+  }
+
+  /**
+   * Wire up the push-to-player select (both bar and per-contact).
+   */
+  _setupPushSelect() {
+    // Push all bar select doesn't need change listener — the Push All button reads its value
   }
 
   /**
@@ -665,7 +706,7 @@ export class GMContactManagerApp extends BaseApplication {
 
     this.soundService?.play?.('click');
     this.eventBus?.emit(EVENTS.CONTACT_TRUST_CHANGED, { contactId, trust: trustValue });
-    this.render();
+    this.render(true);
   }
 
   /**
@@ -760,7 +801,7 @@ export class GMContactManagerApp extends BaseApplication {
     const actorId = this.element?.querySelector('[name="pushTargetActor"]')?.value;
     const contactId = this._selectedContactId;
     if (!actorId || !contactId) {
-      ui.notifications.warn('Select a player to push to.');
+      ui.notifications.warn('Select a character to share with.');
       return;
     }
 
@@ -773,10 +814,10 @@ export class GMContactManagerApp extends BaseApplication {
     if (result.success) {
       const contact = this.masterContactService.getContact(contactId);
       const actor = game.actors.get(actorId);
-      ui.notifications.info(`${contact?.name} pushed to ${actor?.name}.`);
+      ui.notifications.info(`${contact?.name} shared to ${actor?.name}'s contacts.`);
       this.soundService?.play?.('click');
     } else {
-      ui.notifications.error(result.error || 'Failed to push contact.');
+      ui.notifications.error(result.error || 'Failed to share contact.');
     }
   }
 
@@ -811,68 +852,186 @@ export class GMContactManagerApp extends BaseApplication {
   // ═══════════════════════════════════════════════════════════
 
   /**
-   * Import non-player actors as contacts.
+   * Import contacts from a JSON file.
    */
-  static async _onImportFromActors(event, target) {
-    const existing = this.masterContactService?.getAll() || [];
-    const existingActorIds = new Set(existing.filter(c => c.actorId).map(c => c.actorId));
+  static async _onImportContactsJSON(event, target) {
+    const svc = this.masterContactService;
+    if (!svc) return;
 
-    const importable = game.actors
-      .filter(a => !a.hasPlayerOwner && !existingActorIds.has(a.id));
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.style.display = 'none';
+    document.body.appendChild(input);
 
-    if (!importable.length) {
-      ui.notifications.info('No new actors to import. All non-player actors are already linked.');
-      return;
-    }
+    input.addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
 
-    const confirmed = await Dialog.confirm({
-      title: 'Import Actors',
-      content: `
-        <p>Import <strong>${importable.length}</strong> non-player actors as contacts?</p>
-        <p style="color: var(--ncm-text-muted, #555570); font-size: 11px;">
-          Already linked: ${existingActorIds.size} | Importable: ${importable.length}
-        </p>`,
+      try {
+        const text = await file.text();
+        const contacts = JSON.parse(text);
+
+        if (!Array.isArray(contacts)) {
+          ui.notifications.error('Invalid format — expected a JSON array of contacts.');
+          return;
+        }
+
+        let imported = 0;
+        let skipped = 0;
+        const existing = svc.getAll() || [];
+        const existingEmails = new Set(existing.map(c => c.email?.toLowerCase()));
+
+        for (const c of contacts) {
+          if (!c.name) { skipped++; continue; }
+          if (c.email && existingEmails.has(c.email.toLowerCase())) { skipped++; continue; }
+
+          const result = await svc.addContact({
+            name: c.name,
+            email: c.email || '',
+            alias: c.alias || '',
+            phone: c.phone || '',
+            organization: c.organization || '',
+            portrait: c.portrait || '',
+            type: c.type || c.role || 'npc',
+            tags: c.tags || [],
+            notes: c.notes || '',
+            relationship: c.relationship || '',
+            trust: c.trust ?? 3,
+          });
+          if (result?.success) {
+            imported++;
+            existingEmails.add(c.email?.toLowerCase());
+          }
+        }
+
+        ui.notifications.info(`Imported ${imported} contacts.${skipped ? ` ${skipped} skipped.` : ''}`);
+        this.render(true);
+      } catch (err) {
+        console.error('NCM | Import contacts failed:', err);
+        ui.notifications.error('Failed to parse JSON file.');
+      } finally {
+        input.remove();
+      }
     });
 
-    if (!confirmed) return;
-
-    let imported = 0;
-    for (const actor of importable) {
-      const email = actor.getFlag?.(MODULE_ID, 'email') || `${actor.name.toLowerCase().replace(/\s+/g, '.')}@citinet.nc`;
-      const result = await this.masterContactService.addContact({
-        name: actor.name,
-        email,
-        portrait: actor.img !== 'icons/svg/mystery-man.svg' ? actor.img : '',
-        actorId: actor.id,
-        type: 'npc',
-        organization: '',
-        tags: [],
-      });
-      if (result.success) imported++;
-    }
-
-    ui.notifications.info(`Imported ${imported} actors as contacts.`);
-    this.render();
+    input.click();
   }
 
   /**
-   * Link the selected contact to a Foundry actor.
+   * Open a searchable actor-linking dialog for the selected contact.
    */
   static async _onLinkActor(event, target) {
     const contactId = this._selectedContactId;
     if (!contactId) return;
 
-    // Use the select from the form, or if in detail view, from the detail panel
-    const actorId = this.element?.querySelector('[name="linkActorId"]')?.value;
-    if (!actorId) {
-      ui.notifications.warn('Select an actor to link.');
-      return;
-    }
+    const contact = this.masterContactService?.getContact(contactId);
+    if (!contact) return;
 
-    await this.masterContactService.updateContact(contactId, { actorId });
-    const actor = game.actors.get(actorId);
-    ui.notifications.info(`Linked to ${actor?.name}.`);
-    this.render();
+    const actors = game.actors.map(a => ({
+      id: a.id,
+      name: a.name,
+      img: a.img,
+      isPlayer: a.hasPlayerOwner,
+      ownerName: a.hasPlayerOwner
+        ? Object.entries(a.ownership || {}).reduce((name, [uid, level]) => {
+            if (uid !== 'default' && level === CONST.DOCUMENT_PERMISSION_LEVELS.OWNER) {
+              return game.users.get(uid)?.name || name;
+            }
+            return name;
+          }, null)
+        : null,
+    })).sort((a, b) => {
+      if (a.isPlayer !== b.isPlayer) return a.isPlayer ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
+
+    const actorRows = actors.map(a => {
+      const isLinked = a.id === contact.actorId;
+      const playerTag = a.isPlayer ? `<span style="color:#f7c948;font-size:9px;"> (${a.ownerName || 'Player'})</span>` : '';
+      const linkedTag = isLinked ? `<span style="color:#00ff41;font-size:9px;"> ✓ LINKED</span>` : '';
+      const imgHtml = a.img && a.img !== 'icons/svg/mystery-man.svg'
+        ? `<img src="${a.img}" style="width:24px;height:24px;border-radius:50%;object-fit:cover;margin-right:6px;">`
+        : `<span style="display:inline-block;width:24px;height:24px;border-radius:50%;background:#252540;text-align:center;line-height:24px;font-size:10px;font-weight:700;margin-right:6px;color:#8888a0;">${a.name[0]}</span>`;
+
+      return `<div class="ncm-link-actor-row" data-actor-id="${a.id}" style="display:flex;align-items:center;padding:4px 8px;cursor:pointer;border-bottom:1px solid rgba(42,42,69,0.3);${isLinked ? 'background:rgba(0,255,65,0.05);' : ''}">${imgHtml}<span style="flex:1;font-size:11px;font-weight:600;">${a.name}</span>${playerTag}${linkedTag}</div>`;
+    }).join('');
+
+    const currentLinked = contact.actorId ? (game.actors.get(contact.actorId)?.name || 'Unknown') : 'None';
+
+    const content = `
+      <div style="margin-bottom:8px;">
+        <input type="text" id="ncm-link-search" placeholder="Search actors..."
+               style="width:100%;padding:4px 8px;font-family:monospace;font-size:10px;background:#1a1a2e;border:1px solid #2a2a45;color:#e0e0e8;border-radius:2px;outline:none;">
+      </div>
+      <div id="ncm-link-actor-list" style="max-height:300px;overflow-y:auto;border:1px solid #2a2a45;border-radius:2px;">
+        ${actorRows}
+      </div>
+      <p style="font-size:9px;color:#8888a0;margin-top:6px;">Currently linked: <strong>${currentLinked}</strong></p>
+    `;
+
+    // Need 'this' reference for the callback
+    const app = this;
+
+    const d = new Dialog({
+      title: `Link Actor — ${contact.name}`,
+      content,
+      buttons: {
+        unlink: {
+          icon: '<i class="fas fa-link-slash"></i>',
+          label: 'Unlink',
+          callback: async () => {
+            await app.masterContactService.updateContact(contactId, { actorId: '' });
+            ui.notifications.info(`${contact.name} unlinked.`);
+            app.render(true);
+          },
+        },
+        cancel: { icon: '<i class="fas fa-times"></i>', label: 'Cancel' },
+      },
+      default: 'cancel',
+      render: (html) => {
+        const searchInput = html[0]?.querySelector('#ncm-link-search') || html.find('#ncm-link-search')[0];
+        const listContainer = html[0]?.querySelector('#ncm-link-actor-list') || html.find('#ncm-link-actor-list')[0];
+
+        if (searchInput) {
+          searchInput.addEventListener('input', (e) => {
+            const q = e.target.value.toLowerCase();
+            listContainer?.querySelectorAll('.ncm-link-actor-row').forEach(row => {
+              row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+            });
+          });
+          setTimeout(() => searchInput.focus(), 50);
+        }
+
+        if (listContainer) {
+          listContainer.addEventListener('click', async (e) => {
+            const row = e.target.closest('[data-actor-id]');
+            if (!row) return;
+            const selectedActorId = row.dataset.actorId;
+
+            await app.masterContactService.updateContact(contactId, { actorId: selectedActorId });
+            const actor = game.actors.get(selectedActorId);
+            ui.notifications.info(`${contact.name} linked to ${actor?.name}.`);
+            app.render(true);
+            d.close();
+          });
+        }
+      },
+    }, { classes: ['ncm-app'], width: 400 });
+
+    d.render(true);
+  }
+
+  /**
+   * Unlink the current actor from the selected contact.
+   */
+  static async _onUnlinkActor(event, target) {
+    const contactId = this._selectedContactId;
+    if (!contactId) return;
+
+    await this.masterContactService.updateContact(contactId, { actorId: '' });
+    ui.notifications.info('Actor unlinked.');
+    this.render(true);
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -1043,7 +1202,7 @@ export class GMContactManagerApp extends BaseApplication {
     const inboxId = contact.actorId || contactId;
 
     if (game.nightcity?.openInbox) {
-      game.nightcity.openInbox({ actorId: inboxId });
+      game.nightcity.openInbox(inboxId);
     } else {
       // Fallback — try to open MessageViewerApp directly
       const viewerClass = game.nightcity?.MessageViewerApp;
@@ -1062,7 +1221,7 @@ export class GMContactManagerApp extends BaseApplication {
     const svc = this.masterContactService;
     if (!svc) return;
 
-    const contacts = svc.getAllContacts?.() || [];
+    const contacts = svc.getAll?.() || [];
     const data = JSON.stringify(contacts, null, 2);
     const blob = new Blob([data], { type: 'application/json' });
     const url = URL.createObjectURL(blob);

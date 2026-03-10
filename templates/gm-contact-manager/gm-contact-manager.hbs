@@ -23,8 +23,8 @@
     </span>
     <div class="ncm-gm-bar__actions">
       <button class="ncm-btn ncm-btn--ghost ncm-btn--sm"
-              data-action="importFromActors" title="Import non-player actors as contacts">
-        <i class="fas fa-download"></i> Import Actors
+              data-action="importContactsJSON" title="Import contacts from JSON file">
+        <i class="fas fa-download"></i> Import Contacts
       </button>
 
       <button class="ncm-btn ncm-btn--ghost ncm-btn--sm"
@@ -32,16 +32,16 @@
         <i class="fas fa-file-export"></i> Export
       </button>
 
-      {{!-- Push All — with target selector --}}
+      {{!-- Share All — with target selector --}}
       <select name="pushAllTargetActor" class="ncm-gm-bar__push-select">
-        <option value="">Push all to...</option>
+        <option value="">Share all to...</option>
         {{#each playerActors}}
-          <option value="{{id}}">{{name}}</option>
+          <option value="{{id}}">{{name}}{{#if isPlayer}} (Player){{/if}}</option>
         {{/each}}
       </select>
       <button class="ncm-btn ncm-btn--ghost ncm-btn--sm"
-              data-action="pushAllToPlayer" title="Push all filtered contacts to selected player">
-        <i class="fas fa-arrow-up-from-bracket"></i> Push All
+              data-action="pushAllToPlayer" title="Share all filtered contacts to selected player">
+        <i class="fas fa-arrow-up-from-bracket"></i> Share All
       </button>
 
       <button class="ncm-btn ncm-btn--primary ncm-btn--sm"
@@ -272,7 +272,7 @@
           {{!-- ── Relationship Selector ── --}}
           <div class="ncm-gm-section">Relationship</div>
           <div class="ncm-relationship-row">
-            <select class="ncm-relationship-select" data-action="setRelationship">
+            <select class="ncm-relationship-select" name="relationshipSelect">
               <option value="" {{#unless selectedContact.relationship}}selected{{/unless}}>— None —</option>
               <option value="ally" {{#if (eq selectedContact.relationship 'ally')}}selected{{/if}}>ALLY</option>
               <option value="hostile" {{#if (eq selectedContact.relationship 'hostile')}}selected{{/if}}>HOSTILE</option>
@@ -290,18 +290,18 @@
                       rows="4">{{selectedContact.notes}}</textarea>
           </div>
 
-          {{!-- ── Share / Push to Player ── --}}
-          <div class="ncm-gm-section">Share / Push</div>
+          {{!-- ── Share to Character to Player ── --}}
+          <div class="ncm-gm-section">Share / Share</div>
           <div class="ncm-push-row">
             <select name="pushTargetActor" class="ncm-push-select">
-              <option value="">Select player...</option>
+              <option value="">Select character...</option>
               {{#each ../playerActors}}
-                <option value="{{id}}">{{name}}</option>
+                <option value="{{id}}">{{name}}{{#if isPlayer}} (Player){{/if}}</option>
               {{/each}}
             </select>
             <button class="ncm-btn ncm-btn--accent ncm-btn--sm"
                     data-action="pushToPlayer">
-              <i class="fas fa-arrow-up-from-bracket"></i> Push
+              <i class="fas fa-arrow-up-from-bracket"></i> Share
             </button>
             <label class="ncm-push-portrait-toggle" title="Include portrait">
               <input type="checkbox" name="pushIncludePortrait" checked>
@@ -329,12 +329,16 @@
                     data-action="editContact">
               <i class="fas fa-pen"></i> Edit
             </button>
-            {{#unless selectedContact.actorId}}
+            <button class="ncm-btn ncm-btn--ghost"
+                    data-action="linkActor" title="Link or relink to Foundry actor">
+              <i class="fas fa-link"></i> {{#if selectedContact.actorId}}Relink{{else}}Link Actor{{/if}}
+            </button>
+            {{#if selectedContact.actorId}}
               <button class="ncm-btn ncm-btn--ghost"
-                      data-action="linkActor" title="Link to Foundry actor">
-                <i class="fas fa-link"></i> Link Actor
+                      data-action="unlinkActor" title="Remove actor link">
+                <i class="fas fa-link-slash"></i> Unlink
               </button>
-            {{/unless}}
+            {{/if}}
 
             {{!-- Burn / Restore toggle --}}
             {{#if selectedContact.isBurned}}

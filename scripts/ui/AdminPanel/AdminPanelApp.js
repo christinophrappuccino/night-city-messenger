@@ -27,6 +27,14 @@ export class AdminPanelApp extends BaseApplication {
   /** @type {Object<string, number>} Scroll positions per tab for preservation */
   _scrollPositions = {};
 
+  // ── Contacts tab state ──
+  /** @type {string} Contact search query */
+  _contactSearch = '';
+  /** @type {string} Contact sort: 'name' | 'trust' | 'role' | 'recent' */
+  _contactSort = 'name';
+  /** @type {string} Contact filter: 'all' | 'linked' | 'burned' | 'ice' | 'fixer' | 'netrunner' | 'solo' | 'corp' | etc */
+  _contactFilter = 'all';
+
   // ═══════════════════════════════════════════════════════════
   //  Service Accessors
   // ═══════════════════════════════════════════════════════════
@@ -80,7 +88,13 @@ export class AdminPanelApp extends BaseApplication {
       openContactInbox:   AdminPanelApp._onOpenContactInbox,
       composeToContact:   AdminPanelApp._onComposeToContact,
       exportContacts:     AdminPanelApp._onExportContacts,
-      importActorsAsContacts: AdminPanelApp._onImportActorsAsContacts,
+      importActorsAsContacts: AdminPanelApp._onImportContactsJSON,
+      editContactInEditor: AdminPanelApp._onEditContactInEditor,
+      createNewContact:    AdminPanelApp._onCreateNewContact,
+      pushAllContacts:     AdminPanelApp._onPushAllContacts,
+      contactFilter:       AdminPanelApp._onContactFilter,
+      contactClearSearch:  AdminPanelApp._onContactClearSearch,
+      setContactTrust:     AdminPanelApp._onSetContactTrust,
 
       // Networks actions
       toggleNetwork: AdminPanelApp._onToggleNetwork,
@@ -373,77 +387,166 @@ export class AdminPanelApp extends BaseApplication {
   _gatherContactSummary() {
     const contacts = this.masterContactService?.getAll() ?? [];
 
-    return {
-      total: contacts.length,
-      burned: contacts.filter(c => c.burned).length,
-      encrypted: contacts.filter(c => c.encrypted).length,
-      linked: contacts.filter(c => c.actorId).length,
-      contacts: contacts.map(c => {
-        const trust = c.trust ?? 3;
-        let trustLevel = 'med';
-        if (trust >= 4) trustLevel = 'high';
-        else if (trust <= 1) trustLevel = 'low';
+    // ── Enrich all contacts ──
+    const roleBadgeMap = {
+      fixer: { badge: 'Fixer', cls: 'fixer' },
+      netrunner: { badge: 'Runner', cls: 'netrunner' },
+      runner: { badge: 'Runner', cls: 'netrunner' },
+      corp: { badge: 'Corp', cls: 'corp' },
+      solo: { badge: 'Solo', cls: 'solo' },
+      tech: { badge: 'Tech', cls: 'solo' },
+      medtech: { badge: 'Medtech', cls: 'solo' },
+      media: { badge: 'Media', cls: 'netrunner' },
+      nomad: { badge: 'Nomad', cls: 'solo' },
+      exec: { badge: 'Exec', cls: 'corp' },
+      lawman: { badge: 'Lawman', cls: 'fixer' },
+      rockerboy: { badge: 'Rocker', cls: 'fixer' },
+    };
 
-        // Role badge mapping
-        const roleBadgeMap = {
-          fixer: { badge: 'Fixer', cls: 'fixer' },
-          netrunner: { badge: 'Runner', cls: 'netrunner' },
-          runner: { badge: 'Runner', cls: 'netrunner' },
-          corp: { badge: 'Corp', cls: 'corp' },
-          solo: { badge: 'Solo', cls: 'solo' },
-          tech: { badge: 'Tech', cls: 'solo' },
-          medtech: { badge: 'Medtech', cls: 'solo' },
-          media: { badge: 'Media', cls: 'netrunner' },
-          nomad: { badge: 'Nomad', cls: 'solo' },
-          exec: { badge: 'Exec', cls: 'corp' },
-          lawman: { badge: 'Lawman', cls: 'fixer' },
-          rockerboy: { badge: 'Rocker', cls: 'fixer' },
-        };
+    const enriched = contacts.map(c => {
+      const trust = c.trust ?? 3;
+      let trustLevel = 'med';
+      if (trust >= 4) trustLevel = 'high';
+      else if (trust <= 1) trustLevel = 'low';
 
-        const roleLower = (c.role || '').toLowerCase();
-        const roleInfo = roleBadgeMap[roleLower];
+      const roleLower = (c.role || '').toLowerCase();
+      const roleInfo = roleBadgeMap[roleLower];
 
-        const avatarColor = c.burned ? '#ff0033' :
-                           c.encrypted ? '#f7c948' :
-                           '#8888a0';
+      const avatarColor = c.burned ? '#ff0033' : c.encrypted ? '#f7c948' : '#8888a0';
 
-        // Resolve linked actor name and player owner
-        let actorName = null;
-        let playerOwnerName = null;
-        if (c.actorId) {
-          const actor = game.actors?.get(c.actorId);
-          actorName = actor?.name || null;
-          if (actor?.hasPlayerOwner) {
-            const ownerEntry = Object.entries(actor.ownership || {}).find(
-              ([uid, level]) => uid !== 'default' && level === CONST.DOCUMENT_PERMISSION_LEVELS.OWNER
-            );
-            if (ownerEntry) {
-              playerOwnerName = game.users.get(ownerEntry[0])?.name || null;
-            }
+      let actorName = null;
+      let playerOwnerName = null;
+      if (c.actorId) {
+        const actor = game.actors?.get(c.actorId);
+        actorName = actor?.name || null;
+        if (actor?.hasPlayerOwner) {
+          const ownerEntry = Object.entries(actor.ownership || {}).find(
+            ([uid, level]) => uid !== 'default' && level === CONST.DOCUMENT_PERMISSION_LEVELS.OWNER
+          );
+          if (ownerEntry) {
+            playerOwnerName = game.users.get(ownerEntry[0])?.name || null;
           }
         }
+      }
 
-        return {
-          id: c.id,
-          name: c.name,
-          email: c.email || '—',
-          role: c.role,
-          trust,
-          trustLevel,
-          trustSegments: [trust >= 1, trust >= 2, trust >= 3, trust >= 4, trust >= 5],
-          burned: c.burned ?? false,
-          encrypted: c.encrypted ?? false,
-          encryptionDV: c.encryptionDV,
-          linkedActorId: c.linkedActorId,
-          actorName,
-          playerOwnerName,
-          initial: (c.name || '?').charAt(0).toUpperCase(),
-          avatarColor,
-          avatarBorderColor: `${avatarColor}66`,
-          roleBadge: roleInfo?.badge ?? null,
-          roleBadgeClass: roleInfo?.cls ?? '',
-        };
-      }),
+      return {
+        id: c.id,
+        name: c.name,
+        email: c.email || '—',
+        role: c.role,
+        roleLower,
+        trust,
+        trustLevel,
+        trustSegments: [
+          { value: 1, active: trust >= 1 },
+          { value: 2, active: trust >= 2 },
+          { value: 3, active: trust >= 3 },
+          { value: 4, active: trust >= 4 },
+          { value: 5, active: trust >= 5 },
+        ],
+        burned: c.burned ?? false,
+        encrypted: c.encrypted ?? false,
+        encryptionDV: c.encryptionDV,
+        linkedActorId: c.linkedActorId,
+        actorId: c.actorId || null,
+        actorName,
+        playerOwnerName,
+        portrait: c.portrait || null,
+        hasPortrait: !!c.portrait,
+        initial: (c.name || '?').charAt(0).toUpperCase(),
+        avatarColor,
+        avatarBorderColor: `${avatarColor}66`,
+        roleBadge: roleInfo?.badge ?? null,
+        roleBadgeClass: roleInfo?.cls ?? '',
+        organization: c.organization || '',
+        tags: c.tags || [],
+        updatedAt: c.updatedAt || c.createdAt || '',
+      };
+    });
+
+    // ── Totals (always from unfiltered) ──
+    const total = enriched.length;
+    const burned = enriched.filter(c => c.burned).length;
+    const encrypted = enriched.filter(c => c.encrypted).length;
+    const linked = enriched.filter(c => c.actorId).length;
+
+    // ── Collect unique roles for filter pills ──
+    const roleSet = new Set();
+    enriched.forEach(c => { if (c.roleBadge) roleSet.add(c.roleBadge); });
+    const roles = [...roleSet].sort();
+
+    // ── Apply search ──
+    let filtered = enriched;
+    const q = this._contactSearch?.toLowerCase().trim();
+    if (q) {
+      filtered = filtered.filter(c =>
+        c.name.toLowerCase().includes(q) ||
+        c.email.toLowerCase().includes(q) ||
+        (c.organization && c.organization.toLowerCase().includes(q)) ||
+        (c.actorName && c.actorName.toLowerCase().includes(q)) ||
+        (c.playerOwnerName && c.playerOwnerName.toLowerCase().includes(q)) ||
+        c.tags.some(t => t.toLowerCase().includes(q))
+      );
+    }
+
+    // ── Apply filter ──
+    const f = this._contactFilter;
+    if (f && f !== 'all') {
+      switch (f) {
+        case 'linked':
+          filtered = filtered.filter(c => c.actorId);
+          break;
+        case 'unlinked':
+          filtered = filtered.filter(c => !c.actorId);
+          break;
+        case 'burned':
+          filtered = filtered.filter(c => c.burned);
+          break;
+        case 'ice':
+          filtered = filtered.filter(c => c.encrypted);
+          break;
+        case 'player':
+          filtered = filtered.filter(c => c.playerOwnerName);
+          break;
+        default:
+          // Role-based filter (case-insensitive)
+          filtered = filtered.filter(c =>
+            c.roleLower === f.toLowerCase() ||
+            c.roleBadgeClass === f.toLowerCase() ||
+            (c.roleBadge && c.roleBadge.toLowerCase() === f.toLowerCase())
+          );
+          break;
+      }
+    }
+
+    // ── Apply sort ──
+    switch (this._contactSort) {
+      case 'name':
+        filtered.sort((a, b) => a.name.localeCompare(b.name));
+        break;
+      case 'trust':
+        filtered.sort((a, b) => b.trust - a.trust || a.name.localeCompare(b.name));
+        break;
+      case 'role':
+        filtered.sort((a, b) => (a.roleLower || 'zzz').localeCompare(b.roleLower || 'zzz') || a.name.localeCompare(b.name));
+        break;
+      case 'recent':
+        filtered.sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
+        break;
+    }
+
+    return {
+      total,
+      burned,
+      encrypted,
+      linked,
+      filteredCount: filtered.length,
+      contacts: filtered,
+      roles,
+      // Pass current state for template
+      contactSearch: this._contactSearch,
+      contactSort: this._contactSort,
+      contactFilter: this._contactFilter,
     };
   }
 
@@ -792,6 +895,41 @@ export class AdminPanelApp extends BaseApplication {
         el.scrollTop = this._scrollPositions[this._activeTab];
       }
     });
+
+    // ── Contacts tab: wire search + sort inputs ──
+    if (this._activeTab === 'contacts') {
+      this._setupContactsControls();
+    }
+  }
+
+  /**
+   * Wire up contacts tab search input and sort select with debounced handlers.
+   */
+  _setupContactsControls() {
+    // Search input
+    const searchInput = this.element?.querySelector('.ncm-contacts-search__input');
+    if (searchInput) {
+      // Focus if there's an active search
+      if (this._contactSearch) searchInput.focus();
+
+      const handler = this._contactSearchHandler || (this._contactSearchHandler =
+        foundry.utils.debounce((e) => {
+          this._contactSearch = e.target.value;
+          this.render(true);
+        }, 250)
+      );
+      searchInput.removeEventListener('input', handler);
+      searchInput.addEventListener('input', handler);
+    }
+
+    // Sort select
+    const sortSelect = this.element?.querySelector('.ncm-contacts-sort__select');
+    if (sortSelect) {
+      sortSelect.addEventListener('change', (e) => {
+        this._contactSort = e.target.value;
+        this.render(true);
+      });
+    }
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -1055,7 +1193,7 @@ export class AdminPanelApp extends BaseApplication {
     if (!contact) return;
 
     const inboxId = contact.actorId || contactId;
-    game.nightcity?.openInbox?.({ actorId: inboxId });
+    game.nightcity?.openInbox?.(inboxId);
   }
 
   /**
@@ -1081,7 +1219,7 @@ export class AdminPanelApp extends BaseApplication {
     const svc = game.nightcity?.masterContactService;
     if (!svc) return;
 
-    const contacts = svc.getAllContacts?.() || [];
+    const contacts = svc.getAll?.() || [];
     const data = JSON.stringify(contacts, null, 2);
     const blob = new Blob([data], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -1098,20 +1236,152 @@ export class AdminPanelApp extends BaseApplication {
   /**
    * Import NPC actors as master contacts.
    */
-  static async _onImportActorsAsContacts(event, target) {
+  /**
+   * Import contacts from a JSON file.
+   */
+  static async _onImportContactsJSON(event, target) {
     const svc = game.nightcity?.masterContactService;
-    if (!svc?.importFromActors) {
+    if (!svc) {
       ui.notifications.warn('Master contact service not available.');
       return;
     }
 
-    const result = await svc.importFromActors();
-    if (result?.imported > 0) {
-      ui.notifications.info(`Imported ${result.imported} actor(s) as contacts.`);
-      this.render(true);
-    } else {
-      ui.notifications.info('No new actors to import.');
+    // Create a hidden file input
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.style.display = 'none';
+    document.body.appendChild(input);
+
+    input.addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      try {
+        const text = await file.text();
+        const contacts = JSON.parse(text);
+
+        if (!Array.isArray(contacts)) {
+          ui.notifications.error('Invalid format — expected a JSON array of contacts.');
+          return;
+        }
+
+        let imported = 0;
+        let skipped = 0;
+        const existing = svc.getAll() || [];
+        const existingEmails = new Set(existing.map(c => c.email?.toLowerCase()));
+
+        for (const c of contacts) {
+          if (!c.name) { skipped++; continue; }
+          // Skip duplicates by email
+          if (c.email && existingEmails.has(c.email.toLowerCase())) { skipped++; continue; }
+
+          const result = await svc.addContact({
+            name: c.name,
+            email: c.email || '',
+            alias: c.alias || '',
+            phone: c.phone || '',
+            organization: c.organization || '',
+            portrait: c.portrait || '',
+            type: c.type || c.role || 'npc',
+            tags: c.tags || [],
+            notes: c.notes || '',
+            relationship: c.relationship || '',
+            trust: c.trust ?? 3,
+          });
+          if (result?.success) {
+            imported++;
+            existingEmails.add(c.email?.toLowerCase());
+          }
+        }
+
+        ui.notifications.info(`Imported ${imported} contacts. ${skipped ? `${skipped} skipped (duplicates or invalid).` : ''}`);
+        this.render(true);
+      } catch (err) {
+        console.error('NCM | Import contacts failed:', err);
+        ui.notifications.error('Failed to parse JSON file.');
+      } finally {
+        input.remove();
+      }
+    });
+
+    input.click();
+  }
+
+  /**
+   * Set trust on a contact from inline trust bar click.
+   */
+  static async _onSetContactTrust(event, target) {
+    event.stopPropagation();
+    const contactId = target.closest('[data-contact-id]')?.dataset.contactId;
+    const trustValue = parseInt(target.dataset.trustValue, 10);
+    if (!contactId || isNaN(trustValue)) return;
+
+    const svc = game.nightcity?.masterContactService;
+    if (!svc) return;
+
+    await svc.updateContact(contactId, { trust: trustValue });
+    this.render(true);
+  }
+
+  /**
+   * Open the full GM Contact Manager with a specific contact selected for editing.
+   */
+  /**
+   * Open the full GM Contact Manager with a specific contact selected.
+   * Shows the detail view for that contact (not edit mode).
+   */
+  static async _onEditContactInEditor(event, target) {
+    event.stopPropagation();
+    const contactId = target.closest('[data-contact-id]')?.dataset.contactId;
+    if (!contactId) return;
+
+    // openGMContacts returns the singleton app instance
+    const gmApp = await game.nightcity?.openGMContacts?.();
+    if (gmApp) {
+      gmApp._selectedContactId = contactId;
+      gmApp._isEditing = false;
+      gmApp._isCreating = false;
+      gmApp.render(true);
     }
+  }
+
+  /**
+   * Create a new contact via the full GM Contact Manager.
+   */
+  static async _onCreateNewContact(event, target) {
+    const gmApp = await game.nightcity?.openGMContacts?.();
+    if (gmApp) {
+      gmApp._isCreating = true;
+      gmApp._selectedContactId = null;
+      gmApp._isEditing = false;
+      gmApp.render(true);
+    }
+  }
+
+  /**
+   * Push all contacts to a player (placeholder — needs target picker).
+   */
+  static _onPushAllContacts(event, target) {
+    game.nightcity?.openGMContacts?.();
+  }
+
+  /**
+   * Set contact filter from a filter pill click.
+   */
+  static _onContactFilter(event, target) {
+    const filter = target.dataset.filter || 'all';
+    // Toggle: clicking the active filter resets to 'all'
+    this._contactFilter = (this._contactFilter === filter) ? 'all' : filter;
+    this.render(true);
+  }
+
+  /**
+   * Clear the contact search input.
+   */
+  static _onContactClearSearch(event, target) {
+    this._contactSearch = '';
+    this.render(true);
   }
 
   // ═══════════════════════════════════════════════════════════

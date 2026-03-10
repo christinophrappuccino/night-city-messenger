@@ -180,7 +180,25 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     }));
 
     this.mode = options.mode || 'compose';
-    this.fromActorId = options.fromActorId || this._getDefaultFromActor();
+
+    // Resolve sender identity — actor or contact
+    if (options.fromContact) {
+      // Send-as a master contact (no linked actor)
+      this.fromContact = options.fromContact;
+      this.fromActorId = null; // No actor backing
+    } else if (options.fromContactId) {
+      // Resolve contact from ID
+      const contact = game.nightcity?.masterContactService?.getContact(options.fromContactId);
+      if (contact) {
+        this.fromContact = { id: contact.id, name: contact.name, email: contact.email, portrait: contact.portrait };
+        this.fromActorId = contact.actorId || null;
+      } else {
+        this.fromActorId = this._getDefaultFromActor();
+      }
+    } else {
+      this.fromActorId = options.fromActorId || this._getDefaultFromActor();
+    }
+
     this.originalMessage = options.originalMessage || null;
 
     if (this.mode === 'reply' && this.originalMessage) {
@@ -1052,7 +1070,8 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
         toActorId: toActorId || null,
         to: rawRecipients.length > 0 ? rawRecipients[0].email : undefined,
         fromActorId: this.fromActorId || null,
-        from: this.fromContact?.email || undefined, // Pre-set from email for contactOnly senders
+        fromContactId: this.fromContact?.id || null,
+        from: this.fromContact?.email || undefined,
         fromName: this.fromContact?.name || undefined,
         subject: this.subject,
         body: this.body,

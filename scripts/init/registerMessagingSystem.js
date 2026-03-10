@@ -143,14 +143,30 @@ export function registerMessagingSystem(initializer) {
      * @param {object} [options.originalMessage] — For reply/forward
      */
     ns.composeMessage = (options = {}) => {
-      const fromActorId = _resolveActorId(options.fromActorId || options.actorId);
-      if (!fromActorId && !isGM()) return;
+      // Resolve sender — actor or contact
+      let fromActorId = null;
+      let fromContactId = options.fromContactId || null;
+
+      if (options.fromActorId || options.actorId) {
+        fromActorId = _resolveActorId(options.fromActorId || options.actorId);
+        if (!fromActorId && !isGM()) return;
+      } else if (options.fromContact) {
+        // Direct contact object (from GM Contact Manager "Send As")
+        fromContactId = options.fromContact.id;
+      } else {
+        fromActorId = _resolveActorId(null); // fallback to user's character
+        if (!fromActorId && !isGM()) return;
+      }
 
       const composerId = foundry.utils.randomID(8);
       const composer = new MessageComposerApp({
         mode: options.mode ?? 'compose',
         fromActorId: fromActorId,
+        fromContactId: fromContactId,
+        fromContact: options.fromContact ?? null,
         toActorId: options.toActorId ?? null,
+        toContactId: options.toContactId ?? null,
+        to: options.to ?? null,
         subject: options.subject ?? '',
         body: options.body ?? '',
         priority: options.priority ?? 'normal',
@@ -324,16 +340,26 @@ export function registerMessagingSystem(initializer) {
 function _resolveActorId(actorId) {
   if (actorId) {
     const actor = game.actors.get(actorId);
-    if (!actor) {
-      ui.notifications.warn('NCM | Actor not found.');
-      return null;
+    if (actor) {
+      // Verify ownership (GM can access any actor)
+      if (!actor.isOwner && !isGM()) {
+        ui.notifications.warn('NCM | You do not own that character.');
+        return null;
+      }
+      return actorId;
     }
-    // Verify ownership (GM can access any actor)
-    if (!actor.isOwner && !isGM()) {
-      ui.notifications.warn('NCM | You do not own that character.');
-      return null;
+
+    // Not an actor — check if it's a master contact ID (GM only, virtual inbox)
+    if (isGM()) {
+      const contact = game.nightcity?.masterContactService?.getContact(actorId);
+      if (contact) {
+        // Return the contactId as-is — MessageRepository.getInboxJournal handles both
+        return actorId;
+      }
     }
-    return actorId;
+
+    ui.notifications.warn('NCM | Actor or contact not found.');
+    return null;
   }
 
   // Fall back to user's primary character
@@ -342,7 +368,6 @@ function _resolveActorId(actorId) {
 
   // GM with no selected character — show a picker or use first available
   if (isGM()) {
-    // GM can open inbox for any actor; if none specified, prompt them
     const firstActor = game.actors.contents[0];
     if (firstActor) {
       log.debug('GM defaulting to first actor:', firstActor.name);

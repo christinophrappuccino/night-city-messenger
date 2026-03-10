@@ -111,6 +111,9 @@ export class MessageViewerApp extends BaseApplication {
   /** @type {string} Density mode: compact | normal | comfortable */
   density = 'normal';
 
+  /** @type {Array} Cached contacts for synchronous _findContact lookups */
+  _cachedContacts = [];
+
   /** @type {number} Sidebar width in pixels */
   sidebarWidth = DEFAULT_SIDEBAR_WIDTH;
 
@@ -159,17 +162,39 @@ export class MessageViewerApp extends BaseApplication {
   _getViewingAsName() {
     if (!this.actorId) return 'Unknown';
     const actor = game.actors?.get(this.actorId);
-    return actor?.name || 'Unknown';
+    if (actor) return actor.name;
+    // Virtual inbox — check master contacts
+    const contact = game.nightcity?.masterContactService?.getContact(this.actorId);
+    return contact?.name || 'Unknown';
   }
 
+  /**
+   * Look up a contact by email address from the viewer owner's contact list.
+   * Uses a cached contact list to avoid async in render paths.
+   * @param {string} address — Email address to search
+   * @returns {object|null} Contact data or null
+   */
   _findContact(address) {
-    if (!address || !this.contactRepository) return null;
+    if (!address || !this._cachedContacts) return null;
+    const normalized = address.toLowerCase();
+    return this._cachedContacts.find(c =>
+      c.email?.toLowerCase() === normalized
+    ) || null;
+  }
+
+  /**
+   * Refresh the cached contact list for the viewer's owner.
+   * Called during _prepareContext before any _findContact calls.
+   */
+  async _refreshContactCache() {
+    if (!this.actorId || !this.contactRepository) {
+      this._cachedContacts = [];
+      return;
+    }
     try {
-      return this.contactRepository.findByEmail?.(address)
-        || this.contactRepository.findByAddress?.(address)
-        || null;
+      this._cachedContacts = await this.contactRepository.getContacts(this.actorId) || [];
     } catch {
-      return null;
+      this._cachedContacts = [];
     }
   }
 
@@ -357,17 +382,32 @@ export class MessageViewerApp extends BaseApplication {
 
   /** @override */
   async _prepareContext(options) {
+    // ── Refresh contact cache for _findContact lookups ──
+    await this._refreshContactCache();
+
     // ── Messages: load → filter → sort → paginate → enrich ──
     const allMessages = await this._loadMessages();
     const filtered = this._applyFilters(allMessages);
     const sorted = this._applySorting(filtered);
     const paginated = this._applyPagination(sorted);
 
-    // ── Actor identity for inbox header ──
+    // ── Actor/Contact identity for inbox header ──
     const viewingActor = this.actorId ? game.actors?.get(this.actorId) : null;
-    const viewingAsPortrait = viewingActor?.img || null;
-    const viewingAsInitial = getInitials(viewingActor?.name || 'Unknown');
-    const viewingAsEmail = this.contactRepository?.getActorEmail?.(this.actorId) || '';
+    let viewingAsName, viewingAsPortrait, viewingAsInitial, viewingAsEmail;
+
+    if (viewingActor) {
+      viewingAsName = viewingActor.name;
+      viewingAsPortrait = viewingActor.img || null;
+      viewingAsInitial = getInitials(viewingActor.name || 'Unknown');
+      viewingAsEmail = this.contactRepository?.getActorEmail?.(this.actorId) || '';
+    } else {
+      // Virtual inbox — resolve from master contact
+      const masterContact = game.nightcity?.masterContactService?.getContact(this.actorId);
+      viewingAsName = masterContact?.name || 'Unknown Contact';
+      viewingAsPortrait = masterContact?.portrait || null;
+      viewingAsInitial = getInitials(viewingAsName);
+      viewingAsEmail = masterContact?.email || '';
+    }
 
     // ── Sort options for dropdown template ──
     const sortOptions = Object.entries(SORT_LABELS).map(([id, label]) => ({
@@ -442,7 +482,7 @@ export class MessageViewerApp extends BaseApplication {
     // ── Assemble context ──
     return {
       // Identity
-      viewingAsName: this._getViewingAsName(),
+      viewingAsName,
       viewingAsPortrait,
       viewingAsInitial,
       viewingAsEmail,

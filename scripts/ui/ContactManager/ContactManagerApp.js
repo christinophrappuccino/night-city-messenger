@@ -718,6 +718,16 @@ export class ContactManagerApp extends BaseApplication {
       network: formData.get('network')?.trim()?.toLowerCase() || 'citinet',
     };
 
+    // GM-only fields
+    if (game.user.isGM) {
+      const trustVal = formData.get('trust');
+      if (trustVal !== null && trustVal !== undefined) {
+        data.trust = parseInt(trustVal, 10);
+      }
+      const relationship = formData.get('relationship');
+      if (relationship !== null) data.relationship = relationship;
+    }
+
     if (!data.name) {
       ui.notifications.warn('Contact name is required.');
       return;

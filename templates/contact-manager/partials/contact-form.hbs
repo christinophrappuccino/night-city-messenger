@@ -119,6 +119,32 @@
        ═══════════════════════════════════════════ --}}
   {{#if isGM}}
 
+    {{!-- ── Trust Level (per-player-per-contact) ── --}}
+    <div class="ncm-form-row">
+      <div class="ncm-form-group">
+        <label class="ncm-form-label">
+          <i class="fas fa-shield-halved" style="color: var(--ncm-success, #00ff41);"></i>
+          Trust Level
+          <span class="ncm-form-hint">(This player's trust for this contact)</span>
+        </label>
+        <div class="ncm-trust-edit-row">
+          <select name="trust" class="ncm-form-select ncm-form-select--trust">
+            <option value="0" {{#if (eq contact.trust 0)}}selected{{/if}}>0 — Unknown</option>
+            <option value="1" {{#if (eq contact.trust 1)}}selected{{/if}}>1 — Suspicious</option>
+            <option value="2" {{#if (eq contact.trust 2)}}selected{{/if}}>2 — Cautious</option>
+            <option value="3" {{#if (eq contact.trust 3)}}selected{{/if}}>3 — Neutral</option>
+            <option value="4" {{#if (eq contact.trust 4)}}selected{{/if}}>4 — Trusted</option>
+            <option value="5" {{#if (eq contact.trust 5)}}selected{{/if}}>5 — Implicitly Trusted</option>
+          </select>
+          <div class="ncm-trust-edit-bar">
+            {{#each contact.trustSegmentsDetail}}
+              <div class="ncm-trust-edit-seg {{#if active}}ncm-trust-edit-seg--active{{/if}}"></div>
+            {{/each}}
+          </div>
+        </div>
+      </div>
+    </div>
+
     {{!-- ── Relationship ── --}}
     <div class="ncm-form-row">
       <div class="ncm-form-group">
@@ -145,6 +171,44 @@
             </option>
           {{/each}}
         </select>
+      </div>
+    </div>
+
+    {{!-- ── ICE / Encryption ── --}}
+    <div class="ncm-form-row ncm-form-row--half">
+      <div class="ncm-form-group">
+        <label class="ncm-form-label">
+          <i class="fas fa-lock" style="color: var(--ncm-accent, #f7c948);"></i>
+          ICE Encryption
+        </label>
+        <select name="encrypted" class="ncm-form-select">
+          <option value="false" {{#unless contact.encrypted}}selected{{/unless}}>None — Open access</option>
+          <option value="true" {{#if contact.encrypted}}selected{{/if}}>ICE Protected</option>
+        </select>
+      </div>
+      <div class="ncm-form-group">
+        <label class="ncm-form-label">ICE Difficulty (DV)</label>
+        <input type="number" name="encryptionDV" value="{{contact.encryptionDV}}"
+               placeholder="15" min="8" max="30" step="1"
+               class="ncm-form-input ncm-form-input--mono" />
+      </div>
+    </div>
+
+    <div class="ncm-form-row ncm-form-row--half">
+      <div class="ncm-form-group">
+        <label class="ncm-form-label">
+          <i class="fas fa-skull-crossbones" style="color: var(--ncm-danger, #ff0033);"></i>
+          BLACK ICE
+        </label>
+        <select name="blackIce" class="ncm-form-select">
+          <option value="false" {{#unless contact.blackIce}}selected{{/unless}}>None</option>
+          <option value="true" {{#if contact.blackIce}}selected{{/if}}>BLACK ICE Active</option>
+        </select>
+      </div>
+      <div class="ncm-form-group">
+        <label class="ncm-form-label">BLACK ICE Damage</label>
+        <input type="text" name="blackIceDamage" value="{{contact.blackIceDamage}}"
+               placeholder="3d6" class="ncm-form-input ncm-form-input--mono" />
       </div>
     </div>
 
