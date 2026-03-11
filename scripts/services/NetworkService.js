@@ -150,6 +150,7 @@ export class NetworkService {
         allowPassword: network.security?.allowPassword ?? !!(network.security?.password),
         password: network.security?.password ?? '',
         allowSkillCheck: network.security?.allowSkillCheck ?? (network.security?.bypassSkills?.length > 0),
+        authLogic: network.security?.authLogic ?? 'any',
         bypassSkills: network.security?.bypassSkills ?? [],
         bypassDC: network.security?.bypassDC ?? 15,
         allowKeyItem: network.security?.allowKeyItem ?? false,
@@ -647,6 +648,7 @@ export class NetworkService {
         password: data.security?.password ?? '',
         allowPassword: data.security?.allowPassword ?? !!(data.security?.password),
         allowSkillCheck: data.security?.allowSkillCheck ?? (data.security?.bypassSkills?.length > 0),
+        authLogic: data.security?.authLogic ?? 'any',  // 'any' = OR, 'all' = AND (key item always bypasses)
         bypassSkills: data.security?.bypassSkills ?? [],
         bypassDC: data.security?.bypassDC ?? 15,
         allowKeyItem: data.security?.allowKeyItem ?? false,

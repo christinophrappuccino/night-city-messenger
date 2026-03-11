@@ -95,6 +95,14 @@
       <div class="ncm-auth__desc">{{network.description}}</div>
     {{/if}}
 
+    {{!-- Logic Description --}}
+    {{#if logicDescription}}
+      <div class="ncm-auth__logic-desc">
+        <i class="fas fa-info-circle"></i>
+        <span>Requires: {{logicDescription}}</span>
+      </div>
+    {{/if}}
+
     {{!-- Error Message --}}
     {{#if hasError}}
       <div class="ncm-auth__error">
@@ -105,99 +113,130 @@
 
     {{!-- ─── PASSWORD SECTION ─── --}}
     {{#if hasPassword}}
-      <div class="ncm-auth__method-section">
+      <div class="ncm-auth__method-section {{#if passwordCompleted}}ncm-auth__method-section--completed{{/if}}">
         <div class="ncm-auth__method-header">
-          <i class="fas fa-key ncm-auth__method-icon ncm-auth__method-icon--password"></i>
+          {{#if passwordCompleted}}
+            <i class="fas fa-check-circle ncm-auth__method-icon ncm-auth__method-icon--done"></i>
+          {{else}}
+            <i class="fas fa-key ncm-auth__method-icon ncm-auth__method-icon--password"></i>
+          {{/if}}
           <span class="ncm-auth__method-label">Password Authentication</span>
+          {{#if passwordCompleted}}
+            <span class="ncm-auth__method-badge ncm-auth__method-badge--done">PASSED</span>
+          {{/if}}
         </div>
-        <div class="ncm-auth__password-wrap {{#if hasError}}ncm-auth__password-wrap--error{{/if}}">
-          <span class="ncm-auth__password-prefix {{#if hasError}}ncm-auth__password-prefix--error{{/if}}">pass&gt;</span>
-          <input type="password"
-                 name="password"
-                 class="ncm-auth__password-input {{#if hasError}}ncm-auth__password-input--error{{/if}}"
-                 placeholder="{{#if hasError}}try again...{{else}}enter password...{{/if}}"
-                 autocomplete="off"
-                 spellcheck="false"
-                 autofocus />
-          <button type="button" class="ncm-auth__password-toggle" data-action="togglePasswordVisibility" title="Show password">
-            <i class="fas fa-eye"></i>
+        {{#unless passwordCompleted}}
+          <div class="ncm-auth__password-wrap {{#if hasError}}ncm-auth__password-wrap--error{{/if}}">
+            <span class="ncm-auth__password-prefix {{#if hasError}}ncm-auth__password-prefix--error{{/if}}">pass&gt;</span>
+            <input type="password"
+                   name="password"
+                   class="ncm-auth__password-input {{#if hasError}}ncm-auth__password-input--error{{/if}}"
+                   placeholder="{{#if hasError}}try again...{{else}}enter password...{{/if}}"
+                   autocomplete="off"
+                   spellcheck="false"
+                   autofocus />
+            <button type="button" class="ncm-auth__password-toggle" data-action="togglePasswordVisibility" title="Show password">
+              <i class="fas fa-eye"></i>
+            </button>
+          </div>
+          <button type="button" class="ncm-auth__btn ncm-auth__btn--primary ncm-auth__method-action" data-action="submitPassword">
+            <i class="fas fa-key"></i> Authenticate
           </button>
-        </div>
-        <button type="button" class="ncm-auth__btn ncm-auth__btn--primary ncm-auth__method-action" data-action="submitPassword">
-          <i class="fas fa-key"></i> Authenticate
-        </button>
+        {{/unless}}
       </div>
     {{/if}}
 
     {{!-- ─── SKILL CHECK SECTION ─── --}}
     {{#if hasSkillBypass}}
-      <div class="ncm-auth__method-section">
+      <div class="ncm-auth__method-section {{#if skillCompleted}}ncm-auth__method-section--completed{{/if}}">
         <div class="ncm-auth__method-header">
-          <i class="fas fa-dice-d20 ncm-auth__method-icon ncm-auth__method-icon--skill"></i>
+          {{#if skillCompleted}}
+            <i class="fas fa-check-circle ncm-auth__method-icon ncm-auth__method-icon--done"></i>
+          {{else}}
+            <i class="fas fa-dice-d20 ncm-auth__method-icon ncm-auth__method-icon--skill"></i>
+          {{/if}}
           <span class="ncm-auth__method-label">Skill Check Bypass</span>
-          <span class="ncm-auth__method-dv">DV {{bypassDC}}</span>
+          {{#if skillCompleted}}
+            <span class="ncm-auth__method-badge ncm-auth__method-badge--done">PASSED</span>
+          {{else}}
+            <span class="ncm-auth__method-dv">DV {{bypassDC}}</span>
+          {{/if}}
         </div>
 
-        {{!-- Stat Breakdown --}}
-        {{#if skillBreakdown}}
-          <div class="ncm-auth__skill-breakdown">
-            <div class="ncm-auth__skill-stat">
-              <span class="ncm-auth__skill-stat-val ncm-auth__skill-stat-val--stat">{{skillBreakdown.statValue}}</span>
-              <span class="ncm-auth__skill-stat-label">{{skillBreakdown.statName}}</span>
+        {{#unless skillCompleted}}
+          {{!-- Stat Breakdown --}}
+          {{#if skillBreakdown}}
+            <div class="ncm-auth__skill-breakdown">
+              <div class="ncm-auth__skill-stat">
+                <span class="ncm-auth__skill-stat-val ncm-auth__skill-stat-val--stat">{{skillBreakdown.statValue}}</span>
+                <span class="ncm-auth__skill-stat-label">{{skillBreakdown.statName}}</span>
+              </div>
+              <div class="ncm-auth__skill-stat">
+                <span class="ncm-auth__skill-stat-val ncm-auth__skill-stat-val--skill">{{skillBreakdown.skillValue}}</span>
+                <span class="ncm-auth__skill-stat-label">{{skillBreakdown.skillName}}</span>
+              </div>
+              <div class="ncm-auth__skill-stat">
+                <span class="ncm-auth__skill-stat-val ncm-auth__skill-stat-val--dice">?</span>
+                <span class="ncm-auth__skill-stat-label">d10</span>
+              </div>
+              <div class="ncm-auth__skill-stat ncm-auth__skill-stat--total">
+                <span class="ncm-auth__skill-stat-val ncm-auth__skill-stat-val--total">{{skillBreakdown.total}}+?</span>
+                <span class="ncm-auth__skill-stat-label">Total</span>
+              </div>
             </div>
-            <div class="ncm-auth__skill-stat">
-              <span class="ncm-auth__skill-stat-val ncm-auth__skill-stat-val--skill">{{skillBreakdown.skillValue}}</span>
-              <span class="ncm-auth__skill-stat-label">{{skillBreakdown.skillName}}</span>
-            </div>
-            <div class="ncm-auth__skill-stat">
-              <span class="ncm-auth__skill-stat-val ncm-auth__skill-stat-val--dice">?</span>
-              <span class="ncm-auth__skill-stat-label">d10</span>
-            </div>
-            <div class="ncm-auth__skill-stat ncm-auth__skill-stat--total">
-              <span class="ncm-auth__skill-stat-val ncm-auth__skill-stat-val--total">{{skillBreakdown.total}}+?</span>
-              <span class="ncm-auth__skill-stat-label">Total</span>
-            </div>
+          {{/if}}
+
+          <div class="ncm-auth__method-actions">
+            {{#each bypassSkills}}
+              <button type="button" class="ncm-auth__btn ncm-auth__btn--purple" data-action="attemptSkillCheck" data-skill="{{name}}">
+                <i class="fas fa-dice-d20"></i> Roll {{name}}
+              </button>
+            {{/each}}
           </div>
-        {{/if}}
-
-        <div class="ncm-auth__method-actions">
-          {{#each bypassSkills}}
-            <button type="button" class="ncm-auth__btn ncm-auth__btn--purple" data-action="attemptSkillCheck" data-skill="{{name}}">
-              <i class="fas fa-dice-d20"></i> Roll {{name}}
-            </button>
-          {{/each}}
-        </div>
+        {{/unless}}
       </div>
     {{/if}}
 
     {{!-- ─── KEY ITEM SECTION ─── --}}
     {{#if hasKeyItem}}
-      <div class="ncm-auth__method-section">
+      <div class="ncm-auth__method-section {{#if keyItemCompleted}}ncm-auth__method-section--completed{{/if}}">
         <div class="ncm-auth__method-header">
-          <i class="fas fa-id-badge ncm-auth__method-icon ncm-auth__method-icon--keyitem"></i>
+          {{#if keyItemCompleted}}
+            <i class="fas fa-check-circle ncm-auth__method-icon ncm-auth__method-icon--done"></i>
+          {{else}}
+            <i class="fas fa-id-badge ncm-auth__method-icon ncm-auth__method-icon--keyitem"></i>
+          {{/if}}
           <span class="ncm-auth__method-label">Present Credentials</span>
+          {{#if keyItemCompleted}}
+            <span class="ncm-auth__method-badge ncm-auth__method-badge--done">ACCEPTED</span>
+          {{/if}}
+          {{#if isAndMode}}
+            <span class="ncm-auth__method-badge ncm-auth__method-badge--bypass">BYPASSES ALL</span>
+          {{/if}}
         </div>
 
-        <div class="ncm-auth__keyitem-drop">
-          <div class="ncm-auth__keyitem-drop-inner">
-            {{#if presentedItemImg}}
-              <img class="ncm-auth__keyitem-drop-img" src="{{presentedItemImg}}" alt="{{presentedItemName}}" />
-            {{else}}
-              <i class="fas fa-id-badge ncm-auth__keyitem-drop-icon"></i>
-            {{/if}}
-            <div class="ncm-auth__keyitem-drop-text">
-              {{#if keyItemError}}
-                <span class="ncm-auth__keyitem-drop-error">{{keyItemError}}</span>
+        {{#unless keyItemCompleted}}
+          <div class="ncm-auth__keyitem-drop">
+            <div class="ncm-auth__keyitem-drop-inner">
+              {{#if presentedItemImg}}
+                <img class="ncm-auth__keyitem-drop-img" src="{{presentedItemImg}}" alt="{{presentedItemName}}" />
               {{else}}
-                <span class="ncm-auth__keyitem-drop-hint">Select item from inventory</span>
-                <span class="ncm-auth__keyitem-drop-sub">Requires: {{keyItemName}}{{#if keyItemTag}} (tag: {{keyItemTag}}){{/if}}</span>
+                <i class="fas fa-id-badge ncm-auth__keyitem-drop-icon"></i>
               {{/if}}
+              <div class="ncm-auth__keyitem-drop-text">
+                {{#if keyItemError}}
+                  <span class="ncm-auth__keyitem-drop-error">{{keyItemError}}</span>
+                {{else}}
+                  <span class="ncm-auth__keyitem-drop-hint">Select item from inventory</span>
+                  <span class="ncm-auth__keyitem-drop-sub">Requires: {{keyItemName}}{{#if keyItemTag}} (tag: {{keyItemTag}}){{/if}}</span>
+                {{/if}}
+              </div>
             </div>
+            <button type="button" class="ncm-auth__btn ncm-auth__btn--ghost ncm-auth__keyitem-browse" data-action="browseKeyItem">
+              <i class="fas fa-search"></i> Browse Inventory
+            </button>
           </div>
-          <button type="button" class="ncm-auth__btn ncm-auth__btn--ghost ncm-auth__keyitem-browse" data-action="browseKeyItem">
-            <i class="fas fa-search"></i> Browse Inventory
-          </button>
-        </div>
+        {{/unless}}
       </div>
     {{/if}}
 

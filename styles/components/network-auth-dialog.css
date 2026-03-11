@@ -723,11 +723,22 @@
 .ncm-auth__method-section {
   padding: 10px 0;
   border-top: 1px solid var(--nad-border);
+  transition: opacity 0.3s ease;
 }
 
 .ncm-auth__method-section:first-of-type {
   border-top: none;
   padding-top: 4px;
+}
+
+/* Completed method — collapsed and greyed slightly */
+.ncm-auth__method-section--completed {
+  padding: 6px 0;
+  opacity: 0.7;
+}
+
+.ncm-auth__method-section--completed .ncm-auth__method-header {
+  margin-bottom: 0;
 }
 
 .ncm-auth__method-header {
@@ -746,6 +757,7 @@
 .ncm-auth__method-icon--password { color: var(--nad-accent); }
 .ncm-auth__method-icon--skill { color: var(--nad-purple); }
 .ncm-auth__method-icon--keyitem { color: var(--nad-secondary); }
+.ncm-auth__method-icon--done { color: var(--nad-success, #00ff41); }
 
 .ncm-auth__method-label {
   font-family: var(--nad-font-mono);
@@ -754,6 +766,49 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
   flex: 1;
+}
+
+.ncm-auth__method-badge {
+  font-family: var(--nad-font-mono);
+  font-size: 7px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 1px 6px;
+  border-radius: 2px;
+}
+
+.ncm-auth__method-badge--done {
+  color: var(--nad-success, #00ff41);
+  background: rgba(0, 255, 65, 0.08);
+  border: 1px solid rgba(0, 255, 65, 0.2);
+}
+
+.ncm-auth__method-badge--bypass {
+  color: var(--nad-secondary);
+  background: rgba(25, 243, 247, 0.06);
+  border: 1px solid rgba(25, 243, 247, 0.15);
+  margin-left: 4px;
+}
+
+.ncm-auth__logic-desc {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: rgba(25, 243, 247, 0.03);
+  border: 1px solid rgba(25, 243, 247, 0.1);
+  border-radius: 2px;
+  font-family: var(--nad-font-mono);
+  font-size: 9px;
+  color: var(--nad-text-secondary);
+  margin-bottom: 4px;
+}
+
+.ncm-auth__logic-desc i {
+  color: var(--nad-secondary);
+  font-size: 10px;
+  flex-shrink: 0;
 }
 
 .ncm-auth__method-dv {

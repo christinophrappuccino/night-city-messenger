@@ -39,6 +39,9 @@ export class NetworkAuthDialog extends BaseApplication {
   /** @type {string} Current auth mode: 'password' | 'skill' */
   _authMode = 'password';
 
+  /** @type {Set<string>} Completed method names: 'password', 'skill', 'keyitem' */
+  _completedMethods = new Set();
+
   /** @type {string} Error message to display */
   _errorMessage = '';
 
@@ -194,6 +197,26 @@ export class NetworkAuthDialog extends BaseApplication {
       skillBreakdown = this._buildSkillBreakdown(network);
     }
 
+    // --- Auth logic and completion state ---
+    const authLogic = network.security.authLogic ?? 'any';
+    const isAndMode = authLogic === 'all';
+    const passwordCompleted = this._completedMethods.has('password');
+    const skillCompleted = this._completedMethods.has('skill');
+    const keyItemCompleted = this._completedMethods.has('keyitem');
+
+    // Build logic description for the player
+    let logicDescription = '';
+    const enabledMethods = [];
+    if (hasPassword) enabledMethods.push('Password');
+    if (hasSkillBypass) enabledMethods.push('Skill Check');
+    if (isAndMode) {
+      logicDescription = enabledMethods.join(' AND ');
+      if (hasKeyItem) logicDescription += ' — or present Key Item to bypass';
+    } else {
+      logicDescription = enabledMethods.join(' OR ');
+      if (hasKeyItem) logicDescription += ' OR Key Item';
+    }
+
     return {
       network: {
         id: network.id,
@@ -210,10 +233,13 @@ export class NetworkAuthDialog extends BaseApplication {
       hasPassword,
       hasSkillBypass,
       hasKeyItem,
-      hasBothModes: hasPassword && hasSkillBypass,
-      authMode: this._authMode,
-      isPasswordMode: this._authMode === 'password',
-      isSkillMode: this._authMode === 'skill',
+      authLogic,
+      isAndMode,
+      logicDescription,
+
+      passwordCompleted,
+      skillCompleted,
+      keyItemCompleted,
 
       keyItemName: network.security.keyItemName ?? '',
       keyItemTag: network.security.keyItemTag ?? '',
@@ -341,11 +367,13 @@ export class NetworkAuthDialog extends BaseApplication {
       if (actorId) this.securityService?.recordSuccess(actorId, this.networkId);
 
       this._errorMessage = '';
-      if (this._resolve) {
-        this._resolve({ success: true, method: 'password' });
-        this._resolve = null;
-      }
-      this.close();
+      this._completedMethods.add('password');
+
+      // Check if all required methods are now complete
+      if (this._checkAuthComplete()) return;
+
+      // Not fully done yet (AND mode) — re-render to show completion badge
+      this.render();
     } else {
       // Record failed attempt and build dynamic error message
       if (actorId) {
@@ -424,11 +452,13 @@ export class NetworkAuthDialog extends BaseApplication {
     if (authResult.success) {
       this.securityService?.recordSuccess(actor.id, this.networkId);
       this._errorMessage = '';
-      if (this._resolve) {
-        this._resolve({ success: true, method: 'skill', skillName, total, isCritSuccess });
-        this._resolve = null;
-      }
-      this.close();
+      this._completedMethods.add('skill');
+
+      // Check if all required methods are now complete
+      if (this._checkAuthComplete()) return;
+
+      // Not fully done yet (AND mode) — re-render to show completion badge
+      this.render();
     } else {
       const { lockedOut } = this.securityService?.recordFailedAttempt(actor.id, this.networkId) ?? {};
       if (lockedOut) {
@@ -546,12 +576,11 @@ export class NetworkAuthDialog extends BaseApplication {
         });
       }
 
-      // Grant auth
-      this.networkService?.authenticatePassword?.(this.networkId, network.security.password || '__keyitem__');
-      // Add to authenticated set directly
-      this.networkService?._authenticatedNetworks?.add(this.networkId);
-
       this.soundService?.play('key-accepted');
+      this._completedMethods.add('keyitem');
+
+      // Key item ALWAYS grants full access (bypasses AND logic)
+      this.networkService?._authenticatedNetworks?.add(this.networkId);
       if (this._resolve) {
         this._resolve({ success: true, method: 'keyitem', itemName: item.name });
         this._resolve = null;
@@ -565,6 +594,52 @@ export class NetworkAuthDialog extends BaseApplication {
       this.soundService?.play('key-rejected');
       this.render();
     }
+  }
+
+  /**
+   * Check if all required auth methods are completed.
+   * - 'any' mode: any single completion resolves.
+   * - 'all' mode: all enabled non-keyitem methods must be completed.
+   *   Key item always bypasses (handled in _processKeyItem directly).
+   * @returns {boolean} true if auth is complete and dialog was closed
+   */
+  _checkAuthComplete() {
+    const sec = this.network?.security;
+    const authLogic = sec?.authLogic ?? 'any';
+
+    if (authLogic === 'any') {
+      // Any single method completing is enough
+      this.networkService?._authenticatedNetworks?.add(this.networkId);
+      if (this._resolve) {
+        const methods = [...this._completedMethods].join('+');
+        this._resolve({ success: true, method: methods });
+        this._resolve = null;
+      }
+      this.close();
+      return true;
+    }
+
+    // AND mode: check all required non-keyitem methods
+    const needPassword = sec?.allowPassword ?? false;
+    const needSkill = sec?.allowSkillCheck ?? false;
+
+    const passwordDone = !needPassword || this._completedMethods.has('password');
+    const skillDone = !needSkill || this._completedMethods.has('skill');
+
+    if (passwordDone && skillDone) {
+      // All required methods completed
+      this.networkService?._authenticatedNetworks?.add(this.networkId);
+      if (this._resolve) {
+        const methods = [...this._completedMethods].join('+');
+        this._resolve({ success: true, method: methods });
+        this._resolve = null;
+      }
+      this.close();
+      return true;
+    }
+
+    // Not done yet
+    return false;
   }
 
   // ═══════════════════════════════════════════════════════════

@@ -331,6 +331,7 @@ export class NetworkManagementApp extends BaseApplication {
         password: formData.password?.trim() ?? '',
         allowPassword: formData.allowPassword === 'true' || formData.allowPassword === true,
         allowSkillCheck: formData.allowSkillCheck === 'true' || formData.allowSkillCheck === true,
+        authLogic: formData.authLogic || 'any',
         bypassSkills: formData.bypassSkills ? formData.bypassSkills.split(',').map(s => s.trim()).filter(Boolean) : [],
         bypassDC: parseInt(formData.bypassDC) || 15,
         allowKeyItem: formData.allowKeyItem === 'true' || formData.allowKeyItem === true,

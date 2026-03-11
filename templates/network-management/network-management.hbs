@@ -239,7 +239,7 @@
 
               {{!-- Auth Methods (which bypass/auth methods are available) --}}
               <div class="ncm-netmgr__field-row">
-                <div class="ncm-netmgr__field" style="flex:1;">
+                <div class="ncm-netmgr__field" style="flex:2;">
                   <label class="ncm-netmgr__field-label">Auth / Bypass Methods</label>
                   <div class="ncm-netmgr__method-toggles">
                     <label class="ncm-netmgr__checkbox-row">
@@ -261,6 +261,25 @@
                       Key Item
                     </label>
                   </div>
+                </div>
+                <div class="ncm-netmgr__field" style="flex:1;">
+                  <label class="ncm-netmgr__field-label">Combination Logic</label>
+                  <select class="ncm-netmgr__select" name="authLogic">
+                    <option value="any" {{#if (eq selectedNetwork.security.authLogic "any")}}selected{{/if}}>
+                      ANY method (OR)
+                    </option>
+                    <option value="all" {{#unless selectedNetwork.security.authLogic}}selected{{/unless}}
+                            {{#if (eq selectedNetwork.security.authLogic "all")}}selected{{/if}}>
+                      ALL methods (AND)
+                    </option>
+                  </select>
+                  <span class="ncm-netmgr__field-hint">
+                    {{#if (eq selectedNetwork.security.authLogic "all")}}
+                      Player must pass all enabled checks. Key item always bypasses.
+                    {{else}}
+                      Player can use any single method to gain access.
+                    {{/if}}
+                  </span>
                 </div>
               </div>
 
@@ -520,6 +539,17 @@
                       {{/unless}}
                     {{/unless}}
                   {{/unless}}
+                </span>
+              </div>
+              <div class="ncm-netmgr__prop-row">
+                <span class="ncm-netmgr__prop-label">Combination</span>
+                <span class="ncm-netmgr__prop-value">
+                  {{#if (eq selectedNetwork.security.authLogic "all")}}
+                    <span style="color:var(--ncm-primary);">ALL required</span>
+                    <span style="color:var(--ncm-text-muted);font-size:8px;margin-left:4px;">(key item bypasses)</span>
+                  {{else}}
+                    <span style="color:var(--ncm-success,#00ff41);">ANY method</span>
+                  {{/if}}
                 </span>
               </div>
               {{#if selectedNetwork.security.allowKeyItem}}
