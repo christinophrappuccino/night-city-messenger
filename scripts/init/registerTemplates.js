@@ -132,6 +132,10 @@ export function registerTemplates(initializer) {
     Handlebars.registerHelper('sub', (a, b) => (a || 0) - (b || 0));
     Handlebars.registerHelper('ncm-json', (context) => JSON.stringify(context, null, 2));
     Handlebars.registerHelper('ncm-isGM', () => game.user?.isGM);
+    Handlebars.registerHelper('join', (arr, separator) => {
+      if (!Array.isArray(arr)) return '';
+      return arr.join(typeof separator === 'string' ? separator : ', ');
+    });
 
     log.info('Handlebars helpers registered');
   });

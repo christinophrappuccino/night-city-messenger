@@ -214,6 +214,8 @@
           <div class="ncm-netmgr__fieldset">
             <div class="ncm-netmgr__fieldset-legend"><i class="fas fa-shield-halved"></i> Security</div>
             <div class="ncm-netmgr__fieldset-body">
+
+              {{!-- Row 1: Security Level + Auth Required --}}
               <div class="ncm-netmgr__field-row">
                 <div class="ncm-netmgr__field">
                   <label class="ncm-netmgr__field-label">Security Level</label>
@@ -234,6 +236,35 @@
                   </select>
                 </div>
               </div>
+
+              {{!-- Auth Methods (which bypass/auth methods are available) --}}
+              <div class="ncm-netmgr__field-row">
+                <div class="ncm-netmgr__field" style="flex:1;">
+                  <label class="ncm-netmgr__field-label">Auth / Bypass Methods</label>
+                  <div class="ncm-netmgr__method-toggles">
+                    <label class="ncm-netmgr__checkbox-row">
+                      <input type="checkbox" name="allowPassword" value="true"
+                             {{#if selectedNetwork.security.allowPassword}}checked{{/if}}>
+                      <i class="fas fa-key" style="color:var(--ncm-accent,#f7c948);margin-right:2px;font-size:9px;"></i>
+                      Password
+                    </label>
+                    <label class="ncm-netmgr__checkbox-row">
+                      <input type="checkbox" name="allowSkillCheck" value="true"
+                             {{#if selectedNetwork.security.allowSkillCheck}}checked{{/if}}>
+                      <i class="fas fa-dice-d20" style="color:#a855f7;margin-right:2px;font-size:9px;"></i>
+                      Skill Check
+                    </label>
+                    <label class="ncm-netmgr__checkbox-row">
+                      <input type="checkbox" name="allowKeyItem" value="true"
+                             {{#if selectedNetwork.security.allowKeyItem}}checked{{/if}}>
+                      <i class="fas fa-id-badge" style="color:var(--ncm-secondary,#19f3f7);margin-right:2px;font-size:9px;"></i>
+                      Key Item
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {{!-- Password Config --}}
               <div class="ncm-netmgr__field-row">
                 <div class="ncm-netmgr__field">
                   <label class="ncm-netmgr__field-label">Password</label>
@@ -253,12 +284,14 @@
                   </div>
                 </div>
               </div>
+
+              {{!-- Skill Check Config --}}
               <div class="ncm-netmgr__field-row">
                 <div class="ncm-netmgr__field">
                   <label class="ncm-netmgr__field-label">Bypass Skills (comma-separated)</label>
                   <input class="ncm-netmgr__input" type="text" name="bypassSkills"
                          value="{{#if selectedNetwork.security.bypassSkills}}{{join selectedNetwork.security.bypassSkills ","}}{{/if}}"
-                         placeholder="interface, electronics">
+                         placeholder="Interface, Electronics/Security Tech">
                 </div>
                 <div class="ncm-netmgr__field">
                   <label class="ncm-netmgr__field-label">Bypass DV</label>
@@ -267,7 +300,30 @@
                          min="1">
                 </div>
               </div>
+
+              {{!-- Key Item Config --}}
               <div class="ncm-netmgr__field-row">
+                <div class="ncm-netmgr__field">
+                  <label class="ncm-netmgr__field-label">Key Item Name (match by name in inventory)</label>
+                  <input class="ncm-netmgr__input" type="text" name="keyItemName"
+                         value="{{selectedNetwork.security.keyItemName}}"
+                         placeholder="e.g. Arasaka Access Card">
+                </div>
+                <div class="ncm-netmgr__field">
+                  <label class="ncm-netmgr__field-label">Key Item Tag (optional, match by system tag)</label>
+                  <input class="ncm-netmgr__input" type="text" name="keyItemTag"
+                         value="{{selectedNetwork.security.keyItemTag}}"
+                         placeholder="e.g. arasaka_keycard">
+                </div>
+              </div>
+              <label class="ncm-netmgr__checkbox-row">
+                <input type="checkbox" name="keyItemConsume" value="true"
+                       {{#if selectedNetwork.security.keyItemConsume}}checked{{/if}}>
+                Consume key item on use (removes from inventory)
+              </label>
+
+              {{!-- Effects Toggles --}}
+              <div class="ncm-netmgr__field-row" style="margin-top:8px;">
                 <label class="ncm-netmgr__checkbox-row">
                   <input type="checkbox" name="traced" value="true"
                          {{#if selectedNetwork.effects.traced}}checked{{/if}}>
@@ -439,6 +495,42 @@
                 <span class="ncm-netmgr__prop-value">{{selectedNetwork.security.level}}</span>
               </div>
               <div class="ncm-netmgr__prop-row">
+                <span class="ncm-netmgr__prop-label">Auth Methods</span>
+                <span class="ncm-netmgr__prop-value">
+                  {{#if selectedNetwork.security.allowPassword}}
+                    <i class="fas fa-key" style="color:var(--ncm-accent,#f7c948);margin-right:2px;" title="Password"></i>
+                  {{/if}}
+                  {{#if selectedNetwork.security.allowSkillCheck}}
+                    <i class="fas fa-dice-d20" style="color:#a855f7;margin-right:2px;" title="Skill Check"></i>
+                  {{/if}}
+                  {{#if selectedNetwork.security.allowKeyItem}}
+                    <i class="fas fa-id-badge" style="color:var(--ncm-secondary,#19f3f7);margin-right:2px;" title="Key Item"></i>
+                  {{/if}}
+                  {{#unless selectedNetwork.security.allowPassword}}
+                    {{#unless selectedNetwork.security.allowSkillCheck}}
+                      {{#unless selectedNetwork.security.allowKeyItem}}
+                        <span style="color:var(--ncm-text-muted);">None configured</span>
+                      {{/unless}}
+                    {{/unless}}
+                  {{/unless}}
+                </span>
+              </div>
+              {{#if selectedNetwork.security.allowKeyItem}}
+              <div class="ncm-netmgr__prop-row">
+                <span class="ncm-netmgr__prop-label">Key Item</span>
+                <span class="ncm-netmgr__prop-value">
+                  {{#if selectedNetwork.security.keyItemName}}
+                    {{selectedNetwork.security.keyItemName}}
+                    {{#if selectedNetwork.security.keyItemConsume}}
+                      <span style="color:var(--ncm-primary);font-size:9px;margin-left:4px;">(consumed)</span>
+                    {{/if}}
+                  {{else}}
+                    <span style="color:var(--ncm-text-muted);">Not set</span>
+                  {{/if}}
+                </span>
+              </div>
+              {{/if}}
+              <div class="ncm-netmgr__prop-row">
                 <span class="ncm-netmgr__prop-label">Max Auth Attempts</span>
                 <span class="ncm-netmgr__prop-value">{{selectedNetwork.security.maxAttempts}}</span>
               </div>
@@ -546,7 +638,7 @@
           <div class="ncm-netmgr__detail-footer">
             {{#if selectedNetwork.isCore}}
             <span class="ncm-netmgr__detail-footer-note">
-              <i class="fas fa-lock"></i> Core networks cannot be edited or deleted
+              <i class="fas fa-shield-halved"></i> Core network — editable, cannot be deleted
             </span>
             {{else}}
             <span class="ncm-netmgr__detail-footer-note">

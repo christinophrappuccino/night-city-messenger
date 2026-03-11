@@ -1206,6 +1206,12 @@
   accent-color: var(--nm-secondary);
 }
 
+.ncm-netmgr__method-toggles {
+  display: flex;
+  gap: 16px;
+  padding: 6px 0;
+}
+
 /* Color Picker */
 
 .ncm-netmgr__color-picker {
