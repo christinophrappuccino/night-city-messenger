@@ -204,7 +204,7 @@ export class GMContactManagerApp extends BaseApplication {
           // Find player owner name
           if (actor?.hasPlayerOwner) {
             const ownerEntry = Object.entries(actor.ownership || {}).find(
-              ([uid, level]) => uid !== 'default' && level === CONST.DOCUMENT_PERMISSION_LEVELS.OWNER
+              ([uid, level]) => uid !== 'default' && level === CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER
             );
             if (ownerEntry) {
               const ownerUser = game.users.get(ownerEntry[0]);
@@ -251,7 +251,7 @@ export class GMContactManagerApp extends BaseApplication {
         isPlayer: a.hasPlayerOwner,
         ownerName: a.hasPlayerOwner
           ? Object.entries(a.ownership || {}).reduce((name, [uid, level]) => {
-              if (uid !== 'default' && level === CONST.DOCUMENT_PERMISSION_LEVELS.OWNER) {
+              if (uid !== 'default' && level === CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER) {
                 return game.users.get(uid)?.name || name;
               }
               return name;
@@ -935,7 +935,7 @@ export class GMContactManagerApp extends BaseApplication {
       isPlayer: a.hasPlayerOwner,
       ownerName: a.hasPlayerOwner
         ? Object.entries(a.ownership || {}).reduce((name, [uid, level]) => {
-            if (uid !== 'default' && level === CONST.DOCUMENT_PERMISSION_LEVELS.OWNER) {
+            if (uid !== 'default' && level === CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER) {
               return game.users.get(uid)?.name || name;
             }
             return name;

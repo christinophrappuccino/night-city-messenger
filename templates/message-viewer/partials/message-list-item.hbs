@@ -123,7 +123,11 @@
     </div>
 
     {{!-- Body Preview (visible in comfortable density) --}}
-    {{#if bodyPreview}}
+    {{#if isNetworkLocked}}
+      <div class="ncm-message-item__preview ncm-message-item__preview--locked">
+        <i class="fas fa-lock"></i> NETWORK ACCESS REQUIRED — {{lockedNetworkName}}
+      </div>
+    {{else if bodyPreview}}
       <div class="ncm-message-item__preview">{{bodyPreview}}</div>
     {{/if}}
 

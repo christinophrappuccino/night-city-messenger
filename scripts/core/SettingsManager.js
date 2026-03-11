@@ -44,6 +44,15 @@ export class SettingsManager {
       default: [],
     });
 
+    game.settings.register(MODULE_ID, 'coreNetworkOverrides', {
+      name: 'NCM.Settings.CoreNetworkOverrides.Name',
+      hint: 'GM overrides for core network settings (security, effects, theme).',
+      scope: 'world',
+      config: false,
+      type: Object,
+      default: {},
+    });
+
     game.settings.register(MODULE_ID, 'scheduledMessages', {
       name: 'NCM.Settings.ScheduledMessages.Name',
       hint: 'NCM.Settings.ScheduledMessages.Hint',

@@ -77,8 +77,8 @@ export class MessageRepository {
       const ownership = { default: 0 };
       if (isActorInbox && actor.hasPlayerOwner) {
         for (const [userId, level] of Object.entries(actor.ownership)) {
-          if (level === CONST.DOCUMENT_PERMISSION_LEVELS.OWNER && userId !== 'default') {
-            ownership[userId] = CONST.DOCUMENT_PERMISSION_LEVELS.OWNER;
+          if (level === CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER && userId !== 'default') {
+            ownership[userId] = CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER;
           }
         }
       }
@@ -502,6 +502,9 @@ export class MessageRepository {
 
       // Network Access Control
       accessControl: flags.accessControl || null,
+
+      // Inline encrypted block state
+      decryptedBlocks: flags.decryptedBlocks || [],
     };
   }
 

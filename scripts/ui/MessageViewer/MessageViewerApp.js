@@ -134,6 +134,7 @@ export class MessageViewerApp extends BaseApplication {
   get timeService() { return game.nightcity?.timeService; }
   get soundService() { return game.nightcity?.soundService; }
   get stateManager() { return game.nightcity?.stateManager; }
+  get messageAccessService() { return game.nightcity?.messageAccessService; }
 
   // ═══════════════════════════════════════════════════════════
   //  Lifecycle
@@ -597,6 +598,18 @@ export class MessageViewerApp extends BaseApplication {
       replyInput._ncmBound = true;
     }
 
+    // Bypass password input — Enter to submit
+    const bypassInput = html.querySelector('.ncm-locked-overlay__bypass-input');
+    if (bypassInput && !bypassInput._ncmBound) {
+      bypassInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          this._bypassPassword(bypassInput.dataset.messageId);
+        }
+      });
+      bypassInput._ncmBound = true;
+    }
+
     // Sidebar resize
     const divider = html.querySelector('.ncm-panel-divider');
     if (divider && !divider._ncmBound) {
@@ -647,6 +660,24 @@ export class MessageViewerApp extends BaseApplication {
           destructEl.innerHTML = `<i class="fas fa-hourglass-half" style="margin-right:3px;"></i> ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
         }, 1000);
       }
+    }
+
+    // ── Network access lockout countdown ──
+    if (this._lockoutTimer) clearInterval(this._lockoutTimer);
+    const lockoutEl = html.querySelector('.ncm-locked-overlay__lockout-timer');
+    if (lockoutEl?.dataset.lockoutUntil) {
+      this._lockoutTimer = setInterval(() => {
+        const remaining = new Date(lockoutEl.dataset.lockoutUntil).getTime() - Date.now();
+        if (remaining <= 0) {
+          clearInterval(this._lockoutTimer);
+          this._lockoutTimer = null;
+          this.render(); // Re-render to show bypass options again
+          return;
+        }
+        const m = Math.floor(remaining / 60000);
+        const s = Math.floor((remaining % 60000) / 1000);
+        lockoutEl.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+      }, 1000);
     }
   }
 
@@ -749,6 +780,20 @@ export class MessageViewerApp extends BaseApplication {
         break;
       case 'force-decrypt-message':
         this._forceDecryptMessage(messageId);
+        break;
+
+      // ── Network Access Bypass ──
+      case 'bypass-password':
+        this._bypassPassword(target.dataset.messageId);
+        break;
+      case 'bypass-skill':
+        this._bypassSkill(target.dataset.messageId, target.dataset.skill);
+        break;
+      case 'bypass-keyitem':
+        this._bypassKeyItem(target.dataset.messageId);
+        break;
+      case 'gm-force-reveal':
+        this._gmForceReveal(target.dataset.messageId);
         break;
 
       // ── Feature 1: Eddies Claim ──
@@ -1261,14 +1306,35 @@ export class MessageViewerApp extends BaseApplication {
 
   // ── Feature 2: Encrypted Block Decrypt ──
 
-  _decryptBlock(blockKey) {
+  async _decryptBlock(blockKey) {
     if (!blockKey) return;
 
     if (!this._decryptedBlocks) this._decryptedBlocks = new Set();
 
-    // For now: instant decrypt (future: skill check)
+    // Add to local set for immediate UI feedback
     this._decryptedBlocks.add(blockKey);
-    ui.notifications.info('Block decrypted.');
+
+    // Persist to message flags so it survives re-render and app close
+    // blockKey format: "messageId-blockIdx"
+    const dashIdx = blockKey.lastIndexOf('-');
+    const messageId = dashIdx > 0 ? blockKey.substring(0, dashIdx) : null;
+    if (messageId && this.actorId) {
+      try {
+        const msg = this._cachedMessages?.find(m => m.messageId === messageId);
+        const existing = msg?.decryptedBlocks || [];
+        if (!existing.includes(blockKey)) {
+          await this.messageService?.updateMessageFlags(
+            this.actorId, messageId,
+            { decryptedBlocks: [...existing, blockKey] }
+          );
+        }
+      } catch (err) {
+        console.warn('NCM | Failed to persist decrypted block state:', err);
+      }
+    }
+
+    this.soundService?.play?.('hack-success');
+    ui.notifications.info('NCM | Block decrypted.');
     this.render();
   }
 
@@ -1455,12 +1521,108 @@ export class MessageViewerApp extends BaseApplication {
 
   async _decryptMessage(messageId) {
     if (!messageId) return;
-    game.nightcity?.messenger?.attemptDecrypt?.(messageId, this.actorId);
+    const result = await this.messageService?.attemptDecrypt?.(messageId, this.actorId);
+    if (result?.success) {
+      this.render();
+    }
   }
 
   async _forceDecryptMessage(messageId) {
     if (!messageId || !game.user.isGM) return;
-    await this.messageService?.forceDecrypt?.(messageId);
+    await this.messageService?.forceDecrypt?.(messageId, this.actorId);
+    this.render();
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Network Access Bypass Handlers
+  // ═══════════════════════════════════════════════════════════
+
+  async _bypassPassword(messageId) {
+    const input = this.element?.querySelector(`input[name="bypassPassword"][data-message-id="${messageId}"]`);
+    const password = input?.value?.trim();
+    if (!password) {
+      ui.notifications.warn('NCM | Enter an access code.');
+      return;
+    }
+
+    const msg = this._cachedMessages?.find(m => m.messageId === messageId);
+    if (!msg?.accessControl) return;
+
+    const result = await this.messageAccessService?.attemptPasswordBypass(
+      messageId, this.actorId, password, msg.accessControl
+    );
+
+    if (result?.success) {
+      this.soundService?.play?.('login-success');
+      ui.notifications.info('NCM | Access granted.');
+    } else if (result?.lockedOut) {
+      this.soundService?.play?.('lockout');
+      ui.notifications.error('NCM | SYSTEM LOCKED — Too many failed attempts.');
+    } else {
+      this.soundService?.play?.('login-fail');
+      const remaining = result?.attemptsRemaining ?? '?';
+      ui.notifications.warn(`NCM | ACCESS DENIED. ${remaining} attempt(s) remaining.`);
+    }
+
+    this.render();
+  }
+
+  async _bypassSkill(messageId, skillName) {
+    if (!skillName) return;
+
+    const msg = this._cachedMessages?.find(m => m.messageId === messageId);
+    if (!msg?.accessControl) return;
+
+    const actor = game.actors?.get(this.actorId);
+    if (!actor) {
+      ui.notifications.warn('NCM | No character assigned.');
+      return;
+    }
+
+    const result = await this.messageAccessService?.attemptSkillBypass(
+      messageId, actor, skillName, msg.accessControl
+    );
+
+    if (result?.success) {
+      ui.notifications.info('NCM | Access granted — bypass successful.');
+    } else if (result?.lockedOut) {
+      this.soundService?.play?.('lockout');
+      ui.notifications.error('NCM | SYSTEM LOCKED — Too many failed attempts.');
+    } else {
+      ui.notifications.warn('NCM | Bypass failed.');
+    }
+
+    this.render();
+  }
+
+  async _bypassKeyItem(messageId) {
+    const msg = this._cachedMessages?.find(m => m.messageId === messageId);
+    if (!msg?.accessControl) return;
+
+    const actor = game.actors?.get(this.actorId);
+    if (!actor) {
+      ui.notifications.warn('NCM | No character assigned.');
+      return;
+    }
+
+    const result = await this.messageAccessService?.attemptKeyItemBypass(
+      messageId, actor, msg.accessControl
+    );
+
+    if (result?.success) {
+      const consumed = result.consumed ? ' (item consumed)' : '';
+      ui.notifications.info(`NCM | Access granted via ${result.keyItem?.name}${consumed}`);
+    } else {
+      ui.notifications.warn(`NCM | ${result.error || 'Required access item not found in inventory.'}`);
+    }
+
+    this.render();
+  }
+
+  async _gmForceReveal(messageId) {
+    if (!game.user?.isGM) return;
+    await this.messageAccessService?.gmForceReveal(messageId, this.actorId);
+    ui.notifications.info('NCM | Message force-revealed.');
     this.render();
   }
 
@@ -1704,23 +1866,14 @@ export class MessageViewerApp extends BaseApplication {
     // ── Quick win: sender contact check for "Add to Contacts" button ──
     const senderIsContact = !!contact;
 
-    // ── Network-locked check: is the message's network accessible? ──
-    let isNetworkLocked = false;
-    let lockedNetworkName = '';
-    if (msg.network && !msg.status?.sent) {
-      const availableNetworks = this._getAvailableNetworks();
-      const availableIds = new Set(availableNetworks.map(n => (n.name || '').toLowerCase()));
-      const availableIdSet = new Set(availableNetworks.map(n => (n.id || '').toLowerCase()));
-      const msgNetNorm = (msg.network || '').toLowerCase();
-      // Only lock if it's not on a universally available network and not in available list
-      if (msgNetNorm !== 'citinet' && !availableIds.has(msgNetNorm) && !availableIdSet.has(msgNetNorm)) {
-        // GM always has access
-        if (!game.user?.isGM) {
-          isNetworkLocked = true;
-          lockedNetworkName = msg.network;
-        }
-      }
-    }
+    // ── Network/access restriction check via MessageAccessService ──
+    const viewingActor = this.actorId ? game.actors?.get(this.actorId) : null;
+    const accessState = this.messageAccessService?.checkAccess(msg, viewingActor)
+      ?? { canRead: true, restricted: false };
+    const isNetworkLocked = !accessState.canRead;
+    const lockedNetworkName = accessState.requiredNetworkName
+      || this.networkService?.getNetwork?.(msg.network)?.name
+      || msg.network || '';
 
     // Feature 1 — Eddies data (different display for sent vs received)
     let eddiesData = null;
@@ -1758,7 +1911,11 @@ export class MessageViewerApp extends BaseApplication {
       }
     }
 
-    // Feature 2 — Transform encrypted text blocks in body
+    // Feature 2 — Merge persisted decrypted blocks into local set, then transform body
+    if (msg.decryptedBlocks?.length) {
+      if (!this._decryptedBlocks) this._decryptedBlocks = new Set();
+      msg.decryptedBlocks.forEach(key => this._decryptedBlocks.add(key));
+    }
     const bodyRendered = this._renderMessageBody(msg.body, msg.messageId);
 
     return {
@@ -1779,6 +1936,7 @@ export class MessageViewerApp extends BaseApplication {
       senderIsContact,
       isNetworkLocked,
       lockedNetworkName,
+      accessState,
     };
   }
 
@@ -1793,21 +1951,15 @@ export class MessageViewerApp extends BaseApplication {
   async _enrichMessages(messages, currentNetworkName) {
     this._cachedMessages = messages;
 
-    // Pre-compute available network names for lock check
-    const availableNetworks = this._getAvailableNetworks();
-    const availableNameSet = new Set(availableNetworks.map(n => (n.name || '').toLowerCase()));
-    const availableIdSet = new Set(availableNetworks.map(n => (n.id || '').toLowerCase()));
-    const isGM = game.user?.isGM ?? false;
+    // Resolve viewing actor once for all access checks
+    const viewingActor = this.actorId ? game.actors?.get(this.actorId) : null;
+    const accessSvc = this.messageAccessService;
 
     return messages.map(msg => {
-      // Network-locked check for list items
-      let isNetworkLocked = false;
-      if (msg.network && !msg.status?.sent && !isGM) {
-        const msgNetNorm = (msg.network || '').toLowerCase();
-        if (msgNetNorm !== 'citinet' && !availableNameSet.has(msgNetNorm) && !availableIdSet.has(msgNetNorm)) {
-          isNetworkLocked = true;
-        }
-      }
+      // Network/access restriction check via MessageAccessService
+      const accessState = accessSvc?.checkAccess(msg, viewingActor)
+        ?? { canRead: true, restricted: false };
+      const isNetworkLocked = !accessState.canRead;
 
       return {
         ...msg,
@@ -1815,6 +1967,9 @@ export class MessageViewerApp extends BaseApplication {
         selected: msg.messageId === this.selectedMessageId,
         bulkSelected: this.bulkSelected.has(msg.messageId),
         isNetworkLocked,
+        lockedNetworkName: accessState.requiredNetworkName
+          || this.networkService?.getNetwork?.(msg.network)?.name
+          || msg.network || '',
       };
     });
   }
@@ -1877,7 +2032,9 @@ export class MessageViewerApp extends BaseApplication {
     const msgNetworkNorm = (msg.network || '').toLowerCase().trim();
     const curNetworkNorm = (currentNetworkName || '').toLowerCase().trim();
     const showNetworkBadge = !!(msg.network && msgNetworkNorm !== curNetworkNorm && msgNetworkNorm !== 'citinet');
-    const networkBadgeLabel = msg.network || '';
+    // Resolve display name via NetworkService; fall back to raw network field
+    const resolvedNetwork = this.networkService?.getNetwork?.(msg.network);
+    const networkBadgeLabel = resolvedNetwork?.name || msg.network || '';
     // Derive badge variant suffix for color matching
     let networkBadgeVariant = 'default';
     if (msgNetworkNorm.includes('dark')) networkBadgeVariant = 'darknet';
@@ -2149,6 +2306,7 @@ export class MessageViewerApp extends BaseApplication {
   async close(options) {
     if (this._destructTimer) clearInterval(this._destructTimer);
     if (this._clockInterval) clearInterval(this._clockInterval);
+    if (this._lockoutTimer) clearInterval(this._lockoutTimer);
     return super.close(options);
   }
 }

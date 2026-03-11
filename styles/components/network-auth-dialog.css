@@ -283,15 +283,23 @@
 }
 
 .ncm-auth__password-input {
-  flex: 1;
-  background: transparent;
-  border: none;
-  outline: none;
+  flex: 1 !important;
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
   font-family: var(--nad-font-mono);
   font-size: 12px;
   color: var(--nad-secondary);
+  -webkit-text-fill-color: var(--nad-secondary);
+  caret-color: var(--nad-secondary);
   letter-spacing: 0.15em;
-  min-width: 0;
+  line-height: 36px !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  height: 36px !important;
+  padding: 0 !important;
+  margin: 0 !important;
 }
 
 .ncm-auth__password-input::placeholder {
@@ -330,6 +338,7 @@
   padding: 4px;
   transition: color 0.12s;
   flex-shrink: 0;
+  margin-left: auto;
 }
 
 .ncm-auth__password-toggle:hover {
@@ -776,4 +785,139 @@
 
 .ncm-network-auth-dialog[data-auth-state="password"]::before {
   background: var(--nad-accent);
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   Foundry VTT Global Button & Input Overrides
+   Foundry v12 aggressively sets background, border, box-shadow,
+   min-width, min-height, appearance, padding on all button and
+   input elements. These must be overridden with !important.
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── All buttons inside the auth dialog ── */
+.ncm-network-auth-dialog button,
+.ncm-network-auth-dialog .ncm-auth__btn {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  box-shadow: none !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  line-height: 1 !important;
+}
+
+.ncm-network-auth-dialog .ncm-auth__btn {
+  padding: 6px 14px !important;
+  border-radius: 2px !important;
+  font-family: var(--nad-font-display) !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+}
+
+.ncm-network-auth-dialog .ncm-auth__btn--ghost {
+  background: transparent !important;
+  border: 1px solid var(--nad-border) !important;
+  color: var(--nad-text-secondary) !important;
+}
+
+.ncm-network-auth-dialog .ncm-auth__btn--ghost:hover {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border-color: var(--nad-border-active) !important;
+  color: var(--nad-text-primary) !important;
+}
+
+.ncm-network-auth-dialog .ncm-auth__btn--primary {
+  background: rgba(25, 243, 247, 0.08) !important;
+  border: 1px solid rgba(25, 243, 247, 0.3) !important;
+  color: var(--nad-secondary) !important;
+}
+
+.ncm-network-auth-dialog .ncm-auth__btn--primary:hover {
+  background: rgba(25, 243, 247, 0.15) !important;
+  border-color: var(--nad-secondary) !important;
+}
+
+.ncm-network-auth-dialog .ncm-auth__btn--purple {
+  background: rgba(168, 85, 247, 0.08) !important;
+  border: 1px solid rgba(168, 85, 247, 0.25) !important;
+  color: var(--nad-purple) !important;
+}
+
+.ncm-network-auth-dialog .ncm-auth__btn--purple:hover {
+  background: rgba(168, 85, 247, 0.15) !important;
+  border-color: var(--nad-purple) !important;
+}
+
+.ncm-network-auth-dialog .ncm-auth__btn--danger {
+  background: rgba(255, 0, 51, 0.06) !important;
+  border: 1px solid rgba(255, 0, 51, 0.2) !important;
+  color: var(--nad-danger) !important;
+}
+
+.ncm-network-auth-dialog .ncm-auth__btn--danger:hover {
+  background: rgba(255, 0, 51, 0.12) !important;
+  border-color: var(--nad-danger) !important;
+}
+
+/* ── Password input — Foundry forces height, background, border on inputs ── */
+.ncm-network-auth-dialog .ncm-auth__password-input {
+  flex: 1 !important;
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  font-family: var(--nad-font-mono) !important;
+  font-size: 12px !important;
+  color: var(--nad-secondary) !important;
+  -webkit-text-fill-color: var(--nad-secondary) !important;
+  caret-color: var(--nad-secondary) !important;
+  letter-spacing: 0.15em !important;
+  line-height: 36px !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  height: 36px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+}
+
+.ncm-network-auth-dialog .ncm-auth__password-input::placeholder {
+  color: var(--nad-text-muted) !important;
+  letter-spacing: 0.05em !important;
+}
+
+.ncm-network-auth-dialog .ncm-auth__password-input:focus {
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+/* ── Password toggle eye button ── */
+.ncm-network-auth-dialog .ncm-auth__password-toggle {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  padding: 2px !important;
+  margin: 0 0 0 auto !important;
+  color: var(--nad-text-muted) !important;
+  cursor: pointer !important;
+  font-size: 11px !important;
+  flex-shrink: 0 !important;
+}
+
+.ncm-network-auth-dialog .ncm-auth__password-toggle:hover {
+  color: var(--nad-text-primary) !important;
+  background: transparent !important;
 }

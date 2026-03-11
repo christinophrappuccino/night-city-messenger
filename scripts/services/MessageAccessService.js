@@ -222,7 +222,11 @@ export class MessageAccessService {
       return { success: false, error: 'Skill system not available' };
     }
 
-    const result = await skillSvc.performCheck(actor, skillName, dc);
+    const result = await skillSvc.performCheck(actor, skillName, {
+      dc,
+      flavor: 'Message Access Bypass',
+      context: 'ncm-message-bypass',
+    });
 
     if (result?.success) {
       await this._recordBypass(actor.id, messageId, 'skill');

@@ -230,6 +230,37 @@ export function registerDataShardSystem(initializer) {
         return game.nightcity.dataShardService.addMessage(item, messageData);
       };
 
+      // ─── Message Encryption API ──────────────────────
+
+      /**
+       * Attempt to decrypt an encrypted message via skill check.
+       * @param {string} messageId
+       * @param {string} actorId - The actor attempting decryption
+       * @returns {Promise<{ success: boolean, roll?: object }>}
+       */
+      api.attemptDecrypt = async (messageId, actorId) => {
+        return game.nightcity.messageService?.attemptDecrypt(messageId, actorId);
+      };
+
+      /**
+       * GM force decrypt a message (bypasses skill check).
+       * @param {string} messageId
+       * @param {string} [actorId] - Inbox owner. If omitted, searches all inboxes.
+       */
+      api.forceDecrypt = async (messageId, actorId) => {
+        return game.nightcity.messageService?.forceDecrypt(messageId, actorId);
+      };
+
+      /**
+       * GM encrypt an existing message after send.
+       * @param {string} actorId - Inbox owner
+       * @param {string} messageId
+       * @param {object} [encryption] - { type: 'ICE'|'BLACK_ICE', dc: number, skill: string }
+       */
+      api.encryptMessage = async (actorId, messageId, encryption) => {
+        return game.nightcity.messageService?.encryptMessage(actorId, messageId, encryption);
+      };
+
       game.nightcity.messenger = api;
       log.info('Shard macro API extensions registered');
     } catch (err) {

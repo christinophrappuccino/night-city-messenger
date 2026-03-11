@@ -385,7 +385,7 @@ export class NetworkManagementApp extends BaseApplication {
   static _onEditNetwork() {
     if (!this._selectedNetworkId) return;
     const net = this.networkService?.getNetwork(this._selectedNetworkId);
-    if (!net || net.isCore) return;
+    if (!net) return;
     this._isEditMode = true;
     this.render();
   }

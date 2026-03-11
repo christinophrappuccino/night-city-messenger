@@ -777,6 +777,174 @@
   opacity: 0.8;
 }
 
+.ncm-app .ncm-message-item__preview--locked {
+  font-family: var(--ncm-font-mono);
+  font-size: 9px;
+  color: var(--ncm-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ncm-app .ncm-message-item__preview--locked i {
+  margin-right: 3px;
+  font-size: 8px;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   §D14  NETWORK-LOCKED BYPASS UI
+   Password field, skill check buttons, key item, lockout timer.
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-locked-overlay__lockout {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: rgba(246, 82, 97, 0.06);
+  border: 1px solid rgba(246, 82, 97, 0.2);
+  border-radius: 2px;
+  font-family: var(--ncm-font-mono);
+  font-size: 11px;
+  color: var(--ncm-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-top: 8px;
+  animation: ncm-lockout-pulse 2s ease-in-out infinite;
+}
+
+@keyframes ncm-lockout-pulse {
+  0%, 100% { border-color: rgba(246, 82, 97, 0.2); }
+  50% { border-color: rgba(246, 82, 97, 0.5); }
+}
+
+.ncm-app .ncm-locked-overlay__lockout-timer {
+  font-weight: 700;
+  min-width: 40px;
+}
+
+.ncm-app .ncm-locked-overlay__attempts {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--ncm-font-mono);
+  font-size: 9px;
+  color: var(--ncm-text-muted);
+  text-transform: uppercase;
+  margin-top: 8px;
+}
+
+.ncm-app .ncm-locked-overlay__attempts-count {
+  color: var(--ncm-secondary);
+  font-weight: 600;
+}
+
+.ncm-app .ncm-locked-overlay__bypass-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 16px;
+  width: 100%;
+  max-width: 360px;
+}
+
+.ncm-app .ncm-locked-overlay__bypass-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ncm-app .ncm-locked-overlay__bypass-row--skill {
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.ncm-app .ncm-locked-overlay__bypass-field {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--ncm-border);
+  border-radius: 2px;
+  padding: 0 8px;
+  height: 30px;
+  transition: border-color 0.2s ease;
+}
+
+.ncm-app .ncm-locked-overlay__bypass-field:focus-within {
+  border-color: var(--ncm-secondary);
+}
+
+.ncm-app .ncm-locked-overlay__bypass-prefix {
+  font-family: var(--ncm-font-mono);
+  font-size: 10px;
+  color: var(--ncm-secondary);
+  margin-right: 6px;
+  user-select: none;
+}
+
+.ncm-app .ncm-locked-overlay__bypass-input {
+  flex: 1;
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  color: var(--ncm-text-primary);
+  font-family: var(--ncm-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  height: 100%;
+  min-width: 0;
+  min-height: 0 !important;
+  padding: 0 !important;
+  margin: 0;
+}
+
+.ncm-app .ncm-locked-overlay__bypass-input::placeholder {
+  color: var(--ncm-text-muted);
+  font-style: italic;
+  letter-spacing: 0.04em;
+}
+
+.ncm-app .ncm-locked-overlay__dv-badge {
+  display: inline-flex;
+  padding: 1px 6px;
+  margin-left: 4px;
+  background: rgba(25, 243, 247, 0.06);
+  border: 1px solid rgba(25, 243, 247, 0.15);
+  border-radius: 2px;
+  font-family: var(--ncm-font-mono);
+  font-size: 8px;
+  font-weight: 700;
+  color: var(--ncm-secondary);
+  line-height: 1.4;
+}
+
+.ncm-app .ncm-locked-overlay__no-bypass {
+  font-family: var(--ncm-font-mono);
+  font-size: 10px;
+  color: var(--ncm-text-muted);
+  text-align: center;
+  padding: 8px 0;
+}
+
+.ncm-app .ncm-locked-overlay__no-bypass strong {
+  color: var(--ncm-secondary);
+}
+
+.ncm-app .ncm-locked-overlay__gm-controls {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--ncm-border);
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.ncm-app .ncm-locked-overlay__gm-controls:hover {
+  opacity: 1;
+}
+
 
 /* ═══════════════════════════════════════════════════════════
    §D14  QUICK REPLY BAR
@@ -856,4 +1024,106 @@
 .ncm-app .ncm-quick-reply-send:hover {
   background: rgba(25, 243, 247, 0.08) !important;
   border-color: var(--ncm-secondary) !important;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   §D15  LOCKED OVERLAY & MESSAGE DETAIL — Foundry Overrides
+   The templates use BEM classes (ncm-btn--secondary, ncm-btn--ghost).
+   These must be defined here with !important to beat Foundry globals.
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Blanket button reset inside locked overlays and detail actions ── */
+.ncm-app .ncm-message-locked-overlay button,
+.ncm-app .ncm-message-detail .ncm-btn {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  box-shadow: none !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  line-height: 1 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  padding: 6px 12px !important;
+  border-radius: 2px !important;
+  font-family: var(--ncm-font-display) !important;
+  font-size: 0.72rem !important;
+  text-transform: uppercase !important;
+  cursor: pointer !important;
+  transition: background 0.15s, border-color 0.15s !important;
+}
+
+/* ── BEM variant: --secondary (cyan) ── */
+.ncm-app .ncm-btn--secondary {
+  background: rgba(25, 243, 247, 0.1) !important;
+  border: 1px solid rgba(25, 243, 247, 0.35) !important;
+  color: var(--ncm-secondary, #19f3f7) !important;
+}
+
+.ncm-app .ncm-btn--secondary:hover {
+  background: rgba(25, 243, 247, 0.2) !important;
+  border-color: var(--ncm-secondary, #19f3f7) !important;
+}
+
+/* ── BEM variant: --ghost (subtle border) ── */
+.ncm-app .ncm-btn--ghost {
+  background: transparent !important;
+  border: 1px solid var(--ncm-border, #2a2a45) !important;
+  color: var(--ncm-text-secondary, #8888a0) !important;
+}
+
+.ncm-app .ncm-btn--ghost:hover {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border-color: #3a3a5a !important;
+  color: var(--ncm-text-primary, #e0e0e8) !important;
+}
+
+/* ── BEM variant: --sm (small) ── */
+.ncm-app .ncm-btn--sm {
+  padding: 4px 10px !important;
+  font-size: 10px !important;
+}
+
+/* ── BEM variant: --danger-text ── */
+.ncm-app .ncm-btn--danger-text {
+  color: var(--ncm-primary, #F65261) !important;
+}
+
+.ncm-app .ncm-btn--danger-text:hover {
+  border-color: rgba(246, 82, 97, 0.4) !important;
+  background: rgba(246, 82, 97, 0.06) !important;
+}
+
+/* ── Bypass password input ── */
+.ncm-app .ncm-locked-overlay__bypass-input {
+  flex: 1 !important;
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  color: var(--ncm-text-primary) !important;
+  font-family: var(--ncm-font-mono) !important;
+  font-size: 11px !important;
+  letter-spacing: 0.12em !important;
+  height: auto !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+}
+
+.ncm-app .ncm-locked-overlay__bypass-input:focus {
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+.ncm-app .ncm-locked-overlay__bypass-input::placeholder {
+  color: var(--ncm-text-muted) !important;
+  font-style: italic !important;
+  letter-spacing: 0.04em !important;
 }

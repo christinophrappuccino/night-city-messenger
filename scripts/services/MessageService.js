@@ -572,6 +572,125 @@ export class MessageService {
     return this._messageRepo.updateMessageFlags(actorId, messageId, flagUpdates);
   }
 
+  // ─── Message Encryption ─────────────────────────────────
+
+  /**
+   * Attempt to decrypt an encrypted message via skill check.
+   * Uses the message's encryption.dc and encryption.skill (default: Interface).
+   *
+   * @param {string} messageId
+   * @param {string} actorId - The actor attempting decryption
+   * @returns {Promise<{ success: boolean, roll?: object }>}
+   */
+  async attemptDecrypt(messageId, actorId) {
+    const actor = game.actors?.get(actorId);
+    if (!actor) {
+      ui.notifications.warn('NCM | No character assigned.');
+      return { success: false };
+    }
+
+    // Find the message in inbox
+    const inbox = await this._messageRepo.getInboxJournal(actorId);
+    if (!inbox) return { success: false };
+
+    const page = inbox.pages.find(p =>
+      p.flags?.[MODULE_ID]?.messageId === messageId
+    );
+    if (!page) return { success: false };
+
+    const flags = page.flags?.[MODULE_ID];
+    if (!flags?.status?.encrypted) {
+      return { success: true }; // Already decrypted
+    }
+
+    const encryption = flags.encryption || {};
+    const dc = encryption.dc ?? 15;
+    const skillName = encryption.skill ?? 'Interface';
+
+    // Route through SkillService for full CPR roll
+    const skillSvc = game.nightcity?.skillService;
+    if (!skillSvc) {
+      ui.notifications.warn('NCM | Skill system not available.');
+      return { success: false };
+    }
+
+    const result = await skillSvc.performCheck(actor, skillName, {
+      dc,
+      flavor: `Decrypting ${encryption.type || 'ICE'}-protected message`,
+      context: 'ncm-message-decrypt',
+    });
+
+    if (result?.success) {
+      await this._messageRepo.updateMessageFlags(actorId, messageId, {
+        status: { ...flags.status, encrypted: false },
+      });
+      this.soundService?.play('hack-success');
+      this.eventBus?.emit(EVENTS.MESSAGE_STATUS_CHANGED, { messageId, actorId });
+      ui.notifications.info('NCM | Message decrypted.');
+      return { success: true, roll: result };
+    }
+
+    this.soundService?.play('hack-fail');
+    ui.notifications.warn(`NCM | Decryption failed. (${result?.total ?? '?'} vs DV ${dc})`);
+    return { success: false, roll: result };
+  }
+
+  /**
+   * GM force decrypt — bypasses skill check entirely.
+   * @param {string} messageId
+   * @param {string} [actorId] - Inbox owner. If omitted, searches all inboxes.
+   */
+  async forceDecrypt(messageId, actorId) {
+    if (!game.user?.isGM) return;
+
+    if (actorId) {
+      await this._messageRepo.updateMessageFlags(actorId, messageId, {
+        status: { encrypted: false },
+      });
+    } else {
+      // Search all inboxes for this message (GM tool)
+      for (const journal of game.journal) {
+        if (!journal.name?.startsWith('NCM-Inbox-')) continue;
+        const page = journal.pages.find(p =>
+          p.flags?.[MODULE_ID]?.messageId === messageId
+        );
+        if (page) {
+          // Extract owner ID from journal name
+          const ownerMatch = journal.name.match(/NCM-Inbox-(?:Actor-|Contact-)(.+)/);
+          const ownerId = ownerMatch?.[1] || journal.name.replace('NCM-Inbox-', '');
+          await this._messageRepo.updateMessageFlags(ownerId, messageId, {
+            status: { encrypted: false },
+          });
+        }
+      }
+    }
+
+    this.eventBus?.emit(EVENTS.MESSAGE_STATUS_CHANGED, { messageId });
+    ui.notifications.info('NCM | Message force-decrypted.');
+  }
+
+  /**
+   * GM encrypt an existing message after send.
+   * @param {string} actorId - Inbox owner
+   * @param {string} messageId
+   * @param {object} [encryption] - { type: 'ICE'|'BLACK_ICE', dc: number, skill: string }
+   */
+  async encryptMessage(actorId, messageId, encryption = {}) {
+    if (!game.user?.isGM) return;
+
+    await this._messageRepo.updateMessageFlags(actorId, messageId, {
+      status: { encrypted: true },
+      encryption: {
+        type: encryption.type || 'ICE',
+        dc: encryption.dc ?? 15,
+        skill: encryption.skill || 'Interface',
+      },
+    });
+
+    this.eventBus?.emit(EVENTS.MESSAGE_STATUS_CHANGED, { messageId });
+    ui.notifications.info('NCM | Message encrypted.');
+  }
+
   // ─── GM Operations ────────────────────────────────────────
 
   /**

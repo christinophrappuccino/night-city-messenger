@@ -37,7 +37,7 @@
   {{> "modules/cyberpunkred-messenger/templates/partials/section-header.hbs"
       title="MESSAGE DETAIL" size="small" align="left" }}
 
-  {{!-- ═══ Network-Locked Overlay (message from inaccessible network) ═══ --}}
+  {{!-- ═══ Network-Locked Overlay (with bypass options from MessageAccessService) ═══ --}}
   {{#if message.isNetworkLocked}}
     <div class="ncm-message-locked-overlay ncm-message-locked-overlay--network">
       <div class="ncm-locked-overlay__icon">
@@ -46,11 +46,118 @@
       <div class="ncm-locked-overlay__title">NETWORK RESTRICTED</div>
       <div class="ncm-locked-overlay__subtitle">
         This message was transmitted on <strong>{{message.lockedNetworkName}}</strong>.
-        Connect to this network to access content.
+        {{#if message.accessState.lockedOut}}
+          Access locked — too many failed attempts.
+        {{else}}
+          Connect to this network or bypass access controls.
+        {{/if}}
       </div>
       <div class="ncm-locked-overlay__net-badge">
         <i class="fas fa-lock"></i> REQUIRES {{message.lockedNetworkName}} ACCESS
       </div>
+
+      {{!-- ── Lockout State ── --}}
+      {{#if message.accessState.lockedOut}}
+        <div class="ncm-locked-overlay__lockout">
+          <i class="fas fa-clock"></i>
+          <span>SYSTEM LOCKED</span>
+          <span class="ncm-locked-overlay__lockout-timer"
+                data-lockout-until="{{message.accessState.lockoutUntil}}">
+            --:--
+          </span>
+        </div>
+
+      {{!-- ── Bypass Options (not locked out) ── --}}
+      {{else}}
+
+        {{!-- Attempt Counter --}}
+        {{#if message.accessState.maxAttempts}}
+          {{#if message.accessState.hackAttempts}}
+            <div class="ncm-locked-overlay__attempts">
+              <span class="ncm-locked-overlay__attempts-label">Bypass attempts:</span>
+              <span class="ncm-locked-overlay__attempts-count">
+                {{sub message.accessState.maxAttempts message.accessState.hackAttempts}}
+                of {{message.accessState.maxAttempts}} remaining
+              </span>
+            </div>
+          {{/if}}
+        {{/if}}
+
+        <div class="ncm-locked-overlay__bypass-options">
+
+          {{!-- Password Bypass --}}
+          {{#if message.accessState.bypassOptions.password}}
+            <div class="ncm-locked-overlay__bypass-row">
+              <div class="ncm-locked-overlay__bypass-field">
+                <span class="ncm-locked-overlay__bypass-prefix">pass&gt;</span>
+                <input class="ncm-locked-overlay__bypass-input"
+                       type="password"
+                       name="bypassPassword"
+                       placeholder="enter access code..."
+                       data-message-id="{{message.messageId}}" />
+              </div>
+              <button class="ncm-btn ncm-btn--secondary ncm-btn--sm"
+                      data-action="bypass-password"
+                      data-message-id="{{message.messageId}}">
+                <i class="fas fa-key"></i>
+                <span>AUTH</span>
+              </button>
+            </div>
+          {{/if}}
+
+          {{!-- Skill Check Bypass --}}
+          {{#if message.accessState.bypassOptions.skillCheck}}
+            <div class="ncm-locked-overlay__bypass-row ncm-locked-overlay__bypass-row--skill">
+              {{#each message.accessState.bypassSkills}}
+                <button class="ncm-btn ncm-btn--ghost ncm-btn--sm"
+                        data-action="bypass-skill"
+                        data-message-id="{{../message.messageId}}"
+                        data-skill="{{this}}">
+                  <i class="fas fa-dice-d20"></i>
+                  <span>{{this}} Check</span>
+                  <span class="ncm-locked-overlay__dv-badge">DV {{../message.accessState.bypassDC}}</span>
+                </button>
+              {{/each}}
+            </div>
+          {{/if}}
+
+          {{!-- Key Item Bypass --}}
+          {{#if message.accessState.bypassOptions.keyItem}}
+            <div class="ncm-locked-overlay__bypass-row">
+              <button class="ncm-btn ncm-btn--ghost ncm-btn--sm"
+                      data-action="bypass-keyitem"
+                      data-message-id="{{message.messageId}}">
+                <i class="fas fa-id-badge"></i>
+                <span>Present {{message.accessState.keyItemName}}</span>
+              </button>
+            </div>
+          {{/if}}
+
+          {{!-- No bypass available hint --}}
+          {{#unless message.accessState.bypassOptions.password}}
+            {{#unless message.accessState.bypassOptions.skillCheck}}
+              {{#unless message.accessState.bypassOptions.keyItem}}
+                <div class="ncm-locked-overlay__no-bypass">
+                  No bypass methods available. Connect to <strong>{{message.lockedNetworkName}}</strong> directly.
+                </div>
+              {{/unless}}
+            {{/unless}}
+          {{/unless}}
+
+        </div>
+      {{/if}}
+
+      {{!-- ── GM Controls ── --}}
+      {{#if isGM}}
+        <div class="ncm-locked-overlay__gm-controls">
+          <button class="ncm-btn ncm-btn--ghost ncm-btn--sm"
+                  data-action="gm-force-reveal"
+                  data-message-id="{{message.messageId}}">
+            <i class="fas fa-shield-halved"></i>
+            <span>GM Force Reveal</span>
+          </button>
+        </div>
+      {{/if}}
     </div>
 
   {{!-- ═══ Encryption Overlay (if encrypted & not decrypted) ═══ --}}

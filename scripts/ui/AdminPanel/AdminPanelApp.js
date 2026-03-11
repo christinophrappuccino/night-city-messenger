@@ -421,7 +421,7 @@ export class AdminPanelApp extends BaseApplication {
         actorName = actor?.name || null;
         if (actor?.hasPlayerOwner) {
           const ownerEntry = Object.entries(actor.ownership || {}).find(
-            ([uid, level]) => uid !== 'default' && level === CONST.DOCUMENT_PERMISSION_LEVELS.OWNER
+            ([uid, level]) => uid !== 'default' && level === CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER
           );
           if (ownerEntry) {
             playerOwnerName = game.users.get(ownerEntry[0])?.name || null;

@@ -442,11 +442,27 @@ export class NetworkService {
   async updateNetwork(networkId, updates) {
     if (!isGM()) return { success: false, error: 'GM only' };
 
-    // Cannot edit core networks
     const existing = this.getNetwork(networkId);
     if (!existing) return { success: false, error: 'Network not found' };
-    if (existing.isCore) return { success: false, error: 'Cannot edit core networks' };
 
+    // Core networks: save overrides separately (protect id, isCore)
+    if (existing.isCore) {
+      const overrides = foundry.utils.deepClone(
+        this.settingsManager.get('coreNetworkOverrides') ?? {}
+      );
+      // Never allow overriding id or isCore
+      delete updates.id;
+      delete updates.isCore;
+      overrides[networkId] = foundry.utils.mergeObject(overrides[networkId] ?? {}, updates, { inplace: false });
+      await this.settingsManager.set('coreNetworkOverrides', overrides);
+
+      this._buildNetworkCache();
+      this.eventBus.emit(EVENTS.NETWORK_CHANGED, { type: 'updated', networkId });
+      log.info(`Core network override saved: ${networkId}`);
+      return { success: true };
+    }
+
+    // Custom networks: update in place
     const customs = this.settingsManager.get('customNetworks') ?? [];
     const idx = customs.findIndex(n => n.id === networkId);
     if (idx === -1) return { success: false, error: 'Custom network not found' };
@@ -579,9 +595,20 @@ export class NetworkService {
   _buildNetworkCache() {
     this._networkCache.clear();
 
-    // Core networks from constants
+    // Load GM overrides for core networks
+    let coreOverrides = {};
+    try {
+      coreOverrides = this.settingsManager.get('coreNetworkOverrides') ?? {};
+    } catch { /* Settings might not be ready yet */ }
+
+    // Core networks from constants, merged with any GM overrides
     for (const net of DEFAULTS.CORE_NETWORKS) {
-      this._networkCache.set(net.id, { ...net });
+      const override = coreOverrides[net.id];
+      if (override) {
+        this._networkCache.set(net.id, foundry.utils.mergeObject({ ...net }, override, { inplace: false }));
+      } else {
+        this._networkCache.set(net.id, { ...net });
+      }
     }
 
     // Custom networks from settings
