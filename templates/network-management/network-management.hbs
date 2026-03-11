@@ -275,7 +275,7 @@
                   </select>
                   <span class="ncm-netmgr__field-hint">
                     {{#if (eq selectedNetwork.security.authLogic "all")}}
-                      Player must pass all enabled checks. Key item always bypasses.
+                      Player must pass ALL enabled checks to gain access.
                     {{else}}
                       Player can use any single method to gain access.
                     {{/if}}
@@ -546,7 +546,6 @@
                 <span class="ncm-netmgr__prop-value">
                   {{#if (eq selectedNetwork.security.authLogic "all")}}
                     <span style="color:var(--ncm-primary);">ALL required</span>
-                    <span style="color:var(--ncm-text-muted);font-size:8px;margin-left:4px;">(key item bypasses)</span>
                   {{else}}
                     <span style="color:var(--ncm-success,#00ff41);">ANY method</span>
                   {{/if}}

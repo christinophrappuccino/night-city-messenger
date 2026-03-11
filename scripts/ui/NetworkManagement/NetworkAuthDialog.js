@@ -203,6 +203,10 @@ export class NetworkAuthDialog extends BaseApplication {
     // --- Auth logic and completion state ---
     const authLogic = network.security.authLogic ?? 'any';
     const isAndMode = authLogic === 'all';
+
+    // Debug: trace what the dialog reads
+    console.log(`NCM | Auth dialog — network: ${network.name}, authLogic: "${authLogic}", security:`, JSON.stringify(network.security));
+
     const passwordCompleted = this._completedMethods.has('password');
     const skillCompleted = this._completedMethods.has('skill');
     const keyItemCompleted = this._completedMethods.has('keyitem');
@@ -212,12 +216,11 @@ export class NetworkAuthDialog extends BaseApplication {
     const enabledMethods = [];
     if (hasPassword) enabledMethods.push('Password');
     if (hasSkillBypass) enabledMethods.push('Skill Check');
+    if (hasKeyItem) enabledMethods.push('Key Item');
     if (isAndMode) {
       logicDescription = enabledMethods.join(' AND ');
-      if (hasKeyItem) logicDescription += ' — or present Key Item to bypass';
     } else {
       logicDescription = enabledMethods.join(' OR ');
-      if (hasKeyItem) logicDescription += ' OR Key Item';
     }
 
     return {
@@ -557,7 +560,7 @@ export class NetworkAuthDialog extends BaseApplication {
    * @param {Item} item
    */
   _processKeyItem(item) {
-    const network = this.network;
+    const network = this.networkService?.getNetwork?.(this.networkId) ?? this.network;
     const sec = network?.security;
     if (!sec) return;
 
@@ -581,14 +584,15 @@ export class NetworkAuthDialog extends BaseApplication {
 
       this.soundService?.play('key-accepted');
       this._completedMethods.add('keyitem');
+      this._keyItemError = null;
+      this._presentedItemName = item.name;
+      this._presentedItemImg = item.img;
 
-      // Key item ALWAYS grants full access (bypasses AND logic)
-      this.networkService?._authenticatedNetworks?.add(this.networkId);
-      if (this._resolve) {
-        this._resolve({ success: true, method: 'keyitem', itemName: item.name });
-        this._resolve = null;
-      }
-      this.close();
+      // Check if all required methods are now complete
+      if (this._checkAuthComplete()) return;
+
+      // Not fully done yet (AND mode) — re-render to show completion badge
+      this.render();
     } else {
       // Wrong item
       this._presentedItemName = item.name;
@@ -624,14 +628,16 @@ export class NetworkAuthDialog extends BaseApplication {
       return true;
     }
 
-    // AND mode: check all enabled non-keyitem methods
+    // AND mode: check ALL enabled methods
     const needPassword = !!(sec?.allowPassword);
     const needSkill = !!(sec?.allowSkillCheck) && (sec?.bypassSkills?.length > 0);
+    const needKeyItem = !!(sec?.allowKeyItem) && !!(sec?.keyItemName || sec?.keyItemTag);
 
     const passwordDone = !needPassword || this._completedMethods.has('password');
     const skillDone = !needSkill || this._completedMethods.has('skill');
+    const keyItemDone = !needKeyItem || this._completedMethods.has('keyitem');
 
-    if (passwordDone && skillDone) {
+    if (passwordDone && skillDone && keyItemDone) {
       // All required methods completed
       this.networkService?._authenticatedNetworks?.add(this.networkId);
       if (this._resolve) {

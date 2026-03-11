@@ -313,52 +313,61 @@ export class NetworkManagementApp extends BaseApplication {
     const form = this.element.querySelector('.ncm-network-form');
     if (!form) return;
 
-    const formData = new FormDataExtended(form).object;
+    // Read all values directly from DOM — FormDataExtended is unreliable
+    // with selects and checkboxes in ApplicationV2
+    const val = (name) => form.querySelector(`[name="${name}"]`)?.value?.trim() ?? '';
+    const num = (name, def) => parseInt(form.querySelector(`[name="${name}"]`)?.value) || def;
+    const flt = (name, def) => parseFloat(form.querySelector(`[name="${name}"]`)?.value) || def;
+    const chk = (name) => form.querySelector(`input[name="${name}"]`)?.checked ?? false;
+    const sel = (name) => form.querySelector(`select[name="${name}"]`)?.value ?? '';
 
     // Build network data from form
     const networkData = {
-      name: formData.name?.trim(),
-      type: formData.type || NETWORK_TYPES.CUSTOM,
+      name: val('name'),
+      type: sel('type') || NETWORK_TYPES.CUSTOM,
       availability: {
-        global: formData.globalAvailability === 'true' || formData.globalAvailability === true,
+        global: chk('globalAvailability'),
         scenes: [],
       },
-      signalStrength: parseInt(formData.signalStrength) || 75,
-      reliability: parseInt(formData.reliability) || 85,
+      signalStrength: num('signalStrength', 75),
+      reliability: num('reliability', 85),
       security: {
-        level: formData.securityLevel || SECURITY_LEVELS.NONE,
-        requiresAuth: formData.requiresAuth === 'true' || formData.requiresAuth === true,
-        password: formData.password?.trim() ?? '',
-        allowPassword: formData.allowPassword === 'true' || formData.allowPassword === true,
-        allowSkillCheck: formData.allowSkillCheck === 'true' || formData.allowSkillCheck === true,
-        authLogic: formData.authLogic || 'any',
-        bypassSkills: formData.bypassSkills ? formData.bypassSkills.split(',').map(s => s.trim()).filter(Boolean) : [],
-        bypassDC: parseInt(formData.bypassDC) || 15,
-        allowKeyItem: formData.allowKeyItem === 'true' || formData.allowKeyItem === true,
-        keyItemName: formData.keyItemName?.trim() ?? '',
-        keyItemTag: formData.keyItemTag?.trim() ?? '',
-        keyItemConsume: formData.keyItemConsume === 'true' || formData.keyItemConsume === true,
-        maxAttempts: parseInt(formData.maxAttempts) || 3,
-        lockoutDuration: (parseInt(formData.lockoutMinutes) || 60) * 60000,
+        level: sel('securityLevel') || SECURITY_LEVELS.NONE,
+        requiresAuth: sel('requiresAuth') === 'true',
+        password: val('password'),
+        allowPassword: chk('allowPassword'),
+        allowSkillCheck: chk('allowSkillCheck'),
+        authLogic: sel('authLogic') || 'any',
+        bypassSkills: val('bypassSkills') ? val('bypassSkills').split(',').map(s => s.trim()).filter(Boolean) : [],
+        bypassDC: num('bypassDC', 15),
+        allowKeyItem: chk('allowKeyItem'),
+        keyItemName: val('keyItemName'),
+        keyItemTag: val('keyItemTag'),
+        keyItemConsume: chk('keyItemConsume'),
+        maxAttempts: num('maxAttempts', 3),
+        lockoutDuration: (num('lockoutMinutes', 60)) * 60000,
       },
       effects: {
-        messageDelay: parseInt(formData.messageDelay) || 0,
-        traced: formData.traced === 'true' || formData.traced === true,
-        anonymity: formData.anonymity === 'true' || formData.anonymity === true,
-        canRoute: formData.canRoute !== 'false' && formData.canRoute !== false,
-        restrictedAccess: formData.restrictedAccess === 'true' || formData.restrictedAccess === true,
-        allowedRecipientNetworks: formData.allowedRecipientNetworks
-          ? formData.allowedRecipientNetworks.split(',').map(s => s.trim()).filter(Boolean)
+        messageDelay: num('messageDelay', 0),
+        traced: chk('traced'),
+        anonymity: chk('anonymity'),
+        canRoute: chk('canRoute'),
+        restrictedAccess: chk('restrictedAccess'),
+        allowedRecipientNetworks: val('allowedRecipientNetworks')
+          ? val('allowedRecipientNetworks').split(',').map(s => s.trim()).filter(Boolean)
           : [],
       },
       theme: {
-        color: formData.themeColor || '#19f3f7',
-        icon: formData.themeIcon?.trim() || 'fa-wifi',
-        glitchIntensity: parseFloat(formData.glitchIntensity) || 0.1,
+        color: val('themeColor') || '#19f3f7',
+        icon: val('themeIcon') || 'fa-wifi',
+        glitchIntensity: flt('glitchIntensity', 0.1),
       },
-      description: formData.description?.trim() ?? '',
-      lore: formData.lore?.trim() ?? '',
+      description: val('description'),
+      lore: val('lore'),
     };
+
+    // Debug log to verify authLogic is captured
+    console.log(`NCM | Save network — authLogic: "${networkData.security.authLogic}", allowPassword: ${networkData.security.allowPassword}, allowSkillCheck: ${networkData.security.allowSkillCheck}, allowKeyItem: ${networkData.security.allowKeyItem}`);
 
     if (!networkData.name) {
       ui.notifications.warn('NCM | Network name is required.');
