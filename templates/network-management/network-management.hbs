@@ -303,14 +303,21 @@
 
               {{!-- Key Item Config --}}
               <div class="ncm-netmgr__field-row">
-                <div class="ncm-netmgr__field">
+                <div class="ncm-netmgr__field" style="flex:2;">
                   <label class="ncm-netmgr__field-label">Key Item Name (match by name in inventory)</label>
-                  <input class="ncm-netmgr__input" type="text" name="keyItemName"
-                         value="{{selectedNetwork.security.keyItemName}}"
-                         placeholder="e.g. Arasaka Access Card">
+                  <div style="display:flex;gap:4px;align-items:center;">
+                    <input class="ncm-netmgr__input" type="text" name="keyItemName"
+                           value="{{selectedNetwork.security.keyItemName}}"
+                           placeholder="e.g. Arasaka Access Card"
+                           style="flex:1;">
+                    <button type="button" class="ncm-netmgr__btn-sm" data-action="browseKeyItem"
+                            title="Browse world items">
+                      <i class="fas fa-search"></i>
+                    </button>
+                  </div>
                 </div>
                 <div class="ncm-netmgr__field">
-                  <label class="ncm-netmgr__field-label">Key Item Tag (optional, match by system tag)</label>
+                  <label class="ncm-netmgr__field-label">Key Item Tag (optional)</label>
                   <input class="ncm-netmgr__input" type="text" name="keyItemTag"
                          value="{{selectedNetwork.security.keyItemTag}}"
                          placeholder="e.g. arasaka_keycard">

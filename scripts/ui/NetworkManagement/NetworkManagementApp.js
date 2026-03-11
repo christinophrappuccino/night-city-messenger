@@ -13,6 +13,7 @@ import { MODULE_ID, EVENTS, TEMPLATES, NETWORK_TYPES, SECURITY_LEVELS } from '..
 import { log, isGM } from '../../utils/helpers.js';
 import { BaseApplication } from '../BaseApplication.js';
 import { CreateNetworkDialog } from './CreateNetworkDialog.js';
+import { showWorldItemPicker } from '../../utils/itemPicker.js';
 
 export class NetworkManagementApp extends BaseApplication {
 
@@ -63,6 +64,7 @@ export class NetworkManagementApp extends BaseApplication {
       saveSceneConfig: NetworkManagementApp._onSaveSceneConfig,
       clearLogs: NetworkManagementApp._onClearLogs,
       exportLogs: NetworkManagementApp._onExportLogs,
+      browseKeyItem: NetworkManagementApp._onBrowseKeyItem,
       resetSecurity: NetworkManagementApp._onResetSecurity,
     },
   }, { inplace: false });
@@ -445,6 +447,32 @@ export class NetworkManagementApp extends BaseApplication {
       this._selectedNetworkId = null;
     }
     this.render();
+  }
+
+  /**
+   * Browse world items to select a key item for network auth.
+   * Fills the keyItemName input field with the selected item's name.
+   */
+  static async _onBrowseKeyItem(event, target) {
+    const item = await showWorldItemPicker({
+      title: 'Select Key Item for Network Auth',
+    });
+    if (!item) return;
+
+    // Fill in the key item name field
+    const nameInput = this.element?.querySelector('input[name="keyItemName"]');
+    if (nameInput) {
+      nameInput.value = item.name;
+    }
+
+    // Also fill tag if the item has one
+    const tag = item.system?.tag || '';
+    if (tag) {
+      const tagInput = this.element?.querySelector('input[name="keyItemTag"]');
+      if (tagInput && !tagInput.value) {
+        tagInput.value = tag;
+      }
+    }
   }
 
   static async _onToggleDeadZone(event, target) {

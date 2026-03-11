@@ -1997,8 +1997,8 @@ export class MessageViewerApp extends BaseApplication {
     // ── Priority badge variant for tag-badge partial ──
     const priorityVariant = getPriorityBadgeVariant(msg.priority || 'normal');
 
-    // ── Network label (short name for badge) ──
-    const networkLabel = msg.network || '';
+    // ── Network label (resolved display name) ──
+    const networkLabel = this.networkService?.getNetwork?.(msg.network)?.name || msg.network || '';
 
     // ── Formatted time using formatCyberDate helper ──
     let formattedTime = '';

@@ -23,6 +23,7 @@
 import { MODULE_ID, EVENTS, TEMPLATES } from '../../utils/constants.js';
 import { log } from '../../utils/helpers.js';
 import { BaseApplication } from '../BaseApplication.js';
+import { showItemPicker } from '../../utils/itemPicker.js';
 
 export class NetworkAuthDialog extends BaseApplication {
 
@@ -79,6 +80,7 @@ export class NetworkAuthDialog extends BaseApplication {
       togglePasswordVisibility: NetworkAuthDialog._onTogglePasswordVisibility,
       gmBypass: NetworkAuthDialog._onGMBypass,
       switchMode: NetworkAuthDialog._onSwitchMode,
+      browseKeyItem: NetworkAuthDialog._onBrowseKeyItem,
       cancel: NetworkAuthDialog._onCancel,
     },
   }, { inplace: false });
@@ -111,9 +113,8 @@ export class NetworkAuthDialog extends BaseApplication {
       dialog.network = network;
       dialog._resolve = resolve;
 
-      // Determine default auth mode
-      const hasPassword = !!network.security.password;
-      const hasSkillBypass = network.security.bypassSkills?.length > 0;
+      const hasPassword = network.security.allowPassword ?? !!network.security.password;
+      const hasSkillBypass = (network.security.allowSkillCheck ?? false) && network.security.bypassSkills?.length > 0;
       dialog._authMode = hasPassword ? 'password' : (hasSkillBypass ? 'skill' : 'password');
 
       dialog.render(true);
@@ -128,8 +129,9 @@ export class NetworkAuthDialog extends BaseApplication {
     const network = this.network;
     if (!network) return {};
 
-    const hasPassword = !!network.security.password;
-    const hasSkillBypass = network.security.bypassSkills?.length > 0;
+    const hasPassword = network.security.allowPassword ?? !!network.security.password;
+    const hasSkillBypass = (network.security.allowSkillCheck ?? false) && network.security.bypassSkills?.length > 0;
+    const hasKeyItem = (network.security.allowKeyItem ?? false) && !!(network.security.keyItemName || network.security.keyItemTag);
 
     // Derive maxAttempts early — needed for pip computation below
     const maxAttempts = network.security.maxAttempts ?? 3;
@@ -186,9 +188,9 @@ export class NetworkAuthDialog extends BaseApplication {
     };
     const securityTagClass = securityTagMap[(network.security.level || 'standard').toLowerCase()] || 'warn';
 
-    // --- Skill Breakdown (for skill check mode) ---
+    // --- Skill Breakdown (when skill bypass is available) ---
     let skillBreakdown = null;
-    if (this._authMode === 'skill' && hasSkillBypass) {
+    if (hasSkillBypass) {
       skillBreakdown = this._buildSkillBreakdown(network);
     }
 
@@ -207,10 +209,17 @@ export class NetworkAuthDialog extends BaseApplication {
 
       hasPassword,
       hasSkillBypass,
+      hasKeyItem,
       hasBothModes: hasPassword && hasSkillBypass,
       authMode: this._authMode,
       isPasswordMode: this._authMode === 'password',
       isSkillMode: this._authMode === 'skill',
+
+      keyItemName: network.security.keyItemName ?? '',
+      keyItemTag: network.security.keyItemTag ?? '',
+      presentedItemName: this._presentedItemName ?? null,
+      presentedItemImg: this._presentedItemImg ?? null,
+      keyItemError: this._keyItemError ?? null,
 
       bypassSkills: (network.security.bypassSkills ?? []).map(skill => ({
         name: skill,
@@ -249,15 +258,17 @@ export class NetworkAuthDialog extends BaseApplication {
     // Set auth state attribute for CSS accent bar color
     if (context.isLockedOut) {
       this.element.dataset.authState = 'lockout';
-    } else if (context.isSkillMode) {
+    } else if (context.hasKeyItem && !context.hasPassword && !context.hasSkillBypass) {
+      this.element.dataset.authState = 'keyitem';
+    } else if (context.hasSkillBypass && !context.hasPassword) {
       this.element.dataset.authState = 'skill';
     } else {
       this.element.dataset.authState = 'password';
     }
 
-    // ── Enter key submission for password mode ──
+    // ── Enter key submission for password field (always when present) ──
     this._unbindKeydown();
-    if (context.isPasswordMode && !context.isLockedOut) {
+    if (context.hasPassword && !context.isLockedOut) {
       const input = this.element.querySelector('.ncm-auth__password-input');
       if (input) {
         this._keydownHandler = (e) => {
@@ -480,6 +491,80 @@ export class NetworkAuthDialog extends BaseApplication {
 
   static _onCancel() {
     this.close();
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Key Item Handlers
+  // ═══════════════════════════════════════════════════════════
+
+  /**
+   * Browse actor inventory to select a key item.
+   * Uses the shared item picker utility.
+   */
+  static async _onBrowseKeyItem(event, target) {
+    const actor = game.user?.character;
+    if (!actor) {
+      ui.notifications.warn('NCM | No character assigned.');
+      return;
+    }
+
+    const keyItemName = this.network?.security?.keyItemName || 'access credential';
+    const item = await showItemPicker(actor, {
+      title: 'Present Access Credential',
+      hint: `Select an item to present as "${keyItemName}".`,
+    });
+
+    if (item) {
+      this._processKeyItem(item);
+    }
+  }
+
+  /**
+   * Process a presented key item — check against network requirements.
+   * @param {Item} item
+   */
+  _processKeyItem(item) {
+    const network = this.network;
+    const sec = network?.security;
+    if (!sec) return;
+
+    const keyItemName = (sec.keyItemName || '').toLowerCase().trim();
+    const keyItemTag = (sec.keyItemTag || '').toLowerCase().trim();
+    const itemName = (item.name || '').toLowerCase().trim();
+    const itemTag = (item.system?.tag || item.flags?.tag || '').toLowerCase().trim();
+
+    // Check match
+    let matched = false;
+    if (keyItemTag && itemTag === keyItemTag) matched = true;
+    if (keyItemName && itemName === keyItemName) matched = true;
+
+    if (matched) {
+      // Success — consume if configured
+      if (sec.keyItemConsume && item.actor) {
+        item.actor.deleteEmbeddedDocuments('Item', [item.id]).catch(err => {
+          console.warn('NCM | Failed to consume key item:', err);
+        });
+      }
+
+      // Grant auth
+      this.networkService?.authenticatePassword?.(this.networkId, network.security.password || '__keyitem__');
+      // Add to authenticated set directly
+      this.networkService?._authenticatedNetworks?.add(this.networkId);
+
+      this.soundService?.play('key-accepted');
+      if (this._resolve) {
+        this._resolve({ success: true, method: 'keyitem', itemName: item.name });
+        this._resolve = null;
+      }
+      this.close();
+    } else {
+      // Wrong item
+      this._presentedItemName = item.name;
+      this._presentedItemImg = item.img;
+      this._keyItemError = `"${item.name}" is not a valid access credential for ${network.name}.`;
+      this.soundService?.play('key-rejected');
+      this.render();
+    }
   }
 
   // ═══════════════════════════════════════════════════════════
