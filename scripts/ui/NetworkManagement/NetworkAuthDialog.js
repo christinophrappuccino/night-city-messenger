@@ -129,6 +129,9 @@ export class NetworkAuthDialog extends BaseApplication {
   // ═══════════════════════════════════════════════════════════
 
   async _prepareContext(options) {
+    // Always re-fetch from NetworkService to get latest data (e.g., after GM saves)
+    const freshNetwork = this.networkService?.getNetwork(this.networkId);
+    if (freshNetwork) this.network = freshNetwork;
     const network = this.network;
     if (!network) return {};
 
@@ -604,7 +607,9 @@ export class NetworkAuthDialog extends BaseApplication {
    * @returns {boolean} true if auth is complete and dialog was closed
    */
   _checkAuthComplete() {
-    const sec = this.network?.security;
+    // Re-read from NetworkService to ensure latest saved config
+    const network = this.networkService?.getNetwork?.(this.networkId) ?? this.network;
+    const sec = network?.security;
     const authLogic = sec?.authLogic ?? 'any';
 
     if (authLogic === 'any') {
@@ -619,9 +624,9 @@ export class NetworkAuthDialog extends BaseApplication {
       return true;
     }
 
-    // AND mode: check all required non-keyitem methods
-    const needPassword = sec?.allowPassword ?? false;
-    const needSkill = sec?.allowSkillCheck ?? false;
+    // AND mode: check all enabled non-keyitem methods
+    const needPassword = !!(sec?.allowPassword);
+    const needSkill = !!(sec?.allowSkillCheck) && (sec?.bypassSkills?.length > 0);
 
     const passwordDone = !needPassword || this._completedMethods.has('password');
     const skillDone = !needSkill || this._completedMethods.has('skill');

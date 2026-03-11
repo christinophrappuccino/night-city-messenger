@@ -410,6 +410,16 @@ export class DocumentSyncBridge {
         });
         break;
 
+      case 'coreNetworkOverrides':
+        log.debug('SyncBridge: Core network overrides changed');
+        // Rebuild network cache on all clients (merges overrides onto core defs)
+        game.nightcity?.networkService?._buildNetworkCache?.();
+        this._eventBus.emit(EVENTS.NETWORK_CHANGED, {
+          source: 'document-sync',
+          settingChanged: 'coreNetworkOverrides',
+        });
+        break;
+
       case 'masterContacts':
         log.debug('SyncBridge: Master contacts setting changed');
         this._eventBus.emit(EVENTS.CONTACT_UPDATED ?? 'contact:updated', {
