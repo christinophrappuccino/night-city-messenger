@@ -557,6 +557,23 @@
     </div>
     {{/if}}
 
+    {{!-- Broadcast Bar --}}
+    <div class="ncm-broadcast-bar">
+      <div class="ncm-broadcast-bar__icon"><i class="fas fa-tower-broadcast"></i></div>
+      <div><div class="ncm-broadcast-bar__label">Broadcast</div></div>
+      <select class="ncm-broadcast-bar__select" name="broadcastNetwork">
+        <option value="all">All Networks</option>
+        {{#each networks}}
+        <option value="{{this.id}}">{{this.name}}</option>
+        {{/each}}
+      </select>
+      <input class="ncm-broadcast-bar__input" name="broadcastMessage"
+             placeholder="System message to all connected users...">
+      <button class="ncm-broadcast-bar__send" data-action="sendBroadcast">
+        <i class="fas fa-paper-plane"></i> Send
+      </button>
+    </div>
+
     {{!-- Network Cards --}}
     {{#if networks.length}}
     <div class="ncm-network-grid">

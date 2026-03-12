@@ -123,6 +123,7 @@ export class AdminPanelApp extends BaseApplication {
       exportNetworkLogs: AdminPanelApp._onExportNetworkLogs,
       clearNetworkLogs: AdminPanelApp._onClearNetworkLogs,
       resetNetworkAuth: AdminPanelApp._onResetNetworkAuth,
+      sendBroadcast: AdminPanelApp._onSendBroadcast,
 
       // Data Shards actions
       openShardItem: AdminPanelApp._onOpenShardItem,
@@ -1882,6 +1883,65 @@ export class AdminPanelApp extends BaseApplication {
     this.networkService?.revokeAuth(networkId);
     ui.notifications.info(`NCM | Auth reset for ${networkId}.`);
     this.render(true);
+  }
+
+  // ── Sprint 6: Network Broadcast ──
+
+  static async _onSendBroadcast(event, target) {
+    event.preventDefault();
+    const bar = target.closest('.ncm-broadcast-bar') || this.element?.querySelector('.ncm-broadcast-bar');
+    if (!bar) return;
+
+    const networkSelect = bar.querySelector('[name="broadcastNetwork"]');
+    const messageInput = bar.querySelector('[name="broadcastMessage"]');
+    const networkValue = networkSelect?.value ?? 'all';
+    const message = messageInput?.value?.trim();
+
+    if (!message) {
+      ui.notifications.warn('NCM | Broadcast message cannot be empty.');
+      return;
+    }
+
+    const networkName = networkValue === 'all'
+      ? 'ALL NETWORKS'
+      : (this.networkService?.getNetwork(networkValue)?.name ?? networkValue);
+
+    // Create styled chat card whispered to all active non-GM users
+    const whisperTargets = game.users.filter(u => u.active && !u.isGM).map(u => u.id);
+
+    const content = `
+      <div class="ncm-chat-card ncm-chat-card--broadcast">
+        <div class="ncm-chat-card__header">
+          <i class="fas fa-tower-broadcast"></i>
+          <span class="ncm-chat-card__badge">NETWORK BROADCAST</span>
+          <span class="ncm-chat-card__shared-by">${networkName}</span>
+        </div>
+        <div class="ncm-chat-card__content">
+          <div class="ncm-chat-card__body">${foundry.utils.encodeHTML ? foundry.utils.encodeHTML(message) : message}</div>
+        </div>
+        <div class="ncm-chat-card__footer">
+          <span class="ncm-chat-card__network ncm-mono">${networkName} // SYSTEM BROADCAST</span>
+        </div>
+      </div>`;
+
+    await ChatMessage.create({
+      content,
+      whisper: whisperTargets,
+      speaker: { alias: `NCM // ${networkName}` },
+    });
+
+    // Also log to access log
+    this.accessLogService?.addManualEntry({
+      networkId: networkValue === 'all' ? 'all' : networkValue,
+      networkName,
+      actorName: 'SYSTEM',
+      type: 'system',
+      message: `Broadcast: ${message}`,
+    });
+
+    // Clear input
+    if (messageInput) messageInput.value = '';
+    ui.notifications.info(`NCM | Broadcast sent to ${networkName}.`);
   }
 
   // ═══════════════════════════════════════════════════════════

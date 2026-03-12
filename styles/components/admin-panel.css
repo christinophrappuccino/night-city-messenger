@@ -2296,6 +2296,95 @@
 }
 
 /* ═══════════════════════════════════════════
+   SPRINT 6: BROADCAST BAR
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-broadcast-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: rgba(246, 82, 97, 0.04);
+  border: 1px solid rgba(246, 82, 97, 0.15);
+  border-radius: 2px;
+  margin-bottom: 10px;
+}
+
+.ncm-app .ncm-broadcast-bar__icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 2px;
+  background: rgba(246, 82, 97, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ncm-primary);
+  font-size: 11px;
+  flex-shrink: 0;
+  border: 1px solid rgba(246, 82, 97, 0.2);
+}
+
+.ncm-app .ncm-broadcast-bar__label {
+  font-family: var(--ncm-font-display);
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ncm-text-muted);
+}
+
+.ncm-app .ncm-broadcast-bar__select {
+  font-family: var(--ncm-font-mono);
+  font-size: 10px;
+  color: var(--ncm-text-primary);
+  background: var(--ncm-bg-surface);
+  border: 1px solid var(--ncm-border);
+  padding: 4px 8px;
+  border-radius: 2px;
+}
+
+.ncm-app .ncm-broadcast-bar__input {
+  flex: 1;
+  font-family: var(--ncm-font-mono);
+  font-size: 10px;
+  color: var(--ncm-text-primary);
+  background: var(--ncm-bg-surface);
+  border: 1px solid var(--ncm-border);
+  padding: 4px 8px;
+  border-radius: 2px;
+}
+
+.ncm-app .ncm-broadcast-bar__input::placeholder {
+  color: var(--ncm-text-muted);
+}
+
+.ncm-app .ncm-broadcast-bar__input:focus {
+  outline: none;
+  border-color: var(--ncm-secondary);
+}
+
+.ncm-app .ncm-broadcast-bar__send {
+  font-family: var(--ncm-font-display);
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--ncm-primary);
+  background: rgba(246, 82, 97, 0.08);
+  border: 1px solid rgba(246, 82, 97, 0.25);
+  padding: 4px 12px;
+  border-radius: 2px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.ncm-app .ncm-broadcast-bar__send:hover {
+  background: rgba(246, 82, 97, 0.15);
+  border-color: var(--ncm-primary);
+}
+
+/* ═══════════════════════════════════════════
    SPRINT 6: ENHANCED NETWORK CARD ADDITIONS
    ═══════════════════════════════════════════ */
 
@@ -2958,6 +3047,7 @@
 .ncm-app .ncm-admin-panel .ncm-network-card__action-btn,
 .ncm-app .ncm-admin-panel .ncm-network-card__log-toggle,
 .ncm-app .ncm-admin-panel .ncm-log-entry__action-btn,
+.ncm-app .ncm-admin-panel .ncm-broadcast-bar__send,
 .ncm-app .ncm-admin-panel .ncm-netlog-filter-btn,
 .ncm-app .ncm-admin-panel .ncm-netlog-btn,
 .ncm-app .ncm-admin-panel .ncm-add-log-submit {

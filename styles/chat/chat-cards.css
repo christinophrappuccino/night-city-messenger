@@ -147,3 +147,16 @@
 .ncm-chat-btn:hover {
   background: rgba(25, 243, 247, 0.1);
 }
+
+/* Broadcast variant — red accent */
+.ncm-chat-card--broadcast {
+  border-left-color: var(--ncm-primary, #F65261);
+}
+
+.ncm-chat-card--broadcast .ncm-chat-card__header i {
+  color: var(--ncm-primary, #F65261);
+}
+
+.ncm-chat-card--broadcast .ncm-chat-card__badge {
+  color: var(--ncm-primary, #F65261);
+}
