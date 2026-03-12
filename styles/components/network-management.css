@@ -2369,7 +2369,8 @@
 .ncm-netmgr__add-log-field--net { min-width: 130px; }
 .ncm-netmgr__add-log-field--actor { min-width: 100px; }
 .ncm-netmgr__add-log-field--type { min-width: 130px; }
-.ncm-netmgr__add-log-field--message { flex: 1; }
+.ncm-netmgr__add-log-field--message { flex: 1; min-width: 0; }
+.ncm-netmgr__add-log-field--message input { width: 100% !important; }
 
 /* Small add button */
 .ncm-netmgr__add-log-btn {
@@ -2480,10 +2481,14 @@
   appearance: none !important;
   -webkit-appearance: none !important;
   box-shadow: none !important;
+  width: auto !important;
+  height: auto !important;
   min-width: 0 !important;
   min-height: 0 !important;
   outline: none !important;
   white-space: nowrap !important;
+  flex-shrink: 0 !important;
+  flex-grow: 0 !important;
 }
 
 /* ── Sidebar search input ── */
