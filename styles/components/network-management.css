@@ -1471,6 +1471,29 @@
   border-radius: 2px;
 }
 
+/* Refresh icon button — compact */
+.ncm-netmgr__scene-refresh {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid var(--nm-border);
+  border-radius: 2px;
+  background: transparent;
+  color: var(--nm-text-muted);
+  font-size: 10px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+
+.ncm-netmgr__scene-refresh:hover {
+  color: var(--nm-secondary);
+  border-color: rgba(25, 243, 247, 0.3);
+}
+
 /* Quick scene chip strip — shows all scenes at a glance */
 
 .ncm-netmgr__scene-chip-strip {
@@ -1747,9 +1770,24 @@
 
 .ncm-netmgr__log-toolbar {
   display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 12px;
+  background: var(--nm-bg-elevated);
+  border-bottom: 1px solid var(--nm-border);
+  margin-bottom: 0;
+}
+
+.ncm-netmgr__log-toolbar-row {
+  display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
+  gap: 6px;
+}
+
+.ncm-netmgr__log-toolbar-count {
+  font-family: var(--nm-font-mono);
+  font-size: 8px;
+  color: var(--nm-text-muted);
 }
 
 .ncm-netmgr__log-filter-group {
@@ -2104,6 +2142,7 @@
   -webkit-appearance: none !important;
   box-shadow: none !important;
   outline: none !important;
+  flex: 1 !important;
 }
 
 .ncm-network-management .ncm-netmgr__scene-selector:focus {
@@ -2113,6 +2152,30 @@
 .ncm-network-management .ncm-netmgr__scene-selector option {
   background: var(--nm-bg-elevated) !important;
   color: var(--nm-text-primary) !important;
+}
+
+/* ── Scene refresh icon button ── */
+.ncm-network-management .ncm-netmgr__scene-refresh {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 26px !important;
+  height: 26px !important;
+  padding: 0 !important;
+  border: 1px solid var(--nm-border) !important;
+  border-radius: 2px !important;
+  background: transparent !important;
+  color: var(--nm-text-muted) !important;
+  font-size: 10px !important;
+  cursor: pointer !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  box-shadow: none !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  outline: none !important;
+  flex-shrink: 0 !important;
+  flex-grow: 0 !important;
 }
 
 /* ── Scene toggle buttons ── */
