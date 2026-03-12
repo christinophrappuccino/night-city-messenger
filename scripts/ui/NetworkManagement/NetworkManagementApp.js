@@ -31,6 +31,12 @@ export class NetworkManagementApp extends BaseApplication {
   _logNetworkFilter = '';
   _showAddLogForm = false;
 
+  /** @type {string} Search query for subnet sidebar */
+  _networkSearch = '';
+
+  /** @type {Set<string>} Collapsed group names in sidebar */
+  _collapsedGroups = new Set();
+
   // ─── Service Accessors ───
 
   get networkService() { return game.nightcity?.networkService; }
@@ -72,6 +78,7 @@ export class NetworkManagementApp extends BaseApplication {
       deleteLogEntry: NetworkManagementApp._onDeleteLogEntry,
       browseKeyItem: NetworkManagementApp._onBrowseKeyItem,
       resetSecurity: NetworkManagementApp._onResetSecurity,
+      toggleSidebarGroup: NetworkManagementApp._onToggleSidebarGroup,
     },
   }, { inplace: false });
 
@@ -138,6 +145,70 @@ export class NetworkManagementApp extends BaseApplication {
         typeLabel,
       };
     });
+
+    // ─── Search filter ───
+    const filteredNetworks = this._networkSearch
+      ? enrichedNetworks.filter(n => n.name.toLowerCase().includes(this._networkSearch.toLowerCase()))
+      : enrichedNetworks;
+
+    // ─── Group networks for sidebar ───
+    const existingGroups = [...new Set(
+      networks.map(n => n.group).filter(g => g && g.trim())
+    )].sort();
+
+    const networkGroups = [];
+    // Core networks always first
+    const coreNets = filteredNetworks.filter(n => n.isCore);
+    if (coreNets.length) {
+      networkGroups.push({
+        name: 'Core Subnets',
+        key: '_core',
+        icon: 'fa-server',
+        iconClass: '',
+        collapsed: this._collapsedGroups.has('_core'),
+        networks: coreNets,
+        count: coreNets.length,
+      });
+    }
+
+    // Custom networks grouped by group field
+    const customNets = filteredNetworks.filter(n => !n.isCore);
+    const groupMap = new Map();
+    for (const net of customNets) {
+      const groupName = net.group?.trim() || '';
+      if (!groupMap.has(groupName)) groupMap.set(groupName, []);
+      groupMap.get(groupName).push(net);
+    }
+
+    // Named groups first (sorted), ungrouped last
+    const sortedGroupNames = [...groupMap.keys()].filter(g => g).sort();
+    for (const gName of sortedGroupNames) {
+      networkGroups.push({
+        name: gName,
+        key: `grp_${gName}`,
+        icon: 'fa-folder',
+        iconClass: '--custom',
+        collapsed: this._collapsedGroups.has(`grp_${gName}`),
+        networks: groupMap.get(gName),
+        count: groupMap.get(gName).length,
+      });
+    }
+
+    // Ungrouped custom networks
+    const ungrouped = groupMap.get('') ?? [];
+    if (ungrouped.length) {
+      networkGroups.push({
+        name: customNets.length === ungrouped.length && !sortedGroupNames.length
+          ? 'Custom Subnets'
+          : 'Ungrouped',
+        key: '_ungrouped',
+        icon: 'fa-puzzle-piece',
+        iconClass: '--custom',
+        collapsed: this._collapsedGroups.has('_ungrouped'),
+        networks: ungrouped,
+        count: ungrouped.length,
+      });
+    }
 
     // ─── Selected network details ───
     let selectedNetwork = null;
@@ -239,6 +310,9 @@ export class NetworkManagementApp extends BaseApplication {
 
       // Networks
       networks: enrichedNetworks,
+      networkGroups,
+      existingGroups,
+      networkSearch: this._networkSearch,
       selectedNetwork,
       isCreating: this._isCreating,
       isEditing: this._isEditMode || this._isCreating,
@@ -297,6 +371,20 @@ export class NetworkManagementApp extends BaseApplication {
         this._logNetworkFilter = e.target.value;
         this.render(true);
       });
+    }
+
+    // Wire sidebar search input
+    const searchInput = this.element?.querySelector('.ncm-netmgr__sidebar-search');
+    if (searchInput) {
+      if (this._networkSearch) searchInput.focus();
+      const handler = this._sidebarSearchHandler || (this._sidebarSearchHandler =
+        foundry.utils.debounce((e) => {
+          this._networkSearch = e.target.value;
+          this.render(true);
+        }, 200)
+      );
+      searchInput.removeEventListener('input', handler);
+      searchInput.addEventListener('input', handler);
     }
   }
 
@@ -396,6 +484,7 @@ export class NetworkManagementApp extends BaseApplication {
       },
       description: val('description'),
       lore: val('lore'),
+      group: val('group'),
     };
 
     // Debug log to verify authLogic is captured
@@ -669,6 +758,17 @@ export class NetworkManagementApp extends BaseApplication {
       ui.notifications.info('NCM | Security state reset.');
       this.render();
     }
+  }
+
+  static _onToggleSidebarGroup(event, target) {
+    const groupKey = target.dataset.groupKey || target.closest('[data-group-key]')?.dataset.groupKey;
+    if (!groupKey) return;
+    if (this._collapsedGroups.has(groupKey)) {
+      this._collapsedGroups.delete(groupKey);
+    } else {
+      this._collapsedGroups.add(groupKey);
+    }
+    this.render(true);
   }
 
   // ─── Display Helpers ───

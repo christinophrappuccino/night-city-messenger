@@ -211,6 +211,7 @@ export const TEMPLATES = Object.freeze({
   HACKING_SEQUENCE: `${T}/item-inbox/hacking-sequence.hbs`,
   NETWORK_MANAGEMENT: `${T}/network-management/network-management.hbs`,
   ADMIN_PANEL: `${T}/admin-panel/admin-panel.hbs`,
+  ADMIN_NETWORK_CARD: `${T}/admin-panel/partials/network-card.hbs`,
   THEME_CUSTOMIZER: `${T}/theme-customizer/theme-customizer.hbs`,
   NETWORK_AUTH_DIALOG: `${T}/dialogs/network-auth-dialog.hbs`,
   CREATE_NETWORK_DIALOG: `${T}/dialogs/create-network.hbs`,

@@ -673,6 +673,7 @@ export class NetworkService {
       },
       description: data.description ?? '',
       lore: data.lore ?? '',
+      group: data.group ?? '',
       createdBy: game.user.id,
       createdAt: new Date().toISOString(),
     };

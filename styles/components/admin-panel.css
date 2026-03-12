@@ -2355,6 +2355,79 @@
 }
 
 /* ═══════════════════════════════════════════
+   SPRINT 6: NETWORK GROUP HEADERS
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-network-group {
+  margin-bottom: 10px;
+}
+
+.ncm-app .ncm-network-group:last-child {
+  margin-bottom: 0;
+}
+
+.ncm-app .ncm-network-group__header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  margin-bottom: 6px;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: background 0.15s;
+}
+
+.ncm-app .ncm-network-group__header:hover {
+  background: rgba(25, 243, 247, 0.03);
+}
+
+.ncm-app .ncm-network-group__icon {
+  font-size: 9px;
+  color: var(--ncm-secondary);
+}
+
+.ncm-app .ncm-network-group__icon--custom {
+  color: var(--ncm-primary);
+}
+
+.ncm-app .ncm-network-group__title {
+  font-family: var(--ncm-font-display);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ncm-text-secondary);
+}
+
+.ncm-app .ncm-network-group__count {
+  font-family: var(--ncm-font-mono);
+  font-size: 7px;
+  color: var(--ncm-text-muted);
+  background: var(--ncm-bg-surface);
+  padding: 1px 5px;
+  border-radius: 1px;
+  border: 1px solid var(--ncm-border);
+}
+
+.ncm-app .ncm-network-group__arrow {
+  font-size: 7px;
+  color: var(--ncm-text-muted);
+  margin-left: auto;
+}
+
+/* Foundry override for group header */
+.ncm-app .ncm-admin-panel .ncm-network-group__header {
+  background: transparent !important;
+  border: none !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  box-shadow: none !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  outline: none !important;
+}
+
+/* ═══════════════════════════════════════════
    SPRINT 6: BROADCAST BAR
    ═══════════════════════════════════════════ */
 

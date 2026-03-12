@@ -50,6 +50,9 @@ export class AdminPanelApp extends BaseApplication {
   /** @type {string} Network search query */
   _networkSearch = '';
 
+  /** @type {Set<string>} Collapsed network group keys */
+  _collapsedNetGroups = new Set();
+
   // ═══════════════════════════════════════════════════════════
   //  Service Accessors
   // ═══════════════════════════════════════════════════════════
@@ -128,6 +131,7 @@ export class AdminPanelApp extends BaseApplication {
       resetNetworkAuth: AdminPanelApp._onResetNetworkAuth,
       sendBroadcast: AdminPanelApp._onSendBroadcast,
       openNetworkManagerLogs: AdminPanelApp._onOpenNetworkManagerLogs,
+      toggleNetworkGroup: AdminPanelApp._onToggleNetworkGroup,
 
       // Data Shards actions
       openShardItem: AdminPanelApp._onOpenShardItem,
@@ -277,9 +281,12 @@ export class AdminPanelApp extends BaseApplication {
       pushLog,
 
       // Networks tab
-      networks: this._networkSearch
-        ? networks.filter(n => n.name.toLowerCase().includes(this._networkSearch.toLowerCase()))
-        : networks,
+      networks,  // Full flat list (for dropdowns)
+      networkGroups: this._buildNetworkGroups(
+        this._networkSearch
+          ? networks.filter(n => n.name.toLowerCase().includes(this._networkSearch.toLowerCase()))
+          : networks
+      ),
       networkSummary,
       sceneStrip,
       netStats,
@@ -723,6 +730,8 @@ export class AdminPanelApp extends BaseApplication {
            id: net.id || net.name,
            name: net.name || net.id,
            type: known.type,
+           isCore: !!net.isCore,
+           group: net.group ?? '',
            enabled: isEnabled,
            isGlobal,
            signal,
@@ -750,6 +759,72 @@ export class AdminPanelApp extends BaseApplication {
 
      return networks;
    }
+
+  /**
+   * Build grouped network data for the template.
+   * Groups: Core first, then custom groups (by group field), then ungrouped.
+   * @param {Array} filteredNetworks - Networks (possibly search-filtered)
+   * @returns {Array<object>} Array of { name, key, icon, iconClass, collapsed, networks, count }
+   * @private
+   */
+  _buildNetworkGroups(filteredNetworks) {
+    const groups = [];
+
+    // Core networks first
+    const coreNets = filteredNetworks.filter(n => n.isCore);
+    if (coreNets.length) {
+      groups.push({
+        name: 'Core Subnets',
+        key: '_core',
+        icon: 'fa-server',
+        iconClass: '',
+        collapsed: this._collapsedNetGroups.has('_core'),
+        networks: coreNets,
+        count: coreNets.length,
+      });
+    }
+
+    // Custom networks grouped by group field
+    const customNets = filteredNetworks.filter(n => !n.isCore);
+    const groupMap = new Map();
+    for (const net of customNets) {
+      const groupName = net.group?.trim() || '';
+      if (!groupMap.has(groupName)) groupMap.set(groupName, []);
+      groupMap.get(groupName).push(net);
+    }
+
+    // Named groups first (sorted), ungrouped last
+    const sortedGroupNames = [...groupMap.keys()].filter(g => g).sort();
+    for (const gName of sortedGroupNames) {
+      groups.push({
+        name: gName,
+        key: `grp_${gName}`,
+        icon: 'fa-folder',
+        iconClass: '--custom',
+        collapsed: this._collapsedNetGroups.has(`grp_${gName}`),
+        networks: groupMap.get(gName),
+        count: groupMap.get(gName).length,
+      });
+    }
+
+    // Ungrouped custom networks
+    const ungrouped = groupMap.get('') ?? [];
+    if (ungrouped.length) {
+      groups.push({
+        name: customNets.length === ungrouped.length && !sortedGroupNames.length
+          ? 'Custom Subnets'
+          : 'Ungrouped',
+        key: '_ungrouped',
+        icon: 'fa-puzzle-piece',
+        iconClass: '--custom',
+        collapsed: this._collapsedNetGroups.has('_ungrouped'),
+        networks: ungrouped,
+        count: ungrouped.length,
+      });
+    }
+
+    return groups;
+  }
 
   // ═══════════════════════════════════════════════════════════
   //  Data Helpers — Sprint 6: Networks Tab Enhancements
@@ -1775,6 +1850,17 @@ export class AdminPanelApp extends BaseApplication {
       }
     });
     log.info('Admin: Opening Network Manager → Logs tab');
+  }
+
+  static _onToggleNetworkGroup(event, target) {
+    const groupKey = target.dataset.groupKey || target.closest('[data-group-key]')?.dataset.groupKey;
+    if (!groupKey) return;
+    if (this._collapsedNetGroups.has(groupKey)) {
+      this._collapsedNetGroups.delete(groupKey);
+    } else {
+      this._collapsedNetGroups.add(groupKey);
+    }
+    this.render(true);
   }
 
   // ── Sprint 6: Scene Dead Zone Toggle ──

@@ -590,108 +590,106 @@
     </div>
     {{/if}}
 
-    {{!-- Network Cards --}}
-    {{#if networks.length}}
-    <div class="ncm-network-grid">
-      {{#each networks}}
-      <div class="ncm-network-card {{#if this.enabled}}ncm-network-card--active{{else}}ncm-network-card--disabled{{/if}}"
-           data-network-id="{{this.id}}">
-        <div class="ncm-network-card__header">
-          <div class="ncm-network-card__icon ncm-network-card__icon--{{this.iconClass}}">
-            <i class="fas fa-{{this.icon}}"></i>
-          </div>
-          <div class="ncm-network-card__title-area">
-            <div class="ncm-network-card__name">{{this.name}}</div>
-            <div class="ncm-network-card__type">{{this.type}}</div>
-            {{#if this.tags.length}}
-            <div class="ncm-network-card__tags">
-              {{#each this.tags}}
-              <span class="ncm-tag ncm-tag--{{this.class}}">{{this.label}}</span>
-              {{/each}}
+    {{!-- Network Cards — Grouped --}}
+    {{#if networkGroups.length}}
+    {{#each networkGroups}}
+    <div class="ncm-network-group">
+      <div class="ncm-network-group__header" data-action="toggleNetworkGroup" data-group-key="{{this.key}}">
+        <i class="fas {{this.icon}} ncm-network-group__icon ncm-network-group__icon{{this.iconClass}}"></i>
+        <span class="ncm-network-group__title">{{this.name}}</span>
+        <span class="ncm-network-group__count">{{this.count}}</span>
+        <span class="ncm-network-group__arrow">{{#if this.collapsed}}▶{{else}}▼{{/if}}</span>
+      </div>
+      {{#unless this.collapsed}}
+      <div class="ncm-network-grid">
+        {{#each this.networks}}
+        <div class="ncm-network-card {{#if this.enabled}}ncm-network-card--active{{else}}ncm-network-card--disabled{{/if}}"
+             data-network-id="{{this.id}}">
+          <div class="ncm-network-card__header">
+            <div class="ncm-network-card__icon ncm-network-card__icon--{{this.iconClass}}">
+              <i class="fas fa-{{this.icon}}"></i>
             </div>
+            <div class="ncm-network-card__title-area">
+              <div class="ncm-network-card__name">{{this.name}}</div>
+              <div class="ncm-network-card__type">{{this.type}}</div>
+              {{#if this.tags.length}}
+              <div class="ncm-network-card__tags">
+                {{#each this.tags}}<span class="ncm-tag ncm-tag--{{this.class}}">{{this.label}}</span>{{/each}}
+              </div>
+              {{/if}}
+            </div>
+            {{#if this.isGlobal}}
+            <span class="ncm-network-card__global-badge"><i class="fas fa-globe"></i> GLOBAL</span>
+            {{else}}
+            <div class="ncm-network-card__toggle {{#if this.enabled}}ncm-network-card__toggle--on{{/if}}"
+                 data-action="toggleNetwork" data-network-id="{{this.id}}"></div>
             {{/if}}
           </div>
-          {{#if this.isGlobal}}
-          <span class="ncm-network-card__global-badge"><i class="fas fa-globe"></i> GLOBAL</span>
-          {{else}}
-          <div class="ncm-network-card__toggle {{#if this.enabled}}ncm-network-card__toggle--on{{/if}}"
-               data-action="toggleNetwork" data-network-id="{{this.id}}"></div>
-          {{/if}}
-        </div>
-
-        <div class="ncm-network-card__stats">
-          <span>Signal <span class="val {{this.signalClass}}">{{this.signal}}%</span></span>
-          <span>Users <span class="val">{{this.userCount}}</span></span>
-          {{#if this.reliability}}<span>Rel <span class="val">{{this.reliability}}%</span></span>{{/if}}
-        </div>
-
-        {{!-- Quick Signal Adjust --}}
-        <div class="ncm-network-card__quick">
-          <span class="ncm-network-card__quick-label">Signal</span>
-          <input type="range" class="ncm-network-card__quick-slider"
-                 min="0" max="100" value="{{this.signal}}"
-                 data-network-id="{{this.id}}">
-          <span class="ncm-network-card__quick-value">{{this.signal}}%</span>
-        </div>
-
-        {{!-- Connected Users --}}
-        {{#if this.connectedUsers.length}}
-        <div class="ncm-network-card__users">
-          {{#each this.connectedUsers}}
-          <div class="ncm-network-card__user-chip">
-            <div class="ncm-network-card__user-dot"></div> {{this.name}}
+          <div class="ncm-network-card__stats">
+            <span>Signal <span class="val {{this.signalClass}}">{{this.signal}}%</span></span>
+            <span>Users <span class="val">{{this.userCount}}</span></span>
+            {{#if this.reliability}}<span>Rel <span class="val">{{this.reliability}}%</span></span>{{/if}}
           </div>
-          {{/each}}
-        </div>
-        {{/if}}
-
-        <div class="ncm-network-card__auth ncm-network-card__auth--{{this.authClass}}">
-          <i class="fas fa-{{this.authIcon}}"></i> {{this.authLabel}}
-        </div>
-
-        {{!-- Hover Actions --}}
-        <div class="ncm-network-card__actions">
-          <button class="ncm-network-card__action-btn" data-action="openNetworkManager"><i class="fas fa-pen"></i> Edit</button>
-          {{#if this.authClass}}{{#if (eq this.authClass 'password')}}
-          <button class="ncm-network-card__action-btn" data-action="resetNetworkAuth" data-network-id="{{this.id}}"><i class="fas fa-key"></i> Reset Auth</button>
-          {{/if}}{{/if}}
-        </div>
-
-        {{!-- Per-Network Activity Log Toggle --}}
-        <button class="ncm-network-card__log-toggle" data-action="toggleCardLog" data-network-id="{{this.id}}">
-          <i class="fas fa-scroll"></i> Activity Log
-          {{#if this.logCount}}<span class="ncm-network-card__log-count">{{this.logCount}}</span>{{/if}}
-          <span class="ncm-network-card__log-arrow">{{#if this.logExpanded}}▼{{else}}▶{{/if}}</span>
-        </button>
-        {{#if this.logExpanded}}
-        <div class="ncm-network-card__log">
-          {{#each this.logEntries}}
-          <div class="ncm-log-entry {{#if this.manual}}ncm-log-entry--manual{{/if}}" data-entry-id="{{this.id}}">
-            <div class="ncm-log-entry__row1">
-              <span class="ncm-log-entry__icon ncm-log-entry__icon--{{this.typeClass}}"><i class="fas {{this.typeIcon}}"></i></span>
-              <span class="ncm-log-entry__type-label">{{this.typeLabel}}</span>
-              <span class="ncm-log-entry__time">{{this.displayDate}} {{this.displayTime}}</span>
-              <div class="ncm-log-entry__actions">
-                <button class="ncm-log-entry__action-btn" data-action="editLogEntry" data-entry-id="{{this.id}}"><i class="fas fa-pen"></i></button>
-                <button class="ncm-log-entry__action-btn ncm-log-entry__action-btn--danger" data-action="deleteLogEntry" data-entry-id="{{this.id}}"><i class="fas fa-trash"></i></button>
+          <div class="ncm-network-card__quick">
+            <span class="ncm-network-card__quick-label">Signal</span>
+            <input type="range" class="ncm-network-card__quick-slider"
+                   min="0" max="100" value="{{this.signal}}"
+                   data-network-id="{{this.id}}">
+            <span class="ncm-network-card__quick-value">{{this.signal}}%</span>
+          </div>
+          {{#if this.connectedUsers.length}}
+          <div class="ncm-network-card__users">
+            {{#each this.connectedUsers}}
+            <div class="ncm-network-card__user-chip"><div class="ncm-network-card__user-dot"></div> {{this.name}}</div>
+            {{/each}}
+          </div>
+          {{/if}}
+          <div class="ncm-network-card__auth ncm-network-card__auth--{{this.authClass}}">
+            <i class="fas fa-{{this.authIcon}}"></i> {{this.authLabel}}
+          </div>
+          <div class="ncm-network-card__actions">
+            <button class="ncm-network-card__action-btn" data-action="openNetworkManager"><i class="fas fa-pen"></i> Edit</button>
+            {{#if this.authClass}}{{#if (eq this.authClass 'password')}}
+            <button class="ncm-network-card__action-btn" data-action="resetNetworkAuth" data-network-id="{{this.id}}"><i class="fas fa-key"></i> Reset Auth</button>
+            {{/if}}{{/if}}
+          </div>
+          <button class="ncm-network-card__log-toggle" data-action="toggleCardLog" data-network-id="{{this.id}}">
+            <i class="fas fa-scroll"></i> Activity Log
+            {{#if this.logCount}}<span class="ncm-network-card__log-count">{{this.logCount}}</span>{{/if}}
+            <span class="ncm-network-card__log-arrow">{{#if this.logExpanded}}▼{{else}}▶{{/if}}</span>
+          </button>
+          {{#if this.logExpanded}}
+          <div class="ncm-network-card__log">
+            {{#each this.logEntries}}
+            <div class="ncm-log-entry {{#if this.manual}}ncm-log-entry--manual{{/if}}" data-entry-id="{{this.id}}">
+              <div class="ncm-log-entry__row1">
+                <span class="ncm-log-entry__icon ncm-log-entry__icon--{{this.typeClass}}"><i class="fas {{this.typeIcon}}"></i></span>
+                <span class="ncm-log-entry__type-label">{{this.typeLabel}}</span>
+                <span class="ncm-log-entry__time">{{this.displayDate}} {{this.displayTime}}</span>
+                <div class="ncm-log-entry__actions">
+                  <button class="ncm-log-entry__action-btn" data-action="editLogEntry" data-entry-id="{{this.id}}"><i class="fas fa-pen"></i></button>
+                  <button class="ncm-log-entry__action-btn ncm-log-entry__action-btn--danger" data-action="deleteLogEntry" data-entry-id="{{this.id}}"><i class="fas fa-trash"></i></button>
+                </div>
+              </div>
+              <div class="ncm-log-entry__row2">
+                <span class="ncm-log-entry__actor">{{this.actorName}}</span>
+                <span class="ncm-log-entry__message">{{this.message}}</span>
               </div>
             </div>
-            <div class="ncm-log-entry__row2">
-              <span class="ncm-log-entry__actor">{{this.actorName}}</span>
-              <span class="ncm-log-entry__message">{{this.message}}</span>
-            </div>
+            {{/each}}
+            {{#unless this.logEntries.length}}
+            <div class="ncm-log-entry" style="justify-content:center; color:var(--ncm-text-muted); padding: 12px;">No activity</div>
+            {{/unless}}
           </div>
-          {{/each}}
-          {{#unless this.logEntries.length}}
-          <div class="ncm-log-entry" style="justify-content:center; color:var(--ncm-text-muted); padding: 12px;">No activity</div>
-          {{/unless}}
+          {{/if}}
         </div>
-        {{/if}}
+        {{/each}}
       </div>
-      {{/each}}
+      {{/unless}}
     </div>
+    {{/each}}
     {{else}}
-    <div class="ncm-admin-empty"><i class="fas fa-network-wired"></i> No networks defined.</div>
+    <div class="ncm-admin-empty"><i class="fas fa-network-wired"></i> No networks found.</div>
     {{/if}}
 
     {{/if}}{{!-- /networkSubView --}}
