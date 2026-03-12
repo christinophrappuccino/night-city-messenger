@@ -853,18 +853,30 @@
     {{!-- Log Toolbar --}}
     <div class="ncm-netmgr__log-toolbar">
       <div class="ncm-netmgr__log-filter-group">
-        <button class="ncm-netmgr__log-filter-btn ncm-netmgr__log-filter-btn--active"
+        <button class="ncm-netmgr__log-filter-btn {{#if (eq logFilter 'all')}}ncm-netmgr__log-filter-btn--active{{/if}}"
                 data-action="filterLogs" data-filter="all">All</button>
-        <button class="ncm-netmgr__log-filter-btn"
+        <button class="ncm-netmgr__log-filter-btn {{#if (eq logFilter 'auth')}}ncm-netmgr__log-filter-btn--active{{/if}}"
                 data-action="filterLogs" data-filter="auth">Auth</button>
-        <button class="ncm-netmgr__log-filter-btn"
+        <button class="ncm-netmgr__log-filter-btn {{#if (eq logFilter 'switch')}}ncm-netmgr__log-filter-btn--active{{/if}}"
                 data-action="filterLogs" data-filter="switch">Switch</button>
-        <button class="ncm-netmgr__log-filter-btn"
+        <button class="ncm-netmgr__log-filter-btn {{#if (eq logFilter 'lockout')}}ncm-netmgr__log-filter-btn--active{{/if}}"
                 data-action="filterLogs" data-filter="lockout">Lockout</button>
-        <button class="ncm-netmgr__log-filter-btn"
+        <button class="ncm-netmgr__log-filter-btn {{#if (eq logFilter 'hack')}}ncm-netmgr__log-filter-btn--active{{/if}}"
                 data-action="filterLogs" data-filter="hack">Hack</button>
+        <button class="ncm-netmgr__log-filter-btn {{#if (eq logFilter 'manual')}}ncm-netmgr__log-filter-btn--active{{/if}}"
+                data-action="filterLogs" data-filter="manual">Manual</button>
       </div>
+      {{!-- Network filter --}}
+      <select class="ncm-netmgr__log-network-filter" data-action="filterLogNetwork">
+        <option value="">All Networks</option>
+        {{#each networks}}
+        <option value="{{this.id}}" {{#if (eq this.id ../logNetworkFilter)}}selected{{/if}}>{{this.name}}</option>
+        {{/each}}
+      </select>
       <div class="ncm-netmgr__log-toolbar-spacer"></div>
+      <button class="ncm-netmgr__btn-sm ncm-netmgr__btn-sm--accent" data-action="toggleAddLogForm">
+        <i class="fas fa-plus"></i> Add Entry
+      </button>
       <button class="ncm-netmgr__btn-sm" data-action="exportLogs">
         <i class="fas fa-file-export"></i> Export
       </button>
@@ -873,11 +885,51 @@
       </button>
     </div>
 
+    {{!-- Add Manual Entry Form --}}
+    {{#if showAddLogForm}}
+    <div class="ncm-netmgr__add-log-form">
+      <div class="ncm-netmgr__add-log-field">
+        <label>Network</label>
+        <select name="logNetwork">
+          {{#each networks}}
+          <option value="{{this.id}}">{{this.name}}</option>
+          {{/each}}
+        </select>
+      </div>
+      <div class="ncm-netmgr__add-log-field">
+        <label>Actor</label>
+        <input type="text" name="logActor" placeholder="Unknown" style="width:80px;">
+      </div>
+      <div class="ncm-netmgr__add-log-field">
+        <label>Type</label>
+        <select name="logType">
+          <option value="connect">Connect</option>
+          <option value="disconnect">Disconnect</option>
+          <option value="auth_success">Auth Success</option>
+          <option value="auth_failure">Auth Failure</option>
+          <option value="hack">Hack Attempt</option>
+          <option value="lockout">Lockout</option>
+          <option value="manual">Trace / Manual</option>
+          <option value="malware">Malware</option>
+          <option value="system">System</option>
+        </select>
+      </div>
+      <div class="ncm-netmgr__add-log-field ncm-netmgr__add-log-field--message">
+        <label>Message</label>
+        <input type="text" name="logMessage" placeholder="[TRACE] Unauthorized access from...">
+      </div>
+      <button class="ncm-netmgr__btn-sm ncm-netmgr__btn-sm--accent" data-action="addManualLogEntry">
+        <i class="fas fa-plus"></i> Add
+      </button>
+    </div>
+    {{/if}}
+
     {{!-- Log Entries --}}
     <div class="ncm-netmgr__log-list">
       {{#if logEntries.length}}
         {{#each logEntries}}
-        <div class="ncm-netmgr__log-entry">
+        <div class="ncm-netmgr__log-entry {{#if this.manual}}ncm-netmgr__log-entry--manual{{/if}}"
+             data-entry-id="{{this.id}}">
           <span class="ncm-netmgr__log-entry-time">{{displayTime}}</span>
           <span class="ncm-netmgr__log-entry-icon ncm-netmgr__log-entry-icon--{{typeClass}}">
             <i class="fas {{typeIcon}}"></i>
@@ -885,6 +937,14 @@
           <span class="ncm-netmgr__log-entry-actor">{{actorName}}</span>
           <span class="ncm-netmgr__log-entry-action">{{message}}</span>
           <span class="ncm-netmgr__log-entry-network">{{networkName}}</span>
+          <div class="ncm-netmgr__log-entry-actions">
+            <button class="ncm-netmgr__log-entry-btn" data-action="editLogEntry" data-entry-id="{{this.id}}" title="Edit">
+              <i class="fas fa-pen"></i>
+            </button>
+            <button class="ncm-netmgr__log-entry-btn ncm-netmgr__log-entry-btn--danger" data-action="deleteLogEntry" data-entry-id="{{this.id}}" title="Delete">
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
         </div>
         {{/each}}
       {{else}}
@@ -900,6 +960,7 @@
   {{!-- Log Tab Shortcuts --}}
   <div class="ncm-netmgr__shortcuts">
     <div class="ncm-netmgr__shortcut"><span class="ncm-netmgr__shortcut-key">F</span> Filter</div>
+    <div class="ncm-netmgr__shortcut"><span class="ncm-netmgr__shortcut-key">A</span> Add Entry</div>
     <div class="ncm-netmgr__shortcut"><span class="ncm-netmgr__shortcut-key">Ctrl+E</span> Export</div>
     <div class="ncm-netmgr__shortcut"><span class="ncm-netmgr__shortcut-key">Esc</span> Close</div>
   </div>

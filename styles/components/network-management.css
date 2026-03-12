@@ -1887,3 +1887,155 @@
 .ncm-network-management input[type="checkbox"] {
   accent-color: var(--nm-secondary) !important;
 }
+
+/* ═══════════════════════════════════════════════════════════
+   SPRINT 6: LOG ENHANCEMENTS
+   ═══════════════════════════════════════════════════════════ */
+
+/* Network filter select in toolbar */
+.ncm-netmgr__log-network-filter {
+  font-family: var(--nm-font-mono);
+  font-size: 9px;
+  color: var(--nm-text-primary);
+  background: var(--nm-bg-deep);
+  border: 1px solid var(--nm-border);
+  padding: 2px 8px;
+  border-radius: 2px;
+}
+
+/* Accent button variant */
+.ncm-netmgr__btn-sm--accent {
+  color: #a855f7 !important;
+  border-color: rgba(168, 85, 247, 0.25) !important;
+}
+
+.ncm-netmgr__btn-sm--accent:hover {
+  background: rgba(168, 85, 247, 0.06) !important;
+}
+
+/* Manual entry — purple highlight */
+.ncm-netmgr__log-entry--manual {
+  border-left: 2px solid #a855f7;
+  padding-left: 8px;
+}
+
+.ncm-netmgr__log-entry--manual .ncm-netmgr__log-entry-action {
+  color: #a855f7;
+}
+
+/* Hover edit/delete actions on log entries */
+.ncm-netmgr__log-entry-actions {
+  display: flex;
+  gap: 2px;
+  margin-left: auto;
+  opacity: 0;
+  transition: opacity 0.1s;
+  flex-shrink: 0;
+}
+
+.ncm-netmgr__log-entry:hover .ncm-netmgr__log-entry-actions {
+  opacity: 1;
+}
+
+.ncm-netmgr__log-entry-btn {
+  width: 16px;
+  height: 16px;
+  border-radius: 2px;
+  border: none;
+  background: transparent;
+  color: var(--nm-text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8px;
+  transition: all 0.1s;
+}
+
+.ncm-netmgr__log-entry-btn:hover {
+  color: var(--nm-secondary);
+  background: rgba(25, 243, 247, 0.06);
+}
+
+.ncm-netmgr__log-entry-btn--danger:hover {
+  color: var(--nm-danger);
+  background: rgba(255, 0, 51, 0.06);
+}
+
+/* Add manual entry form */
+.ncm-netmgr__add-log-form {
+  display: flex;
+  gap: 5px;
+  padding: 8px 12px;
+  background: var(--nm-bg-elevated);
+  border-bottom: 1px solid var(--nm-border);
+  align-items: flex-end;
+}
+
+.ncm-netmgr__add-log-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ncm-netmgr__add-log-field label {
+  font-family: var(--nm-font-display);
+  font-size: 7px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--nm-text-muted);
+}
+
+.ncm-netmgr__add-log-field input,
+.ncm-netmgr__add-log-field select {
+  font-family: var(--nm-font-mono);
+  font-size: 10px;
+  color: var(--nm-text-primary);
+  background: var(--nm-bg-deep);
+  border: 1px solid var(--nm-border);
+  padding: 4px 8px;
+  border-radius: 2px;
+  line-height: 1.4;
+}
+
+.ncm-netmgr__add-log-field input:focus,
+.ncm-netmgr__add-log-field select:focus {
+  outline: none;
+  border-color: var(--nm-secondary);
+}
+
+.ncm-netmgr__add-log-field--message {
+  flex: 1;
+}
+
+/* Foundry overrides for new log elements */
+.ncm-network-management .ncm-netmgr__log-entry-btn,
+.ncm-network-management .ncm-netmgr__btn-sm--accent,
+.ncm-network-management .ncm-netmgr__log-network-filter {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  box-shadow: none !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  outline: none !important;
+}
+
+.ncm-network-management .ncm-netmgr__log-entry-btn {
+  width: 16px !important;
+  height: 16px !important;
+  padding: 0 !important;
+  border: none !important;
+  background: transparent !important;
+  cursor: pointer !important;
+}
+
+.ncm-network-management .ncm-netmgr__add-log-form input,
+.ncm-network-management .ncm-netmgr__add-log-form select {
+  background: var(--nm-bg-deep) !important;
+  border: 1px solid var(--nm-border) !important;
+  color: var(--nm-text-primary) !important;
+  border-radius: 2px !important;
+  box-shadow: none !important;
+  outline: none !important;
+}

@@ -411,8 +411,9 @@
     {{#if (eq networkSubView 'logs')}}
     {{!-- ═══ FULL ACTIVITY LOG PANEL ═══ --}}
     <div class="ncm-section-title">
-      <i class="fas fa-scroll"></i> Network Activity Log
-      <button class="ncm-section-title__action" data-action="switchNetworkSubView" data-subview="cards">← Back to Networks</button>
+      <i class="fas fa-scroll"></i> Network Activity Log ({{logEntryCount}})
+      <button class="ncm-section-title__action" data-action="openNetworkManagerLogs"><i class="fas fa-up-right-from-square"></i> Open in Manager</button>
+      <button class="ncm-section-title__action" data-action="switchNetworkSubView" data-subview="cards">← Back</button>
     </div>
 
     <div class="ncm-netlog-panel">
@@ -507,8 +508,8 @@
 
     <div class="ncm-section-title">
       <i class="fas fa-network-wired"></i> Network Operations
-      <button class="ncm-section-title__action" data-action="switchNetworkSubView" data-subview="logs"><i class="fas fa-scroll"></i> Activity Log →</button>
-      <button class="ncm-section-title__action" data-action="openNetworkManager">Open Full Manager →</button>
+      <button class="ncm-section-title__action ncm-section-title__action--accent" data-action="switchNetworkSubView" data-subview="logs"><i class="fas fa-scroll"></i> Activity Log ({{logEntryCount}}) →</button>
+      <button class="ncm-section-title__action" data-action="openNetworkManagerLogs"><i class="fas fa-external-link-alt"></i> Full Manager →</button>
     </div>
 
     {{!-- Health Strip --}}

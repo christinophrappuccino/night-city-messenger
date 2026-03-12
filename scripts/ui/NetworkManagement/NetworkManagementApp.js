@@ -28,6 +28,8 @@ export class NetworkManagementApp extends BaseApplication {
 
   _isEditMode = false;
   _logFilter = 'all';
+  _logNetworkFilter = '';
+  _showAddLogForm = false;
 
   // ─── Service Accessors ───
 
@@ -64,6 +66,10 @@ export class NetworkManagementApp extends BaseApplication {
       saveSceneConfig: NetworkManagementApp._onSaveSceneConfig,
       clearLogs: NetworkManagementApp._onClearLogs,
       exportLogs: NetworkManagementApp._onExportLogs,
+      toggleAddLogForm: NetworkManagementApp._onToggleAddLogForm,
+      addManualLogEntry: NetworkManagementApp._onAddManualLogEntry,
+      editLogEntry: NetworkManagementApp._onEditLogEntry,
+      deleteLogEntry: NetworkManagementApp._onDeleteLogEntry,
       browseKeyItem: NetworkManagementApp._onBrowseKeyItem,
       resetSecurity: NetworkManagementApp._onResetSecurity,
     },
@@ -181,10 +187,19 @@ export class NetworkManagementApp extends BaseApplication {
     }));
 
     // ─── Access log entries ───
-    const rawLog = this.accessLogService?.getEntries?.({ limit: 50 }) ?? [];
-    const logEntries = rawLog
-      .filter(e => this._logFilter === 'all' || this._matchesLogFilter(e, this._logFilter))
-      .map(e => ({
+    const logFilters = { limit: 100 };
+    if (this._logNetworkFilter) logFilters.networkId = this._logNetworkFilter;
+
+    let rawLog = this.accessLogService?.getEntries?.(logFilters) ?? [];
+
+    // Apply type and manual filters
+    rawLog = rawLog.filter(e => {
+      if (this._logFilter === 'all') return true;
+      if (this._logFilter === 'manual') return e.manual === true;
+      return this._matchesLogFilter(e, this._logFilter);
+    });
+
+    const logEntries = rawLog.map(e => ({
         ...e,
         displayTime: this._formatLogTime(e.timestamp),
         typeIcon: this._getLogTypeIcon(e.type),
@@ -246,6 +261,8 @@ export class NetworkManagementApp extends BaseApplication {
       logStats,
       logCount: rawLog.length,
       logFilter: this._logFilter,
+      logNetworkFilter: this._logNetworkFilter,
+      showAddLogForm: this._showAddLogForm,
 
       // Lockouts
       lockouts: enrichedLockouts,
@@ -266,6 +283,19 @@ export class NetworkManagementApp extends BaseApplication {
     this.subscribe(EVENTS.NETWORK_AUTH_SUCCESS, () => this.render());
     this.subscribe(EVENTS.NETWORK_AUTH_FAILURE, () => this.render());
     this.subscribe(EVENTS.NETWORK_LOCKOUT, () => this.render());
+  }
+
+  _onRender(context, options) {
+    super._onRender?.(context, options);
+
+    // Wire log network filter select (can't use data-action on <select>)
+    const netFilter = this.element?.querySelector('.ncm-netmgr__log-network-filter');
+    if (netFilter) {
+      netFilter.addEventListener('change', (e) => {
+        this._logNetworkFilter = e.target.value;
+        this.render(true);
+      });
+    }
   }
 
   // ─── Action Handlers ───
@@ -538,6 +568,95 @@ export class NetworkManagementApp extends BaseApplication {
     a.download = `ncm-access-log-${Date.now()}.json`;
     a.click();
     URL.revokeObjectURL(url);
+  }
+
+  // ── Sprint 6: Log Management ──
+
+  static _onToggleAddLogForm() {
+    this._showAddLogForm = !this._showAddLogForm;
+    this.render(true);
+  }
+
+  static _onAddManualLogEntry(event, target) {
+    event.preventDefault();
+    const form = target.closest('.ncm-netmgr__add-log-form') || this.element?.querySelector('.ncm-netmgr__add-log-form');
+    if (!form) return;
+
+    const networkId = form.querySelector('[name="logNetwork"]')?.value;
+    const actorName = form.querySelector('[name="logActor"]')?.value?.trim();
+    const type = form.querySelector('[name="logType"]')?.value;
+    const message = form.querySelector('[name="logMessage"]')?.value?.trim();
+
+    if (!message) {
+      ui.notifications.warn('NCM | Log message cannot be empty.');
+      return;
+    }
+
+    const network = this.networkService?.getNetwork(networkId);
+    this.accessLogService?.addManualEntry({
+      networkId: networkId || 'unknown',
+      networkName: network?.name ?? networkId,
+      actorName: actorName || 'Unknown',
+      type: type || 'manual',
+      message,
+    });
+
+    // Clear form
+    const actorInput = form.querySelector('[name="logActor"]');
+    const messageInput = form.querySelector('[name="logMessage"]');
+    if (actorInput) actorInput.value = '';
+    if (messageInput) messageInput.value = '';
+
+    ui.notifications.info('NCM | Manual log entry added.');
+    this.render(true);
+  }
+
+  static _onEditLogEntry(event, target) {
+    event.preventDefault();
+    event.stopPropagation();
+    const entryId = target.dataset.entryId || target.closest('[data-entry-id]')?.dataset.entryId;
+    if (!entryId) return;
+
+    const entries = this.accessLogService?._entries ?? [];
+    const entry = entries.find(e => e.id === entryId);
+    if (!entry) return;
+
+    const dialog = new Dialog({
+      title: 'Edit Log Entry',
+      content: `
+        <form style="display:flex; flex-direction:column; gap:8px;">
+          <label style="font-size:11px; font-weight:600;">Message</label>
+          <input type="text" name="message" value="${entry.message ?? ''}" style="padding:4px 8px;">
+          <label style="font-size:11px; font-weight:600;">Actor Name</label>
+          <input type="text" name="actorName" value="${entry.actorName ?? ''}" style="padding:4px 8px;">
+        </form>`,
+      buttons: {
+        save: {
+          icon: '<i class="fas fa-save"></i>',
+          label: 'Save',
+          callback: (html) => {
+            const message = html.find('[name="message"]').val();
+            const actorName = html.find('[name="actorName"]').val();
+            this.accessLogService?.updateEntry(entryId, { message, actorName });
+            this.render(true);
+          },
+        },
+        cancel: { icon: '<i class="fas fa-times"></i>', label: 'Cancel' },
+      },
+      default: 'save',
+    });
+    dialog.render(true);
+  }
+
+  static _onDeleteLogEntry(event, target) {
+    event.preventDefault();
+    event.stopPropagation();
+    const entryId = target.dataset.entryId || target.closest('[data-entry-id]')?.dataset.entryId;
+    if (!entryId) return;
+    if (this.accessLogService?.deleteEntry(entryId)) {
+      ui.notifications.info('NCM | Log entry deleted.');
+      this.render(true);
+    }
   }
 
   static _onResetSecurity(event, target) {

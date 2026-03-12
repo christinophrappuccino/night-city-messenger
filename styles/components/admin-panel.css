@@ -363,6 +363,19 @@
   border-color: rgba(25, 243, 247, 0.35) !important;
 }
 
+/* Accent variant — more visible for Activity Log */
+.ncm-app .ncm-section-title__action--accent {
+  color: var(--ncm-primary) !important;
+  border-color: rgba(246, 82, 97, 0.3) !important;
+  background: rgba(246, 82, 97, 0.06) !important;
+}
+
+.ncm-app .ncm-section-title__action--accent:hover {
+  color: var(--ncm-text-primary) !important;
+  background: rgba(246, 82, 97, 0.12) !important;
+  border-color: rgba(246, 82, 97, 0.5) !important;
+}
+
 /* Empty state for tabs with no data */
 
 .ncm-app .ncm-admin-empty {
@@ -3042,21 +3055,260 @@
   color: var(--ncm-text-primary);
 }
 
-/* Sprint 6: New button overrides */
-.ncm-app .ncm-admin-panel .ncm-scene-chip__dead-toggle,
-.ncm-app .ncm-admin-panel .ncm-network-card__action-btn,
-.ncm-app .ncm-admin-panel .ncm-network-card__log-toggle,
-.ncm-app .ncm-admin-panel .ncm-log-entry__action-btn,
-.ncm-app .ncm-admin-panel .ncm-broadcast-bar__send,
-.ncm-app .ncm-admin-panel .ncm-netlog-filter-btn,
-.ncm-app .ncm-admin-panel .ncm-netlog-btn,
-.ncm-app .ncm-admin-panel .ncm-add-log-submit {
+/* Sprint 6: Comprehensive button overrides
+   Must duplicate all visual properties with !important
+   to prevent Foundry's global button styles from showing through. */
+
+/* Scene dead zone toggle */
+.ncm-app .ncm-admin-panel .ncm-scene-chip__dead-toggle {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 18px !important;
+  height: 18px !important;
+  padding: 0 !important;
+  border-radius: 2px !important;
+  border: 1px solid var(--ncm-border) !important;
+  background: var(--ncm-bg-deep) !important;
+  color: var(--ncm-text-muted) !important;
+  font-size: 7px !important;
+  cursor: pointer !important;
   appearance: none !important;
   -webkit-appearance: none !important;
   box-shadow: none !important;
   min-width: 0 !important;
   min-height: 0 !important;
   outline: none !important;
+  transition: all 0.15s !important;
+}
+
+.ncm-app .ncm-admin-panel .ncm-scene-chip--dead .ncm-scene-chip__dead-toggle {
+  border-color: var(--ncm-danger) !important;
+  background: rgba(255, 0, 51, 0.15) !important;
+  color: var(--ncm-danger) !important;
+}
+
+/* Network card action buttons */
+.ncm-app .ncm-admin-panel .ncm-network-card__action-btn {
+  display: flex !important;
+  align-items: center !important;
+  gap: 3px !important;
+  padding: 2px 6px !important;
+  font-family: var(--ncm-font-display) !important;
+  font-size: 8px !important;
+  font-weight: 600 !important;
+  color: var(--ncm-text-muted) !important;
+  background: var(--ncm-bg-elevated) !important;
+  border: 1px solid var(--ncm-border) !important;
+  border-radius: 2px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+  cursor: pointer !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  box-shadow: none !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  outline: none !important;
+  transition: all 0.15s !important;
+}
+
+.ncm-app .ncm-admin-panel .ncm-network-card__action-btn:hover {
+  color: var(--ncm-secondary) !important;
+  border-color: rgba(25, 243, 247, 0.3) !important;
+}
+
+/* Network card log toggle */
+.ncm-app .ncm-admin-panel .ncm-network-card__log-toggle {
+  display: flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  width: 100% !important;
+  padding: 4px 12px 5px !important;
+  font-family: var(--ncm-font-mono) !important;
+  font-size: 8px !important;
+  color: var(--ncm-text-muted) !important;
+  background: transparent !important;
+  border: none !important;
+  border-top: 1px solid var(--ncm-border) !important;
+  border-radius: 0 !important;
+  text-align: left !important;
+  cursor: pointer !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  box-shadow: none !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  outline: none !important;
+  transition: color 0.15s !important;
+}
+
+.ncm-app .ncm-admin-panel .ncm-network-card__log-toggle:hover {
+  color: var(--ncm-secondary) !important;
+}
+
+/* Log entry action buttons (edit/delete) */
+.ncm-app .ncm-admin-panel .ncm-log-entry__action-btn {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 14px !important;
+  height: 14px !important;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 1px !important;
+  background: transparent !important;
+  color: var(--ncm-text-muted) !important;
+  font-size: 7px !important;
+  cursor: pointer !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  box-shadow: none !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  outline: none !important;
+  transition: all 0.1s !important;
+}
+
+.ncm-app .ncm-admin-panel .ncm-log-entry__action-btn:hover {
+  color: var(--ncm-secondary) !important;
+  background: rgba(25, 243, 247, 0.06) !important;
+}
+
+.ncm-app .ncm-admin-panel .ncm-log-entry__action-btn--danger:hover {
+  color: var(--ncm-danger) !important;
+  background: rgba(255, 0, 51, 0.06) !important;
+}
+
+/* Broadcast send button */
+.ncm-app .ncm-admin-panel .ncm-broadcast-bar__send {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  padding: 4px 12px !important;
+  font-family: var(--ncm-font-display) !important;
+  font-size: 9px !important;
+  font-weight: 600 !important;
+  color: var(--ncm-primary) !important;
+  background: rgba(246, 82, 97, 0.08) !important;
+  border: 1px solid rgba(246, 82, 97, 0.25) !important;
+  border-radius: 2px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.06em !important;
+  cursor: pointer !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  box-shadow: none !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  outline: none !important;
+  white-space: nowrap !important;
+  transition: all 0.15s !important;
+}
+
+.ncm-app .ncm-admin-panel .ncm-broadcast-bar__send:hover {
+  background: rgba(246, 82, 97, 0.15) !important;
+  border-color: var(--ncm-primary) !important;
+}
+
+/* Full log panel filter buttons */
+.ncm-app .ncm-admin-panel .ncm-netlog-filter-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  padding: 2px 7px !important;
+  font-family: var(--ncm-font-display) !important;
+  font-size: 8px !important;
+  font-weight: 600 !important;
+  color: var(--ncm-text-muted) !important;
+  background: var(--ncm-bg-surface) !important;
+  border: 1px solid var(--ncm-border) !important;
+  border-radius: 2px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+  cursor: pointer !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  box-shadow: none !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  outline: none !important;
+  transition: all 0.15s !important;
+}
+
+.ncm-app .ncm-admin-panel .ncm-netlog-filter-btn:hover {
+  color: var(--ncm-text-secondary) !important;
+  border-color: var(--ncm-border-active) !important;
+}
+
+.ncm-app .ncm-admin-panel .ncm-netlog-filter-btn--active {
+  color: var(--ncm-secondary) !important;
+  background: rgba(25, 243, 247, 0.06) !important;
+  border-color: rgba(25, 243, 247, 0.25) !important;
+}
+
+/* Full log panel action buttons (export, clear, add entry) */
+.ncm-app .ncm-admin-panel .ncm-netlog-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 3px !important;
+  padding: 2px 7px !important;
+  font-family: var(--ncm-font-display) !important;
+  font-size: 8px !important;
+  font-weight: 600 !important;
+  color: var(--ncm-text-muted) !important;
+  background: var(--ncm-bg-surface) !important;
+  border: 1px solid var(--ncm-border) !important;
+  border-radius: 2px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+  cursor: pointer !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  box-shadow: none !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  outline: none !important;
+  transition: all 0.15s !important;
+}
+
+.ncm-app .ncm-admin-panel .ncm-netlog-btn--accent {
+  color: var(--ncm-purple, #a855f7) !important;
+  border-color: rgba(168, 85, 247, 0.25) !important;
+}
+
+.ncm-app .ncm-admin-panel .ncm-netlog-btn--accent:hover {
+  background: rgba(168, 85, 247, 0.06) !important;
+}
+
+/* Add log submit button */
+.ncm-app .ncm-admin-panel .ncm-add-log-submit {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  padding: 4px 10px !important;
+  font-family: var(--ncm-font-display) !important;
+  font-size: 9px !important;
+  font-weight: 700 !important;
+  color: var(--ncm-purple, #a855f7) !important;
+  background: rgba(168, 85, 247, 0.08) !important;
+  border: 1px solid rgba(168, 85, 247, 0.25) !important;
+  border-radius: 2px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.06em !important;
+  cursor: pointer !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  box-shadow: none !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  outline: none !important;
+  white-space: nowrap !important;
+  transition: all 0.15s !important;
+}
+
+.ncm-app .ncm-admin-panel .ncm-add-log-submit:hover {
+  background: rgba(168, 85, 247, 0.15) !important;
+  border-color: var(--ncm-purple, #a855f7) !important;
 }
 
 /* Sprint 6: Range slider overrides */

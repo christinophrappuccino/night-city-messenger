@@ -124,6 +124,7 @@ export class AdminPanelApp extends BaseApplication {
       clearNetworkLogs: AdminPanelApp._onClearNetworkLogs,
       resetNetworkAuth: AdminPanelApp._onResetNetworkAuth,
       sendBroadcast: AdminPanelApp._onSendBroadcast,
+      openNetworkManagerLogs: AdminPanelApp._onOpenNetworkManagerLogs,
 
       // Data Shards actions
       openShardItem: AdminPanelApp._onOpenShardItem,
@@ -282,6 +283,7 @@ export class AdminPanelApp extends BaseApplication {
       logTypeFilters,
       logNetworkFilter: this._logNetworkFilter,
       showAddLogForm: this._showAddLogForm,
+      logEntryCount: this.accessLogService?.entryCount ?? 0,
 
       // Shards tab
       shards,
@@ -1712,6 +1714,19 @@ export class AdminPanelApp extends BaseApplication {
   static _onOpenNetworkManager(event, target) {
     game.nightcity?.openNetworkManager?.();
     log.info('Admin: Opening Network Manager');
+  }
+
+  static _onOpenNetworkManagerLogs(event, target) {
+    game.nightcity?.openNetworkManager?.();
+    // Switch the manager to Logs tab after it renders
+    requestAnimationFrame(() => {
+      const mgr = Object.values(ui.windows).find(w => w.id === 'ncm-network-management');
+      if (mgr) {
+        mgr._activeTab = 'logs';
+        mgr.render(true);
+      }
+    });
+    log.info('Admin: Opening Network Manager → Logs tab');
   }
 
   // ── Sprint 6: Scene Dead Zone Toggle ──
