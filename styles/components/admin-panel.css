@@ -2124,6 +2124,664 @@
 }
 
 /* ═══════════════════════════════════════════
+   SPRINT 6: NETWORK HEALTH STRIP
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-net-health-strip {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.ncm-app .ncm-net-health-card {
+  flex: 1;
+  padding: 8px 10px;
+  background: var(--ncm-bg-surface, #1a1a2e);
+  border: 1px solid var(--ncm-border, #2a2a45);
+  border-radius: 2px;
+  text-align: center;
+}
+
+.ncm-app .ncm-net-health-card__value {
+  font-family: var(--ncm-font-display);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.ncm-app .ncm-net-health-card__value--cyan { color: var(--ncm-secondary); }
+.ncm-app .ncm-net-health-card__value--green { color: var(--ncm-success); }
+.ncm-app .ncm-net-health-card__value--red { color: var(--ncm-danger); }
+.ncm-app .ncm-net-health-card__value--gold { color: var(--ncm-accent); }
+
+.ncm-app .ncm-net-health-card__label {
+  font-family: var(--ncm-font-mono);
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ncm-text-muted);
+  margin-top: 2px;
+}
+
+/* ═══════════════════════════════════════════
+   SPRINT 6: SCENE QUICK STRIP
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-scene-strip {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  background: var(--ncm-bg-surface, #1a1a2e);
+  border: 1px solid var(--ncm-border, #2a2a45);
+  border-radius: 2px;
+}
+
+.ncm-app .ncm-scene-strip__label {
+  font-family: var(--ncm-font-display);
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ncm-text-muted);
+  width: 100%;
+  margin-bottom: 3px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.ncm-app .ncm-scene-strip__label i {
+  font-size: 8px;
+}
+
+.ncm-app .ncm-scene-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  background: var(--ncm-bg-elevated, #252540);
+  border: 1px solid var(--ncm-border, #2a2a45);
+  border-radius: 2px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: default;
+  transition: all 0.15s;
+}
+
+.ncm-app .ncm-scene-chip__dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--ncm-success, #00ff41);
+  box-shadow: 0 0 4px rgba(0, 255, 65, 0.4);
+  flex-shrink: 0;
+}
+
+.ncm-app .ncm-scene-chip__name {
+  color: var(--ncm-text-primary);
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.ncm-app .ncm-scene-chip__network {
+  font-family: var(--ncm-font-mono);
+  font-size: 8px;
+  color: var(--ncm-text-muted);
+  letter-spacing: 0.04em;
+}
+
+.ncm-app .ncm-scene-chip__dead-toggle {
+  width: 18px;
+  height: 18px;
+  border-radius: 2px;
+  border: 1px solid var(--ncm-border);
+  background: var(--ncm-bg-deep);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-left: 2px;
+}
+
+.ncm-app .ncm-scene-chip__dead-toggle i {
+  font-size: 7px;
+  color: var(--ncm-text-muted);
+}
+
+.ncm-app .ncm-scene-chip__dead-toggle:hover {
+  border-color: var(--ncm-danger);
+  background: rgba(255, 0, 51, 0.1);
+}
+
+.ncm-app .ncm-scene-chip__dead-toggle:hover i {
+  color: var(--ncm-danger);
+}
+
+/* Dead zone state */
+.ncm-app .ncm-scene-chip--dead {
+  border-color: rgba(255, 0, 51, 0.3);
+  background: rgba(255, 0, 51, 0.08);
+}
+
+.ncm-app .ncm-scene-chip--dead .ncm-scene-chip__dot {
+  background: var(--ncm-danger);
+  box-shadow: 0 0 4px rgba(255, 0, 51, 0.5);
+  animation: ncm-pulse-dot 1.2s ease-in-out infinite;
+}
+
+.ncm-app .ncm-scene-chip--dead .ncm-scene-chip__name {
+  color: var(--ncm-danger);
+}
+
+.ncm-app .ncm-scene-chip--dead .ncm-scene-chip__dead-toggle {
+  border-color: var(--ncm-danger);
+  background: rgba(255, 0, 51, 0.15);
+}
+
+.ncm-app .ncm-scene-chip--dead .ncm-scene-chip__dead-toggle i {
+  color: var(--ncm-danger);
+}
+
+/* Current scene */
+.ncm-app .ncm-scene-chip--current {
+  border-color: rgba(25, 243, 247, 0.3);
+}
+
+.ncm-app .ncm-scene-chip--current .ncm-scene-chip__dot {
+  background: var(--ncm-secondary);
+  box-shadow: 0 0 4px rgba(25, 243, 247, 0.4);
+}
+
+/* ═══════════════════════════════════════════
+   SPRINT 6: ENHANCED NETWORK CARD ADDITIONS
+   ═══════════════════════════════════════════ */
+
+/* Signal slider */
+.ncm-app .ncm-network-card__quick {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  background: var(--ncm-bg-elevated, #252540);
+  border-top: 1px solid var(--ncm-border);
+}
+
+.ncm-app .ncm-network-card__quick-label {
+  font-family: var(--ncm-font-display);
+  font-size: 7px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ncm-text-muted);
+  min-width: 36px;
+}
+
+.ncm-app .ncm-network-card__quick-value {
+  font-family: var(--ncm-font-mono);
+  font-size: 9px;
+  color: var(--ncm-secondary);
+  min-width: 26px;
+  text-align: right;
+}
+
+/* Signal val color helpers */
+.ncm-app .ncm-network-card__stats .val--good { color: var(--ncm-success); }
+.ncm-app .ncm-network-card__stats .val--warning { color: var(--ncm-warning); }
+
+/* Tags */
+.ncm-app .ncm-network-card__tags {
+  display: flex;
+  gap: 3px;
+  margin-top: 2px;
+}
+
+.ncm-app .ncm-tag {
+  font-family: var(--ncm-font-mono);
+  font-size: 7px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 1px 5px;
+  border-radius: 1px;
+}
+
+.ncm-app .ncm-tag--core { background: rgba(25, 243, 247, 0.06); color: var(--ncm-secondary); border: 1px solid rgba(25, 243, 247, 0.15); }
+.ncm-app .ncm-tag--custom { background: rgba(246, 82, 97, 0.06); color: var(--ncm-primary); border: 1px solid rgba(246, 82, 97, 0.15); }
+.ncm-app .ncm-tag--restricted { background: rgba(255, 0, 51, 0.06); color: var(--ncm-danger); border: 1px solid rgba(255, 0, 51, 0.15); }
+.ncm-app .ncm-tag--global { background: rgba(247, 201, 72, 0.06); color: var(--ncm-accent); border: 1px solid rgba(247, 201, 72, 0.15); }
+
+/* Connected user chips */
+.ncm-app .ncm-network-card__users {
+  padding: 2px 12px 4px;
+  display: flex;
+  gap: 3px;
+  flex-wrap: wrap;
+}
+
+.ncm-app .ncm-network-card__user-chip {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--ncm-font-mono);
+  font-size: 8px;
+  padding: 2px 6px;
+  border-radius: 1px;
+  background: var(--ncm-bg-elevated);
+  border: 1px solid var(--ncm-border);
+  color: var(--ncm-text-secondary);
+}
+
+.ncm-app .ncm-network-card__user-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--ncm-success);
+}
+
+/* Hover action buttons */
+.ncm-app .ncm-network-card__actions {
+  display: flex;
+  gap: 3px;
+  padding: 0 12px 6px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.ncm-app .ncm-network-card:hover .ncm-network-card__actions {
+  opacity: 1;
+}
+
+.ncm-app .ncm-network-card__action-btn {
+  font-family: var(--ncm-font-display);
+  font-size: 8px;
+  font-weight: 600;
+  color: var(--ncm-text-muted);
+  background: var(--ncm-bg-elevated);
+  border: 1px solid var(--ncm-border);
+  border-radius: 2px;
+  padding: 2px 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ncm-app .ncm-network-card__action-btn:hover {
+  color: var(--ncm-secondary);
+  border-color: rgba(25, 243, 247, 0.3);
+}
+
+.ncm-app .ncm-network-card__action-btn--danger:hover {
+  color: var(--ncm-danger);
+  border-color: rgba(255, 0, 51, 0.3);
+}
+
+/* ═══════════════════════════════════════════
+   SPRINT 6: PER-NETWORK CARD LOG
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-network-card__log-toggle {
+  font-family: var(--ncm-font-mono);
+  font-size: 8px;
+  color: var(--ncm-text-muted);
+  background: transparent;
+  border: none;
+  padding: 4px 12px 5px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+  text-align: left;
+  transition: color 0.15s;
+  border-top: 1px solid var(--ncm-border);
+}
+
+.ncm-app .ncm-network-card__log-toggle:hover {
+  color: var(--ncm-secondary);
+}
+
+.ncm-app .ncm-network-card__log-count {
+  font-size: 7px;
+  background: var(--ncm-bg-elevated);
+  padding: 1px 4px;
+  border-radius: 1px;
+  color: var(--ncm-text-muted);
+}
+
+.ncm-app .ncm-network-card__log-arrow {
+  margin-left: auto;
+  font-size: 7px;
+}
+
+.ncm-app .ncm-network-card__log {
+  border-top: 1px solid var(--ncm-border);
+  background: var(--ncm-bg-deep);
+  max-height: 110px;
+  overflow-y: auto;
+  padding: 3px 0;
+}
+
+.ncm-app .ncm-network-card__log::-webkit-scrollbar { width: 3px; }
+.ncm-app .ncm-network-card__log::-webkit-scrollbar-thumb { background: var(--ncm-border); }
+
+/* Shared log entry (card and full panel) */
+.ncm-app .ncm-log-entry {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  font-size: 9px;
+  transition: background 0.1s;
+}
+
+.ncm-app .ncm-log-entry:hover {
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.ncm-app .ncm-log-entry__time {
+  font-family: var(--ncm-font-mono);
+  font-size: 8px;
+  color: var(--ncm-text-muted);
+  min-width: 44px;
+}
+
+.ncm-app .ncm-log-entry__icon {
+  width: 14px;
+  text-align: center;
+  font-size: 8px;
+}
+
+.ncm-app .ncm-log-entry__icon--connect { color: var(--ncm-success); }
+.ncm-app .ncm-log-entry__icon--disconnect { color: var(--ncm-danger); }
+.ncm-app .ncm-log-entry__icon--auth { color: var(--ncm-accent); }
+.ncm-app .ncm-log-entry__icon--hack { color: var(--ncm-primary); }
+.ncm-app .ncm-log-entry__icon--switch { color: var(--ncm-secondary); }
+.ncm-app .ncm-log-entry__icon--manual { color: var(--ncm-purple, #a855f7); }
+
+.ncm-app .ncm-log-entry__actor {
+  color: var(--ncm-text-primary);
+  font-weight: 600;
+  min-width: 48px;
+}
+
+.ncm-app .ncm-log-entry__message {
+  color: var(--ncm-text-secondary);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Manual GM-planted entry */
+.ncm-app .ncm-log-entry--manual {
+  border-left: 2px solid var(--ncm-purple, #a855f7);
+  padding-left: 8px;
+}
+
+.ncm-app .ncm-log-entry--manual .ncm-log-entry__message {
+  color: var(--ncm-purple, #a855f7);
+}
+
+/* Hover actions on log entries */
+.ncm-app .ncm-log-entry__actions {
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+
+.ncm-app .ncm-log-entry:hover .ncm-log-entry__actions {
+  opacity: 1;
+}
+
+.ncm-app .ncm-log-entry__action-btn {
+  width: 14px;
+  height: 14px;
+  border-radius: 1px;
+  border: none;
+  background: transparent;
+  color: var(--ncm-text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 7px;
+  transition: all 0.1s;
+}
+
+.ncm-app .ncm-log-entry__action-btn:hover {
+  color: var(--ncm-secondary);
+  background: rgba(25, 243, 247, 0.06);
+}
+
+.ncm-app .ncm-log-entry__action-btn--danger:hover {
+  color: var(--ncm-danger);
+  background: rgba(255, 0, 51, 0.06);
+}
+
+/* ═══════════════════════════════════════════
+   SPRINT 6: FULL ACTIVITY LOG PANEL
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-netlog-panel {
+  background: var(--ncm-bg-surface);
+  border: 1px solid var(--ncm-border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.ncm-app .ncm-netlog-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 10px;
+  background: var(--ncm-bg-elevated);
+  border-bottom: 1px solid var(--ncm-border);
+}
+
+.ncm-app .ncm-netlog-filter-group {
+  display: flex;
+  gap: 2px;
+}
+
+.ncm-app .ncm-netlog-filter-btn {
+  font-family: var(--ncm-font-display);
+  font-size: 8px;
+  font-weight: 600;
+  color: var(--ncm-text-muted);
+  background: var(--ncm-bg-surface);
+  border: 1px solid var(--ncm-border);
+  padding: 2px 7px;
+  border-radius: 2px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  transition: all 0.15s;
+}
+
+.ncm-app .ncm-netlog-filter-btn:hover {
+  color: var(--ncm-text-secondary);
+  border-color: var(--ncm-border-active);
+}
+
+.ncm-app .ncm-netlog-filter-btn--active {
+  color: var(--ncm-secondary) !important;
+  background: rgba(25, 243, 247, 0.06);
+  border-color: rgba(25, 243, 247, 0.25);
+}
+
+.ncm-app .ncm-netlog-network-filter {
+  font-family: var(--ncm-font-mono);
+  font-size: 9px;
+  color: var(--ncm-text-primary);
+  background: var(--ncm-bg-surface);
+  border: 1px solid var(--ncm-border);
+  padding: 2px 8px;
+  border-radius: 2px;
+}
+
+.ncm-app .ncm-netlog-spacer { flex: 1; }
+
+.ncm-app .ncm-netlog-btn {
+  font-family: var(--ncm-font-display);
+  font-size: 8px;
+  font-weight: 600;
+  color: var(--ncm-text-muted);
+  background: var(--ncm-bg-surface);
+  border: 1px solid var(--ncm-border);
+  padding: 2px 7px;
+  border-radius: 2px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  transition: all 0.15s;
+}
+
+.ncm-app .ncm-netlog-btn:hover {
+  color: var(--ncm-text-secondary);
+  border-color: var(--ncm-border-active);
+}
+
+.ncm-app .ncm-netlog-btn--accent {
+  color: var(--ncm-purple, #a855f7);
+  border-color: rgba(168, 85, 247, 0.25);
+}
+
+.ncm-app .ncm-netlog-btn--accent:hover {
+  background: rgba(168, 85, 247, 0.06);
+}
+
+.ncm-app .ncm-netlog-btn--danger:hover {
+  color: var(--ncm-danger);
+  border-color: rgba(255, 0, 51, 0.25);
+  background: rgba(255, 0, 51, 0.06);
+}
+
+.ncm-app .ncm-netlog-list {
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 3px 0;
+}
+
+.ncm-app .ncm-netlog-list::-webkit-scrollbar { width: 3px; }
+.ncm-app .ncm-netlog-list::-webkit-scrollbar-thumb { background: var(--ncm-border); }
+
+.ncm-app .ncm-netlog-entry {
+  display: grid;
+  grid-template-columns: 50px 16px 66px 66px 1fr 44px;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  font-size: 9px;
+  transition: background 0.1s;
+  position: relative;
+}
+
+.ncm-app .ncm-netlog-entry:hover { background: rgba(255, 255, 255, 0.015); }
+.ncm-app .ncm-netlog-entry__time { font-family: var(--ncm-font-mono); font-size: 8px; color: var(--ncm-text-muted); }
+.ncm-app .ncm-netlog-entry__icon { text-align: center; font-size: 9px; }
+.ncm-app .ncm-netlog-entry__actor { font-weight: 600; color: var(--ncm-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ncm-app .ncm-netlog-entry__network { font-family: var(--ncm-font-mono); font-size: 8px; color: var(--ncm-secondary); overflow: hidden; text-overflow: ellipsis; }
+.ncm-app .ncm-netlog-entry__message { color: var(--ncm-text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.ncm-app .ncm-netlog-entry__actions {
+  display: flex;
+  gap: 2px;
+  justify-content: flex-end;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+
+.ncm-app .ncm-netlog-entry:hover .ncm-netlog-entry__actions { opacity: 1; }
+
+.ncm-app .ncm-netlog-entry--manual {
+  border-left: 2px solid var(--ncm-purple, #a855f7);
+}
+
+.ncm-app .ncm-netlog-entry--manual::after {
+  content: 'GM';
+  position: absolute;
+  right: 3px;
+  top: 0;
+  font-family: var(--ncm-font-ui);
+  font-size: 5px;
+  letter-spacing: 1px;
+  color: var(--ncm-purple, #a855f7);
+  opacity: 0.4;
+}
+
+.ncm-app .ncm-netlog-empty {
+  text-align: center;
+  padding: 30px 20px;
+  font-family: var(--ncm-font-mono);
+  font-size: 11px;
+  color: var(--ncm-text-muted);
+}
+
+.ncm-app .ncm-netlog-empty i {
+  margin-right: 6px;
+}
+
+/* Add log form */
+.ncm-app .ncm-add-log-form {
+  display: flex;
+  gap: 5px;
+  padding: 7px 10px;
+  background: var(--ncm-bg-elevated);
+  border-top: 1px solid var(--ncm-border);
+  align-items: flex-end;
+}
+
+.ncm-app .ncm-add-log-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ncm-app .ncm-add-log-field label {
+  font-family: var(--ncm-font-display);
+  font-size: 7px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ncm-text-muted);
+}
+
+.ncm-app .ncm-add-log-field--message {
+  flex: 1;
+}
+
+.ncm-app .ncm-add-log-submit {
+  font-family: var(--ncm-font-display);
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--ncm-purple, #a855f7);
+  background: rgba(168, 85, 247, 0.08);
+  border: 1px solid rgba(168, 85, 247, 0.25);
+  padding: 4px 10px;
+  border-radius: 2px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.ncm-app .ncm-add-log-submit:hover {
+  background: rgba(168, 85, 247, 0.15);
+  border-color: var(--ncm-purple, #a855f7);
+}
+
+/* ═══════════════════════════════════════════
    FOUNDRY BUTTON OVERRIDES — Required to prevent
    Foundry's global button styles from rendering
    white boxes with browser chrome.
@@ -2293,4 +2951,46 @@
 .ncm-app .ncm-admin-panel select option {
   background: var(--ncm-bg-elevated);
   color: var(--ncm-text-primary);
+}
+
+/* Sprint 6: New button overrides */
+.ncm-app .ncm-admin-panel .ncm-scene-chip__dead-toggle,
+.ncm-app .ncm-admin-panel .ncm-network-card__action-btn,
+.ncm-app .ncm-admin-panel .ncm-network-card__log-toggle,
+.ncm-app .ncm-admin-panel .ncm-log-entry__action-btn,
+.ncm-app .ncm-admin-panel .ncm-netlog-filter-btn,
+.ncm-app .ncm-admin-panel .ncm-netlog-btn,
+.ncm-app .ncm-admin-panel .ncm-add-log-submit {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  box-shadow: none !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  outline: none !important;
+}
+
+/* Sprint 6: Range slider overrides */
+.ncm-app .ncm-admin-panel input[type="range"].ncm-network-card__quick-slider {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  box-shadow: none !important;
+  border: none !important;
+  background: var(--ncm-bg-deep) !important;
+  height: 3px !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  border-radius: 1px !important;
+  cursor: pointer !important;
+}
+
+.ncm-app .ncm-admin-panel input[type="range"].ncm-network-card__quick-slider::-webkit-slider-thumb {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  width: 10px !important;
+  height: 10px !important;
+  border-radius: 50% !important;
+  background: var(--ncm-secondary) !important;
+  box-shadow: 0 0 4px rgba(25, 243, 247, 0.4) !important;
+  cursor: pointer !important;
+  border: none !important;
 }

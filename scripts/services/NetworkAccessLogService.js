@@ -29,6 +29,8 @@ import { log } from '../utils/helpers.js';
  * @property {number} [rollTotal] - Roll result for skill bypass
  * @property {number} [dc] - Difficulty class
  * @property {string} [reason] - Failure reason
+ * @property {string} [message] - Human-readable display message (auto-generated or GM-written)
+ * @property {boolean} [manual] - True if GM-created entry (RP planted evidence, etc.)
  * @property {object} [extra] - Additional metadata
  */
 
@@ -132,8 +134,58 @@ export class NetworkAccessLogService {
       rollTotal: data.rollTotal,
       dc: data.dc,
       reason: data.reason,
+      message: data.message,
       extra: data.extra,
     });
+  }
+
+  /**
+   * Add a GM-created manual log entry for RP purposes.
+   * Entries are flagged as manual and highlighted in the UI.
+   * Use cases: planted evidence, fake traces, NPC hack records, etc.
+   * @param {object} data
+   * @param {string} data.networkId - Target network ID
+   * @param {string} [data.networkName] - Human-readable network name
+   * @param {string} [data.actorName='Unknown'] - Freeform actor name (can be "DAEMON_07", "NetWatch", etc.)
+   * @param {string} [data.type='manual'] - Event type for icon/styling
+   * @param {string} [data.message=''] - Freeform log message
+   */
+  addManualEntry(data = {}) {
+    this._push({
+      type: data.type ?? 'manual',
+      networkId: data.networkId ?? 'unknown',
+      networkName: data.networkName,
+      actorName: data.actorName ?? 'Unknown',
+      message: data.message ?? '',
+      manual: true,
+    });
+  }
+
+  /**
+   * Update an existing log entry by ID. GM only.
+   * @param {string} entryId
+   * @param {object} updates - Fields to merge into the entry
+   * @returns {boolean} True if found and updated
+   */
+  updateEntry(entryId, updates = {}) {
+    const entry = this._entries.find(e => e.id === entryId);
+    if (!entry) return false;
+    Object.assign(entry, updates);
+    log.debug(`Access log entry updated: ${entryId}`);
+    return true;
+  }
+
+  /**
+   * Delete a log entry by ID. GM only.
+   * @param {string} entryId
+   * @returns {boolean} True if found and removed
+   */
+  deleteEntry(entryId) {
+    const idx = this._entries.findIndex(e => e.id === entryId);
+    if (idx === -1) return false;
+    this._entries.splice(idx, 1);
+    log.debug(`Access log entry deleted: ${entryId}`);
+    return true;
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -179,10 +231,16 @@ export class NetworkAccessLogService {
       if (data.type === 'switch' || data.previousNetworkId) {
         const networkService = game.nightcity.networkService;
         const net = networkService?.getNetwork(data.currentNetworkId || data.networkId);
+        const prevNet = data.previousNetworkId
+          ? networkService?.getNetwork(data.previousNetworkId)
+          : null;
         this._push({
           type: 'network_switch',
           networkId: data.currentNetworkId || data.networkId,
           networkName: net?.name,
+          message: prevNet
+            ? `Switched from ${prevNet.name} → ${net?.name ?? 'unknown'}`
+            : `Connected to ${net?.name ?? 'unknown'}`,
         });
       }
     });
@@ -195,6 +253,7 @@ export class NetworkAccessLogService {
         type: 'connect',
         networkId: data.networkId,
         networkName: net?.name,
+        message: `Connected to ${net?.name ?? data.networkId}`,
       });
     });
 
@@ -204,6 +263,9 @@ export class NetworkAccessLogService {
         type: 'disconnect',
         networkId: 'none',
         reason: data.reason,
+        message: data.reason
+          ? `Disconnected — ${data.reason}`
+          : 'Disconnected from network',
       });
     });
 
@@ -211,6 +273,9 @@ export class NetworkAccessLogService {
     this._sub(EVENTS.NETWORK_AUTH_SUCCESS, (data) => {
       const networkService = game.nightcity.networkService;
       const net = networkService?.getNetwork(data.networkId);
+      const methodLabel = data.method === 'skill'
+        ? `${data.skillName ?? 'skill check'} (${data.rollTotal} vs DV ${data.dc})`
+        : (data.method ?? 'password');
       this._push({
         type: 'auth_success',
         networkId: data.networkId,
@@ -219,6 +284,7 @@ export class NetworkAccessLogService {
         skillName: data.skillName,
         rollTotal: data.rollTotal,
         dc: data.dc,
+        message: `Auth success — ${methodLabel} accepted`,
       });
     });
 
@@ -226,6 +292,9 @@ export class NetworkAccessLogService {
     this._sub(EVENTS.NETWORK_AUTH_FAILURE, (data) => {
       const networkService = game.nightcity.networkService;
       const net = networkService?.getNetwork(data.networkId);
+      const methodLabel = data.method === 'skill'
+        ? `${data.skillName ?? 'skill check'} (${data.rollTotal} vs DV ${data.dc})`
+        : (data.method ?? 'password');
       this._push({
         type: 'auth_failure',
         networkId: data.networkId,
@@ -234,17 +303,20 @@ export class NetworkAccessLogService {
         skillName: data.skillName,
         rollTotal: data.rollTotal,
         dc: data.dc,
+        message: `Auth failure — ${methodLabel} rejected`,
       });
     });
 
     // Lockout
     this._sub(EVENTS.NETWORK_LOCKOUT, (data) => {
+      const actorName = game.actors?.get(data.actorId)?.name ?? 'Unknown';
       this._push({
         type: 'lockout',
         networkId: data.targetId,
         actorId: data.actorId,
-        actorName: game.actors?.get(data.actorId)?.name,
+        actorName,
         extra: { lockoutUntil: data.lockoutUntil, duration: data.duration },
+        message: `Lockout — ${actorName} blocked from access`,
       });
     });
   }

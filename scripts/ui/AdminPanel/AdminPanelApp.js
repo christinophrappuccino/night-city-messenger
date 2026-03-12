@@ -35,6 +35,18 @@ export class AdminPanelApp extends BaseApplication {
   /** @type {string} Contact filter: 'all' | 'linked' | 'burned' | 'ice' | 'fixer' | 'netrunner' | 'solo' | 'corp' | etc */
   _contactFilter = 'all';
 
+  // ── Networks tab state (Sprint 6) ──
+  /** @type {'cards'|'logs'} Networks tab sub-view */
+  _networkSubView = 'cards';
+  /** @type {Set<string>} Network IDs with expanded card logs */
+  _expandedLogs = new Set();
+  /** @type {string} Log type filter for full log panel */
+  _logTypeFilter = 'all';
+  /** @type {string} Log network filter for full log panel ('' = all) */
+  _logNetworkFilter = '';
+  /** @type {boolean} Whether the add-log form is visible */
+  _showAddLogForm = false;
+
   // ═══════════════════════════════════════════════════════════
   //  Service Accessors
   // ═══════════════════════════════════════════════════════════
@@ -46,6 +58,7 @@ export class AdminPanelApp extends BaseApplication {
   get messageRepository() { return game.nightcity?.messageRepository; }
   get dataShardService() { return game.nightcity?.dataShardService; }
   get contactRepository() { return game.nightcity?.contactRepository; }
+  get accessLogService() { return game.nightcity?.accessLogService; }
 
   // ═══════════════════════════════════════════════════════════
   //  ApplicationV2 Configuration
@@ -99,6 +112,17 @@ export class AdminPanelApp extends BaseApplication {
       // Networks actions
       toggleNetwork: AdminPanelApp._onToggleNetwork,
       openNetworkManager: AdminPanelApp._onOpenNetworkManager,
+      toggleSceneDeadZone: AdminPanelApp._onToggleSceneDeadZone,
+      switchNetworkSubView: AdminPanelApp._onSwitchNetworkSubView,
+      toggleCardLog: AdminPanelApp._onToggleCardLog,
+      deleteLogEntry: AdminPanelApp._onDeleteLogEntry,
+      editLogEntry: AdminPanelApp._onEditLogEntry,
+      filterLogType: AdminPanelApp._onFilterLogType,
+      addManualLogEntry: AdminPanelApp._onAddManualLogEntry,
+      toggleAddLogForm: AdminPanelApp._onToggleAddLogForm,
+      exportNetworkLogs: AdminPanelApp._onExportNetworkLogs,
+      clearNetworkLogs: AdminPanelApp._onClearNetworkLogs,
+      resetNetworkAuth: AdminPanelApp._onResetNetworkAuth,
 
       // Data Shards actions
       openShardItem: AdminPanelApp._onOpenShardItem,
@@ -171,6 +195,30 @@ export class AdminPanelApp extends BaseApplication {
       active: networks.filter(n => n.enabled).length,
     };
 
+    // ─── Scene Quick Strip (Networks tab — Sprint 6) ───
+    const sceneStrip = this._gatherSceneStrip();
+
+    // ─── Network Stats (Networks tab — Sprint 6) ───
+    const allNetworks = this.networkService?.getAllNetworks?.() ?? [];
+    const netStats = {
+      total: allNetworks.length,
+      active: networks.filter(n => n.enabled).length,
+      deadZones: sceneStrip.filter(s => s.deadZone).length,
+      secured: allNetworks.filter(n => n.security?.requiresAuth).length,
+      connected: game.users?.filter(u => u.active && !u.isGM)?.length ?? 0,
+    };
+
+    // ─── Full Log Panel (Networks tab — Sprint 6) ───
+    const fullLogEntries = this._gatherFullLogEntries();
+    const logTypeFilters = [
+      { value: 'all', label: 'All', active: this._logTypeFilter === 'all' },
+      { value: 'connect', label: 'Connect', active: this._logTypeFilter === 'connect' },
+      { value: 'auth', label: 'Auth', active: this._logTypeFilter === 'auth' },
+      { value: 'hack', label: 'Hack', active: this._logTypeFilter === 'hack' },
+      { value: 'lockout', label: 'Lockout', active: this._logTypeFilter === 'lockout' },
+      { value: 'manual', label: 'Manual', active: this._logTypeFilter === 'manual' },
+    ];
+
     // ─── Data Shards (Shards tab) ───
     const shards = this._gatherShardData();
     const shardSummary = {
@@ -226,6 +274,13 @@ export class AdminPanelApp extends BaseApplication {
       // Networks tab
       networks,
       networkSummary,
+      sceneStrip,
+      netStats,
+      networkSubView: this._networkSubView,
+      fullLogEntries,
+      logTypeFilters,
+      logNetworkFilter: this._logNetworkFilter,
+      showAddLogForm: this._showAddLogForm,
 
       // Shards tab
       shards,
@@ -613,7 +668,26 @@ export class AdminPanelApp extends BaseApplication {
            authLabel = 'All signals blocked';
          }
 
-         // Gather scenes where this network appears
+         // ─── Signal class for color-coding ───
+         const signal = net.signalStrength ?? (isEnabled ? 85 : 0);
+         let signalClass = '';
+         if (signal === 0) signalClass = 'val--danger';
+         else if (signal < 50) signalClass = 'val--warning';
+         else signalClass = 'val--good';
+
+         // ─── Tags (Core/Custom/Global/Restricted) ───
+         const tags = [];
+         if (net.isCore) tags.push({ class: 'core', label: 'Core' });
+         else tags.push({ class: 'custom', label: 'Custom' });
+         if (isGlobal) tags.push({ class: 'global', label: 'Global' });
+         if (net.effects?.restrictedAccess) tags.push({ class: 'restricted', label: 'Restricted' });
+
+         // ─── Connected users (approximate — all active non-GM users) ───
+         const connectedUsers = game.users
+           ?.filter(u => u.active && !u.isGM)
+           ?.map(u => ({ id: u.id, name: u.character?.name ?? u.name })) ?? [];
+
+         // ─── Gather scenes where this network appears ───
          const scenes = [];
          for (const scene of game.scenes) {
            const sNets = scene.getFlag(MODULE_ID, 'networkAvailability') ?? {};
@@ -626,14 +700,25 @@ export class AdminPanelApp extends BaseApplication {
            }
          }
 
+         // ─── Per-network log data (Sprint 6) ───
+         const networkIdForLog = net.id || net.name;
+         const logExpanded = this._expandedLogs.has(networkIdForLog);
+         const logCount = this.accessLogService
+           ?.getEntries({ networkId: networkIdForLog, limit: 999 })?.length ?? 0;
+         const logEntries = logExpanded
+           ? (this.accessLogService?.getEntries({ networkId: networkIdForLog, limit: 10 }) ?? [])
+             .map(e => this._formatLogEntry(e))
+           : [];
+
          networks.push({
            id: net.id || net.name,
            name: net.name || net.id,
            type: known.type,
            enabled: isEnabled,
            isGlobal,
-           signal: net.signalStrength ?? (isEnabled ? 85 : 0),
-           noSignal: (net.signalStrength ?? (isEnabled ? 85 : 0)) === 0,
+           signal,
+           signalClass,
+           noSignal: signal === 0,
            reliability: net.reliability ?? (netId === 'deadzone' ? undefined : 85),
            userCount: net.userCount ?? 0,
            icon: known.icon,
@@ -641,8 +726,13 @@ export class AdminPanelApp extends BaseApplication {
            authClass,
            authIcon,
            authLabel,
+           tags,
+           connectedUsers,
            scenes,
            isCurrent: this.networkService?.currentNetworkId === (net.id || net.name),
+           logExpanded,
+           logCount,
+           logEntries,
          });
        }
      } catch (error) {
@@ -651,6 +741,161 @@ export class AdminPanelApp extends BaseApplication {
 
      return networks;
    }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Data Helpers — Sprint 6: Networks Tab Enhancements
+  // ═══════════════════════════════════════════════════════════
+
+  /**
+   * Build the scene quick strip data. Active scene sorted first.
+   * @returns {Array<object>}
+   * @private
+   */
+  _gatherSceneStrip() {
+    const currentSceneId = canvas.scene?.id;
+    const allNetworks = this.networkService?.getAllNetworks?.() ?? [];
+
+    return (game.scenes?.contents ?? []).map(s => {
+      const deadZone = s.getFlag(MODULE_ID, 'deadZone') ?? false;
+      const defaultNetId = s.getFlag(MODULE_ID, 'defaultNetwork') ?? '';
+      const defaultNet = allNetworks.find(n => n.id === defaultNetId || n.name === defaultNetId);
+      return {
+        id: s.id,
+        name: s.name,
+        isCurrent: s.id === currentSceneId,
+        deadZone,
+        defaultNetworkName: deadZone ? 'DEAD ZONE' : (defaultNet?.name ?? 'CITINET'),
+      };
+    }).sort((a, b) => {
+      if (a.isCurrent && !b.isCurrent) return -1;
+      if (!a.isCurrent && b.isCurrent) return 1;
+      return a.name.localeCompare(b.name);
+    });
+  }
+
+  /**
+   * Build filtered log entries for the full activity log panel.
+   * @returns {Array<object>}
+   * @private
+   */
+  _gatherFullLogEntries() {
+    if (this._networkSubView !== 'logs') return [];
+
+    const filters = { limit: 100 };
+
+    // Type filter
+    if (this._logTypeFilter === 'connect') {
+      filters.type = 'connect';
+    } else if (this._logTypeFilter === 'auth') {
+      // Match both auth_success and auth_failure — do post-filter
+    } else if (this._logTypeFilter === 'hack') {
+      filters.type = 'hack';
+    } else if (this._logTypeFilter === 'lockout') {
+      filters.type = 'lockout';
+    } else if (this._logTypeFilter === 'manual') {
+      // Post-filter by manual flag
+    }
+
+    // Network filter
+    if (this._logNetworkFilter) {
+      filters.networkId = this._logNetworkFilter;
+    }
+
+    let entries = this.accessLogService?.getEntries(filters) ?? [];
+
+    // Post-filter for auth (both success and failure)
+    if (this._logTypeFilter === 'auth') {
+      entries = entries.filter(e => e.type === 'auth_success' || e.type === 'auth_failure');
+    }
+
+    // Post-filter for manual
+    if (this._logTypeFilter === 'manual') {
+      entries = entries.filter(e => e.manual === true);
+    }
+
+    return entries.map(e => this._formatLogEntry(e));
+  }
+
+  /**
+   * Format a single log entry for template display.
+   * @param {object} e - Raw AccessLogEntry
+   * @returns {object} Formatted entry
+   * @private
+   */
+  _formatLogEntry(e) {
+    return {
+      ...e,
+      displayTime: this._formatLogTime(e.timestamp),
+      typeIcon: this._getLogTypeIcon(e.type),
+      typeClass: this._getLogTypeClass(e.type),
+      colorVar: this._getLogTypeColor(e.type, e.manual),
+      actorName: e.actorName ?? 'System',
+      networkName: e.networkName ?? e.networkId ?? '—',
+      message: e.message ?? e.type ?? '',
+    };
+  }
+
+  /** @private */
+  _formatLogTime(timestamp) {
+    if (!timestamp) return '';
+    const d = new Date(timestamp);
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
+  }
+
+  /** @private */
+  _getLogTypeIcon(type) {
+    const icons = {
+      connect: 'fa-plug',
+      disconnect: 'fa-plug-circle-xmark',
+      auth_success: 'fa-lock-open',
+      auth_failure: 'fa-lock',
+      lockout: 'fa-ban',
+      dead_zone: 'fa-signal-slash',
+      network_switch: 'fa-arrows-rotate',
+      hack: 'fa-skull-crossbones',
+      manual: 'fa-user-secret',
+      malware: 'fa-virus',
+      system: 'fa-signal-slash',
+    };
+    return icons[type] ?? 'fa-circle-info';
+  }
+
+  /** @private */
+  _getLogTypeClass(type) {
+    const map = {
+      connect: 'connect',
+      disconnect: 'disconnect',
+      auth_success: 'auth',
+      auth_failure: 'disconnect',
+      lockout: 'disconnect',
+      dead_zone: 'disconnect',
+      network_switch: 'switch',
+      hack: 'hack',
+      manual: 'manual',
+      malware: 'manual',
+      system: 'disconnect',
+    };
+    return map[type] || 'switch';
+  }
+
+  /** @private */
+  _getLogTypeColor(type, isManual) {
+    if (isManual) return 'purple';
+    const map = {
+      connect: 'success',
+      disconnect: 'danger',
+      auth_success: 'accent',
+      auth_failure: 'danger',
+      lockout: 'danger',
+      dead_zone: 'danger',
+      network_switch: 'secondary',
+      hack: 'primary',
+      manual: 'purple',
+      malware: 'purple',
+      system: 'danger',
+    };
+    return map[type] || 'secondary';
+  }
 
   /**
    * Gather data shard summary for the Shards tab.
@@ -901,6 +1146,11 @@ export class AdminPanelApp extends BaseApplication {
     if (this._activeTab === 'contacts') {
       this._setupContactsControls();
     }
+
+    // ── Networks tab: wire signal sliders + network filter select ──
+    if (this._activeTab === 'networks') {
+      this._setupNetworkControls();
+    }
   }
 
   /**
@@ -933,6 +1183,38 @@ export class AdminPanelApp extends BaseApplication {
     }
   }
 
+  /**
+   * Wire up signal sliders and network filter select on the Networks tab.
+   * Range sliders use input/change events which don't work with data-action.
+   */
+  _setupNetworkControls() {
+    // Signal sliders — update display on input, persist on change
+    this.element?.querySelectorAll('.ncm-network-card__quick-slider')?.forEach(slider => {
+      const networkId = slider.dataset.networkId;
+      const valueEl = slider.closest('.ncm-network-card__quick')
+        ?.querySelector('.ncm-network-card__quick-value');
+
+      slider.addEventListener('input', () => {
+        if (valueEl) valueEl.textContent = `${slider.value}%`;
+      });
+
+      slider.addEventListener('change', async () => {
+        const value = Number(slider.value);
+        await this.networkService?.updateNetwork(networkId, { signalStrength: value });
+        log.info(`Admin: Signal for ${networkId} set to ${value}%`);
+      });
+    });
+
+    // Network filter dropdown in full log panel
+    const netFilter = this.element?.querySelector('.ncm-netlog-network-filter');
+    if (netFilter) {
+      netFilter.addEventListener('change', (e) => {
+        this._logNetworkFilter = e.target.value;
+        this.render(true);
+      });
+    }
+  }
+
   // ═══════════════════════════════════════════════════════════
   //  Event Subscriptions
   // ═══════════════════════════════════════════════════════════
@@ -955,6 +1237,9 @@ export class AdminPanelApp extends BaseApplication {
     this.subscribe(EVENTS.NETWORK_CHANGED, () => this._refreshIfTab('networks', 'overview'));
     this.subscribe(EVENTS.NETWORK_CONNECTED, () => this._refreshIfTab('networks', 'overview'));
     this.subscribe(EVENTS.NETWORK_DISCONNECTED, () => this._refreshIfTab('networks', 'overview'));
+    this.subscribe(EVENTS.NETWORK_AUTH_SUCCESS, () => this._refreshIfTab('networks'));
+    this.subscribe(EVENTS.NETWORK_AUTH_FAILURE, () => this._refreshIfTab('networks'));
+    this.subscribe(EVENTS.NETWORK_LOCKOUT, () => this._refreshIfTab('networks'));
 
     // Data Shards
     this.subscribe(EVENTS.SHARD_DECRYPTED, () => this._refreshIfTab('shards'));
@@ -1426,6 +1711,177 @@ export class AdminPanelApp extends BaseApplication {
   static _onOpenNetworkManager(event, target) {
     game.nightcity?.openNetworkManager?.();
     log.info('Admin: Opening Network Manager');
+  }
+
+  // ── Sprint 6: Scene Dead Zone Toggle ──
+
+  static async _onToggleSceneDeadZone(event, target) {
+    event.preventDefault();
+    event.stopPropagation();
+    const chip = target.closest('[data-scene-id]');
+    const sceneId = chip?.dataset.sceneId;
+    if (!sceneId) return;
+    const scene = game.scenes.get(sceneId);
+    if (!scene) return;
+    const currentDead = scene.getFlag(MODULE_ID, 'deadZone') ?? false;
+    await this.networkService?.toggleDeadZone(sceneId, !currentDead);
+    this.render(true);
+  }
+
+  // ── Sprint 6: Network Sub-View Toggle ──
+
+  static _onSwitchNetworkSubView(event, target) {
+    const subview = target.dataset.subview || target.closest('[data-subview]')?.dataset.subview;
+    if (!subview) return;
+    this._networkSubView = subview;
+    this.render(true);
+  }
+
+  // ── Sprint 6: Card Log Toggle ──
+
+  static _onToggleCardLog(event, target) {
+    event.preventDefault();
+    event.stopPropagation();
+    const networkId = target.dataset.networkId || target.closest('[data-network-id]')?.dataset.networkId;
+    if (!networkId) return;
+    if (this._expandedLogs.has(networkId)) {
+      this._expandedLogs.delete(networkId);
+    } else {
+      this._expandedLogs.add(networkId);
+    }
+    this.render(true);
+  }
+
+  // ── Sprint 6: Log Entry Actions ──
+
+  static _onDeleteLogEntry(event, target) {
+    event.preventDefault();
+    event.stopPropagation();
+    const entryId = target.dataset.entryId || target.closest('[data-entry-id]')?.dataset.entryId;
+    if (!entryId) return;
+    if (this.accessLogService?.deleteEntry(entryId)) {
+      ui.notifications.info('NCM | Log entry deleted.');
+      this.render(true);
+    }
+  }
+
+  static _onEditLogEntry(event, target) {
+    event.preventDefault();
+    event.stopPropagation();
+    const entryId = target.dataset.entryId || target.closest('[data-entry-id]')?.dataset.entryId;
+    if (!entryId) return;
+
+    // Simple dialog for editing the message
+    const entries = this.accessLogService?._entries ?? [];
+    const entry = entries.find(e => e.id === entryId);
+    if (!entry) return;
+
+    const dialog = new Dialog({
+      title: 'Edit Log Entry',
+      content: `
+        <form style="display:flex; flex-direction:column; gap:8px;">
+          <label style="font-size:11px; font-weight:600;">Message</label>
+          <input type="text" name="message" value="${entry.message ?? ''}" style="padding:4px 8px;">
+          <label style="font-size:11px; font-weight:600;">Actor Name</label>
+          <input type="text" name="actorName" value="${entry.actorName ?? ''}" style="padding:4px 8px;">
+        </form>`,
+      buttons: {
+        save: {
+          icon: '<i class="fas fa-save"></i>',
+          label: 'Save',
+          callback: (html) => {
+            const message = html.find('[name="message"]').val();
+            const actorName = html.find('[name="actorName"]').val();
+            this.accessLogService?.updateEntry(entryId, { message, actorName });
+            this.render(true);
+          },
+        },
+        cancel: { icon: '<i class="fas fa-times"></i>', label: 'Cancel' },
+      },
+      default: 'save',
+    });
+    dialog.render(true);
+  }
+
+  // ── Sprint 6: Full Log Panel Actions ──
+
+  static _onFilterLogType(event, target) {
+    const filter = target.dataset.filter || target.closest('[data-filter]')?.dataset.filter;
+    if (!filter) return;
+    this._logTypeFilter = filter;
+    this.render(true);
+  }
+
+  static _onToggleAddLogForm() {
+    this._showAddLogForm = !this._showAddLogForm;
+    this.render(true);
+  }
+
+  static _onAddManualLogEntry(event, target) {
+    event.preventDefault();
+    const form = target.closest('.ncm-add-log-form') || this.element?.querySelector('.ncm-add-log-form');
+    if (!form) return;
+
+    const networkId = form.querySelector('[name="logNetwork"]')?.value;
+    const actorName = form.querySelector('[name="logActor"]')?.value?.trim();
+    const type = form.querySelector('[name="logType"]')?.value;
+    const message = form.querySelector('[name="logMessage"]')?.value?.trim();
+
+    if (!message) {
+      ui.notifications.warn('NCM | Log message cannot be empty.');
+      return;
+    }
+
+    const network = this.networkService?.getNetwork(networkId);
+    this.accessLogService?.addManualEntry({
+      networkId: networkId || 'unknown',
+      networkName: network?.name ?? networkId,
+      actorName: actorName || 'Unknown',
+      type: type || 'manual',
+      message,
+    });
+
+    // Clear form inputs
+    const actorInput = form.querySelector('[name="logActor"]');
+    const messageInput = form.querySelector('[name="logMessage"]');
+    if (actorInput) actorInput.value = '';
+    if (messageInput) messageInput.value = '';
+
+    ui.notifications.info('NCM | Manual log entry added.');
+    this.render(true);
+  }
+
+  static _onExportNetworkLogs() {
+    const json = this.accessLogService?.exportLog();
+    if (!json) return;
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ncm-network-log-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    ui.notifications.info('NCM | Network log exported.');
+  }
+
+  static _onClearNetworkLogs() {
+    Dialog.confirm({
+      title: 'Clear Network Logs',
+      content: '<p>Clear all network access log entries? This cannot be undone.</p>',
+      yes: () => {
+        this.accessLogService?.clearLog();
+        ui.notifications.info('NCM | Network log cleared.');
+        this.render(true);
+      },
+    });
+  }
+
+  static _onResetNetworkAuth(event, target) {
+    const networkId = target.dataset.networkId || target.closest('[data-network-id]')?.dataset.networkId;
+    if (!networkId) return;
+    this.networkService?.revokeAuth(networkId);
+    ui.notifications.info(`NCM | Auth reset for ${networkId}.`);
+    this.render(true);
   }
 
   // ═══════════════════════════════════════════════════════════

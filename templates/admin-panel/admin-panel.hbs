@@ -404,14 +404,160 @@
     {{/if}}
 
     {{!-- ──────────────────────────────────────────
-         TAB 4: NETWORKS
+         TAB 4: NETWORKS (Enhanced — Sprint 6)
          ────────────────────────────────────────── --}}
     {{#if (eq activeTab 'networks')}}
 
+    {{#if (eq networkSubView 'logs')}}
+    {{!-- ═══ FULL ACTIVITY LOG PANEL ═══ --}}
     <div class="ncm-section-title">
-      <i class="fas fa-network-wired"></i> Active Networks
+      <i class="fas fa-scroll"></i> Network Activity Log
+      <button class="ncm-section-title__action" data-action="switchNetworkSubView" data-subview="cards">← Back to Networks</button>
+    </div>
+
+    <div class="ncm-netlog-panel">
+      <div class="ncm-netlog-toolbar">
+        <div class="ncm-netlog-filter-group">
+          {{#each logTypeFilters}}
+          <button class="ncm-netlog-filter-btn {{#if this.active}}ncm-netlog-filter-btn--active{{/if}}"
+                  data-action="filterLogType" data-filter="{{this.value}}">{{this.label}}</button>
+          {{/each}}
+        </div>
+        <select class="ncm-netlog-network-filter" data-action="filterLogNetwork">
+          <option value="">All Networks</option>
+          {{#each networks}}
+          <option value="{{this.id}}" {{#if (eq this.id ../logNetworkFilter)}}selected{{/if}}>{{this.name}}</option>
+          {{/each}}
+        </select>
+        <div class="ncm-netlog-spacer"></div>
+        <button class="ncm-netlog-btn ncm-netlog-btn--accent" data-action="toggleAddLogForm">
+          <i class="fas fa-plus"></i> Add Entry
+        </button>
+        <button class="ncm-netlog-btn" data-action="exportNetworkLogs">
+          <i class="fas fa-file-export"></i> Export
+        </button>
+        <button class="ncm-netlog-btn ncm-netlog-btn--danger" data-action="clearNetworkLogs">
+          <i class="fas fa-trash"></i> Clear
+        </button>
+      </div>
+
+      <div class="ncm-netlog-list">
+        {{#if fullLogEntries.length}}
+        {{#each fullLogEntries}}
+        <div class="ncm-netlog-entry {{#if this.manual}}ncm-netlog-entry--manual{{/if}}" data-entry-id="{{this.id}}">
+          <span class="ncm-netlog-entry__time">{{this.displayTime}}</span>
+          <span class="ncm-netlog-entry__icon" style="color:var(--ncm-{{this.colorVar}});">
+            <i class="fas {{this.typeIcon}}"></i>
+          </span>
+          <span class="ncm-netlog-entry__actor">{{this.actorName}}</span>
+          <span class="ncm-netlog-entry__network">{{this.networkName}}</span>
+          <span class="ncm-netlog-entry__message">{{this.message}}</span>
+          <div class="ncm-netlog-entry__actions">
+            <button class="ncm-log-entry__action-btn" data-action="editLogEntry" data-entry-id="{{this.id}}" title="Edit"><i class="fas fa-pen"></i></button>
+            <button class="ncm-log-entry__action-btn ncm-log-entry__action-btn--danger" data-action="deleteLogEntry" data-entry-id="{{this.id}}" title="Delete"><i class="fas fa-trash"></i></button>
+          </div>
+        </div>
+        {{/each}}
+        {{else}}
+        <div class="ncm-netlog-empty">
+          <i class="fas fa-clipboard-list"></i> No log entries
+        </div>
+        {{/if}}
+      </div>
+
+      {{#if showAddLogForm}}
+      <div class="ncm-add-log-form">
+        <div class="ncm-add-log-field">
+          <label>Network</label>
+          <select name="logNetwork">
+            {{#each networks}}
+            <option value="{{this.id}}">{{this.name}}</option>
+            {{/each}}
+          </select>
+        </div>
+        <div class="ncm-add-log-field">
+          <label>Actor</label>
+          <input type="text" name="logActor" placeholder="Unknown" style="width:80px;">
+        </div>
+        <div class="ncm-add-log-field">
+          <label>Type</label>
+          <select name="logType">
+            <option value="connect">Connect</option>
+            <option value="disconnect">Disconnect</option>
+            <option value="auth_success">Auth Success</option>
+            <option value="auth_failure">Auth Failure</option>
+            <option value="hack">Hack Attempt</option>
+            <option value="lockout">Lockout</option>
+            <option value="manual">Trace / Manual</option>
+            <option value="malware">Malware</option>
+            <option value="system">System</option>
+          </select>
+        </div>
+        <div class="ncm-add-log-field ncm-add-log-field--message">
+          <label>Message</label>
+          <input type="text" name="logMessage" placeholder="[TRACE] Unauthorized access from...">
+        </div>
+        <button class="ncm-add-log-submit" data-action="addManualLogEntry"><i class="fas fa-plus"></i> Add</button>
+      </div>
+      {{/if}}
+    </div>
+
+    {{else}}
+    {{!-- ═══ NETWORK CARDS VIEW (Default) ═══ --}}
+
+    <div class="ncm-section-title">
+      <i class="fas fa-network-wired"></i> Network Operations
+      <button class="ncm-section-title__action" data-action="switchNetworkSubView" data-subview="logs"><i class="fas fa-scroll"></i> Activity Log →</button>
       <button class="ncm-section-title__action" data-action="openNetworkManager">Open Full Manager →</button>
     </div>
+
+    {{!-- Health Strip --}}
+    <div class="ncm-net-health-strip">
+      <div class="ncm-net-health-card">
+        <div class="ncm-net-health-card__value ncm-net-health-card__value--cyan">{{netStats.total}}</div>
+        <div class="ncm-net-health-card__label">Subnets</div>
+      </div>
+      <div class="ncm-net-health-card">
+        <div class="ncm-net-health-card__value ncm-net-health-card__value--green">{{netStats.active}}</div>
+        <div class="ncm-net-health-card__label">Active</div>
+      </div>
+      <div class="ncm-net-health-card">
+        <div class="ncm-net-health-card__value ncm-net-health-card__value--red">{{netStats.deadZones}}</div>
+        <div class="ncm-net-health-card__label">Dead Zones</div>
+      </div>
+      <div class="ncm-net-health-card">
+        <div class="ncm-net-health-card__value ncm-net-health-card__value--gold">{{netStats.secured}}</div>
+        <div class="ncm-net-health-card__label">Secured</div>
+      </div>
+      <div class="ncm-net-health-card">
+        <div class="ncm-net-health-card__value ncm-net-health-card__value--cyan">{{netStats.connected}}</div>
+        <div class="ncm-net-health-card__label">Connected</div>
+      </div>
+    </div>
+
+    {{!-- Scene Quick Strip --}}
+    {{#if sceneStrip.length}}
+    <div class="ncm-scene-strip">
+      <div class="ncm-scene-strip__label"><i class="fas fa-map"></i> Scene Dead Zones</div>
+      {{#each sceneStrip}}
+      <div class="ncm-scene-chip {{#if this.deadZone}}ncm-scene-chip--dead{{/if}} {{#if this.isCurrent}}ncm-scene-chip--current{{/if}}"
+           data-scene-id="{{this.id}}">
+        <div class="ncm-scene-chip__dot"></div>
+        <div>
+          <div class="ncm-scene-chip__name">{{this.name}}</div>
+          <div class="ncm-scene-chip__network">{{this.defaultNetworkName}}</div>
+        </div>
+        <div class="ncm-scene-chip__dead-toggle"
+             data-action="toggleSceneDeadZone"
+             title="{{#if this.deadZone}}Restore signal{{else}}Toggle dead zone{{/if}}">
+          <i class="fas {{#if this.deadZone}}fa-signal{{else}}fa-signal-slash{{/if}}"></i>
+        </div>
+      </div>
+      {{/each}}
+    </div>
+    {{/if}}
+
+    {{!-- Network Cards --}}
     {{#if networks.length}}
     <div class="ncm-network-grid">
       {{#each networks}}
@@ -424,37 +570,93 @@
           <div class="ncm-network-card__title-area">
             <div class="ncm-network-card__name">{{this.name}}</div>
             <div class="ncm-network-card__type">{{this.type}}</div>
+            {{#if this.tags.length}}
+            <div class="ncm-network-card__tags">
+              {{#each this.tags}}
+              <span class="ncm-tag ncm-tag--{{this.class}}">{{this.label}}</span>
+              {{/each}}
+            </div>
+            {{/if}}
           </div>
-           {{#if this.isGlobal}}
-             <span class="ncm-network-card__global-badge">
-               <i class="fas fa-globe"></i> GLOBAL
-             </span>
-             {{else}}
-            <div class="ncm-network-card__toggle {{#if this.enabled}}ncm-network-card__toggle--on{{/if}}"
-                data-action="toggleNetwork" data-network-id="{{this.id}}"></div>
-         {{/if}}
+          {{#if this.isGlobal}}
+          <span class="ncm-network-card__global-badge"><i class="fas fa-globe"></i> GLOBAL</span>
+          {{else}}
+          <div class="ncm-network-card__toggle {{#if this.enabled}}ncm-network-card__toggle--on{{/if}}"
+               data-action="toggleNetwork" data-network-id="{{this.id}}"></div>
+          {{/if}}
         </div>
+
         <div class="ncm-network-card__stats">
-          <span>Signal <span class="val {{#if this.noSignal}}val--danger{{/if}}">{{this.signal}}%</span></span>
+          <span>Signal <span class="val {{this.signalClass}}">{{this.signal}}%</span></span>
           <span>Users <span class="val">{{this.userCount}}</span></span>
-          {{#if this.reliability}}<span>Reliability <span class="val">{{this.reliability}}%</span></span>{{/if}}
+          {{#if this.reliability}}<span>Rel <span class="val">{{this.reliability}}%</span></span>{{/if}}
         </div>
-        {{#if this.scenes.length}}
-        <div class="ncm-network-card__scenes">
-          {{#each this.scenes}}
-          <span class="ncm-network-card__scene {{#if this.isCurrent}}ncm-network-card__scene--current{{/if}}">{{this.name}}</span>
+
+        {{!-- Quick Signal Adjust --}}
+        <div class="ncm-network-card__quick">
+          <span class="ncm-network-card__quick-label">Signal</span>
+          <input type="range" class="ncm-network-card__quick-slider"
+                 min="0" max="100" value="{{this.signal}}"
+                 data-network-id="{{this.id}}">
+          <span class="ncm-network-card__quick-value">{{this.signal}}%</span>
+        </div>
+
+        {{!-- Connected Users --}}
+        {{#if this.connectedUsers.length}}
+        <div class="ncm-network-card__users">
+          {{#each this.connectedUsers}}
+          <div class="ncm-network-card__user-chip">
+            <div class="ncm-network-card__user-dot"></div> {{this.name}}
+          </div>
           {{/each}}
         </div>
         {{/if}}
+
         <div class="ncm-network-card__auth ncm-network-card__auth--{{this.authClass}}">
           <i class="fas fa-{{this.authIcon}}"></i> {{this.authLabel}}
         </div>
+
+        {{!-- Hover Actions --}}
+        <div class="ncm-network-card__actions">
+          <button class="ncm-network-card__action-btn" data-action="openNetworkManager"><i class="fas fa-pen"></i> Edit</button>
+          {{#if this.authClass}}{{#if (eq this.authClass 'password')}}
+          <button class="ncm-network-card__action-btn" data-action="resetNetworkAuth" data-network-id="{{this.id}}"><i class="fas fa-key"></i> Reset Auth</button>
+          {{/if}}{{/if}}
+        </div>
+
+        {{!-- Per-Network Activity Log Toggle --}}
+        <button class="ncm-network-card__log-toggle" data-action="toggleCardLog" data-network-id="{{this.id}}">
+          <i class="fas fa-scroll"></i> Activity Log
+          {{#if this.logCount}}<span class="ncm-network-card__log-count">{{this.logCount}}</span>{{/if}}
+          <span class="ncm-network-card__log-arrow">{{#if this.logExpanded}}▼{{else}}▶{{/if}}</span>
+        </button>
+        {{#if this.logExpanded}}
+        <div class="ncm-network-card__log">
+          {{#each this.logEntries}}
+          <div class="ncm-log-entry {{#if this.manual}}ncm-log-entry--manual{{/if}}" data-entry-id="{{this.id}}">
+            <span class="ncm-log-entry__time">{{this.displayTime}}</span>
+            <span class="ncm-log-entry__icon ncm-log-entry__icon--{{this.typeClass}}"><i class="fas {{this.typeIcon}}"></i></span>
+            <span class="ncm-log-entry__actor">{{this.actorName}}</span>
+            <span class="ncm-log-entry__message">{{this.message}}</span>
+            <div class="ncm-log-entry__actions">
+              <button class="ncm-log-entry__action-btn" data-action="editLogEntry" data-entry-id="{{this.id}}"><i class="fas fa-pen"></i></button>
+              <button class="ncm-log-entry__action-btn ncm-log-entry__action-btn--danger" data-action="deleteLogEntry" data-entry-id="{{this.id}}"><i class="fas fa-trash"></i></button>
+            </div>
+          </div>
+          {{/each}}
+          {{#unless this.logEntries.length}}
+          <div class="ncm-log-entry" style="justify-content:center; color:var(--ncm-text-muted);">No activity</div>
+          {{/unless}}
+        </div>
+        {{/if}}
       </div>
       {{/each}}
     </div>
     {{else}}
     <div class="ncm-admin-empty"><i class="fas fa-network-wired"></i> No networks defined.</div>
     {{/if}}
+
+    {{/if}}{{!-- /networkSubView --}}
 
     {{/if}}
 
@@ -586,7 +788,7 @@
       {{#if (eq activeTab 'overview')}}<span><i class="fas fa-inbox"></i> {{stats.totalMessages}} MESSAGES</span><span><i class="fas fa-wifi"></i> {{currentNetwork}}</span>{{/if}}
       {{#if (eq activeTab 'messages')}}<span><i class="fas fa-clock"></i> {{scheduledCount}} SCHEDULED</span>{{/if}}
       {{#if (eq activeTab 'contacts')}}<span><i class="fas fa-address-book"></i> {{contactSummary.total}} CONTACTS</span>{{#if contactSummary.burned}}<span style="color: var(--ncm-danger);"><i class="fas fa-fire"></i> {{contactSummary.burned}} BURNED</span>{{/if}}{{/if}}
-      {{#if (eq activeTab 'networks')}}<span><i class="fas fa-network-wired"></i> {{networkSummary.active}}/{{networks.length}} NETWORKS ACTIVE</span>{{/if}}
+      {{#if (eq activeTab 'networks')}}<span><i class="fas fa-network-wired"></i> {{netStats.active}}/{{netStats.total}} ACTIVE</span><span><i class="fas fa-ban"></i> {{netStats.deadZones}} DEAD ZONES</span><span><i class="fas fa-users"></i> {{netStats.connected}} CONNECTED</span>{{/if}}
       {{#if (eq activeTab 'shards')}}<span><i class="fas fa-database"></i> {{shards.length}} SHARDS</span>{{#if shardSummary.locked}}<span style="color: var(--ncm-accent);"><i class="fas fa-lock"></i> {{shardSummary.locked}} LOCKED</span>{{/if}}{{#if shardSummary.blackice}}<span style="color: var(--ncm-danger);"><i class="fas fa-skull-crossbones"></i> {{shardSummary.blackice}} BLACK ICE</span>{{/if}}{{/if}}
       {{#if (eq activeTab 'tools')}}<span><i class="fas fa-code-branch"></i> NCM v4.1</span>{{/if}}
     </div>
@@ -594,7 +796,7 @@
       {{#if (eq activeTab 'overview')}}<kbd>TAB</kbd> SWITCH &nbsp; <kbd>R</kbd> REFRESH{{/if}}
       {{#if (eq activeTab 'messages')}}<kbd>N</kbd> NEW MESSAGE &nbsp; <kbd>S</kbd> SCHEDULE{{/if}}
       {{#if (eq activeTab 'contacts')}}<kbd>CLICK</kbd> EDIT &nbsp; <kbd>P</kbd> PUSH &nbsp; <kbd>N</kbd> NEW{{/if}}
-      {{#if (eq activeTab 'networks')}}<kbd>CLICK</kbd> TOGGLE &nbsp; <kbd>E</kbd> EDIT &nbsp; <kbd>N</kbd> NEW NETWORK{{/if}}
+      {{#if (eq activeTab 'networks')}}<kbd>CLICK</kbd> TOGGLE &nbsp; <kbd>E</kbd> EDIT &nbsp; <kbd>N</kbd> NEW &nbsp; <kbd>L</kbd> LOGS{{/if}}
       {{#if (eq activeTab 'shards')}}<kbd>CLICK</kbd> OPEN SHARD &nbsp; <kbd>F</kbd> FORCE DECRYPT &nbsp; <kbd>R</kbd> RELOCK{{/if}}
       {{#if (eq activeTab 'tools')}}<kbd>CLICK</kbd> TOOL → OPEN &nbsp; <kbd>ESC</kbd> CLOSE{{/if}}
     </div>
