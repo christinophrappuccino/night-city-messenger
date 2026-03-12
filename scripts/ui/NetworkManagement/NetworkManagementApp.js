@@ -37,6 +37,9 @@ export class NetworkManagementApp extends BaseApplication {
   /** @type {Set<string>} Collapsed group names in sidebar */
   _collapsedGroups = new Set();
 
+  /** @type {string|null} Currently selected scene in Scenes tab */
+  _selectedSceneId = null;
+
   // ─── Service Accessors ───
 
   get networkService() { return game.nightcity?.networkService; }
@@ -252,10 +255,26 @@ export class NetworkManagementApp extends BaseApplication {
       id: s.id,
       name: s.name,
       isViewed: s.id === game.scenes?.viewed?.id,
+      isCurrent: s.id === canvas.scene?.id,
       deadZone: s.getFlag(MODULE_ID, 'deadZone') ?? false,
       defaultNetwork: s.getFlag(MODULE_ID, 'defaultNetwork') ?? '',
       networkAvailability: s.getFlag(MODULE_ID, 'networkAvailability') ?? {},
     }));
+
+    // Auto-select current scene if nothing selected
+    if (!this._selectedSceneId && scenes.length) {
+      const current = scenes.find(s => s.isCurrent);
+      this._selectedSceneId = current?.id ?? scenes[0].id;
+    }
+
+    const selectedScene = scenes.find(s => s.id === this._selectedSceneId) ?? null;
+
+    // Scene summary stats
+    const sceneSummary = {
+      total: scenes.length,
+      deadZones: scenes.filter(s => s.deadZone).length,
+      configured: scenes.filter(s => s.defaultNetwork).length,
+    };
 
     // ─── Access log entries ───
     const logFilters = { limit: 100 };
@@ -330,6 +349,9 @@ export class NetworkManagementApp extends BaseApplication {
 
       // Scenes
       scenes,
+      selectedScene,
+      selectedSceneId: this._selectedSceneId,
+      sceneSummary,
       allNetworks: networks,
 
       // Logs
@@ -369,6 +391,15 @@ export class NetworkManagementApp extends BaseApplication {
     if (netFilter) {
       netFilter.addEventListener('change', (e) => {
         this._logNetworkFilter = e.target.value;
+        this.render(true);
+      });
+    }
+
+    // Wire scene selector dropdown
+    const sceneSelect = this.element?.querySelector('.ncm-netmgr__scene-selector');
+    if (sceneSelect) {
+      sceneSelect.addEventListener('change', (e) => {
+        this._selectedSceneId = e.target.value;
         this.render(true);
       });
     }

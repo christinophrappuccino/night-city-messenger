@@ -742,106 +742,139 @@
        ═══════════════════════════════════════════════════════ --}}
   {{#if isScenesTab}}
   <div class="ncm-netmgr__content">
-    <div class="ncm-netmgr__section-title">
-      <i class="fas fa-map"></i> Scene Network Configuration
-      <button class="ncm-netmgr__section-action" data-action="refreshScenes">
-        <i class="fas fa-sync"></i> Refresh
-      </button>
-    </div>
 
-    {{#if scenes.length}}
-    <div class="ncm-netmgr__scene-grid">
-      {{#each scenes}}
-      <div class="ncm-netmgr__scene-card {{#if isViewed}}ncm-netmgr__scene-card--current{{/if}} {{#if deadZone}}ncm-netmgr__scene-card--dead{{/if}}"
-           data-scene-id="{{id}}">
-
-        {{!-- Scene Card Header --}}
-        <div class="ncm-netmgr__scene-card-header">
-          <div class="ncm-netmgr__scene-card-dot {{#if deadZone}}ncm-netmgr__scene-card-dot--dead{{else if isViewed}}ncm-netmgr__scene-card-dot--live{{else}}ncm-netmgr__scene-card-dot--inactive{{/if}}"></div>
-          <span class="ncm-netmgr__scene-card-name {{#if deadZone}}ncm-netmgr__scene-card-name--dead{{/if}}">
-            {{name}}
-          </span>
-          {{#if deadZone}}
-          <span class="ncm-netmgr__scene-card-dead-tag">
-            <i class="fas fa-ban"></i> Dead Zone
-          </span>
-          {{/if}}
-          <button class="ncm-netmgr__scene-toggle-dead {{#if deadZone}}ncm-netmgr__scene-toggle-dead--on{{else}}ncm-netmgr__scene-toggle-dead--off{{/if}}"
-                  data-action="toggleDeadZone">
-            {{#if deadZone}}
-            <i class="fas fa-signal"></i> Restore Signal
-            {{else}}
-            <i class="fas fa-signal"></i> Signal OK
-            {{/if}}
-          </button>
-        </div>
-
-        {{!-- Scene Card Body --}}
-        <div class="ncm-netmgr__scene-card-body {{#if deadZone}}ncm-netmgr__scene-card-body--disabled{{/if}}">
-
-          {{!-- Default Network --}}
-          <div>
-            <div class="ncm-netmgr__scene-card-field-label">Default Network</div>
-            {{#if deadZone}}
-            <select class="ncm-netmgr__select" disabled style="width:100%;">
-              <option>— Dead Zone — No Networks —</option>
-            </select>
-            {{else}}
-            <select class="ncm-netmgr__select" name="defaultNetwork" style="width:100%;">
-              <option value="">— None —</option>
-              {{#each ../allNetworks}}
-              <option value="{{id}}" {{#if (eq id ../defaultNetwork)}}selected{{/if}}>{{name}}</option>
-              {{/each}}
-            </select>
-            {{/if}}
-          </div>
-
-          {{!-- Available Networks --}}
-          <div>
-            <div class="ncm-netmgr__scene-card-field-label">Available Networks</div>
-            {{#if deadZone}}
-            <div class="ncm-netmgr__scene-dead-notice">
-              <i class="fas fa-ban"></i> All signals jammed — Dead Zone active
-            </div>
-            {{else}}
-            <div class="ncm-netmgr__scene-net-list">
-              {{#each ../allNetworks}}
-              {{#if availability.global}}
-              <label class="ncm-netmgr__scene-net-check ncm-netmgr__scene-net-check--active ncm-netmgr__scene-net-check--global">
-                <input type="checkbox" name="netAvail_{{id}}" checked disabled>
-                <span class="ncm-netmgr__scene-net-check-icon" style="color: {{theme.color}};">
-                  <i class="fas {{theme.icon}}"></i>
-                </span>
-                {{name}}
-                <span class="ncm-netmgr__tag ncm-netmgr__tag--core" style="font-size:6px; margin-left:2px;">GLOBAL</span>
-              </label>
-              {{else}}
-              <label class="ncm-netmgr__scene-net-check {{#if (lookup ../networkAvailability id)}}ncm-netmgr__scene-net-check--active{{/if}}">
-                <input type="checkbox" name="netAvail_{{id}}"
-                       {{#if (lookup ../networkAvailability id)}}checked{{/if}}>
-                <span class="ncm-netmgr__scene-net-check-icon" style="color: {{theme.color}};">
-                  <i class="fas {{theme.icon}}"></i>
-                </span>
-                {{name}}
-              </label>
-              {{/if}}
-              {{/each}}
-            </div>
-            {{/if}}
-          </div>
-        </div>
-
-        {{!-- Scene Card Footer --}}
-        {{#unless deadZone}}
-        <div class="ncm-netmgr__scene-card-footer">
-          <button class="ncm-netmgr__btn-sm ncm-netmgr__btn-sm--primary" data-action="saveSceneConfig">
-            <i class="fas fa-save"></i> Save
-          </button>
-        </div>
-        {{/unless}}
+    {{!-- Scene Summary Strip --}}
+    <div class="ncm-netmgr__scene-summary">
+      <div class="ncm-netmgr__scene-summary-stat">
+        <span class="ncm-netmgr__scene-summary-value">{{sceneSummary.total}}</span>
+        <span class="ncm-netmgr__scene-summary-label">Scenes</span>
       </div>
-      {{/each}}
+      <div class="ncm-netmgr__scene-summary-stat">
+        <span class="ncm-netmgr__scene-summary-value ncm-netmgr__scene-summary-value--configured">{{sceneSummary.configured}}</span>
+        <span class="ncm-netmgr__scene-summary-label">Configured</span>
+      </div>
+      <div class="ncm-netmgr__scene-summary-stat">
+        <span class="ncm-netmgr__scene-summary-value ncm-netmgr__scene-summary-value--dead">{{sceneSummary.deadZones}}</span>
+        <span class="ncm-netmgr__scene-summary-label">Dead Zones</span>
+      </div>
     </div>
+
+    {{!-- Scene Selector --}}
+    {{#if scenes.length}}
+    <div class="ncm-netmgr__scene-picker">
+      <div class="ncm-netmgr__scene-picker-row">
+        <label class="ncm-netmgr__scene-picker-label"><i class="fas fa-map"></i> Scene</label>
+        <select class="ncm-netmgr__scene-selector">
+          {{#each scenes}}
+          <option value="{{this.id}}" {{#if (eq this.id ../selectedSceneId)}}selected{{/if}}>
+            {{this.name}}{{#if this.isCurrent}} (Active){{/if}}{{#if this.deadZone}} ☠ Dead Zone{{/if}}
+          </option>
+          {{/each}}
+        </select>
+        <button class="ncm-netmgr__btn-sm" data-action="refreshScenes">
+          <i class="fas fa-sync"></i>
+        </button>
+      </div>
+
+      {{!-- Quick Dead Zone Chips --}}
+      <div class="ncm-netmgr__scene-chip-strip">
+        {{#each scenes}}
+        <div class="ncm-netmgr__scene-chip {{#if this.deadZone}}ncm-netmgr__scene-chip--dead{{/if}} {{#if this.isCurrent}}ncm-netmgr__scene-chip--current{{/if}}"
+             title="{{this.name}}{{#if this.deadZone}} — Dead Zone{{/if}}">
+          <span class="ncm-netmgr__scene-chip-dot"></span>
+          <span class="ncm-netmgr__scene-chip-name">{{this.name}}</span>
+        </div>
+        {{/each}}
+      </div>
+    </div>
+
+    {{!-- Selected Scene Detail --}}
+    {{#if selectedScene}}
+    <div class="ncm-netmgr__scene-detail" data-scene-id="{{selectedScene.id}}">
+
+      {{!-- Header --}}
+      <div class="ncm-netmgr__scene-detail-header">
+        <div class="ncm-netmgr__scene-detail-dot {{#if selectedScene.deadZone}}ncm-netmgr__scene-detail-dot--dead{{else if selectedScene.isCurrent}}ncm-netmgr__scene-detail-dot--live{{else}}ncm-netmgr__scene-detail-dot--inactive{{/if}}"></div>
+        <span class="ncm-netmgr__scene-detail-name">{{selectedScene.name}}</span>
+        {{#if selectedScene.isCurrent}}<span class="ncm-netmgr__tag ncm-netmgr__tag--core">Active</span>{{/if}}
+        {{#if selectedScene.deadZone}}<span class="ncm-netmgr__scene-detail-dead-tag"><i class="fas fa-ban"></i> Dead Zone</span>{{/if}}
+
+        <button class="ncm-netmgr__scene-toggle-dead {{#if selectedScene.deadZone}}ncm-netmgr__scene-toggle-dead--on{{else}}ncm-netmgr__scene-toggle-dead--off{{/if}}"
+                data-action="toggleDeadZone">
+          {{#if selectedScene.deadZone}}
+          <i class="fas fa-signal"></i> Restore Signal
+          {{else}}
+          <i class="fas fa-signal-slash"></i> Jam Signal
+          {{/if}}
+        </button>
+      </div>
+
+      {{!-- Config Body --}}
+      <div class="ncm-netmgr__scene-detail-body {{#if selectedScene.deadZone}}ncm-netmgr__scene-detail-body--disabled{{/if}}">
+
+        {{!-- Default Network --}}
+        <div class="ncm-netmgr__scene-detail-field">
+          <label class="ncm-netmgr__field-label">Default Network</label>
+          {{#if selectedScene.deadZone}}
+          <select class="ncm-netmgr__select" disabled>
+            <option>— Dead Zone — No Networks —</option>
+          </select>
+          {{else}}
+          <select class="ncm-netmgr__select" name="defaultNetwork">
+            <option value="">— None —</option>
+            {{#each allNetworks}}
+            <option value="{{id}}" {{#if (eq id ../selectedScene.defaultNetwork)}}selected{{/if}}>{{name}}</option>
+            {{/each}}
+          </select>
+          {{/if}}
+        </div>
+
+        {{!-- Available Networks --}}
+        <div class="ncm-netmgr__scene-detail-field">
+          <label class="ncm-netmgr__field-label">Available Networks</label>
+          {{#if selectedScene.deadZone}}
+          <div class="ncm-netmgr__scene-dead-notice">
+            <i class="fas fa-ban"></i> All signals jammed — Dead Zone active
+          </div>
+          {{else}}
+          <div class="ncm-netmgr__scene-net-list">
+            {{#each allNetworks}}
+            {{#if availability.global}}
+            <label class="ncm-netmgr__scene-net-check ncm-netmgr__scene-net-check--active ncm-netmgr__scene-net-check--global">
+              <input type="checkbox" name="netAvail_{{id}}" checked disabled>
+              <span class="ncm-netmgr__scene-net-check-icon" style="color: {{theme.color}};">
+                <i class="fas {{theme.icon}}"></i>
+              </span>
+              {{name}}
+              <span class="ncm-netmgr__tag ncm-netmgr__tag--core" style="font-size:6px; margin-left:2px;">GLOBAL</span>
+            </label>
+            {{else}}
+            <label class="ncm-netmgr__scene-net-check {{#if (lookup ../selectedScene.networkAvailability id)}}ncm-netmgr__scene-net-check--active{{/if}}">
+              <input type="checkbox" name="netAvail_{{id}}"
+                     {{#if (lookup ../selectedScene.networkAvailability id)}}checked{{/if}}>
+              <span class="ncm-netmgr__scene-net-check-icon" style="color: {{theme.color}};">
+                <i class="fas {{theme.icon}}"></i>
+              </span>
+              {{name}}
+            </label>
+            {{/if}}
+            {{/each}}
+          </div>
+          {{/if}}
+        </div>
+      </div>
+
+      {{!-- Save Footer --}}
+      {{#unless selectedScene.deadZone}}
+      <div class="ncm-netmgr__scene-detail-footer">
+        <button class="ncm-netmgr__btn-sm ncm-netmgr__btn-sm--primary" data-action="saveSceneConfig">
+          <i class="fas fa-save"></i> Save
+        </button>
+      </div>
+      {{/unless}}
+    </div>
+    {{/if}}
+
     {{else}}
     <div class="ncm-netmgr__empty-state">
       <i class="fas fa-map ncm-netmgr__empty-state-icon"></i>
@@ -853,7 +886,7 @@
 
   {{!-- Scene Tab Shortcuts --}}
   <div class="ncm-netmgr__shortcuts">
-    <div class="ncm-netmgr__shortcut"><span class="ncm-netmgr__shortcut-key">Ctrl+S</span> Save all</div>
+    <div class="ncm-netmgr__shortcut"><span class="ncm-netmgr__shortcut-key">Ctrl+S</span> Save</div>
     <div class="ncm-netmgr__shortcut"><span class="ncm-netmgr__shortcut-key">Esc</span> Close</div>
   </div>
   {{/if}}

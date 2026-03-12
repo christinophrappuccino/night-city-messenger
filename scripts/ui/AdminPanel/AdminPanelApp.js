@@ -1234,15 +1234,13 @@ export class AdminPanelApp extends BaseApplication {
   // ═══════════════════════════════════════════════════════════
 
   /**
-   * Before render: save scroll position of current tab.
+   * After render: restore scroll position + wire controls.
+   * Scroll SAVING is handled by a passive listener attached below,
+   * which continuously updates _scrollPositions as the user scrolls.
+   * This avoids the timing problem where _onRender fires after DOM
+   * replacement (scrollTop already 0 on the new element).
    */
   _onRender(context, options) {
-    // Save scroll position before re-render
-    const content = this.element?.querySelector('.ncm-admin-content');
-    if (content && this._activeTab) {
-      this._scrollPositions[this._activeTab] = content.scrollTop;
-    }
-
     super._onRender(context, options);
 
     // Restore scroll position after render
@@ -1251,6 +1249,9 @@ export class AdminPanelApp extends BaseApplication {
       if (el && this._scrollPositions[this._activeTab]) {
         el.scrollTop = this._scrollPositions[this._activeTab];
       }
+
+      // Attach passive scroll listener to continuously track position
+      this._attachScrollTracker(el);
     });
 
     // ── Contacts tab: wire search + sort inputs ──
@@ -1262,6 +1263,30 @@ export class AdminPanelApp extends BaseApplication {
     if (this._activeTab === 'networks') {
       this._setupNetworkControls();
     }
+  }
+
+  /**
+   * Attach a passive scroll listener to the content area.
+   * Continuously saves scroll position so it's always up-to-date
+   * before any render cycle.
+   * @param {HTMLElement} el
+   * @private
+   */
+  _attachScrollTracker(el) {
+    if (!el) return;
+    // Remove previous listener if element changed
+    if (this._scrollEl && this._scrollEl !== el) {
+      this._scrollEl.removeEventListener('scroll', this._scrollHandler);
+    }
+    if (this._scrollEl === el) return; // Already attached
+
+    this._scrollEl = el;
+    this._scrollHandler = () => {
+      if (this._activeTab) {
+        this._scrollPositions[this._activeTab] = el.scrollTop;
+      }
+    };
+    el.addEventListener('scroll', this._scrollHandler, { passive: true });
   }
 
   /**

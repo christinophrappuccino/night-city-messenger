@@ -1393,83 +1393,186 @@
 
 
 /* ═══════════════════════════════════════════════════════════
-   TAB 2: SCENE CONFIGURATION
+   TAB 2: SCENE CONFIGURATION (Redesigned — Dropdown + Detail)
    ═══════════════════════════════════════════════════════════ */
 
-.ncm-netmgr__scene-grid {
+/* Summary Strip */
+
+.ncm-netmgr__scene-summary {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-/* Scene Cards */
-
-.ncm-netmgr__scene-card {
-  background: var(--nm-bg-surface);
-  border: 1px solid var(--nm-border);
-  border-radius: 2px;
-  overflow: hidden;
-  transition: all 0.15s;
-}
-
-.ncm-netmgr__scene-card:hover {
-  border-color: var(--nm-border-active);
-}
-
-.ncm-netmgr__scene-card--current {
-  border-color: rgba(25, 243, 247, 0.25);
-}
-
-.ncm-netmgr__scene-card--dead {
-  border-color: rgba(255, 0, 51, 0.25);
-}
-
-/* Scene Card Header */
-
-.ncm-netmgr__scene-card-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  gap: 16px;
   padding: 8px 12px;
   background: var(--nm-bg-base);
   border-bottom: 1px solid var(--nm-border);
 }
 
-.ncm-netmgr__scene-card-dot {
-  width: 6px;
-  height: 6px;
+.ncm-netmgr__scene-summary-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.ncm-netmgr__scene-summary-value {
+  font-family: var(--nm-font-display);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--nm-secondary);
+}
+
+.ncm-netmgr__scene-summary-value--configured { color: var(--nm-success); }
+.ncm-netmgr__scene-summary-value--dead { color: var(--nm-danger); }
+
+.ncm-netmgr__scene-summary-label {
+  font-family: var(--nm-font-mono);
+  font-size: 7px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--nm-text-muted);
+}
+
+/* Scene Picker */
+
+.ncm-netmgr__scene-picker {
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ncm-netmgr__scene-picker-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ncm-netmgr__scene-picker-label {
+  font-family: var(--nm-font-display);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--nm-text-muted);
+  white-space: nowrap;
+}
+
+.ncm-netmgr__scene-picker-label i {
+  margin-right: 3px;
+  color: var(--nm-secondary);
+}
+
+.ncm-netmgr__scene-selector {
+  flex: 1;
+  font-family: var(--nm-font-mono);
+  font-size: 11px;
+  color: var(--nm-text-primary);
+  background: var(--nm-bg-deep);
+  border: 1px solid var(--nm-border);
+  padding: 5px 10px;
+  border-radius: 2px;
+}
+
+/* Quick scene chip strip — shows all scenes at a glance */
+
+.ncm-netmgr__scene-chip-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.ncm-netmgr__scene-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 2px;
+  border: 1px solid var(--nm-border);
+  background: var(--nm-bg-surface);
+  font-family: var(--nm-font-mono);
+  font-size: 8px;
+  color: var(--nm-text-muted);
+}
+
+.ncm-netmgr__scene-chip--current {
+  border-color: rgba(25, 243, 247, 0.25);
+  color: var(--nm-secondary);
+}
+
+.ncm-netmgr__scene-chip--dead {
+  border-color: rgba(255, 0, 51, 0.3);
+  color: var(--nm-danger);
+}
+
+.ncm-netmgr__scene-chip-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--nm-text-muted);
+  flex-shrink: 0;
+}
+
+.ncm-netmgr__scene-chip--current .ncm-netmgr__scene-chip-dot {
+  background: var(--nm-success);
+  box-shadow: 0 0 4px rgba(0, 255, 65, 0.4);
+}
+
+.ncm-netmgr__scene-chip--dead .ncm-netmgr__scene-chip-dot {
+  background: var(--nm-danger);
+  box-shadow: 0 0 4px rgba(255, 0, 51, 0.4);
+}
+
+.ncm-netmgr__scene-chip-name {
+  white-space: nowrap;
+}
+
+/* Selected Scene Detail */
+
+.ncm-netmgr__scene-detail {
+  margin: 10px 12px;
+  border: 1px solid var(--nm-border);
+  border-radius: 2px;
+  background: var(--nm-bg-surface);
+}
+
+.ncm-netmgr__scene-detail-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--nm-bg-base);
+  border-bottom: 1px solid var(--nm-border);
+}
+
+.ncm-netmgr__scene-detail-dot {
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
 }
 
-.ncm-netmgr__scene-card-dot--live {
+.ncm-netmgr__scene-detail-dot--live {
   background: var(--nm-success);
-  box-shadow: 0 0 6px rgba(0, 255, 65, 0.4);
+  box-shadow: 0 0 8px rgba(0, 255, 65, 0.4);
 }
 
-.ncm-netmgr__scene-card-dot--inactive {
+.ncm-netmgr__scene-detail-dot--inactive {
   background: var(--nm-text-muted);
 }
 
-.ncm-netmgr__scene-card-dot--dead {
+.ncm-netmgr__scene-detail-dot--dead {
   background: var(--nm-danger);
-  box-shadow: 0 0 6px rgba(255, 0, 51, 0.4);
+  box-shadow: 0 0 8px rgba(255, 0, 51, 0.4);
   animation: ncm-netmgr-pulse-dot 1.5s ease-in-out infinite;
 }
 
-.ncm-netmgr__scene-card-name {
+.ncm-netmgr__scene-detail-name {
   font-family: var(--nm-font-display);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--nm-text-primary);
   flex: 1;
 }
 
-.ncm-netmgr__scene-card-name--dead {
-  color: var(--nm-danger);
-}
-
-.ncm-netmgr__scene-card-dead-tag {
+.ncm-netmgr__scene-detail-dead-tag {
   font-family: var(--nm-font-mono);
   font-size: 7px;
   padding: 2px 6px;
@@ -1478,14 +1581,9 @@
   background: rgba(255, 0, 51, 0.12);
   color: var(--nm-danger);
   border: 1px solid rgba(255, 0, 51, 0.2);
-  animation: ncm-netmgr-pulse-dot 2s ease-in-out infinite;
 }
 
-.ncm-netmgr__scene-card-dead-tag i {
-  margin-right: 3px;
-}
-
-/* Dead Zone Toggle Button */
+/* Dead Zone Toggle Button (reused) */
 
 .ncm-netmgr__scene-toggle-dead {
   padding: 3px 8px;
@@ -1513,36 +1611,33 @@
 }
 
 .ncm-netmgr__scene-toggle-dead--on {
-  border: 1px solid rgba(255, 0, 51, 0.3);
-  background: rgba(255, 0, 51, 0.08);
-  color: var(--nm-danger);
+  border: 1px solid rgba(0, 255, 65, 0.3);
+  background: rgba(0, 255, 65, 0.06);
+  color: var(--nm-success);
 }
 
 .ncm-netmgr__scene-toggle-dead--on:hover {
-  background: rgba(255, 0, 51, 0.15);
+  background: rgba(0, 255, 65, 0.12);
 }
 
-/* Scene Card Body */
+/* Scene Detail Body */
 
-.ncm-netmgr__scene-card-body {
-  padding: 10px 12px;
+.ncm-netmgr__scene-detail-body {
+  padding: 12px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
 }
 
-.ncm-netmgr__scene-card-body--disabled {
+.ncm-netmgr__scene-detail-body--disabled {
   opacity: 0.4;
   pointer-events: none;
 }
 
-.ncm-netmgr__scene-card-field-label {
-  font-family: var(--nm-font-mono);
-  font-size: 8px;
-  color: var(--nm-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin-bottom: 3px;
+.ncm-netmgr__scene-detail-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .ncm-netmgr__scene-dead-notice {
@@ -1601,10 +1696,10 @@
   font-size: 9px;
 }
 
-/* Scene Card Footer */
+/* Scene Detail Footer */
 
-.ncm-netmgr__scene-card-footer {
-  padding: 6px 12px;
+.ncm-netmgr__scene-detail-footer {
+  padding: 8px 12px;
   border-top: 1px solid var(--nm-border);
   display: flex;
   justify-content: flex-end;
@@ -1991,13 +2086,66 @@
   border-color: rgba(25, 243, 247, 0.25) !important;
 }
 
+/* ── Scene selector dropdown ── */
+.ncm-network-management .ncm-netmgr__scene-selector {
+  font-family: var(--nm-font-mono) !important;
+  font-size: 11px !important;
+  color: var(--nm-text-primary) !important;
+  background: var(--nm-bg-deep) !important;
+  border: 1px solid var(--nm-border) !important;
+  border-radius: 2px !important;
+  padding: 5px 10px !important;
+  height: auto !important;
+  min-height: 0 !important;
+  min-width: 0 !important;
+  line-height: 1.4 !important;
+  cursor: pointer !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.ncm-network-management .ncm-netmgr__scene-selector:focus {
+  border-color: var(--nm-secondary) !important;
+}
+
+.ncm-network-management .ncm-netmgr__scene-selector option {
+  background: var(--nm-bg-elevated) !important;
+  color: var(--nm-text-primary) !important;
+}
+
 /* ── Scene toggle buttons ── */
 .ncm-network-management .ncm-netmgr__scene-toggle-dead {
-  background: transparent !important;
-  border: 1px solid var(--nm-border) !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
   padding: 3px 8px !important;
   margin: 0 !important;
+  font-family: var(--nm-font-mono) !important;
+  font-size: 8px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
   cursor: pointer !important;
+  border-radius: 2px !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  box-shadow: none !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  outline: none !important;
+}
+
+.ncm-network-management .ncm-netmgr__scene-toggle-dead--off {
+  background: transparent !important;
+  border: 1px solid var(--nm-border) !important;
+  color: var(--nm-text-muted) !important;
+}
+
+.ncm-network-management .ncm-netmgr__scene-toggle-dead--on {
+  background: rgba(0, 255, 65, 0.06) !important;
+  border: 1px solid rgba(0, 255, 65, 0.3) !important;
+  color: var(--nm-success) !important;
 }
 
 /* ── Section action buttons ── */
@@ -2188,14 +2336,42 @@
 
 /* Foundry overrides for new log elements */
 .ncm-network-management .ncm-netmgr__log-entry-btn,
-.ncm-network-management .ncm-netmgr__btn-sm--accent,
-.ncm-network-management .ncm-netmgr__log-network-filter {
+.ncm-network-management .ncm-netmgr__btn-sm--accent {
   appearance: none !important;
   -webkit-appearance: none !important;
   box-shadow: none !important;
   min-width: 0 !important;
   min-height: 0 !important;
   outline: none !important;
+}
+
+/* ── Log network filter dropdown — full Foundry override ── */
+.ncm-network-management .ncm-netmgr__log-network-filter {
+  font-family: var(--nm-font-mono) !important;
+  font-size: 9px !important;
+  color: var(--nm-text-primary) !important;
+  background: var(--nm-bg-deep) !important;
+  border: 1px solid var(--nm-border) !important;
+  border-radius: 2px !important;
+  padding: 3px 8px !important;
+  height: auto !important;
+  min-height: 0 !important;
+  min-width: 0 !important;
+  line-height: 1.4 !important;
+  cursor: pointer !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.ncm-network-management .ncm-netmgr__log-network-filter:focus {
+  border-color: var(--nm-secondary) !important;
+}
+
+.ncm-network-management .ncm-netmgr__log-network-filter option {
+  background: var(--nm-bg-elevated) !important;
+  color: var(--nm-text-primary) !important;
 }
 
 .ncm-network-management .ncm-netmgr__log-entry-btn {
