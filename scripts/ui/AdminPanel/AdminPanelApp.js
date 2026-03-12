@@ -118,6 +118,7 @@ export class AdminPanelApp extends BaseApplication {
       // Networks actions
       toggleNetwork: AdminPanelApp._onToggleNetwork,
       openNetworkManager: AdminPanelApp._onOpenNetworkManager,
+      editNetworkInManager: AdminPanelApp._onEditNetworkInManager,
       toggleSceneDeadZone: AdminPanelApp._onToggleSceneDeadZone,
       switchNetworkSubView: AdminPanelApp._onSwitchNetworkSubView,
       toggleCardLog: AdminPanelApp._onToggleCardLog,
@@ -1864,6 +1865,40 @@ export class AdminPanelApp extends BaseApplication {
   static _onOpenNetworkManager(event, target) {
     game.nightcity?.openNetworkManager?.();
     log.info('Admin: Opening Network Manager');
+  }
+
+  /**
+   * Open the Network Manager with a specific network selected.
+   * Uses polling to wait for the window to finish rendering,
+   * since openNetworkManager's render(true) is async.
+   */
+  static _onEditNetworkInManager(event, target) {
+    const networkId = target.dataset.networkId || target.closest('[data-network-id]')?.dataset.networkId;
+    if (!networkId) {
+      game.nightcity?.openNetworkManager?.();
+      return;
+    }
+
+    game.nightcity?.openNetworkManager?.();
+
+    // Poll for the manager window to be rendered (up to 500ms)
+    let attempts = 0;
+    const poll = setInterval(() => {
+      attempts++;
+      const mgr = Object.values(ui.windows).find(w => w.id === 'ncm-network-management');
+      if (mgr?.rendered) {
+        clearInterval(poll);
+        mgr._activeTab = 'networks';
+        mgr._selectedNetworkId = networkId;
+        mgr._isEditMode = false;
+        mgr._isCreating = false;
+        mgr.render(true);
+        log.info(`Admin: Opening Network Manager → ${networkId}`);
+      } else if (attempts > 25) {
+        clearInterval(poll);
+        log.warn('Admin: Timed out waiting for Network Manager to render');
+      }
+    }, 20);
   }
 
   static _onOpenNetworkManagerLogs(event, target) {
