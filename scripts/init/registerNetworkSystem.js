@@ -179,6 +179,58 @@ export function registerNetworkSystem(initializer) {
     // Network Manager Alias
     ns.openNetworkManager = ns.openNetworkManagement;
 
+    /**
+     * Open Network Manager with a specific network pre-selected.
+     * Has direct closure access to _managementApp, avoiding ui.windows lookup.
+     * @param {string} networkId - Network to select
+     */
+    ns.openNetworkManagerToNetwork = (networkId) => {
+      if (!isGM()) {
+        ui.notifications.warn('NCM | Network Management is GM-only.');
+        return;
+      }
+
+      const wasRendered = _managementApp?.rendered;
+
+      // If already rendered, set state and re-render
+      if (wasRendered) {
+        _managementApp._activeTab = 'networks';
+        _managementApp._selectedNetworkId = networkId;
+        _managementApp._isEditMode = false;
+        _managementApp._isCreating = false;
+        _managementApp.bringToFront();
+        _managementApp.render(true);
+        return;
+      }
+
+      // Create fresh, set state BEFORE first render picks it up
+      _managementApp = new NetworkManagementApp();
+      _managementApp._selectedNetworkId = networkId;
+      _managementApp._activeTab = 'networks';
+      _managementApp.render(true);
+    };
+
+    /**
+     * Open Network Manager directly to the Logs tab.
+     */
+    ns.openNetworkManagerToLogs = () => {
+      if (!isGM()) {
+        ui.notifications.warn('NCM | Network Management is GM-only.');
+        return;
+      }
+
+      if (_managementApp?.rendered) {
+        _managementApp._activeTab = 'logs';
+        _managementApp.bringToFront();
+        _managementApp.render(true);
+        return;
+      }
+
+      _managementApp = new NetworkManagementApp();
+      _managementApp._activeTab = 'logs';
+      _managementApp.render(true);
+    };
+
     // ─── Network Public API Functions ───────────────────────
     ns.getCurrentNetwork = () => ns.networkService?.currentNetwork ?? null;
     ns.getSignalStrength = () => ns.networkService?.signalStrength ?? 0;

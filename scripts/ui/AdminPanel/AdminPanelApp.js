@@ -1879,38 +1879,12 @@ export class AdminPanelApp extends BaseApplication {
       return;
     }
 
-    game.nightcity?.openNetworkManager?.();
-
-    // Poll for the manager window to be rendered (up to 500ms)
-    let attempts = 0;
-    const poll = setInterval(() => {
-      attempts++;
-      const mgr = Object.values(ui.windows).find(w => w.id === 'ncm-network-management');
-      if (mgr?.rendered) {
-        clearInterval(poll);
-        mgr._activeTab = 'networks';
-        mgr._selectedNetworkId = networkId;
-        mgr._isEditMode = false;
-        mgr._isCreating = false;
-        mgr.render(true);
-        log.info(`Admin: Opening Network Manager → ${networkId}`);
-      } else if (attempts > 25) {
-        clearInterval(poll);
-        log.warn('Admin: Timed out waiting for Network Manager to render');
-      }
-    }, 20);
+    game.nightcity?.openNetworkManagerToNetwork?.(networkId);
+    log.info(`Admin: Opening Network Manager → ${networkId}`);
   }
 
   static _onOpenNetworkManagerLogs(event, target) {
-    game.nightcity?.openNetworkManager?.();
-    // Switch the manager to Logs tab after it renders
-    requestAnimationFrame(() => {
-      const mgr = Object.values(ui.windows).find(w => w.id === 'ncm-network-management');
-      if (mgr) {
-        mgr._activeTab = 'logs';
-        mgr.render(true);
-      }
-    });
+    game.nightcity?.openNetworkManagerToLogs?.();
     log.info('Admin: Opening Network Manager → Logs tab');
   }
 
