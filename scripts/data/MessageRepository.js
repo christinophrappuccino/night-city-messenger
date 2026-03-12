@@ -13,12 +13,132 @@ export class MessageRepository {
   constructor() {
     /** @type {Map<string, JournalEntry>} Cache of actor ID → inbox journal */
     this._inboxCache = new Map();
+    /** @type {Folder|null} Cached NCM Messages folder */
+    this._folder = null;
   }
 
   // ─── Service Accessors ────────────────────────────────────
 
   get eventBus() { return game.nightcity.eventBus; }
   get timeService() { return game.nightcity.timeService; }
+
+  // ─── Inbox Folder Management ────────────────────────────────
+
+  /**
+   * Get or create the "NCM Messages" folder for inbox journals.
+   * Keeps the journal sidebar clean.
+   * @returns {Promise<Folder|null>}
+   */
+  async _getInboxFolder() {
+    if (this._folder && game.folders.get(this._folder.id)) return this._folder;
+
+    // Search existing
+    this._folder = game.folders.find(f =>
+      f.type === 'JournalEntry' && f.name === 'NCM Messages'
+    ) ?? null;
+
+    if (!this._folder && game.user.isGM) {
+      this._folder = await Folder.create({
+        name: 'NCM Messages',
+        type: 'JournalEntry',
+        color: '#330000',
+        sorting: 'a',
+      });
+    }
+
+    return this._folder;
+  }
+
+  /**
+   * Compute the correct ownership object for an actor's inbox.
+   * Mirrors the actor's player owners onto the journal.
+   * @param {Actor} actor
+   * @returns {object} Ownership object for JournalEntry
+   */
+  _computeOwnership(actor) {
+    const ownership = { default: 0 };
+    if (actor?.hasPlayerOwner) {
+      for (const [userId, level] of Object.entries(actor.ownership)) {
+        if (level === CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER && userId !== 'default') {
+          ownership[userId] = CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER;
+        }
+      }
+    }
+    return ownership;
+  }
+
+  /**
+   * Verify and repair journal permissions to match the actor's ownership.
+   * Only runs for GM. Skips if permissions already match.
+   * @param {JournalEntry} journal
+   * @param {Actor} actor
+   */
+  async _repairPermissions(journal, actor) {
+    if (!game.user.isGM || !journal || !actor) return;
+
+    const expected = this._computeOwnership(actor);
+    const current = journal.ownership || {};
+
+    // Check if repair is needed
+    let needsRepair = false;
+    for (const [userId, level] of Object.entries(expected)) {
+      if (userId === 'default') continue;
+      if (current[userId] !== level) {
+        needsRepair = true;
+        break;
+      }
+    }
+
+    if (needsRepair) {
+      await journal.update({ ownership: expected });
+      console.log(`${MODULE_ID} | Repaired inbox permissions for ${actor.name}`);
+    }
+
+    // Also ensure journal is in the NCM folder
+    const folder = await this._getInboxFolder();
+    if (folder && journal.folder?.id !== folder.id) {
+      await journal.update({ folder: folder.id });
+    }
+  }
+
+  /**
+   * GM tool: Repair permissions on ALL inbox journals.
+   * Call via: game.nightcity.messageRepository.repairAllInboxPermissions()
+   * @returns {Promise<number>} Number of journals repaired
+   */
+  async repairAllInboxPermissions() {
+    if (!game.user.isGM) {
+      ui.notifications.warn('NCM | GM only.');
+      return 0;
+    }
+
+    let repaired = 0;
+    const folder = await this._getInboxFolder();
+
+    for (const journal of game.journal) {
+      if (!journal.name?.startsWith('NCM-Inbox-')) continue;
+
+      // Extract actor ID from journal name
+      const isContactInbox = journal.name.startsWith('NCM-Inbox-Contact-');
+      if (isContactInbox) {
+        // Contact inboxes are GM-only, just ensure folder
+        if (folder && journal.folder?.id !== folder.id) {
+          await journal.update({ folder: folder.id });
+        }
+        continue;
+      }
+
+      const actorId = journal.name.replace('NCM-Inbox-', '');
+      const actor = game.actors?.get(actorId);
+      if (!actor) continue;
+
+      await this._repairPermissions(journal, actor);
+      repaired++;
+    }
+
+    ui.notifications.info(`NCM | Repaired permissions on ${repaired} inbox journal(s).`);
+    return repaired;
+  }
 
   // ─── Inbox Journal Management ─────────────────────────────
 
@@ -74,19 +194,15 @@ export class MessageRepository {
       }
 
       // Determine ownership
-      const ownership = { default: 0 };
-      if (isActorInbox && actor.hasPlayerOwner) {
-        for (const [userId, level] of Object.entries(actor.ownership)) {
-          if (level === CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER && userId !== 'default') {
-            ownership[userId] = CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER;
-          }
-        }
-      }
-      // GM always has implicit ownership; contacts are GM-only
+      const ownership = isActorInbox ? this._computeOwnership(actor) : { default: 0 };
+
+      // Get or create the NCM Messages folder
+      const folder = await this._getInboxFolder();
 
       journal = await JournalEntry.create({
         name: journalName,
         ownership,
+        folder: folder?.id || null,
         flags: {
           [MODULE_ID]: {
             type: isActorInbox ? 'inbox' : 'contactInbox',
@@ -98,6 +214,9 @@ export class MessageRepository {
       });
 
       console.log(`${MODULE_ID} | Created ${isActorInbox ? 'actor' : 'contact'} inbox journal for ${ownerLabel} (${ownerId})`);
+    } else if (isActorInbox && game.user.isGM) {
+      // Existing journal — verify permissions match actor ownership
+      await this._repairPermissions(journal, actor);
     }
 
     this._inboxCache.set(ownerId, journal);
@@ -505,6 +624,14 @@ export class MessageRepository {
 
       // Inline encrypted block state
       decryptedBlocks: flags.decryptedBlocks || [],
+
+      // Signal degradation (low signal garbled text)
+      signalDegradation: flags.signalDegradation || null,
+
+      // Trace state (traced network countdown)
+      traceStarted: flags.traceStarted || null,
+      traceExpiresAt: flags.traceExpiresAt || null,
+      traceCompleted: flags.traceCompleted || false,
     };
   }
 

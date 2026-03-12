@@ -37,7 +37,7 @@ import {
   getNetworkAccentColor,
   getThreatBadgeData,
 } from '../../utils/designHelpers.js';
-import { EVENTS } from '../../utils/constants.js';
+import { EVENTS, SOCKET_OPS } from '../../utils/constants.js';
 import { formatCyberDate } from '../../utils/helpers.js';
 
 const MODULE_ID = 'cyberpunkred-messenger';
@@ -679,6 +679,43 @@ export class MessageViewerApp extends BaseApplication {
         lockoutEl.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
       }, 1000);
     }
+
+    // ── WP-6: Trace countdown timer ──
+    if (this._traceTimer) clearInterval(this._traceTimer);
+    const traceEl = html.querySelector('.ncm-trace-bar__timer');
+    if (traceEl?.dataset.traceExpires) {
+      const expiresAt = traceEl.dataset.traceExpires;
+      this._traceTimer = setInterval(async () => {
+        const remaining = new Date(expiresAt).getTime() - Date.now();
+        if (remaining <= 0) {
+          clearInterval(this._traceTimer);
+          this._traceTimer = null;
+          traceEl.textContent = 'TRACED';
+          traceEl.closest('.ncm-trace-bar')?.classList.add('ncm-trace-bar--complete');
+
+          // Notify GM via socket
+          const msg = this._getSelectedMessage();
+          if (msg) {
+            game.nightcity?.socketManager?.emit(SOCKET_OPS.TRACE_COMPLETE, {
+              actorId: this.actorId,
+              actorName: game.actors?.get(this.actorId)?.name,
+              messageId: msg.messageId,
+              network: msg.network,
+              scene: game.scenes?.viewed?.name,
+            });
+            // Mark trace complete
+            await this.messageService?.updateMessageFlags?.(this.actorId, msg.messageId, {
+              traceCompleted: true,
+            });
+            ui.notifications.error('NCM | TRACE COMPLETE — Your location has been logged.');
+          }
+          return;
+        }
+        const m = Math.floor(remaining / 60000);
+        const s = Math.floor((remaining % 60000) / 1000);
+        traceEl.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+      }, 1000);
+    }
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -794,6 +831,11 @@ export class MessageViewerApp extends BaseApplication {
         break;
       case 'gm-force-reveal':
         this._gmForceReveal(target.dataset.messageId);
+        break;
+
+      // ── WP-5: Signal Reconstruction ──
+      case 'reconstruct-signal':
+        this._reconstructSignal(target.dataset.messageId);
         break;
 
       // ── Feature 1: Eddies Claim ──
@@ -1084,7 +1126,7 @@ export class MessageViewerApp extends BaseApplication {
   //  Message Selection
   // ═══════════════════════════════════════════════════════════
 
-  _selectMessage(messageId) {
+  async _selectMessage(messageId) {
     if (!messageId) return;
     this.selectedMessageId = messageId;
     this.render();
@@ -1092,6 +1134,28 @@ export class MessageViewerApp extends BaseApplication {
     // Mark as read
     this.messageService?.markAsRead?.(this.actorId, messageId);
     this.soundService?.play?.('click');
+
+    // WP-6 — Trace: start countdown for traced network messages on first open
+    if (!game.user?.isGM) {
+      const msg = this._cachedMessages?.find(m => m.messageId === messageId);
+      if (msg?.network && !msg.status?.sent && !msg.traceStarted && !msg.traceCompleted) {
+        const network = this.networkService?.getNetwork?.(msg.network);
+        if (network?.effects?.traced) {
+          const traceWindow = network.traceWindow ?? 180000; // 3 minutes default
+          const traceExpiresAt = new Date(Date.now() + traceWindow).toISOString();
+          await this.messageService?.updateMessageFlags?.(this.actorId, messageId, {
+            traceStarted: new Date().toISOString(),
+            traceExpiresAt,
+          });
+          // Update local cache so re-render picks it up
+          if (msg) {
+            msg.traceStarted = new Date().toISOString();
+            msg.traceExpiresAt = traceExpiresAt;
+          }
+          this.render();
+        }
+      }
+    }
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -1626,6 +1690,50 @@ export class MessageViewerApp extends BaseApplication {
     this.render();
   }
 
+  /**
+   * WP-5: Attempt to reconstruct a signal-degraded message via skill check.
+   */
+  async _reconstructSignal(messageId) {
+    if (!messageId) return;
+
+    const msg = this._cachedMessages?.find(m => m.messageId === messageId);
+    if (!msg?.signalDegradation || msg.signalDegradation.reconstructed) return;
+
+    const actor = game.actors?.get(this.actorId);
+    if (!actor) {
+      ui.notifications.warn('NCM | No character assigned.');
+      return;
+    }
+
+    const dc = msg.signalDegradation.reconstructDC ?? 15;
+    const skillName = msg.signalDegradation.reconstructSkill ?? 'Electronics/Security Tech';
+
+    const skillSvc = game.nightcity?.skillService;
+    if (!skillSvc) {
+      ui.notifications.warn('NCM | Skill system not available.');
+      return;
+    }
+
+    const result = await skillSvc.performCheck(actor, skillName, {
+      dc,
+      flavor: `Reconstructing signal-degraded message`,
+      context: 'ncm-signal-reconstruct',
+    });
+
+    if (result?.success) {
+      await this.messageService?.updateMessageFlags?.(this.actorId, messageId, {
+        signalDegradation: { ...msg.signalDegradation, reconstructed: true },
+      });
+      this.soundService?.play?.('hack-success');
+      ui.notifications.info('NCM | Signal reconstructed — message restored.');
+    } else {
+      this.soundService?.play?.('hack-fail');
+      ui.notifications.warn(`NCM | Reconstruction failed. (${result?.total ?? '?'} vs DV ${dc})`);
+    }
+
+    this.render();
+  }
+
   _toggleThread() {
     // Toggle thread expansion in detail view — implementation depends on thread UI
     this.render();
@@ -1916,7 +2024,33 @@ export class MessageViewerApp extends BaseApplication {
       if (!this._decryptedBlocks) this._decryptedBlocks = new Set();
       msg.decryptedBlocks.forEach(key => this._decryptedBlocks.add(key));
     }
-    const bodyRendered = this._renderMessageBody(msg.body, msg.messageId);
+    let bodyRendered = this._renderMessageBody(msg.body, msg.messageId);
+
+    // WP-5 — Signal degradation: corrupt body text if not reconstructed (GM sees clean)
+    if (msg.signalDegradation && !msg.signalDegradation.reconstructed && !game.user?.isGM) {
+      bodyRendered = this._applySignalCorruption(bodyRendered, msg.signalDegradation.corruptionLevel);
+    }
+
+    // WP-6 — Trace state for traced network messages
+    let traceActive = false;
+    let traceExpiresAt = msg.traceExpiresAt || null;
+    const traceCompleted = msg.traceCompleted || false;
+    if (msg.traceExpiresAt && !traceCompleted && !game.user?.isGM) {
+      const remaining = new Date(msg.traceExpiresAt).getTime() - Date.now();
+      if (remaining > 0) {
+        traceActive = true;
+      }
+    }
+
+    // WP-7 — Network body visual effect
+    let networkBodyEffect = null;
+    const resolvedNet = this.networkService?.getNetwork?.(msg.network);
+    if (resolvedNet) {
+      const netId = (resolvedNet.id || '').toLowerCase();
+      if (netId === 'darknet') networkBodyEffect = 'darknet';
+      else if (netId === 'govnet') networkBodyEffect = 'govnet';
+      else if (netId === 'corpnet') networkBodyEffect = 'corpnet';
+    }
 
     return {
       ...msg,
@@ -1937,6 +2071,10 @@ export class MessageViewerApp extends BaseApplication {
       isNetworkLocked,
       lockedNetworkName,
       accessState,
+      networkBodyEffect,
+      traceActive,
+      traceExpiresAt,
+      traceCompleted,
     };
   }
 
@@ -2115,6 +2253,37 @@ export class MessageViewerApp extends BaseApplication {
     );
 
     return rendered;
+  }
+
+  /**
+   * WP-5: Apply signal corruption to rendered HTML body.
+   * Replaces random characters with garbled unicode block characters.
+   * Only corrupts text content, not HTML tags.
+   * @param {string} html - Rendered HTML body
+   * @param {string} level - 'moderate' or 'heavy'
+   * @returns {string} Corrupted HTML
+   */
+  _applySignalCorruption(html, level) {
+    const corruptChars = '█▓░▒╬╫╪┼┤├╡╞╟╢';
+    const ratio = level === 'heavy' ? 0.4 : 0.2;
+
+    // Use a seeded approach based on the string to keep corruption stable across renders
+    let seedIdx = 0;
+    return html.replace(/>[^<]+</g, (match) => {
+      const text = match.slice(1, -1);
+      const corrupted = text.split('').map(char => {
+        if (char === ' ' || char === '\n' || char === '\r' || char === '\t') return char;
+        seedIdx++;
+        // Deterministic pseudo-random based on character position
+        const hash = ((seedIdx * 2654435761) >>> 0) / 4294967296;
+        if (hash < ratio) {
+          const ci = Math.floor(((seedIdx * 48271) >>> 0) % corruptChars.length);
+          return `<span class="ncm-corrupt-char">${corruptChars[ci]}</span>`;
+        }
+        return char;
+      }).join('');
+      return `>${corrupted}<`;
+    });
   }
 
   /**
@@ -2307,6 +2476,7 @@ export class MessageViewerApp extends BaseApplication {
     if (this._destructTimer) clearInterval(this._destructTimer);
     if (this._clockInterval) clearInterval(this._clockInterval);
     if (this._lockoutTimer) clearInterval(this._lockoutTimer);
+    if (this._traceTimer) clearInterval(this._traceTimer);
     return super.close(options);
   }
 }

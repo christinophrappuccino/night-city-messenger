@@ -196,7 +196,8 @@ export class AdminPanelApp extends BaseApplication {
     const onlineCount = game.users?.filter(u => u.active)?.length ?? 0;
 
     // ─── Current network ───
-    const currentNetwork = this.networkService?.currentNetworkId ?? 'CITINET';
+    const currentNetworkId = this.networkService?.currentNetworkId ?? 'CITINET';
+    const currentNetwork = this.networkService?.getNetwork?.(currentNetworkId)?.name ?? currentNetworkId;
 
     return {
       isGM: true,

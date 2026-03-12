@@ -55,6 +55,21 @@ export function registerMessagingSystem(initializer) {
   });
 
   // ═══════════════════════════════════════════════════════════════
+  //  READY PHASE — Priority 49: Auto-repair inbox permissions (GM)
+  // ═══════════════════════════════════════════════════════════════
+
+  initializer.register('ready', 49, 'Inbox permission repair', async () => {
+    if (!game.user.isGM) return;
+    const repo = game.nightcity.messageRepository;
+    if (!repo) return;
+    try {
+      await repo.repairAllInboxPermissions();
+    } catch (err) {
+      console.warn('NCM | Inbox permission repair failed:', err);
+    }
+  });
+
+  // ═══════════════════════════════════════════════════════════════
   //  READY PHASE — Priority 50: MessageService + NotificationService
   // ═══════════════════════════════════════════════════════════════
 

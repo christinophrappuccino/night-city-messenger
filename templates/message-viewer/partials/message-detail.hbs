@@ -299,14 +299,52 @@
       </div>
     {{/if}}
 
+    {{!-- ═══ WP-6: Trace Active Bar ═══ --}}
+    {{#if message.traceActive}}
+      <div class="ncm-trace-bar">
+        <i class="fas fa-satellite-dish"></i>
+        <span class="ncm-trace-bar__label">TRACE ACTIVE</span>
+        <span class="ncm-trace-bar__timer" data-trace-expires="{{message.traceExpiresAt}}">
+          --:--
+        </span>
+        <span class="ncm-trace-bar__warning">Location will be logged when timer expires</span>
+      </div>
+    {{else if message.traceCompleted}}
+      <div class="ncm-trace-bar ncm-trace-bar--complete">
+        <i class="fas fa-satellite-dish"></i>
+        <span class="ncm-trace-bar__label">TRACE COMPLETE</span>
+        <span class="ncm-trace-bar__warning">Your location was logged by network security</span>
+      </div>
+    {{/if}}
+
     {{!-- ═══ Message Body ═══ --}}
-    <div class="ncm-detail-body ncm-scrollbar">
+    <div class="ncm-detail-body ncm-scrollbar
+      {{~#if message.networkBodyEffect}} ncm-detail-body--{{message.networkBodyEffect}}{{/if~}}">
       {{#if message.bodyRendered}}
         {{{message.bodyRendered}}}
       {{else}}
         <p class="ncm-detail-body__empty">
           <em>// No message body //</em>
         </p>
+      {{/if}}
+
+      {{!-- ═══ WP-5: Signal Reconstruction ═══ --}}
+      {{#if message.signalDegradation}}
+        {{#unless message.signalDegradation.reconstructed}}
+          <div class="ncm-signal-reconstruct">
+            <div class="ncm-signal-reconstruct__status">
+              <i class="fas fa-signal"></i>
+              SIGNAL DEGRADED — {{message.signalDegradation.corruptionLevel}} corruption
+              (received at {{message.signalDegradation.originalSignal}}% signal)
+            </div>
+            <button class="ncm-btn ncm-btn--ghost ncm-btn--sm"
+                    data-action="reconstruct-signal"
+                    data-message-id="{{message.messageId}}">
+              <i class="fas fa-wrench"></i>
+              Reconstruct ({{message.signalDegradation.reconstructSkill}} DV {{message.signalDegradation.reconstructDC}})
+            </button>
+          </div>
+        {{/unless}}
       {{/if}}
 
       {{!-- ═══ Feature 1: Eddies Claim ═══ --}}

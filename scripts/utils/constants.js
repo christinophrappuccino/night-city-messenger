@@ -84,6 +84,7 @@ export const SOCKET_OPS = Object.freeze({
   CONTACT_SHARE_RELAY:   'contact:shareRelay',
   CONTACT_SHARE_NOTIFY:  'contact:shareNotify',
   CONTACT_SHARE_CONFIRM: 'contact:shareConfirm',
+  TRACE_COMPLETE:        'network:traceComplete',
 });
 
 // ─── Network Types ───

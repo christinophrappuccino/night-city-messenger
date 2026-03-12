@@ -184,6 +184,18 @@ export class MessageService {
         data.accessControl = accessControl;
       }
 
+      // ── Signal degradation stamping (low signal = garbled body) ──
+      const signalStrength = networkService?.signalStrength ?? 100;
+      if (signalStrength < 50) {
+        data.signalDegradation = {
+          originalSignal: signalStrength,
+          corruptionLevel: signalStrength < 20 ? 'heavy' : 'moderate',
+          reconstructed: false,
+          reconstructDC: signalStrength < 20 ? 18 : 13,
+          reconstructSkill: 'Electronics/Security Tech',
+        };
+      }
+
       data.network = networkService?.currentNetworkId || data.network || 'CITINET';
       data.timestamp = this._getTimestamp();
 
