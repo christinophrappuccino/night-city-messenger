@@ -823,7 +823,7 @@ export class NetworkManagementApp extends BaseApplication {
   _formatLogDate(timestamp) {
     if (!timestamp) return '';
     const d = new Date(timestamp);
-    return `${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+    return `${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}.${d.getFullYear()}`;
   }
 
   _getLogTypeIcon(type) {

@@ -127,6 +127,8 @@ export class AdminPanelApp extends BaseApplication {
       addManualLogEntry: AdminPanelApp._onAddManualLogEntry,
       toggleAddLogForm: AdminPanelApp._onToggleAddLogForm,
       exportNetworkLogs: AdminPanelApp._onExportNetworkLogs,
+      exportFormattedNetworkLogs: AdminPanelApp._onExportFormattedNetworkLogs,
+      importNetworkLogs: AdminPanelApp._onImportNetworkLogs,
       clearNetworkLogs: AdminPanelApp._onClearNetworkLogs,
       resetNetworkAuth: AdminPanelApp._onResetNetworkAuth,
       sendBroadcast: AdminPanelApp._onSendBroadcast,
@@ -932,7 +934,7 @@ export class AdminPanelApp extends BaseApplication {
   _formatLogDate(timestamp) {
     if (!timestamp) return '';
     const d = new Date(timestamp);
-    return `${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+    return `${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}.${d.getFullYear()}`;
   }
 
   /** @private */
@@ -2036,7 +2038,43 @@ export class AdminPanelApp extends BaseApplication {
     a.download = `ncm-network-log-${Date.now()}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    ui.notifications.info('NCM | Network log exported.');
+    ui.notifications.info('NCM | Network log exported as JSON.');
+  }
+
+  static _onExportFormattedNetworkLogs() {
+    const text = this.accessLogService?.exportFormatted();
+    if (!text) return;
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ncm-network-log-${Date.now()}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+    ui.notifications.info('NCM | Network log exported as text.');
+  }
+
+  static _onImportNetworkLogs() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const result = this.accessLogService?.importLog(text);
+        if (result?.success) {
+          ui.notifications.info(`NCM | Imported ${result.imported} log entries.`);
+          this.render(true);
+        } else {
+          ui.notifications.error(`NCM | Import failed: ${result?.error ?? 'Unknown error'}`);
+        }
+      } catch (err) {
+        ui.notifications.error(`NCM | Import failed: ${err.message}`);
+      }
+    });
+    input.click();
   }
 
   static _onClearNetworkLogs() {

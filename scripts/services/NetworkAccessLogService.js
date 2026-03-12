@@ -3,10 +3,10 @@
  * @file scripts/services/NetworkAccessLogService.js
  * @module cyberpunkred-messenger
  * @description Logs network connections, disconnections, authentication attempts,
- *              and security events for GM review. Maintains an in-memory ring buffer
- *              with configurable max size. Subscribes to EventBus events automatically.
+ *              and security events for GM review. Persists to world settings via
+ *              debounced saves. Subscribes to EventBus events automatically.
  *
- *              Depends on: EventBus, NetworkService
+ *              Depends on: EventBus, NetworkService, SettingsManager
  *              Initialization priority: ready/90
  */
 
@@ -17,7 +17,7 @@ import { log } from '../utils/helpers.js';
  * @typedef {Object} AccessLogEntry
  * @property {string} id - Unique entry ID
  * @property {string} timestamp - ISO-8601 timestamp
- * @property {string} type - Event type: connect, disconnect, auth_success, auth_failure, lockout, dead_zone, network_switch
+ * @property {string} type - Event type
  * @property {string} networkId - Network involved
  * @property {string} [networkName] - Human-readable network name
  * @property {string} [actorId] - Actor who triggered the event
@@ -29,8 +29,8 @@ import { log } from '../utils/helpers.js';
  * @property {number} [rollTotal] - Roll result for skill bypass
  * @property {number} [dc] - Difficulty class
  * @property {string} [reason] - Failure reason
- * @property {string} [message] - Human-readable display message (auto-generated or GM-written)
- * @property {boolean} [manual] - True if GM-created entry (RP planted evidence, etc.)
+ * @property {string} [message] - Human-readable display message
+ * @property {boolean} [manual] - True if GM-created entry
  * @property {object} [extra] - Additional metadata
  */
 
@@ -39,62 +39,47 @@ export class NetworkAccessLogService {
   /** @type {number} Maximum log entries to retain */
   static MAX_ENTRIES = 500;
 
+  /** @type {number} Save debounce delay in ms */
+  static SAVE_DELAY = 2000;
+
   constructor() {
     this.eventBus = game.nightcity.eventBus;
+    this.settingsManager = game.nightcity.settingsManager;
 
-    /** @type {AccessLogEntry[]} Ring buffer of log entries */
+    /** @type {AccessLogEntry[]} Persistent log entries */
     this._entries = [];
 
     /** @type {Function[]} EventBus unsubscribe handles */
     this._subscriptions = [];
 
+    /** @type {number|null} Debounce timer for saves */
+    this._saveTimer = null;
+
+    this._loadFromSettings();
     this._wireEvents();
     this._initialized = true;
-    log.info('NetworkAccessLogService initialized');
+    log.info(`NetworkAccessLogService initialized (${this._entries.length} entries loaded)`);
   }
 
   // ═══════════════════════════════════════════════════════════
   //  PUBLIC API — Log Queries
   // ═══════════════════════════════════════════════════════════
 
-  /**
-   * Get all log entries, newest first.
-   * @param {object} [filters]
-   * @param {string} [filters.type] - Filter by event type
-   * @param {string} [filters.networkId] - Filter by network
-   * @param {string} [filters.actorId] - Filter by actor
-   * @param {number} [filters.limit=50] - Max results
-   * @param {string} [filters.since] - ISO timestamp — only entries after this time
-   * @returns {AccessLogEntry[]}
-   */
   getEntries(filters = {}) {
     let results = [...this._entries];
 
-    if (filters.type) {
-      results = results.filter(e => e.type === filters.type);
-    }
-    if (filters.networkId) {
-      results = results.filter(e => e.networkId === filters.networkId);
-    }
-    if (filters.actorId) {
-      results = results.filter(e => e.actorId === filters.actorId);
-    }
+    if (filters.type) results = results.filter(e => e.type === filters.type);
+    if (filters.networkId) results = results.filter(e => e.networkId === filters.networkId);
+    if (filters.actorId) results = results.filter(e => e.actorId === filters.actorId);
     if (filters.since) {
       const sinceMs = new Date(filters.since).getTime();
       results = results.filter(e => new Date(e.timestamp).getTime() >= sinceMs);
     }
 
-    // Already newest-first from push order
     results.reverse();
-
-    const limit = filters.limit ?? 50;
-    return results.slice(0, limit);
+    return results.slice(0, filters.limit ?? 50);
   }
 
-  /**
-   * Get count of entries by type.
-   * @returns {Object<string, number>}
-   */
   getStats() {
     const stats = {};
     for (const entry of this._entries) {
@@ -103,10 +88,6 @@ export class NetworkAccessLogService {
     return stats;
   }
 
-  /**
-   * Get total entry count.
-   * @returns {number}
-   */
   get entryCount() {
     return this._entries.length;
   }
@@ -115,11 +96,6 @@ export class NetworkAccessLogService {
   //  PUBLIC API — Manual Logging
   // ═══════════════════════════════════════════════════════════
 
-  /**
-   * Add a custom log entry (for events not auto-captured).
-   * @param {string} type
-   * @param {object} data
-   */
   addEntry(type, data = {}) {
     this._push({
       type,
@@ -139,17 +115,6 @@ export class NetworkAccessLogService {
     });
   }
 
-  /**
-   * Add a GM-created manual log entry for RP purposes.
-   * Entries are flagged as manual and highlighted in the UI.
-   * Use cases: planted evidence, fake traces, NPC hack records, etc.
-   * @param {object} data
-   * @param {string} data.networkId - Target network ID
-   * @param {string} [data.networkName] - Human-readable network name
-   * @param {string} [data.actorName='Unknown'] - Freeform actor name (can be "DAEMON_07", "NetWatch", etc.)
-   * @param {string} [data.type='manual'] - Event type for icon/styling
-   * @param {string} [data.message=''] - Freeform log message
-   */
   addManualEntry(data = {}) {
     this._push({
       type: data.type ?? 'manual',
@@ -161,29 +126,20 @@ export class NetworkAccessLogService {
     });
   }
 
-  /**
-   * Update an existing log entry by ID. GM only.
-   * @param {string} entryId
-   * @param {object} updates - Fields to merge into the entry
-   * @returns {boolean} True if found and updated
-   */
   updateEntry(entryId, updates = {}) {
     const entry = this._entries.find(e => e.id === entryId);
     if (!entry) return false;
     Object.assign(entry, updates);
+    this._scheduleSave();
     log.debug(`Access log entry updated: ${entryId}`);
     return true;
   }
 
-  /**
-   * Delete a log entry by ID. GM only.
-   * @param {string} entryId
-   * @returns {boolean} True if found and removed
-   */
   deleteEntry(entryId) {
     const idx = this._entries.findIndex(e => e.id === entryId);
     if (idx === -1) return false;
     this._entries.splice(idx, 1);
+    this._scheduleSave();
     log.debug(`Access log entry deleted: ${entryId}`);
     return true;
   }
@@ -192,30 +148,137 @@ export class NetworkAccessLogService {
   //  PUBLIC API — Management
   // ═══════════════════════════════════════════════════════════
 
-  /**
-   * Clear all log entries. GM only.
-   */
+  /** Clear all entries. Saves immediately. */
   clearLog() {
     this._entries = [];
+    this._saveNow();
     log.info('Access log cleared');
   }
 
-  /**
-   * Export log as JSON string (for GM download/review).
-   * @returns {string}
-   */
+  /** Export as JSON (for re-import). */
   exportLog() {
     return JSON.stringify(this._entries, null, 2);
   }
 
   /**
-   * Destroy the service — clean up EventBus subscriptions.
+   * Export as formatted plain text for readability.
+   * @returns {string}
    */
+  exportFormatted() {
+    const lines = [
+      '════════════════════════════════════════════════════════════════════',
+      '  NIGHT CITY MESSENGER — NETWORK ACCESS LOG',
+      `  Exported: ${new Date().toISOString()}`,
+      `  Entries: ${this._entries.length}`,
+      '════════════════════════════════════════════════════════════════════',
+      '',
+      'DATE       TIME      TYPE             NETWORK        ACTOR            MESSAGE',
+      '────────── ──────── ──────────────── ────────────── ──────────────── ─────────────────────────────────',
+    ];
+
+    const sorted = [...this._entries].reverse();
+
+    for (const e of sorted) {
+      const d = new Date(e.timestamp);
+      const date = `${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}.${d.getFullYear()}`;
+      const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
+      const typeTag = `[${(e.type ?? 'EVENT').toUpperCase()}]`.padEnd(16);
+      const net = (e.networkName ?? e.networkId ?? '—').padEnd(14);
+      const actor = (e.actorName ?? 'System').padEnd(16);
+      const manual = e.manual ? ' [GM]' : '';
+
+      lines.push(`${date} ${time}  ${typeTag} ${net} ${actor} ${e.message ?? ''}${manual}`);
+    }
+
+    lines.push('');
+    lines.push('════════════════════════════════════════════════════════════════════');
+    lines.push('  END OF LOG');
+    lines.push('════════════════════════════════════════════════════════════════════');
+
+    return lines.join('\n');
+  }
+
+  /**
+   * Import log entries from JSON. Merges with existing, deduplicates by ID.
+   * @param {string} json
+   * @returns {{ success: boolean, imported: number, error?: string }}
+   */
+  importLog(json) {
+    try {
+      const parsed = JSON.parse(json);
+      if (!Array.isArray(parsed)) {
+        return { success: false, imported: 0, error: 'Expected an array of log entries' };
+      }
+
+      const existingIds = new Set(this._entries.map(e => e.id));
+      let imported = 0;
+
+      for (const entry of parsed) {
+        if (!entry.id || !entry.timestamp || !entry.type) continue;
+        if (existingIds.has(entry.id)) continue;
+        this._entries.push(entry);
+        existingIds.add(entry.id);
+        imported++;
+      }
+
+      if (this._entries.length > NetworkAccessLogService.MAX_ENTRIES) {
+        this._entries = this._entries.slice(-NetworkAccessLogService.MAX_ENTRIES);
+      }
+
+      this._saveNow();
+      log.info(`Access log: imported ${imported} entries`);
+      return { success: true, imported };
+    } catch (err) {
+      return { success: false, imported: 0, error: err.message };
+    }
+  }
+
   destroy() {
+    if (this._saveTimer) {
+      clearTimeout(this._saveTimer);
+      this._saveNow();
+    }
     for (const unsub of this._subscriptions) {
       if (typeof unsub === 'function') unsub();
     }
     this._subscriptions = [];
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  INTERNAL — Persistence
+  // ═══════════════════════════════════════════════════════════
+
+  /** @private */
+  _loadFromSettings() {
+    try {
+      const stored = this.settingsManager?.get('networkAccessLog') ?? [];
+      if (Array.isArray(stored)) {
+        this._entries = stored;
+      }
+    } catch (err) {
+      log.warn('Access log: failed to load from settings', err.message);
+      this._entries = [];
+    }
+  }
+
+  /** @private */
+  _scheduleSave() {
+    if (this._saveTimer) clearTimeout(this._saveTimer);
+    this._saveTimer = setTimeout(() => {
+      this._saveNow();
+      this._saveTimer = null;
+    }, NetworkAccessLogService.SAVE_DELAY);
+  }
+
+  /** @private */
+  _saveNow() {
+    if (!game.user?.isGM) return;
+    try {
+      this.settingsManager?.set('networkAccessLog', this._entries);
+      log.debug(`Access log: saved ${this._entries.length} entries`);
+    } catch (err) {
+      log.warn('Access log: failed to save', err.message);
+    }
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -226,7 +289,6 @@ export class NetworkAccessLogService {
   _wireEvents() {
     if (!this.eventBus) return;
 
-    // Network switched
     this._sub(EVENTS.NETWORK_CHANGED, (data) => {
       if (data.type === 'switch' || data.previousNetworkId) {
         const networkService = game.nightcity.networkService;
@@ -245,7 +307,6 @@ export class NetworkAccessLogService {
       }
     });
 
-    // Network connected (e.g., leaving dead zone)
     this._sub(EVENTS.NETWORK_CONNECTED, (data) => {
       const networkService = game.nightcity.networkService;
       const net = networkService?.getNetwork(data.networkId);
@@ -257,7 +318,6 @@ export class NetworkAccessLogService {
       });
     });
 
-    // Network disconnected (e.g., entering dead zone)
     this._sub(EVENTS.NETWORK_DISCONNECTED, (data) => {
       this._push({
         type: 'disconnect',
@@ -269,7 +329,6 @@ export class NetworkAccessLogService {
       });
     });
 
-    // Auth success
     this._sub(EVENTS.NETWORK_AUTH_SUCCESS, (data) => {
       const networkService = game.nightcity.networkService;
       const net = networkService?.getNetwork(data.networkId);
@@ -288,7 +347,6 @@ export class NetworkAccessLogService {
       });
     });
 
-    // Auth failure
     this._sub(EVENTS.NETWORK_AUTH_FAILURE, (data) => {
       const networkService = game.nightcity.networkService;
       const net = networkService?.getNetwork(data.networkId);
@@ -307,7 +365,6 @@ export class NetworkAccessLogService {
       });
     });
 
-    // Lockout
     this._sub(EVENTS.NETWORK_LOCKOUT, (data) => {
       const actorName = game.actors?.get(data.actorId)?.name ?? 'Unknown';
       this._push({
@@ -321,12 +378,7 @@ export class NetworkAccessLogService {
     });
   }
 
-  /**
-   * Subscribe to an EventBus event with auto-tracking for cleanup.
-   * @param {string} event
-   * @param {Function} handler
-   * @private
-   */
+  /** @private */
   _sub(event, handler) {
     const ref = this.eventBus.on(event, handler);
     this._subscriptions.push(() => this.eventBus.off(event, ref));
@@ -336,11 +388,7 @@ export class NetworkAccessLogService {
   //  INTERNAL — Ring Buffer
   // ═══════════════════════════════════════════════════════════
 
-  /**
-   * Push a new entry into the ring buffer.
-   * @param {object} data
-   * @private
-   */
+  /** @private */
   _push(data) {
     const entry = {
       id: foundry.utils.randomID(),
@@ -352,11 +400,11 @@ export class NetworkAccessLogService {
 
     this._entries.push(entry);
 
-    // Ring buffer: drop oldest entries
     if (this._entries.length > NetworkAccessLogService.MAX_ENTRIES) {
       this._entries = this._entries.slice(-NetworkAccessLogService.MAX_ENTRIES);
     }
 
+    this._scheduleSave();
     log.debug(`Access log: [${entry.type}] ${entry.networkName ?? entry.networkId}`);
   }
 }

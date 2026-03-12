@@ -2835,11 +2835,23 @@
 
 .ncm-app .ncm-netlog-toolbar {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 5px;
   padding: 6px 10px;
   background: var(--ncm-bg-elevated);
   border-bottom: 1px solid var(--ncm-border);
+}
+
+.ncm-app .ncm-netlog-toolbar-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.ncm-app .ncm-netlog-count {
+  font-family: var(--ncm-font-mono);
+  font-size: 8px;
+  color: var(--ncm-text-muted);
 }
 
 .ncm-app .ncm-netlog-filter-group {

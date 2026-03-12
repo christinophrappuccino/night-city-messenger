@@ -940,10 +940,16 @@
         <button class="ncm-netmgr__btn-sm ncm-netmgr__btn-sm--accent" data-action="toggleAddLogForm">
           <i class="fas fa-plus"></i> Add Entry
         </button>
+        <button class="ncm-netmgr__btn-sm" data-action="importLogs">
+          <i class="fas fa-file-import"></i> Import
+        </button>
         <div class="ncm-netmgr__log-toolbar-spacer"></div>
         <span class="ncm-netmgr__log-toolbar-count">{{logCount}} entries</span>
-        <button class="ncm-netmgr__btn-sm" data-action="exportLogs">
-          <i class="fas fa-file-export"></i> Export
+        <button class="ncm-netmgr__btn-sm" data-action="exportLogs" title="Export as JSON (re-importable)">
+          <i class="fas fa-file-export"></i> JSON
+        </button>
+        <button class="ncm-netmgr__btn-sm" data-action="exportFormattedLogs" title="Export as formatted text">
+          <i class="fas fa-file-alt"></i> Text
         </button>
         <button class="ncm-netmgr__btn-sm ncm-netmgr__btn-sm--danger" data-action="clearLogs">
           <i class="fas fa-trash"></i> Clear

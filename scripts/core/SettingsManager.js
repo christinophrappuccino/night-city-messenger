@@ -62,6 +62,15 @@ export class SettingsManager {
       default: [],
     });
 
+    game.settings.register(MODULE_ID, 'networkAccessLog', {
+      name: 'NCM.Settings.NetworkAccessLog.Name',
+      hint: 'Persistent network access log entries.',
+      scope: 'world',
+      config: false,
+      type: Array,
+      default: [],
+    });
+
     game.settings.register(MODULE_ID, 'masterContacts', {
       name: 'NCM.Settings.MasterContacts.Name',
       hint: 'NCM.Settings.MasterContacts.Hint',

@@ -418,28 +418,39 @@
 
     <div class="ncm-netlog-panel">
       <div class="ncm-netlog-toolbar">
-        <div class="ncm-netlog-filter-group">
-          {{#each logTypeFilters}}
-          <button class="ncm-netlog-filter-btn {{#if this.active}}ncm-netlog-filter-btn--active{{/if}}"
-                  data-action="filterLogType" data-filter="{{this.value}}">{{this.label}}</button>
-          {{/each}}
+        <div class="ncm-netlog-toolbar-row">
+          <div class="ncm-netlog-filter-group">
+            {{#each logTypeFilters}}
+            <button class="ncm-netlog-filter-btn {{#if this.active}}ncm-netlog-filter-btn--active{{/if}}"
+                    data-action="filterLogType" data-filter="{{this.value}}">{{this.label}}</button>
+            {{/each}}
+          </div>
+          <select class="ncm-netlog-network-filter" data-action="filterLogNetwork">
+            <option value="">All Networks</option>
+            {{#each networks}}
+            <option value="{{this.id}}" {{#if (eq this.id ../logNetworkFilter)}}selected{{/if}}>{{this.name}}</option>
+            {{/each}}
+          </select>
         </div>
-        <select class="ncm-netlog-network-filter" data-action="filterLogNetwork">
-          <option value="">All Networks</option>
-          {{#each networks}}
-          <option value="{{this.id}}" {{#if (eq this.id ../logNetworkFilter)}}selected{{/if}}>{{this.name}}</option>
-          {{/each}}
-        </select>
-        <div class="ncm-netlog-spacer"></div>
-        <button class="ncm-netlog-btn ncm-netlog-btn--accent" data-action="toggleAddLogForm">
-          <i class="fas fa-plus"></i> Add Entry
-        </button>
-        <button class="ncm-netlog-btn" data-action="exportNetworkLogs">
-          <i class="fas fa-file-export"></i> Export
-        </button>
-        <button class="ncm-netlog-btn ncm-netlog-btn--danger" data-action="clearNetworkLogs">
-          <i class="fas fa-trash"></i> Clear
-        </button>
+        <div class="ncm-netlog-toolbar-row">
+          <button class="ncm-netlog-btn ncm-netlog-btn--accent" data-action="toggleAddLogForm">
+            <i class="fas fa-plus"></i> Add Entry
+          </button>
+          <button class="ncm-netlog-btn" data-action="importNetworkLogs">
+            <i class="fas fa-file-import"></i> Import
+          </button>
+          <div class="ncm-netlog-spacer"></div>
+          <span class="ncm-netlog-count">{{logEntryCount}} entries</span>
+          <button class="ncm-netlog-btn" data-action="exportNetworkLogs" title="Export as JSON (re-importable)">
+            <i class="fas fa-file-export"></i> JSON
+          </button>
+          <button class="ncm-netlog-btn" data-action="exportFormattedNetworkLogs" title="Export as formatted text">
+            <i class="fas fa-file-alt"></i> Text
+          </button>
+          <button class="ncm-netlog-btn ncm-netlog-btn--danger" data-action="clearNetworkLogs">
+            <i class="fas fa-trash"></i> Clear
+          </button>
+        </div>
       </div>
 
       <div class="ncm-netlog-list">
