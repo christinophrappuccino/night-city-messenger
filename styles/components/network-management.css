@@ -1621,35 +1621,38 @@
 .ncm-netmgr__log-list {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 0;
 }
 
 .ncm-netmgr__log-entry {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 5px 10px;
+  flex-direction: column;
+  padding: 6px 12px;
   font-family: var(--nm-font-mono);
   font-size: 9px;
-  border-radius: 2px;
+  border-radius: 0;
   transition: background 0.1s;
+  border-bottom: 1px solid rgba(42, 42, 69, 0.3);
 }
+
+.ncm-netmgr__log-entry:last-child { border-bottom: none; }
 
 .ncm-netmgr__log-entry:hover {
   background: var(--nm-bg-surface);
 }
 
-.ncm-netmgr__log-entry-time {
-  color: var(--nm-text-muted);
-  font-size: 8px;
-  flex-shrink: 0;
-  min-width: 60px;
+/* Row 1: Icon + Type + Network + Date/Time + Actions */
+.ncm-netmgr__log-entry-row1 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .ncm-netmgr__log-entry-icon {
-  width: 16px;
+  width: 14px;
   text-align: center;
   flex-shrink: 0;
+  font-size: 9px;
 }
 
 .ncm-netmgr__log-entry-icon--success  { color: var(--nm-success); }
@@ -1659,25 +1662,57 @@
 .ncm-netmgr__log-entry-icon--auth     { color: var(--nm-purple); }
 .ncm-netmgr__log-entry-icon--deadzone { color: var(--nm-danger); }
 .ncm-netmgr__log-entry-icon--system   { color: var(--nm-success); }
+.ncm-netmgr__log-entry-icon--manual   { color: #a855f7; }
+
+.ncm-netmgr__log-entry-type {
+  font-family: var(--nm-font-display);
+  font-size: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--nm-text-secondary);
+}
+
+.ncm-netmgr__log-entry-network {
+  font-size: 8px;
+  color: var(--nm-secondary);
+  padding: 0 4px;
+  background: rgba(25, 243, 247, 0.04);
+  border-radius: 1px;
+  flex-shrink: 0;
+}
+
+.ncm-netmgr__log-entry-time {
+  color: var(--nm-text-muted);
+  font-size: 8px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* Row 2: Actor + Message */
+.ncm-netmgr__log-entry-row2 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-left: 20px;
+  margin-top: 1px;
+}
 
 .ncm-netmgr__log-entry-actor {
   color: var(--nm-text-primary);
+  font-size: 9px;
+  font-weight: 600;
   flex-shrink: 0;
-  min-width: 80px;
 }
 
 .ncm-netmgr__log-entry-action {
   color: var(--nm-text-secondary);
+  font-size: 9px;
   flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.ncm-netmgr__log-entry-network {
-  color: var(--nm-secondary);
-  flex-shrink: 0;
 }
 
 
@@ -1841,11 +1876,38 @@
 
 /* ── Log filter buttons ── */
 .ncm-network-management .ncm-netmgr__log-filter-btn {
-  background: transparent !important;
-  border: 1px solid var(--nm-border) !important;
+  display: inline-flex !important;
+  align-items: center !important;
   padding: 3px 8px !important;
   margin: 0 !important;
+  font-family: var(--nm-font-display) !important;
+  font-size: 8px !important;
+  font-weight: 600 !important;
+  color: var(--nm-text-muted) !important;
+  background: transparent !important;
+  border: 1px solid var(--nm-border) !important;
+  border-radius: 2px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
   cursor: pointer !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  box-shadow: none !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  outline: none !important;
+  transition: all 0.15s !important;
+}
+
+.ncm-network-management .ncm-netmgr__log-filter-btn:hover {
+  color: var(--nm-text-secondary) !important;
+  border-color: var(--nm-border-active, #3a3a5a) !important;
+}
+
+.ncm-network-management .ncm-netmgr__log-filter-btn--active {
+  color: var(--nm-secondary) !important;
+  background: rgba(25, 243, 247, 0.06) !important;
+  border-color: rgba(25, 243, 247, 0.25) !important;
 }
 
 /* ── Scene toggle buttons ── */

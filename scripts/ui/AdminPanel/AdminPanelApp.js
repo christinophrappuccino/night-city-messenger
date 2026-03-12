@@ -47,6 +47,9 @@ export class AdminPanelApp extends BaseApplication {
   /** @type {boolean} Whether the add-log form is visible */
   _showAddLogForm = false;
 
+  /** @type {string} Network search query */
+  _networkSearch = '';
+
   // ═══════════════════════════════════════════════════════════
   //  Service Accessors
   // ═══════════════════════════════════════════════════════════
@@ -274,11 +277,14 @@ export class AdminPanelApp extends BaseApplication {
       pushLog,
 
       // Networks tab
-      networks,
+      networks: this._networkSearch
+        ? networks.filter(n => n.name.toLowerCase().includes(this._networkSearch.toLowerCase()))
+        : networks,
       networkSummary,
       sceneStrip,
       netStats,
       networkSubView: this._networkSubView,
+      networkSearchQuery: this._networkSearch,
       fullLogEntries,
       logTypeFilters,
       logNetworkFilter: this._logNetworkFilter,
@@ -829,8 +835,10 @@ export class AdminPanelApp extends BaseApplication {
     return {
       ...e,
       displayTime: this._formatLogTime(e.timestamp),
+      displayDate: this._formatLogDate(e.timestamp),
       typeIcon: this._getLogTypeIcon(e.type),
       typeClass: this._getLogTypeClass(e.type),
+      typeLabel: this._getLogTypeLabel(e.type),
       colorVar: this._getLogTypeColor(e.type, e.manual),
       actorName: e.actorName ?? 'System',
       networkName: e.networkName ?? e.networkId ?? '—',
@@ -843,6 +851,13 @@ export class AdminPanelApp extends BaseApplication {
     if (!timestamp) return '';
     const d = new Date(timestamp);
     return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
+  }
+
+  /** @private */
+  _formatLogDate(timestamp) {
+    if (!timestamp) return '';
+    const d = new Date(timestamp);
+    return `${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
   }
 
   /** @private */
@@ -879,6 +894,24 @@ export class AdminPanelApp extends BaseApplication {
       system: 'disconnect',
     };
     return map[type] || 'switch';
+  }
+
+  /** @private */
+  _getLogTypeLabel(type) {
+    const labels = {
+      connect: 'CONNECT',
+      disconnect: 'DISCONNECT',
+      auth_success: 'AUTH OK',
+      auth_failure: 'AUTH FAIL',
+      lockout: 'LOCKOUT',
+      dead_zone: 'DEAD ZONE',
+      network_switch: 'SWITCH',
+      hack: 'HACK',
+      manual: 'TRACE',
+      malware: 'MALWARE',
+      system: 'SYSTEM',
+    };
+    return labels[type] || type?.toUpperCase() || 'EVENT';
   }
 
   /** @private */
@@ -1215,6 +1248,21 @@ export class AdminPanelApp extends BaseApplication {
         this._logNetworkFilter = e.target.value;
         this.render(true);
       });
+    }
+
+    // Network search input — debounced
+    const searchInput = this.element?.querySelector('.ncm-network-search-bar__input');
+    if (searchInput) {
+      if (this._networkSearch) searchInput.focus();
+
+      const handler = this._networkSearchHandler || (this._networkSearchHandler =
+        foundry.utils.debounce((e) => {
+          this._networkSearch = e.target.value;
+          this.render(true);
+        }, 250)
+      );
+      searchInput.removeEventListener('input', handler);
+      searchInput.addEventListener('input', handler);
     }
   }
 

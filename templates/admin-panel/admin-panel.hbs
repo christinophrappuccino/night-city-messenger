@@ -446,16 +446,21 @@
         {{#if fullLogEntries.length}}
         {{#each fullLogEntries}}
         <div class="ncm-netlog-entry {{#if this.manual}}ncm-netlog-entry--manual{{/if}}" data-entry-id="{{this.id}}">
-          <span class="ncm-netlog-entry__time">{{this.displayTime}}</span>
-          <span class="ncm-netlog-entry__icon" style="color:var(--ncm-{{this.colorVar}});">
-            <i class="fas {{this.typeIcon}}"></i>
-          </span>
-          <span class="ncm-netlog-entry__actor">{{this.actorName}}</span>
-          <span class="ncm-netlog-entry__network">{{this.networkName}}</span>
-          <span class="ncm-netlog-entry__message">{{this.message}}</span>
-          <div class="ncm-netlog-entry__actions">
-            <button class="ncm-log-entry__action-btn" data-action="editLogEntry" data-entry-id="{{this.id}}" title="Edit"><i class="fas fa-pen"></i></button>
-            <button class="ncm-log-entry__action-btn ncm-log-entry__action-btn--danger" data-action="deleteLogEntry" data-entry-id="{{this.id}}" title="Delete"><i class="fas fa-trash"></i></button>
+          <div class="ncm-netlog-entry__row1">
+            <span class="ncm-netlog-entry__icon" style="color:var(--ncm-{{this.colorVar}});">
+              <i class="fas {{this.typeIcon}}"></i>
+            </span>
+            <span class="ncm-netlog-entry__type-label">{{this.typeLabel}}</span>
+            <span class="ncm-netlog-entry__network">{{this.networkName}}</span>
+            <span class="ncm-netlog-entry__time">{{this.displayDate}} {{this.displayTime}}</span>
+            <div class="ncm-netlog-entry__actions">
+              <button class="ncm-log-entry__action-btn" data-action="editLogEntry" data-entry-id="{{this.id}}" title="Edit"><i class="fas fa-pen"></i></button>
+              <button class="ncm-log-entry__action-btn ncm-log-entry__action-btn--danger" data-action="deleteLogEntry" data-entry-id="{{this.id}}" title="Delete"><i class="fas fa-trash"></i></button>
+            </div>
+          </div>
+          <div class="ncm-netlog-entry__row2">
+            <span class="ncm-netlog-entry__actor">{{this.actorName}}</span>
+            <span class="ncm-netlog-entry__message">{{this.message}}</span>
           </div>
         </div>
         {{/each}}
@@ -544,15 +549,16 @@
       <div class="ncm-scene-chip {{#if this.deadZone}}ncm-scene-chip--dead{{/if}} {{#if this.isCurrent}}ncm-scene-chip--current{{/if}}"
            data-scene-id="{{this.id}}">
         <div class="ncm-scene-chip__dot"></div>
-        <div>
+        <div class="ncm-scene-chip__info">
           <div class="ncm-scene-chip__name">{{this.name}}</div>
           <div class="ncm-scene-chip__network">{{this.defaultNetworkName}}</div>
         </div>
-        <div class="ncm-scene-chip__dead-toggle"
+        <button class="ncm-scene-chip__toggle-btn {{#if this.deadZone}}ncm-scene-chip__toggle-btn--dead{{/if}}"
              data-action="toggleSceneDeadZone"
-             title="{{#if this.deadZone}}Restore signal{{else}}Toggle dead zone{{/if}}">
+             title="{{#if this.deadZone}}Restore signal{{else}}Jam all signals{{/if}}">
           <i class="fas {{#if this.deadZone}}fa-signal{{else}}fa-signal-slash{{/if}}"></i>
-        </div>
+          {{#if this.deadZone}}Restore{{else}}Jam{{/if}}
+        </button>
       </div>
       {{/each}}
     </div>
@@ -574,6 +580,15 @@
         <i class="fas fa-paper-plane"></i> Send
       </button>
     </div>
+
+    {{!-- Network Search / Filter --}}
+    {{#if (gt networks.length 4)}}
+    <div class="ncm-network-search-bar">
+      <i class="fas fa-search ncm-network-search-bar__icon"></i>
+      <input class="ncm-network-search-bar__input" type="text"
+             placeholder="Filter networks..." value="{{networkSearchQuery}}">
+    </div>
+    {{/if}}
 
     {{!-- Network Cards --}}
     {{#if networks.length}}
@@ -652,18 +667,23 @@
         <div class="ncm-network-card__log">
           {{#each this.logEntries}}
           <div class="ncm-log-entry {{#if this.manual}}ncm-log-entry--manual{{/if}}" data-entry-id="{{this.id}}">
-            <span class="ncm-log-entry__time">{{this.displayTime}}</span>
-            <span class="ncm-log-entry__icon ncm-log-entry__icon--{{this.typeClass}}"><i class="fas {{this.typeIcon}}"></i></span>
-            <span class="ncm-log-entry__actor">{{this.actorName}}</span>
-            <span class="ncm-log-entry__message">{{this.message}}</span>
-            <div class="ncm-log-entry__actions">
-              <button class="ncm-log-entry__action-btn" data-action="editLogEntry" data-entry-id="{{this.id}}"><i class="fas fa-pen"></i></button>
-              <button class="ncm-log-entry__action-btn ncm-log-entry__action-btn--danger" data-action="deleteLogEntry" data-entry-id="{{this.id}}"><i class="fas fa-trash"></i></button>
+            <div class="ncm-log-entry__row1">
+              <span class="ncm-log-entry__icon ncm-log-entry__icon--{{this.typeClass}}"><i class="fas {{this.typeIcon}}"></i></span>
+              <span class="ncm-log-entry__type-label">{{this.typeLabel}}</span>
+              <span class="ncm-log-entry__time">{{this.displayDate}} {{this.displayTime}}</span>
+              <div class="ncm-log-entry__actions">
+                <button class="ncm-log-entry__action-btn" data-action="editLogEntry" data-entry-id="{{this.id}}"><i class="fas fa-pen"></i></button>
+                <button class="ncm-log-entry__action-btn ncm-log-entry__action-btn--danger" data-action="deleteLogEntry" data-entry-id="{{this.id}}"><i class="fas fa-trash"></i></button>
+              </div>
+            </div>
+            <div class="ncm-log-entry__row2">
+              <span class="ncm-log-entry__actor">{{this.actorName}}</span>
+              <span class="ncm-log-entry__message">{{this.message}}</span>
             </div>
           </div>
           {{/each}}
           {{#unless this.logEntries.length}}
-          <div class="ncm-log-entry" style="justify-content:center; color:var(--ncm-text-muted);">No activity</div>
+          <div class="ncm-log-entry" style="justify-content:center; color:var(--ncm-text-muted); padding: 12px;">No activity</div>
           {{/unless}}
         </div>
         {{/if}}

@@ -202,8 +202,10 @@ export class NetworkManagementApp extends BaseApplication {
     const logEntries = rawLog.map(e => ({
         ...e,
         displayTime: this._formatLogTime(e.timestamp),
+        displayDate: this._formatLogDate(e.timestamp),
         typeIcon: this._getLogTypeIcon(e.type),
         typeClass: this._getLogTypeClass(e.type),
+        typeLabel: this._getLogTypeLabel(e.type),
         actorName: e.actorName ?? game.actors?.get(e.actorId)?.name ?? 'System',
         networkName: e.networkName ?? this.networkService?.getNetwork(e.networkId)?.name ?? e.networkId ?? '—',
         message: e.message ?? e.action ?? '',
@@ -685,6 +687,12 @@ export class NetworkManagementApp extends BaseApplication {
     if (!timestamp) return '';
     const d = new Date(timestamp);
     return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
+  }
+
+  _formatLogDate(timestamp) {
+    if (!timestamp) return '';
+    const d = new Date(timestamp);
+    return `${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
   }
 
   _getLogTypeIcon(type) {

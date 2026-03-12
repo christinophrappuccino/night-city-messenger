@@ -404,6 +404,8 @@ export class DocumentSyncBridge {
         log.debug('SyncBridge: Custom networks setting changed');
         // Rebuild network cache on all clients
         game.nightcity?.networkService?._buildNetworkCache?.();
+        // Sync live signal if current network was affected (Sprint 6)
+        this._syncSignalStrength();
         this._eventBus.emit(EVENTS.NETWORK_CHANGED, {
           source: 'document-sync',
           settingChanged: 'customNetworks',
@@ -414,6 +416,8 @@ export class DocumentSyncBridge {
         log.debug('SyncBridge: Core network overrides changed');
         // Rebuild network cache on all clients (merges overrides onto core defs)
         game.nightcity?.networkService?._buildNetworkCache?.();
+        // Sync live signal if current network was affected (Sprint 6)
+        this._syncSignalStrength();
         this._eventBus.emit(EVENTS.NETWORK_CHANGED, {
           source: 'document-sync',
           settingChanged: 'coreNetworkOverrides',
@@ -441,6 +445,27 @@ export class DocumentSyncBridge {
         // Generic setting change — could be module config
         log.debug(`SyncBridge: Setting ${settingName} changed`);
         break;
+    }
+  }
+
+  /**
+   * After cache rebuild, sync the live _signalStrength on this client
+   * if the current network's signal was changed by the GM.
+   * This ensures the Message Viewer's signal bar updates in real-time
+   * when the GM adjusts signal from the admin panel.
+   * @private
+   */
+  static _syncSignalStrength() {
+    const ns = game.nightcity?.networkService;
+    if (!ns) return;
+
+    const currentId = ns.currentNetworkId;
+    if (!currentId) return;
+
+    const refreshed = ns.getNetwork(currentId);
+    if (refreshed && typeof refreshed.signalStrength === 'number') {
+      ns._signalStrength = refreshed.signalStrength;
+      log.debug(`SyncBridge: Signal synced to ${refreshed.signalStrength}% for ${currentId}`);
     }
   }
 }

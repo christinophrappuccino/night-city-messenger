@@ -2232,6 +2232,11 @@
   flex-shrink: 0;
 }
 
+.ncm-app .ncm-scene-chip__info {
+  flex: 1;
+  min-width: 0;
+}
+
 .ncm-app .ncm-scene-chip__name {
   color: var(--ncm-text-primary);
   font-size: 11px;
@@ -2245,32 +2250,46 @@
   letter-spacing: 0.04em;
 }
 
-.ncm-app .ncm-scene-chip__dead-toggle {
-  width: 18px;
-  height: 18px;
+.ncm-app .ncm-scene-chip__toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 8px;
   border-radius: 2px;
   border: 1px solid var(--ncm-border);
   background: var(--ncm-bg-deep);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  font-family: var(--ncm-font-display);
+  font-size: 7px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ncm-text-muted);
   cursor: pointer;
   transition: all 0.15s;
-  margin-left: 2px;
+  flex-shrink: 0;
 }
 
-.ncm-app .ncm-scene-chip__dead-toggle i {
+.ncm-app .ncm-scene-chip__toggle-btn i {
   font-size: 7px;
-  color: var(--ncm-text-muted);
 }
 
-.ncm-app .ncm-scene-chip__dead-toggle:hover {
+.ncm-app .ncm-scene-chip__toggle-btn:hover {
   border-color: var(--ncm-danger);
   background: rgba(255, 0, 51, 0.1);
+  color: var(--ncm-danger);
 }
 
-.ncm-app .ncm-scene-chip__dead-toggle:hover i {
-  color: var(--ncm-danger);
+/* Dead state toggle — green "restore" */
+.ncm-app .ncm-scene-chip__toggle-btn--dead {
+  border-color: rgba(0, 255, 65, 0.3);
+  color: var(--ncm-success);
+  background: rgba(0, 255, 65, 0.06);
+}
+
+.ncm-app .ncm-scene-chip__toggle-btn--dead:hover {
+  border-color: var(--ncm-success);
+  background: rgba(0, 255, 65, 0.12);
+  color: var(--ncm-success);
 }
 
 /* Dead zone state */
@@ -2289,15 +2308,6 @@
   color: var(--ncm-danger);
 }
 
-.ncm-app .ncm-scene-chip--dead .ncm-scene-chip__dead-toggle {
-  border-color: var(--ncm-danger);
-  background: rgba(255, 0, 51, 0.15);
-}
-
-.ncm-app .ncm-scene-chip--dead .ncm-scene-chip__dead-toggle i {
-  color: var(--ncm-danger);
-}
-
 /* Current scene */
 .ncm-app .ncm-scene-chip--current {
   border-color: rgba(25, 243, 247, 0.3);
@@ -2306,6 +2316,42 @@
 .ncm-app .ncm-scene-chip--current .ncm-scene-chip__dot {
   background: var(--ncm-secondary);
   box-shadow: 0 0 4px rgba(25, 243, 247, 0.4);
+}
+
+/* ═══════════════════════════════════════════
+   SPRINT 6: NETWORK SEARCH BAR
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-network-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+  padding: 5px 10px;
+  background: var(--ncm-bg-surface);
+  border: 1px solid var(--ncm-border);
+  border-radius: 2px;
+}
+
+.ncm-app .ncm-network-search-bar__icon {
+  font-size: 9px;
+  color: var(--ncm-text-muted);
+  flex-shrink: 0;
+}
+
+.ncm-app .ncm-network-search-bar__input {
+  flex: 1;
+  font-family: var(--ncm-font-mono);
+  font-size: 10px;
+  color: var(--ncm-text-primary);
+  background: transparent;
+  border: none;
+  outline: none;
+  padding: 2px 0;
+}
+
+.ncm-app .ncm-network-search-bar__input::placeholder {
+  color: var(--ncm-text-muted);
 }
 
 /* ═══════════════════════════════════════════
@@ -2572,31 +2618,36 @@
 .ncm-app .ncm-network-card__log::-webkit-scrollbar { width: 3px; }
 .ncm-app .ncm-network-card__log::-webkit-scrollbar-thumb { background: var(--ncm-border); }
 
-/* Shared log entry (card and full panel) */
+/* Shared log entry — two-row layout (Sprint 6.1) */
 .ncm-app .ncm-log-entry {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 3px 10px;
+  flex-direction: column;
+  padding: 5px 10px;
   font-size: 9px;
   transition: background 0.1s;
+  border-bottom: 1px solid rgba(42, 42, 69, 0.3);
+}
+
+.ncm-app .ncm-log-entry:last-child {
+  border-bottom: none;
 }
 
 .ncm-app .ncm-log-entry:hover {
   background: rgba(255, 255, 255, 0.015);
 }
 
-.ncm-app .ncm-log-entry__time {
-  font-family: var(--ncm-font-mono);
-  font-size: 8px;
-  color: var(--ncm-text-muted);
-  min-width: 44px;
+/* Row 1: Icon + Type label + Time + Actions */
+.ncm-app .ncm-log-entry__row1 {
+  display: flex;
+  align-items: center;
+  gap: 5px;
 }
 
 .ncm-app .ncm-log-entry__icon {
-  width: 14px;
-  text-align: center;
   font-size: 8px;
+  width: 12px;
+  text-align: center;
+  flex-shrink: 0;
 }
 
 .ncm-app .ncm-log-entry__icon--connect { color: var(--ncm-success); }
@@ -2606,14 +2657,41 @@
 .ncm-app .ncm-log-entry__icon--switch { color: var(--ncm-secondary); }
 .ncm-app .ncm-log-entry__icon--manual { color: var(--ncm-purple, #a855f7); }
 
+.ncm-app .ncm-log-entry__type-label {
+  font-family: var(--ncm-font-display);
+  font-size: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ncm-text-secondary);
+}
+
+.ncm-app .ncm-log-entry__time {
+  font-family: var(--ncm-font-mono);
+  font-size: 8px;
+  color: var(--ncm-text-muted);
+  margin-left: auto;
+}
+
+/* Row 2: Actor + Message */
+.ncm-app .ncm-log-entry__row2 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-left: 17px;
+  margin-top: 1px;
+}
+
 .ncm-app .ncm-log-entry__actor {
   color: var(--ncm-text-primary);
   font-weight: 600;
-  min-width: 48px;
+  font-size: 9px;
+  flex-shrink: 0;
 }
 
 .ncm-app .ncm-log-entry__message {
   color: var(--ncm-text-secondary);
+  font-size: 9px;
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2627,6 +2705,10 @@
 }
 
 .ncm-app .ncm-log-entry--manual .ncm-log-entry__message {
+  color: var(--ncm-purple, #a855f7);
+}
+
+.ncm-app .ncm-log-entry--manual .ncm-log-entry__type-label {
   color: var(--ncm-purple, #a855f7);
 }
 
@@ -2778,42 +2860,102 @@
 .ncm-app .ncm-netlog-list::-webkit-scrollbar-thumb { background: var(--ncm-border); }
 
 .ncm-app .ncm-netlog-entry {
-  display: grid;
-  grid-template-columns: 50px 16px 66px 66px 1fr 44px;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 10px;
+  display: flex;
+  flex-direction: column;
+  padding: 5px 12px;
   font-size: 9px;
   transition: background 0.1s;
   position: relative;
+  border-bottom: 1px solid rgba(42, 42, 69, 0.3);
 }
 
+.ncm-app .ncm-netlog-entry:last-child { border-bottom: none; }
 .ncm-app .ncm-netlog-entry:hover { background: rgba(255, 255, 255, 0.015); }
-.ncm-app .ncm-netlog-entry__time { font-family: var(--ncm-font-mono); font-size: 8px; color: var(--ncm-text-muted); }
-.ncm-app .ncm-netlog-entry__icon { text-align: center; font-size: 9px; }
-.ncm-app .ncm-netlog-entry__actor { font-weight: 600; color: var(--ncm-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ncm-app .ncm-netlog-entry__network { font-family: var(--ncm-font-mono); font-size: 8px; color: var(--ncm-secondary); overflow: hidden; text-overflow: ellipsis; }
-.ncm-app .ncm-netlog-entry__message { color: var(--ncm-text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Row 1: Icon + Type + Network + Time + Actions */
+.ncm-app .ncm-netlog-entry__row1 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ncm-app .ncm-netlog-entry__icon { text-align: center; font-size: 9px; width: 14px; flex-shrink: 0; }
+
+.ncm-app .ncm-netlog-entry__type-label {
+  font-family: var(--ncm-font-display);
+  font-size: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ncm-text-secondary);
+}
+
+.ncm-app .ncm-netlog-entry__network {
+  font-family: var(--ncm-font-mono);
+  font-size: 8px;
+  color: var(--ncm-secondary);
+  padding: 0 4px;
+  background: rgba(25, 243, 247, 0.04);
+  border-radius: 1px;
+}
+
+.ncm-app .ncm-netlog-entry__time {
+  font-family: var(--ncm-font-mono);
+  font-size: 8px;
+  color: var(--ncm-text-muted);
+  margin-left: auto;
+}
 
 .ncm-app .ncm-netlog-entry__actions {
   display: flex;
   gap: 2px;
-  justify-content: flex-end;
   opacity: 0;
   transition: opacity 0.1s;
 }
 
 .ncm-app .ncm-netlog-entry:hover .ncm-netlog-entry__actions { opacity: 1; }
 
+/* Row 2: Actor + Message */
+.ncm-app .ncm-netlog-entry__row2 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-left: 20px;
+  margin-top: 1px;
+}
+
+.ncm-app .ncm-netlog-entry__actor {
+  font-weight: 600;
+  color: var(--ncm-text-primary);
+  font-size: 9px;
+  flex-shrink: 0;
+}
+
+.ncm-app .ncm-netlog-entry__message {
+  color: var(--ncm-text-secondary);
+  font-size: 9px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .ncm-app .ncm-netlog-entry--manual {
   border-left: 2px solid var(--ncm-purple, #a855f7);
+}
+
+.ncm-app .ncm-netlog-entry--manual .ncm-netlog-entry__type-label {
+  color: var(--ncm-purple, #a855f7);
+}
+
+.ncm-app .ncm-netlog-entry--manual .ncm-netlog-entry__message {
+  color: var(--ncm-purple, #a855f7);
 }
 
 .ncm-app .ncm-netlog-entry--manual::after {
   content: 'GM';
   position: absolute;
-  right: 3px;
-  top: 0;
+  right: 4px;
+  top: 2px;
   font-family: var(--ncm-font-ui);
   font-size: 5px;
   letter-spacing: 1px;
@@ -3059,19 +3201,21 @@
    Must duplicate all visual properties with !important
    to prevent Foundry's global button styles from showing through. */
 
-/* Scene dead zone toggle */
-.ncm-app .ncm-admin-panel .ncm-scene-chip__dead-toggle {
+/* Scene dead zone toggle button */
+.ncm-app .ncm-admin-panel .ncm-scene-chip__toggle-btn {
   display: flex !important;
   align-items: center !important;
-  justify-content: center !important;
-  width: 18px !important;
-  height: 18px !important;
-  padding: 0 !important;
+  gap: 3px !important;
+  padding: 3px 8px !important;
   border-radius: 2px !important;
   border: 1px solid var(--ncm-border) !important;
   background: var(--ncm-bg-deep) !important;
   color: var(--ncm-text-muted) !important;
+  font-family: var(--ncm-font-display) !important;
   font-size: 7px !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.06em !important;
   cursor: pointer !important;
   appearance: none !important;
   -webkit-appearance: none !important;
@@ -3082,10 +3226,10 @@
   transition: all 0.15s !important;
 }
 
-.ncm-app .ncm-admin-panel .ncm-scene-chip--dead .ncm-scene-chip__dead-toggle {
-  border-color: var(--ncm-danger) !important;
-  background: rgba(255, 0, 51, 0.15) !important;
-  color: var(--ncm-danger) !important;
+.ncm-app .ncm-admin-panel .ncm-scene-chip--dead .ncm-scene-chip__toggle-btn {
+  border-color: rgba(0, 255, 65, 0.3) !important;
+  color: var(--ncm-success) !important;
+  background: rgba(0, 255, 65, 0.06) !important;
 }
 
 /* Network card action buttons */

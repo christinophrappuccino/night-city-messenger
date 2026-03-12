@@ -930,20 +930,25 @@
         {{#each logEntries}}
         <div class="ncm-netmgr__log-entry {{#if this.manual}}ncm-netmgr__log-entry--manual{{/if}}"
              data-entry-id="{{this.id}}">
-          <span class="ncm-netmgr__log-entry-time">{{displayTime}}</span>
-          <span class="ncm-netmgr__log-entry-icon ncm-netmgr__log-entry-icon--{{typeClass}}">
-            <i class="fas {{typeIcon}}"></i>
-          </span>
-          <span class="ncm-netmgr__log-entry-actor">{{actorName}}</span>
-          <span class="ncm-netmgr__log-entry-action">{{message}}</span>
-          <span class="ncm-netmgr__log-entry-network">{{networkName}}</span>
-          <div class="ncm-netmgr__log-entry-actions">
-            <button class="ncm-netmgr__log-entry-btn" data-action="editLogEntry" data-entry-id="{{this.id}}" title="Edit">
-              <i class="fas fa-pen"></i>
-            </button>
-            <button class="ncm-netmgr__log-entry-btn ncm-netmgr__log-entry-btn--danger" data-action="deleteLogEntry" data-entry-id="{{this.id}}" title="Delete">
-              <i class="fas fa-trash"></i>
-            </button>
+          <div class="ncm-netmgr__log-entry-row1">
+            <span class="ncm-netmgr__log-entry-icon ncm-netmgr__log-entry-icon--{{typeClass}}">
+              <i class="fas {{typeIcon}}"></i>
+            </span>
+            <span class="ncm-netmgr__log-entry-type">{{typeLabel}}</span>
+            <span class="ncm-netmgr__log-entry-network">{{networkName}}</span>
+            <span class="ncm-netmgr__log-entry-time">{{displayDate}} {{displayTime}}</span>
+            <div class="ncm-netmgr__log-entry-actions">
+              <button class="ncm-netmgr__log-entry-btn" data-action="editLogEntry" data-entry-id="{{this.id}}" title="Edit">
+                <i class="fas fa-pen"></i>
+              </button>
+              <button class="ncm-netmgr__log-entry-btn ncm-netmgr__log-entry-btn--danger" data-action="deleteLogEntry" data-entry-id="{{this.id}}" title="Delete">
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
+          </div>
+          <div class="ncm-netmgr__log-entry-row2">
+            <span class="ncm-netmgr__log-entry-actor">{{actorName}}</span>
+            <span class="ncm-netmgr__log-entry-action">{{message}}</span>
           </div>
         </div>
         {{/each}}
