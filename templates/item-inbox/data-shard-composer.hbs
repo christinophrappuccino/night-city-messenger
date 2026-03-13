@@ -1,36 +1,358 @@
-{{!-- Data Shard Composer — Add message to shard --}}
+{{!--
+  Data Shard Composer — Sprint 4.6 Content Type System
+  File: templates/item-inbox/data-shard-composer.hbs
+  Module: cyberpunkred-messenger
+  Mockup: ncm-shard-composer-config-v2.html (Composer view)
+
+  Content type selector at top swaps form fields below.
+  6 types: Message, Eddies, Dossier, Payload, AV Log, Location.
+  Shared sections: Entry Identity, Per-Entry Encryption, Network Visibility.
+--}}
+
 {{#if hasItem}}
 <form class="ncm-shard-composer" autocomplete="off">
-  <h3><i class="fas fa-file-medical"></i> Add to: {{shardName}}</h3>
-  <div class="ncm-form-group">
-    <label>From:</label>
-    <input type="text" name="from" placeholder="sender@corp.net" />
-  </div>
-  <div class="ncm-form-group">
-    <label>Subject:</label>
-    <input type="text" name="subject" placeholder="Data Fragment" />
-  </div>
-  <div class="ncm-form-group">
-    <label>Body:</label>
-    <textarea name="body" rows="8" placeholder="Message content..."></textarea>
-  </div>
-  <div class="ncm-form-group">
-    <label>Timestamp (ISO):</label>
-    <input type="text" name="timestamp" placeholder="2045-03-15T14:30:00Z" />
-  </div>
-  {{#if isPerMessageEncryption}}
-    <div class="ncm-form-group">
-      <label><input type="checkbox" name="encrypted" checked /> Encrypted</label>
+
+  {{!-- ═══ CONTENT TYPE SELECTOR ═══ --}}
+  <fieldset class="ncm-config-section">
+    <legend class="ncm-config-legend"><i class="fas fa-layer-group"></i> Content Type</legend>
+    <div class="ncm-composer-type-pills">
+      {{#each typePills}}
+        <div class="ncm-composer-type-pill {{#if isActive}}ncm-composer-type-pill--active{{/if}}"
+             data-action="selectContentType" data-type="{{key}}">
+          <i class="{{icon}}"></i> {{label}}
+        </div>
+      {{/each}}
     </div>
-    <div class="ncm-form-group">
-      <label>DV Override: <input type="number" name="encryptionDC" value="{{defaultDC}}" min="1" max="30" /></label>
+  </fieldset>
+
+  {{!-- ═══ ENTRY IDENTITY (icon + accent color) ═══ --}}
+  <fieldset class="ncm-config-section">
+    <legend class="ncm-config-legend"><i class="fas fa-paintbrush"></i> Entry Identity</legend>
+    <div class="ncm-config-row">
+      <label class="ncm-config-label">Icon</label>
+      <select name="entryIcon" class="ncm-config-select ncm-config-flex">
+        {{#each iconOptions}}
+          <option value="{{value}}" {{#if selected}}selected{{/if}}>{{value}} — {{label}}</option>
+        {{/each}}
+      </select>
     </div>
+    <div class="ncm-config-row">
+      <label class="ncm-config-label">Or Custom</label>
+      <input type="text" name="entryIconCustom" class="ncm-config-input ncm-config-flex" placeholder="fas fa-custom-icon (overrides dropdown)" />
+    </div>
+    <div class="ncm-config-row">
+      <label class="ncm-config-label">Accent</label>
+      <div class="ncm-composer-color-row">
+        {{#each accentColors}}
+          <div class="ncm-composer-color-dot {{#if isActive}}ncm-composer-color-dot--active{{/if}}"
+               style="background:{{hex}};"
+               data-action="selectAccent" data-accent="{{key}}"></div>
+        {{/each}}
+      </div>
+    </div>
+  </fieldset>
+
+  {{!-- ═══════════════════════════════════════════
+       TYPE-SPECIFIC FORM FIELDS
+       ═══════════════════════════════════════════ --}}
+
+  {{!-- ─── MESSAGE ─── --}}
+  {{#if isMessage}}
+    <fieldset class="ncm-config-section">
+      <legend class="ncm-config-legend"><i class="fas fa-envelope"></i> Message Content</legend>
+      <div class="ncm-config-row">
+        <label class="ncm-config-label">From</label>
+        <input type="text" name="from" class="ncm-config-input ncm-config-flex" placeholder="sender@corp.net" />
+      </div>
+      <div class="ncm-config-row">
+        <label class="ncm-config-label">Subject</label>
+        <input type="text" name="subject" class="ncm-config-input ncm-config-flex" placeholder="Message subject" />
+      </div>
+      <div class="ncm-config-row ncm-config-row--col">
+        <label class="ncm-config-label" style="margin-bottom:4px;">Body</label>
+        <textarea name="body" class="ncm-config-input ncm-config-textarea" rows="6" placeholder="Message content..."></textarea>
+      </div>
+      <div class="ncm-config-row">
+        <label class="ncm-config-label">Timestamp</label>
+        <input type="text" name="timestamp" class="ncm-config-input ncm-config-flex" value="{{defaultTimestamp}}" placeholder="ISO-8601" />
+      </div>
+    </fieldset>
   {{/if}}
-  <div class="ncm-composer-actions">
-    <button type="button" data-action="saveMessage" class="ncm-btn ncm-btn-primary"><i class="fas fa-save"></i> Add</button>
-    <button type="button" data-action="cancel" class="ncm-btn ncm-btn-secondary">Cancel</button>
+
+  {{!-- ─── EDDIES ─── --}}
+  {{#if isEddies}}
+    <fieldset class="ncm-config-section">
+      <legend class="ncm-config-legend"><i class="fas fa-coins"></i> Eddies Dead Drop</legend>
+      <div class="ncm-config-row">
+        <label class="ncm-config-label">Amount (eb)</label>
+        <input type="number" name="eddiesAmount" class="ncm-config-input ncm-config-flex" value="1000" min="1" placeholder="Eddies amount" style="font-weight:700;" />
+      </div>
+      <div class="ncm-config-row">
+        <label class="ncm-config-label">Title</label>
+        <input type="text" name="eddiesTitle" class="ncm-config-input ncm-config-flex" placeholder="Payment — Job Name" />
+      </div>
+      <div class="ncm-config-row ncm-config-row--col">
+        <label class="ncm-config-label" style="margin-bottom:4px;">Note (optional)</label>
+        <textarea name="eddiesNote" class="ncm-config-input ncm-config-textarea" rows="2" placeholder="Half now, half when it's done..."></textarea>
+      </div>
+      <div class="ncm-config-hint">Eddies are wired to the CPR wealth ledger when claimed by a player.</div>
+      <div class="ncm-config-row">
+        <label class="ncm-config-label">Timestamp</label>
+        <input type="text" name="timestamp" class="ncm-config-input ncm-config-flex" value="{{defaultTimestamp}}" placeholder="ISO-8601" />
+      </div>
+    </fieldset>
+  {{/if}}
+
+  {{!-- ─── DOSSIER ─── --}}
+  {{#if isDossier}}
+    <fieldset class="ncm-config-section">
+      <legend class="ncm-config-legend"><i class="fas fa-user-secret"></i> Dossier Subject</legend>
+      <div class="ncm-config-row">
+        <label class="ncm-config-label">Target Name</label>
+        <input type="text" name="dossierTargetName" class="ncm-config-input ncm-config-flex" placeholder="Full name" />
+      </div>
+      <div class="ncm-config-row">
+        <label class="ncm-config-label">Alias</label>
+        <input type="text" name="dossierAlias" class="ncm-config-input ncm-config-flex" placeholder="Known alias" />
+      </div>
+      <div class="ncm-config-row">
+        <label class="ncm-config-label">Classification</label>
+        <select name="dossierClassification" class="ncm-config-select ncm-config-flex">
+          <option value="">Unclassified</option>
+          <option value="CONFIDENTIAL">Confidential</option>
+          <option value="SECRET">Secret</option>
+          <option value="TOP SECRET">Top Secret</option>
+        </select>
+      </div>
+      <div class="ncm-config-row">
+        <label class="ncm-config-label">Link Actor</label>
+        <select name="dossierLinkedActor" class="ncm-config-select ncm-config-flex">
+          <option value="">— None (manual data) —</option>
+          {{#each actorOptions}}
+            <option value="{{id}}">{{name}}</option>
+          {{/each}}
+        </select>
+      </div>
+      <div class="ncm-config-hint">Linking an actor auto-pulls their portrait. Leave unlinked for a silhouette.</div>
+    </fieldset>
+
+    <fieldset class="ncm-config-section">
+      <legend class="ncm-config-legend"><i class="fas fa-chart-bar"></i> Stat Block</legend>
+      <div class="ncm-config-row">
+        <label class="ncm-config-label">Threat</label>
+        <select name="dossierThreat" class="ncm-config-select ncm-config-flex">
+          <option value="">Unknown</option>
+          <option value="LOW">Low</option>
+          <option value="MEDIUM">Medium</option>
+          <option value="HIGH">High</option>
+          <option value="EXTREME">Extreme</option>
+        </select>
+      </div>
+      <div class="ncm-config-row">
+        <label class="ncm-config-label">Affiliation</label>
+        <input type="text" name="dossierAffiliation" class="ncm-config-input ncm-config-flex" placeholder="Organization" />
+      </div>
+      <div class="ncm-config-row">
+        <label class="ncm-config-label">Last Known</label>
+        <input type="text" name="dossierLastKnown" class="ncm-config-input ncm-config-flex" placeholder="Location" />
+      </div>
+    </fieldset>
+
+    <fieldset class="ncm-config-section">
+      <legend class="ncm-config-legend"><i class="fas fa-file-lines"></i> Sections</legend>
+      <div class="ncm-dossier-sections-list">
+        {{!-- Default first section --}}
+        <div class="ncm-dossier-section-entry">
+          <div class="ncm-config-row">
+            <label class="ncm-config-label">Heading</label>
+            <input type="text" name="dossierSectionHeading-0" class="ncm-config-input ncm-config-flex" placeholder="Section heading" />
+          </div>
+          <div class="ncm-config-row ncm-config-row--col">
+            <textarea name="dossierSectionBody-0" class="ncm-config-input ncm-config-textarea" rows="3" placeholder="Section content..."></textarea>
+          </div>
+          <div class="ncm-config-row">
+            <label class="ncm-config-check"><input type="checkbox" name="dossierSectionRedacted-0" /> Redacted</label>
+            <button type="button" data-action="removeDossierSection" class="ncm-shard-hdr-btn ncm-shard-hdr-btn--danger" title="Remove"><i class="fas fa-times"></i></button>
+          </div>
+        </div>
+      </div>
+      <button type="button" data-action="addDossierSection" class="ncm-shard-btn ncm-shard-btn--secondary" style="margin-top:4px;padding:3px 10px;">
+        <i class="fas fa-plus"></i> Add Section
+      </button>
+      <div class="ncm-config-row" style="margin-top:8px;">
+        <label class="ncm-config-label">Timestamp</label>
+        <input type="text" name="timestamp" class="ncm-config-input ncm-config-flex" value="{{defaultTimestamp}}" placeholder="ISO-8601" />
+      </div>
+    </fieldset>
+  {{/if}}
+
+  {{!-- ─── PAYLOAD ─── --}}
+  {{#if isPayload}}
+    <fieldset class="ncm-config-section">
+      <legend class="ncm-config-legend"><i class="fas fa-bug"></i> Payload Configuration</legend>
+      <div class="ncm-config-row">
+        <label class="ncm-config-label">Payload Type</label>
+        <select name="payloadType" class="ncm-config-select ncm-config-flex">
+          <option value="tracker">Tracker</option>
+          <option value="malware">Malware</option>
+          <option value="worm">Worm</option>
+          <option value="beneficial">Beneficial Program</option>
+          <option value="custom">Custom</option>
+        </select>
+      </div>
+      <div class="ncm-config-row">
+        <label class="ncm-config-label">Program Name</label>
+        <input type="text" name="payloadName" class="ncm-config-input ncm-config-flex" placeholder="GHOST.exe" />
+      </div>
+      <div class="ncm-config-row ncm-config-row--col">
+        <label class="ncm-config-label" style="margin-bottom:4px;">Description</label>
+        <textarea name="payloadDescription" class="ncm-config-input ncm-config-textarea" rows="3" placeholder="What this program does when executed..."></textarea>
+      </div>
+      <div class="ncm-config-row">
+        <label class="ncm-config-label">Effect Type</label>
+        <select name="payloadEffectType" class="ncm-config-select ncm-config-flex">
+          <option value="tracker">Tracker — reports location</option>
+          <option value="damage">Damage — deals HP damage</option>
+          <option value="lockout">Lockout — locks agent</option>
+          <option value="message">Message — sends auto message</option>
+          <option value="custom">Custom (flavor only)</option>
+        </select>
+      </div>
+      <div class="ncm-config-row">
+        <label class="ncm-config-label">Duration (hrs)</label>
+        <input type="number" name="payloadDuration" class="ncm-config-input ncm-config-short" value="24" min="1" />
+      </div>
+      <div class="ncm-config-hint">When executed, the effect triggers. Actual mechanical effects are GM-adjudicated.</div>
+    </fieldset>
+
+    <fieldset class="ncm-config-section">
+      <legend class="ncm-config-legend"><i class="fas fa-mask"></i> Disguise</legend>
+      <div class="ncm-config-row">
+        <label class="ncm-config-check"><input type="checkbox" name="payloadDisguised" /> Disguise as different content type</label>
+      </div>
+      <div class="ncm-config-row">
+        <label class="ncm-config-label">Appears As</label>
+        <select name="payloadDisguiseType" class="ncm-config-select ncm-config-flex">
+          <option value="message">Message</option>
+          <option value="eddies">Eddies Dead Drop</option>
+          <option value="dossier">Dossier</option>
+        </select>
+      </div>
+      <div class="ncm-config-hint">When disguised, the entry renders as the fake type until the player interacts.</div>
+      <div class="ncm-config-row">
+        <label class="ncm-config-label">Timestamp</label>
+        <input type="text" name="timestamp" class="ncm-config-input ncm-config-flex" value="{{defaultTimestamp}}" placeholder="ISO-8601" />
+      </div>
+    </fieldset>
+  {{/if}}
+
+  {{!-- ─── AV LOG ─── --}}
+  {{#if isAvlog}}
+    <fieldset class="ncm-config-section">
+      <legend class="ncm-config-legend"><i class="fas fa-microphone"></i> Recording Details</legend>
+      <div class="ncm-config-row">
+        <label class="ncm-config-label">Media Type</label>
+        <select name="avlogMediaType" class="ncm-config-select ncm-config-flex">
+          <option value="audio">Audio</option>
+          <option value="video">Video</option>
+        </select>
+      </div>
+      <div class="ncm-config-row">
+        <label class="ncm-config-label">Title</label>
+        <input type="text" name="avlogTitle" class="ncm-config-input ncm-config-flex" placeholder="Recording title" />
+      </div>
+      <div class="ncm-config-row">
+        <label class="ncm-config-label">Duration</label>
+        <input type="text" name="avlogDuration" class="ncm-config-input ncm-config-short" placeholder="03:47" />
+      </div>
+      <div class="ncm-config-row">
+        <label class="ncm-config-label">Source</label>
+        <input type="text" name="avlogSource" class="ncm-config-input ncm-config-flex" placeholder="Where/how recorded" />
+      </div>
+      <div class="ncm-config-row">
+        <label class="ncm-config-label">Timestamp</label>
+        <input type="text" name="timestamp" class="ncm-config-input ncm-config-flex" value="{{defaultTimestamp}}" placeholder="ISO-8601" />
+      </div>
+    </fieldset>
+
+    <fieldset class="ncm-config-section">
+      <legend class="ncm-config-legend"><i class="fas fa-closed-captioning"></i> Transcript</legend>
+      <div class="ncm-transcript-list">
+        {{!-- Default first line --}}
+        <div class="ncm-transcript-entry">
+          <input type="text" name="transcriptSpeaker-0" class="ncm-config-input" style="max-width:100px;" placeholder="SPEAKER" />
+          <input type="text" name="transcriptText-0" class="ncm-config-input ncm-config-flex" placeholder="Dialogue line..." />
+          <button type="button" data-action="removeTranscriptLine" class="ncm-shard-hdr-btn ncm-shard-hdr-btn--danger" title="Remove"><i class="fas fa-times"></i></button>
+        </div>
+      </div>
+      <button type="button" data-action="addTranscriptLine" class="ncm-shard-btn ncm-shard-btn--secondary" style="margin-top:4px;padding:3px 10px;">
+        <i class="fas fa-plus"></i> Add Line
+      </button>
+    </fieldset>
+  {{/if}}
+
+  {{!-- ─── LOCATION ─── --}}
+  {{#if isLocation}}
+    <fieldset class="ncm-config-section">
+      <legend class="ncm-config-legend"><i class="fas fa-map-pin"></i> Location Details</legend>
+      <div class="ncm-config-row">
+        <label class="ncm-config-label">Location Name</label>
+        <input type="text" name="locationName" class="ncm-config-input ncm-config-flex" placeholder="Kabuki Market, Back Alley" />
+      </div>
+      <div class="ncm-config-row">
+        <label class="ncm-config-label">Coordinates</label>
+        <input type="text" name="locationCoords" class="ncm-config-input ncm-config-flex" placeholder="N 33.7490° W 84.3880° (flavor text)" />
+      </div>
+      <div class="ncm-config-row">
+        <label class="ncm-config-label">District</label>
+        <input type="text" name="locationDistrict" class="ncm-config-input ncm-config-flex" placeholder="Watson, Westbrook, etc." />
+      </div>
+      <div class="ncm-config-row ncm-config-row--col">
+        <label class="ncm-config-label" style="margin-bottom:4px;">Description</label>
+        <textarea name="locationDescription" class="ncm-config-input ncm-config-textarea" rows="3" placeholder="South entrance. Look for the red neon dragon sign."></textarea>
+      </div>
+      <div class="ncm-config-row">
+        <label class="ncm-config-label">Link Scene</label>
+        <input type="text" name="locationSceneId" class="ncm-config-input ncm-config-flex" placeholder="Foundry Scene ID (optional)" />
+      </div>
+      <div class="ncm-config-hint">If a scene is linked, GM sees a "Go to Scene" button in the viewer.</div>
+      <div class="ncm-config-row">
+        <label class="ncm-config-label">Timestamp</label>
+        <input type="text" name="timestamp" class="ncm-config-input ncm-config-flex" value="{{defaultTimestamp}}" placeholder="ISO-8601" />
+      </div>
+    </fieldset>
+  {{/if}}
+
+  {{!-- ═══ PER-ENTRY ENCRYPTION ═══ --}}
+  {{#if isPerMessageEncryption}}
+    <fieldset class="ncm-config-section">
+      <legend class="ncm-config-legend"><i class="fas fa-lock"></i> Per-Entry Encryption</legend>
+      <div class="ncm-config-row">
+        <label class="ncm-config-check"><input type="checkbox" name="encrypted" /> Individually Encrypted</label>
+      </div>
+      <div class="ncm-config-row">
+        <label class="ncm-config-label">DV Override</label>
+        <input type="number" name="encryptionDC" class="ncm-config-input ncm-config-short" value="{{defaultDC}}" min="1" max="30" />
+      </div>
+      <div class="ncm-config-hint">Only applies when shard encryption mode is set to "Per-entry"</div>
+    </fieldset>
+  {{/if}}
+
+  {{!-- ═══ NETWORK VISIBILITY ═══ --}}
+  <fieldset class="ncm-config-section">
+    <legend class="ncm-config-legend"><i class="fas fa-eye-slash"></i> Network Visibility</legend>
+    <div class="ncm-config-row">
+      <label class="ncm-config-check"><input type="checkbox" name="networkRestricted" /> Restrict to specific networks</label>
+    </div>
+    <div class="ncm-config-hint">When restricted, this entry only appears when the reader is connected to specific networks.</div>
+  </fieldset>
+
+  {{!-- ═══ ACTIONS ═══ --}}
+  <div class="ncm-config-actions">
+    <button type="button" data-action="cancel" class="ncm-shard-btn ncm-shard-btn--secondary"><i class="fas fa-times"></i> Cancel</button>
+    <button type="button" data-action="saveEntry" class="ncm-shard-btn ncm-shard-btn--primary"><i class="fas fa-plus"></i> Add Entry</button>
   </div>
 </form>
 {{else}}
-  <p>No shard selected.</p>
+  <p style="padding:20px;text-align:center;color:var(--ncm-text-muted);">No shard selected.</p>
 {{/if}}
