@@ -1,493 +1,793 @@
 /* ═══════════════════════════════════════════════════════════
- * Item Inbox / Data Shard Viewer Styles
+ * Data Shard Viewer — Sprint 4.6 Chip-Reader Redesign
  * @file styles/components/item-inbox.css
  * @module cyberpunkred-messenger
+ * @description Chip-reader aesthetic for the data shard viewer.
+ *   NOT a mail client — this is a hardware device reading a physical chip.
+ *   Red accent bar (not rainbow), entry cards with accent stripes,
+ *   custom icon blocks, integrity/signal rows, index strip navigation.
+ *
+ * ─── SECTION INDEX ───
+ *  §1   Root Layout & Window Chrome
+ *  §2   Shard Identity Header
+ *  §3   Integrity Bar
+ *  §4   Signal Row
+ *  §5   Index Strip
+ *  §6   Content Area
+ *  §7   Entry Cards (shared)
+ *  §8   Content Type Renderers
+ *  §9   Hidden Entries Block
+ *  §10  Security Overlays
+ *  §11  Disconnected Overlay
+ *  §12  Destroyed State
+ *  §13  Empty State
+ *  §14  Footer
+ *  §15  Boot Sequence Container
+ *  §16  Buttons & Controls
+ *  §17  Corruption Effects
  * ═══════════════════════════════════════════════════════════ */
 
-/* ─── Layout ─── */
+
+/* ═══════════════════════════════════════════
+   §1  ROOT LAYOUT & WINDOW CHROME
+   ═══════════════════════════════════════════ */
 
 .ncm-app .ncm-item-inbox {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: var(--ncm-bg-base, #0a0a0a);
-  color: var(--ncm-text-primary, #e0e0e0);
+  background: var(--ncm-bg-deep, #0a0a0f);
+  color: var(--ncm-text-primary, #e0e0e8);
   font-family: var(--ncm-font-body, 'Rajdhani', sans-serif);
-  overflow: hidden;
-}
-
-/* ─── Header ─── */
-
-.ncm-app .ncm-shard-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-  background: var(--ncm-bg-deep, #050505);
-  border-bottom: 1px solid var(--ncm-shard-accent, var(--ncm-color-primary, #f65261));
-  flex-shrink: 0;
-}
-
-.ncm-app .ncm-shard-header-info {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex: 1;
-  min-width: 0;
-}
-
-.ncm-app .ncm-shard-icon {
-  color: var(--ncm-shard-accent, var(--ncm-color-primary));
-  font-size: 1rem;
-}
-
-.ncm-app .ncm-shard-title {
-  font-family: var(--ncm-font-display, 'Orbitron', monospace);
-  font-size: 0.85rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.ncm-app .ncm-shard-badges {
-  display: flex;
-  gap: 4px;
-  flex-shrink: 0;
-}
-
-.ncm-app .ncm-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  padding: 2px 6px;
-  border-radius: 2px;
-  font-size: 0.65rem;
-  font-family: var(--ncm-font-mono, 'ShareTechMono', monospace);
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.ncm-app .ncm-badge-encryption {
-  background: rgba(255, 0, 50, 0.2);
-  border: 1px solid rgba(255, 0, 50, 0.5);
-  color: #ff3355;
-}
-
-.ncm-app .ncm-badge-network {
-  background: rgba(25, 243, 247, 0.15);
-  border: 1px solid rgba(25, 243, 247, 0.4);
-  color: #19f3f7;
-}
-
-.ncm-app .ncm-badge-decrypted {
-  background: rgba(0, 255, 100, 0.15);
-  border: 1px solid rgba(0, 255, 100, 0.4);
-  color: #00ff64;
-}
-
-.ncm-app .ncm-shard-gm-controls {
-  display: flex;
-  gap: 4px;
-  flex-shrink: 0;
-}
-
-/* ─── Content Area ─── */
-
-.ncm-app .ncm-shard-content {
-  flex: 1;
   overflow: hidden;
   position: relative;
 }
 
-/* ─── Split View ─── */
+/* Top accent bar — primary red, not rainbow (hardware device feel) */
+.ncm-app .ncm-item-inbox::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg,
+    transparent, var(--shard-accent, var(--ncm-color-primary, #F65261)) 15%,
+    var(--shard-accent, var(--ncm-color-primary, #F65261)) 85%, transparent);
+  z-index: 10;
+}
 
-.ncm-app .ncm-shard-split {
+/* Scanline overlay */
+.ncm-app .ncm-item-inbox::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(0deg,
+    transparent, transparent 2px,
+    rgba(0,0,0,0.02) 2px, rgba(0,0,0,0.02) 4px);
+  pointer-events: none;
+  z-index: 100;
+}
+
+
+/* ═══════════════════════════════════════════
+   §2  SHARD IDENTITY HEADER
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-shard-identity {
+  padding: 14px 16px 12px;
+  background: var(--ncm-bg-base, #12121a);
+  border-bottom: 1px solid var(--ncm-border, #2a2a45);
   display: flex;
-  height: 100%;
-}
-
-.ncm-app .ncm-shard-list {
-  width: 220px;
-  flex-shrink: 0;
-  border-right: 1px solid var(--ncm-bg-elevated, #1a1a1a);
-  overflow-y: auto;
-  background: var(--ncm-bg-deep, #050505);
-}
-
-.ncm-app .ncm-shard-list-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 10px;
-  cursor: pointer;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  transition: background 0.15s;
-}
-
-.ncm-app .ncm-shard-list-item:hover {
-  background: var(--ncm-bg-surface, #141414);
-}
-
-.ncm-app .ncm-shard-list-item.selected {
-  background: var(--ncm-bg-surface, #141414);
-  border-left: 2px solid var(--ncm-shard-accent, var(--ncm-color-primary));
-}
-
-.ncm-app .ncm-shard-list-item.encrypted {
-  opacity: 0.7;
-}
-
-.ncm-app .ncm-msg-lock-icon {
-  color: #ff3355;
-  font-size: 0.7rem;
+  gap: 14px;
   flex-shrink: 0;
 }
 
-.ncm-app .ncm-msg-preview {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.ncm-app .ncm-msg-from {
-  font-family: var(--ncm-font-mono, 'ShareTechMono', monospace);
-  font-size: 0.75rem;
-  color: var(--ncm-shard-accent, var(--ncm-color-secondary, #19f3f7));
-}
-
-.ncm-app .ncm-msg-subject-preview {
-  font-size: 0.72rem;
-  color: var(--ncm-text-secondary, #888);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.ncm-app .ncm-msg-date-small {
-  font-size: 0.6rem;
-  color: var(--ncm-text-secondary, #666);
-  font-family: var(--ncm-font-mono, 'ShareTechMono', monospace);
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-/* ─── Detail Pane ─── */
-
-.ncm-app .ncm-shard-detail {
-  flex: 1;
-  overflow-y: auto;
-  padding: 12px;
-}
-
-.ncm-app .ncm-shard-message-detail .ncm-msg-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  margin-bottom: 10px;
-}
-
-.ncm-app .ncm-shard-message-detail .ncm-msg-from {
-  font-size: 0.8rem;
-  flex: 1;
-}
-
-.ncm-app .ncm-shard-message-detail .ncm-msg-date {
-  font-size: 0.7rem;
-  color: var(--ncm-text-secondary, #888);
-  font-family: var(--ncm-font-mono, 'ShareTechMono', monospace);
-}
-
-.ncm-app .ncm-msg-subject {
-  font-family: var(--ncm-font-display, 'Orbitron', monospace);
-  font-size: 0.95rem;
-  margin: 0 0 10px;
-  color: var(--ncm-text-primary, #e0e0e0);
-}
-
-.ncm-app .ncm-msg-body {
-  font-size: 0.82rem;
-  line-height: 1.5;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-/* ─── Empty / Destroyed States ─── */
-
-.ncm-app .ncm-shard-empty,
-.ncm-app .ncm-shard-empty-detail,
-.ncm-app .ncm-shard-destroyed {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  gap: 8px;
-  color: var(--ncm-text-secondary, #666);
-  text-align: center;
-}
-
-.ncm-app .ncm-shard-empty i,
-.ncm-app .ncm-shard-empty-detail i,
-.ncm-app .ncm-shard-destroyed i {
-  font-size: 2rem;
-  opacity: 0.4;
-}
-
-.ncm-app .ncm-shard-destroyed {
-  color: #ff3355;
-}
-
-/* ─── Per-Message Encryption Overlay ─── */
-
-.ncm-app .ncm-msg-encrypted-overlay {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  gap: 12px;
-  color: #ff3355;
-}
-
-.ncm-app .ncm-msg-encrypted-overlay i {
-  font-size: 2rem;
-}
-
-/* ─── Status Bar ─── */
-
-.ncm-app .ncm-shard-status-bar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 4px 10px;
-  background: var(--ncm-bg-deep, #050505);
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  font-size: 0.65rem;
-  font-family: var(--ncm-font-mono, 'ShareTechMono', monospace);
-  color: var(--ncm-text-secondary, #666);
-  flex-shrink: 0;
-}
-
-/* ─── Buttons ─── */
-
-.ncm-app .ncm-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 6px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 2px;
-  background: var(--ncm-bg-elevated, #1a1a1a);
-  color: var(--ncm-text-primary, #e0e0e0);
-  font-family: var(--ncm-font-display, 'Orbitron', monospace);
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
-}
-
-.ncm-app .ncm-btn:hover {
-  background: var(--ncm-bg-surface, #222);
-  border-color: var(--ncm-shard-accent, var(--ncm-color-primary));
-}
-
-.ncm-app .ncm-btn-primary {
-  background: rgba(246, 82, 97, 0.2);
-  border-color: var(--ncm-color-primary, #f65261);
-  color: var(--ncm-color-primary, #f65261);
-}
-
-.ncm-app .ncm-btn-primary:hover {
-  background: rgba(246, 82, 97, 0.35);
-}
-
-.ncm-app .ncm-btn-secondary {
-  background: rgba(25, 243, 247, 0.1);
-  border-color: var(--ncm-color-secondary, #19f3f7);
-  color: var(--ncm-color-secondary, #19f3f7);
-}
-
-.ncm-app .ncm-btn-gm {
-  background: rgba(255, 170, 0, 0.15);
-  border-color: #ffaa00;
-  color: #ffaa00;
-}
-
-.ncm-app .ncm-btn-danger {
-  color: #ff3355;
-  border-color: #ff3355;
-}
-
-.ncm-app .ncm-btn-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  border: 1px solid transparent;
-  border-radius: 2px;
-  background: transparent;
-  color: var(--ncm-text-secondary, #888);
-  cursor: pointer;
-  font-size: 0.75rem;
-  transition: color 0.15s, background 0.15s;
-}
-
-.ncm-app .ncm-btn-icon:hover {
-  color: var(--ncm-text-primary, #e0e0e0);
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.ncm-app .ncm-btn-icon.ncm-btn-gm { color: #ffaa00; }
-.ncm-app .ncm-btn-icon.ncm-btn-danger { color: #ff3355; }
-
-.ncm-app .ncm-text-muted { color: var(--ncm-text-secondary, #666); font-size: 0.75rem; }
-.ncm-app .ncm-text-danger { color: #ff3355; }
-
-/* ─── Shard Visual Themes ─── */
-
-.ncm-app .ncm-shard-theme-arasaka { --ncm-shard-accent: #ff0033; }
-.ncm-app .ncm-shard-theme-militech { --ncm-shard-accent: #3388ff; }
-.ncm-app .ncm-shard-theme-biotechnica { --ncm-shard-accent: #00cc88; }
-.ncm-app .ncm-shard-theme-kang-tao { --ncm-shard-accent: #ffaa00; }
-.ncm-app .ncm-shard-theme-trauma-team { --ncm-shard-accent: #ff3366; }
-.ncm-app .ncm-shard-theme-darknet { --ncm-shard-accent: #00ff41; }
-.ncm-app .ncm-shard-theme-netwatch { --ncm-shard-accent: #ff8800; }
-
-/* ─── Config Dialog ─── */
-
-.ncm-app .ncm-shard-config {
-  padding: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  overflow-y: auto;
-  height: 100%;
-}
-
-.ncm-app .ncm-fieldset {
-  border: 1px solid rgba(255, 255, 255, 0.1);
+/* Icon block */
+.ncm-app .ncm-shard-icon-block {
+  width: 52px;
+  height: 52px;
+  background: rgba(246, 82, 97, 0.08);
+  border: 1px solid rgba(246, 82, 97, 0.2);
   border-radius: 3px;
-  padding: 8px;
-  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
-.ncm-app .ncm-fieldset legend {
-  font-family: var(--ncm-font-display, 'Orbitron', monospace);
-  font-size: 0.75rem;
-  text-transform: uppercase;
+.ncm-app .ncm-shard-icon-block i { font-size: 22px; color: var(--ncm-color-primary, #F65261); }
+.ncm-app .ncm-shard-icon-block .ncm-shard-icon-img { border-radius: 2px; object-fit: contain; }
+
+/* ICE-typed icon block variants */
+.ncm-app .ncm-ice-black { background: rgba(255,0,51,0.08); border-color: rgba(255,0,51,0.3); box-shadow: 0 0 15px rgba(255,0,51,0.1); }
+.ncm-app .ncm-ice-black i { color: #ff0033; }
+.ncm-app .ncm-ice-red { background: rgba(204,0,0,0.1); border-color: rgba(204,0,0,0.35); box-shadow: 0 0 15px rgba(204,0,0,0.15); }
+.ncm-app .ncm-ice-red i { color: #cc0000; }
+.ncm-app .ncm-ice-standard { background: rgba(255,204,0,0.06); border-color: rgba(255,204,0,0.2); }
+.ncm-app .ncm-ice-standard i { color: #ffcc00; }
+.ncm-app .ncm-ice-none { background: rgba(25,243,247,0.05); border-color: rgba(25,243,247,0.15); }
+.ncm-app .ncm-ice-none i { color: var(--ncm-color-secondary, #19f3f7); }
+.ncm-app .ncm-ice-decrypted { background: rgba(0,255,65,0.05); border-color: rgba(0,255,65,0.2); }
+.ncm-app .ncm-ice-decrypted i { color: #00ff41; }
+
+/* Meta info */
+.ncm-app .ncm-shard-meta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+
+.ncm-app .ncm-shard-name {
+  font-family: var(--ncm-font-body, 'Rajdhani', sans-serif);
+  font-size: 17px; font-weight: 700;
+  color: var(--ncm-text-primary, #e0e0e8);
+  line-height: 1.1;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.ncm-app .ncm-shard-type-line {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 10px; color: var(--ncm-text-muted, #555570);
+  display: flex; align-items: center; gap: 2px; letter-spacing: 0.03em;
+}
+
+.ncm-app .ncm-shard-sep { opacity: 0.3; margin: 0 4px; }
+
+.ncm-app .ncm-shard-provenance {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 9px; color: var(--ncm-text-muted, #555570);
+  opacity: 0.7; letter-spacing: 0.03em;
+}
+
+/* Badges */
+.ncm-app .ncm-shard-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+
+.ncm-app .ncm-shard-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 7px; border-radius: 2px;
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 9px; text-transform: uppercase; letter-spacing: 0.05em;
+}
+.ncm-app .ncm-shard-badge i { font-size: 8px; }
+
+.ncm-app .ncm-shard-badge--ice { background: rgba(255,0,51,0.12); color: #ff0033; border: 1px solid rgba(255,0,51,0.25); }
+.ncm-app .ncm-shard-badge--net { background: rgba(25,243,247,0.08); color: var(--ncm-color-secondary, #19f3f7); border: 1px solid rgba(25,243,247,0.2); }
+.ncm-app .ncm-shard-badge--lock { background: rgba(246,82,97,0.1); color: var(--ncm-color-primary, #F65261); border: 1px solid rgba(246,82,97,0.2); }
+.ncm-app .ncm-shard-badge--entries { background: rgba(136,136,160,0.08); color: var(--ncm-text-secondary, #8888a0); border: 1px solid rgba(136,136,160,0.15); }
+.ncm-app .ncm-shard-badge--tethered { background: rgba(168,85,247,0.1); color: #a855f7; border: 1px solid rgba(168,85,247,0.2); }
+.ncm-app .ncm-shard-badge--decrypted { background: rgba(0,255,65,0.08); color: #00ff41; border: 1px solid rgba(0,255,65,0.2); }
+.ncm-app .ncm-shard-badge--classification { background: rgba(246,82,97,0.15); color: #ff6666; border: 1px solid rgba(246,82,97,0.3); font-weight: 700; }
+
+/* GM header buttons */
+.ncm-app .ncm-shard-gm-header-actions { display: flex; gap: 4px; flex-shrink: 0; align-self: flex-start; margin-top: 2px; }
+
+
+/* ═══════════════════════════════════════════
+   §3  INTEGRITY BAR
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-shard-integrity-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 16px;
+  background: var(--ncm-bg-base, #12121a);
+  border-bottom: 1px solid var(--ncm-border, #2a2a45);
+  flex-shrink: 0;
+}
+
+.ncm-app .ncm-shard-integrity-label {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 9px; color: var(--ncm-text-muted, #555570);
+  text-transform: uppercase; letter-spacing: 0.08em;
+  flex-shrink: 0; min-width: 60px;
+}
+
+.ncm-app .ncm-shard-integrity-track {
+  flex: 1; height: 6px;
+  background: var(--ncm-bg-elevated, #252540);
+  border-radius: 1px; overflow: hidden;
+}
+
+.ncm-app .ncm-shard-integrity-fill {
+  height: 100%; border-radius: 1px;
+  transition: width 0.5s ease;
+}
+
+.ncm-app .ncm-integrity-clean  { background: #00ff41; box-shadow: 0 0 6px rgba(0,255,65,0.3); }
+.ncm-app .ncm-integrity-light  { background: #ffab00; box-shadow: 0 0 6px rgba(255,171,0,0.3); }
+.ncm-app .ncm-integrity-heavy  { background: var(--ncm-color-primary, #F65261); box-shadow: 0 0 6px rgba(246,82,97,0.3); }
+.ncm-app .ncm-integrity-severe { background: #ff0033; box-shadow: 0 0 6px rgba(255,0,51,0.4); animation: ncm-pulse-bar 1s ease-in-out infinite; }
+.ncm-app .ncm-integrity-bricked { background: #660000; }
+
+@keyframes ncm-pulse-bar { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
+
+.ncm-app .ncm-shard-integrity-value {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 10px; color: var(--ncm-text-secondary, #8888a0);
+  flex-shrink: 0; min-width: 30px; text-align: right;
+}
+
+
+/* ═══════════════════════════════════════════
+   §4  SIGNAL ROW
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-shard-signal-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 16px;
+  background: rgba(25,243,247,0.02);
+  border-bottom: 1px solid var(--ncm-border, #2a2a45);
+  flex-shrink: 0;
+}
+
+.ncm-app .ncm-shard-signal-label {
+  font-family: var(--ncm-font-mono); font-size: 9px;
+  color: var(--ncm-text-muted); text-transform: uppercase;
+  letter-spacing: 0.08em; flex-shrink: 0; min-width: 60px;
+}
+
+.ncm-app .ncm-shard-signal-bars { display: flex; gap: 2px; align-items: flex-end; height: 14px; }
+
+.ncm-app .ncm-shard-signal-bar { width: 4px; border-radius: 1px; transition: background 0.3s; }
+.ncm-app .ncm-shard-signal-bar:nth-child(1) { height: 3px; }
+.ncm-app .ncm-shard-signal-bar:nth-child(2) { height: 5px; }
+.ncm-app .ncm-shard-signal-bar:nth-child(3) { height: 8px; }
+.ncm-app .ncm-shard-signal-bar:nth-child(4) { height: 11px; }
+.ncm-app .ncm-shard-signal-bar:nth-child(5) { height: 14px; }
+
+.ncm-app .ncm-signal-active { background: #00ff41; }
+.ncm-app .ncm-signal-mid { background: #ffab00; }
+.ncm-app .ncm-signal-low { background: var(--ncm-color-primary, #F65261); }
+.ncm-app .ncm-signal-off { background: var(--ncm-bg-elevated, #252540); }
+
+.ncm-app .ncm-signal-text-good { color: #00ff41; }
+.ncm-app .ncm-signal-text-mid { color: #ffab00; }
+.ncm-app .ncm-signal-text-low { color: var(--ncm-color-primary); }
+
+.ncm-app .ncm-shard-signal-value {
+  font-family: var(--ncm-font-mono); font-size: 10px;
+}
+
+.ncm-app .ncm-shard-signal-network {
+  font-family: var(--ncm-font-mono); font-size: 9px;
   color: var(--ncm-color-secondary, #19f3f7);
-  padding: 0 4px;
+  margin-left: auto; text-transform: uppercase; letter-spacing: 0.05em;
+}
+.ncm-app .ncm-shard-signal-network i { margin-right: 4px; font-size: 8px; }
+
+
+/* ═══════════════════════════════════════════
+   §5  INDEX STRIP
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-shard-index-strip {
+  display: flex; align-items: center;
+  padding: 5px 12px; gap: 5px;
+  background: var(--ncm-bg-base, #12121a);
+  border-bottom: 1px solid var(--ncm-border, #2a2a45);
+  overflow-x: auto; flex-shrink: 0;
 }
 
-.ncm-app .ncm-form-row {
-  margin-bottom: 4px;
+.ncm-app .ncm-shard-index-strip::-webkit-scrollbar { height: 2px; }
+.ncm-app .ncm-shard-index-strip::-webkit-scrollbar-thumb { background: var(--ncm-border-active, #3a3a5a); }
+
+.ncm-app .ncm-shard-index-strip--locked { opacity: 0.35; pointer-events: none; }
+
+.ncm-app .ncm-shard-index-toggle {
+  font-family: var(--ncm-font-mono); font-size: 8px;
+  color: var(--ncm-text-muted); text-transform: uppercase;
+  letter-spacing: 0.08em; display: flex; align-items: center; gap: 4px;
+  flex-shrink: 0; padding-right: 8px;
+  border-right: 1px solid var(--ncm-border); margin-right: 2px;
+  cursor: pointer;
+}
+.ncm-app .ncm-shard-index-toggle i { font-size: 7px; color: var(--ncm-color-secondary); }
+
+.ncm-app .ncm-shard-index-chip {
+  display: flex; align-items: center; gap: 4px;
+  padding: 3px 8px;
+  background: var(--ncm-bg-surface, #1a1a2e);
+  border: 1px solid var(--ncm-border, #2a2a45);
+  border-radius: 2px; cursor: pointer;
+  transition: all 0.15s; flex-shrink: 0; max-width: 150px;
+}
+.ncm-app .ncm-shard-index-chip:hover { border-color: var(--ncm-border-active, #3a3a5a); }
+
+.ncm-app .ncm-shard-index-chip--active {
+  border-color: var(--ncm-color-secondary, #19f3f7);
+  background: rgba(25,243,247,0.06);
 }
 
-.ncm-app .ncm-form-row label {
-  font-size: 0.78rem;
-  display: flex;
-  align-items: center;
-  gap: 4px;
+.ncm-app .ncm-shard-index-chip--hidden { border-style: dashed; opacity: 0.35; cursor: not-allowed; }
+
+.ncm-app .ncm-shard-index-chip-icon { font-size: 8px; flex-shrink: 0; }
+
+.ncm-app .ncm-shard-index-chip-title {
+  font-family: var(--ncm-font-mono); font-size: 8px;
+  color: var(--ncm-text-secondary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  letter-spacing: 0.02em;
+}
+.ncm-app .ncm-shard-index-chip--active .ncm-shard-index-chip-title { color: var(--ncm-color-secondary); }
+
+
+/* ═══════════════════════════════════════════
+   §6  CONTENT AREA
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-shard-content {
+  flex: 1; overflow-y: auto;
+  padding: 12px;
+  display: flex; flex-direction: column; gap: 10px;
+  position: relative;
+  min-height: 200px;
 }
 
-.ncm-app .ncm-form-row input[type="text"],
-.ncm-app .ncm-form-row input[type="number"],
-.ncm-app .ncm-form-row input[type="password"],
-.ncm-app .ncm-form-row select {
-  background: var(--ncm-bg-deep, #050505);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  color: var(--ncm-text-primary, #e0e0e0);
-  padding: 3px 6px;
-  font-size: 0.78rem;
-  border-radius: 2px;
-  font-family: var(--ncm-font-mono, 'ShareTechMono', monospace);
+.ncm-app .ncm-shard-content::-webkit-scrollbar { width: 4px; }
+.ncm-app .ncm-shard-content::-webkit-scrollbar-track { background: transparent; }
+.ncm-app .ncm-shard-content::-webkit-scrollbar-thumb { background: var(--ncm-border-active, #3a3a5a); border-radius: 2px; }
+
+.ncm-app .ncm-shard-entries { display: flex; flex-direction: column; gap: 10px; }
+
+
+/* ═══════════════════════════════════════════
+   §7  ENTRY CARDS (shared base)
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-entry-card {
+  background: var(--ncm-bg-surface, #1a1a2e);
+  border: 1px solid var(--ncm-border, #2a2a45);
+  border-radius: 3px; overflow: hidden;
+  transition: border-color 0.15s;
+}
+.ncm-app .ncm-entry-card:hover { border-color: var(--ncm-border-active, #3a3a5a); }
+
+/* Accent stripe variants (3px left border) */
+.ncm-app .ncm-entry-accent-red { border-left: 3px solid var(--ncm-color-primary, #F65261); }
+.ncm-app .ncm-entry-accent-gold { border-left: 3px solid #f7c948; }
+.ncm-app .ncm-entry-accent-cyan { border-left: 3px solid var(--ncm-color-secondary, #19f3f7); }
+.ncm-app .ncm-entry-accent-purple { border-left: 3px solid #a855f7; }
+.ncm-app .ncm-entry-accent-green { border-left: 3px solid #00ff41; }
+.ncm-app .ncm-entry-accent-danger { border-left: 3px solid #ff0033; }
+.ncm-app .ncm-entry-accent-muted { border-left: 3px solid var(--ncm-text-muted, #555570); }
+
+/* Entry header */
+.ncm-app .ncm-entry-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px;
+  background: var(--ncm-bg-base, #12121a);
+  border-bottom: 1px solid var(--ncm-border);
 }
 
-.ncm-app .ncm-form-row input[type="number"] {
-  width: 60px;
+/* Custom icon block (32px, accent-colored) */
+.ncm-app .ncm-entry-custom-icon {
+  width: 32px; height: 32px; border-radius: 3px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; flex-shrink: 0;
 }
 
-.ncm-app .ncm-skill-entry {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 3px 0;
+.ncm-app .ncm-ci-red { background: rgba(246,82,97,0.1); color: var(--ncm-color-primary); border: 1px solid rgba(246,82,97,0.15); }
+.ncm-app .ncm-ci-gold { background: rgba(247,201,72,0.1); color: #f7c948; border: 1px solid rgba(247,201,72,0.15); }
+.ncm-app .ncm-ci-cyan { background: rgba(25,243,247,0.08); color: var(--ncm-color-secondary); border: 1px solid rgba(25,243,247,0.12); }
+.ncm-app .ncm-ci-purple { background: rgba(168,85,247,0.1); color: #a855f7; border: 1px solid rgba(168,85,247,0.15); }
+.ncm-app .ncm-ci-green { background: rgba(0,255,65,0.06); color: #00ff41; border: 1px solid rgba(0,255,65,0.12); }
+.ncm-app .ncm-ci-danger { background: rgba(255,0,51,0.08); color: #ff0033; border: 1px solid rgba(255,0,51,0.15); }
+.ncm-app .ncm-ci-muted { background: rgba(136,136,160,0.06); color: var(--ncm-text-muted); border: 1px solid rgba(136,136,160,0.1); }
+
+.ncm-app .ncm-entry-title-area { flex: 1; min-width: 0; }
+
+.ncm-app .ncm-entry-type-label {
+  font-family: var(--ncm-font-mono); font-size: 8px;
+  color: var(--ncm-text-muted); text-transform: uppercase;
+  letter-spacing: 0.1em;
 }
 
-.ncm-app .ncm-skill-entry .ncm-skill-name {
-  flex: 1;
-  font-size: 0.78rem;
+.ncm-app .ncm-entry-title {
+  font-family: var(--ncm-font-body); font-size: 14px;
+  font-weight: 600; color: var(--ncm-text-primary);
+  line-height: 1.2;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
-.ncm-app .ncm-skill-dc {
-  width: 50px;
+.ncm-app .ncm-entry-timestamp {
+  font-family: var(--ncm-font-mono); font-size: 9px;
+  color: var(--ncm-text-muted); flex-shrink: 0;
+  letter-spacing: 0.03em;
 }
 
-.ncm-app .ncm-add-skill {
-  display: flex;
-  gap: 4px;
-  align-items: center;
-}
+/* Entry body */
+.ncm-app .ncm-entry-body { padding: 12px; }
+.ncm-app .ncm-entry-body p { font-family: var(--ncm-font-body); font-size: 13px; color: var(--ncm-text-secondary); line-height: 1.6; }
 
-.ncm-app .ncm-add-skill select {
-  flex: 1;
-}
+.ncm-app .ncm-entry-from { font-family: var(--ncm-font-mono); font-size: 10px; color: var(--ncm-text-muted); margin-bottom: 6px; }
+.ncm-app .ncm-entry-from span { color: var(--ncm-color-secondary); }
 
-.ncm-app .ncm-config-actions {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-  padding-top: 8px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
+.ncm-app .ncm-entry-text { font-family: var(--ncm-font-body); font-size: 13px; color: var(--ncm-text-secondary); line-height: 1.6; }
 
-/* ─── Composer ─── */
 
-.ncm-app .ncm-shard-composer {
-  padding: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  height: 100%;
-}
+/* ═══════════════════════════════════════════
+   §8  CONTENT TYPE RENDERERS
+   ═══════════════════════════════════════════ */
 
-.ncm-app .ncm-shard-composer .ncm-form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
+/* ─── EDDIES ─── */
+.ncm-app .ncm-entry-eddies-card { text-align: center; padding: 20px 12px; }
 
-.ncm-app .ncm-shard-composer .ncm-form-group label {
-  font-size: 0.75rem;
-  color: var(--ncm-color-secondary, #19f3f7);
+.ncm-app .ncm-eddies-amount {
   font-family: var(--ncm-font-display, 'Orbitron', monospace);
-  text-transform: uppercase;
+  font-size: 36px; font-weight: 700; color: #f7c948;
+  text-shadow: 0 0 20px rgba(247,201,72,0.3); line-height: 1;
+}
+.ncm-app .ncm-eddies-claimed { color: #00ff41 !important; text-shadow: 0 0 20px rgba(0,255,65,0.3) !important; }
+
+.ncm-app .ncm-eddies-unit {
+  font-family: var(--ncm-font-mono); font-size: 11px;
+  color: var(--ncm-text-muted); text-transform: uppercase;
+  letter-spacing: 0.15em; margin-top: 2px;
 }
 
-.ncm-app .ncm-shard-composer input,
-.ncm-app .ncm-shard-composer textarea {
-  background: var(--ncm-bg-deep, #050505);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  color: var(--ncm-text-primary, #e0e0e0);
-  padding: 6px 8px;
-  font-size: 0.82rem;
+.ncm-app .ncm-eddies-note {
+  font-family: var(--ncm-font-body); font-size: 12px;
+  color: var(--ncm-text-secondary); margin-top: 10px; font-style: italic;
+}
+
+.ncm-app .ncm-eddies-claim-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin-top: 14px; padding: 8px 28px;
+  background: rgba(247,201,72,0.12);
+  border: 1px solid rgba(247,201,72,0.35);
   border-radius: 2px;
-  font-family: var(--ncm-font-mono, 'ShareTechMono', monospace);
-  resize: vertical;
+  font-family: var(--ncm-font-body); font-size: 13px;
+  font-weight: 700; color: #f7c948;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  cursor: pointer; transition: all 0.2s;
+}
+.ncm-app .ncm-eddies-claim-btn:hover {
+  background: rgba(247,201,72,0.2);
+  border-color: #f7c948;
+  box-shadow: 0 0 15px rgba(247,201,72,0.15);
+}
+.ncm-app .ncm-eddies-claim-btn--claimed {
+  background: rgba(0,255,65,0.08) !important;
+  border-color: rgba(0,255,65,0.25) !important;
+  color: #00ff41 !important; cursor: default;
 }
 
-.ncm-app .ncm-composer-actions {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-  margin-top: auto;
+/* ─── DOSSIER ─── */
+.ncm-app .ncm-entry-dossier { display: flex; gap: 14px; padding: 14px; }
+
+.ncm-app .ncm-dossier-portrait {
+  width: 80px; height: 100px;
+  background: var(--ncm-bg-elevated);
+  border: 1px solid var(--ncm-border);
+  border-radius: 2px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; position: relative; overflow: hidden;
 }
+.ncm-app .ncm-dossier-portrait i { font-size: 28px; color: var(--ncm-text-muted); opacity: 0.5; }
+.ncm-app .ncm-dossier-portrait img { width: 100%; height: 100%; object-fit: cover; }
+
+.ncm-app .ncm-dossier-classification {
+  position: absolute; bottom: -1px; left: -1px; right: -1px;
+  background: rgba(246,82,97,0.9);
+  font-family: var(--ncm-font-mono); font-size: 7px;
+  color: white; text-align: center; padding: 2px;
+  text-transform: uppercase; letter-spacing: 0.1em;
+}
+
+.ncm-app .ncm-dossier-info { flex: 1; min-width: 0; }
+
+.ncm-app .ncm-dossier-stat-grid {
+  display: grid; grid-template-columns: auto 1fr;
+  gap: 2px 10px; margin-bottom: 10px;
+}
+
+.ncm-app .ncm-dossier-stat-label {
+  font-family: var(--ncm-font-mono); font-size: 9px;
+  color: var(--ncm-text-muted); text-transform: uppercase;
+  letter-spacing: 0.05em; padding: 2px 0;
+}
+.ncm-app .ncm-dossier-stat-value { font-family: var(--ncm-font-body); font-size: 12px; color: var(--ncm-text-primary); padding: 2px 0; }
+.ncm-app .ncm-threat-high { color: #ff0033 !important; font-weight: 700; }
+
+.ncm-app .ncm-dossier-sections-body { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+
+.ncm-app .ncm-dossier-section {
+  padding: 8px 10px;
+  background: var(--ncm-bg-deep);
+  border: 1px solid var(--ncm-border);
+  border-radius: 2px;
+}
+.ncm-app .ncm-dossier-section-heading {
+  font-family: var(--ncm-font-mono); font-size: 9px;
+  color: var(--ncm-color-secondary); text-transform: uppercase;
+  letter-spacing: 0.08em; margin-bottom: 4px;
+}
+.ncm-app .ncm-dossier-section p { font-size: 12px; }
+
+.ncm-app .ncm-dossier-section--redacted { background: rgba(246,82,97,0.04); border-color: rgba(246,82,97,0.15); }
+.ncm-app .ncm-dossier-redacted-text { color: var(--ncm-color-primary) !important; font-family: var(--ncm-font-mono) !important; letter-spacing: 0.1em; }
+
+/* ─── PAYLOAD ─── */
+.ncm-app .ncm-payload-name {
+  font-family: var(--ncm-font-mono); font-size: 14px;
+  font-weight: 700; color: #a855f7; margin-bottom: 8px;
+}
+.ncm-app .ncm-payload-name i { margin-right: 6px; }
+
+.ncm-app .ncm-payload-status { font-family: var(--ncm-font-mono); font-size: 11px; margin-top: 10px; }
+.ncm-app .ncm-payload-status--executed { color: #00ff41; }
+
+/* ─── AV LOG ─── */
+.ncm-app .ncm-entry-avlog { padding: 12px; }
+
+.ncm-app .ncm-avlog-meta {
+  display: flex; gap: 12px; margin-bottom: 10px;
+  font-family: var(--ncm-font-mono); font-size: 9px;
+  color: var(--ncm-text-muted); text-transform: uppercase; letter-spacing: 0.05em;
+}
+.ncm-app .ncm-avlog-meta i { margin-right: 3px; }
+
+.ncm-app .ncm-avlog-waveform {
+  height: 24px; margin-bottom: 10px;
+  background: linear-gradient(90deg,
+    rgba(25,243,247,0.05) 0%, rgba(25,243,247,0.15) 25%,
+    rgba(25,243,247,0.08) 50%, rgba(25,243,247,0.12) 75%,
+    rgba(25,243,247,0.05) 100%);
+  border-radius: 2px;
+}
+
+.ncm-app .ncm-avlog-line {
+  display: flex; gap: 8px; padding: 4px 0;
+  border-bottom: 1px solid rgba(42,42,69,0.3);
+}
+.ncm-app .ncm-avlog-line:last-child { border-bottom: none; }
+
+.ncm-app .ncm-avlog-speaker {
+  font-family: var(--ncm-font-mono); font-size: 10px;
+  color: var(--ncm-color-secondary); font-weight: 700;
+  flex-shrink: 0; min-width: 80px; text-transform: uppercase;
+}
+.ncm-app .ncm-avlog-text { font-family: var(--ncm-font-body); font-size: 12px; color: var(--ncm-text-secondary); line-height: 1.5; }
+
+/* ─── LOCATION ─── */
+.ncm-app .ncm-entry-location { padding: 12px; }
+
+.ncm-app .ncm-location-coords {
+  font-family: var(--ncm-font-mono); font-size: 12px;
+  color: var(--ncm-color-secondary); letter-spacing: 0.08em; margin-bottom: 4px;
+}
+.ncm-app .ncm-location-name { font-family: var(--ncm-font-body); font-size: 16px; font-weight: 700; color: var(--ncm-text-primary); margin-bottom: 4px; }
+.ncm-app .ncm-location-district { font-family: var(--ncm-font-mono); font-size: 10px; color: var(--ncm-text-muted); margin-bottom: 8px; }
+.ncm-app .ncm-location-district i { margin-right: 4px; }
+
+/* ─── ENCRYPTED ENTRY / CORRUPTED ─── */
+.ncm-app .ncm-entry-encrypted-msg,
+.ncm-app .ncm-entry-corrupted {
+  text-align: center; padding: 20px 12px;
+  color: var(--ncm-text-muted);
+}
+.ncm-app .ncm-entry-encrypted-msg i,
+.ncm-app .ncm-entry-corrupted i { font-size: 20px; margin-bottom: 8px; display: block; }
+.ncm-app .ncm-entry-corrupted { color: var(--ncm-color-primary); }
+
+
+/* ═══════════════════════════════════════════
+   §9  HIDDEN ENTRIES BLOCK
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-shard-hidden-block {
+  background: repeating-linear-gradient(-45deg,
+    var(--ncm-bg-surface) 0, var(--ncm-bg-surface) 8px,
+    rgba(42,42,69,0.5) 8px, rgba(42,42,69,0.5) 16px);
+  border: 1px dashed var(--ncm-border-active, #3a3a5a);
+  border-radius: 3px; padding: 16px; text-align: center;
+}
+.ncm-app .ncm-shard-hidden-block i { font-size: 16px; color: var(--ncm-text-muted); margin-bottom: 6px; display: block; }
+.ncm-app .ncm-shard-hidden-count { font-family: var(--ncm-font-body); font-size: 13px; font-weight: 600; color: var(--ncm-text-secondary); }
+.ncm-app .ncm-shard-hidden-hint { font-family: var(--ncm-font-mono); font-size: 9px; color: var(--ncm-text-muted); margin-top: 4px; letter-spacing: 0.03em; }
+
+
+/* ═══════════════════════════════════════════
+   §10  SECURITY OVERLAYS (existing — preserved)
+   ═══════════════════════════════════════════ */
+
+/* Security overlays are styled in the existing templates and
+   their CSS classes (ncm-security-overlay, ncm-overlay-card, etc.)
+   remain unchanged. The viewer content area positions them. */
+
+.ncm-app .ncm-shard-overlay {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 50;
+}
+
+
+/* ═══════════════════════════════════════════
+   §11  DISCONNECTED OVERLAY
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-shard-overlay--disconnected {
+  background: rgba(10,10,15,0.97);
+}
+.ncm-app .ncm-shard-overlay--disconnected::before {
+  content: ''; position: absolute; inset: 0;
+  background: repeating-linear-gradient(0deg,
+    transparent 0, transparent 1px,
+    rgba(255,0,51,0.02) 1px, rgba(255,0,51,0.02) 2px);
+  animation: ncm-static-scroll 0.3s steps(4) infinite;
+  pointer-events: none;
+}
+@keyframes ncm-static-scroll { 0% { transform: translateY(0); } 100% { transform: translateY(-8px); } }
+
+.ncm-app .ncm-shard-disconnect-panel { text-align: center; padding: 30px; }
+
+.ncm-app .ncm-shard-disconnect-icon {
+  font-size: 40px; color: #ff0033; margin-bottom: 16px; display: block;
+  animation: ncm-flicker 3s ease-in-out infinite;
+}
+@keyframes ncm-flicker { 0%,100% { opacity:1; } 10% { opacity:0.8; } 50% { opacity:0.9; } 80% { opacity:0.7; } }
+
+.ncm-app .ncm-shard-disconnect-title {
+  font-family: var(--ncm-font-display);
+  font-size: 18px; font-weight: 700; color: #ff0033;
+  text-transform: uppercase; letter-spacing: 0.25em;
+  margin-bottom: 14px; text-shadow: 0 0 15px rgba(255,0,51,0.3);
+}
+
+.ncm-app .ncm-shard-disconnect-info { font-size: 13px; color: var(--ncm-text-secondary); margin-bottom: 20px; line-height: 1.6; }
+
+.ncm-app .ncm-shard-disconnect-detail {
+  display: grid; grid-template-columns: auto 1fr;
+  gap: 3px 12px; text-align: left;
+  padding: 10px 14px; background: var(--ncm-bg-surface);
+  border: 1px solid var(--ncm-border); border-radius: 2px;
+  max-width: 300px; margin: 0 auto;
+}
+.ncm-app .ncm-shard-detail-label { font-family: var(--ncm-font-mono); font-size: 9px; color: var(--ncm-text-muted); text-transform: uppercase; padding: 2px 0; }
+.ncm-app .ncm-shard-detail-value { font-family: var(--ncm-font-mono); font-size: 10px; color: var(--ncm-text-secondary); padding: 2px 0; }
+
+
+/* ═══════════════════════════════════════════
+   §12  DESTROYED STATE
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-shard-destroyed {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  flex: 1; padding: 40px 20px; text-align: center;
+}
+.ncm-app .ncm-shard-destroyed i { font-size: 48px; color: #ff0033; margin-bottom: 16px; opacity: 0.6; }
+.ncm-app .ncm-shard-destroyed-title { font-family: var(--ncm-font-display); font-size: 16px; font-weight: 700; color: #ff0033; text-transform: uppercase; letter-spacing: 0.2em; }
+.ncm-app .ncm-shard-destroyed-sub { font-family: var(--ncm-font-mono); font-size: 10px; color: var(--ncm-text-muted); margin-top: 8px; }
+
+
+/* ═══════════════════════════════════════════
+   §13  EMPTY STATE
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-shard-empty {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  flex: 1; padding: 40px 20px; text-align: center;
+}
+.ncm-app .ncm-shard-empty i { font-size: 36px; color: var(--ncm-text-muted); margin-bottom: 12px; opacity: 0.4; }
+.ncm-app .ncm-shard-empty p { font-family: var(--ncm-font-display); font-size: 14px; font-weight: 600; color: var(--ncm-text-secondary); }
+.ncm-app .ncm-shard-empty-sub { font-family: var(--ncm-font-mono) !important; font-size: 10px !important; color: var(--ncm-text-muted) !important; margin-top: 4px; }
+
+
+/* ═══════════════════════════════════════════
+   §14  FOOTER
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-shard-footer {
+  display: flex; align-items: center;
+  padding: 5px 12px;
+  background: var(--ncm-bg-base, #12121a);
+  border-top: 1px solid var(--ncm-border, #2a2a45);
+  flex-shrink: 0; min-height: 28px; gap: 8px;
+}
+
+.ncm-app .ncm-shard-footer-text {
+  font-family: var(--ncm-font-mono); font-size: 9px;
+  color: var(--ncm-text-muted); letter-spacing: 0.05em;
+}
+
+.ncm-app .ncm-shard-footer-sep { margin: 0 4px; opacity: 0.3; }
+.ncm-app .ncm-shard-footer-spacer { flex: 1; }
+
+.ncm-app .ncm-shard-footer-brand {
+  font-family: var(--ncm-font-mono); font-size: 8px;
+  color: var(--ncm-text-muted); opacity: 0.5;
+  text-transform: uppercase; letter-spacing: 0.08em;
+}
+
+/* Trace warning */
+.ncm-app .ncm-shard-trace-warning {
+  font-family: var(--ncm-font-mono); font-size: 9px;
+  color: #ffab00; letter-spacing: 0.03em;
+  animation: ncm-pulse-bar 2s ease-in-out infinite;
+}
+.ncm-app .ncm-shard-trace-warning i { margin-right: 4px; }
+
+
+/* ═══════════════════════════════════════════
+   §15  BOOT SEQUENCE CONTAINER
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-shard-boot {
+  position: absolute; inset: 0;
+  background: var(--ncm-bg-deep, #0a0a0f);
+  z-index: 200;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 30px;
+}
+
+/* Boot sequence elements are injected and animated by JS (Step 3) */
+
+
+/* ═══════════════════════════════════════════
+   §16  BUTTONS & CONTROLS
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-shard-hdr-btn {
+  width: 24px; height: 24px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; color: var(--ncm-text-muted);
+  background: var(--ncm-bg-surface); border: 1px solid var(--ncm-border);
+  border-radius: 2px; cursor: pointer; transition: all 0.15s;
+  appearance: none !important; box-shadow: none !important;
+  min-width: 24px !important; min-height: 24px !important;
+  padding: 0 !important;
+}
+.ncm-app .ncm-shard-hdr-btn:hover { color: var(--ncm-text-primary); border-color: var(--ncm-border-active); }
+.ncm-app .ncm-shard-hdr-btn--danger:hover { color: #ff0033; border-color: #ff0033; }
+
+.ncm-app .ncm-shard-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 16px; border-radius: 2px;
+  font-family: var(--ncm-font-body); font-size: 12px;
+  font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;
+  cursor: pointer; transition: all 0.15s;
+  appearance: none !important; box-shadow: none !important;
+  min-width: auto !important; min-height: auto !important;
+}
+
+.ncm-app .ncm-shard-btn--primary {
+  background: rgba(25,243,247,0.1);
+  border: 1px solid rgba(25,243,247,0.3);
+  color: var(--ncm-color-secondary);
+}
+.ncm-app .ncm-shard-btn--primary:hover { background: rgba(25,243,247,0.18); border-color: var(--ncm-color-secondary); }
+
+.ncm-app .ncm-shard-btn--secondary {
+  background: rgba(136,136,160,0.08);
+  border: 1px solid rgba(136,136,160,0.2);
+  color: var(--ncm-text-secondary);
+}
+.ncm-app .ncm-shard-btn--secondary:hover { background: rgba(136,136,160,0.15); border-color: var(--ncm-text-secondary); }
+
+.ncm-app .ncm-shard-btn--danger {
+  background: rgba(255,0,51,0.1);
+  border: 1px solid rgba(255,0,51,0.3);
+  color: #ff0033;
+}
+.ncm-app .ncm-shard-btn--danger:hover { background: rgba(255,0,51,0.2); border-color: #ff0033; }
+
+/* Utility text classes */
+.ncm-app .ncm-text-danger { color: #ff0033 !important; }
+.ncm-app .ncm-text-success { color: #00ff41 !important; }
+.ncm-app .ncm-text-warning { color: #ffab00 !important; }
+
+
+/* ═══════════════════════════════════════════
+   §17  CORRUPTION EFFECTS
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-entry--corrupted {
+  position: relative; overflow: hidden;
+}
+.ncm-app .ncm-entry--corrupted::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: repeating-linear-gradient(0deg,
+    transparent 0, transparent 3px,
+    rgba(255,0,51,0.03) 3px, rgba(255,0,51,0.03) 6px);
+  pointer-events: none; z-index: 1;
+  animation: ncm-corruption-drift 6s linear infinite;
+}
+@keyframes ncm-corruption-drift { 0% { transform: translateY(0); } 100% { transform: translateY(30px); } }

@@ -7,20 +7,18 @@
  *              Extends BaseApplication (ApplicationV2 + HandlebarsApplicationMixin).
  */
 
-import { MODULE_ID, EVENTS, TEMPLATES, DEFAULTS, THEME_PRESETS, ENCRYPTION_TYPES, FAILURE_MODES } from '../../utils/constants.js';
+import { MODULE_ID, EVENTS, TEMPLATES, DEFAULTS, THEME_PRESETS, ENCRYPTION_TYPES, FAILURE_MODES, CONTENT_TYPES, SHARD_PRESETS } from '../../utils/constants.js';
 import { log, isGM, formatCyberDate } from '../../utils/helpers.js';
 import { BaseApplication } from '../BaseApplication.js';
 
-/** Shard visual theme definitions */
-const SHARD_THEMES = {
-  classic:     { label: 'Default',      accent: 'var(--ncm-color-primary)',   headerBg: 'var(--ncm-bg-surface)',  icon: 'fa-microchip' },
-  arasaka:     { label: 'Arasaka',      accent: '#ff0033',                    headerBg: '#1a0000',               icon: 'fa-building' },
-  militech:    { label: 'Militech',     accent: '#3388ff',                    headerBg: '#000a1a',               icon: 'fa-shield-halved' },
-  biotechnica: { label: 'Biotechnica',  accent: '#00cc88',                    headerBg: '#001a0f',               icon: 'fa-dna' },
-  'kang-tao':  { label: 'Kang Tao',    accent: '#ffaa00',                    headerBg: '#1a1000',               icon: 'fa-yin-yang' },
-  'trauma-team':{ label: 'Trauma Team', accent: '#ff3366',                    headerBg: '#1a000a',               icon: 'fa-heart-pulse' },
-  darknet:     { label: 'Darknet',      accent: '#00ff41',                    headerBg: '#000800',               icon: 'fa-ghost' },
-  netwatch:    { label: 'NetWatch',     accent: '#ff8800',                    headerBg: '#0a0a1a',               icon: 'fa-eye' },
+/** Map content types to display info */
+const CONTENT_TYPE_INFO = {
+  [CONTENT_TYPES.MESSAGE]:  { label: 'Message',           icon: 'fas fa-envelope',         accent: 'cyan',   indexIcon: 'fas fa-envelope' },
+  [CONTENT_TYPES.EDDIES]:   { label: 'Eddies Dead Drop',  icon: 'fas fa-sack-dollar',      accent: 'gold',   indexIcon: 'fas fa-sack-dollar' },
+  [CONTENT_TYPES.DOSSIER]:  { label: 'Dossier',           icon: 'fas fa-id-badge',         accent: 'red',    indexIcon: 'fas fa-id-badge' },
+  [CONTENT_TYPES.PAYLOAD]:  { label: 'Payload',           icon: 'fas fa-virus',            accent: 'purple', indexIcon: 'fas fa-virus' },
+  [CONTENT_TYPES.AVLOG]:    { label: 'Audio/Video Log',   icon: 'fas fa-headphones',       accent: 'green',  indexIcon: 'fas fa-headphones' },
+  [CONTENT_TYPES.LOCATION]: { label: 'Location',          icon: 'fas fa-map-marker-alt',   accent: 'green',  indexIcon: 'fas fa-map-marker-alt' },
 };
 
 export class ItemInboxApp extends BaseApplication {
@@ -38,6 +36,12 @@ export class ItemInboxApp extends BaseApplication {
 
   /** @type {string|null} Skill currently being used for hack */
   _hackingSkill = null;
+
+  /** @type {boolean} Whether boot sequence has completed */
+  _bootComplete = false;
+
+  /** @type {boolean} Whether trace warning is active */
+  _traceWarningActive = false;
 
   // ─── Service Accessors ───
 
@@ -71,9 +75,15 @@ export class ItemInboxApp extends BaseApplication {
       forceDecrypt: ItemInboxApp._onForceDecrypt,
       relockShard: ItemInboxApp._onRelockShard,
       openConfig: ItemInboxApp._onOpenConfig,
-      addMessage: ItemInboxApp._onAddMessage,
-      removeMessage: ItemInboxApp._onRemoveMessage,
+      addEntry: ItemInboxApp._onAddEntry,
+      removeEntry: ItemInboxApp._onRemoveEntry,
       decryptMessage: ItemInboxApp._onDecryptMessage,
+      claimEddies: ItemInboxApp._onClaimEddies,
+      scrollToEntry: ItemInboxApp._onScrollToEntry,
+      toggleIndexStrip: ItemInboxApp._onToggleIndexStrip,
+      // Legacy aliases
+      addMessage: ItemInboxApp._onAddEntry,
+      removeMessage: ItemInboxApp._onRemoveEntry,
     },
   }, { inplace: false });
 
@@ -110,33 +120,108 @@ export class ItemInboxApp extends BaseApplication {
       ? (this.dataShardService?.getActorSession(this.item, actorId) ?? DEFAULTS.ACTOR_SESSION)
       : DEFAULTS.ACTOR_SESSION;
 
-    // Check security stack
+    // Security stack
     const security = this.dataShardService?.checkFullSecurityStack(this.item, actor) ?? { blocked: false };
 
-    // Get shard messages (only if not blocked or GM)
-    let messages = [];
+    // Preset info
+    const presetKey = config.preset || 'blank';
+    const preset = SHARD_PRESETS[presetKey] ?? SHARD_PRESETS['blank'];
+    const presetTheme = config._presetTheme ?? preset?.theme ?? {};
+
+    // Integrity
+    const integrity = this.dataShardService?.checkIntegrity(this.item) ?? { enabled: false, percentage: 100, tier: 'clean' };
+
+    // Network info
+    const networkRequired = config.network?.required ?? config.requiresNetwork ?? false;
+    const isTethered = config.network?.connectionMode === 'tethered';
+    const currentNetworkId = this.networkService?.getCurrentNetworkId?.() ?? null;
+    const currentNetworkName = this.networkService?.getCurrentNetwork?.()?.name ?? currentNetworkId ?? '';
+    const signalStrength = this.networkService?.getSignalStrength?.() ?? 100;
+    const showSignalRow = networkRequired && isTethered;
+
+    // Signal bars (5 bars)
+    const signalBars = this._computeSignalBars(signalStrength);
+    const signalTier = signalStrength > 74 ? 'good' : signalStrength > 40 ? 'mid' : 'low';
+
+    // Tethered disconnection check
+    const showDisconnected = isTethered && networkRequired && !security.blocked && !currentNetworkId;
+
+    // Entries (visible + hidden)
+    let visibleEntries = [];
+    let hiddenCount = 0;
+    let totalEntryCount = 0;
+
     if (!security.blocked || isGM()) {
-      messages = this.dataShardService?.getShardMessages(this.item) ?? [];
+      const visibility = this.dataShardService?.getVisibleEntries(this.item) ?? { visible: [], hiddenCount: 0, totalCount: 0 };
+      visibleEntries = visibility.visible;
+      hiddenCount = visibility.hiddenCount;
+      totalEntryCount = visibility.totalCount;
     }
 
-    // Get selected message detail
-    let selectedMessage = null;
-    if (this.selectedMessageId && messages.length) {
-      selectedMessage = messages.find(m => m.id === this.selectedMessageId) ?? null;
+    // Enrich entries with display data
+    const enrichedEntries = visibleEntries.map(entry => this._enrichEntry(entry));
+
+    // Index strip chips
+    const indexChips = this._buildIndexChips(visibleEntries, hiddenCount, this.selectedMessageId);
+
+    // Eddies totals
+    let totalEddies = 0;
+    let claimedEddies = 0;
+    for (const entry of visibleEntries) {
+      if (entry.contentType === CONTENT_TYPES.EDDIES) {
+        const amt = entry.contentData?.amount ?? 0;
+        totalEddies += amt;
+        if (entry.contentData?.claimed) claimedEddies += amt;
+      }
     }
+
+    // ICE class for icon block
+    let iceClass = 'none';
+    if (state.decrypted) iceClass = 'decrypted';
+    else if (config.encryptionType === ENCRYPTION_TYPES.BLACK_ICE) iceClass = 'black';
+    else if (config.encryptionType === ENCRYPTION_TYPES.RED_ICE) iceClass = 'red';
+    else if (config.encrypted) iceClass = 'standard';
+
+    // Network display name
+    let networkDisplayName = '';
+    if (networkRequired) {
+      const netConfig = config.network ?? {};
+      if (netConfig.allowedNetworks?.length) {
+        const net = this.networkService?.getNetwork(netConfig.allowedNetworks[0]);
+        networkDisplayName = net?.name ?? netConfig.allowedNetworks[0];
+      } else if (config.requiredNetwork) {
+        const net = this.networkService?.getNetwork(config.requiredNetwork);
+        networkDisplayName = net?.name ?? config.requiredNetwork;
+      } else if (netConfig.allowedTypes?.length) {
+        networkDisplayName = netConfig.allowedTypes.join(' / ');
+      }
+    }
+
+    // Metadata
+    const meta = config.metadata ?? {};
+    const hasMetadata = !!(meta.timestamp || meta.location || meta.network);
+
+    // Boot config
+    const bootConfig = config.boot ?? {};
+    const showBoot = bootConfig.enabled && !state.bootPlayed && !this._bootComplete;
+
+    // Trace warning
+    const tracing = config.network?.tracing ?? {};
+    const showTraceWarning = this._traceWarningActive ?? false;
 
     // Available skills for hacking
     let availableSkills = [];
     if (actor && config.allowedSkills?.length) {
       availableSkills = this.skillService?.getAvailableSkills(actor, config.allowedSkills) ?? [];
-      // Attach per-skill DCs
+      const signalMod = this.dataShardService?.getSignalDVModifier(this.item) ?? { modifier: 0 };
       availableSkills = availableSkills.map(s => ({
         ...s,
-        dc: config.skillDCs?.[s.name] ?? config.encryptionDC ?? 15,
+        baseDC: config.skillDCs?.[s.name] ?? config.encryptionDC ?? 15,
+        signalPenalty: signalMod.modifier,
+        dc: (config.skillDCs?.[s.name] ?? config.encryptionDC ?? 15) + signalMod.modifier,
       }));
     }
 
-    // Luck info
     const availableLuck = actor ? (this.skillService?.getAvailableLuck(actor) ?? 0) : 0;
 
     // Lockout timer
@@ -145,57 +230,43 @@ export class ItemInboxApp extends BaseApplication {
       lockoutRemaining = Math.ceil((session.lockoutUntil - Date.now()) / 1000);
     }
 
-    // Shard theme
-    const theme = SHARD_THEMES[config.theme] ?? SHARD_THEMES.classic;
-
-    // Network info (for network overlay)
-    let requiredNetworkName = '';
-    if (config.requiresNetwork && config.requiredNetwork) {
-      const net = this.networkService?.getNetwork(config.requiredNetwork);
-      requiredNetworkName = net?.name ?? config.requiredNetwork;
-    }
-
-    // Per-message encryption info
-    const messagesWithEncryption = messages.map(m => {
-      if (config.encryptionMode === 'message' && m.encrypted && !m.decrypted) {
-        return { ...m, isLocked: true };
-      }
-      return { ...m, isLocked: false };
-    });
-
-    // Pre-compute formatted dates
-    const formattedMessages = messagesWithEncryption.map(m => ({
-      ...m,
-      formattedDate: m.timestamp ? formatCyberDate(m.timestamp) : 'UNKNOWN',
-      isSelected: m.id === this.selectedMessageId,
-    }));
-
     return {
       hasItem: true,
       item: this.item,
-      itemName: this.item.name,
       config,
       state,
       session,
       security,
-      isBlocked: security.blocked,
-      blockingLayer: security.layer,
       isGM: isGM(),
       hasActor: !!actor,
       actorName: actor?.name ?? 'No Character',
 
-      // Security overlay data
-      requiresNetwork: config.requiresNetwork,
-      requiredNetworkName,
-      requiresKeyItem: config.requiresKeyItem,
-      keyItemDisplayName: config.keyItemDisplayName || config.keyItemName || 'Access Token',
-      keyItemIcon: config.keyItemIcon || 'fa-id-card',
-      requiresLogin: config.requiresLogin,
-      loginDisplayName: config.loginDisplayName || 'System Login',
+      // Preset / Identity
+      presetKey,
+      presetLabel: preset?.label ?? 'Data Shard',
+      presetFaIcon: bootConfig.faIcon || preset?.icon || 'fas fa-microchip',
+      presetAccent: presetTheme.accent || null,
+      presetFooterText: presetTheme.footerText || '',
+
+      // Shard display
+      shardDisplayName: config.shardName || this.item.name,
+
+      // Boot
+      showBoot,
+      bootAnimationStyle: bootConfig.animationStyle || 'standard-fade',
+      bootSpeed: bootConfig.speed || 'normal',
+      bootIconIsImage: bootConfig.iconMode === 'image' && bootConfig.imageUrl,
+      bootImageUrl: bootConfig.imageUrl,
+      bootImageSize: bootConfig.imageSize || 64,
+
+      // Security state
+      isBlocked: security.blocked,
+      blockingLayer: security.layer,
+      isDecrypted: state.decrypted,
       isEncrypted: config.encrypted,
       encryptionType: config.encryptionType,
-      encryptionMode: config.encryptionMode,
       encryptionDC: config.encryptionDC,
+      encryptionMode: config.encryptionMode,
       hackAttempts: session.hackAttempts,
       maxHackAttempts: config.maxHackAttempts,
       attemptsRemaining: Math.max(0, config.maxHackAttempts - session.hackAttempts),
@@ -203,46 +274,188 @@ export class ItemInboxApp extends BaseApplication {
       isLockedOut: lockoutRemaining > 0,
       lockoutRemaining,
       isPermanentlyLocked: session.lockoutUntil === Infinity,
+      hackingActive: this._hackingActive,
 
-      // Skill data
+      // ICE
+      iceClass,
+
+      // Network
+      networkRequired,
+      networkDisplayName,
+      isTethered,
+      showSignalRow,
+      signalStrength,
+      signalBars,
+      signalTier,
+      currentNetworkName,
+      showDisconnected,
+
+      // Integrity
+      integrityEnabled: integrity.enabled,
+      integrityPercent: integrity.percentage,
+      integrityTier: integrity.tier,
+
+      // Metadata
+      hasMetadata,
+      metadataTimestamp: meta.timestamp ? formatCyberDate(meta.timestamp) : '',
+      metadataLocation: meta.location || '',
+      metadataNetwork: meta.network || '',
+      metadataClassification: meta.classification || '',
+
+      // Entries
+      visibleEntries: enrichedEntries,
+      hasEntries: enrichedEntries.length > 0,
+      totalEntryCount,
+      visibleCount: enrichedEntries.length,
+      hiddenCount,
+      hasHiddenEntries: hiddenCount > 0,
+      singleEntry: totalEntryCount === 1,
+      singleHidden: hiddenCount === 1,
+
+      // Index strip
+      showIndexStrip: totalEntryCount > 1,
+      indexChips,
+
+      // Eddies totals
+      totalEddies: totalEddies > 0 ? totalEddies.toLocaleString() : null,
+      claimedEddies: claimedEddies > 0 ? claimedEddies.toLocaleString() : null,
+
+      // Skills
       availableSkills,
       availableLuck,
       hasLuck: availableLuck > 0,
 
-      // Messages
-      messages: formattedMessages,
-      messageCount: formattedMessages.length,
-      selectedMessage: selectedMessage ? {
-        ...selectedMessage,
-        formattedDate: selectedMessage.timestamp ? formatCyberDate(selectedMessage.timestamp) : 'UNKNOWN',
-      } : null,
-      hasMessages: formattedMessages.length > 0,
-      singleMessage: config.singleMessage,
-
-      // Theme
-      theme,
-      themeKey: config.theme,
-      themeAccent: theme.accent,
-
-      // State flags for template
-      isDecrypted: state.decrypted,
-      isLoggedIn: session.loggedIn,
-      keyItemUsed: session.keyItemUsed,
-      isDestroyed: state.destroyed === true,
-
-      // Pre-computed overlay flags (avoids unregistered eq helper)
+      // Overlay flags
       showNetworkOverlay: security.blocked && security.layer === 'network',
       showKeyitemOverlay: security.blocked && security.layer === 'keyitem',
       showLoginOverlay: security.blocked && security.layer === 'login',
       showEncryptionOverlay: security.blocked && security.layer === 'encryption',
 
-      // First message for singleMessage mode
-      firstMessage: formattedMessages[0] ?? null,
+      // Login state
+      isLoggedIn: session.loggedIn,
+      keyItemUsed: session.keyItemUsed,
+      loginDisplayName: config.loginDisplayName || 'System Login',
+      requiresLogin: config.requiresLogin,
+      requiresKeyItem: config.requiresKeyItem,
+      keyItemDisplayName: config.keyItemDisplayName || config.keyItemName || 'Access Token',
+      keyItemIcon: config.keyItemIcon || 'fa-id-card',
 
-      // Hacking state
-      hackingActive: this._hackingActive,
-      hackingSkill: this._hackingSkill,
+      // Trace
+      showTraceWarning,
+      traceVisible: tracing.mode === 'visible',
+
+      // State
+      isDestroyed: state.destroyed === true || integrity.isBricked,
     };
+  }
+
+  // ─── Entry Enrichment Helpers ───
+
+  /** @private */
+  _enrichEntry(entry) {
+    const typeInfo = CONTENT_TYPE_INFO[entry.contentType] ?? CONTENT_TYPE_INFO[CONTENT_TYPES.MESSAGE];
+    const enriched = {
+      ...entry,
+      formattedDate: entry.timestamp ? formatCyberDate(entry.timestamp) : 'UNKNOWN',
+      contentTypeLabel: typeInfo.label,
+      entryIcon: typeInfo.icon,
+      accentColor: typeInfo.accent,
+      isMessage: entry.contentType === CONTENT_TYPES.MESSAGE || !entry.contentType,
+      isEddies: entry.contentType === CONTENT_TYPES.EDDIES,
+      isDossier: entry.contentType === CONTENT_TYPES.DOSSIER,
+      isPayload: entry.contentType === CONTENT_TYPES.PAYLOAD,
+      isAvlog: entry.contentType === CONTENT_TYPES.AVLOG,
+      isLocation: entry.contentType === CONTENT_TYPES.LOCATION,
+      isLocked: false,
+    };
+
+    // Per-message encryption
+    if (entry.encrypted && !entry.decrypted) {
+      enriched.isLocked = true;
+    }
+
+    // Eddies enrichment
+    if (enriched.isEddies && entry.contentData) {
+      enriched.contentData = {
+        ...entry.contentData,
+        amountFormatted: (entry.contentData.amount ?? 0).toLocaleString(),
+        claimedByName: entry.contentData.claimedBy
+          ? (game.actors?.get(entry.contentData.claimedBy)?.name ?? 'Unknown')
+          : '',
+      };
+    }
+
+    // Dossier enrichment
+    if (enriched.isDossier && entry.contentData) {
+      const cd = entry.contentData;
+      enriched.contentData = {
+        ...cd,
+        hasSections: cd.sections?.length > 0,
+        threatIsHigh: cd.stats?.threat?.toUpperCase() === 'HIGH',
+        linkedActorImg: cd.linkedActorId ? game.actors?.get(cd.linkedActorId)?.img : null,
+      };
+    }
+
+    // Payload enrichment
+    if (enriched.isPayload && entry.contentData?.executedBy) {
+      enriched.contentData = {
+        ...entry.contentData,
+        executedByName: game.actors?.get(entry.contentData.executedBy)?.name ?? 'Unknown',
+      };
+    }
+
+    // AV Log enrichment
+    if (enriched.isAvlog && entry.contentData) {
+      enriched.contentData = {
+        ...entry.contentData,
+        isVideo: entry.contentData.mediaType === 'video',
+      };
+    }
+
+    return enriched;
+  }
+
+  /** @private */
+  _buildIndexChips(visibleEntries, hiddenCount, selectedId) {
+    const chips = visibleEntries.map(entry => {
+      const typeInfo = CONTENT_TYPE_INFO[entry.contentType] ?? CONTENT_TYPE_INFO[CONTENT_TYPES.MESSAGE];
+      return {
+        id: entry.id,
+        title: entry.subject || 'Data Fragment',
+        iconClass: typeInfo.indexIcon,
+        iconColor: `var(--ncm-color-${typeInfo.accent === 'cyan' ? 'secondary' : typeInfo.accent === 'red' ? 'primary' : typeInfo.accent})`,
+        isActive: entry.id === selectedId,
+        isHidden: false,
+      };
+    });
+
+    // Add hidden placeholder chips
+    for (let i = 0; i < hiddenCount; i++) {
+      chips.push({
+        id: `hidden-${i}`,
+        title: 'Hidden',
+        iconClass: 'fas fa-lock',
+        iconColor: 'var(--ncm-text-muted)',
+        isActive: false,
+        isHidden: true,
+      });
+    }
+
+    return chips;
+  }
+
+  /** @private */
+  _computeSignalBars(signal) {
+    const bars = [];
+    const thresholds = [1, 20, 40, 60, 80];
+    for (const threshold of thresholds) {
+      if (signal >= threshold) {
+        bars.push(signal > 74 ? 'active' : signal > 40 ? 'mid' : 'low');
+      } else {
+        bars.push('off');
+      }
+    }
+    return bars;
   }
 
   // ─── Lifecycle ───
@@ -250,9 +463,9 @@ export class ItemInboxApp extends BaseApplication {
   _onRender(context, options) {
     super._onRender(context, options);
 
-    // Apply shard theme accent color as CSS variable
-    if (context.themeAccent) {
-      this.element?.style?.setProperty('--ncm-shard-accent', context.themeAccent);
+    // Apply shard accent color as CSS variable
+    if (context.presetAccent) {
+      this.element?.style?.setProperty('--shard-accent', context.presetAccent);
     }
 
     // Start lockout timer countdown if active
@@ -516,21 +729,22 @@ export class ItemInboxApp extends BaseApplication {
     });
   }
 
-  static _onAddMessage(event, target) {
+  static _onAddEntry(event, target) {
     if (!isGM() || !this.item) return;
     import('./DataShardComposer.js').then(({ DataShardComposer }) => {
       new DataShardComposer({ shardItem: this.item, onSave: () => this.render() }).render(true);
     });
   }
 
-  static async _onRemoveMessage(event, target) {
+  static async _onRemoveEntry(event, target) {
     if (!isGM() || !this.item) return;
-    const messageId = target.closest('[data-message-id]')?.dataset.messageId;
+    const messageId = target.closest('[data-entry-id]')?.dataset.entryId
+      ?? target.closest('[data-message-id]')?.dataset.messageId;
     if (!messageId) return;
 
     const confirm = await Dialog.confirm({
-      title: 'Delete Message',
-      content: '<p>Remove this message from the data shard?</p>',
+      title: 'Delete Entry',
+      content: '<p>Remove this entry from the data shard?</p>',
     });
     if (!confirm) return;
 
@@ -541,7 +755,8 @@ export class ItemInboxApp extends BaseApplication {
 
   static async _onDecryptMessage(event, target) {
     // Per-message decryption attempt
-    const messageId = target.closest('[data-message-id]')?.dataset.messageId;
+    const messageId = target.closest('[data-entry-id]')?.dataset.entryId
+      ?? target.closest('[data-message-id]')?.dataset.messageId;
     if (!messageId || !this.item) return;
 
     const actor = game.user?.character;
@@ -563,6 +778,67 @@ export class ItemInboxApp extends BaseApplication {
       ui.notifications.warn('NCM | Decryption failed.');
     }
     this.render();
+  }
+
+  // ─── Sprint 4.6 Actions ───
+
+  static async _onClaimEddies(event, target) {
+    if (!this.item) return;
+    const actor = game.user?.character;
+    if (!actor) {
+      ui.notifications.warn('NCM | No character assigned.');
+      return;
+    }
+
+    const entryId = target.closest('[data-entry-id]')?.dataset.entryId;
+    if (!entryId) return;
+
+    const confirm = await Dialog.confirm({
+      title: 'Claim Eddies',
+      content: '<p>Transfer these eddies to your account? This cannot be undone.</p>',
+    });
+    if (!confirm) return;
+
+    const result = await this.dataShardService.claimEddies(this.item, entryId, actor);
+    if (result.success) {
+      ui.notifications.info(`NCM | ${result.amount.toLocaleString()} eb claimed.`);
+    } else {
+      ui.notifications.warn(`NCM | ${result.error || 'Claim failed.'}`);
+    }
+    this.render();
+  }
+
+  static _onScrollToEntry(event, target) {
+    const entryId = target.closest('[data-entry-id]')?.dataset.entryId;
+    if (!entryId || entryId.startsWith('hidden-')) return;
+
+    const entryEl = this.element?.querySelector(`#shard-entry-${entryId}`);
+    if (entryEl) {
+      entryEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // Brief highlight flash
+      entryEl.classList.add('ncm-entry-highlight');
+      setTimeout(() => entryEl.classList.remove('ncm-entry-highlight'), 800);
+    }
+
+    // Update active chip
+    this.selectedMessageId = entryId;
+    const chips = this.element?.querySelectorAll('.ncm-shard-index-chip');
+    chips?.forEach(chip => {
+      chip.classList.toggle('ncm-shard-index-chip--active',
+        chip.dataset.entryId === entryId);
+    });
+  }
+
+  static _onToggleIndexStrip(event, target) {
+    const strip = this.element?.querySelector('.ncm-shard-index-strip');
+    if (strip) {
+      strip.classList.toggle('ncm-shard-index-strip--collapsed');
+      const icon = strip.querySelector('.ncm-shard-index-toggle i');
+      if (icon) {
+        icon.classList.toggle('fa-chevron-down');
+        icon.classList.toggle('fa-chevron-right');
+      }
+    }
   }
 
   // ─── Effects ───

@@ -1,49 +1,156 @@
-{{!-- Item Inbox / Data Shard Viewer --}}
-<div class="ncm-item-inbox ncm-shard-theme-{{themeKey}}" data-item-id="{{item.id}}">
+{{!--
+  Item Inbox / Data Shard Viewer — Sprint 4.6 Redesign
+  File: templates/item-inbox/item-inbox.hbs
+  Module: cyberpunkred-messenger
+  Mockup: ncm-shard-viewer-mockup-v2.html
 
-  {{!-- Header Bar --}}
-  <div class="ncm-shard-header">
-    <div class="ncm-shard-header-info">
-      <i class="fas {{theme.icon}} ncm-shard-icon"></i>
-      <span class="ncm-shard-title">{{itemName}}</span>
+  Chip-reader aesthetic. NOT a mail client.
+  Structure: Identity Header → Integrity Bar → Signal Row → Index Strip → Content/Overlay → Footer
+--}}
+
+<div class="ncm-item-inbox ncm-shard-preset-{{presetKey}}" data-item-id="{{item.id}}" style="{{#if presetAccent}}--shard-accent: {{presetAccent}};{{/if}}">
+
+  {{!-- ═══ BOOT SEQUENCE CONTAINER (filled by JS, hidden after boot completes) ═══ --}}
+  {{#if showBoot}}
+    <div class="ncm-shard-boot" data-boot-style="{{bootAnimationStyle}}" data-boot-speed="{{bootSpeed}}">
+      {{!-- Boot content injected by _playBootSequence() in ItemInboxApp.js --}}
     </div>
-    <div class="ncm-shard-badges">
-      {{#if isEncrypted}}
-        <span class="ncm-badge ncm-badge-encryption" title="{{encryptionType}}">
-          <i class="fas fa-lock"></i> {{encryptionType}}
+  {{/if}}
+
+  {{!-- ═══ SHARD IDENTITY HEADER ═══ --}}
+  <div class="ncm-shard-identity">
+    <div class="ncm-shard-icon-block ncm-ice-{{iceClass}}">
+      {{#if bootIconIsImage}}
+        <img src="{{bootImageUrl}}" alt="" class="ncm-shard-icon-img" style="width:{{bootImageSize}}px;height:{{bootImageSize}}px;">
+      {{else}}
+        <i class="{{presetFaIcon}}"></i>
+      {{/if}}
+    </div>
+    <div class="ncm-shard-meta">
+      <div class="ncm-shard-name">{{shardDisplayName}}</div>
+      <div class="ncm-shard-type-line">
+        {{presetLabel}}
+        {{#if isDecrypted}}
+          <span class="ncm-shard-sep">·</span>DECRYPTED
+        {{else if isEncrypted}}
+          <span class="ncm-shard-sep">·</span>{{encryptionType}}
+        {{/if}}
+        {{#if isTethered}}
+          <span class="ncm-shard-sep">·</span>TETHERED
+        {{/if}}
+      </div>
+      {{#if hasMetadata}}
+        <div class="ncm-shard-provenance">
+          {{#if metadataTimestamp}}Created: {{metadataTimestamp}}{{/if}}
+          {{#if metadataLocation}} // {{metadataLocation}}{{/if}}
+          {{#if metadataNetwork}} // {{metadataNetwork}}{{/if}}
+        </div>
+      {{/if}}
+      <div class="ncm-shard-badges">
+        {{#if isDecrypted}}
+          <span class="ncm-shard-badge ncm-shard-badge--decrypted"><i class="fas fa-unlock"></i> Decrypted</span>
+        {{else if isEncrypted}}
+          <span class="ncm-shard-badge ncm-shard-badge--ice"><i class="fas fa-shield-halved"></i> {{encryptionType}}</span>
+        {{/if}}
+        {{#if networkRequired}}
+          <span class="ncm-shard-badge ncm-shard-badge--net"><i class="fas fa-network-wired"></i> {{networkDisplayName}}</span>
+        {{/if}}
+        {{#if isBlocked}}
+          <span class="ncm-shard-badge ncm-shard-badge--lock"><i class="fas fa-lock"></i> Encrypted</span>
+        {{/if}}
+        <span class="ncm-shard-badge ncm-shard-badge--entries">
+          <i class="fas fa-layer-group"></i>
+          {{#if hasHiddenEntries}}{{visibleCount}} of {{totalEntryCount}} visible{{else}}{{totalEntryCount}} {{#if singleEntry}}Entry{{else}}Entries{{/if}}{{/if}}
         </span>
-      {{/if}}
-      {{#if requiresNetwork}}
-        <span class="ncm-badge ncm-badge-network" title="Requires: {{requiredNetworkName}}">
-          <i class="fas fa-network-wired"></i> {{requiredNetworkName}}
-        </span>
-      {{/if}}
-      {{#if isDecrypted}}
-        <span class="ncm-badge ncm-badge-decrypted"><i class="fas fa-unlock"></i> DECRYPTED</span>
-      {{/if}}
+        {{#if isTethered}}
+          <span class="ncm-shard-badge ncm-shard-badge--tethered"><i class="fas fa-link"></i> Tethered</span>
+        {{/if}}
+        {{#if metadataClassification}}
+          <span class="ncm-shard-badge ncm-shard-badge--classification">{{metadataClassification}}</span>
+        {{/if}}
+      </div>
     </div>
     {{#if isGM}}
-      <div class="ncm-shard-gm-controls">
-        <button type="button" data-action="openConfig" title="Configure Shard" class="ncm-btn-icon"><i class="fas fa-cog"></i></button>
-        <button type="button" data-action="addMessage" title="Add Message" class="ncm-btn-icon"><i class="fas fa-plus"></i></button>
-        {{#if isDecrypted}}
-          <button type="button" data-action="relockShard" title="Relock" class="ncm-btn-icon ncm-btn-danger"><i class="fas fa-lock"></i></button>
-        {{else}}
-          <button type="button" data-action="forceDecrypt" title="Force Decrypt" class="ncm-btn-icon ncm-btn-gm"><i class="fas fa-unlock-keyhole"></i></button>
-        {{/if}}
+      <div class="ncm-shard-gm-header-actions">
+        <button type="button" data-action="openConfig" title="Configure" class="ncm-shard-hdr-btn"><i class="fas fa-cog"></i></button>
+        <button type="button" data-action="addEntry" title="Add Entry" class="ncm-shard-hdr-btn"><i class="fas fa-plus"></i></button>
       </div>
     {{/if}}
   </div>
 
-  {{!-- Content Area --}}
+  {{!-- ═══ INTEGRITY BAR (if enabled) ═══ --}}
+  {{#if integrityEnabled}}
+    <div class="ncm-shard-integrity-row">
+      <span class="ncm-shard-integrity-label">Integrity</span>
+      <div class="ncm-shard-integrity-track">
+        <div class="ncm-shard-integrity-fill ncm-integrity-{{integrityTier}}" style="width: {{integrityPercent}}%;"></div>
+      </div>
+      <span class="ncm-shard-integrity-value">{{integrityPercent}}%</span>
+    </div>
+  {{/if}}
+
+  {{!-- ═══ SIGNAL ROW (if network-required + tethered) ═══ --}}
+  {{#if showSignalRow}}
+    <div class="ncm-shard-signal-row">
+      <span class="ncm-shard-signal-label">Signal</span>
+      <div class="ncm-shard-signal-bars">
+        {{#each signalBars}}
+          <div class="ncm-shard-signal-bar ncm-signal-{{this}}"></div>
+        {{/each}}
+      </div>
+      <span class="ncm-shard-signal-value ncm-signal-text-{{signalTier}}">{{signalStrength}}%</span>
+      <span class="ncm-shard-signal-network"><i class="fas fa-wifi"></i> {{currentNetworkName}}</span>
+    </div>
+  {{/if}}
+
+  {{!-- ═══ INDEX STRIP ═══ --}}
+  {{#if showIndexStrip}}
+    <div class="ncm-shard-index-strip {{#if isBlocked}}ncm-shard-index-strip--locked{{/if}}">
+      <div class="ncm-shard-index-toggle" data-action="toggleIndexStrip">
+        <i class="fas fa-chevron-down"></i> Index
+      </div>
+      {{#each indexChips}}
+        <div class="ncm-shard-index-chip {{#if isActive}}ncm-shard-index-chip--active{{/if}} {{#if isHidden}}ncm-shard-index-chip--hidden{{/if}}"
+             data-action="scrollToEntry" data-entry-id="{{id}}">
+          <i class="{{iconClass}} ncm-shard-index-chip-icon" style="color:{{iconColor}};"></i>
+          <span class="ncm-shard-index-chip-title">{{#if isHidden}}Hidden{{else}}{{title}}{{/if}}</span>
+        </div>
+      {{/each}}
+    </div>
+  {{/if}}
+
+  {{!-- ═══ CONTENT AREA ═══ --}}
   <div class="ncm-shard-content">
+
+    {{!-- DESTROYED STATE --}}
     {{#if isDestroyed}}
       <div class="ncm-shard-destroyed">
         <i class="fas fa-skull-crossbones"></i>
-        <p>DATA CORRUPTED</p>
-        <p class="ncm-text-muted">Shard contents have been destroyed.</p>
+        <p class="ncm-shard-destroyed-title">DATA UNRECOVERABLE</p>
+        <p class="ncm-shard-destroyed-sub">Shard integrity has reached zero. All data is lost.</p>
       </div>
 
+    {{!-- DISCONNECTED STATE (tethered + no connection) --}}
+    {{else if showDisconnected}}
+      <div class="ncm-shard-overlay ncm-shard-overlay--disconnected">
+        <div class="ncm-shard-disconnect-panel">
+          <i class="fas fa-plug-circle-xmark ncm-shard-disconnect-icon"></i>
+          <div class="ncm-shard-disconnect-title">Connection Lost</div>
+          <p class="ncm-shard-disconnect-info">
+            This shard requires an active network connection. Tethered data stream interrupted.
+          </p>
+          <div class="ncm-shard-disconnect-detail">
+            <span class="ncm-shard-detail-label">Required</span>
+            <span class="ncm-shard-detail-value">{{networkDisplayName}}</span>
+            <span class="ncm-shard-detail-label">Status</span>
+            <span class="ncm-shard-detail-value ncm-text-danger">DISCONNECTED</span>
+            <span class="ncm-shard-detail-label">Session</span>
+            <span class="ncm-shard-detail-value ncm-text-success">Preserved</span>
+          </div>
+        </div>
+      </div>
+
+    {{!-- SECURITY OVERLAYS --}}
     {{else if showNetworkOverlay}}
       {{> "modules/cyberpunkred-messenger/templates/item-inbox/security-overlay-network.hbs"}}
 
@@ -59,77 +166,217 @@
     {{else if hackingActive}}
       {{> "modules/cyberpunkred-messenger/templates/item-inbox/hacking-sequence.hbs"}}
 
+    {{!-- UNLOCKED CONTENT --}}
     {{else}}
-      {{!-- Unlocked Content --}}
-      <div class="ncm-shard-messages">
-        {{#if hasMessages}}
-          {{#if singleMessage}}
-            {{#with firstMessage}}
-              <div class="ncm-shard-message-detail">
-                <div class="ncm-msg-header">
-                  <span class="ncm-msg-from">FROM: {{from}}</span>
-                  <span class="ncm-msg-date">{{formattedDate}}</span>
+      <div class="ncm-shard-entries">
+        {{#if hasEntries}}
+          {{#each visibleEntries}}
+            <div class="ncm-entry-card ncm-entry-accent-{{accentColor}} {{#if corrupted}}ncm-entry--corrupted{{/if}}"
+                 data-entry-id="{{id}}" id="shard-entry-{{id}}">
+
+              {{!-- Entry Header (shared across all types) --}}
+              <div class="ncm-entry-header">
+                <div class="ncm-entry-custom-icon ncm-ci-{{accentColor}}">
+                  <i class="{{entryIcon}}"></i>
                 </div>
-                <h3 class="ncm-msg-subject">{{subject}}</h3>
-                <div class="ncm-msg-body">{{{body}}}</div>
-              </div>
-            {{/with}}
-          {{else}}
-            <div class="ncm-shard-split">
-              <div class="ncm-shard-list">
-                {{#each messages}}
-                  <div class="ncm-shard-list-item {{#if isSelected}}selected{{/if}} {{#if isLocked}}encrypted{{/if}}"
-                       data-message-id="{{id}}" data-action="selectMessage">
-                    {{#if isLocked}}<i class="fas fa-lock ncm-msg-lock-icon"></i>{{/if}}
-                    <div class="ncm-msg-preview">
-                      <span class="ncm-msg-from">{{from}}</span>
-                      <span class="ncm-msg-subject-preview">{{subject}}</span>
-                    </div>
-                    <span class="ncm-msg-date-small">{{formattedDate}}</span>
-                  </div>
-                {{/each}}
-              </div>
-              <div class="ncm-shard-detail">
-                {{#if selectedMessage}}
-                  {{#if selectedMessage.isLocked}}
-                    <div class="ncm-msg-encrypted-overlay">
-                      <i class="fas fa-lock"></i>
-                      <p>MESSAGE ENCRYPTED</p>
-                      <button type="button" data-action="decryptMessage" data-message-id="{{selectedMessage.id}}" class="ncm-btn ncm-btn-primary">
-                        <i class="fas fa-terminal"></i> DECRYPT
-                      </button>
-                    </div>
-                  {{else}}
-                    <div class="ncm-shard-message-detail">
-                      <div class="ncm-msg-header">
-                        <span class="ncm-msg-from">FROM: {{selectedMessage.from}}</span>
-                        <span class="ncm-msg-date">{{selectedMessage.formattedDate}}</span>
-                        {{#if isGM}}
-                          <button type="button" data-action="removeMessage" data-message-id="{{selectedMessage.id}}"
-                                  class="ncm-btn-icon ncm-btn-danger" title="Delete"><i class="fas fa-trash"></i></button>
-                        {{/if}}
-                      </div>
-                      <h3 class="ncm-msg-subject">{{selectedMessage.subject}}</h3>
-                      <div class="ncm-msg-body">{{{selectedMessage.body}}}</div>
-                    </div>
-                  {{/if}}
-                {{else}}
-                  <div class="ncm-shard-empty-detail">
-                    <i class="fas fa-microchip"></i>
-                    <p>Select a data fragment to view</p>
-                    <p class="ncm-text-muted">{{messageCount}} fragment(s) stored</p>
-                  </div>
+                <div class="ncm-entry-title-area">
+                  <div class="ncm-entry-type-label">{{contentTypeLabel}}</div>
+                  <div class="ncm-entry-title">{{subject}}</div>
+                </div>
+                <div class="ncm-entry-timestamp">{{formattedDate}}</div>
+                {{#if ../isGM}}
+                  <button type="button" data-action="removeEntry" data-entry-id="{{id}}"
+                          class="ncm-shard-hdr-btn ncm-shard-hdr-btn--danger" title="Delete entry">
+                    <i class="fas fa-trash-can"></i>
+                  </button>
                 {{/if}}
               </div>
+
+              {{!-- Corrupted overlay --}}
+              {{#if corrupted}}
+                <div class="ncm-entry-body ncm-entry-corrupted">
+                  <i class="fas fa-triangle-exclamation"></i>
+                  <p>DATA CORRUPTED — Entry unrecoverable</p>
+                </div>
+
+              {{!-- Per-message encrypted --}}
+              {{else if isLocked}}
+                <div class="ncm-entry-body ncm-entry-encrypted-msg">
+                  <i class="fas fa-lock"></i>
+                  <p>Entry Encrypted</p>
+                  <button type="button" data-action="decryptMessage" data-entry-id="{{id}}"
+                          class="ncm-shard-btn ncm-shard-btn--primary">
+                    <i class="fas fa-terminal"></i> Decrypt
+                  </button>
+                </div>
+
+              {{!-- ═══ CONTENT TYPE RENDERERS ═══ --}}
+
+              {{!-- MESSAGE --}}
+              {{else if isMessage}}
+                <div class="ncm-entry-body">
+                  <div class="ncm-entry-from">From: <span>{{from}}</span></div>
+                  <div class="ncm-entry-text">{{{body}}}</div>
+                </div>
+
+              {{!-- EDDIES --}}
+              {{else if isEddies}}
+                <div class="ncm-entry-eddies-card">
+                  <div class="ncm-eddies-amount {{#if contentData.claimed}}ncm-eddies-claimed{{/if}}">
+                    {{contentData.amountFormatted}}
+                  </div>
+                  <div class="ncm-eddies-unit">eurodollars</div>
+                  {{#if contentData.note}}
+                    <div class="ncm-eddies-note">"{{contentData.note}}"</div>
+                  {{/if}}
+                  {{#if contentData.claimed}}
+                    <div class="ncm-eddies-claim-btn ncm-eddies-claim-btn--claimed">
+                      <i class="fas fa-check"></i> Claimed by {{contentData.claimedByName}}
+                    </div>
+                  {{else}}
+                    <button type="button" data-action="claimEddies" data-entry-id="{{id}}"
+                            class="ncm-eddies-claim-btn">
+                      <i class="fas fa-download"></i> Claim Eddies
+                    </button>
+                  {{/if}}
+                </div>
+
+              {{!-- DOSSIER --}}
+              {{else if isDossier}}
+                <div class="ncm-entry-dossier">
+                  <div class="ncm-dossier-portrait">
+                    {{#if contentData.targetImage}}
+                      <img src="{{contentData.targetImage}}" alt="{{contentData.targetName}}">
+                    {{else if contentData.linkedActorImg}}
+                      <img src="{{contentData.linkedActorImg}}" alt="{{contentData.targetName}}">
+                    {{else}}
+                      <i class="fas fa-user"></i>
+                    {{/if}}
+                    {{#if contentData.classification}}
+                      <div class="ncm-dossier-classification">{{contentData.classification}}</div>
+                    {{/if}}
+                  </div>
+                  <div class="ncm-dossier-info">
+                    <div class="ncm-dossier-stat-grid">
+                      {{#if contentData.targetAlias}}
+                        <span class="ncm-dossier-stat-label">Alias</span>
+                        <span class="ncm-dossier-stat-value">{{contentData.targetAlias}}</span>
+                      {{/if}}
+                      {{#if contentData.stats.affiliation}}
+                        <span class="ncm-dossier-stat-label">Affiliation</span>
+                        <span class="ncm-dossier-stat-value">{{contentData.stats.affiliation}}</span>
+                      {{/if}}
+                      {{#if contentData.stats.threat}}
+                        <span class="ncm-dossier-stat-label">Threat</span>
+                        <span class="ncm-dossier-stat-value {{#if contentData.threatIsHigh}}ncm-threat-high{{/if}}">{{contentData.stats.threat}}</span>
+                      {{/if}}
+                      {{#if contentData.stats.lastKnownLocation}}
+                        <span class="ncm-dossier-stat-label">Last Known</span>
+                        <span class="ncm-dossier-stat-value">{{contentData.stats.lastKnownLocation}}</span>
+                      {{/if}}
+                    </div>
+                    {{#if contentData.hasSections}}
+                      <div class="ncm-dossier-sections-body">
+                        {{#each contentData.sections}}
+                          <div class="ncm-dossier-section {{#if redacted}}ncm-dossier-section--redacted{{/if}}">
+                            <div class="ncm-dossier-section-heading">{{heading}}</div>
+                            {{#if redacted}}
+                              <p class="ncm-dossier-redacted-text">████ REDACTED ████</p>
+                            {{else}}
+                              <p>{{body}}</p>
+                            {{/if}}
+                          </div>
+                        {{/each}}
+                      </div>
+                    {{/if}}
+                  </div>
+                </div>
+
+              {{!-- PAYLOAD --}}
+              {{else if isPayload}}
+                <div class="ncm-entry-body ncm-entry-payload">
+                  <div class="ncm-payload-name"><i class="fas fa-virus"></i> {{contentData.name}}</div>
+                  <p>{{contentData.description}}</p>
+                  {{#if contentData.executed}}
+                    <div class="ncm-payload-status ncm-payload-status--executed">
+                      <i class="fas fa-check-circle"></i> Executed by {{contentData.executedByName}}
+                    </div>
+                  {{else}}
+                    <button type="button" data-action="executePayload" data-entry-id="{{id}}"
+                            class="ncm-shard-btn ncm-shard-btn--danger">
+                      <i class="fas fa-bolt"></i> Execute
+                    </button>
+                  {{/if}}
+                </div>
+
+              {{!-- AV LOG --}}
+              {{else if isAvlog}}
+                <div class="ncm-entry-body ncm-entry-avlog">
+                  <div class="ncm-avlog-meta">
+                    <span class="ncm-avlog-media-type"><i class="fas fa-{{#if contentData.isVideo}}video{{else}}headphones{{/if}}"></i> {{contentData.mediaType}}</span>
+                    <span class="ncm-avlog-duration">{{contentData.duration}}</span>
+                    {{#if contentData.source}}<span class="ncm-avlog-source">{{contentData.source}}</span>{{/if}}
+                  </div>
+                  <div class="ncm-avlog-waveform"></div>
+                  {{#each contentData.transcript}}
+                    <div class="ncm-avlog-line">
+                      <span class="ncm-avlog-speaker">{{speaker}}</span>
+                      <span class="ncm-avlog-text">{{text}}</span>
+                    </div>
+                  {{/each}}
+                </div>
+
+              {{!-- LOCATION --}}
+              {{else if isLocation}}
+                <div class="ncm-entry-body ncm-entry-location">
+                  <div class="ncm-location-coords">{{contentData.coordinates}}</div>
+                  <div class="ncm-location-name">{{contentData.locationName}}</div>
+                  {{#if contentData.district}}
+                    <div class="ncm-location-district"><i class="fas fa-map-marker-alt"></i> {{contentData.district}}</div>
+                  {{/if}}
+                  <p>{{contentData.description}}</p>
+                  {{#if contentData.linkedSceneId}}
+                    {{#if ../isGM}}
+                      <button type="button" data-action="goToScene" data-scene-id="{{contentData.linkedSceneId}}"
+                              class="ncm-shard-btn ncm-shard-btn--secondary">
+                        <i class="fas fa-map"></i> Go to Scene
+                      </button>
+                    {{/if}}
+                  {{/if}}
+                </div>
+
+              {{!-- FALLBACK --}}
+              {{else}}
+                <div class="ncm-entry-body">
+                  <div class="ncm-entry-from">From: <span>{{from}}</span></div>
+                  <div class="ncm-entry-text">{{{body}}}</div>
+                </div>
+              {{/if}}
+            </div>
+          {{/each}}
+
+          {{!-- Hidden entries block --}}
+          {{#if hasHiddenEntries}}
+            <div class="ncm-shard-hidden-block">
+              <i class="fas fa-eye-slash"></i>
+              <div class="ncm-shard-hidden-count">{{hiddenCount}} Additional {{#if singleHidden}}Entry{{else}}Entries{{/if}}</div>
+              <div class="ncm-shard-hidden-hint">These entries require a different network connection.</div>
+              {{#if currentNetworkName}}
+                <div class="ncm-shard-hidden-hint">Current network: {{currentNetworkName}}</div>
+              {{/if}}
             </div>
           {{/if}}
+
         {{else}}
+          {{!-- Empty shard --}}
           <div class="ncm-shard-empty">
             <i class="fas fa-database"></i>
             <p>SHARD EMPTY</p>
-            <p class="ncm-text-muted">No data fragments stored.</p>
+            <p class="ncm-shard-empty-sub">No data fragments stored.</p>
             {{#if isGM}}
-              <button type="button" data-action="addMessage" class="ncm-btn ncm-btn-primary"><i class="fas fa-plus"></i> Add Data Fragment</button>
+              <button type="button" data-action="addEntry" class="ncm-shard-btn ncm-shard-btn--primary">
+                <i class="fas fa-plus"></i> Add Data Fragment
+              </button>
             {{/if}}
           </div>
         {{/if}}
@@ -137,9 +384,26 @@
     {{/if}}
   </div>
 
-  {{!-- Status Bar --}}
-  <div class="ncm-shard-status-bar">
-    <span><i class="fas fa-database"></i> {{messageCount}} fragment(s)</span>
-    {{#if hasActor}}<span><i class="fas fa-user"></i> {{actorName}}</span>{{/if}}
+  {{!-- ═══ FOOTER BAR ═══ --}}
+  <div class="ncm-shard-footer">
+    <span class="ncm-shard-footer-text">
+      ░░ SHARD READER v2.1
+      <span class="ncm-shard-footer-sep">░░</span>
+      {{totalEntryCount}} {{#if singleEntry}}ENTRY{{else}}ENTRIES{{/if}}
+      <span class="ncm-shard-footer-sep">░░</span>
+      {{#if isDecrypted}}DECRYPTED{{else if isBlocked}}ENCRYPTED{{else}}OPEN{{/if}}
+      {{#if isTethered}}<span class="ncm-shard-footer-sep">░░</span> TETHERED{{/if}}
+      {{#if totalEddies}}<span class="ncm-shard-footer-sep">░░</span> {{totalEddies}} eb{{#if claimedEddies}} ({{claimedEddies}} claimed){{/if}}{{/if}}
+    </span>
+    <span class="ncm-shard-footer-spacer"></span>
+    {{#if showTraceWarning}}
+      <span class="ncm-shard-trace-warning">
+        <i class="fas fa-triangle-exclamation"></i>
+        {{#if traceVisible}}TRACE ALERT: Location data transmitted to UNKNOWN CONTACT{{else}}CAUTION: EXTERNAL HANDSHAKE DETECTED{{/if}}
+      </span>
+    {{/if}}
+    {{#if presetFooterText}}
+      <span class="ncm-shard-footer-brand">{{presetFooterText}}</span>
+    {{/if}}
   </div>
 </div>
