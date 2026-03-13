@@ -465,6 +465,17 @@ export class ItemInboxApp extends BaseApplication {
   _onRender(context, options) {
     super._onRender(context, options);
 
+    // Apply preset theme class
+    if (this.element) {
+      // Remove any existing preset class
+      this.element.classList.forEach(cls => {
+        if (cls.startsWith('ncm-preset-')) this.element.classList.remove(cls);
+      });
+      // Add current preset class
+      const presetKey = context.presetKey || 'blank';
+      this.element.classList.add(`ncm-preset-${presetKey}`);
+    }
+
     // Apply shard accent color as CSS variable
     if (context.presetAccent) {
       this.element?.style?.setProperty('--shard-accent', context.presetAccent);

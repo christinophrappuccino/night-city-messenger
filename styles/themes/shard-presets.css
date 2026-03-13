@@ -1,0 +1,275 @@
+/* ═══════════════════════════════════════════════════════════
+ * Shard Preset Themes
+ * @file styles/themes/shard-presets.css
+ * @module cyberpunkred-messenger
+ * @description CSS custom properties per shard preset. Applied via
+ *   .ncm-preset-{key} class on the viewer root element.
+ *   item-inbox.css references --sp-* variables for all color values.
+ *
+ * Variable set (~20 per preset):
+ *   --sp-bg-deep        Deepest background (frame, content area)
+ *   --sp-bg-base        Titlebar, footer, entry headers
+ *   --sp-bg-surface     Entry cards, index chips
+ *   --sp-bg-elevated    Hover states, buttons
+ *   --sp-border         All borders
+ *   --sp-bar            Top gradient bar
+ *   --sp-shadow         Outer box-shadow
+ *   --sp-accent         Primary accent (icons, active states)
+ *   --sp-accent-2       Secondary accent (type line, badges)
+ *   --sp-accent-glow    Glow/shadow tint
+ *   --sp-text-bright    Shard name, entry titles
+ *   --sp-text-body      Entry body content
+ *   --sp-text-meta      Provenance, timestamps
+ *   --sp-text-muted     Footer, subtle elements
+ *   --sp-icon-bg        Icon block background
+ *   --sp-icon-border    Icon block border
+ *   --sp-chip-bg        Index chip background
+ *   --sp-chip-text      Index chip text
+ *   --sp-chip-active-bg Active chip background
+ *   --sp-chip-active-text Active chip text/border
+ *
+ * Mockup reference: ncm-shard-preset-themes-v4.html
+ * ═══════════════════════════════════════════════════════════ */
+
+
+/* ─── BLANK / DEFAULT ─── */
+/* Maps to existing --ncm-* variables so non-themed shards look as before */
+
+.ncm-preset-blank {
+  --sp-bg-deep:         var(--ncm-bg-deep, #0a0a0f);
+  --sp-bg-base:         var(--ncm-bg-base, #12121a);
+  --sp-bg-surface:      var(--ncm-bg-surface, #1a1a2e);
+  --sp-bg-elevated:     var(--ncm-bg-elevated, #252540);
+  --sp-border:          var(--ncm-border, #2a2a45);
+  --sp-bar:             linear-gradient(90deg, var(--ncm-color-primary, #F65261), transparent 40%, transparent 60%, var(--ncm-color-secondary, #19f3f7));
+  --sp-shadow:          0 0 50px rgba(0,0,0,0.5);
+  --sp-accent:          var(--ncm-color-secondary, #19f3f7);
+  --sp-accent-2:        var(--ncm-text-secondary, #8888a0);
+  --sp-accent-glow:     rgba(25, 243, 247, 0.08);
+  --sp-text-bright:     var(--ncm-text-primary, #e0e0e8);
+  --sp-text-body:       var(--ncm-text-secondary, #8888a0);
+  --sp-text-meta:       var(--ncm-text-muted, #555570);
+  --sp-text-muted:      var(--ncm-text-muted, #555570);
+  --sp-icon-bg:         rgba(25, 243, 247, 0.06);
+  --sp-icon-border:     rgba(25, 243, 247, 0.2);
+  --sp-chip-bg:         var(--ncm-bg-surface, #1a1a2e);
+  --sp-chip-text:       var(--ncm-text-secondary, #8888a0);
+  --sp-chip-active-bg:  rgba(25, 243, 247, 0.06);
+  --sp-chip-active-text: var(--ncm-color-secondary, #19f3f7);
+}
+
+
+/* ─── 1. CORPORATE DOSSIER (Arasaka) ─── */
+/* Crimson red + deep black + gold accents */
+
+.ncm-preset-corporate-dossier {
+  --sp-bg-deep:         #0a0606;
+  --sp-bg-base:         #0e0808;
+  --sp-bg-surface:      #120a0a;
+  --sp-bg-elevated:     #1a0e0e;
+  --sp-border:          #3a1515;
+  --sp-bar:             linear-gradient(90deg, transparent, #aa1010 10%, #ee2020 40%, #f0d070 50%, #ee2020 60%, #aa1010 90%, transparent);
+  --sp-shadow:          0 0 50px rgba(0,0,0,0.5), 0 0 4px rgba(220,30,30,0.08);
+  --sp-accent:          #ee3030;
+  --sp-accent-2:        #e0b040;
+  --sp-accent-glow:     rgba(238, 32, 32, 0.1);
+  --sp-text-bright:     #f5eee8;
+  --sp-text-body:       #c0a090;
+  --sp-text-meta:       #887060;
+  --sp-text-muted:      #883030;
+  --sp-icon-bg:         rgba(238, 32, 32, 0.1);
+  --sp-icon-border:     rgba(238, 32, 32, 0.3);
+  --sp-chip-bg:         #180c0c;
+  --sp-chip-text:       #cc7070;
+  --sp-chip-active-bg:  rgba(238, 32, 32, 0.06);
+  --sp-chip-active-text: #ee3030;
+}
+
+
+/* ─── 2. MILITARY INTELLIGENCE ─── */
+/* Olive green + amber warning + steel blue */
+
+.ncm-preset-military-intel {
+  --sp-bg-deep:         #080a08;
+  --sp-bg-base:         #0a0d08;
+  --sp-bg-surface:      #0d100a;
+  --sp-bg-elevated:     #141a0e;
+  --sp-border:          #2a3a20;
+  --sp-bar:             linear-gradient(90deg, transparent, #4a7a2a 15%, #80cc50 50%, #4a7a2a 85%, transparent);
+  --sp-shadow:          0 0 50px rgba(0,0,0,0.5), 0 0 3px rgba(106,170,58,0.06);
+  --sp-accent:          #80cc50;
+  --sp-accent-2:        #e0b040;
+  --sp-accent-glow:     rgba(128, 204, 80, 0.08);
+  --sp-text-bright:     #e0f0d0;
+  --sp-text-body:       #90bb60;
+  --sp-text-meta:       #608090;
+  --sp-text-muted:      #5a9a38;
+  --sp-icon-bg:         rgba(128, 204, 80, 0.08);
+  --sp-icon-border:     rgba(128, 204, 80, 0.25);
+  --sp-chip-bg:         #101a0a;
+  --sp-chip-text:       #8abb50;
+  --sp-chip-active-bg:  rgba(128, 204, 80, 0.06);
+  --sp-chip-active-text: #80cc50;
+}
+
+
+/* ─── 3. STREET SHARD ─── */
+/* Warm gray + dull orange + muted tones */
+
+.ncm-preset-street-shard {
+  --sp-bg-deep:         #0c0c0c;
+  --sp-bg-base:         #101010;
+  --sp-bg-surface:      #141414;
+  --sp-bg-elevated:     #1c1c1c;
+  --sp-border:          #2a2a2a;
+  --sp-bar:             linear-gradient(90deg, transparent, #777 30%, #aaa 50%, #777 70%, transparent);
+  --sp-shadow:          0 0 50px rgba(0,0,0,0.5);
+  --sp-accent:          #b0a090;
+  --sp-accent-2:        #d0a050;
+  --sp-accent-glow:     rgba(180, 160, 140, 0.06);
+  --sp-text-bright:     #e8e0d8;
+  --sp-text-body:       #aaa8a0;
+  --sp-text-meta:       #606060;
+  --sp-text-muted:      #666666;
+  --sp-icon-bg:         rgba(180, 160, 140, 0.06);
+  --sp-icon-border:     rgba(180, 160, 140, 0.15);
+  --sp-chip-bg:         #181818;
+  --sp-chip-text:       #999;
+  --sp-chip-active-bg:  rgba(200, 140, 60, 0.06);
+  --sp-chip-active-text: #d0a050;
+}
+
+
+/* ─── 4. FIXER DEAD DROP ─── */
+/* Neon purple + hot pink + gold + cyan */
+
+.ncm-preset-fixer-dead-drop {
+  --sp-bg-deep:         #0c080f;
+  --sp-bg-base:         #0e0a12;
+  --sp-bg-surface:      #120e18;
+  --sp-bg-elevated:     #1a1422;
+  --sp-border:          #3a2050;
+  --sp-bar:             linear-gradient(90deg, transparent, #d040e0 15%, #e870ff 35%, #c060ff 50%, #60d0ff 75%, transparent);
+  --sp-shadow:          0 0 50px rgba(0,0,0,0.5), 0 0 4px rgba(199,90,255,0.08);
+  --sp-accent:          #e070ff;
+  --sp-accent-2:        #ff60b0;
+  --sp-accent-glow:     rgba(224, 112, 255, 0.08);
+  --sp-text-bright:     #f0e0f8;
+  --sp-text-body:       #bb90cc;
+  --sp-text-meta:       #7050a0;
+  --sp-text-muted:      #8a50aa;
+  --sp-icon-bg:         rgba(224, 112, 255, 0.08);
+  --sp-icon-border:     rgba(224, 112, 255, 0.25);
+  --sp-chip-bg:         #160e1e;
+  --sp-chip-text:       #bb88dd;
+  --sp-chip-active-bg:  rgba(224, 112, 255, 0.06);
+  --sp-chip-active-text: #e070ff;
+}
+
+
+/* ─── 5. BLACK MARKET DATA DUMP ─── */
+/* Chrome silver + electric neon + hot magenta */
+
+.ncm-preset-black-market {
+  --sp-bg-deep:         #0c0d0e;
+  --sp-bg-base:         #10111a;
+  --sp-bg-surface:      #14161e;
+  --sp-bg-elevated:     #1c1e28;
+  --sp-border:          #353840;
+  --sp-bar:             linear-gradient(90deg, transparent, #606878 10%, #b0b8cc 30%, #e0e8f0 50%, #b0b8cc 70%, #606878 90%, transparent);
+  --sp-shadow:          0 0 50px rgba(0,0,0,0.5), 0 0 3px rgba(180,190,210,0.06);
+  --sp-accent:          #c0c8d8;
+  --sp-accent-2:        #00e5ff;
+  --sp-accent-glow:     rgba(192, 200, 216, 0.06);
+  --sp-text-bright:     #eef0f5;
+  --sp-text-body:       #a0a8bb;
+  --sp-text-meta:       #606878;
+  --sp-text-muted:      #606878;
+  --sp-icon-bg:         rgba(192, 200, 216, 0.06);
+  --sp-icon-border:     rgba(192, 200, 216, 0.2);
+  --sp-chip-bg:         #181a22;
+  --sp-chip-text:       #a0a8bb;
+  --sp-chip-active-bg:  rgba(0, 229, 255, 0.05);
+  --sp-chip-active-text: #00e5ff;
+}
+
+
+/* ─── 6. PERSONAL MEMORY ─── */
+/* Warm amber + soft rose + sky blue */
+
+.ncm-preset-personal-memory {
+  --sp-bg-deep:         #0f0c08;
+  --sp-bg-base:         #120e08;
+  --sp-bg-surface:      #15120a;
+  --sp-bg-elevated:     #1e1a10;
+  --sp-border:          #3a2a18;
+  --sp-bar:             linear-gradient(90deg, transparent, #d09040 15%, #f0b860 40%, #e0a0a0 70%, transparent);
+  --sp-shadow:          0 0 50px rgba(0,0,0,0.5), 0 0 3px rgba(232,168,74,0.06);
+  --sp-accent:          #f0b860;
+  --sp-accent-2:        #e0a0a0;
+  --sp-accent-glow:     rgba(240, 184, 96, 0.08);
+  --sp-text-bright:     #f8f0e0;
+  --sp-text-body:       #c8a878;
+  --sp-text-meta:       #808090;
+  --sp-text-muted:      #8a7040;
+  --sp-icon-bg:         rgba(240, 184, 96, 0.08);
+  --sp-icon-border:     rgba(240, 184, 96, 0.25);
+  --sp-chip-bg:         #1a1408;
+  --sp-chip-text:       #cc9860;
+  --sp-chip-active-bg:  rgba(240, 184, 96, 0.06);
+  --sp-chip-active-text: #f0b860;
+}
+
+
+/* ─── 7. MEDIA LEAK ─── */
+/* Electric blue + alert red + white + amber */
+
+.ncm-preset-media-leak {
+  --sp-bg-deep:         #08090f;
+  --sp-bg-base:         #0a0c14;
+  --sp-bg-surface:      #0e1018;
+  --sp-bg-elevated:     #141820;
+  --sp-border:          #1a2a4a;
+  --sp-bar:             linear-gradient(90deg, transparent, #2a6acc 10%, #60b0ff 40%, #ffffff 50%, #ff4040 60%, #cc2020 90%, transparent);
+  --sp-shadow:          0 0 50px rgba(0,0,0,0.5), 0 0 3px rgba(60,140,240,0.08);
+  --sp-accent:          #60b0ff;
+  --sp-accent-2:        #ff5050;
+  --sp-accent-glow:     rgba(96, 176, 255, 0.08);
+  --sp-text-bright:     #e8f0f8;
+  --sp-text-body:       #90b0dd;
+  --sp-text-meta:       #607898;
+  --sp-text-muted:      #4070aa;
+  --sp-icon-bg:         rgba(96, 176, 255, 0.08);
+  --sp-icon-border:     rgba(96, 176, 255, 0.25);
+  --sp-chip-bg:         #0e1220;
+  --sp-chip-text:       #70a0dd;
+  --sp-chip-active-bg:  rgba(96, 176, 255, 0.06);
+  --sp-chip-active-text: #60b0ff;
+}
+
+
+/* ─── 8. NETWATCH EVIDENCE ─── */
+/* Authority purple + badge red + gold */
+
+.ncm-preset-netwatch-evidence {
+  --sp-bg-deep:         #0a080c;
+  --sp-bg-base:         #0c0a10;
+  --sp-bg-surface:      #10101a;
+  --sp-bg-elevated:     #181420;
+  --sp-border:          #2a2040;
+  --sp-bar:             linear-gradient(90deg, #dd3030 0%, #dd3030 46%, #444 48%, #444 52%, #3050cc 54%, #3050cc 100%);
+  --sp-shadow:          0 0 50px rgba(0,0,0,0.5), 0 0 3px rgba(120,70,200,0.06);
+  --sp-accent:          #aa88ee;
+  --sp-accent-2:        #e0b040;
+  --sp-accent-glow:     rgba(140, 100, 220, 0.1);
+  --sp-text-bright:     #e8e0f0;
+  --sp-text-body:       #a098cc;
+  --sp-text-meta:       #607090;
+  --sp-text-muted:      #6a50aa;
+  --sp-icon-bg:         rgba(140, 100, 220, 0.1);
+  --sp-icon-border:     rgba(140, 100, 220, 0.3);
+  --sp-chip-bg:         #14101c;
+  --sp-chip-text:       #a088cc;
+  --sp-chip-active-bg:  rgba(140, 100, 220, 0.06);
+  --sp-chip-active-text: #aa88ee;
+}

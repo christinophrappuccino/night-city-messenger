@@ -110,7 +110,7 @@
         <i class="fas fa-chevron-down"></i> Index
       </div>
       {{#each indexChips}}
-        <div class="ncm-shard-index-chip {{#if isActive}}ncm-shard-index-chip--active{{/if}} {{#if isHidden}}ncm-shard-index-chip--hidden{{/if}}"
+        <div class="ncm-shard-index-chip {{accentClass}} {{#if isActive}}ncm-shard-index-chip--active{{/if}} {{#if isHidden}}ncm-shard-index-chip--hidden{{/if}}"
              data-action="scrollToEntry" data-entry-id="{{id}}">
           <i class="{{iconClass}} ncm-shard-index-chip-icon" style="color:{{iconColor}};"></i>
           <span class="ncm-shard-index-chip-title">{{#if isHidden}}Hidden{{else}}{{title}}{{/if}}</span>

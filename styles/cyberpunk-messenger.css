@@ -28,6 +28,7 @@
 
 /* Themes — preset color overrides */
 @import 'themes/presets.css';
+@import 'themes/shard-presets.css';
 
 /* Components — feature-specific UI styles */
 @import 'components/message-viewer.css';

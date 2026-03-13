@@ -71,6 +71,7 @@ export class DataShardComposer extends BaseApplication {
   _selectedAccent = 'cyan';
 
   get dataShardService() { return game.nightcity?.dataShardService; }
+  get networkService() { return game.nightcity?.networkService; }
 
   static DEFAULT_OPTIONS = foundry.utils.mergeObject(super.DEFAULT_OPTIONS, {
     id: 'ncm-data-shard-composer',
@@ -87,6 +88,9 @@ export class DataShardComposer extends BaseApplication {
       removeDossierSection: DataShardComposer._onRemoveDossierSection,
       addTranscriptLine: DataShardComposer._onAddTranscriptLine,
       removeTranscriptLine: DataShardComposer._onRemoveTranscriptLine,
+      browseImage: DataShardComposer._onBrowseImage,
+      addEntryNetworkTag: DataShardComposer._onAddEntryNetworkTag,
+      removeEntryNetworkTag: DataShardComposer._onRemoveEntryNetworkTag,
     },
   }, { inplace: false });
 
@@ -161,6 +165,9 @@ export class DataShardComposer extends BaseApplication {
 
       // Shared
       defaultTimestamp: new Date().toISOString().replace(/\.\d{3}Z$/, ''),
+
+      // Networks (for visibility restriction)
+      networkOptions: (this.networkService?.getAllNetworks() ?? []).map(n => ({ value: n.id, label: n.name })),
     };
   }
 
@@ -219,7 +226,7 @@ export class DataShardComposer extends BaseApplication {
       encryptionDC: parseInt(data.encryptionDC) || undefined,
       networkVisibility: {
         restricted: !!data.networkRestricted,
-        allowedNetworks: [],
+        allowedNetworks: Array.from(this.element?.querySelectorAll('[name="entryAllowedNetwork"]') ?? []).map(el => el.value).filter(Boolean),
         allowedTypes: [],
       },
       contentData: {},
@@ -407,4 +414,58 @@ export class DataShardComposer extends BaseApplication {
   // ═══════════════════════════════════════════════════════════
 
   static _onCancel(event, target) { this.close(); }
+
+  static _onBrowseImage(event, target) {
+    const targetInput = target.dataset.target;
+    if (!targetInput) return;
+    const input = this.element?.querySelector(`[name="${targetInput}"]`);
+    new FilePicker({
+      type: 'image',
+      current: input?.value || '',
+      callback: (path) => { if (input) input.value = path; },
+    }).render(true);
+  }
+
+  static _onAddEntryNetworkTag(event, target) {
+    const select = this.element?.querySelector('#ncm-add-entry-network-select');
+    const value = select?.value;
+    if (!value) return;
+    const label = select.options[select.selectedIndex]?.text || value;
+    const container = this.element?.querySelector('#ncm-entry-network-tags');
+    if (!container) return;
+
+    // Don't add duplicates
+    if (container.querySelector(`[data-value="${value}"]`)) return;
+
+    const tag = document.createElement('div');
+    tag.classList.add('ncm-tag');
+    tag.dataset.value = value;
+    tag.innerHTML = `<span>${label}</span>
+      <button type="button" class="ncm-tag__remove" data-action="removeEntryNetworkTag" data-value="${value}"><i class="fas fa-times"></i></button>
+      <input type="hidden" name="entryAllowedNetwork" value="${value}" />`;
+    container.appendChild(tag);
+
+    // Remove from dropdown
+    const opt = select.querySelector(`option[value="${value}"]`);
+    if (opt) opt.remove();
+    select.value = '';
+  }
+
+  static _onRemoveEntryNetworkTag(event, target) {
+    const value = target.dataset.value || target.closest('[data-value]')?.dataset.value;
+    if (!value) return;
+    const tag = this.element?.querySelector(`#ncm-entry-network-tags [data-value="${value}"]`);
+    if (tag) {
+      const label = tag.querySelector('span')?.textContent || value;
+      tag.remove();
+      // Re-add to dropdown
+      const select = this.element?.querySelector('#ncm-add-entry-network-select');
+      if (select) {
+        const opt = document.createElement('option');
+        opt.value = value;
+        opt.textContent = label;
+        select.appendChild(opt);
+      }
+    }
+  }
 }

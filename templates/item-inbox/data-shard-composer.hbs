@@ -134,6 +134,11 @@
         </select>
       </div>
       <div class="ncm-config-hint">Linking an actor auto-pulls their portrait. Leave unlinked for a silhouette.</div>
+      <div class="ncm-config-row">
+        <label class="ncm-config-label">Portrait</label>
+        <input type="text" name="dossierPortrait" class="ncm-config-input ncm-config-flex" placeholder="Path to custom portrait (overrides actor)" />
+        <button type="button" data-action="browseImage" data-target="dossierPortrait" class="ncm-shard-hdr-btn" title="Browse"><i class="fas fa-folder-open"></i></button>
+      </div>
     </fieldset>
 
     <fieldset class="ncm-config-section">
@@ -344,7 +349,19 @@
     <div class="ncm-config-row">
       <label class="ncm-config-check"><input type="checkbox" name="networkRestricted" /> Restrict to specific networks</label>
     </div>
-    <div class="ncm-config-hint">When restricted, this entry only appears when the reader is connected to specific networks.</div>
+    <div class="ncm-config-row ncm-config-row--col">
+      <div class="ncm-tag-list" id="ncm-entry-network-tags"></div>
+      <div class="ncm-config-row" style="margin-top:4px;">
+        <select class="ncm-config-select ncm-config-flex" id="ncm-add-entry-network-select">
+          <option value="">— Add Network —</option>
+          {{#each networkOptions}}
+            <option value="{{value}}">{{label}}</option>
+          {{/each}}
+        </select>
+        <button type="button" data-action="addEntryNetworkTag" class="ncm-shard-hdr-btn" title="Add network"><i class="fas fa-plus"></i></button>
+      </div>
+    </div>
+    <div class="ncm-config-hint">When restricted, this entry only appears on selected networks.</div>
   </fieldset>
 
   {{!-- ═══ ACTIONS ═══ --}}

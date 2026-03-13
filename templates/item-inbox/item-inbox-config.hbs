@@ -1,11 +1,8 @@
 {{!--
-  Item Inbox Config — Sprint 4.6 Expanded GM Configuration
+  Item Inbox Config — Sprint 4.6 + Batch A Polish
   File: templates/item-inbox/item-inbox-config.hbs
-  Module: cyberpunkred-messenger
-  Mockup: ncm-shard-composer-config-v2.html (Config view)
-
-  13 sections: Preset, Metadata, Encryption, Skills, Failure,
-  Login, Key Item, Network, Tracing, Integrity, Expiration, Boot, Linked Shards.
+  Fixes: #2 preset layout, #3 network +/- chips, #3.5 skill layout,
+  #5 icon mode toggle (FA/Image/Item) with color, #6 notifications cleanup
 --}}
 
 {{#if hasItem}}
@@ -15,17 +12,14 @@
   <fieldset class="ncm-config-section">
     <legend class="ncm-config-legend"><i class="fas fa-palette"></i> Preset & Identity</legend>
     <div class="ncm-config-row">
-      <label class="ncm-config-label">Preset</label>
       <select name="preset" class="ncm-config-select ncm-config-flex">
         {{#each presetOptions}}
           <option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>
         {{/each}}
       </select>
-      <button type="button" data-action="applyPreset" class="ncm-shard-btn ncm-shard-btn--secondary" title="Apply preset defaults">
-        <i class="fas fa-download"></i> Apply
-      </button>
+      <button type="button" data-action="applyPreset" class="ncm-shard-hdr-btn" title="Apply preset defaults"><i class="fas fa-download"></i></button>
     </div>
-    <div class="ncm-config-hint">Applying a preset loads default theme, security, and boot settings. You can customize after.</div>
+    <div class="ncm-config-hint">Applying a preset loads default theme, security, and boot settings.</div>
     <div class="ncm-config-row">
       <label class="ncm-config-label">Display Name</label>
       <input type="text" name="shardName" class="ncm-config-input ncm-config-flex" value="{{shardName}}" placeholder="Leave empty to use item name" />
@@ -49,7 +43,7 @@
     </div>
     <div class="ncm-config-row">
       <label class="ncm-config-label">Timestamp</label>
-      <input type="text" name="metaTimestamp" class="ncm-config-input ncm-config-flex" value="{{metaTimestamp}}" placeholder="In-world date (e.g. 2045-03-15T03:00:00)" />
+      <input type="text" name="metaTimestamp" class="ncm-config-input ncm-config-flex" value="{{metaTimestamp}}" placeholder="2045-03-15T03:00:00" />
     </div>
     <div class="ncm-config-row">
       <label class="ncm-config-label">Classification</label>
@@ -89,8 +83,8 @@
       {{#each skillEntries}}
         <div class="ncm-skill-entry" data-skill="{{name}}">
           <span class="ncm-skill-name">{{name}} <small>({{stat}})</small></span>
-          <label>DV: <input type="number" name="skillDC-{{name}}" value="{{dc}}" min="1" max="30" class="ncm-skill-dc ncm-config-input ncm-config-short" /></label>
-          <button type="button" class="ncm-shard-hdr-btn" data-action="removeSkill" data-skill="{{name}}" title="Remove"><i class="fas fa-times"></i></button>
+          <label class="ncm-skill-dv-label">DV: <input type="number" name="skillDC-{{name}}" value="{{dc}}" min="1" max="30" class="ncm-skill-dc ncm-config-input ncm-config-short" /></label>
+          <button type="button" class="ncm-shard-hdr-btn ncm-shard-hdr-btn--danger" data-action="removeSkill" data-skill="{{name}}" title="Remove"><i class="fas fa-times"></i></button>
         </div>
       {{/each}}
     </div>
@@ -99,7 +93,7 @@
         <option value="">— Add Skill —</option>
         {{#each allSkills}}<option value="{{this}}">{{this}}</option>{{/each}}
       </select>
-      <button type="button" data-action="addSkill" class="ncm-shard-btn ncm-shard-btn--primary" style="padding:4px 10px;"><i class="fas fa-plus"></i></button>
+      <button type="button" data-action="addSkill" class="ncm-shard-hdr-btn" title="Add skill"><i class="fas fa-plus"></i></button>
     </div>
   </fieldset>
 
@@ -122,7 +116,7 @@
     </div>
   </fieldset>
 
-  {{!-- ═══ 6. LOGIN AUTHENTICATION ═══ --}}
+  {{!-- ═══ 6. LOGIN ═══ --}}
   <fieldset class="ncm-config-section">
     <legend class="ncm-config-legend"><i class="fas fa-terminal"></i> Login Authentication</legend>
     <div class="ncm-config-row">
@@ -161,10 +155,6 @@
       <input type="text" name="keyItemId" class="ncm-config-input ncm-config-flex" value="{{keyItemId}}" placeholder="Foundry Item ID (optional)" />
     </div>
     <div class="ncm-config-row">
-      <label class="ncm-config-label">Tag</label>
-      <input type="text" name="keyItemTag" class="ncm-config-input ncm-config-flex" value="{{keyItemTag}}" placeholder="Custom tag (optional)" />
-    </div>
-    <div class="ncm-config-row">
       <label class="ncm-config-label">Display Name</label>
       <input type="text" name="keyItemDisplayName" class="ncm-config-input ncm-config-flex" value="{{keyItemDisplayName}}" placeholder="Access Token" />
     </div>
@@ -191,23 +181,40 @@
         {{#each accessModeOptions}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}
       </select>
     </div>
-    <div class="ncm-config-row ncm-config-row--wrap">
+    <div class="ncm-config-row ncm-config-row--col">
+      <label class="ncm-config-label" style="margin-bottom:4px;">Whitelisted Networks</label>
+      <div class="ncm-tag-list" id="ncm-network-tags">
+        {{#each networkOptions}}
+          {{#if selected}}
+            <div class="ncm-tag" data-value="{{value}}">
+              <span>{{label}}</span>
+              <button type="button" class="ncm-tag__remove" data-action="removeNetworkTag" data-value="{{value}}"><i class="fas fa-times"></i></button>
+              <input type="hidden" name="allowedNetwork" value="{{value}}" />
+            </div>
+          {{/if}}
+        {{/each}}
+      </div>
+      <div class="ncm-config-row" style="margin-top:4px;">
+        <select class="ncm-config-select ncm-config-flex" id="ncm-add-network-select">
+          <option value="">— Add Network —</option>
+          {{#each networkOptions}}
+            {{#unless selected}}<option value="{{value}}">{{label}}</option>{{/unless}}
+          {{/each}}
+        </select>
+        <button type="button" data-action="addNetworkTag" class="ncm-shard-hdr-btn" title="Add network"><i class="fas fa-plus"></i></button>
+      </div>
+    </div>
+    <div class="ncm-config-row ncm-config-row--wrap" style="margin-top:6px;">
       <label class="ncm-config-label" style="width:100%;">Allowed Types</label>
       {{#each networkTypeChecks}}
         <label class="ncm-config-check"><input type="checkbox" name="allowedType" value="{{value}}" {{#if checked}}checked{{/if}} /> {{label}}</label>
       {{/each}}
     </div>
-    <div class="ncm-config-row ncm-config-row--wrap">
-      <label class="ncm-config-label" style="width:100%;">Whitelisted Networks</label>
-      {{#each networkOptions}}
-        <label class="ncm-config-check"><input type="checkbox" name="allowedNetwork" value="{{value}}" {{#if selected}}checked{{/if}} /> {{label}}</label>
-      {{/each}}
-    </div>
-    <div class="ncm-config-row">
+    <div class="ncm-config-row" style="margin-top:6px;">
       <label class="ncm-config-label">Connection</label>
       <select name="connectionMode" class="ncm-config-select ncm-config-flex">
-        <option value="offline" {{#if connectionModeOffline}}selected{{/if}}>Offline (data on chip, checked once)</option>
-        <option value="tethered" {{#if connectionModeTethered}}selected{{/if}}>Tethered (live connection required)</option>
+        <option value="offline" {{#if connectionModeOffline}}selected{{/if}}>Offline (checked once)</option>
+        <option value="tethered" {{#if connectionModeTethered}}selected{{/if}}>Tethered (live connection)</option>
       </select>
     </div>
     <div class="ncm-config-row">
@@ -216,7 +223,7 @@
     </div>
     <div class="ncm-config-row ncm-config-row--wrap">
       <label class="ncm-config-check"><input type="checkbox" name="signalDVModifier" {{#if signalDVModifier}}checked{{/if}} /> Signal affects DV</label>
-      <label class="ncm-config-check"><input type="checkbox" name="signalDegradation" {{#if signalDegradation}}checked{{/if}} /> Signal visual degradation</label>
+      <label class="ncm-config-check"><input type="checkbox" name="signalDegradation" {{#if signalDegradation}}checked{{/if}} /> Signal degradation</label>
     </div>
   </fieldset>
 
@@ -230,8 +237,8 @@
       <label class="ncm-config-label">Mode</label>
       <select name="tracingMode" class="ncm-config-select ncm-config-flex">
         <option value="silent" {{#if tracingModeSilent}}selected{{/if}}>Silent (GM only)</option>
-        <option value="warned" {{#if tracingModeWarned}}selected{{/if}}>Warned (ambiguous alert)</option>
-        <option value="visible" {{#if tracingModeVisible}}selected{{/if}}>Visible (full disclosure)</option>
+        <option value="warned" {{#if tracingModeWarned}}selected{{/if}}>Warned (ambiguous)</option>
+        <option value="visible" {{#if tracingModeVisible}}selected{{/if}}>Visible (full)</option>
       </select>
     </div>
     <div class="ncm-config-row">
@@ -240,12 +247,11 @@
         <option value="access" {{#if (eq tracingTriggerOn 'access')}}selected{{/if}}>Any access</option>
         <option value="hack-attempt" {{#if (eq tracingTriggerOn 'hack-attempt')}}selected{{/if}}>Hack attempt</option>
         <option value="hack-fail" {{#if (eq tracingTriggerOn 'hack-fail')}}selected{{/if}}>Hack failure only</option>
-        <option value="any" {{#if (eq tracingTriggerOn 'any')}}selected{{/if}}>Any interaction</option>
       </select>
     </div>
     <div class="ncm-config-row ncm-config-row--wrap">
-      <label class="ncm-config-check"><input type="checkbox" name="tracingRevealIdentity" {{#if tracingRevealIdentity}}checked{{/if}} /> Reveal accessor identity</label>
-      <label class="ncm-config-check"><input type="checkbox" name="tracingRevealLocation" {{#if tracingRevealLocation}}checked{{/if}} /> Reveal accessor location</label>
+      <label class="ncm-config-check"><input type="checkbox" name="tracingRevealIdentity" {{#if tracingRevealIdentity}}checked{{/if}} /> Reveal identity</label>
+      <label class="ncm-config-check"><input type="checkbox" name="tracingRevealLocation" {{#if tracingRevealLocation}}checked{{/if}} /> Reveal location</label>
     </div>
   </fieldset>
 
@@ -253,17 +259,17 @@
   <fieldset class="ncm-config-section">
     <legend class="ncm-config-legend"><i class="fas fa-heart-crack"></i> Integrity</legend>
     <div class="ncm-config-row">
-      <label class="ncm-config-check"><input type="checkbox" name="integrityEnabled" {{#if integrityEnabled}}checked{{/if}} /> Enable Integrity System</label>
+      <label class="ncm-config-check"><input type="checkbox" name="integrityEnabled" {{#if integrityEnabled}}checked{{/if}} /> Enable Integrity</label>
     </div>
     <div class="ncm-config-row">
       <label class="ncm-config-label">Mode</label>
       <select name="integrityMode" class="ncm-config-select ncm-config-flex">
-        <option value="cosmetic" {{#if integrityModeCosmetic}}selected{{/if}}>Cosmetic Only (visual damage)</option>
-        <option value="mechanical" {{#if integrityModeMechanical}}selected{{/if}}>Cosmetic + Mechanical (data corruption)</option>
+        <option value="cosmetic" {{#if integrityModeCosmetic}}selected{{/if}}>Cosmetic Only</option>
+        <option value="mechanical" {{#if integrityModeMechanical}}selected{{/if}}>Cosmetic + Mechanical</option>
       </select>
     </div>
     <div class="ncm-config-row">
-      <label class="ncm-config-label">Max Integrity</label>
+      <label class="ncm-config-label">Max</label>
       <input type="number" name="integrityMax" class="ncm-config-input ncm-config-short" value="{{integrityMax}}" min="10" max="100" />
     </div>
     <div class="ncm-config-row">
@@ -273,7 +279,7 @@
     <div class="ncm-config-row">
       <label class="ncm-config-label">Corrupt Below</label>
       <input type="number" name="integrityCorruptionThreshold" class="ncm-config-input ncm-config-short" value="{{integrityCorruptionThreshold}}" min="0" max="100" />
-      <label class="ncm-config-label" style="min-width:auto;">Chance %</label>
+      <label class="ncm-config-label" style="min-width:auto;">%</label>
       <input type="number" name="integrityCorruptionChance" class="ncm-config-input ncm-config-short" value="{{integrityCorruptionChance}}" min="0" max="100" step="5" />
     </div>
   </fieldset>
@@ -287,9 +293,9 @@
     <div class="ncm-config-row">
       <label class="ncm-config-label">Mode</label>
       <select name="expirationMode" class="ncm-config-select ncm-config-flex">
-        <option value="timer" {{#if expirationModeTimer}}selected{{/if}}>Timer (countdown from first access)</option>
-        <option value="calendar" {{#if expirationModeCalendar}}selected{{/if}}>Calendar (SimpleCalendar date)</option>
-        <option value="on-access" {{#if expirationModeAccess}}selected{{/if}}>On-Access (wipe after N reads)</option>
+        <option value="timer" {{#if expirationModeTimer}}selected{{/if}}>Timer</option>
+        <option value="calendar" {{#if expirationModeCalendar}}selected{{/if}}>Calendar</option>
+        <option value="on-access" {{#if expirationModeAccess}}selected{{/if}}>On-Access</option>
       </select>
     </div>
     <div class="ncm-config-row">
@@ -308,33 +314,68 @@
     <div class="ncm-config-row">
       <label class="ncm-config-check"><input type="checkbox" name="bootEnabled" {{#if bootEnabled}}checked{{/if}} /> Enable Boot Sequence</label>
     </div>
-    <div class="ncm-config-row">
-      <label class="ncm-config-label">Icon Mode</label>
-      <select name="bootIconMode" class="ncm-config-select ncm-config-flex">
-        <option value="fa" {{#if bootIconModeFa}}selected{{/if}}>FontAwesome Icon</option>
-        <option value="image" {{#if bootIconModeImage}}selected{{/if}}>Image Upload</option>
-      </select>
-    </div>
-    <div class="ncm-config-row ncm-config-row--col">
-      <label class="ncm-config-label" style="margin-bottom:4px;">Select Icon</label>
-      <div class="ncm-icon-grid" data-target="bootFaIcon">
-        {{#each bootIconOptions}}
-          <div class="ncm-icon-grid__item {{#if selected}}ncm-icon-grid__item--active{{/if}}"
-               data-action="selectIcon" data-icon="{{value}}" data-target="bootFaIcon" title="{{label}}">
-            <i class="{{value}}"></i>
-          </div>
-        {{/each}}
+    <div class="ncm-icon-mode-group" data-active-mode="{{bootIconModeValue}}">
+      <div class="ncm-config-row">
+        <label class="ncm-config-label">Icon Source</label>
+        <select name="bootIconMode" class="ncm-config-select ncm-config-flex" data-action="changeIconMode" data-group="bootIcon">
+          <option value="fa" {{#if bootIconModeFa}}selected{{/if}}>FontAwesome</option>
+          <option value="image" {{#if bootIconModeImage}}selected{{/if}}>Image</option>
+          <option value="item" {{#if bootIconModeItem}}selected{{/if}}>Item Default</option>
+        </select>
       </div>
-      <input type="hidden" name="bootFaIcon" value="{{bootFaIconCustom}}" />
-    </div>
-    <div class="ncm-config-row">
-      <label class="ncm-config-label">Image</label>
-      <input type="text" name="bootImageUrl" class="ncm-config-input ncm-config-flex" value="{{bootImageUrl}}" placeholder="Path to image" />
-      <button type="button" data-action="browseImage" data-target="bootImageUrl" class="ncm-shard-hdr-btn" title="Browse files"><i class="fas fa-folder-open"></i></button>
-    </div>
-    <div class="ncm-config-row">
-      <label class="ncm-config-label">Image Size</label>
-      <input type="number" name="bootImageSize" class="ncm-config-input ncm-config-short" value="{{bootImageSize}}" min="32" max="128" />
+      <div class="ncm-icon-section ncm-icon-section--fa">
+        <div class="ncm-config-row ncm-config-row--col">
+          <label class="ncm-config-label" style="margin-bottom:4px;">Select Icon</label>
+          <div class="ncm-icon-grid" data-target="bootFaIcon">
+            {{#each bootIconOptions}}
+              <div class="ncm-icon-grid__item {{#if selected}}ncm-icon-grid__item--active{{/if}}"
+                   data-action="selectIcon" data-icon="{{value}}" data-target="bootFaIcon" title="{{label}}">
+                <i class="{{value}}"></i>
+              </div>
+            {{/each}}
+          </div>
+          <input type="hidden" name="bootFaIcon" value="{{bootFaIconCustom}}" />
+        </div>
+        <div class="ncm-config-row">
+          <label class="ncm-config-label">Custom FA</label>
+          <input type="text" name="bootFaIconManual" class="ncm-config-input ncm-config-flex" value="" placeholder="fas fa-custom (fontawesome.com)" />
+        </div>
+        <div class="ncm-config-row">
+          <label class="ncm-config-label">Icon Color</label>
+          <div class="ncm-icon-color-row">
+            {{#each iconColorOptions}}
+              <div class="ncm-icon-color-dot {{#if isActive}}ncm-icon-color-dot--active{{/if}}" style="background:{{hex}};"
+                   data-action="selectIconColor" data-color="{{hex}}" data-target="bootIconColor"></div>
+            {{/each}}
+          </div>
+          <input type="hidden" name="bootIconColor" value="{{bootIconColor}}" />
+        </div>
+      </div>
+      <div class="ncm-icon-section ncm-icon-section--image">
+        <div class="ncm-config-row">
+          <label class="ncm-config-label">Image</label>
+          <input type="text" name="bootImageUrl" class="ncm-config-input ncm-config-flex" value="{{bootImageUrl}}" placeholder="Path to image" />
+          <button type="button" data-action="browseImage" data-target="bootImageUrl" class="ncm-shard-hdr-btn" title="Browse"><i class="fas fa-folder-open"></i></button>
+        </div>
+        <div class="ncm-config-row">
+          <label class="ncm-config-label">Size (px)</label>
+          <input type="number" name="bootImageSize" class="ncm-config-input ncm-config-short" value="{{bootImageSize}}" min="32" max="128" />
+        </div>
+        <div class="ncm-config-row">
+          <label class="ncm-config-label">Tint</label>
+          <div class="ncm-icon-color-row">
+            {{#each iconColorOptions}}
+              <div class="ncm-icon-color-dot {{#if isActive}}ncm-icon-color-dot--active{{/if}}" style="background:{{hex}};"
+                   data-action="selectIconColor" data-color="{{hex}}" data-target="bootImageTint"></div>
+            {{/each}}
+          </div>
+          <input type="hidden" name="bootImageTint" value="{{bootImageTint}}" />
+        </div>
+        <div class="ncm-config-hint">SVGs can be tinted. PNGs display as-is.</div>
+      </div>
+      <div class="ncm-icon-section ncm-icon-section--item">
+        <div class="ncm-config-hint">Uses the item's default Foundry image.</div>
+      </div>
     </div>
     <div class="ncm-config-row">
       <label class="ncm-config-label">Title</label>
@@ -361,7 +402,6 @@
       <label class="ncm-config-label">Custom (sec)</label>
       <input type="number" name="bootCustomSeconds" class="ncm-config-input ncm-config-short" value="{{bootCustomSeconds}}" min="0.5" max="30" step="0.5" placeholder="e.g. 6" />
     </div>
-    <div class="ncm-config-hint">Custom overrides the speed dropdown. Enter time in seconds.</div>
     <div class="ncm-config-row ncm-config-row--col">
       <label class="ncm-config-label" style="margin-bottom:4px;">Boot Log Lines</label>
       <div class="ncm-boot-log-list">
@@ -378,25 +418,26 @@
     </div>
   </fieldset>
 
-  {{!-- ═══ 13. LINKED SHARDS (shell) ═══ --}}
+  {{!-- ═══ 13. LINKED SHARDS ═══ --}}
   <fieldset class="ncm-config-section">
     <legend class="ncm-config-legend"><i class="fas fa-link"></i> Linked Shards</legend>
-    <div class="ncm-config-hint">Create breadcrumb chains between shards for multi-shard puzzle trails. (Full implementation in Phase D)</div>
+    <div class="ncm-config-hint">Breadcrumb chains between shards. (Phase D)</div>
     <div class="ncm-config-row">
       <label class="ncm-config-label">Links To</label>
       <input type="text" name="linkedShardId" class="ncm-config-input ncm-config-flex" placeholder="Shard item ID or name" />
     </div>
   </fieldset>
 
-  {{!-- ═══ NOTIFICATIONS ═══ --}}
+  {{!-- ═══ NOTIFICATIONS & DISPLAY ═══ --}}
   <fieldset class="ncm-config-section">
-    <legend class="ncm-config-legend"><i class="fas fa-bell"></i> Notifications</legend>
-    <div class="ncm-config-row ncm-config-row--wrap">
-      <label class="ncm-config-check"><input type="checkbox" name="notifyGM" {{#if notifyGM}}checked{{/if}} /> GM whisper on access</label>
-      <label class="ncm-config-check"><input type="checkbox" name="notifyContact" {{#if notifyContact}}checked{{/if}} /> NPC contact notification</label>
+    <legend class="ncm-config-legend"><i class="fas fa-bell"></i> Notifications & Display</legend>
+    <div class="ncm-config-row ncm-config-row--col" style="gap:4px;">
+      <label class="ncm-config-label" style="margin-bottom:2px;">GM Notifications</label>
+      <label class="ncm-config-check"><input type="checkbox" name="notifyGM" {{#if notifyGM}}checked{{/if}} /> Whisper to GM on player access</label>
+      <label class="ncm-config-check"><input type="checkbox" name="notifyContact" {{#if notifyContact}}checked{{/if}} /> NPC contact notification on access</label>
     </div>
-    <div class="ncm-config-row">
-      <label class="ncm-config-label">Display</label>
+    <div class="ncm-config-row ncm-config-row--col" style="gap:4px;margin-top:6px;">
+      <label class="ncm-config-label" style="margin-bottom:2px;">Display Mode</label>
       <label class="ncm-config-check"><input type="checkbox" name="singleMessage" {{#if singleMessage}}checked{{/if}} /> Single entry mode (no list)</label>
     </div>
   </fieldset>

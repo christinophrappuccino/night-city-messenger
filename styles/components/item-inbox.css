@@ -36,22 +36,21 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: var(--ncm-bg-deep, #0a0a0f);
-  color: var(--ncm-text-primary, #e0e0e8);
+  background: var(--sp-bg-deep);
+  color: var(--sp-text-bright);
   font-family: var(--ncm-font-body, 'Rajdhani', sans-serif);
   overflow: hidden;
   position: relative;
+  box-shadow: var(--sp-shadow);
 }
 
-/* Top accent bar — primary red, not rainbow (hardware device feel) */
+/* Top accent bar — preset gradient */
 .ncm-app .ncm-item-inbox::before {
   content: '';
   position: absolute;
   top: 0; left: 0; right: 0;
   height: 2px;
-  background: linear-gradient(90deg,
-    transparent, var(--shard-accent, var(--ncm-color-primary, #F65261)) 15%,
-    var(--shard-accent, var(--ncm-color-primary, #F65261)) 85%, transparent);
+  background: var(--sp-bar);
   z-index: 10;
 }
 
@@ -74,8 +73,8 @@
 
 .ncm-app .ncm-shard-identity {
   padding: 14px 16px 12px;
-  background: var(--ncm-bg-base, #12121a);
-  border-bottom: 1px solid var(--ncm-border, #2a2a45);
+  background: var(--sp-bg-base);
+  border-bottom: 1px solid var(--sp-border);
   display: flex;
   gap: 14px;
   flex-shrink: 0;
@@ -85,8 +84,8 @@
 .ncm-app .ncm-shard-icon-block {
   width: 52px;
   height: 52px;
-  background: rgba(246, 82, 97, 0.08);
-  border: 1px solid rgba(246, 82, 97, 0.2);
+  background: var(--sp-icon-bg);
+  border: 1px solid var(--sp-icon-border);
   border-radius: 3px;
   display: flex;
   align-items: center;
@@ -94,7 +93,7 @@
   flex-shrink: 0;
 }
 
-.ncm-app .ncm-shard-icon-block i { font-size: 22px; color: var(--ncm-color-primary, #F65261); }
+.ncm-app .ncm-shard-icon-block i { font-size: 22px; color: var(--sp-accent); }
 .ncm-app .ncm-shard-icon-block .ncm-shard-icon-img { border-radius: 2px; object-fit: contain; }
 
 /* ICE-typed icon block variants */
@@ -115,14 +114,14 @@
 .ncm-app .ncm-shard-name {
   font-family: var(--ncm-font-body, 'Rajdhani', sans-serif);
   font-size: 17px; font-weight: 700;
-  color: var(--ncm-text-primary, #e0e0e8);
+  color: var(--sp-text-bright);
   line-height: 1.1;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
 .ncm-app .ncm-shard-type-line {
   font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 10px; color: var(--ncm-text-muted, #555570);
+  font-size: 10px; color: var(--sp-accent-2);
   display: flex; align-items: center; gap: 2px; letter-spacing: 0.03em;
 }
 
@@ -130,7 +129,7 @@
 
 .ncm-app .ncm-shard-provenance {
   font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 9px; color: var(--ncm-text-muted, #555570);
+  font-size: 9px; color: var(--sp-text-meta);
   opacity: 0.7; letter-spacing: 0.03em;
 }
 
@@ -257,39 +256,39 @@
 .ncm-app .ncm-shard-index-strip {
   display: flex; align-items: center;
   padding: 5px 12px; gap: 5px;
-  background: var(--ncm-bg-base, #12121a);
-  border-bottom: 1px solid var(--ncm-border, #2a2a45);
+  background: var(--sp-bg-base);
+  border-bottom: 1px solid var(--sp-border);
   overflow-x: auto; flex-shrink: 0;
 }
 
 .ncm-app .ncm-shard-index-strip::-webkit-scrollbar { height: 2px; }
-.ncm-app .ncm-shard-index-strip::-webkit-scrollbar-thumb { background: var(--ncm-border-active, #3a3a5a); }
+.ncm-app .ncm-shard-index-strip::-webkit-scrollbar-thumb { background: var(--sp-border); }
 
 .ncm-app .ncm-shard-index-strip--locked { opacity: 0.35; pointer-events: none; }
 
 .ncm-app .ncm-shard-index-toggle {
   font-family: var(--ncm-font-mono); font-size: 8px;
-  color: var(--ncm-text-muted); text-transform: uppercase;
+  color: var(--sp-text-muted); text-transform: uppercase;
   letter-spacing: 0.08em; display: flex; align-items: center; gap: 4px;
   flex-shrink: 0; padding-right: 8px;
-  border-right: 1px solid var(--ncm-border); margin-right: 2px;
+  border-right: 1px solid var(--sp-border); margin-right: 2px;
   cursor: pointer;
 }
-.ncm-app .ncm-shard-index-toggle i { font-size: 7px; color: var(--ncm-color-secondary); }
+.ncm-app .ncm-shard-index-toggle i { font-size: 7px; color: var(--sp-accent); }
 
 .ncm-app .ncm-shard-index-chip {
   display: flex; align-items: center; gap: 4px;
   padding: 3px 8px;
-  background: var(--ncm-bg-surface, #1a1a2e);
-  border: 1px solid var(--ncm-border, #2a2a45);
+  background: var(--sp-chip-bg);
+  border: 1px solid var(--sp-border);
   border-radius: 2px; cursor: pointer;
   transition: all 0.15s; flex-shrink: 0; max-width: 150px;
 }
-.ncm-app .ncm-shard-index-chip:hover { border-color: var(--ncm-border-active, #3a3a5a); }
+.ncm-app .ncm-shard-index-chip:hover { border-color: var(--sp-accent); }
 
 .ncm-app .ncm-shard-index-chip--active {
-  border-color: var(--ncm-color-secondary, #19f3f7);
-  background: rgba(25,243,247,0.06);
+  border-color: var(--sp-chip-active-text);
+  background: var(--sp-chip-active-bg);
 }
 
 .ncm-app .ncm-shard-index-chip--hidden { border-style: dashed; opacity: 0.35; cursor: not-allowed; }
@@ -298,11 +297,11 @@
 
 .ncm-app .ncm-shard-index-chip-title {
   font-family: var(--ncm-font-mono); font-size: 8px;
-  color: var(--ncm-text-secondary);
+  color: var(--sp-chip-text);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   letter-spacing: 0.02em;
 }
-.ncm-app .ncm-shard-index-chip--active .ncm-shard-index-chip-title { color: var(--ncm-color-secondary); }
+.ncm-app .ncm-shard-index-chip--active .ncm-shard-index-chip-title { color: var(--sp-chip-active-text); }
 
 
 /* ═══════════════════════════════════════════
@@ -329,14 +328,14 @@
    ═══════════════════════════════════════════ */
 
 .ncm-app .ncm-entry-card {
-  background: var(--ncm-bg-surface, #1a1a2e);
-  border: 1px solid var(--ncm-border, #2a2a45);
+  background: var(--sp-bg-surface);
+  border: 1px solid var(--sp-border);
   border-radius: 3px; overflow: hidden;
   transition: border-color 0.15s;
 }
-.ncm-app .ncm-entry-card:hover { border-color: var(--ncm-border-active, #3a3a5a); }
+.ncm-app .ncm-entry-card:hover { border-color: var(--sp-accent); }
 
-/* Accent stripe variants (3px left border) */
+/* Accent stripe variants (3px left border) — per-entry, not per-preset */
 .ncm-app .ncm-entry-accent-red { border-left: 3px solid var(--ncm-color-primary, #F65261); }
 .ncm-app .ncm-entry-accent-gold { border-left: 3px solid #f7c948; }
 .ncm-app .ncm-entry-accent-cyan { border-left: 3px solid var(--ncm-color-secondary, #19f3f7); }
@@ -349,8 +348,8 @@
 .ncm-app .ncm-entry-header {
   display: flex; align-items: center; gap: 10px;
   padding: 8px 12px;
-  background: var(--ncm-bg-base, #12121a);
-  border-bottom: 1px solid var(--ncm-border);
+  background: var(--sp-bg-base);
+  border-bottom: 1px solid var(--sp-border);
 }
 
 /* Custom icon block (32px, accent-colored) */
@@ -372,31 +371,31 @@
 
 .ncm-app .ncm-entry-type-label {
   font-family: var(--ncm-font-mono); font-size: 8px;
-  color: var(--ncm-text-muted); text-transform: uppercase;
+  color: var(--sp-text-meta); text-transform: uppercase;
   letter-spacing: 0.1em;
 }
 
 .ncm-app .ncm-entry-title {
   font-family: var(--ncm-font-body); font-size: 14px;
-  font-weight: 600; color: var(--ncm-text-primary);
+  font-weight: 600; color: var(--sp-text-bright);
   line-height: 1.2;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
 .ncm-app .ncm-entry-timestamp {
   font-family: var(--ncm-font-mono); font-size: 9px;
-  color: var(--ncm-text-muted); flex-shrink: 0;
+  color: var(--sp-text-meta); flex-shrink: 0;
   letter-spacing: 0.03em;
 }
 
 /* Entry body */
 .ncm-app .ncm-entry-body { padding: 12px; }
-.ncm-app .ncm-entry-body p { font-family: var(--ncm-font-body); font-size: 13px; color: var(--ncm-text-secondary); line-height: 1.6; }
+.ncm-app .ncm-entry-body p { font-family: var(--ncm-font-body); font-size: 13px; color: var(--sp-text-body); line-height: 1.6; }
 
-.ncm-app .ncm-entry-from { font-family: var(--ncm-font-mono); font-size: 10px; color: var(--ncm-text-muted); margin-bottom: 6px; }
-.ncm-app .ncm-entry-from span { color: var(--ncm-color-secondary); }
+.ncm-app .ncm-entry-from { font-family: var(--ncm-font-mono); font-size: 10px; color: var(--sp-text-meta); margin-bottom: 6px; }
+.ncm-app .ncm-entry-from span { color: var(--sp-accent); }
 
-.ncm-app .ncm-entry-text { font-family: var(--ncm-font-body); font-size: 13px; color: var(--ncm-text-secondary); line-height: 1.6; }
+.ncm-app .ncm-entry-text { font-family: var(--ncm-font-body); font-size: 13px; color: var(--sp-text-body); line-height: 1.6; }
 
 
 /* ═══════════════════════════════════════════
@@ -676,14 +675,14 @@
 .ncm-app .ncm-shard-footer {
   display: flex; align-items: center;
   padding: 5px 12px;
-  background: var(--ncm-bg-base, #12121a);
-  border-top: 1px solid var(--ncm-border, #2a2a45);
+  background: var(--sp-bg-base);
+  border-top: 1px solid var(--sp-border);
   flex-shrink: 0; min-height: 28px; gap: 8px;
 }
 
 .ncm-app .ncm-shard-footer-text {
   font-family: var(--ncm-font-mono); font-size: 9px;
-  color: var(--ncm-text-muted); letter-spacing: 0.05em;
+  color: var(--sp-text-muted); letter-spacing: 0.05em;
 }
 
 .ncm-app .ncm-shard-footer-sep { margin: 0 4px; opacity: 0.3; }

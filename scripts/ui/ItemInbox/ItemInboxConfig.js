@@ -57,6 +57,10 @@ export class ItemInboxConfig extends BaseApplication {
       resetDefaults: ItemInboxConfig._onResetDefaults,
       selectIcon: ItemInboxConfig._onSelectIcon,
       browseImage: ItemInboxConfig._onBrowseImage,
+      addNetworkTag: ItemInboxConfig._onAddNetworkTag,
+      removeNetworkTag: ItemInboxConfig._onRemoveNetworkTag,
+      changeIconMode: ItemInboxConfig._onChangeIconMode,
+      selectIconColor: ItemInboxConfig._onSelectIconColor,
     },
   }, { inplace: false });
 
@@ -145,6 +149,20 @@ export class ItemInboxConfig extends BaseApplication {
       ...o, selected: boot.faIcon === o.value,
     }));
     const bootLogLines = boot.logLines ?? [];
+
+    // ─── Icon Color Palette (shared) ───
+    const ICON_COLORS = [
+      { key: 'red', hex: '#F65261' }, { key: 'cyan', hex: '#19f3f7' },
+      { key: 'gold', hex: '#f7c948' }, { key: 'green', hex: '#00ff41' },
+      { key: 'purple', hex: '#a855f7' }, { key: 'danger', hex: '#ff0033' },
+      { key: 'orange', hex: '#e88030' }, { key: 'white', hex: '#e0e0e8' },
+      { key: 'muted', hex: '#888888' },
+    ];
+    const bootIconColor = boot.iconColor || '';
+    const bootImageTint = boot.imageTint || '';
+    const iconColorOptions = ICON_COLORS.map(c => ({
+      ...c, isActive: bootIconColor === c.hex,
+    }));
 
     // ─── Legacy network compat ───
     const legacyNetworkOptions = networks.map(n => ({
@@ -243,6 +261,8 @@ export class ItemInboxConfig extends BaseApplication {
       bootEnabled: boot.enabled ?? true,
       bootIconModeFa: (boot.iconMode ?? 'fa') === 'fa',
       bootIconModeImage: (boot.iconMode ?? 'fa') === 'image',
+      bootIconModeItem: boot.iconMode === 'item',
+      bootIconModeValue: boot.iconMode ?? 'fa',
       bootIconOptions,
       bootFaIconCustom: boot.faIcon || '',
       bootImageUrl: boot.imageUrl || '',
@@ -258,6 +278,20 @@ export class ItemInboxConfig extends BaseApplication {
       bootCustomSeconds: boot.customSeconds ?? '',
       bootLogLines,
       hasBootLogLines: bootLogLines.length > 0,
+
+      // Icon colors (shared palette)
+      iconColorOptions,
+      bootIconColor,
+      bootImageTint,
+
+      // Key item icon
+      keyItemIconOptions: BOOT_ICON_OPTIONS.map(o => ({
+        ...o, selected: config.keyItemIcon === o.value,
+      })),
+      keyItemIconMode: 'fa',
+      keyItemIconModeFa: true,
+      keyItemIconModeImage: false,
+      keyItemImageUrl: config.keyItemImageUrl || '',
 
       // Display
       singleMessage: config.singleMessage,
@@ -386,9 +420,11 @@ export class ItemInboxConfig extends BaseApplication {
       boot: {
         enabled: !!data.bootEnabled,
         iconMode: data.bootIconMode || 'fa',
-        faIcon: data.bootFaIcon || 'fas fa-microchip',
+        faIcon: data.bootFaIconManual?.trim() || data.bootFaIcon || 'fas fa-microchip',
+        iconColor: data.bootIconColor || '',
         imageUrl: data.bootImageUrl || null,
         imageSize: parseInt(data.bootImageSize) || 64,
+        imageTint: data.bootImageTint || '',
         imageBorderRadius: data.bootImageBorderRadius || 'rounded',
         title: data.bootTitle || '',
         subtitle: data.bootSubtitle || '',
@@ -528,6 +564,72 @@ export class ItemInboxConfig extends BaseApplication {
       current: input?.value || '',
       callback: (path) => { if (input) input.value = path; },
     }).render(true);
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  NETWORK TAG +/- MANAGEMENT
+  // ═══════════════════════════════════════════════════════════
+
+  static _onAddNetworkTag(event, target) {
+    const select = this.element?.querySelector('#ncm-add-network-select');
+    const value = select?.value;
+    if (!value) return;
+    const label = select.options[select.selectedIndex]?.text || value;
+    const container = this.element?.querySelector('#ncm-network-tags');
+    if (!container) return;
+    if (container.querySelector(`[data-value="${value}"]`)) return;
+
+    const tag = document.createElement('div');
+    tag.classList.add('ncm-tag');
+    tag.dataset.value = value;
+    tag.innerHTML = `<span>${label}</span>
+      <button type="button" class="ncm-tag__remove" data-action="removeNetworkTag" data-value="${value}"><i class="fas fa-times"></i></button>
+      <input type="hidden" name="allowedNetwork" value="${value}" />`;
+    container.appendChild(tag);
+
+    const opt = select.querySelector(`option[value="${value}"]`);
+    if (opt) opt.remove();
+    select.value = '';
+  }
+
+  static _onRemoveNetworkTag(event, target) {
+    const value = target.dataset.value || target.closest('[data-value]')?.dataset.value;
+    if (!value) return;
+    const tag = this.element?.querySelector(`#ncm-network-tags [data-value="${value}"]`);
+    if (tag) {
+      const label = tag.querySelector('span')?.textContent || value;
+      tag.remove();
+      const select = this.element?.querySelector('#ncm-add-network-select');
+      if (select) {
+        const opt = document.createElement('option');
+        opt.value = value;
+        opt.textContent = label;
+        select.appendChild(opt);
+      }
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  ICON MODE TOGGLE & COLOR SELECTION
+  // ═══════════════════════════════════════════════════════════
+
+  static _onChangeIconMode(event, target) {
+    const group = target.closest('.ncm-icon-mode-group');
+    if (!group) return;
+    const mode = target.value;
+    group.dataset.activeMode = mode;
+  }
+
+  static _onSelectIconColor(event, target) {
+    const color = target.dataset.color;
+    const targetInput = target.dataset.target;
+    if (!color || !targetInput) return;
+    const input = this.element?.querySelector(`[name="${targetInput}"]`);
+    if (input) input.value = color;
+    const row = target.closest('.ncm-icon-color-row');
+    row?.querySelectorAll('.ncm-icon-color-dot').forEach(dot => {
+      dot.classList.toggle('ncm-icon-color-dot--active', dot.dataset.color === color);
+    });
   }
 
   // ═══════════════════════════════════════════════════════════
