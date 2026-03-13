@@ -472,6 +472,11 @@ export class ItemInboxApp extends BaseApplication {
     if (context.isLockedOut && context.lockoutRemaining > 0) {
       this._startLockoutCountdown(context.lockoutRemaining);
     }
+
+    // Play boot sequence on first render if enabled
+    if (context.showBoot && !this._bootComplete) {
+      this._playBootSequence(context);
+    }
   }
 
   _setupEventSubscriptions() {
@@ -780,6 +785,363 @@ export class ItemInboxApp extends BaseApplication {
     this.render();
   }
 
+  // ─── Boot Sequence System (Step 3) ───
+
+  /** @type {Array<number>} Active boot sequence timeouts for cleanup */
+  _bootTimers = [];
+
+  /**
+   * Speed multipliers for boot animation timing.
+   * All delays are multiplied by this factor.
+   */
+  static BOOT_SPEED_MULT = { fast: 0.5, normal: 1.0, dramatic: 1.4 };
+
+  /**
+   * Play the animated boot sequence splash screen.
+   * Reads config.boot for icon, title, subtitle, log lines, speed, animation style.
+   * Respects [data-ncm-animation] gating.
+   *
+   * @param {object} context — The _prepareContext result
+   * @private
+   */
+  async _playBootSequence(context) {
+    const bootEl = this.element?.querySelector('.ncm-shard-boot');
+    if (!bootEl) return;
+
+    const config = context.config?.boot ?? {};
+    const animLevel = this.element?.closest('[data-ncm-animation]')?.dataset?.ncmAnimation ?? 'full';
+
+    // Animation gating: off = skip entirely, reduced = quick fade only
+    if (animLevel === 'off') {
+      this._finishBoot(bootEl);
+      return;
+    }
+
+    const style = config.animationStyle || 'standard-fade';
+    const speedKey = config.speed || 'normal';
+    const mult = ItemInboxApp.BOOT_SPEED_MULT[speedKey] ?? 1.0;
+
+    // Reduced mode: simple quick fade, no choreography
+    if (animLevel === 'reduced') {
+      bootEl.style.opacity = '1';
+      this._buildBootDOM(bootEl, config, context);
+      // Show everything immediately, quick fade out
+      const allEls = bootEl.querySelectorAll('.ncm-boot-icon, .ncm-boot-title, .ncm-boot-subtitle, .ncm-boot-progress, .ncm-boot-log-line');
+      allEls.forEach(el => el.style.opacity = '1');
+      const fill = bootEl.querySelector('.ncm-boot-progress-fill');
+      if (fill) { fill.style.transition = 'width 0.5s'; fill.style.width = '100%'; }
+      this._delay(() => this._finishBoot(bootEl), 800);
+      return;
+    }
+
+    // Full mode: run the choreographed sequence
+    bootEl.style.opacity = '1';
+    this._buildBootDOM(bootEl, config, context);
+    this.soundService?.play('shard-boot');
+
+    // Dispatch to animation style handler
+    const handler = this._bootAnimations[style] ?? this._bootAnimations['standard-fade'];
+    handler.call(this, bootEl, mult);
+  }
+
+  /**
+   * Build boot sequence DOM elements into the container.
+   * @private
+   */
+  _buildBootDOM(container, config, context) {
+    const preset = SHARD_PRESETS[context.presetKey] ?? SHARD_PRESETS['blank'];
+    const theme = preset?.theme ?? {};
+
+    // Determine icon HTML
+    let iconHTML;
+    if (config.iconMode === 'image' && config.imageUrl) {
+      const size = config.imageSize || 64;
+      iconHTML = `<img src="${config.imageUrl}" style="width:${size}px;height:${size}px;" alt="">`;
+    } else {
+      const iconClass = config.faIcon || preset?.icon || 'fas fa-microchip';
+      const iconColor = theme.iconColor || theme.accent || 'var(--ncm-color-primary)';
+      iconHTML = `<i class="${iconClass}" style="color:${iconColor};text-shadow:0 0 30px ${iconColor}40;"></i>`;
+    }
+
+    const titleColor = theme.colorTemp === 'warm' ? '#f8f0e0' : theme.colorTemp === 'cold' ? '#e8ecf4' : '#e0e0e8';
+    const subtitleColor = theme.accent || 'var(--ncm-text-muted)';
+    const progressBg = theme.colorTemp === 'warm' ? '#2a1e10' : '#1a1a28';
+    const progressFill = `linear-gradient(90deg, ${theme.accent || '#19f3f7'}, ${theme.accentSecondary || theme.accent || '#19f3f7'})`;
+    const logColor = theme.accent ? theme.accent + '99' : 'var(--ncm-text-muted)';
+
+    const logLinesHTML = (config.logLines || [])
+      .map(line => `<div class="ncm-boot-log-line" style="color:${logColor};">${line}</div>`)
+      .join('');
+
+    container.innerHTML = `
+      <div class="ncm-boot-screen-fx"></div>
+      <div class="ncm-boot-scan-fx"></div>
+      <div class="ncm-boot-icon">${iconHTML}</div>
+      <div class="ncm-boot-title" style="color:${titleColor};">${config.title || 'DATA SHARD'}</div>
+      <div class="ncm-boot-subtitle" style="color:${subtitleColor};">${config.subtitle || ''}</div>
+      <div class="ncm-boot-progress">
+        <div class="ncm-boot-progress-label" style="color:${logColor};">${config.progressLabel || 'Loading...'}</div>
+        <div class="ncm-boot-progress-track" style="background:${progressBg};">
+          <div class="ncm-boot-progress-fill" style="background:${progressFill};"></div>
+        </div>
+      </div>
+      <div class="ncm-boot-log">${logLinesHTML}</div>
+    `;
+  }
+
+  /**
+   * Finish the boot sequence — fade out container, mark complete, re-render.
+   * @private
+   */
+  _finishBoot(bootEl) {
+    // Clear any pending timers
+    this._bootTimers.forEach(t => clearTimeout(t));
+    this._bootTimers = [];
+
+    if (bootEl) {
+      bootEl.style.transition = 'opacity 0.4s';
+      bootEl.style.opacity = '0';
+      this._delay(() => {
+        bootEl.remove();
+      }, 450);
+    }
+
+    this._bootComplete = true;
+    this.eventBus?.emit(EVENTS.SHARD_BOOT_COMPLETE, { itemId: this.item?.id });
+  }
+
+  /** Schedule a callback and track the timer for cleanup. @private */
+  _delay(fn, ms) {
+    this._bootTimers.push(setTimeout(fn, ms));
+  }
+
+  /**
+   * Animation choreography handlers. Each takes the boot container and speed multiplier.
+   * @private
+   */
+  _bootAnimations = {
+
+    // ─── Arasaka: Holographic snap + stepped progress ───
+    'holographic-snap'(el, m) {
+      const icon = el.querySelector('.ncm-boot-icon');
+      const title = el.querySelector('.ncm-boot-title');
+      const sub = el.querySelector('.ncm-boot-subtitle');
+      const prog = el.querySelector('.ncm-boot-progress');
+      const fill = el.querySelector('.ncm-boot-progress-fill');
+      const lines = el.querySelectorAll('.ncm-boot-log-line');
+
+      this._delay(() => { if (icon) icon.style.cssText += 'animation: ncm-holo-snap 0.6s ease forwards;'; }, 100 * m);
+      this._delay(() => { if (title) { title.style.transition = 'opacity 0.15s'; title.style.opacity = '1'; } }, 500 * m);
+      this._delay(() => { if (title) title.style.opacity = '0.4'; }, 560 * m);
+      this._delay(() => { if (title) title.style.opacity = '1'; }, 620 * m);
+      this._delay(() => { if (sub) { sub.style.transition = 'opacity 0.4s'; sub.style.opacity = '0.7'; } }, 700 * m);
+      this._delay(() => {
+        if (prog) { prog.style.transition = 'opacity 0.2s'; prog.style.opacity = '1'; }
+        if (fill) fill.style.animation = `ncm-step-fill ${2 * m}s ease-out forwards`;
+      }, 800 * m);
+      lines.forEach((l, i) => this._delay(() => { l.style.transition = 'opacity 0.1s'; l.style.opacity = '0.7'; }, (1000 + i * 350) * m));
+      this._delay(() => this._finishBoot(el), (1000 + lines.length * 350 + 500) * m);
+    },
+
+    // ─── Military: Instant dump, rapid-fire ───
+    'instant-dump'(el, m) {
+      const icon = el.querySelector('.ncm-boot-icon');
+      const title = el.querySelector('.ncm-boot-title');
+      const sub = el.querySelector('.ncm-boot-subtitle');
+      const prog = el.querySelector('.ncm-boot-progress');
+      const fill = el.querySelector('.ncm-boot-progress-fill');
+      const lines = el.querySelectorAll('.ncm-boot-log-line');
+
+      this._delay(() => { if (icon) icon.style.opacity = '1'; }, 50 * m);
+      this._delay(() => { if (title) title.style.opacity = '1'; }, 100 * m);
+      this._delay(() => { if (sub) sub.style.opacity = '0.7'; }, 150 * m);
+      this._delay(() => {
+        if (prog) prog.style.opacity = '1';
+        if (fill) { fill.style.transition = `width ${0.3 * m}s linear`; fill.style.width = '100%'; }
+      }, 200 * m);
+      lines.forEach((l, i) => this._delay(() => { l.style.opacity = '0.7'; }, (300 + i * 120) * m));
+      this._delay(() => this._finishBoot(el), (300 + lines.length * 120 + 400) * m);
+    },
+
+    // ─── Street: Glitch stutter + static flash ───
+    'glitch-stutter'(el, m) {
+      const icon = el.querySelector('.ncm-boot-icon');
+      const title = el.querySelector('.ncm-boot-title');
+      const sub = el.querySelector('.ncm-boot-subtitle');
+      const prog = el.querySelector('.ncm-boot-progress');
+      const fill = el.querySelector('.ncm-boot-progress-fill');
+      const lines = el.querySelectorAll('.ncm-boot-log-line');
+      const fx = el.querySelector('.ncm-boot-screen-fx');
+
+      // Static flash
+      if (fx) { fx.style.cssText = 'background:rgba(255,255,255,0.08);opacity:0.5;'; }
+      this._delay(() => { if (fx) fx.style.cssText = 'opacity:0;transition:opacity 0.3s;'; }, 200 * m);
+      this._delay(() => { if (icon) icon.style.cssText += 'animation: ncm-glitch-in 0.8s ease forwards;'; }, 150 * m);
+      this._delay(() => { if (title) title.style.cssText += 'animation: ncm-glitch-in 0.6s ease forwards;'; }, 400 * m);
+      this._delay(() => { if (sub) { sub.style.transition = 'opacity 0.3s'; sub.style.opacity = '0.5'; } }, 600 * m);
+      // Second glitch
+      this._delay(() => { if (fx) fx.style.cssText = 'background:rgba(255,255,255,0.06);opacity:0.4;transition:none;'; }, 700 * m);
+      this._delay(() => { if (fx) fx.style.cssText = 'opacity:0;transition:opacity 0.2s;'; }, 850 * m);
+      this._delay(() => {
+        if (prog) { prog.style.cssText += 'opacity:1;transition:opacity 0.2s;'; }
+        if (fill) fill.style.animation = `ncm-jitter-fill ${1.5 * m}s ease forwards`;
+      }, 800 * m);
+      lines.forEach((l, i) => this._delay(() => { l.style.transition = 'opacity 0.15s'; l.style.opacity = '0.6'; }, (1200 + i * 300) * m));
+      this._delay(() => this._finishBoot(el), (1200 + lines.length * 300 + 400) * m);
+    },
+
+    // ─── Fixer: Neon breathe + flowing glow ───
+    'neon-breathe'(el, m) {
+      const icon = el.querySelector('.ncm-boot-icon');
+      const title = el.querySelector('.ncm-boot-title');
+      const sub = el.querySelector('.ncm-boot-subtitle');
+      const prog = el.querySelector('.ncm-boot-progress');
+      const fill = el.querySelector('.ncm-boot-progress-fill');
+      const lines = el.querySelectorAll('.ncm-boot-log-line');
+
+      this._delay(() => { if (icon) icon.style.cssText += 'animation: ncm-neon-breathe 1.2s ease forwards;'; }, 100 * m);
+      this._delay(() => { if (title) { title.style.cssText += 'animation: ncm-neon-breathe 1s ease forwards;'; } }, 500 * m);
+      this._delay(() => { if (sub) { sub.style.transition = 'opacity 0.6s ease'; sub.style.opacity = '0.7'; } }, 800 * m);
+      this._delay(() => {
+        if (prog) { prog.style.transition = 'opacity 0.5s ease'; prog.style.opacity = '1'; }
+        if (fill) fill.style.animation = `ncm-smooth-fill ${2 * m}s ease-in-out forwards`;
+      }, 1000 * m);
+      lines.forEach((l, i) => this._delay(() => { l.style.cssText = 'animation: ncm-slide-left 0.4s ease forwards;'; }, (1200 + i * 350) * m));
+      this._delay(() => this._finishBoot(el), (1200 + lines.length * 350 + 500) * m);
+    },
+
+    // ─── Black Market: Scan sweep + char-by-char typing ───
+    'scan-sweep'(el, m) {
+      const icon = el.querySelector('.ncm-boot-icon');
+      const title = el.querySelector('.ncm-boot-title');
+      const sub = el.querySelector('.ncm-boot-subtitle');
+      const prog = el.querySelector('.ncm-boot-progress');
+      const fill = el.querySelector('.ncm-boot-progress-fill');
+      const lines = el.querySelectorAll('.ncm-boot-log-line');
+      const scanFx = el.querySelector('.ncm-boot-scan-fx');
+
+      // Scan line sweeps top to bottom
+      if (scanFx) {
+        scanFx.style.cssText = 'opacity:0.6;top:0;background:linear-gradient(180deg,transparent,rgba(0,229,255,0.3),transparent);height:40px;transition:top 1.5s linear;';
+        this._delay(() => { scanFx.style.top = '100%'; }, 100);
+        this._delay(() => { scanFx.style.opacity = '0'; }, 1600 * m);
+      }
+      this._delay(() => { if (icon) icon.style.cssText += 'animation: ncm-scan-reveal 0.8s ease forwards;'; }, 200 * m);
+      this._delay(() => { if (title) title.style.cssText += 'animation: ncm-scan-reveal 0.6s ease forwards;'; }, 500 * m);
+      this._delay(() => { if (sub) { sub.style.transition = 'opacity 0.4s'; sub.style.opacity = '0.7'; } }, 800 * m);
+      this._delay(() => {
+        if (prog) { prog.style.transition = 'opacity 0.3s'; prog.style.opacity = '1'; }
+        if (fill) { fill.style.transition = `width ${2 * m}s linear`; fill.style.width = '100%'; }
+      }, 900 * m);
+
+      // Type characters into log lines
+      lines.forEach((lineEl, i) => {
+        const fullText = lineEl.textContent;
+        this._delay(() => {
+          lineEl.style.opacity = '1';
+          lineEl.textContent = '';
+          let ci = 0;
+          const iv = setInterval(() => {
+            if (ci < fullText.length) {
+              lineEl.textContent = fullText.substring(0, ci + 1);
+              ci++;
+            } else {
+              clearInterval(iv);
+            }
+          }, 18 * m);
+          this._bootTimers.push(iv);
+        }, (1100 + i * 500) * m);
+      });
+      this._delay(() => this._finishBoot(el), (1100 + lines.length * 500 + 400) * m);
+    },
+
+    // ─── Memory: Warm dissolve + gentle fade ───
+    'warm-dissolve'(el, m) {
+      const icon = el.querySelector('.ncm-boot-icon');
+      const title = el.querySelector('.ncm-boot-title');
+      const sub = el.querySelector('.ncm-boot-subtitle');
+      const prog = el.querySelector('.ncm-boot-progress');
+      const fill = el.querySelector('.ncm-boot-progress-fill');
+      const lines = el.querySelectorAll('.ncm-boot-log-line');
+
+      this._delay(() => { if (icon) icon.style.cssText += 'animation: ncm-warm-dissolve 1.5s ease forwards;'; }, 200 * m);
+      this._delay(() => { if (title) title.style.cssText += 'animation: ncm-warm-dissolve 1.2s ease forwards;'; }, 700 * m);
+      this._delay(() => { if (sub) { sub.style.transition = 'opacity 1s ease'; sub.style.opacity = '0.6'; } }, 1100 * m);
+      this._delay(() => {
+        if (prog) { prog.style.transition = 'opacity 0.8s ease'; prog.style.opacity = '1'; }
+        if (fill) { fill.style.transition = `width ${2.5 * m}s ease-in-out`; fill.style.width = '100%'; }
+      }, 1300 * m);
+      lines.forEach((l, i) => this._delay(() => { l.style.transition = 'opacity 0.8s ease'; l.style.opacity = '0.6'; }, (1600 + i * 500) * m));
+      this._delay(() => this._finishBoot(el), (1600 + lines.length * 500 + 600) * m);
+    },
+
+    // ─── Media: Camera flash + news slide-in ───
+    'camera-flash'(el, m) {
+      const icon = el.querySelector('.ncm-boot-icon');
+      const title = el.querySelector('.ncm-boot-title');
+      const sub = el.querySelector('.ncm-boot-subtitle');
+      const prog = el.querySelector('.ncm-boot-progress');
+      const fill = el.querySelector('.ncm-boot-progress-fill');
+      const lines = el.querySelectorAll('.ncm-boot-log-line');
+      const fx = el.querySelector('.ncm-boot-screen-fx');
+
+      // Camera flash
+      if (fx) fx.style.cssText = 'background:rgba(96,176,255,0.2);animation:ncm-camera-flash 0.5s ease forwards;';
+      this._delay(() => { if (icon) icon.style.opacity = '1'; }, 50 * m);
+      this._delay(() => { if (title) title.style.cssText += 'animation: ncm-news-slide 0.4s ease forwards;'; }, 300 * m);
+      this._delay(() => { if (sub) sub.style.cssText += 'animation: ncm-news-slide 0.35s ease forwards; opacity: 0.7;'; }, 500 * m);
+      this._delay(() => {
+        if (prog) { prog.style.cssText += 'opacity:1;transition:opacity 0.15s;'; }
+        if (fill) fill.style.animation = `ncm-urgent-fill ${1.5 * m}s ease forwards`;
+      }, 600 * m);
+      lines.forEach((l, i) => this._delay(() => { l.style.transition = 'opacity 0.1s'; l.style.opacity = '0.7'; }, (800 + i * 280) * m));
+      this._delay(() => this._finishBoot(el), (800 + lines.length * 280 + 500) * m);
+    },
+
+    // ─── NetWatch: Red sweep + authority stamp ───
+    'authority-stamp'(el, m) {
+      const icon = el.querySelector('.ncm-boot-icon');
+      const title = el.querySelector('.ncm-boot-title');
+      const sub = el.querySelector('.ncm-boot-subtitle');
+      const prog = el.querySelector('.ncm-boot-progress');
+      const fill = el.querySelector('.ncm-boot-progress-fill');
+      const lines = el.querySelectorAll('.ncm-boot-log-line');
+      const fx = el.querySelector('.ncm-boot-screen-fx');
+
+      // Red security sweep
+      if (fx) fx.style.cssText = 'background:rgba(220,30,30,0.12);animation:ncm-red-sweep 1.2s ease forwards;';
+      this._delay(() => { if (icon) icon.style.cssText += 'animation: ncm-stamp-in 0.5s ease forwards;'; }, 400 * m);
+      this._delay(() => { if (title) { title.style.transition = 'opacity 0.2s'; title.style.opacity = '1'; } }, 700 * m);
+      this._delay(() => { if (sub) { sub.style.transition = 'opacity 0.3s'; sub.style.opacity = '0.7'; } }, 900 * m);
+      this._delay(() => {
+        if (prog) { prog.style.transition = 'opacity 0.2s'; prog.style.opacity = '1'; }
+        if (fill) { fill.style.transition = `width ${1.8 * m}s linear`; fill.style.width = '100%'; }
+      }, 1000 * m);
+      lines.forEach((l, i) => this._delay(() => { l.style.transition = 'opacity 0.15s'; l.style.opacity = '0.7'; }, (1200 + i * 350) * m));
+      this._delay(() => this._finishBoot(el), (1200 + lines.length * 350 + 500) * m);
+    },
+
+    // ─── Default: Standard fade ───
+    'standard-fade'(el, m) {
+      const icon = el.querySelector('.ncm-boot-icon');
+      const title = el.querySelector('.ncm-boot-title');
+      const sub = el.querySelector('.ncm-boot-subtitle');
+      const prog = el.querySelector('.ncm-boot-progress');
+      const fill = el.querySelector('.ncm-boot-progress-fill');
+      const lines = el.querySelectorAll('.ncm-boot-log-line');
+
+      this._delay(() => { if (icon) icon.style.cssText += 'animation: ncm-standard-fade 0.6s ease forwards;'; }, 100 * m);
+      this._delay(() => { if (title) { title.style.transition = `opacity ${0.4 * m}s`; title.style.opacity = '1'; } }, 400 * m);
+      this._delay(() => { if (sub) { sub.style.transition = `opacity ${0.4 * m}s`; sub.style.opacity = '0.7'; } }, 600 * m);
+      this._delay(() => {
+        if (prog) { prog.style.transition = 'opacity 0.3s'; prog.style.opacity = '1'; }
+        if (fill) { fill.style.animation = `ncm-standard-fill ${1.5 * m}s ease forwards`; }
+      }, 800 * m);
+      lines.forEach((l, i) => this._delay(() => { l.style.transition = `opacity ${0.3 * m}s`; l.style.opacity = '0.7'; }, (1000 + i * 300) * m));
+      this._delay(() => this._finishBoot(el), (1000 + lines.length * 300 + 500) * m);
+    },
+  };
+
   // ─── Sprint 4.6 Actions ───
 
   static async _onClaimEddies(event, target) {
@@ -891,6 +1253,9 @@ export class ItemInboxApp extends BaseApplication {
 
   async close(options) {
     if (this._lockoutInterval) clearInterval(this._lockoutInterval);
+    // Clean up boot sequence timers
+    this._bootTimers.forEach(t => clearTimeout(t));
+    this._bootTimers = [];
     return super.close(options);
   }
 }

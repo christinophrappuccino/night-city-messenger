@@ -791,3 +791,222 @@
   animation: ncm-corruption-drift 6s linear infinite;
 }
 @keyframes ncm-corruption-drift { 0% { transform: translateY(0); } 100% { transform: translateY(30px); } }
+
+
+/* ═══════════════════════════════════════════
+   §18  BOOT SEQUENCE ELEMENTS & ANIMATIONS
+   8 unique choreographies tied to preset themes
+   ═══════════════════════════════════════════ */
+
+/* ─── Boot element base styles ─── */
+
+.ncm-app .ncm-boot-icon {
+  font-size: 48px; margin-bottom: 16px; opacity: 0;
+}
+
+.ncm-app .ncm-boot-icon img {
+  object-fit: contain; border-radius: 2px;
+}
+
+.ncm-app .ncm-boot-title {
+  font-family: var(--ncm-font-display, 'Orbitron', monospace);
+  font-size: 18px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.3em;
+  opacity: 0;
+}
+
+.ncm-app .ncm-boot-subtitle {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.15em; margin-top: 6px;
+  opacity: 0;
+}
+
+.ncm-app .ncm-boot-progress {
+  width: 240px; margin-top: 24px; opacity: 0;
+}
+
+.ncm-app .ncm-boot-progress-label {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 8px; text-transform: uppercase;
+  letter-spacing: 0.1em; margin-bottom: 4px;
+}
+
+.ncm-app .ncm-boot-progress-track {
+  width: 100%; height: 3px;
+  border-radius: 1px; overflow: hidden;
+}
+
+.ncm-app .ncm-boot-progress-fill {
+  height: 100%; width: 0%;
+  border-radius: 1px;
+}
+
+.ncm-app .ncm-boot-log {
+  margin-top: 20px; width: 300px;
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 9px; line-height: 1.6; text-align: left;
+}
+
+.ncm-app .ncm-boot-log-line {
+  opacity: 0;
+}
+
+/* Screen flash effect (overlays boot area) */
+.ncm-app .ncm-boot-screen-fx {
+  position: absolute; inset: 0;
+  pointer-events: none; opacity: 0; z-index: 210;
+}
+
+/* Scan line effect */
+.ncm-app .ncm-boot-scan-fx {
+  position: absolute; left: 0; right: 0;
+  height: 40px; pointer-events: none;
+  opacity: 0; z-index: 209;
+}
+
+/* ─── Keyframes: Holographic Snap (Arasaka / Corporate) ─── */
+
+@keyframes ncm-holo-snap {
+  0%   { opacity: 0; transform: scale(1.3) rotateY(20deg); filter: brightness(3); }
+  15%  { opacity: 1; transform: scale(0.95) rotateY(-5deg); filter: brightness(2); }
+  20%  { opacity: 0.3; }
+  25%  { opacity: 1; transform: scale(1) rotateY(0); filter: brightness(1.5); }
+  100% { opacity: 1; transform: scale(1); filter: brightness(1); }
+}
+
+@keyframes ncm-step-fill {
+  0%   { width: 0; }
+  20%  { width: 22%; }
+  21%  { width: 22%; }
+  40%  { width: 48%; }
+  41%  { width: 48%; }
+  60%  { width: 70%; }
+  61%  { width: 70%; }
+  80%  { width: 88%; }
+  81%  { width: 88%; }
+  100% { width: 100%; }
+}
+
+/* ─── Keyframes: Glitch Stutter (Street) ─── */
+
+@keyframes ncm-glitch-in {
+  0%   { opacity: 0; transform: translateX(-20px); }
+  10%  { opacity: 0.8; transform: translateX(5px); }
+  15%  { opacity: 0.2; transform: translateX(-3px) skewX(5deg); }
+  20%  { opacity: 0.9; transform: translateX(2px) skewX(-2deg); }
+  30%  { opacity: 0.3; }
+  35%  { opacity: 1; transform: translateX(-1px); }
+  50%  { opacity: 0.7; }
+  100% { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes ncm-jitter-fill {
+  0%   { width: 0; }   10%  { width: 12%; }  15%  { width: 8%; }
+  25%  { width: 30%; }  30%  { width: 25%; }  40%  { width: 50%; }
+  45%  { width: 44%; }  55%  { width: 65%; }  60%  { width: 58%; }
+  70%  { width: 78%; }  75%  { width: 72%; }  85%  { width: 90%; }
+  90%  { width: 85%; }  100% { width: 100%; }
+}
+
+/* ─── Keyframes: Neon Breathe (Fixer) ─── */
+
+@keyframes ncm-neon-breathe {
+  0%   { opacity: 0; transform: scale(0.7); filter: blur(8px) brightness(2); }
+  30%  { opacity: 0.5; transform: scale(1.05); filter: blur(2px) brightness(1.5); }
+  50%  { opacity: 1; transform: scale(0.98); filter: blur(0) brightness(1.2); }
+  100% { opacity: 1; transform: scale(1); filter: brightness(1); }
+}
+
+@keyframes ncm-smooth-fill {
+  0%   { width: 0; filter: brightness(1); }
+  50%  { filter: brightness(1.5); }
+  100% { width: 100%; filter: brightness(1); }
+}
+
+@keyframes ncm-slide-left {
+  0%   { opacity: 0; transform: translateX(-20px); }
+  100% { opacity: 0.6; transform: translateX(0); }
+}
+
+/* ─── Keyframes: Scan Sweep (Black Market) ─── */
+
+@keyframes ncm-scan-reveal {
+  0%   { clip-path: inset(0 0 100% 0); }
+  100% { clip-path: inset(0 0 0 0); }
+}
+
+/* ─── Keyframes: Warm Dissolve (Memory) ─── */
+
+@keyframes ncm-warm-dissolve {
+  0%   { opacity: 0; transform: scale(0.95); filter: blur(4px) brightness(0.8); }
+  40%  { opacity: 0.6; filter: blur(1px) brightness(1.1); }
+  100% { opacity: 1; filter: blur(0) brightness(1); }
+}
+
+/* ─── Keyframes: Camera Flash + News Slide (Media) ─── */
+
+@keyframes ncm-camera-flash {
+  0%   { opacity: 0; }
+  5%   { opacity: 1; }
+  15%  { opacity: 0; }
+  100% { opacity: 0; }
+}
+
+@keyframes ncm-news-slide {
+  0%   { opacity: 0; transform: translateX(40px); }
+  60%  { opacity: 1; transform: translateX(-3px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes ncm-urgent-fill {
+  0%   { width: 0; }
+  30%  { width: 45%; }
+  50%  { width: 50%; }
+  80%  { width: 85%; }
+  100% { width: 100%; }
+}
+
+/* ─── Keyframes: Authority Stamp + Red Sweep (NetWatch) ─── */
+
+@keyframes ncm-stamp-in {
+  0%   { opacity: 0; transform: scale(1.5); }
+  30%  { opacity: 1; transform: scale(0.95); }
+  50%  { transform: scale(1.02); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes ncm-red-sweep {
+  0%   { opacity: 0; }
+  10%  { opacity: 0.15; }
+  30%  { opacity: 0; }
+  100% { opacity: 0; }
+}
+
+/* ─── Keyframes: Standard Fade (Blank / Default) ─── */
+
+@keyframes ncm-standard-fade {
+  0%   { opacity: 0; transform: scale(0.9); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes ncm-standard-fill {
+  0%   { width: 0; }
+  100% { width: 100%; }
+}
+
+/* ─── Entry highlight flash (from index strip click) ─── */
+
+.ncm-app .ncm-entry-highlight {
+  animation: ncm-entry-flash 0.8s ease;
+}
+
+@keyframes ncm-entry-flash {
+  0%   { box-shadow: 0 0 0 0 rgba(25, 243, 247, 0.4); }
+  30%  { box-shadow: 0 0 12px 2px rgba(25, 243, 247, 0.3); }
+  100% { box-shadow: none; }
+}
+
+/* ─── Index strip collapsed state ─── */
+
+.ncm-app .ncm-shard-index-strip--collapsed .ncm-shard-index-chip { display: none; }
