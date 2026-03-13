@@ -234,9 +234,20 @@ export class AdminPanelApp extends BaseApplication {
     // ─── Data Shards (Shards tab) ───
     const shards = this._gatherShardData();
     const shardSummary = {
+      total: shards.length,
       locked: shards.filter(s => s.status === 'locked').length,
       blackice: shards.filter(s => s.status === 'blackice').length,
+      breached: shards.filter(s => s.status === 'breached').length,
+      destroyed: shards.filter(s => s.status === 'destroyed').length,
+      open: shards.filter(s => s.status === 'open').length,
+      totalEddies: shards.reduce((sum, s) => sum + (s.totalEddies || 0), 0),
+      unclaimedEddies: shards.reduce((sum, s) => sum + (s.unclaimedEddies || 0), 0),
+      totalEntries: shards.reduce((sum, s) => sum + (s.entryCount || 0), 0),
     };
+
+    // Quick-create preset buttons
+    const shardPresetButtons = (game.nightcity?.dataShardService?.getAllPresets() ?? [])
+      .filter(p => p.key !== 'blank');
 
     // ─── Access Log (Shards tab) ───
     const accessLog = this._gatherAccessLog();
@@ -304,6 +315,7 @@ export class AdminPanelApp extends BaseApplication {
       // Shards tab
       shards,
       shardSummary,
+      shardPresetButtons,
       accessLog,
 
       // Module info
@@ -1012,7 +1024,8 @@ export class AdminPanelApp extends BaseApplication {
   }
 
   /**
-   * Gather data shard summary for the Shards tab.
+   * Gather data shard summary for the Shards tab (Sprint 4.6 expansion).
+   * Surfaces preset, integrity, eddies totals, connection mode, and enriched status.
    * @returns {Array<object>}
    * @private
    */
@@ -1021,90 +1034,149 @@ export class AdminPanelApp extends BaseApplication {
 
     try {
       const allShards = game.items?.filter(i => i.getFlag(MODULE_ID, 'isDataShard') === true) ?? [];
+      const svc = this.dataShardService;
 
       for (const item of allShards) {
-        const config = item.getFlag(MODULE_ID, 'config') ?? {};
-        const state = item.getFlag(MODULE_ID, 'state') ?? {};
+        const config = svc?.getConfig(item) ?? item.getFlag(MODULE_ID, 'config') ?? {};
+        const state = svc?.getState(item) ?? item.getFlag(MODULE_ID, 'state') ?? {};
+        const integrity = svc?.checkIntegrity(item) ?? { enabled: false, percentage: 100, tier: 'clean' };
+
+        // Preset info
+        const presetKey = config.preset || 'blank';
+        const preset = game.nightcity?.dataShardService?.getPreset(presetKey);
 
         // Determine status
         let status = 'locked';
-        const hasBlackICE = config.hasBlackICE || config.blackICE;
-        if (state.decrypted) {
+        if (state.destroyed || integrity.isBricked) {
+          status = 'destroyed';
+        } else if (state.decrypted) {
           status = 'breached';
-        } else if (hasBlackICE) {
+        } else if (config.encryptionType === 'BLACK_ICE' || config.encryptionType === 'RED_ICE') {
           status = 'blackice';
-        } else if (!config.encrypted && !config.requiresLogin && !config.requiresNetwork) {
-          status = 'breached'; // No security = open
+        } else if (!config.encrypted && !config.requiresLogin && !(config.network?.required ?? config.requiresNetwork)) {
+          status = 'open';
         }
 
-        // Build security layer badges
-        const securityLayers = [];
-        if (config.requiresNetwork && config.requiredNetwork) {
-          securityLayers.push({ type: 'network', label: config.requiredNetwork });
-        }
-        if (config.requiresLogin) {
-          securityLayers.push({ type: 'password', label: 'PASSWORD' });
-        }
-        if (hasBlackICE) {
-          securityLayers.push({ type: 'blackice', label: 'BLACK ICE' });
-        }
-        if (config.encrypted && config.encryptionDC) {
-          securityLayers.push({ type: 'encryption', label: `DV ${config.encryptionDC}` });
-        }
+        // ICE stripe class
+        let iceStripe = 'none';
+        if (config.encryptionType === 'RED_ICE') iceStripe = 'red';
+        else if (config.encryptionType === 'BLACK_ICE') iceStripe = 'black';
+        else if (config.encrypted) iceStripe = 'ice';
+        if (state.decrypted) iceStripe = 'decrypted';
+        if (status === 'destroyed') iceStripe = 'destroyed';
+
+        // Build security badges
+        const badges = [];
         if (state.decrypted) {
-          securityLayers.length = 0; // Clear other layers
-          securityLayers.push({ type: 'clear', label: 'DECRYPTED' });
-        }
-        if (securityLayers.length === 0) {
-          securityLayers.push({ type: 'clear', label: 'NO SECURITY' });
+          badges.push({ type: 'green', icon: 'fa-unlock', label: 'Decrypted' });
+        } else if (status === 'destroyed') {
+          badges.push({ type: 'danger', icon: 'fa-skull-crossbones', label: 'Destroyed' });
+        } else if (config.encrypted) {
+          badges.push({ type: 'red', icon: 'fa-lock', label: 'Locked' });
         }
 
-        // Determine icon
-        let icon = 'lock', iconClass = '';
-        if (hasBlackICE && !state.decrypted) {
-          icon = 'skull-crossbones'; iconClass = 'ncm-shard-card__icon--blackice';
-        } else if (state.decrypted || status === 'breached') {
-          icon = config.encrypted ? 'lock-open' : 'folder-open';
-          iconClass = 'ncm-shard-card__icon--unlocked';
+        const netConfig = config.network ?? {};
+        if (netConfig.required ?? config.requiresNetwork) {
+          const netLabel = netConfig.allowedNetworks?.[0] ?? config.requiredNetwork ?? 'Network';
+          badges.push({ type: 'muted', icon: 'fa-network-wired', label: netLabel });
+        }
+        if (netConfig.connectionMode === 'tethered') {
+          badges.push({ type: 'cyan', icon: 'fa-link', label: 'Tethered' });
+        }
+
+        // Integrity badge
+        if (integrity.enabled && integrity.percentage < 75) {
+          badges.push({ type: 'danger', icon: 'fa-triangle-exclamation', label: `${integrity.percentage}% integrity` });
         }
 
         // Determine owner
         let owner = 'World item';
+        let ownerIcon = 'fa-box';
         if (item.parent) {
           owner = `${item.parent.name}'s inventory`;
+          ownerIcon = 'fa-user';
         } else if (item.compendium) {
           owner = 'Compendium';
+          ownerIcon = 'fa-book';
         }
 
-        // Count messages
+        // Count entries + eddies
         const journalId = item.getFlag(MODULE_ID, 'journalId');
         const journal = journalId ? game.journal.get(journalId) : null;
-        const messageCount = journal?.pages?.size ?? 0;
+        const entryCount = journal?.pages?.size ?? 0;
+        let totalEddies = 0;
+        let unclaimedEddies = 0;
+        let corruptedCount = 0;
 
-        // Count attempts
+        if (journal) {
+          for (const page of journal.pages) {
+            const flags = page.flags?.[MODULE_ID];
+            if (flags?.contentType === 'eddies' && flags?.contentData) {
+              const amt = flags.contentData.amount ?? 0;
+              totalEddies += amt;
+              if (!flags.contentData.claimed) unclaimedEddies += amt;
+            }
+            if (flags?.corrupted) corruptedCount++;
+          }
+        }
+
+        // Count attempts + breached by
         const sessions = state.sessions ?? {};
         let attemptCount = 0;
         let breachedBy = null;
         for (const [actorId, session] of Object.entries(sessions)) {
           attemptCount += session.hackAttempts ?? 0;
           if (session.loggedIn || state.decrypted) {
-            const actor = game.actors.get(actorId);
+            const actor = game.actors?.get(actorId);
             if (actor) breachedBy = actor.name;
           }
         }
 
+        // Eddies badge
+        if (unclaimedEddies > 0) {
+          badges.push({ type: 'gold', icon: 'fa-coins', label: `${unclaimedEddies.toLocaleString()} eb unclaimed` });
+        }
+
+        // Entry label
+        let entryLabel = `${entryCount} ${entryCount === 1 ? 'entry' : 'entries'}`;
+        if (corruptedCount > 0) entryLabel += ` (${corruptedCount} corrupt)`;
+
+        // Preset icon
+        const presetIcon = preset?.icon || config.boot?.faIcon || 'fas fa-microchip';
+        const presetLabel = preset?.label || 'Custom';
+
+        // Meta line
+        const metaParts = [presetLabel];
+        if (config.encrypted) {
+          metaParts.push(`<span style="color:${iceStripe === 'red' ? '#cc0000' : iceStripe === 'black' ? 'var(--ncm-danger)' : 'var(--ncm-accent)'}">${config.encryptionType}</span>`);
+          metaParts.push(`DV ${config.encryptionDC}`);
+        }
+        metaParts.push(netConfig.connectionMode === 'tethered' ? 'Tethered' : 'Offline');
+
         shards.push({
           itemId: item.id,
-          name: item.name,
+          name: config.shardName || item.name,
           owner,
+          ownerIcon,
           status,
-          icon,
-          iconClass,
-          securityLayers,
-          messageCount,
+          iceStripe,
+          presetKey,
+          presetLabel,
+          presetIcon,
+          metaLine: metaParts.join(' <span class="ncm-shard-card__meta-sep">·</span> '),
+          badges,
+          entryCount,
+          entryLabel,
           attemptCount,
           breachedBy,
-          hasBlackICE: !!hasBlackICE,
+          // Integrity
+          integrityEnabled: integrity.enabled,
+          integrityPercent: integrity.percentage,
+          integrityTier: integrity.tier,
+          // Eddies
+          totalEddies,
+          unclaimedEddies,
+          hasUnclaimed: unclaimedEddies > 0,
         });
       }
     } catch (error) {
@@ -1401,6 +1473,9 @@ export class AdminPanelApp extends BaseApplication {
     this.subscribe(EVENTS.SHARD_HACK_ATTEMPT, () => this._refreshIfTab('shards'));
     this.subscribe(EVENTS.SHARD_CREATED, () => this._refreshIfTab('shards'));
     this.subscribe(EVENTS.SHARD_STATE_CHANGED, () => this._debouncedRender());
+    this.subscribe(EVENTS.SHARD_INTEGRITY_CHANGED, () => this._refreshIfTab('shards'));
+    this.subscribe(EVENTS.SHARD_EDDIES_CLAIMED, () => this._refreshIfTab('shards'));
+    this.subscribe(EVENTS.SHARD_PRESET_APPLIED, () => this._refreshIfTab('shards'));
   }
 
   /**
