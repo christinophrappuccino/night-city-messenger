@@ -81,6 +81,8 @@ export class ItemInboxApp extends BaseApplication {
       claimEddies: ItemInboxApp._onClaimEddies,
       scrollToEntry: ItemInboxApp._onScrollToEntry,
       toggleIndexStrip: ItemInboxApp._onToggleIndexStrip,
+      executePayload: ItemInboxApp._onExecutePayload,
+      goToScene: ItemInboxApp._onGoToScene,
       // Legacy aliases
       addMessage: ItemInboxApp._onAddEntry,
       removeMessage: ItemInboxApp._onRemoveEntry,
@@ -1201,6 +1203,52 @@ export class ItemInboxApp extends BaseApplication {
         icon.classList.toggle('fa-chevron-right');
       }
     }
+  }
+
+  static async _onExecutePayload(event, target) {
+    if (!this.item) return;
+    const entryId = target.closest('[data-entry-id]')?.dataset.entryId;
+    if (!entryId) return;
+
+    const confirmed = await Dialog.confirm({
+      title: 'Execute Payload',
+      content: '<p style="color:#ff0033;"><strong>WARNING:</strong> Executing this program may have consequences. Proceed?</p>',
+    });
+    if (!confirmed) return;
+
+    // Mark payload as executed on the journal page
+    const journal = this.dataShardService?._getLinkedJournal(this.item);
+    if (!journal) return;
+    const page = journal.pages.find(p => p.flags?.[MODULE_ID]?.messageId === entryId);
+    if (!page) return;
+
+    const actor = game.user?.character;
+    await page.update({
+      [`flags.${MODULE_ID}.contentData.executed`]: true,
+      [`flags.${MODULE_ID}.contentData.executedBy`]: actor?.id ?? null,
+      [`flags.${MODULE_ID}.contentData.executedAt`]: new Date().toISOString(),
+    });
+
+    // Chat notification
+    await ChatMessage.create({
+      content: `<div style="border-left:3px solid #a855f7;padding:4px 8px;"><strong style="color:#a855f7;">⚡ PAYLOAD EXECUTED</strong><br>${page.flags?.[MODULE_ID]?.contentData?.name ?? 'Unknown Program'}<br><small>Executed by ${actor?.name ?? 'Unknown'}</small></div>`,
+      speaker: ChatMessage.getSpeaker({ alias: 'NCM System' }),
+    });
+
+    ui.notifications.warn('NCM | Payload executed.');
+    this.render();
+  }
+
+  static _onGoToScene(event, target) {
+    const sceneId = target.closest('[data-scene-id]')?.dataset.sceneId;
+    if (!sceneId) return;
+    const scene = game.scenes?.get(sceneId);
+    if (!scene) {
+      ui.notifications.warn('NCM | Scene not found.');
+      return;
+    }
+    scene.view();
+    ui.notifications.info(`NCM | Viewing scene: ${scene.name}`);
   }
 
   // ─── Effects ───

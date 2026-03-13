@@ -53,6 +53,10 @@ export class AdminPanelApp extends BaseApplication {
   /** @type {Set<string>} Collapsed network group keys */
   _collapsedNetGroups = new Set();
 
+  // ── Shards tab state (Sprint 4.6) ──
+  /** @type {Array<object>} In-memory shard activity log for session events */
+  _shardActivityLog = [];
+
   // ═══════════════════════════════════════════════════════════
   //  Service Accessors
   // ═══════════════════════════════════════════════════════════
@@ -141,6 +145,11 @@ export class AdminPanelApp extends BaseApplication {
       forceDecryptShard: AdminPanelApp._onForceDecrypt,
       relockShard: AdminPanelApp._onRelockShard,
       convertItemToShard: AdminPanelApp._onConvertItem,
+      quickCreateShard: AdminPanelApp._onQuickCreateShard,
+      bulkRelockAll: AdminPanelApp._onBulkRelockAll,
+      purgeDestroyed: AdminPanelApp._onPurgeDestroyed,
+      configureShardItem: AdminPanelApp._onConfigureShardItem,
+      relockShardItem: AdminPanelApp._onRelockShardItem,
 
       // Tools actions
       openThemeCustomizer: AdminPanelApp._onOpenThemeCustomizer,
@@ -249,8 +258,8 @@ export class AdminPanelApp extends BaseApplication {
     const shardPresetButtons = (game.nightcity?.dataShardService?.getAllPresets() ?? [])
       .filter(p => p.key !== 'blank');
 
-    // ─── Access Log (Shards tab) ───
-    const accessLog = this._gatherAccessLog();
+    // ─── Shard Activity Log (Shards tab) ───
+    const shardActivityLog = this._shardActivityLog.slice(0, 10);
 
     // ─── Push Log (Contacts tab) ───
     const pushLog = this._gatherPushLog();
@@ -316,7 +325,7 @@ export class AdminPanelApp extends BaseApplication {
       shards,
       shardSummary,
       shardPresetButtons,
-      accessLog,
+      shardActivityLog,
 
       // Module info
       MODULE_ID,
@@ -1468,14 +1477,40 @@ export class AdminPanelApp extends BaseApplication {
     this.subscribe(EVENTS.NETWORK_LOCKOUT, () => this._refreshIfTab('networks'));
 
     // Data Shards
-    this.subscribe(EVENTS.SHARD_DECRYPTED, () => this._refreshIfTab('shards'));
-    this.subscribe(EVENTS.SHARD_RELOCKED, () => this._refreshIfTab('shards'));
-    this.subscribe(EVENTS.SHARD_HACK_ATTEMPT, () => this._refreshIfTab('shards'));
-    this.subscribe(EVENTS.SHARD_CREATED, () => this._refreshIfTab('shards'));
+    this.subscribe(EVENTS.SHARD_DECRYPTED, (data) => {
+      this._logShardActivity('success', 'check', data, 'breached');
+      this._refreshIfTab('shards');
+    });
+    this.subscribe(EVENTS.SHARD_RELOCKED, (data) => {
+      this._logShardActivity('gm', 'lock', data, 'relocked by GM');
+      this._refreshIfTab('shards');
+    });
+    this.subscribe(EVENTS.SHARD_HACK_ATTEMPT, (data) => {
+      const type = data.success ? 'success' : 'fail';
+      const icon = data.success ? 'check' : 'xmark';
+      const text = data.success
+        ? `breached (${data.roll} vs DV ${data.dc})`
+        : `hack FAILED (${data.roll} vs DV ${data.dc})`;
+      this._logShardActivity(type, icon, data, text);
+      this._refreshIfTab('shards');
+    });
+    this.subscribe(EVENTS.SHARD_CREATED, (data) => {
+      this._logShardActivity('gm', 'plus', data, 'created');
+      this._refreshIfTab('shards');
+    });
     this.subscribe(EVENTS.SHARD_STATE_CHANGED, () => this._debouncedRender());
-    this.subscribe(EVENTS.SHARD_INTEGRITY_CHANGED, () => this._refreshIfTab('shards'));
-    this.subscribe(EVENTS.SHARD_EDDIES_CLAIMED, () => this._refreshIfTab('shards'));
-    this.subscribe(EVENTS.SHARD_PRESET_APPLIED, () => this._refreshIfTab('shards'));
+    this.subscribe(EVENTS.SHARD_INTEGRITY_CHANGED, (data) => {
+      this._logShardActivity('fail', 'triangle-exclamation', data, `integrity → ${data.newIntegrity}%`);
+      this._refreshIfTab('shards');
+    });
+    this.subscribe(EVENTS.SHARD_EDDIES_CLAIMED, (data) => {
+      this._logShardActivity('success', 'coins', data, `claimed ${data.amount?.toLocaleString() ?? '?'} eb`);
+      this._refreshIfTab('shards');
+    });
+    this.subscribe(EVENTS.SHARD_PRESET_APPLIED, (data) => {
+      this._logShardActivity('gm', 'palette', data, `preset "${data.preset}" applied`);
+      this._refreshIfTab('shards');
+    });
   }
 
   /**
@@ -2302,6 +2337,148 @@ export class AdminPanelApp extends BaseApplication {
     // Open item picker or dialog to select an item to convert
     // For now, use Foundry's built-in document browser
     ui.notifications.info('Select an item from your Items tab, right-click → "Convert to Data Shard".');
+  }
+
+  static async _onQuickCreateShard(event, target) {
+    const presetKey = target.closest('[data-preset]')?.dataset.preset;
+    if (!presetKey) return;
+
+    // Prompt GM to select an item
+    const items = game.items?.filter(i => !i.getFlag(MODULE_ID, 'isDataShard')) ?? [];
+    if (!items.length) {
+      ui.notifications.warn('NCM | No unconverted items available. Create an item first.');
+      return;
+    }
+
+    const options = items.map(i => `<option value="${i.id}">${i.name}</option>`).join('');
+    const itemId = await new Promise(resolve => {
+      new Dialog({
+        title: 'Quick Create Shard',
+        content: `<p>Select an item to convert with the <strong>${presetKey}</strong> preset:</p>
+          <div class="form-group"><select id="ncm-qc-item">${options}</select></div>`,
+        buttons: {
+          create: { label: 'Create', callback: html => resolve(html.find('#ncm-qc-item').val()) },
+          cancel: { label: 'Cancel', callback: () => resolve(null) },
+        },
+        default: 'create',
+      }).render(true);
+    });
+
+    if (!itemId) return;
+    const item = game.items.get(itemId);
+    if (!item) return;
+
+    const result = await this.dataShardService?.convertToDataShard(item, {}, presetKey);
+    if (result?.success) {
+      ui.notifications.info(`NCM | Created "${item.name}" with ${presetKey} preset.`);
+      this.render();
+    } else {
+      ui.notifications.error(`NCM | Failed: ${result?.error || 'Unknown error'}`);
+    }
+  }
+
+  static async _onBulkRelockAll(event, target) {
+    const shards = game.items?.filter(i => {
+      if (!i.getFlag(MODULE_ID, 'isDataShard')) return false;
+      const state = i.getFlag(MODULE_ID, 'state') ?? {};
+      return state.decrypted === true;
+    }) ?? [];
+
+    if (!shards.length) {
+      ui.notifications.info('NCM | No breached shards to relock.');
+      return;
+    }
+
+    const confirmed = await Dialog.confirm({
+      title: 'Bulk Relock All Shards',
+      content: `<p>Relock <strong>${shards.length}</strong> breached shard${shards.length > 1 ? 's' : ''}? All session data will be reset.</p>`,
+    });
+    if (!confirmed) return;
+
+    for (const item of shards) {
+      await this.dataShardService?.relockShard(item);
+    }
+    ui.notifications.info(`NCM | ${shards.length} shard${shards.length > 1 ? 's' : ''} relocked.`);
+    this.render();
+  }
+
+  static async _onPurgeDestroyed(event, target) {
+    const destroyed = game.items?.filter(i => {
+      if (!i.getFlag(MODULE_ID, 'isDataShard')) return false;
+      const state = i.getFlag(MODULE_ID, 'state') ?? {};
+      return state.destroyed === true;
+    }) ?? [];
+
+    if (!destroyed.length) {
+      ui.notifications.info('NCM | No destroyed shards to purge.');
+      return;
+    }
+
+    const confirmed = await Dialog.confirm({
+      title: 'Purge Destroyed Shards',
+      content: `<p>Remove shard flags from <strong>${destroyed.length}</strong> destroyed shard${destroyed.length > 1 ? 's' : ''}? The items will remain but lose their shard data.</p>`,
+    });
+    if (!confirmed) return;
+
+    for (const item of destroyed) {
+      await this.dataShardService?.removeDataShard(item, true);
+    }
+    ui.notifications.info(`NCM | ${destroyed.length} destroyed shard${destroyed.length > 1 ? 's' : ''} purged.`);
+    this.render();
+  }
+
+  static _onConfigureShardItem(event, target) {
+    event.stopPropagation(); // Don't trigger card click (openShardItem)
+    const itemId = target.closest('[data-item-id]')?.dataset.itemId;
+    if (!itemId) return;
+    const item = game.items.get(itemId);
+    if (!item) return;
+
+    import('../ItemInbox/ItemInboxConfig.js').then(({ ItemInboxConfig }) => {
+      new ItemInboxConfig({ item }).render(true);
+    });
+  }
+
+  static async _onRelockShardItem(event, target) {
+    event.stopPropagation(); // Don't trigger card click (openShardItem)
+    const itemId = target.closest('[data-item-id]')?.dataset.itemId;
+    if (!itemId) return;
+    const item = game.items.get(itemId);
+    if (!item) return;
+
+    const result = await game.nightcity?.dataShardService?.relockShard(item);
+    if (result?.success) {
+      ui.notifications.info(`NCM | Relocked: ${item.name}`);
+      this.render();
+    }
+  }
+
+  // ─── Shard Activity Log Helper ───
+
+  /**
+   * Add an entry to the in-memory shard activity log.
+   * @param {string} type - 'success' | 'fail' | 'gm'
+   * @param {string} icon - FontAwesome icon name (without 'fa-')
+   * @param {object} data - Event data with itemId, actorId
+   * @param {string} text - Description text
+   * @private
+   */
+  _logShardActivity(type, icon, data, text) {
+    const actor = data.actorId ? game.actors?.get(data.actorId) : null;
+    const item = data.itemId ? game.items?.get(data.itemId) : null;
+    const actorName = actor?.name || (data.actorId === 'gm-override' ? 'GM' : 'Unknown');
+    const shardName = item?.name || 'Unknown Shard';
+
+    this._shardActivityLog.unshift({
+      type,
+      icon,
+      text: `<span class="ncm-activity-actor">${actorName}</span> ${text} — <span class="ncm-activity-shard">${shardName}</span>`,
+      time: this._getRelativeTime(Date.now()),
+      timestamp: Date.now(),
+    });
+
+    // Keep max 20 entries
+    if (this._shardActivityLog.length > 20) this._shardActivityLog.length = 20;
   }
 
   // ═══════════════════════════════════════════════════════════

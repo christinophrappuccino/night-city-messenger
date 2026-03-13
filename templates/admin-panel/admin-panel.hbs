@@ -726,20 +726,24 @@
       </div>
 
       {{!-- Activity Feed --}}
-      {{#if accessLog.length}}
       <div class="ncm-shard-activity-feed">
         <div class="ncm-shard-activity-feed__header"><i class="fas fa-clock-rotate-left"></i> Recent Activity</div>
         <div class="ncm-shard-activity-feed__list">
-          {{#each accessLog}}
-          <div class="ncm-shard-activity-item">
-            <span class="ncm-shard-activity-item__time">{{this.time}}</span>
-            <div class="ncm-shard-activity-item__icon ncm-shard-activity-item__icon--{{this.type}}"><i class="fas fa-{{this.icon}}"></i></div>
-            <span class="ncm-shard-activity-item__text">{{{this.text}}}</span>
-          </div>
-          {{/each}}
+          {{#if shardActivityLog.length}}
+            {{#each shardActivityLog}}
+            <div class="ncm-shard-activity-item">
+              <span class="ncm-shard-activity-item__time">{{this.time}}</span>
+              <div class="ncm-shard-activity-item__icon ncm-shard-activity-item__icon--{{this.type}}"><i class="fas fa-{{this.icon}}"></i></div>
+              <span class="ncm-shard-activity-item__text">{{{this.text}}}</span>
+            </div>
+            {{/each}}
+          {{else}}
+            <div class="ncm-shard-activity-item">
+              <span class="ncm-shard-activity-item__text" style="opacity:0.4;">No activity this session</span>
+            </div>
+          {{/if}}
         </div>
       </div>
-      {{/if}}
 
       {{!-- Quick Create Presets --}}
       <div class="ncm-shard-quick-create">
@@ -814,20 +818,6 @@
 
     {{else}}
     <div class="ncm-admin-empty"><i class="fas fa-database"></i> No data shards in the world.</div>
-    {{/if}}
-
-    {{!-- Access Log --}}
-    {{#if accessLog.length}}
-    <div class="ncm-section-title"><i class="fas fa-clipboard-list"></i> Recent Access Log</div>
-    <div class="ncm-access-log">
-      {{#each accessLog}}
-      <div class="ncm-access-log__entry ncm-access-log__entry--{{this.type}}">
-        <i class="fas fa-{{this.icon}}"></i>
-        <span class="ncm-access-log__entry__text">{{{this.text}}}</span>
-        <span class="ncm-access-log__entry__time">{{this.time}}</span>
-      </div>
-      {{/each}}
-    </div>
     {{/if}}
 
     {{/if}}

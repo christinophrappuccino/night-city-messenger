@@ -721,52 +721,139 @@
 
 
 /* ═══════════════════════════════════════════
-   §16  BUTTONS & CONTROLS
+   §16  BUTTONS & CONTROLS — FOUNDRY OVERRIDE SWEEP
+   Every button/interactive in shard UI needs !important
+   on appearance, box-shadow, min-width, min-height,
+   background, border, padding, color, font, line-height.
    ═══════════════════════════════════════════ */
 
+/* ─── Header icon buttons (24px square — config, add, delete) ─── */
+
 .ncm-app .ncm-shard-hdr-btn {
-  width: 24px; height: 24px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 10px; color: var(--ncm-text-muted);
-  background: var(--ncm-bg-surface); border: 1px solid var(--ncm-border);
-  border-radius: 2px; cursor: pointer; transition: all 0.15s;
-  appearance: none !important; box-shadow: none !important;
-  min-width: 24px !important; min-height: 24px !important;
-  padding: 0 !important;
+  width: 24px !important; height: 24px !important;
+  display: flex !important; align-items: center !important; justify-content: center !important;
+  font-size: 10px !important; color: var(--ncm-text-muted) !important;
+  background: var(--ncm-bg-surface) !important;
+  border: 1px solid var(--ncm-border) !important;
+  border-radius: 2px !important; cursor: pointer !important;
+  transition: all 0.15s !important;
+  appearance: none !important; -webkit-appearance: none !important;
+  box-shadow: none !important;
+  min-width: 0 !important; min-height: 0 !important;
+  padding: 0 !important; margin: 0 !important;
+  line-height: 1 !important;
 }
-.ncm-app .ncm-shard-hdr-btn:hover { color: var(--ncm-text-primary); border-color: var(--ncm-border-active); }
-.ncm-app .ncm-shard-hdr-btn--danger:hover { color: #ff0033; border-color: #ff0033; }
+.ncm-app .ncm-shard-hdr-btn:hover {
+  color: var(--ncm-text-primary) !important;
+  border-color: var(--ncm-border-active) !important;
+  background: var(--ncm-bg-elevated) !important;
+}
+.ncm-app .ncm-shard-hdr-btn--danger:hover {
+  color: #ff0033 !important;
+  border-color: #ff0033 !important;
+}
+
+/* ─── Standard action buttons (Save, Reset, Add Entry, Cancel, etc.) ─── */
 
 .ncm-app .ncm-shard-btn {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 6px 16px; border-radius: 2px;
-  font-family: var(--ncm-font-body); font-size: 12px;
-  font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;
-  cursor: pointer; transition: all 0.15s;
-  appearance: none !important; box-shadow: none !important;
-  min-width: auto !important; min-height: auto !important;
+  display: inline-flex !important; align-items: center !important; gap: 6px !important;
+  padding: 6px 16px !important; border-radius: 2px !important;
+  font-family: var(--ncm-font-body) !important; font-size: 12px !important;
+  font-weight: 600 !important; text-transform: uppercase !important;
+  letter-spacing: 0.08em !important;
+  cursor: pointer !important; transition: all 0.15s !important;
+  appearance: none !important; -webkit-appearance: none !important;
+  box-shadow: none !important;
+  min-width: 0 !important; min-height: 0 !important;
+  line-height: 1.4 !important; margin: 0 !important;
 }
 
 .ncm-app .ncm-shard-btn--primary {
-  background: rgba(25,243,247,0.1);
-  border: 1px solid rgba(25,243,247,0.3);
-  color: var(--ncm-color-secondary);
+  background: rgba(25,243,247,0.1) !important;
+  border: 1px solid rgba(25,243,247,0.3) !important;
+  color: var(--ncm-color-secondary) !important;
 }
-.ncm-app .ncm-shard-btn--primary:hover { background: rgba(25,243,247,0.18); border-color: var(--ncm-color-secondary); }
+.ncm-app .ncm-shard-btn--primary:hover {
+  background: rgba(25,243,247,0.18) !important;
+  border-color: var(--ncm-color-secondary) !important;
+}
 
 .ncm-app .ncm-shard-btn--secondary {
-  background: rgba(136,136,160,0.08);
-  border: 1px solid rgba(136,136,160,0.2);
-  color: var(--ncm-text-secondary);
+  background: rgba(136,136,160,0.08) !important;
+  border: 1px solid rgba(136,136,160,0.2) !important;
+  color: var(--ncm-text-secondary) !important;
 }
-.ncm-app .ncm-shard-btn--secondary:hover { background: rgba(136,136,160,0.15); border-color: var(--ncm-text-secondary); }
+.ncm-app .ncm-shard-btn--secondary:hover {
+  background: rgba(136,136,160,0.15) !important;
+  border-color: var(--ncm-text-secondary) !important;
+}
 
 .ncm-app .ncm-shard-btn--danger {
-  background: rgba(255,0,51,0.1);
-  border: 1px solid rgba(255,0,51,0.3);
-  color: #ff0033;
+  background: rgba(255,0,51,0.1) !important;
+  border: 1px solid rgba(255,0,51,0.3) !important;
+  color: #ff0033 !important;
 }
-.ncm-app .ncm-shard-btn--danger:hover { background: rgba(255,0,51,0.2); border-color: #ff0033; }
+.ncm-app .ncm-shard-btn--danger:hover {
+  background: rgba(255,0,51,0.2) !important;
+  border-color: #ff0033 !important;
+}
+
+/* ─── Eddies claim button ─── */
+
+.ncm-app .ncm-eddies-claim-btn {
+  display: inline-flex !important; align-items: center !important; gap: 6px !important;
+  margin-top: 14px !important; padding: 8px 28px !important;
+  background: rgba(247,201,72,0.12) !important;
+  border: 1px solid rgba(247,201,72,0.35) !important;
+  border-radius: 2px !important;
+  font-family: var(--ncm-font-body) !important; font-size: 13px !important;
+  font-weight: 700 !important; color: #f7c948 !important;
+  text-transform: uppercase !important; letter-spacing: 0.1em !important;
+  cursor: pointer !important; transition: all 0.2s !important;
+  appearance: none !important; -webkit-appearance: none !important;
+  box-shadow: none !important;
+  min-width: 0 !important; min-height: 0 !important;
+  line-height: 1.4 !important; margin: 14px 0 0 0 !important;
+}
+.ncm-app .ncm-eddies-claim-btn:hover {
+  background: rgba(247,201,72,0.2) !important;
+  border-color: #f7c948 !important;
+  box-shadow: 0 0 15px rgba(247,201,72,0.15) !important;
+}
+.ncm-app .ncm-eddies-claim-btn--claimed {
+  background: rgba(0,255,65,0.08) !important;
+  border-color: rgba(0,255,65,0.25) !important;
+  color: #00ff41 !important;
+  cursor: default !important;
+}
+
+/* ─── Composer content type pills ─── */
+
+.ncm-app .ncm-composer-type-pill {
+  display: flex !important; align-items: center !important; gap: 5px !important;
+  padding: 5px 12px !important;
+  background: var(--ncm-bg-surface, #1a1a2e) !important;
+  border: 1px solid var(--ncm-border, #2a2a45) !important;
+  border-radius: 2px !important; cursor: pointer !important;
+  font-family: var(--ncm-font-body) !important; font-size: 11px !important;
+  color: var(--ncm-text-secondary, #8888a0) !important;
+  text-transform: uppercase !important; letter-spacing: 0.04em !important;
+  transition: all 0.15s !important;
+  appearance: none !important; -webkit-appearance: none !important;
+  box-shadow: none !important;
+  min-width: 0 !important; min-height: 0 !important;
+  line-height: 1.4 !important; margin: 0 !important;
+}
+.ncm-app .ncm-composer-type-pill i { font-size: 10px !important; }
+.ncm-app .ncm-composer-type-pill:hover {
+  border-color: var(--ncm-border-active, #3a3a5a) !important;
+  color: var(--ncm-text-primary) !important;
+}
+.ncm-app .ncm-composer-type-pill--active {
+  background: rgba(25, 243, 247, 0.08) !important;
+  border-color: var(--ncm-color-secondary, #19f3f7) !important;
+  color: var(--ncm-color-secondary, #19f3f7) !important;
+}
 
 /* Utility text classes */
 .ncm-app .ncm-text-danger { color: #ff0033 !important; }
