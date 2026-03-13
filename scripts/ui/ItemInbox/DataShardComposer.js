@@ -82,6 +82,7 @@ export class DataShardComposer extends BaseApplication {
       cancel: DataShardComposer._onCancel,
       selectContentType: DataShardComposer._onSelectContentType,
       selectAccent: DataShardComposer._onSelectAccent,
+      selectIcon: DataShardComposer._onSelectIcon,
       addDossierSection: DataShardComposer._onAddDossierSection,
       removeDossierSection: DataShardComposer._onRemoveDossierSection,
       addTranscriptLine: DataShardComposer._onAddTranscriptLine,
@@ -178,9 +179,20 @@ export class DataShardComposer extends BaseApplication {
     const accent = target.dataset.accent;
     if (!accent) return;
     this._selectedAccent = accent;
-    // Update visual only — no full re-render needed
     this.element?.querySelectorAll('.ncm-composer-color-dot').forEach(dot => {
       dot.classList.toggle('ncm-composer-color-dot--active', dot.dataset.accent === accent);
+    });
+  }
+
+  static _onSelectIcon(event, target) {
+    const icon = target.dataset.icon;
+    const targetInput = target.dataset.target;
+    if (!icon || !targetInput) return;
+    const input = this.element?.querySelector(`[name="${targetInput}"]`);
+    if (input) input.value = icon;
+    const grid = target.closest('.ncm-icon-grid');
+    grid?.querySelectorAll('.ncm-icon-grid__item').forEach(el => {
+      el.classList.toggle('ncm-icon-grid__item--active', el.dataset.icon === icon);
     });
   }
 

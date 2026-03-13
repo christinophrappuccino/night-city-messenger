@@ -821,7 +821,9 @@ export class ItemInboxApp extends BaseApplication {
 
     const style = config.animationStyle || 'standard-fade';
     const speedKey = config.speed || 'normal';
-    const mult = ItemInboxApp.BOOT_SPEED_MULT[speedKey] ?? 1.0;
+    const mult = speedKey === 'custom'
+      ? (config.customSeconds ?? 3) / 3
+      : (ItemInboxApp.BOOT_SPEED_MULT[speedKey] ?? 1.0);
 
     // Reduced mode: simple quick fade, no choreography
     if (animLevel === 'reduced') {

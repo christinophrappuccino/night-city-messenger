@@ -30,6 +30,7 @@
   position: absolute;
   inset: 0;
   z-index: 0;
+  pointer-events: none;
 }
 
 /* Static Noise (Network layer) */
@@ -640,6 +641,7 @@
 @media (prefers-reduced-motion: reduce) {
   .ncm-security-overlay,
   .ncm-security-card,
+  .ncm-overlay-card,
   .ncm-static-noise,
   .ncm-scanline-slow,
   .ncm-scanline-green,
@@ -659,3 +661,224 @@
     animation: none !important;
   }
 }
+
+
+/* ═══════════════════════════════════════════════════════════
+ * TEMPLATE CLASS ALIASES
+ * Templates use ncm-overlay-* but CSS was written as ncm-security-*.
+ * These rules ensure both naming conventions work.
+ * ═══════════════════════════════════════════════════════════ */
+
+/* Card container (templates use ncm-overlay-card) */
+.ncm-overlay-card {
+  position: relative;
+  z-index: 1;
+  background: var(--ncm-bg-base, #12121a);
+  border: 1px solid var(--ncm-bg-elevated, #252540);
+  border-radius: 6px;
+  padding: 24px 28px;
+  max-width: 380px;
+  width: 90%;
+  text-align: center;
+  box-shadow:
+    0 0 20px rgba(0, 0, 0, 0.5),
+    0 0 1px var(--ncm-primary, #F65261);
+  animation: ncm-card-appear 0.4s ease;
+}
+
+/* Layer-specific card accents (templates use ncm-security-overlay-* prefix) */
+.ncm-security-overlay-network .ncm-overlay-card {
+  border-color: #ff4444;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5), 0 0 2px #ff4444;
+}
+.ncm-security-overlay-keyitem .ncm-overlay-card {
+  border-color: var(--ncm-accent, #f7c948);
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5), 0 0 2px var(--ncm-accent, #f7c948);
+}
+.ncm-security-overlay-login .ncm-overlay-card {
+  border-color: #00ff41;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5), 0 0 2px #00ff41;
+}
+.ncm-security-overlay-encryption .ncm-overlay-card {
+  border-color: var(--ncm-secondary, #19f3f7);
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5), 0 0 2px var(--ncm-secondary, #19f3f7);
+}
+
+/* Icon (templates use ncm-overlay-icon) */
+.ncm-overlay-icon {
+  font-size: 28px;
+  margin-bottom: 8px;
+}
+.ncm-security-overlay-network .ncm-overlay-icon { color: #ff4444; }
+.ncm-security-overlay-keyitem .ncm-overlay-icon { color: var(--ncm-accent, #f7c948); animation: ncm-pulse-icon 2s ease-in-out infinite; }
+.ncm-security-overlay-login .ncm-overlay-icon { color: #00ff41; }
+.ncm-security-overlay-encryption .ncm-overlay-icon { color: var(--ncm-secondary, #19f3f7); }
+
+/* Title (templates use ncm-overlay-title) */
+.ncm-overlay-title {
+  font-family: var(--ncm-font-display, 'Orbitron', monospace);
+  font-size: 16px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--ncm-text-primary, #e0e0e8);
+  margin: 0 0 8px 0;
+}
+
+/* Info text */
+.ncm-overlay-info {
+  font-size: 13px;
+  color: var(--ncm-text-secondary, #8888a0);
+  margin: 0 0 4px 0;
+}
+
+/* Highlight text */
+.ncm-overlay-highlight {
+  color: var(--ncm-text-primary, #e0e0e8);
+  font-weight: 700;
+}
+
+/* GM controls section */
+.ncm-overlay-gm {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--ncm-bg-elevated, #252540);
+}
+
+.ncm-gm-divider {
+  font-family: var(--ncm-font-mono, monospace);
+  font-size: 9px;
+  color: var(--ncm-text-muted, #555570);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 8px;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+ * FOUNDRY BUTTON OVERRIDES — Security Overlays
+ * ncm-btn, ncm-btn-primary, ncm-btn-gm, ncm-btn-secondary,
+ * ncm-btn-skill, ncm-btn-breach
+ * ═══════════════════════════════════════════════════════════ */
+
+.ncm-security-overlay .ncm-btn {
+  display: block !important;
+  width: 100% !important;
+  padding: 10px 16px !important;
+  margin-top: 10px !important;
+  font-family: var(--ncm-font-body, 'Rajdhani', sans-serif) !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.08em !important;
+  border-radius: 4px !important;
+  cursor: pointer !important;
+  transition: all 0.15s !important;
+  appearance: none !important; -webkit-appearance: none !important;
+  box-shadow: none !important;
+  min-width: 0 !important; min-height: 0 !important;
+  line-height: 1.4 !important;
+  text-align: center !important;
+}
+
+.ncm-security-overlay .ncm-btn-primary {
+  background: rgba(25, 243, 247, 0.12) !important;
+  border: 1px solid rgba(25, 243, 247, 0.35) !important;
+  color: var(--ncm-secondary, #19f3f7) !important;
+}
+.ncm-security-overlay .ncm-btn-primary:hover {
+  background: rgba(25, 243, 247, 0.22) !important;
+  border-color: var(--ncm-secondary, #19f3f7) !important;
+  box-shadow: 0 0 10px rgba(25, 243, 247, 0.15) !important;
+}
+
+.ncm-security-overlay .ncm-btn-gm {
+  background: rgba(247, 201, 72, 0.1) !important;
+  border: 1px solid rgba(247, 201, 72, 0.3) !important;
+  color: var(--ncm-accent, #f7c948) !important;
+  font-size: 11px !important;
+}
+.ncm-security-overlay .ncm-btn-gm:hover {
+  background: rgba(247, 201, 72, 0.2) !important;
+  border-color: var(--ncm-accent, #f7c948) !important;
+  box-shadow: 0 0 10px rgba(247, 201, 72, 0.15) !important;
+}
+
+.ncm-security-overlay .ncm-btn-secondary {
+  background: rgba(136, 136, 160, 0.08) !important;
+  border: 1px solid rgba(136, 136, 160, 0.2) !important;
+  color: var(--ncm-text-secondary, #8888a0) !important;
+}
+.ncm-security-overlay .ncm-btn-secondary:hover {
+  background: rgba(136, 136, 160, 0.15) !important;
+  border-color: var(--ncm-text-secondary) !important;
+}
+
+.ncm-security-overlay .ncm-btn-breach {
+  background: linear-gradient(135deg, var(--ncm-primary, #F65261), #cc2244) !important;
+  border: none !important;
+  color: #ffffff !important;
+  font-family: var(--ncm-font-display, 'Orbitron', monospace) !important;
+  letter-spacing: 2px !important;
+}
+.ncm-security-overlay .ncm-btn-breach:hover {
+  box-shadow: 0 0 12px rgba(246, 82, 97, 0.5) !important;
+  transform: translateY(-1px);
+}
+
+.ncm-security-overlay .ncm-btn-skill {
+  display: flex !important; align-items: center !important; gap: 8px !important;
+  width: 100% !important;
+  padding: 6px 10px !important;
+  background: var(--ncm-bg-surface, #1a1a2e) !important;
+  border: 1px solid var(--ncm-bg-elevated, #252540) !important;
+  border-radius: 4px !important;
+  font-size: 12px !important;
+  color: var(--ncm-text-primary, #e0e0e8) !important;
+  text-align: left !important;
+  text-transform: none !important;
+  appearance: none !important; -webkit-appearance: none !important;
+  box-shadow: none !important;
+  min-width: 0 !important; min-height: 0 !important;
+}
+.ncm-security-overlay .ncm-btn-skill:hover {
+  border-color: var(--ncm-secondary, #19f3f7) !important;
+  background: var(--ncm-bg-elevated, #252540) !important;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+ * FOUNDRY INPUT OVERRIDES — Login Form
+ * ═══════════════════════════════════════════════════════════ */
+
+.ncm-login-form input[type="text"],
+.ncm-login-form input[type="password"] {
+  width: 100% !important;
+  padding: 8px 10px !important;
+  background: var(--ncm-bg-deep, #0a0a0f) !important;
+  border: 1px solid var(--ncm-bg-elevated, #252540) !important;
+  border-radius: 3px !important;
+  font-family: var(--ncm-font-mono, monospace) !important;
+  font-size: 13px !important;
+  color: #00ff41 !important;
+  outline: none !important;
+  appearance: none !important; -webkit-appearance: none !important;
+  box-shadow: none !important;
+  min-height: 0 !important; min-width: 0 !important;
+  transition: border-color 0.15s !important;
+}
+.ncm-login-form input[type="text"]:focus,
+.ncm-login-form input[type="password"]:focus {
+  border-color: #00ff41 !important;
+  box-shadow: 0 0 6px rgba(0, 255, 65, 0.15) !important;
+}
+
+/* Lockout display — templates use ncm-lockout-display */
+.ncm-lockout-display {
+  padding: 16px;
+  color: #ff4444;
+  font-family: var(--ncm-font-mono, monospace);
+  text-align: center;
+}
+.ncm-lockout-display i { font-size: 32px; margin-bottom: 8px; display: block; }
+.ncm-lockout-display p { margin: 4px 0; font-size: 14px; font-weight: 700; text-transform: uppercase; }

@@ -55,6 +55,8 @@ export class ItemInboxConfig extends BaseApplication {
       addBootLogLine: ItemInboxConfig._onAddBootLogLine,
       removeBootLogLine: ItemInboxConfig._onRemoveBootLogLine,
       resetDefaults: ItemInboxConfig._onResetDefaults,
+      selectIcon: ItemInboxConfig._onSelectIcon,
+      browseImage: ItemInboxConfig._onBrowseImage,
     },
   }, { inplace: false });
 
@@ -252,6 +254,8 @@ export class ItemInboxConfig extends BaseApplication {
       bootSpeedFast: boot.speed === 'fast',
       bootSpeedNormal: (boot.speed ?? 'normal') === 'normal',
       bootSpeedDramatic: boot.speed === 'dramatic',
+      bootSpeedCustom: boot.speed === 'custom',
+      bootCustomSeconds: boot.customSeconds ?? '',
       bootLogLines,
       hasBootLogLines: bootLogLines.length > 0,
 
@@ -382,7 +386,7 @@ export class ItemInboxConfig extends BaseApplication {
       boot: {
         enabled: !!data.bootEnabled,
         iconMode: data.bootIconMode || 'fa',
-        faIcon: data.bootFaIconCustom?.trim() || data.bootFaIcon || 'fas fa-microchip',
+        faIcon: data.bootFaIcon || 'fas fa-microchip',
         imageUrl: data.bootImageUrl || null,
         imageSize: parseInt(data.bootImageSize) || 64,
         imageBorderRadius: data.bootImageBorderRadius || 'rounded',
@@ -391,6 +395,7 @@ export class ItemInboxConfig extends BaseApplication {
         progressLabel: data.bootProgressLabel || '',
         logLines: bootLogLines,
         speed: data.bootSpeed || 'normal',
+        customSeconds: parseFloat(data.bootCustomSeconds) || null,
         animationStyle: SHARD_PRESETS[data.preset]?.boot?.animationStyle || 'standard-fade',
       },
 
@@ -496,6 +501,33 @@ export class ItemInboxConfig extends BaseApplication {
     if (!confirm) return;
     await this.dataShardService.updateConfig(this.item, foundry.utils.deepClone(DEFAULTS.SHARD_CONFIG));
     this.render();
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  ICON GRID & FILE PICKER
+  // ═══════════════════════════════════════════════════════════
+
+  static _onSelectIcon(event, target) {
+    const icon = target.dataset.icon;
+    const targetInput = target.dataset.target;
+    if (!icon || !targetInput) return;
+    const input = this.element?.querySelector(`[name="${targetInput}"]`);
+    if (input) input.value = icon;
+    const grid = target.closest('.ncm-icon-grid');
+    grid?.querySelectorAll('.ncm-icon-grid__item').forEach(el => {
+      el.classList.toggle('ncm-icon-grid__item--active', el.dataset.icon === icon);
+    });
+  }
+
+  static _onBrowseImage(event, target) {
+    const targetInput = target.dataset.target;
+    if (!targetInput) return;
+    const input = this.element?.querySelector(`[name="${targetInput}"]`);
+    new FilePicker({
+      type: 'image',
+      current: input?.value || '',
+      callback: (path) => { if (input) input.value = path; },
+    }).render(true);
   }
 
   // ═══════════════════════════════════════════════════════════

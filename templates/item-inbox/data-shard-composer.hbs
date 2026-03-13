@@ -28,17 +28,17 @@
   {{!-- ═══ ENTRY IDENTITY (icon + accent color) ═══ --}}
   <fieldset class="ncm-config-section">
     <legend class="ncm-config-legend"><i class="fas fa-paintbrush"></i> Entry Identity</legend>
-    <div class="ncm-config-row">
-      <label class="ncm-config-label">Icon</label>
-      <select name="entryIcon" class="ncm-config-select ncm-config-flex">
+    <div class="ncm-config-row ncm-config-row--col">
+      <label class="ncm-config-label" style="margin-bottom:4px;">Icon</label>
+      <div class="ncm-icon-grid" data-target="entryIcon">
         {{#each iconOptions}}
-          <option value="{{value}}" {{#if selected}}selected{{/if}}>{{value}} — {{label}}</option>
+          <div class="ncm-icon-grid__item {{#if selected}}ncm-icon-grid__item--active{{/if}}"
+               data-action="selectIcon" data-icon="{{value}}" data-target="entryIcon" title="{{label}}">
+            <i class="{{value}}"></i>
+          </div>
         {{/each}}
-      </select>
-    </div>
-    <div class="ncm-config-row">
-      <label class="ncm-config-label">Or Custom</label>
-      <input type="text" name="entryIconCustom" class="ncm-config-input ncm-config-flex" placeholder="fas fa-custom-icon (overrides dropdown)" />
+      </div>
+      <input type="hidden" name="entryIcon" value="" />
     </div>
     <div class="ncm-config-row">
       <label class="ncm-config-label">Accent</label>
