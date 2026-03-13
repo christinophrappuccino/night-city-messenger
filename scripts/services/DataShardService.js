@@ -12,7 +12,7 @@
  *              Per-message encryption support.
  */
 
-import { MODULE_ID, EVENTS, SOCKET_OPS, DEFAULTS, ENCRYPTION_TYPES, FAILURE_MODES } from '../utils/constants.js';
+import { MODULE_ID, EVENTS, SOCKET_OPS, DEFAULTS, ENCRYPTION_TYPES, FAILURE_MODES, CONTENT_TYPES, NETWORK_ACCESS_MODES, CONNECTION_MODES, SHARD_PRESETS } from '../utils/constants.js';
 import { log, isGM, generateId } from '../utils/helpers.js';
 
 export class DataShardService {
@@ -35,9 +35,10 @@ export class DataShardService {
    * Creates a linked journal for shard messages.
    * @param {Item} item - The item to convert
    * @param {object} [configOverrides] - Optional config overrides
+   * @param {string} [presetKey] - Optional preset key from SHARD_PRESETS
    * @returns {Promise<{ success: boolean, journalId?: string }>}
    */
-  async convertToDataShard(item, configOverrides = {}) {
+  async convertToDataShard(item, configOverrides = {}, presetKey = null) {
     if (!item) return { success: false, error: 'No item provided' };
     if (!isGM()) return { success: false, error: 'GM only operation' };
 
@@ -54,12 +55,16 @@ export class DataShardService {
         flags: { [MODULE_ID]: { type: 'data-shard', linkedItemId: item.id } },
       });
 
-      // Merge config with defaults
-      const config = foundry.utils.mergeObject(
-        foundry.utils.deepClone(DEFAULTS.SHARD_CONFIG),
-        configOverrides,
-        { inplace: false }
-      );
+      // Build config: defaults → preset overrides → manual overrides
+      let config = foundry.utils.deepClone(DEFAULTS.SHARD_CONFIG);
+
+      // Apply preset if specified
+      if (presetKey && SHARD_PRESETS[presetKey]) {
+        config = this._applyPresetToConfig(config, presetKey);
+      }
+
+      // Apply manual overrides last (highest priority)
+      config = foundry.utils.mergeObject(config, configOverrides, { inplace: false });
 
       // Single atomic flag write
       await item.update({
@@ -69,9 +74,9 @@ export class DataShardService {
         [`flags.${MODULE_ID}.journalId`]: journal.id,
       });
 
-      this.eventBus?.emit(EVENTS.SHARD_CREATED, { itemId: item.id });
+      this.eventBus?.emit(EVENTS.SHARD_CREATED, { itemId: item.id, preset: presetKey });
       this.soundService?.play('shard-insert');
-      log.info(`Item "${item.name}" converted to data shard (journal: ${journal.id})`);
+      log.info(`Item "${item.name}" converted to data shard (journal: ${journal.id}, preset: ${presetKey || 'none'})`);
 
       return { success: true, journalId: journal.id };
     } catch (err) {
@@ -136,16 +141,20 @@ export class DataShardService {
     // Service always returns the true security state.
 
     // Layer 1: NETWORK
-    if (config.requiresNetwork && config.requiredNetwork) {
-      const onNetwork = this.networkService?.isOnNetwork(config.requiredNetwork) ?? false;
-      if (!onNetwork) {
+    // Supports both new `network` object and legacy flat `requiresNetwork` / `requiredNetwork`
+    const networkRequired = config.network?.required ?? config.requiresNetwork ?? false;
+    if (networkRequired) {
+      const networkResult = this._checkNetworkAccess(config);
+      if (!networkResult.allowed) {
         return {
           blocked: true,
           layer: 'network',
-          reason: `Requires network: ${config.requiredNetwork}`,
+          reason: networkResult.reason,
           config,
           session,
-          requiredNetwork: config.requiredNetwork,
+          requiredNetwork: networkResult.requiredNetwork,
+          connectionMode: config.network?.connectionMode ?? 'offline',
+          signalInfo: networkResult.signalInfo,
         };
       }
     }
@@ -407,8 +416,10 @@ export class DataShardService {
       return { success: false, locked: true, permanent: true };
     }
 
-    // Determine DC — per-skill DCs override global
-    const dc = config.skillDCs?.[skillName] ?? config.encryptionDC ?? 15;
+    // Determine DC — per-skill DCs override global, plus signal penalty
+    const baseDC = config.skillDCs?.[skillName] ?? config.encryptionDC ?? 15;
+    const signalMod = this.getSignalDVModifier(shardItem);
+    const dc = baseDC + signalMod.modifier;
 
     // Initialize security tracking
     this.securityService?.initTracking(actor.id, shardItem.id, {
@@ -536,9 +547,11 @@ export class DataShardService {
   }
 
   /**
-   * Add a message to a data shard. GM only.
+   * Add an entry to a data shard. GM only.
+   * Supports all content types: message, eddies, dossier, payload, avlog, location.
+   *
    * @param {Item} shardItem
-   * @param {object} messageData - { from, subject, body, timestamp, encrypted?, encryptionDC? }
+   * @param {object} messageData - { from, subject, body, timestamp, contentType?, contentData?, encrypted?, encryptionDC?, networkVisibility? }
    * @returns {Promise<{ success: boolean, messageId?: string }>}
    */
   async addMessage(shardItem, messageData) {
@@ -550,6 +563,7 @@ export class DataShardService {
     try {
       const messageId = generateId();
       const config = this._getConfig(shardItem);
+      const contentType = messageData.contentType || CONTENT_TYPES.MESSAGE;
 
       await journal.createEmbeddedDocuments('JournalEntryPage', [{
         name: messageData.subject || 'Data Fragment',
@@ -559,21 +573,31 @@ export class DataShardService {
           [MODULE_ID]: {
             messageId,
             type: 'shard-message',
+            contentType,
             from: messageData.from || 'UNKNOWN',
             subject: messageData.subject || 'Data Fragment',
             timestamp: messageData.timestamp || new Date().toISOString(),
+            // Content-type-specific payload
+            contentData: messageData.contentData ?? {},
             // Per-message encryption (only if encryptionMode === 'message')
             encrypted: config.encryptionMode === 'message' ? (messageData.encrypted !== false) : false,
             encryptionDC: messageData.encryptionDC ?? config.encryptionDC,
             decrypted: false,
+            corrupted: false,
+            // Network visibility (per-entry)
+            networkVisibility: messageData.networkVisibility ?? {
+              restricted: false,
+              allowedNetworks: [],
+              allowedTypes: [],
+            },
           },
         },
       }]);
 
-      log.debug(`Message "${messageData.subject}" added to shard "${shardItem.name}"`);
+      log.debug(`Entry "${messageData.subject}" (${contentType}) added to shard "${shardItem.name}"`);
       return { success: true, messageId };
     } catch (err) {
-      log.error(`Failed to add message to shard: ${err.message}`);
+      log.error(`Failed to add entry to shard: ${err.message}`);
       return { success: false, error: err.message };
     }
   }
@@ -644,6 +668,287 @@ export class DataShardService {
   }
 
   // ═══════════════════════════════════════════════════════════
+  //  PUBLIC API — Presets (Sprint 4.6)
+  // ═══════════════════════════════════════════════════════════
+
+  /**
+   * Get a shard preset definition by key.
+   * @param {string} presetKey
+   * @returns {object|null}
+   */
+  getPreset(presetKey) {
+    return SHARD_PRESETS[presetKey] ?? null;
+  }
+
+  /**
+   * Get all available shard preset keys with labels.
+   * @returns {Array<{ key: string, label: string, icon: string }>}
+   */
+  getAllPresets() {
+    return Object.entries(SHARD_PRESETS).map(([key, preset]) => ({
+      key,
+      label: preset.label,
+      icon: preset.icon,
+    }));
+  }
+
+  /**
+   * Apply a preset to an existing data shard. GM only.
+   * Merges preset security, boot, and theme into current config.
+   * Does NOT overwrite manual config changes — preset is a base layer.
+   *
+   * @param {Item} shardItem
+   * @param {string} presetKey
+   * @returns {Promise<{ success: boolean }>}
+   */
+  async applyPreset(shardItem, presetKey) {
+    if (!isGM()) return { success: false, error: 'GM only' };
+    if (!SHARD_PRESETS[presetKey]) return { success: false, error: `Unknown preset: ${presetKey}` };
+
+    try {
+      const currentConfig = this._getConfig(shardItem);
+      const newConfig = this._applyPresetToConfig(currentConfig, presetKey);
+
+      await shardItem.update({ [`flags.${MODULE_ID}.config`]: newConfig });
+      this.eventBus?.emit(EVENTS.SHARD_PRESET_APPLIED, { itemId: shardItem.id, preset: presetKey });
+
+      log.info(`Preset "${presetKey}" applied to shard "${shardItem.name}"`);
+      return { success: true };
+    } catch (err) {
+      log.error(`Failed to apply preset: ${err.message}`);
+      return { success: false, error: err.message };
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  PUBLIC API — Integrity System (Sprint 4.6)
+  // ═══════════════════════════════════════════════════════════
+
+  /**
+   * Get the current integrity status of a shard.
+   * @param {Item} shardItem
+   * @returns {{ enabled: boolean, current: number, max: number, percentage: number, tier: string, isBricked: boolean }}
+   */
+  checkIntegrity(shardItem) {
+    const config = this._getConfig(shardItem);
+    const integrity = config.integrity ?? {};
+
+    if (!integrity.enabled) {
+      return { enabled: false, current: 100, max: 100, percentage: 100, tier: 'clean', isBricked: false };
+    }
+
+    const current = integrity.currentIntegrity ?? 100;
+    const max = integrity.maxIntegrity ?? 100;
+    const pct = max > 0 ? Math.round((current / max) * 100) : 0;
+
+    let tier = 'clean';
+    if (pct <= 0) tier = 'bricked';
+    else if (pct <= 24) tier = 'severe';
+    else if (pct <= 49) tier = 'heavy';
+    else if (pct <= 74) tier = 'light';
+
+    return {
+      enabled: true,
+      current,
+      max,
+      percentage: pct,
+      tier,
+      isBricked: pct <= 0,
+      mode: integrity.mode ?? 'cosmetic',
+      belowCorruptionThreshold: current < (integrity.corruptionThreshold ?? 40),
+    };
+  }
+
+  /**
+   * Degrade a shard's integrity after a failed hack attempt.
+   * If mechanical mode + below corruption threshold, may corrupt individual entries.
+   * GM only (called internally after hack failure, or directly by GM).
+   *
+   * @param {Item} shardItem
+   * @returns {Promise<{ newIntegrity: number, corruptedEntries: string[] }>}
+   */
+  async degradeIntegrity(shardItem) {
+    const config = this._getConfig(shardItem);
+    const integrity = config.integrity ?? {};
+
+    if (!integrity.enabled) return { newIntegrity: 100, corruptedEntries: [] };
+
+    const degradeAmount = integrity.degradePerFailure ?? 15;
+    const newValue = Math.max(0, (integrity.currentIntegrity ?? 100) - degradeAmount);
+    const corruptedEntries = [];
+
+    // Update integrity value
+    await shardItem.update({
+      [`flags.${MODULE_ID}.config.integrity.currentIntegrity`]: newValue,
+    });
+
+    // Mechanical corruption check
+    if (integrity.mode === 'mechanical' && newValue < (integrity.corruptionThreshold ?? 40)) {
+      const journal = this._getLinkedJournal(shardItem);
+      if (journal) {
+        const chance = integrity.corruptionChance ?? 0.3;
+        for (const page of journal.pages) {
+          const flags = page.flags?.[MODULE_ID];
+          if (flags?.type === 'shard-message' && !flags.corrupted && !flags.decrypted) {
+            if (Math.random() < chance) {
+              await page.update({ [`flags.${MODULE_ID}.corrupted`]: true });
+              corruptedEntries.push(flags.messageId);
+              this.eventBus?.emit(EVENTS.SHARD_ENTRY_CORRUPTED, {
+                itemId: shardItem.id, entryId: flags.messageId,
+              });
+            }
+          }
+        }
+      }
+    }
+
+    this.eventBus?.emit(EVENTS.SHARD_INTEGRITY_CHANGED, {
+      itemId: shardItem.id, newIntegrity: newValue,
+    });
+
+    if (newValue <= 0) {
+      this.eventBus?.emit(EVENTS.SHARD_INTEGRITY_BRICKED, { itemId: shardItem.id });
+      this.soundService?.play('shard-brick');
+    }
+
+    log.debug(`Shard "${shardItem.name}" integrity: ${newValue}${corruptedEntries.length ? ` (${corruptedEntries.length} entries corrupted)` : ''}`);
+    return { newIntegrity: newValue, corruptedEntries };
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  PUBLIC API — Eddies Claim (Sprint 4.6)
+  // ═══════════════════════════════════════════════════════════
+
+  /**
+   * Claim eddies from an eddies-type shard entry.
+   * Wires the amount to the actor's CPR wealth ledger.
+   *
+   * @param {Item} shardItem
+   * @param {string} entryId - The messageId of the eddies entry
+   * @param {Actor} actor - The actor claiming the eddies
+   * @returns {Promise<{ success: boolean, amount?: number }>}
+   */
+  async claimEddies(shardItem, entryId, actor) {
+    if (!actor) return { success: false, error: 'No actor provided' };
+
+    const journal = this._getLinkedJournal(shardItem);
+    if (!journal) return { success: false, error: 'No linked journal' };
+
+    const page = journal.pages.find(p => p.flags?.[MODULE_ID]?.messageId === entryId);
+    if (!page) return { success: false, error: 'Entry not found' };
+
+    const flags = page.flags?.[MODULE_ID];
+    if (flags.contentType !== CONTENT_TYPES.EDDIES) {
+      return { success: false, error: 'Entry is not an eddies type' };
+    }
+
+    const contentData = flags.contentData ?? {};
+    if (contentData.claimed) {
+      return { success: false, error: 'Eddies already claimed' };
+    }
+
+    const amount = contentData.amount ?? 0;
+    if (amount <= 0) return { success: false, error: 'No eddies to claim' };
+
+    try {
+      // Wire to CPR wealth ledger — uses array format ["description", "reason"]
+      const currentWealth = actor.system?.wealth ?? [];
+      const newEntry = [`Claimed ${amount}eb from data shard`, 'Data Shard Eddies'];
+      const updatedWealth = [...currentWealth, newEntry];
+      await actor.update({ 'system.wealth': updatedWealth });
+
+      // Mark as claimed on the journal page
+      await page.update({
+        [`flags.${MODULE_ID}.contentData.claimed`]: true,
+        [`flags.${MODULE_ID}.contentData.claimedBy`]: actor.id,
+        [`flags.${MODULE_ID}.contentData.claimedAt`]: new Date().toISOString(),
+      });
+
+      this.eventBus?.emit(EVENTS.SHARD_EDDIES_CLAIMED, {
+        itemId: shardItem.id, entryId, actorId: actor.id, amount,
+      });
+      this.soundService?.play('eddies-claim');
+
+      log.info(`${actor.name} claimed ${amount}eb from shard "${shardItem.name}"`);
+      return { success: true, amount };
+    } catch (err) {
+      log.error(`Eddies claim failed: ${err.message}`);
+      return { success: false, error: err.message };
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  PUBLIC API — Signal & Visibility (Sprint 4.6)
+  // ═══════════════════════════════════════════════════════════
+
+  /**
+   * Calculate the DV modifier from current signal strength.
+   * Low signal increases hack difficulty.
+   * @param {Item} shardItem
+   * @returns {{ modifier: number, signalStrength: number, label: string }}
+   */
+  getSignalDVModifier(shardItem) {
+    const config = this._getConfig(shardItem);
+    if (!config.network?.signalDVModifier) return { modifier: 0, signalStrength: 100, label: '' };
+
+    const signal = this.networkService?.getSignalStrength?.() ?? 100;
+
+    // DV modifier scale: 100-75 = +0, 74-50 = +2, 49-25 = +4, 24-1 = +8
+    let modifier = 0;
+    let label = '';
+    if (signal <= 24) { modifier = 8; label = 'Critical signal'; }
+    else if (signal <= 49) { modifier = 4; label = 'Weak signal'; }
+    else if (signal <= 74) { modifier = 2; label = 'Degraded signal'; }
+
+    return { modifier, signalStrength: signal, label };
+  }
+
+  /**
+   * Filter shard entries by network visibility for the current network.
+   * Returns entries the current connection can see, plus metadata about hidden entries.
+   *
+   * @param {Item} shardItem
+   * @returns {{ visible: Array, hiddenCount: number, totalCount: number }}
+   */
+  getVisibleEntries(shardItem) {
+    const allEntries = this.getShardMessages(shardItem);
+    const totalCount = allEntries.length;
+
+    // If GM, all visible
+    if (isGM()) return { visible: allEntries, hiddenCount: 0, totalCount };
+
+    const currentNetworkId = this.networkService?.getCurrentNetworkId?.() ?? null;
+    const currentNetworkType = this.networkService?.getCurrentNetworkType?.() ?? null;
+
+    const visible = [];
+    let hiddenCount = 0;
+
+    for (const entry of allEntries) {
+      const nv = entry.networkVisibility;
+      if (!nv?.restricted) {
+        visible.push(entry);
+        continue;
+      }
+
+      // Check if current network satisfies the entry's visibility requirements
+      const networkMatch = nv.allowedNetworks?.length
+        ? nv.allowedNetworks.includes(currentNetworkId)
+        : false;
+      const typeMatch = nv.allowedTypes?.length
+        ? nv.allowedTypes.includes(currentNetworkType)
+        : false;
+
+      if (networkMatch || typeMatch) {
+        visible.push(entry);
+      } else {
+        hiddenCount++;
+      }
+    }
+
+    return { visible, hiddenCount, totalCount };
+  }
+
+  // ═══════════════════════════════════════════════════════════
   //  PRIVATE — Hack Result Handlers
   // ═══════════════════════════════════════════════════════════
 
@@ -678,6 +983,12 @@ export class DataShardService {
   async _handleHackFailure(shardItem, actor, rollResult, config, session) {
     const newAttempts = (session.hackAttempts || 0) + 1;
     const updates = { hackAttempts: newAttempts };
+
+    // Degrade integrity if enabled (fire-and-forget, non-blocking)
+    if (config.integrity?.enabled) {
+      this.degradeIntegrity(shardItem).catch(err => log.warn(`Integrity degrade failed: ${err.message}`));
+    }
+
     const result = {
       success: false,
       roll: rollResult,
@@ -906,6 +1217,7 @@ export class DataShardService {
     return {
       id: flags.messageId,
       pageId: page.id,
+      contentType: flags.contentType || CONTENT_TYPES.MESSAGE,  // Backward compat: undefined → 'message'
       from: flags.from || 'UNKNOWN',
       subject: flags.subject || 'Data Fragment',
       body: page.text?.content || '',
@@ -913,6 +1225,9 @@ export class DataShardService {
       encrypted: flags.encrypted ?? false,
       encryptionDC: flags.encryptionDC,
       decrypted: flags.decrypted ?? false,
+      corrupted: flags.corrupted ?? false,
+      contentData: flags.contentData ?? {},
+      networkVisibility: flags.networkVisibility ?? { restricted: false, allowedNetworks: [], allowedTypes: [] },
     };
   }
 
@@ -951,6 +1266,142 @@ export class DataShardService {
     }
 
     return null;
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  PRIVATE — Network Access Check (Sprint 4.6)
+  // ═══════════════════════════════════════════════════════════
+
+  /**
+   * Check if the current network connection satisfies the shard's network requirements.
+   * Handles all access modes: any, whitelist, type, both.
+   * Also checks tethered connection and signal threshold.
+   *
+   * @param {object} config - The shard config
+   * @returns {{ allowed: boolean, reason?: string, requiredNetwork?: string, signalInfo?: object }}
+   * @private
+   */
+  _checkNetworkAccess(config) {
+    const netConfig = config.network ?? {};
+    const currentNetworkId = this.networkService?.getCurrentNetworkId?.() ?? null;
+    const currentNetworkType = this.networkService?.getCurrentNetworkType?.() ?? null;
+
+    // Legacy flat field support: if no network object, fall back to old requiresNetwork/requiredNetwork
+    if (!config.network?.required && config.requiresNetwork) {
+      const onNetwork = this.networkService?.isOnNetwork(config.requiredNetwork) ?? false;
+      if (!onNetwork) {
+        return {
+          allowed: false,
+          reason: `Requires network: ${config.requiredNetwork}`,
+          requiredNetwork: config.requiredNetwork,
+        };
+      }
+      return { allowed: true };
+    }
+
+    // No network connected at all
+    if (!currentNetworkId) {
+      return {
+        allowed: false,
+        reason: 'No network connection',
+      };
+    }
+
+    // Check access mode
+    const mode = netConfig.accessMode ?? 'any';
+    let accessGranted = false;
+
+    switch (mode) {
+      case NETWORK_ACCESS_MODES.ANY:
+        accessGranted = true;
+        break;
+
+      case NETWORK_ACCESS_MODES.WHITELIST:
+        accessGranted = (netConfig.allowedNetworks ?? []).includes(currentNetworkId);
+        break;
+
+      case NETWORK_ACCESS_MODES.TYPE:
+        accessGranted = (netConfig.allowedTypes ?? []).includes(currentNetworkType);
+        break;
+
+      case NETWORK_ACCESS_MODES.BOTH:
+        accessGranted = (netConfig.allowedNetworks ?? []).includes(currentNetworkId)
+          || (netConfig.allowedTypes ?? []).includes(currentNetworkType);
+        break;
+
+      default:
+        accessGranted = true;
+    }
+
+    if (!accessGranted) {
+      const requirements = [];
+      if (netConfig.allowedTypes?.length) requirements.push(`Type: ${netConfig.allowedTypes.join(', ')}`);
+      if (netConfig.allowedNetworks?.length) requirements.push(`Networks: ${netConfig.allowedNetworks.join(', ')}`);
+      return {
+        allowed: false,
+        reason: `Network access restricted — ${requirements.join(' or ')}`,
+        requiredNetwork: netConfig.allowedNetworks?.[0] ?? null,
+      };
+    }
+
+    // Tethered connection: check signal threshold
+    if (netConfig.connectionMode === CONNECTION_MODES.TETHERED) {
+      const signal = this.networkService?.getSignalStrength?.() ?? 100;
+      const threshold = netConfig.signalThreshold ?? 40;
+
+      if (signal < threshold) {
+        return {
+          allowed: false,
+          reason: `Signal too weak (${signal}% < ${threshold}% required)`,
+          signalInfo: { signal, threshold },
+        };
+      }
+    }
+
+    return { allowed: true };
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  PRIVATE — Preset Application (Sprint 4.6)
+  // ═══════════════════════════════════════════════════════════
+
+  /**
+   * Merge a preset's defaults into a shard config.
+   * Preset values provide a base layer — existing manual config takes priority.
+   * @param {object} config - Current config
+   * @param {string} presetKey - Preset key from SHARD_PRESETS
+   * @returns {object} Merged config
+   * @private
+   */
+  _applyPresetToConfig(config, presetKey) {
+    const preset = SHARD_PRESETS[presetKey];
+    if (!preset) return config;
+
+    const merged = foundry.utils.deepClone(config);
+    merged.preset = presetKey;
+
+    // Apply security defaults from preset
+    if (preset.security) {
+      merged.encrypted = preset.security.encrypted ?? merged.encrypted;
+      merged.encryptionType = preset.security.encryptionType ?? merged.encryptionType;
+      merged.encryptionDC = preset.security.encryptionDC ?? merged.encryptionDC;
+      merged.failureMode = preset.security.failureMode ?? merged.failureMode;
+      merged.maxHackAttempts = preset.security.maxHackAttempts ?? merged.maxHackAttempts;
+    }
+
+    // Apply boot config from preset
+    if (preset.boot) {
+      merged.boot = foundry.utils.mergeObject(merged.boot, preset.boot, { inplace: false });
+    }
+
+    // Apply theme from preset (the viewer uses this for accent colors, watermarks, etc.)
+    if (preset.theme) {
+      merged.theme = presetKey;
+      // Store the full theme object for the viewer
+      merged._presetTheme = foundry.utils.deepClone(preset.theme);
+    }
+
+    return merged;
   }
 
   // ═══════════════════════════════════════════════════════════
