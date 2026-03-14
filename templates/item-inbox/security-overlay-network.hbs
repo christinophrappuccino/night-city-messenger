@@ -10,7 +10,22 @@
       Current: <strong class="ncm-sec-text-danger">{{currentNetworkName}}</strong>
       <span class="ncm-sec-text-muted">// Not authorized</span>
     </div>
-    <div class="ncm-sec-muted">Connect to the required network to access this shard.</div>
+
+    {{!-- Network Selector — switch network directly from overlay --}}
+    {{#if availableNetworks.length}}
+      <div class="ncm-sec-divider"></div>
+      <div class="ncm-sec-section-label"><i class="fas fa-satellite-dish"></i> SWITCH NETWORK</div>
+      <select data-field="networkSelector" class="ncm-sec-network-select">
+        <option value="" disabled selected>Select a network...</option>
+        {{#each availableNetworks}}
+          <option value="{{id}}" {{#if isCurrent}}disabled{{/if}}>
+            {{name}}{{#if isCurrent}} (current){{/if}}
+          </option>
+        {{/each}}
+      </select>
+      <div class="ncm-sec-muted">Switching network will apply globally.</div>
+    {{/if}}
+
     {{#if hasSkills}}
       <div class="ncm-sec-divider"></div>
       <button type="button" data-action="hackLayer" data-layer="network" class="ncm-sec-btn ncm-sec-btn--primary" style="margin-top:4px;">

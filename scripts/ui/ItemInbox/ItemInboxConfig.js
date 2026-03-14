@@ -699,7 +699,11 @@ export class ItemInboxConfig extends BaseApplication {
   }
 
   _collectCheckedValues(namePrefix) {
-    return Array.from(this.element?.querySelectorAll(`[name^="${namePrefix}"]:checked`) || [])
-      .map(el => el.value).filter(Boolean);
+    // Collect checked checkboxes/radios AND hidden inputs with matching name prefix
+    // (hidden inputs are used by the tag-list UI pattern for network whitelists)
+    const checked = Array.from(this.element?.querySelectorAll(`[name^="${namePrefix}"]:checked`) || []);
+    const hidden = Array.from(this.element?.querySelectorAll(`input[type="hidden"][name^="${namePrefix}"]`) || []);
+    const combined = [...checked, ...hidden];
+    return combined.map(el => el.value).filter(Boolean);
   }
 }

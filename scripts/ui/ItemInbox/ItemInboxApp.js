@@ -93,6 +93,7 @@ export class ItemInboxApp extends BaseApplication {
       executePayload: ItemInboxApp._onExecutePayload,
       goToScene: ItemInboxApp._onGoToScene,
       editEntry: ItemInboxApp._onEditEntry,
+      switchNetwork: ItemInboxApp._onSwitchNetwork,
       // Legacy aliases
       addMessage: ItemInboxApp._onAddEntry,
       removeMessage: ItemInboxApp._onRemoveEntry,
@@ -218,6 +219,13 @@ export class ItemInboxApp extends BaseApplication {
       }
     }
 
+    // Available networks for selector (used in network overlay)
+    const availableNetworks = (this.networkService?.getAvailableNetworks?.() ?? []).map(n => ({
+      id: n.id,
+      name: n.name,
+      isCurrent: n.id === currentNetworkId,
+    }));
+
     // Metadata
     const meta = config.metadata ?? {};
     const hasMetadata = !!(meta.timestamp || meta.location || meta.network);
@@ -318,12 +326,15 @@ export class ItemInboxApp extends BaseApplication {
       // Network
       networkRequired,
       networkDisplayName,
+      requiredNetworkName: networkDisplayName,
       isTethered,
       showSignalRow,
       signalStrength,
       signalBars,
       signalTier,
       currentNetworkName,
+      currentNetworkId,
+      availableNetworks,
       showDisconnected,
 
       // Integrity
@@ -545,6 +556,22 @@ export class ItemInboxApp extends BaseApplication {
       this._savedScrollTop = null;
     }
 
+    // Wire network selector change event (data-action on <select> fires on click, not change)
+    const netSelect = this.element?.querySelector('[data-field="networkSelector"]');
+    if (netSelect) {
+      netSelect.addEventListener('change', async (e) => {
+        const networkId = e.target.value;
+        if (!networkId) return;
+        try {
+          await this.networkService?.switchNetwork(networkId);
+          this.render(true);
+        } catch (err) {
+          console.error('NCM | Failed to switch network from shard overlay:', err);
+          ui.notifications.warn('NCM | Could not switch network.');
+        }
+      });
+    }
+
     // Start lockout timer countdown if active, clear if not
     if (context.isLockedOut && context.lockoutRemaining > 0) {
       this._startLockoutCountdown(context.lockoutRemaining);
@@ -556,21 +583,19 @@ export class ItemInboxApp extends BaseApplication {
     // Show climactic SHARD UNLOCKED splash when all security layers are cleared
     if (this._pendingUnlockSplash && !context.isBlocked && !this._hackingActive) {
       this._pendingUnlockSplash = false;
-      // Delay slightly so the rendered content is behind the splash
-      setTimeout(() => {
-        this._showTransitionSplash({
-          icon: 'fas fa-lock-open',
-          iconStyle: 'accent',
-          preTitle: 'ALL SECURITY LAYERS CLEARED',
-          title: 'Shard Unlocked',
-          titleColor: 'var(--sp-accent)',
-          subtitle: `${context.shardDisplayName || 'Data Shard'} contents are now accessible.`,
-          progressColor: 'accent',
-          footerText: 'Loading data...',
-          duration: 2500,
-          sound: 'hack-success',
-        });
-      }, 100);
+      // Show immediately — overlay injection is synchronous, covers content before browser paints
+      this._showTransitionSplash({
+        icon: 'fas fa-lock-open',
+        iconStyle: 'accent',
+        preTitle: 'ALL SECURITY LAYERS CLEARED',
+        title: 'Shard Unlocked',
+        titleColor: 'var(--sp-accent)',
+        subtitle: `${context.shardDisplayName || 'Data Shard'} contents are now accessible.`,
+        progressColor: 'accent',
+        footerText: 'Loading data...',
+        duration: 2500,
+        sound: 'hack-success',
+      });
     }
 
     // Play boot sequence on first render if enabled
@@ -659,28 +684,25 @@ export class ItemInboxApp extends BaseApplication {
       return;
     }
 
-    // ─── Luck Dialog ───
-    let luckSpend = 0;
+    // ─── Themed Hack Dialog (skill confirmed + luck) ───
+    const config = this.dataShardService?.getConfig(this.item) ?? {};
+    const dc = config.skillDCs?.[skillName] ?? config.encryptionDC ?? 15;
     const availableLuck = this.skillService?.getAvailableLuck(actor) ?? 0;
-    if (availableLuck > 0) {
-      await new Promise(resolve => {
-        new Dialog({
-          title: 'Spend Luck?',
-          content: `<p style="margin-bottom:8px;">Luck adds directly to your roll total.</p>
-                    <p>Available: <strong>${availableLuck}</strong></p>
-                    <div class="form-group">
-                      <label>Points to spend:</label>
-                      <input type="number" name="luck" value="0" min="0" max="${availableLuck}" />
-                    </div>`,
-          buttons: {
-            spend: { label: 'Roll with Luck', callback: html => { luckSpend = parseInt(html.find('[name=luck]').val()) || 0; } },
-            skip: { label: 'Roll without Luck', callback: () => {} },
-          },
-          default: 'skip',
-          close: () => resolve(),
-        }).render(true);
-      });
-    }
+    const skillTotal = this._hackingSkillTotal || 0;
+
+    const dialogResult = await this._showHackDialog({
+      title: 'ICE Breach',
+      icon: 'fas fa-shield-halved',
+      color: '#19f3f7',
+      subtitle: `Breaching ${config.encryptionType || 'Standard'} encryption on ${this.item.name}`,
+      preSelectedSkill: skillName,
+      preSelectedTotal: skillTotal,
+      dc,
+      availableLuck,
+      actorName: actor.name,
+    });
+    if (!dialogResult) return;
+    const luckSpend = dialogResult.luck;
 
     // ─── Show hacking screen ───
     this._hackingActive = true;
@@ -709,31 +731,8 @@ export class ItemInboxApp extends BaseApplication {
     const skillName = target.dataset.skill;
     if (!skillName) return;
     this._hackingSkill = skillName;
-
-    // DOM-only update — no full re-render (preserves scroll, avoids flicker)
-    const skillBtns = this.element?.querySelectorAll('.ncm-sec-skill-btn');
-    skillBtns?.forEach(btn => {
-      btn.classList.toggle('ncm-sec-skill-btn--selected', btn.dataset.skill === skillName);
-    });
-
-    // Update instruction text
-    const instruction = this.element?.querySelector('.ncm-sec-skill-instruction');
-    if (instruction) {
-      instruction.innerHTML = `<i class="fas fa-check-circle" style="color:#00ff41;margin-right:4px;"></i><strong>${skillName}</strong> selected — ready to breach`;
-    }
-
-    // Update attempt text
-    const attemptText = this.element?.querySelector('.ncm-sec-muted');
-
-    // Enable breach button
-    const breachBtn = this.element?.querySelector('[data-action="attemptBreach"]');
-    if (breachBtn) {
-      breachBtn.disabled = false;
-      breachBtn.classList.remove('ncm-sec-btn--disabled');
-      breachBtn.innerHTML = '<i class="fas fa-bolt"></i> Attempt Breach';
-    }
-
     this.soundService?.play('click');
+    this.render();
   }
 
   /**
@@ -753,11 +752,11 @@ export class ItemInboxApp extends BaseApplication {
 
     const config = this.dataShardService?.getConfig(this.item) ?? {};
     const LAYER_FLAVOR = {
-      network: { title: 'Network Spoofing', icon: 'fas fa-wifi', color: '#19f3f7', verb: 'Spoofed network access' },
-      keyitem: { title: 'Forge Token', icon: 'fas fa-fingerprint', color: '#f7c948', verb: 'Token forged digitally' },
-      login: { title: 'Brute Force Login', icon: 'fas fa-terminal', color: '#00ff41', verb: 'Credentials cracked' },
+      network: { title: 'Network Spoofing', icon: 'fas fa-wifi', color: '#19f3f7', verb: 'Spoofed network access', subtitle: 'Spoofing network handshake to bypass access control' },
+      keyitem: { title: 'Forge Token', icon: 'fas fa-fingerprint', color: '#f7c948', verb: 'Token forged digitally', subtitle: 'Digitally forging authentication token signature' },
+      login: { title: 'Brute Force Login', icon: 'fas fa-terminal', color: '#00ff41', verb: 'Credentials cracked', subtitle: 'Brute-forcing login credentials via dictionary attack' },
     };
-    const flavor = LAYER_FLAVOR[layer] || { title: 'Bypass', icon: 'fas fa-unlock', color: 'var(--sp-accent)', verb: 'Layer bypassed' };
+    const flavor = LAYER_FLAVOR[layer] || { title: 'Bypass', icon: 'fas fa-unlock', color: 'var(--sp-accent)', verb: 'Layer bypassed', subtitle: 'Bypassing security layer' };
 
     // Get available skills
     const availableSkills = this.skillService?.getAvailableSkills(actor, config.allowedSkills) ?? [];
@@ -766,59 +765,40 @@ export class ItemInboxApp extends BaseApplication {
       return;
     }
 
-    // Skill selection dialog — use mutable var pattern (Foundry Dialog resolves on close, not on callback return)
-    let selectedSkill = null;
-    const skillButtons = {};
-    availableSkills.forEach(s => {
-      const dc = config.skillDCs?.[s.name] ?? config.encryptionDC ?? 15;
-      const total = s.total;
-      skillButtons[s.name] = {
-        label: `${s.name} <small style="opacity:0.6;">(${s.stat} ${total} + 1d10 vs DV ${dc})</small>`,
-        callback: () => { selectedSkill = s.name; },
-      };
-    });
-    skillButtons.cancel = { label: 'Cancel', callback: () => {} };
-
-    await new Promise(resolve => {
-      new Dialog({
-        title: flavor.title,
-        content: `<p style="margin-bottom:8px;">Select a skill to attempt a bypass:</p>`,
-        buttons: skillButtons,
-        default: 'cancel',
-        close: () => resolve(),
-      }).render(true);
-    });
-    if (!selectedSkill) return;
-
-    // Luck dialog — same pattern
-    let luckSpend = 0;
+    // Prepare skills with per-skill DCs
+    const dc = config.encryptionDC ?? 15;
+    const skills = availableSkills.map(s => ({
+      ...s,
+      dc: config.skillDCs?.[s.name] ?? dc,
+    }));
     const availableLuck = this.skillService?.getAvailableLuck(actor) ?? 0;
-    if (availableLuck > 0) {
-      await new Promise(resolve => {
-        new Dialog({
-          title: 'Spend Luck?',
-          content: `<p>Available: <strong>${availableLuck}</strong></p>
-                    <div class="form-group"><label>Points:</label><input type="number" name="luck" value="0" min="0" max="${availableLuck}" /></div>`,
-          buttons: {
-            spend: { label: 'Roll with Luck', callback: html => { luckSpend = parseInt(html.find('[name=luck]').val()) || 0; } },
-            skip: { label: 'Roll without Luck', callback: () => {} },
-          },
-          default: 'skip',
-          close: () => resolve(),
-        }).render(true);
-      });
-    }
+
+    // ─── Themed Hack Dialog (skill + luck combined) ───
+    const dialogResult = await this._showHackDialog({
+      title: flavor.title,
+      icon: flavor.icon,
+      color: flavor.color,
+      subtitle: flavor.subtitle,
+      skills,
+      dc,
+      availableLuck,
+      actorName: actor.name,
+    });
+    if (!dialogResult) return;
+
+    const selectedSkill = dialogResult.skill;
+    const luckSpend = dialogResult.luck;
 
     this._transitionActive = true;
 
     // Perform skill check
-    const dc = config.skillDCs?.[selectedSkill] ?? config.encryptionDC ?? 15;
+    const selectedDC = config.skillDCs?.[selectedSkill] ?? dc;
     const rollResult = await this.skillService.performCheck(actor, selectedSkill, {
-      dc,
+      dc: selectedDC,
       luckSpend,
       showChat: true,
       context: `${flavor.title}: ${this.item.name}`,
-      flavor: `${layer.toUpperCase()} Layer // DV ${dc}`,
+      flavor: `${layer.toUpperCase()} Layer // DV ${selectedDC}`,
     });
 
     if (rollResult.success) {
@@ -834,7 +814,7 @@ export class ItemInboxApp extends BaseApplication {
       await this._showTransitionSplash({
         icon: flavor.icon,
         iconStyle: layer === 'keyitem' ? 'gold' : layer === 'login' ? 'green' : 'accent',
-        preTitle: `${selectedSkill} ${rollResult.total} vs DV ${dc}`,
+        preTitle: `${selectedSkill} ${rollResult.total} vs DV ${selectedDC}`,
         title: flavor.verb,
         titleColor: flavor.color,
         progressColor: layer === 'keyitem' ? 'gold' : layer === 'login' ? 'green' : 'accent',
@@ -843,7 +823,7 @@ export class ItemInboxApp extends BaseApplication {
         sound: 'hack-success',
       });
     } else {
-      ui.notifications.warn(`NCM | ${flavor.title} failed. Roll: ${rollResult.total} vs DV ${dc}.`);
+      ui.notifications.warn(`NCM | ${flavor.title} failed. Roll: ${rollResult.total} vs DV ${selectedDC}.`);
     }
 
     this._transitionActive = false;
@@ -855,6 +835,27 @@ export class ItemInboxApp extends BaseApplication {
     // Luck is now integrated into the Attempt Breach flow via dialog
     // This handler kept for backward compat — just triggers breach
     return this._onAttemptBreach.call(this, event, target);
+  }
+
+  /**
+   * Switch network from within the shard's network overlay.
+   * Changes the global network (same as switching in message viewer).
+   */
+  static async _onSwitchNetwork(event, target) {
+    const networkId = target.value ?? target.dataset.networkId;
+    if (!networkId) return;
+
+    const networkService = this.networkService;
+    if (!networkService) return;
+
+    try {
+      await networkService.switchNetwork(networkId);
+      // Re-render to re-evaluate security stack with new network
+      this.render(true);
+    } catch (err) {
+      console.error('NCM | Failed to switch network from shard overlay:', err);
+      ui.notifications.warn('NCM | Could not switch network.');
+    }
   }
 
   static async _onSearchInventory(event, target) {
@@ -1823,6 +1824,163 @@ export class ItemInboxApp extends BaseApplication {
     el.classList.add('ncm-screen-shake');
     await new Promise(r => setTimeout(r, 500));
     el.classList.remove('ncm-screen-shake');
+  }
+
+  /**
+   * Show a themed hack dialog combining skill selection + luck spending.
+   * @param {object} opts
+   * @param {string} opts.title - Dialog title
+   * @param {string} opts.icon - FontAwesome class
+   * @param {string} opts.color - Accent color hex
+   * @param {Array} [opts.skills] - Skill objects from SkillService (if selecting skill)
+   * @param {string} [opts.preSelectedSkill] - Skip skill selection, show this skill
+   * @param {number} [opts.preSelectedTotal] - Pre-selected skill total for preview
+   * @param {number} opts.dc - Difficulty value
+   * @param {number} opts.availableLuck - Actor's available luck
+   * @param {string} opts.actorName - Actor display name
+   * @param {string} [opts.subtitle] - Descriptive line below title
+   * @returns {Promise<{skill:string, luck:number}|null>} null if cancelled
+   * @private
+   */
+  async _showHackDialog(opts) {
+    let selectedSkill = opts.preSelectedSkill || null;
+    let selectedTotal = opts.preSelectedTotal || 0;
+    let luckSpend = 0;
+    let cancelled = true;
+
+    // Build skill list HTML (only if skills array provided)
+    let skillListHTML = '';
+    if (opts.skills?.length) {
+      const skillRows = opts.skills.map(s => {
+        const dc = s.dc ?? opts.dc;
+        return `<button type="button" class="ncm-hd-skill-btn" data-skill="${s.name}" data-total="${s.total}" data-stat="${s.stat}" data-dc="${dc}">
+          <span class="ncm-hd-skill-name">${s.name}</span>
+          <span class="ncm-hd-skill-detail">${s.stat} ${s.total} + 1d10</span>
+          <span class="ncm-hd-skill-dv">DV ${dc}</span>
+        </button>`;
+      }).join('');
+      skillListHTML = `
+        <div class="ncm-hd-section-label"><i class="fas fa-crosshairs"></i> SELECT SKILL</div>
+        <div class="ncm-hd-skill-list">${skillRows}</div>`;
+    } else if (opts.preSelectedSkill) {
+      skillListHTML = `
+        <div class="ncm-hd-section-label"><i class="fas fa-crosshairs"></i> SKILL</div>
+        <div class="ncm-hd-selected-skill">
+          <i class="fas fa-check-circle" style="color:#00ff41;"></i>
+          <strong>${opts.preSelectedSkill}</strong>
+          <span class="ncm-hd-skill-detail">${opts.preSelectedTotal || '?'} + 1d10</span>
+        </div>`;
+    }
+
+    // Luck section
+    const maxLuck = opts.availableLuck || 0;
+    const luckHTML = maxLuck > 0 ? `
+      <div class="ncm-hd-section-label"><i class="fas fa-clover"></i> LUCK BOOST <span class="ncm-hd-luck-avail">Available: ${maxLuck}</span></div>
+      <div class="ncm-hd-luck-row">
+        <button type="button" class="ncm-hd-luck-adj" data-adj="-1">&minus;</button>
+        <div class="ncm-hd-luck-bar-wrap">
+          <div class="ncm-hd-luck-bar-fill" style="width:0%;"></div>
+        </div>
+        <button type="button" class="ncm-hd-luck-adj" data-adj="+1">+</button>
+        <span class="ncm-hd-luck-val">0</span>
+      </div>` : `
+      <div class="ncm-hd-section-label" style="opacity:0.4;"><i class="fas fa-clover"></i> NO LUCK AVAILABLE</div>`;
+
+    // Roll preview
+    const previewHTML = `
+      <div class="ncm-hd-preview">
+        <div class="ncm-hd-preview-label">ROLL PREVIEW</div>
+        <div class="ncm-hd-preview-formula" data-formula>
+          ${selectedSkill ? `${selectedSkill} ${selectedTotal} + 1d10` : 'Select a skill...'}
+        </div>
+        <div class="ncm-hd-preview-vs" data-vs>vs DV ${opts.dc}</div>
+      </div>`;
+
+    const content = `
+      <div class="ncm-hd-body">
+        <div class="ncm-hd-header">
+          <div class="ncm-hd-icon" style="color:${opts.color || 'var(--sp-accent)'};">
+            <i class="${opts.icon || 'fas fa-bolt'}"></i>
+          </div>
+          ${opts.subtitle ? `<div class="ncm-hd-subtitle">${opts.subtitle}</div>` : ''}
+        </div>
+        ${skillListHTML}
+        ${luckHTML}
+        ${previewHTML}
+      </div>`;
+
+    await new Promise(resolve => {
+      const d = new Dialog({
+        title: opts.title || 'Breach Attempt',
+        content,
+        buttons: {
+          execute: {
+            icon: '<i class="fas fa-bolt"></i>',
+            label: 'Execute',
+            callback: () => { cancelled = false; },
+          },
+          cancel: {
+            icon: '<i class="fas fa-times"></i>',
+            label: 'Abort',
+            callback: () => {},
+          },
+        },
+        default: 'cancel',
+        close: () => resolve(),
+        render: html => {
+          const jq = html.closest ? html : $(html);
+          const body = jq.find('.ncm-hd-body').length ? jq : jq.parent();
+
+          const updatePreview = () => {
+            const formula = body.find('[data-formula]');
+            if (!selectedSkill) {
+              formula.text('Select a skill...');
+            } else {
+              const parts = [`${selectedSkill} ${selectedTotal} + 1d10`];
+              if (luckSpend > 0) parts.push(`+ ${luckSpend} LUCK`);
+              formula.text(parts.join(' '));
+            }
+            // Enable/disable execute button
+            const execBtn = body.closest('.dialog').find('button[data-button="execute"]');
+            if (selectedSkill) {
+              execBtn.prop('disabled', false).removeClass('ncm-hd-btn--disabled');
+            } else {
+              execBtn.prop('disabled', true).addClass('ncm-hd-btn--disabled');
+            }
+          };
+
+          // Skill selection
+          body.find('.ncm-hd-skill-btn').on('click', function () {
+            selectedSkill = this.dataset.skill;
+            selectedTotal = parseInt(this.dataset.total) || 0;
+            body.find('.ncm-hd-skill-btn').removeClass('ncm-hd-skill-btn--selected');
+            $(this).addClass('ncm-hd-skill-btn--selected');
+            updatePreview();
+          });
+
+          // Luck adjustment
+          body.find('.ncm-hd-luck-adj').on('click', function () {
+            const adj = parseInt(this.dataset.adj);
+            luckSpend = Math.max(0, Math.min(maxLuck, luckSpend + adj));
+            body.find('.ncm-hd-luck-val').text(luckSpend);
+            body.find('.ncm-hd-luck-bar-fill').css('width', `${maxLuck > 0 ? (luckSpend / maxLuck) * 100 : 0}%`);
+            updatePreview();
+          });
+
+          // Disable execute if no skill pre-selected
+          if (!selectedSkill) {
+            body.closest('.dialog').find('button[data-button="execute"]').prop('disabled', true).addClass('ncm-hd-btn--disabled');
+          }
+        },
+      }, {
+        classes: ['dialog', 'ncm-hack-dialog'],
+        width: 340,
+      });
+      d.render(true);
+    });
+
+    if (cancelled || !selectedSkill) return null;
+    return { skill: selectedSkill, luck: luckSpend };
   }
 
   /**

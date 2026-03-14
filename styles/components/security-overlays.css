@@ -209,6 +209,40 @@
   background: var(--sp-border, #2a2a45);
 }
 
+.ncm-app .ncm-sec-section-label {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 9px; color: var(--sp-text-muted, #6060a0);
+  text-transform: uppercase; letter-spacing: 0.1em;
+  display: flex; align-items: center; gap: 6px;
+  margin-bottom: 6px;
+}
+.ncm-app .ncm-sec-section-label i { font-size: 8px; }
+
+.ncm-app .ncm-sec-network-select {
+  width: 100% !important;
+  padding: 7px 10px !important;
+  background: var(--sp-bg-surface, #1a1a2e) !important;
+  border: 1px solid var(--sp-border, #2a2a45) !important;
+  border-radius: 3px !important;
+  color: var(--sp-text-bright, #e0e0e8) !important;
+  font-family: var(--ncm-font-body, 'Rajdhani', sans-serif) !important;
+  font-size: 12px !important;
+  cursor: pointer !important;
+  appearance: auto !important;
+  box-shadow: none !important;
+  min-width: 0 !important; min-height: 0 !important;
+  transition: border-color 0.15s !important;
+}
+.ncm-app .ncm-sec-network-select:hover,
+.ncm-app .ncm-sec-network-select:focus {
+  border-color: var(--sp-accent, #19f3f7) !important;
+  outline: none !important;
+}
+.ncm-app .ncm-sec-network-select option {
+  background: #12121a;
+  color: #e0e0e8;
+}
+
 
 /* ═══════════════════════════════════════════
    §5  BUTTONS (themed, Foundry-override)
@@ -895,6 +929,190 @@
   backdrop-filter: blur(6px);
   animation: ncm-sec-overlay-fade-in 0.3s ease;
 }
+
+/* ═══════════════════════════════════════════
+   §18b  THEMED HACK DIALOG (.ncm-hack-dialog)
+   Foundry Dialog override — cyberpunk styled
+   ═══════════════════════════════════════════ */
+
+.ncm-hack-dialog {
+  background: #0a0a12 !important;
+  border: 1px solid #2a2a45 !important;
+  border-radius: 4px !important;
+  box-shadow: 0 0 30px rgba(0,0,0,0.6), 0 0 2px rgba(25,243,247,0.3) !important;
+}
+.ncm-hack-dialog .window-header {
+  background: linear-gradient(180deg, #12121a, #0a0a12) !important;
+  border-bottom: 1px solid #2a2a45 !important;
+  color: #e0e0e8 !important;
+  font-family: 'Orbitron', 'Rajdhani', sans-serif !important;
+  font-size: 11px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.08em !important;
+}
+.ncm-hack-dialog .window-header .window-title {
+  font-family: 'Orbitron', 'Rajdhani', sans-serif !important;
+  font-size: 11px !important;
+  letter-spacing: 0.08em !important;
+}
+.ncm-hack-dialog .dialog-content {
+  background: transparent !important;
+  padding: 0 !important;
+}
+.ncm-hack-dialog .dialog-buttons {
+  background: #0e0e18 !important;
+  border-top: 1px solid #2a2a45 !important;
+  padding: 8px 12px !important;
+  display: flex !important; gap: 8px !important;
+}
+.ncm-hack-dialog .dialog-buttons button {
+  flex: 1 !important;
+  background: #1a1a2e !important;
+  border: 1px solid #2a2a45 !important;
+  border-radius: 3px !important;
+  color: #c0c0d0 !important;
+  font-family: 'Rajdhani', sans-serif !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  padding: 6px 12px !important;
+  cursor: pointer !important;
+  transition: all 0.15s !important;
+  appearance: none !important;
+  box-shadow: none !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+}
+.ncm-hack-dialog .dialog-buttons button:hover {
+  border-color: #19f3f7 !important;
+  background: #252540 !important;
+  color: #e0e0e8 !important;
+}
+.ncm-hack-dialog .dialog-buttons button[data-button="execute"] {
+  background: rgba(25,243,247,0.08) !important;
+  border-color: rgba(25,243,247,0.4) !important;
+  color: #19f3f7 !important;
+}
+.ncm-hack-dialog .dialog-buttons button[data-button="execute"]:hover {
+  background: rgba(25,243,247,0.15) !important;
+  border-color: #19f3f7 !important;
+  box-shadow: 0 0 6px rgba(25,243,247,0.2) !important;
+}
+.ncm-hack-dialog .dialog-buttons button.ncm-hd-btn--disabled,
+.ncm-hack-dialog .dialog-buttons button:disabled {
+  opacity: 0.3 !important;
+  cursor: not-allowed !important;
+  pointer-events: none !important;
+}
+
+/* Body */
+.ncm-hd-body {
+  padding: 14px 16px; font-family: 'Rajdhani', sans-serif; color: #c0c0d0;
+}
+.ncm-hd-header { text-align: center; margin-bottom: 12px; }
+.ncm-hd-icon { font-size: 28px; margin-bottom: 6px; }
+.ncm-hd-subtitle {
+  font-size: 10px; color: #6060a0; letter-spacing: 0.06em;
+  font-family: 'Share Tech Mono', monospace;
+}
+
+/* Section labels */
+.ncm-hd-section-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px; color: #6060a0;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  margin: 10px 0 6px; display: flex; align-items: center; gap: 6px;
+}
+.ncm-hd-section-label i { font-size: 8px; }
+
+/* Skill list */
+.ncm-hd-skill-list { display: flex; flex-direction: column; gap: 3px; }
+.ncm-hd-skill-btn {
+  display: flex !important; align-items: center !important; gap: 8px !important;
+  width: 100% !important; padding: 6px 10px !important;
+  background: #12121a !important; border: 1px solid #2a2a45 !important;
+  border-radius: 3px !important; cursor: pointer !important;
+  font-family: 'Rajdhani', sans-serif !important;
+  font-size: 12px !important; color: #c0c0d0 !important;
+  text-align: left !important; transition: all 0.15s !important;
+  appearance: none !important; box-shadow: none !important;
+  min-width: 0 !important; min-height: 0 !important;
+}
+.ncm-hd-skill-btn:hover {
+  border-color: #19f3f7 !important; background: #1a1a2e !important;
+}
+.ncm-hd-skill-btn--selected {
+  border-color: #19f3f7 !important;
+  background: rgba(25,243,247,0.06) !important;
+  box-shadow: 0 0 4px rgba(25,243,247,0.1) !important;
+}
+.ncm-hd-skill-name { flex: 1; font-weight: 600; }
+.ncm-hd-skill-detail { font-family: 'Share Tech Mono', monospace; font-size: 10px; color: #6060a0; }
+.ncm-hd-skill-dv { font-family: 'Share Tech Mono', monospace; font-size: 10px; color: #19f3f7; font-weight: 700; }
+
+/* Pre-selected skill display */
+.ncm-hd-selected-skill {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 10px; background: rgba(0,255,65,0.04);
+  border: 1px solid rgba(0,255,65,0.2); border-radius: 3px;
+  font-size: 12px;
+}
+
+/* Luck */
+.ncm-hd-luck-avail { margin-left: auto; color: #8888a0; }
+.ncm-hd-luck-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 0;
+}
+.ncm-hd-luck-adj {
+  width: 26px !important; height: 26px !important;
+  background: #1a1a2e !important; border: 1px solid #2a2a45 !important;
+  border-radius: 3px !important; color: #c0c0d0 !important;
+  font-size: 14px !important; font-weight: 700 !important;
+  cursor: pointer !important; display: flex !important;
+  align-items: center !important; justify-content: center !important;
+  padding: 0 !important; appearance: none !important;
+  box-shadow: none !important; min-width: 0 !important; min-height: 0 !important;
+  transition: all 0.15s !important;
+}
+.ncm-hd-luck-adj:hover {
+  border-color: #00ff41 !important; background: #252540 !important;
+}
+.ncm-hd-luck-bar-wrap {
+  flex: 1; height: 6px; background: #12121a;
+  border-radius: 3px; overflow: hidden; border: 1px solid #2a2a45;
+}
+.ncm-hd-luck-bar-fill {
+  height: 100%; background: #00ff41;
+  transition: width 0.2s ease; border-radius: 2px;
+}
+.ncm-hd-luck-val {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 13px; font-weight: 700; color: #00ff41;
+  min-width: 20px; text-align: center;
+}
+
+/* Roll preview */
+.ncm-hd-preview {
+  margin-top: 12px; padding: 10px;
+  background: #0e0e18; border: 1px solid #2a2a45;
+  border-radius: 3px; text-align: center;
+}
+.ncm-hd-preview-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 8px; color: #4a4a6a;
+  text-transform: uppercase; letter-spacing: 0.15em;
+  margin-bottom: 4px;
+}
+.ncm-hd-preview-formula {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 13px; color: #e0e0e8;
+  font-weight: 600; margin-bottom: 2px;
+}
+.ncm-hd-preview-vs {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px; color: #19f3f7;
+}
+
 
 @keyframes ncm-sec-overlay-fade-in { from { opacity: 0; } to { opacity: 1; } }
 
