@@ -131,10 +131,14 @@
           </div>
           <input type="hidden" name="keyItemIcon" value="{{keyItemIcon}}" />
         </div>
-        <div class="ncm-cfg-row ncm-cfg-row--wrap" style="gap:10px">
-          <label class="ncm-cfg-check"><input type="checkbox" name="keyItemBypassLogin" {{#if keyItemBypassLogin}}checked{{/if}} /> Bypass login</label>
-          <label class="ncm-cfg-check"><input type="checkbox" name="keyItemBypassEncryption" {{#if keyItemBypassEncryption}}checked{{/if}} /> Bypass encryption</label>
-          <label class="ncm-cfg-check"><input type="checkbox" name="keyItemConsumeOnUse" {{#if keyItemConsumeOnUse}}checked{{/if}} /> Consume on use</label>
+
+        <div class="ncm-cfg-divider"></div>
+        <div class="ncm-cfg-step-label"><i class="fas fa-sliders" style="color:#f7c948"></i> Token Behavior</div>
+        <div class="ncm-cfg-desc">Controls what happens when the player presents the correct item. <strong>Bypass</strong> options skip subsequent security layers entirely. <strong>Consume</strong> deletes the item from inventory after use.</div>
+        <div class="ncm-cfg-row ncm-cfg-row--col" style="gap:8px">
+          <label class="ncm-cfg-check"><input type="checkbox" name="keyItemBypassLogin" {{#if keyItemBypassLogin}}checked{{/if}} /> Skip login layer when item is presented</label>
+          <label class="ncm-cfg-check"><input type="checkbox" name="keyItemBypassEncryption" {{#if keyItemBypassEncryption}}checked{{/if}} /> Skip encryption (ICE) layer too</label>
+          <label class="ncm-cfg-check"><input type="checkbox" name="keyItemConsumeOnUse" {{#if keyItemConsumeOnUse}}checked{{/if}} /> Delete item from inventory after use</label>
         </div>
         <div class="ncm-cfg-consequence"><div class="ncm-cfg-consequence-label"><i class="fas fa-skull"></i> Hack Failure</div>
         <div class="ncm-cfg-row"><span class="ncm-cfg-label">Max</span><input type="number" name="keyitemHackMaxAttempts" class="ncm-cfg-input ncm-cfg-input--short" value="{{keyitemHackMaxAttempts}}" min="1" max="10" /><span class="ncm-cfg-label" style="min-width:auto">then</span><select name="keyitemHackFailureMode" class="ncm-cfg-select ncm-cfg-flex">{{#each layerFailureModes}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}</select></div>

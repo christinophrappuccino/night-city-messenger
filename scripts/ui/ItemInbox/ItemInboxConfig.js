@@ -763,39 +763,94 @@ export class ItemInboxConfig extends BaseApplication {
   // ═══════════════════════════════════════════════════════════
 
   static async _onSearchKeyItem(event, target) {
-    // Open a Foundry Dialog listing all items the GM can pick from
     const items = game.items?.contents ?? [];
     if (items.length === 0) {
       ui.notifications.warn('NCM | No items found in the world.');
       return;
     }
+
+    // Build card-based HTML content
+    const itemCards = items.map(item => {
+      const img = item.img && !item.img.includes('mystery-man') ? `<img src="${item.img}" alt="">` : `<i class="fas fa-cube"></i>`;
+      const escapedName = item.name.replace(/"/g, '&quot;').replace(/</g, '&lt;');
+      return `<div class="ncm-ip-item" data-item-id="${item.id}" data-item-name="${item.name.toLowerCase()}">
+        <div class="ncm-ip-item-img">${img}</div>
+        <div style="flex:1;min-width:0">
+          <div class="ncm-ip-item-name">${escapedName}</div>
+          <div class="ncm-ip-item-type">${item.type || 'Item'}</div>
+        </div>
+      </div>`;
+    }).join('');
+
+    const content = `
+      <div class="ncm-ip-search-wrap">
+        <i class="fas fa-magnifying-glass"></i>
+        <input type="text" class="ncm-ip-search" placeholder="Search items..." autofocus />
+      </div>
+      <div class="ncm-ip-list">${itemCards || '<div class="ncm-ip-empty">No items found</div>'}</div>
+    `;
+
     let selectedItem = null;
-    const itemButtons = {};
-    items.slice(0, 50).forEach((item, i) => {
-      itemButtons[`item${i}`] = {
-        label: `<img src="${item.img}" width="20" height="20" style="vertical-align:middle;margin-right:6px;border:none;"> ${item.name} <small style="opacity:0.5">(${item.type})</small>`,
-        callback: () => { selectedItem = item; },
-      };
+
+    const dialog = new Dialog({
+      title: 'Select Key Item',
+      content,
+      buttons: { cancel: { label: 'Cancel', callback: () => {} } },
+      default: 'cancel',
+      render: (html) => {
+        const jq = html instanceof jQuery ? html : $(html);
+        const listEl = jq.find('.ncm-ip-list')[0] || jq[0]?.querySelector('.ncm-ip-list');
+        const searchEl = jq.find('.ncm-ip-search')[0] || jq[0]?.querySelector('.ncm-ip-search');
+
+        // Search filtering
+        if (searchEl) {
+          searchEl.addEventListener('input', () => {
+            const query = searchEl.value.toLowerCase().trim();
+            const cards = (listEl || jq[0]).querySelectorAll('.ncm-ip-item');
+            cards.forEach(card => {
+              const name = card.dataset.itemName || '';
+              card.style.display = !query || name.includes(query) ? '' : 'none';
+            });
+          });
+        }
+
+        // Click to select
+        if (listEl) {
+          listEl.addEventListener('click', (e) => {
+            const card = e.target.closest('.ncm-ip-item');
+            if (!card) return;
+            const itemId = card.dataset.itemId;
+            selectedItem = game.items.get(itemId);
+            if (selectedItem) dialog.close();
+          });
+        }
+      },
+    }, {
+      classes: ['dialog', 'ncm-item-picker-dialog'],
+      width: 420,
+      height: 480,
+      resizable: true,
     });
-    itemButtons.cancel = { label: 'Cancel', callback: () => {} };
+
     await new Promise(resolve => {
-      new Dialog({
-        title: 'Select Key Item',
-        content: `<p style="margin-bottom:8px;">Select the item required for shard access:</p>`,
-        buttons: itemButtons,
-        default: 'cancel',
-        close: resolve,
-      }, { classes: ['dialog', 'ncm-hack-dialog', 'ncm-hd-theme-cyan'], width: 400 }).render(true);
+      dialog.close = new Proxy(dialog.close, {
+        apply(target, thisArg, args) {
+          const result = Reflect.apply(target, thisArg, args);
+          resolve();
+          return result;
+        }
+      });
+      dialog.render(true);
     });
+
     if (!selectedItem) return;
 
-    // Update hidden inputs
+    // Update hidden inputs + re-render
     const el = this.element;
     const setVal = (name, v) => { const inp = el.querySelector(`[name="${name}"]`); if (inp) inp.value = v; };
     setVal('keyItemName', selectedItem.name);
     setVal('keyItemId', selectedItem.id);
     setVal('keyItemImg', selectedItem.img);
-    // Re-render to show the filled state
     this.render();
   }
 
