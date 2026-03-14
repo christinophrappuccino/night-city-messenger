@@ -1016,7 +1016,7 @@ export class DataShardService {
 
       case FAILURE_MODES.PERMANENT:
         if (newAttempts >= config.maxHackAttempts) {
-          updates.lockoutUntil = Infinity; // Permanent lockout
+          updates.lockoutUntil = Number.MAX_SAFE_INTEGER; // Permanent lockout (survives JSON)
           result.locked = true;
           this.soundService?.play('lockout');
         }

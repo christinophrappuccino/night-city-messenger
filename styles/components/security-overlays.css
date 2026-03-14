@@ -98,8 +98,8 @@
 }
 
 /* Themed scrollbars — vertical only, styled to match preset */
-.ncm-app .ncm-security-overlay *,
-.ncm-app .ncm-hack-screen * {
+.ncm-app .ncm-security-overlay,
+.ncm-app .ncm-hack-screen {
   scrollbar-width: thin;
   scrollbar-color: var(--sp-border, #2a2a45) transparent;
 }
@@ -112,12 +112,21 @@
 .ncm-app .ncm-security-overlay ::-webkit-scrollbar-thumb:hover,
 .ncm-app .ncm-hack-screen ::-webkit-scrollbar-thumb:hover { background: var(--sp-accent, #19f3f7); }
 
-/* No horizontal scrolling anywhere in overlays */
-.ncm-app .ncm-security-overlay,
-.ncm-app .ncm-security-overlay *,
-.ncm-app .ncm-hack-screen,
-.ncm-app .ncm-hack-screen * {
-  overflow-x: hidden !important;
+/* No horizontal scrolling on scrollable containers only */
+.ncm-app .ncm-sec-card,
+.ncm-app .ncm-hack-terminal,
+.ncm-app .ncm-hack-result-overlay,
+.ncm-app .ncm-hack-result-card {
+  overflow-x: hidden;
+}
+
+/* Prevent overflow on non-scrollable elements */
+.ncm-app .ncm-sec-icon,
+.ncm-app .ncm-sec-lockout-icon,
+.ncm-app .ncm-hack-result-icon,
+.ncm-app .ncm-sec-highlight,
+.ncm-app .ncm-sec-lockout {
+  overflow: visible;
 }
 
 

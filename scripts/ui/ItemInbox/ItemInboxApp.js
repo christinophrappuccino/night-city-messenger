@@ -282,7 +282,7 @@ export class ItemInboxApp extends BaseApplication {
       failureMode: config.failureMode,
       isLockedOut: lockoutRemaining > 0,
       lockoutRemaining,
-      isPermanentlyLocked: session.lockoutUntil === Infinity,
+      isPermanentlyLocked: session.lockoutUntil === Infinity || session.lockoutUntil >= Number.MAX_SAFE_INTEGER,
       hackingActive: this._hackingActive,
       hackingSkillName: this._hackingSkill || null,
       hackingSkillTotal: this._hackingSkillTotal || null,
@@ -512,9 +512,12 @@ export class ItemInboxApp extends BaseApplication {
       this.element?.style?.setProperty('--shard-accent', context.presetAccent);
     }
 
-    // Start lockout timer countdown if active
+    // Start lockout timer countdown if active, clear if not
     if (context.isLockedOut && context.lockoutRemaining > 0) {
       this._startLockoutCountdown(context.lockoutRemaining);
+    } else if (this._lockoutInterval) {
+      clearInterval(this._lockoutInterval);
+      this._lockoutInterval = null;
     }
 
     // Play boot sequence on first render if enabled
