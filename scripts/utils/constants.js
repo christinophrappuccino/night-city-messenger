@@ -597,6 +597,7 @@ export const DEFAULTS = Object.freeze({
     requiresKeyItem: false,
     keyItemName: null,
     keyItemId: null,
+    keyItemImg: null,
     keyItemTag: null,
     keyItemDisplayName: '',
     keyItemIcon: 'fa-id-card',

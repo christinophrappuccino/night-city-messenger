@@ -395,7 +395,7 @@ export class ItemInboxConfig extends BaseApplication {
       keyItemTag: config.keyItemTag,
       keyItemDisplayName: config.keyItemDisplayName,
       keyItemIcon: config.keyItemIcon,
-      keyItemImg: config.keyItemImg || '',
+      keyItemImg: config.keyItemImg || (config.keyItemId ? game.items?.get(config.keyItemId)?.img : '') || '',
       keyItemBypassLogin: config.keyItemBypassLogin,
       keyItemBypassEncryption: config.keyItemBypassEncryption,
       keyItemConsumeOnUse: config.keyItemConsumeOnUse,
@@ -878,92 +878,161 @@ export class ItemInboxConfig extends BaseApplication {
     const progressLabel = el.querySelector('[name="bootProgressLabel"]')?.value || 'Loading...';
     const speedSel = el.querySelector('[name="bootSpeed"]')?.value || 'normal';
     const speed = { fast: 1500, normal: 3500, dramatic: 5000 }[speedSel] || 3500;
-    const iconEl = el.querySelector('[name="bootFaIcon"]');
-    const iconClass = iconEl?.value || 'fas fa-microchip';
-    const iconColor = el.querySelector('[name="bootIconColor"]')?.value || '#19f3f7';
+    const iconMode = el.querySelector('[name="bootIconMode"]')?.value || 'fa';
+    const iconClass = el.querySelector('[name="bootFaIcon"]')?.value || 'fas fa-microchip';
+    const userIconColor = el.querySelector('[name="bootIconColor"]')?.value || '';
+    const imageUrl = el.querySelector('[name="bootImageUrl"]')?.value || '';
     const logInputs = el.querySelectorAll('[name="bootLogLine"]');
     const logLines = Array.from(logInputs).map(i => i.value).filter(Boolean);
 
+    // ─── Preset theme integration ───
+    const presetKey = el.querySelector('[name="preset"]')?.value || 'blank';
+    const preset = SHARD_PRESETS[presetKey] ?? SHARD_PRESETS['blank'];
+    const theme = preset?.theme ?? {};
+    const animStyle = preset?.boot?.animationStyle || 'standard-fade';
+
+    // Resolve accent color: user override > preset theme > fallback
+    const accent = userIconColor || theme.accent || '#19f3f7';
+    // Resolve background from preset
+    const bgColor = theme.headerBg || '#0a0a0f';
+    const logColor = theme.colorTemp === 'warm' ? '#ffcc66' : '#00ff41';
+
     // Clear and build preview
     frame.innerHTML = '';
-    frame.style.position = 'relative';
+    frame.style.cssText = `position:relative;background:${bgColor};`;
 
     const area = document.createElement('div');
     area.style.cssText = 'position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;';
     frame.appendChild(area);
 
-    // Icon
+    // ─── Icon (FA or Image) ───
     const icon = document.createElement('div');
-    icon.style.cssText = `width:40px;height:40px;border-radius:50%;border:2px solid ${iconColor};color:${iconColor};display:flex;align-items:center;justify-content:center;font-size:18px;opacity:0;transform:scale(0.5);transition:all 0.4s ease;`;
-    icon.innerHTML = `<i class="${iconClass}"></i>`;
+    icon.style.cssText = `width:44px;height:44px;border-radius:50%;border:2px solid ${accent};color:${accent};display:flex;align-items:center;justify-content:center;font-size:18px;opacity:0;transform:scale(0.5);overflow:hidden;`;
+    if (iconMode === 'image' && imageUrl) {
+      icon.innerHTML = `<img src="${imageUrl}" style="width:100%;height:100%;object-fit:cover;border:none;">`;
+    } else {
+      icon.innerHTML = `<i class="${iconClass}"></i>`;
+    }
     area.appendChild(icon);
 
     // Title
     const titleEl = document.createElement('div');
-    titleEl.style.cssText = `font-family:'Orbitron',sans-serif;font-size:10px;font-weight:700;color:${iconColor};text-transform:uppercase;letter-spacing:0.12em;opacity:0;transform:translateY(4px);transition:all 0.3s ease;`;
+    titleEl.style.cssText = `font-family:'Orbitron',sans-serif;font-size:10px;font-weight:700;color:${accent};text-transform:uppercase;letter-spacing:0.12em;opacity:0;transform:translateY(4px);text-align:center;padding:0 10px;`;
     titleEl.textContent = title;
     area.appendChild(titleEl);
 
     // Subtitle
     const subEl = document.createElement('div');
-    subEl.style.cssText = `font-family:'Share Tech Mono',monospace;font-size:9px;color:#555570;opacity:0;transition:all 0.3s ease;`;
+    subEl.style.cssText = `font-family:'Share Tech Mono',monospace;font-size:9px;color:rgba(255,255,255,0.35);opacity:0;text-align:center;padding:0 10px;`;
     subEl.textContent = subtitle;
     area.appendChild(subEl);
 
-    // Progress
+    // Progress bar
     const track = document.createElement('div');
-    track.style.cssText = 'width:50%;height:3px;background:#1a1a2e;border-radius:2px;overflow:hidden;opacity:0;transition:opacity 0.3s;';
+    track.style.cssText = 'width:50%;height:3px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden;opacity:0;';
     const fill = document.createElement('div');
-    fill.style.cssText = `height:100%;width:0;background:${iconColor};border-radius:2px;transition:width 0.1s linear;`;
+    fill.style.cssText = `height:100%;width:0;background:${accent};border-radius:2px;`;
     track.appendChild(fill);
     area.appendChild(track);
 
     const pLabel = document.createElement('div');
-    pLabel.style.cssText = 'font-family:"Share Tech Mono",monospace;font-size:8px;color:#555570;opacity:0;transition:all 0.3s;';
+    pLabel.style.cssText = 'font-family:"Share Tech Mono",monospace;font-size:8px;color:rgba(255,255,255,0.25);opacity:0;';
     pLabel.textContent = progressLabel;
     area.appendChild(pLabel);
 
     // Log area
     const logArea = document.createElement('div');
-    logArea.style.cssText = 'position:absolute;bottom:8px;left:10px;right:10px;font-family:"Share Tech Mono",monospace;font-size:8px;color:#00ff41;line-height:1.5;';
+    logArea.style.cssText = `position:absolute;bottom:8px;left:10px;right:10px;font-family:"Share Tech Mono",monospace;font-size:8px;color:${logColor};line-height:1.5;`;
     frame.appendChild(logArea);
 
-    // Animate
+    // ─── Animation choreography based on animationStyle ───
     const wait = ms => new Promise(r => setTimeout(r, ms));
-    await wait(200);
-    icon.style.opacity = '1'; icon.style.transform = 'scale(1)';
-    await wait(400);
-    titleEl.style.opacity = '1'; titleEl.style.transform = 'translateY(0)';
-    await wait(250);
-    subEl.style.opacity = '1';
-    await wait(200);
-    track.style.opacity = '1'; pLabel.style.opacity = '1';
+    const transition = (el, prop, dur = '0.3s') => el.style.transition = `${prop} ${dur} ease`;
 
-    // Progress fill
-    const progressDuration = speed * 0.5;
-    const steps = 20;
-    for (let i = 1; i <= steps; i++) {
-      fill.style.width = (i / steps * 100) + '%';
-      await wait(progressDuration / steps);
+    // Style-specific timing modifiers
+    const isFast = animStyle === 'instant-dump';
+    const isGlitch = animStyle === 'glitch-stutter';
+    const isSnap = animStyle === 'holographic-snap' || animStyle === 'authority-stamp';
+    const isSweep = animStyle === 'scan-sweep';
+    const isWarm = animStyle === 'warm-dissolve';
+    const isBreathe = animStyle === 'neon-breathe';
+    const isFlash = animStyle === 'camera-flash';
+
+    // Step 1: Icon entrance
+    await wait(isFast ? 80 : 200);
+    if (isSnap) {
+      icon.style.transition = 'all 0.15s cubic-bezier(0.2, 1.5, 0.4, 1)';
+    } else if (isGlitch) {
+      icon.style.transition = 'all 0.1s steps(3)';
+    } else if (isWarm) {
+      icon.style.transition = 'all 0.8s ease';
+    } else {
+      icon.style.transition = 'all 0.4s ease';
+    }
+    icon.style.opacity = '1'; icon.style.transform = 'scale(1)';
+
+    if (isFlash) {
+      // Camera flash effect
+      const flash = document.createElement('div');
+      flash.style.cssText = 'position:absolute;inset:0;background:white;opacity:0.6;transition:opacity 0.3s;pointer-events:none;z-index:10;';
+      frame.appendChild(flash);
+      await wait(100);
+      flash.style.opacity = '0';
+      await wait(300);
+      flash.remove();
     }
 
-    // Log lines
+    // Step 2: Title
+    await wait(isFast ? 150 : isSnap ? 200 : 400);
+    transition(titleEl, 'all', isSnap ? '0.15s' : isWarm ? '0.6s' : '0.3s');
+    titleEl.style.opacity = '1'; titleEl.style.transform = 'translateY(0)';
+
+    // Step 3: Subtitle
+    await wait(isFast ? 100 : 250);
+    transition(subEl, 'all', isWarm ? '0.6s' : '0.3s');
+    subEl.style.opacity = '1';
+
+    // Step 4: Progress bar
+    await wait(isFast ? 80 : 200);
+    transition(track, 'opacity'); track.style.opacity = '1';
+    transition(pLabel, 'opacity'); pLabel.style.opacity = '1';
+
+    // Step 5: Fill progress
+    const progressDuration = isFast ? speed * 0.3 : speed * 0.5;
+    const progressSteps = isFast ? 5 : isGlitch ? 10 : 20;
+    for (let i = 1; i <= progressSteps; i++) {
+      const pct = (i / progressSteps * 100);
+      if (isGlitch && Math.random() < 0.3) {
+        // Glitch: jump ahead/back randomly
+        fill.style.width = (pct + (Math.random() * 10 - 5)) + '%';
+      } else {
+        fill.style.width = pct + '%';
+      }
+      fill.style.transition = isGlitch ? 'width 0.05s steps(2)' : `width ${progressDuration/progressSteps/1000}s linear`;
+      await wait(progressDuration / progressSteps);
+    }
+    fill.style.width = '100%';
+
+    // Step 6: Log lines
+    const lineDelay = logLines.length > 0 ? Math.max(80, (speed * 0.3) / logLines.length) : 0;
     for (const line of logLines) {
       const lineEl = document.createElement('div');
-      lineEl.style.cssText = 'opacity:0;transform:translateX(-4px);transition:all 0.2s;';
+      lineEl.style.cssText = `opacity:0;transform:translateX(${isSweep ? '8px' : '-4px'});transition:all ${isGlitch ? '0.1s steps(2)' : '0.2s ease'};`;
       lineEl.textContent = `> ${line}`;
       logArea.appendChild(lineEl);
-      await wait(50);
+      await wait(40);
       lineEl.style.opacity = '0.6'; lineEl.style.transform = 'translateX(0)';
-      await wait(Math.max(100, (speed * 0.3) / logLines.length));
+      await wait(lineDelay);
     }
 
-    await wait(600);
+    // Step 7: Fade out
+    await wait(isFast ? 300 : 600);
     area.style.transition = 'opacity 0.4s'; area.style.opacity = '0';
     logArea.style.transition = 'opacity 0.4s'; logArea.style.opacity = '0';
     await wait(500);
 
     frame.innerHTML = '<div class="ncm-cfg-pf-idle">Click Preview to test</div>';
+    frame.style.background = '';
   }
 
   // ═══════════════════════════════════════════════════════════

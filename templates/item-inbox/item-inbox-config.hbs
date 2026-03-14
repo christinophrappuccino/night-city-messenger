@@ -46,7 +46,7 @@
 
       <div class="ncm-cfg-section">
         <div class="ncm-cfg-section-header"><i class="fas fa-tags ncm-cfg-section-icon" style="color:#f7c948"></i><div class="ncm-cfg-section-title">Metadata</div></div>
-        <div class="ncm-cfg-desc">Shown in the shard header. All optional.</div>
+        <div class="ncm-cfg-desc">These fields appear in the shard header as provenance information — who made it, where it came from, when. All fields are <strong>optional</strong>. Players see these when viewing the shard.</div>
         <div class="ncm-cfg-row"><span class="ncm-cfg-label">Creator</span><input type="text" name="metaCreator" class="ncm-cfg-input ncm-cfg-flex" value="{{metaCreator}}" placeholder="Who created this" /></div>
         <div class="ncm-cfg-row"><span class="ncm-cfg-label">Network Origin</span><input type="text" name="metaNetwork" class="ncm-cfg-input ncm-cfg-flex" value="{{metaNetwork}}" placeholder="Origin network" /></div>
         <div class="ncm-cfg-row"><span class="ncm-cfg-label">Location</span><input type="text" name="metaLocation" class="ncm-cfg-input ncm-cfg-flex" value="{{metaLocation}}" placeholder="Origin location" /></div>
@@ -60,7 +60,7 @@
 
     {{!-- ═══ TAB 2: SECURITY ═══ --}}
     <div class="ncm-cfg-panel" data-panel="security">
-      <div class="ncm-cfg-desc">Security layers checked <strong>in order</strong>. Each can be <strong>hacked</strong> with configured skills.</div>
+      <div class="ncm-cfg-desc">Security layers are checked <strong>in order</strong> from left to right. A player must pass each enabled layer before reaching the shard data. Any layer can be <strong>hacked</strong> using the skills configured below, and each layer has its own failure consequences.</div>
 
       {{!-- Pipeline --}}
       <div class="ncm-cfg-pipeline">
@@ -78,7 +78,7 @@
       {{!-- Skills --}}
       <div class="ncm-cfg-section">
         <div class="ncm-cfg-section-header"><i class="fas fa-dice-d20 ncm-cfg-section-icon" style="color:#a855f7"></i><div class="ncm-cfg-section-title">Hacking Skills</div></div>
-        <div class="ncm-cfg-desc">Available for <strong>all hackable layers</strong>. Each can have its own DV.</div>
+        <div class="ncm-cfg-desc">These skills are available when a player attempts to hack <strong>any</strong> security layer. Each skill can have its own DV (difficulty value). When hacking, the player chooses which skill to roll, then rolls <strong>Stat + Skill + 1d10 vs DV</strong>.</div>
         <div class="ncm-cfg-skill-list">
           {{#each skillEntries}}
           <div class="ncm-cfg-skill-row" data-skill="{{name}}">
@@ -104,7 +104,7 @@
       {{!-- Layer 2: Key Item --}}
       <div class="ncm-cfg-layer {{#if requiresKeyItem}}ncm-cfg-layer--enabled{{/if}}" style="border-left-color:#f7c948">
         <div class="ncm-cfg-layer-header"><i class="fas fa-id-card ncm-cfg-layer-icon" style="color:#f7c948"></i><div class="ncm-cfg-layer-title">② Key Item</div><label class="ncm-cfg-toggle-label"><input type="checkbox" name="requiresKeyItem" {{#if requiresKeyItem}}checked{{/if}} /></label></div>
-        <div class="ncm-cfg-desc">Item config, display, and behavior below.</div>
+        <div class="ncm-cfg-desc">Requires the player to have a specific item in their character's inventory. Choose the item below, configure what the player sees on the security overlay, and set behavior options for what happens when the item is presented.</div>
 
         {{!-- Item Picker --}}
         {{#if keyItemName}}
@@ -148,7 +148,7 @@
       {{!-- Layer 3: Login --}}
       <div class="ncm-cfg-layer {{#if requiresLogin}}ncm-cfg-layer--enabled{{/if}}" style="border-left-color:#00ff41">
         <div class="ncm-cfg-layer-header"><i class="fas fa-terminal ncm-cfg-layer-icon" style="color:#00ff41"></i><div class="ncm-cfg-layer-title">③ Login</div><label class="ncm-cfg-toggle-label"><input type="checkbox" name="requiresLogin" {{#if requiresLogin}}checked{{/if}} /></label></div>
-        <div class="ncm-cfg-desc">Username/password or brute force via skill check.</div>
+        <div class="ncm-cfg-desc">Presents a login terminal where players type a username and password. They can enter credentials directly (if they found them in-game) or attempt to <strong>brute force</strong> using a skill check. Failed login attempts count separately from hack attempts.</div>
         <div class="ncm-cfg-row"><span class="ncm-cfg-label">Display Name</span><input type="text" name="loginDisplayName" class="ncm-cfg-input ncm-cfg-flex" value="{{loginDisplayName}}" placeholder="Login screen title" /></div>
         <div class="ncm-cfg-row"><span class="ncm-cfg-label">Username</span><input type="text" name="loginUsername" class="ncm-cfg-input ncm-cfg-flex" value="{{loginUsername}}" /></div>
         <div class="ncm-cfg-row"><span class="ncm-cfg-label">Password</span><input type="text" name="loginPassword" class="ncm-cfg-input ncm-cfg-flex" value="{{loginPassword}}" /></div>
@@ -161,7 +161,7 @@
       {{!-- Layer 4: Encryption --}}
       <div class="ncm-cfg-layer {{#if isEncrypted}}ncm-cfg-layer--enabled{{/if}}" style="border-left-color:#ff0033">
         <div class="ncm-cfg-layer-header"><i class="fas fa-shield-halved ncm-cfg-layer-icon" style="color:#ff0033"></i><div class="ncm-cfg-layer-title">④ Encryption (ICE)</div><label class="ncm-cfg-toggle-label"><input type="checkbox" name="encrypted" {{#if isEncrypted}}checked{{/if}} /></label></div>
-        <div class="ncm-cfg-desc">Final layer. Hacking terminal animation. BLACK/RED ICE deal damage.</div>
+        <div class="ncm-cfg-desc">The final security layer. Players see an animated hacking terminal where they select a skill and roll to breach the encryption. <strong>Standard ICE</strong> has no damage penalty. <strong>BLACK ICE</strong> deals 3d6 damage on failure. <strong>RED ICE</strong> deals 5d6 lethal damage — and can kill.</div>
         <div class="ncm-cfg-row"><span class="ncm-cfg-label">ICE Type</span><select name="encryptionType" class="ncm-cfg-select ncm-cfg-flex">{{#each encryptionTypes}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}</select></div>
 
         {{!-- BLACK ICE Source --}}
@@ -202,7 +202,7 @@
     <div class="ncm-cfg-panel" data-panel="network">
       <div class="ncm-cfg-section">
         <div class="ncm-cfg-section-header"><i class="fas fa-wifi ncm-cfg-section-icon" style="color:#19f3f7"></i><div class="ncm-cfg-section-title">Network Access</div></div>
-        <div class="ncm-cfg-desc">Shard checks the player's network. They see a locked overlay and can switch or hack.</div>
+        <div class="ncm-cfg-desc">When enabled, the shard checks what network the player is currently connected to. If they're on the wrong network, they see a locked overlay and can either <strong>switch to a valid network</strong> or <strong>hack past</strong> the restriction using a skill check.</div>
 
         <div class="ncm-cfg-step-label"><i class="fas fa-key" style="color:#19f3f7"></i> Who can access?</div>
         <div class="ncm-cfg-access-modes">
@@ -249,19 +249,20 @@
           </div>
         </div>
         <input type="hidden" name="connectionMode" value="{{connectionModeValue}}" />
-        <div class="ncm-cfg-row" style="margin-top:8px"><span class="ncm-cfg-label">Min Signal</span><input type="number" name="signalThreshold" class="ncm-cfg-input ncm-cfg-input--short" value="{{signalThreshold}}" min="0" max="100" /><span class="ncm-cfg-hint" style="margin:0">% (tethered)</span></div>
-        <div class="ncm-cfg-row ncm-cfg-row--wrap" style="gap:10px">
-          <label class="ncm-cfg-check"><input type="checkbox" name="signalDVModifier" {{#if signalDVModifier}}checked{{/if}} /> Low signal raises DV</label>
-          <label class="ncm-cfg-check"><input type="checkbox" name="signalDegradation" {{#if signalDegradation}}checked{{/if}} /> Signal degrades</label>
+        <div class="ncm-cfg-desc"><strong>Min Signal</strong> sets the minimum signal strength needed to maintain access. Below this threshold, tethered connections drop. <strong>Signal → DV</strong> makes weak signals increase the difficulty of hack rolls. <strong>Degradation</strong> means signal weakens the longer the player stays connected.</div>
+        <div class="ncm-cfg-row" style="margin-top:4px"><span class="ncm-cfg-label">Min Signal</span><input type="number" name="signalThreshold" class="ncm-cfg-input ncm-cfg-input--short" value="{{signalThreshold}}" min="0" max="100" /><span class="ncm-cfg-hint" style="margin:0">% — tethered connections drop below this</span></div>
+        <div class="ncm-cfg-row ncm-cfg-row--col" style="gap:8px;margin-top:6px">
+          <label class="ncm-cfg-check"><input type="checkbox" name="signalDVModifier" {{#if signalDVModifier}}checked{{/if}} /> Weak signal increases hack difficulty (DV modifier)</label>
+          <label class="ncm-cfg-check"><input type="checkbox" name="signalDegradation" {{#if signalDegradation}}checked{{/if}} /> Signal weakens over time while connected</label>
         </div>
       </div>
 
       <div class="ncm-cfg-section">
         <div class="ncm-cfg-section-header"><i class="fas fa-satellite-dish ncm-cfg-section-icon" style="color:#ff6600"></i><div class="ncm-cfg-section-title">Tracing</div><label class="ncm-cfg-toggle-label"><input type="checkbox" name="tracingEnabled" {{#if tracingEnabled}}checked{{/if}} /></label></div>
-        <div class="ncm-cfg-desc">Leaves a digital trace. GM notified.</div>
-        <div class="ncm-cfg-row"><span class="ncm-cfg-label">Visibility</span><select name="tracingMode" class="ncm-cfg-select ncm-cfg-flex"><option value="silent" {{#if tracingModeSilent}}selected{{/if}}>Silent (GM)</option><option value="warned" {{#if tracingModeWarned}}selected{{/if}}>Warned</option><option value="visible" {{#if tracingModeVisible}}selected{{/if}}>Visible</option></select></div>
-        <div class="ncm-cfg-row"><span class="ncm-cfg-label">Trigger</span><select name="tracingTriggerOn" class="ncm-cfg-select ncm-cfg-flex"><option value="access" {{#if (eq tracingTriggerOn 'access')}}selected{{/if}}>Any access</option><option value="hack-attempt" {{#if (eq tracingTriggerOn 'hack-attempt')}}selected{{/if}}>Hack attempt</option><option value="hack-fail" {{#if (eq tracingTriggerOn 'hack-fail')}}selected{{/if}}>Hack fail</option></select></div>
-        <div class="ncm-cfg-row ncm-cfg-row--wrap" style="gap:10px"><label class="ncm-cfg-check"><input type="checkbox" name="tracingRevealIdentity" {{#if tracingRevealIdentity}}checked{{/if}} /> Reveal identity</label><label class="ncm-cfg-check"><input type="checkbox" name="tracingRevealLocation" {{#if tracingRevealLocation}}checked{{/if}} /> Reveal location</label></div>
+        <div class="ncm-cfg-desc">When enabled, accessing this shard creates a digital footprint. The GM receives a whisper with details about who accessed the shard and when. Depending on <strong>Visibility</strong>, the player may not know they've been traced, may get a vague warning, or see the full trace alert. <strong>Trigger</strong> controls whether the trace fires on any access, only hack attempts, or only failed hacks.</div>
+        <div class="ncm-cfg-row"><span class="ncm-cfg-label">Visibility</span><select name="tracingMode" class="ncm-cfg-select ncm-cfg-flex"><option value="silent" {{#if tracingModeSilent}}selected{{/if}}>Silent — GM sees, player doesn't</option><option value="warned" {{#if tracingModeWarned}}selected{{/if}}>Warned — player gets ambiguous alert</option><option value="visible" {{#if tracingModeVisible}}selected{{/if}}>Visible — player sees full trace</option></select></div>
+        <div class="ncm-cfg-row"><span class="ncm-cfg-label">Trigger</span><select name="tracingTriggerOn" class="ncm-cfg-select ncm-cfg-flex"><option value="access" {{#if (eq tracingTriggerOn 'access')}}selected{{/if}}>Any access to shard</option><option value="hack-attempt" {{#if (eq tracingTriggerOn 'hack-attempt')}}selected{{/if}}>Hack attempt only</option><option value="hack-fail" {{#if (eq tracingTriggerOn 'hack-fail')}}selected{{/if}}>Failed hack only</option></select></div>
+        <div class="ncm-cfg-row ncm-cfg-row--col" style="gap:8px;margin-top:4px"><label class="ncm-cfg-check"><input type="checkbox" name="tracingRevealIdentity" {{#if tracingRevealIdentity}}checked{{/if}} /> Trace reveals the player's character name</label><label class="ncm-cfg-check"><input type="checkbox" name="tracingRevealLocation" {{#if tracingRevealLocation}}checked{{/if}} /> Trace reveals the player's current location</label></div>
       </div>
     </div>
 
@@ -269,7 +270,7 @@
     <div class="ncm-cfg-panel" data-panel="systems">
       <div class="ncm-cfg-section">
         <div class="ncm-cfg-section-header"><i class="fas fa-heart-crack ncm-cfg-section-icon" style="color:#ff4444"></i><div class="ncm-cfg-section-title">Integrity</div><label class="ncm-cfg-toggle-label"><input type="checkbox" name="integrityEnabled" {{#if integrityEnabled}}checked{{/if}} /></label></div>
-        <div class="ncm-cfg-desc"><strong>Cosmetic</strong>: glitches only. <strong>Mechanical</strong>: entries become unreadable.</div>
+        <div class="ncm-cfg-desc">Tracks how damaged the shard data is. Failed hack attempts degrade integrity. When integrity drops below the <strong>Corrupt Below</strong> threshold, individual entries have a chance to become corrupted. <strong>Cosmetic</strong> mode shows visual glitches (scanlines, garbled text) but data remains readable. <strong>Mechanical</strong> mode can make entries actually unreadable or hide them entirely.</div>
         <div class="ncm-cfg-row"><span class="ncm-cfg-label">Mode</span><select name="integrityMode" class="ncm-cfg-select ncm-cfg-flex"><option value="cosmetic" {{#if integrityModeCosmetic}}selected{{/if}}>Cosmetic</option><option value="mechanical" {{#if integrityModeMechanical}}selected{{/if}}>Mechanical</option></select></div>
         <div class="ncm-cfg-row"><span class="ncm-cfg-label">Max</span><input type="number" name="integrityMax" class="ncm-cfg-input ncm-cfg-input--short" value="{{integrityMax}}" min="10" max="100" /></div>
         <div class="ncm-cfg-row"><span class="ncm-cfg-label">Degrade/Fail</span><input type="number" name="integrityDegradePerFailure" class="ncm-cfg-input ncm-cfg-input--short" value="{{integrityDegradePerFailure}}" min="1" max="50" /><span class="ncm-cfg-hint" style="margin:0">pts</span></div>
@@ -279,22 +280,28 @@
 
       <div class="ncm-cfg-section">
         <div class="ncm-cfg-section-header"><i class="fas fa-clock ncm-cfg-section-icon" style="color:#f7c948"></i><div class="ncm-cfg-section-title">Expiration</div><label class="ncm-cfg-toggle-label"><input type="checkbox" name="expirationEnabled" {{#if expirationEnabled}}checked{{/if}} /></label></div>
-        <div class="ncm-cfg-desc"><strong>Timer</strong>: from first access. <strong>Calendar</strong>: in-game date. <strong>On-Access</strong>: after N opens.</div>
+        <div class="ncm-cfg-desc">Makes the shard self-destruct after a condition is met. <strong>Timer</strong> starts a real-world countdown from the first time any player opens the shard. <strong>Calendar</strong> expires at a specific in-game date (requires SimpleCalendar). <strong>On-Access</strong> expires after the shard has been opened a set number of times across all players.</div>
         <div class="ncm-cfg-row"><span class="ncm-cfg-label">Mode</span><select name="expirationMode" class="ncm-cfg-select ncm-cfg-flex"><option value="timer" {{#if expirationModeTimer}}selected{{/if}}>Timer</option><option value="calendar" {{#if expirationModeCalendar}}selected{{/if}}>Calendar</option><option value="on-access" {{#if expirationModeAccess}}selected{{/if}}>On-Access</option></select></div>
         <div class="ncm-cfg-row"><span class="ncm-cfg-label">Duration (hrs)</span><input type="number" name="expirationHours" class="ncm-cfg-input ncm-cfg-input--short" value="{{expirationHours}}" min="1" max="720" /></div>
         <div class="ncm-cfg-row"><span class="ncm-cfg-label">Access Count</span><input type="number" name="expirationAccessCount" class="ncm-cfg-input ncm-cfg-input--short" value="{{expirationAccessCount}}" min="1" max="100" /></div>
       </div>
 
       <div class="ncm-cfg-section">
-        <div class="ncm-cfg-section-header"><i class="fas fa-bell ncm-cfg-section-icon" style="color:#a855f7"></i><div class="ncm-cfg-section-title">Notifications</div></div>
-        <div class="ncm-cfg-row ncm-cfg-row--wrap" style="gap:10px"><label class="ncm-cfg-check"><input type="checkbox" name="notifyGM" {{#if notifyGM}}checked{{/if}} /> GM whisper</label><label class="ncm-cfg-check"><input type="checkbox" name="notifyContact" {{#if notifyContact}}checked{{/if}} /> NPC notify</label></div>
+        <div class="ncm-cfg-section-header"><i class="fas fa-bell ncm-cfg-section-icon" style="color:#a855f7"></i><div class="ncm-cfg-section-title">Notifications & Display</div></div>
+        <div class="ncm-cfg-desc">Controls what happens when a player accesses this shard. <strong>GM whisper</strong> sends a chat notification only the GM sees. <strong>NPC notify</strong> triggers an in-character contact notification as if an NPC detected the access.</div>
+        <div class="ncm-cfg-row ncm-cfg-row--col" style="gap:8px">
+          <label class="ncm-cfg-check"><input type="checkbox" name="notifyGM" {{#if notifyGM}}checked{{/if}} /> Whisper GM when any player opens this shard</label>
+          <label class="ncm-cfg-check"><input type="checkbox" name="notifyContact" {{#if notifyContact}}checked{{/if}} /> Send an NPC contact notification on access</label>
+        </div>
         <div class="ncm-cfg-divider"></div>
-        <label class="ncm-cfg-check"><input type="checkbox" name="singleMessage" {{#if singleMessage}}checked{{/if}} /> Single entry mode</label>
+        <div class="ncm-cfg-desc"><strong>Single entry mode</strong> hides the entry list and shows just one content block. Useful for shards that contain a single document, image, or message.</div>
+        <label class="ncm-cfg-check"><input type="checkbox" name="singleMessage" {{#if singleMessage}}checked{{/if}} /> Single entry mode (skip the entry list)</label>
       </div>
 
       <div class="ncm-cfg-section">
         <div class="ncm-cfg-section-header"><i class="fas fa-link ncm-cfg-section-icon" style="color:#19f3f7"></i><div class="ncm-cfg-section-title">Linked Shards</div></div>
-        <div class="ncm-cfg-row"><span class="ncm-cfg-label">Links To</span><input type="text" name="linkedShardId" class="ncm-cfg-input ncm-cfg-flex" placeholder="Item ID or name" /></div>
+        <div class="ncm-cfg-desc">Creates a breadcrumb trail between shards. When a player finishes reading this shard, a link appears pointing them to the next one in the chain. Useful for multi-part intel drops or quest progressions.</div>
+        <div class="ncm-cfg-row"><span class="ncm-cfg-label">Links To</span><input type="text" name="linkedShardId" class="ncm-cfg-input ncm-cfg-flex" placeholder="Item ID or name of next shard" /></div>
       </div>
     </div>
 
@@ -302,7 +309,7 @@
     <div class="ncm-cfg-panel" data-panel="boot">
       <div class="ncm-cfg-section">
         <div class="ncm-cfg-section-header"><i class="fas fa-power-off ncm-cfg-section-icon" style="color:#00ff41"></i><div class="ncm-cfg-section-title">Boot Sequence</div><label class="ncm-cfg-toggle-label"><input type="checkbox" name="bootEnabled" {{#if bootEnabled}}checked{{/if}} /></label></div>
-        <div class="ncm-cfg-desc">Plays once on first open. Icon, title, progress, log lines.</div>
+        <div class="ncm-cfg-desc">The boot animation plays once when a player first opens this shard. It shows the shard's icon, title, a progress bar, and optional terminal-style log lines. The animation style and timing are determined by the selected <strong>preset</strong> — switch presets to get different animations. Use <strong>Preview</strong> at the bottom to test.</div>
 
         <div class="ncm-cfg-row"><span class="ncm-cfg-label">Icon Source</span><select name="bootIconMode" class="ncm-cfg-select ncm-cfg-flex" data-action="changeIconMode" data-group="bootIcon"><option value="fa" {{#if bootIconModeFa}}selected{{/if}}>FontAwesome</option><option value="image" {{#if bootIconModeImage}}selected{{/if}}>Image</option><option value="item" {{#if bootIconModeItem}}selected{{/if}}>Item Default</option></select></div>
 
