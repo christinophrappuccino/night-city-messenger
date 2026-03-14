@@ -1,17 +1,15 @@
 /**
- * ItemInboxConfig — GM Shard Configuration (Sprint 4.6 Expansion)
+ * ItemInboxConfig — GM Shard Configuration (Sprint 4.6 Tabbed Redesign)
  * @file scripts/ui/ItemInbox/ItemInboxConfig.js
  * @module cyberpunkred-messenger
- * @description GM-only dialog for configuring all data shard settings.
- *   13 sections: Preset, Metadata, Encryption, Skills, Failure, Login,
- *   Key Item, Network (expanded), Tracing, Integrity, Expiration, Boot, Linked Shards.
+ * @description GM-only tabbed configuration for data shard settings.
+ *   5 tabs: Identity, Security, Network, Systems, Boot.
  */
 
-import { MODULE_ID, DEFAULTS, SKILL_MAP, SHARD_PRESETS, NETWORK_ACCESS_MODES, NETWORK_TYPES, CONNECTION_MODES } from '../../utils/constants.js';
+import { MODULE_ID, DEFAULTS, SKILL_MAP, SHARD_PRESETS, NETWORK_ACCESS_MODES, NETWORK_TYPES, CONNECTION_MODES, FAILURE_MODES, ENCRYPTION_TYPES } from '../../utils/constants.js';
 import { log, isGM } from '../../utils/helpers.js';
 import { BaseApplication } from '../BaseApplication.js';
 
-/** Common FA icons for the boot icon dropdown */
 const BOOT_ICON_OPTIONS = [
   { value: 'fas fa-shield-halved', label: 'Shield' },
   { value: 'fas fa-star', label: 'Star' },
@@ -35,9 +33,33 @@ const BOOT_ICON_OPTIONS = [
   { value: 'fas fa-key', label: 'Key' },
 ];
 
+const KEY_ITEM_ICON_OPTIONS = [
+  { value: 'fas fa-id-card', label: 'ID Card' },
+  { value: 'fas fa-key', label: 'Key' },
+  { value: 'fas fa-fingerprint', label: 'Fingerprint' },
+  { value: 'fas fa-credit-card', label: 'Credit Card' },
+  { value: 'fas fa-lock', label: 'Lock' },
+  { value: 'fas fa-microchip', label: 'Microchip' },
+  { value: 'fas fa-shield-halved', label: 'Shield' },
+  { value: 'fas fa-passport', label: 'Passport' },
+  { value: 'fas fa-sim-card', label: 'SIM Card' },
+  { value: 'fas fa-barcode', label: 'Barcode' },
+  { value: 'fas fa-qrcode', label: 'QR Code' },
+  { value: 'fas fa-file-signature', label: 'Signature' },
+];
+
+const LAYER_FAILURE_MODES = [
+  { value: 'nothing', label: 'No consequence' },
+  { value: 'lockout', label: 'Timed lockout' },
+  { value: 'permanent', label: 'Permanent lockout' },
+  { value: 'damage', label: 'BLACK ICE damage' },
+  { value: 'destroy', label: 'Destroy shard' },
+];
+
 export class ItemInboxConfig extends BaseApplication {
 
   item = null;
+  _activeTab = 'identity';
 
   get dataShardService() { return game.nightcity?.dataShardService; }
   get networkService() { return game.nightcity?.networkService; }
@@ -46,7 +68,7 @@ export class ItemInboxConfig extends BaseApplication {
     id: 'ncm-item-inbox-config',
     classes: ['ncm-app', 'ncm-item-inbox-config'],
     window: { title: 'NCM.DataShard.Config', icon: 'fas fa-cog', resizable: true, minimizable: false },
-    position: { width: 540, height: 720 },
+    position: { width: 680, height: 720 },
     actions: {
       saveConfig: ItemInboxConfig._onSaveConfig,
       applyPreset: ItemInboxConfig._onApplyPreset,
@@ -57,11 +79,18 @@ export class ItemInboxConfig extends BaseApplication {
       resetDefaults: ItemInboxConfig._onResetDefaults,
       selectIcon: ItemInboxConfig._onSelectIcon,
       browseImage: ItemInboxConfig._onBrowseImage,
-      addNetworkTag: ItemInboxConfig._onAddNetworkTag,
-      removeNetworkTag: ItemInboxConfig._onRemoveNetworkTag,
       changeIconMode: ItemInboxConfig._onChangeIconMode,
       selectIconColor: ItemInboxConfig._onSelectIconColor,
       relockShard: ItemInboxConfig._onRelockShard,
+      switchTab: ItemInboxConfig._onSwitchTab,
+      selectAccessMode: ItemInboxConfig._onSelectAccessMode,
+      selectConnMode: ItemInboxConfig._onSelectConnMode,
+      toggleNetwork: ItemInboxConfig._onToggleNetwork,
+      selectIceMode: ItemInboxConfig._onSelectIceMode,
+      selectIceActor: ItemInboxConfig._onSelectIceActor,
+      searchKeyItem: ItemInboxConfig._onSearchKeyItem,
+      clearKeyItem: ItemInboxConfig._onClearKeyItem,
+      previewBoot: ItemInboxConfig._onPreviewBoot,
     },
   }, { inplace: false });
 
@@ -81,23 +110,21 @@ export class ItemInboxConfig extends BaseApplication {
   // ═══════════════════════════════════════════════════════════
 
   async _prepareContext(options) {
-    if (!this.item || !isGM()) return { hasItem: false };
+    if (!this.item) return { hasItem: false };
     const config = this.dataShardService?.getConfig(this.item) ?? foundry.utils.deepClone(DEFAULTS.SHARD_CONFIG);
-    const networks = this.networkService?.getAllNetworks() ?? [];
-
-    // ─── Preset ───
-    const presetOptions = Object.entries(SHARD_PRESETS).map(([key, preset]) => ({
-      value: key, label: preset.label, selected: config.preset === key,
-    }));
-
-    // ─── Metadata ───
+    const networks = this.networkService?.getAllNetworks?.() ?? [];
     const meta = config.metadata ?? {};
 
-    // ─── Encryption ───
+    // ─── Presets ───
+    const presetOptions = Object.entries(SHARD_PRESETS).map(([key, p]) => ({
+      value: key, label: p.label, selected: config.preset === key,
+    }));
+
+    // ─── Encryption types ───
     const encryptionTypes = [
-      { value: 'ICE', label: 'ICE (Standard)', selected: config.encryptionType === 'ICE' },
-      { value: 'BLACK_ICE', label: 'BLACK ICE (Damage)', selected: config.encryptionType === 'BLACK_ICE' },
-      { value: 'RED_ICE', label: 'RED ICE (Lethal)', selected: config.encryptionType === 'RED_ICE' },
+      { value: 'ICE', label: 'Standard ICE', selected: config.encryptionType === 'ICE' },
+      { value: 'BLACK_ICE', label: 'BLACK ICE (3d6 damage)', selected: config.encryptionType === 'BLACK_ICE' },
+      { value: 'RED_ICE', label: 'RED ICE (5d6, lethal)', selected: config.encryptionType === 'RED_ICE' },
     ];
 
     // ─── Skills ───
@@ -107,7 +134,7 @@ export class ItemInboxConfig extends BaseApplication {
     }));
     const allSkills = Object.keys(SKILL_MAP).filter(s => !(config.allowedSkills || []).includes(s)).sort();
 
-    // ─── Failure ───
+    // ─── Failure modes ───
     const failureModes = [
       { value: 'nothing', label: 'No consequence', selected: config.failureMode === 'nothing' },
       { value: 'lockout', label: 'Lockout (timed)', selected: config.failureMode === 'lockout' },
@@ -117,29 +144,24 @@ export class ItemInboxConfig extends BaseApplication {
     ];
     const lockoutMinutes = Math.round((config.lockoutDuration || 3600000) / 60000);
 
-    // ─── Layer Security ───
-    const layerSec = config.layerSecurity ?? {};
-    const layerSecFailureModes = [
-      { value: 'nothing', label: 'No consequence', selected: (layerSec.failureMode ?? 'lockout') === 'nothing' },
-      { value: 'lockout', label: 'Lockout (timed)', selected: (layerSec.failureMode ?? 'lockout') === 'lockout' },
-      { value: 'permanent', label: 'Permanent lockout', selected: layerSec.failureMode === 'permanent' },
-      { value: 'damage', label: 'BLACK ICE damage', selected: layerSec.failureMode === 'damage' },
-      { value: 'destroy', label: 'Self-destruct shard', selected: layerSec.failureMode === 'destroy' },
-    ];
+    // ─── Layer failure modes (reusable list) ───
+    const layerFailureModes = LAYER_FAILURE_MODES;
 
-    // ─── Network (expanded) ───
+    // ─── Per-layer hack config ───
+    const layerSec = config.layerSecurity ?? {};
+    const perLayer = layerSec.perLayer ?? {};
+
+    // ─── Network ───
     const netConfig = config.network ?? {};
     const networkRequired = netConfig.required ?? config.requiresNetwork ?? false;
+    const accessMode = netConfig.accessMode ?? 'any';
+
     const networkOptions = networks.map(n => ({
-      value: n.id, label: n.name,
+      value: n.id, label: n.name, type: n.type || 'PUBLIC',
+      color: n.theme?.color || '#19f3f7',
+      icon: n.theme?.icon || 'fa-wifi',
       selected: (netConfig.allowedNetworks ?? []).includes(n.id),
     }));
-    const accessModeOptions = [
-      { value: 'any', label: 'Any Network', selected: netConfig.accessMode === 'any' },
-      { value: 'whitelist', label: 'Specific Networks', selected: netConfig.accessMode === 'whitelist' },
-      { value: 'type', label: 'Network Types', selected: netConfig.accessMode === 'type' },
-      { value: 'both', label: 'Types + Whitelist', selected: netConfig.accessMode === 'both' },
-    ];
     const networkTypeChecks = Object.values(NETWORK_TYPES).map(t => ({
       value: t, label: t, checked: (netConfig.allowedTypes ?? []).includes(t),
     }));
@@ -156,12 +178,10 @@ export class ItemInboxConfig extends BaseApplication {
 
     // ─── Boot ───
     const boot = config.boot ?? {};
-    const bootIconOptions = BOOT_ICON_OPTIONS.map(o => ({
-      ...o, selected: boot.faIcon === o.value,
-    }));
+    const bootIconOptions = BOOT_ICON_OPTIONS.map(o => ({ ...o, selected: boot.faIcon === o.value }));
     const bootLogLines = boot.logLines ?? [];
 
-    // ─── Icon Color Palette (shared) ───
+    // ─── Icon colors ───
     const ICON_COLORS = [
       { key: 'red', hex: '#F65261' }, { key: 'cyan', hex: '#19f3f7' },
       { key: 'gold', hex: '#f7c948' }, { key: 'green', hex: '#00ff41' },
@@ -170,34 +190,66 @@ export class ItemInboxConfig extends BaseApplication {
       { key: 'muted', hex: '#888888' },
     ];
     const bootIconColor = boot.iconColor || '';
-    const bootImageTint = boot.imageTint || '';
-    const iconColorOptions = ICON_COLORS.map(c => ({
-      ...c, isActive: bootIconColor === c.hex,
+    const iconColorOptions = ICON_COLORS.map(c => ({ ...c, isActive: bootIconColor === c.hex }));
+
+    // ─── Key Item icon options ───
+    const keyItemIconOptions = KEY_ITEM_ICON_OPTIONS.map(o => ({
+      ...o, selected: config.keyItemIcon === o.value,
     }));
 
-    // ─── Legacy network compat ───
-    const legacyNetworkOptions = networks.map(n => ({
-      value: n.id, label: n.name,
-      selected: config.requiredNetwork === n.id,
+    // ─── ICE source ───
+    const iceConfig = config.ice ?? {};
+    const iceSource = iceConfig.source ?? 'default';
+
+    // ─── Black ICE actors ───
+    const blackIceActors = (game.actors?.filter(a =>
+      a.type === 'blackIce' || a.type === 'black-ice' ||
+      a.getFlag(MODULE_ID, 'isBlackICE') ||
+      a.name?.toLowerCase().includes('black ice')
+    ) ?? []).map(a => ({
+      id: a.id, name: a.name, img: a.img,
+      damage: a.system?.stats?.atk?.value ? `ATK: ${a.system.stats.atk.value}` : '',
+      selected: iceConfig.actorId === a.id,
     }));
+
+    // ─── Security layer count ───
+    let securityLayerCount = 0;
+    if (networkRequired) securityLayerCount++;
+    if (config.requiresKeyItem) securityLayerCount++;
+    if (config.requiresLogin) securityLayerCount++;
+    if (config.encrypted) securityLayerCount++;
+
+    // ─── Timestamp conversion for datetime-local ───
+    let metaTimestampLocal = '';
+    if (meta.timestamp) {
+      try { metaTimestampLocal = new Date(meta.timestamp).toISOString().slice(0, 16); } catch (e) {}
+    }
+
+    // ─── ICE damage dice display ───
+    const iceDamageDice = config.encryptionType === 'RED_ICE' ? '5d6'
+      : config.encryptionType === 'BLACK_ICE' ? '3d6' : '—';
 
     return {
       hasItem: true,
       itemName: this.item.name,
+      itemImg: this.item.img,
+      itemType: this.item.type || 'Item',
       config,
 
       // Preset
       presetOptions,
-      currentPreset: config.preset || 'blank',
+
+      // Identity
+      shardName: config.shardName || '',
+      shardDescription: config.shardDescription || '',
 
       // Metadata
       metaCreator: meta.creator || '',
       metaNetwork: meta.network || '',
       metaLocation: meta.location || '',
       metaTimestamp: meta.timestamp || '',
+      metaTimestampLocal,
       metaClassification: meta.classification || '',
-
-      // Type line display mode
       typeLineModePresetStatus: (meta.typeLineMode ?? 'preset-status') === 'preset-status',
       typeLineModeStatusOnly: meta.typeLineMode === 'status-only',
       typeLineModeCustom: meta.typeLineMode === 'custom',
@@ -213,10 +265,23 @@ export class ItemInboxConfig extends BaseApplication {
       // Skills
       skillEntries, allSkills, hasSkills: skillEntries.length > 0,
 
-      // Failure
-      failureModes,
-      maxHackAttempts: config.maxHackAttempts,
-      lockoutMinutes,
+      // Failure (encryption layer)
+      failureModes, maxHackAttempts: config.maxHackAttempts, lockoutMinutes,
+
+      // Layer failure modes list
+      layerFailureModes,
+
+      // Per-layer hack config
+      networkHackMaxAttempts: perLayer.network?.maxAttempts ?? 3,
+      networkHackFailureMode: perLayer.network?.failureMode ?? 'nothing',
+      networkHackLockoutMin: Math.round((perLayer.network?.lockoutDuration || 3600000) / 60000),
+      keyitemHackMaxAttempts: perLayer.keyitem?.maxAttempts ?? 3,
+      keyitemHackFailureMode: perLayer.keyitem?.failureMode ?? 'nothing',
+      loginHackMaxAttempts: perLayer.login?.maxAttempts ?? 3,
+      loginHackFailureMode: perLayer.login?.failureMode ?? 'nothing',
+
+      // Security
+      securityLayerCount,
 
       // Login
       requiresLogin: config.requiresLogin,
@@ -232,22 +297,21 @@ export class ItemInboxConfig extends BaseApplication {
       keyItemTag: config.keyItemTag,
       keyItemDisplayName: config.keyItemDisplayName,
       keyItemIcon: config.keyItemIcon,
+      keyItemImg: config.keyItemImg || '',
       keyItemBypassLogin: config.keyItemBypassLogin,
       keyItemBypassEncryption: config.keyItemBypassEncryption,
       keyItemConsumeOnUse: config.keyItemConsumeOnUse,
-
-      // Layer Security
-      layerSecEnabled: layerSec.enabled ?? false,
-      layerSecMaxAttempts: layerSec.maxAttempts ?? 3,
-      layerSecFailureModes,
-      layerSecLockoutMinutes: Math.round((layerSec.lockoutDuration || 3600000) / 60000),
-      layerSecDegradeOnFail: layerSec.degradeOnFail ?? true,
+      keyItemIconOptions,
 
       // Network
       networkRequired,
-      accessModeOptions,
+      accessModeValue: accessMode,
+      accessModeAny: accessMode === 'any',
+      accessModeWhitelist: accessMode === 'whitelist',
+      accessModeType: accessMode === 'type',
       networkTypeChecks,
       networkOptions,
+      connectionModeValue: netConfig.connectionMode ?? 'offline',
       connectionModeOffline: (netConfig.connectionMode ?? 'offline') === 'offline',
       connectionModeTethered: (netConfig.connectionMode ?? 'offline') === 'tethered',
       signalThreshold: netConfig.signalThreshold ?? 40,
@@ -257,7 +321,7 @@ export class ItemInboxConfig extends BaseApplication {
       // Tracing
       tracingEnabled: tracing.enabled ?? false,
       tracingMode: tracing.mode ?? 'silent',
-      tracingModeSilent: tracing.mode === 'silent',
+      tracingModeSilent: (tracing.mode ?? 'silent') === 'silent',
       tracingModeWarned: tracing.mode === 'warned',
       tracingModeVisible: tracing.mode === 'visible',
       tracingTriggerOn: tracing.triggerOn ?? 'access',
@@ -286,7 +350,6 @@ export class ItemInboxConfig extends BaseApplication {
       bootIconModeFa: (boot.iconMode ?? 'fa') === 'fa',
       bootIconModeImage: (boot.iconMode ?? 'fa') === 'image',
       bootIconModeItem: boot.iconMode === 'item',
-      bootIconModeValue: boot.iconMode ?? 'fa',
       bootIconOptions,
       bootFaIconCustom: boot.faIcon || '',
       bootImageUrl: boot.imageUrl || '',
@@ -301,27 +364,23 @@ export class ItemInboxConfig extends BaseApplication {
       bootSpeedCustom: boot.speed === 'custom',
       bootCustomSeconds: boot.customSeconds ?? '',
       bootLogLines,
-      hasBootLogLines: bootLogLines.length > 0,
-
-      // Icon colors (shared palette)
-      iconColorOptions,
       bootIconColor,
-      bootImageTint,
+      iconColorOptions,
 
-      // Key item icon
-      keyItemIconOptions: BOOT_ICON_OPTIONS.map(o => ({
-        ...o, selected: config.keyItemIcon === o.value,
-      })),
-      keyItemIconMode: 'fa',
-      keyItemIconModeFa: true,
-      keyItemIconModeImage: false,
-      keyItemImageUrl: config.keyItemImageUrl || '',
+      // ICE source
+      iceSource,
+      iceSourceDefault: iceSource === 'default',
+      iceSourceCustom: iceSource === 'custom',
+      iceSourceActor: iceSource === 'actor',
+      iceCustomName: iceConfig.customName || '',
+      iceCustomPortrait: iceConfig.customPortrait || '',
+      iceCustomDamage: iceConfig.customDamage || '',
+      iceActorId: iceConfig.actorId || '',
+      iceDamageDice,
+      blackIceActors,
 
       // Display
       singleMessage: config.singleMessage,
-      shardName: config.shardName || '',
-
-      // Notifications
       notifyGM: config.notifyGM ?? true,
       notifyContact: config.notifyContact ?? false,
     };
@@ -333,154 +392,162 @@ export class ItemInboxConfig extends BaseApplication {
 
   static async _onSaveConfig(event, target) {
     if (!isGM() || !this.item) return;
-    const form = this.element.querySelector('form');
-    if (!form) return;
-    const fd = new FormDataExtended(form);
-    const data = fd.object;
+    const el = this.element;
+    const val = (name, fallback = '') => el.querySelector(`[name="${name}"]`)?.value ?? fallback;
+    const checked = (name) => !!el.querySelector(`[name="${name}"]`)?.checked;
 
-    // Collect complex fields
     const allowedSkills = this._collectSkills();
     const skillDCs = this._collectSkillDCs();
     const bootLogLines = this._collectBootLogLines();
-    const allowedNetworks = this._collectCheckedValues('allowedNetwork');
+    const allowedNetworks = this._collectNetworks();
     const allowedTypes = this._collectCheckedValues('allowedType');
 
-    const config = {
-      // Identity
-      preset: data.preset || 'blank',
-      shardName: data.shardName || '',
+    // Timestamp conversion
+    let metaTimestamp = val('metaTimestamp');
+    if (metaTimestamp && !metaTimestamp.includes('T')) {
+      // datetime-local gives "YYYY-MM-DDTHH:MM", convert to ISO
+      try { metaTimestamp = new Date(metaTimestamp).toISOString(); } catch (e) {}
+    }
 
-      // Metadata
+    const config = {
+      preset: val('preset', 'blank'),
+      shardName: val('shardName'),
+      shardDescription: val('shardDescription'),
+
       metadata: {
-        creator: data.metaCreator || '',
-        network: data.metaNetwork || '',
-        location: data.metaLocation || '',
-        timestamp: data.metaTimestamp || '',
-        classification: data.metaClassification || '',
-        typeLineMode: data.typeLineMode || 'preset-status',
-        typeLineCustom: data.typeLineCustom || '',
+        creator: val('metaCreator'),
+        network: val('metaNetwork'),
+        location: val('metaLocation'),
+        timestamp: metaTimestamp,
+        classification: val('metaClassification'),
+        typeLineMode: val('typeLineMode', 'preset-status'),
+        typeLineCustom: val('typeLineCustom'),
         custom: {},
       },
 
-      // Encryption
-      encrypted: !!data.encrypted,
-      encryptionType: data.encryptionType || 'ICE',
-      encryptionDC: parseInt(data.encryptionDC) || 15,
-      encryptionMode: data.encryptionMode || 'shard',
+      encrypted: checked('encrypted'),
+      encryptionType: val('encryptionType', 'ICE'),
+      encryptionDC: parseInt(val('encryptionDC')) || 15,
+      encryptionMode: val('encryptionMode', 'shard'),
       allowedSkills,
       skillDCs,
+      failureMode: val('failureMode', 'lockout'),
+      maxHackAttempts: parseInt(val('maxHackAttempts')) || 3,
+      lockoutDuration: (parseInt(val('lockoutMinutes')) || 60) * 60000,
 
-      // Failure
-      failureMode: data.failureMode || 'lockout',
-      maxHackAttempts: parseInt(data.maxHackAttempts) || 3,
-      lockoutDuration: (parseInt(data.lockoutMinutes) || 60) * 60000,
+      requiresLogin: checked('requiresLogin'),
+      loginUsername: val('loginUsername'),
+      loginPassword: val('loginPassword'),
+      loginDisplayName: val('loginDisplayName'),
+      maxLoginAttempts: parseInt(val('maxLoginAttempts')) || 3,
 
-      // Login
-      requiresLogin: !!data.requiresLogin,
-      loginUsername: data.loginUsername || '',
-      loginPassword: data.loginPassword || '',
-      loginDisplayName: data.loginDisplayName || '',
-      maxLoginAttempts: parseInt(data.maxLoginAttempts) || 3,
+      requiresKeyItem: checked('requiresKeyItem'),
+      keyItemName: val('keyItemName') || null,
+      keyItemId: val('keyItemId') || null,
+      keyItemTag: val('keyItemTag') || null,
+      keyItemImg: val('keyItemImg') || null,
+      keyItemDisplayName: val('keyItemDisplayName'),
+      keyItemIcon: val('keyItemIcon', 'fa-id-card'),
+      keyItemBypassLogin: checked('keyItemBypassLogin'),
+      keyItemBypassEncryption: checked('keyItemBypassEncryption'),
+      keyItemConsumeOnUse: checked('keyItemConsumeOnUse'),
 
-      // Key Item
-      requiresKeyItem: !!data.requiresKeyItem,
-      keyItemName: data.keyItemName || null,
-      keyItemId: data.keyItemId || null,
-      keyItemTag: data.keyItemTag || null,
-      keyItemDisplayName: data.keyItemDisplayName || '',
-      keyItemIcon: data.keyItemIcon || 'fa-id-card',
-      keyItemBypassLogin: !!data.keyItemBypassLogin,
-      keyItemBypassEncryption: !!data.keyItemBypassEncryption,
-      keyItemConsumeOnUse: !!data.keyItemConsumeOnUse,
-
-      // Layer Hack Security
+      // Per-layer hack security
       layerSecurity: {
-        enabled: !!data.layerSecEnabled,
-        maxAttempts: parseInt(data.layerSecMaxAttempts) || 3,
-        failureMode: data.layerSecFailureMode || 'lockout',
-        lockoutDuration: (parseInt(data.layerSecLockoutMinutes) || 60) * 60000,
-        degradeOnFail: !!data.layerSecDegradeOnFail,
-      },
-
-      // Network (expanded)
-      network: {
-        required: !!data.networkRequired,
-        accessMode: data.accessMode || 'any',
-        allowedNetworks,
-        allowedTypes,
-        connectionMode: data.connectionMode || 'offline',
-        signalThreshold: parseInt(data.signalThreshold) || 40,
-        signalDVModifier: !!data.signalDVModifier,
-        signalDegradation: !!data.signalDegradation,
-        tracing: {
-          enabled: !!data.tracingEnabled,
-          mode: data.tracingMode || 'silent',
-          triggerOn: data.tracingTriggerOn || 'access',
-          traceTarget: data.traceTarget || null,
-          traceMessage: data.traceMessage || null,
-          traceDelay: parseInt(data.traceDelay) || 0,
-          revealIdentity: !!data.tracingRevealIdentity,
-          revealLocation: !!data.tracingRevealLocation,
-          cooldown: parseInt(data.tracingCooldown) || 0,
+        enabled: true,
+        perLayer: {
+          network: {
+            maxAttempts: parseInt(val('networkHackMaxAttempts')) || 3,
+            failureMode: val('networkHackFailureMode', 'nothing'),
+            lockoutDuration: (parseInt(val('networkHackLockoutMin')) || 60) * 60000,
+          },
+          keyitem: {
+            maxAttempts: parseInt(val('keyitemHackMaxAttempts')) || 3,
+            failureMode: val('keyitemHackFailureMode', 'nothing'),
+          },
+          login: {
+            maxAttempts: parseInt(val('loginHackMaxAttempts')) || 3,
+            failureMode: val('loginHackFailureMode', 'nothing'),
+          },
         },
       },
 
-      // Legacy compat (keep in sync)
-      requiresNetwork: !!data.networkRequired,
+      // ICE source
+      ice: {
+        source: val('iceSource', 'default'),
+        customName: val('iceCustomName'),
+        customPortrait: val('iceCustomPortrait'),
+        customDamage: val('iceCustomDamage'),
+        actorId: val('iceActorId'),
+      },
+
+      network: {
+        required: checked('networkRequired'),
+        accessMode: val('accessMode', 'any'),
+        allowedNetworks,
+        allowedTypes,
+        connectionMode: val('connectionMode', 'offline'),
+        signalThreshold: parseInt(val('signalThreshold')) || 40,
+        signalDVModifier: checked('signalDVModifier'),
+        signalDegradation: checked('signalDegradation'),
+        tracing: {
+          enabled: checked('tracingEnabled'),
+          mode: val('tracingMode', 'silent'),
+          triggerOn: val('tracingTriggerOn', 'access'),
+          traceTarget: null,
+          traceMessage: null,
+          traceDelay: 0,
+          revealIdentity: checked('tracingRevealIdentity'),
+          revealLocation: checked('tracingRevealLocation'),
+          cooldown: 0,
+        },
+      },
+
+      requiresNetwork: checked('networkRequired'),
       requiredNetwork: allowedNetworks[0] || null,
 
-      // Integrity
       integrity: {
-        enabled: !!data.integrityEnabled,
-        mode: data.integrityMode || 'cosmetic',
-        maxIntegrity: parseInt(data.integrityMax) || 100,
-        currentIntegrity: parseInt(data.integrityMax) || 100,
-        degradePerFailure: parseInt(data.integrityDegradePerFailure) || 15,
-        corruptionThreshold: parseInt(data.integrityCorruptionThreshold) || 40,
-        corruptionChance: (parseInt(data.integrityCorruptionChance) || 30) / 100,
+        enabled: checked('integrityEnabled'),
+        mode: val('integrityMode', 'cosmetic'),
+        maxIntegrity: parseInt(val('integrityMax')) || 100,
+        currentIntegrity: parseInt(val('integrityMax')) || 100,
+        degradePerFailure: parseInt(val('integrityDegradePerFailure')) || 15,
+        corruptionThreshold: parseInt(val('integrityCorruptionThreshold')) || 40,
+        corruptionChance: (parseInt(val('integrityCorruptionChance')) || 30) / 100,
       },
 
-      // Expiration
       expiration: {
-        enabled: !!data.expirationEnabled,
-        mode: data.expirationMode || 'timer',
-        timerDuration: (parseInt(data.expirationHours) || 48) * 3600000,
-        calendarDate: data.expirationCalendarDate || null,
-        accessCount: parseInt(data.expirationAccessCount) || 1,
-        triggered: false,
-        triggeredAt: null,
+        enabled: checked('expirationEnabled'),
+        mode: val('expirationMode', 'timer'),
+        timerDuration: (parseInt(val('expirationHours')) || 48) * 3600000,
+        calendarDate: null,
+        accessCount: parseInt(val('expirationAccessCount')) || 1,
       },
 
-      // Boot Sequence
       boot: {
-        enabled: !!data.bootEnabled,
-        iconMode: data.bootIconMode || 'fa',
-        faIcon: data.bootFaIconManual?.trim() || data.bootFaIcon || 'fas fa-microchip',
-        iconColor: data.bootIconColor || '',
-        imageUrl: data.bootImageUrl || null,
-        imageSize: parseInt(data.bootImageSize) || 64,
-        imageTint: data.bootImageTint || '',
-        imageBorderRadius: data.bootImageBorderRadius || 'rounded',
-        title: data.bootTitle || '',
-        subtitle: data.bootSubtitle || '',
-        progressLabel: data.bootProgressLabel || '',
+        enabled: checked('bootEnabled'),
+        iconMode: val('bootIconMode', 'fa'),
+        faIcon: val('bootFaIcon', 'fas fa-microchip'),
+        iconColor: val('bootIconColor'),
+        imageUrl: val('bootImageUrl') || null,
+        imageSize: parseInt(val('bootImageSize')) || 64,
+        imageTint: val('bootImageTint') || '',
+        imageBorderRadius: 'rounded',
+        title: val('bootTitle'),
+        subtitle: val('bootSubtitle'),
+        progressLabel: val('bootProgressLabel'),
         logLines: bootLogLines,
-        speed: data.bootSpeed || 'normal',
-        customSeconds: parseFloat(data.bootCustomSeconds) || null,
-        animationStyle: SHARD_PRESETS[data.preset]?.boot?.animationStyle || 'standard-fade',
+        speed: val('bootSpeed', 'normal'),
+        customSeconds: parseFloat(val('bootCustomSeconds')) || null,
+        animationStyle: SHARD_PRESETS[val('preset')]?.boot?.animationStyle || 'standard-fade',
       },
 
-      // Linked Shards (shell)
       linkedShards: [],
-
-      // Notifications
-      notifyGM: !!data.notifyGM,
-      notifyContact: !!data.notifyContact,
-      notifyContactId: data.notifyContactId || null,
-
-      // Display
-      theme: data.preset || 'blank',
-      singleMessage: !!data.singleMessage,
+      notifyGM: checked('notifyGM'),
+      notifyContact: checked('notifyContact'),
+      notifyContactId: null,
+      theme: val('preset', 'blank'),
+      singleMessage: checked('singleMessage'),
     };
 
     const result = await this.dataShardService.updateConfig(this.item, config);
@@ -493,6 +560,249 @@ export class ItemInboxConfig extends BaseApplication {
   }
 
   // ═══════════════════════════════════════════════════════════
+  //  TAB SWITCHING
+  // ═══════════════════════════════════════════════════════════
+
+  static _onSwitchTab(event, target) {
+    const tab = target.dataset.tab;
+    if (!tab) return;
+    this._activeTab = tab;
+
+    // Update tab bar
+    this.element.querySelectorAll('.ncm-cfg-tab').forEach(t => {
+      t.classList.toggle('ncm-cfg-tab--active', t.dataset.tab === tab);
+    });
+    // Update panels
+    this.element.querySelectorAll('.ncm-cfg-panel').forEach(p => {
+      p.classList.toggle('ncm-cfg-panel--active', p.dataset.panel === tab);
+    });
+    // Scroll content to top
+    const content = this.element.querySelector('.ncm-cfg-content');
+    if (content) content.scrollTop = 0;
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  NETWORK INTERACTIVE ACTIONS
+  // ═══════════════════════════════════════════════════════════
+
+  static _onSelectAccessMode(event, target) {
+    const mode = target.dataset.mode || target.closest('[data-mode]')?.dataset.mode;
+    if (!mode) return;
+    this.element.querySelectorAll('.ncm-cfg-am-card').forEach(c => c.classList.remove('ncm-cfg-am-card--sel'));
+    (target.closest('.ncm-cfg-am-card') || target).classList.add('ncm-cfg-am-card--sel');
+    const input = this.element.querySelector('[name="accessMode"]');
+    if (input) input.value = mode;
+  }
+
+  static _onSelectConnMode(event, target) {
+    const mode = target.dataset.mode || target.closest('[data-mode]')?.dataset.mode;
+    if (!mode) return;
+    this.element.querySelectorAll('.ncm-cfg-cm-card').forEach(c => c.classList.remove('ncm-cfg-cm-card--sel'));
+    (target.closest('.ncm-cfg-cm-card') || target).classList.add('ncm-cfg-cm-card--sel');
+    const input = this.element.querySelector('[name="connectionMode"]');
+    if (input) input.value = mode;
+  }
+
+  static _onToggleNetwork(event, target) {
+    const card = target.closest('.ncm-cfg-net-card') || target;
+    const netId = card.dataset.netId;
+    if (!netId) return;
+    card.classList.toggle('ncm-cfg-net-card--on');
+    const isOn = card.classList.contains('ncm-cfg-net-card--on');
+    const container = this.element.querySelector('#ncm-network-hidden-inputs');
+    if (!container) return;
+
+    if (isOn) {
+      if (!container.querySelector(`[data-net-hidden="${netId}"]`)) {
+        const inp = document.createElement('input');
+        inp.type = 'hidden'; inp.name = 'allowedNetwork'; inp.value = netId;
+        inp.dataset.netHidden = netId;
+        container.appendChild(inp);
+      }
+    } else {
+      container.querySelector(`[data-net-hidden="${netId}"]`)?.remove();
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  ICE SOURCE
+  // ═══════════════════════════════════════════════════════════
+
+  static _onSelectIceMode(event, target) {
+    const mode = target.dataset.mode || target.closest('[data-mode]')?.dataset.mode;
+    if (!mode) return;
+    this.element.querySelectorAll('.ncm-cfg-ice-card').forEach(c => c.classList.remove('ncm-cfg-ice-card--sel'));
+    (target.closest('.ncm-cfg-ice-card') || target).classList.add('ncm-cfg-ice-card--sel');
+    this.element.querySelectorAll('.ncm-cfg-ice-panel').forEach(p => p.classList.remove('ncm-cfg-ice-panel--on'));
+    this.element.querySelector(`[data-ice-panel="${mode}"]`)?.classList.add('ncm-cfg-ice-panel--on');
+    const input = this.element.querySelector('[name="iceSource"]');
+    if (input) input.value = mode;
+  }
+
+  static _onSelectIceActor(event, target) {
+    const card = target.closest('.ncm-cfg-actor-card') || target;
+    const actorId = card.dataset.actorId;
+    if (!actorId) return;
+    this.element.querySelectorAll('.ncm-cfg-actor-card').forEach(c => c.classList.remove('ncm-cfg-actor-card--sel'));
+    card.classList.add('ncm-cfg-actor-card--sel');
+    const input = this.element.querySelector('[name="iceActorId"]');
+    if (input) input.value = actorId;
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  KEY ITEM PICKER
+  // ═══════════════════════════════════════════════════════════
+
+  static async _onSearchKeyItem(event, target) {
+    // Open a Foundry Dialog listing all items the GM can pick from
+    const items = game.items?.contents ?? [];
+    if (items.length === 0) {
+      ui.notifications.warn('NCM | No items found in the world.');
+      return;
+    }
+    let selectedItem = null;
+    const itemButtons = {};
+    items.slice(0, 50).forEach((item, i) => {
+      itemButtons[`item${i}`] = {
+        label: `<img src="${item.img}" width="20" height="20" style="vertical-align:middle;margin-right:6px;border:none;"> ${item.name} <small style="opacity:0.5">(${item.type})</small>`,
+        callback: () => { selectedItem = item; },
+      };
+    });
+    itemButtons.cancel = { label: 'Cancel', callback: () => {} };
+    await new Promise(resolve => {
+      new Dialog({
+        title: 'Select Key Item',
+        content: `<p style="margin-bottom:8px;">Select the item required for shard access:</p>`,
+        buttons: itemButtons,
+        default: 'cancel',
+        close: resolve,
+      }, { classes: ['dialog', 'ncm-hack-dialog', 'ncm-hd-theme-cyan'], width: 400 }).render(true);
+    });
+    if (!selectedItem) return;
+
+    // Update hidden inputs
+    const el = this.element;
+    const setVal = (name, v) => { const inp = el.querySelector(`[name="${name}"]`); if (inp) inp.value = v; };
+    setVal('keyItemName', selectedItem.name);
+    setVal('keyItemId', selectedItem.id);
+    setVal('keyItemImg', selectedItem.img);
+    // Re-render to show the filled state
+    this.render();
+  }
+
+  static _onClearKeyItem(event, target) {
+    const el = this.element;
+    const setVal = (name, v) => { const inp = el.querySelector(`[name="${name}"]`); if (inp) inp.value = v; };
+    setVal('keyItemName', '');
+    setVal('keyItemId', '');
+    setVal('keyItemImg', '');
+    this.render();
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  BOOT PREVIEW
+  // ═══════════════════════════════════════════════════════════
+
+  static async _onPreviewBoot(event, target) {
+    const el = this.element;
+    const frame = el.querySelector('[data-boot-preview]');
+    if (!frame) return;
+
+    // Read current form values
+    const title = el.querySelector('[name="bootTitle"]')?.value || 'DATA SHARD';
+    const subtitle = el.querySelector('[name="bootSubtitle"]')?.value || '';
+    const progressLabel = el.querySelector('[name="bootProgressLabel"]')?.value || 'Loading...';
+    const speedSel = el.querySelector('[name="bootSpeed"]')?.value || 'normal';
+    const speed = { fast: 1500, normal: 3500, dramatic: 5000 }[speedSel] || 3500;
+    const iconEl = el.querySelector('[name="bootFaIcon"]');
+    const iconClass = iconEl?.value || 'fas fa-microchip';
+    const iconColor = el.querySelector('[name="bootIconColor"]')?.value || '#19f3f7';
+    const logInputs = el.querySelectorAll('[name="bootLogLine"]');
+    const logLines = Array.from(logInputs).map(i => i.value).filter(Boolean);
+
+    // Clear and build preview
+    frame.innerHTML = '';
+    frame.style.position = 'relative';
+
+    const area = document.createElement('div');
+    area.style.cssText = 'position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;';
+    frame.appendChild(area);
+
+    // Icon
+    const icon = document.createElement('div');
+    icon.style.cssText = `width:40px;height:40px;border-radius:50%;border:2px solid ${iconColor};color:${iconColor};display:flex;align-items:center;justify-content:center;font-size:18px;opacity:0;transform:scale(0.5);transition:all 0.4s ease;`;
+    icon.innerHTML = `<i class="${iconClass}"></i>`;
+    area.appendChild(icon);
+
+    // Title
+    const titleEl = document.createElement('div');
+    titleEl.style.cssText = `font-family:'Orbitron',sans-serif;font-size:10px;font-weight:700;color:${iconColor};text-transform:uppercase;letter-spacing:0.12em;opacity:0;transform:translateY(4px);transition:all 0.3s ease;`;
+    titleEl.textContent = title;
+    area.appendChild(titleEl);
+
+    // Subtitle
+    const subEl = document.createElement('div');
+    subEl.style.cssText = `font-family:'Share Tech Mono',monospace;font-size:9px;color:#555570;opacity:0;transition:all 0.3s ease;`;
+    subEl.textContent = subtitle;
+    area.appendChild(subEl);
+
+    // Progress
+    const track = document.createElement('div');
+    track.style.cssText = 'width:50%;height:3px;background:#1a1a2e;border-radius:2px;overflow:hidden;opacity:0;transition:opacity 0.3s;';
+    const fill = document.createElement('div');
+    fill.style.cssText = `height:100%;width:0;background:${iconColor};border-radius:2px;transition:width 0.1s linear;`;
+    track.appendChild(fill);
+    area.appendChild(track);
+
+    const pLabel = document.createElement('div');
+    pLabel.style.cssText = 'font-family:"Share Tech Mono",monospace;font-size:8px;color:#555570;opacity:0;transition:all 0.3s;';
+    pLabel.textContent = progressLabel;
+    area.appendChild(pLabel);
+
+    // Log area
+    const logArea = document.createElement('div');
+    logArea.style.cssText = 'position:absolute;bottom:8px;left:10px;right:10px;font-family:"Share Tech Mono",monospace;font-size:8px;color:#00ff41;line-height:1.5;';
+    frame.appendChild(logArea);
+
+    // Animate
+    const wait = ms => new Promise(r => setTimeout(r, ms));
+    await wait(200);
+    icon.style.opacity = '1'; icon.style.transform = 'scale(1)';
+    await wait(400);
+    titleEl.style.opacity = '1'; titleEl.style.transform = 'translateY(0)';
+    await wait(250);
+    subEl.style.opacity = '1';
+    await wait(200);
+    track.style.opacity = '1'; pLabel.style.opacity = '1';
+
+    // Progress fill
+    const progressDuration = speed * 0.5;
+    const steps = 20;
+    for (let i = 1; i <= steps; i++) {
+      fill.style.width = (i / steps * 100) + '%';
+      await wait(progressDuration / steps);
+    }
+
+    // Log lines
+    for (const line of logLines) {
+      const lineEl = document.createElement('div');
+      lineEl.style.cssText = 'opacity:0;transform:translateX(-4px);transition:all 0.2s;';
+      lineEl.textContent = `> ${line}`;
+      logArea.appendChild(lineEl);
+      await wait(50);
+      lineEl.style.opacity = '0.6'; lineEl.style.transform = 'translateX(0)';
+      await wait(Math.max(100, (speed * 0.3) / logLines.length));
+    }
+
+    await wait(600);
+    area.style.transition = 'opacity 0.4s'; area.style.opacity = '0';
+    logArea.style.transition = 'opacity 0.4s'; logArea.style.opacity = '0';
+    await wait(500);
+
+    frame.innerHTML = '<div class="ncm-cfg-pf-idle">Click Preview to test</div>';
+  }
+
+  // ═══════════════════════════════════════════════════════════
   //  PRESET APPLICATION
   // ═══════════════════════════════════════════════════════════
 
@@ -500,13 +810,11 @@ export class ItemInboxConfig extends BaseApplication {
     if (!isGM() || !this.item) return;
     const presetKey = this.element.querySelector('[name="preset"]')?.value;
     if (!presetKey || !SHARD_PRESETS[presetKey]) return;
-
     const confirm = await Dialog.confirm({
       title: 'Apply Preset',
-      content: `<p>Apply <strong>${SHARD_PRESETS[presetKey].label}</strong> preset? This will overwrite security, boot, and theme settings.</p>`,
+      content: `<p>Apply <strong>${SHARD_PRESETS[presetKey].label}</strong>? Overwrites security, boot, and theme.</p>`,
     });
     if (!confirm) return;
-
     const result = await this.dataShardService.applyPreset(this.item, presetKey);
     if (result.success) {
       ui.notifications.info(`NCM | Preset "${SHARD_PRESETS[presetKey].label}" applied.`);
@@ -522,15 +830,17 @@ export class ItemInboxConfig extends BaseApplication {
     const select = this.element.querySelector('[name="newSkill"]');
     const skillName = select?.value;
     if (!skillName) return;
-    const container = this.element.querySelector('.ncm-skill-list');
+    const container = this.element.querySelector('.ncm-cfg-skill-list');
     if (!container) return;
     const dc = parseInt(this.element.querySelector('[name="encryptionDC"]')?.value) || 15;
     const entry = document.createElement('div');
-    entry.classList.add('ncm-skill-entry');
+    entry.classList.add('ncm-cfg-skill-row');
     entry.dataset.skill = skillName;
-    entry.innerHTML = `<span class="ncm-skill-name">${skillName}</span>
-      <label>DV: <input type="number" name="skillDC-${skillName}" value="${dc}" min="1" max="30" class="ncm-skill-dc" /></label>
-      <button type="button" class="ncm-shard-hdr-btn" data-action="removeSkill" data-skill="${skillName}" title="Remove"><i class="fas fa-times"></i></button>`;
+    const stat = SKILL_MAP[skillName]?.stat?.toUpperCase() ?? '?';
+    entry.innerHTML = `<span class="ncm-cfg-skill-name">${skillName} <small>(${stat})</small></span>
+      <span class="ncm-cfg-skill-dv-label">DV</span>
+      <input type="number" name="skillDC-${skillName}" value="${dc}" min="1" max="30" class="ncm-cfg-skill-dv" />
+      <button type="button" class="ncm-cfg-btn-icon ncm-cfg-btn-icon--danger" data-action="removeSkill" data-skill="${skillName}"><i class="fas fa-times"></i></button>`;
     container.appendChild(entry);
     const opt = select.querySelector(`option[value="${skillName}"]`);
     if (opt) opt.remove();
@@ -540,8 +850,7 @@ export class ItemInboxConfig extends BaseApplication {
   static _onRemoveSkill(event, target) {
     const skillName = target.dataset.skill || target.closest('[data-skill]')?.dataset.skill;
     if (!skillName) return;
-    const entry = this.element.querySelector(`.ncm-skill-entry[data-skill="${skillName}"]`);
-    if (entry) entry.remove();
+    this.element.querySelector(`.ncm-cfg-skill-row[data-skill="${skillName}"]`)?.remove();
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -549,33 +858,50 @@ export class ItemInboxConfig extends BaseApplication {
   // ═══════════════════════════════════════════════════════════
 
   static _onAddBootLogLine(event, target) {
-    const container = this.element.querySelector('.ncm-boot-log-list');
+    const container = this.element.querySelector('.ncm-cfg-boot-log-list');
     if (!container) return;
     const entry = document.createElement('div');
-    entry.classList.add('ncm-boot-log-entry');
-    entry.innerHTML = `<input type="text" name="bootLogLine" class="ncm-config-input" value="" placeholder="Log line text..." />
-      <button type="button" class="ncm-shard-hdr-btn ncm-shard-hdr-btn--danger" data-action="removeBootLogLine" title="Remove"><i class="fas fa-times"></i></button>`;
+    entry.classList.add('ncm-cfg-boot-log-entry');
+    entry.innerHTML = `<input type="text" name="bootLogLine" class="ncm-cfg-input" value="" placeholder="Log line..." />
+      <button type="button" class="ncm-cfg-btn-icon ncm-cfg-btn-icon--danger" data-action="removeBootLogLine"><i class="fas fa-times"></i></button>`;
     container.appendChild(entry);
   }
 
   static _onRemoveBootLogLine(event, target) {
-    const entry = target.closest('.ncm-boot-log-entry');
-    if (entry) entry.remove();
+    target.closest('.ncm-cfg-boot-log-entry')?.remove();
   }
 
   // ═══════════════════════════════════════════════════════════
-  //  RESET
+  //  RESET & RELOCK
   // ═══════════════════════════════════════════════════════════
 
   static async _onResetDefaults(event, target) {
-    const confirm = await Dialog.confirm({ title: 'Reset', content: '<p>Reset all configuration to defaults? This cannot be undone.</p>' });
+    const confirm = await Dialog.confirm({ title: 'Reset', content: '<p>Reset all to defaults? Cannot be undone.</p>' });
     if (!confirm) return;
     await this.dataShardService.updateConfig(this.item, foundry.utils.deepClone(DEFAULTS.SHARD_CONFIG));
     this.render();
   }
 
+  static async _onRelockShard(event, target) {
+    if (!this.item) return;
+    const confirm = await Dialog.confirm({
+      title: 'Relock All Security',
+      content: `<p>Resets ALL security for all players. Cannot be undone.</p>`,
+    });
+    if (!confirm) return;
+    const result = await this.dataShardService?.relockShard(this.item);
+    if (result?.success) {
+      ui.notifications.info('NCM | All security relocked.');
+      for (const app of Object.values(ui.windows)) {
+        if (app.item?.id === this.item.id && app !== this) app.render(true);
+      }
+    } else {
+      ui.notifications.error(`NCM | Relock failed: ${result?.error || 'Unknown'}`);
+    }
+  }
+
   // ═══════════════════════════════════════════════════════════
-  //  ICON GRID & FILE PICKER
+  //  ICON & IMAGE PICKERS
   // ═══════════════════════════════════════════════════════════
 
   static _onSelectIcon(event, target) {
@@ -584,9 +910,9 @@ export class ItemInboxConfig extends BaseApplication {
     if (!icon || !targetInput) return;
     const input = this.element?.querySelector(`[name="${targetInput}"]`);
     if (input) input.value = icon;
-    const grid = target.closest('.ncm-icon-grid');
-    grid?.querySelectorAll('.ncm-icon-grid__item').forEach(el => {
-      el.classList.toggle('ncm-icon-grid__item--active', el.dataset.icon === icon);
+    const grid = target.closest('.ncm-cfg-icon-grid');
+    grid?.querySelectorAll('.ncm-cfg-ig-item').forEach(el => {
+      el.classList.toggle('ncm-cfg-ig-item--active', el.dataset.icon === icon);
     });
   }
 
@@ -601,58 +927,12 @@ export class ItemInboxConfig extends BaseApplication {
     }).render(true);
   }
 
-  // ═══════════════════════════════════════════════════════════
-  //  NETWORK TAG +/- MANAGEMENT
-  // ═══════════════════════════════════════════════════════════
-
-  static _onAddNetworkTag(event, target) {
-    const select = this.element?.querySelector('#ncm-add-network-select');
-    const value = select?.value;
-    if (!value) return;
-    const label = select.options[select.selectedIndex]?.text || value;
-    const container = this.element?.querySelector('#ncm-network-tags');
-    if (!container) return;
-    if (container.querySelector(`[data-value="${value}"]`)) return;
-
-    const tag = document.createElement('div');
-    tag.classList.add('ncm-tag');
-    tag.dataset.value = value;
-    tag.innerHTML = `<span>${label}</span>
-      <button type="button" class="ncm-tag__remove" data-action="removeNetworkTag" data-value="${value}"><i class="fas fa-times"></i></button>
-      <input type="hidden" name="allowedNetwork" value="${value}" />`;
-    container.appendChild(tag);
-
-    const opt = select.querySelector(`option[value="${value}"]`);
-    if (opt) opt.remove();
-    select.value = '';
-  }
-
-  static _onRemoveNetworkTag(event, target) {
-    const value = target.dataset.value || target.closest('[data-value]')?.dataset.value;
-    if (!value) return;
-    const tag = this.element?.querySelector(`#ncm-network-tags [data-value="${value}"]`);
-    if (tag) {
-      const label = tag.querySelector('span')?.textContent || value;
-      tag.remove();
-      const select = this.element?.querySelector('#ncm-add-network-select');
-      if (select) {
-        const opt = document.createElement('option');
-        opt.value = value;
-        opt.textContent = label;
-        select.appendChild(opt);
-      }
-    }
-  }
-
-  // ═══════════════════════════════════════════════════════════
-  //  ICON MODE TOGGLE & COLOR SELECTION
-  // ═══════════════════════════════════════════════════════════
-
   static _onChangeIconMode(event, target) {
-    const group = target.closest('.ncm-icon-mode-group');
-    if (!group) return;
     const mode = target.value;
-    group.dataset.activeMode = mode;
+    const sections = this.element.querySelectorAll('.ncm-cfg-icon-mode-section');
+    sections.forEach(s => {
+      s.style.display = s.dataset.iconMode === mode ? '' : 'none';
+    });
   }
 
   static _onSelectIconColor(event, target) {
@@ -661,43 +941,10 @@ export class ItemInboxConfig extends BaseApplication {
     if (!color || !targetInput) return;
     const input = this.element?.querySelector(`[name="${targetInput}"]`);
     if (input) input.value = color;
-    const row = target.closest('.ncm-icon-color-row');
-    row?.querySelectorAll('.ncm-icon-color-dot').forEach(dot => {
-      dot.classList.toggle('ncm-icon-color-dot--active', dot.dataset.color === color);
+    const row = target.closest('.ncm-cfg-color-dots');
+    row?.querySelectorAll('.ncm-cfg-color-dot').forEach(dot => {
+      dot.classList.toggle('ncm-cfg-color-dot--active', dot.dataset.color === color);
     });
-  }
-
-  static async _onRelockShard(event, target) {
-    if (!this.item) return;
-    const confirm = await Dialog.confirm({
-      title: 'Relock All Security',
-      content: `<p>This will reset <strong>ALL</strong> security state for this shard:</p>
-        <ul style="margin:8px 0 8px 16px;font-size:13px;">
-          <li>Re-encrypt the shard</li>
-          <li>Reset all login sessions</li>
-          <li>Clear key item authorizations</li>
-          <li>Reset hack attempts and lockouts</li>
-          <li>Replay boot sequence</li>
-          <li>Reset expiration timers</li>
-          <li>Restore destroyed shards</li>
-        </ul>
-        <p>This affects <strong>all players</strong>. Continue?</p>`,
-    });
-    if (!confirm) return;
-
-    const result = await this.dataShardService?.relockShard(this.item);
-    if (result?.success) {
-      ui.notifications.info('NCM | All security relocked.');
-      // Force re-render any open viewer for this shard
-      const itemId = this.item.id;
-      for (const app of Object.values(ui.windows)) {
-        if (app.item?.id === itemId && app !== this) {
-          app.render(true);
-        }
-      }
-    } else {
-      ui.notifications.error(`NCM | Relock failed: ${result?.error || 'Unknown'}`);
-    }
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -705,15 +952,15 @@ export class ItemInboxConfig extends BaseApplication {
   // ═══════════════════════════════════════════════════════════
 
   _collectSkills() {
-    return Array.from(this.element?.querySelectorAll('.ncm-skill-entry') || [])
+    return Array.from(this.element?.querySelectorAll('.ncm-cfg-skill-row') || [])
       .map(el => el.dataset.skill).filter(Boolean);
   }
 
   _collectSkillDCs() {
     const dcs = {};
-    for (const el of this.element?.querySelectorAll('.ncm-skill-entry') || []) {
+    for (const el of this.element?.querySelectorAll('.ncm-cfg-skill-row') || []) {
       const name = el.dataset.skill;
-      const dc = el.querySelector('.ncm-skill-dc');
+      const dc = el.querySelector('.ncm-cfg-skill-dv');
       if (name && dc) dcs[name] = parseInt(dc.value) || 15;
     }
     return dcs;
@@ -724,12 +971,14 @@ export class ItemInboxConfig extends BaseApplication {
       .map(el => el.value?.trim()).filter(Boolean);
   }
 
+  _collectNetworks() {
+    return Array.from(this.element?.querySelectorAll('[data-net-hidden]') || [])
+      .map(el => el.value).filter(Boolean);
+  }
+
   _collectCheckedValues(namePrefix) {
-    // Collect checked checkboxes/radios AND hidden inputs with matching name prefix
-    // (hidden inputs are used by the tag-list UI pattern for network whitelists)
     const checked = Array.from(this.element?.querySelectorAll(`[name^="${namePrefix}"]:checked`) || []);
     const hidden = Array.from(this.element?.querySelectorAll(`input[type="hidden"][name^="${namePrefix}"]`) || []);
-    const combined = [...checked, ...hidden];
-    return combined.map(el => el.value).filter(Boolean);
+    return [...checked, ...hidden].map(el => el.value).filter(Boolean);
   }
 }
