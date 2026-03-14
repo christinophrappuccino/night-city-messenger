@@ -103,6 +103,12 @@ export class ItemInboxApp extends BaseApplication {
     if (options.item) {
       this.item = options.item;
     }
+    // Belt-and-suspenders: Foundry Hook catches flag updates even if EventBus misses
+    this._hookId = Hooks.on('updateItem', (item, changes, opts, userId) => {
+      if (item.id === this.item?.id && foundry.utils.hasProperty(changes, `flags.${MODULE_ID}`)) {
+        this.render();
+      }
+    });
   }
 
   /** Override window title */
@@ -1593,6 +1599,7 @@ export class ItemInboxApp extends BaseApplication {
 
   async close(options) {
     if (this._lockoutInterval) clearInterval(this._lockoutInterval);
+    if (this._hookId) Hooks.off('updateItem', this._hookId);
     // Clean up boot sequence timers
     this._bootTimers.forEach(t => clearTimeout(t));
     this._bootTimers = [];
