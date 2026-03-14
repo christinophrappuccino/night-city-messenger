@@ -662,6 +662,13 @@ export class ItemInboxConfig extends BaseApplication {
     const result = await this.dataShardService?.relockShard(this.item);
     if (result?.success) {
       ui.notifications.info('NCM | All security relocked.');
+      // Force re-render any open viewer for this shard
+      const itemId = this.item.id;
+      for (const app of Object.values(ui.windows)) {
+        if (app.item?.id === itemId && app !== this) {
+          app.render(true);
+        }
+      }
     } else {
       ui.notifications.error(`NCM | Relock failed: ${result?.error || 'Unknown'}`);
     }

@@ -103,10 +103,11 @@ export class ItemInboxApp extends BaseApplication {
     if (options.item) {
       this.item = options.item;
     }
-    // Belt-and-suspenders: Foundry Hook catches flag updates even if EventBus misses
-    this._hookId = Hooks.on('updateItem', (item, changes, opts, userId) => {
-      if (item.id === this.item?.id && foundry.utils.hasProperty(changes, `flags.${MODULE_ID}`)) {
-        this.render();
+    // Foundry Hook: re-render when this item's flags change (relock, decrypt, etc.)
+    this._hookId = Hooks.on('updateItem', (item, changes) => {
+      if (item.id === this.item?.id && changes?.flags) {
+        log.debug(`ItemInboxApp: updateItem hook fired for ${item.name}, re-rendering`);
+        this.render(true);
       }
     });
   }
@@ -739,8 +740,9 @@ export class ItemInboxApp extends BaseApplication {
 
     await this.dataShardService.relockShard(this.item);
     this.selectedMessageId = null;
+    if (this._lockoutInterval) { clearInterval(this._lockoutInterval); this._lockoutInterval = null; }
     ui.notifications.info('NCM | Shard relocked.');
-    this.render();
+    this.render(true);
   }
 
   static _onOpenConfig(event, target) {
