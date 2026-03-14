@@ -76,15 +76,21 @@
   z-index: 10;
 }
 
-/* Themed scrollbars across entire viewer */
-.ncm-app .ncm-item-inbox {
-  scrollbar-width: thin;
-  scrollbar-color: var(--sp-border, #2a2a45) transparent;
+/* Themed scrollbars across entire viewer — Foundry override */
+.ncm-app .ncm-item-inbox,
+.ncm-app .ncm-item-inbox * {
+  scrollbar-width: thin !important;
+  scrollbar-color: var(--sp-border, #2a2a45) transparent !important;
 }
-.ncm-app .ncm-item-inbox ::-webkit-scrollbar { width: 4px; height: 0; }
-.ncm-app .ncm-item-inbox ::-webkit-scrollbar-track { background: transparent; }
-.ncm-app .ncm-item-inbox ::-webkit-scrollbar-thumb { background: var(--sp-border, #2a2a45); border-radius: 2px; }
-.ncm-app .ncm-item-inbox ::-webkit-scrollbar-thumb:hover { background: var(--sp-accent, #19f3f7); }
+.ncm-app .ncm-item-inbox ::-webkit-scrollbar { width: 4px !important; height: 0 !important; }
+.ncm-app .ncm-item-inbox ::-webkit-scrollbar-track { background: transparent !important; }
+.ncm-app .ncm-item-inbox ::-webkit-scrollbar-thumb { background: var(--sp-border, #2a2a45) !important; border-radius: 2px !important; }
+.ncm-app .ncm-item-inbox ::-webkit-scrollbar-thumb:hover { background: var(--sp-accent, #19f3f7) !important; }
+/* Also target the Foundry application window scrollable areas */
+.app.window-app .ncm-item-inbox ::-webkit-scrollbar { width: 4px !important; height: 0 !important; }
+.app.window-app .ncm-item-inbox ::-webkit-scrollbar-track { background: transparent !important; }
+.app.window-app .ncm-item-inbox ::-webkit-scrollbar-thumb { background: var(--sp-border, #2a2a45) !important; border-radius: 2px !important; }
+.app.window-app .ncm-item-inbox ::-webkit-scrollbar-thumb:hover { background: var(--sp-accent, #19f3f7) !important; }
 
 /* Scanline overlay */
 .ncm-app .ncm-item-inbox::after {

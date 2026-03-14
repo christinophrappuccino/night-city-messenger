@@ -37,6 +37,9 @@ export class ItemInboxApp extends BaseApplication {
   /** @type {boolean} Guards against re-render during security splashes/animations */
   _transitionActive = false;
 
+  /** @type {boolean} Show unlock splash on next render */
+  _pendingUnlockSplash = false;
+
   /** @type {string|null} Skill currently being used for hack */
   _hackingSkill = null;
 
@@ -550,6 +553,26 @@ export class ItemInboxApp extends BaseApplication {
       this._lockoutInterval = null;
     }
 
+    // Show climactic SHARD UNLOCKED splash when all security layers are cleared
+    if (this._pendingUnlockSplash && !context.isBlocked && !this._hackingActive) {
+      this._pendingUnlockSplash = false;
+      // Delay slightly so the rendered content is behind the splash
+      setTimeout(() => {
+        this._showTransitionSplash({
+          icon: 'fas fa-lock-open',
+          iconStyle: 'accent',
+          preTitle: 'ALL SECURITY LAYERS CLEARED',
+          title: 'Shard Unlocked',
+          titleColor: 'var(--sp-accent)',
+          subtitle: `${context.shardDisplayName || 'Data Shard'} contents are now accessible.`,
+          progressColor: 'accent',
+          footerText: 'Loading data...',
+          duration: 2500,
+          sound: 'hack-success',
+        });
+      }, 100);
+    }
+
     // Play boot sequence on first render if enabled
     if (context.showBoot && !this._bootComplete) {
       this._playBootSequence(context);
@@ -567,6 +590,7 @@ export class ItemInboxApp extends BaseApplication {
         this.selectedMessageId = null;
         this._hackingActive = false;
         this._transitionActive = false;
+        this._pendingUnlockSplash = false;
         this.render(true);
       }
     });
@@ -636,11 +660,10 @@ export class ItemInboxApp extends BaseApplication {
     }
 
     // ─── Luck Dialog ───
-    // CPR: Player decides how much Luck to spend before rolling
     let luckSpend = 0;
     const availableLuck = this.skillService?.getAvailableLuck(actor) ?? 0;
     if (availableLuck > 0) {
-      luckSpend = await new Promise(resolve => {
+      await new Promise(resolve => {
         new Dialog({
           title: 'Spend Luck?',
           content: `<p style="margin-bottom:8px;">Luck adds directly to your roll total.</p>
@@ -650,10 +673,11 @@ export class ItemInboxApp extends BaseApplication {
                       <input type="number" name="luck" value="0" min="0" max="${availableLuck}" />
                     </div>`,
           buttons: {
-            spend: { label: 'Roll with Luck', callback: html => resolve(parseInt(html.find('[name=luck]').val()) || 0) },
-            skip: { label: 'Roll without Luck', callback: () => resolve(0) },
+            spend: { label: 'Roll with Luck', callback: html => { luckSpend = parseInt(html.find('[name=luck]').val()) || 0; } },
+            skip: { label: 'Roll without Luck', callback: () => {} },
           },
           default: 'skip',
+          close: () => resolve(),
         }).render(true);
       });
     }
@@ -677,6 +701,7 @@ export class ItemInboxApp extends BaseApplication {
     this._hackingActive = false;
     this._transitionActive = false;
     this._hackingSkill = null;
+    this._pendingUnlockSplash = true;
     this.render(true);
   }
 
@@ -684,7 +709,30 @@ export class ItemInboxApp extends BaseApplication {
     const skillName = target.dataset.skill;
     if (!skillName) return;
     this._hackingSkill = skillName;
-    this.render();
+
+    // DOM-only update — no full re-render (preserves scroll, avoids flicker)
+    const skillBtns = this.element?.querySelectorAll('.ncm-sec-skill-btn');
+    skillBtns?.forEach(btn => {
+      btn.classList.toggle('ncm-sec-skill-btn--selected', btn.dataset.skill === skillName);
+    });
+
+    // Update instruction text
+    const instruction = this.element?.querySelector('.ncm-sec-skill-instruction');
+    if (instruction) {
+      instruction.innerHTML = `<i class="fas fa-check-circle" style="color:#00ff41;margin-right:4px;"></i><strong>${skillName}</strong> selected — ready to breach`;
+    }
+
+    // Update attempt text
+    const attemptText = this.element?.querySelector('.ncm-sec-muted');
+
+    // Enable breach button
+    const breachBtn = this.element?.querySelector('[data-action="attemptBreach"]');
+    if (breachBtn) {
+      breachBtn.disabled = false;
+      breachBtn.classList.remove('ncm-sec-btn--disabled');
+      breachBtn.innerHTML = '<i class="fas fa-bolt"></i> Attempt Breach';
+    }
+
     this.soundService?.play('click');
   }
 
@@ -718,43 +766,45 @@ export class ItemInboxApp extends BaseApplication {
       return;
     }
 
-    // Skill selection dialog
+    // Skill selection dialog — use mutable var pattern (Foundry Dialog resolves on close, not on callback return)
+    let selectedSkill = null;
     const skillButtons = {};
     availableSkills.forEach(s => {
       const dc = config.skillDCs?.[s.name] ?? config.encryptionDC ?? 15;
       const total = s.total;
       skillButtons[s.name] = {
         label: `${s.name} <small style="opacity:0.6;">(${s.stat} ${total} + 1d10 vs DV ${dc})</small>`,
-        callback: () => s.name,
+        callback: () => { selectedSkill = s.name; },
       };
     });
-    skillButtons.cancel = { label: 'Cancel', callback: () => null };
+    skillButtons.cancel = { label: 'Cancel', callback: () => {} };
 
-    const selectedSkill = await new Promise(resolve => {
+    await new Promise(resolve => {
       new Dialog({
         title: flavor.title,
         content: `<p style="margin-bottom:8px;">Select a skill to attempt a bypass:</p>`,
         buttons: skillButtons,
         default: 'cancel',
-        close: () => resolve(null),
+        close: () => resolve(),
       }).render(true);
     });
     if (!selectedSkill) return;
 
-    // Luck dialog
+    // Luck dialog — same pattern
     let luckSpend = 0;
     const availableLuck = this.skillService?.getAvailableLuck(actor) ?? 0;
     if (availableLuck > 0) {
-      luckSpend = await new Promise(resolve => {
+      await new Promise(resolve => {
         new Dialog({
           title: 'Spend Luck?',
           content: `<p>Available: <strong>${availableLuck}</strong></p>
                     <div class="form-group"><label>Points:</label><input type="number" name="luck" value="0" min="0" max="${availableLuck}" /></div>`,
           buttons: {
-            spend: { label: 'Roll with Luck', callback: html => resolve(parseInt(html.find('[name=luck]').val()) || 0) },
-            skip: { label: 'Roll without Luck', callback: () => resolve(0) },
+            spend: { label: 'Roll with Luck', callback: html => { luckSpend = parseInt(html.find('[name=luck]').val()) || 0; } },
+            skip: { label: 'Roll without Luck', callback: () => {} },
           },
           default: 'skip',
+          close: () => resolve(),
         }).render(true);
       });
     }
@@ -797,6 +847,7 @@ export class ItemInboxApp extends BaseApplication {
     }
 
     this._transitionActive = false;
+    this._pendingUnlockSplash = true;
     this.render(true);
   }
 
@@ -831,29 +882,27 @@ export class ItemInboxApp extends BaseApplication {
       return;
     }
 
-    // Build picker dialog with item images
+    // Build picker dialog with item images — always show, even for single match
     let selectedItem = null;
-    if (matchingItems.length === 1) {
-      selectedItem = matchingItems[0];
-    } else {
-      const itemButtons = {};
-      matchingItems.forEach((item, i) => {
-        itemButtons[`item${i}`] = {
-          label: `<img src="${item.img}" width="24" height="24" style="vertical-align:middle;margin-right:6px;border:none;"> ${item.name}`,
-          callback: () => { selectedItem = item; },
-        };
-      });
-      itemButtons.cancel = { label: 'Cancel', callback: () => {} };
-      await new Promise(resolve => {
-        new Dialog({
-          title: `Select Token — ${keyItemDisplayName}`,
-          content: `<p style="margin-bottom:8px;">Multiple matching items found. Select one:</p>`,
-          buttons: itemButtons,
-          default: 'item0',
-          close: resolve,
-        }).render(true);
-      });
-    }
+    const itemButtons = {};
+    matchingItems.forEach((item, i) => {
+      itemButtons[`item${i}`] = {
+        label: `<img src="${item.img}" width="24" height="24" style="vertical-align:middle;margin-right:6px;border:none;"> ${item.name}`,
+        callback: () => { selectedItem = item; },
+      };
+    });
+    itemButtons.cancel = { label: 'Cancel', callback: () => {} };
+    await new Promise(resolve => {
+      new Dialog({
+        title: `Select Token — ${keyItemDisplayName}`,
+        content: matchingItems.length === 1
+          ? `<p style="margin-bottom:8px;">Found a matching item in your inventory:</p>`
+          : `<p style="margin-bottom:8px;">Multiple matching items found. Select one:</p>`,
+        buttons: itemButtons,
+        default: 'item0',
+        close: resolve,
+      }).render(true);
+    });
 
     if (!selectedItem) return;
 
@@ -924,6 +973,7 @@ export class ItemInboxApp extends BaseApplication {
 
     this._selectedTokenItem = null;
     this._transitionActive = false;
+    this._pendingUnlockSplash = true;
     this.render(true);
   }
 
@@ -968,6 +1018,7 @@ export class ItemInboxApp extends BaseApplication {
     }
 
     this._transitionActive = false;
+    this._pendingUnlockSplash = true;
     this.render(true);
   }
 
