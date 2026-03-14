@@ -933,75 +933,219 @@
 /* ═══════════════════════════════════════════
    §18b  THEMED HACK DIALOG (.ncm-hack-dialog)
    Foundry Dialog override — cyberpunk styled
+   Heavy !important overrides needed — Foundry v12 dialog CSS is aggressive
    ═══════════════════════════════════════════ */
 
-.ncm-hack-dialog {
+/* ─── Window frame ─── */
+.ncm-hack-dialog,
+.app.dialog.ncm-hack-dialog,
+.dialog.window-app.ncm-hack-dialog {
   background: #0a0a12 !important;
   border: 1px solid #2a2a45 !important;
   border-radius: 4px !important;
   box-shadow: 0 0 30px rgba(0,0,0,0.6), 0 0 2px rgba(25,243,247,0.3) !important;
+  color: #c0c0d0 !important;
+  overflow: hidden !important;
 }
-.ncm-hack-dialog .window-header {
-  background: linear-gradient(180deg, #12121a, #0a0a12) !important;
+/* Accent bar at top */
+.ncm-hack-dialog::after {
+  content: '' !important;
+  position: absolute !important; top: 0 !important; left: 0 !important; right: 0 !important;
+  height: 2px !important; z-index: 100 !important;
+  background: linear-gradient(90deg, transparent, var(--hd-accent, #19f3f7) 30%, var(--hd-accent, #19f3f7) 70%, transparent) !important;
+  pointer-events: none !important;
+}
+
+/* ─── Window header / title bar ─── */
+.ncm-hack-dialog .window-header,
+.ncm-hack-dialog header.window-header,
+.dialog.ncm-hack-dialog .window-header {
+  background: linear-gradient(180deg, #14141e, #0e0e16) !important;
   border-bottom: 1px solid #2a2a45 !important;
-  color: #e0e0e8 !important;
+  color: var(--hd-accent, #19f3f7) !important;
+  padding: 6px 10px !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+}
+.ncm-hack-dialog .window-header .window-title,
+.ncm-hack-dialog .window-title {
   font-family: 'Orbitron', 'Rajdhani', sans-serif !important;
-  font-size: 11px !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
   text-transform: uppercase !important;
-  letter-spacing: 0.08em !important;
-}
-.ncm-hack-dialog .window-header .window-title {
-  font-family: 'Orbitron', 'Rajdhani', sans-serif !important;
-  font-size: 11px !important;
-  letter-spacing: 0.08em !important;
-}
-.ncm-hack-dialog .dialog-content {
-  background: transparent !important;
+  letter-spacing: 0.12em !important;
+  color: var(--hd-accent, #19f3f7) !important;
+  margin: 0 !important;
   padding: 0 !important;
+  line-height: 1.4 !important;
 }
-.ncm-hack-dialog .dialog-buttons {
+/* Hide Foundry's default header icon if any */
+.ncm-hack-dialog .window-header .header-icon,
+.ncm-hack-dialog .window-header i.header-icon {
+  display: none !important;
+}
+
+/* ─── Close button (Foundry uses <a> in v1 Dialog, <button> in v2) ─── */
+.ncm-hack-dialog .window-header .close,
+.ncm-hack-dialog .window-header a.close,
+.ncm-hack-dialog .window-header button.close,
+.ncm-hack-dialog .window-header .header-button,
+.ncm-hack-dialog .window-header a.header-button,
+.ncm-hack-dialog .window-header button[data-action="close"],
+.ncm-hack-dialog header button,
+.ncm-hack-dialog header a {
+  background: none !important;
+  border: 1px solid transparent !important;
+  border-radius: 2px !important;
+  color: #555570 !important;
+  font-size: 0 !important;
+  width: 22px !important; height: 22px !important;
+  min-width: 0 !important; min-height: 0 !important;
+  padding: 0 !important; margin: 0 !important;
+  display: flex !important; align-items: center !important; justify-content: center !important;
+  cursor: pointer !important;
+  transition: all 0.15s !important;
+  box-shadow: none !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  line-height: 1 !important;
+  text-decoration: none !important;
+  overflow: hidden !important;
+}
+/* The FA icon inside the close button */
+.ncm-hack-dialog .window-header .close i,
+.ncm-hack-dialog .window-header a.close i,
+.ncm-hack-dialog .window-header .header-button i,
+.ncm-hack-dialog .window-header a.header-button i,
+.ncm-hack-dialog header button i,
+.ncm-hack-dialog header a i {
+  font-size: 10px !important;
+  color: #555570 !important;
+  display: block !important;
+}
+/* Hover state */
+.ncm-hack-dialog .window-header .close:hover,
+.ncm-hack-dialog .window-header a.close:hover,
+.ncm-hack-dialog .window-header .header-button:hover,
+.ncm-hack-dialog .window-header a.header-button:hover,
+.ncm-hack-dialog header button:hover,
+.ncm-hack-dialog header a:hover {
+  border-color: #ff0033 !important;
+}
+.ncm-hack-dialog .window-header .close:hover i,
+.ncm-hack-dialog .window-header a.close:hover i,
+.ncm-hack-dialog .window-header .header-button:hover i,
+.ncm-hack-dialog .window-header a.header-button:hover i,
+.ncm-hack-dialog header button:hover i,
+.ncm-hack-dialog header a:hover i {
+  color: #ff0033 !important;
+}
+
+/* ─── Dialog content area ─── */
+.ncm-hack-dialog .dialog-content,
+.ncm-hack-dialog .window-content,
+.ncm-hack-dialog section.window-content {
+  background: #0a0a12 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+  overflow: visible !important;
+}
+
+/* ─── Dialog action buttons ─── */
+.ncm-hack-dialog .dialog-buttons,
+.ncm-hack-dialog footer.dialog-buttons {
   background: #0e0e18 !important;
   border-top: 1px solid #2a2a45 !important;
-  padding: 8px 12px !important;
+  padding: 10px 16px 12px !important;
   display: flex !important; gap: 8px !important;
+  margin: 0 !important;
 }
-.ncm-hack-dialog .dialog-buttons button {
+.ncm-hack-dialog .dialog-buttons button,
+.ncm-hack-dialog footer button {
   flex: 1 !important;
   background: #1a1a2e !important;
   border: 1px solid #2a2a45 !important;
   border-radius: 3px !important;
-  color: #c0c0d0 !important;
+  color: #8888a0 !important;
   font-family: 'Rajdhani', sans-serif !important;
   font-size: 12px !important;
-  font-weight: 600 !important;
-  padding: 6px 12px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.06em !important;
+  padding: 8px 14px !important;
   cursor: pointer !important;
   transition: all 0.15s !important;
   appearance: none !important;
+  -webkit-appearance: none !important;
   box-shadow: none !important;
   min-width: 0 !important;
   min-height: 0 !important;
+  line-height: 1.4 !important;
+  display: flex !important; align-items: center !important; justify-content: center !important; gap: 6px !important;
+  margin: 0 !important;
+  text-shadow: none !important;
 }
-.ncm-hack-dialog .dialog-buttons button:hover {
-  border-color: #19f3f7 !important;
+.ncm-hack-dialog .dialog-buttons button:hover,
+.ncm-hack-dialog footer button:hover {
+  border-color: #555570 !important;
   background: #252540 !important;
-  color: #e0e0e8 !important;
+  color: #c0c0d0 !important;
 }
-.ncm-hack-dialog .dialog-buttons button[data-button="execute"] {
+.ncm-hack-dialog .dialog-buttons button i,
+.ncm-hack-dialog footer button i {
+  font-size: 11px !important;
+  margin: 0 !important;
+}
+
+/* Execute button */
+.ncm-hack-dialog .dialog-buttons button[data-button="execute"],
+.ncm-hack-dialog footer button[data-button="execute"] {
   background: rgba(25,243,247,0.08) !important;
-  border-color: rgba(25,243,247,0.4) !important;
-  color: #19f3f7 !important;
+  border-color: rgba(25,243,247,0.35) !important;
+  color: var(--hd-accent, #19f3f7) !important;
+  position: relative !important; overflow: hidden !important;
 }
-.ncm-hack-dialog .dialog-buttons button[data-button="execute"]:hover {
+.ncm-hack-dialog .dialog-buttons button[data-button="execute"]:hover,
+.ncm-hack-dialog footer button[data-button="execute"]:hover {
   background: rgba(25,243,247,0.15) !important;
-  border-color: #19f3f7 !important;
-  box-shadow: 0 0 6px rgba(25,243,247,0.2) !important;
+  border-color: var(--hd-accent, #19f3f7) !important;
+  box-shadow: 0 0 10px rgba(25,243,247,0.15) !important;
+  color: var(--hd-accent, #19f3f7) !important;
 }
+/* Disabled execute */
 .ncm-hack-dialog .dialog-buttons button.ncm-hd-btn--disabled,
-.ncm-hack-dialog .dialog-buttons button:disabled {
-  opacity: 0.3 !important;
+.ncm-hack-dialog .dialog-buttons button:disabled,
+.ncm-hack-dialog footer button.ncm-hd-btn--disabled,
+.ncm-hack-dialog footer button:disabled {
+  opacity: 0.25 !important;
   cursor: not-allowed !important;
   pointer-events: none !important;
+}
+
+/* ─── Catch-all Foundry overrides inside hack dialog ─── */
+.ncm-hack-dialog form,
+.ncm-hack-dialog form.dialog-content {
+  background: transparent !important;
+  padding: 0 !important; margin: 0 !important;
+  border: none !important;
+}
+.ncm-hack-dialog .window-content,
+.ncm-hack-dialog section.window-content {
+  background: #0a0a12 !important;
+  padding: 0 !important; margin: 0 !important;
+  overflow: visible !important;
+}
+.ncm-hack-dialog ::-webkit-scrollbar { width: 0 !important; }
+/* Kill any Foundry resize handle */
+.ncm-hack-dialog .window-resizable-handle { display: none !important; }
+/* Ensure no weird Foundry borders leak in */
+.ncm-hack-dialog .dialog-content,
+.ncm-hack-dialog form.dialog-content,
+.ncm-hack-dialog section.window-content,
+.ncm-hack-dialog .window-content {
+  border: none !important;
+  box-shadow: none !important;
 }
 
 /* Body */
@@ -1258,15 +1402,18 @@
 .ncm-hd-theme-green { --hd-accent: #00ff41; }
 .ncm-hd-theme-black { --hd-accent: #ff0033; }
 
-/* Gold accent bar + buttons */
-.ncm-hd-theme-gold.ncm-hack-dialog::before {
+/* Gold accent */
+.ncm-hd-theme-gold.ncm-hack-dialog::after {
   background: linear-gradient(90deg, transparent, #f7c948 30%, #f7c948 70%, transparent) !important;
 }
-.ncm-hd-theme-gold .dialog-buttons button[data-button="execute"] {
+.ncm-hd-theme-gold .dialog-buttons button[data-button="execute"],
+.ncm-hd-theme-gold footer button[data-button="execute"] {
   background: rgba(247,201,72,0.08) !important; border-color: rgba(247,201,72,0.3) !important; color: #f7c948 !important;
 }
-.ncm-hd-theme-gold .dialog-buttons button[data-button="execute"]:hover {
+.ncm-hd-theme-gold .dialog-buttons button[data-button="execute"]:hover,
+.ncm-hd-theme-gold footer button[data-button="execute"]:hover {
   background: rgba(247,201,72,0.15) !important; border-color: #f7c948 !important;
+  box-shadow: 0 0 10px rgba(247,201,72,0.15) !important;
 }
 .ncm-hd-theme-gold .ncm-hd-skill-btn--selected .ncm-hd-skill-check { border-color: #f7c948 !important; color: #f7c948 !important; background: rgba(247,201,72,0.1) !important; }
 .ncm-hd-theme-gold .ncm-hd-skill-btn--selected::before { background: #f7c948 !important; }
@@ -1274,15 +1421,18 @@
 .ncm-hd-theme-gold .ncm-hd-vs { color: #f7c948 !important; }
 .ncm-hd-theme-gold .ncm-hd-attempt-dot--current { background: #f7c948; border-color: #f7c948; box-shadow: 0 0 4px #f7c948; }
 
-/* Green accent bar + buttons */
-.ncm-hd-theme-green.ncm-hack-dialog::before {
+/* Green accent */
+.ncm-hd-theme-green.ncm-hack-dialog::after {
   background: linear-gradient(90deg, transparent, #00ff41 30%, #00ff41 70%, transparent) !important;
 }
-.ncm-hd-theme-green .dialog-buttons button[data-button="execute"] {
+.ncm-hd-theme-green .dialog-buttons button[data-button="execute"],
+.ncm-hd-theme-green footer button[data-button="execute"] {
   background: rgba(0,255,65,0.06) !important; border-color: rgba(0,255,65,0.25) !important; color: #00ff41 !important;
 }
-.ncm-hd-theme-green .dialog-buttons button[data-button="execute"]:hover {
+.ncm-hd-theme-green .dialog-buttons button[data-button="execute"]:hover,
+.ncm-hd-theme-green footer button[data-button="execute"]:hover {
   background: rgba(0,255,65,0.12) !important; border-color: #00ff41 !important;
+  box-shadow: 0 0 10px rgba(0,255,65,0.12) !important;
 }
 .ncm-hd-theme-green .ncm-hd-skill-btn--selected .ncm-hd-skill-check { border-color: #00ff41 !important; color: #00ff41 !important; background: rgba(0,255,65,0.1) !important; }
 .ncm-hd-theme-green .ncm-hd-skill-btn--selected::before { background: #00ff41 !important; }
@@ -1290,14 +1440,16 @@
 .ncm-hd-theme-green .ncm-hd-vs { color: #00ff41 !important; }
 .ncm-hd-theme-green .ncm-hd-attempt-dot--current { background: #00ff41; border-color: #00ff41; box-shadow: 0 0 4px #00ff41; }
 
-/* RED / BLACK ICE accent bar + buttons */
-.ncm-hd-theme-black.ncm-hack-dialog::before {
+/* RED / BLACK ICE accent */
+.ncm-hd-theme-black.ncm-hack-dialog::after {
   background: linear-gradient(90deg, transparent, #ff0033 30%, #ff0033 70%, transparent) !important;
 }
-.ncm-hd-theme-black .dialog-buttons button[data-button="execute"] {
+.ncm-hd-theme-black .dialog-buttons button[data-button="execute"],
+.ncm-hd-theme-black footer button[data-button="execute"] {
   background: rgba(255,0,51,0.08) !important; border-color: rgba(255,0,51,0.3) !important; color: #ff4444 !important;
 }
-.ncm-hd-theme-black .dialog-buttons button[data-button="execute"]:hover {
+.ncm-hd-theme-black .dialog-buttons button[data-button="execute"]:hover,
+.ncm-hd-theme-black footer button[data-button="execute"]:hover {
   background: rgba(255,0,51,0.15) !important; border-color: #ff0033 !important;
   box-shadow: 0 0 12px rgba(255,0,51,0.15) !important;
 }
