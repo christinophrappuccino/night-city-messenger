@@ -28,6 +28,16 @@
 
     {{else if hasActor}}
       {{!-- Skill Selection --}}
+      <div class="ncm-sec-skill-instruction">
+        {{#if hackingSkillName}}
+          <i class="fas fa-check-circle" style="color:#00ff41;margin-right:4px;"></i>
+          <strong>{{hackingSkillName}}</strong> selected — ready to breach
+        {{else}}
+          <i class="fas fa-hand-pointer" style="color:var(--sp-accent);margin-right:4px;"></i>
+          Select a skill to breach the ICE:
+        {{/if}}
+      </div>
+
       <div class="ncm-sec-skill-list">
         {{#each availableSkills}}
           <button type="button" data-action="selectSkill" data-skill="{{name}}"
@@ -45,16 +55,18 @@
           <div class="ncm-sec-attempt-dot {{#if used}}ncm-sec-attempt-dot--used{{else if current}}ncm-sec-attempt-dot--current{{/if}}"></div>
         {{/each}}
       </div>
-      <div class="ncm-sec-muted">Attempt {{hackAttemptCurrent}} of {{maxHackAttempts}}{{#if hackingSkillName}} — {{hackingSkillName}} selected{{/if}}</div>
+      <div class="ncm-sec-muted">Attempt {{hackAttemptCurrent}} of {{maxHackAttempts}}</div>
 
-      <button type="button" data-action="attemptBreach" class="ncm-sec-btn ncm-sec-btn--breach">
-        <i class="fas fa-bolt"></i> Attempt Breach
-      </button>
-      {{#if hasLuck}}
-        <button type="button" data-action="spendLuck" class="ncm-sec-btn ncm-sec-btn--ghost">
-          <i class="fas fa-dice"></i> Re-Roll with Luck ({{availableLuck}} pts)
+      {{#if hackingSkillName}}
+        <button type="button" data-action="attemptBreach" class="ncm-sec-btn ncm-sec-btn--breach">
+          <i class="fas fa-bolt"></i> Attempt Breach
+        </button>
+      {{else}}
+        <button type="button" class="ncm-sec-btn ncm-sec-btn--breach ncm-sec-btn--disabled" disabled>
+          <i class="fas fa-bolt"></i> Select a Skill First
         </button>
       {{/if}}
+
     {{else}}
       <div class="ncm-sec-muted" style="margin-top:12px;">No character assigned. Set your character in User Configuration.</div>
     {{/if}}

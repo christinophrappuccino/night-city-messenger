@@ -34,6 +34,9 @@ export class ItemInboxApp extends BaseApplication {
   /** @type {boolean} Whether hacking sequence is active */
   _hackingActive = false;
 
+  /** @type {boolean} Guards against re-render during security splashes/animations */
+  _transitionActive = false;
+
   /** @type {string|null} Skill currently being used for hack */
   _hackingSkill = null;
 
@@ -106,6 +109,8 @@ export class ItemInboxApp extends BaseApplication {
     // Foundry Hook: re-render when this item's flags change (relock, decrypt, etc.)
     this._hookId = Hooks.on('updateItem', (item, changes) => {
       if (item.id === this.item?.id && changes?.flags) {
+        // Don't re-render during active hacking sequence or transition splash
+        if (this._hackingActive || this._transitionActive) return;
         log.debug(`ItemInboxApp: updateItem hook fired for ${item.name}, re-rendering`);
         this.render(true);
       }
@@ -534,28 +539,34 @@ export class ItemInboxApp extends BaseApplication {
   }
 
   _setupEventSubscriptions() {
+    const _guard = () => !this._hackingActive && !this._transitionActive;
+
     this.subscribe(EVENTS.SHARD_DECRYPTED, (data) => {
-      if (data.itemId === this.item?.id) this.render();
+      if (data.itemId === this.item?.id && _guard()) this.render();
     });
     this.subscribe(EVENTS.SHARD_RELOCKED, (data) => {
       if (data.itemId === this.item?.id) {
         this.selectedMessageId = null;
-        this.render();
+        this._hackingActive = false;
+        this._transitionActive = false;
+        this.render(true);
       }
     });
     this.subscribe(EVENTS.SHARD_STATE_CHANGED, (data) => {
-      if (data.itemId === this.item?.id) this._debouncedRender();
+      if (data.itemId === this.item?.id && _guard()) this._debouncedRender();
     });
     this.subscribe(EVENTS.SHARD_KEY_ITEM_PRESENTED, (data) => {
-      if (data.itemId === this.item?.id) this.render();
+      if (data.itemId === this.item?.id && _guard()) this.render();
     });
     this.subscribe(EVENTS.SHARD_LOGIN_SUCCESS, (data) => {
-      if (data.itemId === this.item?.id) this.render();
+      if (data.itemId === this.item?.id && _guard()) this.render();
     });
     this.subscribe(EVENTS.SHARD_BLACK_ICE, (data) => {
       if (data.itemId === this.item?.id) this._playBlackICEEffect(data.damage);
     });
-    this.subscribe(EVENTS.NETWORK_CHANGED, () => this._debouncedRender());
+    this.subscribe(EVENTS.NETWORK_CHANGED, () => {
+      if (_guard()) this._debouncedRender();
+    });
   }
 
   // ─── Lockout Timer ───
@@ -631,6 +642,7 @@ export class ItemInboxApp extends BaseApplication {
 
     // ─── Show hacking screen ───
     this._hackingActive = true;
+    this._transitionActive = true;
     await this.render(true);
 
     // Safety delay to ensure DOM is painted
@@ -645,8 +657,9 @@ export class ItemInboxApp extends BaseApplication {
     await this._playHackSequence(result, skillName, luckSpend);
 
     this._hackingActive = false;
+    this._transitionActive = false;
     this._hackingSkill = null;
-    this.render();
+    this.render(true);
   }
 
   static _onSelectSkill(event, target) {
@@ -672,23 +685,62 @@ export class ItemInboxApp extends BaseApplication {
     }
 
     const config = this.dataShardService?.getConfig(this.item);
+    const keyItemName = config?.keyItemName || config?.keyItemTag || '';
+    const keyItemDisplayName = config?.keyItemDisplayName || keyItemName || 'Access Token';
+
+    // Search actor inventory for matching item
+    const matchingItems = actor.items?.filter(i => {
+      if (config?.keyItemId && i.id === config.keyItemId) return true;
+      if (config?.keyItemTag && i.getFlag(MODULE_ID, 'keyItemTag') === config.keyItemTag) return true;
+      if (keyItemName && i.name.toLowerCase().includes(keyItemName.toLowerCase())) return true;
+      return false;
+    }) ?? [];
+
+    if (matchingItems.length === 0) {
+      ui.notifications.warn(`NCM | You don't have "${keyItemDisplayName}" in your inventory.`);
+      return;
+    }
 
     // Consume confirmation
     if (config?.keyItemConsumeOnUse) {
       const confirm = await Dialog.confirm({
         title: 'Consume Access Token',
-        content: `<p>Using this access token will <strong>remove it from your inventory</strong>. Continue?</p>`,
+        content: `<p>Using <strong>${matchingItems[0].name}</strong> will <strong>remove it from your inventory</strong>. Continue?</p>`,
       });
       if (!confirm) return;
     }
 
+    // Block re-renders during splash
+    this._transitionActive = true;
+
     const result = await this.dataShardService.presentKeyItem(this.item, actor);
     if (result.success) {
-      await this._playSecuritySuccessEffect('Access Token Accepted', config?.keyItemDisplayName || 'Token verified');
+      // Show unique key item success splash
+      const content = this.element?.querySelector('.ncm-shard-content');
+      if (content) {
+        const splash = document.createElement('div');
+        splash.className = 'ncm-security-overlay';
+        splash.style.zIndex = '12';
+        splash.innerHTML = `
+          <div class="ncm-sec-card" style="box-shadow:0 0 30px rgba(0,0,0,0.4),0 0 2px #f7c948;">
+            <div class="ncm-sec-icon" style="background:rgba(247,201,72,0.08);border-color:rgba(247,201,72,0.3);color:#f7c948;font-size:22px;">
+              <i class="fas fa-id-card"></i>
+            </div>
+            <div class="ncm-sec-title" style="color:#f7c948;">Token Accepted</div>
+            <div class="ncm-sec-info"><strong>${matchingItems[0].name}</strong> verified.</div>
+            <div class="ncm-sec-muted" style="margin-top:12px;">Access layer cleared. Proceeding...</div>
+          </div>`;
+        content.appendChild(splash);
+        this.soundService?.play('hack-success');
+        await new Promise(r => setTimeout(r, 2000));
+        splash.remove();
+      }
     } else {
       ui.notifications.warn(`NCM | ${result.error || 'Access token rejected.'}`);
     }
-    this.render();
+
+    this._transitionActive = false;
+    this.render(true);
   }
 
   static async _onSubmitLogin(event, target) {
@@ -709,16 +761,36 @@ export class ItemInboxApp extends BaseApplication {
       return;
     }
 
+    // Block re-renders during splash
+    this._transitionActive = true;
+
     const result = await this.dataShardService.attemptLogin(this.item, actor, username, password);
     if (result.success) {
-      // Show welcome splash before revealing content
-      await this._playLoginSuccessEffect(username || actor.name);
+      // Show welcome splash on the existing overlay card
+      const card = this.element?.querySelector('.ncm-sec-card');
+      if (card) {
+        card.innerHTML = `
+          <div class="ncm-sec-icon" style="background:rgba(0,255,65,0.06);border-color:rgba(0,255,65,0.25);color:#00ff41;">
+            <i class="fas fa-user-check"></i>
+          </div>
+          <div class="ncm-sec-muted" style="font-size:9px;letter-spacing:0.1em;margin-bottom:4px;">AUTHENTICATION SUCCESSFUL</div>
+          <div class="ncm-sec-title" style="letter-spacing:0.3em;color:#00ff41;">Welcome</div>
+          <div style="font-family:var(--ncm-font-display,'Orbitron');font-size:16px;font-weight:700;color:var(--sp-accent);text-transform:uppercase;letter-spacing:0.2em;margin:8px 0 16px;">
+            ${username || actor.name}
+          </div>
+          <div class="ncm-sec-muted">Loading secure contents...</div>
+        `;
+      }
+      this.soundService?.play('login-success');
+      await new Promise(r => setTimeout(r, 2500));
     } else if (result.locked) {
       ui.notifications.error('NCM | Account locked — too many failed attempts.');
     } else {
-      ui.notifications.warn(`NCM | Login failed. ${result.attemptsRemaining} attempts remaining.`);
+      ui.notifications.warn(`NCM | Login failed. ${result.attemptsRemaining ?? 0} attempts remaining.`);
     }
-    this.render();
+
+    this._transitionActive = false;
+    this.render(true);
   }
 
   // ─── GM Actions ───
