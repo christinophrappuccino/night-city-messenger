@@ -1326,6 +1326,7 @@ export class ItemInboxApp extends BaseApplication {
     const el = this.element;
     if (!el) return;
 
+    const config = this.dataShardService?.getConfig(this.item) ?? {};
     const terminal = el.querySelector('[data-hack-terminal]');
     const progressFill = el.querySelector('[data-hack-progress-fill]');
     const progressLabel = el.querySelector('[data-hack-progress-label]');
@@ -1356,11 +1357,12 @@ export class ItemInboxApp extends BaseApplication {
     };
     const setIce = (pct) => { if (iceFill) iceFill.style.width = `${pct}%`; };
 
-    const total = result.total ?? 0;
-    const dieRoll = result.roll ?? 0;
-    const dv = result.dv ?? 0;
-    const base = total - dieRoll;
-    const encType = result.encryptionType || 'ICE';
+    const rollData = result.roll ?? {};
+    const total = rollData.total ?? 0;
+    const dieRoll = rollData.processedRoll ?? rollData.rollValue ?? 0;
+    const dv = rollData.dc ?? 0;
+    const base = (rollData.statValue ?? 0) + (rollData.skillLevel ?? 0) + (rollData.luckSpent ?? 0);
+    const encType = result.encryptionType || config?.encryptionType || 'ICE';
 
     // Phase 1: Init
     addLine('system', `░░ NCM BREACH PROTOCOL v4.6 ░░`);
@@ -1451,11 +1453,18 @@ export class ItemInboxApp extends BaseApplication {
       }
     }
 
+    // Compute attempts remaining from config
+    const session = this.dataShardService?._getActorSession(
+      this.dataShardService?._getState(this.item),
+      game.user?.character?.id
+    ) ?? {};
+    const attemptsRemaining = Math.max(0, (config.maxHackAttempts || 3) - (session.hackAttempts || 0));
+
     // Show result overlay
     await delay(() => {
       if (resultOverlay) {
         resultOverlay.style.display = 'flex';
-        resultOverlay.innerHTML = this._buildHackResultHTML(result, skillName, base, dieRoll, total, dv);
+        resultOverlay.innerHTML = this._buildHackResultHTML(result, skillName, base, dieRoll, total, dv, attemptsRemaining);
       }
     }, 600);
 
@@ -1472,7 +1481,7 @@ export class ItemInboxApp extends BaseApplication {
   }
 
   /** @private — Build HTML for hack result overlay */
-  _buildHackResultHTML(result, skillName, base, dieRoll, total, dv) {
+  _buildHackResultHTML(result, skillName, base, dieRoll, total, dv, attemptsRemaining = 0) {
     if (result.success) {
       return `<div class="ncm-hack-result-card">
         <div class="ncm-hack-result-icon ncm-hack-result-icon--success"><i class="fas fa-lock-open"></i></div>
@@ -1507,7 +1516,7 @@ export class ItemInboxApp extends BaseApplication {
         </div>
         <div class="ncm-hack-roll-breakdown">${skillName} <span style="color:var(--sp-text-bright)">${base}</span> + 1d10 (<span style="color:#ff0033">${dieRoll}</span>) = <span style="color:#ff0033;font-weight:700">${total}</span></div>
         ${damageHTML}
-        <div class="ncm-hack-result-sub" style="font-size:9px;color:var(--sp-text-muted);">${result.attemptsRemaining ?? 0} attempts remaining.</div>
+        <div class="ncm-hack-result-sub" style="font-size:9px;color:var(--sp-text-muted);">${attemptsRemaining} attempt${attemptsRemaining !== 1 ? 's' : ''} remaining.</div>
         <div class="ncm-hack-result-continue">Click to continue...</div>
       </div>`;
     }

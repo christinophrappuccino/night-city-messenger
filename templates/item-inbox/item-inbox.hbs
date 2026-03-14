@@ -167,11 +167,11 @@
     {{else if showLoginOverlay}}
       {{> "modules/cyberpunkred-messenger/templates/item-inbox/security-overlay-login.hbs"}}
 
-    {{else if showEncryptionOverlay}}
-      {{> "modules/cyberpunkred-messenger/templates/item-inbox/security-overlay-encryption.hbs"}}
-
     {{else if hackingActive}}
       {{> "modules/cyberpunkred-messenger/templates/item-inbox/hacking-sequence.hbs"}}
+
+    {{else if showEncryptionOverlay}}
+      {{> "modules/cyberpunkred-messenger/templates/item-inbox/security-overlay-encryption.hbs"}}
 
     {{!-- UNLOCKED CONTENT --}}
     {{else}}
