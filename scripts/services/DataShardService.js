@@ -482,16 +482,17 @@ export class DataShardService {
     if (!isGM()) return { success: false, error: 'GM only' };
 
     try {
-      // Full atomic reset — restores ALL runtime state to defaults
-      await shardItem.update({
-        [`flags.${MODULE_ID}.state`]: {
-          decrypted: false,
-          sessions: {},
-          destroyed: false,
-          bootPlayed: false,
-          firstAccessedAt: null,
-          accessCount: 0,
-        },
+      // CRITICAL: Foundry's update() uses mergeObject on flags, which means
+      // `sessions: {}` merges INTO existing sessions, leaving lockoutUntil intact.
+      // Must DELETE the flag first, then write a clean state.
+      await shardItem.unsetFlag(MODULE_ID, 'state');
+      await shardItem.setFlag(MODULE_ID, 'state', {
+        decrypted: false,
+        sessions: {},
+        destroyed: false,
+        bootPlayed: false,
+        firstAccessedAt: null,
+        accessCount: 0,
       });
 
       // Clear all security tracking for this shard
