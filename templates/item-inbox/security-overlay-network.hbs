@@ -11,6 +11,13 @@
       <span class="ncm-sec-text-muted">// Not authorized</span>
     </div>
     <div class="ncm-sec-muted">Connect to the required network to access this shard.</div>
+    {{#if hasSkills}}
+      <div class="ncm-sec-divider"></div>
+      <button type="button" data-action="hackLayer" data-layer="network" class="ncm-sec-btn ncm-sec-btn--primary" style="margin-top:4px;">
+        <i class="fas fa-wifi"></i> Attempt Network Spoof
+      </button>
+      <div class="ncm-sec-muted">Use a skill check to bypass the network requirement.</div>
+    {{/if}}
     {{#if isGM}}
       <div class="ncm-sec-gm">
         <div class="ncm-sec-gm-label">GM Controls</div>

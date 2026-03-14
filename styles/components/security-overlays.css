@@ -204,6 +204,11 @@
   letter-spacing: 0.05em; margin-top: 8px;
 }
 
+.ncm-app .ncm-sec-divider {
+  height: 1px; margin: 12px 0;
+  background: var(--sp-border, #2a2a45);
+}
+
 
 /* ═══════════════════════════════════════════
    §5  BUTTONS (themed, Foundry-override)
@@ -880,7 +885,22 @@
 
 
 /* ═══════════════════════════════════════════
-   §18  ANIMATIONS & KEYFRAMES
+   §18d  TRANSITION OVERLAY (injected splash)
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-sec-transition-overlay {
+  position: absolute; inset: 0; z-index: 20;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(6px);
+  animation: ncm-sec-overlay-fade-in 0.3s ease;
+}
+
+@keyframes ncm-sec-overlay-fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+
+/* ═══════════════════════════════════════════
+   §19  ANIMATIONS & KEYFRAMES
    ═══════════════════════════════════════════ */
 
 @keyframes ncm-sec-static { 0% { background-position: 0 0; } 50% { background-position: -1px 2px; } 100% { background-position: 0 0; } }

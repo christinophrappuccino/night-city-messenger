@@ -45,6 +45,13 @@
         <button type="button" data-action="submitLogin" class="ncm-sec-btn ncm-sec-btn--login">
           <i class="fas fa-sign-in-alt"></i> Authenticate
         </button>
+        {{#if hasSkills}}
+          <div class="ncm-sec-divider"></div>
+          <button type="button" data-action="hackLayer" data-layer="login" class="ncm-sec-btn ncm-sec-btn--ghost">
+            <i class="fas fa-terminal"></i> Brute Force Login
+          </button>
+          <div class="ncm-sec-muted">Use a skill check to crack the credentials.</div>
+        {{/if}}
       {{else}}
         <div class="ncm-sec-muted">No character assigned.</div>
       {{/if}}

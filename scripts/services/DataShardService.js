@@ -141,10 +141,13 @@ export class DataShardService {
       return { blocked: false, config, session };
     }
 
+    // Check hacked layers (player bypassed via skill check)
+    const hackedLayers = session.hackedLayers || [];
+
     // Layer 1: NETWORK
     // Supports both new `network` object and legacy flat `requiresNetwork` / `requiredNetwork`
     const networkRequired = config.network?.required ?? config.requiresNetwork ?? false;
-    if (networkRequired) {
+    if (networkRequired && !hackedLayers.includes('network')) {
       const networkResult = this._checkNetworkAccess(config);
       if (!networkResult.allowed) {
         return {
@@ -161,7 +164,7 @@ export class DataShardService {
     }
 
     // Layer 2: KEY ITEM
-    if (config.requiresKeyItem && !session.keyItemUsed) {
+    if (config.requiresKeyItem && !session.keyItemUsed && !hackedLayers.includes('keyitem')) {
       return {
         blocked: true,
         layer: 'keyitem',
@@ -172,7 +175,7 @@ export class DataShardService {
     }
 
     // Layer 3: LOGIN
-    if (config.requiresLogin && !session.loggedIn) {
+    if (config.requiresLogin && !session.loggedIn && !hackedLayers.includes('login')) {
       // Check key item bypass
       if (config.requiresKeyItem && config.keyItemBypassLogin && session.keyItemUsed) {
         // Key item bypasses login — skip this layer

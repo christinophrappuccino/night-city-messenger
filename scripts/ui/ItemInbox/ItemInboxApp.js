@@ -72,6 +72,7 @@ export class ItemInboxApp extends BaseApplication {
       selectMessage: ItemInboxApp._onSelectMessage,
       attemptBreach: ItemInboxApp._onAttemptBreach,
       selectSkill: ItemInboxApp._onSelectSkill,
+      hackLayer: ItemInboxApp._onHackLayer,
       spendLuck: ItemInboxApp._onSpendLuck,
       searchInventory: ItemInboxApp._onSearchInventory,
       clearTokenSlot: ItemInboxApp._onClearTokenSlot,
@@ -359,6 +360,7 @@ export class ItemInboxApp extends BaseApplication {
 
       // Skills
       availableSkills,
+      hasSkills: availableSkills.length > 0,
       availableLuck,
       hasLuck: availableLuck > 0,
 
@@ -686,6 +688,118 @@ export class ItemInboxApp extends BaseApplication {
     this.soundService?.play('click');
   }
 
+  /**
+   * Hack a specific security layer (network/key item/login).
+   * Uses the shard's configured skills + encryption DV as fallback.
+   */
+  static async _onHackLayer(event, target) {
+    if (!this.item) return;
+    const actor = game.user?.character;
+    if (!actor) {
+      ui.notifications.warn('NCM | No character assigned.');
+      return;
+    }
+
+    const layer = target.dataset.layer;
+    if (!layer) return;
+
+    const config = this.dataShardService?.getConfig(this.item) ?? {};
+    const LAYER_FLAVOR = {
+      network: { title: 'Network Spoofing', icon: 'fas fa-wifi', color: '#19f3f7', verb: 'Spoofed network access' },
+      keyitem: { title: 'Forge Token', icon: 'fas fa-fingerprint', color: '#f7c948', verb: 'Token forged digitally' },
+      login: { title: 'Brute Force Login', icon: 'fas fa-terminal', color: '#00ff41', verb: 'Credentials cracked' },
+    };
+    const flavor = LAYER_FLAVOR[layer] || { title: 'Bypass', icon: 'fas fa-unlock', color: 'var(--sp-accent)', verb: 'Layer bypassed' };
+
+    // Get available skills
+    const availableSkills = this.skillService?.getAvailableSkills(actor, config.allowedSkills) ?? [];
+    if (availableSkills.length === 0) {
+      ui.notifications.warn('NCM | No skills configured for this shard.');
+      return;
+    }
+
+    // Skill selection dialog
+    const skillButtons = {};
+    availableSkills.forEach(s => {
+      const dc = config.skillDCs?.[s.name] ?? config.encryptionDC ?? 15;
+      const total = s.total;
+      skillButtons[s.name] = {
+        label: `${s.name} <small style="opacity:0.6;">(${s.stat} ${total} + 1d10 vs DV ${dc})</small>`,
+        callback: () => s.name,
+      };
+    });
+    skillButtons.cancel = { label: 'Cancel', callback: () => null };
+
+    const selectedSkill = await new Promise(resolve => {
+      new Dialog({
+        title: flavor.title,
+        content: `<p style="margin-bottom:8px;">Select a skill to attempt a bypass:</p>`,
+        buttons: skillButtons,
+        default: 'cancel',
+        close: () => resolve(null),
+      }).render(true);
+    });
+    if (!selectedSkill) return;
+
+    // Luck dialog
+    let luckSpend = 0;
+    const availableLuck = this.skillService?.getAvailableLuck(actor) ?? 0;
+    if (availableLuck > 0) {
+      luckSpend = await new Promise(resolve => {
+        new Dialog({
+          title: 'Spend Luck?',
+          content: `<p>Available: <strong>${availableLuck}</strong></p>
+                    <div class="form-group"><label>Points:</label><input type="number" name="luck" value="0" min="0" max="${availableLuck}" /></div>`,
+          buttons: {
+            spend: { label: 'Roll with Luck', callback: html => resolve(parseInt(html.find('[name=luck]').val()) || 0) },
+            skip: { label: 'Roll without Luck', callback: () => resolve(0) },
+          },
+          default: 'skip',
+        }).render(true);
+      });
+    }
+
+    this._transitionActive = true;
+
+    // Perform skill check
+    const dc = config.skillDCs?.[selectedSkill] ?? config.encryptionDC ?? 15;
+    const rollResult = await this.skillService.performCheck(actor, selectedSkill, {
+      dc,
+      luckSpend,
+      showChat: true,
+      context: `${flavor.title}: ${this.item.name}`,
+      flavor: `${layer.toUpperCase()} Layer // DV ${dc}`,
+    });
+
+    if (rollResult.success) {
+      // Mark layer as hacked in session
+      await this.dataShardService._updateActorSession(this.item, actor.id, {
+        ...(layer === 'login' ? { loggedIn: true } : {}),
+        ...(layer === 'keyitem' ? { keyItemUsed: true } : {}),
+        hackedLayers: [...(this.dataShardService._getActorSession(
+          this.dataShardService._getState(this.item), actor.id
+        ).hackedLayers || []), layer],
+      });
+
+      await this._showTransitionSplash({
+        icon: flavor.icon,
+        iconStyle: layer === 'keyitem' ? 'gold' : layer === 'login' ? 'green' : 'accent',
+        preTitle: `${selectedSkill} ${rollResult.total} vs DV ${dc}`,
+        title: flavor.verb,
+        titleColor: flavor.color,
+        progressColor: layer === 'keyitem' ? 'gold' : layer === 'login' ? 'green' : 'accent',
+        footerText: 'Layer bypassed. Proceeding...',
+        duration: 2000,
+        sound: 'hack-success',
+      });
+    } else {
+      ui.notifications.warn(`NCM | ${flavor.title} failed. Roll: ${rollResult.total} vs DV ${dc}.`);
+    }
+
+    this._transitionActive = false;
+    this.render(true);
+  }
+
   static async _onSpendLuck(event, target) {
     // Luck is now integrated into the Attempt Breach flow via dialog
     // This handler kept for backward compat — just triggers breach
@@ -793,21 +907,17 @@ export class ItemInboxApp extends BaseApplication {
 
     const result = await this.dataShardService.presentKeyItem(this.item, actor);
     if (result.success) {
-      const card = this.element?.querySelector('.ncm-sec-card');
-      if (card) {
-        card.innerHTML = `
-          <div class="ncm-sec-splash ncm-sec-animate-in">
-            <div class="ncm-sec-splash-icon ncm-sec-splash-icon--gold">
-              <img src="${selectedItem.img || 'icons/svg/item-bag.svg'}" style="width:40px;height:40px;border:none;border-radius:3px;" />
-            </div>
-            <div class="ncm-sec-splash-title" style="color:#f7c948;">Token Accepted</div>
-            <div class="ncm-sec-splash-sub"><strong>${selectedItem.name}</strong> verified.</div>
-            <div class="ncm-sec-splash-progress"><div class="ncm-sec-splash-progress-fill ncm-sec-splash-progress-fill--gold"></div></div>
-            <div class="ncm-sec-muted">Access layer cleared. Proceeding...</div>
-          </div>`;
-      }
-      this.soundService?.play('hack-success');
-      await new Promise(r => setTimeout(r, 2200));
+      await this._showTransitionSplash({
+        iconHtml: `<img src="${selectedItem.img || 'icons/svg/item-bag.svg'}" style="width:40px;height:40px;border:none;border-radius:3px;" />`,
+        iconStyle: 'gold',
+        title: 'Token Accepted',
+        titleColor: '#f7c948',
+        subtitle: `<strong>${selectedItem.name}</strong> verified.`,
+        progressColor: 'gold',
+        footerText: 'Access layer cleared. Proceeding...',
+        duration: 2200,
+        sound: 'hack-success',
+      });
     } else {
       ui.notifications.warn(`NCM | ${result.error || 'Access token rejected.'}`);
     }
@@ -835,29 +945,22 @@ export class ItemInboxApp extends BaseApplication {
       return;
     }
 
-    // Block re-renders during splash
     this._transitionActive = true;
 
     const result = await this.dataShardService.attemptLogin(this.item, actor, username, password);
     if (result.success) {
-      // Show animated welcome splash
-      const card = this.element?.querySelector('.ncm-sec-card');
-      if (card) {
-        card.innerHTML = `
-          <div class="ncm-sec-splash ncm-sec-animate-in">
-            <div class="ncm-sec-splash-icon ncm-sec-splash-icon--green">
-              <i class="fas fa-user-check"></i>
-            </div>
-            <div class="ncm-sec-muted" style="font-size:9px;letter-spacing:0.1em;margin-bottom:4px;">AUTHENTICATION SUCCESSFUL</div>
-            <div class="ncm-sec-splash-title" style="color:#00ff41;">Welcome</div>
-            <div class="ncm-sec-splash-name">${username || actor.name}</div>
-            <div class="ncm-sec-splash-progress"><div class="ncm-sec-splash-progress-fill ncm-sec-splash-progress-fill--green"></div></div>
-            <div class="ncm-sec-muted">Loading secure contents...</div>
-          </div>
-        `;
-      }
-      this.soundService?.play('login-success');
-      await new Promise(r => setTimeout(r, 2500));
+      await this._showTransitionSplash({
+        icon: 'fas fa-user-check',
+        iconStyle: 'green',
+        preTitle: 'AUTHENTICATION SUCCESSFUL',
+        title: 'Welcome',
+        titleColor: '#00ff41',
+        name: username || actor.name,
+        progressColor: 'green',
+        subtitle: 'Loading secure contents...',
+        duration: 2500,
+        sound: 'login-success',
+      });
     } else if (result.locked) {
       ui.notifications.error('NCM | Account locked — too many failed attempts.');
     } else {
@@ -1671,54 +1774,51 @@ export class ItemInboxApp extends BaseApplication {
     el.classList.remove('ncm-screen-shake');
   }
 
-  /** @private — Show welcome splash after login success */
-  async _playLoginSuccessEffect(username) {
-    const overlay = this.element?.querySelector('.ncm-security-overlay-login');
-    if (!overlay) return;
+  /**
+   * Show a full-screen transition splash overlay.
+   * Injects directly into .ncm-item-inbox — bulletproof regardless of template state.
+   * @param {object} opts
+   * @param {string} [opts.icon] - FontAwesome icon class (e.g. 'fas fa-user-check')
+   * @param {string} [opts.iconHtml] - Raw HTML for icon content (e.g. img tag)
+   * @param {string} [opts.iconStyle] - 'green' | 'gold' | 'accent' | 'red'
+   * @param {string} [opts.preTitle] - Small text above title
+   * @param {string} [opts.title] - Main title
+   * @param {string} [opts.titleColor] - CSS color
+   * @param {string} [opts.name] - Large name text below title (e.g. username)
+   * @param {string} [opts.subtitle] - Secondary text (supports HTML)
+   * @param {string} [opts.progressColor] - 'green' | 'gold' | 'accent' | 'red'
+   * @param {string} [opts.footerText] - Small muted text at bottom
+   * @param {number} [opts.duration] - Milliseconds to display (default 2000)
+   * @param {string} [opts.sound] - Sound to play
+   * @private
+   */
+  async _showTransitionSplash(opts = {}) {
+    const inbox = this.element?.querySelector('.ncm-item-inbox') || this.element;
+    if (!inbox) return;
 
-    const card = overlay.querySelector('.ncm-sec-card');
-    if (card) {
-      card.innerHTML = `
-        <div class="ncm-hack-result-icon ncm-hack-result-icon--success" style="background:var(--sp-icon-bg);border-color:var(--sp-icon-border);color:var(--sp-accent);box-shadow:0 0 30px var(--sp-accent-glow);">
-          <i class="fas fa-user-check"></i>
-        </div>
-        <div class="ncm-sec-muted" style="font-size:9px;letter-spacing:0.08em;margin-bottom:4px;">AUTHENTICATION SUCCESSFUL</div>
-        <div class="ncm-sec-title" style="letter-spacing:0.3em;">Welcome</div>
-        <div style="font-family:var(--ncm-font-display,'Orbitron');font-size:16px;font-weight:700;color:var(--sp-accent);text-transform:uppercase;letter-spacing:0.2em;margin:4px 0 12px;">
-          ${username}
-        </div>
-        <div class="ncm-sec-muted">Loading secure contents...</div>
-      `;
+    const iconContent = opts.iconHtml || (opts.icon ? `<i class="${opts.icon}"></i>` : '<i class="fas fa-check"></i>');
+    const iconClass = opts.iconStyle ? `ncm-sec-splash-icon--${opts.iconStyle}` : 'ncm-sec-splash-icon--accent';
+
+    let html = `<div class="ncm-sec-splash ncm-sec-animate-in">`;
+    html += `<div class="ncm-sec-splash-icon ${iconClass}">${iconContent}</div>`;
+    if (opts.preTitle) html += `<div class="ncm-sec-muted" style="font-size:9px;letter-spacing:0.1em;margin-bottom:4px;">${opts.preTitle}</div>`;
+    if (opts.title) html += `<div class="ncm-sec-splash-title" style="color:${opts.titleColor || 'var(--sp-accent)'};">${opts.title}</div>`;
+    if (opts.name) html += `<div class="ncm-sec-splash-name">${opts.name}</div>`;
+    if (opts.subtitle) html += `<div class="ncm-sec-splash-sub">${opts.subtitle}</div>`;
+    if (opts.progressColor) {
+      html += `<div class="ncm-sec-splash-progress"><div class="ncm-sec-splash-progress-fill ncm-sec-splash-progress-fill--${opts.progressColor}"></div></div>`;
     }
-    this.soundService?.play('login-success');
-    await new Promise(r => setTimeout(r, 2200));
-  }
+    if (opts.footerText) html += `<div class="ncm-sec-muted">${opts.footerText}</div>`;
+    html += `</div>`;
 
-  /** @private — Generic success splash for key item / other layers */
-  async _playSecuritySuccessEffect(title, subtitle) {
-    const el = this.element;
-    if (!el) return;
-
-    // Create temporary overlay
     const overlay = document.createElement('div');
-    overlay.className = 'ncm-security-overlay';
-    overlay.style.cssText = 'z-index:12;';
-    overlay.innerHTML = `
-      <div class="ncm-sec-card" style="box-shadow:0 0 30px rgba(0,0,0,0.4),0 0 2px #00ff41;">
-        <div class="ncm-hack-result-icon ncm-hack-result-icon--success" style="width:64px;height:64px;font-size:26px;">
-          <i class="fas fa-check"></i>
-        </div>
-        <div class="ncm-sec-title" style="color:#00ff41;">${title}</div>
-        <div class="ncm-sec-info">${subtitle}</div>
-        <div class="ncm-sec-muted">Loading contents...</div>
-      </div>
-    `;
+    overlay.className = 'ncm-sec-transition-overlay';
+    overlay.innerHTML = html;
+    inbox.appendChild(overlay);
 
-    const content = el.querySelector('.ncm-shard-content') || el.querySelector('.ncm-item-inbox');
-    if (content) content.appendChild(overlay);
+    if (opts.sound) this.soundService?.play(opts.sound);
 
-    this.soundService?.play('hack-success');
-    await new Promise(r => setTimeout(r, 1800));
+    await new Promise(r => setTimeout(r, opts.duration || 2000));
     overlay.remove();
   }
 
