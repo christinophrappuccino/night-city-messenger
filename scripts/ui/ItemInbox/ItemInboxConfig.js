@@ -91,6 +91,7 @@ export class ItemInboxConfig extends BaseApplication {
       searchKeyItem: ItemInboxConfig._onSearchKeyItem,
       clearKeyItem: ItemInboxConfig._onClearKeyItem,
       previewBoot: ItemInboxConfig._onPreviewBoot,
+      toggleNetworkType: ItemInboxConfig._onToggleNetworkType,
     },
   }, { inplace: false });
 
@@ -104,6 +105,103 @@ export class ItemInboxConfig extends BaseApplication {
   }
 
   get title() { return `Configure Shard: ${this.item?.name ?? 'Unknown'}`; }
+
+  // ═══════════════════════════════════════════════════════════
+  //  LIFECYCLE — Wire change listeners for reactive UI
+  // ═══════════════════════════════════════════════════════════
+
+  _onRender(context, options) {
+    super._onRender?.(context, options);
+    const el = this.element;
+    if (!el) return;
+
+    // ─── Restore active tab ───
+    if (this._activeTab && this._activeTab !== 'identity') {
+      el.querySelectorAll('.ncm-cfg-tab').forEach(t => t.classList.toggle('ncm-cfg-tab--active', t.dataset.tab === this._activeTab));
+      el.querySelectorAll('.ncm-cfg-panel').forEach(p => p.classList.toggle('ncm-cfg-panel--active', p.dataset.panel === this._activeTab));
+    }
+
+    // ─── Pipeline auto-update on checkbox change ───
+    const layerCheckboxes = el.querySelectorAll('[name="networkRequired"], [name="requiresKeyItem"], [name="requiresLogin"], [name="encrypted"]');
+    layerCheckboxes.forEach(cb => {
+      cb.addEventListener('change', () => this._updatePipeline());
+    });
+
+    // ─── ICE type dropdown → show/hide ICE source section ───
+    const iceTypeSel = el.querySelector('[name="encryptionType"]');
+    if (iceTypeSel) {
+      iceTypeSel.addEventListener('change', () => this._updateIceVisibility());
+      this._updateIceVisibility(); // Initial state
+    }
+
+    // ─── Network access mode → show/hide conditional sections ───
+    this._updateNetworkConditionals();
+
+    // ─── Icon mode instant switching ───
+    const iconModeSel = el.querySelector('[name="bootIconMode"]');
+    if (iconModeSel) {
+      iconModeSel.addEventListener('change', () => {
+        const mode = iconModeSel.value;
+        el.querySelectorAll('.ncm-cfg-icon-mode-section').forEach(s => {
+          s.style.display = s.dataset.iconMode === mode ? '' : 'none';
+        });
+      });
+    }
+  }
+
+  /** Update pipeline node states from current checkbox values */
+  _updatePipeline() {
+    const el = this.element;
+    if (!el) return;
+    const mapping = [
+      { name: 'networkRequired', index: 0 },
+      { name: 'requiresKeyItem', index: 1 },
+      { name: 'requiresLogin', index: 2 },
+      { name: 'encrypted', index: 3 },
+    ];
+    const nodes = el.querySelectorAll('.ncm-cfg-pipe-node');
+    const arrows = el.querySelectorAll('.ncm-cfg-pipe-arrow');
+    mapping.forEach(({ name, index }) => {
+      const checked = !!el.querySelector(`[name="${name}"]`)?.checked;
+      const node = nodes[index];
+      const arrow = arrows[index];
+      if (node) {
+        node.querySelector('.ncm-cfg-pipe-icon')?.classList.toggle('ncm-cfg-pipe-icon--on', checked);
+        node.querySelector('.ncm-cfg-pipe-label')?.classList.toggle('ncm-cfg-pipe-label--on', checked);
+      }
+      if (arrow) arrow.classList.toggle('ncm-cfg-pipe-arrow--on', checked);
+    });
+    // Also update layer card borders
+    mapping.forEach(({ name }) => {
+      const checked = !!el.querySelector(`[name="${name}"]`)?.checked;
+      const layer = el.querySelector(`[name="${name}"]`)?.closest('.ncm-cfg-layer');
+      if (layer) layer.classList.toggle('ncm-cfg-layer--enabled', checked);
+    });
+  }
+
+  /** Show/hide ICE source based on encryption type */
+  _updateIceVisibility() {
+    const el = this.element;
+    if (!el) return;
+    const iceType = el.querySelector('[name="encryptionType"]')?.value || 'ICE';
+    const isLethal = iceType === 'BLACK_ICE' || iceType === 'RED_ICE';
+    const iceSource = el.querySelector('[data-ice-source]');
+    if (iceSource) iceSource.style.display = isLethal ? '' : 'none';
+    // Update damage dice display
+    const diceEl = el.querySelector('[data-dmg-dice]');
+    if (diceEl) diceEl.textContent = iceType === 'RED_ICE' ? '5d6' : '3d6';
+  }
+
+  /** Show/hide network sections based on access mode */
+  _updateNetworkConditionals() {
+    const el = this.element;
+    if (!el) return;
+    const mode = el.querySelector('[name="accessMode"]')?.value || 'any';
+    const netGrid = el.querySelector('[data-net-section="whitelist"]');
+    const typeSection = el.querySelector('[data-net-section="type"]');
+    if (netGrid) netGrid.style.display = (mode === 'whitelist' || mode === 'both') ? '' : 'none';
+    if (typeSection) typeSection.style.display = (mode === 'type' || mode === 'both') ? '' : 'none';
+  }
 
   // ═══════════════════════════════════════════════════════════
   //  DATA PREPARATION
@@ -592,6 +690,7 @@ export class ItemInboxConfig extends BaseApplication {
     (target.closest('.ncm-cfg-am-card') || target).classList.add('ncm-cfg-am-card--sel');
     const input = this.element.querySelector('[name="accessMode"]');
     if (input) input.value = mode;
+    this._updateNetworkConditionals();
   }
 
   static _onSelectConnMode(event, target) {
@@ -622,6 +721,16 @@ export class ItemInboxConfig extends BaseApplication {
     } else {
       container.querySelector(`[data-net-hidden="${netId}"]`)?.remove();
     }
+  }
+
+  static _onToggleNetworkType(event, target) {
+    const card = target.closest('.ncm-cfg-type-card') || target;
+    const typeVal = card.dataset.typeValue;
+    if (!typeVal) return;
+    card.classList.toggle('ncm-cfg-type-card--on');
+    // Toggle the hidden checkbox
+    const cb = this.element.querySelector(`input[name="allowedType"][value="${typeVal}"]`);
+    if (cb) cb.checked = card.classList.contains('ncm-cfg-type-card--on');
   }
 
   // ═══════════════════════════════════════════════════════════

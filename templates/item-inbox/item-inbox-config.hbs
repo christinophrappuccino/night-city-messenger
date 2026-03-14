@@ -170,7 +170,7 @@
           <input type="hidden" name="iceSource" value="{{iceSource}}" />
 
           <div class="ncm-cfg-ice-panel {{#if iceSourceDefault}}ncm-cfg-ice-panel--on{{/if}}" data-ice-panel="default">
-            <div class="ncm-cfg-dmg-preview"><span class="ncm-cfg-dmg-dice">{{iceDamageDice}}</span><span class="ncm-cfg-dmg-label">damage on failure</span></div>
+            <div class="ncm-cfg-dmg-preview"><span class="ncm-cfg-dmg-dice" data-dmg-dice>{{iceDamageDice}}</span><span class="ncm-cfg-dmg-label">damage on failure</span></div>
           </div>
           <div class="ncm-cfg-ice-panel {{#if iceSourceCustom}}ncm-cfg-ice-panel--on{{/if}}" data-ice-panel="custom">
             <div class="ncm-cfg-row"><span class="ncm-cfg-label">ICE Name</span><input type="text" name="iceCustomName" class="ncm-cfg-input ncm-cfg-flex" value="{{iceCustomName}}" placeholder="e.g. HELLHOUND" /></div>
@@ -208,15 +208,26 @@
         </div>
         <input type="hidden" name="accessMode" value="{{accessModeValue}}" />
 
-        <div class="ncm-cfg-step-label"><i class="fas fa-network-wired" style="color:#19f3f7"></i> Allowed networks</div>
-        <div class="ncm-cfg-hint" style="margin-bottom:6px">Click to toggle.</div>
-        <div class="ncm-cfg-net-grid">
-          {{#each networkOptions}}<div class="ncm-cfg-net-card {{#if selected}}ncm-cfg-net-card--on{{/if}}" data-action="toggleNetwork" data-net-id="{{value}}"><div class="ncm-cfg-net-icon" style="color:{{color}}"><i class="fas {{icon}}"></i></div><div class="ncm-cfg-net-name">{{label}}</div><div class="ncm-cfg-net-type">{{type}}</div></div>{{/each}}
+        <div data-net-section="whitelist" {{#if accessModeAny}}style="display:none"{{/if}}>
+          <div class="ncm-cfg-step-label"><i class="fas fa-network-wired" style="color:#19f3f7"></i> Allowed networks</div>
+          <div class="ncm-cfg-hint" style="margin-bottom:6px">Click to toggle. Highlighted = access granted.</div>
+          <div class="ncm-cfg-net-grid">
+            {{#each networkOptions}}<div class="ncm-cfg-net-card {{#if selected}}ncm-cfg-net-card--on{{/if}}" data-action="toggleNetwork" data-net-id="{{value}}"><div class="ncm-cfg-net-icon" style="color:{{color}}"><i class="fas {{icon}}"></i></div><div class="ncm-cfg-net-name">{{label}}</div><div class="ncm-cfg-net-type">{{type}}</div></div>{{/each}}
+          </div>
+          <div id="ncm-network-hidden-inputs">{{#each networkOptions}}{{#if selected}}<input type="hidden" name="allowedNetwork" value="{{value}}" data-net-hidden="{{value}}" />{{/if}}{{/each}}</div>
         </div>
-        <div id="ncm-network-hidden-inputs">{{#each networkOptions}}{{#if selected}}<input type="hidden" name="allowedNetwork" value="{{value}}" data-net-hidden="{{value}}" />{{/if}}{{/each}}</div>
 
-        <div class="ncm-cfg-row ncm-cfg-row--wrap" style="margin-top:8px;gap:8px">
-          {{#each networkTypeChecks}}<label class="ncm-cfg-check"><input type="checkbox" name="allowedType" value="{{value}}" {{#if checked}}checked{{/if}} /> {{label}}</label>{{/each}}
+        <div data-net-section="type" {{#unless accessModeType}}style="display:none"{{/unless}}>
+          <div class="ncm-cfg-step-label"><i class="fas fa-layer-group" style="color:#19f3f7"></i> Allowed network types</div>
+          <div class="ncm-cfg-type-cards">
+            {{#each networkTypeChecks}}
+              <div class="ncm-cfg-type-card {{#if checked}}ncm-cfg-type-card--on{{/if}}" data-action="toggleNetworkType" data-type-value="{{value}}">
+                <i class="fas fa-tag" style="font-size:9px"></i> {{label}}
+              </div>
+            {{/each}}
+          </div>
+          {{!-- Hidden checkboxes for form collection --}}
+          <div style="display:none">{{#each networkTypeChecks}}<input type="checkbox" name="allowedType" value="{{value}}" {{#if checked}}checked{{/if}} />{{/each}}</div>
         </div>
       </div>
 
