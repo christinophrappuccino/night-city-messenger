@@ -327,9 +327,6 @@ export class ItemInboxConfig extends BaseApplication {
     const iceDamageDice = config.encryptionType === 'RED_ICE' ? '5d6'
       : config.encryptionType === 'BLACK_ICE' ? '3d6' : '—';
 
-    // ─── Pending key item (selected but not yet saved) ───
-    const pendingKI = this._pendingKeyItem;
-
     return {
       hasItem: true,
       itemName: this.item.name,
@@ -391,14 +388,14 @@ export class ItemInboxConfig extends BaseApplication {
       loginDisplayName: config.loginDisplayName,
       maxLoginAttempts: config.maxLoginAttempts,
 
-      // Key Item — pending selection overrides saved config
+      // Key Item
       requiresKeyItem: config.requiresKeyItem,
-      keyItemName: pendingKI?.name ?? config.keyItemName,
-      keyItemId: pendingKI?.id ?? config.keyItemId,
+      keyItemName: config.keyItemName,
+      keyItemId: config.keyItemId,
       keyItemTag: config.keyItemTag,
       keyItemDisplayName: config.keyItemDisplayName,
       keyItemIcon: config.keyItemIcon,
-      keyItemImg: pendingKI?.img ?? config.keyItemImg ?? (config.keyItemId ? game.items?.get(config.keyItemId)?.img : '') ?? '',
+      keyItemImg: config.keyItemImg || (config.keyItemId ? game.items?.get(config.keyItemId)?.img : '') || '',
       keyItemBypassLogin: config.keyItemBypassLogin,
       keyItemBypassEncryption: config.keyItemBypassEncryption,
       keyItemConsumeOnUse: config.keyItemConsumeOnUse,
@@ -653,7 +650,6 @@ export class ItemInboxConfig extends BaseApplication {
 
     const result = await this.dataShardService.updateConfig(this.item, config);
     if (result.success) {
-      this._pendingKeyItem = null;
       ui.notifications.info('NCM | Shard configuration saved.');
       this.close();
     } else {
@@ -849,26 +845,50 @@ export class ItemInboxConfig extends BaseApplication {
 
     if (!selectedItem) return;
 
-    // Store pending selection on instance — _prepareContext reads this before saved config
-    this._pendingKeyItem = { name: selectedItem.name, id: selectedItem.id, img: selectedItem.img };
-
-    // Update hidden inputs + re-render
+    // Direct DOM update — no render() needed
     const el = this.element;
     const setVal = (name, v) => { const inp = el.querySelector(`[name="${name}"]`); if (inp) inp.value = v; };
     setVal('keyItemName', selectedItem.name);
     setVal('keyItemId', selectedItem.id);
-    setVal('keyItemImg', selectedItem.img);
-    this.render();
+    setVal('keyItemImg', selectedItem.img || '');
+
+    // Update filled picker display
+    const filled = el.querySelector('[data-key-item-filled]');
+    const empty = el.querySelector('[data-key-item-empty]');
+    if (filled) {
+      filled.style.display = '';
+      // Image
+      const imgSlot = filled.querySelector('[data-key-item-img-slot]');
+      if (imgSlot) {
+        const imgSrc = selectedItem.img;
+        if (imgSrc && !imgSrc.includes('mystery-man')) {
+          imgSlot.innerHTML = `<img src="${imgSrc}" alt="" style="width:100%;height:100%;object-fit:cover;border:none;">`;
+        } else {
+          imgSlot.innerHTML = '<i class="fas fa-cube"></i>';
+        }
+      }
+      // Name
+      const nameSlot = filled.querySelector('[data-key-item-name-slot]');
+      if (nameSlot) nameSlot.textContent = selectedItem.name;
+      // ID
+      const idSlot = filled.querySelector('[data-key-item-id-slot]');
+      if (idSlot) idSlot.textContent = selectedItem.id ? `ID: ${selectedItem.id}` : '';
+    }
+    if (empty) empty.style.display = 'none';
   }
 
   static _onClearKeyItem(event, target) {
-    this._pendingKeyItem = null;
     const el = this.element;
     const setVal = (name, v) => { const inp = el.querySelector(`[name="${name}"]`); if (inp) inp.value = v; };
     setVal('keyItemName', '');
     setVal('keyItemId', '');
     setVal('keyItemImg', '');
-    this.render();
+
+    // Toggle visibility
+    const filled = el.querySelector('[data-key-item-filled]');
+    const empty = el.querySelector('[data-key-item-empty]');
+    if (filled) filled.style.display = 'none';
+    if (empty) empty.style.display = '';
   }
 
   // ═══════════════════════════════════════════════════════════

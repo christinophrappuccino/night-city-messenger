@@ -106,19 +106,16 @@
         <div class="ncm-cfg-layer-header"><i class="fas fa-id-card ncm-cfg-layer-icon" style="color:#f7c948"></i><div class="ncm-cfg-layer-title">② Key Item</div><label class="ncm-cfg-toggle-label"><input type="checkbox" name="requiresKeyItem" {{#if requiresKeyItem}}checked{{/if}} /></label></div>
         <div class="ncm-cfg-desc">Requires the player to have a specific item in their character's inventory. Choose the item below, configure what the player sees on the security overlay, and set behavior options for what happens when the item is presented.</div>
 
-        {{!-- Item Picker --}}
-        {{#if keyItemName}}
-        <div class="ncm-cfg-item-picker" data-key-item-filled>
-          <div class="ncm-cfg-ip-img">{{#if keyItemImg}}<img src="{{keyItemImg}}" alt="">{{else}}<i class="fas fa-cube"></i>{{/if}}</div>
+        {{!-- Item Picker — both states always in DOM, toggled by JS --}}
+        <div class="ncm-cfg-item-picker" data-key-item-filled {{#unless keyItemName}}style="display:none"{{/unless}}>
+          <div class="ncm-cfg-ip-img" data-key-item-img-slot>{{#if keyItemImg}}<img src="{{keyItemImg}}" alt="">{{else}}<i class="fas fa-cube"></i>{{/if}}</div>
           <div class="ncm-cfg-ip-meta">
-            <div class="ncm-cfg-ip-name">{{keyItemName}}</div>
-            {{#if keyItemId}}<div class="ncm-cfg-ip-id">ID: {{keyItemId}}</div>{{/if}}
+            <div class="ncm-cfg-ip-name" data-key-item-name-slot>{{keyItemName}}</div>
+            <div class="ncm-cfg-ip-id" data-key-item-id-slot>{{#if keyItemId}}ID: {{keyItemId}}{{/if}}</div>
             <div class="ncm-cfg-ip-actions"><button type="button" data-action="searchKeyItem" class="ncm-cfg-ip-btn ncm-cfg-ip-btn--search"><i class="fas fa-magnifying-glass"></i> Change</button><button type="button" data-action="clearKeyItem" class="ncm-cfg-ip-btn ncm-cfg-ip-btn--clear"><i class="fas fa-times"></i> Clear</button></div>
           </div>
         </div>
-        {{else}}
-        <div class="ncm-cfg-item-picker-empty" data-action="searchKeyItem"><div class="ncm-cfg-ipe-icon"><i class="fas fa-magnifying-glass"></i></div><div class="ncm-cfg-ipe-text">Click to search items</div></div>
-        {{/if}}
+        <div class="ncm-cfg-item-picker-empty" data-key-item-empty data-action="searchKeyItem" {{#if keyItemName}}style="display:none"{{/if}}><div class="ncm-cfg-ipe-icon"><i class="fas fa-magnifying-glass"></i></div><div class="ncm-cfg-ipe-text">Click to search items</div></div>
         <input type="hidden" name="keyItemName" value="{{keyItemName}}" /><input type="hidden" name="keyItemId" value="{{keyItemId}}" /><input type="hidden" name="keyItemImg" value="{{keyItemImg}}" />
         <div class="ncm-cfg-row"><span class="ncm-cfg-label">Match Tag</span><input type="text" name="keyItemTag" class="ncm-cfg-input ncm-cfg-flex" value="{{keyItemTag}}" placeholder="Optional tag" /></div>
 
