@@ -327,6 +327,9 @@ export class ItemInboxConfig extends BaseApplication {
     const iceDamageDice = config.encryptionType === 'RED_ICE' ? '5d6'
       : config.encryptionType === 'BLACK_ICE' ? '3d6' : '—';
 
+    // ─── Pending key item (selected but not yet saved) ───
+    const pendingKI = this._pendingKeyItem;
+
     return {
       hasItem: true,
       itemName: this.item.name,
@@ -388,14 +391,14 @@ export class ItemInboxConfig extends BaseApplication {
       loginDisplayName: config.loginDisplayName,
       maxLoginAttempts: config.maxLoginAttempts,
 
-      // Key Item
+      // Key Item — pending selection overrides saved config
       requiresKeyItem: config.requiresKeyItem,
-      keyItemName: config.keyItemName,
-      keyItemId: config.keyItemId,
+      keyItemName: pendingKI?.name ?? config.keyItemName,
+      keyItemId: pendingKI?.id ?? config.keyItemId,
       keyItemTag: config.keyItemTag,
       keyItemDisplayName: config.keyItemDisplayName,
       keyItemIcon: config.keyItemIcon,
-      keyItemImg: config.keyItemImg || (config.keyItemId ? game.items?.get(config.keyItemId)?.img : '') || '',
+      keyItemImg: pendingKI?.img ?? config.keyItemImg ?? (config.keyItemId ? game.items?.get(config.keyItemId)?.img : '') ?? '',
       keyItemBypassLogin: config.keyItemBypassLogin,
       keyItemBypassEncryption: config.keyItemBypassEncryption,
       keyItemConsumeOnUse: config.keyItemConsumeOnUse,
@@ -650,6 +653,7 @@ export class ItemInboxConfig extends BaseApplication {
 
     const result = await this.dataShardService.updateConfig(this.item, config);
     if (result.success) {
+      this._pendingKeyItem = null;
       ui.notifications.info('NCM | Shard configuration saved.');
       this.close();
     } else {
@@ -845,6 +849,9 @@ export class ItemInboxConfig extends BaseApplication {
 
     if (!selectedItem) return;
 
+    // Store pending selection on instance — _prepareContext reads this before saved config
+    this._pendingKeyItem = { name: selectedItem.name, id: selectedItem.id, img: selectedItem.img };
+
     // Update hidden inputs + re-render
     const el = this.element;
     const setVal = (name, v) => { const inp = el.querySelector(`[name="${name}"]`); if (inp) inp.value = v; };
@@ -855,6 +862,7 @@ export class ItemInboxConfig extends BaseApplication {
   }
 
   static _onClearKeyItem(event, target) {
+    this._pendingKeyItem = null;
     const el = this.element;
     const setVal = (name, v) => { const inp = el.querySelector(`[name="${name}"]`); if (inp) inp.value = v; };
     setVal('keyItemName', '');
