@@ -190,6 +190,31 @@
     </div>
   </fieldset>
 
+  {{!-- ═══ 7b. LAYER HACK SECURITY ═══ --}}
+  <fieldset class="ncm-config-section">
+    <legend class="ncm-config-legend"><i class="fas fa-layer-group"></i> Layer Hack Consequences</legend>
+    <div class="ncm-config-row">
+      <label class="ncm-config-check"><input type="checkbox" name="layerSecEnabled" {{#if layerSecEnabled}}checked{{/if}} /> Enable consequences for layer hacking (network/key item/login bypass)</label>
+    </div>
+    <div class="ncm-config-row">
+      <label class="ncm-config-label">Max Attempts</label>
+      <input type="number" name="layerSecMaxAttempts" class="ncm-config-input ncm-config-short" value="{{layerSecMaxAttempts}}" min="1" max="10" />
+    </div>
+    <div class="ncm-config-row">
+      <label class="ncm-config-label">Failure Mode</label>
+      <select name="layerSecFailureMode" class="ncm-config-select ncm-config-flex">
+        {{#each layerSecFailureModes}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}
+      </select>
+    </div>
+    <div class="ncm-config-row">
+      <label class="ncm-config-label">Lockout (min)</label>
+      <input type="number" name="layerSecLockoutMinutes" class="ncm-config-input ncm-config-short" value="{{layerSecLockoutMinutes}}" min="1" max="1440" />
+    </div>
+    <div class="ncm-config-row">
+      <label class="ncm-config-check"><input type="checkbox" name="layerSecDegradeOnFail" {{#if layerSecDegradeOnFail}}checked{{/if}} /> Degrade shard integrity on failed layer hack</label>
+    </div>
+  </fieldset>
+
   {{!-- ═══ 8. NETWORK REQUIREMENTS ═══ --}}
   <fieldset class="ncm-config-section">
     <legend class="ncm-config-legend"><i class="fas fa-network-wired"></i> Network Requirements</legend>

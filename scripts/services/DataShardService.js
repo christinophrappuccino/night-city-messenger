@@ -1084,8 +1084,113 @@ export class DataShardService {
   }
 
   // ═══════════════════════════════════════════════════════════
-  //  PRIVATE — BLACK ICE Damage
+  //  LAYER HACK — Attempt Tracking & Consequences
   // ═══════════════════════════════════════════════════════════
+
+  /**
+   * Get hack attempt info for a specific security layer (network/keyitem/login).
+   * @param {Item} item
+   * @param {string} actorId
+   * @param {string} layer - 'network' | 'keyitem' | 'login'
+   * @returns {{ attempts: number, max: number, isLockedOut: boolean, lockoutRemaining: number }}
+   */
+  getLayerHackInfo(item, actorId, layer) {
+    const config = this.getConfig(item);
+    const layerSec = config.layerSecurity ?? {};
+    const max = layerSec.maxAttempts ?? 3;
+    const state = this._getState(item);
+    const session = this._getActorSession(state, actorId);
+    const attempts = session.layerHackAttempts?.[layer] ?? 0;
+    const lockoutUntil = session.layerLockoutUntil ?? 0;
+    const isLockedOut = lockoutUntil > Date.now();
+    const lockoutRemaining = isLockedOut ? Math.ceil((lockoutUntil - Date.now()) / 1000) : 0;
+    return { attempts, max, isLockedOut, lockoutRemaining };
+  }
+
+  /**
+   * Record a failed layer hack attempt and apply configured consequences.
+   * @param {Item} item
+   * @param {string} actorId
+   * @param {string} layer - 'network' | 'keyitem' | 'login'
+   * @returns {Promise<{ locked: boolean, destroyed: boolean, damage: number }>}
+   */
+  async handleLayerHackFailure(item, actorId, layer) {
+    const config = this.getConfig(item);
+    const layerSec = config.layerSecurity ?? {};
+    const failureMode = layerSec.failureMode ?? 'nothing';
+    const max = layerSec.maxAttempts ?? 3;
+    const lockoutDuration = layerSec.lockoutDuration ?? 3600000;
+
+    const state = this._getState(item);
+    const session = this._getActorSession(state, actorId);
+    const prevAttempts = session.layerHackAttempts ?? {};
+    const newCount = (prevAttempts[layer] ?? 0) + 1;
+
+    const updates = {
+      layerHackAttempts: { ...prevAttempts, [layer]: newCount },
+    };
+
+    const result = { locked: false, destroyed: false, damage: 0 };
+
+    // Degrade integrity on any failed layer hack if enabled
+    if (config.integrity?.enabled && layerSec.degradeOnFail) {
+      this.degradeIntegrity(item).catch(err => log.warn(`Integrity degrade failed: ${err.message}`));
+    }
+
+    if (newCount >= max) {
+      switch (failureMode) {
+        case FAILURE_MODES.LOCKOUT:
+          updates.layerLockoutUntil = Date.now() + lockoutDuration;
+          result.locked = true;
+          this.soundService?.play('lockout');
+          break;
+
+        case FAILURE_MODES.PERMANENT:
+          updates.layerLockoutUntil = Number.MAX_SAFE_INTEGER;
+          result.locked = true;
+          this.soundService?.play('lockout');
+          break;
+
+        case FAILURE_MODES.DESTROY:
+          await this._destroyShard(item);
+          result.destroyed = true;
+          break;
+
+        case FAILURE_MODES.DAMAGE: {
+          // BLACK ICE damage even on layer hacks if configured
+          const actor = game.actors?.get(actorId);
+          if (actor) {
+            const damage = await this._applyBlackICEDamage(actor, config.encryptionType || 'ICE');
+            result.damage = damage;
+          }
+          if (newCount >= max) {
+            updates.layerLockoutUntil = Date.now() + lockoutDuration;
+            result.locked = true;
+          }
+          break;
+        }
+
+        case FAILURE_MODES.NOTHING:
+        default:
+          break;
+      }
+    }
+
+    await this._updateActorSession(item, actorId, updates);
+    return result;
+  }
+
+  /**
+   * Reset layer hack attempts for an actor on this shard.
+   * @param {Item} item
+   * @param {string} actorId
+   */
+  async resetLayerHackAttempts(item, actorId) {
+    await this._updateActorSession(item, actorId, {
+      layerHackAttempts: {},
+      layerLockoutUntil: null,
+    });
+  }
 
   /**
    * Apply BLACK ICE damage to an actor.

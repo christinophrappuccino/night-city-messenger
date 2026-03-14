@@ -1113,6 +1113,200 @@
   font-size: 10px; color: #19f3f7;
 }
 
+/* Skill check indicator + total */
+.ncm-hd-skill-check {
+  width: 14px; height: 14px;
+  border: 1px solid #3a3a5a; border-radius: 2px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 8px; color: transparent; transition: all 0.15s;
+  flex-shrink: 0;
+}
+.ncm-hd-skill-btn--selected .ncm-hd-skill-check,
+.ncm-hd-skill-btn.ncm-hd-skill-btn--selected .ncm-hd-skill-check {
+  border-color: #19f3f7; color: #19f3f7;
+  background: rgba(25,243,247,0.1);
+}
+.ncm-hd-skill-total {
+  font-family: 'Share Tech Mono', monospace; font-size: 12px;
+  color: #19f3f7; font-weight: 700;
+  min-width: 20px; text-align: right;
+}
+/* Selected skill left-edge accent */
+.ncm-hd-skill-btn--selected::before,
+.ncm-hd-skill-btn.ncm-hd-skill-btn--selected::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px;
+  background: #19f3f7;
+}
+.ncm-hd-skill-btn { position: relative; overflow: hidden; }
+
+/* BLACK ICE Danger Zone */
+.ncm-hd-danger {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px; margin-bottom: 12px;
+  background: rgba(255,0,51,0.06);
+  border: 1px solid rgba(255,0,51,0.2);
+  border-radius: 3px;
+  animation: ncm-hd-danger-pulse 1.5s ease infinite;
+}
+@keyframes ncm-hd-danger-pulse {
+  0%, 100% { border-color: rgba(255,0,51,0.2); }
+  50% { border-color: rgba(255,0,51,0.5); box-shadow: 0 0 8px rgba(255,0,51,0.1); }
+}
+.ncm-hd-danger-icon { font-size: 18px; color: #ff0033; }
+.ncm-hd-danger-text { flex: 1; }
+.ncm-hd-danger-label {
+  font-family: 'Orbitron', 'Rajdhani', sans-serif; font-size: 8px; font-weight: 700;
+  color: #ff0033; text-transform: uppercase; letter-spacing: 0.12em;
+}
+.ncm-hd-danger-sub {
+  font-family: 'Share Tech Mono', monospace; font-size: 10px; color: #ff4444;
+  margin-top: 1px;
+}
+
+/* Segmented Luck Gauge */
+.ncm-hd-luck-gauge {
+  flex: 1; display: flex; gap: 2px; height: 28px; align-items: center;
+}
+.ncm-hd-luck-seg {
+  flex: 1; height: 16px;
+  background: #12121a; border: 1px solid #1e1e30;
+  border-radius: 1px; transition: all 0.2s;
+  position: relative;
+}
+.ncm-hd-luck-seg--filled {
+  background: rgba(0,255,65,0.15) !important;
+  border-color: rgba(0,255,65,0.4) !important;
+  box-shadow: 0 0 4px rgba(0,255,65,0.1) !important;
+}
+.ncm-hd-luck-seg--filled::after {
+  content: ''; position: absolute; inset: 2px;
+  background: linear-gradient(180deg, rgba(0,255,65,0.3), rgba(0,255,65,0.1));
+  border-radius: 1px;
+}
+.ncm-hd-luck-val--zero { color: #3a3a5a !important; text-shadow: none !important; }
+
+/* Odds Gauge */
+.ncm-hd-odds {
+  margin-top: 14px; padding: 10px 12px;
+  background: #0a0a12; border: 1px solid #1e1e30;
+  border-radius: 3px;
+}
+.ncm-hd-odds-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 6px;
+}
+.ncm-hd-odds-label {
+  font-family: 'Share Tech Mono', monospace; font-size: 8px;
+  color: #4a4a6a; text-transform: uppercase; letter-spacing: 0.12em;
+}
+.ncm-hd-odds-pct {
+  font-family: 'Share Tech Mono', monospace; font-size: 12px; font-weight: 700;
+  transition: color 0.3s;
+}
+.ncm-hd-odds-pct.low { color: #ff4444; }
+.ncm-hd-odds-pct.mid { color: #f7c948; }
+.ncm-hd-odds-pct.high { color: #00ff41; }
+.ncm-hd-odds-track {
+  height: 6px; background: #12121a;
+  border-radius: 3px; overflow: hidden;
+}
+.ncm-hd-odds-fill {
+  height: 100%; border-radius: 3px;
+  transition: width 0.3s ease, background 0.3s ease;
+}
+.ncm-hd-odds-fill.low { background: linear-gradient(90deg, #ff0033, #ff4444); }
+.ncm-hd-odds-fill.mid { background: linear-gradient(90deg, #ffab00, #f7c948); }
+.ncm-hd-odds-fill.high { background: linear-gradient(90deg, #00cc33, #00ff41); }
+
+/* Roll Breakdown */
+.ncm-hd-breakdown {
+  display: flex; align-items: center; justify-content: center;
+  gap: 4px; margin-top: 8px;
+  font-family: 'Share Tech Mono', monospace; font-size: 11px; color: #6060a0;
+}
+.ncm-hd-val { color: #c0c0d0; font-weight: 700; }
+.ncm-hd-op { color: #3a3a5a; }
+.ncm-hd-die { color: #8888a0; }
+.ncm-hd-vs { color: #19f3f7; font-weight: 700; }
+.ncm-hd-luck-color { color: #00ff41; font-weight: 700; }
+
+/* Attempt Dots */
+.ncm-hd-attempts {
+  display: flex; align-items: center; justify-content: center;
+  gap: 3px; margin-top: 10px;
+}
+.ncm-hd-attempts-label {
+  font-family: 'Share Tech Mono', monospace; font-size: 8px;
+  color: #4a4a6a; text-transform: uppercase; letter-spacing: 0.08em;
+  margin-right: 6px;
+}
+.ncm-hd-attempt-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  border: 1px solid #3a3a5a; background: transparent;
+}
+.ncm-hd-attempt-dot--used { background: #ff4444; border-color: #ff4444; opacity: 0.5; }
+.ncm-hd-attempt-dot--current {
+  background: #19f3f7; border-color: #19f3f7;
+  box-shadow: 0 0 4px #19f3f7;
+  animation: ncm-hd-dot-pulse 1s ease infinite;
+}
+@keyframes ncm-hd-dot-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+/* ─── Theme Variants ─── */
+.ncm-hd-theme-cyan { --hd-accent: #19f3f7; }
+.ncm-hd-theme-gold { --hd-accent: #f7c948; }
+.ncm-hd-theme-green { --hd-accent: #00ff41; }
+.ncm-hd-theme-black { --hd-accent: #ff0033; }
+
+/* Gold accent bar + buttons */
+.ncm-hd-theme-gold.ncm-hack-dialog::before {
+  background: linear-gradient(90deg, transparent, #f7c948 30%, #f7c948 70%, transparent) !important;
+}
+.ncm-hd-theme-gold .dialog-buttons button[data-button="execute"] {
+  background: rgba(247,201,72,0.08) !important; border-color: rgba(247,201,72,0.3) !important; color: #f7c948 !important;
+}
+.ncm-hd-theme-gold .dialog-buttons button[data-button="execute"]:hover {
+  background: rgba(247,201,72,0.15) !important; border-color: #f7c948 !important;
+}
+.ncm-hd-theme-gold .ncm-hd-skill-btn--selected .ncm-hd-skill-check { border-color: #f7c948 !important; color: #f7c948 !important; background: rgba(247,201,72,0.1) !important; }
+.ncm-hd-theme-gold .ncm-hd-skill-btn--selected::before { background: #f7c948 !important; }
+.ncm-hd-theme-gold .ncm-hd-skill-total { color: #f7c948 !important; }
+.ncm-hd-theme-gold .ncm-hd-vs { color: #f7c948 !important; }
+.ncm-hd-theme-gold .ncm-hd-attempt-dot--current { background: #f7c948; border-color: #f7c948; box-shadow: 0 0 4px #f7c948; }
+
+/* Green accent bar + buttons */
+.ncm-hd-theme-green.ncm-hack-dialog::before {
+  background: linear-gradient(90deg, transparent, #00ff41 30%, #00ff41 70%, transparent) !important;
+}
+.ncm-hd-theme-green .dialog-buttons button[data-button="execute"] {
+  background: rgba(0,255,65,0.06) !important; border-color: rgba(0,255,65,0.25) !important; color: #00ff41 !important;
+}
+.ncm-hd-theme-green .dialog-buttons button[data-button="execute"]:hover {
+  background: rgba(0,255,65,0.12) !important; border-color: #00ff41 !important;
+}
+.ncm-hd-theme-green .ncm-hd-skill-btn--selected .ncm-hd-skill-check { border-color: #00ff41 !important; color: #00ff41 !important; background: rgba(0,255,65,0.1) !important; }
+.ncm-hd-theme-green .ncm-hd-skill-btn--selected::before { background: #00ff41 !important; }
+.ncm-hd-theme-green .ncm-hd-skill-total { color: #00ff41 !important; }
+.ncm-hd-theme-green .ncm-hd-vs { color: #00ff41 !important; }
+.ncm-hd-theme-green .ncm-hd-attempt-dot--current { background: #00ff41; border-color: #00ff41; box-shadow: 0 0 4px #00ff41; }
+
+/* RED / BLACK ICE accent bar + buttons */
+.ncm-hd-theme-black.ncm-hack-dialog::before {
+  background: linear-gradient(90deg, transparent, #ff0033 30%, #ff0033 70%, transparent) !important;
+}
+.ncm-hd-theme-black .dialog-buttons button[data-button="execute"] {
+  background: rgba(255,0,51,0.08) !important; border-color: rgba(255,0,51,0.3) !important; color: #ff4444 !important;
+}
+.ncm-hd-theme-black .dialog-buttons button[data-button="execute"]:hover {
+  background: rgba(255,0,51,0.15) !important; border-color: #ff0033 !important;
+  box-shadow: 0 0 12px rgba(255,0,51,0.15) !important;
+}
+.ncm-hd-theme-black .ncm-hd-skill-btn--selected .ncm-hd-skill-check { border-color: #ff0033 !important; color: #ff0033 !important; background: rgba(255,0,51,0.1) !important; }
+.ncm-hd-theme-black .ncm-hd-skill-btn--selected::before { background: #ff0033 !important; }
+.ncm-hd-theme-black .ncm-hd-skill-total { color: #ff0033 !important; }
+.ncm-hd-theme-black .ncm-hd-vs { color: #ff0033 !important; }
+.ncm-hd-theme-black .ncm-hd-attempt-dot--current { background: #ff0033; border-color: #ff0033; box-shadow: 0 0 4px #ff0033; }
+
 
 @keyframes ncm-sec-overlay-fade-in { from { opacity: 0; } to { opacity: 1; } }
 

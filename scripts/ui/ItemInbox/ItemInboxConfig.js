@@ -117,6 +117,16 @@ export class ItemInboxConfig extends BaseApplication {
     ];
     const lockoutMinutes = Math.round((config.lockoutDuration || 3600000) / 60000);
 
+    // ─── Layer Security ───
+    const layerSec = config.layerSecurity ?? {};
+    const layerSecFailureModes = [
+      { value: 'nothing', label: 'No consequence', selected: (layerSec.failureMode ?? 'lockout') === 'nothing' },
+      { value: 'lockout', label: 'Lockout (timed)', selected: (layerSec.failureMode ?? 'lockout') === 'lockout' },
+      { value: 'permanent', label: 'Permanent lockout', selected: layerSec.failureMode === 'permanent' },
+      { value: 'damage', label: 'BLACK ICE damage', selected: layerSec.failureMode === 'damage' },
+      { value: 'destroy', label: 'Self-destruct shard', selected: layerSec.failureMode === 'destroy' },
+    ];
+
     // ─── Network (expanded) ───
     const netConfig = config.network ?? {};
     const networkRequired = netConfig.required ?? config.requiresNetwork ?? false;
@@ -225,6 +235,13 @@ export class ItemInboxConfig extends BaseApplication {
       keyItemBypassLogin: config.keyItemBypassLogin,
       keyItemBypassEncryption: config.keyItemBypassEncryption,
       keyItemConsumeOnUse: config.keyItemConsumeOnUse,
+
+      // Layer Security
+      layerSecEnabled: layerSec.enabled ?? false,
+      layerSecMaxAttempts: layerSec.maxAttempts ?? 3,
+      layerSecFailureModes,
+      layerSecLockoutMinutes: Math.round((layerSec.lockoutDuration || 3600000) / 60000),
+      layerSecDegradeOnFail: layerSec.degradeOnFail ?? true,
 
       // Network
       networkRequired,
@@ -375,6 +392,15 @@ export class ItemInboxConfig extends BaseApplication {
       keyItemBypassLogin: !!data.keyItemBypassLogin,
       keyItemBypassEncryption: !!data.keyItemBypassEncryption,
       keyItemConsumeOnUse: !!data.keyItemConsumeOnUse,
+
+      // Layer Hack Security
+      layerSecurity: {
+        enabled: !!data.layerSecEnabled,
+        maxAttempts: parseInt(data.layerSecMaxAttempts) || 3,
+        failureMode: data.layerSecFailureMode || 'lockout',
+        lockoutDuration: (parseInt(data.layerSecLockoutMinutes) || 60) * 60000,
+        degradeOnFail: !!data.layerSecDegradeOnFail,
+      },
 
       // Network (expanded)
       network: {
