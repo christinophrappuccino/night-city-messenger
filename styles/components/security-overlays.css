@@ -738,6 +738,148 @@
 
 
 /* ═══════════════════════════════════════════
+   §18a  ENTRANCE ANIMATIONS
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-sec-animate-in {
+  animation: ncm-sec-enter 0.4s ease-out;
+}
+
+/* Staggered children */
+.ncm-app .ncm-sec-animate-in > *:nth-child(1) { animation: ncm-sec-fade-up 0.3s ease 0.05s both; }
+.ncm-app .ncm-sec-animate-in > *:nth-child(2) { animation: ncm-sec-fade-up 0.3s ease 0.1s both; }
+.ncm-app .ncm-sec-animate-in > *:nth-child(3) { animation: ncm-sec-fade-up 0.3s ease 0.15s both; }
+.ncm-app .ncm-sec-animate-in > *:nth-child(4) { animation: ncm-sec-fade-up 0.3s ease 0.2s both; }
+.ncm-app .ncm-sec-animate-in > *:nth-child(5) { animation: ncm-sec-fade-up 0.3s ease 0.25s both; }
+.ncm-app .ncm-sec-animate-in > *:nth-child(6) { animation: ncm-sec-fade-up 0.3s ease 0.3s both; }
+.ncm-app .ncm-sec-animate-in > *:nth-child(7) { animation: ncm-sec-fade-up 0.3s ease 0.35s both; }
+
+
+/* ═══════════════════════════════════════════
+   §18b  SPLASH SCREENS (success transitions)
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-sec-splash { text-align: center; }
+
+.ncm-app .ncm-sec-splash-icon {
+  width: 72px; height: 72px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 14px; font-size: 28px;
+  animation: ncm-sec-icon-pop 0.5s ease;
+  overflow: visible;
+}
+.ncm-app .ncm-sec-splash-icon--green {
+  background: rgba(0,255,65,0.06); border: 2px solid rgba(0,255,65,0.3);
+  color: #00ff41; box-shadow: 0 0 30px rgba(0,255,65,0.15);
+}
+.ncm-app .ncm-sec-splash-icon--gold {
+  background: rgba(247,201,72,0.06); border: 2px solid rgba(247,201,72,0.3);
+  color: #f7c948; box-shadow: 0 0 30px rgba(247,201,72,0.15);
+}
+.ncm-app .ncm-sec-splash-icon--accent {
+  background: var(--sp-icon-bg); border: 2px solid var(--sp-icon-border);
+  color: var(--sp-accent); box-shadow: 0 0 30px var(--sp-accent-glow);
+}
+.ncm-app .ncm-sec-splash-icon img { border: none; border-radius: 3px; }
+
+.ncm-app .ncm-sec-splash-title {
+  font-family: var(--ncm-font-display, 'Orbitron', sans-serif);
+  font-size: 18px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.25em;
+  margin-bottom: 6px;
+}
+
+.ncm-app .ncm-sec-splash-sub {
+  font-family: var(--ncm-font-mono); font-size: 11px;
+  color: var(--sp-text-body, #8888a0); margin-bottom: 8px;
+}
+
+.ncm-app .ncm-sec-splash-name {
+  font-family: var(--ncm-font-display, 'Orbitron', sans-serif);
+  font-size: 16px; font-weight: 700;
+  color: var(--sp-accent, #19f3f7);
+  text-transform: uppercase; letter-spacing: 0.2em;
+  margin: 4px 0 14px;
+  text-shadow: 0 0 20px var(--sp-accent-glow);
+}
+
+.ncm-app .ncm-sec-splash-progress {
+  width: 180px; height: 3px; margin: 12px auto;
+  background: var(--sp-bg-surface, #1a1a2e);
+  border-radius: 2px; overflow: hidden;
+}
+.ncm-app .ncm-sec-splash-progress-fill {
+  height: 100%; width: 0;
+  border-radius: 2px;
+  animation: ncm-sec-progress-grow 2s ease forwards;
+}
+.ncm-app .ncm-sec-splash-progress-fill--green { background: #00ff41; }
+.ncm-app .ncm-sec-splash-progress-fill--gold { background: #f7c948; }
+.ncm-app .ncm-sec-splash-progress-fill--accent { background: var(--sp-accent, #19f3f7); }
+
+
+/* ═══════════════════════════════════════════
+   §18c  TOKEN SLOT (key item picker)
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-sec-token-slot {
+  margin: 14px auto; width: 100%;
+  min-height: 60px;
+  border: 1px dashed var(--sp-border, #2a2a45);
+  border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s;
+}
+
+.ncm-app .ncm-sec-token-slot-empty {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 12px;
+  color: var(--sp-text-muted, #555570);
+  font-family: var(--ncm-font-mono); font-size: 10px;
+}
+.ncm-app .ncm-sec-token-slot-empty i { font-size: 18px; opacity: 0.5; }
+
+.ncm-app .ncm-sec-token-slot-filled {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 14px; width: 100%;
+  background: var(--sp-bg-surface, #1a1a2e);
+  border-radius: 3px;
+}
+
+.ncm-app .ncm-sec-token-img {
+  width: 40px; height: 40px; border-radius: 3px;
+  border: 1px solid var(--sp-border, #2a2a45) !important;
+  object-fit: contain; flex-shrink: 0;
+}
+
+.ncm-app .ncm-sec-token-details { flex: 1; text-align: left; min-width: 0; }
+
+.ncm-app .ncm-sec-token-name {
+  font-family: var(--ncm-font-body, 'Rajdhani', sans-serif);
+  font-size: 14px; font-weight: 700; color: var(--sp-text-bright, #e0e0e8);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.ncm-app .ncm-sec-token-type {
+  font-family: var(--ncm-font-mono); font-size: 9px;
+  color: var(--sp-text-muted, #555570); text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.ncm-app .ncm-sec-token-clear {
+  width: 24px !important; height: 24px !important;
+  display: flex !important; align-items: center !important; justify-content: center !important;
+  background: none !important; border: 1px solid rgba(255,0,51,0.2) !important;
+  border-radius: 2px !important; cursor: pointer !important;
+  color: #ff4444 !important; font-size: 10px !important;
+  padding: 0 !important; margin: 0 !important; flex-shrink: 0 !important;
+  appearance: none !important; -webkit-appearance: none !important;
+  box-shadow: none !important; min-width: 0 !important; min-height: 0 !important;
+}
+.ncm-app .ncm-sec-token-clear:hover { background: rgba(255,0,51,0.08) !important; }
+
+
+/* ═══════════════════════════════════════════
    §18  ANIMATIONS & KEYFRAMES
    ═══════════════════════════════════════════ */
 
@@ -761,3 +903,8 @@
 
 @keyframes ncm-result-pop { 0% { transform: scale(0.5); opacity: 0; } 50% { transform: scale(1.1); } 100% { transform: scale(1); opacity: 1; } }
 @keyframes ncm-result-shake { 0%,100% { transform: translateX(0); } 15% { transform: translateX(-8px) rotate(-2deg); } 30% { transform: translateX(6px) rotate(1deg); } 45% { transform: translateX(-4px); } 60% { transform: translateX(3px); } }
+
+@keyframes ncm-sec-enter { 0% { opacity: 0; transform: scale(0.92) translateY(8px); } 100% { opacity: 1; transform: scale(1) translateY(0); } }
+@keyframes ncm-sec-fade-up { 0% { opacity: 0; transform: translateY(6px); } 100% { opacity: 1; transform: translateY(0); } }
+@keyframes ncm-sec-icon-pop { 0% { opacity: 0; transform: scale(0.4); } 50% { transform: scale(1.15); } 100% { opacity: 1; transform: scale(1); } }
+@keyframes ncm-sec-progress-grow { 0% { width: 0; } 100% { width: 100%; } }

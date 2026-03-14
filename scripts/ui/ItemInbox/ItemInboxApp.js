@@ -73,7 +73,9 @@ export class ItemInboxApp extends BaseApplication {
       attemptBreach: ItemInboxApp._onAttemptBreach,
       selectSkill: ItemInboxApp._onSelectSkill,
       spendLuck: ItemInboxApp._onSpendLuck,
-      presentKeyItem: ItemInboxApp._onPresentKeyItem,
+      searchInventory: ItemInboxApp._onSearchInventory,
+      clearTokenSlot: ItemInboxApp._onClearTokenSlot,
+      confirmPresentToken: ItemInboxApp._onConfirmPresentToken,
       submitLogin: ItemInboxApp._onSubmitLogin,
       forceDecrypt: ItemInboxApp._onForceDecrypt,
       relockShard: ItemInboxApp._onRelockShard,
@@ -503,25 +505,39 @@ export class ItemInboxApp extends BaseApplication {
     return bars;
   }
 
+  /** Override render to save scroll position before DOM is replaced */
+  async render(force) {
+    // Save scroll position of content area before re-render
+    const content = this.element?.querySelector('.ncm-shard-content');
+    if (content) this._savedScrollTop = content.scrollTop;
+    return super.render(force);
+  }
+
   // ─── Lifecycle ───
 
   _onRender(context, options) {
     super._onRender(context, options);
 
-    // Apply preset theme class
+    // Apply preset theme class to the .ncm-item-inbox element (not app root)
     if (this.element) {
-      // Remove any existing preset class
-      this.element.classList.forEach(cls => {
-        if (cls.startsWith('ncm-preset-')) this.element.classList.remove(cls);
+      const inbox = this.element.querySelector('.ncm-item-inbox') || this.element;
+      inbox.classList.forEach(cls => {
+        if (cls.startsWith('ncm-preset-')) inbox.classList.remove(cls);
       });
-      // Add current preset class
       const presetKey = context.presetKey || 'blank';
-      this.element.classList.add(`ncm-preset-${presetKey}`);
+      inbox.classList.add(`ncm-preset-${presetKey}`);
     }
 
     // Apply shard accent color as CSS variable
     if (context.presetAccent) {
       this.element?.style?.setProperty('--shard-accent', context.presetAccent);
+    }
+
+    // Restore scroll position after re-render
+    if (this._savedScrollTop != null) {
+      const content = this.element?.querySelector('.ncm-shard-content');
+      if (content) content.scrollTop = this._savedScrollTop;
+      this._savedScrollTop = null;
     }
 
     // Start lockout timer countdown if active, clear if not
@@ -676,7 +692,7 @@ export class ItemInboxApp extends BaseApplication {
     return this._onAttemptBreach.call(this, event, target);
   }
 
-  static async _onPresentKeyItem(event, target) {
+  static async _onSearchInventory(event, target) {
     if (!this.item) return;
     const actor = game.user?.character;
     if (!actor) {
@@ -688,7 +704,7 @@ export class ItemInboxApp extends BaseApplication {
     const keyItemName = config?.keyItemName || config?.keyItemTag || '';
     const keyItemDisplayName = config?.keyItemDisplayName || keyItemName || 'Access Token';
 
-    // Search actor inventory for matching item
+    // Search actor inventory for matching items
     const matchingItems = actor.items?.filter(i => {
       if (config?.keyItemId && i.id === config.keyItemId) return true;
       if (config?.keyItemTag && i.getFlag(MODULE_ID, 'keyItemTag') === config.keyItemTag) return true;
@@ -697,48 +713,106 @@ export class ItemInboxApp extends BaseApplication {
     }) ?? [];
 
     if (matchingItems.length === 0) {
-      ui.notifications.warn(`NCM | You don't have "${keyItemDisplayName}" in your inventory.`);
+      ui.notifications.warn(`NCM | No matching items found for "${keyItemDisplayName}".`);
       return;
     }
+
+    // Build picker dialog with item images
+    let selectedItem = null;
+    if (matchingItems.length === 1) {
+      selectedItem = matchingItems[0];
+    } else {
+      const itemButtons = {};
+      matchingItems.forEach((item, i) => {
+        itemButtons[`item${i}`] = {
+          label: `<img src="${item.img}" width="24" height="24" style="vertical-align:middle;margin-right:6px;border:none;"> ${item.name}`,
+          callback: () => { selectedItem = item; },
+        };
+      });
+      itemButtons.cancel = { label: 'Cancel', callback: () => {} };
+      await new Promise(resolve => {
+        new Dialog({
+          title: `Select Token — ${keyItemDisplayName}`,
+          content: `<p style="margin-bottom:8px;">Multiple matching items found. Select one:</p>`,
+          buttons: itemButtons,
+          default: 'item0',
+          close: resolve,
+        }).render(true);
+      });
+    }
+
+    if (!selectedItem) return;
+
+    // Populate the token slot
+    this._selectedTokenItem = selectedItem;
+    const slotEmpty = this.element?.querySelector('[data-token-empty]');
+    const slotFilled = this.element?.querySelector('[data-token-filled]');
+    const tokenImg = this.element?.querySelector('[data-token-img]');
+    const tokenName = this.element?.querySelector('[data-token-name]');
+    const tokenType = this.element?.querySelector('[data-token-type]');
+    const confirmBtn = this.element?.querySelector('[data-token-confirm]');
+
+    if (slotEmpty) slotEmpty.style.display = 'none';
+    if (slotFilled) { slotFilled.style.display = 'flex'; slotFilled.classList.add('ncm-sec-animate-in'); }
+    if (tokenImg) { tokenImg.src = selectedItem.img || 'icons/svg/item-bag.svg'; }
+    if (tokenName) tokenName.textContent = selectedItem.name;
+    if (tokenType) tokenType.textContent = selectedItem.type || 'Item';
+    if (confirmBtn) { confirmBtn.style.display = 'block'; confirmBtn.classList.add('ncm-sec-animate-in'); }
+
+    this.soundService?.play('click');
+  }
+
+  static _onClearTokenSlot(event, target) {
+    this._selectedTokenItem = null;
+    const slotEmpty = this.element?.querySelector('[data-token-empty]');
+    const slotFilled = this.element?.querySelector('[data-token-filled]');
+    const confirmBtn = this.element?.querySelector('[data-token-confirm]');
+    if (slotEmpty) slotEmpty.style.display = 'flex';
+    if (slotFilled) slotFilled.style.display = 'none';
+    if (confirmBtn) confirmBtn.style.display = 'none';
+  }
+
+  static async _onConfirmPresentToken(event, target) {
+    if (!this.item || !this._selectedTokenItem) return;
+    const actor = game.user?.character;
+    if (!actor) return;
+
+    const config = this.dataShardService?.getConfig(this.item);
+    const selectedItem = this._selectedTokenItem;
 
     // Consume confirmation
     if (config?.keyItemConsumeOnUse) {
       const confirm = await Dialog.confirm({
         title: 'Consume Access Token',
-        content: `<p>Using <strong>${matchingItems[0].name}</strong> will <strong>remove it from your inventory</strong>. Continue?</p>`,
+        content: `<p>Using <strong>${selectedItem.name}</strong> will <strong>remove it from your inventory</strong>. Continue?</p>`,
       });
       if (!confirm) return;
     }
 
-    // Block re-renders during splash
     this._transitionActive = true;
 
     const result = await this.dataShardService.presentKeyItem(this.item, actor);
     if (result.success) {
-      // Show unique key item success splash
-      const content = this.element?.querySelector('.ncm-shard-content');
-      if (content) {
-        const splash = document.createElement('div');
-        splash.className = 'ncm-security-overlay';
-        splash.style.zIndex = '12';
-        splash.innerHTML = `
-          <div class="ncm-sec-card" style="box-shadow:0 0 30px rgba(0,0,0,0.4),0 0 2px #f7c948;">
-            <div class="ncm-sec-icon" style="background:rgba(247,201,72,0.08);border-color:rgba(247,201,72,0.3);color:#f7c948;font-size:22px;">
-              <i class="fas fa-id-card"></i>
+      const card = this.element?.querySelector('.ncm-sec-card');
+      if (card) {
+        card.innerHTML = `
+          <div class="ncm-sec-splash ncm-sec-animate-in">
+            <div class="ncm-sec-splash-icon ncm-sec-splash-icon--gold">
+              <img src="${selectedItem.img || 'icons/svg/item-bag.svg'}" style="width:40px;height:40px;border:none;border-radius:3px;" />
             </div>
-            <div class="ncm-sec-title" style="color:#f7c948;">Token Accepted</div>
-            <div class="ncm-sec-info"><strong>${matchingItems[0].name}</strong> verified.</div>
-            <div class="ncm-sec-muted" style="margin-top:12px;">Access layer cleared. Proceeding...</div>
+            <div class="ncm-sec-splash-title" style="color:#f7c948;">Token Accepted</div>
+            <div class="ncm-sec-splash-sub"><strong>${selectedItem.name}</strong> verified.</div>
+            <div class="ncm-sec-splash-progress"><div class="ncm-sec-splash-progress-fill ncm-sec-splash-progress-fill--gold"></div></div>
+            <div class="ncm-sec-muted">Access layer cleared. Proceeding...</div>
           </div>`;
-        content.appendChild(splash);
-        this.soundService?.play('hack-success');
-        await new Promise(r => setTimeout(r, 2000));
-        splash.remove();
       }
+      this.soundService?.play('hack-success');
+      await new Promise(r => setTimeout(r, 2200));
     } else {
       ui.notifications.warn(`NCM | ${result.error || 'Access token rejected.'}`);
     }
 
+    this._selectedTokenItem = null;
     this._transitionActive = false;
     this.render(true);
   }
@@ -766,19 +840,20 @@ export class ItemInboxApp extends BaseApplication {
 
     const result = await this.dataShardService.attemptLogin(this.item, actor, username, password);
     if (result.success) {
-      // Show welcome splash on the existing overlay card
+      // Show animated welcome splash
       const card = this.element?.querySelector('.ncm-sec-card');
       if (card) {
         card.innerHTML = `
-          <div class="ncm-sec-icon" style="background:rgba(0,255,65,0.06);border-color:rgba(0,255,65,0.25);color:#00ff41;">
-            <i class="fas fa-user-check"></i>
+          <div class="ncm-sec-splash ncm-sec-animate-in">
+            <div class="ncm-sec-splash-icon ncm-sec-splash-icon--green">
+              <i class="fas fa-user-check"></i>
+            </div>
+            <div class="ncm-sec-muted" style="font-size:9px;letter-spacing:0.1em;margin-bottom:4px;">AUTHENTICATION SUCCESSFUL</div>
+            <div class="ncm-sec-splash-title" style="color:#00ff41;">Welcome</div>
+            <div class="ncm-sec-splash-name">${username || actor.name}</div>
+            <div class="ncm-sec-splash-progress"><div class="ncm-sec-splash-progress-fill ncm-sec-splash-progress-fill--green"></div></div>
+            <div class="ncm-sec-muted">Loading secure contents...</div>
           </div>
-          <div class="ncm-sec-muted" style="font-size:9px;letter-spacing:0.1em;margin-bottom:4px;">AUTHENTICATION SUCCESSFUL</div>
-          <div class="ncm-sec-title" style="letter-spacing:0.3em;color:#00ff41;">Welcome</div>
-          <div style="font-family:var(--ncm-font-display,'Orbitron');font-size:16px;font-weight:700;color:var(--sp-accent);text-transform:uppercase;letter-spacing:0.2em;margin:8px 0 16px;">
-            ${username || actor.name}
-          </div>
-          <div class="ncm-sec-muted">Loading secure contents...</div>
         `;
       }
       this.soundService?.play('login-success');

@@ -136,9 +136,10 @@ export class DataShardService {
     const state = this._getState(item);
     const session = this._getActorSession(state, actor?.id);
 
-    // GM bypass — GMs always see content (but overlays still show for them to manage)
-    // Note: GM bypass is handled at the UI level, not here.
-    // Service always returns the true security state.
+    // GM force-bypass flag — set by forceDecrypt, cleared by relockShard
+    if (state.gmBypassed) {
+      return { blocked: false, config, session };
+    }
 
     // Layer 1: NETWORK
     // Supports both new `network` object and legacy flat `requiresNetwork` / `requiredNetwork`
@@ -457,10 +458,20 @@ export class DataShardService {
     if (!isGM()) return { success: false, error: 'GM only' };
 
     try {
-      const state = this._getState(shardItem);
-      state.decrypted = true;
+      // Bypass ALL security layers — not just encryption
+      // Must use unsetFlag + setFlag to avoid mergeObject issues
+      await shardItem.unsetFlag(MODULE_ID, 'state');
+      await shardItem.setFlag(MODULE_ID, 'state', {
+        decrypted: true,
+        gmBypassed: true,  // Tells security stack to skip all layers for everyone
+        sessions: {},
+        destroyed: false,
+        bootPlayed: true, // Skip boot on force decrypt
+        firstAccessedAt: null,
+        accessCount: 0,
+      });
 
-      await shardItem.update({ [`flags.${MODULE_ID}.state`]: state });
+      this.securityService?.resetAllForTarget(shardItem.id);
       this.eventBus?.emit(EVENTS.SHARD_DECRYPTED, { itemId: shardItem.id, actorId: 'gm-override' });
       this.soundService?.play('shard-decrypt');
       this._broadcastStateChange(shardItem.id);

@@ -76,6 +76,16 @@
   z-index: 10;
 }
 
+/* Themed scrollbars across entire viewer */
+.ncm-app .ncm-item-inbox {
+  scrollbar-width: thin;
+  scrollbar-color: var(--sp-border, #2a2a45) transparent;
+}
+.ncm-app .ncm-item-inbox ::-webkit-scrollbar { width: 4px; height: 0; }
+.ncm-app .ncm-item-inbox ::-webkit-scrollbar-track { background: transparent; }
+.ncm-app .ncm-item-inbox ::-webkit-scrollbar-thumb { background: var(--sp-border, #2a2a45); border-radius: 2px; }
+.ncm-app .ncm-item-inbox ::-webkit-scrollbar-thumb:hover { background: var(--sp-accent, #19f3f7); }
+
 /* Scanline overlay */
 .ncm-app .ncm-item-inbox::after {
   content: '';
@@ -349,7 +359,8 @@
 
 .ncm-app .ncm-shard-content::-webkit-scrollbar { width: 4px; }
 .ncm-app .ncm-shard-content::-webkit-scrollbar-track { background: transparent; }
-.ncm-app .ncm-shard-content::-webkit-scrollbar-thumb { background: var(--ncm-border-active, #3a3a5a); border-radius: 2px; }
+.ncm-app .ncm-shard-content::-webkit-scrollbar-thumb { background: var(--sp-border, #2a2a45); border-radius: 2px; }
+.ncm-app .ncm-shard-content::-webkit-scrollbar-thumb:hover { background: var(--sp-accent, #19f3f7); }
 
 .ncm-app .ncm-shard-entries { display: flex; flex-direction: column; gap: 10px; }
 

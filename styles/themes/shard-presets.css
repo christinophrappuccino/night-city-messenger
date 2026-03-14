@@ -35,7 +35,7 @@
 /* ─── BLANK / DEFAULT ─── */
 /* Maps to existing --ncm-* variables so non-themed shards look as before */
 
-.ncm-preset-blank {
+.ncm-item-inbox.ncm-preset-blank {
   --sp-bg-deep:         var(--ncm-bg-deep, #0a0a0f);
   --sp-bg-base:         var(--ncm-bg-base, #12121a);
   --sp-bg-surface:      var(--ncm-bg-surface, #1a1a2e);
@@ -62,7 +62,7 @@
 /* ─── 1. CORPORATE DOSSIER (Arasaka) ─── */
 /* Crimson red + deep black + gold accents */
 
-.ncm-preset-corporate-dossier {
+.ncm-item-inbox.ncm-preset-corporate-dossier {
   --sp-bg-deep:         #0a0606;
   --sp-bg-base:         #0e0808;
   --sp-bg-surface:      #120a0a;
@@ -89,7 +89,7 @@
 /* ─── 2. MILITARY INTELLIGENCE ─── */
 /* Olive green + amber warning + steel blue */
 
-.ncm-preset-military-intel {
+.ncm-item-inbox.ncm-preset-military-intel {
   --sp-bg-deep:         #080a08;
   --sp-bg-base:         #0a0d08;
   --sp-bg-surface:      #0d100a;
@@ -116,7 +116,7 @@
 /* ─── 3. STREET SHARD ─── */
 /* Warm gray + dull orange + muted tones */
 
-.ncm-preset-street-shard {
+.ncm-item-inbox.ncm-preset-street-shard {
   --sp-bg-deep:         #0c0c0c;
   --sp-bg-base:         #101010;
   --sp-bg-surface:      #141414;
@@ -143,7 +143,7 @@
 /* ─── 4. FIXER DEAD DROP ─── */
 /* Neon purple + hot pink + gold + cyan */
 
-.ncm-preset-fixer-dead-drop {
+.ncm-item-inbox.ncm-preset-fixer-dead-drop {
   --sp-bg-deep:         #0c080f;
   --sp-bg-base:         #0e0a12;
   --sp-bg-surface:      #120e18;
@@ -170,7 +170,7 @@
 /* ─── 5. BLACK MARKET DATA DUMP ─── */
 /* Chrome silver + electric neon + hot magenta */
 
-.ncm-preset-black-market {
+.ncm-item-inbox.ncm-preset-black-market {
   --sp-bg-deep:         #0c0d0e;
   --sp-bg-base:         #10111a;
   --sp-bg-surface:      #14161e;
@@ -197,7 +197,7 @@
 /* ─── 6. PERSONAL MEMORY ─── */
 /* Warm amber + soft rose + sky blue */
 
-.ncm-preset-personal-memory {
+.ncm-item-inbox.ncm-preset-personal-memory {
   --sp-bg-deep:         #0f0c08;
   --sp-bg-base:         #120e08;
   --sp-bg-surface:      #15120a;
@@ -224,7 +224,7 @@
 /* ─── 7. MEDIA LEAK ─── */
 /* Electric blue + alert red + white + amber */
 
-.ncm-preset-media-leak {
+.ncm-item-inbox.ncm-preset-media-leak {
   --sp-bg-deep:         #08090f;
   --sp-bg-base:         #0a0c14;
   --sp-bg-surface:      #0e1018;
@@ -251,7 +251,7 @@
 /* ─── 8. NETWATCH EVIDENCE ─── */
 /* Authority purple + badge red + gold */
 
-.ncm-preset-netwatch-evidence {
+.ncm-item-inbox.ncm-preset-netwatch-evidence {
   --sp-bg-deep:         #0a080c;
   --sp-bg-base:         #0c0a10;
   --sp-bg-surface:      #10101a;

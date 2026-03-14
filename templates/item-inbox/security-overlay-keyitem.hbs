@@ -1,19 +1,43 @@
-{{!-- Security Overlay: Key Item Layer (Sprint 4.6 Themed Redesign) --}}
+{{!-- Security Overlay: Key Item Layer (Sprint 4.6 — Token Slot Picker) --}}
 <div class="ncm-security-overlay ncm-security-overlay-keyitem">
   <div class="ncm-sec-backdrop ncm-sec-backdrop--scanline"></div>
-  <div class="ncm-sec-card ncm-sec-card--keyitem">
+  <div class="ncm-sec-card ncm-sec-card--keyitem ncm-sec-animate-in">
     <div class="ncm-sec-icon ncm-sec-icon--keyitem"><i class="fas {{keyItemIcon}}"></i></div>
     <div class="ncm-sec-title">Access Token Required</div>
     <div class="ncm-sec-info">Present the required physical token:</div>
     <div class="ncm-sec-highlight ncm-sec-highlight--gold">{{keyItemDisplayName}}</div>
+
     {{#if hasActor}}
-      <button type="button" data-action="presentKeyItem" class="ncm-sec-btn ncm-sec-btn--primary" style="margin-top:14px;">
+      {{!-- Token Slot — empty until player selects an item --}}
+      <div class="ncm-sec-token-slot" data-token-slot>
+        <div class="ncm-sec-token-slot-empty" data-token-empty>
+          <i class="fas fa-hand-pointer"></i>
+          <span>No token loaded</span>
+        </div>
+        <div class="ncm-sec-token-slot-filled" data-token-filled style="display:none;">
+          <img class="ncm-sec-token-img" data-token-img src="" alt="" />
+          <div class="ncm-sec-token-details">
+            <div class="ncm-sec-token-name" data-token-name></div>
+            <div class="ncm-sec-token-type" data-token-type></div>
+          </div>
+          <button type="button" data-action="clearTokenSlot" class="ncm-sec-token-clear" title="Remove"><i class="fas fa-times"></i></button>
+        </div>
+      </div>
+
+      <button type="button" data-action="searchInventory" class="ncm-sec-btn ncm-sec-btn--primary" style="margin-top:10px;">
+        <i class="fas fa-search"></i> Search Inventory
+      </button>
+
+      {{!-- Present button — only visible when token is loaded --}}
+      <button type="button" data-action="confirmPresentToken" class="ncm-sec-btn ncm-sec-btn--breach" data-token-confirm style="display:none;margin-top:6px;">
         <i class="fas fa-hand-holding"></i> Present Token
       </button>
+
+      <div class="ncm-sec-muted">Select an item from your inventory to present as the access token.</div>
     {{else}}
-      <div class="ncm-sec-muted">No character assigned. Set your character in User Configuration.</div>
+      <div class="ncm-sec-muted" style="margin-top:12px;">No character assigned. Set your character in User Configuration.</div>
     {{/if}}
-    <div class="ncm-sec-muted">Check your inventory for the required item.</div>
+
     {{#if isGM}}
       <div class="ncm-sec-gm">
         <div class="ncm-sec-gm-label">GM Controls</div>
