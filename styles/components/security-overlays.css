@@ -1,884 +1,706 @@
 /* ═══════════════════════════════════════════════════════════
- * Security Overlays
+ * Security Overlays & Hacking Sequence — Sprint 4.6 Themed Redesign
  * @file styles/components/security-overlays.css
  * @module cyberpunkred-messenger
- * @description Layered security overlay styles for data shards.
- *              Includes backdrop animations (static, scanlines, matrix rain),
- *              hacking sequence, BLACK ICE effects, and screen shake.
+ * @description All security screens (network, key item, login, encryption,
+ *   hacking sequence, result splashes) themed via --sp-* variables.
+ *
+ * ─── SECTION INDEX ───
+ *  §1   Shared Overlay Structure
+ *  §2   Backdrops (animated)
+ *  §3   Security Card
+ *  §4   Icon, Title, Info, Highlight
+ *  §5   Buttons (themed)
+ *  §6   Attempt Dots
+ *  §7   Login Form
+ *  §8   Skill Selection
+ *  §9   Lockout State
+ *  §10  GM Controls
+ *  §11  Hacking Sequence — Split Layout
+ *  §12  Hacking — Terminal
+ *  §13  Hacking — ICE Visualization
+ *  §14  Hacking — Bottom Bar
+ *  §15  Hacking — Result Overlay
+ *  §16  Result — Roll Display
+ *  §17  Result — Damage Box
+ *  §18  Animations & Keyframes
  * ═══════════════════════════════════════════════════════════ */
 
-/* ─── Overlay Container ─── */
 
-.ncm-security-overlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 10;
-  animation: ncm-overlay-appear 0.4s ease;
+/* ═══════════════════════════════════════════
+   §1  SHARED OVERLAY STRUCTURE
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-security-overlay {
+  position: absolute; inset: 0; z-index: 10;
+  display: flex; align-items: center; justify-content: center;
+  padding: 30px;
 }
 
-@keyframes ncm-overlay-appear {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
 
-/* ─── Overlay Backdrops ─── */
+/* ═══════════════════════════════════════════
+   §2  BACKDROPS (animated)
+   ═══════════════════════════════════════════ */
 
-.ncm-overlay-backdrop {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
+.ncm-app .ncm-sec-backdrop {
+  position: absolute; inset: 0; z-index: 0;
   pointer-events: none;
 }
 
-/* Static Noise (Network layer) */
-.ncm-static-noise {
-  background:
-    repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 2px,
-      rgba(255, 255, 255, 0.02) 2px,
-      rgba(255, 255, 255, 0.02) 4px
-    );
-  animation: ncm-static 0.15s steps(3) infinite;
+.ncm-app .ncm-sec-backdrop--static {
+  background: repeating-linear-gradient(0deg,
+    transparent, transparent 2px,
+    rgba(255,255,255,0.015) 2px, rgba(255,255,255,0.015) 4px);
+  animation: ncm-sec-static 0.15s steps(3) infinite;
 }
 
-@keyframes ncm-static {
-  0% { background-position: 0 0; }
-  33% { background-position: -1px 2px; }
-  66% { background-position: 1px -1px; }
-  100% { background-position: 0 0; }
+.ncm-app .ncm-sec-backdrop--scanline {
+  background: repeating-linear-gradient(0deg,
+    transparent, transparent 3px,
+    rgba(0,255,65,0.02) 3px, rgba(0,255,65,0.02) 4px);
 }
 
-.ncm-overlay-network .ncm-overlay-backdrop::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: rgba(255, 0, 0, 0.05);
-  animation: ncm-pulse-red 2s ease-in-out infinite;
+.ncm-app .ncm-sec-backdrop--matrix {
+  background: radial-gradient(ellipse at center, rgba(0,255,200,0.03) 0%, transparent 70%);
+}
+.ncm-app .ncm-sec-backdrop--matrix::after {
+  content: ''; position: absolute; inset: 0;
+  background: repeating-linear-gradient(0deg,
+    transparent, transparent 20px,
+    rgba(25,243,247,0.01) 20px, rgba(25,243,247,0.01) 21px);
+  animation: ncm-sec-dataflow 2s linear infinite;
 }
 
-@keyframes ncm-pulse-red {
-  0%, 100% { opacity: 0.3; }
-  50% { opacity: 0.8; }
-}
 
-/* Slow Scanlines (Key Item layer) */
-.ncm-scanline-slow {
-  background: repeating-linear-gradient(
-    45deg,
-    transparent,
-    transparent 8px,
-    rgba(255, 255, 255, 0.015) 8px,
-    rgba(255, 255, 255, 0.015) 9px
-  );
-  animation: ncm-scanline-drift 4s linear infinite;
-}
+/* ═══════════════════════════════════════════
+   §3  SECURITY CARD
+   ═══════════════════════════════════════════ */
 
-@keyframes ncm-scanline-drift {
-  from { background-position: 0 0; }
-  to { background-position: 100px 100px; }
-}
-
-/* Green Scanlines (Login layer) */
-.ncm-scanline-green {
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 3px,
-    rgba(0, 255, 65, 0.03) 3px,
-    rgba(0, 255, 65, 0.03) 4px
-  );
-}
-
-/* Matrix Rain placeholder (Encryption layer — real canvas in JS) */
-.ncm-matrix-rain {
-  background: radial-gradient(ellipse at center, rgba(0, 255, 200, 0.05) 0%, transparent 70%);
-}
-
-.ncm-matrix-rain::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background:
-    repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 20px,
-      rgba(25, 243, 247, 0.015) 20px,
-      rgba(25, 243, 247, 0.015) 21px
-    );
-  animation: ncm-data-flow 2s linear infinite;
-}
-
-@keyframes ncm-data-flow {
-  from { transform: translateY(-20px); }
-  to { transform: translateY(0); }
-}
-
-/* ─── Security Card ─── */
-
-.ncm-security-card {
-  position: relative;
-  z-index: 1;
-  background: var(--ncm-bg-base, #12121a);
-  border: 1px solid var(--ncm-bg-elevated, #252540);
-  border-radius: 6px;
-  padding: 24px 28px;
-  max-width: 380px;
-  width: 90%;
+.ncm-app .ncm-sec-card {
+  position: relative; z-index: 1;
+  background: var(--sp-bg-base, #12121a);
+  border: 1px solid var(--sp-border, #2a2a45);
+  border-radius: 4px;
+  padding: 28px 32px;
+  max-width: 400px; width: 90%;
   text-align: center;
-  box-shadow:
-    0 0 20px rgba(0, 0, 0, 0.5),
-    0 0 1px var(--ncm-primary, #F65261);
-  animation: ncm-card-appear 0.4s ease;
+  box-shadow: 0 0 30px rgba(0,0,0,0.4), 0 0 2px var(--sp-accent, #19f3f7);
 }
 
-@keyframes ncm-card-appear {
-  from {
-    opacity: 0;
-    transform: scale(0.9);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
+.ncm-app .ncm-sec-card--login {
+  box-shadow: 0 0 30px rgba(0,0,0,0.4), 0 0 2px #00ff41;
 }
 
-/* Layer-specific card accents */
-.ncm-overlay-network .ncm-security-card {
-  border-color: #ff4444;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5), 0 0 2px #ff4444;
+
+/* ═══════════════════════════════════════════
+   §4  ICON, TITLE, INFO, HIGHLIGHT
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-sec-icon {
+  width: 56px; height: 56px; border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 14px;
+  background: var(--sp-icon-bg, rgba(25,243,247,0.06));
+  border: 1px solid var(--sp-icon-border, rgba(25,243,247,0.2));
+  font-size: 22px; color: var(--sp-accent, #19f3f7);
 }
 
-.ncm-overlay-keyitem .ncm-security-card {
-  border-color: var(--ncm-accent, #f7c948);
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5), 0 0 2px var(--ncm-accent, #f7c948);
+.ncm-app .ncm-sec-icon--network {
+  background: rgba(255,68,68,0.08) !important;
+  border-color: rgba(255,68,68,0.3) !important;
+  color: #ff4444 !important;
 }
 
-.ncm-overlay-login .ncm-security-card {
-  border-color: #00ff41;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5), 0 0 2px #00ff41;
+.ncm-app .ncm-sec-icon--keyitem {
+  background: rgba(247,201,72,0.08) !important;
+  border-color: rgba(247,201,72,0.3) !important;
+  color: #f7c948 !important;
+  animation: ncm-sec-pulse-bg 2s ease-in-out infinite;
 }
 
-.ncm-overlay-encryption .ncm-security-card {
-  border-color: var(--ncm-secondary, #19f3f7);
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5), 0 0 2px var(--ncm-secondary, #19f3f7);
+.ncm-app .ncm-sec-icon--login {
+  background: rgba(0,255,65,0.06) !important;
+  border-color: rgba(0,255,65,0.25) !important;
+  color: #00ff41 !important;
 }
 
-.ncm-security-icon {
-  font-size: 28px;
+.ncm-app .ncm-sec-title {
+  font-family: var(--ncm-font-display, 'Orbitron', sans-serif);
+  font-size: 14px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.2em;
+  color: var(--sp-text-bright, #e0e0e8);
+  margin-bottom: 4px;
+}
+
+.ncm-app .ncm-sec-info {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 11px; line-height: 1.7;
+  color: var(--sp-text-body, #8888a0);
   margin-bottom: 8px;
 }
+.ncm-app .ncm-sec-info strong { color: var(--sp-accent, #19f3f7); font-weight: 700; }
+.ncm-app .ncm-sec-text-danger { color: #ff0033 !important; }
+.ncm-app .ncm-sec-text-muted { color: var(--sp-text-muted, #555570); }
 
-.ncm-overlay-network .ncm-security-icon { color: #ff4444; }
-.ncm-overlay-keyitem .ncm-security-icon { color: var(--ncm-accent, #f7c948); animation: ncm-pulse-icon 2s ease-in-out infinite; }
-.ncm-overlay-login .ncm-security-icon { color: #00ff41; }
-.ncm-overlay-encryption .ncm-security-icon { color: var(--ncm-secondary, #19f3f7); }
-
-@keyframes ncm-pulse-icon {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.6; transform: scale(0.95); }
+.ncm-app .ncm-sec-highlight {
+  font-family: var(--ncm-font-display, 'Orbitron', sans-serif);
+  font-size: 12px; font-weight: 600;
+  color: var(--sp-accent, #19f3f7);
+  text-transform: uppercase; letter-spacing: 0.15em;
+  padding: 6px 14px; margin: 8px auto;
+  background: var(--sp-icon-bg, rgba(25,243,247,0.06));
+  border: 1px solid var(--sp-icon-border, rgba(25,243,247,0.2));
+  border-radius: 2px;
+  display: inline-block;
 }
 
-.ncm-security-title {
-  font-family: var(--ncm-font-display, 'Orbitron', monospace);
-  font-size: 16px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 2px;
-  margin: 0 0 8px 0;
+.ncm-app .ncm-sec-highlight--gold {
+  color: #f7c948 !important;
+  background: rgba(247,201,72,0.06) !important;
+  border-color: rgba(247,201,72,0.2) !important;
 }
 
-.ncm-security-detail {
-  font-size: 13px;
-  color: var(--ncm-text-secondary, #8888a0);
-  margin: 0 0 4px 0;
+.ncm-app .ncm-sec-muted {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 9px; color: var(--sp-text-muted, #555570);
+  letter-spacing: 0.05em; margin-top: 8px;
 }
 
-.ncm-security-status {
-  font-family: var(--ncm-font-mono, monospace);
-  font-size: 12px;
-  color: #ff4444;
-  margin-top: 8px;
+
+/* ═══════════════════════════════════════════
+   §5  BUTTONS (themed, Foundry-override)
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-sec-btn {
+  display: block !important; width: 100% !important;
+  padding: 10px 16px !important; margin-top: 8px !important;
+  font-family: var(--ncm-font-body, 'Rajdhani', sans-serif) !important;
+  font-size: 13px !important; font-weight: 700 !important;
+  text-transform: uppercase !important; letter-spacing: 0.1em !important;
+  border-radius: 3px !important; cursor: pointer !important;
+  transition: all 0.15s !important; text-align: center !important;
+  appearance: none !important; -webkit-appearance: none !important;
+  box-shadow: none !important; min-width: 0 !important; min-height: 0 !important;
+  line-height: 1.4 !important;
 }
 
-.ncm-security-warning {
-  font-size: 12px;
-  color: var(--ncm-accent, #f7c948);
-  margin: 4px 0;
+.ncm-app .ncm-sec-btn--primary {
+  background: rgba(25,243,247,0.1) !important;
+  color: var(--sp-accent, #19f3f7) !important;
+  border: 1px solid rgba(25,243,247,0.3) !important;
+}
+.ncm-app .ncm-sec-btn--primary:hover {
+  background: rgba(25,243,247,0.2) !important;
+  border-color: var(--sp-accent, #19f3f7) !important;
+  box-shadow: 0 0 10px rgba(25,243,247,0.15) !important;
 }
 
-.ncm-security-error {
-  font-size: 13px;
-  color: #ff2020;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 1px;
+.ncm-app .ncm-sec-btn--login {
+  background: rgba(0,255,65,0.08) !important;
+  color: #00ff41 !important;
+  border: 1px solid rgba(0,255,65,0.3) !important;
+}
+.ncm-app .ncm-sec-btn--login:hover {
+  background: rgba(0,255,65,0.15) !important;
+  box-shadow: 0 0 10px rgba(0,255,65,0.15) !important;
 }
 
-/* ─── ICE Labels ─── */
-
-.ncm-ice-label { font-weight: 700; }
-.ncm-ice-ICE { color: #ffcc00; }
-.ncm-ice-BLACK_ICE { color: #ff0000; }
-.ncm-ice-RED_ICE { color: #ff2222; }
-
-/* ─── Attempt Counter ─── */
-
-.ncm-attempt-counter {
-  font-family: var(--ncm-font-mono, monospace);
-  font-size: 12px;
-  color: var(--ncm-text-secondary);
-  margin: 8px 0;
+.ncm-app .ncm-sec-btn--breach {
+  background: linear-gradient(135deg, var(--sp-accent, #F65261), #cc2244) !important;
+  color: #fff !important; border: none !important;
+  letter-spacing: 0.2em !important;
+  font-family: var(--ncm-font-display, 'Orbitron', sans-serif) !important;
 }
-
-.ncm-lockout-timer {
-  color: #ff4444;
-  font-weight: 700;
-  margin-left: 8px;
-}
-
-/* ─── Skill Selection ─── */
-
-.ncm-skill-list {
-  margin: 10px 0;
-  text-align: left;
-}
-
-.ncm-skill-list h4 {
-  font-size: 12px;
-  color: var(--ncm-text-secondary);
-  margin: 0 0 6px 0;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.ncm-skill-option {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 6px 10px;
-  margin-bottom: 4px;
-  background: var(--ncm-bg-surface, #1a1a2e);
-  border: 1px solid var(--ncm-bg-elevated, #252540);
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  font-size: 12px;
-  text-align: left;
-  color: var(--ncm-text-primary, #e0e0e8);
-}
-
-.ncm-skill-option:hover {
-  border-color: var(--ncm-secondary, #19f3f7);
-  background: var(--ncm-bg-elevated, #252540);
-}
-
-.ncm-skill-option.ncm-selected {
-  border-color: var(--ncm-secondary, #19f3f7);
-  background: rgba(25, 243, 247, 0.1);
-  box-shadow: 0 0 4px rgba(25, 243, 247, 0.3);
-}
-
-.ncm-skill-name {
-  font-weight: 600;
-  flex: 1;
-}
-
-.ncm-skill-info {
-  font-family: var(--ncm-font-mono, monospace);
-  font-size: 10px;
-  color: var(--ncm-text-secondary);
-}
-
-.ncm-skill-dc {
-  font-family: var(--ncm-font-mono, monospace);
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--ncm-primary, #F65261);
-}
-
-/* ─── Luck Controls ─── */
-
-.ncm-luck-controls {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 8px 0;
-  font-size: 12px;
-}
-
-.ncm-luck-controls label {
-  color: var(--ncm-accent, #f7c948);
-}
-
-/* ─── Hack Progress ─── */
-
-.ncm-hack-progress {
-  margin: 12px 0;
-}
-
-.ncm-hack-progress-bar {
-  height: 6px;
-  background: var(--ncm-bg-deep, #0a0a0f);
-  border: 1px solid var(--ncm-bg-elevated, #252540);
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.ncm-hack-progress-fill {
-  height: 100%;
-  width: 0%;
-  background: linear-gradient(90deg, var(--ncm-secondary, #19f3f7), var(--ncm-primary, #F65261));
-  border-radius: 3px;
-  transition: width 2s ease-in-out;
-}
-
-.ncm-hack-status {
-  font-family: var(--ncm-font-mono, monospace);
-  font-size: 11px;
-  color: var(--ncm-secondary, #19f3f7);
-  text-align: center;
-  margin-top: 4px;
-  animation: ncm-blink 1s steps(1) infinite;
-}
-
-@keyframes ncm-blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
-}
-
-/* Active hacking state */
-.ncm-hacking-active .ncm-matrix-rain::before {
-  animation-duration: 0.5s;
-}
-
-.ncm-hacking-active .ncm-security-card {
-  box-shadow: 0 0 30px rgba(25, 243, 247, 0.3), 0 0 2px var(--ncm-secondary, #19f3f7);
-}
-
-/* ─── Breach Button ─── */
-
-.ncm-btn-hack {
-  display: block;
-  width: 100%;
-  padding: 10px;
-  margin-top: 10px;
-  font-family: var(--ncm-font-display, 'Orbitron', monospace);
-  font-size: 14px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 2px;
-  background: linear-gradient(135deg, var(--ncm-primary, #F65261), #cc2244);
-  color: #ffffff;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.ncm-btn-hack:hover:not(:disabled) {
-  box-shadow: 0 0 12px rgba(246, 82, 97, 0.5);
+.ncm-app .ncm-sec-btn--breach:hover {
+  box-shadow: 0 0 15px rgba(246,82,97,0.4) !important;
   transform: translateY(-1px);
 }
 
-.ncm-btn-hack:disabled,
-.ncm-btn-hack.ncm-btn-disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
+.ncm-app .ncm-sec-btn--ghost {
+  background: rgba(136,136,160,0.06) !important;
+  color: var(--sp-text-body, #8888a0) !important;
+  border: 1px solid rgba(136,136,160,0.15) !important;
+  margin-top: 4px !important;
 }
 
-/* ─── Login Form ─── */
-
-.ncm-login-form {
-  text-align: left;
-  margin-top: 8px;
-}
-
-.ncm-login-form .ncm-form-group {
-  margin-bottom: 8px;
-}
-
-.ncm-login-form label {
-  display: block;
-  font-size: 11px;
-  color: #00ff41;
-  font-family: var(--ncm-font-mono, monospace);
-  text-transform: uppercase;
-  margin-bottom: 2px;
-}
-
-.ncm-login-form .ncm-input {
-  font-family: var(--ncm-font-mono, monospace);
-}
-
-.ncm-login-meta {
-  font-size: 11px;
-  color: var(--ncm-text-secondary);
-  margin-bottom: 8px;
-  text-align: right;
-}
-
-/* ─── ICE Shatter Animation (hack success) ─── */
-
-.ncm-ice-shatter {
-  animation: ncm-shatter 0.8s ease forwards;
-}
-
-@keyframes ncm-shatter {
-  0% {
-    opacity: 1;
-    clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%);
-  }
-  30% {
-    clip-path: polygon(5% 0%, 45% 0%, 50% 50%, 0% 45%);
-  }
-  60% {
-    opacity: 0.5;
-    clip-path: polygon(10% 0%, 30% 0%, 35% 30%, 5% 25%);
-  }
-  100% {
-    opacity: 0;
-    clip-path: polygon(50% 50%, 50% 50%, 50% 50%, 50% 50%);
-  }
-}
-
-/* ─── Screen Shake (BLACK ICE) ─── */
-
-.ncm-screen-shake {
-  animation: ncm-shake-heavy 0.5s ease;
-}
-
-@keyframes ncm-shake-heavy {
-  0%, 100% { transform: translate(0, 0); }
-  10% { transform: translate(-4px, 2px); }
-  20% { transform: translate(3px, -3px); }
-  30% { transform: translate(-2px, 4px); }
-  40% { transform: translate(4px, -1px); }
-  50% { transform: translate(-3px, 3px); }
-  60% { transform: translate(2px, -4px); }
-  70% { transform: translate(-4px, 1px); }
-  80% { transform: translate(3px, 3px); }
-  90% { transform: translate(-1px, -2px); }
-}
-
-/* Card shake (login fail) */
-.ncm-shake {
-  animation: ncm-shake-light 0.3s ease;
-}
-
-@keyframes ncm-shake-light {
-  0%, 100% { transform: translateX(0); }
-  20% { transform: translateX(-2px); }
-  40% { transform: translateX(2px); }
-  60% { transform: translateX(-2px); }
-  80% { transform: translateX(2px); }
-}
-
-/* ─── Flash Effects ─── */
-
-.ncm-flash-red {
-  animation: ncm-red-flash 0.5s ease;
-}
-
-@keyframes ncm-red-flash {
-  0% { box-shadow: inset 0 0 0 rgba(255, 0, 0, 0); }
-  30% { box-shadow: inset 0 0 60px rgba(255, 0, 0, 0.4); }
-  100% { box-shadow: inset 0 0 0 rgba(255, 0, 0, 0); }
-}
-
-/* ─── Damage Float ─── */
-
-.ncm-damage-float {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-family: var(--ncm-font-display, 'Orbitron', monospace);
-  font-size: 36px;
-  font-weight: 900;
-  color: #ff0000;
-  text-shadow: 0 0 10px rgba(255, 0, 0, 0.8);
-  z-index: 100;
-  pointer-events: none;
-  animation: ncm-damage-rise 1s ease-out forwards;
-}
-
-@keyframes ncm-damage-rise {
-  0% {
-    opacity: 1;
-    transform: translate(-50%, -50%) scale(0.5);
-  }
-  50% {
-    opacity: 1;
-    transform: translate(-50%, -70%) scale(1.2);
-  }
-  100% {
-    opacity: 0;
-    transform: translate(-50%, -120%) scale(1);
-  }
-}
-
-/* ─── Hacking Sequence (full overlay) ─── */
-
-.ncm-hacking-sequence {
-  position: relative;
-  width: 100%;
-  height: 100%;
-}
-
-.ncm-hack-backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.9);
-}
-
-.ncm-matrix-canvas {
-  width: 100%;
-  height: 100%;
-  opacity: 0.3;
-}
-
-.ncm-hack-panel {
-  position: relative;
-  z-index: 1;
-  padding: 20px;
-}
-
-.ncm-hack-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-}
-
-.ncm-hack-title {
-  font-family: var(--ncm-font-display, 'Orbitron', monospace);
-  font-size: 16px;
-  color: var(--ncm-secondary, #19f3f7);
-  text-transform: uppercase;
-  letter-spacing: 2px;
-}
-
-.ncm-hack-target {
-  font-family: var(--ncm-font-mono, monospace);
-  font-size: 12px;
-  color: var(--ncm-primary, #F65261);
-}
-
-.ncm-hack-code-window {
-  background: rgba(0, 0, 0, 0.6);
-  border: 1px solid rgba(25, 243, 247, 0.2);
-  border-radius: 4px;
-  padding: 8px 12px;
-  margin-bottom: 12px;
-  font-family: var(--ncm-font-mono, monospace);
-  font-size: 11px;
-  line-height: 1.8;
-}
-
-.ncm-code-line {
-  color: var(--ncm-text-secondary, #8888a0);
-}
-
-.ncm-code-keyword {
-  color: var(--ncm-secondary, #19f3f7);
-  font-weight: 700;
-}
-
-.ncm-code-active {
-  color: var(--ncm-accent, #f7c948);
-  animation: ncm-blink 1s steps(1) infinite;
-}
-
-.ncm-hack-progress-label {
-  display: flex;
-  justify-content: space-between;
-  font-family: var(--ncm-font-mono, monospace);
-  font-size: 11px;
-  margin-top: 4px;
-}
-
-.ncm-hack-percent { color: var(--ncm-secondary, #19f3f7); }
-.ncm-hack-status-text { color: var(--ncm-text-secondary); }
-
-.ncm-hack-stats {
-  display: flex;
-  gap: 16px;
-  margin-top: 12px;
-}
-
-.ncm-hack-stat {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.ncm-stat-label {
-  font-family: var(--ncm-font-mono, monospace);
-  font-size: 9px;
-  color: var(--ncm-text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
-.ncm-stat-value {
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.ncm-stat-luck .ncm-stat-value { color: var(--ncm-accent, #f7c948); }
-
-/* ─── Reduced Motion ─── */
-
-@media (prefers-reduced-motion: reduce) {
-  .ncm-security-overlay,
-  .ncm-security-card,
-  .ncm-overlay-card,
-  .ncm-static-noise,
-  .ncm-scanline-slow,
-  .ncm-scanline-green,
-  .ncm-matrix-rain::before,
-  .ncm-overlay-network .ncm-overlay-backdrop::after,
-  .ncm-hack-progress-fill,
-  .ncm-hacking-active .ncm-matrix-rain::before {
-    animation: none !important;
-    transition: none !important;
-  }
-
-  .ncm-ice-shatter,
-  .ncm-screen-shake,
-  .ncm-shake,
-  .ncm-flash-red,
-  .ncm-damage-float {
-    animation: none !important;
-  }
-}
-
-
-/* ═══════════════════════════════════════════════════════════
- * TEMPLATE CLASS ALIASES
- * Templates use ncm-overlay-* but CSS was written as ncm-security-*.
- * These rules ensure both naming conventions work.
- * ═══════════════════════════════════════════════════════════ */
-
-/* Card container (templates use ncm-overlay-card) */
-.ncm-overlay-card {
-  position: relative;
-  z-index: 1;
-  background: var(--ncm-bg-base, #12121a);
-  border: 1px solid var(--ncm-bg-elevated, #252540);
-  border-radius: 6px;
-  padding: 24px 28px;
-  max-width: 380px;
-  width: 90%;
-  text-align: center;
-  box-shadow:
-    0 0 20px rgba(0, 0, 0, 0.5),
-    0 0 1px var(--ncm-primary, #F65261);
-  animation: ncm-card-appear 0.4s ease;
-}
-
-/* Layer-specific card accents (templates use ncm-security-overlay-* prefix) */
-.ncm-security-overlay-network .ncm-overlay-card {
-  border-color: #ff4444;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5), 0 0 2px #ff4444;
-}
-.ncm-security-overlay-keyitem .ncm-overlay-card {
-  border-color: var(--ncm-accent, #f7c948);
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5), 0 0 2px var(--ncm-accent, #f7c948);
-}
-.ncm-security-overlay-login .ncm-overlay-card {
-  border-color: #00ff41;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5), 0 0 2px #00ff41;
-}
-.ncm-security-overlay-encryption .ncm-overlay-card {
-  border-color: var(--ncm-secondary, #19f3f7);
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5), 0 0 2px var(--ncm-secondary, #19f3f7);
-}
-
-/* Icon (templates use ncm-overlay-icon) */
-.ncm-overlay-icon {
-  font-size: 28px;
-  margin-bottom: 8px;
-}
-.ncm-security-overlay-network .ncm-overlay-icon { color: #ff4444; }
-.ncm-security-overlay-keyitem .ncm-overlay-icon { color: var(--ncm-accent, #f7c948); animation: ncm-pulse-icon 2s ease-in-out infinite; }
-.ncm-security-overlay-login .ncm-overlay-icon { color: #00ff41; }
-.ncm-security-overlay-encryption .ncm-overlay-icon { color: var(--ncm-secondary, #19f3f7); }
-
-/* Title (templates use ncm-overlay-title) */
-.ncm-overlay-title {
-  font-family: var(--ncm-font-display, 'Orbitron', monospace);
-  font-size: 16px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 2px;
-  color: var(--ncm-text-primary, #e0e0e8);
-  margin: 0 0 8px 0;
-}
-
-/* Info text */
-.ncm-overlay-info {
-  font-size: 13px;
-  color: var(--ncm-text-secondary, #8888a0);
-  margin: 0 0 4px 0;
-}
-
-/* Highlight text */
-.ncm-overlay-highlight {
-  color: var(--ncm-text-primary, #e0e0e8);
-  font-weight: 700;
-}
-
-/* GM controls section */
-.ncm-overlay-gm {
-  margin-top: 16px;
-  padding-top: 12px;
-  border-top: 1px solid var(--ncm-bg-elevated, #252540);
-}
-
-.ncm-gm-divider {
-  font-family: var(--ncm-font-mono, monospace);
-  font-size: 9px;
-  color: var(--ncm-text-muted, #555570);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  margin-bottom: 8px;
-}
-
-
-/* ═══════════════════════════════════════════════════════════
- * FOUNDRY BUTTON OVERRIDES — Security Overlays
- * ncm-btn, ncm-btn-primary, ncm-btn-gm, ncm-btn-secondary,
- * ncm-btn-skill, ncm-btn-breach
- * ═══════════════════════════════════════════════════════════ */
-
-.ncm-security-overlay .ncm-btn {
-  display: block !important;
-  width: 100% !important;
-  padding: 10px 16px !important;
-  margin-top: 10px !important;
-  font-family: var(--ncm-font-body, 'Rajdhani', sans-serif) !important;
-  font-size: 13px !important;
-  font-weight: 700 !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.08em !important;
-  border-radius: 4px !important;
-  cursor: pointer !important;
-  transition: all 0.15s !important;
-  appearance: none !important; -webkit-appearance: none !important;
-  box-shadow: none !important;
-  min-width: 0 !important; min-height: 0 !important;
-  line-height: 1.4 !important;
-  text-align: center !important;
-}
-
-.ncm-security-overlay .ncm-btn-primary {
-  background: rgba(25, 243, 247, 0.12) !important;
-  border: 1px solid rgba(25, 243, 247, 0.35) !important;
-  color: var(--ncm-secondary, #19f3f7) !important;
-}
-.ncm-security-overlay .ncm-btn-primary:hover {
-  background: rgba(25, 243, 247, 0.22) !important;
-  border-color: var(--ncm-secondary, #19f3f7) !important;
-  box-shadow: 0 0 10px rgba(25, 243, 247, 0.15) !important;
-}
-
-.ncm-security-overlay .ncm-btn-gm {
-  background: rgba(247, 201, 72, 0.1) !important;
-  border: 1px solid rgba(247, 201, 72, 0.3) !important;
-  color: var(--ncm-accent, #f7c948) !important;
+.ncm-app .ncm-sec-btn--gm {
+  background: rgba(247,201,72,0.08) !important;
+  color: #f7c948 !important;
+  border: 1px solid rgba(247,201,72,0.25) !important;
   font-size: 11px !important;
 }
-.ncm-security-overlay .ncm-btn-gm:hover {
-  background: rgba(247, 201, 72, 0.2) !important;
-  border-color: var(--ncm-accent, #f7c948) !important;
-  box-shadow: 0 0 10px rgba(247, 201, 72, 0.15) !important;
+.ncm-app .ncm-sec-btn--gm:hover { background: rgba(247,201,72,0.15) !important; }
+
+
+/* ═══════════════════════════════════════════
+   §6  ATTEMPT DOTS
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-sec-attempts {
+  display: flex; align-items: center; justify-content: center;
+  gap: 3px; margin-top: 8px;
 }
 
-.ncm-security-overlay .ncm-btn-secondary {
-  background: rgba(136, 136, 160, 0.08) !important;
-  border: 1px solid rgba(136, 136, 160, 0.2) !important;
-  color: var(--ncm-text-secondary, #8888a0) !important;
-}
-.ncm-security-overlay .ncm-btn-secondary:hover {
-  background: rgba(136, 136, 160, 0.15) !important;
-  border-color: var(--ncm-text-secondary) !important;
+.ncm-app .ncm-sec-attempt-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--sp-bg-surface, #1a1a2e);
+  border: 1px solid var(--sp-border, #2a2a45);
 }
 
-.ncm-security-overlay .ncm-btn-breach {
-  background: linear-gradient(135deg, var(--ncm-primary, #F65261), #cc2244) !important;
-  border: none !important;
-  color: #ffffff !important;
-  font-family: var(--ncm-font-display, 'Orbitron', monospace) !important;
-  letter-spacing: 2px !important;
-}
-.ncm-security-overlay .ncm-btn-breach:hover {
-  box-shadow: 0 0 12px rgba(246, 82, 97, 0.5) !important;
-  transform: translateY(-1px);
+.ncm-app .ncm-sec-attempt-dot--used {
+  background: #ff0033 !important; border-color: #ff0033 !important;
 }
 
-.ncm-security-overlay .ncm-btn-skill {
-  display: flex !important; align-items: center !important; gap: 8px !important;
-  width: 100% !important;
-  padding: 6px 10px !important;
-  background: var(--ncm-bg-surface, #1a1a2e) !important;
-  border: 1px solid var(--ncm-bg-elevated, #252540) !important;
-  border-radius: 4px !important;
-  font-size: 12px !important;
-  color: var(--ncm-text-primary, #e0e0e8) !important;
-  text-align: left !important;
-  text-transform: none !important;
+.ncm-app .ncm-sec-attempt-dot--current {
+  background: var(--sp-accent, #19f3f7) !important;
+  border-color: var(--sp-accent, #19f3f7) !important;
+  box-shadow: 0 0 6px var(--sp-accent-glow, rgba(25,243,247,0.08));
+}
+
+
+/* ═══════════════════════════════════════════
+   §7  LOGIN FORM
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-sec-login-form { text-align: left; margin: 10px 0; }
+.ncm-app .ncm-sec-login-group { margin-bottom: 8px; }
+
+.ncm-app .ncm-sec-login-label {
+  display: flex; align-items: center; gap: 6px;
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 10px; color: #00ff41;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  margin-bottom: 3px;
+}
+.ncm-app .ncm-sec-login-label i { font-size: 9px; }
+
+.ncm-app .ncm-sec-login-input {
+  width: 100% !important; padding: 8px 10px !important;
+  background: var(--sp-bg-deep, #0a0a0f) !important;
+  border: 1px solid var(--sp-border, #2a2a45) !important;
+  border-radius: 2px !important;
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace) !important;
+  font-size: 13px !important; color: #00ff41 !important;
+  outline: none !important; transition: border-color 0.15s !important;
   appearance: none !important; -webkit-appearance: none !important;
-  box-shadow: none !important;
-  min-width: 0 !important; min-height: 0 !important;
+  box-shadow: none !important; min-width: 0 !important; min-height: 0 !important;
 }
-.ncm-security-overlay .ncm-btn-skill:hover {
-  border-color: var(--ncm-secondary, #19f3f7) !important;
-  background: var(--ncm-bg-elevated, #252540) !important;
-}
-
-
-/* ═══════════════════════════════════════════════════════════
- * FOUNDRY INPUT OVERRIDES — Login Form
- * ═══════════════════════════════════════════════════════════ */
-
-.ncm-login-form input[type="text"],
-.ncm-login-form input[type="password"] {
-  width: 100% !important;
-  padding: 8px 10px !important;
-  background: var(--ncm-bg-deep, #0a0a0f) !important;
-  border: 1px solid var(--ncm-bg-elevated, #252540) !important;
-  border-radius: 3px !important;
-  font-family: var(--ncm-font-mono, monospace) !important;
-  font-size: 13px !important;
-  color: #00ff41 !important;
-  outline: none !important;
-  appearance: none !important; -webkit-appearance: none !important;
-  box-shadow: none !important;
-  min-height: 0 !important; min-width: 0 !important;
-  transition: border-color 0.15s !important;
-}
-.ncm-login-form input[type="text"]:focus,
-.ncm-login-form input[type="password"]:focus {
+.ncm-app .ncm-sec-login-input:focus {
   border-color: #00ff41 !important;
-  box-shadow: 0 0 6px rgba(0, 255, 65, 0.15) !important;
+  box-shadow: 0 0 6px rgba(0,255,65,0.1) !important;
+}
+.ncm-app .ncm-sec-login-input::placeholder { color: var(--sp-text-muted, #555570) !important; }
+
+
+/* ═══════════════════════════════════════════
+   §8  SKILL SELECTION
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-sec-skill-list { margin: 10px 0; display: flex; flex-direction: column; gap: 4px; }
+
+.ncm-app .ncm-sec-skill-btn {
+  display: flex !important; align-items: center !important; gap: 10px !important;
+  width: 100% !important; padding: 8px 12px !important;
+  background: var(--sp-bg-surface, #1a1a2e) !important;
+  border: 1px solid var(--sp-border, #2a2a45) !important;
+  border-radius: 3px !important; cursor: pointer !important;
+  font-family: var(--ncm-font-body, 'Rajdhani', sans-serif) !important;
+  font-size: 12px !important; color: var(--sp-text-bright, #e0e0e8) !important;
+  text-align: left !important; transition: all 0.15s !important;
+  appearance: none !important; -webkit-appearance: none !important;
+  box-shadow: none !important; min-width: 0 !important; min-height: 0 !important;
+}
+.ncm-app .ncm-sec-skill-btn:hover {
+  border-color: var(--sp-accent, #19f3f7) !important;
+  background: var(--sp-bg-elevated, #252540) !important;
+}
+.ncm-app .ncm-sec-skill-btn--selected {
+  border-color: var(--sp-accent, #19f3f7) !important;
+  background: rgba(25,243,247,0.06) !important;
+  box-shadow: 0 0 4px var(--sp-accent-glow, rgba(25,243,247,0.08)) !important;
 }
 
-/* Lockout display — templates use ncm-lockout-display */
-.ncm-lockout-display {
-  padding: 16px;
-  color: #ff4444;
-  font-family: var(--ncm-font-mono, monospace);
-  text-align: center;
+.ncm-app .ncm-sec-skill-name { flex: 1; font-weight: 600; }
+.ncm-app .ncm-sec-skill-stats { font-family: var(--ncm-font-mono); font-size: 10px; color: var(--sp-text-body, #8888a0); }
+.ncm-app .ncm-sec-skill-dv { font-family: var(--ncm-font-mono); font-size: 10px; color: var(--sp-accent, #19f3f7); font-weight: 700; }
+
+
+/* ═══════════════════════════════════════════
+   §9  LOCKOUT STATE
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-sec-lockout { padding: 16px; text-align: center; }
+.ncm-app .ncm-sec-lockout-icon { font-size: 36px; color: #ff0033; margin-bottom: 10px; opacity: 0.6; }
+.ncm-app .ncm-sec-lockout-text {
+  font-family: var(--ncm-font-display, 'Orbitron', sans-serif);
+  font-size: 14px; color: #ff0033; text-transform: uppercase; letter-spacing: 0.15em;
 }
-.ncm-lockout-display i { font-size: 32px; margin-bottom: 8px; display: block; }
-.ncm-lockout-display p { margin: 4px 0; font-size: 14px; font-weight: 700; text-transform: uppercase; }
+.ncm-app .ncm-sec-lockout-timer {
+  font-family: var(--ncm-font-display, 'Orbitron', sans-serif);
+  font-size: 28px; color: #ff4444; margin-top: 4px;
+}
+
+
+/* ═══════════════════════════════════════════
+   §10  GM CONTROLS
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-sec-gm {
+  margin-top: 14px; padding-top: 12px;
+  border-top: 1px solid var(--sp-border, #2a2a45);
+}
+
+.ncm-app .ncm-sec-gm-label {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 8px; color: var(--sp-text-muted, #555570);
+  text-transform: uppercase; letter-spacing: 0.1em;
+  margin-bottom: 6px;
+}
+
+
+/* ═══════════════════════════════════════════
+   §11  HACKING SEQUENCE — SPLIT LAYOUT
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-hack-screen {
+  position: absolute; inset: 0; z-index: 10;
+  display: flex; flex-direction: column;
+  background: var(--sp-bg-deep, #0a0a0f);
+}
+
+.ncm-app .ncm-hack-status-bar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 14px;
+  background: rgba(0,0,0,0.4);
+  border-bottom: 1px solid var(--sp-border, #2a2a45);
+  flex-shrink: 0; z-index: 5;
+}
+
+.ncm-app .ncm-hack-status-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--sp-accent, #19f3f7);
+  box-shadow: 0 0 6px var(--sp-accent, #19f3f7);
+  animation: ncm-sec-pulse-dot 1.2s ease-in-out infinite;
+}
+
+.ncm-app .ncm-hack-status-text {
+  font-family: var(--ncm-font-mono); font-size: 9px;
+  color: var(--sp-accent, #19f3f7); text-transform: uppercase;
+  letter-spacing: 0.1em; flex: 1;
+}
+
+.ncm-app .ncm-hack-status-ice {
+  font-family: var(--ncm-font-display, 'Orbitron'); font-size: 8px;
+  color: var(--sp-accent-2, #F65261); text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.ncm-app .ncm-hack-status-skill {
+  font-family: var(--ncm-font-mono); font-size: 9px;
+  color: var(--sp-text-body, #8888a0);
+}
+
+.ncm-app .ncm-hack-main {
+  flex: 1; display: flex; position: relative; overflow: hidden;
+}
+
+
+/* ═══════════════════════════════════════════
+   §12  HACKING — TERMINAL
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-hack-terminal {
+  flex: 1; padding: 12px 16px;
+  overflow-y: auto; overflow-x: hidden;
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 10px; line-height: 1.8;
+  color: var(--sp-text-body, #8888a0);
+  position: relative; z-index: 2;
+}
+.ncm-app .ncm-hack-terminal::-webkit-scrollbar { width: 3px; }
+.ncm-app .ncm-hack-terminal::-webkit-scrollbar-thumb { background: var(--sp-border); }
+
+.ncm-app .ncm-hack-line { opacity: 0; animation: ncm-hack-line-appear 0.2s ease forwards; white-space: nowrap; }
+.ncm-app .ncm-hack-line--prompt { color: var(--sp-accent, #19f3f7); }
+.ncm-app .ncm-hack-line--prompt::before { content: '> '; color: var(--sp-text-muted); }
+.ncm-app .ncm-hack-line--system { color: var(--sp-text-muted, #555570); font-size: 9px; }
+.ncm-app .ncm-hack-line--success { color: #00ff41; font-weight: 700; }
+.ncm-app .ncm-hack-line--fail { color: #ff0033; font-weight: 700; }
+.ncm-app .ncm-hack-line--warn { color: #ffab00; }
+.ncm-app .ncm-hack-line--ice { color: var(--sp-accent-2, #F65261); font-weight: 700; text-transform: uppercase; }
+.ncm-app .ncm-hack-line--data { color: var(--sp-accent, #19f3f7); opacity: 0.5; font-size: 9px; letter-spacing: 0.05em; }
+.ncm-app .ncm-hack-line--blank { height: 8px; }
+.ncm-app .ncm-hack-line--roll { font-size: 12px; font-weight: 700; }
+.ncm-app .ncm-hack-line--damage { color: #ff0033; font-weight: 700; font-size: 11px; }
+
+.ncm-app .ncm-hack-cursor {
+  display: inline-block; width: 7px; height: 12px;
+  background: var(--sp-accent, #19f3f7); margin-left: 2px;
+  animation: ncm-sec-cursor-blink 0.8s steps(1) infinite;
+}
+
+
+/* ═══════════════════════════════════════════
+   §13  HACKING — ICE VISUALIZATION
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-hack-visual {
+  width: 220px; flex-shrink: 0;
+  border-left: 1px solid var(--sp-border, #2a2a45);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  position: relative; z-index: 2; padding: 20px;
+}
+
+.ncm-app .ncm-hack-ice-structure {
+  width: 140px; height: 140px;
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.ncm-app .ncm-hack-ice-hex {
+  position: absolute; inset: 0;
+  border: 2px solid var(--sp-accent-2, #F65261);
+  clip-path: polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);
+  animation: ncm-ice-rotate 12s linear infinite;
+  opacity: 0.6;
+}
+.ncm-app .ncm-hack-ice-hex:nth-child(2) {
+  inset: 15px; border-color: var(--sp-accent, #19f3f7);
+  animation-duration: 8s; animation-direction: reverse; opacity: 0.4;
+}
+.ncm-app .ncm-hack-ice-hex:nth-child(3) {
+  inset: 30px; border-color: var(--sp-accent-2, #F65261);
+  animation-duration: 6s; opacity: 0.3;
+}
+
+.ncm-app .ncm-hack-ice-scan {
+  position: absolute; left: 0; right: 0; height: 2px;
+  background: var(--sp-accent, #19f3f7);
+  box-shadow: 0 0 10px var(--sp-accent), 0 -6px 20px var(--sp-accent);
+  opacity: 0.6;
+  animation: ncm-ice-scan-sweep 2.5s ease-in-out infinite;
+}
+
+.ncm-app .ncm-hack-ice-icon {
+  position: relative; z-index: 2;
+  font-size: 28px; color: var(--sp-accent-2, #F65261);
+  animation: ncm-ice-pulse 2s ease-in-out infinite;
+  text-shadow: 0 0 20px var(--sp-accent-2, #F65261);
+}
+
+.ncm-app .ncm-hack-ice-label {
+  font-family: var(--ncm-font-display, 'Orbitron'); font-size: 9px;
+  color: var(--sp-accent-2, #F65261); text-transform: uppercase;
+  letter-spacing: 0.15em; margin-top: 14px; text-align: center; line-height: 1.5;
+}
+
+.ncm-app .ncm-hack-ice-integrity { width: 100%; margin-top: 10px; }
+.ncm-app .ncm-hack-ice-integrity-label {
+  font-family: var(--ncm-font-mono); font-size: 8px;
+  color: var(--sp-text-muted); text-transform: uppercase;
+  letter-spacing: 0.08em; margin-bottom: 3px; text-align: center;
+}
+.ncm-app .ncm-hack-ice-integrity-track {
+  width: 100%; height: 3px; background: var(--sp-bg-surface, #1a1a2e);
+  border-radius: 2px; overflow: hidden;
+}
+.ncm-app .ncm-hack-ice-integrity-fill {
+  height: 100%; border-radius: 2px;
+  background: linear-gradient(90deg, #00ff41 0%, var(--sp-accent-2) 70%, #ff0033 100%);
+  transition: width 0.5s ease;
+}
+
+/* Data streams */
+.ncm-app .ncm-hack-data-stream {
+  position: absolute; top: 0; bottom: 0;
+  width: 1px; z-index: 1; opacity: 0.08;
+}
+.ncm-app .ncm-hack-data-stream::after {
+  content: ''; position: absolute; top: -100%; left: 0;
+  width: 1px; height: 40px;
+  background: linear-gradient(180deg, transparent, var(--sp-accent), transparent);
+  animation: ncm-hack-data-fall 3s linear infinite;
+}
+
+/* ICE shatter on success */
+.ncm-app .ncm-ice-shatter .ncm-hack-ice-hex { animation: ncm-ice-shatter-hex 0.8s ease forwards !important; }
+.ncm-app .ncm-ice-shatter .ncm-hack-ice-hex:nth-child(2) { animation-delay: 0.1s !important; }
+.ncm-app .ncm-ice-shatter .ncm-hack-ice-hex:nth-child(3) { animation-delay: 0.2s !important; }
+.ncm-app .ncm-ice-shatter .ncm-hack-ice-icon { animation: ncm-ice-shatter-icon 0.6s ease forwards !important; }
+
+/* ICE retaliate on fail */
+.ncm-app .ncm-ice-retaliate .ncm-hack-ice-hex { animation: ncm-ice-flash-red 0.5s ease !important; }
+.ncm-app .ncm-ice-retaliate .ncm-hack-ice-icon { animation: ncm-ice-attack 0.5s ease !important; color: #ff0033 !important; }
+
+
+/* ═══════════════════════════════════════════
+   §14  HACKING — BOTTOM BAR
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-hack-bottom {
+  padding: 8px 16px;
+  background: rgba(0,0,0,0.3);
+  border-top: 1px solid var(--sp-border, #2a2a45);
+  display: flex; align-items: center; gap: 14px;
+  flex-shrink: 0; z-index: 5;
+}
+
+.ncm-app .ncm-hack-progress-area { flex: 1; }
+.ncm-app .ncm-hack-progress-label {
+  font-family: var(--ncm-font-mono); font-size: 8px;
+  color: var(--sp-text-muted); text-transform: uppercase;
+  letter-spacing: 0.08em; margin-bottom: 3px;
+}
+.ncm-app .ncm-hack-progress-track {
+  width: 100%; height: 4px; background: var(--sp-bg-surface, #1a1a2e);
+  border-radius: 2px; overflow: hidden;
+}
+.ncm-app .ncm-hack-progress-fill {
+  height: 100%; border-radius: 2px;
+  background: linear-gradient(90deg, var(--sp-accent, #19f3f7), var(--sp-accent-2, #F65261));
+  transition: width 0.3s ease;
+}
+
+.ncm-app .ncm-hack-roll-display {
+  text-align: center; min-width: 60px; flex-shrink: 0;
+  transition: opacity 0.3s;
+}
+.ncm-app .ncm-hack-roll-label {
+  font-family: var(--ncm-font-mono); font-size: 7px;
+  color: var(--sp-text-muted); text-transform: uppercase; letter-spacing: 0.08em;
+}
+.ncm-app .ncm-hack-roll-value {
+  font-family: var(--ncm-font-display, 'Orbitron'); font-size: 22px;
+  font-weight: 700; line-height: 1; margin-top: 2px;
+  color: var(--sp-accent, #19f3f7);
+}
+
+
+/* ═══════════════════════════════════════════
+   §15  HACKING — RESULT OVERLAY
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-hack-result-overlay {
+  position: absolute; inset: 0; z-index: 15;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(4px);
+}
+
+.ncm-app .ncm-hack-result-card { text-align: center; padding: 30px 40px; position: relative; }
+
+.ncm-app .ncm-hack-result-icon {
+  width: 80px; height: 80px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 16px; font-size: 32px;
+}
+.ncm-app .ncm-hack-result-icon--success {
+  background: rgba(0,255,65,0.06); border: 2px solid rgba(0,255,65,0.3);
+  color: #00ff41; box-shadow: 0 0 40px rgba(0,255,65,0.2), 0 0 80px rgba(0,255,65,0.05);
+  animation: ncm-result-pop 0.4s ease;
+}
+.ncm-app .ncm-hack-result-icon--fail {
+  background: rgba(255,0,51,0.06); border: 2px solid rgba(255,0,51,0.3);
+  color: #ff0033; box-shadow: 0 0 40px rgba(255,0,51,0.2);
+  animation: ncm-result-shake 0.5s ease;
+}
+
+.ncm-app .ncm-hack-result-title {
+  font-family: var(--ncm-font-display, 'Orbitron'); font-size: 20px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.3em; margin-bottom: 6px;
+}
+.ncm-app .ncm-hack-result-title--success { color: #00ff41; text-shadow: 0 0 30px rgba(0,255,65,0.4); }
+.ncm-app .ncm-hack-result-title--fail { color: #ff0033; text-shadow: 0 0 30px rgba(255,0,51,0.4); }
+
+.ncm-app .ncm-hack-result-sub {
+  font-family: var(--ncm-font-mono); font-size: 11px;
+  color: var(--sp-text-body, #8888a0); margin-bottom: 18px;
+}
+
+
+/* ═══════════════════════════════════════════
+   §16  RESULT — ROLL DISPLAY
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-hack-roll-reveal {
+  display: flex; align-items: center; justify-content: center;
+  gap: 20px; margin-bottom: 16px;
+}
+.ncm-app .ncm-hack-roll-block { text-align: center; }
+.ncm-app .ncm-hack-roll-block-label {
+  font-family: var(--ncm-font-mono); font-size: 8px;
+  color: var(--sp-text-muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px;
+}
+.ncm-app .ncm-hack-roll-block-value {
+  font-family: var(--ncm-font-display, 'Orbitron');
+  font-size: 36px; font-weight: 700; line-height: 1;
+}
+.ncm-app .ncm-hack-roll-block-value--player { color: var(--sp-accent, #19f3f7); text-shadow: 0 0 15px var(--sp-accent-glow); }
+.ncm-app .ncm-hack-roll-block-value--dv { color: var(--sp-text-bright, #e0e0e8); }
+.ncm-app .ncm-hack-roll-divider {
+  font-family: var(--ncm-font-display, 'Orbitron'); font-size: 12px;
+  color: var(--sp-text-muted); text-transform: uppercase; letter-spacing: 0.15em;
+}
+
+.ncm-app .ncm-hack-roll-breakdown {
+  font-family: var(--ncm-font-mono); font-size: 10px;
+  color: var(--sp-text-meta, #555570); margin-bottom: 14px;
+}
+
+.ncm-app .ncm-hack-result-continue {
+  font-family: var(--ncm-font-mono); font-size: 9px;
+  color: var(--sp-text-muted); letter-spacing: 0.08em; margin-top: 12px;
+  animation: ncm-sec-cursor-blink 1.5s steps(1) infinite;
+  cursor: pointer;
+}
+
+
+/* ═══════════════════════════════════════════
+   §17  RESULT — DAMAGE BOX
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-hack-damage-box {
+  display: inline-flex; flex-direction: column; align-items: center;
+  padding: 12px 24px;
+  background: rgba(255,0,51,0.06);
+  border: 1px solid rgba(255,0,51,0.25);
+  border-radius: 3px; margin-bottom: 12px;
+}
+.ncm-app .ncm-hack-damage-label {
+  font-family: var(--ncm-font-mono); font-size: 9px;
+  color: #ff6666; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px;
+}
+.ncm-app .ncm-hack-damage-value {
+  font-family: var(--ncm-font-display, 'Orbitron'); font-size: 28px; font-weight: 700;
+  color: #ff0033; line-height: 1; text-shadow: 0 0 20px rgba(255,0,51,0.3);
+}
+.ncm-app .ncm-hack-damage-hp {
+  font-family: var(--ncm-font-mono); font-size: 9px; color: #ff6666; margin-top: 2px;
+}
+
+
+/* ═══════════════════════════════════════════
+   §18  ANIMATIONS & KEYFRAMES
+   ═══════════════════════════════════════════ */
+
+@keyframes ncm-sec-static { 0% { background-position: 0 0; } 50% { background-position: -1px 2px; } 100% { background-position: 0 0; } }
+@keyframes ncm-sec-dataflow { from { transform: translateY(-20px); } to { transform: translateY(0); } }
+@keyframes ncm-sec-pulse-bg { 0%,100% { opacity: 0.8; } 50% { opacity: 1; transform: scale(1.02); } }
+@keyframes ncm-sec-pulse-dot { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+@keyframes ncm-sec-cursor-blink { 0%,100% { opacity: 1; } 50% { opacity: 0; } }
+
+@keyframes ncm-hack-line-appear { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes ncm-hack-data-fall { from { transform: translateY(0); } to { transform: translateY(600px); } }
+
+@keyframes ncm-ice-rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes ncm-ice-scan-sweep { 0% { top: 0; } 50% { top: 100%; } 100% { top: 0; } }
+@keyframes ncm-ice-pulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.6; transform: scale(0.92); filter: brightness(1.3); } }
+
+@keyframes ncm-ice-shatter-hex { 0% { opacity: 0.6; transform: rotate(0deg) scale(1); } 30% { opacity: 1; filter: brightness(2); } 100% { opacity: 0; transform: rotate(30deg) scale(1.5); filter: brightness(0); } }
+@keyframes ncm-ice-shatter-icon { 0% { opacity: 1; transform: scale(1); } 30% { opacity: 1; transform: scale(1.3); filter: brightness(3); } 100% { opacity: 0; transform: scale(0); } }
+@keyframes ncm-ice-flash-red { 0%,100% { border-color: var(--sp-accent-2); } 50% { border-color: #ff0033; filter: brightness(2); } }
+@keyframes ncm-ice-attack { 0% { transform: scale(1); } 30% { transform: scale(1.4); filter: brightness(3); } 100% { transform: scale(1); } }
+
+@keyframes ncm-result-pop { 0% { transform: scale(0.5); opacity: 0; } 50% { transform: scale(1.1); } 100% { transform: scale(1); opacity: 1; } }
+@keyframes ncm-result-shake { 0%,100% { transform: translateX(0); } 15% { transform: translateX(-8px) rotate(-2deg); } 30% { transform: translateX(6px) rotate(1deg); } 45% { transform: translateX(-4px); } 60% { transform: translateX(3px); } }

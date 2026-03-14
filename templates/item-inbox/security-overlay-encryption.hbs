@@ -1,58 +1,68 @@
-{{!-- Security Overlay: Encryption Layer --}}
+{{!-- Security Overlay: Encryption Layer (Sprint 4.6 Themed Redesign) --}}
 <div class="ncm-security-overlay ncm-security-overlay-encryption">
-  <div class="ncm-overlay-backdrop ncm-matrix-rain"></div>
-  <div class="ncm-overlay-card">
-    <div class="ncm-overlay-icon"><i class="fas fa-shield-halved"></i></div>
-    <h3 class="ncm-overlay-title">ACCESS DENIED</h3>
-    <div class="ncm-overlay-info">
-      <p>Encryption: <strong>{{encryptionType}}</strong></p>
-      <p>Default DV: <strong>{{encryptionDC}}</strong></p>
-      <p>Attempts: <strong>{{hackAttempts}}/{{maxHackAttempts}}</strong></p>
+  <div class="ncm-sec-backdrop ncm-sec-backdrop--matrix"></div>
+  <div class="ncm-sec-card">
+    <div class="ncm-sec-icon"><i class="fas fa-shield-halved"></i></div>
+    <div class="ncm-sec-title">ICE Protected</div>
+    <div class="ncm-sec-info">
+      Encryption: <strong>{{encryptionType}}</strong>
+      {{#if isBlackICE}}<span class="ncm-sec-text-muted">// Lethal countermeasures active</span>{{/if}}
     </div>
 
     {{#if isLockedOut}}
-      <div class="ncm-lockout-display">
-        <i class="fas fa-ban"></i>
-        <p>SYSTEM LOCKED</p>
+      <div class="ncm-sec-lockout">
+        <div class="ncm-sec-lockout-icon"><i class="fas fa-ban"></i></div>
+        <div class="ncm-sec-lockout-text">System Locked</div>
         {{#if isPermanentlyLocked}}
-          <p class="ncm-text-danger">PERMANENT LOCKOUT</p>
+          <div class="ncm-sec-lockout-timer">PERMANENT</div>
         {{else}}
-          <p class="ncm-lockout-timer">{{lockoutRemaining}}s</p>
+          <div class="ncm-sec-lockout-timer" data-lockout-countdown>{{lockoutRemaining}}s</div>
         {{/if}}
+        <div class="ncm-sec-muted">Maximum attempts exceeded. Cooldown active.</div>
       </div>
+      <div class="ncm-sec-attempts">
+        {{#each attemptDots}}
+          <div class="ncm-sec-attempt-dot ncm-sec-attempt-dot--used"></div>
+        {{/each}}
+      </div>
+
     {{else if hasActor}}
       {{!-- Skill Selection --}}
-      <div class="ncm-skill-select">
-        <p class="ncm-text-muted">Select skill for breach:</p>
+      <div class="ncm-sec-skill-list">
         {{#each availableSkills}}
           <button type="button" data-action="selectSkill" data-skill="{{name}}"
-                  class="ncm-btn ncm-btn-skill {{#if ../hackingSkillIs}}{{#if (this.name)}}{{/if}}{{/if}}"
+                  class="ncm-sec-skill-btn {{#if selected}}ncm-sec-skill-btn--selected{{/if}}"
                   title="{{stat}}({{statValue}}) + {{name}}({{level}}) = {{total}} + 1d10 vs DV {{dc}}">
-            <span class="ncm-skill-label">{{name}}</span>
-            <span class="ncm-skill-stats">{{stat}} {{total}} // DV {{dc}}</span>
+            <span class="ncm-sec-skill-name">{{name}}</span>
+            <span class="ncm-sec-skill-stats">{{stat}} {{total}} + 1d10</span>
+            <span class="ncm-sec-skill-dv">DV {{dc}}</span>
           </button>
         {{/each}}
       </div>
 
-      {{!-- Action Buttons --}}
-      <div class="ncm-hack-actions">
-        <button type="button" data-action="attemptBreach" class="ncm-btn ncm-btn-primary ncm-btn-breach">
-          <i class="fas fa-terminal"></i> ATTEMPT BREACH
-        </button>
-        {{#if hasLuck}}
-          <button type="button" data-action="spendLuck" class="ncm-btn ncm-btn-secondary">
-            <i class="fas fa-dice"></i> Spend Luck ({{availableLuck}})
-          </button>
-        {{/if}}
+      <div class="ncm-sec-attempts">
+        {{#each attemptDots}}
+          <div class="ncm-sec-attempt-dot {{#if used}}ncm-sec-attempt-dot--used{{else if current}}ncm-sec-attempt-dot--current{{/if}}"></div>
+        {{/each}}
       </div>
+      <div class="ncm-sec-muted">Attempt {{hackAttemptCurrent}} of {{maxHackAttempts}}{{#if hackingSkillName}} — {{hackingSkillName}} selected{{/if}}</div>
+
+      <button type="button" data-action="attemptBreach" class="ncm-sec-btn ncm-sec-btn--breach">
+        <i class="fas fa-bolt"></i> Attempt Breach
+      </button>
+      {{#if hasLuck}}
+        <button type="button" data-action="spendLuck" class="ncm-sec-btn ncm-sec-btn--ghost">
+          <i class="fas fa-dice"></i> Spend Luck ({{availableLuck}})
+        </button>
+      {{/if}}
     {{else}}
-      <p class="ncm-text-muted">No character assigned.</p>
+      <div class="ncm-sec-muted" style="margin-top:12px;">No character assigned. Set your character in User Configuration.</div>
     {{/if}}
 
     {{#if isGM}}
-      <div class="ncm-overlay-gm">
-        <div class="ncm-gm-divider">GM CONTROLS</div>
-        <button type="button" data-action="forceDecrypt" class="ncm-btn ncm-btn-gm">
+      <div class="ncm-sec-gm">
+        <div class="ncm-sec-gm-label">GM Controls</div>
+        <button type="button" data-action="forceDecrypt" class="ncm-sec-btn ncm-sec-btn--gm">
           <i class="fas fa-unlock-keyhole"></i> Force Decrypt
         </button>
       </div>

@@ -33,6 +33,28 @@
    ═══════════════════════════════════════════ */
 
 .ncm-app .ncm-item-inbox {
+  /* Default shard theme variables — overridden by .ncm-preset-* classes */
+  --sp-bg-deep: var(--ncm-bg-deep, #0a0a0f);
+  --sp-bg-base: var(--ncm-bg-base, #12121a);
+  --sp-bg-surface: var(--ncm-bg-surface, #1a1a2e);
+  --sp-bg-elevated: var(--ncm-bg-elevated, #252540);
+  --sp-border: var(--ncm-border, #2a2a45);
+  --sp-bar: linear-gradient(90deg, var(--ncm-color-primary, #F65261), transparent 40%, transparent 60%, var(--ncm-color-secondary, #19f3f7));
+  --sp-shadow: 0 0 50px rgba(0,0,0,0.5);
+  --sp-accent: var(--ncm-color-secondary, #19f3f7);
+  --sp-accent-2: var(--ncm-text-secondary, #8888a0);
+  --sp-accent-glow: rgba(25, 243, 247, 0.08);
+  --sp-text-bright: var(--ncm-text-primary, #e0e0e8);
+  --sp-text-body: var(--ncm-text-secondary, #8888a0);
+  --sp-text-meta: var(--ncm-text-muted, #555570);
+  --sp-text-muted: var(--ncm-text-muted, #555570);
+  --sp-icon-bg: rgba(25, 243, 247, 0.06);
+  --sp-icon-border: rgba(25, 243, 247, 0.2);
+  --sp-chip-bg: var(--ncm-bg-surface, #1a1a2e);
+  --sp-chip-text: var(--ncm-text-secondary, #8888a0);
+  --sp-chip-active-bg: rgba(25, 243, 247, 0.06);
+  --sp-chip-active-text: var(--ncm-color-secondary, #19f3f7);
+
   display: flex;
   flex-direction: column;
   height: 100%;

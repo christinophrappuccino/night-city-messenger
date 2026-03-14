@@ -223,7 +223,11 @@ export class ItemInboxApp extends BaseApplication {
         baseDC: config.skillDCs?.[s.name] ?? config.encryptionDC ?? 15,
         signalPenalty: signalMod.modifier,
         dc: (config.skillDCs?.[s.name] ?? config.encryptionDC ?? 15) + signalMod.modifier,
+        selected: s.name === this._hackingSkill,
       }));
+      // Compute selected skill total for status bar
+      const selectedSkill = availableSkills.find(s => s.selected);
+      if (selectedSkill) this._hackingSkillTotal = selectedSkill.total;
     }
 
     const availableLuck = actor ? (this.skillService?.getAvailableLuck(actor) ?? 0) : 0;
@@ -273,12 +277,22 @@ export class ItemInboxApp extends BaseApplication {
       encryptionMode: config.encryptionMode,
       hackAttempts: session.hackAttempts,
       maxHackAttempts: config.maxHackAttempts,
+      hackAttemptCurrent: session.hackAttempts + 1,
       attemptsRemaining: Math.max(0, config.maxHackAttempts - session.hackAttempts),
       failureMode: config.failureMode,
       isLockedOut: lockoutRemaining > 0,
       lockoutRemaining,
       isPermanentlyLocked: session.lockoutUntil === Infinity,
       hackingActive: this._hackingActive,
+      hackingSkillName: this._hackingSkill || null,
+      hackingSkillTotal: this._hackingSkillTotal || null,
+      isBlackICE: config.encryptionType === 'BLACK_ICE',
+
+      // Attempt dots (for visual dot indicators)
+      attemptDots: Array.from({ length: config.maxHackAttempts || 3 }, (_, i) => ({
+        used: i < session.hackAttempts,
+        current: i === session.hackAttempts,
+      })),
 
       // ICE
       iceClass,
@@ -345,6 +359,8 @@ export class ItemInboxApp extends BaseApplication {
       keyItemUsed: session.keyItemUsed,
       loginDisplayName: config.loginDisplayName || 'System Login',
       requiresLogin: config.requiresLogin,
+      maxLoginAttempts: config.maxLoginAttempts || 3,
+      loginAttemptsCurrent: (session.loginAttempts || 0) + 1,
       requiresKeyItem: config.requiresKeyItem,
       keyItemDisplayName: config.keyItemDisplayName || config.keyItemName || 'Access Token',
       keyItemIcon: config.keyItemIcon || 'fa-id-card',
@@ -573,32 +589,28 @@ export class ItemInboxApp extends BaseApplication {
       return;
     }
 
-    // If a skill is already selected, use it
     const skillName = this._hackingSkill || target.dataset.skill;
     if (!skillName) {
       ui.notifications.info('NCM | Select a skill to attempt breach.');
       return;
     }
 
+    // Show hacking screen
     this._hackingActive = true;
     this.render();
 
-    // Brief delay for animation
-    await new Promise(r => setTimeout(r, 500));
+    // Small delay to let template render, then run the actual hack in background
+    await new Promise(r => setTimeout(r, 300));
 
     const result = await this.dataShardService.attemptHack(this.item, actor, skillName, {
       luckSpend: 0,
     });
 
+    // Play the terminal sequence, passing the real result for the reveal
+    await this._playHackSequence(result, skillName);
+
     this._hackingActive = false;
     this._hackingSkill = null;
-
-    if (result.success) {
-      await this._playHackSuccessEffect();
-    } else {
-      await this._playHackFailEffect(result);
-    }
-
     this.render();
   }
 
@@ -654,21 +666,16 @@ export class ItemInboxApp extends BaseApplication {
 
     this._hackingActive = true;
     this.render();
-    await new Promise(r => setTimeout(r, 500));
+    await new Promise(r => setTimeout(r, 300));
 
     const result = await this.dataShardService.attemptHack(this.item, actor, skillName, {
       luckSpend,
     });
 
+    await this._playHackSequence(result, skillName);
+
     this._hackingActive = false;
     this._hackingSkill = null;
-
-    if (result.success) {
-      await this._playHackSuccessEffect();
-    } else {
-      await this._playHackFailEffect(result);
-    }
-
     this.render();
   }
 
@@ -693,8 +700,7 @@ export class ItemInboxApp extends BaseApplication {
 
     const result = await this.dataShardService.presentKeyItem(this.item, actor);
     if (result.success) {
-      ui.notifications.info('NCM | Access token accepted.');
-      await this._playEffect(this.element, 'ncm-fade-in', 400);
+      await this._playSecuritySuccessEffect('Access Token Accepted', config?.keyItemDisplayName || 'Token verified');
     } else {
       ui.notifications.warn(`NCM | ${result.error || 'Access token rejected.'}`);
     }
@@ -721,7 +727,8 @@ export class ItemInboxApp extends BaseApplication {
 
     const result = await this.dataShardService.attemptLogin(this.item, actor, username, password);
     if (result.success) {
-      ui.notifications.info('NCM | Login successful.');
+      // Show welcome splash before revealing content
+      await this._playLoginSuccessEffect(username || actor.name);
     } else if (result.locked) {
       ui.notifications.error('NCM | Account locked — too many failed attempts.');
     } else {
@@ -1314,13 +1321,200 @@ export class ItemInboxApp extends BaseApplication {
 
   // ─── Effects ───
 
-  /** @private */
-  async _playHackSuccessEffect() {
-    const overlay = this.element?.querySelector('.ncm-security-overlay-encryption');
-    if (overlay) {
-      overlay.classList.add('ncm-shatter');
-      await new Promise(r => setTimeout(r, 800));
+  /** @private — Orchestrate the full hacking terminal sequence */
+  async _playHackSequence(result, skillName) {
+    const el = this.element;
+    if (!el) return;
+
+    const terminal = el.querySelector('[data-hack-terminal]');
+    const progressFill = el.querySelector('[data-hack-progress-fill]');
+    const progressLabel = el.querySelector('[data-hack-progress-label]');
+    const rollDisplay = el.querySelector('[data-hack-roll-player]');
+    const iceFill = el.querySelector('[data-ice-fill]');
+    const iceStructure = el.querySelector('[data-ice-structure]');
+    const resultOverlay = el.querySelector('[data-hack-result]');
+    if (!terminal) return;
+
+    // Helpers
+    const _timers = [];
+    const delay = (fn, ms) => new Promise(resolve => {
+      _timers.push(setTimeout(() => { fn(); resolve(); }, ms));
+    });
+    const addLine = (cls, text) => {
+      const div = document.createElement('div');
+      div.className = `ncm-hack-line ncm-hack-line--${cls}`;
+      div.innerHTML = text;
+      // Insert before cursor
+      const cursor = terminal.querySelector('.ncm-hack-cursor');
+      if (cursor) terminal.insertBefore(div, cursor);
+      else terminal.appendChild(div);
+      terminal.scrollTop = terminal.scrollHeight;
+    };
+    const setProgress = (pct, label) => {
+      if (progressFill) progressFill.style.width = `${pct}%`;
+      if (progressLabel) progressLabel.textContent = label;
+    };
+    const setIce = (pct) => { if (iceFill) iceFill.style.width = `${pct}%`; };
+
+    const total = result.total ?? 0;
+    const dieRoll = result.roll ?? 0;
+    const dv = result.dv ?? 0;
+    const base = total - dieRoll;
+    const encType = result.encryptionType || 'ICE';
+
+    // Phase 1: Init
+    addLine('system', `░░ NCM BREACH PROTOCOL v4.6 ░░`);
+    await delay(() => addLine('system', `Target: DATA SHARD // Encryption: ${encType}`), 200);
+    await delay(() => { addLine('blank', ''); setProgress(10, 'Mapping ICE architecture...'); }, 300);
+
+    // Phase 2: Scan
+    await delay(() => addLine('prompt', 'Initializing ICE scan...'), 400);
+    await delay(() => addLine('data', `0x${Math.random().toString(16).slice(2,6).toUpperCase()} :: scanning port matrix :: vectors loaded`), 500);
+    await delay(() => addLine('data', `0x${Math.random().toString(16).slice(2,6).toUpperCase()} :: firewall topology mapped :: layers detected`), 500);
+    await delay(() => { addLine('prompt', 'ICE architecture mapped.'); setProgress(25, 'Probing defenses...'); setIce(90); }, 400);
+
+    // Phase 3: Probe
+    await delay(() => addLine('blank', ''), 200);
+    await delay(() => addLine('ice', `⚠ ${encType} DETECTED — COUNTERMEASURES ARMED`), 400);
+    if (encType === 'BLACK_ICE') {
+      await delay(() => addLine('warn', 'WARNING: Lethal ICE. Failure may cause system damage.'), 400);
     }
+    await delay(() => { setProgress(40, 'Selecting exploit...'); }, 200);
+    await delay(() => addLine('prompt', `Selecting exploit vector: ${skillName}`), 400);
+    await delay(() => addLine('data', `Base total: ${base} + 1d10`), 300);
+    await delay(() => { setProgress(55, 'Injecting exploit...'); setIce(75); }, 300);
+
+    // Phase 4: Inject
+    await delay(() => addLine('blank', ''), 200);
+    await delay(() => addLine('prompt', 'Injecting exploit into layer 1...'), 400);
+    await delay(() => addLine('data', `0x${Math.random().toString(16).slice(2,6).toUpperCase()} :: buffer overflow targeting auth handler`), 500);
+    await delay(() => addLine('prompt', 'Layer 1 response: <span style="color:#ffab00;">PARTIAL</span>'), 400);
+    await delay(() => { setProgress(70, 'Escalating...'); setIce(55); }, 300);
+    await delay(() => addLine('prompt', 'Escalating to layer 2...'), 400);
+    await delay(() => { setProgress(85, 'Rolling dice...'); }, 300);
+
+    // Phase 5: Roll
+    await delay(() => { addLine('blank', ''); addLine('prompt', '<i class="fas fa-dice" style="margin-right:4px;"></i>Rolling 1d10...'); }, 400);
+
+    // Show roll display and tumble
+    if (rollDisplay) {
+      rollDisplay.style.opacity = '1';
+      const rollValueEl = rollDisplay.querySelector('.ncm-hack-roll-value');
+      if (rollValueEl) {
+        let count = 0;
+        await new Promise(resolve => {
+          const tumble = setInterval(() => {
+            rollValueEl.textContent = Math.floor(Math.random() * 10) + 1;
+            count++;
+            if (count > 10) {
+              clearInterval(tumble);
+              rollValueEl.textContent = dieRoll;
+              rollValueEl.style.color = result.success ? '#00ff41' : '#ff0033';
+              resolve();
+            }
+          }, 80);
+          _timers.push(tumble);
+        });
+      }
+    }
+
+    await delay(() => {
+      addLine('roll', `1d10 → <span style="color:${result.success ? '#00ff41' : '#ff0033'};font-size:14px;">${dieRoll}</span>`);
+    }, 200);
+    await delay(() => {
+      addLine('roll', `Total: ${base} + ${dieRoll} = <span style="color:${result.success ? '#00ff41' : '#ff0033'};font-size:14px;">${total}</span> vs DV ${dv}`);
+      setProgress(100, result.success ? 'ICE BREACHED' : 'BREACH FAILED');
+    }, 400);
+
+    // Phase 6: Result
+    if (result.success) {
+      await delay(() => {
+        addLine('blank', '');
+        addLine('success', '██ ICE BREACHED ██ ACCESS GRANTED ██');
+        if (iceStructure) iceStructure.classList.add('ncm-ice-shatter');
+        setIce(0);
+      }, 500);
+      this.soundService?.play('hack-success');
+    } else {
+      await delay(() => {
+        addLine('blank', '');
+        addLine('fail', '██ BREACH FAILED ██ ICE HOLDING ██');
+        if (iceStructure) iceStructure.classList.add('ncm-ice-retaliate');
+      }, 500);
+      if (result.damage) {
+        await delay(() => {
+          addLine('ice', '⚡ BLACK ICE RETALIATION — DAMAGE INCOMING');
+        }, 400);
+        await delay(() => {
+          addLine('damage', `→ BLACK ICE deals ${result.damage} HP damage`);
+        }, 400);
+      }
+    }
+
+    // Show result overlay
+    await delay(() => {
+      if (resultOverlay) {
+        resultOverlay.style.display = 'flex';
+        resultOverlay.innerHTML = this._buildHackResultHTML(result, skillName, base, dieRoll, total, dv);
+      }
+    }, 600);
+
+    // Wait for click to dismiss
+    await new Promise(resolve => {
+      const dismiss = () => { resultOverlay?.removeEventListener('click', dismiss); resolve(); };
+      resultOverlay?.addEventListener('click', dismiss);
+      // Auto-dismiss after 8s
+      _timers.push(setTimeout(dismiss, 8000));
+    });
+
+    // Clean up timers
+    _timers.forEach(t => clearTimeout(t));
+  }
+
+  /** @private — Build HTML for hack result overlay */
+  _buildHackResultHTML(result, skillName, base, dieRoll, total, dv) {
+    if (result.success) {
+      return `<div class="ncm-hack-result-card">
+        <div class="ncm-hack-result-icon ncm-hack-result-icon--success"><i class="fas fa-lock-open"></i></div>
+        <div class="ncm-hack-result-title ncm-hack-result-title--success">Access Granted</div>
+        <div class="ncm-hack-result-sub">ICE neutralized. Shard contents unlocked.</div>
+        <div class="ncm-hack-roll-reveal">
+          <div class="ncm-hack-roll-block"><div class="ncm-hack-roll-block-label">Your Roll</div><div class="ncm-hack-roll-block-value ncm-hack-roll-block-value--player">${total}</div></div>
+          <div class="ncm-hack-roll-divider">vs</div>
+          <div class="ncm-hack-roll-block"><div class="ncm-hack-roll-block-label">DV</div><div class="ncm-hack-roll-block-value ncm-hack-roll-block-value--dv">${dv}</div></div>
+        </div>
+        <div class="ncm-hack-roll-breakdown">${skillName} <span style="color:var(--sp-text-bright)">${base}</span> + 1d10 (<span style="color:#00ff41">${dieRoll}</span>) = <span style="color:#00ff41;font-weight:700">${total}</span></div>
+        <div class="ncm-hack-result-continue">Click to load shard contents...</div>
+      </div>`;
+    } else {
+      let damageHTML = '';
+      if (result.damage) {
+        const diceStr = result.diceResults?.length ? result.diceResults.join(', ') : '';
+        damageHTML = `<div class="ncm-hack-damage-box">
+          <div class="ncm-hack-damage-label"><i class="fas fa-bolt" style="margin-right:4px;"></i> Black ICE Retaliation</div>
+          <div class="ncm-hack-damage-value">${result.damage} HP</div>
+          ${diceStr ? `<div class="ncm-hack-damage-hp">${result.damageFormula || '5d6'} → [${diceStr}]</div>` : ''}
+        </div>`;
+      }
+      return `<div class="ncm-hack-result-card">
+        <div class="ncm-hack-result-icon ncm-hack-result-icon--fail"><i class="fas fa-shield-halved"></i></div>
+        <div class="ncm-hack-result-title ncm-hack-result-title--fail">Breach Failed</div>
+        <div class="ncm-hack-result-sub">ICE countermeasures engaged.</div>
+        <div class="ncm-hack-roll-reveal">
+          <div class="ncm-hack-roll-block"><div class="ncm-hack-roll-block-label">Your Roll</div><div class="ncm-hack-roll-block-value" style="color:#ff0033">${total}</div></div>
+          <div class="ncm-hack-roll-divider">vs</div>
+          <div class="ncm-hack-roll-block"><div class="ncm-hack-roll-block-label">DV</div><div class="ncm-hack-roll-block-value ncm-hack-roll-block-value--dv">${dv}</div></div>
+        </div>
+        <div class="ncm-hack-roll-breakdown">${skillName} <span style="color:var(--sp-text-bright)">${base}</span> + 1d10 (<span style="color:#ff0033">${dieRoll}</span>) = <span style="color:#ff0033;font-weight:700">${total}</span></div>
+        ${damageHTML}
+        <div class="ncm-hack-result-sub" style="font-size:9px;color:var(--sp-text-muted);">${result.attemptsRemaining ?? 0} attempts remaining.</div>
+        <div class="ncm-hack-result-continue">Click to continue...</div>
+      </div>`;
+    }
+  }
+
+  /** @private — Legacy effect for backward compat */
+  async _playHackSuccessEffect() {
     this.soundService?.play('hack-success');
   }
 
@@ -1328,12 +1522,60 @@ export class ItemInboxApp extends BaseApplication {
   async _playHackFailEffect(result) {
     const el = this.element;
     if (!el) return;
-
     el.classList.add('ncm-screen-shake');
-    el.classList.add('ncm-flash-red');
     await new Promise(r => setTimeout(r, 500));
     el.classList.remove('ncm-screen-shake');
-    el.classList.remove('ncm-flash-red');
+  }
+
+  /** @private — Show welcome splash after login success */
+  async _playLoginSuccessEffect(username) {
+    const overlay = this.element?.querySelector('.ncm-security-overlay-login');
+    if (!overlay) return;
+
+    const card = overlay.querySelector('.ncm-sec-card');
+    if (card) {
+      card.innerHTML = `
+        <div class="ncm-hack-result-icon ncm-hack-result-icon--success" style="background:var(--sp-icon-bg);border-color:var(--sp-icon-border);color:var(--sp-accent);box-shadow:0 0 30px var(--sp-accent-glow);">
+          <i class="fas fa-user-check"></i>
+        </div>
+        <div class="ncm-sec-muted" style="font-size:9px;letter-spacing:0.08em;margin-bottom:4px;">AUTHENTICATION SUCCESSFUL</div>
+        <div class="ncm-sec-title" style="letter-spacing:0.3em;">Welcome</div>
+        <div style="font-family:var(--ncm-font-display,'Orbitron');font-size:16px;font-weight:700;color:var(--sp-accent);text-transform:uppercase;letter-spacing:0.2em;margin:4px 0 12px;">
+          ${username}
+        </div>
+        <div class="ncm-sec-muted">Loading secure contents...</div>
+      `;
+    }
+    this.soundService?.play('login-success');
+    await new Promise(r => setTimeout(r, 2200));
+  }
+
+  /** @private — Generic success splash for key item / other layers */
+  async _playSecuritySuccessEffect(title, subtitle) {
+    const el = this.element;
+    if (!el) return;
+
+    // Create temporary overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'ncm-security-overlay';
+    overlay.style.cssText = 'z-index:12;';
+    overlay.innerHTML = `
+      <div class="ncm-sec-card" style="box-shadow:0 0 30px rgba(0,0,0,0.4),0 0 2px #00ff41;">
+        <div class="ncm-hack-result-icon ncm-hack-result-icon--success" style="width:64px;height:64px;font-size:26px;">
+          <i class="fas fa-check"></i>
+        </div>
+        <div class="ncm-sec-title" style="color:#00ff41;">${title}</div>
+        <div class="ncm-sec-info">${subtitle}</div>
+        <div class="ncm-sec-muted">Loading contents...</div>
+      </div>
+    `;
+
+    const content = el.querySelector('.ncm-shard-content') || el.querySelector('.ncm-item-inbox');
+    if (content) content.appendChild(overlay);
+
+    this.soundService?.play('hack-success');
+    await new Promise(r => setTimeout(r, 1800));
+    overlay.remove();
   }
 
   /** @private */

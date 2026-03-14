@@ -1,38 +1,59 @@
-{{!-- Security Overlay: Login Layer --}}
+{{!-- Security Overlay: Login Layer (Sprint 4.6 Themed Redesign) --}}
 <div class="ncm-security-overlay ncm-security-overlay-login">
-  <div class="ncm-overlay-backdrop ncm-scanline-green"></div>
-  <div class="ncm-overlay-card">
-    <div class="ncm-overlay-icon"><i class="fas fa-terminal"></i></div>
-    <h3 class="ncm-overlay-title">{{loginDisplayName}}</h3>
+  <div class="ncm-sec-backdrop ncm-sec-backdrop--scanline"></div>
+  <div class="ncm-sec-card ncm-sec-card--login">
+    <div class="ncm-sec-icon ncm-sec-icon--login"><i class="fas fa-terminal"></i></div>
+    <div class="ncm-sec-title">{{loginDisplayName}}</div>
+    <div class="ncm-sec-info">Authenticate to access shard contents.</div>
 
     {{#if isLockedOut}}
-      <div class="ncm-lockout-display">
-        <i class="fas fa-ban"></i>
-        <p>SYSTEM LOCKED</p>
-        <p class="ncm-lockout-timer" data-seconds="{{lockoutRemaining}}">
-          {{lockoutRemaining}}s
-        </p>
+      <div class="ncm-sec-lockout">
+        <div class="ncm-sec-lockout-icon"><i class="fas fa-ban"></i></div>
+        <div class="ncm-sec-lockout-text">System Locked</div>
+        {{#if isPermanentlyLocked}}
+          <div class="ncm-sec-lockout-timer">PERMANENT</div>
+        {{else}}
+          <div class="ncm-sec-lockout-timer" data-lockout-countdown>{{lockoutRemaining}}s</div>
+        {{/if}}
+        <div class="ncm-sec-muted">Maximum attempts exceeded.</div>
+      </div>
+      <div class="ncm-sec-attempts">
+        {{#each attemptDots}}
+          <div class="ncm-sec-attempt-dot ncm-sec-attempt-dot--used"></div>
+        {{/each}}
       </div>
     {{else}}
-      <div class="ncm-login-form">
-        <div class="ncm-form-group">
-          <label><i class="fas fa-user"></i> Username</label>
-          <input type="text" name="login-username" placeholder="username" autocomplete="off" />
+      <div class="ncm-sec-login-form">
+        <div class="ncm-sec-login-group">
+          <div class="ncm-sec-login-label"><i class="fas fa-user"></i> Username</div>
+          <input class="ncm-sec-login-input" type="text" name="login-username" placeholder="admin" autocomplete="off" />
         </div>
-        <div class="ncm-form-group">
-          <label><i class="fas fa-key"></i> Password</label>
-          <input type="password" name="login-password" placeholder="••••••••" autocomplete="off" />
+        <div class="ncm-sec-login-group">
+          <div class="ncm-sec-login-label"><i class="fas fa-key"></i> Password</div>
+          <input class="ncm-sec-login-input" type="password" name="login-password" placeholder="••••••••" autocomplete="off" />
         </div>
-        <button type="button" data-action="submitLogin" class="ncm-btn ncm-btn-primary">
-          <i class="fas fa-sign-in-alt"></i> AUTHENTICATE
-        </button>
       </div>
+
+      <div class="ncm-sec-attempts">
+        {{#each attemptDots}}
+          <div class="ncm-sec-attempt-dot {{#if used}}ncm-sec-attempt-dot--used{{else if current}}ncm-sec-attempt-dot--current{{/if}}"></div>
+        {{/each}}
+      </div>
+      <div class="ncm-sec-muted">Attempt {{loginAttemptsCurrent}} of {{maxLoginAttempts}}</div>
+
+      {{#if hasActor}}
+        <button type="button" data-action="submitLogin" class="ncm-sec-btn ncm-sec-btn--login">
+          <i class="fas fa-sign-in-alt"></i> Authenticate
+        </button>
+      {{else}}
+        <div class="ncm-sec-muted">No character assigned.</div>
+      {{/if}}
     {{/if}}
 
     {{#if isGM}}
-      <div class="ncm-overlay-gm">
-        <div class="ncm-gm-divider">GM CONTROLS</div>
-        <button type="button" data-action="forceDecrypt" class="ncm-btn ncm-btn-gm">
+      <div class="ncm-sec-gm">
+        <div class="ncm-sec-gm-label">GM Controls</div>
+        <button type="button" data-action="forceDecrypt" class="ncm-sec-btn ncm-sec-btn--gm">
           <i class="fas fa-unlock-keyhole"></i> Bypass All Security
         </button>
       </div>

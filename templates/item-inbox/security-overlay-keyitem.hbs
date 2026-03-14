@@ -1,24 +1,23 @@
-{{!-- Security Overlay: Key Item Layer --}}
+{{!-- Security Overlay: Key Item Layer (Sprint 4.6 Themed Redesign) --}}
 <div class="ncm-security-overlay ncm-security-overlay-keyitem">
-  <div class="ncm-overlay-backdrop ncm-scanline-slow"></div>
-  <div class="ncm-overlay-card">
-    <div class="ncm-overlay-icon ncm-pulse"><i class="fas {{keyItemIcon}}"></i></div>
-    <h3 class="ncm-overlay-title">ACCESS TOKEN REQUIRED</h3>
-    <div class="ncm-overlay-info">
-      <p>Present the required access token:</p>
-      <p class="ncm-overlay-highlight">{{keyItemDisplayName}}</p>
-    </div>
+  <div class="ncm-sec-backdrop ncm-sec-backdrop--scanline"></div>
+  <div class="ncm-sec-card ncm-sec-card--keyitem">
+    <div class="ncm-sec-icon ncm-sec-icon--keyitem"><i class="fas {{keyItemIcon}}"></i></div>
+    <div class="ncm-sec-title">Access Token Required</div>
+    <div class="ncm-sec-info">Present the required physical token:</div>
+    <div class="ncm-sec-highlight ncm-sec-highlight--gold">{{keyItemDisplayName}}</div>
     {{#if hasActor}}
-      <button type="button" data-action="presentKeyItem" class="ncm-btn ncm-btn-primary">
-        <i class="fas fa-id-card"></i> PRESENT TOKEN
+      <button type="button" data-action="presentKeyItem" class="ncm-sec-btn ncm-sec-btn--primary" style="margin-top:14px;">
+        <i class="fas fa-hand-holding"></i> Present Token
       </button>
     {{else}}
-      <p class="ncm-text-muted">No character assigned.</p>
+      <div class="ncm-sec-muted">No character assigned. Set your character in User Configuration.</div>
     {{/if}}
+    <div class="ncm-sec-muted">Check your inventory for the required item.</div>
     {{#if isGM}}
-      <div class="ncm-overlay-gm">
-        <div class="ncm-gm-divider">GM CONTROLS</div>
-        <button type="button" data-action="forceDecrypt" class="ncm-btn ncm-btn-gm">
+      <div class="ncm-sec-gm">
+        <div class="ncm-sec-gm-label">GM Controls</div>
+        <button type="button" data-action="forceDecrypt" class="ncm-sec-btn ncm-sec-btn--gm">
           <i class="fas fa-unlock-keyhole"></i> Bypass All Security
         </button>
       </div>

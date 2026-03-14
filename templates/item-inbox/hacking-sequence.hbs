@@ -1,21 +1,68 @@
-{{!-- Hacking Sequence Animation --}}
-<div class="ncm-hacking-sequence">
-  <div class="ncm-hack-backdrop ncm-matrix-rain-intense"></div>
-  <div class="ncm-hack-content">
-    <h3 class="ncm-hack-header ncm-typewriter">BREACHING ICE...</h3>
-    <div class="ncm-hack-progress">
-      <div class="ncm-hack-progress-bar">
-        <div class="ncm-hack-progress-fill"></div>
-      </div>
-    </div>
-    <div class="ncm-hack-code-display">
-      <div class="ncm-code-line">Initializing breach protocol...</div>
-      <div class="ncm-code-line">Scanning ICE architecture...</div>
-      <div class="ncm-code-line">Injecting exploit vector...</div>
-      <div class="ncm-code-line">Rolling dice...</div>
-    </div>
-    {{#if hackingSkill}}
-      <div class="ncm-hack-skill-label">SKILL: {{hackingSkill}}</div>
+{{!-- Hacking Sequence — Immersive Breach (Sprint 4.6 Redesign) --}}
+<div class="ncm-hack-screen">
+
+  {{!-- Status bar --}}
+  <div class="ncm-hack-status-bar">
+    <div class="ncm-hack-status-dot"></div>
+    <div class="ncm-hack-status-text">Breach Protocol Active</div>
+    <div class="ncm-hack-status-ice">{{encryptionType}} // DV {{encryptionDC}}</div>
+    {{#if hackingSkillName}}
+      <div class="ncm-hack-status-skill">{{hackingSkillName}} {{hackingSkillTotal}}</div>
     {{/if}}
   </div>
+
+  {{!-- Main area: terminal + ICE visual --}}
+  <div class="ncm-hack-main">
+
+    {{!-- Data streams (background) --}}
+    <div class="ncm-hack-data-stream" style="left:5%;"></div>
+    <div class="ncm-hack-data-stream" style="left:18%;animation-delay:0.5s;"></div>
+    <div class="ncm-hack-data-stream" style="left:33%;animation-delay:1.2s;"></div>
+    <div class="ncm-hack-data-stream" style="left:48%;animation-delay:0.3s;"></div>
+    <div class="ncm-hack-data-stream" style="left:62%;animation-delay:0.8s;"></div>
+
+    {{!-- Terminal output (JS populates lines) --}}
+    <div class="ncm-hack-terminal" data-hack-terminal>
+      <div class="ncm-hack-cursor"></div>
+    </div>
+
+    {{!-- ICE Visualization --}}
+    <div class="ncm-hack-visual">
+      <div class="ncm-hack-ice-structure" data-ice-structure>
+        <div class="ncm-hack-ice-hex"></div>
+        <div class="ncm-hack-ice-hex"></div>
+        <div class="ncm-hack-ice-hex"></div>
+        <div class="ncm-hack-ice-scan"></div>
+        <i class="fas fa-shield-halved ncm-hack-ice-icon" data-ice-icon></i>
+      </div>
+      <div class="ncm-hack-ice-label">{{encryptionType}}<br>ACTIVE</div>
+      <div class="ncm-hack-ice-integrity">
+        <div class="ncm-hack-ice-integrity-label">ICE Integrity</div>
+        <div class="ncm-hack-ice-integrity-track">
+          <div class="ncm-hack-ice-integrity-fill" data-ice-fill style="width:100%;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {{!-- Bottom progress --}}
+  <div class="ncm-hack-bottom">
+    <div class="ncm-hack-progress-area">
+      <div class="ncm-hack-progress-label" data-hack-progress-label>Initializing breach...</div>
+      <div class="ncm-hack-progress-track">
+        <div class="ncm-hack-progress-fill" data-hack-progress-fill style="width:0%;"></div>
+      </div>
+    </div>
+    <div class="ncm-hack-roll-display" data-hack-roll-player style="opacity:0;">
+      <div class="ncm-hack-roll-label">Roll</div>
+      <div class="ncm-hack-roll-value">--</div>
+    </div>
+    <div class="ncm-hack-roll-display" style="opacity:0.3;">
+      <div class="ncm-hack-roll-label">DV</div>
+      <div class="ncm-hack-roll-value">{{encryptionDC}}</div>
+    </div>
+  </div>
+
+  {{!-- Result overlay (shown by JS after sequence completes) --}}
+  <div class="ncm-hack-result-overlay" data-hack-result style="display:none;"></div>
 </div>

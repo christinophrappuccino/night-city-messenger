@@ -1,18 +1,20 @@
-{{!-- Security Overlay: Network Layer --}}
+{{!-- Security Overlay: Network Layer (Sprint 4.6 Themed Redesign) --}}
 <div class="ncm-security-overlay ncm-security-overlay-network">
-  <div class="ncm-overlay-backdrop ncm-static-noise"></div>
-  <div class="ncm-overlay-card">
-    <div class="ncm-overlay-icon"><i class="fas fa-network-wired"></i></div>
-    <h3 class="ncm-overlay-title">NETWORK ACCESS REQUIRED</h3>
-    <div class="ncm-overlay-info">
-      <p>This data shard requires connection to:</p>
-      <p class="ncm-overlay-highlight">{{requiredNetworkName}}</p>
-      <p class="ncm-text-muted">Connect to the required network to access this shard.</p>
+  <div class="ncm-sec-backdrop ncm-sec-backdrop--static"></div>
+  <div class="ncm-sec-card">
+    <div class="ncm-sec-icon ncm-sec-icon--network"><i class="fas fa-network-wired"></i></div>
+    <div class="ncm-sec-title">Network Required</div>
+    <div class="ncm-sec-info">This shard requires connection to:</div>
+    <div class="ncm-sec-highlight">{{requiredNetworkName}}</div>
+    <div class="ncm-sec-info" style="margin-top:8px;">
+      Current: <strong class="ncm-sec-text-danger">{{currentNetworkName}}</strong>
+      <span class="ncm-sec-text-muted">// Not authorized</span>
     </div>
+    <div class="ncm-sec-muted">Connect to the required network to access this shard.</div>
     {{#if isGM}}
-      <div class="ncm-overlay-gm">
-        <div class="ncm-gm-divider">GM CONTROLS</div>
-        <button type="button" data-action="forceDecrypt" class="ncm-btn ncm-btn-gm">
+      <div class="ncm-sec-gm">
+        <div class="ncm-sec-gm-label">GM Controls</div>
+        <button type="button" data-action="forceDecrypt" class="ncm-sec-btn ncm-sec-btn--gm">
           <i class="fas fa-unlock-keyhole"></i> Bypass All Security
         </button>
       </div>
