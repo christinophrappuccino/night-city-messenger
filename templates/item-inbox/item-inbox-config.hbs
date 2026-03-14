@@ -8,6 +8,14 @@
 {{#if hasItem}}
 <form class="ncm-shard-config" autocomplete="off">
 
+  {{!-- ═══ RELOCK SECURITY ═══ --}}
+  <div class="ncm-config-relock-bar">
+    <button type="button" data-action="relockShard" class="ncm-shard-btn ncm-shard-btn--danger" style="width:100%;">
+      <i class="fas fa-lock"></i> Relock All Security
+    </button>
+    <div class="ncm-config-hint">Resets encryption, login, key item, hack attempts, lockout, boot sequence, and expiration for all players.</div>
+  </div>
+
   {{!-- ═══ 1. PRESET & IDENTITY ═══ --}}
   <fieldset class="ncm-config-section">
     <legend class="ncm-config-legend"><i class="fas fa-palette"></i> Preset & Identity</legend>

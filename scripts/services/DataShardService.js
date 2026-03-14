@@ -482,11 +482,15 @@ export class DataShardService {
     if (!isGM()) return { success: false, error: 'GM only' };
 
     try {
-      // Atomic reset — single write
+      // Full atomic reset — restores ALL runtime state to defaults
       await shardItem.update({
         [`flags.${MODULE_ID}.state`]: {
           decrypted: false,
           sessions: {},
+          destroyed: false,
+          bootPlayed: false,
+          firstAccessedAt: null,
+          accessCount: 0,
         },
       });
 

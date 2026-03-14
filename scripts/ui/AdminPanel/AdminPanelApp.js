@@ -2320,16 +2320,16 @@ export class AdminPanelApp extends BaseApplication {
 
     const confirmed = await Dialog.confirm({
       title: 'Relock Shard',
-      content: `<p>Relock <strong>${item.name}</strong>? All session data will be reset.</p>`,
+      content: `<p>Relock <strong>${item.name}</strong>? All security state will be fully reset (encryption, login, key item, hack attempts, lockout, boot, expiration).</p>`,
     });
     if (!confirmed) return;
 
-    // Atomic reset — single write
-    await item.update({
-      [`flags.${MODULE_ID}.state`]: { decrypted: false, sessions: {} },
-    });
-
-    ui.notifications.info(`Relocked: ${item.name}`);
+    const result = await game.nightcity?.dataShardService?.relockShard(item);
+    if (result?.success) {
+      ui.notifications.info(`Relocked: ${item.name}`);
+    } else {
+      ui.notifications.error(`Relock failed: ${result?.error || 'Unknown'}`);
+    }
     this.render(true);
   }
 

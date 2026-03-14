@@ -61,6 +61,7 @@ export class ItemInboxConfig extends BaseApplication {
       removeNetworkTag: ItemInboxConfig._onRemoveNetworkTag,
       changeIconMode: ItemInboxConfig._onChangeIconMode,
       selectIconColor: ItemInboxConfig._onSelectIconColor,
+      relockShard: ItemInboxConfig._onRelockShard,
     },
   }, { inplace: false });
 
@@ -638,6 +639,32 @@ export class ItemInboxConfig extends BaseApplication {
     row?.querySelectorAll('.ncm-icon-color-dot').forEach(dot => {
       dot.classList.toggle('ncm-icon-color-dot--active', dot.dataset.color === color);
     });
+  }
+
+  static async _onRelockShard(event, target) {
+    if (!this.item) return;
+    const confirm = await Dialog.confirm({
+      title: 'Relock All Security',
+      content: `<p>This will reset <strong>ALL</strong> security state for this shard:</p>
+        <ul style="margin:8px 0 8px 16px;font-size:13px;">
+          <li>Re-encrypt the shard</li>
+          <li>Reset all login sessions</li>
+          <li>Clear key item authorizations</li>
+          <li>Reset hack attempts and lockouts</li>
+          <li>Replay boot sequence</li>
+          <li>Reset expiration timers</li>
+          <li>Restore destroyed shards</li>
+        </ul>
+        <p>This affects <strong>all players</strong>. Continue?</p>`,
+    });
+    if (!confirm) return;
+
+    const result = await this.dataShardService?.relockShard(this.item);
+    if (result?.success) {
+      ui.notifications.info('NCM | All security relocked.');
+    } else {
+      ui.notifications.error(`NCM | Relock failed: ${result?.error || 'Unknown'}`);
+    }
   }
 
   // ═══════════════════════════════════════════════════════════
