@@ -102,9 +102,16 @@ export class DataShardComposer extends BaseApplication {
     super(options);
     if (options.shardItem) this.shardItem = options.shardItem;
     if (options.onSave) this.onSave = options.onSave;
+    if (options.editData) {
+      this.editData = options.editData;
+      this._selectedType = options.editData.contentType || CONTENT_TYPES.MESSAGE;
+    }
   }
 
-  get title() { return `Add Entry: ${this.shardItem?.name ?? 'Unknown'}`; }
+  get title() {
+    const verb = this.editData ? 'Edit Entry' : 'Add Entry';
+    return `${verb}: ${this.shardItem?.name ?? 'Unknown'}`;
+  }
 
   // ═══════════════════════════════════════════════════════════
   //  DATA PREPARATION
@@ -139,6 +146,17 @@ export class DataShardComposer extends BaseApplication {
       hasItem: true,
       shardName: this.shardItem.name,
       selectedType: type,
+
+      // Edit mode
+      isEditing: !!this.editData,
+      editEntryId: this.editData?.entryId || '',
+
+      // Pre-filled values (from edit data or empty)
+      editFrom: this.editData?.from || '',
+      editSubject: this.editData?.subject || '',
+      editBody: this.editData?.body || '',
+      editTimestamp: this.editData?.timestamp || '',
+      editContentData: this.editData?.contentData ?? {},
 
       // Type pills
       typePills,
@@ -316,13 +334,36 @@ export class DataShardComposer extends BaseApplication {
         break;
     }
 
-    const result = await this.dataShardService.addMessage(this.shardItem, entryData);
-    if (result.success) {
-      ui.notifications.info(`NCM | ${TYPE_PILLS.find(p => p.key === type)?.label ?? 'Entry'} added to shard.`);
+    let result;
+    const typeLabel = TYPE_PILLS.find(p => p.key === type)?.label ?? 'Entry';
+
+    if (this.editData?.entryId) {
+      // EDIT MODE — update existing journal page
+      const journal = this.dataShardService?._getLinkedJournal(this.shardItem);
+      if (!journal) { ui.notifications.error('NCM | Journal not found.'); return; }
+      const page = journal.pages.find(p => p.flags?.[MODULE_ID]?.messageId === this.editData.entryId);
+      if (!page) { ui.notifications.error('NCM | Entry not found.'); return; }
+
+      const updateFlags = {};
+      for (const [key, val] of Object.entries(entryData)) {
+        updateFlags[`flags.${MODULE_ID}.${key}`] = val;
+      }
+      await page.update(updateFlags);
+      result = { success: true };
+      ui.notifications.info(`NCM | ${typeLabel} updated.`);
+    } else {
+      // CREATE MODE — add new entry
+      result = await this.dataShardService.addMessage(this.shardItem, entryData);
+      if (result.success) {
+        ui.notifications.info(`NCM | ${typeLabel} added to shard.`);
+      }
+    }
+
+    if (result?.success) {
       if (typeof this.onSave === 'function') this.onSave();
       this.close();
-    } else {
-      ui.notifications.error(`NCM | Failed: ${result.error}`);
+    } else if (!result?.success) {
+      ui.notifications.error(`NCM | Failed: ${result?.error || 'Unknown error'}`);
     }
   }
 

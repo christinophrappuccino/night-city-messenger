@@ -29,14 +29,21 @@
     <div class="ncm-shard-meta">
       <div class="ncm-shard-name">{{shardDisplayName}}</div>
       <div class="ncm-shard-type-line">
-        {{presetLabel}}
-        {{#if isDecrypted}}
-          <span class="ncm-shard-sep">·</span>DECRYPTED
-        {{else if isEncrypted}}
-          <span class="ncm-shard-sep">·</span>{{encryptionType}}
-        {{/if}}
-        {{#if isTethered}}
-          <span class="ncm-shard-sep">·</span>TETHERED
+        {{#if typeLineIsCustom}}
+          {{typeLineCustomText}}
+        {{else if typeLineIsStatusOnly}}
+          {{#if isDecrypted}}DECRYPTED{{else if isEncrypted}}{{encryptionType}}{{else}}OPEN{{/if}}
+          {{#if isTethered}}<span class="ncm-shard-sep">·</span>TETHERED{{/if}}
+        {{else}}
+          {{presetLabel}}
+          {{#if isDecrypted}}
+            <span class="ncm-shard-sep">·</span>DECRYPTED
+          {{else if isEncrypted}}
+            <span class="ncm-shard-sep">·</span>{{encryptionType}}
+          {{/if}}
+          {{#if isTethered}}
+            <span class="ncm-shard-sep">·</span>TETHERED
+          {{/if}}
         {{/if}}
       </div>
       {{#if hasMetadata}}
@@ -185,6 +192,10 @@
                 </div>
                 <div class="ncm-entry-timestamp">{{formattedDate}}</div>
                 {{#if ../isGM}}
+                  <button type="button" data-action="editEntry" data-entry-id="{{id}}"
+                          class="ncm-shard-hdr-btn" title="Edit entry">
+                    <i class="fas fa-pen"></i>
+                  </button>
                   <button type="button" data-action="removeEntry" data-entry-id="{{id}}"
                           class="ncm-shard-hdr-btn ncm-shard-hdr-btn--danger" title="Delete entry">
                     <i class="fas fa-trash-can"></i>

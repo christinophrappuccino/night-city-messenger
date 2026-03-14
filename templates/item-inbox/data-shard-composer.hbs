@@ -62,19 +62,19 @@
       <legend class="ncm-config-legend"><i class="fas fa-envelope"></i> Message Content</legend>
       <div class="ncm-config-row">
         <label class="ncm-config-label">From</label>
-        <input type="text" name="from" class="ncm-config-input ncm-config-flex" placeholder="sender@corp.net" />
+        <input type="text" name="from" class="ncm-config-input ncm-config-flex" value="{{editFrom}}" placeholder="sender@corp.net" />
       </div>
       <div class="ncm-config-row">
         <label class="ncm-config-label">Subject</label>
-        <input type="text" name="subject" class="ncm-config-input ncm-config-flex" placeholder="Message subject" />
+        <input type="text" name="subject" class="ncm-config-input ncm-config-flex" value="{{editSubject}}" placeholder="Message subject" />
       </div>
       <div class="ncm-config-row ncm-config-row--col">
         <label class="ncm-config-label" style="margin-bottom:4px;">Body</label>
-        <textarea name="body" class="ncm-config-input ncm-config-textarea" rows="6" placeholder="Message content..."></textarea>
+        <textarea name="body" class="ncm-config-input ncm-config-textarea" rows="6" placeholder="Message content...">{{editBody}}</textarea>
       </div>
       <div class="ncm-config-row">
         <label class="ncm-config-label">Timestamp</label>
-        <input type="text" name="timestamp" class="ncm-config-input ncm-config-flex" value="{{defaultTimestamp}}" placeholder="ISO-8601" />
+        <input type="text" name="timestamp" class="ncm-config-input ncm-config-flex" value="{{#if editTimestamp}}{{editTimestamp}}{{else}}{{defaultTimestamp}}{{/if}}" placeholder="ISO-8601" />
       </div>
     </fieldset>
   {{/if}}
@@ -85,15 +85,15 @@
       <legend class="ncm-config-legend"><i class="fas fa-coins"></i> Eddies Dead Drop</legend>
       <div class="ncm-config-row">
         <label class="ncm-config-label">Amount (eb)</label>
-        <input type="number" name="eddiesAmount" class="ncm-config-input ncm-config-flex" value="1000" min="1" placeholder="Eddies amount" style="font-weight:700;" />
+        <input type="number" name="eddiesAmount" class="ncm-config-input ncm-config-flex" value="{{#if editContentData.amount}}{{editContentData.amount}}{{else}}1000{{/if}}" min="1" placeholder="Eddies amount" style="font-weight:700;" />
       </div>
       <div class="ncm-config-row">
         <label class="ncm-config-label">Title</label>
-        <input type="text" name="eddiesTitle" class="ncm-config-input ncm-config-flex" placeholder="Payment — Job Name" />
+        <input type="text" name="eddiesTitle" class="ncm-config-input ncm-config-flex" value="{{editSubject}}" placeholder="Payment — Job Name" />
       </div>
       <div class="ncm-config-row ncm-config-row--col">
         <label class="ncm-config-label" style="margin-bottom:4px;">Note (optional)</label>
-        <textarea name="eddiesNote" class="ncm-config-input ncm-config-textarea" rows="2" placeholder="Half now, half when it's done..."></textarea>
+        <textarea name="eddiesNote" class="ncm-config-input ncm-config-textarea" rows="2" placeholder="Half now, half when it's done...">{{editContentData.note}}</textarea>
       </div>
       <div class="ncm-config-hint">Eddies are wired to the CPR wealth ledger when claimed by a player.</div>
       <div class="ncm-config-row">
@@ -367,7 +367,11 @@
   {{!-- ═══ ACTIONS ═══ --}}
   <div class="ncm-config-actions">
     <button type="button" data-action="cancel" class="ncm-shard-btn ncm-shard-btn--secondary"><i class="fas fa-times"></i> Cancel</button>
-    <button type="button" data-action="saveEntry" class="ncm-shard-btn ncm-shard-btn--primary"><i class="fas fa-plus"></i> Add Entry</button>
+    {{#if isEditing}}
+      <button type="button" data-action="saveEntry" class="ncm-shard-btn ncm-shard-btn--primary"><i class="fas fa-save"></i> Update Entry</button>
+    {{else}}
+      <button type="button" data-action="saveEntry" class="ncm-shard-btn ncm-shard-btn--primary"><i class="fas fa-plus"></i> Add Entry</button>
+    {{/if}}
   </div>
 </form>
 {{else}}

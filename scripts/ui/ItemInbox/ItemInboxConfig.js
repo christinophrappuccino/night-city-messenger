@@ -186,6 +186,12 @@ export class ItemInboxConfig extends BaseApplication {
       metaTimestamp: meta.timestamp || '',
       metaClassification: meta.classification || '',
 
+      // Type line display mode
+      typeLineModePresetStatus: (meta.typeLineMode ?? 'preset-status') === 'preset-status',
+      typeLineModeStatusOnly: meta.typeLineMode === 'status-only',
+      typeLineModeCustom: meta.typeLineMode === 'custom',
+      typeLineCustom: meta.typeLineCustom || '',
+
       // Encryption
       isEncrypted: config.encrypted,
       encryptionTypes,
@@ -333,6 +339,8 @@ export class ItemInboxConfig extends BaseApplication {
         location: data.metaLocation || '',
         timestamp: data.metaTimestamp || '',
         classification: data.metaClassification || '',
+        typeLineMode: data.typeLineMode || 'preset-status',
+        typeLineCustom: data.typeLineCustom || '',
         custom: {},
       },
 

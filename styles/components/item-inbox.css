@@ -303,6 +303,15 @@
 }
 .ncm-app .ncm-shard-index-chip--active .ncm-shard-index-chip-title { color: var(--sp-chip-active-text); }
 
+/* Index chip accent colors (left border per content type) */
+.ncm-app .ncm-shard-index-chip--red { border-left: 2px solid #F65261; }
+.ncm-app .ncm-shard-index-chip--cyan { border-left: 2px solid #19f3f7; }
+.ncm-app .ncm-shard-index-chip--gold { border-left: 2px solid #f7c948; }
+.ncm-app .ncm-shard-index-chip--green { border-left: 2px solid #00ff41; }
+.ncm-app .ncm-shard-index-chip--purple { border-left: 2px solid #a855f7; }
+.ncm-app .ncm-shard-index-chip--danger { border-left: 2px solid #ff0033; }
+.ncm-app .ncm-shard-index-chip--muted { border-left: 2px solid #555570; }
+
 
 /* ═══════════════════════════════════════════
    §6  CONTENT AREA

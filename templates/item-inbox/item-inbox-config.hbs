@@ -49,6 +49,19 @@
       <label class="ncm-config-label">Classification</label>
       <input type="text" name="metaClassification" class="ncm-config-input ncm-config-flex" value="{{metaClassification}}" placeholder="TOP SECRET, CONFIDENTIAL, etc." />
     </div>
+    <div class="ncm-config-row">
+      <label class="ncm-config-label">Type Line</label>
+      <select name="typeLineMode" class="ncm-config-select ncm-config-flex">
+        <option value="preset-status" {{#if typeLineModePresetStatus}}selected{{/if}}>Preset + Status (e.g. Corporate Dossier · DECRYPTED)</option>
+        <option value="status-only" {{#if typeLineModeStatusOnly}}selected{{/if}}>Status Only (e.g. DECRYPTED)</option>
+        <option value="custom" {{#if typeLineModeCustom}}selected{{/if}}>Custom Text</option>
+      </select>
+    </div>
+    <div class="ncm-config-row">
+      <label class="ncm-config-label">Custom Text</label>
+      <input type="text" name="typeLineCustom" class="ncm-config-input ncm-config-flex" value="{{typeLineCustom}}" placeholder="Arasaka Secure Terminal v7.2" />
+    </div>
+    <div class="ncm-config-hint">Controls the subtitle shown below the shard name.</div>
   </fieldset>
 
   {{!-- ═══ 3. ENCRYPTION ═══ --}}

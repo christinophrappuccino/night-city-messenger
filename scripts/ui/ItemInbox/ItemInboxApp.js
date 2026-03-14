@@ -83,6 +83,7 @@ export class ItemInboxApp extends BaseApplication {
       toggleIndexStrip: ItemInboxApp._onToggleIndexStrip,
       executePayload: ItemInboxApp._onExecutePayload,
       goToScene: ItemInboxApp._onGoToScene,
+      editEntry: ItemInboxApp._onEditEntry,
       // Legacy aliases
       addMessage: ItemInboxApp._onAddEntry,
       removeMessage: ItemInboxApp._onRemoveEntry,
@@ -202,6 +203,7 @@ export class ItemInboxApp extends BaseApplication {
     // Metadata
     const meta = config.metadata ?? {};
     const hasMetadata = !!(meta.timestamp || meta.location || meta.network);
+    const presetLabel = preset?.label ?? 'Data Shard';
 
     // Boot config
     const bootConfig = config.boot ?? {};
@@ -245,7 +247,7 @@ export class ItemInboxApp extends BaseApplication {
 
       // Preset / Identity
       presetKey,
-      presetLabel: preset?.label ?? 'Data Shard',
+      presetLabel,
       presetFaIcon: bootConfig.faIcon || preset?.icon || 'fas fa-microchip',
       presetAccent: presetTheme.accent || null,
       presetFooterText: presetTheme.footerText || '',
@@ -303,6 +305,11 @@ export class ItemInboxApp extends BaseApplication {
       metadataLocation: meta.location || '',
       metadataNetwork: meta.network || '',
       metadataClassification: meta.classification || '',
+
+      // Type line display mode
+      typeLineIsCustom: meta.typeLineMode === 'custom',
+      typeLineIsStatusOnly: meta.typeLineMode === 'status-only',
+      typeLineCustomText: meta.typeLineCustom || presetLabel,
 
       // Entries
       visibleEntries: enrichedEntries,
@@ -419,13 +426,19 @@ export class ItemInboxApp extends BaseApplication {
 
   /** @private */
   _buildIndexChips(visibleEntries, hiddenCount, selectedId) {
+    const ACCENT_HEX = {
+      red: '#F65261', cyan: '#19f3f7', gold: '#f7c948',
+      green: '#00ff41', purple: '#a855f7', danger: '#ff0033', muted: '#888888',
+    };
+
     const chips = visibleEntries.map(entry => {
       const typeInfo = CONTENT_TYPE_INFO[entry.contentType] ?? CONTENT_TYPE_INFO[CONTENT_TYPES.MESSAGE];
       return {
         id: entry.id,
         title: entry.subject || 'Data Fragment',
         iconClass: typeInfo.indexIcon,
-        iconColor: `var(--ncm-color-${typeInfo.accent === 'cyan' ? 'secondary' : typeInfo.accent === 'red' ? 'primary' : typeInfo.accent})`,
+        iconColor: ACCENT_HEX[typeInfo.accent] || '#19f3f7',
+        accentClass: `ncm-shard-index-chip--${typeInfo.accent || 'cyan'}`,
         isActive: entry.id === selectedId,
         isHidden: false,
       };
@@ -437,7 +450,8 @@ export class ItemInboxApp extends BaseApplication {
         id: `hidden-${i}`,
         title: 'Hidden',
         iconClass: 'fas fa-lock',
-        iconColor: 'var(--ncm-text-muted)',
+        iconColor: '#555570',
+        accentClass: 'ncm-shard-index-chip--muted',
         isActive: false,
         isHidden: true,
       });
@@ -1262,6 +1276,40 @@ export class ItemInboxApp extends BaseApplication {
     }
     scene.view();
     ui.notifications.info(`NCM | Viewing scene: ${scene.name}`);
+  }
+
+  static _onEditEntry(event, target) {
+    if (!isGM() || !this.item) return;
+    const entryId = target.closest('[data-entry-id]')?.dataset.entryId;
+    if (!entryId) return;
+
+    // Read existing entry data from the journal page
+    const journal = this.dataShardService?._getLinkedJournal(this.item);
+    if (!journal) return;
+    const page = journal.pages.find(p => p.flags?.[MODULE_ID]?.messageId === entryId);
+    if (!page) return;
+
+    const flags = page.flags?.[MODULE_ID] ?? {};
+    const editData = {
+      entryId,
+      contentType: flags.contentType || 'message',
+      from: flags.from || '',
+      subject: flags.subject || '',
+      body: flags.body || '',
+      timestamp: flags.timestamp || '',
+      encrypted: flags.encrypted || false,
+      encryptionDC: flags.encryptionDC,
+      contentData: flags.contentData ?? {},
+      networkVisibility: flags.networkVisibility ?? {},
+    };
+
+    import('./DataShardComposer.js').then(({ DataShardComposer }) => {
+      new DataShardComposer({
+        shardItem: this.item,
+        editData,
+        onSave: () => this.render(),
+      }).render(true);
+    });
   }
 
   // ─── Effects ───
