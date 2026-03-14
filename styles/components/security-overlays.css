@@ -97,6 +97,29 @@
   box-shadow: 0 0 30px rgba(0,0,0,0.4), 0 0 2px #00ff41;
 }
 
+/* Themed scrollbars — vertical only, styled to match preset */
+.ncm-app .ncm-security-overlay *,
+.ncm-app .ncm-hack-screen * {
+  scrollbar-width: thin;
+  scrollbar-color: var(--sp-border, #2a2a45) transparent;
+}
+.ncm-app .ncm-security-overlay ::-webkit-scrollbar,
+.ncm-app .ncm-hack-screen ::-webkit-scrollbar { width: 4px; height: 0; }
+.ncm-app .ncm-security-overlay ::-webkit-scrollbar-track,
+.ncm-app .ncm-hack-screen ::-webkit-scrollbar-track { background: transparent; }
+.ncm-app .ncm-security-overlay ::-webkit-scrollbar-thumb,
+.ncm-app .ncm-hack-screen ::-webkit-scrollbar-thumb { background: var(--sp-border, #2a2a45); border-radius: 2px; }
+.ncm-app .ncm-security-overlay ::-webkit-scrollbar-thumb:hover,
+.ncm-app .ncm-hack-screen ::-webkit-scrollbar-thumb:hover { background: var(--sp-accent, #19f3f7); }
+
+/* No horizontal scrolling anywhere in overlays */
+.ncm-app .ncm-security-overlay,
+.ncm-app .ncm-security-overlay *,
+.ncm-app .ncm-hack-screen,
+.ncm-app .ncm-hack-screen * {
+  overflow-x: hidden !important;
+}
+
 
 /* ═══════════════════════════════════════════
    §4  ICON, TITLE, INFO, HIGHLIGHT

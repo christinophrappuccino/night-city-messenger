@@ -349,6 +349,7 @@ export class ItemInboxApp extends BaseApplication {
       hasLuck: availableLuck > 0,
 
       // Overlay flags
+      isBlocked: security.blocked,
       showNetworkOverlay: security.blocked && security.layer === 'network',
       showKeyitemOverlay: security.blocked && security.layer === 'keyitem',
       showLoginOverlay: security.blocked && security.layer === 'login',
@@ -595,19 +596,43 @@ export class ItemInboxApp extends BaseApplication {
       return;
     }
 
-    // Show hacking screen
+    // ─── Luck Dialog ───
+    // CPR: Player decides how much Luck to spend before rolling
+    let luckSpend = 0;
+    const availableLuck = this.skillService?.getAvailableLuck(actor) ?? 0;
+    if (availableLuck > 0) {
+      luckSpend = await new Promise(resolve => {
+        new Dialog({
+          title: 'Spend Luck?',
+          content: `<p style="margin-bottom:8px;">Luck adds directly to your roll total.</p>
+                    <p>Available: <strong>${availableLuck}</strong></p>
+                    <div class="form-group">
+                      <label>Points to spend:</label>
+                      <input type="number" name="luck" value="0" min="0" max="${availableLuck}" />
+                    </div>`,
+          buttons: {
+            spend: { label: 'Roll with Luck', callback: html => resolve(parseInt(html.find('[name=luck]').val()) || 0) },
+            skip: { label: 'Roll without Luck', callback: () => resolve(0) },
+          },
+          default: 'skip',
+        }).render(true);
+      });
+    }
+
+    // ─── Show hacking screen ───
     this._hackingActive = true;
-    this.render();
+    await this.render(true);
 
-    // Small delay to let template render, then run the actual hack in background
-    await new Promise(r => setTimeout(r, 300));
+    // Safety delay to ensure DOM is painted
+    await new Promise(r => setTimeout(r, 150));
 
+    // ─── Perform the hack ───
     const result = await this.dataShardService.attemptHack(this.item, actor, skillName, {
-      luckSpend: 0,
+      luckSpend,
     });
 
-    // Play the terminal sequence, passing the real result for the reveal
-    await this._playHackSequence(result, skillName);
+    // ─── Play the terminal sequence ───
+    await this._playHackSequence(result, skillName, luckSpend);
 
     this._hackingActive = false;
     this._hackingSkill = null;
@@ -623,60 +648,9 @@ export class ItemInboxApp extends BaseApplication {
   }
 
   static async _onSpendLuck(event, target) {
-    if (!this.item) return;
-    const actor = game.user?.character;
-    if (!actor) return;
-
-    const skillName = this._hackingSkill;
-    if (!skillName) {
-      ui.notifications.info('NCM | Select a skill first, then spend Luck.');
-      return;
-    }
-
-    // Prompt for Luck amount
-    const availableLuck = this.skillService?.getAvailableLuck(actor) ?? 0;
-    if (availableLuck <= 0) {
-      ui.notifications.warn('NCM | No Luck points available.');
-      return;
-    }
-
-    const luckSpend = await new Promise(resolve => {
-      new Dialog({
-        title: 'Spend Luck',
-        content: `<p>Available Luck: <strong>${availableLuck}</strong></p>
-                  <div class="form-group">
-                    <label>Points to spend:</label>
-                    <input type="number" name="luck" value="1" min="1" max="${availableLuck}" />
-                  </div>`,
-        buttons: {
-          spend: {
-            label: 'Spend',
-            callback: html => resolve(parseInt(html.find('[name=luck]').val()) || 0),
-          },
-          cancel: {
-            label: 'Cancel',
-            callback: () => resolve(0),
-          },
-        },
-        default: 'spend',
-      }).render(true);
-    });
-
-    if (luckSpend <= 0) return;
-
-    this._hackingActive = true;
-    this.render();
-    await new Promise(r => setTimeout(r, 300));
-
-    const result = await this.dataShardService.attemptHack(this.item, actor, skillName, {
-      luckSpend,
-    });
-
-    await this._playHackSequence(result, skillName);
-
-    this._hackingActive = false;
-    this._hackingSkill = null;
-    this.render();
+    // Luck is now integrated into the Attempt Breach flow via dialog
+    // This handler kept for backward compat — just triggers breach
+    return this._onAttemptBreach.call(this, event, target);
   }
 
   static async _onPresentKeyItem(event, target) {
@@ -1322,7 +1296,7 @@ export class ItemInboxApp extends BaseApplication {
   // ─── Effects ───
 
   /** @private — Orchestrate the full hacking terminal sequence */
-  async _playHackSequence(result, skillName) {
+  async _playHackSequence(result, skillName, luckSpend = 0) {
     const el = this.element;
     if (!el) return;
 
@@ -1383,7 +1357,8 @@ export class ItemInboxApp extends BaseApplication {
     }
     await delay(() => { setProgress(40, 'Selecting exploit...'); }, 200);
     await delay(() => addLine('prompt', `Selecting exploit vector: ${skillName}`), 400);
-    await delay(() => addLine('data', `Base total: ${base} + 1d10`), 300);
+    const luckStr = luckSpend > 0 ? ` + Luck ${luckSpend}` : '';
+    await delay(() => addLine('data', `Base total: ${base}${luckStr} + 1d10`), 300);
     await delay(() => { setProgress(55, 'Injecting exploit...'); setIce(75); }, 300);
 
     // Phase 4: Inject
@@ -1424,7 +1399,8 @@ export class ItemInboxApp extends BaseApplication {
       addLine('roll', `1d10 → <span style="color:${result.success ? '#00ff41' : '#ff0033'};font-size:14px;">${dieRoll}</span>`);
     }, 200);
     await delay(() => {
-      addLine('roll', `Total: ${base} + ${dieRoll} = <span style="color:${result.success ? '#00ff41' : '#ff0033'};font-size:14px;">${total}</span> vs DV ${dv}`);
+      const luckTxt = luckSpend > 0 ? ` + Luck(${luckSpend})` : '';
+      addLine('roll', `Total: ${base}${luckTxt} + ${dieRoll} = <span style="color:${result.success ? '#00ff41' : '#ff0033'};font-size:14px;">${total}</span> vs DV ${dv}`);
       setProgress(100, result.success ? 'ICE BREACHED' : 'BREACH FAILED');
     }, 400);
 
@@ -1464,7 +1440,7 @@ export class ItemInboxApp extends BaseApplication {
     await delay(() => {
       if (resultOverlay) {
         resultOverlay.style.display = 'flex';
-        resultOverlay.innerHTML = this._buildHackResultHTML(result, skillName, base, dieRoll, total, dv, attemptsRemaining);
+        resultOverlay.innerHTML = this._buildHackResultHTML(result, skillName, base, dieRoll, total, dv, attemptsRemaining, luckSpend);
       }
     }, 600);
 
@@ -1481,7 +1457,8 @@ export class ItemInboxApp extends BaseApplication {
   }
 
   /** @private — Build HTML for hack result overlay */
-  _buildHackResultHTML(result, skillName, base, dieRoll, total, dv, attemptsRemaining = 0) {
+  _buildHackResultHTML(result, skillName, base, dieRoll, total, dv, attemptsRemaining = 0, luckSpend = 0) {
+    const luckStr = luckSpend > 0 ? ` + Luck(<span class="roll">${luckSpend}</span>)` : '';
     if (result.success) {
       return `<div class="ncm-hack-result-card">
         <div class="ncm-hack-result-icon ncm-hack-result-icon--success"><i class="fas fa-lock-open"></i></div>
@@ -1492,7 +1469,7 @@ export class ItemInboxApp extends BaseApplication {
           <div class="ncm-hack-roll-divider">vs</div>
           <div class="ncm-hack-roll-block"><div class="ncm-hack-roll-block-label">DV</div><div class="ncm-hack-roll-block-value ncm-hack-roll-block-value--dv">${dv}</div></div>
         </div>
-        <div class="ncm-hack-roll-breakdown">${skillName} <span style="color:var(--sp-text-bright)">${base}</span> + 1d10 (<span style="color:#00ff41">${dieRoll}</span>) = <span style="color:#00ff41;font-weight:700">${total}</span></div>
+        <div class="ncm-hack-roll-breakdown">${skillName} <span style="color:var(--sp-text-bright)">${base}</span>${luckStr} + 1d10 (<span style="color:#00ff41">${dieRoll}</span>) = <span style="color:#00ff41;font-weight:700">${total}</span></div>
         <div class="ncm-hack-result-continue">Click to load shard contents...</div>
       </div>`;
     } else {
@@ -1514,7 +1491,7 @@ export class ItemInboxApp extends BaseApplication {
           <div class="ncm-hack-roll-divider">vs</div>
           <div class="ncm-hack-roll-block"><div class="ncm-hack-roll-block-label">DV</div><div class="ncm-hack-roll-block-value ncm-hack-roll-block-value--dv">${dv}</div></div>
         </div>
-        <div class="ncm-hack-roll-breakdown">${skillName} <span style="color:var(--sp-text-bright)">${base}</span> + 1d10 (<span style="color:#ff0033">${dieRoll}</span>) = <span style="color:#ff0033;font-weight:700">${total}</span></div>
+        <div class="ncm-hack-roll-breakdown">${skillName} <span style="color:var(--sp-text-bright)">${base}</span>${luckStr} + 1d10 (<span style="color:#ff0033">${dieRoll}</span>) = <span style="color:#ff0033;font-weight:700">${total}</span></div>
         ${damageHTML}
         <div class="ncm-hack-result-sub" style="font-size:9px;color:var(--sp-text-muted);">${attemptsRemaining} attempt${attemptsRemaining !== 1 ? 's' : ''} remaining.</div>
         <div class="ncm-hack-result-continue">Click to continue...</div>

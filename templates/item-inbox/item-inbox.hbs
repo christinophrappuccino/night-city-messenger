@@ -89,10 +89,17 @@
   {{#if integrityEnabled}}
     <div class="ncm-shard-integrity-row">
       <span class="ncm-shard-integrity-label">Integrity</span>
-      <div class="ncm-shard-integrity-track">
-        <div class="ncm-shard-integrity-fill ncm-integrity-{{integrityTier}}" style="width: {{integrityPercent}}%;"></div>
-      </div>
-      <span class="ncm-shard-integrity-value">{{integrityPercent}}%</span>
+      {{#if isBlocked}}
+        <div class="ncm-shard-integrity-track">
+          <div class="ncm-shard-integrity-fill ncm-integrity-clean" style="width: 100%;"></div>
+        </div>
+        <span class="ncm-shard-integrity-value">???</span>
+      {{else}}
+        <div class="ncm-shard-integrity-track">
+          <div class="ncm-shard-integrity-fill ncm-integrity-{{integrityTier}}" style="width: {{integrityPercent}}%;"></div>
+        </div>
+        <span class="ncm-shard-integrity-value">{{integrityPercent}}%</span>
+      {{/if}}
     </div>
   {{/if}}
 
@@ -116,13 +123,22 @@
       <div class="ncm-shard-index-toggle" data-action="toggleIndexStrip">
         <i class="fas fa-chevron-down"></i> Index
       </div>
-      {{#each indexChips}}
-        <div class="ncm-shard-index-chip {{accentClass}} {{#if isActive}}ncm-shard-index-chip--active{{/if}} {{#if isHidden}}ncm-shard-index-chip--hidden{{/if}}"
-             data-action="scrollToEntry" data-entry-id="{{id}}">
-          <i class="{{iconClass}} ncm-shard-index-chip-icon" style="color:{{iconColor}};"></i>
-          <span class="ncm-shard-index-chip-title">{{#if isHidden}}Hidden{{else}}{{title}}{{/if}}</span>
-        </div>
-      {{/each}}
+      {{#if isBlocked}}
+        {{#each indexChips}}
+          <div class="ncm-shard-index-chip ncm-shard-index-chip--muted ncm-shard-index-chip--hidden">
+            <i class="fas fa-lock ncm-shard-index-chip-icon" style="color:#555570;"></i>
+            <span class="ncm-shard-index-chip-title">?????</span>
+          </div>
+        {{/each}}
+      {{else}}
+        {{#each indexChips}}
+          <div class="ncm-shard-index-chip {{accentClass}} {{#if isActive}}ncm-shard-index-chip--active{{/if}} {{#if isHidden}}ncm-shard-index-chip--hidden{{/if}}"
+               data-action="scrollToEntry" data-entry-id="{{id}}">
+            <i class="{{iconClass}} ncm-shard-index-chip-icon" style="color:{{iconColor}};"></i>
+            <span class="ncm-shard-index-chip-title">{{#if isHidden}}Hidden{{else}}{{title}}{{/if}}</span>
+          </div>
+        {{/each}}
+      {{/if}}
     </div>
   {{/if}}
 
