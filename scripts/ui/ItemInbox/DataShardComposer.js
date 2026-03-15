@@ -350,7 +350,7 @@ export class DataShardComposer extends BaseApplication {
         entryData.contentData = {
           targetName: data.dossierTargetName || 'Unknown',
           targetAlias: data.dossierAlias || '',
-          targetImage: null,
+          targetImage: data.dossierPortrait || null,
           linkedActorId: data.dossierLinkedActor || null,
           classification: data.dossierClassification || '',
           sections: this._collectDossierSections(),

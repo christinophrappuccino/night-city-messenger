@@ -873,6 +873,18 @@
   color: #00ff41 !important;
   cursor: default !important;
 }
+.ncm-app .ncm-eddies-claim-btn--processing {
+  background: rgba(247,201,72,0.06) !important;
+  border-color: rgba(247,201,72,0.2) !important;
+  color: #f7c948 !important;
+  cursor: wait !important;
+  pointer-events: none !important;
+  animation: ncm-eddies-pulse 0.8s ease infinite;
+}
+@keyframes ncm-eddies-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
 
 /* ─── Composer content type pills ─── */
 

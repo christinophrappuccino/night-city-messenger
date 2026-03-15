@@ -1654,13 +1654,43 @@ export class ItemInboxApp extends BaseApplication {
     });
     if (!confirm) return;
 
+    // Guard against hook re-renders during animation
+    this._transitionActive = true;
+
     const result = await this.dataShardService.claimEddies(this.item, entryId, actor);
     if (result.success) {
-      ui.notifications.info(`NCM | ${result.amount.toLocaleString()} eb claimed.`);
+      // ─── Transfer animation ───
+      const amount = result.amount ?? 0;
+
+      // Animate the claim button to "processing" state
+      const btn = target.closest('[data-action="claimEddies"]') || target;
+      if (btn) {
+        btn.classList.add('ncm-eddies-claim-btn--processing');
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Transferring...';
+      }
+
+      await new Promise(r => setTimeout(r, 600));
+
+      // Show the transfer splash
+      await this._showTransitionSplash({
+        icon: 'fas fa-coins',
+        iconStyle: 'gold',
+        preTitle: 'WIRE TRANSFER COMPLETE',
+        title: `${amount.toLocaleString()} eb`,
+        titleColor: '#00ff41',
+        name: actor.name,
+        subtitle: 'Funds deposited to wealth ledger.',
+        progressColor: 'green',
+        footerText: 'Transaction verified.',
+        duration: 2200,
+        sound: 'eddies-claim',
+      });
     } else {
       ui.notifications.warn(`NCM | ${result.error || 'Claim failed.'}`);
     }
-    this.render();
+
+    this._transitionActive = false;
+    this.render(true);
   }
 
   static _onScrollToEntry(event, target) {
