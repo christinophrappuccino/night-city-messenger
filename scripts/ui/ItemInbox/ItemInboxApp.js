@@ -158,7 +158,7 @@ export class ItemInboxApp extends BaseApplication {
     const isTethered = config.network?.connectionMode === 'tethered';
     const currentNetworkId = this.networkService?.currentNetworkId ?? null;
     const currentNetworkName = this.networkService?.currentNetwork?.name ?? currentNetworkId ?? '';
-    const signalStrength = this.networkService?.signalStrength ?? this.networkService?.getSignalStrength?.() ?? 100;
+    const signalStrength = this.networkService?.signalStrength ?? 100;
     const showSignalRow = networkRequired && isTethered;
 
     // Signal bars (5 bars)

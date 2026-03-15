@@ -910,7 +910,7 @@ export class DataShardService {
     const config = this._getConfig(shardItem);
     if (!config.network?.signalDVModifier) return { modifier: 0, signalStrength: 100, label: '' };
 
-    const signal = this.networkService?.getSignalStrength?.() ?? 100;
+    const signal = this.networkService?.signalStrength ?? 100;
 
     // DV modifier scale: 100-75 = +0, 74-50 = +2, 49-25 = +4, 24-1 = +8
     let modifier = 0;
@@ -936,8 +936,8 @@ export class DataShardService {
     // If GM, all visible
     if (isGM()) return { visible: allEntries, hiddenCount: 0, totalCount };
 
-    const currentNetworkId = this.networkService?.getCurrentNetworkId?.() ?? null;
-    const currentNetworkType = this.networkService?.getCurrentNetworkType?.() ?? null;
+    const currentNetworkId = this.networkService?.currentNetworkId ?? null;
+    const currentNetworkType = this.networkService?.currentNetwork?.type ?? null;
 
     const visible = [];
     let hiddenCount = 0;
@@ -1407,8 +1407,8 @@ export class DataShardService {
    */
   _checkNetworkAccess(config) {
     const netConfig = config.network ?? {};
-    const currentNetworkId = this.networkService?.getCurrentNetworkId?.() ?? null;
-    const currentNetworkType = this.networkService?.getCurrentNetworkType?.() ?? null;
+    const currentNetworkId = this.networkService?.currentNetworkId ?? null;
+    const currentNetworkType = this.networkService?.currentNetwork?.type ?? null;
 
     // Legacy flat field support: if no network object, fall back to old requiresNetwork/requiredNetwork
     if (!config.network?.required && config.requiresNetwork) {
@@ -1470,7 +1470,7 @@ export class DataShardService {
 
     // Tethered connection: check signal threshold
     if (netConfig.connectionMode === CONNECTION_MODES.TETHERED) {
-      const signal = this.networkService?.getSignalStrength?.() ?? 100;
+      const signal = this.networkService?.signalStrength ?? 100;
       const threshold = netConfig.signalThreshold ?? 40;
 
       if (signal < threshold) {

@@ -201,7 +201,7 @@ export class ContactManagerApp extends BaseApplication {
     const ownerPortrait = actor?.img && actor.img !== 'icons/svg/mystery-man.svg' ? actor.img : '';
 
     // ── Current network ──
-    const currentNetwork = this.networkService?.getCurrentNetwork?.()?.name || 'CITINET';
+    const currentNetwork = this.networkService?.currentNetwork?.name || 'CITINET';
 
     // ── Filter contacts ──
     let filtered = [...this._contacts];

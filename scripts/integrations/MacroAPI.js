@@ -134,7 +134,7 @@ export class MacroAPI {
      * @returns {object|null}
      */
     ns.messenger.getCurrentNetwork = () => {
-      return ns.networkService?.getCurrentNetwork() ?? null;
+      return ns.networkService?.currentNetwork ?? null;
     };
 
     /**
