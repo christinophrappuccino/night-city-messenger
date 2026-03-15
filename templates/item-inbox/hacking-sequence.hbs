@@ -5,7 +5,7 @@
   <div class="ncm-hack-status-bar">
     <div class="ncm-hack-status-dot"></div>
     <div class="ncm-hack-status-text">Breach Protocol Active</div>
-    <div class="ncm-hack-status-ice">{{encryptionType}} // DV {{encryptionDC}}</div>
+    <div class="ncm-hack-status-ice">{{iceName}} // DV {{encryptionDC}}</div>
     {{#if hackingSkillName}}
       <div class="ncm-hack-status-skill">{{hackingSkillName}} {{hackingSkillTotal}}</div>
     {{/if}}
@@ -33,9 +33,13 @@
         <div class="ncm-hack-ice-hex"></div>
         <div class="ncm-hack-ice-hex"></div>
         <div class="ncm-hack-ice-scan"></div>
-        <i class="fas fa-shield-halved ncm-hack-ice-icon" data-ice-icon></i>
+        {{#if iceImg}}
+          <img src="{{iceImg}}" alt="{{iceName}}" class="ncm-hack-ice-portrait" data-ice-icon />
+        {{else}}
+          <i class="fas fa-shield-halved ncm-hack-ice-icon" data-ice-icon></i>
+        {{/if}}
       </div>
-      <div class="ncm-hack-ice-label">{{encryptionType}}<br>ACTIVE</div>
+      <div class="ncm-hack-ice-label">{{iceName}}{{#if iceClass}}<br><span class="ncm-hack-ice-class">{{iceClass}}</span>{{/if}}<br>ACTIVE</div>
       <div class="ncm-hack-ice-integrity">
         <div class="ncm-hack-ice-integrity-label">ICE Integrity</div>
         <div class="ncm-hack-ice-integrity-track">

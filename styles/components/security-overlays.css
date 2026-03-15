@@ -598,10 +598,30 @@
   text-shadow: 0 0 20px var(--sp-accent-2, #F65261);
 }
 
+.ncm-app .ncm-hack-ice-portrait {
+  position: relative; z-index: 2;
+  width: 64px; height: 64px;
+  object-fit: contain; border-radius: 4px;
+  border: 1px solid var(--sp-accent-2, #F65261);
+  animation: ncm-ice-pulse-portrait 2s ease-in-out infinite;
+  filter: drop-shadow(0 0 12px var(--sp-accent-2, #F65261));
+}
+
+@keyframes ncm-ice-pulse-portrait {
+  0%, 100% { filter: drop-shadow(0 0 8px var(--sp-accent-2, #F65261)); transform: scale(1); }
+  50% { filter: drop-shadow(0 0 20px var(--sp-accent-2, #F65261)); transform: scale(1.04); }
+}
+
 .ncm-app .ncm-hack-ice-label {
   font-family: var(--ncm-font-display, 'Orbitron'); font-size: 9px;
   color: var(--sp-accent-2, #F65261); text-transform: uppercase;
   letter-spacing: 0.15em; margin-top: 14px; text-align: center; line-height: 1.5;
+}
+
+.ncm-app .ncm-hack-ice-class {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace); font-size: 7px;
+  color: var(--sp-text-muted, #555570); letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .ncm-app .ncm-hack-ice-integrity { width: 100%; margin-top: 10px; }
@@ -637,10 +657,16 @@
 .ncm-app .ncm-ice-shatter .ncm-hack-ice-hex:nth-child(2) { animation-delay: 0.1s !important; }
 .ncm-app .ncm-ice-shatter .ncm-hack-ice-hex:nth-child(3) { animation-delay: 0.2s !important; }
 .ncm-app .ncm-ice-shatter .ncm-hack-ice-icon { animation: ncm-ice-shatter-icon 0.6s ease forwards !important; }
+.ncm-app .ncm-ice-shatter .ncm-hack-ice-portrait { animation: ncm-ice-shatter-icon 0.6s ease forwards !important; }
 
 /* ICE retaliate on fail */
 .ncm-app .ncm-ice-retaliate .ncm-hack-ice-hex { animation: ncm-ice-flash-red 0.5s ease !important; }
 .ncm-app .ncm-ice-retaliate .ncm-hack-ice-icon { animation: ncm-ice-attack 0.5s ease !important; color: #ff0033 !important; }
+.ncm-app .ncm-ice-retaliate .ncm-hack-ice-portrait {
+  animation: ncm-ice-attack 0.5s ease !important;
+  filter: drop-shadow(0 0 20px #ff0033) brightness(1.3) !important;
+  border-color: #ff0033 !important;
+}
 
 
 /* ═══════════════════════════════════════════

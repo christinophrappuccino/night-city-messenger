@@ -204,6 +204,10 @@ export class ItemInboxApp extends BaseApplication {
     else if (config.encryptionType === ENCRYPTION_TYPES.RED_ICE) iceClass = 'red';
     else if (config.encrypted) iceClass = 'standard';
 
+    // Resolve ICE info for hacking sequence display
+    const isLethalICE = config.encryptionType === ENCRYPTION_TYPES.BLACK_ICE || config.encryptionType === ENCRYPTION_TYPES.RED_ICE;
+    const resolvedICE = isLethalICE ? this.dataShardService?._resolveICE(config) : null;
+
     // Network display name — handles all access modes
     let networkDisplayName = '';
     if (networkRequired) {
@@ -335,6 +339,11 @@ export class ItemInboxApp extends BaseApplication {
       hackingSkillName: this._hackingSkill || null,
       hackingSkillTotal: this._hackingSkillTotal || null,
       isBlackICE: config.encryptionType === 'BLACK_ICE',
+      isRedICE: config.encryptionType === 'RED_ICE',
+      isLethalICE,
+      iceImg: resolvedICE?.img || null,
+      iceName: resolvedICE?.name || config.encryptionType || 'ICE',
+      iceClass: resolvedICE?.class || null,
 
       // Attempt dots (for visual dot indicators)
       attemptDots: Array.from({ length: config.maxHackAttempts || 3 }, (_, i) => ({
