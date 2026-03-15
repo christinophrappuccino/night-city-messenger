@@ -306,7 +306,9 @@ export class ItemInboxConfig extends BaseApplication {
       a.name?.toLowerCase().includes('black ice')
     ) ?? []).map(a => ({
       id: a.id, name: a.name, img: a.img,
-      damage: a.system?.stats?.atk?.value ? `ATK: ${a.system.stats.atk.value}` : '',
+      atk: a.system?.stats?.atk ?? 0,
+      damage: a.system?.stats?.atk ? `ATK: ${a.system.stats.atk}` : '',
+      iceClass: a.system?.class || '',
       selected: iceConfig.actorId === a.id,
     }));
 

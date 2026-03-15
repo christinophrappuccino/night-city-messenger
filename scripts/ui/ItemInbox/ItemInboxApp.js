@@ -717,17 +717,22 @@ export class ItemInboxApp extends BaseApplication {
       max: config.maxHackAttempts,
     } : null;
 
+    // ─── Resolve ICE info for dialog display ───
+    const isLethalICE = config.encryptionType === 'BLACK_ICE' || config.encryptionType === 'RED_ICE';
+    const iceInfo = isLethalICE ? this.dataShardService?._resolveICE(config) : null;
+
     // ─── Themed Hack Dialog (skill + luck combined) ───
     const dialogResult = await this._showHackDialog({
-      title: config.encryptionType === 'BLACK_ICE' || config.encryptionType === 'RED_ICE' ? 'BLACK ICE Breach' : 'ICE Breach',
-      icon: config.encryptionType === 'BLACK_ICE' || config.encryptionType === 'RED_ICE' ? 'fas fa-skull-crossbones' : 'fas fa-shield-halved',
-      color: config.encryptionType === 'BLACK_ICE' || config.encryptionType === 'RED_ICE' ? '#ff0033' : '#19f3f7',
-      subtitle: `Breaching ${config.encryptionType || 'Standard'} encryption on ${this.item.name}`,
+      title: isLethalICE ? `${iceInfo?.name || 'BLACK ICE'} Breach` : 'ICE Breach',
+      icon: isLethalICE ? 'fas fa-skull-crossbones' : 'fas fa-shield-halved',
+      color: isLethalICE ? '#ff0033' : '#19f3f7',
+      subtitle: `Breaching ${iceInfo?.name || config.encryptionType || 'Standard'} encryption on ${this.item.name}`,
       skills,
       dc,
       availableLuck,
       actorName: actor.name,
       encryptionType: config.encryptionType,
+      iceInfo,
       attempts,
     });
     if (!dialogResult) return;
@@ -1850,10 +1855,12 @@ export class ItemInboxApp extends BaseApplication {
     const dv = rollData.dc ?? 0;
     const base = (rollData.statValue ?? 0) + (rollData.skillLevel ?? 0) + (rollData.luckSpent ?? 0);
     const encType = result.encryptionType || config?.encryptionType || 'ICE';
+    const ice = result.iceInfo;
+    const iceName = ice?.name || encType;
 
     // Phase 1: Init
     addLine('system', `░░ NCM BREACH PROTOCOL v4.6 ░░`);
-    await delay(() => addLine('system', `Target: DATA SHARD // Encryption: ${encType}`), 200);
+    await delay(() => addLine('system', `Target: DATA SHARD // Encryption: ${iceName}`), 200);
     await delay(() => { addLine('blank', ''); setProgress(10, 'Mapping ICE architecture...'); }, 300);
 
     // Phase 2: Scan
@@ -1864,9 +1871,11 @@ export class ItemInboxApp extends BaseApplication {
 
     // Phase 3: Probe
     await delay(() => addLine('blank', ''), 200);
-    await delay(() => addLine('ice', `⚠ ${encType} DETECTED — COUNTERMEASURES ARMED`), 400);
-    if (encType === 'BLACK_ICE') {
-      await delay(() => addLine('warn', 'WARNING: Lethal ICE. Failure may cause system damage.'), 400);
+    await delay(() => addLine('ice', `⚠ ${iceName} DETECTED — COUNTERMEASURES ARMED`), 400);
+    if (encType === 'BLACK_ICE' || encType === 'RED_ICE') {
+      const iceClassStr = ice?.class ? ` [${ice.class}]` : '';
+      const iceAtkStr = ice?.atk ? ` // ATK: ${ice.atk}` : '';
+      await delay(() => addLine('warn', `WARNING: Lethal ICE${iceClassStr}${iceAtkStr}. Failure may cause system damage.`), 400);
     }
     await delay(() => { setProgress(40, 'Selecting exploit...'); }, 200);
     await delay(() => addLine('prompt', `Selecting exploit vector: ${skillName}`), 400);
@@ -1934,10 +1943,11 @@ export class ItemInboxApp extends BaseApplication {
       }, 500);
       if (result.damage) {
         await delay(() => {
-          addLine('ice', '⚡ BLACK ICE RETALIATION — DAMAGE INCOMING');
+          addLine('ice', `⚡ ${iceName} RETALIATION — DAMAGE INCOMING`);
         }, 400);
         await delay(() => {
-          addLine('damage', `→ BLACK ICE deals ${result.damage} HP damage`);
+          const formulaStr = result.damageFormula ? ` (${result.damageFormula})` : '';
+          addLine('damage', `→ ${iceName} deals ${result.damage} HP damage${formulaStr}`);
         }, 400);
       }
     }
@@ -1988,11 +1998,20 @@ export class ItemInboxApp extends BaseApplication {
     } else {
       let damageHTML = '';
       if (result.damage) {
+        const ice = result.iceInfo;
         const diceStr = result.diceResults?.length ? result.diceResults.join(', ') : '';
+        const icePortrait = ice?.img
+          ? `<img src="${ice.img}" alt="${ice.name}" class="ncm-hack-damage-portrait" />`
+          : '';
+        const iceName = ice?.name || 'Black ICE';
+        const iceClassTag = ice?.class ? ` <span class="ncm-hack-damage-class">${ice.class}</span>` : '';
         damageHTML = `<div class="ncm-hack-damage-box">
-          <div class="ncm-hack-damage-label"><i class="fas fa-bolt" style="margin-right:4px;"></i> Black ICE Retaliation</div>
-          <div class="ncm-hack-damage-value">${result.damage} HP</div>
-          ${diceStr ? `<div class="ncm-hack-damage-hp">${result.damageFormula || '5d6'} → [${diceStr}]</div>` : ''}
+          ${icePortrait}
+          <div class="ncm-hack-damage-info">
+            <div class="ncm-hack-damage-label"><i class="fas fa-bolt" style="margin-right:4px;"></i> ${iceName} Retaliation${iceClassTag}</div>
+            <div class="ncm-hack-damage-value">${result.damage} HP</div>
+            ${diceStr ? `<div class="ncm-hack-damage-hp">${result.damageFormula || '3d6'} → [${diceStr}]</div>` : ''}
+          </div>
         </div>`;
       }
       return `<div class="ncm-hack-result-card">
@@ -2091,14 +2110,24 @@ export class ItemInboxApp extends BaseApplication {
 
     // ─── BLACK ICE danger zone ───
     const isBlackICE = opts.isBlackICE || opts.encryptionType === 'BLACK_ICE' || opts.encryptionType === 'RED_ICE';
-    const dangerHTML = isBlackICE ? `
+    const ice = opts.iceInfo;
+    let dangerHTML = '';
+    if (isBlackICE) {
+      const iceImgHTML = ice?.img
+        ? `<img src="${ice.img}" alt="${ice.name}" class="ncm-hd-danger-portrait" />`
+        : `<div class="ncm-hd-danger-icon"><i class="fas fa-radiation"></i></div>`;
+      const iceName = ice?.name || (opts.encryptionType === 'RED_ICE' ? 'RED ICE' : 'BLACK ICE');
+      const iceClassHTML = ice?.class ? `<span class="ncm-hd-danger-class">${ice.class}</span>` : '';
+      const formulaLabel = ice?.formula || (opts.encryptionType === 'RED_ICE' ? '5d6' : '3d6');
+      dangerHTML = `
       <div class="ncm-hd-danger">
-        <div class="ncm-hd-danger-icon"><i class="fas fa-radiation"></i></div>
+        ${iceImgHTML}
         <div class="ncm-hd-danger-text">
-          <div class="ncm-hd-danger-label">Lethal Countermeasures Active</div>
-          <div class="ncm-hd-danger-sub">Failure deals ${opts.encryptionType === 'RED_ICE' ? '5d6' : '3d6'} damage directly.</div>
+          <div class="ncm-hd-danger-label">${iceName} — Lethal Countermeasures ${iceClassHTML}</div>
+          <div class="ncm-hd-danger-sub">Failure deals <strong>${formulaLabel}</strong> damage directly.</div>
         </div>
-      </div>` : '';
+      </div>`;
+    }
 
     // ─── Luck gauge (segmented) ───
     const maxLuck = opts.availableLuck || 0;

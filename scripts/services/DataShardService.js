@@ -547,11 +547,21 @@ export class DataShardService {
       flavor: `${config.encryptionType} // DV ${dc}`,
     });
 
+    // ─── Resolve ICE info for UI display ───
+    const isLethal = config.encryptionType === ENCRYPTION_TYPES.BLACK_ICE || config.encryptionType === ENCRYPTION_TYPES.RED_ICE;
+    const iceInfo = isLethal ? this._resolveICE(config) : null;
+
     // ─── Handle Result ───
     if (rollResult.success) {
-      return this._handleHackSuccess(shardItem, actor, rollResult, isMessageHack, options.messageId);
+      const successResult = await this._handleHackSuccess(shardItem, actor, rollResult, isMessageHack, options.messageId);
+      successResult.iceInfo = iceInfo;
+      successResult.encryptionType = config.encryptionType;
+      return successResult;
     } else {
-      return this._handleHackFailure(shardItem, actor, rollResult, config, session);
+      const failResult = await this._handleHackFailure(shardItem, actor, rollResult, config, session);
+      if (!failResult.iceInfo) failResult.iceInfo = iceInfo;
+      failResult.encryptionType = config.encryptionType;
+      return failResult;
     }
   }
 
@@ -1122,9 +1132,18 @@ export class DataShardService {
       roll: rollResult,
       failureEffect: config.failureMode,
       damage: 0,
+      damageFormula: null,
+      diceResults: [],
+      iceInfo: null,
       locked: false,
       destroyed: false,
     };
+
+    // Resolve ICE info upfront (for UI display even when no damage)
+    const isLethal = config.encryptionType === ENCRYPTION_TYPES.BLACK_ICE || config.encryptionType === ENCRYPTION_TYPES.RED_ICE;
+    if (isLethal) {
+      result.iceInfo = this._resolveICE(config);
+    }
 
     // Record failed attempt in SecurityService
     const secResult = this.securityService?.recordFailedAttempt(actor.id, shardItem.id);
@@ -1147,14 +1166,18 @@ export class DataShardService {
         break;
 
       case FAILURE_MODES.DAMAGE:
-        // BLACK ICE damage — apply HP damage
-        if (config.encryptionType === ENCRYPTION_TYPES.BLACK_ICE || config.encryptionType === ENCRYPTION_TYPES.RED_ICE) {
-          const damage = await this._applyBlackICEDamage(actor, config.encryptionType);
-          result.damage = damage;
+        // BLACK ICE damage — resolve source and apply
+        if (isLethal) {
+          const damageResult = await this._applyBlackICEDamage(actor, config);
+          result.damage = damageResult.damage;
+          result.damageFormula = damageResult.formula;
+          result.diceResults = damageResult.diceResults ?? [];
+          result.iceInfo = damageResult.iceInfo ?? result.iceInfo;
           this.eventBus?.emit(EVENTS.SHARD_BLACK_ICE, {
             itemId: shardItem.id,
             actorId: actor.id,
-            damage,
+            damage: result.damage,
+            iceInfo: result.iceInfo,
           });
         }
         // Also lockout after max attempts
@@ -1269,8 +1292,8 @@ export class DataShardService {
           // BLACK ICE damage even on layer hacks if configured
           const actor = game.actors?.get(actorId);
           if (actor) {
-            const damage = await this._applyBlackICEDamage(actor, config.encryptionType || 'ICE');
-            result.damage = damage;
+            const damageResult = await this._applyBlackICEDamage(actor, config);
+            result.damage = damageResult.damage;
           }
           if (newCount >= max) {
             updates.layerLockoutUntil = Date.now() + lockoutDuration;
@@ -1309,11 +1332,11 @@ export class DataShardService {
    * @returns {Promise<number>} damage dealt
    * @private
    */
-  async _applyBlackICEDamage(actor, encryptionType) {
-    const formula = encryptionType === ENCRYPTION_TYPES.RED_ICE ? '5d6' : '3d6';
+  async _applyBlackICEDamage(actor, config) {
+    const ice = this._resolveICE(config);
 
     try {
-      const damageRoll = new Roll(formula);
+      const damageRoll = new Roll(ice.formula);
       await damageRoll.evaluate();
       const damage = damageRoll.total;
 
@@ -1328,20 +1351,83 @@ export class DataShardService {
 
       await actor.update(hpUpdate);
 
-      // Post damage to chat
+      // Build chat message with ICE portrait
+      const imgTag = ice.img ? `<img src="${ice.img}" alt="${ice.name}" style="width:36px;height:36px;object-fit:contain;border:1px solid #ff0033;border-radius:2px;margin-right:8px;vertical-align:middle;" />` : '';
+      const classTag = ice.class ? `<br><span style="font-size:10px;color:#8888a0;text-transform:uppercase;letter-spacing:0.05em;">${ice.class}</span>` : '';
+
       await damageRoll.toMessage({
-        speaker: ChatMessage.getSpeaker({ alias: 'BLACK ICE' }),
-        flavor: `<strong style="color:#ff0033">⚡ ${encryptionType} DAMAGE</strong><br>${actor.name} takes ${damage} damage!`,
+        speaker: ChatMessage.getSpeaker({ alias: ice.name }),
+        flavor: `${imgTag}<strong style="color:#ff0033">⚡ ${ice.name} RETALIATION</strong>${classTag}<br>${actor.name} takes <strong>${damage}</strong> damage!${ice.atk ? ` (ATK ${ice.atk} + 1d10)` : ''}`,
       });
 
       this.soundService?.play('black-ice');
-      log.info(`BLACK ICE (${encryptionType}) dealt ${damage} damage to ${actor.name} (HP: ${currentHP} → ${newHP})`);
+      log.info(`${ice.name} dealt ${damage} damage to ${actor.name} (HP: ${currentHP} → ${newHP})`);
 
-      return damage;
+      return {
+        damage,
+        formula: ice.formula,
+        diceResults: damageRoll.dice?.[0]?.results?.map(r => r.result) ?? [],
+        iceInfo: ice,
+      };
     } catch (err) {
       log.error(`Failed to apply BLACK ICE damage: ${err.message}`);
-      return 0;
+      return { damage: 0, iceInfo: ice };
     }
+  }
+
+  /**
+   * Resolve ICE configuration to concrete combat info.
+   * Shared by both shard encryption and network security.
+   * @param {object} config - The shard/network config object
+   * @returns {{ name: string, img: string|null, formula: string, atk: number|null, class: string|null, actorId: string|null, encryptionType: string }}
+   */
+  _resolveICE(config) {
+    const encType = config.encryptionType || 'ICE';
+    const iceConfig = config.ice ?? {};
+    const source = iceConfig.source ?? 'default';
+
+    // ─── Actor source: pull stats from linked Black ICE actor ───
+    if (source === 'actor' && iceConfig.actorId) {
+      const iceActor = game.actors?.get(iceConfig.actorId);
+      if (iceActor) {
+        const atk = iceActor.system?.stats?.atk ?? 0;
+        return {
+          name: iceActor.name || 'BLACK ICE',
+          img: iceActor.img || null,
+          formula: `${atk} + 1d10`,
+          atk,
+          class: iceActor.system?.class || null,
+          actorId: iceActor.id,
+          encryptionType: encType,
+        };
+      }
+      log.warn(`ICE actor "${iceConfig.actorId}" not found, falling back to default`);
+    }
+
+    // ─── Custom source: GM-defined name + formula ───
+    if (source === 'custom' && iceConfig.customDamage) {
+      return {
+        name: iceConfig.customName || (encType === ENCRYPTION_TYPES.RED_ICE ? 'RED ICE' : 'BLACK ICE'),
+        img: iceConfig.customPortrait || null,
+        formula: iceConfig.customDamage,
+        atk: null,
+        class: null,
+        actorId: null,
+        encryptionType: encType,
+      };
+    }
+
+    // ─── Default source: generic dice by type ───
+    const isRed = encType === ENCRYPTION_TYPES.RED_ICE;
+    return {
+      name: isRed ? 'RED ICE' : 'BLACK ICE',
+      img: null,
+      formula: isRed ? '5d6' : '3d6',
+      atk: null,
+      class: null,
+      actorId: null,
+      encryptionType: encType,
+    };
   }
 
   // ═══════════════════════════════════════════════════════════
