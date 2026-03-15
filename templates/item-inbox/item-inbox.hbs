@@ -356,6 +356,11 @@
               {{!-- LOCATION --}}
               {{else if isLocation}}
                 <div class="ncm-entry-body ncm-entry-location">
+                  {{#if contentData.locationImage}}
+                    <div class="ncm-location-image">
+                      <img src="{{contentData.locationImage}}" alt="{{contentData.locationName}}" />
+                    </div>
+                  {{/if}}
                   <div class="ncm-location-coords">{{contentData.coordinates}}</div>
                   <div class="ncm-location-name">{{contentData.locationName}}</div>
                   {{#if contentData.district}}

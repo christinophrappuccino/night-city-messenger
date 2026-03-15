@@ -393,6 +393,7 @@ export class DataShardComposer extends BaseApplication {
         entryData.subject = data.locationName || 'Unknown Location';
         entryData.contentData = {
           locationName: data.locationName || 'Unknown',
+          locationImage: data.locationImage || null,
           coordinates: data.locationCoords || '',
           district: data.locationDistrict || '',
           description: data.locationDescription || '',

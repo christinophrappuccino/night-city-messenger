@@ -331,6 +331,11 @@
         <input type="text" name="locationName" class="ncm-config-input ncm-config-flex" value="{{editContentData.locationName}}" placeholder="Kabuki Market, Back Alley" />
       </div>
       <div class="ncm-config-row">
+        <label class="ncm-config-label">Image</label>
+        <input type="text" name="locationImage" class="ncm-config-input ncm-config-flex" value="{{editContentData.locationImage}}" placeholder="Path to location image (optional)" />
+        <button type="button" data-action="browseImage" data-target="locationImage" class="ncm-shard-hdr-btn" title="Browse"><i class="fas fa-folder-open"></i></button>
+      </div>
+      <div class="ncm-config-row">
         <label class="ncm-config-label">Coordinates</label>
         <input type="text" name="locationCoords" class="ncm-config-input ncm-config-flex" value="{{editContentData.coordinates}}" placeholder="N 33.7490° W 84.3880° (flavor text)" />
       </div>
