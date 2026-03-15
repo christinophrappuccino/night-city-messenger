@@ -2,8 +2,7 @@
   Create Network Dialog
   File: templates/dialogs/create-network.hbs
   Module: cyberpunkred-messenger
-  Mockup: ncm-network-dialogs-mockup.html — Section 5
-  
+
   Quick-create dialog with template presets and condensed form.
   3 sections: Identity, Configuration, Appearance.
   Two save modes: Create & Close, Create & Open in Manager.
@@ -52,7 +51,8 @@
         <label class="ncm-create-net__label">Description</label>
         <input class="ncm-create-net__input" type="text" name="description"
                value="{{data.description}}"
-               placeholder="In-world description...">
+               placeholder="In-world flavor text shown to players...">
+        <div class="ncm-create-net__hint">Visible to players when they inspect the network.</div>
       </div>
     </div>
   </div>
@@ -64,7 +64,7 @@
     </div>
     <div class="ncm-create-net__section-body">
 
-      {{!-- Signal / Reliability / Delay —— 3-column grid --}}
+      {{!-- Signal / Reliability / Delay --}}
       <div class="ncm-create-net__row ncm-create-net__row--3">
         <div class="ncm-create-net__field">
           <label class="ncm-create-net__label">Signal %</label>
@@ -82,8 +82,10 @@
                  value="{{data.messageDelay}}" min="0">
         </div>
       </div>
+      <div class="ncm-create-net__hint">Signal affects data shard DV modifiers. Reliability determines message delivery chance. Delay adds latency.</div>
 
-      {{!-- Auth Type + Password/DV --}}
+      {{!-- ─── Auth Type ─── --}}
+      <div class="ncm-create-net__subsection-label"><i class="fas fa-lock"></i> Authentication</div>
       <div class="ncm-create-net__row">
         <div class="ncm-create-net__field">
           <label class="ncm-create-net__label">Auth Type</label>
@@ -92,6 +94,11 @@
             <option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>
             {{/each}}
           </select>
+          <div class="ncm-create-net__hint">
+            {{#if showPassword}}Players must enter the correct password to connect.{{/if}}
+            {{#if showBypassDC}}Players must pass a skill check to breach network security.{{/if}}
+            {{#unless showPassword}}{{#unless showBypassDC}}No authentication required — anyone can connect.{{/unless}}{{/unless}}
+          </div>
         </div>
 
         {{#if showPassword}}
@@ -108,12 +115,15 @@
           <label class="ncm-create-net__label">Bypass DV</label>
           <input class="ncm-create-net__input" type="number" name="bypassDC"
                  value="{{data.security.bypassDC}}" min="1" max="30">
+          <div class="ncm-create-net__hint">Difficulty value for the skill check.</div>
         </div>
         {{/if}}
       </div>
 
-      {{!-- ICE Configuration (shown when auth type is skill) --}}
+      {{!-- ─── ICE Configuration ─── --}}
       {{#if showICE}}
+        <div class="ncm-create-net__subsection-label"><i class="fas fa-shield-halved"></i> ICE Protection</div>
+        <div class="ncm-create-net__hint">Intrusion Countermeasures Electronics — determines what happens when a breach attempt fails.</div>
         <div class="ncm-create-net__row">
           <div class="ncm-create-net__field">
             <label class="ncm-create-net__label">ICE Type</label>
@@ -122,6 +132,9 @@
               <option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>
               {{/each}}
             </select>
+            <div class="ncm-create-net__hint">
+              {{#if isLethalICE}}Lethal ICE — failed breaches deal direct HP damage to the hacker.{{else}}Standard ICE — no damage on failure.{{/if}}
+            </div>
           </div>
           <div class="ncm-create-net__field">
             <label class="ncm-create-net__label">On Failure</label>
@@ -136,21 +149,40 @@
         {{#if isLethalICE}}
           <div class="ncm-create-net__ice-section">
             <label class="ncm-create-net__label">ICE Source</label>
+            <div class="ncm-create-net__hint">Where the ICE's combat stats come from.</div>
             <div class="ncm-create-net__ice-cards">
               <div class="ncm-create-net__ice-card {{#if iceSourceDefault}}ncm-create-net__ice-card--sel{{/if}}" data-ice-mode="default">
-                <i class="fas fa-dice"></i> Default
+                <i class="fas fa-dice"></i>
+                <div class="ncm-create-net__ice-card-info">
+                  <span class="ncm-create-net__ice-card-title">Default</span>
+                  <span class="ncm-create-net__ice-card-desc">Generic dice formula</span>
+                </div>
               </div>
               <div class="ncm-create-net__ice-card {{#if iceSourceCustom}}ncm-create-net__ice-card--sel{{/if}}" data-ice-mode="custom">
-                <i class="fas fa-pen-fancy"></i> Custom
+                <i class="fas fa-pen-fancy"></i>
+                <div class="ncm-create-net__ice-card-info">
+                  <span class="ncm-create-net__ice-card-title">Custom</span>
+                  <span class="ncm-create-net__ice-card-desc">Your own name + formula</span>
+                </div>
               </div>
               <div class="ncm-create-net__ice-card {{#if iceSourceActor}}ncm-create-net__ice-card--sel{{/if}}" data-ice-mode="actor">
-                <i class="fas fa-robot"></i> Actor
+                <i class="fas fa-robot"></i>
+                <div class="ncm-create-net__ice-card-info">
+                  <span class="ncm-create-net__ice-card-title">Actor</span>
+                  <span class="ncm-create-net__ice-card-desc">Uses ATK from Black ICE actor</span>
+                </div>
               </div>
             </div>
             <input type="hidden" name="iceSource" value="{{iceSource}}" />
 
+            {{#if iceSourceDefault}}
+              <div class="ncm-create-net__ice-default-info">
+                Damage: <strong>3d6</strong> (BLACK ICE) or <strong>5d6</strong> (RED ICE)
+              </div>
+            {{/if}}
+
             {{#if iceSourceCustom}}
-              <div class="ncm-create-net__row" style="margin-top:6px;">
+              <div class="ncm-create-net__row" style="margin-top:8px;">
                 <div class="ncm-create-net__field">
                   <label class="ncm-create-net__label">ICE Name</label>
                   <input class="ncm-create-net__input" type="text" name="iceCustomName"
@@ -159,28 +191,28 @@
                 <div class="ncm-create-net__field">
                   <label class="ncm-create-net__label">Damage Formula</label>
                   <input class="ncm-create-net__input" type="text" name="iceCustomDamage"
-                         value="{{iceConfig.customDamage}}" placeholder="3d6" style="max-width:80px;">
+                         value="{{iceConfig.customDamage}}" placeholder="e.g. 4d6+2">
+                  <div class="ncm-create-net__hint">Any valid Foundry roll formula.</div>
                 </div>
               </div>
-              <div class="ncm-create-net__row">
-                <div class="ncm-create-net__field">
-                  <label class="ncm-create-net__label">Portrait</label>
-                  <input class="ncm-create-net__input" type="text" name="iceCustomPortrait"
-                         value="{{iceConfig.customPortrait}}" placeholder="Image path (optional)">
-                </div>
+              <div class="ncm-create-net__field">
+                <label class="ncm-create-net__label">Portrait</label>
+                <input class="ncm-create-net__input" type="text" name="iceCustomPortrait"
+                       value="{{iceConfig.customPortrait}}" placeholder="Image path (optional)">
               </div>
             {{/if}}
 
             {{#if iceSourceActor}}
-              <div class="ncm-create-net__ice-actors" style="margin-top:6px;">
+              <div class="ncm-create-net__hint" style="margin-top:6px;">Select a Black ICE actor — damage will be ATK + 1d10.</div>
+              <div class="ncm-create-net__ice-actors">
                 {{#each blackIceActors}}
                   <div class="ncm-create-net__ice-actor {{#if selected}}ncm-create-net__ice-actor--sel{{/if}}" data-ice-actor="{{id}}">
                     {{#if img}}<img src="{{img}}" alt="{{name}}">{{else}}<i class="fas fa-robot"></i>{{/if}}
-                    <span>{{name}}</span>
+                    <span class="ncm-create-net__ice-actor-name">{{name}}</span>
                     {{#if atk}}<span class="ncm-create-net__ice-atk">ATK {{atk}}</span>{{/if}}
                   </div>
                 {{else}}
-                  <div class="ncm-create-net__hint">No Black ICE actors found in world.</div>
+                  <div class="ncm-create-net__hint" style="text-align:center;padding:12px;">No Black ICE actors found in world. Create a <strong>blackIce</strong> type actor first.</div>
                 {{/each}}
               </div>
               <input type="hidden" name="iceActorId" value="{{iceConfig.actorId}}" />
@@ -189,19 +221,29 @@
         {{/if}}
       {{/if}}
 
-      {{!-- Checkbox flags --}}
+      {{!-- ─── Network Flags ─── --}}
+      <div class="ncm-create-net__subsection-label"><i class="fas fa-flag"></i> Network Flags</div>
       <div class="ncm-create-net__flags">
         <label class="ncm-create-net__checkbox">
           <input type="checkbox" name="traced" {{#if data.traced}}checked{{/if}}>
-          Traced
+          <div class="ncm-create-net__checkbox-info">
+            <span class="ncm-create-net__checkbox-title">Traced</span>
+            <span class="ncm-create-net__checkbox-desc">Messages are logged and traceable</span>
+          </div>
         </label>
         <label class="ncm-create-net__checkbox">
           <input type="checkbox" name="anonymous" {{#if data.anonymous}}checked{{/if}}>
-          Anonymous
+          <div class="ncm-create-net__checkbox-info">
+            <span class="ncm-create-net__checkbox-title">Anonymous</span>
+            <span class="ncm-create-net__checkbox-desc">Sender identity is hidden</span>
+          </div>
         </label>
         <label class="ncm-create-net__checkbox">
           <input type="checkbox" name="globallyAvailable" {{#if data.globallyAvailable}}checked{{/if}}>
-          Globally Available
+          <div class="ncm-create-net__checkbox-info">
+            <span class="ncm-create-net__checkbox-title">Global</span>
+            <span class="ncm-create-net__checkbox-desc">Available in all scenes</span>
+          </div>
         </label>
       </div>
     </div>
@@ -214,14 +256,10 @@
     </div>
     <div class="ncm-create-net__section-body">
       <div class="ncm-create-net__appearance-row">
-
-        {{!-- Icon Preview --}}
         <div class="ncm-create-net__icon-preview"
              style="background: {{data.theme.color}}14; color: {{data.theme.color}}; border: 1px solid {{data.theme.color}}26;">
           <i class="fas {{data.theme.icon}}"></i>
         </div>
-
-        {{!-- Icon Select --}}
         <div class="ncm-create-net__field" style="flex: 1;">
           <label class="ncm-create-net__label">Icon</label>
           <select class="ncm-create-net__select" name="themeIcon">
@@ -230,8 +268,6 @@
             {{/each}}
           </select>
         </div>
-
-        {{!-- Color --}}
         <div class="ncm-create-net__field">
           <label class="ncm-create-net__label">Color</label>
           <div class="ncm-create-net__color-row">

@@ -2,10 +2,9 @@
  * Create Network Dialog — Styles
  * File: styles/components/create-network-dialog.css
  * Module: cyberpunkred-messenger
- * Mockup: ncm-network-dialogs-mockup.html — Section 5
  *
- * All selectors scoped with .ncm-create-net prefix.
- * Uses NCM design system variables from variables.css.
+ * Readability-first: Rajdhani for labels/body, Share Tech Mono for data values only.
+ * Higher contrast, larger fonts, descriptive hints.
  */
 
 /* ═══════════════════════════════════════════
@@ -16,7 +15,7 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-family: var(--ncm-font-body, 'Rajdhani', sans-serif);
 }
 
 /* ═══════════════════════════════════════════
@@ -24,9 +23,10 @@
    ═══════════════════════════════════════════ */
 
 .ncm-create-net__presets-label {
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 8px;
-  color: var(--ncm-text-muted, #555570);
+  font-family: var(--ncm-font-body, 'Rajdhani', sans-serif);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ncm-text-secondary, #8888a0);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   margin-bottom: 4px;
@@ -35,24 +35,26 @@
 .ncm-create-net__presets {
   display: flex;
   gap: 6px;
-  padding: 6px 0;
+  padding: 4px 0;
   flex-wrap: wrap;
 }
 
 .ncm-create-net__preset {
   display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 4px 10px;
-  border-radius: 2px;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 3px;
   background: var(--ncm-bg-deep, #0a0a0f);
   border: 1px solid var(--ncm-border, #2a2a45);
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 8px;
+  font-family: var(--ncm-font-body, 'Rajdhani', sans-serif);
+  font-size: 12px;
+  font-weight: 600;
   color: var(--ncm-text-secondary, #8888a0);
   cursor: pointer;
   transition: all 0.12s;
   text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .ncm-create-net__preset:hover {
@@ -66,9 +68,7 @@
   background: rgba(25, 243, 247, 0.04);
 }
 
-.ncm-create-net__preset i {
-  font-size: 9px;
-}
+.ncm-create-net__preset i { font-size: 11px; }
 
 /* ═══════════════════════════════════════════
    FORM SECTIONS
@@ -77,34 +77,57 @@
 .ncm-create-net__section {
   background: var(--ncm-bg-surface, #1a1a2e);
   border: 1px solid var(--ncm-border, #2a2a45);
-  border-radius: 2px;
+  border-radius: 3px;
   overflow: hidden;
 }
 
 .ncm-create-net__section-title {
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 9px;
-  color: var(--ncm-text-secondary, #8888a0);
+  font-family: var(--ncm-font-body, 'Rajdhani', sans-serif);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ncm-text-primary, #e0e0e8);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  padding: 5px 10px;
+  letter-spacing: 0.06em;
+  padding: 7px 12px;
   background: var(--ncm-bg-base, #12121a);
   border-bottom: 1px solid var(--ncm-border, #2a2a45);
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
 }
 
 .ncm-create-net__section-title i {
-  font-size: 8px;
+  font-size: 10px;
   color: var(--ncm-secondary, #19f3f7);
 }
 
 .ncm-create-net__section-body {
-  padding: 10px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
+}
+
+/* ─── Subsection Labels ─── */
+.ncm-create-net__subsection-label {
+  font-family: var(--ncm-font-body, 'Rajdhani', sans-serif);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ncm-text-primary, #e0e0e8);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.ncm-create-net__subsection-label i {
+  font-size: 10px;
+  color: var(--ncm-secondary, #19f3f7);
+  opacity: 0.7;
 }
 
 /* ═══════════════════════════════════════════
@@ -114,13 +137,13 @@
 .ncm-create-net__row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  gap: 10px;
 }
 
 .ncm-create-net__row--3 {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  gap: 8px;
+  gap: 10px;
 }
 
 .ncm-create-net__field {
@@ -130,11 +153,26 @@
 }
 
 .ncm-create-net__label {
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 8px;
-  color: var(--ncm-text-muted, #555570);
+  font-family: var(--ncm-font-body, 'Rajdhani', sans-serif);
+  font-size: 11px;
+  font-weight: 600;
+  color: #a0a0b8;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+}
+
+/* ─── Hint text ─── */
+.ncm-create-net__hint {
+  font-family: var(--ncm-font-body, 'Rajdhani', sans-serif);
+  font-size: 10px;
+  font-weight: 500;
+  color: #6a6a85;
+  line-height: 1.35;
+  margin-top: 1px;
+}
+.ncm-create-net__hint strong {
+  color: #9090a8;
+  font-weight: 700;
 }
 
 /* ═══════════════════════════════════════════
@@ -144,11 +182,12 @@
 .ncm-create-net__input {
   background: var(--ncm-bg-deep, #0a0a0f);
   border: 1px solid var(--ncm-border, #2a2a45);
-  border-radius: 2px;
-  padding: 5px 8px;
+  border-radius: 3px;
+  padding: 6px 10px;
   color: var(--ncm-text-primary, #e0e0e8);
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 10px;
+  font-family: var(--ncm-font-body, 'Rajdhani', sans-serif);
+  font-size: 13px;
+  font-weight: 500;
   transition: all 0.15s;
   outline: none;
   width: 100%;
@@ -160,14 +199,16 @@
 }
 
 .ncm-create-net__input::placeholder {
-  color: var(--ncm-text-muted, #555570);
+  color: #4a4a65;
+  font-weight: 400;
 }
 
 .ncm-create-net__input--color {
-  width: 75px;
+  width: 80px;
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 12px;
 }
 
-/* Error flash animation for validation */
 .ncm-create-net__input--error {
   border-color: var(--ncm-danger, #ff0033);
   box-shadow: 0 0 0 1px rgba(255, 0, 51, 0.2);
@@ -177,18 +218,19 @@
 .ncm-create-net__select {
   background: var(--ncm-bg-deep, #0a0a0f);
   border: 1px solid var(--ncm-border, #2a2a45);
-  border-radius: 2px;
-  padding: 5px 8px;
+  border-radius: 3px;
+  padding: 6px 10px;
   color: var(--ncm-text-primary, #e0e0e8);
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 10px;
+  font-family: var(--ncm-font-body, 'Rajdhani', sans-serif);
+  font-size: 13px;
+  font-weight: 500;
   outline: none;
   cursor: pointer;
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%23555570'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%236a6a85'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 8px center;
-  padding-right: 20px;
+  background-position: right 10px center;
+  padding-right: 24px;
   width: 100%;
 }
 
@@ -197,31 +239,62 @@
 }
 
 /* ═══════════════════════════════════════════
-   CHECKBOXES
+   CHECKBOXES — Title + Description layout
    ═══════════════════════════════════════════ */
 
 .ncm-create-net__flags {
   display: flex;
-  gap: 16px;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .ncm-create-net__checkbox {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 9px;
-  color: var(--ncm-text-secondary, #8888a0);
+  align-items: flex-start;
+  gap: 8px;
   cursor: pointer;
+  padding: 6px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 3px;
+  transition: all 0.15s;
+  flex: 1;
+  min-width: 120px;
+}
+.ncm-create-net__checkbox:hover {
+  border-color: rgba(25, 243, 247, 0.15);
+  background: rgba(25, 243, 247, 0.02);
 }
 
 .ncm-create-net__checkbox input[type="checkbox"] {
   accent-color: var(--ncm-secondary, #19f3f7);
   cursor: pointer;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.ncm-create-net__checkbox-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.ncm-create-net__checkbox-title {
+  font-family: var(--ncm-font-body, 'Rajdhani', sans-serif);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ncm-text-primary, #e0e0e8);
+}
+
+.ncm-create-net__checkbox-desc {
+  font-family: var(--ncm-font-body, 'Rajdhani', sans-serif);
+  font-size: 10px;
+  font-weight: 500;
+  color: #6a6a85;
+  line-height: 1.2;
 }
 
 /* ═══════════════════════════════════════════
-   APPEARANCE — Icon Preview & Color Swatch
+   APPEARANCE
    ═══════════════════════════════════════════ */
 
 .ncm-create-net__appearance-row {
@@ -231,30 +304,23 @@
 }
 
 .ncm-create-net__icon-preview {
-  width: 36px;
-  height: 36px;
+  width: 40px; height: 40px;
   border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
   transition: all 0.2s;
   flex-shrink: 0;
 }
 
 .ncm-create-net__color-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  display: flex; align-items: center; gap: 8px;
 }
 
 .ncm-create-net__swatch {
-  width: 22px;
-  height: 22px;
+  width: 24px; height: 24px;
   border-radius: 3px;
   border: 1px solid var(--ncm-border, #2a2a45);
-  cursor: pointer;
-  flex-shrink: 0;
+  cursor: pointer; flex-shrink: 0;
   transition: background 0.15s;
 }
 
@@ -263,35 +329,31 @@
    ═══════════════════════════════════════════ */
 
 .ncm-create-net__footer {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 0 0;
+  display: flex; align-items: center; gap: 6px;
+  padding: 10px 0 0;
   border-top: 1px solid var(--ncm-border, #2a2a45);
   margin-top: 4px;
 }
 
-.ncm-create-net__footer-spacer {
-  flex: 1;
-}
+.ncm-create-net__footer-spacer { flex: 1; }
 
 /* ═══════════════════════════════════════════
    BUTTONS
    ═══════════════════════════════════════════ */
 
 .ncm-create-net__btn {
-  padding: 6px 14px;
-  border-radius: 2px;
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 11px;
-  font-weight: 600;
+  padding: 7px 16px;
+  border-radius: 3px;
+  font-family: var(--ncm-font-body, 'Rajdhani', sans-serif);
+  font-size: 12px;
+  font-weight: 700;
   cursor: pointer;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   transition: all 0.15s;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
 }
 
 .ncm-create-net__btn--ghost {
@@ -318,7 +380,6 @@
 
 /* ═══════════════════════════════════════════
    DIALOG WINDOW OVERRIDES
-   Scoped to .ncm-create-network-dialog
    ═══════════════════════════════════════════ */
 
 .ncm-create-network-dialog {
@@ -331,23 +392,13 @@
   padding: 14px;
 }
 
-/* Scanline overlay for atmosphere */
 .ncm-create-network-dialog::after {
   content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 100;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(0, 0, 0, 0.03) 2px,
-    rgba(0, 0, 0, 0.03) 4px
-  );
+  position: absolute; inset: 0;
+  pointer-events: none; z-index: 100;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
 }
 
-/* Top accent stripe */
 .ncm-create-network-dialog .window-header {
   border-bottom: 2px solid var(--ncm-secondary, #19f3f7);
 }
@@ -362,7 +413,6 @@
   30%, 70% { transform: translateX(2px); }
 }
 
-/* Fade-in for sections on preset switch */
 .ncm-create-net__section {
   animation: ncm-create-net-fadein 0.2s ease;
 }
@@ -373,29 +423,26 @@
 }
 
 /* ═══════════════════════════════════════════
-   ICE Configuration Section
+   ICE Configuration
    ═══════════════════════════════════════════ */
 
 .ncm-create-net__ice-section {
   margin-top: 8px;
-  padding: 8px 0;
+  padding: 10px 0 0;
   border-top: 1px solid rgba(255, 255, 255, 0.04);
 }
 
 .ncm-create-net__ice-cards {
-  display: flex; gap: 4px; margin-top: 4px;
+  display: flex; gap: 6px; margin-top: 6px;
 }
 
 .ncm-create-net__ice-card {
   flex: 1;
-  display: flex; align-items: center; justify-content: center; gap: 4px;
-  padding: 5px 8px;
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px;
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 3px;
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 9px; color: #8888a0;
-  text-transform: uppercase; letter-spacing: 0.06em;
   cursor: pointer; transition: all 0.15s;
 }
 .ncm-create-net__ice-card:hover {
@@ -405,22 +452,50 @@
 .ncm-create-net__ice-card--sel {
   border-color: rgba(255, 0, 51, 0.5) !important;
   background: rgba(255, 0, 51, 0.08) !important;
-  color: #ff4444 !important;
 }
-.ncm-create-net__ice-card i { font-size: 10px; }
+.ncm-create-net__ice-card--sel .ncm-create-net__ice-card-title { color: #ff4444; }
+.ncm-create-net__ice-card i {
+  font-size: 14px; color: #8888a0; flex-shrink: 0;
+}
+.ncm-create-net__ice-card--sel i { color: #ff4444; }
+
+.ncm-create-net__ice-card-info {
+  display: flex; flex-direction: column; gap: 1px;
+}
+.ncm-create-net__ice-card-title {
+  font-family: var(--ncm-font-body, 'Rajdhani', sans-serif);
+  font-size: 12px; font-weight: 700;
+  color: var(--ncm-text-primary, #e0e0e8);
+}
+.ncm-create-net__ice-card-desc {
+  font-family: var(--ncm-font-body, 'Rajdhani', sans-serif);
+  font-size: 9px; font-weight: 500; color: #6a6a85;
+}
+
+.ncm-create-net__ice-default-info {
+  font-family: var(--ncm-font-body, 'Rajdhani', sans-serif);
+  font-size: 11px; font-weight: 500; color: #8888a0;
+  margin-top: 8px; padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 3px;
+}
+.ncm-create-net__ice-default-info strong {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  color: #ff6666; font-weight: 700;
+}
 
 .ncm-create-net__ice-actors {
-  display: flex; flex-wrap: wrap; gap: 4px;
+  display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px;
 }
 
 .ncm-create-net__ice-actor {
-  display: flex; align-items: center; gap: 6px;
-  padding: 4px 8px;
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 10px;
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 3px;
   cursor: pointer; transition: all 0.15s;
-  font-size: 11px; color: #c0c0d0;
 }
 .ncm-create-net__ice-actor:hover {
   border-color: rgba(255, 0, 51, 0.3);
@@ -431,14 +506,22 @@
   background: rgba(255, 0, 51, 0.08) !important;
 }
 .ncm-create-net__ice-actor img {
-  width: 24px; height: 24px;
-  object-fit: contain; border-radius: 2px;
+  width: 28px; height: 28px;
+  object-fit: contain; border-radius: 3px;
   border: 1px solid rgba(255, 0, 51, 0.2);
 }
-.ncm-create-net__ice-actor i { font-size: 16px; color: #ff4444; }
+.ncm-create-net__ice-actor i { font-size: 18px; color: #ff4444; }
+.ncm-create-net__ice-actor-name {
+  font-family: var(--ncm-font-body, 'Rajdhani', sans-serif);
+  font-size: 13px; font-weight: 600;
+  color: var(--ncm-text-primary, #e0e0e8);
+}
 .ncm-create-net__ice-atk {
   font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 8px; color: #ff6666;
+  font-size: 10px; color: #ff6666;
   text-transform: uppercase; letter-spacing: 0.06em;
   margin-left: auto;
+  padding: 2px 6px;
+  background: rgba(255, 0, 51, 0.06);
+  border-radius: 2px;
 }
