@@ -679,6 +679,8 @@ export class NetworkService {
       theme: {
         color: data.theme?.color ?? '#19f3f7',
         icon: data.theme?.icon ?? 'fa-wifi',
+        iconMode: data.theme?.iconMode ?? 'fa',
+        customImage: data.theme?.customImage ?? '',
         glitchIntensity: data.theme?.glitchIntensity ?? 0.1,
       },
       description: data.description ?? '',

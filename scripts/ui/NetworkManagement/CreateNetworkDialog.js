@@ -133,6 +133,7 @@ export class CreateNetworkDialog extends BaseApplication {
       createAndClose:   CreateNetworkDialog._onCreateAndClose,
       createAndOpen:    CreateNetworkDialog._onCreateAndOpen,
       cancel:           CreateNetworkDialog._onCancel,
+      browseImage:      CreateNetworkDialog._onBrowseImage,
     },
   }, { inplace: false });
 
@@ -256,6 +257,11 @@ export class CreateNetworkDialog extends BaseApplication {
       iceSourceActor: iceSource === 'actor',
       iceConfig,
       blackIceActors,
+      // Icon mode
+      iconMode: data.theme.iconMode || 'fa',
+      isIconModeFa: (data.theme.iconMode || 'fa') === 'fa',
+      isIconModeImage: data.theme.iconMode === 'image',
+      customImage: data.theme.customImage || '',
       data,
       isGM: isGM(),
       MODULE_ID,
@@ -315,6 +321,17 @@ export class CreateNetworkDialog extends BaseApplication {
         // Highlight selected
         html.querySelectorAll('[data-ice-actor]').forEach(c => c.classList.remove('ncm-create-net__ice-actor--sel'));
         card.classList.add('ncm-create-net__ice-actor--sel');
+      });
+    });
+
+    // ─── Live bindings: Icon mode tabs (FA / Custom Image) ───
+    html.querySelectorAll('[data-icon-mode]')?.forEach(tab => {
+      tab.addEventListener('click', () => {
+        const mode = tab.dataset.iconMode;
+        const hidden = html.querySelector('[name="iconMode"]');
+        if (hidden) hidden.value = mode;
+        this._syncFormToData();
+        this.render();
       });
     });
 
@@ -396,6 +413,8 @@ export class CreateNetworkDialog extends BaseApplication {
       theme: {
         icon: val('themeIcon'),
         color: val('themeColor'),
+        iconMode: val('iconMode') || 'fa',
+        customImage: val('customImage') || '',
       },
     };
   }
@@ -459,6 +478,23 @@ export class CreateNetworkDialog extends BaseApplication {
     this.close();
   }
 
+  static _onBrowseImage(event, target) {
+    const targetInput = target.dataset.target;
+    if (!targetInput) return;
+    const input = this.element?.querySelector(`[name="${targetInput}"]`);
+    new FilePicker({
+      type: 'image',
+      current: input?.value || '',
+      callback: (path) => {
+        if (input) input.value = path;
+        // Update preview if it exists
+        const preview = this.element?.querySelector('.ncm-create-net__custom-preview img');
+        if (preview) preview.src = path;
+        this._syncFormToData();
+      },
+    }).render(true);
+  }
+
   // ─── Core Creation Logic ───
 
   /**
@@ -518,6 +554,8 @@ export class CreateNetworkDialog extends BaseApplication {
       theme: {
         color: data.theme.color || '#19f3f7',
         icon: data.theme.icon || 'fa-wifi',
+        iconMode: data.theme.iconMode || 'fa',
+        customImage: data.theme.customImage || '',
         glitchIntensity: 0.1,
       },
       description: data.description?.trim() || '',
