@@ -604,6 +604,7 @@ export const DEFAULTS = Object.freeze({
     keyItemBypassLogin: true,
     keyItemBypassEncryption: false,
     keyItemConsumeOnUse: false,
+    maxKeyItemAttempts: 3,
 
     // ─── Layer Hack Security (network/keyitem/login bypass attempts) ───
     layerSecurity: {
@@ -630,7 +631,7 @@ export const DEFAULTS = Object.freeze({
     firstAccessedAt: null,             // For expiration timer start
     accessCount: 0,                    // For on-access expiration mode
   },
-  ACTOR_SESSION: { loggedIn: false, keyItemUsed: false, hackAttempts: 0, lockoutUntil: null, loginAttempts: 0, hackedLayers: [], layerHackAttempts: {}, layerLockoutUntil: null },
+  ACTOR_SESSION: { loggedIn: false, keyItemUsed: false, keyItemAttempts: 0, hackAttempts: 0, lockoutUntil: null, loginAttempts: 0, hackedLayers: [], layerHackAttempts: {}, layerLockoutUntil: null },
   SCENE_NETWORK: { networkAvailability: {}, defaultNetwork: 'CITINET', deadZone: false },
   CORE_NETWORKS: [
     { id: 'CITINET', name: 'CitiNet', type: 'PUBLIC', isCore: true, availability: { global: true, scenes: [] }, signalStrength: 75, reliability: 90, security: { level: 'LOW', requiresAuth: false }, effects: { messageDelay: 0, traced: false, anonymity: false, canRoute: true, restrictedAccess: false, allowedRecipientNetworks: [] }, theme: { color: '#19f3f7', icon: 'fa-wifi', glitchIntensity: 0.1 }, description: 'Night City public network' },

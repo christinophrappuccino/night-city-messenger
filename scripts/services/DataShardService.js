@@ -308,6 +308,113 @@ export class DataShardService {
     };
   }
 
+  /**
+   * Validate a player-selected item against key item requirements.
+   * Wrong guesses count as attempts; lockout after max.
+   * @param {Item} shardItem
+   * @param {Actor} actor
+   * @param {string} selectedItemId - the item ID the player chose from inventory
+   * @returns {Promise<{ success: boolean, consumed?: boolean, locked?: boolean, attemptsRemaining?: number, bypassLogin?: boolean, bypassEncryption?: boolean, error?: string }>}
+   */
+  async validateKeyItem(shardItem, actor, selectedItemId) {
+    if (!actor) return { success: false, error: 'No actor provided' };
+
+    const config = this._getConfig(shardItem);
+    if (!config.requiresKeyItem) return { success: false, error: 'Shard does not require key item' };
+
+    const state = this._getState(shardItem);
+    const session = this._getActorSession(state, actor.id);
+    const maxAttempts = config.maxKeyItemAttempts || 3;
+
+    // Check if already locked out from too many wrong guesses
+    if (session.keyItemAttempts >= maxAttempts) {
+      return { success: false, locked: true, attemptsRemaining: 0, error: 'Too many failed attempts. Access denied.' };
+    }
+
+    // Get the selected item from actor inventory
+    const selectedItem = actor.items.get(selectedItemId);
+    if (!selectedItem) return { success: false, error: 'Item not found in inventory' };
+
+    // Check if the selected item matches the key item criteria
+    const isMatch = this._isKeyItemMatch(selectedItem, config);
+
+    if (isMatch) {
+      // Consume on use
+      let consumed = false;
+      if (config.keyItemConsumeOnUse) {
+        try {
+          await actor.deleteEmbeddedDocuments('Item', [selectedItem.id]);
+          consumed = true;
+          log.info(`Key item "${selectedItem.name}" consumed for shard "${shardItem.name}"`);
+        } catch (err) {
+          log.warn(`Failed to consume key item: ${err.message}`);
+        }
+      }
+
+      // Grant access
+      await this._updateActorSession(shardItem, actor.id, { keyItemUsed: true });
+
+      this.eventBus?.emit(EVENTS.SHARD_KEY_ITEM_PRESENTED, {
+        itemId: shardItem.id,
+        actorId: actor.id,
+        keyItemId: selectedItem.id,
+        bypassLogin: config.keyItemBypassLogin,
+        bypassEncryption: config.keyItemBypassEncryption,
+      });
+      this.soundService?.play('key-accepted');
+      this._broadcastStateChange(shardItem.id);
+
+      return {
+        success: true,
+        keyItem: selectedItem,
+        consumed,
+        bypassLogin: config.keyItemBypassLogin,
+        bypassEncryption: config.keyItemBypassEncryption,
+      };
+    }
+
+    // Wrong item — increment attempts
+    const newAttempts = (session.keyItemAttempts || 0) + 1;
+    const updates = { keyItemAttempts: newAttempts };
+    await this._updateActorSession(shardItem, actor.id, updates);
+
+    const attemptsRemaining = Math.max(0, maxAttempts - newAttempts);
+    const locked = newAttempts >= maxAttempts;
+
+    this.eventBus?.emit(EVENTS.SHARD_KEY_ITEM_FAILED, {
+      itemId: shardItem.id,
+      actorId: actor.id,
+      selectedItemId,
+      attemptsRemaining,
+      locked,
+    });
+    this.soundService?.play('key-rejected');
+    this._broadcastStateChange(shardItem.id);
+
+    return {
+      success: false,
+      locked,
+      attemptsRemaining,
+      error: locked ? 'Maximum attempts exceeded. Access permanently denied.' : 'Token rejected.',
+    };
+  }
+
+  /**
+   * Check if a specific item matches the key item criteria.
+   * @param {Item} item
+   * @param {object} config
+   * @returns {boolean}
+   */
+  _isKeyItemMatch(item, config) {
+    if (config.keyItemId && item.id === config.keyItemId) return true;
+    if (config.keyItemTag && item.getFlag(MODULE_ID, 'keyTag') === config.keyItemTag) return true;
+    if (config.keyItemName) {
+      const target = config.keyItemName.toLowerCase().trim();
+      if (item.name.toLowerCase().trim() === target) return true;
+    }
+    return false;
+  }
+
   // ═══════════════════════════════════════════════════════════
   //  PUBLIC API — Login Authentication
   // ═══════════════════════════════════════════════════════════

@@ -417,6 +417,15 @@ export class ItemInboxApp extends BaseApplication {
       requiresKeyItem: config.requiresKeyItem,
       keyItemDisplayName: config.keyItemDisplayName || config.keyItemName || 'Access Token',
       keyItemIcon: config.keyItemIcon || 'fa-id-card',
+      maxKeyItemAttempts: config.maxKeyItemAttempts || 3,
+      keyItemAttemptsCurrent: (session.keyItemAttempts || 0) + 1,
+      keyItemAttemptsUsed: session.keyItemAttempts || 0,
+      keyItemAttemptsRemaining: Math.max(0, (config.maxKeyItemAttempts || 3) - (session.keyItemAttempts || 0)),
+      keyItemLockedOut: (session.keyItemAttempts || 0) >= (config.maxKeyItemAttempts || 3),
+      keyItemAttemptDots: Array.from({ length: config.maxKeyItemAttempts || 3 }, (_, i) => ({
+        used: i < (session.keyItemAttempts || 0),
+        current: i === (session.keyItemAttempts || 0),
+      })),
 
       // Trace
       showTraceWarning,
@@ -927,47 +936,78 @@ export class ItemInboxApp extends BaseApplication {
     }
 
     const config = this.dataShardService?.getConfig(this.item);
-    const keyItemName = config?.keyItemName || config?.keyItemTag || '';
-    const keyItemDisplayName = config?.keyItemDisplayName || keyItemName || 'Access Token';
+    const keyItemDisplayName = config?.keyItemDisplayName || config?.keyItemName || 'Access Token';
 
-    // Search actor inventory for matching items
-    const matchingItems = actor.items?.filter(i => {
-      if (config?.keyItemId && i.id === config.keyItemId) return true;
-      if (config?.keyItemTag && i.getFlag(MODULE_ID, 'keyItemTag') === config.keyItemTag) return true;
-      if (keyItemName && i.name.toLowerCase().includes(keyItemName.toLowerCase())) return true;
-      return false;
-    }) ?? [];
-
-    if (matchingItems.length === 0) {
-      ui.notifications.warn(`NCM | No matching items found for "${keyItemDisplayName}".`);
+    // Show ALL actor inventory items — player must figure out which is correct
+    const allItems = actor.items?.contents ?? [];
+    if (allItems.length === 0) {
+      ui.notifications.warn('NCM | Inventory is empty.');
       return;
     }
 
-    // Build picker dialog with item images — always show, even for single match
+    // Sort alphabetically
+    const sortedItems = [...allItems].sort((a, b) => a.name.localeCompare(b.name));
+
+    // Build themed picker dialog with search bar
     let selectedItem = null;
-    const itemButtons = {};
-    matchingItems.forEach((item, i) => {
-      itemButtons[`item${i}`] = {
-        label: `<img src="${item.img}" width="24" height="24" style="vertical-align:middle;margin-right:6px;border:none;"> ${item.name}`,
-        callback: () => { selectedItem = item; },
-      };
-    });
-    itemButtons.cancel = { label: 'Cancel', callback: () => {} };
+    const dialogContent = `
+      <div class="ncm-token-picker">
+        <div class="ncm-token-picker-search">
+          <i class="fas fa-search"></i>
+          <input type="text" class="ncm-token-picker-input" placeholder="Search inventory..." autocomplete="off" />
+        </div>
+        <div class="ncm-token-picker-hint">Select an item to present as <strong>${keyItemDisplayName}</strong></div>
+        <div class="ncm-token-picker-list">
+          ${sortedItems.map(item => `
+            <div class="ncm-token-picker-card" data-item-id="${item.id}" data-item-name="${item.name.toLowerCase()}">
+              <img src="${item.img || 'icons/svg/item-bag.svg'}" class="ncm-token-picker-card-img" />
+              <div class="ncm-token-picker-card-info">
+                <div class="ncm-token-picker-card-name">${item.name}</div>
+                <div class="ncm-token-picker-card-type">${item.type || 'Item'}</div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+
     await new Promise(resolve => {
-      new Dialog({
-        title: `Select Token — ${keyItemDisplayName}`,
-        content: matchingItems.length === 1
-          ? `<p style="margin-bottom:8px;">Found a matching item in your inventory:</p>`
-          : `<p style="margin-bottom:8px;">Multiple matching items found. Select one:</p>`,
-        buttons: itemButtons,
-        default: 'item0',
+      const d = new Dialog({
+        title: `Search Inventory — ${keyItemDisplayName}`,
+        content: dialogContent,
+        buttons: { cancel: { label: 'Cancel', callback: () => {} } },
+        default: 'cancel',
         close: resolve,
-      }).render(true);
+        render: (html) => {
+          const list = html[0]?.querySelector?.('.ncm-token-picker-list') ?? html.find('.ncm-token-picker-list')[0];
+          const input = html[0]?.querySelector?.('.ncm-token-picker-input') ?? html.find('.ncm-token-picker-input')[0];
+
+          // Search filtering
+          input?.addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase().trim();
+            list?.querySelectorAll('.ncm-token-picker-card').forEach(card => {
+              const name = card.dataset.itemName || '';
+              card.style.display = (!query || name.includes(query)) ? '' : 'none';
+            });
+          });
+          input?.focus();
+
+          // Card click to select
+          list?.querySelectorAll('.ncm-token-picker-card').forEach(card => {
+            card.addEventListener('click', () => {
+              const itemId = card.dataset.itemId;
+              selectedItem = sortedItems.find(i => i.id === itemId) || null;
+              d.close();
+            });
+          });
+        },
+      }, { classes: ['ncm-token-picker-dialog'], width: 340 });
+      d.render(true);
     });
 
     if (!selectedItem) return;
 
-    // Populate the token slot
+    // Populate the token slot via direct DOM
     this._selectedTokenItem = selectedItem;
     const slotEmpty = this.element?.querySelector('[data-token-empty]');
     const slotFilled = this.element?.querySelector('[data-token-filled]');
@@ -1004,38 +1044,93 @@ export class ItemInboxApp extends BaseApplication {
     const config = this.dataShardService?.getConfig(this.item);
     const selectedItem = this._selectedTokenItem;
 
-    // Consume confirmation
+    // Consume confirmation (only shown if config says consume on use)
     if (config?.keyItemConsumeOnUse) {
       const confirm = await Dialog.confirm({
         title: 'Consume Access Token',
-        content: `<p>Using <strong>${selectedItem.name}</strong> will <strong>remove it from your inventory</strong>. Continue?</p>`,
+        content: `<p>Using <strong>${selectedItem.name}</strong> will <strong>remove it from your inventory</strong> if correct. Continue?</p>`,
       });
       if (!confirm) return;
     }
 
-    this._transitionActive = true;
+    // Validate the selected item via DataShardService
+    const result = await this.dataShardService.validateKeyItem(this.item, actor, selectedItem.id);
 
-    const result = await this.dataShardService.presentKeyItem(this.item, actor);
     if (result.success) {
+      // ─── Correct item — show success transition ───
+      this._transitionActive = true;
       await this._showTransitionSplash({
         iconHtml: `<img src="${selectedItem.img || 'icons/svg/item-bag.svg'}" style="width:40px;height:40px;border:none;border-radius:3px;" />`,
         iconStyle: 'gold',
         title: 'Token Accepted',
         titleColor: '#f7c948',
-        subtitle: `<strong>${selectedItem.name}</strong> verified.`,
+        subtitle: `<strong>${selectedItem.name}</strong> verified.${result.consumed ? ' Token consumed.' : ''}`,
         progressColor: 'gold',
         footerText: 'Access layer cleared. Proceeding...',
         duration: 2200,
         sound: 'hack-success',
       });
+      this._selectedTokenItem = null;
+      this._transitionActive = false;
+      this._pendingUnlockSplash = true;
+      this.render(true);
     } else {
-      ui.notifications.warn(`NCM | ${result.error || 'Access token rejected.'}`);
-    }
+      // ─── Wrong item — rejection feedback ───
+      this.soundService?.play('key-rejected');
 
-    this._selectedTokenItem = null;
-    this._transitionActive = false;
-    this._pendingUnlockSplash = true;
-    this.render(true);
+      // Shake the token slot
+      const tokenSlot = this.element?.querySelector('[data-token-slot]');
+      if (tokenSlot) {
+        tokenSlot.classList.add('ncm-sec-token-rejected');
+        setTimeout(() => tokenSlot.classList.remove('ncm-sec-token-rejected'), 600);
+      }
+
+      // Flash the status message
+      const statusEl = this.element?.querySelector('[data-token-status]');
+      if (statusEl) {
+        statusEl.textContent = result.locked
+          ? 'MAXIMUM ATTEMPTS EXCEEDED — ACCESS DENIED'
+          : `TOKEN REJECTED — ${result.attemptsRemaining} attempt${result.attemptsRemaining !== 1 ? 's' : ''} remaining`;
+        statusEl.classList.add('ncm-sec-token-status-flash');
+        setTimeout(() => statusEl.classList.remove('ncm-sec-token-status-flash'), 1500);
+      }
+
+      // Clear the token slot
+      this._selectedTokenItem = null;
+      const slotEmpty = this.element?.querySelector('[data-token-empty]');
+      const slotFilled = this.element?.querySelector('[data-token-filled]');
+      const confirmBtn = this.element?.querySelector('[data-token-confirm]');
+      if (slotEmpty) slotEmpty.style.display = 'flex';
+      if (slotFilled) slotFilled.style.display = 'none';
+      if (confirmBtn) confirmBtn.style.display = 'none';
+
+      // If locked out, re-render to show lockout state
+      if (result.locked) {
+        setTimeout(() => this.render(true), 1800);
+      } else {
+        // Update attempt dots without full re-render
+        const dots = this.element?.querySelectorAll('[data-token-dot]');
+        if (dots) {
+          const state = this.dataShardService?._getState(this.item);
+          const session = this.dataShardService?._getActorSession(state, actor.id);
+          const used = session?.keyItemAttempts || 0;
+          dots.forEach((dot, i) => {
+            dot.classList.toggle('ncm-sec-attempt-dot--used', i < used);
+            dot.classList.toggle('ncm-sec-attempt-dot--current', i === used);
+          });
+        }
+
+        // Update the counter text
+        const counterEl = this.element?.querySelector('[data-token-counter]');
+        if (counterEl && result.attemptsRemaining !== undefined) {
+          const state2 = this.dataShardService?._getState(this.item);
+          const session2 = this.dataShardService?._getActorSession(state2, actor.id);
+          const currentAttempt = (session2?.keyItemAttempts || 0) + 1;
+          const max = config?.maxKeyItemAttempts || 3;
+          counterEl.textContent = `Attempt ${currentAttempt} of ${max}`;
+        }
+      }
+    }
   }
 
   static async _onSubmitLogin(event, target) {

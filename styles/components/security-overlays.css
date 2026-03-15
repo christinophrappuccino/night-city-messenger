@@ -936,6 +936,209 @@
 }
 .ncm-app .ncm-sec-token-clear:hover { background: rgba(255,0,51,0.08) !important; }
 
+/* ─── Token Rejection Shake ─── */
+.ncm-app .ncm-sec-token-rejected {
+  animation: ncm-token-shake 0.5s ease;
+  border-color: #ff2244 !important;
+  box-shadow: 0 0 12px rgba(255, 34, 68, 0.4);
+}
+@keyframes ncm-token-shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 50%, 90% { transform: translateX(-4px); }
+  30%, 70% { transform: translateX(4px); }
+}
+
+/* ─── Token Status Message ─── */
+.ncm-app .ncm-sec-token-status {
+  min-height: 16px;
+  margin-top: 8px;
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: #ff4444;
+  text-align: center;
+  text-transform: uppercase;
+  transition: opacity 0.3s;
+}
+.ncm-app .ncm-sec-token-status:empty { display: none; }
+.ncm-app .ncm-sec-token-status-flash {
+  animation: ncm-token-status-flash 1.2s ease;
+}
+@keyframes ncm-token-status-flash {
+  0%, 20%, 40% { opacity: 1; color: #ff2244; }
+  10%, 30% { opacity: 0.4; }
+  100% { opacity: 1; color: #ff4444; }
+}
+
+/* ═══════════════════════════════════════════
+   §18e  TOKEN PICKER DIALOG (.ncm-token-picker-dialog)
+   Inventory browser for key item selection
+   ═══════════════════════════════════════════ */
+
+.ncm-token-picker-dialog,
+.app.dialog.ncm-token-picker-dialog,
+.ncm-token-picker-dialog.app.dialog {
+  background: #0d0d1a !important;
+  border: 1px solid #f7c948 !important;
+  border-radius: 4px !important;
+  box-shadow: 0 0 20px rgba(247, 201, 72, 0.15), inset 0 0 40px rgba(0,0,0,0.3) !important;
+}
+.ncm-token-picker-dialog .window-header {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16162b 100%) !important;
+  border-bottom: 1px solid #f7c948 !important;
+  padding: 6px 10px !important;
+}
+.ncm-token-picker-dialog .window-header .window-title {
+  font-family: var(--ncm-font-display, 'Orbitron', sans-serif) !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  color: #f7c948 !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+}
+.ncm-token-picker-dialog .window-header a.header-button {
+  color: #8a8aa8 !important;
+}
+.ncm-token-picker-dialog .window-header a.header-button:hover {
+  color: #f7c948 !important;
+}
+.ncm-token-picker-dialog .dialog-content {
+  background: transparent !important;
+  padding: 0 !important;
+}
+.ncm-token-picker-dialog .dialog-buttons {
+  background: #0d0d1a !important;
+  border-top: 1px solid rgba(247, 201, 72, 0.15) !important;
+  padding: 6px 10px !important;
+}
+.ncm-token-picker-dialog .dialog-buttons button {
+  background: rgba(247, 201, 72, 0.08) !important;
+  border: 1px solid rgba(247, 201, 72, 0.25) !important;
+  color: #f7c948 !important;
+  font-family: var(--ncm-font-body, 'Rajdhani', sans-serif) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  border-radius: 3px !important;
+  padding: 4px 14px !important;
+  height: auto !important;
+  min-height: 0 !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+  flex-grow: 0 !important;
+  width: auto !important;
+  appearance: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+.ncm-token-picker-dialog .dialog-buttons button:hover {
+  background: rgba(247, 201, 72, 0.15) !important;
+  border-color: #f7c948 !important;
+}
+
+/* ─── Picker internals ─── */
+.ncm-token-picker {
+  padding: 10px;
+}
+.ncm-token-picker-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: rgba(247, 201, 72, 0.04);
+  border: 1px solid rgba(247, 201, 72, 0.2);
+  border-radius: 3px;
+  margin-bottom: 8px;
+}
+.ncm-token-picker-search i {
+  color: #f7c948;
+  font-size: 12px;
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+.ncm-token-picker-input {
+  flex: 1;
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  color: #e0e0e8 !important;
+  font-family: var(--ncm-font-body, 'Rajdhani', sans-serif) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  box-shadow: none !important;
+  height: auto !important;
+  min-height: 0 !important;
+}
+.ncm-token-picker-input::placeholder {
+  color: #555570;
+}
+.ncm-token-picker-hint {
+  font-family: var(--ncm-font-body, 'Rajdhani', sans-serif);
+  font-size: 11px;
+  font-weight: 500;
+  color: #8a8aa8;
+  text-align: center;
+  margin-bottom: 8px;
+}
+.ncm-token-picker-hint strong {
+  color: #f7c948;
+}
+.ncm-token-picker-list {
+  max-height: 280px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(247, 201, 72, 0.3) transparent;
+}
+.ncm-token-picker-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.ncm-token-picker-card:hover {
+  background: rgba(247, 201, 72, 0.08);
+  border-color: rgba(247, 201, 72, 0.35);
+}
+.ncm-token-picker-card-img {
+  width: 32px;
+  height: 32px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+.ncm-token-picker-card-info {
+  flex: 1;
+  min-width: 0;
+}
+.ncm-token-picker-card-name {
+  font-family: var(--ncm-font-body, 'Rajdhani', sans-serif);
+  font-size: 13px;
+  font-weight: 700;
+  color: #e0e0e8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ncm-token-picker-card-type {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 9px;
+  color: #555570;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
 
 /* ═══════════════════════════════════════════
    §18d  TRANSITION OVERLAY (injected splash)
