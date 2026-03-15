@@ -157,6 +157,25 @@ export class DataShardComposer extends BaseApplication {
       editBody: this.editData?.body || '',
       editTimestamp: this.editData?.timestamp || '',
       editContentData: this.editData?.contentData ?? {},
+      editEncrypted: this.editData?.encrypted ?? false,
+      editNetworkRestricted: this.editData?.networkVisibility?.restricted ?? false,
+
+      // Dossier sections (for edit pre-fill)
+      editDossierSections: (this.editData?.contentData?.sections ?? []).map((s, i) => ({
+        index: i, heading: s.heading || '', body: s.body || '', redacted: !!s.redacted,
+      })),
+      hasDossierSections: (this.editData?.contentData?.sections?.length ?? 0) > 0,
+
+      // Transcript lines (for edit pre-fill)
+      editTranscriptLines: (this.editData?.contentData?.transcript ?? []).map((l, i) => ({
+        index: i, speaker: l.speaker || '', text: l.text || '',
+      })),
+      hasTranscriptLines: (this.editData?.contentData?.transcript?.length ?? 0) > 0,
+
+      // Payload duration in hours (stored in ms)
+      editPayloadDurationHrs: this.editData?.contentData?.effect?.duration
+        ? Math.round(this.editData.contentData.effect.duration / 3600000)
+        : null,
 
       // Type pills
       typePills,
@@ -187,6 +206,56 @@ export class DataShardComposer extends BaseApplication {
       // Networks (for visibility restriction)
       networkOptions: (this.networkService?.getAllNetworks() ?? []).map(n => ({ value: n.id, label: n.name })),
     };
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  RENDER LIFECYCLE
+  // ═══════════════════════════════════════════════════════════
+
+  _onRender(context, options) {
+    if (!this.editData) return;
+    const el = this.element;
+    if (!el) return;
+    const cd = this.editData.contentData ?? {};
+
+    // ─── Set select values from editData (Handlebars has no eq helper) ───
+    const selectMap = {
+      dossierClassification: cd.classification,
+      dossierLinkedActor: cd.linkedActorId,
+      dossierThreat: cd.stats?.threat,
+      payloadType: cd.payloadType,
+      payloadEffectType: cd.effect?.type,
+      payloadDisguiseType: cd.disguiseType,
+      avlogMediaType: cd.mediaType,
+    };
+    for (const [key, val] of Object.entries(selectMap)) {
+      if (!val) continue;
+      const select = el.querySelector(`[data-edit-select="${key}"]`);
+      if (select) select.value = val;
+    }
+
+    // ─── Pre-populate network visibility tags ───
+    const nv = this.editData.networkVisibility;
+    if (nv?.restricted && nv.allowedNetworks?.length) {
+      const container = el.querySelector('#ncm-entry-network-tags');
+      const dropdown = el.querySelector('#ncm-add-entry-network-select');
+      if (container && dropdown) {
+        for (const netId of nv.allowedNetworks) {
+          const opt = dropdown.querySelector(`option[value="${netId}"]`);
+          if (!opt) continue;
+          const label = opt.textContent;
+
+          const tag = document.createElement('div');
+          tag.classList.add('ncm-tag');
+          tag.dataset.value = netId;
+          tag.innerHTML = `<span>${label}</span>
+            <button type="button" class="ncm-tag__remove" data-action="removeEntryNetworkTag" data-value="${netId}"><i class="fas fa-times"></i></button>
+            <input type="hidden" name="entryAllowedNetwork" value="${netId}" />`;
+          container.appendChild(tag);
+          opt.remove();
+        }
+      }
+    }
   }
 
   // ═══════════════════════════════════════════════════════════

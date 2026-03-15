@@ -98,7 +98,7 @@
       <div class="ncm-config-hint">Eddies are wired to the CPR wealth ledger when claimed by a player.</div>
       <div class="ncm-config-row">
         <label class="ncm-config-label">Timestamp</label>
-        <input type="text" name="timestamp" class="ncm-config-input ncm-config-flex" value="{{defaultTimestamp}}" placeholder="ISO-8601" />
+        <input type="text" name="timestamp" class="ncm-config-input ncm-config-flex" value="{{#if editTimestamp}}{{editTimestamp}}{{else}}{{defaultTimestamp}}{{/if}}" placeholder="ISO-8601" />
       </div>
     </fieldset>
   {{/if}}
@@ -109,15 +109,15 @@
       <legend class="ncm-config-legend"><i class="fas fa-user-secret"></i> Dossier Subject</legend>
       <div class="ncm-config-row">
         <label class="ncm-config-label">Target Name</label>
-        <input type="text" name="dossierTargetName" class="ncm-config-input ncm-config-flex" placeholder="Full name" />
+        <input type="text" name="dossierTargetName" class="ncm-config-input ncm-config-flex" value="{{editContentData.targetName}}" placeholder="Full name" />
       </div>
       <div class="ncm-config-row">
         <label class="ncm-config-label">Alias</label>
-        <input type="text" name="dossierAlias" class="ncm-config-input ncm-config-flex" placeholder="Known alias" />
+        <input type="text" name="dossierAlias" class="ncm-config-input ncm-config-flex" value="{{editContentData.targetAlias}}" placeholder="Known alias" />
       </div>
       <div class="ncm-config-row">
         <label class="ncm-config-label">Classification</label>
-        <select name="dossierClassification" class="ncm-config-select ncm-config-flex">
+        <select name="dossierClassification" class="ncm-config-select ncm-config-flex" data-edit-select="dossierClassification">
           <option value="">Unclassified</option>
           <option value="CONFIDENTIAL">Confidential</option>
           <option value="SECRET">Secret</option>
@@ -126,7 +126,7 @@
       </div>
       <div class="ncm-config-row">
         <label class="ncm-config-label">Link Actor</label>
-        <select name="dossierLinkedActor" class="ncm-config-select ncm-config-flex">
+        <select name="dossierLinkedActor" class="ncm-config-select ncm-config-flex" data-edit-select="dossierLinkedActor">
           <option value="">— None (manual data) —</option>
           {{#each actorOptions}}
             <option value="{{id}}">{{name}}</option>
@@ -136,7 +136,7 @@
       <div class="ncm-config-hint">Linking an actor auto-pulls their portrait. Leave unlinked for a silhouette.</div>
       <div class="ncm-config-row">
         <label class="ncm-config-label">Portrait</label>
-        <input type="text" name="dossierPortrait" class="ncm-config-input ncm-config-flex" placeholder="Path to custom portrait (overrides actor)" />
+        <input type="text" name="dossierPortrait" class="ncm-config-input ncm-config-flex" value="{{editContentData.targetImage}}" placeholder="Path to custom portrait (overrides actor)" />
         <button type="button" data-action="browseImage" data-target="dossierPortrait" class="ncm-shard-hdr-btn" title="Browse"><i class="fas fa-folder-open"></i></button>
       </div>
     </fieldset>
@@ -145,7 +145,7 @@
       <legend class="ncm-config-legend"><i class="fas fa-chart-bar"></i> Stat Block</legend>
       <div class="ncm-config-row">
         <label class="ncm-config-label">Threat</label>
-        <select name="dossierThreat" class="ncm-config-select ncm-config-flex">
+        <select name="dossierThreat" class="ncm-config-select ncm-config-flex" data-edit-select="dossierThreat">
           <option value="">Unknown</option>
           <option value="LOW">Low</option>
           <option value="MEDIUM">Medium</option>
@@ -155,38 +155,55 @@
       </div>
       <div class="ncm-config-row">
         <label class="ncm-config-label">Affiliation</label>
-        <input type="text" name="dossierAffiliation" class="ncm-config-input ncm-config-flex" placeholder="Organization" />
+        <input type="text" name="dossierAffiliation" class="ncm-config-input ncm-config-flex" value="{{editContentData.stats.affiliation}}" placeholder="Organization" />
       </div>
       <div class="ncm-config-row">
         <label class="ncm-config-label">Last Known</label>
-        <input type="text" name="dossierLastKnown" class="ncm-config-input ncm-config-flex" placeholder="Location" />
+        <input type="text" name="dossierLastKnown" class="ncm-config-input ncm-config-flex" value="{{editContentData.stats.lastKnownLocation}}" placeholder="Location" />
       </div>
     </fieldset>
 
     <fieldset class="ncm-config-section">
       <legend class="ncm-config-legend"><i class="fas fa-file-lines"></i> Sections</legend>
       <div class="ncm-dossier-sections-list">
-        {{!-- Default first section --}}
-        <div class="ncm-dossier-section-entry">
-          <div class="ncm-config-row">
-            <label class="ncm-config-label">Heading</label>
-            <input type="text" name="dossierSectionHeading-0" class="ncm-config-input ncm-config-flex" placeholder="Section heading" />
+        {{#if hasDossierSections}}
+          {{#each editDossierSections}}
+            <div class="ncm-dossier-section-entry">
+              <div class="ncm-config-row">
+                <label class="ncm-config-label">Heading</label>
+                <input type="text" name="dossierSectionHeading-{{index}}" class="ncm-config-input ncm-config-flex" value="{{heading}}" placeholder="Section heading" />
+              </div>
+              <div class="ncm-config-row ncm-config-row--col">
+                <textarea name="dossierSectionBody-{{index}}" class="ncm-config-input ncm-config-textarea" rows="3" placeholder="Section content...">{{body}}</textarea>
+              </div>
+              <div class="ncm-config-row">
+                <label class="ncm-config-check"><input type="checkbox" name="dossierSectionRedacted-{{index}}" {{#if redacted}}checked{{/if}} /> Redacted</label>
+                <button type="button" data-action="removeDossierSection" class="ncm-shard-hdr-btn ncm-shard-hdr-btn--danger" title="Remove section"><i class="fas fa-times"></i></button>
+              </div>
+            </div>
+          {{/each}}
+        {{else}}
+          <div class="ncm-dossier-section-entry">
+            <div class="ncm-config-row">
+              <label class="ncm-config-label">Heading</label>
+              <input type="text" name="dossierSectionHeading-0" class="ncm-config-input ncm-config-flex" placeholder="Section heading" />
+            </div>
+            <div class="ncm-config-row ncm-config-row--col">
+              <textarea name="dossierSectionBody-0" class="ncm-config-input ncm-config-textarea" rows="3" placeholder="Section content..."></textarea>
+            </div>
+            <div class="ncm-config-row">
+              <label class="ncm-config-check"><input type="checkbox" name="dossierSectionRedacted-0" /> Redacted</label>
+              <button type="button" data-action="removeDossierSection" class="ncm-shard-hdr-btn ncm-shard-hdr-btn--danger" title="Remove"><i class="fas fa-times"></i></button>
+            </div>
           </div>
-          <div class="ncm-config-row ncm-config-row--col">
-            <textarea name="dossierSectionBody-0" class="ncm-config-input ncm-config-textarea" rows="3" placeholder="Section content..."></textarea>
-          </div>
-          <div class="ncm-config-row">
-            <label class="ncm-config-check"><input type="checkbox" name="dossierSectionRedacted-0" /> Redacted</label>
-            <button type="button" data-action="removeDossierSection" class="ncm-shard-hdr-btn ncm-shard-hdr-btn--danger" title="Remove"><i class="fas fa-times"></i></button>
-          </div>
-        </div>
+        {{/if}}
       </div>
       <button type="button" data-action="addDossierSection" class="ncm-shard-btn ncm-shard-btn--secondary" style="margin-top:4px;padding:3px 10px;">
         <i class="fas fa-plus"></i> Add Section
       </button>
       <div class="ncm-config-row" style="margin-top:8px;">
         <label class="ncm-config-label">Timestamp</label>
-        <input type="text" name="timestamp" class="ncm-config-input ncm-config-flex" value="{{defaultTimestamp}}" placeholder="ISO-8601" />
+        <input type="text" name="timestamp" class="ncm-config-input ncm-config-flex" value="{{#if editTimestamp}}{{editTimestamp}}{{else}}{{defaultTimestamp}}{{/if}}" placeholder="ISO-8601" />
       </div>
     </fieldset>
   {{/if}}
@@ -197,7 +214,7 @@
       <legend class="ncm-config-legend"><i class="fas fa-bug"></i> Payload Configuration</legend>
       <div class="ncm-config-row">
         <label class="ncm-config-label">Payload Type</label>
-        <select name="payloadType" class="ncm-config-select ncm-config-flex">
+        <select name="payloadType" class="ncm-config-select ncm-config-flex" data-edit-select="payloadType">
           <option value="tracker">Tracker</option>
           <option value="malware">Malware</option>
           <option value="worm">Worm</option>
@@ -207,15 +224,15 @@
       </div>
       <div class="ncm-config-row">
         <label class="ncm-config-label">Program Name</label>
-        <input type="text" name="payloadName" class="ncm-config-input ncm-config-flex" placeholder="GHOST.exe" />
+        <input type="text" name="payloadName" class="ncm-config-input ncm-config-flex" value="{{editContentData.name}}" placeholder="GHOST.exe" />
       </div>
       <div class="ncm-config-row ncm-config-row--col">
         <label class="ncm-config-label" style="margin-bottom:4px;">Description</label>
-        <textarea name="payloadDescription" class="ncm-config-input ncm-config-textarea" rows="3" placeholder="What this program does when executed..."></textarea>
+        <textarea name="payloadDescription" class="ncm-config-input ncm-config-textarea" rows="3" placeholder="What this program does when executed...">{{editContentData.description}}</textarea>
       </div>
       <div class="ncm-config-row">
         <label class="ncm-config-label">Effect Type</label>
-        <select name="payloadEffectType" class="ncm-config-select ncm-config-flex">
+        <select name="payloadEffectType" class="ncm-config-select ncm-config-flex" data-edit-select="payloadEffectType">
           <option value="tracker">Tracker — reports location</option>
           <option value="damage">Damage — deals HP damage</option>
           <option value="lockout">Lockout — locks agent</option>
@@ -225,7 +242,7 @@
       </div>
       <div class="ncm-config-row">
         <label class="ncm-config-label">Duration (hrs)</label>
-        <input type="number" name="payloadDuration" class="ncm-config-input ncm-config-short" value="24" min="1" />
+        <input type="number" name="payloadDuration" class="ncm-config-input ncm-config-short" value="{{#if editPayloadDurationHrs}}{{editPayloadDurationHrs}}{{else}}24{{/if}}" min="1" />
       </div>
       <div class="ncm-config-hint">When executed, the effect triggers. Actual mechanical effects are GM-adjudicated.</div>
     </fieldset>
@@ -233,11 +250,11 @@
     <fieldset class="ncm-config-section">
       <legend class="ncm-config-legend"><i class="fas fa-mask"></i> Disguise</legend>
       <div class="ncm-config-row">
-        <label class="ncm-config-check"><input type="checkbox" name="payloadDisguised" /> Disguise as different content type</label>
+        <label class="ncm-config-check"><input type="checkbox" name="payloadDisguised" {{#if editContentData.disguised}}checked{{/if}} /> Disguise as different content type</label>
       </div>
       <div class="ncm-config-row">
         <label class="ncm-config-label">Appears As</label>
-        <select name="payloadDisguiseType" class="ncm-config-select ncm-config-flex">
+        <select name="payloadDisguiseType" class="ncm-config-select ncm-config-flex" data-edit-select="payloadDisguiseType">
           <option value="message">Message</option>
           <option value="eddies">Eddies Dead Drop</option>
           <option value="dossier">Dossier</option>
@@ -246,7 +263,7 @@
       <div class="ncm-config-hint">When disguised, the entry renders as the fake type until the player interacts.</div>
       <div class="ncm-config-row">
         <label class="ncm-config-label">Timestamp</label>
-        <input type="text" name="timestamp" class="ncm-config-input ncm-config-flex" value="{{defaultTimestamp}}" placeholder="ISO-8601" />
+        <input type="text" name="timestamp" class="ncm-config-input ncm-config-flex" value="{{#if editTimestamp}}{{editTimestamp}}{{else}}{{defaultTimestamp}}{{/if}}" placeholder="ISO-8601" />
       </div>
     </fieldset>
   {{/if}}
@@ -257,38 +274,47 @@
       <legend class="ncm-config-legend"><i class="fas fa-microphone"></i> Recording Details</legend>
       <div class="ncm-config-row">
         <label class="ncm-config-label">Media Type</label>
-        <select name="avlogMediaType" class="ncm-config-select ncm-config-flex">
+        <select name="avlogMediaType" class="ncm-config-select ncm-config-flex" data-edit-select="avlogMediaType">
           <option value="audio">Audio</option>
           <option value="video">Video</option>
         </select>
       </div>
       <div class="ncm-config-row">
         <label class="ncm-config-label">Title</label>
-        <input type="text" name="avlogTitle" class="ncm-config-input ncm-config-flex" placeholder="Recording title" />
+        <input type="text" name="avlogTitle" class="ncm-config-input ncm-config-flex" value="{{editSubject}}" placeholder="Recording title" />
       </div>
       <div class="ncm-config-row">
         <label class="ncm-config-label">Duration</label>
-        <input type="text" name="avlogDuration" class="ncm-config-input ncm-config-short" placeholder="03:47" />
+        <input type="text" name="avlogDuration" class="ncm-config-input ncm-config-short" value="{{editContentData.duration}}" placeholder="03:47" />
       </div>
       <div class="ncm-config-row">
         <label class="ncm-config-label">Source</label>
-        <input type="text" name="avlogSource" class="ncm-config-input ncm-config-flex" placeholder="Where/how recorded" />
+        <input type="text" name="avlogSource" class="ncm-config-input ncm-config-flex" value="{{editContentData.source}}" placeholder="Where/how recorded" />
       </div>
       <div class="ncm-config-row">
         <label class="ncm-config-label">Timestamp</label>
-        <input type="text" name="timestamp" class="ncm-config-input ncm-config-flex" value="{{defaultTimestamp}}" placeholder="ISO-8601" />
+        <input type="text" name="timestamp" class="ncm-config-input ncm-config-flex" value="{{#if editTimestamp}}{{editTimestamp}}{{else}}{{defaultTimestamp}}{{/if}}" placeholder="ISO-8601" />
       </div>
     </fieldset>
 
     <fieldset class="ncm-config-section">
       <legend class="ncm-config-legend"><i class="fas fa-closed-captioning"></i> Transcript</legend>
       <div class="ncm-transcript-list">
-        {{!-- Default first line --}}
-        <div class="ncm-transcript-entry">
-          <input type="text" name="transcriptSpeaker-0" class="ncm-config-input" style="max-width:100px;" placeholder="SPEAKER" />
-          <input type="text" name="transcriptText-0" class="ncm-config-input ncm-config-flex" placeholder="Dialogue line..." />
-          <button type="button" data-action="removeTranscriptLine" class="ncm-shard-hdr-btn ncm-shard-hdr-btn--danger" title="Remove"><i class="fas fa-times"></i></button>
-        </div>
+        {{#if hasTranscriptLines}}
+          {{#each editTranscriptLines}}
+            <div class="ncm-transcript-entry">
+              <input type="text" name="transcriptSpeaker-{{index}}" class="ncm-config-input" style="max-width:100px;" value="{{speaker}}" placeholder="SPEAKER" />
+              <input type="text" name="transcriptText-{{index}}" class="ncm-config-input ncm-config-flex" value="{{text}}" placeholder="Dialogue line..." />
+              <button type="button" data-action="removeTranscriptLine" class="ncm-shard-hdr-btn ncm-shard-hdr-btn--danger" title="Remove"><i class="fas fa-times"></i></button>
+            </div>
+          {{/each}}
+        {{else}}
+          <div class="ncm-transcript-entry">
+            <input type="text" name="transcriptSpeaker-0" class="ncm-config-input" style="max-width:100px;" placeholder="SPEAKER" />
+            <input type="text" name="transcriptText-0" class="ncm-config-input ncm-config-flex" placeholder="Dialogue line..." />
+            <button type="button" data-action="removeTranscriptLine" class="ncm-shard-hdr-btn ncm-shard-hdr-btn--danger" title="Remove"><i class="fas fa-times"></i></button>
+          </div>
+        {{/if}}
       </div>
       <button type="button" data-action="addTranscriptLine" class="ncm-shard-btn ncm-shard-btn--secondary" style="margin-top:4px;padding:3px 10px;">
         <i class="fas fa-plus"></i> Add Line
@@ -302,28 +328,28 @@
       <legend class="ncm-config-legend"><i class="fas fa-map-pin"></i> Location Details</legend>
       <div class="ncm-config-row">
         <label class="ncm-config-label">Location Name</label>
-        <input type="text" name="locationName" class="ncm-config-input ncm-config-flex" placeholder="Kabuki Market, Back Alley" />
+        <input type="text" name="locationName" class="ncm-config-input ncm-config-flex" value="{{editContentData.locationName}}" placeholder="Kabuki Market, Back Alley" />
       </div>
       <div class="ncm-config-row">
         <label class="ncm-config-label">Coordinates</label>
-        <input type="text" name="locationCoords" class="ncm-config-input ncm-config-flex" placeholder="N 33.7490° W 84.3880° (flavor text)" />
+        <input type="text" name="locationCoords" class="ncm-config-input ncm-config-flex" value="{{editContentData.coordinates}}" placeholder="N 33.7490° W 84.3880° (flavor text)" />
       </div>
       <div class="ncm-config-row">
         <label class="ncm-config-label">District</label>
-        <input type="text" name="locationDistrict" class="ncm-config-input ncm-config-flex" placeholder="Watson, Westbrook, etc." />
+        <input type="text" name="locationDistrict" class="ncm-config-input ncm-config-flex" value="{{editContentData.district}}" placeholder="Watson, Westbrook, etc." />
       </div>
       <div class="ncm-config-row ncm-config-row--col">
         <label class="ncm-config-label" style="margin-bottom:4px;">Description</label>
-        <textarea name="locationDescription" class="ncm-config-input ncm-config-textarea" rows="3" placeholder="South entrance. Look for the red neon dragon sign."></textarea>
+        <textarea name="locationDescription" class="ncm-config-input ncm-config-textarea" rows="3" placeholder="South entrance. Look for the red neon dragon sign.">{{editContentData.description}}</textarea>
       </div>
       <div class="ncm-config-row">
         <label class="ncm-config-label">Link Scene</label>
-        <input type="text" name="locationSceneId" class="ncm-config-input ncm-config-flex" placeholder="Foundry Scene ID (optional)" />
+        <input type="text" name="locationSceneId" class="ncm-config-input ncm-config-flex" value="{{editContentData.linkedSceneId}}" placeholder="Foundry Scene ID (optional)" />
       </div>
       <div class="ncm-config-hint">If a scene is linked, GM sees a "Go to Scene" button in the viewer.</div>
       <div class="ncm-config-row">
         <label class="ncm-config-label">Timestamp</label>
-        <input type="text" name="timestamp" class="ncm-config-input ncm-config-flex" value="{{defaultTimestamp}}" placeholder="ISO-8601" />
+        <input type="text" name="timestamp" class="ncm-config-input ncm-config-flex" value="{{#if editTimestamp}}{{editTimestamp}}{{else}}{{defaultTimestamp}}{{/if}}" placeholder="ISO-8601" />
       </div>
     </fieldset>
   {{/if}}
@@ -333,7 +359,7 @@
     <fieldset class="ncm-config-section">
       <legend class="ncm-config-legend"><i class="fas fa-lock"></i> Per-Entry Encryption</legend>
       <div class="ncm-config-row">
-        <label class="ncm-config-check"><input type="checkbox" name="encrypted" /> Individually Encrypted</label>
+        <label class="ncm-config-check"><input type="checkbox" name="encrypted" {{#if editEncrypted}}checked{{/if}} /> Individually Encrypted</label>
       </div>
       <div class="ncm-config-row">
         <label class="ncm-config-label">DV Override</label>
@@ -347,7 +373,7 @@
   <fieldset class="ncm-config-section">
     <legend class="ncm-config-legend"><i class="fas fa-eye-slash"></i> Network Visibility</legend>
     <div class="ncm-config-row">
-      <label class="ncm-config-check"><input type="checkbox" name="networkRestricted" /> Restrict to specific networks</label>
+      <label class="ncm-config-check"><input type="checkbox" name="networkRestricted" {{#if editNetworkRestricted}}checked{{/if}} /> Restrict to specific networks</label>
     </div>
     <div class="ncm-config-row ncm-config-row--col">
       <div class="ncm-tag-list" id="ncm-entry-network-tags"></div>
