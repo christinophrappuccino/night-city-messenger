@@ -973,69 +973,172 @@
 /* ═══════════════════════════════════════════
    §18e  TOKEN PICKER DIALOG (.ncm-token-picker-dialog)
    Inventory browser for key item selection
+   Heavy !important overrides needed — Foundry v12 dialog CSS is aggressive
    ═══════════════════════════════════════════ */
 
+/* ─── Window frame ─── */
 .ncm-token-picker-dialog,
 .app.dialog.ncm-token-picker-dialog,
-.ncm-token-picker-dialog.app.dialog {
+.dialog.window-app.ncm-token-picker-dialog {
   background: #0d0d1a !important;
   border: 1px solid #f7c948 !important;
   border-radius: 4px !important;
   box-shadow: 0 0 20px rgba(247, 201, 72, 0.15), inset 0 0 40px rgba(0,0,0,0.3) !important;
+  color: #c0c0d0 !important;
+  overflow: hidden !important;
 }
-.ncm-token-picker-dialog .window-header {
-  background: linear-gradient(135deg, #1a1a2e 0%, #16162b 100%) !important;
+/* Gold accent bar at top */
+.ncm-token-picker-dialog::after {
+  content: '' !important;
+  position: absolute !important; top: 0 !important; left: 0 !important; right: 0 !important;
+  height: 2px !important; z-index: 100 !important;
+  background: linear-gradient(90deg, transparent, #f7c948 30%, #f7c948 70%, transparent) !important;
+  pointer-events: none !important;
+}
+
+/* ─── Window header / title bar ─── */
+.ncm-token-picker-dialog .window-header,
+.ncm-token-picker-dialog header.window-header,
+.dialog.ncm-token-picker-dialog .window-header {
+  background: linear-gradient(180deg, #1a1a2e, #14142a) !important;
   border-bottom: 1px solid #f7c948 !important;
+  color: #f7c948 !important;
   padding: 6px 10px !important;
+  min-height: 0 !important;
+  margin: 0 !important;
 }
-.ncm-token-picker-dialog .window-header .window-title {
-  font-family: var(--ncm-font-display, 'Orbitron', sans-serif) !important;
-  font-size: 11px !important;
+.ncm-token-picker-dialog .window-header .window-title,
+.ncm-token-picker-dialog .window-title {
+  font-family: 'Orbitron', 'Rajdhani', sans-serif !important;
+  font-size: 10px !important;
   font-weight: 700 !important;
-  color: #f7c948 !important;
-  letter-spacing: 0.08em !important;
   text-transform: uppercase !important;
+  letter-spacing: 0.1em !important;
+  color: #f7c948 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: 1.4 !important;
 }
-.ncm-token-picker-dialog .window-header a.header-button {
-  color: #8a8aa8 !important;
+/* Hide Foundry's default header icon */
+.ncm-token-picker-dialog .window-header .header-icon,
+.ncm-token-picker-dialog .window-header i.header-icon {
+  display: none !important;
 }
-.ncm-token-picker-dialog .window-header a.header-button:hover {
+
+/* ─── Close button (Foundry uses <a> in v1 Dialog, <button> in v2) ─── */
+.ncm-token-picker-dialog .window-header .close,
+.ncm-token-picker-dialog .window-header a.close,
+.ncm-token-picker-dialog .window-header button.close,
+.ncm-token-picker-dialog .window-header .header-button,
+.ncm-token-picker-dialog .window-header a.header-button,
+.ncm-token-picker-dialog .window-header button[data-action="close"],
+.ncm-token-picker-dialog header button,
+.ncm-token-picker-dialog header a {
+  background: none !important;
+  border: 1px solid transparent !important;
+  border-radius: 2px !important;
+  color: #555570 !important;
+  font-size: 0 !important;
+  width: 22px !important; height: 22px !important;
+  min-width: 0 !important; min-height: 0 !important;
+  padding: 0 !important; margin: 0 !important;
+  display: flex !important; align-items: center !important; justify-content: center !important;
+  cursor: pointer !important;
+  transition: all 0.15s !important;
+  box-shadow: none !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  line-height: 1 !important;
+  text-decoration: none !important;
+  overflow: hidden !important;
+}
+.ncm-token-picker-dialog .window-header .close i,
+.ncm-token-picker-dialog .window-header a.close i,
+.ncm-token-picker-dialog .window-header .header-button i,
+.ncm-token-picker-dialog .window-header a.header-button i,
+.ncm-token-picker-dialog header button i,
+.ncm-token-picker-dialog header a i {
+  font-size: 10px !important;
+  color: #555570 !important;
+  display: block !important;
+}
+.ncm-token-picker-dialog .window-header .close:hover,
+.ncm-token-picker-dialog .window-header a.close:hover,
+.ncm-token-picker-dialog .window-header .header-button:hover,
+.ncm-token-picker-dialog .window-header a.header-button:hover,
+.ncm-token-picker-dialog header button:hover,
+.ncm-token-picker-dialog header a:hover {
+  border-color: #f7c948 !important;
+}
+.ncm-token-picker-dialog .window-header .close:hover i,
+.ncm-token-picker-dialog .window-header a.close:hover i,
+.ncm-token-picker-dialog .window-header .header-button:hover i,
+.ncm-token-picker-dialog .window-header a.header-button:hover i,
+.ncm-token-picker-dialog header button:hover i,
+.ncm-token-picker-dialog header a:hover i {
   color: #f7c948 !important;
 }
-.ncm-token-picker-dialog .dialog-content {
-  background: transparent !important;
+
+/* ─── Dialog content area ─── */
+.ncm-token-picker-dialog .dialog-content,
+.ncm-token-picker-dialog .window-content,
+.ncm-token-picker-dialog section.window-content {
+  background: #0d0d1a !important;
   padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+  overflow: visible !important;
 }
-.ncm-token-picker-dialog .dialog-buttons {
+
+/* ─── Dialog action buttons ─── */
+.ncm-token-picker-dialog .dialog-buttons,
+.ncm-token-picker-dialog footer.dialog-buttons {
   background: #0d0d1a !important;
   border-top: 1px solid rgba(247, 201, 72, 0.15) !important;
-  padding: 6px 10px !important;
+  padding: 8px 10px !important;
+  display: flex !important; gap: 8px !important;
+  margin: 0 !important;
 }
-.ncm-token-picker-dialog .dialog-buttons button {
+.ncm-token-picker-dialog .dialog-buttons button,
+.ncm-token-picker-dialog footer button {
+  flex: 1 !important;
   background: rgba(247, 201, 72, 0.08) !important;
   border: 1px solid rgba(247, 201, 72, 0.25) !important;
-  color: #f7c948 !important;
-  font-family: var(--ncm-font-body, 'Rajdhani', sans-serif) !important;
-  font-size: 12px !important;
-  font-weight: 600 !important;
   border-radius: 3px !important;
-  padding: 4px 14px !important;
-  height: auto !important;
-  min-height: 0 !important;
+  color: #f7c948 !important;
+  font-family: 'Rajdhani', sans-serif !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.06em !important;
+  padding: 6px 14px !important;
   cursor: pointer !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
+  transition: all 0.15s !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  box-shadow: none !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  height: auto !important;
+  width: auto !important;
+  line-height: 1.4 !important;
+  display: flex !important; align-items: center !important; justify-content: center !important; gap: 6px !important;
+  margin: 0 !important;
+  text-shadow: none !important;
   flex-shrink: 0 !important;
   flex-grow: 0 !important;
-  width: auto !important;
-  appearance: none !important;
-  box-shadow: none !important;
   outline: none !important;
 }
-.ncm-token-picker-dialog .dialog-buttons button:hover {
+.ncm-token-picker-dialog .dialog-buttons button:hover,
+.ncm-token-picker-dialog footer button:hover {
   background: rgba(247, 201, 72, 0.15) !important;
   border-color: #f7c948 !important;
+  color: #f7c948 !important;
+}
+.ncm-token-picker-dialog .dialog-buttons button i,
+.ncm-token-picker-dialog footer button i {
+  font-size: 11px !important;
+  margin: 0 !important;
 }
 
 /* ─── Picker internals ─── */

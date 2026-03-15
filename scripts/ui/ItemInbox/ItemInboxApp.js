@@ -938,10 +938,11 @@ export class ItemInboxApp extends BaseApplication {
     const config = this.dataShardService?.getConfig(this.item);
     const keyItemDisplayName = config?.keyItemDisplayName || config?.keyItemName || 'Access Token';
 
-    // Show ALL actor inventory items — player must figure out which is correct
-    const allItems = actor.items?.contents ?? [];
+    // Show inventory items — exclude skills, roles, cyberware (not presentable tokens)
+    const EXCLUDED_TYPES = new Set(['skill', 'role', 'cyberware']);
+    const allItems = (actor.items?.contents ?? []).filter(i => !EXCLUDED_TYPES.has(i.type));
     if (allItems.length === 0) {
-      ui.notifications.warn('NCM | Inventory is empty.');
+      ui.notifications.warn('NCM | No presentable items in inventory.');
       return;
     }
 
@@ -1078,11 +1079,10 @@ export class ItemInboxApp extends BaseApplication {
       // ─── Wrong item — rejection feedback ───
       this.soundService?.play('key-rejected');
 
-      // Shake the token slot
+      // Shake the token slot (item stays visible during shake)
       const tokenSlot = this.element?.querySelector('[data-token-slot]');
       if (tokenSlot) {
         tokenSlot.classList.add('ncm-sec-token-rejected');
-        setTimeout(() => tokenSlot.classList.remove('ncm-sec-token-rejected'), 600);
       }
 
       // Flash the status message
@@ -1095,14 +1095,17 @@ export class ItemInboxApp extends BaseApplication {
         setTimeout(() => statusEl.classList.remove('ncm-sec-token-status-flash'), 1500);
       }
 
-      // Clear the token slot
+      // After shake completes, clear the slot
       this._selectedTokenItem = null;
-      const slotEmpty = this.element?.querySelector('[data-token-empty]');
-      const slotFilled = this.element?.querySelector('[data-token-filled]');
-      const confirmBtn = this.element?.querySelector('[data-token-confirm]');
-      if (slotEmpty) slotEmpty.style.display = 'flex';
-      if (slotFilled) slotFilled.style.display = 'none';
-      if (confirmBtn) confirmBtn.style.display = 'none';
+      setTimeout(() => {
+        if (tokenSlot) tokenSlot.classList.remove('ncm-sec-token-rejected');
+        const slotEmpty = this.element?.querySelector('[data-token-empty]');
+        const slotFilled = this.element?.querySelector('[data-token-filled]');
+        const confirmBtn = this.element?.querySelector('[data-token-confirm]');
+        if (slotEmpty) slotEmpty.style.display = 'flex';
+        if (slotFilled) slotFilled.style.display = 'none';
+        if (confirmBtn) confirmBtn.style.display = 'none';
+      }, 650);
 
       // If locked out, re-render to show lockout state
       if (result.locked) {
