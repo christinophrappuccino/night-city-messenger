@@ -1054,12 +1054,14 @@ export class ItemInboxApp extends BaseApplication {
       if (!confirm) return;
     }
 
+    // Guard against updateItem hook re-render during validation + animation
+    this._transitionActive = true;
+
     // Validate the selected item via DataShardService
     const result = await this.dataShardService.validateKeyItem(this.item, actor, selectedItem.id);
 
     if (result.success) {
       // ─── Correct item — show success transition ───
-      this._transitionActive = true;
       await this._showTransitionSplash({
         iconHtml: `<img src="${selectedItem.img || 'icons/svg/item-bag.svg'}" style="width:40px;height:40px;border:none;border-radius:3px;" />`,
         iconStyle: 'gold',
@@ -1080,8 +1082,11 @@ export class ItemInboxApp extends BaseApplication {
       this.soundService?.play('key-rejected');
 
       // Shake the token slot (item stays visible during shake)
+      // Force reflow so animation replays if class was previously applied
       const tokenSlot = this.element?.querySelector('[data-token-slot]');
       if (tokenSlot) {
+        tokenSlot.classList.remove('ncm-sec-token-rejected');
+        void tokenSlot.offsetHeight; // force reflow
         tokenSlot.classList.add('ncm-sec-token-rejected');
       }
 
@@ -1091,11 +1096,13 @@ export class ItemInboxApp extends BaseApplication {
         statusEl.textContent = result.locked
           ? 'MAXIMUM ATTEMPTS EXCEEDED — ACCESS DENIED'
           : `TOKEN REJECTED — ${result.attemptsRemaining} attempt${result.attemptsRemaining !== 1 ? 's' : ''} remaining`;
+        statusEl.classList.remove('ncm-sec-token-status-flash');
+        void statusEl.offsetHeight;
         statusEl.classList.add('ncm-sec-token-status-flash');
         setTimeout(() => statusEl.classList.remove('ncm-sec-token-status-flash'), 1500);
       }
 
-      // After shake completes, clear the slot
+      // After shake completes, clear the slot and release the guard
       this._selectedTokenItem = null;
       setTimeout(() => {
         if (tokenSlot) tokenSlot.classList.remove('ncm-sec-token-rejected');
@@ -1105,11 +1112,16 @@ export class ItemInboxApp extends BaseApplication {
         if (slotEmpty) slotEmpty.style.display = 'flex';
         if (slotFilled) slotFilled.style.display = 'none';
         if (confirmBtn) confirmBtn.style.display = 'none';
+
+        this._transitionActive = false;
       }, 650);
 
       // If locked out, re-render to show lockout state
       if (result.locked) {
-        setTimeout(() => this.render(true), 1800);
+        setTimeout(() => {
+          this._transitionActive = false;
+          this.render(true);
+        }, 1800);
       } else {
         // Update attempt dots without full re-render
         const dots = this.element?.querySelectorAll('[data-token-dot]');
