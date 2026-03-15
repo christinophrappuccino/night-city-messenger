@@ -55,6 +55,7 @@ export class NetworkAuthDialog extends BaseApplication {
 
   get networkService() { return game.nightcity?.networkService; }
   get securityService() { return game.nightcity?.securityService; }
+  get dataShardService() { return game.nightcity?.dataShardService; }
 
   /**
    * Phase 4 SkillService — returns null if not yet available.
@@ -271,6 +272,14 @@ export class NetworkAuthDialog extends BaseApplication {
       errorMessage: this._errorMessage,
       hasError: !!this._errorMessage,
 
+      // ICE info
+      isLethalICE: network.security.encryptionType === 'BLACK_ICE' || network.security.encryptionType === 'RED_ICE',
+      iceInfo: (network.security.encryptionType === 'BLACK_ICE' || network.security.encryptionType === 'RED_ICE')
+        ? this.dataShardService?._resolveICE(network.security) ?? null
+        : null,
+      networkEncryptionType: network.security.encryptionType || 'ICE',
+      networkFailureMode: network.security.failureMode || 'lockout',
+
       isGM: game.user?.isGM ?? false,
 
       MODULE_ID,
@@ -467,6 +476,19 @@ export class NetworkAuthDialog extends BaseApplication {
       this.render();
     } else {
       const { lockedOut } = this.securityService?.recordFailedAttempt(actor.id, this.networkId) ?? {};
+
+      // ─── ICE Damage on failure ───
+      const sec = this.network.security;
+      const isLethal = sec.encryptionType === 'BLACK_ICE' || sec.encryptionType === 'RED_ICE';
+      if (isLethal && sec.failureMode === 'damage' && this.dataShardService) {
+        const damageResult = await this.dataShardService._applyBlackICEDamage(actor, sec);
+        if (damageResult.damage > 0) {
+          const ice = damageResult.iceInfo;
+          const iceName = ice?.name || 'BLACK ICE';
+          ui.notifications.error(`NCM | ${iceName} deals ${damageResult.damage} HP damage to ${actor.name}!`);
+        }
+      }
+
       if (lockedOut) {
         this._errorMessage = 'SYSTEM LOCKED — Too many failed attempts.';
         this.soundService?.play('lockout');

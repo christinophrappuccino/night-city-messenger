@@ -204,6 +204,40 @@ export class CreateNetworkDialog extends BaseApplication {
 
     const showPassword = data.security.authType === 'password';
     const showBypassDC = data.security.authType === 'skill';
+    const showICE = data.security.authType === 'skill';
+
+    // ICE type options
+    const encType = data.security.encryptionType || 'ICE';
+    const iceTypeOptions = [
+      { value: 'ICE',       label: 'Standard ICE',  selected: encType === 'ICE' },
+      { value: 'BLACK_ICE', label: 'BLACK ICE',      selected: encType === 'BLACK_ICE' },
+      { value: 'RED_ICE',   label: 'RED ICE',        selected: encType === 'RED_ICE' },
+    ];
+
+    // Failure mode options
+    const fMode = data.security.failureMode || 'lockout';
+    const failureModeOptions = [
+      { value: 'nothing',   label: 'Nothing',          selected: fMode === 'nothing' },
+      { value: 'lockout',   label: 'Lockout',           selected: fMode === 'lockout' },
+      { value: 'permanent', label: 'Permanent Lockout', selected: fMode === 'permanent' },
+      { value: 'damage',    label: 'Damage (ICE)',       selected: fMode === 'damage' },
+    ];
+
+    // ICE source
+    const iceConfig = data.security.ice ?? {};
+    const iceSource = iceConfig.source ?? 'default';
+    const isLethalICE = encType === 'BLACK_ICE' || encType === 'RED_ICE';
+
+    // Black ICE actors for actor picker
+    const blackIceActors = (game.actors?.filter(a =>
+      a.type === 'blackIce' || a.type === 'black-ice' ||
+      a.getFlag?.(MODULE_ID, 'isBlackICE') ||
+      a.name?.toLowerCase().includes('black ice')
+    ) ?? []).map(a => ({
+      id: a.id, name: a.name, img: a.img,
+      atk: a.system?.stats?.atk ?? 0,
+      selected: iceConfig.actorId === a.id,
+    }));
 
     return {
       presets,
@@ -212,6 +246,16 @@ export class CreateNetworkDialog extends BaseApplication {
       authTypeOptions,
       showPassword,
       showBypassDC,
+      showICE,
+      iceTypeOptions,
+      failureModeOptions,
+      isLethalICE,
+      iceSource,
+      iceSourceDefault: iceSource === 'default',
+      iceSourceCustom: iceSource === 'custom',
+      iceSourceActor: iceSource === 'actor',
+      iceConfig,
+      blackIceActors,
       data,
       isGM: isGM(),
       MODULE_ID,
@@ -234,6 +278,45 @@ export class CreateNetworkDialog extends BaseApplication {
         this.render();
       });
     }
+
+    // ─── Live bindings: ICE type / failure mode → re-render for conditional sections ───
+    const iceTypeSelect = html.querySelector('[name="encryptionType"]');
+    if (iceTypeSelect) {
+      iceTypeSelect.addEventListener('change', () => {
+        this._syncFormToData();
+        this.render();
+      });
+    }
+    const failureModeSelect = html.querySelector('[name="failureMode"]');
+    if (failureModeSelect) {
+      failureModeSelect.addEventListener('change', () => {
+        this._syncFormToData();
+        this.render();
+      });
+    }
+
+    // ─── Live bindings: ICE source cards ───
+    html.querySelectorAll('[data-ice-mode]')?.forEach(card => {
+      card.addEventListener('click', () => {
+        const mode = card.dataset.iceMode;
+        const hidden = html.querySelector('[name="iceSource"]');
+        if (hidden) hidden.value = mode;
+        this._syncFormToData();
+        this.render();
+      });
+    });
+
+    // ─── Live bindings: ICE actor cards ───
+    html.querySelectorAll('[data-ice-actor]')?.forEach(card => {
+      card.addEventListener('click', () => {
+        const actorId = card.dataset.iceActor;
+        const hidden = html.querySelector('[name="iceActorId"]');
+        if (hidden) hidden.value = actorId;
+        // Highlight selected
+        html.querySelectorAll('[data-ice-actor]').forEach(c => c.classList.remove('ncm-create-net__ice-actor--sel'));
+        card.classList.add('ncm-create-net__ice-actor--sel');
+      });
+    });
 
     // ─── Live bindings: Icon preview + color swatch updates ───
     const iconSelect = html.querySelector('[name="themeIcon"]');
@@ -297,6 +380,15 @@ export class CreateNetworkDialog extends BaseApplication {
         password: val('password'),
         bypassDC: num('bypassDC', 15),
         level: this._deriveSecurityLevel(val('authType')),
+        encryptionType: val('encryptionType') || 'ICE',
+        failureMode: val('failureMode') || 'lockout',
+        ice: {
+          source: val('iceSource') || 'default',
+          actorId: val('iceActorId') || null,
+          customName: val('iceCustomName') || '',
+          customPortrait: val('iceCustomPortrait') || '',
+          customDamage: val('iceCustomDamage') || '',
+        },
       },
       traced: checked('traced'),
       anonymous: checked('anonymous'),
@@ -411,6 +503,9 @@ export class CreateNetworkDialog extends BaseApplication {
         bypassDC: data.security.bypassDC || 15,
         maxAttempts: 3,
         lockoutDuration: 3600000,
+        encryptionType: data.security.encryptionType || 'ICE',
+        failureMode: data.security.failureMode || 'lockout',
+        ice: data.security.ice ?? { source: 'default', actorId: null, customName: '', customPortrait: '', customDamage: '' },
       },
       effects: {
         messageDelay: data.messageDelay,

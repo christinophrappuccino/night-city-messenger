@@ -657,6 +657,16 @@ export class NetworkService {
         keyItemConsume: data.security?.keyItemConsume ?? false,
         maxAttempts: data.security?.maxAttempts ?? 3,
         lockoutDuration: data.security?.lockoutDuration ?? 3600000,
+        // ICE configuration (mirrors shard config pattern)
+        encryptionType: data.security?.encryptionType ?? 'ICE',
+        failureMode: data.security?.failureMode ?? 'lockout',
+        ice: {
+          source: data.security?.ice?.source ?? 'default',
+          actorId: data.security?.ice?.actorId ?? null,
+          customName: data.security?.ice?.customName ?? '',
+          customPortrait: data.security?.ice?.customPortrait ?? '',
+          customDamage: data.security?.ice?.customDamage ?? '',
+        },
       },
       effects: {
         messageDelay: data.effects?.messageDelay ?? 0,

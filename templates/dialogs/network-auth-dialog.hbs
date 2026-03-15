@@ -146,6 +146,23 @@
       </div>
     {{/if}}
 
+    {{!-- ─── ICE DANGER ZONE ─── --}}
+    {{#if isLethalICE}}
+      <div class="ncm-auth__ice-danger">
+        {{#if iceInfo.img}}
+          <img src="{{iceInfo.img}}" alt="{{iceInfo.name}}" class="ncm-auth__ice-portrait" />
+        {{else}}
+          <div class="ncm-auth__ice-icon"><i class="fas fa-radiation"></i></div>
+        {{/if}}
+        <div class="ncm-auth__ice-text">
+          <div class="ncm-auth__ice-label">{{iceInfo.name}} — Lethal Countermeasures
+            {{#if iceInfo.class}}<span class="ncm-auth__ice-class">{{iceInfo.class}}</span>{{/if}}
+          </div>
+          <div class="ncm-auth__ice-sub">Failed breach deals <strong>{{iceInfo.formula}}</strong> damage.</div>
+        </div>
+      </div>
+    {{/if}}
+
     {{!-- ─── SKILL CHECK SECTION ─── --}}
     {{#if hasSkillBypass}}
       <div class="ncm-auth__method-section {{#if skillCompleted}}ncm-auth__method-section--completed{{/if}}">

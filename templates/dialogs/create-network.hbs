@@ -112,6 +112,83 @@
         {{/if}}
       </div>
 
+      {{!-- ICE Configuration (shown when auth type is skill) --}}
+      {{#if showICE}}
+        <div class="ncm-create-net__row">
+          <div class="ncm-create-net__field">
+            <label class="ncm-create-net__label">ICE Type</label>
+            <select class="ncm-create-net__select" name="encryptionType">
+              {{#each iceTypeOptions}}
+              <option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>
+              {{/each}}
+            </select>
+          </div>
+          <div class="ncm-create-net__field">
+            <label class="ncm-create-net__label">On Failure</label>
+            <select class="ncm-create-net__select" name="failureMode">
+              {{#each failureModeOptions}}
+              <option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>
+              {{/each}}
+            </select>
+          </div>
+        </div>
+
+        {{#if isLethalICE}}
+          <div class="ncm-create-net__ice-section">
+            <label class="ncm-create-net__label">ICE Source</label>
+            <div class="ncm-create-net__ice-cards">
+              <div class="ncm-create-net__ice-card {{#if iceSourceDefault}}ncm-create-net__ice-card--sel{{/if}}" data-ice-mode="default">
+                <i class="fas fa-dice"></i> Default
+              </div>
+              <div class="ncm-create-net__ice-card {{#if iceSourceCustom}}ncm-create-net__ice-card--sel{{/if}}" data-ice-mode="custom">
+                <i class="fas fa-pen-fancy"></i> Custom
+              </div>
+              <div class="ncm-create-net__ice-card {{#if iceSourceActor}}ncm-create-net__ice-card--sel{{/if}}" data-ice-mode="actor">
+                <i class="fas fa-robot"></i> Actor
+              </div>
+            </div>
+            <input type="hidden" name="iceSource" value="{{iceSource}}" />
+
+            {{#if iceSourceCustom}}
+              <div class="ncm-create-net__row" style="margin-top:6px;">
+                <div class="ncm-create-net__field">
+                  <label class="ncm-create-net__label">ICE Name</label>
+                  <input class="ncm-create-net__input" type="text" name="iceCustomName"
+                         value="{{iceConfig.customName}}" placeholder="e.g. HELLHOUND">
+                </div>
+                <div class="ncm-create-net__field">
+                  <label class="ncm-create-net__label">Damage Formula</label>
+                  <input class="ncm-create-net__input" type="text" name="iceCustomDamage"
+                         value="{{iceConfig.customDamage}}" placeholder="3d6" style="max-width:80px;">
+                </div>
+              </div>
+              <div class="ncm-create-net__row">
+                <div class="ncm-create-net__field">
+                  <label class="ncm-create-net__label">Portrait</label>
+                  <input class="ncm-create-net__input" type="text" name="iceCustomPortrait"
+                         value="{{iceConfig.customPortrait}}" placeholder="Image path (optional)">
+                </div>
+              </div>
+            {{/if}}
+
+            {{#if iceSourceActor}}
+              <div class="ncm-create-net__ice-actors" style="margin-top:6px;">
+                {{#each blackIceActors}}
+                  <div class="ncm-create-net__ice-actor {{#if selected}}ncm-create-net__ice-actor--sel{{/if}}" data-ice-actor="{{id}}">
+                    {{#if img}}<img src="{{img}}" alt="{{name}}">{{else}}<i class="fas fa-robot"></i>{{/if}}
+                    <span>{{name}}</span>
+                    {{#if atk}}<span class="ncm-create-net__ice-atk">ATK {{atk}}</span>{{/if}}
+                  </div>
+                {{else}}
+                  <div class="ncm-create-net__hint">No Black ICE actors found in world.</div>
+                {{/each}}
+              </div>
+              <input type="hidden" name="iceActorId" value="{{iceConfig.actorId}}" />
+            {{/if}}
+          </div>
+        {{/if}}
+      {{/if}}
+
       {{!-- Checkbox flags --}}
       <div class="ncm-create-net__flags">
         <label class="ncm-create-net__checkbox">
