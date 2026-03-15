@@ -1,4 +1,4 @@
-{{!-- Security Overlay: Encryption Layer (Sprint 4.6 Themed Redesign) --}}
+{{!-- Security Overlay: Encryption Layer (Sprint 4.6 — Simplified) --}}
 <div class="ncm-security-overlay ncm-security-overlay-encryption">
   <div class="ncm-sec-backdrop ncm-sec-backdrop--matrix"></div>
   <div class="ncm-sec-card ncm-sec-animate-in">
@@ -27,29 +27,6 @@
       </div>
 
     {{else if hasActor}}
-      {{!-- Skill Selection --}}
-      <div class="ncm-sec-skill-instruction">
-        {{#if hackingSkillName}}
-          <i class="fas fa-check-circle" style="color:#00ff41;margin-right:4px;"></i>
-          <strong>{{hackingSkillName}}</strong> selected — ready to breach
-        {{else}}
-          <i class="fas fa-hand-pointer" style="color:var(--sp-accent);margin-right:4px;"></i>
-          Select a skill to breach the ICE:
-        {{/if}}
-      </div>
-
-      <div class="ncm-sec-skill-list">
-        {{#each availableSkills}}
-          <button type="button" data-action="selectSkill" data-skill="{{name}}"
-                  class="ncm-sec-skill-btn {{#if selected}}ncm-sec-skill-btn--selected{{/if}}"
-                  title="{{stat}}({{statValue}}) + {{name}}({{level}}) = {{total}} + 1d10 vs DV {{dc}}">
-            <span class="ncm-sec-skill-name">{{name}}</span>
-            <span class="ncm-sec-skill-stats">{{stat}} {{total}} + 1d10</span>
-            <span class="ncm-sec-skill-dv">DV {{dc}}</span>
-          </button>
-        {{/each}}
-      </div>
-
       <div class="ncm-sec-attempts">
         {{#each attemptDots}}
           <div class="ncm-sec-attempt-dot {{#if used}}ncm-sec-attempt-dot--used{{else if current}}ncm-sec-attempt-dot--current{{/if}}"></div>
@@ -57,15 +34,10 @@
       </div>
       <div class="ncm-sec-muted">Attempt {{hackAttemptCurrent}} of {{maxHackAttempts}}</div>
 
-      {{#if hackingSkillName}}
-        <button type="button" data-action="attemptBreach" class="ncm-sec-btn ncm-sec-btn--breach">
-          <i class="fas fa-bolt"></i> Attempt Breach
-        </button>
-      {{else}}
-        <button type="button" class="ncm-sec-btn ncm-sec-btn--breach ncm-sec-btn--disabled" disabled>
-          <i class="fas fa-bolt"></i> Select a Skill First
-        </button>
-      {{/if}}
+      <button type="button" data-action="attemptBreach" class="ncm-sec-btn ncm-sec-btn--breach">
+        <i class="fas fa-bolt"></i> Attempt Breach
+      </button>
+      <div class="ncm-sec-muted">Select a skill and spend luck in the breach dialog.</div>
 
     {{else}}
       <div class="ncm-sec-muted" style="margin-top:12px;">No character assigned. Set your character in User Configuration.</div>

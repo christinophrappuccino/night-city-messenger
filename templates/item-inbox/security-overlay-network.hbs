@@ -5,9 +5,9 @@
     <div class="ncm-sec-icon ncm-sec-icon--network"><i class="fas fa-network-wired"></i></div>
     <div class="ncm-sec-title">Network Required</div>
     <div class="ncm-sec-info">This shard requires connection to:</div>
-    <div class="ncm-sec-highlight">{{requiredNetworkName}}</div>
+    <div class="ncm-sec-highlight">{{#if requiredNetworkName}}{{requiredNetworkName}}{{else}}Authorized Network{{/if}}</div>
     <div class="ncm-sec-info" style="margin-top:8px;">
-      Current: <strong class="ncm-sec-text-danger">{{currentNetworkName}}</strong>
+      Current: <strong class="ncm-sec-text-danger">{{#if currentNetworkName}}{{currentNetworkName}}{{else}}None{{/if}}</strong>
       <span class="ncm-sec-text-muted">// Not authorized</span>
     </div>
 

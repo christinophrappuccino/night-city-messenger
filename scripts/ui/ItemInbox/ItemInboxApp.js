@@ -204,18 +204,32 @@ export class ItemInboxApp extends BaseApplication {
     else if (config.encryptionType === ENCRYPTION_TYPES.RED_ICE) iceClass = 'red';
     else if (config.encrypted) iceClass = 'standard';
 
-    // Network display name
+    // Network display name — handles all access modes
     let networkDisplayName = '';
     if (networkRequired) {
       const netConfig = config.network ?? {};
-      if (netConfig.allowedNetworks?.length) {
-        const net = this.networkService?.getNetwork(netConfig.allowedNetworks[0]);
-        networkDisplayName = net?.name ?? netConfig.allowedNetworks[0];
-      } else if (config.requiredNetwork) {
-        const net = this.networkService?.getNetwork(config.requiredNetwork);
-        networkDisplayName = net?.name ?? config.requiredNetwork;
-      } else if (netConfig.allowedTypes?.length) {
-        networkDisplayName = netConfig.allowedTypes.join(' / ');
+      const accessMode = netConfig.accessMode ?? 'any';
+      if (accessMode === 'any') {
+        networkDisplayName = 'Any Network';
+      } else if (accessMode === 'whitelist' || accessMode === 'both') {
+        if (netConfig.allowedNetworks?.length) {
+          const names = netConfig.allowedNetworks.map(id => {
+            const net = this.networkService?.getNetwork(id);
+            return net?.name ?? id;
+          });
+          networkDisplayName = names.join(' / ');
+        } else if (config.requiredNetwork) {
+          const net = this.networkService?.getNetwork(config.requiredNetwork);
+          networkDisplayName = net?.name ?? config.requiredNetwork;
+        } else {
+          networkDisplayName = 'Specific Network (not configured)';
+        }
+      } else if (accessMode === 'type') {
+        if (netConfig.allowedTypes?.length) {
+          networkDisplayName = netConfig.allowedTypes.join(' / ') + ' networks';
+        } else {
+          networkDisplayName = 'Network Type (not configured)';
+        }
       }
     }
 
@@ -563,6 +577,9 @@ export class ItemInboxApp extends BaseApplication {
         const networkId = e.target.value;
         if (!networkId) return;
         try {
+          // Save scroll before re-render
+          const content = this.element?.querySelector('.ncm-shard-content');
+          if (content) this._savedScrollTop = content.scrollTop;
           await this.networkService?.switchNetwork(networkId);
           this.render(true);
         } catch (err) {
@@ -678,35 +695,46 @@ export class ItemInboxApp extends BaseApplication {
       return;
     }
 
-    const skillName = this._hackingSkill || target.dataset.skill;
-    if (!skillName) {
-      ui.notifications.info('NCM | Select a skill to attempt breach.');
+    const config = this.dataShardService?.getConfig(this.item) ?? {};
+    const dc = config.encryptionDC ?? 15;
+
+    // Get available skills — dialog handles selection
+    const availableSkills = this.skillService?.getAvailableSkills(actor, config.allowedSkills) ?? [];
+    if (availableSkills.length === 0) {
+      ui.notifications.warn('NCM | No skills configured for this shard.');
       return;
     }
 
-    // ─── Themed Hack Dialog (skill confirmed + luck) ───
-    const config = this.dataShardService?.getConfig(this.item) ?? {};
-    const dc = config.skillDCs?.[skillName] ?? config.encryptionDC ?? 15;
+    const skills = availableSkills.map(s => ({
+      ...s,
+      dc: config.skillDCs?.[s.name] ?? dc,
+    }));
     const availableLuck = this.skillService?.getAvailableLuck(actor) ?? 0;
-    const skillTotal = this._hackingSkillTotal || 0;
 
+    // Attempt info
+    const state = this.dataShardService._getState(this.item);
+    const session = this.dataShardService._getActorSession(state, actor.id);
+    const attempts = config.maxHackAttempts ? {
+      current: (session.hackAttempts || 0) + 1,
+      max: config.maxHackAttempts,
+    } : null;
+
+    // ─── Themed Hack Dialog (skill + luck combined) ───
     const dialogResult = await this._showHackDialog({
       title: config.encryptionType === 'BLACK_ICE' || config.encryptionType === 'RED_ICE' ? 'BLACK ICE Breach' : 'ICE Breach',
       icon: config.encryptionType === 'BLACK_ICE' || config.encryptionType === 'RED_ICE' ? 'fas fa-skull-crossbones' : 'fas fa-shield-halved',
       color: config.encryptionType === 'BLACK_ICE' || config.encryptionType === 'RED_ICE' ? '#ff0033' : '#19f3f7',
       subtitle: `Breaching ${config.encryptionType || 'Standard'} encryption on ${this.item.name}`,
-      preSelectedSkill: skillName,
-      preSelectedTotal: skillTotal,
+      skills,
       dc,
       availableLuck,
       actorName: actor.name,
       encryptionType: config.encryptionType,
-      attempts: config.maxHackAttempts ? {
-        current: (this.dataShardService._getActorSession(this.dataShardService._getState(this.item), actor.id).hackAttempts || 0) + 1,
-        max: config.maxHackAttempts,
-      } : null,
+      attempts,
     });
     if (!dialogResult) return;
+
+    const skillName = dialogResult.skill;
     const luckSpend = dialogResult.luck;
 
     // ─── Show hacking screen ───
