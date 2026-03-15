@@ -1759,7 +1759,7 @@ export class ItemInboxApp extends BaseApplication {
       contentType: flags.contentType || 'message',
       from: flags.from || '',
       subject: flags.subject || '',
-      body: flags.body || '',
+      body: page.text?.content || '',
       timestamp: flags.timestamp || '',
       encrypted: flags.encrypted || false,
       encryptionDC: flags.encryptionDC,
@@ -1771,7 +1771,7 @@ export class ItemInboxApp extends BaseApplication {
       new DataShardComposer({
         shardItem: this.item,
         editData,
-        onSave: () => this.render(),
+        onSave: () => this.render(true),
       }).render(true);
     });
   }

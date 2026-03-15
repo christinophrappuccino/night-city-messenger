@@ -344,11 +344,14 @@ export class DataShardComposer extends BaseApplication {
       const page = journal.pages.find(p => p.flags?.[MODULE_ID]?.messageId === this.editData.entryId);
       if (!page) { ui.notifications.error('NCM | Entry not found.'); return; }
 
-      const updateFlags = {};
+      const updateData = {
+        name: entryData.subject || page.name,
+        'text.content': entryData.body || '',
+      };
       for (const [key, val] of Object.entries(entryData)) {
-        updateFlags[`flags.${MODULE_ID}.${key}`] = val;
+        updateData[`flags.${MODULE_ID}.${key}`] = val;
       }
-      await page.update(updateFlags);
+      await page.update(updateData);
       result = { success: true };
       ui.notifications.info(`NCM | ${typeLabel} updated.`);
     } else {

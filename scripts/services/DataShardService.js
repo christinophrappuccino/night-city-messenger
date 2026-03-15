@@ -977,11 +977,13 @@ export class DataShardService {
     if (amount <= 0) return { success: false, error: 'No eddies to claim' };
 
     try {
-      // Wire to CPR wealth ledger — uses array format ["description", "reason"]
-      const currentWealth = actor.system?.wealth ?? [];
-      const newEntry = [`Claimed ${amount}eb from data shard`, 'Data Shard Eddies'];
-      const updatedWealth = [...currentWealth, newEntry];
-      await actor.update({ 'system.wealth': updatedWealth });
+      // Wire to CPR wealth ledger — wealth is an object { value, transactions }
+      const wealth = foundry.utils.deepClone(actor.system.wealth);
+      wealth.value += amount;
+      const transaction = `Increased by ${amount} to ${wealth.value}`;
+      const reason = `NCM: Claimed ${amount.toLocaleString()} eb from data shard`;
+      wealth.transactions.push([transaction, reason]);
+      await actor.update({ 'system.wealth': wealth });
 
       // Mark as claimed on the journal page
       await page.update({
