@@ -234,10 +234,18 @@ export class ItemInboxApp extends BaseApplication {
     }
 
     // Available networks for selector (used in network overlay)
+    const netConfig = networkRequired ? (config.network ?? {}) : {};
+    const allowedNetIds = netConfig.allowedNetworks ?? [];
+    const allowedTypes = netConfig.allowedTypes ?? [];
+    const netAccessMode = netConfig.accessMode ?? 'any';
     const availableNetworks = (this.networkService?.getAvailableNetworks?.() ?? []).map(n => ({
       id: n.id,
       name: n.name,
+      type: n.type || '',
       isCurrent: n.id === currentNetworkId,
+      isAllowed: netAccessMode === 'any' || allowedNetIds.includes(n.id) || allowedTypes.includes(n.type),
+      icon: n.theme?.icon || 'fa-wifi',
+      color: n.theme?.color || '#19f3f7',
     }));
 
     // Metadata
@@ -570,25 +578,6 @@ export class ItemInboxApp extends BaseApplication {
       this._savedScrollTop = null;
     }
 
-    // Wire network selector change event (data-action on <select> fires on click, not change)
-    const netSelect = this.element?.querySelector('[data-field="networkSelector"]');
-    if (netSelect) {
-      netSelect.addEventListener('change', async (e) => {
-        const networkId = e.target.value;
-        if (!networkId) return;
-        try {
-          // Save scroll before re-render
-          const content = this.element?.querySelector('.ncm-shard-content');
-          if (content) this._savedScrollTop = content.scrollTop;
-          await this.networkService?.switchNetwork(networkId);
-          this.render(true);
-        } catch (err) {
-          console.error('NCM | Failed to switch network from shard overlay:', err);
-          ui.notifications.warn('NCM | Could not switch network.');
-        }
-      });
-    }
-
     // Start lockout timer countdown if active, clear if not
     if (context.isLockedOut && context.lockoutRemaining > 0) {
       this._startLockoutCountdown(context.lockoutRemaining);
@@ -910,13 +899,16 @@ export class ItemInboxApp extends BaseApplication {
    * Changes the global network (same as switching in message viewer).
    */
   static async _onSwitchNetwork(event, target) {
-    const networkId = target.value ?? target.dataset.networkId;
+    const networkId = target.dataset.networkId || target.value;
     if (!networkId) return;
 
     const networkService = this.networkService;
     if (!networkService) return;
 
     try {
+      // Save scroll before re-render
+      const content = this.element?.querySelector('.ncm-shard-content');
+      if (content) this._savedScrollTop = content.scrollTop;
       await networkService.switchNetwork(networkId);
       // Re-render to re-evaluate security stack with new network
       this.render(true);
