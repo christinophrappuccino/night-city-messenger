@@ -69,11 +69,11 @@
       {{#each contactSummary.sendAsChips}}
         <div class="ncm-ct-qs-chip" data-action="sendAsContact" data-contact-id="{{this.id}}"
              data-ncm-tooltip="Compose a message as {{this.name}}">
-          <div class="ncm-ct-qs-chip__avatar" style="--_ac: {{this.avatarColor}}; --_ab: {{this.avatarBorderColor}};">
+          <div class="ncm-ct-qs-chip__avatar" style="border-color: {{this.avatarBorderColor}};">
             {{#if this.hasPortrait}}
               <img src="{{this.portrait}}" alt="{{this.initial}}">
             {{else}}
-              {{this.initial}}
+              <span style="color: {{this.avatarColor}};">{{this.initial}}</span>
             {{/if}}
           </div>
           <span class="ncm-ct-qs-chip__name">{{this.chipName}}</span>
@@ -197,13 +197,13 @@
             <div class="ncm-ct-row__check {{#if this.isSelected}}ncm-ct-row__check--on{{/if}}"
                  data-action="toggleContactSelect" data-contact-id="{{this.id}}"></div>
 
-            <div class="ncm-ct-row__avatar" style="--_ac: {{this.avatarColor}}; --_ab: {{this.avatarBorderColor}};">
+            <div class="ncm-ct-row__avatar" style="border-color: {{this.avatarBorderColor}};">
               {{#if this.hasPortrait}}
                 <img src="{{this.portrait}}" alt="{{this.initial}}">
               {{else if this.encrypted}}
-                <i class="fas fa-lock" style="font-size:13px;"></i>
+                <span style="color: {{this.avatarColor}};"><i class="fas fa-lock" style="font-size:13px; color: {{this.avatarColor}};"></i></span>
               {{else}}
-                {{this.initial}}
+                <span style="color: {{this.avatarColor}};">{{this.initial}}</span>
               {{/if}}
             </div>
 
@@ -229,7 +229,7 @@
               {{#if this.chips.length}}
               <div class="ncm-ct-row__chips">
                 {{#each this.chips}}
-                  <span class="ncm-ct-chip ncm-ct-chip--{{this.type}}">
+                  <span class="ncm-ct-chip ncm-ct-chip--{{this.type}}" style="{{this.style}}">
                     {{#if this.icon}}<i class="fas fa-{{this.icon}}"></i>{{/if}} {{this.label}}
                   </span>
                 {{/each}}
@@ -356,7 +356,7 @@
                 {{#if this.recentMessages.length}}
                   {{#each this.recentMessages}}
                   <div class="ncm-ct-detail__msg" data-action="openRecentMessage"
-                       data-inbox-owner="{{this.inboxOwnerId}}" data-page-id="{{this.pageId}}" data-journal-id="{{this.journalId}}">
+                       data-inbox-owner="{{this.inboxOwnerId}}" data-message-id="{{this.messageId}}">
                     <i class="fas {{#if this.sent}}fa-arrow-right ncm-ct-detail__msg-icon--sent{{else}}fa-arrow-left ncm-ct-detail__msg-icon--received{{/if}} ncm-ct-detail__msg-icon"></i>
                     <div class="ncm-ct-detail__msg-body">
                       <div class="ncm-ct-detail__msg-route">

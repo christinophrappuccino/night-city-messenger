@@ -189,9 +189,12 @@
     width: 22px !important; height: 22px !important; border-radius: 50% !important;
     display: flex !important; align-items: center !important; justify-content: center !important;
     font-family: var(--ncm-font-display) !important; font-size: 10px !important; font-weight: 700 !important;
-    background: var(--ncm-bg-elevated) !important; border: 1px solid var(--_ab, #9a9ab5) !important;
-    color: var(--_ac, #9a9ab5) !important;
+    background: var(--ncm-bg-elevated) !important; border: 1px solid !important;
     flex-shrink: 0 !important;
+  }
+.ncm-app .ncm-ct-qs-chip__avatar span {
+    font-family: var(--ncm-font-display) !important; font-size: 10px !important; font-weight: 700 !important;
+    line-height: 1 !important;
   }
 .ncm-app .ncm-ct-qs-chip__name {
     font-family: var(--ncm-font-display) !important; font-size: 11px !important; font-weight: 600 !important;
@@ -463,12 +466,16 @@
   /* Avatar */
 .ncm-app .ncm-ct-row__avatar {
     width: 38px !important; height: 38px !important; border-radius: 50% !important;
-    border: 1.5px solid var(--_ab, #9a9ab5) !important;
-    color: var(--_ac, #9a9ab5) !important;
+    border: 1.5px solid !important;
     display: flex !important; align-items: center !important; justify-content: center !important;
     font-family: var(--ncm-font-display) !important;
     font-size: 15px !important; font-weight: 700 !important;
     background: var(--ncm-bg-elevated) !important; flex-shrink: 0 !important; overflow: hidden !important;
+  }
+.ncm-app .ncm-ct-row__avatar span {
+    font-family: var(--ncm-font-display) !important;
+    font-size: 15px !important; font-weight: 700 !important;
+    line-height: 1 !important;
   }
 .ncm-app .ncm-ct-row__avatar img {
     width: 100% !important; height: 100% !important; object-fit: cover !important; border-radius: 50% !important;

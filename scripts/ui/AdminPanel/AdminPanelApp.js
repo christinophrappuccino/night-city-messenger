@@ -571,18 +571,20 @@ export class AdminPanelApp extends BaseApplication {
 
     // ── Role config ──
     const roleChipMap = {
-      fixer:     { label: 'Fixer',   type: 'role-fixer',     icon: 'crosshairs' },
-      netrunner: { label: 'Runner',  type: 'role-netrunner',  icon: 'terminal' },
-      runner:    { label: 'Runner',  type: 'role-netrunner',  icon: 'terminal' },
-      corp:      { label: 'Corp',    type: 'role-corp',       icon: 'briefcase' },
-      solo:      { label: 'Solo',    type: 'role-solo',       icon: 'crosshairs' },
-      tech:      { label: 'Tech',    type: 'role-tech',       icon: 'wrench' },
-      medtech:   { label: 'Medtech', type: 'role-tech',       icon: 'wrench' },
-      media:     { label: 'Media',   type: 'role-media',      icon: 'podcast' },
-      nomad:     { label: 'Nomad',   type: 'role-solo',       icon: 'truck-monster' },
-      exec:      { label: 'Exec',    type: 'role-corp',       icon: 'briefcase' },
-      lawman:    { label: 'Lawman',  type: 'role-lawman',     icon: 'shield-halved' },
-      rockerboy: { label: 'Rocker',  type: 'role-fixer',      icon: 'guitar' },
+      fixer:     { label: 'Fixer',     type: 'role-fixer',     icon: 'crosshairs' },
+      netrunner: { label: 'Runner',    type: 'role-netrunner',  icon: 'terminal' },
+      runner:    { label: 'Runner',    type: 'role-netrunner',  icon: 'terminal' },
+      corp:      { label: 'Corp',      type: 'role-corp',       icon: 'briefcase' },
+      solo:      { label: 'Solo',      type: 'role-solo',       icon: 'crosshairs' },
+      tech:      { label: 'Tech',      type: 'role-tech',       icon: 'wrench' },
+      medtech:   { label: 'Medtech',   type: 'role-tech',       icon: 'wrench' },
+      ripperdoc: { label: 'Ripperdoc', type: 'role-tech',       icon: 'wrench' },
+      media:     { label: 'Media',     type: 'role-media',      icon: 'podcast' },
+      nomad:     { label: 'Nomad',     type: 'role-solo',       icon: 'truck-monster' },
+      exec:      { label: 'Exec',      type: 'role-corp',       icon: 'briefcase' },
+      lawman:    { label: 'Lawman',    type: 'role-lawman',     icon: 'shield-halved' },
+      rockerboy: { label: 'Rocker',    type: 'role-fixer',      icon: 'guitar' },
+      rocker:    { label: 'Rocker',    type: 'role-fixer',      icon: 'guitar' },
     };
 
     const trustLabels = { 5: 'Trusted', 4: 'Trusted', 3: 'Neutral', 2: 'Wary', 1: 'Hostile', 0: 'Unknown' };
@@ -637,7 +639,19 @@ export class AdminPanelApp extends BaseApplication {
       else if (trust >= 2) trustLevel = 'med';
       else if (trust >= 1) trustLevel = 'low';
 
-      const roleLower = (c.role || '').toLowerCase();
+      // Detect role — from c.role field first, then scan tags as fallback
+      let roleLower = (c.role || '').toLowerCase();
+      if (!roleLower) {
+        // Scan tags for known role names
+        const knownRoles = Object.keys(roleChipMap);
+        for (const tag of (c.tags || [])) {
+          const tagLower = tag.toLowerCase();
+          if (knownRoles.includes(tagLower)) {
+            roleLower = tagLower;
+            break;
+          }
+        }
+      }
       const roleInfo = roleChipMap[roleLower];
 
       // Avatar color — per-role colors matching chip colors, with burned/encrypted overrides
@@ -645,11 +659,11 @@ export class AdminPanelApp extends BaseApplication {
         fixer: '#d4a017', netrunner: '#0ec8c7', runner: '#0ec8c7',
         corp: '#4a8ab5', exec: '#4a8ab5',
         solo: '#e04848',
-        tech: '#5bc0be', medtech: '#5bc0be',
+        tech: '#5bc0be', medtech: '#5bc0be', ripperdoc: '#5bc0be',
         media: '#b87aff',
         nomad: '#d4844a',
         lawman: '#6b8fa3',
-        rockerboy: '#e05cb5',
+        rockerboy: '#e05cb5', rocker: '#e05cb5',
       };
       let avatarColor = roleAvatarColors[roleLower] || '#9a9ab5';
       if (c.burned) avatarColor = '#ff3355';
@@ -674,13 +688,37 @@ export class AdminPanelApp extends BaseApplication {
         }
       }
 
-      // Build color-coded chips
+      // Build color-coded chips with inline styles (Foundry-proof)
+      const chipColorMap = {
+        'role-fixer':     { c: '#d4a017', b: 'rgba(212,160,23,0.35)', bg: 'rgba(212,160,23,0.10)' },
+        'role-netrunner': { c: '#0ec8c7', b: 'rgba(14,200,199,0.35)', bg: 'rgba(14,200,199,0.10)' },
+        'role-solo':      { c: '#e04848', b: 'rgba(224,72,72,0.35)',  bg: 'rgba(224,72,72,0.10)' },
+        'role-corp':      { c: '#4a8ab5', b: 'rgba(74,138,181,0.35)', bg: 'rgba(74,138,181,0.10)' },
+        'role-media':     { c: '#b87aff', b: 'rgba(184,122,255,0.35)', bg: 'rgba(184,122,255,0.10)' },
+        'role-tech':      { c: '#5bc0be', b: 'rgba(91,192,190,0.35)', bg: 'rgba(91,192,190,0.10)' },
+        'role-lawman':    { c: '#6b8fa3', b: 'rgba(107,143,163,0.35)', bg: 'rgba(107,143,163,0.10)' },
+        'org':            { c: '#7aa2c4', b: 'rgba(122,162,196,0.35)', bg: 'rgba(122,162,196,0.10)' },
+        'loc':            { c: '#d4844a', b: 'rgba(212,132,74,0.35)',  bg: 'rgba(212,132,74,0.10)' },
+        'tag':            { c: '#19f3f7', b: 'rgba(25,243,247,0.30)',  bg: 'rgba(25,243,247,0.08)' },
+        'alias':          { c: '#c8c8dc', b: 'rgba(200,200,220,0.30)', bg: 'rgba(200,200,220,0.06)' },
+      };
+      const _chipStyle = (type) => {
+        const cm = chipColorMap[type];
+        return cm ? `color:${cm.c};border-color:${cm.b};background:${cm.bg};` : '';
+      };
+
       const chips = [];
-      if (roleInfo) chips.push({ type: roleInfo.type, label: roleInfo.label, icon: roleInfo.icon });
-      if (c.organization) chips.push({ type: 'org', label: c.organization, icon: 'building' });
-      if (c.location) chips.push({ type: 'loc', label: c.location, icon: 'location-dot' });
-      if (c.alias) chips.push({ type: 'alias', label: c.alias, icon: null });
-      if (c.tags) c.tags.forEach(t => chips.push({ type: 'tag', label: t, icon: null }));
+      if (roleInfo) chips.push({ type: roleInfo.type, label: roleInfo.label, icon: roleInfo.icon, style: _chipStyle(roleInfo.type) });
+      if (c.organization) chips.push({ type: 'org', label: c.organization, icon: 'building', style: _chipStyle('org') });
+      if (c.location) chips.push({ type: 'loc', label: c.location, icon: 'location-dot', style: _chipStyle('loc') });
+      if (c.alias) chips.push({ type: 'alias', label: c.alias, icon: null, style: _chipStyle('alias') });
+      if (c.tags) {
+        c.tags.forEach(t => {
+          // Skip tags that were already used as the role chip
+          if (roleLower && t.toLowerCase() === roleLower) return;
+          chips.push({ type: 'tag', label: t, icon: null, style: _chipStyle('tag') });
+        });
+      }
 
       // Known-by
       const knownBy = _buildKnownBy(c.id, c.email);
@@ -809,7 +847,10 @@ export class AdminPanelApp extends BaseApplication {
         if (ownInbox?.pages?.size) {
           for (const page of ownInbox.pages) {
             const flags = page.flags?.['cyberpunkred-messenger'] || {};
-            allMessages.push({ page, flags, journalId: ownInbox.id, sent: false });
+            allMessages.push({
+              page, flags, journalId: ownInbox.id, sent: false,
+              inboxActorId: actorId || contactId,  // whose inbox this page lives in
+            });
           }
         }
 
@@ -823,7 +864,10 @@ export class AdminPanelApp extends BaseApplication {
             const senderName = (flags.senderName || flags.from || '').toLowerCase();
             const senderEmail = (flags.from || '').toLowerCase();
             if (senderName.includes(contactName) || (contactEmail && senderEmail === contactEmail)) {
-              allMessages.push({ page, flags, journalId: playerInbox.id, sent: true });
+              allMessages.push({
+                page, flags, journalId: playerInbox.id, sent: true,
+                inboxActorId: pa.actorId,  // the PLAYER actor whose inbox has this message
+              });
             }
           }
         }
@@ -842,11 +886,8 @@ export class AdminPanelApp extends BaseApplication {
             sent: m.sent,
             preview: (m.flags.subject || m.page.name || '(no subject)').slice(0, 50),
             time: m.flags.timestamp ? this._relativeTime(m.flags.timestamp) : '',
-            pageId: m.page.id,
-            journalId: m.journalId,
-            inboxOwnerId: m.sent
-              ? (m.flags.recipientActorId || m.flags.to || '')
-              : (expandedContact.actorId || expandedContact.id),
+            messageId: m.flags.messageId || m.page.id,
+            inboxOwnerId: m.inboxActorId,
           };
         });
       } catch { /* inbox may not exist */ }
@@ -3057,12 +3098,12 @@ export class AdminPanelApp extends BaseApplication {
     if (!msgEl) return;
 
     const inboxOwnerId = msgEl.dataset.inboxOwner;
-    const pageId = msgEl.dataset.pageId;
+    const messageId = msgEl.dataset.messageId;
 
     if (!inboxOwnerId) return;
 
     // openInbox supports (actorId, messageId) — messageId auto-selects the message
-    game.nightcity?.openInbox?.(inboxOwnerId, pageId || undefined);
+    game.nightcity?.openInbox?.(inboxOwnerId, messageId || undefined);
   }
 
   // ═══════════════════════════════════════════════════════════
