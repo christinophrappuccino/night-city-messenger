@@ -744,6 +744,10 @@
   font-size: 7px;
 }
 
+.ncm-app .ncm-micro-badge .ncm-net-icon-img {
+  width: 10px; height: 10px; border-radius: 1px;
+}
+
 /* Threat variants */
 .ncm-app .ncm-micro-badge--black-ice {
   color: #ff4444;

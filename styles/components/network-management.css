@@ -614,6 +614,7 @@
   justify-content: center;
   font-size: 11px;
   flex-shrink: 0;
+  overflow: hidden;
   /* Dynamic color from --net-color or fallback */
   background: color-mix(in srgb, var(--net-color, var(--nm-text-secondary)) 8%, transparent);
   color: var(--net-color, var(--nm-text-secondary));
@@ -830,6 +831,8 @@
   align-items: center;
   justify-content: center;
   font-size: 18px;
+  overflow: hidden;
+  flex-shrink: 0;
 }
 
 .ncm-netmgr__detail-header-info {
@@ -1749,6 +1752,9 @@
 
 .ncm-netmgr__scene-net-check-icon {
   font-size: 9px;
+  width: 14px; height: 14px;
+  display: inline-flex; align-items: center; justify-content: center;
+  overflow: hidden; flex-shrink: 0;
 }
 
 /* Scene Detail Footer */

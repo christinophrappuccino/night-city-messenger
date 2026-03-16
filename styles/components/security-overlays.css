@@ -249,7 +249,7 @@
   border-color: #00ff41 !important;
   background: rgba(0,255,65,0.04) !important;
 }
-.ncm-app .ncm-sec-net-icon { font-size: 16px; margin-bottom: 1px; }
+.ncm-app .ncm-sec-net-icon { font-size: 16px; margin-bottom: 1px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; }
 .ncm-app .ncm-sec-net-name {
   font-family: var(--ncm-font-body, 'Rajdhani', sans-serif);
   font-size: 11px; font-weight: 600; color: var(--sp-text-bright, #e0e0e8);

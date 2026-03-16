@@ -1613,6 +1613,7 @@
   justify-content: center;
   font-size: 14px;
   flex-shrink: 0;
+  overflow: hidden;
 }
 
 .ncm-app .ncm-network-card__icon--citinet {
