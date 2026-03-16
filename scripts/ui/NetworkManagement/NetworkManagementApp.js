@@ -80,10 +80,13 @@ export class NetworkManagementApp extends BaseApplication {
       editLogEntry: NetworkManagementApp._onEditLogEntry,
       deleteLogEntry: NetworkManagementApp._onDeleteLogEntry,
       browseKeyItem: NetworkManagementApp._onBrowseKeyItem,
+      searchKeyItem: NetworkManagementApp._onSearchKeyItem,
+      clearKeyItem: NetworkManagementApp._onClearKeyItem,
       browseCustomImage: NetworkManagementApp._onBrowseCustomImage,
       selectIceSource: NetworkManagementApp._onSelectIceSource,
       selectIceActor: NetworkManagementApp._onSelectIceActor,
       selectIconMode: NetworkManagementApp._onSelectIconMode,
+      applyPreset: NetworkManagementApp._onApplyPreset,
       resetSecurity: NetworkManagementApp._onResetSecurity,
       toggleSidebarGroup: NetworkManagementApp._onToggleSidebarGroup,
     },
@@ -372,6 +375,20 @@ export class NetworkManagementApp extends BaseApplication {
       isIconModeFa: (selectedNetwork?.theme?.iconMode || 'fa') === 'fa',
       isIconModeImage: selectedNetwork?.theme?.iconMode === 'image',
 
+      // Presets (for create mode)
+      presets: [
+        { key: 'fixer_den', label: 'Fixer Den', icon: 'fa-handshake', color: '#F65261' },
+        { key: 'corp_office', label: 'Corp Office', icon: 'fa-building', color: '#f7c948' },
+        { key: 'gang_turf', label: 'Gang Turf', icon: 'fa-skull', color: '#ff0033' },
+        { key: 'secure_facility', label: 'Secure Facility', icon: 'fa-shield-halved', color: '#19f3f7' },
+        { key: 'blank', label: 'Blank', icon: 'fa-circle-dot', color: '#8888a0' },
+      ],
+
+      // Key item display
+      keyItemName: selectedNetwork?.security?.keyItemName || '',
+      keyItemImg: selectedNetwork?.security?.keyItemImg || '',
+      hasKeyItem: !!(selectedNetwork?.security?.keyItemName),
+
       // Scenes
       scenes,
       selectedScene,
@@ -442,6 +459,23 @@ export class NetworkManagementApp extends BaseApplication {
       searchInput.removeEventListener('input', handler);
       searchInput.addEventListener('input', handler);
     }
+
+    // ─── Editor: ICE type → show/hide ICE source section ───
+    const iceTypeSel = this.element?.querySelector('[name="encryptionType"]');
+    if (iceTypeSel) {
+      iceTypeSel.addEventListener('change', () => this._updateIceVisibility());
+      this._updateIceVisibility(); // sync initial state
+    }
+  }
+
+  /** Show/hide ICE source section based on encryptionType select */
+  _updateIceVisibility() {
+    const el = this.element;
+    if (!el) return;
+    const iceType = el.querySelector('[name="encryptionType"]')?.value || 'ICE';
+    const isLethal = iceType === 'BLACK_ICE' || iceType === 'RED_ICE';
+    const iceSource = el.querySelector('[data-ice-source]');
+    if (iceSource) iceSource.style.display = isLethal ? '' : 'none';
   }
 
   // ─── Action Handlers ───
@@ -543,11 +577,11 @@ export class NetworkManagementApp extends BaseApplication {
           : [],
       },
       theme: {
-        color: val('themeColor') || '#19f3f7',
+        color: (val('iconMode') === 'image' ? val('themeColorImg') : val('themeColor')) || '#19f3f7',
         icon: val('themeIcon') || 'fa-wifi',
         iconMode: val('iconMode') || 'fa',
         customImage: val('customImage') || '',
-        glitchIntensity: flt('glitchIntensity', 0.1),
+        glitchIntensity: val('iconMode') === 'image' ? flt('glitchIntensityImg', 0.1) : flt('glitchIntensity', 0.1),
       },
       description: val('description'),
       lore: val('lore'),
@@ -648,29 +682,160 @@ export class NetworkManagementApp extends BaseApplication {
   }
 
   /**
-   * Browse world items to select a key item for network auth.
-   * Fills the keyItemName input field with the selected item's name.
+   * Browse world items — legacy fallback.
    */
   static async _onBrowseKeyItem(event, target) {
-    const item = await showWorldItemPicker({
-      title: 'Select Key Item for Network Auth',
+    return NetworkManagementApp._onSearchKeyItem.call(this, event, target);
+  }
+
+  /**
+   * Card-based key item picker (matches shard config pattern).
+   */
+  static async _onSearchKeyItem(event, target) {
+    const items = game.items?.contents ?? [];
+    if (items.length === 0) {
+      ui.notifications.warn('NCM | No items found in the world.');
+      return;
+    }
+
+    const itemCards = items.map(item => {
+      const img = item.img && !item.img.includes('mystery-man') ? `<img src="${item.img}" alt="">` : `<i class="fas fa-cube"></i>`;
+      const escapedName = item.name.replace(/"/g, '&quot;').replace(/</g, '&lt;');
+      return `<div class="ncm-ip-item" data-item-id="${item.id}" data-item-name="${item.name.toLowerCase()}">
+        <div class="ncm-ip-item-img">${img}</div>
+        <div style="flex:1;min-width:0">
+          <div class="ncm-ip-item-name">${escapedName}</div>
+          <div class="ncm-ip-item-type">${item.type || 'Item'}</div>
+        </div>
+      </div>`;
+    }).join('');
+
+    const content = `
+      <div class="ncm-ip-search-wrap">
+        <i class="fas fa-magnifying-glass"></i>
+        <input type="text" class="ncm-ip-search" placeholder="Search items..." autofocus />
+      </div>
+      <div class="ncm-ip-list">${itemCards || '<div class="ncm-ip-empty">No items found</div>'}</div>
+    `;
+
+    let selectedItem = null;
+    const dialog = new Dialog({
+      title: 'Select Key Item',
+      content,
+      buttons: { cancel: { label: 'Cancel', callback: () => {} } },
+      default: 'cancel',
+      render: (html) => {
+        const jq = html instanceof jQuery ? html : $(html);
+        const listEl = jq.find('.ncm-ip-list')[0] || jq[0]?.querySelector('.ncm-ip-list');
+        const searchEl = jq.find('.ncm-ip-search')[0] || jq[0]?.querySelector('.ncm-ip-search');
+        if (searchEl) {
+          searchEl.addEventListener('input', () => {
+            const query = searchEl.value.toLowerCase().trim();
+            (listEl || jq[0]).querySelectorAll('.ncm-ip-item').forEach(card => {
+              card.style.display = !query || (card.dataset.itemName || '').includes(query) ? '' : 'none';
+            });
+          });
+        }
+        if (listEl) {
+          listEl.addEventListener('click', (e) => {
+            const card = e.target.closest('.ncm-ip-item');
+            if (!card) return;
+            selectedItem = game.items.get(card.dataset.itemId);
+            if (selectedItem) dialog.close();
+          });
+        }
+      },
+    }, {
+      classes: ['dialog', 'ncm-item-picker-dialog'],
+      width: 420, height: 480, resizable: true,
     });
-    if (!item) return;
 
-    // Fill in the key item name field
-    const nameInput = this.element?.querySelector('input[name="keyItemName"]');
-    if (nameInput) {
-      nameInput.value = item.name;
-    }
+    await new Promise(resolve => {
+      dialog.close = new Proxy(dialog.close, {
+        apply(t, thisArg, args) { const r = Reflect.apply(t, thisArg, args); resolve(); return r; }
+      });
+      dialog.render(true);
+    });
 
-    // Also fill tag if the item has one
-    const tag = item.system?.tag || '';
-    if (tag) {
-      const tagInput = this.element?.querySelector('input[name="keyItemTag"]');
-      if (tagInput && !tagInput.value) {
-        tagInput.value = tag;
+    if (!selectedItem) return;
+
+    // Direct DOM update
+    const el = this.element;
+    const setVal = (name, v) => { const inp = el?.querySelector(`[name="${name}"]`); if (inp) inp.value = v; };
+    setVal('keyItemName', selectedItem.name);
+    setVal('keyItemTag', selectedItem.system?.tag || '');
+
+    // Update filled/empty states
+    const filled = el?.querySelector('[data-key-item-filled]');
+    const empty = el?.querySelector('[data-key-item-empty]');
+    if (filled) {
+      filled.style.display = '';
+      const imgSlot = filled.querySelector('[data-key-item-img-slot]');
+      if (imgSlot) {
+        imgSlot.innerHTML = selectedItem.img && !selectedItem.img.includes('mystery-man')
+          ? `<img src="${selectedItem.img}" alt="" style="width:100%;height:100%;object-fit:cover;border:none;">`
+          : '<i class="fas fa-cube"></i>';
       }
+      const nameSlot = filled.querySelector('[data-key-item-name-slot]');
+      if (nameSlot) nameSlot.textContent = selectedItem.name;
     }
+    if (empty) empty.style.display = 'none';
+  }
+
+  /**
+   * Clear selected key item.
+   */
+  static _onClearKeyItem(event, target) {
+    const el = this.element;
+    const setVal = (name, v) => { const inp = el?.querySelector(`[name="${name}"]`); if (inp) inp.value = v; };
+    setVal('keyItemName', '');
+    setVal('keyItemTag', '');
+
+    const filled = el?.querySelector('[data-key-item-filled]');
+    const empty = el?.querySelector('[data-key-item-empty]');
+    if (filled) filled.style.display = 'none';
+    if (empty) empty.style.display = '';
+  }
+
+  /**
+   * Apply a preset template — fills form fields when creating a new network.
+   */
+  static _onApplyPreset(event, target) {
+    const key = target.closest('[data-preset]')?.dataset.preset;
+    if (!key) return;
+
+    const PRESETS = {
+      fixer_den: { type: 'hidden', description: 'Underground fixer network. Low profile.', signalStrength: 65, reliability: 70, messageDelay: 500, traced: false, anonymous: true, themeIcon: 'fa-handshake', themeColor: '#F65261' },
+      corp_office: { type: 'corporate', description: 'Corporate internal network. Heavy ICE.', signalStrength: 90, reliability: 95, messageDelay: 200, traced: true, anonymous: false, themeIcon: 'fa-building', themeColor: '#f7c948' },
+      gang_turf: { type: 'hidden', description: 'Gang-controlled local mesh. Unstable.', signalStrength: 45, reliability: 50, messageDelay: 800, traced: false, anonymous: true, themeIcon: 'fa-skull', themeColor: '#ff0033' },
+      secure_facility: { type: 'government', description: 'Hardened facility network. Maximum security.', signalStrength: 95, reliability: 99, messageDelay: 100, traced: true, anonymous: false, themeIcon: 'fa-shield-halved', themeColor: '#19f3f7' },
+      blank: { type: 'public', description: '', signalStrength: 75, reliability: 75, messageDelay: 300, traced: false, anonymous: false, themeIcon: 'fa-wifi', themeColor: '#19f3f7' },
+    };
+
+    const preset = PRESETS[key];
+    if (!preset) return;
+
+    const el = this.element;
+    const set = (name, v) => { const inp = el?.querySelector(`[name="${name}"]`); if (inp) inp.value = v; };
+    const chk = (name, v) => { const inp = el?.querySelector(`input[name="${name}"]`); if (inp) inp.checked = v; };
+    const sel = (name, v) => { const s = el?.querySelector(`select[name="${name}"]`); if (s) s.value = v; };
+
+    sel('type', preset.type);
+    set('description', preset.description);
+    set('signalStrength', preset.signalStrength);
+    set('reliability', preset.reliability);
+    set('messageDelay', preset.messageDelay);
+    chk('traced', preset.traced);
+    chk('anonymity', preset.anonymous);
+    sel('themeIcon', preset.themeIcon);
+    set('themeColor', preset.themeColor);
+    set('themeColorText', preset.themeColor);
+    const swatch = el?.querySelector('input[type="color"][name="themeColor"]');
+    if (swatch) swatch.value = preset.themeColor;
+
+    // Highlight active preset pill
+    el?.querySelectorAll('.ncm-netmgr__preset').forEach(p => p.classList.remove('ncm-netmgr__preset--active'));
+    target.closest('.ncm-netmgr__preset')?.classList.add('ncm-netmgr__preset--active');
   }
 
   static _onBrowseCustomImage(event, target) {
@@ -685,30 +850,40 @@ export class NetworkManagementApp extends BaseApplication {
   static _onSelectIceSource(event, target) {
     const mode = target.closest('[data-mode]')?.dataset.mode;
     if (!mode) return;
-    const hidden = this.element?.querySelector('input[name="iceSource"]');
-    if (hidden) hidden.value = mode;
-    // Save and re-render to show conditional fields
-    this._onSaveNetwork(event, target);
+    // Toggle card selection
+    this.element?.querySelectorAll('.ncm-netmgr__ice-card').forEach(c => c.classList.remove('ncm-netmgr__ice-card--sel'));
+    (target.closest('.ncm-netmgr__ice-card') || target).classList.add('ncm-netmgr__ice-card--sel');
+    // Toggle panels
+    this.element?.querySelectorAll('.ncm-netmgr__ice-panel').forEach(p => p.classList.remove('ncm-netmgr__ice-panel--on'));
+    this.element?.querySelector(`[data-ice-panel="${mode}"]`)?.classList.add('ncm-netmgr__ice-panel--on');
+    // Update hidden input
+    const input = this.element?.querySelector('input[name="iceSource"]');
+    if (input) input.value = mode;
   }
 
   static _onSelectIceActor(event, target) {
-    const actorId = target.closest('[data-actor-id]')?.dataset.actorId;
+    const card = target.closest('.ncm-netmgr__ice-actor') || target;
+    const actorId = card.dataset.actorId;
     if (!actorId) return;
-    const hidden = this.element?.querySelector('input[name="iceActorId"]');
-    if (hidden) hidden.value = actorId;
-    // Highlight selected
-    this.element?.querySelectorAll('.ncm-netmgr__ice-actor').forEach(c =>
-      c.classList.toggle('ncm-netmgr__ice-actor--sel', c.dataset.actorId === actorId)
-    );
+    this.element?.querySelectorAll('.ncm-netmgr__ice-actor').forEach(c => c.classList.remove('ncm-netmgr__ice-actor--sel'));
+    card.classList.add('ncm-netmgr__ice-actor--sel');
+    const input = this.element?.querySelector('input[name="iceActorId"]');
+    if (input) input.value = actorId;
   }
 
   static _onSelectIconMode(event, target) {
     const mode = target.closest('[data-mode]')?.dataset.mode;
     if (!mode) return;
-    const hidden = this.element?.querySelector('input[name="iconMode"]');
-    if (hidden) hidden.value = mode;
-    // Save and re-render to swap icon mode sections
-    this._onSaveNetwork(event, target);
+    // Toggle tab active state
+    this.element?.querySelectorAll('.ncm-netmgr__icon-mode-tab').forEach(t => t.classList.remove('ncm-netmgr__icon-mode-tab--active'));
+    (target.closest('.ncm-netmgr__icon-mode-tab') || target).classList.add('ncm-netmgr__icon-mode-tab--active');
+    // Toggle sections
+    this.element?.querySelectorAll('.ncm-netmgr__icon-mode-section').forEach(s => {
+      s.style.display = s.dataset.iconMode === mode ? '' : 'none';
+    });
+    // Update hidden input
+    const input = this.element?.querySelector('input[name="iconMode"]');
+    if (input) input.value = mode;
   }
 
   static async _onToggleDeadZone(event, target) {

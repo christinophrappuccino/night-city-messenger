@@ -2662,3 +2662,125 @@
   border-color: rgba(25,243,247,0.3);
   background: rgba(25,243,247,0.04);
 }
+
+/* ═══════════════════════════════════════════
+   ICE Panel Show/Hide
+   ═══════════════════════════════════════════ */
+
+.ncm-network-management .ncm-netmgr__ice-panel {
+  display: none;
+  margin-top: 6px;
+}
+.ncm-network-management .ncm-netmgr__ice-panel--on {
+  display: block;
+}
+
+.ncm-network-management .ncm-netmgr__ice-source-wrap {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255,255,255,0.04);
+}
+
+/* ═══════════════════════════════════════════
+   Icon Mode Section Show/Hide
+   ═══════════════════════════════════════════ */
+
+.ncm-network-management .ncm-netmgr__icon-mode-section {
+  margin-top: 8px;
+}
+
+/* ═══════════════════════════════════════════
+   Preset Bar (create mode)
+   ═══════════════════════════════════════════ */
+
+.ncm-network-management .ncm-netmgr__preset-section {
+  margin-bottom: 4px;
+}
+
+.ncm-network-management .ncm-netmgr__preset-header {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+  font-family: var(--nm-font-body, 'Rajdhani', sans-serif);
+  font-size: 12px; font-weight: 700; color: var(--nm-text-secondary, #8888a0);
+  text-transform: uppercase; letter-spacing: 0.06em;
+}
+.ncm-network-management .ncm-netmgr__preset-header::after {
+  content: ''; flex: 1; height: 1px; background: var(--nm-border, #2a2a45);
+}
+.ncm-network-management .ncm-netmgr__preset-header i {
+  font-size: 10px; color: var(--nm-secondary, #19f3f7);
+}
+
+.ncm-network-management .ncm-netmgr__presets {
+  display: flex; gap: 4px; flex-wrap: wrap;
+}
+
+.ncm-network-management .ncm-netmgr__preset {
+  display: flex; align-items: center; gap: 5px;
+  padding: 4px 10px; border-radius: 3px;
+  background: var(--nm-bg-deep, #0a0a0f);
+  border: 1px solid var(--nm-border, #2a2a45);
+  font-family: var(--nm-font-body, 'Rajdhani', sans-serif);
+  font-size: 11px; font-weight: 600; color: var(--nm-text-secondary, #8888a0);
+  cursor: pointer; transition: all 0.12s;
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+.ncm-network-management .ncm-netmgr__preset:hover {
+  border-color: var(--nm-border-active, #3a3a5a); color: var(--nm-text-primary, #e0e0e8);
+}
+.ncm-network-management .ncm-netmgr__preset--active {
+  border-color: var(--nm-secondary, #19f3f7); color: var(--nm-secondary, #19f3f7);
+  background: rgba(25,243,247,0.04);
+}
+.ncm-network-management .ncm-netmgr__preset i { font-size: 10px; }
+
+/* ═══════════════════════════════════════════
+   Key Item Picker (card-based)
+   ═══════════════════════════════════════════ */
+
+.ncm-network-management .ncm-netmgr__key-item-filled {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px; border-radius: 3px;
+  background: rgba(247,201,72,0.04);
+  border: 1px solid rgba(247,201,72,0.15);
+}
+
+.ncm-network-management .ncm-netmgr__ki-img {
+  width: 36px; height: 36px; border-radius: 3px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--nm-bg-surface, #1a1a2e);
+  border: 1px solid var(--nm-border, #2a2a45);
+  flex-shrink: 0; overflow: hidden;
+  font-size: 14px; color: var(--nm-text-muted, #555570);
+}
+.ncm-network-management .ncm-netmgr__ki-img img {
+  width: 100%; height: 100%; object-fit: cover; border: none;
+}
+
+.ncm-network-management .ncm-netmgr__ki-meta { flex: 1; min-width: 0; }
+.ncm-network-management .ncm-netmgr__ki-name {
+  font-family: var(--nm-font-body, 'Rajdhani', sans-serif);
+  font-size: 13px; font-weight: 700; color: var(--nm-text-primary, #e0e0e8);
+  margin-bottom: 3px;
+}
+.ncm-network-management .ncm-netmgr__ki-actions {
+  display: flex; gap: 4px;
+}
+
+.ncm-network-management .ncm-netmgr__key-item-empty {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px; border-radius: 3px;
+  border: 1px dashed rgba(247,201,72,0.2);
+  cursor: pointer; transition: all 0.15s;
+}
+.ncm-network-management .ncm-netmgr__key-item-empty:hover {
+  border-color: rgba(247,201,72,0.4);
+  background: rgba(247,201,72,0.03);
+}
+
+.ncm-network-management .ncm-netmgr__kie-icon {
+  font-size: 16px; color: #f7c948; opacity: 0.5;
+}
+.ncm-network-management .ncm-netmgr__kie-text {
+  font-family: var(--nm-font-body, 'Rajdhani', sans-serif);
+  font-size: 12px; font-weight: 500; color: var(--nm-text-muted, #555570);
+}
