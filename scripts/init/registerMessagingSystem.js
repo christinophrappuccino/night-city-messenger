@@ -121,7 +121,7 @@ export function registerMessagingSystem(initializer) {
         // Already open — bring to front and optionally select message
         viewer.bringToFront();
         if (messageId) {
-          viewer.selectMessage(messageId);
+          viewer._selectMessage(messageId);
         }
         return viewer;
       }

@@ -570,21 +570,22 @@ export class AdminPanelApp extends BaseApplication {
     const contacts = this.masterContactService?.getAll() ?? [];
 
     // ── Role config ──
+    // ── Role config — every role gets a unique type + color ──
     const roleChipMap = {
       fixer:     { label: 'Fixer',     type: 'role-fixer',     icon: 'crosshairs' },
       netrunner: { label: 'Runner',    type: 'role-netrunner',  icon: 'terminal' },
       runner:    { label: 'Runner',    type: 'role-netrunner',  icon: 'terminal' },
       corp:      { label: 'Corp',      type: 'role-corp',       icon: 'briefcase' },
+      exec:      { label: 'Exec',      type: 'role-exec',       icon: 'building-columns' },
       solo:      { label: 'Solo',      type: 'role-solo',       icon: 'crosshairs' },
-      tech:      { label: 'Tech',      type: 'role-tech',       icon: 'wrench' },
-      medtech:   { label: 'Medtech',   type: 'role-tech',       icon: 'wrench' },
-      ripperdoc: { label: 'Ripperdoc', type: 'role-tech',       icon: 'wrench' },
+      tech:      { label: 'Tech',      type: 'role-tech',       icon: 'gear' },
+      medtech:   { label: 'Medtech',   type: 'role-medtech',    icon: 'staff-snake' },
+      ripperdoc: { label: 'Ripperdoc', type: 'role-ripperdoc',  icon: 'syringe' },
       media:     { label: 'Media',     type: 'role-media',      icon: 'podcast' },
-      nomad:     { label: 'Nomad',     type: 'role-solo',       icon: 'truck-monster' },
-      exec:      { label: 'Exec',      type: 'role-corp',       icon: 'briefcase' },
+      nomad:     { label: 'Nomad',     type: 'role-nomad',      icon: 'truck-monster' },
       lawman:    { label: 'Lawman',    type: 'role-lawman',     icon: 'shield-halved' },
-      rockerboy: { label: 'Rocker',    type: 'role-fixer',      icon: 'guitar' },
-      rocker:    { label: 'Rocker',    type: 'role-fixer',      icon: 'guitar' },
+      rockerboy: { label: 'Rocker',    type: 'role-rocker',     icon: 'guitar' },
+      rocker:    { label: 'Rocker',    type: 'role-rocker',     icon: 'guitar' },
     };
 
     const trustLabels = { 5: 'Trusted', 4: 'Trusted', 3: 'Neutral', 2: 'Wary', 1: 'Hostile', 0: 'Unknown' };
@@ -656,10 +657,11 @@ export class AdminPanelApp extends BaseApplication {
 
       // Avatar color — per-role colors matching chip colors, with burned/encrypted overrides
       const roleAvatarColors = {
-        fixer: '#d4a017', netrunner: '#0ec8c7', runner: '#0ec8c7',
-        corp: '#4a8ab5', exec: '#4a8ab5',
+        fixer: '#d4a017',
+        netrunner: '#00e5ff', runner: '#00e5ff',
+        corp: '#4a8ab5', exec: '#6ec1e4',
         solo: '#e04848',
-        tech: '#5bc0be', medtech: '#5bc0be', ripperdoc: '#5bc0be',
+        tech: '#2ecc71', medtech: '#1abc9c', ripperdoc: '#e06888',
         media: '#b87aff',
         nomad: '#d4844a',
         lawman: '#6b8fa3',
@@ -689,16 +691,22 @@ export class AdminPanelApp extends BaseApplication {
       }
 
       // Build color-coded chips with inline styles (Foundry-proof)
+      // Every role gets a visually distinct color
       const chipColorMap = {
         'role-fixer':     { c: '#d4a017', b: 'rgba(212,160,23,0.35)', bg: 'rgba(212,160,23,0.10)' },
-        'role-netrunner': { c: '#0ec8c7', b: 'rgba(14,200,199,0.35)', bg: 'rgba(14,200,199,0.10)' },
-        'role-solo':      { c: '#e04848', b: 'rgba(224,72,72,0.35)',  bg: 'rgba(224,72,72,0.10)' },
+        'role-netrunner': { c: '#00e5ff', b: 'rgba(0,229,255,0.35)',  bg: 'rgba(0,229,255,0.10)' },
         'role-corp':      { c: '#4a8ab5', b: 'rgba(74,138,181,0.35)', bg: 'rgba(74,138,181,0.10)' },
+        'role-exec':      { c: '#6ec1e4', b: 'rgba(110,193,228,0.35)', bg: 'rgba(110,193,228,0.10)' },
+        'role-solo':      { c: '#e04848', b: 'rgba(224,72,72,0.35)',  bg: 'rgba(224,72,72,0.10)' },
+        'role-tech':      { c: '#2ecc71', b: 'rgba(46,204,113,0.35)', bg: 'rgba(46,204,113,0.10)' },
+        'role-medtech':   { c: '#1abc9c', b: 'rgba(26,188,156,0.35)', bg: 'rgba(26,188,156,0.10)' },
+        'role-ripperdoc': { c: '#e06888', b: 'rgba(224,104,136,0.35)', bg: 'rgba(224,104,136,0.10)' },
         'role-media':     { c: '#b87aff', b: 'rgba(184,122,255,0.35)', bg: 'rgba(184,122,255,0.10)' },
-        'role-tech':      { c: '#5bc0be', b: 'rgba(91,192,190,0.35)', bg: 'rgba(91,192,190,0.10)' },
+        'role-nomad':     { c: '#d4844a', b: 'rgba(212,132,74,0.35)',  bg: 'rgba(212,132,74,0.10)' },
         'role-lawman':    { c: '#6b8fa3', b: 'rgba(107,143,163,0.35)', bg: 'rgba(107,143,163,0.10)' },
+        'role-rocker':    { c: '#e05cb5', b: 'rgba(224,92,181,0.35)', bg: 'rgba(224,92,181,0.10)' },
         'org':            { c: '#7aa2c4', b: 'rgba(122,162,196,0.35)', bg: 'rgba(122,162,196,0.10)' },
-        'loc':            { c: '#d4844a', b: 'rgba(212,132,74,0.35)',  bg: 'rgba(212,132,74,0.10)' },
+        'loc':            { c: '#c47a2a', b: 'rgba(196,122,42,0.35)',  bg: 'rgba(196,122,42,0.10)' },
         'tag':            { c: '#19f3f7', b: 'rgba(25,243,247,0.30)',  bg: 'rgba(25,243,247,0.08)' },
         'alias':          { c: '#c8c8dc', b: 'rgba(200,200,220,0.30)', bg: 'rgba(200,200,220,0.06)' },
       };
@@ -3100,10 +3108,25 @@ export class AdminPanelApp extends BaseApplication {
     const inboxOwnerId = msgEl.dataset.inboxOwner;
     const messageId = msgEl.dataset.messageId;
 
-    if (!inboxOwnerId) return;
+    console.log(`NCM | openRecentMessage — inboxOwner: ${inboxOwnerId}, messageId: ${messageId}`);
 
-    // openInbox supports (actorId, messageId) — messageId auto-selects the message
-    game.nightcity?.openInbox?.(inboxOwnerId, messageId || undefined);
+    if (!inboxOwnerId) {
+      console.warn('NCM | openRecentMessage — no inboxOwnerId');
+      return;
+    }
+
+    // Open the inbox — pass messageId for auto-selection
+    const viewer = game.nightcity?.openInbox?.(inboxOwnerId, messageId || undefined);
+
+    // If viewer already existed and is rendered, try selecting with a delay
+    // (the initial openInbox call handles brand-new viewers via selectedMessageId constructor arg)
+    if (viewer?.rendered && messageId) {
+      // Try selecting immediately, then retry after messages load
+      try { viewer._selectMessage?.(messageId); } catch { /* */ }
+      setTimeout(() => {
+        try { viewer._selectMessage?.(messageId); } catch { /* */ }
+      }, 500);
+    }
   }
 
   // ═══════════════════════════════════════════════════════════
