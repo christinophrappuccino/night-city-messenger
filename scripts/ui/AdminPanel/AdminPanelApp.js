@@ -173,6 +173,7 @@ export class AdminPanelApp extends BaseApplication {
       bulkRelockSelected: AdminPanelApp._onBulkRelockSelected,
       bulkExportSelected: AdminPanelApp._onBulkExportSelected,
       unconvertShard: AdminPanelApp._onUnconvertShard,
+      cycleShardSort: AdminPanelApp._onCycleShardSort,
 
       // Tools actions
       openThemeCustomizer: AdminPanelApp._onOpenThemeCustomizer,
@@ -2804,6 +2805,13 @@ export class AdminPanelApp extends BaseApplication {
     // Keep journalId so data isn't lost, just detached
 
     ui.notifications.info(`NCM | Unconverted: ${item.name} is now a regular item.`);
+    this.render();
+  }
+
+  static _onCycleShardSort(event, target) {
+    const sortOrder = ['name', 'status', 'accessed'];
+    const idx = sortOrder.indexOf(this._shardSort);
+    this._shardSort = sortOrder[(idx + 1) % sortOrder.length];
     this.render();
   }
 
