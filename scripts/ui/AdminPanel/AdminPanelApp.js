@@ -1192,17 +1192,17 @@ export class AdminPanelApp extends BaseApplication {
         // Owner info — for grouping
         let ownerKey = 'world';
         let ownerName = 'World Items';
-        let ownerIcon = 'fa-box-open';
+        let ownerIcon = 'fas fa-box-open';
         let ownerImg = null;
         if (item.parent && item.parent instanceof Actor) {
           ownerKey = `actor-${item.parent.id}`;
           ownerName = item.parent.name;
-          ownerIcon = 'fa-user';
+          ownerIcon = 'fas fa-user';
           ownerImg = item.parent.img || item.parent.prototypeToken?.texture?.src || null;
         } else if (item.compendium) {
           ownerKey = 'compendium';
           ownerName = 'Compendium';
-          ownerIcon = 'fa-book';
+          ownerIcon = 'fas fa-book';
         }
 
         // Count entries + eddies
@@ -1400,53 +1400,56 @@ export class AdminPanelApp extends BaseApplication {
    * @private
    */
   _buildShardGroups(shards) {
-    // Build groups map
+    const mode = this._shardGroupMode || 'owner';
+
+    // 'none' mode — single flat group
+    if (mode === 'none') {
+      return [this._buildGroupSummary({ key: 'all', name: 'All Shards', icon: 'fas fa-database', img: null, isWorld: false, shards })];
+    }
+
+    // Build groups map based on mode
     const groupMap = new Map();
     for (const shard of shards) {
-      if (!groupMap.has(shard.ownerKey)) {
-        groupMap.set(shard.ownerKey, {
-          key: shard.ownerKey,
-          name: shard.ownerName,
-          icon: shard.ownerIcon,
-          img: shard.ownerImg,
-          isWorld: shard.ownerKey === 'world',
-          shards: [],
-        });
+      let groupKey, groupName, groupIcon, groupImg, isWorld;
+
+      switch (mode) {
+        case 'preset':
+          groupKey = shard.presetKey || 'blank';
+          groupName = shard.presetLabel || 'Custom';
+          groupIcon = shard.presetIcon || 'fas fa-microchip';
+          groupImg = null;
+          isWorld = false;
+          break;
+
+        case 'status':
+          groupKey = shard.status;
+          const STATUS_LABELS = { locked: 'Locked', blackice: 'BLACK ICE', breached: 'Breached', open: 'Open', destroyed: 'Destroyed' };
+          const STATUS_ICONS = { locked: 'fas fa-lock', blackice: 'fas fa-skull', breached: 'fas fa-unlock', open: 'fas fa-lock-open', destroyed: 'fas fa-skull-crossbones' };
+          groupName = STATUS_LABELS[shard.status] || shard.status;
+          groupIcon = STATUS_ICONS[shard.status] || 'fas fa-circle';
+          groupImg = null;
+          isWorld = false;
+          break;
+
+        default: // 'owner'
+          groupKey = shard.ownerKey;
+          groupName = shard.ownerName;
+          groupIcon = shard.ownerIcon;
+          groupImg = shard.ownerImg;
+          isWorld = shard.ownerKey === 'world';
+          break;
       }
-      groupMap.get(shard.ownerKey).shards.push(shard);
+
+      if (!groupMap.has(groupKey)) {
+        groupMap.set(groupKey, { key: groupKey, name: groupName, icon: groupIcon, img: groupImg, isWorld, shards: [] });
+      }
+      groupMap.get(groupKey).shards.push(shard);
     }
 
-    // Build final groups with status summaries
-    const groups = [];
-    for (const group of groupMap.values()) {
-      const locked = group.shards.filter(s => s.status === 'locked' || s.status === 'blackice').length;
-      const breached = group.shards.filter(s => s.status === 'breached').length;
-      const open = group.shards.filter(s => s.status === 'open').length;
-      const destroyed = group.shards.filter(s => s.status === 'destroyed').length;
+    // Build final groups with summaries
+    const groups = [...groupMap.values()].map(g => this._buildGroupSummary(g));
 
-      // Build status pips array
-      const pips = [];
-      for (const s of group.shards) {
-        pips.push({ class: s.status === 'blackice' ? 'blackice' : s.status });
-      }
-
-      // Status summary text (HTML — use triple-stache in template)
-      const parts = [];
-      if (locked > 0) parts.push(`<span style="color:var(--ncm-color-primary,#F65261);">${locked}</span> locked`);
-      if (breached > 0) parts.push(`<span style="color:var(--ncm-success,#00ff41);">${breached}</span> breached`);
-      if (open > 0) parts.push(`${open} open`);
-      if (destroyed > 0) parts.push(`<span style="color:var(--ncm-danger,#ff0033);">${destroyed}</span> destroyed`);
-
-      groups.push({
-        ...group,
-        shardCount: group.shards.length,
-        pips,
-        statusText: parts.join(' · '),
-        collapsed: this._collapsedShardGroups.has(group.key),
-      });
-    }
-
-    // World items first, then actors alphabetically
+    // Sort: world/all first, then alphabetical
     groups.sort((a, b) => {
       if (a.isWorld) return -1;
       if (b.isWorld) return 1;
@@ -1454,6 +1457,33 @@ export class AdminPanelApp extends BaseApplication {
     });
 
     return groups;
+  }
+
+  /**
+   * Build status pips and summary text for a shard group.
+   * @private
+   */
+  _buildGroupSummary(group) {
+    const locked = group.shards.filter(s => s.status === 'locked' || s.status === 'blackice').length;
+    const breached = group.shards.filter(s => s.status === 'breached').length;
+    const open = group.shards.filter(s => s.status === 'open').length;
+    const destroyed = group.shards.filter(s => s.status === 'destroyed').length;
+
+    const pips = group.shards.map(s => ({ class: s.status === 'blackice' ? 'blackice' : s.status }));
+
+    const parts = [];
+    if (locked > 0) parts.push(`<span style="color:var(--ncm-color-primary,#F65261);">${locked}</span> locked`);
+    if (breached > 0) parts.push(`<span style="color:var(--ncm-success,#00ff41);">${breached}</span> breached`);
+    if (open > 0) parts.push(`${open} open`);
+    if (destroyed > 0) parts.push(`<span style="color:var(--ncm-danger,#ff0033);">${destroyed}</span> destroyed`);
+
+    return {
+      ...group,
+      shardCount: group.shards.length,
+      pips,
+      statusText: parts.join(' · '),
+      collapsed: this._collapsedShardGroups.has(group.key),
+    };
   }
 
   /**

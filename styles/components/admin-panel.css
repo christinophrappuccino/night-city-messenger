@@ -1843,9 +1843,9 @@
 .ncm-app .ncm-shard-create-card__header { display: flex !important; align-items: center !important; gap: 6px !important; padding: 6px 12px !important; background: var(--sp-bg, #12121a) !important; border-bottom: 1px solid var(--sp-border, #2a2a45) !important; font-family: var(--ncm-font-display) !important; font-size: 10px !important; font-weight: 700 !important; color: var(--sp-text-secondary, #b0b0c8) !important; text-transform: uppercase !important; letter-spacing: 0.06em !important; }
 .ncm-app .ncm-shard-create-card__header i { font-size: 9px !important; color: var(--ncm-color-primary, #F65261) !important; }
 
-.ncm-app .ncm-shard-preset-grid { display: grid !important; grid-template-columns: repeat(4, 1fr) !important; gap: 4px !important; padding: 8px !important; }
+.ncm-app .ncm-shard-preset-grid { display: grid !important; grid-template-columns: repeat(4, 1fr) !important; gap: 4px !important; padding: 8px !important; flex: 1 !important; align-content: stretch !important; }
 .ncm-app .ncm-shard-preset-btn {
-  display: flex !important; flex-direction: column !important; align-items: center !important; gap: 3px !important;
+  display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; gap: 4px !important;
   padding: 10px 4px !important; background: var(--sp-bg, #0a0a0f) !important;
   border: 1px solid var(--sp-border, #2a2a45) !important; border-radius: 2px !important;
   cursor: pointer !important; transition: all 0.15s !important;
@@ -1855,7 +1855,7 @@
   font-family: var(--ncm-font-display) !important;
 }
 .ncm-app .ncm-shard-preset-btn:hover { border-color: var(--sp-border-active, #3a3a5a) !important; background: var(--sp-elevated, #252540) !important; }
-.ncm-app .ncm-shard-preset-btn > i { font-size: 14px !important; line-height: 1 !important; }
+.ncm-app .ncm-shard-preset-btn > i { font-size: 18px !important; line-height: 1 !important; }
 .ncm-app .ncm-shard-preset-btn__label {
   font-family: var(--ncm-font-display) !important; font-size: 8px !important; font-weight: 700 !important;
   color: var(--sp-text-secondary, #b0b0c8) !important; text-transform: uppercase !important;
@@ -2011,7 +2011,10 @@
   border-radius: 2px 2px 0 0 !important; cursor: pointer !important;
   transition: all 0.15s !important; user-select: none !important;
 }
-.ncm-app .ncm-shard-owner-header:hover { border-color: var(--sp-border-active, #3a3a5a) !important; }
+.ncm-app .ncm-shard-owner-header:hover {
+  border-color: rgba(25,243,247,0.3) !important;
+  background: rgba(25,243,247,0.06) !important;
+}
 .ncm-app .ncm-shard-owner-group--collapsed .ncm-shard-owner-header { border-radius: 2px !important; }
 .ncm-app .ncm-shard-owner-group--collapsed .ncm-shard-owner-body { display: none !important; }
 .ncm-app .ncm-shard-owner-header__chevron { font-size: 8px !important; color: var(--sp-text-muted) !important; transition: transform 0.2s !important; width: 12px !important; text-align: center !important; }
