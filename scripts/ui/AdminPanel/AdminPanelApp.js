@@ -160,6 +160,7 @@ export class AdminPanelApp extends BaseApplication {
       batchShareContacts:  AdminPanelApp._onBatchShareContacts,
       batchTagContacts:    AdminPanelApp._onBatchTagContacts,
       batchBurnContacts:   AdminPanelApp._onBatchBurnContacts,
+      openRecentMessage:   AdminPanelApp._onOpenRecentMessage,
 
       // Networks actions
       toggleNetwork: AdminPanelApp._onToggleNetwork,
@@ -639,7 +640,20 @@ export class AdminPanelApp extends BaseApplication {
       const roleLower = (c.role || '').toLowerCase();
       const roleInfo = roleChipMap[roleLower];
 
-      const avatarColor = c.burned ? '#ff3355' : c.encrypted ? '#f7c948' : '#9a9ab5';
+      // Avatar color — per-role colors matching chip colors, with burned/encrypted overrides
+      const roleAvatarColors = {
+        fixer: '#d4a017', netrunner: '#0ec8c7', runner: '#0ec8c7',
+        corp: '#4a8ab5', exec: '#4a8ab5',
+        solo: '#e04848',
+        tech: '#5bc0be', medtech: '#5bc0be',
+        media: '#b87aff',
+        nomad: '#d4844a',
+        lawman: '#6b8fa3',
+        rockerboy: '#e05cb5',
+      };
+      let avatarColor = roleAvatarColors[roleLower] || '#9a9ab5';
+      if (c.burned) avatarColor = '#ff3355';
+      else if (c.encrypted) avatarColor = '#f7c948';
       const networkSlug = (c.network || 'citinet').toLowerCase().replace(/[^a-z]/g, '');
 
       // Actor resolution
@@ -799,10 +813,17 @@ export class AdminPanelApp extends BaseApplication {
             const fromName = flags.senderName || flags.from || '?';
             const toName = flags.recipientName || flags.to || '?';
             const isSent = fromName.toLowerCase().includes(expandedContact.name.toLowerCase());
+            // Determine which actor's inbox to open (the other party)
+            const otherActorId = isSent
+              ? (flags.recipientActorId || flags.to || '')
+              : (flags.senderActorId || flags.from || '');
             return {
               from: fromName, to: toName, sent: isSent,
               preview: (flags.subject || page.name || '(no subject)').slice(0, 50),
               time: flags.timestamp ? this._relativeTime(flags.timestamp) : '',
+              pageId: page.id,
+              journalId: inboxJournal.id,
+              inboxOwnerId: expandedContact.actorId || expandedContact.id,
             };
           });
         }
@@ -3001,6 +3022,25 @@ export class AdminPanelApp extends BaseApplication {
     this._selectedContacts.clear();
     ui.notifications.info(`NCM | ${count} contacts burned.`);
     this.render(true);
+  }
+
+  /**
+   * Open a contact's inbox and navigate to a specific message.
+   */
+  static _onOpenRecentMessage(event, target) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const msgEl = target.closest('.ncm-ct-detail__msg');
+    if (!msgEl) return;
+
+    const inboxOwnerId = msgEl.dataset.inboxOwner;
+    const pageId = msgEl.dataset.pageId;
+
+    if (!inboxOwnerId) return;
+
+    // openInbox supports (actorId, messageId) — messageId auto-selects the message
+    game.nightcity?.openInbox?.(inboxOwnerId, pageId || undefined);
   }
 
   // ═══════════════════════════════════════════════════════════

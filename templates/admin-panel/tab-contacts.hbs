@@ -355,7 +355,8 @@
                 <div class="ncm-ct-detail__section-label">Recent Messages</div>
                 {{#if this.recentMessages.length}}
                   {{#each this.recentMessages}}
-                  <div class="ncm-ct-detail__msg">
+                  <div class="ncm-ct-detail__msg" data-action="openRecentMessage"
+                       data-inbox-owner="{{this.inboxOwnerId}}" data-page-id="{{this.pageId}}" data-journal-id="{{this.journalId}}">
                     <i class="fas {{#if this.sent}}fa-arrow-right ncm-ct-detail__msg-icon--sent{{else}}fa-arrow-left ncm-ct-detail__msg-icon--received{{/if}} ncm-ct-detail__msg-icon"></i>
                     <div class="ncm-ct-detail__msg-body">
                       <div class="ncm-ct-detail__msg-route">

@@ -1052,3 +1052,13 @@
 .ncm-app .ncm-ct-filters [data-ncm-tooltip]::before {
   z-index: 10000 !important;
 }
+
+/* ─── Clickable recent messages ─── */
+.ncm-app .ncm-ct-detail__msg {
+  cursor: pointer !important;
+  transition: all 0.15s !important;
+}
+.ncm-app .ncm-ct-detail__msg:hover {
+  border-color: var(--ncm-border-active) !important;
+  background: rgba(25, 243, 247, 0.03) !important;
+}
