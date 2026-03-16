@@ -1832,7 +1832,7 @@
 
 /* ─── Create Panel ─── */
 .ncm-app .ncm-shard-create-panel { display: flex; gap: 8px; margin-bottom: 12px; align-items: stretch; }
-.ncm-app .ncm-shard-create-card { flex: 1; display: flex; flex-direction: column; background: var(--sp-surface); border: 1px solid var(--sp-border); border-radius: 2px; overflow: hidden; }
+.ncm-app .ncm-shard-create-card { flex: 1 1 50%; display: flex; flex-direction: column; background: var(--sp-surface); border: 1px solid var(--sp-border); border-radius: 2px; overflow: hidden; min-width: 0; }
 .ncm-app .ncm-shard-create-card:hover { border-color: var(--sp-border-active); }
 .ncm-app .ncm-shard-create-card__header {
   display: flex; align-items: center; gap: 6px; padding: 5px 12px;
@@ -1840,21 +1840,31 @@
   font-family: var(--ncm-font-display); font-size: 10px; font-weight: 700;
   color: var(--sp-text-secondary); text-transform: uppercase; letter-spacing: 0.06em;
 }
-.ncm-app .ncm-shard-create-card__header i { font-size: 9px; color: var(--ncm-color-primary); }
+.ncm-app .ncm-shard-create-card__header i { font-size: 9px !important; color: var(--ncm-color-primary); }
 
 .ncm-app .ncm-shard-preset-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 8px; }
 .ncm-app .ncm-shard-preset-btn {
-  display: flex !important; flex-direction: column !important; align-items: center !important; gap: 3px !important;
-  padding: 7px 4px !important; background: var(--sp-bg, var(--bg-deep, #0a0a0f)) !important;
+  display: flex !important; flex-direction: column !important; align-items: center !important; gap: 2px !important;
+  padding: 6px 2px !important; background: var(--sp-bg, var(--bg-deep, #0a0a0f)) !important;
   border: 1px solid var(--sp-border) !important; border-radius: 2px !important;
   cursor: pointer !important; transition: all 0.15s !important;
-  font-family: var(--ncm-font-display) !important; font-size: 14px !important;
+  font-family: var(--ncm-font-display) !important; font-size: 9px !important;
   color: inherit !important; height: auto !important; min-height: 0 !important; width: auto !important;
   flex-shrink: 0 !important; flex-grow: 0 !important; appearance: none !important;
-  box-shadow: none !important; outline: none !important;
+  box-shadow: none !important; outline: none !important; line-height: 1 !important;
+  text-align: center !important;
+}
+.ncm-app .ncm-shard-preset-btn > i {
+  font-size: 16px !important; line-height: 1 !important; display: block !important;
+  width: 20px !important; height: 16px !important; text-align: center !important;
 }
 .ncm-app .ncm-shard-preset-btn:hover { border-color: var(--sp-border-active) !important; background: var(--sp-elevated) !important; }
-.ncm-app .ncm-shard-preset-btn__label { font-family: var(--ncm-font-display); font-size: 9px; font-weight: 700; color: var(--sp-text-secondary); text-transform: uppercase; letter-spacing: 0.02em; }
+.ncm-app .ncm-shard-preset-btn__label {
+  font-family: var(--ncm-font-display) !important; font-size: 8px !important; font-weight: 700 !important;
+  color: var(--sp-text-secondary) !important; text-transform: uppercase !important;
+  letter-spacing: 0.02em !important; line-height: 1.2 !important; white-space: nowrap !important;
+  overflow: hidden !important; text-overflow: ellipsis !important; max-width: 100% !important;
+}
 
 .ncm-app .ncm-shard-convert-actions { display: flex; flex-direction: column; gap: 5px; padding: 8px 10px; flex: 1; }
 .ncm-app .ncm-shard-convert-btn {
@@ -1865,16 +1875,21 @@
   font-family: var(--ncm-font-display) !important; color: inherit !important;
   height: auto !important; min-height: 0 !important; width: auto !important;
   flex-shrink: 0 !important; flex-grow: 1 !important; appearance: none !important;
-  box-shadow: none !important; outline: none !important;
+  box-shadow: none !important; outline: none !important; text-align: left !important;
 }
 .ncm-app .ncm-shard-convert-btn:hover { border-color: var(--sp-border-active) !important; background: var(--sp-elevated) !important; }
-.ncm-app .ncm-shard-convert-btn__icon { width: 26px; height: 26px; border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 10px; flex-shrink: 0; }
+.ncm-app .ncm-shard-convert-btn__icon {
+  width: 26px; height: 26px; border-radius: 3px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.ncm-app .ncm-shard-convert-btn__icon i { font-size: 11px !important; line-height: 1 !important; }
 .ncm-app .ncm-shard-convert-btn__icon--convert { background: rgba(246,82,97,0.08); color: var(--ncm-color-primary); border: 1px solid rgba(246,82,97,0.2); }
 .ncm-app .ncm-shard-convert-btn__icon--new { background: rgba(25,243,247,0.06); color: var(--ncm-color-secondary); border: 1px solid rgba(25,243,247,0.12); }
 .ncm-app .ncm-shard-convert-btn__icon--revert { background: rgba(168,85,247,0.06); color: #a855f7; border: 1px solid rgba(168,85,247,0.12); }
 .ncm-app .ncm-shard-convert-btn__text { display: flex; flex-direction: column; gap: 1px; }
-.ncm-app .ncm-shard-convert-btn__title { font-family: var(--ncm-font-display); font-size: 11px; font-weight: 700; color: var(--sp-text-primary); text-transform: uppercase; }
-.ncm-app .ncm-shard-convert-btn__desc { font-family: var(--ncm-font-display); font-size: 9px; font-weight: 500; color: var(--sp-text-muted); }
+.ncm-app .ncm-shard-convert-btn__title { font-family: var(--ncm-font-display); font-size: 11px; font-weight: 700; color: var(--sp-text-primary); text-transform: uppercase; line-height: 1.2; }
+.ncm-app .ncm-shard-convert-btn__desc { font-family: var(--ncm-font-display); font-size: 9px; font-weight: 500; color: var(--sp-text-muted); line-height: 1.2; }
 
 /* ─── Toolbar ─── */
 .ncm-app .ncm-shard-toolbar {
@@ -1913,7 +1928,7 @@
 }
 .ncm-app .ncm-shard-select-toggle:hover { border-color: var(--sp-border-active) !important; color: var(--sp-text-secondary) !important; }
 .ncm-app .ncm-shard-select-toggle--active { border-color: var(--ncm-color-secondary) !important; color: var(--ncm-color-secondary) !important; background: rgba(25,243,247,0.06) !important; }
-.ncm-app .ncm-shard-select-toggle i { font-size: 9px; }
+.ncm-app .ncm-shard-select-toggle i { font-size: 9px !important; }
 
 /* ─── Bulk Action Bar ─── */
 .ncm-app .ncm-shard-bulk-bar {
@@ -1935,7 +1950,7 @@
   appearance: none !important; box-shadow: none !important; outline: none !important;
 }
 .ncm-app .ncm-shard-bulk-btn:hover { border-color: var(--sp-border-active) !important; color: var(--sp-text-primary) !important; }
-.ncm-app .ncm-shard-bulk-btn i { font-size: 8px; }
+.ncm-app .ncm-shard-bulk-btn i { font-size: 8px !important; }
 .ncm-app .ncm-shard-bulk-bar__deselect {
   margin-left: auto; font-family: var(--ncm-font-display); font-size: 10px;
   font-weight: 700; color: var(--sp-text-muted); cursor: pointer;
@@ -1960,10 +1975,11 @@
 .ncm-app .ncm-shard-owner-header__icon {
   width: 22px; height: 22px; border-radius: 3px;
   display: flex; align-items: center; justify-content: center;
-  font-size: 10px; flex-shrink: 0;
+  flex-shrink: 0;
   background: rgba(25,243,247,0.06); color: var(--ncm-color-secondary);
   border: 1px solid rgba(25,243,247,0.12);
 }
+.ncm-app .ncm-shard-owner-header__icon i { font-size: 10px !important; line-height: 1 !important; }
 .ncm-app .ncm-shard-owner-header__icon--world { background: rgba(247,201,72,0.06); color: var(--ncm-accent, #f7c948); border-color: rgba(247,201,72,0.12); }
 .ncm-app .ncm-shard-owner-header__img {
   width: 22px; height: 22px; border-radius: 3px; object-fit: cover; flex-shrink: 0;
@@ -2012,7 +2028,8 @@
 .ncm-app .ncm-shard-row__ice-pip--none { background: var(--sp-text-muted); opacity: 0.3; }
 .ncm-app .ncm-shard-row__ice-pip--destroyed { background: var(--ncm-danger); opacity: 0.4; }
 
-.ncm-app .ncm-shard-row__icon { width: 28px; height: 28px; border-radius: 3px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 12px; background: var(--sp-surface); border: 1px solid var(--sp-border); color: var(--sp-text-secondary); }
+.ncm-app .ncm-shard-row__icon { width: 28px; height: 28px; border-radius: 3px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: var(--sp-surface); border: 1px solid var(--sp-border); color: var(--sp-text-secondary); overflow: hidden; }
+.ncm-app .ncm-shard-row__icon i { font-size: 12px !important; line-height: 1 !important; }
 .ncm-app .ncm-shard-row__info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .ncm-app .ncm-shard-row__name { font-family: var(--ncm-font-display); font-size: 13px; font-weight: 700; color: var(--sp-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2; }
 .ncm-app .ncm-shard-row__meta { font-family: var(--ncm-font-display); font-size: 10px; font-weight: 600; color: var(--sp-text-muted); display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
@@ -2027,7 +2044,7 @@
   border: 1px solid var(--sp-border); border-radius: 2px; flex-shrink: 0;
   font-family: var(--ncm-font-display); font-size: 11px; font-weight: 700; color: var(--sp-text-secondary);
 }
-.ncm-app .ncm-shard-row__entries i { font-size: 8px; color: var(--sp-text-muted); }
+.ncm-app .ncm-shard-row__entries i { font-size: 8px !important; color: var(--sp-text-muted); }
 .ncm-app .ncm-shard-row__integrity { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
 .ncm-app .ncm-shard-row__actions { display: flex; gap: 3px; flex-shrink: 0; opacity: 0; transition: opacity 0.12s; }
 .ncm-app .ncm-shard-row:hover .ncm-shard-row__actions { opacity: 1; }
@@ -2054,7 +2071,7 @@
 .ncm-app .ncm-shard-layer-chip:last-child { border-radius: 0 2px 2px 0; }
 .ncm-app .ncm-shard-layer-chip:only-child { border-radius: 2px; }
 .ncm-app .ncm-shard-layer-chip + .ncm-shard-layer-chip { border-left: none; }
-.ncm-app .ncm-shard-layer-chip i { font-size: 7px; }
+.ncm-app .ncm-shard-layer-chip i { font-size: 7px !important; }
 .ncm-app .ncm-shard-layer-chip--cleared { background: rgba(0,255,65,0.04); color: var(--ncm-success); border-color: rgba(0,255,65,0.15); }
 .ncm-app .ncm-shard-layer-chip--pending { color: var(--sp-text-muted); }
 
@@ -2081,7 +2098,7 @@
 .ncm-app .ncm-shard-expand-btn--cyan { border-color: rgba(25,243,247,0.3) !important; color: var(--ncm-color-secondary) !important; }
 .ncm-app .ncm-shard-expand-btn--cyan:hover { background: rgba(25,243,247,0.06) !important; }
 .ncm-app .ncm-shard-expand-btn--ghost { border-color: var(--sp-border) !important; color: var(--sp-text-muted) !important; }
-.ncm-app .ncm-shard-expand-btn i { font-size: 7px; }
+.ncm-app .ncm-shard-expand-btn i { font-size: 7px !important; }
 
 /* ─── Quick Actions ─── */
 .ncm-app .ncm-shard-quick-actions { display: flex; gap: 6px; margin-bottom: 12px; }
@@ -2096,7 +2113,7 @@
   appearance: none !important; box-shadow: none !important; outline: none !important;
 }
 .ncm-app .ncm-shard-qa-btn:hover { border-color: var(--sp-border-active) !important; color: var(--sp-text-secondary) !important; }
-.ncm-app .ncm-shard-qa-btn i { font-size: 8px; }
+.ncm-app .ncm-shard-qa-btn i { font-size: 8px !important; }
 
 /* ═══════════════════════════════════════════
    TAB 6: TOOLS
