@@ -137,6 +137,18 @@ export function registerTemplates(initializer) {
       return arr.join(typeof separator === 'string' ? separator : ', ');
     });
 
+    // ─── Network Icon Helper (supports FA icon or custom image) ───
+
+    Handlebars.registerHelper('ncm-net-icon', function (theme) {
+      if (!theme) return new Handlebars.SafeString('<i class="fas fa-wifi"></i>');
+      if (theme.iconMode === 'image' && theme.customImage) {
+        const src = Handlebars.escapeExpression(theme.customImage);
+        return new Handlebars.SafeString(`<img src="${src}" alt="" class="ncm-net-icon-img">`);
+      }
+      const icon = Handlebars.escapeExpression(theme.icon || 'fa-wifi');
+      return new Handlebars.SafeString(`<i class="fas ${icon}"></i>`);
+    });
+
     log.info('Handlebars helpers registered');
   });
 }

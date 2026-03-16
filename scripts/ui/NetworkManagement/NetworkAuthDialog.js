@@ -231,6 +231,7 @@ export class NetworkAuthDialog extends BaseApplication {
         type: network.type,
         icon: network.theme?.icon ?? 'fa-wifi',
         color: network.theme?.color ?? '#19f3f7',
+        theme: network.theme || {},
         securityLevel: network.security.level,
         description: network.description,
         typeLabel: networkTypeLabel,

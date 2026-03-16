@@ -21,7 +21,7 @@
                   data-action="switchNetwork" data-network-id="{{id}}"
                   class="ncm-sec-net-card {{#if isCurrent}}ncm-sec-net-card--current{{/if}} {{#if isAllowed}}ncm-sec-net-card--allowed{{/if}}"
                   {{#if isCurrent}}disabled{{/if}}>
-            <div class="ncm-sec-net-icon" style="color:{{color}}"><i class="fas {{icon}}"></i></div>
+            <div class="ncm-sec-net-icon" style="color:{{color}}">{{{ncm-net-icon theme}}}</div>
             <div class="ncm-sec-net-name">{{name}}</div>
             <div class="ncm-sec-net-status">
               {{#if isCurrent}}CONNECTED{{else if isAllowed}}<i class="fas fa-check" style="color:#00ff41;font-size:8px"></i> VALID{{else}}DENIED{{/if}}

@@ -1082,3 +1082,15 @@
 .ncm-app [data-ncm-tooltip]:hover::after {
   opacity: 1;
 }
+
+/* ═══════════════════════════════════════════
+   Network Icon Image — Global (used by ncm-net-icon helper)
+   Renders custom images inside icon containers that normally hold <i> tags.
+   ═══════════════════════════════════════════ */
+
+.ncm-net-icon-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 2px;
+}

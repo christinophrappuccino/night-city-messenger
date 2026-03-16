@@ -765,6 +765,7 @@ export class AdminPanelApp extends BaseApplication {
            userCount: net.userCount ?? 0,
            icon: known.icon,
            iconClass: known.iconClass,
+           theme: net.theme || {},
            authClass,
            authIcon,
            authLabel,

@@ -316,6 +316,7 @@ export class MessageViewerApp extends BaseApplication {
         typeLabel: typeLabels[net.type] || 'Subnet',
         icon: net.theme?.icon ?? 'fa-wifi',
         color: net.theme?.color ?? '#19f3f7',
+        theme: net.theme || {},
         signalStrength: net.signalStrength ?? 75,
         state,
         requiresAuth,
@@ -2178,13 +2179,14 @@ export class MessageViewerApp extends BaseApplication {
     if (msgNetworkNorm.includes('dark')) networkBadgeVariant = 'darknet';
     else if (msgNetworkNorm.includes('corp')) networkBadgeVariant = 'corpnet';
 
-    // Network badge icon — distinct per network
+    // Network badge icon — use actual theme when available, fallback to type map
     const networkIconMap = {
       'darknet': 'fa-user-secret',
       'corpnet': 'fa-building',
       'citinet': 'fa-wifi',
     };
-    const networkBadgeIcon = networkIconMap[networkBadgeVariant] || 'fa-network-wired';
+    const networkBadgeIcon = resolvedNetwork?.theme?.icon || networkIconMap[networkBadgeVariant] || 'fa-network-wired';
+    const networkBadgeTheme = resolvedNetwork?.theme || {};
 
     // Priority icon for detail panel tag-badge partial
     const priorityIconMap = {
@@ -2214,6 +2216,7 @@ export class MessageViewerApp extends BaseApplication {
       networkBadgeLabel,
       networkBadgeVariant,
       networkBadgeIcon, 
+      networkBadgeTheme,
       threatBadge,
     };
   }

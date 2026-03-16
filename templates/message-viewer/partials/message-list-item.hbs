@@ -106,7 +106,7 @@
         {{/if}}
         {{#if showNetworkBadge}}
           <span class="ncm-micro-badge ncm-micro-badge--network-{{networkBadgeVariant}}" data-ncm-tooltip="Via {{networkBadgeLabel}}">
-            <i class="fas {{networkBadgeIcon}}"></i>{{networkBadgeLabel}}
+            {{{ncm-net-icon networkBadgeTheme}}}{{networkBadgeLabel}}
           </span>
         {{/if}}
         {{#if (eq priority "critical")}}

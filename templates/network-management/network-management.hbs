@@ -114,7 +114,7 @@
             {{!-- Network Icon Badge --}}
             <div class="ncm-netmgr__net-item-icon ncm-netmgr__net-item-icon--{{networkTypeClass}}"
                  {{#if theme.color}}style="--net-color: {{theme.color}};"{{/if}}>
-              <i class="fas {{theme.icon}}"></i>
+              {{{ncm-net-icon theme}}}
             </div>
 
             {{!-- Network Info --}}
@@ -458,7 +458,7 @@
           <div class="ncm-netmgr__detail-header">
             <div class="ncm-netmgr__detail-header-icon ncm-netmgr__net-item-icon--{{selectedNetwork.networkTypeClass}}"
                  {{#if selectedNetwork.theme.color}}style="--net-color: {{selectedNetwork.theme.color}};"{{/if}}>
-              <i class="fas {{selectedNetwork.theme.icon}}"></i>
+              {{{ncm-net-icon selectedNetwork.theme}}}
             </div>
             <div class="ncm-netmgr__detail-header-info">
               <div class="ncm-netmgr__detail-header-name">{{selectedNetwork.name}}</div>
@@ -828,7 +828,7 @@
             <label class="ncm-netmgr__scene-net-check ncm-netmgr__scene-net-check--active ncm-netmgr__scene-net-check--global">
               <input type="checkbox" name="netAvail_{{id}}" checked disabled>
               <span class="ncm-netmgr__scene-net-check-icon" style="color: {{theme.color}};">
-                <i class="fas {{theme.icon}}"></i>
+                {{{ncm-net-icon theme}}}
               </span>
               {{name}}
               <span class="ncm-netmgr__tag ncm-netmgr__tag--core" style="font-size:6px; margin-left:2px;">GLOBAL</span>
@@ -838,7 +838,7 @@
               <input type="checkbox" name="netAvail_{{id}}"
                      {{#if (lookup ../selectedScene.networkAvailability id)}}checked{{/if}}>
               <span class="ncm-netmgr__scene-net-check-icon" style="color: {{theme.color}};">
-                <i class="fas {{theme.icon}}"></i>
+                {{{ncm-net-icon theme}}}
               </span>
               {{name}}
             </label>

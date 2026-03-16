@@ -250,6 +250,7 @@ export class ItemInboxApp extends BaseApplication {
       isAllowed: netAccessMode === 'any' || allowedNetIds.includes(n.id) || allowedTypes.includes(n.type),
       icon: n.theme?.icon || 'fa-wifi',
       color: n.theme?.color || '#19f3f7',
+      theme: n.theme || {},
     }));
 
     // Metadata
