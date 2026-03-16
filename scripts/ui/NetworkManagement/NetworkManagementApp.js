@@ -86,6 +86,7 @@ export class NetworkManagementApp extends BaseApplication {
       selectIceSource: NetworkManagementApp._onSelectIceSource,
       selectIceActor: NetworkManagementApp._onSelectIceActor,
       selectIconMode: NetworkManagementApp._onSelectIconMode,
+      selectIcon: NetworkManagementApp._onSelectIcon,
       applyPreset: NetworkManagementApp._onApplyPreset,
       resetSecurity: NetworkManagementApp._onResetSecurity,
       toggleSidebarGroup: NetworkManagementApp._onToggleSidebarGroup,
@@ -466,6 +467,9 @@ export class NetworkManagementApp extends BaseApplication {
       iceTypeSel.addEventListener('change', () => this._updateIceVisibility());
       this._updateIceVisibility(); // sync initial state
     }
+
+    // Wire live preview bindings for icon grid, color, group pills, custom image
+    this._wireEditorLiveBindings();
   }
 
   /** Show/hide ICE source section based on encryptionType select */
@@ -475,7 +479,69 @@ export class NetworkManagementApp extends BaseApplication {
     const iceType = el.querySelector('[name="encryptionType"]')?.value || 'ICE';
     const isLethal = iceType === 'BLACK_ICE' || iceType === 'RED_ICE';
     const iceSource = el.querySelector('[data-ice-source]');
-    if (iceSource) iceSource.style.display = isLethal ? '' : 'none';
+    if (iceSource) iceSource.style.display = isLethal ? 'block' : 'none';
+  }
+
+  /**
+   * Wire live preview updates for icon, color, group pills, and custom image.
+   */
+  _wireEditorLiveBindings() {
+    const el = this.element;
+    if (!el) return;
+
+    // ─── Color swatch → update icon preview ───
+    const colorSwatch = el.querySelector('[data-color-swatch]');
+    const colorText = el.querySelector('[data-color-text]');
+    const iconPreview = el.querySelector('[data-icon-preview]');
+    const syncColor = () => {
+      const hex = colorSwatch?.value || colorText?.value || '#19f3f7';
+      if (iconPreview) {
+        iconPreview.style.color = hex;
+        iconPreview.style.background = `${hex}14`;
+        iconPreview.style.borderColor = `${hex}26`;
+      }
+      if (colorSwatch && colorText && document.activeElement === colorSwatch) colorText.value = hex;
+      if (colorSwatch && colorText && document.activeElement === colorText) {
+        if (/^#[0-9a-fA-F]{6}$/.test(colorText.value)) colorSwatch.value = colorText.value;
+      }
+    };
+    colorSwatch?.addEventListener('input', syncColor);
+    colorText?.addEventListener('input', syncColor);
+
+    // ─── Group pills ───
+    el.querySelectorAll('[data-group-value]')?.forEach(pill => {
+      pill.addEventListener('click', () => {
+        const groupInput = el.querySelector('[data-group-input]');
+        const value = pill.dataset.groupValue;
+        // Toggle: click same pill again to deselect
+        const wasActive = pill.classList.contains('active');
+        el.querySelectorAll('[data-group-value]').forEach(p => p.classList.remove('active'));
+        if (!wasActive) {
+          pill.classList.add('active');
+          if (groupInput) groupInput.value = value;
+        } else {
+          if (groupInput) groupInput.value = '';
+        }
+      });
+    });
+    // + button focuses the input
+    el.querySelector('[data-group-add]')?.addEventListener('click', () => {
+      const groupInput = el.querySelector('[data-group-input]');
+      el.querySelectorAll('[data-group-value]').forEach(p => p.classList.remove('active'));
+      if (groupInput) { groupInput.value = ''; groupInput.focus(); }
+    });
+
+    // ─── Custom image path → update preview ───
+    const customImgInput = el.querySelector('[data-custom-img-input]');
+    const customImgPreview = el.querySelector('[data-custom-img-preview]');
+    if (customImgInput && customImgPreview) {
+      customImgInput.addEventListener('change', () => {
+        const path = customImgInput.value.trim();
+        customImgPreview.innerHTML = path
+          ? `<img src="${path}" alt="" style="width:100%;height:100%;object-fit:contain;">`
+          : '<i class="fas fa-image"></i>';
+      });
+    }
   }
 
   // ─── Action Handlers ───
@@ -553,6 +619,7 @@ export class NetworkManagementApp extends BaseApplication {
         allowKeyItem: chk('allowKeyItem'),
         keyItemName: val('keyItemName'),
         keyItemTag: val('keyItemTag'),
+        keyItemImg: val('keyItemImg'),
         keyItemConsume: chk('keyItemConsume'),
         maxAttempts: num('maxAttempts', 3),
         lockoutDuration: (num('lockoutMinutes', 60)) * 60000,
@@ -759,11 +826,11 @@ export class NetworkManagementApp extends BaseApplication {
 
     if (!selectedItem) return;
 
-    // Direct DOM update
     const el = this.element;
     const setVal = (name, v) => { const inp = el?.querySelector(`[name="${name}"]`); if (inp) inp.value = v; };
     setVal('keyItemName', selectedItem.name);
     setVal('keyItemTag', selectedItem.system?.tag || '');
+    setVal('keyItemImg', selectedItem.img || '');
 
     // Update filled/empty states
     const filled = el?.querySelector('[data-key-item-filled]');
@@ -772,8 +839,9 @@ export class NetworkManagementApp extends BaseApplication {
       filled.style.display = '';
       const imgSlot = filled.querySelector('[data-key-item-img-slot]');
       if (imgSlot) {
-        imgSlot.innerHTML = selectedItem.img && !selectedItem.img.includes('mystery-man')
-          ? `<img src="${selectedItem.img}" alt="" style="width:100%;height:100%;object-fit:cover;border:none;">`
+        const imgSrc = selectedItem.img;
+        imgSlot.innerHTML = imgSrc && !imgSrc.includes('mystery-man')
+          ? `<img src="${imgSrc}" alt="" style="width:100%;height:100%;object-fit:cover;border:none;">`
           : '<i class="fas fa-cube"></i>';
       }
       const nameSlot = filled.querySelector('[data-key-item-name-slot]');
@@ -790,6 +858,7 @@ export class NetworkManagementApp extends BaseApplication {
     const setVal = (name, v) => { const inp = el?.querySelector(`[name="${name}"]`); if (inp) inp.value = v; };
     setVal('keyItemName', '');
     setVal('keyItemTag', '');
+    setVal('keyItemImg', '');
 
     const filled = el?.querySelector('[data-key-item-filled]');
     const empty = el?.querySelector('[data-key-item-empty]');
@@ -839,11 +908,19 @@ export class NetworkManagementApp extends BaseApplication {
   }
 
   static _onBrowseCustomImage(event, target) {
-    const input = this.element?.querySelector('input[name="customImage"]');
+    const input = this.element?.querySelector('[data-custom-img-input]');
     new FilePicker({
       type: 'image',
       current: input?.value || '',
-      callback: (path) => { if (input) input.value = path; },
+      callback: (path) => {
+        if (input) input.value = path;
+        const preview = this.element?.querySelector('[data-custom-img-preview]');
+        if (preview) {
+          preview.innerHTML = path
+            ? `<img src="${path}" alt="" style="width:100%;height:100%;object-fit:contain;">`
+            : '<i class="fas fa-image"></i>';
+        }
+      },
     }).render(true);
   }
 
@@ -874,16 +951,34 @@ export class NetworkManagementApp extends BaseApplication {
   static _onSelectIconMode(event, target) {
     const mode = target.closest('[data-mode]')?.dataset.mode;
     if (!mode) return;
-    // Toggle tab active
     this.element?.querySelectorAll('.icon-mode-tab').forEach(t => t.classList.remove('active'));
     (target.closest('.icon-mode-tab') || target).classList.add('active');
-    // Toggle sections
     this.element?.querySelectorAll('.icon-mode-section').forEach(s => {
       s.style.display = s.dataset.iconMode === mode ? '' : 'none';
     });
-    // Update hidden
     const input = this.element?.querySelector('input[name="iconMode"]');
     if (input) input.value = mode;
+  }
+
+  /**
+   * Icon grid click — update hidden input + preview.
+   */
+  static _onSelectIcon(event, target) {
+    const item = target.closest('[data-icon-value]');
+    if (!item) return;
+    const icon = item.dataset.iconValue;
+
+    // Highlight
+    this.element?.querySelectorAll('.netmgr-icon-grid__item').forEach(g => g.classList.remove('active'));
+    item.classList.add('active');
+
+    // Update hidden input
+    const input = this.element?.querySelector('input[name="themeIcon"]');
+    if (input) input.value = icon;
+
+    // Update preview icon
+    const previewI = this.element?.querySelector('[data-icon-preview-i]');
+    if (previewI) previewI.className = `fas ${icon}`;
   }
 
   static async _onToggleDeadZone(event, target) {

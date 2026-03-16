@@ -654,6 +654,7 @@ export class NetworkService {
         allowKeyItem: data.security?.allowKeyItem ?? false,
         keyItemName: data.security?.keyItemName ?? '',
         keyItemTag: data.security?.keyItemTag ?? '',
+        keyItemImg: data.security?.keyItemImg ?? '',
         keyItemConsume: data.security?.keyItemConsume ?? false,
         maxAttempts: data.security?.maxAttempts ?? 3,
         lockoutDuration: data.security?.lockoutDuration ?? 3600000,

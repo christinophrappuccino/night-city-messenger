@@ -185,8 +185,11 @@
             <div class="cfg-hint">Visible to players when they inspect the network.</div>
             <div class="cfg-row cfg-row--col"><span class="cfg-label cfg-label--col">Lore / Notes</span><input class="cfg-input" type="text" name="lore" value="{{#unless isCreating}}{{selectedNetwork.lore}}{{/unless}}" placeholder="GM-only notes..."></div>
             <div class="cfg-row cfg-row--col"><span class="cfg-label cfg-label--col">Group / Folder</span>
-              <input class="cfg-input" type="text" name="group" value="{{#unless isCreating}}{{selectedNetwork.group}}{{/unless}}" placeholder="e.g. Gang Turf, Corp Offices..." list="ncm-network-groups">
-              <datalist id="ncm-network-groups">{{#each existingGroups}}<option value="{{this}}">{{/each}}</datalist>
+              <div class="netmgr-group-pills" data-group-pills>
+                {{#each existingGroups}}<div class="netmgr-group-pill {{#if (eq this ../selectedNetwork.group)}}active{{/if}}" data-group-value="{{this}}">{{this}}</div>{{/each}}
+                <div class="netmgr-group-add" data-group-add title="Add new group"><i class="fas fa-plus"></i></div>
+              </div>
+              <input class="cfg-input" type="text" name="group" value="{{#unless isCreating}}{{selectedNetwork.group}}{{/unless}}" placeholder="Type a new group name or click above..." data-group-input style="margin-top:4px;">
             </div>
           </div>
 
@@ -273,6 +276,7 @@
               <div class="ncm-netmgr__kie-text">Click to search items</div>
             </div>
             <input type="hidden" name="keyItemName" value="{{selectedNetwork.security.keyItemName}}" />
+            <input type="hidden" name="keyItemImg" value="{{keyItemImg}}" />
 
             <div class="cfg-row" style="margin-top:6px;"><span class="cfg-label">Tag</span><input class="cfg-input cfg-flex" type="text" name="keyItemTag" value="{{selectedNetwork.security.keyItemTag}}" placeholder="e.g. arasaka_keycard"></div>
             <label class="cfg-flag-card" style="max-width:320px;"><input type="checkbox" name="keyItemConsume" value="true" {{#if selectedNetwork.security.keyItemConsume}}checked{{/if}}><div class="cfg-flag-info"><span class="cfg-flag-title">Consume</span><span class="cfg-flag-desc">Removes from inventory after use</span></div></label>
@@ -378,18 +382,21 @@
             {{!-- FA Icon mode --}}
             <div class="icon-mode-section" data-icon-mode="fa" {{#unless isIconModeFa}}style="display:none"{{/unless}}>
               <div class="appearance-row">
-                <div class="icon-preview" style="background:{{#if isCreating}}rgba(25,243,247,0.12){{else}}{{selectedNetwork.theme.color}}14{{/if}}; color:{{#if isCreating}}#19f3f7{{else}}{{selectedNetwork.theme.color}}{{/if}}; border:1px solid {{#if isCreating}}rgba(25,243,247,0.2){{else}}{{selectedNetwork.theme.color}}26{{/if}};">
-                  <i class="fas {{#if isCreating}}fa-wifi{{else}}{{selectedNetwork.theme.icon}}{{/if}}"></i>
+                <div class="icon-preview" data-icon-preview style="background:{{#if isCreating}}rgba(25,243,247,0.12){{else}}{{selectedNetwork.theme.color}}14{{/if}}; color:{{#if isCreating}}#19f3f7{{else}}{{selectedNetwork.theme.color}}{{/if}}; border:1px solid {{#if isCreating}}rgba(25,243,247,0.2){{else}}{{selectedNetwork.theme.color}}26{{/if}};">
+                  <i class="fas {{#if isCreating}}fa-wifi{{else}}{{selectedNetwork.theme.icon}}{{/if}}" data-icon-preview-i></i>
                 </div>
                 <div style="flex:1;">
                   <span class="cfg-label cfg-label--col">Icon</span>
-                  <select class="cfg-select" name="themeIcon">{{#each iconOptions}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}</select>
+                  <div class="netmgr-icon-grid" data-icon-grid>
+                    {{#each iconOptions}}<div class="netmgr-icon-grid__item {{#if selected}}active{{/if}}" data-action="selectIcon" data-icon-value="{{value}}" title="{{label}}"><i class="fas {{value}}"></i></div>{{/each}}
+                  </div>
+                  <input type="hidden" name="themeIcon" value="{{#if isCreating}}fa-wifi{{else}}{{selectedNetwork.theme.icon}}{{/if}}" />
                 </div>
                 <div>
                   <span class="cfg-label cfg-label--col">Color</span>
                   <div class="color-row">
-                    <input type="color" name="themeColor" class="color-swatch" value="{{#if isCreating}}#19f3f7{{else}}{{selectedNetwork.theme.color}}{{/if}}">
-                    <input class="cfg-input cfg-input--mono" type="text" name="themeColorText" value="{{#if isCreating}}#19f3f7{{else}}{{selectedNetwork.theme.color}}{{/if}}" style="width:80px;">
+                    <input type="color" name="themeColor" class="color-swatch" data-color-swatch value="{{#if isCreating}}#19f3f7{{else}}{{selectedNetwork.theme.color}}{{/if}}">
+                    <input class="cfg-input cfg-input--mono" type="text" name="themeColorText" data-color-text value="{{#if isCreating}}#19f3f7{{else}}{{selectedNetwork.theme.color}}{{/if}}" style="width:80px;">
                   </div>
                 </div>
               </div>
@@ -398,21 +405,21 @@
 
             {{!-- Custom Image mode --}}
             <div class="icon-mode-section" data-icon-mode="image" {{#unless isIconModeImage}}style="display:none"{{/unless}}>
-              <div class="icon-custom-row">
-                <div class="icon-custom-preview">
+              <div class="appearance-row">
+                <div class="icon-custom-preview" data-custom-img-preview>
                   {{#if selectedNetwork.theme.customImage}}<img src="{{selectedNetwork.theme.customImage}}" alt="">{{else}}<i class="fas fa-image"></i>{{/if}}
                 </div>
                 <div style="flex:1;">
                   <span class="cfg-label cfg-label--col">Image Path</span>
-                  <div style="display:flex;gap:6px;">
-                    <input class="cfg-input" type="text" name="customImage" value="{{selectedNetwork.theme.customImage}}" placeholder="Path to image...">
-                    <button type="button" class="ncm-netmgr__btn-sm" data-action="browseCustomImage" style="flex-shrink:0;"><i class="fas fa-folder-open"></i></button>
+                  <div style="display:flex;gap:6px;align-items:center;">
+                    <input class="cfg-input" type="text" name="customImage" data-custom-img-input value="{{selectedNetwork.theme.customImage}}" placeholder="Path to image..." style="flex:1;">
+                    <button type="button" class="netmgr-browse-btn" data-action="browseCustomImage" title="Browse"><i class="fas fa-folder-open"></i></button>
                   </div>
                   <div class="cfg-hint">SVG images can be tinted with the color value. Raster images display as-is.</div>
                 </div>
               </div>
-              <div style="margin-top:8px;">
-                <span class="cfg-label cfg-label--col">Color</span>
+              <div class="cfg-row" style="margin-top:8px;">
+                <span class="cfg-label">Color</span>
                 <div class="color-row">
                   <input type="color" name="themeColorImg" class="color-swatch" value="{{#if isCreating}}#19f3f7{{else}}{{selectedNetwork.theme.color}}{{/if}}">
                   <input class="cfg-input cfg-input--mono" type="text" name="themeColorImgText" value="{{#if isCreating}}#19f3f7{{else}}{{selectedNetwork.theme.color}}{{/if}}" style="width:80px;">
