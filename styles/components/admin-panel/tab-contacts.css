@@ -189,7 +189,9 @@
     width: 22px !important; height: 22px !important; border-radius: 50% !important;
     display: flex !important; align-items: center !important; justify-content: center !important;
     font-family: var(--ncm-font-display) !important; font-size: 10px !important; font-weight: 700 !important;
-    background: var(--ncm-bg-elevated) !important; border: 1px solid !important; flex-shrink: 0 !important;
+    background: var(--ncm-bg-elevated) !important; border: 1px solid var(--_ab, #9a9ab5) !important;
+    color: var(--_ac, #9a9ab5) !important;
+    flex-shrink: 0 !important;
   }
 .ncm-app .ncm-ct-qs-chip__name {
     font-family: var(--ncm-font-display) !important; font-size: 11px !important; font-weight: 600 !important;
@@ -461,7 +463,8 @@
   /* Avatar */
 .ncm-app .ncm-ct-row__avatar {
     width: 38px !important; height: 38px !important; border-radius: 50% !important;
-    border: 1.5px solid !important;
+    border: 1.5px solid var(--_ab, #9a9ab5) !important;
+    color: var(--_ac, #9a9ab5) !important;
     display: flex !important; align-items: center !important; justify-content: center !important;
     font-family: var(--ncm-font-display) !important;
     font-size: 15px !important; font-weight: 700 !important;
@@ -518,25 +521,25 @@
 .ncm-app .ncm-ct-chip i { font-size: 7px !important; }
 
   /* Role chip — per-role colors (same as role badge) */
-.ncm-app .ncm-ct-chip--role-fixer { color: #d4a017 !important; border-color: rgba(212,160,23,0.25) !important; background: rgba(212,160,23,0.06) !important; }
-.ncm-app .ncm-ct-chip--role-netrunner { color: #0ec8c7 !important; border-color: rgba(14,200,199,0.25) !important; background: rgba(14,200,199,0.06) !important; }
-.ncm-app .ncm-ct-chip--role-solo { color: #e04848 !important; border-color: rgba(224,72,72,0.25) !important; background: rgba(224,72,72,0.06) !important; }
-.ncm-app .ncm-ct-chip--role-corp { color: #4a8ab5 !important; border-color: rgba(74,138,181,0.25) !important; background: rgba(74,138,181,0.06) !important; }
-.ncm-app .ncm-ct-chip--role-media { color: var(--ncm-purple) !important; border-color: rgba(184,122,255,0.25) !important; background: rgba(184,122,255,0.06) !important; }
-.ncm-app .ncm-ct-chip--role-tech { color: #5bc0be !important; border-color: rgba(91,192,190,0.25) !important; background: rgba(91,192,190,0.06) !important; }
-.ncm-app .ncm-ct-chip--role-lawman { color: #6b8fa3 !important; border-color: rgba(107,143,163,0.25) !important; background: rgba(107,143,163,0.06) !important; }
+.ncm-app .ncm-ct-row__chips .ncm-ct-chip--role-fixer { color: #d4a017 !important; border-color: rgba(212,160,23,0.35) !important; background: rgba(212,160,23,0.10) !important; }
+.ncm-app .ncm-ct-row__chips .ncm-ct-chip--role-netrunner { color: #0ec8c7 !important; border-color: rgba(14,200,199,0.35) !important; background: rgba(14,200,199,0.10) !important; }
+.ncm-app .ncm-ct-row__chips .ncm-ct-chip--role-solo { color: #e04848 !important; border-color: rgba(224,72,72,0.35) !important; background: rgba(224,72,72,0.10) !important; }
+.ncm-app .ncm-ct-row__chips .ncm-ct-chip--role-corp { color: #4a8ab5 !important; border-color: rgba(74,138,181,0.35) !important; background: rgba(74,138,181,0.10) !important; }
+.ncm-app .ncm-ct-row__chips .ncm-ct-chip--role-media { color: #b87aff !important; border-color: rgba(184,122,255,0.35) !important; background: rgba(184,122,255,0.10) !important; }
+.ncm-app .ncm-ct-row__chips .ncm-ct-chip--role-tech { color: #5bc0be !important; border-color: rgba(91,192,190,0.35) !important; background: rgba(91,192,190,0.10) !important; }
+.ncm-app .ncm-ct-row__chips .ncm-ct-chip--role-lawman { color: #6b8fa3 !important; border-color: rgba(107,143,163,0.35) !important; background: rgba(107,143,163,0.10) !important; }
 
   /* Org chip — steel blue */
-.ncm-app .ncm-ct-chip--org { color: #7aa2c4 !important; border-color: rgba(122,162,196,0.25) !important; background: rgba(122,162,196,0.06) !important; }
+.ncm-app .ncm-ct-row__chips .ncm-ct-chip--org { color: #7aa2c4 !important; border-color: rgba(122,162,196,0.35) !important; background: rgba(122,162,196,0.10) !important; }
 
   /* Location chip — warm orange */
-.ncm-app .ncm-ct-chip--loc { color: #d4844a !important; border-color: rgba(212,132,74,0.25) !important; background: rgba(212,132,74,0.06) !important; }
+.ncm-app .ncm-ct-row__chips .ncm-ct-chip--loc { color: #d4844a !important; border-color: rgba(212,132,74,0.35) !important; background: rgba(212,132,74,0.10) !important; }
 
   /* Tag chip — cyan (custom GM labels) */
-.ncm-app .ncm-ct-chip--tag { color: var(--ncm-secondary) !important; border-color: rgba(25,243,247,0.18) !important; background: rgba(25,243,247,0.05) !important; }
+.ncm-app .ncm-ct-row__chips .ncm-ct-chip--tag { color: #19f3f7 !important; border-color: rgba(25,243,247,0.30) !important; background: rgba(25,243,247,0.08) !important; }
 
   /* Alias chip — muted secondary */
-.ncm-app .ncm-ct-chip--alias { color: var(--ncm-text-secondary) !important; border-color: rgba(200,200,220,0.18) !important; background: rgba(200,200,220,0.04) !important; }
+.ncm-app .ncm-ct-row__chips .ncm-ct-chip--alias { color: #c8c8dc !important; border-color: rgba(200,200,220,0.30) !important; background: rgba(200,200,220,0.06) !important; }
 
   /* Notes preview (inline after chips) */
 .ncm-app .ncm-ct-row__notes {
@@ -1062,3 +1065,5 @@
   border-color: var(--ncm-border-active) !important;
   background: rgba(25, 243, 247, 0.03) !important;
 }
+
+

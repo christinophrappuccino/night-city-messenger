@@ -795,38 +795,60 @@ export class AdminPanelApp extends BaseApplication {
     const expandedContact = enriched.find(c => c.isExpanded);
     if (expandedContact && !expandedContact.noInbox) {
       try {
-        // Synchronous journal lookup — avoid async getInboxJournal which can't be called here
         const contactId = expandedContact.id;
         const actorId = expandedContact.actorId;
-        const journalName = actorId
+        const contactName = expandedContact.name.toLowerCase();
+        const contactEmail = (expandedContact.email || '').toLowerCase();
+        const allMessages = [];
+
+        // 1. Messages in the contact's OWN inbox (messages sent TO this contact)
+        const ownJournalName = actorId
           ? `NCM-Inbox-${actorId}`
           : `NCM-Inbox-Contact-${contactId}`;
-        const inboxJournal = game.journal?.find(j => j.name === journalName);
-
-        if (inboxJournal?.pages?.size) {
-          const pages = [...inboxJournal.pages].sort(
-            (a, b) => (b.getFlag?.('cyberpunkred-messenger', 'timestamp') || '')
-              .localeCompare(a.getFlag?.('cyberpunkred-messenger', 'timestamp') || '')
-          );
-          expandedContact.recentMessages = pages.slice(0, 3).map(page => {
+        const ownInbox = game.journal?.find(j => j.name === ownJournalName);
+        if (ownInbox?.pages?.size) {
+          for (const page of ownInbox.pages) {
             const flags = page.flags?.['cyberpunkred-messenger'] || {};
-            const fromName = flags.senderName || flags.from || '?';
-            const toName = flags.recipientName || flags.to || '?';
-            const isSent = fromName.toLowerCase().includes(expandedContact.name.toLowerCase());
-            // Determine which actor's inbox to open (the other party)
-            const otherActorId = isSent
-              ? (flags.recipientActorId || flags.to || '')
-              : (flags.senderActorId || flags.from || '');
-            return {
-              from: fromName, to: toName, sent: isSent,
-              preview: (flags.subject || page.name || '(no subject)').slice(0, 50),
-              time: flags.timestamp ? this._relativeTime(flags.timestamp) : '',
-              pageId: page.id,
-              journalId: inboxJournal.id,
-              inboxOwnerId: expandedContact.actorId || expandedContact.id,
-            };
-          });
+            allMessages.push({ page, flags, journalId: ownInbox.id, sent: false });
+          }
         }
+
+        // 2. Messages sent BY this contact — search player inboxes
+        for (const pa of playerActors) {
+          const playerJournalName = `NCM-Inbox-${pa.actorId}`;
+          const playerInbox = game.journal?.find(j => j.name === playerJournalName);
+          if (!playerInbox?.pages?.size) continue;
+          for (const page of playerInbox.pages) {
+            const flags = page.flags?.['cyberpunkred-messenger'] || {};
+            const senderName = (flags.senderName || flags.from || '').toLowerCase();
+            const senderEmail = (flags.from || '').toLowerCase();
+            if (senderName.includes(contactName) || (contactEmail && senderEmail === contactEmail)) {
+              allMessages.push({ page, flags, journalId: playerInbox.id, sent: true });
+            }
+          }
+        }
+
+        // Sort all messages by timestamp descending, take top 3
+        allMessages.sort((a, b) =>
+          (b.flags.timestamp || '').localeCompare(a.flags.timestamp || '')
+        );
+
+        expandedContact.recentMessages = allMessages.slice(0, 3).map(m => {
+          const fromName = m.flags.senderName || m.flags.from || '?';
+          const toName = m.flags.recipientName || m.flags.to || '?';
+          return {
+            from: fromName,
+            to: toName,
+            sent: m.sent,
+            preview: (m.flags.subject || m.page.name || '(no subject)').slice(0, 50),
+            time: m.flags.timestamp ? this._relativeTime(m.flags.timestamp) : '',
+            pageId: m.page.id,
+            journalId: m.journalId,
+            inboxOwnerId: m.sent
+              ? (m.flags.recipientActorId || m.flags.to || '')
+              : (expandedContact.actorId || expandedContact.id),
+          };
+        });
       } catch { /* inbox may not exist */ }
     }
 

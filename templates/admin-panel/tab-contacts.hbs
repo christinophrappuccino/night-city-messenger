@@ -69,7 +69,7 @@
       {{#each contactSummary.sendAsChips}}
         <div class="ncm-ct-qs-chip" data-action="sendAsContact" data-contact-id="{{this.id}}"
              data-ncm-tooltip="Compose a message as {{this.name}}">
-          <div class="ncm-ct-qs-chip__avatar" style="color: {{this.avatarColor}}; border-color: {{this.avatarBorderColor}};">
+          <div class="ncm-ct-qs-chip__avatar" style="--_ac: {{this.avatarColor}}; --_ab: {{this.avatarBorderColor}};">
             {{#if this.hasPortrait}}
               <img src="{{this.portrait}}" alt="{{this.initial}}">
             {{else}}
@@ -197,7 +197,7 @@
             <div class="ncm-ct-row__check {{#if this.isSelected}}ncm-ct-row__check--on{{/if}}"
                  data-action="toggleContactSelect" data-contact-id="{{this.id}}"></div>
 
-            <div class="ncm-ct-row__avatar" style="color: {{this.avatarColor}}; border-color: {{this.avatarBorderColor}};">
+            <div class="ncm-ct-row__avatar" style="--_ac: {{this.avatarColor}}; --_ab: {{this.avatarBorderColor}};">
               {{#if this.hasPortrait}}
                 <img src="{{this.portrait}}" alt="{{this.initial}}">
               {{else if this.encrypted}}
