@@ -781,11 +781,16 @@ export class AdminPanelApp extends BaseApplication {
     const expandedContact = enriched.find(c => c.isExpanded);
     if (expandedContact && !expandedContact.noInbox) {
       try {
-        const inboxJournal = game.nightcity?.messageRepository?.getInboxJournal?.(
-          expandedContact.actorId || expandedContact.id
-        );
-        if (inboxJournal) {
-          const pages = [...(inboxJournal.pages || [])].sort(
+        // Synchronous journal lookup — avoid async getInboxJournal which can't be called here
+        const contactId = expandedContact.id;
+        const actorId = expandedContact.actorId;
+        const journalName = actorId
+          ? `NCM-Inbox-${actorId}`
+          : `NCM-Inbox-Contact-${contactId}`;
+        const inboxJournal = game.journal?.find(j => j.name === journalName);
+
+        if (inboxJournal?.pages?.size) {
+          const pages = [...inboxJournal.pages].sort(
             (a, b) => (b.getFlag?.('cyberpunkred-messenger', 'timestamp') || '')
               .localeCompare(a.getFlag?.('cyberpunkred-messenger', 'timestamp') || '')
           );
@@ -2677,6 +2682,9 @@ export class AdminPanelApp extends BaseApplication {
     const filter = target.dataset.filter || 'all';
     // Toggle: clicking the active filter resets to 'all'
     this._contactFilter = (this._contactFilter === filter) ? 'all' : filter;
+        // Save scroll before re-render
+    const content = this.element?.querySelector('.ncm-admin-content');
+    if (content) this._scrollPositions[this._activeTab] = content.scrollTop;
     this.render(true);
   }
 
@@ -2685,6 +2693,9 @@ export class AdminPanelApp extends BaseApplication {
    */
   static _onContactClearSearch(event, target) {
     this._contactSearch = '';
+        // Save scroll before re-render
+    const content = this.element?.querySelector('.ncm-admin-content');
+    if (content) this._scrollPositions[this._activeTab] = content.scrollTop;
     this.render(true);
   }
 
@@ -2700,6 +2711,9 @@ export class AdminPanelApp extends BaseApplication {
     if (!contactId) return;
     this._expandedContactId = (this._expandedContactId === contactId) ? null : contactId;
     this._contactOverflowOpen = false;
+    // Save scroll before re-render
+    const content = this.element?.querySelector('.ncm-admin-content');
+    if (content) this._scrollPositions[this._activeTab] = content.scrollTop;
     this.render(true);
   }
 
@@ -2716,6 +2730,9 @@ export class AdminPanelApp extends BaseApplication {
     } else {
       this._selectedContacts.add(contactId);
     }
+        // Save scroll before re-render
+    const content = this.element?.querySelector('.ncm-admin-content');
+    if (content) this._scrollPositions[this._activeTab] = content.scrollTop;
     this.render(true);
   }
 
@@ -2724,6 +2741,9 @@ export class AdminPanelApp extends BaseApplication {
    */
   static _onClearContactSelection() {
     this._selectedContacts.clear();
+        // Save scroll before re-render
+    const content = this.element?.querySelector('.ncm-admin-content');
+    if (content) this._scrollPositions[this._activeTab] = content.scrollTop;
     this.render(true);
   }
 
@@ -2738,6 +2758,9 @@ export class AdminPanelApp extends BaseApplication {
     } else {
       this._collapsedContactGroups.add(groupKey);
     }
+        // Save scroll before re-render
+    const content = this.element?.querySelector('.ncm-admin-content');
+    if (content) this._scrollPositions[this._activeTab] = content.scrollTop;
     this.render(true);
   }
 
@@ -2748,6 +2771,9 @@ export class AdminPanelApp extends BaseApplication {
     event.preventDefault();
     event.stopPropagation();
     this._contactOverflowOpen = !this._contactOverflowOpen;
+        // Save scroll before re-render
+    const content = this.element?.querySelector('.ncm-admin-content');
+    if (content) this._scrollPositions[this._activeTab] = content.scrollTop;
     this.render(true);
   }
 

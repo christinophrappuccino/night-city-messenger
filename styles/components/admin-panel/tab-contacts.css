@@ -74,6 +74,12 @@
     cursor: pointer !important; transition: all 0.15s !important;
   }
 .ncm-app .ncm-ct-tbtn:hover { color: var(--ncm-text-secondary) !important; border-color: var(--ncm-border-active) !important; }
+.ncm-app .ncm-ct-tbtn i {
+  line-height: 1 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
 .ncm-app .ncm-ct-tbtn--accent { color: var(--ncm-primary) !important; border-color: rgba(246,82,97,0.3) !important; }
 .ncm-app .ncm-ct-tbtn--accent:hover { background: rgba(246,82,97,0.08) !important; border-color: rgba(246,82,97,0.5) !important; }
 .ncm-app .ncm-ct-tsep { width: 1px !important; height: 22px !important; background: var(--ncm-border) !important; margin: 0 2px !important; }
@@ -213,6 +219,10 @@
     flex: 1 !important; background: transparent !important; border: none !important; outline: none !important;
     font-family: var(--ncm-font-display) !important; font-size: 12px !important; font-weight: 500 !important;
     color: var(--ncm-text-primary) !important; padding: 3px 0 !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    height: auto !important;
+    width: auto !important;
   }
 .ncm-app .ncm-ct-search__input::placeholder { color: var(--ncm-text-muted) !important; opacity: 0.6 !important; }
 .ncm-app .ncm-ct-search__sort {
@@ -225,6 +235,11 @@
     border: 1px solid var(--ncm-border) !important; border-radius: 2px !important;
     padding: 4px 10px !important; cursor: pointer !important;
     min-height: 26px !important;
+    max-width: 100px !important;
+    width: auto !important;
+    height: auto !important;
+    min-width: 0 !important;
+    flex-shrink: 0 !important;
   }
 .ncm-app .ncm-ct-search__count {
     font-family: var(--ncm-font-display) !important; font-size: 10px !important; font-weight: 600 !important;
@@ -756,7 +771,8 @@
     width: 12px !important; text-align: center !important; font-size: 9px !important;
   }
 .ncm-app .ncm-ct-detail__known-row--yes i { color: var(--ncm-success) !important; }
-.ncm-app .ncm-ct-detail__known-row--no { color: var(--ncm-text-muted) !important; opacity: 0.6 !important; }
+.ncm-app .ncm-ct-detail__known-row--no { color: var(--ncm-text-muted) !important; opacity: 0.5 !important; }
+.ncm-app .ncm-ct-detail__known-row--no i { color: #6e6e88 !important; }
 .ncm-app .ncm-ct-detail__known-row--no i { color: #6e6e88 !important; }
 
   /* Right column — recent messages */
@@ -896,7 +912,7 @@
     transform: translateX(-50%) !important;
     padding: 4px 8px !important;
     background: var(--ncm-bg-elevated) !important; border: 1px solid var(--ncm-border) !important;
-    border-radius: 2px !important; white-space: nowrap !important; z-index: 200 !important;
+    border-radius: 2px !important; white-space: nowrap !important; z-index: 100000 !important;
     font-family: var(--ncm-font-display) !important; font-size: 9px !important; font-weight: 600 !important;
     color: var(--ncm-text-primary) !important;
     box-shadow: 0 2px 8px rgba(0,0,0,0.5) !important;
@@ -938,4 +954,101 @@
 .ncm-app .ncm-ct-search__clear:hover {
   color: var(--ncm-primary) !important;
   border-color: rgba(246,82,97,0.3) !important;
+}
+
+
+/* ─── Font family overrides — prevent Foundry font bleed ─── */
+.ncm-app .ncm-ct-header,
+.ncm-app .ncm-ct-quicksend,
+.ncm-app .ncm-ct-search,
+.ncm-app .ncm-ct-filters,
+.ncm-app .ncm-ct-batch,
+.ncm-app .ncm-ct-group,
+.ncm-app .ncm-ct-list,
+.ncm-app .ncm-ct-row,
+.ncm-app .ncm-ct-detail,
+.ncm-app .ncm-ct-sharelog {
+  font-family: var(--ncm-font-display) !important;
+}
+.ncm-app .ncm-ct-row__name {
+  font-family: var(--ncm-font-display) !important;
+  color: var(--ncm-text-primary) !important;
+}
+.ncm-app .ncm-ct-row__active {
+  font-family: var(--ncm-font-display) !important;
+}
+.ncm-app .ncm-ct-chip {
+  font-family: var(--ncm-font-display) !important;
+}
+.ncm-app .ncm-ct-row__notes {
+  font-family: var(--ncm-font-display) !important;
+}
+.ncm-app .ncm-ct-row__linked,
+.ncm-app .ncm-ct-row__player {
+  font-family: var(--ncm-font-display) !important;
+}
+.ncm-app .ncm-ct-row__shared-lbl {
+  font-family: var(--ncm-font-display) !important;
+}
+.ncm-app .ncm-ct-row__pip {
+  font-family: var(--ncm-font-display) !important;
+}
+.ncm-app .ncm-ct-row__trust-lbl {
+  font-family: var(--ncm-font-display) !important;
+}
+.ncm-app .ncm-ct-badge {
+  font-family: var(--ncm-font-display) !important;
+}
+.ncm-app .ncm-ct-detail__notes-label,
+.ncm-app .ncm-ct-detail__notes,
+.ncm-app .ncm-ct-detail__field-label,
+.ncm-app .ncm-ct-detail__section-label,
+.ncm-app .ncm-ct-detail__known-row,
+.ncm-app .ncm-ct-detail__msg-route,
+.ncm-app .ncm-ct-detail__msg-preview,
+.ncm-app .ncm-ct-detail__empty {
+  font-family: var(--ncm-font-display) !important;
+}
+.ncm-app .ncm-ct-group__name,
+.ncm-app .ncm-ct-group__ct {
+  font-family: var(--ncm-font-display) !important;
+}
+
+/* ─── Tooltip visibility fix — overflow clip prevention ─── */
+.ncm-app .ncm-ct-row__end {
+  overflow: visible !important;
+}
+.ncm-app .ncm-ct-row {
+  overflow: visible !important;
+}
+.ncm-app .ncm-ct-list {
+  overflow: visible !important;
+}
+.ncm-app .ncm-ct-header__toolbar {
+  overflow: visible !important;
+}
+.ncm-app .ncm-ct-row__actions {
+  overflow: visible !important;
+}
+.ncm-app .ncm-ct-row__meta {
+  overflow: visible !important;
+}
+.ncm-app .ncm-ct-qs-chip {
+  overflow: visible !important;
+}
+.ncm-app .ncm-ct-quicksend {
+  overflow-y: visible !important;
+}
+/* Bump tooltip z-index for admin panel context */
+.ncm-app .ncm-ct-row [data-ncm-tooltip]::after,
+.ncm-app .ncm-ct-row [data-ncm-tooltip]::before,
+.ncm-app .ncm-ct-header [data-ncm-tooltip]::after,
+.ncm-app .ncm-ct-header [data-ncm-tooltip]::before,
+.ncm-app .ncm-ct-quicksend [data-ncm-tooltip]::after,
+.ncm-app .ncm-ct-quicksend [data-ncm-tooltip]::before,
+.ncm-app .ncm-ct-detail [data-ncm-tooltip]::after,
+.ncm-app .ncm-ct-detail [data-ncm-tooltip]::before,
+.ncm-app .ncm-ct-filters [data-ncm-tooltip]::after,
+.ncm-app .ncm-ct-filters [data-ncm-tooltip]::before {
+  z-index: 10000 !important;
 }
