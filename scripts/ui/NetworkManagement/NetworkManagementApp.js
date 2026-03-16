@@ -834,8 +834,8 @@ export class NetworkManagementApp extends BaseApplication {
     if (swatch) swatch.value = preset.themeColor;
 
     // Highlight active preset pill
-    el?.querySelectorAll('.ncm-netmgr__preset').forEach(p => p.classList.remove('ncm-netmgr__preset--active'));
-    target.closest('.ncm-netmgr__preset')?.classList.add('ncm-netmgr__preset--active');
+    el?.querySelectorAll('.preset-pill').forEach(p => p.classList.remove('active'));
+    target.closest('.preset-pill')?.classList.add('active');
   }
 
   static _onBrowseCustomImage(event, target) {
@@ -851,22 +851,22 @@ export class NetworkManagementApp extends BaseApplication {
     const mode = target.closest('[data-mode]')?.dataset.mode;
     if (!mode) return;
     // Toggle card selection
-    this.element?.querySelectorAll('.ncm-netmgr__ice-card').forEach(c => c.classList.remove('ncm-netmgr__ice-card--sel'));
-    (target.closest('.ncm-netmgr__ice-card') || target).classList.add('ncm-netmgr__ice-card--sel');
+    this.element?.querySelectorAll('.ice-source-card').forEach(c => c.classList.remove('active'));
+    (target.closest('.ice-source-card') || target).classList.add('active');
     // Toggle panels
-    this.element?.querySelectorAll('.ncm-netmgr__ice-panel').forEach(p => p.classList.remove('ncm-netmgr__ice-panel--on'));
-    this.element?.querySelector(`[data-ice-panel="${mode}"]`)?.classList.add('ncm-netmgr__ice-panel--on');
+    this.element?.querySelectorAll('.ice-panel').forEach(p => p.classList.remove('ice-panel--on'));
+    this.element?.querySelector(`[data-ice-panel="${mode}"]`)?.classList.add('ice-panel--on');
     // Update hidden input
     const input = this.element?.querySelector('input[name="iceSource"]');
     if (input) input.value = mode;
   }
 
   static _onSelectIceActor(event, target) {
-    const card = target.closest('.ncm-netmgr__ice-actor') || target;
+    const card = target.closest('.ice-actor-card') || target;
     const actorId = card.dataset.actorId;
     if (!actorId) return;
-    this.element?.querySelectorAll('.ncm-netmgr__ice-actor').forEach(c => c.classList.remove('ncm-netmgr__ice-actor--sel'));
-    card.classList.add('ncm-netmgr__ice-actor--sel');
+    this.element?.querySelectorAll('.ice-actor-card').forEach(c => c.classList.remove('active'));
+    card.classList.add('active');
     const input = this.element?.querySelector('input[name="iceActorId"]');
     if (input) input.value = actorId;
   }
@@ -874,14 +874,14 @@ export class NetworkManagementApp extends BaseApplication {
   static _onSelectIconMode(event, target) {
     const mode = target.closest('[data-mode]')?.dataset.mode;
     if (!mode) return;
-    // Toggle tab active state
-    this.element?.querySelectorAll('.ncm-netmgr__icon-mode-tab').forEach(t => t.classList.remove('ncm-netmgr__icon-mode-tab--active'));
-    (target.closest('.ncm-netmgr__icon-mode-tab') || target).classList.add('ncm-netmgr__icon-mode-tab--active');
+    // Toggle tab active
+    this.element?.querySelectorAll('.icon-mode-tab').forEach(t => t.classList.remove('active'));
+    (target.closest('.icon-mode-tab') || target).classList.add('active');
     // Toggle sections
-    this.element?.querySelectorAll('.ncm-netmgr__icon-mode-section').forEach(s => {
+    this.element?.querySelectorAll('.icon-mode-section').forEach(s => {
       s.style.display = s.dataset.iconMode === mode ? '' : 'none';
     });
-    // Update hidden input
+    // Update hidden
     const input = this.element?.querySelector('input[name="iconMode"]');
     if (input) input.value = mode;
   }

@@ -159,11 +159,11 @@
 
           {{!-- Presets (create mode only) --}}
           {{#if isCreating}}
-          <div class="ncm-netmgr__preset-section">
-            <div class="ncm-netmgr__preset-header"><i class="fas fa-bolt"></i><span>Presets</span></div>
-            <div class="ncm-netmgr__presets">
+          <div class="preset-section">
+            <div class="preset-section-header"><i class="fas fa-bolt"></i><span class="preset-section-title">Presets</span></div>
+            <div class="preset-bar">
               {{#each presets}}
-              <div class="ncm-netmgr__preset" data-action="applyPreset" data-preset="{{key}}">
+              <div class="preset-pill" data-action="applyPreset" data-preset="{{key}}">
                 <i class="fas {{icon}}" style="color:{{color}};"></i> {{label}}
               </div>
               {{/each}}
@@ -171,445 +171,258 @@
           </div>
           {{/if}}
 
-          {{!-- Identity Fieldset --}}
-          <div class="ncm-netmgr__fieldset">
-            <div class="ncm-netmgr__fieldset-legend"><i class="fas fa-id-card" style="color:#19f3f7"></i> Identity</div>
-            <div class="ncm-netmgr__fieldset-body">
-              <div class="ncm-netmgr__desc">The name and description players see when browsing available networks.</div>
-              <div class="ncm-netmgr__field-row">
-                <div class="ncm-netmgr__field">
-                  <label class="ncm-netmgr__field-label">Network Name</label>
-                  <input class="ncm-netmgr__input" type="text" name="name"
-                         value="{{#unless isCreating}}{{selectedNetwork.name}}{{/unless}}"
-                         placeholder="Network name...">
+          {{!-- ═══ IDENTITY ═══ --}}
+          <div class="cfg-section">
+            <div class="cfg-section-header"><i class="fas fa-id-badge cfg-section-icon" style="color:#19f3f7"></i><div class="cfg-section-title">Identity</div></div>
+            <div class="cfg-desc">The name and description players see when browsing available networks.</div>
+            <div class="cfg-row"><span class="cfg-label">Name</span><input class="cfg-input cfg-flex" type="text" name="name" value="{{#unless isCreating}}{{selectedNetwork.name}}{{/unless}}" placeholder="e.g. Militech Staging"></div>
+            <div class="cfg-row"><span class="cfg-label">Type</span>
+              <select class="cfg-select cfg-flex" name="type">
+                {{#each networkTypes}}<option value="{{value}}" {{#if (eq value ../selectedNetwork.type)}}selected{{/if}} {{#if (and ../isCreating (eq value "custom"))}}selected{{/if}}>{{label}}</option>{{/each}}
+              </select>
+            </div>
+            <div class="cfg-row cfg-row--col"><span class="cfg-label cfg-label--col">Description</span><input class="cfg-input" type="text" name="description" value="{{#unless isCreating}}{{selectedNetwork.description}}{{/unless}}" placeholder="In-world description..."></div>
+            <div class="cfg-hint">Visible to players when they inspect the network.</div>
+            <div class="cfg-row cfg-row--col"><span class="cfg-label cfg-label--col">Lore / Notes</span><input class="cfg-input" type="text" name="lore" value="{{#unless isCreating}}{{selectedNetwork.lore}}{{/unless}}" placeholder="GM-only notes..."></div>
+            <div class="cfg-row cfg-row--col"><span class="cfg-label cfg-label--col">Group / Folder</span>
+              <input class="cfg-input" type="text" name="group" value="{{#unless isCreating}}{{selectedNetwork.group}}{{/unless}}" placeholder="e.g. Gang Turf, Corp Offices..." list="ncm-network-groups">
+              <datalist id="ncm-network-groups">{{#each existingGroups}}<option value="{{this}}">{{/each}}</datalist>
+            </div>
+          </div>
+
+          {{!-- ═══ SIGNAL & PERFORMANCE ═══ --}}
+          <div class="cfg-section">
+            <div class="cfg-section-header"><i class="fas fa-sliders-h cfg-section-icon" style="color:#f7c948"></i><div class="cfg-section-title">Signal & Performance</div></div>
+            <div class="cfg-desc">Signal affects data shard DV modifiers. Reliability is message delivery chance. Delay adds message latency.</div>
+            <div class="cfg-row--3">
+              <div><span class="cfg-label cfg-label--col">Signal %</span><input class="cfg-input" type="number" name="signalStrength" value="{{#if isCreating}}75{{else}}{{selectedNetwork.signalStrength}}{{/if}}" min="0" max="100"></div>
+              <div><span class="cfg-label cfg-label--col">Reliability %</span><input class="cfg-input" type="number" name="reliability" value="{{#if isCreating}}85{{else}}{{selectedNetwork.reliability}}{{/if}}" min="0" max="100"></div>
+              <div><span class="cfg-label cfg-label--col">Delay (ms)</span><input class="cfg-input" type="number" name="messageDelay" value="{{#if isCreating}}0{{else}}{{selectedNetwork.effects.messageDelay}}{{/if}}" min="0"></div>
+            </div>
+          </div>
+
+          {{!-- ═══ AUTHENTICATION ═══ --}}
+          <div class="cfg-section">
+            <div class="cfg-section-header"><i class="fas fa-lock cfg-section-icon" style="color:#a855f7"></i><div class="cfg-section-title">Authentication</div></div>
+            <div class="cfg-desc">How players gain access. Configure security level, bypass methods, passwords, skill checks, key items, and ICE protection.</div>
+
+            <div class="cfg-row--2">
+              <div><span class="cfg-label cfg-label--col">Security Level</span>
+                <select class="cfg-select" name="securityLevel">{{#each securityLevels}}<option value="{{value}}" {{#if (eq value ../selectedNetwork.security.level)}}selected{{/if}}>{{label}}</option>{{/each}}</select>
+              </div>
+              <div><span class="cfg-label cfg-label--col">Authentication</span>
+                <select class="cfg-select" name="requiresAuth">
+                  <option value="false" {{#unless selectedNetwork.security.requiresAuth}}selected{{/unless}}>None (open)</option>
+                  <option value="true" {{#if selectedNetwork.security.requiresAuth}}selected{{/if}}>Required</option>
+                </select>
+              </div>
+            </div>
+
+            {{!-- Auth Methods --}}
+            <div class="cfg-divider"></div>
+            <span class="cfg-label cfg-label--col">Auth / Bypass Methods</span>
+            <div class="cfg-flag-cards" style="margin-bottom:8px;">
+              <label class="cfg-flag-card"><input type="checkbox" name="allowPassword" value="true" {{#if selectedNetwork.security.allowPassword}}checked{{/if}}><div class="cfg-flag-info"><span class="cfg-flag-title"><i class="fas fa-key" style="color:#f7c948;margin-right:3px;font-size:9px;"></i> Password</span><span class="cfg-flag-desc">Passphrase entry</span></div></label>
+              <label class="cfg-flag-card"><input type="checkbox" name="allowSkillCheck" value="true" {{#if selectedNetwork.security.allowSkillCheck}}checked{{/if}}><div class="cfg-flag-info"><span class="cfg-flag-title"><i class="fas fa-dice-d20" style="color:#a855f7;margin-right:3px;font-size:9px;"></i> Skill Check</span><span class="cfg-flag-desc">Roll vs DV</span></div></label>
+              <label class="cfg-flag-card"><input type="checkbox" name="allowKeyItem" value="true" {{#if selectedNetwork.security.allowKeyItem}}checked{{/if}}><div class="cfg-flag-info"><span class="cfg-flag-title"><i class="fas fa-id-badge" style="color:#19f3f7;margin-right:3px;font-size:9px;"></i> Key Item</span><span class="cfg-flag-desc">Inventory item</span></div></label>
+            </div>
+
+            <div class="cfg-row"><span class="cfg-label">Logic</span>
+              <select class="cfg-select cfg-flex" name="authLogic">
+                <option value="any" {{#if (eq selectedNetwork.security.authLogic "any")}}selected{{/if}}>ANY method (OR)</option>
+                <option value="all" {{#if (eq selectedNetwork.security.authLogic "all")}}selected{{/if}}>ALL methods (AND)</option>
+              </select>
+            </div>
+            <div class="cfg-hint">{{#if (eq selectedNetwork.security.authLogic "all")}}Player must pass ALL enabled checks.{{else}}Player can use any single method.{{/if}}</div>
+
+            {{!-- Password --}}
+            <div class="cfg-divider"></div>
+            <div class="cfg-row--2">
+              <div><span class="cfg-label cfg-label--col">Password</span><input class="cfg-input" type="text" name="password" value="{{selectedNetwork.security.password}}" placeholder="Network password..."></div>
+              <div><span class="cfg-label cfg-label--col">Max Attempts / Lockout (min)</span>
+                <div style="display:flex;gap:6px;">
+                  <input class="cfg-input" type="number" name="maxAttempts" value="{{#if isCreating}}3{{else}}{{selectedNetwork.security.maxAttempts}}{{/if}}" min="1" style="flex:1;">
+                  <input class="cfg-input" type="number" name="lockoutMinutes" value="{{#if isCreating}}60{{else}}{{selectedNetwork.lockoutMinutes}}{{/if}}" min="1" style="flex:1;">
                 </div>
-                <div class="ncm-netmgr__field">
-                  <label class="ncm-netmgr__field-label">Type</label>
-                  <select class="ncm-netmgr__select" name="type">
-                    {{#each networkTypes}}
-                    <option value="{{value}}"
-                      {{#if (eq value ../selectedNetwork.type)}}selected{{/if}}
-                      {{#if (and ../isCreating (eq value "custom"))}}selected{{/if}}>
-                      {{label}}
-                    </option>
-                    {{/each}}
-                  </select>
+              </div>
+            </div>
+
+            {{!-- Skill Check --}}
+            <div class="cfg-row--2">
+              <div><span class="cfg-label cfg-label--col">Bypass Skills (comma-separated)</span><input class="cfg-input" type="text" name="bypassSkills" value="{{#if selectedNetwork.security.bypassSkills}}{{join selectedNetwork.security.bypassSkills ","}}{{/if}}" placeholder="Interface, Electronics/Security Tech"></div>
+              <div><span class="cfg-label cfg-label--col">Bypass DV</span><input class="cfg-input" type="number" name="bypassDC" value="{{#if isCreating}}15{{else}}{{selectedNetwork.security.bypassDC}}{{/if}}" min="1"></div>
+            </div>
+
+            {{!-- Key Item Picker --}}
+            <div class="cfg-divider"></div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><i class="fas fa-id-badge" style="color:#f7c948;font-size:13px;"></i><span style="font-family:var(--font-body,'Rajdhani',sans-serif);font-size:13px;font-weight:700;color:#e8e8f0;text-transform:uppercase;letter-spacing:0.04em;">Key Item</span></div>
+            <div class="cfg-hint" style="margin-bottom:8px;">Requires the player to have a specific item in their inventory to connect.</div>
+
+            <div class="ncm-netmgr__key-item-filled" data-key-item-filled {{#unless hasKeyItem}}style="display:none"{{/unless}}>
+              <div class="ncm-netmgr__ki-img" data-key-item-img-slot>{{#if keyItemImg}}<img src="{{keyItemImg}}" alt="">{{else}}<i class="fas fa-cube"></i>{{/if}}</div>
+              <div class="ncm-netmgr__ki-meta">
+                <div class="ncm-netmgr__ki-name" data-key-item-name-slot>{{keyItemName}}</div>
+                <div class="ncm-netmgr__ki-actions">
+                  <button type="button" class="ncm-netmgr__btn-sm" data-action="searchKeyItem"><i class="fas fa-magnifying-glass"></i> Change</button>
+                  <button type="button" class="ncm-netmgr__btn-sm ncm-netmgr__btn-sm--danger" data-action="clearKeyItem"><i class="fas fa-times"></i> Clear</button>
                 </div>
               </div>
-              <div class="ncm-netmgr__field">
-                <label class="ncm-netmgr__field-label">Description</label>
-                <input class="ncm-netmgr__input" type="text" name="description"
-                       value="{{#unless isCreating}}{{selectedNetwork.description}}{{/unless}}"
-                       placeholder="In-world description...">
-                <span class="ncm-netmgr__field-hint">Visible to players when they inspect the network.</span>
+            </div>
+            <div class="ncm-netmgr__key-item-empty" data-key-item-empty data-action="searchKeyItem" {{#if hasKeyItem}}style="display:none"{{/if}}>
+              <div class="ncm-netmgr__kie-icon"><i class="fas fa-magnifying-glass"></i></div>
+              <div class="ncm-netmgr__kie-text">Click to search items</div>
+            </div>
+            <input type="hidden" name="keyItemName" value="{{selectedNetwork.security.keyItemName}}" />
+
+            <div class="cfg-row" style="margin-top:6px;"><span class="cfg-label">Tag</span><input class="cfg-input cfg-flex" type="text" name="keyItemTag" value="{{selectedNetwork.security.keyItemTag}}" placeholder="e.g. arasaka_keycard"></div>
+            <label class="cfg-flag-card" style="max-width:320px;"><input type="checkbox" name="keyItemConsume" value="true" {{#if selectedNetwork.security.keyItemConsume}}checked{{/if}}><div class="cfg-flag-info"><span class="cfg-flag-title">Consume</span><span class="cfg-flag-desc">Removes from inventory after use</span></div></label>
+
+            {{!-- ICE Protection --}}
+            <div class="cfg-divider"></div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><i class="fas fa-shield-halved" style="color:#ff0033;font-size:13px;"></i><span style="font-family:var(--font-body,'Rajdhani',sans-serif);font-size:13px;font-weight:700;color:#e8e8f0;text-transform:uppercase;letter-spacing:0.04em;">ICE Protection</span></div>
+            <div class="cfg-desc">Intrusion Countermeasures — determines what happens when a skill check breach fails. <strong>BLACK ICE</strong> and <strong>RED ICE</strong> deal direct HP damage.</div>
+
+            <div class="cfg-row--2">
+              <div><span class="cfg-label cfg-label--col">ICE Type</span>
+                <select class="cfg-select" name="encryptionType">
+                  <option value="ICE" {{#if (eq selectedNetwork.security.encryptionType "ICE")}}selected{{/if}}>Standard ICE</option>
+                  <option value="BLACK_ICE" {{#if (eq selectedNetwork.security.encryptionType "BLACK_ICE")}}selected{{/if}}>BLACK ICE</option>
+                  <option value="RED_ICE" {{#if (eq selectedNetwork.security.encryptionType "RED_ICE")}}selected{{/if}}>RED ICE</option>
+                </select>
               </div>
-              <div class="ncm-netmgr__field">
-                <label class="ncm-netmgr__field-label">Lore / Notes</label>
-                <input class="ncm-netmgr__input" type="text" name="lore"
-                       value="{{#unless isCreating}}{{selectedNetwork.lore}}{{/unless}}"
-                       placeholder="GM-only notes...">
+              <div><span class="cfg-label cfg-label--col">On Failure</span>
+                <select class="cfg-select" name="failureMode">
+                  <option value="nothing" {{#if (eq selectedNetwork.security.failureMode "nothing")}}selected{{/if}}>Nothing</option>
+                  <option value="lockout" {{#if (eq selectedNetwork.security.failureMode "lockout")}}selected{{/if}}>Lockout</option>
+                  <option value="permanent" {{#if (eq selectedNetwork.security.failureMode "permanent")}}selected{{/if}}>Permanent Lockout</option>
+                  <option value="damage" {{#if (eq selectedNetwork.security.failureMode "damage")}}selected{{/if}}>Damage (ICE)</option>
+                </select>
               </div>
-              <div class="ncm-netmgr__field">
-                <label class="ncm-netmgr__field-label">Group / Folder</label>
-                <input class="ncm-netmgr__input" type="text" name="group"
-                       value="{{#unless isCreating}}{{selectedNetwork.group}}{{/unless}}"
-                       placeholder="e.g. Gang Turf, Corp Offices..." list="ncm-network-groups">
-                <datalist id="ncm-network-groups">
-                  {{#each existingGroups}}
-                  <option value="{{this}}">
-                  {{/each}}
-                </datalist>
+            </div>
+            <div class="cfg-hint">When set to <strong>Damage</strong>, failed breaches trigger ICE retaliation.</div>
+
+            {{!-- ICE Source — always in DOM, toggled by JS --}}
+            <div class="cfg-conditional cfg-conditional-border--danger" data-ice-source {{#unless isLethalICE}}style="display:none"{{else}}style="display:block"{{/unless}}>
+              <span class="cfg-label cfg-label--col">ICE Source</span>
+              <div class="cfg-hint" style="margin-bottom:6px;">Where the ICE's combat stats come from when it retaliates.</div>
+
+              <div class="ice-source-cards">
+                <div class="ice-source-card {{#if iceSourceDefault}}active{{/if}}" data-action="selectIceSource" data-mode="default">
+                  <i class="fas fa-dice"></i><div class="isc-info"><span class="isc-title">Default</span><span class="isc-desc">Generic dice (3d6 / 5d6)</span></div>
+                </div>
+                <div class="ice-source-card {{#if iceSourceCustom}}active{{/if}}" data-action="selectIceSource" data-mode="custom">
+                  <i class="fas fa-pen-fancy"></i><div class="isc-info"><span class="isc-title">Custom</span><span class="isc-desc">Your own name + formula</span></div>
+                </div>
+                <div class="ice-source-card {{#if iceSourceActor}}active{{/if}}" data-action="selectIceSource" data-mode="actor">
+                  <i class="fas fa-robot"></i><div class="isc-info"><span class="isc-title">Actor</span><span class="isc-desc">ATK stat from Black ICE actor</span></div>
+                </div>
+              </div>
+              <input type="hidden" name="iceSource" value="{{iceSource}}" />
+
+              {{!-- Default panel --}}
+              <div class="ice-panel {{#if iceSourceDefault}}ice-panel--on{{/if}}" data-ice-panel="default">
+                <div class="ice-formula-info">Damage: <strong>3d6</strong> (BLACK ICE) or <strong>5d6</strong> (RED ICE)</div>
+              </div>
+              {{!-- Custom panel --}}
+              <div class="ice-panel {{#if iceSourceCustom}}ice-panel--on{{/if}}" data-ice-panel="custom">
+                <div class="cfg-row--2" style="margin-top:6px;">
+                  <div><span class="cfg-label cfg-label--col">ICE Name</span><input class="cfg-input" type="text" name="iceCustomName" value="{{selectedNetwork.security.ice.customName}}" placeholder="e.g. HELLHOUND"></div>
+                  <div><span class="cfg-label cfg-label--col">Damage Formula</span><input class="cfg-input" type="text" name="iceCustomDamage" value="{{selectedNetwork.security.ice.customDamage}}" placeholder="e.g. 4d6+2"></div>
+                </div>
+                <div class="cfg-row cfg-row--col"><span class="cfg-label cfg-label--col">Portrait</span><input class="cfg-input" type="text" name="iceCustomPortrait" value="{{selectedNetwork.security.ice.customPortrait}}" placeholder="Image path (optional)"></div>
+              </div>
+              {{!-- Actor panel --}}
+              <div class="ice-panel {{#if iceSourceActor}}ice-panel--on{{/if}}" data-ice-panel="actor">
+                <div class="cfg-hint" style="margin:6px 0;">Select a Black ICE actor — damage will be <strong>ATK + 1d10</strong>.</div>
+                <div class="ice-actor-grid">
+                  {{#each blackIceActors}}
+                  <div class="ice-actor-card {{#if selected}}active{{/if}}" data-action="selectIceActor" data-actor-id="{{id}}">
+                    {{#if img}}<img src="{{img}}" alt="{{name}}">{{else}}<i class="fas fa-robot"></i>{{/if}}
+                    <span class="ice-actor-name">{{name}}</span>
+                    {{#if atk}}<span class="ice-actor-atk">ATK {{atk}}</span>{{/if}}
+                  </div>
+                  {{else}}<span class="cfg-hint">No Black ICE actors found.</span>{{/each}}
+                </div>
+                <input type="hidden" name="iceActorId" value="{{selectedNetwork.security.ice.actorId}}" />
               </div>
             </div>
           </div>
 
-          {{!-- Signal & Reliability Fieldset --}}
-          <div class="ncm-netmgr__fieldset">
-            <div class="ncm-netmgr__fieldset-legend"><i class="fas fa-signal" style="color:#f7c948"></i> Signal & Performance</div>
-            <div class="ncm-netmgr__fieldset-body">
-              <div class="ncm-netmgr__desc">Signal affects data shard DV modifiers. Reliability is message delivery chance. Delay adds message latency.</div>
-              <div class="ncm-netmgr__field-row ncm-netmgr__field-row--3">
-                <div class="ncm-netmgr__field">
-                  <label class="ncm-netmgr__field-label">Signal Strength</label>
-                  <input class="ncm-netmgr__input" type="number" name="signalStrength"
-                         value="{{#if isCreating}}75{{else}}{{selectedNetwork.signalStrength}}{{/if}}"
-                         min="0" max="100">
+          {{!-- ═══ NETWORK FLAGS ═══ --}}
+          <div class="cfg-section">
+            <div class="cfg-section-header"><i class="fas fa-flag cfg-section-icon" style="color:#00ff41"></i><div class="cfg-section-title">Network Flags</div></div>
+            <div class="cfg-desc">Behavioral properties that affect how messages are handled on this network.</div>
+            <div class="cfg-flag-cards">
+              <label class="cfg-flag-card"><input type="checkbox" name="traced" value="true" {{#if selectedNetwork.effects.traced}}checked{{/if}}><div class="cfg-flag-info"><span class="cfg-flag-title">Traced</span><span class="cfg-flag-desc">Messages are logged and sender identity is recorded</span></div></label>
+              <label class="cfg-flag-card"><input type="checkbox" name="anonymity" value="true" {{#if selectedNetwork.effects.anonymity}}checked{{/if}}><div class="cfg-flag-info"><span class="cfg-flag-title">Anonymous</span><span class="cfg-flag-desc">Sender identity is hidden from recipients</span></div></label>
+              <label class="cfg-flag-card"><input type="checkbox" name="globalAvailability" value="true" {{#if selectedNetwork.availability.global}}checked{{/if}}><div class="cfg-flag-info"><span class="cfg-flag-title">Global</span><span class="cfg-flag-desc">Available in all scenes</span></div></label>
+            </div>
+            <div class="cfg-divider"></div>
+            <label class="cfg-flag-card" style="max-width:320px;"><input type="checkbox" name="canRoute" value="true" {{#unless isCreating}}{{#if selectedNetwork.effects.canRoute}}checked{{/if}}{{else}}checked{{/unless}}><div class="cfg-flag-info"><span class="cfg-flag-title">Can Route</span><span class="cfg-flag-desc">Messages can route to other networks</span></div></label>
+            <label class="cfg-flag-card" style="max-width:320px;"><input type="checkbox" name="restrictedAccess" value="true" {{#if selectedNetwork.effects.restrictedAccess}}checked{{/if}}><div class="cfg-flag-info"><span class="cfg-flag-title">Restricted Access</span><span class="cfg-flag-desc">Messages only readable on this network</span></div></label>
+            <div class="cfg-row cfg-row--col" style="margin-top:4px;"><span class="cfg-label cfg-label--col">Allowed Recipient Networks (comma-separated)</span><input class="cfg-input" type="text" name="allowedRecipientNetworks" value="{{#if selectedNetwork.effects.allowedRecipientNetworks}}{{join selectedNetwork.effects.allowedRecipientNetworks ","}}{{/if}}" placeholder="Leave empty for unrestricted"></div>
+          </div>
+
+          {{!-- ═══ APPEARANCE ═══ --}}
+          <div class="cfg-section">
+            <div class="cfg-section-header"><i class="fas fa-palette cfg-section-icon" style="color:#F65261"></i><div class="cfg-section-title">Appearance</div></div>
+            <div class="cfg-desc">Icon and color shown in the network selector and status bars.</div>
+
+            <span class="cfg-label cfg-label--col">Icon Source</span>
+            <div class="icon-mode-tabs">
+              <div class="icon-mode-tab {{#if isIconModeFa}}active{{/if}}" data-action="selectIconMode" data-mode="fa">FA Icon</div>
+              <div class="icon-mode-tab {{#if isIconModeImage}}active{{/if}}" data-action="selectIconMode" data-mode="image">Custom Image</div>
+            </div>
+            <input type="hidden" name="iconMode" value="{{iconMode}}" />
+
+            {{!-- FA Icon mode --}}
+            <div class="icon-mode-section" data-icon-mode="fa" {{#unless isIconModeFa}}style="display:none"{{/unless}}>
+              <div class="appearance-row">
+                <div class="icon-preview" style="background:{{#if isCreating}}rgba(25,243,247,0.12){{else}}{{selectedNetwork.theme.color}}14{{/if}}; color:{{#if isCreating}}#19f3f7{{else}}{{selectedNetwork.theme.color}}{{/if}}; border:1px solid {{#if isCreating}}rgba(25,243,247,0.2){{else}}{{selectedNetwork.theme.color}}26{{/if}};">
+                  <i class="fas {{#if isCreating}}fa-wifi{{else}}{{selectedNetwork.theme.icon}}{{/if}}"></i>
                 </div>
-                <div class="ncm-netmgr__field">
-                  <label class="ncm-netmgr__field-label">Reliability %</label>
-                  <input class="ncm-netmgr__input" type="number" name="reliability"
-                         value="{{#if isCreating}}85{{else}}{{selectedNetwork.reliability}}{{/if}}"
-                         min="0" max="100">
+                <div style="flex:1;">
+                  <span class="cfg-label cfg-label--col">Icon</span>
+                  <select class="cfg-select" name="themeIcon">{{#each iconOptions}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}</select>
                 </div>
-                <div class="ncm-netmgr__field">
-                  <label class="ncm-netmgr__field-label">Message Delay (ms)</label>
-                  <input class="ncm-netmgr__input" type="number" name="messageDelay"
-                         value="{{#if isCreating}}0{{else}}{{selectedNetwork.effects.messageDelay}}{{/if}}"
-                         min="0">
+                <div>
+                  <span class="cfg-label cfg-label--col">Color</span>
+                  <div class="color-row">
+                    <input type="color" name="themeColor" class="color-swatch" value="{{#if isCreating}}#19f3f7{{else}}{{selectedNetwork.theme.color}}{{/if}}">
+                    <input class="cfg-input cfg-input--mono" type="text" name="themeColorText" value="{{#if isCreating}}#19f3f7{{else}}{{selectedNetwork.theme.color}}{{/if}}" style="width:80px;">
+                  </div>
                 </div>
               </div>
-              <label class="ncm-netmgr__checkbox-row">
-                <input type="checkbox" name="globalAvailability" value="true"
-                       {{#if selectedNetwork.availability.global}}checked{{/if}}>
-                Globally Available (all scenes)
-              </label>
+              <div class="cfg-row" style="margin-top:6px;"><span class="cfg-label">Glitch</span><input class="cfg-input cfg-input--mono" type="number" name="glitchIntensity" value="{{#if isCreating}}0.1{{else}}{{selectedNetwork.theme.glitchIntensity}}{{/if}}" min="0" max="1" step="0.1" style="max-width:80px;"></div>
+            </div>
+
+            {{!-- Custom Image mode --}}
+            <div class="icon-mode-section" data-icon-mode="image" {{#unless isIconModeImage}}style="display:none"{{/unless}}>
+              <div class="icon-custom-row">
+                <div class="icon-custom-preview">
+                  {{#if selectedNetwork.theme.customImage}}<img src="{{selectedNetwork.theme.customImage}}" alt="">{{else}}<i class="fas fa-image"></i>{{/if}}
+                </div>
+                <div style="flex:1;">
+                  <span class="cfg-label cfg-label--col">Image Path</span>
+                  <div style="display:flex;gap:6px;">
+                    <input class="cfg-input" type="text" name="customImage" value="{{selectedNetwork.theme.customImage}}" placeholder="Path to image...">
+                    <button type="button" class="ncm-netmgr__btn-sm" data-action="browseCustomImage" style="flex-shrink:0;"><i class="fas fa-folder-open"></i></button>
+                  </div>
+                  <div class="cfg-hint">SVG images can be tinted with the color value. Raster images display as-is.</div>
+                </div>
+              </div>
+              <div style="margin-top:8px;">
+                <span class="cfg-label cfg-label--col">Color</span>
+                <div class="color-row">
+                  <input type="color" name="themeColorImg" class="color-swatch" value="{{#if isCreating}}#19f3f7{{else}}{{selectedNetwork.theme.color}}{{/if}}">
+                  <input class="cfg-input cfg-input--mono" type="text" name="themeColorImgText" value="{{#if isCreating}}#19f3f7{{else}}{{selectedNetwork.theme.color}}{{/if}}" style="width:80px;">
+                </div>
+              </div>
+              <div class="cfg-row" style="margin-top:6px;"><span class="cfg-label">Glitch</span><input class="cfg-input cfg-input--mono" type="number" name="glitchIntensityImg" value="{{#if isCreating}}0.1{{else}}{{selectedNetwork.theme.glitchIntensity}}{{/if}}" min="0" max="1" step="0.1" style="max-width:80px;"></div>
             </div>
           </div>
 
-          {{!-- Security Fieldset --}}
-          <div class="ncm-netmgr__fieldset">
-            <div class="ncm-netmgr__fieldset-legend"><i class="fas fa-shield-halved" style="color:#a855f7"></i> Security</div>
-            <div class="ncm-netmgr__fieldset-body">
-              <div class="ncm-netmgr__desc">Authentication methods, bypass skills, key items, and ICE protection. Configure how players gain access to this network.</div>
-
-              {{!-- Row 1: Security Level + Auth Required --}}
-              <div class="ncm-netmgr__field-row">
-                <div class="ncm-netmgr__field">
-                  <label class="ncm-netmgr__field-label">Security Level</label>
-                  <select class="ncm-netmgr__select" name="securityLevel">
-                    {{#each securityLevels}}
-                    <option value="{{value}}"
-                      {{#if (eq value ../selectedNetwork.security.level)}}selected{{/if}}>
-                      {{label}}
-                    </option>
-                    {{/each}}
-                  </select>
-                </div>
-                <div class="ncm-netmgr__field">
-                  <label class="ncm-netmgr__field-label">Authentication</label>
-                  <select class="ncm-netmgr__select" name="requiresAuth">
-                    <option value="false" {{#unless selectedNetwork.security.requiresAuth}}selected{{/unless}}>None (open)</option>
-                    <option value="true" {{#if selectedNetwork.security.requiresAuth}}selected{{/if}}>Required</option>
-                  </select>
-                </div>
-              </div>
-
-              {{!-- Auth Methods (which bypass/auth methods are available) --}}
-              <div class="ncm-netmgr__field-row">
-                <div class="ncm-netmgr__field" style="flex:2;">
-                  <label class="ncm-netmgr__field-label">Auth / Bypass Methods</label>
-                  <div class="ncm-netmgr__method-toggles">
-                    <label class="ncm-netmgr__checkbox-row">
-                      <input type="checkbox" name="allowPassword" value="true"
-                             {{#if selectedNetwork.security.allowPassword}}checked{{/if}}>
-                      <i class="fas fa-key" style="color:var(--ncm-accent,#f7c948);margin-right:2px;font-size:9px;"></i>
-                      Password
-                    </label>
-                    <label class="ncm-netmgr__checkbox-row">
-                      <input type="checkbox" name="allowSkillCheck" value="true"
-                             {{#if selectedNetwork.security.allowSkillCheck}}checked{{/if}}>
-                      <i class="fas fa-dice-d20" style="color:#a855f7;margin-right:2px;font-size:9px;"></i>
-                      Skill Check
-                    </label>
-                    <label class="ncm-netmgr__checkbox-row">
-                      <input type="checkbox" name="allowKeyItem" value="true"
-                             {{#if selectedNetwork.security.allowKeyItem}}checked{{/if}}>
-                      <i class="fas fa-id-badge" style="color:var(--ncm-secondary,#19f3f7);margin-right:2px;font-size:9px;"></i>
-                      Key Item
-                    </label>
-                  </div>
-                </div>
-                <div class="ncm-netmgr__field" style="flex:1;">
-                  <label class="ncm-netmgr__field-label">Combination Logic</label>
-                  <select class="ncm-netmgr__select" name="authLogic">
-                    <option value="any" {{#if (eq selectedNetwork.security.authLogic "any")}}selected{{/if}}>
-                      ANY method (OR)
-                    </option>
-                    <option value="all" {{#unless selectedNetwork.security.authLogic}}selected{{/unless}}
-                            {{#if (eq selectedNetwork.security.authLogic "all")}}selected{{/if}}>
-                      ALL methods (AND)
-                    </option>
-                  </select>
-                  <span class="ncm-netmgr__field-hint">
-                    {{#if (eq selectedNetwork.security.authLogic "all")}}
-                      Player must pass ALL enabled checks to gain access.
-                    {{else}}
-                      Player can use any single method to gain access.
-                    {{/if}}
-                  </span>
-                </div>
-              </div>
-
-              {{!-- Password Config --}}
-              <div class="ncm-netmgr__field-row">
-                <div class="ncm-netmgr__field">
-                  <label class="ncm-netmgr__field-label">Password</label>
-                  <input class="ncm-netmgr__input" type="text" name="password"
-                         value="{{selectedNetwork.security.password}}"
-                         placeholder="Network password...">
-                </div>
-                <div class="ncm-netmgr__field">
-                  <label class="ncm-netmgr__field-label">Max Attempts / Lockout (min)</label>
-                  <div class="ncm-netmgr__field-pair">
-                    <input class="ncm-netmgr__input" type="number" name="maxAttempts"
-                           value="{{#if isCreating}}3{{else}}{{selectedNetwork.security.maxAttempts}}{{/if}}"
-                           min="1">
-                    <input class="ncm-netmgr__input" type="number" name="lockoutMinutes"
-                           value="{{#if isCreating}}60{{else}}{{selectedNetwork.lockoutMinutes}}{{/if}}"
-                           min="1">
-                  </div>
-                </div>
-              </div>
-
-              {{!-- Skill Check Config --}}
-              <div class="ncm-netmgr__field-row">
-                <div class="ncm-netmgr__field">
-                  <label class="ncm-netmgr__field-label">Bypass Skills (comma-separated)</label>
-                  <input class="ncm-netmgr__input" type="text" name="bypassSkills"
-                         value="{{#if selectedNetwork.security.bypassSkills}}{{join selectedNetwork.security.bypassSkills ","}}{{/if}}"
-                         placeholder="Interface, Electronics/Security Tech">
-                </div>
-                <div class="ncm-netmgr__field">
-                  <label class="ncm-netmgr__field-label">Bypass DV</label>
-                  <input class="ncm-netmgr__input" type="number" name="bypassDC"
-                         value="{{#if isCreating}}15{{else}}{{selectedNetwork.security.bypassDC}}{{/if}}"
-                         min="1">
-                </div>
-              </div>
-
-              {{!-- Key Item Config — Card Picker (matches shard config) --}}
-              <div class="ncm-netmgr__subsection-divider"></div>
-              <div class="ncm-netmgr__subsection-label"><i class="fas fa-id-badge" style="color:#f7c948"></i> Key Item</div>
-              <span class="ncm-netmgr__field-hint" style="margin-bottom:6px;display:block;">Requires the player to have a specific item in their inventory to connect.</span>
-
-              {{!-- Filled state --}}
-              <div class="ncm-netmgr__key-item-filled" data-key-item-filled {{#unless hasKeyItem}}style="display:none"{{/unless}}>
-                <div class="ncm-netmgr__ki-img" data-key-item-img-slot>
-                  {{#if keyItemImg}}<img src="{{keyItemImg}}" alt="">{{else}}<i class="fas fa-cube"></i>{{/if}}
-                </div>
-                <div class="ncm-netmgr__ki-meta">
-                  <div class="ncm-netmgr__ki-name" data-key-item-name-slot>{{keyItemName}}</div>
-                  <div class="ncm-netmgr__ki-actions">
-                    <button type="button" class="ncm-netmgr__btn-sm" data-action="searchKeyItem"><i class="fas fa-magnifying-glass"></i> Change</button>
-                    <button type="button" class="ncm-netmgr__btn-sm ncm-netmgr__btn-sm--danger" data-action="clearKeyItem"><i class="fas fa-times"></i> Clear</button>
-                  </div>
-                </div>
-              </div>
-
-              {{!-- Empty state --}}
-              <div class="ncm-netmgr__key-item-empty" data-key-item-empty data-action="searchKeyItem" {{#if hasKeyItem}}style="display:none"{{/if}}>
-                <div class="ncm-netmgr__kie-icon"><i class="fas fa-magnifying-glass"></i></div>
-                <div class="ncm-netmgr__kie-text">Click to search items</div>
-              </div>
-              <input type="hidden" name="keyItemName" value="{{selectedNetwork.security.keyItemName}}" />
-
-              <div class="ncm-netmgr__field-row" style="margin-top:6px;">
-                <div class="ncm-netmgr__field">
-                  <label class="ncm-netmgr__field-label">Key Item Tag (optional)</label>
-                  <input class="ncm-netmgr__input" type="text" name="keyItemTag"
-                         value="{{selectedNetwork.security.keyItemTag}}"
-                         placeholder="e.g. arasaka_keycard">
-                </div>
-              </div>
-              <label class="ncm-netmgr__checkbox-row">
-                <input type="checkbox" name="keyItemConsume" value="true"
-                       {{#if selectedNetwork.security.keyItemConsume}}checked{{/if}}>
-                Consume key item on use (removes from inventory)
-              </label>
-
-              {{!-- ICE Protection --}}
-              <div class="ncm-netmgr__subsection-divider"></div>
-              <div class="ncm-netmgr__subsection-label"><i class="fas fa-shield-halved" style="color:#ff0033"></i> ICE Protection</div>
-              <span class="ncm-netmgr__field-hint" style="margin-bottom:6px;display:block;">Intrusion Countermeasures — determines what happens when a skill check breach fails. BLACK/RED ICE deal HP damage.</span>
-
-              <div class="ncm-netmgr__field-row">
-                <div class="ncm-netmgr__field">
-                  <label class="ncm-netmgr__field-label">ICE Type</label>
-                  <select class="ncm-netmgr__select" name="encryptionType">
-                    <option value="ICE" {{#if (eq selectedNetwork.security.encryptionType "ICE")}}selected{{/if}}>Standard ICE</option>
-                    <option value="BLACK_ICE" {{#if (eq selectedNetwork.security.encryptionType "BLACK_ICE")}}selected{{/if}}>BLACK ICE</option>
-                    <option value="RED_ICE" {{#if (eq selectedNetwork.security.encryptionType "RED_ICE")}}selected{{/if}}>RED ICE</option>
-                  </select>
-                </div>
-                <div class="ncm-netmgr__field">
-                  <label class="ncm-netmgr__field-label">On Failure</label>
-                  <select class="ncm-netmgr__select" name="failureMode">
-                    <option value="nothing" {{#if (eq selectedNetwork.security.failureMode "nothing")}}selected{{/if}}>Nothing</option>
-                    <option value="lockout" {{#if (eq selectedNetwork.security.failureMode "lockout")}}selected{{/if}}>Lockout</option>
-                    <option value="permanent" {{#if (eq selectedNetwork.security.failureMode "permanent")}}selected{{/if}}>Permanent Lockout</option>
-                    <option value="damage" {{#if (eq selectedNetwork.security.failureMode "damage")}}selected{{/if}}>Damage (ICE)</option>
-                  </select>
-                </div>
-              </div>
-
-              {{!-- ICE Source — always in DOM, shown/hidden by JS --}}
-              <div class="ncm-netmgr__ice-source-wrap" data-ice-source {{#unless isLethalICE}}style="display:none"{{/unless}}>
-                <div class="ncm-netmgr__field">
-                  <label class="ncm-netmgr__field-label">ICE Source</label>
-                  <span class="ncm-netmgr__field-hint">Where the ICE's combat stats come from when it retaliates.</span>
-                  <div class="ncm-netmgr__ice-source-cards">
-                    <div class="ncm-netmgr__ice-card {{#if iceSourceDefault}}ncm-netmgr__ice-card--sel{{/if}}" data-action="selectIceSource" data-mode="default">
-                      <i class="fas fa-dice"></i><span>Default</span>
-                    </div>
-                    <div class="ncm-netmgr__ice-card {{#if iceSourceCustom}}ncm-netmgr__ice-card--sel{{/if}}" data-action="selectIceSource" data-mode="custom">
-                      <i class="fas fa-pen-fancy"></i><span>Custom</span>
-                    </div>
-                    <div class="ncm-netmgr__ice-card {{#if iceSourceActor}}ncm-netmgr__ice-card--sel{{/if}}" data-action="selectIceSource" data-mode="actor">
-                      <i class="fas fa-robot"></i><span>Actor</span>
-                    </div>
-                  </div>
-                  <input type="hidden" name="iceSource" value="{{iceSource}}" />
-                </div>
-
-                {{!-- Default panel --}}
-                <div class="ncm-netmgr__ice-panel {{#if iceSourceDefault}}ncm-netmgr__ice-panel--on{{/if}}" data-ice-panel="default">
-                  <span class="ncm-netmgr__field-hint">Damage: <strong>3d6</strong> (BLACK ICE) or <strong>5d6</strong> (RED ICE)</span>
-                </div>
-
-                {{!-- Custom panel --}}
-                <div class="ncm-netmgr__ice-panel {{#if iceSourceCustom}}ncm-netmgr__ice-panel--on{{/if}}" data-ice-panel="custom">
-                  <div class="ncm-netmgr__field-row">
-                    <div class="ncm-netmgr__field">
-                      <label class="ncm-netmgr__field-label">ICE Name</label>
-                      <input class="ncm-netmgr__input" type="text" name="iceCustomName"
-                             value="{{selectedNetwork.security.ice.customName}}" placeholder="e.g. HELLHOUND">
-                    </div>
-                    <div class="ncm-netmgr__field">
-                      <label class="ncm-netmgr__field-label">Damage Formula</label>
-                      <input class="ncm-netmgr__input" type="text" name="iceCustomDamage"
-                             value="{{selectedNetwork.security.ice.customDamage}}" placeholder="e.g. 4d6+2">
-                    </div>
-                  </div>
-                  <div class="ncm-netmgr__field">
-                    <label class="ncm-netmgr__field-label">Portrait</label>
-                    <input class="ncm-netmgr__input" type="text" name="iceCustomPortrait"
-                           value="{{selectedNetwork.security.ice.customPortrait}}" placeholder="Image path (optional)">
-                  </div>
-                </div>
-
-                {{!-- Actor panel --}}
-                <div class="ncm-netmgr__ice-panel {{#if iceSourceActor}}ncm-netmgr__ice-panel--on{{/if}}" data-ice-panel="actor">
-                  <span class="ncm-netmgr__field-hint">Select a Black ICE actor — damage will be <strong>ATK + 1d10</strong>.</span>
-                  <div class="ncm-netmgr__ice-actors">
-                    {{#each blackIceActors}}
-                      <div class="ncm-netmgr__ice-actor {{#if selected}}ncm-netmgr__ice-actor--sel{{/if}}" data-action="selectIceActor" data-actor-id="{{id}}">
-                        {{#if img}}<img src="{{img}}" alt="{{name}}">{{else}}<i class="fas fa-robot"></i>{{/if}}
-                        <span>{{name}}</span>
-                        {{#if atk}}<span class="ncm-netmgr__ice-atk">ATK {{atk}}</span>{{/if}}
-                      </div>
-                    {{else}}
-                      <span class="ncm-netmgr__field-hint">No Black ICE actors found.</span>
-                    {{/each}}
-                  </div>
-                  <input type="hidden" name="iceActorId" value="{{selectedNetwork.security.ice.actorId}}" />
-                </div>
-              </div>
-
-              {{!-- Effects Toggles --}}
-              <div class="ncm-netmgr__field-row" style="margin-top:8px;">
-                <label class="ncm-netmgr__checkbox-row">
-                  <input type="checkbox" name="traced" value="true"
-                         {{#if selectedNetwork.effects.traced}}checked{{/if}}>
-                  Traced (messages can be monitored)
-                </label>
-                <label class="ncm-netmgr__checkbox-row">
-                  <input type="checkbox" name="anonymity" value="true"
-                         {{#if selectedNetwork.effects.anonymity}}checked{{/if}}>
-                  Anonymous (hide sender identity)
-                </label>
-              </div>
-              <label class="ncm-netmgr__checkbox-row">
-                <input type="checkbox" name="canRoute" value="true"
-                       {{#unless isCreating}}
-                         {{#if selectedNetwork.effects.canRoute}}checked{{/if}}
-                       {{else}}
-                         checked
-                       {{/unless}}>
-                Can Route to Other Networks
-              </label>
-              <label class="ncm-netmgr__checkbox-row">
-                <input type="checkbox" name="restrictedAccess" value="true"
-                       {{#if selectedNetwork.effects.restrictedAccess}}checked{{/if}}>
-                Restricted Access (messages only readable on this network)
-              </label>
-              <div class="ncm-netmgr__field">
-                <label class="ncm-netmgr__field-label">Allowed Recipient Networks (comma-separated IDs)</label>
-                <input class="ncm-netmgr__input" type="text" name="allowedRecipientNetworks"
-                       value="{{#if selectedNetwork.effects.allowedRecipientNetworks}}{{join selectedNetwork.effects.allowedRecipientNetworks ","}}{{/if}}"
-                       placeholder="Leave empty for unrestricted">
-              </div>
-            </div>
-          </div>
-
-          {{!-- Theme Fieldset --}}
-          <div class="ncm-netmgr__fieldset">
-            <div class="ncm-netmgr__fieldset-legend"><i class="fas fa-palette" style="color:#F65261"></i> Theme</div>
-            <div class="ncm-netmgr__fieldset-body">
-              <div class="ncm-netmgr__desc">Icon and color shown in the network selector and status bars.</div>
-
-              {{!-- Icon Source Tabs --}}
-              <div class="ncm-netmgr__field">
-                <label class="ncm-netmgr__field-label">Icon Source</label>
-                <div class="ncm-netmgr__icon-mode-tabs">
-                  <div class="ncm-netmgr__icon-mode-tab {{#if isIconModeFa}}ncm-netmgr__icon-mode-tab--active{{/if}}" data-action="selectIconMode" data-mode="fa">FA Icon</div>
-                  <div class="ncm-netmgr__icon-mode-tab {{#if isIconModeImage}}ncm-netmgr__icon-mode-tab--active{{/if}}" data-action="selectIconMode" data-mode="image">Custom Image</div>
-                </div>
-                <input type="hidden" name="iconMode" value="{{iconMode}}" />
-              </div>
-
-              {{!-- FA Icon section — always in DOM --}}
-              <div class="ncm-netmgr__icon-mode-section" data-icon-mode="fa" {{#unless isIconModeFa}}style="display:none"{{/unless}}>
-                <div class="ncm-netmgr__field-row ncm-netmgr__field-row--3">
-                  <div class="ncm-netmgr__field">
-                    <label class="ncm-netmgr__field-label">Color</label>
-                    <div class="ncm-netmgr__color-picker">
-                      <input type="color" name="themeColor" class="ncm-netmgr__color-swatch"
-                             value="{{#if isCreating}}#19f3f7{{else}}{{selectedNetwork.theme.color}}{{/if}}">
-                      <input class="ncm-netmgr__input" type="text" name="themeColorText"
-                             value="{{#if isCreating}}#19f3f7{{else}}{{selectedNetwork.theme.color}}{{/if}}"
-                             style="width:80px;">
-                    </div>
-                  </div>
-                  <div class="ncm-netmgr__field">
-                    <label class="ncm-netmgr__field-label">Icon</label>
-                    <select class="ncm-netmgr__select" name="themeIcon">
-                      {{#each iconOptions}}
-                      <option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>
-                      {{/each}}
-                    </select>
-                  </div>
-                  <div class="ncm-netmgr__field">
-                    <label class="ncm-netmgr__field-label">Glitch Intensity</label>
-                    <input class="ncm-netmgr__input" type="number" name="glitchIntensity"
-                           value="{{#if isCreating}}0.1{{else}}{{selectedNetwork.theme.glitchIntensity}}{{/if}}"
-                           min="0" max="1" step="0.1">
-                  </div>
-                </div>
-              </div>
-
-              {{!-- Custom Image section — always in DOM --}}
-              <div class="ncm-netmgr__icon-mode-section" data-icon-mode="image" {{#unless isIconModeImage}}style="display:none"{{/unless}}>
-                <div class="ncm-netmgr__field-row">
-                  <div class="ncm-netmgr__field" style="flex:2;">
-                    <label class="ncm-netmgr__field-label">Image Path</label>
-                    <div style="display:flex;gap:4px;">
-                      <input class="ncm-netmgr__input" type="text" name="customImage"
-                             value="{{selectedNetwork.theme.customImage}}" placeholder="Path to image...">
-                      <button type="button" class="ncm-netmgr__btn-sm" data-action="browseCustomImage" title="Browse images">
-                        <i class="fas fa-folder-open"></i>
-                      </button>
-                    </div>
-                    <span class="ncm-netmgr__field-hint">SVG images can be tinted with the color. Raster images display as-is.</span>
-                  </div>
-                  <div class="ncm-netmgr__field" style="flex:1;">
-                    <label class="ncm-netmgr__field-label">Color</label>
-                    <div class="ncm-netmgr__color-picker">
-                      <input type="color" name="themeColorImg" class="ncm-netmgr__color-swatch"
-                             value="{{#if isCreating}}#19f3f7{{else}}{{selectedNetwork.theme.color}}{{/if}}">
-                      <input class="ncm-netmgr__input" type="text" name="themeColorImgText"
-                             value="{{#if isCreating}}#19f3f7{{else}}{{selectedNetwork.theme.color}}{{/if}}"
-                             style="width:80px;">
-                    </div>
-                  </div>
-                </div>
-                <div class="ncm-netmgr__field">
-                  <label class="ncm-netmgr__field-label">Glitch Intensity</label>
-                  <input class="ncm-netmgr__input" type="number" name="glitchIntensityImg"
-                         value="{{#if isCreating}}0.1{{else}}{{selectedNetwork.theme.glitchIntensity}}{{/if}}"
-                         min="0" max="1" step="0.1">
-                </div>
-              </div>
-            </div>
+          </div>{{!-- /.ncm-netmgr__editor-body --}}
           </div>{{!-- /.ncm-netmgr__editor-body --}}
 
           {{!-- Editor Actions --}}
