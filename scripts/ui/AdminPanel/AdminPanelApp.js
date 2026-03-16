@@ -1034,6 +1034,48 @@ export class AdminPanelApp extends BaseApplication {
   }
 
   /**
+   * Find any item by ID — checks world items first, then all actor inventories.
+   * @param {string} itemId
+   * @returns {Item|null}
+   * @private
+   */
+  static _findItem(itemId) {
+    // World-level items
+    const worldItem = game.items?.get(itemId);
+    if (worldItem) return worldItem;
+
+    // Actor-owned items
+    for (const actor of game.actors ?? []) {
+      const owned = actor.items?.get(itemId);
+      if (owned) return owned;
+    }
+    return null;
+  }
+
+  /**
+   * Collect ALL data shard items — world-level + actor-owned.
+   * @returns {Item[]}
+   * @private
+   */
+  static _getAllDataShards() {
+    const shards = [];
+
+    // World-level items
+    for (const item of game.items ?? []) {
+      if (item.getFlag(MODULE_ID, 'isDataShard') === true) shards.push(item);
+    }
+
+    // Actor-owned items
+    for (const actor of game.actors ?? []) {
+      for (const item of actor.items ?? []) {
+        if (item.getFlag(MODULE_ID, 'isDataShard') === true) shards.push(item);
+      }
+    }
+
+    return shards;
+  }
+
+  /**
    * Gather data shard summary for the Shards tab (Sprint 4.6 expansion).
    * Surfaces preset, integrity, eddies totals, connection mode, and enriched status.
    * @returns {Array<object>}
@@ -1043,7 +1085,7 @@ export class AdminPanelApp extends BaseApplication {
     const shards = [];
 
     try {
-      const allShards = game.items?.filter(i => i.getFlag(MODULE_ID, 'isDataShard') === true) ?? [];
+      const allShards = AdminPanelApp._getAllDataShards();
       const svc = this.dataShardService;
 
       for (const item of allShards) {
@@ -2284,7 +2326,7 @@ export class AdminPanelApp extends BaseApplication {
     const itemId = target.closest('[data-item-id]')?.dataset.itemId;
     if (!itemId) return;
 
-    const item = game.items.get(itemId);
+    const item = AdminPanelApp._findItem(itemId);
     if (!item) return;
 
     item.sheet.render(true);
@@ -2295,7 +2337,7 @@ export class AdminPanelApp extends BaseApplication {
     const itemId = target.closest('[data-item-id]')?.dataset.itemId;
     if (!itemId) return;
 
-    const item = game.items.get(itemId);
+    const item = AdminPanelApp._findItem(itemId);
     if (!item) return;
 
     const confirmed = await Dialog.confirm({
@@ -2316,7 +2358,7 @@ export class AdminPanelApp extends BaseApplication {
     const itemId = target.closest('[data-item-id]')?.dataset.itemId;
     if (!itemId) return;
 
-    const item = game.items.get(itemId);
+    const item = AdminPanelApp._findItem(itemId);
     if (!item) return;
 
     const confirmed = await Dialog.confirm({
@@ -2379,11 +2421,10 @@ export class AdminPanelApp extends BaseApplication {
   }
 
   static async _onBulkRelockAll(event, target) {
-    const shards = game.items?.filter(i => {
-      if (!i.getFlag(MODULE_ID, 'isDataShard')) return false;
+    const shards = AdminPanelApp._getAllDataShards().filter(i => {
       const state = i.getFlag(MODULE_ID, 'state') ?? {};
       return state.decrypted === true;
-    }) ?? [];
+    });
 
     if (!shards.length) {
       ui.notifications.info('NCM | No breached shards to relock.');
@@ -2404,11 +2445,10 @@ export class AdminPanelApp extends BaseApplication {
   }
 
   static async _onPurgeDestroyed(event, target) {
-    const destroyed = game.items?.filter(i => {
-      if (!i.getFlag(MODULE_ID, 'isDataShard')) return false;
+    const destroyed = AdminPanelApp._getAllDataShards().filter(i => {
       const state = i.getFlag(MODULE_ID, 'state') ?? {};
       return state.destroyed === true;
-    }) ?? [];
+    });
 
     if (!destroyed.length) {
       ui.notifications.info('NCM | No destroyed shards to purge.');
@@ -2432,7 +2472,7 @@ export class AdminPanelApp extends BaseApplication {
     event.stopPropagation(); // Don't trigger card click (openShardItem)
     const itemId = target.closest('[data-item-id]')?.dataset.itemId;
     if (!itemId) return;
-    const item = game.items.get(itemId);
+    const item = AdminPanelApp._findItem(itemId);
     if (!item) return;
 
     import('../ItemInbox/ItemInboxConfig.js').then(({ ItemInboxConfig }) => {
@@ -2444,7 +2484,7 @@ export class AdminPanelApp extends BaseApplication {
     event.stopPropagation(); // Don't trigger card click (openShardItem)
     const itemId = target.closest('[data-item-id]')?.dataset.itemId;
     if (!itemId) return;
-    const item = game.items.get(itemId);
+    const item = AdminPanelApp._findItem(itemId);
     if (!item) return;
 
     const result = await game.nightcity?.dataShardService?.relockShard(item);
