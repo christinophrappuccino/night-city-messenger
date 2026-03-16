@@ -70,6 +70,12 @@ export class AdminPanelApp extends BaseApplication {
   _shardSort = 'name';
   /** @type {string} Shard group mode: 'owner' | 'preset' | 'status' | 'none' */
   _shardGroupMode = 'owner';
+  /** @type {string} ICE filter: 'all' | 'ice' | 'black_ice' | 'red_ice' | 'none' */
+  _shardIceFilter = 'all';
+  /** @type {string} Status filter: 'all' | 'locked' | 'breached' | 'open' | 'destroyed' */
+  _shardStatusFilter = 'all';
+  /** @type {string} Preset filter: 'all' | preset key */
+  _shardPresetFilter = 'all';
 
   // ═══════════════════════════════════════════════════════════
   //  Service Accessors
@@ -174,6 +180,11 @@ export class AdminPanelApp extends BaseApplication {
       bulkExportSelected: AdminPanelApp._onBulkExportSelected,
       unconvertShard: AdminPanelApp._onUnconvertShard,
       cycleShardSort: AdminPanelApp._onCycleShardSort,
+      cycleShardIceFilter: AdminPanelApp._onCycleShardIceFilter,
+      cycleShardStatusFilter: AdminPanelApp._onCycleShardStatusFilter,
+      cycleShardPresetFilter: AdminPanelApp._onCycleShardPresetFilter,
+      cycleShardGroupMode: AdminPanelApp._onCycleShardGroupMode,
+      forceDecryptShardItem: AdminPanelApp._onForceDecryptShardItem,
 
       // Tools actions
       openThemeCustomizer: AdminPanelApp._onOpenThemeCustomizer,
@@ -357,6 +368,9 @@ export class AdminPanelApp extends BaseApplication {
       shardSearch: this._shardSearch,
       shardSort: this._shardSort,
       shardGroupMode: this._shardGroupMode,
+      shardIceFilter: this._shardIceFilter,
+      shardStatusFilter: this._shardStatusFilter,
+      shardPresetFilter: this._shardPresetFilter,
 
       // Module info
       MODULE_ID,
@@ -1324,6 +1338,7 @@ export class AdminPanelApp extends BaseApplication {
           lastAccessedTs,
           isSelected: this._selectedShardIds.has(item.id),
           isExpanded: this._expandedShardId === item.id,
+          isDecrypted: state.decrypted ?? false,
           layers,
           firstEntrySnippet,
           hasLayers: layers.length > 0,
@@ -1342,6 +1357,27 @@ export class AdminPanelApp extends BaseApplication {
         s.ownerName.toLowerCase().includes(q) ||
         s.presetLabel.toLowerCase().includes(q)
       );
+    }
+
+    // Apply ICE filter
+    if (this._shardIceFilter !== 'all') {
+      filtered = filtered.filter(s => {
+        if (this._shardIceFilter === 'none') return s.iceStripe === 'none';
+        return s.iceStripe === this._shardIceFilter;
+      });
+    }
+
+    // Apply status filter
+    if (this._shardStatusFilter !== 'all') {
+      filtered = filtered.filter(s => {
+        if (this._shardStatusFilter === 'locked') return s.status === 'locked' || s.status === 'blackice';
+        return s.status === this._shardStatusFilter;
+      });
+    }
+
+    // Apply preset filter
+    if (this._shardPresetFilter !== 'all') {
+      filtered = filtered.filter(s => s.presetKey === this._shardPresetFilter);
     }
 
     // Apply sort
@@ -1686,13 +1722,19 @@ export class AdminPanelApp extends BaseApplication {
   _setupShardControls() {
     const searchInput = this.element?.querySelector('.ncm-shard-search__input');
     if (searchInput) {
-      if (this._shardSearch) searchInput.focus();
+      // Restore cursor position after render
+      if (this._shardSearch) {
+        searchInput.value = this._shardSearch;
+        searchInput.focus();
+        const len = this._shardSearch.length;
+        searchInput.setSelectionRange(len, len);
+      }
 
       const handler = this._shardSearchHandler || (this._shardSearchHandler =
         foundry.utils.debounce((e) => {
           this._shardSearch = e.target.value;
           this.render(true);
-        }, 250)
+        }, 350)
       );
       searchInput.removeEventListener('input', handler);
       searchInput.addEventListener('input', handler);
@@ -2812,6 +2854,56 @@ export class AdminPanelApp extends BaseApplication {
     const sortOrder = ['name', 'status', 'accessed'];
     const idx = sortOrder.indexOf(this._shardSort);
     this._shardSort = sortOrder[(idx + 1) % sortOrder.length];
+    this.render();
+  }
+
+  static _onCycleShardIceFilter(event, target) {
+    const order = ['all', 'ice', 'black', 'red', 'decrypted', 'none'];
+    const idx = order.indexOf(this._shardIceFilter);
+    this._shardIceFilter = order[(idx + 1) % order.length];
+    this.render();
+  }
+
+  static _onCycleShardStatusFilter(event, target) {
+    const order = ['all', 'locked', 'breached', 'open', 'destroyed'];
+    const idx = order.indexOf(this._shardStatusFilter);
+    this._shardStatusFilter = order[(idx + 1) % order.length];
+    this.render();
+  }
+
+  static _onCycleShardPresetFilter(event, target) {
+    const presets = ['all', ...(game.nightcity?.dataShardService?.getAllPresets() ?? []).map(p => p.key)];
+    const idx = presets.indexOf(this._shardPresetFilter);
+    this._shardPresetFilter = presets[(idx + 1) % presets.length];
+    this.render();
+  }
+
+  static _onCycleShardGroupMode(event, target) {
+    const order = ['owner', 'preset', 'status', 'none'];
+    const idx = order.indexOf(this._shardGroupMode);
+    this._shardGroupMode = order[(idx + 1) % order.length];
+    this.render();
+  }
+
+  static async _onForceDecryptShardItem(event, target) {
+    event.stopPropagation();
+    const itemId = target.closest('[data-item-id]')?.dataset.itemId;
+    if (!itemId) return;
+    const item = AdminPanelApp._findItem(itemId);
+    if (!item) return;
+
+    const state = item.getFlag(MODULE_ID, 'state') ?? {};
+    if (state.decrypted) {
+      // Already decrypted → relock
+      const result = await game.nightcity?.dataShardService?.relockShard(item);
+      if (result?.success) {
+        ui.notifications.info(`NCM | Relocked: ${item.name}`);
+      }
+    } else {
+      // Locked → force decrypt
+      await item.update({ [`flags.${MODULE_ID}.state.decrypted`]: true, [`flags.${MODULE_ID}.state.gmBypassed`]: true });
+      ui.notifications.info(`NCM | Force-decrypted: ${item.name}`);
+    }
     this.render();
   }
 

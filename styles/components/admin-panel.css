@@ -1846,7 +1846,7 @@
 .ncm-app .ncm-shard-preset-grid { display: grid !important; grid-template-columns: repeat(4, 1fr) !important; gap: 4px !important; padding: 8px !important; }
 .ncm-app .ncm-shard-preset-btn {
   display: flex !important; flex-direction: column !important; align-items: center !important; gap: 3px !important;
-  padding: 8px 4px !important; background: var(--sp-bg, #0a0a0f) !important;
+  padding: 10px 4px !important; background: var(--sp-bg, #0a0a0f) !important;
   border: 1px solid var(--sp-border, #2a2a45) !important; border-radius: 2px !important;
   cursor: pointer !important; transition: all 0.15s !important;
   height: auto !important; min-height: 0 !important; width: auto !important;
@@ -1881,6 +1881,7 @@
 .ncm-app .ncm-shard-convert-btn__icon--convert { background: rgba(246,82,97,0.08) !important; color: var(--ncm-color-primary, #F65261) !important; border: 1px solid rgba(246,82,97,0.2) !important; }
 .ncm-app .ncm-shard-convert-btn__icon--new { background: rgba(25,243,247,0.06) !important; color: var(--ncm-color-secondary, #19f3f7) !important; border: 1px solid rgba(25,243,247,0.12) !important; }
 .ncm-app .ncm-shard-convert-btn__icon--revert { background: rgba(168,85,247,0.06) !important; color: #a855f7 !important; border: 1px solid rgba(168,85,247,0.12) !important; }
+.ncm-app .ncm-shard-convert-btn__icon--import { background: rgba(247,201,72,0.06) !important; color: var(--ncm-accent, #f7c948) !important; border: 1px solid rgba(247,201,72,0.12) !important; }
 .ncm-app .ncm-shard-convert-btn__text { display: flex !important; flex-direction: column !important; gap: 1px !important; }
 .ncm-app .ncm-shard-convert-btn__title { font-family: var(--ncm-font-display) !important; font-size: 11px !important; font-weight: 700 !important; color: var(--sp-text-primary, #eeeef4) !important; text-transform: uppercase !important; line-height: 1.2 !important; }
 .ncm-app .ncm-shard-convert-btn__desc { font-family: var(--ncm-font-display) !important; font-size: 9px !important; font-weight: 500 !important; color: var(--sp-text-muted, #6a6a88) !important; line-height: 1.2 !important; }
@@ -2049,8 +2050,8 @@
   margin: 0 !important; border-top: none !important; border-left: none !important; border-right: none !important;
 }
 .ncm-app .ncm-shard-row:last-child { border-bottom: none !important; }
-.ncm-app .ncm-shard-row:hover { background: rgba(25,243,247,0.02) !important; }
-.ncm-app .ncm-shard-row--selected { background: rgba(25,243,247,0.04) !important; }
+.ncm-app .ncm-shard-row:hover { background: rgba(25,243,247,0.05) !important; }
+.ncm-app .ncm-shard-row--selected { background: rgba(25,243,247,0.08) !important; }
 .ncm-app .ncm-shard-row--selected::before { content: '' !important; position: absolute !important; left: 0 !important; top: 0 !important; bottom: 0 !important; width: 2px !important; background: var(--ncm-color-secondary, #19f3f7) !important; }
 
 .ncm-app .ncm-shard-row__checkbox {
@@ -2157,6 +2158,33 @@
 }
 .ncm-app .ncm-shard-qa-btn:hover { border-color: var(--sp-border-active, #3a3a5a) !important; color: var(--sp-text-secondary) !important; }
 .ncm-app .ncm-shard-qa-btn i { font-size: 9px !important; }
+
+/* ─── Pagination ─── */
+.ncm-app .ncm-shard-pagination {
+  display: flex !important; align-items: center !important; justify-content: space-between !important;
+  flex-direction: row !important;
+  padding: 8px 0 !important; margin-top: 4px !important;
+}
+.ncm-app .ncm-shard-pagination__info {
+  font-family: var(--ncm-font-display) !important; font-size: 10px !important; font-weight: 600 !important;
+  color: var(--sp-text-muted) !important;
+}
+.ncm-app .ncm-shard-pagination__info span { color: var(--sp-text-secondary) !important; }
+
+/* ─── Bulk Danger Button ─── */
+.ncm-app .ncm-shard-bulk-btn--danger { color: var(--ncm-danger, #ff0033) !important; border-color: rgba(255,0,51,0.2) !important; }
+.ncm-app .ncm-shard-bulk-btn--danger:hover { background: rgba(255,0,51,0.06) !important; }
+
+/* ─── Owner Header Drop Target (drag-and-drop) ─── */
+.ncm-app .ncm-shard-owner-header--drop-target {
+  border-color: var(--ncm-color-secondary, #19f3f7) !important;
+  background: rgba(25,243,247,0.04) !important;
+  box-shadow: inset 0 0 0 1px rgba(25,243,247,0.1) !important;
+}
+.ncm-app .ncm-shard-owner-header--drop-target .ncm-shard-owner-header__name { color: var(--ncm-color-secondary) !important; }
+
+/* ─── Row Hover Overlay Enhancement ─── */
+.ncm-app .ncm-shard-owner-header:hover { background: rgba(25,243,247,0.03) !important; }
 
 /* ═══════════════════════════════════════════
    TAB 6: TOOLS
