@@ -74,8 +74,8 @@ export class AdminPanelApp extends BaseApplication {
   _shardIceFilter = 'all';
   /** @type {string} Status filter: 'all' | 'locked' | 'breached' | 'open' | 'destroyed' */
   _shardStatusFilter = 'all';
-  /** @type {string} Preset filter: 'all' | preset key */
-  _shardPresetFilter = 'all';
+  /** @type {string} Owner filter: 'all' | 'world' | 'actors' */
+  _shardOwnerFilter = 'all';
 
   // ═══════════════════════════════════════════════════════════
   //  Service Accessors
@@ -183,8 +183,10 @@ export class AdminPanelApp extends BaseApplication {
       cycleShardIceFilter: AdminPanelApp._onCycleShardIceFilter,
       cycleShardStatusFilter: AdminPanelApp._onCycleShardStatusFilter,
       cycleShardPresetFilter: AdminPanelApp._onCycleShardPresetFilter,
+      cycleShardOwnerFilter: AdminPanelApp._onCycleShardOwnerFilter,
       cycleShardGroupMode: AdminPanelApp._onCycleShardGroupMode,
       forceDecryptShardItem: AdminPanelApp._onForceDecryptShardItem,
+      toggleShardLayer: AdminPanelApp._onToggleShardLayer,
 
       // Tools actions
       openThemeCustomizer: AdminPanelApp._onOpenThemeCustomizer,
@@ -370,7 +372,7 @@ export class AdminPanelApp extends BaseApplication {
       shardGroupMode: this._shardGroupMode,
       shardIceFilter: this._shardIceFilter,
       shardStatusFilter: this._shardStatusFilter,
-      shardPresetFilter: this._shardPresetFilter,
+      shardOwnerFilter: this._shardOwnerFilter,
 
       // Module info
       MODULE_ID,
@@ -1288,10 +1290,10 @@ export class AdminPanelApp extends BaseApplication {
 
         // Security layers for expand preview
         const layers = [];
-        if (netConfig.required ?? config.requiresNetwork) layers.push({ name: 'Network', cleared: true });
-        if (config.requiresKeyItem) layers.push({ name: 'Key Item', cleared: !!Object.values(sessions).find(s => s.keyItemUsed) });
-        if (config.requiresLogin) layers.push({ name: 'Login', cleared: !!Object.values(sessions).find(s => s.loggedIn) });
-        if (config.encrypted) layers.push({ name: 'Encryption', cleared: state.decrypted });
+        if (netConfig.required ?? config.requiresNetwork) layers.push({ key: 'network', name: 'Network', cleared: !!Object.values(sessions).find(s => s.hackedLayers?.includes('network')) || status === 'breached' || status === 'open' });
+        if (config.requiresKeyItem) layers.push({ key: 'keyitem', name: 'Key Item', cleared: !!Object.values(sessions).find(s => s.keyItemUsed) });
+        if (config.requiresLogin) layers.push({ key: 'login', name: 'Login', cleared: !!Object.values(sessions).find(s => s.loggedIn) });
+        if (config.encrypted) layers.push({ key: 'encryption', name: 'Encryption', cleared: state.decrypted });
 
         // First entry preview snippet
         let firstEntrySnippet = '';
@@ -1375,9 +1377,12 @@ export class AdminPanelApp extends BaseApplication {
       });
     }
 
-    // Apply preset filter
-    if (this._shardPresetFilter !== 'all') {
-      filtered = filtered.filter(s => s.presetKey === this._shardPresetFilter);
+    // Apply owner filter
+    if (this._shardOwnerFilter !== 'all') {
+      filtered = filtered.filter(s => {
+        if (this._shardOwnerFilter === 'world') return s.ownerKey === 'world';
+        return s.ownerKey !== 'world'; // 'actors'
+      });
     }
 
     // Apply sort
@@ -2908,10 +2913,111 @@ export class AdminPanelApp extends BaseApplication {
     this.render();
   }
 
+  static _onCycleShardOwnerFilter(event, target) {
+    const order = ['all', 'world', 'actors'];
+    const idx = order.indexOf(this._shardOwnerFilter);
+    this._shardOwnerFilter = order[(idx + 1) % order.length];
+    this.render();
+  }
+
   static _onCycleShardGroupMode(event, target) {
     const order = ['owner', 'preset', 'status', 'none'];
     const idx = order.indexOf(this._shardGroupMode);
     this._shardGroupMode = order[(idx + 1) % order.length];
+    this.render();
+  }
+
+  static async _onToggleShardLayer(event, target) {
+    event.stopPropagation();
+    const itemId = target.closest('[data-item-id]')?.dataset.itemId;
+    const layer = target.closest('[data-layer]')?.dataset.layer;
+    if (!itemId || !layer) return;
+
+    const item = AdminPanelApp._findItem(itemId);
+    if (!item) return;
+
+    const state = item.getFlag(MODULE_ID, 'state') ?? {};
+    const sessions = state.sessions ?? {};
+
+    // Determine current cleared state for this layer
+    let isCleared = false;
+    switch (layer) {
+      case 'network':
+        isCleared = !!Object.values(sessions).find(s => s.hackedLayers?.includes('network'));
+        break;
+      case 'keyitem':
+        isCleared = !!Object.values(sessions).find(s => s.keyItemUsed);
+        break;
+      case 'login':
+        isCleared = !!Object.values(sessions).find(s => s.loggedIn);
+        break;
+      case 'encryption':
+        isCleared = state.decrypted ?? false;
+        break;
+    }
+
+    const action = isCleared ? 'relock to' : 'unlock to';
+    const confirmed = await Dialog.confirm({
+      title: `${isCleared ? 'Relock' : 'Unlock'} Security Layer`,
+      content: `<p>${isCleared ? 'Relock' : 'Force-clear'} the <strong>${layer}</strong> layer on <strong>${item.name}</strong>?${isCleared ? ' All layers from this point forward will also be relocked.' : ''}</p>`,
+    });
+    if (!confirmed) return;
+
+    const LAYER_ORDER = ['network', 'keyitem', 'login', 'encryption'];
+    const layerIdx = LAYER_ORDER.indexOf(layer);
+
+    if (isCleared) {
+      // RELOCK from this layer forward — reset all sessions for layers at and after this index
+      const updates = {};
+      for (const [actorId, session] of Object.entries(sessions)) {
+        const newSession = { ...session };
+        const hackedLayers = [...(session.hackedLayers || [])];
+
+        for (let i = layerIdx; i < LAYER_ORDER.length; i++) {
+          const l = LAYER_ORDER[i];
+          const hIdx = hackedLayers.indexOf(l);
+          if (hIdx !== -1) hackedLayers.splice(hIdx, 1);
+          if (l === 'keyitem') newSession.keyItemUsed = false;
+          if (l === 'login') newSession.loggedIn = false;
+        }
+        newSession.hackedLayers = hackedLayers;
+        updates[actorId] = newSession;
+      }
+
+      const stateUpdates = { [`flags.${MODULE_ID}.state.sessions`]: updates };
+      // If encryption is at or after this layer, also un-decrypt
+      if (layerIdx <= LAYER_ORDER.indexOf('encryption')) {
+        stateUpdates[`flags.${MODULE_ID}.state.decrypted`] = false;
+        stateUpdates[`flags.${MODULE_ID}.state.gmBypassed`] = false;
+      }
+      await item.update(stateUpdates);
+      ui.notifications.info(`NCM | Relocked ${item.name} from ${layer} layer.`);
+    } else {
+      // UNLOCK up to and including this layer
+      const updates = {};
+      // If no sessions exist, create a GM session
+      const gmSession = sessions['gm-override'] || { hackedLayers: [], hackAttempts: 0 };
+      const hackedLayers = [...(gmSession.hackedLayers || [])];
+
+      for (let i = 0; i <= layerIdx; i++) {
+        const l = LAYER_ORDER[i];
+        if (!hackedLayers.includes(l)) hackedLayers.push(l);
+        if (l === 'keyitem') gmSession.keyItemUsed = true;
+        if (l === 'login') gmSession.loggedIn = true;
+      }
+      gmSession.hackedLayers = hackedLayers;
+      updates['gm-override'] = gmSession;
+      // Merge with existing sessions
+      const mergedSessions = { ...sessions, ...updates };
+
+      const stateUpdates = { [`flags.${MODULE_ID}.state.sessions`]: mergedSessions };
+      if (layer === 'encryption') {
+        stateUpdates[`flags.${MODULE_ID}.state.decrypted`] = true;
+        stateUpdates[`flags.${MODULE_ID}.state.gmBypassed`] = true;
+      }
+      await item.update(stateUpdates);
+      ui.notifications.info(`NCM | Force-cleared ${item.name} through ${layer} layer.`);
+    }
     this.render();
   }
 

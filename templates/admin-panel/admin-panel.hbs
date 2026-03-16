@@ -788,7 +788,7 @@
       </div>
       <div class="ncm-shard-filter-pill" data-action="cycleShardIceFilter">ICE <span class="ncm-shard-filter-val">{{shardIceFilter}}</span> <i class="fas fa-chevron-down"></i></div>
       <div class="ncm-shard-filter-pill" data-action="cycleShardStatusFilter">Status <span class="ncm-shard-filter-val">{{shardStatusFilter}}</span> <i class="fas fa-chevron-down"></i></div>
-      <div class="ncm-shard-filter-pill" data-action="cycleShardPresetFilter">Preset <span class="ncm-shard-filter-val">{{shardPresetFilter}}</span> <i class="fas fa-chevron-down"></i></div>
+      <div class="ncm-shard-filter-pill" data-action="cycleShardOwnerFilter">Owner <span class="ncm-shard-filter-val">{{shardOwnerFilter}}</span> <i class="fas fa-chevron-down"></i></div>
       <div class="ncm-shard-toolbar__spacer"></div>
       <div class="ncm-shard-filter-pill" data-action="cycleShardSort">Sort <span class="ncm-shard-filter-val">{{shardSort}}</span> <i class="fas fa-chevron-down"></i></div>
       <div class="ncm-shard-filter-pill" data-action="cycleShardGroupMode">Group <span class="ncm-shard-filter-val">{{shardGroupMode}}</span> <i class="fas fa-chevron-down"></i></div>
@@ -872,7 +872,9 @@
               {{#if this.hasLayers}}
               <div class="ncm-shard-layer-chain">
                 {{#each this.layers}}
-                <div class="ncm-shard-layer-chip {{#if this.cleared}}ncm-shard-layer-chip--cleared{{else}}ncm-shard-layer-chip--pending{{/if}}">
+                <div class="ncm-shard-layer-chip {{#if this.cleared}}ncm-shard-layer-chip--cleared{{else}}ncm-shard-layer-chip--pending{{/if}}"
+                     data-action="toggleShardLayer" data-item-id="{{../itemId}}" data-layer="{{this.key}}"
+                     title="Click to {{#if this.cleared}}relock from{{else}}unlock to{{/if}} this layer">
                   <i class="fas {{#if this.cleared}}fa-check{{else}}fa-lock{{/if}}"></i> {{this.name}}
                 </div>
                 {{/each}}
