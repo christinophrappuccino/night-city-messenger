@@ -377,6 +377,91 @@
                 Consume key item on use (removes from inventory)
               </label>
 
+              {{!-- ICE Protection --}}
+              <div class="ncm-netmgr__subsection-divider"></div>
+              <div class="ncm-netmgr__subsection-label"><i class="fas fa-shield-halved" style="color:#ff0033"></i> ICE Protection</div>
+              <span class="ncm-netmgr__field-hint" style="margin-bottom:6px;display:block;">Intrusion Countermeasures — determines what happens when a skill check breach fails. BLACK/RED ICE deal HP damage.</span>
+
+              <div class="ncm-netmgr__field-row">
+                <div class="ncm-netmgr__field">
+                  <label class="ncm-netmgr__field-label">ICE Type</label>
+                  <select class="ncm-netmgr__select" name="encryptionType">
+                    <option value="ICE" {{#if (eq selectedNetwork.security.encryptionType "ICE")}}selected{{/if}}>Standard ICE</option>
+                    <option value="BLACK_ICE" {{#if (eq selectedNetwork.security.encryptionType "BLACK_ICE")}}selected{{/if}}>BLACK ICE</option>
+                    <option value="RED_ICE" {{#if (eq selectedNetwork.security.encryptionType "RED_ICE")}}selected{{/if}}>RED ICE</option>
+                  </select>
+                </div>
+                <div class="ncm-netmgr__field">
+                  <label class="ncm-netmgr__field-label">On Failure</label>
+                  <select class="ncm-netmgr__select" name="failureMode">
+                    <option value="nothing" {{#if (eq selectedNetwork.security.failureMode "nothing")}}selected{{/if}}>Nothing</option>
+                    <option value="lockout" {{#if (eq selectedNetwork.security.failureMode "lockout")}}selected{{/if}}>Lockout</option>
+                    <option value="permanent" {{#if (eq selectedNetwork.security.failureMode "permanent")}}selected{{/if}}>Permanent Lockout</option>
+                    <option value="damage" {{#if (eq selectedNetwork.security.failureMode "damage")}}selected{{/if}}>Damage (ICE)</option>
+                  </select>
+                </div>
+              </div>
+
+              {{!-- ICE Source (only for BLACK/RED) --}}
+              {{#if isLethalICE}}
+                <div class="ncm-netmgr__field">
+                  <label class="ncm-netmgr__field-label">ICE Source</label>
+                  <span class="ncm-netmgr__field-hint">Where the ICE's combat stats come from when it retaliates.</span>
+                  <div class="ncm-netmgr__ice-source-cards">
+                    <div class="ncm-netmgr__ice-card {{#if iceSourceDefault}}ncm-netmgr__ice-card--sel{{/if}}" data-action="selectIceSource" data-mode="default">
+                      <i class="fas fa-dice"></i><span>Default</span>
+                    </div>
+                    <div class="ncm-netmgr__ice-card {{#if iceSourceCustom}}ncm-netmgr__ice-card--sel{{/if}}" data-action="selectIceSource" data-mode="custom">
+                      <i class="fas fa-pen-fancy"></i><span>Custom</span>
+                    </div>
+                    <div class="ncm-netmgr__ice-card {{#if iceSourceActor}}ncm-netmgr__ice-card--sel{{/if}}" data-action="selectIceSource" data-mode="actor">
+                      <i class="fas fa-robot"></i><span>Actor</span>
+                    </div>
+                  </div>
+                  <input type="hidden" name="iceSource" value="{{iceSource}}" />
+                </div>
+
+                {{#if iceSourceDefault}}
+                  <span class="ncm-netmgr__field-hint">Damage: <strong>3d6</strong> (BLACK ICE) or <strong>5d6</strong> (RED ICE)</span>
+                {{/if}}
+
+                {{#if iceSourceCustom}}
+                  <div class="ncm-netmgr__field-row">
+                    <div class="ncm-netmgr__field">
+                      <label class="ncm-netmgr__field-label">ICE Name</label>
+                      <input class="ncm-netmgr__input" type="text" name="iceCustomName"
+                             value="{{selectedNetwork.security.ice.customName}}" placeholder="e.g. HELLHOUND">
+                    </div>
+                    <div class="ncm-netmgr__field">
+                      <label class="ncm-netmgr__field-label">Damage Formula</label>
+                      <input class="ncm-netmgr__input" type="text" name="iceCustomDamage"
+                             value="{{selectedNetwork.security.ice.customDamage}}" placeholder="e.g. 4d6+2">
+                    </div>
+                  </div>
+                  <div class="ncm-netmgr__field">
+                    <label class="ncm-netmgr__field-label">Portrait</label>
+                    <input class="ncm-netmgr__input" type="text" name="iceCustomPortrait"
+                           value="{{selectedNetwork.security.ice.customPortrait}}" placeholder="Image path (optional)">
+                  </div>
+                {{/if}}
+
+                {{#if iceSourceActor}}
+                  <span class="ncm-netmgr__field-hint">Select a Black ICE actor — damage will be <strong>ATK + 1d10</strong>.</span>
+                  <div class="ncm-netmgr__ice-actors">
+                    {{#each blackIceActors}}
+                      <div class="ncm-netmgr__ice-actor {{#if selected}}ncm-netmgr__ice-actor--sel{{/if}}" data-action="selectIceActor" data-actor-id="{{id}}">
+                        {{#if img}}<img src="{{img}}" alt="{{name}}">{{else}}<i class="fas fa-robot"></i>{{/if}}
+                        <span>{{name}}</span>
+                        {{#if atk}}<span class="ncm-netmgr__ice-atk">ATK {{atk}}</span>{{/if}}
+                      </div>
+                    {{else}}
+                      <span class="ncm-netmgr__field-hint">No Black ICE actors found.</span>
+                    {{/each}}
+                  </div>
+                  <input type="hidden" name="iceActorId" value="{{selectedNetwork.security.ice.actorId}}" />
+                {{/if}}
+              {{/if}}
+
               {{!-- Effects Toggles --}}
               <div class="ncm-netmgr__field-row" style="margin-top:8px;">
                 <label class="ncm-netmgr__checkbox-row">
@@ -417,32 +502,78 @@
           <div class="ncm-netmgr__fieldset">
             <div class="ncm-netmgr__fieldset-legend"><i class="fas fa-palette"></i> Theme</div>
             <div class="ncm-netmgr__fieldset-body">
-              <div class="ncm-netmgr__field-row ncm-netmgr__field-row--3">
-                <div class="ncm-netmgr__field">
-                  <label class="ncm-netmgr__field-label">Color</label>
-                  <div class="ncm-netmgr__color-picker">
-                    <input type="color" name="themeColor" class="ncm-netmgr__color-swatch"
-                           value="{{#if isCreating}}#19f3f7{{else}}{{selectedNetwork.theme.color}}{{/if}}">
-                    <input class="ncm-netmgr__input" type="text" name="themeColorText"
-                           value="{{#if isCreating}}#19f3f7{{else}}{{selectedNetwork.theme.color}}{{/if}}"
-                           style="width:80px;">
+
+              {{!-- Icon Source Tabs --}}
+              <div class="ncm-netmgr__field">
+                <label class="ncm-netmgr__field-label">Icon Source</label>
+                <div class="ncm-netmgr__icon-mode-tabs">
+                  <div class="ncm-netmgr__icon-mode-tab {{#if isIconModeFa}}ncm-netmgr__icon-mode-tab--active{{/if}}" data-action="selectIconMode" data-mode="fa">FA Icon</div>
+                  <div class="ncm-netmgr__icon-mode-tab {{#if isIconModeImage}}ncm-netmgr__icon-mode-tab--active{{/if}}" data-action="selectIconMode" data-mode="image">Custom Image</div>
+                </div>
+                <input type="hidden" name="iconMode" value="{{iconMode}}" />
+              </div>
+
+              {{#if isIconModeFa}}
+                <div class="ncm-netmgr__field-row ncm-netmgr__field-row--3">
+                  <div class="ncm-netmgr__field">
+                    <label class="ncm-netmgr__field-label">Color</label>
+                    <div class="ncm-netmgr__color-picker">
+                      <input type="color" name="themeColor" class="ncm-netmgr__color-swatch"
+                             value="{{#if isCreating}}#19f3f7{{else}}{{selectedNetwork.theme.color}}{{/if}}">
+                      <input class="ncm-netmgr__input" type="text" name="themeColorText"
+                             value="{{#if isCreating}}#19f3f7{{else}}{{selectedNetwork.theme.color}}{{/if}}"
+                             style="width:80px;">
+                    </div>
+                  </div>
+                  <div class="ncm-netmgr__field">
+                    <label class="ncm-netmgr__field-label">Icon</label>
+                    <select class="ncm-netmgr__select" name="themeIcon">
+                      {{#each iconOptions}}
+                      <option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>
+                      {{/each}}
+                    </select>
+                  </div>
+                  <div class="ncm-netmgr__field">
+                    <label class="ncm-netmgr__field-label">Glitch Intensity</label>
+                    <input class="ncm-netmgr__input" type="number" name="glitchIntensity"
+                           value="{{#if isCreating}}0.1{{else}}{{selectedNetwork.theme.glitchIntensity}}{{/if}}"
+                           min="0" max="1" step="0.1">
                   </div>
                 </div>
-                <div class="ncm-netmgr__field">
-                  <label class="ncm-netmgr__field-label">Icon</label>
-                  <select class="ncm-netmgr__select" name="themeIcon">
-                    {{#each iconOptions}}
-                    <option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>
-                    {{/each}}
-                  </select>
+              {{else}}
+                <div class="ncm-netmgr__field-row">
+                  <div class="ncm-netmgr__field" style="flex:2;">
+                    <label class="ncm-netmgr__field-label">Image Path</label>
+                    <div style="display:flex;gap:4px;">
+                      <input class="ncm-netmgr__input" type="text" name="customImage"
+                             value="{{selectedNetwork.theme.customImage}}" placeholder="Path to image...">
+                      <button type="button" class="ncm-netmgr__btn-sm" data-action="browseCustomImage" title="Browse images">
+                        <i class="fas fa-folder-open"></i>
+                      </button>
+                    </div>
+                    <span class="ncm-netmgr__field-hint">SVG images can be tinted with the color value. Raster images display as-is.</span>
+                  </div>
+                  <div class="ncm-netmgr__field" style="flex:1;">
+                    <label class="ncm-netmgr__field-label">Color</label>
+                    <div class="ncm-netmgr__color-picker">
+                      <input type="color" name="themeColor" class="ncm-netmgr__color-swatch"
+                             value="{{#if isCreating}}#19f3f7{{else}}{{selectedNetwork.theme.color}}{{/if}}">
+                      <input class="ncm-netmgr__input" type="text" name="themeColorText"
+                             value="{{#if isCreating}}#19f3f7{{else}}{{selectedNetwork.theme.color}}{{/if}}"
+                             style="width:80px;">
+                    </div>
+                  </div>
                 </div>
-                <div class="ncm-netmgr__field">
-                  <label class="ncm-netmgr__field-label">Glitch Intensity</label>
-                  <input class="ncm-netmgr__input" type="number" name="glitchIntensity"
-                         value="{{#if isCreating}}0.1{{else}}{{selectedNetwork.theme.glitchIntensity}}{{/if}}"
-                         min="0" max="1" step="0.1">
+                <input type="hidden" name="themeIcon" value="{{#if selectedNetwork.theme.icon}}{{selectedNetwork.theme.icon}}{{else}}fa-wifi{{/if}}">
+                <div class="ncm-netmgr__field-row">
+                  <div class="ncm-netmgr__field">
+                    <label class="ncm-netmgr__field-label">Glitch Intensity</label>
+                    <input class="ncm-netmgr__input" type="number" name="glitchIntensity"
+                           value="{{#if isCreating}}0.1{{else}}{{selectedNetwork.theme.glitchIntensity}}{{/if}}"
+                           min="0" max="1" step="0.1">
+                  </div>
                 </div>
-              </div>
+              {{/if}}
             </div>
           </div>{{!-- /.ncm-netmgr__editor-body --}}
 

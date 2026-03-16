@@ -80,6 +80,10 @@ export class NetworkManagementApp extends BaseApplication {
       editLogEntry: NetworkManagementApp._onEditLogEntry,
       deleteLogEntry: NetworkManagementApp._onDeleteLogEntry,
       browseKeyItem: NetworkManagementApp._onBrowseKeyItem,
+      browseCustomImage: NetworkManagementApp._onBrowseCustomImage,
+      selectIceSource: NetworkManagementApp._onSelectIceSource,
+      selectIceActor: NetworkManagementApp._onSelectIceActor,
+      selectIconMode: NetworkManagementApp._onSelectIconMode,
       resetSecurity: NetworkManagementApp._onResetSecurity,
       toggleSidebarGroup: NetworkManagementApp._onToggleSidebarGroup,
     },
@@ -347,6 +351,27 @@ export class NetworkManagementApp extends BaseApplication {
       })),
       iconOptions,
 
+      // ICE config (for selected network)
+      isLethalICE: selectedNetwork?.security?.encryptionType === 'BLACK_ICE' || selectedNetwork?.security?.encryptionType === 'RED_ICE',
+      iceSource: selectedNetwork?.security?.ice?.source ?? 'default',
+      iceSourceDefault: (selectedNetwork?.security?.ice?.source ?? 'default') === 'default',
+      iceSourceCustom: selectedNetwork?.security?.ice?.source === 'custom',
+      iceSourceActor: selectedNetwork?.security?.ice?.source === 'actor',
+      blackIceActors: (game.actors?.filter(a =>
+        a.type === 'blackIce' || a.type === 'black-ice' ||
+        a.getFlag?.(MODULE_ID, 'isBlackICE') ||
+        a.name?.toLowerCase().includes('black ice')
+      ) ?? []).map(a => ({
+        id: a.id, name: a.name, img: a.img,
+        atk: a.system?.stats?.atk ?? 0,
+        selected: selectedNetwork?.security?.ice?.actorId === a.id,
+      })),
+
+      // Icon mode
+      iconMode: selectedNetwork?.theme?.iconMode || 'fa',
+      isIconModeFa: (selectedNetwork?.theme?.iconMode || 'fa') === 'fa',
+      isIconModeImage: selectedNetwork?.theme?.iconMode === 'image',
+
       // Scenes
       scenes,
       selectedScene,
@@ -497,6 +522,15 @@ export class NetworkManagementApp extends BaseApplication {
         keyItemConsume: chk('keyItemConsume'),
         maxAttempts: num('maxAttempts', 3),
         lockoutDuration: (num('lockoutMinutes', 60)) * 60000,
+        encryptionType: sel('encryptionType') || 'ICE',
+        failureMode: sel('failureMode') || 'lockout',
+        ice: {
+          source: val('iceSource') || 'default',
+          actorId: val('iceActorId') || null,
+          customName: val('iceCustomName') || '',
+          customPortrait: val('iceCustomPortrait') || '',
+          customDamage: val('iceCustomDamage') || '',
+        },
       },
       effects: {
         messageDelay: num('messageDelay', 0),
@@ -511,6 +545,8 @@ export class NetworkManagementApp extends BaseApplication {
       theme: {
         color: val('themeColor') || '#19f3f7',
         icon: val('themeIcon') || 'fa-wifi',
+        iconMode: val('iconMode') || 'fa',
+        customImage: val('customImage') || '',
         glitchIntensity: flt('glitchIntensity', 0.1),
       },
       description: val('description'),
@@ -635,6 +671,44 @@ export class NetworkManagementApp extends BaseApplication {
         tagInput.value = tag;
       }
     }
+  }
+
+  static _onBrowseCustomImage(event, target) {
+    const input = this.element?.querySelector('input[name="customImage"]');
+    new FilePicker({
+      type: 'image',
+      current: input?.value || '',
+      callback: (path) => { if (input) input.value = path; },
+    }).render(true);
+  }
+
+  static _onSelectIceSource(event, target) {
+    const mode = target.closest('[data-mode]')?.dataset.mode;
+    if (!mode) return;
+    const hidden = this.element?.querySelector('input[name="iceSource"]');
+    if (hidden) hidden.value = mode;
+    // Save and re-render to show conditional fields
+    this._onSaveNetwork(event, target);
+  }
+
+  static _onSelectIceActor(event, target) {
+    const actorId = target.closest('[data-actor-id]')?.dataset.actorId;
+    if (!actorId) return;
+    const hidden = this.element?.querySelector('input[name="iceActorId"]');
+    if (hidden) hidden.value = actorId;
+    // Highlight selected
+    this.element?.querySelectorAll('.ncm-netmgr__ice-actor').forEach(c =>
+      c.classList.toggle('ncm-netmgr__ice-actor--sel', c.dataset.actorId === actorId)
+    );
+  }
+
+  static _onSelectIconMode(event, target) {
+    const mode = target.closest('[data-mode]')?.dataset.mode;
+    if (!mode) return;
+    const hidden = this.element?.querySelector('input[name="iconMode"]');
+    if (hidden) hidden.value = mode;
+    // Save and re-render to swap icon mode sections
+    this._onSaveNetwork(event, target);
   }
 
   static async _onToggleDeadZone(event, target) {
