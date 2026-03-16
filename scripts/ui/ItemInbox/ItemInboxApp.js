@@ -370,6 +370,9 @@ export class ItemInboxApp extends BaseApplication {
       currentNetworkId,
       availableNetworks,
       showDisconnected,
+      networkBlockReason: security.layer === 'network' ? (security.reason || '') : '',
+      networkSignalBlocked: !!(security.layer === 'network' && security.signalInfo),
+      networkSignalThreshold: security.signalInfo?.threshold ?? null,
 
       // Integrity
       integrityEnabled: integrity.enabled,

@@ -7,9 +7,25 @@
     <div class="ncm-sec-info">This shard requires connection to:</div>
     <div class="ncm-sec-highlight">{{#if requiredNetworkName}}{{requiredNetworkName}}{{else}}Authorized Network{{/if}}</div>
     <div class="ncm-sec-info" style="margin-top:8px;">
-      Current: <strong class="{{#if currentNetworkName}}ncm-sec-text-danger{{else}}ncm-sec-text-muted{{/if}}">{{#if currentNetworkName}}{{currentNetworkName}}{{else}}Disconnected{{/if}}</strong>
-      <span class="ncm-sec-text-muted">// Not authorized</span>
+      {{#if networkSignalBlocked}}
+        Current: <strong style="color:#FFD700;">{{currentNetworkName}}</strong>
+        <span class="ncm-sec-text-muted">// Connected</span>
+      {{else if currentNetworkName}}
+        Current: <strong class="ncm-sec-text-danger">{{currentNetworkName}}</strong>
+        <span class="ncm-sec-text-muted">// Not authorized</span>
+      {{else}}
+        Current: <strong class="ncm-sec-text-muted">Disconnected</strong>
+      {{/if}}
     </div>
+
+    {{#if networkSignalBlocked}}
+      <div class="ncm-sec-info" style="margin-top:6px;">
+        <i class="fas fa-signal ncm-sec-text-danger" style="font-size:10px;"></i>
+        <span class="ncm-sec-text-danger">Signal too weak</span>
+        <span class="ncm-sec-text-muted">— {{signalStrength}}% / {{networkSignalThreshold}}% required</span>
+      </div>
+      <div class="ncm-sec-muted" style="margin-top:4px;">Increase signal strength or move to a better location.</div>
+    {{/if}}
 
     {{!-- Network Cards — click to switch --}}
     {{#if availableNetworks.length}}
