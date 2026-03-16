@@ -829,15 +829,15 @@
             <div class="ncm-shard-row__checkbox" data-action="toggleShardSelect" data-item-id="{{this.itemId}}"><i class="fas fa-check"></i></div>
             {{/if}}
             <div class="ncm-shard-row__ice-pip ncm-shard-row__ice-pip--{{this.iceStripe}}"></div>
-            <div class="ncm-shard-row__icon"><i class="{{this.presetIcon}}"></i></div>
+            <div class="ncm-shard-row__icon {{#if this.presetIconClass}}ncm-shard-row__icon--{{this.presetIconClass}}{{/if}}"><i class="{{this.presetIcon}}"></i></div>
             <div class="ncm-shard-row__info">
               <div class="ncm-shard-row__name">{{this.name}}</div>
               <div class="ncm-shard-row__meta">{{{this.metaLine}}}</div>
-            </div>
-            <div class="ncm-shard-row__badges">
-              {{#each this.badges}}
-              <span class="ncm-sc-badge ncm-sc-badge--{{this.type}}"><i class="fas {{this.icon}}"></i> {{this.label}}</span>
-              {{/each}}
+              <div class="ncm-shard-row__badges">
+                {{#each this.badges}}
+                <span class="ncm-sc-badge ncm-sc-badge--{{this.type}}"><i class="fas {{this.icon}}"></i> {{this.label}}</span>
+                {{/each}}
+              </div>
             </div>
             <div class="ncm-shard-row__accessed {{#if this.lastAccessedRecent}}ncm-shard-row__accessed--recent{{/if}} {{#if (eq this.lastAccessedLabel 'Never')}}ncm-shard-row__accessed--never{{/if}}">{{this.lastAccessedLabel}}</div>
             {{#if this.integrityEnabled}}

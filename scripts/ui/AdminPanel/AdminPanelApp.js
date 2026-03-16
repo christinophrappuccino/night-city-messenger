@@ -1161,8 +1161,9 @@ export class AdminPanelApp extends BaseApplication {
 
         const netConfig = config.network ?? {};
         if (netConfig.required ?? config.requiresNetwork) {
-          const netLabel = netConfig.allowedNetworks?.[0] ?? config.requiredNetwork ?? 'Network';
-          badges.push({ type: 'muted', icon: 'fa-network-wired', label: netLabel });
+          const netId = netConfig.allowedNetworks?.[0] ?? config.requiredNetwork ?? null;
+          const netName = netId ? (this.networkService?.getNetwork(netId)?.name ?? netId) : 'Network';
+          badges.push({ type: 'muted', icon: 'fa-network-wired', label: netName });
         }
         if (netConfig.connectionMode === 'tethered') {
           badges.push({ type: 'cyan', icon: 'fa-link', label: 'Tethered' });
@@ -1246,9 +1247,21 @@ export class AdminPanelApp extends BaseApplication {
           else { lastAccessedLabel = `${Math.floor(ago / 86400000)}d ago`; }
         }
 
-        // Preset icon + label
+        // Preset icon + label + color class
         const presetIcon = preset?.icon || config.boot?.faIcon || 'fas fa-microchip';
         const presetLabel = preset?.label || 'Custom';
+        const ICON_CLASS_MAP = {
+          'corporate-dossier': 'corp',
+          'military-intel': 'mil',
+          'fixer-dead-drop': 'fixer',
+          'street-shard': 'street',
+          'black-market': 'black',
+          'personal-memory': 'memory',
+          'media-leak': 'media',
+          'netwatch-evidence': 'nw',
+          'blank': '',
+        };
+        const presetIconClass = ICON_CLASS_MAP[presetKey] || '';
 
         // Meta line
         const metaParts = [presetLabel];
@@ -1288,6 +1301,7 @@ export class AdminPanelApp extends BaseApplication {
           presetKey,
           presetLabel,
           presetIcon,
+          presetIconClass,
           metaLine: metaParts.join(' <span class="ncm-shard-row__meta-sep">·</span> '),
           badges,
           entryCount,
