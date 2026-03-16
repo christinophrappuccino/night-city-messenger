@@ -1,0 +1,58 @@
+    {{#if (eq activeTab 'tools')}}
+
+    <div class="ncm-section-title"><i class="fas fa-cog"></i> System Tools</div>
+    <div class="ncm-tools-grid">
+      <div class="ncm-tool-card" data-action="openThemeCustomizer">
+        <i class="fas fa-palette ncm-tool-card__icon ncm-tool-card__icon--gold"></i>
+        <span class="ncm-tool-card__name">Themes</span>
+        <span class="ncm-tool-card__desc">Colors, fonts &amp; effects</span>
+      </div>
+      <div class="ncm-tool-card" data-action="forceRefreshAll">
+        <i class="fas fa-broadcast-tower ncm-tool-card__icon ncm-tool-card__icon--green"></i>
+        <span class="ncm-tool-card__name">Force Refresh</span>
+        <span class="ncm-tool-card__desc">Sync all clients</span>
+      </div>
+      <div class="ncm-tool-card" data-action="exportLogs">
+        <i class="fas fa-file-export ncm-tool-card__icon"></i>
+        <span class="ncm-tool-card__name">Export Logs</span>
+        <span class="ncm-tool-card__desc">Download message JSON</span>
+      </div>
+      <div class="ncm-tool-card" data-action="healthCheck">
+        <i class="fas fa-heartbeat ncm-tool-card__icon ncm-tool-card__icon--green"></i>
+        <span class="ncm-tool-card__name">Health Check</span>
+        <span class="ncm-tool-card__desc">Run diagnostics</span>
+      </div>
+      <div class="ncm-tool-card" data-action="openTimeSettings">
+        <i class="fas fa-clock-rotate-left ncm-tool-card__icon ncm-tool-card__icon--gold"></i>
+        <span class="ncm-tool-card__name">Time Settings</span>
+        <span class="ncm-tool-card__desc">SimpleCalendar config</span>
+      </div>
+      <div class="ncm-tool-card" data-action="openSoundSettings">
+        <i class="fas fa-volume-high ncm-tool-card__icon"></i>
+        <span class="ncm-tool-card__name">Sound Settings</span>
+        <span class="ncm-tool-card__desc">Notification audio</span>
+      </div>
+    </div>
+
+    <div class="ncm-danger-zone">
+      <div class="ncm-section-title"><i class="fas fa-triangle-exclamation"></i> Danger Zone</div>
+      <div class="ncm-tools-grid">
+        <div class="ncm-tool-card" data-action="purgeMessages">
+          <i class="fas fa-trash ncm-tool-card__icon"></i>
+          <span class="ncm-tool-card__name">Purge Messages</span>
+          <span class="ncm-tool-card__desc">Delete all for an actor</span>
+        </div>
+        <div class="ncm-tool-card" data-action="resetModule">
+          <i class="fas fa-rotate-left ncm-tool-card__icon"></i>
+          <span class="ncm-tool-card__name">Reset Module</span>
+          <span class="ncm-tool-card__desc">Clear all data (irreversible)</span>
+        </div>
+        <div class="ncm-tool-card" data-action="rebuildIndex">
+          <i class="fas fa-hammer ncm-tool-card__icon"></i>
+          <span class="ncm-tool-card__name">Rebuild Index</span>
+          <span class="ncm-tool-card__desc">Reindex journals &amp; contacts</span>
+        </div>
+      </div>
+    </div>
+
+    {{/if}}

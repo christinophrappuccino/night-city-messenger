@@ -1,0 +1,194 @@
+/* ═══════════════════════════════════════════
+   TAB 2: MESSAGES — Quick-Send + Scheduled
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-quicksend-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
+  gap: 6px;
+}
+
+.ncm-app .ncm-quicksend-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  background: var(--ncm-bg-surface, #1a1a2e);
+  border: 1px solid var(--ncm-border, #2a2a45);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.ncm-app .ncm-quicksend-card:hover {
+  border-color: var(--ncm-primary, #F65261);
+  background: var(--ncm-bg-elevated, #252540);
+}
+
+.ncm-app .ncm-quicksend-card__avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--ncm-border, #2a2a45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-weight: 700;
+  font-size: 10px;
+  flex-shrink: 0;
+  background: var(--ncm-bg-elevated, #252540);
+}
+
+.ncm-app .ncm-quicksend-card__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.ncm-app .ncm-quicksend-card__name {
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ncm-text-primary, #e0e0e8);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ncm-app .ncm-quicksend-card__last {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 8px;
+  color: var(--ncm-text-muted, #555570);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ncm-app .ncm-quicksend-card__send {
+  color: var(--ncm-text-muted, #555570);
+  font-size: 10px;
+  transition: color 0.15s;
+  flex-shrink: 0;
+}
+
+.ncm-app .ncm-quicksend-card:hover .ncm-quicksend-card__send {
+  color: var(--ncm-primary, #F65261);
+}
+
+/* Scheduled items */
+
+.ncm-app .ncm-scheduled-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ncm-app .ncm-scheduled-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: var(--ncm-bg-surface, #1a1a2e);
+  border: 1px solid var(--ncm-border, #2a2a45);
+  border-radius: 2px;
+  transition: all 0.15s;
+}
+
+.ncm-app .ncm-scheduled-item:hover {
+  border-color: var(--ncm-border-active, #3a3a5a);
+  background: var(--ncm-bg-elevated, #252540);
+}
+
+.ncm-app .ncm-scheduled-item__time {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  min-width: 60px;
+}
+
+.ncm-app .ncm-scheduled-item__countdown {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ncm-accent, #f7c948);
+  line-height: 1;
+}
+
+.ncm-app .ncm-scheduled-item__countdown--soon {
+  color: var(--ncm-primary, #F65261);
+  animation: ncm-pulse-dot 1s ease-in-out infinite;
+}
+
+.ncm-app .ncm-scheduled-item__date {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 8px;
+  color: var(--ncm-text-muted, #555570);
+  margin-top: 2px;
+}
+
+.ncm-app .ncm-scheduled-item__route {
+  flex: 1;
+  min-width: 0;
+}
+
+.ncm-app .ncm-scheduled-item__from-to {
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ncm-text-primary, #e0e0e8);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ncm-app .ncm-scheduled-item__from-to .arrow {
+  color: var(--ncm-text-muted, #555570);
+  font-size: 9px;
+}
+
+.ncm-app .ncm-scheduled-item__subject {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 9px;
+  color: var(--ncm-text-secondary, #8888a0);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 1px;
+}
+
+.ncm-app .ncm-scheduled-item__priority {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 7px;
+  padding: 1px 5px;
+  border-radius: 1px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  flex-shrink: 0;
+}
+
+.ncm-app .ncm-scheduled-item__priority--urgent {
+  background: rgba(246, 82, 97, 0.12);
+  color: var(--ncm-primary, #F65261);
+  border: 1px solid rgba(246, 82, 97, 0.2);
+}
+
+.ncm-app .ncm-scheduled-item__priority--normal {
+  background: rgba(25, 243, 247, 0.06);
+  color: var(--ncm-text-muted, #555570);
+  border: 1px solid rgba(25, 243, 247, 0.1);
+}
+
+.ncm-app .ncm-scheduled-item__priority--critical {
+  background: rgba(255, 0, 51, 0.15);
+  color: var(--ncm-danger, #ff0033);
+  border: 1px solid rgba(255, 0, 51, 0.3);
+  animation: ncm-pulse-dot 1.5s ease-in-out infinite;
+}
+
+.ncm-app .ncm-scheduled-item__actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+

@@ -1,0 +1,58 @@
+    {{#if (eq activeTab 'messages')}}
+
+    {{!-- NPC Quick-Send --}}
+    <div class="ncm-section-title">
+      <i class="fas fa-paper-plane"></i> Send As NPC
+      <button class="ncm-section-title__action" data-action="openComposer"><i class="fas fa-plus"></i> Compose →</button>
+    </div>
+    {{#if npcActors.length}}
+    <div class="ncm-quicksend-grid">
+      {{#each npcActors}}
+      <div class="ncm-quicksend-card" data-action="quickSend" data-actor-id="{{this.id}}">
+        <div class="ncm-quicksend-card__avatar" style="color: {{this.color}};">{{this.initial}}</div>
+        <div class="ncm-quicksend-card__info">
+          <div class="ncm-quicksend-card__name">{{this.name}}</div>
+          <div class="ncm-quicksend-card__last">{{#if this.lastMessage}}{{this.lastMessage}}{{else}}No messages sent{{/if}}</div>
+        </div>
+        <div class="ncm-quicksend-card__send"><i class="fas fa-paper-plane"></i></div>
+      </div>
+      {{/each}}
+    </div>
+    {{else}}
+    <div class="ncm-admin-empty"><i class="fas fa-user-slash"></i> No NPC actors configured.</div>
+    {{/if}}
+
+    {{!-- Scheduled Deliveries --}}
+    <div class="ncm-section-title">
+      <i class="fas fa-clock"></i> Scheduled Deliveries
+      {{#if scheduledCount}}<span class="ncm-admin-tab__count" style="margin-left: 4px;">{{scheduledCount}}</span>{{/if}}
+    </div>
+    {{#if scheduledEntries.length}}
+    <div class="ncm-scheduled-list">
+      {{#each scheduledEntries}}
+      <div class="ncm-scheduled-item">
+        <div class="ncm-scheduled-item__time">
+          <div class="ncm-scheduled-item__countdown {{#if this.isSoon}}ncm-scheduled-item__countdown--soon{{/if}}">{{this.countdown}}</div>
+          <div class="ncm-scheduled-item__date">{{this.deliveryDate}}</div>
+        </div>
+        <div class="ncm-scheduled-item__route">
+          <div class="ncm-scheduled-item__from-to">
+            <span style="color: {{this.fromColor}};">{{this.fromName}}</span>
+            <span class="arrow">→</span>
+            <span>{{this.toName}}</span>
+          </div>
+          <div class="ncm-scheduled-item__subject">"{{this.subject}}"</div>
+        </div>
+        <div class="ncm-scheduled-item__priority ncm-scheduled-item__priority--{{this.priority}}">{{this.priority}}</div>
+        <div class="ncm-scheduled-item__actions">
+          <button class="ncm-admin-action-btn" data-action="editScheduled" data-schedule-id="{{this.scheduleId}}" title="Edit"><i class="fas fa-pen"></i></button>
+          <button class="ncm-admin-action-btn ncm-admin-action-btn--danger" data-action="cancelScheduled" data-schedule-id="{{this.scheduleId}}" title="Cancel"><i class="fas fa-xmark"></i></button>
+        </div>
+      </div>
+      {{/each}}
+    </div>
+    {{else}}
+    <div class="ncm-admin-empty"><i class="fas fa-clock"></i> No scheduled messages pending.</div>
+    {{/if}}
+
+    {{/if}}

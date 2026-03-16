@@ -1,0 +1,209 @@
+    {{#if (eq activeTab 'shards')}}
+
+    {{!-- SUMMARY STRIP --}}
+    <div class="ncm-shard-summary-strip">
+      <div class="ncm-shard-stat"><div class="ncm-shard-stat__value ncm-shard-stat__value--cyan">{{shardSummary.total}}</div><div class="ncm-shard-stat__label">Shards</div></div>
+      <div class="ncm-shard-stat__sep"></div>
+      <div class="ncm-shard-stat"><div class="ncm-shard-stat__value">{{shardSummary.totalEntries}}</div><div class="ncm-shard-stat__label">Entries</div></div>
+      <div class="ncm-shard-stat__sep"></div>
+      {{#if shardSummary.unclaimedEddies}}
+      <div class="ncm-shard-stat"><div class="ncm-shard-stat__value ncm-shard-stat__value--gold">{{shardSummary.unclaimedEddies}}</div><div class="ncm-shard-stat__label">eb unclaimed</div></div>
+      <div class="ncm-shard-stat__sep"></div>
+      {{/if}}
+      {{#if shardSummary.claimedEddies}}
+      <div class="ncm-shard-stat"><div class="ncm-shard-stat__value ncm-shard-stat__value--muted">{{shardSummary.claimedEddies}}</div><div class="ncm-shard-stat__label">eb claimed</div></div>
+      <div class="ncm-shard-stat__sep"></div>
+      {{/if}}
+      <div class="ncm-shard-stat"><div class="ncm-shard-stat__value ncm-shard-stat__value--green">{{shardSummary.breached}}</div><div class="ncm-shard-stat__label">Breached</div></div>
+      <div class="ncm-shard-stat__sep"></div>
+      <div class="ncm-shard-stat"><div class="ncm-shard-stat__value ncm-shard-stat__value--red">{{shardSummary.locked}}</div><div class="ncm-shard-stat__label">Locked</div></div>
+    </div>
+
+    {{!-- ACTIVITY STRIP --}}
+    <div class="ncm-shard-activity-strip">
+      <div class="ncm-shard-activity-strip__label"><i class="fas fa-bolt"></i> Live</div>
+      <div class="ncm-shard-activity-strip__events">
+        {{#if shardActivityLog.length}}
+          {{#each shardActivityLog}}
+          <div class="ncm-shard-activity-strip__event">{{{this.text}}}</div>
+          {{/each}}
+        {{else}}
+          <div class="ncm-shard-activity-strip__event" style="opacity:0.4;">No activity this session</div>
+        {{/if}}
+      </div>
+    </div>
+
+    {{!-- CREATE PANEL --}}
+    <div class="ncm-shard-create-panel">
+      <div class="ncm-shard-create-card">
+        <div class="ncm-shard-create-card__header"><i class="fas fa-plus"></i> Quick Create from Preset</div>
+        <div class="ncm-shard-preset-grid">
+          {{#each shardPresetButtons}}
+          <button class="ncm-shard-preset-btn" data-action="quickCreateShard" data-preset="{{key}}">
+            <i class="{{icon}}" {{#if iconColor}}style="color:{{iconColor}};"{{/if}}></i><span class="ncm-shard-preset-btn__label">{{label}}</span>
+          </button>
+          {{/each}}
+        </div>
+      </div>
+      <div class="ncm-shard-create-card">
+        <div class="ncm-shard-create-card__header"><i class="fas fa-arrow-right-arrow-left"></i> Other Actions</div>
+        <div class="ncm-shard-convert-actions">
+          <button class="ncm-shard-convert-btn" data-action="convertItemToShard">
+            <div class="ncm-shard-convert-btn__icon ncm-shard-convert-btn__icon--convert"><i class="fas fa-arrow-right-arrow-left"></i></div>
+            <div class="ncm-shard-convert-btn__text"><div class="ncm-shard-convert-btn__title">Convert Item</div><div class="ncm-shard-convert-btn__desc">Turn any world item into a data shard</div></div>
+          </button>
+          <button class="ncm-shard-convert-btn" data-action="quickCreateShard" data-preset="blank">
+            <div class="ncm-shard-convert-btn__icon ncm-shard-convert-btn__icon--new"><i class="fas fa-file-circle-plus"></i></div>
+            <div class="ncm-shard-convert-btn__text"><div class="ncm-shard-convert-btn__title">New Blank Shard</div><div class="ncm-shard-convert-btn__desc">Create empty shard, configure everything</div></div>
+          </button>
+          <button class="ncm-shard-convert-btn">
+            <div class="ncm-shard-convert-btn__icon ncm-shard-convert-btn__icon--import"><i class="fas fa-file-import"></i></div>
+            <div class="ncm-shard-convert-btn__text"><div class="ncm-shard-convert-btn__title">Import JSON</div><div class="ncm-shard-convert-btn__desc">Restore from exported shard data</div></div>
+          </button>
+          <button class="ncm-shard-convert-btn" data-action="unconvertShard">
+            <div class="ncm-shard-convert-btn__icon ncm-shard-convert-btn__icon--revert"><i class="fas fa-rotate-left"></i></div>
+            <div class="ncm-shard-convert-btn__text"><div class="ncm-shard-convert-btn__title">Unconvert Shard</div><div class="ncm-shard-convert-btn__desc">Revert a data shard back to a regular item</div></div>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    {{!-- TOOLBAR --}}
+    <div class="ncm-shard-toolbar">
+      <div class="ncm-shard-search">
+        <i class="fas fa-search"></i>
+        <input type="text" class="ncm-shard-search__input" placeholder="Search shards..." value="{{shardSearch}}">
+      </div>
+      <div class="ncm-shard-filter-pill" data-action="cycleShardIceFilter">ICE <span class="ncm-shard-filter-val">{{shardIceFilter}}</span> <i class="fas fa-chevron-down"></i></div>
+      <div class="ncm-shard-filter-pill" data-action="cycleShardStatusFilter">Status <span class="ncm-shard-filter-val">{{shardStatusFilter}}</span> <i class="fas fa-chevron-down"></i></div>
+      <div class="ncm-shard-filter-pill" data-action="cycleShardOwnerFilter">Owner <span class="ncm-shard-filter-val">{{shardOwnerFilter}}</span> <i class="fas fa-chevron-down"></i></div>
+      <div class="ncm-shard-toolbar__spacer"></div>
+      <div class="ncm-shard-filter-pill" data-action="cycleShardSort">Sort <span class="ncm-shard-filter-val">{{shardSort}}</span> <i class="fas fa-chevron-down"></i></div>
+      <div class="ncm-shard-filter-pill" data-action="cycleShardGroupMode">Group <span class="ncm-shard-filter-val">{{shardGroupMode}}</span> <i class="fas fa-chevron-down"></i></div>
+      <button class="ncm-shard-select-toggle {{#if shardSelectMode}}ncm-shard-select-toggle--active{{/if}}" data-action="toggleShardSelectMode">
+        <i class="fas fa-check-double"></i> Select
+      </button>
+    </div>
+
+    {{!-- BULK ACTION BAR --}}
+    {{#if shardSelectedCount}}
+    <div class="ncm-shard-bulk-bar">
+      <div class="ncm-shard-bulk-bar__count">{{shardSelectedCount}} selected</div>
+      <div class="ncm-shard-bulk-bar__sep"></div>
+      <div class="ncm-shard-bulk-bar__actions">
+        <button class="ncm-shard-bulk-btn" data-action="bulkRelockSelected"><i class="fas fa-lock"></i> Relock Selected</button>
+        <button class="ncm-shard-bulk-btn"><i class="fas fa-arrow-right"></i> Move to...</button>
+        <button class="ncm-shard-bulk-btn" data-action="bulkExportSelected"><i class="fas fa-file-export"></i> Export Selected</button>
+        <button class="ncm-shard-bulk-btn ncm-shard-bulk-btn--danger" data-action="purgeDestroyed"><i class="fas fa-trash-can"></i> Delete</button>
+      </div>
+      <div class="ncm-shard-bulk-bar__deselect" data-action="deselectAllShards">✕ Clear</div>
+    </div>
+    {{/if}}
+
+    {{!-- SHARD LIST --}}
+    {{#if shardGroups.length}}
+      {{#each shardGroups}}
+      <div class="ncm-shard-owner-group {{#if this.collapsed}}ncm-shard-owner-group--collapsed{{/if}}">
+        <div class="ncm-shard-owner-header" data-action="toggleShardGroup" data-group-key="{{this.key}}">
+          <i class="fas fa-chevron-down ncm-shard-owner-header__chevron"></i>
+          {{#if this.img}}
+            <img src="{{this.img}}" class="ncm-shard-owner-header__img" />
+          {{else}}
+            <div class="ncm-shard-owner-header__icon {{#if this.isWorld}}ncm-shard-owner-header__icon--world{{/if}}"><i class="{{this.icon}}"></i></div>
+          {{/if}}
+          <div class="ncm-shard-owner-header__name">{{this.name}}</div>
+          <div class="ncm-shard-owner-header__summary">
+            <div class="ncm-shard-owner-header__pips">
+              {{#each this.pips}}
+              <div class="ncm-shard-owner-pip ncm-shard-owner-pip--{{this.class}}" title="{{this.class}}"></div>
+              {{/each}}
+            </div>
+            <div class="ncm-shard-owner-header__status-text">{{{this.statusText}}}</div>
+            <div class="ncm-shard-owner-header__count">{{this.shardCount}} shard{{#unless (eq this.shardCount 1)}}s{{/unless}}</div>
+          </div>
+        </div>
+        {{#unless this.collapsed}}
+        <div class="ncm-shard-owner-body">
+          {{#each this.shards}}
+          <div class="ncm-shard-row {{#if this.isSelected}}ncm-shard-row--selected{{/if}}" data-action="expandShard" data-item-id="{{this.itemId}}">
+            {{#if ../../shardSelectMode}}
+            <div class="ncm-shard-row__checkbox" data-action="toggleShardSelect" data-item-id="{{this.itemId}}"><i class="fas fa-check"></i></div>
+            {{/if}}
+            <div class="ncm-shard-row__ice-pip ncm-shard-row__ice-pip--{{this.iceStripe}}"></div>
+            <div class="ncm-shard-row__icon {{#if this.presetIconClass}}ncm-shard-row__icon--{{this.presetIconClass}}{{/if}}"><i class="{{this.presetIcon}}"></i></div>
+            <div class="ncm-shard-row__info">
+              <div class="ncm-shard-row__name">{{this.name}}</div>
+              <div class="ncm-shard-row__meta">{{{this.metaLine}}}</div>
+            </div>
+            <div class="ncm-shard-row__badges">
+              {{#each this.badges}}
+              <span class="ncm-sc-badge ncm-sc-badge--{{this.type}}"><i class="fas {{this.icon}}"></i> {{this.label}}</span>
+              {{/each}}
+            </div>
+            <div class="ncm-shard-row__accessed {{#if this.lastAccessedRecent}}ncm-shard-row__accessed--recent{{/if}} {{#if (eq this.lastAccessedLabel 'Never')}}ncm-shard-row__accessed--never{{/if}}">{{this.lastAccessedLabel}}</div>
+            {{#if this.integrityEnabled}}
+            <div class="ncm-shard-row__integrity">
+              <div class="ncm-integrity-mini-track"><div class="ncm-integrity-mini-fill ncm-integrity-mini-fill--{{this.integrityTier}}" style="width:{{this.integrityPercent}}%;"></div></div>
+              <span class="ncm-integrity-mini-val">{{this.integrityPercent}}%</span>
+            </div>
+            {{/if}}
+            <div class="ncm-shard-row__entries"><i class="fas fa-file-lines"></i> {{this.entryCount}}</div>
+            <div class="ncm-shard-row__actions">
+              <div class="ncm-action-btn" data-action="openShardItem" data-item-id="{{this.itemId}}" title="Open Shard"><i class="fas fa-folder-open"></i></div>
+              <div class="ncm-action-btn ncm-action-btn--gold" data-action="configureShardItem" data-item-id="{{this.itemId}}" title="Configure"><i class="fas fa-cog"></i></div>
+              <div class="ncm-action-btn" data-action="forceDecryptShardItem" data-item-id="{{this.itemId}}" title="{{#if this.isDecrypted}}Relock{{else}}Force Decrypt{{/if}}"><i class="fas {{#if this.isDecrypted}}fa-lock{{else}}fa-unlock{{/if}}"></i></div>
+            </div>
+          </div>
+          {{#if this.isExpanded}}
+          <div class="ncm-shard-row-expand">
+            <div class="ncm-shard-row-expand__inner">
+              {{#if this.hasLayers}}
+              <div class="ncm-shard-layer-chain">
+                {{#each this.layers}}
+                <div class="ncm-shard-layer-chip {{#if this.cleared}}ncm-shard-layer-chip--cleared{{else}}ncm-shard-layer-chip--pending{{/if}}"
+                     data-action="toggleShardLayer" data-item-id="{{../itemId}}" data-layer="{{this.key}}"
+                     title="Click to {{#if this.cleared}}relock from{{else}}unlock to{{/if}} this layer">
+                  <i class="fas {{#if this.cleared}}fa-check{{else}}fa-lock{{/if}}"></i> {{this.name}}
+                </div>
+                {{/each}}
+              </div>
+              {{/if}}
+              <div class="ncm-shard-expand-preview">
+                {{#if this.firstEntrySnippet}}
+                <div class="ncm-shard-expand-preview__label">First Entry</div>
+                <div class="ncm-shard-expand-preview__snippet">{{this.firstEntrySnippet}}</div>
+                {{else}}
+                <div class="ncm-shard-expand-preview__label">No entries</div>
+                {{/if}}
+              </div>
+              <div class="ncm-shard-expand-actions">
+                <button class="ncm-shard-expand-btn ncm-shard-expand-btn--cyan" data-action="openShardItem" data-item-id="{{this.itemId}}"><i class="fas fa-folder-open"></i> Open</button>
+                <button class="ncm-shard-expand-btn ncm-shard-expand-btn--ghost" data-action="configureShardItem" data-item-id="{{this.itemId}}"><i class="fas fa-cog"></i> Config</button>
+                <button class="ncm-shard-expand-btn ncm-shard-expand-btn--ghost" data-action="unconvertShard" data-item-id="{{this.itemId}}"><i class="fas fa-rotate-left"></i> Unconvert</button>
+              </div>
+            </div>
+          </div>
+          {{/if}}
+          {{/each}}
+        </div>
+        {{/unless}}
+      </div>
+      {{/each}}
+
+      {{!-- PAGINATION --}}
+      <div class="ncm-shard-pagination">
+        <div class="ncm-shard-pagination__info">Showing <span>{{shardSummary.total}}</span> shard{{#unless (eq shardSummary.total 1)}}s{{/unless}}</div>
+      </div>
+
+    {{else}}
+      <div class="ncm-admin-empty"><i class="fas fa-database"></i> No data shards found.</div>
+    {{/if}}
+
+    {{!-- Quick Actions --}}
+    <div class="ncm-section-title" style="margin-top:16px;"><i class="fas fa-bolt"></i> Quick Actions</div>
+    <div class="ncm-shard-quick-actions">
+      <button class="ncm-shard-qa-btn" data-action="bulkRelockAll"><i class="fas fa-lock"></i> Bulk Relock All</button>
+      <button class="ncm-shard-qa-btn" data-action="purgeDestroyed"><i class="fas fa-trash-can"></i> Purge Destroyed</button>
+    </div>
+
+    {{/if}}

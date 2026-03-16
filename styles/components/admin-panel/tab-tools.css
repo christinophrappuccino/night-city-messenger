@@ -1,0 +1,109 @@
+/* ═══════════════════════════════════════════
+   TAB 6: TOOLS
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-tools-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.ncm-app .ncm-tool-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 18px 12px 14px;
+  background: var(--ncm-bg-surface, #1a1a2e);
+  border: 1px solid var(--ncm-border, #2a2a45);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.15s;
+  position: relative;
+  overflow: hidden;
+}
+
+.ncm-app .ncm-tool-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: transparent;
+  transition: background 0.15s;
+}
+
+.ncm-app .ncm-tool-card:hover {
+  border-color: var(--ncm-border-active, #3a3a5a);
+  background: var(--ncm-bg-elevated, #252540);
+}
+
+.ncm-app .ncm-tool-card:hover::before {
+  background: var(--ncm-secondary, #19f3f7);
+}
+
+.ncm-app .ncm-tool-card__icon {
+  font-size: 20px;
+  color: var(--ncm-secondary, #19f3f7);
+  transition: transform 0.15s;
+}
+
+.ncm-app .ncm-tool-card:hover .ncm-tool-card__icon {
+  transform: scale(1.1);
+}
+
+.ncm-app .ncm-tool-card__icon--red {
+  color: var(--ncm-primary, #F65261);
+}
+
+.ncm-app .ncm-tool-card__icon--gold {
+  color: var(--ncm-accent, #f7c948);
+}
+
+.ncm-app .ncm-tool-card__icon--green {
+  color: var(--ncm-success, #00ff41);
+}
+
+.ncm-app .ncm-tool-card__name {
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ncm-text-primary, #e0e0e8);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  text-align: center;
+}
+
+.ncm-app .ncm-tool-card__desc {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 8px;
+  color: var(--ncm-text-muted, #555570);
+  text-align: center;
+  line-height: 1.4;
+}
+
+/* Danger zone */
+
+.ncm-app .ncm-danger-zone {
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 0, 51, 0.15);
+}
+
+.ncm-app .ncm-danger-zone .ncm-section-title {
+  color: var(--ncm-danger, #ff0033);
+}
+
+.ncm-app .ncm-danger-zone .ncm-section-title i {
+  color: var(--ncm-danger, #ff0033);
+}
+
+.ncm-app .ncm-danger-zone .ncm-tool-card:hover::before {
+  background: var(--ncm-danger, #ff0033);
+}
+
+.ncm-app .ncm-danger-zone .ncm-tool-card__icon {
+  color: var(--ncm-danger, #ff0033);
+}
+

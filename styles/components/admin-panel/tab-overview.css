@@ -1,0 +1,224 @@
+/* ═══════════════════════════════════════════
+   TAB 1: OVERVIEW — Actor Cards + Connections
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-actor-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 8px;
+}
+
+.ncm-app .ncm-actor-card {
+  background: var(--ncm-bg-surface, #1a1a2e);
+  border: 1px solid var(--ncm-border, #2a2a45);
+  border-radius: 2px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+  position: relative;
+}
+
+.ncm-app .ncm-actor-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: transparent;
+  transition: background 0.15s;
+}
+
+.ncm-app .ncm-actor-card:hover {
+  border-color: var(--ncm-border-active, #3a3a5a);
+  background: var(--ncm-bg-elevated, #252540);
+}
+
+.ncm-app .ncm-actor-card:hover::before {
+  background: var(--ncm-secondary, #19f3f7);
+}
+
+.ncm-app .ncm-actor-card--player {
+  border-left: 2px solid rgba(25, 243, 247, 0.3);
+}
+
+.ncm-app .ncm-actor-card--npc {
+  border-left: 2px solid rgba(247, 201, 72, 0.3);
+}
+
+.ncm-app .ncm-actor-card--alert {
+  border-left-color: var(--ncm-primary, #F65261);
+}
+
+.ncm-app .ncm-actor-card__avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 2px solid var(--ncm-border, #2a2a45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-weight: 700;
+  font-size: 15px;
+  flex-shrink: 0;
+  background: var(--ncm-bg-elevated, #252540);
+  overflow: hidden;
+}
+
+.ncm-app .ncm-actor-card__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ncm-app .ncm-actor-card__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.ncm-app .ncm-actor-card__name {
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ncm-text-primary, #e0e0e8);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ncm-app .ncm-actor-card__meta {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 9px;
+  color: var(--ncm-text-muted, #555570);
+  display: flex;
+  gap: 8px;
+  margin-top: 1px;
+}
+
+.ncm-app .ncm-actor-card__meta span {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.ncm-app .ncm-actor-card__stats {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.ncm-app .ncm-actor-card__msg-count {
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ncm-text-secondary, #8888a0);
+  line-height: 1;
+}
+
+.ncm-app .ncm-actor-card__unread {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 8px;
+  padding: 1px 5px;
+  border-radius: 1px;
+  background: rgba(246, 82, 97, 0.15);
+  color: var(--ncm-primary, #F65261);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.ncm-app .ncm-actor-card__last-active {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 8px;
+  color: var(--ncm-text-muted, #555570);
+}
+
+/* Connections rows */
+
+.ncm-app .ncm-connection-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ncm-app .ncm-connection-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  background: var(--ncm-bg-surface, #1a1a2e);
+  border-radius: 2px;
+  border: 1px solid var(--ncm-border, #2a2a45);
+}
+
+.ncm-app .ncm-connection-row__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 5px currentColor;
+}
+
+.ncm-app .ncm-connection-row__dot--online {
+  background: var(--ncm-success, #00ff41);
+  color: var(--ncm-success, #00ff41);
+}
+
+.ncm-app .ncm-connection-row__dot--gm {
+  background: var(--ncm-primary, #F65261);
+  color: var(--ncm-primary, #F65261);
+}
+
+.ncm-app .ncm-connection-row__name {
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ncm-text-primary, #e0e0e8);
+}
+
+.ncm-app .ncm-connection-row__role {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 7px;
+  padding: 1px 5px;
+  border-radius: 1px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.ncm-app .ncm-connection-row__role--gm {
+  background: rgba(246, 82, 97, 0.12);
+  color: var(--ncm-primary, #F65261);
+  border: 1px solid rgba(246, 82, 97, 0.2);
+}
+
+.ncm-app .ncm-connection-row__role--player {
+  background: rgba(25, 243, 247, 0.08);
+  color: var(--ncm-secondary, #19f3f7);
+  border: 1px solid rgba(25, 243, 247, 0.15);
+}
+
+.ncm-app .ncm-connection-row__actor {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 9px;
+  color: var(--ncm-text-secondary, #8888a0);
+  flex: 1;
+}
+
+.ncm-app .ncm-connection-row__network {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 8px;
+  color: var(--ncm-secondary, #19f3f7);
+  text-transform: uppercase;
+}
+
+.ncm-app .ncm-connection-row__session {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 8px;
+  color: var(--ncm-text-muted, #555570);
+}
+
