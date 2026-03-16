@@ -923,7 +923,7 @@ export class ItemInboxApp extends BaseApplication {
   /**
    * Switch network from within the shard's network overlay.
    * If the target network requires authentication, opens NetworkAuthDialog first.
-   * Mirrors MessageViewerApp._onSelectNetwork pattern.
+   * Shows a transition splash on success before proceeding to next security layer.
    */
   static async _onSwitchNetwork(event, target) {
     const networkId = target.dataset.networkId || target.value;
@@ -947,19 +947,40 @@ export class ItemInboxApp extends BaseApplication {
         if (!result.success) return; // Cancelled or failed — stay on current overlay
       }
 
+      // Guard against hook-driven re-renders during transition
+      this._transitionActive = true;
+
       // Save scroll before re-render
       const content = this.element?.querySelector('.ncm-shard-content');
       if (content) this._savedScrollTop = content.scrollTop;
 
       const switchResult = await networkService.switchNetwork(networkId);
       if (switchResult?.success === false) {
+        this._transitionActive = false;
         ui.notifications.warn(`NCM | Could not switch to ${network.name}: ${switchResult.reason || 'unknown error'}`);
         return;
       }
 
-      // Re-render to re-evaluate security stack with new network
+      // Success — show transition splash before proceeding
+      const iconColor = network.theme?.color || '#19f3f7';
+      await this._showTransitionSplash({
+        icon: 'fas fa-network-wired',
+        iconStyle: 'accent',
+        preTitle: 'NETWORK CONNECTION ESTABLISHED',
+        title: network.name,
+        titleColor: iconColor,
+        subtitle: requiresAuth ? 'Authenticated and connected.' : 'Signal locked. Proceeding...',
+        progressColor: 'accent',
+        footerText: 'Verifying access...',
+        duration: 2000,
+        sound: 'login-success',
+      });
+
+      this._transitionActive = false;
+      this._pendingUnlockSplash = true;
       this.render(true);
     } catch (err) {
+      this._transitionActive = false;
       console.error('NCM | Failed to switch network from shard overlay:', err);
       ui.notifications.warn('NCM | Could not switch network.');
     }
