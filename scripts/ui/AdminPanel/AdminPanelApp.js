@@ -56,6 +56,20 @@ export class AdminPanelApp extends BaseApplication {
   // ── Shards tab state (Sprint 4.6) ──
   /** @type {Array<object>} In-memory shard activity log for session events */
   _shardActivityLog = [];
+  /** @type {boolean} Bulk select mode active */
+  _shardSelectMode = false;
+  /** @type {Set<string>} Selected shard item IDs */
+  _selectedShardIds = new Set();
+  /** @type {string|null} Expanded shard row item ID for inline preview */
+  _expandedShardId = null;
+  /** @type {Set<string>} Collapsed owner group keys */
+  _collapsedShardGroups = new Set();
+  /** @type {string} Shard search query */
+  _shardSearch = '';
+  /** @type {string} Shard sort: 'name' | 'status' | 'accessed' */
+  _shardSort = 'name';
+  /** @type {string} Shard group mode: 'owner' | 'preset' | 'status' | 'none' */
+  _shardGroupMode = 'owner';
 
   // ═══════════════════════════════════════════════════════════
   //  Service Accessors
@@ -150,6 +164,15 @@ export class AdminPanelApp extends BaseApplication {
       purgeDestroyed: AdminPanelApp._onPurgeDestroyed,
       configureShardItem: AdminPanelApp._onConfigureShardItem,
       relockShardItem: AdminPanelApp._onRelockShardItem,
+      // v4 shard actions
+      toggleShardGroup: AdminPanelApp._onToggleShardGroup,
+      toggleShardSelect: AdminPanelApp._onToggleShardSelect,
+      toggleShardSelectMode: AdminPanelApp._onToggleShardSelectMode,
+      deselectAllShards: AdminPanelApp._onDeselectAllShards,
+      expandShard: AdminPanelApp._onExpandShard,
+      bulkRelockSelected: AdminPanelApp._onBulkRelockSelected,
+      bulkExportSelected: AdminPanelApp._onBulkExportSelected,
+      unconvertShard: AdminPanelApp._onUnconvertShard,
 
       // Tools actions
       openThemeCustomizer: AdminPanelApp._onOpenThemeCustomizer,
@@ -242,14 +265,15 @@ export class AdminPanelApp extends BaseApplication {
 
     // ─── Data Shards (Shards tab) ───
     const shards = this._gatherShardData();
+    const shardGroups = this._buildShardGroups(shards);
     const shardSummary = {
       total: shards.length,
-      locked: shards.filter(s => s.status === 'locked').length,
-      blackice: shards.filter(s => s.status === 'blackice').length,
+      locked: shards.filter(s => s.status === 'locked' || s.status === 'blackice').length,
       breached: shards.filter(s => s.status === 'breached').length,
       destroyed: shards.filter(s => s.status === 'destroyed').length,
       open: shards.filter(s => s.status === 'open').length,
       totalEddies: shards.reduce((sum, s) => sum + (s.totalEddies || 0), 0),
+      claimedEddies: shards.reduce((sum, s) => sum + (s.claimedEddies || 0), 0),
       unclaimedEddies: shards.reduce((sum, s) => sum + (s.unclaimedEddies || 0), 0),
       totalEntries: shards.reduce((sum, s) => sum + (s.entryCount || 0), 0),
     };
@@ -323,9 +347,15 @@ export class AdminPanelApp extends BaseApplication {
 
       // Shards tab
       shards,
+      shardGroups,
       shardSummary,
       shardPresetButtons,
       shardActivityLog,
+      shardSelectMode: this._shardSelectMode,
+      shardSelectedCount: this._selectedShardIds.size,
+      shardSearch: this._shardSearch,
+      shardSort: this._shardSort,
+      shardGroupMode: this._shardGroupMode,
 
       // Module info
       MODULE_ID,
@@ -1120,9 +1150,11 @@ export class AdminPanelApp extends BaseApplication {
         // Build security badges
         const badges = [];
         if (state.decrypted) {
-          badges.push({ type: 'green', icon: 'fa-unlock', label: 'Decrypted' });
+          badges.push({ type: 'green', icon: 'fa-unlock', label: 'Breached' });
         } else if (status === 'destroyed') {
           badges.push({ type: 'danger', icon: 'fa-skull-crossbones', label: 'Destroyed' });
+        } else if (status === 'open') {
+          badges.push({ type: 'muted', icon: 'fa-lock-open', label: 'Open' });
         } else if (config.encrypted) {
           badges.push({ type: 'red', icon: 'fa-lock', label: 'Locked' });
         }
@@ -1138,17 +1170,22 @@ export class AdminPanelApp extends BaseApplication {
 
         // Integrity badge
         if (integrity.enabled && integrity.percentage < 75) {
-          badges.push({ type: 'danger', icon: 'fa-triangle-exclamation', label: `${integrity.percentage}% integrity` });
+          badges.push({ type: 'danger', icon: 'fa-triangle-exclamation', label: `${integrity.percentage}%` });
         }
 
-        // Determine owner
-        let owner = 'World item';
-        let ownerIcon = 'fa-box';
-        if (item.parent) {
-          owner = `${item.parent.name}'s inventory`;
+        // Owner info — for grouping
+        let ownerKey = 'world';
+        let ownerName = 'World Items';
+        let ownerIcon = 'fa-box-open';
+        let ownerImg = null;
+        if (item.parent && item.parent instanceof Actor) {
+          ownerKey = `actor-${item.parent.id}`;
+          ownerName = item.parent.name;
           ownerIcon = 'fa-user';
+          ownerImg = item.parent.img || item.parent.prototypeToken?.texture?.src || null;
         } else if (item.compendium) {
-          owner = 'Compendium';
+          ownerKey = 'compendium';
+          ownerName = 'Compendium';
           ownerIcon = 'fa-book';
         }
 
@@ -1157,6 +1194,7 @@ export class AdminPanelApp extends BaseApplication {
         const journal = journalId ? game.journal.get(journalId) : null;
         const entryCount = journal?.pages?.size ?? 0;
         let totalEddies = 0;
+        let claimedEddies = 0;
         let unclaimedEddies = 0;
         let corruptedCount = 0;
 
@@ -1166,34 +1204,49 @@ export class AdminPanelApp extends BaseApplication {
             if (flags?.contentType === 'eddies' && flags?.contentData) {
               const amt = flags.contentData.amount ?? 0;
               totalEddies += amt;
-              if (!flags.contentData.claimed) unclaimedEddies += amt;
+              if (flags.contentData.claimed) claimedEddies += amt;
+              else unclaimedEddies += amt;
             }
             if (flags?.corrupted) corruptedCount++;
           }
         }
 
-        // Count attempts + breached by
+        // Eddies badges — separate claimed vs unclaimed
+        if (unclaimedEddies > 0) {
+          badges.push({ type: 'gold', icon: 'fa-coins', label: `${unclaimedEddies.toLocaleString()} eb` });
+        }
+        if (claimedEddies > 0) {
+          badges.push({ type: 'muted', icon: 'fa-coins', label: `${claimedEddies.toLocaleString()} eb claimed` });
+        }
+
+        // Count attempts + breached by + last accessed
         const sessions = state.sessions ?? {};
         let attemptCount = 0;
         let breachedBy = null;
+        let lastAccessedTs = 0;
         for (const [actorId, session] of Object.entries(sessions)) {
           attemptCount += session.hackAttempts ?? 0;
           if (session.loggedIn || state.decrypted) {
             const actor = game.actors?.get(actorId);
             if (actor) breachedBy = actor.name;
           }
+          // Track most recent access timestamp
+          const ts = session.lastAccessed ?? session.lastLogin ?? 0;
+          if (ts > lastAccessedTs) lastAccessedTs = ts;
         }
 
-        // Eddies badge
-        if (unclaimedEddies > 0) {
-          badges.push({ type: 'gold', icon: 'fa-coins', label: `${unclaimedEddies.toLocaleString()} eb unclaimed` });
+        // Format last accessed
+        let lastAccessedLabel = 'Never';
+        let lastAccessedRecent = false;
+        if (lastAccessedTs > 0) {
+          const ago = Date.now() - lastAccessedTs;
+          if (ago < 60000) { lastAccessedLabel = 'Just now'; lastAccessedRecent = true; }
+          else if (ago < 3600000) { lastAccessedLabel = `${Math.floor(ago / 60000)}m ago`; lastAccessedRecent = ago < 600000; }
+          else if (ago < 86400000) { lastAccessedLabel = `${Math.floor(ago / 3600000)}h ago`; }
+          else { lastAccessedLabel = `${Math.floor(ago / 86400000)}d ago`; }
         }
 
-        // Entry label
-        let entryLabel = `${entryCount} ${entryCount === 1 ? 'entry' : 'entries'}`;
-        if (corruptedCount > 0) entryLabel += ` (${corruptedCount} corrupt)`;
-
-        // Preset icon
+        // Preset icon + label
         const presetIcon = preset?.icon || config.boot?.faIcon || 'fas fa-microchip';
         const presetLabel = preset?.label || 'Custom';
 
@@ -1205,20 +1258,40 @@ export class AdminPanelApp extends BaseApplication {
         }
         metaParts.push(netConfig.connectionMode === 'tethered' ? 'Tethered' : 'Offline');
 
+        // Security layers for expand preview
+        const layers = [];
+        if (netConfig.required ?? config.requiresNetwork) layers.push({ name: 'Network', cleared: true });
+        if (config.requiresKeyItem) layers.push({ name: 'Key Item', cleared: !!Object.values(sessions).find(s => s.keyItemUsed) });
+        if (config.requiresLogin) layers.push({ name: 'Login', cleared: !!Object.values(sessions).find(s => s.loggedIn) });
+        if (config.encrypted) layers.push({ name: 'Encryption', cleared: state.decrypted });
+
+        // First entry preview snippet
+        let firstEntrySnippet = '';
+        if (journal?.pages?.size) {
+          const firstPage = journal.pages.contents[0];
+          const pageFlags = firstPage?.flags?.[MODULE_ID];
+          firstEntrySnippet = pageFlags?.body || pageFlags?.contentData?.message || firstPage?.text?.content || '';
+          if (firstEntrySnippet.length > 200) firstEntrySnippet = firstEntrySnippet.slice(0, 200) + '...';
+          // Strip HTML tags
+          firstEntrySnippet = firstEntrySnippet.replace(/<[^>]+>/g, '');
+        }
+
         shards.push({
           itemId: item.id,
           name: config.shardName || item.name,
-          owner,
+          ownerKey,
+          ownerName,
           ownerIcon,
+          ownerImg,
           status,
           iceStripe,
           presetKey,
           presetLabel,
           presetIcon,
-          metaLine: metaParts.join(' <span class="ncm-shard-card__meta-sep">·</span> '),
+          metaLine: metaParts.join(' <span class="ncm-shard-row__meta-sep">·</span> '),
           badges,
           entryCount,
-          entryLabel,
+          corruptedCount,
           attemptCount,
           breachedBy,
           // Integrity
@@ -1227,15 +1300,109 @@ export class AdminPanelApp extends BaseApplication {
           integrityTier: integrity.tier,
           // Eddies
           totalEddies,
+          claimedEddies,
           unclaimedEddies,
           hasUnclaimed: unclaimedEddies > 0,
+          // v4 fields
+          lastAccessedLabel,
+          lastAccessedRecent,
+          lastAccessedTs,
+          isSelected: this._selectedShardIds.has(item.id),
+          isExpanded: this._expandedShardId === item.id,
+          layers,
+          firstEntrySnippet,
+          hasLayers: layers.length > 0,
         });
       }
     } catch (error) {
       console.error(`${MODULE_ID} | AdminPanelApp._gatherShardData:`, error);
     }
 
-    return shards;
+    // Apply search filter
+    let filtered = shards;
+    if (this._shardSearch) {
+      const q = this._shardSearch.toLowerCase();
+      filtered = filtered.filter(s =>
+        s.name.toLowerCase().includes(q) ||
+        s.ownerName.toLowerCase().includes(q) ||
+        s.presetLabel.toLowerCase().includes(q)
+      );
+    }
+
+    // Apply sort
+    filtered.sort((a, b) => {
+      switch (this._shardSort) {
+        case 'status': return a.status.localeCompare(b.status);
+        case 'accessed': return (b.lastAccessedTs || 0) - (a.lastAccessedTs || 0);
+        default: return a.name.localeCompare(b.name);
+      }
+    });
+
+    return filtered;
+  }
+
+  /**
+   * Group shards by owner for the v4 collapsible group layout.
+   * Each group has: key, name, icon, img, shards[], statusPips, statusText, shardCount.
+   * @param {Array<object>} shards
+   * @returns {Array<object>}
+   * @private
+   */
+  _buildShardGroups(shards) {
+    // Build groups map
+    const groupMap = new Map();
+    for (const shard of shards) {
+      if (!groupMap.has(shard.ownerKey)) {
+        groupMap.set(shard.ownerKey, {
+          key: shard.ownerKey,
+          name: shard.ownerName,
+          icon: shard.ownerIcon,
+          img: shard.ownerImg,
+          isWorld: shard.ownerKey === 'world',
+          shards: [],
+        });
+      }
+      groupMap.get(shard.ownerKey).shards.push(shard);
+    }
+
+    // Build final groups with status summaries
+    const groups = [];
+    for (const group of groupMap.values()) {
+      const locked = group.shards.filter(s => s.status === 'locked' || s.status === 'blackice').length;
+      const breached = group.shards.filter(s => s.status === 'breached').length;
+      const open = group.shards.filter(s => s.status === 'open').length;
+      const destroyed = group.shards.filter(s => s.status === 'destroyed').length;
+
+      // Build status pips array
+      const pips = [];
+      for (const s of group.shards) {
+        pips.push({ class: s.status === 'blackice' ? 'blackice' : s.status });
+      }
+
+      // Status summary text
+      const parts = [];
+      if (locked > 0) parts.push(`${locked} locked`);
+      if (breached > 0) parts.push(`${breached} breached`);
+      if (open > 0) parts.push(`${open} open`);
+      if (destroyed > 0) parts.push(`${destroyed} destroyed`);
+
+      groups.push({
+        ...group,
+        shardCount: group.shards.length,
+        pips,
+        statusText: parts.join(' · '),
+        collapsed: this._collapsedShardGroups.has(group.key),
+      });
+    }
+
+    // World items first, then actors alphabetically
+    groups.sort((a, b) => {
+      if (a.isWorld) return -1;
+      if (b.isWorld) return 1;
+      return a.name.localeCompare(b.name);
+    });
+
+    return groups;
   }
 
   /**
@@ -1390,6 +1557,11 @@ export class AdminPanelApp extends BaseApplication {
     if (this._activeTab === 'networks') {
       this._setupNetworkControls();
     }
+
+    // ── Shards tab: wire search input ──
+    if (this._activeTab === 'shards') {
+      this._setupShardControls();
+    }
   }
 
   /**
@@ -1485,6 +1657,25 @@ export class AdminPanelApp extends BaseApplication {
       const handler = this._networkSearchHandler || (this._networkSearchHandler =
         foundry.utils.debounce((e) => {
           this._networkSearch = e.target.value;
+          this.render(true);
+        }, 250)
+      );
+      searchInput.removeEventListener('input', handler);
+      searchInput.addEventListener('input', handler);
+    }
+  }
+
+  /**
+   * Wire up shard tab search input with debounced handler.
+   */
+  _setupShardControls() {
+    const searchInput = this.element?.querySelector('.ncm-shard-search__input');
+    if (searchInput) {
+      if (this._shardSearch) searchInput.focus();
+
+      const handler = this._shardSearchHandler || (this._shardSearchHandler =
+        foundry.utils.debounce((e) => {
+          this._shardSearch = e.target.value;
           this.render(true);
         }, 250)
       );
@@ -2492,6 +2683,114 @@ export class AdminPanelApp extends BaseApplication {
       ui.notifications.info(`NCM | Relocked: ${item.name}`);
       this.render();
     }
+  }
+
+  // ─── v4 Shard Tab Handlers ───
+
+  static _onToggleShardGroup(event, target) {
+    const key = target.closest('[data-group-key]')?.dataset.groupKey;
+    if (!key) return;
+    if (this._collapsedShardGroups.has(key)) {
+      this._collapsedShardGroups.delete(key);
+    } else {
+      this._collapsedShardGroups.add(key);
+    }
+    this.render();
+  }
+
+  static _onToggleShardSelectMode(event, target) {
+    this._shardSelectMode = !this._shardSelectMode;
+    if (!this._shardSelectMode) this._selectedShardIds.clear();
+    this.render();
+  }
+
+  static _onToggleShardSelect(event, target) {
+    event.stopPropagation();
+    const itemId = target.closest('[data-item-id]')?.dataset.itemId;
+    if (!itemId) return;
+    if (this._selectedShardIds.has(itemId)) {
+      this._selectedShardIds.delete(itemId);
+    } else {
+      this._selectedShardIds.add(itemId);
+    }
+    this.render();
+  }
+
+  static _onDeselectAllShards(event, target) {
+    this._selectedShardIds.clear();
+    this.render();
+  }
+
+  static _onExpandShard(event, target) {
+    const itemId = target.closest('[data-item-id]')?.dataset.itemId;
+    if (!itemId) return;
+    this._expandedShardId = this._expandedShardId === itemId ? null : itemId;
+    this.render();
+  }
+
+  static async _onBulkRelockSelected(event, target) {
+    const ids = [...this._selectedShardIds];
+    if (!ids.length) return;
+
+    const confirmed = await Dialog.confirm({
+      title: 'Relock Selected Shards',
+      content: `<p>Relock <strong>${ids.length}</strong> selected shard${ids.length > 1 ? 's' : ''}? All session data will be reset.</p>`,
+    });
+    if (!confirmed) return;
+
+    for (const id of ids) {
+      const item = AdminPanelApp._findItem(id);
+      if (item) await this.dataShardService?.relockShard(item);
+    }
+    this._selectedShardIds.clear();
+    ui.notifications.info(`NCM | ${ids.length} shard${ids.length > 1 ? 's' : ''} relocked.`);
+    this.render();
+  }
+
+  static _onBulkExportSelected(event, target) {
+    const ids = [...this._selectedShardIds];
+    if (!ids.length) return;
+
+    const exportData = [];
+    for (const id of ids) {
+      const item = AdminPanelApp._findItem(id);
+      if (!item) continue;
+      const config = item.getFlag(MODULE_ID, 'config');
+      const state = item.getFlag(MODULE_ID, 'state');
+      exportData.push({ name: item.name, id: item.id, config, state });
+    }
+
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ncm-shards-export-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    ui.notifications.info(`NCM | Exported ${exportData.length} shard${exportData.length > 1 ? 's' : ''}.`);
+  }
+
+  static async _onUnconvertShard(event, target) {
+    event.stopPropagation();
+    const itemId = target.closest('[data-item-id]')?.dataset.itemId;
+    if (!itemId) return;
+
+    const item = AdminPanelApp._findItem(itemId);
+    if (!item) return;
+
+    const confirmed = await Dialog.confirm({
+      title: 'Unconvert Data Shard',
+      content: `<p>Remove all data shard flags from <strong>${item.name}</strong>? The item will revert to a normal item. Shard entries and journal data will be preserved but detached.</p>`,
+    });
+    if (!confirmed) return;
+
+    await item.unsetFlag(MODULE_ID, 'isDataShard');
+    await item.unsetFlag(MODULE_ID, 'config');
+    await item.unsetFlag(MODULE_ID, 'state');
+    // Keep journalId so data isn't lost, just detached
+
+    ui.notifications.info(`NCM | Unconverted: ${item.name} is now a regular item.`);
+    this.render();
   }
 
   // ─── Shard Activity Log Helper ───

@@ -1798,272 +1798,305 @@
 }
 
 /* ═══════════════════════════════════════════
-   TAB 5: DATA SHARDS (Sprint 4.6 Redesign)
+   TAB 5: DATA SHARDS (v4 Redesign)
    ═══════════════════════════════════════════ */
 
-/* ─── Top Area: Count + Activity Feed + Quick Create ─── */
+/* ─── Summary Strip ─── */
+.ncm-app .ncm-shard-summary-strip {
+  display: flex; align-items: center; gap: 14px;
+  padding: 8px 14px;
+  background: var(--sp-surface); border: 1px solid var(--sp-border);
+  border-radius: 2px; margin-bottom: 10px;
+}
+.ncm-app .ncm-shard-stat { display: flex; align-items: baseline; gap: 5px; }
+.ncm-app .ncm-shard-stat__value { font-family: var(--ncm-font-display); font-size: 18px; font-weight: 700; color: var(--sp-text-primary); line-height: 1; }
+.ncm-app .ncm-shard-stat__value--cyan { color: var(--ncm-color-secondary, #19f3f7); }
+.ncm-app .ncm-shard-stat__value--gold { color: var(--ncm-accent, #f7c948); }
+.ncm-app .ncm-shard-stat__value--green { color: var(--ncm-success, #00ff41); }
+.ncm-app .ncm-shard-stat__value--red { color: var(--ncm-color-primary, #F65261); }
+.ncm-app .ncm-shard-stat__value--muted { color: var(--sp-text-muted); }
+.ncm-app .ncm-shard-stat__label { font-family: var(--ncm-font-display); font-size: 10px; font-weight: 600; color: var(--sp-text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.ncm-app .ncm-shard-stat__sep { width: 1px; height: 20px; background: var(--sp-border); flex-shrink: 0; }
 
-.ncm-app .ncm-shard-top-area {
-  display: flex; gap: 8px; margin-bottom: 12px;
-  min-height: 120px;
+/* ─── Activity Strip ─── */
+.ncm-app .ncm-shard-activity-strip {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 12px;
+  background: var(--sp-surface); border: 1px solid var(--sp-border);
+  border-radius: 2px; margin-bottom: 10px; overflow: hidden;
 }
+.ncm-app .ncm-shard-activity-strip__label { font-family: var(--ncm-font-display); font-size: 9px; font-weight: 700; color: var(--sp-text-muted); text-transform: uppercase; letter-spacing: 0.06em; flex-shrink: 0; }
+.ncm-app .ncm-shard-activity-strip__label i { font-size: 8px; color: var(--ncm-color-secondary); margin-right: 4px; }
+.ncm-app .ncm-shard-activity-strip__events { display: flex; gap: 14px; flex: 1; overflow: hidden; }
+.ncm-app .ncm-shard-activity-strip__event { font-family: var(--ncm-font-display); font-size: 10px; font-weight: 600; color: var(--sp-text-muted); white-space: nowrap; flex-shrink: 0; }
 
-.ncm-app .ncm-shard-count-box {
-  width: 72px; flex-shrink: 0;
-  background: var(--ncm-bg-surface, #1a1a2e);
-  border: 1px solid var(--ncm-border, #2a2a45);
-  border-radius: 2px;
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  padding: 10px 8px; text-align: center;
+/* ─── Create Panel ─── */
+.ncm-app .ncm-shard-create-panel { display: flex; gap: 8px; margin-bottom: 12px; align-items: stretch; }
+.ncm-app .ncm-shard-create-card { flex: 1; display: flex; flex-direction: column; background: var(--sp-surface); border: 1px solid var(--sp-border); border-radius: 2px; overflow: hidden; }
+.ncm-app .ncm-shard-create-card:hover { border-color: var(--sp-border-active); }
+.ncm-app .ncm-shard-create-card__header {
+  display: flex; align-items: center; gap: 6px; padding: 5px 12px;
+  background: var(--sp-bg, var(--bg-base, #12121a)); border-bottom: 1px solid var(--sp-border);
+  font-family: var(--ncm-font-display); font-size: 10px; font-weight: 700;
+  color: var(--sp-text-secondary); text-transform: uppercase; letter-spacing: 0.06em;
 }
-.ncm-app .ncm-shard-count-box__value {
-  font-family: var(--ncm-font-display, 'Orbitron', monospace);
-  font-size: 28px; font-weight: 700;
-  color: var(--ncm-text-primary, #e0e0e8);
-  line-height: 1;
-}
-.ncm-app .ncm-shard-count-box__label {
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 8px; color: var(--ncm-text-muted, #555570);
-  text-transform: uppercase; letter-spacing: 0.1em; margin-top: 4px;
-}
-.ncm-app .ncm-shard-count-box__sub {
-  font-family: var(--ncm-font-mono); font-size: 8px;
-  color: var(--ncm-text-muted); margin-top: 2px;
-}
+.ncm-app .ncm-shard-create-card__header i { font-size: 9px; color: var(--ncm-color-primary); }
 
-/* Activity Feed */
-.ncm-app .ncm-shard-activity-feed {
-  flex: 1; min-width: 0;
-  background: var(--ncm-bg-surface); border: 1px solid var(--ncm-border);
-  border-radius: 2px; overflow: hidden;
-  display: flex; flex-direction: column;
+.ncm-app .ncm-shard-preset-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 8px; }
+.ncm-app .ncm-shard-preset-btn {
+  display: flex !important; flex-direction: column !important; align-items: center !important; gap: 3px !important;
+  padding: 7px 4px !important; background: var(--sp-bg, var(--bg-deep, #0a0a0f)) !important;
+  border: 1px solid var(--sp-border) !important; border-radius: 2px !important;
+  cursor: pointer !important; transition: all 0.15s !important;
+  font-family: var(--ncm-font-display) !important; font-size: 14px !important;
+  color: inherit !important; height: auto !important; min-height: 0 !important; width: auto !important;
+  flex-shrink: 0 !important; flex-grow: 0 !important; appearance: none !important;
+  box-shadow: none !important; outline: none !important;
 }
-.ncm-app .ncm-shard-activity-feed__header {
-  display: flex; align-items: center; gap: 5px;
-  padding: 4px 10px;
-  background: var(--ncm-bg-base, #12121a); border-bottom: 1px solid var(--ncm-border);
-  font-family: var(--ncm-font-mono); font-size: 8px; color: var(--ncm-text-muted);
-  text-transform: uppercase; letter-spacing: 0.08em;
-}
-.ncm-app .ncm-shard-activity-feed__header i { font-size: 7px; color: var(--ncm-color-secondary, #19f3f7); }
-.ncm-app .ncm-shard-activity-feed__list { flex: 1; overflow-y: auto; padding: 4px 0; }
-.ncm-app .ncm-shard-activity-feed__list::-webkit-scrollbar { width: 3px; }
-.ncm-app .ncm-shard-activity-feed__list::-webkit-scrollbar-thumb { background: var(--ncm-border-active); }
+.ncm-app .ncm-shard-preset-btn:hover { border-color: var(--sp-border-active) !important; background: var(--sp-elevated) !important; }
+.ncm-app .ncm-shard-preset-btn__label { font-family: var(--ncm-font-display); font-size: 9px; font-weight: 700; color: var(--sp-text-secondary); text-transform: uppercase; letter-spacing: 0.02em; }
 
-.ncm-app .ncm-shard-activity-item {
+.ncm-app .ncm-shard-convert-actions { display: flex; flex-direction: column; gap: 5px; padding: 8px 10px; flex: 1; }
+.ncm-app .ncm-shard-convert-btn {
+  display: flex !important; align-items: center !important; gap: 8px !important;
+  padding: 6px 10px !important; background: var(--sp-bg, var(--bg-deep, #0a0a0f)) !important;
+  border: 1px solid var(--sp-border) !important; border-radius: 2px !important;
+  cursor: pointer !important; transition: all 0.15s !important; flex: 1 !important;
+  font-family: var(--ncm-font-display) !important; color: inherit !important;
+  height: auto !important; min-height: 0 !important; width: auto !important;
+  flex-shrink: 0 !important; flex-grow: 1 !important; appearance: none !important;
+  box-shadow: none !important; outline: none !important;
+}
+.ncm-app .ncm-shard-convert-btn:hover { border-color: var(--sp-border-active) !important; background: var(--sp-elevated) !important; }
+.ncm-app .ncm-shard-convert-btn__icon { width: 26px; height: 26px; border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 10px; flex-shrink: 0; }
+.ncm-app .ncm-shard-convert-btn__icon--convert { background: rgba(246,82,97,0.08); color: var(--ncm-color-primary); border: 1px solid rgba(246,82,97,0.2); }
+.ncm-app .ncm-shard-convert-btn__icon--new { background: rgba(25,243,247,0.06); color: var(--ncm-color-secondary); border: 1px solid rgba(25,243,247,0.12); }
+.ncm-app .ncm-shard-convert-btn__icon--revert { background: rgba(168,85,247,0.06); color: #a855f7; border: 1px solid rgba(168,85,247,0.12); }
+.ncm-app .ncm-shard-convert-btn__text { display: flex; flex-direction: column; gap: 1px; }
+.ncm-app .ncm-shard-convert-btn__title { font-family: var(--ncm-font-display); font-size: 11px; font-weight: 700; color: var(--sp-text-primary); text-transform: uppercase; }
+.ncm-app .ncm-shard-convert-btn__desc { font-family: var(--ncm-font-display); font-size: 9px; font-weight: 500; color: var(--sp-text-muted); }
+
+/* ─── Toolbar ─── */
+.ncm-app .ncm-shard-toolbar {
   display: flex; align-items: center; gap: 8px;
-  padding: 3px 10px;
-  font-family: var(--ncm-font-mono); font-size: 9px;
-  transition: background 0.1s;
+  padding: 0 0 10px; border-bottom: 1px solid var(--sp-border);
+  margin-bottom: 10px;
 }
-.ncm-app .ncm-shard-activity-item:hover { background: rgba(25,243,247,0.02); }
-.ncm-app .ncm-shard-activity-item__time { color: var(--ncm-text-muted); flex-shrink: 0; min-width: 36px; font-size: 8px; }
-.ncm-app .ncm-shard-activity-item__icon {
+.ncm-app .ncm-shard-search {
+  flex: 1; min-width: 160px; max-width: 260px;
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 10px;
+  background: var(--sp-surface); border: 1px solid var(--sp-border);
+  border-radius: 2px; transition: border-color 0.15s;
+}
+.ncm-app .ncm-shard-search:focus-within { border-color: var(--ncm-color-secondary); }
+.ncm-app .ncm-shard-search i { font-size: 10px; color: var(--sp-text-muted); }
+.ncm-app .ncm-shard-search__input {
+  background: none !important; border: none !important; outline: none !important;
+  font-family: var(--ncm-font-display) !important; font-size: 12px !important; font-weight: 600 !important;
+  color: var(--sp-text-primary) !important; width: 100% !important;
+  padding: 0 !important; margin: 0 !important; height: auto !important; min-height: 0 !important;
+  box-shadow: none !important;
+}
+.ncm-app .ncm-shard-search__input::placeholder { color: var(--sp-text-muted); font-weight: 500; }
+.ncm-app .ncm-shard-toolbar__spacer { flex: 1; }
+
+.ncm-app .ncm-shard-select-toggle {
+  display: flex !important; align-items: center !important; gap: 5px !important;
+  padding: 4px 10px !important;
+  background: none !important; border: 1px solid var(--sp-border) !important;
+  border-radius: 2px !important; cursor: pointer !important; transition: all 0.15s !important;
+  font-family: var(--ncm-font-display) !important; font-size: 10px !important; font-weight: 700 !important;
+  color: var(--sp-text-muted) !important; text-transform: uppercase !important;
+  height: auto !important; min-height: 0 !important; width: auto !important;
+  flex-shrink: 0 !important; appearance: none !important; box-shadow: none !important; outline: none !important;
+}
+.ncm-app .ncm-shard-select-toggle:hover { border-color: var(--sp-border-active) !important; color: var(--sp-text-secondary) !important; }
+.ncm-app .ncm-shard-select-toggle--active { border-color: var(--ncm-color-secondary) !important; color: var(--ncm-color-secondary) !important; background: rgba(25,243,247,0.06) !important; }
+.ncm-app .ncm-shard-select-toggle i { font-size: 9px; }
+
+/* ─── Bulk Action Bar ─── */
+.ncm-app .ncm-shard-bulk-bar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 12px; margin-bottom: 10px;
+  background: rgba(25,243,247,0.04); border: 1px solid rgba(25,243,247,0.15); border-radius: 2px;
+}
+.ncm-app .ncm-shard-bulk-bar__count { font-family: var(--ncm-font-display); font-size: 12px; font-weight: 700; color: var(--ncm-color-secondary); flex-shrink: 0; }
+.ncm-app .ncm-shard-bulk-bar__sep { width: 1px; height: 18px; background: var(--sp-border); flex-shrink: 0; }
+.ncm-app .ncm-shard-bulk-bar__actions { display: flex; gap: 4px; flex: 1; flex-wrap: wrap; }
+.ncm-app .ncm-shard-bulk-btn {
+  display: inline-flex !important; align-items: center !important; gap: 4px !important;
+  padding: 4px 10px !important;
+  font-family: var(--ncm-font-display) !important; font-size: 10px !important; font-weight: 700 !important;
+  text-transform: uppercase !important; letter-spacing: 0.03em !important;
+  border-radius: 2px !important; cursor: pointer !important; transition: all 0.15s !important;
+  border: 1px solid var(--sp-border) !important; background: none !important; color: var(--sp-text-secondary) !important;
+  height: auto !important; min-height: 0 !important; width: auto !important;
+  appearance: none !important; box-shadow: none !important; outline: none !important;
+}
+.ncm-app .ncm-shard-bulk-btn:hover { border-color: var(--sp-border-active) !important; color: var(--sp-text-primary) !important; }
+.ncm-app .ncm-shard-bulk-btn i { font-size: 8px; }
+.ncm-app .ncm-shard-bulk-bar__deselect {
+  margin-left: auto; font-family: var(--ncm-font-display); font-size: 10px;
+  font-weight: 700; color: var(--sp-text-muted); cursor: pointer;
+  text-transform: uppercase; transition: color 0.15s;
+}
+.ncm-app .ncm-shard-bulk-bar__deselect:hover { color: var(--sp-text-secondary); }
+
+/* ─── Owner Group ─── */
+.ncm-app .ncm-shard-owner-group { margin-bottom: 8px; }
+.ncm-app .ncm-shard-owner-header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 10px;
+  background: var(--sp-surface); border: 1px solid var(--sp-border);
+  border-radius: 2px 2px 0 0; cursor: pointer; transition: all 0.15s; user-select: none;
+}
+.ncm-app .ncm-shard-owner-header:hover { border-color: var(--sp-border-active); }
+.ncm-app .ncm-shard-owner-group--collapsed .ncm-shard-owner-header { border-radius: 2px; }
+.ncm-app .ncm-shard-owner-group--collapsed .ncm-shard-owner-body { display: none; }
+.ncm-app .ncm-shard-owner-header__chevron { font-size: 8px; color: var(--sp-text-muted); transition: transform 0.2s; width: 12px; text-align: center; }
+.ncm-app .ncm-shard-owner-group--collapsed .ncm-shard-owner-header__chevron { transform: rotate(-90deg); }
+
+.ncm-app .ncm-shard-owner-header__icon {
+  width: 22px; height: 22px; border-radius: 3px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; flex-shrink: 0;
+  background: rgba(25,243,247,0.06); color: var(--ncm-color-secondary);
+  border: 1px solid rgba(25,243,247,0.12);
+}
+.ncm-app .ncm-shard-owner-header__icon--world { background: rgba(247,201,72,0.06); color: var(--ncm-accent, #f7c948); border-color: rgba(247,201,72,0.12); }
+.ncm-app .ncm-shard-owner-header__img {
+  width: 22px; height: 22px; border-radius: 3px; object-fit: cover; flex-shrink: 0;
+  border: 1px solid var(--sp-border);
+}
+.ncm-app .ncm-shard-owner-header__name { font-family: var(--ncm-font-display); font-size: 12px; font-weight: 700; color: var(--sp-text-primary); }
+.ncm-app .ncm-shard-owner-header__summary { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.ncm-app .ncm-shard-owner-header__pips { display: flex; gap: 3px; align-items: center; }
+.ncm-app .ncm-shard-owner-pip { width: 7px; height: 7px; border-radius: 50%; }
+.ncm-app .ncm-shard-owner-pip--locked { background: var(--ncm-color-primary); }
+.ncm-app .ncm-shard-owner-pip--blackice { background: var(--ncm-danger, #ff0033); box-shadow: 0 0 4px rgba(255,0,51,0.5); }
+.ncm-app .ncm-shard-owner-pip--breached { background: var(--ncm-success, #00ff41); }
+.ncm-app .ncm-shard-owner-pip--open { background: var(--sp-text-muted); opacity: 0.4; }
+.ncm-app .ncm-shard-owner-pip--destroyed { background: var(--ncm-danger); opacity: 0.5; }
+.ncm-app .ncm-shard-owner-header__status-text { font-family: var(--ncm-font-display); font-size: 9px; font-weight: 600; color: var(--sp-text-muted); white-space: nowrap; }
+.ncm-app .ncm-shard-owner-header__count { font-family: var(--ncm-font-display); font-size: 10px; font-weight: 600; color: var(--sp-text-muted); }
+.ncm-app .ncm-shard-owner-body { border: 1px solid var(--sp-border); border-top: none; border-radius: 0 0 2px 2px; background: var(--sp-bg, #0a0a0f); }
+
+/* ─── Shard Row ─── */
+.ncm-app .ncm-shard-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 12px;
+  border-bottom: 1px solid rgba(42,42,69,0.5);
+  cursor: pointer; transition: all 0.12s; position: relative;
+}
+.ncm-app .ncm-shard-row:last-child { border-bottom: none; }
+.ncm-app .ncm-shard-row:hover { background: rgba(25,243,247,0.02); }
+.ncm-app .ncm-shard-row--selected { background: rgba(25,243,247,0.04); }
+.ncm-app .ncm-shard-row--selected::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background: var(--ncm-color-secondary); }
+
+.ncm-app .ncm-shard-row__checkbox {
   width: 16px; height: 16px; border-radius: 2px;
+  border: 1px solid var(--sp-border); background: var(--sp-surface);
   display: flex; align-items: center; justify-content: center;
-  font-size: 7px; flex-shrink: 0;
+  flex-shrink: 0; cursor: pointer; transition: all 0.12s;
+  font-size: 8px; color: transparent;
 }
-.ncm-app .ncm-shard-activity-item__icon--success { background: rgba(0,255,65,0.08); color: #00ff41; }
-.ncm-app .ncm-shard-activity-item__icon--fail { background: rgba(246,82,97,0.08); color: var(--ncm-color-primary); }
-.ncm-app .ncm-shard-activity-item__icon--gm { background: rgba(247,201,72,0.08); color: var(--ncm-accent); }
-.ncm-app .ncm-shard-activity-item__text { color: var(--ncm-text-secondary); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-app .ncm-shard-row__checkbox:hover { border-color: var(--ncm-color-secondary); }
+.ncm-app .ncm-shard-row--selected .ncm-shard-row__checkbox { background: var(--ncm-color-secondary); border-color: var(--ncm-color-secondary); color: var(--sp-bg); }
 
-/* Quick Create */
-.ncm-app .ncm-shard-quick-create {
-  display: flex; flex-direction: column;
-  background: var(--ncm-bg-surface); border: 1px solid var(--ncm-border);
-  border-radius: 2px; overflow: hidden;
-  min-width: 140px; flex-shrink: 0;
-}
-.ncm-app .ncm-shard-quick-create__header {
-  display: flex; align-items: center; gap: 5px;
-  padding: 4px 10px;
-  background: var(--ncm-bg-base); border-bottom: 1px solid var(--ncm-border);
-  font-family: var(--ncm-font-mono); font-size: 8px; color: var(--ncm-text-muted);
-  text-transform: uppercase; letter-spacing: 0.08em;
-}
-.ncm-app .ncm-shard-quick-create__header i { font-size: 7px; color: var(--ncm-color-primary); }
-.ncm-app .ncm-shard-quick-create__list { display: flex; flex-direction: column; padding: 4px; gap: 2px; flex: 1; overflow-y: auto; }
+.ncm-app .ncm-shard-row__ice-pip { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.ncm-app .ncm-shard-row__ice-pip--black { background: var(--ncm-danger, #ff0033); box-shadow: 0 0 4px rgba(255,0,51,0.5); }
+.ncm-app .ncm-shard-row__ice-pip--red { background: #cc0000; box-shadow: 0 0 4px rgba(204,0,0,0.5); }
+.ncm-app .ncm-shard-row__ice-pip--ice { background: var(--ncm-accent, #f7c948); }
+.ncm-app .ncm-shard-row__ice-pip--decrypted { background: var(--ncm-success, #00ff41); }
+.ncm-app .ncm-shard-row__ice-pip--none { background: var(--sp-text-muted); opacity: 0.3; }
+.ncm-app .ncm-shard-row__ice-pip--destroyed { background: var(--ncm-danger); opacity: 0.4; }
 
-.ncm-app .ncm-shard-qc-btn {
-  display: flex !important; align-items: center !important; gap: 6px !important;
+.ncm-app .ncm-shard-row__icon { width: 28px; height: 28px; border-radius: 3px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 12px; background: var(--sp-surface); border: 1px solid var(--sp-border); color: var(--sp-text-secondary); }
+.ncm-app .ncm-shard-row__info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.ncm-app .ncm-shard-row__name { font-family: var(--ncm-font-display); font-size: 13px; font-weight: 700; color: var(--sp-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2; }
+.ncm-app .ncm-shard-row__meta { font-family: var(--ncm-font-display); font-size: 10px; font-weight: 600; color: var(--sp-text-muted); display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.ncm-app .ncm-shard-row__meta-sep { opacity: 0.3; }
+.ncm-app .ncm-shard-row__badges { display: flex; gap: 3px; flex-wrap: wrap; flex-shrink: 0; }
+.ncm-app .ncm-shard-row__accessed { font-family: var(--ncm-font-display); font-size: 9px; font-weight: 600; color: var(--sp-text-muted); flex-shrink: 0; min-width: 36px; text-align: right; }
+.ncm-app .ncm-shard-row__accessed--recent { color: var(--ncm-color-secondary); }
+.ncm-app .ncm-shard-row__accessed--never { opacity: 0.4; font-style: italic; }
+.ncm-app .ncm-shard-row__entries {
+  display: flex; align-items: center; gap: 4px;
+  padding: 2px 7px; background: var(--sp-surface);
+  border: 1px solid var(--sp-border); border-radius: 2px; flex-shrink: 0;
+  font-family: var(--ncm-font-display); font-size: 11px; font-weight: 700; color: var(--sp-text-secondary);
+}
+.ncm-app .ncm-shard-row__entries i { font-size: 8px; color: var(--sp-text-muted); }
+.ncm-app .ncm-shard-row__integrity { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.ncm-app .ncm-shard-row__actions { display: flex; gap: 3px; flex-shrink: 0; opacity: 0; transition: opacity 0.12s; }
+.ncm-app .ncm-shard-row:hover .ncm-shard-row__actions { opacity: 1; }
+
+/* ─── Inline Expand Preview ─── */
+.ncm-app .ncm-shard-row-expand {
+  padding: 0 12px 8px 46px;
+  border-bottom: 1px solid rgba(42,42,69,0.5);
+  background: rgba(25,243,247,0.015);
+}
+.ncm-app .ncm-shard-row-expand__inner {
+  display: flex; gap: 12px; padding-top: 8px;
+  border-top: 1px dashed rgba(42,42,69,0.6);
+}
+.ncm-app .ncm-shard-layer-chain { display: flex; align-items: center; gap: 0; flex-shrink: 0; }
+.ncm-app .ncm-shard-layer-chip {
+  display: flex; align-items: center; gap: 3px;
+  padding: 3px 7px;
+  font-family: var(--ncm-font-display); font-size: 9px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.02em;
+  border: 1px solid var(--sp-border); background: var(--sp-surface);
+}
+.ncm-app .ncm-shard-layer-chip:first-child { border-radius: 2px 0 0 2px; }
+.ncm-app .ncm-shard-layer-chip:last-child { border-radius: 0 2px 2px 0; }
+.ncm-app .ncm-shard-layer-chip:only-child { border-radius: 2px; }
+.ncm-app .ncm-shard-layer-chip + .ncm-shard-layer-chip { border-left: none; }
+.ncm-app .ncm-shard-layer-chip i { font-size: 7px; }
+.ncm-app .ncm-shard-layer-chip--cleared { background: rgba(0,255,65,0.04); color: var(--ncm-success); border-color: rgba(0,255,65,0.15); }
+.ncm-app .ncm-shard-layer-chip--pending { color: var(--sp-text-muted); }
+
+.ncm-app .ncm-shard-expand-preview { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.ncm-app .ncm-shard-expand-preview__label { font-family: var(--ncm-font-display); font-size: 9px; font-weight: 700; color: var(--sp-text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.ncm-app .ncm-shard-expand-preview__snippet {
+  font-family: var(--ncm-font-display); font-size: 11px; font-weight: 500;
+  color: var(--sp-text-secondary); line-height: 1.4;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+
+.ncm-app .ncm-shard-expand-actions { display: flex; flex-direction: column; gap: 3px; flex-shrink: 0; justify-content: center; }
+.ncm-app .ncm-shard-expand-btn {
+  display: inline-flex !important; align-items: center !important; gap: 4px !important;
   padding: 3px 8px !important;
-  background: none !important; border: 1px solid transparent !important;
-  border-radius: 2px !important; cursor: pointer !important;
-  font-family: var(--ncm-font-mono) !important; font-size: 9px !important;
-  color: var(--ncm-text-secondary) !important; text-align: left !important;
-  transition: all 0.12s !important;
-  appearance: none !important; -webkit-appearance: none !important;
-  box-shadow: none !important;
-  min-width: 0 !important; min-height: 0 !important;
-  line-height: 1.4 !important; margin: 0 !important;
+  font-family: var(--ncm-font-display) !important; font-size: 9px !important; font-weight: 700 !important;
+  text-transform: uppercase !important; border-radius: 2px !important;
+  cursor: pointer !important; transition: all 0.15s !important;
+  border: 1px solid var(--sp-border) !important; background: none !important; color: var(--sp-text-secondary) !important;
+  height: auto !important; min-height: 0 !important; width: auto !important;
+  appearance: none !important; box-shadow: none !important; outline: none !important;
 }
-.ncm-app .ncm-shard-qc-btn:hover {
-  background: var(--ncm-bg-elevated) !important;
-  border-color: var(--ncm-border) !important;
-  color: var(--ncm-text-primary) !important;
-}
-.ncm-app .ncm-shard-qc-btn i { font-size: 8px; width: 14px; text-align: center; flex-shrink: 0; }
+.ncm-app .ncm-shard-expand-btn:hover { border-color: var(--sp-border-active) !important; color: var(--sp-text-primary) !important; }
+.ncm-app .ncm-shard-expand-btn--cyan { border-color: rgba(25,243,247,0.3) !important; color: var(--ncm-color-secondary) !important; }
+.ncm-app .ncm-shard-expand-btn--cyan:hover { background: rgba(25,243,247,0.06) !important; }
+.ncm-app .ncm-shard-expand-btn--ghost { border-color: var(--sp-border) !important; color: var(--sp-text-muted) !important; }
+.ncm-app .ncm-shard-expand-btn i { font-size: 7px; }
 
-/* Shard card hover action buttons (Open / Config / Relock) */
-.ncm-app .ncm-action-btn {
-  width: 24px !important; height: 24px !important;
-  display: flex !important; align-items: center !important; justify-content: center !important;
-  font-size: 9px !important; color: var(--ncm-text-muted, #555570) !important;
-  background: var(--ncm-bg-surface, #1a1a2e) !important;
-  border: 1px solid var(--ncm-border, #2a2a45) !important;
-  border-radius: 2px !important; cursor: pointer !important;
-  transition: all 0.15s !important;
-  appearance: none !important; -webkit-appearance: none !important;
-  box-shadow: none !important;
-  min-width: 0 !important; min-height: 0 !important;
-  padding: 0 !important; margin: 0 !important;
-  line-height: 1 !important;
+/* ─── Quick Actions ─── */
+.ncm-app .ncm-shard-quick-actions { display: flex; gap: 6px; margin-bottom: 12px; }
+.ncm-app .ncm-shard-qa-btn {
+  display: inline-flex !important; align-items: center !important; gap: 5px !important;
+  padding: 4px 10px !important;
+  font-family: var(--ncm-font-display) !important; font-size: 10px !important; font-weight: 700 !important;
+  text-transform: uppercase !important; letter-spacing: 0.04em !important;
+  border-radius: 2px !important; cursor: pointer !important; transition: all 0.15s !important;
+  border: 1px solid var(--sp-border) !important; background: none !important; color: var(--sp-text-muted) !important;
+  height: auto !important; min-height: 0 !important; width: auto !important;
+  appearance: none !important; box-shadow: none !important; outline: none !important;
 }
-.ncm-app .ncm-action-btn:hover {
-  color: var(--ncm-text-primary) !important;
-  border-color: var(--ncm-border-active, #3a3a5a) !important;
-  background: var(--ncm-bg-elevated) !important;
-}
-.ncm-app .ncm-action-btn--gold:hover {
-  color: var(--ncm-accent, #f7c948) !important;
-  border-color: rgba(247, 201, 72, 0.3) !important;
-}
-.ncm-app .ncm-action-btn--danger:hover {
-  color: #ff0033 !important;
-  border-color: rgba(255, 0, 51, 0.3) !important;
-}
-
-/* Quick actions row buttons — Foundry overrides */
-.ncm-app .ncm-shard-quick-actions button {
-  appearance: none !important; -webkit-appearance: none !important;
-  box-shadow: none !important;
-  min-width: 0 !important; min-height: 0 !important;
-}
-
-/* Activity log text highlight classes */
-.ncm-app .ncm-activity-actor { color: var(--ncm-color-secondary, #19f3f7); }
-.ncm-app .ncm-activity-shard { color: var(--ncm-text-primary, #e0e0e8); }
-
-/* ─── Shard Card List (v2) ─── */
-
-.ncm-app .ncm-shard-list-v2 { display: flex; flex-direction: column; gap: 6px; }
-
-.ncm-app .ncm-shard-card-v2 {
-  display: flex; overflow: hidden;
-  background: var(--ncm-bg-surface, #1a1a2e);
-  border: 1px solid var(--ncm-border, #2a2a45);
-  border-radius: 2px;
-  cursor: pointer; transition: all 0.15s;
-}
-.ncm-app .ncm-shard-card-v2:hover { border-color: var(--ncm-border-active, #3a3a5a); }
-
-/* ICE stripe (4px left edge) */
-.ncm-app .ncm-shard-card-v2__ice-stripe { width: 4px; flex-shrink: 0; }
-.ncm-app .ncm-shard-card-v2__ice-stripe--black { background: #ff0033; }
-.ncm-app .ncm-shard-card-v2__ice-stripe--red { background: #cc0000; }
-.ncm-app .ncm-shard-card-v2__ice-stripe--ice { background: #ffcc00; }
-.ncm-app .ncm-shard-card-v2__ice-stripe--none { background: var(--ncm-border); }
-.ncm-app .ncm-shard-card-v2__ice-stripe--decrypted { background: #00ff41; }
-.ncm-app .ncm-shard-card-v2__ice-stripe--destroyed { background: #660000; }
-
-/* Card body */
-.ncm-app .ncm-shard-card-v2__body {
-  flex: 1; display: flex; gap: 10px;
-  padding: 8px 12px; min-width: 0;
-}
-
-.ncm-app .ncm-shard-card-v2__icon {
-  width: 32px; height: 32px; border-radius: 3px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 13px; flex-shrink: 0;
-  background: rgba(136,136,160,0.06); color: var(--ncm-text-secondary);
-  border: 1px solid rgba(136,136,160,0.1);
-}
-
-.ncm-app .ncm-shard-card-v2__info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-
-.ncm-app .ncm-shard-card-v2__name {
-  font-family: var(--ncm-font-body); font-size: 12px;
-  font-weight: 700; color: var(--ncm-text-primary);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-
-.ncm-app .ncm-shard-card-v2__meta {
-  font-family: var(--ncm-font-mono); font-size: 9px;
-  color: var(--ncm-text-muted); display: flex; align-items: center; gap: 2px;
-}
-.ncm-app .ncm-shard-card-v2__meta-sep { opacity: 0.3; margin: 0 3px; }
-
-.ncm-app .ncm-shard-card-v2__badges { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 2px; }
-
-/* Shard card badges */
-.ncm-app .ncm-sc-badge {
-  display: inline-flex; align-items: center; gap: 3px;
-  padding: 1px 6px; border-radius: 2px;
-  font-family: var(--ncm-font-mono); font-size: 8px;
-  text-transform: uppercase; letter-spacing: 0.04em;
-}
-.ncm-app .ncm-sc-badge i { font-size: 7px; }
-.ncm-app .ncm-sc-badge--red { background: rgba(246,82,97,0.1); color: var(--ncm-color-primary); border: 1px solid rgba(246,82,97,0.2); }
-.ncm-app .ncm-sc-badge--green { background: rgba(0,255,65,0.06); color: #00ff41; border: 1px solid rgba(0,255,65,0.15); }
-.ncm-app .ncm-sc-badge--gold { background: rgba(247,201,72,0.08); color: var(--ncm-accent); border: 1px solid rgba(247,201,72,0.15); }
-.ncm-app .ncm-sc-badge--cyan { background: rgba(25,243,247,0.06); color: var(--ncm-color-secondary); border: 1px solid rgba(25,243,247,0.12); }
-.ncm-app .ncm-sc-badge--muted { background: rgba(136,136,160,0.06); color: var(--ncm-text-muted); border: 1px solid rgba(136,136,160,0.1); }
-.ncm-app .ncm-sc-badge--danger { background: rgba(255,0,51,0.08); color: #ff0033; border: 1px solid rgba(255,0,51,0.15); }
-
-/* Stats column */
-.ncm-app .ncm-shard-card-v2__stats {
-  flex-shrink: 0; text-align: right;
-  display: flex; flex-direction: column; align-items: flex-end; gap: 1px;
-  min-width: 70px;
-}
-.ncm-app .ncm-shard-card-v2__entry-count {
-  font-family: var(--ncm-font-display); font-size: 18px;
-  font-weight: 700; color: var(--ncm-text-primary); line-height: 1;
-}
-.ncm-app .ncm-shard-card-v2__entry-label {
-  font-family: var(--ncm-font-mono); font-size: 8px;
-  color: var(--ncm-text-muted); text-transform: uppercase; letter-spacing: 0.06em;
-}
-.ncm-app .ncm-shard-card-v2__owner {
-  font-family: var(--ncm-font-mono); font-size: 8px;
-  color: var(--ncm-text-muted); margin-top: 2px;
-}
-.ncm-app .ncm-shard-card-v2__owner i { margin-right: 3px; font-size: 7px; }
-
-/* Mini integrity bar */
-.ncm-app .ncm-shard-card-v2__integrity { display: flex; align-items: center; gap: 4px; margin-top: 3px; }
-.ncm-app .ncm-integrity-mini-track { width: 40px; height: 3px; background: var(--ncm-bg-elevated); border-radius: 1px; overflow: hidden; }
-.ncm-app .ncm-integrity-mini-fill { height: 100%; border-radius: 1px; }
-.ncm-app .ncm-integrity-mini-fill--clean { background: #00ff41; }
-.ncm-app .ncm-integrity-mini-fill--light { background: #ffab00; }
-.ncm-app .ncm-integrity-mini-fill--heavy { background: var(--ncm-color-primary); }
-.ncm-app .ncm-integrity-mini-fill--severe { background: #ff0033; animation: ncm-pulse-dot 1.5s ease-in-out infinite; }
-.ncm-app .ncm-integrity-mini-fill--bricked { background: #660000; }
-.ncm-app .ncm-integrity-mini-val { font-family: var(--ncm-font-mono); font-size: 8px; color: var(--ncm-text-muted); }
-
-/* Hover action buttons */
-.ncm-app .ncm-shard-card-v2__actions {
-  display: flex; flex-direction: column; gap: 2px;
-  padding: 4px; flex-shrink: 0;
-  opacity: 0; transition: opacity 0.15s;
-}
-.ncm-app .ncm-shard-card-v2:hover .ncm-shard-card-v2__actions { opacity: 1; }
-
-/* Summary footer */
-.ncm-app .ncm-shard-list-summary {
-  font-family: var(--ncm-font-mono); font-size: 9px;
-  color: var(--ncm-text-muted); padding: 6px 0;
-  letter-spacing: 0.05em;
-}
-
-/* Quick actions row */
-.ncm-app .ncm-shard-quick-actions {
-  display: flex; gap: 6px; margin-bottom: 12px;
-}
+.ncm-app .ncm-shard-qa-btn:hover { border-color: var(--sp-border-active) !important; color: var(--sp-text-secondary) !important; }
+.ncm-app .ncm-shard-qa-btn i { font-size: 8px; }
 
 /* ═══════════════════════════════════════════
    TAB 6: TOOLS
