@@ -520,179 +520,195 @@
     </div>
 
     {{else}}
-    {{!-- ═══ NETWORK CARDS VIEW (Default) ═══ --}}
+    {{!-- ═══ WAR ROOM DASHBOARD (Default) ═══ --}}
 
-    <div class="ncm-section-title">
-      <i class="fas fa-network-wired"></i> Network Operations
-      <button class="ncm-section-title__action ncm-section-title__action--accent" data-action="switchNetworkSubView" data-subview="logs"><i class="fas fa-scroll"></i> Activity Log ({{logEntryCount}}) →</button>
-      <button class="ncm-section-title__action" data-action="openNetworkManagerLogs"><i class="fas fa-external-link-alt"></i> Full Manager →</button>
+    {{!-- STATUS BAR --}}
+    <div class="ncm-net-status-bar">
+      <div class="ncm-net-stat"><div class="ncm-net-stat__val ncm-net-stat__val--cyan">{{netStats.total}}</div><div class="ncm-net-stat__label">Subnets</div></div>
+      <div class="ncm-net-stat__sep"></div>
+      <div class="ncm-net-stat"><div class="ncm-net-stat__val ncm-net-stat__val--green">{{netStats.active}}</div><div class="ncm-net-stat__label">Active</div></div>
+      <div class="ncm-net-stat__sep"></div>
+      <div class="ncm-net-stat"><div class="ncm-net-stat__val ncm-net-stat__val--red">{{netStats.deadZones}}</div><div class="ncm-net-stat__label">Dead Zones</div></div>
+      <div class="ncm-net-stat__sep"></div>
+      <div class="ncm-net-stat"><div class="ncm-net-stat__val ncm-net-stat__val--gold">{{netStats.secured}}</div><div class="ncm-net-stat__label">Secured</div></div>
+      <div class="ncm-net-stat__sep"></div>
+      <div class="ncm-net-stat"><div class="ncm-net-stat__val">{{netStats.connected}}</div><div class="ncm-net-stat__label">Players Online</div></div>
     </div>
 
-    {{!-- Health Strip --}}
-    <div class="ncm-net-health-strip">
-      <div class="ncm-net-health-card">
-        <div class="ncm-net-health-card__value ncm-net-health-card__value--cyan">{{netStats.total}}</div>
-        <div class="ncm-net-health-card__label">Subnets</div>
-      </div>
-      <div class="ncm-net-health-card">
-        <div class="ncm-net-health-card__value ncm-net-health-card__value--green">{{netStats.active}}</div>
-        <div class="ncm-net-health-card__label">Active</div>
-      </div>
-      <div class="ncm-net-health-card">
-        <div class="ncm-net-health-card__value ncm-net-health-card__value--red">{{netStats.deadZones}}</div>
-        <div class="ncm-net-health-card__label">Dead Zones</div>
-      </div>
-      <div class="ncm-net-health-card">
-        <div class="ncm-net-health-card__value ncm-net-health-card__value--gold">{{netStats.secured}}</div>
-        <div class="ncm-net-health-card__label">Secured</div>
-      </div>
-      <div class="ncm-net-health-card">
-        <div class="ncm-net-health-card__value ncm-net-health-card__value--cyan">{{netStats.connected}}</div>
-        <div class="ncm-net-health-card__label">Connected</div>
-      </div>
+    {{!-- CONNECTED PLAYERS --}}
+    <div class="ncm-war-section">
+      <i class="fas fa-users ncm-war-section__icon"></i>
+      <div class="ncm-war-section__title">Connected Players</div>
+      <div class="ncm-war-section__hint">— who's on what network right now</div>
+      <div class="ncm-war-section__line"></div>
     </div>
 
-    {{!-- Scene Quick Strip --}}
-    {{#if sceneStrip.length}}
-    <div class="ncm-scene-strip">
-      <div class="ncm-scene-strip__label"><i class="fas fa-map"></i> Scene Dead Zones</div>
-      {{#each sceneStrip}}
-      <div class="ncm-scene-chip {{#if this.deadZone}}ncm-scene-chip--dead{{/if}} {{#if this.isCurrent}}ncm-scene-chip--current{{/if}}"
-           data-scene-id="{{this.id}}">
-        <div class="ncm-scene-chip__dot"></div>
-        <div class="ncm-scene-chip__info">
-          <div class="ncm-scene-chip__name">{{this.name}}</div>
-          <div class="ncm-scene-chip__network">{{this.defaultNetworkName}}</div>
+    <div class="ncm-net-players">
+      {{#if connectedPlayers.length}}
+      {{#each connectedPlayers}}
+      <div class="ncm-player-card ncm-player-card--{{this.signalTier}}">
+        <div class="ncm-player-card__top">
+          {{#if this.img}}
+          <div class="ncm-player-card__avatar"><img src="{{this.img}}" /></div>
+          {{else}}
+          <div class="ncm-player-card__avatar"><i class="fas fa-user"></i></div>
+          {{/if}}
+          <div class="ncm-player-card__name-area">
+            <div class="ncm-player-card__name">{{this.name}}</div>
+            <div class="ncm-player-card__status ncm-player-card__status--{{this.signalTier}}">{{this.statusText}}</div>
+          </div>
+          <button class="ncm-player-card__move" data-action="switchPlayerNetwork" data-user-id="{{this.userId}}"><i class="fas fa-arrow-right-arrow-left"></i> Switch Net</button>
         </div>
-        <button class="ncm-scene-chip__toggle-btn {{#if this.deadZone}}ncm-scene-chip__toggle-btn--dead{{/if}}"
-             data-action="toggleSceneDeadZone"
-             title="{{#if this.deadZone}}Restore signal{{else}}Jam all signals{{/if}}">
-          <i class="fas {{#if this.deadZone}}fa-signal{{else}}fa-signal-slash{{/if}}"></i>
-          {{#if this.deadZone}}Restore{{else}}Jam{{/if}}
-        </button>
+        <div class="ncm-player-card__bottom">
+          <div class="ncm-player-card__net ncm-player-card__net--{{this.netClass}}"><i class="fas {{this.netIcon}}"></i> {{this.networkName}}</div>
+          <div class="ncm-player-card__signal ncm-player-card__signal--{{this.signalTier}}"><i class="fas {{this.signalIcon}}"></i> {{this.signal}}%</div>
+        </div>
       </div>
       {{/each}}
+      {{else}}
+      <div class="ncm-admin-empty" style="padding:16px;"><i class="fas fa-users-slash"></i> No players online</div>
+      {{/if}}
     </div>
-    {{/if}}
 
-    {{!-- Broadcast Bar --}}
-    <div class="ncm-broadcast-bar">
-      <div class="ncm-broadcast-bar__icon"><i class="fas fa-tower-broadcast"></i></div>
-      <div><div class="ncm-broadcast-bar__label">Broadcast</div></div>
-      <select class="ncm-broadcast-bar__select" name="broadcastNetwork">
-        <option value="all">All Networks</option>
+    {{!-- SIGNAL MIXER --}}
+    <div class="ncm-war-section">
+      <i class="fas fa-sliders ncm-war-section__icon"></i>
+      <div class="ncm-war-section__title">Signal Control</div>
+      <div class="ncm-war-section__hint">— drag sliders to adjust signal strength mid-session</div>
+      <div class="ncm-war-section__line"></div>
+    </div>
+
+    <div class="ncm-mixer-wrap">
+      <div class="ncm-mixer-arrow ncm-mixer-arrow--left" data-action="scrollMixerLeft"><i class="fas fa-chevron-left"></i></div>
+      <div class="ncm-mixer-strip">
         {{#each networks}}
-        <option value="{{this.id}}">{{this.name}}</option>
-        {{/each}}
-      </select>
-      <input class="ncm-broadcast-bar__input" name="broadcastMessage"
-             placeholder="System message to all connected users...">
-      <button class="ncm-broadcast-bar__send" data-action="sendBroadcast">
-        <i class="fas fa-paper-plane"></i> Send
-      </button>
-    </div>
-
-    {{!-- Network Search / Filter --}}
-    {{#if (gt networks.length 4)}}
-    <div class="ncm-network-search-bar">
-      <i class="fas fa-search ncm-network-search-bar__icon"></i>
-      <input class="ncm-network-search-bar__input" type="text"
-             placeholder="Filter networks..." value="{{networkSearchQuery}}">
-    </div>
-    {{/if}}
-
-    {{!-- Network Cards — Grouped --}}
-    {{#if networkGroups.length}}
-    {{#each networkGroups}}
-    <div class="ncm-network-group">
-      <div class="ncm-network-group__header" data-action="toggleNetworkGroup" data-group-key="{{this.key}}">
-        <i class="fas {{this.icon}} ncm-network-group__icon ncm-network-group__icon{{this.iconClass}}"></i>
-        <span class="ncm-network-group__title">{{this.name}}</span>
-        <span class="ncm-network-group__count">{{this.count}}</span>
-        <span class="ncm-network-group__arrow">{{#if this.collapsed}}▶{{else}}▼{{/if}}</span>
-      </div>
-      {{#unless this.collapsed}}
-      <div class="ncm-network-grid">
-        {{#each this.networks}}
-        <div class="ncm-network-card {{#if this.enabled}}ncm-network-card--active{{else}}ncm-network-card--disabled{{/if}}"
-             data-network-id="{{this.id}}">
-          <div class="ncm-network-card__header">
-            <div class="ncm-network-card__icon ncm-network-card__icon--{{this.iconClass}}">
-              {{{ncm-net-icon this.theme}}}
-            </div>
-            <div class="ncm-network-card__title-area">
-              <div class="ncm-network-card__name">{{this.name}}</div>
-              <div class="ncm-network-card__type">{{this.type}}</div>
-              {{#if this.tags.length}}
-              <div class="ncm-network-card__tags">
-                {{#each this.tags}}<span class="ncm-tag ncm-tag--{{this.class}}">{{this.label}}</span>{{/each}}
-              </div>
+        <div class="ncm-mixer-ch {{#if this.enabled}}ncm-mixer-ch--on{{else}}ncm-mixer-ch--off{{/if}} {{#if this.isCurrent}}ncm-mixer-ch--current{{/if}}" data-network-id="{{this.id}}">
+          <div class="ncm-mixer-ch__icon ncm-mixer-ch__icon--{{this.iconClass}}">
+            {{{ncm-net-icon this.theme}}}
+          </div>
+          <div class="ncm-mixer-ch__name">{{this.name}}</div>
+          <div class="ncm-mixer-ch__slider-wrap">
+            <div class="ncm-mixer-ch__slider-label">Signal</div>
+            <div class="ncm-mixer-ch__slider-track">
+              <div class="ncm-mixer-ch__slider-fill ncm-mixer-ch__slider-fill--{{this.signalTier}}" style="height:{{this.signal}}%;"></div>
+              {{#if this.enabled}}
+              <div class="ncm-mixer-ch__slider-thumb" style="bottom:calc({{this.signal}}% - 3px);"></div>
               {{/if}}
             </div>
+          </div>
+          <div class="ncm-mixer-ch__pct {{#unless this.enabled}}ncm-mixer-ch__pct--off{{/unless}}">{{#if this.enabled}}{{this.signal}}%{{else}}OFF{{/if}}</div>
+          <div class="ncm-mixer-ch__info">
+            <div class="ncm-mixer-ch__auth ncm-mixer-ch__auth--{{this.authClass}}"><i class="fas fa-{{this.authIcon}}"></i> {{this.authLabel}}</div>
+            <div class="ncm-mixer-ch__users"><i class="fas fa-user"></i> <span class="ct">{{this.userCount}}</span> {{#if (eq this.authClass 'blocked')}}trapped{{else}}connected{{/if}}</div>
             {{#if this.isGlobal}}
-            <span class="ncm-network-card__global-badge"><i class="fas fa-globe"></i> GLOBAL</span>
+            <div class="ncm-mixer-ch__toggle ncm-mixer-ch__toggle--on ncm-mixer-ch__toggle--global" title="Global — always on"></div>
             {{else}}
-            <div class="ncm-network-card__toggle {{#if this.enabled}}ncm-network-card__toggle--on{{/if}}"
-                 data-action="toggleNetwork" data-network-id="{{this.id}}"></div>
+            <div class="ncm-mixer-ch__toggle {{#if this.enabled}}ncm-mixer-ch__toggle--on{{/if}}" data-action="toggleNetwork" data-network-id="{{this.id}}" title="{{#if this.enabled}}Network is ON — click to disable{{else}}Network is OFF — click to enable{{/if}}"></div>
             {{/if}}
           </div>
-          <div class="ncm-network-card__stats">
-            <span>Signal <span class="val {{this.signalClass}}">{{this.signal}}%</span></span>
-            <span>Users <span class="val">{{this.userCount}}</span></span>
-            {{#if this.reliability}}<span>Rel <span class="val">{{this.reliability}}%</span></span>{{/if}}
-          </div>
-          <div class="ncm-network-card__quick">
-            <span class="ncm-network-card__quick-label">Signal</span>
-            <input type="range" class="ncm-network-card__quick-slider"
-                   min="0" max="100" value="{{this.signal}}"
-                   data-network-id="{{this.id}}">
-            <span class="ncm-network-card__quick-value">{{this.signal}}%</span>
-          </div>
-          {{#if this.connectedUsers.length}}
-          <div class="ncm-network-card__users">
-            {{#each this.connectedUsers}}
-            <div class="ncm-network-card__user-chip"><div class="ncm-network-card__user-dot"></div> {{this.name}}</div>
-            {{/each}}
-          </div>
+        </div>
+        {{/each}}
+      </div>
+      <div class="ncm-mixer-arrow ncm-mixer-arrow--right" data-action="scrollMixerRight"><i class="fas fa-chevron-right"></i></div>
+    </div>
+
+    {{!-- SCENES + BROADCAST --}}
+    <div class="ncm-net-ops-row">
+      <div class="ncm-net-scenes">
+        <div class="ncm-net-scenes__label"><i class="fas fa-map"></i> Scenes</div>
+        {{#each sceneStrip}}
+        <div class="ncm-scene-chip {{#if this.isCurrent}}ncm-scene-chip--current{{/if}} {{#if this.deadZone}}ncm-scene-chip--dead{{/if}}" data-scene-id="{{this.id}}">
+          <div class="ncm-scene-chip__dot"></div>
+          <div class="ncm-scene-chip__name">{{this.name}}</div>
+          {{#if this.deadZone}}
+          <button class="ncm-scene-chip__btn ncm-scene-chip__btn--restore" data-action="toggleSceneDeadZone" data-scene-id="{{this.id}}">Restore</button>
+          {{else}}
+          <div class="ncm-scene-chip__net">{{this.signalPct}}%</div>
+          <button class="ncm-scene-chip__btn ncm-scene-chip__btn--jam" data-action="toggleSceneDeadZone" data-scene-id="{{this.id}}">Jam</button>
           {{/if}}
-          <div class="ncm-network-card__auth ncm-network-card__auth--{{this.authClass}}">
-            <i class="fas fa-{{this.authIcon}}"></i> {{this.authLabel}}
-          </div>
-          <div class="ncm-network-card__actions">
-            <button class="ncm-network-card__action-btn" data-action="editNetworkInManager" data-network-id="{{this.id}}"><i class="fas fa-pen"></i> Edit</button>
-            {{#if this.authClass}}{{#if (eq this.authClass 'password')}}
-            <button class="ncm-network-card__action-btn" data-action="resetNetworkAuth" data-network-id="{{this.id}}"><i class="fas fa-key"></i> Reset Auth</button>
-            {{/if}}{{/if}}
-          </div>
-          <button class="ncm-network-card__log-toggle" data-action="toggleCardLog" data-network-id="{{this.id}}">
-            <i class="fas fa-scroll"></i> Activity Log
-            {{#if this.logCount}}<span class="ncm-network-card__log-count">{{this.logCount}}</span>{{/if}}
-            <span class="ncm-network-card__log-arrow">{{#if this.logExpanded}}▼{{else}}▶{{/if}}</span>
-          </button>
-          {{#if this.logExpanded}}
-          <div class="ncm-network-card__log">
-            {{#each this.logEntries}}
-            <div class="ncm-log-entry {{#if this.manual}}ncm-log-entry--manual{{/if}}" data-entry-id="{{this.id}}">
-              <div class="ncm-log-entry__row1">
-                <span class="ncm-log-entry__icon ncm-log-entry__icon--{{this.typeClass}}"><i class="fas {{this.typeIcon}}"></i></span>
-                <span class="ncm-log-entry__type-label">{{this.typeLabel}}</span>
-                <span class="ncm-log-entry__time">{{this.displayDate}} {{this.displayTime}}</span>
-                <div class="ncm-log-entry__actions">
-                  <button class="ncm-log-entry__action-btn" data-action="editLogEntry" data-entry-id="{{this.id}}"><i class="fas fa-pen"></i></button>
-                  <button class="ncm-log-entry__action-btn ncm-log-entry__action-btn--danger" data-action="deleteLogEntry" data-entry-id="{{this.id}}"><i class="fas fa-trash"></i></button>
-                </div>
-              </div>
-              <div class="ncm-log-entry__row2">
-                <span class="ncm-log-entry__actor">{{this.actorName}}</span>
-                <span class="ncm-log-entry__message">{{this.message}}</span>
-              </div>
-            </div>
+        </div>
+        {{/each}}
+      </div>
+      <div class="ncm-net-broadcast">
+        <div class="ncm-net-broadcast__label"><i class="fas fa-tower-broadcast"></i> Broadcast — sends an in-character system message to players</div>
+        <div class="ncm-net-broadcast__row">
+          <select class="ncm-net-broadcast__select" name="broadcastNetwork">
+            <option value="all">All Networks</option>
+            {{#each networks}}
+            <option value="{{this.id}}">{{this.name}}</option>
             {{/each}}
-            {{#unless this.logEntries.length}}
-            <div class="ncm-log-entry" style="justify-content:center; color:var(--ncm-text-muted); padding: 12px;">No activity</div>
+          </select>
+          <input class="ncm-net-broadcast__input" name="broadcastMessage" placeholder="Type a message all connected players will see...">
+          <button class="ncm-net-broadcast__send" data-action="sendBroadcast"><i class="fas fa-paper-plane"></i> Send</button>
+        </div>
+      </div>
+    </div>
+
+    {{!-- ZONE DIVIDER --}}
+    <div class="ncm-net-zone-div">
+      <i class="fas fa-cog ncm-net-zone-div__icon"></i>
+      <div class="ncm-net-zone-div__title">Network Configuration</div>
+      <div class="ncm-net-zone-div__hint">— create, edit, and manage network settings</div>
+      <div class="ncm-net-zone-div__line"></div>
+      <div class="ncm-net-zone-div__actions">
+        <button class="ncm-net-config-btn" data-action="switchNetworkSubView" data-subview="logs"><i class="fas fa-scroll"></i> Activity Logs</button>
+        <button class="ncm-net-config-btn ncm-net-config-btn--cyan" data-action="openNetworkManagerLogs"><i class="fas fa-external-link-alt"></i> Full Manager</button>
+      </div>
+    </div>
+
+    {{!-- CONFIG TOOLBAR --}}
+    <div class="ncm-net-config-toolbar">
+      <div class="ncm-net-config-search">
+        <i class="fas fa-search"></i>
+        <input type="text" class="ncm-net-config-search__input" placeholder="Search networks..." value="{{networkSearchQuery}}">
+      </div>
+      <div class="ncm-net-config-toolbar__spacer"></div>
+      <button class="ncm-net-config-btn ncm-net-config-btn--cyan" data-action="createNetwork"><i class="fas fa-plus"></i> Create Network</button>
+    </div>
+
+    {{!-- CONFIG LIST — GROUPED --}}
+    {{#if networkGroups.length}}
+    {{#each networkGroups}}
+    <div class="ncm-net-config-group {{#if this.collapsed}}ncm-net-config-group--collapsed{{/if}}">
+      <div class="ncm-net-config-group__header" data-action="toggleNetworkGroup" data-group-key="{{this.key}}">
+        <i class="fas fa-chevron-down ncm-net-config-group__chevron"></i>
+        <div class="ncm-net-config-group__icon ncm-net-config-group__icon{{this.iconClass}}"><i class="fas {{this.icon}}"></i></div>
+        <div class="ncm-net-config-group__title">{{this.name}}</div>
+        <div class="ncm-net-config-group__summary">
+          <div class="ncm-net-config-group__pips">
+            {{#each this.networks}}
+            <div class="ncm-net-cg-pip {{#if this.enabled}}ncm-net-cg-pip--active{{else}}ncm-net-cg-pip--disabled{{/if}}"></div>
+            {{/each}}
+          </div>
+          <div class="ncm-net-config-group__count">{{this.count}} subnet{{#unless (eq this.count 1)}}s{{/unless}}</div>
+        </div>
+      </div>
+      {{#unless this.collapsed}}
+      <div class="ncm-net-config-group__body">
+        {{#each this.networks}}
+        <div class="ncm-net-config-row {{#unless this.enabled}}ncm-net-config-row--disabled{{/unless}}" data-network-id="{{this.id}}">
+          <div class="ncm-net-config-row__pip {{#if this.enabled}}ncm-net-config-row__pip--active{{else}}ncm-net-config-row__pip--disabled{{/if}}"></div>
+          <div class="ncm-net-config-row__icon ncm-net-config-row__icon--{{this.iconClass}}">
+            {{{ncm-net-icon this.theme}}}
+          </div>
+          <div class="ncm-net-config-row__info">
+            <div class="ncm-net-config-row__name">{{this.name}}</div>
+            <div class="ncm-net-config-row__desc">{{this.type}}{{#if this.isGlobal}} · Available everywhere{{/if}}{{#if this.authLabel}} · {{this.authLabel}}{{/if}}</div>
+          </div>
+          <div class="ncm-net-config-row__badges">
+            {{#each this.tags}}
+            <span class="ncm-net-cbadge ncm-net-cbadge--{{this.class}}">{{this.label}}</span>
+            {{/each}}
+          </div>
+          <div class="ncm-net-config-row__actions">
+            <div class="ncm-action-btn" data-action="editNetworkInManager" data-network-id="{{this.id}}" title="Edit network settings"><i class="fas fa-pen"></i></div>
+            {{#if this.authClass}}{{#if (eq this.authClass 'password')}}
+            <div class="ncm-action-btn ncm-action-btn--gold" data-action="resetNetworkAuth" data-network-id="{{this.id}}" title="Reset all player authentications"><i class="fas fa-key"></i></div>
+            {{/if}}{{/if}}
+            {{#unless this.isCore}}
+            <div class="ncm-action-btn ncm-action-btn--danger" data-action="deleteNetwork" data-network-id="{{this.id}}" title="Delete this network"><i class="fas fa-trash"></i></div>
             {{/unless}}
           </div>
-          {{/if}}
         </div>
         {{/each}}
       </div>

@@ -157,6 +157,8 @@ export class AdminPanelApp extends BaseApplication {
       clearNetworkLogs: AdminPanelApp._onClearNetworkLogs,
       resetNetworkAuth: AdminPanelApp._onResetNetworkAuth,
       sendBroadcast: AdminPanelApp._onSendBroadcast,
+      scrollMixerLeft: AdminPanelApp._onScrollMixerLeft,
+      scrollMixerRight: AdminPanelApp._onScrollMixerRight,
       openNetworkManagerLogs: AdminPanelApp._onOpenNetworkManagerLogs,
       toggleNetworkGroup: AdminPanelApp._onToggleNetworkGroup,
 
@@ -253,6 +255,17 @@ export class AdminPanelApp extends BaseApplication {
       active: networks.filter(n => n.enabled).length,
     };
 
+    // Add signalTier for mixer display
+    for (const net of networks) {
+      if (net.signal >= 70) net.signalTier = 'good';
+      else if (net.signal >= 40) net.signalTier = 'mid';
+      else if (net.signal > 0) net.signalTier = 'low';
+      else net.signalTier = 'dead';
+    }
+
+    // ─── Connected Players (Networks tab — War Room) ───
+    const connectedPlayers = this._gatherConnectedPlayers(networks);
+
     // ─── Scene Quick Strip (Networks tab — Sprint 6) ───
     const sceneStrip = this._gatherSceneStrip();
 
@@ -342,7 +355,8 @@ export class AdminPanelApp extends BaseApplication {
       pushLog,
 
       // Networks tab
-      networks,  // Full flat list (for dropdowns)
+      networks,  // Full flat list (for dropdowns + mixer)
+      connectedPlayers,
       networkGroups: this._buildNetworkGroups(
         this._networkSearch
           ? networks.filter(n => n.name.toLowerCase().includes(this._networkSearch.toLowerCase()))
@@ -915,18 +929,88 @@ export class AdminPanelApp extends BaseApplication {
       const deadZone = s.getFlag(MODULE_ID, 'deadZone') ?? false;
       const defaultNetId = s.getFlag(MODULE_ID, 'defaultNetwork') ?? '';
       const defaultNet = allNetworks.find(n => n.id === defaultNetId || n.name === defaultNetId);
+      const signalPct = deadZone ? 0 : (defaultNet?.signalStrength ?? 85);
       return {
         id: s.id,
         name: s.name,
         isCurrent: s.id === currentSceneId,
         deadZone,
         defaultNetworkName: deadZone ? 'DEAD ZONE' : (defaultNet?.name ?? 'CITINET'),
+        signalPct,
       };
     }).sort((a, b) => {
       if (a.isCurrent && !b.isCurrent) return -1;
       if (!a.isCurrent && b.isCurrent) return 1;
       return a.name.localeCompare(b.name);
     });
+  }
+
+  /**
+   * Gather connected (non-GM) player data for the War Room player cards.
+   * @param {Array<object>} networks - Already-gathered network data
+   * @returns {Array<object>}
+   * @private
+   */
+  _gatherConnectedPlayers(networks) {
+    const players = [];
+    const onlineUsers = game.users?.filter(u => u.active && !u.isGM) ?? [];
+    const currentNetId = this.networkService?.currentNetworkId ?? 'CITINET';
+
+    // Icon class mapping for known network types
+    const NET_CLASS_MAP = {
+      citinet: 'citinet', darknet: 'darknet', corpnet: 'corpnet',
+      govnet: 'govnet', dead_zone: 'dead', deadzone: 'dead',
+    };
+    const NET_ICON_MAP = {
+      citinet: 'fa-wifi', darknet: 'fa-mask', corpnet: 'fa-building',
+      govnet: 'fa-landmark', dead_zone: 'fa-ban', deadzone: 'fa-ban',
+    };
+
+    for (const user of onlineUsers) {
+      const actor = user.character;
+      // Try to determine the player's current network from their actor flags
+      const playerNetId = actor?.getFlag?.(MODULE_ID, 'currentNetwork') ?? currentNetId;
+      const net = networks.find(n => n.id === playerNetId || n.name === playerNetId);
+      const netIdLower = (playerNetId || '').toLowerCase().replace(/\s+/g, '_');
+
+      const signal = net?.signal ?? 0;
+      const isDead = netIdLower === 'dead_zone' || netIdLower === 'deadzone' || signal === 0;
+      let signalTier, statusText, signalIcon;
+
+      if (isDead) {
+        signalTier = 'dead';
+        statusText = 'No signal · All comms blocked';
+        signalIcon = 'fa-signal-slash';
+      } else if (signal >= 70) {
+        signalTier = 'ok';
+        statusText = 'Connected · Strong signal';
+        signalIcon = 'fa-signal';
+      } else if (signal >= 40) {
+        signalTier = 'weak';
+        statusText = 'Connected · Weak signal';
+        signalIcon = 'fa-signal';
+      } else {
+        signalTier = 'weak';
+        statusText = 'Connected · Very weak signal';
+        signalIcon = 'fa-signal';
+      }
+
+      players.push({
+        userId: user.id,
+        name: actor?.name ?? user.name,
+        img: actor?.img || actor?.prototypeToken?.texture?.src || null,
+        networkId: playerNetId,
+        networkName: net?.name ?? playerNetId ?? 'Unknown',
+        netClass: NET_CLASS_MAP[netIdLower] || 'custom',
+        netIcon: NET_ICON_MAP[netIdLower] || 'fa-network-wired',
+        signal,
+        signalTier,
+        statusText,
+        signalIcon,
+      });
+    }
+
+    return players;
   }
 
   /**
@@ -1709,20 +1793,20 @@ export class AdminPanelApp extends BaseApplication {
    * Range sliders use input/change events which don't work with data-action.
    */
   _setupNetworkControls() {
-    // Signal sliders — update display on input, persist on change
-    this.element?.querySelectorAll('.ncm-network-card__quick-slider')?.forEach(slider => {
-      const networkId = slider.dataset.networkId;
-      const valueEl = slider.closest('.ncm-network-card__quick')
-        ?.querySelector('.ncm-network-card__quick-value');
+    // Mixer channel click — prompt for signal value
+    this.element?.querySelectorAll('.ncm-mixer-ch__slider-track')?.forEach(track => {
+      const channel = track.closest('.ncm-mixer-ch');
+      const networkId = channel?.dataset?.networkId;
+      if (!networkId) return;
 
-      slider.addEventListener('input', () => {
-        if (valueEl) valueEl.textContent = `${slider.value}%`;
-      });
-
-      slider.addEventListener('change', async () => {
-        const value = Number(slider.value);
-        await this.networkService?.updateNetwork(networkId, { signalStrength: value });
-        log.info(`Admin: Signal for ${networkId} set to ${value}%`);
+      track.addEventListener('click', async (e) => {
+        // Calculate click position as percentage (bottom = 0%, top = 100%)
+        const rect = track.getBoundingClientRect();
+        const clickY = e.clientY - rect.top;
+        const pct = Math.round(Math.max(0, Math.min(100, (1 - clickY / rect.height) * 100)));
+        await this.networkService?.updateNetwork(networkId, { signalStrength: pct });
+        log.info(`Admin: Signal for ${networkId} set to ${pct}%`);
+        this.render();
       });
     });
 
@@ -1735,16 +1819,21 @@ export class AdminPanelApp extends BaseApplication {
       });
     }
 
-    // Network search input — debounced
-    const searchInput = this.element?.querySelector('.ncm-network-search-bar__input');
+    // Network search input — debounced (supports both old and new class)
+    const searchInput = this.element?.querySelector('.ncm-net-config-search__input') || this.element?.querySelector('.ncm-network-search-bar__input');
     if (searchInput) {
-      if (this._networkSearch) searchInput.focus();
+      if (this._networkSearch) {
+        searchInput.value = this._networkSearch;
+        searchInput.focus();
+        const len = this._networkSearch.length;
+        searchInput.setSelectionRange(len, len);
+      }
 
       const handler = this._networkSearchHandler || (this._networkSearchHandler =
         foundry.utils.debounce((e) => {
           this._networkSearch = e.target.value;
           this.render(true);
-        }, 250)
+        }, 350)
       );
       searchInput.removeEventListener('input', handler);
       searchInput.addEventListener('input', handler);
@@ -2546,7 +2635,7 @@ export class AdminPanelApp extends BaseApplication {
 
   static async _onSendBroadcast(event, target) {
     event.preventDefault();
-    const bar = target.closest('.ncm-broadcast-bar') || this.element?.querySelector('.ncm-broadcast-bar');
+    const bar = target.closest('.ncm-net-broadcast') || target.closest('.ncm-broadcast-bar') || this.element?.querySelector('.ncm-net-broadcast');
     if (!bar) return;
 
     const networkSelect = bar.querySelector('[name="broadcastNetwork"]');
@@ -2599,6 +2688,16 @@ export class AdminPanelApp extends BaseApplication {
     // Clear input
     if (messageInput) messageInput.value = '';
     ui.notifications.info(`NCM | Broadcast sent to ${networkName}.`);
+  }
+
+  static _onScrollMixerLeft(event, target) {
+    const strip = this.element?.querySelector('.ncm-mixer-strip');
+    if (strip) strip.scrollBy({ left: -200, behavior: 'smooth' });
+  }
+
+  static _onScrollMixerRight(event, target) {
+    const strip = this.element?.querySelector('.ncm-mixer-strip');
+    if (strip) strip.scrollBy({ left: 200, behavior: 'smooth' });
   }
 
   // ═══════════════════════════════════════════════════════════
