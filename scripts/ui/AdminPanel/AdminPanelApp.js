@@ -847,7 +847,14 @@ export class AdminPanelApp extends BaseApplication {
         const contactEmail = (expandedContact.email || '').toLowerCase();
         const allMessages = [];
 
-        // 1. Messages in the contact's OWN inbox (messages sent TO this contact)
+        // Build a map of player actor IDs for looking up recipients
+        const playerActorMap = {};
+        for (const pa of playerActors) {
+          playerActorMap[pa.actorId] = pa;
+        }
+
+        // 1. Messages in the contact's OWN inbox
+        //    Includes BOTH received messages AND sent copies (messageId ending in "-sent")
         const ownJournalName = actorId
           ? `NCM-Inbox-${actorId}`
           : `NCM-Inbox-Contact-${contactId}`;
@@ -855,26 +862,44 @@ export class AdminPanelApp extends BaseApplication {
         if (ownInbox?.pages?.size) {
           for (const page of ownInbox.pages) {
             const flags = page.flags?.['cyberpunkred-messenger'] || {};
-            allMessages.push({
-              page, flags, journalId: ownInbox.id, sent: false,
-              inboxActorId: actorId || contactId,  // whose inbox this page lives in
-            });
-          }
-        }
+            const msgId = flags.messageId || '';
+            const isSentCopy = msgId.endsWith('-sent');
 
-        // 2. Messages sent BY this contact — search player inboxes
-        for (const pa of playerActors) {
-          const playerJournalName = `NCM-Inbox-${pa.actorId}`;
-          const playerInbox = game.journal?.find(j => j.name === playerJournalName);
-          if (!playerInbox?.pages?.size) continue;
-          for (const page of playerInbox.pages) {
-            const flags = page.flags?.['cyberpunkred-messenger'] || {};
-            const senderName = (flags.senderName || flags.from || '').toLowerCase();
-            const senderEmail = (flags.from || '').toLowerCase();
-            if (senderName.includes(contactName) || (contactEmail && senderEmail === contactEmail)) {
+            if (isSentCopy) {
+              // This is a sent copy — find the recipient's inbox for click-to-open
+              // The received copy has the base messageId (without "-sent")
+              const baseMessageId = msgId.replace(/-sent$/, '');
+              const recipientActorId = flags.recipientActorId || '';
+
+              // Try to find which player inbox has the received copy
+              let recipientInboxId = recipientActorId;
+              if (!recipientInboxId) {
+                // Search player inboxes for the base message
+                for (const pa of playerActors) {
+                  const pJournal = game.journal?.find(j => j.name === `NCM-Inbox-${pa.actorId}`);
+                  if (!pJournal?.pages?.size) continue;
+                  for (const pp of pJournal.pages) {
+                    if (pp.flags?.['cyberpunkred-messenger']?.messageId === baseMessageId) {
+                      recipientInboxId = pa.actorId;
+                      break;
+                    }
+                  }
+                  if (recipientInboxId) break;
+                }
+              }
+
               allMessages.push({
-                page, flags, journalId: playerInbox.id, sent: true,
-                inboxActorId: pa.actorId,  // the PLAYER actor whose inbox has this message
+                page, flags, sent: true,
+                // For click: open recipient's inbox with the base (non-sent) messageId
+                openInboxId: recipientInboxId || actorId || contactId,
+                openMessageId: baseMessageId,
+              });
+            } else {
+              // Received message — open this inbox with this messageId
+              allMessages.push({
+                page, flags, sent: false,
+                openInboxId: actorId || contactId,
+                openMessageId: msgId,
               });
             }
           }
@@ -894,8 +919,8 @@ export class AdminPanelApp extends BaseApplication {
             sent: m.sent,
             preview: (m.flags.subject || m.page.name || '(no subject)').slice(0, 50),
             time: m.flags.timestamp ? this._relativeTime(m.flags.timestamp) : '',
-            messageId: m.flags.messageId || m.page.id,
-            inboxOwnerId: m.inboxActorId,
+            messageId: m.openMessageId,
+            inboxOwnerId: m.openInboxId,
           };
         });
       } catch { /* inbox may not exist */ }
@@ -3108,25 +3133,10 @@ export class AdminPanelApp extends BaseApplication {
     const inboxOwnerId = msgEl.dataset.inboxOwner;
     const messageId = msgEl.dataset.messageId;
 
-    console.log(`NCM | openRecentMessage — inboxOwner: ${inboxOwnerId}, messageId: ${messageId}`);
+    if (!inboxOwnerId) return;
 
-    if (!inboxOwnerId) {
-      console.warn('NCM | openRecentMessage — no inboxOwnerId');
-      return;
-    }
-
-    // Open the inbox — pass messageId for auto-selection
-    const viewer = game.nightcity?.openInbox?.(inboxOwnerId, messageId || undefined);
-
-    // If viewer already existed and is rendered, try selecting with a delay
-    // (the initial openInbox call handles brand-new viewers via selectedMessageId constructor arg)
-    if (viewer?.rendered && messageId) {
-      // Try selecting immediately, then retry after messages load
-      try { viewer._selectMessage?.(messageId); } catch { /* */ }
-      setTimeout(() => {
-        try { viewer._selectMessage?.(messageId); } catch { /* */ }
-      }, 500);
-    }
+    // openInbox handles singleton window, actor switching, and message selection
+    game.nightcity?.openInbox?.(inboxOwnerId, messageId || undefined);
   }
 
   // ═══════════════════════════════════════════════════════════

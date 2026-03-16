@@ -33,7 +33,8 @@ import { Phase2Verification } from '../tests/Phase2Verification.js';
  * Track open application instances for reuse / singleton-per-actor behavior
  * @type {Map<string, Application>}
  */
-const _openViewers = new Map();
+/** @type {MessageViewerApp|null} Singleton viewer instance */
+let _activeViewer = null;
 const _openComposers = new Map();
 const _openContacts = new Map();
 
@@ -106,39 +107,77 @@ export function registerMessagingSystem(initializer) {
     const ns = game.nightcity;
 
     /**
-     * Open the inbox for an actor. Reuses existing window if already open.
+     * Open the inbox for an actor. Only ONE viewer window exists (singleton).
+     * If already open for a different actor, switches the actor and re-renders.
      * @param {string} [actorId] — Falls back to user's primary character
      * @param {string} [messageId] — If provided, auto-selects this message
      */
-    ns.openInbox = (actorId, messageId) => {
+    /**
+     * Open the inbox for an actor. Reuses existing window if already open.
+     * @param {string} [actorId] — Falls back to user's primary character
+     * @param {string} [messageId] — If provided, auto-selects this message
+     * @param {object} [options]
+     * @param {string} [options.filter] — Force a specific filter tab ('inbox' | 'sent' | etc.)
+     */
+    ns.openInbox = (actorId, messageId, options = {}) => {
       const resolvedActorId = _resolveActorId(actorId);
       if (!resolvedActorId) return;
 
-      const key = `viewer-${resolvedActorId}`;
-      let viewer = _openViewers.get(key);
+      const filterHint = options.filter || 'inbox';
+
+      // Singleton — find any existing viewer
+      let viewer = _activeViewer;
+
+      // Safety: check if viewer is actually alive (element in DOM)
+      if (viewer && (!viewer.rendered || !viewer.element?.closest('body'))) {
+        _activeViewer = null;
+        viewer = null;
+      }
 
       if (viewer && viewer.rendered) {
-        // Already open — bring to front and optionally select message
-        viewer.bringToFront();
-        if (messageId) {
-          viewer._selectMessage(messageId);
+        const isSameActor = viewer.actorId === resolvedActorId;
+
+        if (isSameActor) {
+          // Same actor — bring to front and select message
+          viewer.bringToFront();
+          if (messageId) {
+            viewer.currentFilter = filterHint;
+            viewer.currentPage = 1;
+            viewer.selectedMessageId = messageId;
+            viewer._cachedMessages = null; // force reload to pick up filter change
+            viewer.render(true);
+          }
+          return viewer;
         }
+
+        // Different actor — switch the viewer's actor, clear caches, re-render
+        viewer.actorId = resolvedActorId;
+        viewer.selectedMessageId = messageId ?? null;
+        viewer._cachedMessages = null;
+        viewer._cachedContacts = null;
+        viewer.currentFilter = filterHint;
+        viewer.currentPage = 1;
+        viewer.bringToFront();
+        viewer.render(true);
         return viewer;
       }
 
-      // Create new viewer
+      // No existing viewer or it's closed — create new
       viewer = new MessageViewerApp({
         actorId: resolvedActorId,
         selectedMessageId: messageId ?? null,
       });
+      // Set filter before first render if provided
+      if (messageId && filterHint !== 'inbox') {
+        viewer.currentFilter = filterHint;
+      }
 
-      // Track instance
-      _openViewers.set(key, viewer);
+      _activeViewer = viewer;
 
       // Clean up tracking on close
       const origClose = viewer.close.bind(viewer);
       viewer.close = async (...args) => {
-        _openViewers.delete(key);
+        if (_activeViewer === viewer) _activeViewer = null;
         return origClose(...args);
       };
 
