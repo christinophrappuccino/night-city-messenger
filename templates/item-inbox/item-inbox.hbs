@@ -191,6 +191,10 @@
 
     {{!-- UNLOCKED CONTENT --}}
     {{else}}
+      {{!-- Opaque cover prevents content flash before unlock splash plays --}}
+      {{#if pendingUnlockSplash}}
+        <div class="ncm-sec-unlock-cover" style="position:absolute;inset:0;background:var(--ncm-background, #0a0a0a);z-index:100;"></div>
+      {{/if}}
       <div class="ncm-shard-entries">
         {{#if hasEntries}}
           {{#each visibleEntries}}

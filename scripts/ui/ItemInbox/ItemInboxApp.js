@@ -421,6 +421,7 @@ export class ItemInboxApp extends BaseApplication {
       showKeyitemOverlay: security.blocked && security.layer === 'keyitem',
       showLoginOverlay: security.blocked && security.layer === 'login',
       showEncryptionOverlay: security.blocked && security.layer === 'encryption',
+      pendingUnlockSplash: this._pendingUnlockSplash,
 
       // Login state
       isLoggedIn: session.loggedIn,
@@ -613,7 +614,8 @@ export class ItemInboxApp extends BaseApplication {
     // Show climactic SHARD UNLOCKED splash when all security layers are cleared
     if (this._pendingUnlockSplash && !context.isBlocked && !this._hackingActive) {
       this._pendingUnlockSplash = false;
-      // Show immediately — overlay injection is synchronous, covers content before browser paints
+      // Remove template-rendered opaque cover → inject animated splash (both synchronous, no paint gap)
+      this.element?.querySelector('.ncm-sec-unlock-cover')?.remove();
       this._showTransitionSplash({
         icon: 'fas fa-lock-open',
         iconStyle: 'accent',
