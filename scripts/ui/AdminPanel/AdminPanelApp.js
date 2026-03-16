@@ -49,6 +49,9 @@ export class AdminPanelApp extends BaseApplication {
 
   /** @type {string} Network search query */
   _networkSearch = '';
+  _netAuthFilter = 'all';
+  _netStatusFilter = 'all';
+  _netGroupFilter = 'all';
 
   /** @type {Set<string>} Collapsed network group keys */
   _collapsedNetGroups = new Set();
@@ -159,6 +162,9 @@ export class AdminPanelApp extends BaseApplication {
       sendBroadcast: AdminPanelApp._onSendBroadcast,
       scrollMixerLeft: AdminPanelApp._onScrollMixerLeft,
       scrollMixerRight: AdminPanelApp._onScrollMixerRight,
+      cycleNetAuthFilter: AdminPanelApp._onCycleNetAuthFilter,
+      cycleNetStatusFilter: AdminPanelApp._onCycleNetStatusFilter,
+      cycleNetGroupFilter: AdminPanelApp._onCycleNetGroupFilter,
       openNetworkManagerLogs: AdminPanelApp._onOpenNetworkManagerLogs,
       toggleNetworkGroup: AdminPanelApp._onToggleNetworkGroup,
 
@@ -357,16 +363,15 @@ export class AdminPanelApp extends BaseApplication {
       // Networks tab
       networks,  // Full flat list (for dropdowns + mixer)
       connectedPlayers,
-      networkGroups: this._buildNetworkGroups(
-        this._networkSearch
-          ? networks.filter(n => n.name.toLowerCase().includes(this._networkSearch.toLowerCase()))
-          : networks
-      ),
+      networkGroups: this._buildNetworkGroups(this._filterNetworks(networks)),
       networkSummary,
       sceneStrip,
       netStats,
       networkSubView: this._networkSubView,
       networkSearchQuery: this._networkSearch,
+      netAuthFilter: this._netAuthFilter,
+      netStatusFilter: this._netStatusFilter,
+      netGroupFilter: this._netGroupFilter,
       fullLogEntries,
       logTypeFilters,
       logNetworkFilter: this._logNetworkFilter,
@@ -845,6 +850,41 @@ export class AdminPanelApp extends BaseApplication {
 
      return networks;
    }
+
+  /**
+   * Apply search + filter pills to network list before grouping.
+   * @param {Array} networks
+   * @returns {Array}
+   * @private
+   */
+  _filterNetworks(networks) {
+    let filtered = networks;
+
+    // Text search
+    if (this._networkSearch) {
+      const q = this._networkSearch.toLowerCase();
+      filtered = filtered.filter(n => n.name.toLowerCase().includes(q));
+    }
+
+    // Auth filter
+    if (this._netAuthFilter !== 'all') {
+      filtered = filtered.filter(n => n.authClass === this._netAuthFilter);
+    }
+
+    // Status filter
+    if (this._netStatusFilter !== 'all') {
+      if (this._netStatusFilter === 'active') filtered = filtered.filter(n => n.enabled);
+      else if (this._netStatusFilter === 'disabled') filtered = filtered.filter(n => !n.enabled);
+    }
+
+    // Group filter
+    if (this._netGroupFilter !== 'all') {
+      if (this._netGroupFilter === 'core') filtered = filtered.filter(n => n.isCore);
+      else if (this._netGroupFilter === 'custom') filtered = filtered.filter(n => !n.isCore);
+    }
+
+    return filtered;
+  }
 
   /**
    * Build grouped network data for the template.
@@ -1793,24 +1833,68 @@ export class AdminPanelApp extends BaseApplication {
    * Range sliders use input/change events which don't work with data-action.
    */
   _setupNetworkControls() {
-    // Mixer channel click — prompt for signal value
+    // ─── Mixer: Real-time drag on slider tracks ───
     this.element?.querySelectorAll('.ncm-mixer-ch__slider-track')?.forEach(track => {
       const channel = track.closest('.ncm-mixer-ch');
-      const networkId = channel?.dataset?.networkId;
+      const networkId = track.dataset?.networkId || channel?.dataset?.networkId;
       if (!networkId) return;
 
-      track.addEventListener('click', async (e) => {
-        // Calculate click position as percentage (bottom = 0%, top = 100%)
+      const fill = track.querySelector('.ncm-mixer-ch__slider-fill');
+      const thumb = track.querySelector('.ncm-mixer-ch__slider-thumb');
+      const pctInput = channel?.querySelector('.ncm-mixer-ch__pct-input');
+
+      const updateVisual = (pct) => {
+        if (fill) fill.style.height = `${pct}%`;
+        if (thumb) thumb.style.bottom = `calc(${pct}% - 3px)`;
+        if (pctInput) pctInput.value = pct;
+        // Update fill color class
+        if (fill) {
+          fill.className = fill.className.replace(/ncm-mixer-ch__slider-fill--\w+/g, '');
+          fill.classList.add('ncm-mixer-ch__slider-fill');
+          if (pct >= 70) fill.classList.add('ncm-mixer-ch__slider-fill--good');
+          else if (pct >= 40) fill.classList.add('ncm-mixer-ch__slider-fill--mid');
+          else if (pct > 0) fill.classList.add('ncm-mixer-ch__slider-fill--low');
+          else fill.classList.add('ncm-mixer-ch__slider-fill--dead');
+        }
+      };
+
+      const calcPct = (e) => {
         const rect = track.getBoundingClientRect();
-        const clickY = e.clientY - rect.top;
-        const pct = Math.round(Math.max(0, Math.min(100, (1 - clickY / rect.height) * 100)));
-        await this.networkService?.updateNetwork(networkId, { signalStrength: pct });
-        log.info(`Admin: Signal for ${networkId} set to ${pct}%`);
+        const y = e.clientY - rect.top;
+        return Math.round(Math.max(0, Math.min(100, (1 - y / rect.height) * 100)));
+      };
+
+      track.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        let pct = calcPct(e);
+        updateVisual(pct);
+
+        const onMove = (ev) => { pct = calcPct(ev); updateVisual(pct); };
+        const onUp = async () => {
+          document.removeEventListener('mousemove', onMove);
+          document.removeEventListener('mouseup', onUp);
+          await this.networkService?.updateNetwork(networkId, { signalStrength: pct });
+          log.info(`Admin: Signal for ${networkId} set to ${pct}%`);
+        };
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+      });
+    });
+
+    // ─── Mixer: Editable percentage input ───
+    this.element?.querySelectorAll('.ncm-mixer-ch__pct-input')?.forEach(input => {
+      const networkId = input.dataset.networkId;
+      if (!networkId) return;
+      input.addEventListener('change', async () => {
+        const val = Math.max(0, Math.min(100, Number(input.value) || 0));
+        input.value = val;
+        await this.networkService?.updateNetwork(networkId, { signalStrength: val });
+        log.info(`Admin: Signal for ${networkId} set to ${val}% (manual input)`);
         this.render();
       });
     });
 
-    // Network filter dropdown in full log panel
+    // ─── Network filter dropdown in full log panel ───
     const netFilter = this.element?.querySelector('.ncm-netlog-network-filter');
     if (netFilter) {
       netFilter.addEventListener('change', (e) => {
@@ -1819,8 +1903,8 @@ export class AdminPanelApp extends BaseApplication {
       });
     }
 
-    // Network search input — debounced (supports both old and new class)
-    const searchInput = this.element?.querySelector('.ncm-net-config-search__input') || this.element?.querySelector('.ncm-network-search-bar__input');
+    // ─── Network search input — debounced ───
+    const searchInput = this.element?.querySelector('.ncm-net-config-search__input');
     if (searchInput) {
       if (this._networkSearch) {
         searchInput.value = this._networkSearch;
@@ -2698,6 +2782,27 @@ export class AdminPanelApp extends BaseApplication {
   static _onScrollMixerRight(event, target) {
     const strip = this.element?.querySelector('.ncm-mixer-strip');
     if (strip) strip.scrollBy({ left: 200, behavior: 'smooth' });
+  }
+
+  static _onCycleNetAuthFilter() {
+    const order = ['all', 'open', 'password', 'skill', 'locked', 'blocked'];
+    const idx = order.indexOf(this._netAuthFilter);
+    this._netAuthFilter = order[(idx + 1) % order.length];
+    this.render();
+  }
+
+  static _onCycleNetStatusFilter() {
+    const order = ['all', 'active', 'disabled'];
+    const idx = order.indexOf(this._netStatusFilter);
+    this._netStatusFilter = order[(idx + 1) % order.length];
+    this.render();
+  }
+
+  static _onCycleNetGroupFilter() {
+    const order = ['all', 'core', 'custom'];
+    const idx = order.indexOf(this._netGroupFilter);
+    this._netGroupFilter = order[(idx + 1) % order.length];
+    this.render();
   }
 
   // ═══════════════════════════════════════════════════════════

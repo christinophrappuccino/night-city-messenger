@@ -1,6 +1,7 @@
 /* ═══════════════════════════════════════════
    TAB 4: NETWORKS — War Room Dashboard
-   Every property has !important to defeat Foundry globals.
+   Ported from ncm-admin-networks-tab-v4-warroom.html mockup.
+   All properties use !important to defeat Foundry globals.
    ═══════════════════════════════════════════ */
 
 /* ─── War Section Headers ─── */
@@ -19,7 +20,7 @@
 .ncm-app .ncm-net-status-bar {
   display: flex !important; align-items: center !important; gap: 14px !important;
   flex-direction: row !important;
-  padding: 7px 14px !important;
+  padding: 8px 14px !important;
   background: var(--sp-surface, #1a1a2e) !important; border: 1px solid var(--sp-border, #2a2a45) !important;
   border-radius: 2px !important; margin-bottom: 12px !important;
 }
@@ -34,6 +35,8 @@
 
 /* ─── Player Cards ─── */
 .ncm-app .ncm-net-players { display: flex !important; gap: 8px !important; margin-bottom: 12px !important; flex-direction: row !important; flex-wrap: wrap !important; }
+.ncm-app .ncm-net-players-empty { width: 100% !important; padding: 16px !important; text-align: center !important; font-family: var(--ncm-font-display) !important; font-size: 11px !important; color: var(--sp-text-muted) !important; background: var(--sp-surface, #1a1a2e) !important; border: 1px solid var(--sp-border) !important; border-radius: 2px !important; }
+.ncm-app .ncm-net-players-empty i { margin-right: 6px !important; }
 
 .ncm-app .ncm-player-card {
   flex: 1 1 180px !important; display: flex !important; flex-direction: column !important; gap: 6px !important;
@@ -83,12 +86,12 @@
 .ncm-app .ncm-player-card__signal--weak { color: var(--ncm-warning, #ffab00) !important; }
 .ncm-app .ncm-player-card__signal--dead { color: var(--ncm-danger, #ff0033) !important; }
 
-/* ─── Mixer ─── */
+/* ─── Mixer Container ─── */
 .ncm-app .ncm-mixer-wrap { display: flex !important; align-items: stretch !important; gap: 0 !important; flex-direction: row !important; margin-bottom: 12px !important; }
 .ncm-app .ncm-mixer-arrow {
   width: 24px !important; flex-shrink: 0 !important;
   display: flex !important; align-items: center !important; justify-content: center !important;
-  background: var(--sp-surface) !important; border: 1px solid var(--sp-border) !important;
+  background: var(--sp-surface, #1a1a2e) !important; border: 1px solid var(--sp-border, #2a2a45) !important;
   color: var(--sp-text-muted) !important; font-size: 10px !important;
   cursor: pointer !important; transition: all 0.15s !important; z-index: 2 !important;
 }
@@ -106,15 +109,16 @@
 .ncm-app .ncm-mixer-strip::-webkit-scrollbar-thumb { background: var(--sp-border-active, #3a3a5a) !important; border-radius: 2px !important; }
 .ncm-app .ncm-mixer-strip::-webkit-scrollbar-thumb:hover { background: rgba(25,243,247,0.4) !important; }
 
+/* ─── Mixer Channel — the dark blue tile ─── */
 .ncm-app .ncm-mixer-ch {
   flex: 1 1 105px !important; min-width: 105px !important; max-width: 140px !important;
   display: flex !important; flex-direction: column !important; align-items: center !important; gap: 5px !important;
   padding: 10px 8px 8px !important;
-  background: var(--sp-surface) !important; border: 1px solid var(--sp-border) !important;
+  background: var(--sp-surface, #1a1a2e) !important; border: 1px solid var(--sp-border, #2a2a45) !important;
   border-radius: 2px !important; position: relative !important; overflow: hidden !important;
-  transition: all 0.15s !important; cursor: pointer !important;
+  transition: all 0.15s !important; cursor: default !important;
 }
-.ncm-app .ncm-mixer-ch:hover { border-color: var(--sp-border-active) !important; }
+.ncm-app .ncm-mixer-ch:hover { border-color: var(--sp-border-active, #3a3a5a) !important; }
 .ncm-app .ncm-mixer-ch::before { content: '' !important; position: absolute !important; top: 0 !important; left: 0 !important; right: 0 !important; height: 2px !important; }
 .ncm-app .ncm-mixer-ch--on::before { background: var(--ncm-success, #00ff41) !important; }
 .ncm-app .ncm-mixer-ch--off::before { background: var(--ncm-danger, #ff0033) !important; }
@@ -131,20 +135,49 @@
 
 .ncm-app .ncm-mixer-ch__name { font-family: var(--ncm-font-display) !important; font-size: 10px !important; font-weight: 700 !important; color: var(--sp-text-primary) !important; text-transform: uppercase !important; text-align: center !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; width: 100% !important; line-height: 1.1 !important; }
 
-/* Vertical slider */
+/* ─── Mixer Slider (vertical) ─── */
 .ncm-app .ncm-mixer-ch__slider-wrap { display: flex !important; flex-direction: column !important; align-items: center !important; gap: 3px !important; padding: 2px 0 !important; }
 .ncm-app .ncm-mixer-ch__slider-label { font-family: var(--ncm-font-display) !important; font-size: 7px !important; font-weight: 700 !important; color: var(--sp-text-muted) !important; text-transform: uppercase !important; letter-spacing: 0.06em !important; }
-.ncm-app .ncm-mixer-ch__slider-track { width: 4px !important; height: 56px !important; background: var(--sp-elevated, #252540) !important; border-radius: 2px !important; position: relative !important; }
-.ncm-app .ncm-mixer-ch__slider-fill { position: absolute !important; bottom: 0 !important; left: 0 !important; right: 0 !important; border-radius: 2px !important; }
+.ncm-app .ncm-mixer-ch__slider-track {
+  width: 8px !important; height: 60px !important;
+  background: var(--sp-elevated, #252540) !important; border-radius: 4px !important;
+  position: relative !important; cursor: pointer !important;
+  border: 1px solid rgba(42,42,69,0.5) !important;
+  transition: border-color 0.15s !important;
+}
+.ncm-app .ncm-mixer-ch__slider-track:hover { border-color: rgba(25,243,247,0.3) !important; }
+.ncm-app .ncm-mixer-ch__slider-fill { position: absolute !important; bottom: 0 !important; left: 0 !important; right: 0 !important; border-radius: 0 0 3px 3px !important; }
 .ncm-app .ncm-mixer-ch__slider-fill--good { background: var(--ncm-success, #00ff41) !important; }
 .ncm-app .ncm-mixer-ch__slider-fill--mid { background: var(--ncm-warning, #ffab00) !important; }
 .ncm-app .ncm-mixer-ch__slider-fill--low { background: var(--ncm-color-primary, #F65261) !important; }
 .ncm-app .ncm-mixer-ch__slider-fill--dead { background: var(--ncm-danger, #ff0033) !important; opacity: 0.3 !important; }
-.ncm-app .ncm-mixer-ch__slider-thumb { position: absolute !important; left: 50% !important; transform: translateX(-50%) !important; width: 14px !important; height: 6px !important; background: var(--sp-text-primary) !important; border-radius: 1px !important; cursor: grab !important; box-shadow: 0 0 4px rgba(0,0,0,0.5) !important; }
-.ncm-app .ncm-mixer-ch__pct { font-family: var(--ncm-font-mono) !important; font-size: 11px !important; font-weight: 700 !important; color: var(--sp-text-secondary) !important; }
-.ncm-app .ncm-mixer-ch__pct--off { color: var(--ncm-danger, #ff0033) !important; }
+.ncm-app .ncm-mixer-ch__slider-thumb {
+  position: absolute !important; left: 50% !important; transform: translateX(-50%) !important;
+  width: 18px !important; height: 8px !important;
+  background: var(--sp-text-primary, #eeeef4) !important; border-radius: 2px !important;
+  cursor: grab !important; box-shadow: 0 0 6px rgba(0,0,0,0.6) !important;
+  transition: background 0.15s, box-shadow 0.15s !important;
+}
+.ncm-app .ncm-mixer-ch__slider-thumb:hover { background: var(--ncm-color-secondary, #19f3f7) !important; box-shadow: 0 0 10px rgba(25,243,247,0.5) !important; }
+.ncm-app .ncm-mixer-ch__slider-track:hover .ncm-mixer-ch__slider-thumb { background: var(--ncm-color-secondary) !important; }
 
-/* Mixer channel info row */
+/* ─── Mixer Percentage Input ─── */
+.ncm-app .ncm-mixer-ch__pct-input {
+  width: 44px !important; padding: 3px 4px !important;
+  font-family: var(--ncm-font-mono) !important; font-size: 12px !important; font-weight: 700 !important;
+  color: var(--ncm-color-secondary, #19f3f7) !important; text-align: center !important;
+  background: var(--sp-bg, #0a0a0f) !important; border: 1px solid var(--sp-border, #2a2a45) !important;
+  border-radius: 2px !important; outline: none !important;
+  -moz-appearance: textfield !important; appearance: textfield !important;
+  height: auto !important; min-height: 0 !important; box-shadow: none !important;
+  transition: border-color 0.15s !important;
+}
+.ncm-app .ncm-mixer-ch__pct-input:focus { border-color: var(--ncm-color-secondary) !important; box-shadow: 0 0 4px rgba(25,243,247,0.2) !important; }
+.ncm-app .ncm-mixer-ch__pct-input::-webkit-inner-spin-button,
+.ncm-app .ncm-mixer-ch__pct-input::-webkit-outer-spin-button { -webkit-appearance: none !important; margin: 0 !important; }
+.ncm-app .ncm-mixer-ch__pct-input:disabled { color: var(--ncm-danger, #ff0033) !important; opacity: 0.6 !important; }
+
+/* ─── Mixer Channel Info Row ─── */
 .ncm-app .ncm-mixer-ch__info { width: 100% !important; display: flex !important; flex-direction: column !important; align-items: center !important; gap: 4px !important; padding-top: 4px !important; border-top: 1px solid rgba(42,42,69,0.4) !important; }
 .ncm-app .ncm-mixer-ch__auth { font-family: var(--ncm-font-display) !important; font-size: 8px !important; font-weight: 700 !important; text-transform: uppercase !important; display: flex !important; align-items: center !important; gap: 3px !important; }
 .ncm-app .ncm-mixer-ch__auth i { font-size: 7px !important; }
@@ -157,21 +190,21 @@
 .ncm-app .ncm-mixer-ch__users i { font-size: 7px !important; }
 .ncm-app .ncm-mixer-ch__users .ct { color: var(--sp-text-secondary) !important; }
 
-/* Mixer toggle */
+/* Mixer Toggle */
 .ncm-app .ncm-mixer-ch__toggle { width: 28px !important; height: 14px !important; border-radius: 7px !important; background: var(--sp-elevated) !important; border: 1px solid var(--sp-border) !important; position: relative !important; cursor: pointer !important; transition: all 0.2s !important; }
 .ncm-app .ncm-mixer-ch__toggle::after { content: '' !important; position: absolute !important; top: 2px !important; left: 2px !important; width: 8px !important; height: 8px !important; border-radius: 50% !important; background: var(--sp-text-muted) !important; transition: all 0.2s !important; }
 .ncm-app .ncm-mixer-ch__toggle--on { background: rgba(0,255,65,0.15) !important; border-color: rgba(0,255,65,0.3) !important; }
 .ncm-app .ncm-mixer-ch__toggle--on::after { left: 16px !important; background: var(--ncm-success) !important; box-shadow: 0 0 4px rgba(0,255,65,0.4) !important; }
 .ncm-app .ncm-mixer-ch__toggle--global { opacity: 0.3 !important; pointer-events: none !important; }
 
-/* ─── Ops Row (Scenes + Broadcast) ─── */
+/* ─── Scenes + Broadcast Row ─── */
 .ncm-app .ncm-net-ops-row { display: flex !important; gap: 8px !important; margin-bottom: 12px !important; flex-direction: row !important; }
 
-.ncm-app .ncm-net-scenes { flex: 1 !important; display: flex !important; align-items: center !important; gap: 6px !important; padding: 7px 12px !important; background: var(--sp-surface) !important; border: 1px solid var(--sp-border) !important; border-radius: 2px !important; overflow-x: auto !important; flex-direction: row !important; }
+.ncm-app .ncm-net-scenes { flex: 1 !important; display: flex !important; align-items: center !important; gap: 6px !important; padding: 7px 12px !important; background: var(--sp-surface, #1a1a2e) !important; border: 1px solid var(--sp-border) !important; border-radius: 2px !important; overflow-x: auto !important; flex-direction: row !important; }
 .ncm-app .ncm-net-scenes__label { font-family: var(--ncm-font-display) !important; font-size: 9px !important; font-weight: 700 !important; color: var(--sp-text-muted) !important; text-transform: uppercase !important; flex-shrink: 0 !important; display: flex !important; align-items: center !important; gap: 4px !important; }
 .ncm-app .ncm-net-scenes__label i { font-size: 8px !important; color: var(--ncm-accent) !important; }
 
-.ncm-app .ncm-scene-chip { display: flex !important; align-items: center !important; gap: 5px !important; padding: 3px 8px !important; background: var(--sp-bg) !important; border: 1px solid var(--sp-border) !important; border-radius: 2px !important; flex-shrink: 0 !important; transition: all 0.15s !important; flex-direction: row !important; }
+.ncm-app .ncm-scene-chip { display: flex !important; align-items: center !important; gap: 5px !important; padding: 3px 8px !important; background: var(--sp-bg, #0a0a0f) !important; border: 1px solid var(--sp-border) !important; border-radius: 2px !important; flex-shrink: 0 !important; transition: all 0.15s !important; flex-direction: row !important; }
 .ncm-app .ncm-scene-chip--current { border-color: rgba(25,243,247,0.3) !important; background: rgba(25,243,247,0.04) !important; }
 .ncm-app .ncm-scene-chip--dead { border-color: rgba(255,0,51,0.2) !important; }
 .ncm-app .ncm-scene-chip__dot { width: 5px !important; height: 5px !important; border-radius: 50% !important; background: var(--ncm-success) !important; flex-shrink: 0 !important; }
@@ -185,15 +218,15 @@
 .ncm-app .ncm-scene-chip__btn--restore:hover { background: rgba(255,0,51,0.06) !important; }
 
 /* Broadcast */
-.ncm-app .ncm-net-broadcast { flex: 1 !important; display: flex !important; flex-direction: column !important; gap: 4px !important; padding: 6px 10px !important; background: var(--sp-surface) !important; border: 1px solid var(--sp-border) !important; border-radius: 2px !important; }
+.ncm-app .ncm-net-broadcast { flex: 1 !important; display: flex !important; flex-direction: column !important; gap: 4px !important; padding: 6px 10px !important; background: var(--sp-surface, #1a1a2e) !important; border: 1px solid var(--sp-border) !important; border-radius: 2px !important; }
 .ncm-app .ncm-net-broadcast__label { font-family: var(--ncm-font-display) !important; font-size: 8px !important; font-weight: 700 !important; color: var(--sp-text-muted) !important; text-transform: uppercase !important; letter-spacing: 0.04em !important; display: flex !important; align-items: center !important; gap: 4px !important; }
 .ncm-app .ncm-net-broadcast__label i { font-size: 7px !important; color: var(--ncm-accent) !important; }
 .ncm-app .ncm-net-broadcast__row { display: flex !important; align-items: center !important; gap: 6px !important; flex-direction: row !important; }
-.ncm-app .ncm-net-broadcast__select { padding: 2px 6px !important; background: var(--sp-bg) !important; border: 1px solid var(--sp-border) !important; border-radius: 2px !important; font-family: var(--ncm-font-display) !important; font-size: 9px !important; color: var(--sp-text-secondary) !important; outline: none !important; cursor: pointer !important; }
-.ncm-app .ncm-net-broadcast__input { flex: 1 !important; min-width: 0 !important; padding: 3px 8px !important; background: var(--sp-bg) !important; border: 1px solid var(--sp-border) !important; border-radius: 2px !important; font-family: var(--ncm-font-display) !important; font-size: 10px !important; font-weight: 600 !important; color: var(--sp-text-primary) !important; outline: none !important; }
+.ncm-app .ncm-net-broadcast__select { padding: 3px 8px !important; background: var(--sp-bg) !important; border: 1px solid var(--sp-border) !important; border-radius: 2px !important; font-family: var(--ncm-font-display) !important; font-size: 9px !important; color: var(--sp-text-secondary) !important; outline: none !important; cursor: pointer !important; max-width: 130px !important; flex-shrink: 0 !important; width: auto !important; }
+.ncm-app .ncm-net-broadcast__input { flex: 1 !important; min-width: 0 !important; padding: 3px 8px !important; background: var(--sp-bg) !important; border: 1px solid var(--sp-border) !important; border-radius: 2px !important; font-family: var(--ncm-font-display) !important; font-size: 10px !important; font-weight: 600 !important; color: var(--sp-text-primary) !important; outline: none !important; height: auto !important; min-height: 0 !important; box-shadow: none !important; }
 .ncm-app .ncm-net-broadcast__input::placeholder { color: var(--sp-text-muted) !important; }
 .ncm-app .ncm-net-broadcast__input:focus { border-color: var(--ncm-color-secondary) !important; }
-.ncm-app .ncm-net-broadcast__send { display: flex !important; align-items: center !important; gap: 3px !important; padding: 3px 8px !important; background: none !important; border: 1px solid rgba(25,243,247,0.3) !important; border-radius: 2px !important; color: var(--ncm-color-secondary) !important; cursor: pointer !important; font-family: var(--ncm-font-display) !important; font-size: 9px !important; font-weight: 700 !important; text-transform: uppercase !important; transition: all 0.15s !important; flex-shrink: 0 !important; height: auto !important; min-height: 0 !important; appearance: none !important; box-shadow: none !important; outline: none !important; }
+.ncm-app .ncm-net-broadcast__send { display: flex !important; align-items: center !important; gap: 3px !important; padding: 3px 10px !important; background: none !important; border: 1px solid rgba(25,243,247,0.3) !important; border-radius: 2px !important; color: var(--ncm-color-secondary) !important; cursor: pointer !important; font-family: var(--ncm-font-display) !important; font-size: 9px !important; font-weight: 700 !important; text-transform: uppercase !important; transition: all 0.15s !important; flex-shrink: 0 !important; height: auto !important; min-height: 0 !important; appearance: none !important; box-shadow: none !important; outline: none !important; }
 .ncm-app .ncm-net-broadcast__send:hover { background: rgba(25,243,247,0.06) !important; }
 .ncm-app .ncm-net-broadcast__send i { font-size: 7px !important; }
 
@@ -203,37 +236,48 @@
 .ncm-app .ncm-net-zone-div__title { font-family: var(--ncm-font-title, 'Orbitron') !important; font-size: 8px !important; font-weight: 600 !important; color: var(--sp-text-muted) !important; text-transform: uppercase !important; letter-spacing: 0.15em !important; white-space: nowrap !important; }
 .ncm-app .ncm-net-zone-div__hint { font-family: var(--ncm-font-display) !important; font-size: 9px !important; font-weight: 500 !important; color: var(--sp-text-muted) !important; font-style: italic !important; opacity: 0.6 !important; white-space: nowrap !important; }
 .ncm-app .ncm-net-zone-div__line { flex: 1 !important; height: 1px !important; background: var(--sp-border) !important; }
-.ncm-app .ncm-net-zone-div__actions { display: flex !important; gap: 4px !important; flex-shrink: 0 !important; }
-
-.ncm-app .ncm-net-config-btn { display: flex !important; align-items: center !important; gap: 4px !important; padding: 4px 8px !important; background: none !important; border: 1px solid var(--sp-border) !important; border-radius: 2px !important; cursor: pointer !important; transition: all 0.15s !important; font-family: var(--ncm-font-display) !important; font-size: 9px !important; font-weight: 700 !important; color: var(--sp-text-muted) !important; text-transform: uppercase !important; height: auto !important; min-height: 0 !important; appearance: none !important; box-shadow: none !important; outline: none !important; }
-.ncm-app .ncm-net-config-btn:hover { border-color: var(--sp-border-active) !important; color: var(--sp-text-secondary) !important; }
-.ncm-app .ncm-net-config-btn--cyan { color: var(--ncm-color-secondary) !important; border-color: rgba(25,243,247,0.3) !important; }
-.ncm-app .ncm-net-config-btn--cyan:hover { background: rgba(25,243,247,0.06) !important; }
-.ncm-app .ncm-net-config-btn i { font-size: 8px !important; }
 
 /* ─── Config Toolbar ─── */
-.ncm-app .ncm-net-config-toolbar { display: flex !important; align-items: center !important; gap: 8px !important; flex-direction: row !important; padding: 0 0 10px !important; border-bottom: 1px solid var(--sp-border) !important; margin-bottom: 10px !important; flex-wrap: wrap !important; }
-.ncm-app .ncm-net-config-search { flex: 1 !important; min-width: 160px !important; max-width: 240px !important; display: flex !important; align-items: center !important; gap: 6px !important; padding: 5px 10px !important; background: var(--sp-surface) !important; border: 1px solid var(--sp-border) !important; border-radius: 2px !important; }
+.ncm-app .ncm-net-config-toolbar { display: flex !important; align-items: center !important; gap: 6px !important; flex-direction: row !important; padding: 0 0 10px !important; border-bottom: 1px solid var(--sp-border) !important; margin-bottom: 10px !important; flex-wrap: wrap !important; }
+.ncm-app .ncm-net-config-search { flex: 1 !important; min-width: 140px !important; max-width: 220px !important; display: flex !important; align-items: center !important; gap: 6px !important; padding: 5px 10px !important; background: var(--sp-surface) !important; border: 1px solid var(--sp-border) !important; border-radius: 2px !important; }
 .ncm-app .ncm-net-config-search:focus-within { border-color: var(--ncm-color-secondary) !important; }
 .ncm-app .ncm-net-config-search i { font-size: 9px !important; color: var(--sp-text-muted) !important; }
 .ncm-app .ncm-net-config-search__input { background: none !important; border: none !important; outline: none !important; font-family: var(--ncm-font-display) !important; font-size: 11px !important; font-weight: 600 !important; color: var(--sp-text-primary) !important; width: 100% !important; padding: 0 !important; margin: 0 !important; height: auto !important; min-height: 0 !important; box-shadow: none !important; }
 .ncm-app .ncm-net-config-search__input::placeholder { color: var(--sp-text-muted) !important; }
 .ncm-app .ncm-net-config-toolbar__spacer { flex: 1 !important; }
 
+/* Filter Pills */
+.ncm-app .ncm-net-filter-pill {
+  display: flex !important; align-items: center !important; gap: 4px !important;
+  padding: 4px 8px !important; background: var(--sp-surface, #1a1a2e) !important;
+  border: 1px solid var(--sp-border, #2a2a45) !important; border-radius: 2px !important;
+  cursor: pointer !important; transition: all 0.15s !important;
+  font-family: var(--ncm-font-display) !important; font-size: 9px !important; font-weight: 600 !important;
+  color: var(--sp-text-secondary, #b0b0c8) !important; text-transform: uppercase !important;
+  white-space: nowrap !important;
+}
+.ncm-app .ncm-net-filter-pill:hover { border-color: var(--sp-border-active) !important; color: var(--sp-text-primary) !important; }
+.ncm-app .ncm-net-filter-pill i.fa-chevron-down { font-size: 6px !important; color: var(--sp-text-muted) !important; }
+.ncm-app .ncm-net-filter-val { color: var(--ncm-color-secondary, #19f3f7) !important; font-weight: 700 !important; }
+
+/* Config Buttons */
+.ncm-app .ncm-net-config-btn { display: flex !important; align-items: center !important; gap: 4px !important; padding: 4px 8px !important; background: none !important; border: 1px solid var(--sp-border) !important; border-radius: 2px !important; cursor: pointer !important; transition: all 0.15s !important; font-family: var(--ncm-font-display) !important; font-size: 9px !important; font-weight: 700 !important; color: var(--sp-text-muted) !important; text-transform: uppercase !important; height: auto !important; min-height: 0 !important; appearance: none !important; box-shadow: none !important; outline: none !important; white-space: nowrap !important; }
+.ncm-app .ncm-net-config-btn:hover { border-color: var(--sp-border-active) !important; color: var(--sp-text-secondary) !important; }
+.ncm-app .ncm-net-config-btn--cyan { color: var(--ncm-color-secondary) !important; border-color: rgba(25,243,247,0.3) !important; }
+.ncm-app .ncm-net-config-btn--cyan:hover { background: rgba(25,243,247,0.06) !important; }
+.ncm-app .ncm-net-config-btn i { font-size: 8px !important; }
+
 /* ─── Config Groups ─── */
 .ncm-app .ncm-net-config-group { margin-bottom: 8px !important; }
-.ncm-app .ncm-net-config-group__header { display: flex !important; align-items: center !important; gap: 8px !important; flex-direction: row !important; padding: 6px 10px !important; background: var(--sp-surface) !important; border: 1px solid var(--sp-border) !important; border-radius: 2px 2px 0 0 !important; cursor: pointer !important; transition: all 0.15s !important; user-select: none !important; }
+.ncm-app .ncm-net-config-group__header { display: flex !important; align-items: center !important; gap: 8px !important; flex-direction: row !important; padding: 6px 10px !important; background: var(--sp-surface, #1a1a2e) !important; border: 1px solid var(--sp-border) !important; border-radius: 2px 2px 0 0 !important; cursor: pointer !important; transition: all 0.15s !important; user-select: none !important; }
 .ncm-app .ncm-net-config-group__header:hover { border-color: rgba(25,243,247,0.3) !important; background: rgba(25,243,247,0.04) !important; }
 .ncm-app .ncm-net-config-group--collapsed .ncm-net-config-group__header { border-radius: 2px !important; }
 .ncm-app .ncm-net-config-group--collapsed .ncm-net-config-group__body { display: none !important; }
 .ncm-app .ncm-net-config-group__chevron { font-size: 8px !important; color: var(--sp-text-muted) !important; transition: transform 0.2s !important; width: 12px !important; text-align: center !important; }
 .ncm-app .ncm-net-config-group--collapsed .ncm-net-config-group__chevron { transform: rotate(-90deg) !important; }
-.ncm-app .ncm-net-config-group__icon { width: 22px !important; height: 22px !important; border-radius: 3px !important; display: flex !important; align-items: center !important; justify-content: center !important; flex-shrink: 0 !important; font-size: 10px !important; }
+.ncm-app .ncm-net-config-group__icon { width: 22px !important; height: 22px !important; border-radius: 3px !important; display: flex !important; align-items: center !important; justify-content: center !important; flex-shrink: 0 !important; background: rgba(25,243,247,0.06) !important; color: var(--ncm-color-secondary) !important; border: 1px solid rgba(25,243,247,0.12) !important; }
 .ncm-app .ncm-net-config-group__icon i { font-size: 10px !important; line-height: 1 !important; }
-.ncm-app .ncm-net-config-group__icon--core,
-.ncm-app .ncm-net-config-group__icon { background: rgba(25,243,247,0.06) !important; color: var(--ncm-color-secondary) !important; border: 1px solid rgba(25,243,247,0.12) !important; }
-.ncm-app .ncm-net-config-group__icon----custom,
-.ncm-app .ncm-net-config-group__icon--custom { background: rgba(136,136,160,0.06) !important; color: var(--sp-text-secondary) !important; border: 1px solid rgba(136,136,160,0.12) !important; }
+.ncm-app .ncm-net-config-group__icon--custom { background: rgba(136,136,160,0.06) !important; color: var(--sp-text-secondary) !important; border-color: rgba(136,136,160,0.12) !important; }
 .ncm-app .ncm-net-config-group__title { font-family: var(--ncm-font-display) !important; font-size: 11px !important; font-weight: 700 !important; color: var(--sp-text-primary) !important; text-transform: uppercase !important; }
 .ncm-app .ncm-net-config-group__summary { display: flex !important; align-items: center !important; gap: 8px !important; margin-left: auto !important; flex-shrink: 0 !important; }
 .ncm-app .ncm-net-config-group__pips { display: flex !important; gap: 3px !important; align-items: center !important; }
@@ -275,290 +319,53 @@
 .ncm-app .ncm-net-config-row__actions { display: flex !important; gap: 3px !important; flex-shrink: 0 !important; opacity: 0 !important; transition: opacity 0.12s !important; }
 .ncm-app .ncm-net-config-row:hover .ncm-net-config-row__actions { opacity: 1 !important; }
 
-   SPRINT 6: FULL ACTIVITY LOG PANEL
-   ═══════════════════════════════════════════ */
+/* ─── Full Activity Log Panel (from Sprint 6) ─── */
+.ncm-app .ncm-netlog-panel { background: var(--sp-surface, #1a1a2e) !important; border: 1px solid var(--sp-border) !important; border-radius: 2px !important; overflow: hidden !important; }
+.ncm-app .ncm-netlog-toolbar { display: flex !important; flex-direction: column !important; gap: 6px !important; padding: 10px 12px !important; border-bottom: 1px solid var(--sp-border) !important; background: var(--sp-bg, #12121a) !important; }
+.ncm-app .ncm-netlog-toolbar-row { display: flex !important; align-items: center !important; gap: 6px !important; flex-wrap: wrap !important; }
+.ncm-app .ncm-netlog-filter-group { display: flex !important; gap: 3px !important; flex-wrap: wrap !important; }
+.ncm-app .ncm-netlog-filter-btn { display: inline-flex !important; align-items: center !important; padding: 3px 8px !important; font-family: var(--ncm-font-display) !important; font-size: 9px !important; font-weight: 700 !important; text-transform: uppercase !important; color: var(--sp-text-muted) !important; background: none !important; border: 1px solid var(--sp-border) !important; border-radius: 2px !important; cursor: pointer !important; transition: all 0.15s !important; height: auto !important; min-height: 0 !important; appearance: none !important; box-shadow: none !important; outline: none !important; }
+.ncm-app .ncm-netlog-filter-btn:hover { color: var(--sp-text-secondary) !important; border-color: var(--sp-border-active) !important; }
+.ncm-app .ncm-netlog-filter-btn--active { color: var(--ncm-color-secondary) !important; border-color: var(--ncm-color-secondary) !important; background: rgba(25,243,247,0.06) !important; }
+.ncm-app .ncm-netlog-network-filter { padding: 3px 8px !important; font-family: var(--ncm-font-display) !important; font-size: 9px !important; color: var(--sp-text-secondary) !important; background: var(--sp-bg) !important; border: 1px solid var(--sp-border) !important; border-radius: 2px !important; outline: none !important; }
+.ncm-app .ncm-netlog-btn { display: inline-flex !important; align-items: center !important; gap: 4px !important; padding: 3px 8px !important; font-family: var(--ncm-font-display) !important; font-size: 9px !important; font-weight: 700 !important; text-transform: uppercase !important; color: var(--sp-text-muted) !important; background: none !important; border: 1px solid var(--sp-border) !important; border-radius: 2px !important; cursor: pointer !important; transition: all 0.15s !important; height: auto !important; min-height: 0 !important; appearance: none !important; box-shadow: none !important; outline: none !important; }
+.ncm-app .ncm-netlog-btn:hover { color: var(--sp-text-secondary) !important; border-color: var(--sp-border-active) !important; }
+.ncm-app .ncm-netlog-btn--accent { color: var(--ncm-color-secondary) !important; border-color: rgba(25,243,247,0.3) !important; }
+.ncm-app .ncm-netlog-btn--danger { color: var(--ncm-danger) !important; border-color: rgba(255,0,51,0.2) !important; }
+.ncm-app .ncm-netlog-btn i { font-size: 8px !important; }
+.ncm-app .ncm-netlog-spacer { flex: 1 !important; }
+.ncm-app .ncm-netlog-count { font-family: var(--ncm-font-mono) !important; font-size: 9px !important; color: var(--sp-text-muted) !important; }
 
-.ncm-app .ncm-netlog-panel {
-  background: var(--ncm-bg-surface);
-  border: 1px solid var(--ncm-border);
-  border-radius: 2px;
-  overflow: hidden;
-}
+.ncm-app .ncm-netlog-list { max-height: 400px !important; overflow-y: auto !important; }
+.ncm-app .ncm-netlog-list::-webkit-scrollbar { width: 4px !important; }
+.ncm-app .ncm-netlog-list::-webkit-scrollbar-thumb { background: var(--sp-border) !important; border-radius: 2px !important; }
 
-.ncm-app .ncm-netlog-toolbar {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  padding: 6px 10px;
-  background: var(--ncm-bg-elevated);
-  border-bottom: 1px solid var(--ncm-border);
-}
+.ncm-app .ncm-netlog-entry { display: flex !important; flex-direction: column !important; gap: 2px !important; padding: 6px 12px !important; border-bottom: 1px solid rgba(42,42,69,0.3) !important; transition: background 0.12s !important; }
+.ncm-app .ncm-netlog-entry:hover { background: rgba(25,243,247,0.02) !important; }
+.ncm-app .ncm-netlog-entry--manual { border-left: 2px solid var(--ncm-accent) !important; }
+.ncm-app .ncm-netlog-entry__row1 { display: flex !important; align-items: center !important; gap: 6px !important; }
+.ncm-app .ncm-netlog-entry__icon { font-size: 9px !important; flex-shrink: 0 !important; }
+.ncm-app .ncm-netlog-entry__type-label { font-family: var(--ncm-font-display) !important; font-size: 9px !important; font-weight: 700 !important; color: var(--sp-text-secondary) !important; text-transform: uppercase !important; }
+.ncm-app .ncm-netlog-entry__network { font-family: var(--ncm-font-display) !important; font-size: 9px !important; font-weight: 600 !important; color: var(--ncm-color-secondary) !important; }
+.ncm-app .ncm-netlog-entry__time { font-family: var(--ncm-font-mono) !important; font-size: 8px !important; color: var(--sp-text-muted) !important; margin-left: auto !important; }
+.ncm-app .ncm-netlog-entry__actions { display: flex !important; gap: 3px !important; opacity: 0 !important; transition: opacity 0.12s !important; }
+.ncm-app .ncm-netlog-entry:hover .ncm-netlog-entry__actions { opacity: 1 !important; }
+.ncm-app .ncm-netlog-entry__row2 { display: flex !important; align-items: center !important; gap: 6px !important; padding-left: 15px !important; }
+.ncm-app .ncm-netlog-entry__actor { font-family: var(--ncm-font-display) !important; font-size: 10px !important; font-weight: 700 !important; color: var(--sp-text-primary) !important; flex-shrink: 0 !important; }
+.ncm-app .ncm-netlog-entry__message { font-family: var(--ncm-font-display) !important; font-size: 10px !important; font-weight: 500 !important; color: var(--sp-text-muted) !important; }
+.ncm-app .ncm-netlog-empty { padding: 24px !important; text-align: center !important; color: var(--sp-text-muted) !important; font-family: var(--ncm-font-display) !important; font-size: 11px !important; }
 
-.ncm-app .ncm-netlog-toolbar-row {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
+.ncm-app .ncm-log-entry__action-btn { width: 20px !important; height: 20px !important; display: flex !important; align-items: center !important; justify-content: center !important; background: none !important; border: 1px solid var(--sp-border) !important; color: var(--sp-text-muted) !important; font-size: 8px !important; cursor: pointer !important; border-radius: 2px !important; transition: all 0.15s !important; padding: 0 !important; min-height: 0 !important; appearance: none !important; box-shadow: none !important; outline: none !important; }
+.ncm-app .ncm-log-entry__action-btn:hover { color: var(--ncm-color-secondary) !important; border-color: rgba(25,243,247,0.3) !important; }
+.ncm-app .ncm-log-entry__action-btn--danger:hover { color: var(--ncm-danger) !important; border-color: rgba(255,0,51,0.3) !important; }
 
-.ncm-app .ncm-netlog-count {
-  font-family: var(--ncm-font-mono);
-  font-size: 8px;
-  color: var(--ncm-text-muted);
-}
-
-.ncm-app .ncm-netlog-filter-group {
-  display: flex;
-  gap: 2px;
-}
-
-.ncm-app .ncm-netlog-filter-btn {
-  font-family: var(--ncm-font-display);
-  font-size: 8px;
-  font-weight: 600;
-  color: var(--ncm-text-muted);
-  background: var(--ncm-bg-surface);
-  border: 1px solid var(--ncm-border);
-  padding: 2px 7px;
-  border-radius: 2px;
-  cursor: pointer;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  transition: all 0.15s;
-}
-
-.ncm-app .ncm-netlog-filter-btn:hover {
-  color: var(--ncm-text-secondary);
-  border-color: var(--ncm-border-active);
-}
-
-.ncm-app .ncm-netlog-filter-btn--active {
-  color: var(--ncm-secondary) !important;
-  background: rgba(25, 243, 247, 0.06);
-  border-color: rgba(25, 243, 247, 0.25);
-}
-
-.ncm-app .ncm-netlog-network-filter {
-  font-family: var(--ncm-font-mono);
-  font-size: 9px;
-  color: var(--ncm-text-primary);
-  background: var(--ncm-bg-surface);
-  border: 1px solid var(--ncm-border);
-  padding: 2px 8px;
-  border-radius: 2px;
-}
-
-.ncm-app .ncm-netlog-spacer { flex: 1; }
-
-.ncm-app .ncm-netlog-btn {
-  font-family: var(--ncm-font-display);
-  font-size: 8px;
-  font-weight: 600;
-  color: var(--ncm-text-muted);
-  background: var(--ncm-bg-surface);
-  border: 1px solid var(--ncm-border);
-  padding: 2px 7px;
-  border-radius: 2px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  transition: all 0.15s;
-}
-
-.ncm-app .ncm-netlog-btn:hover {
-  color: var(--ncm-text-secondary);
-  border-color: var(--ncm-border-active);
-}
-
-.ncm-app .ncm-netlog-btn--accent {
-  color: var(--ncm-purple, #a855f7);
-  border-color: rgba(168, 85, 247, 0.25);
-}
-
-.ncm-app .ncm-netlog-btn--accent:hover {
-  background: rgba(168, 85, 247, 0.06);
-}
-
-.ncm-app .ncm-netlog-btn--danger:hover {
-  color: var(--ncm-danger);
-  border-color: rgba(255, 0, 51, 0.25);
-  background: rgba(255, 0, 51, 0.06);
-}
-
-.ncm-app .ncm-netlog-list {
-  max-height: 280px;
-  overflow-y: auto;
-  padding: 3px 0;
-}
-
-.ncm-app .ncm-netlog-list::-webkit-scrollbar { width: 3px; }
-.ncm-app .ncm-netlog-list::-webkit-scrollbar-thumb { background: var(--ncm-border); }
-
-.ncm-app .ncm-netlog-entry {
-  display: flex;
-  flex-direction: column;
-  padding: 5px 12px;
-  font-size: 9px;
-  transition: background 0.1s;
-  position: relative;
-  border-bottom: 1px solid rgba(42, 42, 69, 0.3);
-}
-
-.ncm-app .ncm-netlog-entry:last-child { border-bottom: none; }
-.ncm-app .ncm-netlog-entry:hover { background: rgba(255, 255, 255, 0.015); }
-
-/* Row 1: Icon + Type + Network + Time + Actions */
-.ncm-app .ncm-netlog-entry__row1 {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.ncm-app .ncm-netlog-entry__icon { text-align: center; font-size: 9px; width: 14px; flex-shrink: 0; }
-
-.ncm-app .ncm-netlog-entry__type-label {
-  font-family: var(--ncm-font-display);
-  font-size: 8px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--ncm-text-secondary);
-}
-
-.ncm-app .ncm-netlog-entry__network {
-  font-family: var(--ncm-font-mono);
-  font-size: 8px;
-  color: var(--ncm-secondary);
-  padding: 0 4px;
-  background: rgba(25, 243, 247, 0.04);
-  border-radius: 1px;
-}
-
-.ncm-app .ncm-netlog-entry__time {
-  font-family: var(--ncm-font-mono);
-  font-size: 8px;
-  color: var(--ncm-text-muted);
-  margin-left: auto;
-}
-
-.ncm-app .ncm-netlog-entry__actions {
-  display: flex;
-  gap: 2px;
-  opacity: 0;
-  transition: opacity 0.1s;
-}
-
-.ncm-app .ncm-netlog-entry:hover .ncm-netlog-entry__actions { opacity: 1; }
-
-/* Row 2: Actor + Message */
-.ncm-app .ncm-netlog-entry__row2 {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding-left: 20px;
-  margin-top: 1px;
-}
-
-.ncm-app .ncm-netlog-entry__actor {
-  font-weight: 600;
-  color: var(--ncm-text-primary);
-  font-size: 9px;
-  flex-shrink: 0;
-}
-
-.ncm-app .ncm-netlog-entry__message {
-  color: var(--ncm-text-secondary);
-  font-size: 9px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.ncm-app .ncm-netlog-entry--manual {
-  border-left: 2px solid var(--ncm-purple, #a855f7);
-}
-
-.ncm-app .ncm-netlog-entry--manual .ncm-netlog-entry__type-label {
-  color: var(--ncm-purple, #a855f7);
-}
-
-.ncm-app .ncm-netlog-entry--manual .ncm-netlog-entry__message {
-  color: var(--ncm-purple, #a855f7);
-}
-
-.ncm-app .ncm-netlog-entry--manual::after {
-  content: 'GM';
-  position: absolute;
-  right: 4px;
-  top: 2px;
-  font-family: var(--ncm-font-ui);
-  font-size: 5px;
-  letter-spacing: 1px;
-  color: var(--ncm-purple, #a855f7);
-  opacity: 0.4;
-}
-
-.ncm-app .ncm-netlog-empty {
-  text-align: center;
-  padding: 30px 20px;
-  font-family: var(--ncm-font-mono);
-  font-size: 11px;
-  color: var(--ncm-text-muted);
-}
-
-.ncm-app .ncm-netlog-empty i {
-  margin-right: 6px;
-}
-
-/* Add log form */
-.ncm-app .ncm-add-log-form {
-  display: flex;
-  gap: 5px;
-  padding: 7px 10px;
-  background: var(--ncm-bg-elevated);
-  border-top: 1px solid var(--ncm-border);
-  align-items: flex-end;
-}
-
-.ncm-app .ncm-add-log-field {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.ncm-app .ncm-add-log-field label {
-  font-family: var(--ncm-font-display);
-  font-size: 7px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ncm-text-muted);
-}
-
-.ncm-app .ncm-add-log-field--message {
-  flex: 1;
-}
-
-.ncm-app .ncm-add-log-submit {
-  font-family: var(--ncm-font-display);
-  font-size: 9px;
-  font-weight: 700;
-  color: var(--ncm-purple, #a855f7);
-  background: rgba(168, 85, 247, 0.08);
-  border: 1px solid rgba(168, 85, 247, 0.25);
-  padding: 4px 10px;
-  border-radius: 2px;
-  cursor: pointer;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  transition: all 0.15s;
-  white-space: nowrap;
-}
-
-.ncm-app .ncm-add-log-submit:hover {
-  background: rgba(168, 85, 247, 0.15);
-  border-color: var(--ncm-purple, #a855f7);
-}
-
+/* Add Log Form */
+.ncm-app .ncm-add-log-form { display: flex !important; align-items: flex-end !important; gap: 6px !important; padding: 10px 12px !important; border-top: 1px solid var(--sp-border) !important; background: var(--sp-bg) !important; flex-wrap: wrap !important; }
+.ncm-app .ncm-add-log-field { display: flex !important; flex-direction: column !important; gap: 2px !important; }
+.ncm-app .ncm-add-log-field label { font-family: var(--ncm-font-display) !important; font-size: 8px !important; font-weight: 700 !important; color: var(--sp-text-muted) !important; text-transform: uppercase !important; }
+.ncm-app .ncm-add-log-field input,
+.ncm-app .ncm-add-log-field select { padding: 3px 6px !important; font-family: var(--ncm-font-display) !important; font-size: 10px !important; color: var(--sp-text-primary) !important; background: var(--sp-surface) !important; border: 1px solid var(--sp-border) !important; border-radius: 2px !important; outline: none !important; }
+.ncm-app .ncm-add-log-field--message { flex: 1 !important; min-width: 120px !important; }
+.ncm-app .ncm-add-log-field--message input { width: 100% !important; }
+.ncm-app .ncm-add-log-submit { display: inline-flex !important; align-items: center !important; gap: 4px !important; padding: 4px 10px !important; font-family: var(--ncm-font-display) !important; font-size: 9px !important; font-weight: 700 !important; text-transform: uppercase !important; color: var(--ncm-color-secondary) !important; background: none !important; border: 1px solid rgba(25,243,247,0.3) !important; border-radius: 2px !important; cursor: pointer !important; transition: all 0.15s !important; height: auto !important; min-height: 0 !important; appearance: none !important; box-shadow: none !important; outline: none !important; }
+.ncm-app .ncm-add-log-submit:hover { background: rgba(25,243,247,0.06) !important; }
