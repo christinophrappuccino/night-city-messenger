@@ -258,6 +258,7 @@ export class ItemInboxConfig extends BaseApplication {
       value: n.id, label: n.name, type: n.type || 'PUBLIC',
       color: n.theme?.color || '#19f3f7',
       icon: n.theme?.icon || 'fa-wifi',
+      theme: n.theme || {},
       selected: (netConfig.allowedNetworks ?? []).includes(n.id),
     }));
     const networkTypeChecks = Object.values(NETWORK_TYPES).map(t => ({

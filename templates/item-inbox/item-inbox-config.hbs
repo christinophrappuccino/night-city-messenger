@@ -213,7 +213,7 @@
           <div class="ncm-cfg-step-label"><i class="fas fa-network-wired" style="color:#19f3f7"></i> Allowed networks</div>
           <div class="ncm-cfg-hint" style="margin-bottom:6px">Click to toggle. Highlighted = access granted.</div>
           <div class="ncm-cfg-net-grid">
-            {{#each networkOptions}}<div class="ncm-cfg-net-card {{#if selected}}ncm-cfg-net-card--on{{/if}}" data-action="toggleNetwork" data-net-id="{{value}}"><div class="ncm-cfg-net-icon" style="color:{{color}}"><i class="fas {{icon}}"></i></div><div class="ncm-cfg-net-name">{{label}}</div><div class="ncm-cfg-net-type">{{type}}</div></div>{{/each}}
+            {{#each networkOptions}}<div class="ncm-cfg-net-card {{#if selected}}ncm-cfg-net-card--on{{/if}}" data-action="toggleNetwork" data-net-id="{{value}}"><div class="ncm-cfg-net-icon" style="color:{{color}}">{{{ncm-net-icon theme}}}</div><div class="ncm-cfg-net-name">{{label}}</div><div class="ncm-cfg-net-type">{{type}}</div></div>{{/each}}
           </div>
           <div id="ncm-network-hidden-inputs">{{#each networkOptions}}{{#if selected}}<input type="hidden" name="allowedNetwork" value="{{value}}" data-net-hidden="{{value}}" />{{/if}}{{/each}}</div>
         </div>
