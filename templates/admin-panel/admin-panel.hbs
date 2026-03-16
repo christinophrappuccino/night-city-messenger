@@ -731,17 +731,19 @@
       <div class="ncm-shard-stat"><div class="ncm-shard-stat__value ncm-shard-stat__value--red">{{shardSummary.locked}}</div><div class="ncm-shard-stat__label">Locked</div></div>
     </div>
 
-    {{!-- v4: ACTIVITY STRIP --}}
-    {{#if shardActivityLog.length}}
+    {{!-- v4: ACTIVITY STRIP (always visible) --}}
     <div class="ncm-shard-activity-strip">
       <div class="ncm-shard-activity-strip__label"><i class="fas fa-bolt"></i> Live</div>
       <div class="ncm-shard-activity-strip__events">
-        {{#each shardActivityLog}}
-        <div class="ncm-shard-activity-strip__event">{{{this.text}}}</div>
-        {{/each}}
+        {{#if shardActivityLog.length}}
+          {{#each shardActivityLog}}
+          <div class="ncm-shard-activity-strip__event">{{{this.text}}}</div>
+          {{/each}}
+        {{else}}
+          <div class="ncm-shard-activity-strip__event" style="opacity:0.4;">No activity this session</div>
+        {{/if}}
       </div>
     </div>
-    {{/if}}
 
     {{!-- v4: CREATE PANEL --}}
     <div class="ncm-shard-create-panel">
@@ -750,7 +752,7 @@
         <div class="ncm-shard-preset-grid">
           {{#each shardPresetButtons}}
           <button class="ncm-shard-preset-btn" data-action="quickCreateShard" data-preset="{{key}}">
-            <i class="{{icon}}"></i><span class="ncm-shard-preset-btn__label">{{label}}</span>
+            <i class="{{icon}}" {{#if iconColor}}style="color:{{iconColor}};"{{/if}}></i><span class="ncm-shard-preset-btn__label">{{label}}</span>
           </button>
           {{/each}}
         </div>
@@ -774,13 +776,18 @@
       </div>
     </div>
 
-    {{!-- v4: TOOLBAR --}}
+    {{!-- v4: TOOLBAR with filter pills --}}
     <div class="ncm-shard-toolbar">
       <div class="ncm-shard-search">
         <i class="fas fa-search"></i>
         <input type="text" class="ncm-shard-search__input" placeholder="Search shards..." value="{{shardSearch}}">
       </div>
+      <div class="ncm-shard-filter-pill">ICE <span class="ncm-shard-filter-val">All</span> <i class="fas fa-chevron-down"></i></div>
+      <div class="ncm-shard-filter-pill">Status <span class="ncm-shard-filter-val">All</span> <i class="fas fa-chevron-down"></i></div>
+      <div class="ncm-shard-filter-pill">Preset <span class="ncm-shard-filter-val">All</span> <i class="fas fa-chevron-down"></i></div>
       <div class="ncm-shard-toolbar__spacer"></div>
+      <div class="ncm-shard-filter-pill">Sort <span class="ncm-shard-filter-val">Name</span> <i class="fas fa-chevron-down"></i></div>
+      <div class="ncm-shard-filter-pill">Group <span class="ncm-shard-filter-val">Owner</span> <i class="fas fa-chevron-down"></i></div>
       <button class="ncm-shard-select-toggle {{#if shardSelectMode}}ncm-shard-select-toggle--active{{/if}}" data-action="toggleShardSelectMode">
         <i class="fas fa-check-double"></i> Select
       </button>
@@ -817,7 +824,7 @@
               <div class="ncm-shard-owner-pip ncm-shard-owner-pip--{{this.class}}" title="{{this.class}}"></div>
               {{/each}}
             </div>
-            <div class="ncm-shard-owner-header__status-text">{{this.statusText}}</div>
+            <div class="ncm-shard-owner-header__status-text">{{{this.statusText}}}</div>
             <div class="ncm-shard-owner-header__count">{{this.shardCount}} shard{{#unless (eq this.shardCount 1)}}s{{/unless}}</div>
           </div>
         </div>

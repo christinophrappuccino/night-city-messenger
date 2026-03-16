@@ -1393,12 +1393,12 @@ export class AdminPanelApp extends BaseApplication {
         pips.push({ class: s.status === 'blackice' ? 'blackice' : s.status });
       }
 
-      // Status summary text
+      // Status summary text (HTML — use triple-stache in template)
       const parts = [];
-      if (locked > 0) parts.push(`${locked} locked`);
-      if (breached > 0) parts.push(`${breached} breached`);
+      if (locked > 0) parts.push(`<span style="color:var(--ncm-color-primary,#F65261);">${locked}</span> locked`);
+      if (breached > 0) parts.push(`<span style="color:var(--ncm-success,#00ff41);">${breached}</span> breached`);
       if (open > 0) parts.push(`${open} open`);
-      if (destroyed > 0) parts.push(`${destroyed} destroyed`);
+      if (destroyed > 0) parts.push(`<span style="color:var(--ncm-danger,#ff0033);">${destroyed}</span> destroyed`);
 
       groups.push({
         ...group,

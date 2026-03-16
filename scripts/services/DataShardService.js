@@ -825,6 +825,7 @@ export class DataShardService {
       key,
       label: preset.label,
       icon: preset.icon,
+      iconColor: preset.theme?.iconColor || '',
     }));
   }
 

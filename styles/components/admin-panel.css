@@ -1899,6 +1899,19 @@
 .ncm-app .ncm-shard-search__input::placeholder { color: var(--sp-text-muted, #6a6a88) !important; font-weight: 500 !important; }
 .ncm-app .ncm-shard-toolbar__spacer { flex: 1 !important; }
 
+.ncm-app .ncm-shard-filter-pill {
+  display: flex !important; align-items: center !important; gap: 4px !important;
+  padding: 5px 10px !important;
+  background: var(--sp-surface, #1a1a2e) !important; border: 1px solid var(--sp-border, #2a2a45) !important;
+  border-radius: 2px !important; cursor: pointer !important; transition: all 0.15s !important;
+  font-family: var(--ncm-font-display) !important; font-size: 10px !important; font-weight: 600 !important;
+  color: var(--sp-text-secondary, #b0b0c8) !important; text-transform: uppercase !important;
+  letter-spacing: 0.03em !important; white-space: nowrap !important;
+}
+.ncm-app .ncm-shard-filter-pill:hover { border-color: var(--sp-border-active, #3a3a5a) !important; color: var(--sp-text-primary) !important; }
+.ncm-app .ncm-shard-filter-pill i.fa-chevron-down { font-size: 7px !important; color: var(--sp-text-muted) !important; }
+.ncm-app .ncm-shard-filter-val { color: var(--ncm-color-secondary, #19f3f7) !important; font-weight: 700 !important; }
+
 .ncm-app .ncm-shard-select-toggle {
   display: flex !important; align-items: center !important; gap: 5px !important;
   padding: 5px 10px !important; background: none !important; border: 1px solid var(--sp-border, #2a2a45) !important;
