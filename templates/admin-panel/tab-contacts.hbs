@@ -1,182 +1,432 @@
     {{#if (eq activeTab 'contacts')}}
 
-    {{!-- Combined Header + Toolbar --}}
-    <div class="ncm-contacts-header">
-      <div class="ncm-contacts-header__top">
-        <span class="ncm-contacts-header__title">
-          <i class="fas fa-address-book"></i> MASTER CONTACTS
-          <span class="ncm-contacts-header__count">({{contactSummary.total}})</span>
+    {{!-- ═══════════════════════════════════════
+         HEADER — Title + Subtitle + Toolbar
+         ═══════════════════════════════════════ --}}
+    <div class="ncm-ct-header">
+      <div class="ncm-ct-header__top">
+        <span class="ncm-ct-header__title">
+          <i class="fas fa-address-book"></i> Master Contacts
+          <span class="ncm-ct-header__count">({{contactSummary.total}})</span>
         </span>
-        <button class="ncm-contacts-header__editor-btn" data-action="openGMContacts">
-          <i class="fas fa-expand"></i> FULL EDITOR
+        <button class="ncm-ct-header__editor-btn" data-action="openGMContacts">
+          <i class="fas fa-expand"></i> Full Editor
         </button>
       </div>
-      <div class="ncm-contacts-header__toolbar">
-        <div class="ncm-contacts-toolbar__group">
-          <button class="ncm-admin-action-btn" data-action="importActorsAsContacts" data-ncm-tooltip="Import Contacts JSON">
-            <i class="fas fa-download"></i>
-          </button>
-          <button class="ncm-admin-action-btn" data-action="exportContacts" data-ncm-tooltip="Export JSON">
-            <i class="fas fa-file-export"></i>
-          </button>
-          <button class="ncm-admin-action-btn ncm-admin-action-btn--accent" data-action="createNewContact" data-ncm-tooltip="New Contact">
-            <i class="fas fa-plus"></i>
-          </button>
-        </div>
-        <div class="ncm-contacts-toolbar__sep"></div>
-        <button class="ncm-section-title__action" data-action="pushAllContacts" style="margin-left: 0;">
+      <div class="ncm-ct-header__subtitle">GM source directory — player contacts are copies of these</div>
+      <div class="ncm-ct-header__toolbar">
+        <button class="ncm-ct-tbtn ncm-ct-tbtn--accent" data-action="createNewContact" data-ncm-tooltip="Create a new NPC contact">
+          <i class="fas fa-plus"></i>
+        </button>
+        <button class="ncm-ct-taction" data-action="pushAllContacts" data-ncm-tooltip="Share all contacts with every player">
           <i class="fas fa-arrow-up-from-bracket"></i> Share All
         </button>
-        <span class="ncm-contacts-toolbar__count">
-          <b>{{contactSummary.total}}</b> total
-          {{#if contactSummary.linked}} · <span class="ncm-contacts-toolbar__linked">{{contactSummary.linked}} linked</span>{{/if}}
-          {{#if contactSummary.burned}} · <span class="ncm-contacts-toolbar__burned">{{contactSummary.burned}} burned</span>{{/if}}
-        </span>
+        <div class="ncm-ct-tsep"></div>
+        <div class="ncm-ct-tstats">
+          <span><b>{{contactSummary.total}}</b> total</span>
+          {{#if contactSummary.linked}}
+            <span class="ncm-ct-tstats__linked" data-ncm-tooltip="Contacts linked to a Foundry actor">{{contactSummary.linked}} linked</span>
+          {{/if}}
+          {{#if contactSummary.playerCount}}
+            <span class="ncm-ct-tstats__player" data-ncm-tooltip="Contacts owned by a player, not GM-only NPCs">{{contactSummary.playerCount}} player</span>
+          {{/if}}
+          {{#if contactSummary.burned}}
+            <span class="ncm-ct-tstats__burned" data-ncm-tooltip="Compromised contacts — cover blown">{{contactSummary.burned}} burned</span>
+          {{/if}}
+        </div>
+        <div class="ncm-ct-overflow">
+          <button class="ncm-ct-overflow__btn" data-action="toggleContactOverflow" data-ncm-tooltip="More actions">
+            <i class="fas fa-ellipsis-vertical"></i>
+          </button>
+          {{#if contactSummary.overflowOpen}}
+          <div class="ncm-ct-overflow__menu">
+            <div class="ncm-ct-overflow__item" data-action="importActorsAsContacts">
+              <i class="fas fa-download"></i> Import Contacts
+              <span class="ncm-ct-overflow__desc">from JSON</span>
+            </div>
+            <div class="ncm-ct-overflow__item" data-action="exportContacts">
+              <i class="fas fa-file-export"></i> Export Contacts
+              <span class="ncm-ct-overflow__desc">to JSON</span>
+            </div>
+            <div class="ncm-ct-overflow__sep"></div>
+            <div class="ncm-ct-overflow__item" data-action="syncFromActors">
+              <i class="fas fa-users-between-lines"></i> Sync from Actors
+              <span class="ncm-ct-overflow__desc">create from world actors</span>
+            </div>
+          </div>
+          {{/if}}
+        </div>
       </div>
     </div>
 
-    {{!-- Search + Sort Row --}}
-    <div class="ncm-contacts-search">
-      <i class="fas fa-search ncm-contacts-search__icon"></i>
-      <input type="text" class="ncm-contacts-search__input"
-             placeholder="Search name, email, org, tag..."
+    {{!-- ═══════════════════════════════════════
+         SEND AS STRIP — Recent NPC quick-send
+         ═══════════════════════════════════════ --}}
+    {{#if contactSummary.sendAsChips.length}}
+    <div class="ncm-ct-quicksend">
+      <span class="ncm-ct-quicksend__label"><i class="fas fa-paper-plane"></i> Send As</span>
+      <div class="ncm-ct-quicksend__sep"></div>
+      {{#each contactSummary.sendAsChips}}
+        <div class="ncm-ct-qs-chip" data-action="sendAsContact" data-contact-id="{{this.id}}"
+             data-ncm-tooltip="Compose a message as {{this.name}}">
+          <div class="ncm-ct-qs-chip__avatar" style="color: {{this.avatarColor}}; border-color: {{this.avatarBorderColor}};">
+            {{#if this.hasPortrait}}
+              <img src="{{this.portrait}}" alt="{{this.initial}}">
+            {{else}}
+              {{this.initial}}
+            {{/if}}
+          </div>
+          <span class="ncm-ct-qs-chip__name">{{this.chipName}}</span>
+          <i class="fas fa-paper-plane ncm-ct-qs-chip__send"></i>
+        </div>
+      {{/each}}
+    </div>
+    {{/if}}
+
+    {{!-- ═══════════════════════════════════════
+         SEARCH + SORT
+         ═══════════════════════════════════════ --}}
+    <div class="ncm-ct-search">
+      <i class="fas fa-search ncm-ct-search__icon"></i>
+      <input type="text" class="ncm-ct-search__input"
+             placeholder="Search name, email, org, tag, notes..."
              value="{{contactSummary.contactSearch}}" />
       {{#if contactSummary.contactSearch}}
-        <button class="ncm-contacts-search__clear" data-action="contactClearSearch">
+        <button class="ncm-ct-search__clear" data-action="contactClearSearch">
           <i class="fas fa-times"></i>
         </button>
       {{/if}}
-      <select class="ncm-contacts-sort__select">
+      <select class="ncm-ct-search__sort">
         <option value="name" {{#if (eq contactSummary.contactSort 'name')}}selected{{/if}}>A–Z Name</option>
         <option value="trust" {{#if (eq contactSummary.contactSort 'trust')}}selected{{/if}}>Trust ↓</option>
         <option value="role" {{#if (eq contactSummary.contactSort 'role')}}selected{{/if}}>Role</option>
         <option value="recent" {{#if (eq contactSummary.contactSort 'recent')}}selected{{/if}}>Recent</option>
+        <option value="org" {{#if (eq contactSummary.contactSort 'org')}}selected{{/if}}>Organization</option>
       </select>
-      <span class="ncm-contacts-search__count">{{contactSummary.filteredCount}} of {{contactSummary.total}}</span>
+      <span class="ncm-ct-search__count">{{contactSummary.filteredCount}} of {{contactSummary.total}}</span>
     </div>
 
-    {{!-- Filter Pills --}}
-    <div class="ncm-contacts-filters">
-      <button class="ncm-contacts-filter {{#if (eq contactSummary.contactFilter 'all')}}ncm-contacts-filter--active{{/if}}"
-              data-action="contactFilter" data-filter="all">ALL</button>
-      <button class="ncm-contacts-filter {{#if (eq contactSummary.contactFilter 'linked')}}ncm-contacts-filter--active{{/if}}"
-              data-action="contactFilter" data-filter="linked">
-        <i class="fas fa-link"></i> LINKED
+    {{!-- ═══════════════════════════════════════
+         FILTER PILLS (with counts + tooltips)
+         ═══════════════════════════════════════ --}}
+    <div class="ncm-ct-filters">
+      <button class="ncm-ct-pill {{#if (eq contactSummary.contactFilter 'all')}}ncm-ct-pill--active{{/if}}"
+              data-action="contactFilter" data-filter="all">
+        All <span class="ncm-ct-pill__ct">{{contactSummary.total}}</span>
       </button>
-      <button class="ncm-contacts-filter {{#if (eq contactSummary.contactFilter 'unlinked')}}ncm-contacts-filter--active{{/if}}"
-              data-action="contactFilter" data-filter="unlinked">
-        <i class="fas fa-link-slash"></i> UNLINKED
+      <button class="ncm-ct-pill {{#if (eq contactSummary.contactFilter 'linked')}}ncm-ct-pill--active{{/if}}"
+              data-action="contactFilter" data-filter="linked"
+              data-ncm-tooltip="Has a linked Foundry actor">
+        <i class="fas fa-link"></i> Linked <span class="ncm-ct-pill__ct">{{contactSummary.linked}}</span>
       </button>
-      <button class="ncm-contacts-filter {{#if (eq contactSummary.contactFilter 'player')}}ncm-contacts-filter--active{{/if}}"
-              data-action="contactFilter" data-filter="player">
-        <i class="fas fa-user"></i> PLAYER
+      <button class="ncm-ct-pill {{#if (eq contactSummary.contactFilter 'unlinked')}}ncm-ct-pill--active{{/if}}"
+              data-action="contactFilter" data-filter="unlinked"
+              data-ncm-tooltip="No linked actor — NPC-only contact">
+        <i class="fas fa-link-slash"></i> Unlinked <span class="ncm-ct-pill__ct">{{contactSummary.unlinked}}</span>
       </button>
-      <button class="ncm-contacts-filter ncm-contacts-filter--burned {{#if (eq contactSummary.contactFilter 'burned')}}ncm-contacts-filter--active{{/if}}"
-              data-action="contactFilter" data-filter="burned">
-        <i class="fas fa-fire"></i> BURNED
+      <button class="ncm-ct-pill {{#if (eq contactSummary.contactFilter 'player')}}ncm-ct-pill--active{{/if}}"
+              data-action="contactFilter" data-filter="player"
+              data-ncm-tooltip="Contacts owned by a player">
+        <i class="fas fa-user"></i> Player <span class="ncm-ct-pill__ct">{{contactSummary.playerCount}}</span>
       </button>
-      <button class="ncm-contacts-filter ncm-contacts-filter--ice {{#if (eq contactSummary.contactFilter 'ice')}}ncm-contacts-filter--active{{/if}}"
-              data-action="contactFilter" data-filter="ice">
-        <i class="fas fa-lock"></i> ICE
+      <button class="ncm-ct-pill ncm-ct-pill--burned {{#if (eq contactSummary.contactFilter 'burned')}}ncm-ct-pill--active{{/if}}"
+              data-action="contactFilter" data-filter="burned"
+              data-ncm-tooltip="Compromised contacts — cover blown, no longer usable">
+        <i class="fas fa-fire"></i> Burned <span class="ncm-ct-pill__ct">{{contactSummary.burned}}</span>
+      </button>
+      <button class="ncm-ct-pill ncm-ct-pill--ice {{#if (eq contactSummary.contactFilter 'ice')}}ncm-ct-pill--active{{/if}}"
+              data-action="contactFilter" data-filter="ice"
+              data-ncm-tooltip="Encrypted contacts requiring a skill check to access">
+        <i class="fas fa-lock"></i> ICE <span class="ncm-ct-pill__ct">{{contactSummary.encrypted}}</span>
       </button>
       {{!-- Dynamic role pills --}}
-      {{#each contactSummary.roles}}
-        <button class="ncm-contacts-filter ncm-contacts-filter--role {{#if (eq this ../contactSummary.contactFilter)}}ncm-contacts-filter--active{{/if}}"
-                data-action="contactFilter" data-filter="{{this}}">{{this}}</button>
+      {{#each contactSummary.roleCounts}}
+        <button class="ncm-ct-pill ncm-ct-pill--role {{#if (eq this.name ../contactSummary.contactFilter)}}ncm-ct-pill--active{{/if}}"
+                data-action="contactFilter" data-filter="{{this.name}}"
+                data-ncm-tooltip="Filter by role: {{this.name}}">
+          {{this.name}} <span class="ncm-ct-pill__ct">{{this.count}}</span>
+        </button>
       {{/each}}
     </div>
-    {{#if contactSummary.contacts.length}}
-    <div class="ncm-contact-list">
-      {{#each contactSummary.contacts}}
-      <div class="ncm-contact-row {{#if this.burned}}ncm-contact-row--burned{{/if}}"
-           data-contact-id="{{this.id}}" data-action="editContactInEditor">
 
-        {{!-- Avatar --}}
-        <div class="ncm-contact-row__avatar" style="color: {{this.avatarColor}}; border-color: {{this.avatarBorderColor}};">
-          {{#if this.hasPortrait}}
-            <img src="{{this.portrait}}" alt="{{this.initial}}" class="ncm-contact-row__portrait">
-          {{else}}
-            {{this.initial}}
-          {{/if}}
+    {{!-- ═══════════════════════════════════════
+         BATCH SELECTION BAR
+         ═══════════════════════════════════════ --}}
+    {{#if contactSummary.selectedCount}}
+    <div class="ncm-ct-batch">
+      <span class="ncm-ct-batch__count">{{contactSummary.selectedCount}} selected</span>
+      <div class="ncm-ct-batch__sep"></div>
+      <button class="ncm-ct-batch__action" data-action="batchShareContacts"
+              data-ncm-tooltip="Share selected contacts with players">
+        <i class="fas fa-share-nodes"></i> Share with Players
+      </button>
+      <button class="ncm-ct-batch__action" data-action="batchTagContacts"
+              data-ncm-tooltip="Apply a tag to all selected contacts">
+        <i class="fas fa-tag"></i> Tag
+      </button>
+      <button class="ncm-ct-batch__action ncm-ct-batch__action--danger" data-action="batchBurnContacts"
+              data-ncm-tooltip="Mark selected contacts as compromised">
+        <i class="fas fa-fire"></i> Burn
+      </button>
+      <button class="ncm-ct-batch__clear" data-action="clearContactSelection">
+        <i class="fas fa-xmark"></i> Clear
+      </button>
+    </div>
+    {{/if}}
+
+    {{!-- ═══════════════════════════════════════
+         GROUPED CONTACT LIST
+         ═══════════════════════════════════════ --}}
+    {{#if contactSummary.groups.length}}
+      {{#each contactSummary.groups}}
+      <div class="ncm-ct-group {{#if this.collapsed}}ncm-ct-group--collapsed{{/if}}">
+        <div class="ncm-ct-group__hdr" data-action="toggleContactGroup" data-group="{{this.key}}">
+          <i class="fas fa-chevron-down ncm-ct-group__chev"></i>
+          <span class="ncm-ct-group__name">{{this.name}}</span>
+          <span class="ncm-ct-group__ct">{{this.contacts.length}}</span>
+          <div class="ncm-ct-group__line"></div>
         </div>
+        {{#unless this.collapsed}}
+        <div class="ncm-ct-list">
+          {{#each this.contacts}}
 
-        {{!-- Name + Email --}}
-        <div class="ncm-contact-row__info">
-          <div class="ncm-contact-row__name">{{this.name}}</div>
-          <div class="ncm-contact-row__email">{{this.email}}</div>
-        </div>
+          {{!-- ═══ Contact Row ═══ --}}
+          <div class="ncm-ct-row {{#if this.burned}}ncm-ct-row--burned{{/if}} {{#if this.encrypted}}ncm-ct-row--ice{{/if}} ncm-ct-row--{{this.networkSlug}} {{#if this.isExpanded}}ncm-ct-row--expanded{{/if}} {{#if this.noInbox}}ncm-ct-row--no-inbox{{/if}}"
+               data-contact-id="{{this.id}}" data-action="toggleContactExpand">
 
-        {{!-- Meta: Role + Linked Info --}}
-        <div class="ncm-contact-row__meta">
-          {{#if this.roleBadge}}
-            <span class="ncm-contact-row__role ncm-contact-row__role--{{this.roleBadgeClass}}">{{this.roleBadge}}</span>
-          {{/if}}
-          {{#if this.actorName}}
-            <div class="ncm-contact-row__linked">
-              <i class="fas fa-link"></i> {{this.actorName}}
-              {{#if this.playerOwnerName}}
-                <span class="ncm-contact-row__player"><i class="fas fa-user"></i> {{this.playerOwnerName}}</span>
+            <div class="ncm-ct-row__check {{#if this.isSelected}}ncm-ct-row__check--on{{/if}}"
+                 data-action="toggleContactSelect" data-contact-id="{{this.id}}"></div>
+
+            <div class="ncm-ct-row__avatar" style="color: {{this.avatarColor}}; border-color: {{this.avatarBorderColor}};">
+              {{#if this.hasPortrait}}
+                <img src="{{this.portrait}}" alt="{{this.initial}}">
+              {{else if this.encrypted}}
+                <i class="fas fa-lock" style="font-size:13px;"></i>
+              {{else}}
+                {{this.initial}}
               {{/if}}
             </div>
-          {{/if}}
-        </div>
 
-        {{!-- Trust Bar (clickable to set trust) --}}
-        {{#unless this.burned}}
-          {{#unless this.encrypted}}
-            <div class="ncm-contact-row__trust ncm-contact-row__trust--interactive">
-              {{#each this.trustSegments}}
-                <div class="ncm-contact-row__trust-seg {{#if this.active}}ncm-contact-row__trust-seg--active ncm-contact-row__trust-seg--{{../trustLevel}}{{/if}}"
-                     data-action="setContactTrust"
-                     data-trust-value="{{this.value}}"
-                     data-contact-id="{{../id}}"
-                     data-ncm-tooltip="Trust {{this.value}}"></div>
-              {{/each}}
+            <div class="ncm-ct-row__info">
+              <div class="ncm-ct-row__line1">
+                <span class="ncm-ct-row__name">{{this.name}}</span>
+                {{#if this.burned}}
+                  <span class="ncm-ct-badge ncm-ct-badge--burned"><i class="fas fa-fire"></i> Burned</span>
+                {{else if this.encrypted}}
+                  <span class="ncm-ct-badge ncm-ct-badge--ice"><i class="fas fa-lock"></i> ICE DV{{this.encryptionDV}}</span>
+                {{else if this.noInbox}}
+                  <span class="ncm-ct-badge ncm-ct-badge--unverified"><i class="fas fa-inbox"></i> No Inbox</span>
+                {{/if}}
+              </div>
+              <div class="ncm-ct-row__line2">
+                {{#if this.noInbox}}
+                  <span class="ncm-ct-row__email ncm-ct-row__email--none">No email assigned</span>
+                {{else}}
+                  <span class="ncm-ct-row__email">{{this.email}}</span>
+                {{/if}}
+                <span class="ncm-ct-row__active {{#if this.activeRecent}}ncm-ct-row__active--recent{{/if}}">{{this.activeLabel}}</span>
+              </div>
+              {{#if this.chips.length}}
+              <div class="ncm-ct-row__chips">
+                {{#each this.chips}}
+                  <span class="ncm-ct-chip ncm-ct-chip--{{this.type}}">
+                    {{#if this.icon}}<i class="fas fa-{{this.icon}}"></i>{{/if}} {{this.label}}
+                  </span>
+                {{/each}}
+              </div>
+              {{/if}}
+              {{#if this.notesPreview}}
+              <div class="ncm-ct-row__line3">
+                <span class="ncm-ct-row__notes"><i class="fas fa-note-sticky"></i> {{this.notesPreview}}</span>
+              </div>
+              {{/if}}
             </div>
-          {{/unless}}
-        {{/unless}}
 
-        {{!-- Status Badge --}}
-        <div class="ncm-contact-row__status">
-          {{#if this.burned}}
-            <span class="ncm-contact-row__badge ncm-contact-row__badge--burned"><i class="fas fa-fire"></i> BURNED</span>
-          {{else if this.encrypted}}
-            <span class="ncm-contact-row__badge ncm-contact-row__badge--ice"><i class="fas fa-lock"></i> ICE DV{{this.encryptionDV}}</span>
+            <div class="ncm-ct-row__meta">
+              {{#if this.actorName}}
+                <div class="ncm-ct-row__linked">
+                  <i class="fas fa-link"></i> {{this.actorName}}
+                  {{#if this.playerOwnerName}}
+                    <span class="ncm-ct-row__player"><i class="fas fa-user"></i> {{this.playerOwnerName}}</span>
+                  {{/if}}
+                </div>
+              {{/if}}
+              {{#if this.knownByPips.length}}
+                <div class="ncm-ct-row__shared">
+                  <span class="ncm-ct-row__shared-lbl">Known by</span>
+                  {{#each this.knownByPips}}
+                    <div class="ncm-ct-row__pip {{#if this.has}}ncm-ct-row__pip--has{{else}}ncm-ct-row__pip--no{{/if}}"
+                         data-ncm-tooltip="{{this.tooltip}}">{{this.initial}}</div>
+                  {{/each}}
+                </div>
+              {{/if}}
+            </div>
+
+            {{#unless this.burned}}
+            {{#unless this.encrypted}}
+            <div class="ncm-ct-row__trust">
+              <span class="ncm-ct-row__trust-lbl ncm-ct-row__trust-lbl--{{this.trustLevel}}">{{this.trustLabel}}</span>
+              <div class="ncm-ct-row__trust-bar">
+                {{#each this.trustSegments}}
+                  <div class="ncm-ct-row__trust-seg {{#if this.active}}ncm-ct-row__tseg--on ncm-ct-row__tseg--{{../trustLevel}}{{/if}}"
+                       data-action="setContactTrust"
+                       data-trust-value="{{this.value}}"
+                       data-contact-id="{{../id}}"></div>
+                {{/each}}
+              </div>
+            </div>
+            {{/unless}}
+            {{/unless}}
+
+            <div class="ncm-ct-row__end">
+              {{#unless this.noInbox}}
+                <button class="ncm-ct-row__send" data-action="sendAsContact" data-contact-id="{{this.id}}"
+                        data-ncm-tooltip="Send a message as {{this.name}}">
+                  <i class="fas fa-paper-plane"></i>
+                </button>
+              {{/unless}}
+              <div class="ncm-ct-row__actions">
+                {{#unless this.noInbox}}
+                  <button class="ncm-ct-row__act ncm-ct-row__act--inbox" data-action="openContactInbox" data-contact-id="{{this.id}}"
+                          data-ncm-tooltip="Open {{this.name}}'s inbox"><i class="fas fa-inbox"></i></button>
+                  <button class="ncm-ct-row__act" data-action="composeToContact" data-contact-id="{{this.id}}"
+                          data-ncm-tooltip="Compose a message to {{this.name}}"><i class="fas fa-envelope"></i></button>
+                {{/unless}}
+                <button class="ncm-ct-row__act ncm-ct-row__act--edit" data-action="editContactInEditor" data-contact-id="{{this.id}}"
+                        data-ncm-tooltip="Edit contact details"><i class="fas fa-pen"></i></button>
+              </div>
+            </div>
+          </div>
+
+          {{!-- ═══ Expanded Detail Panel ═══ --}}
+          {{#if this.isExpanded}}
+          <div class="ncm-ct-detail" data-contact-id="{{this.id}}">
+            <div class="ncm-ct-detail__body">
+              <div class="ncm-ct-detail__left">
+                {{#if this.notes}}
+                <div>
+                  <div class="ncm-ct-detail__notes-label"><i class="fas fa-note-sticky"></i> GM Notes</div>
+                  <div class="ncm-ct-detail__notes">{{this.notes}}</div>
+                </div>
+                {{/if}}
+                <div class="ncm-ct-detail__fields">
+                  {{#if this.alias}}
+                  <div class="ncm-ct-detail__field">
+                    <span class="ncm-ct-detail__field-label">Alias</span>
+                    <span class="ncm-ct-detail__field-value">{{this.alias}}</span>
+                  </div>
+                  {{/if}}
+                  {{#if this.phone}}
+                  <div class="ncm-ct-detail__field">
+                    <span class="ncm-ct-detail__field-label">Phone</span>
+                    <span class="ncm-ct-detail__field-value">{{this.phone}}</span>
+                  </div>
+                  {{/if}}
+                  <div class="ncm-ct-detail__field">
+                    <span class="ncm-ct-detail__field-label">Network</span>
+                    <span class="ncm-ct-detail__field-value ncm-ct-detail__field-value--cyan">{{this.networkName}}</span>
+                  </div>
+                  <div class="ncm-ct-detail__field">
+                    <span class="ncm-ct-detail__field-label">Type</span>
+                    <span class="ncm-ct-detail__field-value">{{this.contactType}}</span>
+                  </div>
+                  {{#if this.encrypted}}
+                  <div class="ncm-ct-detail__field">
+                    <span class="ncm-ct-detail__field-label">ICE Skill</span>
+                    <span class="ncm-ct-detail__field-value">{{this.encryptionSkill}} DV{{this.encryptionDV}}</span>
+                  </div>
+                  {{/if}}
+                </div>
+                {{#if this.knownByExpanded.length}}
+                <div>
+                  <div class="ncm-ct-detail__section-label">Known by Players</div>
+                  <div class="ncm-ct-detail__known">
+                    {{#each this.knownByExpanded}}
+                    <div class="ncm-ct-detail__known-row {{#if this.has}}ncm-ct-detail__known-row--yes{{else}}ncm-ct-detail__known-row--no{{/if}}">
+                      <i class="fas {{#if this.has}}fa-circle-check{{else}}fa-circle-xmark{{/if}}"></i>
+                      {{this.characterName}} <span style="color:var(--ncm-text-muted);">({{this.playerName}})</span>
+                    </div>
+                    {{/each}}
+                  </div>
+                </div>
+                {{/if}}
+              </div>
+              <div class="ncm-ct-detail__right">
+                <div class="ncm-ct-detail__section-label">Recent Messages</div>
+                {{#if this.recentMessages.length}}
+                  {{#each this.recentMessages}}
+                  <div class="ncm-ct-detail__msg">
+                    <i class="fas {{#if this.sent}}fa-arrow-right ncm-ct-detail__msg-icon--sent{{else}}fa-arrow-left ncm-ct-detail__msg-icon--received{{/if}} ncm-ct-detail__msg-icon"></i>
+                    <div class="ncm-ct-detail__msg-body">
+                      <div class="ncm-ct-detail__msg-route">
+                        {{this.from}} <span class="arrow">→</span> {{this.to}}
+                      </div>
+                      <div class="ncm-ct-detail__msg-preview">{{this.preview}}</div>
+                    </div>
+                    <span class="ncm-ct-detail__msg-time">{{this.time}}</span>
+                  </div>
+                  {{/each}}
+                {{else}}
+                  <div class="ncm-ct-detail__empty"><i class="fas fa-inbox"></i> No messages yet</div>
+                {{/if}}
+              </div>
+            </div>
+            <div class="ncm-ct-detail__actions">
+              {{#unless this.noInbox}}
+              <button class="ncm-ct-detail__action ncm-ct-detail__action--primary" data-action="sendAsContact" data-contact-id="{{this.id}}"
+                      data-ncm-tooltip="Compose a message impersonating this NPC">
+                <i class="fas fa-paper-plane"></i> Send As
+              </button>
+              <button class="ncm-ct-detail__action" data-action="openContactInbox" data-contact-id="{{this.id}}"
+                      data-ncm-tooltip="Open this contact's message inbox">
+                <i class="fas fa-inbox"></i> Inbox
+              </button>
+              <button class="ncm-ct-detail__action" data-action="composeToContact" data-contact-id="{{this.id}}"
+                      data-ncm-tooltip="Send a message addressed to this contact">
+                <i class="fas fa-envelope"></i> Message
+              </button>
+              <button class="ncm-ct-detail__action" data-action="shareContactToPlayer" data-contact-id="{{this.id}}"
+                      data-ncm-tooltip="Choose which players receive this contact">
+                <i class="fas fa-share-nodes"></i> Share
+              </button>
+              {{/unless}}
+              {{#unless this.burned}}
+              <button class="ncm-ct-detail__action ncm-ct-detail__action--danger" data-action="burnContact" data-contact-id="{{this.id}}"
+                      data-ncm-tooltip="Mark as compromised — burns contact for all players">
+                <i class="fas fa-fire"></i> Burn
+              </button>
+              {{/unless}}
+              <button class="ncm-ct-detail__action ncm-ct-detail__action--edit" data-action="editContactInEditor" data-contact-id="{{this.id}}"
+                      data-ncm-tooltip="Open in Full Editor for complete editing">
+                <i class="fas fa-pen"></i> Edit in Full Editor
+              </button>
+            </div>
+          </div>
           {{/if}}
-        </div>
 
-        {{!-- Hover Actions --}}
-        <div class="ncm-contact-row__actions">
-          <button class="ncm-contact-row__action ncm-contact-row__action--send" data-action="sendAsContact" data-contact-id="{{this.id}}" data-ncm-tooltip="Send As">
-            <i class="fas fa-paper-plane"></i>
-          </button>
-          <button class="ncm-contact-row__action ncm-contact-row__action--inbox" data-action="openContactInbox" data-contact-id="{{this.id}}" data-ncm-tooltip="Inbox">
-            <i class="fas fa-inbox"></i>
-          </button>
-          <button class="ncm-contact-row__action" data-action="composeToContact" data-contact-id="{{this.id}}" data-ncm-tooltip="Message">
-            <i class="fas fa-envelope"></i>
-          </button>
-          <button class="ncm-contact-row__action ncm-contact-row__action--edit" data-action="editContactInEditor" data-contact-id="{{this.id}}" data-ncm-tooltip="Edit">
-            <i class="fas fa-pen"></i>
-          </button>
+          {{/each}}
         </div>
-
+        {{/unless}}
       </div>
       {{/each}}
-    </div>
     {{else}}
     <div class="ncm-admin-empty"><i class="fas fa-address-book"></i> No contacts in master directory.</div>
     {{/if}}
 
-    {{!-- Recent Pushes --}}
+    {{!-- ═══════════════════════════════════════
+         RECENT SHARES LOG
+         ═══════════════════════════════════════ --}}
     {{#if pushLog.length}}
-    <div class="ncm-section-title"><i class="fas fa-arrow-up-from-bracket"></i> Recent Pushes</div>
-    <div class="ncm-push-log">
+    <div class="ncm-ct-sharelog">
+      <div class="ncm-ct-sharelog__hdr">
+        <span class="ncm-ct-sharelog__title"><i class="fas fa-share-nodes"></i> Recent Shares</span>
+        <div class="ncm-ct-sharelog__line"></div>
+      </div>
       {{#each pushLog}}
-      <div class="ncm-push-log__entry">
+      <div class="ncm-ct-share-entry">
         <i class="fas fa-check"></i>
         {{{this.text}}}
-        <span class="ncm-push-log__entry__time">{{this.time}}</span>
+        <span class="ncm-ct-share-entry__time">{{this.time}}</span>
       </div>
       {{/each}}
     </div>

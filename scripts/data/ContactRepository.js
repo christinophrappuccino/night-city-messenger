@@ -27,6 +27,7 @@ function _normalizeContact(data) {
     email: data.email || '',
     organization: data.organization || '',
     phone: data.phone || '',
+    location: data.location || '',
     alias: data.alias || '',
     tags: Array.isArray(data.tags) ? data.tags : [],
     customImg: data.customImg || '',

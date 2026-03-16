@@ -149,6 +149,7 @@ export class MasterContactService {
    * @param {string} [data.alias] - Alias / handle
    * @param {string} [data.organization] - Organization / corp
    * @param {string} [data.phone] - Phone number
+   * @param {string} [data.location] - Location / district
    * @param {string} [data.portrait] - Image path
    * @param {Array<string>} [data.tags] - Tags for filtering
    * @param {string} [data.notes] - GM notes
@@ -170,6 +171,7 @@ export class MasterContactService {
       alias: data.alias?.trim() || '',
       organization: data.organization?.trim() || '',
       phone: data.phone?.trim() || '',
+      location: data.location?.trim() || '',
       portrait: data.portrait || null,
       tags: Array.isArray(data.tags) ? data.tags.map(t => t.trim()).filter(Boolean) : [],
       notes: data.notes?.trim() || '',
@@ -202,7 +204,7 @@ export class MasterContactService {
 
     // Apply updates (whitelist fields)
     const allowed = [
-      'name', 'email', 'alias', 'organization', 'phone', 'portrait',
+      'name', 'email', 'alias', 'organization', 'phone', 'location', 'portrait',
       'tags', 'notes', 'actorId', 'type',
       'relationship', 'trust', 'burned',
       'encrypted', 'encryptionDV', 'blackIce', 'blackIceDamage',
@@ -291,6 +293,7 @@ export class MasterContactService {
         alias: contact.alias,
         organization: contact.organization,
         phone: contact.phone,
+        location: contact.location || '',
         customImg: contact.portrait,
         tags: [...(contact.tags || [])],
         notes: '', // Don't copy GM notes to players

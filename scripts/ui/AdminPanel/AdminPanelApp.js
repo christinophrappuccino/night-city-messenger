@@ -30,10 +30,18 @@ export class AdminPanelApp extends BaseApplication {
   // ── Contacts tab state ──
   /** @type {string} Contact search query */
   _contactSearch = '';
-  /** @type {string} Contact sort: 'name' | 'trust' | 'role' | 'recent' */
+  /** @type {string} Contact sort: 'name' | 'trust' | 'role' | 'recent' | 'org' */
   _contactSort = 'name';
-  /** @type {string} Contact filter: 'all' | 'linked' | 'burned' | 'ice' | 'fixer' | 'netrunner' | 'solo' | 'corp' | etc */
+  /** @type {string} Contact filter: 'all' | 'linked' | 'burned' | 'ice' | role names */
   _contactFilter = 'all';
+  /** @type {string|null} Expanded contact ID (accordion — one at a time) */
+  _expandedContactId = null;
+  /** @type {Set<string>} Selected contact IDs for batch operations */
+  _selectedContacts = new Set();
+  /** @type {Set<string>} Collapsed group keys */
+  _collapsedContactGroups = new Set();
+  /** @type {boolean} Overflow menu open state */
+  _contactOverflowOpen = false;
 
   // ── Networks tab state (Sprint 6) ──
   /** @type {'cards'|'logs'} Networks tab sub-view */
@@ -141,6 +149,17 @@ export class AdminPanelApp extends BaseApplication {
       contactFilter:       AdminPanelApp._onContactFilter,
       contactClearSearch:  AdminPanelApp._onContactClearSearch,
       setContactTrust:     AdminPanelApp._onSetContactTrust,
+      toggleContactExpand: AdminPanelApp._onToggleContactExpand,
+      toggleContactSelect: AdminPanelApp._onToggleContactSelect,
+      clearContactSelection: AdminPanelApp._onClearContactSelection,
+      toggleContactGroup:  AdminPanelApp._onToggleContactGroup,
+      toggleContactOverflow: AdminPanelApp._onToggleContactOverflow,
+      burnContact:         AdminPanelApp._onBurnContact,
+      shareContactToPlayer: AdminPanelApp._onShareContactToPlayer,
+      syncFromActors:      AdminPanelApp._onSyncFromActors,
+      batchShareContacts:  AdminPanelApp._onBatchShareContacts,
+      batchTagContacts:    AdminPanelApp._onBatchTagContacts,
+      batchBurnContacts:   AdminPanelApp._onBatchBurnContacts,
 
       // Networks actions
       toggleNetwork: AdminPanelApp._onToggleNetwork,
@@ -549,39 +568,89 @@ export class AdminPanelApp extends BaseApplication {
   _gatherContactSummary() {
     const contacts = this.masterContactService?.getAll() ?? [];
 
-    // ── Enrich all contacts ──
-    const roleBadgeMap = {
-      fixer: { badge: 'Fixer', cls: 'fixer' },
-      netrunner: { badge: 'Runner', cls: 'netrunner' },
-      runner: { badge: 'Runner', cls: 'netrunner' },
-      corp: { badge: 'Corp', cls: 'corp' },
-      solo: { badge: 'Solo', cls: 'solo' },
-      tech: { badge: 'Tech', cls: 'solo' },
-      medtech: { badge: 'Medtech', cls: 'solo' },
-      media: { badge: 'Media', cls: 'netrunner' },
-      nomad: { badge: 'Nomad', cls: 'solo' },
-      exec: { badge: 'Exec', cls: 'corp' },
-      lawman: { badge: 'Lawman', cls: 'fixer' },
-      rockerboy: { badge: 'Rocker', cls: 'fixer' },
+    // ── Role config ──
+    const roleChipMap = {
+      fixer:     { label: 'Fixer',   type: 'role-fixer',     icon: 'crosshairs' },
+      netrunner: { label: 'Runner',  type: 'role-netrunner',  icon: 'terminal' },
+      runner:    { label: 'Runner',  type: 'role-netrunner',  icon: 'terminal' },
+      corp:      { label: 'Corp',    type: 'role-corp',       icon: 'briefcase' },
+      solo:      { label: 'Solo',    type: 'role-solo',       icon: 'crosshairs' },
+      tech:      { label: 'Tech',    type: 'role-tech',       icon: 'wrench' },
+      medtech:   { label: 'Medtech', type: 'role-tech',       icon: 'wrench' },
+      media:     { label: 'Media',   type: 'role-media',      icon: 'podcast' },
+      nomad:     { label: 'Nomad',   type: 'role-solo',       icon: 'truck-monster' },
+      exec:      { label: 'Exec',    type: 'role-corp',       icon: 'briefcase' },
+      lawman:    { label: 'Lawman',  type: 'role-lawman',     icon: 'shield-halved' },
+      rockerboy: { label: 'Rocker',  type: 'role-fixer',      icon: 'guitar' },
     };
 
+    const trustLabels = { 5: 'Trusted', 4: 'Trusted', 3: 'Neutral', 2: 'Wary', 1: 'Hostile', 0: 'Unknown' };
+
+    // ── Gather player-owned actors for "Known by" + Player Characters group ──
+    const playerActors = [];
+    for (const user of game.users) {
+      if (user.isGM || !user.character) continue;
+      playerActors.push({
+        actorId: user.character.id,
+        actorName: user.character.name,
+        playerName: user.name,
+        initial: (user.character.name || '?').charAt(0).toUpperCase(),
+      });
+    }
+
+    // ── Build "Known by" for a contact: check which player actors have it ──
+    const contactRepo = game.nightcity?.contactRepository;
+    const _buildKnownBy = (masterContactId, contactEmail) => {
+      const pips = [];
+      const expanded = [];
+      for (const pa of playerActors) {
+        let has = false;
+        try {
+          const playerContacts = contactRepo?.getAll(pa.actorId) ?? [];
+          has = playerContacts.some(pc =>
+            pc.masterContactId === masterContactId ||
+            (contactEmail && pc.email?.toLowerCase() === contactEmail.toLowerCase())
+          );
+        } catch { /* actor may not have contacts */ }
+        pips.push({
+          initial: pa.initial,
+          has,
+          tooltip: has
+            ? `${pa.actorName} (${pa.playerName}) has this contact`
+            : `${pa.actorName} (${pa.playerName}) does not have this contact`,
+        });
+        expanded.push({
+          characterName: pa.actorName,
+          playerName: pa.playerName,
+          has,
+        });
+      }
+      return { pips, expanded };
+    };
+
+    // ── Enrich all master contacts ──
     const enriched = contacts.map(c => {
-      const trust = c.trust ?? 3;
-      let trustLevel = 'med';
+      const trust = c.trust ?? 0;
+      let trustLevel = 'none';
       if (trust >= 4) trustLevel = 'high';
-      else if (trust <= 1) trustLevel = 'low';
+      else if (trust >= 2) trustLevel = 'med';
+      else if (trust >= 1) trustLevel = 'low';
 
       const roleLower = (c.role || '').toLowerCase();
-      const roleInfo = roleBadgeMap[roleLower];
+      const roleInfo = roleChipMap[roleLower];
 
-      const avatarColor = c.burned ? '#ff0033' : c.encrypted ? '#f7c948' : '#8888a0';
+      const avatarColor = c.burned ? '#ff3355' : c.encrypted ? '#f7c948' : '#9a9ab5';
+      const networkSlug = (c.network || 'citinet').toLowerCase().replace(/[^a-z]/g, '');
 
+      // Actor resolution
       let actorName = null;
       let playerOwnerName = null;
+      let isPlayerOwned = false;
       if (c.actorId) {
         const actor = game.actors?.get(c.actorId);
         actorName = actor?.name || null;
         if (actor?.hasPlayerOwner) {
+          isPlayerOwned = true;
           const ownerEntry = Object.entries(actor.ownership || {}).find(
             ([uid, level]) => uid !== 'default' && level === CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER
           );
@@ -591,14 +660,45 @@ export class AdminPanelApp extends BaseApplication {
         }
       }
 
+      // Build color-coded chips
+      const chips = [];
+      if (roleInfo) chips.push({ type: roleInfo.type, label: roleInfo.label, icon: roleInfo.icon });
+      if (c.organization) chips.push({ type: 'org', label: c.organization, icon: 'building' });
+      if (c.location) chips.push({ type: 'loc', label: c.location, icon: 'location-dot' });
+      if (c.alias) chips.push({ type: 'alias', label: c.alias, icon: null });
+      if (c.tags) c.tags.forEach(t => chips.push({ type: 'tag', label: t, icon: null }));
+
+      // Known-by
+      const knownBy = _buildKnownBy(c.id, c.email);
+
+      // Activity label
+      let activeLabel = 'Never contacted';
+      let activeRecent = false;
+      if (c.updatedAt) {
+        const diff = Date.now() - new Date(c.updatedAt).getTime();
+        const hours = diff / (1000 * 60 * 60);
+        if (hours < 24) { activeLabel = 'Active today'; activeRecent = true; }
+        else if (hours < 168) activeLabel = 'This week';
+        else activeLabel = 'Inactive';
+      }
+
+      // Notes preview (first ~60 chars)
+      const notesPreview = c.notes ? (c.notes.length > 60 ? c.notes.slice(0, 60) + '...' : c.notes) : '';
+
       return {
         id: c.id,
         name: c.name,
         email: c.email || '—',
+        alias: c.alias || '',
+        phone: c.phone || '',
+        notes: c.notes || '',
+        notesPreview,
         role: c.role,
         roleLower,
+        roleBadge: roleInfo?.label ?? null,
         trust,
         trustLevel,
+        trustLabel: trustLabels[trust] ?? 'Unknown',
         trustSegments: [
           { value: 1, active: trust >= 1 },
           { value: 2, active: trust >= 2 },
@@ -609,33 +709,117 @@ export class AdminPanelApp extends BaseApplication {
         burned: c.burned ?? false,
         encrypted: c.encrypted ?? false,
         encryptionDV: c.encryptionDV,
-        linkedActorId: c.linkedActorId,
+        encryptionSkill: c.encryptionSkill || 'Interface',
         actorId: c.actorId || null,
         actorName,
         playerOwnerName,
+        isPlayerOwned,
         portrait: c.portrait || null,
         hasPortrait: !!c.portrait,
         initial: (c.name || '?').charAt(0).toUpperCase(),
         avatarColor,
         avatarBorderColor: `${avatarColor}66`,
-        roleBadge: roleInfo?.badge ?? null,
-        roleBadgeClass: roleInfo?.cls ?? '',
+        networkSlug,
+        networkName: (c.network || 'Citinet').charAt(0).toUpperCase() + (c.network || 'citinet').slice(1),
+        contactType: isPlayerOwned ? 'Player' : (c.type || 'NPC').charAt(0).toUpperCase() + (c.type || 'npc').slice(1),
         organization: c.organization || '',
+        location: c.location || '',
         tags: c.tags || [],
+        chips,
+        knownByPips: knownBy.pips,
+        knownByExpanded: knownBy.expanded,
+        activeLabel,
+        activeRecent,
         updatedAt: c.updatedAt || c.createdAt || '',
+        noInbox: false,
+        isExpanded: this._expandedContactId === c.id,
+        isSelected: this._selectedContacts.has(c.id),
+        // Recent messages (populated below for expanded contact)
+        recentMessages: [],
       };
     });
 
-    // ── Totals (always from unfiltered) ──
+    // ── Inject player characters that aren't already master contacts ──
+    const masterActorIds = new Set(enriched.map(c => c.actorId).filter(Boolean));
+    for (const pa of playerActors) {
+      if (masterActorIds.has(pa.actorId)) continue;
+      const actor = game.actors?.get(pa.actorId);
+      if (!actor) continue;
+      const email = actor.getFlag?.('cyberpunkred-messenger', 'email') || '';
+      enriched.push({
+        id: `pc-${pa.actorId}`,
+        name: pa.actorName,
+        email: email || '—',
+        alias: '', phone: '', notes: '', notesPreview: '',
+        role: '', roleLower: '', roleBadge: null,
+        trust: 5, trustLevel: 'high', trustLabel: 'Trusted',
+        trustSegments: [
+          { value: 1, active: true }, { value: 2, active: true },
+          { value: 3, active: true }, { value: 4, active: true },
+          { value: 5, active: true },
+        ],
+        burned: false, encrypted: false, encryptionDV: null, encryptionSkill: '',
+        actorId: pa.actorId, actorName: pa.actorName,
+        playerOwnerName: pa.playerName, isPlayerOwned: true,
+        portrait: actor.img || null, hasPortrait: !!actor.img && actor.img !== 'icons/svg/mystery-man.svg',
+        initial: pa.initial,
+        avatarColor: '#19f3f7', avatarBorderColor: 'rgba(25,243,247,0.4)',
+        networkSlug: 'citinet', networkName: 'Citinet',
+        contactType: 'Player',
+        organization: '', location: '', tags: [], chips: [],
+        knownByPips: [], knownByExpanded: [],
+        activeLabel: email ? 'Active today' : 'Never contacted',
+        activeRecent: !!email,
+        updatedAt: '', noInbox: !email,
+        isExpanded: this._expandedContactId === `pc-${pa.actorId}`,
+        isSelected: this._selectedContacts.has(`pc-${pa.actorId}`),
+        recentMessages: [],
+      });
+    }
+
+    // ── Populate recent messages for expanded contact ──
+    const expandedContact = enriched.find(c => c.isExpanded);
+    if (expandedContact && !expandedContact.noInbox) {
+      try {
+        const inboxJournal = game.nightcity?.messageRepository?.getInboxJournal?.(
+          expandedContact.actorId || expandedContact.id
+        );
+        if (inboxJournal) {
+          const pages = [...(inboxJournal.pages || [])].sort(
+            (a, b) => (b.getFlag?.('cyberpunkred-messenger', 'timestamp') || '')
+              .localeCompare(a.getFlag?.('cyberpunkred-messenger', 'timestamp') || '')
+          );
+          expandedContact.recentMessages = pages.slice(0, 3).map(page => {
+            const flags = page.flags?.['cyberpunkred-messenger'] || {};
+            const fromName = flags.senderName || flags.from || '?';
+            const toName = flags.recipientName || flags.to || '?';
+            const isSent = fromName.toLowerCase().includes(expandedContact.name.toLowerCase());
+            return {
+              from: fromName, to: toName, sent: isSent,
+              preview: (flags.subject || page.name || '(no subject)').slice(0, 50),
+              time: flags.timestamp ? this._relativeTime(flags.timestamp) : '',
+            };
+          });
+        }
+      } catch { /* inbox may not exist */ }
+    }
+
+    // ── Totals ──
     const total = enriched.length;
     const burned = enriched.filter(c => c.burned).length;
     const encrypted = enriched.filter(c => c.encrypted).length;
     const linked = enriched.filter(c => c.actorId).length;
+    const unlinked = total - linked;
+    const playerCount = enriched.filter(c => c.isPlayerOwned).length;
 
-    // ── Collect unique roles for filter pills ──
-    const roleSet = new Set();
-    enriched.forEach(c => { if (c.roleBadge) roleSet.add(c.roleBadge); });
-    const roles = [...roleSet].sort();
+    // ── Role counts for filter pills ──
+    const roleCountMap = {};
+    enriched.forEach(c => {
+      if (c.roleBadge) roleCountMap[c.roleBadge] = (roleCountMap[c.roleBadge] || 0) + 1;
+    });
+    const roleCounts = Object.entries(roleCountMap)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([name, count]) => ({ name, count }));
 
     // ── Apply search ──
     let filtered = enriched;
@@ -645,6 +829,9 @@ export class AdminPanelApp extends BaseApplication {
         c.name.toLowerCase().includes(q) ||
         c.email.toLowerCase().includes(q) ||
         (c.organization && c.organization.toLowerCase().includes(q)) ||
+        (c.location && c.location.toLowerCase().includes(q)) ||
+        (c.alias && c.alias.toLowerCase().includes(q)) ||
+        (c.notes && c.notes.toLowerCase().includes(q)) ||
         (c.actorName && c.actorName.toLowerCase().includes(q)) ||
         (c.playerOwnerName && c.playerOwnerName.toLowerCase().includes(q)) ||
         c.tags.some(t => t.toLowerCase().includes(q))
@@ -655,26 +842,14 @@ export class AdminPanelApp extends BaseApplication {
     const f = this._contactFilter;
     if (f && f !== 'all') {
       switch (f) {
-        case 'linked':
-          filtered = filtered.filter(c => c.actorId);
-          break;
-        case 'unlinked':
-          filtered = filtered.filter(c => !c.actorId);
-          break;
-        case 'burned':
-          filtered = filtered.filter(c => c.burned);
-          break;
-        case 'ice':
-          filtered = filtered.filter(c => c.encrypted);
-          break;
-        case 'player':
-          filtered = filtered.filter(c => c.playerOwnerName);
-          break;
+        case 'linked':   filtered = filtered.filter(c => c.actorId); break;
+        case 'unlinked': filtered = filtered.filter(c => !c.actorId); break;
+        case 'burned':   filtered = filtered.filter(c => c.burned); break;
+        case 'ice':      filtered = filtered.filter(c => c.encrypted); break;
+        case 'player':   filtered = filtered.filter(c => c.isPlayerOwned); break;
         default:
-          // Role-based filter (case-insensitive)
           filtered = filtered.filter(c =>
             c.roleLower === f.toLowerCase() ||
-            c.roleBadgeClass === f.toLowerCase() ||
             (c.roleBadge && c.roleBadge.toLowerCase() === f.toLowerCase())
           );
           break;
@@ -684,32 +859,101 @@ export class AdminPanelApp extends BaseApplication {
     // ── Apply sort ──
     switch (this._contactSort) {
       case 'name':
-        filtered.sort((a, b) => a.name.localeCompare(b.name));
-        break;
+        filtered.sort((a, b) => a.name.localeCompare(b.name)); break;
       case 'trust':
-        filtered.sort((a, b) => b.trust - a.trust || a.name.localeCompare(b.name));
-        break;
+        filtered.sort((a, b) => b.trust - a.trust || a.name.localeCompare(b.name)); break;
       case 'role':
-        filtered.sort((a, b) => (a.roleLower || 'zzz').localeCompare(b.roleLower || 'zzz') || a.name.localeCompare(b.name));
-        break;
+        filtered.sort((a, b) => (a.roleLower || 'zzz').localeCompare(b.roleLower || 'zzz') || a.name.localeCompare(b.name)); break;
       case 'recent':
-        filtered.sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
-        break;
+        filtered.sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || '')); break;
+      case 'org':
+        filtered.sort((a, b) => (a.organization || 'zzz').localeCompare(b.organization || 'zzz') || a.name.localeCompare(b.name)); break;
     }
+
+    // ── Build groups ──
+    const groupOrder = ['Player Characters', 'Fixers', 'Corp Contacts', 'Runners', 'Street Contacts'];
+    const groupMap = {};
+    for (const c of filtered) {
+      let groupName = 'Street Contacts';
+      if (c.isPlayerOwned) groupName = 'Player Characters';
+      else if (c.roleBadge === 'Fixer') groupName = 'Fixers';
+      else if (c.roleBadge === 'Corp' || c.roleBadge === 'Exec') groupName = 'Corp Contacts';
+      else if (c.roleBadge === 'Runner') groupName = 'Runners';
+
+      if (!groupMap[groupName]) groupMap[groupName] = [];
+      groupMap[groupName].push(c);
+    }
+    const groups = [];
+    for (const name of groupOrder) {
+      if (groupMap[name]?.length) {
+        const key = name.toLowerCase().replace(/\s+/g, '-');
+        groups.push({
+          key,
+          name,
+          contacts: groupMap[name],
+          collapsed: this._collapsedContactGroups.has(key),
+        });
+      }
+    }
+    // Remaining groups not in groupOrder
+    for (const [name, contacts] of Object.entries(groupMap)) {
+      if (!groupOrder.includes(name) && contacts.length) {
+        const key = name.toLowerCase().replace(/\s+/g, '-');
+        groups.push({ key, name, contacts, collapsed: this._collapsedContactGroups.has(key) });
+      }
+    }
+
+    // ── Send As chips (up to 5 most recently updated NPC contacts) ──
+    const sendAsChips = enriched
+      .filter(c => !c.isPlayerOwned && !c.burned && !c.noInbox)
+      .sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''))
+      .slice(0, 5)
+      .map(c => ({
+        id: c.id,
+        name: c.name,
+        chipName: c.name.length > 12 ? c.name.split(' ')[0] : c.name,
+        initial: c.initial,
+        avatarColor: c.avatarColor,
+        avatarBorderColor: c.avatarBorderColor,
+        portrait: c.portrait,
+        hasPortrait: c.hasPortrait,
+      }));
 
     return {
       total,
       burned,
       encrypted,
       linked,
+      unlinked,
+      playerCount,
       filteredCount: filtered.length,
-      contacts: filtered,
-      roles,
-      // Pass current state for template
+      groups,
+      roleCounts,
+      sendAsChips,
+      selectedCount: this._selectedContacts.size,
+      overflowOpen: this._contactOverflowOpen,
       contactSearch: this._contactSearch,
       contactSort: this._contactSort,
       contactFilter: this._contactFilter,
     };
+  }
+
+  /**
+   * Relative time helper for message timestamps.
+   * @param {string} isoTimestamp
+   * @returns {string}
+   */
+  _relativeTime(isoTimestamp) {
+    try {
+      const diff = Date.now() - new Date(isoTimestamp).getTime();
+      const mins = Math.floor(diff / 60000);
+      if (mins < 1) return 'Just now';
+      if (mins < 60) return `${mins} min ago`;
+      const hours = Math.floor(mins / 60);
+      if (hours < 24) return `${hours} hr ago`;
+      const days = Math.floor(hours / 24);
+      return `${days}d ago`;
+    } catch { return ''; }
   }
 
   /**
@@ -1802,10 +2046,9 @@ export class AdminPanelApp extends BaseApplication {
    * Wire up contacts tab search input and sort select with debounced handlers.
    */
   _setupContactsControls() {
-    // Search input
-    const searchInput = this.element?.querySelector('.ncm-contacts-search__input');
+    // Search input — new v6 class
+    const searchInput = this.element?.querySelector('.ncm-ct-search__input');
     if (searchInput) {
-      // Focus if there's an active search
       if (this._contactSearch) searchInput.focus();
 
       const handler = this._contactSearchHandler || (this._contactSearchHandler =
@@ -1818,13 +2061,26 @@ export class AdminPanelApp extends BaseApplication {
       searchInput.addEventListener('input', handler);
     }
 
-    // Sort select
-    const sortSelect = this.element?.querySelector('.ncm-contacts-sort__select');
+    // Sort select — new v6 class
+    const sortSelect = this.element?.querySelector('.ncm-ct-search__sort');
     if (sortSelect) {
       sortSelect.addEventListener('change', (e) => {
         this._contactSort = e.target.value;
         this.render(true);
       });
+    }
+
+    // Close overflow menu when clicking outside
+    const overflowBtn = this.element?.querySelector('.ncm-ct-overflow__btn');
+    if (overflowBtn && this._contactOverflowOpen) {
+      const closeOverflow = (e) => {
+        if (!e.target.closest('.ncm-ct-overflow')) {
+          this._contactOverflowOpen = false;
+          this.render(true);
+          document.removeEventListener('click', closeOverflow);
+        }
+      };
+      setTimeout(() => document.addEventListener('click', closeOverflow), 0);
     }
   }
 
@@ -2134,9 +2390,8 @@ export class AdminPanelApp extends BaseApplication {
   static async _onPushContact(event, target) {
     const contactId = target.closest('[data-contact-id]')?.dataset.contactId;
     if (!contactId) return;
-
-    // TODO: Implement push dialog — select target actor
-    ui.notifications.info('Push contact feature coming soon.');
+    // Delegate to the share-to-player dialog
+    await this._showShareDialog([contactId]);
   }
 
   /**
@@ -2430,6 +2685,295 @@ export class AdminPanelApp extends BaseApplication {
    */
   static _onContactClearSearch(event, target) {
     this._contactSearch = '';
+    this.render(true);
+  }
+
+  /**
+   * Toggle expand/collapse of a contact detail panel (accordion).
+   */
+  static _onToggleContactExpand(event, target) {
+    // Don't toggle if clicking on an action button, checkbox, or trust segment
+    const clickedAction = event.target.closest('[data-action]:not([data-action="toggleContactExpand"])');
+    if (clickedAction) return;
+
+    const contactId = target.closest('[data-contact-id]')?.dataset.contactId;
+    if (!contactId) return;
+    this._expandedContactId = (this._expandedContactId === contactId) ? null : contactId;
+    this._contactOverflowOpen = false;
+    this.render(true);
+  }
+
+  /**
+   * Toggle a contact's selection checkbox.
+   */
+  static _onToggleContactSelect(event, target) {
+    event.preventDefault();
+    event.stopPropagation();
+    const contactId = target.dataset.contactId || target.closest('[data-contact-id]')?.dataset.contactId;
+    if (!contactId) return;
+    if (this._selectedContacts.has(contactId)) {
+      this._selectedContacts.delete(contactId);
+    } else {
+      this._selectedContacts.add(contactId);
+    }
+    this.render(true);
+  }
+
+  /**
+   * Clear all contact selections.
+   */
+  static _onClearContactSelection() {
+    this._selectedContacts.clear();
+    this.render(true);
+  }
+
+  /**
+   * Toggle a contact group's collapsed state.
+   */
+  static _onToggleContactGroup(event, target) {
+    const groupKey = target.dataset.group || target.closest('[data-group]')?.dataset.group;
+    if (!groupKey) return;
+    if (this._collapsedContactGroups.has(groupKey)) {
+      this._collapsedContactGroups.delete(groupKey);
+    } else {
+      this._collapsedContactGroups.add(groupKey);
+    }
+    this.render(true);
+  }
+
+  /**
+   * Toggle the overflow menu.
+   */
+  static _onToggleContactOverflow(event, target) {
+    event.preventDefault();
+    event.stopPropagation();
+    this._contactOverflowOpen = !this._contactOverflowOpen;
+    this.render(true);
+  }
+
+  /**
+   * Burn a single contact.
+   */
+  static async _onBurnContact(event, target) {
+    event.preventDefault();
+    event.stopPropagation();
+    const contactId = target.dataset.contactId || target.closest('[data-contact-id]')?.dataset.contactId;
+    if (!contactId) return;
+
+    const contact = this.masterContactService?.getContact(contactId);
+    if (!contact) return;
+
+    const confirm = await Dialog.confirm({
+      title: 'Burn Contact',
+      content: `<p>Mark <b>${contact.name}</b> as burned (compromised)?</p><p>This will mark the contact as burned for all players.</p>`,
+    });
+    if (!confirm) return;
+
+    await this.masterContactService.updateContact(contactId, { burned: true });
+    ui.notifications.info(`NCM | ${contact.name} has been burned.`);
+    this.render(true);
+  }
+
+  /**
+   * Share a single contact to players via dialog.
+   */
+  static async _onShareContactToPlayer(event, target) {
+    event.preventDefault();
+    event.stopPropagation();
+    const contactId = target.dataset.contactId || target.closest('[data-contact-id]')?.dataset.contactId;
+    if (!contactId) return;
+    await this._showShareDialog([contactId]);
+  }
+
+  /**
+   * Sync contacts from world actors — creates master contacts for actors with NCM emails.
+   */
+  static async _onSyncFromActors(event, target) {
+    event.preventDefault();
+    event.stopPropagation();
+    this._contactOverflowOpen = false;
+
+    const confirmed = await Dialog.confirm({
+      title: 'Sync from Actors',
+      content: `<p>Create master contacts for all world actors that have an NCM email assigned but aren't already in the directory?</p>`,
+    });
+    if (!confirmed) { this.render(true); return; }
+
+    const result = await this.masterContactService?.importFromActors();
+    if (result?.success) {
+      ui.notifications.info(`NCM | Imported ${result.imported} contact${result.imported !== 1 ? 's' : ''} from world actors.`);
+    } else {
+      ui.notifications.warn('NCM | Sync failed.');
+    }
+    this.render(true);
+  }
+
+  /**
+   * Batch: share selected contacts with players via dialog.
+   */
+  static async _onBatchShareContacts() {
+    if (!this._selectedContacts.size) return;
+    await this._showShareDialog([...this._selectedContacts]);
+  }
+
+  /**
+   * Batch: tag selected contacts via dialog.
+   */
+  static async _onBatchTagContacts() {
+    if (!this._selectedContacts.size) return;
+    const count = this._selectedContacts.size;
+
+    // Build existing tags list for suggestions
+    const existingTags = this.masterContactService?.getAllTags() ?? [];
+    const tagOptions = existingTags.map(t => `<option value="${t}">`).join('');
+
+    const dialog = new Dialog({
+      title: `Tag ${count} Contact${count !== 1 ? 's' : ''}`,
+      content: `
+        <form style="display:flex; flex-direction:column; gap:8px; padding:4px 0;">
+          <label style="font-size:11px; font-weight:600;">Tag name</label>
+          <input type="text" name="tag" list="ncm-tag-suggest" placeholder="e.g. HEIST, WATSON, VIP..."
+                 style="padding:6px 8px; font-size:12px;">
+          <datalist id="ncm-tag-suggest">${tagOptions}</datalist>
+          <p style="font-size:10px; color:#888; margin:0;">Will be added to all ${count} selected contacts.</p>
+        </form>`,
+      buttons: {
+        apply: {
+          icon: '<i class="fas fa-tag"></i>',
+          label: 'Apply Tag',
+          callback: async (html) => {
+            const tag = html.find('[name="tag"]').val()?.trim();
+            if (!tag) return;
+            let tagged = 0;
+            for (const contactId of this._selectedContacts) {
+              if (contactId.startsWith('pc-')) continue;
+              const contact = this.masterContactService?.getContact(contactId);
+              if (!contact) continue;
+              const currentTags = contact.tags || [];
+              if (!currentTags.includes(tag)) {
+                await this.masterContactService.updateContact(contactId, {
+                  tags: [...currentTags, tag],
+                });
+                tagged++;
+              }
+            }
+            this._selectedContacts.clear();
+            ui.notifications.info(`NCM | Tagged ${tagged} contact${tagged !== 1 ? 's' : ''} with "${tag}".`);
+            this.render(true);
+          },
+        },
+        cancel: { icon: '<i class="fas fa-times"></i>', label: 'Cancel' },
+      },
+      default: 'apply',
+    });
+    dialog.render(true);
+  }
+
+  /**
+   * Shared dialog: pick player actors to share contacts with.
+   * @param {string[]} contactIds - Array of contact IDs to share
+   * @private
+   */
+  static async _showShareDialog(contactIds) {
+    if (!contactIds.length) return;
+
+    // Gather player-owned actors
+    const playerActors = [];
+    for (const user of game.users) {
+      if (user.isGM || !user.character) continue;
+      playerActors.push({
+        actorId: user.character.id,
+        actorName: user.character.name,
+        playerName: user.name,
+      });
+    }
+
+    if (!playerActors.length) {
+      ui.notifications.warn('NCM | No player-owned characters found.');
+      return;
+    }
+
+    // Build contact names for display
+    const contactNames = contactIds
+      .map(id => {
+        if (id.startsWith('pc-')) return null;
+        return this.masterContactService?.getContact(id)?.name;
+      })
+      .filter(Boolean);
+
+    const isSingle = contactNames.length === 1;
+    const title = isSingle ? `Share ${contactNames[0]}` : `Share ${contactNames.length} Contacts`;
+    const desc = isSingle
+      ? `Share <b>${contactNames[0]}</b> with:`
+      : `Share <b>${contactNames.length}</b> contacts with:`;
+
+    const checkboxes = playerActors.map(pa =>
+      `<label style="display:flex; align-items:center; gap:8px; padding:4px 0; font-size:12px; cursor:pointer;">
+        <input type="checkbox" name="actor-${pa.actorId}" value="${pa.actorId}" checked style="margin:0;">
+        <b>${pa.actorName}</b> <span style="color:#888;">(${pa.playerName})</span>
+      </label>`
+    ).join('');
+
+    const dialog = new Dialog({
+      title,
+      content: `
+        <div style="display:flex; flex-direction:column; gap:8px; padding:4px 0;">
+          <p style="font-size:11px; margin:0;">${desc}</p>
+          <div style="display:flex; flex-direction:column; gap:2px;">${checkboxes}</div>
+        </div>`,
+      buttons: {
+        share: {
+          icon: '<i class="fas fa-share-nodes"></i>',
+          label: 'Share',
+          callback: async (html) => {
+            const selectedActorIds = [];
+            html.find('input[type="checkbox"]:checked').each((_, el) => {
+              selectedActorIds.push(el.value);
+            });
+            if (!selectedActorIds.length) return;
+
+            let shared = 0;
+            for (const contactId of contactIds) {
+              if (contactId.startsWith('pc-')) continue;
+              for (const actorId of selectedActorIds) {
+                const result = await this.masterContactService?.pushToPlayer(contactId, actorId);
+                if (result?.success) shared++;
+              }
+            }
+
+            const actorCount = selectedActorIds.length;
+            ui.notifications.info(
+              `NCM | Shared ${contactNames.length} contact${contactNames.length !== 1 ? 's' : ''} with ${actorCount} player${actorCount !== 1 ? 's' : ''}.`
+            );
+            this._selectedContacts.clear();
+            this.render(true);
+          },
+        },
+        cancel: { icon: '<i class="fas fa-times"></i>', label: 'Cancel' },
+      },
+      default: 'share',
+    });
+    dialog.render(true);
+  }
+
+  /**
+   * Batch: burn selected contacts.
+   */
+  static async _onBatchBurnContacts() {
+    if (!this._selectedContacts.size) return;
+    const count = this._selectedContacts.size;
+    const confirm = await Dialog.confirm({
+      title: 'Burn Contacts',
+      content: `<p>Mark <b>${count}</b> selected contacts as burned?</p>`,
+    });
+    if (!confirm) return;
+
+    for (const contactId of this._selectedContacts) {
+      if (contactId.startsWith('pc-')) continue; // Can't burn player characters
+      await this.masterContactService?.updateContact(contactId, { burned: true });
+    }
+    this._selectedContacts.clear();
+    ui.notifications.info(`NCM | ${count} contacts burned.`);
     this.render(true);
   }
 
