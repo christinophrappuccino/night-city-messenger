@@ -10,6 +10,7 @@
 import { MODULE_ID, EVENTS, TEMPLATES, DEFAULTS, THEME_PRESETS, ENCRYPTION_TYPES, FAILURE_MODES, CONTENT_TYPES, SHARD_PRESETS } from '../../utils/constants.js';
 import { log, isGM, formatCyberDate } from '../../utils/helpers.js';
 import { BaseApplication } from '../BaseApplication.js';
+import { NetworkAuthDialog } from '../NetworkManagement/NetworkAuthDialog.js';
 
 /** Map content types to display info */
 const CONTENT_TYPE_INFO = {
@@ -248,6 +249,7 @@ export class ItemInboxApp extends BaseApplication {
       type: n.type || '',
       isCurrent: n.id === currentNetworkId,
       isAllowed: netAccessMode === 'any' || allowedNetIds.includes(n.id) || allowedTypes.includes(n.type),
+      requiresAuth: (n.security?.requiresAuth ?? false) && !(this.networkService?.isAuthenticated?.(n.id) ?? false),
       icon: n.theme?.icon || 'fa-wifi',
       color: n.theme?.color || '#19f3f7',
       theme: n.theme || {},
@@ -920,7 +922,8 @@ export class ItemInboxApp extends BaseApplication {
 
   /**
    * Switch network from within the shard's network overlay.
-   * Changes the global network (same as switching in message viewer).
+   * If the target network requires authentication, opens NetworkAuthDialog first.
+   * Mirrors MessageViewerApp._onSelectNetwork pattern.
    */
   static async _onSwitchNetwork(event, target) {
     const networkId = target.dataset.networkId || target.value;
@@ -930,10 +933,30 @@ export class ItemInboxApp extends BaseApplication {
     if (!networkService) return;
 
     try {
+      const network = networkService.getNetwork?.(networkId);
+      if (!network) return;
+
+      // Check if auth is required (mirrors MessageViewerApp._onSelectNetwork)
+      const requiresAuth = network.security?.requiresAuth ?? false;
+      const isAuthenticated = networkService.isAuthenticated?.(networkId) ?? false;
+      const isGMUser = game.user?.isGM ?? false;
+
+      if (requiresAuth && !isAuthenticated && !isGMUser) {
+        // Show auth dialog — blocks until resolved
+        const result = await NetworkAuthDialog.show(networkId);
+        if (!result.success) return; // Cancelled or failed — stay on current overlay
+      }
+
       // Save scroll before re-render
       const content = this.element?.querySelector('.ncm-shard-content');
       if (content) this._savedScrollTop = content.scrollTop;
-      await networkService.switchNetwork(networkId);
+
+      const switchResult = await networkService.switchNetwork(networkId);
+      if (switchResult?.success === false) {
+        ui.notifications.warn(`NCM | Could not switch to ${network.name}: ${switchResult.reason || 'unknown error'}`);
+        return;
+      }
+
       // Re-render to re-evaluate security stack with new network
       this.render(true);
     } catch (err) {
