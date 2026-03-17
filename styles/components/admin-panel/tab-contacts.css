@@ -82,9 +82,14 @@
 .ncm-app .ncm-admin-panel button.ncm-ct-tbtn:hover,
 .ncm-app button.ncm-ct-tbtn:hover { color: var(--ncm-text-secondary) !important; border-color: var(--ncm-border-active) !important; }
 .ncm-app .ncm-admin-panel button.ncm-ct-tbtn i,
+.ncm-app .ncm-admin-panel button.ncm-ct-tbtn i,
 .ncm-app button.ncm-ct-tbtn i {
   font-size: 12px !important;
   line-height: 1 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  width: auto !important;
+  height: auto !important;
 }
 .ncm-app .ncm-admin-panel button.ncm-ct-tbtn--accent,
 .ncm-app button.ncm-ct-tbtn--accent { color: var(--ncm-primary) !important; border-color: rgba(246,82,97,0.3) !important; }
@@ -116,7 +121,7 @@
 .ncm-app .ncm-admin-panel button.ncm-ct-taction:hover,
 .ncm-app button.ncm-ct-taction:hover { color: var(--ncm-text-secondary) !important; border-color: var(--ncm-border-active) !important; }
 .ncm-app .ncm-admin-panel button.ncm-ct-taction i,
-.ncm-app button.ncm-ct-taction i { font-size: 10px !important; }
+.ncm-app button.ncm-ct-taction i { font-size: 10px !important; margin: 0 !important; padding: 0 !important; }
 .ncm-app .ncm-ct-tstats {
     font-family: var(--ncm-font-display) !important; font-size: 10px !important; font-weight: 600 !important;
     color: var(--ncm-text-muted) !important;
@@ -154,6 +159,7 @@
 .ncm-app .ncm-admin-panel button.ncm-ct-overflow__btn i,
 .ncm-app button.ncm-ct-overflow__btn i {
     font-size: 13px !important; line-height: 1 !important;
+    margin: 0 !important; padding: 0 !important;
   }
 .ncm-app .ncm-admin-panel button.ncm-ct-overflow__btn:hover,
 .ncm-app button.ncm-ct-overflow__btn:hover { color: var(--ncm-text-secondary) !important; border-color: var(--ncm-border-active) !important; }
