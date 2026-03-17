@@ -458,7 +458,7 @@
 .ncm-gm-detail {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 /* Empty state (no selection) */
@@ -1088,19 +1088,19 @@
 .ncm-form-row {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
 }
 
 .ncm-form-row--half {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  gap: 12px;
 }
 
 .ncm-form-row--thirds {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  gap: 10px;
+  gap: 12px;
 }
 
 .ncm-form-row--half > .ncm-form-group,
@@ -1111,7 +1111,7 @@
 .ncm-form-group {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
 }
 
 .ncm-form-label {
@@ -1158,7 +1158,7 @@
   font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
   font-weight: 600;
   font-size: 11px;
-  padding: 4px 7px;
+  padding: 6px 10px;
   outline: none;
   transition: border-color 0.15s;
   appearance: none;
@@ -1277,8 +1277,8 @@
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-  margin-top: 6px;
-  padding-top: 8px;
+  margin-top: 10px;
+  padding-top: 12px;
   border-top: 1px solid var(--ncm-border, #2a2a45);
 }
 
@@ -1289,14 +1289,15 @@
 .ncm-rel-form-grid {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
+  margin-top: 2px;
 }
 
 .ncm-rel-form-row {
   display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 4px 7px;
+  gap: 6px;
+  padding: 5px 8px;
   background: var(--ncm-bg-surface, #1a1a2e);
   border: 1px solid var(--ncm-border, #2a2a45);
   border-radius: 3px;
@@ -1802,7 +1803,7 @@
   background: var(--ncm-bg-surface) !important;
   border: 1px solid var(--ncm-border) !important;
   border-radius: 3px !important;
-  padding: 4px 7px !important;
+  padding: 6px 10px !important;
   outline: none !important;
   box-shadow: none !important;
   height: auto !important;
@@ -1824,7 +1825,7 @@
   background-position: right 7px center !important;
   border: 1px solid var(--ncm-border) !important;
   border-radius: 3px !important;
-  padding: 4px 20px 4px 7px !important;
+  padding: 6px 22px 6px 10px !important;
   outline: none !important;
   box-shadow: none !important;
   height: auto !important;

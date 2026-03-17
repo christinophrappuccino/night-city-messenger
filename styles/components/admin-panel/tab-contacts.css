@@ -72,20 +72,16 @@
     min-height: 28px !important; max-height: 28px !important;
     padding: 0 !important;
     background: var(--ncm-bg-elevated) !important; border: 1px solid var(--ncm-border) !important;
-    border-radius: 2px !important; color: var(--ncm-text-muted) !important; font-size: 11px !important;
+    border-radius: 2px !important; color: var(--ncm-text-muted) !important;
     cursor: pointer !important; transition: all 0.15s !important;
     flex-shrink: 0 !important; flex-grow: 0 !important;
-    line-height: 1 !important;
+    line-height: 1 !important; text-align: center !important;
+    font-size: 12px !important;
   }
 .ncm-app .ncm-ct-tbtn:hover { color: var(--ncm-text-secondary) !important; border-color: var(--ncm-border-active) !important; }
 .ncm-app .ncm-ct-tbtn i {
+  font-size: 12px !important;
   line-height: 1 !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  width: 100% !important;
-  height: 100% !important;
-  font-size: 11px !important;
 }
 .ncm-app .ncm-ct-tbtn--accent { color: var(--ncm-primary) !important; border-color: rgba(246,82,97,0.3) !important; }
 .ncm-app .ncm-ct-tbtn--accent:hover { background: rgba(246,82,97,0.08) !important; border-color: rgba(246,82,97,0.5) !important; }
@@ -139,10 +135,14 @@
     min-height: 28px !important; max-height: 28px !important;
     padding: 0 !important;
     background: var(--ncm-bg-elevated) !important; border: 1px solid var(--ncm-border) !important;
-    border-radius: 2px !important; color: var(--ncm-text-muted) !important; font-size: 12px !important;
+    border-radius: 2px !important; color: var(--ncm-text-muted) !important;
     cursor: pointer !important; transition: all 0.15s !important;
     flex-shrink: 0 !important; flex-grow: 0 !important;
-    line-height: 1 !important;
+    line-height: 1 !important; text-align: center !important;
+    font-size: 13px !important;
+  }
+.ncm-app .ncm-ct-overflow__btn i {
+    font-size: 13px !important; line-height: 1 !important;
   }
 .ncm-app .ncm-ct-overflow__btn:hover { color: var(--ncm-text-secondary) !important; border-color: var(--ncm-border-active) !important; }
 .ncm-app .ncm-ct-overflow__menu {
@@ -379,19 +379,19 @@
   box-shadow: none !important;
   outline: none !important;
     display: flex !important; align-items: center !important; gap: 8px !important;
-    padding: 7px 12px !important;
-    background: linear-gradient(135deg, rgba(25, 243, 247, 0.06) 0%, rgba(25, 243, 247, 0.02) 100%) !important;
-    border: 1px solid rgba(25, 243, 247, 0.12) !important;
+    padding: 8px 12px !important;
+    background: rgba(25, 243, 247, 0.08) !important;
+    border: 1px solid rgba(25, 243, 247, 0.18) !important;
+    border-left: 3px solid rgba(25, 243, 247, 0.5) !important;
     border-radius: 2px 2px 0 0 !important;
     cursor: pointer !important; transition: all 0.15s !important;
-    min-height: 30px !important;
+    min-height: 32px !important;
     user-select: none !important;
   }
-.ncm-app .ncm-ct-group__hdr:hover { background: rgba(25, 243, 247, 0.10) !important; border-color: rgba(25, 243, 247, 0.20) !important; }
+.ncm-app .ncm-ct-group__hdr:hover { background: rgba(25, 243, 247, 0.14) !important; border-color: rgba(25, 243, 247, 0.30) !important; }
 .ncm-app .ncm-ct-group__chev {
     font-size: 9px !important; color: var(--ncm-secondary) !important;
     transition: transform 0.2s !important;
-    opacity: 0.6 !important;
   }
 .ncm-app .ncm-ct-group--collapsed .ncm-ct-group__chev { transform: rotate(-90deg) !important; }
 .ncm-app .ncm-ct-group__name {
@@ -490,7 +490,8 @@
   /* Avatar */
 .ncm-app .ncm-ct-row__avatar {
     width: 38px !important; height: 38px !important; border-radius: 50% !important;
-    border: 1.5px solid !important;
+    border-width: 2px !important;
+    border-style: solid !important;
     display: flex !important; align-items: center !important; justify-content: center !important;
     font-family: var(--ncm-font-display) !important;
     font-size: 15px !important; font-weight: 700 !important;
