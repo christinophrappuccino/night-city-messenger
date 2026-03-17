@@ -1,14 +1,13 @@
 {{!--
-  GM Master Contact Directory — Sprint 3.10
+  GM Master Contact Directory — Phase 2 Redesign
   @file templates/gm-contact-manager/gm-contact-manager.hbs
   @module cyberpunkred-messenger
-  @description Split-view GM interface: scrollable contact list (left 280px)
-    + detail/edit panel (right flex). GM bar with import/push-all/new actions.
-    Search bar + custom tag filter pills. Detail panel shows portrait, badges,
-    trust detail (reuses trust-detail.hbs partial), contact info grid, GM notes,
-    push-to-player controls, and action buttons.
+  @description Split-view GM interface: scrollable grouped contact list (left 280px)
+    + detail/edit panel (right flex). Group-by selector with collapse/expand,
+    pagination (10 per page), party trust + per-player relationships in detail,
+    inline-styled chips, location field, custom role integration.
 
-  Visual reference: ncm-contacts-mockup-v2.html — View 2 (GM Split)
+  Visual reference: ncm-gm-editor-mockup-v3.html
 --}}
 
 {{#if hasService}}
@@ -24,7 +23,7 @@
     <div class="ncm-gm-bar__actions">
       <button class="ncm-btn ncm-btn--ghost ncm-btn--sm"
               data-action="importContactsJSON" title="Import contacts from JSON file">
-        <i class="fas fa-download"></i> Import Contacts
+        <i class="fas fa-download"></i> Import
       </button>
 
       <button class="ncm-btn ncm-btn--ghost ncm-btn--sm"
@@ -91,43 +90,77 @@
 
     {{!-- ─── LEFT: Contact List ─── --}}
     <div class="ncm-gm-split__list">
-      <div class="ncm-gm-list">
-        {{#if contacts.length}}
-          {{#each contacts}}
-            <div class="ncm-gm-list-item {{#if isSelected}}ncm-gm-list-item--selected{{/if}} {{#if isBurned}}ncm-gm-list-item--burned{{/if}}"
-                 data-contact-id="{{id}}" data-action="selectContact">
-              {{!-- Avatar --}}
-              <div class="ncm-gm-list-item__avatar"
-                   style="{{#if hasPortrait}}{{else}}color: {{avatarColor}};{{/if}} border-color: {{avatarBorderColor}};">
-                {{#if hasPortrait}}
-                  <img src="{{portraitSrc}}" alt="{{initials}}">
-                {{else}}
-                  {{initials}}
+
+      {{!-- Group-by selector bar --}}
+      <div class="ncm-gm-group-bar">
+        <span class="ncm-gm-group-bar__label">Group</span>
+        <select class="ncm-gm-group-bar__select">
+          <option value="none" {{#if (eq groupBy 'none')}}selected{{/if}}>None</option>
+          <option value="organization" {{#if (eq groupBy 'organization')}}selected{{/if}}>Organization</option>
+          <option value="role" {{#if (eq groupBy 'role')}}selected{{/if}}>Role</option>
+          <option value="tag" {{#if (eq groupBy 'tag')}}selected{{/if}}>Tag</option>
+          <option value="folders" {{#if (eq groupBy 'folders')}}selected{{/if}}>Folders</option>
+        </select>
+        {{#if isFolderMode}}
+          <button class="ncm-gm-group-bar__btn ncm-gm-group-bar__btn--active"
+                  data-action="createFolder" title="New folder">
+            <i class="fas fa-folder-plus"></i>
+          </button>
+        {{/if}}
+        <button class="ncm-gm-group-bar__btn" data-action="collapseAll" title="Collapse all">
+          <i class="fas fa-compress-alt"></i>
+        </button>
+        <button class="ncm-gm-group-bar__btn" data-action="expandAll" title="Expand all">
+          <i class="fas fa-expand-alt"></i>
+        </button>
+      </div>
+
+      {{!-- Scrollable list --}}
+      <div class="ncm-gm-list-scroll">
+        {{#if groups.length}}
+          {{#each groups}}
+            {{!-- Group header --}}
+            {{#if showHeader}}
+              <div class="ncm-gm-group-header {{#if collapsed}}ncm-gm-group-header--collapsed{{/if}}"
+                   data-action="toggleGroup" data-group-key="{{key}}">
+                <i class="ncm-gm-group-header__chevron fas fa-chevron-down"></i>
+                <i class="ncm-gm-group-header__icon fas {{icon}}"></i>
+                <span class="ncm-gm-group-header__name">{{label}}</span>
+                <span class="ncm-gm-group-header__count">{{totalInGroup}}</span>
+                {{#if isFolder}}
+                  <i class="ncm-gm-group-header__edit fas fa-pen-to-square"
+                     data-action="renameFolder" data-folder="{{key}}" title="Rename folder"></i>
                 {{/if}}
               </div>
+            {{/if}}
 
-              {{!-- Info --}}
-              <div class="ncm-gm-list-item__info">
-                <span class="ncm-gm-list-item__name {{#if isBurned}}ncm-gm-list-item__name--burned{{/if}}">
-                  {{name}}
-                </span>
-                <span class="ncm-gm-list-item__detail">{{email}}</span>
-              </div>
+            {{!-- Contact items within this group (hidden if collapsed) --}}
+            {{#unless collapsed}}
+              {{#each contacts}}
+                <div class="ncm-gm-list-item {{#if isSelected}}ncm-gm-list-item--selected{{/if}} {{#if isBurned}}ncm-gm-list-item--burned{{/if}}"
+                     data-contact-id="{{id}}" data-action="selectContact">
+                  <div class="ncm-gm-list-item__avatar"
+                       style="{{#if hasPortrait}}{{else}}color: {{avatarColor}};{{/if}} border-color: {{avatarBorderColor}};">
+                    {{#if hasPortrait}}
+                      <img src="{{portraitSrc}}" alt="{{initials}}">
+                    {{else}}
+                      {{initials}}
+                    {{/if}}
+                  </div>
 
-              {{!-- Role badge --}}
-              {{#if role}}
-                <span class="ncm-badge ncm-badge--{{role}}" style="font-size: 7px; padding: 0 5px;">
-                  {{roleLabel}}
-                </span>
-              {{/if}}
+                  <div class="ncm-gm-list-item__info">
+                    <span class="ncm-gm-list-item__name {{#if isBurned}}ncm-gm-list-item__name--burned{{/if}}">
+                      {{name}}
+                    </span>
+                    <span class="ncm-gm-list-item__detail">{{email}}</span>
+                  </div>
 
-              {{!-- Burned badge --}}
-              {{#if isBurned}}
-                <span class="ncm-badge ncm-badge--burned" style="font-size: 7px; padding: 0 5px;">
-                  BURNED
-                </span>
-              {{/if}}
-            </div>
+                  {{#if roleChipStyle}}
+                    <span class="ncm-gm-list-item__role" style="{{roleChipStyle}}">{{roleLabel}}</span>
+                  {{/if}}
+                </div>
+              {{/each}}
+            {{/unless}}
           {{/each}}
         {{else}}
           <div class="ncm-gm-empty">
@@ -139,6 +172,23 @@
           </div>
         {{/if}}
       </div>
+
+      {{!-- Pagination --}}
+      {{#if showPagination}}
+        <div class="ncm-gm-pagination">
+          <button class="ncm-gm-pagination__btn" data-action="prevPage"
+                  {{#unless hasPrevPage}}disabled{{/unless}}>
+            <i class="fas fa-chevron-left"></i>
+          </button>
+          <span class="ncm-gm-pagination__info">
+            Page <strong>{{currentPage}}</strong> of <strong>{{totalPages}}</strong>
+          </span>
+          <button class="ncm-gm-pagination__btn" data-action="nextPage"
+                  {{#unless hasNextPage}}disabled{{/unless}}>
+            <i class="fas fa-chevron-right"></i>
+          </button>
+        </div>
+      {{/if}}
     </div>
 
     {{!-- ─── RIGHT: Detail / Form Panel ─── --}}
@@ -147,28 +197,31 @@
       {{!-- ═══ CREATE FORM ═══ --}}
       {{#if isCreating}}
         <div class="ncm-gm-detail ncm-gm-detail--form">
-          <div class="ncm-gm-section-header">
+          <div class="ncm-gm-section" style="margin-top: 0;">
             <i class="fas fa-plus"></i> NEW CONTACT
           </div>
           {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/contact-form.hbs"
-              contact=null isCreating=true isGM=true availableActors=availableActors }}
+              contact=null isCreating=true isGM=true availableActors=availableActors
+              playerActors=playerActors roleOptions=roleOptions customRoles=customRoles }}
         </div>
 
       {{!-- ═══ EDIT FORM ═══ --}}
       {{else if showForm}}
         <div class="ncm-gm-detail ncm-gm-detail--form">
-          <div class="ncm-gm-section-header">
+          <div class="ncm-gm-section" style="margin-top: 0;">
             <i class="fas fa-pen"></i> EDIT — {{selectedContact.name}}
           </div>
           {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/contact-form.hbs"
-              contact=selectedContact isCreating=false isGM=true availableActors=availableActors }}
+              contact=selectedContact isCreating=false isGM=true availableActors=availableActors
+              playerActors=playerActors roleOptions=roleOptions customRoles=customRoles
+              perPlayerRelationships=perPlayerRelationships }}
         </div>
 
       {{!-- ═══ DETAIL VIEW ═══ --}}
       {{else if hasSelection}}
         <div class="ncm-gm-detail">
 
-          {{!-- Detail Header: Avatar + Name + Badges --}}
+          {{!-- Detail Header: Avatar + Name + Chips --}}
           <div class="ncm-gm-detail__header">
             <div class="ncm-gm-detail__avatar"
                  style="border-color: {{selectedContact.avatarBorderColor}};">
@@ -188,65 +241,59 @@
               {{#if selectedContact.alias}}
                 <div class="ncm-gm-detail__subtitle">"{{selectedContact.alias}}"</div>
               {{/if}}
-              <div class="ncm-gm-detail__badges">
-                {{!-- Role badge --}}
-                {{#if selectedContact.role}}
-                  <span class="ncm-badge ncm-badge--{{selectedContact.role}}">
-                    <i class="fas {{selectedContact.roleIcon}}"></i> {{selectedContact.roleLabel}}
-                  </span>
-                {{/if}}
 
-                {{!-- Relationship badges --}}
-                {{#each selectedContact.relationshipBadges}}
-                  <span class="ncm-badge {{class}}">
-                    <i class="fas {{icon}}"></i> {{label}}
+              {{!-- Inline-styled chips (role, org, location, tags) --}}
+              <div class="ncm-gm-detail__chips">
+                {{#each selectedContact.chips}}
+                  <span class="ncm-chip" style="{{style}}">
+                    {{#if icon}}<i class="fas fa-{{icon}}"></i> {{/if}}{{label}}
                   </span>
                 {{/each}}
 
-                {{!-- Burned badge --}}
                 {{#if selectedContact.isBurned}}
-                  <span class="ncm-badge ncm-badge--burned">
+                  <span class="ncm-chip" style="color:#ff0033;border-color:rgba(255,0,51,0.35);background:rgba(255,0,51,0.08);">
                     <i class="fas fa-fire"></i> BURNED
                   </span>
                 {{/if}}
-
-                {{!-- Linked actor badge with player info --}}
-                {{#if selectedContact.actorId}}
-                  <span class="ncm-linked-badge">
-                    <i class="fas fa-link"></i> LINKED: {{selectedContact.actorName}}
-                    {{#if selectedContact.playerOwnerName}}
-                      <span class="ncm-linked-badge__player">
-                        <i class="fas fa-user"></i> {{selectedContact.playerOwnerName}}
-                      </span>
-                    {{/if}}
-                  </span>
-                {{/if}}
               </div>
+
+              {{#if selectedContact.actorId}}
+                <div class="ncm-linked-badge">
+                  <i class="fas fa-link"></i> LINKED: {{selectedContact.actorName}}
+                  {{#if selectedContact.playerOwnerName}}
+                    <span class="ncm-linked-badge__player">
+                      <i class="fas fa-user"></i> {{selectedContact.playerOwnerName}}
+                    </span>
+                  {{/if}}
+                </div>
+              {{/if}}
             </div>
           </div>
 
-          {{!-- ── Trust Level ── --}}
-          <div class="ncm-gm-section">Trust Level</div>
-          {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/trust-detail.hbs"
-              trustClass=selectedContact.trustClass
-              trustSegments=selectedContact.trustSegments
-              trustSegmentsDetail=selectedContact.trustData.segmentsDetail
-              isUnverified=selectedContact.isUnverified
-              trustDescription=selectedContact.trustDescription
-              trustLevel=selectedContact.trust
-              trustData=selectedContact.trustData
-              isGM=true
-              contactId=selectedContact.id }}
+          {{!-- ── Party Trust ── --}}
+          <div class="ncm-gm-section">
+            <i class="fas fa-shield-halved"></i> Party Trust
+            <span class="ncm-gm-section__hint">(group-wide baseline)</span>
+          </div>
+          <div class="ncm-trust-row">
+            <div class="ncm-trust-bar ncm-trust-bar--interactive" data-contact-id="{{selectedContact.id}}">
+              {{#each selectedContact.trustSegmentsDetail}}
+                <div class="ncm-trust-seg ncm-trust-seg--{{value}} {{#if active}}ncm-trust-seg--active{{/if}}"
+                     data-action="setTrustLevel" data-trust-value="{{value}}" data-contact-id="{{../selectedContact.id}}"></div>
+              {{/each}}
+            </div>
+            <div class="ncm-trust-label">{{selectedContact.trust}} — {{selectedContact.trustLabel}}</div>
+          </div>
 
           {{!-- ── Contact Info Grid ── --}}
-          <div class="ncm-gm-section">Contact Info</div>
+          <div class="ncm-gm-section"><i class="fas fa-address-card"></i> Contact Info</div>
           <div class="ncm-info-grid">
             <span class="ncm-info-label">Email</span>
-            <span class="ncm-info-value ncm-info-value--email">{{selectedContact.email}}</span>
+            <span class="ncm-info-value ncm-info-value--mono">{{selectedContact.email}}</span>
 
             {{#if selectedContact.phone}}
               <span class="ncm-info-label">Phone</span>
-              <span class="ncm-info-value ncm-info-value--phone">{{selectedContact.phone}}</span>
+              <span class="ncm-info-value ncm-info-value--mono" style="color: var(--ncm-accent, #f7c948);">{{selectedContact.phone}}</span>
             {{/if}}
 
             {{#if selectedContact.organization}}
@@ -254,44 +301,75 @@
               <span class="ncm-info-value">{{selectedContact.organization}}</span>
             {{/if}}
 
+            {{#if selectedContact.location}}
+              <span class="ncm-info-label">Location</span>
+              <span class="ncm-info-value">{{selectedContact.location}}</span>
+            {{/if}}
+
             {{#if selectedContact.network}}
               <span class="ncm-info-label">Network</span>
-              <span class="ncm-info-value ncm-info-value--email">{{selectedContact.network}}</span>
+              <span class="ncm-info-value ncm-info-value--mono">{{selectedContact.network}}</span>
             {{/if}}
 
             {{#if selectedContact.tags.length}}
               <span class="ncm-info-label">Tags</span>
               <span class="ncm-info-value">
                 {{#each selectedContact.tags}}
-                  <span class="ncm-tag-chip">{{this}}</span>
+                  <span class="ncm-tag-chip-inline">{{this}}</span>
                 {{/each}}
               </span>
             {{/if}}
           </div>
 
-          {{!-- ── Relationship Selector ── --}}
-          <div class="ncm-gm-section">Relationship</div>
-          <div class="ncm-relationship-row">
-            <select class="ncm-relationship-select" name="relationshipSelect">
-              <option value="" {{#unless selectedContact.relationship}}selected{{/unless}}>— None —</option>
-              <option value="ally" {{#if (eq selectedContact.relationship 'ally')}}selected{{/if}}>ALLY</option>
-              <option value="hostile" {{#if (eq selectedContact.relationship 'hostile')}}selected{{/if}}>HOSTILE</option>
-              <option value="owes-you" {{#if (eq selectedContact.relationship 'owes-you')}}selected{{/if}}>OWES YOU</option>
-              <option value="you-owe" {{#if (eq selectedContact.relationship 'you-owe')}}selected{{/if}}>YOU OWE</option>
-            </select>
-          </div>
+          {{!-- ── Per-Player Relationships ── --}}
+          {{#if selectedContact.playerRelationships.length}}
+            <div class="ncm-gm-section">
+              <i class="fas fa-users"></i> Player Relationships
+              <span class="ncm-gm-section__hint">(per-player trust overrides party baseline)</span>
+            </div>
+            <div class="ncm-rel-grid">
+              {{#each selectedContact.playerRelationships}}
+                <div class="ncm-rel-row">
+                  <div class="ncm-rel-row__avatar">{{initial}}</div>
+                  <div class="ncm-rel-row__info">
+                    <div class="ncm-rel-row__name">{{characterName}}</div>
+                    <div class="ncm-rel-row__player">player: {{playerName}}</div>
+                  </div>
+                  {{#if relBadgeLabel}}
+                    <span class="ncm-rel-badge" style="{{relBadgeStyle}}">
+                      <i class="fas {{relIcon}}"></i> {{relBadgeLabel}}
+                    </span>
+                  {{/if}}
+                  <div class="ncm-rel-trust-mini" title="Trust: {{displayTrust}}{{#if isOverride}} (OVERRIDE — party is {{partyTrust}}){{/if}}">
+                    {{#each trustSegments}}
+                      <div class="ncm-rel-trust-mini__seg {{#if active}}ncm-rel-trust-mini__seg--active s{{value}}{{/if}}"></div>
+                    {{/each}}
+                  </div>
+                  {{#if isOverride}}
+                    <span class="ncm-rel-trust-override" title="Trust differs from party baseline">OVR</span>
+                  {{/if}}
+                  <button class="ncm-rel-row__note-btn {{#if hasNote}}ncm-rel-row__note-btn--has-note{{/if}}"
+                          title="{{#if hasNote}}View note{{else}}Add note{{/if}}"
+                          data-action="toggleRelNote" data-actor-id="{{actorId}}">
+                    <i class="fas fa-sticky-note"></i>
+                  </button>
+                </div>
+                {{#if showNote}}
+                  <div class="ncm-rel-note">{{note}}</div>
+                {{/if}}
+              {{/each}}
+            </div>
+          {{/if}}
 
           {{!-- ── GM Notes ── --}}
-          <div class="ncm-gm-section">GM Notes</div>
-          <div class="ncm-gm-notes">
-            <span class="ncm-gm-notes__label">GM Only</span>
-            <textarea class="ncm-gm-notes__textarea"
-                      placeholder="Private GM notes... (auto-saves on blur)"
-                      rows="4">{{selectedContact.notes}}</textarea>
-          </div>
+          <div class="ncm-gm-section"><i class="fas fa-eye-slash"></i> GM Notes</div>
+          <textarea class="ncm-gm-notes__textarea"
+                    placeholder="Private GM notes... (auto-saves on blur)"
+                    rows="2">{{selectedContact.notes}}</textarea>
+          <div class="ncm-gm-notes__hint">GM only — auto-saves on blur</div>
 
-          {{!-- ── Share to Character to Player ── --}}
-          <div class="ncm-gm-section">Share / Share</div>
+          {{!-- ── Share to Player ── --}}
+          <div class="ncm-gm-section"><i class="fas fa-arrow-up-from-bracket"></i> Share</div>
           <div class="ncm-push-row">
             <select name="pushTargetActor" class="ncm-push-select">
               <option value="">Select character...</option>
@@ -311,60 +389,46 @@
 
           {{!-- ── Action Buttons ── --}}
           <div class="ncm-gm-detail__actions">
-            <button class="ncm-btn ncm-btn--secondary"
-                    data-action="composeToContact">
+            <button class="ncm-btn ncm-btn--secondary" data-action="composeToContact">
               <i class="fas fa-envelope"></i> Message
             </button>
-            <button class="ncm-btn ncm-btn--secondary"
-                    data-action="sendAsContact"
-                    title="Open composer as this contact">
+            <button class="ncm-btn ncm-btn--secondary" data-action="sendAsContact" title="Open composer as this contact">
               <i class="fas fa-paper-plane"></i> Send As
             </button>
-            <button class="ncm-btn ncm-btn--ghost"
-                    data-action="openContactInbox"
-                    title="View this contact's virtual inbox">
+            <button class="ncm-btn ncm-btn--ghost" data-action="openContactInbox" title="View this contact's virtual inbox">
               <i class="fas fa-inbox"></i> Inbox
             </button>
-            <button class="ncm-btn ncm-btn--ghost"
-                    data-action="editContact">
+            <button class="ncm-btn ncm-btn--ghost" data-action="editContact">
               <i class="fas fa-pen"></i> Edit
             </button>
-            <button class="ncm-btn ncm-btn--ghost"
-                    data-action="linkActor" title="Link or relink to Foundry actor">
+            <button class="ncm-btn ncm-btn--ghost" data-action="linkActor" title="Link or relink to Foundry actor">
               <i class="fas fa-link"></i> {{#if selectedContact.actorId}}Relink{{else}}Link Actor{{/if}}
             </button>
             {{#if selectedContact.actorId}}
-              <button class="ncm-btn ncm-btn--ghost"
-                      data-action="unlinkActor" title="Remove actor link">
+              <button class="ncm-btn ncm-btn--ghost" data-action="unlinkActor" title="Remove actor link">
                 <i class="fas fa-link-slash"></i> Unlink
               </button>
             {{/if}}
 
-            {{!-- Burn / Restore toggle --}}
             {{#if selectedContact.isBurned}}
-              <button class="ncm-btn ncm-btn--success ncm-btn--sm"
-                      data-action="restoreContact" title="Remove burned status">
+              <button class="ncm-btn ncm-btn--success ncm-btn--sm" data-action="restoreContact" title="Remove burned status">
                 <i class="fas fa-heart-pulse"></i> Restore
               </button>
             {{else}}
-              <button class="ncm-btn ncm-btn--ghost"
-                      data-action="burnContact"
-                      style="color: var(--ncm-danger, #ff0033); border-color: rgba(255,0,51,0.3);"
-                      title="Mark contact as burned/compromised">
+              <button class="ncm-btn ncm-btn--ghost" data-action="burnContact"
+                      style="color:#ff0033;border-color:rgba(255,0,51,0.3);" title="Mark contact as burned/compromised">
                 <i class="fas fa-fire"></i> Burn
               </button>
             {{/if}}
 
-            <button class="ncm-btn ncm-btn--ghost"
-                    data-action="deleteContact"
-                    style="color: var(--ncm-primary, #F65261); border-color: rgba(246,82,97,0.3);">
+            <button class="ncm-btn ncm-btn--ghost" data-action="deleteContact"
+                    style="color:var(--ncm-primary,#F65261);border-color:rgba(246,82,97,0.3);">
               <i class="fas fa-trash"></i> Delete
             </button>
           </div>
-
         </div>
 
-      {{!-- ═══ EMPTY STATE — No selection ═══ --}}
+      {{!-- ═══ EMPTY STATE ═══ --}}
       {{else}}
         <div class="ncm-gm-detail ncm-gm-detail--empty">
           <i class="fas fa-user-shield"></i>
@@ -397,7 +461,6 @@
 </div>
 
 {{else}}
-  {{!-- Service not available --}}
   <div class="ncm-gm-contacts ncm-gm-contacts--error">
     <div class="ncm-gm-empty" style="padding: 60px 20px;">
       <i class="fas fa-triangle-exclamation" style="font-size: 36px; color: var(--ncm-primary, #F65261);"></i>

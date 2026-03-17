@@ -1,23 +1,28 @@
 {{!--
-  Contact Form — Shared Create/Edit partial
+  Contact Form — Shared Create/Edit partial (Phase 2 Redesign)
   @file templates/contact-manager/partials/contact-form.hbs
   @module cyberpunkred-messenger
   @description Unified form used by both player ContactManagerApp and
     GM GMContactManagerApp for creating/editing contacts.
-    GM-only fields (notes, relationship, linked actor) are gated by {{#if isGM}}.
+    GM-only fields (notes, relationships, linked actor, ICE) gated by {{#if isGM}}.
+
+  Phase 2 changes:
+    - Role dropdown uses contact.role (not contact.type)
+    - Added: Ripperdoc, Civilian, Government, A.I. roles
+    - Custom roles from GM settings integrated via roleOptions/customRoles
+    - Location field in 3-column row (Role / Org / Location)
+    - Per-player relationship rows replace single relationship dropdown
+    - Party trust separate from per-player trust
+    - Compact ICE layout (DV + BLACK ICE in one row)
 
   @param {object|null} contact       — Contact data (null for create mode)
   @param {boolean}     isCreating    — True when creating a new contact
   @param {boolean}     isGM          — Whether current user is GM
   @param {Array}       [availableActors] — All actors for linking (GM only)
-
-  @example Player usage:
-    {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/contact-form.hbs"
-        contact=editingContact isCreating=isAdding isGM=false }}
-
-  @example GM usage:
-    {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/contact-form.hbs"
-        contact=selectedContact isCreating=isCreating isGM=true availableActors=availableActors }}
+  @param {Array}       [playerActors] — Player-owned actors (for relationship rows)
+  @param {Array}       [roleOptions] — Built-in + custom role options
+  @param {Array}       [customRoles] — Custom roles from GM settings
+  @param {Array}       [perPlayerRelationships] — Per-player relationship form data
 --}}
 
 <form class="ncm-contact-form">
@@ -67,24 +72,37 @@
     </div>
   </div>
 
-  {{!-- ── Role / Type + Organization ── --}}
-  <div class="ncm-form-row ncm-form-row--half">
+  {{!-- ── Role / Organization / Location (3-column) ── --}}
+  <div class="ncm-form-row ncm-form-row--thirds">
     <div class="ncm-form-group">
-      <label class="ncm-form-label">Role / Type</label>
-      <select name="role" class="ncm-form-select">
-        <option value="npc" {{#if (eq contact.type 'npc')}}selected{{/if}}>NPC</option>
-        <option value="fixer" {{#if (eq contact.type 'fixer')}}selected{{/if}}>Fixer</option>
-        <option value="solo" {{#if (eq contact.type 'solo')}}selected{{/if}}>Solo</option>
-        <option value="netrunner" {{#if (eq contact.type 'netrunner')}}selected{{/if}}>Netrunner</option>
-        <option value="tech" {{#if (eq contact.type 'tech')}}selected{{/if}}>Tech</option>
-        <option value="medtech" {{#if (eq contact.type 'medtech')}}selected{{/if}}>Medtech</option>
-        <option value="media" {{#if (eq contact.type 'media')}}selected{{/if}}>Media</option>
-        <option value="exec" {{#if (eq contact.type 'exec')}}selected{{/if}}>Exec</option>
-        <option value="lawman" {{#if (eq contact.type 'lawman')}}selected{{/if}}>Lawman</option>
-        <option value="nomad" {{#if (eq contact.type 'nomad')}}selected{{/if}}>Nomad</option>
-        <option value="rockerboy" {{#if (eq contact.type 'rockerboy')}}selected{{/if}}>Rockerboy</option>
-        <option value="corp" {{#if (eq contact.type 'corp')}}selected{{/if}}>Corp</option>
-        <option value="gang" {{#if (eq contact.type 'gang')}}selected{{/if}}>Gang</option>
+      <label class="ncm-form-label">Role</label>
+      <select name="role" class="ncm-form-select ncm-form-select--role">
+        <option value="npc" {{#if (eq contact.role 'npc')}}selected{{/if}}>NPC</option>
+        <option value="" disabled>── Roles ──</option>
+        <option value="fixer" {{#if (eq contact.role 'fixer')}}selected{{/if}}>Fixer</option>
+        <option value="solo" {{#if (eq contact.role 'solo')}}selected{{/if}}>Solo</option>
+        <option value="netrunner" {{#if (eq contact.role 'netrunner')}}selected{{/if}}>Netrunner</option>
+        <option value="tech" {{#if (eq contact.role 'tech')}}selected{{/if}}>Tech</option>
+        <option value="medtech" {{#if (eq contact.role 'medtech')}}selected{{/if}}>Medtech</option>
+        <option value="ripperdoc" {{#if (eq contact.role 'ripperdoc')}}selected{{/if}}>Ripperdoc</option>
+        <option value="media" {{#if (eq contact.role 'media')}}selected{{/if}}>Media</option>
+        <option value="exec" {{#if (eq contact.role 'exec')}}selected{{/if}}>Exec</option>
+        <option value="corp" {{#if (eq contact.role 'corp')}}selected{{/if}}>Corp</option>
+        <option value="lawman" {{#if (eq contact.role 'lawman')}}selected{{/if}}>Lawman</option>
+        <option value="nomad" {{#if (eq contact.role 'nomad')}}selected{{/if}}>Nomad</option>
+        <option value="rockerboy" {{#if (eq contact.role 'rockerboy')}}selected{{/if}}>Rockerboy</option>
+        <option value="" disabled>── Types ──</option>
+        <option value="gang" {{#if (eq contact.role 'gang')}}selected{{/if}}>Gang</option>
+        <option value="civilian" {{#if (eq contact.role 'civilian')}}selected{{/if}}>Civilian</option>
+        <option value="government" {{#if (eq contact.role 'government')}}selected{{/if}}>Government</option>
+        <option value="ai" {{#if (eq contact.role 'ai')}}selected{{/if}}>A.I.</option>
+        {{!-- Custom roles --}}
+        {{#if customRoles.length}}
+          <option value="" disabled>── Custom ──</option>
+          {{#each customRoles}}
+            <option value="{{id}}" {{#if (eq id ../contact.role)}}selected{{/if}}>{{label}}</option>
+          {{/each}}
+        {{/if}}
       </select>
     </div>
     <div class="ncm-form-group">
@@ -92,21 +110,22 @@
       <input type="text" name="organization" value="{{contact.organization}}"
              placeholder="Afterlife Bar" class="ncm-form-input" />
     </div>
+    <div class="ncm-form-group">
+      <label class="ncm-form-label"><i class="fas fa-location-dot" style="color: #c47a2a; font-size: 8px;"></i> Location</label>
+      <input type="text" name="location" value="{{contact.location}}"
+             placeholder="Afterlife, Watson" class="ncm-form-input" />
+    </div>
   </div>
 
-  {{!-- ── Portrait Path ── --}}
-  <div class="ncm-form-row">
+  {{!-- ── Portrait + Tags ── --}}
+  <div class="ncm-form-row ncm-form-row--half">
     <div class="ncm-form-group">
       <label class="ncm-form-label">Portrait</label>
       <input type="text" name="portrait" value="{{contact.portrait}}"
              placeholder="path/to/image.png" class="ncm-form-input ncm-form-input--mono" />
     </div>
-  </div>
-
-  {{!-- ── Tags ── --}}
-  <div class="ncm-form-row">
     <div class="ncm-form-group">
-      <label class="ncm-form-label">Tags <span class="ncm-form-hint">(comma-separated, auto-uppercased)</span></label>
+      <label class="ncm-form-label">Tags <span class="ncm-form-hint">(comma-separated)</span></label>
       <input type="text" name="tags"
              value="{{#each contact.tags}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}"
              placeholder="HEIST CREW, TRUSTED, ARASAKA"
@@ -119,48 +138,27 @@
        ═══════════════════════════════════════════ --}}
   {{#if isGM}}
 
-    {{!-- ── Trust Level (per-player-per-contact) ── --}}
-    <div class="ncm-form-row">
+    {{!-- GM section divider --}}
+    <div class="ncm-form-divider-label"><i class="fas fa-shield-halved"></i> GM-ONLY FIELDS</div>
+    <hr class="ncm-form-divider" />
+
+    {{!-- ── Party Trust + Linked Actor ── --}}
+    <div class="ncm-form-row ncm-form-row--half">
       <div class="ncm-form-group">
         <label class="ncm-form-label">
-          <i class="fas fa-shield-halved" style="color: var(--ncm-success, #00ff41);"></i>
-          Trust Level
-          <span class="ncm-form-hint">(This player's trust for this contact)</span>
+          <i class="fas fa-shield-halved" style="color: var(--ncm-success, #00ff41); font-size: 8px;"></i>
+          Party Trust
+          <span class="ncm-form-hint">(group baseline)</span>
         </label>
-        <div class="ncm-trust-edit-row">
-          <select name="trust" class="ncm-form-select ncm-form-select--trust">
-            <option value="0" {{#if (eq contact.trust 0)}}selected{{/if}}>0 — Unknown</option>
-            <option value="1" {{#if (eq contact.trust 1)}}selected{{/if}}>1 — Suspicious</option>
-            <option value="2" {{#if (eq contact.trust 2)}}selected{{/if}}>2 — Cautious</option>
-            <option value="3" {{#if (eq contact.trust 3)}}selected{{/if}}>3 — Neutral</option>
-            <option value="4" {{#if (eq contact.trust 4)}}selected{{/if}}>4 — Trusted</option>
-            <option value="5" {{#if (eq contact.trust 5)}}selected{{/if}}>5 — Implicitly Trusted</option>
-          </select>
-          <div class="ncm-trust-edit-bar">
-            {{#each contact.trustSegmentsDetail}}
-              <div class="ncm-trust-edit-seg {{#if active}}ncm-trust-edit-seg--active{{/if}}"></div>
-            {{/each}}
-          </div>
-        </div>
-      </div>
-    </div>
-
-    {{!-- ── Relationship ── --}}
-    <div class="ncm-form-row">
-      <div class="ncm-form-group">
-        <label class="ncm-form-label">Relationship</label>
-        <select name="relationship" class="ncm-form-select">
-          <option value="" {{#unless contact.relationship}}selected{{/unless}}>— None —</option>
-          <option value="ally" {{#if (eq contact.relationship 'ally')}}selected{{/if}}>ALLY</option>
-          <option value="hostile" {{#if (eq contact.relationship 'hostile')}}selected{{/if}}>HOSTILE</option>
-          <option value="owes-you" {{#if (eq contact.relationship 'owes-you')}}selected{{/if}}>OWES YOU</option>
-          <option value="you-owe" {{#if (eq contact.relationship 'you-owe')}}selected{{/if}}>YOU OWE</option>
+        <select name="trust" class="ncm-form-select ncm-form-select--trust">
+          <option value="0" {{#if (eq contact.trust 0)}}selected{{/if}}>0 — Unknown</option>
+          <option value="1" {{#if (eq contact.trust 1)}}selected{{/if}}>1 — Suspicious</option>
+          <option value="2" {{#if (eq contact.trust 2)}}selected{{/if}}>2 — Cautious</option>
+          <option value="3" {{#if (eq contact.trust 3)}}selected{{/if}}>3 — Neutral</option>
+          <option value="4" {{#if (eq contact.trust 4)}}selected{{/if}}>4 — Trusted</option>
+          <option value="5" {{#if (eq contact.trust 5)}}selected{{/if}}>5 — Implicitly Trusted</option>
         </select>
       </div>
-    </div>
-
-    {{!-- ── Linked Actor ── --}}
-    <div class="ncm-form-row">
       <div class="ncm-form-group">
         <label class="ncm-form-label">Linked Actor</label>
         <select name="actorId" class="ncm-form-select">
@@ -174,11 +172,11 @@
       </div>
     </div>
 
-    {{!-- ── ICE / Encryption ── --}}
+    {{!-- ── ICE / Encryption (compact) ── --}}
     <div class="ncm-form-row ncm-form-row--half">
       <div class="ncm-form-group">
         <label class="ncm-form-label">
-          <i class="fas fa-lock" style="color: var(--ncm-accent, #f7c948);"></i>
+          <i class="fas fa-lock" style="color: var(--ncm-accent, #f7c948); font-size: 8px;"></i>
           ICE Encryption
         </label>
         <select name="encrypted" class="ncm-form-select">
@@ -187,39 +185,73 @@
         </select>
       </div>
       <div class="ncm-form-group">
-        <label class="ncm-form-label">ICE Difficulty (DV)</label>
-        <input type="number" name="encryptionDV" value="{{contact.encryptionDV}}"
-               placeholder="15" min="8" max="30" step="1"
-               class="ncm-form-input ncm-form-input--mono" />
+        <label class="ncm-form-label">ICE DV / BLACK ICE</label>
+        <div class="ncm-form-ice-compact">
+          <input type="number" name="encryptionDV" value="{{contact.encryptionDV}}"
+                 placeholder="15" min="8" max="30" step="1"
+                 class="ncm-form-input ncm-form-input--mono ncm-form-input--dv" />
+          <select name="blackIce" class="ncm-form-select ncm-form-select--ice">
+            <option value="false" {{#unless contact.blackIce}}selected{{/unless}}>No BLACK ICE</option>
+            <option value="true" {{#if contact.blackIce}}selected{{/if}}>BLACK ICE Active</option>
+          </select>
+          <input type="text" name="blackIceDamage" value="{{contact.blackIceDamage}}"
+                 placeholder="dmg" class="ncm-form-input ncm-form-input--mono ncm-form-input--dmg" />
+        </div>
       </div>
     </div>
 
-    <div class="ncm-form-row ncm-form-row--half">
-      <div class="ncm-form-group">
-        <label class="ncm-form-label">
-          <i class="fas fa-skull-crossbones" style="color: var(--ncm-danger, #ff0033);"></i>
-          BLACK ICE
-        </label>
-        <select name="blackIce" class="ncm-form-select">
-          <option value="false" {{#unless contact.blackIce}}selected{{/unless}}>None</option>
-          <option value="true" {{#if contact.blackIce}}selected{{/if}}>BLACK ICE Active</option>
-        </select>
+    {{!-- ── Per-Player Relationships ── --}}
+    {{#if perPlayerRelationships.length}}
+      <div class="ncm-form-row">
+        <div class="ncm-form-group">
+          <label class="ncm-form-label">
+            <i class="fas fa-users" style="color: var(--ncm-secondary, #19f3f7); font-size: 8px;"></i>
+            Per-Player Relationships
+            <span class="ncm-form-hint">(leave trust empty = inherit party)</span>
+          </label>
+          <div class="ncm-rel-form-grid">
+            {{#each perPlayerRelationships}}
+              <div class="ncm-rel-form-row" data-actor-id="{{actorId}}">
+                <div class="ncm-rel-form-row__pip">{{initial}}</div>
+                <span class="ncm-rel-form-row__name">{{characterName}}</span>
+                <select class="ncm-form-select ncm-rel-select" style="width: 100px; font-size: 9px; padding: 3px 18px 3px 5px;">
+                  <option value="">— None —</option>
+                  <option value="ally" {{#if (eq relType 'ally')}}selected{{/if}}>Ally</option>
+                  <option value="contact" {{#if (eq relType 'contact')}}selected{{/if}}>Contact</option>
+                  <option value="neutral" {{#if (eq relType 'neutral')}}selected{{/if}}>Neutral</option>
+                  <option value="hostile" {{#if (eq relType 'hostile')}}selected{{/if}}>Hostile</option>
+                  <option value="rival" {{#if (eq relType 'rival')}}selected{{/if}}>Rival</option>
+                  <option value="owes-you" {{#if (eq relType 'owes-you')}}selected{{/if}}>Owes You</option>
+                  <option value="you-owe" {{#if (eq relType 'you-owe')}}selected{{/if}}>You Owe</option>
+                  <option value="patron" {{#if (eq relType 'patron')}}selected{{/if}}>Patron</option>
+                  <option value="informant" {{#if (eq relType 'informant')}}selected{{/if}}>Informant</option>
+                </select>
+                <div class="ncm-rel-form-trust" data-trust="{{trustValue}}" title="Player trust (click to set, leave empty = use party baseline)">
+                  <div class="ncm-rel-form-trust__pip s1 {{#if (ncm-eq trustLevel1 true)}}ncm-rel-form-trust__pip--active{{/if}}" data-pip="1"></div>
+                  <div class="ncm-rel-form-trust__pip s2 {{#if (ncm-eq trustLevel2 true)}}ncm-rel-form-trust__pip--active{{/if}}" data-pip="2"></div>
+                  <div class="ncm-rel-form-trust__pip s3 {{#if (ncm-eq trustLevel3 true)}}ncm-rel-form-trust__pip--active{{/if}}" data-pip="3"></div>
+                  <div class="ncm-rel-form-trust__pip s4 {{#if (ncm-eq trustLevel4 true)}}ncm-rel-form-trust__pip--active{{/if}}" data-pip="4"></div>
+                  <div class="ncm-rel-form-trust__pip s5 {{#if (ncm-eq trustLevel5 true)}}ncm-rel-form-trust__pip--active{{/if}}" data-pip="5"></div>
+                </div>
+                <span class="ncm-rel-form-row__trust-label {{#if isOverride}}ncm-rel-form-row__trust-label--override{{/if}}">{{trustDisplay}}</span>
+                <input type="text" class="ncm-rel-form-row__note-input ncm-rel-note-input"
+                       value="{{note}}" placeholder="Relationship note..." />
+              </div>
+            {{/each}}
+          </div>
+        </div>
       </div>
-      <div class="ncm-form-group">
-        <label class="ncm-form-label">BLACK ICE Damage</label>
-        <input type="text" name="blackIceDamage" value="{{contact.blackIceDamage}}"
-               placeholder="3d6" class="ncm-form-input ncm-form-input--mono" />
-      </div>
-    </div>
+    {{/if}}
 
     {{!-- ── GM Notes ── --}}
     <div class="ncm-form-row">
       <div class="ncm-form-group">
         <label class="ncm-form-label">
+          <i class="fas fa-eye-slash" style="font-size: 8px;"></i>
           GM Notes
-          <span class="ncm-form-hint ncm-form-hint--danger">(GM only — never shared to players)</span>
+          <span class="ncm-form-hint ncm-form-hint--danger">(never shared)</span>
         </label>
-        <textarea name="notes" rows="3" placeholder="Private GM notes..."
+        <textarea name="notes" rows="2" placeholder="Private GM notes..."
                   class="ncm-form-textarea">{{contact.notes}}</textarea>
       </div>
     </div>
