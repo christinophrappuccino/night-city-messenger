@@ -352,6 +352,39 @@
                 {{/if}}
               </div>
               <div class="ncm-ct-detail__right">
+                {{!-- Per-Player Relationships --}}
+                {{#if this.hasPlayerRelationships}}
+                <div>
+                  <div class="ncm-ct-detail__section-label">Player Relationships</div>
+                  <div class="ncm-ct-detail__rels">
+                    {{#each this.playerRelationships}}
+                      {{#if this.relType}}
+                      <div class="ncm-ct-detail__rel-row">
+                        <div class="ncm-ct-detail__rel-pip">{{this.initial}}</div>
+                        <span class="ncm-ct-detail__rel-name">{{this.characterName}}</span>
+                        {{#if this.relBadgeLabel}}
+                          <span class="ncm-ct-detail__rel-badge" style="{{this.relBadgeStyle}}">
+                            <i class="fas {{this.relIcon}}"></i> {{this.relBadgeLabel}}
+                          </span>
+                        {{/if}}
+                        <div class="ncm-ct-detail__rel-trust" title="Trust: {{this.displayTrust}}{{#if this.isOverride}} (override){{/if}}">
+                          {{#each this.trustSegments}}
+                            <div class="ncm-ct-detail__rel-tseg {{#if this.active}}ncm-ct-detail__rel-tseg--on ncm-ct-detail__rel-tseg--s{{this.value}}{{/if}}"></div>
+                          {{/each}}
+                        </div>
+                        {{#if this.isOverride}}
+                          <span class="ncm-ct-detail__rel-ovr">OVR</span>
+                        {{/if}}
+                        {{#if this.hasNote}}
+                          <i class="fas fa-sticky-note ncm-ct-detail__rel-note-icon" title="{{this.note}}"></i>
+                        {{/if}}
+                      </div>
+                      {{/if}}
+                    {{/each}}
+                  </div>
+                </div>
+                {{/if}}
+
                 <div class="ncm-ct-detail__section-label">Recent Messages</div>
                 {{#if this.recentMessages.length}}
                   {{#each this.recentMessages}}

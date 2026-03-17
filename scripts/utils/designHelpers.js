@@ -520,18 +520,24 @@ export function getThreatBadgeData(message) {
  * @type {Record<string, string>}
  */
 const ROLE_ICONS = {
-  fixer:     'fa-crosshairs',
-  netrunner: 'fa-terminal',
-  solo:      'fa-gun',
-  tech:      'fa-screwdriver-wrench',
-  medtech:   'fa-kit-medical',
-  media:     'fa-camera',
-  exec:      'fa-building',
-  lawman:    'fa-shield-halved',
-  nomad:     'fa-van-shuttle',
-  rockerboy: 'fa-guitar',
-  corp:      'fa-building',
-  gang:      'fa-skull',
+  fixer:      'fa-crosshairs',
+  netrunner:  'fa-terminal',
+  runner:     'fa-terminal',
+  solo:       'fa-gun',
+  tech:       'fa-screwdriver-wrench',
+  medtech:    'fa-kit-medical',
+  ripperdoc:  'fa-syringe',
+  media:      'fa-camera',
+  exec:       'fa-building-columns',
+  lawman:     'fa-shield-halved',
+  nomad:      'fa-van-shuttle',
+  rockerboy:  'fa-guitar',
+  rocker:     'fa-guitar',
+  corp:       'fa-building',
+  gang:       'fa-users-line',
+  civilian:   'fa-user',
+  government: 'fa-landmark',
+  ai:         'fa-microchip',
 };
 
 /**

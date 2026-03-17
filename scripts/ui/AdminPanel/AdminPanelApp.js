@@ -586,9 +586,21 @@ export class AdminPanelApp extends BaseApplication {
       lawman:    { label: 'Lawman',    type: 'role-lawman',     icon: 'shield-halved' },
       rockerboy: { label: 'Rocker',    type: 'role-rocker',     icon: 'guitar' },
       rocker:    { label: 'Rocker',    type: 'role-rocker',     icon: 'guitar' },
+      gang:       { label: 'Gang',       type: 'role-gang',       icon: 'users-line' },
+      civilian:   { label: 'Civilian',   type: 'role-civilian',   icon: 'user' },
+      government: { label: 'Gov',        type: 'role-gov',        icon: 'landmark' },
+      ai:         { label: 'A.I.',       type: 'role-ai',         icon: 'microchip' },
     };
 
-    const trustLabels = { 5: 'Trusted', 4: 'Trusted', 3: 'Neutral', 2: 'Wary', 1: 'Hostile', 0: 'Unknown' };
+    // Merge custom roles from GM settings
+    const customRoles = this.masterContactService?.getCustomRoles?.() || [];
+    for (const cr of customRoles) {
+      if (!roleChipMap[cr.id]) {
+        roleChipMap[cr.id] = { label: cr.label, type: `role-${cr.id}`, icon: cr.icon || 'tag' };
+      }
+    }
+
+    const trustLabels = { 5: 'Implicitly Trusted', 4: 'Trusted', 3: 'Neutral', 2: 'Cautious', 1: 'Suspicious', 0: 'Unknown' };
 
     // ── Gather player-owned actors for "Known by" + Player Characters group ──
     const playerActors = [];
@@ -632,6 +644,19 @@ export class AdminPanelApp extends BaseApplication {
       return { pips, expanded };
     };
 
+    // ── Relationship type config (used in enriched contact per-player display) ──
+    const RELATIONSHIP_TYPES = {
+      ally:       { label: 'ALLY',       icon: 'fa-handshake',            color: '#00ff41' },
+      hostile:    { label: 'HOSTILE',    icon: 'fa-skull-crossbones',     color: '#ff0033' },
+      rival:      { label: 'RIVAL',     icon: 'fa-bolt',                 color: '#b87aff' },
+      neutral:    { label: 'NEUTRAL',   icon: 'fa-minus',                color: '#555570' },
+      contact:    { label: 'CONTACT',   icon: 'fa-address-card',         color: '#7aa2c4' },
+      'owes-you': { label: 'OWES YOU',  icon: 'fa-coins',                color: '#f7c948' },
+      'you-owe':  { label: 'YOU OWE',   icon: 'fa-hand-holding-dollar',  color: '#d4844a' },
+      patron:     { label: 'PATRON',    icon: 'fa-crown',                color: '#6ec1e4' },
+      informant:  { label: 'INFORMANT', icon: 'fa-user-secret',          color: '#1abc9c' },
+    };
+
     // ── Enrich all master contacts ──
     const enriched = contacts.map(c => {
       const trust = c.trust ?? 0;
@@ -666,7 +691,13 @@ export class AdminPanelApp extends BaseApplication {
         nomad: '#d4844a',
         lawman: '#6b8fa3',
         rockerboy: '#e05cb5', rocker: '#e05cb5',
+        gang: '#cc4444', civilian: '#8888a0',
+        government: '#5a7fa5', ai: '#ff44cc',
       };
+      // Merge custom role colors
+      for (const cr of customRoles) {
+        if (cr.color && !roleAvatarColors[cr.id]) roleAvatarColors[cr.id] = cr.color;
+      }
       let avatarColor = roleAvatarColors[roleLower] || '#9a9ab5';
       if (c.burned) avatarColor = '#ff3355';
       else if (c.encrypted) avatarColor = '#f7c948';
@@ -705,11 +736,29 @@ export class AdminPanelApp extends BaseApplication {
         'role-nomad':     { c: '#d4844a', b: 'rgba(212,132,74,0.35)',  bg: 'rgba(212,132,74,0.10)' },
         'role-lawman':    { c: '#6b8fa3', b: 'rgba(107,143,163,0.35)', bg: 'rgba(107,143,163,0.10)' },
         'role-rocker':    { c: '#e05cb5', b: 'rgba(224,92,181,0.35)', bg: 'rgba(224,92,181,0.10)' },
+        'role-gang':      { c: '#cc4444', b: 'rgba(204,68,68,0.35)',  bg: 'rgba(204,68,68,0.10)' },
+        'role-civilian':  { c: '#8888a0', b: 'rgba(136,136,160,0.35)', bg: 'rgba(136,136,160,0.10)' },
+        'role-gov':       { c: '#5a7fa5', b: 'rgba(90,127,165,0.35)', bg: 'rgba(90,127,165,0.10)' },
+        'role-ai':        { c: '#ff44cc', b: 'rgba(255,68,204,0.35)', bg: 'rgba(255,68,204,0.10)' },
         'org':            { c: '#7aa2c4', b: 'rgba(122,162,196,0.35)', bg: 'rgba(122,162,196,0.10)' },
         'loc':            { c: '#c47a2a', b: 'rgba(196,122,42,0.35)',  bg: 'rgba(196,122,42,0.10)' },
         'tag':            { c: '#19f3f7', b: 'rgba(25,243,247,0.30)',  bg: 'rgba(25,243,247,0.08)' },
         'alias':          { c: '#c8c8dc', b: 'rgba(200,200,220,0.30)', bg: 'rgba(200,200,220,0.06)' },
       };
+      // Merge custom role chip colors dynamically
+      for (const cr of customRoles) {
+        const key = `role-${cr.id}`;
+        if (!chipColorMap[key] && cr.color) {
+          const r = parseInt(cr.color.slice(1, 3), 16);
+          const g = parseInt(cr.color.slice(3, 5), 16);
+          const b = parseInt(cr.color.slice(5, 7), 16);
+          chipColorMap[key] = {
+            c: cr.color,
+            b: `rgba(${r},${g},${b},0.35)`,
+            bg: `rgba(${r},${g},${b},0.10)`,
+          };
+        }
+      }
       const _chipStyle = (type) => {
         const cm = chipColorMap[type];
         return cm ? `color:${cm.c};border-color:${cm.b};background:${cm.bg};` : '';
@@ -744,6 +793,41 @@ export class AdminPanelApp extends BaseApplication {
 
       // Notes preview (first ~60 chars)
       const notesPreview = c.notes ? (c.notes.length > 60 ? c.notes.slice(0, 60) + '...' : c.notes) : '';
+
+      // Per-player relationship summary for expanded detail
+      const rels = c.relationships || {};
+      const partyTrust = trust;
+      const playerRelationships = playerActors.map(pa => {
+        const rel = rels[pa.actorId] || {};
+        const relType = rel.type || '';
+        const relData = RELATIONSHIP_TYPES[relType];
+        const playerTrust = rel.trust != null ? rel.trust : partyTrust;
+        const isOverride = rel.trust != null && rel.trust !== partyTrust;
+        const _badgeStyle = (color) => {
+          if (!color) return '';
+          const rr = parseInt(color.slice(1, 3), 16);
+          const gg = parseInt(color.slice(3, 5), 16);
+          const bb = parseInt(color.slice(5, 7), 16);
+          return `color:${color};border-color:rgba(${rr},${gg},${bb},0.35);background:rgba(${rr},${gg},${bb},0.08);`;
+        };
+        return {
+          actorId: pa.actorId,
+          characterName: pa.actorName,
+          playerName: pa.playerName,
+          initial: pa.initial,
+          relType,
+          relBadgeLabel: relData?.label || '',
+          relIcon: relData?.icon || '',
+          relBadgeStyle: relData ? _badgeStyle(relData.color) : '',
+          displayTrust: playerTrust,
+          partyTrust,
+          isOverride,
+          trustSegments: [1, 2, 3, 4, 5].map(v => ({ value: v, active: v <= playerTrust })),
+          hasNote: !!rel.note,
+          note: rel.note || '',
+        };
+      });
+      const hasPlayerRelationships = playerRelationships.some(pr => pr.relType || pr.hasNote || pr.isOverride);
 
       return {
         id: c.id,
@@ -794,6 +878,9 @@ export class AdminPanelApp extends BaseApplication {
         noInbox: false,
         isExpanded: this._expandedContactId === c.id,
         isSelected: this._selectedContacts.has(c.id),
+        // Per-player relationships (for expanded detail)
+        playerRelationships,
+        hasPlayerRelationships,
         // Recent messages (populated below for expanded contact)
         recentMessages: [],
       };
@@ -833,6 +920,7 @@ export class AdminPanelApp extends BaseApplication {
         updatedAt: '', noInbox: !email,
         isExpanded: this._expandedContactId === `pc-${pa.actorId}`,
         isSelected: this._selectedContacts.has(`pc-${pa.actorId}`),
+        playerRelationships: [], hasPlayerRelationships: false,
         recentMessages: [],
       });
     }

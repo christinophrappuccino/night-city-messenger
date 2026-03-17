@@ -787,6 +787,65 @@
 
   /* Right column — recent messages */
 .ncm-app .ncm-ct-detail__right { display: flex !important; flex-direction: column !important; gap: 6px !important; }
+
+  /* Per-player relationship rows in expanded detail */
+.ncm-app .ncm-ct-detail__rels {
+    display: flex !important; flex-direction: column !important; gap: 3px !important;
+    margin-bottom: 6px !important;
+  }
+.ncm-app .ncm-ct-detail__rel-row {
+    display: flex !important; align-items: center !important; gap: 5px !important;
+    padding: 3px 6px !important;
+    background: var(--ncm-bg-deep) !important;
+    border: 1px solid var(--ncm-border) !important;
+    border-radius: 2px !important;
+  }
+.ncm-app .ncm-ct-detail__rel-pip {
+    width: 18px !important; height: 18px !important; border-radius: 50% !important;
+    border: 1px solid rgba(25, 243, 247, 0.3) !important;
+    display: flex !important; align-items: center !important; justify-content: center !important;
+    font-family: var(--ncm-font-display) !important; font-weight: 700 !important; font-size: 8px !important;
+    color: var(--ncm-secondary) !important;
+    background: var(--ncm-bg-elevated) !important;
+    flex-shrink: 0 !important;
+  }
+.ncm-app .ncm-ct-detail__rel-name {
+    font-family: var(--ncm-font-display) !important; font-weight: 600 !important; font-size: 10px !important;
+    color: var(--ncm-text-primary) !important;
+    min-width: 50px !important; flex-shrink: 0 !important;
+  }
+.ncm-app .ncm-ct-detail__rel-badge {
+    display: inline-flex !important; align-items: center !important; gap: 3px !important;
+    font-family: var(--ncm-font-display) !important; font-weight: 700 !important; font-size: 7px !important;
+    text-transform: uppercase !important;
+    padding: 1px 5px !important; border-radius: 2px !important; border: 1px solid !important;
+    letter-spacing: 0.03em !important; flex-shrink: 0 !important; line-height: 1.3 !important;
+  }
+.ncm-app .ncm-ct-detail__rel-badge i { font-size: 6px !important; }
+.ncm-app .ncm-ct-detail__rel-trust {
+    display: flex !important; gap: 1px !important; height: 4px !important;
+    width: 40px !important; flex-shrink: 0 !important;
+  }
+.ncm-app .ncm-ct-detail__rel-tseg {
+    flex: 1 !important;
+    background: var(--ncm-bg-elevated) !important;
+    border-radius: 1px !important;
+  }
+.ncm-app .ncm-ct-detail__rel-tseg--on.ncm-ct-detail__rel-tseg--s1 { background: #ff0033 !important; }
+.ncm-app .ncm-ct-detail__rel-tseg--on.ncm-ct-detail__rel-tseg--s2 { background: #ff6600 !important; }
+.ncm-app .ncm-ct-detail__rel-tseg--on.ncm-ct-detail__rel-tseg--s3 { background: var(--ncm-accent) !important; }
+.ncm-app .ncm-ct-detail__rel-tseg--on.ncm-ct-detail__rel-tseg--s4 { background: #66cc44 !important; }
+.ncm-app .ncm-ct-detail__rel-tseg--on.ncm-ct-detail__rel-tseg--s5 { background: var(--ncm-success) !important; }
+.ncm-app .ncm-ct-detail__rel-ovr {
+    font-family: var(--ncm-font-mono) !important; font-size: 6px !important;
+    color: var(--ncm-accent) !important; letter-spacing: 0.05em !important;
+    flex-shrink: 0 !important;
+  }
+.ncm-app .ncm-ct-detail__rel-note-icon {
+    font-size: 8px !important; color: var(--ncm-accent) !important;
+    flex-shrink: 0 !important; margin-left: auto !important;
+    cursor: help !important;
+  }
 .ncm-app .ncm-ct-detail__section-label {
     font-family: var(--ncm-font-display) !important; font-size: 8px !important; font-weight: 700 !important;
     color: #6e6e88 !important; text-transform: uppercase !important;
