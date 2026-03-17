@@ -125,8 +125,13 @@
   <div class="ncm-form-row ncm-form-row--half">
     <div class="ncm-form-group">
       <label class="ncm-form-label">Portrait</label>
-      <input type="text" name="portrait" value="{{contact.portrait}}"
-             placeholder="path/to/image.png" class="ncm-form-input ncm-form-input--mono" />
+      <div class="ncm-form-input-row">
+        <input type="text" name="portrait" value="{{contact.portrait}}"
+               placeholder="path/to/image.png" class="ncm-form-input ncm-form-input--mono" />
+        <button type="button" class="ncm-form-browse-btn" data-action="browsePortrait" title="Browse files">
+          <i class="fas fa-folder-open"></i>
+        </button>
+      </div>
     </div>
     <div class="ncm-form-group">
       <label class="ncm-form-label">Tags <span class="ncm-form-hint">(comma-separated)</span></label>
@@ -184,10 +189,15 @@
           Folder
           <span class="ncm-form-hint">(for manual grouping — type or pick existing)</span>
         </label>
-        <input type="text" name="folder" value="{{contact.folder}}"
-               placeholder="e.g. Main Story NPCs"
-               class="ncm-form-input"
-               list="ncm-folder-list" autocomplete="off" />
+        <div class="ncm-form-input-row">
+          <input type="text" name="folder" value="{{contact.folder}}"
+                 placeholder="e.g. Main Story NPCs"
+                 class="ncm-form-input"
+                 list="ncm-folder-list" autocomplete="off" />
+          <button type="button" class="ncm-form-browse-btn" data-action="createFolderInline" title="Create new folder">
+            <i class="fas fa-folder-plus"></i>
+          </button>
+        </div>
         <datalist id="ncm-folder-list">
           {{#each existingFolders}}
             <option value="{{this}}">

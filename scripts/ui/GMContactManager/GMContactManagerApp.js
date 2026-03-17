@@ -181,6 +181,8 @@ export class GMContactManagerApp extends BaseApplication {
       // ─── Portrait ───
       uploadPortrait:   GMContactManagerApp._onUploadPortrait,
       removePortrait:   GMContactManagerApp._onRemovePortrait,
+      browsePortrait:   GMContactManagerApp._onBrowsePortrait,
+      createFolderInline: GMContactManagerApp._onCreateFolderInline,
       // ─── Tag filters ───
       toggleTagFilter:  GMContactManagerApp._onToggleTagFilter,
       clearTagFilters:  GMContactManagerApp._onClearTagFilters,
@@ -1520,6 +1522,48 @@ export class GMContactManagerApp extends BaseApplication {
     if (!contactId) return;
     await this.masterContactService.updateContact(contactId, { portrait: '' });
     this.render();
+  }
+
+  /**
+   * Browse for a portrait image via FilePicker — fills the form input (doesn't save).
+   */
+  static _onBrowsePortrait(event, target) {
+    event.stopPropagation();
+    const input = this.element?.querySelector('[name="portrait"]');
+    if (!input) return;
+
+    const fp = new FilePicker({
+      type: 'image',
+      current: input.value || '',
+      callback: (path) => {
+        if (path) input.value = path;
+      },
+    });
+    fp.browse();
+  }
+
+  /**
+   * Create a new folder name via prompt and fill into the folder input.
+   */
+  static async _onCreateFolderInline(event, target) {
+    event.stopPropagation();
+    const result = await Dialog.prompt({
+      title: 'Create Folder',
+      content: `
+        <form class="ncm-dialog-form">
+          <div class="form-group">
+            <label>Folder Name</label>
+            <input type="text" name="folderName" placeholder="e.g. Main Story NPCs" maxlength="40" autofocus />
+          </div>
+        </form>`,
+      callback: (html) => (html[0] || html).querySelector('[name="folderName"]')?.value?.trim(),
+      rejectClose: false,
+    });
+
+    if (!result) return;
+
+    const input = this.element?.querySelector('[name="folder"]');
+    if (input) input.value = result;
   }
 
   // ═══════════════════════════════════════════════════════════
