@@ -913,6 +913,7 @@ export class ContactManagerApp extends BaseApplication {
       email: formData.get('email')?.trim(),
       organization: formData.get('organization')?.trim(),
       phone: formData.get('phone')?.trim(),
+      location: formData.get('location')?.trim(),
       alias: formData.get('alias')?.trim(),
       role: formData.get('role')?.trim()?.toLowerCase(),
       tags: formData.get('tags')?.split(',').map(t => t.trim().toUpperCase()).filter(Boolean) || [],
@@ -928,6 +929,28 @@ export class ContactManagerApp extends BaseApplication {
       }
       const relationship = formData.get('relationship');
       if (relationship !== null) data.relationship = relationship;
+
+      // ICE fields (GM only) — selects return "true"/"false" strings
+      const encryptedVal = formData.get('encrypted');
+      if (encryptedVal !== null) {
+        data.encrypted = encryptedVal === 'true';
+      }
+      const encryptionDV = formData.get('encryptionDV');
+      if (encryptionDV !== null) {
+        data.encryptionDV = parseInt(encryptionDV, 10) || 15;
+      }
+      const encryptionSkill = formData.get('encryptionSkill');
+      if (encryptionSkill) {
+        data.encryptionSkill = encryptionSkill.trim();
+      }
+      const blackIceVal = formData.get('blackIce');
+      if (blackIceVal !== null) {
+        data.blackIce = blackIceVal === 'true';
+      }
+      const blackIceDamage = formData.get('blackIceDamage');
+      if (blackIceDamage) {
+        data.blackIceDamage = blackIceDamage.trim();
+      }
     }
 
     if (!data.name) {
