@@ -167,6 +167,11 @@ export function registerMessagingSystem(initializer) {
         actorId: resolvedActorId,
         selectedMessageId: messageId ?? null,
       });
+      // Belt-and-suspenders: set selectedMessageId AFTER construction
+      // to ensure class field initializer doesn't override constructor assignment
+      if (messageId) {
+        viewer.selectedMessageId = messageId;
+      }
       // Set filter before first render if provided
       if (messageId && filterHint !== 'inbox') {
         viewer.currentFilter = filterHint;
@@ -174,11 +179,23 @@ export function registerMessagingSystem(initializer) {
 
       _activeViewer = viewer;
 
-      // Clean up tracking on close
+      // Clean up tracking on close — with error guard
       const origClose = viewer.close.bind(viewer);
       viewer.close = async (...args) => {
         if (_activeViewer === viewer) _activeViewer = null;
-        return origClose(...args);
+        try {
+          return await origClose(...args);
+        } catch (err) {
+          console.warn('NCM | Error during inbox close:', err);
+          _activeViewer = null;
+        }
+      };
+
+      // Backup: also hook _onClose for Foundry's internal close path
+      const origOnClose = viewer._onClose?.bind(viewer);
+      viewer._onClose = (...args) => {
+        if (_activeViewer === viewer) _activeViewer = null;
+        if (origOnClose) return origOnClose(...args);
       };
 
       viewer.render(true);

@@ -843,18 +843,11 @@ export class AdminPanelApp extends BaseApplication {
       try {
         const contactId = expandedContact.id;
         const actorId = expandedContact.actorId;
-        const contactName = expandedContact.name.toLowerCase();
-        const contactEmail = (expandedContact.email || '').toLowerCase();
         const allMessages = [];
 
-        // Build a map of player actor IDs for looking up recipients
-        const playerActorMap = {};
-        for (const pa of playerActors) {
-          playerActorMap[pa.actorId] = pa;
-        }
-
-        // 1. Messages in the contact's OWN inbox
-        //    Includes BOTH received messages AND sent copies (messageId ending in "-sent")
+        // Messages in the contact's OWN inbox
+        // Contains BOTH received messages AND sent copies (messageId ending in "-sent")
+        // The viewer's auto-filter-switch handles navigating to the correct tab
         const ownJournalName = actorId
           ? `NCM-Inbox-${actorId}`
           : `NCM-Inbox-Contact-${contactId}`;
@@ -865,43 +858,13 @@ export class AdminPanelApp extends BaseApplication {
             const msgId = flags.messageId || '';
             const isSentCopy = msgId.endsWith('-sent');
 
-            if (isSentCopy) {
-              // This is a sent copy — find the recipient's inbox for click-to-open
-              // The received copy has the base messageId (without "-sent")
-              const baseMessageId = msgId.replace(/-sent$/, '');
-              const recipientActorId = flags.recipientActorId || '';
-
-              // Try to find which player inbox has the received copy
-              let recipientInboxId = recipientActorId;
-              if (!recipientInboxId) {
-                // Search player inboxes for the base message
-                for (const pa of playerActors) {
-                  const pJournal = game.journal?.find(j => j.name === `NCM-Inbox-${pa.actorId}`);
-                  if (!pJournal?.pages?.size) continue;
-                  for (const pp of pJournal.pages) {
-                    if (pp.flags?.['cyberpunkred-messenger']?.messageId === baseMessageId) {
-                      recipientInboxId = pa.actorId;
-                      break;
-                    }
-                  }
-                  if (recipientInboxId) break;
-                }
-              }
-
-              allMessages.push({
-                page, flags, sent: true,
-                // For click: open recipient's inbox with the base (non-sent) messageId
-                openInboxId: recipientInboxId || actorId || contactId,
-                openMessageId: baseMessageId,
-              });
-            } else {
-              // Received message — open this inbox with this messageId
-              allMessages.push({
-                page, flags, sent: false,
-                openInboxId: actorId || contactId,
-                openMessageId: msgId,
-              });
-            }
+            allMessages.push({
+              page, flags,
+              sent: isSentCopy,
+              // Always open the contact's own inbox — viewer auto-switches filter
+              openInboxId: actorId || contactId,
+              openMessageId: msgId,
+            });
           }
         }
 
