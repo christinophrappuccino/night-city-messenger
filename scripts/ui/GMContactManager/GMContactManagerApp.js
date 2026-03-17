@@ -22,6 +22,7 @@ import {
   getTrustData,
   getRoleIcon,
 } from '../../utils/designHelpers.js';
+import { RoleManagerDialog } from './RoleManagerDialog.js';
 
 // ═══════════════════════════════════════════
 //  Constants — Role & Relationship Maps
@@ -635,6 +636,7 @@ export class GMContactManagerApp extends BaseApplication {
     this._setupGroupBySelect();
     this._setupTrustPipClicks();
     this._restoreListScroll();
+    this._setupRoleSelectManage();
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -768,6 +770,29 @@ export class GMContactManagerApp extends BaseApplication {
         this._listScrollTop = listScroll.scrollTop;
       }, { passive: true });
     }
+  }
+
+  /**
+   * Wire up the role select to detect "Manage Roles..." and open the dialog.
+   * Uses addEventListener('change') — data-action on <select> fires on click, not change.
+   */
+  _setupRoleSelectManage() {
+    const select = this.element?.querySelector('.ncm-form-select--role');
+    if (!select) return;
+
+    select.addEventListener('change', (e) => {
+      if (e.target.value !== '__manage_roles__') return;
+
+      // Reset select to current contact's role (don't leave it on the action option)
+      const currentRole = this._isEditing
+        ? (this.masterContactService?.getContact(this._selectedContactId)?.role || 'npc')
+        : 'npc';
+      e.target.value = currentRole;
+
+      // Open the role manager dialog
+      const dialog = new RoleManagerDialog(this.masterContactService);
+      dialog.open();
+    });
   }
 
   _setupKeyboardShortcuts() {

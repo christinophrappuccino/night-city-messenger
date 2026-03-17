@@ -103,6 +103,10 @@
             <option value="{{id}}" {{#if (eq id ../contact.role)}}selected{{/if}}>{{label}}</option>
           {{/each}}
         {{/if}}
+        {{#if isGM}}
+          <option value="" disabled>────────</option>
+          <option value="__manage_roles__">Manage Roles...</option>
+        {{/if}}
       </select>
     </div>
     <div class="ncm-form-group">
