@@ -1,0 +1,31 @@
+{{!--
+  Quick-Dial Favorites Strip — Horizontal avatar row for favorited contacts
+  @file templates/contact-manager/partials/contact-quickdial.hbs
+  @module cyberpunkred-messenger
+  @description Renders up to 8 favorite contacts as small circular avatars
+    with online status dots. Clicking selects the contact in the detail panel.
+
+  @param {Array} quickDialContacts — Array of enriched favorite contacts (max 8)
+--}}
+
+{{#if quickDialContacts.length}}
+  <div class="ncm-quickdial">
+    <span class="ncm-quickdial__label">Favs</span>
+    {{#each quickDialContacts}}
+      <div class="ncm-quickdial__item" data-action="selectContact" data-contact-id="{{id}}">
+        <div class="ncm-quickdial__avatar"
+             style="color: {{avatarColor}}; border-color: {{avatarBorderColor}};">
+          {{#if hasPortrait}}
+            <img src="{{portraitSrc}}" alt="{{name}}" />
+          {{else}}
+            {{initials}}
+          {{/if}}
+          {{#if (eq status 'online')}}
+            <div class="ncm-quickdial__dot"></div>
+          {{/if}}
+        </div>
+        <span class="ncm-quickdial__name">{{name}}</span>
+      </div>
+    {{/each}}
+  </div>
+{{/if}}

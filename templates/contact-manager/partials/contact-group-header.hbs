@@ -1,0 +1,23 @@
+{{!--
+  Contact Group Header — Collapsible group divider with cyan accent bar
+  @file templates/contact-manager/partials/contact-group-header.hbs
+  @module cyberpunkred-messenger
+  @description Renders a group header row with chevron toggle, icon, name, and count.
+    Special styling for Burned (red) and ICE Protected (gold) groups.
+
+  @param {string}  groupKey       — Group identifier (e.g. "fixer", "burned", "encrypted")
+  @param {string}  groupName      — Display name (e.g. "Fixers", "Burned", "ICE Protected")
+  @param {string}  groupIcon      — FontAwesome icon class (e.g. "fas fa-crosshairs")
+  @param {number}  groupCount     — Number of contacts in this group
+  @param {boolean} isCollapsed    — Whether the group is currently collapsed
+  @param {boolean} [isBurnedGroup]    — Special burned group styling
+  @param {boolean} [isEncryptedGroup] — Special ICE group styling
+--}}
+
+<div class="ncm-group-header {{#if isCollapsed}}ncm-group-header--collapsed{{/if}} {{#if isBurnedGroup}}ncm-group-header--burned{{/if}} {{#if isEncryptedGroup}}ncm-group-header--encrypted{{/if}}"
+     data-action="toggleGroup" data-group="{{groupKey}}">
+  <i class="ncm-group-header__chev fas fa-chevron-down"></i>
+  <i class="ncm-group-header__icon {{groupIcon}}"></i>
+  <span class="ncm-group-header__name">{{groupName}}</span>
+  <span class="ncm-group-header__count">{{groupCount}}</span>
+</div>

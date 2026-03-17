@@ -1,2694 +1,892 @@
 /**
- * Contact Manager — Sprint 3 Styles
+ * Contact Manager — v5.1 Split View Styles
  * @file styles/components/contact-manager.css
  * @module cyberpunkred-messenger
- * @description Player contact directory: grid/list views, card system,
- *   trust meters, burned/encrypted states, tag pills, hover actions.
- *   Matches ncm-contacts-mockup-v3.html spec.
+ * @description Player contact directory: split-view layout with quick-dial,
+ *   grouped list, detail panel, ICE overlays, info cards, and collapsible groups.
+ *   Replaces Sprint 3 grid/list-only layout.
  *
- *   All selectors scoped under .ncm-contacts-v3 to isolate from
- *   Foundry core and other module styles.
+ * ─── SECTION INDEX ───
+ *  §1   Window Frame + Accent Line
+ *  §2   Header (identity + stats + actions)
+ *  §3   Toolbar (search + pills + view toggle)
+ *  §4   Content Area (forms, grid fallback, empty state)
+ *  §5   Split Layout (300px list + flex detail)
+ *  §6   Quick-Dial Favorites Strip
+ *  §7   Sort/Group Bar
+ *  §8   Group Headers (collapsible, cyan accent)
+ *  §9   List Items (avatars, two-row, status, selected)
+ *  §10  Detail Panel (profile + info cards + trust + notes)
+ *  §11  Detail Empty State
+ *  §12  Burned Banner
+ *  §13  Chips + Badges
+ *  §14  Footer
+ *  §15  Grid View (legacy card layout)
+ *  §16  GM Inspect Banner
+ *  §17  Scrollbars
+ *  §18  Foundry Overrides
  */
 
+
 /* ═══════════════════════════════════════════
-   ROOT CONTAINER
+   §1  WINDOW FRAME + ACCENT LINE
    ═══════════════════════════════════════════ */
 
-.ncm-contacts-v3 {
+.ncm-app .ncm-contacts-v5 {
   display: flex;
   flex-direction: column;
   height: 100%;
   overflow: hidden;
-  background: var(--ncm-bg-deep, #0a0a0f);
-  color: var(--ncm-text-primary, #e0e0e8);
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-}
-
-/* ═══════════════════════════════════════════
-   CONDENSED HEADER
-   ═══════════════════════════════════════════ */
-
-.ncm-contacts-v3 .ncm-header {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 10px 16px;
   background: var(--ncm-bg-base, #12121a);
-  border-bottom: 1px solid var(--ncm-border, #2a2a45);
-  flex-shrink: 0;
 }
 
-.ncm-contacts-v3 .ncm-header__identity {
+/* Top accent gradient line */
+.ncm-app .ncm-contacts-v5::before {
+  content: '';
+  height: 2px;
+  background: linear-gradient(90deg,
+    var(--ncm-primary, #F65261) 0%, transparent 30%,
+    transparent 70%, var(--ncm-secondary, #00D4E6) 100%);
+  flex-shrink: 0;
+  opacity: 0.6;
+}
+
+
+/* ═══════════════════════════════════════════
+   §2  HEADER
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-contacts-v5 .ncm-header {
   display: flex;
   align-items: center;
-  gap: 10px;
-  flex-shrink: 0;
-}
-
-.ncm-contacts-v3 .ncm-header__avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: 2px solid var(--ncm-border, #2a2a45);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-weight: 700;
-  font-size: 14px;
-  flex-shrink: 0;
-  background: var(--ncm-bg-elevated, #252540);
-  overflow: hidden;
-}
-
-.ncm-contacts-v3 .ncm-header__avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.ncm-contacts-v3 .ncm-header__info {
-  display: flex;
-  flex-direction: column;
-}
-
-.ncm-contacts-v3 .ncm-header__name {
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--ncm-text-primary, #e0e0e8);
-  line-height: 1.2;
-}
-
-.ncm-contacts-v3 .ncm-header__email {
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 10px;
-  color: var(--ncm-text-muted, #555570);
-}
-
-.ncm-contacts-v3 .ncm-header__divider {
-  width: 1px;
-  height: 28px;
-  background: var(--ncm-border, #2a2a45);
-  flex-shrink: 0;
-}
-
-.ncm-contacts-v3 .ncm-header__stats {
-  display: flex;
   gap: 16px;
-  flex-shrink: 0;
-}
-
-.ncm-contacts-v3 .ncm-stat {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.ncm-contacts-v3 .ncm-stat__value {
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--ncm-text-primary, #e0e0e8);
-  line-height: 1;
-}
-
-.ncm-contacts-v3 .ncm-stat__value--success {
-  color: var(--ncm-success, #00ff41);
-}
-
-.ncm-contacts-v3 .ncm-stat__value--accent {
-  color: var(--ncm-accent, #f7c948);
-}
-
-.ncm-contacts-v3 .ncm-stat__label {
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 8px;
-  color: var(--ncm-text-muted, #555570);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-}
-
-.ncm-contacts-v3 .ncm-header__actions {
-  display: flex;
-  gap: 6px;
-  margin-left: auto;
-  flex-shrink: 0;
-}
-
-/* ═══════════════════════════════════════════
-   TOOLBAR — Search + Filter Pills + Toggle
-   ═══════════════════════════════════════════ */
-
-.ncm-contacts-v3 .ncm-toolbar {
-  display: flex;
-  flex-direction: column;
-  background: var(--ncm-bg-base, #12121a);
-  border-bottom: 1px solid var(--ncm-border, #2a2a45);
-  flex-shrink: 0;
-}
-
-.ncm-contacts-v3 .ncm-search-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-}
-
-.ncm-contacts-v3 .ncm-search-row i {
-  color: var(--ncm-text-muted, #555570);
-  font-size: 11px;
-  flex-shrink: 0;
-}
-
-.ncm-contacts-v3 .ncm-search-input {
-  flex: 1;
-  background: transparent;
-  border: none;
-  color: var(--ncm-text-primary, #e0e0e8);
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 11px;
-  outline: none;
-  caret-color: var(--ncm-secondary, #19f3f7);
-}
-
-.ncm-contacts-v3 .ncm-search-input::placeholder {
-  color: var(--ncm-text-muted, #555570);
-}
-
-.ncm-contacts-v3 .ncm-search-count {
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 9px;
-  color: var(--ncm-text-muted, #555570);
-  flex-shrink: 0;
-}
-
-.ncm-contacts-v3 .ncm-filter-row {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 4px 16px 8px;
-  flex-wrap: wrap;
-}
-
-/* ─── Filter Pills ─── */
-
-.ncm-contacts-v3 .ncm-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 9px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--ncm-text-muted, #555570);
-  background: transparent;
-  border: 1px solid var(--ncm-border, #2a2a45);
-  border-radius: 2px;
-  cursor: pointer;
-  transition: all 0.15s;
-  user-select: none;
-}
-
-.ncm-contacts-v3 .ncm-pill:hover {
-  color: var(--ncm-text-secondary, #8888a0);
-  border-color: var(--ncm-text-muted, #555570);
-}
-
-.ncm-contacts-v3 .ncm-pill--active {
-  color: var(--ncm-secondary, #19f3f7);
-  border-color: rgba(25, 243, 247, 0.4);
-  background: rgba(25, 243, 247, 0.06);
-}
-
-.ncm-contacts-v3 .ncm-pill--all {
-  color: var(--ncm-text-secondary, #8888a0);
-  border-color: var(--ncm-text-muted, #555570);
-}
-
-.ncm-contacts-v3 .ncm-pill--tag {
-  color: var(--ncm-accent, #f7c948);
-  border-color: rgba(247, 201, 72, 0.3);
-}
-
-.ncm-contacts-v3 .ncm-pill--tag:hover {
-  border-color: rgba(247, 201, 72, 0.5);
-  background: rgba(247, 201, 72, 0.04);
-}
-
-.ncm-contacts-v3 .ncm-pill--tag.ncm-pill--active {
-  color: var(--ncm-accent, #f7c948);
-  border-color: rgba(247, 201, 72, 0.5);
-  background: rgba(247, 201, 72, 0.08);
-}
-
-.ncm-contacts-v3 .ncm-pill__remove {
-  font-size: 8px;
-  opacity: 0.5;
-  cursor: pointer;
-  margin-left: 2px;
-}
-
-.ncm-contacts-v3 .ncm-pill__remove:hover {
-  opacity: 1;
-  color: var(--ncm-primary, #F65261);
-}
-
-.ncm-contacts-v3 .ncm-pill--add {
-  border-style: dashed;
-  color: var(--ncm-text-muted, #555570);
-  opacity: 0.6;
-}
-
-.ncm-contacts-v3 .ncm-pill--add:hover {
-  opacity: 1;
-  color: var(--ncm-accent, #f7c948);
-  border-color: rgba(247, 201, 72, 0.3);
-}
-
-/* ─── View Toggle ─── */
-
-.ncm-contacts-v3 .ncm-view-toggle {
-  margin-left: auto;
-  display: flex;
-  gap: 2px;
-}
-
-.ncm-contacts-v3 .ncm-view-btn {
-  width: 24px;
-  height: 22px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: none;
-  border: 1px solid var(--ncm-border, #2a2a45);
-  color: var(--ncm-text-muted, #555570);
-  font-size: 10px;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.ncm-contacts-v3 .ncm-view-btn:first-child {
-  border-radius: 2px 0 0 2px;
-}
-
-.ncm-contacts-v3 .ncm-view-btn:last-child {
-  border-radius: 0 2px 2px 0;
-}
-
-.ncm-contacts-v3 .ncm-view-btn--active {
-  color: var(--ncm-secondary, #19f3f7);
-  border-color: rgba(25, 243, 247, 0.3);
-  background: rgba(25, 243, 247, 0.06);
-}
-
-/* ═══════════════════════════════════════════
-   TRUST METER
-   ═══════════════════════════════════════════ */
-
-.ncm-contacts-v3 .ncm-trust {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  width: 100%;
-  justify-content: center;
-  margin-top: 2px;
-}
-
-.ncm-contacts-v3 .ncm-trust__label {
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 7px;
-  color: var(--ncm-text-muted, #555570);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  flex-shrink: 0;
-}
-
-.ncm-contacts-v3 .ncm-trust__bar {
-  display: flex;
-  gap: 2px;
-}
-
-.ncm-contacts-v3 .ncm-trust__segment {
-  width: 8px;
-  height: 4px;
-  border-radius: 1px;
-  background: var(--ncm-bg-elevated, #252540);
-  transition: background 0.3s;
-}
-
-.ncm-contacts-v3 .ncm-trust--high .ncm-trust__segment.active {
-  background: var(--ncm-success, #00ff41);
-  box-shadow: 0 0 3px rgba(0, 255, 65, 0.3);
-}
-
-.ncm-contacts-v3 .ncm-trust--med .ncm-trust__segment.active {
-  background: var(--ncm-warning, #ffab00);
-}
-
-.ncm-contacts-v3 .ncm-trust--low .ncm-trust__segment.active {
-  background: var(--ncm-danger, #ff0033);
-  box-shadow: 0 0 3px rgba(255, 0, 51, 0.3);
-}
-
-.ncm-contacts-v3 .ncm-trust--unknown .ncm-trust__segment.active {
-  background: var(--ncm-text-muted, #555570);
-}
-
-.ncm-contacts-v3 .ncm-unverified {
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 7px;
-  color: var(--ncm-text-muted, #555570);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  opacity: 0.5;
-}
-
-/* ═══════════════════════════════════════════
-   CONTENT AREA
-   ═══════════════════════════════════════════ */
-
-.ncm-contacts-v3 .ncm-content {
-  flex: 1;
-  overflow-y: auto;
-  min-height: 0;
-}
-
-.ncm-contacts-v3 .ncm-content::-webkit-scrollbar { width: 4px; }
-.ncm-contacts-v3 .ncm-content::-webkit-scrollbar-track { background: transparent; }
-.ncm-contacts-v3 .ncm-content::-webkit-scrollbar-thumb { background: var(--ncm-border, #2a2a45); border-radius: 2px; }
-.ncm-contacts-v3 .ncm-content::-webkit-scrollbar-thumb:hover { background: var(--ncm-text-muted, #555570); }
-
-/* ═══════════════════════════════════════════
-   CARD GRID VIEW
-   ═══════════════════════════════════════════ */
-
-.ncm-contacts-v3 .ncm-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(185px, 1fr));
-  gap: 8px;
-  padding: 12px 16px;
-}
-
-.ncm-contacts-v3 .ncm-card {
-  background: var(--ncm-bg-surface, #1a1a2e);
-  border: 1px solid var(--ncm-border, #2a2a45);
-  border-radius: 2px;
-  padding: 14px 12px 10px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-  transition: all 0.2s;
-  position: relative;
-  overflow: hidden;
-  text-align: center;
-}
-
-.ncm-contacts-v3 .ncm-card::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 2px;
-  background: transparent;
-  transition: background 0.15s;
-}
-
-.ncm-contacts-v3 .ncm-card:hover {
-  border-color: var(--ncm-border-active, #3a3a5a);
-  background: var(--ncm-bg-elevated, #252540);
-}
-
-.ncm-contacts-v3 .ncm-card:hover::before {
-  background: var(--ncm-secondary, #19f3f7);
-}
-
-.ncm-contacts-v3 .ncm-card--selected {
-  border-color: rgba(25, 243, 247, 0.4);
-  background: rgba(25, 243, 247, 0.04);
-}
-
-.ncm-contacts-v3 .ncm-card--selected::before {
-  background: var(--ncm-secondary, #19f3f7);
-}
-
-/* ─── Burned card ─── */
-
-/* ─────────────────────────────────────────
-   GRID VIEW — Burned Card
-   ───────────────────────────────────────── */
-
-.ncm-contacts-v3 .ncm-card--burned {
-  border-color: rgba(255, 0, 51, 0.3);
-  background:
-    /* Noise texture layer */
-    repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 2px,
-      rgba(255, 0, 51, 0.02) 2px,
-      rgba(255, 0, 51, 0.02) 4px
-    ),
-    /* Base tint */
-    rgba(255, 0, 51, 0.04);
-
-  /* Red inner vignette — danger glow from edges */
-  box-shadow:
-    inset 0 0 20px rgba(255, 0, 51, 0.08),
-    inset 0 0 40px rgba(255, 0, 51, 0.04),
-    0 0 8px rgba(255, 0, 51, 0.06);
-
-  overflow: hidden;
-}
-
-/* Left accent bar — solid danger red */
-.ncm-contacts-v3 .ncm-card--burned::before {
-  background: var(--ncm-danger, #ff0033) !important;
-  box-shadow: 0 0 6px rgba(255, 0, 51, 0.4);
-}
-
-/* ::after — Diagonal "COMPROMISED" stamp + hatch lines */
-.ncm-contacts-v3 .ncm-card--burned::after {
-  content: 'COMPROMISED';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%) rotate(-18deg);
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 16px;
-  font-weight: 900;
-  letter-spacing: 0.25em;
-  text-transform: uppercase;
-  color: rgba(255, 0, 51, 0.10);
-  white-space: nowrap;
-  pointer-events: none;
-  z-index: 2;
-  /* Double border stamp effect */
-  text-shadow:
-    0 0 1px rgba(255, 0, 51, 0.15);
-  -webkit-text-stroke: 1px rgba(255, 0, 51, 0.06);
-  /* Hatch background on the pseudo itself */
-  background:
-    repeating-linear-gradient(
-      -45deg,
-      transparent,
-      transparent 8px,
-      rgba(255, 0, 51, 0.03) 8px,
-      rgba(255, 0, 51, 0.03) 9px
-    );
-  /* Fill the card area */
-  width: 200%;
-  height: 200%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-
-/* ─── Avatar: Grayscale + red tint ─── */
-
-.ncm-contacts-v3 .ncm-card--burned .ncm-card__avatar {
-  opacity: 0.7;
-  border-color: rgba(255, 0, 51, 0.4) !important;
-  filter: grayscale(0.7) brightness(0.8);
-  position: relative;
-}
-
-/* Red tint overlay on avatar via box-shadow */
-.ncm-contacts-v3 .ncm-card--burned .ncm-card__avatar::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background: rgba(255, 0, 51, 0.12);
-  pointer-events: none;
-}
-
-
-/* ─── Name: Strikethrough + glitch flicker ─── */
-
-.ncm-contacts-v3 .ncm-card--burned .ncm-card__name {
-  text-decoration: line-through;
-  text-decoration-color: rgba(255, 0, 51, 0.5);
-  text-decoration-thickness: 1.5px;
-  color: rgba(224, 224, 232, 0.6);
-  animation: ncm-burned-name-glitch 4s ease-in-out infinite;
-}
-
-@keyframes ncm-burned-name-glitch {
-  0%, 88%, 100% {
-    transform: translate(0, 0);
-    text-shadow: none;
-    opacity: 0.6;
-  }
-  89% {
-    transform: translate(-2px, 0);
-    text-shadow:
-      2px 0 0 rgba(255, 0, 51, 0.4),
-      -2px 0 0 rgba(25, 243, 247, 0.3);
-    opacity: 0.8;
-  }
-  90% {
-    transform: translate(3px, 1px);
-    text-shadow:
-      -3px 0 0 rgba(255, 0, 51, 0.6),
-       3px 0 0 rgba(25, 243, 247, 0.4);
-    opacity: 0.5;
-  }
-  91% {
-    transform: translate(-1px, -1px);
-    text-shadow:
-      1px 0 0 rgba(255, 0, 51, 0.3),
-      -1px 0 0 rgba(25, 243, 247, 0.2);
-    opacity: 0.7;
-  }
-  92% {
-    transform: translate(0, 0);
-    text-shadow: none;
-    opacity: 0.6;
-  }
-}
-
-
-/* ─── Email: Muted ─── */
-
-.ncm-contacts-v3 .ncm-card--burned .ncm-card__email {
-  color: rgba(85, 85, 112, 0.4);
-  text-decoration: line-through;
-  text-decoration-color: rgba(255, 0, 51, 0.2);
-}
-
-
-/* ─── Tags: Muted with red tint ─── */
-
-.ncm-contacts-v3 .ncm-card--burned .ncm-card__tag {
-  opacity: 0.35;
-  border-color: rgba(255, 0, 51, 0.15);
-  color: rgba(255, 0, 51, 0.4);
-}
-
-
-/* ─── Trust meter: Force red ─── */
-
-.ncm-contacts-v3 .ncm-card--burned .ncm-trust__segment.active {
-  background: var(--ncm-danger, #ff0033) !important;
-  box-shadow: 0 0 3px rgba(255, 0, 51, 0.3);
-}
-
-
-/* ─── Burned badge: Pulsing danger ─── */
-
-.ncm-contacts-v3 .ncm-card--burned .ncm-badge--burned {
-  animation: ncm-burned-badge-pulse 2s ease-in-out infinite;
-}
-
-@keyframes ncm-burned-badge-pulse {
-  0%, 100% {
-    box-shadow: 0 0 4px rgba(255, 0, 51, 0.2);
-  }
-  50% {
-    box-shadow: 0 0 10px rgba(255, 0, 51, 0.4),
-                0 0 20px rgba(255, 0, 51, 0.1);
-  }
-}
-
-
-/* ─── Red scanline: Slow sweep across the card ─── */
-
-.ncm-contacts-v3 .ncm-card--burned {
-  /* Using a pseudo would conflict, so we animate a gradient via background */
-  background-size: 100% 100%, 100% 2px;
-  background-repeat: no-repeat, no-repeat;
-  animation: ncm-burned-scanline 6s linear infinite;
-}
-
-@keyframes ncm-burned-scanline {
-  0% {
-    background-image:
-      /* Noise layer */
-      repeating-linear-gradient(
-        0deg, transparent, transparent 2px,
-        rgba(255, 0, 51, 0.02) 2px, rgba(255, 0, 51, 0.02) 4px
-      ),
-      /* Scanline */
-      linear-gradient(
-        0deg,
-        transparent 0%, rgba(255, 0, 51, 0.08) 50%, transparent 100%
-      );
-    background-position: 0 0, 0 -10%;
-  }
-  50% {
-    background-image:
-      repeating-linear-gradient(
-        0deg, transparent, transparent 2px,
-        rgba(255, 0, 51, 0.02) 2px, rgba(255, 0, 51, 0.02) 4px
-      ),
-      linear-gradient(
-        0deg,
-        transparent 0%, rgba(255, 0, 51, 0.12) 50%, transparent 100%
-      );
-    background-position: 0 0, 0 50%;
-  }
-  100% {
-    background-image:
-      repeating-linear-gradient(
-        0deg, transparent, transparent 2px,
-        rgba(255, 0, 51, 0.02) 2px, rgba(255, 0, 51, 0.02) 4px
-      ),
-      linear-gradient(
-        0deg,
-        transparent 0%, rgba(255, 0, 51, 0.08) 50%, transparent 100%
-      );
-    background-position: 0 0, 0 110%;
-  }
-}
-
-
-/* ─── Hover: Danger intensifies ─── */
-
-.ncm-contacts-v3 .ncm-card--burned:hover {
-  border-color: rgba(255, 0, 51, 0.45);
-  box-shadow:
-    inset 0 0 30px rgba(255, 0, 51, 0.12),
-    inset 0 0 60px rgba(255, 0, 51, 0.06),
-    0 0 12px rgba(255, 0, 51, 0.1);
-}
-
-.ncm-contacts-v3 .ncm-card--burned:hover .ncm-card__name {
-  color: rgba(255, 0, 51, 0.7);
-}
-
-.ncm-contacts-v3 .ncm-card--burned:hover::after {
-  color: rgba(255, 0, 51, 0.15);
-}
-
-/* ─────────────────────────────────────────
-   GRID VIEW — Encrypted Card (behind overlay)
-   ───────────────────────────────────────── */
-
-.ncm-contacts-v3 .ncm-card--encrypted {
-  border-color: rgba(247, 201, 72, 0.25);
-  overflow: hidden;
-
-  /* Amber inner glow */
-  box-shadow:
-    inset 0 0 15px rgba(247, 201, 72, 0.05),
-    0 0 6px rgba(247, 201, 72, 0.04);
-
-  /* Breathing border pulse */
-  animation: ncm-ice-border-pulse 3s ease-in-out infinite;
-}
-
-@keyframes ncm-ice-border-pulse {
-  0%, 100% {
-    border-color: rgba(247, 201, 72, 0.20);
-    box-shadow:
-      inset 0 0 15px rgba(247, 201, 72, 0.04),
-      0 0 6px rgba(247, 201, 72, 0.03);
-  }
-  50% {
-    border-color: rgba(247, 201, 72, 0.35);
-    box-shadow:
-      inset 0 0 20px rgba(247, 201, 72, 0.08),
-      0 0 10px rgba(247, 201, 72, 0.06);
-  }
-}
-
-/* Left accent bar — amber with glow */
-.ncm-contacts-v3 .ncm-card--encrypted::before {
-  background: var(--ncm-accent, #f7c948) !important;
-  box-shadow: 0 0 6px rgba(247, 201, 72, 0.4);
-}
-
-/* ::after — Hex security grid pattern */
-.ncm-contacts-v3 .ncm-card--encrypted::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 1;
-  opacity: 0.4;
-  background-image:
-    /* Horizontal fine lines */
-    repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 10px,
-      rgba(247, 201, 72, 0.03) 10px,
-      rgba(247, 201, 72, 0.03) 11px
-    ),
-    /* Vertical fine lines */
-    repeating-linear-gradient(
-      90deg,
-      transparent,
-      transparent 10px,
-      rgba(247, 201, 72, 0.02) 10px,
-      rgba(247, 201, 72, 0.02) 11px
-    );
-}
-
-
-/* ─────────────────────────────────────────
-   OVERLAY — ICE Fortress
-   ───────────────────────────────────────── */
-
-.ncm-contacts-v3 .ncm-encrypted-overlay {
-  position: absolute;
-  inset: 0;
-  z-index: 5;
-  cursor: pointer;
-  overflow: hidden;
-
-  /* Layered depth gradient — darker at edges, lighter at center */
-  background:
-    radial-gradient(
-      ellipse at center,
-      rgba(10, 10, 15, 0.78) 0%,
-      rgba(10, 10, 15, 0.88) 60%,
-      rgba(5, 5, 8, 0.94) 100%
-    );
-
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-
-  transition: background 0.3s;
-}
-
-
-/* ─── Scrolling data stream lines (via ::before) ─── */
-
-.ncm-contacts-v3 .ncm-encrypted-overlay::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  opacity: 0.12;
-
-  /* Vertical data stream lines */
-  background-image:
-    repeating-linear-gradient(
-      90deg,
-      transparent,
-      transparent 18px,
-      rgba(247, 201, 72, 0.15) 18px,
-      rgba(247, 201, 72, 0.15) 19px
-    );
-
-  /* Animate downward scroll */
-  background-size: 100% 200%;
-  animation: ncm-data-scroll 8s linear infinite;
-}
-
-@keyframes ncm-data-scroll {
-  0%   { background-position: 0 0; }
-  100% { background-position: 0 200%; }
-}
-
-
-/* ─── Corner bracket framing (via ::after) ─── */
-
-.ncm-contacts-v3 .ncm-encrypted-overlay::after {
-  content: '';
-  position: absolute;
-  inset: 6px;
-  pointer-events: none;
-  z-index: 1;
-
-  /* Four corner brackets via border + clip */
-  border: 1px solid rgba(247, 201, 72, 0.15);
-
-  /* Clip to show only corners */
-  clip-path: polygon(
-    /* Top-left */
-    0% 0%, 20% 0%, 20% 1px, 1px 1px, 1px 20%, 0% 20%,
-    /* Top-right */
-    80% 0%, 100% 0%, 100% 20%, calc(100% - 1px) 20%, calc(100% - 1px) 1px, 80% 1px,
-    /* Bottom-right */
-    100% 80%, 100% 100%, 80% 100%, 80% calc(100% - 1px), calc(100% - 1px) calc(100% - 1px), calc(100% - 1px) 80%,
-    /* Bottom-left */
-    20% 100%, 0% 100%, 0% 80%, 1px 80%, 1px calc(100% - 1px), 20% calc(100% - 1px)
-  );
-
-  animation: ncm-bracket-pulse 3s ease-in-out infinite;
-}
-
-@keyframes ncm-bracket-pulse {
-  0%, 100% {
-    border-color: rgba(247, 201, 72, 0.12);
-  }
-  50% {
-    border-color: rgba(247, 201, 72, 0.25);
-  }
-}
-
-
-/* ─── Lock icon — Glow + orbital ring ─── */
-
-.ncm-contacts-v3 .ncm-encrypted-overlay i.fa-lock {
-  font-size: 18px;
-  color: var(--ncm-accent, #f7c948);
-  position: relative;
-  z-index: 2;
-
-  /* Glow pulse */
-  animation: ncm-lock-glow-enhanced 2.5s ease-in-out infinite;
-}
-
-@keyframes ncm-lock-glow-enhanced {
-  0%, 100% {
-    text-shadow:
-      0 0 4px rgba(247, 201, 72, 0.3),
-      0 0 8px rgba(247, 201, 72, 0.1);
-    transform: scale(1);
-  }
-  50% {
-    text-shadow:
-      0 0 8px rgba(247, 201, 72, 0.5),
-      0 0 16px rgba(247, 201, 72, 0.2),
-      0 0 30px rgba(247, 201, 72, 0.08);
-    transform: scale(1.05);
-  }
-}
-
-
-/* ─── "ICE Protected" text — with scanning cursor ─── */
-
-.ncm-contacts-v3 .ncm-encrypted-overlay__text {
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 8px;
-  color: var(--ncm-accent, #f7c948);
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  position: relative;
-  z-index: 2;
-}
-
-/* Blinking cursor after text */
-.ncm-contacts-v3 .ncm-encrypted-overlay__text::after {
-  content: '█';
-  font-size: 7px;
-  margin-left: 2px;
-  animation: ncm-cursor-blink 1s step-end infinite;
-  color: rgba(247, 201, 72, 0.6);
-}
-
-@keyframes ncm-cursor-blink {
-  0%, 50% { opacity: 1; }
-  51%, 100% { opacity: 0; }
-}
-
-
-/* ─── DV chip — styled badge ─── */
-
-.ncm-contacts-v3 .ncm-encrypted-overlay__dv {
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 7px;
-  color: rgba(247, 201, 72, 0.7);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  position: relative;
-  z-index: 2;
-
-  /* Badge styling */
-  background: rgba(247, 201, 72, 0.06);
-  border: 1px solid rgba(247, 201, 72, 0.15);
-  border-radius: 2px;
-  padding: 1px 8px;
-}
-
-
-/* ─── Hover: ICE warms up ─── */
-
-.ncm-contacts-v3 .ncm-encrypted-overlay:hover {
-  background:
-    radial-gradient(
-      ellipse at center,
-      rgba(10, 10, 15, 0.72) 0%,
-      rgba(10, 10, 15, 0.82) 60%,
-      rgba(5, 5, 8, 0.90) 100%
-    );
-}
-
-.ncm-contacts-v3 .ncm-encrypted-overlay:hover i.fa-lock {
-  text-shadow:
-    0 0 10px rgba(247, 201, 72, 0.6),
-    0 0 20px rgba(247, 201, 72, 0.3),
-    0 0 40px rgba(247, 201, 72, 0.1);
-}
-
-.ncm-contacts-v3 .ncm-encrypted-overlay:hover .ncm-encrypted-overlay__text {
-  color: rgba(247, 201, 72, 0.9);
-  text-shadow: 0 0 6px rgba(247, 201, 72, 0.3);
-}
-
-.ncm-contacts-v3 .ncm-encrypted-overlay:hover .ncm-encrypted-overlay__dv {
-  color: rgba(247, 201, 72, 0.9);
-  border-color: rgba(247, 201, 72, 0.3);
-  background: rgba(247, 201, 72, 0.10);
-}
-
-.ncm-contacts-v3 .ncm-encrypted-overlay:hover::after {
-  border-color: rgba(247, 201, 72, 0.30);
-}
-
-
-/* ─── GM Bypass — sits above all overlay layers ─── */
-
-.ncm-contacts-v3 .ncm-encrypted-overlay__gm-bypass {
-  position: absolute;
-  bottom: 6px;
-  right: 6px;
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 7px;
-  color: var(--ncm-danger, #ff0033);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  opacity: 0.5;
-  cursor: pointer;
-  padding: 2px 6px;
-  border: 1px solid rgba(255, 0, 51, 0.2);
-  border-radius: 2px;
-  transition: all 0.15s;
-  z-index: 10;
-  background: rgba(0, 0, 0, 0.4);
-}
-
-.ncm-contacts-v3 .ncm-encrypted-overlay__gm-bypass:hover {
-  opacity: 1;
-  border-color: rgba(255, 0, 51, 0.5);
-  background: rgba(255, 0, 51, 0.12);
-}
-
-
-/* ─── Override the old lock-glow keyframe ─── 
-   The enhanced version above (ncm-lock-glow-enhanced) replaces this.
-   Keep the old name as a no-op fallback in case anything references it. */
-
-@keyframes ncm-lock-glow {
-  0%, 100% {
-    text-shadow: 0 0 4px rgba(247, 201, 72, 0.3);
-  }
-  50% {
-    text-shadow:
-      0 0 8px rgba(247, 201, 72, 0.5),
-      0 0 16px rgba(247, 201, 72, 0.2);
-  }
-}
-
-/* ─── Redacted avatar: neutral amber circle with ? ─── */
-
-.ncm-contacts-v3 .ncm-card__avatar--redacted {
-  color: rgba(247, 201, 72, 0.25) !important;
-  border-color: rgba(247, 201, 72, 0.12) !important;
-  background: rgba(247, 201, 72, 0.03);
-  font-size: 22px;
-  font-weight: 400;
-}
-
-/* ─── Redacted name: dim amber block characters ─── */
-
-.ncm-contacts-v3 .ncm-card__name--redacted {
-  color: rgba(247, 201, 72, 0.12);
-  letter-spacing: 0.15em;
-  font-size: 12px;
-}
-
-/* ─── Redacted email: dim ─── */
-
-.ncm-contacts-v3 .ncm-card__email--redacted {
-  color: rgba(247, 201, 72, 0.08);
-  font-style: normal;
-}
-
-/* ─── Card Avatar ─── */
-
-.ncm-contacts-v3 .ncm-card__avatar {
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  border: 2px solid var(--ncm-border, #2a2a45);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-weight: 700;
-  font-size: 20px;
-  flex-shrink: 0;
-  position: relative;
-  overflow: hidden;
-  background: var(--ncm-bg-elevated, #252540);
-  transition: border-color 0.15s;
-}
-
-.ncm-contacts-v3 .ncm-card__avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.ncm-contacts-v3 .ncm-card__status {
-  position: absolute;
-  bottom: 2px;
-  right: 2px;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  border: 2px solid var(--ncm-bg-surface, #1a1a2e);
-}
-
-.ncm-contacts-v3 .ncm-card__status--active {
-  background: var(--ncm-success, #00ff41);
-  box-shadow: 0 0 4px rgba(0, 255, 65, 0.4);
-  animation: ncm-status-pulse 1.2s ease-in-out infinite;
-}
-
-.ncm-contacts-v3 .ncm-card__status--online {
-  background: var(--ncm-success, #00ff41);
-  box-shadow: 0 0 4px rgba(0, 255, 65, 0.4);
-}
-
-.ncm-contacts-v3 .ncm-card__status--idle {
-  background: var(--ncm-warning, #ffab00);
-  box-shadow: 0 0 4px rgba(255, 171, 0, 0.3);
-}
-
-.ncm-contacts-v3 .ncm-card__status--offline {
-  background: var(--ncm-text-muted, #555570);
-}
-
-.ncm-contacts-v3 .ncm-card__status--dead-zone {
-  background: var(--ncm-danger, #ff0033);
-  box-shadow: 0 0 4px rgba(255, 0, 51, 0.3);
-}
-
-@keyframes ncm-status-pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.3); }
-}
-
-/* Avatar upload overlay */
-.ncm-contacts-v3 .ncm-card__avatar-upload {
-  position: absolute;
-  inset: 0;
-  background: rgba(10, 10, 15, 0.75);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: opacity 0.15s;
-  cursor: pointer;
-  border-radius: 50%;
-}
-
-.ncm-contacts-v3 .ncm-card__avatar-upload i {
-  color: var(--ncm-secondary, #19f3f7);
-  font-size: 14px;
-}
-
-.ncm-contacts-v3 .ncm-card:hover .ncm-card__avatar-upload {
-  opacity: 1;
-}
-
-/* Card text */
-.ncm-contacts-v3 .ncm-card__name {
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--ncm-text-primary, #e0e0e8);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
-}
-
-.ncm-contacts-v3 .ncm-card__email {
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 9px;
-  color: var(--ncm-text-muted, #555570);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
-}
-
-/* Card tags */
-.ncm-contacts-v3 .ncm-card__tags {
-  display: flex;
-  gap: 3px;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-
-.ncm-contacts-v3 .ncm-card__tag {
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 7px;
-  padding: 0 5px;
-  color: var(--ncm-accent, #f7c948);
-  background: rgba(247, 201, 72, 0.06);
-  border: 1px dashed rgba(247, 201, 72, 0.2);
-  border-radius: 2px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-/* Hover quick actions */
-.ncm-contacts-v3 .ncm-card__actions {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  display: flex;
-  gap: 3px;
-  opacity: 0;
-  transition: opacity 0.15s;
-  z-index: 3;
-}
-
-.ncm-contacts-v3 .ncm-card:hover .ncm-card__actions {
-  opacity: 1;
-}
-
-.ncm-contacts-v3 .ncm-card__action {
-  width: 22px;
-  height: 22px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  padding: 10px 20px;
   background: var(--ncm-bg-deep, #0a0a0f);
-  border: 1px solid var(--ncm-border, #2a2a45);
-  color: var(--ncm-text-muted, #555570);
-  font-size: 9px;
-  cursor: pointer;
-  border-radius: 2px;
-  transition: all 0.15s;
-}
-
-.ncm-contacts-v3 .ncm-card__action:hover {
-  color: var(--ncm-secondary, #19f3f7);
-  border-color: rgba(25, 243, 247, 0.3);
-}
-
-.ncm-contacts-v3 .ncm-card__action--danger:hover {
-  color: var(--ncm-primary, #F65261);
-  border-color: rgba(246, 82, 97, 0.3);
-}
-
-.ncm-contacts-v3 .ncm-card__action--share:hover {
-  color: var(--ncm-accent, #f7c948);
-  border-color: rgba(247, 201, 72, 0.3);
-}
-
-/* Network bottom bar */
-.ncm-contacts-v3 .ncm-card__network {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-}
-
-.ncm-contacts-v3 .ncm-card__network--darknet {
-  background: #b44dff;
-}
-
-.ncm-contacts-v3 .ncm-card__network--corpnet {
-  background: var(--ncm-accent, #f7c948);
-}
-
-.ncm-contacts-v3 .ncm-card__network--citinet {
-  background: var(--ncm-secondary, #19f3f7);
-  opacity: 0.3;
-}
-
-/* ═══════════════════════════════════════════
-   LIST VIEW
-   ═══════════════════════════════════════════ */
-
-.ncm-contacts-v3 .ncm-list {
-  display: flex;
-  flex-direction: column;
-}
-
-.ncm-contacts-v3 .ncm-list-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 16px;
   border-bottom: 1px solid var(--ncm-border, #2a2a45);
-  cursor: pointer;
-  transition: all 0.15s;
-  position: relative;
+  flex-shrink: 0;
 }
 
-.ncm-contacts-v3 .ncm-list-item:hover {
-  background: var(--ncm-bg-surface, #1a1a2e);
-}
-
-.ncm-contacts-v3 .ncm-list-item--selected {
-  background: rgba(25, 243, 247, 0.04);
-  border-left: 3px solid var(--ncm-secondary, #19f3f7);
-  padding-left: 13px;
-}
-
-/* Network tinting */
-.ncm-contacts-v3 .ncm-list-item--darknet {
-  border-left: 3px solid #b44dff;
-  padding-left: 13px;
-}
-
-.ncm-contacts-v3 .ncm-list-item--darknet:hover {
-  background: rgba(180, 77, 255, 0.03);
-}
-
-.ncm-contacts-v3 .ncm-list-item--corpnet {
-  border-left: 3px solid var(--ncm-accent, #f7c948);
-  padding-left: 13px;
-}
-
-.ncm-contacts-v3 .ncm-list-item--corpnet:hover {
-  background: rgba(247, 201, 72, 0.03);
-}
-
-/* Burned list item */
-/* ═════════════════════════════════════════
-   LIST VIEW — Burned Item
-   ═════════════════════════════════════════ */
-
-.ncm-contacts-v3 .ncm-list-item--burned {
-  background:
-    repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 2px,
-      rgba(255, 0, 51, 0.015) 2px,
-      rgba(255, 0, 51, 0.015) 4px
-    ),
-    rgba(255, 0, 51, 0.03);
-  border-left: 3px solid var(--ncm-danger, #ff0033);
-  padding-left: 13px;
-  box-shadow: inset 0 0 15px rgba(255, 0, 51, 0.05);
-  position: relative;
-  overflow: hidden;
-}
-
-/* Subtle COMPROMISED watermark on list items too */
-.ncm-contacts-v3 .ncm-list-item--burned::after {
-  content: 'COMPROMISED';
-  position: absolute;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: rgba(255, 0, 51, 0.10);
-  pointer-events: none;
-  white-space: nowrap;
-}
-
-/* Avatar: grayscale + red tint */
-.ncm-contacts-v3 .ncm-list-item--burned .ncm-list-item__avatar {
-  opacity: 0.6;
-  filter: grayscale(0.7) brightness(0.8);
-  border-color: rgba(255, 0, 51, 0.35) !important;
-}
-
-/* Name: strikethrough + muted */
-.ncm-contacts-v3 .ncm-list-item--burned .ncm-list-item__name {
-  text-decoration: line-through;
-  text-decoration-color: rgba(255, 0, 51, 0.4);
-  text-decoration-thickness: 1.5px;
-  color: rgba(224, 224, 232, 0.5);
-}
-
-/* Email: muted */
-.ncm-contacts-v3 .ncm-list-item--burned .ncm-list-item__email {
-  color: rgba(85, 85, 112, 0.35);
-}
-
-/* Org text shows COMPROMISED — already in template */
-.ncm-contacts-v3 .ncm-list-item--burned .ncm-list-item__org {
-  color: rgba(255, 0, 51, 0.35);
-}
-
-/* Trust segments force red */
-.ncm-contacts-v3 .ncm-list-item--burned .ncm-list-item__trust-seg.active {
-  background: var(--ncm-danger, #ff0033) !important;
-}
-
-/* Hover: danger intensifies */
-.ncm-contacts-v3 .ncm-list-item--burned:hover {
-  background:
-    repeating-linear-gradient(
-      0deg, transparent, transparent 2px,
-      rgba(255, 0, 51, 0.02) 2px, rgba(255, 0, 51, 0.02) 4px
-    ),
-    rgba(255, 0, 51, 0.06);
-  box-shadow: inset 0 0 20px rgba(255, 0, 51, 0.08);
-}
-
-.ncm-contacts-v3 .ncm-list-item--burned:hover .ncm-list-item__name {
-  color: rgba(255, 0, 51, 0.6);
-}
-
-/* ─────────────────────────────────────────
-   List Item — Encrypted base state
-   ───────────────────────────────────────── */
-
-.ncm-contacts-v3 .ncm-list-item--encrypted {
-  position: relative;
-  overflow: hidden;
-  border-left: 3px solid var(--ncm-accent, #f7c948);
-  padding-left: 13px;
-
-  /* Amber breathing border */
-  animation: ncm-ice-list-pulse 3s ease-in-out infinite;
-}
-
-@keyframes ncm-ice-list-pulse {
-  0%, 100% {
-    border-left-color: rgba(247, 201, 72, 0.5);
-    box-shadow: inset 0 0 10px rgba(247, 201, 72, 0.03);
-  }
-  50% {
-    border-left-color: rgba(247, 201, 72, 0.8);
-    box-shadow: inset 0 0 15px rgba(247, 201, 72, 0.06);
-  }
-}
-
-/* Hide the normal content behind the overlay */
-.ncm-contacts-v3 .ncm-list-item--encrypted > .ncm-list-item__avatar,
-.ncm-contacts-v3 .ncm-list-item--encrypted > .ncm-list-item__body,
-.ncm-contacts-v3 .ncm-list-item--encrypted > .ncm-list-item__right {
-  opacity: 0;
-  pointer-events: none;
-}
-
-
-/* ─────────────────────────────────────────
-   ICE Overlay — Covers the list row
-   ───────────────────────────────────────── */
-
-.ncm-list-item__ice-overlay {
-  position: absolute;
-  inset: 0;
-  z-index: 4;
+.ncm-app .ncm-header__identity {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 0 16px 0 0;
-  cursor: pointer;
-
-  /* Layered depth background */
-  background:
-    radial-gradient(
-      ellipse at 30% 50%,
-      rgba(10, 10, 15, 0.82) 0%,
-      rgba(10, 10, 15, 0.90) 60%,
-      rgba(5, 5, 8, 0.95) 100%
-    );
-
-  transition: background 0.2s;
 }
 
-
-/* ─── Data stream scanlines on overlay ─── */
-
-.ncm-list-item__ice-overlay::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  opacity: 0.08;
-
-  background-image:
-    repeating-linear-gradient(
-      90deg,
-      transparent,
-      transparent 24px,
-      rgba(247, 201, 72, 0.15) 24px,
-      rgba(247, 201, 72, 0.15) 25px
-    );
-
-  background-size: 100% 200%;
-  animation: ncm-data-scroll 8s linear infinite;
-}
-
-/* Reuse the same keyframe from the grid card */
-/* @keyframes ncm-data-scroll already defined in encrypted-enhanced.css */
-
-
-/* ─── Corner brackets (top-left + bottom-right only for compact row) ─── */
-
-.ncm-list-item__ice-overlay::after {
-  content: '';
-  position: absolute;
-  inset: 4px;
-  pointer-events: none;
-  z-index: 1;
-  border: 1px solid rgba(247, 201, 72, 0.10);
-
-  clip-path: polygon(
-    /* Top-left corner */
-    0% 0%, 12% 0%, 12% 1px, 1px 1px, 1px 30%, 0% 30%,
-    /* Bottom-right corner */
-    88% 100%, 100% 100%, 100% 70%, calc(100% - 1px) 70%, calc(100% - 1px) calc(100% - 1px), 88% calc(100% - 1px)
-  );
-
-  animation: ncm-bracket-pulse 3s ease-in-out infinite;
-}
-
-/* @keyframes ncm-bracket-pulse already defined in encrypted-enhanced.css */
-
-
-/* ─── Lock Avatar ─── */
-
-.ncm-list-item__ice-avatar {
-  width: 36px;
-  height: 36px;
+.ncm-app .ncm-header__avatar {
+  width: 34px; height: 34px;
   border-radius: 50%;
-  border: 2px solid rgba(247, 201, 72, 0.25);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  position: relative;
-  z-index: 2;
-  background: rgba(247, 201, 72, 0.04);
-}
-
-.ncm-list-item__ice-avatar i.fa-lock {
-  font-size: 13px;
-  color: var(--ncm-accent, #f7c948);
-  animation: ncm-lock-glow-enhanced 2.5s ease-in-out infinite;
-}
-
-/* @keyframes ncm-lock-glow-enhanced already defined in encrypted-enhanced.css */
-
-
-/* ─── Scrambled Info ─── */
-
-.ncm-list-item__ice-body {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  position: relative;
-  z-index: 2;
-}
-
-.ncm-list-item__ice-top {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.ncm-list-item__ice-name {
+  border: 2px solid rgba(0,212,230,0.3);
+  display: flex; align-items: center; justify-content: center;
   font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 13px;
-  font-weight: 700;
-  color: rgba(247, 201, 72, 0.35);
-  letter-spacing: 0.1em;
-}
-
-.ncm-list-item__ice-bottom {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.ncm-list-item__ice-dv {
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 8px;
-  color: rgba(247, 201, 72, 0.6);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-
-  /* Badge chip */
-  background: rgba(247, 201, 72, 0.06);
-  border: 1px solid rgba(247, 201, 72, 0.15);
-  border-radius: 2px;
-  padding: 0 6px;
-}
-
-/* Blinking cursor after DV */
-.ncm-list-item__ice-dv::after {
-  content: '█';
-  font-size: 7px;
-  margin-left: 3px;
-  animation: ncm-cursor-blink 1s step-end infinite;
-  color: rgba(247, 201, 72, 0.4);
-}
-
-/* @keyframes ncm-cursor-blink already defined in encrypted-enhanced.css */
-
-
-/* ─── ICE Badge ─── */
-
-.ncm-badge--encrypted {
-  background: rgba(247, 201, 72, 0.08) !important;
-  border-color: rgba(247, 201, 72, 0.25) !important;
-  color: var(--ncm-accent, #f7c948) !important;
-}
-
-
-/* ─── Right Side: GM Bypass ─── */
-
-.ncm-list-item__ice-right {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  position: relative;
-  z-index: 5;
-}
-
-.ncm-list-item__ice-gm-bypass {
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 7px;
-  color: var(--ncm-danger, #ff0033);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  opacity: 0.5;
-  cursor: pointer;
-  padding: 2px 6px;
-  border: 1px solid rgba(255, 0, 51, 0.2);
-  border-radius: 2px;
-  background: rgba(0, 0, 0, 0.4);
-  transition: all 0.15s;
-  white-space: nowrap;
-}
-
-.ncm-list-item__ice-gm-bypass:hover {
-  opacity: 1;
-  border-color: rgba(255, 0, 51, 0.5);
-  background: rgba(255, 0, 51, 0.12);
-}
-
-
-/* ─── Hover: ICE warms up ─── */
-
-.ncm-contacts-v3 .ncm-list-item--encrypted:hover {
-  background: transparent;
-}
-
-.ncm-list-item__ice-overlay:hover {
-  background:
-    radial-gradient(
-      ellipse at 30% 50%,
-      rgba(10, 10, 15, 0.75) 0%,
-      rgba(10, 10, 15, 0.84) 60%,
-      rgba(5, 5, 8, 0.92) 100%
-    );
-}
-
-.ncm-list-item__ice-overlay:hover .ncm-list-item__ice-avatar {
-  border-color: rgba(247, 201, 72, 0.4);
-}
-
-.ncm-list-item__ice-overlay:hover .ncm-list-item__ice-avatar i.fa-lock {
-  text-shadow:
-    0 0 10px rgba(247, 201, 72, 0.6),
-    0 0 20px rgba(247, 201, 72, 0.3);
-}
-
-.ncm-list-item__ice-overlay:hover .ncm-list-item__ice-name {
-  color: rgba(247, 201, 72, 0.5);
-}
-
-.ncm-list-item__ice-overlay:hover .ncm-list-item__ice-dv {
-  color: rgba(247, 201, 72, 0.8);
-  border-color: rgba(247, 201, 72, 0.3);
-  background: rgba(247, 201, 72, 0.10);
-}
-
-.ncm-list-item__ice-overlay:hover::after {
-  border-color: rgba(247, 201, 72, 0.25);
-}
-
-
-/* ─── Breach animation states on list items ─── */
-
-/* Breaching in progress */
-.ncm-list-item--encrypted .ncm-list-item__ice-overlay--breaching {
-  pointer-events: none;
-}
-
-.ncm-list-item--encrypted .ncm-list-item__ice-overlay--breaching .fa-lock {
-  animation: ncm-lock-pulse 0.4s ease-in-out infinite alternate;
-}
-
-/* Success: Overlay glitch-shatters away */
-.ncm-list-item--encrypted .ncm-list-item__ice-overlay--unscramble {
-  animation: ncm-list-ice-shatter 0.9s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-  pointer-events: none;
-}
-
-@keyframes ncm-list-ice-shatter {
-  0% {
-    transform: translateX(0);
-    opacity: 1;
-    filter: brightness(1);
-  }
-  15% {
-    transform: translateX(-4px) skewX(-1deg);
-    filter: brightness(1.6) hue-rotate(60deg);
-  }
-  30% {
-    transform: translateX(6px) skewX(2deg);
-    opacity: 0.8;
-    filter: brightness(0.6);
-  }
-  50% {
-    transform: translateX(-3px);
-    opacity: 0.5;
-    filter: brightness(1.4) hue-rotate(120deg);
-  }
-  70% {
-    transform: translateX(8px) skewX(-3deg);
-    opacity: 0.25;
-    filter: brightness(0.5);
-    clip-path: polygon(
-      0% 0%, 100% 3%, 98% 25%, 2% 30%,
-      0% 50%, 100% 48%, 97% 75%, 3% 78%,
-      0% 95%, 100% 100%
-    );
-  }
-  100% {
-    transform: translateX(-10px);
-    opacity: 0;
-    filter: brightness(2);
-    clip-path: polygon(50% 50%, 50% 50%, 50% 50%, 50% 50%);
-  }
-}
-
-/* Success: Row gets a brief cyan flash */
-.ncm-list-item--encrypted.ncm-list-item--decrypted-resolve {
-  animation: ncm-list-resolve 0.5s ease-out both;
-}
-
-@keyframes ncm-list-resolve {
-  0% {
-    box-shadow: inset 0 0 0 rgba(25, 243, 247, 0);
-    background: transparent;
-  }
-  30% {
-    box-shadow: inset 0 0 20px rgba(25, 243, 247, 0.1);
-    background: rgba(25, 243, 247, 0.03);
-  }
-  100% {
-    box-shadow: none;
-    background: transparent;
-  }
-}
-
-/* Failure: Denied flash + shake on the overlay */
-.ncm-list-item--encrypted .ncm-list-item__ice-overlay--denied {
-  animation: ncm-list-ice-denied 0.5s ease-out;
-}
-
-@keyframes ncm-list-ice-denied {
-  0%   { background: rgba(10, 10, 15, 0.90); }
-  25%  { background: rgba(255, 0, 51, 0.08); }
-  50%  { background: rgba(255, 0, 51, 0.04); }
-  100% { background: rgba(10, 10, 15, 0.90); }
-}
-
-.ncm-list-item--encrypted .ncm-list-item__ice-overlay--shake {
-  animation: ncm-shake 0.3s ease-out;
-}
-
-/* ACCESS DENIED text in list overlay */
-.ncm-list-item__ice-overlay .ncm-list-item__ice-denied-text {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--ncm-danger, #ff0033);
-  text-transform: uppercase;
-  letter-spacing: 0.15em;
-  text-shadow: 0 0 8px rgba(255, 0, 51, 0.6);
-  opacity: 0;
-  pointer-events: none;
-  z-index: 15;
-  white-space: nowrap;
-}
-
-.ncm-list-item__ice-overlay--denied .ncm-list-item__ice-denied-text {
-  animation: ncm-denied-text-appear 1.5s ease-out forwards;
-}
-
-/* ACCESS GRANTED text in list overlay */
-.ncm-list-item__ice-overlay .ncm-list-item__ice-granted-text {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--ncm-secondary, #19f3f7);
-  text-transform: uppercase;
-  letter-spacing: 0.15em;
-  text-shadow: 0 0 10px rgba(25, 243, 247, 0.6);
-  opacity: 0;
-  pointer-events: none;
-  z-index: 15;
-  white-space: nowrap;
-}
-
-.ncm-list-item__ice-overlay--unscramble .ncm-list-item__ice-granted-text {
-  animation: ncm-granted-text-appear 0.8s ease-out 0.2s forwards;
-}
-
-/* List avatar */
-.ncm-contacts-v3 .ncm-list-item__avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: 2px solid var(--ncm-border, #2a2a45);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-weight: 700;
-  font-size: 14px;
+  font-weight: 700; font-size: 14px;
+  background: var(--ncm-bg-surface, #1a1a2e);
   flex-shrink: 0;
   overflow: hidden;
-  background: var(--ncm-bg-elevated, #252540);
-  position: relative;
+}
+.ncm-app .ncm-header__avatar img {
+  width: 100%; height: 100%; object-fit: cover; border-radius: 50%;
 }
 
-.ncm-contacts-v3 .ncm-list-item__avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+.ncm-app .ncm-header__info {
+  display: flex; flex-direction: column; gap: 1px;
+}
+.ncm-app .ncm-header__name {
+  font-weight: 700; font-size: 15px; color: var(--ncm-text-primary, #e0e0e8);
+}
+.ncm-app .ncm-header__email {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 10px; color: var(--ncm-secondary, #00D4E6); opacity: 0.6;
 }
 
-.ncm-contacts-v3 .ncm-list-item__status {
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
+.ncm-app .ncm-header__divider {
+  width: 1px; height: 26px; background: var(--ncm-border, #2a2a45);
+}
+
+.ncm-app .ncm-header__stats {
+  display: flex; gap: 14px;
+}
+.ncm-app .ncm-stat {
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+}
+.ncm-app .ncm-stat__value {
+  font-size: 17px; font-weight: 700; color: var(--ncm-text-primary, #e0e0e8); line-height: 1;
+}
+.ncm-app .ncm-stat__value--success { color: var(--ncm-success, #34D399); }
+.ncm-app .ncm-stat__value--accent { color: var(--ncm-accent, #F0C55B); }
+.ncm-app .ncm-stat__label {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 8px; color: var(--ncm-text-muted, #555570);
+  text-transform: uppercase; letter-spacing: 0.1em;
+}
+
+.ncm-app .ncm-header__actions {
+  display: flex; gap: 6px; margin-left: auto;
+}
+
+
+/* ═══════════════════════════════════════════
+   §3  TOOLBAR
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-contacts-v5 .ncm-toolbar {
+  padding: 8px 20px;
+  border-bottom: 1px solid var(--ncm-border, #2a2a45);
+  flex-shrink: 0;
+  background: var(--ncm-bg-deep, #0a0a0f);
+}
+
+.ncm-app .ncm-search-row {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--ncm-bg-surface, #1a1a2e);
+  border: 1px solid var(--ncm-border, #2a2a45);
+  border-radius: 4px; padding: 5px 12px;
+  transition: border-color 0.2s;
+}
+.ncm-app .ncm-search-row:focus-within {
+  border-color: var(--ncm-secondary, #00D4E6);
+}
+.ncm-app .ncm-search-row i {
+  color: var(--ncm-text-muted, #555570); font-size: 11px;
+}
+.ncm-app .ncm-search-input {
+  flex: 1; background: none; border: none; outline: none;
+  color: var(--ncm-text-primary, #e0e0e8);
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-weight: 600; font-size: 13px;
+}
+.ncm-app .ncm-search-input::placeholder {
+  color: var(--ncm-text-muted, #555570);
+}
+.ncm-app .ncm-search-count {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 9px; color: var(--ncm-text-muted, #555570);
+}
+
+.ncm-app .ncm-filter-row {
+  display: flex; gap: 4px; margin-top: 6px; flex-wrap: wrap; align-items: center;
+}
+
+/* Pills */
+.ncm-app .ncm-pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 8px; border-radius: 3px;
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-size: 10px; font-weight: 600;
+  color: var(--ncm-text-secondary, #8888a0); background: transparent;
+  border: 1px solid var(--ncm-border, #2a2a45);
+  cursor: pointer; transition: all 0.15s;
+  text-transform: uppercase; letter-spacing: 0.06em;
+}
+.ncm-app .ncm-pill:hover {
+  color: var(--ncm-text-primary, #e0e0e8);
+  border-color: var(--ncm-border-active, #3a3a5a);
+}
+.ncm-app .ncm-pill--active {
+  color: var(--ncm-secondary, #00D4E6);
+  border-color: rgba(0,212,230,0.35);
+  background: rgba(0,212,230,0.06);
+}
+.ncm-app .ncm-pill--tag {
+  border-style: dashed; color: var(--ncm-accent, #F0C55B);
+  border-color: rgba(240,197,91,0.3);
+}
+.ncm-app .ncm-pill--tag.ncm-pill--active {
+  border-style: solid; background: rgba(240,197,91,0.06);
+}
+.ncm-app .ncm-pill--add {
+  border-style: dashed; color: var(--ncm-text-dim, #3a3a50);
+}
+.ncm-app .ncm-pill i { font-size: 8px; }
+.ncm-app .ncm-pill__remove {
+  cursor: pointer; font-size: 11px; opacity: 0.6;
+}
+.ncm-app .ncm-pill__remove:hover { opacity: 1; }
+
+/* View toggle */
+.ncm-app .ncm-view-toggle {
+  display: flex; margin-left: auto; gap: 2px;
+}
+.ncm-app .ncm-view-btn {
+  width: 26px !important; height: 26px !important;
+  display: flex !important; align-items: center !important; justify-content: center !important;
+  background: transparent !important; border: 1px solid var(--ncm-border, #2a2a45) !important;
+  border-radius: 3px !important; color: var(--ncm-text-dim, #3a3a50) !important;
+  font-size: 10px !important; cursor: pointer !important; transition: all 0.15s !important;
+  padding: 0 !important; min-height: 0 !important; min-width: 0 !important;
+  flex-shrink: 0 !important; flex-grow: 0 !important;
+  appearance: none !important; box-shadow: none !important; outline: none !important;
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif) !important;
+}
+.ncm-app .ncm-view-btn--active {
+  color: var(--ncm-secondary, #00D4E6) !important;
+  border-color: rgba(0,212,230,0.3) !important;
+  background: rgba(0,212,230,0.06) !important;
+}
+
+
+/* ═══════════════════════════════════════════
+   §4  CONTENT AREA
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-content {
+  flex: 1; overflow-y: auto; overflow-x: hidden;
+}
+
+/* Empty state */
+.ncm-app .ncm-empty {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  height: 100%; gap: 8px; padding: 40px;
+  color: var(--ncm-text-muted, #555570);
+}
+.ncm-app .ncm-empty i { font-size: 28px; opacity: 0.4; }
+.ncm-app .ncm-empty__text {
+  font-weight: 700; font-size: 14px;
+  color: var(--ncm-text-secondary, #8888a0);
+}
+.ncm-app .ncm-empty__sub {
+  font-size: 11px; color: var(--ncm-text-muted, #555570);
+}
+
+
+/* ═══════════════════════════════════════════
+   §5  SPLIT LAYOUT
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-split {
+  flex: 1; display: flex; overflow: hidden;
+}
+
+.ncm-app .ncm-split__list {
+  width: 300px; min-width: 300px;
+  border-right: 1px solid var(--ncm-border, #2a2a45);
+  display: flex; flex-direction: column;
+  background: var(--ncm-bg-deep, #0a0a0f);
+}
+
+.ncm-app .ncm-split__detail {
+  flex: 1; overflow-y: auto; overflow-x: hidden;
+  background: var(--ncm-bg-base, #12121a);
+  min-width: 0;
+}
+
+
+/* ═══════════════════════════════════════════
+   §6  QUICK-DIAL FAVORITES
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-quickdial {
+  display: flex; gap: 6px; align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--ncm-border, #2a2a45);
+  flex-shrink: 0;
+}
+.ncm-app .ncm-quickdial__label {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 8px; color: var(--ncm-text-dim, #3a3a50);
+  text-transform: uppercase; letter-spacing: 0.1em;
+  flex-shrink: 0; writing-mode: vertical-lr; transform: rotate(180deg);
+}
+.ncm-app .ncm-quickdial__item {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  cursor: pointer; flex-shrink: 0; transition: transform 0.15s;
+}
+.ncm-app .ncm-quickdial__item:hover { transform: translateY(-2px); }
+.ncm-app .ncm-quickdial__avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  border: 2px solid; display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 12px; background: var(--ncm-bg-surface, #1a1a2e);
+  position: relative; transition: box-shadow 0.2s;
+  overflow: hidden;
+}
+.ncm-app .ncm-quickdial__avatar img {
+  width: 100%; height: 100%; object-fit: cover; border-radius: 50%;
+}
+.ncm-app .ncm-quickdial__item:hover .ncm-quickdial__avatar {
+  box-shadow: 0 0 10px rgba(0,212,230,0.2);
+}
+.ncm-app .ncm-quickdial__dot {
+  position: absolute; bottom: 0; right: 0;
+  width: 9px; height: 9px; border-radius: 50%;
+  border: 2px solid var(--ncm-bg-deep, #0a0a0f);
+  background: var(--ncm-success, #34D399);
+}
+.ncm-app .ncm-quickdial__name {
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-size: 9px; font-weight: 600;
+  color: var(--ncm-text-muted, #555570);
+  max-width: 42px; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; text-align: center;
+}
+
+
+/* ═══════════════════════════════════════════
+   §7  SORT/GROUP BAR
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-sort-bar {
+  display: flex; align-items: center; gap: 5px;
+  padding: 5px 12px;
+  border-bottom: 1px solid var(--ncm-border, #2a2a45);
+  flex-shrink: 0;
+}
+.ncm-app .ncm-sort-bar__label {
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-size: 9px; font-weight: 700;
+  color: var(--ncm-text-dim, #3a3a50);
+  text-transform: uppercase; letter-spacing: 0.08em;
+  flex-shrink: 0;
+}
+.ncm-app .ncm-sort-bar__select {
+  flex: 1; min-width: 0;
+  background: var(--ncm-bg-surface, #1a1a2e);
+  border: 1px solid var(--ncm-border, #2a2a45);
+  border-radius: 3px;
+  color: var(--ncm-text-primary, #e0e0e8);
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-weight: 600; font-size: 10px;
+  padding: 2px 18px 2px 6px; outline: none; cursor: pointer;
+  appearance: none; -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M1 1l3 3 3-3' fill='none' stroke='%238888a0' stroke-width='1.2'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+}
+.ncm-app .ncm-sort-bar__btn {
+  width: 22px !important; height: 22px !important;
+  display: flex !important; align-items: center !important; justify-content: center !important;
+  background: none !important; border: 1px solid var(--ncm-border, #2a2a45) !important;
+  border-radius: 3px !important; color: var(--ncm-text-muted, #555570) !important;
+  font-size: 9px !important; cursor: pointer !important; transition: all 0.15s !important;
+  flex-shrink: 0 !important; padding: 0 !important; min-height: 0 !important;
+  appearance: none !important; box-shadow: none !important; outline: none !important;
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif) !important;
+}
+.ncm-app .ncm-sort-bar__btn:hover {
+  color: var(--ncm-secondary, #00D4E6) !important;
+  border-color: rgba(0,212,230,0.3) !important;
+}
+
+
+/* ═══════════════════════════════════════════
+   §8  GROUP HEADERS
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-group-header {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 12px;
+  background: rgba(0,212,230,0.04);
+  border-bottom: 1px solid rgba(0,212,230,0.08);
+  border-left: 3px solid rgba(0,212,230,0.3);
+  cursor: pointer; user-select: none; transition: all 0.15s;
+}
+.ncm-app .ncm-group-header:hover { background: rgba(0,212,230,0.08); }
+.ncm-app .ncm-group-header__chev {
+  font-size: 8px; color: var(--ncm-secondary, #00D4E6); opacity: 0.5;
+  transition: transform 0.2s; width: 10px; text-align: center;
+}
+.ncm-app .ncm-group-header--collapsed .ncm-group-header__chev { transform: rotate(-90deg); }
+.ncm-app .ncm-group-header__icon {
+  font-size: 9px; color: var(--ncm-secondary, #00D4E6); opacity: 0.4;
+}
+.ncm-app .ncm-group-header__name {
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-weight: 700; font-size: 10px;
+  color: var(--ncm-text-primary, #e0e0e8);
+  text-transform: uppercase; letter-spacing: 0.06em; flex: 1;
+}
+.ncm-app .ncm-group-header__count {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 9px; color: var(--ncm-secondary, #00D4E6); opacity: 0.6;
+}
+
+/* Burned group */
+.ncm-app .ncm-group-header--burned {
+  border-left-color: rgba(239,68,68,0.3);
+  background: rgba(239,68,68,0.03);
+  border-bottom-color: rgba(239,68,68,0.06);
+}
+.ncm-app .ncm-group-header--burned .ncm-group-header__chev,
+.ncm-app .ncm-group-header--burned .ncm-group-header__icon,
+.ncm-app .ncm-group-header--burned .ncm-group-header__name { color: var(--ncm-danger, #EF4444); }
+.ncm-app .ncm-group-header--burned .ncm-group-header__count { color: var(--ncm-danger, #EF4444); opacity: 0.5; }
+
+/* Encrypted group */
+.ncm-app .ncm-group-header--encrypted {
+  border-left-color: rgba(240,197,91,0.3);
+  background: rgba(240,197,91,0.03);
+  border-bottom-color: rgba(240,197,91,0.06);
+}
+.ncm-app .ncm-group-header--encrypted .ncm-group-header__chev,
+.ncm-app .ncm-group-header--encrypted .ncm-group-header__icon,
+.ncm-app .ncm-group-header--encrypted .ncm-group-header__name { color: var(--ncm-accent, #F0C55B); }
+.ncm-app .ncm-group-header--encrypted .ncm-group-header__count { color: var(--ncm-accent, #F0C55B); opacity: 0.5; }
+
+
+/* ═══════════════════════════════════════════
+   §9  LIST ITEMS
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-list-scroll { flex: 1; overflow-y: auto; overflow-x: hidden; }
+
+.ncm-app .ncm-list-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(42,42,69,0.3);
+  cursor: pointer; transition: all 0.15s; position: relative;
+}
+.ncm-app .ncm-list-item:hover { background: var(--ncm-bg-hover, #2A2A40); }
+.ncm-app .ncm-list-item--selected {
+  background: rgba(0,212,230,0.06);
+  border-left: 3px solid var(--ncm-secondary, #00D4E6);
+  padding-left: 9px;
+}
+.ncm-app .ncm-list-item--burned { opacity: 0.35; }
+.ncm-app .ncm-list-item--encrypted { opacity: 0.45; }
+
+.ncm-app .ncm-list-item__avatar {
+  width: 34px; height: 34px; border-radius: 8px;
+  border: 1.5px solid; display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 13px; flex-shrink: 0;
+  background: var(--ncm-bg-surface, #1a1a2e);
+  position: relative; overflow: visible;
+}
+.ncm-app .ncm-list-item__avatar img {
+  width: 100%; height: 100%; object-fit: cover; border-radius: 8px;
+}
+.ncm-app .ncm-list-item__status {
+  position: absolute; bottom: -2px; right: -2px;
+  width: 9px; height: 9px; border-radius: 50%;
   border: 2px solid var(--ncm-bg-deep, #0a0a0f);
 }
+.ncm-app .ncm-list-item__status--online { background: var(--ncm-success, #34D399); }
 
-.ncm-contacts-v3 .ncm-list-item__status--active {
-  background: var(--ncm-success, #00ff41);
-  box-shadow: 0 0 4px rgba(0, 255, 65, 0.4);
-  animation: ncm-status-pulse 1.2s ease-in-out infinite;
-}
-
-.ncm-contacts-v3 .ncm-list-item__status--online { background: var(--ncm-success, #00ff41); }
-.ncm-contacts-v3 .ncm-list-item__status--idle { background: var(--ncm-warning, #ffab00); }
-.ncm-contacts-v3 .ncm-list-item__status--offline { background: var(--ncm-text-muted, #555570); }
-.ncm-contacts-v3 .ncm-list-item__status--dead-zone { background: var(--ncm-danger, #ff0033); }
-
-/* List body */
-.ncm-contacts-v3 .ncm-list-item__body {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.ncm-contacts-v3 .ncm-list-item__top {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.ncm-contacts-v3 .ncm-list-item__name {
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 13px;
-  font-weight: 700;
+.ncm-app .ncm-list-item__body { flex: 1; min-width: 0; }
+.ncm-app .ncm-list-item__row1 { display: flex; align-items: baseline; gap: 6px; }
+.ncm-app .ncm-list-item__name {
+  font-weight: 600; font-size: 12px;
   color: var(--ncm-text-primary, #e0e0e8);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  flex: 1; min-width: 0;
 }
-
-.ncm-contacts-v3 .ncm-list-item__unverified {
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 7px;
+.ncm-app .ncm-list-item__name--burned {
+  text-decoration: line-through;
+  text-decoration-color: var(--ncm-danger, #EF4444);
   color: var(--ncm-text-muted, #555570);
-  opacity: 0.5;
-  text-transform: uppercase;
 }
-
-.ncm-contacts-v3 .ncm-list-item__bottom {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.ncm-contacts-v3 .ncm-list-item__email {
+.ncm-app .ncm-list-item__seen {
   font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 9px;
-  color: var(--ncm-text-muted, #555570);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  font-size: 9px; color: var(--ncm-text-dim, #3a3a50); flex-shrink: 0;
 }
-
-.ncm-contacts-v3 .ncm-list-item__org {
+.ncm-app .ncm-list-item__seen--online { color: var(--ncm-success, #34D399); }
+.ncm-app .ncm-list-item__row2 { margin-top: 1px; }
+.ncm-app .ncm-list-item__email {
   font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 9px;
-  color: var(--ncm-text-muted, #555570);
-  opacity: 0.6;
-  flex-shrink: 0;
+  font-size: 9px; color: var(--ncm-secondary, #00D4E6); opacity: 0.4;
+}
+.ncm-app .ncm-list-item__fav {
+  position: absolute; top: 5px; right: 6px;
+  font-size: 7px; color: var(--ncm-accent, #F0C55B); opacity: 0.6;
 }
 
-.ncm-contacts-v3 .ncm-list-item__tags {
-  display: flex;
-  gap: 3px;
-  flex-wrap: wrap;
-  margin-top: 2px;
+
+/* ═══════════════════════════════════════════
+   §10  DETAIL PANEL
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-detail {
+  padding: 20px;
+  display: flex; flex-direction: column; gap: 16px;
 }
 
-/* List trust meter */
-.ncm-contacts-v3 .ncm-list-item__trust {
-  display: flex;
-  gap: 2px;
-  flex-shrink: 0;
+/* Profile */
+.ncm-app .ncm-detail__profile { display: flex; gap: 16px; align-items: flex-start; }
+.ncm-app .ncm-detail__avatar {
+  width: 64px; height: 64px; border-radius: 12px;
+  border: 2px solid; display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 24px;
+  background: var(--ncm-bg-surface, #1a1a2e);
+  flex-shrink: 0; position: relative; overflow: hidden;
 }
-
-.ncm-contacts-v3 .ncm-list-item__trust-seg {
-  width: 6px;
-  height: 3px;
-  border-radius: 1px;
-  background: var(--ncm-bg-elevated, #252540);
+.ncm-app .ncm-detail__avatar img {
+  width: 100%; height: 100%; object-fit: cover; border-radius: 12px;
 }
-
-.ncm-contacts-v3 .ncm-list-item__trust--high .ncm-list-item__trust-seg.active { background: var(--ncm-success, #00ff41); }
-.ncm-contacts-v3 .ncm-list-item__trust--med .ncm-list-item__trust-seg.active { background: var(--ncm-warning, #ffab00); }
-.ncm-contacts-v3 .ncm-list-item__trust--low .ncm-list-item__trust-seg.active { background: var(--ncm-danger, #ff0033); }
-
-/* List right side */
-.ncm-contacts-v3 .ncm-list-item__right {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-shrink: 0;
+.ncm-app .ncm-detail__avatar-upload {
+  position: absolute; inset: 0; border-radius: 12px;
+  background: rgba(0,0,0,0.65);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  opacity: 0; transition: opacity 0.2s; cursor: pointer;
+  font-size: 8px; color: var(--ncm-text-secondary, #8888a0);
 }
-
-.ncm-contacts-v3 .ncm-list-item__actions {
-  display: flex;
-  gap: 3px;
-  opacity: 0;
-  transition: opacity 0.15s;
+.ncm-app .ncm-detail__avatar-upload i {
+  font-size: 14px; color: var(--ncm-secondary, #00D4E6);
 }
+.ncm-app .ncm-detail__avatar:hover .ncm-detail__avatar-upload { opacity: 1; }
 
-.ncm-contacts-v3 .ncm-list-item:hover .ncm-list-item__actions {
-  opacity: 1;
+.ncm-app .ncm-detail__info { flex: 1; min-width: 0; }
+.ncm-app .ncm-detail__name {
+  font-weight: 700; font-size: 22px;
+  color: var(--ncm-text-primary, #e0e0e8); line-height: 1.1;
 }
+.ncm-app .ncm-detail__name--burned {
+  text-decoration: line-through;
+  text-decoration-color: var(--ncm-danger, #EF4444);
+}
+.ncm-app .ncm-detail__alias {
+  font-size: 12px; font-weight: 500;
+  color: var(--ncm-text-secondary, #8888a0);
+  font-style: italic; margin-top: 2px;
+}
+.ncm-app .ncm-detail__chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.ncm-app .ncm-detail__actions { display: flex; gap: 6px; margin-top: 4px; }
 
-.ncm-contacts-v3 .ncm-list-item__action {
-  width: 22px;
-  height: 22px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: none;
+
+/* Info Cards */
+.ncm-app .ncm-info-card {
+  background: var(--ncm-bg-surface, #1a1a2e);
   border: 1px solid var(--ncm-border, #2a2a45);
-  color: var(--ncm-text-muted, #555570);
-  font-size: 9px;
-  cursor: pointer;
-  border-radius: 2px;
-  transition: all 0.15s;
+  border-radius: 4px; overflow: hidden;
+}
+.ncm-app .ncm-info-card__header {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 14px;
+  background: rgba(0,212,230,0.02);
+  border-bottom: 1px solid var(--ncm-border, #2a2a45);
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 9px; color: var(--ncm-text-muted, #555570);
+  text-transform: uppercase; letter-spacing: 0.1em;
+}
+.ncm-app .ncm-info-card__header i {
+  font-size: 9px; color: var(--ncm-secondary, #00D4E6); opacity: 0.5;
+}
+.ncm-app .ncm-info-card__body { padding: 12px 14px; }
+.ncm-app .ncm-info-card__body--relationship {
+  display: flex; flex-direction: column; gap: 10px;
+}
+.ncm-app .ncm-info-card__body--gm {
+  display: flex; gap: 8px; flex-wrap: wrap;
+}
+.ncm-app .ncm-info-card--gm {
+  border-color: rgba(246,82,97,0.15);
 }
 
-.ncm-contacts-v3 .ncm-list-item__action:hover {
-  color: var(--ncm-secondary, #19f3f7);
-  border-color: rgba(25, 243, 247, 0.3);
+.ncm-app .ncm-info-grid {
+  display: grid; grid-template-columns: 68px 1fr;
+  gap: 4px 12px; align-items: baseline;
 }
+.ncm-app .ncm-info-label {
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-size: 9px; font-weight: 700;
+  color: var(--ncm-text-muted, #555570);
+  text-transform: uppercase; letter-spacing: 0.06em;
+}
+.ncm-app .ncm-info-value {
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-size: 12px; font-weight: 600;
+  color: var(--ncm-text-primary, #e0e0e8);
+}
+.ncm-app .ncm-info-value--mono {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 11px; color: var(--ncm-secondary, #00D4E6);
+}
+.ncm-app .ncm-info-value--accent { color: var(--ncm-accent, #F0C55B); }
+
+/* Trust */
+.ncm-app .ncm-trust-row { display: flex; align-items: center; gap: 10px; }
+.ncm-app .ncm-trust-bar { display: flex; gap: 3px; height: 7px; flex: 1; }
+.ncm-app .ncm-trust-seg { flex: 1; background: var(--ncm-bg-elevated, #252540); border-radius: 2px; }
+.ncm-app .ncm-trust-seg--active.s0 { background: var(--ncm-danger, #EF4444); }
+.ncm-app .ncm-trust-seg--active.s1 { background: #F97316; }
+.ncm-app .ncm-trust-seg--active.s2 { background: var(--ncm-accent, #F0C55B); }
+.ncm-app .ncm-trust-seg--active.s3 { background: #84CC16; }
+.ncm-app .ncm-trust-seg--active.s4 { background: var(--ncm-success, #34D399); }
+.ncm-app .ncm-trust-label {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 9px; color: var(--ncm-text-muted, #555570);
+  min-width: 70px; text-align: right;
+}
+
+/* Relationship */
+.ncm-app .ncm-rel-row {
+  display: flex; align-items: center; gap: 10px;
+}
+.ncm-app .ncm-rel-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-weight: 700; font-size: 9px; padding: 4px 10px; border-radius: 3px;
+  border: 1px solid; text-transform: uppercase; letter-spacing: 0.04em;
+}
+.ncm-app .ncm-rel-badge--Ally,
+.ncm-app .ncm-rel-badge--ally {
+  color: var(--ncm-success, #34D399);
+  border-color: rgba(52,211,153,0.35);
+  background: rgba(52,211,153,0.08);
+}
+.ncm-app .ncm-rel-badge--Rival,
+.ncm-app .ncm-rel-badge--rival {
+  color: var(--ncm-danger, #EF4444);
+  border-color: rgba(239,68,68,0.35);
+  background: rgba(239,68,68,0.08);
+}
+.ncm-app .ncm-rel-badge--Neutral,
+.ncm-app .ncm-rel-badge--neutral {
+  color: var(--ncm-text-secondary, #8888a0);
+  border-color: rgba(136,136,160,0.35);
+  background: rgba(136,136,160,0.08);
+}
+.ncm-app .ncm-rel-note {
+  font-size: 11px; font-weight: 500;
+  color: var(--ncm-text-secondary, #8888a0); line-height: 1.6;
+  padding: 8px 12px; background: var(--ncm-bg-elevated, #252540);
+  border-radius: 4px; border-left: 3px solid var(--ncm-accent, #F0C55B);
+}
+
+/* Last Interaction */
+.ncm-app .ncm-last-msg { display: flex; align-items: center; gap: 10px; }
+.ncm-app .ncm-last-msg__icon {
+  width: 32px; height: 32px; border-radius: 6px;
+  background: rgba(0,212,230,0.04); border: 1px solid rgba(0,212,230,0.10);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; color: var(--ncm-secondary, #00D4E6); opacity: 0.5;
+  flex-shrink: 0;
+}
+.ncm-app .ncm-last-msg__info { flex: 1; min-width: 0; }
+.ncm-app .ncm-last-msg__subject {
+  font-size: 12px; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ncm-app .ncm-last-msg__meta {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 9px; color: var(--ncm-text-muted, #555570); margin-top: 1px;
+}
+
+/* Notes */
+.ncm-app .ncm-notes-textarea {
+  width: 100%; min-height: 50px;
+  background: var(--ncm-bg-elevated, #252540);
+  border: 1px solid var(--ncm-border, #2a2a45);
+  border-radius: 4px;
+  color: var(--ncm-text-primary, #e0e0e8);
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-size: 11px; font-weight: 500;
+  padding: 8px 12px; resize: vertical; outline: none; line-height: 1.6;
+}
+.ncm-app .ncm-notes-textarea::placeholder { color: var(--ncm-text-muted, #555570); }
+.ncm-app .ncm-notes-textarea:focus { border-color: var(--ncm-secondary, #00D4E6); }
+
 
 /* ═══════════════════════════════════════════
-   EMPTY STATE
+   §11  DETAIL EMPTY STATE
    ═══════════════════════════════════════════ */
 
-.ncm-contacts-v3 .ncm-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 60px 20px;
+.ncm-app .ncm-detail-empty {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  height: 100%; gap: 8px; padding: 40px;
   color: var(--ncm-text-muted, #555570);
 }
-
-.ncm-contacts-v3 .ncm-empty i {
-  font-size: 36px;
-  opacity: 0.3;
+.ncm-app .ncm-detail-empty i { font-size: 32px; opacity: 0.2; }
+.ncm-app .ncm-detail-empty__text {
+  font-weight: 700; font-size: 14px;
+  color: var(--ncm-text-secondary, #8888a0); opacity: 0.5;
+}
+.ncm-app .ncm-detail-empty__sub {
+  font-size: 11px; color: var(--ncm-text-muted, #555570); opacity: 0.4;
 }
 
-.ncm-contacts-v3 .ncm-empty__text {
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 11px;
+
+/* ═══════════════════════════════════════════
+   §12  BURNED BANNER
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-burned-banner {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px;
+  background: rgba(239,68,68,0.05);
+  border: 1px solid rgba(239,68,68,0.12);
+  border-radius: 4px;
+  font-size: 11px; font-weight: 600;
+  color: var(--ncm-danger, #EF4444);
+}
+
+
+/* ═══════════════════════════════════════════
+   §13  CHIPS + ACTION BUTTONS
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-chip {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-weight: 700; font-size: 8px; letter-spacing: 0.04em;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  padding: 2px 6px; border-radius: 3px; border: 1px solid; line-height: 1.4;
+}
+.ncm-app .ncm-chip i { font-size: 7px; }
+.ncm-app .ncm-chip--role {
+  color: #d4a017; border-color: rgba(212,160,23,0.35); background: rgba(212,160,23,0.08);
+}
+.ncm-app .ncm-chip--org {
+  color: #7aa2c4; border-color: rgba(122,162,196,0.35); background: rgba(122,162,196,0.08);
+}
+.ncm-app .ncm-chip--location {
+  color: #c47a2a; border-color: rgba(196,122,42,0.35); background: rgba(196,122,42,0.08);
+}
+.ncm-app .ncm-chip--tag {
+  color: var(--ncm-secondary, #00D4E6);
+  border-color: rgba(0,212,230,0.30);
+  background: rgba(0,212,230,0.06);
 }
 
-.ncm-contacts-v3 .ncm-empty__sub {
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 9px;
-  opacity: 0.5;
+/* Action buttons */
+.ncm-app .ncm-action-btn {
+  display: inline-flex !important; align-items: center !important; gap: 5px !important;
+  padding: 6px 14px !important; border-radius: 3px !important;
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif) !important;
+  font-size: 10px !important; font-weight: 600 !important;
+  cursor: pointer !important; transition: all 0.15s !important;
+  border: 1px solid !important;
+  text-transform: uppercase !important; letter-spacing: 0.06em !important;
+  height: auto !important; min-height: 0 !important;
+  width: auto !important; flex-shrink: 0 !important; flex-grow: 0 !important;
+  appearance: none !important; box-shadow: none !important; outline: none !important;
 }
+.ncm-app .ncm-action-btn--primary {
+  background: rgba(0,212,230,0.08) !important;
+  border-color: rgba(0,212,230,0.3) !important;
+  color: var(--ncm-secondary, #00D4E6) !important;
+}
+.ncm-app .ncm-action-btn--primary:hover {
+  background: rgba(0,212,230,0.15) !important;
+}
+.ncm-app .ncm-action-btn--ghost {
+  background: transparent !important;
+  border-color: var(--ncm-border, #2a2a45) !important;
+  color: var(--ncm-text-secondary, #8888a0) !important;
+}
+.ncm-app .ncm-action-btn--ghost:hover {
+  color: var(--ncm-text-primary, #e0e0e8) !important;
+  border-color: var(--ncm-border-active, #3a3a5a) !important;
+}
+.ncm-app .ncm-action-btn--danger {
+  background: transparent !important;
+  border-color: rgba(239,68,68,0.2) !important;
+  color: rgba(239,68,68,0.6) !important;
+}
+.ncm-app .ncm-action-btn--danger:hover {
+  background: rgba(239,68,68,0.06) !important;
+  color: var(--ncm-danger, #EF4444) !important;
+}
+
 
 /* ═══════════════════════════════════════════
-   FOOTER
+   §14  FOOTER
    ═══════════════════════════════════════════ */
 
-.ncm-contacts-v3 .ncm-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 4px 16px;
+.ncm-app .ncm-contacts-v5 .ncm-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 5px 20px;
   background: var(--ncm-bg-deep, #0a0a0f);
   border-top: 1px solid var(--ncm-border, #2a2a45);
   flex-shrink: 0;
 }
-
-.ncm-contacts-v3 .ncm-footer__info {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+.ncm-app .ncm-footer__info {
+  display: flex; gap: 14px;
   font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 9px;
-  color: var(--ncm-text-muted, #555570);
+  font-size: 9px; color: var(--ncm-text-dim, #3a3a50);
 }
-
-.ncm-contacts-v3 .ncm-footer__shortcuts {
+.ncm-app .ncm-footer__info i { margin-right: 3px; }
+.ncm-app .ncm-footer__shortcuts {
   font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 9px;
-  color: var(--ncm-text-muted, #555570);
-  letter-spacing: 0.04em;
+  font-size: 8px; color: var(--ncm-text-dim, #3a3a50);
 }
-
-.ncm-contacts-v3 .ncm-footer__shortcuts kbd {
-  font-family: inherit;
-  color: var(--ncm-text-secondary, #8888a0);
+.ncm-app .ncm-footer__shortcuts kbd {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 8px; color: var(--ncm-secondary, #00D4E6);
   background: var(--ncm-bg-surface, #1a1a2e);
   border: 1px solid var(--ncm-border, #2a2a45);
-  padding: 0 3px;
-  border-radius: 2px;
-  margin-right: 1px;
+  border-radius: 2px; padding: 0 3px; margin-right: 1px;
 }
+
 
 /* ═══════════════════════════════════════════
-   §3.5 — TRUST DETAIL PANEL
-   Expanded trust meter for GM detail panel.
+   §15  GRID VIEW (legacy card layout)
    ═══════════════════════════════════════════ */
 
-.ncm-trust-detail {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 10px 0;
+.ncm-app .ncm-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px; padding: 14px;
 }
 
-.ncm-trust-detail__header {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
 
-.ncm-trust-detail__label {
+/* ═══════════════════════════════════════════
+   §16  GM INSPECT BANNER
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-gm-inspect-banner {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 20px;
+  background: rgba(246,82,97,0.04);
+  border-bottom: 1px solid rgba(246,82,97,0.12);
   font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 9px;
-  color: var(--ncm-text-muted, #555570);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-}
-
-.ncm-trust-detail__meter {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-/* ── Expanded segment bar ── */
-
-.ncm-trust-detail__bar {
-  display: flex;
-  gap: 3px;
+  font-size: 9px; color: var(--ncm-primary, #F65261);
+  text-transform: uppercase; letter-spacing: 0.1em;
   flex-shrink: 0;
 }
-
-.ncm-trust-detail__segment {
-  width: 18px;
-  height: 6px;
-  border-radius: 1px;
-  background: var(--ncm-bg-elevated, #252540);
-  transition: background 0.2s, box-shadow 0.2s, transform 0.15s;
-}
-
-/* Active segment colors by trust class */
-.ncm-trust-detail.ncm-trust--high .ncm-trust-detail__segment.active {
-  background: var(--ncm-success, #00ff41);
-  box-shadow: 0 0 6px rgba(0, 255, 65, 0.4);
-}
-
-.ncm-trust-detail.ncm-trust--med .ncm-trust-detail__segment.active {
-  background: var(--ncm-warning, #ffab00);
-  box-shadow: 0 0 4px rgba(255, 171, 0, 0.25);
-}
-
-.ncm-trust-detail.ncm-trust--low .ncm-trust-detail__segment.active {
-  background: var(--ncm-danger, #ff0033);
-  box-shadow: 0 0 6px rgba(255, 0, 51, 0.4);
-}
-
-.ncm-trust-detail.ncm-trust--unknown .ncm-trust-detail__segment.active {
-  background: var(--ncm-text-muted, #555570);
-}
-
-/* ── GM interactive segments ── */
-
-.ncm-trust-detail__bar--interactive .ncm-trust-detail__segment {
-  cursor: pointer;
-  position: relative;
-}
-
-.ncm-trust-detail__bar--interactive .ncm-trust-detail__segment:hover {
-  transform: scaleY(1.4);
-  background: var(--ncm-secondary, #19f3f7);
-  box-shadow: 0 0 8px rgba(25, 243, 247, 0.4);
-}
-
-/* Hover preview: highlight segments up to the hovered one */
-.ncm-trust-detail__bar--interactive:hover .ncm-trust-detail__segment {
-  background: var(--ncm-bg-elevated, #252540);
-  box-shadow: none;
-}
-
-.ncm-trust-detail__bar--interactive .ncm-trust-detail__segment:hover,
-.ncm-trust-detail__bar--interactive .ncm-trust-detail__segment:hover ~ .ncm-trust-detail__segment {
-  /* Reset — siblings after hovered stay dim */
-}
-
-/* Use JS-applied .ncm-trust-detail__segment--preview for proper L-to-R preview */
-.ncm-trust-detail__segment--preview {
-  background: var(--ncm-secondary, #19f3f7) !important;
-  box-shadow: 0 0 6px rgba(25, 243, 247, 0.3) !important;
-}
-
-/* ── Trust description text ── */
-
-.ncm-trust-detail__text {
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 10px;
-  letter-spacing: 0.04em;
-  white-space: nowrap;
-}
-
-.ncm-trust-detail__text--high {
-  color: var(--ncm-success, #00ff41);
-}
-
-.ncm-trust-detail__text--med {
-  color: var(--ncm-warning, #ffab00);
-}
-
-.ncm-trust-detail__text--low {
-  color: var(--ncm-danger, #ff0033);
-}
-
-.ncm-trust-detail__text--unknown {
-  color: var(--ncm-text-muted, #555570);
-  font-style: italic;
-}
-
-/* ── GM controls ── */
-
-.ncm-trust-detail__gm-controls {
-  display: flex;
-  gap: 6px;
-  margin-top: 2px;
-}
-
-.ncm-trust-detail__reset {
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 8px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--ncm-text-muted, #555570);
-  background: none;
-  border: 1px solid var(--ncm-border, #2a2a45);
-  padding: 2px 8px;
-  border-radius: 2px;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.ncm-trust-detail__reset:hover {
-  color: var(--ncm-secondary, #19f3f7);
-  border-color: rgba(25, 243, 247, 0.3);
+.ncm-app .ncm-gm-inspect-banner__name {
+  font-weight: 700; color: var(--ncm-text-primary, #e0e0e8);
 }
 
 
 /* ═══════════════════════════════════════════
-   §3.6 — BURN CONTACT TRANSITIONS
-   Animated burn/restore with red flash + hatch fade.
+   §17  SCROLLBARS
    ═══════════════════════════════════════════ */
 
-/* Burn flash — brief red overlay that fades out */
-@keyframes ncm-burn-flash {
-  0%   { opacity: 0; }
-  15%  { opacity: 0.6; }
-  100% { opacity: 0; }
-}
-
-.ncm-card--burn-flash::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: rgba(255, 0, 51, 0.5);
-  z-index: 20;
-  pointer-events: none;
-  animation: ncm-burn-flash 0.6s ease-out forwards;
-  border-radius: inherit;
-}
-
-/* Hatch pattern fade-in (on the ::after pseudo already used by .ncm-card--burned) */
-@keyframes ncm-hatch-fade-in {
-  0%   { opacity: 0; }
-  100% { opacity: 1; }
-}
-
-.ncm-card--burned.ncm-card--burn-transition::after {
-  animation: ncm-hatch-fade-in 0.4s ease-out 0.2s both;
-}
-
-/* Burn transition on card properties */
-.ncm-card--burn-transition {
-  transition: border-color 0.3s ease,
-              background 0.3s ease;
-}
-
-.ncm-card--burn-transition .ncm-card__name {
-  transition: text-decoration 0.3s ease,
-              text-decoration-color 0.3s ease;
-}
-
-.ncm-card--burn-transition .ncm-card__avatar {
-  transition: opacity 0.3s ease,
-              border-color 0.3s ease;
-}
-
-/* Restore transition — reverse: hatch fades out */
-@keyframes ncm-hatch-fade-out {
-  0%   { opacity: 1; }
-  100% { opacity: 0; }
-}
-
-.ncm-card--restore-transition::after {
-  animation: ncm-hatch-fade-out 0.3s ease-out forwards;
-}
-
-/* ── List view burn transitions ── */
-
-.ncm-list-item--burn-flash {
-  animation: ncm-list-burn-flash 0.5s ease-out;
-}
-
-@keyframes ncm-list-burn-flash {
-  0%   { background: transparent; }
-  20%  { background: rgba(255, 0, 51, 0.15); }
-  100% { background: transparent; }
+.ncm-app .ncm-list-scroll::-webkit-scrollbar,
+.ncm-app .ncm-split__detail::-webkit-scrollbar,
+.ncm-app .ncm-content::-webkit-scrollbar { width: 4px; }
+.ncm-app .ncm-list-scroll::-webkit-scrollbar-track,
+.ncm-app .ncm-split__detail::-webkit-scrollbar-track,
+.ncm-app .ncm-content::-webkit-scrollbar-track { background: transparent; }
+.ncm-app .ncm-list-scroll::-webkit-scrollbar-thumb,
+.ncm-app .ncm-split__detail::-webkit-scrollbar-thumb,
+.ncm-app .ncm-content::-webkit-scrollbar-thumb { background: var(--ncm-border, #2a2a45); border-radius: 2px; }
+.ncm-app .ncm-list-scroll,
+.ncm-app .ncm-split__detail,
+.ncm-app .ncm-content {
+  scrollbar-width: thin;
+  scrollbar-color: var(--ncm-border, #2a2a45) transparent;
 }
 
 
 /* ═══════════════════════════════════════════
-   §3.7 — ENCRYPTED CONTACT BREACH ANIMATIONS
-   Unscramble on success, denied on failure.
+   §18  FOUNDRY OVERRIDES
    ═══════════════════════════════════════════ */
 
-/* ── Breach in-progress indicator ── */
-
-.ncm-encrypted-overlay--breaching {
-  pointer-events: none;
+.ncm-app .ncm-btn {
+  display: inline-flex !important; align-items: center !important; gap: 5px !important;
+  padding: 5px 12px !important; border-radius: 3px !important;
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif) !important;
+  font-size: 10px !important; font-weight: 600 !important;
+  cursor: pointer !important; transition: all 0.15s !important;
+  border: 1px solid !important; background: transparent !important;
+  text-transform: uppercase !important; letter-spacing: 0.06em !important;
+  height: auto !important; min-height: 0 !important;
+  width: auto !important; flex-shrink: 0 !important; flex-grow: 0 !important;
+  appearance: none !important; box-shadow: none !important; outline: none !important;
+  color: var(--ncm-text-muted, #555570) !important;
 }
-
-.ncm-encrypted-overlay--breaching .fa-lock {
-  animation: ncm-lock-pulse 0.4s ease-in-out infinite alternate;
+.ncm-app .ncm-btn--secondary {
+  color: var(--ncm-secondary, #00D4E6) !important;
+  border-color: rgba(0,212,230,0.3) !important;
 }
-
-@keyframes ncm-lock-pulse {
-  0%   { transform: scale(1); opacity: 1; }
-  100% { transform: scale(1.15); opacity: 0.7; }
+.ncm-app .ncm-btn--secondary:hover {
+  background: rgba(0,212,230,0.08) !important;
 }
-
-/* ──────────────────────────────────────────
-   Phase 1–3: Overlay Shatter
-   Main element: aggressive jitter + clip-path fragmentation
-   ────────────────────────────────────────── */
-
-@keyframes ncm-overlay-glitch {
-  /* Phase 1: Lock crack — hard jitter */
-  0% {
-    transform: translate(0, 0) skewX(0deg);
-    clip-path: inset(0 0 0 0);
-    opacity: 1;
-    filter: brightness(1) hue-rotate(0deg);
-  }
-  5% {
-    transform: translate(-6px, 2px) skewX(-2deg);
-    filter: brightness(1.8) hue-rotate(60deg);
-  }
-  10% {
-    transform: translate(8px, -1px) skewX(3deg);
-    filter: brightness(0.6) hue-rotate(-30deg);
-  }
-  15% {
-    transform: translate(-3px, 0) skewX(0deg);
-    filter: brightness(1.4) hue-rotate(40deg);
-  }
-
-  /* Phase 2: Chromatic flicker */
-  20% {
-    transform: translate(4px, -3px) skewX(-1deg);
-    opacity: 0.9;
-    filter: brightness(1) hue-rotate(0deg);
-  }
-  30% {
-    transform: translate(-5px, 2px) skewX(2deg);
-    opacity: 0.7;
-    filter: brightness(1.6) hue-rotate(90deg);
-  }
-  40% {
-    transform: translate(6px, 0) skewX(-3deg);
-    opacity: 0.85;
-    filter: brightness(0.5);
-  }
-  50% {
-    transform: translate(-2px, -2px) skewX(1deg);
-    opacity: 0.6;
-    filter: brightness(1.2) hue-rotate(180deg);
-  }
-
-  /* Phase 3: Fragmentation — clip-path tears */
-  55% {
-    clip-path: inset(0 0 0 0);
-    opacity: 0.7;
-  }
-  60% {
-    transform: translate(3px, 0);
-    clip-path: polygon(
-      0% 0%, 100% 0%, 100% 15%, 0% 18%,    /* strip 1 */
-      0% 22%, 100% 20%, 100% 40%, 0% 42%,   /* strip 2 */
-      0% 48%, 100% 45%, 100% 65%, 0% 68%,   /* strip 3 */
-      0% 72%, 100% 70%, 100% 85%, 0% 88%,   /* strip 4 */
-      0% 92%, 100% 90%, 100% 100%, 0% 100%  /* strip 5 */
-    );
-    opacity: 0.6;
-    filter: brightness(1.5);
-  }
-  75% {
-    transform: translate(-8px, -4px) skewX(5deg);
-    clip-path: polygon(
-      -5% 0%, 95% 2%, 90% 10%, -10% 12%,
-      5% 25%, 110% 22%, 105% 35%, -5% 38%,
-      10% 50%, 115% 48%, 108% 62%, 0% 65%,
-      -8% 78%, 100% 75%, 95% 88%, 5% 90%
-    );
-    opacity: 0.35;
-    filter: brightness(0.8) hue-rotate(120deg);
-  }
-  90% {
-    transform: translate(12px, -8px) skewX(-8deg);
-    clip-path: polygon(
-      20% 5%, 80% 0%, 75% 8%, 25% 10%,
-      30% 30%, 90% 25%, 85% 38%, 15% 42%,
-      40% 55%, 95% 50%, 88% 65%, 20% 68%
-    );
-    opacity: 0.15;
-    filter: brightness(2);
-  }
-  100% {
-    transform: translate(0, -15px) skewX(0deg);
-    clip-path: polygon(50% 50%, 50% 50%, 50% 50%, 50% 50%);
-    opacity: 0;
-    filter: brightness(0);
-  }
+.ncm-app .ncm-btn--ghost {
+  color: var(--ncm-text-muted, #555570) !important;
+  border-color: var(--ncm-border, #2a2a45) !important;
 }
-
-.ncm-encrypted-overlay--unscramble {
-  animation: ncm-overlay-glitch 0.9s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-  pointer-events: none;
+.ncm-app .ncm-btn--ghost:hover {
+  color: var(--ncm-text-secondary, #8888a0) !important;
 }
-
-
-/* ──────────────────────────────────────────
-   Chromatic aberration on overlay children
-   Text and icon get red/cyan split shadows
-   ────────────────────────────────────────── */
-
-.ncm-encrypted-overlay--unscramble .fa-lock {
-  animation: ncm-lock-shatter 0.4s ease-out forwards;
-}
-
-@keyframes ncm-lock-shatter {
-  0% {
-    color: var(--ncm-accent, #f7c948);
-    text-shadow: 0 0 4px rgba(247, 201, 72, 0.3);
-    transform: scale(1) rotate(0deg);
-  }
-  20% {
-    color: var(--ncm-secondary, #19f3f7);
-    text-shadow:
-      -3px 0 0 rgba(255, 0, 51, 0.7),
-       3px 0 0 rgba(25, 243, 247, 0.7);
-    transform: scale(1.3) rotate(-5deg);
-  }
-  40% {
-    text-shadow:
-      -5px 2px 0 rgba(255, 0, 51, 0.5),
-       5px -2px 0 rgba(25, 243, 247, 0.5);
-    transform: scale(0.8) rotate(8deg);
-  }
-  70% {
-    color: var(--ncm-secondary, #19f3f7);
-    text-shadow:
-      -8px 0 0 rgba(255, 0, 51, 0.3),
-       8px 0 0 rgba(25, 243, 247, 0.3);
-    transform: scale(1.1) rotate(-3deg);
-    opacity: 0.6;
-  }
-  100% {
-    color: transparent;
-    text-shadow: none;
-    transform: scale(2) rotate(0deg);
-    opacity: 0;
-  }
-}
-
-/* Text gets chromatic split too */
-.ncm-encrypted-overlay--unscramble .ncm-encrypted-overlay__text,
-.ncm-encrypted-overlay--unscramble .ncm-encrypted-overlay__dv {
-  animation: ncm-text-aberration 0.6s ease-out forwards;
-}
-
-@keyframes ncm-text-aberration {
-  0% {
-    text-shadow: none;
-    opacity: 1;
-  }
-  25% {
-    text-shadow:
-      -3px 0 0 rgba(255, 0, 51, 0.6),
-       3px 0 0 rgba(25, 243, 247, 0.6);
-    opacity: 0.8;
-  }
-  50% {
-    text-shadow:
-      -6px 1px 0 rgba(255, 0, 51, 0.4),
-       6px -1px 0 rgba(25, 243, 247, 0.4);
-    opacity: 0.5;
-    letter-spacing: 0.3em;
-  }
-  100% {
-    text-shadow:
-      -10px 0 0 rgba(255, 0, 51, 0),
-       10px 0 0 rgba(25, 243, 247, 0);
-    opacity: 0;
-    letter-spacing: 0.6em;
-  }
-}
-
-
-/* ──────────────────────────────────────────
-   Scanline sweep — pseudo-element on overlay
-   Bright cyan line sweeps top→bottom during breach
-   ────────────────────────────────────────── */
-
-.ncm-encrypted-overlay--unscramble::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(25, 243, 247, 0.3) 20%,
-    rgba(25, 243, 247, 0.8) 50%,
-    rgba(25, 243, 247, 0.3) 80%,
-    transparent 100%
-  );
-  box-shadow:
-    0 0 8px rgba(25, 243, 247, 0.4),
-    0 0 20px rgba(25, 243, 247, 0.2);
-  z-index: 10;
-  animation: ncm-scanline-sweep 0.7s ease-in-out forwards;
-}
-
-@keyframes ncm-scanline-sweep {
-  0% {
-    top: -2px;
-    opacity: 0;
-  }
-  10% {
-    opacity: 1;
-  }
-  80% {
-    opacity: 0.8;
-  }
-  100% {
-    top: 100%;
-    opacity: 0;
-  }
-}
-
-
-/* ──────────────────────────────────────────
-   Cyan flash — pseudo-element on overlay
-   Brief cyan flash at peak of breach
-   ────────────────────────────────────────── */
-
-.ncm-encrypted-overlay--unscramble::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(
-    ellipse at center,
-    rgba(25, 243, 247, 0.25) 0%,
-    rgba(25, 243, 247, 0.08) 40%,
-    transparent 70%
-  );
-  z-index: 9;
-  animation: ncm-breach-flash 0.5s ease-out 0.15s both;
-  pointer-events: none;
-  border-radius: inherit;
-}
-
-@keyframes ncm-breach-flash {
-  0% {
-    opacity: 0;
-  }
-  30% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-  }
-}
-
-
-/* ──────────────────────────────────────────
-   Phase 4: Card Reveal
-   Cyan border pulse + scale resolve
-   ────────────────────────────────────────── */
-
-@keyframes ncm-card-resolve {
-  0% {
-    transform: scale(0.97);
-    opacity: 0.6;
-    box-shadow: inset 0 0 0 rgba(25, 243, 247, 0);
-    border-color: rgba(25, 243, 247, 0);
-  }
-  30% {
-    transform: scale(1.02);
-    opacity: 0.85;
-    box-shadow: inset 0 0 30px rgba(25, 243, 247, 0.15),
-                0 0 15px rgba(25, 243, 247, 0.2);
-    border-color: rgba(25, 243, 247, 0.5);
-  }
-  60% {
-    transform: scale(1.0);
-    opacity: 0.95;
-    box-shadow: inset 0 0 15px rgba(25, 243, 247, 0.08),
-                0 0 8px rgba(25, 243, 247, 0.1);
-    border-color: rgba(25, 243, 247, 0.3);
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-    box-shadow: none;
-    border-color: var(--ncm-border, #2a2a45);
-  }
-}
-
-.ncm-card--decrypted-resolve {
-  animation: ncm-card-resolve 0.5s ease-out 0.7s both;
-}
-
-
-/* ──────────────────────────────────────────
-   "ACCESS GRANTED" text (injected by JS)
-   Appears briefly on the card after breach
-   ────────────────────────────────────────── */
-
-.ncm-encrypted-overlay__granted-text {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--ncm-secondary, #19f3f7);
-  text-transform: uppercase;
-  letter-spacing: 0.15em;
-  text-shadow: 0 0 10px rgba(25, 243, 247, 0.6),
-               0 0 20px rgba(25, 243, 247, 0.3);
-  opacity: 0;
-  pointer-events: none;
-  z-index: 15;
-  white-space: nowrap;
-}
-
-@keyframes ncm-granted-text-appear {
-  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.7); }
-  15%  { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
-  40%  { opacity: 1; transform: translate(-50%, -50%) scale(1.0); }
-  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.0); }
-}
-
-.ncm-encrypted-overlay--unscramble .ncm-encrypted-overlay__granted-text {
-  animation: ncm-granted-text-appear 0.8s ease-out 0.2s forwards;
-}
-
-/* ── FAILURE: Access Denied ── */
-
-@keyframes ncm-overlay-denied-flash {
-  0%   { border-color: rgba(247, 201, 72, 0.2); background: rgba(0, 0, 0, 0.85); }
-  25%  { border-color: rgba(255, 0, 51, 0.6);   background: rgba(255, 0, 51, 0.12); }
-  50%  { border-color: rgba(255, 0, 51, 0.3);   background: rgba(255, 0, 51, 0.06); }
-  100% { border-color: rgba(247, 201, 72, 0.2); background: rgba(0, 0, 0, 0.85); }
-}
-
-.ncm-encrypted-overlay--denied {
-  animation: ncm-overlay-denied-flash 0.5s ease-out;
-}
-
-/* ACCESS DENIED text */
-.ncm-encrypted-overlay__denied-text {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--ncm-danger, #ff0033);
-  text-transform: uppercase;
-  letter-spacing: 0.15em;
-  text-shadow: 0 0 8px rgba(255, 0, 51, 0.6);
-  opacity: 0;
-  pointer-events: none;
-  z-index: 5;
-}
-
-@keyframes ncm-denied-text-appear {
-  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
-  20%  { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
-  80%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-  100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
-}
-
-.ncm-encrypted-overlay--denied .ncm-encrypted-overlay__denied-text {
-  animation: ncm-denied-text-appear 1.5s ease-out forwards;
-}
-
-/* Shake animation */
-@keyframes ncm-shake {
-  0%, 100% { transform: translateX(0); }
-  20%  { transform: translateX(-4px); }
-  40%  { transform: translateX(4px); }
-  60%  { transform: translateX(-3px); }
-  80%  { transform: translateX(2px); }
-}
-
-.ncm-encrypted-overlay--shake {
-  animation: ncm-shake 0.3s ease-out;
-}
-
-/* Lock turns red on failure */
-.ncm-encrypted-overlay--denied .fa-lock {
-  color: var(--ncm-danger, #ff0033) !important;
-  text-shadow: 0 0 8px rgba(255, 0, 51, 0.5);
-  transition: color 0.2s;
-}
-
-/* ── LOCKED OUT state ── */
-
-.ncm-encrypted-overlay--locked-out {
-  border-color: rgba(255, 0, 51, 0.3);
-}
-
-.ncm-encrypted-overlay--locked-out .ncm-encrypted-overlay__text {
-  color: var(--ncm-danger, #ff0033);
-}
-
-.ncm-encrypted-overlay--locked-out .ncm-encrypted-overlay__text::after {
-  content: ' — LOCKED OUT';
-  color: var(--ncm-danger, #ff0033);
-  font-weight: 700;
-}
-
-.ncm-encrypted-overlay--locked-out .fa-lock {
-  color: var(--ncm-danger, #ff0033);
-  animation: none;
-}
-
-/* ── GM Force Decrypt indicator ── */
-
-.ncm-encrypted-overlay__gm-bypass {
-  position: absolute;
-  bottom: 6px;
-  right: 6px;
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 7px;
-  color: var(--ncm-danger, #ff0033);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  opacity: 0.6;
-  cursor: pointer;
-  padding: 2px 6px;
-  border: 1px solid rgba(255, 0, 51, 0.2);
-  border-radius: 2px;
-  transition: all 0.15s;
-  z-index: 5;
-}
-
-.ncm-encrypted-overlay__gm-bypass:hover {
-  opacity: 1;
-  border-color: rgba(255, 0, 51, 0.5);
-  background: rgba(255, 0, 51, 0.1);
+.ncm-app .ncm-btn--sm {
+  font-size: 9px !important; padding: 3px 8px !important;
 }

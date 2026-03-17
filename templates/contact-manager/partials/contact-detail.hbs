@@ -1,0 +1,194 @@
+{{!--
+  Contact Detail Panel — Right side of split view
+  @file templates/contact-manager/partials/contact-detail.hbs
+  @module cyberpunkred-messenger
+  @description Full detail view for the selected contact: profile header with avatar,
+    chips (role/org/location/tags), action buttons, info card, last interaction card,
+    relationship card (if GM-revealed), and personal notes textarea.
+    Shows ICE overlay if contact is encrypted, burned banner if burned.
+
+  @param {object}  selectedContact — Enriched contact from enrichContactForDisplay()
+  @param {boolean} isGM            — Whether current user is GM
+  @param {object}  [lastInteraction] — Most recent message data with this contact
+  @param {string}  [relationship]    — Relationship type if GM revealed
+  @param {string}  [relationshipNote] — Relationship note if GM revealed
+  @param {number}  [trust]           — Trust level (0-5) if GM revealed
+--}}
+
+{{#with selectedContact}}
+
+  {{!-- ═══ ICE OVERLAY — covers entire detail panel if encrypted ═══ --}}
+  {{#if isEncrypted}}
+    {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/encrypted-overlay.hbs"
+        encryptionDV=encryptionDV encryptionSkill=encryptionSkill
+        blackIce=blackIce blackIceDamage=blackIceDamage
+        isGM=../isGM contactId=id }}
+  {{else}}
+
+    {{!-- ═══ BURNED BANNER ═══ --}}
+    {{#if isBurned}}
+      <div class="ncm-burned-banner">
+        <i class="fas fa-fire"></i>
+        <span>IDENTITY COMPROMISED — This contact has been burned.</span>
+      </div>
+    {{/if}}
+
+    {{!-- ═══ PROFILE HEADER ═══ --}}
+    <div class="ncm-detail__profile">
+      <div class="ncm-detail__avatar"
+           style="{{#if hasPortrait}}{{else}}color: {{avatarColor}};{{/if}} border-color: {{avatarBorderColor}};">
+        {{#if hasPortrait}}
+          <img src="{{portraitSrc}}" alt="{{name}}" />
+        {{else}}
+          {{initials}}
+        {{/if}}
+        <div class="ncm-detail__avatar-upload" data-action="uploadPortrait" data-contact-id="{{id}}">
+          <i class="fas fa-camera"></i>
+          <span>Upload</span>
+        </div>
+      </div>
+      <div class="ncm-detail__info">
+        <div class="ncm-detail__name {{#if isBurned}}ncm-detail__name--burned{{/if}}">{{name}}</div>
+        {{#if alias}}
+          <div class="ncm-detail__alias">"{{alias}}"</div>
+        {{/if}}
+        <div class="ncm-detail__chips">
+          {{#if role}}
+            <span class="ncm-chip ncm-chip--role"><i class="{{roleIcon}}"></i> {{roleLabel}}</span>
+          {{/if}}
+          {{#if organization}}
+            <span class="ncm-chip ncm-chip--org"><i class="fas fa-building"></i> {{organization}}</span>
+          {{/if}}
+          {{#if location}}
+            <span class="ncm-chip ncm-chip--location"><i class="fas fa-location-dot"></i> {{location}}</span>
+          {{/if}}
+          {{#each tags}}
+            <span class="ncm-chip ncm-chip--tag">{{this}}</span>
+          {{/each}}
+        </div>
+        <div class="ncm-detail__actions">
+          {{#unless isBurned}}
+            <button class="ncm-action-btn ncm-action-btn--primary"
+                    data-action="sendMessage" data-contact-id="{{id}}">
+              <i class="fas fa-envelope"></i> Message
+            </button>
+          {{/unless}}
+          <button class="ncm-action-btn ncm-action-btn--ghost"
+                  data-action="editContact" data-contact-id="{{id}}">
+            <i class="fas fa-pen"></i> Edit
+          </button>
+          <button class="ncm-action-btn ncm-action-btn--ghost"
+                  data-action="shareContact" data-contact-id="{{id}}">
+            <i class="fas fa-share-nodes"></i> Share
+          </button>
+          <button class="ncm-action-btn ncm-action-btn--ghost"
+                  data-action="toggleFavorite" data-contact-id="{{id}}"
+                  title="{{#if isFavorite}}Remove from favorites{{else}}Add to favorites{{/if}}">
+            <i class="fas fa-star" {{#if isFavorite}}style="color:var(--ncm-accent, #F0C55B);"{{/if}}></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    {{!-- ═══ CONTACT INFO CARD ═══ --}}
+    <div class="ncm-info-card">
+      <div class="ncm-info-card__header"><i class="fas fa-address-card"></i> Contact Info</div>
+      <div class="ncm-info-card__body">
+        <div class="ncm-info-grid">
+          {{#if email}}
+            <span class="ncm-info-label">Email</span>
+            <span class="ncm-info-value ncm-info-value--mono">{{email}}</span>
+          {{/if}}
+          {{#if phone}}
+            <span class="ncm-info-label">Phone</span>
+            <span class="ncm-info-value ncm-info-value--accent">{{phone}}</span>
+          {{/if}}
+          {{#if location}}
+            <span class="ncm-info-label">Location</span>
+            <span class="ncm-info-value">{{location}}</span>
+          {{/if}}
+          <span class="ncm-info-label">Network</span>
+          <span class="ncm-info-value ncm-info-value--mono">{{network}}</span>
+        </div>
+      </div>
+    </div>
+
+    {{!-- ═══ LAST INTERACTION CARD ═══ --}}
+    {{#if ../lastInteraction}}
+      <div class="ncm-info-card">
+        <div class="ncm-info-card__header"><i class="fas fa-clock-rotate-left"></i> Last Interaction</div>
+        <div class="ncm-info-card__body">
+          <div class="ncm-last-msg">
+            <div class="ncm-last-msg__icon"><i class="fas fa-envelope"></i></div>
+            <div class="ncm-last-msg__info">
+              <div class="ncm-last-msg__subject">{{../lastInteraction.subject}}</div>
+              <div class="ncm-last-msg__meta">{{../lastInteraction.timeAgo}}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    {{/if}}
+
+    {{!-- ═══ RELATIONSHIP CARD (only if GM has revealed trust) ═══ --}}
+    {{#if ../hasRelationship}}
+      <div class="ncm-info-card">
+        <div class="ncm-info-card__header"><i class="fas fa-handshake"></i> Relationship</div>
+        <div class="ncm-info-card__body ncm-info-card__body--relationship">
+          <div class="ncm-rel-row">
+            {{#if ../relationship}}
+              <span class="ncm-rel-badge ncm-rel-badge--{{../relationship}}">
+                <i class="fas fa-handshake"></i> {{../relationship}}
+              </span>
+            {{/if}}
+            <div class="ncm-trust-row">
+              <div class="ncm-trust-bar">
+                {{#each trustSegmentsDetail}}
+                  <div class="ncm-trust-seg {{#if active}}ncm-trust-seg--active s{{@index}}{{/if}}"></div>
+                {{/each}}
+              </div>
+              <div class="ncm-trust-label">{{trustData.label}}</div>
+            </div>
+          </div>
+          {{#if ../relationshipNote}}
+            <div class="ncm-rel-note">{{../relationshipNote}}</div>
+          {{/if}}
+        </div>
+      </div>
+    {{/if}}
+
+    {{!-- ═══ MY NOTES CARD ═══ --}}
+    <div class="ncm-info-card">
+      <div class="ncm-info-card__header"><i class="fas fa-note-sticky"></i> My Notes</div>
+      <div class="ncm-info-card__body">
+        <textarea class="ncm-notes-textarea" placeholder="Your private notes..."
+                  data-contact-id="{{id}}">{{notes}}</textarea>
+      </div>
+    </div>
+
+    {{!-- ═══ GM CONTROLS ═══ --}}
+    {{#if ../isGM}}
+      <div class="ncm-info-card ncm-info-card--gm">
+        <div class="ncm-info-card__header"><i class="fas fa-shield-halved"></i> GM Controls</div>
+        <div class="ncm-info-card__body ncm-info-card__body--gm">
+          {{#if isBurned}}
+            <button class="ncm-action-btn ncm-action-btn--ghost"
+                    data-action="restoreContact" data-contact-id="{{id}}">
+              <i class="fas fa-heart-pulse"></i> Restore Contact
+            </button>
+          {{else}}
+            <button class="ncm-action-btn ncm-action-btn--danger"
+                    data-action="burnContact" data-contact-id="{{id}}">
+              <i class="fas fa-fire"></i> Burn Contact
+            </button>
+          {{/if}}
+          <button class="ncm-action-btn ncm-action-btn--danger"
+                  data-action="deleteContact" data-contact-id="{{id}}">
+            <i class="fas fa-trash"></i> Delete
+          </button>
+        </div>
+      </div>
+    {{/if}}
+
+  {{/if}} {{!-- end if/else encrypted --}}
+
+{{/with}}

@@ -464,6 +464,9 @@ export const TEMPLATES = Object.freeze({
   CONTACT_TRUST_DETAIL: `${T}/contact-manager/partials/trust-detail.hbs`,
   CONTACT_ENCRYPTED:      `${T}/contact-manager/partials/encrypted-overlay.hbs`,
   CONTACT_FORM:          `${T}/contact-manager/partials/contact-form.hbs`,
+  CONTACT_DETAIL:        `${T}/contact-manager/partials/contact-detail.hbs`,
+  CONTACT_QUICKDIAL:     `${T}/contact-manager/partials/contact-quickdial.hbs`,
+  CONTACT_GROUP_HEADER:  `${T}/contact-manager/partials/contact-group-header.hbs`,
   // Partials — Design System Components
   PARTIAL_SECTION_HEADER: `${T}/partials/section-header.hbs`,
   PARTIAL_STAT_CARD:      `${T}/partials/stat-card.hbs`,

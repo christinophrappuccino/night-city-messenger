@@ -1,15 +1,16 @@
 {{!--
-  Contact Manager — Sprint 3 Player Directory
+  Contact Manager — v5.1 Split View Rewrite
   @file templates/contact-manager/contact-manager.hbs
   @module cyberpunkred-messenger
-  @description Player contact directory with grid/list toggle, custom tag filtering,
-    search, trust meters, portraits, burned/encrypted states.
-    Matches ncm-contacts-mockup-v3.html spec.
+  @description Player contact directory with split-view layout:
+    Left: quick-dial favorites, sort/group bar, collapsible grouped list
+    Right: detail panel with profile, info cards, last interaction, relationship, notes
+    Replaces Sprint 3 grid/list-only layout.
 --}}
 
-<div class="ncm-contacts-v3">
+<div class="ncm-contacts-v5">
 
-  {{!-- ═══ Condensed Header ═══ --}}
+  {{!-- ═══ Header: Avatar + Name + Stats + Actions ═══ --}}
   <div class="ncm-header">
     <div class="ncm-header__identity">
       <div class="ncm-header__avatar" style="color: {{ownerAvatarColor}};">
@@ -38,16 +39,6 @@
         <span class="ncm-stat__value ncm-stat__value--accent">{{favoriteCount}}</span>
         <span class="ncm-stat__label">Favs</span>
       </div>
-      {{#if requireVerification}}
-        <span class="ncm-header__stat">
-          <i class="fas fa-circle-check" style="color: var(--ncm-success);"></i>
-          {{verifiedCount}}
-        </span>
-        <span class="ncm-header__stat">
-          <i class="fas fa-triangle-exclamation" style="color: var(--ncm-danger);"></i>
-          {{unverifiedCount}}
-        </span>
-      {{/if}}
     </div>
     <div class="ncm-header__actions">
       {{#if isGM}}
@@ -65,36 +56,26 @@
     </div>
   </div>
 
+  {{!-- GM Inspect Banner --}}
   {{#if gmInspectMode}}
     <div class="ncm-gm-inspect-banner">
       <i class="fas fa-shield-halved"></i>
       <span>GM ADMIN — VIEWING:</span>
       <span class="ncm-gm-inspect-banner__name">{{inspectedActorName}}'S CONTACTS</span>
-      <span style="margin-left: auto; opacity: 0.6;">
-        {{verifiedCount}} VERIFIED · {{unverifiedCount}} UNVERIFIED
-      </span>
     </div>
   {{/if}}
 
   {{!-- ═══ Toolbar: Search + Filter Pills + View Toggle ═══ --}}
   <div class="ncm-toolbar">
-
-    {{!-- Search row --}}
     <div class="ncm-search-row">
       <i class="fas fa-search"></i>
       <input class="ncm-search-input ncm-contact-search" type="text"
              placeholder="Search contacts..." value="{{searchTerm}}">
       <span class="ncm-search-count">{{filteredCount}} contact{{#if (neq filteredCount 1)}}s{{/if}}</span>
     </div>
-
-    {{!-- Filter pills + view toggle --}}
     <div class="ncm-filter-row">
-
-      {{!-- ALL pill --}}
       <span class="ncm-pill ncm-pill--all {{#unless hasActiveTagFilter}}ncm-pill--active{{/unless}}"
             data-action="clearTagFilter">ALL</span>
-
-      {{!-- Custom tag pills --}}
       {{#each allTags}}
         <span class="ncm-pill ncm-pill--tag {{#if this.active}}ncm-pill--active{{/if}}"
               data-action="toggleTagFilter" data-tag="{{this.name}}">
@@ -104,13 +85,9 @@
           {{/if}}
         </span>
       {{/each}}
-
-      {{!-- Add tag button --}}
       <span class="ncm-pill ncm-pill--add" data-action="startAddTag" title="Create new tag">
-        <i class="fas fa-plus"></i> TAG
+        <i class="fas fa-plus"></i>
       </span>
-
-      {{!-- Grid / List toggle --}}
       <div class="ncm-view-toggle">
         <button class="ncm-view-btn {{#if (eq viewMode 'grid')}}ncm-view-btn--active{{/if}}"
                 data-action="setViewMode" data-mode="grid" title="Grid view">
@@ -124,31 +101,35 @@
     </div>
   </div>
 
-  {{!-- ═══ Content Area: Form / Grid / List ═══ --}}
+  {{!-- ═══ Content: Form OR Split View OR Grid ═══ --}}
+
+  {{!-- Add/Edit Form (full width, replaces split) --}}
+  {{#if isAdding}}
     <div class="ncm-content">
-
-      {{!-- Add form --}}
-      {{#if isAdding}}
-        <div class="ncm-content__form">
-          <div class="ncm-gm-section-header">
-            <i class="fas fa-plus"></i> NEW CONTACT
-          </div>
-          {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/contact-form.hbs"
-              contact=null isCreating=true isGM=isGM }}
+      <div class="ncm-content__form">
+        <div class="ncm-gm-section-header">
+          <i class="fas fa-plus"></i> NEW CONTACT
         </div>
+        {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/contact-form.hbs"
+            contact=null isCreating=true isGM=isGM }}
+      </div>
+    </div>
 
-      {{!-- Edit form --}}
-      {{else if editingContact}}
-        <div class="ncm-content__form">
-          <div class="ncm-gm-section-header">
-            <i class="fas fa-pen"></i> EDIT — {{editingContact.name}}
-          </div>
-          {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/contact-form.hbs"
-              contact=editingContact isCreating=false isGM=isGM }}
+  {{else if editingContact}}
+    <div class="ncm-content">
+      <div class="ncm-content__form">
+        <div class="ncm-gm-section-header">
+          <i class="fas fa-pen"></i> EDIT — {{editingContact.name}}
         </div>
+        {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/contact-form.hbs"
+            contact=editingContact isCreating=false isGM=isGM }}
+      </div>
+    </div>
 
-      {{!-- Empty state --}}
-      {{else if isEmpty}}
+  {{!-- Grid View (full width, original card layout) --}}
+  {{else if isGridView}}
+    <div class="ncm-content">
+      {{#if isEmpty}}
         <div class="ncm-empty">
           {{#if hasSearch}}
             <i class="fas fa-search"></i>
@@ -160,39 +141,156 @@
             <div class="ncm-empty__sub">Add contacts to start messaging</div>
           {{/if}}
         </div>
-
-      {{!-- Grid or List --}}
       {{else}}
-        {{#if isGridView}}
-          <div class="ncm-grid">
-            {{#each contacts}}
-              {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/contact-card.hbs" }}
-            {{/each}}
-          </div>
-        {{else}}
-          <div class="ncm-list">
-            {{#each contacts}}
-              {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/contact-list-item.hbs" }}
-            {{/each}}
-          </div>
-        {{/if}}
+        <div class="ncm-grid">
+          {{#each contacts}}
+            {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/contact-card.hbs" }}
+          {{/each}}
+        </div>
       {{/if}}
-
     </div>
 
+  {{!-- List/Split View --}}
+  {{else}}
+    {{#if isEmpty}}
+      <div class="ncm-content">
+        <div class="ncm-empty">
+          {{#if hasSearch}}
+            <i class="fas fa-search"></i>
+            <div class="ncm-empty__text">No matches found</div>
+            <div class="ncm-empty__sub">Try adjusting your search or filters</div>
+          {{else}}
+            <i class="fas fa-user-slash"></i>
+            <div class="ncm-empty__text">No contacts yet</div>
+            <div class="ncm-empty__sub">Add contacts to start messaging</div>
+          {{/if}}
+        </div>
+      </div>
+    {{else}}
+      <div class="ncm-split">
 
-  {{!-- ═══ Context-Aware Footer ═══ --}}
+        {{!-- LEFT: List Panel --}}
+        <div class="ncm-split__list">
+
+          {{!-- Quick-Dial Favorites --}}
+          {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/contact-quickdial.hbs"
+              quickDialContacts=quickDialContacts }}
+
+          {{!-- Sort / Group Bar --}}
+          <div class="ncm-sort-bar">
+            <span class="ncm-sort-bar__label">Group</span>
+            <select class="ncm-sort-bar__select ncm-group-select">
+              <option value="none" {{#if (eq groupBy 'none')}}selected{{/if}}>None (A–Z)</option>
+              <option value="role" {{#if (eq groupBy 'role')}}selected{{/if}}>Role</option>
+              <option value="organization" {{#if (eq groupBy 'organization')}}selected{{/if}}>Organization</option>
+              <option value="location" {{#if (eq groupBy 'location')}}selected{{/if}}>Location</option>
+            </select>
+            <span class="ncm-sort-bar__label">Sort</span>
+            <select class="ncm-sort-bar__select ncm-sort-select" style="max-width:80px;">
+              <option value="name" {{#if (eq sortBy 'name')}}selected{{/if}}>Name</option>
+              <option value="recent" {{#if (eq sortBy 'recent')}}selected{{/if}}>Recent</option>
+              <option value="trust" {{#if (eq sortBy 'trust')}}selected{{/if}}>Trust</option>
+            </select>
+            <button class="ncm-sort-bar__btn" data-action="collapseAll" title="Collapse all">
+              <i class="fas fa-compress-alt"></i>
+            </button>
+            <button class="ncm-sort-bar__btn" data-action="expandAll" title="Expand all">
+              <i class="fas fa-expand-alt"></i>
+            </button>
+          </div>
+
+          {{!-- Scrollable Contact List --}}
+          <div class="ncm-list-scroll">
+            {{#each groups}}
+              {{!-- Group header (skip for ungrouped/flat) --}}
+              {{#if ../hasGroups}}
+                {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/contact-group-header.hbs"
+                    groupKey=key groupName=name groupIcon=icon groupCount=contacts.length
+                    isCollapsed=isCollapsed isBurnedGroup=isBurnedGroup isEncryptedGroup=isEncryptedGroup }}
+              {{/if}}
+
+              {{!-- Contact items within group --}}
+              {{#unless isCollapsed}}
+                {{#each contacts}}
+                  <div class="ncm-list-item {{#if isSelected}}ncm-list-item--selected{{/if}} {{#if isBurned}}ncm-list-item--burned{{/if}} {{#if isEncrypted}}ncm-list-item--encrypted{{/if}}"
+                       data-action="selectContact" data-contact-id="{{id}}">
+                    <div class="ncm-list-item__avatar"
+                         style="{{#if isEncrypted}}color:var(--ncm-accent, #F0C55B); border-color:rgba(240,197,91,0.4);{{else}}color: {{avatarColor}}; border-color: {{avatarBorderColor}};{{/if}}">
+                      {{#if isEncrypted}}
+                        <i class="fas fa-lock" style="font-size:13px;"></i>
+                      {{else if hasPortrait}}
+                        <img src="{{portraitSrc}}" alt="{{name}}" />
+                      {{else}}
+                        {{initials}}
+                      {{/if}}
+                      {{#if (eq status 'online')}}
+                        <div class="ncm-list-item__status ncm-list-item__status--online"></div>
+                      {{/if}}
+                    </div>
+                    <div class="ncm-list-item__body">
+                      <div class="ncm-list-item__row1">
+                        <span class="ncm-list-item__name {{#if isBurned}}ncm-list-item__name--burned{{/if}}">
+                          {{#if isEncrypted}}████████{{else}}{{name}}{{/if}}
+                        </span>
+                        <span class="ncm-list-item__seen {{#if (eq status 'online')}}ncm-list-item__seen--online{{/if}}">
+                          {{#if isBurned}}burned{{else if isEncrypted}}ICE{{else if (eq status 'online')}}now{{else if lastSeen}}{{lastSeen}}{{/if}}
+                        </span>
+                      </div>
+                      {{#unless isEncrypted}}
+                        {{#unless isBurned}}
+                          <div class="ncm-list-item__row2">
+                            <span class="ncm-list-item__email">{{email}}</span>
+                          </div>
+                        {{/unless}}
+                      {{/unless}}
+                    </div>
+                    {{#if isFavorite}}
+                      <i class="ncm-list-item__fav fas fa-star"></i>
+                    {{/if}}
+                  </div>
+                {{/each}}
+              {{/unless}}
+            {{/each}}
+          </div>
+        </div>
+
+        {{!-- RIGHT: Detail Panel --}}
+        <div class="ncm-split__detail">
+          {{#if selectedContact}}
+            <div class="ncm-detail">
+              {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/contact-detail.hbs"
+                  selectedContact=selectedContact isGM=isGM
+                  lastInteraction=lastInteraction
+                  hasRelationship=hasRelationship
+                  relationship=selectedRelationship
+                  relationshipNote=selectedRelationshipNote }}
+            </div>
+          {{else}}
+            <div class="ncm-detail-empty">
+              <i class="fas fa-address-card"></i>
+              <div class="ncm-detail-empty__text">Select a contact</div>
+              <div class="ncm-detail-empty__sub">Choose from the list to view details</div>
+            </div>
+          {{/if}}
+        </div>
+
+      </div>
+    {{/if}}
+  {{/if}}
+
+  {{!-- ═══ Footer: Stats + Keyboard Shortcuts ═══ --}}
   <div class="ncm-footer">
     <div class="ncm-footer__info">
-      <span><i class="fas fa-address-book"></i> {{filteredCount}} CONTACTS</span>
+      <span><i class="fas fa-address-book"></i> {{filteredCount}} contacts</span>
       <span><i class="fas fa-user"></i> {{ownerName}}</span>
       <span><i class="fas fa-wifi"></i> {{currentNetwork}}</span>
     </div>
     <div class="ncm-footer__shortcuts">
-      <kbd>/</kbd> SEARCH &nbsp;
-      <kbd>↑↓</kbd> NAV &nbsp;
-      <kbd>N</kbd> NEW &nbsp;
-      <kbd>S</kbd> SHARE
+      {{#if selectedContact}}
+        <kbd>M</kbd> message <kbd>E</kbd> edit <kbd>F</kbd> fav <kbd>S</kbd> share
+      {{else}}
+        <kbd>/</kbd> search <kbd>↑↓</kbd> nav <kbd>N</kbd> new <kbd>G</kbd> group
+      {{/if}}
     </div>
   </div>
 </div>
