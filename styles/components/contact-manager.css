@@ -539,7 +539,7 @@
   font-style: italic; margin-top: 2px;
 }
 .ncm-app .ncm-detail__chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
-.ncm-app .ncm-detail__actions { display: flex; gap: 6px; margin-top: 4px; }
+.ncm-app .ncm-detail__actions { display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap; }
 
 
 /* Info Cards */
@@ -737,20 +737,43 @@
 }
 
 /* Action buttons */
+/* Action buttons — triple specificity to beat Foundry's button globals */
+.ncm-app .ncm-contacts-v5 .ncm-action-btn,
+.ncm-app .ncm-detail .ncm-action-btn,
+.ncm-app .ncm-info-card .ncm-action-btn,
 .ncm-app .ncm-action-btn {
-  display: inline-flex !important; align-items: center !important; gap: 5px !important;
-  padding: 6px 14px !important; border-radius: 3px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 5px !important;
+  padding: 6px 14px !important;
+  border-radius: 3px !important;
   font-family: var(--ncm-font-display, 'Rajdhani', sans-serif) !important;
-  font-size: 10px !important; font-weight: 600 !important;
-  cursor: pointer !important; transition: all 0.15s !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all 0.15s !important;
   border: 1px solid !important;
-  text-transform: uppercase !important; letter-spacing: 0.06em !important;
-  height: auto !important; min-height: 0 !important;
-  width: auto !important; max-width: none !important;
-  flex-shrink: 0 !important; flex-grow: 0 !important;
-  appearance: none !important; box-shadow: none !important; outline: none !important;
-  white-space: nowrap !important; line-height: 1.2 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.06em !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  flex-shrink: 0 !important;
+  flex-grow: 0 !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+  white-space: nowrap !important;
+  line-height: 1.2 !important;
   background: transparent !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  margin: 0 !important;
 }
 .ncm-app .ncm-action-btn--primary {
   background: rgba(0,212,230,0.08) !important;
@@ -2752,4 +2775,87 @@
   opacity: 1;
   border-color: rgba(255, 0, 51, 0.5);
   background: rgba(255, 0, 51, 0.1);
+}
+
+
+/* ═══════════════════════════════════════════
+   §21  FORM BROWSE / CREATE BUTTON OVERRIDES
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-form-browse-btn,
+.ncm-app .ncm-contacts-v5 .ncm-form-browse-btn {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 30px !important;
+  height: 30px !important;
+  min-width: 30px !important;
+  min-height: 30px !important;
+  max-width: 30px !important;
+  padding: 0 !important;
+  background: var(--ncm-bg-elevated, #252540) !important;
+  border: 1px solid var(--ncm-border, #2a2a45) !important;
+  border-radius: 3px !important;
+  color: var(--ncm-text-muted, #555570) !important;
+  font-size: 11px !important;
+  cursor: pointer !important;
+  flex-shrink: 0 !important;
+  flex-grow: 0 !important;
+  transition: all 0.15s !important;
+  margin: 0 !important;
+  line-height: 1 !important;
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif) !important;
+}
+.ncm-app .ncm-form-browse-btn:hover {
+  color: var(--ncm-secondary, #00D4E6) !important;
+  border-color: rgba(0,212,230,0.3) !important;
+  background: rgba(0,212,230,0.06) !important;
+}
+
+/* Form save/cancel action buttons */
+.ncm-app .ncm-form-actions .ncm-btn,
+.ncm-app .ncm-contacts-v5 .ncm-form-actions .ncm-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  padding: 7px 18px !important;
+  border-radius: 3px !important;
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif) !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  border: 1px solid !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.06em !important;
+  height: auto !important;
+  min-height: 0 !important;
+  width: auto !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+  white-space: nowrap !important;
+  line-height: 1.2 !important;
+  margin: 0 !important;
+  flex-shrink: 0 !important;
+}
+
+/* ── Nuclear: override every button inside contacts window ── */
+.ncm-app.ncm-contact-manager button:not(.header-control) {
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  width: auto !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  box-shadow: none !important;
+  line-height: 1.2 !important;
+  white-space: nowrap !important;
+  overflow: visible !important;
 }
