@@ -1081,25 +1081,25 @@
 .ncm-contact-form {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
 }
 
 .ncm-form-row {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
 }
 
 .ncm-form-row--half {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  gap: 10px;
 }
 
 .ncm-form-row--thirds {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  gap: 8px;
+  gap: 10px;
 }
 
 .ncm-form-row--half > .ncm-form-group,
@@ -1110,7 +1110,7 @@
 .ncm-form-group {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
 }
 
 .ncm-form-label {
@@ -1223,7 +1223,7 @@
 
 /* Form dividers */
 .ncm-form-divider {
-  margin: 4px 0 2px;
+  margin: 8px 0 4px;
   border: none;
   border-top: 1px solid rgba(42, 42, 69, 0.5);
 }
@@ -1238,7 +1238,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  margin: 6px 0 1px;
+  margin: 10px 0 2px;
 }
 
 .ncm-form-divider-label i {
@@ -1669,34 +1669,116 @@
   -webkit-appearance: none !important;
   box-shadow: none !important;
   outline: none !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
   min-width: 0 !important;
   min-height: 0 !important;
   height: auto !important;
   width: auto !important;
+  background: none !important;
+  border: 1px solid var(--ncm-border) !important;
+  border-radius: 3px !important;
+  color: var(--ncm-text-muted) !important;
+  padding: 3px 10px !important;
+  cursor: pointer !important;
+  font-family: var(--ncm-font-display) !important;
+  font-weight: 700 !important;
+  font-size: 10px !important;
+  line-height: 1 !important;
+  transition: all 0.15s !important;
+  flex-shrink: 0 !important;
+  flex-grow: 0 !important;
+}
+.ncm-app .ncm-gm-pagination .ncm-gm-pagination__btn:hover {
+  color: var(--ncm-secondary) !important;
+  border-color: var(--ncm-secondary) !important;
+}
+.ncm-app .ncm-gm-pagination .ncm-gm-pagination__btn:disabled {
+  opacity: 0.3 !important;
+  cursor: default !important;
+}
+.ncm-app .ncm-gm-pagination .ncm-gm-pagination__btn:disabled:hover {
+  color: var(--ncm-text-muted) !important;
+  border-color: var(--ncm-border) !important;
 }
 
-/* Group bar buttons */
+/* Group bar buttons (collapse/expand/new folder) */
 .ncm-app .ncm-gm-group-bar .ncm-gm-group-bar__btn {
   appearance: none !important;
   -webkit-appearance: none !important;
   box-shadow: none !important;
   outline: none !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
   min-width: 0 !important;
   min-height: 0 !important;
   height: auto !important;
   width: auto !important;
+  background: none !important;
+  border: 1px solid var(--ncm-border) !important;
+  border-radius: 3px !important;
+  color: var(--ncm-text-muted) !important;
+  padding: 3px 6px !important;
+  cursor: pointer !important;
+  font-size: 9px !important;
+  line-height: 1 !important;
+  transition: all 0.15s !important;
+  flex-shrink: 0 !important;
+  flex-grow: 0 !important;
+}
+.ncm-app .ncm-gm-group-bar .ncm-gm-group-bar__btn:hover {
+  color: var(--ncm-secondary) !important;
+  border-color: var(--ncm-secondary) !important;
+}
+.ncm-app .ncm-gm-group-bar .ncm-gm-group-bar__btn--active {
+  color: var(--ncm-secondary) !important;
+  border-color: rgba(25, 243, 247, 0.35) !important;
 }
 
-/* Note buttons */
+/* Note buttons (per-player relationship detail) */
 .ncm-app .ncm-rel-row__note-btn {
   appearance: none !important;
   -webkit-appearance: none !important;
   box-shadow: none !important;
   outline: none !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
   min-width: 0 !important;
   min-height: 0 !important;
   height: auto !important;
   width: auto !important;
+  background: none !important;
+  border: 1px solid var(--ncm-border) !important;
+  border-radius: 3px !important;
+  color: var(--ncm-text-muted) !important;
+  padding: 2px 5px !important;
+  cursor: pointer !important;
+  font-size: 9px !important;
+  line-height: 1 !important;
+  transition: all 0.15s !important;
+  flex-shrink: 0 !important;
+  flex-grow: 0 !important;
+  margin-left: auto !important;
+}
+.ncm-app .ncm-rel-row__note-btn:hover {
+  color: var(--ncm-secondary) !important;
+  border-color: var(--ncm-secondary) !important;
+}
+.ncm-app .ncm-rel-row__note-btn--has-note {
+  color: var(--ncm-accent) !important;
+  border-color: rgba(247, 201, 72, 0.3) !important;
+}
+
+/* All selects: dropdown arrow SVG */
+.ncm-app .ncm-gm-contacts select {
+  padding-right: 20px !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M1 1l3 3 3-3' fill='none' stroke='%238888a0' stroke-width='1.2'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 7px center !important;
+  cursor: pointer !important;
 }
 
 /* Filter pills */

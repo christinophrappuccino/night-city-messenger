@@ -666,6 +666,7 @@ export class GMContactManagerApp extends BaseApplication {
     this._setupTrustPipClicks();
     this._restoreListScroll();
     this._setupRoleSelectManage();
+    this._setupFolderField();
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -821,6 +822,22 @@ export class GMContactManagerApp extends BaseApplication {
       // Open the role manager dialog
       const dialog = new RoleManagerDialog(this.masterContactService);
       dialog.open();
+    });
+  }
+
+  /**
+   * Wire up folder input — Enter key triggers save, browser datalist handles suggestions.
+   */
+  _setupFolderField() {
+    const input = this.element?.querySelector('[name="folder"]');
+    if (!input) return;
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        // Trigger the save button
+        this.element?.querySelector('[data-action="saveContact"]')?.click();
+      }
     });
   }
 
@@ -1174,7 +1191,7 @@ export class GMContactManagerApp extends BaseApplication {
             <input type="text" name="folderName" placeholder="e.g. Main Story NPCs" maxlength="40" autofocus />
           </div>
         </form>`,
-      callback: (html) => html.querySelector('[name="folderName"]')?.value?.trim(),
+      callback: (html) => (html[0] || html).querySelector('[name="folderName"]')?.value?.trim(),
       rejectClose: false,
     });
     if (!result) return;
@@ -1197,7 +1214,7 @@ export class GMContactManagerApp extends BaseApplication {
             <input type="text" name="folderName" value="${oldName}" maxlength="40" autofocus />
           </div>
         </form>`,
-      callback: (html) => html.querySelector('[name="folderName"]')?.value?.trim(),
+      callback: (html) => (html[0] || html).querySelector('[name="folderName"]')?.value?.trim(),
       rejectClose: false,
     });
 
@@ -1534,7 +1551,7 @@ export class GMContactManagerApp extends BaseApplication {
           </div>
         </form>`,
       callback: (html) => {
-        const name = html.querySelector('[name="tagName"]')?.value?.trim()?.toUpperCase();
+        const name = (html[0] || html).querySelector('[name="tagName"]')?.value?.trim()?.toUpperCase();
         return name || null;
       },
       rejectClose: false,
