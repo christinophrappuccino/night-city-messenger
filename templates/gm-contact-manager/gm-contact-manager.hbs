@@ -34,9 +34,18 @@
       {{!-- Share All — with target selector --}}
       <select name="pushAllTargetActor" class="ncm-gm-bar__push-select">
         <option value="">Share all to...</option>
-        {{#each playerActors}}
-          <option value="{{id}}">{{name}}{{#if isPlayer}} (Player){{/if}}</option>
-        {{/each}}
+        <optgroup label="Players">
+          {{#each shareTargetPlayers}}
+            <option value="{{id}}">{{name}} (Player)</option>
+          {{/each}}
+        </optgroup>
+        {{#if hasShareNPCs}}
+        <optgroup label="NPCs">
+          {{#each shareTargetNPCs}}
+            <option value="{{id}}">{{name}}</option>
+          {{/each}}
+        </optgroup>
+        {{/if}}
       </select>
       <button class="ncm-btn ncm-btn--ghost ncm-btn--sm"
               data-action="pushAllToPlayer" title="Share all filtered contacts to selected player">
@@ -369,14 +378,23 @@
                     rows="2">{{selectedContact.notes}}</textarea>
           <div class="ncm-gm-notes__hint">GM only — auto-saves on blur</div>
 
-          {{!-- ── Share to Player ── --}}
+          {{!-- ── Share to Character ── --}}
           <div class="ncm-gm-section"><i class="fas fa-arrow-up-from-bracket"></i> Share</div>
           <div class="ncm-push-row">
             <select name="pushTargetActor" class="ncm-push-select">
               <option value="">Select character...</option>
-              {{#each ../playerActors}}
-                <option value="{{id}}">{{name}}{{#if isPlayer}} (Player){{/if}}</option>
-              {{/each}}
+              <optgroup label="Players">
+                {{#each ../shareTargetPlayers}}
+                  <option value="{{id}}">{{name}} (Player)</option>
+                {{/each}}
+              </optgroup>
+              {{#if ../hasShareNPCs}}
+              <optgroup label="NPCs">
+                {{#each ../shareTargetNPCs}}
+                  <option value="{{id}}">{{name}}</option>
+                {{/each}}
+              </optgroup>
+              {{/if}}
             </select>
             <button class="ncm-btn ncm-btn--accent ncm-btn--sm"
                     data-action="pushToPlayer">

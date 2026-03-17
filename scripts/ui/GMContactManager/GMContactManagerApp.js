@@ -315,6 +315,11 @@ export class GMContactManagerApp extends BaseApplication {
       }))
       .sort((a, b) => a.name.localeCompare(b.name));
 
+    // ── Share targets — all actors, grouped for the push select ──
+    const shareTargetPlayers = availableActors.filter(a => a.hasPlayerOwner);
+    const shareTargetNPCs = availableActors.filter(a => !a.hasPlayerOwner);
+    const hasShareNPCs = shareTargetNPCs.length > 0;
+
     // ── Selected contact enrichment ──
     let selectedEnriched = null;
     let perPlayerRelationships = [];
@@ -413,6 +418,9 @@ export class GMContactManagerApp extends BaseApplication {
       // Actors
       availableActors,
       playerActors,
+      shareTargetPlayers,
+      shareTargetNPCs,
+      hasShareNPCs,
 
       // Roles
       customRoles,

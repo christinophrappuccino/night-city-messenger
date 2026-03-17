@@ -378,7 +378,8 @@
 .ncm-gm-list-item__detail {
   font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
   font-size: 9px;
-  color: var(--ncm-text-muted, #555570);
+  color: var(--ncm-secondary, #19f3f7);
+  opacity: 0.6;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -620,8 +621,8 @@
   color: var(--ncm-text-muted, #555570);
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  margin: 12px 0 5px;
-  padding-bottom: 3px;
+  margin: 16px 0 6px;
+  padding-bottom: 4px;
   border-bottom: 1px solid rgba(42, 42, 69, 0.5);
   display: flex;
   align-items: center;
@@ -1081,7 +1082,7 @@
 .ncm-contact-form {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
 }
 
 .ncm-form-row {
@@ -1223,7 +1224,7 @@
 
 /* Form dividers */
 .ncm-form-divider {
-  margin: 8px 0 4px;
+  margin: 10px 0 4px;
   border: none;
   border-top: 1px solid rgba(42, 42, 69, 0.5);
 }
@@ -1238,7 +1239,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  margin: 10px 0 2px;
+  margin: 14px 0 2px;
 }
 
 .ncm-form-divider-label i {
@@ -1249,20 +1250,26 @@
 .ncm-form-ice-compact {
   display: flex;
   gap: 6px;
+  align-items: center;
 }
 
-.ncm-form-input--dv {
-  width: 55px;
-  flex-shrink: 0;
+.ncm-app .ncm-gm-contacts .ncm-form-input--dv {
+  width: 55px !important;
+  max-width: 55px !important;
+  flex-shrink: 0 !important;
+  text-align: center !important;
 }
 
-.ncm-form-select--ice {
-  flex: 1;
+.ncm-app .ncm-gm-contacts .ncm-form-select--ice {
+  flex: 1 !important;
+  min-width: 0 !important;
 }
 
-.ncm-form-input--dmg {
-  width: 45px;
-  flex-shrink: 0;
+.ncm-app .ncm-gm-contacts .ncm-form-input--dmg {
+  width: 50px !important;
+  max-width: 50px !important;
+  flex-shrink: 0 !important;
+  text-align: center !important;
 }
 
 /* Form actions */
@@ -1772,15 +1779,6 @@
   border-color: rgba(247, 201, 72, 0.3) !important;
 }
 
-/* All selects: dropdown arrow SVG */
-.ncm-app .ncm-gm-contacts select {
-  padding-right: 20px !important;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M1 1l3 3 3-3' fill='none' stroke='%238888a0' stroke-width='1.2'/%3E%3C/svg%3E") !important;
-  background-repeat: no-repeat !important;
-  background-position: right 7px center !important;
-  cursor: pointer !important;
-}
-
 /* Filter pills */
 .ncm-app .ncm-gm-contacts .ncm-pill,
 .ncm-app .ncm-gm-contacts button.ncm-pill {
@@ -1796,7 +1794,6 @@
 
 /* Form inputs/selects/textareas */
 .ncm-app .ncm-gm-contacts input,
-.ncm-app .ncm-gm-contacts select,
 .ncm-app .ncm-gm-contacts textarea {
   font-family: var(--ncm-font-display) !important;
   font-weight: 600 !important;
@@ -1815,6 +1812,29 @@
   -webkit-appearance: none !important;
 }
 
+/* Selects get background-color (not shorthand) so background-image arrow is preserved */
+.ncm-app .ncm-gm-contacts select {
+  font-family: var(--ncm-font-display) !important;
+  font-weight: 600 !important;
+  font-size: 11px !important;
+  color: var(--ncm-text-primary) !important;
+  background-color: var(--ncm-bg-surface) !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M1 1l3 3 3-3' fill='none' stroke='%238888a0' stroke-width='1.2'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 7px center !important;
+  border: 1px solid var(--ncm-border) !important;
+  border-radius: 3px !important;
+  padding: 4px 20px 4px 7px !important;
+  outline: none !important;
+  box-shadow: none !important;
+  height: auto !important;
+  min-height: 0 !important;
+  line-height: 1.4 !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  cursor: pointer !important;
+}
+
 .ncm-app .ncm-gm-contacts input:focus,
 .ncm-app .ncm-gm-contacts select:focus,
 .ncm-app .ncm-gm-contacts textarea:focus {
@@ -1824,6 +1844,22 @@
 .ncm-app .ncm-gm-contacts select option {
   background: var(--ncm-bg-elevated);
   color: var(--ncm-text-primary);
+}
+
+.ncm-app .ncm-gm-contacts select optgroup {
+  background: var(--ncm-bg-deep);
+  color: var(--ncm-text-secondary);
+  font-family: var(--ncm-font-display);
+  font-weight: 700;
+  font-size: 10px;
+  font-style: normal;
+}
+
+.ncm-app .ncm-gm-contacts select optgroup option {
+  background: var(--ncm-bg-elevated);
+  color: var(--ncm-text-primary);
+  padding-left: 8px;
+  font-weight: 600;
 }
 
 .ncm-app .ncm-gm-contacts input::placeholder,
