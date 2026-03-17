@@ -432,6 +432,14 @@ export class DocumentSyncBridge {
         });
         break;
 
+      case 'customRoles':
+        log.debug('SyncBridge: Custom roles setting changed');
+        this._eventBus.emit('roles:updated', {
+          source: 'document-sync',
+          settingChanged: 'customRoles',
+        });
+        break;
+
       case 'scheduledMessages':
         log.debug('SyncBridge: Scheduled messages setting changed');
         // SchedulingService already handles this via its own socket,

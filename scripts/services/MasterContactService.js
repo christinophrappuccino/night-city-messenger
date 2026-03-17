@@ -154,7 +154,11 @@ export class MasterContactService {
    * @param {Array<string>} [data.tags] - Tags for filtering
    * @param {string} [data.notes] - GM notes
    * @param {string} [data.actorId] - Linked Foundry actor ID
-   * @param {string} [data.type] - Contact type: npc, player, fixer, corp, etc.
+   * @param {string} [data.type] - Contact type: npc, player (deprecated — use role)
+   * @param {string} [data.role] - Role: fixer, solo, netrunner, etc. (or custom role ID)
+   * @param {number} [data.trust] - Party-wide trust level (0-5)
+   * @param {object} [data.relationships] - Per-player relationships { [actorId]: { type, trust, note } }
+   * @param {string} [data.folder] - Manual folder name for grouping
    * @returns {{ success: boolean, contact?: object, error?: string }}
    */
   async addContact(data) {
@@ -177,6 +181,10 @@ export class MasterContactService {
       notes: data.notes?.trim() || '',
       actorId: data.actorId || null,
       type: data.type || 'npc',
+      role: data.role?.trim() || '',
+      trust: typeof data.trust === 'number' ? data.trust : 0,
+      relationships: data.relationships || {},
+      folder: data.folder?.trim() || '',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -205,14 +213,17 @@ export class MasterContactService {
     // Apply updates (whitelist fields)
     const allowed = [
       'name', 'email', 'alias', 'organization', 'phone', 'location', 'portrait',
-      'tags', 'notes', 'actorId', 'type',
-      'relationship', 'trust', 'burned',
+      'tags', 'notes', 'actorId', 'type', 'role', 'folder',
+      'trust', 'relationships', 'burned',
       'encrypted', 'encryptionDV', 'blackIce', 'blackIceDamage',
     ];
     for (const key of allowed) {
       if (key in updates) {
         if (key === 'tags' && Array.isArray(updates.tags)) {
           contact.tags = updates.tags.map(t => t.trim()).filter(Boolean);
+        } else if (key === 'relationships' && typeof updates.relationships === 'object') {
+          // Deep-merge relationships (don't trim — it's an object)
+          contact.relationships = updates.relationships;
         } else if (typeof updates[key] === 'string') {
           contact[key] = updates[key].trim();
         } else {
@@ -299,6 +310,7 @@ export class MasterContactService {
         notes: '', // Don't copy GM notes to players
         actorId: contact.actorId,
         type: contact.type,
+        role: contact.role || '',
       };
 
       await contactRepo.addContact(actorId, playerContact);
@@ -397,6 +409,119 @@ export class MasterContactService {
   }
 
   // ═══════════════════════════════════════════════════════════════
+  //  CUSTOM ROLES
+  // ═══════════════════════════════════════════════════════════════
+
+  /**
+   * Get all custom roles defined by the GM.
+   * @returns {Array<{ id: string, label: string, icon: string, color: string }>}
+   */
+  getCustomRoles() {
+    try {
+      return this.settingsManager?.get('customRoles') ?? [];
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Save custom roles to settings.
+   * @param {Array<{ id: string, label: string, icon: string, color: string }>} roles
+   */
+  async setCustomRoles(roles) {
+    if (!isGM()) return;
+    await this.settingsManager?.set('customRoles', roles);
+    this.eventBus?.emit('roles:updated', { roles });
+    log.info(`Custom roles saved — ${roles.length} roles`);
+  }
+
+  /**
+   * Add a single custom role.
+   * @param {{ label: string, icon: string, color: string }} roleData
+   * @returns {{ success: boolean, role?: object, error?: string }}
+   */
+  async addCustomRole(roleData) {
+    if (!isGM()) return { success: false, error: 'GM only' };
+    if (!roleData.label?.trim()) return { success: false, error: 'Role name is required' };
+
+    const id = roleData.label.trim().toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
+
+    // Check for duplicates against built-in + existing custom
+    const builtIn = [
+      'fixer','netrunner','runner','corp','exec','solo','tech','medtech',
+      'ripperdoc','media','nomad','lawman','rockerboy','rocker',
+      'gang','civilian','government','ai','npc',
+    ];
+    if (builtIn.includes(id)) return { success: false, error: 'Cannot override a built-in role' };
+
+    const existing = this.getCustomRoles();
+    if (existing.some(r => r.id === id)) return { success: false, error: 'A role with this name already exists' };
+
+    const role = {
+      id,
+      label: roleData.label.trim(),
+      icon: roleData.icon || 'tag',
+      color: roleData.color || '#888888',
+    };
+
+    existing.push(role);
+    await this.setCustomRoles(existing);
+    return { success: true, role };
+  }
+
+  /**
+   * Update an existing custom role.
+   * @param {string} roleId
+   * @param {{ label?: string, icon?: string, color?: string }} updates
+   * @returns {{ success: boolean, error?: string }}
+   */
+  async updateCustomRole(roleId, updates) {
+    if (!isGM()) return { success: false, error: 'GM only' };
+
+    const roles = this.getCustomRoles();
+    const role = roles.find(r => r.id === roleId);
+    if (!role) return { success: false, error: 'Custom role not found' };
+
+    if (updates.label != null) role.label = updates.label.trim();
+    if (updates.icon != null) role.icon = updates.icon;
+    if (updates.color != null) role.color = updates.color;
+
+    await this.setCustomRoles(roles);
+    return { success: true };
+  }
+
+  /**
+   * Delete a custom role. Contacts using it will have their role cleared.
+   * @param {string} roleId
+   * @returns {{ success: boolean, affectedContacts: number, error?: string }}
+   */
+  async deleteCustomRole(roleId) {
+    if (!isGM()) return { success: false, affectedContacts: 0, error: 'GM only' };
+
+    const roles = this.getCustomRoles();
+    const idx = roles.findIndex(r => r.id === roleId);
+    if (idx < 0) return { success: false, affectedContacts: 0, error: 'Custom role not found' };
+
+    roles.splice(idx, 1);
+    await this.setCustomRoles(roles);
+
+    // Clear role on any contacts that used it
+    let affected = 0;
+    for (const contact of this._contacts) {
+      if (contact.role === roleId) {
+        contact.role = '';
+        affected++;
+      }
+    }
+    if (affected > 0) {
+      await this._persistContacts();
+      this.eventBus?.emit('contacts:masterUpdated', { action: 'roleDeleted', roleId });
+    }
+
+    return { success: true, affectedContacts: affected };
+  }
+
+  // ═══════════════════════════════════════════════════════════════
   //  INTERNAL
   // ═══════════════════════════════════════════════════════════════
 
@@ -404,9 +529,72 @@ export class MasterContactService {
   _loadContacts() {
     try {
       this._contacts = this.settingsManager?.get('masterContacts') ?? [];
+      this._migrateContacts();
     } catch {
       log.warn('Failed to load master contacts — starting fresh');
       this._contacts = [];
+    }
+  }
+
+  /**
+   * Migrate contacts from older schema versions.
+   * - type → role (if role doesn't exist yet and type is a known role name)
+   * - relationship (string) → relationships (per-player object)
+   * - Ensure new fields have defaults
+   * @private
+   */
+  _migrateContacts() {
+    let dirty = false;
+
+    // Known role names that should migrate from type → role
+    const knownRoles = new Set([
+      'fixer', 'netrunner', 'runner', 'corp', 'exec', 'solo', 'tech',
+      'medtech', 'ripperdoc', 'media', 'nomad', 'lawman', 'rockerboy',
+      'rocker', 'gang', 'civilian', 'government', 'ai',
+    ]);
+
+    for (const contact of this._contacts) {
+      // ── Migrate type → role ──
+      if (!contact.role && contact.type && knownRoles.has(contact.type.toLowerCase())) {
+        contact.role = contact.type.toLowerCase();
+        dirty = true;
+      }
+
+      // ── Migrate single relationship → per-player relationships ──
+      if (contact.relationship && !contact.relationships) {
+        // Build per-player relationships from the old single value
+        const playerActorIds = [];
+        for (const user of game.users ?? []) {
+          if (!user.isGM && user.character) {
+            playerActorIds.push(user.character.id);
+          }
+        }
+        contact.relationships = {};
+        for (const actorId of playerActorIds) {
+          contact.relationships[actorId] = {
+            type: contact.relationship,
+            trust: null, // inherit party trust
+            note: '',
+          };
+        }
+        delete contact.relationship;
+        dirty = true;
+      }
+
+      // ── Ensure new fields have defaults ──
+      if (contact.role === undefined) { contact.role = ''; dirty = true; }
+      if (contact.folder === undefined) { contact.folder = ''; dirty = true; }
+      if (contact.relationships === undefined) { contact.relationships = {}; dirty = true; }
+      if (contact.trust === undefined) { contact.trust = 0; dirty = true; }
+      if (contact.location === undefined) { contact.location = ''; dirty = true; }
+    }
+
+    if (dirty) {
+      log.info('MasterContactService: Migrated contacts to updated schema');
+      // Persist silently — don't emit events during init
+      this._persistContacts().catch(err =>
+        console.error(`${MODULE_ID} | Migration persist failed:`, err)
+      );
     }
   }
 

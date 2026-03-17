@@ -80,6 +80,15 @@ export class SettingsManager {
       default: [],
     });
 
+    game.settings.register(MODULE_ID, 'customRoles', {
+      name: 'NCM.Settings.CustomRoles.Name',
+      hint: 'GM-defined custom contact roles with custom icons and colors.',
+      scope: 'world',
+      config: false,
+      type: Array,
+      default: [],
+    });
+
     game.settings.register(MODULE_ID, 'requireContactVerification', {
       name: 'NCM.Settings.RequireContactVerification',
       hint: 'NCM.Settings.RequireContactVerificationHint',
