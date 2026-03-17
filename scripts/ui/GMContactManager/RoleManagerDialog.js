@@ -1,6 +1,6 @@
 /**
  * Custom Role Manager Dialog
- * @file scripts/ui/RoleManagerDialog.js
+ * @file scripts/ui/GMContactManager/RoleManagerDialog.js
  * @module cyberpunkred-messenger
  * @description GM dialog for creating, editing, and deleting custom roles.
  *   Shows built-in roles (read-only) and custom roles (editable) in a list,
@@ -14,8 +14,8 @@
  *   Visual reference: ncm-gm-editor-mockup-v3.html — State 4
  */
 
-import { MODULE_ID } from '../utils/constants.js';
-import { log } from '../utils/helpers.js';
+import { MODULE_ID } from '../../utils/constants.js';
+import { log } from '../../utils/helpers.js';
 
 // ═══════════════════════════════════════════
 //  Constants
