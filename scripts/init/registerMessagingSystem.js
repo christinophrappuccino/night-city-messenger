@@ -123,7 +123,11 @@ export function registerMessagingSystem(initializer) {
       const resolvedActorId = _resolveActorId(actorId);
       if (!resolvedActorId) return;
 
-      const filterHint = options.filter || 'inbox';
+      // Auto-detect sent messages from messageId suffix
+      let filterHint = options.filter || 'inbox';
+      if (messageId && messageId.endsWith('-sent') && filterHint === 'inbox') {
+        filterHint = 'sent';
+      }
 
       // Singleton — find any existing viewer
       let viewer = _activeViewer;
