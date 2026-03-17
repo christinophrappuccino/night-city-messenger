@@ -202,7 +202,8 @@
           </div>
           {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/contact-form.hbs"
               contact=null isCreating=true isGM=true availableActors=availableActors
-              playerActors=playerActors roleOptions=roleOptions customRoles=customRoles }}
+              playerActors=playerActors roleOptions=roleOptions customRoles=customRoles
+              existingFolders=existingFolders }}
         </div>
 
       {{!-- ═══ EDIT FORM ═══ --}}
@@ -214,7 +215,7 @@
           {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/contact-form.hbs"
               contact=selectedContact isCreating=false isGM=true availableActors=availableActors
               playerActors=playerActors roleOptions=roleOptions customRoles=customRoles
-              perPlayerRelationships=perPlayerRelationships }}
+              perPlayerRelationships=perPlayerRelationships existingFolders=existingFolders }}
         </div>
 
       {{!-- ═══ DETAIL VIEW ═══ --}}

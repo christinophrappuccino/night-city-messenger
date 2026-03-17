@@ -120,6 +120,9 @@ export class GMContactManagerApp extends BaseApplication {
   /** @type {Set<string>} Keys of collapsed groups */
   _collapsedGroups = new Set();
 
+  /** @type {string[]} All group keys (computed in _buildGroups, used by collapseAll) */
+  _allGroupKeys = [];
+
   /** @type {Set<string>} Actor IDs with notes expanded in detail view */
   _expandedNotes = new Set();
 
@@ -283,7 +286,8 @@ export class GMContactManagerApp extends BaseApplication {
     const paged = enriched.slice(pageStart, pageStart + ITEMS_PER_PAGE);
 
     // ── Grouping ──
-    const groups = this._buildGroups(paged, allRoles);
+    // Pass full enriched list for accurate group counts; paged subset for visible contacts
+    const groups = this._buildGroups(paged, allRoles, enriched);
 
     // ── Player actors ──
     const playerActors = [];
@@ -366,6 +370,11 @@ export class GMContactManagerApp extends BaseApplication {
     const totalCount = svc.getAll().length;
     const linkedCount = svc.getAll().filter(c => c.actorId).length;
 
+    // ── Existing folder names (for datalist in form) ──
+    const existingFolders = [...new Set(
+      svc.getAll().map(c => c.folder).filter(Boolean)
+    )].sort();
+
     return {
       hasService: true,
 
@@ -408,6 +417,9 @@ export class GMContactManagerApp extends BaseApplication {
       // Roles
       customRoles,
 
+      // Folders
+      existingFolders,
+
       // Per-player relationships (form)
       perPlayerRelationships,
 
@@ -419,7 +431,7 @@ export class GMContactManagerApp extends BaseApplication {
   //  Grouping Logic
   // ═══════════════════════════════════════════════════════════
 
-  _buildGroups(contacts, allRoles) {
+  _buildGroups(pagedContacts, allRoles, allEnriched) {
     if (this._groupBy === 'none') {
       return [{
         key: '__all__',
@@ -428,41 +440,55 @@ export class GMContactManagerApp extends BaseApplication {
         showHeader: false,
         collapsed: false,
         isFolder: false,
-        totalInGroup: contacts.length,
-        contacts,
+        totalInGroup: allEnriched.length,
+        contacts: pagedContacts,
       }];
     }
 
-    const groupMap = new Map();
-
-    for (const c of contacts) {
-      let keys = [];
-
+    /** Extract group key(s) for a contact based on current groupBy mode */
+    const _groupKeys = (c) => {
       if (this._groupBy === 'organization') {
-        keys = [c.organization || 'Unaffiliated'];
+        return [c.organization || 'Unaffiliated'];
       } else if (this._groupBy === 'role') {
         const roleLower = (c.role || '').toLowerCase();
         const roleData = allRoles[roleLower];
-        keys = [roleData ? roleData.label : (roleLower || 'No Role')];
+        return [roleData ? roleData.label : (roleLower || 'No Role')];
       } else if (this._groupBy === 'tag') {
-        keys = (c.tags && c.tags.length) ? c.tags : ['Untagged'];
+        return (c.tags && c.tags.length) ? c.tags : ['Untagged'];
       } else if (this._groupBy === 'folders') {
-        keys = [c.folder || 'Unfiled'];
+        return [c.folder || 'Unfiled'];
       }
+      return ['Other'];
+    };
 
-      for (const key of keys) {
+    // Build full counts from ALL filtered contacts (not just current page)
+    const fullCountMap = new Map();
+    for (const c of allEnriched) {
+      for (const key of _groupKeys(c)) {
+        fullCountMap.set(key, (fullCountMap.get(key) || 0) + 1);
+      }
+    }
+
+    // Build paged groups — only contacts visible on current page
+    const groupMap = new Map();
+    for (const c of pagedContacts) {
+      for (const key of _groupKeys(c)) {
         if (!groupMap.has(key)) groupMap.set(key, []);
         groupMap.get(key).push(c);
       }
     }
 
-    // Sort groups alphabetically, but put "Unfiled"/"Unaffiliated"/"Untagged"/"No Role" last
+    // Sort groups alphabetically, but put catch-all groups last
     const catchAll = new Set(['Unfiled', 'Unaffiliated', 'Untagged', 'No Role']);
-    const sortedKeys = [...groupMap.keys()].sort((a, b) => {
+    // Use full count keys so we know ALL group names (for collapseAll)
+    const allKeys = [...fullCountMap.keys()].sort((a, b) => {
       if (catchAll.has(a) && !catchAll.has(b)) return 1;
       if (!catchAll.has(a) && catchAll.has(b)) return -1;
       return a.localeCompare(b);
     });
+
+    // Store all group keys for collapseAll (Bug 2 fix)
+    this._allGroupKeys = allKeys;
 
     const groupIcon = {
       organization: 'fa-building',
@@ -471,18 +497,21 @@ export class GMContactManagerApp extends BaseApplication {
       folders: 'fa-folder',
     }[this._groupBy] || 'fa-folder';
 
-    return sortedKeys.map(key => ({
-      key,
-      label: key,
-      icon: this._groupBy === 'folders'
-        ? (catchAll.has(key) ? 'fa-folder-open' : 'fa-folder')
-        : groupIcon,
-      showHeader: true,
-      collapsed: this._collapsedGroups.has(key),
-      isFolder: this._groupBy === 'folders' && !catchAll.has(key),
-      totalInGroup: groupMap.get(key).length,
-      contacts: groupMap.get(key),
-    }));
+    // Only return groups that have contacts on the current page
+    return allKeys
+      .filter(key => groupMap.has(key))
+      .map(key => ({
+        key,
+        label: key,
+        icon: this._groupBy === 'folders'
+          ? (catchAll.has(key) ? 'fa-folder-open' : 'fa-folder')
+          : groupIcon,
+        showHeader: true,
+        collapsed: this._collapsedGroups.has(key),
+        isFolder: this._groupBy === 'folders' && !catchAll.has(key),
+        totalInGroup: fullCountMap.get(key) || 0,
+        contacts: groupMap.get(key) || [],
+      }));
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -932,7 +961,7 @@ export class GMContactManagerApp extends BaseApplication {
       portrait: _val('portrait'),
       notes: _val('notes'),
       actorId: _val('actorId') || null,
-      role: _val('role') || '',
+      role: (_val('role') === '__manage_roles__' ? '' : _val('role')) || '',
       location: _val('location'),
       trust: parseInt(_val('trust'), 10) || 0,
       encrypted: _val('encrypted') === 'true',
@@ -940,6 +969,7 @@ export class GMContactManagerApp extends BaseApplication {
       blackIce: _val('blackIce') === 'true',
       blackIceDamage: _val('blackIceDamage'),
       tags: (_val('tags') || '').split(',').map(t => t.trim().toUpperCase()).filter(Boolean),
+      folder: _val('folder'),
     };
 
     if (!data.name) {
@@ -1120,11 +1150,10 @@ export class GMContactManagerApp extends BaseApplication {
   }
 
   static _onCollapseAll(event, target) {
-    // Collapse all current groups
-    const headers = this.element?.querySelectorAll('.ncm-gm-group-header[data-group-key]');
-    if (headers) {
-      for (const h of headers) {
-        this._collapsedGroups.add(h.dataset.groupKey);
+    // Use precomputed group keys — covers groups on all pages, not just current DOM
+    if (this._allGroupKeys?.length) {
+      for (const key of this._allGroupKeys) {
+        this._collapsedGroups.add(key);
       }
     }
     this.render();
@@ -1194,6 +1223,7 @@ export class GMContactManagerApp extends BaseApplication {
   }
 
   static _onNextPage(event, target) {
+    // Guard: _prepareContext clamps page, but skip render if already at end
     this._currentPage++;
     this._listScrollTop = 0;
     this.render();

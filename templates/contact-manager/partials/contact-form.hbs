@@ -176,6 +176,26 @@
       </div>
     </div>
 
+    {{!-- ── Folder assignment ── --}}
+    <div class="ncm-form-row">
+      <div class="ncm-form-group">
+        <label class="ncm-form-label">
+          <i class="fas fa-folder" style="color: var(--ncm-accent, #f7c948); font-size: 8px;"></i>
+          Folder
+          <span class="ncm-form-hint">(for manual grouping — type or pick existing)</span>
+        </label>
+        <input type="text" name="folder" value="{{contact.folder}}"
+               placeholder="e.g. Main Story NPCs"
+               class="ncm-form-input"
+               list="ncm-folder-list" autocomplete="off" />
+        <datalist id="ncm-folder-list">
+          {{#each existingFolders}}
+            <option value="{{this}}">
+          {{/each}}
+        </datalist>
+      </div>
+    </div>
+
     {{!-- ── ICE / Encryption (compact) ── --}}
     <div class="ncm-form-row ncm-form-row--half">
       <div class="ncm-form-group">
