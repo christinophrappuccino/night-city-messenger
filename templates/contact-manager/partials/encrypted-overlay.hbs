@@ -1,32 +1,68 @@
 {{!--
-  Encrypted Overlay — ICE lock display for encrypted contacts (Sprint 3.7 update)
+  Encrypted Overlay — ICE / BLACK ICE animated display (v5.1 redesign)
   @file templates/contact-manager/partials/encrypted-overlay.hbs
   @module cyberpunkred-messenger
-  @description Dark overlay with pulsing lock icon, shown on encrypted contact cards.
-    Clicking triggers the breach/hack flow. GM sees a force-decrypt bypass button.
+  @description Animated overlay with drifting grid, scanning line, pulsing icon
+    with rotating dashed ring, large DV readout. BLACK ICE variant has faster
+    animations, red tint, and damage warning. All CSS-only, gated by animation
+    preference attribute.
 
-  @param {number}  encryptionDV    — Difficulty value for the hack check
-  @param {string}  encryptionSkill — Required skill (e.g. "Interface")
-  @param {boolean} [isGM]          — Whether current user is GM (shows bypass)
-  @param {string}  [contactId]     — Contact ID (for force-decrypt data attribute)
+  @param {number}  encryptionDV       — Difficulty value for the hack check
+  @param {string}  encryptionSkill    — Required skill (e.g. "Interface")
+  @param {boolean} [blackIce]         — Whether this is BLACK ICE (lethal on failure)
+  @param {string}  [blackIceDamage]   — Damage formula (e.g. "3d6", "5d6")
+  @param {boolean} [isGM]             — Whether current user is GM (shows bypass)
+  @param {string}  [contactId]        — Contact ID (for force-decrypt data attribute)
 
   @example
     {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/encrypted-overlay.hbs"
-        encryptionDV=15 encryptionSkill="Interface" isGM=isGM contactId=contact.id }}
+        encryptionDV=15 encryptionSkill="Interface" blackIce=blackIce
+        blackIceDamage=blackIceDamage isGM=../isGM contactId=id }}
 --}}
 
-<div class="ncm-encrypted-overlay" data-action="breachContact">
-  <i class="fas fa-lock"></i>
-  <span class="ncm-encrypted-overlay__text">ICE Protected</span>
-  <span class="ncm-encrypted-overlay__dv">DV {{encryptionDV}} · {{encryptionSkill}}</span>
+<div class="ncm-ice ncm-ice--{{#if blackIce}}black{{else}}standard{{/if}}"
+     data-action="breachContact">
+  <div class="ncm-ice__grid"></div>
+  <div class="ncm-ice__scan"></div>
 
-  {{!-- GM force-decrypt bypass --}}
+  <div class="ncm-ice__icon">
+    <i class="fas fa-{{#if blackIce}}skull-crossbones{{else}}lock{{/if}}"></i>
+  </div>
+
+  <div class="ncm-ice__title">
+    {{#if blackIce}}BLACK ICE Detected{{else}}ICE Protected{{/if}}
+  </div>
+
+  <div class="ncm-ice__dv">
+    <span class="ncm-ice__dv-label">Difficulty</span>
+    <span class="ncm-ice__dv-value">{{encryptionDV}}</span>
+    <span class="ncm-ice__dv-skill">{{encryptionSkill}}</span>
+  </div>
+
+  {{#if blackIce}}
+    <div class="ncm-ice__damage">
+      <i class="fas fa-bolt"></i>
+      Failure: {{blackIceDamage}} damage to netrunner
+    </div>
+  {{/if}}
+
+  <div class="ncm-ice__meta">
+    {{#if blackIce}}
+      Hostile countermeasure. Breach failure is lethal.
+    {{else}}
+      Intrusion countermeasure active. Breach required.
+    {{/if}}
+  </div>
+
+  <button class="ncm-ice__breach">
+    <i class="fas fa-terminal"></i>
+    {{#if blackIce}}Breach at Your Own Risk{{else}}Attempt Breach{{/if}}
+  </button>
+
   {{#if isGM}}
-    <button class="ncm-encrypted-overlay__gm-bypass"
-            data-action="forceDecrypt"
-            data-contact-id="{{contactId}}"
-            title="GM: Force decrypt (bypass ICE)">
-      <i class="fas fa-shield-halved"></i> GM BYPASS
+    <button class="ncm-ice__breach ncm-ice__breach--gm"
+            data-action="forceDecrypt" data-contact-id="{{contactId}}">
+      <i class="fas fa-shield-halved"></i> GM Bypass
     </button>
   {{/if}}
 </div>

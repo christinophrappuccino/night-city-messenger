@@ -42,6 +42,8 @@ function _normalizeContact(data) {
     encrypted: !!data.encrypted,
     encryptionDV: data.encryptionDV || 15,
     encryptionSkill: data.encryptionSkill || 'Interface',
+    blackIce: !!data.blackIce,
+    blackIceDamage: data.blackIceDamage || '3d6',
     favorite: !!data.favorite,
     role: data.role || '',
     network: data.network || 'citinet',

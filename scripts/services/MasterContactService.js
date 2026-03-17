@@ -185,6 +185,13 @@ export class MasterContactService {
       trust: typeof data.trust === 'number' ? data.trust : 0,
       relationships: data.relationships || {},
       folder: data.folder?.trim() || '',
+      burned: !!data.burned,
+      encrypted: !!data.encrypted,
+      encryptionDV: data.encryptionDV || 15,
+      encryptionSkill: data.encryptionSkill?.trim() || 'Interface',
+      blackIce: !!data.blackIce,
+      blackIceDamage: data.blackIceDamage?.trim?.() || '3d6',
+      revealTrust: !!data.revealTrust,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -215,7 +222,8 @@ export class MasterContactService {
       'name', 'email', 'alias', 'organization', 'phone', 'location', 'portrait',
       'tags', 'notes', 'actorId', 'type', 'role', 'folder',
       'trust', 'relationships', 'burned',
-      'encrypted', 'encryptionDV', 'blackIce', 'blackIceDamage',
+      'encrypted', 'encryptionDV', 'encryptionSkill', 'blackIce', 'blackIceDamage',
+      'revealTrust',
     ];
     for (const key of allowed) {
       if (key in updates) {
@@ -311,7 +319,24 @@ export class MasterContactService {
         actorId: contact.actorId,
         type: contact.type,
         role: contact.role || '',
+
+        // ICE fields — always transfer so player sees encryption state
+        encrypted: !!contact.encrypted,
+        encryptionDV: contact.encryptionDV || 15,
+        encryptionSkill: contact.encryptionSkill || 'Interface',
+        blackIce: !!contact.blackIce,
+        blackIceDamage: contact.blackIceDamage || '3d6',
       };
+
+      // Optionally reveal trust/relationship data (GM toggle per contact)
+      if (contact.revealTrust) {
+        playerContact.trust = contact.trust || 0;
+        const rel = contact.relationships?.[actorId];
+        if (rel) {
+          playerContact.relationship = rel.type;
+          playerContact.relationshipNote = rel.note;
+        }
+      }
 
       await contactRepo.addContact(actorId, playerContact);
       log.info(`Pushed contact ${contact.name} to actor ${actorId}`);

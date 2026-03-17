@@ -190,6 +190,7 @@ export class ContactBreachService {
 
   /**
    * Handle failed breach — fire events, play denied animation.
+   * BLACK ICE contacts deal damage on failure.
    * @private
    */
   async _handleFailure(actorId, contactId, contact, actor, rollResult) {
@@ -218,6 +219,28 @@ export class ContactBreachService {
       },
     });
 
+    // BLACK ICE damage on failure
+    let blackIceResult = null;
+    if (contact.blackIce) {
+      blackIceResult = await this._applyBlackICEDamage(actor, contact);
+
+      this.eventBus?.emit(EVENTS.CONTACT_BLACK_ICE, {
+        actorId,
+        contactId,
+        contactName: contact.name,
+        damage: blackIceResult.damage,
+        formula: blackIceResult.formula,
+      });
+
+      this.notificationService?.showToastV2({
+        type: 'danger',
+        title: 'BLACK ICE',
+        detail: `${blackIceResult.damage} damage dealt to ${actor.name}!`,
+        icon: 'fas fa-skull-crossbones',
+        duration: 6000,
+      });
+    }
+
     log.info(`ContactBreachService: FAILED — ${actor.name} failed breach on "${contact.name}" ` +
       `(${rollResult.total} vs DV ${rollResult.dc}, margin ${rollResult.margin})`);
 
@@ -225,6 +248,49 @@ export class ContactBreachService {
       success: false,
       roll: rollResult,
       contactName: contact.name,
+      blackIce: blackIceResult,
     };
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  PRIVATE — BLACK ICE Damage
+  // ═══════════════════════════════════════════════════════════
+
+  /**
+   * Apply BLACK ICE damage to the actor who failed a breach.
+   * Mirrors DataShardService._applyBlackICEDamage() pattern.
+   * @param {Actor} actor
+   * @param {object} contact — must have blackIceDamage formula
+   * @returns {Promise<{ damage: number, formula: string }>}
+   * @private
+   */
+  async _applyBlackICEDamage(actor, contact) {
+    const formula = contact.blackIceDamage || '3d6';
+    try {
+      const roll = new Roll(formula);
+      await roll.evaluate();
+      const damage = roll.total;
+
+      // Apply to actor HP (CPR system paths)
+      const currentHP = actor.system?.derivedStats?.hp?.value ?? actor.system?.hp?.value ?? 0;
+      const newHP = Math.max(0, currentHP - damage);
+      const hpUpdate = actor.system?.derivedStats?.hp
+        ? { 'system.derivedStats.hp.value': newHP }
+        : { 'system.hp.value': newHP };
+      await actor.update(hpUpdate);
+
+      // Chat message
+      await roll.toMessage({
+        speaker: ChatMessage.getSpeaker({ alias: 'BLACK ICE' }),
+        flavor: `<strong style="color:#ff0033">⚡ BLACK ICE RETALIATION</strong><br>${actor.name} takes <strong>${damage}</strong> damage!`,
+      });
+
+      this.soundService?.play('black-ice');
+      log.info(`BLACK ICE dealt ${damage} damage to ${actor.name} (HP: ${currentHP} → ${newHP})`);
+      return { damage, formula };
+    } catch (err) {
+      log.error(`Failed to apply BLACK ICE damage: ${err.message}`);
+      return { damage: 0, formula };
+    }
   }
 }
