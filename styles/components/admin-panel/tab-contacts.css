@@ -61,7 +61,8 @@
     padding: 6px 12px !important;
     min-height: 36px !important;
   }
-.ncm-app .ncm-ct-tbtn {
+.ncm-app .ncm-admin-panel button.ncm-ct-tbtn,
+.ncm-app button.ncm-ct-tbtn {
   appearance: none !important;
   -webkit-appearance: none !important;
   box-shadow: none !important;
@@ -78,13 +79,17 @@
     line-height: 1 !important; text-align: center !important;
     font-size: 12px !important;
   }
-.ncm-app .ncm-ct-tbtn:hover { color: var(--ncm-text-secondary) !important; border-color: var(--ncm-border-active) !important; }
-.ncm-app .ncm-ct-tbtn i {
+.ncm-app .ncm-admin-panel button.ncm-ct-tbtn:hover,
+.ncm-app button.ncm-ct-tbtn:hover { color: var(--ncm-text-secondary) !important; border-color: var(--ncm-border-active) !important; }
+.ncm-app .ncm-admin-panel button.ncm-ct-tbtn i,
+.ncm-app button.ncm-ct-tbtn i {
   font-size: 12px !important;
   line-height: 1 !important;
 }
-.ncm-app .ncm-ct-tbtn--accent { color: var(--ncm-primary) !important; border-color: rgba(246,82,97,0.3) !important; }
-.ncm-app .ncm-ct-tbtn--accent:hover { background: rgba(246,82,97,0.08) !important; border-color: rgba(246,82,97,0.5) !important; }
+.ncm-app .ncm-admin-panel button.ncm-ct-tbtn--accent,
+.ncm-app button.ncm-ct-tbtn--accent { color: var(--ncm-primary) !important; border-color: rgba(246,82,97,0.3) !important; }
+.ncm-app .ncm-admin-panel button.ncm-ct-tbtn--accent:hover,
+.ncm-app button.ncm-ct-tbtn--accent:hover { background: rgba(246,82,97,0.08) !important; border-color: rgba(246,82,97,0.5) !important; }
 .ncm-app .ncm-ct-tsep {
     flex: 1 !important;
     height: 1px !important;
@@ -93,21 +98,25 @@
     min-width: 8px !important;
     align-self: center !important;
   }
-.ncm-app .ncm-ct-taction {
+.ncm-app .ncm-admin-panel button.ncm-ct-taction,
+.ncm-app button.ncm-ct-taction {
   appearance: none !important;
   -webkit-appearance: none !important;
   box-shadow: none !important;
   outline: none !important;
     display: inline-flex !important; align-items: center !important; gap: 5px !important;
-    padding: 5px 12px !important; min-height: 28px !important;
+    padding: 5px 12px !important; height: 28px !important; min-height: 28px !important;
     font-family: var(--ncm-font-display) !important; font-size: 10px !important; font-weight: 700 !important;
     text-transform: uppercase !important; letter-spacing: 0.04em !important;
     color: var(--ncm-text-muted) !important;
     background: transparent !important; border: 1px solid var(--ncm-border) !important;
     border-radius: 2px !important; cursor: pointer !important; transition: all 0.15s !important;
+    flex-shrink: 0 !important;
   }
-.ncm-app .ncm-ct-taction:hover { color: var(--ncm-text-secondary) !important; border-color: var(--ncm-border-active) !important; }
-.ncm-app .ncm-ct-taction i { font-size: 10px !important; }
+.ncm-app .ncm-admin-panel button.ncm-ct-taction:hover,
+.ncm-app button.ncm-ct-taction:hover { color: var(--ncm-text-secondary) !important; border-color: var(--ncm-border-active) !important; }
+.ncm-app .ncm-admin-panel button.ncm-ct-taction i,
+.ncm-app button.ncm-ct-taction i { font-size: 10px !important; }
 .ncm-app .ncm-ct-tstats {
     font-family: var(--ncm-font-display) !important; font-size: 10px !important; font-weight: 600 !important;
     color: var(--ncm-text-muted) !important;
@@ -124,7 +133,8 @@
     position: relative !important;
     margin-left: 2px !important;
   }
-.ncm-app .ncm-ct-overflow__btn {
+.ncm-app .ncm-admin-panel button.ncm-ct-overflow__btn,
+.ncm-app button.ncm-ct-overflow__btn {
   appearance: none !important;
   -webkit-appearance: none !important;
   box-shadow: none !important;
@@ -141,10 +151,12 @@
     line-height: 1 !important; text-align: center !important;
     font-size: 13px !important;
   }
-.ncm-app .ncm-ct-overflow__btn i {
+.ncm-app .ncm-admin-panel button.ncm-ct-overflow__btn i,
+.ncm-app button.ncm-ct-overflow__btn i {
     font-size: 13px !important; line-height: 1 !important;
   }
-.ncm-app .ncm-ct-overflow__btn:hover { color: var(--ncm-text-secondary) !important; border-color: var(--ncm-border-active) !important; }
+.ncm-app .ncm-admin-panel button.ncm-ct-overflow__btn:hover,
+.ncm-app button.ncm-ct-overflow__btn:hover { color: var(--ncm-text-secondary) !important; border-color: var(--ncm-border-active) !important; }
 .ncm-app .ncm-ct-overflow__menu {
     position: absolute !important; top: calc(100% + 4px) !important; right: 0 !important;
     background: var(--ncm-bg-elevated) !important; border: 1px solid var(--ncm-border) !important;
@@ -380,15 +392,15 @@
   outline: none !important;
     display: flex !important; align-items: center !important; gap: 8px !important;
     padding: 8px 12px !important;
-    background: rgba(25, 243, 247, 0.08) !important;
-    border: 1px solid rgba(25, 243, 247, 0.18) !important;
-    border-left: 3px solid rgba(25, 243, 247, 0.5) !important;
+    background: rgba(25, 243, 247, 0.12) !important;
+    border: 1px solid rgba(25, 243, 247, 0.25) !important;
+    border-left: 3px solid var(--ncm-secondary) !important;
     border-radius: 2px 2px 0 0 !important;
     cursor: pointer !important; transition: all 0.15s !important;
     min-height: 32px !important;
     user-select: none !important;
   }
-.ncm-app .ncm-ct-group__hdr:hover { background: rgba(25, 243, 247, 0.14) !important; border-color: rgba(25, 243, 247, 0.30) !important; }
+.ncm-app .ncm-ct-group__hdr:hover { background: rgba(25, 243, 247, 0.18) !important; border-color: rgba(25, 243, 247, 0.40) !important; }
 .ncm-app .ncm-ct-group__chev {
     font-size: 9px !important; color: var(--ncm-secondary) !important;
     transition: transform 0.2s !important;
