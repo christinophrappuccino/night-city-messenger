@@ -563,7 +563,7 @@
 /* Subtle divider between folder groups and ungrouped contacts */
 .ncm-app .ncm-ungrouped-divider {
   height: 1px; margin: 6px 12px;
-  background: linear-gradient(90deg, var(--ncm-border, #2a2a45), transparent 80%);
+  background: rgba(25, 243, 247, 0.15);
 }
 
 
