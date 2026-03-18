@@ -107,3 +107,350 @@
   color: var(--ncm-danger, #ff0033);
 }
 
+
+/* ═══════════════════════════════════════════
+   TIME CONFIG DIALOG
+   Foundry v1 Dialog override — scoped to
+   .ncm-time-config-dialog class
+   ═══════════════════════════════════════════ */
+
+/* ─── Window frame ─── */
+.dialog.window-app.ncm-time-config-dialog {
+  background: #0d0d1a !important;
+  border: 1px solid #2a2a45 !important;
+  border-radius: 2px !important;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.6), 0 0 2px rgba(25,243,247,0.08) !important;
+  color: #eeeef4 !important;
+  overflow: hidden !important;
+}
+
+/* Top accent bar */
+.ncm-time-config-dialog::after {
+  content: '' !important;
+  position: absolute !important; top: 0 !important; left: 0 !important; right: 0 !important;
+  height: 2px !important; z-index: 100 !important;
+  background: linear-gradient(90deg, #F65261, transparent 40%, transparent 60%, #19f3f7) !important;
+  pointer-events: none !important;
+}
+
+/* ─── Window header ─── */
+.ncm-time-config-dialog .window-header,
+.ncm-time-config-dialog header.window-header,
+.dialog.ncm-time-config-dialog .window-header {
+  background: #12121a !important;
+  border-bottom: 1px solid #2a2a45 !important;
+  color: #eeeef4 !important;
+  padding: 6px 10px !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+}
+
+.ncm-time-config-dialog .window-header .window-title,
+.ncm-time-config-dialog .window-title {
+  font-family: 'Rajdhani', sans-serif !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.06em !important;
+  color: #eeeef4 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: 1.4 !important;
+}
+
+/* Header icon */
+.ncm-time-config-dialog .window-header .header-icon,
+.ncm-time-config-dialog .window-header i.header-icon {
+  display: none !important;
+}
+
+/* ─── Close button ─── */
+.ncm-time-config-dialog .window-header .close,
+.ncm-time-config-dialog .window-header a.close,
+.ncm-time-config-dialog .window-header button.close,
+.ncm-time-config-dialog .window-header .header-button,
+.ncm-time-config-dialog .window-header a.header-button,
+.ncm-time-config-dialog .window-header button[data-action="close"],
+.ncm-time-config-dialog header button,
+.ncm-time-config-dialog header a {
+  background: none !important;
+  border: 1px solid transparent !important;
+  border-radius: 2px !important;
+  color: #8888a0 !important;
+  font-size: 0 !important;
+  width: 22px !important; height: 22px !important;
+  min-width: 0 !important; min-height: 0 !important;
+  padding: 0 !important; margin: 0 !important;
+  display: flex !important; align-items: center !important; justify-content: center !important;
+  cursor: pointer !important; transition: all 0.15s !important;
+  box-shadow: none !important; appearance: none !important; -webkit-appearance: none !important;
+  line-height: 1 !important; text-decoration: none !important; overflow: hidden !important;
+}
+
+.ncm-time-config-dialog .window-header .close i,
+.ncm-time-config-dialog .window-header a.close i,
+.ncm-time-config-dialog .window-header .header-button i,
+.ncm-time-config-dialog .window-header a.header-button i,
+.ncm-time-config-dialog header button i,
+.ncm-time-config-dialog header a i {
+  font-size: 10px !important;
+  color: #8888a0 !important;
+  display: block !important;
+}
+
+.ncm-time-config-dialog .window-header .close:hover,
+.ncm-time-config-dialog .window-header a.close:hover,
+.ncm-time-config-dialog .window-header .header-button:hover,
+.ncm-time-config-dialog header button:hover,
+.ncm-time-config-dialog header a:hover {
+  border-color: rgba(246, 82, 97, 0.4) !important;
+}
+
+.ncm-time-config-dialog .window-header .close:hover i,
+.ncm-time-config-dialog .window-header a.close:hover i,
+.ncm-time-config-dialog .window-header .header-button:hover i,
+.ncm-time-config-dialog header button:hover i,
+.ncm-time-config-dialog header a:hover i {
+  color: #F65261 !important;
+}
+
+/* ─── Content area ─── */
+.ncm-time-config-dialog .dialog-content,
+.ncm-time-config-dialog .window-content,
+.ncm-time-config-dialog section.window-content {
+  background: #0d0d1a !important;
+  padding: 12px !important;
+  margin: 0 !important;
+  border: none !important;
+  overflow-y: auto !important;
+}
+
+/* ─── All inputs inside the dialog ─── */
+.ncm-time-config-dialog input,
+.ncm-time-config-dialog input[type="text"],
+.ncm-time-config-dialog input[type="date"],
+.ncm-time-config-dialog input[type="time"],
+.ncm-time-config-dialog input[type="number"] {
+  background: #12121a !important;
+  border: 1px solid #2a2a45 !important;
+  border-radius: 2px !important;
+  color: #eeeef4 !important;
+  font-family: 'Share Tech Mono', monospace !important;
+  font-size: 12px !important;
+  padding: 5px 8px !important;
+  margin: 0 !important;
+  outline: none !important;
+  box-shadow: none !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  min-height: 0 !important;
+  height: auto !important;
+  width: auto !important;
+  transition: border-color 0.15s !important;
+  color-scheme: dark !important;
+}
+
+.ncm-time-config-dialog input:focus {
+  border-color: #19f3f7 !important;
+}
+
+/* Date/time input calendar/clock icons */
+.ncm-time-config-dialog input[type="date"]::-webkit-calendar-picker-indicator,
+.ncm-time-config-dialog input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.6) !important;
+  cursor: pointer !important;
+}
+
+/* ─── Select dropdown ─── */
+.ncm-time-config-dialog select {
+  background: #12121a !important;
+  border: 1px solid #2a2a45 !important;
+  border-radius: 2px !important;
+  color: #eeeef4 !important;
+  font-family: 'Rajdhani', sans-serif !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  padding: 5px 8px !important;
+  margin: 0 !important;
+  width: 100% !important;
+  outline: none !important;
+  box-shadow: none !important;
+  appearance: auto !important;
+  min-height: 0 !important;
+  height: auto !important;
+  cursor: pointer !important;
+  transition: border-color 0.15s !important;
+}
+
+.ncm-time-config-dialog select:focus {
+  border-color: #19f3f7 !important;
+}
+
+.ncm-time-config-dialog select option {
+  background: #12121a !important;
+  color: #eeeef4 !important;
+}
+
+.ncm-time-config-dialog select option:disabled {
+  color: #555570 !important;
+}
+
+/* ─── Buttons inside content (anchor, set, advance, re-anchor) ─── */
+.ncm-time-config-dialog .dialog-content button {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  background: transparent !important;
+  border: 1px solid #2a2a45 !important;
+  border-radius: 2px !important;
+  color: #8888a0 !important;
+  font-family: 'Rajdhani', sans-serif !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+  padding: 5px 14px !important;
+  margin: 0 !important;
+  cursor: pointer !important;
+  transition: all 0.15s !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  box-shadow: none !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  height: auto !important;
+  width: auto !important;
+  outline: none !important;
+  line-height: 1.2 !important;
+  text-shadow: none !important;
+  flex-shrink: 0 !important;
+}
+
+.ncm-time-config-dialog .dialog-content button:hover {
+  border-color: #3a3a5a !important;
+  color: #eeeef4 !important;
+}
+
+.ncm-time-config-dialog .dialog-content button i {
+  font-size: 9px !important;
+  margin: 0 !important;
+}
+
+/* Cyan accent buttons (Set, Anchor) */
+.ncm-time-config-dialog .dialog-content button[id$="-set"],
+.ncm-time-config-dialog .dialog-content button[id$="-dis-set"] {
+  border-color: rgba(25, 243, 247, 0.3) !important;
+  color: #19f3f7 !important;
+}
+
+.ncm-time-config-dialog .dialog-content button[id$="-set"]:hover,
+.ncm-time-config-dialog .dialog-content button[id$="-dis-set"]:hover {
+  background: rgba(25, 243, 247, 0.06) !important;
+  border-color: rgba(25, 243, 247, 0.5) !important;
+}
+
+/* Gold accent buttons (Anchor disguised) */
+.ncm-time-config-dialog .dialog-content button[id="ncm-tc-dis-set"] {
+  border-color: rgba(247, 201, 72, 0.3) !important;
+  color: #f7c948 !important;
+}
+
+.ncm-time-config-dialog .dialog-content button[id="ncm-tc-dis-set"]:hover {
+  background: rgba(247, 201, 72, 0.06) !important;
+  border-color: rgba(247, 201, 72, 0.5) !important;
+}
+
+/* Quick advance buttons — smaller, grouped */
+.ncm-time-config-dialog .dialog-content button.ncm-tc-advance {
+  padding: 4px 10px !important;
+  font-size: 10px !important;
+}
+
+.ncm-time-config-dialog .dialog-content button.ncm-tc-advance:hover {
+  border-color: rgba(25, 243, 247, 0.3) !important;
+  color: #19f3f7 !important;
+  background: rgba(25, 243, 247, 0.04) !important;
+}
+
+/* ─── Dialog footer buttons (Apply / Close) ─── */
+.ncm-time-config-dialog .dialog-buttons,
+.ncm-time-config-dialog footer.dialog-buttons {
+  background: #0d0d1a !important;
+  border-top: 1px solid #2a2a45 !important;
+  padding: 8px 12px !important;
+  display: flex !important;
+  gap: 8px !important;
+  margin: 0 !important;
+}
+
+.ncm-time-config-dialog .dialog-buttons button,
+.ncm-time-config-dialog footer.dialog-buttons button {
+  flex: 1 !important;
+  background: transparent !important;
+  border: 1px solid #2a2a45 !important;
+  border-radius: 2px !important;
+  color: #8888a0 !important;
+  font-family: 'Rajdhani', sans-serif !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.06em !important;
+  padding: 6px 14px !important;
+  cursor: pointer !important;
+  transition: all 0.15s !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  box-shadow: none !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  height: auto !important;
+  width: auto !important;
+  line-height: 1.4 !important;
+  display: flex !important; align-items: center !important; justify-content: center !important; gap: 6px !important;
+  margin: 0 !important;
+  text-shadow: none !important;
+  flex-shrink: 0 !important;
+  flex-grow: 0 !important;
+  outline: none !important;
+}
+
+/* Apply button — cyan accent */
+.ncm-time-config-dialog .dialog-buttons button[data-button="apply"],
+.ncm-time-config-dialog footer.dialog-buttons button[data-button="apply"] {
+  border-color: rgba(25, 243, 247, 0.3) !important;
+  color: #19f3f7 !important;
+  background: rgba(25, 243, 247, 0.04) !important;
+  flex-grow: 1 !important;
+}
+
+.ncm-time-config-dialog .dialog-buttons button[data-button="apply"]:hover,
+.ncm-time-config-dialog footer.dialog-buttons button[data-button="apply"]:hover {
+  background: rgba(25, 243, 247, 0.1) !important;
+  border-color: #19f3f7 !important;
+}
+
+/* Close button — muted */
+.ncm-time-config-dialog .dialog-buttons button[data-button="close"],
+.ncm-time-config-dialog footer.dialog-buttons button[data-button="close"] {
+  flex-grow: 0 !important;
+}
+
+.ncm-time-config-dialog .dialog-buttons button[data-button="close"]:hover,
+.ncm-time-config-dialog footer.dialog-buttons button[data-button="close"]:hover {
+  border-color: #3a3a5a !important;
+  color: #eeeef4 !important;
+}
+
+.ncm-time-config-dialog .dialog-buttons button i,
+.ncm-time-config-dialog footer.dialog-buttons button i {
+  font-size: 11px !important;
+  margin: 0 !important;
+}
+
+/* ─── Scrollbar ─── */
+.ncm-time-config-dialog .window-content::-webkit-scrollbar,
+.ncm-time-config-dialog .dialog-content::-webkit-scrollbar { width: 4px !important; }
+.ncm-time-config-dialog .window-content::-webkit-scrollbar-track,
+.ncm-time-config-dialog .dialog-content::-webkit-scrollbar-track { background: transparent !important; }
+.ncm-time-config-dialog .window-content::-webkit-scrollbar-thumb,
+.ncm-time-config-dialog .dialog-content::-webkit-scrollbar-thumb { background: #2a2a45 !important; border-radius: 2px !important; }
