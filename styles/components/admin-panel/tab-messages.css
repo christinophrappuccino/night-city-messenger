@@ -705,6 +705,83 @@
   margin: 2px 0;
 }
 
+/* Date range filter row */
+
+.ncm-app .ncm-msg-feed-daterange {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  background: var(--ncm-bg-deep, #0a0a0f);
+  border: 1px solid var(--ncm-border, #2a2a45);
+  border-top: none;
+  border-radius: 0 0 2px 2px;
+  margin-top: -2px;
+  margin-bottom: 8px;
+}
+
+.ncm-app .ncm-msg-feed-daterange > i {
+  font-size: 9px;
+  color: var(--ncm-text-muted, #8888a0);
+  flex-shrink: 0;
+}
+
+.ncm-app .ncm-msg-feed-daterange__label {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 9px;
+  color: var(--ncm-text-muted, #8888a0);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  flex-shrink: 0;
+}
+
+.ncm-app .ncm-msg-feed-daterange input[type="date"] {
+  background: var(--ncm-bg-surface, #1a1a2e);
+  border: 1px solid var(--ncm-border, #2a2a45);
+  border-radius: 2px;
+  color: var(--ncm-text-primary, #e0e0e8);
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 10px;
+  padding: 2px 6px;
+  outline: none;
+  transition: border-color 0.15s;
+  color-scheme: dark;
+  width: auto;
+  flex: 0 1 auto;
+}
+
+.ncm-app .ncm-msg-feed-daterange input[type="date"]:focus {
+  border-color: var(--ncm-secondary, #19f3f7);
+}
+
+.ncm-app .ncm-msg-feed-daterange input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.5);
+  cursor: pointer;
+  font-size: 10px;
+}
+
+.ncm-app .ncm-msg-feed-daterange__clear {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 1px solid rgba(246, 82, 97, 0.2);
+  border-radius: 2px;
+  color: var(--ncm-primary, #F65261);
+  font-size: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.ncm-app .ncm-msg-feed-daterange__clear:hover {
+  background: rgba(246, 82, 97, 0.08);
+  border-color: rgba(246, 82, 97, 0.4);
+}
+
 /* Feed list container */
 
 .ncm-app .ncm-msg-feed-list {
@@ -1843,4 +1920,66 @@
   font-size: 11px !important;
   font-weight: 600 !important;
   color: var(--ncm-text-primary) !important;
+}
+
+/* ─── Foundry overrides: Date range filter inputs ─── */
+.ncm-app .ncm-admin-panel .ncm-msg-feed-daterange input[type="date"] {
+  background: var(--ncm-bg-surface) !important;
+  border: 1px solid var(--ncm-border) !important;
+  border-radius: 2px !important;
+  color: var(--ncm-text-primary) !important;
+  font-family: var(--ncm-font-mono) !important;
+  font-size: 10px !important;
+  padding: 2px 6px !important;
+  margin: 0 !important;
+  outline: none !important;
+  box-shadow: none !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  min-height: 0 !important;
+  height: auto !important;
+  width: auto !important;
+  flex: 0 1 auto !important;
+  color-scheme: dark !important;
+}
+
+.ncm-app .ncm-admin-panel .ncm-msg-feed-daterange input[type="date"]:focus {
+  border-color: var(--ncm-secondary) !important;
+}
+
+/* ─── Foundry overrides: Date range clear button ─── */
+.ncm-app .ncm-admin-panel .ncm-msg-feed-daterange__clear {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 18px !important;
+  height: 18px !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-height: 18px !important;
+  padding: 0 !important;
+  margin: 0 0 0 auto !important;
+  background: none !important;
+  border: 1px solid rgba(246, 82, 97, 0.2) !important;
+  border-radius: 2px !important;
+  color: var(--ncm-primary) !important;
+  font-size: 8px !important;
+  cursor: pointer !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+  flex-shrink: 0 !important;
+  line-height: 1 !important;
+  transition: all 0.15s !important;
+}
+
+.ncm-app .ncm-admin-panel .ncm-msg-feed-daterange__clear:hover {
+  background: rgba(246, 82, 97, 0.08) !important;
+  border-color: rgba(246, 82, 97, 0.4) !important;
+}
+
+.ncm-app .ncm-admin-panel .ncm-msg-feed-daterange__clear i {
+  font-size: 8px !important;
+  margin: 0 !important;
 }

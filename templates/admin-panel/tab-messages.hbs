@@ -160,6 +160,22 @@
       <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="exportLogs"><i class="fas fa-file-export"></i> Export</button>
     </div>
 
+    {{!-- Date Range Filter --}}
+    <div class="ncm-msg-feed-daterange">
+      <i class="fas fa-calendar-days"></i>
+      <span class="ncm-msg-feed-daterange__label">From</span>
+      <input type="date" class="ncm-msg-feed-date-from" value="{{msgFeedDateFrom}}">
+      <span class="ncm-msg-feed-daterange__label">To</span>
+      <input type="date" class="ncm-msg-feed-date-to" value="{{msgFeedDateTo}}">
+      {{#if msgFeedDateFrom}}
+      <button class="ncm-msg-feed-daterange__clear" data-action="clearFeedDates" title="Clear dates"><i class="fas fa-xmark"></i></button>
+      {{else}}
+      {{#if msgFeedDateTo}}
+      <button class="ncm-msg-feed-daterange__clear" data-action="clearFeedDates" title="Clear dates"><i class="fas fa-xmark"></i></button>
+      {{/if}}
+      {{/if}}
+    </div>
+
     {{!-- Activity Feed List --}}
     {{#if msgFeedEntries.length}}
     <div class="ncm-msg-feed-list">

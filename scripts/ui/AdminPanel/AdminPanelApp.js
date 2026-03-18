@@ -77,6 +77,10 @@ export class AdminPanelApp extends BaseApplication {
   _msgActorDropdownOpen = false;
   /** @type {string} Actor filter dropdown search */
   _msgActorDropdownSearch = '';
+  /** @type {string} Date-from filter (YYYY-MM-DD or '') */
+  _msgFeedDateFrom = '';
+  /** @type {string} Date-to filter (YYYY-MM-DD or '') */
+  _msgFeedDateTo = '';
   /** @type {number} How many feed entries to show (pagination) */
   _msgFeedLimit = 20;
   /** @type {string} NPC quick-send search query */
@@ -169,6 +173,7 @@ export class AdminPanelApp extends BaseApplication {
       purgeOldMessages: AdminPanelApp._onPurgeOldMessages,
       msgBroadcast: AdminPanelApp._onMsgBroadcast,
       loadMoreMessages: AdminPanelApp._onLoadMoreMessages,
+      clearFeedDates: AdminPanelApp._onClearFeedDates,
       npcQuickSend: AdminPanelApp._onNpcQuickSend,
       npcPagePrev: AdminPanelApp._onNpcPagePrev,
       npcPageNext: AdminPanelApp._onNpcPageNext,
@@ -815,6 +820,8 @@ export class AdminPanelApp extends BaseApplication {
         msgActorDropdownOpen: false,
         msgActorDropdownSearch: '',
         msgActorFilterOptions: [],
+        msgFeedDateFrom: this._msgFeedDateFrom,
+        msgFeedDateTo: this._msgFeedDateTo,
       };
     }
 
@@ -861,6 +868,8 @@ export class AdminPanelApp extends BaseApplication {
       msgActorFilterOptions: this._msgActorDropdownSearch
         ? actorOptions.filter(o => o.isGroupLabel || (o.name && o.name.toLowerCase().includes(this._msgActorDropdownSearch.toLowerCase())))
         : actorOptions,
+      msgFeedDateFrom: this._msgFeedDateFrom,
+      msgFeedDateTo: this._msgFeedDateTo,
     };
   }
 
@@ -1032,6 +1041,16 @@ export class AdminPanelApp extends BaseApplication {
         e.subject.toLowerCase().includes(q) ||
         e.bodyPreview.toLowerCase().includes(q)
       );
+    }
+
+    // Date range filter
+    if (this._msgFeedDateFrom) {
+      const fromMs = new Date(this._msgFeedDateFrom + 'T00:00:00').getTime();
+      if (!isNaN(fromMs)) filtered = filtered.filter(e => e.rawTimestamp >= fromMs);
+    }
+    if (this._msgFeedDateTo) {
+      const toMs = new Date(this._msgFeedDateTo + 'T23:59:59').getTime();
+      if (!isNaN(toMs)) filtered = filtered.filter(e => e.rawTimestamp <= toMs);
     }
 
     // Track total before limiting (for "Load More" button)
@@ -3032,13 +3051,37 @@ export class AdminPanelApp extends BaseApplication {
       npcSearch.addEventListener('input', npcHandler);
     }
 
+    // ── Date range filter inputs ──
+    const dateFrom = this.element?.querySelector('.ncm-msg-feed-date-from');
+    const dateTo = this.element?.querySelector('.ncm-msg-feed-date-to');
+    if (dateFrom) {
+      if (this._msgFeedDateFrom) dateFrom.value = this._msgFeedDateFrom;
+      dateFrom.addEventListener('change', (e) => {
+        this._msgFeedDateFrom = e.target.value;
+        this._msgFeedLimit = 20;
+        this.render(true);
+      });
+    }
+    if (dateTo) {
+      if (this._msgFeedDateTo) dateTo.value = this._msgFeedDateTo;
+      dateTo.addEventListener('change', (e) => {
+        this._msgFeedDateTo = e.target.value;
+        this._msgFeedLimit = 20;
+        this.render(true);
+      });
+    }
+
     // ── Actor filter dropdown search input ──
     const actorDdSearch = this.element?.querySelector('.ncm-msg-actor-dd-search__input');
     if (actorDdSearch) {
       if (this._msgActorDropdownSearch) {
         actorDdSearch.value = this._msgActorDropdownSearch;
+        actorDdSearch.focus();
+        const len = this._msgActorDropdownSearch.length;
+        actorDdSearch.setSelectionRange(len, len);
+      } else if (this._msgActorDropdownOpen) {
+        actorDdSearch.focus();
       }
-      actorDdSearch.focus();
 
       const actorDdHandler = this._actorDdSearchHandler || (this._actorDdSearchHandler =
         foundry.utils.debounce((e) => {
@@ -3637,6 +3680,13 @@ export class AdminPanelApp extends BaseApplication {
     // Save scroll
     const content = this.element?.querySelector('.ncm-admin-content');
     if (content) this._scrollPositions[this._activeTab] = content.scrollTop;
+    this.render(true);
+  }
+
+  static _onClearFeedDates(event, target) {
+    this._msgFeedDateFrom = '';
+    this._msgFeedDateTo = '';
+    this._msgFeedLimit = 20;
     this.render(true);
   }
 
