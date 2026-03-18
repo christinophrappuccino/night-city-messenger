@@ -3,44 +3,25 @@
   @file templates/contact-manager/partials/contact-card.hbs
   @module cyberpunkred-messenger
   @description Renders a single contact as a card in grid view.
-    Now includes verification status indicators:
-    - Verified: green dot, solid left border
-    - Unverified: red dashed border, email struck through, warning badge
-    - GM Verified: gold dot, gold badge
-    Handles burned, encrypted, verified, and selected states.
-
-  @param {object}  contact       — Enriched contact object from enrichContactForDisplay()
-  @param {boolean} gmInspectMode — If true, show GM verify/unverify controls
-  @param {boolean} isGM          — Whether current user is GM
+    Includes verification status, encrypted (ICE) compact overlay,
+    and selected states.
 --}}
 
 <div class="{{cardClasses}} ncm-card--{{_verifyClass}}" data-contact-id="{{id}}" data-action="selectContact">
 
   {{!-- Verification status dot (top-right) --}}
   {{#unless isEncrypted}}
-    {{#unless isBurned}}
-      <div class="ncm-card__verify-dot" title="{{_verifyLabel}}"></div>
-    {{/unless}}
+    <div class="ncm-card__verify-dot" title="{{_verifyLabel}}"></div>
   {{/unless}}
 
-  {{!-- Encrypted overlay --}}
+  {{!-- Compact ICE overlay for card view --}}
   {{#if isEncrypted}}
-    {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/encrypted-overlay.hbs"
-        encryptionDV=encryptionDV encryptionSkill=encryptionSkill
-        blackIce=blackIce blackIceDamage=blackIceDamage icePortrait=icePortrait
-        maxBreachAttempts=maxBreachAttempts attemptDots=attemptDots isLockedOut=isLockedOut
-        isGM=../isGM contactId=id }}
+    {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/encrypted-card-overlay.hbs"
+        blackIce=blackIce encryptionDV=encryptionDV icePortrait=icePortrait contactId=id }}
   {{/if}}
 
   {{!-- Hover quick actions --}}
-  {{#if isBurned}}
-    <div class="ncm-card__actions">
-      <button class="ncm-card__action ncm-card__action--danger"
-              title="Delete" data-action="deleteContact" data-contact-id="{{id}}">
-        <i class="fas fa-trash"></i>
-      </button>
-    </div>
-  {{else if isEncrypted}}
+  {{#if isEncrypted}}
     <div class="ncm-card__actions">
       <button class="ncm-card__action ncm-card__action--share"
               title="Share (ICE intact)" data-action="shareContact" data-contact-id="{{id}}">
@@ -127,9 +108,7 @@
     </div>
 
     {{!-- Name --}}
-    <span class="ncm-card__name {{#if isBurned}}ncm-card__name--burned{{/if}}">
-      {{name}}
-    </span>
+    <span class="ncm-card__name">{{name}}</span>
 
     {{!-- Role badge --}}
     {{#if role}}
@@ -141,15 +120,13 @@
     {{!-- Email --}}
     <span class="ncm-card__email">{{email}}</span>
 
-    {{!-- Verification badge (below email) --}}
-    {{#if isBurned}}
-      {{!-- Burned takes priority over verification display --}}
-    {{else if verifiedOverride}}
+    {{!-- Verification badge --}}
+    {{#if verifiedOverride}}
       <span class="ncm-verify-badge ncm-verify-badge--gm-verified">
         <i class="fas fa-shield-halved"></i> GM VERIFIED
       </span>
     {{else if verified}}
-      {{!-- Verified contacts don't need a badge — the green dot is enough --}}
+      {{!-- Green dot is enough --}}
     {{else}}
       <span class="ncm-verify-badge ncm-verify-badge--unverified">
         <i class="fas fa-triangle-exclamation"></i> UNVERIFIED
@@ -166,10 +143,8 @@
     {{/if}}
 
     {{!-- Trust meter --}}
-    {{#unless isBurned}}
-      {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/trust-meter.hbs"
-          trust=trust trustLevel=trustLevel }}
-    {{/unless}}
+    {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/trust-meter.hbs"
+        trust=trust trustLevel=trustLevel }}
 
   {{/if}}
 </div>

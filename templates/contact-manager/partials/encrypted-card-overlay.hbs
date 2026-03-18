@@ -1,0 +1,22 @@
+{{!--
+  Compact Encrypted Overlay — Card View Only
+  @file templates/contact-manager/partials/encrypted-card-overlay.hbs
+  @module cyberpunkred-messenger
+  @description Simplified ICE indicator for grid card view. Shows icon,
+    ICE type label, and DV. Full overlay is in the detail panel.
+--}}
+
+<div class="ncm-ice-card ncm-ice-card--{{#if blackIce}}black{{else}}standard{{/if}}"
+     data-action="breachContact" data-contact-id="{{contactId}}">
+  <div class="ncm-ice-card__icon">
+    {{#if icePortrait}}
+      <img src="{{icePortrait}}" alt="ICE" class="ncm-ice-card__portrait" />
+    {{else}}
+      <i class="fas fa-{{#if blackIce}}skull-crossbones{{else}}lock{{/if}}"></i>
+    {{/if}}
+  </div>
+  <div class="ncm-ice-card__label">
+    {{#if blackIce}}BLACK ICE{{else}}ICE{{/if}}
+  </div>
+  <div class="ncm-ice-card__dv">DV {{encryptionDV}}</div>
+</div>

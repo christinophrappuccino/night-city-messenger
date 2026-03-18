@@ -10,11 +10,10 @@
   @param {string}  groupIcon      — FontAwesome icon class (e.g. "fas fa-crosshairs")
   @param {number}  groupCount     — Number of contacts in this group
   @param {boolean} isCollapsed    — Whether the group is currently collapsed
-  @param {boolean} [isBurnedGroup]    — Special burned group styling
   @param {boolean} [isEncryptedGroup] — Special ICE group styling
 --}}
 
-<div class="ncm-group-header {{#if isCollapsed}}ncm-group-header--collapsed{{/if}} {{#if isBurnedGroup}}ncm-group-header--burned{{/if}} {{#if isEncryptedGroup}}ncm-group-header--encrypted{{/if}}"
+<div class="ncm-group-header {{#if isCollapsed}}ncm-group-header--collapsed{{/if}} {{#if isEncryptedGroup}}ncm-group-header--encrypted{{/if}}"
      data-action="toggleGroup" data-group="{{groupKey}}">
   <i class="ncm-group-header__chev fas fa-chevron-down"></i>
   <i class="ncm-group-header__icon {{groupIcon}}"></i>

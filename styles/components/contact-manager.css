@@ -404,15 +404,6 @@
 }
 
 /* Burned group — gold/accent */
-.ncm-app .ncm-group-header--burned {
-  border-left-color: rgba(240,197,91,0.3);
-  background: rgba(240,197,91,0.03);
-  border-bottom-color: rgba(240,197,91,0.06);
-}
-.ncm-app .ncm-group-header--burned .ncm-group-header__chev,
-.ncm-app .ncm-group-header--burned .ncm-group-header__icon,
-.ncm-app .ncm-group-header--burned .ncm-group-header__name { color: var(--ncm-accent, #F0C55B); }
-.ncm-app .ncm-group-header--burned .ncm-group-header__count { color: var(--ncm-accent, #F0C55B); opacity: 0.5; }
 
 /* Encrypted group — red/danger */
 .ncm-app .ncm-group-header--encrypted {
@@ -444,7 +435,6 @@
   border-left: 3px solid var(--ncm-secondary, #00D4E6);
   padding-left: 9px;
 }
-.ncm-app .ncm-list-item--burned { opacity: 0.35; }
 .ncm-app .ncm-list-item--encrypted { opacity: 0.45; }
 
 .ncm-app .ncm-list-item__avatar {
@@ -1303,108 +1293,21 @@
   background: var(--ncm-secondary, #19f3f7);
 }
 
-/* ─── Burned card ─── */
 
 /* ─────────────────────────────────────────
-   GRID VIEW — Burned Card
+   GRID VIEW — Encrypted Card (behind overlay)
    ───────────────────────────────────────── */
 
-.ncm-app .ncm-card--burned {
-  border-color: rgba(255, 0, 51, 0.3);
-  background:
-    /* Noise texture layer */
-    repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 2px,
-      rgba(255, 0, 51, 0.02) 2px,
-      rgba(255, 0, 51, 0.02) 4px
-    ),
-    /* Base tint */
-    rgba(255, 0, 51, 0.04);
-
-  /* Red inner vignette — danger glow from edges */
-  box-shadow:
-    inset 0 0 20px rgba(255, 0, 51, 0.08),
-    inset 0 0 40px rgba(255, 0, 51, 0.04),
-    0 0 8px rgba(255, 0, 51, 0.06);
-
-  overflow: hidden;
-}
-
-/* Left accent bar — solid danger red */
-.ncm-app .ncm-card--burned::before {
-  background: var(--ncm-danger, #ff0033) !important;
-  box-shadow: 0 0 6px rgba(255, 0, 51, 0.4);
-}
-
-/* ::after — Diagonal "COMPROMISED" stamp + hatch lines */
-.ncm-app .ncm-card--burned::after {
-  content: 'COMPROMISED';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%) rotate(-18deg);
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 16px;
-  font-weight: 900;
-  letter-spacing: 0.25em;
-  text-transform: uppercase;
-  color: rgba(255, 0, 51, 0.10);
-  white-space: nowrap;
-  pointer-events: none;
-  z-index: 2;
-  /* Double border stamp effect */
-  text-shadow:
-    0 0 1px rgba(255, 0, 51, 0.15);
-  -webkit-text-stroke: 1px rgba(255, 0, 51, 0.06);
-  /* Hatch background on the pseudo itself */
-  background:
-    repeating-linear-gradient(
-      -45deg,
-      transparent,
-      transparent 8px,
-      rgba(255, 0, 51, 0.03) 8px,
-      rgba(255, 0, 51, 0.03) 9px
-    );
-  /* Fill the card area */
-  width: 200%;
-  height: 200%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
 
 
 /* ─── Avatar: Grayscale + red tint ─── */
 
-.ncm-app .ncm-card--burned .ncm-card__avatar {
-  opacity: 0.7;
-  border-color: rgba(255, 0, 51, 0.4) !important;
-  filter: grayscale(0.7) brightness(0.8);
-  position: relative;
-}
 
 /* Red tint overlay on avatar via box-shadow */
-.ncm-app .ncm-card--burned .ncm-card__avatar::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background: rgba(255, 0, 51, 0.12);
-  pointer-events: none;
-}
 
 
 /* ─── Name: Strikethrough + glitch flicker ─── */
 
-.ncm-app .ncm-card--burned .ncm-card__name {
-  text-decoration: line-through;
-  text-decoration-color: rgba(255, 0, 51, 0.5);
-  text-decoration-thickness: 1.5px;
-  color: rgba(224, 224, 232, 0.6);
-  animation: ncm-burned-name-glitch 4s ease-in-out infinite;
-}
 
 @keyframes ncm-burned-name-glitch {
   0%, 88%, 100% {
@@ -1443,35 +1346,17 @@
 
 /* ─── Email: Muted ─── */
 
-.ncm-app .ncm-card--burned .ncm-card__email {
-  color: rgba(85, 85, 112, 0.4);
-  text-decoration: line-through;
-  text-decoration-color: rgba(255, 0, 51, 0.2);
-}
 
 
 /* ─── Tags: Muted with red tint ─── */
 
-.ncm-app .ncm-card--burned .ncm-card__tag {
-  opacity: 0.35;
-  border-color: rgba(255, 0, 51, 0.15);
-  color: rgba(255, 0, 51, 0.4);
-}
 
 
 /* ─── Trust meter: Force red ─── */
 
-.ncm-app .ncm-card--burned .ncm-trust__segment.active {
-  background: var(--ncm-danger, #ff0033) !important;
-  box-shadow: 0 0 3px rgba(255, 0, 51, 0.3);
-}
 
 
-/* ─── Burned badge: Pulsing danger ─── */
 
-.ncm-app .ncm-card--burned .ncm-badge--burned {
-  animation: ncm-burned-badge-pulse 2s ease-in-out infinite;
-}
 
 @keyframes ncm-burned-badge-pulse {
   0%, 100% {
@@ -1486,12 +1371,6 @@
 
 /* ─── Red scanline: Slow sweep across the card ─── */
 
-.ncm-app .ncm-card--burned {
-  /* Using a pseudo would conflict, so we animate a gradient via background */
-  background-size: 100% 100%, 100% 2px;
-  background-repeat: no-repeat, no-repeat;
-  animation: ncm-burned-scanline 6s linear infinite;
-}
 
 @keyframes ncm-burned-scanline {
   0% {
@@ -1537,21 +1416,8 @@
 
 /* ─── Hover: Danger intensifies ─── */
 
-.ncm-app .ncm-card--burned:hover {
-  border-color: rgba(255, 0, 51, 0.45);
-  box-shadow:
-    inset 0 0 30px rgba(255, 0, 51, 0.12),
-    inset 0 0 60px rgba(255, 0, 51, 0.06),
-    0 0 12px rgba(255, 0, 51, 0.1);
-}
 
-.ncm-app .ncm-card--burned:hover .ncm-card__name {
-  color: rgba(255, 0, 51, 0.7);
-}
 
-.ncm-app .ncm-card--burned:hover::after {
-  color: rgba(255, 0, 51, 0.15);
-}
 
 /* ─────────────────────────────────────────
    GRID VIEW — Encrypted Card (behind overlay)
@@ -1620,44 +1486,9 @@
 
 
 /* ─────────────────────────────────────────
-   GRID VIEW — Burned Card → Gold/Accent Override
    (Burned = compromised identity, amber warning tone)
    ───────────────────────────────────────── */
 
-.ncm-app .ncm-card--burned {
-  border-color: rgba(240, 197, 91, 0.3) !important;
-  background:
-    repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(240,197,91,0.02) 2px, rgba(240,197,91,0.02) 4px),
-    rgba(240, 197, 91, 0.04) !important;
-  box-shadow:
-    inset 0 0 20px rgba(240, 197, 91, 0.06),
-    inset 0 0 40px rgba(240, 197, 91, 0.03),
-    0 0 8px rgba(240, 197, 91, 0.05) !important;
-}
-.ncm-app .ncm-card--burned::before {
-  background: var(--ncm-accent, #F0C55B) !important;
-  box-shadow: 0 0 6px rgba(240, 197, 91, 0.4) !important;
-}
-.ncm-app .ncm-card--burned::after {
-  color: rgba(240, 197, 91, 0.10) !important;
-  text-shadow: 0 0 1px rgba(240, 197, 91, 0.15) !important;
-  -webkit-text-stroke: 1px rgba(240, 197, 91, 0.06) !important;
-  background:
-    repeating-linear-gradient(-45deg, transparent, transparent 8px, rgba(240,197,91,0.03) 8px, rgba(240,197,91,0.03) 9px) !important;
-}
-.ncm-app .ncm-card--burned .ncm-card__avatar {
-  border-color: rgba(240, 197, 91, 0.4) !important;
-}
-.ncm-app .ncm-card--burned .ncm-card__avatar::after {
-  background: rgba(240, 197, 91, 0.12) !important;
-}
-.ncm-app .ncm-card--burned .ncm-card__name {
-  text-decoration-color: rgba(240, 197, 91, 0.5) !important;
-  color: rgba(240, 197, 91, 0.6) !important;
-}
-.ncm-app .ncm-card--burned .ncm-card__email {
-  color: rgba(240, 197, 91, 0.3) !important;
-}
 
 
 /* ─────────────────────────────────────────
@@ -1699,6 +1530,63 @@
   background-image:
     repeating-linear-gradient(0deg, transparent, transparent 10px, rgba(239,68,68,0.03) 10px, rgba(239,68,68,0.03) 11px),
     repeating-linear-gradient(90deg, transparent, transparent 10px, rgba(239,68,68,0.02) 10px, rgba(239,68,68,0.02) 11px) !important;
+}
+
+
+/* ─────────────────────────────────────────
+   GRID VIEW — Compact ICE Card Overlay
+   Simplified indicator for card view. Full overlay lives in detail panel.
+   ───────────────────────────────────────── */
+
+.ncm-ice-card {
+  position: absolute; inset: 0; z-index: 5;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 6px; cursor: pointer;
+  border-radius: 6px;
+}
+
+.ncm-ice-card--standard {
+  background: linear-gradient(160deg, rgba(12,12,18,0.92) 0%, rgba(30,25,15,0.88) 100%);
+}
+.ncm-ice-card--black {
+  background: linear-gradient(160deg, rgba(12,12,18,0.92) 0%, rgba(30,10,10,0.88) 100%);
+}
+
+.ncm-ice-card__icon {
+  width: 48px; height: 48px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; overflow: hidden;
+  aspect-ratio: 1; flex-shrink: 0;
+}
+
+.ncm-ice-card--standard .ncm-ice-card__icon {
+  background: rgba(240,197,91,0.06);
+  border: 2px solid rgba(240,197,91,0.2);
+  color: var(--ncm-accent, #F0C55B);
+}
+.ncm-ice-card--black .ncm-ice-card__icon {
+  background: rgba(239,68,68,0.06);
+  border: 2px solid rgba(239,68,68,0.25);
+  color: var(--ncm-danger, #EF4444);
+}
+
+.ncm-ice-card__portrait {
+  width: 100%; height: 100%; object-fit: cover; border-radius: 50%;
+}
+
+.ncm-ice-card__label {
+  font-family: var(--ncm-font-title, 'Orbitron', sans-serif);
+  font-weight: 700; font-size: 9px;
+  text-transform: uppercase; letter-spacing: 0.15em;
+}
+.ncm-ice-card--standard .ncm-ice-card__label { color: var(--ncm-accent, #F0C55B); }
+.ncm-ice-card--black .ncm-ice-card__label { color: var(--ncm-danger, #EF4444); }
+
+.ncm-ice-card__dv {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 10px; font-weight: 700;
+  color: var(--ncm-text-secondary, #8888a0);
 }
 
 
@@ -2363,15 +2251,7 @@
   border-radius: inherit;
 }
 
-/* Hatch pattern fade-in (on the ::after pseudo already used by .ncm-card--burned) */
-@keyframes ncm-hatch-fade-in {
-  0%   { opacity: 0; }
-  100% { opacity: 1; }
-}
 
-.ncm-card--burned.ncm-card--burn-transition::after {
-  animation: ncm-hatch-fade-in 0.4s ease-out 0.2s both;
-}
 
 /* Burn transition on card properties */
 .ncm-card--burn-transition {

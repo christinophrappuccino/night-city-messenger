@@ -1894,6 +1894,13 @@
   justify-content: center;
 }
 
+/* Allow content to overflow during breach animations */
+.ncm-app .ncm-ice--breaching,
+.ncm-app .ncm-ice--granted,
+.ncm-app .ncm-ice--denied {
+  overflow: visible;
+}
+
 /* ── Animated background grid ── */
 .ncm-app .ncm-ice__grid {
   position: absolute; inset: 0;

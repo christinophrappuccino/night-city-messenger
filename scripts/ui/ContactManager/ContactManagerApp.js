@@ -129,8 +129,6 @@ export class ContactManagerApp extends BaseApplication {
       uploadPortrait: ContactManagerApp._onUploadPortrait,
       removePortrait: ContactManagerApp._onRemovePortrait,
       setTrustLevel:  ContactManagerApp._onSetTrustLevel,
-      burnContact:    ContactManagerApp._onBurnContact,
-      restoreContact: ContactManagerApp._onRestoreContact,
       breachContact:  ContactManagerApp._onBreachContact,
       forceDecrypt:   ContactManagerApp._onForceDecrypt,
 
@@ -186,11 +184,7 @@ export class ContactManagerApp extends BaseApplication {
     // ── Verification stamping ──
     const requireVerification = game.settings.get(MODULE_ID, 'requireContactVerification') ?? true;
     for (const contact of this._contacts) {
-      if (contact.burned) {
-        contact._verifyClass = 'burned';
-        contact._verifyLabel = 'BURNED';
-        contact._canMessage = false;
-      } else if (contact.verifiedOverride) {
+      if (contact.verifiedOverride) {
         contact._verifyClass = 'gm-verified';
         contact._verifyLabel = 'GM VERIFIED';
         contact._canMessage = true;
@@ -260,7 +254,7 @@ export class ContactManagerApp extends BaseApplication {
 
     // ── Quick-dial favorites (max 8) ──
     const quickDialContacts = allEnriched
-      .filter(c => c.isFavorite && !c.isBurned && !c.isEncrypted)
+      .filter(c => c.isFavorite && !c.isEncrypted)
       .slice(0, 8);
 
     // ── Selected contact detail ──
@@ -304,7 +298,7 @@ export class ContactManagerApp extends BaseApplication {
 
     // ── Verification counts ──
     const verifiedCount = this._contacts.filter(c => c.verified || c.verifiedOverride).length;
-    const unverifiedCount = this._contacts.filter(c => !c.verified && !c.verifiedOverride && !c.burned).length;
+    const unverifiedCount = this._contacts.filter(c => !c.verified && !c.verifiedOverride).length;
 
     // ── Existing folders (for datalist in form) ──
     const masterSvc = game.nightcity?.masterContactService;
@@ -405,29 +399,21 @@ export class ContactManagerApp extends BaseApplication {
 
   /**
    * Build groups from enriched contacts based on _groupBy mode.
-   * Always adds special Burned and ICE Protected groups at bottom.
+   * Always adds special ICE Protected group at bottom.
    * @param {Array} contacts — enriched contacts
    * @returns {{ groups: Array, hasGroups: boolean }}
    */
   _buildGroups(contacts) {
     if (this._groupBy === 'none') {
-      // Flat list with special groups at bottom
-      const normal = contacts.filter(c => !c.isBurned && !c.isEncrypted);
-      const burned = contacts.filter(c => c.isBurned);
-      const encrypted = contacts.filter(c => c.isEncrypted && !c.isBurned);
+      // Flat list with ICE group at bottom
+      const normal = contacts.filter(c => !c.isEncrypted);
+      const encrypted = contacts.filter(c => c.isEncrypted);
 
       const groups = [];
       if (normal.length) {
         groups.push({
           key: '_all', name: 'All Contacts', icon: 'fas fa-address-book',
           contacts: normal, isCollapsed: false,
-        });
-      }
-      if (burned.length) {
-        groups.push({
-          key: '_burned', name: 'Burned', icon: 'fas fa-fire',
-          contacts: burned, isCollapsed: this._collapsedGroups.has('_burned'),
-          isBurnedGroup: true,
         });
       }
       if (encrypted.length) {
@@ -438,7 +424,7 @@ export class ContactManagerApp extends BaseApplication {
         });
       }
 
-      return { groups, hasGroups: burned.length > 0 || encrypted.length > 0 };
+      return { groups, hasGroups: encrypted.length > 0 };
     }
 
     // ── Grouped mode ──
@@ -453,7 +439,7 @@ export class ContactManagerApp extends BaseApplication {
     const groupMap = new Map();
 
     for (const contact of contacts) {
-      if (contact.isBurned || contact.isEncrypted) continue;
+      if (contact.isEncrypted) continue;
       const key = (contact[field] || '').trim().toLowerCase() || '_ungrouped';
       if (!groupMap.has(key)) {
         groupMap.set(key, {
@@ -476,17 +462,9 @@ export class ContactManagerApp extends BaseApplication {
       return a.name.localeCompare(b.name);
     });
 
-    // Add special groups at bottom
-    const burned = contacts.filter(c => c.isBurned);
-    const encrypted = contacts.filter(c => c.isEncrypted && !c.isBurned);
+    // Add special ICE group at bottom
+    const encrypted = contacts.filter(c => c.isEncrypted);
 
-    if (burned.length) {
-      groups.push({
-        key: '_burned', name: 'Burned', icon: 'fas fa-fire',
-        contacts: burned, isCollapsed: this._collapsedGroups.has('_burned'),
-        isBurnedGroup: true,
-      });
-    }
     if (encrypted.length) {
       groups.push({
         key: '_encrypted', name: 'ICE Protected', icon: 'fas fa-lock',
@@ -503,9 +481,7 @@ export class ContactManagerApp extends BaseApplication {
    */
   _sortContacts(contacts) {
     contacts.sort((a, b) => {
-      // Burned always at bottom
-      if (a.isBurned !== b.isBurned) return a.isBurned ? 1 : -1;
-      // Encrypted at bottom (above burned)
+      // Encrypted at bottom
       if (a.isEncrypted !== b.isEncrypted) return a.isEncrypted ? 1 : -1;
 
       switch (this._sortBy) {
@@ -820,7 +796,6 @@ export class ContactManagerApp extends BaseApplication {
 
   _setupEventSubscriptions() {
     this.subscribe(EVENTS.CONTACT_UPDATED, () => this._debouncedRender());
-    this.subscribe(EVENTS.CONTACT_BURNED, () => this.render());
     this.subscribe(EVENTS.CONTACT_SHARED, () => this.render());
     this.subscribe(EVENTS.CONTACT_TRUST_CHANGED, () => this.render());
     this.subscribe(EVENTS.CONTACT_TAGS_UPDATED, () => this.render());
@@ -883,7 +858,7 @@ export class ContactManagerApp extends BaseApplication {
 
   static _onCollapseAll() {
     // Collect all current group keys and collapse them
-    this._collapsedGroups = new Set(['_all', '_burned', '_encrypted']);
+    this._collapsedGroups = new Set(['_all', '_encrypted']);
     // Also add dynamic group keys
     for (const c of this._contacts) {
       const key = (c[this._groupBy] || '').trim().toLowerCase() || '_ungrouped';
@@ -1384,104 +1359,6 @@ export class ContactManagerApp extends BaseApplication {
       actorId: this.actorId, contactId, contactName: contact.name, trust: trustValue,
     });
     game.nightcity?.soundService?.play('notification');
-    this.render();
-  }
-
-  static async _onBurnContact(event, target) {
-    event.stopPropagation();
-    if (!game.user.isGM) return;
-
-    const contactId = target.closest('[data-contact-id]')?.dataset.contactId || target.dataset.contactId;
-    if (!contactId) return;
-
-    const contactRepo = this.contactRepo;
-    if (!contactRepo) return;
-
-    const contacts = await contactRepo.getContacts(this.actorId);
-    const contact = contacts.find(c => c.id === contactId);
-    if (!contact || contact.burned) return;
-
-    const confirmed = await new Promise(resolve => {
-      new Dialog({
-        title: 'Burn Contact',
-        content: `
-          <div style="font-family: 'Rajdhani', sans-serif; padding: 8px 0;">
-            <p style="color: #F0C55B; font-weight: 700; font-size: 14px; margin-bottom: 6px;">
-              <i class="fas fa-fire"></i> Burn ${contact.name}?
-            </p>
-            <p style="color: #8888a0; font-size: 12px; line-height: 1.5;">
-              This marks the contact as compromised. Their identity is blown —
-              trust will drop to LOW and the contact will be flagged across all views.
-            </p>
-            <p style="color: #555570; font-size: 10px; margin-top: 8px;">
-              This action is reversible via "Restore Contact".
-            </p>
-          </div>
-        `,
-        buttons: {
-          burn: {
-            icon: '<i class="fas fa-fire"></i>',
-            label: 'Burn',
-            callback: () => resolve(true),
-          },
-          cancel: {
-            icon: '<i class="fas fa-times"></i>',
-            label: 'Cancel',
-            callback: () => resolve(false),
-          },
-        },
-        default: 'cancel',
-        close: () => resolve(false),
-      }).render(true);
-    });
-    if (!confirmed) return;
-
-    const burnResult = await contactRepo.setBurned(this.actorId, contactId, true);
-    if (!burnResult.success) {
-      ui.notifications.error(`Failed to burn contact: ${burnResult.error}`);
-      return;
-    }
-    if (contact.trust > 1) {
-      await contactRepo.setTrust(this.actorId, contactId, 1);
-    }
-
-    game.nightcity?.soundService?.play('hack-fail');
-    game.nightcity?.notificationService?.showContactBurned({
-      contactName: contact.name, actorId: this.actorId, contactId,
-    });
-    game.nightcity?.eventBus?.emit(EVENTS.CONTACT_BURNED, {
-      actorId: this.actorId, contactId, contactName: contact.name, burned: true,
-    });
-    this.render();
-  }
-
-  static async _onRestoreContact(event, target) {
-    event.stopPropagation();
-    if (!game.user.isGM) return;
-
-    const contactId = target.closest('[data-contact-id]')?.dataset.contactId || target.dataset.contactId;
-    if (!contactId) return;
-
-    const contactRepo = this.contactRepo;
-    if (!contactRepo) return;
-
-    const contacts = await contactRepo.getContacts(this.actorId);
-    const contact = contacts.find(c => c.id === contactId);
-    if (!contact?.burned) return;
-
-    const result = await contactRepo.setBurned(this.actorId, contactId, false);
-    if (!result.success) {
-      ui.notifications.error(`Failed to restore contact: ${result.error}`);
-      return;
-    }
-
-    game.nightcity?.notificationService?.showToast(
-      'Contact Restored', `${contact.name} — identity restored. Trust level unchanged.`, 'info', 4000
-    );
-    game.nightcity?.soundService?.play('notification');
-    game.nightcity?.eventBus?.emit(EVENTS.CONTACT_BURNED, {
-      actorId: this.actorId, contactId, contactName: contact.name, burned: false,
-    });
     this.render();
   }
 

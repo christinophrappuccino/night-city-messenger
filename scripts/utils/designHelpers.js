@@ -601,9 +601,6 @@ export function getContactStatus(contact) {
   // Explicit override set by GM
   if (contact.statusOverride) return contact.statusOverride;
 
-  // Burned contacts always show dead-zone
-  if (contact.burned) return 'dead-zone';
-
   // If linked to an actor, check if that actor's owner is online
   if (contact.actorId) {
     const actor = game.actors.get(contact.actorId);
@@ -656,9 +653,7 @@ export function enrichContactForDisplay(contact, options = {}) {
 
   // Avatar border color: network-themed or avatar-color based
   let avatarBorderColor;
-  if (contact.burned) {
-    avatarBorderColor = 'rgba(255, 0, 51, 0.4)';
-  } else if (networkClass === 'darknet') {
+  if (networkClass === 'darknet') {
     avatarBorderColor = 'rgba(180, 77, 255, 0.5)';
   } else if (networkClass === 'corpnet') {
     avatarBorderColor = 'rgba(247, 201, 72, 0.5)';
@@ -694,7 +689,6 @@ export function enrichContactForDisplay(contact, options = {}) {
     cardNetworkClass: `ncm-card__network--${networkClass}`,
 
     // State flags
-    isBurned: contact.burned,
     isEncrypted: contact.encrypted,
     isFavorite: contact.favorite,
     isSelected: contact.id === options.selectedId,
@@ -731,7 +725,6 @@ export function enrichContactForDisplay(contact, options = {}) {
     cardClasses: [
       'ncm-card',
       contact.id === options.selectedId ? 'ncm-card--selected' : '',
-      contact.burned ? 'ncm-card--burned' : '',
       contact.encrypted ? 'ncm-card--encrypted' : '',
       contact.encrypted && contact.blackIce ? 'ncm-card--blackice' : '',
     ].filter(Boolean).join(' '),
@@ -739,9 +732,8 @@ export function enrichContactForDisplay(contact, options = {}) {
     listClasses: [
       'ncm-list-item',
       contact.id === options.selectedId ? 'ncm-list-item--selected' : '',
-      contact.burned ? 'ncm-list-item--burned' : '',
       contact.encrypted ? 'ncm-list-item--encrypted' : '',
-      !contact.burned && !contact.encrypted && networkClass !== 'citinet' ? `ncm-list-item--${networkClass}` : '',
+      !contact.encrypted && networkClass !== 'citinet' ? `ncm-list-item--${networkClass}` : '',
     ].filter(Boolean).join(' '),
 
     // Tags display

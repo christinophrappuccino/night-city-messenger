@@ -206,13 +206,13 @@
               {{#if ../hasGroups}}
                 {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/contact-group-header.hbs"
                     groupKey=key groupName=name groupIcon=icon groupCount=contacts.length
-                    isCollapsed=isCollapsed isBurnedGroup=isBurnedGroup isEncryptedGroup=isEncryptedGroup }}
+                    isCollapsed=isCollapsed isEncryptedGroup=isEncryptedGroup }}
               {{/if}}
 
               {{!-- Contact items within group --}}
               {{#unless isCollapsed}}
                 {{#each contacts}}
-                  <div class="ncm-list-item {{#if isSelected}}ncm-list-item--selected{{/if}} {{#if isBurned}}ncm-list-item--burned{{/if}} {{#if isEncrypted}}ncm-list-item--encrypted{{/if}}"
+                  <div class="ncm-list-item {{#if isSelected}}ncm-list-item--selected{{/if}} {{#if isEncrypted}}ncm-list-item--encrypted{{/if}}"
                        data-action="selectContact" data-contact-id="{{id}}">
                     <div class="ncm-list-item__avatar"
                          style="{{#if isEncrypted}}color:var(--ncm-accent, #F0C55B); border-color:rgba(240,197,91,0.4);{{else}}color: {{avatarColor}}; border-color: {{avatarBorderColor}};{{/if}}">
@@ -229,19 +229,17 @@
                     </div>
                     <div class="ncm-list-item__body">
                       <div class="ncm-list-item__row1">
-                        <span class="ncm-list-item__name {{#if isBurned}}ncm-list-item__name--burned{{/if}}">
+                        <span class="ncm-list-item__name">
                           {{#if isEncrypted}}████████{{else}}{{name}}{{/if}}
                         </span>
                         <span class="ncm-list-item__seen {{#if (eq status 'online')}}ncm-list-item__seen--online{{/if}}">
-                          {{#if isBurned}}burned{{else if isEncrypted}}ICE{{else if (eq status 'online')}}now{{else if lastSeen}}{{lastSeen}}{{/if}}
+                          {{#if isEncrypted}}ICE{{else if (eq status 'online')}}now{{else if lastSeen}}{{lastSeen}}{{/if}}
                         </span>
                       </div>
                       {{#unless isEncrypted}}
-                        {{#unless isBurned}}
-                          <div class="ncm-list-item__row2">
-                            <span class="ncm-list-item__email">{{email}}</span>
-                          </div>
-                        {{/unless}}
+                        <div class="ncm-list-item__row2">
+                          <span class="ncm-list-item__email">{{email}}</span>
+                        </div>
                       {{/unless}}
                     </div>
                     {{#if isFavorite}}

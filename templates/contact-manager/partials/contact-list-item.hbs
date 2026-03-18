@@ -75,15 +75,9 @@
     {{!-- Top line: name + badge + unverified --}}
     <div class="ncm-list-item__top">
       <span class="ncm-list-item__name">{{name}}</span>
-      {{#if isBurned}}
-        <span class="ncm-badge ncm-badge--burned" style="font-size:7px; padding:0 5px;">
-          <i class="fas fa-triangle-exclamation"></i> BURNED
-        </span>
-      {{else}}
-        <span class="ncm-badge ncm-badge--{{role}}" style="font-size:7px; padding:0 5px;">
-          {{roleLabel}}
-        </span>
-      {{/if}}
+      <span class="ncm-badge ncm-badge--{{role}}" style="font-size:7px; padding:0 5px;">
+        {{roleLabel}}
+      </span>
       {{#if isUnverified}}
         <span class="ncm-list-item__unverified">UNVERIFIED</span>
       {{/if}}
@@ -93,7 +87,7 @@
     <div class="ncm-list-item__bottom">
       <span class="ncm-list-item__email">{{email}}</span>
       {{#if organization}}
-        <span class="ncm-list-item__org">· {{#if isBurned}}COMPROMISED{{else}}{{organization}}{{/if}}</span>
+        <span class="ncm-list-item__org">· {{organization}}</span>
       {{/if}}
     </div>
 
@@ -120,26 +114,18 @@
 
     {{!-- Hover actions --}}
     <div class="ncm-list-item__actions">
-      {{#if isBurned}}
-        <button class="ncm-list-item__action" title="Delete"
-                style="color: var(--primary);"
-                data-action="deleteContact" data-contact-id="{{id}}">
-          <i class="fas fa-trash"></i>
-        </button>
-      {{else}}
-        <button class="ncm-list-item__action" title="Share"
-                data-action="shareContact" data-contact-id="{{id}}">
-          <i class="fas fa-share-nodes"></i>
-        </button>
-        <button class="ncm-list-item__action" title="Message"
-                data-action="sendMessage" data-contact-id="{{id}}">
-          <i class="fas fa-envelope"></i>
-        </button>
-        <button class="ncm-list-item__action" title="Edit"
-                data-action="editContact" data-contact-id="{{id}}">
-          <i class="fas fa-pen"></i>
-        </button>
-      {{/if}}
+      <button class="ncm-list-item__action" title="Share"
+              data-action="shareContact" data-contact-id="{{id}}">
+        <i class="fas fa-share-nodes"></i>
+      </button>
+      <button class="ncm-list-item__action" title="Message"
+              data-action="sendMessage" data-contact-id="{{id}}">
+        <i class="fas fa-envelope"></i>
+      </button>
+      <button class="ncm-list-item__action" title="Edit"
+              data-action="editContact" data-contact-id="{{id}}">
+        <i class="fas fa-pen"></i>
+      </button>
     </div>
   </div>
 </div>

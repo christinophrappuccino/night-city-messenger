@@ -5,7 +5,7 @@
   @description Full detail view for the selected contact: profile header with avatar,
     chips (role/org/location/tags), action buttons, info card, last interaction card,
     relationship card (if GM-revealed), and personal notes textarea.
-    Shows ICE overlay if contact is encrypted, burned banner if burned.
+    Shows ICE overlay if contact is encrypted.
 
   @param {object}  selectedContact — Enriched contact from enrichContactForDisplay()
   @param {boolean} isGM            — Whether current user is GM
@@ -26,14 +26,6 @@
         isGM=../isGM contactId=id }}
   {{else}}
 
-    {{!-- ═══ BURNED BANNER ═══ --}}
-    {{#if isBurned}}
-      <div class="ncm-burned-banner">
-        <i class="fas fa-fire"></i>
-        <span>IDENTITY COMPROMISED — This contact has been burned.</span>
-      </div>
-    {{/if}}
-
     {{!-- ═══ PROFILE HEADER ═══ --}}
     <div class="ncm-detail__profile">
       <div class="ncm-detail__avatar"
@@ -49,7 +41,7 @@
         </div>
       </div>
       <div class="ncm-detail__info">
-        <div class="ncm-detail__name {{#if isBurned}}ncm-detail__name--burned{{/if}}">{{name}}</div>
+        <div class="ncm-detail__name">{{name}}</div>
         {{#if alias}}
           <div class="ncm-detail__alias">"{{alias}}"</div>
         {{/if}}
@@ -68,12 +60,10 @@
           {{/each}}
         </div>
         <div class="ncm-detail__actions">
-          {{#unless isBurned}}
-            <button class="ncm-action-btn ncm-action-btn--primary"
-                    data-action="sendMessage" data-contact-id="{{id}}">
-              <i class="fas fa-envelope"></i> Message
-            </button>
-          {{/unless}}
+          <button class="ncm-action-btn ncm-action-btn--primary"
+                  data-action="sendMessage" data-contact-id="{{id}}">
+            <i class="fas fa-envelope"></i> Message
+          </button>
           <button class="ncm-action-btn ncm-action-btn--ghost"
                   data-action="editContact" data-contact-id="{{id}}">
             <i class="fas fa-pen"></i> Edit
@@ -171,17 +161,6 @@
       <div class="ncm-info-card ncm-info-card--gm">
         <div class="ncm-info-card__header"><i class="fas fa-shield-halved"></i> GM Controls</div>
         <div class="ncm-info-card__body ncm-info-card__body--gm">
-          {{#if isBurned}}
-            <button class="ncm-action-btn ncm-action-btn--ghost"
-                    data-action="restoreContact" data-contact-id="{{id}}">
-              <i class="fas fa-heart-pulse"></i> Restore Contact
-            </button>
-          {{else}}
-            <button class="ncm-action-btn ncm-action-btn--danger"
-                    data-action="burnContact" data-contact-id="{{id}}">
-              <i class="fas fa-fire"></i> Burn Contact
-            </button>
-          {{/if}}
           <button class="ncm-action-btn ncm-action-btn--danger"
                   data-action="deleteContact" data-contact-id="{{id}}">
             <i class="fas fa-trash"></i> Delete
