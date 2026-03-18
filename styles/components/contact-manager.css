@@ -3045,6 +3045,34 @@
   font-style: italic;
 }
 
+/* Form descriptors */
+.ncm-app .ncm-contacts-v5 .ncm-form-desc,
+.ncm-app.ncm-contact-manager .ncm-form-desc {
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-size: 10px; font-weight: 500;
+  color: var(--ncm-text-muted, #555570);
+  line-height: 1.6; margin: 4px 0 8px;
+}
+.ncm-app .ncm-form-desc strong {
+  color: var(--ncm-text-secondary, #8888a0);
+}
+
+/* Actor damage badge */
+.ncm-app.ncm-contact-manager .ncm-cfg-actor-dmg {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 8px; color: #ff4444; opacity: 0.7;
+  margin-top: 2px;
+}
+.ncm-app.ncm-contact-manager .ncm-cfg-actor-dmg i {
+  font-size: 7px; margin-right: 2px;
+}
+
+/* ICE card descriptors */
+.ncm-app.ncm-contact-manager .ncm-cfg-ice-card__desc {
+  font-size: 8px; opacity: 0.5; font-weight: 400;
+  margin-top: 1px;
+}
+
 
 /* ═══════════════════════════════════════════
    §23  BREACH DIALOG (.ncm-breach-dialog)

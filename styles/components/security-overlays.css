@@ -1919,26 +1919,26 @@
 }
 
 .ncm-app .ncm-ice__icon {
-  width: 64px; height: 64px; border-radius: 16px;
+  width: 80px; height: 80px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  font-size: 26px; position: relative; z-index: 1;
-  overflow: hidden;
+  font-size: 30px; position: relative; z-index: 1;
+  overflow: hidden; aspect-ratio: 1; flex-shrink: 0;
 }
 /* Portrait image inside ICE icon */
 .ncm-app .ncm-ice__portrait {
-  width: 100%; height: 100%; object-fit: cover; border-radius: 16px;
+  width: 100%; height: 100%; object-fit: cover; border-radius: 50%;
 }
 .ncm-app .ncm-ice--standard .ncm-ice__icon {
   background: rgba(240,197,91,0.06);
-  border: 1px solid rgba(240,197,91,0.15);
+  border: 2px solid rgba(240,197,91,0.15);
   color: var(--ncm-accent, #F0C55B);
   animation: ncm-ice-v2-icon-pulse 2.5s ease-in-out infinite;
 }
 
 /* Rotating ring around icon */
 .ncm-app .ncm-ice__icon::before {
-  content: ''; position: absolute; inset: -6px;
-  border-radius: 20px;
+  content: ''; position: absolute; inset: -8px;
+  border-radius: 50%;
   border: 1px dashed rgba(240,197,91,0.15);
   animation: ncm-ice-v2-ring-spin 12s linear infinite;
 }
@@ -2030,7 +2030,7 @@
 }
 .ncm-app .ncm-ice--black .ncm-ice__icon {
   background: rgba(239,68,68,0.06);
-  border: 1px solid rgba(239,68,68,0.2);
+  border: 2px solid rgba(239,68,68,0.2);
   color: var(--ncm-danger, #EF4444);
   animation: ncm-ice-v2-black-pulse 1.5s ease-in-out infinite;
 }
@@ -2115,21 +2115,45 @@
 
 /* ═══════════════════════════════════════════
    §20  ICE OVERLAY — Breach Animation States
-   Applied by ContactManagerApp._playBreachSuccess / _playBreachDenied
+   Multi-phase: Init → Result (Granted/Denied) → Dissolve/Cleanup
    ═══════════════════════════════════════════ */
 
-/* ── Breaching (scan in progress) ── */
+/* ── Phase 1: Breaching (init scan) ── */
 .ncm-ice--breaching .ncm-ice__scan {
-  animation-duration: 0.4s !important;
-  background: linear-gradient(90deg, transparent, rgba(0,212,230,0.4), transparent) !important;
+  animation-duration: 0.3s !important;
+  background: linear-gradient(90deg, transparent, rgba(0,212,230,0.5), transparent) !important;
+}
+.ncm-ice--breaching .ncm-ice__grid {
+  animation-duration: 1s !important;
+  opacity: 0.8;
 }
 .ncm-ice--breaching .ncm-ice__icon {
-  animation: ncm-breach-scan-pulse 0.5s ease-in-out infinite !important;
+  animation: ncm-breach-icon-active 0.4s ease-in-out infinite !important;
+}
+.ncm-ice--breaching .ncm-ice__title {
+  animation: ncm-breach-text-flicker 0.15s steps(2) infinite;
 }
 
-/* ── Granted (success) ── */
+/* Terminal lines injected by JS */
+.ncm-ice__terminal {
+  position: absolute; bottom: 16px; left: 16px; right: 16px;
+  z-index: 20; pointer-events: none;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.ncm-ice__terminal-line {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 9px; color: var(--ncm-secondary, #00D4E6);
+  opacity: 0; animation: ncm-breach-line-in 0.25s ease-out forwards;
+  text-shadow: 0 0 6px rgba(0,212,230,0.3);
+}
+.ncm-ice--breaching.ncm-ice--black .ncm-ice__terminal-line {
+  color: #ff4444;
+  text-shadow: 0 0 6px rgba(255,0,51,0.3);
+}
+
+/* ── Phase 2a: Granted (success) ── */
 .ncm-ice--granted {
-  animation: ncm-breach-flash-green 0.5s ease-out;
+  animation: ncm-breach-flash-green 0.6s ease-out;
 }
 .ncm-ice--granted .ncm-ice__grid,
 .ncm-ice--granted .ncm-ice__scan,
@@ -2137,104 +2161,174 @@
 .ncm-ice--granted .ncm-ice__dv,
 .ncm-ice--granted .ncm-ice__meta,
 .ncm-ice--granted .ncm-ice__damage,
-.ncm-ice--granted .ncm-ice__breach { opacity: 0; transition: opacity 0.3s; }
+.ncm-ice--granted .ncm-ice__attempts,
+.ncm-ice--granted .ncm-ice__breach {
+  opacity: 0; transition: opacity 0.3s;
+}
+.ncm-ice--granted .ncm-ice__icon {
+  animation: ncm-breach-icon-unlock 0.6s ease-out forwards !important;
+}
 
 .ncm-ice--dissolve {
   animation: ncm-breach-dissolve 0.9s ease-out forwards;
 }
 
-/* ── Denied (failure) ── */
+/* ── Phase 2b: Denied (failure) ── */
 .ncm-ice--denied {
-  animation: ncm-breach-flash-red 0.4s ease-out, ncm-breach-shake 0.5s ease-out;
+  animation: ncm-breach-flash-red 0.5s ease-out, ncm-breach-shake 0.6s ease-out;
+}
+.ncm-ice--denied .ncm-ice__icon {
+  animation: ncm-breach-icon-reject 0.5s ease-out !important;
 }
 
-/* ── Result text overlays ── */
-.ncm-ice__result-text {
+/* ── Result overlays (injected by JS) ── */
+.ncm-ice__result {
   position: absolute; inset: 0; z-index: 50;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 8px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 10px; pointer-events: none;
+  animation: ncm-breach-result-enter 0.5s ease-out;
+}
+
+.ncm-ice__result-icon {
+  font-size: 36px;
+  animation: ncm-breach-icon-pop 0.4s ease-out;
+}
+.ncm-ice__result-label {
   font-family: var(--ncm-font-title, 'Orbitron', sans-serif);
   font-weight: 700; font-size: 16px;
-  letter-spacing: 0.15em; text-transform: uppercase;
-  animation: ncm-breach-result-pop 0.4s ease-out;
-  pointer-events: none;
+  text-transform: uppercase; letter-spacing: 0.2em;
+}
+.ncm-ice__result-sub {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em;
+  opacity: 0.6;
 }
 
-.ncm-ice__result-text--granted {
-  color: var(--ncm-success, #34D399);
-  text-shadow: 0 0 20px rgba(52,211,153,0.5), 0 0 40px rgba(52,211,153,0.2);
+.ncm-ice__result--granted .ncm-ice__result-icon { color: #34D399; }
+.ncm-ice__result--granted .ncm-ice__result-label {
+  color: #34D399;
+  text-shadow: 0 0 20px rgba(52,211,153,0.6), 0 0 50px rgba(52,211,153,0.2);
 }
-.ncm-ice__result-text--granted i { font-size: 28px; }
+.ncm-ice__result--granted .ncm-ice__result-sub { color: #34D399; }
 
-.ncm-ice__result-text--denied {
-  color: var(--ncm-danger, #EF4444);
-  text-shadow: 0 0 20px rgba(239,68,68,0.5), 0 0 40px rgba(239,68,68,0.2);
+.ncm-ice__result--denied .ncm-ice__result-icon { color: #EF4444; }
+.ncm-ice__result--denied .ncm-ice__result-label {
+  color: #EF4444;
+  text-shadow: 0 0 20px rgba(239,68,68,0.6), 0 0 50px rgba(239,68,68,0.2);
 }
-.ncm-ice__result-text--denied i { font-size: 28px; }
+.ncm-ice__result--denied .ncm-ice__result-sub { color: #EF4444; }
 
 /* ── Damage splash (BLACK ICE) ── */
 .ncm-ice__damage-splash {
-  position: absolute; top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 60; pointer-events: none;
-  font-family: var(--ncm-font-title, 'Orbitron', sans-serif);
-  font-weight: 700; font-size: 32px;
-  color: #ff0033;
-  text-shadow: 0 0 30px rgba(255,0,51,0.8), 0 0 60px rgba(255,0,51,0.3);
-  animation: ncm-breach-damage-pop 0.5s ease-out forwards,
-             ncm-breach-damage-fade 2.5s ease-out 0.5s forwards;
+  position: absolute; inset: 0; z-index: 60;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 6px; pointer-events: none;
+  background: rgba(255,0,51,0.08);
+  animation: ncm-breach-damage-enter 0.4s ease-out;
 }
-.ncm-ice__damage-splash i { font-size: 24px; margin-right: 4px; }
+.ncm-ice__damage-splash-icon {
+  font-size: 28px; color: #ff0033;
+  animation: ncm-breach-skull-pulse 0.8s ease-in-out infinite;
+}
+.ncm-ice__damage-splash-value {
+  font-family: var(--ncm-font-title, 'Orbitron', sans-serif);
+  font-weight: 700; font-size: 40px; color: #ff0033;
+  text-shadow: 0 0 30px rgba(255,0,51,0.8), 0 0 60px rgba(255,0,51,0.3);
+  animation: ncm-breach-dmg-value-pop 0.5s ease-out;
+}
+.ncm-ice__damage-splash-label {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 9px; color: rgba(255,0,51,0.7);
+  text-transform: uppercase; letter-spacing: 0.15em;
+}
 
 
 /* ── Keyframes ── */
 
-@keyframes ncm-breach-scan-pulse {
+@keyframes ncm-breach-icon-active {
   0%, 100% { filter: brightness(1); transform: scale(1); }
-  50% { filter: brightness(1.6); transform: scale(1.05); }
+  50% { filter: brightness(1.8); transform: scale(1.08); }
+}
+
+@keyframes ncm-breach-text-flicker {
+  0% { opacity: 1; }
+  50% { opacity: 0.4; }
+  100% { opacity: 1; }
+}
+
+@keyframes ncm-breach-line-in {
+  0% { opacity: 0; transform: translateX(-8px); }
+  100% { opacity: 0.8; transform: translateX(0); }
 }
 
 @keyframes ncm-breach-flash-green {
   0% { box-shadow: inset 0 0 0 rgba(52,211,153,0); }
-  30% { box-shadow: inset 0 0 60px rgba(52,211,153,0.15); }
+  30% { box-shadow: inset 0 0 80px rgba(52,211,153,0.2); border-color: rgba(52,211,153,0.3); }
   100% { box-shadow: inset 0 0 0 rgba(52,211,153,0); }
+}
+
+@keyframes ncm-breach-icon-unlock {
+  0% { transform: scale(1); filter: brightness(1); }
+  40% { transform: scale(1.3); filter: brightness(2.5); }
+  100% { transform: scale(1); filter: brightness(1); opacity: 0.3; }
 }
 
 @keyframes ncm-breach-dissolve {
   0% { opacity: 1; filter: brightness(1); }
-  30% { opacity: 0.8; filter: brightness(1.5) blur(1px); }
-  100% { opacity: 0; filter: brightness(2) blur(8px); transform: scale(1.03); }
+  20% { filter: brightness(1.8) blur(1px); }
+  100% { opacity: 0; filter: brightness(3) blur(10px); transform: scale(1.05); }
 }
 
 @keyframes ncm-breach-flash-red {
   0% { box-shadow: inset 0 0 0 rgba(239,68,68,0); }
-  30% { box-shadow: inset 0 0 80px rgba(239,68,68,0.2); }
+  20% { box-shadow: inset 0 0 100px rgba(239,68,68,0.25); border-color: rgba(239,68,68,0.5); }
   100% { box-shadow: inset 0 0 0 rgba(239,68,68,0); }
 }
 
 @keyframes ncm-breach-shake {
   0%, 100% { transform: translateX(0); }
-  15% { transform: translateX(-6px) rotate(-1deg); }
-  30% { transform: translateX(5px) rotate(0.5deg); }
-  45% { transform: translateX(-4px); }
-  60% { transform: translateX(3px); }
-  75% { transform: translateX(-1px); }
+  10% { transform: translateX(-8px) rotate(-1.5deg); }
+  20% { transform: translateX(7px) rotate(1deg); }
+  30% { transform: translateX(-6px) rotate(-0.5deg); }
+  40% { transform: translateX(5px); }
+  50% { transform: translateX(-3px); }
+  60% { transform: translateX(2px); }
 }
 
-@keyframes ncm-breach-result-pop {
-  0% { opacity: 0; transform: scale(0.5); }
-  60% { opacity: 1; transform: scale(1.1); }
+@keyframes ncm-breach-icon-reject {
+  0% { transform: scale(1); filter: brightness(1); }
+  30% { transform: scale(1.2); filter: brightness(2) saturate(2); }
+  60% { transform: scale(0.9); }
+  100% { transform: scale(1); filter: brightness(1); }
+}
+
+@keyframes ncm-breach-result-enter {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@keyframes ncm-breach-icon-pop {
+  0% { opacity: 0; transform: scale(0.3); }
+  60% { transform: scale(1.2); }
   100% { opacity: 1; transform: scale(1); }
 }
 
-@keyframes ncm-breach-damage-pop {
-  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.3); }
-  100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+@keyframes ncm-breach-damage-enter {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
 }
 
-@keyframes ncm-breach-damage-fade {
-  0% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-  100% { opacity: 0; transform: translate(-50%, -70%) scale(1.2); }
+@keyframes ncm-breach-skull-pulse {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 6px rgba(255,0,51,0.4)); }
+  50% { transform: scale(1.15); filter: drop-shadow(0 0 12px rgba(255,0,51,0.7)); }
+}
+
+@keyframes ncm-breach-dmg-value-pop {
+  0% { opacity: 0; transform: scale(0.3); }
+  50% { transform: scale(1.15); }
+  100% { opacity: 1; transform: scale(1); }
 }
 
 

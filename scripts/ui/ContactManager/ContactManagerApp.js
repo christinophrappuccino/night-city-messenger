@@ -335,6 +335,8 @@ export class ContactManagerApp extends BaseApplication {
           a.name?.toLowerCase().includes('black ice')
         ) ?? []).map(a => ({
           id: a.id, name: a.name, img: a.img,
+          atk: a.system?.stats?.atk ?? 0,
+          damage: a.system?.stats?.atk ? `ATK ${a.system.stats.atk}` : (a.system?.damage || ''),
           selected: iceConfig.iceActorId === a.id,
         }))
       : [];
@@ -1053,6 +1055,10 @@ export class ContactManagerApp extends BaseApplication {
       if (encryptionSkill) {
         data.encryptionSkill = encryptionSkill.trim();
       }
+      const maxBreachAttempts = formData.get('maxBreachAttempts');
+      if (maxBreachAttempts !== null) {
+        data.maxBreachAttempts = parseInt(maxBreachAttempts, 10) || 3;
+      }
       const blackIceVal = formData.get('blackIce');
       if (blackIceVal !== null) {
         data.blackIce = blackIceVal === 'true';
@@ -1319,9 +1325,8 @@ export class ContactManagerApp extends BaseApplication {
     // Show breaching state on overlay
     const overlayEl = target.closest('.ncm-ice') || target;
 
-    // Brief scan animation before roll
-    overlayEl.classList?.add('ncm-ice--breaching');
-    await new Promise(r => setTimeout(r, 600));
+    // ── Phase 1: Breach initiation — terminal lines + accelerating scan ──
+    await this._playBreachInit(overlayEl, contact.blackIce);
 
     // Execute breach
     const result = await breachService.attemptBreach(
@@ -1329,19 +1334,18 @@ export class ContactManagerApp extends BaseApplication {
       { luckSpend: dialogResult.luck, skillOverride: dialogResult.skill }
     );
 
-    overlayEl.classList?.remove('ncm-ice--breaching');
-
     if (result.success) {
-      // ── SUCCESS: Green flash + ACCESS GRANTED ──
-      this._playBreachSuccess(overlayEl, () => this.render());
+      // ── Phase 2a: SUCCESS — hex shatter + unlock ──
+      await this._playBreachSuccess(overlayEl);
+      this.render();
     } else if (result.error) {
+      overlayEl.classList?.remove('ncm-ice--breaching');
       ui.notifications.error(result.error);
-      this.render(); // Re-render to update attempt dots / lockout state
+      this.render();
     } else {
-      // ── FAILURE: Red flash + ACCESS DENIED ──
-      this._playBreachDenied(overlayEl, result.blackIce);
-      // Re-render after animation to update attempt dots
-      setTimeout(() => this.render(), 2200);
+      // ── Phase 2b: FAILURE — corruption + denied ──
+      await this._playBreachDenied(overlayEl, result.blackIce);
+      this.render();
     }
   }
 
@@ -1762,61 +1766,130 @@ export class ContactManagerApp extends BaseApplication {
     return { skill: opts.skillName, luck: luckSpend };
   }
 
-  /**
-   * Play breach success animation on the ICE overlay.
-   * Green flash + "ACCESS GRANTED" → then callback to re-render.
-   */
-  _playBreachSuccess(overlayEl, onComplete) {
-    if (!overlayEl) { onComplete?.(); return; }
+  // ═══════════════════════════════════════════════════════════
+  //  Breach Animation Sequence
+  // ═══════════════════════════════════════════════════════════
 
-    let granted = overlayEl.querySelector('.ncm-ice__result-text');
-    if (!granted) {
-      granted = document.createElement('div');
-      granted.className = 'ncm-ice__result-text ncm-ice__result-text--granted';
-      granted.innerHTML = '<i class="fas fa-lock-open"></i> ACCESS GRANTED';
-      overlayEl.appendChild(granted);
+  /**
+   * Phase 1: Breach initiation — overlay transitions to active scan mode.
+   * Terminal lines appear, scan accelerates, icon pulses faster.
+   * Duration: ~1.5s
+   */
+  async _playBreachInit(overlayEl, isBlackICE) {
+    if (!overlayEl) return;
+
+    // Hide static elements (button, meta, attempts, lockout, dv)
+    const hideEls = overlayEl.querySelectorAll('.ncm-ice__breach, .ncm-ice__meta, .ncm-ice__attempts, .ncm-ice__damage, .ncm-ice__breach--gm');
+    hideEls.forEach(el => { el.style.transition = 'opacity 0.3s'; el.style.opacity = '0'; el.style.pointerEvents = 'none'; });
+
+    // Add breaching class (fast scan, pulse)
+    overlayEl.classList.add('ncm-ice--breaching');
+
+    // Inject terminal line container
+    let terminal = overlayEl.querySelector('.ncm-ice__terminal');
+    if (!terminal) {
+      terminal = document.createElement('div');
+      terminal.className = 'ncm-ice__terminal';
+      overlayEl.appendChild(terminal);
+    }
+    terminal.innerHTML = '';
+
+    // Type out terminal lines
+    const lines = isBlackICE
+      ? ['> INITIATING BREACH PROTOCOL', '> BLACK ICE DETECTED — RISK ASSESSMENT: LETHAL', '> BYPASSING COUNTERMEASURES...', '> ROLLING DICE...']
+      : ['> INITIATING BREACH PROTOCOL', '> SCANNING ICE BARRIER...', '> ATTEMPTING DECRYPTION...', '> ROLLING DICE...'];
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = document.createElement('div');
+      line.className = 'ncm-ice__terminal-line';
+      line.textContent = lines[i];
+      terminal.appendChild(line);
+      await new Promise(r => setTimeout(r, 300));
     }
 
-    overlayEl.classList.add('ncm-ice--granted');
-
-    setTimeout(() => {
-      overlayEl.classList.add('ncm-ice--dissolve');
-    }, 500);
-
-    setTimeout(() => {
-      onComplete?.();
-    }, 1400);
+    // Hold for dramatic pause
+    await new Promise(r => setTimeout(r, 400));
   }
 
   /**
-   * Play breach denied animation on the ICE overlay.
-   * Red flash + shake + "ACCESS DENIED". If BLACK ICE, show damage number.
+   * Phase 2a: Breach SUCCESS — hex shatter + green flash + ACCESS GRANTED + dissolve.
+   * Duration: ~2s total
    */
-  _playBreachDenied(overlayEl, blackIceResult) {
+  async _playBreachSuccess(overlayEl) {
     if (!overlayEl) return;
 
-    let denied = overlayEl.querySelector('.ncm-ice__result-text');
-    if (denied) denied.remove();
+    // Remove terminal
+    overlayEl.querySelector('.ncm-ice__terminal')?.remove();
 
-    denied = document.createElement('div');
-    denied.className = 'ncm-ice__result-text ncm-ice__result-text--denied';
-    denied.innerHTML = '<i class="fas fa-shield-halved"></i> ACCESS DENIED';
-    overlayEl.appendChild(denied);
+    // Inject result overlay
+    const result = document.createElement('div');
+    result.className = 'ncm-ice__result ncm-ice__result--granted';
+    result.innerHTML = `
+      <div class="ncm-ice__result-icon"><i class="fas fa-lock-open"></i></div>
+      <div class="ncm-ice__result-label">ACCESS GRANTED</div>
+      <div class="ncm-ice__result-sub">ICE barrier neutralized</div>
+    `;
+    overlayEl.appendChild(result);
 
+    // Phase transitions
+    overlayEl.classList.remove('ncm-ice--breaching');
+    overlayEl.classList.add('ncm-ice--granted');
+
+    await new Promise(r => setTimeout(r, 800));
+
+    // Dissolve the entire overlay
+    overlayEl.classList.add('ncm-ice--dissolve');
+
+    await new Promise(r => setTimeout(r, 900));
+  }
+
+  /**
+   * Phase 2b: Breach DENIED — red corruption flash + shake + ACCESS DENIED.
+   * If BLACK ICE, show dramatic damage splash.
+   * Duration: ~2.5s
+   */
+  async _playBreachDenied(overlayEl, blackIceResult) {
+    if (!overlayEl) return;
+
+    // Remove terminal
+    overlayEl.querySelector('.ncm-ice__terminal')?.remove();
+
+    // Inject result overlay
+    const result = document.createElement('div');
+    result.className = 'ncm-ice__result ncm-ice__result--denied';
+    result.innerHTML = `
+      <div class="ncm-ice__result-icon"><i class="fas fa-shield-halved"></i></div>
+      <div class="ncm-ice__result-label">ACCESS DENIED</div>
+      <div class="ncm-ice__result-sub">ICE countermeasures hold</div>
+    `;
+    overlayEl.appendChild(result);
+
+    overlayEl.classList.remove('ncm-ice--breaching');
     overlayEl.classList.add('ncm-ice--denied');
 
+    // BLACK ICE damage splash
     if (blackIceResult?.damage) {
+      await new Promise(r => setTimeout(r, 600));
       const dmg = document.createElement('div');
       dmg.className = 'ncm-ice__damage-splash';
-      dmg.innerHTML = `<i class="fas fa-bolt"></i> ${blackIceResult.damage} DMG`;
+      dmg.innerHTML = `
+        <div class="ncm-ice__damage-splash-icon"><i class="fas fa-skull-crossbones"></i></div>
+        <div class="ncm-ice__damage-splash-value">${blackIceResult.damage}</div>
+        <div class="ncm-ice__damage-splash-label">BLACK ICE DAMAGE</div>
+      `;
       overlayEl.appendChild(dmg);
-      setTimeout(() => dmg.remove(), 3000);
     }
 
-    setTimeout(() => {
-      overlayEl.classList.remove('ncm-ice--denied');
-      denied?.remove();
-    }, 2000);
+    await new Promise(r => setTimeout(r, 2000));
+
+    // Cleanup — restore overlay to idle state
+    overlayEl.classList.remove('ncm-ice--denied');
+    overlayEl.querySelector('.ncm-ice__result')?.remove();
+    overlayEl.querySelector('.ncm-ice__damage-splash')?.remove();
+
+    // Restore hidden elements
+    const hiddenEls = overlayEl.querySelectorAll('.ncm-ice__breach, .ncm-ice__meta, .ncm-ice__attempts, .ncm-ice__damage, .ncm-ice__breach--gm');
+    hiddenEls.forEach(el => { el.style.opacity = ''; el.style.pointerEvents = ''; });
   }
 
   // ═══════════════════════════════════════════════════════════

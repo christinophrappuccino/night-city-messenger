@@ -219,6 +219,7 @@
     <div class="ncm-form-row ncm-form-row--ice-details" {{#unless contact.encrypted}}style="display:none;"{{/unless}}>
       <div class="ncm-form-group">
         <label class="ncm-form-label">ICE Configuration</label>
+        <div class="ncm-form-desc">Players must pass a skill check to decrypt this contact. Standard ICE has no penalty for failure. BLACK ICE deals damage on failed breach attempts.</div>
 
         {{!-- DV + Skill + BLACK ICE toggle row --}}
         <div class="ncm-form-ice-compact">
@@ -238,23 +239,36 @@
           </select>
         </div>
 
+        {{!-- Lockout Configuration --}}
+        <div class="ncm-form-ice-compact" style="margin-top:8px;">
+          <span class="ncm-form-ice-label">Max Attempts</span>
+          <input type="number" name="maxBreachAttempts" value="{{contact.maxBreachAttempts}}"
+                 placeholder="3" min="1" max="10" step="1"
+                 class="ncm-form-input ncm-form-input--mono ncm-form-input--dv" />
+          <span class="ncm-form-desc" style="flex:1;margin:0;font-size:9px;">then 10min lockout</span>
+        </div>
+
         {{!-- BLACK ICE Source Picker (shown when BLACK ICE is active) --}}
         <div class="ncm-form-ice-source" {{#unless contact.blackIce}}style="display:none;"{{/unless}}>
           <div class="ncm-form-ice-source__label">BLACK ICE Source</div>
+          <div class="ncm-form-desc">Choose how BLACK ICE damage is determined. <strong>Default</strong> uses a fixed dice formula. <strong>Custom</strong> lets you name the ICE and set a portrait. <strong>Actor</strong> pulls damage from a Black ICE actor in your world.</div>
 
           {{!-- Mode cards --}}
           <div class="ncm-cfg-ice-modes">
             <div class="ncm-cfg-ice-card {{#if (eq contact.iceSource 'default')}}ncm-cfg-ice-card--sel{{/if}} {{#unless contact.iceSource}}ncm-cfg-ice-card--sel{{/unless}}"
                  data-action="selectIceMode" data-mode="default">
               <i class="fas fa-dice"></i><span>Default</span>
+              <span class="ncm-cfg-ice-card__desc">Fixed formula</span>
             </div>
             <div class="ncm-cfg-ice-card {{#if (eq contact.iceSource 'custom')}}ncm-cfg-ice-card--sel{{/if}}"
                  data-action="selectIceMode" data-mode="custom">
               <i class="fas fa-pen-fancy"></i><span>Custom</span>
+              <span class="ncm-cfg-ice-card__desc">Name + portrait</span>
             </div>
             <div class="ncm-cfg-ice-card {{#if (eq contact.iceSource 'actor')}}ncm-cfg-ice-card--sel{{/if}}"
                  data-action="selectIceMode" data-mode="actor">
               <i class="fas fa-robot"></i><span>Actor</span>
+              <span class="ncm-cfg-ice-card__desc">From world actor</span>
             </div>
           </div>
           <input type="hidden" name="iceSource" value="{{contact.iceSource}}" />
@@ -263,8 +277,9 @@
           <div class="ncm-cfg-ice-panel {{#if (eq contact.iceSource 'default')}}ncm-cfg-ice-panel--on{{/if}} {{#unless contact.iceSource}}ncm-cfg-ice-panel--on{{/unless}}"
                data-ice-panel="default">
             <div class="ncm-cfg-dmg-preview">
+              <i class="fas fa-skull-crossbones" style="font-size:16px;color:#ff4444;opacity:0.6;"></i>
               <span class="ncm-cfg-dmg-dice">{{contact.blackIceDamage}}</span>
-              <span class="ncm-cfg-dmg-label">damage on failure</span>
+              <span class="ncm-cfg-dmg-label">damage on failed breach</span>
             </div>
             <div class="ncm-form-ice-compact" style="margin-top:8px;">
               <span class="ncm-form-ice-label">Damage</span>
@@ -276,6 +291,7 @@
           {{!-- Panel: Custom --}}
           <div class="ncm-cfg-ice-panel {{#if (eq contact.iceSource 'custom')}}ncm-cfg-ice-panel--on{{/if}}"
                data-ice-panel="custom">
+            <div class="ncm-form-desc" style="margin-bottom:6px;">Create a named ICE program with a custom portrait. The portrait appears on the breach overlay.</div>
             <div class="ncm-form-ice-compact">
               <span class="ncm-form-ice-label">Name</span>
               <input type="text" name="iceCustomName" value="{{contact.iceCustomName}}"
@@ -293,12 +309,14 @@
               <span class="ncm-form-ice-label">Damage</span>
               <input type="text" name="iceCustomDamage" value="{{contact.iceCustomDamage}}"
                      placeholder="3d6" class="ncm-form-input ncm-form-input--mono" style="max-width:80px;" />
+              <span class="ncm-cfg-dmg-label" style="margin-left:4px;">on failed breach</span>
             </div>
           </div>
 
           {{!-- Panel: Actor --}}
           <div class="ncm-cfg-ice-panel {{#if (eq contact.iceSource 'actor')}}ncm-cfg-ice-panel--on{{/if}}"
                data-ice-panel="actor">
+            <div class="ncm-form-desc" style="margin-bottom:6px;">Select a Black ICE actor from your world. Damage is derived from the actor's ATK stat.</div>
             <div class="ncm-cfg-actor-grid">
               {{#each blackIceActors}}
                 <div class="ncm-cfg-actor-card {{#if selected}}ncm-cfg-actor-card--sel{{/if}}"
@@ -307,10 +325,13 @@
                     {{#if img}}<img src="{{img}}" alt="">{{else}}<i class="fas fa-robot"></i>{{/if}}
                   </div>
                   <div class="ncm-cfg-actor-name">{{name}}</div>
+                  {{#if damage}}
+                    <div class="ncm-cfg-actor-dmg"><i class="fas fa-bolt"></i> {{damage}}</div>
+                  {{/if}}
                 </div>
               {{else}}
                 <div class="ncm-cfg-hint" style="padding:8px;text-align:center;width:100%;">
-                  No Black ICE actors found.
+                  No Black ICE actors found. Create actors with type "blackIce" or flag them with <code>isBlackICE</code>.
                 </div>
               {{/each}}
             </div>
