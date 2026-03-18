@@ -208,15 +208,37 @@
   position: relative; flex-wrap: wrap;
 }
 
-/* Chevron inside the ALL pill */
-.ncm-app .ncm-tag-dropdown__chev {
-  font-size: 7px; margin-left: 2px;
-  opacity: 0.5; cursor: pointer;
-  transition: transform 0.2s, opacity 0.15s;
+/* Toggle button (chevron) */
+.ncm-app .ncm-tag-dropdown__toggle {
+  all: unset !important;
+  display: flex !important; align-items: center !important; justify-content: center !important;
+  width: 20px !important; height: 20px !important;
+  border-radius: 3px !important;
+  font-size: 7px !important;
+  color: var(--ncm-text-muted, #555570) !important;
+  background: transparent !important;
+  border: 1px solid var(--ncm-border, #2a2a45) !important;
+  cursor: pointer !important;
+  transition: all 0.15s !important;
+  flex-shrink: 0 !important;
+  padding: 0 !important; margin: 0 !important;
+  min-height: 0 !important; min-width: 0 !important;
+  box-shadow: none !important; outline: none !important;
+  appearance: none !important;
 }
-.ncm-app .ncm-tag-dropdown__chev:hover { opacity: 1; }
-.ncm-app .ncm-tag-dropdown--open .ncm-tag-dropdown__chev {
-  transform: rotate(180deg); opacity: 1;
+.ncm-app .ncm-tag-dropdown__toggle:hover {
+  color: var(--ncm-text-primary, #e0e0e8) !important;
+  border-color: var(--ncm-border-active, #3a3a5a) !important;
+}
+.ncm-app .ncm-tag-dropdown--open .ncm-tag-dropdown__toggle {
+  color: var(--ncm-secondary, #00D4E6) !important;
+  border-color: rgba(0,212,230,0.3) !important;
+}
+.ncm-app .ncm-tag-dropdown--open .ncm-tag-dropdown__toggle i {
+  transform: rotate(180deg);
+}
+.ncm-app .ncm-tag-dropdown__toggle i {
+  transition: transform 0.2s;
 }
 
 /* Dropdown panel */

@@ -75,10 +75,11 @@
     </div>
     <div class="ncm-filter-row">
       <div class="ncm-tag-dropdown">
-        <button class="ncm-pill ncm-pill--all {{#unless hasActiveTagFilter}}ncm-pill--active{{/unless}}"
-                data-action="clearTagFilter">
-          ALL
-          <i class="ncm-tag-dropdown__chev fas fa-chevron-down" data-action="toggleTagDropdown"></i>
+        <span class="ncm-pill ncm-pill--all {{#unless hasActiveTagFilter}}ncm-pill--active{{/unless}}"
+              data-action="clearTagFilter">ALL</span>
+        <button class="ncm-tag-dropdown__toggle" data-action="toggleTagDropdown"
+                title="Filter by tag">
+          <i class="fas fa-chevron-down"></i>
         </button>
 
         {{!-- Active tag pills shown inline --}}
