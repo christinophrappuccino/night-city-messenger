@@ -1106,9 +1106,7 @@ export class ContactManagerApp extends BaseApplication {
 
   static _onOpenGMContacts(event, target) {
     if (!game.user.isGM) return;
-    if (game.nightcity?.gmContactManager) {
-      game.nightcity.gmContactManager.render(true);
-    }
+    game.nightcity?.openGMContacts?.();
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -1310,9 +1308,11 @@ export class ContactManagerApp extends BaseApplication {
     );
 
     if (result.success) {
-      // ── Phase 2a: SUCCESS — hex shatter + unlock ──
+      // ── Phase 2a: SUCCESS — unlock + dissolve ──
       await this._playBreachSuccess(overlayEl);
       this.render();
+      // ── Phase 3: Reveal — staggered fade-in of decrypted contact ──
+      this._playContactReveal();
     } else if (result.error) {
       overlayEl.classList?.remove('ncm-ice--breaching');
       ui.notifications.error(result.error);
@@ -1378,6 +1378,7 @@ export class ContactManagerApp extends BaseApplication {
     const result = await breachService.forceDecrypt(this.actorId, contactId);
     if (result.success) {
       this.render();
+      this._playContactReveal();
     } else {
       ui.notifications.error(`Force decrypt failed: ${result.error}`);
     }
@@ -1772,6 +1773,76 @@ export class ContactManagerApp extends BaseApplication {
       result.innerHTML = '';
     }
     if (status) status.textContent = '';
+  }
+
+  /**
+   * Phase 3: Contact reveal — staggered fade-in of decrypted contact detail.
+   * Called after render() has replaced the ICE overlay with actual contact info.
+   * Uses requestAnimationFrame to ensure DOM is flushed.
+   */
+  _playContactReveal() {
+    requestAnimationFrame(() => {
+      const detail = this.element?.querySelector('.ncm-split__detail');
+      if (!detail) return;
+
+      // Find all revealable elements in order
+      const selectors = [
+        '.ncm-detail__avatar',
+        '.ncm-detail__name',
+        '.ncm-detail__alias',
+        '.ncm-detail__chips',
+        '.ncm-detail__actions',
+        '.ncm-info-card',
+        '.ncm-info-card + .ncm-info-card',
+        '.ncm-info-card + .ncm-info-card + .ncm-info-card',
+      ];
+
+      // Also grab all info cards individually for staggering
+      const cards = detail.querySelectorAll('.ncm-info-card');
+      const elements = [];
+
+      // Collect unique elements in visual order
+      const avatar = detail.querySelector('.ncm-detail__avatar');
+      const name = detail.querySelector('.ncm-detail__name');
+      const alias = detail.querySelector('.ncm-detail__alias');
+      const chips = detail.querySelector('.ncm-detail__chips');
+      const actions = detail.querySelector('.ncm-detail__actions');
+
+      if (avatar) elements.push(avatar);
+      if (name) elements.push(name);
+      if (alias) elements.push(alias);
+      if (chips) elements.push(chips);
+      if (actions) elements.push(actions);
+      cards.forEach(c => elements.push(c));
+
+      // Set initial state and stagger reveal
+      elements.forEach((el, i) => {
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(12px)';
+        el.style.transition = 'none';
+      });
+
+      // Force reflow
+      void detail.offsetHeight;
+
+      // Animate in with stagger
+      elements.forEach((el, i) => {
+        setTimeout(() => {
+          el.style.transition = 'opacity 0.4s ease, transform 0.4s cubic-bezier(0.16,1,0.3,1)';
+          el.style.opacity = '1';
+          el.style.transform = 'translateY(0)';
+        }, 60 * i);
+      });
+
+      // Clean up inline styles after animation completes
+      setTimeout(() => {
+        elements.forEach(el => {
+          el.style.opacity = '';
+          el.style.transform = '';
+          el.style.transition = '';
+        });
+      }, 60 * elements.length + 500);
+    });
   }
 
   // ═══════════════════════════════════════════════════════════
