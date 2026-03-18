@@ -620,6 +620,7 @@ export class AdminPanelApp extends BaseApplication {
         msgFeedActorName: '',
         msgActorDropdownOpen: false,
         msgActorFilterOptions: [],
+        msgInboxes: [],
       };
     }
 
@@ -658,6 +659,7 @@ export class AdminPanelApp extends BaseApplication {
       msgFeedActorName: actorName,
       msgActorDropdownOpen: this._msgActorDropdownOpen,
       msgActorFilterOptions: actorOptions,
+      msgInboxes: this._gatherAllInboxes(),
     };
   }
 
@@ -912,6 +914,127 @@ export class AdminPanelApp extends BaseApplication {
     }
 
     return options;
+  }
+
+  /**
+   * Gather ALL inboxes — both actor inboxes and contact virtual inboxes.
+   * Scans NCM-Inbox-* journals and enriches with actor/contact data.
+   * @returns {Array<object>} Unified inbox entries sorted by total messages desc
+   * @private
+   */
+  _gatherAllInboxes() {
+    const inboxes = [];
+    const seenOwnerIds = new Set();
+
+    try {
+      for (const journal of game.journal ?? []) {
+        if (!journal.name?.startsWith('NCM-Inbox-')) continue;
+
+        const isContactInbox = journal.name.startsWith('NCM-Inbox-Contact-');
+        const ownerId = isContactInbox
+          ? journal.name.replace('NCM-Inbox-Contact-', '')
+          : journal.name.replace('NCM-Inbox-', '');
+
+        // Skip duplicates (same owner might appear if journals are misconfigured)
+        if (seenOwnerIds.has(ownerId)) continue;
+        seenOwnerIds.add(ownerId);
+
+        // Count messages and unread
+        let totalMessages = 0;
+        let unreadMessages = 0;
+        for (const page of journal.pages ?? []) {
+          const flags = page.flags?.['cyberpunkred-messenger'];
+          if (!flags) continue;
+          totalMessages++;
+          const isSentCopy = (flags.messageId || '').endsWith('-sent');
+          if (!flags.status?.read && !isSentCopy && !flags.status?.deleted) {
+            unreadMessages++;
+          }
+        }
+
+        // Skip empty inboxes
+        if (totalMessages === 0) continue;
+
+        // Enrich with actor or contact data
+        let name = ownerId;
+        let avatarColor = '#8888a0';
+        let avatarBorderColor = 'rgba(136,136,160,0.4)';
+        let initial = '?';
+        let img = null;
+        let ownerLabel = 'NPC';
+        let isPlayer = false;
+
+        if (!isContactInbox) {
+          // Actor inbox
+          const actor = game.actors?.get(ownerId);
+          if (actor) {
+            name = actor.name;
+            initial = (actor.name || '?').charAt(0).toUpperCase();
+            img = actor.img && !actor.img.includes('mystery-man') ? actor.img : null;
+            isPlayer = actor.hasPlayerOwner;
+
+            if (isPlayer) {
+              avatarColor = '#19f3f7';
+              avatarBorderColor = 'rgba(25,243,247,0.4)';
+              // Find player owner name
+              const ownerEntry = Object.entries(actor.ownership || {})
+                .find(([uid, level]) => uid !== 'default' && level >= 3);
+              const ownerUser = ownerEntry ? game.users.get(ownerEntry[0]) : null;
+              ownerLabel = ownerUser?.name ?? 'Player';
+            } else {
+              avatarColor = '#F65261';
+              avatarBorderColor = 'rgba(246,82,97,0.4)';
+              ownerLabel = 'NPC';
+            }
+          }
+        } else {
+          // Contact virtual inbox
+          const contact = this.masterContactService?.getContact(ownerId);
+          if (contact) {
+            name = contact.name;
+            initial = (contact.name || '?').charAt(0).toUpperCase();
+            img = contact.portrait || null;
+
+            // Role-based color
+            const roleLower = (contact.role || '').toLowerCase();
+            const roleColors = {
+              fixer: '#d4a017', netrunner: '#00e5ff', runner: '#00e5ff',
+              corp: '#4a8ab5', exec: '#6ec1e4', solo: '#e04848',
+              tech: '#2ecc71', medtech: '#1abc9c', media: '#b87aff',
+              nomad: '#d4844a', lawman: '#6b8fa3', rocker: '#e05cb5',
+            };
+            avatarColor = roleColors[roleLower] || '#F65261';
+            avatarBorderColor = `${avatarColor}66`;
+            ownerLabel = contact.role ? contact.role.charAt(0).toUpperCase() + contact.role.slice(1) : 'NPC';
+          }
+        }
+
+        inboxes.push({
+          inboxId: ownerId,
+          name,
+          initial,
+          img,
+          avatarColor,
+          avatarBorderColor,
+          isPlayer,
+          ownerLabel,
+          totalMessages,
+          unreadMessages,
+          isContactInbox,
+        });
+      }
+    } catch (error) {
+      console.error(`${MODULE_ID} | AdminPanelApp._gatherAllInboxes:`, error);
+    }
+
+    // Sort: players first, then by total messages descending
+    inboxes.sort((a, b) => {
+      if (a.isPlayer && !b.isPlayer) return -1;
+      if (!a.isPlayer && b.isPlayer) return 1;
+      return b.totalMessages - a.totalMessages;
+    });
+
+    return inboxes;
   }
 
   /**
