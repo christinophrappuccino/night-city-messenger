@@ -181,13 +181,12 @@
       </div>
     </div>
 
-    {{!-- ── Folder assignment ── --}}
-    <div class="ncm-form-row">
+    {{!-- ── Folder + ICE Encryption ── --}}
+    <div class="ncm-form-row ncm-form-row--half">
       <div class="ncm-form-group">
         <label class="ncm-form-label">
           <i class="fas fa-folder" style="color: var(--ncm-accent, #f7c948); font-size: 8px;"></i>
           Folder
-          <span class="ncm-form-hint">(for manual grouping — type or pick existing)</span>
         </label>
         <div class="ncm-form-input-row">
           <input type="text" name="folder" value="{{contact.folder}}"
@@ -204,32 +203,41 @@
           {{/each}}
         </datalist>
       </div>
-    </div>
-
-    {{!-- ── ICE / Encryption (compact) ── --}}
-    <div class="ncm-form-row ncm-form-row--half">
       <div class="ncm-form-group">
         <label class="ncm-form-label">
           <i class="fas fa-lock" style="color: var(--ncm-accent, #f7c948); font-size: 8px;"></i>
           ICE Encryption
         </label>
-        <select name="encrypted" class="ncm-form-select">
+        <select name="encrypted" class="ncm-form-select ncm-ice-toggle-select">
           <option value="false" {{#unless contact.encrypted}}selected{{/unless}}>None — Open access</option>
           <option value="true" {{#if contact.encrypted}}selected{{/if}}>ICE Protected</option>
         </select>
       </div>
+    </div>
+
+    {{!-- ── ICE Details (only visible when encrypted) ── --}}
+    <div class="ncm-form-row ncm-form-row--ice-details" {{#unless contact.encrypted}}style="display:none;"{{/unless}}>
       <div class="ncm-form-group">
-        <label class="ncm-form-label">ICE DV / BLACK ICE</label>
+        <label class="ncm-form-label">ICE Configuration</label>
         <div class="ncm-form-ice-compact">
+          <span class="ncm-form-ice-label">DV</span>
           <input type="number" name="encryptionDV" value="{{contact.encryptionDV}}"
                  placeholder="15" min="8" max="30" step="1"
                  class="ncm-form-input ncm-form-input--mono ncm-form-input--dv" />
-          <select name="blackIce" class="ncm-form-select ncm-form-select--ice">
+          <span class="ncm-form-ice-label">Skill</span>
+          <select name="encryptionSkill" class="ncm-form-select ncm-form-select--ice">
+            <option value="Interface" {{#if (eq contact.encryptionSkill 'Interface')}}selected{{/if}}>Interface</option>
+            <option value="Electronics" {{#if (eq contact.encryptionSkill 'Electronics')}}selected{{/if}}>Electronics</option>
+            <option value="Cryptography" {{#if (eq contact.encryptionSkill 'Cryptography')}}selected{{/if}}>Cryptography</option>
+          </select>
+          <select name="blackIce" class="ncm-form-select ncm-form-select--ice ncm-blackice-toggle-select">
             <option value="false" {{#unless contact.blackIce}}selected{{/unless}}>No BLACK ICE</option>
             <option value="true" {{#if contact.blackIce}}selected{{/if}}>BLACK ICE Active</option>
           </select>
           <input type="text" name="blackIceDamage" value="{{contact.blackIceDamage}}"
-                 placeholder="dmg" class="ncm-form-input ncm-form-input--mono ncm-form-input--dmg" />
+                 placeholder="3d6"
+                 class="ncm-form-input ncm-form-input--mono ncm-form-input--dmg ncm-blackice-damage-input"
+                 {{#unless contact.blackIce}}style="display:none;"{{/unless}} />
         </div>
       </div>
     </div>

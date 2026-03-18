@@ -140,6 +140,10 @@ export class ContactManagerApp extends BaseApplication {
       expandAll:      ContactManagerApp._onExpandAll,
       toggleFavorite: ContactManagerApp._onToggleFavorite,
 
+      // ─── Form helpers ───
+      browsePortrait:     ContactManagerApp._onBrowsePortrait,
+      createFolderInline: ContactManagerApp._onCreateFolderInline,
+
       // ─── Other ───
       openSettings:   ContactManagerApp._onOpenSettings,
     },
@@ -299,6 +303,20 @@ export class ContactManagerApp extends BaseApplication {
     const verifiedCount = this._contacts.filter(c => c.verified || c.verifiedOverride).length;
     const unverifiedCount = this._contacts.filter(c => !c.verified && !c.verifiedOverride && !c.burned).length;
 
+    // ── Existing folders (for datalist in form) ──
+    const masterSvc = game.nightcity?.masterContactService;
+    const existingFolders = masterSvc
+      ? [...new Set(masterSvc.getAll().map(c => c.folder).filter(Boolean))].sort()
+      : [];
+
+    // ── Available actors (for linked actor select in GM form) ──
+    const availableActors = game.user.isGM
+      ? game.actors.contents.map(a => ({
+          id: a.id, name: a.name,
+          hasPlayerOwner: a.hasPlayerOwner,
+        }))
+      : [];
+
     return {
       // Owner
       ownerName, ownerEmail, ownerAvatarColor, ownerInitials,
@@ -337,6 +355,10 @@ export class ContactManagerApp extends BaseApplication {
 
       // Tags
       allTags: tagPills,
+
+      // Folders + Actors (for form)
+      existingFolders,
+      availableActors,
 
       // Network
       currentNetwork,
@@ -484,6 +506,7 @@ export class ContactManagerApp extends BaseApplication {
     this._setupEmailVerification();
     this._setupSelectListeners();
     this._setupNotesAutoSave();
+    this._setupICEToggle();
     this._restoreListScroll();
 
     if (game.user.isGM) {
@@ -551,6 +574,29 @@ export class ContactManagerApp extends BaseApplication {
     scrollEl.addEventListener('scroll', () => {
       this._listScrollTop = scrollEl.scrollTop;
     }, { passive: true });
+  }
+
+  /**
+   * Wire up ICE toggle conditionals on the form.
+   * Shows/hides the ICE details row when encryption dropdown changes.
+   * Shows/hides BLACK ICE damage input when BLACK ICE dropdown changes.
+   */
+  _setupICEToggle() {
+    const iceSelect = this.element?.querySelector('.ncm-ice-toggle-select');
+    const iceRow = this.element?.querySelector('.ncm-form-row--ice-details');
+    if (iceSelect && iceRow) {
+      iceSelect.addEventListener('change', (e) => {
+        iceRow.style.display = e.target.value === 'true' ? '' : 'none';
+      });
+    }
+
+    const blackIceSelect = this.element?.querySelector('.ncm-blackice-toggle-select');
+    const dmgInput = this.element?.querySelector('.ncm-blackice-damage-input');
+    if (blackIceSelect && dmgInput) {
+      blackIceSelect.addEventListener('change', (e) => {
+        dmgInput.style.display = e.target.value === 'true' ? '' : 'none';
+      });
+    }
   }
 
   /**
@@ -929,6 +975,14 @@ export class ContactManagerApp extends BaseApplication {
       }
       const relationship = formData.get('relationship');
       if (relationship !== null) data.relationship = relationship;
+
+      // Folder (GM only)
+      const folder = formData.get('folder')?.trim();
+      if (folder !== undefined) data.folder = folder || '';
+
+      // Linked actor (GM only)
+      const actorId = formData.get('actorId');
+      if (actorId !== null) data.actorId = actorId || null;
 
       // ICE fields (GM only) — selects return "true"/"false" strings
       const encryptedVal = formData.get('encrypted');
@@ -1311,6 +1365,51 @@ export class ContactManagerApp extends BaseApplication {
     if (game.nightcity?.openThemeCustomizer) {
       game.nightcity.openThemeCustomizer();
     }
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Action Handlers — Form Helpers
+  // ═══════════════════════════════════════════════════════════
+
+  /**
+   * Browse Foundry files for a portrait image path.
+   */
+  static _onBrowsePortrait(event, target) {
+    event.stopPropagation();
+    const input = this.element?.querySelector('[name="portrait"]');
+    if (!input) return;
+
+    const fp = new FilePicker({
+      type: 'image',
+      current: input.value || '',
+      callback: (path) => {
+        if (path) input.value = path;
+      },
+    });
+    fp.browse();
+  }
+
+  /**
+   * Create a new folder name via prompt and fill into the folder input.
+   */
+  static async _onCreateFolderInline(event, target) {
+    event.stopPropagation();
+    const result = await Dialog.prompt({
+      title: 'Create Folder',
+      content: `
+        <form class="ncm-dialog-form">
+          <div class="form-group">
+            <label>Folder Name</label>
+            <input type="text" name="folderName" placeholder="e.g. Main Story NPCs" maxlength="40" autofocus />
+          </div>
+        </form>`,
+      callback: (html) => (html[0] || html).querySelector('[name="folderName"]')?.value?.trim(),
+      rejectClose: false,
+    });
+
+    if (!result) return;
+    const input = this.element?.querySelector('[name="folder"]');
+    if (input) input.value = result;
   }
 
   // ═══════════════════════════════════════════════════════════
