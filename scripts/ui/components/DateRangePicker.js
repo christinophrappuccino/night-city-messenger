@@ -240,13 +240,40 @@ export class DateRangePicker {
       this._onDayClick(dateStr);
     });
 
-    // Hover preview
+    // Hover preview — direct DOM manipulation, no rerender
     html.find('.ncm-drp-day').on('mouseenter', (e) => {
       if (this._selectState !== 'from') return;
-      const dateStr = e.currentTarget.dataset.date;
-      if (!dateStr) return;
-      this._previewTo = dateStr;
-      this._rerender();
+      const hoverDate = e.currentTarget.dataset.date;
+      if (!hoverDate || !this._from) return;
+
+      const from = this._from < hoverDate ? this._from : hoverDate;
+      const to = this._from < hoverDate ? hoverDate : this._from;
+
+      html.find('.ncm-drp-day').each((_, el) => {
+        const d = el.dataset.date;
+        if (!d) return;
+        const isEndpoint = d === from || d === to;
+        const inRange = d >= from && d <= to;
+
+        if (isEndpoint) {
+          el.style.background = 'rgba(25,243,247,0.15)';
+          el.style.borderColor = 'rgba(25,243,247,0.4)';
+          el.querySelector('div').style.color = '#19f3f7';
+        } else if (inRange) {
+          el.style.background = 'rgba(25,243,247,0.05)';
+          el.style.borderColor = 'transparent';
+          el.querySelector('div').style.color = '#c0c0d0';
+        } else {
+          el.style.background = 'transparent';
+          el.style.borderColor = 'transparent';
+          el.querySelector('div').style.color = '#e0e0e8';
+        }
+      });
+    });
+
+    // Reset hover styles on mouse leave from grid
+    html.find('.ncm-drp-day').on('mouseleave', () => {
+      // Only reset if still in 'from' selection mode — the rerender on click handles final state
     });
 
     // Nav arrows
@@ -275,15 +302,6 @@ export class DateRangePicker {
     }).on('mouseleave', function() {
       this.style.borderColor = '#2a2a45';
       this.style.color = '#8888a0';
-    });
-
-    // Day hover highlight
-    html.find('.ncm-drp-day').on('mouseenter', function() {
-      if (!this.style.background || this.style.background === 'transparent') {
-        this.style.background = 'rgba(25,243,247,0.04)';
-      }
-    }).on('mouseleave', function() {
-      // Rerender handles proper state
     });
   }
 
