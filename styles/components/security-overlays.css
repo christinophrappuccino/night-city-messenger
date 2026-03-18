@@ -1877,10 +1877,17 @@
 
 
 /* ═══════════════════════════════════════════
-   §19  ICE OVERLAY v2 — Contact Manager (v5.1)
-   Animated grid, scan line, pulsing icon, rotating ring,
-   large DV readout. BLACK ICE variant with faster animations.
+   §19  ICE OVERLAY v2 — Contact Manager (v6 redesign)
+   Conic-gradient progress ring, CSS-driven animation.
+   No DOM injection — ring is ::before on icon-wrap.
    ═══════════════════════════════════════════ */
+
+/* ── CSS custom property for conic-gradient animation ── */
+@property --ncm-breach-progress {
+  syntax: '<percentage>';
+  initial-value: 0%;
+  inherits: false;
+}
 
 /* ── Shared base ── */
 .ncm-app .ncm-ice {
@@ -1890,11 +1897,6 @@
   padding: 32px 24px;
   display: flex; flex-direction: column; align-items: center;
   gap: 12px; text-align: center;
-}
-
-/* Allow ring to extend beyond container during breach init */
-.ncm-app .ncm-ice--breaching {
-  overflow: visible;
 }
 
 /* ── Animated background grid ── */
@@ -1923,101 +1925,150 @@
   box-shadow: inset 0 0 60px rgba(240,197,91,0.03), 0 0 30px rgba(240,197,91,0.05);
 }
 
+/* ── Icon wrap (holds conic ring pseudo-elements) ── */
+.ncm-app .ncm-ice__icon-wrap {
+  position: relative;
+  width: 88px; height: 88px;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 2;
+}
+
+/* Conic progress ring — hidden until breaching */
+.ncm-app .ncm-ice__icon-wrap::before {
+  content: '';
+  position: absolute; inset: -4px;
+  border-radius: 50%;
+  background: conic-gradient(
+    var(--ncm-ring-color, rgba(240,197,91,0.4)) var(--ncm-breach-progress),
+    rgba(240,197,91,0.08) var(--ncm-breach-progress)
+  );
+  --ncm-breach-progress: 0%;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+/* Inner mask — makes the conic gradient a ring */
+.ncm-app .ncm-ice__icon-wrap::after {
+  content: '';
+  position: absolute; inset: -1px;
+  border-radius: 50%;
+  background: var(--ncm-bg-base, #12121a);
+  z-index: 0;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+/* ── Icon ── */
 .ncm-app .ncm-ice__icon {
   width: 80px; height: 80px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   font-size: 30px; position: relative; z-index: 1;
   overflow: hidden; aspect-ratio: 1; flex-shrink: 0;
+  transition: all 0.4s;
 }
-/* Portrait image inside ICE icon */
+
 .ncm-app .ncm-ice__portrait {
   width: 100%; height: 100%; object-fit: cover; border-radius: 50%;
 }
+
 .ncm-app .ncm-ice--standard .ncm-ice__icon {
   background: rgba(240,197,91,0.06);
-  border: 2px solid rgba(240,197,91,0.15);
+  border: 2px solid rgba(240,197,91,0.2);
   color: var(--ncm-accent, #F0C55B);
-  animation: ncm-ice-v2-icon-pulse 2.5s ease-in-out infinite;
 }
 
-/* Rotating ring around icon */
-.ncm-app .ncm-ice__icon::before {
-  content: ''; position: absolute; inset: -8px;
-  border-radius: 50%;
-  border: 1px dashed rgba(240,197,91,0.15);
-  animation: ncm-ice-v2-ring-spin 12s linear infinite;
-}
-
+/* ── Title ── */
 .ncm-app .ncm-ice__title {
   font-family: var(--ncm-font-title, 'Orbitron', sans-serif);
   font-weight: 600; font-size: 13px;
   text-transform: uppercase; letter-spacing: 0.15em;
   position: relative; z-index: 1;
+  transition: opacity 0.3s, transform 0.3s;
 }
 .ncm-app .ncm-ice--standard .ncm-ice__title { color: var(--ncm-accent, #F0C55B); }
 
-.ncm-app .ncm-ice__meta {
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 12px; font-weight: 500;
-  color: var(--ncm-text-muted, #555570); line-height: 1.7;
-  position: relative; z-index: 1;
+/* ── Status text (breach phases) ── */
+.ncm-app .ncm-ice__status {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 10px;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  text-align: center;
+  min-height: 16px;
+  position: relative; z-index: 2;
+  opacity: 0;
+  transition: opacity 0.25s;
 }
 
+/* ── DV readout ── */
 .ncm-app .ncm-ice__dv {
-  display: flex; align-items: center; gap: 12px;
+  display: flex; align-items: center; gap: 8px;
   position: relative; z-index: 1;
+  transition: opacity 0.3s, transform 0.3s;
 }
 .ncm-app .ncm-ice__dv-label {
   font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
   font-size: 8px; color: var(--ncm-text-muted, #555570);
-  text-transform: uppercase; letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 .ncm-app .ncm-ice__dv-value {
   font-family: var(--ncm-font-title, 'Orbitron', sans-serif);
-  font-size: 28px; font-weight: 700; line-height: 1;
-}
-.ncm-app .ncm-ice--standard .ncm-ice__dv-value {
-  color: var(--ncm-accent, #F0C55B);
-  text-shadow: 0 0 20px rgba(240,197,91,0.3);
+  font-weight: 700; font-size: 22px; color: var(--ncm-text-primary, #e0e0e8);
 }
 .ncm-app .ncm-ice__dv-skill {
   font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
   font-size: 9px; color: var(--ncm-text-secondary, #8888a0);
 }
 
-/* Breach button */
+/* ── Damage warning ── */
+.ncm-app .ncm-ice__damage {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 10px; color: rgba(239,68,68,0.8);
+  display: flex; align-items: center; gap: 6px;
+  position: relative; z-index: 1;
+  transition: opacity 0.3s, transform 0.3s;
+}
+
+/* ── Meta text ── */
+.ncm-app .ncm-ice__meta {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 9px; color: var(--ncm-text-muted, #555570);
+  max-width: 260px; line-height: 1.5;
+  position: relative; z-index: 1;
+  transition: opacity 0.3s, transform 0.3s;
+}
+
+/* ── Breach button ── */
 .ncm-app .ncm-ice__breach {
   display: inline-flex !important; align-items: center !important; gap: 8px !important;
-  padding: 10px 28px !important; border-radius: 3px !important;
+  padding: 8px 28px !important; border-radius: 3px !important;
   font-family: var(--ncm-font-display, 'Rajdhani', sans-serif) !important;
   font-size: 11px !important; font-weight: 700 !important;
   cursor: pointer !important; transition: all 0.2s !important;
   text-transform: uppercase !important; letter-spacing: 0.08em !important;
   position: relative !important; z-index: 1 !important;
   height: auto !important; min-height: 0 !important;
-  width: auto !important; flex-shrink: 0 !important; flex-grow: 0 !important;
+  width: auto !important; flex-shrink: 0 !important;
   appearance: none !important; box-shadow: none !important; outline: none !important;
 }
 .ncm-app .ncm-ice--standard .ncm-ice__breach {
   color: var(--ncm-accent, #F0C55B) !important;
-  background: rgba(240,197,91,0.06) !important;
-  border: 1px solid rgba(240,197,91,0.2) !important;
+  background: rgba(240,197,91,0.04) !important;
+  border: 1px solid rgba(240,197,91,0.25) !important;
 }
 .ncm-app .ncm-ice--standard .ncm-ice__breach:hover {
-  background: rgba(240,197,91,0.12) !important;
-  border-color: rgba(240,197,91,0.4) !important;
-  box-shadow: 0 0 20px rgba(240,197,91,0.1) !important;
+  background: rgba(240,197,91,0.1) !important;
+  box-shadow: 0 0 12px rgba(240,197,91,0.1) !important;
 }
 
-/* GM Bypass variant */
+/* GM bypass */
 .ncm-app .ncm-ice__breach--gm {
-  font-size: 9px !important;
-  padding: 6px 16px !important;
-  opacity: 0.6;
+  font-size: 9px !important; padding: 5px 14px !important; opacity: 0.5;
+  color: #8888a0 !important; background: transparent !important;
+  border: 1px solid #2a2a45 !important;
 }
 .ncm-app .ncm-ice__breach--gm:hover { opacity: 1; }
 
-/* Share button inside ICE overlay */
+/* Share button */
 .ncm-app .ncm-ice__share-btn {
   display: inline-flex !important; align-items: center !important; gap: 6px !important;
   padding: 5px 14px !important; border-radius: 3px !important;
@@ -2040,203 +2091,148 @@
   border-color: rgba(0,212,230,0.3) !important;
 }
 
-/* ── BLACK ICE variant ── */
+
+/* ═══════════════════════════════════════════
+   §19b  BLACK ICE Variant
+   ═══════════════════════════════════════════ */
+
 .ncm-app .ncm-ice--black {
-  background: linear-gradient(160deg, rgba(12,12,18,0.96) 0%, rgba(30,8,8,0.94) 100%);
-  border: 1px solid rgba(239,68,68,0.15);
-  box-shadow: inset 0 0 80px rgba(239,68,68,0.04), 0 0 40px rgba(239,68,68,0.06);
+  background: linear-gradient(160deg, rgba(12,12,18,0.95) 0%, rgba(30,10,10,0.92) 100%);
+  border: 1px solid rgba(239,68,68,0.12);
+  box-shadow: inset 0 0 60px rgba(239,68,68,0.03), 0 0 30px rgba(239,68,68,0.05);
 }
 .ncm-app .ncm-ice--black .ncm-ice__grid {
   background-image:
-    linear-gradient(rgba(239,68,68,0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(239,68,68,0.04) 1px, transparent 1px);
-  animation-duration: 4s;
+    linear-gradient(rgba(239,68,68,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(239,68,68,0.03) 1px, transparent 1px);
 }
 .ncm-app .ncm-ice--black .ncm-ice__scan {
-  background: linear-gradient(90deg, transparent, rgba(239,68,68,0.2), transparent);
+  background: linear-gradient(90deg, transparent, rgba(239,68,68,0.15), transparent);
   animation-duration: 2s;
 }
 .ncm-app .ncm-ice--black .ncm-ice__icon {
   background: rgba(239,68,68,0.06);
-  border: 2px solid rgba(239,68,68,0.2);
+  border: 2px solid rgba(239,68,68,0.25);
   color: var(--ncm-danger, #EF4444);
-  animation: ncm-ice-v2-black-pulse 1.5s ease-in-out infinite;
-}
-.ncm-app .ncm-ice--black .ncm-ice__icon::before {
-  border-color: rgba(239,68,68,0.2);
-  animation-duration: 6s;
 }
 .ncm-app .ncm-ice--black .ncm-ice__title { color: var(--ncm-danger, #EF4444); }
-.ncm-app .ncm-ice--black .ncm-ice__dv-value {
-  color: var(--ncm-danger, #EF4444);
-  text-shadow: 0 0 25px rgba(239,68,68,0.4);
+.ncm-app .ncm-ice--black .ncm-ice__icon-wrap::before {
+  --ncm-ring-color: rgba(239,68,68,0.5);
+  background: conic-gradient(
+    var(--ncm-ring-color) var(--ncm-breach-progress),
+    rgba(239,68,68,0.08) var(--ncm-breach-progress)
+  );
 }
 .ncm-app .ncm-ice--black .ncm-ice__breach {
-  color: var(--ncm-danger, #EF4444) !important;
-  background: rgba(239,68,68,0.06) !important;
-  border: 1px solid rgba(239,68,68,0.2) !important;
+  color: #ff4444 !important;
+  background: rgba(239,68,68,0.04) !important;
+  border: 1px solid rgba(239,68,68,0.25) !important;
 }
 .ncm-app .ncm-ice--black .ncm-ice__breach:hover {
-  background: rgba(239,68,68,0.12) !important;
-  border-color: rgba(239,68,68,0.4) !important;
-  box-shadow: 0 0 20px rgba(239,68,68,0.1) !important;
+  background: rgba(239,68,68,0.1) !important;
+  box-shadow: 0 0 12px rgba(239,68,68,0.1) !important;
 }
-
-/* Damage warning badge (BLACK ICE only) */
-.ncm-app .ncm-ice__damage {
-  display: flex; align-items: center; gap: 6px;
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 9px; color: rgba(239,68,68,0.7);
-  text-transform: uppercase; letter-spacing: 0.08em;
-  padding: 4px 12px; border-radius: 3px;
-  background: rgba(239,68,68,0.04); border: 1px solid rgba(239,68,68,0.1);
-  position: relative; z-index: 1;
-  animation: ncm-ice-v2-damage-blink 2s ease-in-out infinite;
-}
-.ncm-app .ncm-ice__damage i { font-size: 10px; }
-
-
-/* ── Animation keyframes ── */
-
-@keyframes ncm-ice-v2-grid-drift {
-  0% { background-position: 0 0; }
-  100% { background-position: 24px 24px; }
-}
-@keyframes ncm-ice-v2-scan {
-  0% { top: -2px; opacity: 0; }
-  10% { opacity: 1; }
-  90% { opacity: 1; }
-  100% { top: 100%; opacity: 0; }
-}
-@keyframes ncm-ice-v2-icon-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(240,197,91,0.1), 0 0 20px rgba(240,197,91,0.05); }
-  50% { box-shadow: 0 0 0 8px rgba(240,197,91,0.05), 0 0 40px rgba(240,197,91,0.1); }
-}
-@keyframes ncm-ice-v2-ring-spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-@keyframes ncm-ice-v2-black-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.1), 0 0 20px rgba(239,68,68,0.08); }
-  50% { box-shadow: 0 0 0 10px rgba(239,68,68,0.05), 0 0 50px rgba(239,68,68,0.12); }
-}
-@keyframes ncm-ice-v2-damage-blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-}
-
-
-/* ── Animation gating ── */
-
-/* Reduced: pulses only, no grid/scan/ring */
-[data-ncm-animation="reduced"] .ncm-ice__grid,
-[data-ncm-animation="reduced"] .ncm-ice__scan { display: none; }
-[data-ncm-animation="reduced"] .ncm-ice__icon::before { animation: none; }
-
-/* Off: no animations at all */
-[data-ncm-animation="off"] .ncm-ice__grid,
-[data-ncm-animation="off"] .ncm-ice__scan { display: none; }
-[data-ncm-animation="off"] .ncm-ice__icon { animation: none; }
-[data-ncm-animation="off"] .ncm-ice__icon::before { animation: none; }
-[data-ncm-animation="off"] .ncm-ice__damage { animation: none; }
 
 
 /* ═══════════════════════════════════════════
-   §20  ICE OVERLAY — Breach Animation States
-   Multi-phase: Init → Result (Granted/Denied) → Dissolve/Cleanup
+   §20  BREACH ANIMATION STATES
+   CSS-driven, no DOM injection. Classes toggled by JS.
    ═══════════════════════════════════════════ */
 
-/* ── Phase 1: Breaching (init scan) ── */
+/* ── Breaching (init scan) ── */
 .ncm-ice--breaching .ncm-ice__scan {
-  animation-duration: 0.3s !important;
-  background: linear-gradient(90deg, transparent, rgba(0,212,230,0.5), transparent) !important;
+  animation-duration: 0.6s !important;
 }
 .ncm-ice--breaching .ncm-ice__grid {
-  animation-duration: 1s !important;
+  animation-duration: 1.5s !important;
   opacity: 0.8;
 }
 .ncm-ice--breaching .ncm-ice__icon {
-  animation: ncm-breach-icon-active 0.4s ease-in-out infinite !important;
-}
-.ncm-ice--breaching .ncm-ice__title {
-  opacity: 0.4;
-  transition: opacity 0.3s;
+  animation: ncm-breach-icon-pulse 0.6s ease-in-out infinite !important;
 }
 
-/* Decryption ring — absolutely centered over the icon */
-.ncm-ice__ring {
-  position: absolute;
-  z-index: 15; pointer-events: none;
-  width: 100px; height: 100px;
-  /* Will be positioned by JS relative to icon */
-}
-.ncm-ice__ring-svg {
-  width: 100%; height: 100%;
-  transform: rotate(-90deg);
-  filter: drop-shadow(0 0 4px currentColor);
-}
-.ncm-ice__ring-progress {
-  transition: stroke-dashoffset 0.4s ease-out, stroke 0.3s, filter 0.2s;
+/* Show the conic ring */
+.ncm-ice--breaching .ncm-ice__icon-wrap::before,
+.ncm-ice--breaching .ncm-ice__icon-wrap::after {
+  opacity: 1;
 }
 
-/* Status line — smooth phase transitions */
-.ncm-ice__status {
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 10px;
-  color: var(--ncm-secondary, #00D4E6);
-  text-transform: uppercase; letter-spacing: 0.08em;
-  position: relative; z-index: 10;
-  text-align: center;
-  transition: opacity 0.25s;
-  min-height: 16px;
-  margin-top: 4px;
+/* Animate conic fill */
+.ncm-ice--breaching .ncm-ice__icon-wrap::before {
+  animation: ncm-breach-ring-fill 3.2s ease-in-out forwards;
 }
-.ncm-ice--black .ncm-ice__status {
+
+/* Glow on icon wrap */
+.ncm-ice--breaching .ncm-ice__icon-wrap {
+  filter: drop-shadow(0 0 8px rgba(25,243,247,0.15));
+}
+.ncm-ice--black.ncm-ice--breaching .ncm-ice__icon-wrap {
+  filter: drop-shadow(0 0 8px rgba(239,68,68,0.2));
+}
+
+/* Collapse UI elements during breach */
+.ncm-ice--breaching .ncm-ice__title,
+.ncm-ice--breaching .ncm-ice__dv,
+.ncm-ice--breaching .ncm-ice__damage,
+.ncm-ice--breaching .ncm-ice__meta,
+.ncm-ice--breaching .ncm-ice__breach,
+.ncm-ice--breaching .ncm-ice__share-btn,
+.ncm-ice--breaching .ncm-ice__breach--gm,
+.ncm-ice--breaching .ncm-ice__attempts,
+.ncm-ice--breaching .ncm-ice__lockout {
+  opacity: 0 !important; transform: translateY(-4px);
+  pointer-events: none;
+  height: 0 !important; overflow: hidden; padding: 0 !important; margin: 0 !important;
+}
+
+/* Show status text */
+.ncm-ice--breaching .ncm-ice__status {
+  opacity: 1;
+  color: var(--ncm-secondary, #19f3f7);
+}
+.ncm-ice--black.ncm-ice--breaching .ncm-ice__status {
   color: #ff4444;
 }
+.ncm-ice--black.ncm-ice--breaching .ncm-ice__scan {
+  background: linear-gradient(90deg, transparent, rgba(239,68,68,0.4), transparent) !important;
+}
 
-/* ── Phase 2a: Granted (success) ── */
+/* ── Granted (success) ── */
 .ncm-ice--granted {
   animation: ncm-breach-flash-green 0.6s ease-out;
 }
-.ncm-ice--granted .ncm-ice__grid,
-.ncm-ice--granted .ncm-ice__scan,
-.ncm-ice--granted .ncm-ice__title,
-.ncm-ice--granted .ncm-ice__dv,
-.ncm-ice--granted .ncm-ice__meta,
-.ncm-ice--granted .ncm-ice__damage,
-.ncm-ice--granted .ncm-ice__attempts,
-.ncm-ice--granted .ncm-ice__breach {
-  opacity: 0; transition: opacity 0.3s;
-}
 .ncm-ice--granted .ncm-ice__icon {
+  border-color: rgba(52,211,153,0.4) !important;
   animation: ncm-breach-icon-unlock 0.6s ease-out forwards !important;
 }
 
+/* ── Dissolve ── */
 .ncm-ice--dissolve {
-  animation: ncm-breach-dissolve 0.9s ease-out forwards;
+  animation: ncm-breach-dissolve 1s ease-out forwards;
 }
 
-/* ── Phase 2b: Denied (failure) ── */
+/* ── Denied (failure) ── */
 .ncm-ice--denied {
   animation: ncm-breach-flash-red 0.5s ease-out, ncm-breach-shake 0.6s ease-out;
 }
 .ncm-ice--denied .ncm-ice__icon {
+  border-color: rgba(239,68,68,0.4) !important;
   animation: ncm-breach-icon-reject 0.5s ease-out !important;
 }
 
-/* ── Result overlays (injected by JS) ── */
+/* ── Result overlay ── */
 .ncm-ice__result {
-  position: absolute; inset: 0; z-index: 50;
+  position: absolute; inset: 0; z-index: 20;
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
   gap: 10px; pointer-events: none;
-  animation: ncm-breach-result-enter 0.5s ease-out;
+  opacity: 0; transition: opacity 0.4s;
 }
+.ncm-ice__result--visible { opacity: 1; }
 
 .ncm-ice__result-icon {
-  font-size: 36px;
-  animation: ncm-breach-icon-pop 0.4s ease-out;
+  font-size: 40px;
+  animation: ncm-breach-result-pop 0.5s cubic-bezier(0.16,1,0.3,1);
 }
 .ncm-ice__result-label {
   font-family: var(--ncm-font-title, 'Orbitron', sans-serif);
@@ -2249,74 +2245,73 @@
   opacity: 0.6;
 }
 
-.ncm-ice__result--granted .ncm-ice__result-icon { color: #34D399; }
+.ncm-ice__result--granted .ncm-ice__result-icon { color: var(--ncm-success, #34D399); }
 .ncm-ice__result--granted .ncm-ice__result-label {
-  color: #34D399;
+  color: var(--ncm-success, #34D399);
   text-shadow: 0 0 20px rgba(52,211,153,0.6), 0 0 50px rgba(52,211,153,0.2);
 }
-.ncm-ice__result--granted .ncm-ice__result-sub { color: #34D399; }
+.ncm-ice__result--granted .ncm-ice__result-sub { color: var(--ncm-success, #34D399); }
 
-.ncm-ice__result--denied .ncm-ice__result-icon { color: #EF4444; }
+.ncm-ice__result--denied .ncm-ice__result-icon { color: var(--ncm-danger, #EF4444); }
 .ncm-ice__result--denied .ncm-ice__result-label {
-  color: #EF4444;
+  color: var(--ncm-danger, #EF4444);
   text-shadow: 0 0 20px rgba(239,68,68,0.6), 0 0 50px rgba(239,68,68,0.2);
 }
-.ncm-ice__result--denied .ncm-ice__result-sub { color: #EF4444; }
+.ncm-ice__result--denied .ncm-ice__result-sub { color: var(--ncm-danger, #EF4444); }
 
-/* ── Damage splash (BLACK ICE) ── */
-.ncm-ice__damage-splash {
-  position: absolute; inset: 0; z-index: 60;
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  gap: 6px; pointer-events: none;
-  background: rgba(255,0,51,0.08);
-  animation: ncm-breach-damage-enter 0.4s ease-out;
-}
-.ncm-ice__damage-splash-icon {
-  font-size: 28px; color: #ff0033;
-  animation: ncm-breach-skull-pulse 0.8s ease-in-out infinite;
-}
-.ncm-ice__damage-splash-value {
-  font-family: var(--ncm-font-title, 'Orbitron', sans-serif);
-  font-weight: 700; font-size: 40px; color: #ff0033;
+.ncm-ice__result--damage .ncm-ice__result-icon { font-size: 32px; color: #ff0033; }
+.ncm-ice__result--damage .ncm-ice__result-label {
+  font-size: 44px; color: #ff0033;
   text-shadow: 0 0 30px rgba(255,0,51,0.8), 0 0 60px rgba(255,0,51,0.3);
-  animation: ncm-breach-dmg-value-pop 0.5s ease-out;
 }
-.ncm-ice__damage-splash-label {
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 9px; color: rgba(255,0,51,0.7);
-  text-transform: uppercase; letter-spacing: 0.15em;
-}
+.ncm-ice__result--damage .ncm-ice__result-sub { color: rgba(255,0,51,0.7); }
 
 
 /* ── Keyframes ── */
 
-@keyframes ncm-breach-icon-active {
+@keyframes ncm-ice-v2-grid-drift {
+  0% { background-position: 0 0; }
+  100% { background-position: 24px 24px; }
+}
+
+@keyframes ncm-ice-v2-scan {
+  0%, 100% { top: 0; opacity: 0; }
+  10% { opacity: 1; }
+  50% { top: 100%; opacity: 0.5; }
+  100% { top: 0; opacity: 0; }
+}
+
+@keyframes ncm-breach-icon-pulse {
   0%, 100% { filter: brightness(1); transform: scale(1); }
-  50% { filter: brightness(1.8); transform: scale(1.08); }
+  50% { filter: brightness(1.4); transform: scale(1.03); }
+}
+
+@keyframes ncm-breach-ring-fill {
+  0%   { --ncm-breach-progress: 0%; }
+  100% { --ncm-breach-progress: 100%; }
 }
 
 @keyframes ncm-breach-flash-green {
-  0% { box-shadow: inset 0 0 0 rgba(52,211,153,0); }
-  30% { box-shadow: inset 0 0 80px rgba(52,211,153,0.2); border-color: rgba(52,211,153,0.3); }
+  0%   { box-shadow: inset 0 0 0 rgba(52,211,153,0); }
+  30%  { box-shadow: inset 0 0 80px rgba(52,211,153,0.15); }
   100% { box-shadow: inset 0 0 0 rgba(52,211,153,0); }
 }
 
 @keyframes ncm-breach-icon-unlock {
-  0% { transform: scale(1); filter: brightness(1); }
-  40% { transform: scale(1.3); filter: brightness(2.5); }
+  0%   { transform: scale(1); filter: brightness(1); }
+  40%  { transform: scale(1.2); filter: brightness(2.5); }
   100% { transform: scale(1); filter: brightness(1); opacity: 0.3; }
 }
 
 @keyframes ncm-breach-dissolve {
-  0% { opacity: 1; filter: brightness(1); }
-  20% { filter: brightness(1.8) blur(1px); }
-  100% { opacity: 0; filter: brightness(3) blur(10px); transform: scale(1.05); }
+  0%   { opacity: 1; filter: brightness(1); }
+  20%  { filter: brightness(1.8) blur(1px); }
+  100% { opacity: 0; filter: brightness(3) blur(10px); transform: scale(1.04); }
 }
 
 @keyframes ncm-breach-flash-red {
-  0% { box-shadow: inset 0 0 0 rgba(239,68,68,0); }
-  20% { box-shadow: inset 0 0 100px rgba(239,68,68,0.25); border-color: rgba(239,68,68,0.5); }
+  0%   { box-shadow: inset 0 0 0 rgba(239,68,68,0); }
+  20%  { box-shadow: inset 0 0 100px rgba(239,68,68,0.2); }
   100% { box-shadow: inset 0 0 0 rgba(239,68,68,0); }
 }
 
@@ -2331,36 +2326,15 @@
 }
 
 @keyframes ncm-breach-icon-reject {
-  0% { transform: scale(1); filter: brightness(1); }
-  30% { transform: scale(1.2); filter: brightness(2) saturate(2); }
-  60% { transform: scale(0.9); }
+  0%   { transform: scale(1); filter: brightness(1); }
+  30%  { transform: scale(1.2); filter: brightness(2) saturate(2); }
+  60%  { transform: scale(0.9); }
   100% { transform: scale(1); filter: brightness(1); }
 }
 
-@keyframes ncm-breach-result-enter {
-  0% { opacity: 0; }
-  100% { opacity: 1; }
-}
-
-@keyframes ncm-breach-icon-pop {
-  0% { opacity: 0; transform: scale(0.3); }
-  60% { transform: scale(1.2); }
-  100% { opacity: 1; transform: scale(1); }
-}
-
-@keyframes ncm-breach-damage-enter {
-  0% { opacity: 0; }
-  100% { opacity: 1; }
-}
-
-@keyframes ncm-breach-skull-pulse {
-  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 6px rgba(255,0,51,0.4)); }
-  50% { transform: scale(1.15); filter: drop-shadow(0 0 12px rgba(255,0,51,0.7)); }
-}
-
-@keyframes ncm-breach-dmg-value-pop {
-  0% { opacity: 0; transform: scale(0.3); }
-  50% { transform: scale(1.15); }
+@keyframes ncm-breach-result-pop {
+  0%   { opacity: 0; transform: scale(0.3); }
+  60%  { transform: scale(1.15); }
   100% { opacity: 1; transform: scale(1); }
 }
 
@@ -2405,7 +2379,6 @@
   background: rgba(239,68,68,0.04);
   border: 1px solid rgba(239,68,68,0.12);
   position: relative; z-index: 1;
-  animation: ncm-ice-v2-damage-blink 2s ease-in-out infinite;
 }
 
 @keyframes ncm-breach-dot-pulse {
@@ -2413,6 +2386,14 @@
   50% { box-shadow: 0 0 0 4px rgba(240,197,91,0.1); }
 }
 
+/* Animation level gates */
+[data-ncm-animation="reduced"] .ncm-ice__grid,
+[data-ncm-animation="reduced"] .ncm-ice__scan { display: none; }
+[data-ncm-animation="reduced"] .ncm-ice__icon { animation: none !important; }
+[data-ncm-animation="off"] .ncm-ice__grid,
+[data-ncm-animation="off"] .ncm-ice__scan { display: none; }
+[data-ncm-animation="off"] .ncm-ice__icon { animation: none !important; }
+[data-ncm-animation="off"] .ncm-ice__damage { animation: none; }
 
 /* ═══════════════════════════════════════════
    §21  CONTACT BREACH DIALOG (.ncm-breach-dialog)

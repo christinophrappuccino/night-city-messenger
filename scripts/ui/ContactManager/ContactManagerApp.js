@@ -1656,207 +1656,122 @@ export class ContactManagerApp extends BaseApplication {
     return { skill: opts.skillName, luck: luckSpend };
   }
 
+
   // ═══════════════════════════════════════════════════════════
-  //  Breach Animation Sequence
+  //  Breach Animation Sequence (CSS-driven, no DOM injection)
   // ═══════════════════════════════════════════════════════════
 
   /**
-   * Phase 1: Breach initiation — overlay transitions to active scan mode.
-   * Terminal lines appear, scan accelerates, icon pulses faster.
-   * Duration: ~1.5s
+   * Phase 1: Breach initiation — add breaching class (CSS handles ring + collapse),
+   * cycle status text through phases.
+   * Duration: ~3.5s
    */
   async _playBreachInit(overlayEl, isBlackICE) {
     if (!overlayEl) return;
 
-    // Hide static elements (button, meta, attempts, damage, share, gm bypass, dv)
-    const hideEls = overlayEl.querySelectorAll('.ncm-ice__breach, .ncm-ice__meta, .ncm-ice__attempts, .ncm-ice__damage, .ncm-ice__breach--gm, .ncm-ice__share-btn, .ncm-ice__dv, .ncm-ice__title');
-    hideEls.forEach(el => { el.style.transition = 'opacity 0.4s'; el.style.opacity = '0'; el.style.pointerEvents = 'none'; });
-
-    // Add breaching class
     overlayEl.classList.add('ncm-ice--breaching');
 
-    // ── Inject decryption ring SVG below the icon ──
-    const iconEl = overlayEl.querySelector('.ncm-ice__icon');
-    if (!iconEl) return;
+    const status = overlayEl.querySelector('.ncm-ice__status');
+    if (!status) return;
 
-    let ring = overlayEl.querySelector('.ncm-ice__ring');
-    if (ring) ring.remove();
-
-    const color = isBlackICE ? '#ff4444' : '#19f3f7';
-    const bgColor = isBlackICE ? 'rgba(255,68,68,0.08)' : 'rgba(0,212,230,0.08)';
-    const segments = 8;
-    const radius = 43;
-    const circumference = 2 * Math.PI * radius;
-    const segLen = circumference / segments;
-    const gapLen = 4;
-
-    ring = document.createElement('div');
-    ring.className = 'ncm-ice__ring';
-    ring.innerHTML = `
-      <svg viewBox="0 0 100 100" class="ncm-ice__ring-svg">
-        <circle cx="50" cy="50" r="${radius}" fill="none" stroke="${bgColor}" stroke-width="2" />
-        <circle cx="50" cy="50" r="${radius}" fill="none" stroke="${color}" stroke-width="3"
-                stroke-dasharray="${segLen - gapLen} ${gapLen}"
-                stroke-dashoffset="${circumference}"
-                stroke-linecap="round"
-                class="ncm-ice__ring-progress" />
-      </svg>
-    `;
-    // Position ring absolutely centered over the icon
-    overlayEl.appendChild(ring);
-    const iconRect = iconEl.getBoundingClientRect();
-    const containerRect = overlayEl.getBoundingClientRect();
-    const iconCenterX = iconRect.left + iconRect.width / 2 - containerRect.left;
-    const iconCenterY = iconRect.top + iconRect.height / 2 - containerRect.top;
-    ring.style.left = `${iconCenterX - 50}px`;
-    ring.style.top = `${iconCenterY - 50}px`;
-
-    // ── Inject status line below the title ──
-    let status = overlayEl.querySelector('.ncm-ice__status');
-    if (status) status.remove();
-    status = document.createElement('div');
-    status.className = 'ncm-ice__status';
-    overlayEl.querySelector('.ncm-ice__title')?.after(status);
-
-    // ── Animate: fill ring segments progressively (~3.6s total) ──
-    const progressEl = ring.querySelector('.ncm-ice__ring-progress');
     const phases = isBlackICE
       ? ['Probing ICE barrier...', 'BLACK ICE countermeasures detected', 'Injecting exploit...', 'Decrypting...']
       : ['Probing ICE barrier...', 'Mapping encryption layers...', 'Injecting exploit...', 'Decrypting...'];
 
-    const totalDuration = 3600;
-    const stepTime = totalDuration / segments;
-
-    for (let i = 0; i < segments; i++) {
-      const filled = (i + 1) / segments;
-      const offset = circumference * (1 - filled);
-      progressEl.style.transition = `stroke-dashoffset ${stepTime * 0.7}ms ease-out`;
-      progressEl.style.strokeDashoffset = offset;
-
-      // Update status text at phase boundaries
-      const phaseIdx = Math.floor((i / segments) * phases.length);
-      if (status.textContent !== phases[phaseIdx]) {
-        status.style.opacity = '0';
-        await new Promise(r => setTimeout(r, 120));
-        status.textContent = phases[phaseIdx];
-        status.style.opacity = '1';
-      }
-
-      // Flash every other segment lock-in
-      if (i > 0 && i % 2 === 0) {
-        progressEl.style.filter = 'brightness(2)';
-        setTimeout(() => { progressEl.style.filter = ''; }, 150);
-      }
-
-      await new Promise(r => setTimeout(r, stepTime));
+    for (const text of phases) {
+      status.style.opacity = '0';
+      await new Promise(r => setTimeout(r, 150));
+      status.textContent = text;
+      status.style.opacity = '1';
+      await new Promise(r => setTimeout(r, 700));
     }
 
-    // Final flash — ring complete
-    progressEl.style.filter = 'brightness(2.5)';
+    // Final hold
+    status.style.opacity = '0';
+    await new Promise(r => setTimeout(r, 200));
     status.textContent = 'Resolving...';
+    status.style.opacity = '1';
     await new Promise(r => setTimeout(r, 500));
-    progressEl.style.filter = '';
   }
 
   /**
-   * Phase 2a: Breach SUCCESS — hex shatter + green flash + ACCESS GRANTED + dissolve.
-   * Duration: ~2s total
+   * Phase 2a: Breach SUCCESS — granted flash + result text + dissolve.
    */
   async _playBreachSuccess(overlayEl) {
     if (!overlayEl) return;
 
-    // Clean up breach init elements
-    overlayEl.querySelector('.ncm-ice__terminal')?.remove();
-    overlayEl.querySelector('.ncm-ice__status')?.remove();
+    overlayEl.classList.remove('ncm-ice--breaching');
 
-    // Flash the ring green before removing
-    const ringProgress = overlayEl.querySelector('.ncm-ice__ring-progress');
-    if (ringProgress) {
-      ringProgress.style.stroke = '#34D399';
-      ringProgress.style.filter = 'brightness(2.5) drop-shadow(0 0 8px rgba(52,211,153,0.6))';
+    // Clear status
+    const status = overlayEl.querySelector('.ncm-ice__status');
+    if (status) status.style.opacity = '0';
+
+    // Show result
+    const result = overlayEl.querySelector('.ncm-ice__result');
+    if (result) {
+      result.innerHTML = `
+        <div class="ncm-ice__result-icon"><i class="fas fa-lock-open"></i></div>
+        <div class="ncm-ice__result-label">Access Granted</div>
+        <div class="ncm-ice__result-sub">ICE barrier neutralized</div>
+      `;
+      result.className = 'ncm-ice__result ncm-ice__result--granted ncm-ice__result--visible';
     }
 
-    await new Promise(r => setTimeout(r, 300));
-    overlayEl.querySelector('.ncm-ice__ring')?.remove();
-
-    // Inject result overlay
-    const result = document.createElement('div');
-    result.className = 'ncm-ice__result ncm-ice__result--granted';
-    result.innerHTML = `
-      <div class="ncm-ice__result-icon"><i class="fas fa-lock-open"></i></div>
-      <div class="ncm-ice__result-label">ACCESS GRANTED</div>
-      <div class="ncm-ice__result-sub">ICE barrier neutralized</div>
-    `;
-    overlayEl.appendChild(result);
-
-    overlayEl.classList.remove('ncm-ice--breaching');
     overlayEl.classList.add('ncm-ice--granted');
-
-    await new Promise(r => setTimeout(r, 800));
-
-    // Dissolve the entire overlay
-    overlayEl.classList.add('ncm-ice--dissolve');
-
     await new Promise(r => setTimeout(r, 900));
+
+    overlayEl.classList.add('ncm-ice--dissolve');
+    await new Promise(r => setTimeout(r, 1000));
   }
 
   /**
-   * Phase 2b: Breach DENIED — ring shatters red + shake + ACCESS DENIED.
-   * If BLACK ICE, show dramatic damage splash.
+   * Phase 2b: Breach DENIED — red flash + shake + result text.
+   * BLACK ICE: swap to damage splash after delay.
    */
   async _playBreachDenied(overlayEl, blackIceResult) {
     if (!overlayEl) return;
 
-    // Clean up breach init elements
-    overlayEl.querySelector('.ncm-ice__terminal')?.remove();
-    overlayEl.querySelector('.ncm-ice__status')?.remove();
+    overlayEl.classList.remove('ncm-ice--breaching');
 
-    // Flash the ring red before removing
-    const ringProgress = overlayEl.querySelector('.ncm-ice__ring-progress');
-    if (ringProgress) {
-      ringProgress.style.stroke = '#EF4444';
-      ringProgress.style.filter = 'brightness(2) drop-shadow(0 0 8px rgba(239,68,68,0.6))';
+    // Clear status
+    const status = overlayEl.querySelector('.ncm-ice__status');
+    if (status) status.style.opacity = '0';
+
+    // Show denied result
+    const result = overlayEl.querySelector('.ncm-ice__result');
+    if (result) {
+      result.innerHTML = `
+        <div class="ncm-ice__result-icon"><i class="fas fa-shield-halved"></i></div>
+        <div class="ncm-ice__result-label">Access Denied</div>
+        <div class="ncm-ice__result-sub">ICE countermeasures hold</div>
+      `;
+      result.className = 'ncm-ice__result ncm-ice__result--denied ncm-ice__result--visible';
     }
 
-    await new Promise(r => setTimeout(r, 200));
-    overlayEl.querySelector('.ncm-ice__ring')?.remove();
-
-    // Inject result overlay
-    const result = document.createElement('div');
-    result.className = 'ncm-ice__result ncm-ice__result--denied';
-    result.innerHTML = `
-      <div class="ncm-ice__result-icon"><i class="fas fa-shield-halved"></i></div>
-      <div class="ncm-ice__result-label">ACCESS DENIED</div>
-      <div class="ncm-ice__result-sub">ICE countermeasures hold</div>
-    `;
-    overlayEl.appendChild(result);
-
-    overlayEl.classList.remove('ncm-ice--breaching');
     overlayEl.classList.add('ncm-ice--denied');
 
-    // BLACK ICE damage splash
-    if (blackIceResult?.damage) {
-      await new Promise(r => setTimeout(r, 600));
-      const dmg = document.createElement('div');
-      dmg.className = 'ncm-ice__damage-splash';
-      dmg.innerHTML = `
-        <div class="ncm-ice__damage-splash-icon"><i class="fas fa-skull-crossbones"></i></div>
-        <div class="ncm-ice__damage-splash-value">${blackIceResult.damage}</div>
-        <div class="ncm-ice__damage-splash-label">BLACK ICE DAMAGE</div>
+    // BLACK ICE: show damage splash
+    if (blackIceResult?.damage && result) {
+      await new Promise(r => setTimeout(r, 1200));
+
+      result.innerHTML = `
+        <div class="ncm-ice__result-icon"><i class="fas fa-skull-crossbones"></i></div>
+        <div class="ncm-ice__result-label">${blackIceResult.damage}</div>
+        <div class="ncm-ice__result-sub">BLACK ICE DAMAGE</div>
       `;
-      overlayEl.appendChild(dmg);
+      result.className = 'ncm-ice__result ncm-ice__result--damage ncm-ice__result--visible';
+      await new Promise(r => setTimeout(r, 2000));
+    } else {
+      await new Promise(r => setTimeout(r, 2000));
     }
 
-    await new Promise(r => setTimeout(r, 2000));
-
-    // Cleanup — restore overlay to idle state
+    // Cleanup — restore to idle state
     overlayEl.classList.remove('ncm-ice--denied');
-    overlayEl.querySelector('.ncm-ice__result')?.remove();
-    overlayEl.querySelector('.ncm-ice__damage-splash')?.remove();
-
-    // Restore hidden elements
-    const hiddenEls = overlayEl.querySelectorAll('.ncm-ice__breach, .ncm-ice__meta, .ncm-ice__attempts, .ncm-ice__damage, .ncm-ice__breach--gm, .ncm-ice__share-btn, .ncm-ice__dv, .ncm-ice__title');
-    hiddenEls.forEach(el => { el.style.opacity = ''; el.style.pointerEvents = ''; });
+    if (result) {
+      result.className = 'ncm-ice__result';
+      result.innerHTML = '';
+    }
+    if (status) status.textContent = '';
   }
 
   // ═══════════════════════════════════════════════════════════

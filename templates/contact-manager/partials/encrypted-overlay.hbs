@@ -1,41 +1,31 @@
 {{!--
-  Encrypted Overlay — ICE / BLACK ICE animated display (v5.1 redesign)
+  Encrypted Overlay — ICE / BLACK ICE animated display (v6 redesign)
   @file templates/contact-manager/partials/encrypted-overlay.hbs
   @module cyberpunkred-messenger
-  @description Animated overlay with drifting grid, scanning line, pulsing icon
-    with rotating dashed ring, large DV readout. BLACK ICE variant has faster
-    animations, red tint, and damage warning. All CSS-only, gated by animation
-    preference attribute.
-
-  @param {number}  encryptionDV       — Difficulty value for the hack check
-  @param {string}  encryptionSkill    — Required skill (e.g. "Interface")
-  @param {boolean} [blackIce]         — Whether this is BLACK ICE (lethal on failure)
-  @param {string}  [blackIceDamage]   — Damage formula (e.g. "3d6", "5d6")
-  @param {boolean} [isGM]             — Whether current user is GM (shows bypass)
-  @param {string}  [contactId]        — Contact ID (for force-decrypt data attribute)
-
-  @example
-    {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/encrypted-overlay.hbs"
-        encryptionDV=15 encryptionSkill="Interface" blackIce=blackIce
-        blackIceDamage=blackIceDamage isGM=../isGM contactId=id }}
+  @description Conic-gradient ring animation, no DOM injection needed.
+    Click target is the breach button only, not the entire overlay.
 --}}
 
 <div class="ncm-ice ncm-ice--{{#if blackIce}}black{{else}}standard{{/if}}"
-     data-action="breachContact" data-contact-id="{{contactId}}">
+     data-contact-id="{{contactId}}">
   <div class="ncm-ice__grid"></div>
   <div class="ncm-ice__scan"></div>
 
-  <div class="ncm-ice__icon">
-    {{#if icePortrait}}
-      <img src="{{icePortrait}}" alt="ICE" class="ncm-ice__portrait" />
-    {{else}}
-      <i class="fas fa-{{#if blackIce}}skull-crossbones{{else}}lock{{/if}}"></i>
-    {{/if}}
+  <div class="ncm-ice__icon-wrap">
+    <div class="ncm-ice__icon">
+      {{#if icePortrait}}
+        <img src="{{icePortrait}}" alt="ICE" class="ncm-ice__portrait" />
+      {{else}}
+        <i class="fas fa-{{#if blackIce}}skull-crossbones{{else}}lock{{/if}}"></i>
+      {{/if}}
+    </div>
   </div>
 
   <div class="ncm-ice__title">
     {{#if blackIce}}BLACK ICE Detected{{else}}ICE Protected{{/if}}
   </div>
+
+  <div class="ncm-ice__status"></div>
 
   <div class="ncm-ice__dv">
     <span class="ncm-ice__dv-label">Difficulty</span>
@@ -73,7 +63,7 @@
       <i class="fas fa-clock"></i> LOCKED OUT — System in cooldown
     </div>
   {{else}}
-    <button class="ncm-ice__breach">
+    <button class="ncm-ice__breach" data-action="breachContact" data-contact-id="{{contactId}}">
       <i class="fas fa-terminal"></i>
       {{#if blackIce}}Breach at Your Own Risk{{else}}Attempt Breach{{/if}}
     </button>
@@ -89,4 +79,7 @@
       <i class="fas fa-shield-halved"></i> GM Bypass
     </button>
   {{/if}}
+
+  {{!-- Result overlay (always in DOM, toggled via class) --}}
+  <div class="ncm-ice__result"></div>
 </div>
