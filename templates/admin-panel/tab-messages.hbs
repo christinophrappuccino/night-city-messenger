@@ -183,7 +183,7 @@
         <span class="ncm-msg-feed-col-headers__route">Route</span>
         <span class="ncm-msg-feed-col-headers__subject">Subject</span>
         <span class="ncm-msg-feed-col-headers__status">Status</span>
-        <span class="ncm-msg-feed-col-headers__time">Time</span>
+        <span class="ncm-msg-feed-col-headers__time">Date</span>
         <span class="ncm-msg-feed-col-headers__actions"></span>
       </div>
 
@@ -204,7 +204,10 @@
         <div class="ncm-msg-feed-row__status">
           <div class="ncm-msg-feed-status ncm-msg-feed-status--{{this.statusClass}}"><i class="fas fa-{{this.statusIcon}}"></i> {{this.statusLabel}}</div>
         </div>
-        <div class="ncm-msg-feed-row__time {{#if this.isRecent}}ncm-msg-feed-row__time--recent{{/if}}">{{this.relativeTime}}</div>
+        <div class="ncm-msg-feed-row__time {{#if this.isRecent}}ncm-msg-feed-row__time--recent{{/if}}">
+          <span class="ncm-msg-feed-row__time-date">{{this.shortDate}}</span>
+          <span class="ncm-msg-feed-row__time-rel">{{this.relativeTime}}</span>
+        </div>
         <div class="ncm-msg-feed-row__actions">
           <button class="ncm-admin-action-btn" data-action="openMsgInInbox" data-message-id="{{this.messageId}}" data-inbox-owner="{{this.inboxOwnerId}}" title="Open in Inbox"><i class="fas fa-external-link"></i></button>
           <button class="ncm-admin-action-btn ncm-admin-action-btn--danger" data-action="hardDeleteMessage" data-message-id="{{this.messageId}}" title="Delete"><i class="fas fa-trash"></i></button>

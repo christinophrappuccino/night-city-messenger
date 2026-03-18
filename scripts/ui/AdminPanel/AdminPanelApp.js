@@ -933,10 +933,18 @@ export class AdminPanelApp extends BaseApplication {
             statusClass = 'deleted';
             statusIcon = 'trash';
             statusLabel = 'Deleted';
+          } else if (isSentCopy) {
+            statusClass = 'sent';
+            statusIcon = 'paper-plane';
+            statusLabel = 'Sent';
           } else if (isRead) {
             statusClass = 'read';
             statusIcon = 'check-double';
             statusLabel = 'Read';
+          } else if (!isRead) {
+            statusClass = 'unread';
+            statusIcon = 'envelope';
+            statusLabel = 'Unread';
           }
 
           // Relative time
@@ -944,10 +952,12 @@ export class AdminPanelApp extends BaseApplication {
           const isRecent = rawTimestamp > 0 && (Date.now() - rawTimestamp) < 600000; // 10 min
 
           // Full timestamp in cyberpunk format
-          let fullTimestamp = '';
+          const fullTimestamp = timestamp ? formatCyberDate(timestamp) : '';
+          // Short date for feed row (just date portion)
+          let shortDate = '';
           if (timestamp) {
             const dt = new Date(timestamp);
-            fullTimestamp = `${String(dt.getDate()).padStart(2, '0')}.${String(dt.getMonth() + 1).padStart(2, '0')}.${dt.getFullYear()} // ${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`;
+            shortDate = `${String(dt.getDate()).padStart(2, '0')}.${String(dt.getMonth() + 1).padStart(2, '0')}`;
           }
 
           // Body preview (strip HTML, truncate)
@@ -983,6 +993,7 @@ export class AdminPanelApp extends BaseApplication {
             attachments,
             relativeTime,
             fullTimestamp,
+            shortDate,
             isRecent,
             unread: !isRead && !isSentCopy && !isDeleted,
             isSent: isSentCopy,
