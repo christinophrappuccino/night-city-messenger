@@ -102,6 +102,60 @@ export class SettingsManager {
       },
     });
 
+    // ─── Time Provider Settings ───
+
+    game.settings.register(MODULE_ID, 'timeProvider', {
+      name: 'NCM.Settings.TimeProvider.Name',
+      hint: 'How NCM determines in-game time. Auto-detect picks the best available module. Disguised runs real-time but displays a fictional date.',
+      scope: 'world',
+      config: true,
+      type: String,
+      default: 'auto',
+      choices: {
+        auto: 'Auto-Detect',
+        'simple-calendar': 'SimpleCalendar',
+        'world-time': 'Foundry World Time',
+        'real-time': 'Real-World Time',
+        'manual': 'Manual (GM Set)',
+        'disguised': 'Disguised Time',
+      },
+      onChange: (value) => {
+        const ts = game.nightcity?.timeService;
+        if (ts) {
+          ts._mode = value;
+          if (value === 'auto') ts._autoResolved = ts._detectBestProvider();
+          log.info(`TimeService: Mode changed via settings to ${value}`);
+        }
+      },
+    });
+
+    game.settings.register(MODULE_ID, 'disguisedBaseTime', {
+      name: 'Disguised Base Time',
+      hint: 'The fictional date/time that the disguised clock started from.',
+      scope: 'world',
+      config: false,
+      type: String,
+      default: '',
+    });
+
+    game.settings.register(MODULE_ID, 'disguisedAnchor', {
+      name: 'Disguised Anchor',
+      hint: 'Real-world timestamp (ms) when the disguised base was set.',
+      scope: 'world',
+      config: false,
+      type: Number,
+      default: 0,
+    });
+
+    game.settings.register(MODULE_ID, 'manualTime', {
+      name: 'Manual Time',
+      hint: 'The GM-set manual timestamp.',
+      scope: 'world',
+      config: false,
+      type: String,
+      default: '',
+    });
+
     game.settings.register(MODULE_ID, 'debugMode', {
       name: 'NCM.Settings.DebugMode.Name',
       hint: 'NCM.Settings.DebugMode.Hint',
