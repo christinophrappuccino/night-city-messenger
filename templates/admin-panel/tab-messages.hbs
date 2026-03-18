@@ -83,7 +83,7 @@
     {{!-- §3 — ACTIVITY FEED --}}
     <div class="ncm-section-title">
       <i class="fas fa-satellite-dish"></i> Message Activity
-      <span class="ncm-section-title__count">// {{msgFeedEntries.length}} entries</span>
+      <span class="ncm-section-title__count">// {{msgFeedShowing}} of {{msgFeedTotalCount}}</span>
     </div>
 
     {{!-- Toolbar --}}
@@ -191,6 +191,20 @@
       </div>
       {{/if}}
       {{/each}}
+
+      {{!-- Load More / Pagination Footer --}}
+      {{#if msgFeedHasMore}}
+      <div class="ncm-msg-feed-load-more" data-action="loadMoreMessages">
+        <i class="fas fa-chevron-down"></i> Show More
+        <span class="ncm-msg-feed-load-more__count">(showing {{msgFeedShowing}} of {{msgFeedTotalCount}})</span>
+      </div>
+      {{else}}
+      {{#if msgFeedEntries.length}}
+      <div class="ncm-msg-feed-footer">
+        <span>{{msgFeedShowing}} messages</span>
+      </div>
+      {{/if}}
+      {{/if}}
     </div>
     {{else}}
     <div class="ncm-admin-empty"><i class="fas fa-inbox"></i> No message activity yet.</div>

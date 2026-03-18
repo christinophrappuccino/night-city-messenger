@@ -75,6 +75,8 @@ export class AdminPanelApp extends BaseApplication {
   _expandedMessageId = null;
   /** @type {boolean} Actor filter dropdown open state */
   _msgActorDropdownOpen = false;
+  /** @type {number} How many feed entries to show (pagination) */
+  _msgFeedLimit = 20;
 
   // ── Shards tab state (Sprint 4.6) ──
   /** @type {Array<object>} In-memory shard activity log for session events */
@@ -158,6 +160,7 @@ export class AdminPanelApp extends BaseApplication {
       markAllRead: AdminPanelApp._onMarkAllRead,
       purgeOldMessages: AdminPanelApp._onPurgeOldMessages,
       msgBroadcast: AdminPanelApp._onMsgBroadcast,
+      loadMoreMessages: AdminPanelApp._onLoadMoreMessages,
 
       // Contacts actions
       openGMContacts: AdminPanelApp._onOpenGMContacts,
@@ -605,6 +608,9 @@ export class AdminPanelApp extends BaseApplication {
     if (this._activeTab !== 'messages') {
       return {
         msgFeedEntries: [],
+        msgFeedHasMore: false,
+        msgFeedTotalCount: 0,
+        msgFeedShowing: 0,
         msgQueueEntries: [],
         msgQueueCount: 0,
         msgSentToday: 0,
@@ -617,7 +623,9 @@ export class AdminPanelApp extends BaseApplication {
       };
     }
 
-    const feedEntries = this._gatherMessageActivity();
+    const feedResult = this._gatherMessageActivity();
+    const feedEntries = feedResult.entries;
+    const feedTotalFiltered = feedResult.totalFiltered;
     const queueEntries = this._gatherMessageQueue();
     const actorOptions = this._gatherMsgActorFilterOptions(feedEntries);
 
@@ -638,6 +646,9 @@ export class AdminPanelApp extends BaseApplication {
 
     return {
       msgFeedEntries: feedEntries,
+      msgFeedHasMore: feedTotalFiltered > feedEntries.length,
+      msgFeedTotalCount: feedTotalFiltered,
+      msgFeedShowing: feedEntries.length,
       msgQueueEntries: queueEntries,
       msgQueueCount: queueEntries.length,
       msgSentToday: sentToday,
@@ -801,8 +812,9 @@ export class AdminPanelApp extends BaseApplication {
       );
     }
 
-    // Cap at 50 for performance
-    return filtered.slice(0, 50);
+    // Track total before limiting (for "Load More" button)
+    const totalFiltered = filtered.length;
+    return { entries: filtered.slice(0, this._msgFeedLimit), totalFiltered };
   }
 
   /**
@@ -2578,6 +2590,7 @@ export class AdminPanelApp extends BaseApplication {
       const handler = this._msgSearchHandler || (this._msgSearchHandler =
         foundry.utils.debounce((e) => {
           this._msgFeedSearch = e.target.value;
+          this._msgFeedLimit = 20;
           this.render(true);
         }, 350)
       );
@@ -2863,11 +2876,8 @@ export class AdminPanelApp extends BaseApplication {
     const actorId = target.closest('[data-actor-id]')?.dataset.actorId;
     if (!actorId) return;
 
-    const actor = game.actors.get(actorId);
-    if (!actor) return;
-
-    game.nightcity?.openInbox?.(actor);
-    log.info(`Admin: Opening inbox for ${actor.name}`);
+    game.nightcity?.openInbox?.(actorId);
+    log.info(`Admin: Opening inbox for ${actorId}`);
   }
 
   static _onOpenAllInboxes(event, target) {
@@ -2877,7 +2887,7 @@ export class AdminPanelApp extends BaseApplication {
     ).slice(0, 4);
 
     for (const actor of actors) {
-      game.nightcity?.openInbox?.(actor);
+      game.nightcity?.openInbox?.(actor.id);
     }
   }
 
@@ -2941,6 +2951,15 @@ export class AdminPanelApp extends BaseApplication {
   static _onMsgFeedFilter(event, target) {
     const filter = target.dataset.filter || target.closest('[data-filter]')?.dataset.filter || 'all';
     this._msgFeedFilter = filter;
+    this._msgFeedLimit = 20; // Reset pagination on filter change
+    this.render(true);
+  }
+
+  static _onLoadMoreMessages(event, target) {
+    this._msgFeedLimit += 20;
+    // Save scroll
+    const content = this.element?.querySelector('.ncm-admin-content');
+    if (content) this._scrollPositions[this._activeTab] = content.scrollTop;
     this.render(true);
   }
 
@@ -2970,6 +2989,7 @@ export class AdminPanelApp extends BaseApplication {
     const actorId = target.closest('[data-actor-id]')?.dataset.actorId ?? '';
     this._msgFeedActorFilter = actorId;
     this._msgActorDropdownOpen = false;
+    this._msgFeedLimit = 20;
     this.render(true);
   }
 
