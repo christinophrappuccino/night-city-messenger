@@ -77,6 +77,10 @@ export class AdminPanelApp extends BaseApplication {
   _msgActorDropdownOpen = false;
   /** @type {number} How many feed entries to show (pagination) */
   _msgFeedLimit = 20;
+  /** @type {string} NPC quick-send search query */
+  _npcSendSearch = '';
+  /** @type {number} How many NPC send-as entries to show */
+  _npcSendLimit = 8;
 
   // ── Shards tab state (Sprint 4.6) ──
   /** @type {Array<object>} In-memory shard activity log for session events */
@@ -161,6 +165,8 @@ export class AdminPanelApp extends BaseApplication {
       purgeOldMessages: AdminPanelApp._onPurgeOldMessages,
       msgBroadcast: AdminPanelApp._onMsgBroadcast,
       loadMoreMessages: AdminPanelApp._onLoadMoreMessages,
+      npcQuickSend: AdminPanelApp._onNpcQuickSend,
+      loadMoreNpcs: AdminPanelApp._onLoadMoreNpcs,
 
       // Contacts actions
       openGMContacts: AdminPanelApp._onOpenGMContacts,
@@ -297,7 +303,7 @@ export class AdminPanelApp extends BaseApplication {
     const connections = this._gatherConnections();
 
     // ─── NPC Actors (Messages tab quick-send) ───
-    const npcActors = this._gatherNPCActors();
+    const npcSendData = this._gatherNPCActors();
 
     // ─── Player Actors ───
     const playerActors = this._gatherPlayerActors();
@@ -402,7 +408,10 @@ export class AdminPanelApp extends BaseApplication {
       connections,
 
       // Messages tab
-      npcActors,
+      npcSendEntries: npcSendData.entries,
+      npcSendTotalCount: npcSendData.totalCount,
+      npcSendHasMore: npcSendData.hasMore,
+      npcSendSearch: npcSendData.search,
       playerActors,
       scheduledEntries,
       ...this._gatherMessagesTabContext(stats),
@@ -557,24 +566,92 @@ export class AdminPanelApp extends BaseApplication {
   }
 
   /**
-   * Gather NPC actors for the quick-send grid.
-   * @returns {Array<object>}
+   * Gather ALL NPCs for the quick-send grid — master contacts + NPC actors.
+   * Includes search filtering and pagination.
+   * @returns {object} { entries, totalCount, hasMore, search }
    * @private
    */
   _gatherNPCActors() {
-    return game.actors
-      .filter(a => !a.hasPlayerOwner)
-      .filter(a => a.getFlag(MODULE_ID, 'email'))
-      .map(a => ({
-        id: a.id,
-        name: a.name,
-        img: a.img,
-        email: a.getFlag(MODULE_ID, 'email'),
-        initial: a.name?.charAt(0)?.toUpperCase() ?? '?',
+    const roleColors = {
+      fixer: '#d4a017', netrunner: '#00e5ff', runner: '#00e5ff',
+      corp: '#4a8ab5', exec: '#6ec1e4', solo: '#e04848',
+      tech: '#2ecc71', medtech: '#1abc9c', media: '#b87aff',
+      nomad: '#d4844a', lawman: '#6b8fa3', rocker: '#e05cb5',
+      ripperdoc: '#e06888', gang: '#cc4444', government: '#5a7fa5', ai: '#ff44cc',
+    };
+
+    const all = [];
+    const seenIds = new Set();
+
+    // ── Pass 1: Master contacts (non-player) ──
+    const contacts = this.masterContactService?.getAll() ?? [];
+    for (const c of contacts) {
+      if (!c.email) continue;
+      // Skip player-linked contacts
+      if (c.actorId) {
+        const actor = game.actors?.get(c.actorId);
+        if (actor?.hasPlayerOwner) continue;
+      }
+      const primaryId = c.actorId || c.id;
+      if (seenIds.has(primaryId)) continue;
+      seenIds.add(primaryId);
+      if (c.actorId) seenIds.add(c.actorId);
+      seenIds.add(c.id);
+
+      const roleLower = (c.role || '').toLowerCase();
+      all.push({
+        id: primaryId,
+        contactId: c.id,
+        name: c.name,
+        email: c.email,
+        initial: (c.name || '?').charAt(0).toUpperCase(),
+        color: roleColors[roleLower] || '#F65261',
+        portrait: c.portrait || null,
+        role: c.role || '',
+        isContact: true,
+      });
+    }
+
+    // ── Pass 2: NPC actors with emails NOT already in master contacts ──
+    for (const actor of game.actors ?? []) {
+      if (actor.hasPlayerOwner) continue;
+      if (seenIds.has(actor.id)) continue;
+      const email = actor.getFlag(MODULE_ID, 'email');
+      if (!email) continue;
+      seenIds.add(actor.id);
+
+      all.push({
+        id: actor.id,
+        contactId: null,
+        name: actor.name,
+        email,
+        initial: (actor.name || '?').charAt(0).toUpperCase(),
         color: '#F65261',
-        lastMessage: null, // TODO: Fetch last sent message preview
-      }))
-      .slice(0, 10); // Cap at 10 for grid space
+        portrait: actor.img && !actor.img.includes('mystery-man') ? actor.img : null,
+        role: '',
+        isContact: false,
+      });
+    }
+
+    // Sort alphabetically
+    all.sort((a, b) => a.name.localeCompare(b.name));
+
+    // Apply search
+    let filtered = all;
+    if (this._npcSendSearch) {
+      const q = this._npcSendSearch.toLowerCase();
+      filtered = filtered.filter(n =>
+        n.name.toLowerCase().includes(q) ||
+        n.email.toLowerCase().includes(q) ||
+        n.role.toLowerCase().includes(q)
+      );
+    }
+
+    const totalCount = filtered.length;
+    const entries = filtered.slice(0, this._npcSendLimit);
+    const hasMore = totalCount > entries.length;
+
+    return { entries, totalCount, hasMore, search: this._npcSendSearch };
   }
 
   /**
@@ -2785,10 +2862,14 @@ export class AdminPanelApp extends BaseApplication {
   }
 
   /**
-   * Wire up messages tab search input with debounced handler
-   * and click-outside-to-close for the actor filter dropdown.
+   * Wire up messages tab controls:
+   * - Feed search input (debounced)
+   * - NPC send-as search input (debounced)
+   * - Scheduled countdown ticking interval
+   * - Actor filter dropdown click-outside-to-close
    */
   _setupMessagesControls() {
+    // ── Feed search input ──
     const searchInput = this.element?.querySelector('.ncm-msg-feed-search__input');
     if (searchInput) {
       if (this._msgFeedSearch) {
@@ -2809,7 +2890,75 @@ export class AdminPanelApp extends BaseApplication {
       searchInput.addEventListener('input', handler);
     }
 
-    // Close actor dropdown when clicking outside
+    // ── NPC send-as search input ──
+    const npcSearch = this.element?.querySelector('.ncm-msg-npc-search__input');
+    if (npcSearch) {
+      if (this._npcSendSearch) {
+        npcSearch.value = this._npcSendSearch;
+        npcSearch.focus();
+        const len = this._npcSendSearch.length;
+        npcSearch.setSelectionRange(len, len);
+      }
+
+      const npcHandler = this._npcSearchHandler || (this._npcSearchHandler =
+        foundry.utils.debounce((e) => {
+          this._npcSendSearch = e.target.value;
+          this._npcSendLimit = 8;
+          this.render(true);
+        }, 350)
+      );
+      npcSearch.removeEventListener('input', npcHandler);
+      npcSearch.addEventListener('input', npcHandler);
+    }
+
+    // ── Scheduled countdown ticking ──
+    // Clear any previous interval
+    if (this._schedCountdownInterval) {
+      clearInterval(this._schedCountdownInterval);
+      this._schedCountdownInterval = null;
+    }
+
+    const countdownEls = this.element?.querySelectorAll('[data-delivery-time]');
+    if (countdownEls?.length) {
+      const ts = game.nightcity?.timeService;
+
+      this._schedCountdownInterval = setInterval(() => {
+        // Self-clean if tab switched or panel closed
+        const firstEl = this.element?.querySelector('[data-delivery-time]');
+        if (!firstEl || this._activeTab !== 'messages') {
+          clearInterval(this._schedCountdownInterval);
+          this._schedCountdownInterval = null;
+          return;
+        }
+
+        for (const el of this.element.querySelectorAll('[data-delivery-time]')) {
+          const deliveryIso = el.dataset.deliveryTime;
+          const useGameTime = el.dataset.useGameTime === 'true';
+
+          const nowIso = useGameTime
+            ? (ts?.getCurrentTime() ?? new Date().toISOString())
+            : new Date().toISOString();
+
+          const nowMs = new Date(nowIso).getTime();
+          const deliveryMs = new Date(deliveryIso).getTime();
+          const diffMs = Math.max(0, deliveryMs - nowMs);
+          const diffSec = Math.floor(diffMs / 1000);
+
+          const hours = Math.floor(diffSec / 3600);
+          const mins = Math.floor((diffSec % 3600) / 60);
+          const secs = diffSec % 60;
+          const countdown = `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+
+          el.textContent = countdown;
+
+          // Update soon class
+          const isSoon = diffMs < 5 * 60 * 1000;
+          el.classList.toggle('ncm-msg-sched-row__countdown--soon', isSoon);
+        }
+      }, 1000);
+    }
+
+    // ── Close actor dropdown when clicking outside ──
     if (this._msgActorDropdownOpen) {
       const closeDropdown = (e) => {
         if (!e.target.closest('.ncm-msg-actor-filter')) {
@@ -3113,9 +3262,53 @@ export class AdminPanelApp extends BaseApplication {
     const actor = game.actors.get(actorId);
     if (!actor) return;
 
-    // Open composer pre-filled with this NPC as sender
     game.nightcity?.openComposer?.({ fromActorId: actorId, fromName: actor.name });
     log.info(`Admin: Quick-send as ${actor.name}`);
+  }
+
+  /**
+   * Quick-send as NPC — handles both actor-linked and contact-only NPCs.
+   */
+  static _onNpcQuickSend(event, target) {
+    const el = target.closest('[data-npc-id]');
+    const npcId = el?.dataset.npcId;
+    const contactId = el?.dataset.contactId;
+    if (!npcId) return;
+
+    // Try as actor first
+    const actor = game.actors?.get(npcId);
+    if (actor) {
+      game.nightcity?.openComposer?.({ fromActorId: npcId, fromName: actor.name });
+      log.info(`Admin: Quick-send as actor ${actor.name}`);
+      return;
+    }
+
+    // Try as contact
+    const contact = contactId
+      ? game.nightcity?.masterContactService?.getContact(contactId)
+      : game.nightcity?.masterContactService?.getContact(npcId);
+    if (contact) {
+      if (contact.actorId) {
+        game.nightcity?.openComposer?.({ fromActorId: contact.actorId });
+      } else {
+        game.nightcity?.openComposer?.({
+          fromContact: {
+            id: contact.id,
+            name: contact.name,
+            email: contact.email,
+            portrait: contact.portrait || null,
+          },
+        });
+      }
+      log.info(`Admin: Quick-send as contact ${contact.name}`);
+    }
+  }
+
+  static _onLoadMoreNpcs(event, target) {
+    this._npcSendLimit += 8;
+    const content = this.element?.querySelector('.ncm-admin-content');
+    if (content) this._scrollPositions[this._activeTab] = content.scrollTop;
+    this.render(true);
   }
 
   static _onOpenComposer(event, target) {

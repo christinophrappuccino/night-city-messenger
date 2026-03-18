@@ -37,12 +37,22 @@
     <div class="ncm-msg-compose-row">
       {{!-- NPC Quick-Send --}}
       <div class="ncm-msg-compose-card" style="flex: 2;">
-        <div class="ncm-msg-compose-card__header"><i class="fas fa-user-secret"></i> Send as NPC</div>
-        {{#if npcActors.length}}
+        <div class="ncm-msg-compose-card__header">
+          <i class="fas fa-user-secret"></i> Send as NPC
+          <span class="ncm-msg-compose-card__count">{{npcSendTotalCount}}</span>
+        </div>
+        {{!-- Search --}}
+        <div class="ncm-msg-npc-search">
+          <i class="fas fa-magnifying-glass"></i>
+          <input type="text" class="ncm-msg-npc-search__input" placeholder="Search NPCs…" value="{{npcSendSearch}}">
+        </div>
+        {{#if npcSendEntries.length}}
         <div class="ncm-msg-npc-grid">
-          {{#each npcActors}}
-          <div class="ncm-msg-npc-chip" data-action="quickSend" data-actor-id="{{this.id}}">
-            <div class="ncm-msg-npc-chip__avatar" style="color: {{this.color}}; border-color: {{this.color}}40; background: {{this.color}}0a;">{{this.initial}}</div>
+          {{#each npcSendEntries}}
+          <div class="ncm-msg-npc-chip" data-action="npcQuickSend" data-npc-id="{{this.id}}" data-contact-id="{{this.contactId}}">
+            <div class="ncm-msg-npc-chip__avatar" style="color: {{this.color}}; border-color: {{this.color}}40; background: {{this.color}}0a;">
+              {{#if this.portrait}}<img src="{{this.portrait}}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">{{else}}{{this.initial}}{{/if}}
+            </div>
             <div class="ncm-msg-npc-chip__info">
               <span class="ncm-msg-npc-chip__name">{{this.name}}</span>
               <span class="ncm-msg-npc-chip__email">{{this.email}}</span>
@@ -50,9 +60,18 @@
           </div>
           {{/each}}
         </div>
+        {{#if npcSendHasMore}}
+        <div class="ncm-msg-npc-load-more" data-action="loadMoreNpcs">
+          <i class="fas fa-chevron-down"></i> Show More <span class="ncm-msg-npc-load-more__count">({{npcSendEntries.length}} of {{npcSendTotalCount}})</span>
+        </div>
+        {{/if}}
         {{else}}
         <div class="ncm-admin-empty" style="padding: 16px;">
-          <i class="fas fa-user-plus"></i> No NPC actors with emails configured.
+          {{#if npcSendSearch}}
+          <i class="fas fa-magnifying-glass"></i> No NPCs matching "{{npcSendSearch}}"
+          {{else}}
+          <i class="fas fa-user-plus"></i> No NPC contacts with emails configured.
+          {{/if}}
         </div>
         {{/if}}
       </div>
@@ -107,6 +126,7 @@
             <span class="ncm-msg-actor-dropdown__count">{{stats.totalMessages}}</span>
           </div>
           <div class="ncm-msg-actor-dropdown__sep"></div>
+          <div class="ncm-msg-actor-dropdown__scroll">
           {{#each msgActorFilterOptions}}
           {{#if this.isGroupLabel}}
           <div class="ncm-msg-actor-dropdown__group-label">{{this.label}}</div>
@@ -118,6 +138,7 @@
           </div>
           {{/if}}
           {{/each}}
+          </div>
         </div>
         {{/if}}
       </div>
@@ -220,7 +241,8 @@
     <div class="ncm-msg-sched-list">
       {{#each scheduledEntries}}
       <div class="ncm-msg-sched-row" data-schedule-id="{{this.scheduleId}}">
-        <div class="ncm-msg-sched-row__countdown {{#if this.isSoon}}ncm-msg-sched-row__countdown--soon{{/if}}">{{this.countdown}}</div>
+        <div class="ncm-msg-sched-row__countdown {{#if this.isSoon}}ncm-msg-sched-row__countdown--soon{{/if}}"
+             data-delivery-time="{{this.deliveryTime}}" data-use-game-time="{{this.useGameTime}}">{{this.countdown}}</div>
         <div class="ncm-msg-sched-row__sep"></div>
         <div class="ncm-msg-sched-row__route">
           <div class="ncm-msg-sched-row__from-to">
