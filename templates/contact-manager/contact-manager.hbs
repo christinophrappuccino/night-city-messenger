@@ -232,11 +232,13 @@
           {{!-- Scrollable Contact List --}}
           <div class="ncm-list-scroll">
             {{#each groups}}
-              {{!-- Group header (skip for ungrouped/flat) --}}
+              {{!-- Group header (skip for ungrouped/headerless groups) --}}
               {{#if ../hasGroups}}
-                {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/contact-group-header.hbs"
-                    groupKey=key groupName=name groupIcon=icon groupCount=contacts.length
-                    isCollapsed=isCollapsed isEncryptedGroup=isEncryptedGroup }}
+                {{#unless noHeader}}
+                  {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/contact-group-header.hbs"
+                      groupKey=key groupName=name groupIcon=icon groupCount=contacts.length
+                      isCollapsed=isCollapsed isEncryptedGroup=isEncryptedGroup }}
+                {{/unless}}
               {{/if}}
 
               {{!-- Contact items within group --}}

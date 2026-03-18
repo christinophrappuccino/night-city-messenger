@@ -441,16 +441,18 @@ export class ContactManagerApp extends BaseApplication {
 
     for (const contact of contacts) {
       if (contact.isEncrypted) continue;
-      const key = (contact[field] || '').trim().toLowerCase() || '_ungrouped';
+      const val = (contact[field] || '').trim();
+      const key = val.toLowerCase() || '_ungrouped';
       if (!groupMap.has(key)) {
         groupMap.set(key, {
           key,
-          name: contact[field]?.trim() || 'Ungrouped',
+          name: val || '',
           icon: field === 'role' ? (roleIcons[key] || 'fas fa-user') :
                 field === 'organization' ? 'fas fa-building' :
                 field === 'location' ? 'fas fa-location-dot' : 'fas fa-folder',
           contacts: [],
-          isCollapsed: this._collapsedGroups.has(key),
+          isCollapsed: key === '_ungrouped' ? false : this._collapsedGroups.has(key),
+          noHeader: key === '_ungrouped',
         });
       }
       groupMap.get(key).contacts.push(contact);
