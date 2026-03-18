@@ -515,6 +515,12 @@ export class ContactManagerApp extends BaseApplication {
     if (game.user.isGM) {
       this._setupTrustHoverPreview(this.element);
     }
+
+    // Play contact reveal animation if flagged (after breach success / GM decrypt)
+    if (this._pendingReveal) {
+      this._pendingReveal = false;
+      this._playContactReveal();
+    }
   }
 
   /**
@@ -1310,9 +1316,8 @@ export class ContactManagerApp extends BaseApplication {
     if (result.success) {
       // ── Phase 2a: SUCCESS — unlock + dissolve ──
       await this._playBreachSuccess(overlayEl);
+      this._pendingReveal = true;
       this.render();
-      // ── Phase 3: Reveal — staggered fade-in of decrypted contact ──
-      this._playContactReveal();
     } else if (result.error) {
       overlayEl.classList?.remove('ncm-ice--breaching');
       ui.notifications.error(result.error);
@@ -1377,8 +1382,8 @@ export class ContactManagerApp extends BaseApplication {
 
     const result = await breachService.forceDecrypt(this.actorId, contactId);
     if (result.success) {
+      this._pendingReveal = true;
       this.render();
-      this._playContactReveal();
     } else {
       ui.notifications.error(`Force decrypt failed: ${result.error}`);
     }
