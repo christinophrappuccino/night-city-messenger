@@ -269,10 +269,6 @@
   background: var(--ncm-bg-base, #12121a);
   min-width: 0;
 }
-/* Prevent scrollbar when detail shows ICE overlay */
-.ncm-app .ncm-split__detail:has(.ncm-ice) {
-  overflow-y: hidden;
-}
 
 
 /* ═══════════════════════════════════════════

@@ -1685,7 +1685,7 @@ export class ContactManagerApp extends BaseApplication {
     const color = isBlackICE ? '#ff4444' : '#19f3f7';
     const bgColor = isBlackICE ? 'rgba(255,68,68,0.08)' : 'rgba(0,212,230,0.08)';
     const segments = 8;
-    const radius = 52;
+    const radius = 43;
     const circumference = 2 * Math.PI * radius;
     const segLen = circumference / segments;
     const gapLen = 4;
@@ -1693,9 +1693,9 @@ export class ContactManagerApp extends BaseApplication {
     ring = document.createElement('div');
     ring.className = 'ncm-ice__ring';
     ring.innerHTML = `
-      <svg viewBox="0 0 120 120" class="ncm-ice__ring-svg">
-        <circle cx="60" cy="60" r="${radius}" fill="none" stroke="${bgColor}" stroke-width="2" />
-        <circle cx="60" cy="60" r="${radius}" fill="none" stroke="${color}" stroke-width="3"
+      <svg viewBox="0 0 100 100" class="ncm-ice__ring-svg">
+        <circle cx="50" cy="50" r="${radius}" fill="none" stroke="${bgColor}" stroke-width="2" />
+        <circle cx="50" cy="50" r="${radius}" fill="none" stroke="${color}" stroke-width="3"
                 stroke-dasharray="${segLen - gapLen} ${gapLen}"
                 stroke-dashoffset="${circumference}"
                 stroke-linecap="round"
