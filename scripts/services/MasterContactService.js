@@ -325,6 +325,7 @@ export class MasterContactService {
         actorId: contact.actorId,
         type: contact.type,
         role: contact.role || '',
+        folder: contact.folder || '',
 
         // ICE fields — always transfer so player sees encryption state
         encrypted: !!contact.encrypted,

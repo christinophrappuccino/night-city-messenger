@@ -53,6 +53,7 @@ function _normalizeContact(data) {
     breachLockoutUntil: data.breachLockoutUntil || null,
     favorite: !!data.favorite,
     role: data.role || '',
+    folder: data.folder || '',
     network: data.network || 'citinet',
     statusOverride: data.statusOverride || null,
 

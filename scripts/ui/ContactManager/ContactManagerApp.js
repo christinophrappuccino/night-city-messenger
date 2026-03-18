@@ -62,7 +62,7 @@ export class ContactManagerApp extends BaseApplication {
   // ── v5.1 Split View State ──
 
   /** @type {string} Group-by mode: 'none' | 'role' | 'organization' | 'location' */
-  _groupBy = 'none';
+  _groupBy = 'folder';
 
   /** @type {string} Sort mode: 'name' | 'recent' | 'trust' */
   _sortBy = 'name';
@@ -1907,7 +1907,7 @@ export class ContactManagerApp extends BaseApplication {
    * Cycle through groupBy options.
    */
   _cycleGroupBy() {
-    const modes = ['none', 'role', 'organization', 'location'];
+    const modes = ['folder', 'none', 'role', 'organization', 'location'];
     const idx = modes.indexOf(this._groupBy);
     this._groupBy = modes[(idx + 1) % modes.length];
     this.render();

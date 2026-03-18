@@ -209,6 +209,7 @@
           <div class="ncm-sort-bar">
             <span class="ncm-sort-bar__label">Group</span>
             <select class="ncm-sort-bar__select ncm-group-select">
+              <option value="folder" {{#if (eq groupBy 'folder')}}selected{{/if}}>Folder</option>
               <option value="none" {{#if (eq groupBy 'none')}}selected{{/if}}>None (A–Z)</option>
               <option value="role" {{#if (eq groupBy 'role')}}selected{{/if}}>Role</option>
               <option value="organization" {{#if (eq groupBy 'organization')}}selected{{/if}}>Organization</option>
