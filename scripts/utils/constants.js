@@ -463,6 +463,7 @@ export const TEMPLATES = Object.freeze({
   CONTACT_TRUST_METER:    `${T}/contact-manager/partials/trust-meter.hbs`,
   CONTACT_TRUST_DETAIL: `${T}/contact-manager/partials/trust-detail.hbs`,
   CONTACT_ENCRYPTED:      `${T}/contact-manager/partials/encrypted-overlay.hbs`,
+  CONTACT_ENCRYPTED_CARD: `${T}/contact-manager/partials/encrypted-card-overlay.hbs`,
   CONTACT_FORM:          `${T}/contact-manager/partials/contact-form.hbs`,
   CONTACT_DETAIL:        `${T}/contact-manager/partials/contact-detail.hbs`,
   CONTACT_QUICKDIAL:     `${T}/contact-manager/partials/contact-quickdial.hbs`,

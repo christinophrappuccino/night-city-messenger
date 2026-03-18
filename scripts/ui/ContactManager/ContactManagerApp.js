@@ -1702,15 +1702,21 @@ export class ContactManagerApp extends BaseApplication {
                 class="ncm-ice__ring-progress" />
       </svg>
     `;
-    // Insert after the icon in flex flow (not before/overlapping)
-    iconEl.after(ring);
+    // Position ring absolutely centered over the icon
+    overlayEl.appendChild(ring);
+    const iconRect = iconEl.getBoundingClientRect();
+    const containerRect = overlayEl.getBoundingClientRect();
+    const iconCenterX = iconRect.left + iconRect.width / 2 - containerRect.left;
+    const iconCenterY = iconRect.top + iconRect.height / 2 - containerRect.top;
+    ring.style.left = `${iconCenterX - 50}px`;
+    ring.style.top = `${iconCenterY - 50}px`;
 
-    // ── Inject status line below the ring ──
+    // ── Inject status line below the title ──
     let status = overlayEl.querySelector('.ncm-ice__status');
     if (status) status.remove();
     status = document.createElement('div');
     status.className = 'ncm-ice__status';
-    ring.after(status);
+    overlayEl.querySelector('.ncm-ice__title')?.after(status);
 
     // ── Animate: fill ring segments progressively (~3.6s total) ──
     const progressEl = ring.querySelector('.ncm-ice__ring-progress');
