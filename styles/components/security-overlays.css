@@ -2226,6 +2226,7 @@
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
   gap: 10px; pointer-events: none;
+  background: var(--ncm-bg-base, #12121a);
   opacity: 0; transition: opacity 0.4s;
 }
 .ncm-ice__result--visible { opacity: 1; }
