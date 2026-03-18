@@ -801,11 +801,15 @@ export class ContactManagerApp extends BaseApplication {
   // ═══════════════════════════════════════════════════════════
 
   _setupEventSubscriptions() {
-    this.subscribe(EVENTS.CONTACT_UPDATED, () => this._debouncedRender());
+    this.subscribe(EVENTS.CONTACT_UPDATED, () => {
+      if (!this._breachInProgress) this._debouncedRender();
+    });
     this.subscribe(EVENTS.CONTACT_SHARED, () => this.render());
     this.subscribe(EVENTS.CONTACT_TRUST_CHANGED, () => this.render());
     this.subscribe(EVENTS.CONTACT_TAGS_UPDATED, () => this.render());
-    this.subscribe(EVENTS.CONTACT_DECRYPTED, () => this.render());
+    this.subscribe(EVENTS.CONTACT_DECRYPTED, () => {
+      if (!this._breachInProgress) this.render();
+    });
     this.subscribe(EVENTS.CONTACT_BREACH_FAILED, () => {});
     this.subscribe(EVENTS.CONTACT_BLACK_ICE, () => {});
     this.subscribe(EVENTS.CONTACTS_REVERIFIED, () => {
@@ -1304,6 +1308,9 @@ export class ContactManagerApp extends BaseApplication {
     // Show breaching state on overlay
     const overlayEl = target.closest('.ncm-ice') || target;
 
+    // Prevent event-driven re-renders during animation
+    this._breachInProgress = true;
+
     // ── Phase 1: Breach initiation — terminal lines + accelerating scan ──
     await this._playBreachInit(overlayEl, contact.blackIce);
 
@@ -1316,15 +1323,18 @@ export class ContactManagerApp extends BaseApplication {
     if (result.success) {
       // ── Phase 2a: SUCCESS — unlock + dissolve ──
       await this._playBreachSuccess(overlayEl);
+      this._breachInProgress = false;
       this._pendingReveal = true;
       this.render();
     } else if (result.error) {
       overlayEl.classList?.remove('ncm-ice--breaching');
+      this._breachInProgress = false;
       ui.notifications.error(result.error);
       this.render();
     } else {
       // ── Phase 2b: FAILURE — corruption + denied ──
       await this._playBreachDenied(overlayEl, result.blackIce);
+      this._breachInProgress = false;
       this.render();
     }
   }
@@ -1380,7 +1390,9 @@ export class ContactManagerApp extends BaseApplication {
       return;
     }
 
+    this._breachInProgress = true;
     const result = await breachService.forceDecrypt(this.actorId, contactId);
+    this._breachInProgress = false;
     if (result.success) {
       this._pendingReveal = true;
       this.render();
