@@ -620,7 +620,6 @@ export class AdminPanelApp extends BaseApplication {
         msgFeedActorName: '',
         msgActorDropdownOpen: false,
         msgActorFilterOptions: [],
-        msgInboxes: [],
       };
     }
 
@@ -630,11 +629,16 @@ export class AdminPanelApp extends BaseApplication {
     const queueEntries = this._gatherMessageQueue();
     const actorOptions = this._gatherMsgActorFilterOptions(feedEntries);
 
-    // Resolve actor name for the filter display
+    // Resolve actor/contact name for the filter display
     let actorName = '';
     if (this._msgFeedActorFilter) {
       const actor = game.actors?.get(this._msgFeedActorFilter);
-      actorName = actor?.name ?? this._msgFeedActorFilter;
+      if (actor) {
+        actorName = actor.name;
+      } else {
+        const contact = this.masterContactService?.getContact(this._msgFeedActorFilter);
+        actorName = contact?.name ?? this._msgFeedActorFilter;
+      }
     }
 
     // Count sent today
@@ -659,7 +663,6 @@ export class AdminPanelApp extends BaseApplication {
       msgFeedActorName: actorName,
       msgActorDropdownOpen: this._msgActorDropdownOpen,
       msgActorFilterOptions: actorOptions,
-      msgInboxes: this._gatherAllInboxes(),
     };
   }
 
@@ -742,9 +745,11 @@ export class AdminPanelApp extends BaseApplication {
           let bodyPreview = body.replace(/<[^>]+>/g, '');
           if (bodyPreview.length > 300) bodyPreview = bodyPreview.slice(0, 300) + '...';
 
-          // Determine actor IDs for actor filter
+          // Determine actor/contact IDs for filter
           const fromActorId = flags.fromActorId || '';
           const toActorId = flags.toActorId || '';
+          const fromContactId = flags.fromContactId || '';
+          const toContactId = flags.toContactId || '';
 
           entries.push({
             messageId: msgId,
@@ -753,6 +758,8 @@ export class AdminPanelApp extends BaseApplication {
             toName: to,
             fromActorId,
             toActorId,
+            fromContactId,
+            toContactId,
             subject,
             bodyPreview,
             dirClass,
@@ -795,11 +802,13 @@ export class AdminPanelApp extends BaseApplication {
       filtered = filtered.filter(e => e.unread);
     }
 
-    // Actor filter
+    // Actor / Contact filter
     if (this._msgFeedActorFilter) {
       const actId = this._msgFeedActorFilter;
       filtered = filtered.filter(e =>
-        e.fromActorId === actId || e.toActorId === actId || e.inboxOwnerId === actId
+        e.fromActorId === actId || e.toActorId === actId ||
+        e.fromContactId === actId || e.toContactId === actId ||
+        e.inboxOwnerId === actId
       );
     }
 
@@ -861,56 +870,89 @@ export class AdminPanelApp extends BaseApplication {
   }
 
   /**
-   * Build actor filter dropdown options from feed entries.
-   * Groups by Players and NPCs, with message counts.
+   * Build actor/contact filter dropdown options from feed entries.
+   * Groups by Players, NPCs, and Contacts — with message counts.
    * @param {Array<object>} feedEntries - Unfiltered feed entries
    * @returns {Array<object>}
    * @private
    */
   _gatherMsgActorFilterOptions(feedEntries) {
-    // Count messages per actor ID
-    const actorCounts = new Map();
+    // Count messages per unique ID (actor or contact)
+    const idCounts = new Map();
+    const _inc = (id) => { if (id) idCounts.set(id, (idCounts.get(id) || 0) + 1); };
+
     for (const entry of feedEntries) {
-      if (entry.fromActorId) {
-        actorCounts.set(entry.fromActorId, (actorCounts.get(entry.fromActorId) || 0) + 1);
-      }
-      if (entry.toActorId && entry.toActorId !== entry.fromActorId) {
-        actorCounts.set(entry.toActorId, (actorCounts.get(entry.toActorId) || 0) + 1);
-      }
+      _inc(entry.fromActorId);
+      _inc(entry.toActorId);
+      _inc(entry.fromContactId);
+      _inc(entry.toContactId);
     }
 
     const players = [];
     const npcs = [];
+    const contacts = [];
+    const seen = new Set(); // Prevent duplicates (contact linked to actor)
 
-    for (const [actorId, count] of actorCounts) {
-      const actor = game.actors?.get(actorId);
+    // First pass: resolve actors
+    for (const [id, count] of idCounts) {
+      const actor = game.actors?.get(id);
       if (!actor) continue;
+      seen.add(id);
 
       const avatarColor = actor.hasPlayerOwner ? '#19f3f7' : '#F65261';
       const item = {
-        actorId,
+        actorId: id,
         name: actor.name,
         initial: (actor.name || '?').charAt(0).toUpperCase(),
         color: avatarColor,
         messageCount: count,
-        isActive: this._msgFeedActorFilter === actorId,
+        isActive: this._msgFeedActorFilter === id,
       };
 
       if (actor.hasPlayerOwner) players.push(item);
       else npcs.push(item);
     }
 
+    // Second pass: resolve master contacts (skip those already seen as actors)
+    for (const [id, count] of idCounts) {
+      if (seen.has(id)) continue;
+      const contact = this.masterContactService?.getContact(id);
+      if (!contact) continue;
+      seen.add(id);
+
+      // If this contact has a linked actor we already captured, skip
+      if (contact.actorId && seen.has(contact.actorId)) continue;
+
+      const roleLower = (contact.role || '').toLowerCase();
+      const roleColors = {
+        fixer: '#d4a017', netrunner: '#00e5ff', runner: '#00e5ff',
+        corp: '#4a8ab5', exec: '#6ec1e4', solo: '#e04848',
+        tech: '#2ecc71', medtech: '#1abc9c', media: '#b87aff',
+        nomad: '#d4844a', lawman: '#6b8fa3', rocker: '#e05cb5',
+      };
+
+      contacts.push({
+        actorId: id, // contactId used as the filter value
+        name: contact.name,
+        initial: (contact.name || '?').charAt(0).toUpperCase(),
+        color: roleColors[roleLower] || '#F65261',
+        messageCount: count,
+        isActive: this._msgFeedActorFilter === id,
+      });
+    }
+
     players.sort((a, b) => b.messageCount - a.messageCount);
     npcs.sort((a, b) => b.messageCount - a.messageCount);
+    contacts.sort((a, b) => b.messageCount - a.messageCount);
 
     const options = [];
     if (players.length) {
       options.push({ isGroupLabel: true, label: 'Players' });
       options.push(...players);
     }
-    if (npcs.length) {
+    if (npcs.length || contacts.length) {
       options.push({ isGroupLabel: true, label: 'NPCs' });
-      options.push(...npcs);
+      options.push(...npcs, ...contacts);
     }
 
     return options;

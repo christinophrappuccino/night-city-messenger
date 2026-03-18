@@ -282,34 +282,33 @@
     {{!-- §6 — INBOX MANAGEMENT --}}
     <div class="ncm-section-title">
       <i class="fas fa-boxes-stacked"></i> Inbox Management
-      {{#if msgInboxes.length}}<span class="ncm-section-title__count">{{msgInboxes.length}}</span>{{/if}}
       <button class="ncm-section-title__action" data-action="exportLogs"><i class="fas fa-file-export"></i> Export All</button>
     </div>
-    {{#if msgInboxes.length}}
+    {{#if stats.actorStats.length}}
     <div class="ncm-msg-inbox-grid">
-      {{#each msgInboxes}}
-      <div class="ncm-msg-inbox-card" data-action="openInbox" data-actor-id="{{this.inboxId}}">
+      {{#each stats.actorStats}}
+      <div class="ncm-msg-inbox-card" data-action="openInbox" data-actor-id="{{this.actorId}}">
         <div class="ncm-msg-inbox-card__avatar" style="color: {{this.avatarColor}}; border-color: {{this.avatarBorderColor}}; background: {{this.avatarColor}}0a;">
-          {{#if this.img}}<img src="{{this.img}}" alt="{{this.name}}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">{{else}}{{this.initial}}{{/if}}
+          {{#if this.actorImg}}<img src="{{this.actorImg}}" alt="{{this.actorName}}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">{{else}}{{this.initial}}{{/if}}
         </div>
         <div class="ncm-msg-inbox-card__info">
-          <span class="ncm-msg-inbox-card__name">{{this.name}}</span>
+          <span class="ncm-msg-inbox-card__name">{{this.actorName}}</span>
           <span class="ncm-msg-inbox-card__meta">
-            {{#if this.isPlayer}}<span><i class="fas fa-user"></i> {{this.ownerLabel}}</span>{{else}}<span style="color: var(--ncm-primary);"><i class="fas fa-user-secret"></i> {{this.ownerLabel}}</span>{{/if}}
+            {{#if this.hasPlayerOwner}}<span><i class="fas fa-user"></i> {{this.ownerName}}</span>{{else}}<span style="color: var(--ncm-primary);"><i class="fas fa-user-secret"></i> NPC</span>{{/if}}
             <span>{{this.totalMessages}} msgs</span>
           </span>
         </div>
         <div class="ncm-msg-inbox-card__count {{#if this.unreadMessages}}ncm-msg-inbox-card__count--alert{{/if}}">{{this.unreadMessages}}</div>
         <div class="ncm-msg-inbox-card__actions">
-          <button class="ncm-msg-inbox-card__action" data-action="openInbox" data-actor-id="{{this.inboxId}}" title="Open Inbox"><i class="fas fa-envelope-open"></i></button>
-          <button class="ncm-msg-inbox-card__action" data-action="markAllRead" data-actor-id="{{this.inboxId}}" title="Mark All Read"><i class="fas fa-check-double"></i></button>
-          <button class="ncm-msg-inbox-card__action" data-action="purgeOldMessages" data-actor-id="{{this.inboxId}}" title="Purge Old"><i class="fas fa-broom"></i></button>
+          <button class="ncm-msg-inbox-card__action" data-action="openInbox" data-actor-id="{{this.actorId}}" title="Open Inbox"><i class="fas fa-envelope-open"></i></button>
+          <button class="ncm-msg-inbox-card__action" data-action="markAllRead" data-actor-id="{{this.actorId}}" title="Mark All Read"><i class="fas fa-check-double"></i></button>
+          <button class="ncm-msg-inbox-card__action" data-action="purgeOldMessages" data-actor-id="{{this.actorId}}" title="Purge Old"><i class="fas fa-broom"></i></button>
         </div>
       </div>
       {{/each}}
     </div>
     {{else}}
-    <div class="ncm-admin-empty"><i class="fas fa-inbox"></i> No inboxes with messages yet.</div>
+    <div class="ncm-admin-empty"><i class="fas fa-inbox"></i> No actors with messages yet.</div>
     {{/if}}
 
     {{/if}}
