@@ -699,6 +699,15 @@ export function enrichContactForDisplay(contact, options = {}) {
     isFavorite: contact.favorite,
     isSelected: contact.id === options.selectedId,
 
+    // ICE portrait (custom image or actor image for BLACK ICE icon)
+    icePortrait: contact.encrypted && contact.blackIce
+      ? (contact.iceSource === 'custom' && contact.iceCustomPortrait
+          ? contact.iceCustomPortrait
+          : contact.iceSource === 'actor' && contact.iceActorId
+            ? (game.actors?.get(contact.iceActorId)?.img || '')
+            : '')
+      : '',
+
     // Trust detail segments
     trustSegmentsDetail: trustData.segmentsDetail,
 

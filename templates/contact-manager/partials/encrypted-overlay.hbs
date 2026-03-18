@@ -26,7 +26,11 @@
   <div class="ncm-ice__scan"></div>
 
   <div class="ncm-ice__icon">
-    <i class="fas fa-{{#if blackIce}}skull-crossbones{{else}}lock{{/if}}"></i>
+    {{#if icePortrait}}
+      <img src="{{icePortrait}}" alt="ICE" class="ncm-ice__portrait" />
+    {{else}}
+      <i class="fas fa-{{#if blackIce}}skull-crossbones{{else}}lock{{/if}}"></i>
+    {{/if}}
   </div>
 
   <div class="ncm-ice__title">

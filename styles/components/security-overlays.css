@@ -1922,6 +1922,11 @@
   width: 64px; height: 64px; border-radius: 16px;
   display: flex; align-items: center; justify-content: center;
   font-size: 26px; position: relative; z-index: 1;
+  overflow: hidden;
+}
+/* Portrait image inside ICE icon */
+.ncm-app .ncm-ice__portrait {
+  width: 100%; height: 100%; object-fit: cover; border-radius: 16px;
 }
 .ncm-app .ncm-ice--standard .ncm-ice__icon {
   background: rgba(240,197,91,0.06);
@@ -2106,3 +2111,383 @@
 [data-ncm-animation="off"] .ncm-ice__icon { animation: none; }
 [data-ncm-animation="off"] .ncm-ice__icon::before { animation: none; }
 [data-ncm-animation="off"] .ncm-ice__damage { animation: none; }
+
+
+/* ═══════════════════════════════════════════
+   §20  ICE OVERLAY — Breach Animation States
+   Applied by ContactManagerApp._playBreachSuccess / _playBreachDenied
+   ═══════════════════════════════════════════ */
+
+/* ── Breaching (scan in progress) ── */
+.ncm-ice--breaching .ncm-ice__scan {
+  animation-duration: 0.4s !important;
+  background: linear-gradient(90deg, transparent, rgba(0,212,230,0.4), transparent) !important;
+}
+.ncm-ice--breaching .ncm-ice__icon {
+  animation: ncm-breach-scan-pulse 0.5s ease-in-out infinite !important;
+}
+
+/* ── Granted (success) ── */
+.ncm-ice--granted {
+  animation: ncm-breach-flash-green 0.5s ease-out;
+}
+.ncm-ice--granted .ncm-ice__grid,
+.ncm-ice--granted .ncm-ice__scan,
+.ncm-ice--granted .ncm-ice__title,
+.ncm-ice--granted .ncm-ice__dv,
+.ncm-ice--granted .ncm-ice__meta,
+.ncm-ice--granted .ncm-ice__damage,
+.ncm-ice--granted .ncm-ice__breach { opacity: 0; transition: opacity 0.3s; }
+
+.ncm-ice--dissolve {
+  animation: ncm-breach-dissolve 0.9s ease-out forwards;
+}
+
+/* ── Denied (failure) ── */
+.ncm-ice--denied {
+  animation: ncm-breach-flash-red 0.4s ease-out, ncm-breach-shake 0.5s ease-out;
+}
+
+/* ── Result text overlays ── */
+.ncm-ice__result-text {
+  position: absolute; inset: 0; z-index: 50;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 8px;
+  font-family: var(--ncm-font-title, 'Orbitron', sans-serif);
+  font-weight: 700; font-size: 16px;
+  letter-spacing: 0.15em; text-transform: uppercase;
+  animation: ncm-breach-result-pop 0.4s ease-out;
+  pointer-events: none;
+}
+
+.ncm-ice__result-text--granted {
+  color: var(--ncm-success, #34D399);
+  text-shadow: 0 0 20px rgba(52,211,153,0.5), 0 0 40px rgba(52,211,153,0.2);
+}
+.ncm-ice__result-text--granted i { font-size: 28px; }
+
+.ncm-ice__result-text--denied {
+  color: var(--ncm-danger, #EF4444);
+  text-shadow: 0 0 20px rgba(239,68,68,0.5), 0 0 40px rgba(239,68,68,0.2);
+}
+.ncm-ice__result-text--denied i { font-size: 28px; }
+
+/* ── Damage splash (BLACK ICE) ── */
+.ncm-ice__damage-splash {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 60; pointer-events: none;
+  font-family: var(--ncm-font-title, 'Orbitron', sans-serif);
+  font-weight: 700; font-size: 32px;
+  color: #ff0033;
+  text-shadow: 0 0 30px rgba(255,0,51,0.8), 0 0 60px rgba(255,0,51,0.3);
+  animation: ncm-breach-damage-pop 0.5s ease-out forwards,
+             ncm-breach-damage-fade 2.5s ease-out 0.5s forwards;
+}
+.ncm-ice__damage-splash i { font-size: 24px; margin-right: 4px; }
+
+
+/* ── Keyframes ── */
+
+@keyframes ncm-breach-scan-pulse {
+  0%, 100% { filter: brightness(1); transform: scale(1); }
+  50% { filter: brightness(1.6); transform: scale(1.05); }
+}
+
+@keyframes ncm-breach-flash-green {
+  0% { box-shadow: inset 0 0 0 rgba(52,211,153,0); }
+  30% { box-shadow: inset 0 0 60px rgba(52,211,153,0.15); }
+  100% { box-shadow: inset 0 0 0 rgba(52,211,153,0); }
+}
+
+@keyframes ncm-breach-dissolve {
+  0% { opacity: 1; filter: brightness(1); }
+  30% { opacity: 0.8; filter: brightness(1.5) blur(1px); }
+  100% { opacity: 0; filter: brightness(2) blur(8px); transform: scale(1.03); }
+}
+
+@keyframes ncm-breach-flash-red {
+  0% { box-shadow: inset 0 0 0 rgba(239,68,68,0); }
+  30% { box-shadow: inset 0 0 80px rgba(239,68,68,0.2); }
+  100% { box-shadow: inset 0 0 0 rgba(239,68,68,0); }
+}
+
+@keyframes ncm-breach-shake {
+  0%, 100% { transform: translateX(0); }
+  15% { transform: translateX(-6px) rotate(-1deg); }
+  30% { transform: translateX(5px) rotate(0.5deg); }
+  45% { transform: translateX(-4px); }
+  60% { transform: translateX(3px); }
+  75% { transform: translateX(-1px); }
+}
+
+@keyframes ncm-breach-result-pop {
+  0% { opacity: 0; transform: scale(0.5); }
+  60% { opacity: 1; transform: scale(1.1); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes ncm-breach-damage-pop {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.3); }
+  100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+@keyframes ncm-breach-damage-fade {
+  0% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -70%) scale(1.2); }
+}
+
+
+/* ═══════════════════════════════════════════
+   §21  CONTACT BREACH DIALOG (.ncm-breach-dialog)
+   Themed dialog for contact ICE breach — lighter than data shard hack dialog
+   ═══════════════════════════════════════════ */
+
+/* ─── Window frame ─── */
+.ncm-breach-dialog,
+.app.dialog.ncm-breach-dialog,
+.dialog.window-app.ncm-breach-dialog {
+  background: #0a0a12 !important;
+  border: 1px solid #2a2a45 !important;
+  border-radius: 4px !important;
+  box-shadow: 0 0 30px rgba(0,0,0,0.6), 0 0 2px rgba(0,212,230,0.3) !important;
+  color: #c0c0d0 !important;
+  overflow: hidden !important;
+}
+.ncm-breach-dialog::after {
+  content: '' !important;
+  position: absolute !important; top: 0 !important; left: 0 !important; right: 0 !important;
+  height: 2px !important; z-index: 100 !important;
+  background: linear-gradient(90deg, transparent, #19f3f7 30%, #19f3f7 70%, transparent) !important;
+  pointer-events: none !important;
+}
+.ncm-bd-theme--black::after {
+  background: linear-gradient(90deg, transparent, #ff0033 30%, #ff0033 70%, transparent) !important;
+}
+.ncm-bd-theme--black {
+  box-shadow: 0 0 30px rgba(0,0,0,0.6), 0 0 2px rgba(255,0,51,0.3) !important;
+}
+
+/* ─── Window header ─── */
+.ncm-breach-dialog .window-header {
+  background: #08080e !important;
+  border-bottom: 1px solid #1a1a2e !important;
+  padding: 6px 12px !important;
+}
+.ncm-breach-dialog .window-header .window-title {
+  font-family: 'Rajdhani', sans-serif !important;
+  font-weight: 700 !important; font-size: 12px !important;
+  color: #8888a0 !important; text-transform: uppercase !important;
+  letter-spacing: 0.1em !important;
+}
+.ncm-breach-dialog .window-header .header-control {
+  color: #555570 !important;
+}
+
+/* ─── Content area ─── */
+.ncm-breach-dialog .dialog-content {
+  background: #0a0a12 !important;
+  padding: 0 !important; margin: 0 !important;
+}
+
+/* ─── Body ─── */
+.ncm-bd-body {
+  padding: 16px; display: flex; flex-direction: column; gap: 14px;
+  font-family: 'Rajdhani', sans-serif;
+}
+
+/* ─── Header ─── */
+.ncm-bd-header {
+  display: flex; align-items: center; gap: 12px;
+}
+.ncm-bd-header__icon {
+  width: 40px; height: 40px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; flex-shrink: 0;
+  background: rgba(0,212,230,0.06); border: 1px solid rgba(0,212,230,0.15);
+  color: #19f3f7;
+}
+.ncm-bd-header__icon--danger {
+  background: rgba(255,0,51,0.06); border-color: rgba(255,0,51,0.2);
+  color: #ff4444;
+}
+.ncm-bd-header__title {
+  font-weight: 700; font-size: 15px; color: #e0e0e8;
+}
+.ncm-bd-header__sub {
+  font-size: 11px; color: #555570; margin-top: 1px;
+}
+
+/* ─── Danger zone (BLACK ICE) ─── */
+.ncm-bd-danger {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; border-radius: 4px;
+  background: rgba(255,0,51,0.04);
+  border: 1px solid rgba(255,0,51,0.15);
+  animation: ncm-ice-v2-damage-blink 2s ease-in-out infinite;
+}
+.ncm-bd-danger__img {
+  width: 36px; height: 36px; border-radius: 50%;
+  border: 2px solid rgba(255,0,51,0.3);
+  object-fit: cover; flex-shrink: 0;
+}
+.ncm-bd-danger__icon {
+  width: 36px; height: 36px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(255,0,51,0.06); border: 2px solid rgba(255,0,51,0.3);
+  color: #ff4444; font-size: 16px; flex-shrink: 0;
+}
+.ncm-bd-danger__title {
+  font-weight: 700; font-size: 11px; color: #ff4444;
+  text-transform: uppercase; letter-spacing: 0.06em;
+}
+.ncm-bd-danger__sub {
+  font-size: 11px; color: rgba(255,68,68,0.7); margin-top: 2px;
+}
+.ncm-bd-danger__sub strong { color: #ff4444; font-weight: 700; }
+
+/* ─── Section labels ─── */
+.ncm-bd-section-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 8px; color: #555570;
+  text-transform: uppercase; letter-spacing: 0.12em;
+  display: flex; align-items: center; gap: 6px;
+}
+.ncm-bd-section-label i { font-size: 9px; color: #19f3f7; opacity: 0.5; }
+
+/* ─── Skill row ─── */
+.ncm-bd-skill__row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px; margin-top: 4px;
+  background: #0e0e18; border: 1px solid #1e1e30; border-radius: 3px;
+}
+.ncm-bd-skill__name {
+  font-weight: 700; font-size: 13px; color: #19f3f7;
+}
+.ncm-bd-skill__detail {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px; color: #8888a0; flex: 1;
+}
+.ncm-bd-skill__vs {
+  font-size: 9px; color: #555570; text-transform: uppercase;
+}
+.ncm-bd-skill__dc {
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 700; font-size: 14px; color: #e0e0e8;
+}
+
+/* ─── Luck gauge ─── */
+.ncm-bd-luck {
+  display: flex; align-items: center; gap: 6px; margin-top: 4px;
+}
+.ncm-bd-luck__adj {
+  all: unset !important;
+  width: 24px !important; height: 24px !important;
+  display: flex !important; align-items: center !important; justify-content: center !important;
+  background: #12121a !important; border: 1px solid #2a2a45 !important;
+  border-radius: 3px !important; color: #8888a0 !important;
+  font-size: 14px !important; cursor: pointer !important;
+  transition: all 0.15s !important;
+}
+.ncm-bd-luck__adj:hover {
+  color: #19f3f7 !important; border-color: rgba(25,243,247,0.3) !important;
+}
+.ncm-bd-luck__gauge {
+  display: flex; gap: 2px; flex: 1;
+}
+.ncm-bd-luck__seg {
+  flex: 1; height: 8px; background: #1a1a2e;
+  border-radius: 2px; transition: background 0.15s;
+}
+.ncm-bd-luck__seg--active { background: #19f3f7; }
+.ncm-bd-luck__val {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px; font-weight: 700; color: #19f3f7;
+  min-width: 20px; text-align: center;
+}
+.ncm-bd-luck__avail {
+  font-size: 8px; color: #555570; margin-left: auto;
+}
+
+/* ─── Odds gauge ─── */
+.ncm-bd-odds {
+  display: flex; flex-direction: column; gap: 4px;
+}
+.ncm-bd-odds__header {
+  display: flex; justify-content: space-between; align-items: center;
+}
+.ncm-bd-odds__label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 8px; color: #555570;
+  text-transform: uppercase; letter-spacing: 0.1em;
+}
+.ncm-bd-odds__pct {
+  font-family: 'Share Tech Mono', monospace;
+  font-weight: 700; font-size: 14px;
+}
+.ncm-bd-odds__pct.high { color: #34D399; }
+.ncm-bd-odds__pct.mid { color: #FBBF24; }
+.ncm-bd-odds__pct.low { color: #EF4444; }
+.ncm-bd-odds__track {
+  height: 6px; background: #1a1a2e; border-radius: 3px;
+  overflow: hidden;
+}
+.ncm-bd-odds__fill {
+  height: 100%; border-radius: 3px; transition: width 0.3s, background 0.3s;
+}
+.ncm-bd-odds__fill.high { background: #34D399; }
+.ncm-bd-odds__fill.mid { background: #FBBF24; }
+.ncm-bd-odds__fill.low { background: #EF4444; }
+
+/* ─── Breakdown ─── */
+.ncm-bd-breakdown {
+  display: flex; align-items: center; gap: 6px; margin-top: 2px;
+  font-family: 'Share Tech Mono', monospace; font-size: 10px;
+}
+.ncm-bd-val { font-weight: 700; color: #19f3f7; font-size: 12px; }
+.ncm-bd-op { color: #555570; }
+.ncm-bd-die { color: #8888a0; }
+.ncm-bd-vs { color: #e0e0e8; font-weight: 700; }
+.ncm-bd-luck-add { color: #34D399; font-size: 9px; }
+
+/* ─── Dialog buttons ─── */
+.ncm-breach-dialog .dialog-buttons {
+  background: #08080e !important;
+  border-top: 1px solid #1a1a2e !important;
+  padding: 8px 16px !important; gap: 8px !important;
+  display: flex !important;
+}
+.ncm-breach-dialog .dialog-buttons button {
+  font-family: 'Rajdhani', sans-serif !important;
+  font-weight: 700 !important; font-size: 11px !important;
+  text-transform: uppercase !important; letter-spacing: 0.06em !important;
+  padding: 8px 20px !important; border-radius: 3px !important;
+  cursor: pointer !important; transition: all 0.15s !important;
+  border: 1px solid !important;
+}
+.ncm-breach-dialog .dialog-buttons button[data-button="execute"] {
+  background: rgba(0,212,230,0.06) !important;
+  border-color: rgba(0,212,230,0.3) !important;
+  color: #19f3f7 !important;
+}
+.ncm-breach-dialog .dialog-buttons button[data-button="execute"]:hover {
+  background: rgba(0,212,230,0.12) !important;
+  box-shadow: 0 0 12px rgba(0,212,230,0.15) !important;
+}
+.ncm-bd-theme--black .dialog-buttons button[data-button="execute"] {
+  background: rgba(255,0,51,0.06) !important;
+  border-color: rgba(255,0,51,0.25) !important;
+  color: #ff4444 !important;
+}
+.ncm-bd-theme--black .dialog-buttons button[data-button="execute"]:hover {
+  background: rgba(255,0,51,0.12) !important;
+  box-shadow: 0 0 12px rgba(255,0,51,0.15) !important;
+}
+.ncm-breach-dialog .dialog-buttons button[data-button="cancel"] {
+  background: transparent !important;
+  border-color: #2a2a45 !important;
+  color: #555570 !important;
+}
+.ncm-breach-dialog .dialog-buttons button[data-button="cancel"]:hover {
+  color: #8888a0 !important; border-color: #3a3a5a !important;
+}

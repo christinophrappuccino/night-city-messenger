@@ -1017,6 +1017,7 @@ export class ContactManagerApp extends BaseApplication {
       location: formData.get('location')?.trim(),
       alias: formData.get('alias')?.trim(),
       role: formData.get('role')?.trim()?.toLowerCase(),
+      portrait: formData.get('portrait')?.trim() || '',
       tags: formData.get('tags')?.split(',').map(t => t.trim().toUpperCase()).filter(Boolean) || [],
       notes: formData.get('notes')?.trim(),
       type: formData.get('type') || 'npc',
@@ -1259,22 +1260,73 @@ export class ContactManagerApp extends BaseApplication {
     }
 
     const breachService = this.contactBreachService;
-    if (!breachService) {
+    const skillService = game.nightcity?.skillService;
+    if (!breachService || !skillService) {
       ui.notifications.error('Breach service not available.');
       return;
     }
 
-    const overlayEl = target.closest('.ncm-ice') || target.closest('.ncm-encrypted-overlay') || target;
-    overlayEl.classList?.add('ncm-encrypted-overlay--breaching');
+    // Get the contact data
+    const contact = this._contacts.find(c => c.id === contactId);
+    if (!contact || !contact.encrypted) return;
 
-    const result = await breachService.attemptBreach(this.actorId, contactId, actor, { luckSpend: 0 });
+    const skillName = contact.encryptionSkill || 'Interface';
+    const dc = contact.encryptionDV || 15;
 
-    overlayEl.classList?.remove('ncm-encrypted-overlay--breaching');
+    // Get the player's skill info
+    const availableSkills = skillService.getAvailableSkills(actor, [skillName]) ?? [];
+    const skill = availableSkills.find(s => s.name === skillName) || availableSkills[0];
+    const skillTotal = skill?.total ?? 0;
+    const availableLuck = skillService.getAvailableLuck(actor) ?? 0;
+
+    // ICE portrait
+    let icePortrait = '';
+    if (contact.blackIce) {
+      if (contact.iceSource === 'custom' && contact.iceCustomPortrait) {
+        icePortrait = contact.iceCustomPortrait;
+      } else if (contact.iceSource === 'actor' && contact.iceActorId) {
+        icePortrait = game.actors.get(contact.iceActorId)?.img || '';
+      }
+    }
+
+    // Show breach dialog
+    const dialogResult = await this._showBreachDialog({
+      dc,
+      skillName: skill?.name || skillName,
+      skillTotal,
+      skillStat: skill?.stat || '',
+      availableLuck,
+      isBlackICE: !!contact.blackIce,
+      blackIceDamage: contact.blackIceDamage || '3d6',
+      icePortrait,
+      actorName: actor.name,
+    });
+
+    if (!dialogResult) return;
+
+    // Show breaching state on overlay
+    const overlayEl = target.closest('.ncm-ice') || target;
+
+    // Brief scan animation before roll
+    overlayEl.classList?.add('ncm-ice--breaching');
+    await new Promise(r => setTimeout(r, 600));
+
+    // Execute breach
+    const result = await breachService.attemptBreach(
+      this.actorId, contactId, actor,
+      { luckSpend: dialogResult.luck, skillOverride: dialogResult.skill }
+    );
+
+    overlayEl.classList?.remove('ncm-ice--breaching');
 
     if (result.success) {
-      this.render();
+      // ── SUCCESS: Green flash + ACCESS GRANTED ──
+      this._playBreachSuccess(overlayEl, () => this.render());
     } else if (result.error) {
       ui.notifications.error(result.error);
+    } else {
+      // ── FAILURE: Red flash + ACCESS DENIED ──
+      this._playBreachDenied(overlayEl, result.blackIce);
     }
   }
 
@@ -1525,6 +1577,222 @@ export class ContactManagerApp extends BaseApplication {
       callback: (path) => { if (path) input.value = path; },
     });
     fp.browse();
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Breach Dialog + Animations
+  // ═══════════════════════════════════════════════════════════
+
+  /**
+   * Show a themed breach dialog with skill info, luck slider, odds gauge.
+   * Lighter than data shard's hack dialog — single skill, compact layout.
+   * @param {object} opts
+   * @returns {Promise<{skill: string, luck: number}|null>}
+   */
+  async _showBreachDialog(opts) {
+    let luckSpend = 0;
+    let cancelled = true;
+
+    const calcOdds = (total, luck, dc) => {
+      const needed = dc - total - luck;
+      if (needed <= 1) return 100;
+      if (needed > 10) return 0;
+      return Math.round(((10 - needed + 1) / 10) * 100);
+    };
+
+    const initOdds = calcOdds(opts.skillTotal, 0, opts.dc);
+    const oddsClass = initOdds >= 60 ? 'high' : initOdds >= 30 ? 'mid' : 'low';
+
+    // BLACK ICE danger zone
+    let dangerHTML = '';
+    if (opts.isBlackICE) {
+      const imgHTML = opts.icePortrait
+        ? `<img src="${opts.icePortrait}" alt="BLACK ICE" class="ncm-bd-danger__img" />`
+        : `<div class="ncm-bd-danger__icon"><i class="fas fa-skull-crossbones"></i></div>`;
+      dangerHTML = `
+        <div class="ncm-bd-danger">
+          ${imgHTML}
+          <div class="ncm-bd-danger__text">
+            <div class="ncm-bd-danger__title">BLACK ICE — Lethal Countermeasures</div>
+            <div class="ncm-bd-danger__sub">Failure deals <strong>${opts.blackIceDamage}</strong> damage directly.</div>
+          </div>
+        </div>`;
+    }
+
+    // Luck gauge
+    const maxLuck = opts.availableLuck || 0;
+    let luckHTML = '';
+    if (maxLuck > 0) {
+      const segs = Array.from({ length: Math.min(maxLuck, 10) }, (_, i) =>
+        `<div class="ncm-bd-luck__seg" data-seg="${i}"></div>`
+      ).join('');
+      luckHTML = `
+        <div class="ncm-bd-section-label"><i class="fas fa-clover"></i> LUCK BOOST <span class="ncm-bd-luck__avail">${maxLuck}</span></div>
+        <div class="ncm-bd-luck">
+          <button type="button" class="ncm-bd-luck__adj" data-adj="-1">&minus;</button>
+          <div class="ncm-bd-luck__gauge">${segs}</div>
+          <button type="button" class="ncm-bd-luck__adj" data-adj="+1">+</button>
+          <span class="ncm-bd-luck__val">0</span>
+        </div>`;
+    }
+
+    const content = `
+      <div class="ncm-bd-body">
+        <div class="ncm-bd-header">
+          <div class="ncm-bd-header__icon ${opts.isBlackICE ? 'ncm-bd-header__icon--danger' : ''}">
+            <i class="fas fa-${opts.isBlackICE ? 'skull-crossbones' : 'terminal'}"></i>
+          </div>
+          <div class="ncm-bd-header__info">
+            <div class="ncm-bd-header__title">Contact ICE Breach</div>
+            <div class="ncm-bd-header__sub">${opts.actorName} attempting intrusion</div>
+          </div>
+        </div>
+
+        ${dangerHTML}
+
+        <div class="ncm-bd-skill">
+          <div class="ncm-bd-section-label"><i class="fas fa-crosshairs"></i> SKILL CHECK</div>
+          <div class="ncm-bd-skill__row">
+            <span class="ncm-bd-skill__name">${opts.skillName}</span>
+            <span class="ncm-bd-skill__detail">${opts.skillStat ? opts.skillStat + ' ' : ''}${opts.skillTotal} + 1d10</span>
+            <span class="ncm-bd-skill__vs">vs</span>
+            <span class="ncm-bd-skill__dc">DV ${opts.dc}</span>
+          </div>
+        </div>
+
+        ${luckHTML}
+
+        <div class="ncm-bd-odds">
+          <div class="ncm-bd-odds__header">
+            <span class="ncm-bd-odds__label">Success Probability</span>
+            <span class="ncm-bd-odds__pct ${oddsClass}" data-odds-pct>${initOdds}%</span>
+          </div>
+          <div class="ncm-bd-odds__track">
+            <div class="ncm-bd-odds__fill ${oddsClass}" data-odds-fill style="width:${initOdds}%;"></div>
+          </div>
+          <div class="ncm-bd-breakdown" data-breakdown>
+            <span class="ncm-bd-val">${opts.skillTotal}</span>
+            <span class="ncm-bd-op">+</span>
+            <span class="ncm-bd-die">1d10</span>
+            <span class="ncm-bd-op">vs</span>
+            <span class="ncm-bd-vs">DV ${opts.dc}</span>
+          </div>
+        </div>
+      </div>`;
+
+    const themeClass = opts.isBlackICE ? 'ncm-bd-theme--black' : 'ncm-bd-theme--cyan';
+
+    await new Promise(resolve => {
+      const d = new Dialog({
+        title: opts.isBlackICE ? 'BLACK ICE Breach' : 'ICE Breach',
+        content,
+        buttons: {
+          execute: {
+            icon: `<i class="fas fa-${opts.isBlackICE ? 'skull-crossbones' : 'bolt'}"></i>`,
+            label: opts.isBlackICE ? 'Risk Breach' : 'Breach',
+            callback: () => { cancelled = false; },
+          },
+          cancel: {
+            icon: '<i class="fas fa-times"></i>',
+            label: 'Abort',
+          },
+        },
+        default: 'cancel',
+        close: () => resolve(),
+        render: (html) => {
+          const jq = html.closest ? html : $(html);
+          const dialog = jq.closest('.dialog, .window-app');
+          dialog.addClass(`ncm-breach-dialog ${themeClass}`);
+
+          const updateOdds = () => {
+            const odds = calcOdds(opts.skillTotal, luckSpend, opts.dc);
+            const cls = odds >= 60 ? 'high' : odds >= 30 ? 'mid' : 'low';
+            jq.find('[data-odds-pct]').text(odds + '%').removeClass('high mid low').addClass(cls);
+            jq.find('[data-odds-fill]').css('width', odds + '%').removeClass('high mid low').addClass(cls);
+            jq.find('.ncm-bd-luck__val').text(luckSpend);
+
+            const totalWithLuck = opts.skillTotal + luckSpend;
+            jq.find('[data-breakdown]').html(
+              `<span class="ncm-bd-val">${totalWithLuck}</span>` +
+              (luckSpend > 0 ? `<span class="ncm-bd-luck-add">+${luckSpend} luck</span>` : '') +
+              `<span class="ncm-bd-op">+</span><span class="ncm-bd-die">1d10</span>` +
+              `<span class="ncm-bd-op">vs</span><span class="ncm-bd-vs">DV ${opts.dc}</span>`
+            );
+
+            jq.find('.ncm-bd-luck__seg').each(function(i) {
+              $(this).toggleClass('ncm-bd-luck__seg--active', i < luckSpend);
+            });
+          };
+
+          jq.find('.ncm-bd-luck__adj').on('click', function() {
+            const adj = parseInt(this.dataset.adj);
+            luckSpend = Math.max(0, Math.min(maxLuck, luckSpend + adj));
+            updateOdds();
+          });
+        },
+      });
+      d.render(true);
+    });
+
+    if (cancelled) return null;
+    return { skill: opts.skillName, luck: luckSpend };
+  }
+
+  /**
+   * Play breach success animation on the ICE overlay.
+   * Green flash + "ACCESS GRANTED" → then callback to re-render.
+   */
+  _playBreachSuccess(overlayEl, onComplete) {
+    if (!overlayEl) { onComplete?.(); return; }
+
+    let granted = overlayEl.querySelector('.ncm-ice__result-text');
+    if (!granted) {
+      granted = document.createElement('div');
+      granted.className = 'ncm-ice__result-text ncm-ice__result-text--granted';
+      granted.innerHTML = '<i class="fas fa-lock-open"></i> ACCESS GRANTED';
+      overlayEl.appendChild(granted);
+    }
+
+    overlayEl.classList.add('ncm-ice--granted');
+
+    setTimeout(() => {
+      overlayEl.classList.add('ncm-ice--dissolve');
+    }, 500);
+
+    setTimeout(() => {
+      onComplete?.();
+    }, 1400);
+  }
+
+  /**
+   * Play breach denied animation on the ICE overlay.
+   * Red flash + shake + "ACCESS DENIED". If BLACK ICE, show damage number.
+   */
+  _playBreachDenied(overlayEl, blackIceResult) {
+    if (!overlayEl) return;
+
+    let denied = overlayEl.querySelector('.ncm-ice__result-text');
+    if (denied) denied.remove();
+
+    denied = document.createElement('div');
+    denied.className = 'ncm-ice__result-text ncm-ice__result-text--denied';
+    denied.innerHTML = '<i class="fas fa-shield-halved"></i> ACCESS DENIED';
+    overlayEl.appendChild(denied);
+
+    overlayEl.classList.add('ncm-ice--denied');
+
+    if (blackIceResult?.damage) {
+      const dmg = document.createElement('div');
+      dmg.className = 'ncm-ice__damage-splash';
+      dmg.innerHTML = `<i class="fas fa-bolt"></i> ${blackIceResult.damage} DMG`;
+      overlayEl.appendChild(dmg);
+      setTimeout(() => dmg.remove(), 3000);
+    }
+
+    setTimeout(() => {
+      overlayEl.classList.remove('ncm-ice--denied');
+      denied?.remove();
+    }, 2000);
   }
 
   // ═══════════════════════════════════════════════════════════
