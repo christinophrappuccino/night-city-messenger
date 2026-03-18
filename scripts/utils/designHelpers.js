@@ -733,6 +733,7 @@ export function enrichContactForDisplay(contact, options = {}) {
       contact.id === options.selectedId ? 'ncm-card--selected' : '',
       contact.burned ? 'ncm-card--burned' : '',
       contact.encrypted ? 'ncm-card--encrypted' : '',
+      contact.encrypted && contact.blackIce ? 'ncm-card--blackice' : '',
     ].filter(Boolean).join(' '),
 
     listClasses: [

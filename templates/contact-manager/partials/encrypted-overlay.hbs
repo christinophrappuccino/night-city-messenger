@@ -79,6 +79,10 @@
     </button>
   {{/if}}
 
+  <button class="ncm-ice__share-btn" data-action="shareContact" data-contact-id="{{contactId}}">
+    <i class="fas fa-share-nodes"></i> Share Contact (ICE intact)
+  </button>
+
   {{#if isGM}}
     <button class="ncm-ice__breach ncm-ice__breach--gm"
             data-action="forceDecrypt" data-contact-id="{{contactId}}">

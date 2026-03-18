@@ -1616,6 +1616,89 @@
 
 
 /* ─────────────────────────────────────────
+   GRID VIEW — Burned Card → Gold/Accent Override
+   (Burned = compromised identity, amber warning tone)
+   ───────────────────────────────────────── */
+
+.ncm-app .ncm-card--burned {
+  border-color: rgba(240, 197, 91, 0.3) !important;
+  background:
+    repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(240,197,91,0.02) 2px, rgba(240,197,91,0.02) 4px),
+    rgba(240, 197, 91, 0.04) !important;
+  box-shadow:
+    inset 0 0 20px rgba(240, 197, 91, 0.06),
+    inset 0 0 40px rgba(240, 197, 91, 0.03),
+    0 0 8px rgba(240, 197, 91, 0.05) !important;
+}
+.ncm-app .ncm-card--burned::before {
+  background: var(--ncm-accent, #F0C55B) !important;
+  box-shadow: 0 0 6px rgba(240, 197, 91, 0.4) !important;
+}
+.ncm-app .ncm-card--burned::after {
+  color: rgba(240, 197, 91, 0.10) !important;
+  text-shadow: 0 0 1px rgba(240, 197, 91, 0.15) !important;
+  -webkit-text-stroke: 1px rgba(240, 197, 91, 0.06) !important;
+  background:
+    repeating-linear-gradient(-45deg, transparent, transparent 8px, rgba(240,197,91,0.03) 8px, rgba(240,197,91,0.03) 9px) !important;
+}
+.ncm-app .ncm-card--burned .ncm-card__avatar {
+  border-color: rgba(240, 197, 91, 0.4) !important;
+}
+.ncm-app .ncm-card--burned .ncm-card__avatar::after {
+  background: rgba(240, 197, 91, 0.12) !important;
+}
+.ncm-app .ncm-card--burned .ncm-card__name {
+  text-decoration-color: rgba(240, 197, 91, 0.5) !important;
+  color: rgba(240, 197, 91, 0.6) !important;
+}
+.ncm-app .ncm-card--burned .ncm-card__email {
+  color: rgba(240, 197, 91, 0.3) !important;
+}
+
+
+/* ─────────────────────────────────────────
+   GRID VIEW — BLACK ICE Card (Red Variant)
+   (BLACK ICE = lethal, aggressive red threat tone)
+   ───────────────────────────────────────── */
+
+.ncm-app .ncm-card--blackice {
+  border-color: rgba(239, 68, 68, 0.3) !important;
+  background:
+    repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(239,68,68,0.02) 2px, rgba(239,68,68,0.02) 4px),
+    rgba(239, 68, 68, 0.04) !important;
+  box-shadow:
+    inset 0 0 20px rgba(239, 68, 68, 0.08),
+    inset 0 0 40px rgba(239, 68, 68, 0.04),
+    0 0 8px rgba(239, 68, 68, 0.06) !important;
+  animation: ncm-blackice-border-pulse 2s ease-in-out infinite !important;
+}
+
+@keyframes ncm-blackice-border-pulse {
+  0%, 100% {
+    border-color: rgba(239, 68, 68, 0.25);
+    box-shadow: inset 0 0 15px rgba(239,68,68,0.05), 0 0 6px rgba(239,68,68,0.04);
+  }
+  50% {
+    border-color: rgba(239, 68, 68, 0.45);
+    box-shadow: inset 0 0 25px rgba(239,68,68,0.1), 0 0 12px rgba(239,68,68,0.08);
+  }
+}
+
+/* Left accent bar — danger red */
+.ncm-app .ncm-card--blackice::before {
+  background: var(--ncm-danger, #EF4444) !important;
+  box-shadow: 0 0 6px rgba(239, 68, 68, 0.5) !important;
+}
+
+/* Hex grid — red tint */
+.ncm-app .ncm-card--blackice::after {
+  background-image:
+    repeating-linear-gradient(0deg, transparent, transparent 10px, rgba(239,68,68,0.03) 10px, rgba(239,68,68,0.03) 11px),
+    repeating-linear-gradient(90deg, transparent, transparent 10px, rgba(239,68,68,0.02) 10px, rgba(239,68,68,0.02) 11px) !important;
+}
+
+
+/* ─────────────────────────────────────────
    OVERLAY — ICE Fortress
    ───────────────────────────────────────── */
 

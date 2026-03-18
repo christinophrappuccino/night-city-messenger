@@ -1778,37 +1778,88 @@ export class ContactManagerApp extends BaseApplication {
   async _playBreachInit(overlayEl, isBlackICE) {
     if (!overlayEl) return;
 
-    // Hide static elements (button, meta, attempts, lockout, dv)
-    const hideEls = overlayEl.querySelectorAll('.ncm-ice__breach, .ncm-ice__meta, .ncm-ice__attempts, .ncm-ice__damage, .ncm-ice__breach--gm');
+    // Hide static elements (button, meta, attempts, damage, share, gm bypass)
+    const hideEls = overlayEl.querySelectorAll('.ncm-ice__breach, .ncm-ice__meta, .ncm-ice__attempts, .ncm-ice__damage, .ncm-ice__breach--gm, .ncm-ice__share-btn, .ncm-ice__dv');
     hideEls.forEach(el => { el.style.transition = 'opacity 0.3s'; el.style.opacity = '0'; el.style.pointerEvents = 'none'; });
 
-    // Add breaching class (fast scan, pulse)
+    // Add breaching class
     overlayEl.classList.add('ncm-ice--breaching');
 
-    // Inject terminal line container
-    let terminal = overlayEl.querySelector('.ncm-ice__terminal');
-    if (!terminal) {
-      terminal = document.createElement('div');
-      terminal.className = 'ncm-ice__terminal';
-      overlayEl.appendChild(terminal);
+    // ── Inject decryption ring SVG around the icon ──
+    const iconEl = overlayEl.querySelector('.ncm-ice__icon');
+    if (!iconEl) return;
+
+    let ring = overlayEl.querySelector('.ncm-ice__ring');
+    if (ring) ring.remove();
+
+    const color = isBlackICE ? '#ff4444' : '#19f3f7';
+    const bgColor = isBlackICE ? 'rgba(255,68,68,0.08)' : 'rgba(0,212,230,0.08)';
+    const segments = 8;
+    const radius = 52;
+    const circumference = 2 * Math.PI * radius;
+    const segLen = circumference / segments;
+    const gapLen = 4;
+
+    ring = document.createElement('div');
+    ring.className = 'ncm-ice__ring';
+    ring.innerHTML = `
+      <svg viewBox="0 0 120 120" class="ncm-ice__ring-svg">
+        <circle cx="60" cy="60" r="${radius}" fill="none" stroke="${bgColor}" stroke-width="2" />
+        <circle cx="60" cy="60" r="${radius}" fill="none" stroke="${color}" stroke-width="3"
+                stroke-dasharray="${segLen - gapLen} ${gapLen}"
+                stroke-dashoffset="${circumference}"
+                stroke-linecap="round"
+                class="ncm-ice__ring-progress" />
+      </svg>
+    `;
+    iconEl.parentNode.insertBefore(ring, iconEl);
+
+    // ── Inject status line ──
+    let status = overlayEl.querySelector('.ncm-ice__status');
+    if (status) status.remove();
+    status = document.createElement('div');
+    status.className = 'ncm-ice__status';
+    overlayEl.querySelector('.ncm-ice__title')?.after(status);
+
+    // ── Animate: fill ring segments progressively ──
+    const progressEl = ring.querySelector('.ncm-ice__ring-progress');
+    const phases = isBlackICE
+      ? ['Probing ICE barrier...', 'BLACK ICE countermeasures detected', 'Injecting exploit...', 'Decrypting...']
+      : ['Probing ICE barrier...', 'Mapping encryption layers...', 'Injecting exploit...', 'Decrypting...'];
+
+    const totalDuration = 2200;
+    const stepTime = totalDuration / segments;
+
+    for (let i = 0; i < segments; i++) {
+      // Fill this segment
+      const filled = (i + 1) / segments;
+      const offset = circumference * (1 - filled);
+      progressEl.style.transition = `stroke-dashoffset ${stepTime * 0.8}ms ease-out`;
+      progressEl.style.strokeDashoffset = offset;
+
+      // Update status text at phase boundaries
+      const phaseIdx = Math.floor((i / segments) * phases.length);
+      if (status.textContent !== phases[phaseIdx]) {
+        status.style.opacity = '0';
+        await new Promise(r => setTimeout(r, 80));
+        status.textContent = phases[phaseIdx];
+        status.style.opacity = '1';
+      }
+
+      // Flash the segment lock-in
+      if (i > 0 && i % 2 === 0) {
+        progressEl.style.filter = 'brightness(2)';
+        setTimeout(() => { progressEl.style.filter = ''; }, 100);
+      }
+
+      await new Promise(r => setTimeout(r, stepTime));
     }
-    terminal.innerHTML = '';
 
-    // Type out terminal lines
-    const lines = isBlackICE
-      ? ['> INITIATING BREACH PROTOCOL', '> BLACK ICE DETECTED — RISK ASSESSMENT: LETHAL', '> BYPASSING COUNTERMEASURES...', '> ROLLING DICE...']
-      : ['> INITIATING BREACH PROTOCOL', '> SCANNING ICE BARRIER...', '> ATTEMPTING DECRYPTION...', '> ROLLING DICE...'];
-
-    for (let i = 0; i < lines.length; i++) {
-      const line = document.createElement('div');
-      line.className = 'ncm-ice__terminal-line';
-      line.textContent = lines[i];
-      terminal.appendChild(line);
-      await new Promise(r => setTimeout(r, 300));
-    }
-
-    // Hold for dramatic pause
-    await new Promise(r => setTimeout(r, 400));
+    // Final flash — ring complete
+    progressEl.style.filter = 'brightness(2.5)';
+    status.textContent = 'Resolving...';
+    await new Promise(r => setTimeout(r, 300));
+    progressEl.style.filter = '';
   }
 
   /**
@@ -1818,8 +1869,19 @@ export class ContactManagerApp extends BaseApplication {
   async _playBreachSuccess(overlayEl) {
     if (!overlayEl) return;
 
-    // Remove terminal
+    // Clean up breach init elements
     overlayEl.querySelector('.ncm-ice__terminal')?.remove();
+    overlayEl.querySelector('.ncm-ice__status')?.remove();
+
+    // Flash the ring green before removing
+    const ringProgress = overlayEl.querySelector('.ncm-ice__ring-progress');
+    if (ringProgress) {
+      ringProgress.style.stroke = '#34D399';
+      ringProgress.style.filter = 'brightness(2.5) drop-shadow(0 0 8px rgba(52,211,153,0.6))';
+    }
+
+    await new Promise(r => setTimeout(r, 300));
+    overlayEl.querySelector('.ncm-ice__ring')?.remove();
 
     // Inject result overlay
     const result = document.createElement('div');
@@ -1831,7 +1893,6 @@ export class ContactManagerApp extends BaseApplication {
     `;
     overlayEl.appendChild(result);
 
-    // Phase transitions
     overlayEl.classList.remove('ncm-ice--breaching');
     overlayEl.classList.add('ncm-ice--granted');
 
@@ -1844,15 +1905,25 @@ export class ContactManagerApp extends BaseApplication {
   }
 
   /**
-   * Phase 2b: Breach DENIED — red corruption flash + shake + ACCESS DENIED.
+   * Phase 2b: Breach DENIED — ring shatters red + shake + ACCESS DENIED.
    * If BLACK ICE, show dramatic damage splash.
-   * Duration: ~2.5s
    */
   async _playBreachDenied(overlayEl, blackIceResult) {
     if (!overlayEl) return;
 
-    // Remove terminal
+    // Clean up breach init elements
     overlayEl.querySelector('.ncm-ice__terminal')?.remove();
+    overlayEl.querySelector('.ncm-ice__status')?.remove();
+
+    // Flash the ring red before removing
+    const ringProgress = overlayEl.querySelector('.ncm-ice__ring-progress');
+    if (ringProgress) {
+      ringProgress.style.stroke = '#EF4444';
+      ringProgress.style.filter = 'brightness(2) drop-shadow(0 0 8px rgba(239,68,68,0.6))';
+    }
+
+    await new Promise(r => setTimeout(r, 200));
+    overlayEl.querySelector('.ncm-ice__ring')?.remove();
 
     // Inject result overlay
     const result = document.createElement('div');
@@ -1888,7 +1959,7 @@ export class ContactManagerApp extends BaseApplication {
     overlayEl.querySelector('.ncm-ice__damage-splash')?.remove();
 
     // Restore hidden elements
-    const hiddenEls = overlayEl.querySelectorAll('.ncm-ice__breach, .ncm-ice__meta, .ncm-ice__attempts, .ncm-ice__damage, .ncm-ice__breach--gm');
+    const hiddenEls = overlayEl.querySelectorAll('.ncm-ice__breach, .ncm-ice__meta, .ncm-ice__attempts, .ncm-ice__damage, .ncm-ice__breach--gm, .ncm-ice__share-btn, .ncm-ice__dv');
     hiddenEls.forEach(el => { el.style.opacity = ''; el.style.pointerEvents = ''; });
   }
 
