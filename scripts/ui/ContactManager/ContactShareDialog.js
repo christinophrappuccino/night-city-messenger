@@ -103,15 +103,19 @@ export class ContactShareDialog extends BaseApplication {
       return { hasData: false };
     }
 
-    // ── Contact preview ──
-    const portrait = this.portraitService?.resolvePortrait(this.contact) || null;
-    const avatarColor = getAvatarColor(this.contact.name);
-    const initials = getInitials(this.contact.name);
-    const contactMeta = [
-      this.contact.email,
-      this.contact.role?.toUpperCase(),
-      this.contact.organization,
-    ].filter(Boolean).join(' · ');
+    // ── Contact preview (redact if encrypted) ──
+    const isEncrypted = !!this.contact.encrypted;
+    const displayName = isEncrypted ? 'ICE-Protected Contact' : this.contact.name;
+    const portrait = isEncrypted ? null : (this.portraitService?.resolvePortrait(this.contact) || null);
+    const avatarColor = isEncrypted ? '#555570' : getAvatarColor(this.contact.name);
+    const initials = isEncrypted ? '?' : getInitials(this.contact.name);
+    const contactMeta = isEncrypted
+      ? 'Encrypted · ICE active'
+      : [
+          this.contact.email,
+          this.contact.role?.toUpperCase(),
+          this.contact.organization,
+        ].filter(Boolean).join(' · ');
 
     // ── Eligible recipients ──
     const allRecipients = this.shareService?.getEligibleRecipients(this.senderActorId) || [];
@@ -132,6 +136,8 @@ export class ContactShareDialog extends BaseApplication {
     return {
       hasData: true,
       contact: this.contact,
+      isEncrypted,
+      displayName,
       portrait,
       avatarColor,
       initials,
@@ -218,9 +224,10 @@ export class ContactShareDialog extends BaseApplication {
       if (result.success) {
         // GM gets instant confirmation; players get async via socket
         if (game.user.isGM) {
+          const toastName = this.contact.encrypted ? 'ICE-Protected Contact' : this.contact.name;
           game.nightcity?.notificationService?.showToast(
             'Data Drop Complete',
-            `"${this.contact.name}" shared to ${result.delivered} recipient${result.delivered !== 1 ? 's' : ''}.`,
+            `"${toastName}" shared to ${result.delivered} recipient${result.delivered !== 1 ? 's' : ''}.`,
             'success',
             4000
           );

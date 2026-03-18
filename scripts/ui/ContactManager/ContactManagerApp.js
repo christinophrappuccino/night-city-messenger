@@ -1778,14 +1778,14 @@ export class ContactManagerApp extends BaseApplication {
   async _playBreachInit(overlayEl, isBlackICE) {
     if (!overlayEl) return;
 
-    // Hide static elements (button, meta, attempts, damage, share, gm bypass)
-    const hideEls = overlayEl.querySelectorAll('.ncm-ice__breach, .ncm-ice__meta, .ncm-ice__attempts, .ncm-ice__damage, .ncm-ice__breach--gm, .ncm-ice__share-btn, .ncm-ice__dv');
-    hideEls.forEach(el => { el.style.transition = 'opacity 0.3s'; el.style.opacity = '0'; el.style.pointerEvents = 'none'; });
+    // Hide static elements (button, meta, attempts, damage, share, gm bypass, dv)
+    const hideEls = overlayEl.querySelectorAll('.ncm-ice__breach, .ncm-ice__meta, .ncm-ice__attempts, .ncm-ice__damage, .ncm-ice__breach--gm, .ncm-ice__share-btn, .ncm-ice__dv, .ncm-ice__title');
+    hideEls.forEach(el => { el.style.transition = 'opacity 0.4s'; el.style.opacity = '0'; el.style.pointerEvents = 'none'; });
 
     // Add breaching class
     overlayEl.classList.add('ncm-ice--breaching');
 
-    // ── Inject decryption ring SVG around the icon ──
+    // ── Inject decryption ring SVG below the icon ──
     const iconEl = overlayEl.querySelector('.ncm-ice__icon');
     if (!iconEl) return;
 
@@ -1812,44 +1812,44 @@ export class ContactManagerApp extends BaseApplication {
                 class="ncm-ice__ring-progress" />
       </svg>
     `;
-    iconEl.parentNode.insertBefore(ring, iconEl);
+    // Insert after the icon in flex flow (not before/overlapping)
+    iconEl.after(ring);
 
-    // ── Inject status line ──
+    // ── Inject status line below the ring ──
     let status = overlayEl.querySelector('.ncm-ice__status');
     if (status) status.remove();
     status = document.createElement('div');
     status.className = 'ncm-ice__status';
-    overlayEl.querySelector('.ncm-ice__title')?.after(status);
+    ring.after(status);
 
-    // ── Animate: fill ring segments progressively ──
+    // ── Animate: fill ring segments progressively (~3.6s total) ──
     const progressEl = ring.querySelector('.ncm-ice__ring-progress');
     const phases = isBlackICE
       ? ['Probing ICE barrier...', 'BLACK ICE countermeasures detected', 'Injecting exploit...', 'Decrypting...']
       : ['Probing ICE barrier...', 'Mapping encryption layers...', 'Injecting exploit...', 'Decrypting...'];
 
-    const totalDuration = 2200;
+    const totalDuration = 3600;
     const stepTime = totalDuration / segments;
 
     for (let i = 0; i < segments; i++) {
-      // Fill this segment
       const filled = (i + 1) / segments;
       const offset = circumference * (1 - filled);
-      progressEl.style.transition = `stroke-dashoffset ${stepTime * 0.8}ms ease-out`;
+      progressEl.style.transition = `stroke-dashoffset ${stepTime * 0.7}ms ease-out`;
       progressEl.style.strokeDashoffset = offset;
 
       // Update status text at phase boundaries
       const phaseIdx = Math.floor((i / segments) * phases.length);
       if (status.textContent !== phases[phaseIdx]) {
         status.style.opacity = '0';
-        await new Promise(r => setTimeout(r, 80));
+        await new Promise(r => setTimeout(r, 120));
         status.textContent = phases[phaseIdx];
         status.style.opacity = '1';
       }
 
-      // Flash the segment lock-in
+      // Flash every other segment lock-in
       if (i > 0 && i % 2 === 0) {
         progressEl.style.filter = 'brightness(2)';
-        setTimeout(() => { progressEl.style.filter = ''; }, 100);
+        setTimeout(() => { progressEl.style.filter = ''; }, 150);
       }
 
       await new Promise(r => setTimeout(r, stepTime));
@@ -1858,7 +1858,7 @@ export class ContactManagerApp extends BaseApplication {
     // Final flash — ring complete
     progressEl.style.filter = 'brightness(2.5)';
     status.textContent = 'Resolving...';
-    await new Promise(r => setTimeout(r, 300));
+    await new Promise(r => setTimeout(r, 500));
     progressEl.style.filter = '';
   }
 
@@ -1959,7 +1959,7 @@ export class ContactManagerApp extends BaseApplication {
     overlayEl.querySelector('.ncm-ice__damage-splash')?.remove();
 
     // Restore hidden elements
-    const hiddenEls = overlayEl.querySelectorAll('.ncm-ice__breach, .ncm-ice__meta, .ncm-ice__attempts, .ncm-ice__damage, .ncm-ice__breach--gm, .ncm-ice__share-btn, .ncm-ice__dv');
+    const hiddenEls = overlayEl.querySelectorAll('.ncm-ice__breach, .ncm-ice__meta, .ncm-ice__attempts, .ncm-ice__damage, .ncm-ice__breach--gm, .ncm-ice__share-btn, .ncm-ice__dv, .ncm-ice__title');
     hiddenEls.forEach(el => { el.style.opacity = ''; el.style.pointerEvents = ''; });
   }
 

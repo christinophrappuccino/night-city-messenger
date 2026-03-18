@@ -93,7 +93,7 @@ export class ContactBreachService {
         dc,
         luckSpend: options.luckSpend ?? 0,
         showChat: true,
-        context: `Breaching ICE: ${contact.name}`,
+        context: `Breaching ICE: ${contact.encrypted ? '████████' : contact.name}`,
         flavor: `CONTACT ICE // DV ${dc} // Attempt ${currentAttempts + 1}/${maxAttempts}`,
       });
     } catch (err) {
@@ -228,6 +228,9 @@ export class ContactBreachService {
    * @private
    */
   async _handleFailure(actorId, contactId, contact, actor, rollResult) {
+    // Use redacted name for encrypted contacts in player-facing messages
+    const displayName = contact.encrypted ? '████████' : contact.name;
+
     // Sound
     this.soundService?.play('hack-fail');
 
@@ -235,7 +238,7 @@ export class ContactBreachService {
     this.notificationService?.showToastV2({
       type: 'error',
       title: 'Breach Failed',
-      detail: `ICE holds — ${contact.name}`,
+      detail: `ICE holds — ${displayName}`,
       icon: 'fas fa-shield-halved',
       duration: 4000,
     });
@@ -244,7 +247,7 @@ export class ContactBreachService {
     this.eventBus?.emit(EVENTS.CONTACT_BREACH_FAILED, {
       actorId,
       contactId,
-      contactName: contact.name,
+      contactName: displayName,
       roll: {
         success: rollResult.success,
         total: rollResult.total,
@@ -261,7 +264,7 @@ export class ContactBreachService {
       this.eventBus?.emit(EVENTS.CONTACT_BLACK_ICE, {
         actorId,
         contactId,
-        contactName: contact.name,
+        contactName: displayName,
         damage: blackIceResult.damage,
         formula: blackIceResult.formula,
       });

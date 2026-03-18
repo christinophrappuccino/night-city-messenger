@@ -26,16 +26,23 @@
   <div class="ncm-share__contact">
     <div class="ncm-share__contact-avatar"
          style="border-color: {{avatarColor}}33;">
-      {{#if portrait}}
-        <img src="{{portrait}}" alt="{{contact.name}}">
+      {{#if isEncrypted}}
+        <span style="color: var(--ncm-accent, #F0C55B);"><i class="fas fa-lock"></i></span>
+      {{else if portrait}}
+        <img src="{{portrait}}" alt="{{displayName}}">
       {{else}}
         <span style="color: {{avatarColor}};">{{initials}}</span>
       {{/if}}
     </div>
     <div class="ncm-share__contact-info">
-      <div class="ncm-share__contact-name">{{contact.name}}</div>
+      <div class="ncm-share__contact-name">{{displayName}}</div>
       {{#if contactMeta}}
         <div class="ncm-share__contact-email">{{contactMeta}}</div>
+      {{/if}}
+      {{#if isEncrypted}}
+        <div class="ncm-share__contact-email" style="color: var(--ncm-accent, #F0C55B);">
+          <i class="fas fa-shield-halved" style="font-size:8px;"></i> ICE will remain active for recipient
+        </div>
       {{/if}}
     </div>
   </div>

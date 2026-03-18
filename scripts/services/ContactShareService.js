@@ -185,9 +185,10 @@ export class ContactShareService {
     }
 
     // Emit event for sender-side feedback
+    const displayName = contact.encrypted ? 'ICE-Protected Contact' : contact.name;
     this.eventBus?.emit(EVENTS.CONTACT_SHARED, {
       shareId: payload.shareId,
-      contactName: contact.name,
+      contactName: displayName,
       delivered,
       total: recipientActorIds.length,
     });
@@ -230,7 +231,13 @@ export class ContactShareService {
     const actor = game.actors.get(recipientActorId);
     if (!actor?.isOwner) return;
 
-    log.info(`Received shared contact: "${contact.name}" from ${senderName}`);
+    // Redact name/portrait for encrypted contacts
+    const displayName = contact.encrypted ? 'ICE-Protected Contact' : contact.name;
+    const displayContact = contact.encrypted
+      ? { ...contact, name: displayName, portrait: '', customImg: '' }
+      : contact;
+
+    log.info(`Received shared contact: "${displayName}" from ${senderName}`);
 
     // Play the Data Drop overlay animation
     try {
@@ -238,7 +245,7 @@ export class ContactShareService {
       await DataDropOverlay.play({
         senderName,
         recipientName: actor.name,
-        contact,
+        contact: displayContact,
         network,
       });
     } catch (error) {
@@ -247,7 +254,7 @@ export class ContactShareService {
 
     // Fire the contact-acquired toast
     this.notificationService?.showContactAcquired({
-      contactName: contact.name,
+      contactName: displayName,
       senderName,
       network,
       actorId: recipientActorId,
@@ -256,7 +263,7 @@ export class ContactShareService {
 
     // Emit event for UI refresh
     this.eventBus?.emit(EVENTS.CONTACT_SHARED, {
-      contactName: contact.name,
+      contactName: displayName,
       senderName,
       recipientActorId,
     });
