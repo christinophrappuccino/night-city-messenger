@@ -56,7 +56,9 @@
   <div class="ncm-datadrop__card">
     <div class="ncm-datadrop__card-avatar"
          style="color: {{avatarColor}}; border-color: {{avatarColor}}33;">
-      {{#if portrait}}
+      {{#if isEncrypted}}
+        <i class="fas fa-lock" style="font-size: 18px; color: var(--ncm-accent, #F0C55B);"></i>
+      {{else if portrait}}
         <img src="{{portrait}}" alt="{{contactName}}">
       {{else}}
         {{initials}}

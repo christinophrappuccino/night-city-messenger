@@ -83,27 +83,31 @@ export class DataDropOverlay {
       return;
     }
 
-    // Prepare template data
-    const portrait = contact.portrait || null;
-    const avatarColor = getAvatarColor(contact.name || 'Unknown');
-    const initials = getInitials(contact.name || 'Unknown');
+    // Prepare template data — redact if encrypted
+    const isEncrypted = !!contact.encrypted;
+    const contactName = isEncrypted ? 'ICE-Protected Contact' : (contact.name || 'Unknown');
+    const contactEmail = isEncrypted ? '███@███.██' : (contact.email || '');
+    const portrait = isEncrypted ? null : (contact.portrait || null);
+    const avatarColor = isEncrypted ? '#555570' : getAvatarColor(contact.name || 'Unknown');
+    const initials = isEncrypted ? '?' : getInitials(contact.name || 'Unknown');
     const relayName = `${network} RELAY`;
 
-    const tags = (contact.tags || []).slice(0, 3);
-    const role = contact.role?.toUpperCase() || '';
+    const tags = isEncrypted ? [] : (contact.tags || []).slice(0, 3);
+    const role = isEncrypted ? '' : (contact.role?.toUpperCase() || '');
 
     const templateData = {
       senderName,
       recipientName,
       relayName,
-      contactName: contact.name || 'Unknown',
-      contactEmail: contact.email || '',
+      contactName,
+      contactEmail,
       portrait,
       avatarColor,
       initials,
       role,
       tags,
       isSender,
+      isEncrypted,
       statusText: isSender ? 'CONTACT TRANSMITTED' : 'CONTACT ACQUIRED',
     };
 
@@ -334,7 +338,8 @@ export class DataDropOverlay {
       </div>
       <div class="ncm-datadrop__card">
         <div class="ncm-datadrop__card-avatar" style="color: ${data.avatarColor};">
-          ${data.portrait ? `<img src="${data.portrait}" alt="${data.contactName}">` : data.initials}
+          ${data.isEncrypted ? '<i class="fas fa-lock" style="font-size:18px;color:#F0C55B;"></i>'
+            : data.portrait ? `<img src="${data.portrait}" alt="${data.contactName}">` : data.initials}
         </div>
         <div class="ncm-datadrop__card-info">
           <div class="ncm-datadrop__card-name">${data.contactName}</div>
