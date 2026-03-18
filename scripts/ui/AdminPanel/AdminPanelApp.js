@@ -79,8 +79,14 @@ export class AdminPanelApp extends BaseApplication {
   _msgFeedLimit = 20;
   /** @type {string} NPC quick-send search query */
   _npcSendSearch = '';
-  /** @type {number} How many NPC send-as entries to show */
-  _npcSendLimit = 8;
+  /** @type {number} Current NPC send-as page (0-indexed) */
+  _npcSendPage = 0;
+  /** @type {number} NPCs per page */
+  _npcSendPerPage = 8;
+  /** @type {boolean} Inbox dropdown open state */
+  _inboxDropdownOpen = false;
+  /** @type {string} Inbox dropdown search query */
+  _inboxDropdownSearch = '';
 
   // ── Shards tab state (Sprint 4.6) ──
   /** @type {Array<object>} In-memory shard activity log for session events */
@@ -166,7 +172,10 @@ export class AdminPanelApp extends BaseApplication {
       msgBroadcast: AdminPanelApp._onMsgBroadcast,
       loadMoreMessages: AdminPanelApp._onLoadMoreMessages,
       npcQuickSend: AdminPanelApp._onNpcQuickSend,
-      loadMoreNpcs: AdminPanelApp._onLoadMoreNpcs,
+      npcPagePrev: AdminPanelApp._onNpcPagePrev,
+      npcPageNext: AdminPanelApp._onNpcPageNext,
+      toggleInboxDropdown: AdminPanelApp._onToggleInboxDropdown,
+      openInboxFromDropdown: AdminPanelApp._onOpenInboxFromDropdown,
 
       // Contacts actions
       openGMContacts: AdminPanelApp._onOpenGMContacts,
@@ -410,8 +419,14 @@ export class AdminPanelApp extends BaseApplication {
       // Messages tab
       npcSendEntries: npcSendData.entries,
       npcSendTotalCount: npcSendData.totalCount,
-      npcSendHasMore: npcSendData.hasMore,
+      npcSendPage: npcSendData.page + 1,
+      npcSendTotalPages: npcSendData.totalPages,
+      npcSendHasPrev: npcSendData.hasPrev,
+      npcSendHasNext: npcSendData.hasNext,
       npcSendSearch: npcSendData.search,
+      inboxDropdownOpen: this._inboxDropdownOpen,
+      inboxDropdownSearch: this._inboxDropdownSearch,
+      inboxDropdownEntries: this._inboxDropdownOpen ? this._gatherInboxDropdownEntries() : [],
       playerActors,
       scheduledEntries,
       ...this._gatherMessagesTabContext(stats),
@@ -648,10 +663,24 @@ export class AdminPanelApp extends BaseApplication {
     }
 
     const totalCount = filtered.length;
-    const entries = filtered.slice(0, this._npcSendLimit);
-    const hasMore = totalCount > entries.length;
+    const totalPages = Math.max(1, Math.ceil(totalCount / this._npcSendPerPage));
 
-    return { entries, totalCount, hasMore, search: this._npcSendSearch };
+    // Clamp page
+    if (this._npcSendPage >= totalPages) this._npcSendPage = totalPages - 1;
+    if (this._npcSendPage < 0) this._npcSendPage = 0;
+
+    const startIdx = this._npcSendPage * this._npcSendPerPage;
+    const entries = filtered.slice(startIdx, startIdx + this._npcSendPerPage);
+
+    return {
+      entries,
+      totalCount,
+      page: this._npcSendPage,
+      totalPages,
+      hasPrev: this._npcSendPage > 0,
+      hasNext: this._npcSendPage < totalPages - 1,
+      search: this._npcSendSearch,
+    };
   }
 
   /**
@@ -667,6 +696,111 @@ export class AdminPanelApp extends BaseApplication {
         name: a.name,
         img: a.img,
       }));
+  }
+
+  /**
+   * Gather all inboxes for the View Inbox dropdown.
+   * Includes player actors, NPC actors with emails, and master contacts.
+   * Supports search filtering via _inboxDropdownSearch.
+   * @returns {Array<object>}
+   * @private
+   */
+  _gatherInboxDropdownEntries() {
+    const entries = [];
+    const seenIds = new Set();
+
+    // ── Players ──
+    for (const user of game.users ?? []) {
+      if (user.isGM || !user.character) continue;
+      const actor = user.character;
+      if (seenIds.has(actor.id)) continue;
+      seenIds.add(actor.id);
+
+      entries.push({
+        inboxId: actor.id,
+        name: actor.name,
+        initial: (actor.name || '?').charAt(0).toUpperCase(),
+        color: '#19f3f7',
+        type: 'Player',
+        typeIcon: 'fa-user',
+        email: actor.getFlag?.(MODULE_ID, 'email') || '',
+        isPlayer: true,
+      });
+    }
+
+    // ── Master contacts ──
+    const contacts = this.masterContactService?.getAll() ?? [];
+    const roleColors = {
+      fixer: '#d4a017', netrunner: '#00e5ff', runner: '#00e5ff',
+      corp: '#4a8ab5', exec: '#6ec1e4', solo: '#e04848',
+      tech: '#2ecc71', medtech: '#1abc9c', media: '#b87aff',
+      nomad: '#d4844a', lawman: '#6b8fa3', rocker: '#e05cb5',
+    };
+
+    for (const c of contacts) {
+      const primaryId = c.actorId || c.id;
+      if (seenIds.has(primaryId)) continue;
+      seenIds.add(primaryId);
+      if (c.actorId) seenIds.add(c.actorId);
+      seenIds.add(c.id);
+
+      // Skip player-linked
+      if (c.actorId) {
+        const actor = game.actors?.get(c.actorId);
+        if (actor?.hasPlayerOwner) continue;
+      }
+
+      const roleLower = (c.role || '').toLowerCase();
+      entries.push({
+        inboxId: primaryId,
+        name: c.name,
+        initial: (c.name || '?').charAt(0).toUpperCase(),
+        color: roleColors[roleLower] || '#F65261',
+        type: c.role ? c.role.charAt(0).toUpperCase() + c.role.slice(1) : 'NPC',
+        typeIcon: 'fa-user-secret',
+        email: c.email || '',
+        isPlayer: false,
+      });
+    }
+
+    // ── NPC actors with emails not in master contacts ──
+    for (const actor of game.actors ?? []) {
+      if (actor.hasPlayerOwner) continue;
+      if (seenIds.has(actor.id)) continue;
+      const email = actor.getFlag(MODULE_ID, 'email');
+      if (!email) continue;
+      seenIds.add(actor.id);
+
+      entries.push({
+        inboxId: actor.id,
+        name: actor.name,
+        initial: (actor.name || '?').charAt(0).toUpperCase(),
+        color: '#F65261',
+        type: 'NPC',
+        typeIcon: 'fa-user-secret',
+        email,
+        isPlayer: false,
+      });
+    }
+
+    // Sort: players first, then alphabetical
+    entries.sort((a, b) => {
+      if (a.isPlayer && !b.isPlayer) return -1;
+      if (!a.isPlayer && b.isPlayer) return 1;
+      return a.name.localeCompare(b.name);
+    });
+
+    // Apply search
+    if (this._inboxDropdownSearch) {
+      const q = this._inboxDropdownSearch.toLowerCase();
+      return entries.filter(e =>
+        e.name.toLowerCase().includes(q) ||
+        e.email.toLowerCase().includes(q) ||
+        e.type.toLowerCase().includes(q)
+      );
+    }
+
+    return entries;
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -2903,12 +3037,43 @@ export class AdminPanelApp extends BaseApplication {
       const npcHandler = this._npcSearchHandler || (this._npcSearchHandler =
         foundry.utils.debounce((e) => {
           this._npcSendSearch = e.target.value;
-          this._npcSendLimit = 8;
+          this._npcSendPage = 0;
           this.render(true);
         }, 350)
       );
       npcSearch.removeEventListener('input', npcHandler);
       npcSearch.addEventListener('input', npcHandler);
+    }
+
+    // ── Inbox dropdown search input ──
+    const inboxSearch = this.element?.querySelector('.ncm-msg-inbox-dd-search__input');
+    if (inboxSearch) {
+      if (this._inboxDropdownSearch) {
+        inboxSearch.value = this._inboxDropdownSearch;
+      }
+      inboxSearch.focus();
+
+      const inboxHandler = this._inboxSearchHandler || (this._inboxSearchHandler =
+        foundry.utils.debounce((e) => {
+          this._inboxDropdownSearch = e.target.value;
+          this.render(true);
+        }, 250)
+      );
+      inboxSearch.removeEventListener('input', inboxHandler);
+      inboxSearch.addEventListener('input', inboxHandler);
+    }
+
+    // ── Close inbox dropdown when clicking outside ──
+    if (this._inboxDropdownOpen) {
+      const closeInbox = (e) => {
+        if (!e.target.closest('.ncm-msg-inbox-dd')) {
+          this._inboxDropdownOpen = false;
+          this._inboxDropdownSearch = '';
+          this.render(true);
+          document.removeEventListener('pointerdown', closeInbox);
+        }
+      };
+      setTimeout(() => document.addEventListener('pointerdown', closeInbox), 0);
     }
 
     // ── Scheduled countdown ticking ──
@@ -3304,10 +3469,35 @@ export class AdminPanelApp extends BaseApplication {
     }
   }
 
-  static _onLoadMoreNpcs(event, target) {
-    this._npcSendLimit += 8;
+  static _onNpcPagePrev(event, target) {
+    if (this._npcSendPage > 0) this._npcSendPage--;
     const content = this.element?.querySelector('.ncm-admin-content');
     if (content) this._scrollPositions[this._activeTab] = content.scrollTop;
+    this.render(true);
+  }
+
+  static _onNpcPageNext(event, target) {
+    this._npcSendPage++;
+    const content = this.element?.querySelector('.ncm-admin-content');
+    if (content) this._scrollPositions[this._activeTab] = content.scrollTop;
+    this.render(true);
+  }
+
+  static _onToggleInboxDropdown(event, target) {
+    // Don't toggle when clicking inside the dropdown
+    if (event.target.closest('[data-action="openInboxFromDropdown"]')) return;
+    this._inboxDropdownOpen = !this._inboxDropdownOpen;
+    this._inboxDropdownSearch = '';
+    this.render(true);
+  }
+
+  static _onOpenInboxFromDropdown(event, target) {
+    event.preventDefault();
+    event.stopPropagation();
+    const inboxId = target.closest('[data-inbox-id]')?.dataset.inboxId;
+    if (!inboxId) return;
+    this._inboxDropdownOpen = false;
+    game.nightcity?.openInbox?.(inboxId);
     this.render(true);
   }
 

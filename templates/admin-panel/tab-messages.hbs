@@ -41,10 +41,17 @@
           <i class="fas fa-user-secret"></i> Send as NPC
           <span class="ncm-msg-compose-card__count">{{npcSendTotalCount}}</span>
         </div>
-        {{!-- Search --}}
-        <div class="ncm-msg-npc-search">
-          <i class="fas fa-magnifying-glass"></i>
-          <input type="text" class="ncm-msg-npc-search__input" placeholder="Search NPCs…" value="{{npcSendSearch}}">
+        {{!-- Search + Page Nav --}}
+        <div class="ncm-msg-npc-toolbar">
+          <div class="ncm-msg-npc-search">
+            <i class="fas fa-magnifying-glass"></i>
+            <input type="text" class="ncm-msg-npc-search__input" placeholder="Search NPCs…" value="{{npcSendSearch}}">
+          </div>
+          <div class="ncm-msg-npc-pager">
+            <button class="ncm-msg-npc-pager__btn {{#unless npcSendHasPrev}}ncm-msg-npc-pager__btn--disabled{{/unless}}" data-action="npcPagePrev" title="Previous page"><i class="fas fa-chevron-left"></i></button>
+            <span class="ncm-msg-npc-pager__label">{{npcSendPage}} / {{npcSendTotalPages}}</span>
+            <button class="ncm-msg-npc-pager__btn {{#unless npcSendHasNext}}ncm-msg-npc-pager__btn--disabled{{/unless}}" data-action="npcPageNext" title="Next page"><i class="fas fa-chevron-right"></i></button>
+          </div>
         </div>
         {{#if npcSendEntries.length}}
         <div class="ncm-msg-npc-grid">
@@ -60,11 +67,6 @@
           </div>
           {{/each}}
         </div>
-        {{#if npcSendHasMore}}
-        <div class="ncm-msg-npc-load-more" data-action="loadMoreNpcs">
-          <i class="fas fa-chevron-down"></i> Show More <span class="ncm-msg-npc-load-more__count">({{npcSendEntries.length}} of {{npcSendTotalCount}})</span>
-        </div>
-        {{/if}}
         {{else}}
         <div class="ncm-admin-empty" style="padding: 16px;">
           {{#if npcSendSearch}}
@@ -93,6 +95,37 @@
               <span class="ncm-msg-compose-btn__title">Mass Broadcast</span>
               <span class="ncm-msg-compose-btn__desc">Send to all player inboxes</span>
             </div>
+          </div>
+          {{!-- View Inbox Dropdown --}}
+          <div class="ncm-msg-inbox-dd" style="position: relative;">
+            <div class="ncm-msg-compose-btn" data-action="toggleInboxDropdown">
+              <div class="ncm-msg-compose-btn__icon" style="background:rgba(0,255,65,0.06); color:var(--ncm-success,#00ff41); border:1px solid rgba(0,255,65,0.12);"><i class="fas fa-inbox"></i></div>
+              <div class="ncm-msg-compose-btn__text">
+                <span class="ncm-msg-compose-btn__title">View Inbox</span>
+                <span class="ncm-msg-compose-btn__desc">Open any character's inbox</span>
+              </div>
+            </div>
+            {{#if inboxDropdownOpen}}
+            <div class="ncm-msg-inbox-dd__panel">
+              <div class="ncm-msg-inbox-dd__search">
+                <i class="fas fa-magnifying-glass"></i>
+                <input type="text" class="ncm-msg-inbox-dd-search__input" placeholder="Search inboxes…" value="{{inboxDropdownSearch}}">
+              </div>
+              <div class="ncm-msg-inbox-dd__scroll">
+                {{#each inboxDropdownEntries}}
+                <div class="ncm-msg-inbox-dd__item" data-action="openInboxFromDropdown" data-inbox-id="{{this.inboxId}}">
+                  <div class="ncm-msg-inbox-dd__pip" style="color: {{this.color}}; border: 1px solid {{this.color}}33; background: {{this.color}}0a;">{{this.initial}}</div>
+                  <div class="ncm-msg-inbox-dd__info">
+                    <span class="ncm-msg-inbox-dd__name">{{this.name}}</span>
+                    <span class="ncm-msg-inbox-dd__type"><i class="fas {{this.typeIcon}}"></i> {{this.type}}</span>
+                  </div>
+                </div>
+                {{else}}
+                <div class="ncm-msg-inbox-dd__empty">No inboxes found</div>
+                {{/each}}
+              </div>
+            </div>
+            {{/if}}
           </div>
         </div>
       </div>

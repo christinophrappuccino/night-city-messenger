@@ -178,9 +178,17 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 12px;
-  border-bottom: 1px solid var(--ncm-border, #2a2a45);
+  flex: 1;
+  min-width: 0;
+  padding: 4px 10px;
   background: var(--ncm-bg-deep, #0a0a0f);
+  border: 1px solid var(--ncm-border, #2a2a45);
+  border-radius: 2px;
+  transition: border-color 0.15s;
+}
+
+.ncm-app .ncm-msg-npc-search:focus-within {
+  border-color: var(--ncm-secondary, #19f3f7);
 }
 
 .ncm-app .ncm-msg-npc-search i {
@@ -197,11 +205,63 @@
   font-size: 11px;
   font-weight: 600;
   color: var(--ncm-text-primary, #e0e0e8);
+  min-width: 0;
 }
 
 .ncm-app .ncm-msg-npc-search input::placeholder {
   color: var(--ncm-text-muted, #8888a0);
   font-weight: 500;
+}
+
+/* NPC toolbar — search + pager */
+.ncm-app .ncm-msg-npc-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--ncm-border, #2a2a45);
+  background: var(--ncm-bg-deep, #0a0a0f);
+}
+
+/* NPC pager */
+.ncm-app .ncm-msg-npc-pager {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.ncm-app .ncm-msg-npc-pager__label {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 9px;
+  color: var(--ncm-text-muted, #8888a0);
+  min-width: 32px;
+  text-align: center;
+}
+
+.ncm-app .ncm-msg-npc-pager__btn {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 1px solid var(--ncm-border, #2a2a45);
+  border-radius: 2px;
+  color: var(--ncm-text-muted, #8888a0);
+  font-size: 9px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.ncm-app .ncm-msg-npc-pager__btn:hover {
+  color: var(--ncm-secondary, #19f3f7);
+  border-color: rgba(25, 243, 247, 0.3);
+}
+
+.ncm-app .ncm-msg-npc-pager__btn--disabled {
+  opacity: 0.3;
+  pointer-events: none;
 }
 
 /* NPC grid — scrollable when many entries */
@@ -214,43 +274,134 @@
 .ncm-app .ncm-msg-npc-grid::-webkit-scrollbar-track { background: transparent; }
 .ncm-app .ncm-msg-npc-grid::-webkit-scrollbar-thumb { background: var(--ncm-border, #2a2a45); border-radius: 2px; }
 
-/* NPC load more */
-.ncm-app .ncm-msg-npc-load-more {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  padding: 5px 12px;
-  cursor: pointer;
-  transition: all 0.15s;
-  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--ncm-secondary, #19f3f7);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  border-top: 1px solid var(--ncm-border, #2a2a45);
-}
-
-.ncm-app .ncm-msg-npc-load-more:hover {
-  background: rgba(25, 243, 247, 0.04);
-}
-
-.ncm-app .ncm-msg-npc-load-more i { font-size: 8px; }
-
-.ncm-app .ncm-msg-npc-load-more__count {
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 9px;
-  font-weight: 400;
-  color: var(--ncm-text-muted, #8888a0);
-}
-
 /* Compose card header count badge */
 .ncm-app .ncm-msg-compose-card__count {
   margin-left: auto;
   font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
   font-size: 9px;
   color: var(--ncm-text-muted, #8888a0);
+}
+
+/* ─── Inbox Dropdown ─── */
+
+.ncm-app .ncm-msg-inbox-dd__panel {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  margin-bottom: 4px;
+  background: var(--ncm-bg-base, #12121a);
+  border: 1px solid var(--ncm-border-active, #3a3a5a);
+  border-radius: 2px;
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.5);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+}
+
+.ncm-app .ncm-msg-inbox-dd__search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--ncm-border, #2a2a45);
+}
+
+.ncm-app .ncm-msg-inbox-dd__search i {
+  font-size: 9px;
+  color: var(--ncm-text-muted, #8888a0);
+}
+
+.ncm-app .ncm-msg-inbox-dd__search input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ncm-text-primary, #e0e0e8);
+  min-width: 0;
+}
+
+.ncm-app .ncm-msg-inbox-dd__search input::placeholder {
+  color: var(--ncm-text-muted, #8888a0);
+  font-weight: 500;
+}
+
+.ncm-app .ncm-msg-inbox-dd__scroll {
+  max-height: 220px;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.ncm-app .ncm-msg-inbox-dd__scroll::-webkit-scrollbar { width: 4px; }
+.ncm-app .ncm-msg-inbox-dd__scroll::-webkit-scrollbar-track { background: transparent; }
+.ncm-app .ncm-msg-inbox-dd__scroll::-webkit-scrollbar-thumb { background: var(--ncm-border, #2a2a45); border-radius: 2px; }
+
+.ncm-app .ncm-msg-inbox-dd__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.ncm-app .ncm-msg-inbox-dd__item:hover {
+  background: rgba(25, 243, 247, 0.03);
+}
+
+.ncm-app .ncm-msg-inbox-dd__pip {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-size: 9px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.ncm-app .ncm-msg-inbox-dd__info {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+}
+
+.ncm-app .ncm-msg-inbox-dd__name {
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ncm-text-primary, #e0e0e8);
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ncm-app .ncm-msg-inbox-dd__type {
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--ncm-text-muted, #8888a0);
+}
+
+.ncm-app .ncm-msg-inbox-dd__type i {
+  font-size: 7px;
+  margin-right: 2px;
+}
+
+.ncm-app .ncm-msg-inbox-dd__empty {
+  padding: 12px 10px;
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ncm-text-muted, #8888a0);
+  text-align: center;
 }
 
 /* Compose Actions */
@@ -1525,4 +1676,118 @@
 
 .ncm-app .ncm-admin-panel .ncm-msg-feed-load-more:hover {
   background: rgba(25, 243, 247, 0.04) !important;
+}
+
+/* ─── Foundry overrides: NPC pager buttons ─── */
+.ncm-app .ncm-admin-panel .ncm-msg-npc-pager__btn {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 22px !important;
+  height: 22px !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-height: 22px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: none !important;
+  border: 1px solid var(--ncm-border) !important;
+  border-radius: 2px !important;
+  color: var(--ncm-text-muted) !important;
+  font-size: 9px !important;
+  cursor: pointer !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+  flex-shrink: 0 !important;
+  flex-grow: 0 !important;
+  line-height: 1 !important;
+  transition: all 0.15s !important;
+}
+
+.ncm-app .ncm-admin-panel .ncm-msg-npc-pager__btn:hover {
+  color: var(--ncm-secondary) !important;
+  border-color: rgba(25, 243, 247, 0.3) !important;
+}
+
+.ncm-app .ncm-admin-panel .ncm-msg-npc-pager__btn--disabled {
+  opacity: 0.3 !important;
+  pointer-events: none !important;
+}
+
+.ncm-app .ncm-admin-panel .ncm-msg-npc-pager__btn i {
+  font-size: 9px !important;
+  margin: 0 !important;
+}
+
+/* ─── Foundry overrides: NPC search input ─── */
+.ncm-app .ncm-admin-panel .ncm-msg-npc-search input,
+.ncm-app .ncm-admin-panel .ncm-msg-npc-search__input {
+  background: none !important;
+  border: none !important;
+  border-radius: 0 !important;
+  outline: none !important;
+  box-shadow: none !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  min-height: 0 !important;
+  height: auto !important;
+  width: auto !important;
+  flex: 1 !important;
+  font-family: var(--ncm-font-display) !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: var(--ncm-text-primary) !important;
+}
+
+/* ─── Foundry overrides: Inbox dropdown search input ─── */
+.ncm-app .ncm-admin-panel .ncm-msg-inbox-dd-search__input,
+.ncm-app .ncm-admin-panel .ncm-msg-inbox-dd__search input {
+  background: none !important;
+  border: none !important;
+  border-radius: 0 !important;
+  outline: none !important;
+  box-shadow: none !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  min-height: 0 !important;
+  height: auto !important;
+  width: auto !important;
+  flex: 1 !important;
+  font-family: var(--ncm-font-display) !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: var(--ncm-text-primary) !important;
+}
+
+/* ─── Foundry overrides: Inbox dropdown items ─── */
+.ncm-app .ncm-admin-panel .ncm-msg-inbox-dd__item {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 5px 10px !important;
+  cursor: pointer !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+  min-height: 0 !important;
+  height: auto !important;
+  width: 100% !important;
+  margin: 0 !important;
+  font-family: inherit !important;
+  text-align: left !important;
+  transition: background 0.1s !important;
+}
+
+.ncm-app .ncm-admin-panel .ncm-msg-inbox-dd__item:hover {
+  background: rgba(25, 243, 247, 0.03) !important;
 }
