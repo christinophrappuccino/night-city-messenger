@@ -616,6 +616,37 @@
   letter-spacing: 0.1em;
 }
 
+.ncm-app .ncm-msg-actor-dropdown__search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-bottom: 1px solid var(--ncm-border, #2a2a45);
+  background: var(--ncm-bg-deep, #0a0a0f);
+}
+
+.ncm-app .ncm-msg-actor-dropdown__search i {
+  font-size: 8px;
+  color: var(--ncm-text-muted, #8888a0);
+}
+
+.ncm-app .ncm-msg-actor-dropdown__search input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ncm-text-primary, #e0e0e8);
+  min-width: 0;
+}
+
+.ncm-app .ncm-msg-actor-dropdown__search input::placeholder {
+  color: var(--ncm-text-muted, #8888a0);
+  font-weight: 500;
+}
+
 .ncm-app .ncm-msg-actor-dropdown__group-label {
   padding: 4px 10px 2px;
   font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
@@ -1790,4 +1821,26 @@
 
 .ncm-app .ncm-admin-panel .ncm-msg-inbox-dd__item:hover {
   background: rgba(25, 243, 247, 0.03) !important;
+}
+
+/* ─── Foundry overrides: Actor dropdown search input ─── */
+.ncm-app .ncm-admin-panel .ncm-msg-actor-dd-search__input,
+.ncm-app .ncm-admin-panel .ncm-msg-actor-dropdown__search input {
+  background: none !important;
+  border: none !important;
+  border-radius: 0 !important;
+  outline: none !important;
+  box-shadow: none !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  min-height: 0 !important;
+  height: auto !important;
+  width: auto !important;
+  flex: 1 !important;
+  font-family: var(--ncm-font-display) !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: var(--ncm-text-primary) !important;
 }

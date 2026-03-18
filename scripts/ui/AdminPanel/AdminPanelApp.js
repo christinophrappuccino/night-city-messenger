@@ -75,6 +75,8 @@ export class AdminPanelApp extends BaseApplication {
   _expandedMessageId = null;
   /** @type {boolean} Actor filter dropdown open state */
   _msgActorDropdownOpen = false;
+  /** @type {string} Actor filter dropdown search */
+  _msgActorDropdownSearch = '';
   /** @type {number} How many feed entries to show (pagination) */
   _msgFeedLimit = 20;
   /** @type {string} NPC quick-send search query */
@@ -83,10 +85,6 @@ export class AdminPanelApp extends BaseApplication {
   _npcSendPage = 0;
   /** @type {number} NPCs per page */
   _npcSendPerPage = 8;
-  /** @type {boolean} Inbox dropdown open state */
-  _inboxDropdownOpen = false;
-  /** @type {string} Inbox dropdown search query */
-  _inboxDropdownSearch = '';
 
   // ── Shards tab state (Sprint 4.6) ──
   /** @type {Array<object>} In-memory shard activity log for session events */
@@ -174,8 +172,7 @@ export class AdminPanelApp extends BaseApplication {
       npcQuickSend: AdminPanelApp._onNpcQuickSend,
       npcPagePrev: AdminPanelApp._onNpcPagePrev,
       npcPageNext: AdminPanelApp._onNpcPageNext,
-      toggleInboxDropdown: AdminPanelApp._onToggleInboxDropdown,
-      openInboxFromDropdown: AdminPanelApp._onOpenInboxFromDropdown,
+      openViewInboxDialog: AdminPanelApp._onOpenViewInboxDialog,
 
       // Contacts actions
       openGMContacts: AdminPanelApp._onOpenGMContacts,
@@ -424,9 +421,6 @@ export class AdminPanelApp extends BaseApplication {
       npcSendHasPrev: npcSendData.hasPrev,
       npcSendHasNext: npcSendData.hasNext,
       npcSendSearch: npcSendData.search,
-      inboxDropdownOpen: this._inboxDropdownOpen,
-      inboxDropdownSearch: this._inboxDropdownSearch,
-      inboxDropdownEntries: this._inboxDropdownOpen ? this._gatherInboxDropdownEntries() : [],
       playerActors,
       scheduledEntries,
       ...this._gatherMessagesTabContext(stats),
@@ -699,9 +693,8 @@ export class AdminPanelApp extends BaseApplication {
   }
 
   /**
-   * Gather all inboxes for the View Inbox dropdown.
+   * Gather all inboxes for the View Inbox dialog.
    * Includes player actors, NPC actors with emails, and master contacts.
-   * Supports search filtering via _inboxDropdownSearch.
    * @returns {Array<object>}
    * @private
    */
@@ -790,16 +783,6 @@ export class AdminPanelApp extends BaseApplication {
       return a.name.localeCompare(b.name);
     });
 
-    // Apply search
-    if (this._inboxDropdownSearch) {
-      const q = this._inboxDropdownSearch.toLowerCase();
-      return entries.filter(e =>
-        e.name.toLowerCase().includes(q) ||
-        e.email.toLowerCase().includes(q) ||
-        e.type.toLowerCase().includes(q)
-      );
-    }
-
     return entries;
   }
 
@@ -830,6 +813,7 @@ export class AdminPanelApp extends BaseApplication {
         msgFeedActorFilter: this._msgFeedActorFilter,
         msgFeedActorName: '',
         msgActorDropdownOpen: false,
+        msgActorDropdownSearch: '',
         msgActorFilterOptions: [],
       };
     }
@@ -873,7 +857,10 @@ export class AdminPanelApp extends BaseApplication {
       msgFeedActorFilter: this._msgFeedActorFilter,
       msgFeedActorName: actorName,
       msgActorDropdownOpen: this._msgActorDropdownOpen,
-      msgActorFilterOptions: actorOptions,
+      msgActorDropdownSearch: this._msgActorDropdownSearch,
+      msgActorFilterOptions: this._msgActorDropdownSearch
+        ? actorOptions.filter(o => o.isGroupLabel || (o.name && o.name.toLowerCase().includes(this._msgActorDropdownSearch.toLowerCase())))
+        : actorOptions,
     };
   }
 
@@ -3045,35 +3032,22 @@ export class AdminPanelApp extends BaseApplication {
       npcSearch.addEventListener('input', npcHandler);
     }
 
-    // ── Inbox dropdown search input ──
-    const inboxSearch = this.element?.querySelector('.ncm-msg-inbox-dd-search__input');
-    if (inboxSearch) {
-      if (this._inboxDropdownSearch) {
-        inboxSearch.value = this._inboxDropdownSearch;
+    // ── Actor filter dropdown search input ──
+    const actorDdSearch = this.element?.querySelector('.ncm-msg-actor-dd-search__input');
+    if (actorDdSearch) {
+      if (this._msgActorDropdownSearch) {
+        actorDdSearch.value = this._msgActorDropdownSearch;
       }
-      inboxSearch.focus();
+      actorDdSearch.focus();
 
-      const inboxHandler = this._inboxSearchHandler || (this._inboxSearchHandler =
+      const actorDdHandler = this._actorDdSearchHandler || (this._actorDdSearchHandler =
         foundry.utils.debounce((e) => {
-          this._inboxDropdownSearch = e.target.value;
+          this._msgActorDropdownSearch = e.target.value;
           this.render(true);
-        }, 250)
+        }, 200)
       );
-      inboxSearch.removeEventListener('input', inboxHandler);
-      inboxSearch.addEventListener('input', inboxHandler);
-    }
-
-    // ── Close inbox dropdown when clicking outside ──
-    if (this._inboxDropdownOpen) {
-      const closeInbox = (e) => {
-        if (!e.target.closest('.ncm-msg-inbox-dd')) {
-          this._inboxDropdownOpen = false;
-          this._inboxDropdownSearch = '';
-          this.render(true);
-          document.removeEventListener('pointerdown', closeInbox);
-        }
-      };
-      setTimeout(() => document.addEventListener('pointerdown', closeInbox), 0);
+      actorDdSearch.removeEventListener('input', actorDdHandler);
+      actorDdSearch.addEventListener('input', actorDdHandler);
     }
 
     // ── Scheduled countdown ticking ──
@@ -3128,6 +3102,7 @@ export class AdminPanelApp extends BaseApplication {
       const closeDropdown = (e) => {
         if (!e.target.closest('.ncm-msg-actor-filter')) {
           this._msgActorDropdownOpen = false;
+          this._msgActorDropdownSearch = '';
           this.render(true);
           document.removeEventListener('pointerdown', closeDropdown);
         }
@@ -3483,22 +3458,130 @@ export class AdminPanelApp extends BaseApplication {
     this.render(true);
   }
 
-  static _onToggleInboxDropdown(event, target) {
-    // Don't toggle when clicking inside the dropdown
-    if (event.target.closest('[data-action="openInboxFromDropdown"]')) return;
-    this._inboxDropdownOpen = !this._inboxDropdownOpen;
-    this._inboxDropdownSearch = '';
-    this.render(true);
-  }
+  static _onOpenViewInboxDialog(event, target) {
+    const entries = this._gatherInboxDropdownEntries.call(this);
 
-  static _onOpenInboxFromDropdown(event, target) {
-    event.preventDefault();
-    event.stopPropagation();
-    const inboxId = target.closest('[data-inbox-id]')?.dataset.inboxId;
-    if (!inboxId) return;
-    this._inboxDropdownOpen = false;
-    game.nightcity?.openInbox?.(inboxId);
-    this.render(true);
+    // Count messages per inbox
+    const inboxCounts = new Map();
+    for (const journal of game.journal ?? []) {
+      if (!journal.name?.startsWith('NCM-Inbox-')) continue;
+      const isContact = journal.name.startsWith('NCM-Inbox-Contact-');
+      const ownerId = isContact
+        ? journal.name.replace('NCM-Inbox-Contact-', '')
+        : journal.name.replace('NCM-Inbox-', '');
+      let total = 0;
+      let unread = 0;
+      for (const page of journal.pages ?? []) {
+        const flags = page.flags?.['cyberpunkred-messenger'];
+        if (!flags) continue;
+        total++;
+        const isSent = (flags.messageId || '').endsWith('-sent');
+        if (!flags.status?.read && !isSent && !flags.status?.deleted) unread++;
+      }
+      inboxCounts.set(ownerId, { total, unread });
+    }
+
+    // Build rows
+    const rows = entries.map(e => {
+      const counts = inboxCounts.get(e.inboxId) || { total: 0, unread: 0 };
+      return { ...e, totalMessages: counts.total, unreadMessages: counts.unread };
+    });
+
+    const S = {
+      panel: 'background:#1a1a2e; border:1px solid #2a2a45; border-radius:2px; padding:0; overflow:hidden;',
+      search: 'display:flex; align-items:center; gap:6px; padding:7px 12px; border-bottom:1px solid #2a2a45; background:#0a0a0f;',
+      scroll: 'max-height:340px; overflow-y:auto;',
+      row: 'display:flex; align-items:center; gap:10px; padding:6px 12px; cursor:pointer; transition:background 0.1s; border-bottom:1px solid rgba(42,42,69,0.3);',
+      pip: 'width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:Rajdhani,sans-serif; font-size:10px; font-weight:700; flex-shrink:0;',
+      info: 'display:flex; flex-direction:column; flex:1; min-width:0;',
+      name: 'font-family:Rajdhani,sans-serif; font-size:12px; font-weight:700; color:#e0e0e8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;',
+      meta: 'font-family:Share Tech Mono,monospace; font-size:9px; color:#8888a0;',
+      badge: 'font-family:Share Tech Mono,monospace; font-size:10px; flex-shrink:0; padding:2px 6px; border-radius:2px; line-height:1;',
+      empty: 'padding:20px; text-align:center; font-family:Rajdhani,sans-serif; font-size:12px; color:#8888a0;',
+    };
+
+    const buildRows = (list) => {
+      if (!list.length) return `<div style="${S.empty}"><i class="fas fa-inbox" style="margin-right:6px;"></i> No inboxes found</div>`;
+      return list.map(e => {
+        const unreadBadge = e.unreadMessages > 0
+          ? `<span style="${S.badge} background:rgba(246,82,97,0.12); color:#F65261;">${e.unreadMessages} new</span>`
+          : '';
+        const totalBadge = `<span style="${S.badge} background:rgba(136,136,160,0.08); color:#8888a0;">${e.totalMessages}</span>`;
+        return `<div class="ncm-vi-row" data-inbox-id="${e.inboxId}" style="${S.row}">
+          <div style="${S.pip} color:${e.color}; border:1px solid ${e.color}33; background:${e.color}0a;">${e.initial}</div>
+          <div style="${S.info}">
+            <span style="${S.name}">${e.name}</span>
+            <span style="${S.meta}"><i class="fas ${e.typeIcon}" style="font-size:7px; margin-right:3px;"></i>${e.type}${e.email ? ` · ${e.email}` : ''}</span>
+          </div>
+          ${unreadBadge}
+          ${totalBadge}
+        </div>`;
+      }).join('');
+    };
+
+    const content = `
+      <div style="font-family:Rajdhani,sans-serif; color:#eeeef4; min-width:380px;">
+        <div style="${S.panel}">
+          <div style="${S.search}">
+            <i class="fas fa-magnifying-glass" style="font-size:9px; color:#8888a0;"></i>
+            <input type="text" id="ncm-vi-search" placeholder="Search by name, email, or role…" style="flex:1; background:none; border:none; outline:none; font-family:Rajdhani,sans-serif; font-size:12px; font-weight:600; color:#e0e0e8;">
+          </div>
+          <div id="ncm-vi-list" style="${S.scroll}">
+            ${buildRows(rows)}
+          </div>
+        </div>
+        <div style="font-family:Share Tech Mono,monospace; font-size:9px; color:#555570; padding:6px 4px 0; text-align:center;">
+          ${rows.length} inboxes · Click to open
+        </div>
+      </div>`;
+
+    const dialog = new Dialog({
+      title: 'View Inbox',
+      content,
+      buttons: {
+        close: {
+          icon: '<i class="fas fa-times"></i>',
+          label: 'Close',
+        },
+      },
+      default: 'close',
+      render: (html) => {
+        const searchEl = html.find('#ncm-vi-search');
+        const listEl = html.find('#ncm-vi-list');
+
+        // Search filtering
+        let searchTimeout;
+        searchEl.on('input', () => {
+          clearTimeout(searchTimeout);
+          searchTimeout = setTimeout(() => {
+            const q = searchEl.val().toLowerCase();
+            const filtered = q
+              ? rows.filter(e => e.name.toLowerCase().includes(q) || e.email.toLowerCase().includes(q) || e.type.toLowerCase().includes(q))
+              : rows;
+            listEl.html(buildRows(filtered));
+            bindRowClicks();
+          }, 200);
+        });
+
+        searchEl.focus();
+
+        // Click to open inbox
+        const bindRowClicks = () => {
+          html.find('.ncm-vi-row').on('click', (e) => {
+            const id = e.currentTarget.dataset.inboxId;
+            if (!id) return;
+            game.nightcity?.openInbox?.(id);
+            dialog.close();
+          });
+        };
+        bindRowClicks();
+      },
+    }, {
+      width: 440,
+      classes: ['ncm-time-config-dialog'],
+    });
+
+    dialog.render(true);
   }
 
   static _onOpenComposer(event, target) {

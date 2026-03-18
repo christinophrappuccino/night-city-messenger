@@ -96,36 +96,13 @@
               <span class="ncm-msg-compose-btn__desc">Send to all player inboxes</span>
             </div>
           </div>
-          {{!-- View Inbox Dropdown --}}
-          <div class="ncm-msg-inbox-dd" style="position: relative;">
-            <div class="ncm-msg-compose-btn" data-action="toggleInboxDropdown">
-              <div class="ncm-msg-compose-btn__icon" style="background:rgba(0,255,65,0.06); color:var(--ncm-success,#00ff41); border:1px solid rgba(0,255,65,0.12);"><i class="fas fa-inbox"></i></div>
-              <div class="ncm-msg-compose-btn__text">
-                <span class="ncm-msg-compose-btn__title">View Inbox</span>
-                <span class="ncm-msg-compose-btn__desc">Open any character's inbox</span>
-              </div>
+          {{!-- View Inbox --}}
+          <div class="ncm-msg-compose-btn" data-action="openViewInboxDialog">
+            <div class="ncm-msg-compose-btn__icon" style="background:rgba(0,255,65,0.06); color:var(--ncm-success,#00ff41); border:1px solid rgba(0,255,65,0.12);"><i class="fas fa-inbox"></i></div>
+            <div class="ncm-msg-compose-btn__text">
+              <span class="ncm-msg-compose-btn__title">View Inbox</span>
+              <span class="ncm-msg-compose-btn__desc">Open any character's inbox</span>
             </div>
-            {{#if inboxDropdownOpen}}
-            <div class="ncm-msg-inbox-dd__panel">
-              <div class="ncm-msg-inbox-dd__search">
-                <i class="fas fa-magnifying-glass"></i>
-                <input type="text" class="ncm-msg-inbox-dd-search__input" placeholder="Search inboxes…" value="{{inboxDropdownSearch}}">
-              </div>
-              <div class="ncm-msg-inbox-dd__scroll">
-                {{#each inboxDropdownEntries}}
-                <div class="ncm-msg-inbox-dd__item" data-action="openInboxFromDropdown" data-inbox-id="{{this.inboxId}}">
-                  <div class="ncm-msg-inbox-dd__pip" style="color: {{this.color}}; border: 1px solid {{this.color}}33; background: {{this.color}}0a;">{{this.initial}}</div>
-                  <div class="ncm-msg-inbox-dd__info">
-                    <span class="ncm-msg-inbox-dd__name">{{this.name}}</span>
-                    <span class="ncm-msg-inbox-dd__type"><i class="fas {{this.typeIcon}}"></i> {{this.type}}</span>
-                  </div>
-                </div>
-                {{else}}
-                <div class="ncm-msg-inbox-dd__empty">No inboxes found</div>
-                {{/each}}
-              </div>
-            </div>
-            {{/if}}
           </div>
         </div>
       </div>
@@ -153,6 +130,10 @@
         {{#if msgActorDropdownOpen}}
         <div class="ncm-msg-actor-dropdown">
           <div class="ncm-msg-actor-dropdown__header">Filter by Actor</div>
+          <div class="ncm-msg-actor-dropdown__search">
+            <i class="fas fa-magnifying-glass"></i>
+            <input type="text" class="ncm-msg-actor-dd-search__input" placeholder="Search…" value="{{msgActorDropdownSearch}}">
+          </div>
           <div class="ncm-msg-actor-dropdown__item {{#unless msgFeedActorFilter}}ncm-msg-actor-dropdown__item--active{{/unless}}" data-action="setMsgActorFilter" data-actor-id="">
             <i class="fas fa-layer-group" style="font-size: 9px; color: var(--ncm-secondary); width: 18px; text-align: center;"></i>
             <span class="ncm-msg-actor-dropdown__name" style="{{#unless msgFeedActorFilter}}color: var(--ncm-secondary);{{/unless}}">All Actors</span>
