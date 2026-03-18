@@ -1,50 +1,224 @@
     {{#if (eq activeTab 'messages')}}
 
-    {{!-- NPC Quick-Send --}}
-    <div class="ncm-section-title">
-      <i class="fas fa-paper-plane"></i> Send As NPC
-      <button class="ncm-section-title__action" data-action="openComposer"><i class="fas fa-plus"></i> Compose →</button>
-    </div>
-    {{#if npcActors.length}}
-    <div class="ncm-quicksend-grid">
-      {{#each npcActors}}
-      <div class="ncm-quicksend-card" data-action="quickSend" data-actor-id="{{this.id}}">
-        <div class="ncm-quicksend-card__avatar" style="color: {{this.color}};">{{this.initial}}</div>
-        <div class="ncm-quicksend-card__info">
-          <div class="ncm-quicksend-card__name">{{this.name}}</div>
-          <div class="ncm-quicksend-card__last">{{#if this.lastMessage}}{{this.lastMessage}}{{else}}No messages sent{{/if}}</div>
-        </div>
-        <div class="ncm-quicksend-card__send"><i class="fas fa-paper-plane"></i></div>
+    {{!-- §1 — SUMMARY STRIP --}}
+    <div class="ncm-msg-summary">
+      <div class="ncm-msg-stat">
+        <span class="ncm-msg-stat__value ncm-msg-stat__value--cyan">{{stats.totalMessages}}</span>
+        <span class="ncm-msg-stat__label">Total</span>
       </div>
+      <div class="ncm-msg-stat__sep"></div>
+      <div class="ncm-msg-stat">
+        <span class="ncm-msg-stat__value ncm-msg-stat__value--red">{{stats.unreadMessages}}</span>
+        <span class="ncm-msg-stat__label">Unread</span>
+      </div>
+      <div class="ncm-msg-stat__sep"></div>
+      <div class="ncm-msg-stat">
+        <span class="ncm-msg-stat__value ncm-msg-stat__value--gold">{{scheduledCount}}</span>
+        <span class="ncm-msg-stat__label">Scheduled</span>
+      </div>
+      <div class="ncm-msg-stat__sep"></div>
+      <div class="ncm-msg-stat">
+        <span class="ncm-msg-stat__value ncm-msg-stat__value--orange">{{msgQueueCount}}</span>
+        <span class="ncm-msg-stat__label">Queued</span>
+      </div>
+      <div class="ncm-msg-stat__sep"></div>
+      <div class="ncm-msg-stat">
+        <span class="ncm-msg-stat__value ncm-msg-stat__value--green">{{msgSentToday}}</span>
+        <span class="ncm-msg-stat__label">Sent Today</span>
+      </div>
+    </div>
+
+
+    {{!-- §2 — QUICK COMPOSE --}}
+    <div class="ncm-section-title">
+      <i class="fas fa-paper-plane"></i> Quick Compose
+    </div>
+
+    <div class="ncm-msg-compose-row">
+      {{!-- NPC Quick-Send --}}
+      <div class="ncm-msg-compose-card" style="flex: 2;">
+        <div class="ncm-msg-compose-card__header"><i class="fas fa-user-secret"></i> Send as NPC</div>
+        {{#if npcActors.length}}
+        <div class="ncm-msg-npc-grid">
+          {{#each npcActors}}
+          <div class="ncm-msg-npc-chip" data-action="quickSend" data-actor-id="{{this.id}}">
+            <div class="ncm-msg-npc-chip__avatar" style="color: {{this.color}}; border-color: {{this.color}}40; background: {{this.color}}0a;">{{this.initial}}</div>
+            <div class="ncm-msg-npc-chip__info">
+              <span class="ncm-msg-npc-chip__name">{{this.name}}</span>
+              <span class="ncm-msg-npc-chip__email">{{this.email}}</span>
+            </div>
+          </div>
+          {{/each}}
+        </div>
+        {{else}}
+        <div class="ncm-admin-empty" style="padding: 16px;">
+          <i class="fas fa-user-plus"></i> No NPC actors with emails configured.
+        </div>
+        {{/if}}
+      </div>
+
+      {{!-- Compose Actions --}}
+      <div class="ncm-msg-compose-card" style="flex: 1;">
+        <div class="ncm-msg-compose-card__header"><i class="fas fa-pen-nib"></i> Actions</div>
+        <div class="ncm-msg-compose-actions">
+          <div class="ncm-msg-compose-btn" data-action="openComposer">
+            <div class="ncm-msg-compose-btn__icon ncm-msg-compose-btn__icon--compose"><i class="fas fa-pen"></i></div>
+            <div class="ncm-msg-compose-btn__text">
+              <span class="ncm-msg-compose-btn__title">New Message</span>
+              <span class="ncm-msg-compose-btn__desc">Open full composer</span>
+            </div>
+          </div>
+          <div class="ncm-msg-compose-btn" data-action="msgBroadcast">
+            <div class="ncm-msg-compose-btn__icon ncm-msg-compose-btn__icon--broadcast"><i class="fas fa-tower-broadcast"></i></div>
+            <div class="ncm-msg-compose-btn__text">
+              <span class="ncm-msg-compose-btn__title">Mass Broadcast</span>
+              <span class="ncm-msg-compose-btn__desc">Send to all player inboxes</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    {{!-- §3 — ACTIVITY FEED --}}
+    <div class="ncm-section-title">
+      <i class="fas fa-satellite-dish"></i> Message Activity
+      <span class="ncm-section-title__count">// {{msgFeedEntries.length}} entries</span>
+    </div>
+
+    {{!-- Toolbar --}}
+    <div class="ncm-msg-feed-toolbar">
+      <div class="ncm-msg-feed-search">
+        <i class="fas fa-magnifying-glass"></i>
+        <input type="text" class="ncm-msg-feed-search__input" placeholder="Search messages…" value="{{msgFeedSearch}}">
+      </div>
+      <div class="ncm-pill {{#if (eq msgFeedFilter 'all')}}ncm-pill--active{{/if}}" data-action="msgFeedFilter" data-filter="all"><i class="fas fa-layer-group"></i> All</div>
+      <div class="ncm-pill {{#if (eq msgFeedFilter 'received')}}ncm-pill--active{{/if}}" data-action="msgFeedFilter" data-filter="received"><i class="fas fa-arrow-down"></i> Received</div>
+      <div class="ncm-pill {{#if (eq msgFeedFilter 'sent')}}ncm-pill--active{{/if}}" data-action="msgFeedFilter" data-filter="sent"><i class="fas fa-arrow-up"></i> Sent</div>
+      <div class="ncm-pill {{#if (eq msgFeedFilter 'unread')}}ncm-pill--active{{/if}}" data-action="msgFeedFilter" data-filter="unread"><i class="fas fa-eye-slash"></i> Unread</div>
+      <div class="ncm-msg-actor-filter {{#if msgFeedActorFilter}}ncm-msg-actor-filter--active{{/if}}" data-action="toggleMsgActorFilter">
+        <i class="fas fa-user"></i> Actor: <span class="filter-val">{{#if msgFeedActorFilter}}{{msgFeedActorName}}{{else}}All{{/if}}</span> <i class="fas fa-chevron-down" style="font-size: 8px;"></i>
+        {{#if msgActorDropdownOpen}}
+        <div class="ncm-msg-actor-dropdown">
+          <div class="ncm-msg-actor-dropdown__header">Filter by Actor</div>
+          <div class="ncm-msg-actor-dropdown__item {{#unless msgFeedActorFilter}}ncm-msg-actor-dropdown__item--active{{/unless}}" data-action="setMsgActorFilter" data-actor-id="">
+            <i class="fas fa-layer-group" style="font-size: 9px; color: var(--ncm-secondary); width: 18px; text-align: center;"></i>
+            <span class="ncm-msg-actor-dropdown__name" style="{{#unless msgFeedActorFilter}}color: var(--ncm-secondary);{{/unless}}">All Actors</span>
+            <span class="ncm-msg-actor-dropdown__count">{{stats.totalMessages}}</span>
+          </div>
+          <div class="ncm-msg-actor-dropdown__sep"></div>
+          {{#each msgActorFilterOptions}}
+          {{#if this.isGroupLabel}}
+          <div class="ncm-msg-actor-dropdown__group-label">{{this.label}}</div>
+          {{else}}
+          <div class="ncm-msg-actor-dropdown__item {{#if this.isActive}}ncm-msg-actor-dropdown__item--active{{/if}}" data-action="setMsgActorFilter" data-actor-id="{{this.actorId}}">
+            <div class="ncm-msg-actor-dropdown__pip" style="color: {{this.color}}; border: 1px solid {{this.color}}33; background: {{this.color}}0a;">{{this.initial}}</div>
+            <span class="ncm-msg-actor-dropdown__name">{{this.name}}</span>
+            <span class="ncm-msg-actor-dropdown__count">{{this.messageCount}}</span>
+          </div>
+          {{/if}}
+          {{/each}}
+        </div>
+        {{/if}}
+      </div>
+      <div class="ncm-msg-feed-toolbar__spacer"></div>
+      <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="exportLogs"><i class="fas fa-file-export"></i> Export</button>
+    </div>
+
+    {{!-- Activity Feed List --}}
+    {{#if msgFeedEntries.length}}
+    <div class="ncm-msg-feed-list">
+      <div class="ncm-msg-feed-col-headers">
+        <span class="ncm-msg-feed-col-headers__dir"></span>
+        <span class="ncm-msg-feed-col-headers__route">Route</span>
+        <span class="ncm-msg-feed-col-headers__subject">Subject</span>
+        <span class="ncm-msg-feed-col-headers__status">Status</span>
+        <span class="ncm-msg-feed-col-headers__time">Time</span>
+        <span class="ncm-msg-feed-col-headers__actions"></span>
+      </div>
+
+      {{#each msgFeedEntries}}
+      {{!-- Feed Row --}}
+      <div class="ncm-msg-feed-row {{#if this.unread}}ncm-msg-feed-row--unread{{/if}} {{#if this.isExpanded}}ncm-msg-feed-row--expanded{{/if}} {{#if this.isDeleted}}ncm-msg-feed-row--deleted{{/if}}"
+           data-action="toggleMsgExpand" data-message-id="{{this.messageId}}" data-inbox-owner="{{this.inboxOwnerId}}">
+        <div class="ncm-msg-feed-row__dir ncm-msg-feed-row__dir--{{this.dirClass}}"><i class="fas fa-{{this.dirIcon}}"></i></div>
+        <div class="ncm-msg-feed-row__route">
+          <div class="ncm-msg-feed-row__names">
+            <span class="ncm-msg-feed-row__from">{{this.fromName}}</span>
+            <i class="fas fa-chevron-right ncm-msg-feed-row__arrow"></i>
+            <span class="ncm-msg-feed-row__to">{{this.toName}}</span>
+          </div>
+          <span class="ncm-msg-feed-row__network">{{this.networkLabel}}</span>
+        </div>
+        <div class="ncm-msg-feed-row__subject">{{this.subject}}</div>
+        <div class="ncm-msg-feed-row__status">
+          <div class="ncm-msg-feed-status ncm-msg-feed-status--{{this.statusClass}}"><i class="fas fa-{{this.statusIcon}}"></i> {{this.statusLabel}}</div>
+        </div>
+        <div class="ncm-msg-feed-row__time {{#if this.isRecent}}ncm-msg-feed-row__time--recent{{/if}}">{{this.relativeTime}}</div>
+        <div class="ncm-msg-feed-row__actions">
+          <button class="ncm-admin-action-btn" data-action="openMsgInInbox" data-message-id="{{this.messageId}}" data-inbox-owner="{{this.inboxOwnerId}}" title="Open in Inbox"><i class="fas fa-external-link"></i></button>
+          <button class="ncm-admin-action-btn ncm-admin-action-btn--danger" data-action="hardDeleteMessage" data-message-id="{{this.messageId}}" title="Delete"><i class="fas fa-trash"></i></button>
+        </div>
+      </div>
+
+      {{!-- Inline Expand --}}
+      {{#if this.isExpanded}}
+      <div class="ncm-msg-feed-expand">
+        <div class="ncm-msg-feed-expand__inner">
+          <div class="ncm-msg-feed-expand__body">
+            <div class="ncm-msg-feed-expand__subject">{{this.subject}}</div>
+            <div class="ncm-msg-feed-expand__text">{{this.bodyPreview}}</div>
+            <div class="ncm-msg-feed-expand__meta">
+              <span><i class="fas fa-calendar"></i> <span class="ncm-msg-feed-expand__meta-val">{{this.fullTimestamp}}</span></span>
+              <span><i class="fas fa-network-wired"></i> <span class="ncm-msg-feed-expand__meta-val">{{this.networkName}}</span></span>
+              {{#if this.signalStrength}}<span><i class="fas fa-signal"></i> <span class="ncm-msg-feed-expand__meta-val">{{this.signalStrength}}%</span></span>{{/if}}
+              <span><i class="fas {{#if this.encrypted}}fa-lock{{else}}fa-lock-open{{/if}}"></i> <span class="ncm-msg-feed-expand__meta-val">{{#if this.encrypted}}Encrypted{{else}}Unencrypted{{/if}}</span></span>
+            </div>
+            {{#if this.attachments.length}}
+            <div class="ncm-msg-feed-expand__attachments">
+              {{#each this.attachments}}
+              <span class="sc-badge sc-badge--muted"><i class="fas fa-paperclip"></i> {{this.name}}</span>
+              {{/each}}
+            </div>
+            {{/if}}
+          </div>
+          <div class="ncm-msg-feed-expand__actions">
+            <button class="ncm-btn ncm-btn--cyan ncm-btn--sm" data-action="openMsgInInbox" data-message-id="{{this.messageId}}" data-inbox-owner="{{this.inboxOwnerId}}"><i class="fas fa-external-link"></i> Open</button>
+            <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="replyAsMsg" data-message-id="{{this.messageId}}" data-inbox-owner="{{this.inboxOwnerId}}"><i class="fas fa-reply"></i> Reply As</button>
+            <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="shareMsgToChat" data-message-id="{{this.messageId}}"><i class="fas fa-share-nodes"></i> Share</button>
+          </div>
+        </div>
+      </div>
+      {{/if}}
       {{/each}}
     </div>
     {{else}}
-    <div class="ncm-admin-empty"><i class="fas fa-user-slash"></i> No NPC actors configured.</div>
+    <div class="ncm-admin-empty"><i class="fas fa-inbox"></i> No message activity yet.</div>
     {{/if}}
 
-    {{!-- Scheduled Deliveries --}}
+
+    {{!-- §4 — SCHEDULED DELIVERIES --}}
     <div class="ncm-section-title">
       <i class="fas fa-clock"></i> Scheduled Deliveries
-      {{#if scheduledCount}}<span class="ncm-admin-tab__count" style="margin-left: 4px;">{{scheduledCount}}</span>{{/if}}
+      {{#if scheduledCount}}<span class="ncm-section-title__count">{{scheduledCount}}</span>{{/if}}
     </div>
     {{#if scheduledEntries.length}}
-    <div class="ncm-scheduled-list">
+    <div class="ncm-msg-sched-list">
       {{#each scheduledEntries}}
-      <div class="ncm-scheduled-item">
-        <div class="ncm-scheduled-item__time">
-          <div class="ncm-scheduled-item__countdown {{#if this.isSoon}}ncm-scheduled-item__countdown--soon{{/if}}">{{this.countdown}}</div>
-          <div class="ncm-scheduled-item__date">{{this.deliveryDate}}</div>
-        </div>
-        <div class="ncm-scheduled-item__route">
-          <div class="ncm-scheduled-item__from-to">
-            <span style="color: {{this.fromColor}};">{{this.fromName}}</span>
+      <div class="ncm-msg-sched-row" data-schedule-id="{{this.scheduleId}}">
+        <div class="ncm-msg-sched-row__countdown {{#if this.isSoon}}ncm-msg-sched-row__countdown--soon{{/if}}">{{this.countdown}}</div>
+        <div class="ncm-msg-sched-row__sep"></div>
+        <div class="ncm-msg-sched-row__route">
+          <div class="ncm-msg-sched-row__from-to">
+            <span class="from">{{this.fromName}}</span>
             <span class="arrow">→</span>
-            <span>{{this.toName}}</span>
+            <span class="to">{{this.toName}}</span>
           </div>
-          <div class="ncm-scheduled-item__subject">"{{this.subject}}"</div>
+          <div class="ncm-msg-sched-row__subject">"{{this.subject}}"</div>
         </div>
-        <div class="ncm-scheduled-item__priority ncm-scheduled-item__priority--{{this.priority}}">{{this.priority}}</div>
-        <div class="ncm-scheduled-item__actions">
+        <div class="ncm-msg-sched-row__priority ncm-msg-sched-row__priority--{{this.priority}}">{{this.priority}}</div>
+        <div class="ncm-msg-sched-row__date">{{this.deliveryDate}}</div>
+        <div class="ncm-msg-sched-row__actions">
           <button class="ncm-admin-action-btn" data-action="editScheduled" data-schedule-id="{{this.scheduleId}}" title="Edit"><i class="fas fa-pen"></i></button>
           <button class="ncm-admin-action-btn ncm-admin-action-btn--danger" data-action="cancelScheduled" data-schedule-id="{{this.scheduleId}}" title="Cancel"><i class="fas fa-xmark"></i></button>
         </div>
@@ -53,6 +227,74 @@
     </div>
     {{else}}
     <div class="ncm-admin-empty"><i class="fas fa-clock"></i> No scheduled messages pending.</div>
+    {{/if}}
+
+
+    {{!-- §5 — MESSAGE QUEUE --}}
+    <div class="ncm-section-title">
+      <i class="fas fa-hourglass-half"></i> Message Queue
+      {{#if msgQueueCount}}<span class="ncm-section-title__count">{{msgQueueCount}} stuck</span>{{/if}}
+    </div>
+    {{#if msgQueueEntries.length}}
+    <div class="ncm-msg-queue-list">
+      <div class="ncm-msg-queue-list__header">
+        <span class="ncm-msg-queue-list__label"><i class="fas fa-triangle-exclamation"></i> Queued — Awaiting Network</span>
+        <span class="ncm-msg-queue-list__count">{{msgQueueCount}} messages</span>
+        <button class="ncm-msg-queue-list__flush" data-action="flushMsgQueue"><i class="fas fa-bolt"></i> Force Deliver All</button>
+      </div>
+      {{#each msgQueueEntries}}
+      <div class="ncm-msg-queue-row" data-message-id="{{this.messageId}}">
+        <div class="ncm-msg-queue-row__icon"><i class="fas fa-{{this.reasonIcon}}"></i></div>
+        <div class="ncm-msg-queue-row__route">
+          <span class="ncm-msg-queue-row__names">{{this.fromName}} <span class="arrow">→</span> {{this.toName}}</span>
+          <span class="ncm-msg-queue-row__reason"><i class="fas fa-{{this.reasonIcon}}"></i> {{this.reason}}</span>
+        </div>
+        <span class="ncm-msg-queue-row__queued">Queued {{this.queuedTime}}</span>
+        <div class="ncm-msg-queue-row__actions">
+          <button class="ncm-admin-action-btn" data-action="forceDeliverMsg" data-message-id="{{this.messageId}}" title="Force Deliver"><i class="fas fa-bolt"></i></button>
+          <button class="ncm-admin-action-btn ncm-admin-action-btn--danger" data-action="cancelQueuedMsg" data-message-id="{{this.messageId}}" title="Cancel"><i class="fas fa-xmark"></i></button>
+        </div>
+      </div>
+      {{/each}}
+    </div>
+    {{else}}
+    <div class="ncm-msg-queue-empty">
+      <i class="fas fa-circle-check"></i>
+      <span>All messages delivered — no queued or stuck messages</span>
+    </div>
+    {{/if}}
+
+
+    {{!-- §6 — INBOX MANAGEMENT --}}
+    <div class="ncm-section-title">
+      <i class="fas fa-boxes-stacked"></i> Inbox Management
+      <button class="ncm-section-title__action" data-action="exportLogs"><i class="fas fa-file-export"></i> Export All</button>
+    </div>
+    {{#if stats.actorStats.length}}
+    <div class="ncm-msg-inbox-grid">
+      {{#each stats.actorStats}}
+      <div class="ncm-msg-inbox-card" data-action="openInbox" data-actor-id="{{this.actorId}}">
+        <div class="ncm-msg-inbox-card__avatar" style="color: {{this.avatarColor}}; border-color: {{this.avatarBorderColor}}; background: {{this.avatarColor}}0a;">
+          {{#if this.actorImg}}<img src="{{this.actorImg}}" alt="{{this.actorName}}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">{{else}}{{this.initial}}{{/if}}
+        </div>
+        <div class="ncm-msg-inbox-card__info">
+          <span class="ncm-msg-inbox-card__name">{{this.actorName}}</span>
+          <span class="ncm-msg-inbox-card__meta">
+            {{#if this.hasPlayerOwner}}<span><i class="fas fa-user"></i> {{this.ownerName}}</span>{{else}}<span style="color: var(--ncm-primary);"><i class="fas fa-user-secret"></i> NPC</span>{{/if}}
+            <span>{{this.totalMessages}} msgs</span>
+          </span>
+        </div>
+        <div class="ncm-msg-inbox-card__count {{#if this.unreadMessages}}ncm-msg-inbox-card__count--alert{{/if}}">{{this.unreadMessages}}</div>
+        <div class="ncm-msg-inbox-card__actions">
+          <button class="ncm-msg-inbox-card__action" data-action="openInbox" data-actor-id="{{this.actorId}}" title="Open Inbox"><i class="fas fa-envelope-open"></i></button>
+          <button class="ncm-msg-inbox-card__action" data-action="markAllRead" data-actor-id="{{this.actorId}}" title="Mark All Read"><i class="fas fa-check-double"></i></button>
+          <button class="ncm-msg-inbox-card__action" data-action="purgeOldMessages" data-actor-id="{{this.actorId}}" title="Purge Old"><i class="fas fa-broom"></i></button>
+        </div>
+      </div>
+      {{/each}}
+    </div>
+    {{else}}
+    <div class="ncm-admin-empty"><i class="fas fa-inbox"></i> No actors with messages yet.</div>
     {{/if}}
 
     {{/if}}

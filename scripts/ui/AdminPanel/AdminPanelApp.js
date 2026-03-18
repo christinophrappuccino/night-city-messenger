@@ -64,6 +64,18 @@ export class AdminPanelApp extends BaseApplication {
   /** @type {Set<string>} Collapsed network group keys */
   _collapsedNetGroups = new Set();
 
+  // ── Messages tab state (v2) ──
+  /** @type {string} Feed direction filter: 'all' | 'received' | 'sent' | 'unread' */
+  _msgFeedFilter = 'all';
+  /** @type {string} Feed search query */
+  _msgFeedSearch = '';
+  /** @type {string} Actor filter (actor ID or '' for all) */
+  _msgFeedActorFilter = '';
+  /** @type {string|null} Expanded message ID in the activity feed */
+  _expandedMessageId = null;
+  /** @type {boolean} Actor filter dropdown open state */
+  _msgActorDropdownOpen = false;
+
   // ── Shards tab state (Sprint 4.6) ──
   /** @type {Array<object>} In-memory shard activity log for session events */
   _shardActivityLog = [];
@@ -131,6 +143,21 @@ export class AdminPanelApp extends BaseApplication {
       openComposer: AdminPanelApp._onOpenComposer,
       cancelScheduled: AdminPanelApp._onCancelScheduled,
       editScheduled: AdminPanelApp._onEditScheduled,
+
+      // Messages v2 actions
+      msgFeedFilter: AdminPanelApp._onMsgFeedFilter,
+      toggleMsgExpand: AdminPanelApp._onToggleMsgExpand,
+      toggleMsgActorFilter: AdminPanelApp._onToggleMsgActorFilter,
+      setMsgActorFilter: AdminPanelApp._onSetMsgActorFilter,
+      openMsgInInbox: AdminPanelApp._onOpenMsgInInbox,
+      replyAsMsg: AdminPanelApp._onReplyAsMsg,
+      shareMsgToChat: AdminPanelApp._onShareMsgToChat,
+      forceDeliverMsg: AdminPanelApp._onForceDeliverMsg,
+      cancelQueuedMsg: AdminPanelApp._onCancelQueuedMsg,
+      flushMsgQueue: AdminPanelApp._onFlushMsgQueue,
+      markAllRead: AdminPanelApp._onMarkAllRead,
+      purgeOldMessages: AdminPanelApp._onPurgeOldMessages,
+      msgBroadcast: AdminPanelApp._onMsgBroadcast,
 
       // Contacts actions
       openGMContacts: AdminPanelApp._onOpenGMContacts,
@@ -375,6 +402,7 @@ export class AdminPanelApp extends BaseApplication {
       npcActors,
       playerActors,
       scheduledEntries,
+      ...this._gatherMessagesTabContext(stats),
 
       // Contacts tab
       contactSummary,
@@ -559,6 +587,319 @@ export class AdminPanelApp extends BaseApplication {
         name: a.name,
         img: a.img,
       }));
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Messages Tab v2 — Data Gathering
+  // ═══════════════════════════════════════════════════════════
+
+  /**
+   * Build all context data unique to the Messages tab v2.
+   * Only gathers activity feed when the messages tab is active.
+   * @param {object} stats - Pre-gathered stats from _gatherStats
+   * @returns {object} Context keys for the Messages tab
+   * @private
+   */
+  _gatherMessagesTabContext(stats) {
+    // Only compute feed when tab is active (performance)
+    if (this._activeTab !== 'messages') {
+      return {
+        msgFeedEntries: [],
+        msgQueueEntries: [],
+        msgQueueCount: 0,
+        msgSentToday: 0,
+        msgFeedFilter: this._msgFeedFilter,
+        msgFeedSearch: this._msgFeedSearch,
+        msgFeedActorFilter: this._msgFeedActorFilter,
+        msgFeedActorName: '',
+        msgActorDropdownOpen: false,
+        msgActorFilterOptions: [],
+      };
+    }
+
+    const feedEntries = this._gatherMessageActivity();
+    const queueEntries = this._gatherMessageQueue();
+    const actorOptions = this._gatherMsgActorFilterOptions(feedEntries);
+
+    // Resolve actor name for the filter display
+    let actorName = '';
+    if (this._msgFeedActorFilter) {
+      const actor = game.actors?.get(this._msgFeedActorFilter);
+      actorName = actor?.name ?? this._msgFeedActorFilter;
+    }
+
+    // Count sent today
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayMs = todayStart.getTime();
+    const sentToday = feedEntries.filter(e =>
+      e.isSent && e.rawTimestamp >= todayMs
+    ).length;
+
+    return {
+      msgFeedEntries: feedEntries,
+      msgQueueEntries: queueEntries,
+      msgQueueCount: queueEntries.length,
+      msgSentToday: sentToday,
+      msgFeedFilter: this._msgFeedFilter,
+      msgFeedSearch: this._msgFeedSearch,
+      msgFeedActorFilter: this._msgFeedActorFilter,
+      msgFeedActorName: actorName,
+      msgActorDropdownOpen: this._msgActorDropdownOpen,
+      msgActorFilterOptions: actorOptions,
+    };
+  }
+
+  /**
+   * Scan all inbox journals and build a flat, sorted, filtered activity feed.
+   * @returns {Array<object>} Feed entries
+   * @private
+   */
+  _gatherMessageActivity() {
+    const entries = [];
+
+    try {
+      // Scan all NCM inbox journals
+      for (const journal of game.journal ?? []) {
+        if (!journal.name?.startsWith('NCM-Inbox-')) continue;
+        const isContactInbox = journal.name.startsWith('NCM-Inbox-Contact-');
+        const ownerId = isContactInbox
+          ? journal.name.replace('NCM-Inbox-Contact-', '')
+          : journal.name.replace('NCM-Inbox-', '');
+
+        for (const page of journal.pages ?? []) {
+          const flags = page.flags?.['cyberpunkred-messenger'];
+          if (!flags) continue;
+
+          const msgId = flags.messageId || page.id;
+          const isSentCopy = msgId.endsWith('-sent');
+          const from = flags.senderName || flags.from || 'Unknown';
+          const to = flags.recipientName || flags.to || 'Unknown';
+          const subject = flags.subject || page.name || '(no subject)';
+          const body = flags.body || page.text?.content || '';
+          const timestamp = flags.timestamp || '';
+          const rawTimestamp = timestamp ? new Date(timestamp).getTime() : 0;
+          const isRead = flags.status?.read ?? false;
+          const isDeleted = flags.status?.deleted ?? false;
+          const network = flags.metadata?.networkTrace || flags.network || 'CITINET';
+          const signal = flags.metadata?.signalStrength ?? null;
+          const encrypted = flags.status?.encrypted ?? false;
+          const attachments = (flags.attachments || []).map(a => ({
+            name: typeof a === 'string' ? a : (a.name || a.filename || 'attachment'),
+          }));
+
+          // Determine direction
+          let dirClass = 'in';
+          let dirIcon = 'arrow-down';
+          if (isSentCopy) {
+            dirClass = 'out';
+            dirIcon = 'arrow-up';
+          }
+          if (flags.isBroadcast || flags.type === 'broadcast') {
+            dirClass = 'system';
+            dirIcon = 'tower-broadcast';
+          }
+
+          // Status
+          let statusClass = 'delivered';
+          let statusIcon = 'check';
+          let statusLabel = 'Delivered';
+          if (isDeleted) {
+            statusClass = 'deleted';
+            statusIcon = 'trash';
+            statusLabel = 'Deleted';
+          } else if (isRead) {
+            statusClass = 'read';
+            statusIcon = 'check-double';
+            statusLabel = 'Read';
+          }
+
+          // Relative time
+          const relativeTime = this._relativeTime(timestamp);
+          const isRecent = rawTimestamp > 0 && (Date.now() - rawTimestamp) < 600000; // 10 min
+
+          // Full timestamp in cyberpunk format
+          let fullTimestamp = '';
+          if (timestamp) {
+            const dt = new Date(timestamp);
+            fullTimestamp = `${String(dt.getDate()).padStart(2, '0')}.${String(dt.getMonth() + 1).padStart(2, '0')}.${dt.getFullYear()} // ${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`;
+          }
+
+          // Body preview (strip HTML, truncate)
+          let bodyPreview = body.replace(/<[^>]+>/g, '');
+          if (bodyPreview.length > 300) bodyPreview = bodyPreview.slice(0, 300) + '...';
+
+          // Determine actor IDs for actor filter
+          const fromActorId = flags.fromActorId || '';
+          const toActorId = flags.toActorId || '';
+
+          entries.push({
+            messageId: msgId,
+            inboxOwnerId: ownerId,
+            fromName: from,
+            toName: to,
+            fromActorId,
+            toActorId,
+            subject,
+            bodyPreview,
+            dirClass,
+            dirIcon,
+            statusClass,
+            statusIcon,
+            statusLabel,
+            networkLabel: `${network.toUpperCase()}`,
+            networkName: network,
+            signalStrength: signal,
+            encrypted,
+            attachments,
+            relativeTime,
+            fullTimestamp,
+            isRecent,
+            unread: !isRead && !isSentCopy && !isDeleted,
+            isSent: isSentCopy,
+            isDeleted,
+            rawTimestamp,
+            isExpanded: this._expandedMessageId === msgId,
+          });
+        }
+      }
+    } catch (error) {
+      console.error(`${MODULE_ID} | AdminPanelApp._gatherMessageActivity:`, error);
+    }
+
+    // Sort by timestamp descending (newest first)
+    entries.sort((a, b) => b.rawTimestamp - a.rawTimestamp);
+
+    // Apply filters
+    let filtered = entries;
+
+    // Direction filter
+    if (this._msgFeedFilter === 'received') {
+      filtered = filtered.filter(e => e.dirClass === 'in');
+    } else if (this._msgFeedFilter === 'sent') {
+      filtered = filtered.filter(e => e.dirClass === 'out');
+    } else if (this._msgFeedFilter === 'unread') {
+      filtered = filtered.filter(e => e.unread);
+    }
+
+    // Actor filter
+    if (this._msgFeedActorFilter) {
+      const actId = this._msgFeedActorFilter;
+      filtered = filtered.filter(e =>
+        e.fromActorId === actId || e.toActorId === actId || e.inboxOwnerId === actId
+      );
+    }
+
+    // Search filter
+    if (this._msgFeedSearch) {
+      const q = this._msgFeedSearch.toLowerCase();
+      filtered = filtered.filter(e =>
+        e.fromName.toLowerCase().includes(q) ||
+        e.toName.toLowerCase().includes(q) ||
+        e.subject.toLowerCase().includes(q) ||
+        e.bodyPreview.toLowerCase().includes(q)
+      );
+    }
+
+    // Cap at 50 for performance
+    return filtered.slice(0, 50);
+  }
+
+  /**
+   * Gather messages stuck in the send queue (dead zone / network unavailable).
+   * @returns {Array<object>}
+   * @private
+   */
+  _gatherMessageQueue() {
+    try {
+      const queue = this.messageService?.getQueue?.() ?? [];
+      return queue.map(entry => {
+        const fromActor = entry.fromActorId ? game.actors?.get(entry.fromActorId) : null;
+        const toActor = entry.toActorId ? game.actors?.get(entry.toActorId) : null;
+        const reason = entry.reason || 'Network unavailable';
+        let reasonIcon = 'network-wired';
+        if (reason.toLowerCase().includes('dead zone') || reason.toLowerCase().includes('dead_zone')) {
+          reasonIcon = 'signal-slash';
+        } else if (reason.toLowerCase().includes('lock') || reason.toLowerCase().includes('auth')) {
+          reasonIcon = 'lock';
+        }
+
+        const queuedMs = entry.queuedAt ? Date.now() - new Date(entry.queuedAt).getTime() : 0;
+        let queuedTime = '';
+        if (queuedMs > 0) {
+          const mins = Math.floor(queuedMs / 60000);
+          if (mins < 60) queuedTime = `${mins}m`;
+          else queuedTime = `${Math.floor(mins / 60)}h ${mins % 60}m`;
+        }
+
+        return {
+          messageId: entry.messageId || entry.id || '',
+          fromName: fromActor?.name ?? entry.from ?? 'Unknown',
+          toName: toActor?.name ?? entry.to ?? 'Unknown',
+          reason,
+          reasonIcon,
+          queuedTime,
+        };
+      });
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Build actor filter dropdown options from feed entries.
+   * Groups by Players and NPCs, with message counts.
+   * @param {Array<object>} feedEntries - Unfiltered feed entries
+   * @returns {Array<object>}
+   * @private
+   */
+  _gatherMsgActorFilterOptions(feedEntries) {
+    // Count messages per actor ID
+    const actorCounts = new Map();
+    for (const entry of feedEntries) {
+      if (entry.fromActorId) {
+        actorCounts.set(entry.fromActorId, (actorCounts.get(entry.fromActorId) || 0) + 1);
+      }
+      if (entry.toActorId && entry.toActorId !== entry.fromActorId) {
+        actorCounts.set(entry.toActorId, (actorCounts.get(entry.toActorId) || 0) + 1);
+      }
+    }
+
+    const players = [];
+    const npcs = [];
+
+    for (const [actorId, count] of actorCounts) {
+      const actor = game.actors?.get(actorId);
+      if (!actor) continue;
+
+      const avatarColor = actor.hasPlayerOwner ? '#19f3f7' : '#F65261';
+      const item = {
+        actorId,
+        name: actor.name,
+        initial: (actor.name || '?').charAt(0).toUpperCase(),
+        color: avatarColor,
+        messageCount: count,
+        isActive: this._msgFeedActorFilter === actorId,
+      };
+
+      if (actor.hasPlayerOwner) players.push(item);
+      else npcs.push(item);
+    }
+
+    players.sort((a, b) => b.messageCount - a.messageCount);
+    npcs.sort((a, b) => b.messageCount - a.messageCount);
+
+    const options = [];
+    if (players.length) {
+      options.push({ isGroupLabel: true, label: 'Players' });
+      options.push(...players);
+    }
+    if (npcs.length) {
+      options.push({ isGroupLabel: true, label: 'NPCs' });
+      options.push(...npcs);
+    }
+
+    return options;
   }
 
   /**
@@ -2175,6 +2516,11 @@ export class AdminPanelApp extends BaseApplication {
       this._attachScrollTracker(el);
     });
 
+    // ── Messages tab: wire search input ──
+    if (this._activeTab === 'messages') {
+      this._setupMessagesControls();
+    }
+
     // ── Contacts tab: wire search + sort inputs ──
     if (this._activeTab === 'contacts') {
       this._setupContactsControls();
@@ -2213,6 +2559,43 @@ export class AdminPanelApp extends BaseApplication {
       }
     };
     el.addEventListener('scroll', this._scrollHandler, { passive: true });
+  }
+
+  /**
+   * Wire up messages tab search input with debounced handler
+   * and click-outside-to-close for the actor filter dropdown.
+   */
+  _setupMessagesControls() {
+    const searchInput = this.element?.querySelector('.ncm-msg-feed-search__input');
+    if (searchInput) {
+      if (this._msgFeedSearch) {
+        searchInput.value = this._msgFeedSearch;
+        searchInput.focus();
+        const len = this._msgFeedSearch.length;
+        searchInput.setSelectionRange(len, len);
+      }
+
+      const handler = this._msgSearchHandler || (this._msgSearchHandler =
+        foundry.utils.debounce((e) => {
+          this._msgFeedSearch = e.target.value;
+          this.render(true);
+        }, 350)
+      );
+      searchInput.removeEventListener('input', handler);
+      searchInput.addEventListener('input', handler);
+    }
+
+    // Close actor dropdown when clicking outside
+    if (this._msgActorDropdownOpen) {
+      const closeDropdown = (e) => {
+        if (!e.target.closest('.ncm-msg-actor-filter')) {
+          this._msgActorDropdownOpen = false;
+          this.render(true);
+          document.removeEventListener('pointerdown', closeDropdown);
+        }
+      };
+      setTimeout(() => document.addEventListener('pointerdown', closeDropdown), 0);
+    }
   }
 
   /**
@@ -2549,6 +2932,299 @@ export class AdminPanelApp extends BaseApplication {
       scheduleId,
       editMode: true,
     });
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Action Handlers — Messages v2
+  // ═══════════════════════════════════════════════════════════
+
+  static _onMsgFeedFilter(event, target) {
+    const filter = target.dataset.filter || target.closest('[data-filter]')?.dataset.filter || 'all';
+    this._msgFeedFilter = filter;
+    this.render(true);
+  }
+
+  static _onToggleMsgExpand(event, target) {
+    // Don't toggle if clicking an action button inside the row
+    if (event.target.closest('[data-action]:not([data-action="toggleMsgExpand"])')) return;
+
+    const msgId = target.closest('[data-message-id]')?.dataset.messageId;
+    if (!msgId) return;
+    this._expandedMessageId = (this._expandedMessageId === msgId) ? null : msgId;
+    // Save scroll
+    const content = this.element?.querySelector('.ncm-admin-content');
+    if (content) this._scrollPositions[this._activeTab] = content.scrollTop;
+    this.render(true);
+  }
+
+  static _onToggleMsgActorFilter(event, target) {
+    // Don't toggle when clicking a dropdown item
+    if (event.target.closest('[data-action="setMsgActorFilter"]')) return;
+    this._msgActorDropdownOpen = !this._msgActorDropdownOpen;
+    this.render(true);
+  }
+
+  static _onSetMsgActorFilter(event, target) {
+    event.preventDefault();
+    event.stopPropagation();
+    const actorId = target.closest('[data-actor-id]')?.dataset.actorId ?? '';
+    this._msgFeedActorFilter = actorId;
+    this._msgActorDropdownOpen = false;
+    this.render(true);
+  }
+
+  static _onOpenMsgInInbox(event, target) {
+    event.preventDefault();
+    event.stopPropagation();
+    const inboxOwnerId = target.closest('[data-inbox-owner]')?.dataset.inboxOwner
+                       || target.dataset.inboxOwner;
+    const messageId = target.closest('[data-message-id]')?.dataset.messageId
+                    || target.dataset.messageId;
+    if (!inboxOwnerId) return;
+    game.nightcity?.openInbox?.(inboxOwnerId, messageId || undefined);
+  }
+
+  static _onReplyAsMsg(event, target) {
+    event.preventDefault();
+    event.stopPropagation();
+    const inboxOwnerId = target.closest('[data-inbox-owner]')?.dataset.inboxOwner
+                       || target.dataset.inboxOwner;
+    if (!inboxOwnerId) return;
+    // Open composer as the inbox owner (reply as the recipient)
+    const actor = game.actors?.get(inboxOwnerId);
+    if (actor) {
+      game.nightcity?.openComposer?.({ fromActorId: actor.id, fromName: actor.name });
+    } else {
+      game.nightcity?.openComposer?.();
+    }
+  }
+
+  static async _onShareMsgToChat(event, target) {
+    event.preventDefault();
+    event.stopPropagation();
+    const messageId = target.closest('[data-message-id]')?.dataset.messageId
+                    || target.dataset.messageId;
+    if (!messageId) return;
+
+    // Find the journal page for this message
+    let foundPage = null;
+    for (const journal of game.journal ?? []) {
+      if (!journal.name?.startsWith('NCM-Inbox-')) continue;
+      for (const page of journal.pages ?? []) {
+        const flags = page.flags?.['cyberpunkred-messenger'];
+        if (flags?.messageId === messageId) {
+          foundPage = { page, flags };
+          break;
+        }
+      }
+      if (foundPage) break;
+    }
+
+    if (!foundPage) {
+      ui.notifications.warn('NCM | Message not found.');
+      return;
+    }
+
+    const { flags } = foundPage;
+    const content = `
+      <div class="ncm-chat-card">
+        <div class="ncm-chat-card__header">
+          <i class="fas fa-envelope"></i>
+          <span class="ncm-chat-card__badge">INTERCEPTED MSG</span>
+          <span class="ncm-chat-card__shared-by">GM</span>
+        </div>
+        <div class="ncm-chat-card__content">
+          <div class="ncm-chat-card__from">${flags.senderName || flags.from || 'Unknown'} → ${flags.recipientName || flags.to || 'Unknown'}</div>
+          <div class="ncm-chat-card__subject">${flags.subject || '(no subject)'}</div>
+          <div class="ncm-chat-card__body">${(flags.body || '').slice(0, 200)}${(flags.body || '').length > 200 ? '...' : ''}</div>
+        </div>
+      </div>`;
+
+    await ChatMessage.create({
+      content,
+      speaker: { alias: 'NCM // GM' },
+    });
+
+    ui.notifications.info('NCM | Message shared to chat.');
+  }
+
+  static async _onForceDeliverMsg(event, target) {
+    event.preventDefault();
+    event.stopPropagation();
+    const messageId = target.closest('[data-message-id]')?.dataset.messageId
+                    || target.dataset.messageId;
+    if (!messageId) return;
+
+    const result = await this.messageService?.forceDeliver?.(messageId);
+    if (result?.success) {
+      ui.notifications.info('NCM | Message force-delivered.');
+    } else {
+      ui.notifications.warn('NCM | Force delivery not available or failed.');
+    }
+    this.render(true);
+  }
+
+  static async _onCancelQueuedMsg(event, target) {
+    event.preventDefault();
+    event.stopPropagation();
+    const messageId = target.closest('[data-message-id]')?.dataset.messageId
+                    || target.dataset.messageId;
+    if (!messageId) return;
+
+    const result = await this.messageService?.cancelQueued?.(messageId);
+    if (result?.success) {
+      ui.notifications.info('NCM | Queued message cancelled.');
+    } else {
+      ui.notifications.warn('NCM | Cancel failed.');
+    }
+    this.render(true);
+  }
+
+  static async _onFlushMsgQueue(event, target) {
+    event.preventDefault();
+    const queue = this.messageService?.getQueue?.() ?? [];
+    if (!queue.length) {
+      ui.notifications.info('NCM | Queue is empty.');
+      return;
+    }
+
+    const confirmed = await Dialog.confirm({
+      title: 'Force Deliver All',
+      content: `<p>Force-deliver <strong>${queue.length}</strong> queued message${queue.length > 1 ? 's' : ''}? This bypasses network requirements.</p>`,
+    });
+    if (!confirmed) return;
+
+    let delivered = 0;
+    for (const entry of queue) {
+      const result = await this.messageService?.forceDeliver?.(entry.messageId || entry.id);
+      if (result?.success) delivered++;
+    }
+    ui.notifications.info(`NCM | Force-delivered ${delivered} message${delivered !== 1 ? 's' : ''}.`);
+    this.render(true);
+  }
+
+  static async _onMarkAllRead(event, target) {
+    event.preventDefault();
+    event.stopPropagation();
+    const actorId = target.closest('[data-actor-id]')?.dataset.actorId;
+    if (!actorId) return;
+
+    try {
+      const messages = await this.messageService?.getMessages(actorId) ?? [];
+      const unread = messages.filter(m => !m.status?.read && !m.status?.sent && !m.status?.deleted);
+      if (!unread.length) {
+        ui.notifications.info('NCM | No unread messages.');
+        return;
+      }
+
+      for (const msg of unread) {
+        await this.messageRepository?.markRead(actorId, msg.messageId || msg.id);
+      }
+      ui.notifications.info(`NCM | Marked ${unread.length} message${unread.length !== 1 ? 's' : ''} as read.`);
+      this.render(true);
+    } catch (error) {
+      console.error(`${MODULE_ID} | Mark all read failed:`, error);
+      ui.notifications.error('NCM | Failed to mark messages as read.');
+    }
+  }
+
+  static async _onPurgeOldMessages(event, target) {
+    event.preventDefault();
+    event.stopPropagation();
+    const actorId = target.closest('[data-actor-id]')?.dataset.actorId;
+    if (!actorId) return;
+
+    const actor = game.actors?.get(actorId);
+    if (!actor) return;
+
+    const confirmed = await Dialog.confirm({
+      title: 'Purge Old Messages',
+      content: `<p>Delete all read messages older than 7 days from <strong>${actor.name}</strong>'s inbox?</p>`,
+    });
+    if (!confirmed) return;
+
+    try {
+      const messages = await this.messageService?.getMessages(actorId) ?? [];
+      const cutoff = Date.now() - (7 * 24 * 60 * 60 * 1000);
+      const toPurge = messages.filter(m => {
+        const ts = m.timestamp ? new Date(m.timestamp).getTime() : 0;
+        return m.status?.read && ts < cutoff && !m.status?.saved;
+      });
+
+      if (!toPurge.length) {
+        ui.notifications.info('NCM | No old read messages to purge.');
+        return;
+      }
+
+      for (const msg of toPurge) {
+        await this.messageRepository?.hardDelete(msg.messageId || msg.id);
+      }
+      ui.notifications.info(`NCM | Purged ${toPurge.length} old message${toPurge.length !== 1 ? 's' : ''} from ${actor.name}'s inbox.`);
+      this.render(true);
+    } catch (error) {
+      console.error(`${MODULE_ID} | Purge failed:`, error);
+      ui.notifications.error('NCM | Purge failed.');
+    }
+  }
+
+  static async _onMsgBroadcast(event, target) {
+    // Open a dialog to compose a broadcast message to all player inboxes
+    const playerActors = [];
+    for (const user of game.users) {
+      if (user.isGM || !user.character) continue;
+      playerActors.push({ id: user.character.id, name: user.character.name });
+    }
+
+    if (!playerActors.length) {
+      ui.notifications.warn('NCM | No player-owned characters found.');
+      return;
+    }
+
+    const dialog = new Dialog({
+      title: 'Mass Broadcast — All Player Inboxes',
+      content: `
+        <form style="display:flex; flex-direction:column; gap:8px; padding:4px 0;">
+          <label style="font-size:11px; font-weight:600;">From (NPC / Sender name)</label>
+          <input type="text" name="from" placeholder="e.g. NCPD, System, Rogue…" style="padding:6px 8px; font-size:12px;">
+          <label style="font-size:11px; font-weight:600;">Subject</label>
+          <input type="text" name="subject" placeholder="Message subject…" style="padding:6px 8px; font-size:12px;">
+          <label style="font-size:11px; font-weight:600;">Message Body</label>
+          <textarea name="body" rows="4" placeholder="Message content…" style="padding:6px 8px; font-size:12px; resize:vertical;"></textarea>
+          <p style="font-size:10px; color:#888; margin:0;">Will be delivered to ${playerActors.length} player inbox${playerActors.length !== 1 ? 'es' : ''}: ${playerActors.map(a => a.name).join(', ')}</p>
+        </form>`,
+      buttons: {
+        send: {
+          icon: '<i class="fas fa-tower-broadcast"></i>',
+          label: 'Send Broadcast',
+          callback: async (html) => {
+            const from = html.find('[name="from"]').val()?.trim() || 'System';
+            const subject = html.find('[name="subject"]').val()?.trim() || 'Broadcast';
+            const body = html.find('[name="body"]').val()?.trim();
+            if (!body) return;
+
+            let sent = 0;
+            for (const pa of playerActors) {
+              try {
+                await this.messageService?.sendMessage({
+                  from,
+                  to: pa.name,
+                  toActorId: pa.id,
+                  subject,
+                  body,
+                  isBroadcast: true,
+                });
+                sent++;
+              } catch { /* continue */ }
+            }
+            ui.notifications.info(`NCM | Broadcast sent to ${sent} player inbox${sent !== 1 ? 'es' : ''}.`);
+            this.render(true);
+          },
+        },
+        cancel: { icon: '<i class="fas fa-times"></i>', label: 'Cancel' },
+      },
+      default: 'send',
+    });
+    dialog.render(true);
   }
 
   // ═══════════════════════════════════════════════════════════
