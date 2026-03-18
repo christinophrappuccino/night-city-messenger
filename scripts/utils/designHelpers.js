@@ -708,6 +708,19 @@ export function enrichContactForDisplay(contact, options = {}) {
             : '')
       : '',
 
+    // Breach attempt tracking
+    maxBreachAttempts: contact.maxBreachAttempts || 3,
+    breachAttempts: contact.breachAttempts || 0,
+    isLockedOut: !!(contact.breachLockoutUntil && Date.now() < contact.breachLockoutUntil),
+    attemptDots: contact.encrypted ? (() => {
+      const max = contact.maxBreachAttempts || 3;
+      const used = contact.breachAttempts || 0;
+      return Array.from({ length: max }, (_, i) => ({
+        used: i < used,
+        current: i === used,
+      }));
+    })() : [],
+
     // Trust detail segments
     trustSegmentsDetail: trustData.segmentsDetail,
 

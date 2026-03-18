@@ -21,7 +21,7 @@
 --}}
 
 <div class="ncm-ice ncm-ice--{{#if blackIce}}black{{else}}standard{{/if}}"
-     data-action="breachContact">
+     data-action="breachContact" data-contact-id="{{contactId}}">
   <div class="ncm-ice__grid"></div>
   <div class="ncm-ice__scan"></div>
 
@@ -58,10 +58,26 @@
     {{/if}}
   </div>
 
-  <button class="ncm-ice__breach">
-    <i class="fas fa-terminal"></i>
-    {{#if blackIce}}Breach at Your Own Risk{{else}}Attempt Breach{{/if}}
-  </button>
+  {{!-- Attempt dots --}}
+  {{#if maxBreachAttempts}}
+    <div class="ncm-ice__attempts">
+      <span class="ncm-ice__attempts-label">Attempts</span>
+      {{#each attemptDots}}
+        <div class="ncm-ice__attempt-dot {{#if used}}ncm-ice__attempt-dot--used{{/if}} {{#if current}}ncm-ice__attempt-dot--current{{/if}}"></div>
+      {{/each}}
+    </div>
+  {{/if}}
+
+  {{#if isLockedOut}}
+    <div class="ncm-ice__lockout">
+      <i class="fas fa-clock"></i> LOCKED OUT — System in cooldown
+    </div>
+  {{else}}
+    <button class="ncm-ice__breach">
+      <i class="fas fa-terminal"></i>
+      {{#if blackIce}}Breach at Your Own Risk{{else}}Attempt Breach{{/if}}
+    </button>
+  {{/if}}
 
   {{#if isGM}}
     <button class="ncm-ice__breach ncm-ice__breach--gm"

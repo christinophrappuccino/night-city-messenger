@@ -191,6 +191,11 @@ export class MasterContactService {
       encryptionSkill: data.encryptionSkill?.trim() || 'Interface',
       blackIce: !!data.blackIce,
       blackIceDamage: data.blackIceDamage?.trim?.() || '3d6',
+      iceSource: data.iceSource?.trim?.() || 'default',
+      iceCustomName: data.iceCustomName?.trim?.() || '',
+      iceCustomPortrait: data.iceCustomPortrait?.trim?.() || '',
+      iceActorId: data.iceActorId || '',
+      maxBreachAttempts: data.maxBreachAttempts || 3,
       revealTrust: !!data.revealTrust,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -223,6 +228,7 @@ export class MasterContactService {
       'tags', 'notes', 'actorId', 'type', 'role', 'folder',
       'trust', 'relationships', 'burned',
       'encrypted', 'encryptionDV', 'encryptionSkill', 'blackIce', 'blackIceDamage',
+      'iceSource', 'iceCustomName', 'iceCustomPortrait', 'iceActorId', 'maxBreachAttempts',
       'revealTrust',
     ];
     for (const key of allowed) {
@@ -326,6 +332,11 @@ export class MasterContactService {
         encryptionSkill: contact.encryptionSkill || 'Interface',
         blackIce: !!contact.blackIce,
         blackIceDamage: contact.blackIceDamage || '3d6',
+        iceSource: contact.iceSource || 'default',
+        iceCustomName: contact.iceCustomName || '',
+        iceCustomPortrait: contact.iceCustomPortrait || '',
+        iceActorId: contact.iceActorId || '',
+        maxBreachAttempts: contact.maxBreachAttempts || 3,
       };
 
       // Optionally reveal trust/relationship data (GM toggle per contact)

@@ -541,6 +541,13 @@
 .ncm-app .ncm-detail__chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
 .ncm-app .ncm-detail__actions { display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap; }
 
+/* Actions row shown below ICE overlay for encrypted contacts */
+.ncm-app .ncm-detail__ice-actions {
+  display: flex; gap: 6px; justify-content: center;
+  padding: 12px 20px;
+  border-top: 1px solid var(--ncm-border, #2a2a45);
+}
+
 
 /* Info Cards */
 .ncm-app .ncm-info-card {

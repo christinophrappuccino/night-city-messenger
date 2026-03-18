@@ -62,11 +62,29 @@ export class ContactBreachService {
     if (!contact) return { success: false, error: 'Contact not found' };
     if (!contact.encrypted) return { success: false, error: 'Contact is not encrypted' };
 
+    // ── Lockout check ──
+    if (contact.breachLockoutUntil && Date.now() < contact.breachLockoutUntil) {
+      const remaining = Math.ceil((contact.breachLockoutUntil - Date.now()) / 60000);
+      return { success: false, error: `ICE lockout active — ${remaining} minute${remaining !== 1 ? 's' : ''} remaining.` };
+    }
+
+    // ── Max attempts check ──
+    const maxAttempts = contact.maxBreachAttempts || 3;
+    const currentAttempts = contact.breachAttempts || 0;
+    if (currentAttempts >= maxAttempts) {
+      // Auto-lockout (10 minutes)
+      await this.contactRepo.updateContact(actorId, contactId, {
+        breachLockoutUntil: Date.now() + (10 * 60 * 1000),
+        breachAttempts: 0,
+      });
+      return { success: false, error: 'Maximum breach attempts exceeded. ICE lockout engaged — 10 minutes.' };
+    }
+
     const skillName = options.skillOverride || contact.encryptionSkill || 'Interface';
     const dc = contact.encryptionDV || 15;
 
     log.info(`ContactBreachService: ${actor.name} attempting breach on "${contact.name}" ` +
-      `(${skillName} vs DV ${dc})`);
+      `(${skillName} vs DV ${dc}, attempt ${currentAttempts + 1}/${maxAttempts})`);
 
     // ── Perform Skill Check ──
     let rollResult;
@@ -76,7 +94,7 @@ export class ContactBreachService {
         luckSpend: options.luckSpend ?? 0,
         showChat: true,
         context: `Breaching ICE: ${contact.name}`,
-        flavor: `CONTACT ICE // DV ${dc}`,
+        flavor: `CONTACT ICE // DV ${dc} // Attempt ${currentAttempts + 1}/${maxAttempts}`,
       });
     } catch (err) {
       log.error('ContactBreachService: Skill check failed:', err);
@@ -85,8 +103,24 @@ export class ContactBreachService {
 
     // ── Handle Result ──
     if (rollResult.success) {
+      // Reset attempts on success
+      await this.contactRepo.updateContact(actorId, contactId, {
+        breachAttempts: 0,
+        breachLockoutUntil: null,
+      });
       return this._handleSuccess(actorId, contactId, contact, actor, rollResult);
     } else {
+      // Increment attempts on failure
+      const newAttempts = currentAttempts + 1;
+      const updates = { breachAttempts: newAttempts };
+
+      // Trigger lockout if max reached
+      if (newAttempts >= maxAttempts) {
+        updates.breachLockoutUntil = Date.now() + (10 * 60 * 1000);
+        updates.breachAttempts = 0; // Reset for next lockout cycle
+      }
+      await this.contactRepo.updateContact(actorId, contactId, updates);
+
       return this._handleFailure(actorId, contactId, contact, actor, rollResult);
     }
   }

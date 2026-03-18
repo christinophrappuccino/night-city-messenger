@@ -1266,12 +1266,22 @@ export class ContactManagerApp extends BaseApplication {
       return;
     }
 
-    // Get the contact data
+    // Get the contact data (re-fetch from repo for fresh attempt count)
+    await this._loadContacts();
     const contact = this._contacts.find(c => c.id === contactId);
     if (!contact || !contact.encrypted) return;
 
+    // ── Lockout check ──
+    if (contact.breachLockoutUntil && Date.now() < contact.breachLockoutUntil) {
+      const remaining = Math.ceil((contact.breachLockoutUntil - Date.now()) / 60000);
+      ui.notifications.warn(`ICE lockout active — ${remaining} minute${remaining !== 1 ? 's' : ''} remaining.`);
+      return;
+    }
+
     const skillName = contact.encryptionSkill || 'Interface';
     const dc = contact.encryptionDV || 15;
+    const maxAttempts = contact.maxBreachAttempts || 3;
+    const currentAttempts = contact.breachAttempts || 0;
 
     // Get the player's skill info
     const availableSkills = skillService.getAvailableSkills(actor, [skillName]) ?? [];
@@ -1300,6 +1310,8 @@ export class ContactManagerApp extends BaseApplication {
       blackIceDamage: contact.blackIceDamage || '3d6',
       icePortrait,
       actorName: actor.name,
+      currentAttempt: currentAttempts + 1,
+      maxAttempts,
     });
 
     if (!dialogResult) return;
@@ -1324,9 +1336,12 @@ export class ContactManagerApp extends BaseApplication {
       this._playBreachSuccess(overlayEl, () => this.render());
     } else if (result.error) {
       ui.notifications.error(result.error);
+      this.render(); // Re-render to update attempt dots / lockout state
     } else {
       // ── FAILURE: Red flash + ACCESS DENIED ──
       this._playBreachDenied(overlayEl, result.blackIce);
+      // Re-render after animation to update attempt dots
+      setTimeout(() => this.render(), 2200);
     }
   }
 
@@ -1678,6 +1693,15 @@ export class ContactManagerApp extends BaseApplication {
             <span class="ncm-bd-vs">DV ${opts.dc}</span>
           </div>
         </div>
+
+        ${opts.maxAttempts ? (() => {
+          const dots = Array.from({ length: opts.maxAttempts }, (_, i) => {
+            if (i < (opts.currentAttempt - 1)) return '<div class="ncm-ice__attempt-dot ncm-ice__attempt-dot--used"></div>';
+            if (i === (opts.currentAttempt - 1)) return '<div class="ncm-ice__attempt-dot ncm-ice__attempt-dot--current"></div>';
+            return '<div class="ncm-ice__attempt-dot"></div>';
+          }).join('');
+          return `<div class="ncm-bd-attempts"><span class="ncm-bd-section-label"><i class="fas fa-circle-dot"></i> ATTEMPT ${opts.currentAttempt} / ${opts.maxAttempts}</span><div class="ncm-bd-attempts__dots">${dots}</div></div>`;
+        })() : ''}
       </div>`;
 
     const themeClass = opts.isBlackICE ? 'ncm-bd-theme--black' : 'ncm-bd-theme--cyan';

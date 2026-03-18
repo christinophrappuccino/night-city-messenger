@@ -2239,6 +2239,55 @@
 
 
 /* ═══════════════════════════════════════════
+   §20b  ICE OVERLAY — Attempt Dots + Lockout
+   ═══════════════════════════════════════════ */
+
+.ncm-ice__attempts {
+  display: flex; align-items: center; gap: 5px;
+  position: relative; z-index: 1;
+}
+.ncm-ice__attempts-label {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 8px; color: var(--ncm-text-muted, #555570);
+  text-transform: uppercase; letter-spacing: 0.1em;
+  margin-right: 4px;
+}
+.ncm-ice__attempt-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--ncm-bg-elevated, #252540);
+  border: 1px solid var(--ncm-border, #2a2a45);
+  transition: all 0.2s;
+}
+.ncm-ice__attempt-dot--used {
+  background: var(--ncm-danger, #EF4444);
+  border-color: rgba(239,68,68,0.5);
+  box-shadow: 0 0 4px rgba(239,68,68,0.3);
+}
+.ncm-ice__attempt-dot--current {
+  border-color: var(--ncm-accent, #F0C55B);
+  animation: ncm-breach-dot-pulse 1.5s ease-in-out infinite;
+}
+
+.ncm-ice__lockout {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 24px; border-radius: 3px;
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 10px; font-weight: 600;
+  color: var(--ncm-danger, #EF4444); opacity: 0.8;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  background: rgba(239,68,68,0.04);
+  border: 1px solid rgba(239,68,68,0.12);
+  position: relative; z-index: 1;
+  animation: ncm-ice-v2-damage-blink 2s ease-in-out infinite;
+}
+
+@keyframes ncm-breach-dot-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(240,197,91,0.2); }
+  50% { box-shadow: 0 0 0 4px rgba(240,197,91,0.1); }
+}
+
+
+/* ═══════════════════════════════════════════
    §21  CONTACT BREACH DIALOG (.ncm-breach-dialog)
    Themed dialog for contact ICE breach — lighter than data shard hack dialog
    ═══════════════════════════════════════════ */
@@ -2490,4 +2539,13 @@
 }
 .ncm-breach-dialog .dialog-buttons button[data-button="cancel"]:hover {
   color: #8888a0 !important; border-color: #3a3a5a !important;
+}
+
+/* ─── Dialog attempt dots ─── */
+.ncm-bd-attempts {
+  display: flex; align-items: center; gap: 10px;
+  padding-top: 4px;
+}
+.ncm-bd-attempts__dots {
+  display: flex; gap: 5px; align-items: center;
 }
