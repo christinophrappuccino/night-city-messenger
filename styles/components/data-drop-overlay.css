@@ -1,279 +1,356 @@
 /**
- * Data Drop Overlay Styles — Sprint 3.8
+ * Data Drop Overlay v2 — Redesigned
  * @file styles/components/data-drop-overlay.css
  * @module cyberpunkred-messenger
- * @description Animated overlay for the Data Drop contact transmission sequence.
- *   Route visualization, phase text, progress bar, card materialization, and status flash.
- *   Matches mockup View 4.
+ * @description Full-screen animated overlay for the Data Drop contact transmission.
+ *   Backdrop with grid + scanline, floating panel, route dot visualization,
+ *   phase text with indicators, progress bar, card materialization, status flash.
  */
 
 /* ═══════════════════════════════════════════
-   OVERLAY CONTAINER
+   OVERLAY CONTAINER (full-screen)
    ═══════════════════════════════════════════ */
 
 .ncm-datadrop {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  position: fixed; inset: 0;
   z-index: 10001;
-
-  background: var(--ncm-bg-deep, #0a0a0f);
-  border: 1px solid var(--ncm-border, #2a2a45);
-  border-radius: 2px;
-  padding: 24px 32px;
-  width: 380px;
-
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-
-  overflow: hidden;
-
-  /* Start invisible */
-  opacity: 0;
-  pointer-events: none;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.4s ease;
 }
 
-/* Active state (JS adds this) */
 .ncm-datadrop--active {
-  opacity: 1;
-  pointer-events: auto;
-  animation: ncm-datadrop-fade-in 0.3s ease forwards;
+  opacity: 1; pointer-events: auto;
 }
 
-/* Exit state */
 .ncm-datadrop--exiting {
-  animation: ncm-datadrop-fade-out 0.3s ease forwards;
+  opacity: 0; transition: opacity 0.35s ease;
 }
 
-@keyframes ncm-datadrop-fade-in {
-  from { opacity: 0; transform: translate(-50%, -50%) scale(0.95); }
-  to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+/* ── Backdrop ── */
+.ncm-datadrop__backdrop {
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at center, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.95) 100%);
 }
 
-@keyframes ncm-datadrop-fade-out {
-  from { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-  to   { opacity: 0; transform: translate(-50%, -50%) scale(0.95); }
-}
-
-/* Scan line effect */
-.ncm-datadrop::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, var(--ncm-secondary, #19f3f7), transparent);
-  animation: ncm-datadrop-scanline 2s linear infinite;
+/* ── Scanline sweep ── */
+.ncm-datadrop__scanline {
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(25,243,247,0.6) 50%, transparent 100%);
+  animation: ncm-datadrop-scanline 3.5s linear infinite;
+  pointer-events: none; z-index: 2;
 }
 
 @keyframes ncm-datadrop-scanline {
-  0%   { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
+  0%   { top: 0; opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
 }
 
-/* Backdrop dimming */
-.ncm-datadrop--active::after {
-  content: '';
-  position: fixed;
-  top: -200vh;
-  left: -200vw;
-  width: 500vw;
-  height: 500vh;
-  background: rgba(0, 0, 0, 0.6);
-  z-index: -1;
-  pointer-events: none;
+/* ── Grid background ── */
+.ncm-datadrop__grid {
+  position: absolute; inset: 0;
+  background:
+    repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(25,243,247,0.02) 39px, rgba(25,243,247,0.02) 40px),
+    repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(25,243,247,0.02) 39px, rgba(25,243,247,0.02) 40px);
+  pointer-events: none; z-index: 1;
 }
+
+
+/* ═══════════════════════════════════════════
+   PANEL
+   ═══════════════════════════════════════════ */
+
+.ncm-datadrop__panel {
+  position: relative; z-index: 5;
+  width: 420px;
+  background: rgba(10, 10, 18, 0.95);
+  border: 1px solid rgba(25,243,247,0.12);
+  border-radius: 2px;
+  overflow: hidden;
+  display: flex; flex-direction: column;
+  box-shadow:
+    0 0 60px rgba(0,0,0,0.5),
+    0 0 1px rgba(25,243,247,0.3),
+    inset 0 0 30px rgba(0,0,0,0.3);
+  transform: scale(0.96); opacity: 0;
+  transition: transform 0.5s cubic-bezier(0.16,1,0.3,1), opacity 0.4s ease;
+}
+
+.ncm-datadrop--active .ncm-datadrop__panel {
+  transform: scale(1); opacity: 1;
+}
+
+/* Top accent bar */
+.ncm-datadrop__panel::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0;
+  height: 2px; z-index: 10;
+  background: linear-gradient(90deg, transparent, #19f3f7 30%, #19f3f7 70%, transparent);
+}
+
+/* CRT scanline texture */
+.ncm-datadrop__panel::after {
+  content: ''; position: absolute; inset: 0;
+  background: repeating-linear-gradient(
+    0deg, transparent, transparent 3px, rgba(0,0,0,0.04) 3px, rgba(0,0,0,0.04) 4px
+  );
+  pointer-events: none; z-index: 6;
+}
+
+
+/* ═══════════════════════════════════════════
+   HEADER
+   ═══════════════════════════════════════════ */
+
+.ncm-datadrop__header {
+  padding: 14px 20px 10px;
+  display: flex; align-items: center; gap: 10px;
+  border-bottom: 1px solid rgba(25,243,247,0.06);
+}
+
+.ncm-datadrop__header-icon {
+  width: 28px; height: 28px; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(25,243,247,0.06);
+  border: 1px solid rgba(25,243,247,0.12);
+  color: #19f3f7; font-size: 12px;
+  flex-shrink: 0;
+}
+
+.ncm-datadrop__header-text {
+  flex: 1; min-width: 0;
+}
+
+.ncm-datadrop__header-title {
+  font-family: var(--ncm-font-title, 'Orbitron', sans-serif);
+  font-weight: 700; font-size: 10px;
+  color: #19f3f7;
+  text-transform: uppercase; letter-spacing: 0.15em;
+}
+
+.ncm-datadrop__header-sub {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 8px; color: var(--ncm-text-muted, #555570);
+  text-transform: uppercase; letter-spacing: 0.08em;
+  margin-top: 1px;
+}
+
 
 /* ═══════════════════════════════════════════
    ROUTE VISUALIZATION
    ═══════════════════════════════════════════ */
 
 .ncm-datadrop__route {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 8px;
-  justify-content: center;
+  padding: 14px 20px;
+  display: flex; align-items: center; gap: 0;
 }
 
 .ncm-datadrop__node {
-  padding: 2px 6px;
-  border: 1px solid var(--ncm-border, #2a2a45);
-  border-radius: 2px;
-  color: var(--ncm-text-muted, #555570);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  display: flex; flex-direction: column; align-items: center;
+  gap: 4px; flex: 1;
+  opacity: 0.3;
+  transition: all 0.4s ease;
+}
+.ncm-datadrop__node--active { opacity: 1; }
+.ncm-datadrop__node--done   { opacity: 1; }
+
+/* Dot */
+.ncm-datadrop__node-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  border: 2px solid var(--ncm-border, #2a2a45);
+  background: transparent;
   transition: all 0.3s ease;
+  position: relative;
+}
+
+.ncm-datadrop__node--active .ncm-datadrop__node-dot {
+  border-color: #19f3f7;
+  background: #19f3f7;
+  box-shadow: 0 0 10px rgba(25,243,247,0.5), 0 0 20px rgba(25,243,247,0.2);
+}
+
+.ncm-datadrop__node--done .ncm-datadrop__node-dot {
+  border-color: var(--ncm-success, #34D399);
+  background: var(--ncm-success, #34D399);
+  box-shadow: 0 0 6px rgba(52,211,153,0.4);
+}
+
+/* Ping ring on active node */
+.ncm-datadrop__node--active .ncm-datadrop__node-dot::after {
+  content: ''; position: absolute; inset: -4px;
+  border-radius: 50%; border: 1px solid rgba(25,243,247,0.3);
+  animation: ncm-datadrop-node-ping 1.2s ease-out infinite;
+}
+
+@keyframes ncm-datadrop-node-ping {
+  0%   { transform: scale(1); opacity: 1; }
+  100% { transform: scale(2); opacity: 0; }
+}
+
+/* Label */
+.ncm-datadrop__node-label {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 8px; color: var(--ncm-text-muted, #555570);
+  text-transform: uppercase; letter-spacing: 0.06em;
   white-space: nowrap;
+  transition: color 0.3s;
+}
+.ncm-datadrop__node--active .ncm-datadrop__node-label { color: #19f3f7; }
+.ncm-datadrop__node--done .ncm-datadrop__node-label { color: var(--ncm-success, #34D399); }
+
+/* Connection lines between nodes */
+.ncm-datadrop__conn {
+  flex: 0.8; height: 2px;
+  background: var(--ncm-bg-elevated, #1a1a2e);
+  border-radius: 1px;
+  position: relative; overflow: hidden;
+  margin: 0 -4px; margin-top: -14px;
 }
 
-.ncm-datadrop__node--active {
-  color: var(--ncm-secondary, #19f3f7);
-  border-color: rgba(25, 243, 247, 0.3);
-  box-shadow: 0 0 8px rgba(25, 243, 247, 0.2);
+.ncm-datadrop__conn-fill {
+  position: absolute; inset: 0;
+  background: linear-gradient(90deg, var(--ncm-success, #34D399), #19f3f7);
+  transform: scaleX(0); transform-origin: left;
+  transition: transform 0.5s ease;
+  border-radius: 1px;
+  box-shadow: 0 0 6px rgba(25,243,247,0.3);
 }
 
-.ncm-datadrop__node--done {
-  color: var(--ncm-success, #00ff41);
-  border-color: rgba(0, 255, 65, 0.3);
-  box-shadow: 0 0 6px rgba(0, 255, 65, 0.15);
+.ncm-datadrop__conn--active .ncm-datadrop__conn-fill {
+  transform: scaleX(1);
 }
 
-.ncm-datadrop__hop {
-  color: var(--ncm-text-muted, #555570);
-  flex-shrink: 0;
-  font-size: 7px;
-  letter-spacing: -0.5px;
-  transition: color 0.3s ease;
-}
-
-.ncm-datadrop__hop--active {
-  color: var(--ncm-secondary, #19f3f7);
-}
 
 /* ═══════════════════════════════════════════
    PHASE TEXT
    ═══════════════════════════════════════════ */
 
 .ncm-datadrop__phases {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+  padding: 0 20px 12px;
+  display: flex; flex-direction: column; gap: 3px;
 }
 
 .ncm-datadrop__phase {
   font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 9px;
-  color: var(--ncm-text-muted, #555570);
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  transition: color 0.3s ease;
-  opacity: 0.4;
+  font-size: 9px; color: #333348;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  display: flex; align-items: center; gap: 6px;
+  transition: color 0.3s;
+}
+
+.ncm-datadrop__phase-dot {
+  width: 4px; height: 4px; border-radius: 50%;
+  background: #333348; flex-shrink: 0;
+  transition: all 0.3s;
 }
 
 .ncm-datadrop__phase--active {
-  color: var(--ncm-secondary, #19f3f7);
-  opacity: 1;
+  color: #19f3f7;
+}
+.ncm-datadrop__phase--active .ncm-datadrop__phase-dot {
+  background: #19f3f7;
+  box-shadow: 0 0 4px rgba(25,243,247,0.5);
 }
 
 .ncm-datadrop__phase--done {
-  color: var(--ncm-success, #00ff41);
-  opacity: 1;
+  color: var(--ncm-success, #34D399);
+}
+.ncm-datadrop__phase--done .ncm-datadrop__phase-dot {
+  background: var(--ncm-success, #34D399);
 }
 
-.ncm-datadrop__phase--done::before {
-  content: '✓ ';
-}
 
 /* ═══════════════════════════════════════════
    PROGRESS BAR
    ═══════════════════════════════════════════ */
 
 .ncm-datadrop__progress {
-  width: 100%;
-  height: 3px;
-  background: var(--ncm-bg-elevated, #252540);
-  border-radius: 2px;
+  margin: 0 20px 14px;
+  height: 2px;
+  background: var(--ncm-bg-elevated, #1a1a2e);
+  border-radius: 1px;
   overflow: hidden;
 }
 
 .ncm-datadrop__progress-fill {
-  height: 100%;
-  width: 0%;
-  background: var(--ncm-secondary, #19f3f7);
-  border-radius: 2px;
-  box-shadow: 0 0 8px rgba(25, 243, 247, 0.4);
-  /* transition set by JS: width Xms ease */
+  height: 100%; width: 0%;
+  background: linear-gradient(90deg, #19f3f7, var(--ncm-success, #34D399));
+  border-radius: 1px;
+  box-shadow: 0 0 8px rgba(25,243,247,0.4);
+  /* transition set by JS */
 }
+
 
 /* ═══════════════════════════════════════════
    MATERIALIZING CONTACT CARD
    ═══════════════════════════════════════════ */
 
 .ncm-datadrop__card {
-  background: var(--ncm-bg-surface, #1a1a2e);
-  border: 1px solid rgba(25, 243, 247, 0.2);
-  border-radius: 2px;
+  margin: 0 16px 16px;
   padding: 16px;
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 14px;
+  background: rgba(25, 25, 40, 0.6);
+  border: 1px solid rgba(25,243,247,0.1);
+  border-radius: 3px;
+  display: flex; align-items: center; gap: 14px;
 
   /* Hidden initially */
-  opacity: 0;
-  transform: translateY(8px);
-  transition: opacity 0.4s ease, transform 0.4s ease;
+  opacity: 0; transform: translateY(12px);
+  transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.16,1,0.3,1);
 }
 
 .ncm-datadrop__card--visible {
-  opacity: 1;
-  transform: translateY(0);
+  opacity: 1; transform: translateY(0);
 }
 
 /* Avatar */
 .ncm-datadrop__card-avatar {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  border: 2px solid rgba(25, 243, 247, 0.3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  width: 52px; height: 52px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; overflow: hidden;
+  background: rgba(25,243,247,0.04);
+  border: 2px solid rgba(25,243,247,0.2);
   font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-weight: 700;
-  font-size: 18px;
-  color: var(--ncm-secondary, #19f3f7);
-  flex-shrink: 0;
-  overflow: hidden;
-  background: var(--ncm-bg-elevated, #252540);
+  font-weight: 700; font-size: 20px;
+  color: #19f3f7;
 
-  /* Hidden initially */
-  opacity: 0;
-  transform: scale(0.5);
-  transition: opacity 0.3s ease, transform 0.3s ease;
+  opacity: 0; transform: scale(0.5);
+  transition: all 0.4s cubic-bezier(0.16,1,0.3,1);
 }
 
-.ncm-datadrop__card-avatar--visible {
-  opacity: 1;
-  transform: scale(1);
+.ncm-datadrop__card--visible .ncm-datadrop__card-avatar {
+  opacity: 1; transform: scale(1);
 }
 
 .ncm-datadrop__card-avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+  width: 100%; height: 100%; object-fit: cover;
 }
 
-/* Info container */
+/* ICE avatar variant */
+.ncm-datadrop__card-avatar--ice {
+  border-color: rgba(240,197,91,0.3) !important;
+  background: rgba(240,197,91,0.04) !important;
+  color: var(--ncm-accent, #F0C55B) !important;
+}
+
+/* Info */
 .ncm-datadrop__card-info {
-  flex: 1;
-  min-width: 0;
+  flex: 1; min-width: 0;
 }
 
-/* Name — typing reveal effect */
+/* Name — typing reveal */
 .ncm-datadrop__card-name {
   font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 15px;
-  font-weight: 700;
+  font-size: 15px; font-weight: 700;
   color: var(--ncm-text-primary, #e0e0e8);
-  overflow: hidden;
-  white-space: nowrap;
-
-  /* Hidden initially — typing reveal activated via JS class */
+  overflow: hidden; white-space: nowrap;
   width: 0;
 }
 
 .ncm-datadrop__card-name--reveal {
-  border-right: 2px solid var(--ncm-secondary, #19f3f7);
-  animation: ncm-datadrop-typing 0.8s steps(16) forwards, ncm-datadrop-blink-caret 0.4s step-end 3;
+  border-right: 2px solid #19f3f7;
+  animation: ncm-datadrop-typing 0.8s steps(18) forwards, ncm-datadrop-blink-caret 0.4s step-end 3;
 }
 
 @keyframes ncm-datadrop-typing {
@@ -288,93 +365,78 @@
 /* Email */
 .ncm-datadrop__card-email {
   font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 10px;
-  color: var(--ncm-text-muted, #555570);
+  font-size: 10px; color: var(--ncm-text-muted, #555570);
   margin-top: 2px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-
-  /* Hidden initially */
-  opacity: 0;
-  transition: opacity 0.3s ease;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  opacity: 0; transition: opacity 0.3s ease;
 }
 
-.ncm-datadrop__card-email--visible {
-  opacity: 1;
-}
+.ncm-datadrop__card-email--visible { opacity: 1; }
 
 /* Badges */
 .ncm-datadrop__card-badges {
-  display: flex;
-  gap: 6px;
+  display: flex; gap: 5px; margin-top: 6px; flex-wrap: wrap;
+  opacity: 0; transition: opacity 0.3s ease;
+}
+
+.ncm-datadrop__card-badges--visible { opacity: 1; }
+
+.ncm-datadrop__badge {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 7px; font-weight: 600;
+  padding: 2px 7px; border-radius: 2px;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  background: rgba(25,243,247,0.06);
+  border: 1px solid rgba(25,243,247,0.12);
+  color: rgba(25,243,247,0.7);
+}
+
+/* ICE note */
+.ncm-datadrop__card-ice-note {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 8px; color: var(--ncm-accent, #F0C55B);
   margin-top: 6px;
-  flex-wrap: wrap;
-
-  /* Hidden initially */
-  opacity: 0;
-  transition: opacity 0.3s ease;
+  display: flex; align-items: center; gap: 4px;
+  opacity: 0; transition: opacity 0.3s;
 }
 
-.ncm-datadrop__card-badges--visible {
-  opacity: 1;
-}
+.ncm-datadrop__card-ice-note--visible { opacity: 0.7; }
 
-.ncm-datadrop__card-badges .ncm-badge {
-  font-size: 8px;
-}
 
 /* ═══════════════════════════════════════════
    STATUS TEXT
    ═══════════════════════════════════════════ */
 
 .ncm-datadrop__status {
+  padding: 10px 20px;
+  text-align: center;
+  border-top: 1px solid rgba(52,211,153,0.1);
   font-family: var(--ncm-font-title, 'Orbitron', sans-serif);
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.15em;
-  color: var(--ncm-success, #00ff41);
-
-  /* Hidden initially */
-  opacity: 0;
-  transform: scale(0.8);
-  transition: opacity 0.3s ease, transform 0.3s ease;
+  font-weight: 700; font-size: 11px;
+  text-transform: uppercase; letter-spacing: 0.2em;
+  color: var(--ncm-success, #34D399);
+  opacity: 0; transform: scale(0.85);
+  transition: all 0.4s cubic-bezier(0.16,1,0.3,1);
 }
 
 .ncm-datadrop__status--visible {
-  opacity: 1;
-  transform: scale(1);
-  text-shadow: 0 0 12px rgba(0, 255, 65, 0.4);
-  animation: ncm-datadrop-status-glow 1s ease;
+  opacity: 1; transform: scale(1);
+  text-shadow: 0 0 16px rgba(52,211,153,0.5);
 }
 
-@keyframes ncm-datadrop-status-glow {
-  0%  { text-shadow: 0 0 0 rgba(0, 255, 65, 0); }
-  50% { text-shadow: 0 0 20px rgba(0, 255, 65, 0.6); }
-  100% { text-shadow: 0 0 12px rgba(0, 255, 65, 0.4); }
+.ncm-datadrop__status i {
+  margin-right: 6px; font-size: 10px;
 }
+
 
 /* ═══════════════════════════════════════════
    ANIMATION LEVEL GATES
    ═══════════════════════════════════════════ */
 
-/* Reduced: no animations, instant transitions */
-[data-ncm-animation-level="reduced"] .ncm-datadrop {
-  animation: none;
-}
-
-[data-ncm-animation-level="reduced"] .ncm-datadrop--active {
-  opacity: 1;
-  animation: none;
-  transform: translate(-50%, -50%);
-}
-
-[data-ncm-animation-level="reduced"] .ncm-datadrop::before {
-  animation: none;
-  display: none;
-}
-
+/* Reduced: disable background effects, instant transitions */
+[data-ncm-animation-level="reduced"] .ncm-datadrop__scanline,
+[data-ncm-animation-level="reduced"] .ncm-datadrop__grid { display: none; }
+[data-ncm-animation-level="reduced"] .ncm-datadrop__panel::after { display: none; }
 [data-ncm-animation-level="reduced"] .ncm-datadrop__node,
 [data-ncm-animation-level="reduced"] .ncm-datadrop__phase,
 [data-ncm-animation-level="reduced"] .ncm-datadrop__card,
@@ -382,17 +444,11 @@
 [data-ncm-animation-level="reduced"] .ncm-datadrop__card-name,
 [data-ncm-animation-level="reduced"] .ncm-datadrop__card-email,
 [data-ncm-animation-level="reduced"] .ncm-datadrop__card-badges,
-[data-ncm-animation-level="reduced"] .ncm-datadrop__status {
-  transition-duration: 0s;
-}
-
+[data-ncm-animation-level="reduced"] .ncm-datadrop__card-ice-note,
+[data-ncm-animation-level="reduced"] .ncm-datadrop__status { transition-duration: 0s; }
 [data-ncm-animation-level="reduced"] .ncm-datadrop__card-name--reveal {
-  animation: none;
-  width: 100%;
-  border-right: none;
+  animation: none; width: 100%; border-right: none;
 }
 
-/* Off: no overlay at all (handled by JS returning early) */
-[data-ncm-animation-level="off"] .ncm-datadrop {
-  display: none;
-}
+/* Off: overlay hidden entirely (JS returns early) */
+[data-ncm-animation-level="off"] .ncm-datadrop { display: none; }
