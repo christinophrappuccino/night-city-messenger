@@ -5108,6 +5108,16 @@ export class AdminPanelApp extends BaseApplication {
             <input type="time" id="ncm-tc-dis-time" value="${disTimeVal}" style="${S.input} width:100px;">
             <button id="ncm-tc-dis-set" style="${S.btn} ${S.btnGold}"><i class="fas fa-anchor" style="font-size:9px;"></i> Anchor</button>
           </div>
+          <div id="ncm-tc-dis-preview" style="display:flex; align-items:center; gap:10px; padding:6px 10px; background:#12121a; border:1px solid #2a2a45; border-radius:2px; margin-bottom:8px;">
+            <div style="flex:1;">
+              <div style="font-family:Share Tech Mono,monospace; font-size:8px; color:#8888a0; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:2px;">Preview — If anchored now</div>
+              <div id="ncm-tc-dis-preview-time" style="font-family:Share Tech Mono,monospace; font-size:15px; color:#f7c948; line-height:1;">${info.isDisguised ? formatCyberDate(info.currentTime) : '—'}</div>
+            </div>
+            <div style="flex:0;">
+              <div style="font-family:Share Tech Mono,monospace; font-size:8px; color:#8888a0; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:2px;">Ticking</div>
+              <div id="ncm-tc-dis-preview-tick" style="font-family:Share Tech Mono,monospace; font-size:10px; color:#555570;">+0s</div>
+            </div>
+          </div>
           <div style="${S.row} margin-bottom:0;">
             <button id="ncm-tc-dis-reanchor" style="${S.btn}"><i class="fas fa-rotate" style="font-size:9px;"></i> Re-Anchor Now</button>
             <div style="${S.hint} flex:1; margin-top:0;">Freezes current displayed time and restarts the clock from there. Use after session breaks.</div>
@@ -5184,6 +5194,45 @@ export class AdminPanelApp extends BaseApplication {
           if (!clockEl.closest('body').length) { clearInterval(clockInterval); return; }
           clockEl.text(formatCyberDate(ts.getCurrentTime()));
         }, 1000);
+
+        // Disguised preview — shows what the time would be if anchored now
+        const previewTimeEl = html.find('#ncm-tc-dis-preview-time');
+        const previewTickEl = html.find('#ncm-tc-dis-preview-tick');
+        const previewOpenedAt = Date.now();
+
+        const updateDisguisedPreview = () => {
+          const date = html.find('#ncm-tc-dis-date').val();
+          const time = html.find('#ncm-tc-dis-time').val();
+          if (!date || !time) {
+            previewTimeEl.text('—');
+            previewTickEl.text('');
+            return;
+          }
+          const baseMs = new Date(`${date}T${time}:00`).getTime();
+          if (isNaN(baseMs)) {
+            previewTimeEl.text('Invalid date');
+            return;
+          }
+          const elapsed = Date.now() - previewOpenedAt;
+          const previewMs = baseMs + elapsed;
+          previewTimeEl.text(formatCyberDate(new Date(previewMs).toISOString()));
+
+          // Show elapsed tick
+          const secs = Math.floor(elapsed / 1000);
+          if (secs < 60) previewTickEl.text(`+${secs}s`);
+          else if (secs < 3600) previewTickEl.text(`+${Math.floor(secs / 60)}m ${secs % 60}s`);
+          else previewTickEl.text(`+${Math.floor(secs / 3600)}h ${Math.floor((secs % 3600) / 60)}m`);
+        };
+
+        // Update preview immediately and every second
+        updateDisguisedPreview();
+        const previewInterval = setInterval(() => {
+          if (!previewTimeEl.closest('body').length) { clearInterval(previewInterval); return; }
+          updateDisguisedPreview();
+        }, 1000);
+
+        // Also update preview when date/time inputs change
+        html.find('#ncm-tc-dis-date, #ncm-tc-dis-time').on('change input', updateDisguisedPreview);
 
         // Disguised: Anchor button
         html.find('#ncm-tc-dis-set').on('click', async () => {

@@ -377,25 +377,26 @@
 .ncm-time-config-dialog footer.dialog-buttons {
   background: #0d0d1a !important;
   border-top: 1px solid #2a2a45 !important;
-  padding: 8px 12px !important;
+  padding: 6px 12px !important;
   display: flex !important;
-  gap: 8px !important;
+  justify-content: flex-end !important;
+  gap: 6px !important;
   margin: 0 !important;
 }
 
 .ncm-time-config-dialog .dialog-buttons button,
 .ncm-time-config-dialog footer.dialog-buttons button {
-  flex: 1 !important;
+  flex: 0 0 auto !important;
   background: transparent !important;
   border: 1px solid #2a2a45 !important;
   border-radius: 2px !important;
   color: #8888a0 !important;
   font-family: 'Rajdhani', sans-serif !important;
-  font-size: 12px !important;
+  font-size: 11px !important;
   font-weight: 700 !important;
   text-transform: uppercase !important;
   letter-spacing: 0.06em !important;
-  padding: 6px 14px !important;
+  padding: 4px 12px !important;
   cursor: pointer !important;
   transition: all 0.15s !important;
   appearance: none !important;
@@ -405,12 +406,10 @@
   min-height: 0 !important;
   height: auto !important;
   width: auto !important;
-  line-height: 1.4 !important;
-  display: flex !important; align-items: center !important; justify-content: center !important; gap: 6px !important;
+  line-height: 1.2 !important;
+  display: inline-flex !important; align-items: center !important; justify-content: center !important; gap: 5px !important;
   margin: 0 !important;
   text-shadow: none !important;
-  flex-shrink: 0 !important;
-  flex-grow: 0 !important;
   outline: none !important;
 }
 
@@ -420,7 +419,6 @@
   border-color: rgba(25, 243, 247, 0.3) !important;
   color: #19f3f7 !important;
   background: rgba(25, 243, 247, 0.04) !important;
-  flex-grow: 1 !important;
 }
 
 .ncm-time-config-dialog .dialog-buttons button[data-button="apply"]:hover,
@@ -430,11 +428,6 @@
 }
 
 /* Close button — muted */
-.ncm-time-config-dialog .dialog-buttons button[data-button="close"],
-.ncm-time-config-dialog footer.dialog-buttons button[data-button="close"] {
-  flex-grow: 0 !important;
-}
-
 .ncm-time-config-dialog .dialog-buttons button[data-button="close"]:hover,
 .ncm-time-config-dialog footer.dialog-buttons button[data-button="close"]:hover {
   border-color: #3a3a5a !important;
@@ -443,7 +436,7 @@
 
 .ncm-time-config-dialog .dialog-buttons button i,
 .ncm-time-config-dialog footer.dialog-buttons button i {
-  font-size: 11px !important;
+  font-size: 9px !important;
   margin: 0 !important;
 }
 
