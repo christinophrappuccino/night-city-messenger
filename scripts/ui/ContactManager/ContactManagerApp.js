@@ -143,6 +143,9 @@ export class ContactManagerApp extends BaseApplication {
       // ─── Form helpers ───
       browsePortrait:     ContactManagerApp._onBrowsePortrait,
       createFolderInline: ContactManagerApp._onCreateFolderInline,
+      selectIceMode:      ContactManagerApp._onSelectIceMode,
+      selectIceActor:     ContactManagerApp._onSelectIceActor,
+      browseIcePortrait:  ContactManagerApp._onBrowseIcePortrait,
 
       // ─── Other ───
       openSettings:   ContactManagerApp._onOpenSettings,
@@ -317,6 +320,25 @@ export class ContactManagerApp extends BaseApplication {
         }))
       : [];
 
+    // ── Custom roles from GM settings ──
+    const customRoles = masterSvc?.getCustomRoles?.() || [];
+
+    // ── Black ICE actors (for ICE source picker) ──
+    const editContact = editingContact || (this.isAdding ? null : null);
+    const iceConfig = editContact || {};
+    const iceSource = iceConfig.iceSource || 'default';
+
+    const blackIceActors = game.user.isGM
+      ? (game.actors?.filter(a =>
+          a.type === 'blackIce' || a.type === 'black-ice' ||
+          a.getFlag?.(MODULE_ID, 'isBlackICE') ||
+          a.name?.toLowerCase().includes('black ice')
+        ) ?? []).map(a => ({
+          id: a.id, name: a.name, img: a.img,
+          selected: iceConfig.iceActorId === a.id,
+        }))
+      : [];
+
     return {
       // Owner
       ownerName, ownerEmail, ownerAvatarColor, ownerInitials,
@@ -356,9 +378,11 @@ export class ContactManagerApp extends BaseApplication {
       // Tags
       allTags: tagPills,
 
-      // Folders + Actors (for form)
+      // Folders + Actors + Roles (for form)
       existingFolders,
       availableActors,
+      customRoles,
+      blackIceActors,
 
       // Network
       currentNetwork,
@@ -507,6 +531,7 @@ export class ContactManagerApp extends BaseApplication {
     this._setupSelectListeners();
     this._setupNotesAutoSave();
     this._setupICEToggle();
+    this._setupRoleSelect();
     this._restoreListScroll();
 
     if (game.user.isGM) {
@@ -582,6 +607,7 @@ export class ContactManagerApp extends BaseApplication {
    * Shows/hides BLACK ICE damage input when BLACK ICE dropdown changes.
    */
   _setupICEToggle() {
+    // Show/hide ICE details when encryption toggled
     const iceSelect = this.element?.querySelector('.ncm-ice-toggle-select');
     const iceRow = this.element?.querySelector('.ncm-form-row--ice-details');
     if (iceSelect && iceRow) {
@@ -590,13 +616,42 @@ export class ContactManagerApp extends BaseApplication {
       });
     }
 
+    // Show/hide BLACK ICE source panel when BLACK ICE toggled
     const blackIceSelect = this.element?.querySelector('.ncm-blackice-toggle-select');
-    const dmgInput = this.element?.querySelector('.ncm-blackice-damage-input');
-    if (blackIceSelect && dmgInput) {
+    const iceSourceBlock = this.element?.querySelector('.ncm-form-ice-source');
+    if (blackIceSelect && iceSourceBlock) {
       blackIceSelect.addEventListener('change', (e) => {
-        dmgInput.style.display = e.target.value === 'true' ? '' : 'none';
+        iceSourceBlock.style.display = e.target.value === 'true' ? '' : 'none';
       });
     }
+  }
+
+  /**
+   * Wire up the "Manage Roles…" option in the role select dropdown.
+   * When selected, opens the RoleManagerDialog and resets the select.
+   */
+  _setupRoleSelect() {
+    if (!game.user.isGM) return;
+    const select = this.element?.querySelector('.ncm-form-select--role');
+    if (!select) return;
+
+    select.addEventListener('change', async (e) => {
+      if (e.target.value !== '__manage_roles__') return;
+
+      // Reset to current role
+      const currentRole = this.editingContactId
+        ? (this._contacts.find(c => c.id === this.editingContactId)?.role || 'npc')
+        : 'npc';
+      e.target.value = currentRole;
+
+      // Dynamic import to keep bundle light
+      const { RoleManagerDialog } = await import('../GMContactManager/RoleManagerDialog.js');
+      const masterSvc = game.nightcity?.masterContactService;
+      if (masterSvc) {
+        const dialog = new RoleManagerDialog(masterSvc);
+        dialog.open();
+      }
+    });
   }
 
   /**
@@ -1001,9 +1056,32 @@ export class ContactManagerApp extends BaseApplication {
       if (blackIceVal !== null) {
         data.blackIce = blackIceVal === 'true';
       }
-      const blackIceDamage = formData.get('blackIceDamage');
-      if (blackIceDamage) {
-        data.blackIceDamage = blackIceDamage.trim();
+
+      // ICE source fields (Default / Custom / Actor)
+      if (data.blackIce) {
+        const iceSource = formData.get('iceSource') || 'default';
+        data.iceSource = iceSource;
+
+        if (iceSource === 'custom') {
+          data.iceCustomName = formData.get('iceCustomName')?.trim() || '';
+          data.iceCustomPortrait = formData.get('iceCustomPortrait')?.trim() || '';
+          data.blackIceDamage = formData.get('iceCustomDamage')?.trim() || '3d6';
+        } else if (iceSource === 'actor') {
+          data.iceActorId = formData.get('iceActorId') || '';
+          // Damage derived from actor at runtime, store actor ref
+          data.blackIceDamage = formData.get('blackIceDamage')?.trim() || '3d6';
+        } else {
+          // Default mode
+          const blackIceDamage = formData.get('blackIceDamage');
+          if (blackIceDamage) {
+            data.blackIceDamage = blackIceDamage.trim();
+          }
+        }
+      } else {
+        const blackIceDamage = formData.get('blackIceDamage');
+        if (blackIceDamage) {
+          data.blackIceDamage = blackIceDamage.trim();
+        }
       }
     }
 
@@ -1141,27 +1219,10 @@ export class ContactManagerApp extends BaseApplication {
       return;
     }
 
-    const useFilePicker = await Dialog.confirm({
-      title: 'Upload Portrait',
-      content: `
-        <p style="font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--ncm-text-secondary, #8888a0);">
-          Choose image source:
-        </p>
-        <p style="font-family: 'Share Tech Mono', monospace; font-size: 10px; color: var(--ncm-text-muted, #555570);">
-          <strong>Yes</strong> — Browse Foundry files (world/module images)<br>
-          <strong>No</strong> — Upload from your computer (auto-resized to 128×128)
-        </p>`,
-      yes: 'Browse Files',
-      no: 'Upload Local',
-      defaultYes: true,
-    });
-
-    let result;
-    if (useFilePicker) {
-      result = await portraitService.uploadViaFilePicker(this.actorId, contactId, { useBase64: false });
-    } else {
-      result = await portraitService.uploadViaFileInput(this.actorId, contactId);
-    }
+    // Direct FilePicker — same as everywhere else in NCM
+    const result = await portraitService.uploadViaFilePicker(
+      this.actorId, contactId, { useBase64: false }
+    );
 
     if (result.success) {
       ui.notifications.info('Portrait updated.');
@@ -1410,6 +1471,60 @@ export class ContactManagerApp extends BaseApplication {
     if (!result) return;
     const input = this.element?.querySelector('[name="folder"]');
     if (input) input.value = result;
+  }
+
+  /**
+   * Switch ICE source mode (default / custom / actor).
+   * Shows the matching panel, hides others, updates hidden input.
+   */
+  static _onSelectIceMode(event, target) {
+    event.stopPropagation();
+    const mode = target.closest('[data-mode]')?.dataset.mode;
+    if (!mode) return;
+
+    // Toggle card selection
+    const cards = this.element?.querySelectorAll('.ncm-cfg-ice-card');
+    cards?.forEach(c => c.classList.toggle('ncm-cfg-ice-card--sel', c.dataset.mode === mode));
+
+    // Toggle panels
+    const panels = this.element?.querySelectorAll('[data-ice-panel]');
+    panels?.forEach(p => p.classList.toggle('ncm-cfg-ice-panel--on', p.dataset.icePanel === mode));
+
+    // Update hidden input
+    const hidden = this.element?.querySelector('[name="iceSource"]');
+    if (hidden) hidden.value = mode;
+  }
+
+  /**
+   * Select a BLACK ICE actor from the actor grid.
+   */
+  static _onSelectIceActor(event, target) {
+    event.stopPropagation();
+    const actorId = target.closest('[data-actor-id]')?.dataset.actorId;
+    if (!actorId) return;
+
+    // Toggle card selection
+    const cards = this.element?.querySelectorAll('.ncm-cfg-actor-card');
+    cards?.forEach(c => c.classList.toggle('ncm-cfg-actor-card--sel', c.dataset.actorId === actorId));
+
+    // Update hidden input
+    const hidden = this.element?.querySelector('[name="iceActorId"]');
+    if (hidden) hidden.value = actorId;
+  }
+
+  /**
+   * Browse for a custom ICE portrait via FilePicker.
+   */
+  static _onBrowseIcePortrait(event, target) {
+    event.stopPropagation();
+    const input = this.element?.querySelector('[name="iceCustomPortrait"]');
+    if (!input) return;
+    const fp = new FilePicker({
+      type: 'image',
+      current: input.value || '',
+      callback: (path) => { if (path) input.value = path; },
+    });
+    fp.browse();
   }
 
   // ═══════════════════════════════════════════════════════════

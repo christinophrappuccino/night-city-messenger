@@ -2863,60 +2863,20 @@
 
 
 /* ═══════════════════════════════════════════
-   §19  FORM — Browse Buttons + ICE Compact
+   §22  FORM — ICE Source Tile Picker
+   (mirrors shard-config.css ncm-cfg-ice-* pattern)
    ═══════════════════════════════════════════ */
 
-/* Browse/Create buttons (portrait, folder) */
-.ncm-app .ncm-contacts-v5 .ncm-form-browse-btn {
-  appearance: none !important;
-  -webkit-appearance: none !important;
-  box-shadow: none !important;
-  outline: none !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  width: 30px !important;
-  height: 30px !important;
-  min-width: 30px !important;
-  min-height: 30px !important;
-  max-width: 30px !important;
-  max-height: 30px !important;
-  padding: 0 !important;
-  background: var(--ncm-bg-elevated, #252540) !important;
-  border: 1px solid var(--ncm-border, #2a2a45) !important;
-  border-radius: 3px !important;
-  color: var(--ncm-text-muted, #555570) !important;
-  font-size: 11px !important;
-  cursor: pointer !important;
-  flex-shrink: 0 !important;
-  flex-grow: 0 !important;
-  line-height: 1 !important;
-}
-.ncm-app .ncm-contacts-v5 .ncm-form-browse-btn:hover {
-  color: var(--ncm-secondary, #00D4E6) !important;
-  border-color: rgba(0,212,230,0.3) !important;
-  background: rgba(0,212,230,0.06) !important;
-}
-
-/* Input + inline button row */
-.ncm-app .ncm-contacts-v5 .ncm-form-input-row {
-  display: flex;
-  gap: 4px;
-  align-items: center;
-}
-.ncm-app .ncm-contacts-v5 .ncm-form-input-row .ncm-form-input {
-  flex: 1;
-  min-width: 0;
-}
-
 /* ICE compact layout row */
-.ncm-app .ncm-contacts-v5 .ncm-form-ice-compact {
+.ncm-app .ncm-contacts-v5 .ncm-form-ice-compact,
+.ncm-app.ncm-contact-manager .ncm-form-ice-compact {
   display: flex;
   gap: 6px;
   align-items: center;
 }
 
-.ncm-app .ncm-contacts-v5 .ncm-form-ice-label {
+.ncm-app .ncm-contacts-v5 .ncm-form-ice-label,
+.ncm-app.ncm-contact-manager .ncm-form-ice-label {
   font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
   font-size: 8px;
   color: var(--ncm-text-muted, #555570);
@@ -2925,21 +2885,155 @@
   flex-shrink: 0;
 }
 
-.ncm-app .ncm-contacts-v5 .ncm-form-input--dv {
+.ncm-app .ncm-contacts-v5 .ncm-form-input--dv,
+.ncm-app.ncm-contact-manager .ncm-form-input--dv {
   width: 55px !important;
   max-width: 55px !important;
   flex-shrink: 0 !important;
   text-align: center !important;
 }
 
-.ncm-app .ncm-contacts-v5 .ncm-form-select--ice {
+.ncm-app .ncm-contacts-v5 .ncm-form-select--ice,
+.ncm-app.ncm-contact-manager .ncm-form-select--ice {
   flex: 1 !important;
   min-width: 0 !important;
 }
 
-.ncm-app .ncm-contacts-v5 .ncm-form-input--dmg {
-  width: 50px !important;
-  max-width: 50px !important;
-  flex-shrink: 0 !important;
+/* Input + inline button row */
+.ncm-app .ncm-contacts-v5 .ncm-form-input-row,
+.ncm-app.ncm-contact-manager .ncm-form-input-row {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.ncm-app .ncm-contacts-v5 .ncm-form-input-row .ncm-form-input,
+.ncm-app.ncm-contact-manager .ncm-form-input-row .ncm-form-input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ICE source label */
+.ncm-app .ncm-form-ice-source__label {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 8px;
+  color: var(--ncm-text-muted, #555570);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin: 10px 0 4px;
+}
+
+/* Mode cards — reuse shard-config classes, scoped to contacts */
+.ncm-app.ncm-contact-manager .ncm-cfg-ice-modes {
+  display: flex; gap: 6px; margin: 8px 0;
+}
+.ncm-app.ncm-contact-manager .ncm-cfg-ice-card {
+  all: unset !important;
+  flex: 1 !important;
+  padding: 8px 10px !important;
   text-align: center !important;
+  cursor: pointer !important;
+  background: var(--ncm-bg-deep, #0e0e16) !important;
+  border: 1px solid var(--ncm-border, #1e1e30) !important;
+  border-radius: 3px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 3px !important;
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif) !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: var(--ncm-text-muted, #6a6a8a) !important;
+  box-sizing: border-box !important;
+  transition: all 0.15s !important;
+}
+.ncm-app.ncm-contact-manager .ncm-cfg-ice-card:hover {
+  border-color: var(--ncm-border-active, #3a3a5a) !important;
+}
+.ncm-app.ncm-contact-manager .ncm-cfg-ice-card--sel {
+  border-color: #ff0033 !important;
+  background: rgba(255,0,51,0.04) !important;
+  color: #ff4444 !important;
+}
+.ncm-app.ncm-contact-manager .ncm-cfg-ice-card i { font-size: 16px; }
+
+/* Panels */
+.ncm-app.ncm-contact-manager .ncm-cfg-ice-panel {
+  display: none;
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: var(--ncm-bg-deep, #0a0a12);
+  border: 1px solid var(--ncm-border, #1a1a2e);
+  border-radius: 3px;
+}
+.ncm-app.ncm-contact-manager .ncm-cfg-ice-panel--on { display: block; }
+
+/* Damage preview */
+.ncm-app.ncm-contact-manager .ncm-cfg-dmg-preview {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px;
+  background: rgba(255,0,51,0.04);
+  border: 1px solid rgba(255,0,51,0.12);
+  border-radius: 3px;
+}
+.ncm-app.ncm-contact-manager .ncm-cfg-dmg-dice {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 16px; font-weight: 700; color: #ff4444;
+}
+.ncm-app.ncm-contact-manager .ncm-cfg-dmg-label {
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-size: 11px; font-weight: 600; color: #ff4444;
+  opacity: 0.8; text-transform: uppercase; letter-spacing: 0.04em;
+}
+
+/* Actor grid */
+.ncm-app.ncm-contact-manager .ncm-cfg-actor-grid {
+  display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0;
+}
+.ncm-app.ncm-contact-manager .ncm-cfg-actor-card {
+  all: unset !important;
+  width: 75px !important;
+  padding: 8px !important;
+  text-align: center !important;
+  cursor: pointer !important;
+  background: var(--ncm-bg-base, #12121a) !important;
+  border: 1px solid var(--ncm-border, #2a2a45) !important;
+  border-radius: 3px !important;
+  transition: all 0.15s !important;
+  box-sizing: border-box !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 4px !important;
+}
+.ncm-app.ncm-contact-manager .ncm-cfg-actor-card:hover {
+  border-color: var(--ncm-border-active, #3a3a5a) !important;
+}
+.ncm-app.ncm-contact-manager .ncm-cfg-actor-card--sel {
+  border-color: #ff0033 !important;
+  background: rgba(255,0,51,0.04) !important;
+}
+.ncm-app.ncm-contact-manager .ncm-cfg-actor-img {
+  width: 44px; height: 44px; border-radius: 50%;
+  margin: 0 auto 4px; border: 2px solid var(--ncm-border, #2a2a45);
+  overflow: hidden; background: var(--ncm-bg-deep, #0a0a12);
+  display: flex; align-items: center; justify-content: center;
+}
+.ncm-app.ncm-contact-manager .ncm-cfg-actor-card--sel .ncm-cfg-actor-img {
+  border-color: #ff0033; box-shadow: 0 0 6px rgba(255,0,51,0.2);
+}
+.ncm-app.ncm-contact-manager .ncm-cfg-actor-img img {
+  width: 100%; height: 100%; object-fit: cover; border: none;
+}
+.ncm-app.ncm-contact-manager .ncm-cfg-actor-img i {
+  font-size: 18px; color: var(--ncm-text-muted, #5a5a7a);
+}
+.ncm-app.ncm-contact-manager .ncm-cfg-actor-name {
+  font-size: 10px; font-weight: 600;
+  color: var(--ncm-text-primary, #d0d0d8);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 75px;
+}
+.ncm-app.ncm-contact-manager .ncm-cfg-hint {
+  font-size: 10px; color: var(--ncm-text-muted, #555570);
+  font-style: italic;
 }

@@ -219,6 +219,8 @@
     <div class="ncm-form-row ncm-form-row--ice-details" {{#unless contact.encrypted}}style="display:none;"{{/unless}}>
       <div class="ncm-form-group">
         <label class="ncm-form-label">ICE Configuration</label>
+
+        {{!-- DV + Skill + BLACK ICE toggle row --}}
         <div class="ncm-form-ice-compact">
           <span class="ncm-form-ice-label">DV</span>
           <input type="number" name="encryptionDV" value="{{contact.encryptionDV}}"
@@ -234,10 +236,86 @@
             <option value="false" {{#unless contact.blackIce}}selected{{/unless}}>No BLACK ICE</option>
             <option value="true" {{#if contact.blackIce}}selected{{/if}}>BLACK ICE Active</option>
           </select>
-          <input type="text" name="blackIceDamage" value="{{contact.blackIceDamage}}"
-                 placeholder="3d6"
-                 class="ncm-form-input ncm-form-input--mono ncm-form-input--dmg ncm-blackice-damage-input"
-                 {{#unless contact.blackIce}}style="display:none;"{{/unless}} />
+        </div>
+
+        {{!-- BLACK ICE Source Picker (shown when BLACK ICE is active) --}}
+        <div class="ncm-form-ice-source" {{#unless contact.blackIce}}style="display:none;"{{/unless}}>
+          <div class="ncm-form-ice-source__label">BLACK ICE Source</div>
+
+          {{!-- Mode cards --}}
+          <div class="ncm-cfg-ice-modes">
+            <div class="ncm-cfg-ice-card {{#if (eq contact.iceSource 'default')}}ncm-cfg-ice-card--sel{{/if}} {{#unless contact.iceSource}}ncm-cfg-ice-card--sel{{/unless}}"
+                 data-action="selectIceMode" data-mode="default">
+              <i class="fas fa-dice"></i><span>Default</span>
+            </div>
+            <div class="ncm-cfg-ice-card {{#if (eq contact.iceSource 'custom')}}ncm-cfg-ice-card--sel{{/if}}"
+                 data-action="selectIceMode" data-mode="custom">
+              <i class="fas fa-pen-fancy"></i><span>Custom</span>
+            </div>
+            <div class="ncm-cfg-ice-card {{#if (eq contact.iceSource 'actor')}}ncm-cfg-ice-card--sel{{/if}}"
+                 data-action="selectIceMode" data-mode="actor">
+              <i class="fas fa-robot"></i><span>Actor</span>
+            </div>
+          </div>
+          <input type="hidden" name="iceSource" value="{{contact.iceSource}}" />
+
+          {{!-- Panel: Default --}}
+          <div class="ncm-cfg-ice-panel {{#if (eq contact.iceSource 'default')}}ncm-cfg-ice-panel--on{{/if}} {{#unless contact.iceSource}}ncm-cfg-ice-panel--on{{/unless}}"
+               data-ice-panel="default">
+            <div class="ncm-cfg-dmg-preview">
+              <span class="ncm-cfg-dmg-dice">{{contact.blackIceDamage}}</span>
+              <span class="ncm-cfg-dmg-label">damage on failure</span>
+            </div>
+            <div class="ncm-form-ice-compact" style="margin-top:8px;">
+              <span class="ncm-form-ice-label">Damage</span>
+              <input type="text" name="blackIceDamage" value="{{contact.blackIceDamage}}"
+                     placeholder="3d6" class="ncm-form-input ncm-form-input--mono" style="max-width:80px;" />
+            </div>
+          </div>
+
+          {{!-- Panel: Custom --}}
+          <div class="ncm-cfg-ice-panel {{#if (eq contact.iceSource 'custom')}}ncm-cfg-ice-panel--on{{/if}}"
+               data-ice-panel="custom">
+            <div class="ncm-form-ice-compact">
+              <span class="ncm-form-ice-label">Name</span>
+              <input type="text" name="iceCustomName" value="{{contact.iceCustomName}}"
+                     placeholder="e.g. HELLHOUND" class="ncm-form-input" style="flex:1;" />
+            </div>
+            <div class="ncm-form-ice-compact" style="margin-top:6px;">
+              <span class="ncm-form-ice-label">Portrait</span>
+              <input type="text" name="iceCustomPortrait" value="{{contact.iceCustomPortrait}}"
+                     placeholder="path/to/image.png" class="ncm-form-input ncm-form-input--mono" style="flex:1;" />
+              <button type="button" class="ncm-form-browse-btn" data-action="browseIcePortrait" title="Browse files">
+                <i class="fas fa-folder-open"></i>
+              </button>
+            </div>
+            <div class="ncm-form-ice-compact" style="margin-top:6px;">
+              <span class="ncm-form-ice-label">Damage</span>
+              <input type="text" name="iceCustomDamage" value="{{contact.iceCustomDamage}}"
+                     placeholder="3d6" class="ncm-form-input ncm-form-input--mono" style="max-width:80px;" />
+            </div>
+          </div>
+
+          {{!-- Panel: Actor --}}
+          <div class="ncm-cfg-ice-panel {{#if (eq contact.iceSource 'actor')}}ncm-cfg-ice-panel--on{{/if}}"
+               data-ice-panel="actor">
+            <div class="ncm-cfg-actor-grid">
+              {{#each blackIceActors}}
+                <div class="ncm-cfg-actor-card {{#if selected}}ncm-cfg-actor-card--sel{{/if}}"
+                     data-action="selectIceActor" data-actor-id="{{id}}">
+                  <div class="ncm-cfg-actor-img">
+                    {{#if img}}<img src="{{img}}" alt="">{{else}}<i class="fas fa-robot"></i>{{/if}}
+                  </div>
+                  <div class="ncm-cfg-actor-name">{{name}}</div>
+                </div>
+              {{else}}
+                <div class="ncm-cfg-hint" style="padding:8px;text-align:center;width:100%;">
+                  No Black ICE actors found.
+                </div>
+              {{/each}}
+            </div>
+            <input type="hidden" name="iceActorId" value="{{contact.iceActorId}}" />
+          </div>
         </div>
       </div>
     </div>
