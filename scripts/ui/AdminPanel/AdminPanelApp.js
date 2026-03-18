@@ -802,13 +802,26 @@ export class AdminPanelApp extends BaseApplication {
       filtered = filtered.filter(e => e.unread);
     }
 
-    // Actor / Contact filter
+    // Actor / Contact filter — cross-resolve linked IDs
     if (this._msgFeedActorFilter) {
       const actId = this._msgFeedActorFilter;
+
+      // Build a set of all IDs that belong to this entity
+      // (contact might have a linked actorId, or actorId might map to a contact)
+      const matchIds = new Set([actId]);
+
+      // If actId is an actor, find any master contact linked to it
+      const linkedContact = (this.masterContactService?.getAll() ?? [])
+        .find(c => c.actorId === actId || c.id === actId);
+      if (linkedContact) {
+        if (linkedContact.id) matchIds.add(linkedContact.id);
+        if (linkedContact.actorId) matchIds.add(linkedContact.actorId);
+      }
+
       filtered = filtered.filter(e =>
-        e.fromActorId === actId || e.toActorId === actId ||
-        e.fromContactId === actId || e.toContactId === actId ||
-        e.inboxOwnerId === actId
+        matchIds.has(e.fromActorId) || matchIds.has(e.toActorId) ||
+        matchIds.has(e.fromContactId) || matchIds.has(e.toContactId) ||
+        matchIds.has(e.inboxOwnerId)
       );
     }
 
@@ -870,14 +883,16 @@ export class AdminPanelApp extends BaseApplication {
   }
 
   /**
-   * Build actor/contact filter dropdown options from feed entries.
-   * Groups by Players, NPCs, and Contacts — with message counts.
-   * @param {Array<object>} feedEntries - Unfiltered feed entries
+   * Build actor/contact filter dropdown options from the full roster.
+   * Shows ALL master contacts + player actors, with message counts
+   * overlaid from the feed. This ensures every NPC is filterable
+   * even if their ID mapping in the feed is incomplete.
+   * @param {Array<object>} feedEntries - Current feed entries (for counts)
    * @returns {Array<object>}
    * @private
    */
   _gatherMsgActorFilterOptions(feedEntries) {
-    // Count messages per unique ID (actor or contact)
+    // ── Count messages per unique ID from feed ──
     const idCounts = new Map();
     const _inc = (id) => { if (id) idCounts.set(id, (idCounts.get(id) || 0) + 1); };
 
@@ -886,73 +901,104 @@ export class AdminPanelApp extends BaseApplication {
       _inc(entry.toActorId);
       _inc(entry.fromContactId);
       _inc(entry.toContactId);
+      // Also count by inbox owner ID (catches NPC-inbox messages)
+      _inc(entry.inboxOwnerId);
     }
 
     const players = [];
     const npcs = [];
-    const contacts = [];
-    const seen = new Set(); // Prevent duplicates (contact linked to actor)
+    const seen = new Set();
 
-    // First pass: resolve actors
-    for (const [id, count] of idCounts) {
-      const actor = game.actors?.get(id);
-      if (!actor) continue;
+    // ── Pass 1: Player actors ──
+    for (const user of game.users ?? []) {
+      if (user.isGM || !user.character) continue;
+      const actor = user.character;
+      const id = actor.id;
+      if (seen.has(id)) continue;
       seen.add(id);
 
-      const avatarColor = actor.hasPlayerOwner ? '#19f3f7' : '#F65261';
-      const item = {
+      const count = idCounts.get(id) || 0;
+      players.push({
         actorId: id,
         name: actor.name,
         initial: (actor.name || '?').charAt(0).toUpperCase(),
-        color: avatarColor,
-        messageCount: count,
-        isActive: this._msgFeedActorFilter === id,
-      };
-
-      if (actor.hasPlayerOwner) players.push(item);
-      else npcs.push(item);
-    }
-
-    // Second pass: resolve master contacts (skip those already seen as actors)
-    for (const [id, count] of idCounts) {
-      if (seen.has(id)) continue;
-      const contact = this.masterContactService?.getContact(id);
-      if (!contact) continue;
-      seen.add(id);
-
-      // If this contact has a linked actor we already captured, skip
-      if (contact.actorId && seen.has(contact.actorId)) continue;
-
-      const roleLower = (contact.role || '').toLowerCase();
-      const roleColors = {
-        fixer: '#d4a017', netrunner: '#00e5ff', runner: '#00e5ff',
-        corp: '#4a8ab5', exec: '#6ec1e4', solo: '#e04848',
-        tech: '#2ecc71', medtech: '#1abc9c', media: '#b87aff',
-        nomad: '#d4844a', lawman: '#6b8fa3', rocker: '#e05cb5',
-      };
-
-      contacts.push({
-        actorId: id, // contactId used as the filter value
-        name: contact.name,
-        initial: (contact.name || '?').charAt(0).toUpperCase(),
-        color: roleColors[roleLower] || '#F65261',
+        color: '#19f3f7',
         messageCount: count,
         isActive: this._msgFeedActorFilter === id,
       });
     }
 
-    players.sort((a, b) => b.messageCount - a.messageCount);
-    npcs.sort((a, b) => b.messageCount - a.messageCount);
-    contacts.sort((a, b) => b.messageCount - a.messageCount);
+    // ── Pass 2: All master contacts ──
+    const masterContacts = this.masterContactService?.getAll() ?? [];
+    const roleColors = {
+      fixer: '#d4a017', netrunner: '#00e5ff', runner: '#00e5ff',
+      corp: '#4a8ab5', exec: '#6ec1e4', solo: '#e04848',
+      tech: '#2ecc71', medtech: '#1abc9c', media: '#b87aff',
+      nomad: '#d4844a', lawman: '#6b8fa3', rocker: '#e05cb5',
+      ripperdoc: '#e06888', gang: '#cc4444', government: '#5a7fa5',
+      ai: '#ff44cc',
+    };
+
+    for (const contact of masterContacts) {
+      // Linked actor — use actor ID, merge count from contact ID + actor ID
+      const actorId = contact.actorId;
+      const contactId = contact.id;
+
+      // Skip if we already added this as a player character
+      if (actorId && seen.has(actorId)) continue;
+      if (seen.has(contactId)) continue;
+
+      const primaryId = actorId || contactId;
+      seen.add(primaryId);
+      if (actorId) seen.add(actorId);
+      if (contactId) seen.add(contactId);
+
+      // Merge counts from all possible IDs this contact could appear as
+      let count = 0;
+      if (actorId) count += (idCounts.get(actorId) || 0);
+      if (contactId && contactId !== actorId) count += (idCounts.get(contactId) || 0);
+
+      const roleLower = (contact.role || '').toLowerCase();
+
+      npcs.push({
+        actorId: primaryId,
+        name: contact.name,
+        initial: (contact.name || '?').charAt(0).toUpperCase(),
+        color: roleColors[roleLower] || '#F65261',
+        messageCount: count,
+        isActive: this._msgFeedActorFilter === primaryId,
+      });
+    }
+
+    // ── Pass 3: NPC actors with emails but NOT in master contacts ──
+    for (const actor of game.actors ?? []) {
+      if (actor.hasPlayerOwner) continue;
+      if (seen.has(actor.id)) continue;
+      if (!actor.getFlag(MODULE_ID, 'email')) continue;
+      seen.add(actor.id);
+
+      npcs.push({
+        actorId: actor.id,
+        name: actor.name,
+        initial: (actor.name || '?').charAt(0).toUpperCase(),
+        color: '#F65261',
+        messageCount: idCounts.get(actor.id) || 0,
+        isActive: this._msgFeedActorFilter === actor.id,
+      });
+    }
+
+    // Sort: those with messages first, then alphabetically
+    players.sort((a, b) => b.messageCount - a.messageCount || a.name.localeCompare(b.name));
+    npcs.sort((a, b) => b.messageCount - a.messageCount || a.name.localeCompare(b.name));
 
     const options = [];
     if (players.length) {
       options.push({ isGroupLabel: true, label: 'Players' });
       options.push(...players);
     }
-    if (npcs.length || contacts.length) {
-      options.push({ isGroupLabel: true, label: 'NPCs' });
-      options.push(...npcs, ...contacts);
+    if (npcs.length) {
+      options.push({ isGroupLabel: true, label: 'NPCs & Contacts' });
+      options.push(...npcs);
     }
 
     return options;
