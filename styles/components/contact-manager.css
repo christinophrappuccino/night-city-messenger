@@ -560,6 +560,12 @@
 .ncm-app .ncm-group-header--encrypted .ncm-group-header__name { color: var(--ncm-danger, #EF4444); }
 .ncm-app .ncm-group-header--encrypted .ncm-group-header__count { color: var(--ncm-danger, #EF4444); opacity: 0.5; }
 
+/* Subtle divider between folder groups and ungrouped contacts */
+.ncm-app .ncm-ungrouped-divider {
+  height: 1px; margin: 6px 12px;
+  background: linear-gradient(90deg, var(--ncm-border, #2a2a45), transparent 80%);
+}
+
 
 /* ═══════════════════════════════════════════
    §9  LIST ITEMS

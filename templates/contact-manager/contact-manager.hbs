@@ -238,6 +238,8 @@
                   {{> "modules/cyberpunkred-messenger/templates/contact-manager/partials/contact-group-header.hbs"
                       groupKey=key groupName=name groupIcon=icon groupCount=contacts.length
                       isCollapsed=isCollapsed isEncryptedGroup=isEncryptedGroup }}
+                {{else}}
+                  <div class="ncm-ungrouped-divider"></div>
                 {{/unless}}
               {{/if}}
 
