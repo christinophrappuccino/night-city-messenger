@@ -10,6 +10,7 @@
 
 import { MODULE_ID, EVENTS, TEMPLATES } from '../../utils/constants.js';
 import { log, isGM, formatCyberDate } from '../../utils/helpers.js';
+import { DateRangePicker } from '../components/DateRangePicker.js';
 import { BaseApplication } from '../BaseApplication.js';
 
 export class AdminPanelApp extends BaseApplication {
@@ -173,6 +174,7 @@ export class AdminPanelApp extends BaseApplication {
       purgeOldMessages: AdminPanelApp._onPurgeOldMessages,
       msgBroadcast: AdminPanelApp._onMsgBroadcast,
       loadMoreMessages: AdminPanelApp._onLoadMoreMessages,
+      openDateRangePicker: AdminPanelApp._onOpenDateRangePicker,
       clearFeedDates: AdminPanelApp._onClearFeedDates,
       npcQuickSend: AdminPanelApp._onNpcQuickSend,
       npcPagePrev: AdminPanelApp._onNpcPagePrev,
@@ -3051,26 +3053,6 @@ export class AdminPanelApp extends BaseApplication {
       npcSearch.addEventListener('input', npcHandler);
     }
 
-    // ── Date range filter inputs ──
-    const dateFrom = this.element?.querySelector('.ncm-msg-feed-date-from');
-    const dateTo = this.element?.querySelector('.ncm-msg-feed-date-to');
-    if (dateFrom) {
-      if (this._msgFeedDateFrom) dateFrom.value = this._msgFeedDateFrom;
-      dateFrom.addEventListener('change', (e) => {
-        this._msgFeedDateFrom = e.target.value;
-        this._msgFeedLimit = 20;
-        this.render(true);
-      });
-    }
-    if (dateTo) {
-      if (this._msgFeedDateTo) dateTo.value = this._msgFeedDateTo;
-      dateTo.addEventListener('change', (e) => {
-        this._msgFeedDateTo = e.target.value;
-        this._msgFeedLimit = 20;
-        this.render(true);
-      });
-    }
-
     // ── Actor filter dropdown search input ──
     const actorDdSearch = this.element?.querySelector('.ncm-msg-actor-dd-search__input');
     if (actorDdSearch) {
@@ -3683,7 +3665,30 @@ export class AdminPanelApp extends BaseApplication {
     this.render(true);
   }
 
+  static _onOpenDateRangePicker(event, target) {
+    // Don't open picker if clicking the clear button
+    if (event.target.closest('[data-action="clearFeedDates"]')) return;
+    DateRangePicker.open({
+      from: this._msgFeedDateFrom,
+      to: this._msgFeedDateTo,
+      title: 'Filter Messages by Date',
+      onApply: (from, to) => {
+        this._msgFeedDateFrom = from;
+        this._msgFeedDateTo = to;
+        this._msgFeedLimit = 20;
+        this.render(true);
+      },
+      onClear: () => {
+        this._msgFeedDateFrom = '';
+        this._msgFeedDateTo = '';
+        this._msgFeedLimit = 20;
+        this.render(true);
+      },
+    });
+  }
+
   static _onClearFeedDates(event, target) {
+    event.stopPropagation();
     this._msgFeedDateFrom = '';
     this._msgFeedDateTo = '';
     this._msgFeedLimit = 20;

@@ -161,18 +161,17 @@
     </div>
 
     {{!-- Date Range Filter --}}
-    <div class="ncm-msg-feed-daterange">
+    <div class="ncm-msg-feed-daterange" data-action="openDateRangePicker">
       <i class="fas fa-calendar-days"></i>
-      <span class="ncm-msg-feed-daterange__label">From</span>
-      <input type="date" class="ncm-msg-feed-date-from" value="{{msgFeedDateFrom}}">
-      <span class="ncm-msg-feed-daterange__label">To</span>
-      <input type="date" class="ncm-msg-feed-date-to" value="{{msgFeedDateTo}}">
       {{#if msgFeedDateFrom}}
+      <span class="ncm-msg-feed-daterange__range">
+        <span class="ncm-msg-feed-daterange__date">{{msgFeedDateFrom}}</span>
+        <span class="ncm-msg-feed-daterange__arrow">→</span>
+        <span class="ncm-msg-feed-daterange__date">{{#if msgFeedDateTo}}{{msgFeedDateTo}}{{else}}…{{/if}}</span>
+      </span>
       <button class="ncm-msg-feed-daterange__clear" data-action="clearFeedDates" title="Clear dates"><i class="fas fa-xmark"></i></button>
       {{else}}
-      {{#if msgFeedDateTo}}
-      <button class="ncm-msg-feed-daterange__clear" data-action="clearFeedDates" title="Clear dates"><i class="fas fa-xmark"></i></button>
-      {{/if}}
+      <span class="ncm-msg-feed-daterange__placeholder">Filter by date range…</span>
       {{/if}}
     </div>
 
