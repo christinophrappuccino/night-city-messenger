@@ -106,10 +106,11 @@ export class ContactManagerApp extends BaseApplication {
       selectContact:  ContactManagerApp._onSelectContact,
 
       // ─── Tag filter actions ───
-      toggleTagFilter: ContactManagerApp._onToggleTagFilter,
-      removeTagFilter: ContactManagerApp._onRemoveTagFilter,
-      clearTagFilter:  ContactManagerApp._onClearTagFilter,
-      startAddTag:     ContactManagerApp._onStartAddTag,
+      toggleTagFilter:  ContactManagerApp._onToggleTagFilter,
+      toggleTagDropdown: ContactManagerApp._onToggleTagDropdown,
+      removeTagFilter:  ContactManagerApp._onRemoveTagFilter,
+      clearTagFilter:   ContactManagerApp._onClearTagFilter,
+      startAddTag:      ContactManagerApp._onStartAddTag,
 
       // ─── Contact CRUD ───
       addContact:     ContactManagerApp._onAddContact,
@@ -912,6 +913,25 @@ export class ContactManagerApp extends BaseApplication {
       this.activeTagFilters.push(tag);
     }
     this.render();
+  }
+
+  static _onToggleTagDropdown(event, target) {
+    event.stopPropagation();
+    const dropdown = this.element?.querySelector('.ncm-tag-dropdown');
+    if (!dropdown) return;
+    const isOpen = dropdown.classList.toggle('ncm-tag-dropdown--open');
+
+    // Close on click outside
+    if (isOpen) {
+      const closeHandler = (e) => {
+        if (!dropdown.contains(e.target)) {
+          dropdown.classList.remove('ncm-tag-dropdown--open');
+          document.removeEventListener('pointerdown', closeHandler, true);
+        }
+      };
+      // Defer so the current click doesn't immediately close it
+      setTimeout(() => document.addEventListener('pointerdown', closeHandler, true), 0);
+    }
   }
 
   static _onRemoveTagFilter(event, target) {

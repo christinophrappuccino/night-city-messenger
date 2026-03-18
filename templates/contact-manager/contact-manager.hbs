@@ -74,20 +74,48 @@
       <span class="ncm-search-count">{{filteredCount}} contact{{#if (neq filteredCount 1)}}s{{/if}}</span>
     </div>
     <div class="ncm-filter-row">
-      <span class="ncm-pill ncm-pill--all {{#unless hasActiveTagFilter}}ncm-pill--active{{/unless}}"
-            data-action="clearTagFilter">ALL</span>
-      {{#each allTags}}
-        <span class="ncm-pill ncm-pill--tag {{#if this.active}}ncm-pill--active{{/if}}"
-              data-action="toggleTagFilter" data-tag="{{this.name}}">
-          {{this.name}}
+      <div class="ncm-tag-dropdown">
+        <button class="ncm-pill ncm-pill--all {{#unless hasActiveTagFilter}}ncm-pill--active{{/unless}}"
+                data-action="clearTagFilter">
+          ALL
+          <i class="ncm-tag-dropdown__chev fas fa-chevron-down" data-action="toggleTagDropdown"></i>
+        </button>
+
+        {{!-- Active tag pills shown inline --}}
+        {{#each allTags}}
           {{#if this.active}}
-            <span class="ncm-pill__remove" data-action="removeTagFilter" data-tag="{{this.name}}">×</span>
+            <span class="ncm-pill ncm-pill--tag ncm-pill--active"
+                  data-action="toggleTagFilter" data-tag="{{this.name}}">
+              {{this.name}}
+              <span class="ncm-pill__remove" data-action="removeTagFilter" data-tag="{{this.name}}">×</span>
+            </span>
           {{/if}}
-        </span>
-      {{/each}}
-      <span class="ncm-pill ncm-pill--add" data-action="startAddTag" title="Create new tag">
-        <i class="fas fa-plus"></i>
-      </span>
+        {{/each}}
+
+        {{!-- Dropdown panel --}}
+        <div class="ncm-tag-dropdown__panel">
+          <div class="ncm-tag-dropdown__header">
+            <span class="ncm-tag-dropdown__title">Tags</span>
+            <span class="ncm-tag-dropdown__count">{{allTags.length}}</span>
+          </div>
+          <div class="ncm-tag-dropdown__list">
+            {{#each allTags}}
+              <button class="ncm-tag-dropdown__item {{#if this.active}}ncm-tag-dropdown__item--active{{/if}}"
+                      data-action="toggleTagFilter" data-tag="{{this.name}}">
+                <span class="ncm-tag-dropdown__dot"></span>
+                <span class="ncm-tag-dropdown__name">{{this.name}}</span>
+                {{#if this.active}}
+                  <i class="fas fa-check ncm-tag-dropdown__check"></i>
+                {{/if}}
+              </button>
+            {{/each}}
+          </div>
+          <button class="ncm-tag-dropdown__add" data-action="startAddTag">
+            <i class="fas fa-plus"></i> Create Tag
+          </button>
+        </div>
+      </div>
+
       <div class="ncm-view-toggle">
         <button class="ncm-view-btn {{#if (eq viewMode 'grid')}}ncm-view-btn--active{{/if}}"
                 data-action="setViewMode" data-mode="grid" title="Grid view">

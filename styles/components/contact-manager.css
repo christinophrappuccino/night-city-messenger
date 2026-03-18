@@ -202,6 +202,132 @@
 }
 .ncm-app .ncm-pill__remove:hover { opacity: 1; }
 
+/* Tag dropdown container */
+.ncm-app .ncm-tag-dropdown {
+  display: flex; gap: 4px; align-items: center;
+  position: relative; flex-wrap: wrap;
+}
+
+/* Chevron inside the ALL pill */
+.ncm-app .ncm-tag-dropdown__chev {
+  font-size: 7px; margin-left: 2px;
+  opacity: 0.5; cursor: pointer;
+  transition: transform 0.2s, opacity 0.15s;
+}
+.ncm-app .ncm-tag-dropdown__chev:hover { opacity: 1; }
+.ncm-app .ncm-tag-dropdown--open .ncm-tag-dropdown__chev {
+  transform: rotate(180deg); opacity: 1;
+}
+
+/* Dropdown panel */
+.ncm-app .ncm-tag-dropdown__panel {
+  position: absolute;
+  top: calc(100% + 4px); left: 0;
+  min-width: 200px; max-width: 280px;
+  max-height: 260px;
+  background: var(--ncm-bg-deep, #0a0a0f);
+  border: 1px solid var(--ncm-border, #2a2a45);
+  border-radius: 4px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5), 0 0 1px rgba(25,243,247,0.1);
+  z-index: 50;
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+}
+.ncm-app .ncm-tag-dropdown--open .ncm-tag-dropdown__panel {
+  display: flex;
+}
+
+/* Panel header */
+.ncm-app .ncm-tag-dropdown__header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 12px 6px;
+  border-bottom: 1px solid var(--ncm-border, #2a2a45);
+}
+.ncm-app .ncm-tag-dropdown__title {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 8px; color: var(--ncm-text-muted, #555570);
+  text-transform: uppercase; letter-spacing: 0.12em;
+}
+.ncm-app .ncm-tag-dropdown__count {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 8px; color: var(--ncm-text-dim, #3a3a50);
+}
+
+/* Scrollable tag list */
+.ncm-app .ncm-tag-dropdown__list {
+  flex: 1; overflow-y: auto; overflow-x: hidden;
+  padding: 4px 0;
+}
+.ncm-app .ncm-tag-dropdown__list::-webkit-scrollbar { width: 3px; }
+.ncm-app .ncm-tag-dropdown__list::-webkit-scrollbar-thumb {
+  background: var(--ncm-border, #2a2a45); border-radius: 2px;
+}
+
+/* Tag items */
+.ncm-app .ncm-tag-dropdown__item {
+  all: unset !important;
+  display: flex !important; align-items: center !important; gap: 8px !important;
+  padding: 5px 12px !important;
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif) !important;
+  font-size: 11px !important; font-weight: 600 !important;
+  color: var(--ncm-text-secondary, #8888a0) !important;
+  cursor: pointer !important;
+  transition: all 0.12s !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+  width: 100% !important; box-sizing: border-box !important;
+}
+.ncm-app .ncm-tag-dropdown__item:hover {
+  background: rgba(240,197,91,0.04) !important;
+  color: var(--ncm-text-primary, #e0e0e8) !important;
+}
+.ncm-app .ncm-tag-dropdown__item--active {
+  color: var(--ncm-accent, #F0C55B) !important;
+}
+.ncm-app .ncm-tag-dropdown__item--active:hover {
+  background: rgba(240,197,91,0.06) !important;
+}
+
+/* Dot indicator */
+.ncm-app .ncm-tag-dropdown__dot {
+  width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+  border: 1px solid var(--ncm-border, #2a2a45);
+  background: transparent;
+  transition: all 0.15s;
+}
+.ncm-app .ncm-tag-dropdown__item--active .ncm-tag-dropdown__dot {
+  background: var(--ncm-accent, #F0C55B);
+  border-color: rgba(240,197,91,0.5);
+  box-shadow: 0 0 4px rgba(240,197,91,0.3);
+}
+
+.ncm-app .ncm-tag-dropdown__name { flex: 1; }
+
+.ncm-app .ncm-tag-dropdown__check {
+  font-size: 8px; color: var(--ncm-accent, #F0C55B); opacity: 0.7;
+}
+
+/* Add tag button at bottom */
+.ncm-app .ncm-tag-dropdown__add {
+  all: unset !important;
+  display: flex !important; align-items: center !important; gap: 6px !important;
+  padding: 7px 12px !important;
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif) !important;
+  font-size: 10px !important; font-weight: 600 !important;
+  color: var(--ncm-text-dim, #3a3a50) !important;
+  cursor: pointer !important;
+  transition: all 0.12s !important;
+  border-top: 1px solid var(--ncm-border, #2a2a45) !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+}
+.ncm-app .ncm-tag-dropdown__add:hover {
+  color: var(--ncm-secondary, #00D4E6) !important;
+  background: rgba(0,212,230,0.04) !important;
+}
+.ncm-app .ncm-tag-dropdown__add i { font-size: 8px; }
+
 /* View toggle */
 .ncm-app .ncm-view-toggle {
   display: flex; margin-left: auto; gap: 2px;
