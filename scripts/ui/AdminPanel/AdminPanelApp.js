@@ -957,7 +957,7 @@ export class AdminPanelApp extends BaseApplication {
           let shortDate = '';
           if (timestamp) {
             const dt = new Date(timestamp);
-            shortDate = `${String(dt.getDate()).padStart(2, '0')}.${String(dt.getMonth() + 1).padStart(2, '0')}`;
+            shortDate = `${String(dt.getDate()).padStart(2, '0')}.${String(dt.getMonth() + 1).padStart(2, '0')}.${dt.getFullYear()}`;
           }
 
           // Body preview (strip HTML, truncate)
@@ -3647,14 +3647,67 @@ export class AdminPanelApp extends BaseApplication {
     const scheduleId = target.closest('[data-schedule-id]')?.dataset.scheduleId;
     if (!scheduleId) return;
 
-    const entry = this.schedulingService?.getEntry?.(scheduleId);
-    if (!entry) return;
+    const entry = this.schedulingService?.getScheduled?.(scheduleId);
+    if (!entry) {
+      ui.notifications.warn('NCM | Scheduled entry not found.');
+      return;
+    }
 
-    game.nightcity?.openComposer?.({
-      ...entry.messageData,
-      scheduleId,
-      editMode: true,
+    const data = entry.messageData || {};
+    const currentDelivery = entry.deliveryTime ? new Date(entry.deliveryTime) : new Date();
+    const dateVal = `${currentDelivery.getFullYear()}-${String(currentDelivery.getMonth() + 1).padStart(2, '0')}-${String(currentDelivery.getDate()).padStart(2, '0')}`;
+    const timeVal = `${String(currentDelivery.getHours()).padStart(2, '0')}:${String(currentDelivery.getMinutes()).padStart(2, '0')}`;
+
+    const content = `
+      <div style="font-family:Rajdhani,sans-serif; color:#eeeef4;">
+        <div style="background:#1a1a2e; border:1px solid #2a2a45; border-radius:2px; padding:10px 14px; margin-bottom:10px;">
+          <div style="font-size:9px; font-weight:700; color:#8888a0; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:4px;">Message Details</div>
+          <div style="display:flex; gap:8px; align-items:center; margin-bottom:4px;">
+            <span style="font-size:12px; font-weight:700; color:#F65261;">${data.from || data.fromName || 'Unknown'}</span>
+            <i class="fas fa-arrow-right" style="font-size:8px; color:#555570;"></i>
+            <span style="font-size:12px; font-weight:700; color:#19f3f7;">${data.to || data.toName || 'Unknown'}</span>
+          </div>
+          <div style="font-size:11px; color:#c0c0d0;">"${data.subject || '(no subject)'}"</div>
+        </div>
+        <div style="background:#1a1a2e; border:1px solid #2a2a45; border-radius:2px; padding:10px 14px;">
+          <div style="font-size:9px; font-weight:700; color:#8888a0; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:6px;">Reschedule Delivery</div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <input type="date" id="ncm-sched-edit-date" value="${dateVal}" style="background:#12121a; border:1px solid #2a2a45; color:#eeeef4; font-family:Share Tech Mono,monospace; font-size:12px; padding:5px 8px; border-radius:2px; outline:none; color-scheme:dark; flex:1;">
+            <input type="time" id="ncm-sched-edit-time" value="${timeVal}" style="background:#12121a; border:1px solid #2a2a45; color:#eeeef4; font-family:Share Tech Mono,monospace; font-size:12px; padding:5px 8px; border-radius:2px; outline:none; width:100px;">
+          </div>
+        </div>
+      </div>`;
+
+    const dialog = new Dialog({
+      title: 'Edit Scheduled Message',
+      content,
+      buttons: {
+        save: {
+          icon: '<i class="fas fa-check"></i>',
+          label: 'Reschedule',
+          callback: async (html) => {
+            const date = html.find('#ncm-sched-edit-date').val();
+            const time = html.find('#ncm-sched-edit-time').val();
+            if (!date || !time) return;
+            const newDelivery = new Date(`${date}T${time}:00`).toISOString();
+            await this.schedulingService?.editScheduled(scheduleId, { deliveryTime: newDelivery });
+            ui.notifications.info('NCM | Scheduled message rescheduled.');
+            this.render(true);
+          },
+        },
+        cancel: {
+          icon: '<i class="fas fa-times"></i>',
+          label: 'Close',
+        },
+      },
+      default: 'save',
+    }, {
+      width: 400,
+      height: 'auto',
+      classes: ['ncm-time-config-dialog'],
     });
+
+    dialog.render(true);
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -5910,7 +5963,9 @@ export class AdminPanelApp extends BaseApplication {
   }
 
   static async _onHardDeleteMessage(event, target) {
+    event.stopPropagation(); // Don't trigger row expand
     const messageId = target.closest('[data-message-id]')?.dataset.messageId;
+    const inboxOwnerId = target.closest('[data-inbox-owner]')?.dataset.inboxOwner;
     if (!messageId) return;
 
     const confirmed = await Dialog.confirm({
@@ -5919,8 +5974,28 @@ export class AdminPanelApp extends BaseApplication {
     });
     if (!confirmed) return;
 
-    await this.messageRepository?.hardDelete(messageId);
-    ui.notifications.info('Message permanently deleted.');
-    this.render(true);
+    try {
+      if (inboxOwnerId) {
+        await this.messageRepository?.hardDeleteMessage(inboxOwnerId, messageId);
+      } else {
+        // Fallback: scan all inboxes for this message
+        for (const journal of game.journal ?? []) {
+          if (!journal.name?.startsWith('NCM-Inbox-')) continue;
+          const page = journal.pages?.find(p => {
+            const flags = p.flags?.['cyberpunkred-messenger'];
+            return flags?.messageId === messageId;
+          });
+          if (page) {
+            await page.delete();
+            break;
+          }
+        }
+      }
+      ui.notifications.info('NCM | Message permanently deleted.');
+      this.render(true);
+    } catch (err) {
+      console.error(`${MODULE_ID} | Hard delete failed:`, err);
+      ui.notifications.error('NCM | Failed to delete message.');
+    }
   }
 }

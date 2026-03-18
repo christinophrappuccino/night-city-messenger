@@ -195,7 +195,7 @@
         <div class="ncm-msg-feed-row__route">
           <div class="ncm-msg-feed-row__names">
             <span class="ncm-msg-feed-row__from">{{this.fromName}}</span>
-            <i class="fas fa-chevron-right ncm-msg-feed-row__arrow"></i>
+            <i class="fas fa-arrow-right ncm-msg-feed-row__arrow"></i>
             <span class="ncm-msg-feed-row__to">{{this.toName}}</span>
           </div>
           <span class="ncm-msg-feed-row__network">{{this.networkLabel}}</span>
@@ -210,7 +210,7 @@
         </div>
         <div class="ncm-msg-feed-row__actions">
           <button class="ncm-admin-action-btn" data-action="openMsgInInbox" data-message-id="{{this.messageId}}" data-inbox-owner="{{this.inboxOwnerId}}" title="Open in Inbox"><i class="fas fa-external-link"></i></button>
-          <button class="ncm-admin-action-btn ncm-admin-action-btn--danger" data-action="hardDeleteMessage" data-message-id="{{this.messageId}}" title="Delete"><i class="fas fa-trash"></i></button>
+          <button class="ncm-admin-action-btn ncm-admin-action-btn--danger" data-action="hardDeleteMessage" data-message-id="{{this.messageId}}" data-inbox-owner="{{this.inboxOwnerId}}" title="Delete"><i class="fas fa-trash"></i></button>
         </div>
       </div>
 
@@ -225,7 +225,7 @@
               <span><i class="fas fa-calendar"></i> <span class="ncm-msg-feed-expand__meta-val">{{this.fullTimestamp}}</span></span>
               <span><i class="fas fa-network-wired"></i> <span class="ncm-msg-feed-expand__meta-val">{{this.networkName}}</span></span>
               {{#if this.signalStrength}}<span><i class="fas fa-signal"></i> <span class="ncm-msg-feed-expand__meta-val">{{this.signalStrength}}%</span></span>{{/if}}
-              <span><i class="fas {{#if this.encrypted}}fa-lock{{else}}fa-lock-open{{/if}}"></i> <span class="ncm-msg-feed-expand__meta-val">{{#if this.encrypted}}Encrypted{{else}}Unencrypted{{/if}}</span></span>
+              <span><i class="fas {{#if this.encrypted}}fa-lock{{else}}fa-lock-open{{/if}}"></i> <span class="ncm-msg-feed-expand__meta-val {{#if this.encrypted}}ncm-msg-feed-expand__meta-val--encrypted{{else}}ncm-msg-feed-expand__meta-val--open{{/if}}">{{#if this.encrypted}}Encrypted{{else}}Unencrypted{{/if}}</span></span>
             </div>
             {{#if this.attachments.length}}
             <div class="ncm-msg-feed-expand__attachments">

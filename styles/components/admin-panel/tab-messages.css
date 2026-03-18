@@ -932,7 +932,7 @@
 }
 
 .ncm-app .ncm-msg-feed-row__from { color: var(--ncm-text-primary, #e0e0e8); }
-.ncm-app .ncm-msg-feed-row__arrow { color: var(--ncm-text-muted, #555570); font-size: 7px; flex-shrink: 0; }
+.ncm-app .ncm-msg-feed-row__arrow { color: var(--ncm-text-muted, #555570); font-size: 9px; flex-shrink: 0; opacity: 0.6; }
 .ncm-app .ncm-msg-feed-row__to { color: var(--ncm-text-secondary, #c0c0d0); }
 
 /* Color from/to based on direction */
@@ -1030,7 +1030,7 @@
   align-items: flex-end;
   gap: 0;
   flex-shrink: 0;
-  min-width: 56px;
+  min-width: 80px;
   text-align: right;
 }
 
@@ -1138,8 +1138,9 @@
 
 .ncm-app .ncm-msg-feed-expand__meta {
   display: flex;
-  gap: 12px;
+  gap: 14px;
   align-items: center;
+  flex-wrap: wrap;
   font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
   font-size: 9px;
   color: var(--ncm-text-muted, #8888a0);
@@ -1147,11 +1148,40 @@
   letter-spacing: 0.06em;
 }
 
+.ncm-app .ncm-msg-feed-expand__meta > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background: rgba(26, 26, 46, 0.6);
+  border: 1px solid var(--ncm-border, #2a2a45);
+  border-radius: 2px;
+}
+
 .ncm-app .ncm-msg-feed-expand__meta i { font-size: 8px; }
 
+/* Calendar — gold */
+.ncm-app .ncm-msg-feed-expand__meta > span:nth-child(1) i { color: var(--ncm-accent, #f7c948); }
+.ncm-app .ncm-msg-feed-expand__meta > span:nth-child(1) .ncm-msg-feed-expand__meta-val { color: var(--ncm-accent, #f7c948); }
+
+/* Network — cyan */
+.ncm-app .ncm-msg-feed-expand__meta > span:nth-child(2) i { color: var(--ncm-secondary, #19f3f7); }
+.ncm-app .ncm-msg-feed-expand__meta > span:nth-child(2) .ncm-msg-feed-expand__meta-val { color: var(--ncm-secondary, #19f3f7); }
+
+/* Signal — green */
+.ncm-app .ncm-msg-feed-expand__meta > span:nth-child(3) i { color: var(--ncm-success, #00ff41); }
+.ncm-app .ncm-msg-feed-expand__meta > span:nth-child(3) .ncm-msg-feed-expand__meta-val { color: var(--ncm-success, #00ff41); }
+
+/* Encryption — last child, colored per state in template */
+.ncm-app .ncm-msg-feed-expand__meta > span:last-child .fa-lock { color: var(--ncm-primary, #F65261); }
+.ncm-app .ncm-msg-feed-expand__meta > span:last-child .fa-lock-open { color: var(--ncm-success, #00ff41); }
+
 .ncm-app .ncm-msg-feed-expand__meta-val {
-  color: var(--ncm-text-secondary, #8888a0);
+  color: var(--ncm-text-secondary, #c0c0d0);
 }
+
+.ncm-app .ncm-msg-feed-expand__meta-val--encrypted { color: var(--ncm-primary, #F65261) !important; }
+.ncm-app .ncm-msg-feed-expand__meta-val--open { color: var(--ncm-success, #00ff41) !important; }
 
 .ncm-app .ncm-msg-feed-expand__attachments {
   display: flex;
