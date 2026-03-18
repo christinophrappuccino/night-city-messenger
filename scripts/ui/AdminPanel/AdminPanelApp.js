@@ -5070,8 +5070,11 @@ export class AdminPanelApp extends BaseApplication {
               <div style="${S.value}">${info.label}${info.isAuto ? ` <span style="color:#19f3f7;">→ ${info.effectiveLabel}</span>` : ''}</div>
             </div>
             <div style="flex:1;">
-              <div style="${S.label}">Current Time</div>
-              <div style="${S.value}" id="ncm-tc-clock">${formatCyberDate(currentTime)}</div>
+              <div style="display:flex; align-items:center; justify-content:space-between;">
+                <div style="${S.label} margin-bottom:0;">Current Time</div>
+                <button id="ncm-tc-12h-toggle" style="${S.btn} font-size:9px !important; padding:2px 8px !important;"><i class="fas fa-clock" style="font-size:7px;"></i> <span id="ncm-tc-12h-label">24H</span></button>
+              </div>
+              <div style="${S.value}" id="ncm-tc-clock">—</div>
             </div>
           </div>
           <div style="${S.sep}"></div>
@@ -5119,9 +5122,6 @@ export class AdminPanelApp extends BaseApplication {
                 <div style="font-family:Share Tech Mono,monospace; font-size:9px; color:#f7c948; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:4px;"><i class="fas fa-city" style="font-size:7px; margin-right:3px;"></i> Night City Time</div>
                 <div id="ncm-tc-dis-fake" style="font-family:Share Tech Mono,monospace; font-size:14px; color:#f7c948; line-height:1.2;">—</div>
               </div>
-            </div>
-            <div style="display:flex; align-items:center; justify-content:flex-end; padding:4px 12px; border-top:1px solid #2a2a45; background:#0d0d1a;">
-              <button id="ncm-tc-12h-toggle" style="${S.btn} font-size:9px !important; padding:2px 8px !important;"><i class="fas fa-clock" style="font-size:7px;"></i> <span id="ncm-tc-12h-label">24H</span></button>
             </div>
           </div>
           <div style="${S.row} margin-bottom:0;">
@@ -5177,6 +5177,78 @@ export class AdminPanelApp extends BaseApplication {
         const manualPanel = html.find('#ncm-tc-manual');
         const hintEl = html.find('#ncm-tc-hint');
 
+        // ── Shared time formatter (respects 12h toggle, includes seconds) ──
+        const clockEl = html.find('#ncm-tc-clock');
+        const realClockEl = html.find('#ncm-tc-dis-real');
+        const fakeClockEl = html.find('#ncm-tc-dis-fake');
+        const toggleBtn = html.find('#ncm-tc-12h-toggle');
+        const toggleLabel = html.find('#ncm-tc-12h-label');
+        const dialogOpenedAt = Date.now();
+        let use12h = false;
+
+        const _fmt = (isoStr) => {
+          const d = new Date(isoStr);
+          const yr = d.getFullYear();
+          const mo = String(d.getMonth() + 1).padStart(2, '0');
+          const dy = String(d.getDate()).padStart(2, '0');
+          const sec = String(d.getSeconds()).padStart(2, '0');
+          const min = String(d.getMinutes()).padStart(2, '0');
+          if (use12h) {
+            let hr = d.getHours();
+            const ampm = hr >= 12 ? 'PM' : 'AM';
+            hr = hr % 12 || 12;
+            return `${yr}.${mo}.${dy} // ${hr}:${min}:${sec} ${ampm}`;
+          }
+          const hr = String(d.getHours()).padStart(2, '0');
+          return `${yr}.${mo}.${dy} // ${hr}:${min}:${sec}`;
+        };
+
+        // ── 12h/24h toggle — affects ALL clocks in the dialog ──
+        toggleBtn.on('click', (e) => {
+          e.preventDefault();
+          use12h = !use12h;
+          toggleLabel.text(use12h ? '12H' : '24H');
+          updateAllClocks();
+        });
+
+        // ── Update all clocks ──
+        const updateAllClocks = () => {
+          // Main status clock
+          clockEl.text(_fmt(ts.getCurrentTime()));
+
+          // Disguised preview — only if visible
+          if (disguisedPanel.is(':visible')) {
+            realClockEl.text(_fmt(new Date().toISOString()));
+
+            const date = html.find('#ncm-tc-dis-date').val();
+            const time = html.find('#ncm-tc-dis-time').val();
+            if (!date || !time) {
+              fakeClockEl.text('Set date & time above');
+              fakeClockEl.css('color', '#555570');
+            } else {
+              const baseMs = new Date(`${date}T${time}:00`).getTime();
+              if (isNaN(baseMs)) {
+                fakeClockEl.text('Invalid date');
+                fakeClockEl.css('color', '#555570');
+              } else {
+                const elapsed = Date.now() - dialogOpenedAt;
+                fakeClockEl.text(_fmt(new Date(baseMs + elapsed).toISOString()));
+                fakeClockEl.css('color', '#f7c948');
+              }
+            }
+          }
+        };
+
+        // Initial render + tick every second
+        updateAllClocks();
+        const clockInterval = setInterval(() => {
+          if (!clockEl.closest('body').length) { clearInterval(clockInterval); return; }
+          updateAllClocks();
+        }, 1000);
+
+        // Update preview when disguised inputs change
+        html.find('#ncm-tc-dis-date, #ncm-tc-dis-time').on('change input', updateAllClocks);
+
         const hints = {
           'auto': 'Automatically picks the best available time source. Currently resolves to: ' + info.effectiveLabel,
           'simple-calendar': 'Uses SimpleCalendar\'s game clock. Requires the SimpleCalendar module.',
@@ -5192,83 +5264,8 @@ export class AdminPanelApp extends BaseApplication {
           disguisedPanel.toggle(m === 'disguised');
           manualPanel.toggle(m === 'manual');
           hintEl.text(hints[m] || '');
+          updateAllClocks();
         });
-
-        // Live clock update
-        const clockEl = html.find('#ncm-tc-clock');
-        const clockInterval = setInterval(() => {
-          if (!clockEl.closest('body').length) { clearInterval(clockInterval); return; }
-          clockEl.text(formatCyberDate(ts.getCurrentTime()));
-        }, 1000);
-
-        // Disguised preview — side-by-side real vs Night City with seconds
-        const realClockEl = html.find('#ncm-tc-dis-real');
-        const fakeClockEl = html.find('#ncm-tc-dis-fake');
-        const toggleBtn = html.find('#ncm-tc-12h-toggle');
-        const toggleLabel = html.find('#ncm-tc-12h-label');
-        const dialogOpenedAt = Date.now();
-        let use12h = false;
-
-        // Format with seconds, respects 12h toggle
-        const _fmtPreview = (isoStr) => {
-          const d = new Date(isoStr);
-          const yr = d.getFullYear();
-          const mo = String(d.getMonth() + 1).padStart(2, '0');
-          const dy = String(d.getDate()).padStart(2, '0');
-          const sec = String(d.getSeconds()).padStart(2, '0');
-          if (use12h) {
-            let hr = d.getHours();
-            const ampm = hr >= 12 ? 'PM' : 'AM';
-            hr = hr % 12 || 12;
-            const min = String(d.getMinutes()).padStart(2, '0');
-            return `${yr}.${mo}.${dy} // ${hr}:${min}:${sec} ${ampm}`;
-          }
-          const hr = String(d.getHours()).padStart(2, '0');
-          const min = String(d.getMinutes()).padStart(2, '0');
-          return `${yr}.${mo}.${dy} // ${hr}:${min}:${sec}`;
-        };
-
-        // 12h/24h toggle
-        toggleBtn.on('click', (e) => {
-          e.preventDefault();
-          use12h = !use12h;
-          toggleLabel.text(use12h ? '12H' : '24H');
-          updateDisguisedPreview();
-        });
-
-        const updateDisguisedPreview = () => {
-          // Real world clock with seconds
-          realClockEl.text(_fmtPreview(new Date().toISOString()));
-
-          // Night City clock — simulates what disguised mode would show
-          const date = html.find('#ncm-tc-dis-date').val();
-          const time = html.find('#ncm-tc-dis-time').val();
-          if (!date || !time) {
-            fakeClockEl.text('Set date & time above');
-            fakeClockEl.css('color', '#555570');
-            return;
-          }
-          const baseMs = new Date(`${date}T${time}:00`).getTime();
-          if (isNaN(baseMs)) {
-            fakeClockEl.text('Invalid date');
-            fakeClockEl.css('color', '#555570');
-            return;
-          }
-          // Simulate: if we anchored at dialog open, what would it show now?
-          const elapsed = Date.now() - dialogOpenedAt;
-          const nightCityMs = baseMs + elapsed;
-          fakeClockEl.text(_fmtPreview(new Date(nightCityMs).toISOString()));
-          fakeClockEl.css('color', '#f7c948');
-        };
-
-        updateDisguisedPreview();
-        const previewInterval = setInterval(() => {
-          if (!realClockEl.closest('body').length) { clearInterval(previewInterval); return; }
-          updateDisguisedPreview();
-        }, 1000);
-
-        // Update preview immediately when inputs change
-        html.find('#ncm-tc-dis-date, #ncm-tc-dis-time').on('change input', updateDisguisedPreview);
 
         // Disguised: Anchor button
         html.find('#ncm-tc-dis-set').on('click', async () => {

@@ -238,6 +238,12 @@
   height: auto !important;
 }
 
+/* Kill Foundry's flex:1 on window-content children — this is the empty space culprit */
+.ncm-time-config-dialog .window-content > *,
+.ncm-time-config-dialog.window-app .window-content > * {
+  flex: 0 0 auto !important;
+}
+
 /* ─── All inputs inside the dialog ─── */
 .ncm-time-config-dialog input,
 .ncm-time-config-dialog input[type="text"],
