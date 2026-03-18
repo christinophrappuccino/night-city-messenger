@@ -5108,15 +5108,20 @@ export class AdminPanelApp extends BaseApplication {
             <input type="time" id="ncm-tc-dis-time" value="${disTimeVal}" style="${S.input} width:100px;">
             <button id="ncm-tc-dis-set" style="${S.btn} ${S.btnGold}"><i class="fas fa-anchor" style="font-size:9px;"></i> Anchor</button>
           </div>
-          <div id="ncm-tc-dis-preview" style="display:flex; gap:0; margin-bottom:8px; border:1px solid #2a2a45; border-radius:2px; overflow:hidden;">
-            <div style="flex:1; padding:8px 12px; background:#12121a;">
-              <div style="font-family:Share Tech Mono,monospace; font-size:8px; color:#8888a0; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:4px;"><i class="fas fa-globe" style="font-size:7px; margin-right:3px;"></i> Real World</div>
-              <div id="ncm-tc-dis-real" style="font-family:Share Tech Mono,monospace; font-size:14px; color:#8888a0; line-height:1;">${formatCyberDate(new Date().toISOString())}</div>
+          <div id="ncm-tc-dis-preview" style="border:1px solid #2a2a45; border-radius:2px; overflow:hidden; margin-bottom:8px;">
+            <div style="display:flex; gap:0;">
+              <div style="flex:1; padding:8px 12px; background:#12121a;">
+                <div style="font-family:Share Tech Mono,monospace; font-size:9px; color:#8888a0; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:4px;"><i class="fas fa-globe" style="font-size:7px; margin-right:3px;"></i> Real World</div>
+                <div id="ncm-tc-dis-real" style="font-family:Share Tech Mono,monospace; font-size:14px; color:#8888a0; line-height:1.2;">—</div>
+              </div>
+              <div style="width:1px; background:#2a2a45;"></div>
+              <div style="flex:1; padding:8px 12px; background:rgba(247,201,72,0.02);">
+                <div style="font-family:Share Tech Mono,monospace; font-size:9px; color:#f7c948; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:4px;"><i class="fas fa-city" style="font-size:7px; margin-right:3px;"></i> Night City Time</div>
+                <div id="ncm-tc-dis-fake" style="font-family:Share Tech Mono,monospace; font-size:14px; color:#f7c948; line-height:1.2;">—</div>
+              </div>
             </div>
-            <div style="width:1px; background:#2a2a45;"></div>
-            <div style="flex:1; padding:8px 12px; background:rgba(247,201,72,0.02);">
-              <div style="font-family:Share Tech Mono,monospace; font-size:8px; color:#f7c948; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:4px;"><i class="fas fa-city" style="font-size:7px; margin-right:3px;"></i> Night City Time</div>
-              <div id="ncm-tc-dis-fake" style="font-family:Share Tech Mono,monospace; font-size:14px; color:#f7c948; line-height:1;">—</div>
+            <div style="display:flex; align-items:center; justify-content:flex-end; padding:4px 12px; border-top:1px solid #2a2a45; background:#0d0d1a;">
+              <button id="ncm-tc-12h-toggle" style="${S.btn} font-size:9px !important; padding:2px 8px !important;"><i class="fas fa-clock" style="font-size:7px;"></i> <span id="ncm-tc-12h-label">24H</span></button>
             </div>
           </div>
           <div style="${S.row} margin-bottom:0;">
@@ -5196,14 +5201,44 @@ export class AdminPanelApp extends BaseApplication {
           clockEl.text(formatCyberDate(ts.getCurrentTime()));
         }, 1000);
 
-        // Disguised preview — side-by-side real clock vs Night City clock
+        // Disguised preview — side-by-side real vs Night City with seconds
         const realClockEl = html.find('#ncm-tc-dis-real');
         const fakeClockEl = html.find('#ncm-tc-dis-fake');
+        const toggleBtn = html.find('#ncm-tc-12h-toggle');
+        const toggleLabel = html.find('#ncm-tc-12h-label');
         const dialogOpenedAt = Date.now();
+        let use12h = false;
+
+        // Format with seconds, respects 12h toggle
+        const _fmtPreview = (isoStr) => {
+          const d = new Date(isoStr);
+          const yr = d.getFullYear();
+          const mo = String(d.getMonth() + 1).padStart(2, '0');
+          const dy = String(d.getDate()).padStart(2, '0');
+          const sec = String(d.getSeconds()).padStart(2, '0');
+          if (use12h) {
+            let hr = d.getHours();
+            const ampm = hr >= 12 ? 'PM' : 'AM';
+            hr = hr % 12 || 12;
+            const min = String(d.getMinutes()).padStart(2, '0');
+            return `${yr}.${mo}.${dy} // ${hr}:${min}:${sec} ${ampm}`;
+          }
+          const hr = String(d.getHours()).padStart(2, '0');
+          const min = String(d.getMinutes()).padStart(2, '0');
+          return `${yr}.${mo}.${dy} // ${hr}:${min}:${sec}`;
+        };
+
+        // 12h/24h toggle
+        toggleBtn.on('click', (e) => {
+          e.preventDefault();
+          use12h = !use12h;
+          toggleLabel.text(use12h ? '12H' : '24H');
+          updateDisguisedPreview();
+        });
 
         const updateDisguisedPreview = () => {
-          // Real world clock
-          realClockEl.text(formatCyberDate(new Date().toISOString()));
+          // Real world clock with seconds
+          realClockEl.text(_fmtPreview(new Date().toISOString()));
 
           // Night City clock — simulates what disguised mode would show
           const date = html.find('#ncm-tc-dis-date').val();
@@ -5222,7 +5257,7 @@ export class AdminPanelApp extends BaseApplication {
           // Simulate: if we anchored at dialog open, what would it show now?
           const elapsed = Date.now() - dialogOpenedAt;
           const nightCityMs = baseMs + elapsed;
-          fakeClockEl.text(formatCyberDate(new Date(nightCityMs).toISOString()));
+          fakeClockEl.text(_fmtPreview(new Date(nightCityMs).toISOString()));
           fakeClockEl.css('color', '#f7c948');
         };
 
@@ -5289,6 +5324,7 @@ export class AdminPanelApp extends BaseApplication {
       },
     }, {
       width: 460,
+      height: 'auto',
       classes: ['ncm-time-config-dialog'],
     });
 

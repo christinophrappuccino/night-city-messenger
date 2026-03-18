@@ -122,6 +122,8 @@
   box-shadow: 0 8px 40px rgba(0,0,0,0.6), 0 0 2px rgba(25,243,247,0.08) !important;
   color: #eeeef4 !important;
   overflow: hidden !important;
+  height: auto !important;
+  min-height: 0 !important;
 }
 
 /* Top accent bar */
@@ -223,6 +225,17 @@
   margin: 0 !important;
   border: none !important;
   overflow-y: auto !important;
+  min-height: 0 !important;
+  height: auto !important;
+}
+
+/* Kill Foundry's default form padding/height */
+.ncm-time-config-dialog .dialog-content form,
+.ncm-time-config-dialog .window-content form {
+  margin: 0 !important;
+  padding: 0 !important;
+  min-height: 0 !important;
+  height: auto !important;
 }
 
 /* ─── All inputs inside the dialog ─── */
@@ -358,6 +371,24 @@
 .ncm-time-config-dialog .dialog-content button[id="ncm-tc-dis-set"]:hover {
   background: rgba(247, 201, 72, 0.06) !important;
   border-color: rgba(247, 201, 72, 0.5) !important;
+}
+
+/* 12h/24h toggle in preview */
+.ncm-time-config-dialog .dialog-content button#ncm-tc-12h-toggle {
+  padding: 2px 8px !important;
+  font-size: 9px !important;
+  gap: 4px !important;
+  border-color: rgba(25, 243, 247, 0.2) !important;
+  color: #8888a0 !important;
+}
+
+.ncm-time-config-dialog .dialog-content button#ncm-tc-12h-toggle:hover {
+  border-color: rgba(25, 243, 247, 0.4) !important;
+  color: #19f3f7 !important;
+}
+
+.ncm-time-config-dialog .dialog-content button#ncm-tc-12h-toggle i {
+  font-size: 7px !important;
 }
 
 /* Quick advance buttons — smaller, grouped */
