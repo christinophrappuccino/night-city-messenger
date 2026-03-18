@@ -1401,25 +1401,38 @@ export class ContactManagerApp extends BaseApplication {
     const contact = contacts.find(c => c.id === contactId);
     if (!contact || contact.burned) return;
 
-    const confirmed = await Dialog.confirm({
-      title: 'Burn Contact',
-      content: `
-        <div style="font-family: 'Rajdhani', sans-serif; padding: 8px 0;">
-          <p style="color: #ff0033; font-weight: 700; font-size: 14px; margin-bottom: 6px;">
-            <i class="fas fa-fire"></i> Burn ${contact.name}?
-          </p>
-          <p style="color: #8888a0; font-size: 12px; line-height: 1.5;">
-            This marks the contact as compromised. Their identity is blown —
-            trust will drop to LOW and the contact will be flagged across all views.
-          </p>
-          <p style="color: #555570; font-size: 10px; margin-top: 8px;">
-            This action is reversible via "Restore Contact".
-          </p>
-        </div>
-      `,
-      yes: { icon: 'fas fa-fire', label: 'Burn' },
-      no: { icon: 'fas fa-times', label: 'Cancel' },
-      defaultYes: false,
+    const confirmed = await new Promise(resolve => {
+      new Dialog({
+        title: 'Burn Contact',
+        content: `
+          <div style="font-family: 'Rajdhani', sans-serif; padding: 8px 0;">
+            <p style="color: #F0C55B; font-weight: 700; font-size: 14px; margin-bottom: 6px;">
+              <i class="fas fa-fire"></i> Burn ${contact.name}?
+            </p>
+            <p style="color: #8888a0; font-size: 12px; line-height: 1.5;">
+              This marks the contact as compromised. Their identity is blown —
+              trust will drop to LOW and the contact will be flagged across all views.
+            </p>
+            <p style="color: #555570; font-size: 10px; margin-top: 8px;">
+              This action is reversible via "Restore Contact".
+            </p>
+          </div>
+        `,
+        buttons: {
+          burn: {
+            icon: '<i class="fas fa-fire"></i>',
+            label: 'Burn',
+            callback: () => resolve(true),
+          },
+          cancel: {
+            icon: '<i class="fas fa-times"></i>',
+            label: 'Cancel',
+            callback: () => resolve(false),
+          },
+        },
+        default: 'cancel',
+        close: () => resolve(false),
+      }).render(true);
     });
     if (!confirmed) return;
 

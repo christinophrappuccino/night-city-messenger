@@ -24,18 +24,6 @@
         blackIce=blackIce blackIceDamage=blackIceDamage icePortrait=icePortrait
         maxBreachAttempts=maxBreachAttempts attemptDots=attemptDots isLockedOut=isLockedOut
         isGM=../isGM contactId=id }}
-
-    {{!-- Actions available even while encrypted --}}
-    <div class="ncm-detail__ice-actions">
-      <button class="ncm-action-btn ncm-action-btn--ghost"
-              data-action="shareContact" data-contact-id="{{id}}">
-        <i class="fas fa-share-nodes"></i> Share (ICE intact)
-      </button>
-      <button class="ncm-action-btn ncm-action-btn--danger"
-              data-action="deleteContact" data-contact-id="{{id}}">
-        <i class="fas fa-trash"></i> Delete
-      </button>
-    </div>
   {{else}}
 
     {{!-- ═══ BURNED BANNER ═══ --}}

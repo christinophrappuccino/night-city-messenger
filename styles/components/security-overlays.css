@@ -1887,9 +1887,11 @@
   position: relative;
   border-radius: 6px;
   overflow: hidden;
-  padding: 40px 32px;
+  padding: 24px 24px;
   display: flex; flex-direction: column; align-items: center;
-  gap: 20px; text-align: center;
+  gap: 12px; text-align: center;
+  min-height: 100%;
+  justify-content: center;
 }
 
 /* ── Animated background grid ── */
