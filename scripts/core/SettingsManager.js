@@ -104,6 +104,19 @@ export class SettingsManager {
 
     // ─── Time Provider Settings ───
 
+    game.settings.register(MODULE_ID, 'timeFormat', {
+      name: 'NCM.Settings.TimeFormat.Name',
+      hint: 'Display times in 24-hour (22:00) or 12-hour (10:00 PM) format across all NCM windows.',
+      scope: 'world',
+      config: true,
+      type: String,
+      default: '24h',
+      choices: {
+        '24h': '24-Hour (22:00)',
+        '12h': '12-Hour (10:00 PM)',
+      },
+    });
+
     game.settings.register(MODULE_ID, 'timeProvider', {
       name: 'NCM.Settings.TimeProvider.Name',
       hint: 'How NCM determines in-game time. Auto-detect picks the best available module. Disguised runs real-time but displays a fictional date.',

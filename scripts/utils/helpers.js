@@ -74,14 +74,38 @@ export function getPlayerActor() {
  * @param {string|number|Date} timestamp
  * @returns {string}
  */
-export function formatCyberDate(timestamp) {
+/**
+ * Format timestamp in cyberpunk style. Respects the module's 12h/24h setting.
+ * @param {string|number|Date} timestamp
+ * @param {object} [options]
+ * @param {boolean} [options.seconds=false] - Include seconds
+ * @returns {string}
+ */
+export function formatCyberDate(timestamp, options = {}) {
   const d = new Date(timestamp);
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
-  const hours = String(d.getHours()).padStart(2, '0');
-  const minutes = String(d.getMinutes()).padStart(2, '0');
-  return `${year}.${month}.${day} // ${hours}:${minutes}`;
+  const min = String(d.getMinutes()).padStart(2, '0');
+  const sec = String(d.getSeconds()).padStart(2, '0');
+
+  // Check setting — default to 24h if settings not available yet
+  let use12h = false;
+  try {
+    use12h = game.settings?.get(MODULE_ID, 'timeFormat') === '12h';
+  } catch { /* settings not registered yet — use 24h */ }
+
+  if (use12h) {
+    let hr = d.getHours();
+    const ampm = hr >= 12 ? 'PM' : 'AM';
+    hr = hr % 12 || 12;
+    const timeStr = options.seconds ? `${hr}:${min}:${sec} ${ampm}` : `${hr}:${min} ${ampm}`;
+    return `${year}.${month}.${day} // ${timeStr}`;
+  }
+
+  const hr = String(d.getHours()).padStart(2, '0');
+  const timeStr = options.seconds ? `${hr}:${min}:${sec}` : `${hr}:${min}`;
+  return `${year}.${month}.${day} // ${timeStr}`;
 }
 
 /**

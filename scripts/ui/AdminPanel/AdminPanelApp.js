@@ -5018,6 +5018,8 @@ export class AdminPanelApp extends BaseApplication {
     const info = ts.getProviderInfo();
     const currentTime = info.currentTime;
     const currentDate = currentTime ? new Date(currentTime) : new Date();
+    let initFormat = '24H';
+    try { initFormat = game.settings.get(MODULE_ID, 'timeFormat') === '12h' ? '12H' : '24H'; } catch { /* default */ }
 
     // Pre-fill date/time inputs
     const dateVal = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`;
@@ -5072,7 +5074,7 @@ export class AdminPanelApp extends BaseApplication {
             <div style="flex:1;">
               <div style="display:flex; align-items:center; justify-content:space-between;">
                 <div style="${S.label} margin-bottom:0;">Current Time</div>
-                <button id="ncm-tc-12h-toggle" style="${S.btn} font-size:9px !important; padding:2px 8px !important;"><i class="fas fa-clock" style="font-size:7px;"></i> <span id="ncm-tc-12h-label">24H</span></button>
+                <button id="ncm-tc-12h-toggle" style="${S.btn} font-size:9px !important; padding:2px 8px !important;"><i class="fas fa-clock" style="font-size:7px;"></i> <span id="ncm-tc-12h-label">${initFormat}</span></button>
               </div>
               <div style="${S.value}" id="ncm-tc-clock">—</div>
             </div>
@@ -5177,37 +5179,29 @@ export class AdminPanelApp extends BaseApplication {
         const manualPanel = html.find('#ncm-tc-manual');
         const hintEl = html.find('#ncm-tc-hint');
 
-        // ── Shared time formatter (respects 12h toggle, includes seconds) ──
+        // ── Clock elements ──
         const clockEl = html.find('#ncm-tc-clock');
         const realClockEl = html.find('#ncm-tc-dis-real');
         const fakeClockEl = html.find('#ncm-tc-dis-fake');
         const toggleBtn = html.find('#ncm-tc-12h-toggle');
         const toggleLabel = html.find('#ncm-tc-12h-label');
         const dialogOpenedAt = Date.now();
-        let use12h = false;
 
-        const _fmt = (isoStr) => {
-          const d = new Date(isoStr);
-          const yr = d.getFullYear();
-          const mo = String(d.getMonth() + 1).padStart(2, '0');
-          const dy = String(d.getDate()).padStart(2, '0');
-          const sec = String(d.getSeconds()).padStart(2, '0');
-          const min = String(d.getMinutes()).padStart(2, '0');
-          if (use12h) {
-            let hr = d.getHours();
-            const ampm = hr >= 12 ? 'PM' : 'AM';
-            hr = hr % 12 || 12;
-            return `${yr}.${mo}.${dy} // ${hr}:${min}:${sec} ${ampm}`;
-          }
-          const hr = String(d.getHours()).padStart(2, '0');
-          return `${yr}.${mo}.${dy} // ${hr}:${min}:${sec}`;
+        // Init toggle label from setting
+        const _is12h = () => {
+          try { return game.settings.get(MODULE_ID, 'timeFormat') === '12h'; } catch { return false; }
         };
+        toggleLabel.text(_is12h() ? '12H' : '24H');
 
-        // ── 12h/24h toggle — affects ALL clocks in the dialog ──
-        toggleBtn.on('click', (e) => {
+        // Shorthand: format with seconds using the global setting
+        const _fmt = (isoStr) => formatCyberDate(isoStr, { seconds: true });
+
+        // ── 12h/24h toggle — persists to setting, affects ALL clocks module-wide ──
+        toggleBtn.on('click', async (e) => {
           e.preventDefault();
-          use12h = !use12h;
-          toggleLabel.text(use12h ? '12H' : '24H');
+          const newFormat = _is12h() ? '24h' : '12h';
+          await game.settings.set(MODULE_ID, 'timeFormat', newFormat);
+          toggleLabel.text(newFormat === '12h' ? '12H' : '24H');
           updateAllClocks();
         });
 
