@@ -60,6 +60,72 @@ const SORT_LABELS = {
 
 const PRIORITY_ORDER = { critical: 0, urgent: 1, normal: 2 };
 
+/**
+ * Derive network pill color state from signal strength.
+ * @param {number} signal — 0–100
+ * @param {boolean} isDead — Dead zone flag
+ * @returns {'strong'|'good'|'weak'|'critical'|'dead'}
+ */
+function getNetPillState(signal, isDead) {
+  if (isDead || signal <= 0) return 'dead';
+  if (signal < 25) return 'critical';
+  if (signal < 50) return 'weak';
+  if (signal < 80) return 'good';
+  return 'strong';
+}
+
+/**
+ * Derive primaryTab from the currentFilter value.
+ * Message filters (inbox, unread, sent, saved, trash, spam) → 'messages'
+ * Everything else maps directly.
+ */
+const MESSAGE_FILTERS = new Set(['inbox', 'unread', 'sent', 'saved', 'trash', 'spam']);
+function getPrimaryTab(filter) {
+  if (MESSAGE_FILTERS.has(filter)) return 'messages';
+  if (filter === 'shards') return 'shards';
+  if (filter === 'scheduled') return 'scheduled';
+  if (filter === 'drafts') return 'drafts';
+  return 'messages';
+}
+
+/**
+ * Compute relative time string and recency flag from an ISO timestamp.
+ * @param {string} isoTimestamp
+ * @returns {{ relativeTime: string, isRecentMessage: boolean }}
+ */
+function computeRelativeTime(isoTimestamp) {
+  if (!isoTimestamp) return { relativeTime: '', isRecentMessage: false };
+  const now = Date.now();
+  const then = new Date(isoTimestamp).getTime();
+  const diff = now - then;
+  if (diff < 0) return { relativeTime: 'future', isRecentMessage: false };
+
+  const MINUTE = 60000;
+  const HOUR = 3600000;
+  const DAY = 86400000;
+
+  let relativeTime;
+  if (diff < MINUTE) relativeTime = 'just now';
+  else if (diff < HOUR) relativeTime = `${Math.floor(diff / MINUTE)}m ago`;
+  else if (diff < DAY) relativeTime = `${Math.floor(diff / HOUR)}h ago`;
+  else if (diff < DAY * 7) relativeTime = `${Math.floor(diff / DAY)}d ago`;
+  else relativeTime = `${Math.floor(diff / DAY)}d ago`;
+
+  return { relativeTime, isRecentMessage: diff < HOUR };
+}
+
+/**
+ * Build a 3-char network pip label from a network name.
+ * E.g. "DARKNET" → "DRK", "CORPNET" → "CRP", "CITINET" → "CIT"
+ */
+function getNetPipLabel(name) {
+  if (!name) return '';
+  const upper = name.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (upper.length <= 3) return upper;
+  // Take first, middle, last consonant-rich chars
+  return upper.substring(0, 3);
+}
+
 export class MessageViewerApp extends BaseApplication {
 
   /** @override */
@@ -481,6 +547,19 @@ export class MessageViewerApp extends BaseApplication {
     const encryptionCipher = this._deriveEncryptionCipher(currentNetwork);
     const latencyMs = this._deriveLatency(currentNetwork, signalStrength);
 
+    // ── v3.2: Two-tier navigation ──
+    const primaryTab = getPrimaryTab(this.currentFilter);
+    const isMessagesTab = primaryTab === 'messages';
+
+    // ── v3.2: Network pill color state ──
+    const netPillState = getNetPillState(signalStrength, isDeadZone);
+
+    // ── v3.2: Identity drawer data ──
+    const viewingAsRole = viewingActor?.system?.role
+      || viewingActor?.system?.lifepath?.role
+      || '';
+    const ownedCharacters = this._buildOwnedCharacters();
+
     // ── Assemble context ──
     return {
       // Identity
@@ -488,7 +567,16 @@ export class MessageViewerApp extends BaseApplication {
       viewingAsPortrait,
       viewingAsInitial,
       viewingAsEmail,
+      viewingAsRole,
       isGM: game.user.isGM,
+
+      // v3.2 Navigation
+      primaryTab,
+      isMessagesTab,
+      netPillState,
+
+      // v3.2 Identity Drawer
+      ownedCharacters,
 
       // Network
       currentNetwork: displayNetwork,
@@ -564,7 +652,7 @@ export class MessageViewerApp extends BaseApplication {
 
     // ── Scroll preservation — restore saved scroll position ──
     if (this._savedScrollTop != null) {
-      const listEl = html.querySelector('.ncm-message-list');
+      const listEl = html.querySelector('.ncm-viewer__msg-list');
       if (listEl) {
         listEl.scrollTop = this._savedScrollTop;
         this._savedScrollTop = null;
@@ -578,7 +666,7 @@ export class MessageViewerApp extends BaseApplication {
     }
 
     // Search input
-    const searchInput = html.querySelector('.ncm-search-input');
+    const searchInput = html.querySelector('.ncm-viewer__search-input');
     if (searchInput && !searchInput._ncmBound) {
       searchInput.addEventListener('input', (event) => this._onSearchInput(event));
       searchInput.addEventListener('keydown', (event) => {
@@ -588,7 +676,7 @@ export class MessageViewerApp extends BaseApplication {
     }
 
     // Quick reply input — Enter to send
-    const replyInput = html.querySelector('.ncm-quick-reply-input');
+    const replyInput = html.querySelector('.ncm-viewer__quick-reply-input');
     if (replyInput && !replyInput._ncmBound) {
       replyInput.addEventListener('keydown', (event) => {
         if (event.key === 'Enter') {
@@ -600,7 +688,7 @@ export class MessageViewerApp extends BaseApplication {
     }
 
     // Bypass password input — Enter to submit
-    const bypassInput = html.querySelector('.ncm-locked-overlay__bypass-input');
+    const bypassInput = html.querySelector('.ncm-viewer__locked-bypass-input');
     if (bypassInput && !bypassInput._ncmBound) {
       bypassInput.addEventListener('keydown', (event) => {
         if (event.key === 'Enter') {
@@ -612,7 +700,7 @@ export class MessageViewerApp extends BaseApplication {
     }
 
     // Sidebar resize
-    const divider = html.querySelector('.ncm-panel-divider');
+    const divider = html.querySelector('.ncm-viewer__divider');
     if (divider && !divider._ncmBound) {
       divider.addEventListener('mousedown', (event) => this._onDividerDrag(event));
       divider.addEventListener('dblclick', () => {
@@ -625,7 +713,7 @@ export class MessageViewerApp extends BaseApplication {
 
     // ── Real-time clock — tick TIME display every second ──
     if (this._clockInterval) clearInterval(this._clockInterval);
-    const timeEl = html.querySelector('.ncm-hud-strip__value--time');
+    const timeEl = html.querySelector('.ncm-viewer__hud-value--time');
     if (timeEl) {
       this._clockInterval = setInterval(() => {
         try {
@@ -665,7 +753,7 @@ export class MessageViewerApp extends BaseApplication {
 
     // ── Network access lockout countdown ──
     if (this._lockoutTimer) clearInterval(this._lockoutTimer);
-    const lockoutEl = html.querySelector('.ncm-locked-overlay__lockout-timer');
+    const lockoutEl = html.querySelector('.ncm-viewer__locked-timer');
     if (lockoutEl?.dataset.lockoutUntil) {
       this._lockoutTimer = setInterval(() => {
         const remaining = new Date(lockoutEl.dataset.lockoutUntil).getTime() - Date.now();
@@ -683,7 +771,7 @@ export class MessageViewerApp extends BaseApplication {
 
     // ── WP-6: Trace countdown timer ──
     if (this._traceTimer) clearInterval(this._traceTimer);
-    const traceEl = html.querySelector('.ncm-trace-bar__timer');
+    const traceEl = html.querySelector('.ncm-viewer__trace-timer');
     if (traceEl?.dataset.traceExpires) {
       const expiresAt = traceEl.dataset.traceExpires;
       this._traceTimer = setInterval(async () => {
@@ -692,7 +780,7 @@ export class MessageViewerApp extends BaseApplication {
           clearInterval(this._traceTimer);
           this._traceTimer = null;
           traceEl.textContent = 'TRACED';
-          traceEl.closest('.ncm-trace-bar')?.classList.add('ncm-trace-bar--complete');
+          traceEl.closest('.ncm-viewer__trace-bar')?.classList.add('ncm-viewer__trace-bar--complete');
 
           // Notify GM via socket
           const msg = this._getSelectedMessage();
@@ -918,6 +1006,97 @@ export class MessageViewerApp extends BaseApplication {
       case 'open-settings':
         game.nightcity?.openAdmin?.();
         break;
+
+      // ── v3.2: Identity Drawer ──
+      case 'toggle-identity-drawer':
+        this._toggleIdentityDrawer();
+        break;
+      case 'close-identity-drawer':
+        this._closeIdentityDrawer();
+        break;
+
+      // ── v3.2: Primary Tab Navigation ──
+      case 'set-primary-tab': {
+        const tab = target.dataset.tab;
+        // Map primary tab to a default filter
+        const tabFilterMap = { messages: 'inbox', shards: 'shards', scheduled: 'scheduled', drafts: 'drafts' };
+        this._setFilter(tabFilterMap[tab] || 'inbox');
+        break;
+      }
+
+      // ── v3.2: Header Actions ──
+      case 'open-contacts':
+        game.nightcity?.openContacts?.({ actorId: this.actorId });
+        break;
+      case 'open-admin':
+        game.nightcity?.openAdmin?.();
+        break;
+      case 'open-theme':
+        game.nightcity?.openThemeCustomizer?.();
+        break;
+
+      // ── v3.2: Character Switcher ──
+      case 'switch-character': {
+        const newActorId = target.closest('[data-actor-id]')?.dataset.actorId;
+        if (newActorId && newActorId !== this.actorId) {
+          this.actorId = newActorId;
+          this.selectedMessageId = null;
+          this.currentPage = 1;
+          this._closeIdentityDrawer();
+          this.render(true);
+        }
+        break;
+      }
+
+      // ── v3.2: Email Save ──
+      case 'save-email': {
+        const input = this.element?.querySelector('.ncm-viewer__drawer-field-input[data-field="email"]');
+        if (input?.value && this.actorId) {
+          this.contactRepository?.setActorEmail?.(this.actorId, input.value.trim());
+          ui.notifications.info('NCM | Email updated.');
+          this.render();
+        }
+        break;
+      }
+
+      // ── v3.2: Date Picker ──
+      case 'open-date-picker': {
+        const { DateRangePicker } = await import('../components/DateRangePicker.js');
+        DateRangePicker.open({
+          from: this._dateRangeFrom || null,
+          to: this._dateRangeTo || null,
+          onApply: (from, to) => {
+            this._dateRangeFrom = from;
+            this._dateRangeTo = to;
+            this.currentPage = 1;
+            this.render();
+          },
+          onClear: () => {
+            this._dateRangeFrom = null;
+            this._dateRangeTo = null;
+            this.currentPage = 1;
+            this.render();
+          },
+        });
+        break;
+      }
+
+      // ── v3.2: Filter Dropdown (placeholder — tag system Phase 2) ──
+      case 'toggle-filter-dropdown':
+        ui.notifications.info('NCM | Filter tags coming soon.');
+        break;
+
+      // ── v3.2: Add Contact from detail ──
+      case 'add-sender-contact': {
+        const email = target.dataset.email;
+        const name = target.dataset.name;
+        if (email) {
+          game.nightcity?.masterContactService?.createContact?.({ name: name || email.split('@')[0], email });
+          ui.notifications.info(`NCM | Added ${name || email} to contacts.`);
+          this.render();
+        }
+        break;
+      }
 
       // ── Thread ──
       case 'toggle-thread':
@@ -1962,7 +2141,7 @@ export class MessageViewerApp extends BaseApplication {
     const msg = allMessages.find(m => m.messageId === messageId);
     if (!msg) return null;
 
-    const displayData = this._enrichMessageDisplay(msg);
+    const displayData = this._enrichMessageDisplay(msg, this._getCurrentNetworkData()?.name);
     const contact = this._findContact(msg.from);
     const attachments = msg.attachments || [];
 
@@ -2198,6 +2377,29 @@ export class MessageViewerApp extends BaseApplication {
     // §2.7 — Threat badge for malware
     const threatBadge = getThreatBadgeData(msg);
 
+    // ══════════════════════════════════════════════════════
+    //  v3.2 — Stacked timestamp + network pip + stripe
+    // ══════════════════════════════════════════════════════
+
+    // Stacked timestamp: date on top, relative below
+    let formattedDate = '';
+    try {
+      if (msg.timestamp) formattedDate = formatCyberDate(msg.timestamp, { dateOnly: true });
+    } catch { formattedDate = ''; }
+    const { relativeTime, isRecentMessage } = computeRelativeTime(msg.timestamp);
+
+    // Network stripe color (all messages get the stripe)
+    const themeColor = resolvedNetwork?.theme?.color || null;
+    const netStripeColor = themeColor ? `${themeColor}40` : null; // 25% opacity hex suffix
+
+    // Network pip (only for messages from a different network than current)
+    const isDifferentNetwork = !!(msg.network && msgNetworkNorm !== curNetworkNorm);
+    const netPipColor = isDifferentNetwork ? (themeColor || null) : null;
+    const netPipIcon = isDifferentNetwork
+      ? (resolvedNetwork?.theme?.icon || networkBadgeIcon || 'fa-network-wired')
+      : null;
+    const netPipLabel = isDifferentNetwork ? getNetPipLabel(networkBadgeLabel) : null;
+
     return {
       fromDisplay,
       fromInitial,
@@ -2218,6 +2420,14 @@ export class MessageViewerApp extends BaseApplication {
       networkBadgeIcon, 
       networkBadgeTheme,
       threatBadge,
+      // v3.2 — Stacked time + network pip
+      formattedDate,
+      relativeTime,
+      isRecentMessage,
+      netStripeColor,
+      netPipColor,
+      netPipIcon,
+      netPipLabel,
     };
   }
 
@@ -2473,6 +2683,86 @@ export class MessageViewerApp extends BaseApplication {
     }
 
     return counts;
+  }
+
+  /**
+   * Build list of characters the current user owns for the identity drawer switcher.
+   * @returns {Array<{actorId, name, portrait, initials, email, isActive, avatarColor}>}
+   */
+  _buildOwnedCharacters() {
+    const characters = [];
+    const currentUser = game.user;
+    if (!currentUser) return characters;
+
+    // Collect actors this user owns
+    for (const actor of game.actors) {
+      const isOwner = actor.isOwner && actor.hasPlayerOwner;
+      const isGMAll = currentUser.isGM; // GM can see all
+      if (!isOwner && !isGMAll) continue;
+      // Skip actors without emails (non-messenger actors)
+      const email = this.contactRepository?.getActorEmail?.(actor.id) || '';
+      if (!email && !currentUser.isGM) continue;
+
+      characters.push({
+        actorId: actor.id,
+        name: actor.name,
+        portrait: actor.img || null,
+        initials: getInitials(actor.name || 'Unknown'),
+        email,
+        isActive: actor.id === this.actorId,
+        avatarColor: getAvatarColor(actor.name),
+      });
+    }
+    return characters;
+  }
+
+  /**
+   * Build list of characters the current user owns for the identity drawer switcher.
+   * @returns {Array<{actorId, name, portrait, initials, email, isActive, avatarColor}>}
+   */
+  _buildOwnedCharacters() {
+    const chars = [];
+    const seenIds = new Set();
+
+    for (const user of game.users) {
+      if (user.id !== game.user.id) continue;
+      const actor = user.character;
+      if (actor && !seenIds.has(actor.id)) {
+        seenIds.add(actor.id);
+        chars.push({
+          actorId: actor.id,
+          name: actor.name,
+          portrait: actor.img || null,
+          initials: getInitials(actor.name || 'Unknown'),
+          email: this.contactRepository?.getActorEmail?.(actor.id) || '',
+          isActive: actor.id === this.actorId,
+          avatarColor: getAvatarColor(actor.name),
+        });
+      }
+    }
+
+    // Also include any actors this user owns directly
+    if (game.user.isGM) {
+      // GMs see all player characters
+      for (const user of game.users) {
+        if (user.isGM || !user.character) continue;
+        const actor = user.character;
+        if (!seenIds.has(actor.id)) {
+          seenIds.add(actor.id);
+          chars.push({
+            actorId: actor.id,
+            name: actor.name,
+            portrait: actor.img || null,
+            initials: getInitials(actor.name || 'Unknown'),
+            email: this.contactRepository?.getActorEmail?.(actor.id) || '',
+            isActive: actor.id === this.actorId,
+            avatarColor: getAvatarColor(actor.name),
+          });
+        }
+      }
+    }
+
+    return chars;
   }
 
   async close(options) {
