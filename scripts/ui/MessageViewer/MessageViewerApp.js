@@ -278,7 +278,7 @@ export class MessageViewerApp extends BaseApplication {
    * Restored in _onRender() via this._savedScrollTop.
    */
   _saveScrollPosition() {
-    const listEl = this.element?.querySelector('.ncm-message-list');
+    const listEl = this.element?.querySelector('.ncm-viewer__msg-list');
     if (listEl) {
       this._savedScrollTop = listEl.scrollTop;
     }
@@ -1133,7 +1133,7 @@ export class MessageViewerApp extends BaseApplication {
     // Focus the input after render
     if (this.searchActive) {
       requestAnimationFrame(() => {
-        const input = this.element?.querySelector('.ncm-search-input');
+        const input = this.element?.querySelector('.ncm-viewer__search-input');
         input?.focus();
       });
     }
@@ -1507,9 +1507,9 @@ export class MessageViewerApp extends BaseApplication {
     }
 
     // Show loading state
-    const claimEl = this.element?.querySelector(`.ncm-eddies-claim[data-message-id="${messageId}"]`);
+    const claimEl = this.element?.querySelector(`.ncm-viewer__eddies[data-message-id="${messageId}"]`);
     const progress = claimEl?.querySelector('[data-id="eddies-progress"]');
-    if (claimEl) claimEl.classList.add('ncm-eddies-claim--loading');
+    if (claimEl) claimEl.classList.add('ncm-viewer__eddies--loading');
 
     // Animate progress bar
     if (progress) {
@@ -1756,7 +1756,7 @@ export class MessageViewerApp extends BaseApplication {
   }
 
   async _sendCustomReply() {
-    const input = this.element?.querySelector('.ncm-quick-reply-input');
+    const input = this.element?.querySelector('.ncm-viewer__quick-reply-input');
     const text = input?.value?.trim();
     if (!text) return;
     await this._sendQuickReply(text);
@@ -2021,8 +2021,11 @@ export class MessageViewerApp extends BaseApplication {
         if (!d.matches(selector)) d.classList.add('ncm-hidden');
       });
 
-    // Find the dropdown relative to the trigger
-    const container = triggerEl.closest('.ncm-inbox-network, .ncm-tab-control, .ncm-sort-control, .ncm-network-filter-control');
+    // Find the dropdown relative to the trigger — check v3.2 + legacy containers
+    const container = triggerEl.closest(
+      '.ncm-viewer__net-pill, .ncm-viewer__sort-btn, .ncm-viewer__refine-controls, ' +
+      '.ncm-inbox-network, .ncm-tab-control, .ncm-sort-control, .ncm-network-filter-control'
+    );
     const dropdown = container?.querySelector(selector);
     if (dropdown) {
       dropdown.classList.toggle('ncm-hidden');
@@ -2042,8 +2045,8 @@ export class MessageViewerApp extends BaseApplication {
     html.querySelectorAll('.ncm-sort-dropdown, .ncm-network-filter-dropdown')
       .forEach(d => d.classList.add('ncm-hidden'));
 
-    // Find the selector wrap
-    const container = triggerEl.closest('.ncm-inbox-network');
+    // Find the selector wrap — v3.2 + legacy
+    const container = triggerEl.closest('.ncm-viewer__net-pill, .ncm-inbox-network');
     const selectorWrap = container?.querySelector('.ncm-net-selector-wrap');
     if (selectorWrap) {
       selectorWrap.classList.toggle('ncm-hidden');
@@ -2067,7 +2070,7 @@ export class MessageViewerApp extends BaseApplication {
     const startX = event.clientX;
     const startWidth = this.sidebarWidth;
     const html = this.element;
-    const panel = html?.querySelector('.ncm-message-list-panel');
+    const panel = html?.querySelector('.ncm-viewer__list-panel');
 
     const onMouseMove = (e) => {
       const delta = e.clientX - startX;
