@@ -27,6 +27,19 @@ export class AdminPanelApp extends BaseApplication {
 
   /** @type {Object<string, number>} Scroll positions per tab for preservation */
   _scrollPositions = {};
+  /** @type {number} Feed list internal scroll position */
+  _feedListScroll = 0;
+
+  /**
+   * Save all scroll positions before a render.
+   * @private
+   */
+  _saveScroll() {
+    const content = this.element?.querySelector('.ncm-admin-content');
+    if (content) this._scrollPositions[this._activeTab] = content.scrollTop;
+    const feedList = this.element?.querySelector('.ncm-msg-feed-list');
+    if (feedList) this._feedListScroll = feedList.scrollTop;
+  }
 
   // ── Contacts tab state ──
   /** @type {string} Contact search query */
@@ -970,6 +983,12 @@ export class AdminPanelApp extends BaseApplication {
           const fromContactId = flags.fromContactId || '';
           const toContactId = flags.toContactId || '';
 
+          // Network theme data (color + icon from NetworkService)
+          const _ns = game.nightcity?.networkService;
+          const _netData = _ns?.getNetwork?.(network.toUpperCase()) || _ns?.getNetwork?.(network) || null;
+          const networkColor = _netData?.theme?.color || '#8888a0';
+          const networkIcon = _netData?.theme?.icon || 'fa-wifi';
+
           entries.push({
             messageId: msgId,
             inboxOwnerId: ownerId,
@@ -986,8 +1005,10 @@ export class AdminPanelApp extends BaseApplication {
             statusClass,
             statusIcon,
             statusLabel,
-            networkLabel: `${network.toUpperCase()}`,
-            networkName: network,
+            networkLabel: _netData?.name || network.toUpperCase(),
+            networkName: _netData?.name || network,
+            networkColor,
+            networkIcon,
             signalStrength: signal,
             encrypted,
             attachments,
@@ -2965,6 +2986,12 @@ export class AdminPanelApp extends BaseApplication {
         el.scrollTop = this._scrollPositions[this._activeTab];
       }
 
+      // Restore feed list internal scroll
+      const feedList = this.element?.querySelector('.ncm-msg-feed-list');
+      if (feedList && this._feedListScroll) {
+        feedList.scrollTop = this._feedListScroll;
+      }
+
       // Attach passive scroll listener to continuously track position
       this._attachScrollTracker(el);
     });
@@ -3482,15 +3509,13 @@ export class AdminPanelApp extends BaseApplication {
 
   static _onNpcPagePrev(event, target) {
     if (this._npcSendPage > 0) this._npcSendPage--;
-    const content = this.element?.querySelector('.ncm-admin-content');
-    if (content) this._scrollPositions[this._activeTab] = content.scrollTop;
+    this._saveScroll();
     this.render(true);
   }
 
   static _onNpcPageNext(event, target) {
     this._npcSendPage++;
-    const content = this.element?.querySelector('.ncm-admin-content');
-    if (content) this._scrollPositions[this._activeTab] = content.scrollTop;
+    this._saveScroll();
     this.render(true);
   }
 
@@ -3717,15 +3742,14 @@ export class AdminPanelApp extends BaseApplication {
   static _onMsgFeedFilter(event, target) {
     const filter = target.dataset.filter || target.closest('[data-filter]')?.dataset.filter || 'all';
     this._msgFeedFilter = filter;
-    this._msgFeedLimit = 20; // Reset pagination on filter change
+    this._msgFeedLimit = 20;
+    this._saveScroll();
     this.render(true);
   }
 
   static _onLoadMoreMessages(event, target) {
     this._msgFeedLimit += 20;
-    // Save scroll
-    const content = this.element?.querySelector('.ncm-admin-content');
-    if (content) this._scrollPositions[this._activeTab] = content.scrollTop;
+    this._saveScroll();
     this.render(true);
   }
 
@@ -3756,26 +3780,23 @@ export class AdminPanelApp extends BaseApplication {
     this._msgFeedDateFrom = '';
     this._msgFeedDateTo = '';
     this._msgFeedLimit = 20;
+    this._saveScroll();
     this.render(true);
   }
 
   static _onToggleMsgExpand(event, target) {
-    // Don't toggle if clicking an action button inside the row
     if (event.target.closest('[data-action]:not([data-action="toggleMsgExpand"])')) return;
-
     const msgId = target.closest('[data-message-id]')?.dataset.messageId;
     if (!msgId) return;
     this._expandedMessageId = (this._expandedMessageId === msgId) ? null : msgId;
-    // Save scroll
-    const content = this.element?.querySelector('.ncm-admin-content');
-    if (content) this._scrollPositions[this._activeTab] = content.scrollTop;
+    this._saveScroll();
     this.render(true);
   }
 
   static _onToggleMsgActorFilter(event, target) {
-    // Don't toggle when clicking a dropdown item
     if (event.target.closest('[data-action="setMsgActorFilter"]')) return;
     this._msgActorDropdownOpen = !this._msgActorDropdownOpen;
+    this._saveScroll();
     this.render(true);
   }
 
@@ -3786,6 +3807,7 @@ export class AdminPanelApp extends BaseApplication {
     this._msgFeedActorFilter = actorId;
     this._msgActorDropdownOpen = false;
     this._msgFeedLimit = 20;
+    this._saveScroll();
     this.render(true);
   }
 
@@ -5968,6 +5990,9 @@ export class AdminPanelApp extends BaseApplication {
     const inboxOwnerId = target.closest('[data-inbox-owner]')?.dataset.inboxOwner;
     if (!messageId) return;
 
+    // Save scroll before async operation
+    this._saveScroll();
+
     const confirmed = await Dialog.confirm({
       title: 'Hard Delete Message',
       content: '<p>Permanently delete this message? This cannot be undone.</p>',
@@ -5992,6 +6017,8 @@ export class AdminPanelApp extends BaseApplication {
         }
       }
       ui.notifications.info('NCM | Message permanently deleted.');
+      const content = this.element?.querySelector('.ncm-admin-content');
+      if (content) this._scrollPositions[this._activeTab] = content.scrollTop;
       this.render(true);
     } catch (err) {
       console.error(`${MODULE_ID} | Hard delete failed:`, err);

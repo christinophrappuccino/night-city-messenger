@@ -198,7 +198,7 @@
             <i class="fas fa-arrow-right ncm-msg-feed-row__arrow"></i>
             <span class="ncm-msg-feed-row__to">{{this.toName}}</span>
           </div>
-          <span class="ncm-msg-feed-row__network">{{this.networkLabel}}</span>
+          <span class="ncm-msg-feed-row__network" style="color: {{this.networkColor}};"><i class="fas {{this.networkIcon}}" style="font-size:7px; margin-right:2px;"></i>{{this.networkLabel}}</span>
         </div>
         <div class="ncm-msg-feed-row__subject">{{this.subject}}</div>
         <div class="ncm-msg-feed-row__status">
@@ -223,7 +223,7 @@
             <div class="ncm-msg-feed-expand__text">{{this.bodyPreview}}</div>
             <div class="ncm-msg-feed-expand__meta">
               <span><i class="fas fa-calendar"></i> <span class="ncm-msg-feed-expand__meta-val">{{this.fullTimestamp}}</span></span>
-              <span><i class="fas fa-network-wired"></i> <span class="ncm-msg-feed-expand__meta-val">{{this.networkName}}</span></span>
+              <span><i class="fas {{this.networkIcon}}" style="color:{{this.networkColor}};"></i> <span class="ncm-msg-feed-expand__meta-val" style="color:{{this.networkColor}};">{{this.networkName}}</span></span>
               {{#if this.signalStrength}}<span><i class="fas fa-signal"></i> <span class="ncm-msg-feed-expand__meta-val">{{this.signalStrength}}%</span></span>{{/if}}
               <span><i class="fas {{#if this.encrypted}}fa-lock{{else}}fa-lock-open{{/if}}"></i> <span class="ncm-msg-feed-expand__meta-val {{#if this.encrypted}}ncm-msg-feed-expand__meta-val--encrypted{{else}}ncm-msg-feed-expand__meta-val--open{{/if}}">{{#if this.encrypted}}Encrypted{{else}}Unencrypted{{/if}}</span></span>
             </div>

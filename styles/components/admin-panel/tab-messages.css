@@ -942,10 +942,8 @@
 .ncm-app .ncm-msg-feed-row__network {
   font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
   font-size: 9px;
-  color: var(--ncm-secondary, #19f3f7);
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  opacity: 0.7;
 }
 
 /* Subject */
@@ -1164,9 +1162,7 @@
 .ncm-app .ncm-msg-feed-expand__meta > span:nth-child(1) i { color: var(--ncm-accent, #f7c948); }
 .ncm-app .ncm-msg-feed-expand__meta > span:nth-child(1) .ncm-msg-feed-expand__meta-val { color: var(--ncm-accent, #f7c948); }
 
-/* Network — cyan */
-.ncm-app .ncm-msg-feed-expand__meta > span:nth-child(2) i { color: var(--ncm-secondary, #19f3f7); }
-.ncm-app .ncm-msg-feed-expand__meta > span:nth-child(2) .ncm-msg-feed-expand__meta-val { color: var(--ncm-secondary, #19f3f7); }
+/* Network — color set inline from network theme data */
 
 /* Signal — green */
 .ncm-app .ncm-msg-feed-expand__meta > span:nth-child(3) i { color: var(--ncm-success, #00ff41); }
