@@ -1,539 +1,455 @@
 {{!--
-  Message Viewer (Inbox) — Sprint 2A: Inbox Layout Redesign
+  Message Viewer (Inbox) — v3.2 Redesign
   @file templates/message-viewer/message-viewer.hbs
   @module cyberpunkred-messenger
-  @description Main inbox template with condensed cyberdeck terminal layout.
-    Layout: Condensed Header (identity + network + stats + actions) →
-    Tightened HUD strip → Tabs with counts + controls →
-    Split panel (list | detail) → Smart Footer with keyboard hints.
+  @description Full inbox redesign with:
+    - Clickable portrait → identity drawer (left slide overlay)
+    - Color-coded network pill with signal bars + percentage
+    - Colored HUD strip (TIME cyan, LOC gold, QUEUE red-on-alert, ENC green)
+    - Two-tier navigation: primary tabs (Messages/Shards/Scheduled/Drafts)
+      + category pills that change per primary tab
+    - Refinement bar inside list panel (Dates/Sort/Filters+tag pills/Density)
+    - Network right-edge stripes on all messages, pip chips for non-current-net
+    - Stacked timestamps (date + relative)
+    - Contextual footer (actions when message selected, shortcuts when not)
+    - Identity drawer with profile, editable email, network status, character switcher
 
-  Sprint 2A changes:
-    - Condensed header merges identity, network badge, stat counters, and actions
-      into a single ~52px row
-    - HUD strip tightened to ~20px
-    - Tabs absorb count badges from old stat cards
-    - Smart footer with persistent info + context-aware shortcuts
-    - Old stat cards row REMOVED
-    - Old separate search/unread badge REMOVED from header (moved to tab controls)
+  Required context fields (new in v3.2, added in Phase 3 JS):
+    primaryTab       — 'messages'|'shards'|'scheduled'|'drafts' (derived from currentFilter)
+    isMessagesTab    — boolean, true when primaryTab === 'messages'
+    netPillState     — 'strong'|'good'|'weak'|'critical'|'dead' (from signalStrength)
 
   CRITICAL CSS RULE:
     NEVER set properties on .ncm-app root — it IS Foundry's window frame.
     All styling targets .ncm-app > .window-content and descendants.
 --}}
 
-<div class="ncm-message-viewer" data-density="{{density}}" data-filter="{{currentFilter}}">
+<div class="ncm-viewer" data-density="{{density}}" data-filter="{{currentFilter}}" data-primary-tab="{{primaryTab}}">
 
-  {{!-- ═══════ CONDENSED HEADER BAR — Sprint 2A ═══════
-       Single ~52px row: [Avatar Name/Email] | [● NET ▼ ████] | [12 TOTAL 3 UNREAD 2 SAVED] | [Compose] [⚙] [×]
-  --}}
-  <header class="ncm-inbox-header">
+  {{!-- ═══════ §1 HEADER — Portrait + Network Pill + Actions ═══════ --}}
+  <header class="ncm-viewer__header">
 
-    {{!-- Identity Cluster --}}
-    <div class="ncm-inbox-identity">
+    {{!-- Clickable Identity → opens drawer --}}
+    <div class="ncm-viewer__identity" data-action="toggle-identity-drawer">
       {{#if viewingAsPortrait}}
-        <img class="ncm-inbox-identity__portrait" src="{{viewingAsPortrait}}" alt="{{viewingAsName}}" />
+        <div class="ncm-viewer__avatar">
+          <img src="{{viewingAsPortrait}}" alt="{{viewingAsName}}" />
+        </div>
       {{else}}
-        <div class="ncm-inbox-identity__initials">{{viewingAsInitial}}</div>
+        <div class="ncm-viewer__avatar ncm-viewer__avatar--initials">{{viewingAsInitial}}</div>
       {{/if}}
-      <div class="ncm-inbox-identity__info">
-        <span class="ncm-inbox-identity__name">{{viewingAsName}}</span>
+      <div class="ncm-viewer__identity-info">
+        <span class="ncm-viewer__identity-name">{{viewingAsName}}</span>
         {{#if viewingAsEmail}}
-          <span class="ncm-inbox-identity__email">{{viewingAsEmail}}</span>
+          <span class="ncm-viewer__identity-email">{{viewingAsEmail}}</span>
         {{/if}}
       </div>
+      <i class="fas fa-chevron-right ncm-viewer__identity-expand"></i>
     </div>
 
-    {{!-- Divider --}}
-    <div class="ncm-header-divider"></div>
+    <div class="ncm-viewer__header-divider"></div>
 
-    {{!-- Network Badge — compact clickable pill with full selector dropdown --}}
-    <div class="ncm-inbox-network {{#if isDeadZone}}ncm-inbox-network--dead{{/if}}" data-action="toggleNetworkSelector">
-      {{#if isDeadZone}}
-        <span class="ncm-inbox-network__dot ncm-inbox-network__dot--NO_SIGNAL"></span>
-        <i class="fas fa-signal-slash ncm-inbox-network__dead-icon"></i>
-        <span class="ncm-inbox-network__name">NO SIGNAL</span>
+    {{!-- Network Pill — color-coded with bars + percentage --}}
+    <div class="ncm-viewer__net-pill ncm-viewer__net-pill--{{netPillState}}"
+         data-action="toggleNetworkSelector">
+      <span class="ncm-viewer__net-dot"></span>
+      <span class="ncm-viewer__net-name">
+        {{#if isDeadZone}}NO SIGNAL{{else}}{{currentNetwork.name}}{{/if}}
+      </span>
+      <div class="ncm-viewer__net-bars">
+        <div class="ncm-viewer__net-bar {{#if (gte signalStrength 20)}}ncm-viewer__net-bar--active{{/if}}"></div>
+        <div class="ncm-viewer__net-bar {{#if (gte signalStrength 40)}}ncm-viewer__net-bar--active{{/if}}"></div>
+        <div class="ncm-viewer__net-bar {{#if (gte signalStrength 60)}}ncm-viewer__net-bar--active{{/if}}"></div>
+        <div class="ncm-viewer__net-bar {{#if (gte signalStrength 80)}}ncm-viewer__net-bar--active{{/if}}"></div>
+      </div>
+      <span class="ncm-viewer__net-pct">{{signalStrength}}%</span>
+      {{#unless isDeadZone}}
+        <i class="fas fa-caret-down ncm-viewer__net-caret"></i>
+      {{/unless}}
 
-        {{!-- Signal Bars — all inactive --}}
-        <div class="ncm-inbox-network__signal" title="Signal: 0%">
-          <div class="ncm-signal-bar-mini ncm-signal-bar-mini--1"></div>
-          <div class="ncm-signal-bar-mini ncm-signal-bar-mini--2"></div>
-          <div class="ncm-signal-bar-mini ncm-signal-bar-mini--3"></div>
-          <div class="ncm-signal-bar-mini ncm-signal-bar-mini--4"></div>
-        </div>
-      {{else}}
-        <span class="ncm-inbox-network__dot ncm-inbox-network__dot--{{connectionStatus}}"></span>
-        <span class="ncm-inbox-network__name">{{currentNetwork.name}}</span>
-
-        {{!-- Signal Bars (inline, 4 bars) --}}
-        <div class="ncm-inbox-network__signal" title="Signal: {{signalStrength}}%">
-          <div class="ncm-signal-bar-mini ncm-signal-bar-mini--1 {{#if (gte signalStrength 20)}}ncm-signal-bar-mini--active{{/if}}"></div>
-          <div class="ncm-signal-bar-mini ncm-signal-bar-mini--2 {{#if (gte signalStrength 40)}}ncm-signal-bar-mini--active{{/if}}"></div>
-          <div class="ncm-signal-bar-mini ncm-signal-bar-mini--3 {{#if (gte signalStrength 60)}}ncm-signal-bar-mini--active{{/if}}"></div>
-          <div class="ncm-signal-bar-mini ncm-signal-bar-mini--4 {{#if (gte signalStrength 80)}}ncm-signal-bar-mini--active{{/if}}"></div>
-        </div>
-      {{/if}}
-
-      <i class="fas fa-caret-down ncm-inbox-network__caret"></i>
-
-      {{!-- WP-5: Full Network Selector Dropdown --}}
+      {{!-- Network Selector Dropdown --}}
       <div class="ncm-net-selector-wrap ncm-hidden">
         {{> "modules/cyberpunkred-messenger/templates/message-viewer/partials/network-selector.hbs"}}
       </div>
     </div>
 
-    {{!-- Divider --}}
-    <div class="ncm-header-divider"></div>
+    <div class="ncm-viewer__header-spacer"></div>
 
-    {{!-- Inline Stat Counters --}}
-    <div class="ncm-header-stats">
-      <div class="ncm-header-stat" data-action="set-filter" data-filter="inbox"
-           data-ncm-tooltip="Show all messages">
-        <span class="ncm-header-stat__value ncm-header-stat__value--total">{{counts.total}}</span>
-        <span class="ncm-header-stat__label">TOTAL</span>
-      </div>
-      <div class="ncm-header-stat" data-action="set-filter" data-filter="unread"
-           data-ncm-tooltip="Show unread messages">
-        <span class="ncm-header-stat__value ncm-header-stat__value--unread">{{counts.unread}}</span>
-        <span class="ncm-header-stat__label">UNREAD</span>
-      </div>
-      <div class="ncm-header-stat" data-action="set-filter" data-filter="saved"
-           data-ncm-tooltip="Show saved messages">
-        <span class="ncm-header-stat__value ncm-header-stat__value--saved">{{counts.saved}}</span>
-        <span class="ncm-header-stat__label">SAVED</span>
-      </div>
-    </div>
-
-    {{!-- Spacer --}}
-    <div class="ncm-header-spacer"></div>
-
-    {{!-- Header Actions --}}
-    <div class="ncm-header-actions">
+    {{!-- Action Buttons --}}
+    <div class="ncm-viewer__header-actions">
+      <button class="ncm-btn ncm-btn--secondary ncm-btn--sm" data-action="open-contacts"
+              data-ncm-tooltip="Open contacts">
+        <i class="fas fa-address-book"></i> <span>Contacts</span>
+      </button>
       <button class="ncm-btn ncm-btn--primary ncm-btn--sm" data-action="compose-new"
+              {{#if isDeadZone}}disabled{{/if}}
               data-ncm-tooltip="Compose new message">
-        <i class="fas fa-pen-to-square"></i>
-        <span>Compose</span>
+        <i class="fas fa-pen-to-square"></i> <span>Compose</span>
       </button>
       {{#if isGM}}
-        <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="open-settings"
-                data-ncm-tooltip="Settings">
-          <i class="fas fa-gear"></i>
+        <button class="ncm-btn ncm-btn--gm ncm-btn--icon-only ncm-btn--sm" data-action="open-admin"
+                data-ncm-tooltip="GM Admin Panel">
+          <i class="fas fa-shield-halved"></i>
         </button>
       {{/if}}
+      <button class="ncm-btn ncm-btn--ghost ncm-btn--icon-only ncm-btn--sm" data-action="open-settings"
+              data-ncm-tooltip="Settings">
+        <i class="fas fa-gear"></i>
+      </button>
     </div>
   </header>
 
-  {{!-- ═══════ HUD STRIP — Tightened Sprint 2A ═══════
-       3px padding, 9px mono font. NET // SIG // LAT // QUEUE // ENC // ONLINE
-  --}}
-  <div class="ncm-hud-strip ncm-hud-strip--tight">
-    <span class="ncm-hud-strip__item">
-      <span class="ncm-hud-strip__label">NET</span>
-      <span class="ncm-hud-strip__value ncm-hud-strip__value--network {{#if isDeadZone}}ncm-hud-strip__value--alert{{/if}}">
-        {{#if isDeadZone}}NO SIGNAL{{else}}{{currentNetwork.name}}{{/if}}
+  {{!-- ═══════ §2 HUD STRIP — Colored data readout ═══════ --}}
+  <div class="ncm-viewer__hud">
+    <div class="ncm-viewer__hud-item">
+      <span class="ncm-viewer__hud-label ncm-viewer__hud-label--time">Time</span>
+      <span class="ncm-viewer__hud-value ncm-viewer__hud-value--time">{{currentGameTime}}</span>
+    </div>
+    <span class="ncm-viewer__hud-sep">//</span>
+    <div class="ncm-viewer__hud-item">
+      <span class="ncm-viewer__hud-label ncm-viewer__hud-label--scene">Loc</span>
+      <span class="ncm-viewer__hud-value ncm-viewer__hud-value--scene">{{currentSceneName}}</span>
+    </div>
+    <span class="ncm-viewer__hud-sep">//</span>
+    <div class="ncm-viewer__hud-item">
+      <span class="ncm-viewer__hud-label ncm-viewer__hud-label--queue">Queue</span>
+      <span class="ncm-viewer__hud-value {{#if (gt queuedMessageCount 0)}}ncm-viewer__hud-value--alert{{else}}ncm-viewer__hud-value--queue{{/if}}">{{queuedMessageCount}}</span>
+    </div>
+    <span class="ncm-viewer__hud-sep">//</span>
+    <div class="ncm-viewer__hud-item">
+      <span class="ncm-viewer__hud-label ncm-viewer__hud-label--enc">Enc</span>
+      <span class="ncm-viewer__hud-value ncm-viewer__hud-value--enc">{{encryptionCipher}}</span>
+    </div>
+    <div class="ncm-viewer__hud-spacer"></div>
+    <div class="ncm-viewer__hud-status">
+      <span class="ncm-viewer__hud-dot ncm-viewer__hud-dot--{{connectionStatus}}"></span>
+      <span class="ncm-viewer__hud-status-text ncm-viewer__hud-status-text--{{connectionStatus}}">
+        {{#if (eq connectionStatus "CONNECTED")}}Online{{/if}}
+        {{#if (eq connectionStatus "DEGRADED")}}Degraded{{/if}}
+        {{#if (eq connectionStatus "NO_SIGNAL")}}Offline{{/if}}
       </span>
-    </span>
-    <span class="ncm-hud-strip__sep">//</span>
-    <span class="ncm-hud-strip__item">
-      <span class="ncm-hud-strip__label">SIG</span>
-      <span class="ncm-hud-strip__value">{{signalStrength}}%</span>
-    </span>
-    <span class="ncm-hud-strip__sep">//</span>
-    <span class="ncm-hud-strip__item">
-      <span class="ncm-hud-strip__label">LAT</span>
-      <span class="ncm-hud-strip__value">{{latencyMs}}ms</span>
-    </span>
-    <span class="ncm-hud-strip__sep">//</span>
-    <span class="ncm-hud-strip__item">
-      <span class="ncm-hud-strip__label">QUEUE</span>
-      <span class="ncm-hud-strip__value {{#if (gt queuedMessageCount 0)}}ncm-hud-strip__value--alert{{/if}}">{{queuedMessageCount}}</span>
-    </span>
-    <span class="ncm-hud-strip__sep">//</span>
-    <span class="ncm-hud-strip__item ncm-hud-strip__item--accent">
-      <span class="ncm-hud-strip__label">ENC</span>
-      <span class="ncm-hud-strip__value">{{encryptionCipher}}</span>
-    </span>
-    <span class="ncm-hud-strip__sep">//</span>
-    <span class="ncm-hud-strip__item">
-      <span class="ncm-hud-strip__label">TIME</span>
-      <span class="ncm-hud-strip__value ncm-hud-strip__value--time">{{currentGameTime}}</span>
-    </span>
-
-    {{!-- Right-aligned connection status --}}
-    <span class="ncm-hud-strip__spacer"></span>
-    <span class="ncm-hud-strip__status ncm-hud-strip__status--{{connectionStatus}}">
-      <span class="ncm-hud-strip__status-dot"></span>
-      <span class="ncm-hud-strip__status-text">
-        {{#if (eq connectionStatus "CONNECTED")}}ONLINE{{/if}}
-        {{#if (eq connectionStatus "DEGRADED")}}DEGRADED{{/if}}
-        {{#if (eq connectionStatus "NO_SIGNAL")}}OFFLINE{{/if}}
-      </span>
-    </span>
+    </div>
   </div>
 
-  {{!-- ═══════ TABS — Sprint 2A: Embedded Counts + Tab Controls ═══════ --}}
-  <nav class="ncm-inbox-tabs">
-    <div class="ncm-tabs">
-      <button class="ncm-tab {{#if (eq currentFilter 'inbox')}}ncm-tab--active{{/if}}"
-              data-action="set-filter" data-filter="inbox">
-        <i class="fas fa-inbox"></i>
-        <span>Inbox</span>
-        {{#if counts.inbox}}<span class="ncm-tab__count">{{counts.inbox}}</span>{{/if}}
-      </button>
-      <button class="ncm-tab {{#if (eq currentFilter 'unread')}}ncm-tab--active{{/if}}"
-              data-action="set-filter" data-filter="unread">
-        <i class="fas fa-envelope"></i>
-        <span>Unread</span>
-        {{#if counts.unread}}<span class="ncm-tab__count ncm-tab__count--alert">{{counts.unread}}</span>{{/if}}
-      </button>
-      <button class="ncm-tab {{#if (eq currentFilter 'sent')}}ncm-tab--active{{/if}}"
-              data-action="set-filter" data-filter="sent">
-        <i class="fas fa-paper-plane"></i>
-        <span>Sent</span>
-        {{#if counts.sent}}<span class="ncm-tab__count">{{counts.sent}}</span>{{/if}}
-      </button>
-      <button class="ncm-tab {{#if (eq currentFilter 'saved')}}ncm-tab--active{{/if}}"
-              data-action="set-filter" data-filter="saved">
-        <i class="fas fa-bookmark"></i>
-        <span>Saved</span>
-        {{#if counts.saved}}<span class="ncm-tab__count">{{counts.saved}}</span>{{/if}}
-      </button>
-      <button class="ncm-tab {{#if (eq currentFilter 'drafts')}}ncm-tab--active{{/if}}"
-              data-action="set-filter" data-filter="drafts">
-        <i class="fas fa-file-pen"></i>
-        <span>Drafts</span>
-        {{#if counts.drafts}}<span class="ncm-tab__count">{{counts.drafts}}</span>{{/if}}
-      </button>
-      <button class="ncm-tab ncm-tab--accent {{#if (eq currentFilter 'scheduled')}}ncm-tab--active{{/if}}"
-              data-action="set-filter" data-filter="scheduled">
-        <i class="fas fa-clock"></i>
-        <span>Scheduled</span>
-        {{#if counts.scheduled}}<span class="ncm-tab__count">{{counts.scheduled}}</span>{{/if}}
-      </button>
-      <button class="ncm-tab {{#if (eq currentFilter 'shards')}}ncm-tab--active{{/if}}"
-              data-action="set-filter" data-filter="shards">
-        <i class="fas fa-microchip"></i>
-        <span>Shards</span>
-        {{#if counts.shards}}<span class="ncm-tab__count">{{counts.shards}}</span>{{/if}}
-      </button>
-      <button class="ncm-tab {{#if (eq currentFilter 'spam')}}ncm-tab--active{{/if}}"
-              data-action="set-filter" data-filter="spam">
-        <i class="fas fa-shield-halved"></i>
-        <span>Spam</span>
-        {{#if counts.spam}}<span class="ncm-tab__count ncm-tab__count--alert">{{counts.spam}}</span>{{/if}}
-      </button>
-      <button class="ncm-tab {{#if (eq currentFilter 'trash')}}ncm-tab--active{{/if}}"
-              data-action="set-filter" data-filter="trash">
-        <i class="fas fa-trash"></i>
-        <span>Trash</span>
-        {{#if counts.trash}}<span class="ncm-tab__count">{{counts.trash}}</span>{{/if}}
-      </button>
+  {{!-- ═══════ §3 PRIMARY NAV — Content type tabs ═══════ --}}
+  <nav class="ncm-viewer__primary-nav">
+    <div class="ncm-viewer__primary-tab {{#if isMessagesTab}}ncm-viewer__primary-tab--active{{/if}}"
+         data-action="set-primary-tab" data-tab="messages">
+      <i class="fas fa-inbox"></i> Messages
+      {{#if counts.total}}<span class="ncm-viewer__primary-badge">{{counts.total}}</span>{{/if}}
     </div>
-
-    {{!-- Tab Controls: Search (right-aligned) --}}
-    <div class="ncm-tab-controls">
-      {{!-- Search Toggle --}}
-      {{#if searchActive}}
-        <div class="ncm-tab-search ncm-tab-search--expanded">
-          <input type="text"
-                 class="ncm-search-input"
-                 placeholder="Search messages..."
-                 value="{{searchTerm}}"
-                 autofocus />
-          <button class="ncm-tab-control" data-action="toggle-search"
-                  data-ncm-tooltip="Close search (Esc)">
-            <i class="fas fa-times"></i>
-          </button>
-        </div>
-      {{else}}
-        <button class="ncm-tab-control" data-action="toggle-search"
-                data-ncm-tooltip="Search (/)">
-          <i class="fas fa-search"></i>
-        </button>
-      {{/if}}
+    <div class="ncm-viewer__primary-tab {{#if (eq primaryTab 'shards')}}ncm-viewer__primary-tab--active{{/if}}"
+         data-action="set-primary-tab" data-tab="shards">
+      <i class="fas fa-microchip"></i> Shards
+      {{#if counts.shards}}<span class="ncm-viewer__primary-badge">{{counts.shards}}</span>{{/if}}
+    </div>
+    <div class="ncm-viewer__primary-tab {{#if (eq primaryTab 'scheduled')}}ncm-viewer__primary-tab--active{{/if}}"
+         data-action="set-primary-tab" data-tab="scheduled">
+      <i class="fas fa-clock"></i> Scheduled
+      {{#if counts.scheduled}}<span class="ncm-viewer__primary-badge">{{counts.scheduled}}</span>{{/if}}
+    </div>
+    <div class="ncm-viewer__primary-tab {{#if (eq primaryTab 'drafts')}}ncm-viewer__primary-tab--active{{/if}}"
+         data-action="set-primary-tab" data-tab="drafts">
+      <i class="fas fa-file-pen"></i> Drafts
+      {{#if counts.drafts}}<span class="ncm-viewer__primary-badge">{{counts.drafts}}</span>{{/if}}
     </div>
   </nav>
 
-  {{!-- ═══════ BULK ACTIONS (visible when items selected) ═══════ --}}
+  {{!-- ═══════ §4 TOOLBAR — Search + Category Pills ═══════ --}}
+  <div class="ncm-viewer__toolbar">
+    <div class="ncm-viewer__search-row">
+      <i class="fas fa-search"></i>
+      <input type="text" class="ncm-viewer__search-input"
+             placeholder="Search {{#if isMessagesTab}}messages{{else if (eq primaryTab 'shards')}}shards{{else}}...{{/if}}"
+             value="{{searchTerm}}" />
+      <span class="ncm-viewer__search-count">{{totalMessages}} msg{{#if (neq totalMessages 1)}}s{{/if}}</span>
+    </div>
+
+    {{!-- Category Pills — change per primary tab --}}
+    <div class="ncm-viewer__category-pills">
+      {{#if isMessagesTab}}
+        <span class="ncm-pill {{#if (eq currentFilter 'inbox')}}ncm-pill--active{{/if}}"
+              data-action="set-filter" data-filter="inbox">
+          <i class="fas fa-inbox"></i> All
+          {{#if counts.total}}<span class="ncm-pill__badge">{{counts.total}}</span>{{/if}}
+        </span>
+        <span class="ncm-pill {{#if (eq currentFilter 'unread')}}ncm-pill--active{{/if}}"
+              data-action="set-filter" data-filter="unread">
+          <i class="fas fa-envelope"></i> Unread
+          {{#if counts.unread}}<span class="ncm-pill__badge ncm-pill__badge--alert">{{counts.unread}}</span>{{/if}}
+        </span>
+        <span class="ncm-pill {{#if (eq currentFilter 'sent')}}ncm-pill--active{{/if}}"
+              data-action="set-filter" data-filter="sent">
+          <i class="fas fa-paper-plane"></i> Sent
+          {{#if counts.sent}}<span class="ncm-pill__badge">{{counts.sent}}</span>{{/if}}
+        </span>
+        <span class="ncm-pill {{#if (eq currentFilter 'saved')}}ncm-pill--active{{/if}}"
+              data-action="set-filter" data-filter="saved">
+          <i class="fas fa-bookmark"></i> Saved
+          {{#if counts.saved}}<span class="ncm-pill__badge">{{counts.saved}}</span>{{/if}}
+        </span>
+        <span class="ncm-pill {{#if (eq currentFilter 'trash')}}ncm-pill--active{{/if}}"
+              data-action="set-filter" data-filter="trash">
+          <i class="fas fa-trash"></i> Trash
+          {{#if counts.trash}}<span class="ncm-pill__badge">{{counts.trash}}</span>{{/if}}
+        </span>
+        <span class="ncm-pill {{#if (eq currentFilter 'spam')}}ncm-pill--active{{/if}}"
+              data-action="set-filter" data-filter="spam">
+          <i class="fas fa-ban"></i> Spam
+          {{#if counts.spam}}<span class="ncm-pill__badge">{{counts.spam}}</span>{{/if}}
+        </span>
+      {{else if (eq primaryTab 'shards')}}
+        <span class="ncm-pill ncm-pill--active" data-action="set-filter" data-filter="shards">
+          <i class="fas fa-layer-group"></i> All
+          {{#if counts.shards}}<span class="ncm-pill__badge">{{counts.shards}}</span>{{/if}}
+        </span>
+        <span class="ncm-pill"><i class="fas fa-download"></i> Received</span>
+        <span class="ncm-pill"><i class="fas fa-box"></i> Inventory</span>
+        <span class="ncm-pill"><i class="fas fa-lock"></i> Encrypted</span>
+      {{/if}}
+    </div>
+  </div>
+
+  {{!-- ═══════ §5 BULK / MANAGEMENT BARS ═══════ --}}
   {{#if showBulkActions}}
-    <div class="ncm-bulk-bar">
-      <span class="ncm-bulk-bar__count">{{bulkCount}} selected</span>
-      <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="bulk-mark-read">
-        <i class="fas fa-check-double"></i> Mark Read
-      </button>
-      <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="bulk-mark-spam">
-        <i class="fas fa-shield-halved"></i> Spam
-      </button>
-      <button class="ncm-btn ncm-btn--danger ncm-btn--sm" data-action="bulk-delete">
-        <i class="fas fa-trash"></i> Delete
-      </button>
-      <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="bulk-clear">
-        <i class="fas fa-times"></i> Clear
-      </button>
+    <div class="ncm-viewer__bulk-bar">
+      <span class="ncm-viewer__bulk-count">{{bulkCount}} selected</span>
+      <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="bulk-mark-read"><i class="fas fa-check-double"></i> Mark Read</button>
+      <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="bulk-mark-spam"><i class="fas fa-shield-halved"></i> Spam</button>
+      <button class="ncm-btn ncm-btn--danger ncm-btn--sm" data-action="bulk-delete"><i class="fas fa-trash"></i> Delete</button>
+      <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="bulk-clear"><i class="fas fa-times"></i> Clear</button>
     </div>
   {{/if}}
-
-  {{!-- ═══════ TRASH / SPAM MANAGEMENT BAR ═══════ --}}
   {{#if (eq currentFilter 'trash')}}
-    <div class="ncm-filter-action-bar">
-      <i class="fas fa-trash" style="color: var(--ncm-danger); margin-right: 4px;"></i>
-      <span class="ncm-filter-action-bar__label">Trash — messages here will be permanently deleted when emptied</span>
-      <button class="ncm-btn ncm-btn--danger ncm-btn--sm" data-action="empty-trash">
-        <i class="fas fa-fire"></i> Empty Trash
-      </button>
+    <div class="ncm-viewer__filter-bar ncm-viewer__filter-bar--danger">
+      <i class="fas fa-trash"></i>
+      <span>Trash — messages here will be permanently deleted when emptied</span>
+      <button class="ncm-btn ncm-btn--danger ncm-btn--sm" data-action="empty-trash"><i class="fas fa-fire"></i> Empty Trash</button>
     </div>
   {{/if}}
   {{#if (eq currentFilter 'spam')}}
-    <div class="ncm-filter-action-bar">
-      <i class="fas fa-ban" style="color: var(--ncm-warning); margin-right: 4px;"></i>
-      <span class="ncm-filter-action-bar__label">Spam — flagged as unwanted</span>
-      <button class="ncm-btn ncm-btn--danger ncm-btn--sm" data-action="empty-spam">
-        <i class="fas fa-fire"></i> Empty Spam
-      </button>
+    <div class="ncm-viewer__filter-bar ncm-viewer__filter-bar--warning">
+      <i class="fas fa-ban"></i>
+      <span>Spam — flagged as unwanted</span>
+      <button class="ncm-btn ncm-btn--danger ncm-btn--sm" data-action="empty-spam"><i class="fas fa-fire"></i> Empty Spam</button>
     </div>
   {{/if}}
 
-  {{!-- ═══════ TAB-SPECIFIC CONTENT ═══════ --}}
+  {{!-- ═══════ §6 CONTENT AREA ═══════ --}}
 
-  {{#if (eq currentFilter 'scheduled')}}
-    {{!-- SCHEDULED TAB — full-width list --}}
-    <div class="ncm-tab-content-list">
+  {{#if (eq primaryTab 'scheduled')}}
+    <div class="ncm-viewer__tab-list ncm-scrollbar">
       {{#if scheduledMessages.length}}
         {{#each scheduledMessages}}
-          <div class="ncm-scheduled-item" data-schedule-id="{{this.scheduleId}}">
-            <i class="fas fa-clock ncm-scheduled-item__icon"></i>
-            <div class="ncm-scheduled-item__info">
-              <div class="ncm-scheduled-item__to">→ {{this.toName}}</div>
-              <div class="ncm-scheduled-item__subject">{{this.subject}}</div>
+          <div class="ncm-viewer__sched-item" data-schedule-id="{{this.scheduleId}}">
+            <i class="fas fa-clock ncm-viewer__sched-icon"></i>
+            <div class="ncm-viewer__sched-info">
+              <div class="ncm-viewer__sched-to">→ {{this.toName}}</div>
+              <div class="ncm-viewer__sched-subject">{{this.subject}}</div>
             </div>
-            <div style="text-align: right;">
-              <div class="ncm-scheduled-item__time">{{this.deliveryTime}}</div>
-              <div class="ncm-scheduled-item__time-label">{{#if this.useGameTime}}Game Time{{else}}Real Time{{/if}}</div>
+            <div class="ncm-viewer__sched-time">
+              <div>{{this.deliveryTime}}</div>
+              <div class="ncm-viewer__sched-time-label">{{#if this.useGameTime}}Game Time{{else}}Real Time{{/if}}</div>
             </div>
-            <button data-action="edit-scheduled" data-schedule-id="{{this.scheduleId}}" class="ncm-scheduled-item__cancel" style="color: var(--ncm-secondary); border-color: rgba(25,243,247,0.3);">Edit</button>
-            <button data-action="cancel-scheduled" data-schedule-id="{{this.scheduleId}}" class="ncm-scheduled-item__cancel">Cancel</button>
+            <button class="ncm-btn ncm-btn--secondary ncm-btn--sm" data-action="edit-scheduled" data-schedule-id="{{this.scheduleId}}">Edit</button>
+            <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="cancel-scheduled" data-schedule-id="{{this.scheduleId}}">Cancel</button>
           </div>
         {{/each}}
       {{else}}
-        <div class="ncm-tab-content-empty">
-          <i class="fas fa-clock"></i>
-          <p>No scheduled messages</p>
-        </div>
+        {{> "modules/cyberpunkred-messenger/templates/partials/empty-state.hbs"
+            icon="fas fa-clock" title="NO SCHEDULED MESSAGES" message="Nothing queued for delivery" }}
       {{/if}}
     </div>
 
-  {{else if (eq currentFilter 'drafts')}}
-    {{!-- DRAFTS TAB — full-width list --}}
-    <div class="ncm-tab-content-list">
+  {{else if (eq primaryTab 'drafts')}}
+    <div class="ncm-viewer__tab-list ncm-scrollbar">
       {{#if draftItems.length}}
         {{#each draftItems}}
-          <div class="ncm-scheduled-item" data-action="open-draft" data-actor-id="{{this.actorId}}">
-            <i class="fas fa-file-pen ncm-scheduled-item__icon" style="color: var(--ncm-text-muted);"></i>
-            <div class="ncm-scheduled-item__info">
-              <div class="ncm-scheduled-item__to">{{#if this.recipientName}}→ {{this.recipientName}}{{else}}(no recipient){{/if}}</div>
-              <div class="ncm-scheduled-item__subject">{{#if this.subject}}{{this.subject}}{{else}}(no subject){{/if}}</div>
+          <div class="ncm-viewer__sched-item" data-action="open-draft" data-actor-id="{{this.actorId}}">
+            <i class="fas fa-file-pen ncm-viewer__sched-icon" style="color: var(--ncm-text-muted);"></i>
+            <div class="ncm-viewer__sched-info">
+              <div class="ncm-viewer__sched-to">{{#if this.recipientName}}→ {{this.recipientName}}{{else}}(no recipient){{/if}}</div>
+              <div class="ncm-viewer__sched-subject">{{#if this.subject}}{{this.subject}}{{else}}(no subject){{/if}}</div>
             </div>
-            <div style="text-align: right;">
-              <div class="ncm-scheduled-item__time">{{this.savedAt}}</div>
-              <div class="ncm-scheduled-item__time-label">Last saved</div>
+            <div class="ncm-viewer__sched-time">
+              <div>{{this.savedAt}}</div>
+              <div class="ncm-viewer__sched-time-label">Last saved</div>
             </div>
-            <button data-action="delete-draft" data-actor-id="{{this.actorId}}" class="ncm-scheduled-item__cancel">Delete</button>
+            <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="delete-draft" data-actor-id="{{this.actorId}}">Delete</button>
           </div>
         {{/each}}
       {{else}}
-        <div class="ncm-tab-content-empty">
-          <i class="fas fa-file-pen"></i>
-          <p>No drafts</p>
-        </div>
+        {{> "modules/cyberpunkred-messenger/templates/partials/empty-state.hbs"
+            icon="fas fa-file-pen" title="NO DRAFTS" message="Saved drafts will appear here" }}
       {{/if}}
     </div>
 
-  {{else if (eq currentFilter 'shards')}}
-    {{!-- SHARDS TAB — full-width list --}}
-    <div class="ncm-tab-content-list">
+  {{else if (eq primaryTab 'shards')}}
+    <div class="ncm-viewer__refine-bar">
+      <div class="ncm-viewer__refine-controls">
+        <span class="ncm-viewer__sort-btn" data-action="toggle-sort-dropdown">
+          <i class="fas fa-arrow-down-short-wide"></i> {{sortLabel}} <i class="fas fa-caret-down"></i>
+        </span>
+        <div class="ncm-viewer__density" style="margin-left: auto;">
+          <button class="ncm-viewer__density-btn {{#if (eq density 'compact')}}ncm-viewer__density-btn--active{{/if}}"
+                  data-action="set-density" data-density="compact"><i class="fas fa-list"></i></button>
+          <button class="ncm-viewer__density-btn {{#if (eq density 'comfortable')}}ncm-viewer__density-btn--active{{/if}}"
+                  data-action="set-density" data-density="comfortable"><i class="fas fa-th-large"></i></button>
+        </div>
+      </div>
+    </div>
+    <div class="ncm-viewer__tab-list ncm-scrollbar">
       {{#if shardItems.length}}
         {{#each shardItems}}
-          <div class="ncm-shard-item" data-action="open-shard" data-item-id="{{this.id}}">
-            <div class="ncm-shard-item__icon {{#if this.isReceived}}ncm-shard-item__icon--received{{/if}}">
+          <div class="ncm-viewer__shard-item" data-action="open-shard" data-item-id="{{this.id}}">
+            <div class="ncm-viewer__shard-icon {{#if this.isReceived}}ncm-viewer__shard-icon--received{{/if}}">
               <i class="fas fa-microchip"></i>
             </div>
-            <div class="ncm-shard-item__info">
-              <div class="ncm-shard-item__name">{{this.name}}</div>
-              <div class="ncm-shard-item__meta">
+            <div class="ncm-viewer__shard-info">
+              <div class="ncm-viewer__shard-name">{{this.name}}</div>
+              <div class="ncm-viewer__shard-meta">
                 {{#if this.fragmentCount}}<span>{{this.fragmentCount}} fragment(s)</span>{{/if}}
                 {{#if this.fromName}}<span>From: {{this.fromName}}</span>{{/if}}
               </div>
             </div>
-            <span class="ncm-shard-item__badge {{#if this.isReceived}}ncm-shard-item__badge--received{{else}}ncm-shard-item__badge--inventory{{/if}}">
+            <span class="ncm-viewer__shard-badge {{#if this.isReceived}}ncm-viewer__shard-badge--received{{else}}ncm-viewer__shard-badge--inventory{{/if}}">
               {{#if this.isReceived}}Received{{else}}Inventory{{/if}}
             </span>
             {{#if this.isEncrypted}}
-              <span class="ncm-shard-item__badge ncm-shard-item__badge--encrypted"><i class="fas fa-lock" style="margin-right:2px;"></i> ICE</span>
+              <span class="ncm-viewer__shard-badge ncm-viewer__shard-badge--ice"><i class="fas fa-lock"></i> ICE</span>
             {{/if}}
           </div>
         {{/each}}
       {{else}}
-        <div class="ncm-tab-content-empty">
-          <i class="fas fa-microchip"></i>
-          <p>No data shards found</p>
-        </div>
+        {{> "modules/cyberpunkred-messenger/templates/partials/empty-state.hbs"
+            icon="fas fa-microchip" title="NO DATA SHARDS" message="Received and inventory shards will appear here" }}
       {{/if}}
     </div>
 
   {{else}}
-    {{!-- NORMAL TABS — Split panel --}}
-    <div class="ncm-inbox-split-panel">
-
-    {{!-- Left: Message List --}}
-    <div class="ncm-message-list-panel ncm-scrollbar" style="width: {{sidebarWidth}}px;">
-
-      {{!-- List Toolbar: Count + Sort + Network Filter --}}
-      <div class="ncm-list-toolbar">
-        <span class="ncm-list-toolbar__count">
-          {{totalMessages}} msg{{#if (neq totalMessages 1)}}s{{/if}}
-        </span>
-
-        {{!-- Sort Dropdown --}}
-        <div class="ncm-sort-control" data-action="toggle-sort-dropdown">
-          <i class="fas fa-arrow-down-short-wide"></i>
-          <span>{{sortLabel}}</span>
-          <i class="fas fa-caret-down"></i>
-          <div class="ncm-sort-dropdown ncm-hidden">
-            {{#each sortOptions}}
-            <div class="ncm-sort-option {{#if this.active}}ncm-sort-option--active{{/if}}"
-                 data-action="set-sort" data-sort="{{this.id}}">
-              {{this.label}}
-            </div>
-            {{/each}}
-          </div>
-        </div>
-
-        {{!-- Network Filter (only if messages span multiple networks) --}}
-        {{#if showNetworkFilter}}
-          <div class="ncm-network-filter-control" data-action="toggle-network-filter">
-            <i class="fas fa-network-wired"></i>
-            <span>{{#if networkFilter}}{{networkFilter}}{{else}}All Nets{{/if}}</span>
-            <i class="fas fa-caret-down"></i>
-            <div class="ncm-network-filter-dropdown ncm-hidden">
-              <div class="ncm-sort-option {{#unless networkFilter}}ncm-sort-option--active{{/unless}}"
-                   data-action="filter-network" data-network="">
-                All Networks
+    {{!-- MESSAGES — Split panel --}}
+    <div class="ncm-viewer__split">
+      {{!-- Left: Message List --}}
+      <div class="ncm-viewer__list-panel" style="width: {{sidebarWidth}}px;">
+        {{!-- Refinement Bar --}}
+        <div class="ncm-viewer__refine-bar">
+          <div class="ncm-viewer__refine-controls">
+            <span class="ncm-viewer__date-filter" data-action="open-date-picker">
+              <i class="fas fa-calendar-days"></i> Dates <i class="fas fa-caret-down"></i>
+            </span>
+            <span class="ncm-viewer__sort-btn" data-action="toggle-sort-dropdown">
+              <i class="fas fa-arrow-down-short-wide"></i> {{sortLabel}} <i class="fas fa-caret-down"></i>
+              <div class="ncm-sort-dropdown ncm-hidden">
+                {{#each sortOptions}}
+                <div class="ncm-sort-option {{#if this.active}}ncm-sort-option--active{{/if}}"
+                     data-action="set-sort" data-sort="{{this.id}}">{{this.label}}</div>
+                {{/each}}
               </div>
-              {{#each messageNetworks}}
-                <div class="ncm-sort-option {{#if (eq this ../networkFilter)}}ncm-sort-option--active{{/if}}"
-                     data-action="filter-network" data-network="{{this}}">
-                  {{this}}
-                </div>
-              {{/each}}
+            </span>
+            <span class="ncm-viewer__filter-trigger" data-action="toggle-filter-dropdown">
+              <i class="fas fa-filter"></i> Filters <i class="fas fa-caret-down"></i>
+            </span>
+            <div class="ncm-viewer__density">
+              <button class="ncm-viewer__density-btn {{#if (eq density 'compact')}}ncm-viewer__density-btn--active{{/if}}"
+                      data-action="set-density" data-density="compact"><i class="fas fa-bars"></i></button>
+              <button class="ncm-viewer__density-btn {{#if (eq density 'normal')}}ncm-viewer__density-btn--active{{/if}}"
+                      data-action="set-density" data-density="normal"><i class="fas fa-list"></i></button>
+              <button class="ncm-viewer__density-btn {{#if (eq density 'comfortable')}}ncm-viewer__density-btn--active{{/if}}"
+                      data-action="set-density" data-density="comfortable"><i class="fas fa-th-list"></i></button>
             </div>
           </div>
-        {{/if}}
-
-        {{!-- Density Toggle (pushed right) --}}
-        <div class="ncm-list-toolbar__spacer"></div>
-        <div class="ncm-density-toggle">
-          <button class="ncm-density-btn {{#if (eq density 'compact')}}ncm-density-btn--active{{/if}}"
-                  data-action="set-density" data-density="compact"
-                  data-ncm-tooltip="Compact">
-            <i class="fas fa-bars"></i>
-          </button>
-          <button class="ncm-density-btn {{#if (eq density 'normal')}}ncm-density-btn--active{{/if}}"
-                  data-action="set-density" data-density="normal"
-                  data-ncm-tooltip="Normal">
-            <i class="fas fa-list"></i>
-          </button>
-          <button class="ncm-density-btn {{#if (eq density 'comfortable')}}ncm-density-btn--active{{/if}}"
-                  data-action="set-density" data-density="comfortable"
-                  data-ncm-tooltip="Comfortable">
-            <i class="fas fa-th-list"></i>
-          </button>
         </div>
+
+        {{!-- Message List --}}
+        <div class="ncm-viewer__msg-list ncm-scrollbar">
+          {{#if messages.length}}
+            {{#each messages}}
+              {{> "modules/cyberpunkred-messenger/templates/message-viewer/partials/message-list-item.hbs" }}
+            {{/each}}
+          {{else}}
+            {{> "modules/cyberpunkred-messenger/templates/partials/empty-state.hbs"
+                icon="fas fa-inbox" title="NO MESSAGES" message="Awaiting transmissions..." }}
+          {{/if}}
+        </div>
+
+        {{!-- Pagination --}}
+        {{#if (gt totalPages 1)}}
+          <div class="ncm-viewer__pagination">
+            <button class="ncm-viewer__page-btn" data-action="prev-page"
+                    {{#if (eq currentPage 1)}}disabled{{/if}}>
+              <i class="fas fa-chevron-left"></i>
+            </button>
+            <span class="ncm-viewer__page-info">Page {{currentPage}} of {{totalPages}}</span>
+            <button class="ncm-viewer__page-btn" data-action="next-page"
+                    {{#if (eq currentPage totalPages)}}disabled{{/if}}>
+              <i class="fas fa-chevron-right"></i>
+            </button>
+          </div>
+        {{/if}}
       </div>
 
-      <div class="ncm-message-list">
-        {{#if messages.length}}
-          {{#each messages}}
-            {{> "modules/cyberpunkred-messenger/templates/message-viewer/partials/message-list-item.hbs" }}
-          {{/each}}
+      {{!-- Panel Divider --}}
+      <div class="ncm-viewer__divider">
+        <div class="ncm-viewer__divider-grip"><span></span><span></span><span></span></div>
+      </div>
+
+      {{!-- Right: Detail --}}
+      <div class="ncm-viewer__detail-panel ncm-scrollbar">
+        {{#if selectedMessage}}
+          {{> "modules/cyberpunkred-messenger/templates/message-viewer/partials/message-detail.hbs"
+              message=selectedMessage quickReplies=quickReplies isGM=isGM currentFilter=currentFilter }}
         {{else}}
-          {{> "modules/cyberpunkred-messenger/templates/partials/empty-state.hbs"
-              icon="fas fa-inbox" title="NO MESSAGES"
-              message="Awaiting transmissions..." }}
+          <div class="ncm-viewer__empty-detail">
+            <i class="fas fa-terminal ncm-viewer__empty-icon"></i>
+            <span class="ncm-viewer__empty-text">Select message to read</span>
+            <span class="ncm-viewer__empty-hint">↑↓ to navigate · Enter to select</span>
+          </div>
         {{/if}}
       </div>
+    </div>
+  {{/if}}
 
-      {{!-- Pagination Footer --}}
-      {{#if (gt totalPages 1)}}
-      <div class="ncm-inbox-pagination">
-        <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="prev-page"
-                {{#if (eq currentPage 1)}}disabled{{/if}}>
-          <i class="fas fa-chevron-left"></i>
-        </button>
-        <span class="ncm-pagination-info">
-          Page {{currentPage}} of {{totalPages}}
-        </span>
-        <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="next-page"
-                {{#if (eq currentPage totalPages)}}disabled{{/if}}>
-          <i class="fas fa-chevron-right"></i>
-        </button>
+  {{!-- ═══════ §7 FOOTER ═══════ --}}
+  <footer class="ncm-viewer__footer">
+    {{#if (and isMessagesTab selectedMessage)}}
+      <div class="ncm-viewer__footer-actions">
+        {{#if (eq currentFilter 'trash')}}
+          <button class="ncm-viewer__footer-btn ncm-viewer__footer-btn--primary" data-action="restore-message"><i class="fas fa-undo"></i> Restore</button>
+          <button class="ncm-viewer__footer-btn ncm-viewer__footer-btn--danger" data-action="permanent-delete"><i class="fas fa-fire"></i> Delete</button>
+        {{else if (eq currentFilter 'spam')}}
+          <button class="ncm-viewer__footer-btn ncm-viewer__footer-btn--primary" data-action="reply-message"><i class="fas fa-reply"></i> Reply</button>
+          <button class="ncm-viewer__footer-btn" data-action="restore-message"><i class="fas fa-undo"></i> Not Spam</button>
+          <button class="ncm-viewer__footer-btn ncm-viewer__footer-btn--danger" data-action="permanent-delete"><i class="fas fa-fire"></i> Delete</button>
+        {{else if selectedMessage.isSent}}
+          <button class="ncm-viewer__footer-btn" data-action="forward-message"><i class="fas fa-share"></i> Forward</button>
+          <button class="ncm-viewer__footer-btn" data-action="share-to-chat"><i class="fas fa-share-from-square"></i> Chat</button>
+          <button class="ncm-viewer__footer-btn ncm-viewer__footer-btn--danger" data-action="delete-message"><i class="fas fa-trash"></i> Delete</button>
+        {{else}}
+          <button class="ncm-viewer__footer-btn ncm-viewer__footer-btn--primary" data-action="reply-message"><i class="fas fa-reply"></i> Reply</button>
+          <button class="ncm-viewer__footer-btn" data-action="forward-message"><i class="fas fa-share"></i> Forward</button>
+          <button class="ncm-viewer__footer-btn" data-action="save-message"><i class="fas fa-bookmark"></i> Save</button>
+          <button class="ncm-viewer__footer-btn" data-action="share-to-chat"><i class="fas fa-share-from-square"></i> Chat</button>
+          <button class="ncm-viewer__footer-btn ncm-viewer__footer-btn--danger" data-action="delete-message"><i class="fas fa-trash"></i> Delete</button>
+        {{/if}}
       </div>
-      {{/if}}
-    </div>
-
-    {{!-- Divider --}}
-    <div class="ncm-panel-divider">
-      <div class="ncm-divider-grip">
-        <span></span><span></span><span></span>
+      <div class="ncm-viewer__footer-spacer"></div>
+      <div class="ncm-viewer__footer-shortcuts">
+        <span class="ncm-viewer__shortcut"><kbd>R</kbd> Reply</span>
+        <span class="ncm-viewer__shortcut"><kbd>F</kbd> Fwd</span>
+        <span class="ncm-viewer__shortcut"><kbd>S</kbd> Save</span>
+        <span class="ncm-viewer__shortcut"><kbd>Del</kbd> Trash</span>
       </div>
-    </div>
-
-    {{!-- Right: Message Detail --}}
-    <div class="ncm-message-detail-panel ncm-scrollbar">
-      {{#if selectedMessage}}
-        {{> "modules/cyberpunkred-messenger/templates/message-viewer/partials/message-detail.hbs"
-            message=selectedMessage quickReplies=quickReplies isGM=isGM currentFilter=currentFilter }}
-      {{else}}
-        {{!-- Empty Detail State --}}
-        <div class="ncm-detail-empty">
-          {{> "modules/cyberpunkred-messenger/templates/partials/empty-state.hbs"
-              icon="fas fa-terminal"
-              title="AWAITING INPUT"
-              message="> SELECT MESSAGE TO READ_" }}
-        </div>
-      {{/if}}
-    </div>
-  </div>
-  {{/if}}{{!-- /normal tabs --}}
-
-  {{!-- ═══════ SMART FOOTER — Sprint 2A ═══════
-       Left: message count + actor + network
-       Right: context-aware keyboard shortcuts
-  --}}
-  <footer class="ncm-inbox-footer">
-    <div class="ncm-footer-info">
-      <span class="ncm-footer-item">
-        <i class="fas fa-database"></i>
-        {{totalMessages}} MESSAGE{{#if (neq totalMessages 1)}}S{{/if}}
-      </span>
-      <span class="ncm-footer-item">
-        <i class="fas fa-user"></i>
-        {{viewingAsName}}
-      </span>
-      <span class="ncm-footer-item">
-        <i class="fas fa-network-wired"></i>
-        {{currentNetwork.name}}
-      </span>
-    </div>
-    <div class="ncm-footer-shortcuts">
-      <span class="ncm-footer-item">
-        <i class="fas fa-keyboard"></i>
-        <span class="ncm-shortcut-hint" data-context="list">
-          / SEARCH &nbsp; ↑↓ NAV &nbsp; ENTER SELECT
-        </span>
-        <span class="ncm-shortcut-hint ncm-hidden" data-context="detail">
-          R REPLY &nbsp; F FORWARD &nbsp; S SAVE &nbsp; DEL TRASH
-        </span>
-      </span>
-    </div>
+    {{else}}
+      <div class="ncm-viewer__footer-shortcuts" style="margin: 0 auto;">
+        <span class="ncm-viewer__shortcut"><kbd>/</kbd> Search</span>
+        <span class="ncm-viewer__shortcut"><kbd>↑↓</kbd> Navigate</span>
+        <span class="ncm-viewer__shortcut"><kbd>Enter</kbd> Select</span>
+        <span class="ncm-viewer__shortcut"><kbd>N</kbd> New message</span>
+      </div>
+    {{/if}}
   </footer>
+
+  {{!-- ═══════ §8 IDENTITY DRAWER ═══════ --}}
+  {{> "modules/cyberpunkred-messenger/templates/message-viewer/partials/identity-drawer.hbs"}}
 
 </div>

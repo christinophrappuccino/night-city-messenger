@@ -1,134 +1,136 @@
 {{!--
-  Message List Item — Partial
+  Message List Item — v3.2 Redesign
   @file templates/message-viewer/partials/message-list-item.hbs
   @module cyberpunkred-messenger
-  @description Single message row in the inbox list. Supports 3 density modes
-    (compact, normal, comfortable), priority indicators, unread state,
-    sender avatar with color-coding, network-themed styling, threat badges.
-    Density is controlled by the parent [data-density] attribute on .ncm-message-viewer.
+  @description Single message row in the inbox list. Features:
+    - Network right-edge stripe via inline style (dynamic theme.color)
+    - Network pip chip only for messages from non-current network
+    - Stacked timestamp: date on top, relative time below
+    - Single badge slot: priority OR threat (most important wins)
+    - Color-coded avatar with matching border
+    - Unread dot, priority left border, lock indicator
 
-  Sprint 2C additions:
-    - §2.9 Color-coded avatar via avatarColor (inline style)
-    - §2.10 Network theme class via networkThemeClass (e.g. ncm-msg--darknet)
-    - §2.10 Network accent border on avatar via networkAccentColor
-    - §2.10 Network tag badge on non-default-network messages
-    - §2.7 Threat badge for malware-infected messages
-    - §2.7 Red tint on infected message items
-
-  Visual Audit Fixes:
-    - Removed bulk selection checkbox (Fix 2B) — will be re-added
-      when a "bulk select" mode toggle is implemented
-
-  Expected context (per message from _enrichMessages):
+  Expected context per message (from _enrichMessages + _enrichMessageDisplay):
     messageId, from, to, subject, body, timestamp, network, priority,
     status: { read, saved, spam, encrypted, infected, deleted, sent },
     fromDisplay, fromInitial, fromPortrait, bodyPreview,
-    formattedTime, networkLabel, priorityVariant,
+    formattedDate, relativeTime, isRecentMessage,
+    formattedTime,  {{!-- fallback if Phase 3 fields not yet present --}}
+    networkLabel, priorityVariant,
     selected, bulkSelected,
-    — Sprint 2C:
-    avatarColor, networkThemeClass, networkAccentColor,
-    showNetworkBadge, networkBadgeLabel, networkBadgeVariant, threatBadge
+    avatarColor, networkAccentColor,
+    isNetworkLocked, lockedNetworkName,
+    threatBadge,
+    — v3.2 network pip (dynamic from NetworkService theme):
+    netPipColor, netPipIcon, netPipLabel,
+    netStripeColor  {{!-- inline border-right color, null if current network --}}
 --}}
 
-<div class="ncm-message-item {{networkThemeClass}}
-  {{~#unless status.read}} ncm-message-item--unread{{/unless~}}
-  {{~#if selected}} ncm-message-item--selected{{/if~}}
-  {{~#if bulkSelected}} ncm-message-item--bulk-selected{{/if~}}
-  {{~#if status.infected}} ncm-message-item--infected{{/if~}}
-  {{~#if status.encrypted}} ncm-message-item--encrypted{{/if~}}
-  {{~#if threatBadge}} ncm-message-item--threat{{/if~}}
-  {{~#if isNetworkLocked}} ncm-message-item--network-locked{{/if~}}"
+<div class="ncm-viewer__msg
+  {{~#unless status.read}} ncm-viewer__msg--unread{{/unless~}}
+  {{~#if selected}} ncm-viewer__msg--selected{{/if~}}
+  {{~#if status.infected}} ncm-viewer__msg--infected{{/if~}}
+  {{~#if isNetworkLocked}} ncm-viewer__msg--locked{{/if~}}"
      data-message-id="{{messageId}}"
      data-priority="{{priority}}"
-     data-action="select-message">
+     data-action="select-message"
+     {{~#if netStripeColor}} style="border-right: 3px solid {{netStripeColor}}"{{/if~}}>
 
-  {{!-- Priority Left Border is handled by CSS [data-priority] --}}
+  {{!-- Priority left border handled by CSS [data-priority] --}}
 
-  {{!-- Unread Indicator Dot --}}
+  {{!-- Unread dot --}}
   {{#unless status.read}}
-    <div class="ncm-message-item__unread-dot" data-ncm-tooltip="Unread"></div>
+    <div class="ncm-viewer__msg-unread-dot"></div>
   {{/unless}}
 
   {{!-- Network-locked indicator --}}
   {{#if isNetworkLocked}}
-    <div class="ncm-message-item__lock-indicator" data-ncm-tooltip="Requires {{lockedNetworkName}} access">
+    <div class="ncm-viewer__msg-lock" data-ncm-tooltip="Requires {{lockedNetworkName}} access">
       <i class="fas fa-lock"></i>
     </div>
   {{/if}}
 
-  {{!-- Avatar — §2.9 Color-coded, §2.10 Network accent border --}}
-  <div class="ncm-message-item__avatar"
-    {{~#if networkAccentColor}} style="border-color: {{networkAccentColor}}"{{/if~}}>
+  {{!-- Avatar — color-coded with matching border --}}
+  <div class="ncm-viewer__msg-avatar"
+    style="color: {{avatarColor}}; border-color: {{networkAccentColor}}">
     {{#if fromPortrait}}
-      <img class="ncm-message-item__portrait" src="{{fromPortrait}}" alt="{{fromDisplay}}" />
+      <img src="{{fromPortrait}}" alt="{{fromDisplay}}" />
     {{else}}
-      <div class="ncm-message-item__initials" style="color: {{avatarColor}}">{{fromInitial}}</div>
+      {{fromInitial}}
     {{/if}}
   </div>
 
-  {{!-- Content Area --}}
-  <div class="ncm-message-item__content">
+  {{!-- Content --}}
+  <div class="ncm-viewer__msg-content">
 
-    {{!-- Top Row: Sender + Time --}}
-    <div class="ncm-message-item__top-row">
-      <span class="ncm-message-item__sender">{{fromDisplay}}</span>
+    {{!-- Row 1: Sender + Icons + Net Pip + Stacked Time --}}
+    <div class="ncm-viewer__msg-top">
+      <span class="ncm-viewer__msg-sender">{{fromDisplay}}</span>
 
-      {{!-- Inline indicators (compact icon cluster) --}}
-      <span class="ncm-message-item__status-icons">
+      {{!-- Status icons --}}
+      <span class="ncm-viewer__msg-icons">
         {{#if status.encrypted}}
-          <i class="fas fa-lock ncm-message-item__icon ncm-message-item__icon--encrypted"
+          <i class="fas fa-lock ncm-viewer__msg-icon ncm-viewer__msg-icon--encrypted"
              data-ncm-tooltip="Encrypted"></i>
         {{/if}}
         {{#if status.saved}}
-          <i class="fas fa-bookmark ncm-message-item__icon ncm-message-item__icon--saved"
+          <i class="fas fa-bookmark ncm-viewer__msg-icon ncm-viewer__msg-icon--saved"
              data-ncm-tooltip="Saved"></i>
         {{/if}}
         {{#if status.infected}}
-          <i class="fas fa-virus ncm-message-item__icon ncm-message-item__icon--infected"
+          <i class="fas fa-virus ncm-viewer__msg-icon ncm-viewer__msg-icon--infected"
              data-ncm-tooltip="Malware detected"></i>
         {{/if}}
       </span>
 
-      {{!-- Timestamp --}}
-      <span class="ncm-message-item__time">{{formattedTime}}</span>
-    </div>
+      {{!-- Network pip — only for non-current network (dynamic colors from theme) --}}
+      {{#if netPipLabel}}
+        <span class="ncm-viewer__msg-net-pip"
+              style="color: {{netPipColor}}; border-color: {{netPipColor}}40; background: {{netPipColor}}0A">
+          <i class="fas {{netPipIcon}}"></i> {{netPipLabel}}
+        </span>
+      {{/if}}
 
-    {{!-- Subject Row --}}
-    <div class="ncm-message-item__subject-row">
-      <span class="ncm-message-item__subject">{{subject}}</span>
-
-      {{!-- Compact badge cluster (pushed right) --}}
-      <span class="ncm-message-item__badges">
-        {{#if threatBadge}}
-          <span class="ncm-micro-badge ncm-micro-badge--{{threatBadge.variant}}" data-ncm-tooltip="{{threatBadge.label}}">
-            <i class="{{threatBadge.icon}}"></i>{{threatBadge.label}}
-          </span>
-        {{/if}}
-        {{#if showNetworkBadge}}
-          <span class="ncm-micro-badge ncm-micro-badge--network-{{networkBadgeVariant}}" data-ncm-tooltip="Via {{networkBadgeLabel}}">
-            {{{ncm-net-icon networkBadgeTheme}}}{{networkBadgeLabel}}
-          </span>
-        {{/if}}
-        {{#if (eq priority "critical")}}
-          <span class="ncm-micro-badge ncm-micro-badge--critical">
-            <i class="fas fa-triangle-exclamation"></i>CRIT
-          </span>
-        {{/if}}
-        {{#if (eq priority "urgent")}}
-          <span class="ncm-micro-badge ncm-micro-badge--urgent">
-            <i class="fas fa-bolt"></i>URG
-          </span>
+      {{!-- Stacked timestamp --}}
+      <span class="ncm-viewer__msg-time">
+        {{#if formattedDate}}
+          <span class="ncm-viewer__msg-time-date">{{formattedDate}}</span>
+          <span class="ncm-viewer__msg-time-rel {{#if isRecentMessage}}ncm-viewer__msg-time-rel--recent{{/if}}">{{relativeTime}}</span>
+        {{else}}
+          {{!-- Fallback for pre-Phase3 --}}
+          <span class="ncm-viewer__msg-time-date">{{formattedTime}}</span>
         {{/if}}
       </span>
     </div>
 
-    {{!-- Body Preview (visible in comfortable density) --}}
+    {{!-- Row 2: Subject + Badge (single slot — most important wins) --}}
+    <div class="ncm-viewer__msg-subject">
+      <span class="ncm-viewer__msg-subject-text">{{subject}}</span>
+
+      {{!-- Single badge slot --}}
+      {{#if threatBadge}}
+        <span class="ncm-viewer__msg-badge ncm-viewer__msg-badge--{{threatBadge.variant}}"
+              data-ncm-tooltip="{{threatBadge.label}}">
+          <i class="{{threatBadge.icon}}"></i> {{threatBadge.label}}
+        </span>
+      {{else if (eq priority "critical")}}
+        <span class="ncm-viewer__msg-badge ncm-viewer__msg-badge--crit">
+          <i class="fas fa-triangle-exclamation"></i> CRIT
+        </span>
+      {{else if (eq priority "urgent")}}
+        <span class="ncm-viewer__msg-badge ncm-viewer__msg-badge--urgent">
+          <i class="fas fa-bolt"></i> URG
+        </span>
+      {{/if}}
+    </div>
+
+    {{!-- Row 3: Body preview (visible in comfortable density) --}}
     {{#if isNetworkLocked}}
-      <div class="ncm-message-item__preview ncm-message-item__preview--locked">
+      <div class="ncm-viewer__msg-preview ncm-viewer__msg-preview--locked">
         <i class="fas fa-lock"></i> NETWORK ACCESS REQUIRED — {{lockedNetworkName}}
       </div>
     {{else if bodyPreview}}
-      <div class="ncm-message-item__preview">{{bodyPreview}}</div>
+      <div class="ncm-viewer__msg-preview">{{bodyPreview}}</div>
     {{/if}}
 
   </div>

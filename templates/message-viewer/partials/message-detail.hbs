@@ -1,50 +1,32 @@
 {{!--
-  Message Detail Panel — Partial
+  Message Detail Panel — v3.2 Redesign
   @file templates/message-viewer/partials/message-detail.hbs
   @module cyberpunkred-messenger
-  @description Displays a selected message with full metadata, body, actions,
-    and quick-reply bar. Uses Sprint 0 design system components.
-
-  Sprint 2B additions:
-    - Security verification strip below metadata (§2.4) — uses items[] array
-    - Thread badge pill in subject row (§2.5)
-    - Interactive encrypted attachments via partial (§2.6)
-    - Attachment chips via partial (§2.8)
-
-  Viewer Polish additions:
-    - Network-locked overlay (messages from inaccessible networks)
-    - Enhanced encrypted overlay with DV/type metadata
-    - "Add to Contacts" inline button for unknown senders
-    - Security strip iterates over items[] from getSecurityStripData()
-    - Threat alert marker in security strip
+  @description Displays selected message with:
+    - Clickable sender avatar with color-coded border
+    - Sender name + "Add Contact" button for unknown senders
+    - Color-coded meta fields (from=cyan, to=gold, time=muted, network=green)
+    - Security verification strip
+    - Thread indicator badge
+    - Message body with eddies claim, attachments, encrypted blocks
+    - Network-locked and encryption overlays
+    - Quick reply bar
 
   Expected context:
-    message — enriched message object from _getEnrichedMessage()
-      { messageId, from, to, subject, body, bodyRendered, timestamp, network,
-        priority, priorityVariant, priorityIcon, fromDisplay, fromInitial,
-        fromPortrait, toDisplay, formattedTime, status, threadInfo, attachments,
-        senderIsContact, isNetworkLocked, lockedNetworkName,
-        security: { variant, items: [{icon, label, status}...], hasThreat },
-        encryption: { type, dc } | null }
+    message — enriched from _getEnrichedMessage()
     quickReplies — array of quick-reply strings
     isGM — boolean
-    currentFilter — active filter tab name
+    currentFilter — active filter name
 --}}
 
-<div class="ncm-message-detail" data-message-id="{{message.messageId}}">
+<div class="ncm-viewer__detail" data-message-id="{{message.messageId}}">
 
-  {{!-- ═══ Bracket Header ═══ --}}
-  {{> "modules/cyberpunkred-messenger/templates/partials/section-header.hbs"
-      title="MESSAGE DETAIL" size="small" align="left" }}
-
-  {{!-- ═══ Network-Locked Overlay (with bypass options from MessageAccessService) ═══ --}}
+  {{!-- ═══ Network-Locked Overlay ═══ --}}
   {{#if message.isNetworkLocked}}
-    <div class="ncm-message-locked-overlay ncm-message-locked-overlay--network">
-      <div class="ncm-locked-overlay__icon">
-        <i class="fas fa-tower-broadcast"></i>
-      </div>
-      <div class="ncm-locked-overlay__title">NETWORK RESTRICTED</div>
-      <div class="ncm-locked-overlay__subtitle">
+    <div class="ncm-viewer__locked-overlay ncm-viewer__locked-overlay--network">
+      <div class="ncm-viewer__locked-icon"><i class="fas fa-tower-broadcast"></i></div>
+      <div class="ncm-viewer__locked-title">NETWORK RESTRICTED</div>
+      <div class="ncm-viewer__locked-subtitle">
         This message was transmitted on <strong>{{message.lockedNetworkName}}</strong>.
         {{#if message.accessState.lockedOut}}
           Access locked — too many failed attempts.
@@ -52,294 +34,242 @@
           Connect to this network or bypass access controls.
         {{/if}}
       </div>
-      <div class="ncm-locked-overlay__net-badge">
+      <div class="ncm-viewer__locked-badge">
         <i class="fas fa-lock"></i> REQUIRES {{message.lockedNetworkName}} ACCESS
       </div>
 
-      {{!-- ── Lockout State ── --}}
       {{#if message.accessState.lockedOut}}
-        <div class="ncm-locked-overlay__lockout">
+        <div class="ncm-viewer__locked-lockout">
           <i class="fas fa-clock"></i>
           <span>SYSTEM LOCKED</span>
-          <span class="ncm-locked-overlay__lockout-timer"
-                data-lockout-until="{{message.accessState.lockoutUntil}}">
-            --:--
-          </span>
+          <span class="ncm-viewer__locked-timer" data-lockout-until="{{message.accessState.lockoutUntil}}">--:--</span>
         </div>
-
-      {{!-- ── Bypass Options (not locked out) ── --}}
       {{else}}
-
-        {{!-- Attempt Counter --}}
+        {{!-- Attempt counter --}}
         {{#if message.accessState.maxAttempts}}
           {{#if message.accessState.hackAttempts}}
-            <div class="ncm-locked-overlay__attempts">
-              <span class="ncm-locked-overlay__attempts-label">Bypass attempts:</span>
-              <span class="ncm-locked-overlay__attempts-count">
-                {{sub message.accessState.maxAttempts message.accessState.hackAttempts}}
-                of {{message.accessState.maxAttempts}} remaining
-              </span>
+            <div class="ncm-viewer__locked-attempts">
+              <span>Bypass attempts:</span>
+              <span>{{sub message.accessState.maxAttempts message.accessState.hackAttempts}} of {{message.accessState.maxAttempts}} remaining</span>
             </div>
           {{/if}}
         {{/if}}
 
-        <div class="ncm-locked-overlay__bypass-options">
-
-          {{!-- Password Bypass --}}
+        <div class="ncm-viewer__locked-bypass">
+          {{!-- Password --}}
           {{#if message.accessState.bypassOptions.password}}
-            <div class="ncm-locked-overlay__bypass-row">
-              <div class="ncm-locked-overlay__bypass-field">
-                <span class="ncm-locked-overlay__bypass-prefix">pass&gt;</span>
-                <input class="ncm-locked-overlay__bypass-input"
-                       type="password"
-                       name="bypassPassword"
-                       placeholder="enter access code..."
+            <div class="ncm-viewer__locked-bypass-row">
+              <div class="ncm-viewer__locked-bypass-field">
+                <span class="ncm-viewer__locked-bypass-prefix">pass&gt;</span>
+                <input class="ncm-viewer__locked-bypass-input" type="password"
+                       name="bypassPassword" placeholder="enter access code..."
                        data-message-id="{{message.messageId}}" />
               </div>
               <button class="ncm-btn ncm-btn--secondary ncm-btn--sm"
-                      data-action="bypass-password"
-                      data-message-id="{{message.messageId}}">
-                <i class="fas fa-key"></i>
-                <span>AUTH</span>
+                      data-action="bypass-password" data-message-id="{{message.messageId}}">
+                <i class="fas fa-key"></i> AUTH
               </button>
             </div>
           {{/if}}
 
-          {{!-- Skill Check Bypass --}}
+          {{!-- Skill check --}}
           {{#if message.accessState.bypassOptions.skillCheck}}
-            <div class="ncm-locked-overlay__bypass-row ncm-locked-overlay__bypass-row--skill">
+            <div class="ncm-viewer__locked-bypass-row ncm-viewer__locked-bypass-row--skill">
               {{#each message.accessState.bypassSkills}}
                 <button class="ncm-btn ncm-btn--ghost ncm-btn--sm"
                         data-action="bypass-skill"
                         data-message-id="{{../message.messageId}}"
                         data-skill="{{this}}">
-                  <i class="fas fa-dice-d20"></i>
-                  <span>{{this}} Check</span>
-                  <span class="ncm-locked-overlay__dv-badge">DV {{../message.accessState.bypassDC}}</span>
+                  <i class="fas fa-dice-d20"></i> {{this}} Check
+                  <span class="ncm-viewer__locked-dv">DV {{../message.accessState.bypassDC}}</span>
                 </button>
               {{/each}}
             </div>
           {{/if}}
 
-          {{!-- Key Item Bypass --}}
+          {{!-- Key item --}}
           {{#if message.accessState.bypassOptions.keyItem}}
-            <div class="ncm-locked-overlay__bypass-row">
+            <div class="ncm-viewer__locked-bypass-row">
               <button class="ncm-btn ncm-btn--ghost ncm-btn--sm"
-                      data-action="bypass-keyitem"
-                      data-message-id="{{message.messageId}}">
-                <i class="fas fa-id-badge"></i>
-                <span>Present {{message.accessState.keyItemName}}</span>
+                      data-action="bypass-keyitem" data-message-id="{{message.messageId}}">
+                <i class="fas fa-id-badge"></i> Present {{message.accessState.keyItemName}}
               </button>
             </div>
           {{/if}}
 
-          {{!-- No bypass available hint --}}
+          {{!-- No bypass hint --}}
           {{#unless message.accessState.bypassOptions.password}}
             {{#unless message.accessState.bypassOptions.skillCheck}}
               {{#unless message.accessState.bypassOptions.keyItem}}
-                <div class="ncm-locked-overlay__no-bypass">
+                <div class="ncm-viewer__locked-no-bypass">
                   No bypass methods available. Connect to <strong>{{message.lockedNetworkName}}</strong> directly.
                 </div>
               {{/unless}}
             {{/unless}}
           {{/unless}}
-
         </div>
       {{/if}}
 
-      {{!-- ── GM Controls ── --}}
+      {{!-- GM Controls --}}
       {{#if isGM}}
-        <div class="ncm-locked-overlay__gm-controls">
+        <div class="ncm-viewer__locked-gm">
           <button class="ncm-btn ncm-btn--ghost ncm-btn--sm"
-                  data-action="gm-force-reveal"
-                  data-message-id="{{message.messageId}}">
-            <i class="fas fa-shield-halved"></i>
-            <span>GM Force Reveal</span>
+                  data-action="gm-force-reveal" data-message-id="{{message.messageId}}">
+            <i class="fas fa-shield-halved"></i> GM Force Reveal
           </button>
         </div>
       {{/if}}
     </div>
 
-  {{!-- ═══ Encryption Overlay (if encrypted & not decrypted) ═══ --}}
+  {{!-- ═══ Encryption Overlay ═══ --}}
   {{else if message.status.encrypted}}
-    <div class="ncm-message-locked-overlay ncm-message-locked-overlay--encrypted">
-      <div class="ncm-locked-overlay__icon">
-        <i class="fas fa-lock"></i>
-      </div>
-      <div class="ncm-locked-overlay__title">MESSAGE ENCRYPTED</div>
-      <div class="ncm-locked-overlay__subtitle">
-        ICE-protected transmission. Requires decryption to access content.
-      </div>
+    <div class="ncm-viewer__locked-overlay ncm-viewer__locked-overlay--encrypted">
+      <div class="ncm-viewer__locked-icon"><i class="fas fa-lock"></i></div>
+      <div class="ncm-viewer__locked-title">MESSAGE ENCRYPTED</div>
+      <div class="ncm-viewer__locked-subtitle">ICE-protected transmission. Requires decryption to access content.</div>
       {{#if message.encryption}}
-        <div class="ncm-locked-overlay__meta">
+        <div class="ncm-viewer__locked-meta">
           {{#if message.encryption.type}}
-            <span class="ncm-locked-overlay__meta-item">
-              <i class="fas fa-shield-halved"></i> {{message.encryption.type}}
-            </span>
+            <span><i class="fas fa-shield-halved"></i> {{message.encryption.type}}</span>
           {{/if}}
           {{#if message.encryption.dc}}
-            <span class="ncm-locked-overlay__meta-item">
-              <i class="fas fa-dice-d20"></i> DV {{message.encryption.dc}}
-            </span>
+            <span><i class="fas fa-dice-d20"></i> DV {{message.encryption.dc}}</span>
           {{/if}}
         </div>
       {{/if}}
-      <div class="ncm-locked-overlay__actions">
-        <button class="ncm-btn ncm-btn--secondary" data-action="decrypt-message"
-                data-message-id="{{message.messageId}}">
-          <i class="fas fa-unlock-keyhole"></i>
-          <span>Attempt Decrypt</span>
+      <button class="ncm-btn ncm-btn--secondary ncm-btn--sm"
+              data-action="attempt-decrypt" data-message-id="{{message.messageId}}">
+        <i class="fas fa-terminal"></i> Attempt Decryption
+      </button>
+      {{#if isGM}}
+        <button class="ncm-btn ncm-btn--ghost ncm-btn--sm"
+                data-action="gm-force-reveal" data-message-id="{{message.messageId}}">
+          <i class="fas fa-shield-halved"></i> GM Force Reveal
         </button>
-        {{#if isGM}}
-          <button class="ncm-btn ncm-btn--ghost" data-action="force-decrypt-message"
-                  data-message-id="{{message.messageId}}">
-            <i class="fas fa-shield-halved"></i>
-            <span>GM Force Decrypt</span>
-          </button>
-        {{/if}}
-      </div>
+      {{/if}}
     </div>
+
   {{else}}
+    {{!-- ═══ Normal Message Content ═══ --}}
 
-    {{!-- ═══ Message Metadata ═══ --}}
-    <div class="ncm-detail-meta">
+    {{!-- Detail Header --}}
+    <div class="ncm-viewer__detail-head">
+      <div class="ncm-viewer__detail-head-top">
+        {{!-- Sender avatar --}}
+        <div class="ncm-viewer__detail-avatar"
+             style="color: {{message.avatarColor}}; border-color: {{message.networkAccentColor}}">
+          {{#if message.fromPortrait}}
+            <img src="{{message.fromPortrait}}" alt="{{message.fromDisplay}}" />
+          {{else}}
+            {{message.fromInitial}}
+          {{/if}}
+        </div>
 
-      {{!-- Subject Heading Row --}}
-      <div class="ncm-detail-subject">
-        <span class="ncm-detail-subject__text">
-          {{#if message.subject}}{{message.subject}}{{else}}<em>(No Subject)</em>{{/if}}
-        </span>
-
-        {{!-- Priority badge (inline with subject) --}}
-        {{#if (neq message.priority "normal")}}
-        {{> "modules/cyberpunkred-messenger/templates/partials/tag-badge.hbs"
-            label=message.priority variant=message.priorityVariant icon=message.priorityIcon }}
-        {{/if}}
-
-        {{!-- §2.5 Thread Badge Pill --}}
-        {{#if message.threadInfo.count}}
-          <div class="ncm-thread-badge" data-action="toggle-thread">
-            <i class="fas fa-code-branch"></i>
-            <span class="ncm-thread-badge__label">THREAD</span>
-            <span class="ncm-thread-badge__count">{{message.threadInfo.count}}</span>
+        <div class="ncm-viewer__detail-info">
+          {{!-- Sender name + Add Contact --}}
+          <div class="ncm-viewer__detail-sender">
+            <span class="ncm-viewer__detail-sender-name">{{message.fromDisplay}}</span>
+            {{#unless message.senderIsContact}}
+              <button class="ncm-viewer__detail-add-contact" data-action="add-sender-contact"
+                      data-email="{{message.from}}" data-name="{{message.fromDisplay}}">
+                <i class="fas fa-user-plus"></i> Add Contact
+              </button>
+            {{/unless}}
           </div>
-        {{/if}}
+
+          {{!-- Color-coded meta fields --}}
+          <div class="ncm-viewer__detail-meta">
+            <span class="ncm-viewer__detail-meta-item ncm-viewer__detail-meta-item--from">
+              <i class="fas fa-envelope"></i> {{message.from}}
+            </span>
+            <span class="ncm-viewer__detail-meta-item ncm-viewer__detail-meta-item--to">
+              <i class="fas fa-arrow-right"></i> {{message.toDisplay}}
+            </span>
+            <span class="ncm-viewer__detail-meta-item ncm-viewer__detail-meta-item--time">
+              <i class="fas fa-clock"></i> {{message.formattedTime}}
+            </span>
+            <span class="ncm-viewer__detail-meta-item ncm-viewer__detail-meta-item--net">
+              <i class="fas fa-wifi"></i> {{message.networkLabel}}
+            </span>
+            {{#if message.priorityIcon}}
+              <span class="ncm-viewer__detail-meta-item ncm-viewer__detail-meta-item--priority">
+                <i class="{{message.priorityIcon}}"></i> {{message.priority}}
+              </span>
+            {{/if}}
+          </div>
+        </div>
       </div>
 
-      {{!-- Compact Horizontal Meta Row --}}
-      <div class="ncm-detail-meta__row-inline">
-        <div class="ncm-detail-meta-item">
-          <span class="ncm-detail-meta-label">FROM</span>
-          <span class="ncm-detail-meta-value">
-            {{message.fromDisplay}}
-            {{!-- Add to Contacts button for unknown senders --}}
-            {{#unless message.senderIsContact}}
-              {{#unless message.isSent}}
-                <button class="ncm-btn-inline ncm-btn-inline--add-contact"
-                        data-action="add-contact"
-                        data-ncm-tooltip="Add to contacts">
-                  <i class="fas fa-user-plus"></i>
-                </button>
-              {{/unless}}
-            {{/unless}}
+      {{!-- Subject + Thread badge --}}
+      <div class="ncm-viewer__detail-subject">
+        {{message.subject}}
+        {{#if message.threadInfo}}
+          <span class="ncm-viewer__detail-thread">
+            <i class="fas fa-code-branch"></i> Thread · {{message.threadInfo.count}}
           </span>
-        </div>
-        <div class="ncm-detail-meta-item">
-          <span class="ncm-detail-meta-label">TO</span>
-          <span class="ncm-detail-meta-value">
-            {{#if message.toDisplay}}{{message.toDisplay}}{{else}}{{message.to}}{{/if}}
-          </span>
-        </div>
-        <div class="ncm-detail-meta-item">
-          <span class="ncm-detail-meta-label">DATE</span>
-          <span class="ncm-detail-meta-value ncm-detail-meta-value--mono">{{message.formattedTime}}</span>
-        </div>
-        <div class="ncm-detail-meta-item">
-          <span class="ncm-detail-meta-label">NET</span>
-          <span class="ncm-detail-meta-value ncm-detail-meta-value--highlight">{{message.networkLabel}}</span>
-        </div>
+        {{/if}}
       </div>
     </div>
 
-    {{!-- ═══ §2.4 Security Verification Strip (items array) ═══ --}}
+    {{!-- Security Strip --}}
     {{#if message.security}}
-      <div class="ncm-security-strip ncm-security-strip--{{message.security.variant}}">
+      <div class="ncm-viewer__sec-strip ncm-viewer__sec-strip--{{message.security.variant}}">
         {{#each message.security.items}}
-          <div class="ncm-security-item ncm-security-item--{{this.status}}">
-            <i class="{{this.icon}}"></i>
-            <span>{{this.label}}</span>
-          </div>
+          <span class="ncm-viewer__sec-item ncm-viewer__sec-item--{{this.status}}">
+            <i class="fas {{this.icon}}"></i> {{this.label}}
+          </span>
         {{/each}}
-        {{#if message.security.hasThreat}}
-          <div class="ncm-security-item ncm-security-item--danger ncm-security-item--threat-alert">
-            <i class="fas fa-skull-crossbones"></i>
-            <span>THREAT</span>
-          </div>
-        {{/if}}
       </div>
     {{/if}}
 
-    {{!-- ═══ Thread Indicator (expanded bar below strip) ═══ --}}
-    {{#if message.threadInfo.count}}
-      <div class="ncm-thread-indicator" data-action="toggle-thread">
-        <i class="fas fa-code-branch"></i>
-        <span>{{message.threadInfo.count}} message{{#if (gt message.threadInfo.count 1)}}s{{/if}} in thread</span>
-        <i class="fas fa-chevron-right ncm-thread-chevron"></i>
-      </div>
-    {{/if}}
-
-    {{!-- ═══ Self-Destruct Banner (Feature 4) ═══ --}}
+    {{!-- Self-destruct bar --}}
     {{#if message.selfDestructActive}}
-      <div class="ncm-destruct-banner">
-        <i class="fas fa-bomb ncm-destruct-banner__icon"></i>
-        <span class="ncm-destruct-banner__text">Self-Destruct Active</span>
-        <span class="ncm-destruct-banner__timer" data-id="destruct-timer">
-          <i class="fas fa-hourglass-half" style="margin-right:3px;"></i> {{message.selfDestructDisplay}}
+      <div class="ncm-viewer__destruct-bar">
+        <i class="fas fa-bomb"></i>
+        <span>SELF-DESTRUCT ACTIVE</span>
+        <span class="ncm-viewer__destruct-timer"
+              data-self-destruct-display="{{message.selfDestructDisplay}}"
+              data-expires-at="{{message.selfDestruct.expiresAt}}">
+          {{message.selfDestructDisplay}}
         </span>
       </div>
     {{/if}}
 
-    {{!-- ═══ WP-6: Trace Active Bar ═══ --}}
+    {{!-- Trace bar --}}
     {{#if message.traceActive}}
-      <div class="ncm-trace-bar">
+      <div class="ncm-viewer__trace-bar">
         <i class="fas fa-satellite-dish"></i>
-        <span class="ncm-trace-bar__label">TRACE ACTIVE</span>
-        <span class="ncm-trace-bar__timer" data-trace-expires="{{message.traceExpiresAt}}">
-          --:--
-        </span>
-        <span class="ncm-trace-bar__warning">Location will be logged when timer expires</span>
+        <span class="ncm-viewer__trace-label">TRACE IN PROGRESS</span>
+        <span class="ncm-viewer__trace-timer" data-trace-expires="{{message.traceExpiresAt}}">--:--</span>
       </div>
     {{else if message.traceCompleted}}
-      <div class="ncm-trace-bar ncm-trace-bar--complete">
+      <div class="ncm-viewer__trace-bar ncm-viewer__trace-bar--complete">
         <i class="fas fa-satellite-dish"></i>
-        <span class="ncm-trace-bar__label">TRACE COMPLETE</span>
-        <span class="ncm-trace-bar__warning">Your location was logged by network security</span>
+        <span class="ncm-viewer__trace-label">TRACE COMPLETE</span>
+        <span>Your location was logged by network security</span>
       </div>
     {{/if}}
 
     {{!-- ═══ Message Body ═══ --}}
-    <div class="ncm-detail-body ncm-scrollbar
-      {{~#if message.networkBodyEffect}} ncm-detail-body--{{message.networkBodyEffect}}{{/if~}}">
+    <div class="ncm-viewer__detail-body ncm-scrollbar
+      {{~#if message.networkBodyEffect}} ncm-viewer__detail-body--{{message.networkBodyEffect}}{{/if~}}">
       {{#if message.bodyRendered}}
         {{{message.bodyRendered}}}
       {{else}}
-        <p class="ncm-detail-body__empty">
-          <em>// No message body //</em>
-        </p>
+        <p class="ncm-viewer__detail-body-empty"><em>// No message body //</em></p>
       {{/if}}
 
-      {{!-- ═══ WP-5: Signal Reconstruction ═══ --}}
+      {{!-- Signal reconstruction --}}
       {{#if message.signalDegradation}}
         {{#unless message.signalDegradation.reconstructed}}
-          <div class="ncm-signal-reconstruct">
-            <div class="ncm-signal-reconstruct__status">
+          <div class="ncm-viewer__signal-reconstruct">
+            <div class="ncm-viewer__signal-status">
               <i class="fas fa-signal"></i>
               SIGNAL DEGRADED — {{message.signalDegradation.corruptionLevel}} corruption
               (received at {{message.signalDegradation.originalSignal}}% signal)
             </div>
             <button class="ncm-btn ncm-btn--ghost ncm-btn--sm"
-                    data-action="reconstruct-signal"
-                    data-message-id="{{message.messageId}}">
+                    data-action="reconstruct-signal" data-message-id="{{message.messageId}}">
               <i class="fas fa-wrench"></i>
               Reconstruct ({{message.signalDegradation.reconstructSkill}} DV {{message.signalDegradation.reconstructDC}})
             </button>
@@ -347,55 +277,53 @@
         {{/unless}}
       {{/if}}
 
-      {{!-- ═══ Feature 1: Eddies Claim ═══ --}}
+      {{!-- Eddies claim --}}
       {{#if message.eddiesData}}
-        <div class="ncm-eddies-claim {{#if message.eddiesData.claimed}}ncm-eddies-claim--claimed{{/if}}"
+        <div class="ncm-viewer__eddies {{#if message.eddiesData.claimed}}ncm-viewer__eddies--claimed{{/if}}"
              data-message-id="{{message.messageId}}">
-          <i class="fas {{#if message.eddiesData.isSentCopy}}fa-paper-plane{{else if message.eddiesData.claimed}}fa-check-circle{{else}}fa-coins{{/if}} ncm-eddies-claim__icon"></i>
-          <div class="ncm-eddies-claim__info">
-            <div class="ncm-eddies-claim__amount">{{message.eddiesData.formatted}}</div>
-            <div class="ncm-eddies-claim__label">{{#if message.eddiesData.isSentCopy}}Eddies Sent{{else}}Eddies Transfer{{/if}}</div>
+          <i class="fas {{#if message.eddiesData.isSentCopy}}fa-paper-plane{{else if message.eddiesData.claimed}}fa-check-circle{{else}}fa-coins{{/if}} ncm-viewer__eddies-icon"></i>
+          <div class="ncm-viewer__eddies-info">
+            <div class="ncm-viewer__eddies-amount">{{message.eddiesData.formatted}}</div>
+            <div class="ncm-viewer__eddies-label">{{#if message.eddiesData.isSentCopy}}Eddies Sent{{else}}Eddies Transfer{{/if}}</div>
           </div>
           {{#if message.eddiesData.claimed}}
-            <span class="ncm-eddies-claim__status">
-              <i class="fas {{#if message.eddiesData.isSentCopy}}fa-arrow-up{{else}}fa-check{{/if}}" style="margin-right:3px;"></i>
+            <span class="ncm-viewer__eddies-status">
+              <i class="fas {{#if message.eddiesData.isSentCopy}}fa-arrow-up{{else}}fa-check{{/if}}"></i>
               {{message.eddiesData.claimedAt}}
             </span>
           {{else}}
-            <button class="ncm-eddies-claim__btn" data-action="claim-eddies"
+            <button class="ncm-viewer__eddies-btn" data-action="claim-eddies"
                     data-message-id="{{message.messageId}}" data-amount="{{message.eddiesData.amount}}">
-              <i class="fas fa-download" style="margin-right:4px;"></i> Claim
+              <i class="fas fa-download"></i> Claim
             </button>
           {{/if}}
-          <div class="ncm-eddies-claim__progress" data-id="eddies-progress"></div>
+          <div class="ncm-viewer__eddies-progress" data-id="eddies-progress"></div>
         </div>
       {{/if}}
 
-      {{!-- ═══ §2.6 Encrypted Attachments (inline in body) ═══ --}}
+      {{!-- Encrypted attachments --}}
       {{#each message.encryptedAttachments}}
         {{> "modules/cyberpunkred-messenger/templates/partials/encrypted-attachment.hbs"
-            attachment=this
-            messageId=../message.messageId
-            isGM=../isGM }}
+            attachment=this messageId=../message.messageId isGM=../isGM }}
       {{/each}}
 
-      {{!-- ═══ Feature 3: Attachment Thumbnails ═══ --}}
+      {{!-- Regular attachment cards --}}
       {{#if message.hasAttachmentCards}}
-        <div class="ncm-attachments-grid">
+        <div class="ncm-viewer__attach-grid">
           {{#each message.attachmentCards}}
-            <div class="ncm-attach-card" data-action="{{this.action}}" 
+            <div class="ncm-viewer__attach-card" data-action="{{this.action}}"
                  data-attachment-index="{{@index}}" data-message-id="{{../message.messageId}}"
                  data-item-id="{{this.itemId}}">
-              <div class="ncm-attach-card__thumb {{this.thumbClass}}">
+              <div class="ncm-viewer__attach-thumb {{this.thumbClass}}">
                 {{#if this.thumbSrc}}
                   <img src="{{this.thumbSrc}}" alt="">
                 {{else}}
                   <i class="{{this.thumbIcon}}"></i>
                 {{/if}}
               </div>
-              <div class="ncm-attach-card__info">
-                <div class="ncm-attach-card__name" {{#if this.nameStyle}}style="{{this.nameStyle}}"{{/if}}>{{this.name}}</div>
-                <div class="ncm-attach-card__meta {{this.metaClass}}">{{this.meta}}</div>
+              <div class="ncm-viewer__attach-info">
+                <div class="ncm-viewer__attach-name" {{#if this.nameStyle}}style="{{this.nameStyle}}"{{/if}}>{{this.name}}</div>
+                <div class="ncm-viewer__attach-meta {{this.metaClass}}">{{this.meta}}</div>
               </div>
             </div>
           {{/each}}
@@ -403,85 +331,22 @@
       {{/if}}
     </div>
 
-    {{!-- ═══ Malware Warning ═══ --}}
+    {{!-- Malware warning --}}
     {{#if message.status.infected}}
       {{> "modules/cyberpunkred-messenger/templates/partials/alert-panel.hbs"
-          variant="danger"
-          icon="fas fa-biohazard"
+          variant="danger" icon="fas fa-biohazard"
           title="MALWARE DETECTED"
-          text="This message contains a hostile daemon. Proceed with caution."
-      }}
+          text="This message contains a hostile daemon. Proceed with caution." }}
     {{/if}}
 
-    {{!-- ═══ Action Bar ═══ --}}
-    <div class="ncm-detail-actions">
-      {{#if (eq currentFilter 'trash')}}
-        {{!-- Trash view — restore or permanently delete --}}
-        <button class="ncm-btn ncm-btn--primary" data-action="restore-message">
-          <i class="fas fa-undo"></i> Restore
-        </button>
-        <button class="ncm-btn ncm-btn--danger" data-action="permanent-delete">
-          <i class="fas fa-fire"></i> Permanent Delete
-        </button>
-      {{else if (eq currentFilter 'spam')}}
-        {{!-- Spam view — restore (not spam) or permanently delete --}}
-        <button class="ncm-btn ncm-btn--primary" data-action="reply-message">
-          <i class="fas fa-reply"></i> Reply
-        </button>
-        <button class="ncm-btn ncm-btn--ghost" data-action="restore-message">
-          <i class="fas fa-undo"></i> Not Spam
-        </button>
-        <button class="ncm-btn ncm-btn--danger" data-action="permanent-delete">
-          <i class="fas fa-fire"></i> Delete
-        </button>
-      {{else if message.isSent}}
-        {{!-- Sent view — no reply/spam, can forward or delete --}}
-        <button class="ncm-btn ncm-btn--ghost" data-action="forward-message">
-          <i class="fas fa-share"></i> Forward
-        </button>
-        <button class="ncm-btn ncm-btn--ghost" data-action="share-to-chat">
-          <i class="fas fa-share-from-square"></i> Chat
-        </button>
-        <button class="ncm-btn ncm-btn--ghost ncm-btn--danger-text" data-action="delete-message">
-          <i class="fas fa-trash"></i> Delete
-        </button>
-      {{else}}
-        {{!-- Normal view — full actions --}}
-        <button class="ncm-btn ncm-btn--primary" data-action="reply-message">
-          <i class="fas fa-reply"></i> Reply
-        </button>
-        <button class="ncm-btn ncm-btn--ghost" data-action="forward-message">
-          <i class="fas fa-share"></i> Forward
-        </button>
-        <button class="ncm-btn ncm-btn--ghost" data-action="save-message">
-          <i class="fas fa-bookmark"></i> Save
-        </button>
-        <button class="ncm-btn ncm-btn--ghost" data-action="share-to-chat">
-          <i class="fas fa-share-from-square"></i> Chat
-        </button>
-        <button class="ncm-btn ncm-btn--ghost" data-action="mark-spam">
-          <i class="fas fa-ban"></i> Spam
-        </button>
-        <button class="ncm-btn ncm-btn--ghost ncm-btn--danger-text" data-action="delete-message">
-          <i class="fas fa-trash"></i> Delete
-        </button>
-        {{#if isGM}}
-          <button class="ncm-btn ncm-btn--ghost" data-action="gm-edit-message"
-                  data-ncm-tooltip="GM: Edit message flags">
-            <i class="fas fa-pen-to-square"></i>
-          </button>
-        {{/if}}
-      {{/if}}
-    </div>
-
-    {{!-- ═══ Quick Reply Bar (inbox/unread/saved only) ═══ --}}
+    {{!-- Quick Reply Bar --}}
     {{#unless message.isSent}}
       {{#unless (eq currentFilter 'trash')}}
         {{#unless (eq currentFilter 'spam')}}
-          <div class="ncm-quick-reply-bar">
-            <div class="ncm-quick-reply-input-row">
-              <input type="text" class="ncm-quick-reply-input" placeholder="Quick reply..." />
-              <button class="ncm-quick-reply-send" data-action="send-reply">
+          <div class="ncm-viewer__quick-reply">
+            <div class="ncm-viewer__quick-reply-row">
+              <input type="text" class="ncm-viewer__quick-reply-input" placeholder="Quick reply..." />
+              <button class="ncm-viewer__quick-reply-send" data-action="send-reply">
                 <i class="fas fa-paper-plane"></i>
               </button>
             </div>
