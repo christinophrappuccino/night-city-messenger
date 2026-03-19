@@ -75,10 +75,11 @@ export function getPlayerActor() {
  * @returns {string}
  */
 /**
- * Format timestamp in cyberpunk style. Respects the module's 12h/24h setting.
+ * Format timestamp in cyberpunk style. Respects module's date format and 12h/24h settings.
  * @param {string|number|Date} timestamp
  * @param {object} [options]
- * @param {boolean} [options.seconds=false] - Include seconds
+ * @param {boolean} [options.seconds=false] - Include seconds in time portion
+ * @param {boolean} [options.dateOnly=false] - Return only the date portion (no time)
  * @returns {string}
  */
 export function formatCyberDate(timestamp, options = {}) {
@@ -89,23 +90,38 @@ export function formatCyberDate(timestamp, options = {}) {
   const min = String(d.getMinutes()).padStart(2, '0');
   const sec = String(d.getSeconds()).padStart(2, '0');
 
-  // Check setting — default to 24h if settings not available yet
+  // Date format setting — default YMD
+  let dateFmt = 'YMD';
+  try {
+    dateFmt = game.settings?.get(MODULE_ID, 'dateFormat') || 'YMD';
+  } catch { /* settings not registered yet */ }
+
+  let dateStr;
+  switch (dateFmt) {
+    case 'DMY': dateStr = `${day}.${month}.${year}`; break;
+    case 'MDY': dateStr = `${month}.${day}.${year}`; break;
+    default:    dateStr = `${year}.${month}.${day}`; break;
+  }
+
+  if (options.dateOnly) return dateStr;
+
+  // Time format setting — default 24h
   let use12h = false;
   try {
     use12h = game.settings?.get(MODULE_ID, 'timeFormat') === '12h';
-  } catch { /* settings not registered yet — use 24h */ }
+  } catch { /* settings not registered yet */ }
 
   if (use12h) {
     let hr = d.getHours();
     const ampm = hr >= 12 ? 'PM' : 'AM';
     hr = hr % 12 || 12;
     const timeStr = options.seconds ? `${hr}:${min}:${sec} ${ampm}` : `${hr}:${min} ${ampm}`;
-    return `${year}.${month}.${day} // ${timeStr}`;
+    return `${dateStr} // ${timeStr}`;
   }
 
   const hr = String(d.getHours()).padStart(2, '0');
   const timeStr = options.seconds ? `${hr}:${min}:${sec}` : `${hr}:${min}`;
-  return `${year}.${month}.${day} // ${timeStr}`;
+  return `${dateStr} // ${timeStr}`;
 }
 
 /**

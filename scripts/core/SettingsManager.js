@@ -104,6 +104,20 @@ export class SettingsManager {
 
     // ─── Time Provider Settings ───
 
+    game.settings.register(MODULE_ID, 'dateFormat', {
+      name: 'NCM.Settings.DateFormat.Name',
+      hint: 'How dates are displayed across all NCM windows.',
+      scope: 'world',
+      config: true,
+      type: String,
+      default: 'YMD',
+      choices: {
+        YMD: 'YYYY.MM.DD',
+        DMY: 'DD.MM.YYYY',
+        MDY: 'MM.DD.YYYY',
+      },
+    });
+
     game.settings.register(MODULE_ID, 'timeFormat', {
       name: 'NCM.Settings.TimeFormat.Name',
       hint: 'Display times in 24-hour (22:00) or 12-hour (10:00 PM) format across all NCM windows.',

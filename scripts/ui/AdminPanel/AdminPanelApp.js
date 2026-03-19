@@ -966,12 +966,8 @@ export class AdminPanelApp extends BaseApplication {
 
           // Full timestamp in cyberpunk format
           const fullTimestamp = timestamp ? formatCyberDate(timestamp) : '';
-          // Short date for feed row (just date portion)
-          let shortDate = '';
-          if (timestamp) {
-            const dt = new Date(timestamp);
-            shortDate = `${String(dt.getDate()).padStart(2, '0')}.${String(dt.getMonth() + 1).padStart(2, '0')}.${dt.getFullYear()}`;
-          }
+          // Short date for feed row (date only, respects format setting)
+          const shortDate = timestamp ? formatCyberDate(timestamp, { dateOnly: true }) : '';
 
           // Body preview (strip HTML, truncate)
           let bodyPreview = body.replace(/<[^>]+>/g, '');
@@ -5627,6 +5623,9 @@ export class AdminPanelApp extends BaseApplication {
     const currentDate = currentTime ? new Date(currentTime) : new Date();
     let initFormat = '24H';
     try { initFormat = game.settings.get(MODULE_ID, 'timeFormat') === '12h' ? '12H' : '24H'; } catch { /* default */ }
+    let initDateFmt = 'YMD';
+    try { initDateFmt = game.settings.get(MODULE_ID, 'dateFormat') || 'YMD'; } catch { /* default */ }
+    const dateFmtLabels = { YMD: 'Y.M.D', DMY: 'D.M.Y', MDY: 'M.D.Y' };
 
     // Pre-fill date/time inputs
     const dateVal = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`;
@@ -5681,7 +5680,10 @@ export class AdminPanelApp extends BaseApplication {
             <div style="flex:1;">
               <div style="display:flex; align-items:center; justify-content:space-between;">
                 <div style="${S.label} margin-bottom:0;">Current Time</div>
-                <button id="ncm-tc-12h-toggle" style="${S.btn} font-size:9px !important; padding:2px 8px !important;"><i class="fas fa-clock" style="font-size:7px;"></i> <span id="ncm-tc-12h-label">${initFormat}</span></button>
+                <div style="display:flex; gap:4px;">
+                  <button id="ncm-tc-datefmt-toggle" style="${S.btn} font-size:9px !important; padding:2px 8px !important;"><i class="fas fa-calendar-days" style="font-size:7px;"></i> <span id="ncm-tc-datefmt-label">${dateFmtLabels[initDateFmt]}</span></button>
+                  <button id="ncm-tc-12h-toggle" style="${S.btn} font-size:9px !important; padding:2px 8px !important;"><i class="fas fa-clock" style="font-size:7px;"></i> <span id="ncm-tc-12h-label">${initFormat}</span></button>
+                </div>
               </div>
               <div style="${S.value}" id="ncm-tc-clock">—</div>
             </div>
@@ -5809,6 +5811,22 @@ export class AdminPanelApp extends BaseApplication {
           const newFormat = _is12h() ? '24h' : '12h';
           await game.settings.set(MODULE_ID, 'timeFormat', newFormat);
           toggleLabel.text(newFormat === '12h' ? '12H' : '24H');
+          updateAllClocks();
+        });
+
+        // ── Date format toggle — cycles YMD → DMY → MDY ──
+        const dateFmtBtn = html.find('#ncm-tc-datefmt-toggle');
+        const dateFmtLabel = html.find('#ncm-tc-datefmt-label');
+        const _dateFmtLabels = { YMD: 'Y.M.D', DMY: 'D.M.Y', MDY: 'M.D.Y' };
+        const _dateFmtCycle = { YMD: 'DMY', DMY: 'MDY', MDY: 'YMD' };
+
+        dateFmtBtn.on('click', async (e) => {
+          e.preventDefault();
+          let current = 'YMD';
+          try { current = game.settings.get(MODULE_ID, 'dateFormat') || 'YMD'; } catch { /* */ }
+          const next = _dateFmtCycle[current] || 'YMD';
+          await game.settings.set(MODULE_ID, 'dateFormat', next);
+          dateFmtLabel.text(_dateFmtLabels[next]);
           updateAllClocks();
         });
 
