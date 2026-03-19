@@ -811,7 +811,7 @@ export class MessageViewerApp extends BaseApplication {
   //  Delegated Click Router
   // ═══════════════════════════════════════════════════════════
 
-  _onDelegatedClick(event) {
+  async _onDelegatedClick(event) {
     const target = event.target.closest('[data-action]');
     if (!target) return;
 
