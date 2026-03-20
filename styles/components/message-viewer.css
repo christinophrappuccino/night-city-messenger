@@ -459,23 +459,60 @@
 .ncm-app .ncm-viewer__detail-add-contact:hover { background: rgba(0,212,230,0.12) !important; border-color: rgba(0,212,230,0.4) !important; }
 .ncm-app .ncm-viewer__detail-add-contact i { font-size: 7px !important; }
 
-/* Color-coded meta fields — using mockup v3.2 exact colors */
-.ncm-app .ncm-viewer__detail-meta { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 4px; }
-.ncm-app .ncm-viewer__detail-meta-item { font-family: var(--ncm-font-mono); font-size: 10px; display: flex; align-items: center; gap: 4px; }
-.ncm-app .ncm-viewer__detail-meta-item i { font-size: 8px; opacity: 0.6; }
-.ncm-app .ncm-viewer__detail-meta-item--from { color: #00D4E6; }
-.ncm-app .ncm-viewer__detail-meta-item--from i { color: #00D4E6; }
-.ncm-app .ncm-viewer__detail-meta-item--to { color: #F0C55B; }
-.ncm-app .ncm-viewer__detail-meta-item--to i { color: #F0C55B; }
-.ncm-app .ncm-viewer__detail-meta-item--time { color: rgba(0,212,230,0.55); }
-.ncm-app .ncm-viewer__detail-meta-item--time i { color: rgba(0,212,230,0.4); }
-.ncm-app .ncm-viewer__detail-meta-item--net { color: #34D399; }
-.ncm-app .ncm-viewer__detail-meta-item--net i { color: #34D399; }
-.ncm-app .ncm-viewer__detail-meta-item--priority { color: #F65261; }
-.ncm-app .ncm-viewer__detail-meta-item--priority i { color: #F65261; }
+/* Grid readout — label : value pairs */
+.ncm-app .ncm-viewer__detail-grid {
+  display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; margin-top: 6px;
+}
+.ncm-app .ncm-viewer__detail-grid-label {
+  font-family: var(--ncm-font-mono); font-size: 9px; color: var(--ncm-text-dim);
+  text-transform: uppercase; letter-spacing: 0.1em; padding-top: 2px;
+}
+.ncm-app .ncm-viewer__detail-grid-val {
+  font-family: var(--ncm-font-mono); font-size: 11px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ncm-app .ncm-viewer__detail-grid-val--from { color: #00D4E6; }
+.ncm-app .ncm-viewer__detail-grid-val--to { color: #F0C55B; }
+.ncm-app .ncm-viewer__detail-grid-val--time { color: #b0b0c0; }
 
-/* Subject + Thread */
-.ncm-app .ncm-viewer__detail-subject { font-size: 16px; font-weight: 700; color: var(--ncm-text-primary); margin-top: 8px; display: flex; align-items: center; gap: 8px; }
+/* Subject strip — accent border adapts to priority/network */
+.ncm-app .ncm-viewer__subject-strip {
+  margin-top: 12px; padding: 10px 20px;
+  border-top: 1px solid var(--ncm-border);
+  border-left: 3px solid #00D4E6;
+  background: linear-gradient(90deg, rgba(0,212,230,0.03) 0%, transparent 40%);
+  display: flex; align-items: center; gap: 10px;
+}
+.ncm-app .ncm-viewer__subject-strip--urgent {
+  border-left-color: #F65261;
+  background: linear-gradient(90deg, rgba(246,82,97,0.04) 0%, transparent 40%);
+}
+.ncm-app .ncm-viewer__subject-strip--critical {
+  border-left-color: #EF4444;
+  background: linear-gradient(90deg, rgba(239,68,68,0.04) 0%, transparent 40%);
+}
+.ncm-app .ncm-viewer__subject-strip--default {
+  border-left-color: #F0C55B;
+  background: linear-gradient(90deg, rgba(240,197,91,0.04) 0%, transparent 40%);
+}
+.ncm-app .ncm-viewer__subject-text {
+  font-family: var(--ncm-font-title); font-size: 13px; font-weight: 600;
+  letter-spacing: 0.03em; color: #f0f0f5; flex: 1;
+}
+
+/* Priority pill (inside subject strip) */
+.ncm-app .ncm-viewer__priority-pill {
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 2px 8px; border-radius: 3px;
+  font-family: var(--ncm-font-display); font-size: 9px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.06em; flex-shrink: 0;
+}
+.ncm-app .ncm-viewer__priority-pill i { font-size: 8px; }
+.ncm-app .ncm-viewer__priority-pill--urgent { color: #F65261; background: rgba(246,82,97,0.1); border: 1px solid rgba(246,82,97,0.2); }
+.ncm-app .ncm-viewer__priority-pill--critical { color: #EF4444; background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.25); }
+.ncm-app .ncm-viewer__priority-pill--threat { color: #A78BFA; background: rgba(167,139,250,0.1); border: 1px solid rgba(167,139,250,0.2); }
+
+/* Thread pill (inside subject strip) */
 .ncm-app .ncm-viewer__detail-thread {
   display: inline-flex; align-items: center; gap: 4px;
   font-size: 9px; font-weight: 600; color: #00D4E6;

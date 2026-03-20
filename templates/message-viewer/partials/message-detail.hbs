@@ -152,7 +152,7 @@
   {{else}}
     {{!-- ═══ Normal Message Content ═══ --}}
 
-    {{!-- Detail Header --}}
+    {{!-- Detail Header — Grid Readout --}}
     <div class="ncm-viewer__detail-head">
       <div class="ncm-viewer__detail-head-top">
         {{!-- Sender avatar --}}
@@ -177,36 +177,45 @@
             {{/unless}}
           </div>
 
-          {{!-- Color-coded meta fields --}}
-          <div class="ncm-viewer__detail-meta">
-            <span class="ncm-viewer__detail-meta-item ncm-viewer__detail-meta-item--from">
-              <i class="fas fa-envelope"></i> {{message.from}}
-            </span>
-            <span class="ncm-viewer__detail-meta-item ncm-viewer__detail-meta-item--to">
-              <i class="fas fa-arrow-right"></i> {{message.toDisplay}}
-            </span>
-            <span class="ncm-viewer__detail-meta-item ncm-viewer__detail-meta-item--time">
-              <i class="fas fa-clock"></i> {{message.formattedTime}}
-            </span>
-            {{!-- Network: use dynamic theme color + icon --}}
-            <span class="ncm-viewer__detail-meta-item"
+          {{!-- Grid readout: label | value pairs --}}
+          <div class="ncm-viewer__detail-grid">
+            <span class="ncm-viewer__detail-grid-label">From</span>
+            <span class="ncm-viewer__detail-grid-val ncm-viewer__detail-grid-val--from">{{message.from}}</span>
+            <span class="ncm-viewer__detail-grid-label">To</span>
+            <span class="ncm-viewer__detail-grid-val ncm-viewer__detail-grid-val--to">{{message.toDisplay}}</span>
+            <span class="ncm-viewer__detail-grid-label">Time</span>
+            <span class="ncm-viewer__detail-grid-val ncm-viewer__detail-grid-val--time">{{message.formattedTime}}</span>
+            <span class="ncm-viewer__detail-grid-label">Net</span>
+            <span class="ncm-viewer__detail-grid-val"
                   {{#if message.networkBadgeTheme.color}}style="color: {{message.networkBadgeTheme.color}}"{{/if}}>
               <i class="fas {{#if message.networkBadgeTheme.icon}}{{message.networkBadgeTheme.icon}}{{else}}fa-wifi{{/if}}"
-                 {{#if message.networkBadgeTheme.color}}style="color: {{message.networkBadgeTheme.color}}; opacity: 0.6;"{{/if}}></i>
-              {{message.networkLabel}}
+                 style="font-size: 9px; margin-right: 3px; opacity: 0.6;"></i>{{message.networkLabel}}
             </span>
-            {{#if message.priorityIcon}}
-              <span class="ncm-viewer__detail-meta-item ncm-viewer__detail-meta-item--priority">
-                <i class="{{message.priorityIcon}}"></i> {{message.priority}}
-              </span>
-            {{/if}}
           </div>
         </div>
       </div>
 
-      {{!-- Subject + Thread badge --}}
-      <div class="ncm-viewer__detail-subject">
-        {{message.subject}}
+      {{!-- Subject Strip — accent border adapts to priority or network color --}}
+      <div class="ncm-viewer__subject-strip
+        {{~#if (eq message.priority 'critical')}} ncm-viewer__subject-strip--critical
+        {{~else if (eq message.priority 'urgent')}} ncm-viewer__subject-strip--urgent
+        {{~else}} ncm-viewer__subject-strip--default{{/if}}"
+        {{~#unless (or (eq message.priority 'critical') (eq message.priority 'urgent'))}}
+          {{~#if message.networkBadgeTheme.color}}
+            style="border-left-color: {{message.networkBadgeTheme.color}}; background: linear-gradient(90deg, {{message.networkBadgeTheme.color}}0A 0%, transparent 40%);"
+          {{/if}}
+        {{/unless}}>
+        <span class="ncm-viewer__subject-text">{{message.subject}}</span>
+        {{#if message.priorityIcon}}
+          <span class="ncm-viewer__priority-pill ncm-viewer__priority-pill--{{message.priority}}">
+            <i class="{{message.priorityIcon}}"></i> {{message.priority}}
+          </span>
+        {{/if}}
+        {{#if message.threatBadge}}
+          <span class="ncm-viewer__priority-pill ncm-viewer__priority-pill--threat">
+            <i class="{{message.threatBadge.icon}}"></i> {{message.threatBadge.label}}
+          </span>
+        {{/if}}
         {{#if message.threadInfo}}
           <span class="ncm-viewer__detail-thread">
             <i class="fas fa-code-branch"></i> Thread · {{message.threadInfo.count}}
