@@ -28,9 +28,12 @@
 .ncm-composer button.ncm-composer__tool,
 .ncm-composer button.ncm-composer__btn,
 .ncm-composer button.ncm-composer__strip-close {
+  display: inline-flex !important;
+  width: auto !important;
   height: auto !important;
   min-height: 0 !important;
   min-width: 0 !important;
+  flex-shrink: 0 !important;
   flex-grow: 0 !important;
   appearance: none !important;
   box-shadow: none !important;
