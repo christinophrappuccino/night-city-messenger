@@ -63,6 +63,7 @@
 
 .ncm-ctp-wrapper.ncm-time-config-dialog .dialog-content {
   padding: 12px 14px !important;
+  overflow: hidden !important;
 }
 
 /* Colon pulse animation (used by inline style, defined here for the keyframe) */
