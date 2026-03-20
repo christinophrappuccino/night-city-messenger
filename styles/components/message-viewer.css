@@ -485,29 +485,51 @@
 .ncm-app .ncm-viewer__detail-grid-val--to { color: #F0C55B; }
 .ncm-app .ncm-viewer__detail-grid-val--time { color: #b0b0c0; }
 
-/* Subject strip — accent border adapts to priority/network */
+/* Subject strip — two-tier: micro label + large title + fading rule */
 .ncm-app .ncm-viewer__subject-strip {
-  margin-top: 8px; padding: 8px 20px;
-  border-top: 1px solid var(--ncm-border);
-  border-left: 3px solid #00D4E6;
-  background: linear-gradient(90deg, rgba(0,212,230,0.03) 0%, transparent 40%);
+  margin-top: 8px; padding: 10px 20px 0;
+  display: flex; flex-direction: column; gap: 0;
+}
+.ncm-app .ncm-viewer__subject-micro {
+  font-family: var(--ncm-font-title); font-size: 7px; font-weight: 600;
+  letter-spacing: 0.2em; text-transform: uppercase;
+  color: rgba(0,212,230,0.35); margin-bottom: 4px;
+}
+.ncm-app .ncm-viewer__subject-row {
   display: flex; align-items: center; gap: 10px;
 }
-.ncm-app .ncm-viewer__subject-strip--urgent {
-  border-left-color: #F65261;
-  background: linear-gradient(90deg, rgba(246,82,97,0.04) 0%, transparent 40%);
-}
-.ncm-app .ncm-viewer__subject-strip--critical {
-  border-left-color: #EF4444;
-  background: linear-gradient(90deg, rgba(239,68,68,0.04) 0%, transparent 40%);
-}
-.ncm-app .ncm-viewer__subject-strip--default {
-  border-left-color: #F0C55B;
-  background: linear-gradient(90deg, rgba(240,197,91,0.04) 0%, transparent 40%);
-}
 .ncm-app .ncm-viewer__subject-text {
-  font-family: var(--ncm-font-title); font-size: 13px; font-weight: 600;
-  letter-spacing: 0.03em; color: #f0f0f5; flex: 1;
+  font-family: var(--ncm-font-display); font-size: 18px; font-weight: 700;
+  letter-spacing: 0.01em; color: #f0f0f5; line-height: 1.1; flex: 1;
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ncm-app .ncm-viewer__subject-rule {
+  height: 1px; margin-top: 10px;
+  background: linear-gradient(90deg, rgba(0,212,230,0.25), rgba(0,212,230,0.05) 50%, transparent);
+}
+
+/* Priority tints — micro label + rule color */
+.ncm-app .ncm-viewer__subject-strip--urgent .ncm-viewer__subject-micro { color: rgba(246,82,97,0.45); }
+.ncm-app .ncm-viewer__subject-strip--urgent .ncm-viewer__subject-rule {
+  background: linear-gradient(90deg, rgba(246,82,97,0.3), rgba(246,82,97,0.05) 50%, transparent);
+}
+.ncm-app .ncm-viewer__subject-strip--critical .ncm-viewer__subject-micro { color: rgba(239,68,68,0.5); }
+.ncm-app .ncm-viewer__subject-strip--critical .ncm-viewer__subject-rule {
+  background: linear-gradient(90deg, rgba(239,68,68,0.35), rgba(239,68,68,0.05) 50%, transparent);
+}
+/* Default (network-colored or gold fallback) */
+.ncm-app .ncm-viewer__subject-strip--default .ncm-viewer__subject-micro { color: rgba(240,197,91,0.35); }
+.ncm-app .ncm-viewer__subject-strip--default .ncm-viewer__subject-rule {
+  background: linear-gradient(90deg, rgba(240,197,91,0.25), rgba(240,197,91,0.05) 50%, transparent);
+}
+/* Network-color override via --ncm-strip-accent custom property (set inline) */
+.ncm-app .ncm-viewer__subject-strip[style*="--ncm-strip-accent"] .ncm-viewer__subject-micro {
+  color: var(--ncm-strip-accent);
+  opacity: 0.4;
+}
+.ncm-app .ncm-viewer__subject-strip[style*="--ncm-strip-accent"] .ncm-viewer__subject-rule {
+  background: linear-gradient(90deg, var(--ncm-strip-accent) 0%, transparent 60%);
+  opacity: 0.25;
 }
 
 /* Priority pill (inside subject strip) */
