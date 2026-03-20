@@ -174,7 +174,10 @@ export function registerGMTools(initializer) {
       }
 
       // Normal player mode — singleton per actor
-      _openSingleton(`contacts-${actorId}`, ContactManagerApp, { actorId });
+      _openSingleton(`contacts-${actorId}`, () =>
+        import('../ui/ContactManager/ContactManagerApp.js'),
+        { actorId }
+      );
     };
 
     // ─── Theme Customizer (all players) ───

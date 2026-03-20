@@ -713,7 +713,7 @@ export class MessageViewerApp extends BaseApplication {
 
     // ── Real-time clock — tick TIME display every second ──
     if (this._clockInterval) clearInterval(this._clockInterval);
-    const timeEl = html.querySelector('.ncm-viewer__hud-inline-val--time');
+    const timeEl = html.querySelector('.ncm-viewer__hud-chip--time');
     if (timeEl) {
       this._clockInterval = setInterval(() => {
         try {
@@ -1031,20 +1031,7 @@ export class MessageViewerApp extends BaseApplication {
           ui.notifications.warn('NCM | No character assigned. Cannot open contacts.');
           break;
         }
-        // Try the registered launcher first
-        if (typeof game.nightcity?.openContacts === 'function') {
-          game.nightcity.openContacts(contactActorId);
-        } else {
-          // Direct fallback — import and open ContactManagerApp
-          try {
-            const { ContactManagerApp } = await import('../ContactManager/ContactManagerApp.js');
-            const app = new ContactManagerApp({ actorId: contactActorId });
-            app.render(true);
-          } catch (err) {
-            console.error('NCM | Failed to open contacts:', err);
-            ui.notifications.error('NCM | Could not open contacts.');
-          }
-        }
+        game.nightcity?.openContacts?.(contactActorId);
         break;
       }
       case 'open-admin':

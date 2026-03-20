@@ -64,13 +64,17 @@
       </div>
     </div>
 
-    {{!-- Inline HUD readouts (replaces the full HUD strip) --}}
+    {{!-- Inline HUD readouts --}}
     <div class="ncm-viewer__hud-inline">
-      <span class="ncm-viewer__hud-inline-val ncm-viewer__hud-inline-val--time">{{currentGameTime}}</span>
-      <span class="ncm-viewer__hud-inline-sep">//</span>
-      <span class="ncm-viewer__hud-inline-val ncm-viewer__hud-inline-val--scene">{{currentSceneName}}</span>
-      <span class="ncm-viewer__hud-inline-sep">//</span>
-      <span class="ncm-viewer__hud-inline-val ncm-viewer__hud-inline-val--enc">{{encryptionCipher}}</span>
+      <span class="ncm-viewer__hud-chip ncm-viewer__hud-chip--time">
+        <i class="fas fa-clock"></i> {{currentGameTime}}
+      </span>
+      <span class="ncm-viewer__hud-chip ncm-viewer__hud-chip--scene">
+        <i class="fas fa-location-dot"></i> {{currentSceneName}}
+      </span>
+      <span class="ncm-viewer__hud-chip ncm-viewer__hud-chip--enc">
+        <i class="fas fa-shield-halved"></i> {{encryptionCipher}}
+      </span>
     </div>
 
     <div class="ncm-viewer__header-spacer"></div>

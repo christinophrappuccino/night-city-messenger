@@ -154,7 +154,7 @@
 
     {{!-- Detail Header — Collapsible Grid Readout --}}
     <div class="ncm-viewer__detail-head">
-      {{!-- Always-visible: Avatar + Sender + To summary + expand toggle --}}
+      {{!-- Always-visible: Avatar + Sender + Time + expand toggle --}}
       <div class="ncm-viewer__detail-head-top">
         <div class="ncm-viewer__detail-avatar"
              style="color: {{message.avatarColor}}; border-color: {{message.avatarColor}}">
@@ -166,7 +166,7 @@
         </div>
 
         <div class="ncm-viewer__detail-info">
-          <div class="ncm-viewer__detail-sender">
+          <div class="ncm-viewer__detail-sender-row">
             <span class="ncm-viewer__detail-sender-name">{{message.fromDisplay}}</span>
             {{#unless message.senderIsContact}}
               <button class="ncm-viewer__detail-add-contact" data-action="add-sender-contact"
@@ -174,18 +174,16 @@
                 <i class="fas fa-user-plus"></i> Add
               </button>
             {{/unless}}
+            <span class="ncm-viewer__detail-time">{{message.formattedTime}}</span>
           </div>
-          {{!-- Collapsed summary: "to jackie@nightcity.net" --}}
           <div class="ncm-viewer__detail-to-summary">
             <span class="ncm-viewer__detail-to-label">to</span>
             <span class="ncm-viewer__detail-to-val">{{message.toDisplay}}</span>
+            <button class="ncm-viewer__detail-expand" data-action="toggle-detail-grid">
+              <i class="fas fa-chevron-down"></i>
+            </button>
           </div>
         </div>
-
-        {{!-- Expand/collapse toggle --}}
-        <button class="ncm-viewer__detail-expand" data-action="toggle-detail-grid">
-          <i class="fas fa-chevron-down"></i>
-        </button>
       </div>
 
       {{!-- Expandable grid (hidden by default, toggled by arrow) --}}

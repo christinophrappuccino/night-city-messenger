@@ -147,17 +147,21 @@
 
 
 /* ═══════════════════════════════════════════════════════════
-   §3  INLINE HUD (folded into header row)
+   §3  INLINE HUD (chips in header row)
    ═══════════════════════════════════════════════════════════ */
 .ncm-app .ncm-viewer__hud-inline {
-  display: flex; align-items: center; gap: 4px;
-  font-family: var(--ncm-font-mono); font-size: 9px;
-  flex-shrink: 0;
+  display: flex; align-items: center; gap: 4px; flex-shrink: 0;
 }
-.ncm-app .ncm-viewer__hud-inline-val--time { color: rgba(0,212,230,0.7); }
-.ncm-app .ncm-viewer__hud-inline-val--scene { color: rgba(240,197,91,0.6); }
-.ncm-app .ncm-viewer__hud-inline-val--enc { color: rgba(52,211,153,0.5); }
-.ncm-app .ncm-viewer__hud-inline-sep { color: var(--ncm-text-dim); opacity: 0.4; }
+.ncm-app .ncm-viewer__hud-chip {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-family: var(--ncm-font-mono); font-size: 9px;
+  padding: 1px 6px; border-radius: 3px;
+  border: 1px solid transparent;
+}
+.ncm-app .ncm-viewer__hud-chip i { font-size: 7px; opacity: 0.5; }
+.ncm-app .ncm-viewer__hud-chip--time { color: rgba(0,212,230,0.7); border-color: rgba(0,212,230,0.1); background: rgba(0,212,230,0.03); }
+.ncm-app .ncm-viewer__hud-chip--scene { color: rgba(240,197,91,0.6); border-color: rgba(240,197,91,0.1); background: rgba(240,197,91,0.03); }
+.ncm-app .ncm-viewer__hud-chip--enc { color: rgba(52,211,153,0.5); border-color: rgba(52,211,153,0.08); background: rgba(52,211,153,0.02); }
 
 
 /* ═══════════════════════════════════════════════════════════
@@ -406,19 +410,20 @@
    ═══════════════════════════════════════════════════════════ */
 .ncm-app .ncm-viewer__detail { display: flex; flex-direction: column; height: 100%; }
 
-.ncm-app .ncm-viewer__detail-head { padding: 14px 20px 12px; border-bottom: 1px solid var(--ncm-border); flex-shrink: 0; }
-.ncm-app .ncm-viewer__detail-head-top { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 10px; }
+.ncm-app .ncm-viewer__detail-head { padding: 10px 20px 0; flex-shrink: 0; }
+.ncm-app .ncm-viewer__detail-head-top { display: flex; align-items: flex-start; gap: 10px; }
 .ncm-app .ncm-viewer__detail-avatar {
-  width: 40px; height: 40px; border-radius: 50%;
+  width: 36px; height: 36px; border-radius: 50%;
   border: 2px solid rgba(0,212,230,0.25);
   display: flex; align-items: center; justify-content: center;
-  font-weight: 700; font-size: 15px; flex-shrink: 0;
+  font-weight: 700; font-size: 14px; flex-shrink: 0;
   background: var(--ncm-bg-surface); overflow: hidden;
 }
 .ncm-app .ncm-viewer__detail-avatar img { width: 100%; height: 100%; object-fit: cover; }
 .ncm-app .ncm-viewer__detail-info { flex: 1; min-width: 0; }
-.ncm-app .ncm-viewer__detail-sender { font-size: 15px; font-weight: 700; color: var(--ncm-text-primary); display: flex; align-items: center; gap: 8px; }
-.ncm-app .ncm-viewer__detail-sender-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-app .ncm-viewer__detail-sender-row { display: flex; align-items: center; gap: 6px; }
+.ncm-app .ncm-viewer__detail-sender-name { font-size: 14px; font-weight: 700; color: var(--ncm-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-app .ncm-viewer__detail-time { margin-left: auto; font-family: var(--ncm-font-mono); font-size: 10px; color: #b0b0c0; flex-shrink: 0; white-space: nowrap; }
 
 /* Add Contact button */
 .ncm-app .ncm-viewer__detail-add-contact {
@@ -439,7 +444,7 @@
 /* Grid readout — label : value pairs (collapsible) */
 .ncm-app .ncm-viewer__detail-grid {
   display: grid; grid-template-columns: auto 1fr; gap: 2px 10px;
-  margin-top: 6px; padding: 8px 20px 8px 72px;
+  margin-top: 6px; padding: 8px 20px 8px 66px;
   transition: max-height 0.2s ease, opacity 0.15s ease, padding 0.2s ease;
   max-height: 200px; opacity: 1; overflow: hidden;
 }
@@ -457,12 +462,12 @@
 
 /* Expand/collapse chevron */
 .ncm-app .ncm-viewer__detail-expand {
-  display: flex !important; align-items: center !important; justify-content: center !important;
-  width: 22px !important; height: 22px !important; flex-shrink: 0 !important;
-  background: none !important; border: 1px solid var(--ncm-border) !important; border-radius: 3px !important;
-  color: var(--ncm-text-dim) !important; font-size: 9px !important; cursor: pointer !important;
+  display: inline-flex !important; align-items: center !important; justify-content: center !important;
+  width: 16px !important; height: 16px !important; flex-shrink: 0 !important;
+  background: none !important; border: 1px solid var(--ncm-border) !important; border-radius: 2px !important;
+  color: var(--ncm-text-dim) !important; font-size: 7px !important; cursor: pointer !important;
   padding: 0 !important; min-width: 0 !important; min-height: 0 !important; box-shadow: none !important;
-  transition: all 0.15s !important; margin-left: auto;
+  transition: all 0.15s !important; margin-left: 6px;
 }
 .ncm-app .ncm-viewer__detail-expand:hover { color: var(--ncm-text-secondary) !important; border-color: var(--ncm-border-active) !important; }
 .ncm-app .ncm-viewer__detail-expand i { transition: transform 0.2s; }
@@ -482,7 +487,7 @@
 
 /* Subject strip — accent border adapts to priority/network */
 .ncm-app .ncm-viewer__subject-strip {
-  margin-top: 12px; padding: 10px 20px;
+  margin-top: 8px; padding: 8px 20px;
   border-top: 1px solid var(--ncm-border);
   border-left: 3px solid #00D4E6;
   background: linear-gradient(90deg, rgba(0,212,230,0.03) 0%, transparent 40%);
