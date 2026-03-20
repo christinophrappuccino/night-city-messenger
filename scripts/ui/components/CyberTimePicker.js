@@ -129,7 +129,7 @@ export class CyberTimePicker {
       dateRow:     'display:flex; align-items:center; gap:4px; margin-bottom:14px;',
       fieldGroup:  'display:flex; flex-direction:column; align-items:center; gap:2px;',
       fieldHint:   'font-size:8px; font-weight:600; color:#444460; text-transform:uppercase; letter-spacing:0.06em;',
-      input:       'font-family:Share Tech Mono,monospace; font-size:15px; color:#e0e0e8; background:#12121a; border:1px solid #2a2a45; border-radius:3px; padding:5px 3px; text-align:center; width:100%; outline:none; transition:border-color 0.15s;',
+      input:       'font-family:Share Tech Mono,monospace; font-size:15px; color:#e0e0e8; background:#12121a; border:1px solid #2a2a45; border-radius:3px; padding:5px 3px; text-align:center; outline:none; transition:border-color 0.15s;',
       inputYear:   'width:64px;',
       inputMD:     'width:42px;',
       inputHM:     'width:42px;',
