@@ -307,7 +307,7 @@
     <span class="ncm-composer__strip-label">Deliver at:</span>
     <div class="ncm-ctp-trigger ncm-composer__sched-trigger" data-action="openSchedulePicker">
       <i class="fas fa-clock ncm-ctp-trigger__icon"></i>
-      <span class="ncm-ctp-trigger__value {{unless scheduledTimeFormatted}}ncm-ctp-trigger__value--empty{{/unless}}">
+      <span class="ncm-ctp-trigger__value {{#unless scheduledTimeFormatted}}ncm-ctp-trigger__value--empty{{/unless}}">
         {{#if scheduledTimeFormatted}}{{scheduledTimeFormatted}}{{else}}Pick a time...{{/if}}
       </span>
       <i class="fas fa-chevron-down ncm-ctp-trigger__chevron"></i>
