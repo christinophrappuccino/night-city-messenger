@@ -60,6 +60,7 @@
   /* ─── Typography — Font Stacks ──────────────────────────── */
   --ncm-font-display: 'Rajdhani', 'Segoe UI', sans-serif;
   --ncm-font-mono: 'Share Tech Mono', 'Courier New', monospace;
+  --ncm-font-title: 'Orbitron', 'Rajdhani', sans-serif;
   --ncm-font-ui: 'Orbitron', 'Rajdhani', sans-serif;
   --ncm-font-body: 'Rajdhani', sans-serif;
 
