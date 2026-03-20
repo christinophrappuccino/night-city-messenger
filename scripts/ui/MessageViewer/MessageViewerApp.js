@@ -744,12 +744,12 @@ export class MessageViewerApp extends BaseApplication {
 
     // ── Real-time clock — tick TIME display every second ──
     if (this._clockInterval) clearInterval(this._clockInterval);
-    const timeEl = html.querySelector('.ncm-viewer__hud-chip--time');
-    if (timeEl) {
+    const timeValEl = html.querySelector('.ncm-viewer__hud-time-val');
+    if (timeValEl) {
       this._clockInterval = setInterval(() => {
         try {
           const now = this.timeService?.getCurrentTime?.() || new Date().toISOString();
-          timeEl.textContent = formatCyberDate(now);
+          timeValEl.textContent = formatCyberDate(now);
         } catch { /* non-critical */ }
       }, 1000);
     }
@@ -1037,6 +1037,9 @@ export class MessageViewerApp extends BaseApplication {
         break;
 
       // ── Layout ──
+      case 'toggle-density-dropdown':
+        this._toggleDropdown('.ncm-density-dropdown', target);
+        break;
       case 'set-density':
         this._setDensity(target.dataset.density);
         break;

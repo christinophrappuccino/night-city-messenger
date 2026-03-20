@@ -44,6 +44,7 @@
           <span class="ncm-viewer__identity-email">{{viewingAsEmail}}</span>
         {{/if}}
       </div>
+      <i class="fas fa-chevron-right ncm-viewer__identity-expand"></i>
     </div>
 
     <div class="ncm-viewer__header-divider"></div>
@@ -69,16 +70,13 @@
       </div>
     </div>
 
-    {{!-- Inline HUD readouts --}}
+    {{!-- Inline HUD readouts (time + scene only, no encryption) --}}
     <div class="ncm-viewer__hud-inline">
       <span class="ncm-viewer__hud-chip ncm-viewer__hud-chip--time">
-        <i class="fas fa-clock"></i> {{currentGameTime}}
+        <i class="fas fa-clock"></i> <span class="ncm-viewer__hud-time-val">{{currentGameTime}}</span>
       </span>
       <span class="ncm-viewer__hud-chip ncm-viewer__hud-chip--scene">
         <i class="fas fa-location-dot"></i> {{currentSceneName}}
-      </span>
-      <span class="ncm-viewer__hud-chip ncm-viewer__hud-chip--enc">
-        <i class="fas fa-shield-halved"></i> {{encryptionCipher}}
       </span>
     </div>
 
@@ -264,12 +262,17 @@
         <span class="ncm-viewer__sort-btn" data-action="toggle-sort-dropdown">
           <i class="fas fa-arrow-down-short-wide"></i> {{sortLabel}} <i class="fas fa-caret-down"></i>
         </span>
-        <div class="ncm-viewer__density" style="margin-left: auto;">
-          <button class="ncm-viewer__density-btn {{#if (eq density 'compact')}}ncm-viewer__density-btn--active{{/if}}"
-                  data-action="set-density" data-density="compact"><i class="fas fa-list"></i></button>
-          <button class="ncm-viewer__density-btn {{#if (eq density 'comfortable')}}ncm-viewer__density-btn--active{{/if}}"
-                  data-action="set-density" data-density="comfortable"><i class="fas fa-th-large"></i></button>
-        </div>
+        <div class="ncm-viewer__density-trigger" data-action="toggle-density-dropdown" style="margin-left: auto;">
+              {{#if (eq density 'compact')}}<i class="fas fa-list"></i>
+              {{else}}<i class="fas fa-th-large"></i>{{/if}}
+              <i class="fas fa-caret-down" style="font-size: 7px; opacity: 0.5;"></i>
+              <div class="ncm-density-dropdown ncm-hidden">
+                <div class="ncm-density-option {{#if (eq density 'compact')}}ncm-density-option--active{{/if}}"
+                     data-action="set-density" data-density="compact"><i class="fas fa-list"></i> Compact</div>
+                <div class="ncm-density-option {{#if (eq density 'comfortable')}}ncm-density-option--active{{/if}}"
+                     data-action="set-density" data-density="comfortable"><i class="fas fa-th-large"></i> Comfortable</div>
+              </div>
+            </div>
       </div>
     </div>
     <div class="ncm-viewer__tab-list ncm-scrollbar">
@@ -335,13 +338,19 @@
               {{/if}}
               <i class="fas fa-caret-down"></i>
             </span>
-            <div class="ncm-viewer__density">
-              <button class="ncm-viewer__density-btn {{#if (eq density 'compact')}}ncm-viewer__density-btn--active{{/if}}"
-                      data-action="set-density" data-density="compact"><i class="fas fa-bars"></i></button>
-              <button class="ncm-viewer__density-btn {{#if (eq density 'normal')}}ncm-viewer__density-btn--active{{/if}}"
-                      data-action="set-density" data-density="normal"><i class="fas fa-list"></i></button>
-              <button class="ncm-viewer__density-btn {{#if (eq density 'comfortable')}}ncm-viewer__density-btn--active{{/if}}"
-                      data-action="set-density" data-density="comfortable"><i class="fas fa-th-list"></i></button>
+            <div class="ncm-viewer__density-trigger" data-action="toggle-density-dropdown">
+              {{#if (eq density 'compact')}}<i class="fas fa-bars"></i>
+              {{else if (eq density 'comfortable')}}<i class="fas fa-th-list"></i>
+              {{else}}<i class="fas fa-list"></i>{{/if}}
+              <i class="fas fa-caret-down" style="font-size: 7px; opacity: 0.5;"></i>
+              <div class="ncm-density-dropdown ncm-hidden">
+                <div class="ncm-density-option {{#if (eq density 'compact')}}ncm-density-option--active{{/if}}"
+                     data-action="set-density" data-density="compact"><i class="fas fa-bars"></i> Compact</div>
+                <div class="ncm-density-option {{#if (eq density 'normal')}}ncm-density-option--active{{/if}}"
+                     data-action="set-density" data-density="normal"><i class="fas fa-list"></i> Normal</div>
+                <div class="ncm-density-option {{#if (eq density 'comfortable')}}ncm-density-option--active{{/if}}"
+                     data-action="set-density" data-density="comfortable"><i class="fas fa-th-list"></i> Comfortable</div>
+              </div>
             </div>
           </div>
           {{!-- Active filter tag pills (visible when filters applied) --}}
