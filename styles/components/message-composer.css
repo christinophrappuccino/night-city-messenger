@@ -29,7 +29,6 @@
 .ncm-composer button.ncm-composer__btn,
 .ncm-composer button.ncm-composer__strip-close {
   display: inline-flex !important;
-  width: auto !important;
   height: auto !important;
   min-height: 0 !important;
   min-width: 0 !important;
@@ -42,6 +41,17 @@
   text-transform: none !important;
   margin: 0 !important;
   background-image: none !important;
+}
+/* Width auto for all EXCEPT tool buttons (which need explicit 26px) */
+.ncm-composer button.ncm-composer__opt-pill,
+.ncm-composer button.ncm-composer__enc-opt,
+.ncm-composer button.ncm-composer__toggle,
+.ncm-composer button.ncm-composer__destruct-pill,
+.ncm-composer button.ncm-composer__field-action,
+.ncm-composer button.ncm-composer__alert-action,
+.ncm-composer button.ncm-composer__btn,
+.ncm-composer button.ncm-composer__strip-close {
+  width: auto !important;
 }
 .ncm-composer button.ncm-composer__opt-pill i,
 .ncm-composer button.ncm-composer .ncm-composer__enc-opt i,
@@ -763,6 +773,7 @@
   flex: 1; display: flex;
   flex-direction: column;
   min-height: 0; position: relative;
+  border-bottom: 1px solid #10101a;
 }
 .ncm-composer__editor-wrap--encrypted {
   border-left: 2px solid rgba(0,255,65,0.15);
@@ -770,13 +781,13 @@
 
 .ncm-composer__toolbar {
   display: flex; align-items: center;
-  gap: 2px; padding: 3px 10px;
+  gap: 2px; padding: 4px 10px;
   background: #08080e;
   border-bottom: 1px solid #0e0e16;
   flex-shrink: 0;
 }
 
-.ncm-composer .ncm-composer__tool {
+.ncm-composer button.ncm-composer__tool {
   width: 26px !important; height: 24px !important;
   display: inline-flex !important; align-items: center !important; justify-content: center !important;
   background: none !important;
@@ -789,35 +800,35 @@
   flex-shrink: 0 !important;
   padding: 0 !important;
 }
-.ncm-composer .ncm-composer__tool:hover {
+.ncm-composer button.ncm-composer__tool:hover {
   color: #19f3f7 !important;
   border-color: rgba(25,243,247,0.15) !important;
   background: rgba(25,243,247,0.03) !important;
 }
-.ncm-composer .ncm-composer__tool--active {
+.ncm-composer button.ncm-composer__tool.ncm-composer__tool--active {
   color: #19f3f7 !important;
   background: rgba(25,243,247,0.06) !important;
   border-color: rgba(25,243,247,0.2) !important;
 }
-.ncm-composer .ncm-composer__tool--eddies:hover {
+.ncm-composer button.ncm-composer__tool.ncm-composer__tool--eddies:hover {
   color: #f7c948 !important;
   border-color: rgba(247,201,72,0.15) !important;
 }
-.ncm-composer .ncm-composer__tool i { margin: 0 !important; padding: 0 !important; }
+.ncm-composer button.ncm-composer__tool i { margin: 0 !important; padding: 0 !important; }
 
 .ncm-composer__tool-sep {
   width: 1px; height: 14px;
   background: #2a2a45; margin: 0 3px; flex-shrink: 0;
 }
 
-.ncm-composer .ncm-composer__tool--more {
+.ncm-composer button.ncm-composer__tool--more {
   margin-left: auto !important;
   font-size: 12px !important;
   letter-spacing: 2px !important;
   color: #8888a0 !important;
   width: auto !important;
 }
-.ncm-composer .ncm-composer__tool--more:hover { color: #c0c0d0 !important; }
+.ncm-composer button.ncm-composer__tool--more:hover { color: #c0c0d0 !important; }
 
 /* Overflow menu */
 .ncm-composer__overflow {
@@ -856,6 +867,15 @@
   line-height: 1.5; outline: none;
   scrollbar-width: thin;
   scrollbar-color: #1a1a2e transparent;
+  /* Ensure Foundry doesn't kill contenteditable */
+  -webkit-user-modify: read-write !important;
+  user-select: text !important;
+  white-space: pre-wrap !important;
+  word-wrap: break-word !important;
+  cursor: text !important;
+  background: transparent !important;
+  border: none !important;
+}
 }
 .ncm-composer__editor:empty::before {
   content: attr(data-placeholder);
