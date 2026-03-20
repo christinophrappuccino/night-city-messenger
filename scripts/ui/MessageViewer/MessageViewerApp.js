@@ -551,8 +551,15 @@ export class MessageViewerApp extends BaseApplication {
     const primaryTab = getPrimaryTab(this.currentFilter);
     const isMessagesTab = primaryTab === 'messages';
 
-    // ── v3.2: Network pill color state ──
+    // ── v3.2: Network pill color state + signal bars ──
     const netPillState = getNetPillState(signalStrength, isDeadZone);
+    // 4-bar signal strength indicator (mockup spec: 80%+=4, 50-79%=3, 25-49%=2, 1-24%=1, 0=0)
+    const activeBarCount = isDeadZone ? 0
+      : signalStrength >= 80 ? 4
+      : signalStrength >= 50 ? 3
+      : signalStrength >= 25 ? 2
+      : signalStrength > 0 ? 1 : 0;
+    const netPillBars = [1, 2, 3, 4].map(i => ({ active: i <= activeBarCount }));
 
     // ── v3.2: Identity drawer data ──
     const viewingAsRole = viewingActor?.system?.role
@@ -574,6 +581,7 @@ export class MessageViewerApp extends BaseApplication {
       primaryTab,
       isMessagesTab,
       netPillState,
+      netPillBars,
 
       // v3.2 Identity Drawer
       ownedCharacters,

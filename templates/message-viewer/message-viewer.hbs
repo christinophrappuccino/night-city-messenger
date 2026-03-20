@@ -55,6 +55,11 @@
       <span class="ncm-viewer__net-name">
         {{#if isDeadZone}}NO SIGNAL{{else}}{{currentNetwork.name}}{{/if}}
       </span>
+      <span class="ncm-viewer__net-bars">
+        {{#each netPillBars}}
+          <span class="ncm-viewer__net-bar {{#if this.active}}ncm-viewer__net-bar--active{{/if}}"></span>
+        {{/each}}
+      </span>
       <span class="ncm-viewer__net-pct">{{signalStrength}}%</span>
       {{#unless isDeadZone}}
         <i class="fas fa-caret-down ncm-viewer__net-caret"></i>
