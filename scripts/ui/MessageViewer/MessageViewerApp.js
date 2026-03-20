@@ -1128,65 +1128,124 @@ export class MessageViewerApp extends BaseApplication {
 
       // ── v3.2: Filter Dropdown ──
       case 'toggle-filter-dropdown': {
-        // Build grouped filter options and show as a simple dialog
+        // Toggle inline filter dropdown (same pattern as sort dropdown)
+        const existing = this.element?.querySelector('.ncm-filter-dropdown');
+        if (existing && !existing.classList.contains('ncm-hidden')) {
+          existing.classList.add('ncm-hidden');
+          break;
+        }
+
+        // Build dynamic content
         const networks = [...new Set(
           (await this._loadMessages()).map(m => m.network).filter(Boolean)
         )].sort();
-        
-        const content = `
-          <div style="display:flex;flex-direction:column;gap:8px;padding:8px;">
-            <div style="font-family:var(--ncm-font-title);font-size:9px;color:var(--ncm-secondary);text-transform:uppercase;letter-spacing:0.1em;">Network</div>
-            ${networks.map(n => {
-              const net = this.networkService?.getNetwork?.(n);
-              const name = net?.name || n;
-              const color = net?.theme?.color || '#8888a0';
-              const active = this._filterTags?.includes(`net:${n}`) ? 'checked' : '';
-              return `<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ncm-text-primary);cursor:pointer;">
-                <input type="checkbox" data-filter-tag="net:${n}" ${active} style="accent-color:${color}">
-                <span style="color:${color}">${name}</span>
-              </label>`;
-            }).join('')}
-            <div style="font-family:var(--ncm-font-title);font-size:9px;color:var(--ncm-secondary);text-transform:uppercase;letter-spacing:0.1em;margin-top:6px;">Status</div>
-            ${['Encrypted', 'Has Attachments', 'Has Eddies'].map(s => {
-              const key = `status:${s.toLowerCase().replace(/\s/g,'-')}`;
-              const active = this._filterTags?.includes(key) ? 'checked' : '';
-              return `<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ncm-text-primary);cursor:pointer;">
-                <input type="checkbox" data-filter-tag="${key}" ${active}>
-                <span>${s}</span>
-              </label>`;
-            }).join('')}
-          </div>`;
 
-        const dlg = new Dialog({
-          title: 'Message Filters',
-          content,
-          buttons: {
-            apply: {
-              icon: '<i class="fas fa-check"></i>',
-              label: 'Apply',
-              callback: (html) => {
-                this._filterTags = [];
-                html.find('[data-filter-tag]:checked').each((_, el) => {
-                  this._filterTags.push(el.dataset.filterTag);
-                });
-                this.currentPage = 1;
-                this.render(true);
-              },
-            },
-            clear: {
-              icon: '<i class="fas fa-times"></i>',
-              label: 'Clear All',
-              callback: () => {
-                this._filterTags = [];
-                this.currentPage = 1;
-                this.render(true);
-              },
-            },
-          },
-          default: 'apply',
-          classes: ['ncm-time-config-dialog'],
-        }, { width: 280 });
-        dlg.render(true);
+        const container = target.closest('.ncm-viewer__filter-trigger');
+        let dropdown = container?.querySelector('.ncm-filter-dropdown');
+        if (!dropdown) {
+          dropdown = document.createElement('div');
+          dropdown.className = 'ncm-filter-dropdown ncm-hidden';
+          container?.appendChild(dropdown);
+        }
+
+        // Network section
+        const netItems = networks.map(n => {
+          const net = this.networkService?.getNetwork?.(n);
+          const name = net?.name || n;
+          const color = net?.theme?.color || '#8888a0';
+          const checked = this._filterTags?.includes(`net:${n}`) ? 'checked' : '';
+          return `<label class="ncm-filter-dropdown__item" data-filter-tag="net:${n}">
+            <span class="ncm-filter-dropdown__check ${checked ? 'ncm-filter-dropdown__check--on' : ''}" style="border-color: ${color}40; ${checked ? `background: ${color}20;` : ''}">
+              ${checked ? `<i class="fas fa-check" style="color: ${color};"></i>` : ''}
+            </span>
+            <i class="fas ${net?.theme?.icon || 'fa-wifi'}" style="color: ${color}; font-size: 9px; width: 14px; text-align: center;"></i>
+            <span class="ncm-filter-dropdown__label" style="color: ${color};">${name}</span>
+          </label>`;
+        }).join('');
+
+        // Status section
+        const statusItems = [
+          { key: 'status:encrypted', label: 'Encrypted', icon: 'fa-lock', color: '#00D4E6' },
+          { key: 'status:has-attachments', label: 'Attachments', icon: 'fa-paperclip', color: '#8888a0' },
+          { key: 'status:has-eddies', label: 'Has Eddies', icon: 'fa-coins', color: '#F0C55B' },
+        ].map(s => {
+          const checked = this._filterTags?.includes(s.key) ? 'checked' : '';
+          return `<label class="ncm-filter-dropdown__item" data-filter-tag="${s.key}">
+            <span class="ncm-filter-dropdown__check ${checked ? 'ncm-filter-dropdown__check--on' : ''}" style="border-color: ${s.color}40; ${checked ? `background: ${s.color}20;` : ''}">
+              ${checked ? `<i class="fas fa-check" style="color: ${s.color};"></i>` : ''}
+            </span>
+            <i class="fas ${s.icon}" style="color: ${s.color}80; font-size: 9px; width: 14px; text-align: center;"></i>
+            <span class="ncm-filter-dropdown__label">${s.label}</span>
+          </label>`;
+        }).join('');
+
+        dropdown.innerHTML = `
+          <div class="ncm-filter-dropdown__section-title">Network</div>
+          ${netItems || '<div class="ncm-filter-dropdown__empty">No networks</div>'}
+          <div class="ncm-filter-dropdown__divider"></div>
+          <div class="ncm-filter-dropdown__section-title">Status</div>
+          ${statusItems}
+          <div class="ncm-filter-dropdown__actions">
+            <span class="ncm-filter-dropdown__btn ncm-filter-dropdown__btn--apply" data-action="apply-filters">
+              <i class="fas fa-check"></i> Apply
+            </span>
+            <span class="ncm-filter-dropdown__btn ncm-filter-dropdown__btn--clear" data-action="clear-filters">
+              <i class="fas fa-times"></i> Clear
+            </span>
+          </div>
+        `;
+
+        dropdown.classList.remove('ncm-hidden');
+
+        // Toggle checkmarks on click
+        dropdown.querySelectorAll('.ncm-filter-dropdown__item').forEach(item => {
+          item.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const check = item.querySelector('.ncm-filter-dropdown__check');
+            const tag = item.dataset.filterTag;
+            const isOn = check.classList.toggle('ncm-filter-dropdown__check--on');
+            const color = check.style.borderColor.replace(/40$/, '');
+            if (isOn) {
+              check.style.background = check.style.borderColor.replace(/40/, '20');
+              check.innerHTML = `<i class="fas fa-check" style="color: ${item.querySelector('i').style.color};"></i>`;
+            } else {
+              check.style.background = '';
+              check.innerHTML = '';
+            }
+          });
+        });
+
+        // Close on outside click (one-shot)
+        const closeHandler = (e) => {
+          if (!dropdown.contains(e.target) && !container.contains(e.target)) {
+            dropdown.classList.add('ncm-hidden');
+            document.removeEventListener('mousedown', closeHandler);
+          }
+        };
+        setTimeout(() => document.addEventListener('mousedown', closeHandler), 0);
+        break;
+      }
+
+      case 'apply-filters': {
+        const dropdown = this.element?.querySelector('.ncm-filter-dropdown');
+        if (!dropdown) break;
+        this._filterTags = [];
+        dropdown.querySelectorAll('.ncm-filter-dropdown__check--on').forEach(check => {
+          const item = check.closest('[data-filter-tag]');
+          if (item) this._filterTags.push(item.dataset.filterTag);
+        });
+        dropdown.classList.add('ncm-hidden');
+        this.currentPage = 1;
+        this.render(true);
+        break;
+      }
+
+      case 'clear-filters': {
+        const dropdown = this.element?.querySelector('.ncm-filter-dropdown');
+        if (dropdown) dropdown.classList.add('ncm-hidden');
+        this._filterTags = [];
+        this.currentPage = 1;
+        this.render(true);
         break;
       }
 

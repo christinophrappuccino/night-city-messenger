@@ -309,6 +309,67 @@
   line-height: 1.4;
 }
 
+/* ── Filter dropdown panel (inline, positioned below trigger) ── */
+.ncm-app .ncm-filter-dropdown {
+  position: absolute; top: 100%; left: 0; z-index: 30;
+  min-width: 200px; padding: 8px 0 4px; margin-top: 4px;
+  background: var(--ncm-bg-elevated); border: 1px solid var(--ncm-border);
+  border-radius: 4px; box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+.ncm-app .ncm-filter-dropdown__section-title {
+  font-family: var(--ncm-font-title); font-size: 8px; font-weight: 600;
+  color: var(--ncm-secondary); text-transform: uppercase;
+  letter-spacing: 0.12em; padding: 4px 12px 6px; opacity: 0.6;
+}
+.ncm-app .ncm-filter-dropdown__item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 12px; cursor: pointer; transition: background 0.1s;
+  font-family: var(--ncm-font-display); font-size: 11px; font-weight: 600;
+  color: var(--ncm-text-secondary);
+}
+.ncm-app .ncm-filter-dropdown__item:hover { background: rgba(0,212,230,0.04); }
+.ncm-app .ncm-filter-dropdown__check {
+  width: 16px; height: 16px; border-radius: 3px;
+  border: 1px solid var(--ncm-border); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+.ncm-app .ncm-filter-dropdown__check i { font-size: 8px; }
+.ncm-app .ncm-filter-dropdown__label { flex: 1; }
+.ncm-app .ncm-filter-dropdown__divider {
+  height: 1px; background: var(--ncm-border); margin: 6px 12px; opacity: 0.5;
+}
+.ncm-app .ncm-filter-dropdown__empty {
+  padding: 4px 12px; font-family: var(--ncm-font-mono); font-size: 9px;
+  color: var(--ncm-text-dim); font-style: italic;
+}
+.ncm-app .ncm-filter-dropdown__actions {
+  display: flex; gap: 4px; padding: 8px 12px 4px;
+  border-top: 1px solid var(--ncm-border); margin-top: 4px;
+}
+.ncm-app .ncm-filter-dropdown__btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 10px; border-radius: 3px;
+  font-family: var(--ncm-font-display); font-size: 10px; font-weight: 600;
+  cursor: pointer; transition: all 0.15s; text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.ncm-app .ncm-filter-dropdown__btn i { font-size: 8px; }
+.ncm-app .ncm-filter-dropdown__btn--apply {
+  color: var(--ncm-secondary); background: rgba(0,212,230,0.08);
+  border: 1px solid rgba(0,212,230,0.2);
+}
+.ncm-app .ncm-filter-dropdown__btn--apply:hover {
+  background: rgba(0,212,230,0.15); border-color: rgba(0,212,230,0.35);
+}
+.ncm-app .ncm-filter-dropdown__btn--clear {
+  color: var(--ncm-text-muted); background: transparent;
+  border: 1px solid var(--ncm-border);
+}
+.ncm-app .ncm-filter-dropdown__btn--clear:hover {
+  color: var(--ncm-text-primary); border-color: var(--ncm-border-active);
+}
+
 /* ── Active filter tag pills row ── */
 .ncm-app .ncm-viewer__active-filters {
   display: flex; flex-wrap: wrap; gap: 3px; align-items: center;
