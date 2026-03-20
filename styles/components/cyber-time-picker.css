@@ -5,7 +5,8 @@
  *
  * Trigger replaces raw datetime-local inputs in forms.
  * Dialog content uses inline styles (DateRangePicker pattern).
- * This file handles only the trigger element and dialog wrapper.
+ * This file handles the trigger element, dialog wrapper,
+ * and Foundry input overrides for the picker fields.
  * ═══════════════════════════════════════════════════════════ */
 
 /* ─── Trigger Field ───
@@ -59,14 +60,36 @@
 
 
 /* ─── Dialog Wrapper Override ───
-   Extra specificity so Foundry doesn't clobber the dialog chrome */
+   Foundry input/layout overrides for the picker dialog */
 
 .ncm-ctp-wrapper.ncm-time-config-dialog .dialog-content {
   padding: 12px 14px !important;
   overflow: hidden !important;
 }
 
-/* Colon pulse animation (used by inline style, defined here for the keyframe) */
+/* Kill Foundry's blanket input sizing inside the picker */
+.ncm-ctp-wrapper input.ncm-ctp-inp {
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  flex: 0 0 auto !important;
+  box-sizing: border-box !important;
+  margin: 0 !important;
+}
+
+.ncm-ctp-wrapper input.ncm-ctp-inp[data-field="year"] {
+  width: 64px !important;
+}
+.ncm-ctp-wrapper input.ncm-ctp-inp[data-field="month"],
+.ncm-ctp-wrapper input.ncm-ctp-inp[data-field="day"] {
+  width: 42px !important;
+}
+.ncm-ctp-wrapper input.ncm-ctp-inp[data-field="hour"],
+.ncm-ctp-wrapper input.ncm-ctp-inp[data-field="min"] {
+  width: 42px !important;
+}
+
+/* Colon pulse animation */
 @keyframes ncm-ctp-colon-pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.3; }
