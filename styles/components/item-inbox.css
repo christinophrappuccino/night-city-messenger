@@ -66,15 +66,7 @@
   box-shadow: var(--sp-shadow);
 }
 
-/* Top accent bar — preset gradient */
-.ncm-app .ncm-item-inbox::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 2px;
-  background: var(--sp-bar);
-  z-index: 10;
-}
+/* Top accent bar — removed, window chrome §1 now handles preset-colored accent via --shard-accent */
 
 /* Themed scrollbars across entire viewer — Foundry override */
 .ncm-app .ncm-item-inbox,

@@ -33,7 +33,8 @@
 /* ═══════════════════════════════════════════════════════════
    §1  FOUNDRY WINDOW HEADER → CYBERPUNK TITLE BAR
    Restyle, don't hide. Keeps native drag + window controls.
-   Slim dark bar with gradient top-edge accent.
+   Slim dark bar with thin accent line. Shard presets tint
+   the header to feel integrated with shard content.
    ═══════════════════════════════════════════════════════════ */
 
 .ncm-app > .window-header {
@@ -70,6 +71,26 @@
 .ncm-app[style*="--shard-accent"] > .window-header::before {
   opacity: 0.6;
   height: 2px;
+}
+
+/* ── Shard Integration — header feels like part of the shard ── */
+.ncm-app[style*="--shard-accent"] > .window-header {
+  background: color-mix(in srgb, var(--shard-accent) 4%, var(--ncm-bg-base, #12121a));
+  border-bottom-color: color-mix(in srgb, var(--shard-accent) 15%, var(--ncm-border, #2a2a45));
+}
+.ncm-app[style*="--shard-accent"] > .window-header .window-title {
+  color: color-mix(in srgb, var(--shard-accent) 40%, var(--ncm-text-secondary, #8888a0));
+}
+.ncm-app[style*="--shard-accent"] > .window-header .header-control {
+  color: color-mix(in srgb, var(--shard-accent) 20%, var(--ncm-text-muted, #555570));
+}
+.ncm-app[style*="--shard-accent"] > .window-header .header-control:hover {
+  color: var(--shard-accent);
+  background: color-mix(in srgb, var(--shard-accent) 8%, transparent);
+}
+.ncm-app[style*="--shard-accent"] > .window-header .header-control.close:hover {
+  color: var(--ncm-primary, #F65261);
+  background: rgba(246, 82, 97, 0.1);
 }
 
 /* Window icon — uses preset accent when available, cyan default */
