@@ -447,6 +447,8 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     this._setupKeyboardShortcuts();
     this._startAutoSave();
     this._setupSendAsList();
+    this._setupToolbarFocusGuard();
+    this._setupEditorStateTracking();
 
     // Focus recipient input on new compose, editor on reply
     requestAnimationFrame(() => {
@@ -460,6 +462,10 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
 
   close(options) {
     this._stopAutoSave();
+    if (this._editorStateHandler) {
+      document.removeEventListener('selectionchange', this._editorStateHandler);
+      this._editorStateHandler = null;
+    }
     return super.close(options);
   }
 
@@ -817,10 +823,93 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
   _getEditorText() {
     const editor = this.element?.querySelector('[data-id="editor-content"]');
     if (editor) return editor.textContent || '';
-    // Fallback: strip HTML from body
     const div = document.createElement('div');
     div.innerHTML = this.body;
     return div.textContent || '';
+  }
+
+  /**
+   * Prevent toolbar buttons from stealing focus from the editor.
+   * On mousedown, call preventDefault — this keeps the editor selection alive
+   * so execCommand has something to work with when the click fires.
+   */
+  _setupToolbarFocusGuard() {
+    const toolbar = this.element?.querySelector('.ncm-composer__toolbar');
+    if (!toolbar) return;
+
+    toolbar.addEventListener('mousedown', (e) => {
+      if (e.target.closest('.ncm-composer__tool')) {
+        e.preventDefault();
+      }
+    });
+
+    // Also guard overflow menu items
+    const overflow = this.element?.querySelector('[data-id="overflow-menu"]');
+    if (overflow) {
+      overflow.addEventListener('mousedown', (e) => {
+        if (e.target.closest('.ncm-composer__overflow-item')) {
+          e.preventDefault();
+        }
+      });
+    }
+  }
+
+  /**
+   * Track editor formatting state and update toolbar button active classes.
+   * Like Gmail: if cursor is in bold text, the bold button highlights.
+   * Uses document.queryCommandState() on selectionchange.
+   */
+  _setupEditorStateTracking() {
+    const editor = this.element?.querySelector('[data-id="editor-content"]');
+    if (!editor) return;
+
+    const updateActiveStates = () => {
+      if (!this.element?.contains(document.activeElement)) return;
+
+      // Direct command state queries
+      const commands = {
+        bold: 'bold',
+        italic: 'italic',
+        underline: 'underline',
+        strikethrough: 'strikeThrough',
+        bulletList: 'insertUnorderedList',
+        numberList: 'insertOrderedList',
+      };
+
+      for (const [cmd, queryCmd] of Object.entries(commands)) {
+        // Check both toolbar and overflow
+        const btn = this.element?.querySelector(`.ncm-composer__tool[data-command="${cmd}"]`)
+          || this.element?.querySelector(`.ncm-composer__overflow-item[data-command="${cmd}"]`);
+        if (!btn) continue;
+        try {
+          const isActive = document.queryCommandState(queryCmd);
+          btn.classList.toggle('ncm-composer__tool--active', isActive);
+          btn.classList.toggle('ncm-composer__overflow-item--active', isActive);
+        } catch { /* queryCommandState can throw */ }
+      }
+
+      // Link detection — check if cursor is inside an <a> tag
+      const sel = window.getSelection();
+      const anchorEl = sel?.anchorNode
+        ? (sel.anchorNode.nodeType === 3 ? sel.anchorNode.parentElement : sel.anchorNode)
+        : null;
+
+      const linkBtn = this.element?.querySelector('.ncm-composer__tool[data-command="link"]');
+      if (linkBtn && anchorEl) {
+        linkBtn.classList.toggle('ncm-composer__tool--active', !!anchorEl.closest('a'));
+      }
+
+      // Monospace — check if inside <pre> or <code>
+      const codeBtn = this.element?.querySelector('.ncm-composer__tool[data-command="monospace"]');
+      if (codeBtn && anchorEl) {
+        const isInCode = !!(anchorEl.closest('pre') || anchorEl.closest('code'));
+        codeBtn.classList.toggle('ncm-composer__tool--active', isInCode);
+      }
+    };
+
+    document.addEventListener('selectionchange', updateActiveStates);
+    editor.addEventListener('keyup', updateActiveStates);
+    this._editorStateHandler = updateActiveStates;
   }
 
   // ─── Form Sync ────────────────────────────────────────────
@@ -1596,12 +1685,30 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       case 'strikethrough':
         document.execCommand('strikeThrough', false);
         break;
-      case 'monospace':
-        // Toggle <code> wrap on selection
-        if (window.getSelection()?.toString()) {
-          document.execCommand('formatBlock', false, 'pre');
+      case 'monospace': {
+        // Toggle <code> wrap on selection — if already in code, unwrap; otherwise wrap
+        const sel = window.getSelection();
+        if (!sel || sel.isCollapsed) break;
+        const anchorNode = sel.anchorNode?.nodeType === 3 ? sel.anchorNode.parentElement : sel.anchorNode;
+        const existingCode = anchorNode?.closest('code');
+        if (existingCode) {
+          // Unwrap — replace <code> with its text content
+          const text = document.createTextNode(existingCode.textContent);
+          existingCode.parentNode.replaceChild(text, existingCode);
+          // Re-select the text
+          const range = document.createRange();
+          range.selectNodeContents(text);
+          sel.removeAllRanges();
+          sel.addRange(range);
+        } else {
+          // Wrap selection in <code>
+          const selectedText = sel.toString();
+          document.execCommand('insertHTML', false,
+            `<code style="font-family:'Share Tech Mono',monospace;background:rgba(25,243,247,0.06);padding:1px 4px;border-radius:2px;color:#19f3f7;">${selectedText}</code>`
+          );
         }
         break;
+      }
       case 'link':
         // Use Foundry Dialog instead of prompt()
         this._showLinkDialog();

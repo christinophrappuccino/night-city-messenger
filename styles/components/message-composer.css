@@ -850,6 +850,10 @@
 .ncm-composer__overflow-item:hover {
   color: #19f3f7; background: rgba(25,243,247,0.03);
 }
+.ncm-composer__overflow-item--active {
+  color: #19f3f7;
+}
+.ncm-composer__overflow-item--active i { color: #19f3f7; }
 .ncm-composer__overflow-item i { width: 12px; text-align: center; font-size: 9px; }
 .ncm-composer__overflow-sep {
   height: 1px; background: #1a1a2e; margin: 3px 8px;
@@ -876,10 +880,90 @@
   background: transparent !important;
   border: none !important;
 }
+.ncm-composer__editor:focus {
+  background: rgba(25,243,247,0.01) !important;
+}
 }
 .ncm-composer__editor:empty::before {
   content: attr(data-placeholder);
   color: #555570; font-style: italic;
+}
+
+/* Rich text styling inside the editor */
+.ncm-composer__editor b, .ncm-composer__editor strong { font-weight: 700; color: #e0e0e8; }
+.ncm-composer__editor i, .ncm-composer__editor em { font-style: italic; }
+.ncm-composer__editor u { text-decoration: underline; text-decoration-color: rgba(25,243,247,0.4); }
+.ncm-composer__editor s, .ncm-composer__editor strike { text-decoration: line-through; color: #666680; }
+.ncm-composer__editor code {
+  font-family: 'Share Tech Mono', monospace;
+  background: rgba(25,243,247,0.06);
+  padding: 1px 4px; border-radius: 2px;
+  color: #19f3f7; font-size: 0.9em;
+}
+.ncm-composer__editor pre {
+  font-family: 'Share Tech Mono', monospace;
+  background: rgba(25,243,247,0.04);
+  border: 1px solid #1a1a2e; border-radius: 3px;
+  padding: 6px 10px; margin: 4px 0;
+  color: #19f3f7; font-size: 0.9em;
+  white-space: pre-wrap;
+}
+.ncm-composer__editor blockquote {
+  border-left: 2px solid rgba(25,243,247,0.2);
+  padding-left: 10px; margin: 4px 0;
+  color: #8888a0; font-style: italic;
+}
+.ncm-composer__editor a {
+  color: #19f3f7; text-decoration: underline;
+  text-decoration-color: rgba(25,243,247,0.3);
+}
+.ncm-composer__editor a:hover { text-decoration-color: #19f3f7; }
+.ncm-composer__editor ul, .ncm-composer__editor ol {
+  padding-left: 20px; margin: 4px 0;
+}
+.ncm-composer__editor li { margin-bottom: 2px; }
+.ncm-composer__editor hr {
+  border: none; border-top: 1px solid #2a2a45;
+  margin: 8px 0;
+}
+
+/* Encrypted text block inserted by ICE command */
+.ncm-composer__editor .ncm-encrypted-text-block {
+  background: rgba(0,255,65,0.03);
+  border: 1px solid rgba(0,255,65,0.12);
+  border-left: 2px solid rgba(0,255,65,0.2);
+  border-radius: 3px;
+  padding: 6px 10px;
+  margin: 4px 0;
+  position: relative;
+}
+.ncm-composer__editor .ncm-encrypted-text-block::before {
+  content: attr(data-label);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 8px; color: rgba(0,255,65,0.3);
+  position: absolute; top: 2px; right: 6px;
+  letter-spacing: 0.06em;
+}
+
+/* Timestamp and location tags */
+.ncm-composer__editor .ncm-timestamp-tag {
+  color: #19f3f7;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.9em;
+}
+.ncm-composer__editor .ncm-location-tag {
+  color: #f7c948;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.9em;
+}
+
+/* Signature */
+.ncm-composer__editor .ncm-signature {
+  border-top: 1px solid #1a1a2e;
+  padding-top: 6px; margin-top: 8px;
+  color: #666680;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.85em; font-style: italic;
 }
 
 .ncm-composer__char-count {
