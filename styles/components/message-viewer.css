@@ -422,8 +422,8 @@
 .ncm-app .ncm-viewer__detail-avatar img { width: 100%; height: 100%; object-fit: cover; }
 .ncm-app .ncm-viewer__detail-info { flex: 1; min-width: 0; }
 .ncm-app .ncm-viewer__detail-sender-row { display: flex; align-items: center; gap: 6px; }
-.ncm-app .ncm-viewer__detail-sender-name { font-size: 14px; font-weight: 700; color: var(--ncm-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ncm-app .ncm-viewer__detail-time { margin-left: auto; font-family: var(--ncm-font-mono); font-size: 10px; color: #b0b0c0; flex-shrink: 0; white-space: nowrap; }
+.ncm-app .ncm-viewer__detail-sender-name { font-size: 14px; font-weight: 700; color: var(--ncm-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; user-select: text; }
+.ncm-app .ncm-viewer__detail-time { margin-left: auto; font-family: var(--ncm-font-mono); font-size: 10px; color: #b0b0c0; flex-shrink: 0; white-space: nowrap; user-select: text; }
 
 /* Add Contact button */
 .ncm-app .ncm-viewer__detail-add-contact {
@@ -458,7 +458,7 @@
   font-family: var(--ncm-font-mono); font-size: 10px; margin-top: 1px;
 }
 .ncm-app .ncm-viewer__detail-to-label { color: var(--ncm-text-dim); }
-.ncm-app .ncm-viewer__detail-to-val { color: #F0C55B; }
+.ncm-app .ncm-viewer__detail-to-val { color: #F0C55B; user-select: text; }
 
 /* Expand/collapse chevron */
 .ncm-app .ncm-viewer__detail-expand {
@@ -480,6 +480,7 @@
 .ncm-app .ncm-viewer__detail-grid-val {
   font-family: var(--ncm-font-mono); font-size: 11px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  user-select: text;
 }
 .ncm-app .ncm-viewer__detail-grid-val--from { color: #00D4E6; }
 .ncm-app .ncm-viewer__detail-grid-val--to { color: #F0C55B; }
@@ -502,6 +503,7 @@
   font-family: var(--ncm-font-display); font-size: 18px; font-weight: 700;
   letter-spacing: 0.01em; color: #f0f0f5; line-height: 1.1; flex: 1;
   min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  user-select: text;
 }
 .ncm-app .ncm-viewer__subject-rule {
   height: 1px; margin-top: 10px;
@@ -600,7 +602,11 @@
 .ncm-app .ncm-viewer__detail-body {
   flex: 1; overflow-y: auto; padding: 16px 20px;
   font-size: 13px; color: var(--ncm-text-primary); line-height: 1.7;
+  user-select: text;
 }
+.ncm-app .ncm-viewer__detail-body * { user-select: text; }
+.ncm-app .ncm-viewer__detail-body button,
+.ncm-app .ncm-viewer__detail-body [data-action] { user-select: none; }
 .ncm-app .ncm-viewer__detail-body p { margin-bottom: 12px; }
 .ncm-app .ncm-viewer__detail-body p:last-child { margin-bottom: 0; }
 .ncm-app .ncm-viewer__detail-body-empty { color: var(--ncm-text-dim); font-style: italic; }
