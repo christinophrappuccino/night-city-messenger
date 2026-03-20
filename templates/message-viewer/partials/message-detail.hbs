@@ -231,17 +231,6 @@
       </div>
     </div>
 
-    {{!-- Security Strip --}}
-    {{#if message.security}}
-      <div class="ncm-viewer__sec-strip ncm-viewer__sec-strip--{{message.security.variant}}">
-        {{#each message.security.items}}
-          <span class="ncm-viewer__sec-item ncm-viewer__sec-item--{{this.status}}">
-            <i class="fas {{this.icon}}"></i> {{this.label}}
-          </span>
-        {{/each}}
-      </div>
-    {{/if}}
-
     {{!-- Self-destruct bar --}}
     {{#if message.selfDestructActive}}
       <div class="ncm-viewer__destruct-bar">

@@ -1155,10 +1155,30 @@ export class MessageViewerApp extends BaseApplication {
       case 'add-sender-contact': {
         const email = target.dataset.email;
         const name = target.dataset.name;
-        if (email) {
-          game.nightcity?.masterContactService?.createContact?.({ name: name || email.split('@')[0], email });
-          ui.notifications.info(`NCM | Added ${name || email} to contacts.`);
-          this.render();
+        if (!email || !this.actorId) break;
+        try {
+          const repo = this.contactRepository;
+          if (repo?.addContact) {
+            const result = await repo.addContact(this.actorId, {
+              name: name || email.split('@')[0],
+              email,
+              network: this._getSelectedMessage()?.network || 'CITINET',
+              trust: 'neutral',
+              notes: 'Added from message viewer',
+            });
+            if (result?.success) {
+              ui.notifications.info(`NCM | Added ${name || email} to contacts.`);
+              await this._refreshContactCache();
+              this.render(true);
+            } else {
+              ui.notifications.warn(`NCM | ${result?.error || 'Could not add contact.'}`);
+            }
+          } else {
+            ui.notifications.warn('NCM | Contact system unavailable.');
+          }
+        } catch (err) {
+          console.error('NCM | Failed to add contact:', err);
+          ui.notifications.error('NCM | Failed to add contact.');
         }
         break;
       }

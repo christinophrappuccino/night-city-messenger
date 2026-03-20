@@ -658,27 +658,6 @@
 
 
 /* ═══════════════════════════════════════════════════════════
-   §13  SECURITY STRIP
-   ═══════════════════════════════════════════════════════════ */
-.ncm-app .ncm-viewer__sec-strip {
-  display: flex; align-items: center; gap: 10px;
-  padding: 5px 20px; flex-shrink: 0;
-  background: rgba(52,211,153,0.03);
-  border-bottom: 1px solid rgba(52,211,153,0.08);
-}
-.ncm-app .ncm-viewer__sec-strip--warn { background: rgba(251,191,36,0.03); border-bottom-color: rgba(251,191,36,0.08); }
-.ncm-app .ncm-viewer__sec-strip--danger { background: rgba(239,68,68,0.03); border-bottom-color: rgba(239,68,68,0.08); }
-.ncm-app .ncm-viewer__sec-item { display: flex; align-items: center; gap: 4px; font-family: var(--ncm-font-mono); font-size: 9px; color: var(--ncm-text-muted); }
-.ncm-app .ncm-viewer__sec-item i { font-size: 8px; }
-.ncm-app .ncm-viewer__sec-item--ok i { color: var(--ncm-success); }
-.ncm-app .ncm-viewer__sec-item--ok { color: rgba(52,211,153,0.7); }
-.ncm-app .ncm-viewer__sec-item--warn i { color: var(--ncm-warning); }
-.ncm-app .ncm-viewer__sec-item--warn { color: rgba(251,191,36,0.7); }
-.ncm-app .ncm-viewer__sec-item--muted i { color: var(--ncm-text-dim); }
-.ncm-app .ncm-viewer__sec-item:last-child { margin-left: auto; }
-
-
-/* ═══════════════════════════════════════════════════════════
    §14  QUICK REPLY
    ═══════════════════════════════════════════════════════════ */
 .ncm-app .ncm-viewer__quick-reply { padding: 4px 20px; border-top: 1px solid var(--ncm-border); flex-shrink: 0; }
