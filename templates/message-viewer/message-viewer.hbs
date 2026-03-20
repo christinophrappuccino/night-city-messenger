@@ -70,13 +70,15 @@
       </div>
     </div>
 
-    {{!-- Inline HUD readouts (time + scene only, no encryption) --}}
+    {{!-- Inline HUD readouts — stacked label+value widgets --}}
     <div class="ncm-viewer__hud-inline">
       <span class="ncm-viewer__hud-chip ncm-viewer__hud-chip--time">
-        <i class="fas fa-clock"></i> <span class="ncm-viewer__hud-time-val">{{currentGameTime}}</span>
+        <span class="ncm-viewer__hud-label">Time</span>
+        <span class="ncm-viewer__hud-val ncm-viewer__hud-time-val">{{currentGameTime}}</span>
       </span>
       <span class="ncm-viewer__hud-chip ncm-viewer__hud-chip--scene">
-        <i class="fas fa-location-dot"></i> {{currentSceneName}}
+        <span class="ncm-viewer__hud-label">Location</span>
+        <span class="ncm-viewer__hud-val">{{currentSceneName}}</span>
       </span>
     </div>
 
