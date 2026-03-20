@@ -26,7 +26,7 @@
 
 <div class="ncm-viewer" data-density="{{density}}" data-filter="{{currentFilter}}" data-primary-tab="{{primaryTab}}">
 
-  {{!-- ═══════ §1 HEADER — Portrait + Network Pill + Actions ═══════ --}}
+  {{!-- ═══════ §1 HEADER — Identity + Pill + HUD inline + Actions ═══════ --}}
   <header class="ncm-viewer__header">
 
     {{!-- Clickable Identity → opens drawer --}}
@@ -44,33 +44,33 @@
           <span class="ncm-viewer__identity-email">{{viewingAsEmail}}</span>
         {{/if}}
       </div>
-      <i class="fas fa-chevron-right ncm-viewer__identity-expand"></i>
     </div>
 
     <div class="ncm-viewer__header-divider"></div>
 
-    {{!-- Network Pill — color-coded with bars + percentage --}}
+    {{!-- Network Pill --}}
     <div class="ncm-viewer__net-pill ncm-viewer__net-pill--{{netPillState}}"
          data-action="toggleNetworkSelector">
       <span class="ncm-viewer__net-dot"></span>
       <span class="ncm-viewer__net-name">
         {{#if isDeadZone}}NO SIGNAL{{else}}{{currentNetwork.name}}{{/if}}
       </span>
-      <div class="ncm-viewer__net-bars">
-        <div class="ncm-viewer__net-bar {{#if (gte signalStrength 20)}}ncm-viewer__net-bar--active{{/if}}"></div>
-        <div class="ncm-viewer__net-bar {{#if (gte signalStrength 40)}}ncm-viewer__net-bar--active{{/if}}"></div>
-        <div class="ncm-viewer__net-bar {{#if (gte signalStrength 60)}}ncm-viewer__net-bar--active{{/if}}"></div>
-        <div class="ncm-viewer__net-bar {{#if (gte signalStrength 80)}}ncm-viewer__net-bar--active{{/if}}"></div>
-      </div>
       <span class="ncm-viewer__net-pct">{{signalStrength}}%</span>
       {{#unless isDeadZone}}
         <i class="fas fa-caret-down ncm-viewer__net-caret"></i>
       {{/unless}}
-
-      {{!-- Network Selector Dropdown --}}
       <div class="ncm-net-selector-wrap ncm-hidden">
         {{> "modules/cyberpunkred-messenger/templates/message-viewer/partials/network-selector.hbs"}}
       </div>
+    </div>
+
+    {{!-- Inline HUD readouts (replaces the full HUD strip) --}}
+    <div class="ncm-viewer__hud-inline">
+      <span class="ncm-viewer__hud-inline-val ncm-viewer__hud-inline-val--time">{{currentGameTime}}</span>
+      <span class="ncm-viewer__hud-inline-sep">//</span>
+      <span class="ncm-viewer__hud-inline-val ncm-viewer__hud-inline-val--scene">{{currentSceneName}}</span>
+      <span class="ncm-viewer__hud-inline-sep">//</span>
+      <span class="ncm-viewer__hud-inline-val ncm-viewer__hud-inline-val--enc">{{encryptionCipher}}</span>
     </div>
 
     <div class="ncm-viewer__header-spacer"></div>
@@ -99,39 +99,7 @@
     </div>
   </header>
 
-  {{!-- ═══════ §2 HUD STRIP — Colored data readout ═══════ --}}
-  <div class="ncm-viewer__hud">
-    <div class="ncm-viewer__hud-item">
-      <span class="ncm-viewer__hud-label ncm-viewer__hud-label--time">Time</span>
-      <span class="ncm-viewer__hud-value ncm-viewer__hud-value--time">{{currentGameTime}}</span>
-    </div>
-    <span class="ncm-viewer__hud-sep">//</span>
-    <div class="ncm-viewer__hud-item">
-      <span class="ncm-viewer__hud-label ncm-viewer__hud-label--scene">Loc</span>
-      <span class="ncm-viewer__hud-value ncm-viewer__hud-value--scene">{{currentSceneName}}</span>
-    </div>
-    <span class="ncm-viewer__hud-sep">//</span>
-    <div class="ncm-viewer__hud-item">
-      <span class="ncm-viewer__hud-label ncm-viewer__hud-label--queue">Queue</span>
-      <span class="ncm-viewer__hud-value {{#if (gt queuedMessageCount 0)}}ncm-viewer__hud-value--alert{{else}}ncm-viewer__hud-value--queue{{/if}}">{{queuedMessageCount}}</span>
-    </div>
-    <span class="ncm-viewer__hud-sep">//</span>
-    <div class="ncm-viewer__hud-item">
-      <span class="ncm-viewer__hud-label ncm-viewer__hud-label--enc">Enc</span>
-      <span class="ncm-viewer__hud-value ncm-viewer__hud-value--enc">{{encryptionCipher}}</span>
-    </div>
-    <div class="ncm-viewer__hud-spacer"></div>
-    <div class="ncm-viewer__hud-status">
-      <span class="ncm-viewer__hud-dot ncm-viewer__hud-dot--{{connectionStatus}}"></span>
-      <span class="ncm-viewer__hud-status-text ncm-viewer__hud-status-text--{{connectionStatus}}">
-        {{#if (eq connectionStatus "CONNECTED")}}Online{{/if}}
-        {{#if (eq connectionStatus "DEGRADED")}}Degraded{{/if}}
-        {{#if (eq connectionStatus "NO_SIGNAL")}}Offline{{/if}}
-      </span>
-    </div>
-  </div>
-
-  {{!-- ═══════ §3 PRIMARY NAV — Content type tabs ═══════ --}}
+  {{!-- ═══════ §2 PRIMARY NAV + Search (merged row) ═══════ --}}
   <nav class="ncm-viewer__primary-nav">
     <div class="ncm-viewer__primary-tab {{#if isMessagesTab}}ncm-viewer__primary-tab--active{{/if}}"
          data-action="set-primary-tab" data-tab="messages">
@@ -153,64 +121,61 @@
       <i class="fas fa-file-pen"></i> Drafts
       {{#if counts.drafts}}<span class="ncm-viewer__primary-badge">{{counts.drafts}}</span>{{/if}}
     </div>
-  </nav>
-
-  {{!-- ═══════ §4 TOOLBAR — Search + Category Pills ═══════ --}}
-  <div class="ncm-viewer__toolbar">
-    <div class="ncm-viewer__search-row">
+    {{!-- Compact search (right-aligned in nav row) --}}
+    <div class="ncm-viewer__nav-search">
       <i class="fas fa-search"></i>
       <input type="text" class="ncm-viewer__search-input"
-             placeholder="Search {{#if isMessagesTab}}messages{{else if (eq primaryTab 'shards')}}shards{{else}}...{{/if}}"
+             placeholder="Search..."
              value="{{searchTerm}}" />
-      <span class="ncm-viewer__search-count">{{totalMessages}} msg{{#if (neq totalMessages 1)}}s{{/if}}</span>
+      <span class="ncm-viewer__search-count">{{totalMessages}}</span>
     </div>
+  </nav>
 
-    {{!-- Category Pills — change per primary tab --}}
-    <div class="ncm-viewer__category-pills">
-      {{#if isMessagesTab}}
-        <span class="ncm-pill {{#if (eq currentFilter 'inbox')}}ncm-pill--active{{/if}}"
-              data-action="set-filter" data-filter="inbox">
-          <i class="fas fa-inbox"></i> All
-          {{#if counts.total}}<span class="ncm-pill__badge">{{counts.total}}</span>{{/if}}
-        </span>
-        <span class="ncm-pill {{#if (eq currentFilter 'unread')}}ncm-pill--active{{/if}}"
-              data-action="set-filter" data-filter="unread">
-          <i class="fas fa-envelope"></i> Unread
-          {{#if counts.unread}}<span class="ncm-pill__badge ncm-pill__badge--alert">{{counts.unread}}</span>{{/if}}
-        </span>
-        <span class="ncm-pill {{#if (eq currentFilter 'sent')}}ncm-pill--active{{/if}}"
-              data-action="set-filter" data-filter="sent">
-          <i class="fas fa-paper-plane"></i> Sent
-          {{#if counts.sent}}<span class="ncm-pill__badge">{{counts.sent}}</span>{{/if}}
-        </span>
-        <span class="ncm-pill {{#if (eq currentFilter 'saved')}}ncm-pill--active{{/if}}"
-              data-action="set-filter" data-filter="saved">
-          <i class="fas fa-bookmark"></i> Saved
-          {{#if counts.saved}}<span class="ncm-pill__badge">{{counts.saved}}</span>{{/if}}
-        </span>
-        <span class="ncm-pill {{#if (eq currentFilter 'trash')}}ncm-pill--active{{/if}}"
-              data-action="set-filter" data-filter="trash">
-          <i class="fas fa-trash"></i> Trash
-          {{#if counts.trash}}<span class="ncm-pill__badge">{{counts.trash}}</span>{{/if}}
-        </span>
-        <span class="ncm-pill {{#if (eq currentFilter 'spam')}}ncm-pill--active{{/if}}"
-              data-action="set-filter" data-filter="spam">
-          <i class="fas fa-ban"></i> Spam
-          {{#if counts.spam}}<span class="ncm-pill__badge">{{counts.spam}}</span>{{/if}}
-        </span>
-      {{else if (eq primaryTab 'shards')}}
-        <span class="ncm-pill ncm-pill--active" data-action="set-filter" data-filter="shards">
-          <i class="fas fa-layer-group"></i> All
-          {{#if counts.shards}}<span class="ncm-pill__badge">{{counts.shards}}</span>{{/if}}
-        </span>
-        <span class="ncm-pill"><i class="fas fa-download"></i> Received</span>
-        <span class="ncm-pill"><i class="fas fa-box"></i> Inventory</span>
-        <span class="ncm-pill"><i class="fas fa-lock"></i> Encrypted</span>
-      {{/if}}
-    </div>
+  {{!-- ═══════ §3 CATEGORY PILLS ═══════ --}}
+  <div class="ncm-viewer__category-pills">
+    {{#if isMessagesTab}}
+      <span class="ncm-pill {{#if (eq currentFilter 'inbox')}}ncm-pill--active{{/if}}"
+            data-action="set-filter" data-filter="inbox">
+        <i class="fas fa-inbox"></i> All
+        {{#if counts.total}}<span class="ncm-pill__badge">{{counts.total}}</span>{{/if}}
+      </span>
+      <span class="ncm-pill {{#if (eq currentFilter 'unread')}}ncm-pill--active{{/if}}"
+            data-action="set-filter" data-filter="unread">
+        <i class="fas fa-envelope"></i> Unread
+        {{#if counts.unread}}<span class="ncm-pill__badge ncm-pill__badge--alert">{{counts.unread}}</span>{{/if}}
+      </span>
+      <span class="ncm-pill {{#if (eq currentFilter 'sent')}}ncm-pill--active{{/if}}"
+            data-action="set-filter" data-filter="sent">
+        <i class="fas fa-paper-plane"></i> Sent
+        {{#if counts.sent}}<span class="ncm-pill__badge">{{counts.sent}}</span>{{/if}}
+      </span>
+      <span class="ncm-pill {{#if (eq currentFilter 'saved')}}ncm-pill--active{{/if}}"
+            data-action="set-filter" data-filter="saved">
+        <i class="fas fa-bookmark"></i> Saved
+        {{#if counts.saved}}<span class="ncm-pill__badge">{{counts.saved}}</span>{{/if}}
+      </span>
+      <span class="ncm-pill {{#if (eq currentFilter 'trash')}}ncm-pill--active{{/if}}"
+            data-action="set-filter" data-filter="trash">
+        <i class="fas fa-trash"></i> Trash
+        {{#if counts.trash}}<span class="ncm-pill__badge">{{counts.trash}}</span>{{/if}}
+      </span>
+      <span class="ncm-pill {{#if (eq currentFilter 'spam')}}ncm-pill--active{{/if}}"
+            data-action="set-filter" data-filter="spam">
+        <i class="fas fa-ban"></i> Spam
+        {{#if counts.spam}}<span class="ncm-pill__badge">{{counts.spam}}</span>{{/if}}
+      </span>
+    {{else if (eq primaryTab 'shards')}}
+      <span class="ncm-pill ncm-pill--active" data-action="set-filter" data-filter="shards">
+        <i class="fas fa-layer-group"></i> All
+        {{#if counts.shards}}<span class="ncm-pill__badge">{{counts.shards}}</span>{{/if}}
+      </span>
+      <span class="ncm-pill"><i class="fas fa-download"></i> Received</span>
+      <span class="ncm-pill"><i class="fas fa-box"></i> Inventory</span>
+      <span class="ncm-pill"><i class="fas fa-lock"></i> Encrypted</span>
+    {{/if}}
   </div>
 
-  {{!-- ═══════ §5 BULK / MANAGEMENT BARS ═══════ --}}
+  {{!-- ═══════ §4 BULK / MANAGEMENT BARS ═══════ --}}
   {{#if showBulkActions}}
     <div class="ncm-viewer__bulk-bar">
       <span class="ncm-viewer__bulk-count">{{bulkCount}} selected</span>

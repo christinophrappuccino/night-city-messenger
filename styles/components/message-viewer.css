@@ -147,42 +147,17 @@
 
 
 /* ═══════════════════════════════════════════════════════════
-   §3  HUD STRIP
+   §3  INLINE HUD (folded into header row)
    ═══════════════════════════════════════════════════════════ */
-.ncm-app .ncm-viewer__hud {
-  display: flex; align-items: center; gap: 0;
-  padding: 5px 16px; background: var(--ncm-bg-deep);
-  border-bottom: 1px solid rgba(42,42,69,0.6);
-  flex-shrink: 0; font-family: var(--ncm-font-mono);
-  font-size: 11px; color: var(--ncm-text-dim);
-  letter-spacing: 0.02em; min-height: 28px;
+.ncm-app .ncm-viewer__hud-inline {
+  display: flex; align-items: center; gap: 4px;
+  font-family: var(--ncm-font-mono); font-size: 9px;
+  flex-shrink: 0;
 }
-.ncm-app .ncm-viewer__hud-item { display: inline-flex; align-items: center; gap: 5px; padding: 0 10px; }
-.ncm-app .ncm-viewer__hud-item:first-child { padding-left: 0; }
-.ncm-app .ncm-viewer__hud-label { color: var(--ncm-text-dim); text-transform: uppercase; letter-spacing: 0.08em; font-size: 10px; }
-.ncm-app .ncm-viewer__hud-value { color: var(--ncm-text-secondary); }
-/* Colored labels */
-.ncm-app .ncm-viewer__hud-label--time { color: rgba(0,212,230,0.5); }
-.ncm-app .ncm-viewer__hud-label--scene { color: rgba(240,197,91,0.45); }
-.ncm-app .ncm-viewer__hud-label--queue { color: var(--ncm-text-dim); }
-.ncm-app .ncm-viewer__hud-label--enc { color: rgba(52,211,153,0.45); }
-/* Colored values */
-.ncm-app .ncm-viewer__hud-value--time { color: var(--ncm-secondary); opacity: 0.85; }
-.ncm-app .ncm-viewer__hud-value--scene { color: var(--ncm-accent); opacity: 0.75; }
-.ncm-app .ncm-viewer__hud-value--queue { color: var(--ncm-text-secondary); }
-.ncm-app .ncm-viewer__hud-value--alert { color: var(--ncm-primary); font-weight: 700; }
-.ncm-app .ncm-viewer__hud-value--enc { color: var(--ncm-success); opacity: 0.65; }
-.ncm-app .ncm-viewer__hud-sep { color: var(--ncm-text-dim); opacity: 0.3; padding: 0 3px; font-size: 10px; }
-.ncm-app .ncm-viewer__hud-spacer { flex: 1; }
-.ncm-app .ncm-viewer__hud-status { display: inline-flex; align-items: center; gap: 5px; padding: 0 0 0 10px; }
-.ncm-app .ncm-viewer__hud-dot { width: 6px; height: 6px; border-radius: 50%; }
-.ncm-app .ncm-viewer__hud-dot--CONNECTED { background: var(--ncm-success); box-shadow: 0 0 5px rgba(52,211,153,0.5); }
-.ncm-app .ncm-viewer__hud-dot--DEGRADED { background: var(--ncm-warning); box-shadow: 0 0 5px rgba(251,191,36,0.5); }
-.ncm-app .ncm-viewer__hud-dot--NO_SIGNAL { background: var(--ncm-danger); box-shadow: 0 0 5px rgba(239,68,68,0.5); }
-.ncm-app .ncm-viewer__hud-status-text { color: var(--ncm-text-muted); text-transform: uppercase; letter-spacing: 0.06em; font-size: 10px; }
-.ncm-app .ncm-viewer__hud-status-text--CONNECTED { color: rgba(52,211,153,0.6); }
-.ncm-app .ncm-viewer__hud-status-text--DEGRADED { color: rgba(251,191,36,0.6); }
-.ncm-app .ncm-viewer__hud-status-text--NO_SIGNAL { color: rgba(239,68,68,0.6); }
+.ncm-app .ncm-viewer__hud-inline-val--time { color: rgba(0,212,230,0.5); }
+.ncm-app .ncm-viewer__hud-inline-val--scene { color: rgba(240,197,91,0.4); }
+.ncm-app .ncm-viewer__hud-inline-val--enc { color: rgba(52,211,153,0.35); }
+.ncm-app .ncm-viewer__hud-inline-sep { color: var(--ncm-text-dim); opacity: 0.3; }
 
 
 /* ═══════════════════════════════════════════════════════════
@@ -212,36 +187,37 @@
 
 
 /* ═══════════════════════════════════════════════════════════
-   §5  TOOLBAR — Search + Category Pills
+   §5  COMPACT NAV-SEARCH (inside primary nav row)
    ═══════════════════════════════════════════════════════════ */
-.ncm-app .ncm-viewer__toolbar {
-  padding: 6px 16px 8px; border-bottom: 1px solid var(--ncm-border);
-  flex-shrink: 0; background: var(--ncm-bg-deep);
-  display: flex; flex-direction: column; gap: 6px;
-}
-.ncm-app .ncm-viewer__search-row {
-  display: flex; align-items: center; gap: 8px;
+.ncm-app .ncm-viewer__nav-search {
+  display: flex; align-items: center; gap: 4px;
+  margin-left: auto; margin-right: 14px;
+  padding: 1px 8px; height: 22px;
   background: var(--ncm-bg-surface); border: 1px solid var(--ncm-border);
-  border-radius: 4px; padding: 5px 12px; transition: border-color 0.2s;
+  border-radius: 3px; overflow: hidden; flex-shrink: 0;
 }
-.ncm-app .ncm-viewer__search-row:focus-within { border-color: var(--ncm-secondary); }
-.ncm-app .ncm-viewer__search-row i { color: var(--ncm-text-muted); font-size: 11px; }
+.ncm-app .ncm-viewer__nav-search:focus-within { border-color: var(--ncm-secondary); }
+.ncm-app .ncm-viewer__nav-search i { color: var(--ncm-text-muted); font-size: 8px; flex-shrink: 0; }
 .ncm-app .ncm-viewer__search-input {
-  flex: 1; background: none !important; border: none !important; outline: none !important;
+  flex: 1; min-width: 0; width: 80px; max-width: 120px;
+  background: none !important; border: none !important; outline: none !important;
   color: var(--ncm-text-primary) !important; font-family: var(--ncm-font-display) !important;
-  font-weight: 600 !important; font-size: 13px !important;
+  font-weight: 600 !important; font-size: 10px !important;
   padding: 0 !important; margin: 0 !important; height: auto !important;
   min-height: 0 !important; box-shadow: none !important;
 }
-.ncm-app .ncm-viewer__search-input::placeholder { color: var(--ncm-text-muted); }
-.ncm-app .ncm-viewer__search-count { font-family: var(--ncm-font-mono); font-size: 9px; color: var(--ncm-text-muted); flex-shrink: 0; }
-.ncm-app .ncm-viewer__search-close {
-  background: none !important; border: none !important; color: var(--ncm-text-dim); font-size: 10px;
-  cursor: pointer; padding: 2px !important; transition: color 0.15s;
-  width: auto !important; min-width: 0 !important; min-height: 0 !important; box-shadow: none !important;
+.ncm-app .ncm-viewer__search-input::placeholder { color: var(--ncm-text-dim); }
+.ncm-app .ncm-viewer__search-count { font-family: var(--ncm-font-mono); font-size: 8px; color: var(--ncm-text-muted); flex-shrink: 0; }
+
+/* ═══════════════════════════════════════════════════════════
+   §5b CATEGORY PILLS (standalone row)
+   ═══════════════════════════════════════════════════════════ */
+.ncm-app .ncm-viewer__category-pills {
+  display: flex; align-items: center; gap: 3px;
+  padding: 4px 14px; flex-shrink: 0;
+  background: var(--ncm-bg-deep);
+  border-bottom: 1px solid var(--ncm-border);
 }
-.ncm-app .ncm-viewer__search-close:hover { color: var(--ncm-primary); }
-.ncm-app .ncm-viewer__category-pills { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
 
 
 /* ═══════════════════════════════════════════════════════════

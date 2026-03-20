@@ -713,7 +713,7 @@ export class MessageViewerApp extends BaseApplication {
 
     // ── Real-time clock — tick TIME display every second ──
     if (this._clockInterval) clearInterval(this._clockInterval);
-    const timeEl = html.querySelector('.ncm-viewer__hud-value--time');
+    const timeEl = html.querySelector('.ncm-viewer__hud-inline-val--time');
     if (timeEl) {
       this._clockInterval = setInterval(() => {
         try {
