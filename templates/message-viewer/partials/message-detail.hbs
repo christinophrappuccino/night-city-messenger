@@ -152,10 +152,10 @@
   {{else}}
     {{!-- ═══ Normal Message Content ═══ --}}
 
-    {{!-- Detail Header — Grid Readout --}}
+    {{!-- Detail Header — Collapsible Grid Readout --}}
     <div class="ncm-viewer__detail-head">
+      {{!-- Always-visible: Avatar + Sender + To summary + expand toggle --}}
       <div class="ncm-viewer__detail-head-top">
-        {{!-- Sender avatar --}}
         <div class="ncm-viewer__detail-avatar"
              style="color: {{message.avatarColor}}; border-color: {{message.avatarColor}}">
           {{#if message.fromPortrait}}
@@ -166,36 +166,45 @@
         </div>
 
         <div class="ncm-viewer__detail-info">
-          {{!-- Sender name + Add Contact --}}
           <div class="ncm-viewer__detail-sender">
             <span class="ncm-viewer__detail-sender-name">{{message.fromDisplay}}</span>
             {{#unless message.senderIsContact}}
               <button class="ncm-viewer__detail-add-contact" data-action="add-sender-contact"
                       data-email="{{message.from}}" data-name="{{message.fromDisplay}}">
-                <i class="fas fa-user-plus"></i> Add Contact
+                <i class="fas fa-user-plus"></i> Add
               </button>
             {{/unless}}
           </div>
-
-          {{!-- Grid readout: label | value pairs --}}
-          <div class="ncm-viewer__detail-grid">
-            <span class="ncm-viewer__detail-grid-label">From</span>
-            <span class="ncm-viewer__detail-grid-val ncm-viewer__detail-grid-val--from">{{message.from}}</span>
-            <span class="ncm-viewer__detail-grid-label">To</span>
-            <span class="ncm-viewer__detail-grid-val ncm-viewer__detail-grid-val--to">{{message.toDisplay}}</span>
-            <span class="ncm-viewer__detail-grid-label">Time</span>
-            <span class="ncm-viewer__detail-grid-val ncm-viewer__detail-grid-val--time">{{message.formattedTime}}</span>
-            <span class="ncm-viewer__detail-grid-label">Net</span>
-            <span class="ncm-viewer__detail-grid-val"
-                  {{#if message.networkBadgeTheme.color}}style="color: {{message.networkBadgeTheme.color}}"{{/if}}>
-              <i class="fas {{#if message.networkBadgeTheme.icon}}{{message.networkBadgeTheme.icon}}{{else}}fa-wifi{{/if}}"
-                 style="font-size: 9px; margin-right: 3px; opacity: 0.6;"></i>{{message.networkLabel}}
-            </span>
+          {{!-- Collapsed summary: "to jackie@nightcity.net" --}}
+          <div class="ncm-viewer__detail-to-summary">
+            <span class="ncm-viewer__detail-to-label">to</span>
+            <span class="ncm-viewer__detail-to-val">{{message.toDisplay}}</span>
           </div>
         </div>
+
+        {{!-- Expand/collapse toggle --}}
+        <button class="ncm-viewer__detail-expand" data-action="toggle-detail-grid">
+          <i class="fas fa-chevron-down"></i>
+        </button>
       </div>
 
-      {{!-- Subject Strip — accent border adapts to priority or network color --}}
+      {{!-- Expandable grid (hidden by default, toggled by arrow) --}}
+      <div class="ncm-viewer__detail-grid ncm-viewer__detail-grid--collapsed">
+        <span class="ncm-viewer__detail-grid-label">From</span>
+        <span class="ncm-viewer__detail-grid-val ncm-viewer__detail-grid-val--from">{{message.from}}</span>
+        <span class="ncm-viewer__detail-grid-label">To</span>
+        <span class="ncm-viewer__detail-grid-val ncm-viewer__detail-grid-val--to">{{message.to}}</span>
+        <span class="ncm-viewer__detail-grid-label">Time</span>
+        <span class="ncm-viewer__detail-grid-val ncm-viewer__detail-grid-val--time">{{message.formattedTime}}</span>
+        <span class="ncm-viewer__detail-grid-label">Net</span>
+        <span class="ncm-viewer__detail-grid-val"
+              {{#if message.networkBadgeTheme.color}}style="color: {{message.networkBadgeTheme.color}}"{{/if}}>
+          <i class="fas {{#if message.networkBadgeTheme.icon}}{{message.networkBadgeTheme.icon}}{{else}}fa-wifi{{/if}}"
+             style="font-size: 9px; margin-right: 3px; opacity: 0.6;"></i>{{message.networkLabel}}
+        </span>
+      </div>
+
+      {{!-- Subject Strip --}}
       <div class="ncm-viewer__subject-strip
         {{~#if (eq message.priority 'critical')}} ncm-viewer__subject-strip--critical
         {{~else if (eq message.priority 'urgent')}} ncm-viewer__subject-strip--urgent

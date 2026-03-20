@@ -1027,10 +1027,23 @@ export class MessageViewerApp extends BaseApplication {
       // ── v3.2: Header Actions ──
       case 'open-contacts': {
         const contactActorId = this.actorId || game.user?.character?.id;
-        if (contactActorId) {
-          game.nightcity?.openContacts?.(contactActorId);
-        } else {
+        if (!contactActorId) {
           ui.notifications.warn('NCM | No character assigned. Cannot open contacts.');
+          break;
+        }
+        // Try the registered launcher first
+        if (typeof game.nightcity?.openContacts === 'function') {
+          game.nightcity.openContacts(contactActorId);
+        } else {
+          // Direct fallback — import and open ContactManagerApp
+          try {
+            const { ContactManagerApp } = await import('../ContactManager/ContactManagerApp.js');
+            const app = new ContactManagerApp({ actorId: contactActorId });
+            app.render(true);
+          } catch (err) {
+            console.error('NCM | Failed to open contacts:', err);
+            ui.notifications.error('NCM | Could not open contacts.');
+          }
         }
         break;
       }
@@ -1159,6 +1172,17 @@ export class MessageViewerApp extends BaseApplication {
           game.nightcity?.masterContactService?.createContact?.({ name: name || email.split('@')[0], email });
           ui.notifications.info(`NCM | Added ${name || email} to contacts.`);
           this.render();
+        }
+        break;
+      }
+
+      // ── v3.2: Collapsible detail grid ──
+      case 'toggle-detail-grid': {
+        const grid = this.element?.querySelector('.ncm-viewer__detail-grid');
+        const btn = this.element?.querySelector('.ncm-viewer__detail-expand');
+        if (grid) {
+          grid.classList.toggle('ncm-viewer__detail-grid--collapsed');
+          if (btn) btn.classList.toggle('ncm-viewer__detail-expand--open');
         }
         break;
       }
