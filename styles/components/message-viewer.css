@@ -57,11 +57,7 @@
   --ncm-signal-critical: #EF4444;
   --ncm-signal-dead: #EF4444;
 }
-/* Top accent gradient */
-.ncm-app .ncm-viewer::before {
-  content: ''; height: 2px; flex-shrink: 0; opacity: 0.6;
-  background: linear-gradient(90deg, var(--ncm-primary) 0%, transparent 30%, transparent 70%, var(--ncm-secondary) 100%);
-}
+/* Top accent removed — window chrome §1 handles this */
 
 
 /* ═══════════════════════════════════════════════════════════
