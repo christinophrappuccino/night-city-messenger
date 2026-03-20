@@ -844,6 +844,19 @@ export class MessageViewerApp extends BaseApplication {
       const el = html.querySelector(`[data-message-id="${scrollTargetId}"]`);
       el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     }
+
+    // ── Search: restore focus + cursor after render ──
+    if (this._restoreSearchFocus) {
+      const { value, cursorPos } = this._restoreSearchFocus;
+      this._restoreSearchFocus = null;
+      const input = html.querySelector('.ncm-viewer__search-input');
+      if (input) {
+        input.value = value;
+        input.focus();
+        const pos = Math.min(cursorPos, value.length);
+        input.setSelectionRange(pos, pos);
+      }
+    }
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -1320,12 +1333,14 @@ export class MessageViewerApp extends BaseApplication {
 
   _onSearchInput(event) {
     const value = event.target.value;
+    const cursorPos = event.target.selectionStart;
 
     if (this._searchDebounce) clearTimeout(this._searchDebounce);
 
     this._searchDebounce = setTimeout(() => {
       this.searchTerm = value.trim();
       this.currentPage = 1;
+      this._restoreSearchFocus = { value, cursorPos: cursorPos ?? value.length };
       this.render();
     }, DEBOUNCE_SEARCH_MS);
   }
