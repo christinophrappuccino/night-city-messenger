@@ -7,8 +7,9 @@
  */
 
 import { MODULE_ID, DEFAULTS, SKILL_MAP, SHARD_PRESETS, NETWORK_ACCESS_MODES, NETWORK_TYPES, CONNECTION_MODES, FAILURE_MODES, ENCRYPTION_TYPES } from '../../utils/constants.js';
-import { log, isGM } from '../../utils/helpers.js';
+import { log, isGM, formatCyberDate } from '../../utils/helpers.js';
 import { BaseApplication } from '../BaseApplication.js';
+import { CyberTimePicker } from '../components/CyberTimePicker.js';
 
 const BOOT_ICON_OPTIONS = [
   { value: 'fas fa-shield-halved', label: 'Shield' },
@@ -92,9 +93,7 @@ export class ItemInboxConfig extends BaseApplication {
       clearKeyItem: ItemInboxConfig._onClearKeyItem,
       previewBoot: ItemInboxConfig._onPreviewBoot,
       toggleNetworkType: ItemInboxConfig._onToggleNetworkType,
-      setTimestampNow: ItemInboxConfig._onSetTimestampNow,
-      setTimestampGame: ItemInboxConfig._onSetTimestampGame,
-      clearTimestamp: ItemInboxConfig._onClearTimestamp,
+      openTimePicker: ItemInboxConfig._onOpenTimePicker,
     },
   }, { inplace: false });
 
@@ -323,10 +322,10 @@ export class ItemInboxConfig extends BaseApplication {
     if (config.requiresLogin) securityLayerCount++;
     if (config.encrypted) securityLayerCount++;
 
-    // ─── Timestamp conversion for datetime-local ───
-    let metaTimestampLocal = '';
+    // ─── Timestamp formatted for trigger display ───
+    let metaTimestampFormatted = '';
     if (meta.timestamp) {
-      try { metaTimestampLocal = new Date(meta.timestamp).toISOString().slice(0, 16); } catch (e) {}
+      try { metaTimestampFormatted = formatCyberDate(meta.timestamp); } catch (e) {}
     }
 
     // ─── ICE damage dice display ───
@@ -352,7 +351,7 @@ export class ItemInboxConfig extends BaseApplication {
       metaNetwork: meta.network || '',
       metaLocation: meta.location || '',
       metaTimestamp: meta.timestamp || '',
-      metaTimestampLocal,
+      metaTimestampFormatted,
       metaClassification: meta.classification || '',
       typeLineModePresetStatus: (meta.typeLineMode ?? 'preset-status') === 'preset-status',
       typeLineModeStatusOnly: meta.typeLineMode === 'status-only',
@@ -506,12 +505,8 @@ export class ItemInboxConfig extends BaseApplication {
     const allowedNetworks = this._collectNetworks();
     const allowedTypes = this._collectCheckedValues('allowedType');
 
-    // Timestamp conversion
-    let metaTimestamp = val('metaTimestamp');
-    if (metaTimestamp && !metaTimestamp.includes('T')) {
-      // datetime-local gives "YYYY-MM-DDTHH:MM", convert to ISO
-      try { metaTimestamp = new Date(metaTimestamp).toISOString(); } catch (e) {}
-    }
+    // Timestamp — stored as ISO from CyberTimePicker hidden input
+    const metaTimestamp = val('metaTimestamp');
 
     const config = {
       preset: val('preset', 'blank'),
@@ -1215,46 +1210,32 @@ export class ItemInboxConfig extends BaseApplication {
   }
 
   // ═══════════════════════════════════════════════════════════
-  //  TIMESTAMP QUICK ACTIONS
+  //  TIMESTAMP PICKER
   // ═══════════════════════════════════════════════════════════
 
-  /** Set timestamp to real-world "now" */
-  static _onSetTimestampNow(event, target) {
+  /** Open CyberTimePicker for the metadata timestamp field */
+  static _onOpenTimePicker(event, target) {
     const inputName = target.dataset.target || 'metaTimestamp';
-    const input = this.element?.querySelector(`[name="${inputName}"]`);
-    if (input) input.value = new Date().toISOString().slice(0, 16);
-  }
+    const hiddenInput = this.element?.querySelector(`input[name="${inputName}"]`);
+    const triggerValue = target.querySelector('.ncm-ctp-trigger__value');
 
-  /** Set timestamp to in-game time (via TimeService or world time) */
-  static _onSetTimestampGame(event, target) {
-    const inputName = target.dataset.target || 'metaTimestamp';
-    const input = this.element?.querySelector(`[name="${inputName}"]`);
-    if (!input) return;
-
-    const ts = game.nightcity?.timeService;
-    if (ts) {
-      try {
-        const gameDate = ts.getCurrentTime?.();
-        if (gameDate instanceof Date && !isNaN(gameDate.getTime())) {
-          input.value = gameDate.toISOString().slice(0, 16);
-          return;
+    CyberTimePicker.open({
+      value: hiddenInput?.value || '',
+      onSet: (iso, formatted) => {
+        if (hiddenInput) hiddenInput.value = iso;
+        if (triggerValue) {
+          triggerValue.textContent = formatted;
+          triggerValue.classList.remove('ncm-ctp-trigger__value--empty');
         }
-      } catch { /* fall through */ }
-    }
-    // Fallback: Foundry world time
-    if (game.time?.worldTime) {
-      const d = new Date(game.time.worldTime * 1000);
-      if (!isNaN(d.getTime())) { input.value = d.toISOString().slice(0, 16); return; }
-    }
-    ui.notifications.warn('NCM | No game time available — using real time.');
-    input.value = new Date().toISOString().slice(0, 16);
-  }
-
-  /** Clear the timestamp field */
-  static _onClearTimestamp(event, target) {
-    const inputName = target.dataset.target || 'metaTimestamp';
-    const input = this.element?.querySelector(`[name="${inputName}"]`);
-    if (input) input.value = '';
+      },
+      onClear: () => {
+        if (hiddenInput) hiddenInput.value = '';
+        if (triggerValue) {
+          triggerValue.textContent = 'No timestamp set';
+          triggerValue.classList.add('ncm-ctp-trigger__value--empty');
+        }
+      },
+    });
   }
 
   // ═══════════════════════════════════════════════════════════

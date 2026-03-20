@@ -9,8 +9,9 @@
  */
 
 import { MODULE_ID, DEFAULTS, CONTENT_TYPES } from '../../utils/constants.js';
-import { log, isGM } from '../../utils/helpers.js';
+import { log, isGM, formatCyberDate } from '../../utils/helpers.js';
 import { BaseApplication } from '../BaseApplication.js';
+import { CyberTimePicker } from '../components/CyberTimePicker.js';
 
 /** Content type pill definitions */
 const TYPE_PILLS = [
@@ -91,9 +92,7 @@ export class DataShardComposer extends BaseApplication {
       browseImage: DataShardComposer._onBrowseImage,
       addEntryNetworkTag: DataShardComposer._onAddEntryNetworkTag,
       removeEntryNetworkTag: DataShardComposer._onRemoveEntryNetworkTag,
-      setTimestampNow: DataShardComposer._onSetTimestampNow,
-      setTimestampGame: DataShardComposer._onSetTimestampGame,
-      clearTimestamp: DataShardComposer._onClearTimestamp,
+      openTimePicker: DataShardComposer._onOpenTimePicker,
     },
   }, { inplace: false });
 
@@ -114,24 +113,6 @@ export class DataShardComposer extends BaseApplication {
   get title() {
     const verb = this.editData ? 'Edit Entry' : 'Add Entry';
     return `${verb}: ${this.shardItem?.name ?? 'Unknown'}`;
-  }
-
-  // ═══════════════════════════════════════════════════════════
-  //  TIMESTAMP HELPERS
-  // ═══════════════════════════════════════════════════════════
-
-  /**
-   * Convert an ISO-8601 string (or Date) to the value format expected by
-   * `<input type="datetime-local">` — i.e. `YYYY-MM-DDTHH:MM`.
-   * Returns '' if the input is falsy or unparseable.
-   */
-  static _toDatetimeLocal(iso) {
-    if (!iso) return '';
-    try {
-      const d = new Date(iso);
-      if (isNaN(d.getTime())) return '';
-      return d.toISOString().slice(0, 16);
-    } catch { return ''; }
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -177,7 +158,7 @@ export class DataShardComposer extends BaseApplication {
       editSubject: this.editData?.subject || '',
       editBody: this.editData?.body || '',
       editTimestamp: this.editData?.timestamp || '',
-      editTimestampLocal: DataShardComposer._toDatetimeLocal(this.editData?.timestamp),
+      editTimestampFormatted: this.editData?.timestamp ? formatCyberDate(this.editData.timestamp) : '',
       editContentData: this.editData?.contentData ?? {},
       editEncrypted: this.editData?.encrypted ?? false,
       editNetworkRestricted: this.editData?.networkVisibility?.restricted ?? false,
@@ -222,8 +203,31 @@ export class DataShardComposer extends BaseApplication {
       // Dossier helpers
       actorOptions,
 
-      // Shared
-      defaultTimestampLocal: new Date().toISOString().slice(0, 16),
+      // Shared — default timestamp is game time
+      defaultTimestamp: (() => {
+        const ts = game.nightcity?.timeService;
+        try {
+          const gt = ts?.getCurrentTime?.();
+          if (gt instanceof Date && !isNaN(gt.getTime())) return gt.toISOString();
+        } catch { /* fall through */ }
+        if (game.time?.worldTime) {
+          const d = new Date(game.time.worldTime * 1000);
+          if (!isNaN(d.getTime())) return d.toISOString();
+        }
+        return new Date().toISOString();
+      })(),
+      defaultTimestampFormatted: (() => {
+        const ts = game.nightcity?.timeService;
+        try {
+          const gt = ts?.getCurrentTime?.();
+          if (gt instanceof Date && !isNaN(gt.getTime())) return formatCyberDate(gt.toISOString());
+        } catch { /* fall through */ }
+        if (game.time?.worldTime) {
+          const d = new Date(game.time.worldTime * 1000);
+          if (!isNaN(d.getTime())) return formatCyberDate(d.toISOString());
+        }
+        return formatCyberDate(new Date().toISOString());
+      })(),
 
       // Networks (for visibility restriction)
       networkOptions: (this.networkService?.getAllNetworks() ?? []).map(n => ({ value: n.id, label: n.name })),
@@ -552,46 +556,32 @@ export class DataShardComposer extends BaseApplication {
   }
 
   // ═══════════════════════════════════════════════════════════
-  //  TIMESTAMP QUICK ACTIONS
+  //  TIMESTAMP PICKER
   // ═══════════════════════════════════════════════════════════
 
-  /** Set timestamp to real-world "now" */
-  static _onSetTimestampNow(event, target) {
+  /** Open CyberTimePicker for a timestamp field */
+  static _onOpenTimePicker(event, target) {
     const inputName = target.dataset.target || 'timestamp';
-    const input = this.element?.querySelector(`[name="${inputName}"]`);
-    if (input) input.value = new Date().toISOString().slice(0, 16);
-  }
+    const hiddenInput = this.element?.querySelector(`input[name="${inputName}"]`);
+    const triggerValue = target.querySelector('.ncm-ctp-trigger__value');
 
-  /** Set timestamp to in-game time (via TimeService or world time) */
-  static _onSetTimestampGame(event, target) {
-    const inputName = target.dataset.target || 'timestamp';
-    const input = this.element?.querySelector(`[name="${inputName}"]`);
-    if (!input) return;
-
-    const ts = game.nightcity?.timeService;
-    if (ts) {
-      try {
-        const gameDate = ts.getCurrentTime?.();
-        if (gameDate instanceof Date && !isNaN(gameDate.getTime())) {
-          input.value = gameDate.toISOString().slice(0, 16);
-          return;
+    CyberTimePicker.open({
+      value: hiddenInput?.value || '',
+      onSet: (iso, formatted) => {
+        if (hiddenInput) hiddenInput.value = iso;
+        if (triggerValue) {
+          triggerValue.textContent = formatted;
+          triggerValue.classList.remove('ncm-ctp-trigger__value--empty');
         }
-      } catch { /* fall through */ }
-    }
-    // Fallback: Foundry world time
-    if (game.time?.worldTime) {
-      const d = new Date(game.time.worldTime * 1000);
-      if (!isNaN(d.getTime())) { input.value = d.toISOString().slice(0, 16); return; }
-    }
-    ui.notifications.warn('NCM | No game time available — using real time.');
-    input.value = new Date().toISOString().slice(0, 16);
-  }
-
-  /** Clear the timestamp field */
-  static _onClearTimestamp(event, target) {
-    const inputName = target.dataset.target || 'timestamp';
-    const input = this.element?.querySelector(`[name="${inputName}"]`);
-    if (input) input.value = '';
+      },
+      onClear: () => {
+        if (hiddenInput) hiddenInput.value = '';
+        if (triggerValue) {
+          triggerValue.textContent = 'No timestamp set';
+          triggerValue.classList.add('ncm-ctp-trigger__value--empty');
+        }
+      },
+    });
   }
 
   // ═══════════════════════════════════════════════════════════

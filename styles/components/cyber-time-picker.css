@@ -1,0 +1,72 @@
+/* ═══════════════════════════════════════════════════════════
+ * CyberTimePicker — Trigger + Dialog Styles
+ * @file styles/components/cyber-time-picker.css
+ * @module cyberpunkred-messenger
+ *
+ * Trigger replaces raw datetime-local inputs in forms.
+ * Dialog content uses inline styles (DateRangePicker pattern).
+ * This file handles only the trigger element and dialog wrapper.
+ * ═══════════════════════════════════════════════════════════ */
+
+/* ─── Trigger Field ───
+   Clickable row that shows formatted time + opens picker */
+
+.ncm-ctp-trigger {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  background: #12121a;
+  border: 1px solid #2a2a45;
+  border-radius: 3px;
+  padding: 5px 8px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.ncm-ctp-trigger:hover {
+  border-color: #19f3f7;
+}
+
+.ncm-ctp-trigger__icon {
+  font-size: 11px;
+  color: #19f3f7;
+  flex-shrink: 0;
+}
+
+.ncm-ctp-trigger__value {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  color: #e0e0e8;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ncm-ctp-trigger__value--empty {
+  color: #555570;
+  font-style: italic;
+  font-family: 'Rajdhani', sans-serif;
+}
+
+.ncm-ctp-trigger__chevron {
+  font-size: 9px;
+  color: #555570;
+  flex-shrink: 0;
+}
+
+
+/* ─── Dialog Wrapper Override ───
+   Extra specificity so Foundry doesn't clobber the dialog chrome */
+
+.ncm-ctp-wrapper.ncm-time-config-dialog .dialog-content {
+  padding: 12px 14px !important;
+}
+
+/* Colon pulse animation (used by inline style, defined here for the keyframe) */
+@keyframes ncm-ctp-colon-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
