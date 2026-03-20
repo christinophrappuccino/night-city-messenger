@@ -257,9 +257,9 @@
 .ncm-app .ncm-viewer__refine-controls { display: flex; align-items: center; gap: 4px; }
 .ncm-app .ncm-viewer__refine-controls .ncm-viewer__density { margin-left: auto; }
 
+/* ── Dates / Sort — shared base ── */
 .ncm-app .ncm-viewer__date-filter,
-.ncm-app .ncm-viewer__sort-btn,
-.ncm-app .ncm-viewer__filter-trigger {
+.ncm-app .ncm-viewer__sort-btn {
   display: inline-flex; align-items: center; gap: 4px;
   padding: 3px 8px; border-radius: 3px;
   font-family: var(--ncm-font-display); font-size: 10px; font-weight: 600;
@@ -268,11 +268,84 @@
   transition: all 0.15s; position: relative;
 }
 .ncm-app .ncm-viewer__date-filter:hover,
-.ncm-app .ncm-viewer__sort-btn:hover,
-.ncm-app .ncm-viewer__filter-trigger:hover { color: var(--ncm-text-primary); border-color: var(--ncm-border-active); }
+.ncm-app .ncm-viewer__sort-btn:hover { color: var(--ncm-text-primary); border-color: var(--ncm-border-active); }
 .ncm-app .ncm-viewer__date-filter i,
-.ncm-app .ncm-viewer__sort-btn i,
+.ncm-app .ncm-viewer__sort-btn i { font-size: 8px; }
+
+/* Dates — active state (gold tint when date range set) */
+.ncm-app .ncm-viewer__date-filter--active {
+  color: var(--ncm-accent); border-color: rgba(240,197,91,0.3);
+  background: rgba(240,197,91,0.06);
+}
+.ncm-app .ncm-viewer__date-range {
+  font-family: var(--ncm-font-mono); font-size: 9px; color: var(--ncm-accent);
+}
+.ncm-app .ncm-viewer__date-clear {
+  font-size: 9px; color: var(--ncm-text-dim); margin-left: 2px;
+  cursor: pointer; transition: color 0.15s;
+}
+.ncm-app .ncm-viewer__date-filter--active:hover .ncm-viewer__date-clear { color: var(--ncm-primary); }
+
+/* ── Filter trigger — dashed border, solid+cyan when active ── */
+.ncm-app .ncm-viewer__filter-trigger {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 8px; border-radius: 3px;
+  font-family: var(--ncm-font-display); font-size: 10px; font-weight: 600;
+  color: var(--ncm-text-muted); background: transparent;
+  border: 1px dashed var(--ncm-border); cursor: pointer;
+  transition: all 0.15s; text-transform: uppercase; letter-spacing: 0.06em;
+  position: relative;
+}
+.ncm-app .ncm-viewer__filter-trigger:hover { color: var(--ncm-text-primary); border-color: var(--ncm-border-active); }
 .ncm-app .ncm-viewer__filter-trigger i { font-size: 8px; }
+.ncm-app .ncm-viewer__filter-trigger--has-active {
+  color: var(--ncm-secondary); border-color: rgba(0,212,230,0.3);
+  border-style: solid; background: rgba(0,212,230,0.04);
+}
+.ncm-app .ncm-viewer__filter-count {
+  font-family: var(--ncm-font-mono); font-size: 8px;
+  padding: 0 4px; border-radius: 2px;
+  background: rgba(0,212,230,0.15); color: var(--ncm-secondary);
+  line-height: 1.4;
+}
+
+/* ── Active filter tag pills row ── */
+.ncm-app .ncm-viewer__active-filters {
+  display: flex; flex-wrap: wrap; gap: 3px; align-items: center;
+}
+.ncm-app .ncm-viewer__tag-pill {
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 2px 6px; border-radius: 3px;
+  font-family: var(--ncm-font-display); font-size: 9px; font-weight: 600;
+  cursor: default; transition: all 0.15s;
+  text-transform: uppercase; letter-spacing: 0.04em;
+  border: 1px solid;
+}
+.ncm-app .ncm-viewer__tag-pill i { font-size: 7px; }
+.ncm-app .ncm-viewer__tag-close {
+  font-size: 8px; cursor: pointer; opacity: 0.5;
+  margin-left: 2px; transition: opacity 0.15s;
+}
+.ncm-app .ncm-viewer__tag-close:hover { opacity: 1; }
+
+/* Tag pill color variants */
+.ncm-app .ncm-viewer__tag-pill--net {
+  color: var(--ncm-secondary); border-color: rgba(0,212,230,0.3);
+  background: rgba(0,212,230,0.06);
+}
+.ncm-app .ncm-viewer__tag-pill--priority {
+  color: var(--ncm-danger); border-color: rgba(239,68,68,0.3);
+  background: rgba(239,68,68,0.06);
+}
+.ncm-app .ncm-viewer__tag-pill--status {
+  color: var(--ncm-success); border-color: rgba(52,211,153,0.3);
+  background: rgba(52,211,153,0.06);
+}
+.ncm-app .ncm-viewer__tag-pill--custom {
+  color: var(--ncm-accent); border-color: rgba(240,197,91,0.3);
+  background: rgba(240,197,91,0.06);
+  border-style: dashed;
+}
 
 .ncm-app .ncm-viewer__density { display: flex; gap: 2px; }
 .ncm-app .ncm-viewer__density-btn {

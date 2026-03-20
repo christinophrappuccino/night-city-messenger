@@ -308,8 +308,15 @@
         {{!-- Refinement Bar --}}
         <div class="ncm-viewer__refine-bar">
           <div class="ncm-viewer__refine-controls">
-            <span class="ncm-viewer__date-filter" data-action="open-date-picker">
-              <i class="fas fa-calendar-days"></i> Dates <i class="fas fa-caret-down"></i>
+            <span class="ncm-viewer__date-filter {{#if hasDateRange}}ncm-viewer__date-filter--active{{/if}}"
+                  data-action="open-date-picker">
+              <i class="fas fa-calendar-days"></i> Dates
+              {{#if hasDateRange}}
+                <span class="ncm-viewer__date-range">{{dateRangeLabel}}</span>
+                <span class="ncm-viewer__date-clear" data-action="clear-date-range">&times;</span>
+              {{else}}
+                <i class="fas fa-caret-down"></i>
+              {{/if}}
             </span>
             <span class="ncm-viewer__sort-btn" data-action="toggle-sort-dropdown">
               <i class="fas fa-arrow-down-short-wide"></i> {{sortLabel}} <i class="fas fa-caret-down"></i>
@@ -320,8 +327,13 @@
                 {{/each}}
               </div>
             </span>
-            <span class="ncm-viewer__filter-trigger" data-action="toggle-filter-dropdown">
-              <i class="fas fa-filter"></i> Filters <i class="fas fa-caret-down"></i>
+            <span class="ncm-viewer__filter-trigger {{#if hasActiveFilters}}ncm-viewer__filter-trigger--has-active{{/if}}"
+                  data-action="toggle-filter-dropdown">
+              <i class="fas fa-filter"></i> Filters
+              {{#if activeFilterCount}}
+                <span class="ncm-viewer__filter-count">{{activeFilterCount}}</span>
+              {{/if}}
+              <i class="fas fa-caret-down"></i>
             </span>
             <div class="ncm-viewer__density">
               <button class="ncm-viewer__density-btn {{#if (eq density 'compact')}}ncm-viewer__density-btn--active{{/if}}"
@@ -332,6 +344,17 @@
                       data-action="set-density" data-density="comfortable"><i class="fas fa-th-list"></i></button>
             </div>
           </div>
+          {{!-- Active filter tag pills (visible when filters applied) --}}
+          {{#if activeFilterTags.length}}
+            <div class="ncm-viewer__active-filters">
+              {{#each activeFilterTags}}
+                <span class="ncm-viewer__tag-pill ncm-viewer__tag-pill--{{this.type}}">
+                  <i class="fas {{this.icon}}"></i> {{this.label}}
+                  <span class="ncm-viewer__tag-close" data-action="remove-filter-tag" data-tag="{{this.tag}}">&times;</span>
+                </span>
+              {{/each}}
+            </div>
+          {{/if}}
         </div>
 
         {{!-- Message List --}}

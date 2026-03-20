@@ -634,6 +634,13 @@ export class MessageViewerApp extends BaseApplication {
       messageNetworks,
       counts,
 
+      // Active filter tags (for refinement bar tag pills)
+      hasDateRange: !!(this._dateRangeFrom || this._dateRangeTo),
+      dateRangeLabel: this._buildDateRangeLabel(),
+      activeFilterTags: this._buildActiveFilterTags(),
+      hasActiveFilters: !!(this._filterTags?.length),
+      activeFilterCount: this._filterTags?.length || 0,
+
       // Feature 6-7: Special tab data
       scheduledMessages,
       shardItems,
@@ -1183,6 +1190,13 @@ export class MessageViewerApp extends BaseApplication {
         break;
       }
 
+      case 'remove-filter-tag':
+        this._removeFilterTag(target.dataset.tag);
+        break;
+      case 'clear-date-range':
+        this._clearDateRange();
+        break;
+
       // ── v3.2: Add Contact from detail ──
       case 'add-sender-contact': {
         const email = target.dataset.email;
@@ -1423,6 +1437,69 @@ export class MessageViewerApp extends BaseApplication {
     this.networkFilter = network || null;
     this.currentPage = 1;
     this.render();
+  }
+
+  /**
+   * Build a short label for the active date range.
+   * @returns {string} e.g. "Mar 1 – Mar 15" or ""
+   */
+  _buildDateRangeLabel() {
+    if (!this._dateRangeFrom && !this._dateRangeTo) return '';
+    const fmt = (d) => {
+      if (!d) return '…';
+      const dt = new Date(d);
+      return `${dt.toLocaleString('en', { month: 'short' })} ${dt.getDate()}`;
+    };
+    return `${fmt(this._dateRangeFrom)} – ${fmt(this._dateRangeTo)}`;
+  }
+
+  /**
+   * Build enriched tag pill data from _filterTags for the refinement bar.
+   * Each tag becomes { tag, label, icon, type } for the template.
+   * @returns {Array<{tag: string, label: string, icon: string, type: string}>}
+   */
+  _buildActiveFilterTags() {
+    if (!this._filterTags?.length) return [];
+    return this._filterTags.map(tag => {
+      if (tag.startsWith('net:')) {
+        const netId = tag.substring(4);
+        const net = this.networkService?.getNetwork?.(netId);
+        return {
+          tag,
+          label: net?.name || netId,
+          icon: net?.theme?.icon || 'fa-wifi',
+          type: 'net',
+        };
+      } else if (tag === 'status:encrypted') {
+        return { tag, label: 'Encrypted', icon: 'fa-lock', type: 'status' };
+      } else if (tag === 'status:has-attachments') {
+        return { tag, label: 'Attachments', icon: 'fa-paperclip', type: 'status' };
+      } else if (tag === 'status:has-eddies') {
+        return { tag, label: 'Eddies', icon: 'fa-coins', type: 'custom' };
+      }
+      return { tag, label: tag, icon: 'fa-tag', type: 'custom' };
+    });
+  }
+
+  /**
+   * Remove a single filter tag and re-render.
+   * @param {string} tag — The filter tag to remove (e.g. "net:DARKNET")
+   */
+  _removeFilterTag(tag) {
+    if (!this._filterTags?.length) return;
+    this._filterTags = this._filterTags.filter(t => t !== tag);
+    this.currentPage = 1;
+    this.render(true);
+  }
+
+  /**
+   * Clear the date range filter.
+   */
+  _clearDateRange() {
+    this._dateRangeFrom = null;
+    this._dateRangeTo = null;
+    this.currentPage = 1;
+    this.render(true);
   }
 
   // ═══════════════════════════════════════════════════════════
