@@ -339,6 +339,29 @@
           text="This message contains a hostile daemon. Proceed with caution." }}
     {{/if}}
 
+    {{!-- ═══ Action Bar (inside detail panel) ═══ --}}
+    <div class="ncm-viewer__detail-actions">
+      {{#if (eq currentFilter 'trash')}}
+        <button class="ncm-btn ncm-btn--primary ncm-btn--sm" data-action="restore-message"><i class="fas fa-undo"></i> Restore</button>
+        <button class="ncm-btn ncm-btn--danger ncm-btn--sm" data-action="permanent-delete"><i class="fas fa-fire"></i> Delete</button>
+      {{else if (eq currentFilter 'spam')}}
+        <button class="ncm-btn ncm-btn--primary ncm-btn--sm" data-action="reply-message"><i class="fas fa-reply"></i> Reply</button>
+        <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="restore-message"><i class="fas fa-undo"></i> Not Spam</button>
+        <button class="ncm-btn ncm-btn--danger ncm-btn--sm" data-action="permanent-delete"><i class="fas fa-fire"></i> Delete</button>
+      {{else if message.isSent}}
+        <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="forward-message"><i class="fas fa-share"></i> Forward</button>
+        <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="share-to-chat"><i class="fas fa-share-from-square"></i> Chat</button>
+        <button class="ncm-btn ncm-btn--danger ncm-btn--sm" data-action="delete-message"><i class="fas fa-trash"></i> Delete</button>
+      {{else}}
+        <button class="ncm-btn ncm-btn--primary ncm-btn--sm" data-action="reply-message"><i class="fas fa-reply"></i> Reply</button>
+        <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="forward-message"><i class="fas fa-share"></i> Forward</button>
+        <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="save-message"><i class="fas fa-bookmark"></i> Save</button>
+        <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="share-to-chat"><i class="fas fa-share-from-square"></i> Chat</button>
+        <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="mark-spam"><i class="fas fa-ban"></i> Spam</button>
+        <button class="ncm-btn ncm-btn--danger ncm-btn--sm" data-action="delete-message"><i class="fas fa-trash"></i> Delete</button>
+      {{/if}}
+    </div>
+
     {{!-- Quick Reply Bar --}}
     {{#unless message.isSent}}
       {{#unless (eq currentFilter 'trash')}}

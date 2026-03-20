@@ -1198,7 +1198,7 @@ export class MessageViewerApp extends BaseApplication {
     this.currentPage = 1;
     this.selectedMessageId = null;
     this.bulkSelected.clear();
-    this.render();
+    this.render(true);
     this.soundService?.play?.('click');
   }
 
