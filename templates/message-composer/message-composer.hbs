@@ -1,477 +1,468 @@
 {{!--
-  Message Composer — Sprint 4.5 Redesign
+  Message Composer v3 — Messaging-App Redesign
   @file templates/message-composer/message-composer.hbs
   @module cyberpunkred-messenger
-  @description Full composer redesign: condensed header with identity/network/mode,
-    HUD strip, network effects strip, chip-based recipients with autocomplete,
-    encryption toggle, self-destruct timer, schedule bar, rich contenteditable
-    editor, attachments with eddies, GM send-as picker, validation error states,
-    dead-zone/darknet alerts, footer with auto-save indicator.
+  @description Conversation-first composer. Single compressed header,
+    full message card for reply/forward context, one-row toolbar with
+    overflow menu, compact options bar, send animation overlay.
 
-  States covered:
-    1. Compose New (CITINET) — baseline
-    2. GM Send-As — clickable identity, NPC picker
-    3. CORPNET Encrypted + Restricted + Self-Destruct
-    4. Autocomplete — network-aware filtering
-    5. Validation Errors — missing recipient
-    6. DARKNET — anonymous, degraded signal
-    7. Dead Zone — no signal, queue mode
-    8. Reply Mode — locked TO, quote block, inherited encryption
+  States:
+    1. New Message — minimal chrome, straight to writing
+    2. Reply — full original message card, cyan accent, locked TO
+    3. Forward — full message card, gold accent, editable TO
+    4. GM Send-As — clickable identity with caret, NPC picker
+    5. Dead Zone — alert strip, queue mode
+    6. Darknet — alert strip, anonymized routing
+    7. Sending — transmission overlay animation
+    8. Sent/Failed — result overlay
 --}}
 
 <div class="ncm-composer">
 
-  {{!-- ═══ §1 HEADER — identity + network badge + mode + close ═══ --}}
-  <div class="ncm-header">
+  {{!-- ═══ §1 HEADER — Identity + Net Pill + Time + Mode + Close ═══ --}}
+  <header class="ncm-composer__header">
 
-    {{!-- Identity cluster —— GM: clickable with ▾; Player: locked --}}
-    <div class="ncm-identity {{#if isGM}}ncm-identity--clickable{{/if}}"
+    {{!-- Identity cluster — GM: clickable with caret; Player: static --}}
+    <div class="ncm-composer__identity {{#if isGM}}ncm-composer__identity--clickable{{/if}}"
          {{#if isGM}}data-action="toggleSendAs"{{/if}}>
-      <div class="ncm-avatar {{#if isGM}}ncm-avatar--gm{{/if}}"
-           style="{{#if fromAvatarColor}}color: {{fromAvatarColor}};{{/if}}">
+      <div class="ncm-composer__avatar {{#if isGMSendAs}}ncm-composer__avatar--gm{{/if}}">
         {{#if fromImg}}
-          <img src="{{fromImg}}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">
+          <img src="{{fromImg}}" alt="{{fromName}}" />
         {{else}}
-          <i class="fas fa-user"></i>
+          <span class="ncm-composer__avatar-initials">{{fromInitials}}</span>
         {{/if}}
       </div>
-      <div class="ncm-identity-text">
-        <div class="ncm-identity-name">
+      <div class="ncm-composer__id-info">
+        <span class="ncm-composer__id-name">
           {{fromName}}
-          {{#if isGMSendAs}}<span class="ncm-gm-tag">GM</span>{{/if}}
-        </div>
-        <div class="ncm-identity-email">{{fromEmail}}</div>
+          {{#if isGMSendAs}}<span class="ncm-composer__gm-tag">GM</span>{{/if}}
+        </span>
+        <span class="ncm-composer__id-email">{{fromEmail}}</span>
       </div>
+      {{#if isGM}}<i class="fas fa-caret-down ncm-composer__id-caret"></i>{{/if}}
     </div>
 
-    <div class="ncm-header-divider"></div>
+    <div class="ncm-composer__header-divider"></div>
 
-    {{!-- Network badge --}}
-    <div class="ncm-network-badge"
-         {{#if networkThemeColor}}style="border-color: {{networkThemeColor}}30;"{{/if}}>
-      <div class="ncm-network-dot {{#if isDeadZone}}ncm-network-dot--dead{{/if}}"
-           {{#if networkThemeColor}}style="background: {{networkThemeColor}}; box-shadow: 0 0 5px {{networkThemeColor}}80;"{{/if}}>
-      </div>
-      <span class="ncm-network-name {{#if isDeadZone}}ncm-network-name--dead{{/if}}"
-            {{#if networkThemeColor}}style="color: {{networkThemeColor}};"{{/if}}>
+    {{!-- Network pill --}}
+    <div class="ncm-composer__net-pill ncm-composer__net-pill--{{netPillState}}">
+      <span class="ncm-composer__net-dot ncm-composer__net-dot--{{netPillState}}"
+            {{#if networkThemeColor}}style="background:{{networkThemeColor}};box-shadow:0 0 4px {{networkThemeColor}}80;"{{/if}}>
+      </span>
+      <span class="ncm-composer__net-name"
+            {{#if networkThemeColor}}style="color:{{networkThemeColor}};"{{/if}}>
         {{networkName}}
       </span>
-      <div class="ncm-network-signal">
-        {{#each signalBars}}
-        <div class="ncm-signal-bar {{#unless this}}ncm-signal-bar--off{{/unless}}"
-             {{#if ../networkThemeColor}}{{#if this}}style="background: {{../networkThemeColor}};"{{/if}}{{/if}}>
-        </div>
+      <span class="ncm-composer__net-bars">
+        {{#each netPillBars}}
+          <span class="ncm-composer__net-bar {{#if this.active}}ncm-composer__net-bar--active{{/if}}"
+                {{#if ../networkThemeColor}}{{#if this.active}}style="background:{{../networkThemeColor}};"{{/if}}{{/if}}>
+          </span>
         {{/each}}
-      </div>
-    </div>
-
-    <div class="ncm-header-divider"></div>
-
-    {{!-- Mode label --}}
-    <div class="ncm-mode-label {{modeLabelClass}}">
-      <i class="fas {{modeLabelIcon}} {{modeLabelIconColor}}"></i> {{modeLabelText}}
-    </div>
-
-    <div class="ncm-header-spacer"></div>
-
-    {{!-- Close button (handled by Foundry's window frame, but also provide one) --}}
-    <div class="ncm-close" data-action="cancel"><i class="fas fa-xmark"></i></div>
-  </div>
-
-  {{!-- ═══ §2 HUD STRIP ═══ --}}
-  <div class="ncm-hud"
-       {{#if isDeadZone}}style="border-bottom-color: rgba(255,0,51,0.15);"{{/if}}>
-    <div class="ncm-hud-item {{hudNetClass}}">
-      NET <span {{#if networkThemeColor}}style="color: {{networkThemeColor}};"{{/if}}>{{networkName}}</span>
-    </div>
-    <div class="ncm-hud-sep">//</div>
-    <div class="ncm-hud-item {{hudSigClass}}">SIG <span>{{signalPercent}}%</span></div>
-    <div class="ncm-hud-sep">//</div>
-
-    {{#if isGMSendAs}}
-    <div class="ncm-hud-item ncm-hud-item--gold">FROM <span>{{hudFromLabel}}</span></div>
-    {{else}}
-    <div class="ncm-hud-item {{hudToClass}}">TO <span>{{hudToLabel}}</span></div>
-    {{/if}}
-
-    <div class="ncm-hud-sep">//</div>
-    <div class="ncm-hud-item {{hudPriClass}}">PRI <span>{{hudPriLabel}}</span></div>
-    <div class="ncm-hud-sep">//</div>
-    <div class="ncm-hud-item {{hudEncClass}}">ENC <span>{{hudEncLabel}}</span></div>
-    <div class="ncm-hud-sep">//</div>
-    <div class="ncm-hud-item">TIME <span>{{currentGameTime}}</span></div>
-
-    <div class="ncm-hud-right">
-      <span style="font-size: 8px; color: {{hudStatusColor}};">
-        {{#if hudStatusIcon}}<i class="fas {{hudStatusIcon}}" style="margin-right:2px;"></i>{{/if}}
-        {{hudStatusText}}
       </span>
+      {{!-- Inline FX tags --}}
+      {{#each fxTags}}
+        <span class="ncm-composer__fx-tag ncm-composer__fx-tag--{{variant}}">{{label}}</span>
+      {{/each}}
     </div>
-  </div>
 
-  {{!-- ═══ §3 NETWORK EFFECTS STRIP ═══ --}}
-  <div class="ncm-effects-strip"
-       {{#if isDeadZone}}style="border-bottom-color: rgba(255,0,51,0.1);"{{/if}}>
-    <span class="ncm-effects-strip__label">FX:</span>
-    {{#each effectTags}}
-    <span class="ncm-effect-tag ncm-effect-tag--{{variant}}">
-      <i class="fas {{icon}}"></i> {{label}}
+    {{!-- Date/Time chip --}}
+    <div class="ncm-composer__time-chip">
+      <span class="ncm-composer__time-label">Date / Time</span>
+      <span class="ncm-composer__time-val">{{currentGameTime}}</span>
+    </div>
+
+    {{!-- Mode badge --}}
+    <span class="ncm-composer__mode ncm-composer__mode--{{modeKey}}">
+      <i class="fas {{modeLabelIcon}}"></i> {{modeLabelText}}
     </span>
-    {{/each}}
-  </div>
 
-  {{!-- ═══ §4 GM SEND-AS DROPDOWN (GM only, toggled by JS) ═══ --}}
+    {{!-- Close --}}
+    <div class="ncm-composer__close" data-action="cancel"><i class="fas fa-xmark"></i></div>
+  </header>
+
+  {{!-- ═══ §2 GM SEND-AS DROPDOWN (GM only, toggled by JS) ═══ --}}
   {{#if isGM}}
-  <div class="ncm-sendas-dropdown ncm-hidden" data-id="sendas-dropdown">
-    <div class="ncm-sendas-dropdown__header">
+  <div class="ncm-composer__sendas-dropdown ncm-hidden" data-id="sendas-dropdown">
+    <div class="ncm-composer__sendas-header">
       <i class="fas fa-masks-theater"></i> Send As NPC
     </div>
-    <div class="ncm-sendas-dropdown__search">
+    <div class="ncm-composer__sendas-search">
       <input type="text" placeholder="Search contacts..." data-id="sendas-search" />
     </div>
-    <div class="ncm-sendas-dropdown__list" data-id="sendas-list">
+    <div class="ncm-composer__sendas-list" data-id="sendas-list">
       {{!-- Populated dynamically by JS --}}
     </div>
   </div>
   {{/if}}
 
-  {{!-- ═══ §5 FORM BODY ═══ --}}
-  <div class="ncm-composer-body">
+  {{!-- ═══ §3 ALERTS — Dead Zone / Darknet ═══ --}}
+  {{#if isDeadZone}}
+  <div class="ncm-composer__alert ncm-composer__alert--danger">
+    <i class="fas fa-triangle-exclamation"></i>
+    <span class="ncm-composer__alert-text">Dead Zone — No signal. Message will be queued and sent when signal is restored.</span>
+    <button class="ncm-composer__alert-action" data-action="queueMessage">Queue</button>
+  </div>
+  {{/if}}
 
-    {{!-- Alerts (dead zone, darknet warning) --}}
-    {{#if isDeadZone}}
-    <div class="ncm-alert ncm-alert--danger">
-      <i class="fas fa-triangle-exclamation ncm-alert__icon"></i>
-      <div class="ncm-alert__body">
-        <div class="ncm-alert__title">Dead Zone — No Signal</div>
-        <div class="ncm-alert__text">Cannot transmit from this location. Message will be queued and sent automatically when signal is restored.</div>
+  {{#if isDarknet}}
+  <div class="ncm-composer__alert ncm-composer__alert--warn">
+    <i class="fas fa-mask"></i>
+    <span class="ncm-composer__alert-text">Darknet — Anonymized routing. Sender identity masked.
+      {{#if degradedSignal}}{{reliabilityFailChance}}% chance of transmission failure.{{/if}}</span>
+  </div>
+  {{/if}}
+
+  {{!-- ═══ §4 CONVERSATION CONTEXT — Original message card (reply/forward) ═══ --}}
+  {{#if originalMessageCard}}
+  <div class="ncm-composer__context">
+    <div class="ncm-composer__msg-card ncm-composer__msg-card--{{mode}}">
+
+      {{!-- Context label --}}
+      <div class="ncm-composer__context-label ncm-composer__context-label--{{mode}}">
+        {{#if isReply}}<i class="fas fa-reply"></i> Replying to this message{{/if}}
+        {{#if isForward}}<i class="fas fa-share"></i> Forwarding this message{{/if}}
       </div>
-      <button class="ncm-alert__action" data-action="queueMessage">Queue</button>
-    </div>
-    {{/if}}
 
-    {{#if isDarknet}}
-    <div class="ncm-alert ncm-alert--warn">
-      <i class="fas fa-mask ncm-alert__icon"></i>
-      <div class="ncm-alert__body">
-        <div class="ncm-alert__title">Darknet — Anonymized Routing</div>
-        <div class="ncm-alert__text">Sender identity masked. Routed through anonymous nodes.
-          {{#if degradedSignal}}{{reliabilityFailChance}}% chance of transmission failure on degraded signal.{{/if}}</div>
-      </div>
-    </div>
-    {{/if}}
-
-    {{!-- TO field --}}
-    <div class="ncm-field {{#if errors.to}}ncm-field--error{{/if}}" style="position: relative;">
-      <div class="ncm-field__label {{#if errors.to}}ncm-field__label--error{{/if}}">TO:</div>
-      <div class="ncm-field__chips" data-id="recipient-chips">
-        {{#each recipients}}
-        <div class="ncm-recipient-chip {{#if mismatch}}ncm-recipient-chip--mismatch{{/if}} {{#if unreachable}}ncm-recipient-chip--unreachable{{/if}}"
-             data-actor-id="{{actorId}}">
-          <div class="ncm-recipient-chip__avatar" style="color: {{avatarColor}};">{{initials}}</div>
-          {{name}}
-          {{#if mismatch}}
-          <i class="fas fa-triangle-exclamation ncm-recipient-chip__warn" title="Cross-network routing"></i>
+      {{!-- Message header --}}
+      <div class="ncm-composer__msg-header">
+        <div class="ncm-composer__msg-avatar"
+             {{#if originalMessageCard.avatarColor}}style="color:{{originalMessageCard.avatarColor}};"{{/if}}>
+          {{#if originalMessageCard.portrait}}
+            <img src="{{originalMessageCard.portrait}}" alt="" />
+          {{else}}
+            {{originalMessageCard.initials}}
           {{/if}}
-          {{#unless locked}}
-          <i class="fas fa-xmark ncm-recipient-chip__remove" data-action="removeRecipient" data-actor-id="{{actorId}}"></i>
-          {{/unless}}
         </div>
-        {{#if mismatchTooltip}}
-        <span class="ncm-recipient-chip__warn-tooltip">{{mismatchTooltip}}</span>
-        {{/if}}
-        {{/each}}
-        {{#unless recipientLocked}}
-        <input class="ncm-recipient-input" data-id="recipient-input"
-               placeholder="{{#if recipients.length}}Add recipient...{{else}}Search contacts...{{/if}}"
-               autocomplete="off" />
-        {{/unless}}
+        <div class="ncm-composer__msg-meta">
+          <div class="ncm-composer__msg-sender">{{originalMessageCard.sender}}</div>
+          <div class="ncm-composer__msg-detail-row">
+            <span class="ncm-composer__msg-email">{{originalMessageCard.email}}</span>
+            <span class="ncm-composer__msg-time">{{originalMessageCard.formattedTime}}</span>
+            <span class="ncm-composer__msg-net-tag"
+                  {{#if originalMessageCard.networkColor}}style="color:{{originalMessageCard.networkColor}};border-color:{{originalMessageCard.networkColor}}30;background:{{originalMessageCard.networkColor}}08;"{{/if}}>
+              {{originalMessageCard.network}}
+            </span>
+          </div>
+        </div>
       </div>
-      {{#unless recipientLocked}}
-      <button class="ncm-field__action" data-action="toggleCC">
-        <i class="fas fa-plus" style="margin-right:2px"></i> CC
-      </button>
-      {{/unless}}
-      {{#if errors.to}}
-      <span class="ncm-field__error-text">
-        <i class="fas fa-exclamation-circle" style="margin-right:2px;"></i> {{errors.to}}
-      </span>
+
+      {{!-- Subject --}}
+      {{#if originalMessageCard.subject}}
+      <div class="ncm-composer__msg-subject">{{originalMessageCard.subject}}</div>
       {{/if}}
 
-      {{!-- Autocomplete dropdown (populated dynamically) --}}
-      <div class="ncm-autocomplete ncm-hidden" data-id="autocomplete-dropdown"></div>
-    </div>
-
-    {{!-- CC field (toggled by JS) --}}
-    <div class="ncm-field ncm-hidden" data-id="cc-field">
-      <div class="ncm-field__label">CC:</div>
-      <div class="ncm-field__chips" data-id="cc-chips">
-        <input class="ncm-recipient-input" data-id="cc-input"
-               placeholder="Add CC recipient..." autocomplete="off" />
+      {{!-- Body --}}
+      <div class="ncm-composer__msg-body" data-id="original-msg-body">
+        {{{originalMessageCard.body}}}
+        <div class="ncm-composer__msg-body-fade"></div>
       </div>
-    </div>
-
-    {{!-- SUBJECT --}}
-    <div class="ncm-field">
-      <div class="ncm-field__label">SUBJ:</div>
-      <input class="ncm-field__input" data-id="subject-input" name="subject"
-             value="{{subject}}" placeholder="Subject line..." />
-    </div>
-
-    {{!-- PRIORITY + actions --}}
-    <div class="ncm-field">
-      <div class="ncm-field__label">PRI:</div>
-      <div class="ncm-priority-pills">
-        {{#each priorities}}
-        <button class="ncm-priority-pill {{#if active}}ncm-priority-pill--active-{{id}}{{/if}}"
-                data-action="setPriority" data-priority="{{id}}">
-          {{label}}
-        </button>
-        {{/each}}
-      </div>
-      <div style="flex:1"></div>
-      <button class="ncm-field__action" data-action="toggleSchedule">
-        <i class="fas fa-clock" style="margin-right:2px"></i> Schedule
-      </button>
-      <button class="ncm-field__action" data-action="toggleSelfDestruct">
-        <i class="fas fa-bomb" style="margin-right:2px"></i> Self-Destruct
-      </button>
-    </div>
-
-    {{!-- ENCRYPTION STRIP --}}
-    <div class="ncm-encrypt-strip">
-      <div class="ncm-encrypt-strip__label">ENC:</div>
-      <div class="ncm-encrypt-toggle">
-        <button class="ncm-encrypt-toggle__opt {{#unless encryptionEnabled}}ncm-encrypt-toggle__opt--open-active{{/unless}}"
-                data-action="setEncryption" data-value="open">
-          <i class="fas fa-unlock"></i> Open
-        </button>
-        <button class="ncm-encrypt-toggle__opt {{#if encryptionEnabled}}ncm-encrypt-toggle__opt--ice-active{{/if}}"
-                data-action="setEncryption" data-value="ice">
-          <i class="fas fa-lock"></i> ICE
-        </button>
-      </div>
-      {{#if encryptionEnabled}}
-      <div class="ncm-encrypt-dv">
-        DV: <input class="ncm-encrypt-dv__input" data-id="encryption-dv" type="number"
-                   value="{{encryptionDV}}" min="1" max="30" />
-      </div>
-      <div class="ncm-encrypt-type" data-action="cycleEncryptionType">
-        {{encryptionType}} <i class="fas fa-caret-down"></i>
-      </div>
-      {{/if}}
-    </div>
-
-    {{!-- SELF-DESTRUCT STRIP (conditional) --}}
-    {{#if selfDestructEnabled}}
-    <div class="ncm-destruct-strip">
-      <i class="fas fa-bomb ncm-destruct-strip__icon"></i>
-      <span class="ncm-destruct-strip__label">Self-Destruct:</span>
-      <div class="ncm-destruct-strip__options">
-        {{#each selfDestructOptions}}
-        <button class="ncm-destruct-pill {{#if active}}ncm-destruct-pill--active{{/if}}"
-                data-action="setSelfDestructMode" data-mode="{{id}}">
-          {{label}}
-        </button>
-        {{/each}}
-      </div>
-      <i class="fas fa-xmark ncm-destruct-strip__remove" data-action="toggleSelfDestruct"></i>
-    </div>
-    {{/if}}
-
-    {{!-- SCHEDULE BAR (conditional) --}}
-    {{#if scheduleEnabled}}
-    <div class="ncm-schedule-bar">
-      <i class="fas fa-clock ncm-schedule-bar__icon"></i>
-      <span class="ncm-schedule-bar__label">Deliver at:</span>
-      <input class="ncm-schedule-input" data-id="schedule-input" type="datetime-local"
-             value="{{scheduledTimeLocal}}" />
-      <div class="ncm-schedule-toggle" data-action="toggleGameTime">
-        <div class="ncm-toggle-mini {{#if scheduleGameTime}}ncm-toggle-mini--on{{/if}}"></div>
-        Game Time
-      </div>
-      <i class="fas fa-xmark ncm-schedule-bar__remove" data-action="toggleSchedule"></i>
-    </div>
-    {{/if}}
-
-    {{!-- QUOTE BLOCK (reply / forward) --}}
-    {{#if quoteBlock}}
-    <div class="ncm-quote-block">
-      <div class="ncm-quote-block__header">
-        <i class="fas fa-quote-left"></i> {{quoteBlock.sender}} — {{quoteBlock.time}} // {{quoteBlock.network}}
-      </div>
-      <div class="ncm-quote-block__body" data-id="quote-body">{{{quoteBlock.body}}}</div>
-      <div class="ncm-quote-block__expand" data-action="toggleQuote">
+      <div class="ncm-composer__msg-expand" data-action="toggleQuote">
         <i class="fas fa-chevron-down"></i> Show full message
       </div>
-    </div>
-    {{/if}}
 
-    {{!-- EDITOR --}}
-    <div class="ncm-editor-wrap {{#if encryptionEnabled}}ncm-editor-wrap--encrypted{{/if}}">
-      {{!-- Editor toolbar — two rows --}}
-      <div class="ncm-editor-toolbar ncm-editor-toolbar--format">
-        {{!-- Text formatting --}}
-        <button class="ncm-editor-tool" data-action="editorCommand" data-command="bold" title="Bold (Ctrl+B)">
-          <i class="fas fa-bold"></i>
-        </button>
-        <button class="ncm-editor-tool" data-action="editorCommand" data-command="italic" title="Italic (Ctrl+I)">
-          <i class="fas fa-italic"></i>
-        </button>
-        <button class="ncm-editor-tool" data-action="editorCommand" data-command="underline" title="Underline (Ctrl+U)">
-          <i class="fas fa-underline"></i>
-        </button>
-        <button class="ncm-editor-tool" data-action="editorCommand" data-command="strikethrough" title="Strikethrough">
-          <i class="fas fa-strikethrough"></i>
-        </button>
-        <button class="ncm-editor-tool" data-action="editorCommand" data-command="monospace" title="Code / Monospace">
-          <i class="fas fa-code"></i>
-        </button>
-        <div class="ncm-editor-tool-sep"></div>
-        <button class="ncm-editor-tool" data-action="editorCommand" data-command="bulletList" title="Bullet List">
-          <i class="fas fa-list-ul"></i>
-        </button>
-        <button class="ncm-editor-tool" data-action="editorCommand" data-command="numberList" title="Numbered List">
-          <i class="fas fa-list-ol"></i>
-        </button>
-        <button class="ncm-editor-tool" data-action="editorCommand" data-command="blockquote" title="Blockquote">
-          <i class="fas fa-quote-right"></i>
-        </button>
-        <button class="ncm-editor-tool" data-action="editorCommand" data-command="horizontalRule" title="Divider Line">
-          <i class="fas fa-minus"></i>
-        </button>
-        <div class="ncm-editor-tool-sep"></div>
-        <button class="ncm-editor-tool" data-action="editorCommand" data-command="link" title="Insert Link">
-          <i class="fas fa-link"></i>
-        </button>
-        <button class="ncm-editor-tool" data-action="editorCommand" data-command="unlink" title="Remove Link">
-          <i class="fas fa-link-slash"></i>
-        </button>
-        <div class="ncm-editor-tool-sep"></div>
-        <button class="ncm-editor-tool" data-action="editorCommand" data-command="clearFormat" title="Clear Formatting">
-          <i class="fas fa-eraser"></i>
-        </button>
+      {{!-- Encryption badge --}}
+      {{#if originalMessageCard.encrypted}}
+      <div class="ncm-composer__msg-enc-badge">
+        <i class="fas fa-shield-halved"></i> ICE-PROTECTED
+        {{#if originalMessageCard.encDV}}· DV {{originalMessageCard.encDV}}{{/if}}
       </div>
-      <div class="ncm-editor-toolbar ncm-editor-toolbar--actions">
-        {{!-- Security --}}
-        <button class="ncm-editor-tool {{#if encryptionEnabled}}ncm-editor-tool--active{{/if}}"
-                data-action="editorCommand" data-command="lock" title="Insert Encrypted Text Block">
-          <i class="fas fa-lock"></i>
-        </button>
-        <span class="ncm-editor-toolbar__label">ICE Block</span>
-        <div class="ncm-editor-tool-sep"></div>
+      {{/if}}
 
-        {{!-- Attachments --}}
-        <button class="ncm-editor-tool" data-action="attachShard" title="Attach Data Shard">
-          <i class="fas fa-microchip"></i>
-        </button>
-        <span class="ncm-editor-toolbar__label">Shard</span>
-        <button class="ncm-editor-tool" data-action="attachFile" title="Attach File">
-          <i class="fas fa-paperclip"></i>
-        </button>
-        <span class="ncm-editor-toolbar__label">File</span>
-        <button class="ncm-editor-tool ncm-editor-tool--eddies" data-action="attachEddies" title="Attach Eddies">
-          <i class="fas fa-coins"></i>
-        </button>
-        <span class="ncm-editor-toolbar__label ncm-editor-toolbar__label--eddies">Eddies</span>
-        <div class="ncm-editor-tool-sep"></div>
-
-        {{!-- Message features --}}
-        <button class="ncm-editor-tool" data-action="insertTimestamp" title="Insert Timestamp">
-          <i class="fas fa-clock"></i>
-        </button>
-        <span class="ncm-editor-toolbar__label">Time</span>
-        <button class="ncm-editor-tool" data-action="insertCoords" title="Insert Location Tag">
-          <i class="fas fa-location-dot"></i>
-        </button>
-        <span class="ncm-editor-toolbar__label">Location</span>
-        <button class="ncm-editor-tool" data-action="insertSignature" title="Insert Signature">
-          <i class="fas fa-signature"></i>
-        </button>
-        <span class="ncm-editor-toolbar__label">Sig</span>
-      </div>
-      <div class="ncm-editor-content" data-id="editor-content" contenteditable="true"
-           data-placeholder="> Type your message...">{{{body}}}</div>
-      <div class="ncm-editor-counter" data-id="editor-counter">{{charCount}} chars</div>
-      {{#if encryptionEnabled}}
-      <div class="ncm-editor-ice-badge">
-        <i class="fas fa-shield-halved" style="margin-right:3px;"></i> ICE-PROTECTED
+      {{!-- Attachments on original --}}
+      {{#if originalMessageCard.hasAttachments}}
+      <div class="ncm-composer__msg-attachments">
+        {{#each originalMessageCard.attachments}}
+        <div class="ncm-composer__msg-attach {{#if isEddies}}ncm-composer__msg-attach--eddies{{/if}}">
+          <i class="fas {{icon}}"></i> {{name}}
+        </div>
+        {{/each}}
       </div>
       {{/if}}
     </div>
-
-    {{!-- ATTACHMENTS BAR --}}
-    {{#if hasAttachments}}
-    <div class="ncm-attach-bar">
-      {{#each attachments}}
-      <div class="ncm-attach-chip {{#if encrypted}}ncm-attach-chip--encrypted{{/if}} {{#if isEddies}}ncm-attach-chip--eddies{{/if}}">
-        <i class="fas {{icon}}"></i>
-        {{#if isEddies}}
-          <span class="ncm-attach-chip__amount">{{eddiesFormatted}}</span>
-        {{else}}
-          {{name}} <span class="ncm-attach-chip__size">{{size}}</span>
-        {{/if}}
-        <i class="fas fa-xmark ncm-attach-chip__remove" data-action="removeAttachment" data-index="{{@index}}"></i>
-      </div>
-      {{/each}}
-      <button class="ncm-attach-btn" data-action="attachFile"><i class="fas fa-plus"></i> Attach</button>
-      <button class="ncm-attach-btn ncm-attach-btn--eddies" data-action="attachEddies"><i class="fas fa-coins"></i> Eddies</button>
-    </div>
-    {{/if}}
-
   </div>
 
-  {{!-- ═══ §6 FOOTER ═══ --}}
-  <div class="ncm-composer-footer">
+  {{!-- Reply/Forward divider --}}
+  <div class="ncm-composer__reply-divider">
+    <div class="ncm-composer__reply-divider-line"></div>
+    <span class="ncm-composer__reply-divider-label ncm-composer__reply-divider-label--{{mode}}">
+      <i class="fas fa-pen"></i>
+      {{#if isReply}}Your Reply{{else}}Your Note{{/if}}
+    </span>
+    <div class="ncm-composer__reply-divider-line ncm-composer__reply-divider-line--right"></div>
+  </div>
+  {{/if}}
 
-    {{!-- Primary action button --}}
+  {{!-- ═══ §5 FORM FIELDS — TO / CC / SUBJECT ═══ --}}
+  {{!-- TO field: hidden in reply (implicit), visible in compose/forward --}}
+  {{#unless recipientLocked}}
+  <div class="ncm-composer__field {{#if errors.to}}ncm-composer__field--error{{/if}}" style="position:relative;">
+    <span class="ncm-composer__field-label {{#if errors.to}}ncm-composer__field-label--error{{/if}}">TO:</span>
+    <div class="ncm-composer__chips" data-id="recipient-chips">
+      {{#each recipients}}
+      <div class="ncm-composer__chip {{#if mismatch}}ncm-composer__chip--mismatch{{/if}} {{#if unreachable}}ncm-composer__chip--unreachable{{/if}}"
+           data-actor-id="{{actorId}}">
+        <div class="ncm-composer__chip-avatar" {{#if avatarColor}}style="color:{{avatarColor}};"{{/if}}>{{initials}}</div>
+        {{name}}
+        {{#if mismatch}}
+        <i class="fas fa-triangle-exclamation ncm-composer__chip-warn" title="{{mismatchTooltip}}"></i>
+        {{/if}}
+        {{#unless locked}}
+        <i class="fas fa-xmark ncm-composer__chip-remove" data-action="removeRecipient" data-actor-id="{{actorId}}"></i>
+        {{/unless}}
+      </div>
+      {{/each}}
+      <input class="ncm-composer__field-input" data-id="recipient-input"
+             placeholder="{{#if recipients.length}}Add recipient...{{else}}Search contacts...{{/if}}"
+             autocomplete="off" />
+    </div>
+    <button class="ncm-composer__field-action" data-action="toggleCC">CC</button>
+    {{#if errors.to}}
+    <span class="ncm-composer__field-error"><i class="fas fa-exclamation-circle"></i> {{errors.to}}</span>
+    {{/if}}
+    {{!-- Autocomplete dropdown --}}
+    <div class="ncm-composer__autocomplete ncm-hidden" data-id="autocomplete-dropdown"></div>
+  </div>
+  {{/unless}}
+
+  {{!-- CC field (toggled by JS) --}}
+  <div class="ncm-composer__field ncm-hidden" data-id="cc-field">
+    <span class="ncm-composer__field-label">CC:</span>
+    <div class="ncm-composer__chips" data-id="cc-chips">
+      <input class="ncm-composer__field-input" data-id="cc-input"
+             placeholder="Add CC recipient..." autocomplete="off" />
+    </div>
+  </div>
+
+  {{!-- Subject: hidden in reply (inherited), visible in compose/forward --}}
+  {{#unless isReply}}
+  <div class="ncm-composer__field ncm-composer__field--subj">
+    <span class="ncm-composer__field-label">SUBJ:</span>
+    <input class="ncm-composer__field-input ncm-composer__field-input--full" data-id="subject-input" name="subject"
+           value="{{subject}}" placeholder="Subject line..." />
+  </div>
+  {{/unless}}
+
+  {{!-- ═══ §6 OPTIONS BAR — Priority + Encryption + Schedule + Self-Destruct ═══ --}}
+  <div class="ncm-composer__options">
+    {{!-- Priority --}}
+    <span class="ncm-composer__opt-label">PRI</span>
+    {{#each priorities}}
+    <button class="ncm-composer__opt-pill {{#if active}}ncm-composer__opt-pill--active-{{id}}{{/if}}"
+            data-action="setPriority" data-priority="{{id}}">{{label}}</button>
+    {{/each}}
+
+    <div class="ncm-composer__opt-sep"></div>
+
+    {{!-- Encryption toggle --}}
+    <span class="ncm-composer__opt-label">ENC</span>
+    <div class="ncm-composer__enc-switch">
+      <button class="ncm-composer__enc-opt {{#unless encryptionEnabled}}ncm-composer__enc-opt--open-active{{/unless}}"
+              data-action="setEncryption" data-value="open">
+        <i class="fas fa-unlock"></i> Open
+      </button>
+      <button class="ncm-composer__enc-opt {{#if encryptionEnabled}}ncm-composer__enc-opt--ice-active{{/if}}"
+              data-action="setEncryption" data-value="ice">
+        <i class="fas fa-lock"></i> ICE
+      </button>
+    </div>
+    {{#if encryptionEnabled}}
+    <span class="ncm-composer__enc-dv">
+      DV:<input class="ncm-composer__enc-dv-input" data-id="encryption-dv" type="number"
+                value="{{encryptionDV}}" min="1" max="30" />
+    </span>
+    <span class="ncm-composer__enc-type" data-action="cycleEncryptionType">{{encryptionType}} ▾</span>
+    {{/if}}
+
+    <div class="ncm-composer__opt-sep"></div>
+
+    {{!-- Feature toggles --}}
+    <button class="ncm-composer__toggle {{#if scheduleEnabled}}ncm-composer__toggle--on-gold{{/if}}"
+            data-action="toggleSchedule">
+      <i class="fas fa-clock"></i> Sched
+    </button>
+    <button class="ncm-composer__toggle {{#if selfDestructEnabled}}ncm-composer__toggle--on-red{{/if}}"
+            data-action="toggleSelfDestruct">
+      <i class="fas fa-bomb"></i> Destruct
+    </button>
+  </div>
+
+  {{!-- Self-destruct expansion strip --}}
+  {{#if selfDestructEnabled}}
+  <div class="ncm-composer__strip ncm-composer__strip--destruct">
+    <i class="fas fa-bomb"></i>
+    <span class="ncm-composer__strip-label">Self-Destruct:</span>
+    {{#each selfDestructOptions}}
+    <button class="ncm-composer__destruct-pill {{#if active}}ncm-composer__destruct-pill--active{{/if}}"
+            data-action="setSelfDestructMode" data-mode="{{id}}">{{label}}</button>
+    {{/each}}
+    <i class="fas fa-xmark ncm-composer__strip-close" data-action="toggleSelfDestruct"></i>
+  </div>
+  {{/if}}
+
+  {{!-- Schedule expansion strip --}}
+  {{#if scheduleEnabled}}
+  <div class="ncm-composer__strip ncm-composer__strip--schedule">
+    <i class="fas fa-clock"></i>
+    <span class="ncm-composer__strip-label">Deliver at:</span>
+    <div class="ncm-ctp-trigger ncm-composer__sched-trigger" data-action="openSchedulePicker">
+      <i class="fas fa-clock ncm-ctp-trigger__icon"></i>
+      <span class="ncm-ctp-trigger__value {{unless scheduledTimeFormatted}}ncm-ctp-trigger__value--empty{{/unless}}">
+        {{#if scheduledTimeFormatted}}{{scheduledTimeFormatted}}{{else}}Pick a time...{{/if}}
+      </span>
+      <i class="fas fa-chevron-down ncm-ctp-trigger__chevron"></i>
+    </div>
+    <input type="hidden" name="scheduledTime" value="{{scheduledTime}}" data-id="schedule-hidden" />
+    <i class="fas fa-xmark ncm-composer__strip-close" data-action="toggleSchedule"></i>
+  </div>
+  {{/if}}
+
+  {{!-- ═══ §7 EDITOR — Toolbar + Content area ═══ --}}
+  <div class="ncm-composer__editor-wrap {{#if encryptionEnabled}}ncm-composer__editor-wrap--encrypted{{/if}}">
+
+    {{!-- Single-row toolbar with overflow --}}
+    <div class="ncm-composer__toolbar">
+      <button class="ncm-composer__tool" data-action="editorCommand" data-command="bold" title="Bold (Ctrl+B)"><i class="fas fa-bold"></i></button>
+      <button class="ncm-composer__tool" data-action="editorCommand" data-command="italic" title="Italic (Ctrl+I)"><i class="fas fa-italic"></i></button>
+      <button class="ncm-composer__tool" data-action="editorCommand" data-command="monospace" title="Code"><i class="fas fa-code"></i></button>
+      <button class="ncm-composer__tool" data-action="editorCommand" data-command="link" title="Insert Link"><i class="fas fa-link"></i></button>
+      <button class="ncm-composer__tool" data-action="editorCommand" data-command="bulletList" title="List"><i class="fas fa-list-ul"></i></button>
+      <div class="ncm-composer__tool-sep"></div>
+      <button class="ncm-composer__tool" data-action="attachShard" title="Attach Data Shard"><i class="fas fa-microchip"></i></button>
+      <button class="ncm-composer__tool" data-action="attachFile" title="Attach File"><i class="fas fa-paperclip"></i></button>
+      <button class="ncm-composer__tool ncm-composer__tool--eddies" data-action="attachEddies" title="Attach Eddies"><i class="fas fa-coins"></i></button>
+      <div class="ncm-composer__tool-sep"></div>
+      <button class="ncm-composer__tool" data-action="insertTimestamp" title="Insert Timestamp"><i class="fas fa-clock"></i></button>
+      <button class="ncm-composer__tool ncm-composer__tool--more" data-action="toggleOverflow" title="More tools">⋯</button>
+    </div>
+
+    {{!-- Overflow menu (toggled by JS) --}}
+    <div class="ncm-composer__overflow ncm-hidden" data-id="overflow-menu">
+      <div class="ncm-composer__overflow-item" data-action="editorCommand" data-command="underline"><i class="fas fa-underline"></i> Underline</div>
+      <div class="ncm-composer__overflow-item" data-action="editorCommand" data-command="strikethrough"><i class="fas fa-strikethrough"></i> Strikethrough</div>
+      <div class="ncm-composer__overflow-item" data-action="editorCommand" data-command="blockquote"><i class="fas fa-quote-right"></i> Blockquote</div>
+      <div class="ncm-composer__overflow-item" data-action="editorCommand" data-command="numberList"><i class="fas fa-list-ol"></i> Numbered List</div>
+      <div class="ncm-composer__overflow-item" data-action="editorCommand" data-command="horizontalRule"><i class="fas fa-minus"></i> Divider</div>
+      <div class="ncm-composer__overflow-sep"></div>
+      <div class="ncm-composer__overflow-item" data-action="editorCommand" data-command="unlink"><i class="fas fa-link-slash"></i> Remove Link</div>
+      <div class="ncm-composer__overflow-item" data-action="editorCommand" data-command="clearFormat"><i class="fas fa-eraser"></i> Clear Format</div>
+      <div class="ncm-composer__overflow-sep"></div>
+      <div class="ncm-composer__overflow-item" data-action="insertCoords"><i class="fas fa-location-dot"></i> Insert Location</div>
+      <div class="ncm-composer__overflow-item" data-action="insertSignature"><i class="fas fa-signature"></i> Insert Signature</div>
+      <div class="ncm-composer__overflow-item" data-action="editorCommand" data-command="lock"><i class="fas fa-lock"></i> ICE Text Block</div>
+    </div>
+
+    {{!-- Editor content --}}
+    <div class="ncm-composer__editor" data-id="editor-content" contenteditable="true"
+         data-placeholder="{{#if isForward}}> Add a note (optional)...{{else}}> Type your message...{{/if}}">{{{body}}}</div>
+
+    {{#if encryptionEnabled}}
+    <span class="ncm-composer__ice-badge"><i class="fas fa-shield-halved"></i> ICE-PROTECTED</span>
+    {{/if}}
+    <span class="ncm-composer__char-count" data-id="editor-counter">{{charCount}} chars</span>
+  </div>
+
+  {{!-- ═══ §8 ATTACHMENTS BAR ═══ --}}
+  {{#if hasAttachments}}
+  <div class="ncm-composer__attachments">
+    {{#each attachments}}
+    <div class="ncm-composer__attach {{#if isEddies}}ncm-composer__attach--eddies{{/if}} {{#if encrypted}}ncm-composer__attach--encrypted{{/if}}">
+      <i class="fas {{icon}}"></i>
+      {{#if isEddies}}
+        <span class="ncm-composer__attach-amount">{{eddiesFormatted}}</span>
+      {{else}}
+        {{name}} <span class="ncm-composer__attach-size">{{size}}</span>
+      {{/if}}
+      <i class="fas fa-xmark ncm-composer__attach-remove" data-action="removeAttachment" data-index="{{@index}}"></i>
+    </div>
+    {{/each}}
+  </div>
+  {{/if}}
+
+  {{!-- ═══ §9 FOOTER ═══ --}}
+  <div class="ncm-composer__footer">
+    {{!-- Primary action --}}
     {{#if isDeadZone}}
-      <button class="ncm-btn ncm-btn--send ncm-btn--send--disabled" disabled>
+      <button class="ncm-composer__btn ncm-composer__btn--send ncm-composer__btn--disabled" disabled>
         <i class="fas fa-paper-plane"></i> Send
       </button>
-      <button class="ncm-btn ncm-btn--schedule" data-action="queueMessage">
+      <button class="ncm-composer__btn ncm-composer__btn--queue" data-action="queueMessage">
         <i class="fas fa-clock"></i> Queue
       </button>
     {{else if scheduleEnabled}}
-      <button class="ncm-btn ncm-btn--schedule" data-action="send" {{#if sending}}disabled{{/if}}>
-        {{#if sending}}
-        <i class="fas fa-spinner fa-spin"></i> Scheduling...
-        {{else}}
-        <i class="fas fa-clock"></i> Schedule Send
-        {{/if}}
+      <button class="ncm-composer__btn ncm-composer__btn--schedule" data-action="send" {{#if sending}}disabled{{/if}}>
+        {{#if sending}}<i class="fas fa-spinner fa-spin"></i> Scheduling...
+        {{else}}<i class="fas fa-clock"></i> Schedule Send{{/if}}
       </button>
     {{else}}
-      <button class="ncm-btn ncm-btn--send {{#if sending}}ncm-btn--send--disabled{{/if}}"
+      <button class="ncm-composer__btn ncm-composer__btn--send {{#if sending}}ncm-composer__btn--disabled{{/if}}"
               data-action="send" {{#if sending}}disabled{{/if}}>
-        {{#if sending}}
-        <i class="fas fa-spinner fa-spin"></i> Sending...
-        {{else}}
-        <i class="fas fa-paper-plane"></i> {{#if isReply}}Send Reply{{else}}Send{{/if}}
+        {{#if sending}}<i class="fas fa-spinner fa-spin"></i> Sending...
+        {{else}}<i class="fas fa-paper-plane"></i>
+          {{#if isReply}}Send Reply{{else if isForward}}Forward{{else}}Send{{/if}}
         {{/if}}
       </button>
     {{/if}}
 
-    <button class="ncm-btn ncm-btn--draft" data-action="saveDraft">
+    <button class="ncm-composer__btn ncm-composer__btn--draft" data-action="saveDraft">
       <i class="fas fa-floppy-disk"></i> Draft
     </button>
 
-    <div class="ncm-footer-spacer"></div>
+    <div class="ncm-composer__footer-spacer"></div>
 
-    {{!-- Auto-save indicator --}}
     {{#if autoSaveTime}}
-    <div class="ncm-autosave">
-      <i class="fas fa-check-circle"></i> Draft saved {{autoSaveTime}}
+    <div class="ncm-composer__autosave">
+      <i class="fas fa-check-circle"></i> Saved {{autoSaveTime}}
     </div>
-    <div style="width:12px"></div>
     {{/if}}
 
-    {{!-- Keyboard shortcuts --}}
-    <div class="ncm-footer-shortcuts">
-      <div class="ncm-shortcut">
-        <kbd>Ctrl</kbd>+<kbd>Enter</kbd>
+    <div class="ncm-composer__shortcuts">
+      <span class="ncm-composer__shortcut">
+        <kbd>Ctrl</kbd>+<kbd>↵</kbd>
         {{#if scheduleEnabled}}Schedule{{else if isDeadZone}}Queue{{else}}Send{{/if}}
+      </span>
+      <span class="ncm-composer__shortcut"><kbd>Esc</kbd> Close</span>
+    </div>
+  </div>
+
+  {{!-- ═══ §10 SEND ANIMATION OVERLAY (toggled by JS) ═══ --}}
+  <div class="ncm-composer__send-overlay ncm-hidden" data-id="send-overlay">
+    {{!-- Transmitting state --}}
+    <div class="ncm-composer__send-transmit" data-id="send-transmit">
+      <div class="ncm-composer__send-ring"><i class="fas fa-paper-plane"></i></div>
+      <div class="ncm-composer__send-progress">
+        <div class="ncm-composer__send-progress-bar" data-id="send-progress-bar"></div>
       </div>
-      <div class="ncm-shortcut"><kbd>Esc</kbd> Cancel</div>
+      <div class="ncm-composer__send-status">Transmitting<span>...</span></div>
+      <div class="ncm-composer__send-route" data-id="send-route">
+        <span class="ncm-composer__send-route-label">FROM</span>
+        <div class="ncm-composer__send-route-dot"></div>
+        <div class="ncm-composer__send-route-line"></div>
+        <span class="ncm-composer__send-route-label" data-id="send-route-net">{{networkName}}</span>
+        <div class="ncm-composer__send-route-line"></div>
+        <div class="ncm-composer__send-route-dot"></div>
+        <span class="ncm-composer__send-route-target" data-id="send-route-to">—</span>
+      </div>
+      <div class="ncm-composer__send-stream" data-id="send-stream"></div>
+    </div>
+
+    {{!-- Success state --}}
+    <div class="ncm-composer__send-success ncm-hidden" data-id="send-success">
+      <div class="ncm-composer__send-success-icon"><i class="fas fa-check"></i></div>
+      <div class="ncm-composer__send-success-text">Message Transmitted</div>
+      <div class="ncm-composer__send-success-detail" data-id="send-success-detail"></div>
+    </div>
+
+    {{!-- Failure state --}}
+    <div class="ncm-composer__send-failure ncm-hidden" data-id="send-failure">
+      <div class="ncm-composer__send-fail-icon"><i class="fas fa-triangle-exclamation"></i></div>
+      <div class="ncm-composer__send-fail-text">Transmission Failed</div>
+      <div class="ncm-composer__send-fail-detail" data-id="send-fail-detail"></div>
+      <div class="ncm-composer__send-fail-actions">
+        <button class="ncm-composer__btn ncm-composer__btn--queue" data-action="retrySend"><i class="fas fa-redo"></i> Retry</button>
+        <button class="ncm-composer__btn ncm-composer__btn--draft" data-action="queueMessage"><i class="fas fa-clock"></i> Queue</button>
+        <button class="ncm-composer__btn ncm-composer__btn--draft" data-action="saveDraft"><i class="fas fa-floppy-disk"></i> Save Draft</button>
+      </div>
     </div>
   </div>
 
