@@ -74,7 +74,12 @@
       </div>
       <div class="ncm-config-row">
         <label class="ncm-config-label">Timestamp</label>
-        <input type="text" name="timestamp" class="ncm-config-input ncm-config-flex" value="{{#if editTimestamp}}{{editTimestamp}}{{else}}{{defaultTimestamp}}{{/if}}" placeholder="ISO-8601" />
+        <div class="ncm-config-timestamp-row">
+          <input type="datetime-local" name="timestamp" class="ncm-config-input ncm-config-flex" value="{{#if editTimestampLocal}}{{editTimestampLocal}}{{else}}{{defaultTimestampLocal}}{{/if}}" />
+          <button type="button" class="ncm-config-time-btn" data-action="setTimestampNow" data-target="timestamp" title="Real-world now"><i class="fas fa-clock"></i> Now</button>
+          <button type="button" class="ncm-config-time-btn" data-action="setTimestampGame" data-target="timestamp" title="In-game time"><i class="fas fa-gamepad"></i> Game</button>
+          <button type="button" class="ncm-config-time-btn ncm-config-time-btn--clear" data-action="clearTimestamp" data-target="timestamp" title="Clear"><i class="fas fa-times"></i></button>
+        </div>
       </div>
     </fieldset>
   {{/if}}
@@ -98,7 +103,12 @@
       <div class="ncm-config-hint">Eddies are wired to the CPR wealth ledger when claimed by a player.</div>
       <div class="ncm-config-row">
         <label class="ncm-config-label">Timestamp</label>
-        <input type="text" name="timestamp" class="ncm-config-input ncm-config-flex" value="{{#if editTimestamp}}{{editTimestamp}}{{else}}{{defaultTimestamp}}{{/if}}" placeholder="ISO-8601" />
+        <div class="ncm-config-timestamp-row">
+          <input type="datetime-local" name="timestamp" class="ncm-config-input ncm-config-flex" value="{{#if editTimestampLocal}}{{editTimestampLocal}}{{else}}{{defaultTimestampLocal}}{{/if}}" />
+          <button type="button" class="ncm-config-time-btn" data-action="setTimestampNow" data-target="timestamp" title="Real-world now"><i class="fas fa-clock"></i> Now</button>
+          <button type="button" class="ncm-config-time-btn" data-action="setTimestampGame" data-target="timestamp" title="In-game time"><i class="fas fa-gamepad"></i> Game</button>
+          <button type="button" class="ncm-config-time-btn ncm-config-time-btn--clear" data-action="clearTimestamp" data-target="timestamp" title="Clear"><i class="fas fa-times"></i></button>
+        </div>
       </div>
     </fieldset>
   {{/if}}
@@ -203,7 +213,12 @@
       </button>
       <div class="ncm-config-row" style="margin-top:8px;">
         <label class="ncm-config-label">Timestamp</label>
-        <input type="text" name="timestamp" class="ncm-config-input ncm-config-flex" value="{{#if editTimestamp}}{{editTimestamp}}{{else}}{{defaultTimestamp}}{{/if}}" placeholder="ISO-8601" />
+        <div class="ncm-config-timestamp-row">
+          <input type="datetime-local" name="timestamp" class="ncm-config-input ncm-config-flex" value="{{#if editTimestampLocal}}{{editTimestampLocal}}{{else}}{{defaultTimestampLocal}}{{/if}}" />
+          <button type="button" class="ncm-config-time-btn" data-action="setTimestampNow" data-target="timestamp" title="Real-world now"><i class="fas fa-clock"></i> Now</button>
+          <button type="button" class="ncm-config-time-btn" data-action="setTimestampGame" data-target="timestamp" title="In-game time"><i class="fas fa-gamepad"></i> Game</button>
+          <button type="button" class="ncm-config-time-btn ncm-config-time-btn--clear" data-action="clearTimestamp" data-target="timestamp" title="Clear"><i class="fas fa-times"></i></button>
+        </div>
       </div>
     </fieldset>
   {{/if}}
@@ -263,7 +278,12 @@
       <div class="ncm-config-hint">When disguised, the entry renders as the fake type until the player interacts.</div>
       <div class="ncm-config-row">
         <label class="ncm-config-label">Timestamp</label>
-        <input type="text" name="timestamp" class="ncm-config-input ncm-config-flex" value="{{#if editTimestamp}}{{editTimestamp}}{{else}}{{defaultTimestamp}}{{/if}}" placeholder="ISO-8601" />
+        <div class="ncm-config-timestamp-row">
+          <input type="datetime-local" name="timestamp" class="ncm-config-input ncm-config-flex" value="{{#if editTimestampLocal}}{{editTimestampLocal}}{{else}}{{defaultTimestampLocal}}{{/if}}" />
+          <button type="button" class="ncm-config-time-btn" data-action="setTimestampNow" data-target="timestamp" title="Real-world now"><i class="fas fa-clock"></i> Now</button>
+          <button type="button" class="ncm-config-time-btn" data-action="setTimestampGame" data-target="timestamp" title="In-game time"><i class="fas fa-gamepad"></i> Game</button>
+          <button type="button" class="ncm-config-time-btn ncm-config-time-btn--clear" data-action="clearTimestamp" data-target="timestamp" title="Clear"><i class="fas fa-times"></i></button>
+        </div>
       </div>
     </fieldset>
   {{/if}}
@@ -293,7 +313,12 @@
       </div>
       <div class="ncm-config-row">
         <label class="ncm-config-label">Timestamp</label>
-        <input type="text" name="timestamp" class="ncm-config-input ncm-config-flex" value="{{#if editTimestamp}}{{editTimestamp}}{{else}}{{defaultTimestamp}}{{/if}}" placeholder="ISO-8601" />
+        <div class="ncm-config-timestamp-row">
+          <input type="datetime-local" name="timestamp" class="ncm-config-input ncm-config-flex" value="{{#if editTimestampLocal}}{{editTimestampLocal}}{{else}}{{defaultTimestampLocal}}{{/if}}" />
+          <button type="button" class="ncm-config-time-btn" data-action="setTimestampNow" data-target="timestamp" title="Real-world now"><i class="fas fa-clock"></i> Now</button>
+          <button type="button" class="ncm-config-time-btn" data-action="setTimestampGame" data-target="timestamp" title="In-game time"><i class="fas fa-gamepad"></i> Game</button>
+          <button type="button" class="ncm-config-time-btn ncm-config-time-btn--clear" data-action="clearTimestamp" data-target="timestamp" title="Clear"><i class="fas fa-times"></i></button>
+        </div>
       </div>
     </fieldset>
 
@@ -354,7 +379,12 @@
       <div class="ncm-config-hint">If a scene is linked, GM sees a "Go to Scene" button in the viewer.</div>
       <div class="ncm-config-row">
         <label class="ncm-config-label">Timestamp</label>
-        <input type="text" name="timestamp" class="ncm-config-input ncm-config-flex" value="{{#if editTimestamp}}{{editTimestamp}}{{else}}{{defaultTimestamp}}{{/if}}" placeholder="ISO-8601" />
+        <div class="ncm-config-timestamp-row">
+          <input type="datetime-local" name="timestamp" class="ncm-config-input ncm-config-flex" value="{{#if editTimestampLocal}}{{editTimestampLocal}}{{else}}{{defaultTimestampLocal}}{{/if}}" />
+          <button type="button" class="ncm-config-time-btn" data-action="setTimestampNow" data-target="timestamp" title="Real-world now"><i class="fas fa-clock"></i> Now</button>
+          <button type="button" class="ncm-config-time-btn" data-action="setTimestampGame" data-target="timestamp" title="In-game time"><i class="fas fa-gamepad"></i> Game</button>
+          <button type="button" class="ncm-config-time-btn ncm-config-time-btn--clear" data-action="clearTimestamp" data-target="timestamp" title="Clear"><i class="fas fa-times"></i></button>
+        </div>
       </div>
     </fieldset>
   {{/if}}

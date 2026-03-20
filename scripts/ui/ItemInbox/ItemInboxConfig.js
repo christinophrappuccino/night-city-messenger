@@ -92,6 +92,9 @@ export class ItemInboxConfig extends BaseApplication {
       clearKeyItem: ItemInboxConfig._onClearKeyItem,
       previewBoot: ItemInboxConfig._onPreviewBoot,
       toggleNetworkType: ItemInboxConfig._onToggleNetworkType,
+      setTimestampNow: ItemInboxConfig._onSetTimestampNow,
+      setTimestampGame: ItemInboxConfig._onSetTimestampGame,
+      clearTimestamp: ItemInboxConfig._onClearTimestamp,
     },
   }, { inplace: false });
 
@@ -1209,6 +1212,49 @@ export class ItemInboxConfig extends BaseApplication {
     row?.querySelectorAll('.ncm-cfg-color-dot').forEach(dot => {
       dot.classList.toggle('ncm-cfg-color-dot--active', dot.dataset.color === color);
     });
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  TIMESTAMP QUICK ACTIONS
+  // ═══════════════════════════════════════════════════════════
+
+  /** Set timestamp to real-world "now" */
+  static _onSetTimestampNow(event, target) {
+    const inputName = target.dataset.target || 'metaTimestamp';
+    const input = this.element?.querySelector(`[name="${inputName}"]`);
+    if (input) input.value = new Date().toISOString().slice(0, 16);
+  }
+
+  /** Set timestamp to in-game time (via TimeService or world time) */
+  static _onSetTimestampGame(event, target) {
+    const inputName = target.dataset.target || 'metaTimestamp';
+    const input = this.element?.querySelector(`[name="${inputName}"]`);
+    if (!input) return;
+
+    const ts = game.nightcity?.timeService;
+    if (ts) {
+      try {
+        const gameDate = ts.getCurrentTime?.();
+        if (gameDate instanceof Date && !isNaN(gameDate.getTime())) {
+          input.value = gameDate.toISOString().slice(0, 16);
+          return;
+        }
+      } catch { /* fall through */ }
+    }
+    // Fallback: Foundry world time
+    if (game.time?.worldTime) {
+      const d = new Date(game.time.worldTime * 1000);
+      if (!isNaN(d.getTime())) { input.value = d.toISOString().slice(0, 16); return; }
+    }
+    ui.notifications.warn('NCM | No game time available — using real time.');
+    input.value = new Date().toISOString().slice(0, 16);
+  }
+
+  /** Clear the timestamp field */
+  static _onClearTimestamp(event, target) {
+    const inputName = target.dataset.target || 'metaTimestamp';
+    const input = this.element?.querySelector(`[name="${inputName}"]`);
+    if (input) input.value = '';
   }
 
   // ═══════════════════════════════════════════════════════════

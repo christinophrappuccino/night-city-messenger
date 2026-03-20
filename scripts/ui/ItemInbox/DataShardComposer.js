@@ -91,6 +91,9 @@ export class DataShardComposer extends BaseApplication {
       browseImage: DataShardComposer._onBrowseImage,
       addEntryNetworkTag: DataShardComposer._onAddEntryNetworkTag,
       removeEntryNetworkTag: DataShardComposer._onRemoveEntryNetworkTag,
+      setTimestampNow: DataShardComposer._onSetTimestampNow,
+      setTimestampGame: DataShardComposer._onSetTimestampGame,
+      clearTimestamp: DataShardComposer._onClearTimestamp,
     },
   }, { inplace: false });
 
@@ -111,6 +114,24 @@ export class DataShardComposer extends BaseApplication {
   get title() {
     const verb = this.editData ? 'Edit Entry' : 'Add Entry';
     return `${verb}: ${this.shardItem?.name ?? 'Unknown'}`;
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  TIMESTAMP HELPERS
+  // ═══════════════════════════════════════════════════════════
+
+  /**
+   * Convert an ISO-8601 string (or Date) to the value format expected by
+   * `<input type="datetime-local">` — i.e. `YYYY-MM-DDTHH:MM`.
+   * Returns '' if the input is falsy or unparseable.
+   */
+  static _toDatetimeLocal(iso) {
+    if (!iso) return '';
+    try {
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return '';
+      return d.toISOString().slice(0, 16);
+    } catch { return ''; }
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -156,6 +177,7 @@ export class DataShardComposer extends BaseApplication {
       editSubject: this.editData?.subject || '',
       editBody: this.editData?.body || '',
       editTimestamp: this.editData?.timestamp || '',
+      editTimestampLocal: DataShardComposer._toDatetimeLocal(this.editData?.timestamp),
       editContentData: this.editData?.contentData ?? {},
       editEncrypted: this.editData?.encrypted ?? false,
       editNetworkRestricted: this.editData?.networkVisibility?.restricted ?? false,
@@ -201,7 +223,7 @@ export class DataShardComposer extends BaseApplication {
       actorOptions,
 
       // Shared
-      defaultTimestamp: new Date().toISOString().replace(/\.\d{3}Z$/, ''),
+      defaultTimestampLocal: new Date().toISOString().slice(0, 16),
 
       // Networks (for visibility restriction)
       networkOptions: (this.networkService?.getAllNetworks() ?? []).map(n => ({ value: n.id, label: n.name })),
@@ -302,13 +324,19 @@ export class DataShardComposer extends BaseApplication {
     const data = fd.object;
     const type = this._selectedType;
 
-    // Build base entry data
+    // Build base entry data — convert datetime-local → ISO
+    let timestamp = data.timestamp || '';
+    if (timestamp && !timestamp.includes('Z') && !timestamp.match(/[+-]\d{2}:\d{2}$/)) {
+      try { timestamp = new Date(timestamp).toISOString(); } catch { /* keep as-is */ }
+    }
+    if (!timestamp) timestamp = new Date().toISOString();
+
     const entryData = {
       contentType: type,
       from: data.from || 'UNKNOWN',
       subject: data.subject || 'Data Fragment',
       body: data.body || '',
-      timestamp: data.timestamp || new Date().toISOString(),
+      timestamp,
       encrypted: !!data.encrypted,
       encryptionDC: parseInt(data.encryptionDC) || undefined,
       networkVisibility: {
@@ -521,6 +549,49 @@ export class DataShardComposer extends BaseApplication {
       }
     }
     return lines;
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  TIMESTAMP QUICK ACTIONS
+  // ═══════════════════════════════════════════════════════════
+
+  /** Set timestamp to real-world "now" */
+  static _onSetTimestampNow(event, target) {
+    const inputName = target.dataset.target || 'timestamp';
+    const input = this.element?.querySelector(`[name="${inputName}"]`);
+    if (input) input.value = new Date().toISOString().slice(0, 16);
+  }
+
+  /** Set timestamp to in-game time (via TimeService or world time) */
+  static _onSetTimestampGame(event, target) {
+    const inputName = target.dataset.target || 'timestamp';
+    const input = this.element?.querySelector(`[name="${inputName}"]`);
+    if (!input) return;
+
+    const ts = game.nightcity?.timeService;
+    if (ts) {
+      try {
+        const gameDate = ts.getCurrentTime?.();
+        if (gameDate instanceof Date && !isNaN(gameDate.getTime())) {
+          input.value = gameDate.toISOString().slice(0, 16);
+          return;
+        }
+      } catch { /* fall through */ }
+    }
+    // Fallback: Foundry world time
+    if (game.time?.worldTime) {
+      const d = new Date(game.time.worldTime * 1000);
+      if (!isNaN(d.getTime())) { input.value = d.toISOString().slice(0, 16); return; }
+    }
+    ui.notifications.warn('NCM | No game time available — using real time.');
+    input.value = new Date().toISOString().slice(0, 16);
+  }
+
+  /** Clear the timestamp field */
+  static _onClearTimestamp(event, target) {
+    const inputName = target.dataset.target || 'timestamp';
+    const input = this.element?.querySelector(`[name="${inputName}"]`);
+    if (input) input.value = '';
   }
 
   // ═══════════════════════════════════════════════════════════
