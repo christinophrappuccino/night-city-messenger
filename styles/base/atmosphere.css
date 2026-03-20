@@ -112,26 +112,10 @@
 }
 
 
-/* ─── 4. Top Gradient Bar — Thin Accent Strip ───────────────────────────── */
-/* A 2px red-to-orange gradient across the very top edge of every NCM window.
-   Gives the "powered on" device feel. Always visible when scanlines are on. */
-
-.ncm-app[data-ncm-scanlines="true"] > :first-child::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(
-    90deg,
-    var(--ncm-primary, #F65261) 0%,
-    var(--ncm-accent, #f7c948) 50%,
-    var(--ncm-primary, #F65261) 100%
-  );
-  z-index: calc(var(--ncm-z-overlay, 300) + 2);
-  opacity: 0.7;
-}
+/* ─── 4. Top Accent Strip ────────────────────────────────────────────────── */
+/* Removed: The old red-gold-red gradient is replaced by the clean accent line
+   in window-chrome.css §1, which uses --shard-accent for preset-aware coloring.
+   No atmosphere override needed — window chrome handles it. */
 
 
 /* ─── 5. Disabled / Off States ──────────────────────────────────────────── */
