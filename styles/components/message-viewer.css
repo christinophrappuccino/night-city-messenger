@@ -433,18 +433,19 @@
 
 /* Add Contact button */
 .ncm-app .ncm-viewer__detail-add-contact {
-  display: inline-flex !important; align-items: center !important; gap: 4px !important;
-  padding: 2px 8px !important; border-radius: 3px !important;
-  font-family: var(--ncm-font-display) !important; font-size: 9px !important; font-weight: 600 !important;
-  color: var(--ncm-secondary) !important; background: rgba(0,212,230,0.06) !important;
+  display: inline-flex !important; align-items: center !important; gap: 3px !important;
+  padding: 1px 6px !important; border-radius: 2px !important;
+  font-family: var(--ncm-font-display) !important; font-size: 8px !important; font-weight: 600 !important;
+  color: #00D4E6 !important; background: rgba(0,212,230,0.06) !important;
   border: 1px solid rgba(0,212,230,0.2) !important;
   cursor: pointer !important; transition: all 0.15s !important;
   text-transform: uppercase !important; letter-spacing: 0.04em !important;
   flex-shrink: 0 !important; width: auto !important; min-width: 0 !important;
   min-height: 0 !important; height: auto !important; box-shadow: none !important;
+  line-height: 1.4 !important;
 }
 .ncm-app .ncm-viewer__detail-add-contact:hover { background: rgba(0,212,230,0.12) !important; border-color: rgba(0,212,230,0.4) !important; }
-.ncm-app .ncm-viewer__detail-add-contact i { font-size: 8px !important; }
+.ncm-app .ncm-viewer__detail-add-contact i { font-size: 7px !important; }
 
 /* Color-coded meta fields — using mockup v3.2 exact colors */
 .ncm-app .ncm-viewer__detail-meta { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 4px; }
@@ -621,21 +622,21 @@
 /* ═══════════════════════════════════════════════════════════
    §14  QUICK REPLY
    ═══════════════════════════════════════════════════════════ */
-.ncm-app .ncm-viewer__quick-reply { padding: 8px 20px; border-top: 1px solid var(--ncm-border); flex-shrink: 0; }
+.ncm-app .ncm-viewer__quick-reply { padding: 6px 20px; border-top: 1px solid var(--ncm-border); flex-shrink: 0; }
 .ncm-app .ncm-viewer__quick-reply-row { display: flex; align-items: center; gap: 6px; }
 .ncm-app .ncm-viewer__quick-reply-input {
   flex: 1; background: var(--ncm-bg-surface) !important; border: 1px solid var(--ncm-border) !important;
-  border-radius: 4px !important; padding: 6px 10px !important;
+  border-radius: 3px !important; padding: 4px 8px !important;
   color: var(--ncm-text-primary) !important; font-family: var(--ncm-font-display) !important;
-  font-size: 12px !important; outline: none !important; height: auto !important;
+  font-size: 11px !important; outline: none !important; height: auto !important;
   min-height: 0 !important; box-shadow: none !important;
 }
 .ncm-app .ncm-viewer__quick-reply-input:focus { border-color: var(--ncm-secondary) !important; }
 .ncm-app .ncm-viewer__quick-reply-input::placeholder { color: var(--ncm-text-muted); }
 .ncm-app .ncm-viewer__quick-reply-send {
-  width: 32px !important; height: 32px !important; display: flex !important; align-items: center !important; justify-content: center !important;
+  width: 26px !important; height: 26px !important; display: flex !important; align-items: center !important; justify-content: center !important;
   background: rgba(0,212,230,0.08) !important; border: 1px solid rgba(0,212,230,0.2) !important;
-  border-radius: 4px !important; color: var(--ncm-secondary) !important; font-size: 12px !important;
+  border-radius: 3px !important; color: var(--ncm-secondary) !important; font-size: 10px !important;
   cursor: pointer !important; transition: all 0.15s !important;
   padding: 0 !important; min-width: 0 !important; min-height: 0 !important; box-shadow: none !important;
 }

@@ -1026,7 +1026,7 @@ export class MessageViewerApp extends BaseApplication {
 
       // ── v3.2: Header Actions ──
       case 'open-contacts':
-        game.nightcity?.openContacts?.({ actorId: this.actorId });
+        game.nightcity?.openContacts?.(this.actorId);
         break;
       case 'open-admin':
         game.nightcity?.openAdmin?.();
@@ -1081,10 +1081,69 @@ export class MessageViewerApp extends BaseApplication {
         break;
       }
 
-      // ── v3.2: Filter Dropdown (placeholder — tag system Phase 2) ──
-      case 'toggle-filter-dropdown':
-        ui.notifications.info('NCM | Filter tags coming soon.');
+      // ── v3.2: Filter Dropdown ──
+      case 'toggle-filter-dropdown': {
+        // Build grouped filter options and show as a simple dialog
+        const networks = [...new Set(
+          (await this._loadMessages()).map(m => m.network).filter(Boolean)
+        )].sort();
+        
+        const content = `
+          <div style="display:flex;flex-direction:column;gap:8px;padding:8px;">
+            <div style="font-family:var(--ncm-font-title);font-size:9px;color:var(--ncm-secondary);text-transform:uppercase;letter-spacing:0.1em;">Network</div>
+            ${networks.map(n => {
+              const net = this.networkService?.getNetwork?.(n);
+              const name = net?.name || n;
+              const color = net?.theme?.color || '#8888a0';
+              const active = this._filterTags?.includes(`net:${n}`) ? 'checked' : '';
+              return `<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ncm-text-primary);cursor:pointer;">
+                <input type="checkbox" data-filter-tag="net:${n}" ${active} style="accent-color:${color}">
+                <span style="color:${color}">${name}</span>
+              </label>`;
+            }).join('')}
+            <div style="font-family:var(--ncm-font-title);font-size:9px;color:var(--ncm-secondary);text-transform:uppercase;letter-spacing:0.1em;margin-top:6px;">Status</div>
+            ${['Encrypted', 'Has Attachments', 'Has Eddies'].map(s => {
+              const key = `status:${s.toLowerCase().replace(/\s/g,'-')}`;
+              const active = this._filterTags?.includes(key) ? 'checked' : '';
+              return `<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ncm-text-primary);cursor:pointer;">
+                <input type="checkbox" data-filter-tag="${key}" ${active}>
+                <span>${s}</span>
+              </label>`;
+            }).join('')}
+          </div>`;
+
+        const dlg = new Dialog({
+          title: 'Message Filters',
+          content,
+          buttons: {
+            apply: {
+              icon: '<i class="fas fa-check"></i>',
+              label: 'Apply',
+              callback: (html) => {
+                this._filterTags = [];
+                html.find('[data-filter-tag]:checked').each((_, el) => {
+                  this._filterTags.push(el.dataset.filterTag);
+                });
+                this.currentPage = 1;
+                this.render(true);
+              },
+            },
+            clear: {
+              icon: '<i class="fas fa-times"></i>',
+              label: 'Clear All',
+              callback: () => {
+                this._filterTags = [];
+                this.currentPage = 1;
+                this.render(true);
+              },
+            },
+          },
+          default: 'apply',
+          classes: ['ncm-time-config-dialog'],
+        }, { width: 280 });
+        dlg.render(true);
         break;
+      }
 
       // ── v3.2: Add Contact from detail ──
       case 'add-sender-contact': {
@@ -1125,6 +1184,26 @@ export class MessageViewerApp extends BaseApplication {
       this.render();
     }, DEBOUNCE_SEARCH_MS);
   }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Identity Drawer
+  // ═══════════════════════════════════════════════════════════
+
+  _toggleIdentityDrawer() {
+    const viewer = this.element?.querySelector('.ncm-viewer');
+    if (!viewer) return;
+    viewer.classList.toggle('ncm-viewer--drawer-open');
+  }
+
+  _closeIdentityDrawer() {
+    const viewer = this.element?.querySelector('.ncm-viewer');
+    if (!viewer) return;
+    viewer.classList.remove('ncm-viewer--drawer-open');
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Search
+  // ═══════════════════════════════════════════════════════════
 
   _toggleSearch() {
     this.searchActive = !this.searchActive;
@@ -1188,6 +1267,32 @@ export class MessageViewerApp extends BaseApplication {
         m.from?.toLowerCase().includes(term) ||
         m.to?.toLowerCase().includes(term)
       );
+    }
+
+    // Date range filter
+    if (this._dateRangeFrom) {
+      const fromMs = new Date(this._dateRangeFrom).getTime();
+      result = result.filter(m => m.timestamp && new Date(m.timestamp).getTime() >= fromMs);
+    }
+    if (this._dateRangeTo) {
+      const toMs = new Date(this._dateRangeTo).getTime() + 86400000;
+      result = result.filter(m => m.timestamp && new Date(m.timestamp).getTime() < toMs);
+    }
+
+    // Filter tags
+    if (this._filterTags?.length) {
+      for (const tag of this._filterTags) {
+        if (tag.startsWith('net:')) {
+          const netId = tag.substring(4);
+          result = result.filter(m => m.network === netId);
+        } else if (tag === 'status:encrypted') {
+          result = result.filter(m => m.status?.encrypted);
+        } else if (tag === 'status:has-attachments') {
+          result = result.filter(m => m.attachments?.length > 0);
+        } else if (tag === 'status:has-eddies') {
+          result = result.filter(m => m.eddies > 0);
+        }
+      }
     }
 
     return result;

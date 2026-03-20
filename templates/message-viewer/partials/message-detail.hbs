@@ -157,7 +157,7 @@
       <div class="ncm-viewer__detail-head-top">
         {{!-- Sender avatar --}}
         <div class="ncm-viewer__detail-avatar"
-             style="color: {{message.avatarColor}}; border-color: {{message.networkAccentColor}}">
+             style="color: {{message.avatarColor}}; border-color: {{message.avatarColor}}">
           {{#if message.fromPortrait}}
             <img src="{{message.fromPortrait}}" alt="{{message.fromDisplay}}" />
           {{else}}
@@ -188,8 +188,12 @@
             <span class="ncm-viewer__detail-meta-item ncm-viewer__detail-meta-item--time">
               <i class="fas fa-clock"></i> {{message.formattedTime}}
             </span>
-            <span class="ncm-viewer__detail-meta-item ncm-viewer__detail-meta-item--net">
-              <i class="fas fa-wifi"></i> {{message.networkLabel}}
+            {{!-- Network: use dynamic theme color + icon --}}
+            <span class="ncm-viewer__detail-meta-item"
+                  {{#if message.networkBadgeTheme.color}}style="color: {{message.networkBadgeTheme.color}}"{{/if}}>
+              <i class="fas {{#if message.networkBadgeTheme.icon}}{{message.networkBadgeTheme.icon}}{{else}}fa-wifi{{/if}}"
+                 {{#if message.networkBadgeTheme.color}}style="color: {{message.networkBadgeTheme.color}}; opacity: 0.6;"{{/if}}></i>
+              {{message.networkLabel}}
             </span>
             {{#if message.priorityIcon}}
               <span class="ncm-viewer__detail-meta-item ncm-viewer__detail-meta-item--priority">
