@@ -1025,9 +1025,15 @@ export class MessageViewerApp extends BaseApplication {
       }
 
       // ── v3.2: Header Actions ──
-      case 'open-contacts':
-        game.nightcity?.openContacts?.(this.actorId);
+      case 'open-contacts': {
+        const contactActorId = this.actorId || game.user?.character?.id;
+        if (contactActorId) {
+          game.nightcity?.openContacts?.(contactActorId);
+        } else {
+          ui.notifications.warn('NCM | No character assigned. Cannot open contacts.');
+        }
         break;
+      }
       case 'open-admin':
         game.nightcity?.openAdmin?.();
         break;
@@ -2473,7 +2479,12 @@ export class MessageViewerApp extends BaseApplication {
       'citinet': 'fa-wifi',
     };
     const networkBadgeIcon = resolvedNetwork?.theme?.icon || networkIconMap[networkBadgeVariant] || 'fa-network-wired';
-    const networkBadgeTheme = resolvedNetwork?.theme || {};
+    const rawTheme = resolvedNetwork?.theme || {};
+    const networkBadgeTheme = {
+      ...rawTheme,
+      color: rawTheme.color || networkAccentColor || null,
+      icon: rawTheme.icon || networkIconMap[networkBadgeVariant] || 'fa-network-wired',
+    };
 
     // Priority icon for detail panel tag-badge partial
     const priorityIconMap = {
@@ -2497,7 +2508,7 @@ export class MessageViewerApp extends BaseApplication {
     const { relativeTime, isRecentMessage } = computeRelativeTime(msg.timestamp);
 
     // Network stripe color (all messages get the stripe)
-    const themeColor = resolvedNetwork?.theme?.color || null;
+    const themeColor = resolvedNetwork?.theme?.color || networkAccentColor || null;
     const netStripeColor = themeColor ? `${themeColor}40` : null; // 25% opacity hex suffix
 
     // Network pip (only for messages from a different network than current)

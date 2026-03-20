@@ -50,6 +50,12 @@
   height: 100%; background: var(--ncm-bg-base);
   color: var(--ncm-text-primary); overflow: hidden;
   position: relative;
+  /* Signal color tokens for network pill + drawer */
+  --ncm-signal-strong: #34D399;
+  --ncm-signal-good: #00D4E6;
+  --ncm-signal-weak: #FBBF24;
+  --ncm-signal-critical: #EF4444;
+  --ncm-signal-dead: #EF4444;
 }
 /* Top accent gradient */
 .ncm-app .ncm-viewer::before {
@@ -386,8 +392,8 @@
 /* Stacked timestamp */
 .ncm-app .ncm-viewer__msg-time { display: flex; flex-direction: column; align-items: flex-end; gap: 0; flex-shrink: 0; white-space: nowrap; }
 .ncm-app .ncm-viewer__msg-time-date { font-family: var(--ncm-font-mono); font-size: 9px; color: var(--ncm-text-muted); line-height: 1.2; }
-.ncm-app .ncm-viewer__msg-time-rel { font-family: var(--ncm-font-mono); font-size: 8px; color: var(--ncm-text-dim); line-height: 1.2; }
-.ncm-app .ncm-viewer__msg-time-rel--recent { color: var(--ncm-secondary); opacity: 0.6; }
+.ncm-app .ncm-viewer__msg-time-rel { font-family: var(--ncm-font-mono); font-size: 8px; color: rgba(0,212,230,0.5); line-height: 1.2; }
+.ncm-app .ncm-viewer__msg-time-rel--recent { color: #00D4E6; opacity: 0.8; }
 
 /* Subject row */
 .ncm-app .ncm-viewer__msg-subject { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; }
@@ -405,6 +411,12 @@
 .ncm-app .ncm-viewer__msg-badge--crit { color: var(--ncm-danger); background: rgba(239,68,68,0.1); }
 .ncm-app .ncm-viewer__msg-badge--urgent { color: var(--ncm-warning); background: rgba(251,191,36,0.1); }
 .ncm-app .ncm-viewer__msg-badge--danger { color: var(--ncm-danger); background: rgba(239,68,68,0.12); }
+/* Malware threat badge variants (from getThreatBadgeData) */
+.ncm-app .ncm-viewer__msg-badge--daemon { color: #A78BFA; background: rgba(167,139,250,0.12); }
+.ncm-app .ncm-viewer__msg-badge--worm { color: #34D399; background: rgba(52,211,153,0.12); }
+.ncm-app .ncm-viewer__msg-badge--trojan { color: #FBBF24; background: rgba(251,191,36,0.12); }
+.ncm-app .ncm-viewer__msg-badge--black-ice { color: #EF4444; background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.2); }
+.ncm-app .ncm-viewer__msg-badge--threat { color: #F65261; background: rgba(246,82,97,0.12); }
 
 /* Preview */
 .ncm-app .ncm-viewer__msg-preview { font-size: 10px; color: var(--ncm-text-muted); line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
@@ -455,8 +467,8 @@
 .ncm-app .ncm-viewer__detail-meta-item--from i { color: #00D4E6; }
 .ncm-app .ncm-viewer__detail-meta-item--to { color: #F0C55B; }
 .ncm-app .ncm-viewer__detail-meta-item--to i { color: #F0C55B; }
-.ncm-app .ncm-viewer__detail-meta-item--time { color: #8888a0; }
-.ncm-app .ncm-viewer__detail-meta-item--time i { color: #8888a0; }
+.ncm-app .ncm-viewer__detail-meta-item--time { color: rgba(0,212,230,0.55); }
+.ncm-app .ncm-viewer__detail-meta-item--time i { color: rgba(0,212,230,0.4); }
 .ncm-app .ncm-viewer__detail-meta-item--net { color: #34D399; }
 .ncm-app .ncm-viewer__detail-meta-item--net i { color: #34D399; }
 .ncm-app .ncm-viewer__detail-meta-item--priority { color: #F65261; }
@@ -622,14 +634,14 @@
 /* ═══════════════════════════════════════════════════════════
    §14  QUICK REPLY
    ═══════════════════════════════════════════════════════════ */
-.ncm-app .ncm-viewer__quick-reply { padding: 6px 20px; border-top: 1px solid var(--ncm-border); flex-shrink: 0; }
-.ncm-app .ncm-viewer__quick-reply-row { display: flex; align-items: center; gap: 6px; }
+.ncm-app .ncm-viewer__quick-reply { padding: 4px 20px; border-top: 1px solid var(--ncm-border); flex-shrink: 0; }
+.ncm-app .ncm-viewer__quick-reply-row { display: flex; align-items: center; gap: 4px; }
 .ncm-app .ncm-viewer__quick-reply-input {
   flex: 1; background: var(--ncm-bg-surface) !important; border: 1px solid var(--ncm-border) !important;
-  border-radius: 3px !important; padding: 4px 8px !important;
+  border-radius: 3px !important; padding: 3px 8px !important;
   color: var(--ncm-text-primary) !important; font-family: var(--ncm-font-display) !important;
   font-size: 11px !important; outline: none !important; height: auto !important;
-  min-height: 0 !important; box-shadow: none !important;
+  min-height: 0 !important; box-shadow: none !important; line-height: 1.3 !important;
 }
 .ncm-app .ncm-viewer__quick-reply-input:focus { border-color: var(--ncm-secondary) !important; }
 .ncm-app .ncm-viewer__quick-reply-input::placeholder { color: var(--ncm-text-muted); }
@@ -734,10 +746,11 @@
 .ncm-app .ncm-viewer__drawer-field-label { font-family: var(--ncm-font-mono); font-size: 9px; color: var(--ncm-text-secondary); text-transform: uppercase; letter-spacing: 0.08em; }
 .ncm-app .ncm-viewer__drawer-field-label--email { color: rgba(0,212,230,0.6); }
 .ncm-app .ncm-viewer__drawer-field-label--handle { color: rgba(167,139,250,0.6); }
-.ncm-app .ncm-viewer__drawer-field-value { display: flex; align-items: center; gap: 6px; padding: 6px 10px; background: var(--ncm-bg-surface); border: 1px solid var(--ncm-border); border-radius: 4px; transition: border-color 0.2s; }
-.ncm-app .ncm-viewer__drawer-field-value:focus-within { border-color: var(--ncm-secondary); }
+.ncm-app .ncm-viewer__drawer-field-value { display: flex; align-items: center; gap: 6px; padding: 6px 10px; background: var(--ncm-bg-surface); border: 1px solid var(--ncm-border); border-radius: 4px; transition: border-color 0.2s; width: 100%; }
+.ncm-app .ncm-viewer__drawer-field-value:focus-within { border-color: #00D4E6; }
 .ncm-app .ncm-viewer__drawer-field-input {
-  flex: 1; background: none !important; border: none !important; outline: none !important;
+  flex: 1; min-width: 0; width: 100%;
+  background: none !important; border: none !important; outline: none !important;
   color: var(--ncm-text-primary) !important; font-family: var(--ncm-font-mono) !important; font-size: 12px !important;
   padding: 0 !important; min-height: 0 !important; height: auto !important; box-shadow: none !important;
 }
@@ -753,7 +766,12 @@
 
 /* Network status */
 .ncm-app .ncm-viewer__drawer-net-status { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 4px; background: var(--ncm-bg-surface); border: 1px solid var(--ncm-border); margin-bottom: 10px; }
-.ncm-app .ncm-viewer__drawer-net-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.ncm-app .ncm-viewer__drawer-net-status--strong { border-color: rgba(52,211,153,0.25); background: rgba(52,211,153,0.04); }
+.ncm-app .ncm-viewer__drawer-net-status--good { border-color: rgba(0,212,230,0.25); background: rgba(0,212,230,0.04); }
+.ncm-app .ncm-viewer__drawer-net-status--weak { border-color: rgba(251,191,36,0.25); background: rgba(251,191,36,0.04); }
+.ncm-app .ncm-viewer__drawer-net-status--critical { border-color: rgba(239,68,68,0.25); background: rgba(239,68,68,0.04); }
+.ncm-app .ncm-viewer__drawer-net-status--dead { border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.06); }
+.ncm-app .ncm-viewer__drawer-net-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; box-shadow: 0 0 6px currentColor; }
 .ncm-app .ncm-viewer__drawer-net-name { font-weight: 700; font-size: 12px; flex: 1; }
 .ncm-app .ncm-viewer__drawer-net-pct { font-family: var(--ncm-font-mono); font-size: 11px; }
 .ncm-app .ncm-viewer__drawer-net-row { display: flex; align-items: center; gap: 8px; font-family: var(--ncm-font-mono); font-size: 10px; margin-bottom: 5px; }
