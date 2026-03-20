@@ -159,8 +159,8 @@
 
 .ncm-app .ncm-shard-provenance {
   font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 9px; color: var(--sp-text-meta);
-  opacity: 0.7; letter-spacing: 0.03em;
+  font-size: 10px; color: var(--sp-text-body);
+  letter-spacing: 0.03em;
 }
 
 /* Badges */
@@ -423,8 +423,8 @@
 }
 
 .ncm-app .ncm-entry-timestamp {
-  font-family: var(--ncm-font-mono); font-size: 9px;
-  color: var(--sp-text-meta); flex-shrink: 0;
+  font-family: var(--ncm-font-mono); font-size: 10px;
+  color: var(--sp-text-body); flex-shrink: 0;
   letter-spacing: 0.03em;
 }
 
@@ -432,7 +432,7 @@
 .ncm-app .ncm-entry-body { padding: 12px; }
 .ncm-app .ncm-entry-body p { font-family: var(--ncm-font-body); font-size: 13px; color: var(--sp-text-body); line-height: 1.6; }
 
-.ncm-app .ncm-entry-from { font-family: var(--ncm-font-mono); font-size: 10px; color: var(--sp-text-meta); margin-bottom: 6px; }
+.ncm-app .ncm-entry-from { font-family: var(--ncm-font-mono); font-size: 10px; color: var(--sp-text-body); margin-bottom: 6px; }
 .ncm-app .ncm-entry-from span { color: var(--sp-accent); }
 
 .ncm-app .ncm-entry-text { font-family: var(--ncm-font-body); font-size: 13px; color: var(--sp-text-body); line-height: 1.6; }
