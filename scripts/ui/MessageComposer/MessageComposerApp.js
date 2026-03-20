@@ -18,6 +18,7 @@
 import { MODULE_ID, EVENTS } from '../../utils/constants.js';
 import { getInitials, getAvatarColor } from '../../utils/designHelpers.js';
 import { formatCyberDate } from '../../utils/helpers.js';
+import { CyberTimePicker } from '../components/CyberTimePicker.js';
 
 export class MessageComposerApp extends foundry.applications.api.HandlebarsApplicationMixin(
   foundry.applications.api.ApplicationV2
@@ -50,10 +51,12 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       toggleSelfDestruct: MessageComposerApp._onToggleSelfDestruct,
       setSelfDestructMode: MessageComposerApp._onSetSelfDestructMode,
       toggleSchedule: MessageComposerApp._onToggleSchedule,
-      toggleGameTime: MessageComposerApp._onToggleGameTime,
       toggleSendAs: MessageComposerApp._onToggleSendAs,
       toggleCC: MessageComposerApp._onToggleCC,
       toggleQuote: MessageComposerApp._onToggleQuote,
+      toggleOverflow: MessageComposerApp._onToggleOverflow,
+      openSchedulePicker: MessageComposerApp._onOpenSchedulePicker,
+      retrySend: MessageComposerApp._onRetrySend,
       removeRecipient: MessageComposerApp._onRemoveRecipient,
       removeAttachment: MessageComposerApp._onRemoveAttachment,
       attachFile: MessageComposerApp._onAttachFile,
@@ -247,11 +250,6 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     const networkName = isDeadZone ? 'DEAD ZONE' : (network?.name?.toUpperCase() || 'OFFLINE');
     const networkThemeColor = isDeadZone ? null : (network?.theme?.color || null);
 
-    // Signal bars (4 bars)
-    const barCount = 4;
-    const activeBars = isDeadZone ? 0 : Math.ceil((signalStrength / 100) * barCount);
-    const signalBars = Array.from({ length: barCount }, (_, i) => i < activeBars);
-
     // From actor — or master contact fallback
     const fromActor = this.fromActorId ? game.actors.get(this.fromActorId) : null;
     const fromName = fromActor?.name || this.fromContact?.name || 'Unknown';
@@ -260,79 +258,53 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       : (this.fromContact?.email || '');
     const fromAvatarColor = getAvatarColor(fromName);
 
-    // Mode label
+    // Mode label + key
     const isGM = game.user.isGM;
     const isGMSendAs = isGM && (this.fromContact || this.fromActorId !== this._getDefaultFromActor());
-    let modeLabelText, modeLabelIcon, modeLabelIconColor, modeLabelClass;
+    let modeLabelText, modeLabelIcon, modeKey;
 
     if (isGMSendAs) {
-      modeLabelText = 'SEND AS';
+      modeLabelText = 'Send-As';
       modeLabelIcon = 'fa-masks-theater';
-      modeLabelIconColor = '';
-      modeLabelClass = 'ncm-mode-label--gm';
+      modeKey = 'sendas';
     } else if (this.mode === 'reply') {
-      modeLabelText = 'REPLY';
+      modeLabelText = 'Reply';
       modeLabelIcon = 'fa-reply';
-      modeLabelIconColor = '';
-      modeLabelClass = 'ncm-mode-label--reply';
+      modeKey = 'reply';
     } else if (this.mode === 'forward') {
-      modeLabelText = 'FORWARD';
+      modeLabelText = 'Forward';
       modeLabelIcon = 'fa-share';
-      modeLabelIconColor = '';
-      modeLabelClass = 'ncm-mode-label--forward';
+      modeKey = 'forward';
     } else {
-      modeLabelText = 'NEW MSG';
+      modeLabelText = 'New';
       modeLabelIcon = 'fa-pen';
-      modeLabelIconColor = 'cyan';
-      modeLabelClass = '';
+      modeKey = 'compose';
     }
 
-    // HUD data
-    const recipientCount = this.recipients.length;
-    const hudToLabel = recipientCount === 0 ? 'NONE'
-      : recipientCount === 1 ? this.recipients[0].name.toUpperCase()
-      : `${recipientCount} RECIPIENTS`;
-    const hudFromLabel = isGMSendAs ? fromName.toUpperCase() : '';
+    // Network pill state
+    const netPillState = isDeadZone ? 'dead'
+      : (!isDeadZone && network?.effects?.anonymity) ? 'darknet' : 'connected';
 
-    const hudNetClass = isDeadZone ? 'ncm-hud-item--danger' : '';
-    const hudSigClass = isDeadZone ? 'ncm-hud-item--danger' : signalStrength < 50 ? 'ncm-hud-item--warn' : '';
-    const hudToClass = recipientCount === 0 ? (this._errors.to ? 'ncm-hud-item--danger' : '') : 'ncm-hud-item--accent';
-    const hudPriClass = this.priority === 'critical' ? 'ncm-hud-item--danger'
-      : this.priority === 'urgent' ? 'ncm-hud-item--warn' : '';
-    const hudEncClass = this.encryptionEnabled ? 'ncm-hud-item--gold' : '';
-    const hudEncLabel = this.encryptionEnabled ? `ICE DV${this.encryptionDV}` : 'OPEN';
-    const hudPriLabel = this.priority.toUpperCase();
+    // Network pill bars [{active: bool}, ...]
+    const barCount = 4;
+    const activeBars = isDeadZone ? 0 : Math.ceil((signalStrength / 100) * barCount);
+    const netPillBars = Array.from({ length: barCount }, (_, i) => ({ active: i < activeBars }));
 
-    // HUD status
-    let hudStatusText, hudStatusColor, hudStatusIcon;
-    if (this._errors.to || this._errors.general) {
-      hudStatusText = 'VALIDATION ERROR';
-      hudStatusColor = 'var(--ncm-danger)';
-      hudStatusIcon = '';
-    } else if (isDeadZone) {
-      hudStatusText = 'NO SIGNAL';
-      hudStatusColor = 'var(--ncm-danger)';
-      hudStatusIcon = '';
-    } else if (this.selfDestructEnabled) {
-      hudStatusText = 'SELF-DESTRUCT';
-      hudStatusColor = 'var(--ncm-danger)';
-      hudStatusIcon = 'fa-bomb';
-    } else if (isGMSendAs) {
-      hudStatusText = 'GM MODE';
-      hudStatusColor = 'var(--ncm-accent)';
-      hudStatusIcon = '';
-    } else {
-      hudStatusText = 'READY';
-      hudStatusColor = 'var(--ncm-success)';
-      hudStatusIcon = '';
+    // Inline FX tags on net pill (compact version of old effects strip)
+    const fxTags = [];
+    if (isDeadZone) {
+      fxTags.push({ label: 'DEAD ZONE', variant: 'danger' });
+    } else if (network) {
+      if (network.effects?.restrictedAccess) fxTags.push({ label: 'RESTRICTED', variant: 'warn' });
+      if (network.effects?.anonymity) fxTags.push({ label: 'ANON', variant: 'info' });
+      if (network.effects?.traced) fxTags.push({ label: 'TRACED', variant: 'danger' });
     }
-
-    // Effects tags
-    const effectTags = this._buildEffectTags(network, isDeadZone);
 
     // Priorities
     const priorities = [
+      { id: 'low', label: 'Low', active: this.priority === 'low' },
       { id: 'normal', label: 'Normal', active: this.priority === 'normal' },
+      { id: 'high', label: 'High', active: this.priority === 'high' },
       { id: 'urgent', label: 'Urgent', active: this.priority === 'urgent' },
       { id: 'critical', label: 'Critical', active: this.priority === 'critical' },
     ];
@@ -345,26 +317,56 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       { id: '24h', label: '24 Hours', active: this.selfDestructMode === '24h' },
     ];
 
-    // Quote block (reply/forward)
-    let quoteBlock = null;
+    // Original message card (reply/forward) — full rendered card data
+    let originalMessageCard = null;
     if ((this.mode === 'reply' || this.mode === 'forward') && this.originalMessage) {
       const orig = this.originalMessage;
       const senderActor = game.actors.get(orig.fromActorId);
-      quoteBlock = {
-        sender: senderActor?.name || orig.from || 'Unknown',
-        time: orig.timestamp ? new Date(orig.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
-        network: orig.network || 'CITINET',
+      const senderName = senderActor?.name || orig.from || 'Unknown';
+      const senderEmail = senderActor
+        ? (this.contactRepo?.getActorEmail(orig.fromActorId) || orig.from || '')
+        : (orig.from || '');
+      const origNetwork = orig.network || orig.metadata?.networkTrace || 'CITINET';
+
+      // Try to resolve network color
+      let origNetColor = null;
+      const origNetObj = this.networkService?.getAllNetworks?.()?.find(
+        n => n.name?.toUpperCase() === origNetwork.toUpperCase() || n.id === origNetwork
+      );
+      if (origNetObj?.theme?.color) origNetColor = origNetObj.theme.color;
+
+      originalMessageCard = {
+        sender: senderName,
+        email: senderEmail,
+        initials: getInitials(senderName),
+        avatarColor: getAvatarColor(senderName),
+        portrait: senderActor?.img || null,
+        formattedTime: orig.timestamp ? formatCyberDate(orig.timestamp) : '',
+        network: origNetwork.toUpperCase(),
+        networkColor: origNetColor,
+        subject: orig.subject || '',
         body: orig.body || '',
+        encrypted: orig.status?.encrypted || false,
+        encDV: orig.encryption?.dc || null,
+        attachments: (orig.attachments || []).map(a => ({
+          name: a.name || 'Attachment',
+          icon: a.isEddies ? 'fa-coins' : (a.icon || 'fa-paperclip'),
+          isEddies: a.isEddies || false,
+        })),
+        hasAttachments: (orig.attachments?.length || 0) > 0,
       };
     }
 
-    // Darknet detection
+    // Darknet / alert state
     const isDarknet = !isDeadZone && network?.effects?.anonymity;
     const degradedSignal = signalStrength < 75;
     const reliabilityFailChance = network ? Math.round(100 - (network.reliability || 100)) : 0;
 
     // Character count
     const charCount = this._getEditorText().length;
+
+    // Sender initials
+    const fromInitials = getInitials(fromName);
 
     return {
       MODULE_ID,
@@ -378,25 +380,20 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       fromName,
       fromEmail,
       fromImg: fromActor?.img || this.fromContact?.portrait || null,
+      fromInitials,
       fromAvatarColor,
       networkName,
       networkThemeColor,
       isDeadZone,
-      signalBars,
-      signalPercent: signalStrength,
+      netPillState,
+      netPillBars,
+      fxTags,
       modeLabelText,
       modeLabelIcon,
-      modeLabelIconColor,
-      modeLabelClass,
+      modeKey,
 
-      // HUD
-      hudNetClass, hudSigClass, hudToClass, hudPriClass, hudEncClass,
-      hudToLabel, hudFromLabel, hudPriLabel, hudEncLabel,
-      hudStatusText, hudStatusColor, hudStatusIcon,
+      // Time
       currentGameTime: formatCyberDate(this.timeService?.getCurrentTime?.() || new Date().toISOString()),
-
-      // Effects
-      effectTags,
 
       // Fields
       recipients: this.recipients,
@@ -417,14 +414,13 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       // Schedule
       scheduleEnabled: this.scheduleEnabled,
       scheduledTime: this.scheduledTime,
-      scheduledTimeLocal: this._formatForDatetimeLocal(this.scheduledTime),
-      scheduleGameTime: this.scheduleGameTime,
+      scheduledTimeFormatted: this.scheduledTime ? formatCyberDate(this.scheduledTime) : '',
 
       // Editor
       charCount,
 
-      // Quote
-      quoteBlock,
+      // Conversation context
+      originalMessageCard,
 
       // Alerts
       isDarknet,
@@ -841,11 +837,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
         this.encryptionDV = Math.max(1, Math.min(30, parseInt(e.target.value) || 12));
       });
     }
-
-    const scheduleInput = this.element?.querySelector('[data-id="schedule-input"]');
-    if (scheduleInput) {
-      scheduleInput.addEventListener('change', (e) => { this.scheduledTime = e.target.value; });
-    }
+    // Schedule time is handled by CyberTimePicker → hidden input
   }
 
   // ─── Keyboard Shortcuts ───────────────────────────────────
@@ -897,9 +889,9 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     this.autoSaveTime = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
     // Update the auto-save indicator without full re-render
-    const indicator = this.element?.querySelector('.ncm-autosave');
+    const indicator = this.element?.querySelector('.ncm-composer__autosave');
     if (indicator) {
-      indicator.innerHTML = `<i class="fas fa-check-circle"></i> Draft saved ${this.autoSaveTime}`;
+      indicator.innerHTML = `<i class="fas fa-check-circle"></i> Saved ${this.autoSaveTime}`;
     }
 
     // Persist draft to actor flags
@@ -1134,7 +1126,11 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
 
       if (result?.success) {
         if (!this.scheduleEnabled) {
-          ui.notifications.info(result.queued ? 'Message queued for delivery.' : 'Message sent.');
+          // Play success animation
+          this.soundService?.play('send');
+          await this._playSendAnimation(true);
+        } else {
+          ui.notifications.info(`Message scheduled for delivery.`);
         }
 
         // Credit eddies to recipient(s) on successful send
@@ -1144,31 +1140,25 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
           }
         }
 
-        this.soundService?.play('send');
-
-        // Send animation — flash the composer
-        await this._playSendAnimation();
-
         // Clear draft
         await this._clearDraft();
 
         this.close();
       } else {
-        // Send failed — refund eddies if they were deducted
+        // Send failed — show failure animation with retry options
         if (this.eddiesAmount > 0) {
           await this._creditEddies(this.fromActorId, this.eddiesAmount);
-          ui.notifications.warn('Eddies refunded due to send failure.');
         }
-        ui.notifications.error(`Send failed: ${result?.error || 'Unknown error'}`);
+        await this._playSendAnimation(false, { error: result?.error || 'Unknown transmission error' });
+        // Don't close — user can retry/queue/draft from the overlay
       }
     } catch (error) {
       console.error(`${MODULE_ID} | Send failed:`, error);
       // Refund eddies on exception too
       if (this.eddiesAmount > 0) {
         await this._creditEddies(this.fromActorId, this.eddiesAmount).catch(() => {});
-        ui.notifications.warn('Eddies refunded due to send failure.');
       }
-      ui.notifications.error('Failed to send message.');
+      await this._playSendAnimation(false, { error: error.message || 'Unexpected transmission error' });
     } finally {
       this._sending = false;
     }
@@ -1237,18 +1227,31 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     this.render(true);
   }
 
-  static _onToggleGameTime(event, target) {
-    this.scheduleGameTime = !this.scheduleGameTime;
-    // Re-fill with game time if toggling on
-    if (this.scheduleGameTime && this.timeService) {
-      const gameTime = this.timeService.getCurrentTime();
-      if (gameTime) {
-        const d = new Date(gameTime);
-        d.setHours(d.getHours() + 1);
-        this.scheduledTime = d.toISOString();
-      }
-    }
-    this.render(true);
+  /** Open CyberTimePicker for the schedule delivery time */
+  static _onOpenSchedulePicker(event, target) {
+    const hiddenInput = this.element?.querySelector('[data-id="schedule-hidden"]');
+    const triggerValue = target.querySelector('.ncm-ctp-trigger__value');
+
+    CyberTimePicker.open({
+      value: this.scheduledTime || '',
+      title: 'Schedule Delivery',
+      onSet: (iso, formatted) => {
+        this.scheduledTime = iso;
+        if (hiddenInput) hiddenInput.value = iso;
+        if (triggerValue) {
+          triggerValue.textContent = formatted;
+          triggerValue.classList.remove('ncm-ctp-trigger__value--empty');
+        }
+      },
+      onClear: () => {
+        this.scheduledTime = '';
+        if (hiddenInput) hiddenInput.value = '';
+        if (triggerValue) {
+          triggerValue.textContent = 'Pick a time...';
+          triggerValue.classList.add('ncm-ctp-trigger__value--empty');
+        }
+      },
+    });
   }
 
   // ── GM Send-As (WP-4.5.6) ──
@@ -1325,18 +1328,53 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     }
   }
 
+  // ── Overflow Menu ──
+
+  static _onToggleOverflow(event, target) {
+    const menu = this.element?.querySelector('[data-id="overflow-menu"]');
+    if (!menu) return;
+    const wasHidden = menu.classList.contains('ncm-hidden');
+    menu.classList.toggle('ncm-hidden');
+
+    // Close on outside click
+    if (wasHidden) {
+      const closeHandler = (e) => {
+        if (!menu.contains(e.target) && e.target !== target) {
+          menu.classList.add('ncm-hidden');
+          document.removeEventListener('click', closeHandler, true);
+        }
+      };
+      // Defer so the current click doesn't immediately close it
+      requestAnimationFrame(() => {
+        document.addEventListener('click', closeHandler, true);
+      });
+    }
+  }
+
+  // ── Retry Send ──
+
+  static _onRetrySend(event, target) {
+    // Hide the failure overlay, then re-trigger send
+    const overlay = this.element?.querySelector('[data-id="send-overlay"]');
+    if (overlay) overlay.classList.add('ncm-hidden');
+    this._sending = false;
+    MessageComposerApp._onSend.call(this, event, target);
+  }
+
   // ── Quote ──
 
   static _onToggleQuote(event, target) {
-    const body = this.element?.querySelector('[data-id="quote-body"]');
+    const body = this.element?.querySelector('[data-id="original-msg-body"]');
     if (body) {
-      body.classList.toggle('ncm-quote-block__body--expanded');
+      body.classList.toggle('ncm-composer__msg-body--expanded');
+      const fade = body.querySelector('.ncm-composer__msg-body-fade');
+      if (fade) fade.style.display = body.classList.contains('ncm-composer__msg-body--expanded') ? 'none' : '';
       const icon = target.querySelector('i');
       if (icon) {
         icon.classList.toggle('fa-chevron-down');
         icon.classList.toggle('fa-chevron-up');
       }
-      const text = body.classList.contains('ncm-quote-block__body--expanded')
+      const text = body.classList.contains('ncm-composer__msg-body--expanded')
         ? 'Hide full message' : 'Show full message';
       target.childNodes[target.childNodes.length - 1].textContent = ` ${text}`;
     }
@@ -1764,10 +1802,10 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     const dv = el.querySelector('[data-id="encryption-dv"]');
     if (dv) this.encryptionDV = parseInt(dv.value) || 12;
 
-    const schedule = el.querySelector('[data-id="schedule-input"]');
+    const schedule = el.querySelector('[data-id="schedule-hidden"]');
     if (schedule && schedule.value) {
-      // datetime-local returns YYYY-MM-DDTHH:MM — convert to ISO
-      this.scheduledTime = new Date(schedule.value).toISOString();
+      // Hidden input stores ISO directly from CyberTimePicker
+      this.scheduledTime = schedule.value;
     }
   }
 
@@ -1857,28 +1895,86 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
 
   // ─── Send Animation ────────────────────────────────────────
 
-  async _playSendAnimation() {
+  /**
+   * Play the full send animation overlay:
+   * 1. Show transmitting overlay with route + progress
+   * 2. On success: swap to success state, auto-close after delay
+   * 3. On failure: swap to failure state with retry/queue/draft buttons
+   * @param {boolean} [success=true]
+   * @param {Object} [details={}]
+   */
+  async _playSendAnimation(success = true, details = {}) {
     const el = this.element;
     if (!el) return;
 
-    // Flash the send button
-    const sendBtn = el.querySelector('.ncm-btn--send, .ncm-btn--schedule');
-    if (sendBtn) {
-      sendBtn.classList.add('ncm-send-flash');
+    const overlay = el.querySelector('[data-id="send-overlay"]');
+    const transmit = el.querySelector('[data-id="send-transmit"]');
+    const successEl = el.querySelector('[data-id="send-success"]');
+    const failureEl = el.querySelector('[data-id="send-failure"]');
+    if (!overlay || !transmit) return;
+
+    // Populate route info
+    const routeNet = el.querySelector('[data-id="send-route-net"]');
+    const routeTo = el.querySelector('[data-id="send-route-to"]');
+    if (routeNet) routeNet.textContent = this.networkService?.currentNetwork?.name?.toUpperCase() || 'CITINET';
+    if (routeTo) {
+      routeTo.textContent = this.recipients.length > 0
+        ? this.recipients[0].name
+        : '—';
     }
 
-    // Brief overlay flash on the composer
-    const composer = el.querySelector('.ncm-composer');
-    if (composer) {
-      composer.classList.add('ncm-send-pulse');
+    // Populate stream data
+    const stream = el.querySelector('[data-id="send-stream"]');
+    if (stream) {
+      const encLabel = this.encryptionEnabled ? `ICE DV${this.encryptionDV}` : 'NONE';
+      const sig = this.networkService?.signalStrength ?? 100;
+      stream.innerHTML = `PKT 0x${Math.random().toString(16).slice(2, 6).toUpperCase()} → NODE_${String(Math.floor(Math.random() * 20)).padStart(2, '0')} → RELAY<br>ENC: ${encLabel} · SIG: ${sig}% · PRI: ${this.priority.toUpperCase()}<br>ROUTE: LOCAL → ${(this.networkService?.currentNetwork?.name || 'CITINET').toUpperCase()}_CORE → DEST`;
     }
 
-    // Wait for animation
-    await new Promise(r => setTimeout(r, 400));
+    // Show overlay with transmitting state
+    overlay.classList.remove('ncm-hidden');
+    transmit.classList.remove('ncm-hidden');
+    if (successEl) successEl.classList.add('ncm-hidden');
+    if (failureEl) failureEl.classList.add('ncm-hidden');
 
-    // Clean up (window will close shortly after)
-    sendBtn?.classList.remove('ncm-send-flash');
-    composer?.classList.remove('ncm-send-pulse');
+    // Start progress bar animation
+    const progressBar = el.querySelector('[data-id="send-progress-bar"]');
+    if (progressBar) {
+      progressBar.style.width = '0';
+      progressBar.classList.add('ncm-composer__send-progress-bar--animating');
+    }
+
+    // Wait for transmission animation
+    await new Promise(r => setTimeout(r, 2000));
+
+    if (success) {
+      // Swap to success state
+      transmit.classList.add('ncm-hidden');
+      if (successEl) {
+        successEl.classList.remove('ncm-hidden');
+        const detail = el.querySelector('[data-id="send-success-detail"]');
+        if (detail) {
+          const recipientName = this.recipients.length > 0 ? this.recipients[0].name : 'recipient';
+          const netName = this.networkService?.currentNetwork?.name || 'CITINET';
+          const time = formatCyberDate(this.timeService?.getCurrentTime?.() || new Date().toISOString());
+          detail.textContent = `Delivered to ${recipientName} via ${netName} · ${time}`;
+        }
+      }
+
+      // Auto-close after success display
+      await new Promise(r => setTimeout(r, 1500));
+    } else {
+      // Swap to failure state
+      transmit.classList.add('ncm-hidden');
+      if (failureEl) {
+        failureEl.classList.remove('ncm-hidden');
+        const detail = el.querySelector('[data-id="send-fail-detail"]');
+        if (detail) {
+          detail.textContent = details.error || 'ERR_NET_TIMEOUT · Node relay unresponsive';
+        }
+      }
+      // Don't auto-close — user picks retry/queue/draft
+    }
   }
 
   _computeExpiry() {
@@ -1892,22 +1988,4 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     }
   }
 
-  /**
-   * Convert an ISO string to the format needed by input[type=datetime-local]: YYYY-MM-DDTHH:MM
-   */
-  _formatForDatetimeLocal(isoStr) {
-    if (!isoStr) return '';
-    try {
-      const d = new Date(isoStr);
-      if (isNaN(d.getTime())) return '';
-      const yyyy = d.getFullYear();
-      const mm = String(d.getMonth() + 1).padStart(2, '0');
-      const dd = String(d.getDate()).padStart(2, '0');
-      const hh = String(d.getHours()).padStart(2, '0');
-      const min = String(d.getMinutes()).padStart(2, '0');
-      return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
-    } catch {
-      return '';
-    }
-  }
 }
