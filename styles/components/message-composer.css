@@ -867,7 +867,7 @@
   overflow-y: auto;
   padding: 10px 14px;
   font-family: 'Rajdhani', sans-serif;
-  font-size: 13px; color: #c0c0d0;
+  font-size: 13px; font-weight: 400 !important; color: #c0c0d0;
   line-height: 1.5; outline: none;
   scrollbar-width: thin;
   scrollbar-color: #1a1a2e transparent;
@@ -890,7 +890,7 @@
 }
 
 /* Rich text styling inside the editor */
-.ncm-composer__editor b, .ncm-composer__editor strong { font-weight: 700; color: #e0e0e8; }
+.ncm-composer__editor b, .ncm-composer__editor strong { font-weight: 700 !important; color: #f0f0f8 !important; }
 .ncm-composer__editor i, .ncm-composer__editor em { font-style: italic; }
 .ncm-composer__editor u { text-decoration: underline; text-decoration-color: rgba(25,243,247,0.4); }
 .ncm-composer__editor s, .ncm-composer__editor strike { text-decoration: line-through; color: #666680; }
