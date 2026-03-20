@@ -336,51 +336,69 @@ const AVATAR_PALETTE = [
 ];
 
 /**
- * §2.9 — Faction-to-color override map.
- * If a contact has a faction/role flag, this takes precedence over the name hash.
+ * §2.9 — Role-to-color map.
+ * Canonical source of truth for avatar colors by role — matches the GM Admin
+ * Panel's roleAvatarColors. If a contact has a role flag, this takes precedence
+ * over the name hash. Custom roles from MasterContactService are also supported
+ * via the optional customRoles parameter.
  * @type {Record<string, string>}
  */
-const FACTION_COLORS = {
-  fixer:       '#F65261', // red
-  netrunner:   '#19f3f7', // cyan
-  corp:        '#f7c948', // gold
-  corporate:   '#f7c948', // gold (alias)
-  gang:        '#b44dff', // purple
-  ncpd:        '#4a9eff', // blue
-  police:      '#4a9eff', // blue (alias)
-  traumateam:  '#00ff41', // green
-  'trauma team': '#00ff41', // green (alias)
-  solo:        '#ff6a13', // orange
-  media:       '#ff69b4', // pink
-  techie:      '#00bcd4', // teal
-  tech:        '#00bcd4', // teal (alias)
-  nomad:       '#8bc34a', // lime
-  rockerboy:   '#ff5722', // deep orange
-  medtech:     '#00ff41', // green
-  lawman:      '#4a9eff', // blue
-  exec:        '#f7c948', // gold
+const ROLE_COLORS = {
+  fixer:       '#d4a017',
+  netrunner:   '#00e5ff',
+  runner:      '#00e5ff', // alias
+  corp:        '#4a8ab5',
+  corporate:   '#4a8ab5', // alias
+  exec:        '#6ec1e4',
+  solo:        '#e04848',
+  tech:        '#2ecc71',
+  techie:      '#2ecc71', // alias
+  medtech:     '#1abc9c',
+  ripperdoc:   '#e06888',
+  media:       '#b87aff',
+  nomad:       '#d4844a',
+  lawman:      '#6b8fa3',
+  rockerboy:   '#e05cb5',
+  rocker:      '#e05cb5', // alias
+  gang:        '#cc4444',
+  civilian:    '#8888a0',
+  government:  '#5a7fa5',
+  ncpd:        '#6b8fa3', // alias → lawman
+  police:      '#6b8fa3', // alias → lawman
+  traumateam:  '#1abc9c', // alias → medtech
+  'trauma team': '#1abc9c', // alias
+  ai:          '#ff44cc',
 };
 
 /**
  * §2.9 — Compute a deterministic avatar color from a sender name.
- * Uses a simple char-code hash modulo palette length so the same name
- * always maps to the same color. If the contact has a faction/role flag,
- * faction color takes precedence.
+ * Priority order:
+ *   1. Contact role/faction → ROLE_COLORS lookup
+ *   2. Contact role → customRoles color lookup (GM-defined roles)
+ *   3. Name hash → AVATAR_PALETTE (deterministic fallback)
  *
  * @param {string} name — Sender display name
- * @param {object} [contact] — Optional contact with faction/role data
- * @returns {string} Hex color string (e.g. '#19f3f7')
+ * @param {object} [contact] — Optional contact with role data
+ * @param {Array<{id: string, color: string}>} [customRoles] — Optional custom roles from MasterContactService
+ * @returns {string} Hex color string (e.g. '#00e5ff')
  *
  * @example
- *   getAvatarColor('V')                          // → '#ff6a13'  (hash-based)
- *   getAvatarColor('Rogue', { faction: 'fixer' }) // → '#F65261'  (faction override)
+ *   getAvatarColor('V')                                      // → hash-based
+ *   getAvatarColor('Rogue', { role: 'fixer' })               // → '#d4a017'
+ *   getAvatarColor('Ozob', { role: 'clown' }, [{id:'clown', color:'#ff0'}]) // → '#ff0'
  */
-export function getAvatarColor(name, contact) {
-  // Faction override — check contact role/faction
+export function getAvatarColor(name, contact, customRoles) {
+  // Role/faction override — check built-in role map
   if (contact) {
-    const faction = (contact.faction || contact.role || '').toLowerCase().trim();
-    if (faction && FACTION_COLORS[faction]) {
-      return FACTION_COLORS[faction];
+    const role = (contact.faction || contact.role || '').toLowerCase().trim();
+    if (role) {
+      // Built-in roles
+      if (ROLE_COLORS[role]) return ROLE_COLORS[role];
+      // Custom roles from MasterContactService
+      if (customRoles?.length) {
+        const custom = customRoles.find(cr => cr.id === role);
+        if (custom?.color) return custom.color;
+      }
     }
   }
 

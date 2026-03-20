@@ -456,6 +456,9 @@ export class MessageViewerApp extends BaseApplication {
     // ── Refresh contact cache for _findContact lookups ──
     await this._refreshContactCache();
 
+    // ── Cache custom roles for role-colored avatars ──
+    this._customRoles = game.nightcity?.masterContactService?.getCustomRoles?.() || [];
+
     // ── Messages: load → filter → sort → paginate → enrich ──
     const allMessages = await this._loadMessages();
     const filtered = this._applyFilters(allMessages);
@@ -2653,8 +2656,8 @@ export class MessageViewerApp extends BaseApplication {
     //  Sprint 2C — Visual personality enrichment
     // ══════════════════════════════════════════════════════
 
-    // §2.9 — Color-coded avatar
-    const avatarColor = getAvatarColor(fromDisplay, contact);
+    // §2.9 — Color-coded avatar (role colors from GM Admin Panel)
+    const avatarColor = getAvatarColor(fromDisplay, contact, this._customRoles);
 
     // §2.10 — Network theme class
     const networkThemeClass = getNetworkThemeClass(msg.network);
@@ -3031,7 +3034,7 @@ export class MessageViewerApp extends BaseApplication {
         initials: getInitials(actor.name || 'Unknown'),
         email,
         isActive: actor.id === this.actorId,
-        avatarColor: getAvatarColor(actor.name),
+        avatarColor: getAvatarColor(actor.name, null, this._customRoles),
       });
     }
     return characters;
@@ -3057,7 +3060,7 @@ export class MessageViewerApp extends BaseApplication {
           initials: getInitials(actor.name || 'Unknown'),
           email: this.contactRepository?.getActorEmail?.(actor.id) || '',
           isActive: actor.id === this.actorId,
-          avatarColor: getAvatarColor(actor.name),
+          avatarColor: getAvatarColor(actor.name, null, this._customRoles),
         });
       }
     }
@@ -3077,7 +3080,7 @@ export class MessageViewerApp extends BaseApplication {
             initials: getInitials(actor.name || 'Unknown'),
             email: this.contactRepository?.getActorEmail?.(actor.id) || '',
             isActive: actor.id === this.actorId,
-            avatarColor: getAvatarColor(actor.name),
+            avatarColor: getAvatarColor(actor.name, null, this._customRoles),
           });
         }
       }
