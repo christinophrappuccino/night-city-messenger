@@ -189,6 +189,9 @@ export class MessageViewerApp extends BaseApplication {
   /** @type {Array|null} Cached messages from last load */
   _cachedMessages = null;
 
+  /** @type {Array<string>} Message IDs on current page, for keyboard navigation */
+  _lastPaginatedIds = [];
+
   /** @type {number|null} Search debounce timer */
   _searchDebounce = null;
 
@@ -459,6 +462,9 @@ export class MessageViewerApp extends BaseApplication {
     const sorted = this._applySorting(filtered);
     const paginated = this._applyPagination(sorted);
 
+    // Store paginated IDs for keyboard navigation
+    this._lastPaginatedIds = paginated.map(m => m.messageId);
+
     // ── Actor/Contact identity for inbox header ──
     const viewingActor = this.actorId ? game.actors?.get(this.actorId) : null;
     let viewingAsName, viewingAsPortrait, viewingAsInitial, viewingAsEmail;
@@ -673,6 +679,13 @@ export class MessageViewerApp extends BaseApplication {
       this._delegatedClickBound = true;
     }
 
+    // Keyboard shortcuts (bind once — cleaned up in close())
+    if (!this._keydownBound) {
+      this._boundKeydown = (event) => this._onKeydown(event);
+      document.addEventListener('keydown', this._boundKeydown);
+      this._keydownBound = true;
+    }
+
     // Search input
     const searchInput = html.querySelector('.ncm-viewer__search-input');
     if (searchInput && !searchInput._ncmBound) {
@@ -812,6 +825,14 @@ export class MessageViewerApp extends BaseApplication {
         const s = Math.floor((remaining % 60000) / 1000);
         traceEl.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
       }, 1000);
+    }
+
+    // ── Keyboard navigation: scroll selected message into view ──
+    if (this._scrollToMessageId) {
+      const scrollTargetId = this._scrollToMessageId;
+      this._scrollToMessageId = null;
+      const el = html.querySelector(`[data-message-id="${scrollTargetId}"]`);
+      el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     }
   }
 
@@ -1435,6 +1456,148 @@ export class MessageViewerApp extends BaseApplication {
     }
 
     return sorted;
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Keyboard Shortcuts
+  // ═══════════════════════════════════════════════════════════
+
+  /**
+   * Global keyboard shortcut handler.
+   * Matches the footer hints:
+   *   With message selected: R=Reply, F=Forward, S=Save, Del=Trash, ↑↓=Navigate
+   *   Always: /=Search, N=New, ↑↓=Navigate, Enter=Select, Esc=Deselect
+   *
+   * Skips when focus is inside an input, textarea, or contenteditable element
+   * so typing in search, quick-reply, or bypass fields works normally.
+   */
+  _onKeydown(event) {
+    // Guard: skip if app isn't rendered or visible
+    if (!this.element) return;
+
+    // Guard: skip if typing inside an input field
+    const tag = event.target.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || event.target.isContentEditable) return;
+
+    // Guard: skip if the active element is inside a different Foundry application
+    const activeApp = event.target.closest?.('.application, .app');
+    if (activeApp && !this.element.contains(activeApp) && activeApp !== this.element) return;
+
+    // Guard: skip if modifier keys held (allow browser/OS shortcuts)
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
+
+    const key = event.key;
+    const hasSelection = !!this.selectedMessageId;
+    const isMessages = getPrimaryTab(this.currentFilter) === 'messages';
+
+    switch (key) {
+      // ── Navigation ──
+      case 'ArrowUp':
+        event.preventDefault();
+        if (isMessages) this._navigateMessages(-1);
+        break;
+      case 'ArrowDown':
+        event.preventDefault();
+        if (isMessages) this._navigateMessages(1);
+        break;
+      case 'Enter':
+        event.preventDefault();
+        if (isMessages && !hasSelection) {
+          // Select first message in list
+          const firstId = this._lastPaginatedIds?.[0];
+          if (firstId) this._selectMessage(firstId);
+        }
+        break;
+
+      // ── Actions requiring selected message ──
+      case 'r':
+      case 'R':
+        if (hasSelection && isMessages) {
+          event.preventDefault();
+          this._replyToMessage(this.selectedMessageId);
+        }
+        break;
+      case 'f':
+      case 'F':
+        if (hasSelection && isMessages) {
+          event.preventDefault();
+          this._forwardMessage(this.selectedMessageId);
+        }
+        break;
+      case 's':
+      case 'S':
+        if (hasSelection && isMessages) {
+          event.preventDefault();
+          this._toggleSave(this.selectedMessageId);
+        }
+        break;
+      case 'Delete':
+      case 'Backspace':
+        if (hasSelection && isMessages) {
+          event.preventDefault();
+          this._deleteMessage(this.selectedMessageId);
+        }
+        break;
+      case 'Escape':
+        if (hasSelection) {
+          event.preventDefault();
+          this.selectedMessageId = null;
+          this.render();
+        }
+        break;
+
+      // ── Global shortcuts ──
+      case '/':
+        event.preventDefault();
+        this._focusSearch();
+        break;
+      case 'n':
+      case 'N':
+        event.preventDefault();
+        game.nightcity?.composeMessage?.({ fromActorId: this.actorId });
+        break;
+    }
+  }
+
+  /**
+   * Navigate the message list by offset (-1 = up, +1 = down).
+   * Uses _lastPaginatedIds to find current position and move.
+   * If no message is selected, selects the first (down) or last (up) in the page.
+   */
+  _navigateMessages(direction) {
+    const ids = this._lastPaginatedIds;
+    if (!ids?.length) return;
+
+    let targetId;
+    if (!this.selectedMessageId) {
+      // No selection — pick first or last based on direction
+      targetId = direction > 0 ? ids[0] : ids[ids.length - 1];
+    } else {
+      const currentIndex = ids.indexOf(this.selectedMessageId);
+      if (currentIndex === -1) {
+        targetId = ids[0];
+      } else {
+        const nextIndex = currentIndex + direction;
+        if (nextIndex < 0 || nextIndex >= ids.length) return; // At boundary
+        targetId = ids[nextIndex];
+      }
+    }
+
+    if (targetId) {
+      this._scrollToMessageId = targetId;
+      this._selectMessage(targetId);
+    }
+  }
+
+  /**
+   * Focus the search input field.
+   */
+  _focusSearch() {
+    const searchInput = this.element?.querySelector('.ncm-viewer__search-input');
+    if (searchInput) {
+      searchInput.focus();
+      searchInput.select();
+    }
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -2928,6 +3091,12 @@ export class MessageViewerApp extends BaseApplication {
     if (this._clockInterval) clearInterval(this._clockInterval);
     if (this._lockoutTimer) clearInterval(this._lockoutTimer);
     if (this._traceTimer) clearInterval(this._traceTimer);
+    // Remove global keyboard listener
+    if (this._boundKeydown) {
+      document.removeEventListener('keydown', this._boundKeydown);
+      this._boundKeydown = null;
+      this._keydownBound = false;
+    }
     return super.close(options);
   }
 }
