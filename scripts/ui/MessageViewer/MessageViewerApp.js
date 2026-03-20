@@ -857,6 +857,26 @@ export class MessageViewerApp extends BaseApplication {
         input.setSelectionRange(pos, pos);
       }
     }
+
+    // ── Category pills: slide-in after tab switch ──
+    if (this._pillsSlideFrom) {
+      const direction = this._pillsSlideFrom;
+      this._pillsSlideFrom = null;
+      const track = html.querySelector('.ncm-viewer__pills-track');
+      if (track) {
+        // Start at offset position (no transition)
+        track.classList.add(`ncm-viewer__pills-track--enter-${direction}`);
+        // Next frame: enable transition and slide to center
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            track.classList.remove(`ncm-viewer__pills-track--enter-${direction}`);
+            track.classList.add('ncm-viewer__pills-track--enter-active');
+            // Clean up class after animation
+            setTimeout(() => track.classList.remove('ncm-viewer__pills-track--enter-active'), 350);
+          });
+        });
+      }
+    }
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -1073,9 +1093,29 @@ export class MessageViewerApp extends BaseApplication {
       // ── v3.2: Primary Tab Navigation ──
       case 'set-primary-tab': {
         const tab = target.dataset.tab;
-        // Map primary tab to a default filter
         const tabFilterMap = { messages: 'inbox', shards: 'shards', scheduled: 'scheduled', drafts: 'drafts' };
-        this._setFilter(tabFilterMap[tab] || 'inbox');
+        const newFilter = tabFilterMap[tab] || 'inbox';
+
+        // Determine slide direction based on tab order
+        const TAB_ORDER = ['messages', 'shards', 'scheduled', 'drafts'];
+        const oldTab = getPrimaryTab(this.currentFilter);
+        const oldIndex = TAB_ORDER.indexOf(oldTab);
+        const newIndex = TAB_ORDER.indexOf(tab);
+        if (tab === oldTab) break; // Same tab, no-op
+
+        const goingRight = newIndex > oldIndex;
+
+        // Animate current pills out
+        const track = this.element?.querySelector('.ncm-viewer__pills-track');
+        if (track) {
+          track.classList.add(goingRight ? 'ncm-viewer__pills-track--exit-left' : 'ncm-viewer__pills-track--exit-right');
+          // After exit animation, render with new content and slide in
+          this._pillsSlideFrom = goingRight ? 'right' : 'left';
+          setTimeout(() => this._setFilter(newFilter), 200);
+        } else {
+          // No track element (e.g. scheduled/drafts tabs) — just switch immediately
+          this._setFilter(newFilter);
+        }
         break;
       }
 

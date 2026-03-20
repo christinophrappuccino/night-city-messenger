@@ -142,6 +142,7 @@
 
   {{!-- ═══════ §3 CATEGORY PILLS ═══════ --}}
   <div class="ncm-viewer__category-pills">
+    <div class="ncm-viewer__pills-track">
     {{#if isMessagesTab}}
       <span class="ncm-pill {{#if (eq currentFilter 'inbox')}}ncm-pill--active{{/if}}"
             data-action="set-filter" data-filter="inbox">
@@ -182,6 +183,7 @@
       <span class="ncm-pill"><i class="fas fa-box"></i> Inventory</span>
       <span class="ncm-pill"><i class="fas fa-lock"></i> Encrypted</span>
     {{/if}}
+    </div>
   </div>
 
   {{!-- ═══════ §4 BULK / MANAGEMENT BARS ═══════ --}}
