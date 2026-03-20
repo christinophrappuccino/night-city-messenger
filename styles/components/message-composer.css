@@ -12,6 +12,8 @@
 
 /* ─── ROOT ─── */
 
+.ncm-app .ncm-composer .ncm-hidden { display: none !important; }
+
 .ncm-app .ncm-composer {
   display: flex;
   flex-direction: column;
