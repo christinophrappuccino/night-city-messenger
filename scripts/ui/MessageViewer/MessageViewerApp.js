@@ -811,7 +811,7 @@ export class MessageViewerApp extends BaseApplication {
 
     // ── WP-6: Trace countdown timer ──
     if (this._traceTimer) clearInterval(this._traceTimer);
-    const traceEl = html.querySelector('.ncm-viewer__trace-timer');
+    const traceEl = html.querySelector('.ncm-viewer__trace-bar-timer');
     if (traceEl?.dataset.traceExpires) {
       const expiresAt = traceEl.dataset.traceExpires;
       this._traceTimer = setInterval(async () => {
@@ -2474,9 +2474,9 @@ export class MessageViewerApp extends BaseApplication {
   }
 
   /**
-   * Attempt to decrypt an ICE-protected message with a full breach animation.
-   * Injects a terminal + ICE visualization into the encrypted overlay,
-   * calls the actual skill check, then shows success/failure.
+   * Attempt to decrypt an ICE-protected message with a unique cipher-matrix animation.
+   * Different from the shard hacking terminal — this is a visual decryption grid
+   * with character reveals and a rotating cipher ring.
    * @param {string} messageId
    */
   async _decryptMessage(messageId) {
@@ -2493,198 +2493,210 @@ export class MessageViewerApp extends BaseApplication {
     // Find the encrypted overlay container
     const overlay = html.querySelector('.ncm-viewer__encrypted');
     if (!overlay) {
-      // Fallback: just call service directly
       const result = await this.messageService?.attemptDecrypt?.(messageId, this.actorId);
       if (result?.success) this.render();
       return;
     }
 
-    // ── Inject Breach Sequence UI ──
+    // ── Build the hex character grid (8x6 = 48 cells) ──
+    const GLYPHS = '0123456789ABCDEF░▒▓█╬╠╣╦╩';
+    const COLS = 8, ROWS = 6;
+    let gridCells = '';
+    for (let i = 0; i < ROWS * COLS; i++) {
+      const ch = GLYPHS[Math.floor(Math.random() * GLYPHS.length)];
+      gridCells += `<span class="ncm-decrypt__cell" data-idx="${i}">${ch}</span>`;
+    }
+
+    // ── Inject Decryption Matrix UI ──
     overlay.innerHTML = `
-      <div class="ncm-breach-seq">
-        <div class="ncm-breach-seq__status">
-          <div class="ncm-breach-seq__status-dot"></div>
-          <div class="ncm-breach-seq__status-text">Breach Protocol Active</div>
-          <div class="ncm-breach-seq__status-ice">${iceName} // DV ${dc}</div>
+      <div class="ncm-decrypt">
+        <div class="ncm-decrypt__header">
+          <div class="ncm-decrypt__header-dot"></div>
+          <span class="ncm-decrypt__header-title">Decryption Matrix</span>
+          <span class="ncm-decrypt__header-ice">${iceName} // DV ${dc}</span>
         </div>
-        <div class="ncm-breach-seq__main">
-          <div class="ncm-breach-seq__stream" style="left:8%;"></div>
-          <div class="ncm-breach-seq__stream" style="left:24%;animation-delay:0.5s;"></div>
-          <div class="ncm-breach-seq__stream" style="left:42%;animation-delay:1.1s;"></div>
-          <div class="ncm-breach-seq__stream" style="left:58%;animation-delay:0.3s;"></div>
-          <div class="ncm-breach-seq__stream" style="left:76%;animation-delay:0.8s;"></div>
-          <div class="ncm-breach-seq__terminal" data-terminal>
-            <div class="ncm-breach-seq__cursor"></div>
-          </div>
-          <div class="ncm-breach-seq__ice">
-            <div class="ncm-breach-seq__ice-rings" data-ice-rings>
-              <div class="ncm-breach-seq__ice-ring ncm-breach-seq__ice-ring--outer"></div>
-              <div class="ncm-breach-seq__ice-ring ncm-breach-seq__ice-ring--middle"></div>
-              <div class="ncm-breach-seq__ice-ring ncm-breach-seq__ice-ring--inner"></div>
-              <i class="fas fa-shield-halved ncm-breach-seq__ice-icon"></i>
+        <div class="ncm-decrypt__body">
+          <div class="ncm-decrypt__grid-panel">
+            <div class="ncm-decrypt__grid" data-grid>${gridCells}</div>
+            <div class="ncm-decrypt__grid-info">
+              <span class="ncm-decrypt__grid-pct" data-pct>0%</span>
+              <span class="ncm-decrypt__grid-status" data-status>ENCRYPTED</span>
             </div>
-            <div class="ncm-breach-seq__ice-label">${iceName}</div>
-            <div class="ncm-breach-seq__ice-bar">
-              <div class="ncm-breach-seq__ice-bar-label">ICE Integrity</div>
-              <div class="ncm-breach-seq__ice-bar-track">
-                <div class="ncm-breach-seq__ice-bar-fill" data-ice-fill style="width:100%;"></div>
+          </div>
+          <div class="ncm-decrypt__key-panel">
+            <div class="ncm-decrypt__ring" data-ring>
+              <div class="ncm-decrypt__ring-outer"></div>
+              <div class="ncm-decrypt__ring-inner"></div>
+              <div class="ncm-decrypt__ring-core">
+                <i class="fas fa-key"></i>
               </div>
             </div>
+            <div class="ncm-decrypt__key-label" data-key-label>Analyzing cipher...</div>
+            <div class="ncm-decrypt__key-log" data-key-log></div>
           </div>
         </div>
-        <div class="ncm-breach-seq__progress">
-          <div class="ncm-breach-seq__progress-fill" data-progress-fill></div>
-          <span class="ncm-breach-seq__progress-label" data-progress-label>Initializing...</span>
+        <div class="ncm-decrypt__bar">
+          <div class="ncm-decrypt__bar-fill" data-bar-fill></div>
+          <span class="ncm-decrypt__bar-label" data-bar-label>Initializing...</span>
         </div>
-        <div class="ncm-breach-seq__result" data-result style="display:none;"></div>
+        <div class="ncm-decrypt__result" data-result style="display:none;"></div>
       </div>
     `;
 
-    // ── Animation Helpers ──
+    // ── Refs ──
     const _timers = [];
-    const delay = (fn, ms) => new Promise(resolve => {
-      _timers.push(setTimeout(() => { fn(); resolve(); }, ms));
-    });
-    const terminal = overlay.querySelector('[data-terminal]');
-    const progressFill = overlay.querySelector('[data-progress-fill]');
-    const progressLabel = overlay.querySelector('[data-progress-label]');
-    const iceFill = overlay.querySelector('[data-ice-fill]');
-    const iceRings = overlay.querySelector('[data-ice-rings]');
+    const delay = (fn, ms) => new Promise(r => { _timers.push(setTimeout(() => { fn(); r(); }, ms)); });
+    const cells = overlay.querySelectorAll('.ncm-decrypt__cell');
+    const pctEl = overlay.querySelector('[data-pct]');
+    const statusEl = overlay.querySelector('[data-status]');
+    const barFill = overlay.querySelector('[data-bar-fill]');
+    const barLabel = overlay.querySelector('[data-bar-label]');
+    const keyLabel = overlay.querySelector('[data-key-label]');
+    const keyLog = overlay.querySelector('[data-key-log]');
+    const ring = overlay.querySelector('[data-ring]');
     const resultEl = overlay.querySelector('[data-result]');
 
-    const addLine = (cls, text) => {
-      const div = document.createElement('div');
-      div.className = `ncm-breach-seq__line ncm-breach-seq__line--${cls}`;
-      div.innerHTML = text;
-      const cursor = terminal.querySelector('.ncm-breach-seq__cursor');
-      if (cursor) terminal.insertBefore(div, cursor);
-      else terminal.appendChild(div);
-      terminal.scrollTop = terminal.scrollHeight;
+    const setBar = (pct, label) => {
+      if (barFill) barFill.style.width = `${pct}%`;
+      if (barLabel) barLabel.textContent = label;
     };
-    const setProg = (pct, label) => {
-      if (progressFill) progressFill.style.width = `${pct}%`;
-      if (progressLabel) progressLabel.textContent = label;
+    const addKeyLog = (text) => {
+      const s = document.createElement('div');
+      s.className = 'ncm-decrypt__key-log-line';
+      s.textContent = text;
+      keyLog.appendChild(s);
+      keyLog.scrollTop = keyLog.scrollHeight;
     };
-    const setIce = (pct) => { if (iceFill) iceFill.style.width = `${pct}%`; };
 
-    // ── Phase 1: Init ──
-    addLine('system', '░░ NCM BREACH PROTOCOL v4.6 ░░');
-    await delay(() => addLine('system', `Target: MESSAGE // Encryption: ${iceName}`), 200);
-    await delay(() => { addLine('blank', ''); setProg(10, 'Mapping ICE architecture...'); }, 300);
+    // Scramble animation — cells cycle random chars
+    let scrambleInterval = setInterval(() => {
+      cells.forEach(c => {
+        if (!c.classList.contains('ncm-decrypt__cell--solved')) {
+          c.textContent = GLYPHS[Math.floor(Math.random() * GLYPHS.length)];
+        }
+      });
+    }, 100);
 
-    // ── Phase 2: Scan ──
-    await delay(() => addLine('prompt', 'Initializing ICE scan...'), 400);
-    await delay(() => addLine('data', `0x${Math.random().toString(16).slice(2,6).toUpperCase()} :: scanning encryption layer :: vectors loaded`), 500);
-    await delay(() => addLine('data', `0x${Math.random().toString(16).slice(2,6).toUpperCase()} :: firewall topology mapped :: ${iceName} detected`), 500);
-    await delay(() => { addLine('prompt', 'ICE architecture mapped.'); setProg(25, 'Probing defenses...'); setIce(90); }, 400);
+    // Solve cells progressively
+    const solveCount = (count) => {
+      const unsolved = [...cells].filter(c => !c.classList.contains('ncm-decrypt__cell--solved'));
+      const toSolve = unsolved.slice(0, count);
+      toSolve.forEach(c => {
+        c.classList.add('ncm-decrypt__cell--solved');
+        c.textContent = '0123456789ABCDEF'[Math.floor(Math.random() * 16)];
+      });
+      const total = [...cells].filter(c => c.classList.contains('ncm-decrypt__cell--solved')).length;
+      const pct = Math.round((total / cells.length) * 100);
+      if (pctEl) pctEl.textContent = `${pct}%`;
+    };
 
-    // ── Phase 3: Probe ──
-    await delay(() => addLine('blank', ''), 200);
-    await delay(() => addLine('ice', `⚠ ${iceName} DETECTED — COUNTERMEASURES ARMED`), 400);
-    await delay(() => { setProg(40, 'Selecting exploit...'); }, 200);
-    await delay(() => addLine('prompt', `Exploit vector: ${encryption.skill || 'Interface'}`), 400);
-    await delay(() => { setProg(55, 'Injecting exploit...'); setIce(75); }, 300);
+    // ── Phase 1: Cipher analysis ──
+    setBar(8, 'Analyzing cipher structure...');
+    addKeyLog(`Target: ${iceName}`);
+    await delay(() => { addKeyLog('Cipher type: polyalphabetic'); setBar(15, 'Mapping key space...'); }, 500);
+    await delay(() => { solveCount(4); addKeyLog('Key length: estimated 256-bit'); setBar(25, 'Probing key rotations...'); }, 500);
 
-    // ── Phase 4: Inject ──
-    await delay(() => addLine('blank', ''), 200);
-    await delay(() => addLine('prompt', 'Injecting exploit into layer 1...'), 400);
-    await delay(() => addLine('data', `0x${Math.random().toString(16).slice(2,6).toUpperCase()} :: buffer overflow targeting auth handler`), 500);
-    await delay(() => addLine('prompt', 'Layer 1: <span style="color:#ffab00;">PARTIAL</span>'), 400);
-    await delay(() => { setProg(70, 'Escalating...'); setIce(55); }, 300);
-    await delay(() => addLine('prompt', 'Escalating to layer 2...'), 300);
-    await delay(() => { setProg(85, 'Rolling dice...'); }, 300);
+    // ── Phase 2: Key rotation ──
+    if (ring) ring.classList.add('ncm-decrypt__ring--spinning');
+    await delay(() => { keyLabel.textContent = 'Rotating cipher keys...'; addKeyLog('Rotation 1: partial match'); solveCount(5); setBar(35, 'Matching patterns...'); }, 500);
+    await delay(() => { addKeyLog('Rotation 2: frequency analysis'); solveCount(6); setBar(45, 'Frequency analysis...'); }, 400);
+    await delay(() => { addKeyLog('Rotation 3: key candidate found'); solveCount(5); setBar(55, 'Testing candidate key...'); }, 400);
 
-    // ── Phase 5: Actual Skill Check ──
-    await delay(() => {
-      addLine('blank', '');
-      addLine('prompt', '<i class="fas fa-dice" style="margin-right:4px;"></i> Rolling 1d10...');
-    }, 400);
+    // ── Phase 3: Brute force ──
+    await delay(() => { keyLabel.textContent = 'Injecting key sequence...'; addKeyLog('Brute force: 2^18 combinations'); solveCount(6); setBar(65, 'Injecting key...'); }, 500);
+    await delay(() => { addKeyLog('Collision detected — escalating'); solveCount(4); setBar(75, 'Escalating...'); }, 400);
+    await delay(() => { setBar(85, 'Rolling dice...'); keyLabel.textContent = 'Final key injection...'; }, 300);
+
+    // ── Phase 4: Skill check ──
+    await delay(() => { addKeyLog(`Rolling ${encryption.skill || 'Interface'}...`); setBar(90, 'Rolling...'); }, 400);
 
     const result = await this.messageService?.attemptDecrypt?.(messageId, this.actorId);
     const success = !!result?.success;
     const roll = result?.roll || {};
     const total = roll.total ?? '?';
-    const dieRoll = roll.processedRoll ?? roll.rollValue ?? roll.dieRoll ?? '?';
 
-    await delay(() => {
-      addLine('roll', `1d10 → <span style="color:${success ? '#00ff41' : '#ff0033'};font-size:14px;">${dieRoll}</span>`);
-    }, 300);
-    await delay(() => {
-      addLine('roll', `Total: <span style="color:${success ? '#00ff41' : '#ff0033'};font-size:14px;">${total}</span> vs DV ${dc}`);
-      setProg(100, success ? 'ICE BREACHED' : 'BREACH FAILED');
-    }, 400);
+    // ── Phase 5: Result ──
+    clearInterval(scrambleInterval);
 
-    // ── Phase 6: Result ──
     if (success) {
-      await delay(() => {
-        addLine('blank', '');
-        addLine('success', '██ ICE BREACHED ██ ACCESS GRANTED ██');
-        if (iceRings) iceRings.classList.add('ncm-breach-seq__ice-shatter');
-        setIce(0);
-      }, 500);
+      // Solve all remaining cells rapidly
+      if (ring) ring.classList.add('ncm-decrypt__ring--cracked');
+      setBar(100, 'DECRYPTED');
+      if (statusEl) { statusEl.textContent = 'DECRYPTED'; statusEl.style.color = '#00ff41'; }
+
+      // Rapid cascade solve
+      const unsolved = [...cells].filter(c => !c.classList.contains('ncm-decrypt__cell--solved'));
+      for (let i = 0; i < unsolved.length; i++) {
+        await delay(() => {
+          unsolved[i].classList.add('ncm-decrypt__cell--solved');
+          unsolved[i].textContent = '0123456789ABCDEF'[Math.floor(Math.random() * 16)];
+          const solved = [...cells].filter(c => c.classList.contains('ncm-decrypt__cell--solved')).length;
+          if (pctEl) pctEl.textContent = `${Math.round((solved / cells.length) * 100)}%`;
+        }, 30);
+      }
+
       this.soundService?.play?.('hack-success');
+      addKeyLog('██ KEY ACCEPTED ██');
 
       await delay(() => {
-        if (resultEl) {
-          resultEl.style.display = 'flex';
-          resultEl.innerHTML = `
-            <div class="ncm-breach-seq__result-card ncm-breach-seq__result-card--success">
-              <div class="ncm-breach-seq__result-icon"><i class="fas fa-lock-open"></i></div>
-              <div class="ncm-breach-seq__result-title">Message Decrypted</div>
-              <div class="ncm-breach-seq__result-sub">${iceName} neutralized. Content unlocked.</div>
-              <div class="ncm-breach-seq__result-roll">
-                <span class="ncm-breach-seq__result-total ncm-breach-seq__result-total--pass">${total}</span>
-                <span class="ncm-breach-seq__result-vs">vs</span>
-                <span class="ncm-breach-seq__result-dv">${dc}</span>
-              </div>
-              <div class="ncm-breach-seq__result-continue">Click to read message...</div>
-            </div>`;
-        }
-      }, 500);
-
-      // Wait for click then re-render
-      await new Promise(resolve => {
-        const dismiss = () => { resultEl?.removeEventListener('click', dismiss); resolve(); };
-        resultEl?.addEventListener('click', dismiss);
-        _timers.push(setTimeout(dismiss, 6000));
-      });
-      _timers.forEach(t => clearTimeout(t));
-      this.render();
-
+        resultEl.style.display = 'flex';
+        resultEl.innerHTML = `
+          <div class="ncm-decrypt__result-card ncm-decrypt__result-card--success">
+            <i class="fas fa-lock-open ncm-decrypt__result-icon"></i>
+            <div class="ncm-decrypt__result-title">Message Decrypted</div>
+            <div class="ncm-decrypt__result-sub">${iceName} cipher broken. Content unlocked.</div>
+            <div class="ncm-decrypt__result-roll">
+              <span style="color:#00ff41;font-family:var(--ncm-font-title);font-size:22px;font-weight:700;">${total}</span>
+              <span style="font-family:var(--ncm-font-mono);font-size:9px;color:var(--ncm-text-dim);">vs</span>
+              <span style="color:var(--ncm-accent);font-family:var(--ncm-font-title);font-size:22px;font-weight:700;">${dc}</span>
+            </div>
+            <div class="ncm-decrypt__result-continue">Click to read message...</div>
+          </div>`;
+      }, 400);
     } else {
-      await delay(() => {
-        addLine('blank', '');
-        addLine('fail', '██ BREACH FAILED ██ ICE HOLDING ██');
-        if (iceRings) iceRings.classList.add('ncm-breach-seq__ice-retaliate');
-      }, 500);
-      this.soundService?.play?.('hack-fail');
+      // Cells glitch red and reset
+      if (ring) ring.classList.add('ncm-decrypt__ring--rejected');
+      setBar(100, 'KEY REJECTED');
+      if (statusEl) { statusEl.textContent = 'KEY REJECTED'; statusEl.style.color = '#ff0033'; }
 
-      await delay(() => {
-        if (resultEl) {
-          resultEl.style.display = 'flex';
-          resultEl.innerHTML = `
-            <div class="ncm-breach-seq__result-card ncm-breach-seq__result-card--fail">
-              <div class="ncm-breach-seq__result-icon"><i class="fas fa-shield-halved"></i></div>
-              <div class="ncm-breach-seq__result-title">Breach Failed</div>
-              <div class="ncm-breach-seq__result-sub">${iceName} countermeasures engaged.</div>
-              <div class="ncm-breach-seq__result-roll">
-                <span class="ncm-breach-seq__result-total ncm-breach-seq__result-total--fail">${total}</span>
-                <span class="ncm-breach-seq__result-vs">vs</span>
-                <span class="ncm-breach-seq__result-dv">${dc}</span>
-              </div>
-              <div class="ncm-breach-seq__result-continue">Click to continue...</div>
-            </div>`;
-        }
-      }, 500);
-
-      await new Promise(resolve => {
-        const dismiss = () => { resultEl?.removeEventListener('click', dismiss); resolve(); };
-        resultEl?.addEventListener('click', dismiss);
-        _timers.push(setTimeout(dismiss, 6000));
+      cells.forEach(c => {
+        c.classList.remove('ncm-decrypt__cell--solved');
+        c.classList.add('ncm-decrypt__cell--failed');
       });
-      _timers.forEach(t => clearTimeout(t));
-      this.render();
+      // Re-scramble
+      scrambleInterval = setInterval(() => {
+        cells.forEach(c => { c.textContent = GLYPHS[Math.floor(Math.random() * GLYPHS.length)]; });
+      }, 80);
+
+      this.soundService?.play?.('hack-fail');
+      addKeyLog('██ KEY REJECTED ██');
+
+      await delay(() => {
+        clearInterval(scrambleInterval);
+        resultEl.style.display = 'flex';
+        resultEl.innerHTML = `
+          <div class="ncm-decrypt__result-card ncm-decrypt__result-card--fail">
+            <i class="fas fa-shield-halved ncm-decrypt__result-icon"></i>
+            <div class="ncm-decrypt__result-title">Decryption Failed</div>
+            <div class="ncm-decrypt__result-sub">${iceName} cipher held. Key rejected.</div>
+            <div class="ncm-decrypt__result-roll">
+              <span style="color:var(--ncm-danger);font-family:var(--ncm-font-title);font-size:22px;font-weight:700;">${total}</span>
+              <span style="font-family:var(--ncm-font-mono);font-size:9px;color:var(--ncm-text-dim);">vs</span>
+              <span style="color:var(--ncm-accent);font-family:var(--ncm-font-title);font-size:22px;font-weight:700;">${dc}</span>
+            </div>
+            <div class="ncm-decrypt__result-continue">Click to continue...</div>
+          </div>`;
+      }, 800);
     }
+
+    await new Promise(resolve => {
+      const dismiss = () => { resultEl?.removeEventListener('click', dismiss); resolve(); };
+      resultEl?.addEventListener('click', dismiss);
+      _timers.push(setTimeout(dismiss, 8000));
+    });
+    _timers.forEach(t => clearTimeout(t));
+    clearInterval(scrambleInterval);
+    this.render();
   }
 
   async _forceDecryptMessage(messageId) {
@@ -2789,8 +2801,15 @@ export class MessageViewerApp extends BaseApplication {
   /**
    * WP-5: Attempt to reconstruct a signal-degraded message via skill check.
    */
+  /**
+   * Signal reconstruction with animated frequency-analysis sequence.
+   * Injects a waveform/signal UI into the signal-reconstruct block,
+   * performs the skill check, then shows repair/fail animation.
+   * @param {string} messageId
+   */
   async _reconstructSignal(messageId) {
     if (!messageId) return;
+    const html = this.element;
 
     const msg = this._cachedMessages?.find(m => m.messageId === messageId);
     if (!msg?.signalDegradation || msg.signalDegradation.reconstructed) return;
@@ -2803,6 +2822,8 @@ export class MessageViewerApp extends BaseApplication {
 
     const dc = msg.signalDegradation.reconstructDC ?? 15;
     const skillName = msg.signalDegradation.reconstructSkill ?? 'Electronics/Security Tech';
+    const corruptPct = msg.signalDegradation.corruptionPercent ?? 30;
+    const origSignal = msg.signalDegradation.originalSignal ?? 12;
 
     const skillSvc = game.nightcity?.skillService;
     if (!skillSvc) {
@@ -2810,23 +2831,212 @@ export class MessageViewerApp extends BaseApplication {
       return;
     }
 
+    // Find the reconstruct block and replace with animation
+    const reconBlock = html?.querySelector('.ncm-viewer__signal-reconstruct');
+    const bodyEl = html?.querySelector('.ncm-viewer__detail-body');
+    if (!bodyEl) return;
+
+    // Inject signal analysis overlay into the body
+    const overlay = document.createElement('div');
+    overlay.className = 'ncm-signal-seq';
+    overlay.innerHTML = `
+      <div class="ncm-signal-seq__header">
+        <div class="ncm-signal-seq__dot"></div>
+        <span class="ncm-signal-seq__title">Signal Analysis</span>
+        <span class="ncm-signal-seq__meta">${skillName} // DV ${dc}</span>
+      </div>
+      <div class="ncm-signal-seq__viz">
+        <canvas class="ncm-signal-seq__canvas" data-canvas width="480" height="100"></canvas>
+        <div class="ncm-signal-seq__freq-labels">
+          <span>ORIG: ${origSignal}%</span>
+          <span>CORRUPT: ${corruptPct}%</span>
+          <span data-boost-label>BOOST: --</span>
+        </div>
+      </div>
+      <div class="ncm-signal-seq__log" data-log></div>
+      <div class="ncm-signal-seq__bar">
+        <div class="ncm-signal-seq__bar-fill" data-bar-fill></div>
+        <span class="ncm-signal-seq__bar-label" data-bar-label>Initializing...</span>
+      </div>
+      <div class="ncm-signal-seq__result" data-result style="display:none;"></div>
+    `;
+
+    // Hide original content, show animation
+    const origDisplay = bodyEl.style.display;
+    bodyEl.style.display = 'none';
+    bodyEl.parentNode.insertBefore(overlay, bodyEl);
+
+    // Animation helpers
+    const _timers = [];
+    const delay = (fn, ms) => new Promise(r => { _timers.push(setTimeout(() => { fn(); r(); }, ms)); });
+    const canvas = overlay.querySelector('[data-canvas]');
+    const ctx = canvas?.getContext('2d');
+    const logEl = overlay.querySelector('[data-log]');
+    const barFill = overlay.querySelector('[data-bar-fill]');
+    const barLabel = overlay.querySelector('[data-bar-label]');
+    const boostLabel = overlay.querySelector('[data-boost-label]');
+    const resultEl = overlay.querySelector('[data-result]');
+
+    const addLog = (cls, text) => {
+      const div = document.createElement('div');
+      div.className = `ncm-signal-seq__log-line ncm-signal-seq__log-line--${cls}`;
+      div.innerHTML = text;
+      logEl.appendChild(div);
+      logEl.scrollTop = logEl.scrollHeight;
+    };
+    const setBar = (pct, label) => {
+      if (barFill) barFill.style.width = `${pct}%`;
+      if (barLabel) barLabel.textContent = label;
+    };
+
+    // Waveform drawing
+    let wavePhase = 0;
+    let noiseLevel = 0.8; // starts very noisy
+    let signalBoost = origSignal;
+    let waveRAF = null;
+    const drawWave = () => {
+      if (!ctx) return;
+      const w = canvas.width, h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+
+      // Grid lines
+      ctx.strokeStyle = 'rgba(251,191,36,0.06)';
+      ctx.lineWidth = 0.5;
+      for (let y = 0; y < h; y += 20) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+      for (let x = 0; x < w; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
+
+      // Corrupted signal (red, fading as we reconstruct)
+      ctx.beginPath();
+      ctx.strokeStyle = `rgba(239,68,68,${0.3 * noiseLevel})`;
+      ctx.lineWidth = 1;
+      for (let x = 0; x < w; x += 2) {
+        const noise = (Math.random() - 0.5) * 40 * noiseLevel;
+        const y = h/2 + Math.sin((x + wavePhase) * 0.03) * 15 + noise;
+        x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+
+      // Clean signal (cyan, getting stronger)
+      ctx.beginPath();
+      ctx.strokeStyle = `rgba(0,212,230,${0.2 + (1 - noiseLevel) * 0.6})`;
+      ctx.lineWidth = 1.5;
+      for (let x = 0; x < w; x += 2) {
+        const y = h/2 + Math.sin((x + wavePhase) * 0.03) * 15 * (1 - noiseLevel * 0.5);
+        x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+
+      // Center line
+      ctx.strokeStyle = 'rgba(251,191,36,0.08)';
+      ctx.lineWidth = 0.5;
+      ctx.beginPath(); ctx.moveTo(0, h/2); ctx.lineTo(w, h/2); ctx.stroke();
+
+      wavePhase += 2;
+      waveRAF = requestAnimationFrame(drawWave);
+    };
+    drawWave();
+
+    // ── Phase 1: Init ──
+    addLog('sys', `SIGNAL ANALYSIS v4.6 — Corruption: ${corruptPct}%`);
+    await delay(() => { addLog('sys', `Original signal strength: ${origSignal}%`); setBar(10, 'Scanning frequencies...'); }, 300);
+
+    // ── Phase 2: Frequency scan ──
+    await delay(() => addLog('scan', 'Scanning carrier frequency... band locked'), 400);
+    await delay(() => { addLog('scan', `Noise floor: ${(corruptPct * 0.7).toFixed(0)}dB — mapping interference pattern`); setBar(25, 'Mapping interference...'); }, 500);
+    await delay(() => { noiseLevel = 0.6; signalBoost = 30; boostLabel.textContent = `BOOST: ${signalBoost}%`; }, 200);
+    await delay(() => { addLog('scan', 'Interference pattern isolated. Applying inverse filter...'); setBar(40, 'Filtering noise...'); }, 500);
+
+    // ── Phase 3: Filter & boost ──
+    await delay(() => { noiseLevel = 0.4; signalBoost = 55; boostLabel.textContent = `BOOST: ${signalBoost}%`; addLog('boost', 'Signal amplification: +20dB'); }, 400);
+    await delay(() => { setBar(55, 'Boosting signal...'); addLog('boost', 'Error correction: Reed-Solomon active'); }, 400);
+    await delay(() => { noiseLevel = 0.25; signalBoost = 70; boostLabel.textContent = `BOOST: ${signalBoost}%`; setBar(70, 'Reconstructing packets...'); }, 400);
+
+    // ── Phase 4: Skill check ──
+    await delay(() => { addLog('sys', ''); addLog('roll', `<i class="fas fa-dice" style="margin-right:4px;"></i> ${skillName} check vs DV ${dc}...`); setBar(85, 'Rolling...'); }, 400);
+
     const result = await skillSvc.performCheck(actor, skillName, {
       dc,
       flavor: `Reconstructing signal-degraded message`,
       context: 'ncm-signal-reconstruct',
     });
 
-    if (result?.success) {
+    const success = !!result?.success;
+    const total = result?.total ?? '?';
+    const dieRoll = result?.processedRoll ?? result?.rollValue ?? '?';
+
+    await delay(() => {
+      const color = success ? '#00ff41' : '#ff0033';
+      addLog('roll', `Result: <span style="color:${color};font-size:13px;font-weight:700;">${total}</span> vs DV ${dc}`);
+      setBar(100, success ? 'SIGNAL RESTORED' : 'RECONSTRUCTION FAILED');
+    }, 400);
+
+    // ── Phase 5: Result ──
+    if (success) {
+      await delay(() => {
+        noiseLevel = 0.02;
+        signalBoost = 98;
+        boostLabel.textContent = 'BOOST: 98%';
+        addLog('success', '██ SIGNAL RESTORED — Packets reconstructed ██');
+      }, 500);
+      this.soundService?.play?.('hack-success');
+
       await this.messageService?.updateMessageFlags?.(this.actorId, messageId, {
         signalDegradation: { ...msg.signalDegradation, reconstructed: true },
       });
-      this.soundService?.play?.('hack-success');
-      ui.notifications.info('NCM | Signal reconstructed — message restored.');
+
+      await delay(() => {
+        resultEl.style.display = 'flex';
+        resultEl.innerHTML = `
+          <div class="ncm-signal-seq__result-card ncm-signal-seq__result-card--success">
+            <i class="fas fa-signal ncm-signal-seq__result-icon"></i>
+            <div class="ncm-signal-seq__result-title">Signal Restored</div>
+            <div class="ncm-signal-seq__result-sub">Message packets reconstructed successfully.</div>
+            <div class="ncm-signal-seq__result-roll">
+              <span class="ncm-signal-seq__result-total" style="color:#00ff41;">${total}</span>
+              <span class="ncm-signal-seq__result-vs">vs</span>
+              <span class="ncm-signal-seq__result-dv">${dc}</span>
+            </div>
+            <div class="ncm-signal-seq__result-continue">Click to view restored message...</div>
+          </div>`;
+      }, 400);
     } else {
+      await delay(() => {
+        noiseLevel = 0.9;
+        signalBoost = origSignal;
+        boostLabel.textContent = `BOOST: ${origSignal}%`;
+        addLog('fail', '██ RECONSTRUCTION FAILED — Signal too degraded ██');
+      }, 500);
       this.soundService?.play?.('hack-fail');
-      ui.notifications.warn(`NCM | Reconstruction failed. (${result?.total ?? '?'} vs DV ${dc})`);
+
+      await delay(() => {
+        resultEl.style.display = 'flex';
+        resultEl.innerHTML = `
+          <div class="ncm-signal-seq__result-card ncm-signal-seq__result-card--fail">
+            <i class="fas fa-signal ncm-signal-seq__result-icon" style="opacity:0.4;"></i>
+            <div class="ncm-signal-seq__result-title">Reconstruction Failed</div>
+            <div class="ncm-signal-seq__result-sub">Unable to recover lost packets.</div>
+            <div class="ncm-signal-seq__result-roll">
+              <span class="ncm-signal-seq__result-total" style="color:var(--ncm-danger);">${total}</span>
+              <span class="ncm-signal-seq__result-vs">vs</span>
+              <span class="ncm-signal-seq__result-dv">${dc}</span>
+            </div>
+            <div class="ncm-signal-seq__result-continue">Click to continue...</div>
+          </div>`;
+      }, 400);
     }
 
+    // Wait for click to dismiss
+    await new Promise(resolve => {
+      const dismiss = () => { resultEl?.removeEventListener('click', dismiss); resolve(); };
+      resultEl?.addEventListener('click', dismiss);
+      _timers.push(setTimeout(dismiss, 8000));
+    });
+
+    // Cleanup
+    _timers.forEach(t => clearTimeout(t));
+    if (waveRAF) cancelAnimationFrame(waveRAF);
+    overlay.remove();
+    bodyEl.style.display = origDisplay;
     this.render();
   }
 
@@ -2851,21 +3061,19 @@ export class MessageViewerApp extends BaseApplication {
       return;
     }
 
-    // Open the auth dialog — it handles password, skill check, key item, lockout, etc.
+    // Use the static show() API — returns { success, method } via promise
     try {
       const { NetworkAuthDialog } = await import('../NetworkManagement/NetworkAuthDialog.js');
-      const dialog = new NetworkAuthDialog({
-        networkId: network.id,
-        actorId: this.actorId,
-        onSuccess: async () => {
-          // Auth succeeded — switch to this network
-          await networkService.switchNetwork?.(network.id);
-          ui.notifications.info(`NCM | Connected to ${network.name}.`);
-          this.soundService?.play?.('connect');
-          this.render();
-        },
-      });
-      dialog.render(true);
+      const result = await NetworkAuthDialog.show(networkId);
+
+      if (result?.success) {
+        // Auth succeeded — switch to this network and re-render
+        await networkService.switchNetwork?.(network.id);
+        ui.notifications.info(`NCM | Connected to ${network.name}.`);
+        this.soundService?.play?.('connect');
+        this.render();
+      }
+      // If cancelled or failed, the dialog already handles notifications
     } catch (err) {
       console.error('NCM | Failed to open NetworkAuthDialog:', err);
       ui.notifications.error('NCM | Failed to open network authentication.');

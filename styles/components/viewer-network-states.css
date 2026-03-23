@@ -841,26 +841,33 @@
    ═══════════════════════════════════════════════════════════ */
 
 .ncm-app .ncm-viewer__signal-reconstruct {
-  margin: 12px 0; padding: 8px 12px; border-radius: 4px;
-  background: rgba(251,191,36,0.03); border: 1px solid rgba(251,191,36,0.1);
+  margin: 14px 0; padding: 10px 14px; border-radius: 5px;
+  background: rgba(251,191,36,0.04);
+  border: 1px solid rgba(251,191,36,0.12);
+  border-left: 3px solid rgba(251,191,36,0.25);
 }
 .ncm-app .ncm-viewer__signal-reconstruct-header {
-  display: flex; align-items: center; gap: 6px; margin-bottom: 5px;
+  display: flex; align-items: center; gap: 6px; margin-bottom: 6px;
 }
-.ncm-app .ncm-viewer__signal-reconstruct-icon { font-size: 9px; color: var(--ncm-warning); }
+.ncm-app .ncm-viewer__signal-reconstruct-icon { font-size: 10px; color: var(--ncm-warning); }
 .ncm-app .ncm-viewer__signal-reconstruct-label {
-  font-family: var(--ncm-font-mono); font-size: 8px;
-  color: var(--ncm-warning); text-transform: uppercase; letter-spacing: 0.06em;
+  font-family: var(--ncm-font-title); font-size: 8px;
+  color: var(--ncm-warning); text-transform: uppercase;
+  letter-spacing: 0.1em;
 }
 .ncm-app .ncm-viewer__signal-reconstruct-level {
-  font-family: var(--ncm-font-mono); font-size: 7px;
-  padding: 1px 4px; border-radius: 2px; margin-left: auto;
+  font-family: var(--ncm-font-mono); font-size: 7px; font-weight: 700;
+  padding: 2px 6px; border-radius: 3px; margin-left: auto;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  border: 1px solid;
 }
 .ncm-app .ncm-viewer__signal-reconstruct-level--moderate {
   color: var(--ncm-warning); background: rgba(251,191,36,0.08);
+  border-color: rgba(251,191,36,0.15);
 }
 .ncm-app .ncm-viewer__signal-reconstruct-level--severe {
   color: var(--ncm-danger); background: rgba(239,68,68,0.08);
+  border-color: rgba(239,68,68,0.15);
 }
 .ncm-app .ncm-viewer__signal-status {
   font-family: var(--ncm-font-mono); font-size: 8px;
@@ -876,13 +883,22 @@
 /* Corrupted text styling */
 .ncm-app .ncm-viewer__corrupted-char {
   color: var(--ncm-warning); font-family: var(--ncm-font-mono);
-  opacity: 0.5; letter-spacing: 0.02em;
+  opacity: 0.6; letter-spacing: 0.02em;
 }
 .ncm-app .ncm-viewer__corrupted-block {
   display: inline;
-  background: rgba(251,191,36,0.04);
-  border-bottom: 1px dashed rgba(251,191,36,0.15);
-  padding: 0 2px;
+  background: rgba(251,191,36,0.06);
+  border-bottom: 1px dashed rgba(251,191,36,0.2);
+  padding: 0 3px; border-radius: 2px;
+  position: relative;
+}
+.ncm-app .ncm-viewer__corrupted-block::before {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(251,191,36,0.04), transparent);
+  animation: ncm-corrupt-shimmer 3s ease-in-out infinite;
+}
+@keyframes ncm-corrupt-shimmer {
+  0%,100% { opacity: 0; } 50% { opacity: 1; }
 }
 
 
@@ -931,16 +947,19 @@
    ═══════════════════════════════════════════════════════════ */
 
 .ncm-app .ncm-viewer__detail-body--darknet {
-  text-shadow: 0 0 1px rgba(167,139,250,0.15);
-  background: rgba(167,139,250,0.01);
+  text-shadow: 0 0 2px rgba(167,139,250,0.2);
+  background: linear-gradient(180deg, rgba(167,139,250,0.03), transparent 30%);
+  border-left: 2px solid rgba(167,139,250,0.12);
 }
 .ncm-app .ncm-viewer__detail-body--corpnet {
-  text-shadow: 0 0 1px rgba(68,136,255,0.1);
-  background: rgba(68,136,255,0.008);
+  text-shadow: 0 0 2px rgba(68,136,255,0.15);
+  background: linear-gradient(180deg, rgba(68,136,255,0.025), transparent 30%);
+  border-left: 2px solid rgba(68,136,255,0.1);
 }
 .ncm-app .ncm-viewer__detail-body--govnet {
-  text-shadow: 0 0 1px rgba(255,102,0,0.1);
-  background: rgba(255,102,0,0.008);
+  text-shadow: 0 0 2px rgba(255,102,0,0.15);
+  background: linear-gradient(180deg, rgba(255,102,0,0.025), transparent 30%);
+  border-left: 2px solid rgba(255,102,0,0.1);
 }
 
 
@@ -1050,251 +1069,389 @@
   50% { box-shadow: inset 0 0 8px rgba(239,68,68,0.08); }
 }
 
+/* Shared — log line fade-in (used by decrypt matrix + signal analysis) */
+@keyframes ncm-breach-fadein { to { opacity: 1; } }
+
+
 
 /* ═══════════════════════════════════════════════════════════
-   §13  MESSAGE DECRYPTION BREACH SEQUENCE
-   Full-screen animation inside the encrypted overlay.
-   Terminal output + ICE visualization + roll result.
+   §13  MESSAGE DECRYPTION MATRIX
+   Cipher grid with character-by-character reveals and
+   rotating key ring. Unique from shard terminal hacking.
    ═══════════════════════════════════════════════════════════ */
 
-.ncm-app .ncm-breach-seq {
+.ncm-app .ncm-decrypt {
   display: flex; flex-direction: column;
   height: 100%; width: 100%;
   background: var(--ncm-bg-deep);
   position: relative; overflow: hidden;
 }
 
-/* Status bar */
-.ncm-app .ncm-breach-seq__status {
+/* Header */
+.ncm-app .ncm-decrypt__header {
   display: flex; align-items: center; gap: 8px;
   padding: 6px 14px; flex-shrink: 0;
   background: rgba(240,197,91,0.04);
   border-bottom: 1px solid rgba(240,197,91,0.1);
 }
-.ncm-app .ncm-breach-seq__status-dot {
+.ncm-app .ncm-decrypt__header-dot {
   width: 6px; height: 6px; border-radius: 50%;
   background: var(--ncm-accent);
   box-shadow: 0 0 6px rgba(240,197,91,0.5);
   animation: ncm-pulse-dot 1.5s ease-in-out infinite;
 }
-.ncm-app .ncm-breach-seq__status-text {
+.ncm-app .ncm-decrypt__header-title {
   font-family: var(--ncm-font-title); font-size: 9px;
   letter-spacing: 0.12em; color: var(--ncm-accent);
   text-transform: uppercase;
 }
-.ncm-app .ncm-breach-seq__status-ice {
+.ncm-app .ncm-decrypt__header-ice {
   font-family: var(--ncm-font-mono); font-size: 9px;
   color: rgba(240,197,91,0.5); margin-left: auto;
 }
 
-/* Main area */
-.ncm-app .ncm-breach-seq__main {
-  flex: 1; display: flex; position: relative; overflow: hidden;
-  background: radial-gradient(ellipse at 70% 50%,
+/* Body — grid left, key panel right */
+.ncm-app .ncm-decrypt__body {
+  flex: 1; display: flex; overflow: hidden;
+  background: radial-gradient(ellipse at 30% 50%,
     rgba(240,197,91,0.02), transparent 60%);
 }
 
-/* Data streams (falling chars) */
-.ncm-app .ncm-breach-seq__stream {
-  position: absolute; top: -20%; width: 1px; height: 120%;
-  background: linear-gradient(180deg,
-    transparent, rgba(240,197,91,0.06) 30%,
-    rgba(240,197,91,0.02) 70%, transparent);
-  animation: ncm-breach-stream 3s linear infinite;
-  opacity: 0.4;
-}
-@keyframes ncm-breach-stream {
-  0% { transform: translateY(-100%); }
-  100% { transform: translateY(100%); }
-}
-
-/* Terminal */
-.ncm-app .ncm-breach-seq__terminal {
-  flex: 1; padding: 10px 14px; overflow-y: auto;
-  font-family: var(--ncm-font-mono); font-size: 10px;
-  line-height: 1.6; z-index: 1;
-}
-.ncm-app .ncm-breach-seq__cursor {
-  display: inline-block; width: 7px; height: 12px;
-  background: var(--ncm-accent); opacity: 0.7;
-  animation: ncm-blink 1s step-end infinite;
-}
-.ncm-app .ncm-breach-seq__line { margin-bottom: 2px; opacity: 0; animation: ncm-breach-fadein 0.15s ease forwards; }
-@keyframes ncm-breach-fadein { to { opacity: 1; } }
-.ncm-app .ncm-breach-seq__line--system { color: rgba(240,197,91,0.6); }
-.ncm-app .ncm-breach-seq__line--prompt { color: var(--ncm-secondary); }
-.ncm-app .ncm-breach-seq__line--data { color: var(--ncm-text-dim); font-size: 9px; }
-.ncm-app .ncm-breach-seq__line--ice { color: var(--ncm-accent); font-weight: 700; }
-.ncm-app .ncm-breach-seq__line--warn { color: var(--ncm-danger); }
-.ncm-app .ncm-breach-seq__line--roll { color: var(--ncm-text-primary); font-size: 11px; }
-.ncm-app .ncm-breach-seq__line--blank { height: 6px; }
-.ncm-app .ncm-breach-seq__line--success { color: #00ff41; font-weight: 700; font-size: 12px; text-shadow: 0 0 8px rgba(0,255,65,0.3); }
-.ncm-app .ncm-breach-seq__line--fail { color: #ff0033; font-weight: 700; font-size: 12px; text-shadow: 0 0 8px rgba(255,0,51,0.3); }
-
-/* ICE Visualization (right panel) */
-.ncm-app .ncm-breach-seq__ice {
-  width: 140px; flex-shrink: 0;
-  display: flex; flex-direction: column;
+/* Grid panel */
+.ncm-app .ncm-decrypt__grid-panel {
+  flex: 1; display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  gap: 10px; padding: 12px;
-  border-left: 1px solid rgba(240,197,91,0.06);
-  z-index: 1;
+  gap: 10px; padding: 16px;
 }
-.ncm-app .ncm-breach-seq__ice-rings {
+.ncm-app .ncm-decrypt__grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 3px;
+  width: fit-content;
+}
+.ncm-app .ncm-decrypt__cell {
+  width: 30px; height: 24px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--ncm-font-mono); font-size: 11px;
+  color: rgba(240,197,91,0.3);
+  background: rgba(240,197,91,0.02);
+  border: 1px solid rgba(240,197,91,0.06);
+  border-radius: 2px;
+  transition: all 0.2s;
+}
+.ncm-app .ncm-decrypt__cell--solved {
+  color: var(--ncm-secondary);
+  background: rgba(0,212,230,0.06);
+  border-color: rgba(0,212,230,0.15);
+  text-shadow: 0 0 4px rgba(0,212,230,0.3);
+}
+.ncm-app .ncm-decrypt__cell--failed {
+  color: var(--ncm-danger);
+  background: rgba(239,68,68,0.06);
+  border-color: rgba(239,68,68,0.15);
+  animation: ncm-decrypt-cell-fail 0.3s ease;
+}
+@keyframes ncm-decrypt-cell-fail {
+  0%,100% { transform: none; } 25% { transform: translateX(-2px); } 75% { transform: translateX(2px); }
+}
+.ncm-app .ncm-decrypt__grid-info {
+  display: flex; align-items: center; gap: 12px;
+  font-family: var(--ncm-font-mono); font-size: 9px;
+}
+.ncm-app .ncm-decrypt__grid-pct {
+  color: var(--ncm-secondary); font-weight: 700; font-size: 14px;
+  font-family: var(--ncm-font-title);
+}
+.ncm-app .ncm-decrypt__grid-status {
+  color: rgba(240,197,91,0.5); text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* Key panel */
+.ncm-app .ncm-decrypt__key-panel {
+  width: 160px; flex-shrink: 0;
+  display: flex; flex-direction: column;
+  align-items: center; gap: 8px; padding: 12px;
+  border-left: 1px solid rgba(240,197,91,0.06);
+}
+
+/* Cipher ring */
+.ncm-app .ncm-decrypt__ring {
   position: relative; width: 72px; height: 72px;
   display: flex; align-items: center; justify-content: center;
-  transition: all 0.5s;
 }
-.ncm-app .ncm-breach-seq__ice-ring {
-  position: absolute; border-radius: 50%;
+.ncm-app .ncm-decrypt__ring-outer {
+  position: absolute; inset: 0; border-radius: 50%;
+  border: 2px dashed rgba(240,197,91,0.15);
+}
+.ncm-app .ncm-decrypt__ring-inner {
+  position: absolute; inset: 12px; border-radius: 50%;
+  border: 1px solid rgba(240,197,91,0.1);
+}
+.ncm-app .ncm-decrypt__ring-core {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: rgba(240,197,91,0.06);
   border: 1px solid rgba(240,197,91,0.15);
-  animation: ncm-breach-ice-spin 8s linear infinite;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1;
 }
-.ncm-app .ncm-breach-seq__ice-ring--outer {
-  inset: 0; border-style: dashed;
-  animation-duration: 12s;
+.ncm-app .ncm-decrypt__ring-core i {
+  font-size: 12px; color: var(--ncm-accent); opacity: 0.6;
 }
-.ncm-app .ncm-breach-seq__ice-ring--middle {
-  inset: 10px; border-color: rgba(240,197,91,0.1);
-  animation-duration: 8s; animation-direction: reverse;
+.ncm-app .ncm-decrypt__ring--spinning .ncm-decrypt__ring-outer {
+  animation: ncm-decrypt-spin 3s linear infinite;
 }
-.ncm-app .ncm-breach-seq__ice-ring--inner {
-  inset: 20px; border-color: rgba(240,197,91,0.06);
-  animation-duration: 5s;
+.ncm-app .ncm-decrypt__ring--spinning .ncm-decrypt__ring-inner {
+  animation: ncm-decrypt-spin 2s linear infinite reverse;
 }
-@keyframes ncm-breach-ice-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes ncm-decrypt-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
-.ncm-app .ncm-breach-seq__ice-icon {
-  font-size: 20px; color: var(--ncm-accent); opacity: 0.5;
-  z-index: 1; filter: drop-shadow(0 0 6px rgba(240,197,91,0.3));
+.ncm-app .ncm-decrypt__ring--cracked .ncm-decrypt__ring-outer {
+  border-color: rgba(0,255,65,0.3); animation: none;
 }
-.ncm-app .ncm-breach-seq__ice-label {
-  font-family: var(--ncm-font-title); font-size: 8px;
-  letter-spacing: 0.12em; color: rgba(240,197,91,0.5);
-  text-transform: uppercase; text-align: center;
+.ncm-app .ncm-decrypt__ring--cracked .ncm-decrypt__ring-inner {
+  border-color: rgba(0,255,65,0.2); animation: none;
 }
-.ncm-app .ncm-breach-seq__ice-bar { width: 100%; }
-.ncm-app .ncm-breach-seq__ice-bar-label {
-  font-family: var(--ncm-font-mono); font-size: 7px;
-  color: var(--ncm-text-dim); text-transform: uppercase;
-  letter-spacing: 0.06em; margin-bottom: 3px;
+.ncm-app .ncm-decrypt__ring--cracked .ncm-decrypt__ring-core {
+  background: rgba(0,255,65,0.08); border-color: rgba(0,255,65,0.2);
 }
-.ncm-app .ncm-breach-seq__ice-bar-track {
-  height: 4px; background: rgba(240,197,91,0.08);
-  border-radius: 2px; overflow: hidden;
-}
-.ncm-app .ncm-breach-seq__ice-bar-fill {
-  height: 100%; background: var(--ncm-accent);
-  border-radius: 2px; transition: width 0.6s ease;
-  box-shadow: 0 0 6px rgba(240,197,91,0.3);
-}
+.ncm-app .ncm-decrypt__ring--cracked .ncm-decrypt__ring-core i { color: #00ff41; opacity: 1; }
 
-/* ICE shatter (success) */
-.ncm-app .ncm-breach-seq__ice-shatter {
-  animation: ncm-breach-shatter 0.6s ease forwards;
+.ncm-app .ncm-decrypt__ring--rejected .ncm-decrypt__ring-outer {
+  border-color: rgba(239,68,68,0.3);
+  animation: ncm-decrypt-reject 0.4s ease;
 }
-.ncm-app .ncm-breach-seq__ice-shatter .ncm-breach-seq__ice-ring {
-  border-color: rgba(0,255,65,0.3) !important;
+.ncm-app .ncm-decrypt__ring--rejected .ncm-decrypt__ring-inner {
+  border-color: rgba(239,68,68,0.2); animation: none;
 }
-.ncm-app .ncm-breach-seq__ice-shatter .ncm-breach-seq__ice-icon {
-  color: #00ff41 !important;
+.ncm-app .ncm-decrypt__ring--rejected .ncm-decrypt__ring-core {
+  background: rgba(239,68,68,0.08); border-color: rgba(239,68,68,0.2);
 }
-@keyframes ncm-breach-shatter {
-  0% { transform: scale(1); opacity: 1; }
-  30% { transform: scale(1.15); opacity: 1; }
-  60% { transform: scale(1.1); opacity: 0.6; }
-  100% { transform: scale(0.8); opacity: 0.15; }
+.ncm-app .ncm-decrypt__ring--rejected .ncm-decrypt__ring-core i { color: var(--ncm-danger); }
+@keyframes ncm-decrypt-reject {
+  0%,100% { transform: none; } 20% { transform: translateX(-4px) rotate(-5deg); }
+  40% { transform: translateX(4px) rotate(5deg); } 60% { transform: translateX(-2px); }
 }
 
-/* ICE retaliate (failure) */
-.ncm-app .ncm-breach-seq__ice-retaliate {
-  animation: ncm-breach-retaliate 0.5s ease;
+.ncm-app .ncm-decrypt__key-label {
+  font-family: var(--ncm-font-mono); font-size: 8px;
+  color: rgba(240,197,91,0.5); text-align: center;
 }
-.ncm-app .ncm-breach-seq__ice-retaliate .ncm-breach-seq__ice-ring {
-  border-color: rgba(239,68,68,0.4) !important;
+.ncm-app .ncm-decrypt__key-log {
+  flex: 1; overflow-y: auto; width: 100%;
+  font-family: var(--ncm-font-mono); font-size: 8px;
+  color: var(--ncm-text-dim); line-height: 1.6;
 }
-.ncm-app .ncm-breach-seq__ice-retaliate .ncm-breach-seq__ice-icon {
-  color: var(--ncm-danger) !important;
-}
-@keyframes ncm-breach-retaliate {
-  0%,100% { transform: scale(1); }
-  25% { transform: scale(1.2) translateX(-3px); }
-  50% { transform: scale(1.15) translateX(3px); }
-  75% { transform: scale(1.1) translateX(-2px); }
+.ncm-app .ncm-decrypt__key-log-line {
+  opacity: 0; animation: ncm-breach-fadein 0.15s ease forwards;
 }
 
 /* Progress bar */
-.ncm-app .ncm-breach-seq__progress {
+.ncm-app .ncm-decrypt__bar {
   position: relative; height: 22px; flex-shrink: 0;
   background: rgba(240,197,91,0.03);
   border-top: 1px solid rgba(240,197,91,0.08);
   display: flex; align-items: center; justify-content: center;
 }
-.ncm-app .ncm-breach-seq__progress-fill {
+.ncm-app .ncm-decrypt__bar-fill {
   position: absolute; top: 0; left: 0; bottom: 0;
   background: linear-gradient(90deg,
     rgba(240,197,91,0.06), rgba(240,197,91,0.02));
   transition: width 0.4s ease;
 }
-.ncm-app .ncm-breach-seq__progress-label {
+.ncm-app .ncm-decrypt__bar-label {
   font-family: var(--ncm-font-mono); font-size: 8px;
   color: rgba(240,197,91,0.5); text-transform: uppercase;
   letter-spacing: 0.06em; z-index: 1;
 }
 
 /* Result overlay */
-.ncm-app .ncm-breach-seq__result {
+.ncm-app .ncm-decrypt__result {
   position: absolute; inset: 0;
   display: flex; align-items: center; justify-content: center;
   background: rgba(10,10,15,0.85); z-index: 10;
   cursor: pointer; backdrop-filter: blur(3px);
 }
-.ncm-app .ncm-breach-seq__result-card {
+.ncm-app .ncm-decrypt__result-card {
   display: flex; flex-direction: column;
   align-items: center; gap: 8px;
   padding: 24px 32px; border-radius: 6px;
   background: var(--ncm-bg-surface);
   border: 1px solid; max-width: 300px;
 }
-.ncm-app .ncm-breach-seq__result-card--success {
+.ncm-app .ncm-decrypt__result-card--success {
   border-color: rgba(0,255,65,0.2);
   box-shadow: 0 0 30px rgba(0,255,65,0.06);
 }
-.ncm-app .ncm-breach-seq__result-card--fail {
+.ncm-app .ncm-decrypt__result-card--fail {
   border-color: rgba(239,68,68,0.2);
   box-shadow: 0 0 30px rgba(239,68,68,0.06);
 }
-.ncm-app .ncm-breach-seq__result-icon { font-size: 28px; }
-.ncm-app .ncm-breach-seq__result-card--success .ncm-breach-seq__result-icon { color: #00ff41; }
-.ncm-app .ncm-breach-seq__result-card--fail .ncm-breach-seq__result-icon { color: var(--ncm-danger); }
-.ncm-app .ncm-breach-seq__result-title {
+.ncm-app .ncm-decrypt__result-icon { font-size: 28px; }
+.ncm-app .ncm-decrypt__result-card--success .ncm-decrypt__result-icon { color: #00ff41; }
+.ncm-app .ncm-decrypt__result-card--fail .ncm-decrypt__result-icon { color: var(--ncm-danger); }
+.ncm-app .ncm-decrypt__result-title {
   font-family: var(--ncm-font-title); font-size: 13px;
   letter-spacing: 0.15em; text-transform: uppercase;
 }
-.ncm-app .ncm-breach-seq__result-card--success .ncm-breach-seq__result-title { color: #00ff41; }
-.ncm-app .ncm-breach-seq__result-card--fail .ncm-breach-seq__result-title { color: var(--ncm-danger); }
-.ncm-app .ncm-breach-seq__result-sub {
+.ncm-app .ncm-decrypt__result-card--success .ncm-decrypt__result-title { color: #00ff41; }
+.ncm-app .ncm-decrypt__result-card--fail .ncm-decrypt__result-title { color: var(--ncm-danger); }
+.ncm-app .ncm-decrypt__result-sub {
   font-size: 11px; color: var(--ncm-text-muted);
   text-align: center; line-height: 1.5;
 }
-.ncm-app .ncm-breach-seq__result-roll {
-  display: flex; align-items: center; gap: 10px;
-  margin: 4px 0;
+.ncm-app .ncm-decrypt__result-roll {
+  display: flex; align-items: center; gap: 10px; margin: 4px 0;
 }
-.ncm-app .ncm-breach-seq__result-total {
-  font-family: var(--ncm-font-title); font-size: 22px; font-weight: 700;
+.ncm-app .ncm-decrypt__result-continue {
+  font-family: var(--ncm-font-mono); font-size: 8px;
+  color: var(--ncm-text-dim); margin-top: 6px;
+  animation: ncm-pulse-dot 2s ease-in-out infinite;
 }
-.ncm-app .ncm-breach-seq__result-total--pass { color: #00ff41; }
-.ncm-app .ncm-breach-seq__result-total--fail { color: var(--ncm-danger); }
-.ncm-app .ncm-breach-seq__result-vs {
+
+
+/* ═══════════════════════════════════════════════════════════
+   §14  SIGNAL RECONSTRUCTION SEQUENCE
+   Waveform analysis with canvas, frequency scanning,
+   signal boost animation. Radio/engineering themed.
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-signal-seq {
+  display: flex; flex-direction: column;
+  width: 100%; min-height: 300px; max-height: 100%;
+  background: var(--ncm-bg-deep);
+  border: 1px solid rgba(251,191,36,0.1);
+  border-radius: 4px;
+  position: relative; overflow: hidden;
+}
+
+/* Header */
+.ncm-app .ncm-signal-seq__header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 14px; flex-shrink: 0;
+  background: rgba(251,191,36,0.04);
+  border-bottom: 1px solid rgba(251,191,36,0.1);
+}
+.ncm-app .ncm-signal-seq__dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--ncm-warning);
+  box-shadow: 0 0 6px rgba(251,191,36,0.5);
+  animation: ncm-pulse-dot 1.5s ease-in-out infinite;
+}
+.ncm-app .ncm-signal-seq__title {
+  font-family: var(--ncm-font-title); font-size: 9px;
+  letter-spacing: 0.12em; color: var(--ncm-warning);
+  text-transform: uppercase;
+}
+.ncm-app .ncm-signal-seq__meta {
+  font-family: var(--ncm-font-mono); font-size: 9px;
+  color: rgba(251,191,36,0.5); margin-left: auto;
+}
+
+/* Waveform canvas */
+.ncm-app .ncm-signal-seq__viz {
+  flex-shrink: 0; padding: 8px 14px;
+  background: rgba(251,191,36,0.01);
+  border-bottom: 1px solid rgba(251,191,36,0.06);
+}
+.ncm-app .ncm-signal-seq__canvas {
+  width: 100%; height: 80px;
+  border-radius: 3px;
+  background: rgba(10,10,15,0.5);
+  border: 1px solid rgba(251,191,36,0.06);
+}
+.ncm-app .ncm-signal-seq__freq-labels {
+  display: flex; justify-content: space-between;
+  font-family: var(--ncm-font-mono); font-size: 8px;
+  color: var(--ncm-text-dim); margin-top: 4px;
+  padding: 0 4px;
+}
+
+/* Log area */
+.ncm-app .ncm-signal-seq__log {
+  flex: 1; overflow-y: auto; padding: 8px 14px;
+  font-family: var(--ncm-font-mono); font-size: 9px;
+  line-height: 1.7;
+  min-height: 80px;
+}
+.ncm-app .ncm-signal-seq__log-line {
+  opacity: 0; animation: ncm-breach-fadein 0.15s ease forwards;
+  margin-bottom: 1px;
+}
+.ncm-app .ncm-signal-seq__log-line--sys { color: rgba(251,191,36,0.6); }
+.ncm-app .ncm-signal-seq__log-line--scan { color: var(--ncm-secondary); }
+.ncm-app .ncm-signal-seq__log-line--boost { color: var(--ncm-success); }
+.ncm-app .ncm-signal-seq__log-line--roll { color: var(--ncm-text-primary); font-size: 10px; }
+.ncm-app .ncm-signal-seq__log-line--success { color: #00ff41; font-weight: 700; text-shadow: 0 0 6px rgba(0,255,65,0.3); }
+.ncm-app .ncm-signal-seq__log-line--fail { color: #ff0033; font-weight: 700; text-shadow: 0 0 6px rgba(255,0,51,0.3); }
+
+/* Progress bar */
+.ncm-app .ncm-signal-seq__bar {
+  position: relative; height: 22px; flex-shrink: 0;
+  background: rgba(251,191,36,0.03);
+  border-top: 1px solid rgba(251,191,36,0.08);
+  display: flex; align-items: center; justify-content: center;
+}
+.ncm-app .ncm-signal-seq__bar-fill {
+  position: absolute; top: 0; left: 0; bottom: 0;
+  background: linear-gradient(90deg,
+    rgba(251,191,36,0.06), rgba(251,191,36,0.02));
+  transition: width 0.4s ease;
+}
+.ncm-app .ncm-signal-seq__bar-label {
+  font-family: var(--ncm-font-mono); font-size: 8px;
+  color: rgba(251,191,36,0.5); text-transform: uppercase;
+  letter-spacing: 0.06em; z-index: 1;
+}
+
+/* Result overlay */
+.ncm-app .ncm-signal-seq__result {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(10,10,15,0.85); z-index: 10;
+  cursor: pointer; backdrop-filter: blur(3px);
+}
+.ncm-app .ncm-signal-seq__result-card {
+  display: flex; flex-direction: column;
+  align-items: center; gap: 8px;
+  padding: 24px 32px; border-radius: 6px;
+  background: var(--ncm-bg-surface);
+  border: 1px solid; max-width: 280px;
+}
+.ncm-app .ncm-signal-seq__result-card--success {
+  border-color: rgba(0,255,65,0.2);
+  box-shadow: 0 0 30px rgba(0,255,65,0.06);
+}
+.ncm-app .ncm-signal-seq__result-card--fail {
+  border-color: rgba(239,68,68,0.2);
+  box-shadow: 0 0 30px rgba(239,68,68,0.06);
+}
+.ncm-app .ncm-signal-seq__result-icon { font-size: 24px; color: var(--ncm-warning); }
+.ncm-app .ncm-signal-seq__result-title {
+  font-family: var(--ncm-font-title); font-size: 12px;
+  letter-spacing: 0.12em; text-transform: uppercase;
+}
+.ncm-app .ncm-signal-seq__result-card--success .ncm-signal-seq__result-title { color: #00ff41; }
+.ncm-app .ncm-signal-seq__result-card--fail .ncm-signal-seq__result-title { color: var(--ncm-danger); }
+.ncm-app .ncm-signal-seq__result-sub {
+  font-size: 10px; color: var(--ncm-text-muted);
+  text-align: center; line-height: 1.5;
+}
+.ncm-app .ncm-signal-seq__result-roll {
+  display: flex; align-items: center; gap: 10px; margin: 4px 0;
+}
+.ncm-app .ncm-signal-seq__result-total {
+  font-family: var(--ncm-font-title); font-size: 20px; font-weight: 700;
+}
+.ncm-app .ncm-signal-seq__result-vs {
   font-family: var(--ncm-font-mono); font-size: 9px;
   color: var(--ncm-text-dim); text-transform: uppercase;
 }
-.ncm-app .ncm-breach-seq__result-dv {
-  font-family: var(--ncm-font-title); font-size: 22px; font-weight: 700;
+.ncm-app .ncm-signal-seq__result-dv {
+  font-family: var(--ncm-font-title); font-size: 20px; font-weight: 700;
   color: var(--ncm-accent);
 }
-.ncm-app .ncm-breach-seq__result-continue {
+.ncm-app .ncm-signal-seq__result-continue {
   font-family: var(--ncm-font-mono); font-size: 8px;
   color: var(--ncm-text-dim); margin-top: 6px;
   animation: ncm-pulse-dot 2s ease-in-out infinite;
