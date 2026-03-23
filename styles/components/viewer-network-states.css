@@ -495,6 +495,66 @@
 
 
 /* ═══════════════════════════════════════════════════════════
+   §3b  GM RESTRICTED BANNER
+   Shown when GM views a network-restricted message.
+   Content is readable (GM bypass) but banner signals restriction.
+   Uses --net-color / --net-rgb from network theme inline.
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-viewer__gm-restricted-banner {
+  display: flex; align-items: center; gap: 0;
+  flex-shrink: 0; overflow: hidden;
+  height: 28px;
+  background: linear-gradient(90deg,
+    rgba(var(--net-rgb, 68,136,255), 0.05),
+    rgba(var(--net-rgb, 68,136,255), 0.01) 50%,
+    rgba(var(--net-rgb, 68,136,255), 0.03));
+  border-bottom: 1px solid rgba(var(--net-rgb, 68,136,255), 0.1);
+}
+.ncm-app .ncm-viewer__gm-restricted-accent {
+  width: 3px; height: 100%; flex-shrink: 0;
+  background: linear-gradient(180deg,
+    rgba(var(--net-rgb, 68,136,255), 0.5),
+    rgba(var(--net-rgb, 68,136,255), 0.15));
+}
+.ncm-app .ncm-viewer__gm-restricted-icon {
+  font-size: 9px;
+  color: rgba(var(--net-rgb, 68,136,255), 0.5);
+  margin: 0 6px 0 10px;
+}
+.ncm-app .ncm-viewer__gm-restricted-label {
+  font-family: var(--ncm-font-title); font-size: 7px;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: rgba(var(--net-rgb, 68,136,255), 0.6);
+  margin-right: 8px;
+}
+.ncm-app .ncm-viewer__gm-restricted-net {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-family: var(--ncm-font-mono); font-size: 8px;
+  color: rgba(var(--net-rgb, 68,136,255), 0.5);
+}
+.ncm-app .ncm-viewer__gm-restricted-net i { font-size: 7px; }
+.ncm-app .ncm-viewer__gm-restricted-security {
+  font-family: var(--ncm-font-mono); font-size: 7px;
+  padding: 1px 4px; border-radius: 2px;
+  color: rgba(var(--net-rgb, 68,136,255), 0.6);
+  background: rgba(var(--net-rgb, 68,136,255), 0.06);
+  margin-left: 4px;
+}
+.ncm-app .ncm-viewer__gm-restricted-bypass {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-family: var(--ncm-font-mono); font-size: 7px;
+  color: var(--ncm-accent); opacity: 0.6;
+  margin-left: auto; margin-right: 10px;
+  padding: 1px 6px; border-radius: 2px;
+  background: rgba(240,197,91,0.06);
+  border: 1px solid rgba(240,197,91,0.12);
+  letter-spacing: 0.06em;
+}
+.ncm-app .ncm-viewer__gm-restricted-bypass i { font-size: 7px; }
+
+
+/* ═══════════════════════════════════════════════════════════
    §4  LOCKOUT OVERLAY (red takeover)
    ═══════════════════════════════════════════════════════════ */
 

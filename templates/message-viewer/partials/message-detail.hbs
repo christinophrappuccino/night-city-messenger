@@ -50,7 +50,7 @@
         <div class="ncm-viewer__lockout-pips">
           <span class="ncm-viewer__lockout-pips-label">All attempts exhausted</span>
           <div class="ncm-viewer__lockout-pip-dots">
-            {{#each message.accessState.attemptPips}}
+            {{#each message.restrictedNetworkData.attemptPips}}
               <div class="ncm-viewer__lockout-pip"></div>
             {{else}}
               <div class="ncm-viewer__lockout-pip"></div>
@@ -154,12 +154,9 @@
             <div class="ncm-viewer__restricted-pips">
               <span class="ncm-viewer__restricted-pips-label">Attempts</span>
               <div class="ncm-viewer__restricted-pip-dots">
-                {{#times message.restrictedNetworkData.hackAttempts}}
-                  <div class="ncm-viewer__restricted-pip ncm-viewer__restricted-pip--used"></div>
-                {{/times}}
-                {{#times message.restrictedNetworkData.remainingAttempts}}
-                  <div class="ncm-viewer__restricted-pip ncm-viewer__restricted-pip--available"></div>
-                {{/times}}
+                {{#each message.restrictedNetworkData.attemptPips}}
+                  <div class="ncm-viewer__restricted-pip ncm-viewer__restricted-pip--{{this.state}}"></div>
+                {{/each}}
               </div>
             </div>
           {{/if}}
@@ -222,6 +219,33 @@
 
   {{else}}
     {{!-- ═══ NORMAL MESSAGE CONTENT ═══ --}}
+
+    {{!-- GM restriction indicator — shows when message IS restricted but GM can bypass --}}
+    {{#if message.hasNetworkRestriction}}
+      {{#unless message.isNetworkLocked}}
+        <div class="ncm-viewer__gm-restricted-banner"
+          {{#if message.restrictedNetworkData}}
+            style="--net-color: {{message.restrictedNetworkData.color}};
+                   --net-rgb: {{message.restrictedNetworkData.rgb}};"
+          {{/if}}>
+          <div class="ncm-viewer__gm-restricted-accent"></div>
+          <i class="fas fa-tower-broadcast ncm-viewer__gm-restricted-icon"></i>
+          <span class="ncm-viewer__gm-restricted-label">Network Restricted</span>
+          {{#if message.restrictedNetworkData}}
+            <span class="ncm-viewer__gm-restricted-net">
+              <i class="fas {{message.restrictedNetworkData.icon}}"></i>
+              {{message.restrictedNetworkData.name}}
+            </span>
+            <span class="ncm-viewer__gm-restricted-security">
+              {{message.restrictedNetworkData.securityLevel}}
+            </span>
+          {{/if}}
+          <span class="ncm-viewer__gm-restricted-bypass">
+            <i class="fas fa-shield-halved"></i> GM BYPASS
+          </span>
+        </div>
+      {{/unless}}
+    {{/if}}
 
     {{!-- Detail Header --}}
     <div class="ncm-viewer__detail-head">

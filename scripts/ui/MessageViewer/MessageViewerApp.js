@@ -2929,14 +2929,18 @@ export class MessageViewerApp extends BaseApplication {
     const accessState = this.messageAccessService?.checkAccess(msg, viewingActor)
       ?? { canRead: true, restricted: false };
     const isNetworkLocked = !accessState.canRead;
+    const hasNetworkRestriction = !!accessState.restricted;
     const lockedNetworkName = accessState.requiredNetworkName
       || this.networkService?.getNetwork?.(msg.network)?.name
       || msg.network || '';
 
     // ── Enriched network data for redesigned restricted overlay ──
+    // Build whenever the message HAS restrictions — not just when locked.
+    // GMs see the content but get a "restricted" indicator.
     let restrictedNetworkData = null;
-    if (isNetworkLocked && accessState.requiredNetwork) {
-      const net = this.networkService?.getNetwork?.(accessState.requiredNetwork);
+    if (hasNetworkRestriction && (accessState.requiredNetwork || msg.accessControl?.requiredNetwork)) {
+      const netId = accessState.requiredNetwork || msg.accessControl?.requiredNetwork;
+      const net = this.networkService?.getNetwork?.(netId);
       if (net) {
         const theme = net.theme || {};
         const sec = net.security || {};
@@ -2971,6 +2975,10 @@ export class MessageViewerApp extends BaseApplication {
           remainingAttempts: accessState.maxAttempts ? (accessState.maxAttempts - (accessState.hackAttempts || 0)) : null,
           maxAttempts: accessState.maxAttempts || 3,
           hackAttempts: accessState.hackAttempts || 0,
+          // Pre-computed pip array for template iteration
+          attemptPips: Array.from({ length: accessState.maxAttempts || 3 }, (_, i) => ({
+            state: i < (accessState.hackAttempts || 0) ? 'used' : 'available',
+          })),
         };
       }
     }
@@ -3026,7 +3034,7 @@ export class MessageViewerApp extends BaseApplication {
     let traceActive = false;
     let traceExpiresAt = msg.traceExpiresAt || null;
     const traceCompleted = msg.traceCompleted || false;
-    if (msg.traceExpiresAt && !traceCompleted && !game.user?.isGM) {
+    if (msg.traceExpiresAt && !traceCompleted) {
       const remaining = new Date(msg.traceExpiresAt).getTime() - Date.now();
       if (remaining > 0) {
         traceActive = true;
@@ -3060,6 +3068,7 @@ export class MessageViewerApp extends BaseApplication {
       isSent: !!msg.status?.sent,
       senderIsContact,
       isNetworkLocked,
+      hasNetworkRestriction,
       lockedNetworkName,
       accessState,
       restrictedNetworkData,

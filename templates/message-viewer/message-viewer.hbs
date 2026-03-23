@@ -237,7 +237,7 @@
         {{/each}}
       {{else}}
         {{> "modules/cyberpunkred-messenger/templates/partials/empty-state.hbs"
-            icon="fas fa-clock" title="NO SCHEDULED MESSAGES" message="Nothing queued for delivery" }}
+            icon="fas fa-clock" prompt="> NO SCHEDULED MESSAGES" }}
       {{/if}}
     </div>
 
@@ -260,7 +260,7 @@
         {{/each}}
       {{else}}
         {{> "modules/cyberpunkred-messenger/templates/partials/empty-state.hbs"
-            icon="fas fa-file-pen" title="NO DRAFTS" message="Saved drafts will appear here" }}
+            icon="fas fa-file-pen" prompt="> NO DRAFTS" }}
       {{/if}}
     </div>
 
@@ -307,7 +307,7 @@
         {{/each}}
       {{else}}
         {{> "modules/cyberpunkred-messenger/templates/partials/empty-state.hbs"
-            icon="fas fa-microchip" title="NO DATA SHARDS" message="Received and inventory shards will appear here" }}
+            icon="fas fa-microchip" prompt="> SHARD SLOT EMPTY" }}
       {{/if}}
     </div>
 
@@ -442,7 +442,7 @@
             {{/each}}
           {{else}}
             {{> "modules/cyberpunkred-messenger/templates/partials/empty-state.hbs"
-                icon="fas fa-inbox" title="NO MESSAGES" message="Awaiting transmissions..." }}
+                icon="fas fa-inbox" prompt="> AWAITING TRANSMISSIONS" }}
           {{/if}}
         </div>
 
