@@ -1137,7 +1137,13 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     }
 
     this._sending = true;
-    this.render(true);
+
+    // Disable send button directly (no re-render — preserves the overlay DOM)
+    const sendBtn = this.element?.querySelector('[data-action="send"]');
+    if (sendBtn) {
+      sendBtn.disabled = true;
+      sendBtn.classList.add('ncm-composer__btn--disabled');
+    }
 
     try {
       // Build recipient — handle raw addresses and multi-recipient
@@ -1187,17 +1193,17 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
         const deducted = await this._deductEddies(this.fromActorId, this.eddiesAmount);
         if (!deducted) {
           this._sending = false;
+          if (sendBtn) { sendBtn.disabled = false; sendBtn.classList.remove('ncm-composer__btn--disabled'); }
           return; // _deductEddies shows its own error
         }
       }
 
+      // Show transmitting animation immediately
+      await this._playSendAnimation('transmit');
+
       // Route through SchedulingService if schedule is enabled
       if (this.scheduleEnabled && this.scheduledTime) {
         let deliveryTime = this.scheduledTime;
-        if (this.scheduleGameTime && this.timeService) {
-          // scheduledTime is user-entered game-time string; pass as-is
-          // SchedulingService uses useGameTime flag for comparison
-        }
 
         result = await this.schedulingService?.scheduleMessage(
           messageData,
@@ -1206,7 +1212,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
         );
 
         if (result?.success) {
-          ui.notifications.info(`Message scheduled for delivery at ${this.scheduledTime}.`);
+          ui.notifications.info(`Message scheduled for delivery.`);
         }
       } else {
         // Immediate send
@@ -1214,13 +1220,9 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       }
 
       if (result?.success) {
-        if (!this.scheduleEnabled) {
-          // Play success animation
-          this.soundService?.play('send');
-          await this._playSendAnimation(true);
-        } else {
-          ui.notifications.info(`Message scheduled for delivery.`);
-        }
+        // Play success state
+        this.soundService?.play?.('send');
+        await this._playSendAnimation('success');
 
         // Credit eddies to recipient(s) on successful send
         if (this.eddiesAmount > 0 && actorRecipients.length > 0) {
@@ -1238,7 +1240,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
         if (this.eddiesAmount > 0) {
           await this._creditEddies(this.fromActorId, this.eddiesAmount);
         }
-        await this._playSendAnimation(false, { error: result?.error || 'Unknown transmission error' });
+        await this._playSendAnimation('failure', { error: result?.error || 'Unknown transmission error' });
         // Don't close — user can retry/queue/draft from the overlay
       }
     } catch (error) {
@@ -1247,7 +1249,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       if (this.eddiesAmount > 0) {
         await this._creditEddies(this.fromActorId, this.eddiesAmount).catch(() => {});
       }
-      await this._playSendAnimation(false, { error: error.message || 'Unexpected transmission error' });
+      await this._playSendAnimation('failure', { error: error.message || 'Unexpected transmission error' });
     } finally {
       this._sending = false;
     }
@@ -1443,9 +1445,25 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
   // ── Retry Send ──
 
   static _onRetrySend(event, target) {
-    // Hide the failure overlay, then re-trigger send
+    // Reset overlay state — hide overlay, clear route active classes
     const overlay = this.element?.querySelector('[data-id="send-overlay"]');
     if (overlay) overlay.classList.add('ncm-hidden');
+
+    // Reset route element active states
+    const route = this.element?.querySelector('[data-id="send-route"]');
+    if (route) {
+      route.querySelectorAll('[class*="--active"]').forEach(el => {
+        el.className = el.className.replace(/\s*ncm-composer__send-route-\w+--active/g, '');
+      });
+    }
+
+    // Reset progress bar
+    const progressBar = this.element?.querySelector('[data-id="send-progress-bar"]');
+    if (progressBar) {
+      progressBar.classList.remove('ncm-composer__send-progress-bar--animating');
+      progressBar.style.width = '0';
+    }
+
     this._sending = false;
     MessageComposerApp._onSend.call(this, event, target);
   }
@@ -2010,7 +2028,12 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
    * @param {boolean} [success=true]
    * @param {Object} [details={}]
    */
-  async _playSendAnimation(success = true, details = {}) {
+  /**
+   * Play send animation overlay in stages.
+   * @param {'transmit'|'success'|'failure'} state
+   * @param {Object} [details={}] — { error: string } for failure state
+   */
+  async _playSendAnimation(state, details = {}) {
     const el = this.element;
     if (!el) return;
 
@@ -2018,70 +2041,68 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     const transmit = el.querySelector('[data-id="send-transmit"]');
     const successEl = el.querySelector('[data-id="send-success"]');
     const failureEl = el.querySelector('[data-id="send-failure"]');
-    if (!overlay || !transmit) return;
+    if (!overlay) return;
 
-    // Populate route info
-    const routeNet = el.querySelector('[data-id="send-route-net"]');
-    const routeTo = el.querySelector('[data-id="send-route-to"]');
     const netName = this.networkService?.currentNetwork?.name?.toUpperCase() || 'CITINET';
     const recipientName = this.recipients.length > 0 ? this.recipients[0].name : '—';
-    if (routeNet) routeNet.textContent = netName;
-    if (routeTo) routeTo.textContent = recipientName;
 
-    // Populate stream data
-    const stream = el.querySelector('[data-id="send-stream"]');
-    if (stream) {
-      const encLabel = this.encryptionEnabled ? `ICE DV${this.encryptionDV}` : 'NONE';
-      const sig = this.networkService?.signalStrength ?? 100;
-      stream.innerHTML = `PKT 0x${Math.random().toString(16).slice(2, 6).toUpperCase()} → NODE_${String(Math.floor(Math.random() * 20)).padStart(2, '0')} → RELAY<br>ENC: ${encLabel} · SIG: ${sig}% · PRI: ${this.priority.toUpperCase()}<br>ROUTE: LOCAL → ${netName}_CORE → DEST`;
-    }
+    if (state === 'transmit') {
+      // ─── Show transmitting overlay ───
+      // Populate route info
+      const routeNet = el.querySelector('[data-id="send-route-net"]');
+      const routeTo = el.querySelector('[data-id="send-route-to"]');
+      if (routeNet) routeNet.textContent = netName;
+      if (routeTo) routeTo.textContent = recipientName;
 
-    // Show overlay with transmitting state
-    overlay.classList.remove('ncm-hidden');
-    transmit.classList.remove('ncm-hidden');
-    if (successEl) successEl.classList.add('ncm-hidden');
-    if (failureEl) failureEl.classList.add('ncm-hidden');
-
-    // Start progress bar animation
-    const progressBar = el.querySelector('[data-id="send-progress-bar"]');
-    if (progressBar) {
-      progressBar.style.width = '0';
-      progressBar.classList.add('ncm-composer__send-progress-bar--animating');
-    }
-
-    // ─── Sequential route animation ───
-    // Elements in order: FROM label, dot1, line1, NET label, line2, dot2, TO label
-    const route = el.querySelector('[data-id="send-route"]');
-    if (route) {
-      const children = route.children;
-      const steps = [];
-      for (let i = 0; i < children.length; i++) {
-        steps.push(children[i]);
+      // Populate stream data
+      const stream = el.querySelector('[data-id="send-stream"]');
+      if (stream) {
+        const encLabel = this.encryptionEnabled ? `ICE DV${this.encryptionDV}` : 'NONE';
+        const sig = this.networkService?.signalStrength ?? 100;
+        stream.innerHTML = `PKT 0x${Math.random().toString(16).slice(2, 6).toUpperCase()} → NODE_${String(Math.floor(Math.random() * 20)).padStart(2, '0')} → RELAY<br>ENC: ${encLabel} · SIG: ${sig}% · PRI: ${this.priority.toUpperCase()}<br>ROUTE: LOCAL → ${netName}_CORE → DEST`;
       }
 
-      // Activate each step with delay
-      const stepDelay = 250; // ms per step
-      for (let i = 0; i < steps.length; i++) {
-        await new Promise(r => setTimeout(r, stepDelay));
-        const child = steps[i];
-        if (child.classList.contains('ncm-composer__send-route-label') || child.dataset.id === 'send-route-net') {
-          child.classList.add('ncm-composer__send-route-label--active');
-        } else if (child.classList.contains('ncm-composer__send-route-dot')) {
-          child.classList.add('ncm-composer__send-route-dot--active');
-        } else if (child.classList.contains('ncm-composer__send-route-line')) {
-          child.classList.add('ncm-composer__send-route-line--active');
-        } else if (child.classList.contains('ncm-composer__send-route-target') || child.dataset.id === 'send-route-to') {
-          child.classList.add('ncm-composer__send-route-target--active');
+      // Show overlay with transmitting state
+      overlay.classList.remove('ncm-hidden');
+      if (transmit) transmit.classList.remove('ncm-hidden');
+      if (successEl) successEl.classList.add('ncm-hidden');
+      if (failureEl) failureEl.classList.add('ncm-hidden');
+
+      // Start progress bar animation
+      const progressBar = el.querySelector('[data-id="send-progress-bar"]');
+      if (progressBar) {
+        progressBar.style.width = '0';
+        requestAnimationFrame(() => {
+          progressBar.classList.add('ncm-composer__send-progress-bar--animating');
+        });
+      }
+
+      // Sequential route animation
+      const route = el.querySelector('[data-id="send-route"]');
+      if (route) {
+        const steps = Array.from(route.children);
+        const stepDelay = 250;
+        for (let i = 0; i < steps.length; i++) {
+          await new Promise(r => setTimeout(r, stepDelay));
+          const child = steps[i];
+          if (child.classList.contains('ncm-composer__send-route-label') || child.dataset?.id === 'send-route-net') {
+            child.classList.add('ncm-composer__send-route-label--active');
+          } else if (child.classList.contains('ncm-composer__send-route-dot')) {
+            child.classList.add('ncm-composer__send-route-dot--active');
+          } else if (child.classList.contains('ncm-composer__send-route-line')) {
+            child.classList.add('ncm-composer__send-route-line--active');
+          } else if (child.classList.contains('ncm-composer__send-route-target') || child.dataset?.id === 'send-route-to') {
+            child.classList.add('ncm-composer__send-route-target--active');
+          }
         }
       }
-    }
 
-    // Wait for remaining transmission feel
-    await new Promise(r => setTimeout(r, 400));
+      // Brief hold after route completes
+      await new Promise(r => setTimeout(r, 300));
 
-    if (success) {
-      // Swap to success state
-      transmit.classList.add('ncm-hidden');
+    } else if (state === 'success') {
+      // ─── Swap to success state ───
+      if (transmit) transmit.classList.add('ncm-hidden');
       if (successEl) {
         successEl.classList.remove('ncm-hidden');
         const detail = el.querySelector('[data-id="send-success-detail"]');
@@ -2090,12 +2111,12 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
           detail.textContent = `Delivered to ${recipientName} via ${netName} · ${time}`;
         }
       }
-
-      // Auto-close after success display
+      // Hold for user to see success
       await new Promise(r => setTimeout(r, 1500));
-    } else {
-      // Swap to failure state
-      transmit.classList.add('ncm-hidden');
+
+    } else if (state === 'failure') {
+      // ─── Swap to failure state ───
+      if (transmit) transmit.classList.add('ncm-hidden');
       if (failureEl) {
         failureEl.classList.remove('ncm-hidden');
         const detail = el.querySelector('[data-id="send-fail-detail"]');
