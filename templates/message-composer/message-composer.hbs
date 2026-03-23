@@ -252,9 +252,10 @@
             data-action="setPriority" data-priority="{{id}}">{{label}}</button>
     {{/each}}
 
+    {{#if isGM}}
     <div class="ncm-composer__opt-sep"></div>
 
-    {{!-- Encryption toggle --}}
+    {{!-- Encryption toggle (GM only) --}}
     <span class="ncm-composer__opt-label">ENC</span>
     <div class="ncm-composer__enc-switch">
       <button class="ncm-composer__enc-opt {{#unless encryptionEnabled}}ncm-composer__enc-opt--open-active{{/unless}}"
@@ -276,7 +277,7 @@
 
     <div class="ncm-composer__opt-sep"></div>
 
-    {{!-- Feature toggles --}}
+    {{!-- Feature toggles (GM only) --}}
     <button class="ncm-composer__toggle {{#if scheduleEnabled}}ncm-composer__toggle--on-gold{{/if}}"
             data-action="toggleSchedule">
       <i class="fas fa-clock"></i> Sched
@@ -285,6 +286,7 @@
             data-action="toggleSelfDestruct">
       <i class="fas fa-bomb"></i> Destruct
     </button>
+    {{/if}}
   </div>
 
   {{!-- Self-destruct expansion strip --}}

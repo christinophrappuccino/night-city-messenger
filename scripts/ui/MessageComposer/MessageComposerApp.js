@@ -2023,19 +2023,17 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     // Populate route info
     const routeNet = el.querySelector('[data-id="send-route-net"]');
     const routeTo = el.querySelector('[data-id="send-route-to"]');
-    if (routeNet) routeNet.textContent = this.networkService?.currentNetwork?.name?.toUpperCase() || 'CITINET';
-    if (routeTo) {
-      routeTo.textContent = this.recipients.length > 0
-        ? this.recipients[0].name
-        : '—';
-    }
+    const netName = this.networkService?.currentNetwork?.name?.toUpperCase() || 'CITINET';
+    const recipientName = this.recipients.length > 0 ? this.recipients[0].name : '—';
+    if (routeNet) routeNet.textContent = netName;
+    if (routeTo) routeTo.textContent = recipientName;
 
     // Populate stream data
     const stream = el.querySelector('[data-id="send-stream"]');
     if (stream) {
       const encLabel = this.encryptionEnabled ? `ICE DV${this.encryptionDV}` : 'NONE';
       const sig = this.networkService?.signalStrength ?? 100;
-      stream.innerHTML = `PKT 0x${Math.random().toString(16).slice(2, 6).toUpperCase()} → NODE_${String(Math.floor(Math.random() * 20)).padStart(2, '0')} → RELAY<br>ENC: ${encLabel} · SIG: ${sig}% · PRI: ${this.priority.toUpperCase()}<br>ROUTE: LOCAL → ${(this.networkService?.currentNetwork?.name || 'CITINET').toUpperCase()}_CORE → DEST`;
+      stream.innerHTML = `PKT 0x${Math.random().toString(16).slice(2, 6).toUpperCase()} → NODE_${String(Math.floor(Math.random() * 20)).padStart(2, '0')} → RELAY<br>ENC: ${encLabel} · SIG: ${sig}% · PRI: ${this.priority.toUpperCase()}<br>ROUTE: LOCAL → ${netName}_CORE → DEST`;
     }
 
     // Show overlay with transmitting state
@@ -2051,8 +2049,35 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       progressBar.classList.add('ncm-composer__send-progress-bar--animating');
     }
 
-    // Wait for transmission animation
-    await new Promise(r => setTimeout(r, 2000));
+    // ─── Sequential route animation ───
+    // Elements in order: FROM label, dot1, line1, NET label, line2, dot2, TO label
+    const route = el.querySelector('[data-id="send-route"]');
+    if (route) {
+      const children = route.children;
+      const steps = [];
+      for (let i = 0; i < children.length; i++) {
+        steps.push(children[i]);
+      }
+
+      // Activate each step with delay
+      const stepDelay = 250; // ms per step
+      for (let i = 0; i < steps.length; i++) {
+        await new Promise(r => setTimeout(r, stepDelay));
+        const child = steps[i];
+        if (child.classList.contains('ncm-composer__send-route-label') || child.dataset.id === 'send-route-net') {
+          child.classList.add('ncm-composer__send-route-label--active');
+        } else if (child.classList.contains('ncm-composer__send-route-dot')) {
+          child.classList.add('ncm-composer__send-route-dot--active');
+        } else if (child.classList.contains('ncm-composer__send-route-line')) {
+          child.classList.add('ncm-composer__send-route-line--active');
+        } else if (child.classList.contains('ncm-composer__send-route-target') || child.dataset.id === 'send-route-to') {
+          child.classList.add('ncm-composer__send-route-target--active');
+        }
+      }
+    }
+
+    // Wait for remaining transmission feel
+    await new Promise(r => setTimeout(r, 400));
 
     if (success) {
       // Swap to success state
@@ -2061,8 +2086,6 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
         successEl.classList.remove('ncm-hidden');
         const detail = el.querySelector('[data-id="send-success-detail"]');
         if (detail) {
-          const recipientName = this.recipients.length > 0 ? this.recipients[0].name : 'recipient';
-          const netName = this.networkService?.currentNetwork?.name || 'CITINET';
           const time = formatCyberDate(this.timeService?.getCurrentTime?.() || new Date().toISOString());
           detail.textContent = `Delivered to ${recipientName} via ${netName} · ${time}`;
         }
