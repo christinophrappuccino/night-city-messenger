@@ -207,10 +207,53 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     if (this.mode === 'reply' && this.originalMessage) {
       const reply = this.messageService?.buildReply(this.originalMessage, this.fromActorId, '');
       if (reply) {
-        this._addRecipient(reply.toActorId, true);
+        if (reply.toActorId) {
+          this._addRecipient(reply.toActorId, true);
+        } else if (reply.toContactId || reply.to) {
+          // Contact-only or raw email reply — add as a locked raw recipient
+          const orig = this.originalMessage;
+          const senderName = orig.fromName || orig.from || 'Unknown';
+          const senderEmail = reply.to || orig.from || '';
+          this.recipients.push({
+            actorId: null,
+            contactId: reply.toContactId || null,
+            name: senderName,
+            email: senderEmail,
+            avatarColor: getAvatarColor(senderName),
+            initials: getInitials(senderName),
+            mismatch: false,
+            mismatchTooltip: '',
+            unreachable: false,
+            locked: true,
+            isRaw: !reply.toContactId,
+          });
+        }
         this.subject = reply.subject;
         this.threadId = reply.threadId;
         this.inReplyTo = reply.inReplyTo;
+      } else {
+        // buildReply unavailable (no messageService yet?) — fall back to original message data
+        const orig = this.originalMessage;
+        if (orig.fromActorId) {
+          this._addRecipient(orig.fromActorId, true);
+        } else {
+          const senderName = orig.fromName || orig.from || 'Unknown';
+          this.recipients.push({
+            actorId: null,
+            name: senderName,
+            email: orig.from || '',
+            avatarColor: getAvatarColor(senderName),
+            initials: getInitials(senderName),
+            mismatch: false,
+            mismatchTooltip: '',
+            unreachable: false,
+            locked: true,
+            isRaw: true,
+          });
+        }
+        this.subject = orig.subject?.startsWith('RE: ') ? orig.subject : `RE: ${orig.subject || '(no subject)'}`;
+        this.threadId = orig.threadId;
+        this.inReplyTo = orig.messageId;
       }
       // Inherit encryption from original
       if (this.originalMessage.status?.encrypted && this.originalMessage.encryption) {
@@ -527,10 +570,24 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     if (!actorId || this.recipients.find(r => r.actorId === actorId)) return;
 
     const actor = game.actors.get(actorId);
-    if (!actor) return;
+    let name, email;
 
-    const name = actor.name;
-    const email = this.contactRepo?.getActorEmail(actorId) || '';
+    if (actor) {
+      name = actor.name;
+      email = this.contactRepo?.getActorEmail(actorId) || '';
+    } else {
+      // Actor not visible to this client — fall back to master contact data
+      const masterService = game.nightcity?.masterContactService;
+      const mc = masterService?.getAll?.()?.find(c => c.actorId === actorId);
+      if (mc) {
+        name = mc.name;
+        email = mc.email || '';
+      } else {
+        // Last resort — check if we have info from the original message
+        return; // Truly unknown, skip
+      }
+    }
+
     const avatarColor = getAvatarColor(name);
     const initials = getInitials(name);
 
@@ -1146,16 +1203,19 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     }
 
     try {
-      // Build recipient — handle raw addresses and multi-recipient
+      // Build recipient — handle actor, contact, and raw address recipients
       const actorRecipients = this.recipients.filter(r => r.actorId);
+      const contactRecipients = this.recipients.filter(r => !r.actorId && r.contactId);
       const rawRecipients = this.recipients.filter(r => r.isRaw);
       const toActorId = actorRecipients.length === 1
         ? actorRecipients[0].actorId
-        : actorRecipients.map(r => r.actorId);
+        : actorRecipients.length > 1 ? actorRecipients.map(r => r.actorId) : null;
 
       const messageData = {
         toActorId: toActorId || null,
-        to: rawRecipients.length > 0 ? rawRecipients[0].email : undefined,
+        toContactId: contactRecipients.length > 0 ? contactRecipients[0].contactId : undefined,
+        to: rawRecipients.length > 0 ? rawRecipients[0].email
+          : (contactRecipients.length > 0 ? contactRecipients[0].email : undefined),
         fromActorId: this.fromActorId || null,
         fromContactId: this.fromContact?.id || null,
         from: this.fromContact?.email || undefined,
