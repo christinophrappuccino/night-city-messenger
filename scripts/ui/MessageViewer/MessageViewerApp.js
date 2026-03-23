@@ -2725,6 +2725,13 @@ export class MessageViewerApp extends BaseApplication {
     });
     _timers.forEach(t => clearTimeout(t));
     clearInterval(scrambleInterval);
+
+    // Success: play unlock reveal transition before showing the message
+    if (success) {
+      await this._playMessageRevealTransition('decrypt', {
+        sub: `${iceName} cipher broken — loading message...`,
+      });
+    }
     this.render();
   }
 
@@ -3091,6 +3098,13 @@ export class MessageViewerApp extends BaseApplication {
     if (waveRAF) cancelAnimationFrame(waveRAF);
     overlay.remove();
     bodyEl.style.display = origDisplay;
+
+    // Success: play signal-lock reveal transition before showing clean message
+    if (success) {
+      await this._playMessageRevealTransition('signal', {
+        sub: 'Signal restored — loading clean transmission...',
+      });
+    }
     this.render();
   }
 
@@ -4093,6 +4107,80 @@ export class MessageViewerApp extends BaseApplication {
     }
 
     return chars;
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Message Reveal Transitions
+  //  Played between animation result dismiss and re-render.
+  //  Injected into .ncm-viewer__detail-panel, then render()
+  //  naturally replaces it with the message content.
+  // ═══════════════════════════════════════════════════════════
+
+  /**
+   * Play a success reveal transition in the detail panel.
+   * Two variants:
+   *   'decrypt' — Green scanline sweep, lock shatters, hex rain dissolves
+   *   'signal'  — Cyan frequency lock, waveform resolves, static clears
+   *
+   * @param {'decrypt'|'signal'} type — Transition variant
+   * @param {object} [opts] — Display data
+   * @param {string} [opts.title] — Override title text
+   * @param {string} [opts.sub] — Override subtitle
+   * @returns {Promise<void>} — Resolves when animation completes
+   */
+  async _playMessageRevealTransition(type, opts = {}) {
+    const html = this.element;
+    const detailPanel = html?.querySelector('.ncm-viewer__detail-panel');
+    if (!detailPanel) return;
+
+    const isDecrypt = type === 'decrypt';
+    const color = isDecrypt ? '#00ff41' : '#00D4E6';
+    const rgb = isDecrypt ? '0,255,65' : '0,212,230';
+    const icon = isDecrypt ? 'fa-lock-open' : 'fa-signal';
+    const title = opts.title || (isDecrypt ? 'ACCESS GRANTED' : 'SIGNAL LOCKED');
+    const sub = opts.sub || (isDecrypt ? 'Decryption complete — loading message...' : 'Signal restored — loading clean transmission...');
+
+    const overlay = document.createElement('div');
+    overlay.className = 'ncm-reveal';
+    overlay.setAttribute('data-variant', type);
+    overlay.innerHTML = `
+      <div class="ncm-reveal__bg" style="--reveal-rgb:${rgb};--reveal-color:${color};"></div>
+      <div class="ncm-reveal__scanline" style="--reveal-color:${color};"></div>
+      ${isDecrypt ? `
+        <div class="ncm-reveal__hex-rain">
+          ${Array.from({length: 40}, () => `<span class="ncm-reveal__hex-char" style="left:${Math.random()*100}%;animation-delay:${Math.random()*0.8}s;animation-duration:${0.8+Math.random()*0.6}s;">${'0123456789ABCDEF'[Math.floor(Math.random()*16)]}</span>`).join('')}
+        </div>
+      ` : `
+        <div class="ncm-reveal__static-clear"></div>
+      `}
+      <div class="ncm-reveal__center">
+        <div class="ncm-reveal__icon-ring" style="--reveal-color:${color};--reveal-rgb:${rgb};">
+          <i class="fas ${icon} ncm-reveal__icon"></i>
+        </div>
+        <div class="ncm-reveal__title" style="color:${color};">${title}</div>
+        <div class="ncm-reveal__sub">${sub}</div>
+        <div class="ncm-reveal__loading">
+          <div class="ncm-reveal__loading-bar" style="--reveal-color:${color};"></div>
+        </div>
+      </div>
+    `;
+
+    // Inject overlay into detail panel
+    detailPanel.style.position = 'relative';
+    detailPanel.appendChild(overlay);
+
+    // Force reflow then trigger animations
+    overlay.offsetHeight; // eslint-disable-line no-unused-expressions
+    overlay.classList.add('ncm-reveal--active');
+
+    // Wait for transition duration
+    await new Promise(r => setTimeout(r, 2200));
+
+    // Fade out
+    overlay.classList.add('ncm-reveal--exit');
+    await new Promise(r => setTimeout(r, 400));
+
+    overlay.remove();
   }
 
   // ═══════════════════════════════════════════════════════════

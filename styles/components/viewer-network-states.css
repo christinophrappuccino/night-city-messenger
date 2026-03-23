@@ -1456,3 +1456,157 @@
   color: var(--ncm-text-dim); margin-top: 6px;
   animation: ncm-pulse-dot 2s ease-in-out infinite;
 }
+
+
+/* ═══════════════════════════════════════════════════════════
+   §15  MESSAGE REVEAL TRANSITIONS
+   Full-panel overlay played between animation result dismiss
+   and re-render. Two variants: decrypt (green) and signal (cyan).
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-app .ncm-reveal {
+  position: absolute; inset: 0; z-index: 60;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden; pointer-events: none;
+  opacity: 0; transition: opacity 0.3s ease;
+}
+.ncm-app .ncm-reveal--active { opacity: 1; }
+.ncm-app .ncm-reveal--exit { opacity: 0; transition: opacity 0.4s ease; }
+
+/* Background glow */
+.ncm-app .ncm-reveal__bg {
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at center,
+    rgba(var(--reveal-rgb), 0.06), rgba(var(--reveal-rgb), 0.01) 50%, transparent 70%);
+}
+
+/* Horizontal scanline sweep */
+.ncm-app .ncm-reveal__scanline {
+  position: absolute; left: 0; right: 0; height: 3px;
+  background: linear-gradient(90deg,
+    transparent, rgba(var(--reveal-rgb,0,255,65), 0.15) 20%,
+    rgba(var(--reveal-rgb,0,255,65), 0.4) 50%,
+    rgba(var(--reveal-rgb,0,255,65), 0.15) 80%, transparent);
+  top: -3px;
+  box-shadow: 0 0 20px rgba(var(--reveal-rgb,0,255,65), 0.15);
+}
+.ncm-reveal--active .ncm-reveal__scanline {
+  animation: ncm-reveal-scan 1.8s ease-in-out forwards;
+}
+@keyframes ncm-reveal-scan {
+  0% { top: -3px; opacity: 0; }
+  5% { opacity: 1; }
+  100% { top: calc(100% + 3px); opacity: 0.3; }
+}
+
+/* Decrypt variant: hex rain (falling characters that dissolve) */
+.ncm-app .ncm-reveal__hex-rain {
+  position: absolute; inset: 0; overflow: hidden;
+}
+.ncm-app .ncm-reveal__hex-char {
+  position: absolute; top: -20px;
+  font-family: var(--ncm-font-mono); font-size: 10px;
+  color: rgba(0,255,65,0.2);
+  animation: ncm-reveal-hexfall 1.2s ease-in forwards;
+  opacity: 0;
+}
+.ncm-reveal--active .ncm-reveal__hex-char { opacity: 1; }
+@keyframes ncm-reveal-hexfall {
+  0% { transform: translateY(0); opacity: 0.4; }
+  80% { opacity: 0.15; }
+  100% { transform: translateY(calc(100vh)); opacity: 0; }
+}
+
+/* Signal variant: static clearing effect */
+.ncm-app .ncm-reveal__static-clear {
+  position: absolute; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 180px; opacity: 0.08;
+}
+.ncm-reveal--active .ncm-reveal__static-clear {
+  animation: ncm-reveal-static 2s ease-out forwards;
+}
+@keyframes ncm-reveal-static {
+  0% { opacity: 0.08; }
+  30% { opacity: 0.04; }
+  100% { opacity: 0; }
+}
+
+/* Center content: icon ring + title + loading bar */
+.ncm-app .ncm-reveal__center {
+  display: flex; flex-direction: column;
+  align-items: center; gap: 10px; z-index: 2;
+  transform: scale(0.9); opacity: 0;
+}
+.ncm-reveal--active .ncm-reveal__center {
+  animation: ncm-reveal-center-in 0.5s ease-out 0.2s forwards;
+}
+@keyframes ncm-reveal-center-in {
+  0% { transform: scale(0.9); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.ncm-app .ncm-reveal__icon-ring {
+  position: relative; width: 56px; height: 56px;
+  display: flex; align-items: center; justify-content: center;
+}
+.ncm-app .ncm-reveal__icon-ring::before {
+  content: ''; position: absolute; inset: 0; border-radius: 50%;
+  border: 2px solid var(--reveal-color);
+  opacity: 0; animation: ncm-reveal-ring-expand 0.8s ease-out 0.3s forwards;
+}
+.ncm-app .ncm-reveal__icon-ring::after {
+  content: ''; position: absolute; inset: -8px; border-radius: 50%;
+  border: 1px solid var(--reveal-color);
+  opacity: 0; animation: ncm-reveal-ring-expand 0.8s ease-out 0.5s forwards;
+}
+@keyframes ncm-reveal-ring-expand {
+  0% { transform: scale(0.6); opacity: 0; }
+  50% { opacity: 0.3; }
+  100% { transform: scale(1); opacity: 0.12; }
+}
+
+.ncm-app .ncm-reveal__icon {
+  font-size: 22px; color: var(--reveal-color, #00ff41);
+  filter: drop-shadow(0 0 10px rgba(var(--reveal-rgb), 0.4));
+  opacity: 0;
+}
+.ncm-reveal--active .ncm-reveal__icon {
+  animation: ncm-reveal-icon-pop 0.4s ease-out 0.35s forwards;
+}
+@keyframes ncm-reveal-icon-pop {
+  0% { transform: scale(0.5); opacity: 0; }
+  60% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.ncm-app .ncm-reveal__title {
+  font-family: var(--ncm-font-title); font-size: 14px;
+  letter-spacing: 0.2em; text-transform: uppercase;
+  text-shadow: 0 0 12px currentColor;
+}
+.ncm-app .ncm-reveal__sub {
+  font-family: var(--ncm-font-mono); font-size: 9px;
+  color: var(--ncm-text-muted); text-align: center;
+}
+
+/* Loading bar — fills left to right during transition */
+.ncm-app .ncm-reveal__loading {
+  width: 120px; height: 3px;
+  background: rgba(var(--reveal-rgb,0,255,65), 0.08);
+  border-radius: 2px; overflow: hidden;
+  margin-top: 4px;
+}
+.ncm-app .ncm-reveal__loading-bar {
+  height: 100%; width: 0;
+  background: var(--reveal-color);
+  border-radius: 2px;
+  box-shadow: 0 0 8px rgba(var(--reveal-rgb,0,255,65), 0.4);
+}
+.ncm-reveal--active .ncm-reveal__loading-bar {
+  animation: ncm-reveal-load 1.8s ease-in-out 0.4s forwards;
+}
+@keyframes ncm-reveal-load {
+  0% { width: 0; }
+  100% { width: 100%; }
+}
