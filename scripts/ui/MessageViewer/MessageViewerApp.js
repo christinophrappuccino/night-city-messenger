@@ -1077,9 +1077,9 @@ export class MessageViewerApp extends BaseApplication {
         this._setDensity(target.dataset.density);
         break;
 
-      // ── Settings / GM ──
+      // ── Settings / Preferences ──
       case 'open-settings':
-        game.nightcity?.openAdmin?.();
+        game.nightcity?.openThemeCustomizer?.();
         break;
 
       // ── v3.2: Identity Drawer ──
@@ -1131,9 +1131,6 @@ export class MessageViewerApp extends BaseApplication {
       }
       case 'open-admin':
         game.nightcity?.openAdmin?.();
-        break;
-      case 'open-theme':
-        game.nightcity?.openThemeCustomizer?.();
         break;
 
       // ── v3.2: Character Switcher ──
