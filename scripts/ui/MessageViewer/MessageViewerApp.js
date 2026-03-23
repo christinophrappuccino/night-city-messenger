@@ -2490,10 +2490,36 @@ export class MessageViewerApp extends BaseApplication {
     const iceName = encryption.type || 'ICE';
     const dc = encryption.dc ?? 15;
 
+    // ── Skill + Luck Dialog ──
+    const actor = game.actors?.get(this.actorId);
+    if (!actor) { ui.notifications.warn('NCM | No character assigned.'); return; }
+
+    const skillSvc = game.nightcity?.skillService;
+    const allowedSkills = encryption.bypassSkills || ['Interface', 'Electronics/Security Tech'];
+    const skills = skillSvc?.getAvailableSkills(actor, allowedSkills) || [];
+    const availableLuck = skillSvc?.getAvailableLuck(actor) ?? 0;
+
+    const dialogResult = await this._showMessageSkillDialog({
+      title: 'Message Decryption',
+      icon: 'fas fa-key',
+      color: '#F0C55B',
+      subtitle: `Decrypting ${iceName} encryption — DV ${dc}`,
+      skills,
+      dc,
+      availableLuck,
+      actorName: actor.name,
+      executeLabel: 'Decrypt',
+      executeIcon: 'fas fa-lock-open',
+    });
+    if (!dialogResult) return; // Cancelled
+
+    const chosenSkill = dialogResult.skill;
+    const chosenLuck = dialogResult.luck;
+
     // Find the encrypted overlay container
     const overlay = html.querySelector('.ncm-viewer__encrypted');
     if (!overlay) {
-      const result = await this.messageService?.attemptDecrypt?.(messageId, this.actorId);
+      const result = await this.messageService?.attemptDecrypt?.(messageId, this.actorId, { skillName: chosenSkill, luckSpend: chosenLuck });
       if (result?.success) this.render();
       return;
     }
@@ -2608,9 +2634,12 @@ export class MessageViewerApp extends BaseApplication {
     await delay(() => { setBar(85, 'Rolling dice...'); keyLabel.textContent = 'Final key injection...'; }, 300);
 
     // ── Phase 4: Skill check ──
-    await delay(() => { addKeyLog(`Rolling ${encryption.skill || 'Interface'}...`); setBar(90, 'Rolling...'); }, 400);
+    await delay(() => { addKeyLog(`Rolling ${chosenSkill}...`); setBar(90, 'Rolling...'); }, 400);
 
-    const result = await this.messageService?.attemptDecrypt?.(messageId, this.actorId);
+    const result = await this.messageService?.attemptDecrypt?.(messageId, this.actorId, {
+      skillName: chosenSkill,
+      luckSpend: chosenLuck,
+    });
     const success = !!result?.success;
     const roll = result?.roll || {};
     const total = roll.total ?? '?';
@@ -2821,7 +2850,7 @@ export class MessageViewerApp extends BaseApplication {
     }
 
     const dc = msg.signalDegradation.reconstructDC ?? 15;
-    const skillName = msg.signalDegradation.reconstructSkill ?? 'Electronics/Security Tech';
+    const defaultSkill = msg.signalDegradation.reconstructSkill ?? 'Electronics/Security Tech';
     const corruptPct = msg.signalDegradation.corruptionPercent ?? 30;
     const origSignal = msg.signalDegradation.originalSignal ?? 12;
 
@@ -2830,6 +2859,29 @@ export class MessageViewerApp extends BaseApplication {
       ui.notifications.warn('NCM | Skill system not available.');
       return;
     }
+
+    // ── Skill + Luck Dialog ──
+    const allowedSkills = msg.signalDegradation.allowedSkills
+      || ['Electronics/Security Tech', 'Basic Tech', 'Cybertech'];
+    const skills = skillSvc.getAvailableSkills(actor, allowedSkills) || [];
+    const availableLuck = skillSvc.getAvailableLuck(actor) ?? 0;
+
+    const dialogResult = await this._showMessageSkillDialog({
+      title: 'Signal Reconstruction',
+      icon: 'fas fa-signal',
+      color: '#FBBF24',
+      subtitle: `Reconstructing ${corruptPct}% corrupted signal — DV ${dc}`,
+      skills,
+      dc,
+      availableLuck,
+      actorName: actor.name,
+      executeLabel: 'Reconstruct',
+      executeIcon: 'fas fa-wrench',
+    });
+    if (!dialogResult) return; // Cancelled
+
+    const chosenSkill = dialogResult.skill;
+    const chosenLuck = dialogResult.luck;
 
     // Find the reconstruct block and replace with animation
     const reconBlock = html?.querySelector('.ncm-viewer__signal-reconstruct');
@@ -2843,7 +2895,7 @@ export class MessageViewerApp extends BaseApplication {
       <div class="ncm-signal-seq__header">
         <div class="ncm-signal-seq__dot"></div>
         <span class="ncm-signal-seq__title">Signal Analysis</span>
-        <span class="ncm-signal-seq__meta">${skillName} // DV ${dc}</span>
+        <span class="ncm-signal-seq__meta">${chosenSkill} // DV ${dc}</span>
       </div>
       <div class="ncm-signal-seq__viz">
         <canvas class="ncm-signal-seq__canvas" data-canvas width="480" height="100"></canvas>
@@ -2952,10 +3004,12 @@ export class MessageViewerApp extends BaseApplication {
     await delay(() => { noiseLevel = 0.25; signalBoost = 70; boostLabel.textContent = `BOOST: ${signalBoost}%`; setBar(70, 'Reconstructing packets...'); }, 400);
 
     // ── Phase 4: Skill check ──
-    await delay(() => { addLog('sys', ''); addLog('roll', `<i class="fas fa-dice" style="margin-right:4px;"></i> ${skillName} check vs DV ${dc}...`); setBar(85, 'Rolling...'); }, 400);
+    const luckStr = chosenLuck > 0 ? ` + ${chosenLuck} Luck` : '';
+    await delay(() => { addLog('sys', ''); addLog('roll', `<i class="fas fa-dice" style="margin-right:4px;"></i> ${chosenSkill}${luckStr} check vs DV ${dc}...`); setBar(85, 'Rolling...'); }, 400);
 
-    const result = await skillSvc.performCheck(actor, skillName, {
+    const result = await skillSvc.performCheck(actor, chosenSkill, {
       dc,
+      luckSpend: chosenLuck,
       flavor: `Reconstructing signal-degraded message`,
       context: 'ncm-signal-reconstruct',
     });
@@ -4039,6 +4093,182 @@ export class MessageViewerApp extends BaseApplication {
     }
 
     return chars;
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Skill + Luck Selection Dialog
+  //  Reusable for decryption and signal reconstruction.
+  //  Same visual pattern as shard _showHackDialog but adapted
+  //  for message operations (no BLACK ICE danger zone).
+  // ═══════════════════════════════════════════════════════════
+
+  /**
+   * Show a themed skill/luck selection dialog before a message operation.
+   * @param {object} opts
+   * @param {string} opts.title       — Dialog title
+   * @param {string} opts.icon        — FontAwesome icon class
+   * @param {string} opts.color       — Accent color hex
+   * @param {string} [opts.subtitle]  — Description line
+   * @param {Array}  opts.skills      — Skill objects from SkillService.getAvailableSkills()
+   * @param {number} opts.dc          — Difficulty value
+   * @param {number} opts.availableLuck — Actor's current luck points
+   * @param {string} opts.actorName   — Actor display name
+   * @param {string} [opts.executeLabel] — Button label (default 'Execute')
+   * @param {string} [opts.executeIcon]  — Button icon (default 'fas fa-bolt')
+   * @returns {Promise<{skill:string, luck:number, total:number}|null>} — null if cancelled
+   */
+  async _showMessageSkillDialog(opts) {
+    let selectedSkill = null;
+    let selectedTotal = 0;
+    let luckSpend = 0;
+    let cancelled = true;
+
+    const calcOdds = (total, luck, dc) => {
+      const needed = dc - total - luck;
+      if (needed <= 1) return 100;
+      if (needed > 10) return 0;
+      return Math.round(((10 - needed + 1) / 10) * 100);
+    };
+
+    // Skill list
+    const skillRows = (opts.skills || []).map(s => {
+      return `<button type="button" class="ncm-hd-skill-btn" data-skill="${s.name}" data-total="${s.total}" data-stat="${s.stat}">
+        <div class="ncm-hd-skill-check"><i class="fas fa-check"></i></div>
+        <span class="ncm-hd-skill-name">${s.name}</span>
+        <span class="ncm-hd-skill-detail">${s.stat} ${s.total} + 1d10</span>
+        <span class="ncm-hd-skill-total">${s.total}</span>
+      </button>`;
+    }).join('');
+
+    const skillListHTML = skillRows
+      ? `<div class="ncm-hd-section-label"><i class="fas fa-crosshairs"></i> SELECT SKILL</div>
+         <div class="ncm-hd-skill-list">${skillRows}</div>`
+      : '';
+
+    // Luck gauge
+    const maxLuck = opts.availableLuck || 0;
+    let luckHTML = '';
+    if (maxLuck > 0) {
+      const segs = Array.from({ length: maxLuck }, (_, i) =>
+        `<div class="ncm-hd-luck-seg" data-seg="${i}"></div>`
+      ).join('');
+      luckHTML = `
+        <div class="ncm-hd-section-label"><i class="fas fa-clover"></i> LUCK BOOST <span class="ncm-hd-luck-avail">Available: ${maxLuck}</span></div>
+        <div class="ncm-hd-luck-row">
+          <button type="button" class="ncm-hd-luck-adj" data-adj="-1">&minus;</button>
+          <div class="ncm-hd-luck-gauge">${segs}</div>
+          <button type="button" class="ncm-hd-luck-adj" data-adj="+1">+</button>
+          <span class="ncm-hd-luck-val ncm-hd-luck-val--zero">0</span>
+        </div>`;
+    } else {
+      luckHTML = `<div class="ncm-hd-section-label" style="opacity:0.4;"><i class="fas fa-clover"></i> NO LUCK AVAILABLE</div>`;
+    }
+
+    // Odds gauge
+    const oddsHTML = `
+      <div class="ncm-hd-odds">
+        <div class="ncm-hd-odds-header">
+          <span class="ncm-hd-odds-label">Success Probability</span>
+          <span class="ncm-hd-odds-pct" data-odds-pct>—</span>
+        </div>
+        <div class="ncm-hd-odds-track">
+          <div class="ncm-hd-odds-fill" data-odds-fill style="width:0%;"></div>
+        </div>
+      </div>
+      <div class="ncm-hd-breakdown" data-breakdown>Select a skill...</div>`;
+
+    const content = `
+      <div class="ncm-hd-body">
+        <div class="ncm-hd-header">
+          <div class="ncm-hd-icon" style="color:${opts.color || 'var(--ncm-secondary)'};">
+            <i class="${opts.icon || 'fas fa-bolt'}"></i>
+          </div>
+          ${opts.subtitle ? `<div class="ncm-hd-subtitle">${opts.subtitle}</div>` : ''}
+        </div>
+        ${skillListHTML}
+        ${luckHTML}
+        ${oddsHTML}
+      </div>`;
+
+    const themeClass = opts.color === '#f7c948' || opts.color === 'var(--ncm-accent)'
+      ? 'ncm-hd-theme-gold'
+      : opts.color === '#FBBF24' ? 'ncm-hd-theme-gold'
+      : 'ncm-hd-theme-cyan';
+
+    await new Promise(resolve => {
+      const d = new Dialog({
+        title: opts.title || 'Skill Check',
+        content,
+        buttons: {
+          execute: {
+            icon: `<i class="${opts.executeIcon || 'fas fa-bolt'}"></i>`,
+            label: opts.executeLabel || 'Execute',
+            callback: () => { cancelled = false; },
+          },
+          cancel: {
+            icon: '<i class="fas fa-times"></i>',
+            label: 'Abort',
+            callback: () => {},
+          },
+        },
+        default: 'cancel',
+        close: () => resolve(),
+        render: html => {
+          const jq = html.closest ? html : $(html);
+          const body = jq.find('.ncm-hd-body').length ? jq : jq.parent();
+
+          const updateAll = () => {
+            const odds = selectedSkill ? calcOdds(selectedTotal, luckSpend, opts.dc) : 0;
+            const cls = odds >= 60 ? 'high' : odds >= 30 ? 'mid' : 'low';
+            body.find('[data-odds-pct]').text(selectedSkill ? odds + '%' : '—')
+              .removeClass('high mid low').addClass(cls);
+            body.find('[data-odds-fill]').css('width', (selectedSkill ? odds : 0) + '%')
+              .removeClass('high mid low').addClass(cls);
+
+            const bd = body.find('[data-breakdown]');
+            if (!selectedSkill) {
+              bd.html('Select a skill...');
+            } else {
+              let p = `<span class="ncm-hd-val">${selectedTotal}</span> <span class="ncm-hd-op">+</span> <span class="ncm-hd-die">1d10</span>`;
+              if (luckSpend > 0) p += ` <span class="ncm-hd-op">+</span> <span class="ncm-hd-luck-color">${luckSpend} LUCK</span>`;
+              p += ` <span class="ncm-hd-op" style="margin:0 4px;">vs</span> <span class="ncm-hd-vs">DV ${opts.dc}</span>`;
+              bd.html(p);
+            }
+
+            const execBtn = body.closest('.dialog').find('button[data-button="execute"]');
+            execBtn.prop('disabled', !selectedSkill).toggleClass('ncm-hd-btn--disabled', !selectedSkill);
+          };
+
+          // Skill selection
+          body.find('.ncm-hd-skill-btn').on('click', function () {
+            selectedSkill = this.dataset.skill;
+            selectedTotal = parseInt(this.dataset.total) || 0;
+            body.find('.ncm-hd-skill-btn').removeClass('ncm-hd-skill-btn--selected');
+            $(this).addClass('ncm-hd-skill-btn--selected');
+            updateAll();
+          });
+
+          // Luck adjustment
+          body.find('.ncm-hd-luck-adj').on('click', function () {
+            luckSpend = Math.max(0, Math.min(maxLuck, luckSpend + parseInt(this.dataset.adj)));
+            body.find('.ncm-hd-luck-val').text(luckSpend)
+              .toggleClass('ncm-hd-luck-val--zero', luckSpend === 0);
+            body.find('.ncm-hd-luck-seg').each(function (i) {
+              $(this).toggleClass('ncm-hd-luck-seg--filled', i < luckSpend);
+            });
+            updateAll();
+          });
+
+          // Disable execute until skill selected
+          body.closest('.dialog').find('button[data-button="execute"]')
+            .prop('disabled', true).addClass('ncm-hd-btn--disabled');
+        },
+      }, { classes: ['dialog', 'ncm-hack-dialog', themeClass], width: 360 });
+      d.render(true);
+    });
+
+    if (cancelled || !selectedSkill) return null;
+    return { skill: selectedSkill, luck: luckSpend, total: selectedTotal };
   }
 
   async close(options) {
