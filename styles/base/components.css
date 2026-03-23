@@ -1008,11 +1008,13 @@
   line-height: 1.4;
 }
 
-/* Terminal cursor variant */
+/* Terminal cursor variant — uses Orbitron for cyberdeck feel */
 .ncm-app .ncm-empty-state__cursor {
-  font-family: var(--ncm-font-mono);
-  font-size: var(--ncm-text-sm);
+  font-family: var(--ncm-font-title);
+  font-size: 11px;
   color: var(--ncm-secondary);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
 .ncm-app .ncm-empty-state__cursor::after {

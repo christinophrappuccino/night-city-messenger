@@ -1020,12 +1020,23 @@
 .ncm-app .ncm-viewer__shard-name { font-size: 12px; font-weight: 700; color: var(--ncm-text-primary); }
 .ncm-app .ncm-viewer__shard-meta { font-family: var(--ncm-font-mono); font-size: 9px; color: var(--ncm-text-muted); display: flex; gap: 8px; }
 .ncm-app .ncm-viewer__shard-badge {
-  font-family: var(--ncm-font-mono); font-size: 9px; padding: 2px 6px; border-radius: 2px;
-  text-transform: uppercase; letter-spacing: 0.04em; flex-shrink: 0;
+  font-family: var(--ncm-font-mono); font-size: 8px; font-weight: 600;
+  padding: 2px 7px; border-radius: 3px;
+  text-transform: uppercase; letter-spacing: 0.06em; flex-shrink: 0;
+  border: 1px solid;
 }
-.ncm-app .ncm-viewer__shard-badge--received { color: var(--ncm-success); background: rgba(52,211,153,0.08); }
-.ncm-app .ncm-viewer__shard-badge--inventory { color: var(--ncm-text-muted); background: rgba(85,85,112,0.1); }
-.ncm-app .ncm-viewer__shard-badge--ice { color: var(--ncm-accent); background: rgba(240,197,91,0.08); }
+.ncm-app .ncm-viewer__shard-badge--received {
+  color: var(--ncm-success); background: rgba(52,211,153,0.08);
+  border-color: rgba(52,211,153,0.2);
+}
+.ncm-app .ncm-viewer__shard-badge--inventory {
+  color: var(--ncm-text-secondary); background: rgba(85,85,112,0.08);
+  border-color: rgba(85,85,112,0.2);
+}
+.ncm-app .ncm-viewer__shard-badge--ice {
+  color: var(--ncm-accent); background: rgba(240,197,91,0.08);
+  border-color: rgba(240,197,91,0.2);
+}
 
 
 /* ═══════════════════════════════════════════════════════════
@@ -1073,6 +1084,7 @@
 .ncm-app .ncm-viewer .ncm-pill i { font-size: 8px; }
 .ncm-app .ncm-viewer .ncm-pill__badge { font-family: var(--ncm-font-mono); font-size: 9px; padding: 0 4px; border-radius: 2px; background: rgba(0,212,230,0.12); color: var(--ncm-secondary); line-height: 1.4; }
 .ncm-app .ncm-viewer .ncm-pill__badge--alert { background: rgba(246,82,97,0.15); color: var(--ncm-primary); }
+.ncm-app .ncm-viewer .ncm-pill__badge--success { background: rgba(52,211,153,0.15); color: var(--ncm-success); }
 
 /* Sort dropdown */
 .ncm-app .ncm-viewer .ncm-sort-dropdown {
@@ -1143,10 +1155,10 @@
 /* ═══════════════════════════════════════════════════════════
    §21  EMPTY STATES
    ═══════════════════════════════════════════════════════════ */
-.ncm-app .ncm-viewer__empty-detail { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: var(--ncm-text-dim); }
-.ncm-app .ncm-viewer__empty-icon { font-size: 28px; opacity: 0.3; }
-.ncm-app .ncm-viewer__empty-text { font-family: var(--ncm-font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; }
-.ncm-app .ncm-viewer__empty-hint { font-size: 10px; color: var(--ncm-text-dim); opacity: 0.5; }
+.ncm-app .ncm-viewer__empty-detail { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--ncm-text-dim); }
+.ncm-app .ncm-viewer__empty-icon { font-size: 28px; opacity: 0.2; }
+.ncm-app .ncm-viewer__empty-text { font-family: var(--ncm-font-title); font-size: 10px; text-transform: uppercase; letter-spacing: 0.15em; }
+.ncm-app .ncm-viewer__empty-hint { font-family: var(--ncm-font-mono); font-size: 9px; color: var(--ncm-text-dim); opacity: 0.4; }
 
 /* Trash/spam view opacity */
 .ncm-app .ncm-viewer[data-filter="trash"] .ncm-viewer__msg { opacity: 0.7; }

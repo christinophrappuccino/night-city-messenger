@@ -179,13 +179,24 @@
         {{#if counts.spam}}<span class="ncm-pill__badge">{{counts.spam}}</span>{{/if}}
       </span>
     {{else if (eq primaryTab 'shards')}}
-      <span class="ncm-pill ncm-pill--active" data-action="set-filter" data-filter="shards">
+      <span class="ncm-pill ncm-pill--active" data-action="filter-shards" data-shard-filter="all">
         <i class="fas fa-layer-group"></i> All
-        {{#if counts.shards}}<span class="ncm-pill__badge">{{counts.shards}}</span>{{/if}}
+        {{#if shardCounts.all}}<span class="ncm-pill__badge">{{shardCounts.all}}</span>{{/if}}
       </span>
-      <span class="ncm-pill"><i class="fas fa-download"></i> Received</span>
-      <span class="ncm-pill"><i class="fas fa-box"></i> Inventory</span>
-      <span class="ncm-pill"><i class="fas fa-lock"></i> Encrypted</span>
+      <span class="ncm-pill" data-action="filter-shards" data-shard-filter="received">
+        <i class="fas fa-download"></i> Received
+        {{#if shardCounts.received}}<span class="ncm-pill__badge ncm-pill__badge--success">{{shardCounts.received}}</span>{{/if}}
+      </span>
+      <span class="ncm-pill" data-action="filter-shards" data-shard-filter="inventory">
+        <i class="fas fa-box"></i> Inventory
+        {{#if shardCounts.inventory}}<span class="ncm-pill__badge">{{shardCounts.inventory}}</span>{{/if}}
+      </span>
+      {{#if shardCounts.encrypted}}
+        <span class="ncm-pill" data-action="filter-shards" data-shard-filter="encrypted">
+          <i class="fas fa-lock"></i> ICE
+          <span class="ncm-pill__badge ncm-pill__badge--alert">{{shardCounts.encrypted}}</span>
+        </span>
+      {{/if}}
     {{/if}}
     </div>
   </div>
@@ -286,7 +297,9 @@
     <div class="ncm-viewer__tab-list ncm-scrollbar">
       {{#if shardItems.length}}
         {{#each shardItems}}
-          <div class="ncm-viewer__shard-item" data-action="open-shard" data-item-id="{{this.id}}">
+          <div class="ncm-viewer__shard-item" data-action="open-shard" data-item-id="{{this.id}}"
+               data-shard-type="{{#if this.isReceived}}received{{else}}inventory{{/if}}"
+               data-shard-encrypted="{{this.isEncrypted}}">
             <div class="ncm-viewer__shard-icon {{#if this.isReceived}}ncm-viewer__shard-icon--received{{/if}}">
               <i class="fas fa-microchip"></i>
             </div>

@@ -269,7 +269,7 @@ export class MessageRepository {
             saved: false,
             spam: false,
             encrypted: messageData.status?.encrypted || !!messageData.encryption || false,
-            infected: false,
+            infected: messageData.status?.infected || false,
             deleted: false,
             sent: messageData.status?.sent || false,
             scheduled: false,

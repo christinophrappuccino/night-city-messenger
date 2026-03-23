@@ -512,6 +512,12 @@ export class MessageViewerApp extends BaseApplication {
     // ── Feature 7: Data shards (inventory + received) ──
     const shardItems = this._buildShardItems(allMessages);
     counts.shards = shardItems.length;
+    const shardCounts = {
+      all: shardItems.length,
+      received: shardItems.filter(s => s.isReceived).length,
+      inventory: shardItems.filter(s => !s.isReceived).length,
+      encrypted: shardItems.filter(s => s.isEncrypted).length,
+    };
 
     // ── Feature: Drafts ──
     const draftItems = this._buildDraftItems();
@@ -698,6 +704,7 @@ export class MessageViewerApp extends BaseApplication {
       // Feature 6-7: Special tab data
       scheduledMessages,
       shardItems,
+      shardCounts,
       draftItems,
 
       // Layout
@@ -1187,6 +1194,9 @@ export class MessageViewerApp extends BaseApplication {
       // ── Feature 7: Data Shards ──
       case 'open-shard':
         this._openShard(target.closest('[data-item-id]')?.dataset.itemId);
+        break;
+      case 'filter-shards':
+        this._filterShards(target.dataset.shardFilter, target);
         break;
 
       // ── Drafts ──
@@ -2320,6 +2330,32 @@ export class MessageViewerApp extends BaseApplication {
     }
   }
 
+  /**
+   * Filter shard items by category — pure DOM manipulation, no re-render.
+   * @param {string} filter — 'all' | 'received' | 'inventory' | 'encrypted'
+   * @param {HTMLElement} pillEl — The clicked pill element
+   */
+  _filterShards(filter, pillEl) {
+    const html = this.element;
+    if (!html) return;
+
+    // Toggle active pill
+    html.querySelectorAll('[data-action="filter-shards"]').forEach(p =>
+      p.classList.toggle('ncm-pill--active', p === pillEl)
+    );
+
+    // Show/hide shard items
+    html.querySelectorAll('.ncm-viewer__shard-item').forEach(item => {
+      const type = item.dataset.shardType;
+      const encrypted = item.dataset.shardEncrypted === 'true';
+      let show = true;
+      if (filter === 'received') show = type === 'received';
+      else if (filter === 'inventory') show = type === 'inventory';
+      else if (filter === 'encrypted') show = encrypted;
+      item.style.display = show ? '' : 'none';
+    });
+  }
+
   // ── Drafts ──
 
   _openDraft(actorId) {
@@ -2437,10 +2473,216 @@ export class MessageViewerApp extends BaseApplication {
     if (input) input.value = '';
   }
 
+  /**
+   * Attempt to decrypt an ICE-protected message with a full breach animation.
+   * Injects a terminal + ICE visualization into the encrypted overlay,
+   * calls the actual skill check, then shows success/failure.
+   * @param {string} messageId
+   */
   async _decryptMessage(messageId) {
     if (!messageId) return;
+    const html = this.element;
+    if (!html) return;
+
+    const msg = this._cachedMessages?.find(m => m.messageId === messageId)
+      || (await this._getEnrichedMessage(messageId));
+    const encryption = msg?.encryption || {};
+    const iceName = encryption.type || 'ICE';
+    const dc = encryption.dc ?? 15;
+
+    // Find the encrypted overlay container
+    const overlay = html.querySelector('.ncm-viewer__encrypted');
+    if (!overlay) {
+      // Fallback: just call service directly
+      const result = await this.messageService?.attemptDecrypt?.(messageId, this.actorId);
+      if (result?.success) this.render();
+      return;
+    }
+
+    // ── Inject Breach Sequence UI ──
+    overlay.innerHTML = `
+      <div class="ncm-breach-seq">
+        <div class="ncm-breach-seq__status">
+          <div class="ncm-breach-seq__status-dot"></div>
+          <div class="ncm-breach-seq__status-text">Breach Protocol Active</div>
+          <div class="ncm-breach-seq__status-ice">${iceName} // DV ${dc}</div>
+        </div>
+        <div class="ncm-breach-seq__main">
+          <div class="ncm-breach-seq__stream" style="left:8%;"></div>
+          <div class="ncm-breach-seq__stream" style="left:24%;animation-delay:0.5s;"></div>
+          <div class="ncm-breach-seq__stream" style="left:42%;animation-delay:1.1s;"></div>
+          <div class="ncm-breach-seq__stream" style="left:58%;animation-delay:0.3s;"></div>
+          <div class="ncm-breach-seq__stream" style="left:76%;animation-delay:0.8s;"></div>
+          <div class="ncm-breach-seq__terminal" data-terminal>
+            <div class="ncm-breach-seq__cursor"></div>
+          </div>
+          <div class="ncm-breach-seq__ice">
+            <div class="ncm-breach-seq__ice-rings" data-ice-rings>
+              <div class="ncm-breach-seq__ice-ring ncm-breach-seq__ice-ring--outer"></div>
+              <div class="ncm-breach-seq__ice-ring ncm-breach-seq__ice-ring--middle"></div>
+              <div class="ncm-breach-seq__ice-ring ncm-breach-seq__ice-ring--inner"></div>
+              <i class="fas fa-shield-halved ncm-breach-seq__ice-icon"></i>
+            </div>
+            <div class="ncm-breach-seq__ice-label">${iceName}</div>
+            <div class="ncm-breach-seq__ice-bar">
+              <div class="ncm-breach-seq__ice-bar-label">ICE Integrity</div>
+              <div class="ncm-breach-seq__ice-bar-track">
+                <div class="ncm-breach-seq__ice-bar-fill" data-ice-fill style="width:100%;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="ncm-breach-seq__progress">
+          <div class="ncm-breach-seq__progress-fill" data-progress-fill></div>
+          <span class="ncm-breach-seq__progress-label" data-progress-label>Initializing...</span>
+        </div>
+        <div class="ncm-breach-seq__result" data-result style="display:none;"></div>
+      </div>
+    `;
+
+    // ── Animation Helpers ──
+    const _timers = [];
+    const delay = (fn, ms) => new Promise(resolve => {
+      _timers.push(setTimeout(() => { fn(); resolve(); }, ms));
+    });
+    const terminal = overlay.querySelector('[data-terminal]');
+    const progressFill = overlay.querySelector('[data-progress-fill]');
+    const progressLabel = overlay.querySelector('[data-progress-label]');
+    const iceFill = overlay.querySelector('[data-ice-fill]');
+    const iceRings = overlay.querySelector('[data-ice-rings]');
+    const resultEl = overlay.querySelector('[data-result]');
+
+    const addLine = (cls, text) => {
+      const div = document.createElement('div');
+      div.className = `ncm-breach-seq__line ncm-breach-seq__line--${cls}`;
+      div.innerHTML = text;
+      const cursor = terminal.querySelector('.ncm-breach-seq__cursor');
+      if (cursor) terminal.insertBefore(div, cursor);
+      else terminal.appendChild(div);
+      terminal.scrollTop = terminal.scrollHeight;
+    };
+    const setProg = (pct, label) => {
+      if (progressFill) progressFill.style.width = `${pct}%`;
+      if (progressLabel) progressLabel.textContent = label;
+    };
+    const setIce = (pct) => { if (iceFill) iceFill.style.width = `${pct}%`; };
+
+    // ── Phase 1: Init ──
+    addLine('system', '░░ NCM BREACH PROTOCOL v4.6 ░░');
+    await delay(() => addLine('system', `Target: MESSAGE // Encryption: ${iceName}`), 200);
+    await delay(() => { addLine('blank', ''); setProg(10, 'Mapping ICE architecture...'); }, 300);
+
+    // ── Phase 2: Scan ──
+    await delay(() => addLine('prompt', 'Initializing ICE scan...'), 400);
+    await delay(() => addLine('data', `0x${Math.random().toString(16).slice(2,6).toUpperCase()} :: scanning encryption layer :: vectors loaded`), 500);
+    await delay(() => addLine('data', `0x${Math.random().toString(16).slice(2,6).toUpperCase()} :: firewall topology mapped :: ${iceName} detected`), 500);
+    await delay(() => { addLine('prompt', 'ICE architecture mapped.'); setProg(25, 'Probing defenses...'); setIce(90); }, 400);
+
+    // ── Phase 3: Probe ──
+    await delay(() => addLine('blank', ''), 200);
+    await delay(() => addLine('ice', `⚠ ${iceName} DETECTED — COUNTERMEASURES ARMED`), 400);
+    await delay(() => { setProg(40, 'Selecting exploit...'); }, 200);
+    await delay(() => addLine('prompt', `Exploit vector: ${encryption.skill || 'Interface'}`), 400);
+    await delay(() => { setProg(55, 'Injecting exploit...'); setIce(75); }, 300);
+
+    // ── Phase 4: Inject ──
+    await delay(() => addLine('blank', ''), 200);
+    await delay(() => addLine('prompt', 'Injecting exploit into layer 1...'), 400);
+    await delay(() => addLine('data', `0x${Math.random().toString(16).slice(2,6).toUpperCase()} :: buffer overflow targeting auth handler`), 500);
+    await delay(() => addLine('prompt', 'Layer 1: <span style="color:#ffab00;">PARTIAL</span>'), 400);
+    await delay(() => { setProg(70, 'Escalating...'); setIce(55); }, 300);
+    await delay(() => addLine('prompt', 'Escalating to layer 2...'), 300);
+    await delay(() => { setProg(85, 'Rolling dice...'); }, 300);
+
+    // ── Phase 5: Actual Skill Check ──
+    await delay(() => {
+      addLine('blank', '');
+      addLine('prompt', '<i class="fas fa-dice" style="margin-right:4px;"></i> Rolling 1d10...');
+    }, 400);
+
     const result = await this.messageService?.attemptDecrypt?.(messageId, this.actorId);
-    if (result?.success) {
+    const success = !!result?.success;
+    const roll = result?.roll || {};
+    const total = roll.total ?? '?';
+    const dieRoll = roll.processedRoll ?? roll.rollValue ?? roll.dieRoll ?? '?';
+
+    await delay(() => {
+      addLine('roll', `1d10 → <span style="color:${success ? '#00ff41' : '#ff0033'};font-size:14px;">${dieRoll}</span>`);
+    }, 300);
+    await delay(() => {
+      addLine('roll', `Total: <span style="color:${success ? '#00ff41' : '#ff0033'};font-size:14px;">${total}</span> vs DV ${dc}`);
+      setProg(100, success ? 'ICE BREACHED' : 'BREACH FAILED');
+    }, 400);
+
+    // ── Phase 6: Result ──
+    if (success) {
+      await delay(() => {
+        addLine('blank', '');
+        addLine('success', '██ ICE BREACHED ██ ACCESS GRANTED ██');
+        if (iceRings) iceRings.classList.add('ncm-breach-seq__ice-shatter');
+        setIce(0);
+      }, 500);
+      this.soundService?.play?.('hack-success');
+
+      await delay(() => {
+        if (resultEl) {
+          resultEl.style.display = 'flex';
+          resultEl.innerHTML = `
+            <div class="ncm-breach-seq__result-card ncm-breach-seq__result-card--success">
+              <div class="ncm-breach-seq__result-icon"><i class="fas fa-lock-open"></i></div>
+              <div class="ncm-breach-seq__result-title">Message Decrypted</div>
+              <div class="ncm-breach-seq__result-sub">${iceName} neutralized. Content unlocked.</div>
+              <div class="ncm-breach-seq__result-roll">
+                <span class="ncm-breach-seq__result-total ncm-breach-seq__result-total--pass">${total}</span>
+                <span class="ncm-breach-seq__result-vs">vs</span>
+                <span class="ncm-breach-seq__result-dv">${dc}</span>
+              </div>
+              <div class="ncm-breach-seq__result-continue">Click to read message...</div>
+            </div>`;
+        }
+      }, 500);
+
+      // Wait for click then re-render
+      await new Promise(resolve => {
+        const dismiss = () => { resultEl?.removeEventListener('click', dismiss); resolve(); };
+        resultEl?.addEventListener('click', dismiss);
+        _timers.push(setTimeout(dismiss, 6000));
+      });
+      _timers.forEach(t => clearTimeout(t));
+      this.render();
+
+    } else {
+      await delay(() => {
+        addLine('blank', '');
+        addLine('fail', '██ BREACH FAILED ██ ICE HOLDING ██');
+        if (iceRings) iceRings.classList.add('ncm-breach-seq__ice-retaliate');
+      }, 500);
+      this.soundService?.play?.('hack-fail');
+
+      await delay(() => {
+        if (resultEl) {
+          resultEl.style.display = 'flex';
+          resultEl.innerHTML = `
+            <div class="ncm-breach-seq__result-card ncm-breach-seq__result-card--fail">
+              <div class="ncm-breach-seq__result-icon"><i class="fas fa-shield-halved"></i></div>
+              <div class="ncm-breach-seq__result-title">Breach Failed</div>
+              <div class="ncm-breach-seq__result-sub">${iceName} countermeasures engaged.</div>
+              <div class="ncm-breach-seq__result-roll">
+                <span class="ncm-breach-seq__result-total ncm-breach-seq__result-total--fail">${total}</span>
+                <span class="ncm-breach-seq__result-vs">vs</span>
+                <span class="ncm-breach-seq__result-dv">${dc}</span>
+              </div>
+              <div class="ncm-breach-seq__result-continue">Click to continue...</div>
+            </div>`;
+        }
+      }, 500);
+
+      await new Promise(resolve => {
+        const dismiss = () => { resultEl?.removeEventListener('click', dismiss); resolve(); };
+        resultEl?.addEventListener('click', dismiss);
+        _timers.push(setTimeout(dismiss, 6000));
+      });
+      _timers.forEach(t => clearTimeout(t));
       this.render();
     }
   }
