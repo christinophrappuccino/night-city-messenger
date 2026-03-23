@@ -107,43 +107,23 @@ export class MessageService {
       data._recipientInboxId = recipientInboxId;
 
       // ── Contact Verification Gate (players only) ──
+      // Players can only send to contacts that exist in the GM's Master Contact Directory.
       const requireVerification = game.settings.get(MODULE_ID, 'requireContactVerification') ?? true;
 
       if (!game.user.isGM && requireVerification) {
-        const contactRepo = this._contactRepo;
-        const senderContacts = await contactRepo.getContacts(data.fromActorId);
+        const masterService = game.nightcity?.masterContactService;
+        const recipientEmail = data.to || (toActor ? this._contactRepo.getActorEmail(data.toActorId) : toContact?.email);
 
-        const recipientEmail = data.to || (toActor ? contactRepo.getActorEmail(data.toActorId) : toContact?.email);
-        const recipientContact = senderContacts.find(c =>
-          c.linkedActorId === data.toActorId ||
-          c.actorId === data.toActorId ||
-          (c.email && recipientEmail && c.email.toLowerCase() === recipientEmail.toLowerCase())
+        const inMasterContacts = masterService?.getAll?.()?.find(mc =>
+          mc.actorId === data.toActorId ||
+          (mc.email && recipientEmail && mc.email.toLowerCase() === recipientEmail.toLowerCase())
         );
 
-        if (!recipientContact) {
-          this.soundService?.play('error');
+        if (!inMasterContacts) {
           return {
             success: false,
-            error: 'CONTACT NOT FOUND — Add this contact to your address book before sending.',
+            error: 'CONTACT NOT FOUND — Recipient not registered in the network directory.',
             errorCode: 'NO_CONTACT',
-          };
-        }
-
-        if (recipientContact.burned) {
-          this.soundService?.play('error');
-          return {
-            success: false,
-            error: 'CONTACT BURNED — This address has been compromised. Connection refused.',
-            errorCode: 'BURNED',
-          };
-        }
-
-        if (!recipientContact.verified && !recipientContact.verifiedOverride) {
-          this.soundService?.play('error');
-          return {
-            success: false,
-            error: 'UNVERIFIED CONTACT — Cannot establish connection. Verify the address and try again.',
-            errorCode: 'UNVERIFIED',
           };
         }
       }

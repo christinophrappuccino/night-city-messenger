@@ -194,13 +194,12 @@
   {{/if}}
 
   {{!-- ═══ §5 FORM FIELDS — TO / CC / SUBJECT ═══ --}}
-  {{!-- TO field: hidden in reply (implicit), visible in compose/forward --}}
-  {{#unless recipientLocked}}
+  {{!-- TO field: always visible. Reply mode shows locked chips; compose/forward is editable --}}
   <div class="ncm-composer__field {{#if errors.to}}ncm-composer__field--error{{/if}}" style="position:relative;">
     <span class="ncm-composer__field-label {{#if errors.to}}ncm-composer__field-label--error{{/if}}">TO:</span>
     <div class="ncm-composer__chips" data-id="recipient-chips">
       {{#each recipients}}
-      <div class="ncm-composer__chip {{#if mismatch}}ncm-composer__chip--mismatch{{/if}} {{#if unreachable}}ncm-composer__chip--unreachable{{/if}}"
+      <div class="ncm-composer__chip {{#if mismatch}}ncm-composer__chip--mismatch{{/if}} {{#if unreachable}}ncm-composer__chip--unreachable{{/if}} {{#if locked}}ncm-composer__chip--locked{{/if}}"
            data-actor-id="{{actorId}}">
         <div class="ncm-composer__chip-avatar" {{#if avatarColor}}style="color:{{avatarColor}};"{{/if}}>{{initials}}</div>
         {{name}}
@@ -212,18 +211,22 @@
         {{/unless}}
       </div>
       {{/each}}
+      {{!-- Only show input if not reply-locked --}}
+      {{#unless recipientLocked}}
       <input class="ncm-composer__field-input" data-id="recipient-input"
              placeholder="{{#if recipients.length}}Add recipient...{{else}}Search contacts...{{/if}}"
              autocomplete="off" />
+      {{/unless}}
     </div>
+    {{#unless recipientLocked}}
     <button class="ncm-composer__field-action" data-action="toggleCC">CC</button>
+    {{/unless}}
     {{#if errors.to}}
     <span class="ncm-composer__field-error"><i class="fas fa-exclamation-circle"></i> {{errors.to}}</span>
     {{/if}}
     {{!-- Autocomplete dropdown --}}
     <div class="ncm-composer__autocomplete ncm-hidden" data-id="autocomplete-dropdown"></div>
   </div>
-  {{/unless}}
 
   {{!-- CC field (toggled by JS) --}}
   <div class="ncm-composer__field ncm-hidden" data-id="cc-field">

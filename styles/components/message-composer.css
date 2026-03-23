@@ -573,6 +573,10 @@
   background: rgba(255,0,51,0.02);
   opacity: 0.6;
 }
+.ncm-composer__chip--locked {
+  background: rgba(25,243,247,0.05);
+  border-color: rgba(25,243,247,0.15);
+}
 
 .ncm-composer__chip-avatar {
   width: 20px; height: 20px; border-radius: 50%;

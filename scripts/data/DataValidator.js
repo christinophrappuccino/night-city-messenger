@@ -30,7 +30,7 @@ export class DataValidator {
     if (data.subject && data.subject.length > 200) {
       errors.push('Subject must be under 200 characters');
     }
-    if (data.priority && !['normal', 'urgent', 'critical'].includes(data.priority)) {
+    if (data.priority && !['low', 'normal', 'high', 'urgent', 'critical'].includes(data.priority)) {
       errors.push('Invalid priority level');
     }
 
