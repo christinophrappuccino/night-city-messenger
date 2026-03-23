@@ -576,6 +576,54 @@ export class MessageViewerApp extends BaseApplication {
       || '';
     const ownedCharacters = this._buildOwnedCharacters();
 
+    // ── Ambient Network State Strips ──
+    const netEffects = currentNetwork?.effects || {};
+    const netTheme = currentNetwork?.theme || {};
+    const netId = (currentNetwork?.id || '').toLowerCase();
+
+    // Signal strip: show when degraded (<50%) but not dead
+    let ambientSignalStrip = null;
+    if (!isDeadZone && signalStrength < 50 && signalStrength > 0) {
+      const isCritical = signalStrength < 25;
+      ambientSignalStrip = {
+        variant: isCritical ? 'critical' : 'weak',
+        label: isCritical ? 'Critical Signal' : 'Weak Signal',
+        status: isCritical ? 'CORRUPTION RISK' : `DELAY +${Math.floor((100 - signalStrength) * 3)}MS`,
+        detailHint: isCritical
+          ? 'Critical signal — messages may be corrupted'
+          : 'Weak signal — messages may be delayed',
+      };
+    }
+
+    // Darknet anonymous strip: show when on a network with anonymity: true
+    const ambientDarknet = !isDeadZone && !!netEffects.anonymity;
+
+    // Traced strip: show when on a network with traced: true
+    let ambientTraced = null;
+    if (!isDeadZone && netEffects.traced) {
+      const color = netTheme.color || '#4488ff';
+      // Parse hex to rgb for CSS rgba()
+      const r = parseInt(color.slice(1,3), 16) || 68;
+      const g = parseInt(color.slice(3,5), 16) || 136;
+      const b = parseInt(color.slice(5,7), 16) || 255;
+      const isGovnet = netId === 'govnet' || !netEffects.canRoute;
+      ambientTraced = {
+        color,
+        rgb: `${r},${g},${b}`,
+        detail: isGovnet
+          ? 'Walled garden — external routing disabled · All data classified'
+          : 'All traffic logged — messages, metadata, routing',
+        agencyIcon: isGovnet ? 'fa-shield-halved' : 'fa-eye',
+        agencyName: netEffects.tracedBy || (isGovnet ? 'NCPD/Gov' : 'NetWatch'),
+      };
+    }
+
+    // Network mode for CSS data attribute (used for body effects etc.)
+    const networkMode = isDeadZone ? 'dead'
+      : ambientDarknet ? 'darknet'
+      : ambientTraced ? 'traced'
+      : 'normal';
+
     // ── Assemble context ──
     return {
       // Identity
@@ -607,6 +655,12 @@ export class MessageViewerApp extends BaseApplication {
       selectorNetworks,
       availableCount,
       currentSceneName,
+
+      // Ambient Network State Strips
+      networkMode,
+      ambientSignalStrip,
+      ambientDarknet,
+      ambientTraced,
 
       // HUD Strip
       connectionStatus,
@@ -718,17 +772,7 @@ export class MessageViewerApp extends BaseApplication {
       replyInput._ncmBound = true;
     }
 
-    // Bypass password input — Enter to submit
-    const bypassInput = html.querySelector('.ncm-viewer__locked-bypass-input');
-    if (bypassInput && !bypassInput._ncmBound) {
-      bypassInput.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter') {
-          event.preventDefault();
-          this._bypassPassword(bypassInput.dataset.messageId);
-        }
-      });
-      bypassInput._ncmBound = true;
-    }
+    // Bypass password input — removed, now handled via NetworkAuthDialog
 
     // Sidebar resize
     const divider = html.querySelector('.ncm-viewer__divider');
@@ -754,51 +798,9 @@ export class MessageViewerApp extends BaseApplication {
       }, 1000);
     }
 
-    // Feature 4 — Self-destruct timer update
-    if (this._destructTimer) clearInterval(this._destructTimer);
-    const destructEl = html.querySelector('[data-id="destruct-timer"]');
-    if (destructEl) {
-      const msg = this._getSelectedMessage();
-      if (msg?.selfDestruct?.expiresAt) {
-        this._destructTimer = setInterval(async () => {
-          const remaining = new Date(msg.selfDestruct.expiresAt).getTime() - Date.now();
-          if (remaining <= 0) {
-            clearInterval(this._destructTimer);
-            destructEl.innerHTML = '<i class="fas fa-skull-crossbones"></i> EXPIRED';
-            // Auto-delete the message
-            await this.messageService?.deleteMessage?.(this.actorId, msg.messageId);
-            ui.notifications.warn('Self-destruct message expired and deleted.');
-            setTimeout(() => {
-              this.selectedMessageId = null;
-              this.render();
-            }, 1500);
-            return;
-          }
-          const h = Math.floor(remaining / 3600000);
-          const m = Math.floor((remaining % 3600000) / 60000);
-          const s = Math.floor((remaining % 60000) / 1000);
-          destructEl.innerHTML = `<i class="fas fa-hourglass-half" style="margin-right:3px;"></i> ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
-        }, 1000);
-      }
-    }
+    // Feature 4 — Self-destruct timer — see _setupDestructFill()
 
-    // ── Network access lockout countdown ──
-    if (this._lockoutTimer) clearInterval(this._lockoutTimer);
-    const lockoutEl = html.querySelector('.ncm-viewer__locked-timer');
-    if (lockoutEl?.dataset.lockoutUntil) {
-      this._lockoutTimer = setInterval(() => {
-        const remaining = new Date(lockoutEl.dataset.lockoutUntil).getTime() - Date.now();
-        if (remaining <= 0) {
-          clearInterval(this._lockoutTimer);
-          this._lockoutTimer = null;
-          this.render(); // Re-render to show bypass options again
-          return;
-        }
-        const m = Math.floor(remaining / 60000);
-        const s = Math.floor((remaining % 60000) / 1000);
-        lockoutEl.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
-      }, 1000);
-    }
+    // ── Network access lockout countdown — see _setupLockoutCountdown() ──
 
     // ── WP-6: Trace countdown timer ──
     if (this._traceTimer) clearInterval(this._traceTimer);
@@ -877,6 +879,148 @@ export class MessageViewerApp extends BaseApplication {
         });
       }
     }
+
+    // ── Ambient Strip Animations ──
+    this._setupAmbientAnimations(html);
+
+    // ── Destruct bar fill percentage ──
+    this._setupDestructFill(html);
+
+    // ── Lockout timer (redesigned) ──
+    this._setupLockoutCountdown(html);
+  }
+
+  /**
+   * Set up ambient network strip animations — scramble text, relay hops, waveform.
+   * All intervals stored for cleanup in close().
+   * @param {HTMLElement} html — Root element
+   */
+  _setupAmbientAnimations(html) {
+    // Clean up previous intervals
+    if (this._ambientIntervals) {
+      this._ambientIntervals.forEach(id => clearInterval(id));
+    }
+    if (this._ambientRAF) cancelAnimationFrame(this._ambientRAF);
+    this._ambientIntervals = [];
+
+    // ── Scramble text (darknet anonymous strip) ──
+    const scrambleEl = html.querySelector('.ncm-viewer__anon-strip-scramble');
+    if (scrambleEl) {
+      const GLITCH = '░▒▓█▌▐╔╗╚╝║═╬┼▄▀■□';
+      const id = setInterval(() => {
+        let r = '';
+        for (let i = 0; i < 6; i++) r += GLITCH[Math.floor(Math.random() * GLITCH.length)];
+        scrambleEl.textContent = r;
+      }, 800);
+      this._ambientIntervals.push(id);
+    }
+
+    // ── Relay hop animation (darknet) ──
+    const hops = html.querySelectorAll('.ncm-viewer__anon-strip-hop');
+    if (hops.length) {
+      let current = 0;
+      const id = setInterval(() => {
+        hops.forEach((h, i) => h.classList.toggle('ncm-viewer__anon-strip-hop--active', i === current));
+        current = (current + 1) % hops.length;
+      }, 600);
+      this._ambientIntervals.push(id);
+    }
+
+    // ── Signal waveform animation (SVG path) ──
+    const wavePath = html.querySelector('.ncm-viewer__signal-wave-path');
+    if (wavePath) {
+      const isCritical = html.querySelector('.ncm-viewer__signal-strip--critical');
+      const animate = () => {
+        const pts = [];
+        const w = 200, mid = 6;
+        if (isCritical) {
+          // EKG-style: long flatlines with sharp spikes
+          let x = 0;
+          while (x <= w) {
+            if (Math.random() < 0.07 && x > 10 && x < w - 10) {
+              pts.push(`${x},${mid}`, `${x+2},${mid-4-Math.random()*2}`,
+                `${x+4},${mid+4+Math.random()*2}`, `${x+6},${mid}`);
+              x += 8;
+            } else {
+              pts.push(`${x},${(mid + (Math.random()-0.5)*0.4).toFixed(1)}`);
+              x += 3;
+            }
+          }
+        } else {
+          // Gentle sine wave with jitter
+          for (let x = 0; x <= w; x += 2) {
+            const y = mid + Math.sin(x * 0.08 + Date.now() * 0.002) * 2
+              + (Math.random() - 0.5) * 0.8;
+            pts.push(`${x},${Math.max(1, Math.min(11, y)).toFixed(1)}`);
+          }
+        }
+        wavePath.setAttribute('d', `M${pts.join(' L')}`);
+        this._ambientRAF = requestAnimationFrame(animate);
+      };
+      this._ambientRAF = requestAnimationFrame(animate);
+    }
+  }
+
+  /**
+   * Set up self-destruct fill bar width based on remaining time.
+   * @param {HTMLElement} html
+   */
+  _setupDestructFill(html) {
+    const fillEl = html.querySelector('.ncm-viewer__destruct-bar-fill');
+    const timerEl = html.querySelector('.ncm-viewer__destruct-bar-timer');
+    if (!fillEl || !timerEl) return;
+
+    const msg = this._getSelectedMessage();
+    if (!msg?.selfDestruct?.expiresAt) return;
+
+    const expiresAt = new Date(msg.selfDestruct.expiresAt).getTime();
+    // Estimate total duration (default 10 min if unknown)
+    const totalDuration = msg.selfDestruct.duration || 600000;
+
+    const updateFill = () => {
+      const remaining = expiresAt - Date.now();
+      if (remaining <= 0) {
+        fillEl.style.width = '0%';
+        return;
+      }
+      const pct = Math.max(0, Math.min(100, (remaining / totalDuration) * 100));
+      fillEl.style.width = `${pct}%`;
+
+      // Update timer text
+      const h = Math.floor(remaining / 3600000);
+      const m = Math.floor((remaining % 3600000) / 60000);
+      const s = Math.floor((remaining % 60000) / 1000);
+      timerEl.textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    };
+
+    updateFill();
+    // Reuse existing destruct timer interval or create new
+    if (this._destructFillTimer) clearInterval(this._destructFillTimer);
+    this._destructFillTimer = setInterval(updateFill, 1000);
+  }
+
+  /**
+   * Set up lockout countdown for the redesigned lockout overlay.
+   * @param {HTMLElement} html
+   */
+  _setupLockoutCountdown(html) {
+    if (this._lockoutTimer) clearInterval(this._lockoutTimer);
+    const timerEl = html.querySelector('.ncm-viewer__lockout-timer');
+    if (!timerEl?.dataset.lockoutUntil) return;
+
+    const until = new Date(timerEl.dataset.lockoutUntil).getTime();
+    this._lockoutTimer = setInterval(() => {
+      const remaining = until - Date.now();
+      if (remaining <= 0) {
+        clearInterval(this._lockoutTimer);
+        this._lockoutTimer = null;
+        this.render(); // Re-render to show bypass options again
+        return;
+      }
+      const m = Math.floor(remaining / 60000);
+      const s = Math.floor((remaining % 60000) / 1000);
+      timerEl.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    }, 1000);
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -992,6 +1136,29 @@ export class MessageViewerApp extends BaseApplication {
         break;
       case 'gm-force-reveal':
         this._gmForceReveal(target.dataset.messageId);
+        break;
+
+      // ── Network Restricted: Connect CTA → opens auth dialog ──
+      case 'connect-network':
+        this._connectToRestrictedNetwork(target.dataset.networkId);
+        break;
+
+      // ── Encrypted: Attempt Decryption (redesigned CTA) ──
+      case 'attempt-decrypt':
+        this._decryptMessage(target.dataset.messageId);
+        break;
+
+      // ── GM: Reset Lockout Timer ──
+      case 'gm-reset-lockout':
+        this._gmResetLockout(target.dataset.messageId);
+        break;
+
+      // ── Malware Actions ──
+      case 'quarantine-malware':
+        this._quarantineMalware(target.dataset.messageId);
+        break;
+      case 'analyze-malware':
+        this._analyzeMalware(target.dataset.messageId);
         break;
 
       // ── WP-5: Signal Reconstruction ──
@@ -2421,6 +2588,99 @@ export class MessageViewerApp extends BaseApplication {
     this.render();
   }
 
+  /**
+   * Open the NetworkAuthDialog for a restricted network.
+   * Called when player clicks "Connect to [Network]" in the restricted overlay.
+   * On successful auth, the network auto-switches and the overlay dissolves on re-render.
+   * @param {string} networkId — ID of the network to connect to
+   */
+  async _connectToRestrictedNetwork(networkId) {
+    if (!networkId) return;
+
+    const networkService = this.networkService;
+    if (!networkService) {
+      ui.notifications.warn('NCM | Network service not available.');
+      return;
+    }
+
+    const network = networkService.getNetwork?.(networkId);
+    if (!network) {
+      ui.notifications.warn(`NCM | Network "${networkId}" not found.`);
+      return;
+    }
+
+    // Open the auth dialog — it handles password, skill check, key item, lockout, etc.
+    try {
+      const { NetworkAuthDialog } = await import('../NetworkManagement/NetworkAuthDialog.js');
+      const dialog = new NetworkAuthDialog({
+        networkId: network.id,
+        actorId: this.actorId,
+        onSuccess: async () => {
+          // Auth succeeded — switch to this network
+          await networkService.switchNetwork?.(network.id);
+          ui.notifications.info(`NCM | Connected to ${network.name}.`);
+          this.soundService?.play?.('connect');
+          this.render();
+        },
+      });
+      dialog.render(true);
+    } catch (err) {
+      console.error('NCM | Failed to open NetworkAuthDialog:', err);
+      ui.notifications.error('NCM | Failed to open network authentication.');
+    }
+  }
+
+  /**
+   * GM: Reset lockout timer on a network-restricted message.
+   * @param {string} messageId
+   */
+  async _gmResetLockout(messageId) {
+    if (!game.user?.isGM) return;
+    await this.messageAccessService?.resetLockout?.(messageId, this.actorId);
+    ui.notifications.info('NCM | Lockout timer reset.');
+    this.render();
+  }
+
+  /**
+   * Quarantine a malware-infected message — disables its payload.
+   * @param {string} messageId
+   */
+  async _quarantineMalware(messageId) {
+    if (!messageId) return;
+    await this.messageService?.updateMessageFlags?.(this.actorId, messageId, {
+      status: { quarantined: true },
+    });
+    this.soundService?.play?.('hack-success');
+    ui.notifications.info('NCM | Malware quarantined.');
+    this.render();
+  }
+
+  /**
+   * Analyze a malware-infected message — share details to chat for the GM.
+   * @param {string} messageId
+   */
+  async _analyzeMalware(messageId) {
+    if (!messageId) return;
+    const msg = this._cachedMessages?.find(m => m.messageId === messageId);
+    if (!msg) return;
+
+    const actor = game.actors?.get(this.actorId);
+    const content = `<div class="ncm-chat-card">
+      <div class="ncm-chat-card__header"><i class="fas fa-biohazard"></i> MALWARE ANALYSIS</div>
+      <div class="ncm-chat-card__body">
+        <strong>${actor?.name || 'Unknown'}</strong> analyzed a hostile daemon in message from <strong>${msg.fromDisplay || msg.from}</strong>.<br>
+        Subject: <em>${msg.subject || 'No subject'}</em>
+      </div>
+    </div>`;
+
+    await ChatMessage.create({
+      content,
+      speaker: ChatMessage.getSpeaker({ actor }),
+      whisper: game.users.filter(u => u.isGM).map(u => u.id),
+    });
+    ui.notifications.info('NCM | Malware analysis sent to GM.');
+  }
+
   _toggleThread() {
     // Toggle thread expansion in detail view — implementation depends on thread UI
     this.render();
@@ -2673,6 +2933,47 @@ export class MessageViewerApp extends BaseApplication {
       || this.networkService?.getNetwork?.(msg.network)?.name
       || msg.network || '';
 
+    // ── Enriched network data for redesigned restricted overlay ──
+    let restrictedNetworkData = null;
+    if (isNetworkLocked && accessState.requiredNetwork) {
+      const net = this.networkService?.getNetwork?.(accessState.requiredNetwork);
+      if (net) {
+        const theme = net.theme || {};
+        const sec = net.security || {};
+        const color = theme.color || '#4488ff';
+        const r = parseInt(color.slice(1,3), 16) || 68;
+        const g = parseInt(color.slice(3,5), 16) || 136;
+        const b = parseInt(color.slice(5,7), 16) || 255;
+        // Build requirement chips from auth config
+        const reqChips = [];
+        if (sec.requiresAuth) {
+          if (sec.password || sec.hasPassword) reqChips.push({ type: 'password', icon: 'fa-key', label: 'Password' });
+          if (sec.skillCheck || sec.hasSkillBypass) reqChips.push({ type: 'skill', icon: 'fa-dice-d20', label: 'Skill Check' });
+          if (sec.keyItem || sec.hasKeyItem) reqChips.push({ type: 'keyitem', icon: 'fa-id-badge', label: net.security.keyItemName || 'Key Item' });
+        }
+        // Determine AND vs OR logic
+        const authLogic = sec.authLogic || 'OR';
+        restrictedNetworkData = {
+          networkId: net.id,
+          name: net.name,
+          type: net.type || 'Unknown',
+          typeLabel: (net.type || 'Unknown').charAt(0) + (net.type || 'Unknown').slice(1).toLowerCase(),
+          icon: theme.icon || 'fa-wifi',
+          color,
+          rgb: `${r},${g},${b}`,
+          glow: `rgba(${r},${g},${b},0.04)`,
+          securityLevel: (sec.level || 'NONE').toUpperCase(),
+          securityTagClass: (sec.level || 'none').toLowerCase(),
+          reqChips,
+          authLogic,
+          isLockedOut: accessState.lockedOut || false,
+          lockoutUntil: accessState.lockoutUntil || null,
+          remainingAttempts: accessState.maxAttempts ? (accessState.maxAttempts - (accessState.hackAttempts || 0)) : null,
+          maxAttempts: accessState.maxAttempts || 3,
+          hackAttempts: accessState.hackAttempts || 0,
+        };
+      }
+    }
     // Feature 1 — Eddies data (different display for sent vs received)
     let eddiesData = null;
     if (msg.eddies && msg.eddies > 0) {
@@ -2761,6 +3062,7 @@ export class MessageViewerApp extends BaseApplication {
       isNetworkLocked,
       lockedNetworkName,
       accessState,
+      restrictedNetworkData,
       networkBodyEffect,
       traceActive,
       traceExpiresAt,
@@ -3282,9 +3584,16 @@ export class MessageViewerApp extends BaseApplication {
 
   async close(options) {
     if (this._destructTimer) clearInterval(this._destructTimer);
+    if (this._destructFillTimer) clearInterval(this._destructFillTimer);
     if (this._clockInterval) clearInterval(this._clockInterval);
     if (this._lockoutTimer) clearInterval(this._lockoutTimer);
     if (this._traceTimer) clearInterval(this._traceTimer);
+    // Ambient strip animations
+    if (this._ambientIntervals) {
+      this._ambientIntervals.forEach(id => clearInterval(id));
+      this._ambientIntervals = [];
+    }
+    if (this._ambientRAF) cancelAnimationFrame(this._ambientRAF);
     // Remove global keyboard listener
     if (this._boundKeydown) {
       document.removeEventListener('keydown', this._boundKeydown);

@@ -1,16 +1,16 @@
 {{!--
-  Message Detail Panel — v3.2 Redesign
+  Message Detail Panel — v4 Network States Redesign
   @file templates/message-viewer/partials/message-detail.hbs
   @module cyberpunkred-messenger
-  @description Displays selected message with:
-    - Clickable sender avatar with color-coded border
-    - Sender name + "Add Contact" button for unknown senders
-    - Color-coded meta fields (from=cyan, to=gold, time=muted, network=green)
-    - Security verification strip
-    - Thread indicator badge
-    - Message body with eddies claim, attachments, encrypted blocks
-    - Network-locked and encryption overlays
-    - Quick reply bar
+  @description Displays selected message with redesigned network state screens:
+    - Network Restricted: network identity card + "Connect to [Network]" CTA
+    - Lockout: red takeover with static, glitch, vignette, countdown
+    - Encrypted: gold ICE overlay with type + DV chips, breach CTA
+    - Self-destruct: depleting fill bar + countdown timer
+    - Trace: scanning sweep bar (active + complete states)
+    - Signal degradation: severity badge + reconstruct button
+    - Malware: alert card with Quarantine/Analyze actions
+    - Network body effects (darknet, corpnet, govnet)
 
   Expected context:
     message — enriched from _getEnrichedMessage()
@@ -21,140 +21,210 @@
 
 <div class="ncm-viewer__detail" data-message-id="{{message.messageId}}">
 
-  {{!-- ═══ Network-Locked Overlay ═══ --}}
+  {{!-- ═══ NETWORK RESTRICTED ═══ --}}
   {{#if message.isNetworkLocked}}
-    <div class="ncm-viewer__locked-overlay ncm-viewer__locked-overlay--network">
-      <div class="ncm-viewer__locked-icon"><i class="fas fa-tower-broadcast"></i></div>
-      <div class="ncm-viewer__locked-title">NETWORK RESTRICTED</div>
-      <div class="ncm-viewer__locked-subtitle">
-        This message was transmitted on <strong>{{message.lockedNetworkName}}</strong>.
-        {{#if message.accessState.lockedOut}}
-          Access locked — too many failed attempts.
-        {{else}}
-          Connect to this network or bypass access controls.
-        {{/if}}
-      </div>
-      <div class="ncm-viewer__locked-badge">
-        <i class="fas fa-lock"></i> REQUIRES {{message.lockedNetworkName}} ACCESS
-      </div>
+    {{#if message.accessState.lockedOut}}
 
-      {{#if message.accessState.lockedOut}}
-        <div class="ncm-viewer__locked-lockout">
-          <i class="fas fa-clock"></i>
-          <span>SYSTEM LOCKED</span>
-          <span class="ncm-viewer__locked-timer" data-lockout-until="{{message.accessState.lockoutUntil}}">--:--</span>
+      {{!-- ═══ LOCKOUT — Red takeover ═══ --}}
+      <div class="ncm-viewer__lockout">
+        <div class="ncm-viewer__lockout-vignette"></div>
+        <div class="ncm-viewer__lockout-icon-ring">
+          <i class="fas fa-lock ncm-viewer__lockout-icon"></i>
         </div>
-      {{else}}
-        {{!-- Attempt counter --}}
-        {{#if message.accessState.maxAttempts}}
-          {{#if message.accessState.hackAttempts}}
-            <div class="ncm-viewer__locked-attempts">
-              <span>Bypass attempts:</span>
-              <span>{{sub message.accessState.maxAttempts message.accessState.hackAttempts}} of {{message.accessState.maxAttempts}} remaining</span>
-            </div>
-          {{/if}}
+        <div class="ncm-viewer__lockout-title">Access Denied</div>
+        <div class="ncm-viewer__lockout-subtitle">
+          Too many failed authentication attempts on <strong>{{message.lockedNetworkName}}</strong>.
+          Your connection has been flagged and temporarily blocked.
+        </div>
+        <div class="ncm-viewer__lockout-logged">
+          <i class="fas fa-exclamation-triangle"></i> This incident has been logged
+        </div>
+
+        <div class="ncm-viewer__lockout-timer-block">
+          <div class="ncm-viewer__lockout-timer-label">Lockout Remaining</div>
+          <div class="ncm-viewer__lockout-timer"
+               data-lockout-until="{{message.accessState.lockoutUntil}}">--:--</div>
+          <div class="ncm-viewer__lockout-timer-hint">Retry available after lockout expires</div>
+        </div>
+
+        <div class="ncm-viewer__lockout-pips">
+          <span class="ncm-viewer__lockout-pips-label">All attempts exhausted</span>
+          <div class="ncm-viewer__lockout-pip-dots">
+            {{#each message.accessState.attemptPips}}
+              <div class="ncm-viewer__lockout-pip"></div>
+            {{else}}
+              <div class="ncm-viewer__lockout-pip"></div>
+              <div class="ncm-viewer__lockout-pip"></div>
+              <div class="ncm-viewer__lockout-pip"></div>
+            {{/each}}
+          </div>
+        </div>
+
+        {{#if message.restrictedNetworkData}}
+          <div class="ncm-viewer__lockout-net-badge">
+            <i class="fas {{message.restrictedNetworkData.icon}}"></i>
+            {{message.restrictedNetworkData.name}} — Connection Flagged
+          </div>
         {{/if}}
 
-        <div class="ncm-viewer__locked-bypass">
-          {{!-- Password --}}
-          {{#if message.accessState.bypassOptions.password}}
-            <div class="ncm-viewer__locked-bypass-row">
-              <div class="ncm-viewer__locked-bypass-field">
-                <span class="ncm-viewer__locked-bypass-prefix">pass&gt;</span>
-                <input class="ncm-viewer__locked-bypass-input" type="password"
-                       name="bypassPassword" placeholder="enter access code..."
-                       data-message-id="{{message.messageId}}" />
-              </div>
-              <button class="ncm-btn ncm-btn--secondary ncm-btn--sm"
-                      data-action="bypass-password" data-message-id="{{message.messageId}}">
-                <i class="fas fa-key"></i> AUTH
-              </button>
-            </div>
-          {{/if}}
+        {{#if isGM}}
+          <div class="ncm-viewer__lockout-gm">
+            <span class="ncm-viewer__lockout-gm-label">GM Only</span>
+            <button class="ncm-btn ncm-btn--gm ncm-btn--sm"
+                    data-action="gm-force-reveal" data-message-id="{{message.messageId}}">
+              <i class="fas fa-shield-halved"></i> Force Reveal
+            </button>
+            <button class="ncm-btn ncm-btn--gm ncm-btn--sm"
+                    data-action="gm-reset-lockout" data-message-id="{{message.messageId}}">
+              <i class="fas fa-clock-rotate-left"></i> Reset Lockout
+            </button>
+          </div>
+        {{/if}}
+      </div>
 
-          {{!-- Skill check --}}
-          {{#if message.accessState.bypassOptions.skillCheck}}
-            <div class="ncm-viewer__locked-bypass-row ncm-viewer__locked-bypass-row--skill">
-              {{#each message.accessState.bypassSkills}}
-                <button class="ncm-btn ncm-btn--ghost ncm-btn--sm"
-                        data-action="bypass-skill"
-                        data-message-id="{{../message.messageId}}"
-                        data-skill="{{this}}">
-                  <i class="fas fa-dice-d20"></i> {{this}} Check
-                  <span class="ncm-viewer__locked-dv">DV {{../message.accessState.bypassDC}}</span>
-                </button>
+    {{else}}
+
+      {{!-- ═══ RESTRICTED — Network card + Connect CTA ═══ --}}
+      <div class="ncm-viewer__restricted"
+        {{#if message.restrictedNetworkData}}
+           style="--net-color: {{message.restrictedNetworkData.color}};
+                  --net-glow: {{message.restrictedNetworkData.glow}};
+                  --net-rgb: {{message.restrictedNetworkData.rgb}};"
+        {{/if}}>
+
+        <div class="ncm-viewer__restricted-icon-ring">
+          <i class="fas fa-tower-broadcast ncm-viewer__restricted-icon"></i>
+        </div>
+        <div class="ncm-viewer__restricted-title">Network Restricted</div>
+        <div class="ncm-viewer__restricted-subtitle">
+          This message was transmitted on a secured network.
+          Connect and authenticate to access content.
+        </div>
+
+        {{#if message.restrictedNetworkData}}
+          {{!-- Network Identity Card --}}
+          <div class="ncm-viewer__restricted-net-card">
+            <div class="ncm-viewer__restricted-net-icon"
+                 style="background: {{message.restrictedNetworkData.color}}18;
+                        color: {{message.restrictedNetworkData.color}};
+                        border: 1px solid {{message.restrictedNetworkData.color}}33;">
+              <i class="fas {{message.restrictedNetworkData.icon}}"></i>
+            </div>
+            <div class="ncm-viewer__restricted-net-info">
+              <div class="ncm-viewer__restricted-net-name">{{message.restrictedNetworkData.name}}</div>
+              <div class="ncm-viewer__restricted-net-meta">
+                <span>{{message.restrictedNetworkData.typeLabel}}</span>
+                <span class="ncm-viewer__restricted-security-tag ncm-viewer__restricted-security-tag--{{message.restrictedNetworkData.securityTagClass}}">
+                  <i class="fas fa-shield-halved"></i> {{message.restrictedNetworkData.securityLevel}}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {{!-- Auth Requirement Chips --}}
+          {{#if message.restrictedNetworkData.reqChips.length}}
+            <div class="ncm-viewer__restricted-requires">
+              <i class="fas fa-info-circle"></i>
+              <span>Requires:</span>
+              {{#each message.restrictedNetworkData.reqChips}}
+                {{#unless @first}}
+                  <span class="ncm-viewer__restricted-req-and">
+                    {{#if (eq ../message.restrictedNetworkData.authLogic "AND")}}+{{else}}or{{/if}}
+                  </span>
+                {{/unless}}
+                <span class="ncm-viewer__restricted-req-chip ncm-viewer__restricted-req-chip--{{this.type}}">
+                  <i class="fas {{this.icon}}"></i> {{this.label}}
+                </span>
               {{/each}}
             </div>
           {{/if}}
 
-          {{!-- Key item --}}
-          {{#if message.accessState.bypassOptions.keyItem}}
-            <div class="ncm-viewer__locked-bypass-row">
-              <button class="ncm-btn ncm-btn--ghost ncm-btn--sm"
-                      data-action="bypass-keyitem" data-message-id="{{message.messageId}}">
-                <i class="fas fa-id-badge"></i> Present {{message.accessState.keyItemName}}
-              </button>
+          {{!-- Connect CTA --}}
+          <button class="ncm-viewer__restricted-connect"
+                  data-action="connect-network"
+                  data-network-id="{{message.restrictedNetworkData.networkId}}"
+                  style="border-color: {{message.restrictedNetworkData.color}}66;
+                         background: {{message.restrictedNetworkData.color}}14;">
+            <i class="fas fa-plug-circle-bolt"></i> Connect to {{message.restrictedNetworkData.name}}
+          </button>
+          <span class="ncm-viewer__restricted-hint">Opens network authentication dialog</span>
+
+          {{!-- Attempt Pips --}}
+          {{#if message.restrictedNetworkData.maxAttempts}}
+            <div class="ncm-viewer__restricted-pips">
+              <span class="ncm-viewer__restricted-pips-label">Attempts</span>
+              <div class="ncm-viewer__restricted-pip-dots">
+                {{#times message.restrictedNetworkData.hackAttempts}}
+                  <div class="ncm-viewer__restricted-pip ncm-viewer__restricted-pip--used"></div>
+                {{/times}}
+                {{#times message.restrictedNetworkData.remainingAttempts}}
+                  <div class="ncm-viewer__restricted-pip ncm-viewer__restricted-pip--available"></div>
+                {{/times}}
+              </div>
             </div>
           {{/if}}
+        {{else}}
+          <div class="ncm-viewer__restricted-subtitle" style="margin-top: 0;">
+            Connect to <strong>{{message.lockedNetworkName}}</strong> to access this message.
+          </div>
+        {{/if}}
 
-          {{!-- No bypass hint --}}
-          {{#unless message.accessState.bypassOptions.password}}
-            {{#unless message.accessState.bypassOptions.skillCheck}}
-              {{#unless message.accessState.bypassOptions.keyItem}}
-                <div class="ncm-viewer__locked-no-bypass">
-                  No bypass methods available. Connect to <strong>{{message.lockedNetworkName}}</strong> directly.
-                </div>
-              {{/unless}}
-            {{/unless}}
-          {{/unless}}
+        {{#if isGM}}
+          <div class="ncm-viewer__restricted-gm">
+            <span class="ncm-viewer__restricted-gm-label">GM Only</span>
+            <button class="ncm-btn ncm-btn--gm ncm-btn--sm"
+                    data-action="gm-force-reveal" data-message-id="{{message.messageId}}">
+              <i class="fas fa-shield-halved"></i> Force Reveal
+            </button>
+          </div>
+        {{/if}}
+      </div>
+    {{/if}}
+
+  {{!-- ═══ ENCRYPTED ═══ --}}
+  {{else if message.status.encrypted}}
+    <div class="ncm-viewer__encrypted">
+      <div class="ncm-viewer__encrypted-icon-ring">
+        <i class="fas fa-lock ncm-viewer__encrypted-icon"></i>
+      </div>
+      <div class="ncm-viewer__encrypted-title">Message Encrypted</div>
+      <div class="ncm-viewer__encrypted-subtitle">
+        ICE-protected transmission. Requires decryption to access content.
+      </div>
+      {{#if message.encryption}}
+        <div class="ncm-viewer__encrypted-ice-meta">
+          {{#if message.encryption.type}}
+            <span class="ncm-viewer__encrypted-ice-chip">
+              <i class="fas fa-shield-halved"></i> {{message.encryption.type}}
+            </span>
+          {{/if}}
+          {{#if message.encryption.dc}}
+            <span class="ncm-viewer__encrypted-ice-chip">
+              <i class="fas fa-dice-d20"></i> DV {{message.encryption.dc}}
+            </span>
+          {{/if}}
         </div>
       {{/if}}
-
-      {{!-- GM Controls --}}
+      <button class="ncm-viewer__encrypted-breach"
+              data-action="attempt-decrypt" data-message-id="{{message.messageId}}">
+        <i class="fas fa-terminal"></i> Attempt Decryption
+      </button>
       {{#if isGM}}
-        <div class="ncm-viewer__locked-gm">
-          <button class="ncm-btn ncm-btn--ghost ncm-btn--sm"
+        <div class="ncm-viewer__encrypted-gm">
+          <span class="ncm-viewer__encrypted-gm-label">GM Only</span>
+          <button class="ncm-btn ncm-btn--gm ncm-btn--sm"
                   data-action="gm-force-reveal" data-message-id="{{message.messageId}}">
-            <i class="fas fa-shield-halved"></i> GM Force Reveal
+            <i class="fas fa-shield-halved"></i> Force Reveal
           </button>
         </div>
       {{/if}}
     </div>
 
-  {{!-- ═══ Encryption Overlay ═══ --}}
-  {{else if message.status.encrypted}}
-    <div class="ncm-viewer__locked-overlay ncm-viewer__locked-overlay--encrypted">
-      <div class="ncm-viewer__locked-icon"><i class="fas fa-lock"></i></div>
-      <div class="ncm-viewer__locked-title">MESSAGE ENCRYPTED</div>
-      <div class="ncm-viewer__locked-subtitle">ICE-protected transmission. Requires decryption to access content.</div>
-      {{#if message.encryption}}
-        <div class="ncm-viewer__locked-meta">
-          {{#if message.encryption.type}}
-            <span><i class="fas fa-shield-halved"></i> {{message.encryption.type}}</span>
-          {{/if}}
-          {{#if message.encryption.dc}}
-            <span><i class="fas fa-dice-d20"></i> DV {{message.encryption.dc}}</span>
-          {{/if}}
-        </div>
-      {{/if}}
-      <button class="ncm-btn ncm-btn--secondary ncm-btn--sm"
-              data-action="attempt-decrypt" data-message-id="{{message.messageId}}">
-        <i class="fas fa-terminal"></i> Attempt Decryption
-      </button>
-      {{#if isGM}}
-        <button class="ncm-btn ncm-btn--ghost ncm-btn--sm"
-                data-action="gm-force-reveal" data-message-id="{{message.messageId}}">
-          <i class="fas fa-shield-halved"></i> GM Force Reveal
-        </button>
-      {{/if}}
-    </div>
-
   {{else}}
-    {{!-- ═══ Normal Message Content ═══ --}}
+    {{!-- ═══ NORMAL MESSAGE CONTENT ═══ --}}
 
-    {{!-- Detail Header — Collapsible Grid Readout --}}
+    {{!-- Detail Header --}}
     <div class="ncm-viewer__detail-head">
-      {{!-- Always-visible: Avatar + Sender + Time + expand toggle --}}
       <div class="ncm-viewer__detail-head-top">
         <div class="ncm-viewer__detail-avatar"
              style="color: {{message.avatarColor}}; border-color: {{message.avatarColor}}">
@@ -164,7 +234,6 @@
             {{message.fromInitial}}
           {{/if}}
         </div>
-
         <div class="ncm-viewer__detail-info">
           <div class="ncm-viewer__detail-sender-row">
             <span class="ncm-viewer__detail-sender-name">{{message.fromDisplay}}</span>
@@ -185,8 +254,6 @@
           </div>
         </div>
       </div>
-
-      {{!-- Expandable grid (hidden by default, toggled by arrow) --}}
       <div class="ncm-viewer__detail-grid ncm-viewer__detail-grid--collapsed">
         <span class="ncm-viewer__detail-grid-label">From</span>
         <span class="ncm-viewer__detail-grid-val ncm-viewer__detail-grid-val--from">{{message.from}}</span>
@@ -201,8 +268,6 @@
              style="font-size: 9px; margin-right: 3px; opacity: 0.6;"></i>{{message.networkLabel}}
         </span>
       </div>
-
-      {{!-- Subject Strip — Two-tier: micro label + large title + fading rule --}}
       <div class="ncm-viewer__subject-strip
         {{~#if (eq message.priority 'critical')}} ncm-viewer__subject-strip--critical
         {{~else if (eq message.priority 'urgent')}} ncm-viewer__subject-strip--urgent
@@ -235,35 +300,42 @@
       </div>
     </div>
 
-    {{!-- Self-destruct bar --}}
+    {{!-- Self-Destruct Bar --}}
     {{#if message.selfDestructActive}}
       <div class="ncm-viewer__destruct-bar">
-        <i class="fas fa-bomb"></i>
-        <span>SELF-DESTRUCT ACTIVE</span>
-        <span class="ncm-viewer__destruct-timer"
-              data-self-destruct-display="{{message.selfDestructDisplay}}"
-              data-expires-at="{{message.selfDestruct.expiresAt}}">
+        <div class="ncm-viewer__destruct-bar-fill" style="width: 100%;"></div>
+        <i class="fas fa-bomb ncm-viewer__destruct-bar-icon"></i>
+        <span class="ncm-viewer__destruct-bar-label">Self-Destruct</span>
+        <span class="ncm-viewer__destruct-bar-spacer"></span>
+        <span class="ncm-viewer__destruct-bar-timer"
+              data-expires-at="{{message.selfDestruct.expiresAt}}"
+              data-duration="{{message.selfDestruct.duration}}">
           {{message.selfDestructDisplay}}
+        </span>
+        <span class="ncm-viewer__destruct-bar-mode">
+          {{#if (eq message.selfDestruct.mode 'after_read')}}READ{{else}}TIMED{{/if}}
         </span>
       </div>
     {{/if}}
 
-    {{!-- Trace bar --}}
+    {{!-- Trace Bar --}}
     {{#if message.traceActive}}
-      <div class="ncm-viewer__trace-bar">
-        <i class="fas fa-satellite-dish"></i>
-        <span class="ncm-viewer__trace-label">TRACE IN PROGRESS</span>
-        <span class="ncm-viewer__trace-timer" data-trace-expires="{{message.traceExpiresAt}}">--:--</span>
+      <div class="ncm-viewer__trace-bar ncm-viewer__trace-bar--active">
+        <i class="fas fa-satellite-dish ncm-viewer__trace-bar-icon"></i>
+        <span class="ncm-viewer__trace-bar-label">Trace in Progress</span>
+        <span class="ncm-viewer__trace-bar-spacer"></span>
+        <span class="ncm-viewer__trace-bar-timer" data-trace-expires="{{message.traceExpiresAt}}">--:--</span>
       </div>
     {{else if message.traceCompleted}}
       <div class="ncm-viewer__trace-bar ncm-viewer__trace-bar--complete">
-        <i class="fas fa-satellite-dish"></i>
-        <span class="ncm-viewer__trace-label">TRACE COMPLETE</span>
-        <span>Your location was logged by network security</span>
+        <i class="fas fa-satellite-dish ncm-viewer__trace-bar-icon"></i>
+        <span class="ncm-viewer__trace-bar-label">Trace Complete</span>
+        <span class="ncm-viewer__trace-bar-spacer"></span>
+        <span class="ncm-viewer__trace-bar-detail">Your location was logged by network security</span>
       </div>
     {{/if}}
 
-    {{!-- ═══ Message Body ═══ --}}
+    {{!-- Message Body --}}
     <div class="ncm-viewer__detail-body ncm-scrollbar
       {{~#if message.networkBodyEffect}} ncm-viewer__detail-body--{{message.networkBodyEffect}}{{/if~}}">
       {{#if message.bodyRendered}}
@@ -272,25 +344,31 @@
         <p class="ncm-viewer__detail-body-empty"><em>// No message body //</em></p>
       {{/if}}
 
-      {{!-- Signal reconstruction --}}
+      {{!-- Signal Degradation --}}
       {{#if message.signalDegradation}}
         {{#unless message.signalDegradation.reconstructed}}
           <div class="ncm-viewer__signal-reconstruct">
+            <div class="ncm-viewer__signal-reconstruct-header">
+              <i class="fas fa-signal ncm-viewer__signal-reconstruct-icon"></i>
+              <span class="ncm-viewer__signal-reconstruct-label">Signal Degraded</span>
+              <span class="ncm-viewer__signal-reconstruct-level ncm-viewer__signal-reconstruct-level--{{#if (gt message.signalDegradation.corruptionPercent 30)}}severe{{else}}moderate{{/if}}">
+                {{message.signalDegradation.corruptionLevel}}
+              </span>
+            </div>
             <div class="ncm-viewer__signal-status">
-              <i class="fas fa-signal"></i>
-              SIGNAL DEGRADED — {{message.signalDegradation.corruptionLevel}} corruption
-              (received at {{message.signalDegradation.originalSignal}}% signal)
+              Received at {{message.signalDegradation.originalSignal}}% signal —
+              {{message.signalDegradation.corruptionLevel}} corruption detected
             </div>
             <button class="ncm-btn ncm-btn--ghost ncm-btn--sm"
                     data-action="reconstruct-signal" data-message-id="{{message.messageId}}">
-              <i class="fas fa-wrench"></i>
-              Reconstruct ({{message.signalDegradation.reconstructSkill}} DV {{message.signalDegradation.reconstructDC}})
+              <i class="fas fa-wrench"></i> Reconstruct
+              <span class="ncm-viewer__signal-dv">{{message.signalDegradation.reconstructSkill}} DV {{message.signalDegradation.reconstructDC}}</span>
             </button>
           </div>
         {{/unless}}
       {{/if}}
 
-      {{!-- Eddies claim --}}
+      {{!-- Eddies --}}
       {{#if message.eddiesData}}
         <div class="ncm-viewer__eddies {{#if message.eddiesData.claimed}}ncm-viewer__eddies--claimed{{/if}}"
              data-message-id="{{message.messageId}}">
@@ -314,13 +392,13 @@
         </div>
       {{/if}}
 
-      {{!-- Encrypted attachments --}}
+      {{!-- Encrypted Attachments --}}
       {{#each message.encryptedAttachments}}
         {{> "modules/cyberpunkred-messenger/templates/partials/encrypted-attachment.hbs"
             attachment=this messageId=../message.messageId isGM=../isGM }}
       {{/each}}
 
-      {{!-- Regular attachment cards --}}
+      {{!-- Attachments --}}
       {{#if message.hasAttachmentCards}}
         <div class="ncm-viewer__attach-grid">
           {{#each message.attachmentCards}}
@@ -328,11 +406,8 @@
                  data-attachment-index="{{@index}}" data-message-id="{{../message.messageId}}"
                  data-item-id="{{this.itemId}}">
               <div class="ncm-viewer__attach-thumb {{this.thumbClass}}">
-                {{#if this.thumbSrc}}
-                  <img src="{{this.thumbSrc}}" alt="">
-                {{else}}
-                  <i class="{{this.thumbIcon}}"></i>
-                {{/if}}
+                {{#if this.thumbSrc}}<img src="{{this.thumbSrc}}" alt="">
+                {{else}}<i class="{{this.thumbIcon}}"></i>{{/if}}
               </div>
               <div class="ncm-viewer__attach-info">
                 <div class="ncm-viewer__attach-name" {{#if this.nameStyle}}style="{{this.nameStyle}}"{{/if}}>{{this.name}}</div>
@@ -344,15 +419,32 @@
       {{/if}}
     </div>
 
-    {{!-- Malware warning --}}
+    {{!-- Malware Alert --}}
     {{#if message.status.infected}}
-      {{> "modules/cyberpunkred-messenger/templates/partials/alert-panel.hbs"
-          variant="danger" icon="fas fa-biohazard"
-          title="MALWARE DETECTED"
-          text="This message contains a hostile daemon. Proceed with caution." }}
+      <div class="ncm-viewer__malware-alert">
+        <div class="ncm-viewer__malware-alert-icon-wrap">
+          <i class="fas fa-biohazard ncm-viewer__malware-alert-icon"></i>
+        </div>
+        <div class="ncm-viewer__malware-alert-body">
+          <div class="ncm-viewer__malware-alert-title">Malware Detected</div>
+          <div class="ncm-viewer__malware-alert-text">
+            This message contains a <strong>hostile daemon</strong>. Your cyberdeck may be compromised.
+          </div>
+          <div class="ncm-viewer__malware-alert-actions">
+            <button class="ncm-btn ncm-btn--danger ncm-btn--sm"
+                    data-action="quarantine-malware" data-message-id="{{message.messageId}}">
+              <i class="fas fa-shield-virus"></i> Quarantine
+            </button>
+            <button class="ncm-btn ncm-btn--ghost ncm-btn--sm"
+                    data-action="analyze-malware" data-message-id="{{message.messageId}}">
+              <i class="fas fa-magnifying-glass"></i> Analyze
+            </button>
+          </div>
+        </div>
+      </div>
     {{/if}}
 
-    {{!-- ═══ Action Bar (inside detail panel) ═══ --}}
+    {{!-- Action Bar --}}
     <div class="ncm-viewer__detail-actions">
       {{#if (eq currentFilter 'trash')}}
         <button class="ncm-btn ncm-btn--primary ncm-btn--sm" data-action="restore-message"><i class="fas fa-undo"></i> Restore</button>
@@ -375,7 +467,7 @@
       {{/if}}
     </div>
 
-    {{!-- Quick Reply Bar --}}
+    {{!-- Quick Reply --}}
     {{#unless message.isSent}}
       {{#unless (eq currentFilter 'trash')}}
         {{#unless (eq currentFilter 'spam')}}
@@ -391,6 +483,6 @@
       {{/unless}}
     {{/unless}}
 
-  {{/if}}{{!-- /else encrypted --}}
+  {{/if}}
 
 </div>

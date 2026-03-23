@@ -737,37 +737,10 @@
 
 
 /* ═══════════════════════════════════════════════════════════
-   §11  LOCKED / ENCRYPTED OVERLAYS
+   §11  LOCKED / ENCRYPTED / RESTRICTED OVERLAYS
+   Redesigned in viewer-network-states.css §3-§5.
+   Old .ncm-viewer__locked-* classes removed.
    ═══════════════════════════════════════════════════════════ */
-.ncm-app .ncm-viewer__locked-overlay {
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 12px; padding: 40px 24px; flex: 1; text-align: center;
-}
-.ncm-app .ncm-viewer__locked-overlay--network { background: rgba(0,212,230,0.02); }
-.ncm-app .ncm-viewer__locked-overlay--encrypted { background: rgba(240,197,91,0.02); }
-.ncm-app .ncm-viewer__locked-icon { font-size: 32px; color: var(--ncm-text-dim); opacity: 0.5; }
-.ncm-app .ncm-viewer__locked-title { font-family: var(--ncm-font-title); font-size: 14px; font-weight: 600; color: var(--ncm-text-primary); text-transform: uppercase; letter-spacing: 0.1em; }
-.ncm-app .ncm-viewer__locked-subtitle { font-size: 12px; color: var(--ncm-text-muted); max-width: 360px; line-height: 1.6; }
-.ncm-app .ncm-viewer__locked-badge { font-family: var(--ncm-font-mono); font-size: 10px; color: var(--ncm-secondary); padding: 4px 12px; background: rgba(0,212,230,0.06); border: 1px solid rgba(0,212,230,0.2); border-radius: 3px; }
-.ncm-app .ncm-viewer__locked-lockout { display: flex; align-items: center; gap: 8px; font-family: var(--ncm-font-mono); font-size: 10px; color: var(--ncm-danger); }
-.ncm-app .ncm-viewer__locked-timer { color: var(--ncm-danger); font-weight: 700; }
-.ncm-app .ncm-viewer__locked-attempts { font-family: var(--ncm-font-mono); font-size: 10px; color: var(--ncm-text-muted); }
-.ncm-app .ncm-viewer__locked-bypass { display: flex; flex-direction: column; gap: 8px; width: 100%; max-width: 360px; }
-.ncm-app .ncm-viewer__locked-bypass-row { display: flex; align-items: center; gap: 6px; }
-.ncm-app .ncm-viewer__locked-bypass-row--skill { flex-wrap: wrap; justify-content: center; }
-.ncm-app .ncm-viewer__locked-bypass-field { display: flex; align-items: center; gap: 4px; flex: 1; background: var(--ncm-bg-surface); border: 1px solid var(--ncm-border); border-radius: 3px; padding: 4px 8px; }
-.ncm-app .ncm-viewer__locked-bypass-prefix { font-family: var(--ncm-font-mono); font-size: 10px; color: var(--ncm-secondary); }
-.ncm-app .ncm-viewer__locked-bypass-input {
-  flex: 1; background: none !important; border: none !important; outline: none !important;
-  color: var(--ncm-text-primary) !important; font-family: var(--ncm-font-mono) !important;
-  font-size: 11px !important; padding: 0 !important; min-height: 0 !important; height: auto !important;
-  box-shadow: none !important;
-}
-.ncm-app .ncm-viewer__locked-dv { font-family: var(--ncm-font-mono); font-size: 9px; color: var(--ncm-accent); padding: 1px 5px; background: rgba(240,197,91,0.08); border-radius: 2px; }
-.ncm-app .ncm-viewer__locked-no-bypass { font-size: 11px; color: var(--ncm-text-dim); line-height: 1.5; }
-.ncm-app .ncm-viewer__locked-gm { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--ncm-border); }
-.ncm-app .ncm-viewer__locked-meta { display: flex; gap: 12px; font-family: var(--ncm-font-mono); font-size: 10px; color: var(--ncm-text-muted); }
-.ncm-app .ncm-viewer__locked-meta i { margin-right: 3px; }
 
 
 /* ═══════════════════════════════════════════════════════════
@@ -785,33 +758,13 @@
 .ncm-app .ncm-viewer__detail-body p:last-child { margin-bottom: 0; }
 .ncm-app .ncm-viewer__detail-body-empty { color: var(--ncm-text-dim); font-style: italic; }
 
-/* Network body effects */
-.ncm-app .ncm-viewer__detail-body--darknet { text-shadow: 0 0 1px rgba(167,139,250,0.2); }
-.ncm-app .ncm-viewer__detail-body--corpnet { text-shadow: 0 0 1px rgba(240,197,91,0.15); }
+/* Network body effects — see viewer-network-states.css §10 */
 
-/* Self-destruct bar */
-.ncm-app .ncm-viewer__destruct-bar {
-  display: flex; align-items: center; gap: 8px;
-  padding: 5px 20px; background: rgba(239,68,68,0.04);
-  border-bottom: 1px solid rgba(239,68,68,0.15); flex-shrink: 0;
-  font-family: var(--ncm-font-mono); font-size: 10px; color: var(--ncm-danger);
-}
-.ncm-app .ncm-viewer__destruct-timer { font-weight: 700; margin-left: auto; }
+/* Self-destruct bar — see viewer-network-states.css §6 */
 
-/* Trace bar */
-.ncm-app .ncm-viewer__trace-bar {
-  display: flex; align-items: center; gap: 8px;
-  padding: 5px 20px; background: rgba(251,191,36,0.04);
-  border-bottom: 1px solid rgba(251,191,36,0.15); flex-shrink: 0;
-  font-family: var(--ncm-font-mono); font-size: 10px; color: var(--ncm-warning);
-}
-.ncm-app .ncm-viewer__trace-bar--complete { background: rgba(239,68,68,0.04); border-bottom-color: rgba(239,68,68,0.15); color: var(--ncm-danger); }
-.ncm-app .ncm-viewer__trace-label { font-weight: 700; }
-.ncm-app .ncm-viewer__trace-timer { margin-left: auto; font-weight: 700; }
+/* Trace bar — see viewer-network-states.css §7 */
 
-/* Signal reconstruction */
-.ncm-app .ncm-viewer__signal-reconstruct { margin: 12px 0; padding: 10px; background: rgba(0,212,230,0.03); border: 1px solid rgba(0,212,230,0.1); border-radius: 3px; }
-.ncm-app .ncm-viewer__signal-status { font-family: var(--ncm-font-mono); font-size: 10px; color: var(--ncm-text-muted); margin-bottom: 6px; }
+/* Signal reconstruction — see viewer-network-states.css §8 */
 
 /* Eddies claim */
 .ncm-app .ncm-viewer__eddies {

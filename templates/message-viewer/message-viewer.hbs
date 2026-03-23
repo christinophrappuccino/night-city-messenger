@@ -24,7 +24,11 @@
     All styling targets .ncm-app > .window-content and descendants.
 --}}
 
-<div class="ncm-viewer" data-density="{{density}}" data-filter="{{currentFilter}}" data-primary-tab="{{primaryTab}}">
+<div class="ncm-viewer
+  {{~#if isDeadZone}} ncm-viewer--deadzone{{/if~}}"
+     data-density="{{density}}" data-filter="{{currentFilter}}" data-primary-tab="{{primaryTab}}"
+     data-network-mode="{{networkMode}}"
+>
 
   {{!-- ═══════ §1 HEADER — Identity + Pill + HUD inline + Actions ═══════ --}}
   <header class="ncm-viewer__header">
@@ -370,6 +374,66 @@
           {{/if}}
         </div>
 
+        {{!-- ═══ Ambient Network Strips ═══ --}}
+        {{!-- Signal Degradation Strip (weak < 50%, critical < 25%) --}}
+        {{#if ambientSignalStrip}}
+          <div class="ncm-viewer__signal-strip ncm-viewer__signal-strip--{{ambientSignalStrip.variant}}">
+            <i class="fas fa-signal ncm-viewer__signal-strip-icon"></i>
+            <span class="ncm-viewer__signal-strip-label">{{ambientSignalStrip.label}}</span>
+            <div class="ncm-viewer__signal-strip-wave">
+              <svg viewBox="0 0 200 12" preserveAspectRatio="none">
+                <path class="ncm-viewer__signal-wave-path" d="M0,6 Q10,3 20,6 T40,6 T60,6 T80,6 T100,6 T120,6 T140,6 T160,6 T180,6 T200,6" />
+              </svg>
+            </div>
+            <span class="ncm-viewer__signal-strip-pct">{{signalStrength}}%</span>
+            <span class="ncm-viewer__signal-strip-status">{{ambientSignalStrip.status}}</span>
+          </div>
+        {{/if}}
+
+        {{!-- Darknet Anonymous Strip --}}
+        {{#if ambientDarknet}}
+          <div class="ncm-viewer__anon-strip">
+            <div class="ncm-viewer__anon-strip-accent"></div>
+            <div class="ncm-viewer__anon-strip-content">
+              <i class="fas fa-mask ncm-viewer__anon-strip-icon"></i>
+              <span class="ncm-viewer__anon-strip-label">Anonymous</span>
+              <div class="ncm-viewer__anon-strip-sep"></div>
+              <span class="ncm-viewer__anon-strip-detail">Identity masked — sender: <span class="ncm-viewer__anon-strip-scramble">██████</span></span>
+              <div class="ncm-viewer__anon-strip-hops">
+                <div class="ncm-viewer__anon-strip-hop ncm-viewer__anon-strip-hop--active"></div>
+                <div class="ncm-viewer__anon-strip-hop-line"></div>
+                <div class="ncm-viewer__anon-strip-hop"></div>
+                <div class="ncm-viewer__anon-strip-hop-line"></div>
+                <div class="ncm-viewer__anon-strip-hop"></div>
+                <div class="ncm-viewer__anon-strip-hop-line"></div>
+                <div class="ncm-viewer__anon-strip-hop"></div>
+                <div class="ncm-viewer__anon-strip-hop-line"></div>
+                <div class="ncm-viewer__anon-strip-exit">EXIT</div>
+              </div>
+            </div>
+          </div>
+        {{/if}}
+
+        {{!-- Traced / Monitored Network Strip --}}
+        {{#if ambientTraced}}
+          <div class="ncm-viewer__traced-strip"
+               style="--traced-color: {{ambientTraced.color}}; --traced-rgb: {{ambientTraced.rgb}};">
+            <div class="ncm-viewer__traced-strip-accent"></div>
+            <div class="ncm-viewer__traced-strip-content">
+              <div class="ncm-viewer__traced-strip-rec">
+                <div class="ncm-viewer__traced-strip-dot"></div>
+                <span class="ncm-viewer__traced-strip-label">Monitored</span>
+              </div>
+              <div class="ncm-viewer__traced-strip-sep"></div>
+              <span class="ncm-viewer__traced-strip-detail">{{ambientTraced.detail}}</span>
+              <div class="ncm-viewer__traced-strip-agency">
+                <i class="fas {{ambientTraced.agencyIcon}} ncm-viewer__traced-strip-agency-icon"></i>
+                <span class="ncm-viewer__traced-strip-agency-name">{{ambientTraced.agencyName}}</span>
+              </div>
+            </div>
+          </div>
+        {{/if}}
+
         {{!-- Message List --}}
         <div class="ncm-viewer__msg-list ncm-scrollbar">
           {{#if messages.length}}
@@ -407,13 +471,57 @@
           {{> "modules/cyberpunkred-messenger/templates/message-viewer/partials/message-detail.hbs"
               message=selectedMessage quickReplies=quickReplies isGM=isGM currentFilter=currentFilter }}
         {{else}}
-          <div class="ncm-viewer__empty-detail">
-            <i class="fas fa-terminal ncm-viewer__empty-icon"></i>
-            <span class="ncm-viewer__empty-text">Select message to read</span>
-            <span class="ncm-viewer__empty-hint">↑↓ to navigate · Enter to select</span>
+          <div class="ncm-viewer__empty-detail
+            {{~#if ambientDarknet}} ncm-viewer__empty-detail--darknet{{/if~}}
+            {{~#if ambientTraced}} ncm-viewer__empty-detail--traced{{/if~}}">
+            {{#if ambientDarknet}}
+              <i class="fas fa-mask ncm-viewer__empty-icon"></i>
+              <span class="ncm-viewer__empty-text">Select message to read</span>
+              <span class="ncm-viewer__empty-hint">Anonymous mode — sender identity masked</span>
+            {{else if ambientTraced}}
+              <i class="fas fa-eye ncm-viewer__empty-icon"></i>
+              <span class="ncm-viewer__empty-text">Select message to read</span>
+              <span class="ncm-viewer__empty-hint">All activity on this network is logged</span>
+            {{else}}
+              <i class="fas fa-terminal ncm-viewer__empty-icon"></i>
+              <span class="ncm-viewer__empty-text">Select message to read</span>
+              <span class="ncm-viewer__empty-hint">↑↓ to navigate · Enter to select</span>
+            {{/if}}
+            {{#if ambientSignalStrip}}
+              <div class="ncm-viewer__detail-signal-badge ncm-viewer__detail-signal-badge--{{ambientSignalStrip.variant}}">
+                <i class="fas fa-signal"></i> {{ambientSignalStrip.detailHint}}
+              </div>
+            {{/if}}
           </div>
         {{/if}}
       </div>
+
+      {{!-- ═══ Dead Zone Overlay (covers entire split) ═══ --}}
+      {{#if isDeadZone}}
+        <div class="ncm-viewer__deadzone">
+          <div class="ncm-viewer__deadzone-center">
+            <div class="ncm-viewer__deadzone-radar">
+              <div class="ncm-viewer__deadzone-ring ncm-viewer__deadzone-ring--out"></div>
+              <div class="ncm-viewer__deadzone-ring ncm-viewer__deadzone-ring--mid"></div>
+              <div class="ncm-viewer__deadzone-ring ncm-viewer__deadzone-ring--core"></div>
+              <div class="ncm-viewer__deadzone-sweep"></div>
+              <div class="ncm-viewer__deadzone-icon"><i class="fas fa-wifi"></i></div>
+            </div>
+            <div class="ncm-viewer__deadzone-title">NO SIGNAL</div>
+            <div class="ncm-viewer__deadzone-sub">
+              <strong>DEAD ZONE</strong> — All connections lost.<br>
+              Cached messages read-only. Outgoing <strong>queued</strong>.
+            </div>
+          </div>
+          <div class="ncm-viewer__deadzone-ticker">
+            <div class="ncm-viewer__deadzone-track">
+              <span>● SCANNING</span><span>{{currentNetwork.name}} — UNREACHABLE</span><span>QUEUE: {{queuedMessageCount}}</span>
+              <span>● SCANNING</span><span>{{currentNetwork.name}} — UNREACHABLE</span><span>QUEUE: {{queuedMessageCount}}</span>
+              <span>● SCANNING</span><span>{{currentNetwork.name}} — UNREACHABLE</span><span>QUEUE: {{queuedMessageCount}}</span>
+            </div>
+          </div>
+        </div>
+      {{/if}}
     </div>
   {{/if}}
 

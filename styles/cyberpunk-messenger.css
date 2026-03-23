@@ -32,6 +32,7 @@
 
 /* Components — feature-specific UI styles */
 @import 'components/message-viewer.css';
+@import 'components/viewer-network-states.css';
 @import 'components/message-viewer-hud.css'; 
 @import 'components/message-detail.css'; 
 @import 'components/message-composer.css';
