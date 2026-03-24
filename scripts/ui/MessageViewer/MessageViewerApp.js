@@ -975,35 +975,118 @@ export class MessageViewerApp extends BaseApplication {
   _setupDestructFill(html) {
     const fillEl = html.querySelector('.ncm-viewer__destruct-bar-fill');
     const timerEl = html.querySelector('.ncm-viewer__destruct-bar-timer');
-    if (!fillEl || !timerEl) return;
+    const barEl = html.querySelector('.ncm-viewer__destruct-bar');
+    const labelEl = html.querySelector('.ncm-viewer__destruct-bar-label');
+    if (!fillEl || !timerEl || !barEl) return;
 
     const msg = this._getSelectedMessage();
     if (!msg?.selfDestruct?.expiresAt) return;
 
     const expiresAt = new Date(msg.selfDestruct.expiresAt).getTime();
-    // Estimate total duration (default 10 min if unknown)
     const totalDuration = msg.selfDestruct.duration || 600000;
+    let hasEscalated = false;
+    let hasExpired = false;
 
     const updateFill = () => {
       const remaining = expiresAt - Date.now();
-      if (remaining <= 0) {
+
+      if (remaining <= 0 && !hasExpired) {
+        hasExpired = true;
         fillEl.style.width = '0%';
+        timerEl.textContent = '00:00:00';
+        barEl.classList.remove('ncm-viewer__destruct-bar--urgent');
+        barEl.classList.add('ncm-viewer__destruct-bar--expired');
+        if (labelEl) labelEl.textContent = 'Self-Destruct';
+        clearInterval(this._destructFillTimer);
+        // Trigger expiration animation
+        this._playDestructExpiration(msg);
         return;
       }
+
+      if (remaining <= 0) return;
+
       const pct = Math.max(0, Math.min(100, (remaining / totalDuration) * 100));
       fillEl.style.width = `${pct}%`;
 
-      // Update timer text
       const h = Math.floor(remaining / 3600000);
       const m = Math.floor((remaining % 3600000) / 60000);
       const s = Math.floor((remaining % 60000) / 1000);
       timerEl.textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+
+      // Escalation: < 30 seconds remaining
+      if (remaining <= 30000 && !hasEscalated) {
+        hasEscalated = true;
+        barEl.classList.add('ncm-viewer__destruct-bar--urgent');
+        if (labelEl) labelEl.textContent = 'Self-Destruct Imminent';
+        // Add red vignette to body
+        const bodyEl = this.element?.querySelector('.ncm-viewer__detail-body');
+        bodyEl?.classList.add('ncm-viewer__detail-body--destruct-warn');
+      }
     };
 
     updateFill();
-    // Reuse existing destruct timer interval or create new
     if (this._destructFillTimer) clearInterval(this._destructFillTimer);
     this._destructFillTimer = setInterval(updateFill, 1000);
+  }
+
+  /**
+   * Play the self-destruct expiration animation.
+   * Injects a destruction overlay, blurs/dissolves the body,
+   * then auto-deletes the message after the animation completes.
+   * @param {object} msg — The self-destructing message
+   */
+  async _playDestructExpiration(msg) {
+    const html = this.element;
+    if (!html) return;
+
+    const detailPanel = html.querySelector('.ncm-viewer__detail-panel');
+    const bodyEl = html.querySelector('.ncm-viewer__detail-body');
+    if (!detailPanel) return;
+
+    // Add body dissolve
+    bodyEl?.classList.add('ncm-viewer__detail-body--destroying');
+
+    // Inject destruction overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'ncm-destruct-expire';
+    overlay.innerHTML = `
+      <div class="ncm-destruct-expire__vignette"></div>
+      <div class="ncm-destruct-expire__static"></div>
+      <div class="ncm-destruct-expire__scanline"></div>
+      <div class="ncm-destruct-expire__slices">
+        <div class="ncm-destruct-expire__slice" style="top:12%;animation-delay:0.1s;"></div>
+        <div class="ncm-destruct-expire__slice" style="top:28%;animation-delay:0.25s;"></div>
+        <div class="ncm-destruct-expire__slice" style="top:45%;animation-delay:0.05s;"></div>
+        <div class="ncm-destruct-expire__slice" style="top:63%;animation-delay:0.18s;"></div>
+        <div class="ncm-destruct-expire__slice" style="top:78%;animation-delay:0.12s;"></div>
+        <div class="ncm-destruct-expire__slice" style="top:91%;animation-delay:0.3s;"></div>
+      </div>
+      <div class="ncm-destruct-expire__center">
+        <i class="fas fa-fire ncm-destruct-expire__icon"></i>
+        <div class="ncm-destruct-expire__title">Data Destroyed</div>
+        <div class="ncm-destruct-expire__sub">Self-destruct sequence complete.<br>Message permanently erased.</div>
+      </div>
+    `;
+
+    detailPanel.style.position = 'relative';
+    detailPanel.appendChild(overlay);
+
+    // Trigger animation
+    requestAnimationFrame(() => overlay.classList.add('ncm-destruct-expire--active'));
+    this.soundService?.play?.('destruct');
+
+    // Wait for animation, then delete and re-render
+    await new Promise(r => setTimeout(r, 3000));
+
+    // Auto-delete the message
+    if (msg?.messageId) {
+      await this.messageService?.deleteMessage?.(this.actorId, msg.messageId);
+      ui.notifications.warn('NCM | Self-destruct message expired and deleted.');
+    }
+
+    this.selectedMessageId = null;
+    overlay.remove();
+    this.render();
   }
 
   /**
@@ -1016,12 +1099,14 @@ export class MessageViewerApp extends BaseApplication {
     if (!timerEl?.dataset.lockoutUntil) return;
 
     const until = new Date(timerEl.dataset.lockoutUntil).getTime();
-    this._lockoutTimer = setInterval(() => {
+    this._lockoutTimer = setInterval(async () => {
       const remaining = until - Date.now();
       if (remaining <= 0) {
         clearInterval(this._lockoutTimer);
         this._lockoutTimer = null;
-        this.render(); // Re-render to show bypass options again
+        // Play access granted transition then re-render
+        await this._playAccessGrantedTransition('Lockout expired — access restored...');
+        this.render();
         return;
       }
       const m = Math.floor(remaining / 60000);
@@ -1148,6 +1233,20 @@ export class MessageViewerApp extends BaseApplication {
       // ── Network Restricted: Connect CTA → opens auth dialog ──
       case 'connect-network':
         this._connectToRestrictedNetwork(target.dataset.networkId);
+        break;
+
+      // ── Network Changed: Reconnect to old network ──
+      case 'reconnect-network':
+        this._connectToRestrictedNetwork(target.dataset.networkId);
+        // Remove the overlay
+        target.closest('.ncm-net-changed')?.remove();
+        break;
+
+      // ── Network Changed: Dismiss and go back to inbox ──
+      case 'dismiss-net-changed':
+        target.closest('.ncm-net-changed')?.remove();
+        this.selectedMessageId = null;
+        this.render();
         break;
 
       // ── Encrypted: Attempt Decryption (redesigned CTA) ──
@@ -2080,6 +2179,15 @@ export class MessageViewerApp extends BaseApplication {
   _replyToMessage(messageId) {
     const msg = this._getSelectedMessage();
     if (!msg) return;
+
+    // Check if current network can route to the recipient
+    const currentNet = this._getCurrentNetworkData();
+    const netEffects = currentNet?.effects || {};
+    if (netEffects.canRoute === false) {
+      this._showReplyBlockedDialog(currentNet, msg);
+      return;
+    }
+
     game.nightcity?.composeMessage?.({
       mode: 'reply',
       fromActorId: this.actorId,
@@ -2090,11 +2198,91 @@ export class MessageViewerApp extends BaseApplication {
   _forwardMessage(messageId) {
     const msg = this._getSelectedMessage();
     if (!msg) return;
+
+    // Check if current network can route
+    const currentNet = this._getCurrentNetworkData();
+    const netEffects = currentNet?.effects || {};
+    if (netEffects.canRoute === false) {
+      this._showReplyBlockedDialog(currentNet, msg);
+      return;
+    }
+
     game.nightcity?.composeMessage?.({
       mode: 'forward',
       fromActorId: this.actorId,
       originalMessage: msg,
     });
+  }
+
+  /**
+   * Show a "Cannot Route Reply" dialog when the current network
+   * doesn't allow outbound routing (e.g. GOVNET walled garden).
+   * @param {object} network — Current network data
+   * @param {object} msg — The message being replied to
+   */
+  _showReplyBlockedDialog(network, msg) {
+    const netName = network?.name || 'Current Network';
+    const netIcon = network?.theme?.icon || 'fa-shield-halved';
+    const netColor = network?.theme?.color || '#ff6600';
+    const recipient = msg?.from || 'unknown';
+
+    new Dialog({
+      title: 'Cannot Route Reply',
+      content: `
+        <div class="ncm-hd-body" style="padding:16px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+            <div style="width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(246,82,97,0.08);color:var(--ncm-primary,#F65261);font-size:11px;">
+              <i class="fas fa-ban"></i>
+            </div>
+            <div style="font-family:'Orbitron',sans-serif;font-size:10px;letter-spacing:0.12em;color:var(--ncm-primary,#F65261);text-transform:uppercase;">Cannot Route Reply</div>
+          </div>
+          <div style="font-size:11px;color:var(--ncm-text-secondary,#8888a0);line-height:1.7;margin-bottom:14px;">
+            <strong style="color:var(--ncm-text-primary,#e0e0e8);">${netName}</strong> does not allow outbound routing to external networks.
+            Your reply to <strong style="color:var(--ncm-text-primary,#e0e0e8);">${recipient}</strong> cannot be delivered on this network.
+          </div>
+          <div style="display:flex;align-items:center;justify-content:center;gap:0;margin-bottom:14px;">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+              <div style="width:36px;height:36px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--ncm-secondary,#19f3f7);border:1px solid rgba(25,243,247,0.2);background:rgba(25,243,247,0.06);"><i class="fas fa-user"></i></div>
+              <span style="font-family:'Share Tech Mono',monospace;font-size:7px;color:var(--ncm-text-muted,#555570);text-transform:uppercase;">You</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:3px;padding:0 8px;">
+              <span style="width:20px;height:1px;background:rgba(25,243,247,0.2);"></span>
+              <i class="fas fa-check" style="font-size:8px;color:rgba(25,243,247,0.4);"></i>
+              <span style="width:20px;height:1px;background:rgba(25,243,247,0.2);"></span>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+              <div style="width:36px;height:36px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;color:${netColor};border:1px solid ${netColor}33;background:${netColor}0F;"><i class="fas ${netIcon}"></i></div>
+              <span style="font-family:'Share Tech Mono',monospace;font-size:7px;color:var(--ncm-text-muted,#555570);text-transform:uppercase;">${netName}</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:3px;padding:0 8px;">
+              <span style="width:20px;height:0;border-top:1px dashed rgba(246,82,97,0.3);"></span>
+              <i class="fas fa-xmark" style="font-size:10px;color:var(--ncm-primary,#F65261);"></i>
+              <span style="width:20px;height:0;border-top:1px dashed rgba(246,82,97,0.3);"></span>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+              <div style="width:36px;height:36px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--ncm-text-muted,#555570);border:1px solid var(--ncm-border,#2a2a45);background:rgba(85,85,112,0.06);opacity:0.5;"><i class="fas fa-envelope"></i></div>
+              <span style="font-family:'Share Tech Mono',monospace;font-size:7px;color:var(--ncm-text-muted,#555570);text-transform:uppercase;">Recipient</span>
+            </div>
+          </div>
+          <div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--ncm-text-dim,#3a3a50);text-align:center;padding:8px 12px;border-top:1px solid var(--ncm-border,#2a2a45);background:rgba(10,10,15,0.3);margin:0 -16px -16px;border-radius:0 0 6px 6px;">
+            <i class="fas fa-info-circle" style="margin-right:4px;"></i>
+            Switch to CITINET or DARKNET to send external replies
+          </div>
+        </div>`,
+      buttons: {
+        switchNet: {
+          icon: '<i class="fas fa-exchange-alt"></i>',
+          label: 'Switch Network',
+          callback: () => {
+            // Open network selector
+            const pill = this.element?.querySelector('.ncm-viewer__net-pill');
+            if (pill) this._toggleNetworkSelector(pill);
+          },
+        },
+        cancel: { icon: '<i class="fas fa-times"></i>', label: 'Cancel' },
+      },
+      default: 'cancel',
+    }, { classes: ['dialog', 'ncm-hack-dialog', 'ncm-hd-theme-cyan'], width: 380 }).render(true);
   }
 
   async _deleteMessage(messageId) {
@@ -3136,10 +3324,13 @@ export class MessageViewerApp extends BaseApplication {
       const result = await NetworkAuthDialog.show(networkId);
 
       if (result?.success) {
-        // Auth succeeded — switch to this network and re-render
+        // Auth succeeded — switch to this network
         await networkService.switchNetwork?.(network.id);
         ui.notifications.info(`NCM | Connected to ${network.name}.`);
-        this.soundService?.play?.('connect');
+        // Play access granted transition, then re-render to show message
+        await this._playAccessGrantedTransition(
+          `Connected to ${network.name} — loading message content...`
+        );
         this.render();
       }
       // If cancelled or failed, the dialog already handles notifications
@@ -3392,7 +3583,9 @@ export class MessageViewerApp extends BaseApplication {
     this.subscribe?.(EVENTS.SCHEDULE_UPDATED, () => this._debouncedRender());
 
     // ── Network events ──
-    this.subscribe?.(EVENTS.NETWORK_CHANGED, () => this._debouncedRender());
+    this.subscribe?.(EVENTS.NETWORK_CHANGED, (data) => {
+      this._handleNetworkChange(data);
+    });
     this.subscribe?.(EVENTS.NETWORK_CONNECTED, () => this._debouncedRender());
     this.subscribe?.(EVENTS.NETWORK_DISCONNECTED, () => this._debouncedRender());
 
@@ -4109,6 +4302,143 @@ export class MessageViewerApp extends BaseApplication {
     }
 
     return chars;
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Network Change Detection + Access Granted Transition
+  // ═══════════════════════════════════════════════════════════
+
+  /**
+   * Handle NETWORK_CHANGED event — detect if viewing a restricted message
+   * and show a "Connection Lost" overlay if the network changed out from under us.
+   * @param {object} [data] — Event data (may contain oldNetwork, newNetwork)
+   */
+  _handleNetworkChange(data) {
+    const selectedMsg = this._getSelectedMessage();
+
+    // If no message selected or message isn't network-restricted, just re-render
+    if (!selectedMsg?.accessControl?.restricted) {
+      this._debouncedRender();
+      return;
+    }
+
+    // Track the previous network for the overlay
+    const oldNet = this._previousNetwork || data?.oldNetwork;
+    const newNet = this._getCurrentNetworkData();
+    this._previousNetwork = newNet;
+
+    // If the message requires a specific network and we just left it, show overlay
+    const requiredNet = selectedMsg.accessControl.requiredNetwork;
+    if (requiredNet && oldNet?.id === requiredNet && newNet?.id !== requiredNet) {
+      this._showNetworkChangedOverlay(oldNet, newNet, selectedMsg);
+    } else {
+      this._debouncedRender();
+    }
+  }
+
+  /**
+   * Show the "Connection Lost" overlay in the detail panel.
+   * @param {object} oldNet — Previous network data
+   * @param {object} newNet — New current network data
+   * @param {object} msg — The restricted message being viewed
+   */
+  _showNetworkChangedOverlay(oldNet, newNet, msg) {
+    const html = this.element;
+    const detailPanel = html?.querySelector('.ncm-viewer__detail-panel');
+    if (!detailPanel) { this._debouncedRender(); return; }
+
+    const oldName = oldNet?.name || 'Unknown';
+    const oldIcon = oldNet?.theme?.icon || 'fa-wifi';
+    const newName = newNet?.name || 'Unknown';
+    const newIcon = newNet?.theme?.icon || 'fa-wifi';
+
+    // Remove any existing overlay
+    detailPanel.querySelector('.ncm-net-changed')?.remove();
+
+    const overlay = document.createElement('div');
+    overlay.className = 'ncm-net-changed';
+    overlay.innerHTML = `
+      <div class="ncm-net-changed__bg"></div>
+      <div class="ncm-net-changed__grain"></div>
+      <div class="ncm-net-changed__flash"></div>
+      <div class="ncm-net-changed__center">
+        <i class="fas fa-link-slash ncm-net-changed__icon"></i>
+        <div class="ncm-net-changed__title">Connection Lost</div>
+        <div class="ncm-net-changed__sub">
+          Network changed. Your connection to <strong>${oldName}</strong> was interrupted.<br>
+          Re-authenticate or return to the inbox.
+        </div>
+        <div class="ncm-net-changed__nets">
+          <div class="ncm-net-changed__pill ncm-net-changed__pill--old">
+            <i class="fas ${oldIcon}"></i> ${oldName.toUpperCase()}
+          </div>
+          <i class="fas fa-arrow-right ncm-net-changed__arrow"></i>
+          <div class="ncm-net-changed__pill ncm-net-changed__pill--new">
+            <i class="fas ${newIcon}"></i> ${newName.toUpperCase()}
+          </div>
+        </div>
+        <div class="ncm-net-changed__actions">
+          <button class="ncm-btn ncm-btn--secondary" data-action="reconnect-network"
+                  data-network-id="${oldNet?.id || ''}">
+            <i class="fas fa-plug-circle-bolt"></i> Reconnect to ${oldName}
+          </button>
+          <button class="ncm-btn ncm-btn--ghost" data-action="dismiss-net-changed">
+            <i class="fas fa-arrow-left"></i> Back to Inbox
+          </button>
+        </div>
+      </div>
+    `;
+
+    detailPanel.style.position = 'relative';
+    detailPanel.appendChild(overlay);
+    this.soundService?.play?.('disconnect');
+
+    // Trigger animation
+    requestAnimationFrame(() => overlay.classList.add('ncm-net-changed--active'));
+  }
+
+  /**
+   * Play the Access Granted transition overlay.
+   * Used after successful network auth, bypass, or lockout expiry.
+   * Green scanline, lock icon, loading bar — then auto-dismiss and re-render.
+   * @param {string} [sub] — Optional subtitle text
+   * @returns {Promise<void>}
+   */
+  async _playAccessGrantedTransition(sub) {
+    const html = this.element;
+    const detailPanel = html?.querySelector('.ncm-viewer__detail-panel');
+    if (!detailPanel) return;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'ncm-access-granted';
+    overlay.innerHTML = `
+      <div class="ncm-access-granted__bg"></div>
+      <div class="ncm-access-granted__glow"></div>
+      <div class="ncm-access-granted__scan"></div>
+      <div class="ncm-access-granted__center">
+        <div class="ncm-access-granted__ring">
+          <i class="fas fa-lock-open ncm-access-granted__icon"></i>
+        </div>
+        <div class="ncm-access-granted__title">Access Granted</div>
+        <div class="ncm-access-granted__sub">${sub || 'Authentication verified — loading message content...'}</div>
+        <div class="ncm-access-granted__load">
+          <div class="ncm-access-granted__load-bar"></div>
+        </div>
+      </div>
+    `;
+
+    detailPanel.style.position = 'relative';
+    detailPanel.appendChild(overlay);
+    this.soundService?.play?.('login-success');
+
+    requestAnimationFrame(() => overlay.classList.add('ncm-access-granted--active'));
+
+    // Auto-dismiss after animation
+    await new Promise(r => setTimeout(r, 2200));
+    overlay.style.transition = 'opacity 0.4s';
+    overlay.style.opacity = '0';
+    await new Promise(r => setTimeout(r, 400));
+    overlay.remove();
   }
 
   // ═══════════════════════════════════════════════════════════

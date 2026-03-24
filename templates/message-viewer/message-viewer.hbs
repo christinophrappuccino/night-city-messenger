@@ -525,6 +525,16 @@
               <strong>DEAD ZONE</strong> — All connections lost.<br>
               Cached messages read-only. Outgoing <strong>queued</strong>.
             </div>
+            {{#if queuedMessageCount}}
+              <div class="ncm-viewer__deadzone-queue">
+                <i class="fas fa-paper-plane ncm-viewer__deadzone-queue-icon"></i>
+                <div class="ncm-viewer__deadzone-queue-info">
+                  <div class="ncm-viewer__deadzone-queue-count">{{queuedMessageCount}}</div>
+                  <div class="ncm-viewer__deadzone-queue-label">Messages Queued</div>
+                </div>
+                <div class="ncm-viewer__deadzone-queue-hint">Will send when<br>signal restored</div>
+              </div>
+            {{/if}}
           </div>
           <div class="ncm-viewer__deadzone-ticker">
             <div class="ncm-viewer__deadzone-track">

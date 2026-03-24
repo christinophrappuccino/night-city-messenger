@@ -91,6 +91,11 @@
         </span>
       {{/if}}
 
+      {{!-- Queued badge (dead zone — message waiting to send) --}}
+      {{#if isQueued}}
+        <span class="ncm-viewer__msg-queue-badge"><i class="fas fa-clock"></i> Queued</span>
+      {{/if}}
+
       {{!-- Stacked timestamp --}}
       <span class="ncm-viewer__msg-time">
         {{#if formattedDate}}
