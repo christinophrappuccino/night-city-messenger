@@ -2324,7 +2324,8 @@ export class MessageViewerApp extends BaseApplication {
     const item = game.items.get(itemId)
       || game.actors.get(this.actorId)?.items.get(itemId);
     if (item) {
-      game.nightcity?.openDataShard?.(item);
+      const actor = game.actors.get(this.actorId);
+      game.nightcity?.openDataShard?.(item, { actor });
     } else {
       ui.notifications.warn('Data shard not found.');
     }
@@ -3232,7 +3233,8 @@ export class MessageViewerApp extends BaseApplication {
       const item = game.items.get(att.itemId)
         || game.actors.get(this.actorId)?.items.get(att.itemId);
       if (item) {
-        game.nightcity?.openDataShard?.(item);
+        const actor = game.actors.get(this.actorId);
+        game.nightcity?.openDataShard?.(item, { actor });
       } else {
         ui.notifications.warn('Data shard not found in inventory.');
       }

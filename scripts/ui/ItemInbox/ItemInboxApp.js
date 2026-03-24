@@ -110,10 +110,17 @@ export class ItemInboxApp extends BaseApplication {
   // ─── Constructor ───
 
   constructor(options = {}) {
+    // Set unique app ID per item BEFORE super() reads it
+    if (options.item?.id) {
+      options.id = `ncm-item-inbox-${options.item.id}`;
+    }
     super(options);
     if (options.item) {
       this.item = options.item;
     }
+    // Reset boot state for this instance
+    this._bootComplete = false;
+
     // Foundry Hook: re-render when this item's flags change (relock, decrypt, etc.)
     this._hookId = Hooks.on('updateItem', (item, changes) => {
       if (item.id === this.item?.id && changes?.flags) {
