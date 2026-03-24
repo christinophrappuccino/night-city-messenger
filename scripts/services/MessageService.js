@@ -568,13 +568,16 @@ export class MessageService {
 
   /**
    * Attempt to decrypt an encrypted message via skill check.
-   * Uses the message's encryption.dc and encryption.skill (default: Interface).
+   * Uses caller-provided skill/luck if present, else falls back to encryption config.
    *
    * @param {string} messageId
    * @param {string} actorId - The actor attempting decryption
+   * @param {object} [options]
+   * @param {string} [options.skillName] - Skill chosen in the dialog
+   * @param {number} [options.luckSpend=0] - Luck points to spend
    * @returns {Promise<{ success: boolean, roll?: object }>}
    */
-  async attemptDecrypt(messageId, actorId) {
+  async attemptDecrypt(messageId, actorId, options = {}) {
     const actor = game.actors?.get(actorId);
     if (!actor) {
       ui.notifications.warn('NCM | No character assigned.');
@@ -597,7 +600,9 @@ export class MessageService {
 
     const encryption = flags.encryption || {};
     const dc = encryption.dc ?? 15;
-    const skillName = encryption.skill ?? 'Interface';
+    // Use caller-provided skill/luck if present, else fall back to encryption config
+    const skillName = options.skillName || encryption.skill || 'Interface';
+    const luckSpend = options.luckSpend ?? 0;
 
     // Route through SkillService for full CPR roll
     const skillSvc = game.nightcity?.skillService;
@@ -608,6 +613,7 @@ export class MessageService {
 
     const result = await skillSvc.performCheck(actor, skillName, {
       dc,
+      luckSpend,
       flavor: `Decrypting ${encryption.type || 'ICE'}-protected message`,
       context: 'ncm-message-decrypt',
     });
