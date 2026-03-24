@@ -2917,13 +2917,6 @@ export class MessageViewerApp extends BaseApplication {
     });
     _timers.forEach(t => clearTimeout(t));
     clearInterval(scrambleInterval);
-
-    // Success: play unlock reveal transition before showing the message
-    if (success) {
-      await this._playMessageRevealTransition('decrypt', {
-        sub: `${iceName} cipher broken — loading message...`,
-      });
-    }
     this.render();
   }
 
@@ -3290,13 +3283,6 @@ export class MessageViewerApp extends BaseApplication {
     if (waveRAF) cancelAnimationFrame(waveRAF);
     overlay.remove();
     bodyEl.style.display = origDisplay;
-
-    // Success: play signal-lock reveal transition before showing clean message
-    if (success) {
-      await this._playMessageRevealTransition('signal', {
-        sub: 'Signal restored — loading clean transmission...',
-      });
-    }
     this.render();
   }
 
