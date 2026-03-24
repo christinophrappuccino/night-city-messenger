@@ -735,6 +735,9 @@ export class MessageViewerApp extends BaseApplication {
     const html = this.element;
     if (!html) return;
 
+    // Track current network for change detection
+    this._previousNetwork = this._getCurrentNetworkData();
+
     // ── Scroll preservation — restore saved scroll position ──
     if (this._savedScrollTop != null) {
       const listEl = html.querySelector('.ncm-viewer__msg-list');
@@ -4310,27 +4313,40 @@ export class MessageViewerApp extends BaseApplication {
 
   /**
    * Handle NETWORK_CHANGED event — detect if viewing a restricted message
-   * and show a "Connection Lost" overlay if the network changed out from under us.
+   * and show a "Connection Lost" overlay if the required network changed.
    * @param {object} [data] — Event data (may contain oldNetwork, newNetwork)
    */
   _handleNetworkChange(data) {
     const selectedMsg = this._getSelectedMessage();
+    const newNet = this._getCurrentNetworkData();
+    const oldNet = this._previousNetwork || data?.oldNetwork || newNet;
+    this._previousNetwork = newNet;
 
-    // If no message selected or message isn't network-restricted, just re-render
-    if (!selectedMsg?.accessControl?.restricted) {
+    // No message selected — just re-render
+    if (!selectedMsg) {
       this._debouncedRender();
       return;
     }
 
-    // Track the previous network for the overlay
-    const oldNet = this._previousNetwork || data?.oldNetwork;
-    const newNet = this._getCurrentNetworkData();
-    this._previousNetwork = newNet;
+    // Check if the selected message is network-restricted via access service
+    const viewingActor = this.actorId ? game.actors?.get(this.actorId) : null;
+    const accessState = this.messageAccessService?.checkAccess(selectedMsg, viewingActor)
+      ?? { canRead: true, restricted: false };
 
-    // If the message requires a specific network and we just left it, show overlay
-    const requiredNet = selectedMsg.accessControl.requiredNetwork;
-    if (requiredNet && oldNet?.id === requiredNet && newNet?.id !== requiredNet) {
+    // If message isn't restricted, just re-render
+    if (!accessState.restricted) {
+      this._debouncedRender();
+      return;
+    }
+
+    // If we were on the required network and now we're not, show overlay
+    const requiredNet = accessState.requiredNetwork || selectedMsg.network;
+    if (oldNet?.id !== newNet?.id && oldNet?.id === requiredNet) {
       this._showNetworkChangedOverlay(oldNet, newNet, selectedMsg);
+    } else if (!accessState.canRead) {
+      // We're not on the right network at all — show overlay
+      const requiredNetData = this.networkService?.getNetwork?.(requiredNet) || { name: requiredNet, id: requiredNet };
+      this._showNetworkChangedOverlay(requiredNetData, newNet, selectedMsg);
     } else {
       this._debouncedRender();
     }
@@ -4433,11 +4449,11 @@ export class MessageViewerApp extends BaseApplication {
 
     requestAnimationFrame(() => overlay.classList.add('ncm-access-granted--active'));
 
-    // Auto-dismiss after animation
-    await new Promise(r => setTimeout(r, 2200));
-    overlay.style.transition = 'opacity 0.4s';
+    // Auto-dismiss — fast, don't stack delay on top of previous animations
+    await new Promise(r => setTimeout(r, 1200));
+    overlay.style.transition = 'opacity 0.3s';
     overlay.style.opacity = '0';
-    await new Promise(r => setTimeout(r, 400));
+    await new Promise(r => setTimeout(r, 300));
     overlay.remove();
   }
 
@@ -4506,11 +4522,11 @@ export class MessageViewerApp extends BaseApplication {
     overlay.classList.add('ncm-reveal--active');
 
     // Wait for transition duration
-    await new Promise(r => setTimeout(r, 2200));
+    await new Promise(r => setTimeout(r, 1400));
 
     // Fade out
     overlay.classList.add('ncm-reveal--exit');
-    await new Promise(r => setTimeout(r, 400));
+    await new Promise(r => setTimeout(r, 300));
 
     overlay.remove();
   }
