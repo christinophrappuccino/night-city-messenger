@@ -517,9 +517,9 @@
   border: 2px solid var(--ncm-border);
   display: flex; align-items: center; justify-content: center;
   font-weight: 700; font-size: 12px; flex-shrink: 0;
-  background: var(--ncm-bg-surface); overflow: hidden;
+  background: var(--ncm-bg-surface); position: relative;
 }
-.ncm-app .ncm-viewer__msg-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.ncm-app .ncm-viewer__msg-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
 
 /* Content */
 .ncm-app .ncm-viewer__msg-content { flex: 1; min-width: 0; }
@@ -577,6 +577,122 @@
 .ncm-app .ncm-viewer__msg-preview { font-size: 10px; color: var(--ncm-text-muted); line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
 .ncm-app .ncm-viewer__msg-preview--locked { color: var(--ncm-text-dim); font-style: italic; }
 .ncm-app .ncm-viewer__msg-preview--locked i { font-size: 9px; margin-right: 4px; }
+.ncm-app .ncm-viewer__msg-preview--encrypted {
+  font-family: var(--ncm-font-mono); font-size: 8px; color: var(--ncm-text-dim);
+  letter-spacing: 0.15em; opacity: 0.4;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   §9B  MESSAGE LIST ITEM — STATE STYLING (v3.3)
+   Encrypted, infected, darknet, traced, self-destruct,
+   avatar badges, indicator tags, and combo stacking.
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Avatar Micro-Badges (positioned bottom-right of avatar) ── */
+.ncm-app .ncm-viewer__msg-av-badge {
+  position: absolute; bottom: -3px; right: -3px; z-index: 2;
+  width: 14px; height: 14px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--ncm-bg-deep); font-size: 7px;
+}
+.ncm-app .ncm-viewer__msg-av-badge--lock {
+  border: 1px solid rgba(240,197,91,0.4); color: var(--ncm-accent);
+}
+.ncm-app .ncm-viewer__msg-av-badge--biohazard {
+  border: 1px solid rgba(239,68,68,0.4); color: var(--ncm-danger);
+}
+
+/* ── Encrypted State ── */
+.ncm-app .ncm-viewer__msg--encrypted .ncm-viewer__msg-avatar {
+  position: relative;
+}
+.ncm-app .ncm-viewer__msg--encrypted .ncm-viewer__msg-avatar::after {
+  content: ''; position: absolute; inset: -2px; border-radius: 50%;
+  background: rgba(240,197,91,0.06); border: 2px solid rgba(240,197,91,0.25);
+  pointer-events: none;
+}
+.ncm-app .ncm-viewer__msg--encrypted .ncm-viewer__msg-subject-text {
+  color: var(--ncm-text-dim); font-style: italic;
+}
+.ncm-app .ncm-viewer__msg-subject-lock {
+  font-size: 8px; color: rgba(240,197,91,0.35); margin-right: 3px; flex-shrink: 0;
+}
+.ncm-app .ncm-viewer__msg-encrypt-tag {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-family: var(--ncm-font-mono); font-size: 7px; color: rgba(240,197,91,0.45);
+  text-transform: uppercase; letter-spacing: 0.06em; flex-shrink: 0;
+}
+.ncm-app .ncm-viewer__msg-encrypt-tag i { font-size: 6px; }
+
+/* ── Infected / Malware State ── */
+.ncm-app .ncm-viewer__msg--infected .ncm-viewer__msg-avatar {
+  position: relative;
+}
+.ncm-app .ncm-viewer__msg--infected .ncm-viewer__msg-avatar::after {
+  content: ''; position: absolute; inset: -2px; border-radius: 50%;
+  border: 2px solid rgba(239,68,68,0.2); pointer-events: none;
+  animation: ncm-msg-infected-pulse 2s ease-in-out infinite;
+}
+@keyframes ncm-msg-infected-pulse {
+  0%,100% { border-color: rgba(239,68,68,0.2); box-shadow: none; }
+  50% { border-color: rgba(239,68,68,0.4); box-shadow: 0 0 8px rgba(239,68,68,0.15); }
+}
+
+/* ── Darknet Origin State ── */
+.ncm-app .ncm-viewer__msg--darknet { background: rgba(168,85,247,0.02); }
+.ncm-app .ncm-viewer__msg--darknet .ncm-viewer__msg-avatar {
+  border-color: rgba(168,85,247,0.3) !important;
+}
+.ncm-app .ncm-viewer__msg--darknet .ncm-viewer__msg-sender {
+  color: rgba(168,85,247,0.6); font-style: italic;
+}
+.ncm-app .ncm-viewer__msg--darknet.ncm-viewer__msg--unread .ncm-viewer__msg-sender {
+  color: rgba(168,85,247,0.85);
+}
+.ncm-app .ncm-viewer__msg-anon-tag {
+  font-family: var(--ncm-font-mono); font-size: 7px;
+  color: rgba(168,85,247,0.35); letter-spacing: 0.06em; flex-shrink: 0;
+}
+
+/* ── Traced / Monitored State ── */
+.ncm-app .ncm-viewer__msg--traced { background: rgba(246,82,97,0.02); }
+.ncm-app .ncm-viewer__msg-traced-indicator {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-family: var(--ncm-font-mono); font-size: 7px;
+  color: rgba(246,82,97,0.45); flex-shrink: 0;
+}
+.ncm-app .ncm-viewer__msg-traced-dot {
+  width: 5px; height: 5px; border-radius: 50%; background: var(--ncm-danger);
+  animation: ncm-msg-rec-pulse 1.5s ease-in-out infinite;
+}
+@keyframes ncm-msg-rec-pulse {
+  0%,100% { opacity: 0.4; box-shadow: none; }
+  50% { opacity: 1; box-shadow: 0 0 4px rgba(255,0,51,0.4); }
+}
+
+/* ── Self-Destruct State ── */
+.ncm-app .ncm-viewer__msg--destruct {
+  border-left: 3px solid var(--ncm-danger); padding-left: 9px;
+}
+/* Priority border takes precedence over destruct — don't double */
+.ncm-app .ncm-viewer__msg--destruct[data-priority="critical"],
+.ncm-app .ncm-viewer__msg--destruct[data-priority="urgent"] {
+  padding-left: 9px; /* already has priority border */
+}
+.ncm-app .ncm-viewer__msg-destruct-timer {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-family: var(--ncm-font-mono); font-size: 7px; color: var(--ncm-danger);
+  flex-shrink: 0;
+}
+.ncm-app .ncm-viewer__msg-destruct-timer i { font-size: 6px; }
+.ncm-app .ncm-viewer__msg-destruct-timer--urgent {
+  font-weight: 700;
+  animation: ncm-queue-pulse 0.8s ease-in-out infinite;
+}
+
+/* ── Network Locked (enhanced) ── */
+.ncm-app .ncm-viewer__msg--locked .ncm-viewer__msg-avatar { filter: grayscale(0.5); }
 
 
 /* ═══════════════════════════════════════════════════════════

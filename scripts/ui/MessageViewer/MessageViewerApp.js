@@ -3802,6 +3802,46 @@ export class MessageViewerApp extends BaseApplication {
         ?? { canRead: true, restricted: false };
       const isNetworkLocked = !accessState.canRead;
 
+      // Encrypted state for list item styling
+      const isEncrypted = !!msg.status?.encrypted;
+      const encryption = msg.encryption || {};
+      let encryptionTag = '';
+      if (isEncrypted) {
+        const iceType = encryption.type || 'ICE';
+        const isBlackIce = iceType === 'BLACK_ICE' || iceType === 'RED_ICE';
+        encryptionTag = isBlackIce ? iceType.replace('_', ' ') : `${iceType} // DV ${encryption.dc ?? 15}`;
+      }
+
+      // Darknet origin for list item styling
+      const msgNetNorm = (msg.network || '').toLowerCase();
+      const isDarknet = msgNetNorm.includes('dark');
+
+      // Trace state for list item
+      const isTraced = !!(msg.traceExpiresAt || msg.traceCompleted);
+      const traceAgency = msg.traceAgency || null;
+
+      // Self-destruct for list item display
+      let hasSelfDestruct = false;
+      let selfDestructListDisplay = '';
+      let selfDestructUrgent = false;
+      if (msg.selfDestruct && !msg.status?.sent) {
+        hasSelfDestruct = true;
+        if (msg.selfDestruct.mode === 'after_read' && msg.status?.read) {
+          selfDestructListDisplay = 'ON READ';
+        } else if (msg.selfDestruct.expiresAt) {
+          const remaining = new Date(msg.selfDestruct.expiresAt).getTime() - Date.now();
+          if (remaining > 0) {
+            const m = Math.floor(remaining / 60000);
+            const s = Math.floor((remaining % 60000) / 1000);
+            selfDestructListDisplay = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+            selfDestructUrgent = remaining <= 30000;
+          } else {
+            selfDestructListDisplay = '00:00';
+            selfDestructUrgent = true;
+          }
+        }
+      }
+
       return {
         ...msg,
         ...this._enrichMessageDisplay(msg, currentNetworkName),
@@ -3811,6 +3851,15 @@ export class MessageViewerApp extends BaseApplication {
         lockedNetworkName: accessState.requiredNetworkName
           || this.networkService?.getNetwork?.(msg.network)?.name
           || msg.network || '',
+        // New list-item state fields
+        isEncrypted,
+        encryptionTag,
+        isDarknet,
+        isTraced,
+        traceAgency,
+        hasSelfDestruct,
+        selfDestructListDisplay,
+        selfDestructUrgent,
       };
     });
   }
