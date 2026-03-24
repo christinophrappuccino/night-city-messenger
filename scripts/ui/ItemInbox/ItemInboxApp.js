@@ -47,6 +47,9 @@ export class ItemInboxApp extends BaseApplication {
   /** @type {boolean} Whether boot sequence has completed */
   _bootComplete = false;
 
+  /** @type {boolean} Whether boot sequence is currently playing */
+  _bootInProgress = false;
+
   /** @type {boolean} Whether trace warning is active */
   _traceWarningActive = false;
 
@@ -110,13 +113,16 @@ export class ItemInboxApp extends BaseApplication {
   // ─── Constructor ───
 
   constructor(options = {}) {
-    // Set unique app ID per item BEFORE super() reads it
+    // Set unique app ID per item for Foundry window deduplication
     if (options.item?.id) {
       options.id = `ncm-item-inbox-${options.item.id}`;
     }
     super(options);
     if (options.item) {
       this.item = options.item;
+    }
+    if (options.actor) {
+      this._actor = options.actor;
     }
     // Reset boot state for this instance
     this._bootComplete = false;
@@ -130,6 +136,11 @@ export class ItemInboxApp extends BaseApplication {
         this.render(true);
       }
     });
+  }
+
+  /** Unique app ID per item — guarantees each shard gets its own window */
+  get id() {
+    return this.item?.id ? `ncm-item-inbox-${this.item.id}` : 'ncm-item-inbox';
   }
 
   /** Override window title */
@@ -269,7 +280,12 @@ export class ItemInboxApp extends BaseApplication {
 
     // Boot config
     const bootConfig = config.boot ?? {};
-    const showBoot = bootConfig.enabled && !state.bootPlayed && !this._bootComplete;
+    // Boot plays once per app instance — _bootComplete guards replay.
+    // state.bootPlayed is only set by forceDecrypt; normal opens always get boot.
+    const showBoot = !!bootConfig.enabled && !this._bootComplete;
+    if (!showBoot && bootConfig.enabled) {
+      console.debug('NCM | Boot skipped:', { bootEnabled: bootConfig.enabled, bootComplete: this._bootComplete, bootPlayed: state.bootPlayed, itemId: this.item?.id });
+    }
 
     // Trace warning
     const tracing = config.network?.tracing ?? {};
@@ -1367,8 +1383,19 @@ export class ItemInboxApp extends BaseApplication {
    * @private
    */
   async _playBootSequence(context) {
+    // Guard: prevent double-invocation
+    if (this._bootInProgress || this._bootComplete) {
+      console.debug('NCM | Boot already in progress/complete, skipping');
+      return;
+    }
+    this._bootInProgress = true;
+
     const bootEl = this.element?.querySelector('.ncm-shard-boot');
-    if (!bootEl) return;
+    if (!bootEl) {
+      console.warn('NCM | Boot element .ncm-shard-boot not found in DOM');
+      this._bootInProgress = false;
+      return;
+    }
 
     const config = context.config?.boot ?? {};
     const animLevel = this.element?.closest('[data-ncm-animation]')?.dataset?.ncmAnimation ?? 'full';
@@ -1471,6 +1498,7 @@ export class ItemInboxApp extends BaseApplication {
     }
 
     this._bootComplete = true;
+    this._bootInProgress = false;
     this.eventBus?.emit(EVENTS.SHARD_BOOT_COMPLETE, { itemId: this.item?.id });
   }
 

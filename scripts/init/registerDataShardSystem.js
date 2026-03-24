@@ -120,6 +120,13 @@ export function registerDataShardSystem(initializer) {
           actor = game.user.character;
         }
 
+        // Close any existing app for this item to ensure fresh boot sequence
+        const existingId = `ncm-item-inbox-${item.id}`;
+        const existing = Object.values(ui.windows).find(w => w.id === existingId);
+        if (existing) {
+          existing.close({ animate: false });
+        }
+
         // Create and render the app
         const app = new ItemInboxApp({ item, actor });
         app.render(true);
