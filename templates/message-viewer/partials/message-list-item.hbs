@@ -2,29 +2,17 @@
   Message List Item — v3.3 State Styling
   @file templates/message-viewer/partials/message-list-item.hbs
   @module cyberpunkred-messenger
-  @description Single message row in the inbox list. Features:
-    - Network right-edge stripe via inline style (dynamic theme.color)
-    - Network pip chip only for messages from non-current network
-    - Stacked timestamp: date on top, relative time below
-    - Single badge slot: priority OR threat (most important wins)
-    - Color-coded avatar with matching border
-    - Unread dot, priority left border, lock indicator
-    - v3.3: Encrypted (gold lock ring, cipher preview), infected (biohazard badge),
-      self-destruct (bomb timer), traced (recording dot), darknet (purple theme),
-      queued (amber badge), network-locked (dimmed + access required)
 
-  Expected context per message (from _enrichMessages + _enrichMessageDisplay):
-    messageId, from, to, subject, body, timestamp, network, priority,
-    status: { read, saved, spam, encrypted, infected, deleted, sent },
-    fromDisplay, fromInitial, fromPortrait, bodyPreview,
-    formattedDate, relativeTime, isRecentMessage,
-    formattedTime, networkLabel, priorityVariant,
-    selected, bulkSelected,
-    avatarColor, networkAccentColor,
-    isNetworkLocked, lockedNetworkName, threatBadge,
-    netPipColor, netPipIcon, netPipLabel, netStripeColor,
-    isEncrypted, encryptionTag, isDarknet, isTraced, traceAgency,
-    hasSelfDestruct, selfDestructListDisplay, selfDestructUrgent, isQueued
+  State priority (highest wins for conflicting treatments):
+    1. Network-locked (dims everything, overrides encrypted visual)
+    2. Infected/Malware (biohazard badge, red ring)
+    3. Encrypted (gold ring, lock badge, cipher preview)
+    4. Self-destruct (red border, timer)
+    5. Traced (recording dot)
+    6. Darknet (purple theme)
+    7. Queued (amber badge)
+    8. Priority (left border color)
+    9. Unread (bright text, cyan dot)
 --}}
 
 <div class="ncm-viewer__msg
@@ -32,7 +20,7 @@
   {{~#if selected}} ncm-viewer__msg--selected{{/if~}}
   {{~#if status.infected}} ncm-viewer__msg--infected{{/if~}}
   {{~#if isNetworkLocked}} ncm-viewer__msg--locked{{/if~}}
-  {{~#if isEncrypted}} ncm-viewer__msg--encrypted{{/if~}}
+  {{~#if isEncrypted}}{{~#unless isNetworkLocked}} ncm-viewer__msg--encrypted{{/unless~}}{{/if~}}
   {{~#if isDarknet}} ncm-viewer__msg--darknet{{/if~}}
   {{~#if isTraced}} ncm-viewer__msg--traced{{/if~}}
   {{~#if hasSelfDestruct}} ncm-viewer__msg--destruct{{/if~}}"
@@ -41,28 +29,33 @@
      data-action="select-message"
      {{~#if netStripeColor}} style="border-right: 3px solid {{netStripeColor}}"{{/if~}}>
 
-  {{!-- Priority left border handled by CSS [data-priority] --}}
-
   {{!-- Unread dot --}}
   {{#unless status.read}}
     <div class="ncm-viewer__msg-unread-dot"></div>
   {{/unless}}
 
-  {{!-- Network-locked indicator --}}
+  {{!-- Network-locked indicator (left edge) --}}
   {{#if isNetworkLocked}}
     <div class="ncm-viewer__msg-lock" data-ncm-tooltip="Requires {{lockedNetworkName}} access">
       <i class="fas fa-lock"></i>
     </div>
   {{/if}}
 
-  {{!-- Avatar — color-coded with matching border + state overlays --}}
+  {{!-- Avatar --}}
   <div class="ncm-viewer__msg-avatar"
     style="color: {{avatarColor}}; border-color: {{avatarColor}}">
     {{#if fromPortrait}}
       <img src="{{fromPortrait}}" alt="{{fromDisplay}}" />
     {{else}}
-      {{#if isEncrypted}}
-        <i class="fas fa-question" style="font-size:12px;opacity:0.4;"></i>
+      {{!-- Network-locked or encrypted with no sender: show ? --}}
+      {{#if isNetworkLocked}}
+        <i class="fas fa-lock" style="font-size:11px;opacity:0.3;"></i>
+      {{else if isEncrypted}}
+        {{#if fromInitial}}
+          {{fromInitial}}
+        {{else}}
+          <i class="fas fa-question" style="font-size:12px;opacity:0.4;"></i>
+        {{/if}}
       {{else if isDarknet}}
         {{#if fromInitial}}
           {{fromInitial}}
@@ -74,14 +67,16 @@
       {{/if}}
     {{/if}}
 
-    {{!-- Encrypted lock micro-badge --}}
+    {{!-- Encrypted lock badge (bottom-right) — only when NOT network-locked --}}
     {{#if isEncrypted}}
-      <span class="ncm-viewer__msg-av-badge ncm-viewer__msg-av-badge--lock">
-        <i class="fas fa-lock"></i>
-      </span>
+      {{#unless isNetworkLocked}}
+        <span class="ncm-viewer__msg-av-badge ncm-viewer__msg-av-badge--lock">
+          <i class="fas fa-lock"></i>
+        </span>
+      {{/unless}}
     {{/if}}
 
-    {{!-- Infected biohazard micro-badge --}}
+    {{!-- Infected biohazard badge (bottom-left to avoid overlap with lock badge) --}}
     {{#if status.infected}}
       <span class="ncm-viewer__msg-av-badge ncm-viewer__msg-av-badge--biohazard">
         <i class="fas fa-biohazard"></i>
@@ -96,14 +91,16 @@
     <div class="ncm-viewer__msg-top">
       <span class="ncm-viewer__msg-sender">{{fromDisplay}}</span>
 
-      {{!-- Encryption tag (ICE // DV 18 or BLACK ICE) --}}
+      {{!-- Encryption tag — only when NOT network-locked --}}
       {{#if isEncrypted}}
-        <span class="ncm-viewer__msg-encrypt-tag">
-          <i class="fas fa-shield-halved"></i> {{encryptionTag}}
-        </span>
+        {{#unless isNetworkLocked}}
+          <span class="ncm-viewer__msg-encrypt-tag">
+            <i class="fas fa-shield-halved"></i> {{encryptionTag}}
+          </span>
+        {{/unless}}
       {{/if}}
 
-      {{!-- Traced indicator (recording dot + agency) --}}
+      {{!-- Traced indicator --}}
       {{#if isTraced}}
         <span class="ncm-viewer__msg-traced-indicator">
           <span class="ncm-viewer__msg-traced-dot"></span>
@@ -123,13 +120,13 @@
         <span class="ncm-viewer__msg-anon-tag">// ANON</span>
       {{/if}}
 
-      {{!-- Status icons (saved) --}}
+      {{!-- Saved icon --}}
       {{#if status.saved}}
         <i class="fas fa-bookmark ncm-viewer__msg-icon ncm-viewer__msg-icon--saved"
            data-ncm-tooltip="Saved"></i>
       {{/if}}
 
-      {{!-- Network pip — only for non-current network --}}
+      {{!-- Network pip --}}
       {{#if netPipLabel}}
         <span class="ncm-viewer__msg-net-pip"
               style="color: {{netPipColor}}; border-color: {{netPipColor}}40; background: {{netPipColor}}0A">
@@ -137,7 +134,7 @@
         </span>
       {{/if}}
 
-      {{!-- Queued badge (dead zone) --}}
+      {{!-- Queued badge --}}
       {{#if isQueued}}
         <span class="ncm-viewer__msg-queue-badge"><i class="fas fa-clock"></i> Queued</span>
       {{/if}}
@@ -155,14 +152,17 @@
 
     {{!-- Row 2: Subject + Badge --}}
     <div class="ncm-viewer__msg-subject">
-      {{#if isEncrypted}}
-        <i class="fas fa-lock ncm-viewer__msg-subject-lock"></i>
-      {{/if}}
       <span class="ncm-viewer__msg-subject-text">
-        {{~#if isEncrypted}}[ENCRYPTED MESSAGE]{{else}}{{subject}}{{/if~}}
+        {{~#if isNetworkLocked~}}
+          [ACCESS RESTRICTED]
+        {{~else if isEncrypted~}}
+          [ENCRYPTED MESSAGE]
+        {{~else~}}
+          {{subject}}
+        {{~/if~}}
       </span>
 
-      {{!-- Single badge slot --}}
+      {{!-- Badge slot --}}
       {{#if threatBadge}}
         <span class="ncm-viewer__msg-badge ncm-viewer__msg-badge--{{threatBadge.variant}}"
               data-ncm-tooltip="{{threatBadge.label}}">
@@ -179,7 +179,7 @@
       {{/if}}
     </div>
 
-    {{!-- Row 3: Body preview --}}
+    {{!-- Row 3: Preview --}}
     {{#if isNetworkLocked}}
       <div class="ncm-viewer__msg-preview ncm-viewer__msg-preview--locked">
         <i class="fas fa-lock"></i> REQUIRES {{lockedNetworkName}} ACCESS

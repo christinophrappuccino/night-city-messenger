@@ -502,6 +502,7 @@
 .ncm-app .ncm-viewer__msg--selected.ncm-viewer__msg--unread::before { left: 2px; }
 .ncm-app .ncm-viewer__msg--infected { background: rgba(239,68,68,0.03); }
 .ncm-app .ncm-viewer__msg--locked { opacity: 0.7; }
+.ncm-app .ncm-viewer__msg--locked.ncm-viewer__msg--unread::before { display: none; }
 
 /* Priority left border */
 .ncm-app .ncm-viewer__msg[data-priority="critical"] { border-left: 3px solid var(--ncm-danger); padding-left: 11px; }
@@ -601,6 +602,7 @@
 }
 .ncm-app .ncm-viewer__msg-av-badge--biohazard {
   border: 1px solid rgba(239,68,68,0.4); color: var(--ncm-danger);
+  right: auto; left: -3px;
 }
 
 /* ── Encrypted State ── */
@@ -614,9 +616,6 @@
 }
 .ncm-app .ncm-viewer__msg--encrypted .ncm-viewer__msg-subject-text {
   color: var(--ncm-text-dim); font-style: italic;
-}
-.ncm-app .ncm-viewer__msg-subject-lock {
-  font-size: 8px; color: rgba(240,197,91,0.35); margin-right: 3px; flex-shrink: 0;
 }
 .ncm-app .ncm-viewer__msg-encrypt-tag {
   display: inline-flex; align-items: center; gap: 3px;
