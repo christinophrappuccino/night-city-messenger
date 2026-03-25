@@ -34,41 +34,33 @@
     <div class="ncm-viewer__msg-unread-dot"></div>
   {{/unless}}
 
-  {{!-- Network-locked indicator (left edge) --}}
-  {{#if isNetworkLocked}}
-    <div class="ncm-viewer__msg-lock" data-ncm-tooltip="Requires {{lockedNetworkName}} access">
-      <i class="fas fa-lock"></i>
-    </div>
-  {{/if}}
-
   {{!-- Avatar --}}
   <div class="ncm-viewer__msg-avatar"
     style="color: {{avatarColor}}; border-color: {{avatarColor}}">
     {{#if fromPortrait}}
       <img src="{{fromPortrait}}" alt="{{fromDisplay}}" />
     {{else}}
-      {{!-- Encrypted (not locked): show initial or ? if unknown sender --}}
       {{#if isEncrypted}}
         {{#if fromInitial}}{{fromInitial}}{{else}}<i class="fas fa-question" style="font-size:12px;opacity:0.4;"></i>{{/if}}
-      {{!-- Darknet: show initial or ghost if anonymous --}}
       {{else if isDarknet}}
         {{#if fromInitial}}{{fromInitial}}{{else}}<i class="fas fa-ghost" style="font-size:12px;opacity:0.5;"></i>{{/if}}
-      {{!-- Everything else (including locked): show initial --}}
       {{else}}
         {{fromInitial}}
       {{/if}}
     {{/if}}
 
-    {{!-- Encrypted lock badge (bottom-right) — only when NOT network-locked --}}
-    {{#if isEncrypted}}
-      {{#unless isNetworkLocked}}
-        <span class="ncm-viewer__msg-av-badge ncm-viewer__msg-av-badge--lock">
-          <i class="fas fa-lock"></i>
-        </span>
-      {{/unless}}
+    {{!-- Lock badge (bottom-right): network-locked OR encrypted (not both) --}}
+    {{#if isNetworkLocked}}
+      <span class="ncm-viewer__msg-av-badge ncm-viewer__msg-av-badge--net-lock">
+        <i class="fas fa-lock"></i>
+      </span>
+    {{else if isEncrypted}}
+      <span class="ncm-viewer__msg-av-badge ncm-viewer__msg-av-badge--lock">
+        <i class="fas fa-lock"></i>
+      </span>
     {{/if}}
 
-    {{!-- Infected biohazard badge (bottom-left to avoid overlap with lock badge) --}}
+    {{!-- Infected biohazard badge (bottom-left) --}}
     {{#if status.infected}}
       <span class="ncm-viewer__msg-av-badge ncm-viewer__msg-av-badge--biohazard">
         <i class="fas fa-biohazard"></i>

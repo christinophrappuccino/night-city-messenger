@@ -501,8 +501,27 @@
 }
 .ncm-app .ncm-viewer__msg--selected.ncm-viewer__msg--unread::before { left: 2px; }
 .ncm-app .ncm-viewer__msg--infected { background: rgba(239,68,68,0.03); }
-.ncm-app .ncm-viewer__msg--locked { opacity: 0.7; }
+.ncm-app .ncm-viewer__msg--locked { opacity: 0.55; }
 .ncm-app .ncm-viewer__msg--locked.ncm-viewer__msg--unread::before { display: none; }
+.ncm-app .ncm-viewer__msg--locked .ncm-viewer__msg-avatar { filter: grayscale(0.6); }
+.ncm-app .ncm-viewer__msg--locked .ncm-viewer__msg-sender { color: var(--ncm-text-muted); }
+.ncm-app .ncm-viewer__msg--locked .ncm-viewer__msg-subject-text {
+  color: var(--ncm-text-dim); font-style: italic;
+}
+
+/* Lock micro-badge on avatar (bottom-right, network-colored) */
+.ncm-app .ncm-viewer__msg-av-badge--net-lock {
+  border: 1px solid var(--ncm-text-dim); color: var(--ncm-text-dim);
+}
+
+/* Locked preview line */
+.ncm-app .ncm-viewer__msg-preview--locked {
+  display: flex; align-items: center; gap: 4px;
+  font-family: var(--ncm-font-mono); font-size: 8px;
+  color: var(--ncm-text-dim); text-transform: uppercase;
+  letter-spacing: 0.04em; font-style: normal;
+}
+.ncm-app .ncm-viewer__msg-preview--locked i { font-size: 7px; }
 
 /* Priority left border */
 .ncm-app .ncm-viewer__msg[data-priority="critical"] { border-left: 3px solid var(--ncm-danger); padding-left: 11px; }
@@ -510,8 +529,6 @@
 
 /* Unread dot + Lock */
 .ncm-app .ncm-viewer__msg-unread-dot { display: none; /* handled by ::before pseudo */ }
-.ncm-app .ncm-viewer__msg-lock { position: absolute; left: 5px; top: 50%; transform: translateY(-50%); font-size: 8px; color: var(--ncm-text-dim); }
-
 /* Avatar */
 .ncm-app .ncm-viewer__msg-avatar {
   width: 34px; height: 34px; border-radius: 50%;
@@ -576,8 +593,6 @@
 
 /* Preview */
 .ncm-app .ncm-viewer__msg-preview { font-size: 10px; color: var(--ncm-text-muted); line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
-.ncm-app .ncm-viewer__msg-preview--locked { color: var(--ncm-text-dim); font-style: italic; }
-.ncm-app .ncm-viewer__msg-preview--locked i { font-size: 9px; margin-right: 4px; }
 .ncm-app .ncm-viewer__msg-preview--encrypted {
   font-family: var(--ncm-font-mono); font-size: 8px; color: var(--ncm-text-dim);
   letter-spacing: 0.15em; opacity: 0.4;
@@ -689,9 +704,6 @@
   font-weight: 700;
   animation: ncm-queue-pulse 0.8s ease-in-out infinite;
 }
-
-/* ── Network Locked (enhanced) ── */
-.ncm-app .ncm-viewer__msg--locked .ncm-viewer__msg-avatar { filter: grayscale(0.5); }
 
 
 /* ═══════════════════════════════════════════════════════════
