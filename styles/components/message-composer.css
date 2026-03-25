@@ -923,117 +923,125 @@
 }
 .ncm-composer__enc-type--lethal:hover { border-color: rgba(255,68,85,0.4) !important; }
 
-/* ── ICE Config Panel — shown for BLACK_ICE / RED_ICE ── */
+/* ── ICE Config Panel — BLACK_ICE / RED_ICE ── */
 .ncm-composer__ice-config {
-  display: flex; flex-direction: column; gap: 6px;
-  padding: 8px 12px; margin: 0;
-  background: rgba(255,0,51,0.04);
-  border-top: 1px solid rgba(255,0,51,0.12);
-  border-bottom: 1px solid rgba(255,0,51,0.12);
+  margin: 0; border-top: 1px solid rgba(255,68,85,0.15);
+  border-bottom: 1px solid rgba(255,68,85,0.15);
+  background: rgba(255,0,51,0.02);
 }
-.ncm-composer__ice-row {
+.ncm-composer__ice-header {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 12px;
+  background: rgba(255,68,85,0.06);
+  border-bottom: 1px solid rgba(255,68,85,0.08);
+  font-family: 'Orbitron', sans-serif; font-size: 8px;
+  color: #ff4455; letter-spacing: 0.15em; text-transform: uppercase;
+}
+.ncm-composer__ice-header i { font-size: 9px; }
+.ncm-composer__ice-header-sub {
+  font-family: 'Share Tech Mono', monospace; font-size: 7px;
+  color: rgba(255,68,85,0.4); letter-spacing: 0.08em; margin-left: auto;
+}
+.ncm-composer__ice-body {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 8px 12px;
+}
+.ncm-composer__ice-field {
   display: flex; align-items: center; gap: 8px;
 }
-.ncm-composer__ice-label {
-  font-family: 'Share Tech Mono', monospace; font-size: 9px;
-  color: #F65261; text-transform: uppercase;
-  letter-spacing: 0.12em; font-weight: 600;
-}
-.ncm-composer__ice-label i { font-size: 9px; margin-right: 3px; }
-
-/* Failure mode chip */
-.ncm-composer .ncm-composer__ice-chip {
-  display: inline-flex; align-items: center; gap: 4px;
-  padding: 3px 8px; border-radius: 3px;
-  font-family: 'Share Tech Mono', monospace; font-size: 9px;
-  text-transform: uppercase; cursor: pointer;
-  border: 1px solid; transition: all 0.12s;
-  margin-left: auto;
-}
-.ncm-composer .ncm-composer__ice-chip i { font-size: 8px; }
-.ncm-composer .ncm-composer__ice-chip--damage {
-  color: #ff4455; border-color: rgba(255,68,85,0.3);
-  background: rgba(255,68,85,0.08);
-}
-.ncm-composer .ncm-composer__ice-chip--lockout {
-  color: #ffbb33; border-color: rgba(255,187,51,0.3);
-  background: rgba(255,187,51,0.08);
-}
-.ncm-composer .ncm-composer__ice-chip--nothing {
-  color: #8888a0; border-color: rgba(136,136,160,0.2);
-  background: rgba(136,136,160,0.05);
-}
-.ncm-composer .ncm-composer__ice-chip:hover { filter: brightness(1.2); }
-
-/* Source toggle */
-.ncm-composer__ice-source-label {
+.ncm-composer__ice-field-label {
   font-family: 'Share Tech Mono', monospace; font-size: 9px;
   color: #b0b0c0; text-transform: uppercase; letter-spacing: 0.06em;
+  min-width: 60px; flex-shrink: 0;
 }
-.ncm-composer button.ncm-composer__ice-src,
-.ncm-composer .ncm-composer__ice-src {
+
+/* Toggle button group */
+.ncm-composer__ice-toggle-group {
+  display: flex; gap: 2px;
+  background: rgba(42,42,69,0.25);
+  border-radius: 4px; padding: 2px;
+}
+.ncm-composer button.ncm-composer__ice-toggle,
+.ncm-composer .ncm-composer__ice-toggle {
   display: inline-flex !important; align-items: center !important; gap: 4px !important;
-  padding: 3px 10px !important; border-radius: 3px !important;
+  padding: 3px 9px !important; border-radius: 3px !important;
   font-family: 'Share Tech Mono', monospace !important; font-size: 9px !important;
-  cursor: pointer !important; border: 1px solid rgba(136,136,160,0.2) !important;
-  background: rgba(136,136,160,0.04) !important; color: #8888a0 !important;
+  cursor: pointer !important; border: none !important;
+  background: transparent !important; color: #666680 !important;
   height: auto !important; min-height: 0 !important; width: auto !important;
   flex-shrink: 0 !important; flex-grow: 0 !important;
   appearance: none !important; box-shadow: none !important; outline: none !important;
   transition: all 0.15s !important;
 }
-.ncm-composer .ncm-composer__ice-src i { font-size: 8px !important; margin: 0 !important; padding: 0 !important; }
-.ncm-composer .ncm-composer__ice-src:hover {
-  border-color: rgba(136,136,160,0.35) !important; color: #b0b0c0 !important;
+.ncm-composer .ncm-composer__ice-toggle i { font-size: 8px !important; margin: 0 !important; padding: 0 !important; }
+.ncm-composer .ncm-composer__ice-toggle:hover { color: #b0b0c0 !important; }
+.ncm-composer .ncm-composer__ice-toggle--active-red {
+  background: rgba(255,68,85,0.12) !important; color: #ff4455 !important;
 }
-.ncm-composer .ncm-composer__ice-src--active {
-  color: #ff4455 !important; border-color: rgba(255,68,85,0.35) !important;
-  background: rgba(255,68,85,0.08) !important;
+.ncm-composer .ncm-composer__ice-toggle--active-amber {
+  background: rgba(255,187,51,0.12) !important; color: #ffbb33 !important;
+}
+.ncm-composer .ncm-composer__ice-toggle--active-dim {
+  background: rgba(136,136,160,0.08) !important; color: #8888a0 !important;
 }
 
-/* ICE Actor picker list */
-.ncm-composer__ice-actor-list {
+/* Actor picker list */
+.ncm-composer__ice-actors {
   display: flex; flex-direction: column; gap: 3px;
-  max-height: 100px; overflow-y: auto;
-  padding: 3px 0;
+  max-height: 110px; overflow-y: auto; padding: 2px 0;
 }
 .ncm-composer button.ncm-composer__ice-actor,
 .ncm-composer .ncm-composer__ice-actor {
   display: flex !important; align-items: center !important; gap: 8px !important;
-  padding: 4px 10px !important; border-radius: 4px !important;
-  border: 1px solid rgba(136,136,160,0.12) !important;
-  background: rgba(26,26,46,0.5) !important;
+  padding: 5px 10px !important; border-radius: 4px !important;
+  border: 1px solid rgba(42,42,69,0.4) !important;
+  background: rgba(18,18,26,0.6) !important;
   cursor: pointer !important; transition: all 0.15s !important;
   height: auto !important; min-height: 0 !important; width: auto !important;
   flex-shrink: 0 !important; flex-grow: 0 !important;
   appearance: none !important; box-shadow: none !important; outline: none !important;
 }
 .ncm-composer .ncm-composer__ice-actor:hover {
-  border-color: rgba(255,68,85,0.25) !important;
+  border-color: rgba(255,68,85,0.3) !important;
   background: rgba(255,68,85,0.04) !important;
 }
 .ncm-composer .ncm-composer__ice-actor img {
-  width: 24px; height: 24px; border-radius: 3px;
-  border: 1px solid rgba(255,68,85,0.25); object-fit: cover;
+  width: 28px; height: 28px; border-radius: 3px;
+  border: 1px solid rgba(255,68,85,0.2); object-fit: cover;
 }
+.ncm-composer__ice-actor-icon {
+  width: 28px; height: 28px; border-radius: 3px;
+  border: 1px solid rgba(255,68,85,0.15);
+  background: rgba(255,68,85,0.04);
+  display: flex; align-items: center; justify-content: center;
+  color: rgba(255,68,85,0.4); font-size: 12px;
+}
+.ncm-composer__ice-actor-info { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; }
 .ncm-composer__ice-actor-name {
-  font-family: 'Rajdhani', sans-serif;
-  font-size: 11px; color: #d0d0dc; font-weight: 600;
+  font-family: 'Rajdhani', sans-serif; font-size: 12px;
+  color: #d0d0dc; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ncm-composer__ice-actor-class {
+  font-family: 'Share Tech Mono', monospace; font-size: 8px;
+  color: #666680; text-transform: uppercase; letter-spacing: 0.04em;
 }
 .ncm-composer__ice-actor-atk {
-  font-family: 'Share Tech Mono', monospace; font-size: 9px;
-  color: #ff4455; margin-left: auto; letter-spacing: 0.04em;
+  font-family: 'Orbitron', sans-serif; font-size: 9px;
+  color: #ff4455; flex-shrink: 0; letter-spacing: 0.06em;
 }
 .ncm-composer .ncm-composer__ice-actor--selected {
-  border-color: rgba(255,68,85,0.45) !important;
-  background: rgba(255,68,85,0.1) !important;
+  border-color: rgba(255,68,85,0.5) !important;
+  background: rgba(255,68,85,0.08) !important;
+  box-shadow: 0 0 8px rgba(255,68,85,0.08) !important;
 }
 .ncm-composer .ncm-composer__ice-actor--selected .ncm-composer__ice-actor-name { color: #ff4455; }
-.ncm-composer__ice-actor-empty {
+.ncm-composer__ice-empty {
   font-family: 'Share Tech Mono', monospace; font-size: 9px;
-  color: #8888a0; font-style: italic; padding: 6px 4px;
+  color: #666680; font-style: italic; padding: 8px 4px;
+  text-align: center;
 }
-.ncm-composer__ice-actor-empty i { margin-right: 4px; color: #ffbb33; }
+.ncm-composer__ice-empty i { margin-right: 4px; color: #ffbb33; font-size: 9px; }
 
 /* Feature toggles */
 .ncm-composer .ncm-composer__toggle {

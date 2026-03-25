@@ -907,76 +907,19 @@ export class ItemInboxApp extends BaseApplication {
         ).hackedLayers || []), layer],
       });
 
-      await this._showTransitionSplash({
-        icon: flavor.icon,
-        iconStyle: layer === 'keyitem' ? 'gold' : layer === 'login' ? 'green' : 'accent',
-        preTitle: `${selectedSkill} ${rollResult.total} vs DV ${selectedDC}`,
-        title: flavor.verb,
-        titleColor: flavor.color,
-        progressColor: layer === 'keyitem' ? 'gold' : layer === 'login' ? 'green' : 'accent',
-        footerText: 'Layer bypassed. Proceeding...',
-        duration: 2000,
-        sound: 'hack-success',
+      await this._playLayerHackSequence({
+        layer, flavor, rollResult, selectedSkill, luckSpend, dc: selectedDC, success: true,
       });
-
       this._pendingUnlockSplash = true;
     } else {
       // ─── Handle layer hack failure — always track attempts ───
       const consequence = await this.dataShardService.handleLayerHackFailure(this.item, actor.id, layer);
+      const hackInfo = this.dataShardService.getLayerHackInfo(this.item, actor.id, layer);
 
-      if (consequence.destroyed) {
-        await this._showTransitionSplash({
-          icon: 'fas fa-explosion',
-          iconStyle: 'red',
-          preTitle: `${selectedSkill} ${rollResult.total} vs DV ${selectedDC}`,
-          title: 'SHARD DESTROYED',
-          titleColor: '#ff0033',
-          progressColor: 'red',
-          footerText: 'Self-destruct triggered. All data lost.',
-          duration: 2500,
-          sound: 'lockout',
-        });
-      } else if (consequence.damage > 0) {
-        await this._playBlackICEEffect(consequence.damage);
-        await this._showTransitionSplash({
-          icon: 'fas fa-skull-crossbones',
-          iconStyle: 'red',
-          preTitle: `${selectedSkill} ${rollResult.total} vs DV ${selectedDC}`,
-          title: `BLACK ICE — ${consequence.damage} HP`,
-          titleColor: '#ff0033',
-          progressColor: 'red',
-          footerText: consequence.locked ? 'Maximum attempts exceeded — locked out.' : 'Countermeasures engaged.',
-          duration: 2200,
-          sound: null,
-        });
-      } else if (consequence.locked) {
-        await this._showTransitionSplash({
-          icon: 'fas fa-lock',
-          iconStyle: 'red',
-          preTitle: `${selectedSkill} ${rollResult.total} vs DV ${selectedDC}`,
-          title: 'ACCESS DENIED',
-          titleColor: '#ff0033',
-          progressColor: 'red',
-          footerText: 'Maximum attempts exceeded — locked out.',
-          duration: 2200,
-          sound: 'lockout',
-        });
-      } else {
-        // Normal failure — show red splash with attempt count
-        const hackInfo = this.dataShardService.getLayerHackInfo(this.item, actor.id, layer);
-        const attemptsText = hackInfo.max > 0 ? `Attempt ${hackInfo.attempts}/${hackInfo.max}` : '';
-        await this._showTransitionSplash({
-          icon: 'fas fa-xmark',
-          iconStyle: 'red',
-          preTitle: `${selectedSkill} ${rollResult.total} vs DV ${selectedDC}`,
-          title: `${flavor.title} Failed`,
-          titleColor: '#ff0033',
-          progressColor: 'red',
-          footerText: attemptsText || 'Bypass attempt rejected.',
-          duration: 1800,
-          sound: 'hack-fail',
-        });
-      }
+      await this._playLayerHackSequence({
+        layer, flavor, rollResult, selectedSkill, luckSpend, dc: selectedDC, success: false,
+        consequence, hackInfo,
+      });
     }
 
     this._transitionActive = false;
@@ -2411,6 +2354,180 @@ export class ItemInboxApp extends BaseApplication {
    * @param {string} [opts.sound] - Sound to play
    * @private
    */
+
+  /**
+   * Play a mini-terminal hack sequence for layer bypass attempts.
+   * Themed per layer with buildup → roll reveal → result.
+   * @param {object} opts
+   * @private
+   */
+  async _playLayerHackSequence(opts) {
+    const { layer, flavor, rollResult, selectedSkill, luckSpend, dc, success, consequence, hackInfo } = opts;
+    const inbox = this.element?.querySelector('.ncm-item-inbox') || this.element;
+    if (!inbox) return;
+
+    const roll = rollResult || {};
+    const total = roll.total ?? 0;
+    const dieRoll = roll.processedRoll ?? roll.rollValue ?? 0;
+    const base = (roll.statValue ?? 0) + (roll.skillLevel ?? 0) + (roll.luckSpent ?? 0);
+    const accentColor = success ? (flavor.color || '#00ff41') : '#ff0033';
+
+    // Layer-specific log lines
+    const LAYER_LOGS = {
+      network: {
+        init: ['Intercepting network handshake...', 'Cloning MAC address from authorized device...', 'Injecting spoofed credentials into auth stream...'],
+        probe: ['Handshake accepted — validating spoofed identity...'],
+      },
+      keyitem: {
+        init: ['Scanning token signature pattern...', 'Analyzing cryptographic hash structure...', 'Generating forged token with matched entropy...'],
+        probe: ['Token injected — verifying against validator...'],
+      },
+      login: {
+        init: ['Loading dictionary attack module...', 'Parsing credential format from auth prompt...', 'Executing brute-force against login service...'],
+        probe: ['Credentials submitted — awaiting auth response...'],
+      },
+    };
+    const logs = LAYER_LOGS[layer] || LAYER_LOGS.login;
+
+    // Build mini-terminal overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'ncm-sec-transition-overlay';
+    overlay.innerHTML = `
+      <div class="ncm-layer-seq" style="--layer-accent:${accentColor};">
+        <div class="ncm-layer-seq__header">
+          <i class="${flavor.icon}" style="color:${flavor.color};"></i>
+          <span class="ncm-layer-seq__title">${flavor.title}</span>
+          <span class="ncm-layer-seq__skill">${selectedSkill}${luckSpend > 0 ? ` +${luckSpend} Luck` : ''}</span>
+        </div>
+        <div class="ncm-layer-seq__terminal" data-layer-term></div>
+        <div class="ncm-layer-seq__bar-track">
+          <div class="ncm-layer-seq__bar-fill" data-layer-bar></div>
+        </div>
+        <div class="ncm-layer-seq__roll" data-layer-roll style="display:none;">
+          <div class="ncm-layer-seq__roll-dice" data-layer-dice>?</div>
+          <div class="ncm-layer-seq__roll-breakdown">
+            <span class="ncm-layer-seq__roll-base">${base}</span>
+            <span class="ncm-layer-seq__roll-plus">+</span>
+            <span class="ncm-layer-seq__roll-die" data-layer-die-val>?</span>
+            <span class="ncm-layer-seq__roll-eq">=</span>
+            <span class="ncm-layer-seq__roll-total" data-layer-total>?</span>
+            <span class="ncm-layer-seq__roll-vs">vs</span>
+            <span class="ncm-layer-seq__roll-dv">DV ${dc}</span>
+          </div>
+        </div>
+        <div class="ncm-layer-seq__result" data-layer-result style="display:none;"></div>
+      </div>`;
+    inbox.appendChild(overlay);
+
+    // Helpers
+    const _timers = [];
+    const delay = (fn, ms) => new Promise(resolve => { _timers.push(setTimeout(() => { fn(); resolve(); }, ms)); });
+    const term = overlay.querySelector('[data-layer-term]');
+    const bar = overlay.querySelector('[data-layer-bar]');
+    const rollArea = overlay.querySelector('[data-layer-roll]');
+    const diceEl = overlay.querySelector('[data-layer-dice]');
+    const dieValEl = overlay.querySelector('[data-layer-die-val]');
+    const totalEl = overlay.querySelector('[data-layer-total]');
+    const resultEl = overlay.querySelector('[data-layer-result]');
+
+    const addLog = (text, cls = '') => {
+      const line = document.createElement('div');
+      line.className = `ncm-layer-seq__log ${cls}`;
+      line.innerHTML = text;
+      term.appendChild(line);
+      term.scrollTop = term.scrollHeight;
+    };
+    const setBar = (pct) => { if (bar) bar.style.width = `${pct}%`; };
+
+    // ── Phase 1: Init ──
+    addLog(`░░ ${flavor.title.toUpperCase()} PROTOCOL ░░`, 'ncm-layer-seq__log--sys');
+    await delay(() => setBar(10), 200);
+    for (let i = 0; i < logs.init.length; i++) {
+      await delay(() => { addLog(logs.init[i]); setBar(10 + (i + 1) * 15); }, 350 + i * 100);
+    }
+
+    // ── Phase 2: Probe ──
+    await delay(() => { addLog(''); setBar(60); }, 300);
+    await delay(() => addLog(logs.probe[0], 'ncm-layer-seq__log--highlight'), 400);
+    await delay(() => setBar(75), 300);
+
+    // ── Phase 3: Roll reveal ──
+    await delay(() => {
+      addLog(`<i class="fas fa-dice" style="margin-right:4px;"></i> Rolling 1d10...`, 'ncm-layer-seq__log--roll');
+      rollArea.style.display = 'flex';
+      setBar(85);
+    }, 400);
+
+    // Tumble the dice
+    let tumbleCount = 0;
+    await new Promise(resolve => {
+      const tumbleId = setInterval(() => {
+        const v = Math.floor(Math.random() * 10) + 1;
+        if (diceEl) diceEl.textContent = v;
+        if (dieValEl) dieValEl.textContent = v;
+        if (totalEl) totalEl.textContent = base + v;
+        tumbleCount++;
+        if (tumbleCount > 12) {
+          clearInterval(tumbleId);
+          if (diceEl) diceEl.textContent = dieRoll;
+          if (dieValEl) dieValEl.textContent = dieRoll;
+          if (totalEl) { totalEl.textContent = total; totalEl.style.color = success ? '#00ff41' : '#ff0033'; }
+          resolve();
+        }
+      }, 70);
+      _timers.push(tumbleId);
+    });
+
+    setBar(100);
+    if (bar) bar.style.background = success ? '#00ff41' : '#ff0033';
+    this.soundService?.play(success ? 'hack-success' : 'hack-fail');
+
+    // ── Phase 4: Result ──
+    await delay(() => {
+      addLog(success ? `█ ${flavor.verb.toUpperCase()} █` : '█ ACCESS DENIED █',
+        success ? 'ncm-layer-seq__log--success' : 'ncm-layer-seq__log--fail');
+    }, 300);
+
+    await delay(() => {
+      resultEl.style.display = 'flex';
+      if (success) {
+        resultEl.innerHTML = `
+          <div class="ncm-layer-seq__result-card ncm-layer-seq__result-card--success">
+            <i class="${flavor.icon}" style="color:#00ff41;font-size:18px;"></i>
+            <div>
+              <div style="font-family:var(--ncm-font-title);font-size:13px;color:#00ff41;letter-spacing:0.08em;">${flavor.verb}</div>
+              <div style="font-size:9px;color:var(--ncm-text-muted);margin-top:2px;">Layer bypassed. Proceeding...</div>
+            </div>
+          </div>`;
+      } else {
+        let consequenceText = '';
+        if (consequence?.destroyed) consequenceText = '<span style="color:#ff0033;">Self-destruct triggered. All data lost.</span>';
+        else if (consequence?.damage > 0) consequenceText = `<span style="color:#ff0033;">⚡ BLACK ICE — ${consequence.damage} HP damage</span>`;
+        else if (consequence?.locked) consequenceText = '<span style="color:#ff0033;">Maximum attempts exceeded — locked out.</span>';
+        else if (hackInfo?.max > 0) consequenceText = `Attempt ${hackInfo.attempts}/${hackInfo.max}`;
+        resultEl.innerHTML = `
+          <div class="ncm-layer-seq__result-card ncm-layer-seq__result-card--fail">
+            <i class="fas fa-xmark" style="color:#ff0033;font-size:18px;"></i>
+            <div>
+              <div style="font-family:var(--ncm-font-title);font-size:13px;color:#ff0033;letter-spacing:0.08em;">${flavor.title} Failed</div>
+              ${consequenceText ? `<div style="font-size:9px;color:var(--ncm-text-muted);margin-top:2px;">${consequenceText}</div>` : ''}
+            </div>
+          </div>`;
+      }
+    }, 400);
+
+    if (!success && consequence?.damage > 0) await this._playBlackICEEffect(consequence.damage);
+
+    // Wait for click or timeout
+    await new Promise(resolve => {
+      const dismiss = () => { overlay.removeEventListener('click', dismiss); resolve(); };
+      overlay.addEventListener('click', dismiss);
+      _timers.push(setTimeout(dismiss, success ? 3000 : 4000));
+    });
+    _timers.forEach(t => clearTimeout(t));
+    overlay.remove();
+  }
+
   async _showTransitionSplash(opts = {}) {
     const inbox = this.element?.querySelector('.ncm-item-inbox') || this.element;
     if (!inbox) return;

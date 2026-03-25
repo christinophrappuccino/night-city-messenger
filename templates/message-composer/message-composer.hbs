@@ -281,48 +281,62 @@
     {{!-- ICE Config Panel — shown when BLACK_ICE or RED_ICE selected --}}
     {{#if isLethalICE}}
     <div class="ncm-composer__ice-config">
-      <div class="ncm-composer__ice-row">
-        <span class="ncm-composer__ice-label"><i class="fas fa-skull-crossbones"></i> ICE CONFIG</span>
-        <span class="ncm-composer__ice-chip ncm-composer__ice-chip--{{encryptionFailureMode}}"
-              data-action="setFailureMode"
-              data-mode="{{#if (eq encryptionFailureMode 'damage')}}lockout{{else}}damage{{/if}}">
-          {{#if (eq encryptionFailureMode 'damage')}}
-            <i class="fas fa-bolt"></i> Damage
-          {{else if (eq encryptionFailureMode 'lockout')}}
-            <i class="fas fa-lock"></i> Lockout
-          {{else}}
-            <i class="fas fa-minus"></i> No Penalty
-          {{/if}}
-          ▾
-        </span>
+      <div class="ncm-composer__ice-header">
+        <i class="fas fa-radiation"></i>
+        <span>{{encryptionType}}</span>
+        <span class="ncm-composer__ice-header-sub">LETHAL COUNTERMEASURES</span>
       </div>
-      <div class="ncm-composer__ice-row">
-        <span class="ncm-composer__ice-source-label">Source:</span>
-        <button class="ncm-composer__ice-src {{#if (eq iceSource 'default')}}ncm-composer__ice-src--active{{/if}}"
-                data-action="setIceSource" data-source="default">
-          Default
-        </button>
-        <button class="ncm-composer__ice-src {{#if (eq iceSource 'actor')}}ncm-composer__ice-src--active{{/if}}"
-                data-action="setIceSource" data-source="actor">
-          <i class="fas fa-ghost"></i> Actor
-        </button>
-      </div>
-      {{#if (eq iceSource 'actor')}}
-      <div class="ncm-composer__ice-actor-list">
-        {{#each iceActors}}
-        <button class="ncm-composer__ice-actor {{#if (eq this.id ../iceActorId)}}ncm-composer__ice-actor--selected{{/if}}"
-                data-action="setIceActor" data-actor-id="{{this.id}}">
-          {{#if this.img}}<img src="{{this.img}}" alt="{{this.name}}" />{{/if}}
-          <span class="ncm-composer__ice-actor-name">{{this.name}}</span>
-          <span class="ncm-composer__ice-actor-atk">ATK {{this.atk}}</span>
-        </button>
-        {{else}}
-        <div class="ncm-composer__ice-actor-empty">
-          <i class="fas fa-exclamation-triangle"></i> No BLACK ICE actors in world
+      <div class="ncm-composer__ice-body">
+        <div class="ncm-composer__ice-field">
+          <span class="ncm-composer__ice-field-label">On Fail</span>
+          <div class="ncm-composer__ice-toggle-group">
+            <button class="ncm-composer__ice-toggle {{#if (eq encryptionFailureMode 'damage')}}ncm-composer__ice-toggle--active-red{{/if}}"
+                    data-action="setFailureMode" data-mode="damage">
+              <i class="fas fa-bolt"></i> Damage
+            </button>
+            <button class="ncm-composer__ice-toggle {{#if (eq encryptionFailureMode 'lockout')}}ncm-composer__ice-toggle--active-amber{{/if}}"
+                    data-action="setFailureMode" data-mode="lockout">
+              <i class="fas fa-lock"></i> Lockout
+            </button>
+            <button class="ncm-composer__ice-toggle {{#if (eq encryptionFailureMode 'nothing')}}ncm-composer__ice-toggle--active-dim{{/if}}"
+                    data-action="setFailureMode" data-mode="nothing">
+              <i class="fas fa-minus"></i> None
+            </button>
+          </div>
         </div>
-        {{/each}}
+        <div class="ncm-composer__ice-field">
+          <span class="ncm-composer__ice-field-label">ICE Source</span>
+          <div class="ncm-composer__ice-toggle-group">
+            <button class="ncm-composer__ice-toggle {{#if (eq iceSource 'default')}}ncm-composer__ice-toggle--active-red{{/if}}"
+                    data-action="setIceSource" data-source="default">
+              <i class="fas fa-dice-d6"></i> Default
+            </button>
+            <button class="ncm-composer__ice-toggle {{#if (eq iceSource 'actor')}}ncm-composer__ice-toggle--active-red{{/if}}"
+                    data-action="setIceSource" data-source="actor">
+              <i class="fas fa-ghost"></i> Actor
+            </button>
+          </div>
+        </div>
+        {{#if (eq iceSource 'actor')}}
+        <div class="ncm-composer__ice-actors">
+          {{#each iceActors}}
+          <button class="ncm-composer__ice-actor {{#if (eq this.id ../iceActorId)}}ncm-composer__ice-actor--selected{{/if}}"
+                  data-action="setIceActor" data-actor-id="{{this.id}}">
+            {{#if this.img}}<img src="{{this.img}}" alt="{{this.name}}" />{{else}}<div class="ncm-composer__ice-actor-icon"><i class="fas fa-ghost"></i></div>{{/if}}
+            <div class="ncm-composer__ice-actor-info">
+              <span class="ncm-composer__ice-actor-name">{{this.name}}</span>
+              {{#if this.class}}<span class="ncm-composer__ice-actor-class">{{this.class}}</span>{{/if}}
+            </div>
+            <span class="ncm-composer__ice-actor-atk">ATK {{this.atk}}</span>
+          </button>
+          {{else}}
+          <div class="ncm-composer__ice-empty">
+            <i class="fas fa-triangle-exclamation"></i> No BLACK ICE actors found in world
+          </div>
+          {{/each}}
+        </div>
+        {{/if}}
       </div>
-      {{/if}}
     </div>
     {{/if}}
 

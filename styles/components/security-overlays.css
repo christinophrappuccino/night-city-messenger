@@ -2658,3 +2658,109 @@
 .ncm-bd-attempts__dots {
   display: flex; gap: 5px; align-items: center;
 }
+
+/* ═══════════════════════════════════════════════════════════
+   Layer Hack Sequence — Mini-terminal animation
+   Used for network spoof, token forge, brute force login
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-layer-seq {
+  width: 320px; max-width: 90%;
+  background: rgba(10,10,15,0.95);
+  border: 1px solid rgba(42,42,69,0.6);
+  border-radius: 6px; overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 1px var(--layer-accent, #19f3f7);
+  animation: ncm-layer-seq-in 0.3s ease;
+}
+@keyframes ncm-layer-seq-in {
+  0% { opacity: 0; transform: scale(0.95) translateY(8px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.ncm-layer-seq__header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px;
+  background: rgba(42,42,69,0.15);
+  border-bottom: 1px solid rgba(42,42,69,0.3);
+}
+.ncm-layer-seq__header i { font-size: 11px; }
+.ncm-layer-seq__title {
+  font-family: 'Orbitron', sans-serif; font-size: 10px;
+  color: #e0e0e8; letter-spacing: 0.1em; text-transform: uppercase;
+}
+.ncm-layer-seq__skill {
+  margin-left: auto;
+  font-family: 'Share Tech Mono', monospace; font-size: 8px;
+  color: #8888a0; letter-spacing: 0.04em;
+}
+
+/* Terminal log area */
+.ncm-layer-seq__terminal {
+  padding: 8px 12px; min-height: 80px; max-height: 120px;
+  overflow-y: auto; font-family: 'Share Tech Mono', monospace; font-size: 9px;
+  line-height: 1.6; color: #8888a0;
+}
+.ncm-layer-seq__log { opacity: 0; animation: ncm-layer-log-in 0.2s ease forwards; }
+@keyframes ncm-layer-log-in { 0% { opacity: 0; transform: translateX(-4px); } 100% { opacity: 1; transform: translateX(0); } }
+.ncm-layer-seq__log--sys { color: var(--layer-accent, #19f3f7); font-weight: 600; letter-spacing: 0.06em; }
+.ncm-layer-seq__log--highlight { color: #e0e0e8; }
+.ncm-layer-seq__log--roll { color: #f7c948; }
+.ncm-layer-seq__log--success { color: #00ff41; font-weight: 700; letter-spacing: 0.08em; }
+.ncm-layer-seq__log--fail { color: #ff0033; font-weight: 700; letter-spacing: 0.08em; }
+
+/* Progress bar */
+.ncm-layer-seq__bar-track {
+  height: 3px; background: rgba(42,42,69,0.3);
+  margin: 0 12px; border-radius: 2px; overflow: hidden;
+}
+.ncm-layer-seq__bar-fill {
+  height: 100%; width: 0%; border-radius: 2px;
+  background: var(--layer-accent, #19f3f7);
+  transition: width 0.3s ease, background 0.3s ease;
+}
+
+/* Roll display */
+.ncm-layer-seq__roll {
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px 12px; justify-content: center;
+}
+.ncm-layer-seq__roll-dice {
+  font-family: 'Orbitron', sans-serif; font-size: 28px; font-weight: 700;
+  color: #e0e0e8; min-width: 40px; text-align: center;
+  text-shadow: 0 0 12px rgba(255,255,255,0.15);
+}
+.ncm-layer-seq__roll-breakdown {
+  display: flex; align-items: baseline; gap: 4px;
+  font-family: 'Share Tech Mono', monospace; font-size: 10px;
+  color: #8888a0;
+}
+.ncm-layer-seq__roll-base { color: #b0b0c0; font-size: 12px; }
+.ncm-layer-seq__roll-plus { color: #555570; }
+.ncm-layer-seq__roll-die { color: #e0e0e8; font-size: 12px; }
+.ncm-layer-seq__roll-eq { color: #555570; }
+.ncm-layer-seq__roll-total {
+  font-family: 'Orbitron', sans-serif; font-size: 14px; font-weight: 700;
+  color: #e0e0e8; transition: color 0.3s ease;
+}
+.ncm-layer-seq__roll-vs { color: #555570; font-size: 8px; text-transform: uppercase; margin: 0 2px; }
+.ncm-layer-seq__roll-dv {
+  font-family: 'Orbitron', sans-serif; font-size: 14px; font-weight: 700;
+  color: #f7c948;
+}
+
+/* Result card */
+.ncm-layer-seq__result {
+  display: flex; justify-content: center; padding: 6px 12px 10px;
+}
+.ncm-layer-seq__result-card {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 14px; border-radius: 4px; width: 100%;
+  animation: ncm-layer-result-in 0.3s ease;
+}
+@keyframes ncm-layer-result-in { 0% { opacity: 0; transform: scale(0.9); } 100% { opacity: 1; transform: scale(1); } }
+.ncm-layer-seq__result-card--success {
+  background: rgba(0,255,65,0.06); border: 1px solid rgba(0,255,65,0.15);
+}
+.ncm-layer-seq__result-card--fail {
+  background: rgba(255,0,51,0.06); border: 1px solid rgba(255,0,51,0.15);
+}
