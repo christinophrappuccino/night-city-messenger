@@ -919,6 +919,109 @@
 }
 .ncm-composer__enc-type:hover { border-color: rgba(0,255,65,0.3); }
 
+/* ICE Config Panel — shown for BLACK_ICE / RED_ICE */
+.ncm-composer__ice-config {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 6px 10px; margin: 0;
+  background: rgba(255,0,51,0.03);
+  border-top: 1px solid rgba(255,0,51,0.1);
+  border-bottom: 1px solid rgba(255,0,51,0.1);
+}
+.ncm-composer__ice-row {
+  display: flex; align-items: center; gap: 6px;
+}
+.ncm-composer__ice-label {
+  font-family: 'Share Tech Mono', monospace; font-size: 8px;
+  color: rgba(255,0,51,0.6); text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+.ncm-composer__ice-label i { font-size: 8px; margin-right: 2px; }
+
+/* Failure mode chip */
+.ncm-composer .ncm-composer__ice-chip {
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 2px 7px; border-radius: 3px;
+  font-family: 'Share Tech Mono', monospace; font-size: 8px;
+  text-transform: uppercase; cursor: pointer;
+  border: 1px solid; transition: all 0.12s;
+}
+.ncm-composer .ncm-composer__ice-chip i { font-size: 7px; }
+.ncm-composer .ncm-composer__ice-chip--damage {
+  color: #ff0033; border-color: rgba(255,0,51,0.25);
+  background: rgba(255,0,51,0.06);
+}
+.ncm-composer .ncm-composer__ice-chip--lockout {
+  color: #ffab00; border-color: rgba(255,171,0,0.25);
+  background: rgba(255,171,0,0.06);
+}
+.ncm-composer .ncm-composer__ice-chip--nothing {
+  color: #555570; border-color: rgba(85,85,112,0.2);
+  background: rgba(85,85,112,0.04);
+}
+.ncm-composer .ncm-composer__ice-chip:hover { opacity: 0.8; }
+
+/* Source toggle */
+.ncm-composer__ice-source-label {
+  font-family: 'Share Tech Mono', monospace; font-size: 8px;
+  color: #555570; text-transform: uppercase; letter-spacing: 0.06em;
+}
+.ncm-composer button.ncm-composer__ice-src,
+.ncm-composer .ncm-composer__ice-src {
+  display: inline-flex !important; align-items: center !important; gap: 3px !important;
+  padding: 2px 7px !important; border-radius: 3px !important;
+  font-family: 'Share Tech Mono', monospace !important; font-size: 8px !important;
+  cursor: pointer !important; border: 1px solid rgba(85,85,112,0.15) !important;
+  background: transparent !important; color: #555570 !important;
+  height: auto !important; min-height: 0 !important; width: auto !important;
+  flex-shrink: 0 !important; flex-grow: 0 !important;
+  appearance: none !important; box-shadow: none !important; outline: none !important;
+  transition: all 0.12s !important;
+}
+.ncm-composer .ncm-composer__ice-src i { font-size: 7px !important; margin: 0 !important; padding: 0 !important; }
+.ncm-composer .ncm-composer__ice-src--active {
+  color: #ff0033 !important; border-color: rgba(255,0,51,0.25) !important;
+  background: rgba(255,0,51,0.06) !important;
+}
+
+/* ICE Actor picker list */
+.ncm-composer__ice-actor-list {
+  display: flex; flex-wrap: wrap; gap: 4px;
+  max-height: 80px; overflow-y: auto;
+  padding: 2px 0;
+}
+.ncm-composer button.ncm-composer__ice-actor,
+.ncm-composer .ncm-composer__ice-actor {
+  display: flex !important; align-items: center !important; gap: 5px !important;
+  padding: 3px 8px !important; border-radius: 4px !important;
+  border: 1px solid rgba(85,85,112,0.15) !important;
+  background: rgba(85,85,112,0.04) !important;
+  cursor: pointer !important; transition: all 0.12s !important;
+  height: auto !important; min-height: 0 !important; width: auto !important;
+  flex-shrink: 0 !important; flex-grow: 0 !important;
+  appearance: none !important; box-shadow: none !important; outline: none !important;
+}
+.ncm-composer .ncm-composer__ice-actor img {
+  width: 20px; height: 20px; border-radius: 2px;
+  border: 1px solid rgba(255,0,51,0.2); object-fit: cover;
+}
+.ncm-composer__ice-actor-name {
+  font-size: 10px; color: #8888a0; font-weight: 600;
+}
+.ncm-composer__ice-actor-atk {
+  font-family: 'Share Tech Mono', monospace; font-size: 8px;
+  color: #ff0033; margin-left: auto;
+}
+.ncm-composer .ncm-composer__ice-actor--selected {
+  border-color: rgba(255,0,51,0.4) !important;
+  background: rgba(255,0,51,0.08) !important;
+}
+.ncm-composer .ncm-composer__ice-actor--selected .ncm-composer__ice-actor-name { color: #ff0033; }
+.ncm-composer__ice-actor-empty {
+  font-family: 'Share Tech Mono', monospace; font-size: 8px;
+  color: #555570; font-style: italic; padding: 4px;
+}
+.ncm-composer__ice-actor-empty i { margin-right: 3px; color: #ffab00; }
+
 /* Feature toggles */
 .ncm-composer .ncm-composer__toggle {
   font-family: 'Rajdhani', sans-serif !important;

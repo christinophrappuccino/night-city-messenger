@@ -48,6 +48,9 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       setPriority: MessageComposerApp._onSetPriority,
       setEncryption: MessageComposerApp._onSetEncryption,
       cycleEncryptionType: MessageComposerApp._onCycleEncryptionType,
+      setFailureMode: MessageComposerApp._onSetFailureMode,
+      setIceSource: MessageComposerApp._onSetIceSource,
+      setIceActor: MessageComposerApp._onSetIceActor,
       toggleSelfDestruct: MessageComposerApp._onToggleSelfDestruct,
       setSelfDestructMode: MessageComposerApp._onSetSelfDestructMode,
       toggleSchedule: MessageComposerApp._onToggleSchedule,
@@ -1075,6 +1078,11 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
         encryptionEnabled: this.encryptionEnabled,
         encryptionDV: this.encryptionDV,
         encryptionType: this.encryptionType,
+        encryptionFailureMode: this.encryptionFailureMode,
+        encryptionMaxAttempts: this.encryptionMaxAttempts,
+        iceSource: this.iceSource,
+        iceActorId: this.iceActorId,
+        encryptionBypassSkills: this.encryptionBypassSkills,
         selfDestructEnabled: this.selfDestructEnabled,
         selfDestructMode: this.selfDestructMode,
         savedAt: now.toISOString(),
@@ -1117,6 +1125,11 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     this.encryptionEnabled = draft.encryptionEnabled || false;
     this.encryptionDV = draft.encryptionDV || 12;
     this.encryptionType = draft.encryptionType || 'ICE';
+    this.encryptionFailureMode = draft.encryptionFailureMode || 'nothing';
+    this.encryptionMaxAttempts = draft.encryptionMaxAttempts || 0;
+    this.iceSource = draft.iceSource || 'default';
+    this.iceActorId = draft.iceActorId || null;
+    this.encryptionBypassSkills = draft.encryptionBypassSkills || null;
     this.selfDestructEnabled = draft.selfDestructEnabled || false;
     this.selfDestructMode = draft.selfDestructMode || 'after_read';
   }
@@ -1387,6 +1400,32 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     const types = ['ICE', 'BLACK_ICE', 'RED_ICE'];
     const idx = types.indexOf(this.encryptionType);
     this.encryptionType = types[(idx + 1) % types.length];
+
+    // Auto-set failure mode for lethal ICE
+    const isLethal = this.encryptionType === 'BLACK_ICE' || this.encryptionType === 'RED_ICE';
+    if (isLethal && this.encryptionFailureMode === 'nothing') {
+      this.encryptionFailureMode = 'damage';
+    } else if (!isLethal) {
+      this.encryptionFailureMode = 'nothing';
+      this.iceSource = 'default';
+      this.iceActorId = null;
+    }
+    this.render(true);
+  }
+
+  static _onSetFailureMode(event, target) {
+    this.encryptionFailureMode = target.dataset.mode || 'nothing';
+    this.render(true);
+  }
+
+  static _onSetIceSource(event, target) {
+    this.iceSource = target.dataset.source || 'default';
+    if (this.iceSource === 'default') this.iceActorId = null;
+    this.render(true);
+  }
+
+  static _onSetIceActor(event, target) {
+    this.iceActorId = target.dataset.actorId || null;
     this.render(true);
   }
 
