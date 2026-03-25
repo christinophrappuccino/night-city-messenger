@@ -48,6 +48,7 @@ export const EVENTS = Object.freeze({
   SHARD_HACK_ATTEMPT: 'shard:hackAttempt',
   SHARD_DECRYPTED: 'shard:decrypted',
   SHARD_BLACK_ICE: 'shard:blackICE',
+  BLACK_ICE_DAMAGE: 'ice:damage',
   SHARD_KEY_ITEM_PRESENTED: 'shard:keyItemPresented',
   SHARD_KEY_ITEM_FAILED: 'shard:keyItemFailed',
   SHARD_LOGIN_SUCCESS: 'shard:loginSuccess',

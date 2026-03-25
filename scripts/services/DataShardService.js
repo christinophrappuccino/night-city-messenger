@@ -22,6 +22,7 @@ export class DataShardService {
   get eventBus() { return game.nightcity?.eventBus; }
   get skillService() { return game.nightcity?.skillService; }
   get securityService() { return game.nightcity?.securityService; }
+  get iceService() { return game.nightcity?.iceService; }
   get networkService() { return game.nightcity?.networkService; }
   get soundService() { return game.nightcity?.soundService; }
   get socketManager() { return game.nightcity?.socketManager; }
@@ -1169,17 +1170,13 @@ export class DataShardService {
       case FAILURE_MODES.DAMAGE:
         // BLACK ICE damage — resolve source and apply
         if (isLethal) {
+          this._currentShardName = shardItem.name;
+          this._currentShardId = shardItem.id;
           const damageResult = await this._applyBlackICEDamage(actor, config);
           result.damage = damageResult.damage;
           result.damageFormula = damageResult.formula;
           result.diceResults = damageResult.diceResults ?? [];
           result.iceInfo = damageResult.iceInfo ?? result.iceInfo;
-          this.eventBus?.emit(EVENTS.SHARD_BLACK_ICE, {
-            itemId: shardItem.id,
-            actorId: actor.id,
-            damage: result.damage,
-            iceInfo: result.iceInfo,
-          });
         }
         // Also lockout after max attempts
         if (newAttempts >= config.maxHackAttempts) {
@@ -1293,6 +1290,8 @@ export class DataShardService {
           // BLACK ICE damage even on layer hacks if configured
           const actor = game.actors?.get(actorId);
           if (actor) {
+            this._currentShardName = item.name;
+            this._currentShardId = item.id;
             const damageResult = await this._applyBlackICEDamage(actor, config);
             result.damage = damageResult.damage;
           }
@@ -1327,62 +1326,47 @@ export class DataShardService {
 
   /**
    * Apply BLACK ICE damage to an actor.
-   * BLACK_ICE: 3d6, RED_ICE: 5d6
+   * Delegates to shared ICEService.
    * @param {Actor} actor
-   * @param {string} encryptionType
-   * @returns {Promise<number>} damage dealt
+   * @param {object} config — Shard config with encryptionType + ice
+   * @returns {Promise<{damage: number, iceInfo: object}>}
    * @private
    */
   async _applyBlackICEDamage(actor, config) {
-    const ice = this._resolveICE(config);
-
-    try {
-      const damageRoll = new Roll(ice.formula);
-      await damageRoll.evaluate();
-      const damage = damageRoll.total;
-
-      // Apply damage to actor HP
-      const currentHP = actor.system?.derivedStats?.hp?.value ?? actor.system?.hp?.value ?? 0;
-      const newHP = Math.max(0, currentHP - damage);
-
-      // Try both possible HP paths for CPR system
-      const hpUpdate = actor.system?.derivedStats?.hp
-        ? { 'system.derivedStats.hp.value': newHP }
-        : { 'system.hp.value': newHP };
-
-      await actor.update(hpUpdate);
-
-      // Build chat message with ICE portrait
-      const imgTag = ice.img ? `<img src="${ice.img}" alt="${ice.name}" style="width:36px;height:36px;object-fit:contain;border:1px solid #ff0033;border-radius:2px;margin-right:8px;vertical-align:middle;" />` : '';
-      const classTag = ice.class ? `<br><span style="font-size:10px;color:#8888a0;text-transform:uppercase;letter-spacing:0.05em;">${ice.class}</span>` : '';
-
-      await damageRoll.toMessage({
-        speaker: ChatMessage.getSpeaker({ alias: ice.name }),
-        flavor: `${imgTag}<strong style="color:#ff0033">⚡ ${ice.name} RETALIATION</strong>${classTag}<br>${actor.name} takes <strong>${damage}</strong> damage!${ice.atk ? ` (ATK ${ice.atk} + 1d10)` : ''}`,
-      });
-
-      this.soundService?.play('black-ice');
-      log.info(`${ice.name} dealt ${damage} damage to ${actor.name} (HP: ${currentHP} → ${newHP})`);
-
-      return {
-        damage,
-        formula: ice.formula,
-        diceResults: damageRoll.dice?.[0]?.results?.map(r => r.result) ?? [],
-        iceInfo: ice,
-      };
-    } catch (err) {
-      log.error(`Failed to apply BLACK ICE damage: ${err.message}`);
-      return { damage: 0, iceInfo: ice };
+    const iceService = this.iceService;
+    if (!iceService) {
+      log.warn('ICEService not available, falling back to basic damage');
+      return { damage: 0, iceInfo: this._resolveICE(config) };
     }
+
+    const result = await iceService.applyDamage(actor, config, {
+      context: 'shard',
+      targetName: this._currentShardName || 'Data Shard',
+    });
+
+    // Also emit the shard-specific event for ItemInboxApp animation
+    this.eventBus?.emit(EVENTS.SHARD_BLACK_ICE, {
+      itemId: this._currentShardId,
+      actorId: actor.id,
+      damage: result.damage,
+      iceInfo: result.iceInfo,
+    });
+
+    return { damage: result.damage, iceInfo: result.iceInfo };
   }
 
   /**
    * Resolve ICE configuration to concrete combat info.
-   * Shared by both shard encryption and network security.
-   * @param {object} config - The shard/network config object
-   * @returns {{ name: string, img: string|null, formula: string, atk: number|null, class: string|null, actorId: string|null, encryptionType: string }}
+   * Delegates to shared ICEService, with local fallback.
+   * @param {object} config
+   * @returns {object} ICE info
    */
   _resolveICE(config) {
+    return this.iceService?.resolveICE(config) ?? this._resolveICEFallback(config);
+  }
+
+  /** @private Fallback if ICEService not yet loaded */
+  _resolveICEFallback(config) {
     const encType = config.encryptionType || 'ICE';
     const iceConfig = config.ice ?? {};
     const source = iceConfig.source ?? 'default';

@@ -52,6 +52,7 @@ export function registerCoreServices(initializer) {
       skillService: null,
       networkService: null,
       securityService: null,
+      iceService: null,
       messageService: null,
       notificationService: null,
       dataShardService: null,

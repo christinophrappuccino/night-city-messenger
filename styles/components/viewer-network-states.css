@@ -1943,3 +1943,51 @@
   60% { opacity: 0.3; filter: blur(2px) saturate(0); }
   100% { opacity: 0; filter: blur(6px) saturate(0); }
 }
+
+
+/* ═══════════════════════════════════════════════════════════
+   §20  BLACK ICE HIT EFFECT
+   Screen shake, red flash, floating damage number.
+   Triggered on failed BLACK_ICE / RED_ICE decrypt.
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-app.ncm-black-ice-hit {
+  animation: ncm-ice-shake 0.5s ease !important;
+}
+.ncm-app.ncm-black-ice-hit::after {
+  content: ''; position: fixed; inset: 0; z-index: 999;
+  background: rgba(255,0,51,0.15);
+  animation: ncm-ice-flash 0.5s ease-out forwards;
+  pointer-events: none;
+}
+@keyframes ncm-ice-shake {
+  0%,100% { transform: translate(0,0); }
+  10% { transform: translate(-4px,2px); }
+  20% { transform: translate(4px,-2px); }
+  30% { transform: translate(-3px,-1px); }
+  40% { transform: translate(3px,2px); }
+  50% { transform: translate(-2px,1px); }
+  60% { transform: translate(2px,-1px); }
+  70% { transform: translate(-1px,1px); }
+  80% { transform: translate(1px,0); }
+}
+@keyframes ncm-ice-flash {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Floating damage number */
+.ncm-app .ncm-viewer__damage-float {
+  position: absolute; top: 40%; left: 50%;
+  transform: translate(-50%, 0);
+  font-family: var(--ncm-font-title); font-size: 36px; font-weight: 700;
+  color: var(--ncm-danger);
+  text-shadow: 0 0 20px rgba(255,0,51,0.6), 0 2px 4px rgba(0,0,0,0.8);
+  z-index: 100; pointer-events: none;
+  animation: ncm-dmg-float 1s ease-out forwards;
+}
+@keyframes ncm-dmg-float {
+  0% { opacity: 1; transform: translate(-50%, 0) scale(0.8); }
+  30% { opacity: 1; transform: translate(-50%, -20px) scale(1.1); }
+  100% { opacity: 0; transform: translate(-50%, -60px) scale(0.9); }
+}

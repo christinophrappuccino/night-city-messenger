@@ -55,6 +55,7 @@ export class NetworkAuthDialog extends BaseApplication {
 
   get networkService() { return game.nightcity?.networkService; }
   get securityService() { return game.nightcity?.securityService; }
+  get iceService() { return game.nightcity?.iceService; }
   get dataShardService() { return game.nightcity?.dataShardService; }
 
   /**
@@ -274,9 +275,9 @@ export class NetworkAuthDialog extends BaseApplication {
       hasError: !!this._errorMessage,
 
       // ICE info
-      isLethalICE: network.security.encryptionType === 'BLACK_ICE' || network.security.encryptionType === 'RED_ICE',
-      iceInfo: (network.security.encryptionType === 'BLACK_ICE' || network.security.encryptionType === 'RED_ICE')
-        ? this.dataShardService?._resolveICE(network.security) ?? null
+      isLethalICE: this.iceService?.isLethalICE(network.security) ?? false,
+      iceInfo: this.iceService?.isLethalICE(network.security)
+        ? this.iceService.resolveICE(network.security)
         : null,
       networkEncryptionType: network.security.encryptionType || 'ICE',
       networkFailureMode: network.security.failureMode || 'lockout',
@@ -480,12 +481,14 @@ export class NetworkAuthDialog extends BaseApplication {
 
       // ─── ICE Damage on failure ───
       const sec = this.network.security;
-      const isLethal = sec.encryptionType === 'BLACK_ICE' || sec.encryptionType === 'RED_ICE';
-      if (isLethal && sec.failureMode === 'damage' && this.dataShardService) {
-        const damageResult = await this.dataShardService._applyBlackICEDamage(actor, sec);
+      const isLethal = this.iceService?.isLethalICE(sec);
+      if (isLethal && sec.failureMode === 'damage' && this.iceService) {
+        const damageResult = await this.iceService.applyDamage(actor, sec, {
+          context: 'network',
+          targetName: this.network.name || 'Network',
+        });
         if (damageResult.damage > 0) {
-          const ice = damageResult.iceInfo;
-          const iceName = ice?.name || 'BLACK ICE';
+          const iceName = damageResult.iceInfo?.name || 'BLACK ICE';
           ui.notifications.error(`NCM | ${iceName} deals ${damageResult.damage} HP damage to ${actor.name}!`);
         }
       }

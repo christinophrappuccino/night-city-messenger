@@ -114,6 +114,16 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
   encryptionDV = 12;
   /** @type {string} 'ICE' | 'BLACK_ICE' | 'RED_ICE' */
   encryptionType = 'ICE';
+  /** @type {string} 'nothing' | 'damage' | 'lockout' */
+  encryptionFailureMode = 'nothing';
+  /** @type {number} Max attempts before lockout (0 = unlimited) */
+  encryptionMaxAttempts = 0;
+  /** @type {string} 'default' | 'actor' | 'custom' */
+  iceSource = 'default';
+  /** @type {string|null} Actor ID for ICE actor source */
+  iceActorId = null;
+  /** @type {string[]|null} Allowed bypass skills */
+  encryptionBypassSkills = null;
 
   // Self-destruct
   /** @type {boolean} */
@@ -260,6 +270,13 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
         this.encryptionEnabled = true;
         this.encryptionDV = this.originalMessage.encryption.dc || 12;
         this.encryptionType = this.originalMessage.encryption.type || 'ICE';
+        this.encryptionFailureMode = this.originalMessage.encryption.failureMode || 'nothing';
+        this.encryptionMaxAttempts = this.originalMessage.encryption.maxAttempts || 0;
+        if (this.originalMessage.encryption.ice) {
+          this.iceSource = this.originalMessage.encryption.ice.source || 'default';
+          this.iceActorId = this.originalMessage.encryption.ice.actorId || null;
+        }
+        this.encryptionBypassSkills = this.originalMessage.encryption.bypassSkills || null;
       }
     } else if (this.mode === 'forward' && this.originalMessage) {
       const fwd = this.messageService?.buildForward(this.originalMessage, this.fromActorId, '', '');
@@ -449,6 +466,12 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       encryptionEnabled: this.encryptionEnabled,
       encryptionDV: this.encryptionDV,
       encryptionType: this.encryptionType,
+      encryptionFailureMode: this.encryptionFailureMode,
+      encryptionMaxAttempts: this.encryptionMaxAttempts,
+      isLethalICE: this.encryptionType === 'BLACK_ICE' || this.encryptionType === 'RED_ICE',
+      iceSource: this.iceSource,
+      iceActorId: this.iceActorId,
+      iceActors: game.nightcity?.iceService?.getAvailableICEActors() ?? [],
 
       // Self-destruct
       selfDestructEnabled: this.selfDestructEnabled,
@@ -1234,7 +1257,22 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
         messageData.encryption = {
           type: this.encryptionType,
           dc: this.encryptionDV,
+          failureMode: this.encryptionFailureMode || 'nothing',
+          maxAttempts: this.encryptionMaxAttempts || 0,
+          bypassSkills: this.encryptionBypassSkills || null,
         };
+        // ICE config for BLACK_ICE / RED_ICE
+        const isLethal = this.encryptionType === 'BLACK_ICE' || this.encryptionType === 'RED_ICE';
+        if (isLethal && this.iceSource !== 'default') {
+          messageData.encryption.ice = {
+            source: this.iceSource,
+            actorId: this.iceActorId || null,
+          };
+        }
+        // Set failureMode to damage for lethal ICE by default
+        if (isLethal && this.encryptionFailureMode === 'nothing') {
+          messageData.encryption.failureMode = 'damage';
+        }
         messageData.status = { encrypted: true };
       }
 

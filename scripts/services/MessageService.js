@@ -25,6 +25,7 @@ export class MessageService {
   get timeService() { return game.nightcity.timeService; }
   get soundService() { return game.nightcity.soundService; }
   get notificationService() { return game.nightcity.notificationService; }
+  get iceService() { return game.nightcity?.iceService; }
 
   // ─── Send Pipeline ────────────────────────────────────────
 
@@ -629,8 +630,21 @@ export class MessageService {
     }
 
     this.soundService?.play('hack-fail');
+
+    // BLACK ICE / RED ICE: apply damage on failure
+    let iceDamage = null;
+    if (this.iceService?.isLethalICE(encryption)) {
+      const failureMode = encryption.failureMode || 'nothing';
+      if (failureMode === 'damage') {
+        iceDamage = await this.iceService.applyDamage(actor, encryption, {
+          context: 'message',
+          targetName: flags.subject || 'Encrypted Message',
+        });
+      }
+    }
+
     ui.notifications.warn(`NCM | Decryption failed. (${result?.total ?? '?'} vs DV ${dc})`);
-    return { success: false, roll: result };
+    return { success: false, roll: result, iceDamage };
   }
 
   /**

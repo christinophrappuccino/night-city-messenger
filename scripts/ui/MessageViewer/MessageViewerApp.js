@@ -204,6 +204,7 @@ export class MessageViewerApp extends BaseApplication {
   get soundService() { return game.nightcity?.soundService; }
   get stateManager() { return game.nightcity?.stateManager; }
   get messageAccessService() { return game.nightcity?.messageAccessService; }
+  get iceService() { return game.nightcity?.iceService; }
 
   // ═══════════════════════════════════════════════════════════
   //  Lifecycle
@@ -2691,17 +2692,24 @@ export class MessageViewerApp extends BaseApplication {
     const skills = skillSvc?.getAvailableSkills(actor, allowedSkills) || [];
     const availableLuck = skillSvc?.getAvailableLuck(actor) ?? 0;
 
+    // Resolve ICE info for danger zone display
+    const isLethalICE = this.iceService?.isLethalICE(encryption) ?? false;
+    const iceInfo = isLethalICE ? this.iceService?.resolveICE(encryption) : null;
+
     const dialogResult = await this._showMessageSkillDialog({
-      title: 'Message Decryption',
-      icon: 'fas fa-key',
-      color: '#F0C55B',
+      title: isLethalICE ? `${iceInfo?.name || 'BLACK ICE'} Decryption` : 'Message Decryption',
+      icon: isLethalICE ? 'fas fa-skull-crossbones' : 'fas fa-key',
+      color: isLethalICE ? '#ff0033' : '#F0C55B',
       subtitle: `Decrypting ${iceName} encryption — DV ${dc}`,
       skills,
       dc,
       availableLuck,
       actorName: actor.name,
-      executeLabel: 'Decrypt',
-      executeIcon: 'fas fa-lock-open',
+      executeLabel: isLethalICE ? 'Risk Breach' : 'Decrypt',
+      executeIcon: isLethalICE ? 'fas fa-skull-crossbones' : 'fas fa-lock-open',
+      isBlackICE: isLethalICE,
+      iceInfo,
+      encryptionType: encryption.type,
     });
     if (!dialogResult) return; // Cancelled
 
@@ -2892,22 +2900,37 @@ export class MessageViewerApp extends BaseApplication {
       this.soundService?.play?.('hack-fail');
       addKeyLog('██ KEY REJECTED ██');
 
+      // BLACK ICE damage on failure
+      const iceDmg = result?.iceDamage;
+      if (iceDmg?.damage > 0) {
+        addKeyLog(`⚡ ${iceDmg.iceInfo?.name || 'BLACK ICE'} RETALIATION — ${iceDmg.damage} HP`);
+        // Screen shake + red flash
+        this._playBlackICEHit(iceDmg.damage);
+      }
+
       await delay(() => {
         clearInterval(scrambleInterval);
         resultEl.style.display = 'flex';
+        const dmgHtml = iceDmg?.damage > 0
+          ? `<div style="margin-top:8px;padding:6px 10px;border-radius:4px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);text-align:center;">
+              ${iceDmg.iceInfo?.img ? `<img src="${iceDmg.iceInfo.img}" style="width:24px;height:24px;border-radius:2px;border:1px solid rgba(239,68,68,0.3);vertical-align:middle;margin-right:6px;" />` : ''}
+              <span style="font-family:var(--ncm-font-title);font-size:11px;color:var(--ncm-danger);letter-spacing:0.1em;">⚡ ${iceDmg.iceInfo?.name || 'BLACK ICE'}</span>
+              <span style="font-family:var(--ncm-font-title);font-size:18px;color:var(--ncm-danger);font-weight:700;margin-left:6px;">-${iceDmg.damage} HP</span>
+            </div>` : '';
         resultEl.innerHTML = `
           <div class="ncm-decrypt__result-card ncm-decrypt__result-card--fail">
             <i class="fas fa-shield-halved ncm-decrypt__result-icon"></i>
-            <div class="ncm-decrypt__result-title">Decryption Failed</div>
+            <div class="ncm-decrypt__result-title">${iceDmg?.damage > 0 ? 'ICE Retaliation' : 'Decryption Failed'}</div>
             <div class="ncm-decrypt__result-sub">${iceName} cipher held. Key rejected.</div>
             <div class="ncm-decrypt__result-roll">
               <span style="color:var(--ncm-danger);font-family:var(--ncm-font-title);font-size:22px;font-weight:700;">${total}</span>
               <span style="font-family:var(--ncm-font-mono);font-size:9px;color:var(--ncm-text-dim);">vs</span>
               <span style="color:var(--ncm-accent);font-family:var(--ncm-font-title);font-size:22px;font-weight:700;">${dc}</span>
             </div>
+            ${dmgHtml}
             <div class="ncm-decrypt__result-continue">Click to continue...</div>
           </div>`;
-      }, 800);
+      }, iceDmg?.damage > 0 ? 1200 : 800);
     }
 
     await new Promise(resolve => {
@@ -4500,6 +4523,34 @@ export class MessageViewerApp extends BaseApplication {
   // ═══════════════════════════════════════════════════════════
 
   /**
+   * Play BLACK ICE hit effect — screen shake, red flash, floating damage number.
+   * Used when a decrypt attempt triggers BLACK ICE retaliation.
+   * @param {number} damage — Damage dealt
+   */
+  _playBlackICEHit(damage) {
+    const el = this.element;
+    if (!el) return;
+
+    // Screen shake
+    el.classList.add('ncm-black-ice-hit');
+
+    // Floating damage number
+    const dmgEl = document.createElement('div');
+    dmgEl.className = 'ncm-viewer__damage-float';
+    dmgEl.textContent = `-${damage}`;
+    const detailPanel = el.querySelector('.ncm-viewer__detail-panel') || el;
+    detailPanel.style.position = 'relative';
+    detailPanel.appendChild(dmgEl);
+
+    this.soundService?.play?.('black-ice');
+
+    setTimeout(() => {
+      el.classList.remove('ncm-black-ice-hit');
+      dmgEl.remove();
+    }, 1000);
+  }
+
+  /**
    * Play a success reveal transition in the detail panel.
    * Two variants:
    *   'decrypt' — Green scanline sweep, lock shatters, hex rain dissolves
@@ -4648,6 +4699,26 @@ export class MessageViewerApp extends BaseApplication {
       </div>
       <div class="ncm-hd-breakdown" data-breakdown>Select a skill...</div>`;
 
+    // BLACK ICE danger zone
+    const isBlackICE = opts.isBlackICE || false;
+    const ice = opts.iceInfo;
+    let dangerHTML = '';
+    if (isBlackICE && ice) {
+      const iceImgHTML = ice.img
+        ? `<img src="${ice.img}" alt="${ice.name}" class="ncm-hd-danger-portrait" />`
+        : `<div class="ncm-hd-danger-icon"><i class="fas fa-radiation"></i></div>`;
+      const iceClassHTML = ice.class ? `<span class="ncm-hd-danger-class">${ice.class}</span>` : '';
+      const formulaLabel = ice.formula || (opts.encryptionType === 'RED_ICE' ? '5d6' : '3d6');
+      dangerHTML = `
+      <div class="ncm-hd-danger">
+        ${iceImgHTML}
+        <div class="ncm-hd-danger-text">
+          <div class="ncm-hd-danger-label">${ice.name} — Lethal Countermeasures ${iceClassHTML}</div>
+          <div class="ncm-hd-danger-sub">Failure deals <strong>${formulaLabel}</strong> damage directly.</div>
+        </div>
+      </div>`;
+    }
+
     const content = `
       <div class="ncm-hd-body">
         <div class="ncm-hd-header">
@@ -4656,13 +4727,15 @@ export class MessageViewerApp extends BaseApplication {
           </div>
           ${opts.subtitle ? `<div class="ncm-hd-subtitle">${opts.subtitle}</div>` : ''}
         </div>
+        ${dangerHTML}
         ${skillListHTML}
         ${luckHTML}
         ${oddsHTML}
       </div>`;
 
-    const themeClass = opts.color === '#f7c948' || opts.color === 'var(--ncm-accent)'
-      ? 'ncm-hd-theme-gold'
+    const themeClass = isBlackICE ? 'ncm-hd-theme-black'
+      : opts.color === '#f7c948' || opts.color === 'var(--ncm-accent)' || opts.color === '#F0C55B'
+        ? 'ncm-hd-theme-gold'
       : opts.color === '#FBBF24' ? 'ncm-hd-theme-gold'
       : 'ncm-hd-theme-cyan';
 

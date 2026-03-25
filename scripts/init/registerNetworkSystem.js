@@ -19,6 +19,7 @@ import { log, isGM } from '../utils/helpers.js';
 // Services
 import { NetworkService } from '../services/NetworkService.js';
 import { SecurityService } from '../services/SecurityService.js';
+import { ICEService } from '../services/ICEService.js';
 import { NetworkAccessLogService } from '../services/NetworkAccessLogService.js';
 
 // UI Applications
@@ -56,6 +57,12 @@ export function registerNetworkSystem(initializer) {
     const securityService = new SecurityService();
     game.nightcity.securityService = securityService;
     log.info('SecurityService initialized');
+  });
+
+  initializer.register('ready', 42, 'ICEService', () => {
+    const iceService = new ICEService();
+    game.nightcity.iceService = iceService;
+    log.info('ICEService initialized');
   });
 
   // ═══════════════════════════════════════════════════════════
