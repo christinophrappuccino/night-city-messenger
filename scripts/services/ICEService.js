@@ -215,10 +215,10 @@ export class ICEService {
   getAvailableICEActors() {
     const actors = [];
     for (const actor of game.actors) {
-      // CPR BLACK ICE actors have type 'blackIce' or specific class
       const isICE = actor.type === 'blackIce'
         || actor.type === 'black-ice'
-        || actor.system?.class?.toLowerCase?.()?.includes('ice');
+        || actor.getFlag?.('cyberpunkred-messenger', 'isBlackICE')
+        || actor.name?.toLowerCase().includes('black ice');
       if (isICE) {
         actors.push({
           id: actor.id,

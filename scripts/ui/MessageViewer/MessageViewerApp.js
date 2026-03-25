@@ -2716,8 +2716,8 @@ export class MessageViewerApp extends BaseApplication {
     const chosenSkill = dialogResult.skill;
     const chosenLuck = dialogResult.luck;
 
-    // Find the encrypted overlay container
-    const overlay = html.querySelector('.ncm-viewer__encrypted');
+    // Find the encrypted overlay container (re-query — DOM may have re-rendered during dialog)
+    const overlay = this.element?.querySelector('.ncm-viewer__encrypted');
     if (!overlay) {
       const result = await this.messageService?.attemptDecrypt?.(messageId, this.actorId, { skillName: chosenSkill, luckSpend: chosenLuck });
       if (result?.success) this.render();
@@ -3098,9 +3098,9 @@ export class MessageViewerApp extends BaseApplication {
     const chosenSkill = dialogResult.skill;
     const chosenLuck = dialogResult.luck;
 
-    // Find the reconstruct block and replace with animation
-    const reconBlock = html?.querySelector('.ncm-viewer__signal-reconstruct');
-    const bodyEl = html?.querySelector('.ncm-viewer__detail-body');
+    // Find the reconstruct block (re-query — DOM may have re-rendered during dialog)
+    const reconBlock = this.element?.querySelector('.ncm-viewer__signal-reconstruct');
+    const bodyEl = this.element?.querySelector('.ncm-viewer__detail-body');
     if (!bodyEl) return;
 
     // Inject signal analysis overlay into the body

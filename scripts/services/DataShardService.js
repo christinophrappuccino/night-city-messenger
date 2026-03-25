@@ -1352,7 +1352,12 @@ export class DataShardService {
       iceInfo: result.iceInfo,
     });
 
-    return { damage: result.damage, iceInfo: result.iceInfo };
+    return {
+      damage: result.damage,
+      formula: result.formula,
+      diceResults: result.diceResults ?? [],
+      iceInfo: result.iceInfo,
+    };
   }
 
   /**
