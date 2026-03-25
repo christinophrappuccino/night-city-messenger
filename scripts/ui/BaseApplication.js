@@ -198,7 +198,7 @@ export class BaseApplication extends HandlebarsApplicationMixin(ApplicationV2) {
    * @protected
    */
   _debouncedRender = foundry.utils.debounce(() => {
-    if (this.rendered) this.render();
+    if (this.rendered && !this._animationActive) this.render();
   }, 150);
 
   /**

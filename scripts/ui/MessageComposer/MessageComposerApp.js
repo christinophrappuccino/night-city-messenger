@@ -578,10 +578,17 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       tags.push({ label: `${network.reliability}% Reliable`, icon: 'fa-signal', variant: 'reliability' });
 
     // Encryption (from composer state)
-    if (this.encryptionEnabled)
-      tags.push({ label: `ICE DV ${this.encryptionDV}`, icon: 'fa-shield-halved', variant: 'encrypted' });
-    else
+    if (this.encryptionEnabled) {
+      const isLethal = this.encryptionType === 'BLACK_ICE' || this.encryptionType === 'RED_ICE';
+      const typeLabel = this.encryptionType.replace('_', ' ');
+      tags.push({
+        label: `${typeLabel} DV ${this.encryptionDV}`,
+        icon: isLethal ? 'fa-skull-crossbones' : 'fa-shield-halved',
+        variant: isLethal ? 'danger' : 'encrypted',
+      });
+    } else {
       tags.push({ label: 'Cleartext', icon: 'fa-unlock', variant: 'open' });
+    }
 
     // Self-destruct
     if (this.selfDestructEnabled)

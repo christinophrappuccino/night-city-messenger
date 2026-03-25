@@ -918,27 +918,68 @@ export class ItemInboxApp extends BaseApplication {
         duration: 2000,
         sound: 'hack-success',
       });
+
+      this._pendingUnlockSplash = true;
     } else {
-      // ─── Handle layer hack failure consequences ───
-      if (layerSec.enabled) {
-        const consequence = await this.dataShardService.handleLayerHackFailure(this.item, actor.id, layer);
-        if (consequence.destroyed) {
-          ui.notifications.error('NCM | Shard self-destructed! All data lost.');
-        } else if (consequence.locked) {
-          ui.notifications.warn(`NCM | ${flavor.title} failed. Maximum attempts exceeded — locked out.`);
-        } else if (consequence.damage > 0) {
-          ui.notifications.warn(`NCM | ${flavor.title} failed. BLACK ICE dealt ${consequence.damage} damage!`);
-          await this._playBlackICEEffect(consequence.damage);
-        } else {
-          ui.notifications.warn(`NCM | ${flavor.title} failed. Roll: ${rollResult.total} vs DV ${selectedDC}.`);
-        }
+      // ─── Handle layer hack failure — always track attempts ───
+      const consequence = await this.dataShardService.handleLayerHackFailure(this.item, actor.id, layer);
+
+      if (consequence.destroyed) {
+        await this._showTransitionSplash({
+          icon: 'fas fa-explosion',
+          iconStyle: 'red',
+          preTitle: `${selectedSkill} ${rollResult.total} vs DV ${selectedDC}`,
+          title: 'SHARD DESTROYED',
+          titleColor: '#ff0033',
+          progressColor: 'red',
+          footerText: 'Self-destruct triggered. All data lost.',
+          duration: 2500,
+          sound: 'lockout',
+        });
+      } else if (consequence.damage > 0) {
+        await this._playBlackICEEffect(consequence.damage);
+        await this._showTransitionSplash({
+          icon: 'fas fa-skull-crossbones',
+          iconStyle: 'red',
+          preTitle: `${selectedSkill} ${rollResult.total} vs DV ${selectedDC}`,
+          title: `BLACK ICE — ${consequence.damage} HP`,
+          titleColor: '#ff0033',
+          progressColor: 'red',
+          footerText: consequence.locked ? 'Maximum attempts exceeded — locked out.' : 'Countermeasures engaged.',
+          duration: 2200,
+          sound: null,
+        });
+      } else if (consequence.locked) {
+        await this._showTransitionSplash({
+          icon: 'fas fa-lock',
+          iconStyle: 'red',
+          preTitle: `${selectedSkill} ${rollResult.total} vs DV ${selectedDC}`,
+          title: 'ACCESS DENIED',
+          titleColor: '#ff0033',
+          progressColor: 'red',
+          footerText: 'Maximum attempts exceeded — locked out.',
+          duration: 2200,
+          sound: 'lockout',
+        });
       } else {
-        ui.notifications.warn(`NCM | ${flavor.title} failed. Roll: ${rollResult.total} vs DV ${selectedDC}.`);
+        // Normal failure — show red splash with attempt count
+        const hackInfo = this.dataShardService.getLayerHackInfo(this.item, actor.id, layer);
+        const attemptsText = hackInfo.max > 0 ? `Attempt ${hackInfo.attempts}/${hackInfo.max}` : '';
+        await this._showTransitionSplash({
+          icon: 'fas fa-xmark',
+          iconStyle: 'red',
+          preTitle: `${selectedSkill} ${rollResult.total} vs DV ${selectedDC}`,
+          title: `${flavor.title} Failed`,
+          titleColor: '#ff0033',
+          progressColor: 'red',
+          footerText: attemptsText || 'Bypass attempt rejected.',
+          duration: 1800,
+          sound: 'hack-fail',
+        });
       }
     }
 
     this._transitionActive = false;
-    this._pendingUnlockSplash = true;
     this.render(true);
   }
 

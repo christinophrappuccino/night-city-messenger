@@ -2724,6 +2724,9 @@ export class MessageViewerApp extends BaseApplication {
       return;
     }
 
+    // Suppress event-driven re-renders during cipher matrix animation
+    this._animationActive = true;
+
     // ── Build the hex character grid (8x6 = 48 cells) ──
     const GLYPHS = '0123456789ABCDEF░▒▓█╬╠╣╦╩';
     const COLS = 8, ROWS = 6;
@@ -2940,6 +2943,7 @@ export class MessageViewerApp extends BaseApplication {
     });
     _timers.forEach(t => clearTimeout(t));
     clearInterval(scrambleInterval);
+    this._animationActive = false;
     this.render();
   }
 
@@ -3102,6 +3106,9 @@ export class MessageViewerApp extends BaseApplication {
     const reconBlock = this.element?.querySelector('.ncm-viewer__signal-reconstruct');
     const bodyEl = this.element?.querySelector('.ncm-viewer__detail-body');
     if (!bodyEl) return;
+
+    // Suppress event-driven re-renders during signal animation
+    this._animationActive = true;
 
     // Inject signal analysis overlay into the body
     const overlay = document.createElement('div');
@@ -3306,6 +3313,7 @@ export class MessageViewerApp extends BaseApplication {
     if (waveRAF) cancelAnimationFrame(waveRAF);
     overlay.remove();
     bodyEl.style.display = origDisplay;
+    this._animationActive = false;
     this.render();
   }
 

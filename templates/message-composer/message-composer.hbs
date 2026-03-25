@@ -275,7 +275,7 @@
       DV:<input class="ncm-composer__enc-dv-input" data-id="encryption-dv" type="number"
                 value="{{encryptionDV}}" min="1" max="30" />
     </span>
-    <span class="ncm-composer__enc-type" data-action="cycleEncryptionType">{{encryptionType}} ▾</span>
+    <span class="ncm-composer__enc-type {{#if isLethalICE}}ncm-composer__enc-type--lethal{{/if}}" data-action="cycleEncryptionType">{{encryptionType}} ▾</span>
     {{/if}}
 
     {{!-- ICE Config Panel — shown when BLACK_ICE or RED_ICE selected --}}
