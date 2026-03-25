@@ -47,21 +47,13 @@
     {{#if fromPortrait}}
       <img src="{{fromPortrait}}" alt="{{fromDisplay}}" />
     {{else}}
-      {{!-- Network-locked or encrypted with no sender: show ? --}}
-      {{#if isNetworkLocked}}
-        <i class="fas fa-lock" style="font-size:11px;opacity:0.3;"></i>
-      {{else if isEncrypted}}
-        {{#if fromInitial}}
-          {{fromInitial}}
-        {{else}}
-          <i class="fas fa-question" style="font-size:12px;opacity:0.4;"></i>
-        {{/if}}
+      {{!-- Encrypted (not locked): show initial or ? if unknown sender --}}
+      {{#if isEncrypted}}
+        {{#if fromInitial}}{{fromInitial}}{{else}}<i class="fas fa-question" style="font-size:12px;opacity:0.4;"></i>{{/if}}
+      {{!-- Darknet: show initial or ghost if anonymous --}}
       {{else if isDarknet}}
-        {{#if fromInitial}}
-          {{fromInitial}}
-        {{else}}
-          <i class="fas fa-ghost" style="font-size:12px;opacity:0.5;"></i>
-        {{/if}}
+        {{#if fromInitial}}{{fromInitial}}{{else}}<i class="fas fa-ghost" style="font-size:12px;opacity:0.5;"></i>{{/if}}
+      {{!-- Everything else (including locked): show initial --}}
       {{else}}
         {{fromInitial}}
       {{/if}}
