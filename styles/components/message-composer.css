@@ -923,80 +923,66 @@
 }
 .ncm-composer__enc-type--lethal:hover { border-color: rgba(255,68,85,0.4) !important; }
 
-/* ── ICE Config Panel — BLACK_ICE / RED_ICE ── */
-.ncm-composer__ice-config {
-  margin: 0; border-top: 1px solid rgba(255,68,85,0.15);
-  border-bottom: 1px solid rgba(255,68,85,0.15);
-  background: rgba(255,0,51,0.02);
+/* ── ICE Config Strip — compact row below options bar ── */
+.ncm-composer__strip--ice {
+  background: rgba(255,68,85,0.03); border-color: rgba(255,68,85,0.12);
+  gap: 6px;
 }
-.ncm-composer__ice-header {
-  display: flex; align-items: center; gap: 6px;
-  padding: 5px 12px;
-  background: rgba(255,68,85,0.06);
-  border-bottom: 1px solid rgba(255,68,85,0.08);
+.ncm-composer__strip--ice-actors {
+  background: rgba(255,68,85,0.02); border-color: rgba(255,68,85,0.08);
+  gap: 4px; padding: 4px 14px;
+}
+.ncm-composer__ice-badge {
   font-family: 'Orbitron', sans-serif; font-size: 8px;
-  color: #ff4455; letter-spacing: 0.15em; text-transform: uppercase;
+  color: #ff4455; letter-spacing: 0.12em; text-transform: uppercase;
+  flex-shrink: 0;
 }
-.ncm-composer__ice-header i { font-size: 9px; }
-.ncm-composer__ice-header-sub {
-  font-family: 'Share Tech Mono', monospace; font-size: 7px;
-  color: rgba(255,68,85,0.4); letter-spacing: 0.08em; margin-left: auto;
+.ncm-composer__ice-badge i { font-size: 8px; margin-right: 3px; }
+.ncm-composer__ice-sep {
+  width: 1px; height: 12px; background: rgba(255,68,85,0.15); flex-shrink: 0;
 }
-.ncm-composer__ice-body {
-  display: flex; flex-direction: column; gap: 6px;
-  padding: 8px 12px;
-}
-.ncm-composer__ice-field {
-  display: flex; align-items: center; gap: 8px;
-}
-.ncm-composer__ice-field-label {
+.ncm-composer__ice-lbl {
   font-family: 'Share Tech Mono', monospace; font-size: 9px;
-  color: #b0b0c0; text-transform: uppercase; letter-spacing: 0.06em;
-  min-width: 60px; flex-shrink: 0;
+  color: #b0b0c0; text-transform: uppercase; letter-spacing: 0.04em; flex-shrink: 0;
 }
 
-/* Toggle button group */
-.ncm-composer__ice-toggle-group {
-  display: flex; gap: 2px;
-  background: rgba(42,42,69,0.25);
-  border-radius: 4px; padding: 2px;
-}
-.ncm-composer button.ncm-composer__ice-toggle,
-.ncm-composer .ncm-composer__ice-toggle {
-  display: inline-flex !important; align-items: center !important; gap: 4px !important;
-  padding: 3px 9px !important; border-radius: 3px !important;
+/* ICE pill buttons — inline toggle pills */
+.ncm-composer__ice-pills { display: flex; gap: 2px; }
+.ncm-composer button.ncm-composer__ice-pill,
+.ncm-composer .ncm-composer__ice-pill {
+  display: inline-flex !important; align-items: center !important; gap: 3px !important;
+  padding: 2px 7px !important; border-radius: 3px !important;
   font-family: 'Share Tech Mono', monospace !important; font-size: 9px !important;
-  cursor: pointer !important; border: none !important;
+  cursor: pointer !important; border: 1px solid rgba(85,85,112,0.15) !important;
   background: transparent !important; color: #666680 !important;
   height: auto !important; min-height: 0 !important; width: auto !important;
   flex-shrink: 0 !important; flex-grow: 0 !important;
   appearance: none !important; box-shadow: none !important; outline: none !important;
-  transition: all 0.15s !important;
+  transition: all 0.12s !important;
 }
-.ncm-composer .ncm-composer__ice-toggle i { font-size: 8px !important; margin: 0 !important; padding: 0 !important; }
-.ncm-composer .ncm-composer__ice-toggle:hover { color: #b0b0c0 !important; }
-.ncm-composer .ncm-composer__ice-toggle--active-red {
-  background: rgba(255,68,85,0.12) !important; color: #ff4455 !important;
+.ncm-composer .ncm-composer__ice-pill i { font-size: 7px !important; margin: 0 !important; padding: 0 !important; }
+.ncm-composer .ncm-composer__ice-pill:hover { color: #b0b0c0 !important; border-color: rgba(85,85,112,0.3) !important; }
+.ncm-composer .ncm-composer__ice-pill--red {
+  color: #ff4455 !important; border-color: rgba(255,68,85,0.3) !important;
+  background: rgba(255,68,85,0.08) !important;
 }
-.ncm-composer .ncm-composer__ice-toggle--active-amber {
-  background: rgba(255,187,51,0.12) !important; color: #ffbb33 !important;
+.ncm-composer .ncm-composer__ice-pill--amber {
+  color: #ffbb33 !important; border-color: rgba(255,187,51,0.3) !important;
+  background: rgba(255,187,51,0.08) !important;
 }
-.ncm-composer .ncm-composer__ice-toggle--active-dim {
-  background: rgba(136,136,160,0.08) !important; color: #8888a0 !important;
+.ncm-composer .ncm-composer__ice-pill--dim {
+  color: #8888a0 !important; border-color: rgba(136,136,160,0.2) !important;
+  background: rgba(136,136,160,0.06) !important;
 }
 
-/* Actor picker list */
-.ncm-composer__ice-actors {
-  display: flex; flex-direction: column; gap: 3px;
-  max-height: 110px; overflow-y: auto; padding: 2px 0;
-}
+/* ICE Actor picker — compact cards */
 .ncm-composer button.ncm-composer__ice-actor,
 .ncm-composer .ncm-composer__ice-actor {
-  display: flex !important; align-items: center !important; gap: 8px !important;
-  padding: 5px 10px !important; border-radius: 4px !important;
+  display: inline-flex !important; align-items: center !important; gap: 6px !important;
+  padding: 3px 8px !important; border-radius: 4px !important;
   border: 1px solid rgba(42,42,69,0.4) !important;
-  background: rgba(18,18,26,0.6) !important;
-  cursor: pointer !important; transition: all 0.15s !important;
+  background: rgba(18,18,26,0.5) !important;
+  cursor: pointer !important; transition: all 0.12s !important;
   height: auto !important; min-height: 0 !important; width: auto !important;
   flex-shrink: 0 !important; flex-grow: 0 !important;
   appearance: none !important; box-shadow: none !important; outline: none !important;
@@ -1006,42 +992,33 @@
   background: rgba(255,68,85,0.04) !important;
 }
 .ncm-composer .ncm-composer__ice-actor img {
-  width: 28px; height: 28px; border-radius: 3px;
+  width: 22px; height: 22px; border-radius: 2px;
   border: 1px solid rgba(255,68,85,0.2); object-fit: cover;
 }
-.ncm-composer__ice-actor-icon {
-  width: 28px; height: 28px; border-radius: 3px;
-  border: 1px solid rgba(255,68,85,0.15);
-  background: rgba(255,68,85,0.04);
-  display: flex; align-items: center; justify-content: center;
-  color: rgba(255,68,85,0.4); font-size: 12px;
+.ncm-composer__ice-actor-ph {
+  width: 22px; height: 22px; border-radius: 2px;
+  border: 1px solid rgba(255,68,85,0.12); background: rgba(255,68,85,0.03);
+  display: inline-flex; align-items: center; justify-content: center;
+  color: rgba(255,68,85,0.35); font-size: 10px;
 }
-.ncm-composer__ice-actor-info { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; }
 .ncm-composer__ice-actor-name {
-  font-family: 'Rajdhani', sans-serif; font-size: 12px;
+  font-family: 'Rajdhani', sans-serif; font-size: 11px;
   color: #d0d0dc; font-weight: 600;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.ncm-composer__ice-actor-class {
-  font-family: 'Share Tech Mono', monospace; font-size: 8px;
-  color: #666680; text-transform: uppercase; letter-spacing: 0.04em;
 }
 .ncm-composer__ice-actor-atk {
-  font-family: 'Orbitron', sans-serif; font-size: 9px;
-  color: #ff4455; flex-shrink: 0; letter-spacing: 0.06em;
+  font-family: 'Share Tech Mono', monospace; font-size: 8px;
+  color: #ff4455; margin-left: auto;
 }
-.ncm-composer .ncm-composer__ice-actor--selected {
+.ncm-composer .ncm-composer__ice-actor--sel {
   border-color: rgba(255,68,85,0.5) !important;
   background: rgba(255,68,85,0.08) !important;
-  box-shadow: 0 0 8px rgba(255,68,85,0.08) !important;
 }
-.ncm-composer .ncm-composer__ice-actor--selected .ncm-composer__ice-actor-name { color: #ff4455; }
-.ncm-composer__ice-empty {
+.ncm-composer .ncm-composer__ice-actor--sel .ncm-composer__ice-actor-name { color: #ff4455; }
+.ncm-composer__ice-no-actors {
   font-family: 'Share Tech Mono', monospace; font-size: 9px;
-  color: #666680; font-style: italic; padding: 8px 4px;
-  text-align: center;
+  color: #666680; font-style: italic;
 }
-.ncm-composer__ice-empty i { margin-right: 4px; color: #ffbb33; font-size: 9px; }
+.ncm-composer__ice-no-actors i { margin-right: 4px; color: #ffbb33; }
 
 /* Feature toggles */
 .ncm-composer .ncm-composer__toggle {
