@@ -191,6 +191,22 @@
   background: rgba(25, 243, 247, 0.08) !important;
 }
 
+/* Chip info toggle — distinct from other header buttons */
+.ncm-app .ncm-shard-hdr-btn--chip {
+  border-color: var(--shard-accent, var(--ncm-color-secondary, #19f3f7)) !important;
+  color: var(--shard-accent, var(--ncm-color-secondary, #19f3f7)) !important;
+  background: rgba(25, 243, 247, 0.04) !important;
+}
+
+.ncm-app .ncm-shard-hdr-btn--chip:hover {
+  background: rgba(25, 243, 247, 0.12) !important;
+}
+
+.ncm-app .ncm-shard-hdr-btn--chip.ncm-shard-hdr-btn--active {
+  background: rgba(25, 243, 247, 0.15) !important;
+  box-shadow: 0 0 6px rgba(25, 243, 247, 0.2) !important;
+}
+
 
 /* ═══════════════════════════════════════════
    §2B  CHIP INFO DRAWER — Slide-down panel
@@ -201,10 +217,11 @@
   overflow: hidden !important;
   transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1) !important;
   position: relative !important;
+  flex-shrink: 0 !important;
 }
 
 .ncm-app .ncm-shard-chip-drawer--open {
-  max-height: 500px !important;
+  max-height: 220px !important;
 }
 
 /* Top accent line — uses shard accent color */
@@ -233,7 +250,14 @@
   opacity: 0 !important;
   transform: translateY(-4px) !important;
   transition: opacity 0.25s 0.08s, transform 0.25s 0.08s !important;
+  max-height: 200px !important;
+  overflow-y: auto !important;
 }
+
+.ncm-app .ncm-shard-chip-drawer__inner::-webkit-scrollbar { width: 4px !important; }
+.ncm-app .ncm-shard-chip-drawer__inner::-webkit-scrollbar-track { background: transparent !important; }
+.ncm-app .ncm-shard-chip-drawer__inner::-webkit-scrollbar-thumb { background: var(--sp-border, #2a2a45) !important; border-radius: 2px !important; }
+.ncm-app .ncm-shard-chip-drawer__inner::-webkit-scrollbar-thumb:hover { background: #3a3a55 !important; }
 
 .ncm-app .ncm-shard-chip-drawer--open .ncm-shard-chip-drawer__inner {
   opacity: 1 !important;
