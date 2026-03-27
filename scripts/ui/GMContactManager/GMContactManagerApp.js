@@ -1628,7 +1628,7 @@ export class GMContactManagerApp extends BaseApplication {
       return;
     }
     if (game.nightcity?.composeMessage) {
-      game.nightcity.composeMessage({ toActorId: contact.actorId || null });
+      game.nightcity.composeMessage({ toActorId: contact.actorId || null, to: contact.email });
     }
   }
 

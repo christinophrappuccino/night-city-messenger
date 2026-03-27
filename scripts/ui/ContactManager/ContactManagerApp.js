@@ -1204,6 +1204,7 @@ export class ContactManagerApp extends BaseApplication {
       game.nightcity.composeMessage({
         fromActorId: this.actorId,
         toActorId: contact.actorId || null,
+        to: contact.email,
       });
     }
   }
@@ -1939,6 +1940,7 @@ export class ContactManagerApp extends BaseApplication {
       game.nightcity.composeMessage({
         fromActorId: this.actorId,
         toActorId: contact.actorId || null,
+        to: contact.email,
       });
     }
   }

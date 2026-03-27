@@ -290,6 +290,8 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     } else {
       // New compose
       if (options.toActorId) this._addRecipient(options.toActorId, false);
+      // Fallback: if actor-based add failed or no actorId, try raw email
+      if (this.recipients.length === 0 && options.to) this._addRawRecipient(options.to);
       this.subject = options.subject || '';
       this.body = options.body || '';
       this.threadId = options.threadId || null;
