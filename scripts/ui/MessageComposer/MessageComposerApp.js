@@ -1452,12 +1452,9 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
 
   static _onToggleSchedule(event, target) {
     this.scheduleEnabled = !this.scheduleEnabled;
-    // Pre-fill with current time + 1 hour when enabling
+    // Pre-fill with current time when enabling
     if (this.scheduleEnabled && !this.scheduledTime) {
-      const now = this.timeService?.getCurrentTime?.() || new Date().toISOString();
-      const d = new Date(now);
-      d.setHours(d.getHours() + 1);
-      this.scheduledTime = d.toISOString();
+      this.scheduledTime = this.timeService?.getCurrentTime?.() || new Date().toISOString();
     }
     this.render(true);
   }
