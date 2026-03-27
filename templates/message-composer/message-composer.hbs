@@ -280,19 +280,23 @@
 
     <div class="ncm-composer__opt-sep"></div>
 
-    {{!-- Feature toggles (GM only) --}}
-    <button class="ncm-composer__toggle {{#if scheduleEnabled}}ncm-composer__toggle--on-gold{{/if}}"
-            data-action="toggleSchedule">
-      <i class="fas fa-clock"></i> Sched
-    </button>
+    {{!-- Self-destruct toggle (GM only) --}}
     <button class="ncm-composer__toggle {{#if selfDestructEnabled}}ncm-composer__toggle--on-red{{/if}}"
             data-action="toggleSelfDestruct">
       <i class="fas fa-bomb"></i> Destruct
     </button>
     {{/if}}
+
+    {{!-- Schedule toggle (everyone) --}}
+    <div class="ncm-composer__opt-sep"></div>
+    <button class="ncm-composer__toggle {{#if scheduleEnabled}}ncm-composer__toggle--on-gold{{/if}}"
+            data-action="toggleSchedule">
+      <i class="fas fa-clock"></i> Sched
+    </button>
   </div>
 
-  {{!-- ICE Config Strip — lives OUTSIDE options bar, like self-destruct strip --}}
+  {{!-- ICE Config Strip — GM only, shown when BLACK_ICE / RED_ICE --}}
+  {{#if isGM}}
   {{#if isLethalICE}}
   <div class="ncm-composer__strip ncm-composer__strip--ice">
     <span class="ncm-composer__ice-badge"><i class="fas fa-radiation"></i> {{encryptionType}}</span>
@@ -321,7 +325,7 @@
   {{/if}}
   {{/if}}
 
-  {{!-- Self-destruct expansion strip --}}
+  {{!-- Self-destruct expansion strip — GM only --}}
   {{#if selfDestructEnabled}}
   <div class="ncm-composer__strip ncm-composer__strip--destruct">
     <i class="fas fa-bomb"></i>
@@ -333,8 +337,9 @@
     <i class="fas fa-xmark ncm-composer__strip-close" data-action="toggleSelfDestruct"></i>
   </div>
   {{/if}}
+  {{/if}} {{!-- /isGM — end of ICE + destruct strips --}}
 
-  {{!-- Schedule expansion strip --}}
+  {{!-- Schedule expansion strip — available to everyone --}}
   {{#if scheduleEnabled}}
   <div class="ncm-composer__strip ncm-composer__strip--schedule">
     <i class="fas fa-clock"></i>
