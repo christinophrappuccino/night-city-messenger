@@ -1,65 +1,315 @@
     {{#if (eq activeTab 'overview')}}
 
-    {{!-- Actor Inbox Cards --}}
-    <div class="ncm-section-title">
-      <i class="fas fa-inbox"></i> Actor Inboxes
-      <button class="ncm-section-title__action" data-action="openAllInboxes">Open All →</button>
+    {{!-- §1 QUICK ACTIONS BAR --}}
+    <div class="ncm-ov-actions">
+      <button class="ncm-ov-actions__btn ncm-ov-actions__btn--cyan"
+              data-action="openComposer" title="Open the message composer">
+        <i class="fas fa-pen-to-square"></i> Compose
+      </button>
+      <button class="ncm-ov-actions__btn ncm-ov-actions__btn--gold"
+              data-action="ovNewShard" title="Create a new data shard item">
+        <i class="fas fa-microchip"></i> New Shard
+      </button>
+      <button class="ncm-ov-actions__btn ncm-ov-actions__btn--red"
+              data-action="ovBroadcast" title="Send a broadcast to all players">
+        <i class="fas fa-tower-broadcast"></i> Broadcast
+      </button>
+      <button class="ncm-ov-actions__btn ncm-ov-actions__btn--green"
+              data-action="openNetworkManager" title="Open the network manager">
+        <i class="fas fa-network-wired"></i> Networks
+      </button>
+      <button class="ncm-ov-actions__btn ncm-ov-actions__btn--purple"
+              data-action="openGMContacts" title="Open the GM contact manager">
+        <i class="fas fa-address-book"></i> Contacts
+      </button>
     </div>
-    {{#if stats.actorStats.length}}
-    <div class="ncm-actor-grid">
-      {{#each stats.actorStats}}
-      <div class="ncm-actor-card {{#if this.hasPlayerOwner}}ncm-actor-card--player{{else}}ncm-actor-card--npc{{/if}} {{#if this.unreadMessages}}ncm-actor-card--alert{{/if}}"
-           data-actor-id="{{this.actorId}}">
-        <div class="ncm-actor-card__avatar" style="color: {{this.avatarColor}}; border-color: {{this.avatarBorderColor}};">
-          {{#if this.actorImg}}
-          <img src="{{this.actorImg}}" alt="{{this.actorName}}">
-          {{else}}
-          {{this.initial}}
+
+    {{!-- §2 SYSTEM STATUS CARDS --}}
+    <div class="ncm-ov-status-grid">
+
+      {{!-- Messages Card --}}
+      <div class="ncm-ov-status-card ncm-ov-status-card--msgs"
+           data-action="switchTab" data-tab="messages" title="Open Messages tab">
+        <div class="ncm-ov-status-card__head">
+          <span class="ncm-ov-status-card__title">Messages</span>
+          <i class="fas fa-envelope ncm-ov-status-card__icon"></i>
+        </div>
+        <div class="ncm-ov-status-card__big">{{stats.totalMessages}}</div>
+        <div class="ncm-ov-status-card__details">
+          {{#if stats.unreadMessages}}
+          <span class="ncm-ov-status-card__detail">
+            <i class="fas fa-circle-exclamation"></i>
+            <span class="ncm-ov-status-card__detail-val--red">{{stats.unreadMessages}}</span> unread
+          </span>
+          {{/if}}
+          {{#if stats.messagesByPriority.urgent}}
+          <span class="ncm-ov-status-card__detail">
+            <i class="fas fa-bolt"></i>
+            <span class="ncm-ov-status-card__detail-val--gold">{{stats.messagesByPriority.urgent}}</span> urgent
+          </span>
+          {{/if}}
+          {{#if stats.messagesByPriority.critical}}
+          <span class="ncm-ov-status-card__detail">
+            <i class="fas fa-triangle-exclamation"></i>
+            <span class="ncm-ov-status-card__detail-val--red">{{stats.messagesByPriority.critical}}</span> critical
+          </span>
           {{/if}}
         </div>
-        <div class="ncm-actor-card__info">
-          <div class="ncm-actor-card__name">{{this.actorName}}</div>
-          <div class="ncm-actor-card__meta">
-            {{#if this.ownerName}}<span><i class="fas fa-user"></i> {{this.ownerName}}</span>{{/if}}
-            <span><i class="fas fa-wifi"></i> {{../currentNetwork}}</span>
+        <div class="ncm-ov-status-card__link">Open tab →</div>
+      </div>
+
+      {{!-- Networks Card --}}
+      <div class="ncm-ov-status-card ncm-ov-status-card--nets"
+           data-action="switchTab" data-tab="networks" title="Open Networks tab">
+        <div class="ncm-ov-status-card__head">
+          <span class="ncm-ov-status-card__title">Networks</span>
+          <i class="fas fa-network-wired ncm-ov-status-card__icon"></i>
+        </div>
+        <div class="ncm-ov-status-card__big">{{netStats.total}}</div>
+        <div class="ncm-ov-status-card__details">
+          <span class="ncm-ov-status-card__detail">
+            <i class="fas fa-wifi"></i>
+            <span class="ncm-ov-status-card__detail-val--green">{{netStats.active}}</span> active
+          </span>
+          {{#if netStats.deadZones}}
+          <span class="ncm-ov-status-card__detail">
+            <i class="fas fa-ban"></i>
+            <span class="ncm-ov-status-card__detail-val--red">{{netStats.deadZones}}</span> dead
+          </span>
+          {{/if}}
+        </div>
+        <div class="ncm-ov-status-card__link">Open tab →</div>
+      </div>
+
+      {{!-- Shards Card --}}
+      <div class="ncm-ov-status-card ncm-ov-status-card--shards"
+           data-action="switchTab" data-tab="shards" title="Open Shards tab">
+        <div class="ncm-ov-status-card__head">
+          <span class="ncm-ov-status-card__title">Data Shards</span>
+          <i class="fas fa-database ncm-ov-status-card__icon"></i>
+        </div>
+        <div class="ncm-ov-status-card__big">{{shardSummary.total}}</div>
+        <div class="ncm-ov-status-card__details">
+          {{#if shardSummary.locked}}
+          <span class="ncm-ov-status-card__detail">
+            <i class="fas fa-lock"></i>
+            <span class="ncm-ov-status-card__detail-val--gold">{{shardSummary.locked}}</span> locked
+          </span>
+          {{/if}}
+          {{#if shardSummary.unclaimedEddies}}
+          <span class="ncm-ov-status-card__detail">
+            <i class="fas fa-coins"></i>
+            <span class="ncm-ov-status-card__detail-val--gold">{{shardSummary.unclaimedEddies}}</span> eb
+          </span>
+          {{/if}}
+        </div>
+        <div class="ncm-ov-status-card__link">Open tab →</div>
+      </div>
+
+      {{!-- Contacts Card --}}
+      <div class="ncm-ov-status-card ncm-ov-status-card--contacts"
+           data-action="switchTab" data-tab="contacts" title="Open Contacts tab">
+        <div class="ncm-ov-status-card__head">
+          <span class="ncm-ov-status-card__title">Contacts</span>
+          <i class="fas fa-address-book ncm-ov-status-card__icon"></i>
+        </div>
+        <div class="ncm-ov-status-card__big">{{contactSummary.total}}</div>
+        <div class="ncm-ov-status-card__details">
+          {{#if contactSummary.linked}}
+          <span class="ncm-ov-status-card__detail">
+            <i class="fas fa-link"></i>
+            <span class="ncm-ov-status-card__detail-val--purple">{{contactSummary.linked}}</span> linked
+          </span>
+          {{/if}}
+          {{#if contactSummary.encrypted}}
+          <span class="ncm-ov-status-card__detail">
+            <i class="fas fa-shield-halved"></i>
+            <span class="ncm-ov-status-card__detail-val--cyan">{{contactSummary.encrypted}}</span> ICE
+          </span>
+          {{/if}}
+        </div>
+        <div class="ncm-ov-status-card__link">Open tab →</div>
+      </div>
+    </div>
+
+    {{!-- §3 ATTENTION REQUIRED --}}
+    <div class="ncm-ov-section">
+      <i class="fas fa-triangle-exclamation"></i> Attention Required
+      {{#if overviewAlerts.length}}
+      <button class="ncm-ov-section__action" data-action="ovClearAlerts">Clear All</button>
+      {{/if}}
+    </div>
+
+    <div class="ncm-ov-alerts">
+      {{#if overviewAlerts.length}}
+      <div class="ncm-ov-alerts__list">
+        {{#each overviewAlerts}}
+        <div class="ncm-ov-alert ncm-ov-alert--{{this.severity}}">
+          <i class="{{this.iconClass}} ncm-ov-alert__icon"></i>
+          <div class="ncm-ov-alert__body">
+            <div class="ncm-ov-alert__text">{{this.text}}</div>
+            {{#if this.sub}}<div class="ncm-ov-alert__sub">{{this.sub}}</div>{{/if}}
+          </div>
+          <span class="ncm-ov-alert__tag ncm-ov-alert__tag--{{this.domain}}">{{this.domainLabel}}</span>
+          {{#if this.actionLabel}}
+          <button class="ncm-ov-alert__action"
+                  data-action="{{this.actionName}}"
+                  {{#if this.actionActorId}}data-actor-id="{{this.actionActorId}}"{{/if}}
+                  {{#if this.actionItemId}}data-item-id="{{this.actionItemId}}"{{/if}}
+                  {{#if this.actionTab}}data-tab="{{this.actionTab}}"{{/if}}>{{this.actionLabel}}</button>
+          {{/if}}
+          <button class="ncm-ov-alert__dismiss" data-action="ovDismissAlert" data-alert-key="{{this.key}}">
+            <i class="fas fa-xmark"></i>
+          </button>
+        </div>
+        {{/each}}
+      </div>
+      {{else}}
+      <div class="ncm-ov-alerts__empty">
+        <i class="fas fa-check-circle"></i> All systems nominal — no action required
+      </div>
+      {{/if}}
+    </div>
+
+    {{!-- §4 TWO-COLUMN: Activity Feed + Sidebar --}}
+    <div class="ncm-ov-columns">
+
+      {{!-- LEFT: Recent Activity Feed --}}
+      <div class="ncm-ov-feed">
+        <div class="ncm-ov-section">
+          <i class="fas fa-stream"></i> Recent Activity
+        </div>
+
+        {{#if overviewActivity.length}}
+        <div class="ncm-ov-feed__list">
+          {{#each overviewActivity}}
+          <div class="ncm-ov-feed-item"
+               {{#if this.actorId}}data-action="openInbox" data-actor-id="{{this.actorId}}"{{/if}}
+               {{#if this.itemId}}data-action="openShardItem" data-item-id="{{this.itemId}}"{{/if}}>
+            <div class="ncm-ov-feed-item__icon ncm-ov-feed-item__icon--{{this.domain}}">
+              <i class="fas fa-{{this.icon}}"></i>
+            </div>
+            <div class="ncm-ov-feed-item__body">
+              <div class="ncm-ov-feed-item__text">{{{this.html}}}</div>
+              <div class="ncm-ov-feed-item__time">{{this.time}}</div>
+            </div>
+          </div>
+          {{/each}}
+        </div>
+        {{else}}
+        <div class="ncm-ov-feed__empty">
+          <i class="fas fa-ghost"></i> No activity yet this session
+        </div>
+        {{/if}}
+      </div>
+
+      {{!-- RIGHT: Sidebar --}}
+      <div class="ncm-ov-sidebar">
+
+        {{!-- Scheduled Messages --}}
+        <div>
+          <div class="ncm-ov-section">
+            <i class="fas fa-clock"></i> Scheduled
+            {{#if scheduledEntries.length}}
+            <button class="ncm-ov-section__action" data-action="switchTab" data-tab="messages">Manage</button>
+            {{/if}}
+          </div>
+          <div class="ncm-ov-sched">
+            {{#if scheduledEntries.length}}
+            <div class="ncm-ov-sched__list">
+              {{#each scheduledEntries}}
+              <div class="ncm-ov-sched-item" data-schedule-id="{{this.id}}">
+                <span class="ncm-ov-sched-item__countdown {{#if this.isSoon}}ncm-ov-sched-item__countdown--soon{{/if}}">{{this.countdown}}</span>
+                <div class="ncm-ov-sched-item__info">
+                  <div class="ncm-ov-sched-item__from">{{this.fromName}} → {{this.toName}}</div>
+                  <div class="ncm-ov-sched-item__to">{{this.subject}}</div>
+                </div>
+                <button class="ncm-ov-sched-item__cancel" data-action="cancelScheduled" data-schedule-id="{{this.id}}" title="Cancel">
+                  <i class="fas fa-xmark"></i>
+                </button>
+              </div>
+              {{/each}}
+            </div>
+            {{else}}
+            <div class="ncm-ov-sched__empty">No scheduled messages</div>
+            {{/if}}
           </div>
         </div>
-        <div class="ncm-actor-card__stats">
-          <div class="ncm-actor-card__msg-count">{{this.totalMessages}}</div>
-          {{#if this.unreadMessages}}
-          <div class="ncm-actor-card__unread">{{this.unreadMessages}} unread</div>
-          {{else}}
-          <div class="ncm-actor-card__last-active">{{this.lastActive}}</div>
-          {{/if}}
-        </div>
-        <div class="ncm-actor-card__actions">
-          <button class="ncm-actor-card__action" data-action="openInbox" data-actor-id="{{this.actorId}}" title="Open Inbox">
-            <i class="fas fa-envelope"></i>
-          </button>
-          <button class="ncm-actor-card__action ncm-actor-card__action--contacts" data-action="viewPlayerContacts" data-actor-id="{{this.actorId}}" title="View Contacts">
-            <i class="fas fa-address-book"></i>
-          </button>
-        </div>
-      </div>
-      {{/each}}
-    </div>
-    {{else}}
-    <div class="ncm-admin-empty"><i class="fas fa-inbox"></i> No actors with messages yet.</div>
-    {{/if}}
 
-    {{!-- Active Connections --}}
-    <div class="ncm-section-title"><i class="fas fa-signal"></i> Active Connections</div>
-    <div class="ncm-connection-list">
-      {{#each connections}}
-      <div class="ncm-connection-row">
-        <div class="ncm-connection-row__dot {{#if this.isGM}}ncm-connection-row__dot--gm{{else}}ncm-connection-row__dot--online{{/if}}"></div>
-        <span class="ncm-connection-row__name">{{this.userName}}</span>
-        <span class="ncm-connection-row__role {{#if this.isGM}}ncm-connection-row__role--gm{{else}}ncm-connection-row__role--player{{/if}}">{{#if this.isGM}}GM{{else}}Player{{/if}}</span>
-        <span class="ncm-connection-row__actor">{{this.actorNames}}</span>
-        {{#unless this.isGM}}<span class="ncm-connection-row__network">{{../currentNetwork}}</span>{{/unless}}
-        <span class="ncm-connection-row__session">{{this.sessionTime}}</span>
+        {{!-- Active Connections --}}
+        <div>
+          <div class="ncm-ov-section">
+            <i class="fas fa-signal"></i> Connections
+          </div>
+          <div class="ncm-ov-conn">
+            <div class="ncm-ov-conn__list">
+              {{#each connections}}
+              <div class="ncm-ov-conn-item">
+                <div class="ncm-ov-conn-item__dot {{#if this.isGM}}ncm-ov-conn-item__dot--gm{{else}}ncm-ov-conn-item__dot--online{{/if}}"></div>
+                <span class="ncm-ov-conn-item__name">{{this.userName}}</span>
+                {{#unless this.isGM}}<span class="ncm-ov-conn-item__actor">{{this.actorNames}}</span>{{/unless}}
+                <span class="ncm-ov-conn-item__role {{#if this.isGM}}ncm-ov-conn-item__role--gm{{else}}ncm-ov-conn-item__role--player{{/if}}">{{#if this.isGM}}GM{{else}}Player{{/if}}</span>
+              </div>
+              {{/each}}
+            </div>
+          </div>
+        </div>
+
       </div>
-      {{/each}}
+    </div>
+
+    {{!-- §5 ACTOR INBOX CARDS --}}
+    <div class="ncm-ov-actors">
+      <div class="ncm-ov-section">
+        <i class="fas fa-inbox"></i> Actor Inboxes
+        <button class="ncm-ov-section__action" data-action="openAllInboxes">Open All</button>
+      </div>
+
+      {{#if stats.actorStats.length}}
+      <div class="ncm-ov-actor-grid">
+        {{#each stats.actorStats}}
+        <div class="ncm-ov-actor-card {{#if this.hasPlayerOwner}}ncm-ov-actor-card--player{{else}}ncm-ov-actor-card--npc{{/if}} {{#if this.unreadMessages}}ncm-ov-actor-card--alert{{/if}}"
+             data-actor-id="{{this.actorId}}">
+          <div class="ncm-ov-actor-card__avatar" style="color: {{this.avatarColor}}; border-color: {{this.avatarBorderColor}};">
+            {{#if this.actorImg}}
+            <img src="{{this.actorImg}}" alt="{{this.actorName}}">
+            {{else}}
+            {{this.initial}}
+            {{/if}}
+          </div>
+          <div class="ncm-ov-actor-card__info">
+            <div class="ncm-ov-actor-card__name">{{this.actorName}}</div>
+            <div class="ncm-ov-actor-card__meta">
+              {{#if this.hasPlayerOwner}}<i class="fas fa-user"></i>{{else}}<i class="fas fa-robot"></i>{{/if}}
+              {{#if this.ownerName}}{{this.ownerName}}{{else}}NPC{{/if}}
+            </div>
+          </div>
+          <div class="ncm-ov-actor-card__stats-col">
+            <div class="ncm-ov-actor-card__count">{{this.totalMessages}}</div>
+            {{#if this.unreadMessages}}
+            <div class="ncm-ov-actor-card__unread">{{this.unreadMessages}} unread</div>
+            {{/if}}
+          </div>
+          <div class="ncm-ov-actor-card__btns">
+            <button class="ncm-ov-actor-card__btn ncm-ov-actor-card__btn--inbox"
+                    data-action="openInbox" data-actor-id="{{this.actorId}}" title="Open inbox">
+              <i class="fas fa-envelope-open"></i>
+            </button>
+            <button class="ncm-ov-actor-card__btn ncm-ov-actor-card__btn--compose"
+                    data-action="ovComposeAs" data-actor-id="{{this.actorId}}" title="Compose as this actor">
+              <i class="fas fa-pen"></i>
+            </button>
+            <button class="ncm-ov-actor-card__btn ncm-ov-actor-card__btn--contacts"
+                    data-action="viewPlayerContacts" data-actor-id="{{this.actorId}}" title="View contacts">
+              <i class="fas fa-address-book"></i>
+            </button>
+          </div>
+        </div>
+        {{/each}}
+      </div>
+      {{else}}
+      <div class="ncm-admin-empty"><i class="fas fa-inbox"></i> No actors with messages yet.</div>
+      {{/if}}
     </div>
 
     {{/if}}

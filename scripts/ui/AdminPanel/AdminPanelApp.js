@@ -41,6 +41,12 @@ export class AdminPanelApp extends BaseApplication {
     if (feedList) this._feedListScroll = feedList.scrollTop;
   }
 
+  // ── Overview tab state ──
+  /** @type {Array<object>} Cross-domain activity log for this session */
+  _overviewActivityLog = [];
+  /** @type {Set<string>} Dismissed alert keys (session only) */
+  _dismissedAlerts = new Set();
+
   // ── Contacts tab state ──
   /** @type {string} Contact search query */
   _contactSearch = '';
@@ -165,6 +171,11 @@ export class AdminPanelApp extends BaseApplication {
       // Overview actions
       openInbox: AdminPanelApp._onOpenInbox,
       openAllInboxes: AdminPanelApp._onOpenAllInboxes,
+      ovComposeAs: AdminPanelApp._onOvComposeAs,
+      ovNewShard: AdminPanelApp._onOvNewShard,
+      ovBroadcast: AdminPanelApp._onOvBroadcast,
+      ovClearAlerts: AdminPanelApp._onOvClearAlerts,
+      ovDismissAlert: AdminPanelApp._onOvDismissAlert,
 
       // Messages actions
       quickSend: AdminPanelApp._onQuickSend,
@@ -434,6 +445,8 @@ export class AdminPanelApp extends BaseApplication {
 
       // Overview tab
       connections,
+      overviewAlerts: this._gatherOverviewAlerts(stats, shards, scheduledEntries, sceneStrip),
+      overviewActivity: this._overviewActivityLog.slice(0, 15),
 
       // Messages tab
       npcSendEntries: npcSendData.entries,
@@ -594,6 +607,133 @@ export class AdminPanelApp extends BaseApplication {
     }
 
     return connections;
+  }
+
+  /**
+   * Generate attention-required alerts for the overview tab.
+   * Checks: unread pileup per actor, destroyed shards, imminent scheduled
+   * messages, and dead zones on the active scene.
+   * @param {object} stats - Message stats from _gatherStats
+   * @param {Array} shards - Shard data from _gatherShardData
+   * @param {Array} scheduledEntries - Formatted scheduled entries
+   * @param {Array} sceneStrip - Scene strip data
+   * @returns {Array<object>}
+   * @private
+   */
+  _gatherOverviewAlerts(stats, shards, scheduledEntries, sceneStrip) {
+    const alerts = [];
+
+    // ── Unread message pileup (>3 per actor) ──
+    for (const actor of stats.actorStats) {
+      if (actor.unreadMessages >= 3) {
+        const key = `unread-${actor.actorId}`;
+        if (this._dismissedAlerts.has(key)) continue;
+        alerts.push({
+          key,
+          severity: 'urgent',
+          iconClass: 'fas fa-envelope-circle-exclamation',
+          text: `${actor.actorName} has ${actor.unreadMessages} unread messages piling up`,
+          sub: null,
+          domain: 'msg',
+          domainLabel: 'MSG',
+          actionLabel: 'Open Inbox',
+          actionName: 'openInbox',
+          actionActorId: actor.actorId,
+        });
+      }
+    }
+
+    // ── Destroyed / bricked shards ──
+    for (const shard of shards) {
+      if (shard.status === 'destroyed') {
+        const key = `destroyed-${shard.itemId}`;
+        if (this._dismissedAlerts.has(key)) continue;
+        alerts.push({
+          key,
+          severity: 'urgent',
+          iconClass: 'fas fa-skull-crossbones',
+          text: `Shard "${shard.name}" integrity at 0% — destroyed`,
+          sub: null,
+          domain: 'shard',
+          domainLabel: 'SHARD',
+          actionLabel: 'View Shard',
+          actionName: 'openShardItem',
+          actionItemId: shard.itemId,
+        });
+      }
+    }
+
+    // ── Scheduled messages firing soon (<5 min) ──
+    for (const entry of scheduledEntries) {
+      if (entry.isSoon) {
+        const key = `sched-${entry.id}`;
+        if (this._dismissedAlerts.has(key)) continue;
+        alerts.push({
+          key,
+          severity: 'warn',
+          iconClass: 'fas fa-clock',
+          text: `Scheduled message fires in ${entry.countdown}`,
+          sub: `${entry.fromName} → ${entry.toName}: "${entry.subject}"`,
+          domain: 'sched',
+          domainLabel: 'SCHED',
+          actionLabel: 'Edit',
+          actionName: 'editScheduled',
+          actionActorId: null,
+        });
+      }
+    }
+
+    // ── Dead zones on active scene ──
+    const activeScene = game.scenes?.active;
+    if (activeScene) {
+      for (const scene of sceneStrip) {
+        if (scene.deadZone && scene.sceneId === activeScene.id) {
+          const key = `deadzone-${scene.sceneId}`;
+          if (this._dismissedAlerts.has(key)) continue;
+          alerts.push({
+            key,
+            severity: 'info',
+            iconClass: 'fas fa-signal',
+            text: `Dead zone active on current scene`,
+            sub: `${scene.sceneName} — No signal, queued messages will hold`,
+            domain: 'net',
+            domainLabel: 'NET',
+            actionLabel: 'Networks',
+            actionName: 'switchTab',
+            actionTab: 'networks',
+          });
+        }
+      }
+    }
+
+    return alerts;
+  }
+
+  /**
+   * Log an activity event to the overview feed.
+   * Entries persist for the session only (not saved to flags).
+   * @param {string} domain - 'msg' | 'shard' | 'net' | 'contact' | 'alert'
+   * @param {string} icon - FontAwesome icon name (without 'fa-' prefix)
+   * @param {string} html - HTML text for the feed entry (supports inline spans)
+   * @param {object} [options] - Optional context
+   * @param {string} [options.actorId] - Actor ID for click-through
+   * @param {string} [options.itemId] - Item ID for click-through
+   * @param {string} [options.detail] - Secondary detail text
+   * @private
+   */
+  _logOverviewActivity(domain, icon, html, options = {}) {
+    this._overviewActivityLog.unshift({
+      domain,
+      icon,
+      html,
+      time: this._getRelativeTime(Date.now()),
+      timestamp: Date.now(),
+      actorId: options.actorId || null,
+      itemId: options.itemId || null,
+    });
+
+    // Cap at 30 entries
+    if (this._overviewActivityLog.length > 30) this._overviewActivityLog.length = 30;
   }
 
   /**
@@ -3340,31 +3480,80 @@ export class AdminPanelApp extends BaseApplication {
   // ═══════════════════════════════════════════════════════════
 
   _setupEventSubscriptions() {
-    // Messages
-    this.subscribe(EVENTS.MESSAGE_SENT, () => this._refreshIfTab('overview', 'messages'));
-    this.subscribe(EVENTS.MESSAGE_RECEIVED, () => this._refreshIfTab('overview', 'messages'));
-    this.subscribe(EVENTS.MESSAGE_SCHEDULED, () => this._refreshIfTab('messages'));
+    // Messages — with overview activity logging
+    this.subscribe(EVENTS.MESSAGE_SENT, (data) => {
+      const from = data?.fromName || game.actors.get(data?.fromActorId)?.name || 'Unknown';
+      const to = data?.toName || game.actors.get(data?.toActorId)?.name || 'Unknown';
+      this._logOverviewActivity('msg', 'paper-plane',
+        `<strong>${from}</strong> sent message to <span class="ncm-ov-hl--cyan">${to}</span>`,
+        { actorId: data?.fromActorId });
+      this._refreshIfTab('overview', 'messages');
+    });
+    this.subscribe(EVENTS.MESSAGE_RECEIVED, (data) => {
+      const from = data?.fromName || game.actors.get(data?.fromActorId)?.name || 'Unknown';
+      const to = data?.toName || game.actors.get(data?.toActorId)?.name || 'Unknown';
+      this._logOverviewActivity('msg', 'envelope',
+        `<strong>${to}</strong> received message from <span class="ncm-ov-hl--cyan">${from}</span>`,
+        { actorId: data?.toActorId });
+      this._refreshIfTab('overview', 'messages');
+    });
+    this.subscribe(EVENTS.MESSAGE_SCHEDULED, (data) => {
+      this._logOverviewActivity('msg', 'clock',
+        `Message scheduled for delivery`,
+        {});
+      this._refreshIfTab('overview', 'messages');
+    });
     this.subscribe(EVENTS.MESSAGE_DELETED, () => this._refreshIfTab('overview', 'messages'));
-    this.subscribe('schedule:updated', () => this._refreshIfTab('messages'));
+    this.subscribe('schedule:updated', () => this._refreshIfTab('overview', 'messages'));
 
-    // Contacts
+    // Contacts — with overview activity logging
     this.subscribe(EVENTS.CONTACT_TRUST_CHANGED, () => this._refreshIfTab('contacts'));
     this.subscribe(EVENTS.CONTACT_BURNED, () => this._refreshIfTab('contacts'));
-    this.subscribe(EVENTS.CONTACT_SHARED, () => this._refreshIfTab('contacts'));
+    this.subscribe(EVENTS.CONTACT_SHARED, (data) => {
+      const contactName = data?.contactName || 'Unknown';
+      const targetName = data?.targetActorName || game.actors.get(data?.targetActorId)?.name || 'Unknown';
+      this._logOverviewActivity('contact', 'user-plus',
+        `Contact <span class="ncm-ov-hl--purple">"${contactName}"</span> pushed to ${targetName}`,
+        {});
+      this._refreshIfTab('overview', 'contacts');
+    });
     this.subscribe(EVENTS.CONTACT_UPDATED, () => this._debouncedRender());
 
-    // Networks
-    this.subscribe(EVENTS.NETWORK_CHANGED, () => this._refreshIfTab('networks', 'overview'));
-    this.subscribe(EVENTS.NETWORK_CONNECTED, () => this._refreshIfTab('networks', 'overview'));
-    this.subscribe(EVENTS.NETWORK_DISCONNECTED, () => this._refreshIfTab('networks', 'overview'));
+    // Networks — with overview activity logging
+    this.subscribe(EVENTS.NETWORK_CHANGED, (data) => {
+      const netName = data?.networkName || data?.networkId || 'Unknown';
+      this._logOverviewActivity('net', 'wifi',
+        `Network switched to <span class="ncm-ov-hl--green">${netName}</span>`,
+        {});
+      this._refreshIfTab('networks', 'overview');
+    });
+    this.subscribe(EVENTS.NETWORK_CONNECTED, (data) => {
+      const netName = data?.networkName || data?.networkId || 'Unknown';
+      this._logOverviewActivity('net', 'plug',
+        `Connected to network <span class="ncm-ov-hl--green">${netName}</span>`,
+        {});
+      this._refreshIfTab('networks', 'overview');
+    });
+    this.subscribe(EVENTS.NETWORK_DISCONNECTED, (data) => {
+      const netName = data?.networkName || data?.networkId || 'Unknown';
+      this._logOverviewActivity('net', 'ban',
+        `Disconnected from network <span class="ncm-ov-hl--red">${netName}</span>`,
+        {});
+      this._refreshIfTab('networks', 'overview');
+    });
     this.subscribe(EVENTS.NETWORK_AUTH_SUCCESS, () => this._refreshIfTab('networks'));
     this.subscribe(EVENTS.NETWORK_AUTH_FAILURE, () => this._refreshIfTab('networks'));
     this.subscribe(EVENTS.NETWORK_LOCKOUT, () => this._refreshIfTab('networks'));
 
-    // Data Shards
+    // Data Shards — with overview activity logging
     this.subscribe(EVENTS.SHARD_DECRYPTED, (data) => {
       this._logShardActivity('success', 'check', data, 'breached');
-      this._refreshIfTab('shards');
+      const actorName = data.actorId ? game.actors?.get(data.actorId)?.name : 'GM';
+      const shardName = data.itemId ? game.items?.get(data.itemId)?.name : 'Unknown';
+      this._logOverviewActivity('shard', 'unlock',
+        `<strong>${actorName || 'Unknown'}</strong> breached shard <span class="ncm-ov-hl--gold">"${shardName}"</span>`,
+        { itemId: data.itemId });
+      this._refreshIfTab('overview', 'shards');
     });
     this.subscribe(EVENTS.SHARD_RELOCKED, (data) => {
       this._logShardActivity('gm', 'lock', data, 'relocked by GM');
@@ -3381,16 +3570,32 @@ export class AdminPanelApp extends BaseApplication {
     });
     this.subscribe(EVENTS.SHARD_CREATED, (data) => {
       this._logShardActivity('gm', 'plus', data, 'created');
-      this._refreshIfTab('shards');
+      const shardName = data.itemId ? game.items?.get(data.itemId)?.name : 'New Shard';
+      this._logOverviewActivity('shard', 'database',
+        `Data shard <span class="ncm-ov-hl--gold">"${shardName}"</span> created`,
+        { itemId: data.itemId });
+      this._refreshIfTab('overview', 'shards');
     });
     this.subscribe(EVENTS.SHARD_STATE_CHANGED, () => this._debouncedRender());
     this.subscribe(EVENTS.SHARD_INTEGRITY_CHANGED, (data) => {
       this._logShardActivity('fail', 'triangle-exclamation', data, `integrity → ${data.newIntegrity}%`);
       this._refreshIfTab('shards');
     });
+    this.subscribe(EVENTS.BLACK_ICE_DAMAGE, (data) => {
+      const actorName = data.actorId ? game.actors?.get(data.actorId)?.name : 'Unknown';
+      const damage = data.damage || '?';
+      this._logOverviewActivity('alert', 'shield-virus',
+        `<span class="ncm-ov-hl--red">BLACK ICE</span> dealt ${damage} HP damage to <strong>${actorName}</strong>`,
+        { actorId: data.actorId });
+      this._refreshIfTab('overview');
+    });
     this.subscribe(EVENTS.SHARD_EDDIES_CLAIMED, (data) => {
       this._logShardActivity('success', 'coins', data, `claimed ${data.amount?.toLocaleString() ?? '?'} eb`);
-      this._refreshIfTab('shards');
+      const actorName = data.actorId ? game.actors?.get(data.actorId)?.name : 'Unknown';
+      this._logOverviewActivity('shard', 'coins',
+        `<strong>${actorName}</strong> claimed <span class="ncm-ov-hl--gold">${data.amount?.toLocaleString() ?? '?'} eb</span>`,
+        { actorId: data.actorId });
+      this._refreshIfTab('overview', 'shards');
     });
     this.subscribe(EVENTS.SHARD_PRESET_APPLIED, (data) => {
       this._logShardActivity('gm', 'palette', data, `preset "${data.preset}" applied`);
@@ -3450,6 +3655,62 @@ export class AdminPanelApp extends BaseApplication {
     for (const actor of actors) {
       game.nightcity?.openInbox?.(actor.id);
     }
+  }
+
+  /**
+   * Overview: Compose as a specific actor (from actor card buttons).
+   */
+  static _onOvComposeAs(event, target) {
+    const actorId = target.closest('[data-actor-id]')?.dataset.actorId;
+    if (!actorId) return;
+    const actor = game.actors.get(actorId);
+    if (!actor) return;
+    game.nightcity?.openComposer?.({ fromActorId: actorId, fromName: actor.name });
+    log.info(`Admin Overview: Compose as ${actor.name}`);
+  }
+
+  /**
+   * Overview: Quick-create a new data shard — switches to Shards tab
+   * where the quick-create preset buttons live.
+   */
+  static _onOvNewShard(event, target) {
+    this._activeTab = 'shards';
+    this.render(true);
+    log.info('Admin Overview: Switching to Shards tab for creation');
+  }
+
+  /**
+   * Overview: Open the broadcast dialog.
+   * Switches to the Networks tab which has the broadcast bar.
+   */
+  static _onOvBroadcast(event, target) {
+    // Switch to networks tab where the broadcast UI lives
+    this._activeTab = 'networks';
+    this.render(true);
+    log.info('Admin Overview: Switching to Networks for broadcast');
+  }
+
+  /**
+   * Overview: Dismiss all alerts for this session.
+   */
+  static _onOvClearAlerts(event, target) {
+    // Gather all current alert keys and dismiss them
+    const alertEls = this.element?.querySelectorAll('[data-alert-key]') ?? [];
+    for (const el of alertEls) {
+      const key = el.dataset.alertKey;
+      if (key) this._dismissedAlerts.add(key);
+    }
+    this.render(true);
+  }
+
+  /**
+   * Overview: Dismiss a single alert by key.
+   */
+  static _onOvDismissAlert(event, target) {
+    const key = target.closest('[data-alert-key]')?.dataset.alertKey;
+    if (!key) return;
+    this._dismissedAlerts.add(key);
+    this.render(true);
   }
 
   // ═══════════════════════════════════════════════════════════
