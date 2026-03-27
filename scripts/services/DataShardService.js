@@ -142,8 +142,27 @@ export class DataShardService {
       return { blocked: false, config, session };
     }
 
-    // Check hacked layers (player bypassed via skill check)
-    const hackedLayers = session.hackedLayers || [];
+    // Build effective hackedLayers:
+    // Merge the actor's session AND the gm-override session (if GM)
+    // so admin panel layer toggles apply regardless of which actor the GM has assigned
+    let hackedLayers = [...(session.hackedLayers || [])];
+    if (game.user?.isGM) {
+      const gmOverride = state.sessions?.['gm-override'];
+      if (gmOverride?.hackedLayers) {
+        for (const l of gmOverride.hackedLayers) {
+          if (!hackedLayers.includes(l)) hackedLayers.push(l);
+        }
+      }
+    }
+
+    // Effective session flags — merge gm-override booleans for GM
+    let effectiveKeyItemUsed = session.keyItemUsed;
+    let effectiveLoggedIn = session.loggedIn;
+    if (game.user?.isGM) {
+      const gmOverride = state.sessions?.['gm-override'];
+      if (gmOverride?.keyItemUsed) effectiveKeyItemUsed = true;
+      if (gmOverride?.loggedIn) effectiveLoggedIn = true;
+    }
 
     // Layer 1: NETWORK
     // Supports both new `network` object and legacy flat `requiresNetwork` / `requiredNetwork`
@@ -165,7 +184,7 @@ export class DataShardService {
     }
 
     // Layer 2: KEY ITEM
-    if (config.requiresKeyItem && !session.keyItemUsed && !hackedLayers.includes('keyitem')) {
+    if (config.requiresKeyItem && !effectiveKeyItemUsed && !hackedLayers.includes('keyitem')) {
       return {
         blocked: true,
         layer: 'keyitem',
@@ -176,9 +195,9 @@ export class DataShardService {
     }
 
     // Layer 3: LOGIN
-    if (config.requiresLogin && !session.loggedIn && !hackedLayers.includes('login')) {
+    if (config.requiresLogin && !effectiveLoggedIn && !hackedLayers.includes('login')) {
       // Check key item bypass
-      if (config.requiresKeyItem && config.keyItemBypassLogin && session.keyItemUsed) {
+      if (config.requiresKeyItem && config.keyItemBypassLogin && effectiveKeyItemUsed) {
         // Key item bypasses login — skip this layer
       } else {
         return {
@@ -194,7 +213,7 @@ export class DataShardService {
     // Layer 4: ENCRYPTION
     if (config.encrypted && config.encryptionMode === 'shard' && !state.decrypted) {
       // Check key item bypass
-      if (config.requiresKeyItem && config.keyItemBypassEncryption && session.keyItemUsed) {
+      if (config.requiresKeyItem && config.keyItemBypassEncryption && effectiveKeyItemUsed) {
         // Key item bypasses encryption — skip this layer
       } else {
         return {
