@@ -973,15 +973,15 @@ export class DataShardService {
   }
 
   /**
-   * GM set shard integrity to a specific value.
+   * GM set shard integrity to a specific percentage.
    * Optionally un-corrupt entries when restoring above corruption threshold.
    * @param {Item} shardItem
-   * @param {number} value — 0–100 (clamped to max)
+   * @param {number} percent — 0–100 percentage target
    * @param {object} [opts]
    * @param {boolean} [opts.uncorrupt=true] — If restoring, also clear corrupted flags on entries
-   * @returns {Promise<{ success: boolean, newIntegrity: number }>}
+   * @returns {Promise<{ success: boolean, newIntegrity: number, percent: number }>}
    */
-  async setIntegrity(shardItem, value, opts = {}) {
+  async setIntegrity(shardItem, percent, opts = {}) {
     if (!isGM()) return { success: false, error: 'GM only' };
 
     const config = this._getConfig(shardItem);
@@ -990,7 +990,7 @@ export class DataShardService {
     if (!integrity.enabled) return { success: false, error: 'Integrity not enabled' };
 
     const max = integrity.maxIntegrity ?? 100;
-    const newValue = Math.max(0, Math.min(value, max));
+    const newValue = Math.max(0, Math.min(Math.round(max * percent / 100), max));
     const oldValue = integrity.currentIntegrity ?? 100;
 
     await shardItem.update({
@@ -1027,8 +1027,8 @@ export class DataShardService {
       itemId: shardItem.id, newIntegrity: newValue,
     });
 
-    log.info(`GM set shard "${shardItem.name}" integrity: ${oldValue} → ${newValue}${uncorruptedCount ? ` (${uncorruptedCount} entries un-corrupted)` : ''}`);
-    return { success: true, newIntegrity: newValue, uncorruptedCount };
+    log.info(`GM set shard "${shardItem.name}" integrity: ${oldValue} → ${newValue} (${percent}%)${uncorruptedCount ? ` (${uncorruptedCount} entries un-corrupted)` : ''}`);
+    return { success: true, newIntegrity: newValue, percent, uncorruptedCount };
   }
 
   // ═══════════════════════════════════════════════════════════

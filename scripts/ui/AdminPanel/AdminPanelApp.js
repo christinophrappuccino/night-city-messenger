@@ -5598,7 +5598,7 @@ export class AdminPanelApp extends BaseApplication {
       const result = await game.nightcity?.dataShardService?.setIntegrity(item, value);
       this._animationActive = false;
       if (result?.success) {
-        ui.notifications.info(`NCM | ${item.name} integrity set to ${result.newIntegrity}%${result.uncorruptedCount ? ` (${result.uncorruptedCount} entries restored)` : ''}`);
+        ui.notifications.info(`NCM | ${item.name} integrity set to ${value}%${result.uncorruptedCount ? ` (${result.uncorruptedCount} entries restored)` : ''}`);
       } else {
         ui.notifications.warn(`NCM | Set integrity failed: ${result?.error || 'Unknown'}`);
       }
