@@ -486,6 +486,19 @@ export class ItemInboxConfig extends BaseApplication {
       singleMessage: config.singleMessage,
       notifyGM: config.notifyGM ?? true,
       notifyContact: config.notifyContact ?? false,
+
+      // Item (CPR system properties)
+      itemPrice: this.item?.system?.price?.market ?? 100,
+      itemAmount: this.item?.system?.amount ?? 1,
+      itemBrand: this.item?.system?.brand || '',
+      itemEquippedOwned: (this.item?.system?.equipped || 'owned') === 'owned',
+      itemEquippedCarried: this.item?.system?.equipped === 'carried',
+      itemEquippedEquipped: this.item?.system?.equipped === 'equipped',
+      itemIsElectronic: this.item?.system?.isElectronic ?? false,
+      itemConcealable: this.item?.system?.concealable?.concealable ?? false,
+      itemDescription: this.item?.system?.description?.value || '',
+      itemSourceBook: this.item?.system?.source?.book || '',
+      itemSourcePage: this.item?.system?.source?.page || 0,
     };
   }
 
@@ -651,6 +664,22 @@ export class ItemInboxConfig extends BaseApplication {
 
     const result = await this.dataShardService.updateConfig(this.item, config);
     if (result.success) {
+      // Also save CPR system properties directly on the item
+      try {
+        await this.item.update({
+          'system.price.market': parseInt(val('itemPrice')) || 0,
+          'system.amount': parseInt(val('itemAmount')) || 1,
+          'system.brand': val('itemBrand'),
+          'system.equipped': val('itemEquipped', 'owned'),
+          'system.isElectronic': checked('itemIsElectronic'),
+          'system.concealable.concealable': checked('itemConcealable'),
+          'system.description.value': val('itemDescription'),
+          'system.source.book': val('itemSourceBook'),
+          'system.source.page': parseInt(val('itemSourcePage')) || 0,
+        });
+      } catch (err) {
+        console.warn(`${MODULE_ID} | Failed to update item system properties:`, err);
+      }
       ui.notifications.info('NCM | Shard configuration saved.');
       this.close();
     } else {

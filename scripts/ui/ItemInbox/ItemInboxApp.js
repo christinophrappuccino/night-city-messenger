@@ -47,6 +47,9 @@ export class ItemInboxApp extends BaseApplication {
   /** @type {boolean} Whether boot sequence has completed */
   _bootComplete = false;
 
+  /** @type {boolean} Whether chip info drawer is open */
+  _chipDrawerOpen = false;
+
   /** @type {boolean} Whether boot sequence is currently playing */
   _bootInProgress = false;
 
@@ -94,6 +97,7 @@ export class ItemInboxApp extends BaseApplication {
       claimEddies: ItemInboxApp._onClaimEddies,
       scrollToEntry: ItemInboxApp._onScrollToEntry,
       toggleIndexStrip: ItemInboxApp._onToggleIndexStrip,
+      toggleChipInfo: ItemInboxApp._onToggleChipInfo,
       executePayload: ItemInboxApp._onExecutePayload,
       goToScene: ItemInboxApp._onGoToScene,
       editEntry: ItemInboxApp._onEditEntry,
@@ -472,6 +476,20 @@ export class ItemInboxApp extends BaseApplication {
 
       // State
       isDestroyed: state.destroyed === true || integrity.isBricked,
+
+      // Chip info drawer
+      chipDrawerOpen: this._chipDrawerOpen,
+      chipInfo: {
+        price: this.item?.system?.price?.market ?? 0,
+        amount: this.item?.system?.amount ?? 1,
+        brand: this.item?.system?.brand || '',
+        equipped: this.item?.system?.equipped || 'owned',
+        equippedLabel: (this.item?.system?.equipped || 'owned').toUpperCase(),
+        isElectronic: this.item?.system?.isElectronic ?? false,
+        concealable: this.item?.system?.concealable?.concealable ?? false,
+        isConcealed: this.item?.system?.concealable?.isConcealed ?? false,
+        description: this.item?.system?.description?.value || '',
+      },
     };
   }
 
@@ -1807,6 +1825,11 @@ export class ItemInboxApp extends BaseApplication {
         icon.classList.toggle('fa-chevron-right');
       }
     }
+  }
+
+  static _onToggleChipInfo() {
+    this._chipDrawerOpen = !this._chipDrawerOpen;
+    this.render();
   }
 
   static async _onExecutePayload(event, target) {

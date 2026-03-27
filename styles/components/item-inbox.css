@@ -185,6 +185,142 @@
 /* GM header buttons */
 .ncm-app .ncm-shard-gm-header-actions { display: flex; gap: 4px; flex-shrink: 0; align-self: flex-start; margin-top: 2px; }
 
+.ncm-app .ncm-shard-hdr-btn--active {
+  color: var(--ncm-color-secondary, #19f3f7) !important;
+  border-color: var(--ncm-color-secondary, #19f3f7) !important;
+  background: rgba(25, 243, 247, 0.08) !important;
+}
+
+
+/* ═══════════════════════════════════════════
+   §2B  CHIP INFO DRAWER
+   ═══════════════════════════════════════════ */
+
+.ncm-app .ncm-shard-chip-drawer {
+  background: var(--sp-bg-base, #0c0c16) !important;
+  border-bottom: 1px solid var(--sp-border, #1e1e32) !important;
+  padding: 8px 12px !important;
+}
+
+.ncm-app .ncm-shard-chip-drawer__header {
+  display: flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  margin-bottom: 6px !important;
+}
+
+.ncm-app .ncm-shard-chip-drawer__header > i {
+  font-size: 10px !important;
+  color: var(--ncm-color-secondary, #19f3f7) !important;
+}
+
+.ncm-app .ncm-shard-chip-drawer__title {
+  font-family: var(--ncm-font-display, 'Orbitron', monospace) !important;
+  font-size: 9px !important;
+  font-weight: 600 !important;
+  color: var(--sp-text-muted, #555570) !important;
+  letter-spacing: 1.5px !important;
+  text-transform: uppercase !important;
+}
+
+.ncm-app .ncm-shard-chip-drawer__close {
+  margin-left: auto !important;
+  width: 18px !important; height: 18px !important;
+  display: flex !important; align-items: center !important; justify-content: center !important;
+  background: transparent !important; border: none !important; cursor: pointer !important;
+  color: var(--sp-text-muted, #555570) !important; font-size: 10px !important;
+  padding: 0 !important; min-width: 0 !important; min-height: 0 !important;
+  appearance: none !important; -webkit-appearance: none !important;
+  box-shadow: none !important;
+}
+
+.ncm-app .ncm-shard-chip-drawer__close:hover {
+  color: var(--sp-text-bright, #e0e0e8) !important;
+}
+
+.ncm-app .ncm-shard-chip-drawer__grid {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 3px !important;
+}
+
+.ncm-app .ncm-shard-chip-spec {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 4px 8px !important;
+  background: var(--sp-bg-deep, #0a0a14) !important;
+  border-radius: 2px !important;
+}
+
+.ncm-app .ncm-shard-chip-spec__icon {
+  font-size: 9px !important;
+  color: var(--sp-text-muted, #555570) !important;
+  width: 12px !important;
+  text-align: center !important;
+}
+
+.ncm-app .ncm-shard-chip-spec__label {
+  font-family: var(--ncm-font-display, 'Orbitron', monospace) !important;
+  font-size: 7px !important;
+  color: var(--sp-text-muted, #555570) !important;
+  letter-spacing: 0.8px !important;
+  text-transform: uppercase !important;
+}
+
+.ncm-app .ncm-shard-chip-spec__value {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace) !important;
+  font-size: 11px !important;
+  color: var(--sp-text-secondary, #c8c8dd) !important;
+  margin-left: auto !important;
+}
+
+.ncm-app .ncm-shard-chip-spec__tag {
+  font-family: var(--ncm-font-display, 'Orbitron', monospace) !important;
+  font-size: 7px !important;
+  font-weight: 600 !important;
+  padding: 1px 5px !important;
+  border-radius: 2px !important;
+  letter-spacing: 0.8px !important;
+  margin-left: auto !important;
+}
+
+.ncm-app .ncm-shard-chip-spec__tag--cyan {
+  background: rgba(25, 243, 247, 0.1) !important;
+  color: var(--ncm-color-secondary, #19f3f7) !important;
+  border: 1px solid rgba(25, 243, 247, 0.2) !important;
+}
+
+.ncm-app .ncm-shard-chip-spec__tag--green {
+  background: rgba(52, 211, 153, 0.1) !important;
+  color: var(--ncm-success, #34D399) !important;
+  border: 1px solid rgba(52, 211, 153, 0.2) !important;
+}
+
+.ncm-app .ncm-shard-chip-spec__tag--muted {
+  background: rgba(120, 120, 150, 0.1) !important;
+  color: var(--sp-text-muted, #7a7a95) !important;
+  border: 1px solid rgba(120, 120, 150, 0.2) !important;
+}
+
+.ncm-app .ncm-shard-chip-spec--full {
+  grid-column: 1 / -1 !important;
+}
+
+.ncm-app .ncm-shard-chip-spec--desc {
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  gap: 3px !important;
+  padding: 6px 8px !important;
+}
+
+.ncm-app .ncm-shard-chip-spec__desc-text {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace) !important;
+  font-size: 10px !important;
+  color: var(--sp-text-secondary, #b8b8d0) !important;
+  line-height: 1.4 !important;
+}
+
 
 /* ═══════════════════════════════════════════
    §3  INTEGRITY BAR
