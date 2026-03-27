@@ -168,6 +168,19 @@
                 {{/each}}
               </div>
               {{/if}}
+              <div class="ncm-shard-expand-preview">
+                {{#if this.firstEntrySnippet}}
+                <div class="ncm-shard-expand-preview__label">First Entry</div>
+                <div class="ncm-shard-expand-preview__snippet">{{this.firstEntrySnippet}}</div>
+                {{else}}
+                <div class="ncm-shard-expand-preview__label">No entries</div>
+                {{/if}}
+              </div>
+              <div class="ncm-shard-expand-actions">
+                <button class="ncm-shard-expand-btn ncm-shard-expand-btn--cyan" data-action="openShardItem" data-item-id="{{this.itemId}}"><i class="fas fa-folder-open"></i> Open</button>
+                <button class="ncm-shard-expand-btn ncm-shard-expand-btn--ghost" data-action="configureShardItem" data-item-id="{{this.itemId}}"><i class="fas fa-cog"></i> Config</button>
+                <button class="ncm-shard-expand-btn ncm-shard-expand-btn--ghost" data-action="unconvertShard" data-item-id="{{this.itemId}}"><i class="fas fa-rotate-left"></i> Unconvert</button>
+              </div>
               {{#if this.integrityEnabled}}
               <div class="ncm-shard-integrity-controls" data-item-id="{{this.itemId}}">
                 <div class="ncm-shard-integrity-controls__header">
@@ -188,19 +201,6 @@
                 </div>
               </div>
               {{/if}}
-              <div class="ncm-shard-expand-preview">
-                {{#if this.firstEntrySnippet}}
-                <div class="ncm-shard-expand-preview__label">First Entry</div>
-                <div class="ncm-shard-expand-preview__snippet">{{this.firstEntrySnippet}}</div>
-                {{else}}
-                <div class="ncm-shard-expand-preview__label">No entries</div>
-                {{/if}}
-              </div>
-              <div class="ncm-shard-expand-actions">
-                <button class="ncm-shard-expand-btn ncm-shard-expand-btn--cyan" data-action="openShardItem" data-item-id="{{this.itemId}}"><i class="fas fa-folder-open"></i> Open</button>
-                <button class="ncm-shard-expand-btn ncm-shard-expand-btn--ghost" data-action="configureShardItem" data-item-id="{{this.itemId}}"><i class="fas fa-cog"></i> Config</button>
-                <button class="ncm-shard-expand-btn ncm-shard-expand-btn--ghost" data-action="unconvertShard" data-item-id="{{this.itemId}}"><i class="fas fa-rotate-left"></i> Unconvert</button>
-              </div>
             </div>
           </div>
           {{/if}}
