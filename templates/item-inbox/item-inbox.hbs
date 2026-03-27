@@ -89,17 +89,10 @@
   {{#if integrityEnabled}}
     <div class="ncm-shard-integrity-row">
       <span class="ncm-shard-integrity-label">Integrity</span>
-      {{#if isBlocked}}
-        <div class="ncm-shard-integrity-track">
-          <div class="ncm-shard-integrity-fill ncm-integrity-clean" style="width: 100%;"></div>
-        </div>
-        <span class="ncm-shard-integrity-value">???</span>
-      {{else}}
-        <div class="ncm-shard-integrity-track">
-          <div class="ncm-shard-integrity-fill ncm-integrity-{{integrityTier}}" style="width: {{integrityPercent}}%;"></div>
-        </div>
-        <span class="ncm-shard-integrity-value">{{integrityPercent}}%</span>
-      {{/if}}
+      <div class="ncm-shard-integrity-track">
+        <div class="ncm-shard-integrity-fill ncm-integrity-{{integrityTier}}" style="width: {{integrityPercent}}%;"></div>
+      </div>
+      <span class="ncm-shard-integrity-value">{{integrityPercent}}%</span>
     </div>
   {{/if}}
 
