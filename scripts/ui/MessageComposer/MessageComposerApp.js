@@ -1973,11 +1973,11 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     if (this.timeService) {
       const gameTime = this.timeService.getCurrentTime();
       const dt = new Date(gameTime);
-      const dd = String(dt.getDate()).padStart(2, '0');
-      const mm = String(dt.getMonth() + 1).padStart(2, '0');
-      const yyyy = dt.getFullYear();
-      const hh = String(dt.getHours()).padStart(2, '0');
-      const min = String(dt.getMinutes()).padStart(2, '0');
+      const dd = String(dt.getUTCDate()).padStart(2, '0');
+      const mm = String(dt.getUTCMonth() + 1).padStart(2, '0');
+      const yyyy = dt.getUTCFullYear();
+      const hh = String(dt.getUTCHours()).padStart(2, '0');
+      const min = String(dt.getUTCMinutes()).padStart(2, '0');
       timeStr = `${dd}.${mm}.${yyyy} // ${hh}:${min}`;
     } else {
       const now = new Date();

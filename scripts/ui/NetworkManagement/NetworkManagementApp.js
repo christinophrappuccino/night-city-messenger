@@ -1161,13 +1161,13 @@ export class NetworkManagementApp extends BaseApplication {
   _formatLogTime(timestamp) {
     if (!timestamp) return '';
     const d = new Date(timestamp);
-    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
+    return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}:${String(d.getUTCSeconds()).padStart(2, '0')}`;
   }
 
   _formatLogDate(timestamp) {
     if (!timestamp) return '';
     const d = new Date(timestamp);
-    return `${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}.${d.getFullYear()}`;
+    return `${String(d.getUTCMonth() + 1).padStart(2, '0')}.${String(d.getUTCDate()).padStart(2, '0')}.${d.getUTCFullYear()}`;
   }
 
   _getLogTypeIcon(type) {

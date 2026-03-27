@@ -2349,14 +2349,14 @@ export class AdminPanelApp extends BaseApplication {
   _formatLogTime(timestamp) {
     if (!timestamp) return '';
     const d = new Date(timestamp);
-    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
+    return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}:${String(d.getUTCSeconds()).padStart(2, '0')}`;
   }
 
   /** @private */
   _formatLogDate(timestamp) {
     if (!timestamp) return '';
     const d = new Date(timestamp);
-    return `${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}.${d.getFullYear()}`;
+    return `${String(d.getUTCMonth() + 1).padStart(2, '0')}.${String(d.getUTCDate()).padStart(2, '0')}.${d.getUTCFullYear()}`;
   }
 
   /** @private */
@@ -2908,7 +2908,7 @@ export class AdminPanelApp extends BaseApplication {
 
     // Delivery date in cyberpunk format
     const dt = new Date(entry.deliveryTime);
-    const deliveryDate = `${dt.getDate().toString().padStart(2, '0')}.${(dt.getMonth() + 1).toString().padStart(2, '0')}.${dt.getFullYear()} // ${dt.getHours().toString().padStart(2, '0')}:${dt.getMinutes().toString().padStart(2, '0')}`;
+    const deliveryDate = `${dt.getUTCDate().toString().padStart(2, '0')}.${(dt.getUTCMonth() + 1).toString().padStart(2, '0')}.${dt.getUTCFullYear()} // ${dt.getUTCHours().toString().padStart(2, '0')}:${dt.getUTCMinutes().toString().padStart(2, '0')}`;
 
     // Priority
     const priority = entry.messageData?.priority || 'normal';
@@ -3676,8 +3676,8 @@ export class AdminPanelApp extends BaseApplication {
 
     const data = entry.messageData || {};
     const currentDelivery = entry.deliveryTime ? new Date(entry.deliveryTime) : new Date();
-    const dateVal = `${currentDelivery.getFullYear()}-${String(currentDelivery.getMonth() + 1).padStart(2, '0')}-${String(currentDelivery.getDate()).padStart(2, '0')}`;
-    const timeVal = `${String(currentDelivery.getHours()).padStart(2, '0')}:${String(currentDelivery.getMinutes()).padStart(2, '0')}`;
+    const dateVal = `${currentDelivery.getUTCFullYear()}-${String(currentDelivery.getUTCMonth() + 1).padStart(2, '0')}-${String(currentDelivery.getUTCDate()).padStart(2, '0')}`;
+    const timeVal = `${String(currentDelivery.getUTCHours()).padStart(2, '0')}:${String(currentDelivery.getUTCMinutes()).padStart(2, '0')}`;
 
     const content = `
       <div style="font-family:Rajdhani,sans-serif; color:#eeeef4;">
@@ -5628,8 +5628,8 @@ export class AdminPanelApp extends BaseApplication {
     const dateFmtLabels = { YMD: 'Y.M.D', DMY: 'D.M.Y', MDY: 'M.D.Y' };
 
     // Pre-fill date/time inputs
-    const dateVal = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`;
-    const timeVal = `${String(currentDate.getHours()).padStart(2, '0')}:${String(currentDate.getMinutes()).padStart(2, '0')}`;
+    const dateVal = `${currentDate.getUTCFullYear()}-${String(currentDate.getUTCMonth() + 1).padStart(2, '0')}-${String(currentDate.getUTCDate()).padStart(2, '0')}`;
+    const timeVal = `${String(currentDate.getUTCHours()).padStart(2, '0')}:${String(currentDate.getUTCMinutes()).padStart(2, '0')}`;
 
     // Pre-fill disguised with a Night City date if not already set
     let disDateVal = '2045-03-18';
@@ -5638,8 +5638,8 @@ export class AdminPanelApp extends BaseApplication {
       const existing = game.settings.get(MODULE_ID, 'disguisedBaseTime');
       if (existing) {
         const d = new Date(existing);
-        disDateVal = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        disTimeVal = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+        disDateVal = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+        disTimeVal = `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
       }
     } catch { /* use defaults */ }
 
@@ -5934,8 +5934,8 @@ export class AdminPanelApp extends BaseApplication {
           await ts.advanceManualTime(secs);
           // Update the date/time inputs to reflect new time
           const newTime = new Date(ts.getCurrentTime());
-          html.find('#ncm-tc-man-date').val(`${newTime.getFullYear()}-${String(newTime.getMonth() + 1).padStart(2, '0')}-${String(newTime.getDate()).padStart(2, '0')}`);
-          html.find('#ncm-tc-man-time').val(`${String(newTime.getHours()).padStart(2, '0')}:${String(newTime.getMinutes()).padStart(2, '0')}`);
+          html.find('#ncm-tc-man-date').val(`${newTime.getUTCFullYear()}-${String(newTime.getUTCMonth() + 1).padStart(2, '0')}-${String(newTime.getUTCDate()).padStart(2, '0')}`);
+          html.find('#ncm-tc-man-time').val(`${String(newTime.getUTCHours()).padStart(2, '0')}:${String(newTime.getUTCMinutes()).padStart(2, '0')}`);
         });
       },
     }, {

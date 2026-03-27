@@ -130,7 +130,9 @@ export class TimeService {
 
     try {
       const dt = SimpleCalendar.api.currentDateTime();
-      return new Date(dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.seconds || 0).toISOString();
+      // Use Date.UTC — SC values are game-world time, not local timezone
+      const ms = Date.UTC(dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.seconds || 0);
+      return new Date(ms).toISOString();
     } catch (err) {
       log.warn('TimeService: SimpleCalendar read failed, falling back to real time', err);
       return new Date().toISOString();

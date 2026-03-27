@@ -84,11 +84,12 @@ export function getPlayerActor() {
  */
 export function formatCyberDate(timestamp, options = {}) {
   const d = new Date(timestamp);
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  const min = String(d.getMinutes()).padStart(2, '0');
-  const sec = String(d.getSeconds()).padStart(2, '0');
+  // Always read UTC — all stored timestamps use ISO Z (UTC)
+  const year = d.getUTCFullYear();
+  const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  const min = String(d.getUTCMinutes()).padStart(2, '0');
+  const sec = String(d.getUTCSeconds()).padStart(2, '0');
 
   // Date format setting — default YMD
   let dateFmt = 'YMD';
@@ -112,14 +113,14 @@ export function formatCyberDate(timestamp, options = {}) {
   } catch { /* settings not registered yet */ }
 
   if (use12h) {
-    let hr = d.getHours();
+    let hr = d.getUTCHours();
     const ampm = hr >= 12 ? 'PM' : 'AM';
     hr = hr % 12 || 12;
     const timeStr = options.seconds ? `${hr}:${min}:${sec} ${ampm}` : `${hr}:${min} ${ampm}`;
     return `${dateStr} // ${timeStr}`;
   }
 
-  const hr = String(d.getHours()).padStart(2, '0');
+  const hr = String(d.getUTCHours()).padStart(2, '0');
   const timeStr = options.seconds ? `${hr}:${min}:${sec}` : `${hr}:${min}`;
   return `${dateStr} // ${timeStr}`;
 }

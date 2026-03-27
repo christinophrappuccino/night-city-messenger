@@ -1842,7 +1842,7 @@ export class MessageViewerApp extends BaseApplication {
     const fmt = (d) => {
       if (!d) return '…';
       const dt = new Date(d);
-      return `${dt.toLocaleString('en', { month: 'short' })} ${dt.getDate()}`;
+      return `${dt.toLocaleString('en', { month: 'short', timeZone: 'UTC' })} ${dt.getUTCDate()}`;
     };
     return `${fmt(this._dateRangeFrom)} – ${fmt(this._dateRangeTo)}`;
   }
