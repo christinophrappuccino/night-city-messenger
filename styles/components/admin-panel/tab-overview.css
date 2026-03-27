@@ -26,7 +26,7 @@
   border-radius: 2px !important;
   font-family: var(--ncm-font-display) !important;
   font-size: 11px !important;
-  font-weight: 600 !important;
+  font-weight: 700 !important;
   color: var(--ncm-text-secondary) !important;
   cursor: pointer !important;
   transition: all 0.15s !important;
@@ -139,16 +139,16 @@
 
 .ncm-app .ncm-ov-status-card__title {
   font-family: var(--ncm-font-title);
-  font-size: 8px;
-  font-weight: 600;
-  color: var(--ncm-text-muted);
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--ncm-text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.1em;
 }
 
 .ncm-app .ncm-ov-status-card__icon {
-  font-size: 10px;
-  opacity: 0.6;
+  font-size: 11px;
+  opacity: 0.75;
 }
 
 .ncm-app .ncm-ov-status-card--msgs .ncm-ov-status-card__icon { color: var(--ncm-secondary); }
@@ -173,14 +173,14 @@
 
 .ncm-app .ncm-ov-status-card__detail {
   font-family: var(--ncm-font-mono);
-  font-size: 9px;
-  color: var(--ncm-text-muted);
+  font-size: 10px;
+  color: var(--ncm-text-secondary);
   display: flex;
   align-items: center;
   gap: 4px;
 }
 
-.ncm-app .ncm-ov-status-card__detail i { font-size: 8px; }
+.ncm-app .ncm-ov-status-card__detail i { font-size: 9px; }
 
 .ncm-app .ncm-ov-status-card__detail-val--red { color: var(--ncm-primary); }
 .ncm-app .ncm-ov-status-card__detail-val--cyan { color: var(--ncm-secondary); }
@@ -190,7 +190,7 @@
 
 .ncm-app .ncm-ov-status-card__link {
   font-family: var(--ncm-font-mono);
-  font-size: 8px;
+  font-size: 9px;
   color: var(--ncm-secondary);
   opacity: 0;
   text-transform: uppercase;
@@ -254,25 +254,26 @@
 
 .ncm-app .ncm-ov-alert__text {
   font-family: var(--ncm-font-display);
-  font-size: 11px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 700;
   color: var(--ncm-text-primary);
   line-height: 1.3;
 }
 
 .ncm-app .ncm-ov-alert__sub {
   font-family: var(--ncm-font-mono);
-  font-size: 9px;
-  color: var(--ncm-text-muted);
+  font-size: 10px;
+  color: var(--ncm-text-secondary);
   margin-top: 1px;
 }
 
 .ncm-app .ncm-ov-alert__tag {
   font-family: var(--ncm-font-mono);
-  font-size: 7px;
+  font-size: 8px;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  padding: 1px 5px;
+  padding: 2px 6px;
   border-radius: 2px;
   flex-shrink: 0;
 }
@@ -288,7 +289,8 @@
   border: 1px solid var(--ncm-border) !important;
   border-radius: 2px !important;
   font-family: var(--ncm-font-mono) !important;
-  font-size: 8px !important;
+  font-size: 9px !important;
+  font-weight: 700 !important;
   color: var(--ncm-text-secondary) !important;
   cursor: pointer !important;
   text-transform: uppercase !important;
@@ -341,8 +343,8 @@
   border: 1px solid var(--ncm-border);
   border-radius: 2px;
   font-family: var(--ncm-font-mono);
-  font-size: 10px;
-  color: var(--ncm-text-muted);
+  font-size: 11px;
+  color: var(--ncm-text-secondary);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -432,8 +434,8 @@
 
 .ncm-app .ncm-ov-feed-item__text {
   font-family: var(--ncm-font-display);
-  font-size: 11px;
-  font-weight: 500;
+  font-size: 12px;
+  font-weight: 700;
   color: var(--ncm-text-primary);
   line-height: 1.3;
 }
@@ -452,8 +454,8 @@
 
 .ncm-app .ncm-ov-feed-item__time {
   font-family: var(--ncm-font-mono);
-  font-size: 8px;
-  color: var(--ncm-text-muted);
+  font-size: 10px;
+  color: var(--ncm-text-secondary);
   margin-top: 2px;
 }
 
@@ -461,8 +463,8 @@
   padding: 20px;
   text-align: center;
   font-family: var(--ncm-font-mono);
-  font-size: 10px;
-  color: var(--ncm-text-muted);
+  font-size: 11px;
+  color: var(--ncm-text-secondary);
 }
 .ncm-app .ncm-ov-feed__empty i {
   display: inline;
@@ -507,7 +509,8 @@
 
 .ncm-app .ncm-ov-sched-item__countdown {
   font-family: var(--ncm-font-mono);
-  font-size: 10px;
+  font-size: 11px;
+  font-weight: 700;
   color: var(--ncm-accent);
   flex-shrink: 0;
   min-width: 52px;
@@ -522,8 +525,8 @@
 
 .ncm-app .ncm-ov-sched-item__from {
   font-family: var(--ncm-font-display);
-  font-size: 10px;
-  font-weight: 600;
+  font-size: 11px;
+  font-weight: 700;
   color: var(--ncm-text-primary);
   white-space: nowrap;
   overflow: hidden;
@@ -532,8 +535,8 @@
 
 .ncm-app .ncm-ov-sched-item__to {
   font-family: var(--ncm-font-mono);
-  font-size: 8px;
-  color: var(--ncm-text-muted);
+  font-size: 9px;
+  color: var(--ncm-text-secondary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -569,8 +572,8 @@
 .ncm-app .ncm-ov-sched__empty {
   padding: 12px 10px;
   font-family: var(--ncm-font-mono);
-  font-size: 9px;
-  color: var(--ncm-text-muted);
+  font-size: 10px;
+  color: var(--ncm-text-secondary);
   text-align: center;
 }
 
@@ -614,7 +617,7 @@
 .ncm-app .ncm-ov-conn-item__name {
   font-family: var(--ncm-font-display);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--ncm-text-primary);
   flex: 1;
   white-space: nowrap;
@@ -624,7 +627,7 @@
 
 .ncm-app .ncm-ov-conn-item__actor {
   font-family: var(--ncm-font-mono);
-  font-size: 9px;
+  font-size: 10px;
   color: var(--ncm-text-muted);
   white-space: nowrap;
   overflow: hidden;
@@ -634,7 +637,7 @@
 
 .ncm-app .ncm-ov-conn-item__role {
   font-family: var(--ncm-font-mono);
-  font-size: 8px;
+  font-size: 9px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   flex-shrink: 0;
@@ -717,14 +720,14 @@
 
 .ncm-app .ncm-ov-actor-card__meta {
   font-family: var(--ncm-font-mono);
-  font-size: 9px;
+  font-size: 10px;
   color: var(--ncm-text-muted);
   display: flex;
   align-items: center;
   gap: 4px;
 }
 .ncm-app .ncm-ov-actor-card__meta i {
-  font-size: 8px;
+  font-size: 9px;
   margin: 0 !important;
   padding: 0 !important;
 }
@@ -746,7 +749,7 @@
 
 .ncm-app .ncm-ov-actor-card__unread {
   font-family: var(--ncm-font-mono);
-  font-size: 8px;
+  font-size: 9px;
   color: var(--ncm-primary);
 }
 
@@ -799,7 +802,7 @@
 
 .ncm-app .ncm-ov-section {
   font-family: var(--ncm-font-title);
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.1em;
@@ -810,7 +813,7 @@
   gap: 6px;
 }
 
-.ncm-app .ncm-ov-section i { font-size: 9px; }
+.ncm-app .ncm-ov-section i { font-size: 10px; }
 
 .ncm-app .ncm-ov-section::after {
   content: '';
@@ -822,7 +825,7 @@
 .ncm-app button.ncm-ov-section__action,
 .ncm-app .ncm-ov-section__action {
   font-family: var(--ncm-font-mono) !important;
-  font-size: 8px !important;
+  font-size: 9px !important;
   color: var(--ncm-secondary) !important;
   cursor: pointer !important;
   text-transform: uppercase !important;
