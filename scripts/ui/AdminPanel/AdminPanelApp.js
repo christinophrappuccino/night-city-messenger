@@ -5399,7 +5399,7 @@ export class AdminPanelApp extends BaseApplication {
     if (!item) return;
 
     const state = item.getFlag(MODULE_ID, 'state') ?? {};
-    const sessions = state.sessions ?? {};
+    const sessions = foundry.utils.deepClone(state.sessions ?? {});
 
     // Determine current cleared state for this layer
     let isCleared = false;
@@ -5418,7 +5418,6 @@ export class AdminPanelApp extends BaseApplication {
         break;
     }
 
-    const action = isCleared ? 'relock to' : 'unlock to';
     const confirmed = await Dialog.confirm({
       title: `${isCleared ? 'Relock' : 'Unlock'} Security Layer`,
       content: `<p>${isCleared ? 'Relock' : 'Force-clear'} the <strong>${layer}</strong> layer on <strong>${item.name}</strong>?${isCleared ? ' All layers from this point forward will also be relocked.' : ''}</p>`,
@@ -5428,39 +5427,34 @@ export class AdminPanelApp extends BaseApplication {
     const LAYER_ORDER = ['network', 'keyitem', 'login', 'encryption'];
     const layerIdx = LAYER_ORDER.indexOf(layer);
 
+    // Build the complete new state object, then unset/set atomically
+    const newState = foundry.utils.deepClone(state);
+
     if (isCleared) {
-      // RELOCK from this layer forward — reset all sessions for layers at and after this index
-      const updates = {};
-      for (const [actorId, session] of Object.entries(sessions)) {
-        const newSession = { ...session };
+      // RELOCK from this layer forward
+      for (const [actorId, session] of Object.entries(newState.sessions ?? {})) {
         const hackedLayers = [...(session.hackedLayers || [])];
 
         for (let i = layerIdx; i < LAYER_ORDER.length; i++) {
           const l = LAYER_ORDER[i];
           const hIdx = hackedLayers.indexOf(l);
           if (hIdx !== -1) hackedLayers.splice(hIdx, 1);
-          if (l === 'keyitem') newSession.keyItemUsed = false;
-          if (l === 'login') newSession.loggedIn = false;
+          if (l === 'keyitem') session.keyItemUsed = false;
+          if (l === 'login') session.loggedIn = false;
         }
-        newSession.hackedLayers = hackedLayers;
-        updates[actorId] = newSession;
+        session.hackedLayers = hackedLayers;
       }
-
-      const stateUpdates = { [`flags.${MODULE_ID}.state.sessions`]: updates };
-      // If encryption is at or after this layer, also un-decrypt
+      // If encryption is at or after this layer, un-decrypt
       if (layerIdx <= LAYER_ORDER.indexOf('encryption')) {
-        stateUpdates[`flags.${MODULE_ID}.state.decrypted`] = false;
-        stateUpdates[`flags.${MODULE_ID}.state.gmBypassed`] = false;
+        newState.decrypted = false;
+        newState.gmBypassed = false;
       }
-      await item.update(stateUpdates);
-      ui.notifications.info(`NCM | Relocked ${item.name} from ${layer} layer.`);
     } else {
       // UNLOCK up to and including this layer
-      const updates = {};
-      // If no sessions exist, create a GM session
-      const gmSession = sessions['gm-override'] || { hackedLayers: [], hackAttempts: 0 };
-      const hackedLayers = [...(gmSession.hackedLayers || [])];
+      const gmSession = newState.sessions?.['gm-override']
+        || { hackedLayers: [], hackAttempts: 0, loggedIn: false, keyItemUsed: false, keyItemAttempts: 0, loginAttempts: 0, layerHackAttempts: {}, layerLockoutUntil: null, lockoutUntil: null };
 
+      const hackedLayers = [...(gmSession.hackedLayers || [])];
       for (let i = 0; i <= layerIdx; i++) {
         const l = LAYER_ORDER[i];
         if (!hackedLayers.includes(l)) hackedLayers.push(l);
@@ -5468,18 +5462,22 @@ export class AdminPanelApp extends BaseApplication {
         if (l === 'login') gmSession.loggedIn = true;
       }
       gmSession.hackedLayers = hackedLayers;
-      updates['gm-override'] = gmSession;
-      // Merge with existing sessions
-      const mergedSessions = { ...sessions, ...updates };
 
-      const stateUpdates = { [`flags.${MODULE_ID}.state.sessions`]: mergedSessions };
+      if (!newState.sessions) newState.sessions = {};
+      newState.sessions['gm-override'] = gmSession;
+
       if (layer === 'encryption') {
-        stateUpdates[`flags.${MODULE_ID}.state.decrypted`] = true;
-        stateUpdates[`flags.${MODULE_ID}.state.gmBypassed`] = true;
+        newState.decrypted = true;
+        newState.gmBypassed = true;
       }
-      await item.update(stateUpdates);
-      ui.notifications.info(`NCM | Force-cleared ${item.name} through ${layer} layer.`);
     }
+
+    // Atomic unset/set — avoids mergeObject pitfalls
+    await item.unsetFlag(MODULE_ID, 'state');
+    await item.setFlag(MODULE_ID, 'state', newState);
+
+    const verb = isCleared ? 'Relocked' : 'Force-cleared';
+    ui.notifications.info(`NCM | ${verb} ${item.name} ${isCleared ? 'from' : 'through'} ${layer} layer.`);
     this.render();
   }
 
@@ -5492,14 +5490,36 @@ export class AdminPanelApp extends BaseApplication {
 
     const state = item.getFlag(MODULE_ID, 'state') ?? {};
     if (state.decrypted) {
-      // Already decrypted → relock
+      // Already decrypted → relock (delegates to DataShardService which uses unsetFlag/setFlag)
       const result = await game.nightcity?.dataShardService?.relockShard(item);
       if (result?.success) {
         ui.notifications.info(`NCM | Relocked: ${item.name}`);
+      } else {
+        ui.notifications.error(`NCM | Relock failed: ${result?.error || 'Unknown'}`);
       }
     } else {
-      // Locked → force decrypt
-      await item.update({ [`flags.${MODULE_ID}.state.decrypted`]: true, [`flags.${MODULE_ID}.state.gmBypassed`]: true });
+      // Locked → force decrypt via atomic unset/set
+      const newState = foundry.utils.deepClone(state);
+      newState.decrypted = true;
+      newState.gmBypassed = true;
+      // Create a GM override session that has all layers cleared
+      if (!newState.sessions) newState.sessions = {};
+      const config = item.getFlag(MODULE_ID, 'config') ?? {};
+      const gmSession = newState.sessions['gm-override'] || { hackedLayers: [], hackAttempts: 0, loggedIn: false, keyItemUsed: false, keyItemAttempts: 0, loginAttempts: 0, layerHackAttempts: {}, layerLockoutUntil: null, lockoutUntil: null };
+      // Mark all configured layers as cleared
+      const allLayers = [];
+      const netConfig = config.network ?? {};
+      if (netConfig.required ?? config.requiresNetwork) allLayers.push('network');
+      if (config.requiresKeyItem) allLayers.push('keyitem');
+      if (config.requiresLogin) allLayers.push('login');
+      if (config.encrypted) allLayers.push('encryption');
+      gmSession.hackedLayers = allLayers;
+      if (allLayers.includes('keyitem')) gmSession.keyItemUsed = true;
+      if (allLayers.includes('login')) gmSession.loggedIn = true;
+      newState.sessions['gm-override'] = gmSession;
+
+      await item.unsetFlag(MODULE_ID, 'state');
+      await item.setFlag(MODULE_ID, 'state', newState);
       ui.notifications.info(`NCM | Force-decrypted: ${item.name}`);
     }
     this.render();
