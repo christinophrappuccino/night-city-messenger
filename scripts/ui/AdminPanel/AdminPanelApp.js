@@ -5112,11 +5112,19 @@ export class AdminPanelApp extends BaseApplication {
     });
     if (!confirmed) return;
 
-    const result = await game.nightcity?.dataShardService?.relockShard(item);
-    if (result?.success) {
-      ui.notifications.info(`Relocked: ${item.name}`);
-    } else {
-      ui.notifications.error(`Relock failed: ${result?.error || 'Unknown'}`);
+    try {
+      this._animationActive = true;
+      const result = await game.nightcity?.dataShardService?.relockShard(item);
+      this._animationActive = false;
+      if (result?.success) {
+        ui.notifications.info(`NCM | Relocked: ${item.name}`);
+      } else {
+        ui.notifications.error(`NCM | Relock failed: ${result?.error || 'Unknown'}`);
+      }
+    } catch (err) {
+      this._animationActive = false;
+      console.error(`${MODULE_ID} | relockShard failed:`, err);
+      ui.notifications.error(`NCM | Relock failed: ${err.message}`);
     }
     this.render(true);
   }
@@ -5182,8 +5190,15 @@ export class AdminPanelApp extends BaseApplication {
     });
     if (!confirmed) return;
 
-    for (const item of shards) {
-      await this.dataShardService?.relockShard(item);
+    try {
+      this._animationActive = true;
+      for (const item of shards) {
+        await this.dataShardService?.relockShard(item);
+      }
+      this._animationActive = false;
+    } catch (err) {
+      this._animationActive = false;
+      console.error(`${MODULE_ID} | bulkRelockAll failed:`, err);
     }
     ui.notifications.info(`NCM | ${shards.length} shard${shards.length > 1 ? 's' : ''} relocked.`);
     this.render();
@@ -5226,17 +5241,27 @@ export class AdminPanelApp extends BaseApplication {
   }
 
   static async _onRelockShardItem(event, target) {
-    event.stopPropagation(); // Don't trigger card click (openShardItem)
+    event.stopPropagation();
     const itemId = target.closest('[data-item-id]')?.dataset.itemId;
     if (!itemId) return;
     const item = AdminPanelApp._findItem(itemId);
     if (!item) return;
 
-    const result = await game.nightcity?.dataShardService?.relockShard(item);
-    if (result?.success) {
-      ui.notifications.info(`NCM | Relocked: ${item.name}`);
-      this.render();
+    try {
+      this._animationActive = true;
+      const result = await game.nightcity?.dataShardService?.relockShard(item);
+      this._animationActive = false;
+      if (result?.success) {
+        ui.notifications.info(`NCM | Relocked: ${item.name}`);
+      } else {
+        ui.notifications.error(`NCM | Relock failed: ${result?.error || 'Unknown'}`);
+      }
+    } catch (err) {
+      this._animationActive = false;
+      console.error(`${MODULE_ID} | relockShardItem failed:`, err);
+      ui.notifications.error(`NCM | Relock failed: ${err.message}`);
     }
+    this.render();
   }
 
   // ─── v4 Shard Tab Handlers ───
@@ -5396,7 +5421,10 @@ export class AdminPanelApp extends BaseApplication {
     if (!itemId || !layer) return;
 
     const item = AdminPanelApp._findItem(itemId);
-    if (!item) return;
+    if (!item) {
+      console.warn(`${MODULE_ID} | toggleShardLayer: item ${itemId} not found`);
+      return;
+    }
 
     const state = item.getFlag(MODULE_ID, 'state') ?? {};
     const sessions = foundry.utils.deepClone(state.sessions ?? {});
@@ -5427,14 +5455,13 @@ export class AdminPanelApp extends BaseApplication {
     const LAYER_ORDER = ['network', 'keyitem', 'login', 'encryption'];
     const layerIdx = LAYER_ORDER.indexOf(layer);
 
-    // Build the complete new state object, then unset/set atomically
+    // Build the complete new state object
     const newState = foundry.utils.deepClone(state);
 
     if (isCleared) {
       // RELOCK from this layer forward
       for (const [actorId, session] of Object.entries(newState.sessions ?? {})) {
         const hackedLayers = [...(session.hackedLayers || [])];
-
         for (let i = layerIdx; i < LAYER_ORDER.length; i++) {
           const l = LAYER_ORDER[i];
           const hIdx = hackedLayers.indexOf(l);
@@ -5444,16 +5471,15 @@ export class AdminPanelApp extends BaseApplication {
         }
         session.hackedLayers = hackedLayers;
       }
-      // If encryption is at or after this layer, un-decrypt
       if (layerIdx <= LAYER_ORDER.indexOf('encryption')) {
         newState.decrypted = false;
         newState.gmBypassed = false;
       }
     } else {
       // UNLOCK up to and including this layer
-      const gmSession = newState.sessions?.['gm-override']
+      if (!newState.sessions) newState.sessions = {};
+      const gmSession = newState.sessions['gm-override']
         || { hackedLayers: [], hackAttempts: 0, loggedIn: false, keyItemUsed: false, keyItemAttempts: 0, loginAttempts: 0, layerHackAttempts: {}, layerLockoutUntil: null, lockoutUntil: null };
-
       const hackedLayers = [...(gmSession.hackedLayers || [])];
       for (let i = 0; i <= layerIdx; i++) {
         const l = LAYER_ORDER[i];
@@ -5462,22 +5488,27 @@ export class AdminPanelApp extends BaseApplication {
         if (l === 'login') gmSession.loggedIn = true;
       }
       gmSession.hackedLayers = hackedLayers;
-
-      if (!newState.sessions) newState.sessions = {};
       newState.sessions['gm-override'] = gmSession;
-
       if (layer === 'encryption') {
         newState.decrypted = true;
         newState.gmBypassed = true;
       }
     }
 
-    // Atomic unset/set — avoids mergeObject pitfalls
-    await item.unsetFlag(MODULE_ID, 'state');
-    await item.setFlag(MODULE_ID, 'state', newState);
+    try {
+      // Suppress debounced re-renders during the two-step flag write
+      this._animationActive = true;
+      await item.unsetFlag(MODULE_ID, 'state');
+      await item.setFlag(MODULE_ID, 'state', newState);
+      this._animationActive = false;
 
-    const verb = isCleared ? 'Relocked' : 'Force-cleared';
-    ui.notifications.info(`NCM | ${verb} ${item.name} ${isCleared ? 'from' : 'through'} ${layer} layer.`);
+      const verb = isCleared ? 'Relocked' : 'Force-cleared';
+      ui.notifications.info(`NCM | ${verb} ${item.name} ${isCleared ? 'from' : 'through'} ${layer} layer.`);
+    } catch (err) {
+      this._animationActive = false;
+      console.error(`${MODULE_ID} | toggleShardLayer failed:`, err);
+      ui.notifications.error(`NCM | Layer toggle failed: ${err.message}`);
+    }
     this.render();
   }
 
@@ -5486,41 +5517,61 @@ export class AdminPanelApp extends BaseApplication {
     const itemId = target.closest('[data-item-id]')?.dataset.itemId;
     if (!itemId) return;
     const item = AdminPanelApp._findItem(itemId);
-    if (!item) return;
+    if (!item) {
+      console.warn(`${MODULE_ID} | forceDecryptShardItem: item ${itemId} not found`);
+      return;
+    }
 
     const state = item.getFlag(MODULE_ID, 'state') ?? {};
     if (state.decrypted) {
       // Already decrypted → relock (delegates to DataShardService which uses unsetFlag/setFlag)
-      const result = await game.nightcity?.dataShardService?.relockShard(item);
-      if (result?.success) {
-        ui.notifications.info(`NCM | Relocked: ${item.name}`);
-      } else {
-        ui.notifications.error(`NCM | Relock failed: ${result?.error || 'Unknown'}`);
+      try {
+        this._animationActive = true;
+        const result = await game.nightcity?.dataShardService?.relockShard(item);
+        this._animationActive = false;
+        if (result?.success) {
+          ui.notifications.info(`NCM | Relocked: ${item.name}`);
+        } else {
+          ui.notifications.error(`NCM | Relock failed: ${result?.error || 'Unknown'}`);
+        }
+      } catch (err) {
+        this._animationActive = false;
+        console.error(`${MODULE_ID} | forceDecryptShardItem relock failed:`, err);
+        ui.notifications.error(`NCM | Relock failed: ${err.message}`);
       }
     } else {
       // Locked → force decrypt via atomic unset/set
-      const newState = foundry.utils.deepClone(state);
-      newState.decrypted = true;
-      newState.gmBypassed = true;
-      // Create a GM override session that has all layers cleared
-      if (!newState.sessions) newState.sessions = {};
-      const config = item.getFlag(MODULE_ID, 'config') ?? {};
-      const gmSession = newState.sessions['gm-override'] || { hackedLayers: [], hackAttempts: 0, loggedIn: false, keyItemUsed: false, keyItemAttempts: 0, loginAttempts: 0, layerHackAttempts: {}, layerLockoutUntil: null, lockoutUntil: null };
-      // Mark all configured layers as cleared
-      const allLayers = [];
-      const netConfig = config.network ?? {};
-      if (netConfig.required ?? config.requiresNetwork) allLayers.push('network');
-      if (config.requiresKeyItem) allLayers.push('keyitem');
-      if (config.requiresLogin) allLayers.push('login');
-      if (config.encrypted) allLayers.push('encryption');
-      gmSession.hackedLayers = allLayers;
-      if (allLayers.includes('keyitem')) gmSession.keyItemUsed = true;
-      if (allLayers.includes('login')) gmSession.loggedIn = true;
-      newState.sessions['gm-override'] = gmSession;
+      try {
+        const newState = foundry.utils.deepClone(state);
+        newState.decrypted = true;
+        newState.gmBypassed = true;
+        // Create a GM override session that has all layers cleared
+        if (!newState.sessions) newState.sessions = {};
+        const config = item.getFlag(MODULE_ID, 'config') ?? {};
+        const gmSession = newState.sessions['gm-override']
+          || { hackedLayers: [], hackAttempts: 0, loggedIn: false, keyItemUsed: false, keyItemAttempts: 0, loginAttempts: 0, layerHackAttempts: {}, layerLockoutUntil: null, lockoutUntil: null };
+        // Mark all configured layers as cleared
+        const allLayers = [];
+        const netConfig = config.network ?? {};
+        if (netConfig.required ?? config.requiresNetwork) allLayers.push('network');
+        if (config.requiresKeyItem) allLayers.push('keyitem');
+        if (config.requiresLogin) allLayers.push('login');
+        if (config.encrypted) allLayers.push('encryption');
+        gmSession.hackedLayers = allLayers;
+        if (allLayers.includes('keyitem')) gmSession.keyItemUsed = true;
+        if (allLayers.includes('login')) gmSession.loggedIn = true;
+        newState.sessions['gm-override'] = gmSession;
 
-      await item.unsetFlag(MODULE_ID, 'state');
-      await item.setFlag(MODULE_ID, 'state', newState);
-      ui.notifications.info(`NCM | Force-decrypted: ${item.name}`);
+        this._animationActive = true;
+        await item.unsetFlag(MODULE_ID, 'state');
+        await item.setFlag(MODULE_ID, 'state', newState);
+        this._animationActive = false;
+        ui.notifications.info(`NCM | Force-decrypted: ${item.name}`);
+      } catch (err) {
+        this._animationActive = false;
+        console.error(`${MODULE_ID} | forceDecryptShardItem decrypt failed:`, err);
+        ui.notifications.error(`NCM | Force-decrypt failed: ${err.message}`);
+      }
     }
     this.render();
   }
