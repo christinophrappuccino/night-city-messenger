@@ -157,17 +157,39 @@
           {{#if this.isExpanded}}
           <div class="ncm-shard-row-expand">
             <div class="ncm-shard-row-expand__inner">
-              {{#if this.hasLayers}}
-              <div class="ncm-shard-layer-chain">
-                {{#each this.layers}}
-                <div class="ncm-shard-layer-chip {{#if this.cleared}}ncm-shard-layer-chip--cleared{{else}}ncm-shard-layer-chip--pending{{/if}}"
-                     data-action="toggleShardLayer" data-item-id="{{../itemId}}" data-layer="{{this.key}}"
-                     title="Click to {{#if this.cleared}}relock from{{else}}unlock to{{/if}} this layer">
-                  <i class="fas {{#if this.cleared}}fa-check{{else}}fa-lock{{/if}}"></i> {{this.name}}
+              <div class="ncm-shard-expand-left">
+                {{#if this.hasLayers}}
+                <div class="ncm-shard-layer-chain">
+                  {{#each this.layers}}
+                  <div class="ncm-shard-layer-chip {{#if this.cleared}}ncm-shard-layer-chip--cleared{{else}}ncm-shard-layer-chip--pending{{/if}}"
+                       data-action="toggleShardLayer" data-item-id="{{../itemId}}" data-layer="{{this.key}}"
+                       title="Click to {{#if this.cleared}}relock from{{else}}unlock to{{/if}} this layer">
+                    <i class="fas {{#if this.cleared}}fa-check{{else}}fa-lock{{/if}}"></i> {{this.name}}
+                  </div>
+                  {{/each}}
                 </div>
-                {{/each}}
+                {{/if}}
+                {{#if this.integrityEnabled}}
+                <div class="ncm-shard-integrity-controls" data-item-id="{{this.itemId}}">
+                  <div class="ncm-shard-integrity-controls__header">
+                    <i class="fas fa-shield-halved"></i>
+                    <span class="ncm-shard-integrity-controls__label">Integrity</span>
+                    <span class="ncm-shard-integrity-controls__value ncm-shard-integrity-controls__value--{{this.integrityTier}}">{{this.integrityPercent}}%</span>
+                  </div>
+                  <div class="ncm-shard-integrity-controls__track">
+                    <div class="ncm-integrity-mini-fill ncm-integrity-mini-fill--{{this.integrityTier}}" style="width:{{this.integrityPercent}}%;"></div>
+                  </div>
+                  <div class="ncm-shard-integrity-controls__presets">
+                    <div class="ncm-shard-integrity-chip {{#if (eq this.integrityPercent 100)}}ncm-shard-integrity-chip--active{{/if}}" data-action="setShardIntegrity" data-item-id="{{this.itemId}}" data-value="100" title="Full integrity">100</div>
+                    <div class="ncm-shard-integrity-chip {{#if (eq this.integrityPercent 75)}}ncm-shard-integrity-chip--active{{/if}}" data-action="setShardIntegrity" data-item-id="{{this.itemId}}" data-value="75" title="Light damage">75</div>
+                    <div class="ncm-shard-integrity-chip {{#if (eq this.integrityPercent 50)}}ncm-shard-integrity-chip--active{{/if}}" data-action="setShardIntegrity" data-item-id="{{this.itemId}}" data-value="50" title="Heavy damage">50</div>
+                    <div class="ncm-shard-integrity-chip {{#if (eq this.integrityPercent 25)}}ncm-shard-integrity-chip--active{{/if}}" data-action="setShardIntegrity" data-item-id="{{this.itemId}}" data-value="25" title="Severe damage">25</div>
+                    <div class="ncm-shard-integrity-chip ncm-shard-integrity-chip--danger {{#if (eq this.integrityPercent 0)}}ncm-shard-integrity-chip--active{{/if}}" data-action="setShardIntegrity" data-item-id="{{this.itemId}}" data-value="0" title="Bricked">0</div>
+                    <div class="ncm-shard-integrity-chip ncm-shard-integrity-chip--restore" data-action="restoreShardIntegrity" data-item-id="{{this.itemId}}" title="Restore to full + un-corrupt entries"><i class="fas fa-heart-pulse"></i></div>
+                  </div>
+                </div>
+                {{/if}}
               </div>
-              {{/if}}
               <div class="ncm-shard-expand-preview">
                 {{#if this.firstEntrySnippet}}
                 <div class="ncm-shard-expand-preview__label">First Entry</div>
@@ -181,26 +203,6 @@
                 <button class="ncm-shard-expand-btn ncm-shard-expand-btn--ghost" data-action="configureShardItem" data-item-id="{{this.itemId}}"><i class="fas fa-cog"></i> Config</button>
                 <button class="ncm-shard-expand-btn ncm-shard-expand-btn--ghost" data-action="unconvertShard" data-item-id="{{this.itemId}}"><i class="fas fa-rotate-left"></i> Unconvert</button>
               </div>
-              {{#if this.integrityEnabled}}
-              <div class="ncm-shard-integrity-controls" data-item-id="{{this.itemId}}">
-                <div class="ncm-shard-integrity-controls__header">
-                  <i class="fas fa-shield-halved"></i>
-                  <span class="ncm-shard-integrity-controls__label">Integrity</span>
-                  <span class="ncm-shard-integrity-controls__value ncm-shard-integrity-controls__value--{{this.integrityTier}}">{{this.integrityPercent}}%</span>
-                </div>
-                <div class="ncm-shard-integrity-controls__track">
-                  <div class="ncm-integrity-mini-fill ncm-integrity-mini-fill--{{this.integrityTier}}" style="width:{{this.integrityPercent}}%;"></div>
-                </div>
-                <div class="ncm-shard-integrity-controls__presets">
-                  <div class="ncm-shard-integrity-chip {{#if (eq this.integrityPercent 100)}}ncm-shard-integrity-chip--active{{/if}}" data-action="setShardIntegrity" data-item-id="{{this.itemId}}" data-value="100" title="Full integrity">100</div>
-                  <div class="ncm-shard-integrity-chip {{#if (eq this.integrityPercent 75)}}ncm-shard-integrity-chip--active{{/if}}" data-action="setShardIntegrity" data-item-id="{{this.itemId}}" data-value="75" title="Light damage">75</div>
-                  <div class="ncm-shard-integrity-chip {{#if (eq this.integrityPercent 50)}}ncm-shard-integrity-chip--active{{/if}}" data-action="setShardIntegrity" data-item-id="{{this.itemId}}" data-value="50" title="Heavy damage">50</div>
-                  <div class="ncm-shard-integrity-chip {{#if (eq this.integrityPercent 25)}}ncm-shard-integrity-chip--active{{/if}}" data-action="setShardIntegrity" data-item-id="{{this.itemId}}" data-value="25" title="Severe damage">25</div>
-                  <div class="ncm-shard-integrity-chip ncm-shard-integrity-chip--danger {{#if (eq this.integrityPercent 0)}}ncm-shard-integrity-chip--active{{/if}}" data-action="setShardIntegrity" data-item-id="{{this.itemId}}" data-value="0" title="Bricked">0</div>
-                  <div class="ncm-shard-integrity-chip ncm-shard-integrity-chip--restore" data-action="restoreShardIntegrity" data-item-id="{{this.itemId}}" title="Restore to full + un-corrupt entries"><i class="fas fa-heart-pulse"></i></div>
-                </div>
-              </div>
-              {{/if}}
             </div>
           </div>
           {{/if}}
