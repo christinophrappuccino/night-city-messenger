@@ -91,53 +91,54 @@
   </div>
 
   {{!-- ═══ CHIP INFO DRAWER (toggle via header button) ═══ --}}
-  {{#if chipDrawerOpen}}
-  <div class="ncm-shard-chip-drawer">
-    <div class="ncm-shard-chip-drawer__header">
-      <i class="fas fa-microchip"></i>
-      <span class="ncm-shard-chip-drawer__title">Physical Chip</span>
-      <button type="button" data-action="toggleChipInfo" class="ncm-shard-chip-drawer__close"><i class="fas fa-times"></i></button>
-    </div>
-    <div class="ncm-shard-chip-drawer__grid">
-      <div class="ncm-shard-chip-spec">
-        <i class="fas fa-tag ncm-shard-chip-spec__icon"></i>
-        <span class="ncm-shard-chip-spec__label">Price</span>
-        <span class="ncm-shard-chip-spec__value"><span style="color:var(--ncm-gold, #F0C55B);">{{chipInfo.price}} eb</span></span>
+  <div class="ncm-shard-chip-drawer {{#if chipDrawerOpen}}ncm-shard-chip-drawer--open{{/if}}">
+    <div class="ncm-shard-chip-drawer__accent"></div>
+    <div class="ncm-shard-chip-drawer__inner">
+      <div class="ncm-shard-chip-drawer__header">
+        <i class="fas fa-microchip"></i>
+        <span class="ncm-shard-chip-drawer__title">Physical Chip</span>
+        <button type="button" data-action="toggleChipInfo" class="ncm-shard-chip-drawer__close"><i class="fas fa-times"></i></button>
       </div>
-      <div class="ncm-shard-chip-spec">
-        <i class="fas fa-layer-group ncm-shard-chip-spec__icon"></i>
-        <span class="ncm-shard-chip-spec__label">Qty</span>
-        <span class="ncm-shard-chip-spec__value">{{chipInfo.amount}}</span>
+      <div class="ncm-shard-chip-drawer__grid">
+        <div class="ncm-shard-chip-spec">
+          <i class="fas fa-tag ncm-shard-chip-spec__icon"></i>
+          <span class="ncm-shard-chip-spec__label">Price</span>
+          <span class="ncm-shard-chip-spec__value"><span class="ncm-shard-chip-spec__eddies">{{chipInfo.price}} eb</span></span>
+        </div>
+        <div class="ncm-shard-chip-spec">
+          <i class="fas fa-layer-group ncm-shard-chip-spec__icon"></i>
+          <span class="ncm-shard-chip-spec__label">Qty</span>
+          <span class="ncm-shard-chip-spec__value">{{chipInfo.amount}}</span>
+        </div>
+        <div class="ncm-shard-chip-spec">
+          <i class="fas fa-building ncm-shard-chip-spec__icon"></i>
+          <span class="ncm-shard-chip-spec__label">Brand</span>
+          <span class="ncm-shard-chip-spec__value">{{#if chipInfo.brand}}{{chipInfo.brand}}{{else}}—{{/if}}</span>
+        </div>
+        <div class="ncm-shard-chip-spec">
+          <i class="fas fa-box ncm-shard-chip-spec__icon"></i>
+          <span class="ncm-shard-chip-spec__label">Status</span>
+          <span class="ncm-shard-chip-spec__tag ncm-shard-chip-spec__tag--muted">{{chipInfo.equippedLabel}}</span>
+        </div>
+        <div class="ncm-shard-chip-spec">
+          <i class="fas fa-bolt ncm-shard-chip-spec__icon"></i>
+          <span class="ncm-shard-chip-spec__label">Electronic</span>
+          <span class="ncm-shard-chip-spec__tag {{#if chipInfo.isElectronic}}ncm-shard-chip-spec__tag--cyan{{else}}ncm-shard-chip-spec__tag--muted{{/if}}">{{#if chipInfo.isElectronic}}YES{{else}}NO{{/if}}</span>
+        </div>
+        <div class="ncm-shard-chip-spec">
+          <i class="fas fa-eye-slash ncm-shard-chip-spec__icon"></i>
+          <span class="ncm-shard-chip-spec__label">Conceal</span>
+          <span class="ncm-shard-chip-spec__tag {{#if chipInfo.concealable}}ncm-shard-chip-spec__tag--green{{else}}ncm-shard-chip-spec__tag--muted{{/if}}">{{#if chipInfo.concealable}}YES{{else}}NO{{/if}}</span>
+        </div>
+        {{#if chipInfo.description}}
+        <div class="ncm-shard-chip-spec ncm-shard-chip-spec--full ncm-shard-chip-spec--desc">
+          <span class="ncm-shard-chip-spec__label">Description</span>
+          <span class="ncm-shard-chip-spec__desc-text">{{{chipInfo.description}}}</span>
+        </div>
+        {{/if}}
       </div>
-      <div class="ncm-shard-chip-spec">
-        <i class="fas fa-building ncm-shard-chip-spec__icon"></i>
-        <span class="ncm-shard-chip-spec__label">Brand</span>
-        <span class="ncm-shard-chip-spec__value">{{#if chipInfo.brand}}{{chipInfo.brand}}{{else}}—{{/if}}</span>
-      </div>
-      <div class="ncm-shard-chip-spec">
-        <i class="fas fa-box ncm-shard-chip-spec__icon"></i>
-        <span class="ncm-shard-chip-spec__label">Status</span>
-        <span class="ncm-shard-chip-spec__tag ncm-shard-chip-spec__tag--muted">{{chipInfo.equippedLabel}}</span>
-      </div>
-      <div class="ncm-shard-chip-spec">
-        <i class="fas fa-bolt ncm-shard-chip-spec__icon"></i>
-        <span class="ncm-shard-chip-spec__label">Electronic</span>
-        <span class="ncm-shard-chip-spec__tag {{#if chipInfo.isElectronic}}ncm-shard-chip-spec__tag--cyan{{else}}ncm-shard-chip-spec__tag--muted{{/if}}">{{#if chipInfo.isElectronic}}YES{{else}}NO{{/if}}</span>
-      </div>
-      <div class="ncm-shard-chip-spec">
-        <i class="fas fa-eye-slash ncm-shard-chip-spec__icon"></i>
-        <span class="ncm-shard-chip-spec__label">Conceal</span>
-        <span class="ncm-shard-chip-spec__tag {{#if chipInfo.concealable}}ncm-shard-chip-spec__tag--green{{else}}ncm-shard-chip-spec__tag--muted{{/if}}">{{#if chipInfo.concealable}}YES{{else}}NO{{/if}}</span>
-      </div>
-      {{#if chipInfo.description}}
-      <div class="ncm-shard-chip-spec ncm-shard-chip-spec--full ncm-shard-chip-spec--desc">
-        <span class="ncm-shard-chip-spec__label">Description</span>
-        <span class="ncm-shard-chip-spec__desc-text">{{{chipInfo.description}}}</span>
-      </div>
-      {{/if}}
     </div>
   </div>
-  {{/if}}
 
   {{!-- ═══ INTEGRITY BAR (if enabled) ═══ --}}
   {{#if integrityEnabled}}

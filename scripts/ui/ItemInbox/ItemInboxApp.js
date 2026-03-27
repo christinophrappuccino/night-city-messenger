@@ -1829,7 +1829,15 @@ export class ItemInboxApp extends BaseApplication {
 
   static _onToggleChipInfo() {
     this._chipDrawerOpen = !this._chipDrawerOpen;
-    this.render();
+    const drawer = this.element?.querySelector('.ncm-shard-chip-drawer');
+    if (drawer) {
+      drawer.classList.toggle('ncm-shard-chip-drawer--open', this._chipDrawerOpen);
+    }
+    // Toggle active state on the header button
+    const btn = this.element?.querySelector('[data-action="toggleChipInfo"].ncm-shard-hdr-btn');
+    if (btn) {
+      btn.classList.toggle('ncm-shard-hdr-btn--active', this._chipDrawerOpen);
+    }
   }
 
   static async _onExecutePayload(event, target) {

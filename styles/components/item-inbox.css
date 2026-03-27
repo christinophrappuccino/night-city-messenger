@@ -193,49 +193,91 @@
 
 
 /* ═══════════════════════════════════════════
-   §2B  CHIP INFO DRAWER
+   §2B  CHIP INFO DRAWER — Slide-down panel
    ═══════════════════════════════════════════ */
 
 .ncm-app .ncm-shard-chip-drawer {
+  max-height: 0 !important;
+  overflow: hidden !important;
+  transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  position: relative !important;
+}
+
+.ncm-app .ncm-shard-chip-drawer--open {
+  max-height: 300px !important;
+}
+
+/* Top accent line — uses shard accent color */
+.ncm-app .ncm-shard-chip-drawer__accent {
+  position: absolute !important;
+  top: 0 !important; left: 0 !important; right: 0 !important;
+  height: 2px !important;
+  background: linear-gradient(90deg,
+    transparent 5%,
+    var(--shard-accent, var(--ncm-color-secondary, #19f3f7)) 30%,
+    color-mix(in srgb, var(--shard-accent, var(--ncm-color-secondary, #19f3f7)), white 20%) 50%,
+    var(--shard-accent, var(--ncm-color-secondary, #19f3f7)) 70%,
+    transparent 95%) !important;
+  opacity: 0 !important;
+  transition: opacity 0.3s 0.1s !important;
+}
+
+.ncm-app .ncm-shard-chip-drawer--open .ncm-shard-chip-drawer__accent {
+  opacity: 1 !important;
+}
+
+.ncm-app .ncm-shard-chip-drawer__inner {
+  padding: 10px 12px 8px !important;
   background: var(--sp-bg-base, #0c0c16) !important;
   border-bottom: 1px solid var(--sp-border, #1e1e32) !important;
-  padding: 8px 12px !important;
+  opacity: 0 !important;
+  transform: translateY(-4px) !important;
+  transition: opacity 0.25s 0.08s, transform 0.25s 0.08s !important;
+}
+
+.ncm-app .ncm-shard-chip-drawer--open .ncm-shard-chip-drawer__inner {
+  opacity: 1 !important;
+  transform: translateY(0) !important;
 }
 
 .ncm-app .ncm-shard-chip-drawer__header {
   display: flex !important;
   align-items: center !important;
-  gap: 5px !important;
-  margin-bottom: 6px !important;
+  gap: 6px !important;
+  margin-bottom: 8px !important;
 }
 
 .ncm-app .ncm-shard-chip-drawer__header > i {
-  font-size: 10px !important;
-  color: var(--ncm-color-secondary, #19f3f7) !important;
+  font-size: 11px !important;
+  color: var(--shard-accent, var(--ncm-color-secondary, #19f3f7)) !important;
 }
 
 .ncm-app .ncm-shard-chip-drawer__title {
   font-family: var(--ncm-font-display, 'Orbitron', monospace) !important;
-  font-size: 9px !important;
+  font-size: 10px !important;
   font-weight: 600 !important;
-  color: var(--sp-text-muted, #555570) !important;
+  color: var(--shard-accent, var(--ncm-color-secondary, #19f3f7)) !important;
   letter-spacing: 1.5px !important;
   text-transform: uppercase !important;
 }
 
 .ncm-app .ncm-shard-chip-drawer__close {
   margin-left: auto !important;
-  width: 18px !important; height: 18px !important;
+  width: 20px !important; height: 20px !important;
   display: flex !important; align-items: center !important; justify-content: center !important;
-  background: transparent !important; border: none !important; cursor: pointer !important;
+  background: transparent !important; border: 1px solid var(--sp-border, #2a2a45) !important;
+  border-radius: 2px !important;
+  cursor: pointer !important;
   color: var(--sp-text-muted, #555570) !important; font-size: 10px !important;
   padding: 0 !important; min-width: 0 !important; min-height: 0 !important;
   appearance: none !important; -webkit-appearance: none !important;
-  box-shadow: none !important;
+  box-shadow: none !important; line-height: 1 !important;
+  transition: all 0.15s !important;
 }
 
 .ncm-app .ncm-shard-chip-drawer__close:hover {
   color: var(--sp-text-bright, #e0e0e8) !important;
+  border-color: var(--sp-text-muted, #555570) !important;
 }
 
 .ncm-app .ncm-shard-chip-drawer__grid {
@@ -248,38 +290,45 @@
   display: flex !important;
   align-items: center !important;
   gap: 6px !important;
-  padding: 4px 8px !important;
+  padding: 5px 8px !important;
   background: var(--sp-bg-deep, #0a0a14) !important;
   border-radius: 2px !important;
+  border: 1px solid var(--sp-border, #1a1a2e) !important;
 }
 
 .ncm-app .ncm-shard-chip-spec__icon {
-  font-size: 9px !important;
+  font-size: 10px !important;
   color: var(--sp-text-muted, #555570) !important;
-  width: 12px !important;
+  width: 14px !important;
   text-align: center !important;
+  flex-shrink: 0 !important;
 }
 
 .ncm-app .ncm-shard-chip-spec__label {
   font-family: var(--ncm-font-display, 'Orbitron', monospace) !important;
-  font-size: 7px !important;
-  color: var(--sp-text-muted, #555570) !important;
-  letter-spacing: 0.8px !important;
+  font-size: 8px !important;
+  color: var(--sp-text-muted, #7a7a95) !important;
+  letter-spacing: 1px !important;
   text-transform: uppercase !important;
 }
 
 .ncm-app .ncm-shard-chip-spec__value {
   font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace) !important;
-  font-size: 11px !important;
-  color: var(--sp-text-secondary, #c8c8dd) !important;
+  font-size: 12px !important;
+  color: var(--sp-text-secondary, #d8d8e8) !important;
   margin-left: auto !important;
+}
+
+.ncm-app .ncm-shard-chip-spec__eddies {
+  color: var(--ncm-gold, #F0C55B) !important;
+  font-weight: 600 !important;
 }
 
 .ncm-app .ncm-shard-chip-spec__tag {
   font-family: var(--ncm-font-display, 'Orbitron', monospace) !important;
-  font-size: 7px !important;
+  font-size: 8px !important;
   font-weight: 600 !important;
-  padding: 1px 5px !important;
+  padding: 2px 6px !important;
   border-radius: 2px !important;
   letter-spacing: 0.8px !important;
   margin-left: auto !important;
@@ -310,15 +359,15 @@
 .ncm-app .ncm-shard-chip-spec--desc {
   flex-direction: column !important;
   align-items: flex-start !important;
-  gap: 3px !important;
+  gap: 4px !important;
   padding: 6px 8px !important;
 }
 
 .ncm-app .ncm-shard-chip-spec__desc-text {
   font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace) !important;
-  font-size: 10px !important;
+  font-size: 11px !important;
   color: var(--sp-text-secondary, #b8b8d0) !important;
-  line-height: 1.4 !important;
+  line-height: 1.5 !important;
 }
 
 
@@ -928,6 +977,11 @@
   min-width: 0 !important; min-height: 0 !important;
   padding: 0 !important; margin: 0 !important;
   line-height: 1 !important;
+}
+.ncm-app .ncm-shard-hdr-btn i {
+  margin: 0 !important; padding: 0 !important;
+  line-height: 1 !important;
+  width: auto !important; height: auto !important;
 }
 .ncm-app .ncm-shard-hdr-btn:hover {
   color: var(--sp-text-bright) !important;
