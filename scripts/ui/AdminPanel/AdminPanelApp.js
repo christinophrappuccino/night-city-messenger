@@ -277,6 +277,8 @@ export class AdminPanelApp extends BaseApplication {
       cycleShardGroupMode: AdminPanelApp._onCycleShardGroupMode,
       forceDecryptShardItem: AdminPanelApp._onForceDecryptShardItem,
       toggleShardLayer: AdminPanelApp._onToggleShardLayer,
+      setShardIntegrity: AdminPanelApp._onSetShardIntegrity,
+      restoreShardIntegrity: AdminPanelApp._onRestoreShardIntegrity,
 
       // Tools actions
       openThemeCustomizer: AdminPanelApp._onOpenThemeCustomizer,
@@ -5572,6 +5574,66 @@ export class AdminPanelApp extends BaseApplication {
         console.error(`${MODULE_ID} | forceDecryptShardItem decrypt failed:`, err);
         ui.notifications.error(`NCM | Force-decrypt failed: ${err.message}`);
       }
+    }
+    this.render();
+  }
+
+  // ─── Shard Integrity Handlers ───
+
+  /**
+   * Set shard integrity to a specific value from a data-value attribute.
+   * Used by the preset buttons (100, 75, 50, 25, 0).
+   */
+  static async _onSetShardIntegrity(event, target) {
+    event.stopPropagation();
+    const itemId = target.closest('[data-item-id]')?.dataset.itemId;
+    const value = parseInt(target.closest('[data-value]')?.dataset.value);
+    if (!itemId || isNaN(value)) return;
+
+    const item = AdminPanelApp._findItem(itemId);
+    if (!item) return;
+
+    try {
+      this._animationActive = true;
+      const result = await game.nightcity?.dataShardService?.setIntegrity(item, value);
+      this._animationActive = false;
+      if (result?.success) {
+        ui.notifications.info(`NCM | ${item.name} integrity set to ${result.newIntegrity}%${result.uncorruptedCount ? ` (${result.uncorruptedCount} entries restored)` : ''}`);
+      } else {
+        ui.notifications.warn(`NCM | Set integrity failed: ${result?.error || 'Unknown'}`);
+      }
+    } catch (err) {
+      this._animationActive = false;
+      console.error(`${MODULE_ID} | setShardIntegrity failed:`, err);
+      ui.notifications.error(`NCM | Set integrity failed: ${err.message}`);
+    }
+    this.render();
+  }
+
+  /**
+   * Restore shard integrity to max (100) — convenience shortcut.
+   */
+  static async _onRestoreShardIntegrity(event, target) {
+    event.stopPropagation();
+    const itemId = target.closest('[data-item-id]')?.dataset.itemId;
+    if (!itemId) return;
+
+    const item = AdminPanelApp._findItem(itemId);
+    if (!item) return;
+
+    try {
+      this._animationActive = true;
+      const result = await game.nightcity?.dataShardService?.setIntegrity(item, 100, { uncorrupt: true });
+      this._animationActive = false;
+      if (result?.success) {
+        ui.notifications.info(`NCM | ${item.name} integrity fully restored${result.uncorruptedCount ? ` (${result.uncorruptedCount} entries un-corrupted)` : ''}`);
+      } else {
+        ui.notifications.warn(`NCM | Restore failed: ${result?.error || 'Unknown'}`);
+      }
+    } catch (err) {
+      this._animationActive = false;
+      console.error(`${MODULE_ID} | restoreShardIntegrity failed:`, err);
+      ui.notifications.error(`NCM | Restore failed: ${err.message}`);
     }
     this.render();
   }

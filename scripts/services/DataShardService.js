@@ -972,6 +972,65 @@ export class DataShardService {
     return { newIntegrity: newValue, corruptedEntries };
   }
 
+  /**
+   * GM set shard integrity to a specific value.
+   * Optionally un-corrupt entries when restoring above corruption threshold.
+   * @param {Item} shardItem
+   * @param {number} value — 0–100 (clamped to max)
+   * @param {object} [opts]
+   * @param {boolean} [opts.uncorrupt=true] — If restoring, also clear corrupted flags on entries
+   * @returns {Promise<{ success: boolean, newIntegrity: number }>}
+   */
+  async setIntegrity(shardItem, value, opts = {}) {
+    if (!isGM()) return { success: false, error: 'GM only' };
+
+    const config = this._getConfig(shardItem);
+    const integrity = config.integrity ?? {};
+
+    if (!integrity.enabled) return { success: false, error: 'Integrity not enabled' };
+
+    const max = integrity.maxIntegrity ?? 100;
+    const newValue = Math.max(0, Math.min(value, max));
+    const oldValue = integrity.currentIntegrity ?? 100;
+
+    await shardItem.update({
+      [`flags.${MODULE_ID}.config.integrity.currentIntegrity`]: newValue,
+    });
+
+    // Un-corrupt entries if restoring above threshold
+    const uncorrupt = opts.uncorrupt !== false;
+    const threshold = integrity.corruptionThreshold ?? 40;
+    let uncorruptedCount = 0;
+
+    if (uncorrupt && newValue >= threshold && oldValue < threshold) {
+      const journal = this._getLinkedJournal(shardItem);
+      if (journal) {
+        for (const page of journal.pages) {
+          if (page.flags?.[MODULE_ID]?.corrupted) {
+            await page.update({ [`flags.${MODULE_ID}.corrupted`]: false });
+            uncorruptedCount++;
+          }
+        }
+      }
+    }
+
+    // Also un-brick if we're restoring from 0
+    if (newValue > 0) {
+      const state = this._getState(shardItem);
+      if (state.destroyed) {
+        await shardItem.unsetFlag(MODULE_ID, 'state');
+        await shardItem.setFlag(MODULE_ID, 'state', { ...state, destroyed: false });
+      }
+    }
+
+    this.eventBus?.emit(EVENTS.SHARD_INTEGRITY_CHANGED, {
+      itemId: shardItem.id, newIntegrity: newValue,
+    });
+
+    log.info(`GM set shard "${shardItem.name}" integrity: ${oldValue} → ${newValue}${uncorruptedCount ? ` (${uncorruptedCount} entries un-corrupted)` : ''}`);
+    return { success: true, newIntegrity: newValue, uncorruptedCount };
+  }
+
   // ═══════════════════════════════════════════════════════════
   //  PUBLIC API — Eddies Claim (Sprint 4.6)
   // ═══════════════════════════════════════════════════════════

@@ -391,3 +391,114 @@
 /* ─── Row Hover Overlay Enhancement ─── */
 .ncm-app .ncm-shard-owner-header:hover { background: rgba(25,243,247,0.03) !important; }
 
+
+/* ─── Integrity Controls (expanded row) ─── */
+.ncm-app .ncm-shard-integrity-controls {
+  margin: 6px 0 8px !important;
+  padding: 8px 10px !important;
+  background: var(--sp-elevated, #252540) !important;
+  border-radius: 3px !important;
+  border: 1px solid var(--sp-border, #2a2a45) !important;
+}
+
+.ncm-app .ncm-shard-integrity-controls__header {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  margin-bottom: 6px !important;
+}
+
+.ncm-app .ncm-shard-integrity-controls__header i {
+  font-size: 10px !important;
+  color: var(--sp-text-muted) !important;
+}
+
+.ncm-app .ncm-shard-integrity-controls__label {
+  font-family: var(--ncm-font-display) !important;
+  font-size: 9px !important;
+  font-weight: 600 !important;
+  color: var(--sp-text-muted) !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.08em !important;
+}
+
+.ncm-app .ncm-shard-integrity-controls__value {
+  margin-left: auto !important;
+  font-family: var(--ncm-font-mono) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+}
+
+.ncm-app .ncm-shard-integrity-controls__value--clean { color: var(--ncm-success, #00ff41) !important; }
+.ncm-app .ncm-shard-integrity-controls__value--light { color: var(--ncm-warning, #ffab00) !important; }
+.ncm-app .ncm-shard-integrity-controls__value--heavy { color: var(--ncm-color-primary, #F65261) !important; }
+.ncm-app .ncm-shard-integrity-controls__value--severe { color: var(--ncm-danger, #ff0033) !important; }
+.ncm-app .ncm-shard-integrity-controls__value--bricked { color: var(--ncm-danger, #ff0033) !important; opacity: 0.6 !important; }
+
+.ncm-app .ncm-shard-integrity-controls__track {
+  width: 100% !important;
+  height: 4px !important;
+  background: var(--sp-surface, #1a1a2e) !important;
+  border-radius: 2px !important;
+  overflow: hidden !important;
+  margin-bottom: 8px !important;
+}
+
+.ncm-app .ncm-shard-integrity-controls__presets {
+  display: flex !important;
+  align-items: center !important;
+  gap: 3px !important;
+}
+
+.ncm-app .ncm-shard-integrity-chip {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 3px 8px !important;
+  font-family: var(--ncm-font-mono) !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  color: var(--sp-text-muted) !important;
+  background: var(--sp-surface, #1a1a2e) !important;
+  border: 1px solid var(--sp-border, #2a2a45) !important;
+  border-radius: 2px !important;
+  cursor: pointer !important;
+  transition: all 0.15s !important;
+  flex: 1 !important;
+}
+
+.ncm-app .ncm-shard-integrity-chip:first-child { border-radius: 2px 0 0 2px !important; }
+.ncm-app .ncm-shard-integrity-chip:last-child { border-radius: 0 2px 2px 0 !important; }
+.ncm-app .ncm-shard-integrity-chip + .ncm-shard-integrity-chip { border-left: none !important; }
+
+.ncm-app .ncm-shard-integrity-chip:hover {
+  background: rgba(25, 243, 247, 0.06) !important;
+  color: var(--sp-text-secondary) !important;
+  border-color: var(--sp-border-active, #3a3a5a) !important;
+}
+
+.ncm-app .ncm-shard-integrity-chip--active {
+  background: rgba(25, 243, 247, 0.1) !important;
+  color: var(--ncm-color-secondary, #19f3f7) !important;
+  border-color: var(--ncm-color-secondary, #19f3f7) !important;
+}
+
+.ncm-app .ncm-shard-integrity-chip--danger:hover {
+  background: rgba(255, 0, 51, 0.06) !important;
+  color: var(--ncm-danger, #ff0033) !important;
+  border-color: rgba(255, 0, 51, 0.3) !important;
+}
+
+.ncm-app .ncm-shard-integrity-chip--restore {
+  flex: 0 0 auto !important;
+  padding: 3px 10px !important;
+  border-radius: 0 2px 2px 0 !important;
+}
+
+.ncm-app .ncm-shard-integrity-chip--restore:hover {
+  background: rgba(0, 255, 65, 0.06) !important;
+  color: var(--ncm-success, #00ff41) !important;
+  border-color: rgba(0, 255, 65, 0.3) !important;
+}
+
+.ncm-app .ncm-shard-integrity-chip--restore i { font-size: 11px !important; }
