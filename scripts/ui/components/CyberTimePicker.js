@@ -55,7 +55,8 @@ export class CyberTimePicker {
       const ts = game.nightcity?.timeService;
       try {
         const gt = ts?.getCurrentTime?.();
-        initDate = (gt instanceof Date && !isNaN(gt.getTime())) ? gt : null;
+        if (gt) initDate = new Date(gt);
+        if (initDate && isNaN(initDate.getTime())) initDate = null;
       } catch { /* fall through */ }
       if (!initDate && game.time?.worldTime) {
         initDate = new Date(game.time.worldTime * 1000);
@@ -65,11 +66,12 @@ export class CyberTimePicker {
       }
     }
 
-    this._year = initDate.getFullYear();
-    this._month = initDate.getMonth() + 1;
-    this._day = initDate.getDate();
-    this._hour = initDate.getHours();     // Always stored 0-23
-    this._min = initDate.getMinutes();
+    // Always use UTC getters — _toISO() appends 'Z' (UTC marker)
+    this._year = initDate.getUTCFullYear();
+    this._month = initDate.getUTCMonth() + 1;
+    this._day = initDate.getUTCDate();
+    this._hour = initDate.getUTCHours();
+    this._min = initDate.getUTCMinutes();
     this._hasValue = !!options.value;
 
     this._dialog = null;
@@ -509,49 +511,50 @@ export class CyberTimePicker {
         let d;
         try {
           const gt = ts?.getCurrentTime?.();
-          d = (gt instanceof Date && !isNaN(gt.getTime())) ? gt : null;
+          if (gt) d = new Date(gt);
+          if (d && isNaN(d.getTime())) d = null;
         } catch { /* fall through */ }
         if (!d && game.time?.worldTime) {
           d = new Date(game.time.worldTime * 1000);
         }
         if (!d || isNaN(d.getTime())) d = new Date();
-        this._year = d.getFullYear();
-        this._month = d.getMonth() + 1;
-        this._day = d.getDate();
-        this._hour = d.getHours();
-        this._min = d.getMinutes();
+        this._year = d.getUTCFullYear();
+        this._month = d.getUTCMonth() + 1;
+        this._day = d.getUTCDate();
+        this._hour = d.getUTCHours();
+        this._min = d.getUTCMinutes();
         break;
       }
 
       case 'now': {
         const d = new Date();
-        this._year = d.getFullYear();
-        this._month = d.getMonth() + 1;
-        this._day = d.getDate();
-        this._hour = d.getHours();
-        this._min = d.getMinutes();
+        this._year = d.getUTCFullYear();
+        this._month = d.getUTCMonth() + 1;
+        this._day = d.getUTCDate();
+        this._hour = d.getUTCHours();
+        this._min = d.getUTCMinutes();
         break;
       }
 
       case 'plus1h': {
         const d = new Date(this._toISO());
-        d.setHours(d.getHours() + 1);
-        this._year = d.getFullYear();
-        this._month = d.getMonth() + 1;
-        this._day = d.getDate();
-        this._hour = d.getHours();
-        this._min = d.getMinutes();
+        d.setUTCHours(d.getUTCHours() + 1);
+        this._year = d.getUTCFullYear();
+        this._month = d.getUTCMonth() + 1;
+        this._day = d.getUTCDate();
+        this._hour = d.getUTCHours();
+        this._min = d.getUTCMinutes();
         break;
       }
 
       case 'plus1d': {
         const d = new Date(this._toISO());
-        d.setDate(d.getDate() + 1);
-        this._year = d.getFullYear();
-        this._month = d.getMonth() + 1;
-        this._day = d.getDate();
-        this._hour = d.getHours();
-        this._min = d.getMinutes();
+        d.setUTCDate(d.getUTCDate() + 1);
+        this._year = d.getUTCFullYear();
+        this._month = d.getUTCMonth() + 1;
+        this._day = d.getUTCDate();
+        this._hour = d.getUTCHours();
+        this._min = d.getUTCMinutes();
         break;
       }
     }
