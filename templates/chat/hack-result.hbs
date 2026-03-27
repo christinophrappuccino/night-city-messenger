@@ -1,34 +1,51 @@
 {{!-- Chat Card: Skill Check / Hack Result --}}
-<div class="ncm-chat-card ncm-hack-result {{#if success}}ncm-success{{else}}ncm-failure{{/if}}">
-  <div class="ncm-chat-header">
-    {{#if actorImg}}<img src="{{actorImg}}" class="ncm-chat-avatar" alt="{{actorName}}" />{{/if}}
-    <div class="ncm-chat-header-text">
-      <span class="ncm-chat-actor">{{actorName}}</span>
-      {{#if context}}<span class="ncm-chat-context">{{context}}</span>{{/if}}
-    </div>
-    <span class="ncm-chat-result-badge {{#if success}}ncm-badge-success{{else}}ncm-badge-fail{{/if}}">
-      {{#if success}}SUCCESS{{else}}FAILED{{/if}}
+<div class="ncm-cc ncm-cc--skill {{#if success}}ncm-cc--success{{else}}ncm-cc--fail{{/if}}">
+  <div class="ncm-cc__scanline"></div>
+  <div class="ncm-cc__header">
+    {{#if actorImg}}<img class="ncm-cc__header-avatar" src="{{actorImg}}" alt="{{actorName}}" />{{/if}}
+    <i class="fas fa-terminal"></i>
+    <span class="ncm-cc__badge">{{skillName}}</span>
+    <span class="ncm-cc__result-badge {{#if success}}ncm-cc__result-badge--success{{else}}ncm-cc__result-badge--fail{{/if}}">
+      <i class="fas {{#if success}}fa-check{{else}}fa-xmark{{/if}}"></i>
+      {{#if success}}Success{{else}}Failed{{/if}}
     </span>
   </div>
-  <div class="ncm-chat-body">
-    <div class="ncm-chat-skill-name">{{skillName}}</div>
-    <div class="ncm-chat-roll-breakdown">
-      <span class="ncm-roll-component">{{statName}}: {{statValue}}</span>
-      <span class="ncm-roll-component">Skill: {{skillLevel}}</span>
-      <span class="ncm-roll-component ncm-roll-die {{#if isCritical}}ncm-crit{{/if}} {{#if isFumble}}ncm-fumble{{/if}}">
-        1d10: {{rollValue}}{{#if isCritical}} → {{processedRoll}} ⚡{{/if}}{{#if isFumble}} → {{processedRoll}} 💀{{/if}}
-      </span>
-      {{#if luckSpent}}<span class="ncm-roll-component ncm-roll-luck">Luck: +{{luckSpent}}</span>{{/if}}
+  <div class="ncm-cc__body">
+    <div class="ncm-cc__skill-name"><i class="fas {{statIcon}}"></i> {{skillName}}</div>
+    <div class="ncm-cc__roll-grid">
+      <div class="ncm-cc__roll-cell">
+        <span class="ncm-cc__roll-label"><i class="fas {{statIcon}}"></i> {{statName}}</span>
+        <span class="ncm-cc__roll-value">{{statValue}}</span>
+      </div>
+      <div class="ncm-cc__roll-cell">
+        <span class="ncm-cc__roll-label"><i class="fas fa-graduation-cap"></i> Skill</span>
+        <span class="ncm-cc__roll-value">{{skillLevel}}</span>
+      </div>
+      <div class="ncm-cc__roll-cell ncm-cc__roll-cell--die {{#if isCritical}}ncm-cc__roll-cell--crit{{/if}} {{#if isFumble}}ncm-cc__roll-cell--fumble{{/if}}">
+        <span class="ncm-cc__roll-label"><i class="fas fa-dice-d20"></i> 1d10</span>
+        <span class="ncm-cc__roll-value">{{rollValue}}{{#if isCritical}} → {{processedRoll}}{{/if}}{{#if isFumble}} → {{processedRoll}}{{/if}}</span>
+        <i class="fas fa-dice-d20 ncm-cc__die-watermark"></i>
+      </div>
     </div>
-    <div class="ncm-chat-total">
-      <span class="ncm-total-label">Total:</span>
-      <span class="ncm-total-value">{{total}}</span>
-      <span class="ncm-total-vs">vs DV</span>
-      <span class="ncm-total-dc">{{dc}}</span>
-      {{#if success}}<span class="ncm-margin">(+{{margin}})</span>{{/if}}
+    {{#if luckSpent}}
+    <div class="ncm-cc__roll-grid" style="grid-template-columns: 1fr;">
+      <div class="ncm-cc__roll-cell ncm-cc__roll-cell--luck">
+        <span class="ncm-cc__roll-label"><i class="fas fa-clover"></i> Luck Spent</span>
+        <span class="ncm-cc__roll-value">+{{luckSpent}}</span>
+      </div>
     </div>
-    {{#if isCritical}}<div class="ncm-chat-special ncm-crit-text">⚡ CRITICAL HIT — Exploding 10!</div>{{/if}}
-    {{#if isFumble}}<div class="ncm-chat-special ncm-fumble-text">💀 FUMBLE — Subtractive 1!</div>{{/if}}
-    {{#if flavor}}<div class="ncm-chat-flavor">{{flavor}}</div>{{/if}}
+    {{/if}}
+    <div class="ncm-cc__total-bar">
+      <span class="ncm-cc__total-num">{{total}}</span>
+      <span class="ncm-cc__total-vs">vs DV</span>
+      <span class="ncm-cc__total-dv">{{dc}}</span>
+      {{#if success}}<span class="ncm-cc__total-margin">(+{{margin}})</span>{{/if}}
+    </div>
+    {{#if isCritical}}<div class="ncm-cc__special ncm-cc__special--crit"><i class="fas fa-bolt"></i> CRITICAL — EXPLODING 10 <i class="fas fa-bolt"></i></div>{{/if}}
+    {{#if isFumble}}<div class="ncm-cc__special ncm-cc__special--fumble"><i class="fas fa-skull"></i> FUMBLE — SUBTRACTIVE 1 <i class="fas fa-skull"></i></div>{{/if}}
+    {{#if flavor}}<div class="ncm-cc__flavor"><i class="fas {{#if success}}fa-lock-open{{else}}fa-lock{{/if}}"></i> {{flavor}}</div>{{/if}}
+  </div>
+  <div class="ncm-cc__footer">
+    <span class="ncm-cc__network"><i class="fas fa-network-wired"></i> {{networkDisplay}}</span>
   </div>
 </div>

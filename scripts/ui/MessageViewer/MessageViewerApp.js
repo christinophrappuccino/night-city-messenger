@@ -3395,13 +3395,16 @@ export class MessageViewerApp extends BaseApplication {
     if (!msg) return;
 
     const actor = game.actors?.get(this.actorId);
-    const content = `<div class="ncm-chat-card">
-      <div class="ncm-chat-card__header"><i class="fas fa-biohazard"></i> MALWARE ANALYSIS</div>
-      <div class="ncm-chat-card__body">
-        <strong>${actor?.name || 'Unknown'}</strong> analyzed a hostile daemon in message from <strong>${msg.fromDisplay || msg.from}</strong>.<br>
-        Subject: <em>${msg.subject || 'No subject'}</em>
-      </div>
-    </div>`;
+    const content = await renderTemplate(
+      `modules/${MODULE_ID}/templates/chat/malware-analysis.hbs`,
+      {
+        actorName: actor?.name || 'Unknown',
+        source: msg.fromDisplay || msg.from || 'Unknown',
+        subject: msg.subject || 'No subject',
+        malwareType: msg.malware?.type?.toUpperCase() || null,
+        networkDisplay: game.nightcity?.networkService?.getCurrentNetworkName?.() || 'CITINET',
+      }
+    );
 
     await ChatMessage.create({
       content,

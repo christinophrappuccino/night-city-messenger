@@ -3860,19 +3860,17 @@ export class AdminPanelApp extends BaseApplication {
     }
 
     const { flags } = foundPage;
-    const content = `
-      <div class="ncm-chat-card">
-        <div class="ncm-chat-card__header">
-          <i class="fas fa-envelope"></i>
-          <span class="ncm-chat-card__badge">INTERCEPTED MSG</span>
-          <span class="ncm-chat-card__shared-by">GM</span>
-        </div>
-        <div class="ncm-chat-card__content">
-          <div class="ncm-chat-card__from">${flags.senderName || flags.from || 'Unknown'} → ${flags.recipientName || flags.to || 'Unknown'}</div>
-          <div class="ncm-chat-card__subject">${flags.subject || '(no subject)'}</div>
-          <div class="ncm-chat-card__body">${(flags.body || '').slice(0, 200)}${(flags.body || '').length > 200 ? '...' : ''}</div>
-        </div>
-      </div>`;
+    const bodyText = flags.body || '';
+    const content = await renderTemplate(
+      `modules/${MODULE_ID}/templates/chat/intercepted-message.hbs`,
+      {
+        from: flags.senderName || flags.from || 'Unknown',
+        to: flags.recipientName || flags.to || 'Unknown',
+        subject: flags.subject || '(no subject)',
+        bodyPreview: bodyText.length > 200 ? bodyText.slice(0, 200) + '...' : bodyText,
+        networkDisplay: flags.network || 'UNKNOWN',
+      }
+    );
 
     await ChatMessage.create({
       content,
@@ -5006,20 +5004,13 @@ export class AdminPanelApp extends BaseApplication {
     // Create styled chat card whispered to all active non-GM users
     const whisperTargets = game.users.filter(u => u.active && !u.isGM).map(u => u.id);
 
-    const content = `
-      <div class="ncm-chat-card ncm-chat-card--broadcast">
-        <div class="ncm-chat-card__header">
-          <i class="fas fa-tower-broadcast"></i>
-          <span class="ncm-chat-card__badge">NETWORK BROADCAST</span>
-          <span class="ncm-chat-card__shared-by">${networkName}</span>
-        </div>
-        <div class="ncm-chat-card__content">
-          <div class="ncm-chat-card__body">${foundry.utils.encodeHTML ? foundry.utils.encodeHTML(message) : message}</div>
-        </div>
-        <div class="ncm-chat-card__footer">
-          <span class="ncm-chat-card__network ncm-mono">${networkName} // SYSTEM BROADCAST</span>
-        </div>
-      </div>`;
+    const content = await renderTemplate(
+      `modules/${MODULE_ID}/templates/chat/network-broadcast.hbs`,
+      {
+        networkName,
+        message: foundry.utils.encodeHTML ? foundry.utils.encodeHTML(message) : message,
+      }
+    );
 
     await ChatMessage.create({
       content,

@@ -1,0 +1,47 @@
+{{!-- Chat Card: BLACK ICE Retaliation --}}
+<div class="ncm-ice-card">
+  <div class="ncm-scanline ncm-scanline--red"></div>
+  <div class="ncm-ice-card__header">
+    <i class="fas fa-skull-crossbones"></i>
+    <span class="ncm-ice-card__badge">ICE Retaliation</span>
+    <span class="ncm-ice-card__header-meta"><i class="fas {{contextIcon}}"></i> {{contextLabel}}</span>
+  </div>
+  <div class="ncm-ice-card__encounter">
+    <div class="ncm-ice-card__profile">
+      <div class="ncm-ice-card__portrait">
+        {{#if iceImg}}
+        <img src="{{iceImg}}" alt="{{iceName}}" />
+        {{else}}
+        <i class="fas fa-skull"></i>
+        {{/if}}
+      </div>
+      <div class="ncm-ice-card__identity">
+        <div class="ncm-ice-card__name"><i class="fas fa-bolt"></i> {{iceName}}</div>
+        <div class="ncm-ice-card__class">{{iceClassDisplay}}</div>
+        <div class="ncm-ice-card__target"><i class="fas fa-crosshairs"></i> <strong>{{actorName}}</strong> takes damage</div>
+      </div>
+    </div>
+    <div class="ncm-ice-card__damage-block">
+      <div class="ncm-ice-card__dmg-col">
+        <span class="ncm-ice-card__dmg-number">{{damage}}</span>
+        <span class="ncm-ice-card__dmg-tag">DAMAGE</span>
+      </div>
+      <div class="ncm-ice-card__dmg-detail">
+        <span class="ncm-ice-card__formula">{{formulaDisplay}}</span>
+        {{#if hpDisplay}}<span class="ncm-ice-card__hp-change"><i class="fas fa-heart-crack"></i> {{hpDisplay}}</span>{{/if}}
+      </div>
+    </div>
+    {{#if diceIcons}}
+    <div class="ncm-ice-card__dice-tray">
+      <span class="ncm-ice-card__dice-tray-label">ROLL</span>
+      {{#each diceIcons}}
+      <div class="ncm-ice-card__die"><i class="fas {{this}}"></i></div>
+      {{/each}}
+    </div>
+    {{/if}}
+  </div>
+  <div class="ncm-ice-card__footer">
+    <span class="ncm-ice-card__footer-net"><i class="fas fa-shield-halved"></i> {{networkDisplay}} // ICE ENCOUNTER</span>
+    <span class="ncm-ice-card__threat">LETHAL</span>
+  </div>
+</div>

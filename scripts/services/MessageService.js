@@ -778,8 +778,12 @@ export class MessageService {
       const content = await renderTemplate(
         `modules/${MODULE_ID}/templates/chat/message-card.hbs`,
         {
-          message,
+          message: {
+            ...message,
+            messageIdShort: (message.messageId || '').slice(0, 8),
+          },
           sharedBy: actorId ? game.actors.get(actorId)?.name : game.user.name,
+          showPriority: message.priority && message.priority !== 'normal',
           MODULE_ID,
         }
       );

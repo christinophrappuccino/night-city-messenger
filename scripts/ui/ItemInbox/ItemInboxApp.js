@@ -1833,9 +1833,20 @@ export class ItemInboxApp extends BaseApplication {
       [`flags.${MODULE_ID}.contentData.executedAt`]: new Date().toISOString(),
     });
 
-    // Chat notification
+    // Chat notification via template
+    const payloadContent = await renderTemplate(
+      `modules/${MODULE_ID}/templates/chat/payload-executed.hbs`,
+      {
+        programName: page.flags?.[MODULE_ID]?.contentData?.name ?? 'Unknown Program',
+        actorName: actor?.name ?? 'Unknown',
+        timestamp: formatCyberDate(new Date().toISOString()),
+        shardName: this.item?.name ?? null,
+        networkDisplay: game.nightcity?.networkService?.getCurrentNetworkName?.() || 'CITINET',
+      }
+    );
+
     await ChatMessage.create({
-      content: `<div style="border-left:3px solid #a855f7;padding:4px 8px;"><strong style="color:#a855f7;">⚡ PAYLOAD EXECUTED</strong><br>${page.flags?.[MODULE_ID]?.contentData?.name ?? 'Unknown Program'}<br><small>Executed by ${actor?.name ?? 'Unknown'}</small></div>`,
+      content: payloadContent,
       speaker: ChatMessage.getSpeaker({ alias: 'NCM System' }),
     });
 

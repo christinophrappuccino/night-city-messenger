@@ -1,1 +1,16 @@
-{{!-- Placeholder template: chat/network-event.hbs --}}<div class="ncm-placeholder"></div>
+{{!-- Chat Card: Network Event --}}
+<div class="ncm-cc ncm-cc--event {{#if isDanger}}ncm-cc--event-danger{{/if}}">
+  <div class="ncm-cc__scanline"></div>
+  <div class="ncm-cc__header">
+    <i class="fas {{headerIcon}}"></i>
+    <span class="ncm-cc__badge">Network Event</span>
+    <span class="ncm-cc__header-meta">{{networkName}}</span>
+  </div>
+  <div class="ncm-cc__body">
+    <div class="ncm-cc__event-type {{severityClass}}"><i class="fas {{eventIcon}}"></i> {{eventTitle}}</div>
+    <div class="ncm-cc__event-detail">{{eventDetail}}</div>
+  </div>
+  <div class="ncm-cc__footer">
+    <span class="ncm-cc__network"><i class="fas {{footerIcon}}"></i> {{footerText}}</span>
+  </div>
+</div>

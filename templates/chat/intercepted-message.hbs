@@ -1,0 +1,27 @@
+{{!-- Chat Card: Intercepted Message (GM) --}}
+<div class="ncm-cc ncm-cc--intercepted">
+  <div class="ncm-cc__scanline"></div>
+  <div class="ncm-cc__whisper"><i class="fas fa-eye"></i> GM Intercept — Not visible to players</div>
+  <div class="ncm-cc__header">
+    <i class="fas fa-satellite-dish"></i>
+    <span class="ncm-cc__badge">Intercepted</span>
+    <span class="ncm-cc__header-meta">NCM // GM</span>
+  </div>
+  <div class="ncm-cc__body">
+    <div class="ncm-cc__fields">
+      <div class="ncm-cc__field">
+        <span class="ncm-cc__field-label">From</span>
+        <span class="ncm-cc__field-value">{{from}}</span>
+      </div>
+      <div class="ncm-cc__field">
+        <span class="ncm-cc__field-label">To</span>
+        <span class="ncm-cc__field-value">{{to}}</span>
+      </div>
+    </div>
+    <div class="ncm-cc__subject">{{subject}}</div>
+    <div class="ncm-cc__msg-body">{{bodyPreview}}</div>
+  </div>
+  <div class="ncm-cc__footer">
+    <span class="ncm-cc__network"><i class="fas fa-location-crosshairs"></i> {{networkDisplay}} // INTERCEPTED</span>
+  </div>
+</div>

@@ -1,0 +1,40 @@
+{{!-- Chat Card: Payload Executed --}}
+<div class="ncm-payload-card">
+  <div class="ncm-scanline ncm-scanline--purple"></div>
+  <div class="ncm-payload-card__header">
+    <i class="fas fa-bolt"></i>
+    <span class="ncm-payload-card__badge">Payload Executed</span>
+    <span class="ncm-payload-card__header-meta">NCM System</span>
+  </div>
+  <div class="ncm-payload-card__terminal">
+    <div class="ncm-payload-card__program">
+      <div class="ncm-payload-card__icon">
+        <i class="fas fa-virus"></i>
+      </div>
+      <div class="ncm-payload-card__info">
+        <div class="ncm-payload-card__name">{{programName}}</div>
+        <span class="ncm-payload-card__status-badge"><i class="fas fa-check"></i> EXECUTED</span>
+      </div>
+    </div>
+    <div class="ncm-payload-card__exec-block">
+      <div class="ncm-payload-card__exec-row">
+        <span class="ncm-payload-card__exec-label"><i class="fas fa-user"></i> Agent</span>
+        <span class="ncm-payload-card__exec-value"><strong>{{actorName}}</strong></span>
+      </div>
+      <div class="ncm-payload-card__exec-row">
+        <span class="ncm-payload-card__exec-label"><i class="fas fa-clock"></i> Time</span>
+        <span class="ncm-payload-card__exec-value ncm-payload-card__exec-value--purple">{{timestamp}}</span>
+      </div>
+      {{#if shardName}}
+      <div class="ncm-payload-card__exec-row">
+        <span class="ncm-payload-card__exec-label"><i class="fas fa-hard-drive"></i> Source</span>
+        <span class="ncm-payload-card__exec-value">{{shardName}}</span>
+      </div>
+      {{/if}}
+    </div>
+  </div>
+  <div class="ncm-payload-card__footer">
+    <span class="ncm-payload-card__footer-net"><i class="fas fa-network-wired"></i> {{networkDisplay}} // PAYLOAD</span>
+    <span class="ncm-payload-card__exe-badge">DAEMON</span>
+  </div>
+</div>

@@ -276,11 +276,20 @@ export class SkillService {
   /** @private */
   async _postChatMessage(actor, skillName, result, meta = {}) {
     try {
+      // Map stat names to FontAwesome icons
+      const statIcons = {
+        INT: 'fa-brain', TECH: 'fa-wrench', REF: 'fa-crosshairs',
+        DEX: 'fa-person-running', COOL: 'fa-snowflake', WILL: 'fa-hand-fist',
+        LUCK: 'fa-clover', MOVE: 'fa-person-walking', BODY: 'fa-dumbbell', EMP: 'fa-heart',
+      };
+      const statKey = (result.statName || 'INT').toUpperCase();
+
       const templateData = {
         actorName: actor.name,
         actorImg: actor.img,
         skillName,
-        statName: result.statName?.toUpperCase() ?? 'STAT',
+        statName: statKey,
+        statIcon: statIcons[statKey] || 'fa-microchip',
         statValue: result.statValue,
         skillLevel: result.skillLevel,
         rollValue: result.rollValue,
@@ -294,6 +303,7 @@ export class SkillService {
         margin: result.margin,
         context: meta.context || '',
         flavor: meta.flavor || '',
+        networkDisplay: game.nightcity?.networkService?.getCurrentNetworkName?.() || 'CITINET',
       };
 
       const content = await renderTemplate(

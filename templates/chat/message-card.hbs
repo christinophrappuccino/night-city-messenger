@@ -1,38 +1,33 @@
-{{!-- Chat Card — Shared Message --}}
-<div class="ncm-chat-card">
-  <div class="ncm-chat-card__header">
+{{!-- Chat Card: Shared Message --}}
+<div class="ncm-cc ncm-cc--shared">
+  <div class="ncm-cc__scanline"></div>
+  <div class="ncm-cc__header">
     <i class="fas fa-envelope"></i>
-    <span class="ncm-chat-card__badge">SHARED MESSAGE</span>
-    <span class="ncm-chat-card__shared-by">via {{sharedBy}}</span>
+    <span class="ncm-cc__badge">Shared Message</span>
+    <span class="ncm-cc__header-meta">via {{sharedBy}}</span>
   </div>
-  <div class="ncm-chat-card__content">
-    <div class="ncm-chat-card__field">
-      <span class="ncm-chat-card__label">FROM:</span>
-      <span class="ncm-chat-card__value">{{message.from}}</span>
+  <div class="ncm-cc__body">
+    <div class="ncm-cc__fields">
+      <div class="ncm-cc__field">
+        <span class="ncm-cc__field-label">From</span>
+        <span class="ncm-cc__field-value">{{message.from}}</span>
+      </div>
+      <div class="ncm-cc__field">
+        <span class="ncm-cc__field-label">To</span>
+        <span class="ncm-cc__field-value">{{message.to}}</span>
+      </div>
     </div>
-    <div class="ncm-chat-card__field">
-      <span class="ncm-chat-card__label">TO:</span>
-      <span class="ncm-chat-card__value">{{message.to}}</span>
-    </div>
-    <div class="ncm-chat-card__subject">{{message.subject}}</div>
-    <div class="ncm-chat-card__body">
-      {{{message.body}}}
-    </div>
+    <div class="ncm-cc__subject">{{message.subject}}</div>
+    <div class="ncm-cc__msg-body">{{{message.body}}}</div>
     {{#if message.priority}}
-    {{#unless (eq message.priority "normal")}}
-    <div class="ncm-chat-card__priority ncm-chat-card__priority--{{message.priority}}">
+    {{#if showPriority}}
+    <div class="ncm-cc__priority ncm-cc__priority--{{message.priority}}">
       <i class="fas fa-exclamation-triangle"></i> {{message.priority}}
     </div>
-    {{/unless}}
+    {{/if}}
     {{/if}}
   </div>
-  <div class="ncm-chat-card__footer">
-    <span class="ncm-chat-card__network ncm-mono">{{message.network}}</span>
-    <div class="ncm-chat-card__actions">
-      <button class="ncm-chat-btn" data-action="ncm-reply" 
-              data-from-actor-id="{{message.fromActorId}}" data-message-id="{{message.messageId}}">
-        <i class="fas fa-reply"></i> Reply
-      </button>
-    </div>
+  <div class="ncm-cc__footer">
+    <span class="ncm-cc__network"><i class="fas fa-network-wired"></i> {{message.network}} // {{message.messageIdShort}}</span>
   </div>
 </div>

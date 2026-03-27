@@ -157,24 +157,45 @@ export class ICEService {
         : { 'system.hp.value': newHP };
       await actor.update(hpUpdate);
 
-      // Build chat message with ICE portrait
-      const imgTag = ice.img
-        ? `<img src="${ice.img}" alt="${ice.name}" style="width:36px;height:36px;object-fit:contain;border:1px solid #ff0033;border-radius:2px;margin-right:8px;vertical-align:middle;" />`
-        : '';
-      const classTag = ice.class
-        ? `<br><span style="font-size:10px;color:#8888a0;text-transform:uppercase;letter-spacing:0.05em;">${ice.class}</span>`
-        : '';
-
-      const contextLabels = {
-        shard: 'Data Shard',
-        message: 'Message',
-        network: 'Network',
-      };
+      // Build chat card via template
+      const contextLabels = { shard: 'Data Shard', message: 'Message', network: 'Network' };
       const contextLabel = contextLabels[context] || context;
+      const contextIcons = { shard: 'fa-hard-drive', message: 'fa-envelope', network: 'fa-network-wired' };
 
-      await damageRoll.toMessage({
+      // Map d6 results to FA dice-face icons (1–6)
+      const diceFaceMap = ['', 'fa-dice-one', 'fa-dice-two', 'fa-dice-three', 'fa-dice-four', 'fa-dice-five', 'fa-dice-six'];
+      const diceResults = damageRoll.dice?.flatMap(d => d.results?.map(r => r.result) ?? []) ?? [];
+      const diceIcons = diceResults.map(v => diceFaceMap[Math.min(v, 6)] || 'fa-dice');
+
+      // Build ICE class display string
+      let iceClassDisplay = ice.encryptionType?.replace('_', ' ') || 'BLACK ICE';
+      if (ice.atk != null) iceClassDisplay += ` · ATK ${ice.atk}`;
+      if (ice.class) iceClassDisplay += ` · ${ice.class}`;
+
+      const templateData = {
+        iceName: ice.name,
+        iceImg: ice.img || null,
+        iceClassDisplay,
+        actorName: actor.name,
+        damage,
+        formulaDisplay: ice.atk != null
+          ? `ATK ${ice.atk} + 1d10 → ${ice.formula}`
+          : `${ice.formula}`,
+        hpDisplay: `HP: ${currentHP} → ${newHP}`,
+        diceIcons: diceIcons.length ? diceIcons : null,
+        contextLabel,
+        contextIcon: contextIcons[context] || 'fa-hard-drive',
+        networkDisplay: game.nightcity?.networkService?.getCurrentNetworkName?.() || 'CITINET',
+      };
+
+      const content = await renderTemplate(
+        `modules/${MODULE_ID}/templates/chat/ice-retaliation.hbs`,
+        templateData
+      );
+
+      await ChatMessage.create({
+        content,
         speaker: ChatMessage.getSpeaker({ alias: ice.name }),
-        flavor: `${imgTag}<strong style="color:#ff0033">⚡ ${ice.name} RETALIATION</strong>${classTag}<br>${actor.name} takes <strong>${damage}</strong> damage!${ice.atk ? ` (ATK ${ice.atk} + 1d10)` : ''}<br><span style="font-size:10px;color:#555;">${contextLabel}: ${targetName}</span>`,
       });
 
       this.soundService?.play('black-ice');
@@ -193,7 +214,7 @@ export class ICEService {
       return {
         damage,
         formula: ice.formula,
-        diceResults: damageRoll.dice?.[0]?.results?.map(r => r.result) ?? [],
+        diceResults,
         iceInfo: ice,
         roll: damageRoll,
       };
