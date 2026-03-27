@@ -199,12 +199,12 @@
 .ncm-app .ncm-shard-chip-drawer {
   max-height: 0 !important;
   overflow: hidden !important;
-  transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1) !important;
   position: relative !important;
 }
 
 .ncm-app .ncm-shard-chip-drawer--open {
-  max-height: 300px !important;
+  max-height: 500px !important;
 }
 
 /* Top accent line — uses shard accent color */
@@ -227,7 +227,7 @@
 }
 
 .ncm-app .ncm-shard-chip-drawer__inner {
-  padding: 10px 12px 8px !important;
+  padding: 12px 14px 10px !important;
   background: var(--sp-bg-base, #0c0c16) !important;
   border-bottom: 1px solid var(--sp-border, #1e1e32) !important;
   opacity: 0 !important;
@@ -243,19 +243,21 @@
 .ncm-app .ncm-shard-chip-drawer__header {
   display: flex !important;
   align-items: center !important;
-  gap: 6px !important;
-  margin-bottom: 8px !important;
+  gap: 7px !important;
+  margin-bottom: 10px !important;
+  padding-bottom: 8px !important;
+  border-bottom: 1px solid var(--sp-border, #1e1e32) !important;
 }
 
 .ncm-app .ncm-shard-chip-drawer__header > i {
-  font-size: 11px !important;
+  font-size: 13px !important;
   color: var(--shard-accent, var(--ncm-color-secondary, #19f3f7)) !important;
 }
 
 .ncm-app .ncm-shard-chip-drawer__title {
   font-family: var(--ncm-font-display, 'Orbitron', monospace) !important;
-  font-size: 10px !important;
-  font-weight: 600 !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
   color: var(--shard-accent, var(--ncm-color-secondary, #19f3f7)) !important;
   letter-spacing: 1.5px !important;
   text-transform: uppercase !important;
@@ -283,22 +285,22 @@
 .ncm-app .ncm-shard-chip-drawer__grid {
   display: grid !important;
   grid-template-columns: 1fr 1fr !important;
-  gap: 3px !important;
+  gap: 4px !important;
 }
 
 .ncm-app .ncm-shard-chip-spec {
   display: flex !important;
   align-items: center !important;
-  gap: 6px !important;
-  padding: 5px 8px !important;
+  gap: 8px !important;
+  padding: 6px 10px !important;
   background: var(--sp-bg-deep, #0a0a14) !important;
-  border-radius: 2px !important;
+  border-radius: 3px !important;
   border: 1px solid var(--sp-border, #1a1a2e) !important;
 }
 
 .ncm-app .ncm-shard-chip-spec__icon {
-  font-size: 10px !important;
-  color: var(--sp-text-muted, #555570) !important;
+  font-size: 11px !important;
+  color: var(--sp-text-muted, #7a7a95) !important;
   width: 14px !important;
   text-align: center !important;
   flex-shrink: 0 !important;
@@ -306,16 +308,16 @@
 
 .ncm-app .ncm-shard-chip-spec__label {
   font-family: var(--ncm-font-display, 'Orbitron', monospace) !important;
-  font-size: 8px !important;
-  color: var(--sp-text-muted, #7a7a95) !important;
+  font-size: 9px !important;
+  color: var(--sp-text-muted, #8888a0) !important;
   letter-spacing: 1px !important;
   text-transform: uppercase !important;
 }
 
 .ncm-app .ncm-shard-chip-spec__value {
   font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace) !important;
-  font-size: 12px !important;
-  color: var(--sp-text-secondary, #d8d8e8) !important;
+  font-size: 13px !important;
+  color: var(--sp-text-bright, #e8e8f0) !important;
   margin-left: auto !important;
 }
 
@@ -328,9 +330,9 @@
   font-family: var(--ncm-font-display, 'Orbitron', monospace) !important;
   font-size: 8px !important;
   font-weight: 600 !important;
-  padding: 2px 6px !important;
+  padding: 3px 8px !important;
   border-radius: 2px !important;
-  letter-spacing: 0.8px !important;
+  letter-spacing: 1px !important;
   margin-left: auto !important;
 }
 
@@ -359,15 +361,15 @@
 .ncm-app .ncm-shard-chip-spec--desc {
   flex-direction: column !important;
   align-items: flex-start !important;
-  gap: 4px !important;
-  padding: 6px 8px !important;
+  gap: 5px !important;
+  padding: 8px 10px !important;
 }
 
 .ncm-app .ncm-shard-chip-spec__desc-text {
   font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace) !important;
-  font-size: 11px !important;
-  color: var(--sp-text-secondary, #b8b8d0) !important;
-  line-height: 1.5 !important;
+  font-size: 12px !important;
+  color: var(--sp-text-secondary, #c8c8dd) !important;
+  line-height: 1.6 !important;
 }
 
 
