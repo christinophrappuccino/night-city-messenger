@@ -2569,7 +2569,20 @@ export class AdminPanelApp extends BaseApplication {
       badgeIcon: badge.icon,
       badgeClass: badge.cls,
       actorName: e.actorName ?? 'System',
-      actorImg: e.actorId ? (game.actors?.get(e.actorId)?.img ?? null) : null,
+      actorImg: (() => {
+        // Try explicit actorId first
+        if (e.actorId) {
+          const img = game.actors?.get(e.actorId)?.img;
+          if (img && !img.includes('mystery-man')) return img;
+        }
+        // Fall back to userId → user's assigned character
+        if (e.userId) {
+          const user = game.users?.get(e.userId);
+          const img = user?.character?.img;
+          if (img && !img.includes('mystery-man')) return img;
+        }
+        return null;
+      })(),
       actionVerb: VERBS[type] ?? 'event on',
       networkName: e.networkName ?? e.networkId ?? '—',
       networkColor,

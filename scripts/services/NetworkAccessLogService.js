@@ -389,15 +389,22 @@ export class NetworkAccessLogService {
     this._sub(EVENTS.NETWORK_LOCKOUT, (data) => {
       const networkService = game.nightcity?.networkService;
       const net = networkService?.getNetwork(data.targetId);
+      let targetName = net?.name;
+      // targetId might be an itemId (shard lockout) instead of a networkId
+      if (!targetName) {
+        const item = game.items?.get(data.targetId)
+          ?? Array.from(game.actors ?? []).reduce((found, a) => found ?? a.items?.get(data.targetId), null);
+        targetName = item?.name ?? data.targetId;
+      }
       const actorName = game.actors?.get(data.actorId)?.name ?? 'Unknown';
       this._push({
         type: 'lockout',
         networkId: data.targetId,
-        networkName: net?.name ?? data.targetId,
+        networkName: targetName,
         actorId: data.actorId,
         actorName,
-        extra: { lockoutUntil: data.lockoutUntil, duration: data.duration },
-        message: `Lockout — ${actorName} blocked from access`,
+        extra: { lockoutUntil: data.lockoutUntil, duration: data.duration, itemId: net ? undefined : data.targetId },
+        message: `Lockout — ${actorName} blocked from ${net ? 'network' : 'shard'} access`,
       });
     });
 

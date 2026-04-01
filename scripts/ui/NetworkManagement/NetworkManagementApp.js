@@ -1264,7 +1264,18 @@ export class NetworkManagementApp extends BaseApplication {
       badgeIcon: badge.icon,
       badgeClass: badge.cls,
       actorName: e.actorName ?? game.actors?.get(e.actorId)?.name ?? 'System',
-      actorImg: e.actorId ? (game.actors?.get(e.actorId)?.img ?? null) : null,
+      actorImg: (() => {
+        if (e.actorId) {
+          const img = game.actors?.get(e.actorId)?.img;
+          if (img && !img.includes('mystery-man')) return img;
+        }
+        if (e.userId) {
+          const user = game.users?.get(e.userId);
+          const img = user?.character?.img;
+          if (img && !img.includes('mystery-man')) return img;
+        }
+        return null;
+      })(),
       actionVerb: VERBS[type] ?? 'event on',
       networkName: e.networkName ?? this.networkService?.getNetwork(e.networkId)?.name ?? e.networkId ?? '—',
       networkColor,
