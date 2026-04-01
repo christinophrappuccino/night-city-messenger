@@ -1921,7 +1921,7 @@
   font-size: 7px; border: 2px solid var(--nm-bg-surface, #1a1a2e);
   z-index: 1;
 }
-.ncm-netmgr__log-entry-badge-overlay i { line-height: 1; }
+.ncm-netmgr__log-entry-badge-overlay i { margin: 0 !important; padding: 0 !important; line-height: 1 !important; font-size: 7px !important; width: auto !important; height: auto !important; }
 .ncm-netmgr__log-entry-badge-overlay--connect { background: rgba(0,255,65,0.9); color: #000; }
 .ncm-netmgr__log-entry-badge-overlay--disconnect { background: var(--nm-danger); color: #fff; }
 .ncm-netmgr__log-entry-badge-overlay--auth-ok { background: var(--nm-accent); color: #000; }

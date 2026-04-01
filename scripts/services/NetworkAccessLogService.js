@@ -289,6 +289,12 @@ export class NetworkAccessLogService {
   _wireEvents() {
     if (!this.eventBus) return;
 
+    // Helper: get current user's character actor info
+    const _actor = () => {
+      const char = game.user?.character;
+      return { actorId: char?.id ?? null, actorName: char?.name ?? game.user?.name ?? 'Unknown' };
+    };
+
     this._sub(EVENTS.NETWORK_CHANGED, (data) => {
       if (data.type === 'switch' || data.previousNetworkId) {
         const networkService = game.nightcity.networkService;
@@ -296,10 +302,13 @@ export class NetworkAccessLogService {
         const prevNet = data.previousNetworkId
           ? networkService?.getNetwork(data.previousNetworkId)
           : null;
+        const a = _actor();
         this._push({
           type: 'network_switch',
           networkId: data.currentNetworkId || data.networkId,
           networkName: net?.name,
+          actorId: a.actorId,
+          actorName: a.actorName,
           message: prevNet
             ? `Switched from ${prevNet.name} → ${net?.name ?? 'unknown'}`
             : `Connected to ${net?.name ?? 'unknown'}`,
@@ -310,18 +319,24 @@ export class NetworkAccessLogService {
     this._sub(EVENTS.NETWORK_CONNECTED, (data) => {
       const networkService = game.nightcity.networkService;
       const net = networkService?.getNetwork(data.networkId);
+      const a = _actor();
       this._push({
         type: 'connect',
         networkId: data.networkId,
         networkName: net?.name,
+        actorId: a.actorId,
+        actorName: a.actorName,
         message: `Connected to ${net?.name ?? data.networkId}`,
       });
     });
 
     this._sub(EVENTS.NETWORK_DISCONNECTED, (data) => {
+      const a = _actor();
       this._push({
         type: 'disconnect',
         networkId: 'none',
+        actorId: a.actorId,
+        actorName: a.actorName,
         reason: data.reason,
         message: data.reason
           ? `Disconnected — ${data.reason}`
@@ -332,6 +347,7 @@ export class NetworkAccessLogService {
     this._sub(EVENTS.NETWORK_AUTH_SUCCESS, (data) => {
       const networkService = game.nightcity.networkService;
       const net = networkService?.getNetwork(data.networkId);
+      const a = _actor();
       const methodLabel = data.method === 'skill'
         ? `${data.skillName ?? 'skill check'} (${data.rollTotal} vs DV ${data.dc})`
         : (data.method ?? 'password');
@@ -339,6 +355,8 @@ export class NetworkAccessLogService {
         type: 'auth_success',
         networkId: data.networkId,
         networkName: net?.name,
+        actorId: a.actorId,
+        actorName: a.actorName,
         method: data.method,
         skillName: data.skillName,
         rollTotal: data.rollTotal,
@@ -350,6 +368,7 @@ export class NetworkAccessLogService {
     this._sub(EVENTS.NETWORK_AUTH_FAILURE, (data) => {
       const networkService = game.nightcity.networkService;
       const net = networkService?.getNetwork(data.networkId);
+      const a = _actor();
       const methodLabel = data.method === 'skill'
         ? `${data.skillName ?? 'skill check'} (${data.rollTotal} vs DV ${data.dc})`
         : (data.method ?? 'password');
@@ -357,6 +376,8 @@ export class NetworkAccessLogService {
         type: 'auth_failure',
         networkId: data.networkId,
         networkName: net?.name,
+        actorId: a.actorId,
+        actorName: a.actorName,
         method: data.method,
         skillName: data.skillName,
         rollTotal: data.rollTotal,
@@ -366,10 +387,13 @@ export class NetworkAccessLogService {
     });
 
     this._sub(EVENTS.NETWORK_LOCKOUT, (data) => {
+      const networkService = game.nightcity?.networkService;
+      const net = networkService?.getNetwork(data.targetId);
       const actorName = game.actors?.get(data.actorId)?.name ?? 'Unknown';
       this._push({
         type: 'lockout',
         networkId: data.targetId,
+        networkName: net?.name ?? data.targetId,
         actorId: data.actorId,
         actorName,
         extra: { lockoutUntil: data.lockoutUntil, duration: data.duration },
