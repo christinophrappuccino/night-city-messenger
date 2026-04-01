@@ -168,6 +168,7 @@
   gap: 0 !important;
   max-height: 420px !important;
   overflow-y: auto !important;
+  flex: 1 !important;
   scrollbar-width: thin !important;
   scrollbar-color: var(--ncm-border, #2a2a45) transparent !important;
 }
@@ -184,7 +185,7 @@
   background: transparent !important;
 }
 .ncm-actlog__entry:nth-child(even) {
-  background: rgba(25, 25, 50, 0.3) !important;
+  background: rgba(30, 30, 60, 0.45) !important;
 }
 .ncm-actlog__entry:hover {
   background: rgba(25, 243, 247, 0.03) !important;

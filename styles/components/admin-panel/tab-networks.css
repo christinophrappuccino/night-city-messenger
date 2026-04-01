@@ -467,7 +467,7 @@
 .ncm-app .ncm-netlog-header__action i { font-size: 9px !important; margin: 0 !important; padding: 0 !important; }
 
 /* ─── Log Panel + Toolbar ─── */
-.ncm-app .ncm-netlog-panel { background: var(--ncm-bg-surface, #1a1a2e) !important; border: 1px solid var(--ncm-border) !important; border-radius: 2px !important; overflow: visible !important; position: relative !important; }
+.ncm-app .ncm-netlog-panel { background: var(--ncm-bg-surface, #1a1a2e) !important; border: 1px solid var(--ncm-border) !important; border-radius: 2px !important; overflow: visible !important; position: relative !important; flex: 1 !important; display: flex !important; flex-direction: column !important; }
 .ncm-app .ncm-netlog-toolbar { display: flex !important; flex-direction: column !important; gap: 6px !important; padding: 10px 12px !important; border-bottom: 1px solid var(--ncm-border) !important; background: var(--ncm-bg-deep, #12121a) !important; }
 .ncm-app .ncm-netlog-toolbar-row { display: flex !important; align-items: center !important; gap: 6px !important; flex-direction: row !important; flex-wrap: wrap !important; }
 .ncm-app .ncm-netlog-filter-group { display: flex !important; gap: 3px !important; flex-direction: row !important; flex-wrap: wrap !important; flex-shrink: 0 !important; }
@@ -484,7 +484,7 @@
 .ncm-app .ncm-netlog-count { font-family: var(--ncm-font-mono) !important; font-size: 10px !important; color: var(--ncm-text-muted) !important; }
 
 /* ─── Log List ─── */
-.ncm-app .ncm-netlog-list { max-height: 420px !important; overflow-y: auto !important; }
+.ncm-app .ncm-netlog-list { max-height: 420px !important; overflow-y: auto !important; flex: 1 !important; }
 .ncm-app .ncm-netlog-list::-webkit-scrollbar { width: 4px !important; }
 .ncm-app .ncm-netlog-list::-webkit-scrollbar-thumb { background: var(--ncm-border) !important; border-radius: 2px !important; }
 
