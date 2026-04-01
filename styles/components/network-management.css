@@ -1808,7 +1808,7 @@
 
 /* ═══ Log Toolbar ═══ */
 
-.ncm-netmgr__log-toolbar { display: flex !important; flex-direction: column !important; gap: 6px !important; padding: 8px 12px !important; background: var(--nm-bg-elevated) !important; border-bottom: 1px solid var(--nm-border) !important; margin-bottom: 0 !important; }
+.ncm-netmgr__log-toolbar { display: flex !important; flex-direction: column !important; gap: 6px !important; padding: 8px 12px !important; background: var(--nm-bg-deep) !important; border-bottom: 1px solid var(--nm-border) !important; margin-bottom: 0 !important; }
 .ncm-netmgr__log-toolbar-row { display: flex !important; align-items: center !important; gap: 6px !important; flex-direction: row !important; flex-wrap: wrap !important; }
 .ncm-netmgr__log-toolbar-count { font-family: var(--nm-font-mono) !important; font-size: 10px !important; color: var(--nm-text-muted) !important; }
 .ncm-netmgr__log-filter-group { display: flex !important; gap: 3px !important; flex-direction: row !important; flex-shrink: 0 !important; flex-wrap: wrap !important; }
@@ -1820,7 +1820,7 @@
 
 /* ═══ Add Entry Form — Sticky Bottom Bar ═══ */
 
-.ncm-netmgr__add-log-form { display: flex !important; flex-direction: row !important; align-items: flex-end !important; gap: 8px !important; padding: 8px 12px !important; background: var(--nm-bg-elevated) !important; border-top: 1px solid var(--nm-border) !important; position: sticky !important; bottom: 0 !important; z-index: 2 !important; box-shadow: 0 -2px 8px rgba(0,0,0,0.3) !important; flex-wrap: nowrap !important; }
+.ncm-netmgr__add-log-form { display: flex !important; flex-direction: row !important; align-items: flex-end !important; gap: 8px !important; padding: 8px 12px !important; background: var(--nm-bg-deep) !important; border-top: 1px solid var(--nm-border) !important; position: sticky !important; bottom: 0 !important; z-index: 2 !important; box-shadow: 0 -2px 8px rgba(0,0,0,0.3) !important; flex-wrap: nowrap !important; }
 .ncm-netmgr__add-log-field { display: flex !important; flex-direction: column !important; gap: 2px !important; }
 .ncm-netmgr__add-log-field label { font-family: var(--nm-font-display) !important; font-size: 8px !important; font-weight: 700 !important; letter-spacing: 0.04em !important; text-transform: uppercase !important; color: var(--nm-text-muted) !important; }
 .ncm-netmgr__add-log-field input,
