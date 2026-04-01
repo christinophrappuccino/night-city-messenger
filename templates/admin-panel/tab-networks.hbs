@@ -2,10 +2,16 @@
 
     {{#if (eq networkSubView 'logs')}}
     {{!-- ═══ FULL ACTIVITY LOG PANEL ═══ --}}
-    <div class="ncm-section-title">
-      <i class="fas fa-scroll"></i> Network Activity Log ({{logEntryCount}})
-      <button class="ncm-section-title__action" data-action="openNetworkManagerLogs"><i class="fas fa-up-right-from-square"></i> Open in Manager</button>
-      <button class="ncm-section-title__action" data-action="switchNetworkSubView" data-subview="cards">← Back</button>
+    <div class="ncm-netlog-header">
+      <button class="ncm-netlog-header__back" data-action="switchNetworkSubView" data-subview="cards">
+        <i class="fas fa-arrow-left"></i> Back
+      </button>
+      <div class="ncm-netlog-header__title"><i class="fas fa-scroll"></i> Network Activity Log</div>
+      <span class="ncm-netlog-header__count">{{logEntryCount}} entries</span>
+      <div class="ncm-netlog-header__spacer"></div>
+      <button class="ncm-netlog-header__action" data-action="openNetworkManagerLogs">
+        <i class="fas fa-up-right-from-square"></i> Open in Manager
+      </button>
     </div>
 
     <div class="ncm-netlog-panel">
@@ -48,22 +54,39 @@
       <div class="ncm-netlog-list">
         {{#if fullLogEntries.length}}
         {{#each fullLogEntries}}
-        <div class="ncm-netlog-entry {{#if this.manual}}ncm-netlog-entry--manual{{/if}}" data-entry-id="{{this.id}}">
-          <div class="ncm-netlog-entry__row1">
-            <span class="ncm-netlog-entry__icon" style="color:var(--ncm-{{this.colorVar}});">
-              <i class="fas {{this.typeIcon}}"></i>
-            </span>
-            <span class="ncm-netlog-entry__type-label">{{this.typeLabel}}</span>
-            <span class="ncm-netlog-entry__network">{{this.networkName}}</span>
-            <span class="ncm-netlog-entry__time">{{this.displayDate}} {{this.displayTime}}</span>
-            <div class="ncm-netlog-entry__actions">
-              <button class="ncm-log-entry__action-btn" data-action="editLogEntry" data-entry-id="{{this.id}}" title="Edit"><i class="fas fa-pen"></i></button>
-              <button class="ncm-log-entry__action-btn ncm-log-entry__action-btn--danger" data-action="deleteLogEntry" data-entry-id="{{this.id}}" title="Delete"><i class="fas fa-trash"></i></button>
+        <div class="ncm-netlog-entry {{#if this.isTrace}}ncm-netlog-entry--trace{{/if}} {{#if this.manual}}ncm-netlog-entry--manual{{/if}}" data-entry-id="{{this.id}}">
+          <div class="ncm-netlog-entry__badge ncm-netlog-entry__badge--{{this.badgeClass}}">
+            <i class="fas {{this.badgeIcon}}"></i>
+          </div>
+          <div class="ncm-netlog-entry__body">
+            <div class="ncm-netlog-entry__line1">
+              <span class="ncm-netlog-entry__actor">{{this.actorName}}</span>
+              <span class="ncm-netlog-entry__verb">{{this.actionVerb}}</span>
+              <span class="ncm-netlog-entry__network ncm-netlog-entry__network--{{this.networkColor}}">{{this.networkName}}</span>
+            </div>
+            <div class="ncm-netlog-entry__line2">
+              <span class="ncm-netlog-entry__type-tag ncm-netlog-entry__type-tag--{{this.typeTagClass}}">{{this.typeTag}}</span>
+              {{#if this.message}}
+              <span class="ncm-netlog-entry__message">{{this.message}}</span>
+              {{/if}}
+              {{#if this.hasLink}}
+              <span class="ncm-netlog-entry__link {{#if (eq this.linkType 'shard')}}ncm-netlog-entry__link--shard{{/if}}"
+                    data-action="openLogReference"
+                    data-link-type="{{this.linkType}}"
+                    data-message-id="{{this.linkMessageId}}"
+                    data-actor-id="{{this.linkActorId}}"
+                    data-item-id="{{this.linkItemId}}">
+                <i class="fas {{this.linkIcon}}"></i> {{this.linkLabel}}
+              </span>
+              {{/if}}
+              <span class="ncm-netlog-entry__time">
+                <span class="ncm-netlog-entry__time-date">{{this.displayDate}} //</span> {{this.displayTime}}
+              </span>
             </div>
           </div>
-          <div class="ncm-netlog-entry__row2">
-            <span class="ncm-netlog-entry__actor">{{this.actorName}}</span>
-            <span class="ncm-netlog-entry__message">{{this.message}}</span>
+          <div class="ncm-netlog-entry__actions">
+            <button class="ncm-netlog-entry__act" data-action="editLogEntry" data-entry-id="{{this.id}}" title="Edit"><i class="fas fa-pen"></i></button>
+            <button class="ncm-netlog-entry__act ncm-netlog-entry__act--danger" data-action="deleteLogEntry" data-entry-id="{{this.id}}" title="Delete"><i class="fas fa-trash"></i></button>
           </div>
         </div>
         {{/each}}
@@ -97,7 +120,8 @@
             <option value="auth_failure">Auth Failure</option>
             <option value="hack">Hack Attempt</option>
             <option value="lockout">Lockout</option>
-            <option value="manual">Trace / Manual</option>
+            <option value="trace">Trace</option>
+            <option value="manual">Manual</option>
             <option value="malware">Malware</option>
             <option value="system">System</option>
           </select>

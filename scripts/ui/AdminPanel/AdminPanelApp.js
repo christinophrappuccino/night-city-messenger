@@ -244,6 +244,7 @@ export class AdminPanelApp extends BaseApplication {
       toggleCardLog: AdminPanelApp._onToggleCardLog,
       deleteLogEntry: AdminPanelApp._onDeleteLogEntry,
       editLogEntry: AdminPanelApp._onEditLogEntry,
+      openLogReference: AdminPanelApp._onOpenLogReference,
       filterLogType: AdminPanelApp._onFilterLogType,
       addManualLogEntry: AdminPanelApp._onAddManualLogEntry,
       toggleAddLogForm: AdminPanelApp._onToggleAddLogForm,
@@ -388,6 +389,7 @@ export class AdminPanelApp extends BaseApplication {
       { value: 'auth', label: 'Auth', active: this._logTypeFilter === 'auth' },
       { value: 'hack', label: 'Hack', active: this._logTypeFilter === 'hack' },
       { value: 'lockout', label: 'Lockout', active: this._logTypeFilter === 'lockout' },
+      { value: 'trace', label: 'Trace', active: this._logTypeFilter === 'trace' },
       { value: 'manual', label: 'Manual', active: this._logTypeFilter === 'manual' },
     ];
 
@@ -2465,27 +2467,122 @@ export class AdminPanelApp extends BaseApplication {
       entries = entries.filter(e => e.manual === true);
     }
 
+    // Post-filter for trace
+    if (this._logTypeFilter === 'trace') {
+      entries = entries.filter(e => e.type === 'trace' || e.type === 'shard_trace' || e.type === 'message_trace');
+    }
+
     return entries.map(e => this._formatLogEntry(e));
   }
 
   /**
-   * Format a single log entry for template display.
+   * Format a single log entry for template display (who-did-what sentence format).
    * @param {object} e - Raw AccessLogEntry
-   * @returns {object} Formatted entry
+   * @returns {object} Formatted entry with badge, sentence parts, type tag, link data
    * @private
    */
   _formatLogEntry(e) {
+    const type = e.type ?? 'system';
+    const isTrace = type === 'trace' || type === 'shard_trace' || type === 'message_trace';
+
+    // Badge icon + class
+    const BADGE = {
+      connect: { icon: 'fa-plug', cls: 'connect' },
+      disconnect: { icon: 'fa-plug-circle-xmark', cls: 'disconnect' },
+      auth_success: { icon: 'fa-lock-open', cls: 'auth_success' },
+      auth_failure: { icon: 'fa-lock', cls: 'auth_failure' },
+      lockout: { icon: 'fa-ban', cls: 'lockout' },
+      dead_zone: { icon: 'fa-signal-slash', cls: 'system' },
+      network_switch: { icon: 'fa-arrows-rotate', cls: 'network_switch' },
+      hack: { icon: 'fa-skull-crossbones', cls: 'hack' },
+      manual: { icon: 'fa-user-secret', cls: 'manual' },
+      malware: { icon: 'fa-virus', cls: 'hack' },
+      system: { icon: 'fa-signal-slash', cls: 'system' },
+      trace: { icon: 'fa-eye', cls: 'trace' },
+      message_trace: { icon: 'fa-eye', cls: 'trace' },
+      shard_trace: { icon: 'fa-satellite-dish', cls: 'trace' },
+    };
+    const badge = BADGE[type] ?? { icon: 'fa-circle-info', cls: 'system' };
+
+    // Action verb (the "did what" part of the sentence)
+    const VERBS = {
+      connect: 'connected to',
+      disconnect: 'disconnected from',
+      auth_success: 'authenticated on',
+      auth_failure: 'failed auth on',
+      lockout: 'locked out of',
+      dead_zone: 'lost signal on',
+      network_switch: 'switched to',
+      hack: 'attempted hack on',
+      manual: 'logged entry on',
+      malware: 'detected malware on',
+      system: 'system event on',
+      trace: 'was traced on',
+      message_trace: 'sent traced message on',
+      shard_trace: 'triggered shard trace on',
+    };
+
+    // Type tag label + CSS class
+    const TAGS = {
+      connect: { label: 'Connect', cls: 'connect' },
+      disconnect: { label: 'Disconnect', cls: 'disconnect' },
+      auth_success: { label: 'Auth OK', cls: 'auth-ok' },
+      auth_failure: { label: 'Auth Fail', cls: 'auth-fail' },
+      lockout: { label: 'Lockout', cls: 'lockout' },
+      dead_zone: { label: 'Dead Zone', cls: 'system' },
+      network_switch: { label: 'Switch', cls: 'switch' },
+      hack: { label: 'Hack', cls: 'hack' },
+      manual: { label: 'Manual', cls: 'manual' },
+      malware: { label: 'Malware', cls: 'hack' },
+      system: { label: 'System', cls: 'system' },
+      trace: { label: 'Trace', cls: 'trace' },
+      message_trace: { label: 'Trace', cls: 'trace' },
+      shard_trace: { label: 'Shard Trace', cls: 'trace' },
+    };
+    const tag = TAGS[type] ?? { label: type?.toUpperCase() ?? 'EVENT', cls: 'system' };
+
+    // Network color class
+    const netName = (e.networkName ?? e.networkId ?? '').toUpperCase();
+    let networkColor = 'cyan';
+    if (netName.includes('CORP') || netName.includes('GOV')) networkColor = 'gold';
+    else if (netName.includes('DARK')) networkColor = 'purple';
+    else if (netName.includes('DEAD') || netName.includes('BADLAND')) networkColor = 'red';
+
+    // Link data from extra field
+    const extra = e.extra ?? {};
+    const hasLink = !!(extra.messageId || extra.itemId);
+    let linkType = '', linkLabel = '', linkIcon = '';
+    if (extra.itemId) {
+      linkType = 'shard';
+      linkLabel = 'View Shard';
+      linkIcon = 'fa-microchip';
+    } else if (extra.messageId) {
+      linkType = 'message';
+      linkLabel = 'View Message';
+      linkIcon = 'fa-envelope';
+    }
+
     return {
       ...e,
       displayTime: this._formatLogTime(e.timestamp),
       displayDate: this._formatLogDate(e.timestamp),
-      typeIcon: this._getLogTypeIcon(e.type),
-      typeClass: this._getLogTypeClass(e.type),
-      typeLabel: this._getLogTypeLabel(e.type),
-      colorVar: this._getLogTypeColor(e.type, e.manual),
+      badgeIcon: badge.icon,
+      badgeClass: badge.cls,
       actorName: e.actorName ?? 'System',
+      actionVerb: VERBS[type] ?? 'event on',
       networkName: e.networkName ?? e.networkId ?? '—',
-      message: e.message ?? e.type ?? '',
+      networkColor,
+      typeTag: tag.label,
+      typeTagClass: tag.cls,
+      message: e.message ?? '',
+      isTrace,
+      hasLink,
+      linkType,
+      linkLabel,
+      linkIcon,
+      linkMessageId: extra.messageId ?? '',
+      linkActorId: extra.actorId ?? e.actorId ?? '',
+      linkItemId: extra.itemId ?? '',
     };
   }
 
@@ -2501,79 +2598,6 @@ export class AdminPanelApp extends BaseApplication {
     if (!timestamp) return '';
     const d = new Date(timestamp);
     return `${String(d.getUTCMonth() + 1).padStart(2, '0')}.${String(d.getUTCDate()).padStart(2, '0')}.${d.getUTCFullYear()}`;
-  }
-
-  /** @private */
-  _getLogTypeIcon(type) {
-    const icons = {
-      connect: 'fa-plug',
-      disconnect: 'fa-plug-circle-xmark',
-      auth_success: 'fa-lock-open',
-      auth_failure: 'fa-lock',
-      lockout: 'fa-ban',
-      dead_zone: 'fa-signal-slash',
-      network_switch: 'fa-arrows-rotate',
-      hack: 'fa-skull-crossbones',
-      manual: 'fa-user-secret',
-      malware: 'fa-virus',
-      system: 'fa-signal-slash',
-    };
-    return icons[type] ?? 'fa-circle-info';
-  }
-
-  /** @private */
-  _getLogTypeClass(type) {
-    const map = {
-      connect: 'connect',
-      disconnect: 'disconnect',
-      auth_success: 'auth',
-      auth_failure: 'disconnect',
-      lockout: 'disconnect',
-      dead_zone: 'disconnect',
-      network_switch: 'switch',
-      hack: 'hack',
-      manual: 'manual',
-      malware: 'manual',
-      system: 'disconnect',
-    };
-    return map[type] || 'switch';
-  }
-
-  /** @private */
-  _getLogTypeLabel(type) {
-    const labels = {
-      connect: 'CONNECT',
-      disconnect: 'DISCONNECT',
-      auth_success: 'AUTH OK',
-      auth_failure: 'AUTH FAIL',
-      lockout: 'LOCKOUT',
-      dead_zone: 'DEAD ZONE',
-      network_switch: 'SWITCH',
-      hack: 'HACK',
-      manual: 'TRACE',
-      malware: 'MALWARE',
-      system: 'SYSTEM',
-    };
-    return labels[type] || type?.toUpperCase() || 'EVENT';
-  }
-
-  /** @private */
-  _getLogTypeColor(type, isManual) {
-    if (isManual) return 'purple';
-    const map = {
-      connect: 'success',
-      disconnect: 'danger',
-      auth_success: 'accent',
-      auth_failure: 'danger',
-      lockout: 'danger',
-      dead_zone: 'danger',
-      network_switch: 'secondary',
-      hack: 'primary',
-      manual: 'purple',
-      malware: 'purple',
-      system: 'danger',
-    };
-    return map[type] || 'secondary';
   }
 
   /**
@@ -5126,6 +5150,34 @@ export class AdminPanelApp extends BaseApplication {
       default: 'save',
     });
     dialog.render(true);
+  }
+
+  /**
+   * Open the message or shard referenced by a log entry link.
+   * @param {Event} event
+   * @param {HTMLElement} target
+   */
+  static _onOpenLogReference(event, target) {
+    event.preventDefault();
+    event.stopPropagation();
+    const linkEl = target.closest('[data-link-type]') ?? target;
+    const linkType = linkEl.dataset.linkType;
+    const messageId = linkEl.dataset.messageId;
+    const actorId = linkEl.dataset.actorId;
+    const itemId = linkEl.dataset.itemId;
+
+    if (linkType === 'message' && messageId && actorId) {
+      // Open the message viewer for this actor, focused on this message
+      game.nightcity?.messenger?.openInbox?.(actorId, { messageId });
+    } else if (linkType === 'shard' && itemId) {
+      // Find and open the shard
+      const item = AdminPanelApp._findItem(itemId);
+      if (item) {
+        game.nightcity?.messenger?.forceOpenDataShard?.(item);
+      } else {
+        ui.notifications.warn('NCM | Could not find the referenced data shard.');
+      }
+    }
   }
 
   // ── Sprint 6: Full Log Panel Actions ──
