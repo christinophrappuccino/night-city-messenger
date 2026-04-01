@@ -1806,70 +1806,36 @@
   color: var(--nm-danger);
 }
 
-/* Log Toolbar */
+/* ═══ Log Toolbar ═══ */
 
-.ncm-netmgr__log-toolbar {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 8px 12px;
-  background: var(--nm-bg-elevated);
-  border-bottom: 1px solid var(--nm-border);
-  margin-bottom: 0;
-}
+.ncm-netmgr__log-toolbar { display: flex !important; flex-direction: column !important; gap: 6px !important; padding: 8px 12px !important; background: var(--nm-bg-elevated) !important; border-bottom: 1px solid var(--nm-border) !important; margin-bottom: 0 !important; }
+.ncm-netmgr__log-toolbar-row { display: flex !important; align-items: center !important; gap: 6px !important; flex-direction: row !important; flex-wrap: wrap !important; }
+.ncm-netmgr__log-toolbar-count { font-family: var(--nm-font-mono) !important; font-size: 10px !important; color: var(--nm-text-muted) !important; }
+.ncm-netmgr__log-filter-group { display: flex !important; gap: 3px !important; flex-direction: row !important; flex-shrink: 0 !important; flex-wrap: wrap !important; }
+.ncm-netmgr__log-filter-btn { display: inline-flex !important; align-items: center !important; padding: 4px 10px !important; font-family: var(--nm-font-display) !important; font-size: 10px !important; font-weight: 700 !important; text-transform: uppercase !important; color: var(--nm-text-muted) !important; background: transparent !important; background-image: none !important; border: 1px solid var(--nm-border) !important; border-radius: 2px !important; cursor: pointer !important; transition: all 0.15s !important; flex-shrink: 0 !important; white-space: nowrap !important; height: auto !important; min-height: 0 !important; width: auto !important; min-width: 0 !important; appearance: none !important; box-shadow: none !important; outline: none !important; line-height: 1.2 !important; margin: 0 !important; letter-spacing: 0.04em !important; }
+.ncm-netmgr__log-filter-btn:hover { color: var(--nm-text-secondary) !important; border-color: var(--nm-border-active, #3a3a5a) !important; }
+.ncm-netmgr__log-filter-btn--active { color: var(--nm-secondary) !important; border-color: rgba(25,243,247,0.25) !important; background: rgba(25,243,247,0.06) !important; }
+.ncm-netmgr__log-network-filter { padding: 4px 10px !important; font-family: var(--nm-font-display) !important; font-size: 10px !important; font-weight: 600 !important; color: var(--nm-text-secondary) !important; background-color: var(--nm-bg-deep) !important; background-image: none !important; border: 1px solid var(--nm-border) !important; border-radius: 2px !important; outline: none !important; flex-shrink: 0 !important; height: auto !important; min-height: 0 !important; width: auto !important; min-width: 0 !important; appearance: none !important; box-shadow: none !important; }
+.ncm-netmgr__log-toolbar-spacer { flex: 1 !important; }
 
-.ncm-netmgr__log-toolbar-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-direction: row;
-  flex-wrap: wrap;
-}
+/* ═══ Add Entry Form — Sticky Bottom Bar ═══ */
 
-.ncm-netmgr__log-toolbar-count {
-  font-family: var(--nm-font-mono);
-  font-size: 8px;
-  color: var(--nm-text-muted);
-}
-
-.ncm-netmgr__log-filter-group {
-  display: flex;
-  gap: 3px;
-  flex-direction: row;
-  flex-shrink: 0;
-  flex-wrap: wrap;
-}
-
-.ncm-netmgr__log-filter-btn {
-  padding: 4px 10px;
-  background: transparent;
-  border: 1px solid var(--nm-border);
-  border-radius: 2px;
-  font-family: var(--nm-font-display);
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--nm-text-muted);
-  cursor: pointer;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  transition: all 0.12s;
-  flex-shrink: 0;
-  white-space: nowrap;
-}
-
-.ncm-netmgr__log-filter-btn:hover {
-  color: var(--nm-text-secondary);
-  background: var(--nm-bg-surface);
-}
-
-.ncm-netmgr__log-filter-btn--active {
-  color: var(--nm-secondary);
-  background: rgba(25, 243, 247, 0.06);
-}
-
-.ncm-netmgr__log-toolbar-spacer {
-  flex: 1;
-}
+.ncm-netmgr__add-log-form { display: flex !important; flex-direction: row !important; align-items: flex-end !important; gap: 8px !important; padding: 8px 12px !important; background: var(--nm-bg-elevated) !important; border-top: 1px solid var(--nm-border) !important; position: sticky !important; bottom: 0 !important; z-index: 2 !important; box-shadow: 0 -2px 8px rgba(0,0,0,0.3) !important; flex-wrap: nowrap !important; }
+.ncm-netmgr__add-log-field { display: flex !important; flex-direction: column !important; gap: 2px !important; }
+.ncm-netmgr__add-log-field label { font-family: var(--nm-font-display) !important; font-size: 8px !important; font-weight: 700 !important; letter-spacing: 0.04em !important; text-transform: uppercase !important; color: var(--nm-text-muted) !important; }
+.ncm-netmgr__add-log-field input,
+.ncm-netmgr__add-log-field select { padding: 4px 8px !important; height: 26px !important; font-family: var(--nm-font-display) !important; font-size: 11px !important; font-weight: 600 !important; color: var(--nm-text-primary) !important; background-color: var(--nm-bg-deep) !important; background-image: none !important; border: 1px solid var(--nm-border) !important; border-radius: 2px !important; outline: none !important; box-shadow: none !important; min-height: 0 !important; }
+.ncm-netmgr__add-log-field input:focus,
+.ncm-netmgr__add-log-field select:focus { border-color: rgba(25,243,247,0.4) !important; }
+.ncm-netmgr__add-log-field input::placeholder { color: var(--nm-text-muted) !important; font-weight: 500 !important; }
+.ncm-netmgr__add-log-field--net { min-width: 100px !important; }
+.ncm-netmgr__add-log-field--actor { min-width: 80px !important; }
+.ncm-netmgr__add-log-field--type { min-width: 90px !important; }
+.ncm-netmgr__add-log-field--message { flex: 1 !important; min-width: 0 !important; }
+.ncm-netmgr__add-log-field--message input { width: 100% !important; }
+.ncm-netmgr__add-log-btn { display: inline-flex !important; align-items: center !important; gap: 5px !important; flex-direction: row !important; padding: 4px 12px !important; height: 26px !important; font-family: var(--nm-font-display) !important; font-size: 10px !important; font-weight: 700 !important; text-transform: uppercase !important; color: var(--nm-secondary) !important; background: transparent !important; background-image: none !important; border: 1px solid rgba(25,243,247,0.3) !important; border-radius: 2px !important; cursor: pointer !important; transition: all 0.15s !important; min-height: 0 !important; width: auto !important; min-width: 0 !important; appearance: none !important; box-shadow: none !important; outline: none !important; line-height: 1.2 !important; margin: 0 !important; align-self: flex-end !important; flex-shrink: 0 !important; white-space: nowrap !important; }
+.ncm-netmgr__add-log-btn:hover { background: rgba(25,243,247,0.06) !important; }
+.ncm-netmgr__add-log-btn i { font-size: 9px !important; margin: 0 !important; padding: 0 !important; }
 
 /* Log Entries — Who-Did-What Layout */
 
@@ -2391,95 +2357,7 @@
   border-color: rgba(255, 0, 51, 0.3);
 }
 
-/* Add manual entry form */
-.ncm-netmgr__add-log-form {
-  display: flex;
-  flex-direction: row;
-  align-items: flex-end;
-  gap: 8px;
-  padding: 8px 12px;
-  background: var(--nm-bg-elevated);
-  border-top: 1px solid var(--nm-border);
-  position: sticky;
-  bottom: 0;
-  z-index: 2;
-  box-shadow: 0 -2px 8px rgba(0,0,0,0.3);
-}
-
-.ncm-netmgr__add-log-field {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.ncm-netmgr__add-log-field label {
-  font-family: var(--nm-font-display);
-  font-size: 8px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--nm-text-muted);
-}
-
-.ncm-netmgr__add-log-field input,
-.ncm-netmgr__add-log-field select {
-  font-family: var(--nm-font-display);
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--nm-text-primary);
-  background: var(--nm-bg-deep);
-  border: 1px solid var(--nm-border);
-  padding: 4px 8px;
-  height: 26px;
-  border-radius: 2px;
-  line-height: 1.4;
-}
-
-.ncm-netmgr__add-log-field input:focus,
-.ncm-netmgr__add-log-field select:focus {
-  outline: none;
-  border-color: var(--nm-secondary);
-}
-
-.ncm-netmgr__add-log-field input::placeholder {
-  color: var(--nm-text-muted);
-  font-weight: 500;
-}
-
-/* Field widths */
-.ncm-netmgr__add-log-field--net { min-width: 100px; }
-.ncm-netmgr__add-log-field--actor { min-width: 80px; }
-.ncm-netmgr__add-log-field--type { min-width: 90px; }
-.ncm-netmgr__add-log-field--message { flex: 1; min-width: 0; }
-.ncm-netmgr__add-log-field--message input { width: 100% !important; }
-
-/* Add button */
-.ncm-netmgr__add-log-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 4px 12px;
-  height: 26px;
-  font-family: var(--nm-font-display);
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--nm-secondary);
-  background: transparent;
-  border: 1px solid rgba(25, 243, 247, 0.3);
-  border-radius: 2px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  cursor: pointer;
-  transition: all 0.15s;
-  white-space: nowrap;
-  align-self: flex-end;
-}
-}
-
-.ncm-netmgr__add-log-btn:hover {
-  background: rgba(168, 85, 247, 0.15);
-  border-color: #a855f7;
-}
+/* Add manual entry form — defined in toolbar section above */
 
 /* Foundry overrides for new log elements */
 .ncm-network-management .ncm-netmgr__log-entry-btn,
@@ -2539,49 +2417,7 @@
   margin: 0 !important;
 }
 
-.ncm-network-management .ncm-netmgr__add-log-form input,
-.ncm-network-management .ncm-netmgr__add-log-form select {
-  background: var(--nm-bg-deep) !important;
-  border: 1px solid var(--nm-border) !important;
-  color: var(--nm-text-primary) !important;
-  border-radius: 2px !important;
-  box-shadow: none !important;
-  outline: none !important;
-  font-family: var(--nm-font-mono) !important;
-  font-size: 10px !important;
-  padding: 4px 8px !important;
-  height: auto !important;
-  min-height: 0 !important;
-  line-height: 1.4 !important;
-  appearance: none !important;
-  -webkit-appearance: none !important;
-}
-
-.ncm-network-management .ncm-netmgr__add-log-btn {
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 4px !important;
-  padding: 4px 10px !important;
-  font-family: var(--nm-font-display) !important;
-  font-size: 8px !important;
-  font-weight: 700 !important;
-  color: #a855f7 !important;
-  background: rgba(168, 85, 247, 0.08) !important;
-  border: 1px solid rgba(168, 85, 247, 0.25) !important;
-  border-radius: 2px !important;
-  cursor: pointer !important;
-  appearance: none !important;
-  -webkit-appearance: none !important;
-  box-shadow: none !important;
-  width: auto !important;
-  height: auto !important;
-  min-width: 0 !important;
-  min-height: 0 !important;
-  outline: none !important;
-  white-space: nowrap !important;
-  flex-shrink: 0 !important;
-  flex-grow: 0 !important;
-}
+/* Add log form Foundry overrides — handled by !important rules in toolbar section */
 
 /* ── Sidebar search input ── */
 .ncm-network-management .ncm-netmgr__sidebar-search {
