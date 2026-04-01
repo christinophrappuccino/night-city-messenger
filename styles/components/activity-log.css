@@ -379,11 +379,8 @@
   padding: 8px 12px !important;
   background: var(--ncm-bg-deep, #0a0a0f) !important;
   border-top: 1px solid var(--ncm-border, #2a2a45) !important;
-  position: sticky !important;
-  bottom: 0 !important;
-  z-index: 2 !important;
-  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.4) !important;
   flex-wrap: nowrap !important;
+  flex-shrink: 0 !important;
   margin: 0 !important;
 }
 

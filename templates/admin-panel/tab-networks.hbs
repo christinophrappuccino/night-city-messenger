@@ -96,43 +96,44 @@
         {{/if}}
       </div>
 
-      {{#if showAddLogForm}}
-      <div class="ncm-actlog__add-form">
-        <div class="ncm-actlog__add-field ncm-actlog__add-field--net">
-          <label>Network</label>
-          <select name="logNetwork">
-            {{#each networks}}
-            <option value="{{this.id}}">{{this.name}}</option>
-            {{/each}}
-          </select>
-        </div>
-        <div class="ncm-actlog__add-field ncm-actlog__add-field--actor">
-          <label>Actor</label>
-          <input type="text" name="logActor" placeholder="Name">
-        </div>
-        <div class="ncm-actlog__add-field ncm-actlog__add-field--type">
-          <label>Type</label>
-          <select name="logType">
-            <option value="connect">Connect</option>
-            <option value="disconnect">Disconnect</option>
-            <option value="auth_success">Auth Success</option>
-            <option value="auth_failure">Auth Failure</option>
-            <option value="hack">Hack Attempt</option>
-            <option value="lockout">Lockout</option>
-            <option value="trace">Trace</option>
-            <option value="manual">Manual</option>
-            <option value="malware">Malware</option>
-            <option value="system">System</option>
-          </select>
-        </div>
-        <div class="ncm-actlog__add-field ncm-actlog__add-field--msg">
-          <label>Message</label>
-          <input type="text" name="logMessage" placeholder="[TRACE] Unauthorized access from...">
-        </div>
-        <button class="ncm-actlog__add-btn" data-action="addManualLogEntry"><i class="fas fa-plus"></i> Add</button>
-      </div>
-      {{/if}}
     </div>
+
+    {{#if showAddLogForm}}
+    <div class="ncm-actlog__add-form">
+      <div class="ncm-actlog__add-field ncm-actlog__add-field--net">
+        <label>Network</label>
+        <select name="logNetwork">
+          {{#each networks}}
+          <option value="{{this.id}}">{{this.name}}</option>
+          {{/each}}
+        </select>
+      </div>
+      <div class="ncm-actlog__add-field ncm-actlog__add-field--actor">
+        <label>Actor</label>
+        <input type="text" name="logActor" placeholder="Name">
+      </div>
+      <div class="ncm-actlog__add-field ncm-actlog__add-field--type">
+        <label>Type</label>
+        <select name="logType">
+          <option value="connect">Connect</option>
+          <option value="disconnect">Disconnect</option>
+          <option value="auth_success">Auth Success</option>
+          <option value="auth_failure">Auth Failure</option>
+          <option value="hack">Hack Attempt</option>
+          <option value="lockout">Lockout</option>
+          <option value="trace">Trace</option>
+          <option value="manual">Manual</option>
+          <option value="malware">Malware</option>
+          <option value="system">System</option>
+        </select>
+      </div>
+      <div class="ncm-actlog__add-field ncm-actlog__add-field--msg">
+        <label>Message</label>
+        <input type="text" name="logMessage" placeholder="[TRACE] Unauthorized access from...">
+      </div>
+      <button class="ncm-actlog__add-btn" data-action="addManualLogEntry"><i class="fas fa-plus"></i> Add</button>
+    </div>
+    {{/if}}
 
     {{else}}
     {{!-- ═══ WAR ROOM DASHBOARD ═══ --}}
