@@ -79,6 +79,7 @@ export class NetworkManagementApp extends BaseApplication {
       addManualLogEntry: NetworkManagementApp._onAddManualLogEntry,
       editLogEntry: NetworkManagementApp._onEditLogEntry,
       deleteLogEntry: NetworkManagementApp._onDeleteLogEntry,
+      openLogReference: NetworkManagementApp._onOpenLogReference,
       browseKeyItem: NetworkManagementApp._onBrowseKeyItem,
       searchKeyItem: NetworkManagementApp._onSearchKeyItem,
       clearKeyItem: NetworkManagementApp._onClearKeyItem,
@@ -297,17 +298,7 @@ export class NetworkManagementApp extends BaseApplication {
       return this._matchesLogFilter(e, this._logFilter);
     });
 
-    const logEntries = rawLog.map(e => ({
-        ...e,
-        displayTime: this._formatLogTime(e.timestamp),
-        displayDate: this._formatLogDate(e.timestamp),
-        typeIcon: this._getLogTypeIcon(e.type),
-        typeClass: this._getLogTypeClass(e.type),
-        typeLabel: this._getLogTypeLabel(e.type),
-        actorName: e.actorName ?? game.actors?.get(e.actorId)?.name ?? 'System',
-        networkName: e.networkName ?? this.networkService?.getNetwork(e.networkId)?.name ?? e.networkId ?? '—',
-        message: e.message ?? e.action ?? '',
-      }));
+    const logEntries = rawLog.map(e => this._formatLogEntry(e));
 
     const logStats = this.accessLogService?.getStats?.() ?? {};
 
@@ -1125,6 +1116,28 @@ export class NetworkManagementApp extends BaseApplication {
     }
   }
 
+  static _onOpenLogReference(event, target) {
+    event.preventDefault();
+    event.stopPropagation();
+    const linkEl = target.closest('[data-link-type]') ?? target;
+    const linkType = linkEl.dataset.linkType;
+    const messageId = linkEl.dataset.messageId;
+    const actorId = linkEl.dataset.actorId;
+    const itemId = linkEl.dataset.itemId;
+
+    if (linkType === 'message' && messageId && actorId) {
+      game.nightcity?.messenger?.openInbox?.(actorId, { messageId });
+    } else if (linkType === 'shard' && itemId) {
+      const item = game.items?.get(itemId)
+        ?? Array.from(game.actors ?? []).reduce((found, a) => found ?? a.items?.get(itemId), null);
+      if (item) {
+        game.nightcity?.messenger?.forceOpenDataShard?.(item);
+      } else {
+        ui.notifications.warn('NCM | Could not find the referenced data shard.');
+      }
+    }
+  }
+
   static _onResetSecurity(event, target) {
     const actorId = target.dataset.actorId;
     const targetId = target.dataset.targetId;
@@ -1170,30 +1183,102 @@ export class NetworkManagementApp extends BaseApplication {
     return `${String(d.getUTCMonth() + 1).padStart(2, '0')}.${String(d.getUTCDate()).padStart(2, '0')}.${d.getUTCFullYear()}`;
   }
 
-  _getLogTypeIcon(type) {
-    const icons = {
-      connect: 'fa-plug',
-      disconnect: 'fa-plug-circle-xmark',
-      auth_success: 'fa-lock-open',
-      auth_failure: 'fa-lock',
-      lockout: 'fa-ban',
-      dead_zone: 'fa-signal',
-      network_switch: 'fa-arrows-rotate',
-    };
-    return icons[type] ?? 'fa-circle-info';
-  }
+  /**
+   * Format a single log entry for template display (who-did-what sentence format).
+   * @param {object} e - Raw AccessLogEntry
+   * @returns {object} Formatted entry
+   */
+  _formatLogEntry(e) {
+    const type = e.type ?? 'system';
+    const isTrace = type === 'trace' || type === 'shard_trace' || type === 'message_trace';
 
-  _getLogTypeLabel(type) {
-    const labels = {
-      connect: 'Connected',
-      disconnect: 'Disconnected',
-      auth_success: 'Auth Success',
-      auth_failure: 'Auth Failed',
-      lockout: 'Lockout',
-      dead_zone: 'Dead Zone',
-      network_switch: 'Network Switch',
+    const BADGE = {
+      connect: { icon: 'fa-plug', cls: 'connect' },
+      disconnect: { icon: 'fa-plug-circle-xmark', cls: 'disconnect' },
+      auth_success: { icon: 'fa-lock-open', cls: 'auth-ok' },
+      auth_failure: { icon: 'fa-lock', cls: 'auth-fail' },
+      lockout: { icon: 'fa-ban', cls: 'lockout' },
+      dead_zone: { icon: 'fa-signal-slash', cls: 'system' },
+      network_switch: { icon: 'fa-arrows-rotate', cls: 'switch' },
+      hack: { icon: 'fa-skull-crossbones', cls: 'hack' },
+      manual: { icon: 'fa-user-secret', cls: 'manual' },
+      malware: { icon: 'fa-virus', cls: 'hack' },
+      system: { icon: 'fa-signal-slash', cls: 'system' },
+      trace: { icon: 'fa-eye', cls: 'trace' },
+      message_trace: { icon: 'fa-eye', cls: 'trace' },
+      shard_trace: { icon: 'fa-satellite-dish', cls: 'trace' },
     };
-    return labels[type] ?? type;
+    const badge = BADGE[type] ?? { icon: 'fa-circle-info', cls: 'system' };
+
+    const VERBS = {
+      connect: 'connected to',
+      disconnect: 'disconnected from',
+      auth_success: 'authenticated on',
+      auth_failure: 'failed auth on',
+      lockout: 'locked out of',
+      dead_zone: 'lost signal on',
+      network_switch: 'switched to',
+      hack: 'attempted hack on',
+      manual: 'logged entry on',
+      malware: 'detected malware on',
+      system: 'system event on',
+      trace: 'was traced on',
+      message_trace: 'sent traced message on',
+      shard_trace: 'triggered shard trace on',
+    };
+
+    const TAGS = {
+      connect: { label: 'Connect', cls: 'connect' },
+      disconnect: { label: 'Disconnect', cls: 'disconnect' },
+      auth_success: { label: 'Auth OK', cls: 'auth-ok' },
+      auth_failure: { label: 'Auth Fail', cls: 'auth-fail' },
+      lockout: { label: 'Lockout', cls: 'lockout' },
+      dead_zone: { label: 'Dead Zone', cls: 'system' },
+      network_switch: { label: 'Switch', cls: 'switch' },
+      hack: { label: 'Hack', cls: 'hack' },
+      manual: { label: 'Manual', cls: 'manual' },
+      malware: { label: 'Malware', cls: 'hack' },
+      system: { label: 'System', cls: 'system' },
+      trace: { label: 'Trace', cls: 'trace' },
+      message_trace: { label: 'Trace', cls: 'trace' },
+      shard_trace: { label: 'Shard Trace', cls: 'trace' },
+    };
+    const tag = TAGS[type] ?? { label: type?.toUpperCase() ?? 'EVENT', cls: 'system' };
+
+    const netName = (e.networkName ?? e.networkId ?? '').toUpperCase();
+    let networkColor = 'cyan';
+    if (netName.includes('CORP') || netName.includes('GOV')) networkColor = 'gold';
+    else if (netName.includes('DARK')) networkColor = 'purple';
+    else if (netName.includes('DEAD') || netName.includes('BADLAND')) networkColor = 'red';
+
+    const extra = e.extra ?? {};
+    const hasLink = !!(extra.messageId || extra.itemId);
+    let linkType = '', linkLabel = '', linkIcon = '';
+    if (extra.itemId) { linkType = 'shard'; linkLabel = 'View Shard'; linkIcon = 'fa-microchip'; }
+    else if (extra.messageId) { linkType = 'message'; linkLabel = 'View Message'; linkIcon = 'fa-envelope'; }
+
+    return {
+      ...e,
+      displayTime: this._formatLogTime(e.timestamp),
+      displayDate: this._formatLogDate(e.timestamp),
+      badgeIcon: badge.icon,
+      badgeClass: badge.cls,
+      actorName: e.actorName ?? game.actors?.get(e.actorId)?.name ?? 'System',
+      actionVerb: VERBS[type] ?? 'event on',
+      networkName: e.networkName ?? this.networkService?.getNetwork(e.networkId)?.name ?? e.networkId ?? '—',
+      networkColor,
+      typeTag: tag.label,
+      typeTagClass: tag.cls,
+      message: e.message ?? '',
+      isTrace,
+      hasLink,
+      linkType,
+      linkLabel,
+      linkIcon,
+      linkMessageId: extra.messageId ?? '',
+      linkActorId: extra.actorId ?? e.actorId ?? '',
+      linkItemId: extra.itemId ?? '',
+    };
   }
 
   /**
@@ -1361,27 +1446,6 @@ export class NetworkManagementApp extends BaseApplication {
   }
 
   /**
-   * Get log entry type CSS class.
-   * @param {string} type
-   * @returns {string}
-   */
-  _getLogTypeClass(type) {
-    const map = {
-      'auth_success': 'success',
-      'auth_failure': 'fail',
-      'auth_fail': 'fail',
-      'switch': 'switch',
-      'connect': 'success',
-      'disconnect': 'fail',
-      'lockout': 'lockout',
-      'dead_zone': 'deadzone',
-      'hack': 'auth',
-      'system': 'system',
-    };
-    return map[type] || 'switch';
-  }
-
-  /**
    * Check if a log entry matches the current filter.
    * @param {object} entry
    * @param {string} filter
@@ -1390,9 +1454,11 @@ export class NetworkManagementApp extends BaseApplication {
   _matchesLogFilter(entry, filter) {
     const filterMap = {
       'auth': ['auth_success', 'auth_failure', 'auth_fail'],
-      'switch': ['switch', 'connect', 'disconnect'],
+      'connect': ['connect', 'disconnect', 'network_switch'],
+      'switch': ['switch', 'connect', 'disconnect', 'network_switch'],
       'lockout': ['lockout'],
       'hack': ['hack'],
+      'trace': ['trace', 'message_trace', 'shard_trace'],
     };
     return (filterMap[filter] ?? []).includes(entry.type);
   }
