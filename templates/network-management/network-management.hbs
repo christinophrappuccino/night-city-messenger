@@ -995,7 +995,12 @@
         <div class="ncm-netmgr__log-entry {{#if this.isTrace}}ncm-netmgr__log-entry--trace{{/if}} {{#if this.manual}}ncm-netmgr__log-entry--manual{{/if}}"
              data-entry-id="{{this.id}}">
           <div class="ncm-netmgr__log-entry-badge ncm-netmgr__log-entry-badge--{{this.badgeClass}}">
+            {{#if this.actorImg}}
+            <img class="ncm-netmgr__log-entry-badge-img" src="{{this.actorImg}}" alt="">
+            <span class="ncm-netmgr__log-entry-badge-overlay ncm-netmgr__log-entry-badge-overlay--{{this.badgeClass}}"><i class="fas {{this.badgeIcon}}"></i></span>
+            {{else}}
             <i class="fas {{this.badgeIcon}}"></i>
+            {{/if}}
           </div>
           <div class="ncm-netmgr__log-entry-body">
             <div class="ncm-netmgr__log-entry-line1">

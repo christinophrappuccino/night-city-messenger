@@ -1264,6 +1264,7 @@ export class NetworkManagementApp extends BaseApplication {
       badgeIcon: badge.icon,
       badgeClass: badge.cls,
       actorName: e.actorName ?? game.actors?.get(e.actorId)?.name ?? 'System',
+      actorImg: e.actorId ? (game.actors?.get(e.actorId)?.img ?? null) : null,
       actionVerb: VERBS[type] ?? 'event on',
       networkName: e.networkName ?? this.networkService?.getNetwork(e.networkId)?.name ?? e.networkId ?? '—',
       networkColor,

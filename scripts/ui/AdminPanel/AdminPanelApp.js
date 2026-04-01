@@ -2569,6 +2569,7 @@ export class AdminPanelApp extends BaseApplication {
       badgeIcon: badge.icon,
       badgeClass: badge.cls,
       actorName: e.actorName ?? 'System',
+      actorImg: e.actorId ? (game.actors?.get(e.actorId)?.img ?? null) : null,
       actionVerb: VERBS[type] ?? 'event on',
       networkName: e.networkName ?? e.networkId ?? '—',
       networkColor,

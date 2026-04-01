@@ -56,7 +56,12 @@
         {{#each fullLogEntries}}
         <div class="ncm-netlog-entry {{#if this.isTrace}}ncm-netlog-entry--trace{{/if}} {{#if this.manual}}ncm-netlog-entry--manual{{/if}}" data-entry-id="{{this.id}}">
           <div class="ncm-netlog-entry__badge ncm-netlog-entry__badge--{{this.badgeClass}}">
+            {{#if this.actorImg}}
+            <img class="ncm-netlog-entry__badge-img" src="{{this.actorImg}}" alt="">
+            <span class="ncm-netlog-entry__badge-overlay ncm-netlog-entry__badge-overlay--{{this.badgeClass}}"><i class="fas {{this.badgeIcon}}"></i></span>
+            {{else}}
             <i class="fas {{this.badgeIcon}}"></i>
+            {{/if}}
           </div>
           <div class="ncm-netlog-entry__body">
             <div class="ncm-netlog-entry__line1">
