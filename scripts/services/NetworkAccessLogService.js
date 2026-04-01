@@ -10,7 +10,7 @@
  *              Initialization priority: ready/90
  */
 
-import { MODULE_ID, EVENTS } from '../utils/constants.js';
+import { MODULE_ID, EVENTS, SOCKET_OPS } from '../utils/constants.js';
 import { log } from '../utils/helpers.js';
 
 /**
@@ -296,6 +296,7 @@ export class NetworkAccessLogService {
     };
 
     this._sub(EVENTS.NETWORK_CHANGED, (data) => {
+      if (data.source === 'socket') return; // Already logged by originator
       if (data.type === 'switch' || data.previousNetworkId) {
         const networkService = game.nightcity.networkService;
         const net = networkService?.getNetwork(data.currentNetworkId || data.networkId);
@@ -303,7 +304,7 @@ export class NetworkAccessLogService {
           ? networkService?.getNetwork(data.previousNetworkId)
           : null;
         const a = _actor();
-        this._push({
+        this._logOrRelay({
           type: 'network_switch',
           networkId: data.currentNetworkId || data.networkId,
           networkName: net?.name,
@@ -317,10 +318,11 @@ export class NetworkAccessLogService {
     });
 
     this._sub(EVENTS.NETWORK_CONNECTED, (data) => {
+      if (data.source === 'socket') return; // Already logged by originator
       const networkService = game.nightcity.networkService;
       const net = networkService?.getNetwork(data.networkId);
       const a = _actor();
-      this._push({
+      this._logOrRelay({
         type: 'connect',
         networkId: data.networkId,
         networkName: net?.name,
@@ -331,8 +333,9 @@ export class NetworkAccessLogService {
     });
 
     this._sub(EVENTS.NETWORK_DISCONNECTED, (data) => {
+      if (data.source === 'socket') return; // Already logged by originator
       const a = _actor();
-      this._push({
+      this._logOrRelay({
         type: 'disconnect',
         networkId: 'none',
         actorId: a.actorId,
@@ -351,7 +354,7 @@ export class NetworkAccessLogService {
       const methodLabel = data.method === 'skill'
         ? `${data.skillName ?? 'skill check'} (${data.rollTotal} vs DV ${data.dc})`
         : (data.method ?? 'password');
-      this._push({
+      this._logOrRelay({
         type: 'auth_success',
         networkId: data.networkId,
         networkName: net?.name,
@@ -372,7 +375,7 @@ export class NetworkAccessLogService {
       const methodLabel = data.method === 'skill'
         ? `${data.skillName ?? 'skill check'} (${data.rollTotal} vs DV ${data.dc})`
         : (data.method ?? 'password');
-      this._push({
+      this._logOrRelay({
         type: 'auth_failure',
         networkId: data.networkId,
         networkName: net?.name,
@@ -397,7 +400,7 @@ export class NetworkAccessLogService {
         targetName = item?.name ?? data.targetId;
       }
       const actorName = game.actors?.get(data.actorId)?.name ?? 'Unknown';
-      this._push({
+      this._logOrRelay({
         type: 'lockout',
         networkId: data.targetId,
         networkName: targetName,
@@ -413,7 +416,7 @@ export class NetworkAccessLogService {
       const networkService = game.nightcity?.networkService;
       const net = networkService?.getNetwork(data.networkId);
       const actorName = data.actorName ?? game.actors?.get(data.actorId)?.name ?? 'Unknown';
-      this._push({
+      this._logOrRelay({
         type: 'trace',
         networkId: data.networkId,
         networkName: net?.name ?? data.networkId,
@@ -437,7 +440,7 @@ export class NetworkAccessLogService {
       const actorName = data.fromActorName ?? game.actors?.get(data.fromActorId)?.name ?? 'Unknown';
       const toName = data.toActorName ?? 'unknown recipient';
       const subjectSnippet = data.subject ? ` — "${data.subject}"` : '';
-      this._push({
+      this._logOrRelay({
         type: 'message_trace',
         networkId: data.network,
         networkName: net.name,
@@ -486,7 +489,7 @@ export class NetworkAccessLogService {
       });
 
       // Log it
-      this._push({
+      this._logOrRelay({
         type: 'shard_trace',
         networkId: currentNetId,
         networkName: net?.name ?? currentNetId,
@@ -505,6 +508,30 @@ export class NetworkAccessLogService {
   _sub(event, handler) {
     const ref = this.eventBus.on(event, handler);
     this._subscriptions.push(() => this.eventBus.off(event, ref));
+  }
+
+  /**
+   * Route a log entry: GM pushes directly, players relay via socket.
+   * Automatically attaches the current user's character actor info.
+   * @param {object} entry - Log entry data
+   * @private
+   */
+  _logOrRelay(entry) {
+    // Attach actor info from current user's character if not already set
+    if (!entry.actorId) {
+      const char = game.user?.character;
+      if (char) {
+        entry.actorId = char.id;
+        entry.actorName = char.name;
+      }
+    }
+
+    if (game.user?.isGM) {
+      this._push(entry);
+    } else {
+      // Relay to GM via socket — GM's handler will call _push
+      game.nightcity?.socketManager?.emit(SOCKET_OPS.LOG_RELAY, entry);
+    }
   }
 
   // ═══════════════════════════════════════════════════════════

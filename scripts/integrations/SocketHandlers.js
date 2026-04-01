@@ -111,6 +111,17 @@ export class SocketHandlers {
       }
     });
 
+    // ─── Log Relay (Player → GM) ──────────────────────────
+    // Players relay log-worthy events to the GM so they appear
+    // in the persistent access log with the player's actor info.
+    socketManager.register(SOCKET_OPS.LOG_RELAY, (data) => {
+      if (!game.user.isGM) return;
+      const accessLogService = game.nightcity?.accessLogService;
+      if (!accessLogService) return;
+      log.debug('Socket: log relay received —', data.type, data.actorName);
+      accessLogService._push(data);
+    });
+
     log.info('Socket handlers registered');
   }
 }
