@@ -293,14 +293,15 @@ export class NetworkService {
       signalStrength: this._signalStrength,
     });
 
-    // Broadcast to other clients if GM
-    if (isGM()) {
-      this.socketManager.emit(SOCKET_OPS.NETWORK_STATE_CHANGED, {
-        type: 'switch',
-        networkId,
-        sceneId: game.scenes?.viewed?.id,
-      });
-    }
+    // Broadcast to other clients — GM broadcasts for scene sync, players for access log
+    this.socketManager.emit(SOCKET_OPS.NETWORK_STATE_CHANGED, {
+      type: 'switch',
+      networkId,
+      sceneId: game.scenes?.viewed?.id,
+      actorId: game.user?.character?.id ?? null,
+      actorName: game.user?.character?.name ?? game.user?.name ?? 'Unknown',
+      isGMAction: isGM(),
+    });
 
     log.info(`Switched to network: ${network.name} (${networkId})`);
     return { success: true };

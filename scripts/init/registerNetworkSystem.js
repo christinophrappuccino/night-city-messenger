@@ -91,16 +91,18 @@ export function registerNetworkSystem(initializer) {
 
     // ─── Network State Changed (GM → All Clients) ─────────
     socketManager.register(SOCKET_OPS.NETWORK_STATE_CHANGED, (data, sender) => {
-      const { type, networkId, sceneId, isDead } = data;
+      const { type, networkId, sceneId, isDead, actorId, actorName, isGMAction } = data;
 
       switch (type) {
         case 'switch':
-          // GM changed the active network — all clients should be notified
-          log.debug(`Socket: network state changed — switch to ${networkId}`);
+          log.debug(`Socket: network state changed — switch to ${networkId}`, actorName ? `by ${actorName}` : '');
           eventBus.emit(EVENTS.NETWORK_CHANGED, {
             currentNetworkId: networkId,
             sceneId,
             source: 'socket',
+            actorId: actorId ?? null,
+            actorName: actorName ?? null,
+            isGMAction: isGMAction ?? false,
           });
           break;
 

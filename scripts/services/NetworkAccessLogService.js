@@ -289,22 +289,31 @@ export class NetworkAccessLogService {
   _wireEvents() {
     if (!this.eventBus) return;
 
-    // Helper: get current user's character actor info
-    const _actor = () => {
+    // Access log only persists on the GM client.
+    // Player events reach the GM via socket broadcasts (NETWORK_STATE_CHANGED).
+    if (!game.user?.isGM) return;
+
+    // Helper: resolve actor — prefer explicit event data, fall back to current user
+    const _resolveActor = (data) => {
+      if (data.actorId) {
+        return {
+          actorId: data.actorId,
+          actorName: data.actorName ?? game.actors?.get(data.actorId)?.name ?? 'Unknown',
+        };
+      }
       const char = game.user?.character;
-      return { actorId: char?.id ?? null, actorName: char?.name ?? game.user?.name ?? 'Unknown' };
+      return { actorId: char?.id ?? null, actorName: char?.name ?? game.user?.name ?? 'GM' };
     };
 
     this._sub(EVENTS.NETWORK_CHANGED, (data) => {
-      if (data.source === 'socket') return; // Already logged by originator
-      if (data.type === 'switch' || data.previousNetworkId) {
+      if (data.type === 'switch' || data.previousNetworkId || data.currentNetworkId) {
         const networkService = game.nightcity.networkService;
         const net = networkService?.getNetwork(data.currentNetworkId || data.networkId);
         const prevNet = data.previousNetworkId
           ? networkService?.getNetwork(data.previousNetworkId)
           : null;
-        const a = _actor();
-        this._logOrRelay({
+        const a = _resolveActor(data);
+        this._push({
           type: 'network_switch',
           networkId: data.currentNetworkId || data.networkId,
           networkName: net?.name,
@@ -318,11 +327,10 @@ export class NetworkAccessLogService {
     });
 
     this._sub(EVENTS.NETWORK_CONNECTED, (data) => {
-      if (data.source === 'socket') return; // Already logged by originator
       const networkService = game.nightcity.networkService;
       const net = networkService?.getNetwork(data.networkId);
-      const a = _actor();
-      this._logOrRelay({
+      const a = _resolveActor(data);
+      this._push({
         type: 'connect',
         networkId: data.networkId,
         networkName: net?.name,
@@ -333,9 +341,8 @@ export class NetworkAccessLogService {
     });
 
     this._sub(EVENTS.NETWORK_DISCONNECTED, (data) => {
-      if (data.source === 'socket') return; // Already logged by originator
-      const a = _actor();
-      this._logOrRelay({
+      const a = _resolveActor(data);
+      this._push({
         type: 'disconnect',
         networkId: 'none',
         actorId: a.actorId,
@@ -350,11 +357,11 @@ export class NetworkAccessLogService {
     this._sub(EVENTS.NETWORK_AUTH_SUCCESS, (data) => {
       const networkService = game.nightcity.networkService;
       const net = networkService?.getNetwork(data.networkId);
-      const a = _actor();
+      const a = _resolveActor(data);
       const methodLabel = data.method === 'skill'
         ? `${data.skillName ?? 'skill check'} (${data.rollTotal} vs DV ${data.dc})`
         : (data.method ?? 'password');
-      this._logOrRelay({
+      this._push({
         type: 'auth_success',
         networkId: data.networkId,
         networkName: net?.name,
@@ -371,11 +378,11 @@ export class NetworkAccessLogService {
     this._sub(EVENTS.NETWORK_AUTH_FAILURE, (data) => {
       const networkService = game.nightcity.networkService;
       const net = networkService?.getNetwork(data.networkId);
-      const a = _actor();
+      const a = _resolveActor(data);
       const methodLabel = data.method === 'skill'
         ? `${data.skillName ?? 'skill check'} (${data.rollTotal} vs DV ${data.dc})`
         : (data.method ?? 'password');
-      this._logOrRelay({
+      this._push({
         type: 'auth_failure',
         networkId: data.networkId,
         networkName: net?.name,
@@ -393,14 +400,13 @@ export class NetworkAccessLogService {
       const networkService = game.nightcity?.networkService;
       const net = networkService?.getNetwork(data.targetId);
       let targetName = net?.name;
-      // targetId might be an itemId (shard lockout) instead of a networkId
       if (!targetName) {
         const item = game.items?.get(data.targetId)
           ?? Array.from(game.actors ?? []).reduce((found, a) => found ?? a.items?.get(data.targetId), null);
         targetName = item?.name ?? data.targetId;
       }
       const actorName = game.actors?.get(data.actorId)?.name ?? 'Unknown';
-      this._logOrRelay({
+      this._push({
         type: 'lockout',
         networkId: data.targetId,
         networkName: targetName,
@@ -416,7 +422,7 @@ export class NetworkAccessLogService {
       const networkService = game.nightcity?.networkService;
       const net = networkService?.getNetwork(data.networkId);
       const actorName = data.actorName ?? game.actors?.get(data.actorId)?.name ?? 'Unknown';
-      this._logOrRelay({
+      this._push({
         type: 'trace',
         networkId: data.networkId,
         networkName: net?.name ?? data.networkId,
@@ -440,7 +446,7 @@ export class NetworkAccessLogService {
       const actorName = data.fromActorName ?? game.actors?.get(data.fromActorId)?.name ?? 'Unknown';
       const toName = data.toActorName ?? 'unknown recipient';
       const subjectSnippet = data.subject ? ` — "${data.subject}"` : '';
-      this._logOrRelay({
+      this._push({
         type: 'message_trace',
         networkId: data.network,
         networkName: net.name,
@@ -457,16 +463,13 @@ export class NetworkAccessLogService {
     // ─── Trace: Shard decrypted — check for trace config ───
     this._sub(EVENTS.SHARD_DECRYPTED, (data) => {
       if (!data.itemId) return;
-      // Find the shard item
       const item = game.items?.get(data.itemId)
         ?? Array.from(game.actors ?? []).reduce((found, a) => found ?? a.items?.get(data.itemId), null);
       if (!item) return;
 
       const shardFlags = item.getFlag?.(MODULE_ID, 'shardData') ?? {};
       const tracing = shardFlags.security?.tracing ?? {};
-      // Only fire if tracing is configured with a trigger
       if (!tracing.triggerOn || tracing.triggerOn === 'none') return;
-      // Match trigger: 'access' fires on any decrypt, 'hack-attempt' and 'any' also fire
       if (tracing.triggerOn !== 'access' && tracing.triggerOn !== 'hack-attempt' && tracing.triggerOn !== 'any') return;
 
       const actorName = game.actors?.get(data.actorId)?.name ?? (data.actorId === 'gm-override' ? 'GM' : 'Unknown');
@@ -476,7 +479,6 @@ export class NetworkAccessLogService {
       const shardName = item.name ?? 'Unknown Shard';
       const traceMsg = tracing.traceMessage ?? `Shard "${shardName}" — trace target alerted`;
 
-      // Emit SHARD_TRACE_FIRED event
       this.eventBus?.emit(EVENTS.SHARD_TRACE_FIRED, {
         itemId: data.itemId,
         shardName,
@@ -488,8 +490,7 @@ export class NetworkAccessLogService {
         traceMessage: traceMsg,
       });
 
-      // Log it
-      this._logOrRelay({
+      this._push({
         type: 'shard_trace',
         networkId: currentNetId,
         networkName: net?.name ?? currentNetId,
@@ -508,30 +509,6 @@ export class NetworkAccessLogService {
   _sub(event, handler) {
     const ref = this.eventBus.on(event, handler);
     this._subscriptions.push(() => this.eventBus.off(event, ref));
-  }
-
-  /**
-   * Route a log entry: GM pushes directly, players relay via socket.
-   * Automatically attaches the current user's character actor info.
-   * @param {object} entry - Log entry data
-   * @private
-   */
-  _logOrRelay(entry) {
-    // Attach actor info from current user's character if not already set
-    if (!entry.actorId) {
-      const char = game.user?.character;
-      if (char) {
-        entry.actorId = char.id;
-        entry.actorName = char.name;
-      }
-    }
-
-    if (game.user?.isGM) {
-      this._push(entry);
-    } else {
-      // Relay to GM via socket — GM's handler will call _push
-      game.nightcity?.socketManager?.emit(SOCKET_OPS.LOG_RELAY, entry);
-    }
   }
 
   // ═══════════════════════════════════════════════════════════
