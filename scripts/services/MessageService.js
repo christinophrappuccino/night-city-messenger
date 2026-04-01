@@ -230,6 +230,10 @@ export class MessageService {
         toContactId: data.toContactId,
         fromActorId: data.fromActorId,
         fromContactId: data.fromContactId,
+        network: data.network,
+        subject: data.subject,
+        fromActorName: game.actors?.get(data.fromActorId)?.name ?? data.fromContactId ?? 'Unknown',
+        toActorName: game.actors?.get(data.toActorId)?.name ?? data.toContactId ?? 'Unknown',
       });
 
       // Notify recipient via socket (only for actor-backed recipients — contacts are GM-local)

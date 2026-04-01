@@ -376,6 +376,98 @@ export class NetworkAccessLogService {
         message: `Lockout — ${actorName} blocked from access`,
       });
     });
+
+    // ─── Trace: Message trace completed (player's countdown expired) ───
+    this._sub(EVENTS.TRACE_COMPLETE, (data) => {
+      const networkService = game.nightcity?.networkService;
+      const net = networkService?.getNetwork(data.networkId);
+      const actorName = data.actorName ?? game.actors?.get(data.actorId)?.name ?? 'Unknown';
+      this._push({
+        type: 'trace',
+        networkId: data.networkId,
+        networkName: net?.name ?? data.networkId,
+        actorId: data.actorId,
+        actorName,
+        message: `Message opened — trace countdown expired`,
+        extra: {
+          messageId: data.messageId,
+          actorId: data.actorId,
+        },
+      });
+    });
+
+    // ─── Trace: Message sent on a traced network ───
+    this._sub(EVENTS.MESSAGE_SENT, (data) => {
+      if (!data.network) return;
+      const networkService = game.nightcity?.networkService;
+      const net = networkService?.getNetwork(data.network);
+      if (!net?.effects?.traced) return;
+
+      const actorName = data.fromActorName ?? game.actors?.get(data.fromActorId)?.name ?? 'Unknown';
+      const toName = data.toActorName ?? 'unknown recipient';
+      const subjectSnippet = data.subject ? ` — "${data.subject}"` : '';
+      this._push({
+        type: 'message_trace',
+        networkId: data.network,
+        networkName: net.name,
+        actorId: data.fromActorId,
+        actorName,
+        message: `To: ${toName}${subjectSnippet}`,
+        extra: {
+          messageId: data.messageId,
+          actorId: data.fromActorId,
+        },
+      });
+    });
+
+    // ─── Trace: Shard decrypted — check for trace config ───
+    this._sub(EVENTS.SHARD_DECRYPTED, (data) => {
+      if (!data.itemId) return;
+      // Find the shard item
+      const item = game.items?.get(data.itemId)
+        ?? Array.from(game.actors ?? []).reduce((found, a) => found ?? a.items?.get(data.itemId), null);
+      if (!item) return;
+
+      const shardFlags = item.getFlag?.(MODULE_ID, 'shardData') ?? {};
+      const tracing = shardFlags.security?.tracing ?? {};
+      // Only fire if tracing is configured with a trigger
+      if (!tracing.triggerOn || tracing.triggerOn === 'none') return;
+      // Match trigger: 'access' fires on any decrypt, 'hack-attempt' and 'any' also fire
+      if (tracing.triggerOn !== 'access' && tracing.triggerOn !== 'hack-attempt' && tracing.triggerOn !== 'any') return;
+
+      const actorName = game.actors?.get(data.actorId)?.name ?? (data.actorId === 'gm-override' ? 'GM' : 'Unknown');
+      const networkService = game.nightcity?.networkService;
+      const currentNetId = networkService?.currentNetworkId ?? 'CITINET';
+      const net = networkService?.getNetwork(currentNetId);
+      const shardName = item.name ?? 'Unknown Shard';
+      const traceMsg = tracing.traceMessage ?? `Shard "${shardName}" — trace target alerted`;
+
+      // Emit SHARD_TRACE_FIRED event
+      this.eventBus?.emit(EVENTS.SHARD_TRACE_FIRED, {
+        itemId: data.itemId,
+        shardName,
+        actorId: data.actorId,
+        actorName,
+        networkId: currentNetId,
+        networkName: net?.name,
+        traceTarget: tracing.traceTarget,
+        traceMessage: traceMsg,
+      });
+
+      // Log it
+      this._push({
+        type: 'shard_trace',
+        networkId: currentNetId,
+        networkName: net?.name ?? currentNetId,
+        actorId: data.actorId,
+        actorName,
+        message: traceMsg,
+        extra: {
+          itemId: data.itemId,
+          actorId: data.actorId,
+        },
+      });
+    });
   }
 
   /** @private */

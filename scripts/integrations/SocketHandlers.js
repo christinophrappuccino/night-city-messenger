@@ -95,6 +95,22 @@ export class SocketHandlers {
       }
     });
 
+    // ─── Trace Complete (Player → GM) ─────────────────────
+    socketManager.register(SOCKET_OPS.TRACE_COMPLETE, (data) => {
+      if (!game.user.isGM) return;
+      log.debug('Socket: trace complete received for', data.actorName, 'on', data.network);
+      const eventBus = game.nightcity?.eventBus;
+      if (eventBus) {
+        eventBus.emit(EVENTS.TRACE_COMPLETE, {
+          actorId: data.actorId,
+          actorName: data.actorName,
+          messageId: data.messageId,
+          networkId: data.network,
+          scene: data.scene,
+        });
+      }
+    });
+
     log.info('Socket handlers registered');
   }
 }
