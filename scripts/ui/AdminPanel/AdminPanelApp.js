@@ -3461,7 +3461,7 @@ export class AdminPanelApp extends BaseApplication {
     });
 
     // ─── Network filter dropdown in full log panel ───
-    const netFilter = this.element?.querySelector('.ncm-netlog-network-filter');
+    const netFilter = this.element?.querySelector('.ncm-actlog__net-filter');
     if (netFilter) {
       netFilter.addEventListener('change', (e) => {
         this._logNetworkFilter = e.target.value;
@@ -5210,7 +5210,7 @@ export class AdminPanelApp extends BaseApplication {
 
   static _onAddManualLogEntry(event, target) {
     event.preventDefault();
-    const form = target.closest('.ncm-add-log-form') || this.element?.querySelector('.ncm-add-log-form');
+    const form = target.closest('.ncm-actlog__add-form') || this.element?.querySelector('.ncm-actlog__add-form');
     if (!form) return;
 
     const networkId = form.querySelector('[name="logNetwork"]')?.value;

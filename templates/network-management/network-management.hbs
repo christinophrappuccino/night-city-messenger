@@ -898,73 +898,73 @@
     {{/if}}
 
     {{!-- Log Toolbar --}}
-    <div class="ncm-netmgr__log-toolbar">
-      <div class="ncm-netmgr__log-toolbar-row">
-        <div class="ncm-netmgr__log-filter-group">
-          <button class="ncm-netmgr__log-filter-btn {{#if (eq logFilter 'all')}}ncm-netmgr__log-filter-btn--active{{/if}}"
+    <div class="ncm-actlog__toolbar">
+      <div class="ncm-actlog__toolbar-row">
+        <div class="ncm-actlog__filter-group">
+          <button class="ncm-actlog__filter-btn {{#if (eq logFilter 'all')}}ncm-actlog__filter-btn--active{{/if}}"
                   data-action="filterLogs" data-filter="all">All</button>
-          <button class="ncm-netmgr__log-filter-btn {{#if (eq logFilter 'connect')}}ncm-netmgr__log-filter-btn--active{{/if}}"
+          <button class="ncm-actlog__filter-btn {{#if (eq logFilter 'connect')}}ncm-actlog__filter-btn--active{{/if}}"
                   data-action="filterLogs" data-filter="connect">Connect</button>
-          <button class="ncm-netmgr__log-filter-btn {{#if (eq logFilter 'auth')}}ncm-netmgr__log-filter-btn--active{{/if}}"
+          <button class="ncm-actlog__filter-btn {{#if (eq logFilter 'auth')}}ncm-actlog__filter-btn--active{{/if}}"
                   data-action="filterLogs" data-filter="auth">Auth</button>
-          <button class="ncm-netmgr__log-filter-btn {{#if (eq logFilter 'hack')}}ncm-netmgr__log-filter-btn--active{{/if}}"
+          <button class="ncm-actlog__filter-btn {{#if (eq logFilter 'hack')}}ncm-actlog__filter-btn--active{{/if}}"
                   data-action="filterLogs" data-filter="hack">Hack</button>
-          <button class="ncm-netmgr__log-filter-btn {{#if (eq logFilter 'lockout')}}ncm-netmgr__log-filter-btn--active{{/if}}"
+          <button class="ncm-actlog__filter-btn {{#if (eq logFilter 'lockout')}}ncm-actlog__filter-btn--active{{/if}}"
                   data-action="filterLogs" data-filter="lockout">Lockout</button>
-          <button class="ncm-netmgr__log-filter-btn {{#if (eq logFilter 'trace')}}ncm-netmgr__log-filter-btn--active{{/if}}"
+          <button class="ncm-actlog__filter-btn {{#if (eq logFilter 'trace')}}ncm-actlog__filter-btn--active{{/if}}"
                   data-action="filterLogs" data-filter="trace">Trace</button>
-          <button class="ncm-netmgr__log-filter-btn {{#if (eq logFilter 'manual')}}ncm-netmgr__log-filter-btn--active{{/if}}"
+          <button class="ncm-actlog__filter-btn {{#if (eq logFilter 'manual')}}ncm-actlog__filter-btn--active{{/if}}"
                   data-action="filterLogs" data-filter="manual">Manual</button>
         </div>
-        <select class="ncm-netmgr__log-network-filter" data-action="filterLogNetwork">
+        <select class="ncm-actlog__net-filter" data-action="filterLogNetwork">
           <option value="">All Networks</option>
           {{#each networks}}
           <option value="{{this.id}}" {{#if (eq this.id ../logNetworkFilter)}}selected{{/if}}>{{this.name}}</option>
           {{/each}}
         </select>
-        <div class="ncm-netmgr__log-toolbar-spacer"></div>
-        <button class="ncm-netmgr__btn-sm ncm-netmgr__btn-sm--accent" data-action="toggleAddLogForm">
+        <div class="ncm-actlog__spacer"></div>
+        <button class="ncm-actlog__btn ncm-actlog__btn--accent" data-action="toggleAddLogForm">
           <i class="fas fa-plus"></i> Add
         </button>
-        <button class="ncm-netmgr__btn-sm" data-action="importLogs" title="Import log entries">
+        <button class="ncm-actlog__btn" data-action="importLogs" title="Import log entries">
           <i class="fas fa-file-import"></i>
         </button>
-        <button class="ncm-netmgr__btn-sm" data-action="exportLogs" title="Export as JSON">
+        <button class="ncm-actlog__btn" data-action="exportLogs" title="Export as JSON">
           <i class="fas fa-file-export"></i>
         </button>
-        <button class="ncm-netmgr__btn-sm ncm-netmgr__btn-sm--danger" data-action="clearLogs" title="Clear all entries">
+        <button class="ncm-actlog__btn ncm-actlog__btn--danger" data-action="clearLogs" title="Clear all entries">
           <i class="fas fa-trash"></i>
         </button>
       </div>
     </div>
 
-    {{!-- Log Entries — Who-Did-What Layout --}}
-    <div class="ncm-netmgr__log-list">
+    {{!-- Log Entries --}}
+    <div class="ncm-actlog__list">
       {{#if logEntries.length}}
         {{#each logEntries}}
-        <div class="ncm-netmgr__log-entry {{#if this.isTrace}}ncm-netmgr__log-entry--trace{{/if}} {{#if this.manual}}ncm-netmgr__log-entry--manual{{/if}}"
+        <div class="ncm-actlog__entry {{#if this.isTrace}}ncm-actlog__entry--trace{{/if}} {{#if this.manual}}ncm-actlog__entry--manual{{/if}}"
              data-entry-id="{{this.id}}">
-          <div class="ncm-netmgr__log-entry-badge ncm-netmgr__log-entry-badge--{{this.badgeClass}}">
+          <div class="ncm-actlog__badge ncm-actlog__badge--{{this.badgeClass}}">
             {{#if this.actorImg}}
-            <img class="ncm-netmgr__log-entry-badge-img" src="{{this.actorImg}}" alt="">
-            <span class="ncm-netmgr__log-entry-badge-overlay ncm-netmgr__log-entry-badge-overlay--{{this.badgeClass}}"><i class="fas {{this.badgeIcon}}"></i></span>
+            <img class="ncm-actlog__badge-img" src="{{this.actorImg}}" alt="">
+            <span class="ncm-actlog__badge-overlay ncm-actlog__badge-overlay--{{this.badgeClass}}"><i class="fas {{this.badgeIcon}}"></i></span>
             {{else}}
             <i class="fas {{this.badgeIcon}}"></i>
             {{/if}}
           </div>
-          <div class="ncm-netmgr__log-entry-body">
-            <div class="ncm-netmgr__log-entry-line1">
-              <span class="ncm-netmgr__log-entry-actor">{{this.actorName}}</span>
-              <span class="ncm-netmgr__log-entry-verb">{{this.actionVerb}}</span>
-              <span class="ncm-netmgr__log-entry-network ncm-netmgr__log-entry-network--{{this.networkColor}}">{{this.networkName}}</span>
+          <div class="ncm-actlog__body">
+            <div class="ncm-actlog__line1">
+              <span class="ncm-actlog__actor">{{this.actorName}}</span>
+              <span class="ncm-actlog__verb">{{this.actionVerb}}</span>
+              <span class="ncm-actlog__network ncm-actlog__network--{{this.networkColor}}">{{this.networkName}}</span>
             </div>
-            <div class="ncm-netmgr__log-entry-line2">
-              <span class="ncm-netmgr__log-entry-tag ncm-netmgr__log-entry-tag--{{this.typeTagClass}}">{{this.typeTag}}</span>
+            <div class="ncm-actlog__line2">
+              <span class="ncm-actlog__tag ncm-actlog__tag--{{this.typeTagClass}}">{{this.typeTag}}</span>
               {{#if this.message}}
-              <span class="ncm-netmgr__log-entry-message">{{this.message}}</span>
+              <span class="ncm-actlog__message">{{this.message}}</span>
               {{/if}}
               {{#if this.hasLink}}
-              <span class="ncm-netmgr__log-entry-link {{#if (eq this.linkType 'shard')}}ncm-netmgr__log-entry-link--shard{{/if}}"
+              <span class="ncm-actlog__link {{#if (eq this.linkType 'shard')}}ncm-actlog__link--shard{{/if}}"
                     data-action="openLogReference"
                     data-link-type="{{this.linkType}}"
                     data-message-id="{{this.linkMessageId}}"
@@ -973,34 +973,32 @@
                 <i class="fas {{this.linkIcon}}"></i> {{this.linkLabel}}
               </span>
               {{/if}}
-              <span class="ncm-netmgr__log-entry-time">
-                <span class="ncm-netmgr__log-entry-time-date">{{this.displayDate}} //</span> {{this.displayTime}}
+              <span class="ncm-actlog__time">
+                <span class="ncm-actlog__time-date">{{this.displayDate}} //</span> {{this.displayTime}}
               </span>
             </div>
           </div>
-          <div class="ncm-netmgr__log-entry-actions">
-            <button class="ncm-netmgr__log-entry-btn" data-action="editLogEntry" data-entry-id="{{this.id}}" title="Edit">
+          <div class="ncm-actlog__actions">
+            <button class="ncm-actlog__act" data-action="editLogEntry" data-entry-id="{{this.id}}" title="Edit">
               <i class="fas fa-pen"></i>
             </button>
-            <button class="ncm-netmgr__log-entry-btn ncm-netmgr__log-entry-btn--danger" data-action="deleteLogEntry" data-entry-id="{{this.id}}" title="Delete">
+            <button class="ncm-actlog__act ncm-actlog__act--danger" data-action="deleteLogEntry" data-entry-id="{{this.id}}" title="Delete">
               <i class="fas fa-trash"></i>
             </button>
           </div>
         </div>
         {{/each}}
       {{else}}
-        <div class="ncm-netmgr__empty-state" style="padding: 40px 0;">
-          <i class="fas fa-clipboard-list ncm-netmgr__empty-state-icon"></i>
-          <span class="ncm-netmgr__empty-state-text">No log entries</span>
-          <span class="ncm-netmgr__empty-state-sub">Network activity will appear here.</span>
+        <div class="ncm-actlog__empty">
+          <i class="fas fa-clipboard-list"></i> No log entries — network activity will appear here.
         </div>
       {{/if}}
     </div>
 
     {{!-- Add Manual Entry Form — Sticky Bottom Bar --}}
     {{#if showAddLogForm}}
-    <div class="ncm-netmgr__add-log-form">
-      <div class="ncm-netmgr__add-log-field ncm-netmgr__add-log-field--net">
+    <div class="ncm-actlog__add-form">
+      <div class="ncm-actlog__add-field ncm-actlog__add-field--net">
         <label>Network</label>
         <select name="logNetwork">
           {{#each networks}}
@@ -1008,11 +1006,11 @@
           {{/each}}
         </select>
       </div>
-      <div class="ncm-netmgr__add-log-field ncm-netmgr__add-log-field--actor">
+      <div class="ncm-actlog__add-field ncm-actlog__add-field--actor">
         <label>Actor</label>
         <input type="text" name="logActor" placeholder="Name">
       </div>
-      <div class="ncm-netmgr__add-log-field ncm-netmgr__add-log-field--type">
+      <div class="ncm-actlog__add-field ncm-actlog__add-field--type">
         <label>Type</label>
         <select name="logType">
           <option value="connect">Connect</option>
@@ -1027,11 +1025,11 @@
           <option value="system">System</option>
         </select>
       </div>
-      <div class="ncm-netmgr__add-log-field ncm-netmgr__add-log-field--message">
+      <div class="ncm-actlog__add-field ncm-actlog__add-field--msg">
         <label>Message</label>
         <input type="text" name="logMessage" placeholder="[TRACE] Unauthorized access from...">
       </div>
-      <button class="ncm-netmgr__add-log-btn" data-action="addManualLogEntry">
+      <button class="ncm-actlog__add-btn" data-action="addManualLogEntry">
         <i class="fas fa-plus"></i> Add
       </button>
     </div>

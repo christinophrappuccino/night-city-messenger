@@ -46,6 +46,7 @@
 @import 'components/shard-config.css';
 @import 'components/cyber-time-picker.css';
 @import 'components/security-overlays.css';
+@import 'components/activity-log.css';
 @import 'components/network-management.css';
 @import 'components/network-auth-dialog.css';
 @import 'components/create-network-dialog.css';

@@ -421,7 +421,7 @@ export class NetworkManagementApp extends BaseApplication {
     super._onRender?.(context, options);
 
     // Wire log network filter select (can't use data-action on <select>)
-    const netFilter = this.element?.querySelector('.ncm-netmgr__log-network-filter');
+    const netFilter = this.element?.querySelector('.ncm-actlog__net-filter');
     if (netFilter) {
       netFilter.addEventListener('change', (e) => {
         this._logNetworkFilter = e.target.value;
@@ -1036,7 +1036,7 @@ export class NetworkManagementApp extends BaseApplication {
 
   static _onAddManualLogEntry(event, target) {
     event.preventDefault();
-    const form = target.closest('.ncm-netmgr__add-log-form') || this.element?.querySelector('.ncm-netmgr__add-log-form');
+    const form = target.closest('.ncm-actlog__add-form') || this.element?.querySelector('.ncm-actlog__add-form');
     if (!form) return;
 
     const networkId = form.querySelector('[name="logNetwork"]')?.value;
