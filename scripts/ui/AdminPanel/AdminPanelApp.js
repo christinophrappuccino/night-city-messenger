@@ -2336,19 +2336,39 @@ export class AdminPanelApp extends BaseApplication {
   _gatherSceneStrip() {
     const currentSceneId = canvas.scene?.id;
     const allNetworks = this.networkService?.getAllNetworks?.() ?? [];
+    const liveNetId = this.networkService?.currentNetworkId;
+    const liveSignal = this.networkService?.signalStrength ?? 0;
+    const liveNet = liveNetId ? allNetworks.find(n => n.id === liveNetId) : null;
 
     return (game.scenes?.contents ?? []).map(s => {
       const deadZone = s.getFlag(MODULE_ID, 'deadZone') ?? false;
       const defaultNetId = s.getFlag(MODULE_ID, 'defaultNetwork') ?? '';
       const defaultNet = allNetworks.find(n => n.id === defaultNetId || n.name === defaultNetId);
-      const signalPct = deadZone ? 0 : (defaultNet?.signalStrength ?? 85);
+      const isCurrent = s.id === currentSceneId;
+
+      // Current scene: use live network state; other scenes: use configured default
+      let networkName, signalPct;
+      if (deadZone) {
+        networkName = 'DEAD ZONE';
+        signalPct = 0;
+      } else if (isCurrent && liveNet) {
+        networkName = liveNet.name;
+        signalPct = liveSignal;
+      } else if (defaultNet) {
+        networkName = defaultNet.name;
+        signalPct = defaultNet.signalStrength ?? 75;
+      } else {
+        networkName = 'No network';
+        signalPct = 0;
+      }
+
       const signalTier = deadZone ? 'dead' : (signalPct >= 70 ? 'good' : (signalPct >= 40 ? 'mid' : 'low'));
       return {
         id: s.id,
         name: s.name,
-        isCurrent: s.id === currentSceneId,
+        isCurrent,
         deadZone,
-        defaultNetworkName: deadZone ? 'DEAD ZONE' : (defaultNet?.name ?? 'CITINET'),
+        defaultNetworkName: networkName,
         signalPct,
         signalTier,
       };
