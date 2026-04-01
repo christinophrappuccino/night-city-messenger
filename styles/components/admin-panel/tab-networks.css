@@ -588,7 +588,7 @@
 /* Add Log Form */
 .ncm-app .ncm-add-log-form { display: flex !important; align-items: flex-end !important; gap: 8px !important; flex-direction: row !important; padding: 8px 12px !important; border-top: 1px solid var(--ncm-border) !important; background: var(--ncm-bg-deep) !important; flex-wrap: nowrap !important; position: sticky !important; bottom: 0 !important; z-index: 2 !important; box-shadow: 0 -2px 8px rgba(0,0,0,0.3) !important; }
 .ncm-app .ncm-add-log-field { display: flex !important; flex-direction: column !important; gap: 2px !important; }
-.ncm-app .ncm-add-log-field label { font-family: var(--ncm-font-display) !important; font-size: 8px !important; font-weight: 700 !important; color: var(--ncm-text-muted) !important; text-transform: uppercase !important; letter-spacing: 0.04em !important; }
+.ncm-app .ncm-add-log-field label { font-family: var(--ncm-font-display) !important; font-size: 9px !important; font-weight: 700 !important; color: var(--ncm-text-secondary) !important; text-transform: uppercase !important; letter-spacing: 0.04em !important; }
 .ncm-app .ncm-add-log-field input,
 .ncm-app .ncm-add-log-field select { padding: 4px 8px !important; height: 26px !important; font-family: var(--ncm-font-display) !important; font-size: 11px !important; font-weight: 600 !important; color: var(--ncm-text-primary) !important; background-color: var(--ncm-bg-surface) !important; background-image: none !important; border: 1px solid var(--ncm-border) !important; border-radius: 2px !important; outline: none !important; box-shadow: none !important; min-height: 0 !important; }
 .ncm-app .ncm-add-log-field input:focus,

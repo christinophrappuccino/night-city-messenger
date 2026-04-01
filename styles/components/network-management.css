@@ -2381,12 +2381,17 @@
 /* Foundry overrides for new log elements */
 .ncm-network-management .ncm-netmgr__log-entry-btn,
 .ncm-network-management .ncm-netmgr__btn-sm--accent {
+  color: var(--nm-secondary) !important;
+  border-color: rgba(25, 243, 247, 0.3) !important;
   appearance: none !important;
   -webkit-appearance: none !important;
   box-shadow: none !important;
   min-width: 0 !important;
   min-height: 0 !important;
   outline: none !important;
+}
+.ncm-network-management .ncm-netmgr__btn-sm--accent:hover {
+  background: rgba(25, 243, 247, 0.06) !important;
 }
 
 /* ── Log network filter dropdown — full Foundry override ── */
@@ -2437,6 +2442,83 @@
 }
 
 /* Add log form Foundry overrides — handled by !important rules in toolbar section */
+
+/* High-specificity input overrides for add-log form */
+.ncm-network-management .ncm-netmgr__add-log-form {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: flex-end !important;
+  gap: 8px !important;
+  background: var(--nm-bg-deep) !important;
+  padding: 8px 12px !important;
+  border-top: 1px solid var(--nm-border) !important;
+  position: sticky !important;
+  bottom: 0 !important;
+  z-index: 2 !important;
+  box-shadow: 0 -2px 8px rgba(0,0,0,0.4) !important;
+  margin: 0 !important;
+}
+.ncm-network-management .ncm-netmgr__add-log-field input,
+.ncm-network-management .ncm-netmgr__add-log-field select {
+  height: 26px !important;
+  max-height: 26px !important;
+  padding: 4px 8px !important;
+  font-family: var(--nm-font-display) !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: var(--nm-text-primary) !important;
+  background-color: var(--nm-bg-surface) !important;
+  background-image: none !important;
+  border: 1px solid var(--nm-border) !important;
+  border-radius: 2px !important;
+  box-shadow: none !important;
+  outline: none !important;
+  min-height: 0 !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  line-height: 1.4 !important;
+}
+.ncm-network-management .ncm-netmgr__add-log-field label {
+  font-size: 9px !important;
+  color: var(--nm-text-secondary) !important;
+  font-weight: 700 !important;
+}
+.ncm-network-management .ncm-netmgr__add-log-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  flex-direction: row !important;
+  height: 26px !important;
+  max-height: 26px !important;
+  padding: 4px 12px !important;
+  font-family: var(--nm-font-display) !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  color: var(--nm-secondary) !important;
+  background: transparent !important;
+  background-image: none !important;
+  border: 1px solid rgba(25,243,247,0.3) !important;
+  border-radius: 2px !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  box-shadow: none !important;
+  min-height: 0 !important;
+  min-width: 0 !important;
+  width: auto !important;
+  outline: none !important;
+  cursor: pointer !important;
+  flex-shrink: 0 !important;
+  white-space: nowrap !important;
+  align-self: flex-end !important;
+}
+.ncm-network-management .ncm-netmgr__add-log-btn:hover {
+  background: rgba(25,243,247,0.06) !important;
+}
+.ncm-network-management .ncm-netmgr__add-log-btn i {
+  margin: 0 !important;
+  padding: 0 !important;
+  font-size: 9px !important;
+}
 
 /* ── Sidebar search input ── */
 .ncm-network-management .ncm-netmgr__sidebar-search {
