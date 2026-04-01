@@ -204,35 +204,69 @@
       <div class="ncm-mixer-arrow ncm-mixer-arrow--right" data-action="scrollMixerRight"><i class="fas fa-chevron-right"></i></div>
     </div>
 
-    {{!-- SCENES + BROADCAST --}}
-    <div class="ncm-net-ops-row">
-      <div class="ncm-net-scenes">
-        <div class="ncm-net-scenes__label"><i class="fas fa-map"></i> Scenes</div>
-        {{#each sceneStrip}}
-        <div class="ncm-scene-chip {{#if this.isCurrent}}ncm-scene-chip--current{{/if}} {{#if this.deadZone}}ncm-scene-chip--dead{{/if}}" data-scene-id="{{this.id}}">
-          <div class="ncm-scene-chip__dot"></div>
-          <div class="ncm-scene-chip__name">{{this.name}}</div>
-          {{#if this.deadZone}}
-          <button class="ncm-scene-chip__btn ncm-scene-chip__btn--restore" data-action="toggleSceneDeadZone" data-scene-id="{{this.id}}">Restore</button>
-          {{else}}
-          <div class="ncm-scene-chip__net">{{this.signalPct}}%</div>
-          <button class="ncm-scene-chip__btn ncm-scene-chip__btn--jam" data-action="toggleSceneDeadZone" data-scene-id="{{this.id}}">Jam</button>
-          {{/if}}
+    {{!-- SCENES — Full Row Layout --}}
+    <div class="ncm-war-section">
+      <i class="fas fa-map ncm-war-section__icon ncm-war-section__icon--gold"></i>
+      <div class="ncm-war-section__title">Scene Signal</div>
+      <div class="ncm-war-section__hint">— jam or restore per-scene signal</div>
+      <div class="ncm-war-section__line"></div>
+    </div>
+
+    <div class="ncm-scene-list">
+      {{#each sceneStrip}}
+      <div class="ncm-scene-row {{#if this.isCurrent}}ncm-scene-row--active{{/if}} {{#if this.deadZone}}ncm-scene-row--jammed{{/if}}"
+           data-scene-id="{{this.id}}">
+        <div class="ncm-scene-row__dot"></div>
+        <div class="ncm-scene-row__info">
+          <div class="ncm-scene-row__name">{{this.name}}</div>
+          <div class="ncm-scene-row__sub">{{this.defaultNetworkName}}{{#if this.isCurrent}} · Current scene{{/if}}</div>
         </div>
-        {{/each}}
+        {{#if this.isCurrent}}
+        <span class="ncm-scene-row__current-tag">Current</span>
+        {{/if}}
+        {{#if this.deadZone}}
+        <span class="ncm-scene-row__jammed-tag"><i class="fas fa-ban"></i> Jammed</span>
+        <button class="ncm-scene-row__btn ncm-scene-row__btn--restore" data-action="toggleSceneDeadZone" data-scene-id="{{this.id}}">
+          <i class="fas fa-wifi"></i> Restore
+        </button>
+        {{else}}
+        <div class="ncm-scene-row__signal">
+          <div class="ncm-scene-row__signal-bar">
+            <div class="ncm-scene-row__signal-fill ncm-scene-row__signal-fill--{{this.signalTier}}" style="width:{{this.signalPct}}%;"></div>
+          </div>
+          <span class="ncm-scene-row__signal-pct ncm-scene-row__signal-pct--{{this.signalTier}}">{{this.signalPct}}%</span>
+        </div>
+        <button class="ncm-scene-row__btn ncm-scene-row__btn--jam" data-action="toggleSceneDeadZone" data-scene-id="{{this.id}}">
+          <i class="fas fa-ban"></i> Jam
+        </button>
+        {{/if}}
       </div>
-      <div class="ncm-net-broadcast">
-        <div class="ncm-net-broadcast__label"><i class="fas fa-tower-broadcast"></i> Broadcast — sends an in-character system message to players</div>
-        <div class="ncm-net-broadcast__row">
-          <select class="ncm-net-broadcast__select" name="broadcastNetwork">
-            <option value="all">All Networks</option>
-            {{#each networks}}
-            <option value="{{this.id}}">{{this.name}}</option>
-            {{/each}}
-          </select>
-          <input class="ncm-net-broadcast__input" name="broadcastMessage" placeholder="Type a message all connected players will see...">
-          <button class="ncm-net-broadcast__send" data-action="sendBroadcast"><i class="fas fa-paper-plane"></i> Send</button>
-        </div>
+      {{/each}}
+    </div>
+
+    {{!-- BROADCAST --}}
+    <div class="ncm-war-section">
+      <i class="fas fa-tower-broadcast ncm-war-section__icon ncm-war-section__icon--red"></i>
+      <div class="ncm-war-section__title">Broadcast</div>
+      <div class="ncm-war-section__hint">— send an in-character system message to players</div>
+      <div class="ncm-war-section__line"></div>
+    </div>
+
+    <div class="ncm-broadcast">
+      <div class="ncm-broadcast__top">
+        <i class="fas fa-tower-broadcast ncm-broadcast__icon"></i>
+        <span class="ncm-broadcast__title">Network Broadcast</span>
+        <span class="ncm-broadcast__desc">All connected players will receive this message</span>
+      </div>
+      <div class="ncm-broadcast__form">
+        <select class="ncm-broadcast__select" name="broadcastNetwork">
+          <option value="all">All Networks</option>
+          {{#each networks}}
+          <option value="{{this.id}}">{{this.name}}</option>
+          {{/each}}
+        </select>
+        <input class="ncm-broadcast__input" name="broadcastMessage" placeholder="Type a message all connected players will see...">
+        <button class="ncm-broadcast__send" data-action="sendBroadcast"><i class="fas fa-paper-plane"></i> Send</button>
       </div>
     </div>
 

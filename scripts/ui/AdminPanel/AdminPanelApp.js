@@ -2340,6 +2340,7 @@ export class AdminPanelApp extends BaseApplication {
       const defaultNetId = s.getFlag(MODULE_ID, 'defaultNetwork') ?? '';
       const defaultNet = allNetworks.find(n => n.id === defaultNetId || n.name === defaultNetId);
       const signalPct = deadZone ? 0 : (defaultNet?.signalStrength ?? 85);
+      const signalTier = deadZone ? 'dead' : (signalPct >= 70 ? 'good' : (signalPct >= 40 ? 'mid' : 'low'));
       return {
         id: s.id,
         name: s.name,
@@ -2347,6 +2348,7 @@ export class AdminPanelApp extends BaseApplication {
         deadZone,
         defaultNetworkName: deadZone ? 'DEAD ZONE' : (defaultNet?.name ?? 'CITINET'),
         signalPct,
+        signalTier,
       };
     }).sort((a, b) => {
       if (a.isCurrent && !b.isCurrent) return -1;
