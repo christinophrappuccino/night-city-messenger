@@ -10,7 +10,7 @@
       <span class="ncm-netlog-header__count">{{logEntryCount}} entries</span>
       <div class="ncm-netlog-header__spacer"></div>
       <button class="ncm-netlog-header__action" data-action="openNetworkManagerLogs">
-        <i class="fas fa-up-right-from-square"></i> Open in Manager
+        <i class="fas fa-up-right-from-square"></i> Full Manager
       </button>
     </div>
 
@@ -29,24 +29,18 @@
             <option value="{{this.id}}" {{#if (eq this.id ../logNetworkFilter)}}selected{{/if}}>{{this.name}}</option>
             {{/each}}
           </select>
-        </div>
-        <div class="ncm-netlog-toolbar-row">
-          <button class="ncm-netlog-btn ncm-netlog-btn--accent" data-action="toggleAddLogForm">
-            <i class="fas fa-plus"></i> Add Entry
-          </button>
-          <button class="ncm-netlog-btn" data-action="importNetworkLogs">
-            <i class="fas fa-file-import"></i> Import
-          </button>
           <div class="ncm-netlog-spacer"></div>
-          <span class="ncm-netlog-count">{{logEntryCount}} entries</span>
-          <button class="ncm-netlog-btn" data-action="exportNetworkLogs" title="Export as JSON (re-importable)">
-            <i class="fas fa-file-export"></i> JSON
+          <button class="ncm-netlog-btn ncm-netlog-btn--accent" data-action="toggleAddLogForm">
+            <i class="fas fa-plus"></i> Add
           </button>
-          <button class="ncm-netlog-btn" data-action="exportFormattedNetworkLogs" title="Export as formatted text">
-            <i class="fas fa-file-alt"></i> Text
+          <button class="ncm-netlog-btn" data-action="importNetworkLogs" title="Import log entries">
+            <i class="fas fa-file-import"></i>
           </button>
-          <button class="ncm-netlog-btn ncm-netlog-btn--danger" data-action="clearNetworkLogs">
-            <i class="fas fa-trash"></i> Clear
+          <button class="ncm-netlog-btn" data-action="exportNetworkLogs" title="Export as JSON">
+            <i class="fas fa-file-export"></i>
+          </button>
+          <button class="ncm-netlog-btn ncm-netlog-btn--danger" data-action="clearNetworkLogs" title="Clear all entries">
+            <i class="fas fa-trash"></i>
           </button>
         </div>
       </div>

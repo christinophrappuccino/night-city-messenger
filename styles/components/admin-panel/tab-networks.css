@@ -467,7 +467,7 @@
 .ncm-app .ncm-netlog-header__action i { font-size: 9px !important; margin: 0 !important; padding: 0 !important; }
 
 /* ─── Log Panel + Toolbar ─── */
-.ncm-app .ncm-netlog-panel { background: var(--ncm-bg-surface, #1a1a2e) !important; border: 1px solid var(--ncm-border) !important; border-radius: 2px !important; overflow: hidden !important; }
+.ncm-app .ncm-netlog-panel { background: var(--ncm-bg-surface, #1a1a2e) !important; border: 1px solid var(--ncm-border) !important; border-radius: 2px !important; overflow: visible !important; position: relative !important; }
 .ncm-app .ncm-netlog-toolbar { display: flex !important; flex-direction: column !important; gap: 6px !important; padding: 10px 12px !important; border-bottom: 1px solid var(--ncm-border) !important; background: var(--ncm-bg-deep, #12121a) !important; }
 .ncm-app .ncm-netlog-toolbar-row { display: flex !important; align-items: center !important; gap: 6px !important; flex-direction: row !important; flex-wrap: wrap !important; }
 .ncm-app .ncm-netlog-filter-group { display: flex !important; gap: 3px !important; flex-direction: row !important; flex-wrap: wrap !important; }
@@ -586,14 +586,17 @@
 .ncm-app .ncm-netlog-empty { padding: 30px !important; text-align: center !important; color: var(--ncm-text-muted) !important; font-family: var(--ncm-font-display) !important; font-size: 12px !important; }
 
 /* Add Log Form */
-.ncm-app .ncm-add-log-form { display: flex !important; align-items: flex-end !important; gap: 6px !important; flex-direction: row !important; padding: 10px 12px !important; border-top: 1px solid var(--ncm-border) !important; background: var(--ncm-bg-deep) !important; flex-wrap: wrap !important; }
+.ncm-app .ncm-add-log-form { display: flex !important; align-items: flex-end !important; gap: 8px !important; flex-direction: row !important; padding: 8px 12px !important; border-top: 1px solid var(--ncm-border) !important; background: var(--ncm-bg-deep) !important; flex-wrap: nowrap !important; position: sticky !important; bottom: 0 !important; z-index: 2 !important; box-shadow: 0 -2px 8px rgba(0,0,0,0.3) !important; }
 .ncm-app .ncm-add-log-field { display: flex !important; flex-direction: column !important; gap: 2px !important; }
-.ncm-app .ncm-add-log-field label { font-family: var(--ncm-font-display) !important; font-size: 8px !important; font-weight: 700 !important; color: var(--ncm-text-muted) !important; text-transform: uppercase !important; }
+.ncm-app .ncm-add-log-field label { font-family: var(--ncm-font-display) !important; font-size: 8px !important; font-weight: 700 !important; color: var(--ncm-text-muted) !important; text-transform: uppercase !important; letter-spacing: 0.04em !important; }
 .ncm-app .ncm-add-log-field input,
-.ncm-app .ncm-add-log-field select { padding: 3px 6px !important; font-family: var(--ncm-font-display) !important; font-size: 10px !important; color: var(--ncm-text-primary) !important; background: var(--ncm-bg-surface) !important; border: 1px solid var(--ncm-border) !important; border-radius: 2px !important; outline: none !important; }
+.ncm-app .ncm-add-log-field select { padding: 4px 8px !important; height: 26px !important; font-family: var(--ncm-font-display) !important; font-size: 11px !important; font-weight: 600 !important; color: var(--ncm-text-primary) !important; background-color: var(--ncm-bg-surface) !important; background-image: none !important; border: 1px solid var(--ncm-border) !important; border-radius: 2px !important; outline: none !important; box-shadow: none !important; min-height: 0 !important; }
+.ncm-app .ncm-add-log-field input:focus,
+.ncm-app .ncm-add-log-field select:focus { border-color: rgba(25,243,247,0.4) !important; }
+.ncm-app .ncm-add-log-field input::placeholder { color: var(--ncm-text-muted) !important; font-weight: 500 !important; }
 .ncm-app .ncm-add-log-field--message { flex: 1 !important; min-width: 120px !important; }
 .ncm-app .ncm-add-log-field--message input { width: 100% !important; }
-.ncm-app .ncm-add-log-submit { display: inline-flex !important; align-items: center !important; gap: 4px !important; flex-direction: row !important; padding: 4px 10px !important; font-family: var(--ncm-font-display) !important; font-size: 9px !important; font-weight: 700 !important; text-transform: uppercase !important; color: var(--ncm-secondary) !important; background: none !important; background-image: none !important; border: 1px solid rgba(25,243,247,0.3) !important; border-radius: 2px !important; cursor: pointer !important; transition: all 0.15s !important; height: auto !important; min-height: 0 !important; width: auto !important; min-width: 0 !important; appearance: none !important; box-shadow: none !important; outline: none !important; line-height: 1.2 !important; margin: 0 !important; }
+.ncm-app .ncm-add-log-submit { display: inline-flex !important; align-items: center !important; gap: 5px !important; flex-direction: row !important; padding: 4px 12px !important; height: 26px !important; font-family: var(--ncm-font-display) !important; font-size: 10px !important; font-weight: 700 !important; text-transform: uppercase !important; color: var(--ncm-secondary) !important; background: none !important; background-image: none !important; border: 1px solid rgba(25,243,247,0.3) !important; border-radius: 2px !important; cursor: pointer !important; transition: all 0.15s !important; min-height: 0 !important; width: auto !important; min-width: 0 !important; appearance: none !important; box-shadow: none !important; outline: none !important; line-height: 1.2 !important; margin: 0 !important; align-self: flex-end !important; }
 .ncm-app .ncm-add-log-submit:hover { background: rgba(25,243,247,0.06) !important; }
 
 /* ─── Action Buttons (used in config rows — edit, key, delete) ─── */
