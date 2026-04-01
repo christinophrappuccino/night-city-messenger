@@ -1380,19 +1380,21 @@
 .ncm-netmgr__btn-sm {
   padding: 4px 10px;
   border-radius: 2px;
-  font-family: var(--nm-font-mono);
-  font-size: 8px;
+  font-family: var(--nm-font-display);
+  font-size: 10px;
+  font-weight: 700;
   cursor: pointer;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   border: 1px solid var(--nm-border);
   background: transparent;
-  color: var(--nm-text-secondary);
+  color: var(--nm-text-muted);
   transition: all 0.15s;
   display: flex;
   align-items: center;
   gap: 4px;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .ncm-netmgr__btn-sm:hover {
@@ -1820,6 +1822,8 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-direction: row;
+  flex-wrap: wrap;
 }
 
 .ncm-netmgr__log-toolbar-count {
@@ -1830,28 +1834,27 @@
 
 .ncm-netmgr__log-filter-group {
   display: flex;
-  gap: 0;
-  border: 1px solid var(--nm-border);
-  border-radius: 2px;
-  overflow: hidden;
+  gap: 3px;
+  flex-direction: row;
+  flex-shrink: 0;
+  flex-wrap: wrap;
 }
 
 .ncm-netmgr__log-filter-btn {
   padding: 4px 10px;
   background: transparent;
-  border: none;
-  font-family: var(--nm-font-mono);
-  font-size: 8px;
+  border: 1px solid var(--nm-border);
+  border-radius: 2px;
+  font-family: var(--nm-font-display);
+  font-size: 10px;
+  font-weight: 700;
   color: var(--nm-text-muted);
   cursor: pointer;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   transition: all 0.12s;
-  border-right: 1px solid var(--nm-border);
-}
-
-.ncm-netmgr__log-filter-btn:last-child {
-  border-right: none;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .ncm-netmgr__log-filter-btn:hover {
@@ -2165,13 +2168,14 @@
 .ncm-network-management .ncm-netmgr__log-filter-btn {
   display: inline-flex !important;
   align-items: center !important;
-  padding: 3px 8px !important;
+  padding: 4px 10px !important;
   margin: 0 !important;
   font-family: var(--nm-font-display) !important;
-  font-size: 8px !important;
-  font-weight: 600 !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
   color: var(--nm-text-muted) !important;
   background: transparent !important;
+  background-image: none !important;
   border: 1px solid var(--nm-border) !important;
   border-radius: 2px !important;
   text-transform: uppercase !important;
@@ -2184,6 +2188,8 @@
   min-height: 0 !important;
   outline: none !important;
   transition: all 0.15s !important;
+  flex-shrink: 0 !important;
+  white-space: nowrap !important;
 }
 
 .ncm-network-management .ncm-netmgr__log-filter-btn:hover {
