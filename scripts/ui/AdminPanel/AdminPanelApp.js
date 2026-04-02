@@ -5518,22 +5518,24 @@ export class AdminPanelApp extends BaseApplication {
   }
 
   static async _onConvertItem(event, target) {
-    // Gather all unconverted items from world items + actor inventories
     const candidates = [];
     const seenIds = new Set();
     const types = new Set();
+    const sources = new Map(); // source name → count
 
     for (const item of (game.items ?? [])) {
       if (item.getFlag(MODULE_ID, 'isDataShard')) continue;
       candidates.push({ id: item.id, name: item.name, type: item.type, source: 'World', uuid: item.uuid, img: item.img });
       seenIds.add(item.id);
       types.add(item.type);
+      sources.set('World', (sources.get('World') || 0) + 1);
     }
     for (const actor of (game.actors ?? [])) {
       for (const item of actor.items) {
         if (seenIds.has(item.id) || item.getFlag(MODULE_ID, 'isDataShard')) continue;
         candidates.push({ id: item.id, name: item.name, type: item.type, source: actor.name, uuid: item.uuid, img: item.img });
         types.add(item.type);
+        sources.set(actor.name, (sources.get(actor.name) || 0) + 1);
       }
     }
 
@@ -5543,33 +5545,42 @@ export class AdminPanelApp extends BaseApplication {
     }
 
     candidates.sort((a, b) => a.name.localeCompare(b.name));
-    const typeOptions = [...types].sort().map(t => `<option value="${t}">${t}</option>`).join('');
+    const typeOpts = [...types].sort().map(t => `<option value="${t}">${t}</option>`).join('');
+    const tabsHtml = [
+      `<button class="ncm-pick__tab ncm-pick__tab--active" data-source="">All<span class="ncm-pick__tab-count">${candidates.length}</span></button>`,
+      ...[...sources.entries()].map(([name, count]) =>
+        `<button class="ncm-pick__tab" data-source="${name}">${name}<span class="ncm-pick__tab-count">${count}</span></button>`
+      ),
+    ].join('');
 
     const uuid = await new Promise(resolve => {
       new Dialog({
         title: 'Convert Item to Data Shard',
         content: `
-          <div class="ncm-picker">
-            <div class="ncm-picker__controls">
-              <input type="text" id="ncm-pick-search" placeholder="Search items..." autocomplete="off" style="flex:1;">
-              <select id="ncm-pick-type"><option value="">All types</option>${typeOptions}</select>
+          <div class="ncm-pick__controls">
+            <div class="ncm-pick__search-wrap">
+              <i class="fas fa-search"></i>
+              <input type="text" class="ncm-pick__search" id="ncm-pick-search" placeholder="Search items..." autocomplete="off">
             </div>
-            <div class="ncm-picker__list" id="ncm-pick-list" style="max-height:280px;overflow-y:auto;border:1px solid #444;border-radius:3px;margin:6px 0;">
-              ${candidates.map(c => `
-                <div class="ncm-picker__item" data-uuid="${c.uuid}" data-name="${c.name.toLowerCase()}" data-type="${c.type}" data-source="${c.source.toLowerCase()}">
-                  <img src="${c.img || 'icons/svg/item-bag.svg'}" width="28" height="28" style="border-radius:3px;border:1px solid #555;object-fit:cover;">
-                  <div style="flex:1;min-width:0;">
-                    <div style="font-size:12px;font-weight:500;color:#ddd;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.name}</div>
-                    <div style="font-size:10px;color:#888;">${c.type} · ${c.source}</div>
-                  </div>
+            <select class="ncm-pick__filter" id="ncm-pick-type"><option value="">All types</option>${typeOpts}</select>
+          </div>
+          <div class="ncm-pick__tabs" id="ncm-pick-tabs">${tabsHtml}</div>
+          <div class="ncm-pick__list" id="ncm-pick-list">
+            ${candidates.map(c => `
+              <div class="ncm-pick__item" data-uuid="${c.uuid}" data-name="${c.name.toLowerCase()}" data-type="${c.type}" data-source="${c.source}">
+                <img class="ncm-pick__item-img" src="${c.img || 'icons/svg/item-bag.svg'}" width="30" height="30">
+                <div style="flex:1;min-width:0;">
+                  <div class="ncm-pick__item-name">${c.name}</div>
+                  <div class="ncm-pick__item-meta">${c.source}</div>
                 </div>
-              `).join('')}
-            </div>
-            <div style="font-size:10px;color:#888;margin-top:2px;" id="ncm-pick-count">${candidates.length} items</div>
-          </div>`,
+                <span class="ncm-pick__item-type">${c.type}</span>
+              </div>
+            `).join('')}
+          </div>
+          <div class="ncm-pick__count" id="ncm-pick-count">${candidates.length} items</div>`,
         buttons: {
           convert: { label: '<i class="fas fa-microchip"></i> Convert', callback: html => {
-            const sel = html[0].querySelector('.ncm-picker__item.selected');
+            const sel = html[0].querySelector('.ncm-pick__item--selected');
             resolve(sel?.dataset.uuid || null);
           }},
           cancel: { label: 'Cancel', callback: () => resolve(null) },
@@ -5579,39 +5590,49 @@ export class AdminPanelApp extends BaseApplication {
           const root = html[0] ?? html;
           const search = root.querySelector('#ncm-pick-search');
           const typeFilter = root.querySelector('#ncm-pick-type');
+          const tabs = root.querySelector('#ncm-pick-tabs');
           const list = root.querySelector('#ncm-pick-list');
           const count = root.querySelector('#ncm-pick-count');
+          let activeSource = '';
 
           const filter = () => {
             const q = search.value.toLowerCase();
             const t = typeFilter.value;
             let visible = 0;
-            list.querySelectorAll('.ncm-picker__item').forEach(el => {
-              const nameMatch = !q || el.dataset.name.includes(q) || el.dataset.source.includes(q);
+            list.querySelectorAll('.ncm-pick__item').forEach(el => {
+              const nameMatch = !q || el.dataset.name.includes(q);
               const typeMatch = !t || el.dataset.type === t;
-              const show = nameMatch && typeMatch;
+              const sourceMatch = !activeSource || el.dataset.source === activeSource;
+              const show = nameMatch && typeMatch && sourceMatch;
               el.dataset.hidden = !show;
               if (show) visible++;
             });
             count.textContent = `${visible} item${visible !== 1 ? 's' : ''}`;
           };
+
           search.addEventListener('input', filter);
           typeFilter.addEventListener('change', filter);
-
+          tabs.addEventListener('click', (ev) => {
+            const tab = ev.target.closest('.ncm-pick__tab');
+            if (!tab) return;
+            tabs.querySelectorAll('.ncm-pick__tab').forEach(t => t.classList.remove('ncm-pick__tab--active'));
+            tab.classList.add('ncm-pick__tab--active');
+            activeSource = tab.dataset.source;
+            filter();
+          });
           list.addEventListener('click', (ev) => {
-            const item = ev.target.closest('.ncm-picker__item');
-            if (!item) return;
-            list.querySelectorAll('.ncm-picker__item.selected').forEach(s => s.classList.remove('selected'));
-            item.classList.add('selected');
+            const el = ev.target.closest('.ncm-pick__item');
+            if (!el) return;
+            list.querySelectorAll('.ncm-pick__item--selected').forEach(s => s.classList.remove('ncm-pick__item--selected'));
+            el.classList.add('ncm-pick__item--selected');
           });
           list.addEventListener('dblclick', (ev) => {
-            const item = ev.target.closest('.ncm-picker__item');
-            if (item) { item.classList.add('selected'); root.closest('.dialog')?.querySelector('[data-button="convert"]')?.click(); }
+            const el = ev.target.closest('.ncm-pick__item');
+            if (el) { el.classList.add('ncm-pick__item--selected'); root.closest('.dialog')?.querySelector('[data-button="convert"]')?.click(); }
           });
-
           search.focus();
         },
-      }, { width: 420 }).render(true);
+      }, { width: 440, classes: ['ncm-pick-dialog'] }).render(true);
     });
 
     if (!uuid) return;
@@ -5849,7 +5870,6 @@ export class AdminPanelApp extends BaseApplication {
     if (itemId) {
       item = AdminPanelApp._findItem(itemId);
     } else {
-      // Top-level button — show a searchable shard picker
       const shards = AdminPanelApp._getAllDataShards();
       if (!shards.length) {
         ui.notifications.warn('NCM | No data shards to unconvert.');
@@ -5860,26 +5880,47 @@ export class AdminPanelApp extends BaseApplication {
         new Dialog({
           title: 'Unconvert Data Shard',
           content: `
-            <div class="ncm-picker ncm-picker--danger">
-              <input type="text" class="ncm-picker__search" id="ncm-pick-search" placeholder="Search shards..." autocomplete="off">
-              <div class="ncm-picker__list" id="ncm-pick-list">
+            <div class="ncm-pick--danger">
+              <div class="ncm-pick__controls">
+                <div class="ncm-pick__search-wrap">
+                  <i class="fas fa-search"></i>
+                  <input type="text" class="ncm-pick__search" id="ncm-pick-search" placeholder="Search shards..." autocomplete="off">
+                </div>
+              </div>
+              <div class="ncm-pick__list" id="ncm-pick-list">
                 ${shards.map(s => {
                   const config = s.getFlag(MODULE_ID, 'config') || {};
                   const preset = config.preset || 'default';
-                  return `<div class="ncm-picker__item" data-id="${s.id}" data-name="${s.name.toLowerCase()}">
-                    <img src="${s.img || 'icons/svg/item-bag.svg'}" width="28" height="28">
+                  const encrypted = config.encrypted || false;
+                  const iceType = config.iceType || (encrypted ? 'ICE' : '');
+                  const state = s.getFlag(MODULE_ID, 'state') || {};
+                  const isOpen = state.decrypted || !encrypted;
+                  let badgeHtml = '';
+                  if (iceType === 'BLACK_ICE' || iceType === 'black') {
+                    badgeHtml = '<span class="ncm-pick__shard-badge ncm-pick__shard-badge--ice"><i class="fas fa-skull"></i> BLACK</span>';
+                  } else if (encrypted) {
+                    badgeHtml = '<span class="ncm-pick__shard-badge ncm-pick__shard-badge--ice"><i class="fas fa-shield-halved"></i> ICE</span>';
+                  } else {
+                    badgeHtml = '<span class="ncm-pick__shard-badge ncm-pick__shard-badge--open"><i class="fas fa-unlock"></i> Open</span>';
+                  }
+                  return `<div class="ncm-pick__item" data-id="${s.id}" data-name="${s.name.toLowerCase()}">
+                    <img class="ncm-pick__item-img" src="${s.img || 'icons/svg/item-bag.svg'}" width="30" height="30">
                     <div style="flex:1;min-width:0;">
-                      <div style="font-size:12px;font-weight:500;color:#ddd;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${s.name}</div>
-                      <div style="font-size:10px;color:#888;">${s.type} · ${preset}</div>
+                      <div class="ncm-pick__item-name">${s.name}</div>
+                      <div class="ncm-pick__item-meta">${s.type} · ${preset}</div>
                     </div>
+                    ${badgeHtml}
                   </div>`;
                 }).join('')}
               </div>
-              <div style="font-size:10px;color:#c44;margin-top:4px;"><i class="fas fa-exclamation-triangle"></i> Shard content, ICE, and configuration will be removed.</div>
+              <div class="ncm-pick__warning">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span>Shard content, ICE, boot sequence, and configuration will be permanently removed. The base item is preserved.</span>
+              </div>
             </div>`,
           buttons: {
             unconvert: { label: '<i class="fas fa-rotate-left"></i> Unconvert', callback: html => {
-              const sel = html[0].querySelector('.ncm-picker__item.selected');
+              const sel = html[0].querySelector('.ncm-pick__item--selected');
               resolve(sel?.dataset.id || null);
             }},
             cancel: { label: 'Cancel', callback: () => resolve(null) },
@@ -5892,20 +5933,19 @@ export class AdminPanelApp extends BaseApplication {
 
             search.addEventListener('input', () => {
               const q = search.value.toLowerCase();
-              list.querySelectorAll('.ncm-picker__item').forEach(el => {
+              list.querySelectorAll('.ncm-pick__item').forEach(el => {
                 el.dataset.hidden = q && !el.dataset.name.includes(q);
               });
             });
             list.addEventListener('click', (ev) => {
-              const item = ev.target.closest('.ncm-picker__item');
-              if (!item) return;
-              list.querySelectorAll('.selected').forEach(s => s.classList.remove('selected'));
-              item.classList.add('selected');
+              const el = ev.target.closest('.ncm-pick__item');
+              if (!el) return;
+              list.querySelectorAll('.ncm-pick__item--selected').forEach(s => s.classList.remove('ncm-pick__item--selected'));
+              el.classList.add('ncm-pick__item--selected');
             });
-
             search.focus();
           },
-        }, { width: 380 }).render(true);
+        }, { width: 400, classes: ['ncm-pick-dialog'] }).render(true);
       });
 
       if (!pickedId) return;
