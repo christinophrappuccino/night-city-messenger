@@ -1,12 +1,11 @@
 {{!-- Email Setup Flow — Multi-step registration --}}
 {{!-- @file templates/dialogs/email-setup.hbs --}}
-{{!-- @module cyberpunkred-messenger --}}
-{{!-- All steps are in the DOM; CSS + JS handle transitions --}}
+{{!-- All steps in DOM; JS typewriter + scramble decode for transitions --}}
 
 <div class="ncm-email-setup__root">
 <div class="ncm-email-setup__body">
 
-  {{!-- Step Indicator (visible for steps 2-4) --}}
+  {{!-- Step Indicator --}}
   <div class="ncm-email-step-indicator" data-step-indicator>
     <div class="ncm-email-step-dot ncm-email-step-dot--active">1</div>
     <div class="ncm-email-step-line"></div>
@@ -15,34 +14,24 @@
     <div class="ncm-email-step-dot">3</div>
   </div>
 
-  {{!-- ═══ STEP 1: BOOT SEQUENCE ═══ --}}
+  {{!-- STEP 1: BOOT --}}
   <div class="ncm-email-step ncm-email-step--active" data-step="1">
     <div class="ncm-email-boot">
-      <div class="ncm-email-boot__terminal">
-        <div class="ncm-email-boot__line ncm-email-boot__line--dim" style="animation-delay:0.2s">NCM AGENT RUNTIME v4.1.0</div>
-        <div class="ncm-email-boot__line ncm-email-boot__line--dim" style="animation-delay:0.5s">SCANNING NET INTERFACE...</div>
-        <div class="ncm-email-boot__line" style="animation-delay:0.9s"><span class="ncm-email-boot__ok">▓</span> NET INTERFACE DETECTED</div>
-        <div class="ncm-email-boot__line ncm-email-boot__line--dim" style="animation-delay:1.3s">CHECKING IDENTITY REGISTRY...</div>
-        <div class="ncm-email-boot__line ncm-email-boot__line--warn" style="animation-delay:1.8s"><i class="fas fa-triangle-exclamation"></i> NO REGISTERED IDENTITY FOUND</div>
-        <div class="ncm-email-boot__line ncm-email-boot__line--heading" style="animation-delay:2.4s">AGENT REGISTRATION REQUIRED</div>
-        <div class="ncm-email-boot__line ncm-email-boot__line--dim" style="animation-delay:2.8s">Register a NET identity to send and receive messages.</div>
-      </div>
-      <div class="ncm-email-boot__progress"><div class="ncm-email-boot__progress-fill"></div></div>
+      <div class="ncm-email-boot__terminal" data-boot-terminal></div>
+      <div class="ncm-email-boot__progress"><div class="ncm-email-boot__progress-fill" data-boot-fill></div></div>
     </div>
   </div>
 
-  {{!-- ═══ STEP 2: HANDLE SELECTION ═══ --}}
+  {{!-- STEP 2: HANDLE --}}
   <div class="ncm-email-step" data-step="2">
     <div class="ncm-email-form">
-      <div class="ncm-email-heading">Choose Your Handle</div>
-      <div class="ncm-email-subheading">This is your identity on the NET. It's how contacts, fixers, and corpos will know you.</div>
-
+      <div class="ncm-email-heading" data-decode>Choose Your Handle</div>
+      <div class="ncm-email-subheading" data-decode>This is your identity on the NET. It's how contacts, fixers, and corpos will know you.</div>
       <div class="ncm-email-field-label">Handle</div>
       <div class="ncm-email-handle-wrap">
         <input type="text" data-handle-input value="{{handle}}" placeholder="your_handle" spellcheck="false" autocomplete="off">
         <span class="ncm-email-handle-at">@{{domain}}</span>
       </div>
-
       <div class="ncm-email-field-label" style="margin-top:10px;">Suggestions</div>
       <div class="ncm-email-suggestions">
         {{#each suggestions}}
@@ -50,24 +39,21 @@
              data-action="selectSuggestion" data-handle="{{this}}">{{this}}</div>
         {{/each}}
       </div>
-
       <div class="ncm-email-preview">
         <div class="ncm-email-preview-label">Live Preview</div>
         <div class="ncm-email-preview-email" data-handle-preview>{{handle}}<span class="ncm-email-dim">@{{domain}}</span></div>
       </div>
-
       <div class="ncm-email-validation ncm-email-validation--ok" data-handle-validation>
         <i class="fas fa-check-circle"></i> Handle available
       </div>
     </div>
   </div>
 
-  {{!-- ═══ STEP 3: DOMAIN SELECTION ═══ --}}
+  {{!-- STEP 3: DOMAIN --}}
   <div class="ncm-email-step" data-step="3">
     <div class="ncm-email-form">
-      <div class="ncm-email-heading">Select Your Domain</div>
-      <div class="ncm-email-subheading">Your domain determines which network hosts your mailbox.</div>
-
+      <div class="ncm-email-heading" data-decode>Select Your Domain</div>
+      <div class="ncm-email-subheading" data-decode>Your domain determines which network hosts your mailbox.</div>
       <div class="ncm-email-field-label">Available Domains</div>
       <div class="ncm-email-domain-grid">
         {{#each domains}}
@@ -80,14 +66,13 @@
             <div class="ncm-email-domain-card__domain">{{this.domain}}</div>
             <div class="ncm-email-domain-card__network">
               {{this.networkName}}
-              {{#if this.locked}}<i class="fas fa-lock" style="font-size:7px;margin-left:3px;color:var(--ncm-accent,#F0C55B);"></i>{{/if}}
+              {{#if this.locked}}<i class="fas fa-lock" style="font-size:7px;margin-left:3px;"></i>{{/if}}
             </div>
           </div>
           <div class="ncm-email-domain-card__check"><i class="fas fa-check"></i></div>
         </div>
         {{/each}}
       </div>
-
       {{#if allowCustomDomains}}
       <div class="ncm-email-field-label" style="margin-top:12px;">Or enter a custom domain</div>
       <div class="ncm-email-custom-domain">
@@ -95,7 +80,6 @@
         <input type="text" data-custom-domain placeholder="custom.domain.nc" spellcheck="false">
       </div>
       {{/if}}
-
       <div class="ncm-email-preview" style="margin-top:16px;">
         <div class="ncm-email-preview-label">Your NET Identity</div>
         <div class="ncm-email-preview-email" data-handle-preview>{{handle}}<span class="ncm-email-dim">@</span>{{domain}}</div>
@@ -103,45 +87,27 @@
     </div>
   </div>
 
-  {{!-- ═══ STEP 4: CONFIRMATION ═══ --}}
+  {{!-- STEP 4: CONFIRM --}}
   <div class="ncm-email-step" data-step="4">
     <div class="ncm-email-form">
-      <div class="ncm-email-heading">Confirm Your Identity</div>
-      <div class="ncm-email-subheading">Review below. Once registered, this is how you'll appear on the NET.</div>
-
+      <div class="ncm-email-heading" data-decode>Confirm Your Identity</div>
+      <div class="ncm-email-subheading" data-decode>Review below. Once registered, this is how you appear on the NET.</div>
       <div class="ncm-email-confirm-card">
         <div class="ncm-email-confirm-label">Your NET Identity</div>
         <div class="ncm-email-confirm-email" data-email-preview>{{fullEmail}}</div>
       </div>
-
       <div class="ncm-email-confirm-details">
-        <div class="ncm-email-confirm-row">
-          <span class="ncm-email-confirm-row__label">Handle</span>
-          <span class="ncm-email-confirm-row__value" data-confirm-handle>{{handle}}</span>
-        </div>
-        <div class="ncm-email-confirm-row">
-          <span class="ncm-email-confirm-row__label">Domain</span>
-          <span class="ncm-email-confirm-row__value" data-confirm-domain>{{domain}}</span>
-        </div>
+        <div class="ncm-email-confirm-row"><span class="ncm-email-confirm-row__label">Handle</span><span class="ncm-email-confirm-row__value" data-confirm-handle>{{handle}}</span></div>
+        <div class="ncm-email-confirm-row"><span class="ncm-email-confirm-row__label">Domain</span><span class="ncm-email-confirm-row__value" data-confirm-domain>{{domain}}</span></div>
         {{#if domainNetworkName}}
-        <div class="ncm-email-confirm-row">
-          <span class="ncm-email-confirm-row__label">Network</span>
-          <span class="ncm-email-confirm-row__value">
-            <span class="ncm-email-net-badge" style="background:{{domainNetworkColor}}14;color:{{domainNetworkColor}};border-color:{{domainNetworkColor}}26;">
-              <i class="fas {{domainNetworkIcon}}"></i> {{domainNetworkName}}
-            </span>
-          </span>
-        </div>
+        <div class="ncm-email-confirm-row"><span class="ncm-email-confirm-row__label">Network</span><span class="ncm-email-confirm-row__value"><span class="ncm-email-net-badge" style="background:{{domainNetworkColor}}14;color:{{domainNetworkColor}};border-color:{{domainNetworkColor}}26;"><i class="fas {{domainNetworkIcon}}"></i> {{domainNetworkName}}</span></span></div>
         {{/if}}
-        <div class="ncm-email-confirm-row">
-          <span class="ncm-email-confirm-row__label">Actor</span>
-          <span class="ncm-email-confirm-row__value">{{actorName}}</span>
-        </div>
+        <div class="ncm-email-confirm-row"><span class="ncm-email-confirm-row__label">Actor</span><span class="ncm-email-confirm-row__value">{{actorName}}</span></div>
       </div>
     </div>
   </div>
 
-  {{!-- ═══ STEP 5: REGISTRATION ANIMATION ═══ --}}
+  {{!-- STEP 5: REGISTRATION --}}
   <div class="ncm-email-step" data-step="5">
     <div class="ncm-email-reg">
       <div data-reg-spinner>
@@ -150,7 +116,7 @@
           <div class="ncm-email-reg__ring ncm-email-reg__ring--inner"></div>
           <div class="ncm-email-reg__icon"><i class="fas fa-satellite-dish"></i></div>
         </div>
-        <div class="ncm-email-reg__status" data-reg-status>Initializing...</div>
+        <div class="ncm-email-reg__status" data-reg-status></div>
         <div class="ncm-email-reg__sub" data-reg-sub></div>
         <div class="ncm-email-reg__progress-track"><div class="ncm-email-reg__progress-fill" data-reg-progress></div></div>
       </div>
@@ -159,6 +125,9 @@
         <div class="ncm-email-reg__success-text">Identity Confirmed</div>
         <div class="ncm-email-reg__success-email" data-reg-email>{{fullEmail}}</div>
         <div class="ncm-email-reg__success-hint">You can now send and receive messages on the NET</div>
+        <button class="ncm-email-btn ncm-email-btn--cyan ncm-email-reg__done-btn" data-action="openInbox">
+          <i class="fas fa-inbox"></i> Open Inbox
+        </button>
       </div>
     </div>
   </div>
@@ -171,11 +140,8 @@
     <i class="fas fa-arrow-left"></i> Back
   </button>
   <div class="ncm-email-setup__footer-spacer"></div>
-  <button class="ncm-email-btn ncm-email-btn--cyan" data-action="nextStep" data-boot-continue>
-    <i class="fas fa-arrow-right"></i> Continue
-  </button>
-  <button class="ncm-email-btn ncm-email-btn--green" data-action="registerIdentity" style="display:none;">
-    <i class="fas fa-check"></i> Register Identity
+  <button class="ncm-email-btn ncm-email-btn--cyan" data-action="nextStep">
+    <i class="fas fa-arrow-right"></i> <span data-next-label>Continue</span>
   </button>
 </div>
 </div>
