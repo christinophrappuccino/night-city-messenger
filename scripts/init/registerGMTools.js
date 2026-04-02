@@ -10,10 +10,6 @@
  *   80  — MasterContactService    (depends on SettingsManager)
  *  110  — MacroAPI                (depends on all services)
  *  112  — Phase 5 UI launchers    (depends on services + MacroAPI)
- *  115  — EmailSettingsIntegration hooks
- *
- * Priority Map (init phase):
- *   40  — EmailSettingsIntegration (actor sheet hooks)
  *
  * Priority Map (postReady phase):
  *   32  — Phase 5 verification
@@ -24,7 +20,6 @@ import { log, isGM } from '../utils/helpers.js';
 import { SchedulingService } from '../services/SchedulingService.js';
 import { MasterContactService } from '../services/MasterContactService.js';
 import { MacroAPI } from '../integrations/MacroAPI.js';
-import { EmailSettingsIntegration } from '../integrations/EmailSettingsIntegration.js';
 import { Phase5Verification } from '../tests/Phase5Verification.js';
 import { ContactManagerApp } from '../ui/ContactManager/ContactManagerApp.js';
 
@@ -34,16 +29,6 @@ import { ContactManagerApp } from '../ui/ContactManager/ContactManagerApp.js';
  */
 export function registerGMTools(initializer) {
   log.debug('Registering GM tools & customization (Phase 5)');
-
-  // ═══════════════════════════════════════════════════════════
-  //  INIT PHASE — Email Settings Integration Hooks
-  //  Priority 40 (after item sheet hooks at 30)
-  // ═══════════════════════════════════════════════════════════
-
-  initializer.register('init', 40, 'EmailSettingsIntegration', () => {
-    EmailSettingsIntegration.register();
-    log.info('EmailSettingsIntegration hooks registered');
-  });
 
   // ═══════════════════════════════════════════════════════════
   //  READY PHASE — SchedulingService

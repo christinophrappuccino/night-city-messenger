@@ -59,6 +59,7 @@ export function registerCoreServices(initializer) {
       schedulingService: null,
       masterContactService: null,
       accessLogService: null,
+      emailService: null,
 
       // UI launch functions populated later
       openInbox: null,
@@ -68,6 +69,7 @@ export function registerCoreServices(initializer) {
       openDataShard: null,
       openNetworkManagement: null,
       openThemeCustomizer: null,
+      openEmailSetup: null,
     };
 
     log.info('game.nightcity namespace created');

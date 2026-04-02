@@ -183,6 +183,53 @@ export class SettingsManager {
       default: '',
     });
 
+    // ─── Email Identity Settings ───
+
+    game.settings.register(MODULE_ID, 'emailDomains', {
+      name: 'NCM.Settings.EmailDomains.Name',
+      hint: 'Domain configuration per network (managed via Admin Panel).',
+      scope: 'world',
+      config: false,
+      type: Object,
+      default: {},
+    });
+
+    game.settings.register(MODULE_ID, 'emailSetupRequired', {
+      name: 'Require Email Setup',
+      hint: 'Players must register a NET identity before using NCM messaging.',
+      scope: 'world',
+      config: true,
+      type: Boolean,
+      default: true,
+    });
+
+    game.settings.register(MODULE_ID, 'emailAllowPlayerBurn', {
+      name: 'Allow Player Identity Burn',
+      hint: 'Players can burn and re-register their own NET identity.',
+      scope: 'world',
+      config: true,
+      type: Boolean,
+      default: true,
+    });
+
+    game.settings.register(MODULE_ID, 'emailAllowCustomDomains', {
+      name: 'Allow Custom Domains',
+      hint: 'Players can type a custom domain instead of picking from the network list.',
+      scope: 'world',
+      config: true,
+      type: Boolean,
+      default: true,
+    });
+
+    game.settings.register(MODULE_ID, 'emailDefaultDomain', {
+      name: 'Default Email Domain',
+      hint: 'Fallback domain when no network domains are configured.',
+      scope: 'world',
+      config: true,
+      type: String,
+      default: 'nightcity.net',
+    });
+
     game.settings.register(MODULE_ID, 'debugMode', {
       name: 'NCM.Settings.DebugMode.Name',
       hint: 'NCM.Settings.DebugMode.Hint',

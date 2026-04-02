@@ -1,0 +1,131 @@
+/**
+ * Email Setup Flow — Styles
+ * @file styles/components/email-setup.css
+ * @module cyberpunkred-messenger
+ * @description Multi-step email registration dialog.
+ *              Uses !important throughout to beat Foundry defaults.
+ */
+
+/* ═══ Window ═══ */
+.ncm-app.ncm-email-setup .window-content { background: var(--ncm-bg-deep, #0a0a0f) !important; padding: 0 !important; display: flex !important; flex-direction: column !important; overflow: hidden !important; }
+
+.ncm-email-setup__root { display: flex !important; flex-direction: column !important; flex: 1 !important; overflow: hidden !important; }
+.ncm-email-setup__body { flex: 1 !important; position: relative !important; overflow: hidden !important; min-height: 280px !important; }
+
+/* ═══ Steps — only active is visible ═══ */
+.ncm-email-step { display: none !important; padding: 20px 24px !important; }
+.ncm-email-step--active { display: block !important; }
+
+/* ═══ Step Indicator ═══ */
+.ncm-email-step-indicator { display: flex !important; align-items: center !important; gap: 8px !important; padding: 12px 24px 0 !important; }
+.ncm-email-step-dot { width: 20px !important; height: 20px !important; border-radius: 50% !important; display: flex !important; align-items: center !important; justify-content: center !important; font-family: var(--ncm-font-heading, 'Orbitron', sans-serif) !important; font-size: 8px !important; font-weight: 700 !important; border: 1px solid var(--ncm-border, #2a2a45) !important; color: var(--ncm-text-muted, #555570) !important; background: var(--ncm-bg-surface, #1a1a2e) !important; transition: all 0.3s ease !important; }
+.ncm-email-step-dot--active { border-color: var(--ncm-secondary, #00D4E6) !important; color: var(--ncm-secondary, #00D4E6) !important; background: rgba(0,212,230,0.08) !important; }
+.ncm-email-step-dot--done { border-color: var(--ncm-success, #34D399) !important; color: var(--ncm-bg-deep, #0a0a0f) !important; background: var(--ncm-success, #34D399) !important; }
+.ncm-email-step-line { flex: 1 !important; height: 1px !important; background: var(--ncm-border, #2a2a45) !important; transition: background 0.3s ease !important; }
+.ncm-email-step-line--done { background: var(--ncm-success, #34D399) !important; }
+
+/* ═══ Shared Typography ═══ */
+.ncm-email-heading { font-family: var(--ncm-font-heading, 'Orbitron', sans-serif) !important; font-size: 13px !important; font-weight: 700 !important; color: var(--ncm-text-primary, #e0e0e8) !important; text-transform: uppercase !important; letter-spacing: 0.06em !important; margin-bottom: 4px !important; }
+.ncm-email-subheading { font-family: var(--ncm-font-display, 'Rajdhani', sans-serif) !important; font-size: 12px !important; font-weight: 500 !important; color: var(--ncm-text-secondary, #8888a0) !important; margin-bottom: 20px !important; line-height: 1.4 !important; }
+.ncm-email-field-label { font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace) !important; font-size: 9px !important; color: var(--ncm-text-muted, #555570) !important; text-transform: uppercase !important; letter-spacing: 0.08em !important; margin-bottom: 6px !important; }
+.ncm-email-dim { color: var(--ncm-text-muted, #555570) !important; }
+
+/* ═══ Boot Sequence (Step 1) ═══ */
+.ncm-email-boot { padding: 0 !important; }
+.ncm-email-boot__terminal { padding: 20px 24px !important; font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace) !important; font-size: 11px !important; color: var(--ncm-secondary, #00D4E6) !important; line-height: 2 !important; }
+.ncm-email-boot__line { opacity: 0 !important; animation: ncmBootIn 0.3s ease forwards !important; }
+.ncm-email-boot__line--dim { color: var(--ncm-text-muted, #555570) !important; }
+.ncm-email-boot__line--warn { color: var(--ncm-primary, #F65261) !important; }
+.ncm-email-boot__line--warn i { margin-right: 4px !important; font-size: 9px !important; }
+.ncm-email-boot__line--heading { color: var(--ncm-text-primary, #e0e0e8) !important; font-family: var(--ncm-font-heading, 'Orbitron', sans-serif) !important; font-size: 11px !important; letter-spacing: 0.1em !important; margin-top: 12px !important; }
+.ncm-email-boot__ok { color: var(--ncm-success, #34D399) !important; }
+@keyframes ncmBootIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+.ncm-email-boot__progress { margin: 0 24px 16px !important; height: 2px !important; background: rgba(0,212,230,0.1) !important; border-radius: 1px !important; overflow: hidden !important; }
+.ncm-email-boot__progress-fill { height: 100% !important; width: 0% !important; background: var(--ncm-secondary, #00D4E6) !important; animation: ncmBootProgress 3s ease-out forwards !important; }
+@keyframes ncmBootProgress { to { width: 100%; } }
+
+/* ═══ Handle Input (Step 2) ═══ */
+.ncm-email-handle-wrap { display: flex !important; align-items: center !important; background: var(--ncm-bg-surface, #1a1a2e) !important; border: 1px solid var(--ncm-border, #2a2a45) !important; border-radius: 2px !important; overflow: hidden !important; transition: border-color 0.15s !important; }
+.ncm-email-handle-wrap:focus-within { border-color: var(--ncm-secondary, #00D4E6) !important; }
+.ncm-email-handle-wrap input { flex: 1 !important; background: none !important; border: none !important; outline: none !important; padding: 10px 12px !important; font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace) !important; font-size: 14px !important; color: var(--ncm-text-primary, #e0e0e8) !important; min-height: 0 !important; box-shadow: none !important; }
+.ncm-email-handle-wrap input::placeholder { color: var(--ncm-text-muted, #555570) !important; }
+.ncm-email-handle-at { padding: 10px 12px !important; font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace) !important; font-size: 14px !important; color: var(--ncm-text-muted, #555570) !important; background: var(--ncm-bg-deep, #0a0a0f) !important; border-left: 1px solid var(--ncm-border, #2a2a45) !important; white-space: nowrap !important; }
+
+.ncm-email-suggestions { display: flex !important; flex-wrap: wrap !important; gap: 4px !important; }
+.ncm-email-suggest { padding: 4px 10px !important; border-radius: 2px !important; font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace) !important; font-size: 10px !important; background: var(--ncm-bg-surface, #1a1a2e) !important; border: 1px solid var(--ncm-border, #2a2a45) !important; color: var(--ncm-text-secondary, #8888a0) !important; cursor: pointer !important; transition: all 0.15s !important; }
+.ncm-email-suggest:hover { border-color: var(--ncm-secondary, #00D4E6) !important; color: var(--ncm-secondary, #00D4E6) !important; }
+.ncm-email-suggest--active { background: rgba(0,212,230,0.08) !important; border-color: var(--ncm-secondary, #00D4E6) !important; color: var(--ncm-secondary, #00D4E6) !important; }
+
+.ncm-email-preview { margin-top: 16px !important; padding: 12px 16px !important; background: var(--ncm-bg-surface, #1a1a2e) !important; border: 1px solid var(--ncm-border, #2a2a45) !important; border-radius: 2px !important; border-left: 3px solid var(--ncm-secondary, #00D4E6) !important; }
+.ncm-email-preview-label { font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace) !important; font-size: 8px !important; color: var(--ncm-text-muted, #555570) !important; text-transform: uppercase !important; letter-spacing: 0.1em !important; margin-bottom: 4px !important; }
+.ncm-email-preview-email { font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace) !important; font-size: 16px !important; color: var(--ncm-secondary, #00D4E6) !important; font-weight: 700 !important; }
+
+.ncm-email-validation { display: flex !important; align-items: center !important; gap: 6px !important; margin-top: 8px !important; font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace) !important; font-size: 9px !important; }
+.ncm-email-validation--ok { color: var(--ncm-success, #34D399) !important; }
+.ncm-email-validation--err { color: var(--ncm-primary, #F65261) !important; }
+
+/* ═══ Domain Selection (Step 3) ═══ */
+.ncm-email-domain-grid { display: flex !important; flex-direction: column !important; gap: 6px !important; }
+.ncm-email-domain-card { display: flex !important; align-items: center !important; gap: 12px !important; padding: 10px 14px !important; background: var(--ncm-bg-surface, #1a1a2e) !important; border: 1px solid var(--ncm-border, #2a2a45) !important; border-radius: 2px !important; cursor: pointer !important; transition: all 0.15s !important; position: relative !important; }
+.ncm-email-domain-card:hover { border-color: var(--ncm-border-active, #3a3a5a) !important; }
+.ncm-email-domain-card--active { border-color: var(--ncm-secondary, #00D4E6) !important; background: rgba(0,212,230,0.04) !important; }
+.ncm-email-domain-card--active::before { content: '' !important; position: absolute !important; left: 0 !important; top: 0 !important; bottom: 0 !important; width: 3px !important; background: var(--ncm-secondary, #00D4E6) !important; border-radius: 2px 0 0 2px !important; }
+.ncm-email-domain-card__icon { width: 32px !important; height: 32px !important; border-radius: 4px !important; display: flex !important; align-items: center !important; justify-content: center !important; font-size: 14px !important; flex-shrink: 0 !important; border: 1px solid !important; }
+.ncm-email-domain-card__info { flex: 1 !important; }
+.ncm-email-domain-card__domain { font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace) !important; font-size: 13px !important; font-weight: 700 !important; color: var(--ncm-text-primary, #e0e0e8) !important; }
+.ncm-email-domain-card__network { font-family: var(--ncm-font-display, 'Rajdhani', sans-serif) !important; font-size: 10px !important; font-weight: 600 !important; color: var(--ncm-text-muted, #555570) !important; text-transform: uppercase !important; letter-spacing: 0.04em !important; }
+.ncm-email-domain-card__check { width: 18px !important; height: 18px !important; border-radius: 50% !important; border: 1px solid var(--ncm-border, #2a2a45) !important; display: flex !important; align-items: center !important; justify-content: center !important; font-size: 8px !important; color: transparent !important; transition: all 0.15s !important; }
+.ncm-email-domain-card--active .ncm-email-domain-card__check { border-color: var(--ncm-secondary, #00D4E6) !important; color: var(--ncm-secondary, #00D4E6) !important; background: rgba(0,212,230,0.1) !important; }
+
+.ncm-email-custom-domain { display: flex !important; align-items: center !important; gap: 8px !important; padding: 10px 14px !important; background: var(--ncm-bg-surface, #1a1a2e) !important; border: 1px dashed var(--ncm-border, #2a2a45) !important; border-radius: 2px !important; }
+.ncm-email-custom-domain__icon { color: var(--ncm-text-muted, #555570) !important; font-size: 12px !important; }
+.ncm-email-custom-domain input { flex: 1 !important; background: none !important; border: none !important; outline: none !important; font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace) !important; font-size: 12px !important; color: var(--ncm-text-primary, #e0e0e8) !important; min-height: 0 !important; box-shadow: none !important; padding: 0 !important; }
+.ncm-email-custom-domain input::placeholder { color: var(--ncm-text-muted, #555570) !important; }
+
+/* ═══ Confirmation (Step 4) ═══ */
+.ncm-email-confirm-card { margin: 20px 0 24px !important; padding: 24px 20px !important; text-align: center !important; background: rgba(0,212,230,0.03) !important; border: 1px solid rgba(0,212,230,0.12) !important; border-radius: 3px !important; border-left: 3px solid var(--ncm-secondary, #00D4E6) !important; }
+.ncm-email-confirm-label { font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace) !important; font-size: 8px !important; color: var(--ncm-text-muted, #555570) !important; text-transform: uppercase !important; letter-spacing: 0.15em !important; margin-bottom: 8px !important; }
+.ncm-email-confirm-email { font-family: var(--ncm-font-heading, 'Orbitron', sans-serif) !important; font-size: 18px !important; font-weight: 700 !important; color: var(--ncm-secondary, #00D4E6) !important; text-shadow: 0 0 20px rgba(0,212,230,0.3) !important; }
+
+.ncm-email-confirm-details { display: flex !important; flex-direction: column !important; gap: 8px !important; }
+.ncm-email-confirm-row { display: flex !important; align-items: center !important; justify-content: space-between !important; padding: 6px 0 !important; border-bottom: 1px solid rgba(42,42,69,0.25) !important; }
+.ncm-email-confirm-row:last-child { border-bottom: none !important; }
+.ncm-email-confirm-row__label { font-family: var(--ncm-font-display, 'Rajdhani', sans-serif) !important; font-size: 11px !important; font-weight: 600 !important; color: var(--ncm-text-secondary, #8888a0) !important; }
+.ncm-email-confirm-row__value { font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace) !important; font-size: 11px !important; color: var(--ncm-text-primary, #e0e0e8) !important; }
+
+.ncm-email-net-badge { display: inline-flex !important; align-items: center !important; gap: 6px !important; padding: 3px 10px !important; border-radius: 2px !important; font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace) !important; font-size: 10px !important; font-weight: 700 !important; border: 1px solid !important; }
+
+/* ═══ Registration Animation (Step 5) ═══ */
+.ncm-email-reg { display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; min-height: 260px !important; padding: 24px !important; }
+.ncm-email-reg__spinner { width: 60px !important; height: 60px !important; position: relative !important; margin-bottom: 20px !important; }
+.ncm-email-reg__ring { position: absolute !important; inset: 0 !important; border: 2px solid rgba(0,212,230,0.1) !important; border-top-color: var(--ncm-secondary, #00D4E6) !important; border-radius: 50% !important; animation: ncmEmailSpin 0.8s linear infinite !important; }
+.ncm-email-reg__ring--inner { inset: 8px !important; border-top-color: var(--ncm-accent, #F0C55B) !important; animation-direction: reverse !important; animation-duration: 1.2s !important; }
+.ncm-email-reg__icon { position: absolute !important; inset: 0 !important; display: flex !important; align-items: center !important; justify-content: center !important; font-size: 16px !important; color: var(--ncm-secondary, #00D4E6) !important; }
+@keyframes ncmEmailSpin { to { transform: rotate(360deg); } }
+
+.ncm-email-reg__status { font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace) !important; font-size: 11px !important; color: var(--ncm-secondary, #00D4E6) !important; text-transform: uppercase !important; letter-spacing: 0.08em !important; margin-bottom: 6px !important; text-align: center !important; }
+.ncm-email-reg__sub { font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace) !important; font-size: 9px !important; color: var(--ncm-text-muted, #555570) !important; margin-bottom: 16px !important; text-align: center !important; }
+.ncm-email-reg__progress-track { width: 200px !important; height: 3px !important; background: rgba(0,212,230,0.1) !important; border-radius: 2px !important; overflow: hidden !important; }
+.ncm-email-reg__progress-fill { height: 100% !important; background: var(--ncm-secondary, #00D4E6) !important; border-radius: 2px !important; transition: width 0.5s ease !important; width: 0% !important; }
+
+.ncm-email-reg__success { display: none !important; flex-direction: column !important; align-items: center !important; gap: 12px !important; }
+.ncm-email-reg__success--show { display: flex !important; animation: ncmEmailFadeIn 0.4s ease !important; }
+@keyframes ncmEmailFadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+.ncm-email-reg__success-icon { width: 60px !important; height: 60px !important; border-radius: 50% !important; background: rgba(52,211,153,0.1) !important; border: 2px solid var(--ncm-success, #34D399) !important; display: flex !important; align-items: center !important; justify-content: center !important; font-size: 22px !important; color: var(--ncm-success, #34D399) !important; }
+.ncm-email-reg__success-text { font-family: var(--ncm-font-heading, 'Orbitron', sans-serif) !important; font-size: 12px !important; font-weight: 700 !important; color: var(--ncm-success, #34D399) !important; text-transform: uppercase !important; letter-spacing: 0.1em !important; }
+.ncm-email-reg__success-email { font-family: var(--ncm-font-heading, 'Orbitron', sans-serif) !important; font-size: 18px !important; font-weight: 700 !important; color: var(--ncm-secondary, #00D4E6) !important; text-shadow: 0 0 20px rgba(0,212,230,0.3) !important; }
+.ncm-email-reg__success-hint { font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace) !important; font-size: 9px !important; color: var(--ncm-text-muted, #555570) !important; }
+
+/* ═══ Footer Buttons ═══ */
+.ncm-email-setup__footer { display: flex !important; align-items: center !important; gap: 8px !important; padding: 10px 16px !important; background: var(--ncm-bg-base, #12121a) !important; border-top: 1px solid var(--ncm-border, #2a2a45) !important; flex-shrink: 0 !important; }
+.ncm-email-setup__footer-spacer { flex: 1 !important; }
+
+.ncm-email-btn { display: inline-flex !important; align-items: center !important; gap: 5px !important; padding: 7px 16px !important; border-radius: 2px !important; cursor: pointer !important; border: 1px solid !important; font-family: var(--ncm-font-display, 'Rajdhani', sans-serif) !important; font-size: 11px !important; font-weight: 700 !important; text-transform: uppercase !important; letter-spacing: 0.04em !important; transition: all 0.15s !important; background-image: none !important; appearance: none !important; box-shadow: none !important; min-height: 0 !important; line-height: 1.2 !important; }
+.ncm-email-btn i { font-size: 9px !important; margin: 0 !important; padding: 0 !important; }
+.ncm-email-btn--ghost { background: none !important; border-color: var(--ncm-border, #2a2a45) !important; color: var(--ncm-text-muted, #555570) !important; }
+.ncm-email-btn--ghost:hover { border-color: var(--ncm-border-active, #3a3a5a) !important; color: var(--ncm-text-secondary, #8888a0) !important; }
+.ncm-email-btn--cyan { background: rgba(0,212,230,0.08) !important; border-color: rgba(0,212,230,0.3) !important; color: var(--ncm-secondary, #00D4E6) !important; }
+.ncm-email-btn--cyan:hover { background: rgba(0,212,230,0.15) !important; }
+.ncm-email-btn--green { background: rgba(52,211,153,0.08) !important; border-color: rgba(52,211,153,0.3) !important; color: var(--ncm-success, #34D399) !important; }
+.ncm-email-btn--green:hover { background: rgba(52,211,153,0.15) !important; }

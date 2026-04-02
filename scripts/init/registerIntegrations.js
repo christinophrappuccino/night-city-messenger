@@ -13,10 +13,4 @@ export function registerIntegrations(initializer) {
     ChatIntegration.register();
     log.info('Chat integration registered');
   });
-
-  // Phase 5: Item sheet hooks for email field on actor sheets
-  initializer.register('init', 40, 'Item sheet hooks', () => {
-    // Phase 5: EmailSettingsIntegration
-    log.debug('Item sheet hooks (Phase 5 — stub)');
-  });
 }

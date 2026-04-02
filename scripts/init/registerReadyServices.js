@@ -66,6 +66,29 @@ export function registerReadyServices(initializer) {
     log.info('ContactShareService initialized');
   });
 
+  // ─── EmailService ───
+  initializer.register('ready', 86, 'EmailService', async () => {
+    const { EmailService } = await import('../services/EmailService.js');
+    game.nightcity.emailService = new EmailService({
+      networkService: game.nightcity.networkService,
+    });
+
+    // Register the setup flow launcher
+    game.nightcity.openEmailSetup = async (actor) => {
+      if (!actor) {
+        actor = game.user?.character;
+        if (!actor) {
+          ui.notifications.warn('NCM | No actor assigned to open email setup.');
+          return null;
+        }
+      }
+      const { EmailSetupFlow } = await import('../ui/dialogs/EmailSetupFlow.js');
+      return EmailSetupFlow.run(actor, game.nightcity.emailService);
+    };
+
+    log.info('EmailService initialized');
+  });
+
   // ─── SocketManager init ───
   initializer.register('ready', 100, 'SocketManager init', () => {
     game.nightcity.socketManager.initialize();

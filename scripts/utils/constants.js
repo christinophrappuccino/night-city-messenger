@@ -458,6 +458,7 @@ export const TEMPLATES = Object.freeze({
   DEAD_ZONE_WARNING: `${T}/dialogs/dead-zone-warning.hbs`,
   NETWORK_SELECTOR: `${T}/message-viewer/partials/network-selector.hbs`,
   PLAYER_EMAIL_SETUP: `${T}/dialogs/player-email-setup.hbs`,
+  EMAIL_SETUP_FLOW: `${T}/dialogs/email-setup.hbs`,
   CHAT_MESSAGE_CARD: `${T}/chat/message-card.hbs`,
   CHAT_HACK_RESULT: `${T}/chat/hack-result.hbs`,
   CHAT_NETWORK_EVENT: `${T}/chat/network-event.hbs`,
