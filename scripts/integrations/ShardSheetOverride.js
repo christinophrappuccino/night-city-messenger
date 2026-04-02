@@ -56,6 +56,32 @@ export class ShardSheetOverride {
     bind('renderItemDirectory', dirHandler);
     bind('renderDocumentDirectory', dirHandler);
 
+    // Safe fallback for CPR custom sheet classes that don't fire renderItemSheet.
+    // Only intercepts apps whose document is a shard item. Strictly excludes
+    // NCM apps by checking the app ID prefix.
+    bind('renderApplication', (app) => {
+      try {
+        // Only care about apps that have an item document
+        const item = app.document ?? app.object;
+        if (!item?.getFlag) return;
+        if (!item.getFlag(MODULE_ID, 'isDataShard')) return;
+
+        // Strict NCM exclusion — our apps always have 'ncm-' prefix in their ID
+        const appId = app.id || '';
+        if (appId.startsWith('ncm-')) return;
+        if (app._ncmBypass) { app._ncmBypass = false; return; }
+
+        // This is a non-NCM app rendering a shard item — redirect
+        const openFn = game.nightcity?.openDataShard;
+        if (openFn) {
+          app.close({ force: true });
+          openFn(item);
+        }
+      } catch {
+        // Silent — fires for every app
+      }
+    });
+
     // Sidebar tab switch — re-inject badges after tab changes
     bind('changeSidebarTab', (tab) => {
       if (tab?.id === 'items' || tab?.tabName === 'items') {
@@ -506,11 +532,13 @@ export class ShardSheetOverride {
         const result = await dataShardService.convertToDataShard(item);
         if (result.success) {
           ui.notifications.info(`"${item.name}" converted to data shard`);
-          // Refresh sidebar + actor sheets so badges/intercepts update
-          ui.items?.render();
-          for (const sheet of Object.values(ui.windows)) {
-            if (sheet.actor?.items?.has(item.id)) sheet.render(false);
-          }
+          // Delay refresh so flag changes propagate before DOM rebuild
+          setTimeout(() => {
+            ui.items?.render();
+            for (const sheet of Object.values(ui.windows)) {
+              if (sheet.actor?.items?.has(item.id)) sheet.render(false);
+            }
+          }, 150);
         } else {
           ui.notifications.error(`Failed to convert: ${result.error}`);
         }
@@ -552,11 +580,12 @@ export class ShardSheetOverride {
         const result = await dataShardService.removeDataShard(item);
         if (result?.success !== false) {
           ui.notifications.info(`Shard data removed from "${item.name}"`);
-          // Refresh sidebar + actor sheets so badges/intercepts clear
-          ui.items?.render();
-          for (const sheet of Object.values(ui.windows)) {
-            if (sheet.actor?.items?.has(item.id)) sheet.render(false);
-          }
+          setTimeout(() => {
+            ui.items?.render();
+            for (const sheet of Object.values(ui.windows)) {
+              if (sheet.actor?.items?.has(item.id)) sheet.render(false);
+            }
+          }, 150);
         } else {
           ui.notifications.error(`Failed: ${result.error}`);
         }
