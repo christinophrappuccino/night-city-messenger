@@ -506,6 +506,11 @@ export class ShardSheetOverride {
         const result = await dataShardService.convertToDataShard(item);
         if (result.success) {
           ui.notifications.info(`"${item.name}" converted to data shard`);
+          // Refresh sidebar + actor sheets so badges/intercepts update
+          ui.items?.render();
+          for (const sheet of Object.values(ui.windows)) {
+            if (sheet.actor?.items?.has(item.id)) sheet.render(false);
+          }
         } else {
           ui.notifications.error(`Failed to convert: ${result.error}`);
         }
@@ -547,6 +552,11 @@ export class ShardSheetOverride {
         const result = await dataShardService.removeDataShard(item);
         if (result?.success !== false) {
           ui.notifications.info(`Shard data removed from "${item.name}"`);
+          // Refresh sidebar + actor sheets so badges/intercepts clear
+          ui.items?.render();
+          for (const sheet of Object.values(ui.windows)) {
+            if (sheet.actor?.items?.has(item.id)) sheet.render(false);
+          }
         } else {
           ui.notifications.error(`Failed: ${result.error}`);
         }

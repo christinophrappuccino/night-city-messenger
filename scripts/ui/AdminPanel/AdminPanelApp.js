@@ -5642,6 +5642,7 @@ export class AdminPanelApp extends BaseApplication {
     const result = await game.nightcity?.dataShardService?.convertToDataShard(item);
     if (result?.success) {
       ui.notifications.info(`NCM | "${item.name}" converted to data shard.`);
+      ui.items?.render();
       this.render();
     } else {
       ui.notifications.error(`NCM | Failed: ${result?.error || 'Unknown error'}`);
@@ -5965,6 +5966,7 @@ export class AdminPanelApp extends BaseApplication {
     await item.unsetFlag(MODULE_ID, 'state');
 
     ui.notifications.info(`NCM | Unconverted: ${item.name} is now a regular item.`);
+    ui.items?.render();
     this.render();
   }
 
