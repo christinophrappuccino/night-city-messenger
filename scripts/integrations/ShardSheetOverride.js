@@ -220,16 +220,18 @@ export class ShardSheetOverride {
         // ─── Corner badge on thumbnail ───
         const thumb = entry.querySelector('img.thumbnail, img');
         if (thumb) {
-          const container = thumb.parentElement;
-          if (container) {
-            container.style.position = 'relative';
-            container.style.overflow = 'visible';
-          }
+          // Wrap the image in a tight container so the badge is relative to the image
+          const wrapper = document.createElement('div');
+          wrapper.className = 'ncm-shard-img-wrap';
+          wrapper.style.cssText = 'position:relative;display:inline-block;flex-shrink:0;';
+          thumb.parentElement.insertBefore(wrapper, thumb);
+          wrapper.appendChild(thumb);
+
           const tag = document.createElement('div');
           tag.className = 'ncm-shard-img-tag';
           tag.innerHTML = '<i class="fas fa-microchip"></i>';
           tag.title = 'Data Shard';
-          (container ?? thumb.parentElement).appendChild(tag);
+          wrapper.appendChild(tag);
         }
 
         // ─── Click intercept ───
@@ -246,7 +248,8 @@ export class ShardSheetOverride {
           if (el) { el.addEventListener('click', interceptClick, { capture: true }); break; }
         }
         if (thumb) {
-          (thumb.closest('.thumbnail') ?? thumb).addEventListener('click', interceptClick, { capture: true });
+          const clickTarget = thumb.closest('.ncm-shard-img-wrap') ?? thumb;
+          clickTarget.addEventListener('click', interceptClick, { capture: true });
         }
       }
     } catch (err) {
