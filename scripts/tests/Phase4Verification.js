@@ -307,7 +307,7 @@ export class Phase4Verification {
 
       return {
         passed: true,
-        detail: 'ShardSheetOverride active — renderItemSheet + renderActorSheet (with inline context menus)',
+        detail: 'ShardSheetOverride active — renderItemSheet + renderActorSheet + renderItemDirectory + getItemDirectoryEntryContext + renderApplication',
       };
     });
 

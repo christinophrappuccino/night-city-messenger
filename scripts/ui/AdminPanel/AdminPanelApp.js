@@ -5457,7 +5457,12 @@ export class AdminPanelApp extends BaseApplication {
     const item = AdminPanelApp._findItem(itemId);
     if (!item) return;
 
-    item.sheet.render(true);
+    // Use the shard viewer if it's a data shard, otherwise fall back to default sheet
+    if (item.getFlag(MODULE_ID, 'isDataShard') && game.nightcity?.openDataShard) {
+      game.nightcity.openDataShard(item);
+    } else {
+      item.sheet.render(true);
+    }
     log.info(`Admin: Opening shard ${item.name}`);
   }
 
@@ -5516,20 +5521,19 @@ export class AdminPanelApp extends BaseApplication {
     // Gather all unconverted items from world items + actor inventories
     const candidates = [];
     const seenIds = new Set();
+    const types = new Set();
 
-    // World items
     for (const item of (game.items ?? [])) {
       if (item.getFlag(MODULE_ID, 'isDataShard')) continue;
-      candidates.push({ id: item.id, name: item.name, source: 'World', uuid: item.uuid });
+      candidates.push({ id: item.id, name: item.name, type: item.type, source: 'World', uuid: item.uuid, img: item.img });
       seenIds.add(item.id);
+      types.add(item.type);
     }
-
-    // Actor inventory items
     for (const actor of (game.actors ?? [])) {
       for (const item of actor.items) {
-        if (seenIds.has(item.id)) continue;
-        if (item.getFlag(MODULE_ID, 'isDataShard')) continue;
-        candidates.push({ id: item.id, name: `${item.name} (${actor.name})`, source: actor.name, uuid: item.uuid });
+        if (seenIds.has(item.id) || item.getFlag(MODULE_ID, 'isDataShard')) continue;
+        candidates.push({ id: item.id, name: item.name, type: item.type, source: actor.name, uuid: item.uuid, img: item.img });
+        types.add(item.type);
       }
     }
 
@@ -5539,20 +5543,83 @@ export class AdminPanelApp extends BaseApplication {
     }
 
     candidates.sort((a, b) => a.name.localeCompare(b.name));
-    const options = candidates.map(c => `<option value="${c.uuid}">${c.name}</option>`).join('');
+    const typeOptions = [...types].sort().map(t => `<option value="${t}">${t}</option>`).join('');
 
     const uuid = await new Promise(resolve => {
       new Dialog({
         title: 'Convert Item to Data Shard',
-        content: `<p>Select an item to convert into a data shard:</p>
-          <div class="form-group"><select id="ncm-convert-pick" style="width:100%;">${options}</select></div>
-          <p style="font-size:11px;color:#8888a0;margin-top:6px;">The item is preserved — shard data is added as metadata flags.</p>`,
+        content: `
+          <div class="ncm-picker">
+            <div class="ncm-picker__controls">
+              <input type="text" id="ncm-pick-search" placeholder="Search items..." autocomplete="off" style="flex:1;">
+              <select id="ncm-pick-type"><option value="">All types</option>${typeOptions}</select>
+            </div>
+            <div class="ncm-picker__list" id="ncm-pick-list" style="max-height:280px;overflow-y:auto;border:1px solid #444;border-radius:3px;margin:6px 0;">
+              ${candidates.map(c => `
+                <div class="ncm-picker__item" data-uuid="${c.uuid}" data-name="${c.name.toLowerCase()}" data-type="${c.type}" data-source="${c.source.toLowerCase()}">
+                  <img src="${c.img || 'icons/svg/item-bag.svg'}" width="28" height="28" style="border-radius:3px;border:1px solid #555;object-fit:cover;">
+                  <div style="flex:1;min-width:0;">
+                    <div style="font-size:12px;font-weight:500;color:#ddd;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.name}</div>
+                    <div style="font-size:10px;color:#888;">${c.type} · ${c.source}</div>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+            <div style="font-size:10px;color:#888;margin-top:2px;" id="ncm-pick-count">${candidates.length} items</div>
+          </div>
+          <style>
+            .ncm-picker__controls { display:flex; gap:6px; margin-bottom:6px; }
+            .ncm-picker__controls input, .ncm-picker__controls select { padding:4px 8px; background:#2a2a2e; border:1px solid #555; border-radius:3px; color:#ddd; font-size:12px; }
+            .ncm-picker__item { display:flex; align-items:center; gap:8px; padding:5px 8px; cursor:pointer; border-bottom:1px solid #3a3a3e; }
+            .ncm-picker__item:hover { background:rgba(25,243,247,0.06); }
+            .ncm-picker__item.selected { background:rgba(25,243,247,0.1); outline:1px solid rgba(25,243,247,0.3); }
+            .ncm-picker__item[data-hidden="true"] { display:none; }
+          </style>`,
         buttons: {
-          convert: { label: '<i class="fas fa-microchip"></i> Convert', callback: html => resolve(html.find('#ncm-convert-pick').val()) },
+          convert: { label: '<i class="fas fa-microchip"></i> Convert', callback: html => {
+            const sel = html[0].querySelector('.ncm-picker__item.selected');
+            resolve(sel?.dataset.uuid || null);
+          }},
           cancel: { label: 'Cancel', callback: () => resolve(null) },
         },
         default: 'convert',
-      }).render(true);
+        render: html => {
+          const root = html[0] ?? html;
+          const search = root.querySelector('#ncm-pick-search');
+          const typeFilter = root.querySelector('#ncm-pick-type');
+          const list = root.querySelector('#ncm-pick-list');
+          const count = root.querySelector('#ncm-pick-count');
+
+          const filter = () => {
+            const q = search.value.toLowerCase();
+            const t = typeFilter.value;
+            let visible = 0;
+            list.querySelectorAll('.ncm-picker__item').forEach(el => {
+              const nameMatch = !q || el.dataset.name.includes(q) || el.dataset.source.includes(q);
+              const typeMatch = !t || el.dataset.type === t;
+              const show = nameMatch && typeMatch;
+              el.dataset.hidden = !show;
+              if (show) visible++;
+            });
+            count.textContent = `${visible} item${visible !== 1 ? 's' : ''}`;
+          };
+          search.addEventListener('input', filter);
+          typeFilter.addEventListener('change', filter);
+
+          list.addEventListener('click', (ev) => {
+            const item = ev.target.closest('.ncm-picker__item');
+            if (!item) return;
+            list.querySelectorAll('.ncm-picker__item.selected').forEach(s => s.classList.remove('selected'));
+            item.classList.add('selected');
+          });
+          list.addEventListener('dblclick', (ev) => {
+            const item = ev.target.closest('.ncm-picker__item');
+            if (item) { item.classList.add('selected'); root.closest('.dialog')?.querySelector('[data-button="convert"]')?.click(); }
+          });
+
+          search.focus();
+        },
+      }, { width: 420 }).render(true);
     });
 
     if (!uuid) return;
@@ -5788,28 +5855,71 @@ export class AdminPanelApp extends BaseApplication {
 
     let item;
     if (itemId) {
-      // Per-item unconvert button (has data-item-id)
       item = AdminPanelApp._findItem(itemId);
     } else {
-      // Top-level unconvert button — show a shard picker
+      // Top-level button — show a searchable shard picker
       const shards = AdminPanelApp._getAllDataShards();
       if (!shards.length) {
         ui.notifications.warn('NCM | No data shards to unconvert.');
         return;
       }
 
-      const options = shards.map(i => `<option value="${i.id}">${i.name}</option>`).join('');
       const pickedId = await new Promise(resolve => {
         new Dialog({
           title: 'Unconvert Data Shard',
-          content: `<p>Select a data shard to revert back to a regular item:</p>
-            <div class="form-group"><select id="ncm-unconvert-pick" style="width:100%;">${options}</select></div>`,
+          content: `
+            <div class="ncm-picker">
+              <input type="text" id="ncm-pick-search" placeholder="Search shards..." autocomplete="off" style="width:100%;padding:4px 8px;background:#2a2a2e;border:1px solid #555;border-radius:3px;color:#ddd;font-size:12px;margin-bottom:6px;">
+              <div class="ncm-picker__list" id="ncm-pick-list" style="max-height:240px;overflow-y:auto;border:1px solid #444;border-radius:3px;margin:4px 0;">
+                ${shards.map(s => {
+                  const config = s.getFlag(MODULE_ID, 'config') || {};
+                  const preset = config.preset || 'default';
+                  return `<div class="ncm-picker__item" data-id="${s.id}" data-name="${s.name.toLowerCase()}">
+                    <img src="${s.img || 'icons/svg/item-bag.svg'}" width="28" height="28" style="border-radius:3px;border:1px solid #555;object-fit:cover;">
+                    <div style="flex:1;min-width:0;">
+                      <div style="font-size:12px;font-weight:500;color:#ddd;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${s.name}</div>
+                      <div style="font-size:10px;color:#888;">${s.type} · ${preset}</div>
+                    </div>
+                  </div>`;
+                }).join('')}
+              </div>
+              <div style="font-size:10px;color:#c44;margin-top:4px;"><i class="fas fa-exclamation-triangle"></i> Shard content, ICE, and configuration will be removed.</div>
+            </div>
+            <style>
+              .ncm-picker__item { display:flex; align-items:center; gap:8px; padding:5px 8px; cursor:pointer; border-bottom:1px solid #3a3a3e; }
+              .ncm-picker__item:hover { background:rgba(246,82,97,0.06); }
+              .ncm-picker__item.selected { background:rgba(246,82,97,0.1); outline:1px solid rgba(246,82,97,0.3); }
+              .ncm-picker__item[data-hidden="true"] { display:none; }
+            </style>`,
           buttons: {
-            unconvert: { label: '<i class="fas fa-rotate-left"></i> Unconvert', callback: html => resolve(html.find('#ncm-unconvert-pick').val()) },
+            unconvert: { label: '<i class="fas fa-rotate-left"></i> Unconvert', callback: html => {
+              const sel = html[0].querySelector('.ncm-picker__item.selected');
+              resolve(sel?.dataset.id || null);
+            }},
             cancel: { label: 'Cancel', callback: () => resolve(null) },
           },
           default: 'unconvert',
-        }).render(true);
+          render: html => {
+            const root = html[0] ?? html;
+            const search = root.querySelector('#ncm-pick-search');
+            const list = root.querySelector('#ncm-pick-list');
+
+            search.addEventListener('input', () => {
+              const q = search.value.toLowerCase();
+              list.querySelectorAll('.ncm-picker__item').forEach(el => {
+                el.dataset.hidden = q && !el.dataset.name.includes(q);
+              });
+            });
+            list.addEventListener('click', (ev) => {
+              const item = ev.target.closest('.ncm-picker__item');
+              if (!item) return;
+              list.querySelectorAll('.selected').forEach(s => s.classList.remove('selected'));
+              item.classList.add('selected');
+            });
+
+            search.focus();
+          },
+        }, { width: 380 }).render(true);
       });
 
       if (!pickedId) return;
@@ -5827,7 +5937,6 @@ export class AdminPanelApp extends BaseApplication {
     await item.unsetFlag(MODULE_ID, 'isDataShard');
     await item.unsetFlag(MODULE_ID, 'config');
     await item.unsetFlag(MODULE_ID, 'state');
-    // Keep journalId so data isn't lost, just detached
 
     ui.notifications.info(`NCM | Unconverted: ${item.name} is now a regular item.`);
     this.render();
