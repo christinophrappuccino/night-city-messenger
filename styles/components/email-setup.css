@@ -2,18 +2,15 @@
  * Email Setup Flow — Styles
  * @file styles/components/email-setup.css
  * @module cyberpunkred-messenger
- *
- * Fonts: --ncm-font-title (Orbitron) for headings
- *        --ncm-font-display / --ncm-font-body (Rajdhani) for body
- *        --ncm-font-mono (Share Tech Mono) for terminal/technical data
  */
 
 /* ═══ Window ═══ */
 .ncm-app.ncm-email-setup .window-content { background: var(--ncm-bg-deep, #0a0a0f) !important; padding: 0 !important; display: flex !important; flex-direction: column !important; overflow: hidden !important; }
-.ncm-email-setup__root { display: flex !important; flex-direction: column !important; flex: 1 !important; overflow: hidden !important; }
-.ncm-email-setup__body { flex: 1 !important; position: relative !important; overflow: hidden !important; min-height: 300px !important; }
 
-/* Scanline */
+.ncm-email-setup__root { display: flex !important; flex-direction: column !important; flex: 1 !important; overflow: hidden !important; }
+.ncm-email-setup__body { flex: 1 !important; position: relative !important; overflow: hidden !important; min-height: 280px !important; }
+
+/* Scanline overlay */
 .ncm-app.ncm-email-setup .window-content::after { content: '' !important; position: absolute !important; inset: 0 !important; background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,212,230,0.005) 2px, rgba(0,212,230,0.005) 4px) !important; pointer-events: none !important; z-index: 50 !important; }
 
 /* ═══ Steps ═══ */
@@ -23,28 +20,29 @@
 /* ═══ Step Indicator ═══ */
 .ncm-email-step-indicator { display: flex !important; align-items: center !important; gap: 8px !important; padding: 0 24px !important; max-height: 0 !important; opacity: 0 !important; overflow: hidden !important; transition: max-height 0.4s ease, opacity 0.3s ease, padding 0.3s ease !important; }
 .ncm-email-step-indicator--show { max-height: 50px !important; opacity: 1 !important; padding: 14px 24px 0 !important; }
-.ncm-email-step-dot { width: 22px !important; height: 22px !important; border-radius: 50% !important; display: flex !important; align-items: center !important; justify-content: center !important; font-family: var(--ncm-font-title, 'Orbitron', sans-serif) !important; font-size: 8px !important; font-weight: 700 !important; border: 1px solid var(--ncm-border, #2a2a45) !important; color: var(--ncm-text-muted, #555570) !important; background: var(--ncm-bg-surface, #1a1a2e) !important; transition: all 0.35s ease !important; }
+.ncm-email-step-dot { width: 22px !important; height: 22px !important; border-radius: 50% !important; display: flex !important; align-items: center !important; justify-content: center !important; font-family: var(--ncm-font-heading, 'Orbitron', sans-serif) !important; font-size: 8px !important; font-weight: 700 !important; border: 1px solid var(--ncm-border, #2a2a45) !important; color: var(--ncm-text-muted, #555570) !important; background: var(--ncm-bg-surface, #1a1a2e) !important; transition: all 0.35s ease !important; }
 .ncm-email-step-dot--active { border-color: var(--ncm-secondary, #00D4E6) !important; color: var(--ncm-secondary, #00D4E6) !important; background: rgba(0,212,230,0.08) !important; }
 .ncm-email-step-dot--done { border-color: var(--ncm-success, #34D399) !important; color: var(--ncm-bg-deep, #0a0a0f) !important; background: var(--ncm-success, #34D399) !important; }
 .ncm-email-step-line { flex: 1 !important; height: 1px !important; background: var(--ncm-border, #2a2a45) !important; transition: background 0.35s ease !important; }
 .ncm-email-step-line--done { background: var(--ncm-success, #34D399) !important; }
 
 /* ═══ Shared Typography ═══ */
-.ncm-email-heading { font-family: var(--ncm-font-title, 'Orbitron', sans-serif) !important; font-size: 13px !important; font-weight: 700 !important; color: var(--ncm-text-primary, #e0e0e8) !important; text-transform: uppercase !important; letter-spacing: 0.06em !important; margin-bottom: 4px !important; }
+.ncm-email-heading { font-family: var(--ncm-font-heading, 'Orbitron', sans-serif) !important; font-size: 13px !important; font-weight: 700 !important; color: var(--ncm-text-primary, #e0e0e8) !important; text-transform: uppercase !important; letter-spacing: 0.06em !important; margin-bottom: 4px !important; }
 .ncm-email-subheading { font-family: var(--ncm-font-display, 'Rajdhani', sans-serif) !important; font-size: 12px !important; font-weight: 500 !important; color: var(--ncm-text-secondary, #8888a0) !important; margin-bottom: 20px !important; line-height: 1.4 !important; }
 .ncm-email-field-label { font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace) !important; font-size: 9px !important; color: var(--ncm-text-muted, #555570) !important; text-transform: uppercase !important; letter-spacing: 0.08em !important; margin-bottom: 6px !important; }
 .ncm-email-dim { color: var(--ncm-text-muted, #555570) !important; }
 .ncm-email-form { padding: 18px 24px !important; }
 
-/* ═══ Boot Terminal ═══ */
-.ncm-email-boot { padding: 0 !important; }
+/* ═══ Boot Terminal — typewriter ═══ */
 .ncm-email-boot__terminal { padding: 20px 24px !important; font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace) !important; font-size: 11px !important; color: var(--ncm-secondary, #00D4E6) !important; line-height: 2.1 !important; min-height: 200px !important; }
-.ncm-email-boot__line { min-height: 1.3em !important; }
+.ncm-email-boot__line { min-height: 1.4em !important; }
+.ncm-email-boot__line--visible { visibility: visible !important; }
 .ncm-email-boot__line--dim { color: var(--ncm-text-muted, #555570) !important; }
 .ncm-email-boot__line--warn { color: var(--ncm-primary, #F65261) !important; }
-.ncm-email-boot__line--heading { color: var(--ncm-text-primary, #e0e0e8) !important; font-family: var(--ncm-font-title, 'Orbitron', sans-serif) !important; font-size: 11px !important; letter-spacing: 0.1em !important; margin-top: 10px !important; }
+.ncm-email-boot__line--heading { color: var(--ncm-text-primary, #e0e0e8) !important; font-family: var(--ncm-font-heading, 'Orbitron', sans-serif) !important; font-size: 11px !important; letter-spacing: 0.1em !important; margin-top: 10px !important; }
 .ncm-email-boot__cursor { display: inline-block !important; width: 7px !important; height: 13px !important; background: var(--ncm-secondary, #00D4E6) !important; margin-left: 2px !important; vertical-align: text-bottom !important; animation: ncmCursorBlink 0.6s steps(1) infinite !important; }
 @keyframes ncmCursorBlink { 50% { opacity: 0; } }
+
 .ncm-email-boot__progress { margin: 4px 24px 16px !important; height: 2px !important; background: rgba(0,212,230,0.1) !important; border-radius: 1px !important; overflow: hidden !important; }
 .ncm-email-boot__progress-fill { height: 100% !important; background: var(--ncm-secondary, #00D4E6) !important; width: 0%; }
 
@@ -82,23 +80,25 @@
 .ncm-email-domain-card--active .ncm-email-domain-card__check { border-color: var(--ncm-secondary, #00D4E6) !important; color: var(--ncm-secondary, #00D4E6) !important; background: rgba(0,212,230,0.1) !important; }
 
 .ncm-email-custom-domain { display: flex !important; align-items: center !important; gap: 8px !important; padding: 10px 14px !important; background: var(--ncm-bg-surface, #1a1a2e) !important; border: 1px dashed var(--ncm-border, #2a2a45) !important; border-radius: 2px !important; }
-.ncm-email-custom-domain__icon { color: var(--ncm-text-muted, #555570) !important; font-size: 11px !important; }
+.ncm-email-custom-domain__icon { color: var(--ncm-text-muted, #555570) !important; font-size: 12px !important; }
 .ncm-email-custom-domain input { flex: 1 !important; background: none !important; border: none !important; outline: none !important; font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace) !important; font-size: 12px !important; color: var(--ncm-text-primary, #e0e0e8) !important; min-height: 0 !important; box-shadow: none !important; padding: 0 !important; }
 .ncm-email-custom-domain input::placeholder { color: var(--ncm-text-muted, #555570) !important; }
 
 /* ═══ Confirmation ═══ */
 .ncm-email-confirm-card { margin: 16px 0 20px !important; padding: 24px 20px !important; text-align: center !important; background: rgba(0,212,230,0.03) !important; border: 1px solid rgba(0,212,230,0.12) !important; border-radius: 3px !important; border-left: 3px solid var(--ncm-secondary, #00D4E6) !important; }
 .ncm-email-confirm-label { font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace) !important; font-size: 8px !important; color: var(--ncm-text-muted, #555570) !important; text-transform: uppercase !important; letter-spacing: 0.15em !important; margin-bottom: 8px !important; }
-.ncm-email-confirm-email { font-family: var(--ncm-font-title, 'Orbitron', sans-serif) !important; font-size: 18px !important; font-weight: 700 !important; color: var(--ncm-secondary, #00D4E6) !important; text-shadow: 0 0 20px rgba(0,212,230,0.3) !important; word-break: break-all !important; }
+.ncm-email-confirm-email { font-family: var(--ncm-font-heading, 'Orbitron', sans-serif) !important; font-size: 18px !important; font-weight: 700 !important; color: var(--ncm-secondary, #00D4E6) !important; text-shadow: 0 0 20px rgba(0,212,230,0.3) !important; }
+
 .ncm-email-confirm-details { display: flex !important; flex-direction: column !important; }
 .ncm-email-confirm-row { display: flex !important; align-items: center !important; justify-content: space-between !important; padding: 7px 0 !important; border-bottom: 1px solid rgba(42,42,69,0.25) !important; }
 .ncm-email-confirm-row:last-child { border-bottom: none !important; }
 .ncm-email-confirm-row__label { font-family: var(--ncm-font-display, 'Rajdhani', sans-serif) !important; font-size: 11px !important; font-weight: 600 !important; color: var(--ncm-text-secondary, #8888a0) !important; }
 .ncm-email-confirm-row__value { font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace) !important; font-size: 11px !important; color: var(--ncm-text-primary, #e0e0e8) !important; }
+
 .ncm-email-net-badge { display: inline-flex !important; align-items: center !important; gap: 6px !important; padding: 3px 10px !important; border-radius: 2px !important; font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace) !important; font-size: 10px !important; font-weight: 700 !important; border: 1px solid !important; }
 
-/* ═══ Registration ═══ */
-.ncm-email-reg { display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; min-height: 310px !important; padding: 24px !important; }
+/* ═══ Registration Animation ═══ */
+.ncm-email-reg { display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; min-height: 300px !important; padding: 24px !important; }
 .ncm-email-reg__spinner { width: 64px !important; height: 64px !important; position: relative !important; margin-bottom: 24px !important; }
 .ncm-email-reg__ring { position: absolute !important; inset: 0 !important; border: 2px solid rgba(0,212,230,0.1) !important; border-top-color: var(--ncm-secondary, #00D4E6) !important; border-radius: 50% !important; animation: ncmEmailSpin 0.8s linear infinite !important; }
 .ncm-email-reg__ring--inner { inset: 10px !important; border-top-color: var(--ncm-accent, #F0C55B) !important; animation-direction: reverse !important; animation-duration: 1.2s !important; }
@@ -106,7 +106,7 @@
 @keyframes ncmEmailSpin { to { transform: rotate(360deg); } }
 
 .ncm-email-reg__status { font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace) !important; font-size: 12px !important; color: var(--ncm-secondary, #00D4E6) !important; text-transform: uppercase !important; letter-spacing: 0.08em !important; margin-bottom: 6px !important; text-align: center !important; min-height: 18px !important; }
-.ncm-email-reg__sub { font-family: var(--ncm-font-display, 'Rajdhani', sans-serif) !important; font-size: 10px !important; font-weight: 500 !important; color: var(--ncm-text-muted, #555570) !important; margin-bottom: 20px !important; text-align: center !important; min-height: 14px !important; }
+.ncm-email-reg__sub { font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace) !important; font-size: 9px !important; color: var(--ncm-text-muted, #555570) !important; margin-bottom: 20px !important; text-align: center !important; min-height: 14px !important; }
 .ncm-email-reg__progress-track { width: 220px !important; height: 3px !important; background: rgba(0,212,230,0.1) !important; border-radius: 2px !important; overflow: hidden !important; }
 .ncm-email-reg__progress-fill { height: 100% !important; background: var(--ncm-secondary, #00D4E6) !important; border-radius: 2px !important; width: 0%; }
 
@@ -114,14 +114,13 @@
 .ncm-email-reg__success--show { display: flex !important; animation: ncmEmailFadeUp 0.5s ease !important; }
 @keyframes ncmEmailFadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 .ncm-email-reg__success-icon { width: 64px !important; height: 64px !important; border-radius: 50% !important; background: rgba(52,211,153,0.1) !important; border: 2px solid var(--ncm-success, #34D399) !important; display: flex !important; align-items: center !important; justify-content: center !important; font-size: 24px !important; color: var(--ncm-success, #34D399) !important; }
-.ncm-email-reg__success-text { font-family: var(--ncm-font-title, 'Orbitron', sans-serif) !important; font-size: 12px !important; font-weight: 700 !important; color: var(--ncm-success, #34D399) !important; text-transform: uppercase !important; letter-spacing: 0.1em !important; }
-.ncm-email-reg__success-email { font-family: var(--ncm-font-title, 'Orbitron', sans-serif) !important; font-size: 16px !important; font-weight: 700 !important; color: var(--ncm-secondary, #00D4E6) !important; text-shadow: 0 0 20px rgba(0,212,230,0.3) !important; }
-.ncm-email-reg__success-hint { font-family: var(--ncm-font-display, 'Rajdhani', sans-serif) !important; font-size: 10px !important; font-weight: 500 !important; color: var(--ncm-text-muted, #555570) !important; }
-.ncm-email-reg__done-btn { margin-top: 6px !important; }
+.ncm-email-reg__success-text { font-family: var(--ncm-font-heading, 'Orbitron', sans-serif) !important; font-size: 12px !important; font-weight: 700 !important; color: var(--ncm-success, #34D399) !important; text-transform: uppercase !important; letter-spacing: 0.1em !important; }
+.ncm-email-reg__success-email { font-family: var(--ncm-font-heading, 'Orbitron', sans-serif) !important; font-size: 18px !important; font-weight: 700 !important; color: var(--ncm-secondary, #00D4E6) !important; text-shadow: 0 0 20px rgba(0,212,230,0.3) !important; }
+.ncm-email-reg__success-hint { font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace) !important; font-size: 9px !important; color: var(--ncm-text-muted, #555570) !important; }
 
-/* ═══ Footer ═══ */
-.ncm-email-setup__footer { display: flex !important; align-items: center !important; gap: 8px !important; padding: 10px 16px !important; background: var(--ncm-bg-base, #12121a) !important; border-top: 1px solid var(--ncm-border, #2a2a45) !important; flex-shrink: 0 !important; transition: opacity 0.3s, max-height 0.3s, padding 0.3s !important; overflow: hidden !important; }
-.ncm-email-footer--hidden { opacity: 0 !important; max-height: 0 !important; padding: 0 16px !important; border: none !important; }
+/* ═══ Footer — adaptive button, hidden during boot/registration ═══ */
+.ncm-email-setup__footer { display: flex !important; align-items: center !important; gap: 8px !important; padding: 10px 16px !important; background: var(--ncm-bg-base, #12121a) !important; border-top: 1px solid var(--ncm-border, #2a2a45) !important; flex-shrink: 0 !important; transition: opacity 0.3s ease, max-height 0.3s ease, padding 0.3s ease !important; overflow: hidden !important; }
+.ncm-email-setup__footer--hidden { opacity: 0 !important; max-height: 0 !important; padding: 0 16px !important; border-top: none !important; }
 .ncm-email-setup__footer-spacer { flex: 1 !important; }
 
 .ncm-email-btn { display: inline-flex !important; align-items: center !important; gap: 5px !important; padding: 7px 16px !important; border-radius: 2px !important; cursor: pointer !important; border: 1px solid !important; font-family: var(--ncm-font-display, 'Rajdhani', sans-serif) !important; font-size: 11px !important; font-weight: 700 !important; text-transform: uppercase !important; letter-spacing: 0.04em !important; transition: all 0.15s !important; background-image: none !important; appearance: none !important; box-shadow: none !important; min-height: 0 !important; line-height: 1.2 !important; }
