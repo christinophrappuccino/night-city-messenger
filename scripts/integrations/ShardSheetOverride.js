@@ -39,12 +39,12 @@ export class ShardSheetOverride {
   activate() {
     if (this.#active) return;
 
-    const h1 = Hooks.on('preRenderItemSheet', this._onPreRenderItemSheet.bind(this));
+    const h1 = Hooks.on('renderItemSheet', this._onRenderItemSheet.bind(this));
     const h2 = Hooks.on('renderActorSheet', this._onRenderActorSheet.bind(this));
     const h3 = Hooks.on('getActorSheetItemContext', this._onGetItemContext.bind(this));
 
     this.#hookIds.push(
-      { event: 'preRenderItemSheet', id: h1 },
+      { event: 'renderItemSheet', id: h1 },
       { event: 'renderActorSheet', id: h2 },
       { event: 'getActorSheetItemContext', id: h3 },
     );
@@ -66,28 +66,31 @@ export class ShardSheetOverride {
   }
 
   // ═══════════════════════════════════════════════════════════════
-  //  1. Sheet Interception — preRenderItemSheet
+  //  1. Sheet Interception — renderItemSheet (close & redirect)
   // ═══════════════════════════════════════════════════════════════
 
   /**
-   * Intercept item sheet rendering. If the item is a data shard,
-   * prevent the default sheet and open our shard viewer instead.
+   * Intercept item sheet after it renders. If the item is a data shard,
+   * immediately close the Foundry sheet and open our shard viewer.
+   *
+   * Uses renderItemSheet (post-render) instead of preRenderItemSheet
+   * because preRender's `return false` doesn't reliably prevent rendering
+   * across all Foundry versions and system sheet classes.
    *
    * The `_ncmBypass` flag on the sheet allows the GM's "View Original
    * Item" button to open the native Foundry sheet without looping.
    *
    * @param {ItemSheet} sheet - The item sheet application
-   * @param {object} data - Template render data
-   * @returns {boolean|void} Return `false` to prevent rendering
+   * @param {jQuery|HTMLElement} html - The rendered HTML
+   * @param {object} data - Template data
    */
-  _onPreRenderItemSheet(sheet, data) {
+  _onRenderItemSheet(sheet, html, data) {
     try {
       const item = sheet.document ?? sheet.object;
       if (!item) return;
 
-      // GM bypass — let the Foundry sheet render normally
+      // GM bypass — let the Foundry sheet stay open
       if (sheet._ncmBypass) {
-        // Clear the flag so next open goes through the shard viewer again
         sheet._ncmBypass = false;
         return;
       }
@@ -98,17 +101,14 @@ export class ShardSheetOverride {
       // Launch our shard viewer
       const openFn = game.nightcity?.openDataShard;
       if (openFn) {
+        // Close the Foundry sheet, then open the shard viewer
+        sheet.close({ force: true });
         openFn(item);
       } else {
-        log.warn('ShardSheetOverride: openDataShard not available, falling through to default sheet');
-        return;
+        log.warn('ShardSheetOverride: openDataShard not available, leaving default sheet open');
       }
-
-      // Prevent the Foundry sheet from rendering
-      return false;
     } catch (err) {
-      log.error(`ShardSheetOverride: preRender error — ${err.message}`);
-      // Don't block the sheet on error — let it fall through
+      log.error(`ShardSheetOverride: renderItemSheet intercept error — ${err.message}`);
     }
   }
 
