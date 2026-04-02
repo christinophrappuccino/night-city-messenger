@@ -218,20 +218,27 @@ export class ShardSheetOverride {
         entry.dataset.ncmShard = 'true';
 
         // ─── Corner badge on thumbnail ───
+        // Don't wrap or reparent anything — just append badge to entry
+        // and position it at the image's bottom-right corner.
         const thumb = entry.querySelector('img.thumbnail, img');
         if (thumb) {
-          // Wrap the image in a tight container so the badge is relative to the image
-          const wrapper = document.createElement('div');
-          wrapper.className = 'ncm-shard-img-wrap';
-          wrapper.style.cssText = 'position:relative;display:inline-block;flex-shrink:0;';
-          thumb.parentElement.insertBefore(wrapper, thumb);
-          wrapper.appendChild(thumb);
+          entry.style.position = 'relative';
+          entry.style.overflow = 'visible';
 
           const tag = document.createElement('div');
           tag.className = 'ncm-shard-img-tag';
           tag.innerHTML = '<i class="fas fa-microchip"></i>';
           tag.title = 'Data Shard';
-          wrapper.appendChild(tag);
+          entry.appendChild(tag);
+
+          // Position at image bottom-right after layout settles
+          const positionBadge = () => {
+            const imgRect = thumb.getBoundingClientRect();
+            const entryRect = entry.getBoundingClientRect();
+            tag.style.top = (imgRect.top - entryRect.top + imgRect.height - 12) + 'px';
+            tag.style.left = (imgRect.left - entryRect.left + imgRect.width - 12) + 'px';
+          };
+          requestAnimationFrame(positionBadge);
         }
 
         // ─── Click intercept ───
@@ -248,8 +255,7 @@ export class ShardSheetOverride {
           if (el) { el.addEventListener('click', interceptClick, { capture: true }); break; }
         }
         if (thumb) {
-          const clickTarget = thumb.closest('.ncm-shard-img-wrap') ?? thumb;
-          clickTarget.addEventListener('click', interceptClick, { capture: true });
+          thumb.addEventListener('click', interceptClick, { capture: true });
         }
       }
     } catch (err) {
