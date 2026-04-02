@@ -131,3 +131,71 @@
 .ncm-email-btn--cyan:hover { background: rgba(0,212,230,0.15) !important; }
 .ncm-email-btn--green { background: rgba(52,211,153,0.08) !important; border-color: rgba(52,211,153,0.3) !important; color: var(--ncm-success, #34D399) !important; }
 .ncm-email-btn--green:hover { background: rgba(52,211,153,0.15) !important; }
+
+/* ═══════════════════════════════════════════════════════════
+   BURN IDENTITY DIALOG — Foundry overrides
+   Used inside Dialog.confirm, targets .ncm-burn-dialog wrapper
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-burn-dialog { font-family: 'Rajdhani', sans-serif !important; padding: 4px 0 !important; color: #8888a0 !important; }
+.ncm-burn-dialog * { margin: 0 !important; box-sizing: border-box !important; }
+.ncm-burn-dialog i { margin: 0 !important; padding: 0 !important; }
+
+.ncm-burn-dialog__heading { font-family: 'Orbitron', sans-serif !important; font-size: 12px !important; font-weight: 700 !important; text-transform: uppercase !important; letter-spacing: 0.06em !important; color: #e0e0e8 !important; margin-bottom: 4px !important; }
+.ncm-burn-dialog__sub { font-family: 'Rajdhani', sans-serif !important; font-size: 12px !important; font-weight: 500 !important; color: #8888a0 !important; margin-bottom: 14px !important; line-height: 1.4 !important; }
+
+.ncm-burn-dialog__warning { display: flex !important; align-items: flex-start !important; gap: 10px !important; padding: 12px 14px !important; background: rgba(255,0,51,0.04) !important; border: 1px solid rgba(255,0,51,0.15) !important; border-radius: 2px !important; border-left: 3px solid #ff0033 !important; margin-bottom: 14px !important; }
+.ncm-burn-dialog__warning-icon { font-size: 16px !important; color: #ff0033 !important; margin-top: 2px !important; flex-shrink: 0 !important; }
+.ncm-burn-dialog__warning-text { font-family: 'Rajdhani', sans-serif !important; font-size: 12px !important; color: #8888a0 !important; line-height: 1.5 !important; }
+.ncm-burn-dialog__warning-text strong { color: #F65261 !important; font-weight: 700 !important; }
+
+.ncm-burn-dialog__current { padding: 14px !important; text-align: center !important; background: #1a1a2e !important; border: 1px solid #2a2a45 !important; border-radius: 2px !important; margin-bottom: 14px !important; }
+.ncm-burn-dialog__current-label { font-family: 'Share Tech Mono', monospace !important; font-size: 8px !important; color: #555570 !important; text-transform: uppercase !important; letter-spacing: 0.1em !important; margin-bottom: 5px !important; }
+.ncm-burn-dialog__current-email { font-family: 'Orbitron', sans-serif !important; font-size: 15px !important; color: #F65261 !important; text-decoration: line-through !important; text-decoration-color: #ff0033 !important; }
+
+.ncm-burn-dialog__consequences { display: flex !important; flex-direction: column !important; gap: 0 !important; }
+.ncm-burn-dialog__consequence { display: flex !important; align-items: center !important; gap: 8px !important; padding: 7px 0 !important; font-family: 'Rajdhani', sans-serif !important; font-size: 11px !important; font-weight: 500 !important; color: #8888a0 !important; border-bottom: 1px solid rgba(42,42,69,0.25) !important; }
+.ncm-burn-dialog__consequence--last { border-bottom: none !important; }
+.ncm-burn-dialog__consequence-ok { width: 14px !important; text-align: center !important; font-size: 9px !important; color: #34D399 !important; flex-shrink: 0 !important; }
+.ncm-burn-dialog__consequence-bad { width: 14px !important; text-align: center !important; font-size: 9px !important; color: #ff0033 !important; flex-shrink: 0 !important; }
+
+/* ═══ Burn Confirm Dialog — Window chrome + button overrides ═══ */
+.ncm-burn-confirm { background: var(--ncm-bg-deep, #0a0a0f) !important; }
+.ncm-burn-confirm .window-header { background: var(--ncm-bg-base, #12121a) !important; border-bottom: 1px solid var(--ncm-border, #2a2a45) !important; }
+.ncm-burn-confirm .window-header .window-title { font-family: 'Rajdhani', sans-serif !important; font-size: 12px !important; font-weight: 600 !important; color: var(--ncm-text-secondary, #8888a0) !important; text-transform: uppercase !important; letter-spacing: 0.06em !important; }
+.ncm-burn-confirm .window-content { background: var(--ncm-bg-deep, #0a0a0f) !important; padding: 0 16px !important; }
+.ncm-burn-confirm .dialog-content { padding: 0 !important; }
+.ncm-burn-confirm .dialog-buttons { background: var(--ncm-bg-base, #12121a) !important; border-top: 1px solid var(--ncm-border, #2a2a45) !important; padding: 10px 16px !important; display: flex !important; gap: 8px !important; }
+
+.ncm-burn-confirm .dialog-buttons button {
+  display: inline-flex !important; align-items: center !important; gap: 5px !important;
+  padding: 7px 16px !important; border-radius: 2px !important; cursor: pointer !important;
+  font-family: 'Rajdhani', sans-serif !important; font-size: 11px !important; font-weight: 700 !important;
+  text-transform: uppercase !important; letter-spacing: 0.04em !important;
+  border: 1px solid !important; transition: all 0.15s !important;
+  background-image: none !important; appearance: none !important; box-shadow: none !important;
+  min-height: 0 !important; line-height: 1.2 !important; flex: 1 !important;
+  justify-content: center !important;
+}
+.ncm-burn-confirm .dialog-buttons button i { font-size: 9px !important; margin: 0 !important; padding: 0 !important; }
+
+/* Burn button (first) — danger red */
+.ncm-burn-confirm .dialog-buttons button:first-child {
+  background: rgba(255,0,51,0.08) !important;
+  border-color: rgba(255,0,51,0.3) !important;
+  color: #ff0033 !important;
+}
+.ncm-burn-confirm .dialog-buttons button:first-child:hover {
+  background: rgba(255,0,51,0.15) !important;
+}
+
+/* Cancel button (second) — ghost */
+.ncm-burn-confirm .dialog-buttons button:last-child {
+  background: none !important;
+  border-color: var(--ncm-border, #2a2a45) !important;
+  color: var(--ncm-text-muted, #555570) !important;
+}
+.ncm-burn-confirm .dialog-buttons button:last-child:hover {
+  border-color: var(--ncm-border-active, #3a3a5a) !important;
+  color: var(--ncm-text-secondary, #8888a0) !important;
+}

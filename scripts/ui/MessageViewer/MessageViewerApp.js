@@ -1443,26 +1443,45 @@ export class MessageViewerApp extends BaseApplication {
         // If actor has an email, warn about burn first
         if (emailService.hasEmail(actor)) {
           const currentEmail = emailService.getEmail(actor);
-          const confirmed = await Dialog.confirm({
-            title: 'Edit NET Identity',
-            content: `<div style="font-family:'Rajdhani',sans-serif;padding:4px 0;">
-              <div style="font-family:'Orbitron',sans-serif;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#e0e0e8;margin-bottom:4px;">Change Your Identity</div>
-              <div style="font-size:12px;color:#8888a0;margin-bottom:14px;line-height:1.4;">Changing your email will permanently burn your current identity. All past messages from this address will show as [BURNED].</div>
-              <div style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;background:rgba(255,0,51,0.04);border:1px solid rgba(255,0,51,0.15);border-radius:2px;border-left:3px solid #ff0033;margin-bottom:14px;">
-                <i class="fas fa-triangle-exclamation" style="font-size:16px;color:#ff0033;margin-top:2px;flex-shrink:0;"></i>
-                <div style="font-size:12px;color:#8888a0;line-height:1.5;">Your current identity <strong style="color:#F65261;">${currentEmail}</strong> will be permanently burned. This cannot be undone.</div>
-              </div>
-              <div style="padding:14px;text-align:center;background:#1a1a2e;border:1px solid #2a2a45;border-radius:2px;margin-bottom:14px;">
-                <div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:#555570;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:5px;">Current Identity (will be burned)</div>
-                <div style="font-family:'Orbitron',sans-serif;font-size:15px;color:#F65261;text-decoration:line-through;text-decoration-color:#ff0033;">${currentEmail}</div>
-              </div>
-              <div style="display:flex;flex-direction:column;gap:0;">
-                <div style="display:flex;align-items:center;gap:8px;padding:7px 0;font-size:11px;color:#8888a0;border-bottom:1px solid rgba(42,42,69,0.25);"><i class="fas fa-check" style="width:14px;text-align:center;font-size:9px;color:#34D399;"></i> Existing messages preserved in all inboxes</div>
-                <div style="display:flex;align-items:center;gap:8px;padding:7px 0;font-size:11px;color:#8888a0;border-bottom:1px solid rgba(42,42,69,0.25);"><i class="fas fa-check" style="width:14px;text-align:center;font-size:9px;color:#34D399;"></i> Old messages show sender as [BURNED]</div>
-                <div style="display:flex;align-items:center;gap:8px;padding:7px 0;font-size:11px;color:#8888a0;border-bottom:1px solid rgba(42,42,69,0.25);"><i class="fas fa-xmark" style="width:14px;text-align:center;font-size:9px;color:#ff0033;"></i> Cannot send or receive until re-registered</div>
-                <div style="display:flex;align-items:center;gap:8px;padding:7px 0;font-size:11px;color:#8888a0;"><i class="fas fa-xmark" style="width:14px;text-align:center;font-size:9px;color:#ff0033;"></i> Old handle may be claimed by another agent</div>
-              </div>
-            </div>`,
+          const confirmed = await new Promise(resolve => {
+            new Dialog({
+              title: 'Edit NET Identity',
+              content: `<div class="ncm-burn-dialog">
+                <div class="ncm-burn-dialog__heading">Change Your Identity</div>
+                <div class="ncm-burn-dialog__sub">Changing your email will permanently burn your current identity. All past messages from this address will show as [BURNED].</div>
+                <div class="ncm-burn-dialog__warning">
+                  <i class="fas fa-triangle-exclamation ncm-burn-dialog__warning-icon"></i>
+                  <div class="ncm-burn-dialog__warning-text">Your current identity <strong>${currentEmail}</strong> will be permanently burned. This cannot be undone.</div>
+                </div>
+                <div class="ncm-burn-dialog__current">
+                  <div class="ncm-burn-dialog__current-label">Current Identity (will be burned)</div>
+                  <div class="ncm-burn-dialog__current-email">${currentEmail}</div>
+                </div>
+                <div class="ncm-burn-dialog__consequences">
+                  <div class="ncm-burn-dialog__consequence"><i class="fas fa-check ncm-burn-dialog__consequence-ok"></i> Existing messages preserved in all inboxes</div>
+                  <div class="ncm-burn-dialog__consequence"><i class="fas fa-check ncm-burn-dialog__consequence-ok"></i> Old messages show sender as [BURNED]</div>
+                  <div class="ncm-burn-dialog__consequence"><i class="fas fa-xmark ncm-burn-dialog__consequence-bad"></i> Cannot send or receive until re-registered</div>
+                  <div class="ncm-burn-dialog__consequence ncm-burn-dialog__consequence--last"><i class="fas fa-xmark ncm-burn-dialog__consequence-bad"></i> Old handle may be claimed by another agent</div>
+                </div>
+              </div>`,
+              buttons: {
+                burn: {
+                  icon: '<i class="fas fa-fire"></i>',
+                  label: 'Burn & Re-register',
+                  callback: () => resolve(true),
+                },
+                cancel: {
+                  icon: '<i class="fas fa-times"></i>',
+                  label: 'Cancel',
+                  callback: () => resolve(false),
+                },
+              },
+              default: 'cancel',
+              close: () => resolve(false),
+            }, {
+              classes: ['ncm-app', 'ncm-burn-confirm'],
+              width: 440,
+            }).render(true);
           });
           if (!confirmed) break;
 
