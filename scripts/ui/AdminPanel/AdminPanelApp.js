@@ -3182,7 +3182,12 @@ export class AdminPanelApp extends BaseApplication {
     // Restore scroll position after render
     requestAnimationFrame(() => {
       const el = this.element?.querySelector('.ncm-admin-content');
-      if (el && this._scrollPositions[this._activeTab]) {
+
+      // Reset scroll to top when switching sub-views
+      if (this._pendingContentScrollReset) {
+        this._pendingContentScrollReset = false;
+        if (el) el.scrollTop = 0;
+      } else if (el && this._scrollPositions[this._activeTab]) {
         el.scrollTop = this._scrollPositions[this._activeTab];
       }
 
@@ -5143,6 +5148,7 @@ export class AdminPanelApp extends BaseApplication {
     const subview = target.dataset.subview || target.closest('[data-subview]')?.dataset.subview;
     if (!subview) return;
     this._networkSubView = subview;
+    this._pendingContentScrollReset = true;
     this.render(true);
   }
 
