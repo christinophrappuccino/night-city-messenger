@@ -45,8 +45,6 @@ export class ShardSheetOverride {
     };
 
     const dirHandler = this._onRenderItemDirectory.bind(this);
-    const ctxHandler = this._onGetDirectoryContext.bind(this);
-    const appHandler = this._onRenderApplication.bind(this);
 
     // Sheet intercept — catches items opened via item.sheet.render()
     bind('renderItemSheet', this._onRenderItemSheet.bind(this));
@@ -58,19 +56,9 @@ export class ShardSheetOverride {
     bind('renderItemDirectory', dirHandler);
     bind('renderDocumentDirectory', dirHandler);
 
-    // Items Directory context menu — try both hook name patterns
-    bind('getItemDirectoryEntryContext', ctxHandler);
-    bind('getDocumentDirectoryEntryContext', ctxHandler);
-
-    // Broad fallback — catches ALL app renders including CPR custom sheets
-    bind('renderApplication', appHandler);
-    // Also catch ApplicationV2 renders (Foundry v12)
-    bind('renderDocumentSheet', appHandler);
-
     // Sidebar tab switch — re-inject badges after tab changes
     bind('changeSidebarTab', (tab) => {
       if (tab?.id === 'items' || tab?.tabName === 'items') {
-        // Small delay to let the DOM update
         setTimeout(() => dirHandler(tab, tab.element, {}), 50);
       }
     });
@@ -139,69 +127,26 @@ export class ShardSheetOverride {
   }
 
   // ═══════════════════════════════════════════════════════════════
-  //  1b. Broad Fallback — renderApplication
+  //  1b. Items Directory — renderItemDirectory
   // ═══════════════════════════════════════════════════════════════
 
   /**
-   * Broad fallback that catches ANY application render. Checks if the
-   * rendered app is an item sheet for a data shard (catching CPR custom
-   * sheet classes, ApplicationV2 sheets, etc. that renderItemSheet misses).
-   */
-  _onRenderApplication(app, html, data) {
-    try {
-      // Try multiple ways to get the item document
-      const item = app.document ?? app.object ?? app.item;
-      if (!item) return;
-
-      // Check if this looks like an item — try multiple detection methods
-      const isItem = item.documentName === 'Item'
-        || item instanceof Item
-        || (item.type && item.name && typeof item.getFlag === 'function' && item.img !== undefined);
-      if (!isItem) return;
-
-      // Not a shard — skip
-      if (!item.getFlag(MODULE_ID, 'isDataShard')) return;
-
-      // Don't intercept our own NCM apps
-      const className = app.constructor?.name || '';
-      if (className.includes('ItemInbox') || className.includes('Ncm') || className.includes('NCM')) return;
-      if (app._ncmBypass) { app._ncmBypass = false; return; }
-
-      // This is a shard item opened via some non-intercepted path — redirect
-      const openFn = game.nightcity?.openDataShard;
-      if (openFn) {
-        app.close({ force: true });
-        openFn(item);
-        log.debug(`ShardSheetOverride: intercepted ${className} for shard "${item.name}"`);
-      }
-    } catch {
-      // Silently ignore — this fires for every app render, must not break anything
-    }
-  }
-
-  // ═══════════════════════════════════════════════════════════════
-  //  1c. Items Directory — renderItemDirectory
-  // ═══════════════════════════════════════════════════════════════
-
-  /**
-   * After the Items Directory sidebar renders, scan for shard items and:
-   *   - Add the corner chip badge to their thumbnails
-   *   - Intercept clicks to open the shard viewer instead of the default sheet
+   * After the Items Directory sidebar renders, scan items and:
+   *   - Add corner chip badge to shard item thumbnails
+   *   - Intercept left-clicks on shards to open the shard viewer
+   *   - On right-click, inject NCM options into Foundry's rendered context menu
    */
   _onRenderItemDirectory(app, html, data) {
     try {
-      // Only process if this is the Items directory
       const isItemsDir = app?.constructor?.name?.includes?.('Item')
         || app?.collection?.documentName === 'Item'
         || app?.id === 'items'
         || app?.tabName === 'items';
-      // If called from renderDocumentDirectory, verify it's for items
       if (!isItemsDir) {
         if (app?.constructor?.name?.includes?.('Document') && app?.collection?.documentName !== 'Item') return;
         if (!isItemsDir && app?.constructor?.name) return;
       }
 
-      // Get root element — handle jQuery, HTMLElement, or app.element
       let root = html?.[0] ?? html;
       if (!root?.querySelector) root = app?.element?.[0] ?? app?.element;
       if (!root?.querySelector) return;
@@ -209,7 +154,6 @@ export class ShardSheetOverride {
       for (const item of (game.items ?? [])) {
         const isShard = item.getFlag(MODULE_ID, 'isDataShard');
 
-        // Find the directory entry
         const entry = root.querySelector(`[data-document-id="${item.id}"]`)
           ?? root.querySelector(`[data-entry-id="${item.id}"]`)
           ?? root.querySelector(`[data-item-id="${item.id}"]`);
@@ -239,7 +183,7 @@ export class ShardSheetOverride {
             requestAnimationFrame(positionBadge);
           }
 
-          // ─── Click intercept (shard items only) ───
+          // ─── Left-click intercept (shard items only) ───
           const interceptClick = (ev) => {
             if (ev.button !== 0 || ev.ctrlKey || ev.metaKey) return;
             ev.stopImmediatePropagation();
@@ -252,93 +196,67 @@ export class ShardSheetOverride {
           }
           if (thumb) thumb.addEventListener('click', interceptClick, { capture: true });
         }
-        // Context menu options are added via getItemDirectoryEntryContext hook — no manual listeners needed
+
+        // ─── Right-click: inject into Foundry's context menu after it renders ───
+        entry.addEventListener('contextmenu', () => {
+          setTimeout(() => this._injectDirectoryContextOptions(item, isShard), 80);
+        });
       }
     } catch (err) {
       log.error(`ShardSheetOverride: renderItemDirectory error — ${err.message}`);
     }
   }
 
-  // ═══════════════════════════════════════════════════════════════
-  //  1d. Items Directory — Context Menu
-  // ═══════════════════════════════════════════════════════════════
-
   /**
-   * Add shard entries to the Items Directory right-click context menu.
-   * Handles multiple hook signatures: (html, options) or (options).
-   * Handles both jQuery and HTMLElement for the `li` argument.
-   * @param {jQuery|Array} htmlOrOptions
-   * @param {Array} [options]
+   * Inject NCM options into Foundry's already-rendered context menu.
+   * Called 80ms after right-click so Foundry's menu is in the DOM.
+   * Appends our options after a separator at the bottom of the existing menu.
+   *
+   * @param {Item} item
+   * @param {boolean} isShard
    */
-  _onGetDirectoryContext(htmlOrOptions, options) {
-    // Handle different hook signatures
-    const opts = Array.isArray(htmlOrOptions) ? htmlOrOptions : (options ?? []);
-    if (!Array.isArray(opts)) return;
+  _injectDirectoryContextOptions(item, isShard) {
+    const menu = document.querySelector('#context-menu');
+    if (!menu) return;
 
-    // Helper to extract item ID from either jQuery or HTMLElement
-    const getItemId = (li) => {
-      if (li?.data) return li.data('documentId') ?? li.data('entryId') ?? li.data('itemId');
-      if (li?.dataset) return li.dataset.documentId ?? li.dataset.entryId ?? li.dataset.itemId;
-      const el = li?.[0];
-      return el?.dataset?.documentId ?? el?.dataset?.entryId ?? el?.dataset?.itemId;
-    };
-    // ─── Convert to Data Shard (non-shard world items, GM only) ───
-    if (isGM()) {
-      opts.push({
-        name: 'Convert to Data Shard',
-        icon: '<i class="fas fa-microchip" style="color:#00D4E6;"></i>',
-        condition: (li) => {
-          const item = game.items.get(getItemId(li));
-          return item && !item.getFlag(MODULE_ID, 'isDataShard');
-        },
-        callback: (li) => {
-          const item = game.items.get(getItemId(li));
-          if (item) this._launchConversionFlow(item);
-        },
+    const ol = menu.querySelector('ol, ul, .context-items') ?? menu;
+
+    const addOption = (label, icon, color, fn) => {
+      const li = document.createElement('li');
+      li.className = 'context-item';
+      li.innerHTML = `<i class="${icon}" style="color:${color};margin-right:6px;"></i> ${label}`;
+      li.style.cssText = 'cursor:pointer;padding:4px 8px;white-space:nowrap;';
+      li.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        menu.remove();
+        document.querySelector('.context-overlay')?.remove();
+        fn();
       });
-    }
+      li.addEventListener('mouseenter', () => { li.style.background = 'rgba(255,255,255,0.06)'; });
+      li.addEventListener('mouseleave', () => { li.style.background = ''; });
+      ol.appendChild(li);
+    };
 
-    // ─── Open Data Shard ───
-    opts.push({
-      name: 'Open Data Shard',
-      icon: '<i class="fas fa-hard-drive" style="color:#00D4E6;"></i>',
-      condition: (li) => {
-        const item = game.items.get(getItemId(li));
-        return item?.getFlag(MODULE_ID, 'isDataShard') === true;
-      },
-      callback: (li) => {
-        const item = game.items.get(getItemId(li));
-        if (item) game.nightcity?.openDataShard(item);
-      },
-    });
+    // Separator before our options
+    const sep = document.createElement('li');
+    sep.style.cssText = 'height:1px;background:#555;margin:3px 0;';
+    ol.appendChild(sep);
 
-    // ─── GM-only: Configure + Unconvert ───
-    if (isGM()) {
-      opts.push({
-        name: 'Configure Shard',
-        icon: '<i class="fas fa-sliders" style="color:#00D4E6;"></i>',
-        condition: (li) => {
-          return game.items.get(getItemId(li))?.getFlag(MODULE_ID, 'isDataShard') === true;
-        },
-        callback: async (li) => {
-          const item = game.items.get(getItemId(li));
-          if (!item) return;
+    if (isShard) {
+      addOption('Open Data Shard', 'fas fa-hard-drive', '#00D4E6', () => game.nightcity?.openDataShard(item));
+      if (isGM()) {
+        addOption('Configure Shard', 'fas fa-sliders', '#00D4E6', async () => {
           const { ItemInboxConfig } = await import('../ui/ItemInbox/ItemInboxConfig.js');
           new ItemInboxConfig({ item }).render(true);
-        },
-      });
-
-      opts.push({
-        name: 'Remove Shard Data',
-        icon: '<i class="fas fa-rotate-left" style="color:#F65261;"></i>',
-        condition: (li) => {
-          return game.items.get(getItemId(li))?.getFlag(MODULE_ID, 'isDataShard') === true;
-        },
-        callback: (li) => {
-          const item = game.items.get(getItemId(li));
-          if (item) this._confirmUnconvert(item);
-        },
-      });
+        });
+        addOption('View Original Item', 'fas fa-file-alt', '#f7c948', () => {
+          const sheet = item.sheet;
+          if (sheet) { sheet._ncmBypass = true; sheet.render(true); }
+        });
+        addOption('Remove Shard Data', 'fas fa-rotate-left', '#F65261', () => this._confirmUnconvert(item));
+      }
+    } else if (isGM()) {
+      addOption('Convert to Data Shard', 'fas fa-microchip', '#00D4E6', () => this._launchConversionFlow(item));
     }
   }
 
