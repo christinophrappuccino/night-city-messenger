@@ -151,25 +151,57 @@ export class ShardSheetOverride {
   }
 
   /**
-   * Add visual shard indicators to an inventory row.
+   * Add visual shard indicators to an inventory row and intercept clicks
+   * so the default Foundry item sheet never opens for shard items.
+   *
+   * Option B: Corner chip tag overlaid on the item image thumbnail.
+   * Plus a click interceptor on the item name that opens the shard viewer
+   * directly, preventing CPR's default "open item sheet" handler.
+   *
    * @param {HTMLElement} row
    * @param {Item} item
    */
   _applyShardBadge(row, item) {
     // Don't double-badge on re-render
-    if (row.querySelector('.ncm-shard-badge-icon')) return;
+    if (row.querySelector('.ncm-shard-img-tag')) return;
 
-    row.classList.add('ncm-data-shard-item');
+    // ─── Corner tag on item image ───
+    const imgEl = row.querySelector('.item-image, img, .item-icon');
+    if (imgEl) {
+      // Make the image container positioned so we can overlay
+      const imgContainer = imgEl.closest('.item-image') ?? imgEl.parentElement;
+      if (imgContainer) {
+        imgContainer.style.position = 'relative';
+        imgContainer.style.overflow = 'visible';
+      }
 
-    // Find the item name container and prepend a microchip icon
-    const nameEl = row.querySelector('.item-name, .item-name h4, [data-field="name"]');
+      const tag = document.createElement('div');
+      tag.className = 'ncm-shard-img-tag';
+      tag.innerHTML = '<i class="fas fa-microchip"></i>';
+      tag.title = 'Data Shard';
+      (imgContainer ?? imgEl).appendChild(tag);
+    }
+
+    // ─── Click intercept on item name ───
+    // CPR binds its "open item sheet" handler to .item-name clicks.
+    // We intercept with stopImmediatePropagation so it never fires.
+    const nameEl = row.querySelector('.item-name');
     if (nameEl) {
-      const badge = document.createElement('i');
-      badge.className = 'fas fa-microchip ncm-shard-badge-icon';
-      badge.title = 'Data Shard';
-      nameEl.prepend(badge);
-      // Add a space after the icon
-      badge.insertAdjacentHTML('afterend', ' ');
+      nameEl.addEventListener('click', (ev) => {
+        ev.stopImmediatePropagation();
+        ev.preventDefault();
+        game.nightcity?.openDataShard(item);
+      }, { capture: true });
+    }
+
+    // Also intercept on the image (some sheets open on image click too)
+    if (imgEl) {
+      const clickTarget = imgEl.closest('.item-image') ?? imgEl;
+      clickTarget.addEventListener('click', (ev) => {
+        ev.stopImmediatePropagation();
+        ev.preventDefault();
+        game.nightcity?.openDataShard(item);
+      }, { capture: true });
     }
   }
 
