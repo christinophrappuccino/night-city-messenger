@@ -284,6 +284,32 @@ export class EmailService {
     await actor.setFlag(MODULE_ID, 'emailDomain', domain);
     await actor.setFlag(MODULE_ID, 'emailSetupComplete', true);
 
+    // ── Add/update in GM master contact directory ──
+    try {
+      const mcs = game.nightcity?.masterContactService;
+      if (mcs) {
+        const existing = mcs.getByActorId(actor.id);
+        if (existing) {
+          // Update email on existing contact
+          await mcs.updateContact(existing.id, { email });
+          log.info(`EmailService: Updated master contact email → ${email}`);
+        } else {
+          // Create new master contact
+          await mcs.addContact({
+            name: actor.name,
+            email,
+            portrait: actor.img,
+            actorId: actor.id,
+            type: actor.hasPlayerOwner ? 'player' : 'npc',
+          });
+          log.info(`EmailService: Created master contact for ${actor.name}`);
+        }
+      }
+    } catch (e) {
+      // Non-fatal — email is registered even if contact creation fails
+      log.warn('EmailService: Could not sync to master contacts', e);
+    }
+
     log.info(`EmailService: Registered ${email} for ${actor.name}`);
     return email;
   }

@@ -3,8 +3,9 @@
  * @file scripts/ui/dialogs/EmailSetupFlow.js
  * @module cyberpunkred-messenger
  * @description ApplicationV2 dialog for the email identity registration flow.
- *              Single window with internal step transitions (no re-render between steps).
+ *              Single window with internal step transitions.
  *              Steps: Boot → Handle → Domain → Confirm → Register animation.
+ *              Animations are JS-driven to avoid Foundry !important conflicts.
  */
 
 import { MODULE_ID, TEMPLATES } from '../../utils/constants.js';
@@ -14,26 +15,14 @@ const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
 export class EmailSetupFlow extends HandlebarsApplicationMixin(ApplicationV2) {
 
-  /** @type {Actor} */
   actor = null;
-
-  /** @type {import('../../services/EmailService.js').EmailService} */
   emailService = null;
-
-  /** @type {number} Current step (1-5) */
   _step = 1;
-
-  /** @type {string} Selected handle */
   _handle = '';
-
-  /** @type {string} Selected domain */
   _domain = '';
-
-  /** @type {string|null} Selected network ID for domain */
   _domainNetworkId = null;
-
-  /** @type {Function|null} Resolve callback for the Promise returned by .run() */
   _resolvePromise = null;
+  _bootPlayed = false;
 
   static DEFAULT_OPTIONS = {
     id: 'ncm-email-setup',
@@ -57,13 +46,6 @@ export class EmailSetupFlow extends HandlebarsApplicationMixin(ApplicationV2) {
     body: { template: `modules/${MODULE_ID}/templates/dialogs/email-setup.hbs` },
   };
 
-  /**
-   * Open the setup flow for an actor and return a Promise that resolves
-   * with the registered email (or null if cancelled).
-   * @param {Actor} actor
-   * @param {EmailService} emailService
-   * @returns {Promise<string|null>}
-   */
   static run(actor, emailService) {
     return new Promise(resolve => {
       const flow = new EmailSetupFlow();
@@ -78,20 +60,16 @@ export class EmailSetupFlow extends HandlebarsApplicationMixin(ApplicationV2) {
     });
   }
 
-  /** @override */
   async close(options = {}) {
-    if (this._resolvePromise) {
-      this._resolvePromise(null);
-      this._resolvePromise = null;
-    }
+    if (this._resolvePromise) { this._resolvePromise(null); this._resolvePromise = null; }
     return super.close(options);
   }
 
-  /** @override */
   async _prepareContext() {
     const suggestions = this.emailService?.generateHandleSuggestions(this.actor) ?? [];
     const domains = this.emailService?.getAvailableDomains() ?? [];
     const allowCustom = this.emailService?.allowCustomDomains() ?? true;
+    const selDomain = domains.find(d => d.networkId === this._domainNetworkId);
 
     return {
       actorName: this.actor?.name ?? 'Unknown',
@@ -100,153 +78,113 @@ export class EmailSetupFlow extends HandlebarsApplicationMixin(ApplicationV2) {
       domain: this._domain,
       fullEmail: this._handle && this._domain ? `${this._handle}@${this._domain}` : '',
       suggestions,
-      domains: domains.map(d => ({
-        ...d,
-        selected: d.domain === this._domain,
-      })),
+      domains: domains.map(d => ({ ...d, selected: d.domain === this._domain })),
       allowCustomDomains: allowCustom,
-      domainNetworkName: domains.find(d => d.networkId === this._domainNetworkId)?.networkName ?? '',
-      domainNetworkIcon: domains.find(d => d.networkId === this._domainNetworkId)?.icon ?? 'fa-wifi',
-      domainNetworkColor: domains.find(d => d.networkId === this._domainNetworkId)?.color ?? '#00D4E6',
+      domainNetworkName: selDomain?.networkName ?? '',
+      domainNetworkIcon: selDomain?.icon ?? 'fa-wifi',
+      domainNetworkColor: selDomain?.color ?? '#00D4E6',
     };
   }
 
-  /** @override */
   _onRender(context, options) {
     super._onRender(context, options);
 
-    // Wire handle input live validation
     const handleInput = this.element?.querySelector('[data-handle-input]');
-    if (handleInput) {
-      handleInput.addEventListener('input', () => this._onHandleInput(handleInput));
-    }
+    if (handleInput) handleInput.addEventListener('input', () => this._onHandleInput(handleInput));
 
-    // Wire custom domain input
     const domainInput = this.element?.querySelector('[data-custom-domain]');
-    if (domainInput) {
-      domainInput.addEventListener('input', () => this._onCustomDomainInput(domainInput));
-    }
+    if (domainInput) domainInput.addEventListener('input', () => this._onCustomDomainInput(domainInput));
 
-    // Boot animation auto-advance
-    if (this._step === 1) {
-      this._runBootSequence();
-    }
+    this._showStep(1);
+    if (!this._bootPlayed) { this._bootPlayed = true; this._runBootSequence(); }
   }
 
-  // ═══════════════════════════════════════════════════════════
-  //  STEP TRANSITIONS
-  // ═══════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════
+  //  STEP MANAGEMENT
+  // ═══════════════════════════════════════════
 
-  /**
-   * Transition to a new step with animation.
-   * @param {number} newStep
-   */
-  _goToStep(newStep) {
-    if (newStep < 1 || newStep > 5) return;
-    if (newStep === this._step) return;
+  _showStep(n) {
+    this._step = n;
 
-    const body = this.element?.querySelector('.ncm-email-setup__body');
-    if (!body) return;
+    this.element?.querySelectorAll('.ncm-email-step').forEach(el => {
+      el.classList.toggle('ncm-email-step--active', parseInt(el.dataset.step) === n);
+    });
 
-    const oldPanel = body.querySelector(`.ncm-email-step[data-step="${this._step}"]`);
-    const newPanel = body.querySelector(`.ncm-email-step[data-step="${newStep}"]`);
-    if (!oldPanel || !newPanel) return;
-
-    const direction = newStep > this._step ? 1 : -1;
-
-    // Animate out
-    oldPanel.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
-    oldPanel.style.opacity = '0';
-    oldPanel.style.transform = `translateX(${direction * -16}px)`;
-
-    setTimeout(() => {
-      oldPanel.classList.remove('ncm-email-step--active');
-      oldPanel.style.cssText = '';
-
-      // Set up new panel
-      newPanel.style.opacity = '0';
-      newPanel.style.transform = `translateX(${direction * 16}px)`;
-      newPanel.classList.add('ncm-email-step--active');
-
-      // Update step indicators
-      this._step = newStep;
-      this._updateStepIndicators();
-
-      // Animate in
-      requestAnimationFrame(() => {
-        newPanel.style.transition = 'opacity 0.25s ease, transform 0.25s ease';
-        newPanel.style.opacity = '1';
-        newPanel.style.transform = 'translateX(0)';
-      });
-
-      // Boot sequence for step 1
-      if (newStep === 1) this._runBootSequence();
-      // Registration animation for step 5
-      if (newStep === 5) this._runRegistration();
-    }, 200);
-  }
-
-  /**
-   * Update step indicator dots based on current step.
-   */
-  _updateStepIndicators() {
+    // Step dots (steps 2-4 → dots 0-2)
     const dots = this.element?.querySelectorAll('.ncm-email-step-dot');
     const lines = this.element?.querySelectorAll('.ncm-email-step-line');
-    if (!dots?.length) return;
-
-    dots.forEach((dot, i) => {
-      const stepNum = i + 1; // Steps 2, 3, 4 map to dots 0, 1, 2
-      const actualStep = i + 2; // Dot indices are for steps 2-4
+    dots?.forEach((dot, i) => {
+      const dotStep = i + 2;
       dot.classList.remove('ncm-email-step-dot--active', 'ncm-email-step-dot--done');
-      if (actualStep < this._step) dot.classList.add('ncm-email-step-dot--done');
-      else if (actualStep === this._step) dot.classList.add('ncm-email-step-dot--active');
+      if (dotStep < n) { dot.classList.add('ncm-email-step-dot--done'); dot.innerHTML = '<i class="fas fa-check" style="font-size:8px;"></i>'; }
+      else if (dotStep === n) { dot.classList.add('ncm-email-step-dot--active'); dot.textContent = String(i + 1); }
+      else { dot.textContent = String(i + 1); }
     });
+    lines?.forEach((line, i) => { line.classList.toggle('ncm-email-step-line--done', (i + 3) <= n); });
 
-    lines?.forEach((line, i) => {
-      const nextStep = i + 3;
-      line.classList.toggle('ncm-email-step-line--done', nextStep <= this._step);
-    });
+    // Indicator visibility
+    const indicator = this.element?.querySelector('[data-step-indicator]');
+    if (indicator) indicator.style.display = (n >= 2 && n <= 4) ? '' : 'none';
 
-    // Update preview email in all visible places
-    const previews = this.element?.querySelectorAll('[data-email-preview]');
-    const email = this._handle && this._domain ? `${this._handle}@${this._domain}` : '';
-    previews?.forEach(el => { el.textContent = email; });
-
-    // Update footer buttons
+    // Footer buttons
     const prevBtn = this.element?.querySelector('[data-action="prevStep"]');
     const nextBtn = this.element?.querySelector('[data-action="nextStep"]');
     const regBtn = this.element?.querySelector('[data-action="registerIdentity"]');
+    if (prevBtn) prevBtn.style.display = (n >= 2 && n <= 4) ? '' : 'none';
+    if (nextBtn) nextBtn.style.display = (n >= 1 && n <= 3) ? '' : 'none';
+    if (regBtn) regBtn.style.display = (n === 4) ? '' : 'none';
 
-    if (prevBtn) prevBtn.style.display = this._step <= 1 ? 'none' : '';
-    if (nextBtn) nextBtn.style.display = (this._step >= 4 || this._step === 1) ? 'none' : '';
-    if (regBtn) regBtn.style.display = this._step === 4 ? '' : 'none';
+    // Update previews
+    const email = this._handle && this._domain ? `${this._handle}@${this._domain}` : '';
+    this.element?.querySelectorAll('[data-email-preview]').forEach(el => { el.textContent = email; });
 
-    // Step 1 shows "Continue" as next
-    const contBtn = this.element?.querySelector('[data-boot-continue]');
-    if (contBtn) contBtn.style.display = this._step === 1 ? '' : 'none';
+    if (n === 4) {
+      const h = this.element?.querySelector('[data-confirm-handle]'); if (h) h.textContent = this._handle;
+      const d = this.element?.querySelector('[data-confirm-domain]'); if (d) d.textContent = this._domain;
+    }
+
+    // Hide footer on step 5
+    const footer = this.element?.querySelector('.ncm-email-setup__footer');
+    if (footer) footer.style.display = (n === 5) ? 'none' : '';
   }
 
-  // ═══════════════════════════════════════════════════════════
-  //  BOOT SEQUENCE (Step 1)
-  // ═══════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════
+  //  BOOT SEQUENCE — JS-driven line reveal
+  // ═══════════════════════════════════════════
 
   _runBootSequence() {
-    const terminal = this.element?.querySelector('.ncm-email-boot__terminal');
-    if (!terminal) return;
+    const lines = this.element?.querySelectorAll('.ncm-email-boot__line');
+    if (!lines?.length) return;
 
-    // Reset all boot lines
-    const lines = terminal.querySelectorAll('.ncm-email-boot__line');
-    lines.forEach(l => { l.style.opacity = '0'; l.style.animation = 'none'; });
+    // Start hidden
+    lines.forEach(l => { l.style.opacity = '0'; l.style.transform = 'translateY(4px)'; });
 
-    // Stagger reveal
-    requestAnimationFrame(() => {
-      lines.forEach(l => { l.style.animation = ''; });
+    // Stagger reveal via JS timers
+    const delays = [300, 600, 1000, 1400, 1900, 2500, 3000];
+    lines.forEach((line, i) => {
+      setTimeout(() => {
+        if (!this.element) return;
+        line.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+        line.style.opacity = '1';
+        line.style.transform = 'translateY(0)';
+      }, delays[i] ?? (3000 + (i - 6) * 400));
     });
+
+    // Progress bar — JS driven
+    const fill = this.element?.querySelector('.ncm-email-boot__progress-fill');
+    if (fill) {
+      fill.style.transition = 'none';
+      fill.style.width = '0%';
+      requestAnimationFrame(() => {
+        fill.style.transition = 'width 3.5s ease-out';
+        fill.style.width = '100%';
+      });
+    }
   }
 
-  // ═══════════════════════════════════════════════════════════
-  //  REGISTRATION ANIMATION (Step 5)
-  // ═══════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════
+  //  REGISTRATION ANIMATION — phased
+  // ═══════════════════════════════════════════
 
   async _runRegistration() {
     const statusEl = this.element?.querySelector('[data-reg-status]');
@@ -260,67 +198,55 @@ export class EmailSetupFlow extends HandlebarsApplicationMixin(ApplicationV2) {
 
     spinnerEl.style.display = '';
     successEl.classList.remove('ncm-email-reg__success--show');
-    if (progressEl) progressEl.style.width = '0%';
+    if (progressEl) { progressEl.style.transition = 'none'; progressEl.style.width = '0%'; }
+
+    const wait = (ms) => new Promise(r => setTimeout(r, ms));
+    await wait(50);
+    if (progressEl) progressEl.style.transition = 'width 0.6s ease';
 
     const phases = [
-      { status: 'Registering handle...', sub: 'Connecting to NET registry', progress: '20%', delay: 0 },
-      { status: 'Allocating mailbox...', sub: 'Provisioning storage node', progress: '50%', delay: 800 },
-      { status: 'Verifying identity...', sub: 'Cross-referencing NET records', progress: '75%', delay: 1600 },
-      { status: 'Finalizing...', sub: 'Writing identity confirmation', progress: '95%', delay: 2400 },
+      { status: 'Registering handle...', sub: 'Connecting to NET registry', progress: '15%' },
+      { status: 'Allocating mailbox...', sub: 'Provisioning storage node', progress: '40%' },
+      { status: 'Verifying identity...', sub: 'Cross-referencing NET records', progress: '65%' },
+      { status: 'Writing to directory...', sub: 'Syncing master contact list', progress: '85%' },
+      { status: 'Finalizing...', sub: 'Confirming identity registration', progress: '95%' },
     ];
 
     for (const phase of phases) {
-      await new Promise(r => setTimeout(r, phase.delay ? phase.delay - (phases.indexOf(phase) > 0 ? phases[phases.indexOf(phase) - 1].delay : 0) : 0));
-      if (!this.element) return; // Dialog was closed
+      if (!this.element) return;
       statusEl.textContent = phase.status;
       if (subEl) subEl.textContent = phase.sub;
       if (progressEl) progressEl.style.width = phase.progress;
+      await wait(700);
     }
 
-    // Actually register
     try {
-      await new Promise(r => setTimeout(r, 800));
       if (!this.element) return;
-
       const email = await this.emailService.registerEmail(this.actor, this._handle, this._domain);
-
+      if (progressEl) progressEl.style.width = '100%';
+      await wait(400);
       spinnerEl.style.display = 'none';
       if (emailEl) emailEl.textContent = email;
       successEl.classList.add('ncm-email-reg__success--show');
-
-      // Auto-close after 2.5s
-      setTimeout(() => {
-        if (this._resolvePromise) {
-          this._resolvePromise(email);
-          this._resolvePromise = null;
-        }
-        this.close();
-      }, 2500);
-
+      await wait(2500);
+      if (this._resolvePromise) { this._resolvePromise(email); this._resolvePromise = null; }
+      this.close();
     } catch (err) {
       log.error('Email registration failed:', err);
       ui.notifications.error(`Registration failed: ${err.message}`);
-      this._goToStep(2);
+      this._showStep(2);
     }
   }
 
-  // ═══════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════
   //  INPUT HANDLERS
-  // ═══════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════
 
   _onHandleInput(input) {
-    const raw = input.value;
-    this._handle = this.emailService?.sanitizeHandle(raw) ?? raw;
+    this._handle = this.emailService?.sanitizeHandle(input.value) ?? input.value;
 
-    // Update preview
-    const preview = this.element?.querySelector('[data-handle-preview]');
-    if (preview) {
-      preview.innerHTML = this._handle
-        ? `${this._handle}<span class="ncm-email-dim">@${this._domain || '___'}</span>`
-        : '<span class="ncm-email-dim">___@___</span>';
-    }
+    this._updatePreviews();
 
-    // Validate
     const result = this.emailService?.validateHandle(this._handle) ?? { valid: false, error: 'Unknown' };
     const valEl = this.element?.querySelector('[data-handle-validation]');
     if (valEl) {
@@ -334,94 +260,44 @@ export class EmailSetupFlow extends HandlebarsApplicationMixin(ApplicationV2) {
   _onCustomDomainInput(input) {
     this._domain = input.value.toLowerCase().replace(/[^a-z0-9.-]/g, '');
     this._domainNetworkId = '';
-
-    // Deselect domain cards
     this.element?.querySelectorAll('.ncm-email-domain-card').forEach(c => c.classList.remove('ncm-email-domain-card--active'));
-
-    // Update preview
-    this._updateEmailPreview();
+    this._updatePreviews();
   }
 
-  _updateEmailPreview() {
-    const previews = this.element?.querySelectorAll('[data-handle-preview]');
-    previews?.forEach(el => {
+  _updatePreviews() {
+    this.element?.querySelectorAll('[data-handle-preview]').forEach(el => {
       el.innerHTML = this._handle
         ? `${this._handle}<span class="ncm-email-dim">@${this._domain || '___'}</span>`
         : '<span class="ncm-email-dim">___@___</span>';
     });
+    const atEl = this.element?.querySelector('.ncm-email-handle-at');
+    if (atEl) atEl.textContent = `@${this._domain || '___'}`;
   }
 
-  // ═══════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════
   //  ACTIONS
-  // ═══════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════
 
-  static _onNextStep(event, target) {
-    if (this._step === 1) {
-      this._goToStep(2);
-    } else if (this._step === 2) {
-      // Validate handle before advancing
-      const result = this.emailService?.validateHandle(this._handle);
-      if (!result?.valid) {
-        const input = this.element?.querySelector('[data-handle-input]');
-        input?.focus();
-        return;
-      }
-      this._goToStep(3);
-    } else if (this._step === 3) {
-      const result = this.emailService?.validateDomain(this._domain);
-      if (!result?.valid) return;
-      this._goToStep(4);
-    }
-  }
+  static _onNextStep() { if (this._step === 1) { this._showStep(2); } else if (this._step === 2) { const r = this.emailService?.validateHandle(this._handle); if (!r?.valid) { this.element?.querySelector('[data-handle-input]')?.focus(); return; } this._showStep(3); } else if (this._step === 3) { const r = this.emailService?.validateDomain(this._domain); if (!r?.valid) return; this._showStep(4); } }
 
-  static _onPrevStep(event, target) {
-    if (this._step > 1 && this._step < 5) {
-      this._goToStep(this._step - 1);
-    }
-  }
+  static _onPrevStep() { if (this._step > 1 && this._step < 5) this._showStep(this._step - 1); }
 
   static _onSelectSuggestion(event, target) {
-    const handle = target.dataset.handle;
-    if (!handle) return;
-
+    const handle = target.dataset.handle; if (!handle) return;
     this._handle = handle;
-
-    // Update input
-    const input = this.element?.querySelector('[data-handle-input]');
-    if (input) input.value = handle;
-
-    // Update suggestion pills
-    this.element?.querySelectorAll('.ncm-email-suggest').forEach(s => {
-      s.classList.toggle('ncm-email-suggest--active', s.dataset.handle === handle);
-    });
-
-    // Update preview + validation
+    const input = this.element?.querySelector('[data-handle-input]'); if (input) input.value = handle;
+    this.element?.querySelectorAll('.ncm-email-suggest').forEach(s => { s.classList.toggle('ncm-email-suggest--active', s.dataset.handle === handle); });
     this._onHandleInput(input || { value: handle });
   }
 
   static _onSelectDomain(event, target) {
-    const card = target.closest('.ncm-email-domain-card');
-    if (!card) return;
-
-    const domain = card.dataset.domain;
-    const netId = card.dataset.networkId || '';
-    if (!domain) return;
-
-    this._domain = domain;
-    this._domainNetworkId = netId;
-
-    // Update active state
+    const card = target.closest('.ncm-email-domain-card'); if (!card) return;
+    this._domain = card.dataset.domain || ''; this._domainNetworkId = card.dataset.networkId || '';
     this.element?.querySelectorAll('.ncm-email-domain-card').forEach(c => c.classList.remove('ncm-email-domain-card--active'));
     card.classList.add('ncm-email-domain-card--active');
-
-    // Clear custom input
-    const customInput = this.element?.querySelector('[data-custom-domain]');
-    if (customInput) customInput.value = '';
-
-    this._updateEmailPreview();
+    const ci = this.element?.querySelector('[data-custom-domain]'); if (ci) ci.value = '';
+    this._updatePreviews();
   }
 
-  static _onRegisterIdentity(event, target) {
-    this._goToStep(5);
-  }
+  static _onRegisterIdentity() { this._showStep(5); this._runRegistration(); }
 }
