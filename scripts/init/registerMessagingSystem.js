@@ -311,6 +311,20 @@ export function registerMessagingSystem(initializer) {
       const resolvedActorId = _resolveActorId(actorId);
       if (!resolvedActorId) return;
 
+      // ── Email setup intercept ──
+      if (!game.user.isGM) {
+        const emailService = game.nightcity?.emailService;
+        if (emailService?.isSetupRequired()) {
+          const actor = game.actors.get(resolvedActorId);
+          if (actor && !emailService.hasEmail(actor)) {
+            game.nightcity.openEmailSetup(actor).then(email => {
+              if (email) ns.openContacts(resolvedActorId);
+            });
+            return;
+          }
+        }
+      }
+
       const key = `contacts-${resolvedActorId}`;
       let manager = _openContacts.get(key);
 

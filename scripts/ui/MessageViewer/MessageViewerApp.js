@@ -471,13 +471,14 @@ export class MessageViewerApp extends BaseApplication {
 
     // ── Actor/Contact identity for inbox header ──
     const viewingActor = this.actorId ? game.actors?.get(this.actorId) : null;
-    let viewingAsName, viewingAsPortrait, viewingAsInitial, viewingAsEmail;
+    let viewingAsName, viewingAsPortrait, viewingAsInitial, viewingAsEmail, viewingAsHandle;
 
     if (viewingActor) {
       viewingAsName = viewingActor.name;
       viewingAsPortrait = viewingActor.img || null;
       viewingAsInitial = getInitials(viewingActor.name || 'Unknown');
       viewingAsEmail = this.contactRepository?.getActorEmail?.(this.actorId) || '';
+      viewingAsHandle = viewingActor.getFlag?.('cyberpunkred-messenger', 'emailHandle') || viewingAsName;
     } else {
       // Virtual inbox — resolve from master contact
       const masterContact = game.nightcity?.masterContactService?.getContact(this.actorId);
@@ -485,7 +486,11 @@ export class MessageViewerApp extends BaseApplication {
       viewingAsPortrait = masterContact?.portrait || null;
       viewingAsInitial = getInitials(viewingAsName);
       viewingAsEmail = masterContact?.email || '';
+      viewingAsHandle = viewingAsName;
     }
+
+    // Can this user change their identity?
+    const canChangeIdentity = game.user.isGM || (game.nightcity?.emailService?.canPlayerBurn?.() ?? false);
 
     // ── Sort options for dropdown template ──
     const sortOptions = Object.entries(SORT_LABELS).map(([id, label]) => ({
@@ -638,7 +643,9 @@ export class MessageViewerApp extends BaseApplication {
       viewingAsPortrait,
       viewingAsInitial,
       viewingAsEmail,
+      viewingAsHandle,
       viewingAsRole,
+      canChangeIdentity,
       isGM: game.user.isGM,
 
       // v3.2 Navigation
@@ -1427,13 +1434,36 @@ export class MessageViewerApp extends BaseApplication {
       }
 
       // ── v3.2: Email Save ──
-      case 'save-email': {
-        const input = this.element?.querySelector('.ncm-viewer__drawer-field-input[data-field="email"]');
-        if (input?.value && this.actorId) {
-          this.contactRepository?.setActorEmail?.(this.actorId, input.value.trim());
-          ui.notifications.info('NCM | Email updated.');
-          this.render();
+      case 'change-identity': {
+        const actor = game.actors.get(this.actorId);
+        if (!actor) break;
+        const emailService = game.nightcity?.emailService;
+        if (!emailService) break;
+
+        // If actor has an email, warn about burn first
+        if (emailService.hasEmail(actor)) {
+          const currentEmail = emailService.getEmail(actor);
+          const confirmed = await Dialog.confirm({
+            title: 'Change NET Identity',
+            content: `<div style="font-family:'Rajdhani',sans-serif;">
+              <p>Changing your identity will <strong style="color:#F65261;">permanently burn</strong> your current address:</p>
+              <p style="font-family:'Share Tech Mono',monospace;color:#00D4E6;font-size:14px;padding:8px 12px;background:rgba(0,212,230,0.04);border-left:3px solid #00D4E6;margin:8px 0;">${currentEmail}</p>
+              <p style="font-size:11px;color:#8888a0;">Past messages from this address will show as <span style="color:#F65261;">[BURNED]</span> to recipients.</p>
+            </div>`,
+          });
+          if (!confirmed) break;
+
+          // Burn current identity
+          await emailService.burnEmail(actor, 'manual');
+          ui.notifications.info(`NCM | Identity burned: ${currentEmail}`);
         }
+
+        // Launch setup flow for re-registration
+        const newEmail = await game.nightcity.openEmailSetup(actor);
+        if (newEmail) {
+          ui.notifications.info(`NCM | New identity registered: ${newEmail}`);
+        }
+        this.render();
         break;
       }
 

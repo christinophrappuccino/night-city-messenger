@@ -58,19 +58,19 @@
       <span class="ncm-viewer__drawer-field-label ncm-viewer__drawer-field-label--email">Email Address</span>
       <div class="ncm-viewer__drawer-field-value">
         <i class="fas fa-envelope ncm-viewer__drawer-field-icon ncm-viewer__drawer-field-icon--email"></i>
-        <input class="ncm-viewer__drawer-field-input" type="text"
-               value="{{viewingAsEmail}}" data-field="email" />
-        <button class="ncm-viewer__drawer-field-btn" data-action="save-email" title="Save email">
+        <span class="ncm-viewer__drawer-field-input" style="flex:1;font-family:var(--ncm-font-mono,'Share Tech Mono',monospace);font-size:12px;color:var(--ncm-secondary,#00D4E6);">{{viewingAsEmail}}</span>
+        {{#if canChangeIdentity}}
+        <button class="ncm-viewer__drawer-field-btn" data-action="change-identity" title="Change NET identity">
           <i class="fas fa-pen"></i>
         </button>
+        {{/if}}
       </div>
     </div>
     <div class="ncm-viewer__drawer-field">
       <span class="ncm-viewer__drawer-field-label ncm-viewer__drawer-field-label--handle">Handle</span>
       <div class="ncm-viewer__drawer-field-value">
         <i class="fas fa-at ncm-viewer__drawer-field-icon ncm-viewer__drawer-field-icon--handle"></i>
-        <input class="ncm-viewer__drawer-field-input" type="text"
-               value="{{viewingAsName}}" readonly />
+        <span class="ncm-viewer__drawer-field-input" style="flex:1;font-family:var(--ncm-font-mono,'Share Tech Mono',monospace);font-size:12px;">{{viewingAsHandle}}</span>
       </div>
     </div>
   </div>
