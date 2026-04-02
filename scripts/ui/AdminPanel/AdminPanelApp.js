@@ -253,6 +253,8 @@ export class AdminPanelApp extends BaseApplication {
       importNetworkLogs: AdminPanelApp._onImportNetworkLogs,
       clearNetworkLogs: AdminPanelApp._onClearNetworkLogs,
       resetNetworkAuth: AdminPanelApp._onResetNetworkAuth,
+      createNetwork: AdminPanelApp._onCreateNetwork,
+      deleteNetwork: AdminPanelApp._onDeleteNetwork,
       sendBroadcast: AdminPanelApp._onSendBroadcast,
       scrollMixerLeft: AdminPanelApp._onScrollMixerLeft,
       scrollMixerRight: AdminPanelApp._onScrollMixerRight,
@@ -5083,6 +5085,30 @@ export class AdminPanelApp extends BaseApplication {
   static _onOpenNetworkManagerLogs(event, target) {
     game.nightcity?.openNetworkManagerToLogs?.();
     log.info('Admin: Opening Network Manager → Logs tab');
+  }
+
+  static _onCreateNetwork(event, target) {
+    game.nightcity?.openNetworkManagerToCreate?.();
+    log.info('Admin: Opening Network Manager → Create mode');
+  }
+
+  static async _onDeleteNetwork(event, target) {
+    const networkId = target.dataset.networkId || target.closest('[data-network-id]')?.dataset.networkId;
+    if (!networkId) return;
+    const net = this.networkService?.getNetwork(networkId);
+    if (!net) return;
+    if (net.isCore) {
+      ui.notifications.warn('NCM | Core networks cannot be deleted.');
+      return;
+    }
+    const confirm = await Dialog.confirm({
+      title: 'Delete Network',
+      content: `<p>Delete <strong>${net.name}</strong>? This cannot be undone.</p>`,
+    });
+    if (!confirm) return;
+    await this.networkService?.deleteNetwork(networkId);
+    ui.notifications.info(`NCM | Network "${net.name}" deleted.`);
+    this.render(true);
   }
 
   static _onToggleNetworkGroup(event, target) {

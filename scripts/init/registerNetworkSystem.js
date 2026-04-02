@@ -205,7 +205,7 @@ export function registerNetworkSystem(initializer) {
       if (wasRendered) {
         _managementApp._activeTab = 'networks';
         _managementApp._selectedNetworkId = networkId;
-        _managementApp._isEditMode = false;
+        _managementApp._isEditMode = true;
         _managementApp._isCreating = false;
         _managementApp.bringToFront();
         _managementApp.render(true);
@@ -216,6 +216,7 @@ export function registerNetworkSystem(initializer) {
       _managementApp = new NetworkManagementApp();
       _managementApp._selectedNetworkId = networkId;
       _managementApp._activeTab = 'networks';
+      _managementApp._isEditMode = true;
       _managementApp.render(true);
     };
 
@@ -237,6 +238,31 @@ export function registerNetworkSystem(initializer) {
 
       _managementApp = new NetworkManagementApp();
       _managementApp._activeTab = 'logs';
+      _managementApp.render(true);
+    };
+
+    /**
+     * Open Network Manager in create-new-network mode.
+     */
+    ns.openNetworkManagerToCreate = () => {
+      if (!isGM()) {
+        ui.notifications.warn('NCM | Network Management is GM-only.');
+        return;
+      }
+
+      if (_managementApp?.rendered) {
+        _managementApp._activeTab = 'networks';
+        _managementApp._selectedNetworkId = null;
+        _managementApp._isEditMode = false;
+        _managementApp._isCreating = true;
+        _managementApp.bringToFront();
+        _managementApp.render(true);
+        return;
+      }
+
+      _managementApp = new NetworkManagementApp();
+      _managementApp._activeTab = 'networks';
+      _managementApp._isCreating = true;
       _managementApp.render(true);
     };
 
