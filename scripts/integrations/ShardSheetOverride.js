@@ -207,56 +207,52 @@ export class ShardSheetOverride {
       if (!root?.querySelector) return;
 
       for (const item of (game.items ?? [])) {
-        if (!item.getFlag(MODULE_ID, 'isDataShard')) continue;
+        const isShard = item.getFlag(MODULE_ID, 'isDataShard');
 
-        // Try multiple selector patterns
+        // Find the directory entry
         const entry = root.querySelector(`[data-document-id="${item.id}"]`)
           ?? root.querySelector(`[data-entry-id="${item.id}"]`)
           ?? root.querySelector(`[data-item-id="${item.id}"]`);
         if (!entry) continue;
-        if (entry.dataset.ncmShard) continue;
-        entry.dataset.ncmShard = 'true';
+        if (entry.dataset.ncmProcessed) continue;
+        entry.dataset.ncmProcessed = 'true';
 
-        // ─── Corner badge on thumbnail ───
-        // Don't wrap or reparent anything — just append badge to entry
-        // and position it at the image's bottom-right corner.
-        const thumb = entry.querySelector('img.thumbnail, img');
-        if (thumb) {
-          entry.style.position = 'relative';
-          entry.style.overflow = 'visible';
+        if (isShard) {
+          // ─── Corner badge on thumbnail ───
+          const thumb = entry.querySelector('img.thumbnail, img');
+          if (thumb) {
+            entry.style.position = 'relative';
+            entry.style.overflow = 'visible';
 
-          const tag = document.createElement('div');
-          tag.className = 'ncm-shard-img-tag';
-          tag.innerHTML = '<i class="fas fa-microchip"></i>';
-          tag.title = 'Data Shard';
-          entry.appendChild(tag);
+            const tag = document.createElement('div');
+            tag.className = 'ncm-shard-img-tag';
+            tag.innerHTML = '<i class="fas fa-microchip"></i>';
+            tag.title = 'Data Shard';
+            entry.appendChild(tag);
 
-          // Position at image bottom-right after layout settles
-          const positionBadge = () => {
-            const imgRect = thumb.getBoundingClientRect();
-            const entryRect = entry.getBoundingClientRect();
-            tag.style.top = (imgRect.top - entryRect.top + imgRect.height - 12) + 'px';
-            tag.style.left = (imgRect.left - entryRect.left + imgRect.width - 12) + 'px';
+            const positionBadge = () => {
+              const imgRect = thumb.getBoundingClientRect();
+              const entryRect = entry.getBoundingClientRect();
+              tag.style.top = (imgRect.top - entryRect.top + imgRect.height - 12) + 'px';
+              tag.style.left = (imgRect.left - entryRect.left + imgRect.width - 12) + 'px';
+            };
+            requestAnimationFrame(positionBadge);
+          }
+
+          // ─── Click intercept (shard items only) ───
+          const interceptClick = (ev) => {
+            if (ev.button !== 0 || ev.ctrlKey || ev.metaKey) return;
+            ev.stopImmediatePropagation();
+            ev.preventDefault();
+            game.nightcity?.openDataShard(item);
           };
-          requestAnimationFrame(positionBadge);
+          for (const sel of ['.document-name a', '.document-name', '.entry-name a', '.entry-name', 'h4 a', 'h4']) {
+            const el = entry.querySelector(sel);
+            if (el) { el.addEventListener('click', interceptClick, { capture: true }); break; }
+          }
+          if (thumb) thumb.addEventListener('click', interceptClick, { capture: true });
         }
-
-        // ─── Click intercept ───
-        const interceptClick = (ev) => {
-          if (ev.button !== 0 || ev.ctrlKey || ev.metaKey) return;
-          ev.stopImmediatePropagation();
-          ev.preventDefault();
-          game.nightcity?.openDataShard(item);
-        };
-
-        // Try all possible click targets
-        for (const sel of ['.document-name a', '.document-name', '.entry-name a', '.entry-name', 'h4 a', 'h4']) {
-          const el = entry.querySelector(sel);
-          if (el) { el.addEventListener('click', interceptClick, { capture: true }); break; }
-        }
-        if (thumb) {
-          thumb.addEventListener('click', interceptClick, { capture: true });
-        }
+        // Context menu options are added via getItemDirectoryEntryContext hook — no manual listeners needed
       }
     } catch (err) {
       log.error(`ShardSheetOverride: renderItemDirectory error — ${err.message}`);
