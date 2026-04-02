@@ -301,7 +301,12 @@
                data-shard-type="{{#if this.isReceived}}received{{else}}inventory{{/if}}"
                data-shard-encrypted="{{this.isEncrypted}}">
             <div class="ncm-viewer__shard-icon {{#if this.isReceived}}ncm-viewer__shard-icon--received{{/if}}">
-              <i class="fas fa-microchip"></i>
+              {{#if this.img}}
+                <img src="{{this.img}}" alt="" class="ncm-viewer__shard-img">
+              {{else}}
+                <i class="fas fa-microchip"></i>
+              {{/if}}
+              <div class="ncm-viewer__shard-chip-tag"><i class="fas fa-microchip"></i></div>
             </div>
             <div class="ncm-viewer__shard-info">
               <div class="ncm-viewer__shard-name">{{this.name}}</div>
