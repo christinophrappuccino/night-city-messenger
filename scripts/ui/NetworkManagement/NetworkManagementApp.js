@@ -312,6 +312,28 @@ export class NetworkManagementApp extends BaseApplication {
       remainingFormatted: this._formatDuration(Math.max(0, (l.lockoutUntil ?? 0) - Date.now())),
     }));
 
+    // ─── ICE display values for detail view ───
+    const iceEncType = selectedNetwork?.security?.encryptionType ?? 'ICE';
+    const iceSrc = selectedNetwork?.security?.ice?.source ?? 'default';
+    let iceTypeLabel = 'Standard ICE', isBlackIce = false, isRedIce = false;
+    if (iceEncType === 'BLACK_ICE') { iceTypeLabel = 'BLACK ICE'; isBlackIce = true; }
+    else if (iceEncType === 'RED_ICE') { iceTypeLabel = 'RED ICE'; isRedIce = true; }
+
+    const failModes = { nothing: 'Nothing', lockout: 'Lockout', permanent: 'Permanent Lockout', damage: 'Damage' };
+    const iceFailureLabel = failModes[selectedNetwork?.security?.failureMode] ?? 'Nothing';
+
+    let iceDamageDisplay = isRedIce ? '5d6' : '3d6';
+    let iceSourceDisplay = 'Default';
+    if (iceSrc === 'custom') {
+      iceDamageDisplay = selectedNetwork?.security?.ice?.customDamage || '?';
+      iceSourceDisplay = `Custom — ${selectedNetwork?.security?.ice?.customName || '?'}`;
+    } else if (iceSrc === 'actor') {
+      iceDamageDisplay = 'ATK + 1d10';
+      const iceActorId = selectedNetwork?.security?.ice?.actorId;
+      const iceActor = iceActorId ? game.actors?.get(iceActorId) : null;
+      iceSourceDisplay = `Actor — ${iceActor?.name || 'Unknown'}`;
+    }
+
     return {
       // Tabs
       activeTab: this._activeTab,
@@ -352,6 +374,8 @@ export class NetworkManagementApp extends BaseApplication {
       iceSourceDefault: (selectedNetwork?.security?.ice?.source ?? 'default') === 'default',
       iceSourceCustom: selectedNetwork?.security?.ice?.source === 'custom',
       iceSourceActor: selectedNetwork?.security?.ice?.source === 'actor',
+      iceTypeLabel, isBlackIce, isRedIce,
+      iceFailureLabel, iceDamageDisplay, iceSourceDisplay,
       blackIceActors: (game.actors?.filter(a =>
         a.type === 'blackIce' || a.type === 'black-ice' ||
         a.getFlag?.(MODULE_ID, 'isBlackICE') ||

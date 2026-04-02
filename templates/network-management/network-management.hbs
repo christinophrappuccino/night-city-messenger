@@ -450,250 +450,259 @@
           </div>
         </form>
 
-        {{!-- ─── DETAIL VIEW (Read-only) ─── --}}
+        {{!-- ─── DETAIL VIEW (Read-only) — Redesigned ─── --}}
         {{else if selectedNetwork}}
         <div class="ncm-netmgr__detail">
 
-          {{!-- Detail Header --}}
-          <div class="ncm-netmgr__detail-header">
-            <div class="ncm-netmgr__detail-header-icon ncm-netmgr__net-item-icon--{{selectedNetwork.networkTypeClass}}"
-                 {{#if selectedNetwork.theme.color}}style="--net-color: {{selectedNetwork.theme.color}};"{{/if}}>
-              {{{ncm-net-icon selectedNetwork.theme}}}
-            </div>
-            <div class="ncm-netmgr__detail-header-info">
-              <div class="ncm-netmgr__detail-header-name">{{selectedNetwork.name}}</div>
-              <div class="ncm-netmgr__detail-header-type">
-                {{selectedNetwork.typeLabel}} Subnet
-                {{#if selectedNetwork.isCore}}
-                  <span class="ncm-netmgr__tag ncm-netmgr__tag--core">Core</span>
-                {{else}}
-                  <span class="ncm-netmgr__tag ncm-netmgr__tag--custom">Custom</span>
-                {{/if}}
-                <span class="ncm-netmgr__auth-badge ncm-netmgr__auth-badge--{{selectedNetwork.authBadgeClass}}">
-                  <i class="fas {{selectedNetwork.authIcon}}"></i> {{selectedNetwork.authLabel}}
-                </span>
+          {{!-- Identity Banner --}}
+          <div class="ncm-netmgr__detail-banner" {{#if selectedNetwork.theme.color}}style="--net-color: {{selectedNetwork.theme.color}};"{{/if}}>
+            <div class="ncm-netmgr__detail-banner-top">
+              <div class="ncm-netmgr__detail-banner-icon ncm-netmgr__net-item-icon--{{selectedNetwork.networkTypeClass}}"
+                   {{#if selectedNetwork.theme.color}}style="--net-color: {{selectedNetwork.theme.color}};"{{/if}}>
+                {{{ncm-net-icon selectedNetwork.theme}}}
               </div>
-            </div>
-            <div class="ncm-netmgr__detail-header-actions">
-              <button class="ncm-netmgr__btn-sm ncm-netmgr__btn-sm--primary"
-                      data-action="editNetwork">
-                <i class="fas fa-pen"></i> Edit
-              </button>
-            </div>
-          </div>
-
-          {{!-- Stats Grid --}}
-          <div class="ncm-netmgr__stats-grid">
-            <div class="ncm-netmgr__stat ncm-netmgr__stat--cyan">
-              <div class="ncm-netmgr__stat-value ncm-netmgr__stat-value--cyan">
-                {{selectedNetwork.signalStrength}}<span class="ncm-netmgr__stat-unit">%</span>
-              </div>
-              <div class="ncm-netmgr__signal-meter">
-                <div class="ncm-netmgr__signal-meter-fill ncm-netmgr__signal-meter-fill--{{selectedNetwork.signalMeterClass}}"
-                     style="width: {{selectedNetwork.signalStrength}}%;"></div>
-              </div>
-              <div class="ncm-netmgr__stat-label">Signal</div>
-            </div>
-            <div class="ncm-netmgr__stat ncm-netmgr__stat--green">
-              <div class="ncm-netmgr__stat-value ncm-netmgr__stat-value--green">
-                {{selectedNetwork.reliability}}<span class="ncm-netmgr__stat-unit">%</span>
-              </div>
-              <div class="ncm-netmgr__signal-meter">
-                <div class="ncm-netmgr__signal-meter-fill ncm-netmgr__signal-meter-fill--{{selectedNetwork.reliabilityMeterClass}}"
-                     style="width: {{selectedNetwork.reliability}}%;"></div>
-              </div>
-              <div class="ncm-netmgr__stat-label">Reliability</div>
-            </div>
-            <div class="ncm-netmgr__stat ncm-netmgr__stat--gold">
-              <div class="ncm-netmgr__stat-value ncm-netmgr__stat-value--gold">
-                {{selectedNetwork.effects.messageDelay}}
-              </div>
-              <div class="ncm-netmgr__stat-label">Delay (ms)</div>
-            </div>
-            <div class="ncm-netmgr__stat ncm-netmgr__stat--red">
-              <div class="ncm-netmgr__stat-value ncm-netmgr__stat-value--red">
-                {{selectedNetwork.sceneCount}}
-              </div>
-              <div class="ncm-netmgr__stat-label">Scenes</div>
-            </div>
-          </div>
-
-          {{!-- Properties --}}
-          <div class="ncm-netmgr__props">
-
-            {{!-- Security & Auth --}}
-            <div class="ncm-netmgr__prop-group">
-              <div class="ncm-netmgr__prop-group-title"><i class="fas fa-shield-halved"></i> Security & Auth</div>
-              <div class="ncm-netmgr__prop-row">
-                <span class="ncm-netmgr__prop-label">Authentication</span>
-                <span class="ncm-netmgr__prop-value ncm-netmgr__prop-value--{{selectedNetwork.authValueColor}}">
-                  {{selectedNetwork.authLabel}}
-                </span>
-              </div>
-              <div class="ncm-netmgr__prop-row">
-                <span class="ncm-netmgr__prop-label">Security Level</span>
-                <span class="ncm-netmgr__prop-value">{{selectedNetwork.security.level}}</span>
-              </div>
-              <div class="ncm-netmgr__prop-row">
-                <span class="ncm-netmgr__prop-label">Auth Methods</span>
-                <span class="ncm-netmgr__prop-value">
-                  {{#if selectedNetwork.security.allowPassword}}
-                    <i class="fas fa-key" style="color:var(--ncm-accent,#f7c948);margin-right:2px;" title="Password"></i>
-                  {{/if}}
-                  {{#if selectedNetwork.security.allowSkillCheck}}
-                    <i class="fas fa-dice-d20" style="color:#a855f7;margin-right:2px;" title="Skill Check"></i>
-                  {{/if}}
-                  {{#if selectedNetwork.security.allowKeyItem}}
-                    <i class="fas fa-id-badge" style="color:var(--ncm-secondary,#19f3f7);margin-right:2px;" title="Key Item"></i>
-                  {{/if}}
-                  {{#unless selectedNetwork.security.allowPassword}}
-                    {{#unless selectedNetwork.security.allowSkillCheck}}
-                      {{#unless selectedNetwork.security.allowKeyItem}}
-                        <span style="color:var(--ncm-text-muted);">None configured</span>
-                      {{/unless}}
-                    {{/unless}}
-                  {{/unless}}
-                </span>
-              </div>
-              <div class="ncm-netmgr__prop-row">
-                <span class="ncm-netmgr__prop-label">Combination</span>
-                <span class="ncm-netmgr__prop-value">
-                  {{#if (eq selectedNetwork.security.authLogic "all")}}
-                    <span style="color:var(--ncm-primary);">ALL required</span>
+              <div class="ncm-netmgr__detail-banner-info">
+                <div class="ncm-netmgr__detail-banner-name">{{selectedNetwork.name}}</div>
+                <div class="ncm-netmgr__detail-banner-meta">
+                  <span class="ncm-netmgr__detail-banner-type">{{selectedNetwork.typeLabel}} Subnet</span>
+                  {{#if selectedNetwork.isCore}}
+                    <span class="ncm-netmgr__tag ncm-netmgr__tag--core">Core</span>
                   {{else}}
-                    <span style="color:var(--ncm-success,#00ff41);">ANY method</span>
+                    <span class="ncm-netmgr__tag ncm-netmgr__tag--custom">Custom</span>
                   {{/if}}
-                </span>
+                  {{#if selectedNetwork.security.requiresAuth}}
+                    <span class="ncm-netmgr__tag ncm-netmgr__tag--locked"><i class="fas fa-lock"></i> Auth Required</span>
+                  {{else}}
+                    <span class="ncm-netmgr__tag ncm-netmgr__tag--open"><i class="fas fa-check"></i> Open</span>
+                  {{/if}}
+                </div>
               </div>
-              {{#if selectedNetwork.security.allowKeyItem}}
-              <div class="ncm-netmgr__prop-row">
-                <span class="ncm-netmgr__prop-label">Key Item</span>
-                <span class="ncm-netmgr__prop-value">
-                  {{#if selectedNetwork.security.keyItemName}}
-                    {{selectedNetwork.security.keyItemName}}
-                    {{#if selectedNetwork.security.keyItemConsume}}
-                      <span style="color:var(--ncm-primary);font-size:9px;margin-left:4px;">(consumed)</span>
+              <div class="ncm-netmgr__detail-banner-actions">
+                <button class="ncm-netmgr__btn-sm ncm-netmgr__btn-sm--primary" data-action="editNetwork">
+                  <i class="fas fa-pen"></i> Edit
+                </button>
+              </div>
+            </div>
+            {{#if selectedNetwork.description}}
+            <div class="ncm-netmgr__detail-banner-desc">{{selectedNetwork.description}}</div>
+            {{/if}}
+          </div>
+
+          {{!-- Stat Strip --}}
+          <div class="ncm-netmgr__stat-strip">
+            <div class="ncm-netmgr__stat-chip ncm-netmgr__stat-chip--cyan">
+              <div class="ncm-netmgr__stat-chip-value">{{selectedNetwork.signalStrength}}<span class="ncm-netmgr__stat-chip-unit">%</span></div>
+              <div class="ncm-netmgr__stat-chip-label">Signal</div>
+              <div class="ncm-netmgr__stat-chip-bar"><div class="ncm-netmgr__stat-chip-bar-fill ncm-netmgr__stat-chip-bar-fill--{{selectedNetwork.signalMeterClass}}" style="width:{{selectedNetwork.signalStrength}}%;"></div></div>
+            </div>
+            <div class="ncm-netmgr__stat-chip ncm-netmgr__stat-chip--green">
+              <div class="ncm-netmgr__stat-chip-value">{{selectedNetwork.reliability}}<span class="ncm-netmgr__stat-chip-unit">%</span></div>
+              <div class="ncm-netmgr__stat-chip-label">Reliability</div>
+              <div class="ncm-netmgr__stat-chip-bar"><div class="ncm-netmgr__stat-chip-bar-fill ncm-netmgr__stat-chip-bar-fill--{{selectedNetwork.reliabilityMeterClass}}" style="width:{{selectedNetwork.reliability}}%;"></div></div>
+            </div>
+            <div class="ncm-netmgr__stat-chip ncm-netmgr__stat-chip--gold">
+              <div class="ncm-netmgr__stat-chip-value">{{selectedNetwork.effects.messageDelay}}<span class="ncm-netmgr__stat-chip-unit">ms</span></div>
+              <div class="ncm-netmgr__stat-chip-label">Delay</div>
+            </div>
+            <div class="ncm-netmgr__stat-chip ncm-netmgr__stat-chip--red">
+              <div class="ncm-netmgr__stat-chip-value">{{selectedNetwork.sceneCount}}</div>
+              <div class="ncm-netmgr__stat-chip-label">Scenes</div>
+            </div>
+          </div>
+
+          {{!-- Detail Body --}}
+          <div class="ncm-netmgr__detail-body">
+
+            {{!-- Security & Authentication --}}
+            <div class="ncm-netmgr__dsection">
+              <div class="ncm-netmgr__dsection-header">
+                <i class="fas fa-shield-halved" style="color:var(--nm-purple,#b44dff);"></i>
+                <span class="ncm-netmgr__dsection-title">Security & Authentication</span>
+              </div>
+              <div class="ncm-netmgr__dsection-body">
+                <div class="ncm-netmgr__dprop">
+                  <span class="ncm-netmgr__dprop-label">Authentication</span>
+                  <span class="ncm-netmgr__dprop-value ncm-netmgr__dprop-value--{{selectedNetwork.authValueColor}}">{{selectedNetwork.authLabel}}</span>
+                </div>
+                <div class="ncm-netmgr__dprop">
+                  <span class="ncm-netmgr__dprop-label">Security Level</span>
+                  <span class="ncm-netmgr__dprop-value">{{selectedNetwork.security.level}}</span>
+                </div>
+                <div class="ncm-netmgr__dprop">
+                  <span class="ncm-netmgr__dprop-label">Auth Methods</span>
+                  <div class="ncm-netmgr__auth-methods">
+                    {{#if selectedNetwork.security.allowPassword}}
+                    <span class="ncm-netmgr__auth-chip ncm-netmgr__auth-chip--password"><i class="fas fa-key"></i> Password</span>
                     {{/if}}
-                  {{else}}
-                    <span style="color:var(--ncm-text-muted);">Not set</span>
-                  {{/if}}
-                </span>
-              </div>
-              {{/if}}
-              <div class="ncm-netmgr__prop-row">
-                <span class="ncm-netmgr__prop-label">Max Auth Attempts</span>
-                <span class="ncm-netmgr__prop-value">{{selectedNetwork.security.maxAttempts}}</span>
-              </div>
-              <div class="ncm-netmgr__prop-row">
-                <span class="ncm-netmgr__prop-label">Lockout Duration</span>
-                <span class="ncm-netmgr__prop-value">{{selectedNetwork.lockoutMinutes}} min</span>
-              </div>
-            </div>
-
-            {{!-- Effects --}}
-            <div class="ncm-netmgr__prop-group">
-              <div class="ncm-netmgr__prop-group-title"><i class="fas fa-bolt"></i> Effects</div>
-              <div class="ncm-netmgr__prop-row">
-                <span class="ncm-netmgr__prop-label">Message Delay</span>
-                <span class="ncm-netmgr__prop-value">{{selectedNetwork.effects.messageDelay}} ms</span>
-              </div>
-              <div class="ncm-netmgr__prop-row">
-                <span class="ncm-netmgr__prop-label">Traced</span>
-                {{#if selectedNetwork.effects.traced}}
-                <span class="ncm-netmgr__prop-value ncm-netmgr__prop-value--red">
-                  <i class="fas fa-eye"></i> Yes
-                </span>
-                {{else}}
-                <span class="ncm-netmgr__prop-value ncm-netmgr__prop-value--green">No</span>
-                {{/if}}
-              </div>
-              <div class="ncm-netmgr__prop-row">
-                <span class="ncm-netmgr__prop-label">Anonymous</span>
-                {{#if selectedNetwork.effects.anonymity}}
-                <span class="ncm-netmgr__prop-value ncm-netmgr__prop-value--purple">
-                  <i class="fas fa-user-secret"></i> Yes
-                </span>
-                {{else}}
-                <span class="ncm-netmgr__prop-value ncm-netmgr__prop-value--green">No</span>
-                {{/if}}
-              </div>
-              <div class="ncm-netmgr__prop-row">
-                <span class="ncm-netmgr__prop-label">Can Route</span>
-                {{#if selectedNetwork.effects.canRoute}}
-                <span class="ncm-netmgr__prop-value ncm-netmgr__prop-value--green">
-                  <i class="fas fa-check"></i> Yes
-                </span>
-                {{else}}
-                <span class="ncm-netmgr__prop-value ncm-netmgr__prop-value--red">
-                  <i class="fas fa-times"></i> No
-                </span>
-                {{/if}}
-              </div>
-              <div class="ncm-netmgr__prop-row">
-                <span class="ncm-netmgr__prop-label">Restricted Access</span>
-                {{#if selectedNetwork.effects.restrictedAccess}}
-                <span class="ncm-netmgr__prop-value ncm-netmgr__prop-value--gold">
-                  <i class="fas fa-lock"></i> Yes
-                </span>
-                {{else}}
-                <span class="ncm-netmgr__prop-value ncm-netmgr__prop-value--green">No</span>
-                {{/if}}
-              </div>
-              {{#if selectedNetwork.effects.allowedRecipientNetworks.length}}
-              <div class="ncm-netmgr__prop-row">
-                <span class="ncm-netmgr__prop-label">Allowed Recipients</span>
-                <span class="ncm-netmgr__prop-value">
-                  {{join selectedNetwork.effects.allowedRecipientNetworks ", "}}
-                </span>
-              </div>
-              {{/if}}
-            </div>
-
-            {{!-- Availability --}}
-            <div class="ncm-netmgr__prop-group">
-              <div class="ncm-netmgr__prop-group-title"><i class="fas fa-map-marker-alt"></i> Availability</div>
-              <div class="ncm-netmgr__prop-group-body-pad">
-                <div class="ncm-netmgr__scene-pills">
-                  {{#if selectedNetwork.availability.global}}
-                  <span class="ncm-netmgr__scene-pill ncm-netmgr__scene-pill--global">
-                    <i class="fas fa-globe"></i> Global
+                    {{#if selectedNetwork.security.allowSkillCheck}}
+                    <span class="ncm-netmgr__auth-chip ncm-netmgr__auth-chip--skill"><i class="fas fa-dice-d20"></i> Skill</span>
+                    {{/if}}
+                    {{#if selectedNetwork.security.allowKeyItem}}
+                    <span class="ncm-netmgr__auth-chip ncm-netmgr__auth-chip--key"><i class="fas fa-id-badge"></i> Key Item</span>
+                    {{/if}}
+                    {{#unless selectedNetwork.security.allowPassword}}{{#unless selectedNetwork.security.allowSkillCheck}}{{#unless selectedNetwork.security.allowKeyItem}}
+                    <span class="ncm-netmgr__dprop-value ncm-netmgr__dprop-value--muted">—</span>
+                    {{/unless}}{{/unless}}{{/unless}}
+                  </div>
+                </div>
+                {{#if selectedNetwork.security.requiresAuth}}
+                <div class="ncm-netmgr__dprop">
+                  <span class="ncm-netmgr__dprop-label">Combination</span>
+                  <span class="ncm-netmgr__dprop-value {{#if (eq selectedNetwork.security.authLogic 'all')}}ncm-netmgr__dprop-value--red{{else}}ncm-netmgr__dprop-value--green{{/if}}">
+                    {{#if (eq selectedNetwork.security.authLogic "all")}}ALL Required{{else}}ANY Method{{/if}}
                   </span>
-                  {{/if}}
-                  {{#each selectedNetwork.scenePills}}
-                  <span class="ncm-netmgr__scene-pill {{#if isCurrent}}ncm-netmgr__scene-pill--current{{/if}}">
-                    {{name}}
-                  </span>
+                </div>
+                {{/if}}
+
+                {{!-- Bypass Skills --}}
+                {{#if selectedNetwork.security.allowSkillCheck}}
+                <div class="ncm-netmgr__dprop-divider"></div>
+                <div class="ncm-netmgr__dprop-label" style="margin-bottom:6px;">Bypass Skills</div>
+                <div class="ncm-netmgr__skill-row">
+                  {{#each selectedNetwork.security.bypassSkills}}
+                  <span class="ncm-netmgr__skill-pill">{{this}}</span>
                   {{/each}}
-                  {{#unless selectedNetwork.availability.global}}
-                    {{#unless selectedNetwork.scenePills.length}}
-                    <span class="ncm-netmgr__scene-pill ncm-netmgr__scene-pill--none">No scenes assigned</span>
-                    {{/unless}}
-                  {{/unless}}
+                  <span class="ncm-netmgr__dv-badge">DV {{selectedNetwork.security.bypassDC}}</span>
+                </div>
+                {{/if}}
+
+                {{!-- Key Item --}}
+                {{#if selectedNetwork.security.allowKeyItem}}
+                {{#if selectedNetwork.security.keyItemName}}
+                <div class="ncm-netmgr__key-item-display">
+                  <div class="ncm-netmgr__ki-display-img">
+                    {{#if keyItemImg}}<img src="{{keyItemImg}}" alt="">{{else}}<i class="fas fa-id-badge"></i>{{/if}}
+                  </div>
+                  <div class="ncm-netmgr__ki-display-meta">
+                    <div class="ncm-netmgr__ki-display-name">{{selectedNetwork.security.keyItemName}}</div>
+                    <div class="ncm-netmgr__ki-display-sub">{{#if selectedNetwork.security.keyItemTag}}Tag: {{selectedNetwork.security.keyItemTag}}{{else}}No tag{{/if}}</div>
+                  </div>
+                  {{#if selectedNetwork.security.keyItemConsume}}
+                  <span class="ncm-netmgr__ki-consumed-badge">Consumed</span>
+                  {{/if}}
+                </div>
+                {{/if}}
+                {{/if}}
+
+                {{!-- ICE Callout --}}
+                <div class="ncm-netmgr__ice-callout {{#if isBlackIce}}ncm-netmgr__ice-callout--black{{else if isRedIce}}ncm-netmgr__ice-callout--red{{else}}ncm-netmgr__ice-callout--standard{{/if}}">
+                  <div class="ncm-netmgr__ice-callout-header">
+                    <div class="ncm-netmgr__ice-callout-icon {{#if isBlackIce}}ncm-netmgr__ice-callout-icon--black{{else if isRedIce}}ncm-netmgr__ice-callout-icon--red{{else}}ncm-netmgr__ice-callout-icon--standard{{/if}}">
+                      <i class="fas {{#if isBlackIce}}fa-skull-crossbones{{else if isRedIce}}fa-skull-crossbones{{else}}fa-shield-halved{{/if}}"></i>
+                    </div>
+                    <span class="ncm-netmgr__ice-callout-title {{#if isBlackIce}}ncm-netmgr__ice-callout-title--danger{{else if isRedIce}}ncm-netmgr__ice-callout-title--danger{{else}}ncm-netmgr__ice-callout-title--standard{{/if}}">{{iceTypeLabel}}</span>
+                  </div>
+                  <div class="ncm-netmgr__ice-callout-grid">
+                    <div class="ncm-netmgr__dprop">
+                      <span class="ncm-netmgr__dprop-label">On Failure</span>
+                      <span class="ncm-netmgr__dprop-value {{#if (eq iceFailureLabel 'Damage')}}ncm-netmgr__dprop-value--red{{/if}}">{{iceFailureLabel}}</span>
+                    </div>
+                    {{#if isLethalICE}}
+                    <div class="ncm-netmgr__dprop">
+                      <span class="ncm-netmgr__dprop-label">Damage</span>
+                      <span class="ncm-netmgr__dprop-value ncm-netmgr__dprop-value--red">{{iceDamageDisplay}} HP</span>
+                    </div>
+                    {{/if}}
+                    <div class="ncm-netmgr__dprop">
+                      <span class="ncm-netmgr__dprop-label">Source</span>
+                      <span class="ncm-netmgr__dprop-value">{{iceSourceDisplay}}</span>
+                    </div>
+                    <div class="ncm-netmgr__dprop">
+                      <span class="ncm-netmgr__dprop-label">Max Attempts</span>
+                      <span class="ncm-netmgr__dprop-value">{{selectedNetwork.security.maxAttempts}}</span>
+                    </div>
+                    {{#if selectedNetwork.lockoutMinutes}}
+                    <div class="ncm-netmgr__dprop">
+                      <span class="ncm-netmgr__dprop-label">Lockout</span>
+                      <span class="ncm-netmgr__dprop-value">{{selectedNetwork.lockoutMinutes}} min</span>
+                    </div>
+                    {{/if}}
+                  </div>
                 </div>
               </div>
             </div>
 
-            {{!-- Lore (if any) --}}
-            {{#if selectedNetwork.lore}}
-            <div class="ncm-netmgr__prop-group">
-              <div class="ncm-netmgr__prop-group-title"><i class="fas fa-book"></i> Lore</div>
-              <div class="ncm-netmgr__prop-group-body-pad">
-                <span class="ncm-netmgr__lore-text">{{selectedNetwork.lore}}</span>
+            {{!-- Network Flags --}}
+            <div class="ncm-netmgr__dsection">
+              <div class="ncm-netmgr__dsection-header">
+                <i class="fas fa-flag" style="color:var(--nm-success,#34D399);"></i>
+                <span class="ncm-netmgr__dsection-title">Network Flags</span>
+              </div>
+              <div class="ncm-netmgr__flag-strip">
+                <div class="ncm-netmgr__flag-chip {{#if selectedNetwork.effects.traced}}ncm-netmgr__flag-chip--danger{{else}}ncm-netmgr__flag-chip--off{{/if}}"><i class="fas fa-eye"></i> Traced</div>
+                <div class="ncm-netmgr__flag-chip {{#if selectedNetwork.effects.anonymity}}ncm-netmgr__flag-chip--warn{{else}}ncm-netmgr__flag-chip--off{{/if}}"><i class="fas fa-user-secret"></i> Anonymous</div>
+                <div class="ncm-netmgr__flag-chip {{#if selectedNetwork.effects.canRoute}}ncm-netmgr__flag-chip--on{{else}}ncm-netmgr__flag-chip--off{{/if}}"><i class="fas fa-route"></i> Can Route</div>
+                <div class="ncm-netmgr__flag-chip {{#if selectedNetwork.effects.restrictedAccess}}ncm-netmgr__flag-chip--danger{{else}}ncm-netmgr__flag-chip--off{{/if}}"><i class="fas fa-lock"></i> Restricted</div>
+                <div class="ncm-netmgr__flag-chip {{#if selectedNetwork.availability.global}}ncm-netmgr__flag-chip--on{{else}}ncm-netmgr__flag-chip--off{{/if}}"><i class="fas fa-globe"></i> Global</div>
               </div>
             </div>
-            {{/if}}
-          </div>
 
-          {{!-- Detail Footer --}}
+            {{!-- Availability --}}
+            <div class="ncm-netmgr__dsection">
+              <div class="ncm-netmgr__dsection-header">
+                <i class="fas fa-map-marker-alt" style="color:var(--nm-accent,#F0C55B);"></i>
+                <span class="ncm-netmgr__dsection-title">Availability</span>
+              </div>
+              <div class="ncm-netmgr__dscene-pills">
+                {{#if selectedNetwork.availability.global}}
+                <span class="ncm-netmgr__dscene-pill ncm-netmgr__dscene-pill--global"><i class="fas fa-globe"></i> Global</span>
+                {{/if}}
+                {{#each selectedNetwork.scenePills}}
+                <span class="ncm-netmgr__dscene-pill {{#if isCurrent}}ncm-netmgr__dscene-pill--current{{/if}}">{{name}}</span>
+                {{/each}}
+                {{#unless selectedNetwork.availability.global}}
+                  {{#unless selectedNetwork.scenePills.length}}
+                  <span class="ncm-netmgr__dscene-pill ncm-netmgr__dscene-pill--none">No scenes assigned</span>
+                  {{/unless}}
+                {{/unless}}
+              </div>
+            </div>
+
+            {{!-- Lore --}}
+            {{#if selectedNetwork.lore}}
+            <div class="ncm-netmgr__dsection">
+              <div class="ncm-netmgr__dsection-header">
+                <i class="fas fa-book" style="color:var(--nm-text-secondary,#8888a0);"></i>
+                <span class="ncm-netmgr__dsection-title">Lore</span>
+              </div>
+              <div class="ncm-netmgr__dlore">{{selectedNetwork.lore}}</div>
+            </div>
+            {{/if}}
+
+            {{!-- Appearance --}}
+            <div class="ncm-netmgr__dsection">
+              <div class="ncm-netmgr__dsection-header">
+                <i class="fas fa-palette" style="color:var(--nm-primary,#F65261);"></i>
+                <span class="ncm-netmgr__dsection-title">Appearance</span>
+              </div>
+              <div class="ncm-netmgr__dappearance">
+                <div class="ncm-netmgr__dappearance-swatch" style="background:{{selectedNetwork.theme.color}};"></div>
+                <div class="ncm-netmgr__dappearance-info">
+                  <span class="ncm-netmgr__dappearance-label">Color</span>
+                  <span class="ncm-netmgr__dappearance-value">{{selectedNetwork.theme.color}}</span>
+                </div>
+                <div class="ncm-netmgr__dappearance-info">
+                  <span class="ncm-netmgr__dappearance-label">Icon</span>
+                  <span class="ncm-netmgr__dappearance-value"><i class="fas {{selectedNetwork.theme.icon}}"></i> {{selectedNetwork.theme.icon}}</span>
+                </div>
+                <div class="ncm-netmgr__dappearance-info">
+                  <span class="ncm-netmgr__dappearance-label">Glitch</span>
+                  <span class="ncm-netmgr__dappearance-value">{{selectedNetwork.theme.glitchIntensity}}</span>
+                </div>
+              </div>
+            </div>
+
+          </div>{{!-- /detail-body --}}
+
+          {{!-- Footer --}}
           <div class="ncm-netmgr__detail-footer">
             {{#if selectedNetwork.isCore}}
-            <span class="ncm-netmgr__detail-footer-note">
-              <i class="fas fa-shield-halved"></i> Core network — editable, cannot be deleted
-            </span>
+            <i class="fas fa-shield-halved"></i> Core network — editable, cannot be deleted
             {{else}}
-            <span class="ncm-netmgr__detail-footer-note">
-              <i class="fas fa-cube"></i> Custom network — fully editable
-            </span>
+            <i class="fas fa-cube"></i> Custom network — fully editable
+            {{/if}}
+            {{#if selectedNetwork.group}}
+            <span class="ncm-netmgr__detail-footer-group">Group: {{selectedNetwork.group}}</span>
             {{/if}}
           </div>
         </div>
