@@ -1018,6 +1018,16 @@
   color: #ff0033 !important;
   border-color: #ff0033 !important;
 }
+.ncm-app .ncm-shard-hdr-btn--original {
+  color: var(--ncm-accent) !important;
+  border-color: rgba(247, 201, 72, 0.2) !important;
+  background: rgba(247, 201, 72, 0.04) !important;
+}
+.ncm-app .ncm-shard-hdr-btn--original:hover {
+  color: var(--ncm-accent) !important;
+  border-color: rgba(247, 201, 72, 0.4) !important;
+  background: rgba(247, 201, 72, 0.1) !important;
+}
 
 /* ─── Standard action buttons (Save, Reset, Add Entry, Cancel, etc.) ─── */
 

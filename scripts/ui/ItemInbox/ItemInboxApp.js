@@ -98,6 +98,7 @@ export class ItemInboxApp extends BaseApplication {
       scrollToEntry: ItemInboxApp._onScrollToEntry,
       toggleIndexStrip: ItemInboxApp._onToggleIndexStrip,
       toggleChipInfo: ItemInboxApp._onToggleChipInfo,
+      viewOriginalItem: ItemInboxApp._onViewOriginalItem,
       executePayload: ItemInboxApp._onExecutePayload,
       goToScene: ItemInboxApp._onGoToScene,
       editEntry: ItemInboxApp._onEditEntry,
@@ -1837,6 +1838,19 @@ export class ItemInboxApp extends BaseApplication {
     const btn = this.element?.querySelector('[data-action="toggleChipInfo"].ncm-shard-hdr-btn');
     if (btn) {
       btn.classList.toggle('ncm-shard-hdr-btn--active', this._chipDrawerOpen);
+    }
+  }
+
+  /**
+   * GM action: Open the native Foundry item sheet, bypassing the shard viewer intercept.
+   * Sets _ncmBypass on the sheet so ShardSheetOverride.preRenderItemSheet lets it through.
+   */
+  static _onViewOriginalItem() {
+    if (!this.item) return;
+    const sheet = this.item.sheet;
+    if (sheet) {
+      sheet._ncmBypass = true;
+      sheet.render(true);
     }
   }
 

@@ -3,20 +3,20 @@
  * @file scripts/init/registerDataShardSystem.js
  * @module cyberpunkred-messenger
  * @description Phase 4 initialization — wires SkillService, DataShardService,
- *              ItemInboxApp launch function, and ItemSheetIntegration hooks.
+ *              ItemInboxApp launch function, and ShardSheetOverride hooks.
  *
  * Priority Map (ready phase):
  *   20  — SkillService       (no dependencies, needed by DataShardService)
  *   60  — DataShardService   (depends on EventBus, SocketManager, SecurityService, SkillService)
  *  112  — ItemInboxApp launch (depends on DataShardService, SkillService)
- *  115  — ItemSheetIntegration hooks (depends on DataShardService)
+ *  115  — ShardSheetOverride  (sheet intercept, inventory badges, context menu)
  */
 
 import { MODULE_ID, EVENTS } from '../utils/constants.js';
 import { log, isGM } from '../utils/helpers.js';
 import { SkillService } from '../services/SkillService.js';
 import { DataShardService } from '../services/DataShardService.js';
-import { ItemSheetIntegration } from '../integrations/ItemSheetIntegration.js';
+import { ShardSheetOverride } from '../integrations/ShardSheetOverride.js';
 import { Phase4Verification } from '../tests/Phase4Verification.js';
 
 /**
@@ -140,19 +140,20 @@ export function registerDataShardSystem(initializer) {
   });
 
   // ═══════════════════════════════════════════════════════════════
-  //  ItemSheetIntegration — Priority 115 (ready)
-  //  Hooks into item sheet rendering to add "Data Shard" controls.
+  //  ShardSheetOverride — Priority 115 (ready)
+  //  Sheet interception (preRenderItemSheet), inventory badges
+  //  (renderActorSheet), and context menu (getActorSheetItemContext).
   //  Depends on DataShardService being available.
   // ═══════════════════════════════════════════════════════════════
 
-  initializer.register('ready', 115, 'ItemSheetIntegration', async () => {
+  initializer.register('ready', 115, 'ShardSheetOverride', async () => {
     try {
-      const integration = new ItemSheetIntegration();
-      integration.activate();
-      game.nightcity._itemSheetIntegration = integration;
-      log.info('ItemSheetIntegration hooks activated');
+      const override = new ShardSheetOverride();
+      override.activate();
+      game.nightcity._shardSheetOverride = override;
+      log.info('ShardSheetOverride hooks activated');
     } catch (err) {
-      log.error(`ItemSheetIntegration failed: ${err.message}`);
+      log.error(`ShardSheetOverride failed: ${err.message}`);
     }
   });
 

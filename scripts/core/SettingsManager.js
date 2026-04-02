@@ -230,6 +230,35 @@ export class SettingsManager {
       default: 'nightcity.net',
     });
 
+    // ─── Data Shard Conversion Settings ───
+
+    game.settings.register(MODULE_ID, 'allowPlayerConversion', {
+      name: 'Allow Player Shard Conversion',
+      hint: 'Whether players can convert their own inventory items into data shards.',
+      scope: 'world',
+      config: true,
+      type: Boolean,
+      default: false,
+    });
+
+    game.settings.register(MODULE_ID, 'shardConversionSkill', {
+      name: 'Shard Encoding Skill',
+      hint: 'The CPR skill that determines player conversion tier. Set to "none" to give all players basic access only.',
+      scope: 'world',
+      config: true,
+      type: String,
+      default: 'none',
+    });
+
+    game.settings.register(MODULE_ID, 'shardTierThresholds', {
+      name: 'Skill Tier Thresholds',
+      hint: 'Skill levels for medium and expert tiers (comma-separated, e.g. "5,9").',
+      scope: 'world',
+      config: true,
+      type: String,
+      default: '5,9',
+    });
+
     game.settings.register(MODULE_ID, 'debugMode', {
       name: 'NCM.Settings.DebugMode.Name',
       hint: 'NCM.Settings.DebugMode.Hint',

@@ -298,16 +298,16 @@ export class Phase4Verification {
       return { passed: true, detail: `${loaded.length} templates verified: ${loaded.join(', ')}` };
     });
 
-    // ─── ItemSheetIntegration ───
-    await this._check('4.14', 'ItemSheetIntegration hooks active', () => {
-      const integration = game.nightcity?._itemSheetIntegration;
-      if (!integration) {
-        return { passed: false, detail: 'game.nightcity._itemSheetIntegration not found' };
+    // ─── ShardSheetOverride ───
+    await this._check('4.14', 'ShardSheetOverride hooks active', () => {
+      const override = game.nightcity?._shardSheetOverride;
+      if (!override) {
+        return { passed: false, detail: 'game.nightcity._shardSheetOverride not found' };
       }
 
       return {
         passed: true,
-        detail: 'ItemSheetIntegration active — hooks on renderItemSheet + renderItemSheetV2',
+        detail: 'ShardSheetOverride active — preRenderItemSheet + renderActorSheet + getActorSheetItemContext',
       };
     });
 
