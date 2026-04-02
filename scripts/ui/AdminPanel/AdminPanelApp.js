@@ -5566,15 +5566,7 @@ export class AdminPanelApp extends BaseApplication {
               `).join('')}
             </div>
             <div style="font-size:10px;color:#888;margin-top:2px;" id="ncm-pick-count">${candidates.length} items</div>
-          </div>
-          <style>
-            .ncm-picker__controls { display:flex; gap:6px; margin-bottom:6px; }
-            .ncm-picker__controls input, .ncm-picker__controls select { padding:4px 8px; background:#2a2a2e; border:1px solid #555; border-radius:3px; color:#ddd; font-size:12px; }
-            .ncm-picker__item { display:flex; align-items:center; gap:8px; padding:5px 8px; cursor:pointer; border-bottom:1px solid #3a3a3e; }
-            .ncm-picker__item:hover { background:rgba(25,243,247,0.06); }
-            .ncm-picker__item.selected { background:rgba(25,243,247,0.1); outline:1px solid rgba(25,243,247,0.3); }
-            .ncm-picker__item[data-hidden="true"] { display:none; }
-          </style>`,
+          </div>`,
         buttons: {
           convert: { label: '<i class="fas fa-microchip"></i> Convert', callback: html => {
             const sel = html[0].querySelector('.ncm-picker__item.selected');
@@ -5868,14 +5860,14 @@ export class AdminPanelApp extends BaseApplication {
         new Dialog({
           title: 'Unconvert Data Shard',
           content: `
-            <div class="ncm-picker">
-              <input type="text" id="ncm-pick-search" placeholder="Search shards..." autocomplete="off" style="width:100%;padding:4px 8px;background:#2a2a2e;border:1px solid #555;border-radius:3px;color:#ddd;font-size:12px;margin-bottom:6px;">
-              <div class="ncm-picker__list" id="ncm-pick-list" style="max-height:240px;overflow-y:auto;border:1px solid #444;border-radius:3px;margin:4px 0;">
+            <div class="ncm-picker ncm-picker--danger">
+              <input type="text" class="ncm-picker__search" id="ncm-pick-search" placeholder="Search shards..." autocomplete="off">
+              <div class="ncm-picker__list" id="ncm-pick-list">
                 ${shards.map(s => {
                   const config = s.getFlag(MODULE_ID, 'config') || {};
                   const preset = config.preset || 'default';
                   return `<div class="ncm-picker__item" data-id="${s.id}" data-name="${s.name.toLowerCase()}">
-                    <img src="${s.img || 'icons/svg/item-bag.svg'}" width="28" height="28" style="border-radius:3px;border:1px solid #555;object-fit:cover;">
+                    <img src="${s.img || 'icons/svg/item-bag.svg'}" width="28" height="28">
                     <div style="flex:1;min-width:0;">
                       <div style="font-size:12px;font-weight:500;color:#ddd;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${s.name}</div>
                       <div style="font-size:10px;color:#888;">${s.type} · ${preset}</div>
@@ -5884,13 +5876,7 @@ export class AdminPanelApp extends BaseApplication {
                 }).join('')}
               </div>
               <div style="font-size:10px;color:#c44;margin-top:4px;"><i class="fas fa-exclamation-triangle"></i> Shard content, ICE, and configuration will be removed.</div>
-            </div>
-            <style>
-              .ncm-picker__item { display:flex; align-items:center; gap:8px; padding:5px 8px; cursor:pointer; border-bottom:1px solid #3a3a3e; }
-              .ncm-picker__item:hover { background:rgba(246,82,97,0.06); }
-              .ncm-picker__item.selected { background:rgba(246,82,97,0.1); outline:1px solid rgba(246,82,97,0.3); }
-              .ncm-picker__item[data-hidden="true"] { display:none; }
-            </style>`,
+            </div>`,
           buttons: {
             unconvert: { label: '<i class="fas fa-rotate-left"></i> Unconvert', callback: html => {
               const sel = html[0].querySelector('.ncm-picker__item.selected');

@@ -169,15 +169,18 @@ export class ShardSheetOverride {
       for (const item of (game.items ?? [])) {
         if (!item.getFlag(MODULE_ID, 'isDataShard')) continue;
 
-        // Find the directory entry for this item
-        const entry = root.querySelector(`[data-document-id="${item.id}"], [data-entry-id="${item.id}"]`);
+        // Find the directory entry — try multiple selector patterns for v12 compat
+        const entry = root.querySelector(`[data-document-id="${item.id}"]`)
+          ?? root.querySelector(`[data-entry-id="${item.id}"]`)
+          ?? root.querySelector(`li.document[data-document-id="${item.id}"]`);
         if (!entry) continue;
 
         // Don't double-process
-        if (entry.querySelector('.ncm-shard-img-tag')) continue;
+        if (entry.dataset.ncmShard) continue;
+        entry.dataset.ncmShard = 'true';
 
         // ─── Corner badge on thumbnail ───
-        const thumb = entry.querySelector('.thumbnail, img, .document-thumbnail');
+        const thumb = entry.querySelector('.thumbnail, img.thumbnail, .document-thumbnail');
         if (thumb) {
           const container = thumb.closest('.thumbnail') ?? thumb.parentElement;
           if (container) {
@@ -191,14 +194,25 @@ export class ShardSheetOverride {
           (container ?? thumb).appendChild(tag);
         }
 
-        // ─── Click intercept on the entry name ───
-        const nameEl = entry.querySelector('.document-name, .entry-name, h4');
-        if (nameEl) {
-          nameEl.addEventListener('click', (ev) => {
-            ev.stopImmediatePropagation();
-            ev.preventDefault();
-            game.nightcity?.openDataShard(item);
-          }, { capture: true });
+        // ─── Click intercept — capture on the entry itself ───
+        // Foundry binds click on .document-name or the <h4> or the <a> inside.
+        // We intercept on the entry and all its clickable children.
+        const interceptClick = (ev) => {
+          // Don't intercept right-clicks or control-clicks (those open context menu)
+          if (ev.button !== 0 || ev.ctrlKey || ev.metaKey) return;
+          ev.stopImmediatePropagation();
+          ev.preventDefault();
+          game.nightcity?.openDataShard(item);
+        };
+
+        // Intercept on document name link (most Foundry versions)
+        const nameLink = entry.querySelector('.document-name a, .document-name, .entry-name a, h4 a, h4');
+        if (nameLink) {
+          nameLink.addEventListener('click', interceptClick, { capture: true });
+        }
+        // Also intercept on thumbnail click
+        if (thumb) {
+          thumb.addEventListener('click', interceptClick, { capture: true });
         }
       }
     } catch (err) {
@@ -212,10 +226,11 @@ export class ShardSheetOverride {
 
   /**
    * Add shard entries to the Items Directory right-click context menu.
-   * This hook DOES fire reliably (unlike getActorSheetItemContext on CPR).
+   * Foundry hook signature: (html, contextOptions)
+   * @param {jQuery} html - The rendered directory HTML
    * @param {Array} options - Context menu options array
    */
-  _onGetDirectoryContext(options) {
+  _onGetDirectoryContext(html, options) {
     // ─── Convert to Data Shard (non-shard world items, GM only) ───
     if (isGM()) {
       options.push({
