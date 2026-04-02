@@ -144,8 +144,33 @@ export function registerGMTools(initializer) {
         actorId = owned?.id;
       }
       if (!actorId) {
+        // If no actor with email, maybe they need setup
+        const fallback = game.user?.character?.id;
+        if (fallback && !game.user.isGM) {
+          const emailService = game.nightcity?.emailService;
+          if (emailService?.isSetupRequired() && !emailService.hasEmail(game.user.character)) {
+            game.nightcity.openEmailSetup(game.user.character).then(email => {
+              if (email) ns.openContacts(fallback, options);
+            });
+            return;
+          }
+        }
         ui.notifications.warn('No actor with email found.');
         return;
+      }
+
+      // ── Email setup intercept ──
+      if (!game.user.isGM && !options.gmInspectMode) {
+        const emailService = game.nightcity?.emailService;
+        if (emailService?.isSetupRequired()) {
+          const actor = game.actors.get(actorId);
+          if (actor && !emailService.hasEmail(actor)) {
+            game.nightcity.openEmailSetup(actor).then(email => {
+              if (email) ns.openContacts(actorId, options);
+            });
+            return;
+          }
+        }
       }
 
       // GM inspect mode always opens a fresh window (not singleton)
@@ -172,15 +197,18 @@ export function registerGMTools(initializer) {
       );
     };
 
-    // ─── Player Email Setup (utility — called programmatically) ───
+    // ─── Player Email Setup (utility — uses new EmailSetupFlow) ───
     ns.setupEmail = async (actorId) => {
-      const { PlayerEmailSetup } = await import('../ui/dialogs/PlayerEmailSetup.js');
-      return PlayerEmailSetup.show(actorId);
+      const actor = actorId ? game.actors.get(actorId) : game.user?.character;
+      return game.nightcity.openEmailSetup(actor);
     };
 
     ns.ensureEmail = async (actorId) => {
-      const { PlayerEmailSetup } = await import('../ui/dialogs/PlayerEmailSetup.js');
-      return PlayerEmailSetup.ensureEmail(actorId);
+      const actor = actorId ? game.actors.get(actorId) : game.user?.character;
+      if (!actor) return null;
+      const emailService = game.nightcity?.emailService;
+      if (emailService?.hasEmail(actor)) return emailService.getEmail(actor);
+      return game.nightcity.openEmailSetup(actor);
     };
 
     log.info('Phase 5 UI launch functions registered');

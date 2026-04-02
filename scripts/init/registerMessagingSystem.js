@@ -123,6 +123,25 @@ export function registerMessagingSystem(initializer) {
       const resolvedActorId = _resolveActorId(actorId);
       if (!resolvedActorId) return;
 
+      // ── Email setup intercept ──
+      // If player has no email and setup is required, show setup flow first
+      if (!game.user.isGM) {
+        const emailService = game.nightcity?.emailService;
+        if (emailService?.isSetupRequired()) {
+          const actor = game.actors.get(resolvedActorId);
+          if (actor && !emailService.hasEmail(actor)) {
+            // Launch setup flow, then re-open inbox on completion
+            game.nightcity.openEmailSetup(actor).then(email => {
+              if (email) {
+                // Setup complete — now open the inbox
+                ns.openInbox(resolvedActorId, messageId, options);
+              }
+            });
+            return;
+          }
+        }
+      }
+
       // Auto-detect sent messages from messageId suffix
       let filterHint = options.filter || 'inbox';
       if (messageId && messageId.endsWith('-sent') && filterHint === 'inbox') {
@@ -231,6 +250,20 @@ export function registerMessagingSystem(initializer) {
       } else {
         fromActorId = _resolveActorId(null); // fallback to user's character
         if (!fromActorId && !isGM()) return;
+      }
+
+      // ── Email setup intercept ──
+      if (!game.user.isGM && fromActorId) {
+        const emailService = game.nightcity?.emailService;
+        if (emailService?.isSetupRequired()) {
+          const actor = game.actors.get(fromActorId);
+          if (actor && !emailService.hasEmail(actor)) {
+            game.nightcity.openEmailSetup(actor).then(email => {
+              if (email) ns.composeMessage(options);
+            });
+            return;
+          }
+        }
       }
 
       const composerId = foundry.utils.randomID(8);
