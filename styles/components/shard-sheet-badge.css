@@ -42,3 +42,42 @@
   color: #00D4E6 !important;
   filter: drop-shadow(0 0 4px rgba(0, 212, 230, 0.3));
 }
+
+/* ─── Custom context menu (shown on right-click in actor sheet) ─── */
+.ncm-ctx-menu {
+  position: fixed;
+  z-index: 10000;
+  min-width: 190px;
+  background: #1e1e24;
+  border: 1px solid #3a3a44;
+  border-radius: 4px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+  font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: 12px;
+  padding: 3px 0;
+}
+.ncm-ctx-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  color: #ccc;
+  cursor: pointer;
+  transition: background 0.1s;
+  white-space: nowrap;
+}
+.ncm-ctx-menu__item:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+.ncm-ctx-menu__item i {
+  width: 14px;
+  text-align: center;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.ncm-ctx-menu__sep {
+  height: 1px;
+  background: #333;
+  margin: 3px 0;
+}

@@ -5513,9 +5513,59 @@ export class AdminPanelApp extends BaseApplication {
   }
 
   static async _onConvertItem(event, target) {
-    // Open item picker or dialog to select an item to convert
-    // For now, use Foundry's built-in document browser
-    ui.notifications.info('Select an item from your Items tab, right-click → "Convert to Data Shard".');
+    // Gather all unconverted items from world items + actor inventories
+    const candidates = [];
+    const seenIds = new Set();
+
+    // World items
+    for (const item of (game.items ?? [])) {
+      if (item.getFlag(MODULE_ID, 'isDataShard')) continue;
+      candidates.push({ id: item.id, name: item.name, source: 'World', uuid: item.uuid });
+      seenIds.add(item.id);
+    }
+
+    // Actor inventory items
+    for (const actor of (game.actors ?? [])) {
+      for (const item of actor.items) {
+        if (seenIds.has(item.id)) continue;
+        if (item.getFlag(MODULE_ID, 'isDataShard')) continue;
+        candidates.push({ id: item.id, name: `${item.name} (${actor.name})`, source: actor.name, uuid: item.uuid });
+      }
+    }
+
+    if (!candidates.length) {
+      ui.notifications.warn('NCM | No unconverted items found. Create an item first.');
+      return;
+    }
+
+    candidates.sort((a, b) => a.name.localeCompare(b.name));
+    const options = candidates.map(c => `<option value="${c.uuid}">${c.name}</option>`).join('');
+
+    const uuid = await new Promise(resolve => {
+      new Dialog({
+        title: 'Convert Item to Data Shard',
+        content: `<p>Select an item to convert into a data shard:</p>
+          <div class="form-group"><select id="ncm-convert-pick" style="width:100%;">${options}</select></div>
+          <p style="font-size:11px;color:#8888a0;margin-top:6px;">The item is preserved — shard data is added as metadata flags.</p>`,
+        buttons: {
+          convert: { label: '<i class="fas fa-microchip"></i> Convert', callback: html => resolve(html.find('#ncm-convert-pick').val()) },
+          cancel: { label: 'Cancel', callback: () => resolve(null) },
+        },
+        default: 'convert',
+      }).render(true);
+    });
+
+    if (!uuid) return;
+    const item = await fromUuid(uuid);
+    if (!item) { ui.notifications.error('NCM | Item not found.'); return; }
+
+    const result = await game.nightcity?.dataShardService?.convertToDataShard(item);
+    if (result?.success) {
+      ui.notifications.info(`NCM | "${item.name}" converted to data shard.`);
+      this.render();
+    } else {
+      ui.notifications.error(`NCM | Failed: ${result?.error || 'Unknown error'}`);
+    }
   }
 
   static async _onQuickCreateShard(event, target) {
@@ -5735,9 +5785,37 @@ export class AdminPanelApp extends BaseApplication {
   static async _onUnconvertShard(event, target) {
     event.stopPropagation();
     const itemId = target.closest('[data-item-id]')?.dataset.itemId;
-    if (!itemId) return;
 
-    const item = AdminPanelApp._findItem(itemId);
+    let item;
+    if (itemId) {
+      // Per-item unconvert button (has data-item-id)
+      item = AdminPanelApp._findItem(itemId);
+    } else {
+      // Top-level unconvert button — show a shard picker
+      const shards = AdminPanelApp._getAllDataShards();
+      if (!shards.length) {
+        ui.notifications.warn('NCM | No data shards to unconvert.');
+        return;
+      }
+
+      const options = shards.map(i => `<option value="${i.id}">${i.name}</option>`).join('');
+      const pickedId = await new Promise(resolve => {
+        new Dialog({
+          title: 'Unconvert Data Shard',
+          content: `<p>Select a data shard to revert back to a regular item:</p>
+            <div class="form-group"><select id="ncm-unconvert-pick" style="width:100%;">${options}</select></div>`,
+          buttons: {
+            unconvert: { label: '<i class="fas fa-rotate-left"></i> Unconvert', callback: html => resolve(html.find('#ncm-unconvert-pick').val()) },
+            cancel: { label: 'Cancel', callback: () => resolve(null) },
+          },
+          default: 'unconvert',
+        }).render(true);
+      });
+
+      if (!pickedId) return;
+      item = AdminPanelApp._findItem(pickedId);
+    }
+
     if (!item) return;
 
     const confirmed = await Dialog.confirm({

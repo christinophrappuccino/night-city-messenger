@@ -41,16 +41,14 @@ export class ShardSheetOverride {
 
     const h1 = Hooks.on('renderItemSheet', this._onRenderItemSheet.bind(this));
     const h2 = Hooks.on('renderActorSheet', this._onRenderActorSheet.bind(this));
-    const h3 = Hooks.on('getActorSheetItemContext', this._onGetItemContext.bind(this));
 
     this.#hookIds.push(
       { event: 'renderItemSheet', id: h1 },
       { event: 'renderActorSheet', id: h2 },
-      { event: 'getActorSheetItemContext', id: h3 },
     );
 
     this.#active = true;
-    log.debug('ShardSheetOverride: 3 hooks activated');
+    log.debug('ShardSheetOverride: 2 hooks activated');
   }
 
   /**
@@ -203,6 +201,29 @@ export class ShardSheetOverride {
         game.nightcity?.openDataShard(item);
       }, { capture: true });
     }
+
+    // ─── Right-click context menu ───
+    row.addEventListener('contextmenu', (ev) => {
+      // Only intercept if not already handled by Foundry
+      const entries = [
+        { label: 'Open Data Shard', icon: 'fas fa-hard-drive', color: '#00D4E6', fn: () => game.nightcity?.openDataShard(item) },
+      ];
+      if (isGM()) {
+        entries.push(
+          { label: 'Configure Shard', icon: 'fas fa-sliders', color: '#00D4E6', fn: async () => {
+            const { ItemInboxConfig } = await import('../ui/ItemInbox/ItemInboxConfig.js');
+            new ItemInboxConfig({ item }).render(true);
+          }},
+          { label: 'View Original Item', icon: 'fas fa-file-alt', color: '#f7c948', fn: () => {
+            const sheet = item.sheet;
+            if (sheet) { sheet._ncmBypass = true; sheet.render(true); }
+          }},
+          { sep: true },
+          { label: 'Remove Shard Data', icon: 'fas fa-rotate-left', color: '#F65261', fn: () => this._confirmUnconvert(item) },
+        );
+      }
+      this._showContextMenu(ev, entries);
+    });
   }
 
   /**
@@ -229,95 +250,75 @@ export class ShardSheetOverride {
 
     // Insert at the start of controls
     controls.prepend(btn);
+
+    // ─── Right-click context menu ───
+    row.addEventListener('contextmenu', (ev) => {
+      if (!isGM() && !game.settings.get(MODULE_ID, 'allowPlayerConversion')) return;
+      const entries = [
+        { label: 'Convert to Data Shard', icon: 'fas fa-microchip', color: '#00D4E6', fn: () => this._launchConversionFlow(item, actor) },
+      ];
+      this._showContextMenu(ev, entries);
+    });
   }
 
   // ═══════════════════════════════════════════════════════════════
-  //  3. Context Menu — getActorSheetItemContext
+  //  Custom Context Menu
   // ═══════════════════════════════════════════════════════════════
 
   /**
-   * Add shard-related entries to the right-click context menu.
-   * @param {ActorSheet} sheet
-   * @param {Array} options - Context menu option array
+   * Show a lightweight custom context menu at the cursor position.
+   * Replaces getActorSheetItemContext since CPR doesn't fire that hook.
+   *
+   * @param {MouseEvent} ev
+   * @param {Array<{label: string, icon: string, color?: string, fn: Function}|{sep: true}>} entries
    */
-  _onGetItemContext(sheet, options) {
-    try {
-      const actor = sheet.actor ?? sheet.document;
-      if (!actor) return;
+  _showContextMenu(ev, entries) {
+    ev.preventDefault();
+    ev.stopPropagation();
 
-      const canConvert = isGM() || game.settings.get(MODULE_ID, 'allowPlayerConversion');
+    // Remove any existing NCM context menu
+    document.querySelectorAll('.ncm-ctx-menu').forEach(m => m.remove());
 
-      // ─── Convert to Data Shard (non-shard items) ───
-      if (canConvert) {
-        options.push({
-          name: 'Convert to Data Shard',
-          icon: '<i class="fas fa-microchip" style="color:#00D4E6;"></i>',
-          condition: (li) => {
-            const item = actor.items.get(li.data('itemId') ?? li.dataset?.itemId);
-            return item && !item.getFlag(MODULE_ID, 'isDataShard');
-          },
-          callback: (li) => {
-            const item = actor.items.get(li.data('itemId') ?? li.dataset?.itemId);
-            if (item) this._launchConversionFlow(item, actor);
-          },
-        });
+    const menu = document.createElement('div');
+    menu.className = 'ncm-ctx-menu';
+
+    for (const entry of entries) {
+      if (entry.sep) {
+        const sep = document.createElement('div');
+        sep.className = 'ncm-ctx-menu__sep';
+        menu.appendChild(sep);
+        continue;
       }
 
-      // ─── Open Data Shard (shard items — everyone) ───
-      options.push({
-        name: 'Open Data Shard',
-        icon: '<i class="fas fa-hard-drive" style="color:#00D4E6;"></i>',
-        condition: (li) => {
-          const item = actor.items.get(li.data('itemId') ?? li.dataset?.itemId);
-          return item?.getFlag(MODULE_ID, 'isDataShard') === true;
-        },
-        callback: (li) => {
-          const item = actor.items.get(li.data('itemId') ?? li.dataset?.itemId);
-          if (item) game.nightcity?.openDataShard(item);
-        },
+      const item = document.createElement('div');
+      item.className = 'ncm-ctx-menu__item';
+      item.innerHTML = `<i class="${entry.icon}" style="color:${entry.color || '#ccc'};"></i> ${entry.label}`;
+      item.addEventListener('click', (e) => {
+        e.stopPropagation();
+        menu.remove();
+        entry.fn();
       });
-
-      // ─── GM-only: Configure Shard ───
-      if (isGM()) {
-        options.push({
-          name: 'Configure Shard',
-          icon: '<i class="fas fa-sliders" style="color:#00D4E6;"></i>',
-          condition: (li) => {
-            const item = actor.items.get(li.data('itemId') ?? li.dataset?.itemId);
-            return item?.getFlag(MODULE_ID, 'isDataShard') === true;
-          },
-          callback: async (li) => {
-            const item = actor.items.get(li.data('itemId') ?? li.dataset?.itemId);
-            if (!item) return;
-            try {
-              const { ItemInboxConfig } = await import('../ui/ItemInbox/ItemInboxConfig.js');
-              const configApp = new ItemInboxConfig({ item });
-              configApp.render(true);
-            } catch (err) {
-              log.error(`ShardSheetOverride: Failed to open config — ${err.message}`);
-            }
-          },
-        });
-      }
-
-      // ─── GM-only: Remove Shard Data ───
-      if (isGM()) {
-        options.push({
-          name: 'Remove Shard Data',
-          icon: '<i class="fas fa-microchip" style="color:#F65261;"></i>',
-          condition: (li) => {
-            const item = actor.items.get(li.data('itemId') ?? li.dataset?.itemId);
-            return item?.getFlag(MODULE_ID, 'isDataShard') === true;
-          },
-          callback: (li) => {
-            const item = actor.items.get(li.data('itemId') ?? li.dataset?.itemId);
-            if (item) this._confirmUnconvert(item);
-          },
-        });
-      }
-    } catch (err) {
-      log.error(`ShardSheetOverride: context menu error — ${err.message}`);
+      menu.appendChild(item);
     }
+
+    // Position at cursor
+    menu.style.left = `${ev.clientX}px`;
+    menu.style.top = `${ev.clientY}px`;
+    document.body.appendChild(menu);
+
+    // Close on any outside click or scroll
+    const close = () => {
+      menu.remove();
+      document.removeEventListener('click', close, true);
+      document.removeEventListener('contextmenu', close, true);
+      document.removeEventListener('scroll', close, true);
+    };
+    // Delay binding so this click doesn't immediately close it
+    requestAnimationFrame(() => {
+      document.addEventListener('click', close, true);
+      document.addEventListener('contextmenu', close, true);
+      document.addEventListener('scroll', close, true);
+    });
   }
 
   // ═══════════════════════════════════════════════════════════════
