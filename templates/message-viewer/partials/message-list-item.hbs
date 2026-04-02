@@ -35,9 +35,11 @@
   {{/unless}}
 
   {{!-- Avatar --}}
-  <div class="ncm-viewer__msg-avatar"
+  <div class="ncm-viewer__msg-avatar {{#if isBurnedSender}}ncm-viewer__msg-avatar--burned{{/if}}"
     style="color: {{avatarColor}}; border-color: {{avatarColor}}">
-    {{#if fromPortrait}}
+    {{#if isBurnedSender}}
+      <i class="fas fa-user-slash" style="font-size:12px;"></i>
+    {{else if fromPortrait}}
       <img src="{{fromPortrait}}" alt="{{fromDisplay}}" />
     {{else}}
       {{#if isEncrypted}}
@@ -73,7 +75,10 @@
 
     {{!-- Row 1: Sender + Indicators + Net Pip + Stacked Time --}}
     <div class="ncm-viewer__msg-top">
-      <span class="ncm-viewer__msg-sender">{{fromDisplay}}</span>
+      <span class="ncm-viewer__msg-sender {{#if isBurnedSender}}ncm-viewer__msg-sender--burned{{/if}}">{{fromDisplay}}</span>
+      {{#if isBurnedSender}}
+      <span class="ncm-viewer__msg-burned-tag"><i class="fas fa-fire"></i> Burned</span>
+      {{/if}}
 
       {{!-- Encryption tag — only when NOT network-locked --}}
       {{#if isEncrypted}}

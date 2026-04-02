@@ -1444,11 +1444,24 @@ export class MessageViewerApp extends BaseApplication {
         if (emailService.hasEmail(actor)) {
           const currentEmail = emailService.getEmail(actor);
           const confirmed = await Dialog.confirm({
-            title: 'Change NET Identity',
-            content: `<div style="font-family:'Rajdhani',sans-serif;">
-              <p>Changing your identity will <strong style="color:#F65261;">permanently burn</strong> your current address:</p>
-              <p style="font-family:'Share Tech Mono',monospace;color:#00D4E6;font-size:14px;padding:8px 12px;background:rgba(0,212,230,0.04);border-left:3px solid #00D4E6;margin:8px 0;">${currentEmail}</p>
-              <p style="font-size:11px;color:#8888a0;">Past messages from this address will show as <span style="color:#F65261;">[BURNED]</span> to recipients.</p>
+            title: 'Edit NET Identity',
+            content: `<div style="font-family:'Rajdhani',sans-serif;padding:4px 0;">
+              <div style="font-family:'Orbitron',sans-serif;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#e0e0e8;margin-bottom:4px;">Change Your Identity</div>
+              <div style="font-size:12px;color:#8888a0;margin-bottom:14px;line-height:1.4;">Changing your email will permanently burn your current identity. All past messages from this address will show as [BURNED].</div>
+              <div style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;background:rgba(255,0,51,0.04);border:1px solid rgba(255,0,51,0.15);border-radius:2px;border-left:3px solid #ff0033;margin-bottom:14px;">
+                <i class="fas fa-triangle-exclamation" style="font-size:16px;color:#ff0033;margin-top:2px;flex-shrink:0;"></i>
+                <div style="font-size:12px;color:#8888a0;line-height:1.5;">Your current identity <strong style="color:#F65261;">${currentEmail}</strong> will be permanently burned. This cannot be undone.</div>
+              </div>
+              <div style="padding:14px;text-align:center;background:#1a1a2e;border:1px solid #2a2a45;border-radius:2px;margin-bottom:14px;">
+                <div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:#555570;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:5px;">Current Identity (will be burned)</div>
+                <div style="font-family:'Orbitron',sans-serif;font-size:15px;color:#F65261;text-decoration:line-through;text-decoration-color:#ff0033;">${currentEmail}</div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:0;">
+                <div style="display:flex;align-items:center;gap:8px;padding:7px 0;font-size:11px;color:#8888a0;border-bottom:1px solid rgba(42,42,69,0.25);"><i class="fas fa-check" style="width:14px;text-align:center;font-size:9px;color:#34D399;"></i> Existing messages preserved in all inboxes</div>
+                <div style="display:flex;align-items:center;gap:8px;padding:7px 0;font-size:11px;color:#8888a0;border-bottom:1px solid rgba(42,42,69,0.25);"><i class="fas fa-check" style="width:14px;text-align:center;font-size:9px;color:#34D399;"></i> Old messages show sender as [BURNED]</div>
+                <div style="display:flex;align-items:center;gap:8px;padding:7px 0;font-size:11px;color:#8888a0;border-bottom:1px solid rgba(42,42,69,0.25);"><i class="fas fa-xmark" style="width:14px;text-align:center;font-size:9px;color:#ff0033;"></i> Cannot send or receive until re-registered</div>
+                <div style="display:flex;align-items:center;gap:8px;padding:7px 0;font-size:11px;color:#8888a0;"><i class="fas fa-xmark" style="width:14px;text-align:center;font-size:9px;color:#ff0033;"></i> Old handle may be claimed by another agent</div>
+              </div>
             </div>`,
           });
           if (!confirmed) break;
@@ -3940,9 +3953,17 @@ export class MessageViewerApp extends BaseApplication {
   _enrichMessageDisplay(msg, currentNetworkName) {
     // ── Sender display name ──
     const contact = this._findContact(msg.from);
-    const fromDisplay = contact?.name || msg.from?.split('@')[0] || 'Unknown';
-    const fromInitial = (fromDisplay[0] || '?').toUpperCase();
+    let fromDisplay = contact?.name || msg.from?.split('@')[0] || 'Unknown';
     const fromPortrait = contact?.portrait || null;
+
+    // ── Burned sender detection ──
+    const burnCheck = game.nightcity?.emailService?.isBurnedEmail?.(msg.from) ?? { burned: false };
+    const isBurnedSender = burnCheck.burned;
+    if (isBurnedSender && !contact?.name) {
+      fromDisplay = msg.from?.split('@')[0] || 'Unknown';
+    }
+
+    const fromInitial = (fromDisplay[0] || '?').toUpperCase();
 
     // ── Recipient display name ──
     const toContact = this._findContact(msg.to);
@@ -4045,6 +4066,7 @@ export class MessageViewerApp extends BaseApplication {
       fromDisplay,
       fromInitial,
       fromPortrait,
+      isBurnedSender,
       toDisplay,
       priorityVariant,
       priorityIcon,
