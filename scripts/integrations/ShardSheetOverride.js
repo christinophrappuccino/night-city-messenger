@@ -48,6 +48,8 @@ export class ShardSheetOverride {
 
     // Sheet intercept — catches items opened via item.sheet.render()
     bind('renderItemSheet', this._onRenderItemSheet.bind(this));
+    // CPR uses ApplicationV2 which only fires class-specific hooks
+    bind('renderCPRItemSheet', this._onRenderItemSheet.bind(this));
 
     // Actor sheet — badges, click intercepts, context menus on inventory items
     bind('renderActorSheet', this._onRenderActorSheet.bind(this));
@@ -55,32 +57,6 @@ export class ShardSheetOverride {
     // Items Directory sidebar — try multiple hook names for v12 compat
     bind('renderItemDirectory', dirHandler);
     bind('renderDocumentDirectory', dirHandler);
-
-    // Safe fallback for CPR custom sheet classes that don't fire renderItemSheet.
-    // Only intercepts apps whose document is a shard item. Strictly excludes
-    // NCM apps by checking the app ID prefix.
-    bind('renderApplication', (app) => {
-      try {
-        // Only care about apps that have an item document
-        const item = app.document ?? app.object;
-        if (!item?.getFlag) return;
-        if (!item.getFlag(MODULE_ID, 'isDataShard')) return;
-
-        // Strict NCM exclusion — our apps always have 'ncm-' prefix in their ID
-        const appId = app.id || '';
-        if (appId.startsWith('ncm-')) return;
-        if (app._ncmBypass) { app._ncmBypass = false; return; }
-
-        // This is a non-NCM app rendering a shard item — redirect
-        const openFn = game.nightcity?.openDataShard;
-        if (openFn) {
-          app.close({ force: true });
-          openFn(item);
-        }
-      } catch {
-        // Silent — fires for every app
-      }
-    });
 
     // Sidebar tab switch — re-inject badges after tab changes
     bind('changeSidebarTab', (tab) => {
@@ -141,7 +117,10 @@ export class ShardSheetOverride {
       // Launch our shard viewer
       const openFn = game.nightcity?.openDataShard;
       if (openFn) {
-        // Close the Foundry sheet, then open the shard viewer
+        // Hide the sheet element instantly to prevent visual flash
+        const el = sheet.element?.[0] ?? sheet.element;
+        if (el) el.style.display = 'none';
+        // Close and redirect
         sheet.close({ force: true });
         openFn(item);
       } else {
