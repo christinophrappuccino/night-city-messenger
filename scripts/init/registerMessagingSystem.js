@@ -448,7 +448,12 @@ export function registerMessagingSystem(initializer) {
 
       // Play boot splash, then show character select
       await _playBootSplash();
-      ns.showCharacterSelect();
+      try {
+        await ns.showCharacterSelect();
+      } catch (err) {
+        console.error('NCM | Failed to open character select:', err);
+        ui.notifications.error('NCM | Failed to open character select. Check console.');
+      }
     };
 
     /**
@@ -461,17 +466,24 @@ export function registerMessagingSystem(initializer) {
         return _characterSelectApp;
       }
 
-      const { CharacterSelectApp } = await import('../ui/CharacterSelect/CharacterSelectApp.js');
-      _characterSelectApp = new CharacterSelectApp();
+      try {
+        const mod = await import('../ui/CharacterSelect/CharacterSelectApp.js');
+        const CharacterSelectApp = mod.CharacterSelectApp || mod.default;
+        _characterSelectApp = new CharacterSelectApp();
 
-      const origClose = _characterSelectApp.close.bind(_characterSelectApp);
-      _characterSelectApp.close = async (...args) => {
+        const origClose = _characterSelectApp.close.bind(_characterSelectApp);
+        _characterSelectApp.close = async (...args) => {
+          _characterSelectApp = null;
+          return origClose(...args);
+        };
+
+        _characterSelectApp.render(true);
+        return _characterSelectApp;
+      } catch (err) {
+        console.error('NCM | CharacterSelectApp import/render failed:', err);
         _characterSelectApp = null;
-        return origClose(...args);
-      };
-
-      _characterSelectApp.render(true);
-      return _characterSelectApp;
+        throw err;
+      }
     };
 
     /**
