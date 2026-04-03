@@ -52,6 +52,9 @@ export class CharacterSelectApp extends BaseApplication {
   /** @type {boolean} Whether a jack-in sequence is in progress */
   _jackingIn = false;
 
+  /** @type {number} Saved scroll position for roster list */
+  _savedScrollTop = 0;
+
   // ═══════════════════════════════════════════════════════
   //  Data Preparation
   // ═══════════════════════════════════════════════════════
@@ -156,7 +159,7 @@ export class CharacterSelectApp extends BaseApplication {
     const stats = { unread: 0, total: 0, shards: 0, drafts: 0 };
     try {
       // Try both journal naming conventions
-      const journalName = `NCM-Inbox-Actor-${actorId}`;
+      const journalName = `NCM-Inbox-${actorId}`;
       const journal = game.journal?.getName(journalName);
       if (journal) {
         for (const page of journal.pages) {
@@ -205,10 +208,16 @@ export class CharacterSelectApp extends BaseApplication {
   _onRender(context, options) {
     super._onRender(context, options);
 
-    // Wire search input (not a data-action, needs direct listener)
+    // Wire search input
     const searchInput = this.element?.querySelector('[data-el="roster-search"]');
     if (searchInput) {
       searchInput.addEventListener('input', (e) => this._onSearchInput(e));
+    }
+
+    // Restore scroll position
+    const listEl = this.element?.querySelector('.ncm-cs__roster-list');
+    if (listEl && this._savedScrollTop) {
+      listEl.scrollTop = this._savedScrollTop;
     }
   }
 
@@ -232,6 +241,11 @@ export class CharacterSelectApp extends BaseApplication {
     if (this._jackingIn) return;
     const entryId = target.closest('[data-entry-id]')?.dataset.entryId;
     if (!entryId) return;
+
+    // Save scroll position before re-render
+    const listEl = this.element?.querySelector('.ncm-cs__roster-list');
+    if (listEl) this._savedScrollTop = listEl.scrollTop;
+
     this._selectedId = entryId;
     this.render(true);
   }

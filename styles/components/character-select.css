@@ -239,7 +239,7 @@
 }
 .ncm-cs__search-icon {
   position: absolute;
-  left: 8px;
+  right: 8px;
   top: 50%;
   transform: translateY(-50%);
   font-size: 9px;
@@ -251,7 +251,7 @@
   background: var(--ncm-bg-surface);
   border: 1px solid var(--ncm-border);
   border-radius: 2px;
-  padding: 5px 8px 5px 26px;
+  padding: 5px 26px 5px 8px;
   font-family: 'Share Tech Mono', monospace;
   font-size: 10px;
   color: var(--ncm-text-primary);
@@ -749,7 +749,35 @@
 .ncm-cs__bottom-net {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
+}
+.ncm-cs__bottom-net-name {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  color: var(--ncm-secondary);
+  letter-spacing: 0.06em;
+}
+/* Signal bar meter */
+.ncm-cs__bottom-signal-meter {
+  width: 60px;
+  height: 4px;
+  background: var(--ncm-bg-surface);
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+.ncm-cs__bottom-signal-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--ncm-success);
+  box-shadow: 0 0 4px rgba(0, 255, 65, 0.3);
+  transition: width 0.3s ease;
+}
+.ncm-cs__bottom-signal-pct {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 8px;
+  color: var(--ncm-text-muted);
+  min-width: 24px;
 }
 .ncm-cs__bottom-signal {
   display: flex;

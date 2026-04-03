@@ -207,9 +207,12 @@
         <div class="ncm-cs__bottom-signal-bar {{#if this.on}}on{{/if}}"></div>
         {{/each}}
       </div>
-      <span>{{networkName}}</span>
+      <span class="ncm-cs__bottom-net-name">{{networkName}}</span>
+      <div class="ncm-cs__bottom-signal-meter">
+        <div class="ncm-cs__bottom-signal-fill" style="width: {{signalPercent}}%;"></div>
+      </div>
+      <span class="ncm-cs__bottom-signal-pct">{{signalPercent}}%</span>
     </div>
-    <span style="opacity:0.4;">NCM v4.1</span>
   </div>
   {{#if isAdminSelected}}
     <button class="ncm-cs__connect-btn admin-btn" data-action="jack-in" type="button">
