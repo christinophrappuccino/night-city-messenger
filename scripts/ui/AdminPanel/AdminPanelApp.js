@@ -303,6 +303,7 @@ export class AdminPanelApp extends BaseApplication {
       openTimeSettings: AdminPanelApp._onOpenTimeSettings,
       openSoundSettings: AdminPanelApp._onOpenSoundSettings,
       manageDomains: AdminPanelApp._onManageDomains,
+      reorganizeJournals: AdminPanelApp._onReorganizeJournals,
 
       // Danger zone
       purgeMessages: AdminPanelApp._onPurgeMessages,
@@ -6800,6 +6801,38 @@ export class AdminPanelApp extends BaseApplication {
     });
 
     dialog.render(true);
+  }
+
+  /**
+   * Reorganize NCM journals into subfolders with human-readable names.
+   * Runs the migration tool from MessageRepository.
+   */
+  static async _onReorganizeJournals(event, target) {
+    const confirmed = await Dialog.confirm({
+      title: 'Reorganize Journals',
+      content: `<p>This will:</p>
+        <ul style="margin: 8px 0 8px 16px; font-size: 13px;">
+          <li>Create subfolders: <b>Inboxes</b>, <b>NPC Mail</b>, <b>Data Shards</b>, <b>Deleted</b></li>
+          <li>Rename journals to readable names (e.g. "V — Inbox")</li>
+          <li>Rename message pages (e.g. "Rogue — Need your help | 03/15/2045")</li>
+          <li>Move journals into correct subfolders</li>
+        </ul>
+        <p>This is safe to run multiple times and won't delete any data.</p>`,
+    });
+    if (!confirmed) return;
+
+    const repo = game.nightcity?.messageRepository;
+    if (!repo) return ui.notifications.error('NCM | MessageRepository not available.');
+
+    const stats = await repo.migrateJournalOrganization();
+    const total = stats.inboxes + stats.contacts + stats.shards;
+    if (total > 0 || stats.pages > 0) {
+      ui.notifications.info(
+        `NCM | Done: ${stats.inboxes} inbox(es), ${stats.contacts} NPC mail, ${stats.shards} shard(s), ${stats.pages} page(s) renamed.`
+      );
+    } else {
+      ui.notifications.info('NCM | Journals are already organized — nothing to do.');
+    }
   }
 
   // ─── Danger Zone ───

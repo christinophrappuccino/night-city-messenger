@@ -49,10 +49,14 @@ export class DataShardService {
     }
 
     try {
+      // Get the Data Shards subfolder
+      const shardFolder = await game.nightcity?.messageRepository?.getShardFolder?.();
+
       // Create linked journal for shard messages
       const journal = await JournalEntry.create({
-        name: `[NCM Shard] ${item.name}`,
+        name: `${item.name} — Shard`,
         ownership: { default: CONST.DOCUMENT_OWNERSHIP_LEVELS.OBSERVER },
+        folder: shardFolder?.id || null,
         flags: { [MODULE_ID]: { type: 'data-shard', linkedItemId: item.id } },
       });
 

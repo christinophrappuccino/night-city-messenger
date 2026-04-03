@@ -563,6 +563,36 @@ export function registerMessagingSystem(initializer) {
   //  POST-READY PHASE — Priority 20: Initial Badge Count
   // ═══════════════════════════════════════════════════════════════
 
+  // ═══════════════════════════════════════════════════════════════
+  //  POST-READY PHASE — Priority 15: Journal Organization Migration
+  //  Auto-detect and migrate legacy journal format (NCM-Inbox-{id})
+  //  to organized subfolders with human-readable names.
+  // ═══════════════════════════════════════════════════════════════
+
+  initializer.register('postReady', 15, 'Journal organization migration', async () => {
+    if (!game.user.isGM) return;
+
+    const repo = game.nightcity?.messageRepository;
+    if (!repo) return;
+
+    try {
+      if (repo.needsMigration()) {
+        log.info('Legacy journal format detected — running organization migration...');
+        const stats = await repo.migrateJournalOrganization();
+        const total = stats.inboxes + stats.contacts + stats.shards;
+        if (total > 0) {
+          ui.notifications.info(
+            `NCM | Journals reorganized: ${stats.inboxes} inbox(es), ${stats.contacts} NPC mail, ${stats.shards} shard(s), ${stats.pages} page(s) renamed.`
+          );
+        }
+        log.info('Journal migration complete:', stats);
+      }
+    } catch (error) {
+      log.error('Journal migration failed:', error);
+      ui.notifications.warn('NCM | Journal migration encountered errors. Check console.');
+    }
+  });
+
   initializer.register('postReady', 20, 'Initial unread badge', async () => {
     const { notificationService, messageService } = game.nightcity;
     if (notificationService && messageService) {
