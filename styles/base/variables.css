@@ -9,7 +9,7 @@
        spacing, border-active, and HUD-specific tokens.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-.ncm-app {
+:root {
 
   /* ─── Core Palette ───────────────────────────────────────── */
   --ncm-primary: #F65261;

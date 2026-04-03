@@ -13,6 +13,21 @@
   overflow: hidden;
 }
 
+/* ─── Foundry Button Override ───
+   Foundry's blanket button rule at 0,2,1 sets background, border,
+   padding, font, height, etc. Override with element+class at 0,2,1+. */
+.ncm-theme-customizer button.ncm-preset-btn,
+.ncm-theme-customizer button.ncm-toggle,
+.ncm-theme-customizer button.ncm-btn {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: none;
+  box-shadow: none;
+  min-height: 0;
+  width: auto;
+  line-height: 1.2;
+}
+
 .ncm-app .ncm-theme-header {
   display: flex;
   justify-content: space-between;
@@ -34,7 +49,7 @@
 }
 
 .ncm-app .ncm-theme-current {
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-family: var(--ncm-font-mono);
   font-size: 0.75rem;
   color: var(--ncm-secondary);
   padding: 2px 8px;
@@ -178,7 +193,7 @@
 }
 
 .ncm-app .ncm-color-hex {
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-family: var(--ncm-font-mono);
   font-size: 0.65rem;
   color: var(--ncm-text-secondary);
   min-width: 55px;
@@ -210,7 +225,7 @@
   border: 1px solid var(--ncm-bg-elevated);
   background: var(--ncm-bg-surface);
   color: var(--ncm-text-secondary);
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-family: var(--ncm-font-mono);
   font-size: 0.75rem;
   cursor: pointer;
   transition: all 0.15s;
@@ -270,7 +285,7 @@
 }
 
 .ncm-app .ncm-slider-value {
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-family: var(--ncm-font-mono);
   font-size: 0.75rem;
   color: var(--ncm-secondary);
   min-width: 35px;
