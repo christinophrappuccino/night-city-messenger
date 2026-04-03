@@ -115,12 +115,12 @@ export class ThemeCustomizerApp extends BaseApplication {
       { id: 'comfortable', label: 'Comfortable', active: prefs.messageDensity === 'comfortable' },
     ];
 
-    // Font selectors
+    // Font selectors — all fonts available in every slot
     const fonts = prefs.fonts || DEFAULTS.PLAYER_THEME.fonts;
     const fontSelectors = [
-      { slot: 'display', label: 'Body / Display', options: FONT_OPTIONS.display.map(f => ({ ...f, selected: f.key === fonts.display })) },
-      { slot: 'mono', label: 'Monospace / Data', options: FONT_OPTIONS.mono.map(f => ({ ...f, selected: f.key === fonts.mono })) },
-      { slot: 'title', label: 'Titles / Chrome', options: FONT_OPTIONS.title.map(f => ({ ...f, selected: f.key === fonts.title })) },
+      { slot: 'display', label: 'Body / Display', options: FONT_OPTIONS.map(f => ({ ...f, selected: f.key === fonts.display })) },
+      { slot: 'mono', label: 'Monospace / Data', options: FONT_OPTIONS.map(f => ({ ...f, selected: f.key === fonts.mono })) },
+      { slot: 'title', label: 'Titles / Chrome', options: FONT_OPTIONS.map(f => ({ ...f, selected: f.key === fonts.title })) },
     ];
 
     return {

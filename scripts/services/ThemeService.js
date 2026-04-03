@@ -111,8 +111,7 @@ export class ThemeService {
 
     for (const slot of slots) {
       const selectedKey = fonts[slot.key];
-      const options = FONT_OPTIONS[slot.key] || [];
-      const entry = options.find(o => o.key === selectedKey) || options[0];
+      const entry = FONT_OPTIONS.find(o => o.key === selectedKey) || FONT_OPTIONS.find(o => o.key === 'rajdhani');
       if (!entry) continue;
 
       // Load from Google Fonts if needed
