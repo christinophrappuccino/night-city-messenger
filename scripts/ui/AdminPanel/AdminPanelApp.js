@@ -302,6 +302,7 @@ export class AdminPanelApp extends BaseApplication {
       healthCheck: AdminPanelApp._onHealthCheck,
       openTimeSettings: AdminPanelApp._onOpenTimeSettings,
       openSoundSettings: AdminPanelApp._onOpenSoundSettings,
+      manageDomains: AdminPanelApp._onManageDomains,
 
       // Danger zone
       purgeMessages: AdminPanelApp._onPurgeMessages,
@@ -6672,6 +6673,147 @@ export class AdminPanelApp extends BaseApplication {
     ui.notifications.info('Sound settings — coming in a future update.');
   }
 
+  /**
+   * Open the email domain configuration dialog.
+   * Lets GMs assign domain names to each network for the email setup flow.
+   */
+  static async _onManageDomains(event, target) {
+    const MODULE_ID_LOCAL = 'cyberpunkred-messenger';
+    const allNetworks = game.nightcity?.networkService?.getAllNetworks?.() ?? [];
+    let domainConfig = {};
+    try {
+      domainConfig = foundry.utils.deepClone(game.settings.get(MODULE_ID_LOCAL, 'emailDomains') ?? {});
+    } catch { /* empty */ }
+
+    const defaultDomain = game.settings.get(MODULE_ID_LOCAL, 'emailDefaultDomain') || 'nightcity.net';
+
+    // Build rows for each network
+    let rowsHTML = '';
+    for (const net of allNetworks) {
+      const cfg = domainConfig[net.id] || {};
+      const domain = cfg.domain || '';
+      const locked = cfg.locked || false;
+      const color = net.theme?.color || '#00D4E6';
+      const icon = net.theme?.icon || 'fa-wifi';
+
+      rowsHTML += `
+        <div class="ncm-domain-row" data-net-id="${net.id}">
+          <div class="ncm-domain-row__net">
+            <i class="fas ${icon}" style="color:${color}; width:16px; text-align:center;"></i>
+            <span class="ncm-domain-row__name" style="color:${color};">${net.name}</span>
+          </div>
+          <div class="ncm-domain-row__field">
+            <input type="text" class="ncm-domain-row__input" data-field="domain"
+                   value="${domain}" placeholder="${net.name.toLowerCase().replace(/\s+/g, '')}.net" />
+          </div>
+          <label class="ncm-domain-row__lock" title="Lock — players cannot change away from this domain">
+            <input type="checkbox" data-field="locked" ${locked ? 'checked' : ''} />
+            <i class="fas fa-lock"></i>
+          </label>
+          <button type="button" class="ncm-domain-row__clear" title="Clear domain" data-clear="${net.id}">
+            <i class="fas fa-xmark"></i>
+          </button>
+        </div>
+      `;
+    }
+
+    if (allNetworks.length === 0) {
+      rowsHTML = `<div style="text-align:center; color:#8888a0; font-size:11px; padding:20px;">
+        No networks configured. Create networks first in Network Management.
+      </div>`;
+    }
+
+    const dialogContent = `
+      <div class="ncm-domain-dialog">
+        <div class="ncm-domain-dialog__header">
+          <div class="ncm-domain-dialog__title">Email Domains</div>
+          <div class="ncm-domain-dialog__hint">Assign a domain to each network. Players pick from these during email setup.</div>
+        </div>
+
+        <div class="ncm-domain-dialog__default">
+          <span class="ncm-domain-dialog__default-label">Default Domain</span>
+          <div class="ncm-domain-dialog__default-field">
+            <input type="text" class="ncm-domain-row__input" id="ncm-default-domain"
+                   value="${defaultDomain}" placeholder="nightcity.net" />
+          </div>
+          <span class="ncm-domain-dialog__default-hint">fallback</span>
+        </div>
+
+        <div class="ncm-domain-dialog__divider"></div>
+
+        <div class="ncm-domain-dialog__list-header">
+          <span>Network</span>
+          <span>Domain</span>
+          <span></span>
+        </div>
+
+        ${rowsHTML}
+
+        <div class="ncm-domain-dialog__divider"></div>
+
+        <div class="ncm-domain-dialog__footer">
+          <label class="ncm-domain-dialog__custom-toggle">
+            <input type="checkbox" id="ncm-allow-custom" ${(game.settings.get(MODULE_ID_LOCAL, 'emailAllowCustomDomains') ?? true) ? 'checked' : ''} />
+            Allow players to type custom domains
+          </label>
+        </div>
+      </div>
+    `;
+
+    const dialog = new Dialog({
+      title: 'Email Domain Configuration',
+      content: dialogContent,
+      buttons: {
+        save: {
+          icon: '<i class="fas fa-save"></i>',
+          label: 'Save',
+          callback: async (html) => {
+            const newConfig = {};
+
+            html.find('.ncm-domain-row').each((_, row) => {
+              const netId = row.dataset.netId;
+              const domain = row.querySelector('[data-field="domain"]')?.value?.trim();
+              const locked = row.querySelector('[data-field="locked"]')?.checked ?? false;
+              if (domain) {
+                newConfig[netId] = { domain, locked };
+              }
+            });
+
+            const newDefault = html.find('#ncm-default-domain').val()?.trim() || 'nightcity.net';
+            const allowCustom = html.find('#ncm-allow-custom').is(':checked');
+
+            await game.settings.set(MODULE_ID_LOCAL, 'emailDomains', newConfig);
+            await game.settings.set(MODULE_ID_LOCAL, 'emailDefaultDomain', newDefault);
+            await game.settings.set(MODULE_ID_LOCAL, 'emailAllowCustomDomains', allowCustom);
+
+            const count = Object.keys(newConfig).length;
+            ui.notifications.info(`NCM | Saved ${count} domain configuration${count !== 1 ? 's' : ''}.`);
+          },
+        },
+        cancel: {
+          icon: '<i class="fas fa-times"></i>',
+          label: 'Cancel',
+        },
+      },
+      default: 'save',
+      render: (html) => {
+        // Clear buttons
+        html.find('[data-clear]').on('click', (e) => {
+          const netId = e.currentTarget.dataset.clear;
+          const row = html.find(`.ncm-domain-row[data-net-id="${netId}"]`);
+          row.find('[data-field="domain"]').val('');
+          row.find('[data-field="locked"]').prop('checked', false);
+        });
+      },
+    }, {
+      classes: ['ncm-pick-dialog'],
+      width: 520,
+      height: 'auto',
+    });
+
+    dialog.render(true);
+  }
+
   // ─── Danger Zone ───
 
   static async _onPurgeMessages(event, target) {
@@ -6762,5 +6904,130 @@ export class AdminPanelApp extends BaseApplication {
       console.error(`${MODULE_ID} | Hard delete failed:`, err);
       ui.notifications.error('NCM | Failed to delete message.');
     }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  //  Tools — Email Domain Management
+  // ═══════════════════════════════════════════════════════════════
+
+  static async _onManageDomains(event, target) {
+    const MODULE_ID = 'cyberpunkred-messenger';
+    const networkService = game.nightcity?.networkService;
+    const allNetworks = networkService?.getAllNetworks?.() ?? [];
+    const currentConfig = game.settings.get(MODULE_ID, 'emailDomains') ?? {};
+    const defaultDomain = game.settings.get(MODULE_ID, 'emailDefaultDomain') ?? 'nightcity.net';
+
+    // Build rows for each network
+    let networkRows = '';
+    for (const net of allNetworks) {
+      const cfg = currentConfig[net.id] || {};
+      const domain = cfg.domain || '';
+      const locked = cfg.locked || false;
+      const color = net.theme?.color || '#00D4E6';
+      const icon = net.theme?.icon || 'fa-wifi';
+
+      networkRows += `
+        <div class="ncm-domain-row" data-net-id="${net.id}">
+          <div class="ncm-domain-row__net">
+            <i class="fas ${icon}" style="color:${color}; width:16px; text-align:center;"></i>
+            <span class="ncm-domain-row__name" style="color:${color};">${net.name}</span>
+          </div>
+          <div class="ncm-domain-row__field">
+            <span class="ncm-domain-row__at">@</span>
+            <input type="text" class="ncm-domain-row__input" data-net-id="${net.id}"
+                   value="${domain}" placeholder="${defaultDomain}" autocomplete="off" />
+          </div>
+          <label class="ncm-domain-row__lock" title="Lock domain (players cannot use custom)">
+            <input type="checkbox" data-net-lock="${net.id}" ${locked ? 'checked' : ''} />
+            <i class="fas fa-lock"></i>
+          </label>
+        </div>
+      `;
+    }
+
+    if (allNetworks.length === 0) {
+      networkRows = `
+        <div style="text-align:center; padding:20px; color:var(--ncm-text-muted, #555570); font-family:'Share Tech Mono',monospace; font-size:11px;">
+          No networks configured. Create networks first in Network Management.
+        </div>
+      `;
+    }
+
+    const content = `
+      <div class="ncm-domain-dialog">
+        <div class="ncm-domain-dialog__header">
+          <div class="ncm-domain-dialog__title">NET Address Domains</div>
+          <div class="ncm-domain-dialog__hint">
+            Assign an email domain to each network. Players pick from these when registering.
+          </div>
+        </div>
+
+        <div class="ncm-domain-dialog__default">
+          <span class="ncm-domain-dialog__default-label">Default Domain</span>
+          <div class="ncm-domain-dialog__default-field">
+            <span class="ncm-domain-row__at">@</span>
+            <input type="text" id="ncm-default-domain" class="ncm-domain-row__input"
+                   value="${defaultDomain}" placeholder="nightcity.net" />
+          </div>
+          <span class="ncm-domain-dialog__default-hint">Used when no network domain is set</span>
+        </div>
+
+        <div class="ncm-domain-dialog__divider"></div>
+
+        <div class="ncm-domain-dialog__list">
+          <div class="ncm-domain-dialog__list-header">
+            <span>Network</span>
+            <span>Domain</span>
+            <span title="Lock: players must use this domain">Lock</span>
+          </div>
+          ${networkRows}
+        </div>
+      </div>
+    `;
+
+    new Dialog({
+      title: 'Email Domain Configuration',
+      content,
+      buttons: {
+        save: {
+          icon: '<i class="fas fa-save"></i>',
+          label: 'Save',
+          callback: async (html) => {
+            const newConfig = {};
+
+            // Collect domain inputs
+            html.find('.ncm-domain-row__input[data-net-id]').each((_, input) => {
+              const netId = input.dataset.netId;
+              const domain = input.value.trim();
+              const locked = html.find(`input[data-net-lock="${netId}"]`).prop('checked') ?? false;
+              if (domain) {
+                newConfig[netId] = { domain, locked };
+              }
+            });
+
+            // Save network domains
+            await game.settings.set(MODULE_ID, 'emailDomains', newConfig);
+
+            // Save default domain
+            const newDefault = html.find('#ncm-default-domain').val()?.trim();
+            if (newDefault) {
+              await game.settings.set(MODULE_ID, 'emailDefaultDomain', newDefault);
+            }
+
+            const count = Object.keys(newConfig).length;
+            ui.notifications.info(`NCM | Saved ${count} domain configuration${count !== 1 ? 's' : ''}.`);
+          },
+        },
+        cancel: {
+          icon: '<i class="fas fa-times"></i>',
+          label: 'Cancel',
+        },
+      },
+      default: 'save',
+      classes: ['ncm-pick-dialog'],
+    }, {
+      width: 520,
+      height: 'auto',
+    }).render(true);
   }
 }
