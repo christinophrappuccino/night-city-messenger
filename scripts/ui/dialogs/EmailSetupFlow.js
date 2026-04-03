@@ -30,7 +30,7 @@ export class EmailSetupFlow extends HandlebarsApplicationMixin(ApplicationV2) {
     id: 'ncm-email-setup',
     classes: ['ncm-app', 'ncm-email-setup'],
     window: { title: 'NET Identity Registration', icon: 'fas fa-satellite-dish', resizable: false },
-    position: { width: 480, height: 'auto' },
+    position: { width: 480, height: 'auto', top: 60 },
     actions: {
       nextStep: EmailSetupFlow._onNextStep,
       prevStep: EmailSetupFlow._onPrevStep,
