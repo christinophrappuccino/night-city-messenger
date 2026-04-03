@@ -348,6 +348,76 @@ export function registerMessagingSystem(initializer) {
       return manager;
     };
 
+    // ─── Character Select / Entry Point ───
+    /** @type {import('../ui/CharacterSelect/CharacterSelectApp.js').CharacterSelectApp|null} */
+    let _characterSelectApp = null;
+
+    /**
+     * Main NCM entry point. Checks session memory:
+     * - If lastCharacterId exists and actor is valid → open inbox directly
+     * - Otherwise → open CharacterSelectApp (boot + select)
+     */
+    ns.openNCM = async () => {
+      // Check for session memory
+      const lastId = game.user.getFlag(MODULE_ID, 'lastCharacterId');
+      if (lastId) {
+        // Validate the actor still exists and user has access
+        const actor = game.actors.get(lastId);
+        if (actor && (actor.isOwner || isGM())) {
+          ns.openInbox(lastId);
+          return;
+        }
+        // Invalid — clear stale flag
+        try { await game.user.unsetFlag(MODULE_ID, 'lastCharacterId'); } catch { /* ok */ }
+      }
+
+      // No session memory — show character select
+      ns.showCharacterSelect();
+    };
+
+    /**
+     * Force-open the character select screen (used by re-login button).
+     * @param {object} [options]
+     * @param {boolean} [options.skipBoot=false] — Skip the boot loader
+     */
+    ns.showCharacterSelect = async (options = {}) => {
+      // Close existing character select if open
+      if (_characterSelectApp?.rendered) {
+        _characterSelectApp.bringToFront();
+        return _characterSelectApp;
+      }
+
+      const { CharacterSelectApp } = await import('../ui/CharacterSelect/CharacterSelectApp.js');
+      _characterSelectApp = new CharacterSelectApp({
+        skipBoot: options.skipBoot ?? false,
+      });
+
+      const origClose = _characterSelectApp.close.bind(_characterSelectApp);
+      _characterSelectApp.close = async (...args) => {
+        _characterSelectApp = null;
+        return origClose(...args);
+      };
+
+      _characterSelectApp.render(true);
+      return _characterSelectApp;
+    };
+
+    /**
+     * Re-login: clear session memory and show character select.
+     * Called from the viewer's logout button.
+     */
+    ns.reLogin = async () => {
+      try { await game.user.unsetFlag(MODULE_ID, 'lastCharacterId'); } catch { /* ok */ }
+
+      // Close any open viewer
+      if (_activeViewer?.rendered) {
+        await _activeViewer.close();
+        _activeViewer = null;
+      }
+
+      ns.showCharacterSelect({ skipBoot: true });
+    };
+
     log.info('Messaging UI launchers registered (replaced Phase 1 stubs)');
   });
 

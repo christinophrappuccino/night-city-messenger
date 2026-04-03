@@ -19,7 +19,7 @@ export function registerUIComponents(initializer) {
           title: game.i18n.localize('NCM.SceneControls.OpenInbox'),
           icon: 'fas fa-envelope',
           button: true,
-          onClick: () => game.nightcity.openInbox?.(),
+          onClick: () => game.nightcity.openNCM?.(),
         },
         {
           name: 'ncm-compose',
@@ -74,6 +74,9 @@ export function registerUIComponents(initializer) {
     const ns = game.nightcity;
 
     // Stubs — replaced by actual Application classes in Phase 2+
+    ns.openNCM = () => {
+      ui.notifications.info('Night City Messenger: Character Select (Phase 2)');
+    };
     ns.openInbox = (actorId) => {
       ui.notifications.info(`Night City Messenger: Inbox (Phase 2) — actorId: ${actorId ?? 'self'}`);
     };

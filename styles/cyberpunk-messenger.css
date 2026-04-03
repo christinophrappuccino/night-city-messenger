@@ -55,6 +55,7 @@
 @import 'components/network-selector.css';
 @import 'components/network-toasts.css';
 @import 'components/dead-zone-warning.css';
+@import 'components/character-select.css';
 @import 'components/admin-panel.css';
 @import 'components/theme-customizer.css';
 @import 'components/notifications.css';

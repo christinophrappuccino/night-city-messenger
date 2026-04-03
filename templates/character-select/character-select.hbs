@@ -1,0 +1,250 @@
+{{!-- ═══════════════════════════════════════════════════════════════════════
+  Character Select / Boot Loader Template
+  @file templates/character-select/character-select.hbs
+  @module cyberpunkred-messenger
+  @description Two-state layout: boot loader (phase=boot) and character
+    select (phase=select). Managed by CharacterSelectApp.
+═══════════════════════════════════════════════════════════════════════ --}}
+
+{{!-- ── Boot Loader ── --}}
+{{#if booting}}
+<div class="ncm-cs-boot" data-phase="boot">
+  <div class="ncm-cs-boot__bg"></div>
+  <div class="ncm-cs-boot__content">
+    <div class="ncm-cs-boot__icon" data-el="boot-icon">
+      <i class="fas fa-satellite-dish"></i>
+    </div>
+    <div class="ncm-cs-boot__title">Night City Messenger</div>
+    <div class="ncm-cs-boot__subtitle" data-el="boot-subtitle">v4.1 // Initializing</div>
+
+    <div class="ncm-cs-boot__bar-wrap">
+      <div class="ncm-cs-boot__bar-track">
+        <div class="ncm-cs-boot__bar-fill" data-el="boot-bar"></div>
+      </div>
+      <div class="ncm-cs-boot__bar-status">
+        <span class="ncm-cs-boot__bar-label" data-el="boot-label">Loading services...</span>
+        <span class="ncm-cs-boot__bar-pct" data-el="boot-pct">0%</span>
+      </div>
+    </div>
+  </div>
+</div>
+{{/if}}
+
+{{!-- ── Character Select ── --}}
+{{#unless booting}}
+<div class="ncm-cs" data-phase="select">
+  {{!-- Left: Roster --}}
+  <div class="ncm-cs__roster" data-el="roster">
+    <div class="ncm-cs__roster-header">
+      <div class="ncm-cs__roster-title">Identities</div>
+      <div class="ncm-cs__roster-sub" data-el="roster-sub">Select a character to continue</div>
+    </div>
+
+    <div class="ncm-cs__roster-list">
+      {{!-- GM-only: Admin Mode --}}
+      {{#if isGM}}
+      <div class="ncm-cs__divider ncm-cs__divider--gm">
+        <i class="fas fa-shield-halved"></i> GM
+      </div>
+      <div class="ncm-cs__entry admin" data-action="select-entry" data-entry-id="__admin__">
+        <div class="ncm-cs__entry-portrait red">
+          <i class="fas fa-terminal"></i>
+        </div>
+        <div class="ncm-cs__entry-info">
+          <div class="ncm-cs__entry-name">Admin Panel</div>
+          <div class="ncm-cs__entry-role">System administration</div>
+        </div>
+      </div>
+      {{/if}}
+
+      {{#if characters.length}}
+      <div class="ncm-cs__divider">
+        <i class="fas fa-users"></i> Characters
+      </div>
+
+      {{#each characters}}
+      <div class="ncm-cs__entry {{#if this.selected}}selected{{/if}}"
+           data-action="select-entry" data-entry-id="{{this.id}}">
+        <div class="ncm-cs__entry-portrait {{this.colorClass}}">
+          {{#if this.img}}
+            <img src="{{this.img}}" alt="{{this.name}}">
+          {{else}}
+            <span class="initial">{{this.initial}}</span>
+          {{/if}}
+        </div>
+        <div class="ncm-cs__entry-info">
+          <div class="ncm-cs__entry-name">{{this.name}}</div>
+          <div class="ncm-cs__entry-role">{{this.roleLabel}}</div>
+        </div>
+        {{#if this.unreadCount}}
+        <div class="ncm-cs__entry-unread">{{this.unreadCount}}</div>
+        {{/if}}
+      </div>
+      {{/each}}
+      {{/if}}
+    </div>
+  </div>
+
+  {{!-- Right: Spotlight --}}
+  <div class="ncm-cs__spotlight {{#if isAdminSelected}}admin-mode{{/if}}" data-el="spotlight">
+    <div class="ncm-cs__spotlight-bg"></div>
+    <div class="ncm-cs__spotlight-grid"></div>
+
+    <div class="ncm-cs__spotlight-content">
+      {{#if selectedCharacter}}
+        <div class="ncm-cs__portrait-frame active" data-el="portrait-frame">
+          <div class="ncm-cs__corner ncm-cs__corner--tl"></div>
+          <div class="ncm-cs__corner ncm-cs__corner--tr"></div>
+          <div class="ncm-cs__corner ncm-cs__corner--bl"></div>
+          <div class="ncm-cs__corner ncm-cs__corner--br"></div>
+          {{#if selectedCharacter.img}}
+            <img src="{{selectedCharacter.img}}" alt="{{selectedCharacter.name}}">
+          {{else}}
+            <div class="ncm-cs__portrait-initial">{{selectedCharacter.initial}}</div>
+          {{/if}}
+        </div>
+
+        <div class="ncm-cs__char-name">{{selectedCharacter.name}}</div>
+        <div class="ncm-cs__char-role">{{selectedCharacter.roleLabel}}</div>
+
+        <div class="ncm-cs__stats">
+          <div class="ncm-cs__stat">
+            <div class="ncm-cs__stat-value ncm-cs__stat-value--gold">{{selectedCharacter.unreadCount}}</div>
+            <div class="ncm-cs__stat-label">Unread</div>
+          </div>
+          <div class="ncm-cs__stat">
+            <div class="ncm-cs__stat-value">{{selectedCharacter.totalMessages}}</div>
+            <div class="ncm-cs__stat-label">Total</div>
+          </div>
+          <div class="ncm-cs__stat">
+            <div class="ncm-cs__stat-value ncm-cs__stat-value--cyan">{{selectedCharacter.shardCount}}</div>
+            <div class="ncm-cs__stat-label">Shards</div>
+          </div>
+          <div class="ncm-cs__stat">
+            <div class="ncm-cs__stat-value ncm-cs__stat-value--green">{{selectedCharacter.draftCount}}</div>
+            <div class="ncm-cs__stat-label">Drafts</div>
+          </div>
+        </div>
+
+        {{#if selectedCharacter.email}}
+        <div class="ncm-cs__email-row">
+          <i class="fas fa-at"></i>
+          <span class="ncm-cs__email-address">{{selectedCharacter.email}}</span>
+        </div>
+        {{/if}}
+
+        <div class="ncm-cs__net-row">
+          <div class="ncm-cs__net-dot {{#unless networkOnline}}offline{{/unless}}"></div>
+          <span>{{networkName}} // {{signalPercent}}% Signal</span>
+        </div>
+      {{/if}}
+
+      {{!-- Admin spotlight --}}
+      {{#if isAdminSelected}}
+        <div class="ncm-cs__portrait-frame" data-el="portrait-frame">
+          <div class="ncm-cs__corner ncm-cs__corner--tl"></div>
+          <div class="ncm-cs__corner ncm-cs__corner--tr"></div>
+          <div class="ncm-cs__corner ncm-cs__corner--bl"></div>
+          <div class="ncm-cs__corner ncm-cs__corner--br"></div>
+          <div class="ncm-cs__portrait-initial"><i class="fas fa-terminal" style="font-size:50px;"></i></div>
+        </div>
+
+        <div class="ncm-cs__char-name">Admin Panel</div>
+        <div class="ncm-cs__char-role">GM System Access</div>
+
+        <div class="ncm-cs__stats">
+          <div class="ncm-cs__stat">
+            <div class="ncm-cs__stat-value ncm-cs__stat-value--gold">{{adminStats.totalUnread}}</div>
+            <div class="ncm-cs__stat-label">Unread (all)</div>
+          </div>
+          <div class="ncm-cs__stat">
+            <div class="ncm-cs__stat-value">{{adminStats.actorCount}}</div>
+            <div class="ncm-cs__stat-label">Actors</div>
+          </div>
+          <div class="ncm-cs__stat">
+            <div class="ncm-cs__stat-value ncm-cs__stat-value--cyan">{{adminStats.networkCount}}</div>
+            <div class="ncm-cs__stat-label">Networks</div>
+          </div>
+          <div class="ncm-cs__stat">
+            <div class="ncm-cs__stat-value ncm-cs__stat-value--red">{{adminStats.alertCount}}</div>
+            <div class="ncm-cs__stat-label">Alerts</div>
+          </div>
+        </div>
+
+        <div class="ncm-cs__email-row">
+          <i class="fas fa-shield-halved"></i>
+          <span class="ncm-cs__email-address">Full system control — all inboxes, networks, contacts</span>
+        </div>
+      {{/if}}
+
+      {{!-- No selection placeholder --}}
+      {{#unless selectedCharacter}}
+        {{#unless isAdminSelected}}
+        <div class="ncm-cs__portrait-frame">
+          <div class="ncm-cs__corner ncm-cs__corner--tl"></div>
+          <div class="ncm-cs__corner ncm-cs__corner--tr"></div>
+          <div class="ncm-cs__corner ncm-cs__corner--bl"></div>
+          <div class="ncm-cs__corner ncm-cs__corner--br"></div>
+          <div class="ncm-cs__portrait-initial">?</div>
+        </div>
+        <div class="ncm-cs__char-name" style="opacity:0.3;">Select a Character</div>
+        {{/unless}}
+      {{/unless}}
+    </div>
+
+    {{!-- Connecting overlay --}}
+    <div class="ncm-cs__connecting" data-el="connecting-overlay">
+      <div class="ncm-cs__connecting-name" data-el="con-name"></div>
+      <div class="ncm-cs__connecting-email" data-el="con-email"></div>
+      <div class="ncm-cs__ring">
+        <div class="ncm-cs__ring-outer"></div>
+        <div class="ncm-cs__ring-inner"></div>
+        <div class="ncm-cs__ring-icon"><i class="fas fa-satellite-dish"></i></div>
+      </div>
+      <div class="ncm-cs__con-steps" data-el="con-steps">
+        <div class="ncm-cs__con-step" data-step="0"><i class="fas fa-circle" style="font-size:4px;"></i> Identity verified</div>
+        <div class="ncm-cs__con-step" data-step="1"><i class="fas fa-circle" style="font-size:4px;"></i> Network handshake</div>
+        <div class="ncm-cs__con-step" data-step="2"><i class="fas fa-circle" style="font-size:4px;"></i> Synchronizing inbox</div>
+        <div class="ncm-cs__con-step" data-step="3"><i class="fas fa-circle" style="font-size:4px;"></i> Loading contacts</div>
+        <div class="ncm-cs__con-step" data-step="4"><i class="fas fa-circle" style="font-size:4px;"></i> Ready</div>
+      </div>
+    </div>
+
+    {{!-- Success overlay --}}
+    <div class="ncm-cs__success" data-el="success-overlay">
+      <div class="ncm-cs__success-check">
+        <i class="fas fa-check"></i>
+      </div>
+      <div class="ncm-cs__success-name" data-el="success-name"></div>
+      <div class="ncm-cs__success-label">Session Established</div>
+      <div class="ncm-cs__success-hint">Opening inbox...</div>
+    </div>
+  </div>
+</div>
+
+{{!-- Bottom bar --}}
+<div class="ncm-cs__bottom">
+  <div class="ncm-cs__bottom-left">
+    <div class="ncm-cs__bottom-net">
+      <div class="ncm-cs__bottom-signal">
+        {{#each signalBars}}
+        <div class="ncm-cs__bottom-signal-bar {{#if this.on}}on{{/if}}"></div>
+        {{/each}}
+      </div>
+      <span>{{networkName}}</span>
+    </div>
+    <span style="opacity:0.4;">NCM v4.1</span>
+  </div>
+  {{#if isAdminSelected}}
+    <button class="ncm-cs__connect-btn admin-btn" data-action="jack-in" type="button">
+      <i class="fas fa-terminal"></i>
+      Enter Admin
+    </button>
+  {{else}}
+    <button class="ncm-cs__connect-btn" data-action="jack-in" data-el="jack-in-btn" type="button">
+      <i class="fas fa-bolt"></i>
+      Jack In
+    </button>
+  {{/if}}
+</div>
+{{/unless}}
