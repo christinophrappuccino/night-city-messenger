@@ -32,6 +32,10 @@ const TOAST_TYPES = {
     icon: 'fas fa-exclamation-triangle',
     titleIcon: null,
   },
+  'danger': {
+    icon: 'fas fa-skull-crossbones',
+    titleIcon: null,
+  },
   'message': {
     icon: 'fas fa-envelope',
     titleIcon: null,

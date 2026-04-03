@@ -248,6 +248,15 @@
 .ncm-toast--error .ncm-toast__progress-fill { background: var(--ncm-primary, #F65261); }
 .ncm-toast--error .ncm-toast__action:hover { color: var(--ncm-primary, #F65261); border-color: rgba(255, 0, 51, 0.3); }
 
+/* ── Danger (BLACK ICE / lethal — deep red with background tint) ── */
+.ncm-toast--danger { border-color: rgba(255, 0, 51, 0.5); background: rgba(255, 0, 20, 0.08); }
+.ncm-toast--danger::before { background: var(--ncm-danger, #ff0033); width: 4px; }
+.ncm-toast--danger .ncm-toast__icon { color: var(--ncm-danger, #ff0033); border-color: rgba(255, 0, 51, 0.25); background: rgba(255, 0, 51, 0.1); }
+.ncm-toast--danger .ncm-toast__title { color: var(--ncm-danger, #ff0033); }
+.ncm-toast--danger .ncm-toast__detail { color: var(--ncm-primary, #F65261); }
+.ncm-toast--danger .ncm-toast__progress-fill { background: var(--ncm-danger, #ff0033); }
+.ncm-toast--danger .ncm-toast__action:hover { color: var(--ncm-danger, #ff0033); border-color: rgba(255, 0, 51, 0.4); }
+
 /* ── Contact Acquired (cyan + download indicator) ── */
 .ncm-toast--contact-acquired { border-color: rgba(25, 243, 247, 0.3); }
 .ncm-toast--contact-acquired::before { background: var(--ncm-secondary, #19f3f7); }

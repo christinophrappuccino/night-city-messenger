@@ -1136,11 +1136,13 @@ export class GMContactManagerApp extends BaseApplication {
 
     await this.masterContactService.updateContact(contactId, updates);
     this.soundService?.play?.('hack-fail');
-    this.notificationService?.showToast?.({
+    this.notificationService?.showToastV2?.({
+      type: 'contact-burned',
       title: 'CONTACT BURNED',
       detail: `${contact.name} — identity compromised`,
-      type: 'danger',
       icon: 'fas fa-fire',
+      duration: 6000,
+      priority: 'urgent',
     });
     this.eventBus?.emit(EVENTS.CONTACT_BURNED, { contactId, burned: true });
     this.render();
