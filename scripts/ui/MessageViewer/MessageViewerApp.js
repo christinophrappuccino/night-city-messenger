@@ -467,6 +467,10 @@ export class MessageViewerApp extends BaseApplication {
     const allMessages = await this._loadMessages();
     const filtered = this._applyFilters(allMessages);
     const sorted = this._applySorting(filtered);
+
+    // Cache the full filtered list BEFORE pagination — _setPage uses this for maxPage
+    this._cachedMessages = sorted;
+
     const paginated = this._applyPagination(sorted);
 
     // Store paginated IDs for keyboard navigation
@@ -3927,7 +3931,7 @@ export class MessageViewerApp extends BaseApplication {
    * @returns {Array} Enriched messages with display data
    */
   async _enrichMessages(messages, currentNetworkName) {
-    this._cachedMessages = messages;
+    // Note: _cachedMessages is set in _prepareContext before pagination, not here
 
     // Resolve viewing actor once for all access checks
     const viewingActor = this.actorId ? game.actors?.get(this.actorId) : null;

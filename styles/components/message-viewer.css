@@ -484,7 +484,7 @@
 .ncm-app .ncm-viewer__divider-grip span { width: 2px; height: 2px; border-radius: 50%; background: var(--ncm-text-dim); }
 
 /* Collapse Toggle Button */
-.ncm-app .ncm-viewer__collapse-toggle {
+.ncm-app button.ncm-viewer__collapse-toggle {
   position: absolute;
   top: 8px;
   left: 50%;
@@ -512,7 +512,7 @@
   margin: 0;
 }
 
-.ncm-app .ncm-viewer__collapse-toggle:hover {
+.ncm-app button.ncm-viewer__collapse-toggle:hover {
   color: var(--ncm-secondary);
   border-color: rgba(0, 212, 230, 0.3);
   background: var(--ncm-bg-surface);
