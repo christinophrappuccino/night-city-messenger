@@ -1,11 +1,4 @@
-{{!-- ═══════════════════════════════════════════════════════════════════════
-  Character Select Template
-  @file templates/character-select/character-select.hbs
-  @module cyberpunkred-messenger
-  @description Roster + spotlight layout with connecting/success overlays.
-    Boot splash is a separate DOM overlay — not part of this template.
-═══════════════════════════════════════════════════════════════════════ --}}
-
+{{!-- Character Select Template --}}
 <div class="ncm-cs-wrapper">
 <div class="ncm-cs">
   {{!-- Left: Roster --}}
@@ -13,10 +6,14 @@
     <div class="ncm-cs__roster-header">
       <div class="ncm-cs__roster-title">Identities</div>
       <div class="ncm-cs__roster-sub" data-el="roster-sub">Select a character to continue</div>
+      <div class="ncm-cs__search">
+        <i class="fas fa-search ncm-cs__search-icon"></i>
+        <input type="text" class="ncm-cs__search-input" data-el="roster-search"
+               placeholder="Search..." autocomplete="off" />
+      </div>
     </div>
 
     <div class="ncm-cs__roster-list">
-      {{!-- GM-only: Admin Mode --}}
       {{#if isGM}}
       <div class="ncm-cs__divider ncm-cs__divider--gm">
         <i class="fas fa-shield-halved"></i> GM
@@ -34,7 +31,7 @@
 
       {{#if characters.length}}
       <div class="ncm-cs__divider">
-        <i class="fas fa-users"></i> Characters
+        <i class="fas fa-users"></i> Characters ({{characters.length}})
       </div>
 
       {{#each characters}}
@@ -116,12 +113,16 @@
 
       {{!-- Admin spotlight --}}
       {{#if isAdminSelected}}
-        <div class="ncm-cs__portrait-frame">
+        <div class="ncm-cs__portrait-frame ncm-cs__portrait-frame--admin">
           <div class="ncm-cs__corner ncm-cs__corner--tl"></div>
           <div class="ncm-cs__corner ncm-cs__corner--tr"></div>
           <div class="ncm-cs__corner ncm-cs__corner--bl"></div>
           <div class="ncm-cs__corner ncm-cs__corner--br"></div>
-          <div class="ncm-cs__portrait-initial"><i class="fas fa-terminal" style="font-size:50px;"></i></div>
+          <div class="ncm-cs__admin-icon">
+            <div class="ncm-cs__admin-ring ncm-cs__admin-ring--outer"></div>
+            <div class="ncm-cs__admin-ring ncm-cs__admin-ring--inner"></div>
+            <i class="fas fa-terminal"></i>
+          </div>
         </div>
 
         <div class="ncm-cs__char-name">Admin Panel</div>
@@ -177,11 +178,11 @@
         <div class="ncm-cs__ring-icon"><i class="fas fa-satellite-dish"></i></div>
       </div>
       <div class="ncm-cs__con-steps" data-el="con-steps">
-        <div class="ncm-cs__con-step" data-step="0"><i class="fas fa-circle" style="font-size:4px;"></i> Identity verified</div>
-        <div class="ncm-cs__con-step" data-step="1"><i class="fas fa-circle" style="font-size:4px;"></i> Network handshake</div>
-        <div class="ncm-cs__con-step" data-step="2"><i class="fas fa-circle" style="font-size:4px;"></i> Synchronizing inbox</div>
-        <div class="ncm-cs__con-step" data-step="3"><i class="fas fa-circle" style="font-size:4px;"></i> Loading contacts</div>
-        <div class="ncm-cs__con-step" data-step="4"><i class="fas fa-circle" style="font-size:4px;"></i> Ready</div>
+        <div class="ncm-cs__con-step"><i class="fas fa-circle" style="font-size:4px;"></i> Identity verified</div>
+        <div class="ncm-cs__con-step"><i class="fas fa-circle" style="font-size:4px;"></i> Network handshake</div>
+        <div class="ncm-cs__con-step"><i class="fas fa-circle" style="font-size:4px;"></i> Synchronizing inbox</div>
+        <div class="ncm-cs__con-step"><i class="fas fa-circle" style="font-size:4px;"></i> Loading contacts</div>
+        <div class="ncm-cs__con-step"><i class="fas fa-circle" style="font-size:4px;"></i> Ready</div>
       </div>
     </div>
 

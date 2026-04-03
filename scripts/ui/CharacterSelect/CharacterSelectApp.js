@@ -2,12 +2,9 @@
  * Character Select Application
  * @file scripts/ui/CharacterSelect/CharacterSelectApp.js
  * @module cyberpunkred-messenger
- * @description Character select screen for NCM. Shows a roster of available
- *   characters with a spotlight panel. "Jack In" runs a connecting animation
- *   and opens the MessageViewer. GM gets an Admin Panel entry.
- *
- *   Boot splash is handled externally by registerMessagingSystem._playBootSplash().
- *   Session memory stored in user flags (lastCharacterId).
+ * @description Character select screen for NCM. Roster + spotlight layout.
+ *   Roles resolved from actor items (CPR stores roles as item type 'role').
+ *   Search bar for GM with many characters. Smooth transition animations.
  */
 
 import { BaseApplication } from '../BaseApplication.js';
@@ -17,6 +14,13 @@ import { log, isGM } from '../../utils/helpers.js';
 const CONNECT_STEP_DELAY_MS = 400;
 const SUCCESS_HOLD_MS = 1000;
 const PORTRAIT_COLORS = ['cyan', 'gold', 'purple', 'red'];
+
+/** CPR role → role ability name mapping (from CPR system data) */
+const ROLE_ABILITY_MAP = {
+  exec: 'Teamwork', fixer: 'Operator', lawman: 'Backup', media: 'Credibility',
+  medtech: 'Medicine', netrunner: 'Interface', nomad: 'Moto',
+  rockerboy: 'Charismatic Impact', solo: 'Combat Awareness', tech: 'Maker',
+};
 
 export class CharacterSelectApp extends BaseApplication {
 
@@ -42,7 +46,7 @@ export class CharacterSelectApp extends BaseApplication {
     },
   };
 
-  /** @type {string|null} Currently selected entry ID ('__admin__' or actor ID) */
+  /** @type {string|null} Currently selected entry ID */
   _selectedId = null;
 
   /** @type {boolean} Whether a jack-in sequence is in progress */
@@ -74,7 +78,9 @@ export class CharacterSelectApp extends BaseApplication {
     }
 
     const isAdminSelected = this._selectedId === '__admin__';
-    const selectedCharacter = isAdminSelected ? null : characters.find(c => c.id === this._selectedId) || null;
+    const selectedCharacter = isAdminSelected
+      ? null
+      : characters.find(c => c.id === this._selectedId) || null;
 
     let adminStats = null;
     if (isAdminSelected) {
@@ -95,7 +101,7 @@ export class CharacterSelectApp extends BaseApplication {
   }
 
   // ═══════════════════════════════════════════════════════
-  //  Character List Building
+  //  Character List — role data from actor items
   // ═══════════════════════════════════════════════════════
 
   _buildCharacterList() {
@@ -111,11 +117,16 @@ export class CharacterSelectApp extends BaseApplication {
         || actor.getFlag?.(MODULE_ID, 'email')
         || null;
 
-      const role = actor.system?.role
-        || actor.system?.lifepath?.role
-        || '';
-      const rank = actor.system?.stats?.empathy?.rank || '';
-      const roleLabel = role ? (rank ? `${role} // Rank ${rank}` : role) : 'Unknown Role';
+      // ── Resolve roles from actor items (CPR stores roles as items) ──
+      const roleItems = actor.items.filter(i => i.type === 'role');
+      let roleLabel = 'Unknown Role';
+      if (roleItems.length > 0) {
+        const roleParts = roleItems.map(r => {
+          const rank = r.system?.rank ?? r.system?.value ?? 0;
+          return `${r.name} ${rank}`;
+        });
+        roleLabel = roleParts.join(' / ');
+      }
 
       const stats = this._getCharacterStats(actor.id);
 
@@ -128,7 +139,6 @@ export class CharacterSelectApp extends BaseApplication {
         img: hasCustomImg ? actor.img : null,
         initial: (actor.name?.[0] || '?').toUpperCase(),
         colorClass: PORTRAIT_COLORS[colorIndex],
-        role,
         roleLabel,
         email,
         selected: actor.id === this._selectedId,
@@ -145,6 +155,7 @@ export class CharacterSelectApp extends BaseApplication {
   _getCharacterStats(actorId) {
     const stats = { unread: 0, total: 0, shards: 0, drafts: 0 };
     try {
+      // Try both journal naming conventions
       const journalName = `NCM-Inbox-Actor-${actorId}`;
       const journal = game.journal?.getName(journalName);
       if (journal) {
@@ -185,6 +196,32 @@ export class CharacterSelectApp extends BaseApplication {
     }
 
     return { totalUnread, actorCount, networkCount, alertCount };
+  }
+
+  // ═══════════════════════════════════════════════════════
+  //  Post-Render — wire up search
+  // ═══════════════════════════════════════════════════════
+
+  _onRender(context, options) {
+    super._onRender(context, options);
+
+    // Wire search input (not a data-action, needs direct listener)
+    const searchInput = this.element?.querySelector('[data-el="roster-search"]');
+    if (searchInput) {
+      searchInput.addEventListener('input', (e) => this._onSearchInput(e));
+    }
+  }
+
+  _onSearchInput(event) {
+    const query = (event.target.value || '').toLowerCase().trim();
+    const entries = this.element?.querySelectorAll('.ncm-cs__entry:not(.admin)') || [];
+
+    for (const entry of entries) {
+      const name = entry.querySelector('.ncm-cs__entry-name')?.textContent?.toLowerCase() || '';
+      const role = entry.querySelector('.ncm-cs__entry-role')?.textContent?.toLowerCase() || '';
+      const matches = !query || name.includes(query) || role.includes(query);
+      entry.style.display = matches ? '' : 'none';
+    }
   }
 
   // ═══════════════════════════════════════════════════════
@@ -289,18 +326,15 @@ export class CharacterSelectApp extends BaseApplication {
     await this._delay(SUCCESS_HOLD_MS);
     if (!this.rendered) return;
 
-    // Smooth transition: fade out, capture position, close, open next at same spot
     const pos = this._capturePosition();
     await this._fadeOutAndClose();
 
-    // ── Email setup intercept ──
-    // If this character has no email, trigger the setup flow first
+    // Email setup intercept
     const emailService = game.nightcity?.emailService;
     if (actor && emailService && !emailService.hasEmail(actor)) {
       try {
         const email = await game.nightcity.openEmailSetup?.(actor);
         if (!email) {
-          // User cancelled email setup — go back to character select
           game.nightcity?.showCharacterSelect?.();
           return;
         }
@@ -322,16 +356,10 @@ export class CharacterSelectApp extends BaseApplication {
   //  Transition Helpers
   // ═══════════════════════════════════════════════════════
 
-  /**
-   * Capture the current window position for seamless handoff.
-   */
   _capturePosition() {
     return { ...this.position };
   }
 
-  /**
-   * Fade out the window, then close it.
-   */
   async _fadeOutAndClose() {
     const el = this.element;
     if (el) {
