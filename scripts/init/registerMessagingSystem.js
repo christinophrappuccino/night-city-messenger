@@ -17,6 +17,7 @@ import { ContactRepository } from '../data/ContactRepository.js';
 // Services
 import { MessageService } from '../services/MessageService.js';
 import { NotificationService } from '../services/NotificationService.js';
+import { SpamService } from '../services/SpamService.js';
 
 // Integrations
 import { SocketHandlers } from '../integrations/SocketHandlers.js';
@@ -85,6 +86,18 @@ export function registerMessagingSystem(initializer) {
     notificationService.init();
     game.nightcity.notificationService = notificationService;
     log.info('NotificationService initialized');
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  //  READY PHASE — Priority 54: SpamService
+  // ═══════════════════════════════════════════════════════════════
+
+  initializer.register('ready', 54, 'SpamService', () => {
+    const spamService = new SpamService();
+    spamService.registerSettings();
+    spamService.load();
+    game.nightcity.spamService = spamService;
+    log.info('SpamService initialized');
   });
 
   // ═══════════════════════════════════════════════════════════════

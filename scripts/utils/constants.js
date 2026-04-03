@@ -454,6 +454,7 @@ export const TEMPLATES = Object.freeze({
   ADMIN_TAB_CONTACTS: `${T}/admin-panel/tab-contacts.hbs`,
   ADMIN_TAB_NETWORKS: `${T}/admin-panel/tab-networks.hbs`,
   ADMIN_TAB_SHARDS: `${T}/admin-panel/tab-shards.hbs`,
+  ADMIN_TAB_SPAM: `${T}/admin-panel/tab-spam.hbs`,
   ADMIN_TAB_TOOLS: `${T}/admin-panel/tab-tools.hbs`,
   ADMIN_NETWORK_CARD: `${T}/admin-panel/partials/network-card.hbs`,
   THEME_CUSTOMIZER: `${T}/theme-customizer/theme-customizer.hbs`,

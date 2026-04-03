@@ -1,0 +1,890 @@
+/* ═══════════════════════════════════════════
+   TAB 6: SPAM — Template Library & Blast Controls
+   Quick blast bar, split-panel template browser,
+   custom creator, auto-spam network settings
+   ═══════════════════════════════════════════ */
+
+/* ───────────────────────────────────────────
+   §1 QUICK BLAST BAR
+   ─────────────────────────────────────────── */
+
+.ncm-app .ncm-spam-blast-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--ncm-bg-surface);
+  border: 1px solid var(--ncm-border);
+  border-radius: 2px;
+  margin-bottom: 12px;
+}
+
+.ncm-app .ncm-spam-blast-bar__label {
+  font-family: var(--ncm-font-display);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ncm-text-secondary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.ncm-app .ncm-spam-blast-bar__label i {
+  color: var(--ncm-primary);
+  margin-right: 4px;
+  font-size: 10px;
+}
+
+.ncm-app .ncm-spam-blast-bar__sep {
+  width: 1px;
+  height: 24px;
+  background: var(--ncm-border);
+  flex-shrink: 0;
+}
+
+.ncm-app .ncm-spam-blast-bar__recipients {
+  display: flex;
+  gap: 3px;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+/* ── Recipient Chips (shared blast bar + send bar) ── */
+
+.ncm-app .ncm-spam-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  font-family: var(--ncm-font-display);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--ncm-text-muted);
+  background: var(--ncm-bg-elevated);
+  border: 1px solid var(--ncm-border);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.ncm-app .ncm-spam-chip:hover {
+  border-color: var(--ncm-border-active);
+  color: var(--ncm-text-secondary);
+}
+
+.ncm-app .ncm-spam-chip--selected {
+  color: var(--ncm-secondary);
+  border-color: rgba(25, 243, 247, 0.3);
+  background: rgba(25, 243, 247, 0.06);
+}
+
+.ncm-app .ncm-spam-chip i {
+  font-size: 8px;
+}
+
+.ncm-app .ncm-spam-chip__avatar {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 7px;
+  font-weight: 700;
+  color: var(--ncm-bg-deep);
+  flex-shrink: 0;
+}
+
+/* ── Count Stepper ── */
+
+.ncm-app .ncm-spam-stepper {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--ncm-border);
+  border-radius: 2px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.ncm-app button.ncm-spam-stepper__btn {
+  width: 22px !important;
+  height: 24px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: var(--ncm-bg-elevated) !important;
+  background-image: none !important;
+  border: none !important;
+  color: var(--ncm-text-muted) !important;
+  font-size: 9px !important;
+  cursor: pointer !important;
+  transition: all 0.15s !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  box-shadow: none !important;
+  line-height: 1 !important;
+}
+
+.ncm-app button.ncm-spam-stepper__btn:hover {
+  color: var(--ncm-secondary) !important;
+  background: rgba(25, 243, 247, 0.06) !important;
+}
+
+.ncm-app .ncm-spam-stepper__val {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--ncm-font-mono);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--ncm-primary);
+  background: var(--ncm-bg-surface);
+  border-left: 1px solid var(--ncm-border);
+  border-right: 1px solid var(--ncm-border);
+}
+
+/* ── Send Button ── */
+
+.ncm-app button.ncm-spam-send-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 6px 14px !important;
+  font-family: var(--ncm-font-display) !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+  color: #fff !important;
+  background: linear-gradient(135deg, var(--ncm-primary), #d4404e) !important;
+  background-image: linear-gradient(135deg, var(--ncm-primary), #d4404e) !important;
+  border: 1px solid rgba(246, 82, 97, 0.5) !important;
+  border-radius: 2px !important;
+  cursor: pointer !important;
+  transition: all 0.15s !important;
+  flex-shrink: 0 !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
+  min-height: 0 !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  box-shadow: none !important;
+  line-height: 1.2 !important;
+}
+
+.ncm-app button.ncm-spam-send-btn:hover {
+  box-shadow: 0 0 12px rgba(246, 82, 97, 0.4) !important;
+}
+
+.ncm-app .ncm-spam-send-btn i {
+  font-size: 10px;
+}
+
+/* ───────────────────────────────────────────
+   §2 TEMPLATE LIBRARY — Split Panel
+   ─────────────────────────────────────────── */
+
+.ncm-app .ncm-spam-pills {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.ncm-app .ncm-spam-lib {
+  display: flex;
+  border: 1px solid var(--ncm-border);
+  border-radius: 2px;
+  background: var(--ncm-bg-base);
+  min-height: 300px;
+  max-height: 360px;
+}
+
+/* Left: template list */
+
+.ncm-app .ncm-spam-lib__list {
+  width: 340px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  border-right: 1px solid var(--ncm-border);
+}
+
+.ncm-app .ncm-spam-lib__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 40px 16px;
+  color: var(--ncm-text-muted);
+  font-family: var(--ncm-font-display);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.ncm-app .ncm-spam-lib__empty i {
+  font-size: 20px;
+  opacity: 0.3;
+}
+
+/* Template row */
+
+.ncm-app .ncm-spam-tmpl {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+  transition: all 0.12s;
+  border-bottom: 1px solid rgba(42, 42, 69, 0.4);
+}
+
+.ncm-app .ncm-spam-tmpl:last-child {
+  border-bottom: none;
+}
+
+.ncm-app .ncm-spam-tmpl:hover {
+  background: rgba(25, 243, 247, 0.02);
+}
+
+.ncm-app .ncm-spam-tmpl--active {
+  background: rgba(25, 243, 247, 0.04);
+  border-left: 2px solid var(--ncm-secondary);
+  padding-left: 8px;
+}
+
+/* Category icon */
+
+.ncm-app .ncm-spam-tmpl__icon {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 2px;
+  font-size: 10px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.ncm-app .ncm-spam-tmpl__icon--corpo       { background: rgba(25, 243, 247, 0.08); color: var(--ncm-secondary); border: 1px solid rgba(25, 243, 247, 0.15); }
+.ncm-app .ncm-spam-tmpl__icon--scam        { background: rgba(247, 201, 72, 0.08); color: var(--ncm-accent); border: 1px solid rgba(247, 201, 72, 0.15); }
+.ncm-app .ncm-spam-tmpl__icon--ripperdoc   { background: rgba(246, 82, 97, 0.08); color: var(--ncm-primary); border: 1px solid rgba(246, 82, 97, 0.15); }
+.ncm-app .ncm-spam-tmpl__icon--braindance  { background: rgba(168, 85, 247, 0.08); color: var(--ncm-purple); border: 1px solid rgba(168, 85, 247, 0.15); }
+.ncm-app .ncm-spam-tmpl__icon--political   { background: rgba(255, 171, 0, 0.08); color: var(--ncm-warning); border: 1px solid rgba(255, 171, 0, 0.15); }
+.ncm-app .ncm-spam-tmpl__icon--blackmarket { background: rgba(255, 0, 51, 0.08); color: var(--ncm-danger); border: 1px solid rgba(255, 0, 51, 0.15); }
+.ncm-app .ncm-spam-tmpl__icon--fixer       { background: rgba(0, 255, 65, 0.08); color: var(--ncm-success); border: 1px solid rgba(0, 255, 65, 0.15); }
+.ncm-app .ncm-spam-tmpl__icon--custom      { background: rgba(180, 77, 255, 0.08); color: #b44dff; border: 1px solid rgba(180, 77, 255, 0.2); }
+
+.ncm-app .ncm-spam-tmpl__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.ncm-app .ncm-spam-tmpl__subject {
+  font-family: var(--ncm-font-display);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ncm-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+}
+
+.ncm-app .ncm-spam-tmpl__from {
+  font-family: var(--ncm-font-display);
+  font-size: 9px;
+  font-weight: 500;
+  color: var(--ncm-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 1px;
+}
+
+.ncm-app .ncm-spam-tmpl__custom-badge {
+  font-size: 8px;
+  color: #b44dff;
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+
+/* Right: detail preview */
+
+.ncm-app .ncm-spam-lib__detail {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.ncm-app .ncm-spam-detail {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 14px 16px;
+  overflow-y: auto;
+}
+
+.ncm-app .ncm-spam-detail__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--ncm-border);
+}
+
+.ncm-app .ncm-spam-detail__sender {
+  flex: 1;
+}
+
+.ncm-app .ncm-spam-detail__from-name {
+  font-family: var(--ncm-font-display);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ncm-text-primary);
+}
+
+.ncm-app .ncm-spam-detail__from-email {
+  font-family: var(--ncm-font-mono);
+  font-size: 9px;
+  color: var(--ncm-text-muted);
+}
+
+.ncm-app .ncm-spam-detail__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  border-radius: 2px;
+  font-family: var(--ncm-font-display);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  border: 1px solid;
+  flex-shrink: 0;
+}
+
+.ncm-app .ncm-spam-detail__badge i { font-size: 7px; }
+.ncm-app .ncm-spam-detail__badge--cyan    { background: rgba(25, 243, 247, 0.06); color: var(--ncm-secondary); border-color: rgba(25, 243, 247, 0.15); }
+.ncm-app .ncm-spam-detail__badge--gold    { background: rgba(247, 201, 72, 0.08); color: var(--ncm-accent); border-color: rgba(247, 201, 72, 0.2); }
+.ncm-app .ncm-spam-detail__badge--red     { background: rgba(255, 0, 51, 0.08); color: #ff4466; border-color: rgba(255, 0, 51, 0.2); }
+.ncm-app .ncm-spam-detail__badge--purple  { background: rgba(168, 85, 247, 0.08); color: var(--ncm-purple); border-color: rgba(168, 85, 247, 0.2); }
+.ncm-app .ncm-spam-detail__badge--warning { background: rgba(255, 171, 0, 0.08); color: var(--ncm-warning); border-color: rgba(255, 171, 0, 0.15); }
+.ncm-app .ncm-spam-detail__badge--danger  { background: rgba(255, 0, 51, 0.08); color: var(--ncm-danger); border-color: rgba(255, 0, 51, 0.25); }
+.ncm-app .ncm-spam-detail__badge--green   { background: rgba(0, 255, 65, 0.06); color: var(--ncm-success); border-color: rgba(0, 255, 65, 0.15); }
+
+.ncm-app .ncm-spam-detail__subject {
+  font-family: var(--ncm-font-title);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ncm-secondary);
+  letter-spacing: 0.04em;
+  margin-bottom: 10px;
+  line-height: 1.4;
+}
+
+.ncm-app .ncm-spam-detail__body {
+  font-family: var(--ncm-font-display);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ncm-text-secondary);
+  line-height: 1.7;
+  padding: 10px 12px;
+  background: var(--ncm-bg-elevated);
+  border-radius: 2px;
+  border: 1px solid rgba(42, 42, 69, 0.5);
+  flex: 1;
+  overflow-y: auto;
+  white-space: pre-wrap;
+}
+
+/* Custom template actions */
+
+.ncm-app .ncm-spam-detail__custom-actions {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.ncm-app .ncm-spam-detail__delete-btn:hover {
+  color: var(--ncm-danger) !important;
+  border-color: rgba(255, 0, 51, 0.3) !important;
+}
+
+/* Send bar at bottom of detail */
+
+.ncm-app .ncm-spam-detail__send-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0 0;
+  margin-top: 10px;
+  border-top: 1px solid var(--ncm-border);
+}
+
+.ncm-app .ncm-spam-detail__send-label {
+  font-family: var(--ncm-font-display);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ncm-text-muted);
+  flex-shrink: 0;
+}
+
+.ncm-app .ncm-spam-detail__send-chips {
+  display: flex;
+  gap: 3px;
+  flex: 1;
+  flex-wrap: wrap;
+}
+
+.ncm-app .ncm-spam-detail__send-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  font-family: var(--ncm-font-display);
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--ncm-text-muted);
+  background: var(--ncm-bg-surface);
+  border: 1px solid var(--ncm-border);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.ncm-app .ncm-spam-detail__send-chip:hover {
+  border-color: var(--ncm-border-active);
+  color: var(--ncm-text-secondary);
+}
+
+.ncm-app .ncm-spam-detail__send-chip--selected {
+  color: var(--ncm-secondary);
+  border-color: rgba(25, 243, 247, 0.3);
+  background: rgba(25, 243, 247, 0.06);
+}
+
+.ncm-app .ncm-spam-detail__send-chip i {
+  font-size: 7px;
+}
+
+.ncm-app button.ncm-spam-detail__send-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  padding: 4px 10px !important;
+  font-family: var(--ncm-font-display) !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+  color: var(--ncm-primary) !important;
+  background: none !important;
+  background-image: none !important;
+  border: 1px solid rgba(246, 82, 97, 0.3) !important;
+  border-radius: 2px !important;
+  cursor: pointer !important;
+  transition: all 0.15s !important;
+  flex-shrink: 0 !important;
+  min-height: 0 !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  box-shadow: none !important;
+  line-height: 1.2 !important;
+}
+
+.ncm-app button.ncm-spam-detail__send-btn:hover {
+  background: rgba(246, 82, 97, 0.08) !important;
+  box-shadow: 0 0 8px rgba(246, 82, 97, 0.2) !important;
+}
+
+.ncm-app .ncm-spam-detail__send-btn i {
+  font-size: 8px;
+}
+
+/* Empty state */
+
+.ncm-app .ncm-spam-detail__empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--ncm-text-muted);
+}
+
+.ncm-app .ncm-spam-detail__empty i {
+  font-size: 28px;
+  opacity: 0.3;
+}
+
+.ncm-app .ncm-spam-detail__empty-text {
+  font-family: var(--ncm-font-display);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ncm-app .ncm-spam-detail__empty-hint {
+  font-family: var(--ncm-font-display);
+  font-size: 10px;
+  font-weight: 500;
+  opacity: 0.6;
+  text-align: center;
+  max-width: 220px;
+}
+
+/* ───────────────────────────────────────────
+   §3 CUSTOM CREATOR
+   ─────────────────────────────────────────── */
+
+.ncm-app .ncm-spam-creator {
+  background: var(--ncm-bg-surface);
+  border: 1px solid rgba(180, 77, 255, 0.2);
+  border-radius: 2px;
+  padding: 12px 14px;
+  margin-top: 10px;
+  border-left: 2px solid #b44dff;
+}
+
+.ncm-app .ncm-spam-creator__title {
+  font-family: var(--ncm-font-display);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #b44dff;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ncm-app .ncm-spam-creator__title i {
+  font-size: 10px;
+}
+
+.ncm-app .ncm-spam-creator__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.ncm-app .ncm-spam-creator__field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ncm-app .ncm-spam-creator__field--full {
+  grid-column: 1 / -1;
+}
+
+.ncm-app .ncm-spam-creator__label {
+  font-family: var(--ncm-font-display);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ncm-text-muted);
+}
+
+.ncm-app .ncm-spam-creator__input {
+  padding: 5px 8px;
+  font-family: var(--ncm-font-display);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ncm-text-primary);
+  background: var(--ncm-bg-elevated);
+  border: 1px solid var(--ncm-border);
+  border-radius: 2px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.ncm-app .ncm-spam-creator__input:focus {
+  border-color: rgba(180, 77, 255, 0.4);
+}
+
+.ncm-app .ncm-spam-creator__input::placeholder {
+  color: var(--ncm-text-muted);
+  font-weight: 500;
+}
+
+.ncm-app .ncm-spam-creator__textarea {
+  padding: 6px 8px;
+  font-family: var(--ncm-font-display);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ncm-text-primary);
+  background: var(--ncm-bg-elevated);
+  border: 1px solid var(--ncm-border);
+  border-radius: 2px;
+  outline: none;
+  resize: vertical;
+  min-height: 56px;
+  line-height: 1.5;
+  transition: border-color 0.15s;
+}
+
+.ncm-app .ncm-spam-creator__textarea:focus {
+  border-color: rgba(180, 77, 255, 0.4);
+}
+
+.ncm-app .ncm-spam-creator__textarea::placeholder {
+  color: var(--ncm-text-muted);
+}
+
+.ncm-app .ncm-spam-creator__select {
+  padding: 5px 8px;
+  font-family: var(--ncm-font-display);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ncm-text-primary);
+  background-color: var(--ncm-bg-elevated);
+  border: 1px solid var(--ncm-border);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%236a6a88'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  -webkit-appearance: none;
+  appearance: none;
+  padding-right: 24px;
+}
+
+.ncm-app .ncm-spam-creator__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--ncm-border);
+}
+
+.ncm-app .ncm-spam-creator__tokens {
+  font-family: var(--ncm-font-mono);
+  font-size: 9px;
+  color: var(--ncm-text-muted);
+}
+
+.ncm-app .ncm-spam-creator__tokens code {
+  background: var(--ncm-bg-elevated);
+  padding: 1px 4px;
+  border-radius: 2px;
+  color: var(--ncm-accent);
+  font-size: 9px;
+  margin: 0 1px;
+}
+
+.ncm-app .ncm-spam-creator__actions {
+  display: flex;
+  gap: 6px;
+}
+
+/* ───────────────────────────────────────────
+   §4 AUTO-SPAM STRIP (collapsible)
+   ─────────────────────────────────────────── */
+
+.ncm-app .ncm-spam-auto-strip {
+  background: var(--ncm-bg-surface);
+  border: 1px solid var(--ncm-border);
+  border-radius: 2px;
+  margin-top: 12px;
+  overflow: hidden;
+}
+
+.ncm-app .ncm-spam-auto-strip__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.ncm-app .ncm-spam-auto-strip__header:hover {
+  background: rgba(25, 243, 247, 0.02);
+}
+
+.ncm-app .ncm-spam-auto-strip__chevron {
+  font-size: 8px;
+  color: var(--ncm-text-muted);
+  transition: transform 0.2s;
+  width: 12px;
+  text-align: center;
+}
+
+.ncm-app .ncm-spam-auto-strip__chevron--open {
+  transform: rotate(90deg);
+}
+
+.ncm-app .ncm-spam-auto-strip__title {
+  font-family: var(--ncm-font-display);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ncm-text-secondary);
+}
+
+.ncm-app .ncm-spam-auto-strip__title i {
+  color: var(--ncm-text-muted);
+  font-size: 10px;
+  margin-right: 4px;
+}
+
+.ncm-app .ncm-spam-auto-strip__status {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--ncm-font-display);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ncm-app .ncm-spam-auto-strip__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.ncm-app .ncm-spam-auto-strip__dot--on {
+  background: var(--ncm-success);
+  box-shadow: 0 0 6px rgba(0, 255, 65, 0.5);
+}
+
+.ncm-app .ncm-spam-auto-strip__dot--off {
+  background: var(--ncm-text-muted);
+}
+
+.ncm-app .ncm-spam-auto-strip__status-text--on {
+  color: var(--ncm-success);
+}
+
+.ncm-app .ncm-spam-auto-strip__status-text--off {
+  color: var(--ncm-text-muted);
+}
+
+.ncm-app .ncm-spam-auto-strip__body {
+  border-top: 1px solid var(--ncm-border);
+  padding: 6px 0;
+}
+
+/* Auto-spam network row */
+
+.ncm-app .ncm-spam-auto-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px;
+  transition: all 0.12s;
+}
+
+.ncm-app .ncm-spam-auto-row:hover {
+  background: rgba(25, 243, 247, 0.02);
+}
+
+.ncm-app .ncm-spam-auto-row__name {
+  font-family: var(--ncm-font-title);
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--ncm-text-primary);
+  letter-spacing: 0.06em;
+  min-width: 120px;
+}
+
+.ncm-app .ncm-spam-auto-row--active .ncm-spam-auto-row__name {
+  color: var(--ncm-secondary);
+}
+
+.ncm-app .ncm-spam-auto-row__vol {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+}
+
+.ncm-app .ncm-spam-auto-row__vol-label {
+  font-family: var(--ncm-font-display);
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--ncm-text-muted);
+  text-transform: uppercase;
+}
+
+.ncm-app .ncm-spam-auto-row__vol-select {
+  padding: 1px 4px;
+  font-family: var(--ncm-font-display);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--ncm-text-primary);
+  background-color: var(--ncm-bg-elevated);
+  border: 1px solid var(--ncm-border);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%236a6a88'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 4px center;
+  padding-right: 16px;
+}
+
+.ncm-app .ncm-spam-auto-row__toggle {
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* Toggle switch */
+
+.ncm-app .ncm-toggle {
+  width: 30px;
+  height: 14px;
+  border-radius: 7px;
+  background: var(--ncm-bg-elevated);
+  border: 1px solid var(--ncm-border);
+  position: relative;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.ncm-app .ncm-toggle::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ncm-text-muted);
+  transition: all 0.2s;
+}
+
+.ncm-app .ncm-toggle--on {
+  background: rgba(0, 255, 65, 0.12);
+  border-color: rgba(0, 255, 65, 0.3);
+}
+
+.ncm-app .ncm-toggle--on::after {
+  left: 18px;
+  background: var(--ncm-success);
+  box-shadow: 0 0 4px rgba(0, 255, 65, 0.5);
+}

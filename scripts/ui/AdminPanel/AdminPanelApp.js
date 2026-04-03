@@ -2,8 +2,8 @@
  * AdminPanelApp — Sprint 4: 6-Tab GM Dashboard
  * @file scripts/ui/AdminPanel/AdminPanelApp.js
  * @module cyberpunkred-messenger
- * @description GM command center with 6 tabs: Overview, Messages, Contacts,
- *              Networks, Data Shards, Tools. Condensed header with inline stat
+ * @description GM command center with 7 tabs: Overview, Messages, Contacts,
+ *              Networks, Data Shards, Spam, Tools. Condensed header with inline stat
  *              counters, HUD strip, and context-aware footer.
  *              Extends BaseApplication (ApplicationV2 + HandlebarsApplicationMixin).
  */
@@ -19,7 +19,7 @@ export class AdminPanelApp extends BaseApplication {
   //  Instance State
   // ═══════════════════════════════════════════════════════════
 
-  /** @type {string} Active tab — one of: overview, messages, contacts, networks, shards, tools */
+  /** @type {string} Active tab — one of: overview, messages, contacts, networks, shards, spam, tools */
   _activeTab = 'overview';
 
   /** @type {boolean} GM compact mode toggle */
@@ -142,6 +142,24 @@ export class AdminPanelApp extends BaseApplication {
   /** @type {string} Owner filter: 'all' | 'world' | 'actors' */
   _shardOwnerFilter = 'all';
 
+  // ── Spam tab state ──
+  /** @type {string} Selected spam category filter */
+  _spamCategoryFilter = 'all';
+  /** @type {string|null} Currently selected template ID */
+  _spamSelectedId = null;
+  /** @type {Set<string>} Selected recipient actor IDs */
+  _spamRecipients = new Set();
+  /** @type {number} Blast count (1-10) */
+  _spamBlastCount = 3;
+  /** @type {boolean} Show custom creator form */
+  _spamShowCreator = false;
+  /** @type {string|null} Template ID being edited (null = new) */
+  _spamEditingId = null;
+  /** @type {object} Creator form data */
+  _spamCreatorData = { fromName: '', fromEmail: '', category: 'corpo', subject: '', body: '', networkFilter: '' };
+  /** @type {boolean} Auto-spam section expanded */
+  _spamAutoExpanded = false;
+
   // ═══════════════════════════════════════════════════════════
   //  Service Accessors
   // ═══════════════════════════════════════════════════════════
@@ -154,6 +172,7 @@ export class AdminPanelApp extends BaseApplication {
   get dataShardService() { return game.nightcity?.dataShardService; }
   get contactRepository() { return game.nightcity?.contactRepository; }
   get accessLogService() { return game.nightcity?.accessLogService; }
+  get spamService() { return game.nightcity?.spamService; }
 
   // ═══════════════════════════════════════════════════════════
   //  ApplicationV2 Configuration
@@ -301,6 +320,23 @@ export class AdminPanelApp extends BaseApplication {
       toggleShardLayer: AdminPanelApp._onToggleShardLayer,
       setShardIntegrity: AdminPanelApp._onSetShardIntegrity,
       restoreShardIntegrity: AdminPanelApp._onRestoreShardIntegrity,
+
+      // Spam actions
+      spamToggleAll: AdminPanelApp._onSpamToggleAll,
+      spamToggleRecipient: AdminPanelApp._onSpamToggleRecipient,
+      spamCountUp: AdminPanelApp._onSpamCountUp,
+      spamCountDown: AdminPanelApp._onSpamCountDown,
+      spamBlast: AdminPanelApp._onSpamBlast,
+      spamFilterCategory: AdminPanelApp._onSpamFilterCategory,
+      spamSelectTemplate: AdminPanelApp._onSpamSelectTemplate,
+      spamSendTemplate: AdminPanelApp._onSpamSendTemplate,
+      spamToggleCreator: AdminPanelApp._onSpamToggleCreator,
+      spamCancelCreator: AdminPanelApp._onSpamCancelCreator,
+      spamSaveTemplate: AdminPanelApp._onSpamSaveTemplate,
+      spamEditTemplate: AdminPanelApp._onSpamEditTemplate,
+      spamDeleteTemplate: AdminPanelApp._onSpamDeleteTemplate,
+      spamToggleAutoSection: AdminPanelApp._onSpamToggleAutoSection,
+      spamToggleAutoNetwork: AdminPanelApp._onSpamToggleAutoNetwork,
 
       // Tools actions
       openThemeCustomizer: AdminPanelApp._onOpenThemeCustomizer,
@@ -510,6 +546,9 @@ export class AdminPanelApp extends BaseApplication {
       shardIceFilter: this._shardIceFilter,
       shardStatusFilter: this._shardStatusFilter,
       shardOwnerFilter: this._shardOwnerFilter,
+
+      // Spam tab
+      ...this._gatherSpamContext(),
 
       // Module info
       MODULE_ID,
@@ -3231,6 +3270,11 @@ export class AdminPanelApp extends BaseApplication {
       this._setupShardControls();
     }
 
+    // ── Spam tab: wire select change listeners ──
+    if (this._activeTab === 'spam') {
+      this._setupSpamControls();
+    }
+
     // ── Keyboard shortcuts ──
     this._setupKeyboardHandler();
   }
@@ -3295,7 +3339,7 @@ export class AdminPanelApp extends BaseApplication {
     const tab = this._activeTab;
 
     // ── Tab switching: 1–6 ──
-    const tabMap = { '1': 'overview', '2': 'messages', '3': 'contacts', '4': 'networks', '5': 'shards', '6': 'tools' };
+    const tabMap = { '1': 'overview', '2': 'messages', '3': 'contacts', '4': 'networks', '5': 'shards', '6': 'spam', '7': 'tools' };
     if (tabMap[key]) {
       event.preventDefault();
       if (tab !== tabMap[key]) {
@@ -6381,6 +6425,342 @@ export class AdminPanelApp extends BaseApplication {
 
     // Keep max 20 entries
     if (this._shardActivityLog.length > 20) this._shardActivityLog.length = 20;
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Spam Tab — Data Gathering
+  // ═══════════════════════════════════════════════════════════
+
+  /**
+   * Gather all spam tab context data for template rendering.
+   * @returns {object}
+   * @private
+   */
+  _gatherSpamContext() {
+    const spam = this.spamService;
+    if (!spam) {
+      return {
+        spamPlayerActors: [], spamAllSelected: false, spamBlastCount: 3,
+        spamCategoryFilter: 'all', spamCategoryCounts: { all: 0 },
+        spamCategoryList: [], spamTemplates: [], spamSelectedTemplate: null,
+        spamTotalCount: 0, spamCustomCount: 0, spamSentThisSession: 0,
+        spamShowCreator: false, spamEditingId: null, spamCreatorData: this._spamCreatorData,
+        spamAutoExpanded: false, spamAutoActiveCount: 0, spamAutoNetworks: [],
+      };
+    }
+
+    // Player actors with selection state
+    const playerActors = spam.getPlayerActors().map(a => ({
+      ...a,
+      selected: this._spamRecipients.has(a.id),
+    }));
+    const allSelected = playerActors.length > 0 && playerActors.every(a => a.selected);
+
+    // Category data
+    const counts = spam.getCategoryCounts();
+    const categories = spam.categories;
+    const categoryList = Object.entries(categories).map(([key, cat]) => ({
+      key,
+      label: cat.label,
+      icon: cat.icon,
+      color: cat.color,
+      count: counts[key] || 0,
+      active: this._spamCategoryFilter === key,
+    }));
+
+    // Filter templates — 'custom' is a special filter
+    let templates;
+    if (this._spamCategoryFilter === 'custom') {
+      templates = spam.getTemplates().filter(t => t.isCustom);
+    } else {
+      templates = spam.getTemplates(this._spamCategoryFilter);
+    }
+
+    // Enrich templates with display data
+    templates = templates.map(t => {
+      const cat = categories[t.category] || { icon: 'fas fa-envelope', label: t.category, color: 'muted' };
+      return {
+        ...t,
+        categoryIcon: cat.icon,
+        categoryLabel: cat.label,
+        categoryColor: cat.color,
+        isActive: t.id === this._spamSelectedId,
+      };
+    });
+
+    // Selected template detail
+    let selectedTemplate = null;
+    if (this._spamSelectedId) {
+      const tmpl = spam.getTemplate(this._spamSelectedId);
+      if (tmpl) {
+        const cat = categories[tmpl.category] || { icon: 'fas fa-envelope', label: tmpl.category, color: 'muted' };
+        // Convert body newlines to <br> for HTML display, and highlight tokens
+        let bodyHtml = (tmpl.body || '')
+          .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+          .replace(/\n/g, '<br>')
+          .replace(/\{\{(\w+)\}\}/g, '<span style="color: var(--ncm-accent); font-weight: 700;">{{$1}}</span>');
+
+        selectedTemplate = {
+          ...tmpl,
+          categoryIcon: cat.icon,
+          categoryLabel: cat.label,
+          categoryColor: cat.color,
+          bodyHtml,
+        };
+      }
+    }
+
+    // Auto-spam network data
+    const allNetworks = this.networkService?.getAllNetworks?.() ?? [];
+    const autoConfig = spam.getAutoConfig();
+    const autoNetworks = allNetworks.map(net => {
+      const cfg = autoConfig[net.id] ?? {};
+      return {
+        id: net.id,
+        name: net.name,
+        enabled: cfg.enabled ?? false,
+        volume: cfg.volume ?? 'low',
+      };
+    });
+
+    return {
+      spamPlayerActors: playerActors,
+      spamAllSelected: allSelected,
+      spamBlastCount: this._spamBlastCount,
+      spamCategoryFilter: this._spamCategoryFilter,
+      spamCategoryCounts: counts,
+      spamCategoryList: categoryList,
+      spamTemplates: templates,
+      spamSelectedTemplate: selectedTemplate,
+      spamTotalCount: spam.totalCount,
+      spamCustomCount: spam.customCount,
+      spamSentThisSession: spam.sentThisSession,
+      spamShowCreator: this._spamShowCreator,
+      spamEditingId: this._spamEditingId,
+      spamCreatorData: this._spamCreatorData,
+      spamAutoExpanded: this._spamAutoExpanded,
+      spamAutoActiveCount: spam.activeAutoSpamCount,
+      spamAutoNetworks: autoNetworks,
+    };
+  }
+
+  /**
+   * Wire change listeners for spam tab controls.
+   * @private
+   */
+  _setupSpamControls() {
+    // Auto-spam volume selects (data-action on <select> fires on click, not change)
+    const volSelects = this.element?.querySelectorAll('.ncm-spam-auto-row__vol-select') ?? [];
+    for (const sel of volSelects) {
+      sel.addEventListener('change', async (e) => {
+        const networkId = e.target.dataset.networkId;
+        const volume = e.target.value;
+        if (networkId && this.spamService) {
+          await this.spamService.setNetworkVolume(networkId, volume);
+        }
+      });
+    }
+
+    // Creator form selects
+    const creatorSelects = this.element?.querySelectorAll('.ncm-spam-creator__select') ?? [];
+    for (const sel of creatorSelects) {
+      sel.addEventListener('change', (e) => {
+        const field = e.target.dataset.field;
+        if (field) this._spamCreatorData[field] = e.target.value;
+      });
+    }
+
+    // Creator form inputs (live capture for preservation across renders)
+    const creatorInputs = this.element?.querySelectorAll('.ncm-spam-creator__input, .ncm-spam-creator__textarea') ?? [];
+    for (const inp of creatorInputs) {
+      inp.addEventListener('input', (e) => {
+        const field = e.target.dataset.field;
+        if (field) this._spamCreatorData[field] = e.target.value;
+      });
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Action Handlers — Spam
+  // ═══════════════════════════════════════════════════════════
+
+  /**
+   * Get selected recipient IDs (from current state).
+   * @returns {string[]}
+   * @private
+   */
+  _getSpamRecipientIds() {
+    return [...this._spamRecipients];
+  }
+
+  static _onSpamToggleAll(event, target) {
+    const actors = this.spamService?.getPlayerActors() ?? [];
+    const allSelected = actors.length > 0 && actors.every(a => this._spamRecipients.has(a.id));
+    if (allSelected) {
+      this._spamRecipients.clear();
+    } else {
+      for (const a of actors) this._spamRecipients.add(a.id);
+    }
+    this.render(true);
+  }
+
+  static _onSpamToggleRecipient(event, target) {
+    const actorId = target.closest('[data-actor-id]')?.dataset.actorId;
+    if (!actorId) return;
+    if (this._spamRecipients.has(actorId)) {
+      this._spamRecipients.delete(actorId);
+    } else {
+      this._spamRecipients.add(actorId);
+    }
+    this.render(true);
+  }
+
+  static _onSpamCountUp(event, target) {
+    if (this._spamBlastCount < 10) {
+      this._spamBlastCount++;
+      this.render(true);
+    }
+  }
+
+  static _onSpamCountDown(event, target) {
+    if (this._spamBlastCount > 1) {
+      this._spamBlastCount--;
+      this.render(true);
+    }
+  }
+
+  static async _onSpamBlast(event, target) {
+    const recipients = this._getSpamRecipientIds();
+    if (recipients.length === 0) {
+      ui.notifications.warn('Select at least one recipient.');
+      return;
+    }
+    const result = await this.spamService?.blast(recipients, this._spamBlastCount, this._spamCategoryFilter);
+    if (result?.sent > 0) {
+      ui.notifications.info(`Blasted ${result.sent} spam message(s).`);
+    }
+    this.render(true);
+  }
+
+  static _onSpamFilterCategory(event, target) {
+    const category = target.closest('[data-category]')?.dataset.category;
+    if (!category) return;
+    this._spamCategoryFilter = category;
+    this._spamSelectedId = null; // Clear selection on category change
+    this.render(true);
+  }
+
+  static _onSpamSelectTemplate(event, target) {
+    const templateId = target.closest('[data-template-id]')?.dataset.templateId;
+    if (!templateId) return;
+    this._spamSelectedId = this._spamSelectedId === templateId ? null : templateId;
+    this.render(true);
+  }
+
+  static async _onSpamSendTemplate(event, target) {
+    const templateId = target.closest('[data-template-id]')?.dataset.templateId;
+    if (!templateId) return;
+    const recipients = this._getSpamRecipientIds();
+    if (recipients.length === 0) {
+      ui.notifications.warn('Select at least one recipient.');
+      return;
+    }
+    const result = await this.spamService?.sendTemplate(templateId, recipients);
+    if (result?.sent > 0) {
+      ui.notifications.info(`Sent spam to ${result.sent} recipient(s).`);
+    }
+    this.render(true);
+  }
+
+  static _onSpamToggleCreator(event, target) {
+    this._spamShowCreator = !this._spamShowCreator;
+    if (!this._spamShowCreator) {
+      this._spamEditingId = null;
+      this._spamCreatorData = { fromName: '', fromEmail: '', category: 'corpo', subject: '', body: '', networkFilter: '' };
+    }
+    this.render(true);
+  }
+
+  static _onSpamCancelCreator(event, target) {
+    this._spamShowCreator = false;
+    this._spamEditingId = null;
+    this._spamCreatorData = { fromName: '', fromEmail: '', category: 'corpo', subject: '', body: '', networkFilter: '' };
+    this.render(true);
+  }
+
+  static async _onSpamSaveTemplate(event, target) {
+    // Read current form values from DOM (in case input events didn't fire)
+    const form = this.element;
+    const fields = ['fromName', 'fromEmail', 'subject', 'body', 'category', 'networkFilter'];
+    for (const f of fields) {
+      const el = form?.querySelector(`[data-field="${f}"]`);
+      if (el) this._spamCreatorData[f] = el.value ?? '';
+    }
+
+    if (!this._spamCreatorData.fromName || !this._spamCreatorData.subject) {
+      ui.notifications.warn('From Name and Subject are required.');
+      return;
+    }
+
+    if (this._spamEditingId) {
+      await this.spamService?.updateTemplate(this._spamEditingId, this._spamCreatorData);
+      ui.notifications.info('Template updated.');
+    } else {
+      await this.spamService?.createTemplate(this._spamCreatorData);
+      ui.notifications.info('Custom template created.');
+    }
+
+    this._spamShowCreator = false;
+    this._spamEditingId = null;
+    this._spamCreatorData = { fromName: '', fromEmail: '', category: 'corpo', subject: '', body: '', networkFilter: '' };
+    this.render(true);
+  }
+
+  static _onSpamEditTemplate(event, target) {
+    const templateId = target.closest('[data-template-id]')?.dataset.templateId;
+    if (!templateId) return;
+    const tmpl = this.spamService?.getTemplate(templateId);
+    if (!tmpl || !tmpl.isCustom) return;
+
+    this._spamEditingId = templateId;
+    this._spamCreatorData = {
+      fromName: tmpl.fromName || '',
+      fromEmail: tmpl.fromEmail || '',
+      category: tmpl.category || 'corpo',
+      subject: tmpl.subject || '',
+      body: tmpl.body || '',
+      networkFilter: tmpl.networkFilter || '',
+    };
+    this._spamShowCreator = true;
+    this.render(true);
+  }
+
+  static async _onSpamDeleteTemplate(event, target) {
+    const templateId = target.closest('[data-template-id]')?.dataset.templateId;
+    if (!templateId) return;
+
+    const confirm = await Dialog.confirm({
+      title: 'Delete Template',
+      content: '<p>Permanently delete this custom spam template?</p>',
+    });
+    if (!confirm) return;
+
+    await this.spamService?.deleteTemplate(templateId);
+    if (this._spamSelectedId === templateId) this._spamSelectedId = null;
+    ui.notifications.info('Template deleted.');
+    this.render(true);
+  }
+
+  static _onSpamToggleAutoSection(event, target) {
+    this._spamAutoExpanded = !this._spamAutoExpanded;
+    this.render(true);
+  }
+
+  static async _onSpamToggleAutoNetwork(event, target) {
+    const networkId = target.closest('[data-network-id]')?.dataset.networkId;
+    if (!networkId) return;
+    await this.spamService?.toggleNetworkAutoSpam(networkId);
+    this.render(true);
   }
 
   // ═══════════════════════════════════════════════════════════

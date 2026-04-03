@@ -9,7 +9,8 @@
     tab-contacts.hbs        — Tab 3: Contacts
     tab-networks.hbs        — Tab 4: Networks (War Room + Logs)
     tab-shards.hbs          — Tab 5: Data Shards
-    tab-tools.hbs           — Tab 6: Tools
+    tab-spam.hbs            — Tab 6: Spam Generator
+    tab-tools.hbs           — Tab 7: Tools
 --}}
 
 {{#if isGM}}
@@ -83,6 +84,10 @@
             data-action="switchTab" data-tab="shards">
       <i class="fas fa-database"></i> Shards
     </button>
+    <button class="ncm-admin-tab {{#if (eq activeTab 'spam')}}ncm-admin-tab--active{{/if}}"
+            data-action="switchTab" data-tab="spam">
+      <i class="fas fa-envelopes-bulk"></i> Spam
+    </button>
     <button class="ncm-admin-tab {{#if (eq activeTab 'tools')}}ncm-admin-tab--active{{/if}}"
             data-action="switchTab" data-tab="tools">
       <i class="fas fa-wrench"></i> Tools
@@ -102,6 +107,8 @@
 
     {{> "modules/cyberpunkred-messenger/templates/admin-panel/tab-shards.hbs"}}
 
+    {{> "modules/cyberpunkred-messenger/templates/admin-panel/tab-spam.hbs"}}
+
     {{> "modules/cyberpunkred-messenger/templates/admin-panel/tab-tools.hbs"}}
 
   </div>{{!-- /ncm-admin-content --}}
@@ -115,15 +122,17 @@
       {{#if (eq activeTab 'contacts')}}<span><i class="fas fa-address-book"></i> {{contactSummary.total}} CONTACTS</span>{{#if contactSummary.burned}}<span style="color: var(--ncm-danger);"><i class="fas fa-fire"></i> {{contactSummary.burned}} BURNED</span>{{/if}}{{/if}}
       {{#if (eq activeTab 'networks')}}<span><i class="fas fa-network-wired"></i> {{netStats.active}}/{{netStats.total}} ACTIVE</span><span><i class="fas fa-ban"></i> {{netStats.deadZones}} DEAD ZONES</span><span><i class="fas fa-users"></i> {{netStats.connected}} CONNECTED</span>{{/if}}
       {{#if (eq activeTab 'shards')}}<span><i class="fas fa-database"></i> {{shardSummary.total}} SHARDS</span>{{#if shardSummary.locked}}<span style="color: var(--ncm-accent);"><i class="fas fa-lock"></i> {{shardSummary.locked}} LOCKED</span>{{/if}}{{#if shardSummary.breached}}<span style="color: var(--ncm-success);"><i class="fas fa-unlock"></i> {{shardSummary.breached}} BREACHED</span>{{/if}}{{#if shardSummary.unclaimedEddies}}<span style="color: var(--ncm-accent);"><i class="fas fa-coins"></i> {{shardSummary.unclaimedEddies}} eb</span>{{/if}}{{/if}}
+      {{#if (eq activeTab 'spam')}}<span><i class="fas fa-envelopes-bulk"></i> {{spamTotalCount}} TEMPLATES</span><span><i class="fas fa-pen-fancy"></i> {{spamCustomCount}} CUSTOM</span><span><i class="fas fa-paper-plane"></i> {{spamSentThisSession}} SENT</span>{{/if}}
       {{#if (eq activeTab 'tools')}}<span><i class="fas fa-code-branch"></i> NCM v4.1</span>{{/if}}
     </div>
     <div class="ncm-admin-footer__shortcuts">
-      {{#if (eq activeTab 'overview')}}<kbd>1-6</kbd> TABS &nbsp; <kbd>R</kbd> REFRESH{{/if}}
-      {{#if (eq activeTab 'messages')}}<kbd>1-6</kbd> TABS &nbsp; <kbd>N</kbd> NEW MESSAGE{{/if}}
+      {{#if (eq activeTab 'overview')}}<kbd>1-7</kbd> TABS &nbsp; <kbd>R</kbd> REFRESH{{/if}}
+      {{#if (eq activeTab 'messages')}}<kbd>1-7</kbd> TABS &nbsp; <kbd>N</kbd> NEW MESSAGE{{/if}}
       {{#if (eq activeTab 'contacts')}}<kbd>/</kbd> SEARCH &nbsp; <kbd>N</kbd> NEW &nbsp; <kbd>P</kbd> PUSH SELECTED{{/if}}
-      {{#if (eq activeTab 'networks')}}<kbd>1-6</kbd> TABS &nbsp; <kbd>N</kbd> NEW NETWORK{{/if}}
+      {{#if (eq activeTab 'networks')}}<kbd>1-7</kbd> TABS &nbsp; <kbd>N</kbd> NEW NETWORK{{/if}}
       {{#if (eq activeTab 'shards')}}<kbd>/</kbd> SEARCH &nbsp; <kbd>F</kbd> FORCE DECRYPT &nbsp; <kbd>R</kbd> RELOCK{{/if}}
-      {{#if (eq activeTab 'tools')}}<kbd>1-6</kbd> TABS &nbsp; <kbd>ESC</kbd> CLOSE{{/if}}
+      {{#if (eq activeTab 'spam')}}<kbd>1-7</kbd> TABS &nbsp; <kbd>N</kbd> NEW TEMPLATE{{/if}}
+      {{#if (eq activeTab 'tools')}}<kbd>1-7</kbd> TABS &nbsp; <kbd>ESC</kbd> CLOSE{{/if}}
     </div>
   </div>
 

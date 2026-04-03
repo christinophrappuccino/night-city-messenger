@@ -1,0 +1,256 @@
+    {{#if (eq activeTab 'spam')}}
+
+    {{!-- §1 — QUICK BLAST BAR --}}
+    <div class="ncm-spam-blast-bar">
+      <div class="ncm-spam-blast-bar__label"><i class="fas fa-bolt"></i> Quick Blast</div>
+      <div class="ncm-spam-blast-bar__sep"></div>
+
+      <div class="ncm-spam-blast-bar__recipients">
+        <span class="ncm-spam-chip {{#if spamAllSelected}}ncm-spam-chip--selected{{/if}}"
+              data-action="spamToggleAll">
+          <i class="fas fa-users"></i> All
+        </span>
+        {{#each spamPlayerActors}}
+          <span class="ncm-spam-chip {{#if this.selected}}ncm-spam-chip--selected{{/if}}"
+                data-action="spamToggleRecipient" data-actor-id="{{this.id}}">
+            <span class="ncm-spam-chip__avatar" style="background: {{this.color}};">{{this.initial}}</span>
+            {{this.name}}
+          </span>
+        {{/each}}
+      </div>
+
+      <div class="ncm-spam-blast-bar__sep"></div>
+
+      <div class="ncm-spam-stepper">
+        <button class="ncm-spam-stepper__btn" data-action="spamCountDown"><i class="fas fa-minus"></i></button>
+        <span class="ncm-spam-stepper__val">{{spamBlastCount}}</span>
+        <button class="ncm-spam-stepper__btn" data-action="spamCountUp"><i class="fas fa-plus"></i></button>
+      </div>
+
+      <button class="ncm-spam-send-btn" data-action="spamBlast">
+        <i class="fas fa-paper-plane"></i> Blast
+      </button>
+    </div>
+
+    {{!-- §2 — TEMPLATE LIBRARY --}}
+    <div class="ncm-section-title">
+      <i class="fas fa-boxes-stacked"></i> Templates
+      <button class="ncm-section-title__action" data-action="spamToggleCreator">
+        <i class="fas fa-plus"></i> New Template
+      </button>
+    </div>
+
+    {{!-- Category pills --}}
+    <div class="ncm-spam-pills">
+      <span class="ncm-pill {{#if (eq spamCategoryFilter 'all')}}ncm-pill--active{{/if}}"
+            data-action="spamFilterCategory" data-category="all">
+        <i class="fas fa-layer-group"></i> All
+        {{#if spamCategoryCounts.all}}<span class="ncm-pill__badge">{{spamCategoryCounts.all}}</span>{{/if}}
+      </span>
+      {{#each spamCategoryList}}
+        <span class="ncm-pill {{#if this.active}}ncm-pill--active{{/if}}"
+              data-action="spamFilterCategory" data-category="{{this.key}}">
+          <i class="{{this.icon}}"></i> {{this.label}}
+          {{#if this.count}}<span class="ncm-pill__badge">{{this.count}}</span>{{/if}}
+        </span>
+      {{/each}}
+      <span class="ncm-pill {{#if (eq spamCategoryFilter 'custom')}}ncm-pill--active{{/if}}"
+            data-action="spamFilterCategory" data-category="custom">
+        <i class="fas fa-pen-fancy"></i> Custom
+        {{#if spamCategoryCounts.custom}}<span class="ncm-pill__badge">{{spamCategoryCounts.custom}}</span>{{/if}}
+      </span>
+    </div>
+
+    {{!-- Split-panel library --}}
+    <div class="ncm-spam-lib">
+      {{!-- Left: template list --}}
+      <div class="ncm-spam-lib__list ncm-scrollbar">
+        {{#each spamTemplates}}
+          <div class="ncm-spam-tmpl {{#if this.isActive}}ncm-spam-tmpl--active{{/if}}"
+               data-action="spamSelectTemplate" data-template-id="{{this.id}}">
+            <div class="ncm-spam-tmpl__icon ncm-spam-tmpl__icon--{{this.category}}">
+              <i class="{{this.categoryIcon}}"></i>
+            </div>
+            <div class="ncm-spam-tmpl__body">
+              <div class="ncm-spam-tmpl__subject">{{this.subject}}</div>
+              <div class="ncm-spam-tmpl__from">{{this.fromName}}</div>
+            </div>
+            {{#if this.isCustom}}
+              <span class="ncm-spam-tmpl__custom-badge"><i class="fas fa-pen-fancy"></i></span>
+            {{/if}}
+          </div>
+        {{else}}
+          <div class="ncm-spam-lib__empty">
+            <i class="fas fa-filter"></i>
+            <span>No templates in this category</span>
+          </div>
+        {{/each}}
+      </div>
+
+      {{!-- Right: detail preview --}}
+      <div class="ncm-spam-lib__detail">
+        {{#if spamSelectedTemplate}}
+          <div class="ncm-spam-detail ncm-scrollbar">
+            <div class="ncm-spam-detail__header">
+              <div class="ncm-spam-detail__sender">
+                <div class="ncm-spam-detail__from-name">{{spamSelectedTemplate.fromName}}</div>
+                <div class="ncm-spam-detail__from-email">&lt;{{spamSelectedTemplate.fromEmail}}&gt;</div>
+              </div>
+              <span class="ncm-spam-detail__badge ncm-spam-detail__badge--{{spamSelectedTemplate.categoryColor}}">
+                <i class="{{spamSelectedTemplate.categoryIcon}}"></i> {{spamSelectedTemplate.categoryLabel}}
+              </span>
+            </div>
+
+            <div class="ncm-spam-detail__subject">{{spamSelectedTemplate.subject}}</div>
+
+            <div class="ncm-spam-detail__body">{{{spamSelectedTemplate.bodyHtml}}}</div>
+
+            {{!-- Custom template actions --}}
+            {{#if spamSelectedTemplate.isCustom}}
+              <div class="ncm-spam-detail__custom-actions">
+                <button class="ncm-btn ncm-btn--ghost ncm-btn--sm"
+                        data-action="spamEditTemplate" data-template-id="{{spamSelectedTemplate.id}}">
+                  <i class="fas fa-pencil"></i> Edit
+                </button>
+                <button class="ncm-btn ncm-btn--ghost ncm-btn--sm ncm-spam-detail__delete-btn"
+                        data-action="spamDeleteTemplate" data-template-id="{{spamSelectedTemplate.id}}">
+                  <i class="fas fa-trash"></i> Delete
+                </button>
+              </div>
+            {{/if}}
+
+            {{!-- Send bar --}}
+            <div class="ncm-spam-detail__send-bar">
+              <span class="ncm-spam-detail__send-label">Send to →</span>
+              <div class="ncm-spam-detail__send-chips">
+                <span class="ncm-spam-detail__send-chip {{#if spamAllSelected}}ncm-spam-detail__send-chip--selected{{/if}}"
+                      data-action="spamToggleAll">
+                  <i class="fas fa-users"></i> All
+                </span>
+                {{#each spamPlayerActors}}
+                  <span class="ncm-spam-detail__send-chip {{#if this.selected}}ncm-spam-detail__send-chip--selected{{/if}}"
+                        data-action="spamToggleRecipient" data-actor-id="{{this.id}}">
+                    {{this.name}}
+                  </span>
+                {{/each}}
+              </div>
+              <button class="ncm-spam-detail__send-btn"
+                      data-action="spamSendTemplate" data-template-id="{{spamSelectedTemplate.id}}">
+                <i class="fas fa-paper-plane"></i> Send
+              </button>
+            </div>
+          </div>
+        {{else}}
+          <div class="ncm-spam-detail__empty">
+            <i class="fas fa-envelopes-bulk"></i>
+            <div class="ncm-spam-detail__empty-text">Select a template to preview</div>
+            <div class="ncm-spam-detail__empty-hint">Click any template on the left, or hit Quick Blast to send random spam</div>
+          </div>
+        {{/if}}
+      </div>
+    </div>
+
+    {{!-- §3 — CUSTOM CREATOR (toggled) --}}
+    {{#if spamShowCreator}}
+      <div class="ncm-spam-creator">
+        <div class="ncm-spam-creator__title"><i class="fas fa-pen-fancy"></i> {{#if spamEditingId}}Edit Template{{else}}New Custom Template{{/if}}</div>
+        <div class="ncm-spam-creator__grid">
+          <div class="ncm-spam-creator__field">
+            <span class="ncm-spam-creator__label">From Name</span>
+            <input class="ncm-spam-creator__input" data-field="fromName" type="text"
+                   placeholder="e.g. Kang Tao Solutions" value="{{spamCreatorData.fromName}}">
+          </div>
+          <div class="ncm-spam-creator__field">
+            <span class="ncm-spam-creator__label">From Email</span>
+            <input class="ncm-spam-creator__input" data-field="fromEmail" type="text"
+                   placeholder="e.g. promo@kangtao.corp" value="{{spamCreatorData.fromEmail}}">
+          </div>
+          <div class="ncm-spam-creator__field">
+            <span class="ncm-spam-creator__label">Category</span>
+            <select class="ncm-spam-creator__select" data-field="category">
+              <option value="corpo" {{#if (eq spamCreatorData.category 'corpo')}}selected{{/if}}>Corpo Ad</option>
+              <option value="scam" {{#if (eq spamCreatorData.category 'scam')}}selected{{/if}}>Scam</option>
+              <option value="ripperdoc" {{#if (eq spamCreatorData.category 'ripperdoc')}}selected{{/if}}>Ripperdoc</option>
+              <option value="braindance" {{#if (eq spamCreatorData.category 'braindance')}}selected{{/if}}>Braindance</option>
+              <option value="political" {{#if (eq spamCreatorData.category 'political')}}selected{{/if}}>Political</option>
+              <option value="blackmarket" {{#if (eq spamCreatorData.category 'blackmarket')}}selected{{/if}}>Black Market</option>
+              <option value="fixer" {{#if (eq spamCreatorData.category 'fixer')}}selected{{/if}}>Fixer</option>
+            </select>
+          </div>
+          <div class="ncm-spam-creator__field">
+            <span class="ncm-spam-creator__label">Network Filter</span>
+            <select class="ncm-spam-creator__select" data-field="networkFilter">
+              <option value="" {{#unless spamCreatorData.networkFilter}}selected{{/unless}}>Any Network</option>
+              {{#each networks}}
+                <option value="{{this.id}}" {{#if (eq this.id ../spamCreatorData.networkFilter)}}selected{{/if}}>{{this.name}}</option>
+              {{/each}}
+            </select>
+          </div>
+          <div class="ncm-spam-creator__field ncm-spam-creator__field--full">
+            <span class="ncm-spam-creator__label">Subject</span>
+            <input class="ncm-spam-creator__input" data-field="subject" type="text"
+                   placeholder="e.g. Limited Time Offer — Neural Boost Package" value="{{spamCreatorData.subject}}">
+          </div>
+          <div class="ncm-spam-creator__field ncm-spam-creator__field--full">
+            <span class="ncm-spam-creator__label">Body</span>
+            <textarea class="ncm-spam-creator__textarea" data-field="body"
+                      placeholder="Write your spam message here. Use tokens for dynamic content...">{{spamCreatorData.body}}</textarea>
+          </div>
+        </div>
+        <div class="ncm-spam-creator__footer">
+          <div class="ncm-spam-creator__tokens">
+            Tokens: <code>\{{playerName}}</code> <code>\{{networkName}}</code> <code>\{{currentDate}}</code> <code>\{{randomCorpo}}</code> <code>\{{randomDistrict}}</code>
+          </div>
+          <div class="ncm-spam-creator__actions">
+            <button class="ncm-btn ncm-btn--ghost ncm-btn--sm" data-action="spamCancelCreator">
+              <i class="fas fa-times"></i> Cancel
+            </button>
+            <button class="ncm-btn ncm-btn--cyan ncm-btn--sm" data-action="spamSaveTemplate">
+              <i class="fas fa-save"></i> {{#if spamEditingId}}Update{{else}}Save{{/if}} Template
+            </button>
+          </div>
+        </div>
+      </div>
+    {{/if}}
+
+    {{!-- §4 — AUTO-SPAM (collapsible) --}}
+    <div class="ncm-spam-auto-strip">
+      <div class="ncm-spam-auto-strip__header" data-action="spamToggleAutoSection">
+        <span class="ncm-spam-auto-strip__chevron {{#if spamAutoExpanded}}ncm-spam-auto-strip__chevron--open{{/if}}">
+          <i class="fas fa-chevron-right"></i>
+        </span>
+        <span class="ncm-spam-auto-strip__title"><i class="fas fa-robot"></i> Auto-Spam by Network</span>
+        <div class="ncm-spam-auto-strip__status">
+          {{#if spamAutoActiveCount}}
+            <span class="ncm-spam-auto-strip__dot ncm-spam-auto-strip__dot--on"></span>
+            <span class="ncm-spam-auto-strip__status-text--on">{{spamAutoActiveCount}} Network{{#if (gt spamAutoActiveCount 1)}}s{{/if}} Active</span>
+          {{else}}
+            <span class="ncm-spam-auto-strip__dot ncm-spam-auto-strip__dot--off"></span>
+            <span class="ncm-spam-auto-strip__status-text--off">Inactive</span>
+          {{/if}}
+        </div>
+      </div>
+      {{#if spamAutoExpanded}}
+        <div class="ncm-spam-auto-strip__body">
+          {{#each spamAutoNetworks}}
+            <div class="ncm-spam-auto-row {{#if this.enabled}}ncm-spam-auto-row--active{{/if}}">
+              <div class="ncm-spam-auto-row__name">{{this.name}}</div>
+              <div class="ncm-spam-auto-row__vol">
+                <span class="ncm-spam-auto-row__vol-label">Vol:</span>
+                <select class="ncm-spam-auto-row__vol-select" data-network-id="{{this.id}}">
+                  <option value="low" {{#if (eq this.volume 'low')}}selected{{/if}}>Low</option>
+                  <option value="med" {{#if (eq this.volume 'med')}}selected{{/if}}>Med</option>
+                  <option value="high" {{#if (eq this.volume 'high')}}selected{{/if}}>High</option>
+                  <option value="flood" {{#if (eq this.volume 'flood')}}selected{{/if}}>Flood</option>
+                </select>
+              </div>
+              <div class="ncm-spam-auto-row__toggle" data-action="spamToggleAutoNetwork" data-network-id="{{this.id}}">
+                <div class="ncm-toggle {{#if this.enabled}}ncm-toggle--on{{/if}}"></div>
+              </div>
+            </div>
+          {{/each}}
+        </div>
+      {{/if}}
+    </div>
+
+    {{/if}}
