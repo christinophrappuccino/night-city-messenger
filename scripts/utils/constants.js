@@ -200,14 +200,18 @@ export const SKILL_PRESETS = Object.freeze({
 // ─── Theme Presets ───
 
 export const THEME_PRESETS = Object.freeze({
-  classic:    { label: 'Classic',     primary: '#F65261', secondary: '#19f3f7', accent: '#f7c948', bgDeep: '#0a0a0f', bgBase: '#12121a', bgSurface: '#1a1a2e', bgElevated: '#252540', textPrimary: '#e0e0e8', textSecondary: '#8888a0' },
-  netrunner:  { label: 'Netrunner',   primary: '#00ff41', secondary: '#19f3f7', accent: '#88ff88', bgDeep: '#0a0f0a', bgBase: '#0d1a0d', bgSurface: '#142814', bgElevated: '#1e3d1e', textPrimary: '#c0ffc0', textSecondary: '#608860' },
-  corporate:  { label: 'Corporate',   primary: '#4488ff', secondary: '#cccccc', accent: '#ffaa00', bgDeep: '#0a0a14', bgBase: '#101020', bgSurface: '#181830', bgElevated: '#222245', textPrimary: '#d0d0e8', textSecondary: '#7878a0' },
-  arasaka:    { label: 'Arasaka',     primary: '#ff2020', secondary: '#ffffff', accent: '#ff6666', bgDeep: '#0a0000', bgBase: '#1a0808', bgSurface: '#2a1010', bgElevated: '#3a1818', textPrimary: '#f0d0d0', textSecondary: '#a06060' },
-  street:     { label: 'Street',      primary: '#ff6600', secondary: '#ffcc00', accent: '#ff9933', bgDeep: '#0f0a05', bgBase: '#1a1408', bgSurface: '#2a2010', bgElevated: '#3a2c18', textPrimary: '#e8d8c0', textSecondary: '#a08860' },
-  chrome:     { label: 'Chrome',      primary: '#c0c0c0', secondary: '#e0e0e0', accent: '#ffffff', bgDeep: '#080808', bgBase: '#141414', bgSurface: '#1e1e1e', bgElevated: '#2a2a2a', textPrimary: '#e0e0e0', textSecondary: '#888888' },
-  neon:       { label: 'Neon',        primary: '#ff00ff', secondary: '#00ffff', accent: '#ff66ff', bgDeep: '#0a0014', bgBase: '#140028', bgSurface: '#1e0040', bgElevated: '#2a0058', textPrimary: '#e0c0f0', textSecondary: '#8860a8' },
-  traumaTeam: { label: 'Trauma Team', primary: '#ff3366', secondary: '#ffffff', accent: '#ff6699', bgDeep: '#0a0008', bgBase: '#1a0010', bgSurface: '#2a0820', bgElevated: '#3a1030', textPrimary: '#f0d0d8', textSecondary: '#a06878' },
+  classic:     { label: 'Night City Standard', primary: '#F65261', secondary: '#19f3f7', accent: '#f7c948', bgDeep: '#0a0a0f', bgBase: '#12121a', bgSurface: '#1a1a2e', bgElevated: '#252540', textPrimary: '#e0e0e8', textSecondary: '#8888a0', fontDisplay: 'rajdhani', fontMono: 'sharetechmono', fontTitle: 'orbitron' },
+  netrunner:   { label: 'Netrunner',           primary: '#00ff41', secondary: '#40e8d0', accent: '#88ff88', bgDeep: '#030d03', bgBase: '#0a1a0a', bgSurface: '#0f2a12', bgElevated: '#183a1c', textPrimary: '#b8ffb8', textSecondary: '#5a9a5e', fontDisplay: 'chakrapetch', fontMono: 'firacode', fontTitle: 'electrolize' },
+  arasaka:     { label: 'Arasaka',             primary: '#e82030', secondary: '#f0f0f0', accent: '#ff4444', bgDeep: '#080000', bgBase: '#140404', bgSurface: '#220a0a', bgElevated: '#301010', textPrimary: '#f0d8d8', textSecondary: '#a06868', fontDisplay: 'saira', fontMono: 'ibmplexmono', fontTitle: 'michroma' },
+  militech:    { label: 'Militech',            primary: '#c8a832', secondary: '#88aa66', accent: '#e8c840', bgDeep: '#080a04', bgBase: '#101408', bgSurface: '#1a2010', bgElevated: '#242c18', textPrimary: '#d8dcc0', textSecondary: '#8a9068', fontDisplay: 'barlowcondensed', fontMono: 'robotomono', fontTitle: 'quantico' },
+  afterlife:   { label: 'Afterlife',           primary: '#e040ff', secondary: '#00e5ff', accent: '#ff66cc', bgDeep: '#08001a', bgBase: '#120030', bgSurface: '#1c0048', bgElevated: '#280060', textPrimary: '#e8d0ff', textSecondary: '#9060c0', fontDisplay: 'exo2', fontMono: 'spacemono', fontTitle: 'audiowide' },
+  traumaTeam:  { label: 'Trauma Team',         primary: '#ff2255', secondary: '#ffffff', accent: '#ff6690', bgDeep: '#0a0004', bgBase: '#180810', bgSurface: '#281018', bgElevated: '#381820', textPrimary: '#f8e0e8', textSecondary: '#b07080', fontDisplay: 'play', fontMono: 'sourcecodepro', fontTitle: 'orbitron' },
+  combatZone:  { label: 'Combat Zone',         primary: '#ff6a00', secondary: '#ffcc00', accent: '#ff9933', bgDeep: '#0c0804', bgBase: '#1a1208', bgSurface: '#281c0c', bgElevated: '#382814', textPrimary: '#e8d8c0', textSecondary: '#a08858', fontDisplay: 'teko', fontMono: 'vt323', fontTitle: 'blackopsone' },
+  chrome:      { label: 'Chrome',              primary: '#c0c0c0', secondary: '#e8e8e8', accent: '#ffffff', bgDeep: '#060606', bgBase: '#0e0e0e', bgSurface: '#181818', bgElevated: '#242424', textPrimary: '#e0e0e0', textSecondary: '#808080', fontDisplay: 'jura', fontMono: 'jetbrains', fontTitle: 'michroma' },
+  blackwall:   { label: 'Blackwall',           primary: '#cc2200', secondary: '#ff4433', accent: '#ff6644', bgDeep: '#0a0200', bgBase: '#140600', bgSurface: '#200c04', bgElevated: '#2c1408', textPrimary: '#f0d8cc', textSecondary: '#a06848', fontDisplay: 'oxanium', fontMono: 'firacode', fontTitle: 'aldrich' },
+  kiroshi:     { label: 'Kiroshi',             primary: '#2E90FA', secondary: '#F0C55B', accent: '#60b0ff', bgDeep: '#040810', bgBase: '#0a1020', bgSurface: '#101830', bgElevated: '#182240', textPrimary: '#d0e0f8', textSecondary: '#6888b0', fontDisplay: 'exo2', fontMono: 'jetbrains', fontTitle: 'electrolize' },
+  kawaii:      { label: 'Kawaii',              primary: '#ff88b4', secondary: '#b8a0ff', accent: '#80e8c8', bgDeep: '#0a0610', bgBase: '#140e1c', bgSurface: '#1e1628', bgElevated: '#2a2036', textPrimary: '#f0e0f0', textSecondary: '#a088b0', fontDisplay: 'play', fontMono: 'sourcecodepro', fontTitle: 'oxanium' },
+  tygerClaws:  { label: 'Tyger Claws',         primary: '#e8a820', secondary: '#cc2244', accent: '#ffcc44', bgDeep: '#0a0804', bgBase: '#141008', bgSurface: '#201a0c', bgElevated: '#2c2414', textPrimary: '#f0e0c8', textSecondary: '#a89060', fontDisplay: 'chakrapetch', fontMono: 'sharetechmono', fontTitle: 'audiowide' },
 });
 
 // ─── Data Shard Presets (Sprint 4.6) ───
@@ -677,17 +681,25 @@ export const COLOR_VAR_MAP = Object.freeze({
 export const FONT_OPTIONS = Object.freeze({
   display: [
     { key: 'rajdhani', label: 'Rajdhani', family: "'Rajdhani', sans-serif", google: null },
+    { key: 'chakrapetch', label: 'Chakra Petch', family: "'Chakra Petch', sans-serif", google: 'Chakra+Petch:wght@400;500;600;700' },
+    { key: 'saira', label: 'Saira', family: "'Saira', sans-serif", google: 'Saira:wght@400;500;600;700' },
+    { key: 'barlowcondensed', label: 'Barlow Condensed', family: "'Barlow Condensed', sans-serif", google: 'Barlow+Condensed:wght@400;500;600;700' },
     { key: 'exo2', label: 'Exo 2', family: "'Exo 2', sans-serif", google: 'Exo+2:wght@400;500;600;700' },
     { key: 'play', label: 'Play', family: "'Play', sans-serif", google: 'Play:wght@400;700' },
-    { key: 'jost', label: 'Jost', family: "'Jost', sans-serif", google: 'Jost:wght@400;500;600;700' },
-    { key: 'barlow', label: 'Barlow', family: "'Barlow', sans-serif", google: 'Barlow:wght@400;500;600;700' },
+    { key: 'teko', label: 'Teko', family: "'Teko', sans-serif", google: 'Teko:wght@400;500;600;700' },
+    { key: 'jura', label: 'Jura', family: "'Jura', sans-serif", google: 'Jura:wght@400;500;600;700' },
     { key: 'oxanium', label: 'Oxanium', family: "'Oxanium', sans-serif", google: 'Oxanium:wght@400;500;600;700' },
+    { key: 'jost', label: 'Jost', family: "'Jost', sans-serif", google: 'Jost:wght@400;500;600;700' },
   ],
   mono: [
     { key: 'sharetechmono', label: 'Share Tech Mono', family: "'Share Tech Mono', monospace", google: null },
     { key: 'firacode', label: 'Fira Code', family: "'Fira Code', monospace", google: 'Fira+Code:wght@400;500;600;700' },
-    { key: 'jetbrains', label: 'JetBrains Mono', family: "'JetBrains Mono', monospace", google: 'JetBrains+Mono:wght@400;500;600;700' },
+    { key: 'ibmplexmono', label: 'IBM Plex Mono', family: "'IBM Plex Mono', monospace", google: 'IBM+Plex+Mono:wght@400;500;600;700' },
+    { key: 'robotomono', label: 'Roboto Mono', family: "'Roboto Mono', monospace", google: 'Roboto+Mono:wght@400;500;600;700' },
+    { key: 'spacemono', label: 'Space Mono', family: "'Space Mono', monospace", google: 'Space+Mono:wght@400;700' },
     { key: 'sourcecodepro', label: 'Source Code Pro', family: "'Source Code Pro', monospace", google: 'Source+Code+Pro:wght@400;500;600;700' },
+    { key: 'jetbrains', label: 'JetBrains Mono', family: "'JetBrains Mono', monospace", google: 'JetBrains+Mono:wght@400;500;600;700' },
+    { key: 'vt323', label: 'VT323', family: "'VT323', monospace", google: 'VT323' },
   ],
   title: [
     { key: 'orbitron', label: 'Orbitron', family: "'Orbitron', sans-serif", google: null },
@@ -695,5 +707,8 @@ export const FONT_OPTIONS = Object.freeze({
     { key: 'electrolize', label: 'Electrolize', family: "'Electrolize', sans-serif", google: 'Electrolize' },
     { key: 'michroma', label: 'Michroma', family: "'Michroma', sans-serif", google: 'Michroma' },
     { key: 'quantico', label: 'Quantico', family: "'Quantico', sans-serif", google: 'Quantico:wght@400;700' },
+    { key: 'blackopsone', label: 'Black Ops One', family: "'Black Ops One', sans-serif", google: 'Black+Ops+One' },
+    { key: 'aldrich', label: 'Aldrich', family: "'Aldrich', sans-serif", google: 'Aldrich' },
+    { key: 'oxanium', label: 'Oxanium', family: "'Oxanium', sans-serif", google: 'Oxanium:wght@400;500;600;700' },
   ],
 });

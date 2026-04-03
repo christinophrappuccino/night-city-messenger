@@ -146,12 +146,19 @@ export class ThemeCustomizerApp extends BaseApplication {
     const presetKey = target.closest('[data-preset]')?.dataset.preset;
     if (!presetKey || !THEME_PRESETS[presetKey]) return;
 
+    const preset = THEME_PRESETS[presetKey];
     this._workingPrefs.preset = presetKey;
     // Clear custom color overrides when switching presets
     this._workingPrefs.colors = {
       primary: null, secondary: null, accent: null,
       bgDeep: null, bgBase: null, bgSurface: null,
       bgElevated: null, textPrimary: null, textSecondary: null,
+    };
+    // Reset fonts to preset defaults
+    this._workingPrefs.fonts = {
+      display: preset.fontDisplay || 'rajdhani',
+      mono: preset.fontMono || 'sharetechmono',
+      title: preset.fontTitle || 'orbitron',
     };
     this._isDirty = true;
 

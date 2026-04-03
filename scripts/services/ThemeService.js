@@ -59,8 +59,18 @@ export class ThemeService {
     root.style.setProperty('--ncm-glow-secondary', `0 0 10px ${secondary}66`);
     root.style.setProperty('--ncm-glow-accent', `0 0 10px ${accent}4d`);
 
-    // Apply fonts
-    this._applyFonts(prefs.fonts || DEFAULTS.PLAYER_THEME.fonts, root);
+    // Apply fonts: user overrides on top of preset defaults
+    const presetFonts = {
+      display: preset.fontDisplay || 'rajdhani',
+      mono: preset.fontMono || 'sharetechmono',
+      title: preset.fontTitle || 'orbitron',
+    };
+    const effectiveFonts = {
+      display: prefs.fonts?.display || presetFonts.display,
+      mono: prefs.fonts?.mono || presetFonts.mono,
+      title: prefs.fonts?.title || presetFonts.title,
+    };
+    this._applyFonts(effectiveFonts, root);
 
     // Effect classes on body
     document.body.classList.toggle('ncm-scanlines', prefs.scanlines !== false);
