@@ -175,6 +175,14 @@ export class ContactManagerApp extends BaseApplication {
     return game.i18n.localize('NCM.ContactManager.Title');
   }
 
+  async close(options = {}) {
+    if (this._boundKeyHandler) {
+      document.removeEventListener('keydown', this._boundKeyHandler);
+      this._boundKeyHandler = null;
+    }
+    return super.close(options);
+  }
+
   // ═══════════════════════════════════════════════════════════
   //  Data Preparation
   // ═══════════════════════════════════════════════════════════
@@ -686,12 +694,25 @@ export class ContactManagerApp extends BaseApplication {
     const el = this.element;
     if (!el) return;
 
+    // Remove previous document-level handler
     if (this._boundKeyHandler) {
-      el.removeEventListener('keydown', this._boundKeyHandler);
+      document.removeEventListener('keydown', this._boundKeyHandler);
     }
 
     this._boundKeyHandler = (e) => {
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      // Guard: skip if app isn't rendered
+      if (!this.element) return;
+
+      // Guard: skip if typing in an input
+      const tag = e.target.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable) return;
+
+      // Guard: skip if active element is in a different app
+      const activeApp = e.target.closest?.('.application, .app');
+      if (activeApp && !this.element.contains(activeApp) && activeApp !== this.element) return;
+
+      // Guard: skip modifier combos
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
 
       switch (e.key) {
         case '/':
@@ -754,7 +775,7 @@ export class ContactManagerApp extends BaseApplication {
       }
     };
 
-    el.addEventListener('keydown', this._boundKeyHandler);
+    document.addEventListener('keydown', this._boundKeyHandler);
   }
 
   /**

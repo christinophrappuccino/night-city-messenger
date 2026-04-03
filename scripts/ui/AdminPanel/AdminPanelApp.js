@@ -41,6 +41,14 @@ export class AdminPanelApp extends BaseApplication {
     if (feedList) this._feedListScroll = feedList.scrollTop;
   }
 
+  async close(options = {}) {
+    if (this._boundAdminKeydown) {
+      document.removeEventListener('keydown', this._boundAdminKeydown);
+      this._boundAdminKeydown = null;
+    }
+    return super.close(options);
+  }
+
   // ── Overview tab state ──
   /** @type {Array<object>} Cross-domain activity log for this session */
   _overviewActivityLog = [];
@@ -3256,21 +3264,15 @@ export class AdminPanelApp extends BaseApplication {
    * Re-binds each render to ensure fresh DOM reference.
    */
   _setupKeyboardHandler() {
-    const el = this.element;
-    if (!el) return;
+    if (!this.element) return;
 
-    // Remove previous handler if exists
+    // Remove previous document-level handler
     if (this._boundAdminKeydown) {
-      el.removeEventListener('keydown', this._boundAdminKeydown);
+      document.removeEventListener('keydown', this._boundAdminKeydown);
     }
 
     this._boundAdminKeydown = (e) => this._onAdminKeydown(e);
-    el.addEventListener('keydown', this._boundAdminKeydown);
-
-    // Ensure the app element can receive focus for keyboard events
-    if (!el.hasAttribute('tabindex')) {
-      el.setAttribute('tabindex', '-1');
-    }
+    document.addEventListener('keydown', this._boundAdminKeydown);
   }
 
   /**
@@ -3278,8 +3280,15 @@ export class AdminPanelApp extends BaseApplication {
    * Shortcuts are tab-context-sensitive.
    */
   _onAdminKeydown(event) {
+    if (!this.element) return;
+
     const tag = event.target.tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA' || event.target.isContentEditable) return;
+
+    // Guard: skip if active element is in a different app
+    const activeApp = event.target.closest?.('.application, .app');
+    if (activeApp && !this.element.contains(activeApp) && activeApp !== this.element) return;
+
     if (event.ctrlKey || event.metaKey || event.altKey) return;
 
     const key = event.key;
