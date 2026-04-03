@@ -289,13 +289,39 @@ export class CharacterSelectApp extends BaseApplication {
     await this._delay(SUCCESS_HOLD_MS);
     if (!this.rendered) return;
 
-    await this.close();
+    // Smooth transition: fade out, capture position, close, open next at same spot
+    const pos = this._capturePosition();
+    await this._fadeOutAndClose();
     game.nightcity?.openInbox?.(actorId);
   }
 
   async _enterAdmin() {
-    await this.close();
+    const pos = this._capturePosition();
+    await this._fadeOutAndClose();
     game.nightcity?.openAdmin?.();
+  }
+
+  // ═══════════════════════════════════════════════════════
+  //  Transition Helpers
+  // ═══════════════════════════════════════════════════════
+
+  /**
+   * Capture the current window position for seamless handoff.
+   */
+  _capturePosition() {
+    return { ...this.position };
+  }
+
+  /**
+   * Fade out the window, then close it.
+   */
+  async _fadeOutAndClose() {
+    const el = this.element;
+    if (el) {
+      el.classList.add('ncm-fade-out');
+      await this._delay(250);
+    }
+    await this.close();
   }
 
   _delay(ms) {

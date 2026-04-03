@@ -165,6 +165,25 @@
   overflow: hidden;
 }
 
+/* ─── App transition animations ─────────────────────────── */
+/* Shared fade-in for all NCM windows */
+@keyframes ncm-windowFadeIn {
+  from { opacity: 0; transform: scale(0.97); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.ncm-character-select-window,
+.ncm-message-viewer-window,
+.ncm-admin-panel {
+  animation: ncm-windowFadeIn 0.3s ease-out;
+}
+
+/* Fade-out class applied before closing to transition away */
+.ncm-app.ncm-fade-out {
+  opacity: 0 !important;
+  transform: scale(0.97) !important;
+  transition: opacity 0.25s ease-in, transform 0.25s ease-in !important;
+}
+
 
 /* ═══════════════════════════════════════════════════════
    CHARACTER SELECT — Main Layout
@@ -635,7 +654,8 @@
 .ncm-cs__bottom-signal-bar.on { background: var(--ncm-secondary); }
 
 /* Jack In button */
-.ncm-cs__connect-btn {
+/* Jack In button — needs element+class specificity to beat Foundry */
+button.ncm-cs__connect-btn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -654,18 +674,19 @@
   position: relative;
   overflow: hidden;
   /* Foundry button overrides */
-  background-image: none;
-  appearance: none;
-  box-shadow: none;
-  min-height: 0;
-  width: auto;
-  line-height: 1.2;
+  background-image: none !important;
+  appearance: none !important;
+  box-shadow: none !important;
+  min-height: 0 !important;
+  width: auto !important;
+  line-height: 1.2 !important;
+  margin: 0 !important;
 }
-.ncm-cs__connect-btn:hover {
+button.ncm-cs__connect-btn:hover {
   background: rgba(25, 243, 247, 0.1);
-  background-image: none;
+  background-image: none !important;
   border-color: rgba(25, 243, 247, 0.5);
-  box-shadow: 0 0 20px rgba(25, 243, 247, 0.12), inset 0 0 20px rgba(25, 243, 247, 0.03);
+  box-shadow: 0 0 20px rgba(25, 243, 247, 0.12), inset 0 0 20px rgba(25, 243, 247, 0.03) !important;
 }
 .ncm-cs__connect-btn i { font-size: 10px; }
 /* Shimmer */
