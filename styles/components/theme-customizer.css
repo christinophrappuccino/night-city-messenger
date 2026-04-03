@@ -9,7 +9,6 @@
 
 /* ─── Foundry Button Override ─── */
 .ncm-tc button.ncm-tc__tab,
-.ncm-tc button.ncm-tc__pcard,
 .ncm-tc button.ncm-tc__paction,
 .ncm-tc button.ncm-tc__bopt,
 .ncm-tc button.ncm-tc__fbtn,
@@ -58,7 +57,7 @@
 
 /* ═══ PRESETS ═══ */
 .ncm-app .ncm-tc__preset-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 8px 16px; }
-.ncm-tc button.ncm-tc__pcard { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px 6px; background: var(--ncm-bg-surface); border: 1.5px solid var(--ncm-border); border-radius: 4px; cursor: pointer; transition: all 0.15s; position: relative; }
+.ncm-app .ncm-tc__pcard { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px 6px; background: var(--ncm-bg-surface); border: 1.5px solid var(--ncm-border); border-radius: 4px; cursor: pointer; transition: all 0.15s; position: relative; }
 .ncm-app .ncm-tc__pcard:hover { border-color: var(--ncm-text-muted); background: var(--ncm-bg-elevated); }
 .ncm-app .ncm-tc__pcard--active { border-color: var(--ncm-primary) !important; background: var(--ncm-bg-elevated); }
 .ncm-app .ncm-tc__pcard--active::after { content: '\f00c'; font-family: 'Font Awesome 6 Free'; font-weight: 900; position: absolute; top: 3px; right: 5px; font-size: calc(8px * var(--ncm-text-scale, 1)); color: var(--ncm-primary); }

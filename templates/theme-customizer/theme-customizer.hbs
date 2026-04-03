@@ -36,17 +36,17 @@
 
   {{!-- ═══ TAB BAR ═══ --}}
   <div class="ncm-tc__tabs">
-    <button class="ncm-tc__tab ncm-tc__tab--active" data-tc-tab="presets"><i class="fas fa-swatchbook"></i> Presets</button>
-    <button class="ncm-tc__tab" data-tc-tab="colors"><i class="fas fa-droplet"></i> Colors</button>
-    <button class="ncm-tc__tab" data-tc-tab="fonts"><i class="fas fa-font"></i> Fonts</button>
-    <button class="ncm-tc__tab" data-tc-tab="effects"><i class="fas fa-wand-magic-sparkles"></i> Effects</button>
+    <button class="ncm-tc__tab {{#if (eq activeTab 'presets')}}ncm-tc__tab--active{{/if}}" data-tc-tab="presets"><i class="fas fa-swatchbook"></i> Presets</button>
+    <button class="ncm-tc__tab {{#if (eq activeTab 'colors')}}ncm-tc__tab--active{{/if}}" data-tc-tab="colors"><i class="fas fa-droplet"></i> Colors</button>
+    <button class="ncm-tc__tab {{#if (eq activeTab 'fonts')}}ncm-tc__tab--active{{/if}}" data-tc-tab="fonts"><i class="fas fa-font"></i> Fonts</button>
+    <button class="ncm-tc__tab {{#if (eq activeTab 'effects')}}ncm-tc__tab--active{{/if}}" data-tc-tab="effects"><i class="fas fa-wand-magic-sparkles"></i> Effects</button>
   </div>
 
   {{!-- ═══ SCROLLABLE BODY ═══ --}}
   <div class="ncm-tc__body">
 
     {{!-- ── PRESETS ── --}}
-    <div class="ncm-tc__panel ncm-tc__panel--active" data-tc-panel="presets">
+    <div class="ncm-tc__panel {{#if (eq activeTab 'presets')}}ncm-tc__panel--active{{/if}}" data-tc-panel="presets">
       <div class="ncm-tc__slabel">Built-in Presets</div>
       <div class="ncm-tc__preset-grid">
         {{#each presets}}
@@ -92,7 +92,7 @@
     </div>
 
     {{!-- ── COLORS ── --}}
-    <div class="ncm-tc__panel" data-tc-panel="colors">
+    <div class="ncm-tc__panel {{#if (eq activeTab 'colors')}}ncm-tc__panel--active{{/if}}" data-tc-panel="colors">
       <div class="ncm-tc__slabel">Color Overrides</div>
       <div class="ncm-tc__color-grid">
         {{#each colorEntries}}
@@ -108,7 +108,7 @@
     </div>
 
     {{!-- ── FONTS ── --}}
-    <div class="ncm-tc__panel" data-tc-panel="fonts">
+    <div class="ncm-tc__panel {{#if (eq activeTab 'fonts')}}ncm-tc__panel--active{{/if}}" data-tc-panel="fonts">
       <div class="ncm-tc__slabel">Font Selection</div>
       <div class="ncm-tc__font-section">
         {{#each fontSelectors}}
@@ -135,7 +135,7 @@
     </div>
 
     {{!-- ── EFFECTS ── --}}
-    <div class="ncm-tc__panel" data-tc-panel="effects">
+    <div class="ncm-tc__panel {{#if (eq activeTab 'effects')}}ncm-tc__panel--active{{/if}}" data-tc-panel="effects">
       <div class="ncm-tc__slabel">Visual Effects</div>
       <div class="ncm-tc__fx">
         <div class="ncm-tc__trow">
