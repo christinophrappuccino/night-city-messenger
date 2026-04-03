@@ -1,38 +1,12 @@
 {{!-- ═══════════════════════════════════════════════════════════════════════
-  Character Select / Boot Loader Template
+  Character Select Template
   @file templates/character-select/character-select.hbs
   @module cyberpunkred-messenger
-  @description Two-state layout: boot loader (phase=boot) and character
-    select (phase=select). Managed by CharacterSelectApp.
+  @description Roster + spotlight layout with connecting/success overlays.
+    Boot splash is a separate DOM overlay — not part of this template.
 ═══════════════════════════════════════════════════════════════════════ --}}
 
-{{!-- ── Boot Loader ── --}}
-{{#if booting}}
-<div class="ncm-cs-boot" data-phase="boot">
-  <div class="ncm-cs-boot__bg"></div>
-  <div class="ncm-cs-boot__content">
-    <div class="ncm-cs-boot__icon" data-el="boot-icon">
-      <i class="fas fa-satellite-dish"></i>
-    </div>
-    <div class="ncm-cs-boot__title">Night City Messenger</div>
-    <div class="ncm-cs-boot__subtitle" data-el="boot-subtitle">v4.1 // Initializing</div>
-
-    <div class="ncm-cs-boot__bar-wrap">
-      <div class="ncm-cs-boot__bar-track">
-        <div class="ncm-cs-boot__bar-fill" data-el="boot-bar"></div>
-      </div>
-      <div class="ncm-cs-boot__bar-status">
-        <span class="ncm-cs-boot__bar-label" data-el="boot-label">Loading services...</span>
-        <span class="ncm-cs-boot__bar-pct" data-el="boot-pct">0%</span>
-      </div>
-    </div>
-  </div>
-</div>
-{{/if}}
-
-{{!-- ── Character Select ── --}}
-{{#unless booting}}
-<div class="ncm-cs" data-phase="select">
+<div class="ncm-cs">
   {{!-- Left: Roster --}}
   <div class="ncm-cs__roster" data-el="roster">
     <div class="ncm-cs__roster-header">
@@ -46,7 +20,7 @@
       <div class="ncm-cs__divider ncm-cs__divider--gm">
         <i class="fas fa-shield-halved"></i> GM
       </div>
-      <div class="ncm-cs__entry admin" data-action="select-entry" data-entry-id="__admin__">
+      <div class="ncm-cs__entry admin {{#if isAdminSelected}}selected{{/if}}" data-action="select-entry" data-entry-id="__admin__">
         <div class="ncm-cs__entry-portrait red">
           <i class="fas fa-terminal"></i>
         </div>
@@ -92,7 +66,7 @@
 
     <div class="ncm-cs__spotlight-content">
       {{#if selectedCharacter}}
-        <div class="ncm-cs__portrait-frame active" data-el="portrait-frame">
+        <div class="ncm-cs__portrait-frame active">
           <div class="ncm-cs__corner ncm-cs__corner--tl"></div>
           <div class="ncm-cs__corner ncm-cs__corner--tr"></div>
           <div class="ncm-cs__corner ncm-cs__corner--bl"></div>
@@ -141,7 +115,7 @@
 
       {{!-- Admin spotlight --}}
       {{#if isAdminSelected}}
-        <div class="ncm-cs__portrait-frame" data-el="portrait-frame">
+        <div class="ncm-cs__portrait-frame">
           <div class="ncm-cs__corner ncm-cs__corner--tl"></div>
           <div class="ncm-cs__corner ncm-cs__corner--tr"></div>
           <div class="ncm-cs__corner ncm-cs__corner--bl"></div>
@@ -247,4 +221,3 @@
     </button>
   {{/if}}
 </div>
-{{/unless}}

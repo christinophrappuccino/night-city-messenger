@@ -1,39 +1,39 @@
 /* ═══════════════════════════════════════════════════════════════════════════
- * Night City Messenger — Character Select & Boot Loader
+ * Night City Messenger — Character Select & Boot Splash
  * @file styles/components/character-select.css
  * @module cyberpunkred-messenger
- * @description Styles for CharacterSelectApp: boot loader, character roster,
- *   spotlight panel, connecting overlay, and success state.
+ * @description Styles for the boot splash overlay (injected into document.body)
+ *   and CharacterSelectApp (roster, spotlight, connecting, success states).
  * ═══════════════════════════════════════════════════════════════════════════ */
 
-/* ─── Window sizing ─────────────────────────────────────── */
-.ncm-character-select-window {
-  min-width: 600px;
-  min-height: 400px;
-}
 
 /* ═══════════════════════════════════════════════════════
-   BOOT LOADER — centered in window body
+   BOOT SPLASH — full-screen overlay on document.body
+   Injected by registerMessagingSystem._playBootSplash()
    ═══════════════════════════════════════════════════════ */
-.ncm-cs-boot {
+.ncm-boot-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 100%;
-  position: relative;
-  overflow: hidden;
+  background: #0a0a0f;
+  opacity: 1;
+  transition: opacity 0.3s ease;
+}
+.ncm-boot-splash.fade-out {
+  opacity: 0;
 }
 
-/* Subtle radial glow */
-.ncm-cs-boot__bg {
+.ncm-boot-splash__bg {
   position: absolute;
   inset: 0;
   background: radial-gradient(ellipse 50% 40% at 50% 45%, rgba(25, 243, 247, 0.025) 0%, transparent 70%);
   pointer-events: none;
 }
 
-.ncm-cs-boot__content {
+.ncm-boot-splash__content {
   position: relative;
   z-index: 1;
   display: flex;
@@ -41,8 +41,7 @@
   align-items: center;
 }
 
-/* Logo icon */
-.ncm-cs-boot__icon {
+.ncm-boot-splash__icon {
   width: 52px;
   height: 52px;
   border: 1px solid rgba(25, 243, 247, 0.15);
@@ -54,73 +53,71 @@
   margin-bottom: 14px;
   transition: border-color 0.3s, background 0.3s;
 }
-.ncm-cs-boot__icon i {
+.ncm-boot-splash__icon i {
   font-size: 20px;
-  color: var(--ncm-secondary);
+  color: #19f3f7;
   opacity: 0.8;
   transition: color 0.3s, opacity 0.3s;
 }
-.ncm-cs-boot__icon.done {
+.ncm-boot-splash__icon.done {
   border-color: rgba(0, 255, 65, 0.2);
   background: rgba(0, 255, 65, 0.02);
 }
-.ncm-cs-boot__icon.done i {
-  color: var(--ncm-success);
+.ncm-boot-splash__icon.done i {
+  color: #00ff41;
   opacity: 1;
 }
 
-/* Title */
-.ncm-cs-boot__title {
+.ncm-boot-splash__title {
   font-family: 'Orbitron', sans-serif;
   font-size: 16px;
   font-weight: 700;
   letter-spacing: 0.2em;
-  color: var(--ncm-text-primary);
+  color: #e0e0e8;
   text-transform: uppercase;
   margin-bottom: 4px;
 }
-.ncm-cs-boot__subtitle {
+.ncm-boot-splash__subtitle {
   font-family: 'Share Tech Mono', monospace;
   font-size: 9px;
-  color: var(--ncm-text-muted);
+  color: #555570;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   margin-bottom: 28px;
   transition: color 0.3s;
 }
-.ncm-cs-boot__subtitle.done {
-  color: var(--ncm-success);
+.ncm-boot-splash__subtitle.done {
+  color: #00ff41;
 }
 
-/* Progress bar */
-.ncm-cs-boot__bar-wrap {
+.ncm-boot-splash__bar-wrap {
   width: 300px;
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
-.ncm-cs-boot__bar-track {
+.ncm-boot-splash__bar-track {
   width: 100%;
   height: 4px;
-  background: var(--ncm-bg-surface);
+  background: #1a1a2e;
   border-radius: 2px;
   overflow: hidden;
   position: relative;
 }
-.ncm-cs-boot__bar-fill {
+.ncm-boot-splash__bar-fill {
   height: 100%;
   width: 0%;
   border-radius: 2px;
-  background: linear-gradient(90deg, var(--ncm-secondary), rgba(25, 243, 247, 0.6));
+  background: linear-gradient(90deg, #19f3f7, rgba(25, 243, 247, 0.6));
   box-shadow: 0 0 10px rgba(25, 243, 247, 0.3);
   transition: width 0.15s linear;
 }
-.ncm-cs-boot__bar-fill.done {
-  background: var(--ncm-success);
+.ncm-boot-splash__bar-fill.done {
+  background: #00ff41;
   box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
 }
 /* Shimmer sweep */
-.ncm-cs-boot__bar-track::after {
+.ncm-boot-splash__bar-track::after {
   content: '';
   position: absolute;
   top: 0;
@@ -129,33 +126,35 @@
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
   animation: ncm-cs-barShimmer 1.5s ease-in-out infinite;
 }
-@keyframes ncm-cs-barShimmer {
-  0% { left: -60px; }
-  100% { left: 100%; }
-}
 
-/* Status text */
-.ncm-cs-boot__bar-status {
+.ncm-boot-splash__bar-status {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
-.ncm-cs-boot__bar-label {
+.ncm-boot-splash__bar-label {
   font-family: 'Share Tech Mono', monospace;
   font-size: 9px;
-  color: var(--ncm-text-muted);
+  color: #555570;
   letter-spacing: 0.04em;
   transition: color 0.2s;
 }
-.ncm-cs-boot__bar-label.done { color: var(--ncm-success); }
-.ncm-cs-boot__bar-pct {
+.ncm-boot-splash__bar-label.done { color: #00ff41; }
+.ncm-boot-splash__bar-pct {
   font-family: 'Share Tech Mono', monospace;
   font-size: 9px;
-  color: var(--ncm-secondary);
+  color: #19f3f7;
   letter-spacing: 0.06em;
   transition: color 0.2s;
 }
-.ncm-cs-boot__bar-pct.done { color: var(--ncm-success); }
+.ncm-boot-splash__bar-pct.done { color: #00ff41; }
+
+
+/* ─── Window sizing ─────────────────────────────────────── */
+.ncm-character-select-window {
+  min-width: 600px;
+  min-height: 400px;
+}
 
 
 /* ═══════════════════════════════════════════════════════

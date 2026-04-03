@@ -353,44 +353,116 @@ export function registerMessagingSystem(initializer) {
     let _characterSelectApp = null;
 
     /**
+     * Play the NCM boot splash — a frameless overlay injected into document.body.
+     * Resolves after the animation completes (~2s).
+     */
+    function _playBootSplash() {
+      return new Promise(resolve => {
+        const overlay = document.createElement('div');
+        overlay.className = 'ncm-boot-splash';
+        overlay.innerHTML = `
+          <div class="ncm-boot-splash__bg"></div>
+          <div class="ncm-boot-splash__content">
+            <div class="ncm-boot-splash__icon" data-el="icon">
+              <i class="fas fa-satellite-dish"></i>
+            </div>
+            <div class="ncm-boot-splash__title">Night City Messenger</div>
+            <div class="ncm-boot-splash__subtitle" data-el="subtitle">v4.1 // Initializing</div>
+            <div class="ncm-boot-splash__bar-wrap">
+              <div class="ncm-boot-splash__bar-track">
+                <div class="ncm-boot-splash__bar-fill" data-el="bar"></div>
+              </div>
+              <div class="ncm-boot-splash__bar-status">
+                <span class="ncm-boot-splash__bar-label" data-el="label">Loading services...</span>
+                <span class="ncm-boot-splash__bar-pct" data-el="pct">0%</span>
+              </div>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(overlay);
+
+        // Force reflow so the initial state renders before animations start
+        overlay.offsetHeight;
+
+        const bar = overlay.querySelector('[data-el="bar"]');
+        const label = overlay.querySelector('[data-el="label"]');
+        const pct = overlay.querySelector('[data-el="pct"]');
+        const icon = overlay.querySelector('[data-el="icon"]');
+        const subtitle = overlay.querySelector('[data-el="subtitle"]');
+
+        const steps = [
+          { pct: 18, label: 'Loading services...', t: 0 },
+          { pct: 35, label: 'Scanning network...', t: 350 },
+          { pct: 58, label: 'Resolving identities...', t: 700 },
+          { pct: 78, label: 'Validating inboxes...', t: 1050 },
+          { pct: 94, label: 'Synchronizing...', t: 1400 },
+          { pct: 100, label: 'Ready', t: 1700, done: true },
+        ];
+
+        steps.forEach(step => {
+          setTimeout(() => {
+            if (!overlay.parentNode) return;
+            bar.style.width = `${step.pct}%`;
+            label.textContent = step.label;
+            pct.textContent = `${step.pct}%`;
+
+            if (step.done) {
+              bar.classList.add('done');
+              label.classList.add('done');
+              pct.classList.add('done');
+              icon.classList.add('done');
+              icon.querySelector('i').className = 'fas fa-check';
+              subtitle.textContent = 'v4.1 // Systems online';
+              subtitle.classList.add('done');
+            }
+          }, step.t);
+        });
+
+        // Fade out and resolve
+        setTimeout(() => {
+          overlay.classList.add('fade-out');
+          setTimeout(() => {
+            overlay.remove();
+            resolve();
+          }, 300);
+        }, 2100);
+      });
+    }
+
+    /**
      * Main NCM entry point. Checks session memory:
      * - If lastCharacterId exists and actor is valid → open inbox directly
-     * - Otherwise → open CharacterSelectApp (boot + select)
+     * - Otherwise → play boot splash, then open CharacterSelectApp
      */
     ns.openNCM = async () => {
       // Check for session memory
       const lastId = game.user.getFlag(MODULE_ID, 'lastCharacterId');
       if (lastId) {
-        // Validate the actor still exists and user has access
         const actor = game.actors.get(lastId);
         if (actor && (actor.isOwner || isGM())) {
           ns.openInbox(lastId);
           return;
         }
-        // Invalid — clear stale flag
         try { await game.user.unsetFlag(MODULE_ID, 'lastCharacterId'); } catch { /* ok */ }
       }
 
-      // No session memory — show character select
+      // Play boot splash, then show character select
+      await _playBootSplash();
       ns.showCharacterSelect();
     };
 
     /**
-     * Force-open the character select screen (used by re-login button).
-     * @param {object} [options]
-     * @param {boolean} [options.skipBoot=false] — Skip the boot loader
+     * Open the character select screen directly (no boot splash).
+     * Used by re-login and after boot splash.
      */
-    ns.showCharacterSelect = async (options = {}) => {
-      // Close existing character select if open
+    ns.showCharacterSelect = async () => {
       if (_characterSelectApp?.rendered) {
         _characterSelectApp.bringToFront();
         return _characterSelectApp;
       }
 
       const { CharacterSelectApp } = await import('../ui/CharacterSelect/CharacterSelectApp.js');
-      _characterSelectApp = new CharacterSelectApp({
-        skipBoot: options.skipBoot ?? false,
-      });
+      _characterSelectApp = new CharacterSelectApp();
 
       const origClose = _characterSelectApp.close.bind(_characterSelectApp);
       _characterSelectApp.close = async (...args) => {
@@ -403,19 +475,17 @@ export function registerMessagingSystem(initializer) {
     };
 
     /**
-     * Re-login: clear session memory and show character select.
-     * Called from the viewer's logout button.
+     * Re-login: clear session memory and show character select (no boot).
      */
     ns.reLogin = async () => {
       try { await game.user.unsetFlag(MODULE_ID, 'lastCharacterId'); } catch { /* ok */ }
 
-      // Close any open viewer
       if (_activeViewer?.rendered) {
         await _activeViewer.close();
         _activeViewer = null;
       }
 
-      ns.showCharacterSelect({ skipBoot: true });
+      ns.showCharacterSelect();
     };
 
     log.info('Messaging UI launchers registered (replaced Phase 1 stubs)');
