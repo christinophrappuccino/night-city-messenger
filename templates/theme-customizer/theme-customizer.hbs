@@ -146,28 +146,15 @@
           <div><div class="ncm-tc__trow-label">Neon Glow</div><div class="ncm-tc__trow-desc">Glow effects on primary/secondary elements</div></div>
           <div class="ncm-tc__switch {{#if neonGlow}}ncm-tc__switch--on{{/if}}" data-action="toggleNeonGlow"></div>
         </div>
-        <div class="ncm-tc__srow">
-          <div><div class="ncm-tc__trow-label">Glitch Intensity</div><div class="ncm-tc__trow-desc">Random glitch animations</div></div>
-          <input type="range" name="glitchIntensity" min="0" max="100" value="{{glitchIntensity}}" class="ncm-tc__slider" style="flex:1;" />
-          <span class="ncm-tc__srow-val">{{glitchIntensity}}%</span>
-        </div>
       </div>
 
-      <div class="ncm-tc__slabel">Animation & Density</div>
+      <div class="ncm-tc__slabel">Animation</div>
       <div class="ncm-tc__fx">
         <div class="ncm-tc__trow">
           <div class="ncm-tc__trow-label">Animation Level</div>
           <div class="ncm-tc__bgroup">
             {{#each animationLevels}}
             <button class="ncm-tc__bopt {{#if active}}ncm-tc__bopt--active{{/if}}" data-action="setAnimationLevel" data-level="{{id}}">{{label}}</button>
-            {{/each}}
-          </div>
-        </div>
-        <div class="ncm-tc__trow">
-          <div class="ncm-tc__trow-label">Message Density</div>
-          <div class="ncm-tc__bgroup">
-            {{#each densityOptions}}
-            <button class="ncm-tc__bopt {{#if active}}ncm-tc__bopt--active{{/if}}" data-action="setDensity" data-density="{{id}}">{{label}}</button>
             {{/each}}
           </div>
         </div>
