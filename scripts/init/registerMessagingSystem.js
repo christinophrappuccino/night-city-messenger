@@ -394,12 +394,11 @@ export function registerMessagingSystem(initializer) {
         const subtitle = overlay.querySelector('[data-el="subtitle"]');
 
         const steps = [
-          { pct: 18, label: 'Loading services...', t: 0 },
-          { pct: 35, label: 'Scanning network...', t: 350 },
-          { pct: 58, label: 'Resolving identities...', t: 700 },
-          { pct: 78, label: 'Validating inboxes...', t: 1050 },
-          { pct: 94, label: 'Synchronizing...', t: 1400 },
-          { pct: 100, label: 'Ready', t: 1700, done: true },
+          { pct: 22, label: 'Loading services...', t: 0 },
+          { pct: 45, label: 'Scanning network...', t: 200 },
+          { pct: 68, label: 'Resolving identities...', t: 400 },
+          { pct: 88, label: 'Validating inboxes...', t: 600 },
+          { pct: 100, label: 'Ready', t: 850, done: true },
         ];
 
         steps.forEach(step => {
@@ -427,8 +426,8 @@ export function registerMessagingSystem(initializer) {
           setTimeout(() => {
             overlay.remove();
             resolve();
-          }, 300);
-        }, 2100);
+          }, 200);
+        }, 1100);
       });
     }
 
