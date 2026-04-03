@@ -106,8 +106,10 @@ export class ShardSheetOverride {
       if (!item) return;
 
       // GM bypass — let the Foundry sheet stay open
+      // Use requestAnimationFrame to clear so both renderItemSheet
+      // and renderCPRItemSheet see the flag before it's cleared
       if (sheet._ncmBypass) {
-        sheet._ncmBypass = false;
+        requestAnimationFrame(() => { sheet._ncmBypass = false; });
         return;
       }
 
