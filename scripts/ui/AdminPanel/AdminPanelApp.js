@@ -3222,6 +3222,9 @@ export class AdminPanelApp extends BaseApplication {
     if (this._activeTab === 'shards') {
       this._setupShardControls();
     }
+
+    // ── Keyboard shortcuts ──
+    this._setupKeyboardHandler();
   }
 
   /**
@@ -3246,6 +3249,113 @@ export class AdminPanelApp extends BaseApplication {
       }
     };
     el.addEventListener('scroll', this._scrollHandler, { passive: true });
+  }
+
+  /**
+   * Set up keyboard shortcut handler on the app element.
+   * Re-binds each render to ensure fresh DOM reference.
+   */
+  _setupKeyboardHandler() {
+    const el = this.element;
+    if (!el) return;
+
+    // Remove previous handler if exists
+    if (this._boundAdminKeydown) {
+      el.removeEventListener('keydown', this._boundAdminKeydown);
+    }
+
+    this._boundAdminKeydown = (e) => this._onAdminKeydown(e);
+    el.addEventListener('keydown', this._boundAdminKeydown);
+
+    // Ensure the app element can receive focus for keyboard events
+    if (!el.hasAttribute('tabindex')) {
+      el.setAttribute('tabindex', '-1');
+    }
+  }
+
+  /**
+   * Handle keyboard shortcuts for the Admin Panel.
+   * Shortcuts are tab-context-sensitive.
+   */
+  _onAdminKeydown(event) {
+    const tag = event.target.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || event.target.isContentEditable) return;
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
+
+    const key = event.key;
+    const tab = this._activeTab;
+
+    // ── Tab switching: 1–6 ──
+    const tabMap = { '1': 'overview', '2': 'messages', '3': 'contacts', '4': 'networks', '5': 'shards', '6': 'tools' };
+    if (tabMap[key]) {
+      event.preventDefault();
+      if (tab !== tabMap[key]) {
+        const content = this.element?.querySelector('.ncm-admin-content');
+        if (content) this._scrollPositions[tab] = content.scrollTop;
+        this._activeTab = tabMap[key];
+        this._pendingContentScrollReset = true;
+        this.render();
+      }
+      return;
+    }
+
+    // ── Per-tab shortcuts ──
+    switch (tab) {
+
+      case 'overview':
+        if (key === 'r' || key === 'R') {
+          event.preventDefault();
+          AdminPanelApp._onRefreshStats.call(this, event, this.element);
+        }
+        break;
+
+      case 'messages':
+        if (key === 'n' || key === 'N') {
+          event.preventDefault();
+          AdminPanelApp._onOpenComposer.call(this, event, this.element);
+        }
+        break;
+
+      case 'contacts':
+        if (key === '/') {
+          event.preventDefault();
+          this.element?.querySelector('.ncm-admin-contacts-search, [data-field="contactSearch"]')?.focus();
+        } else if (key === 'n' || key === 'N') {
+          event.preventDefault();
+          AdminPanelApp._onCreateNewContact.call(this, event, this.element);
+        } else if ((key === 'p' || key === 'P') && this._expandedContactId) {
+          event.preventDefault();
+          // Push the expanded contact to players
+          const btn = this.element?.querySelector(`[data-contact-id="${this._expandedContactId}"] [data-action="pushContact"]`);
+          if (btn) btn.click();
+        }
+        break;
+
+      case 'networks':
+        if (key === 'n' || key === 'N') {
+          event.preventDefault();
+          AdminPanelApp._onCreateNetwork.call(this, event, this.element);
+        }
+        break;
+
+      case 'shards':
+        if (key === '/' ) {
+          event.preventDefault();
+          this.element?.querySelector('.ncm-admin-shard-search, [data-field="shardSearch"]')?.focus();
+        } else if ((key === 'f' || key === 'F') && this._selectedShardIds.size > 0) {
+          event.preventDefault();
+          // Force decrypt first selected shard
+          const firstId = [...this._selectedShardIds][0];
+          const btn = this.element?.querySelector(`[data-item-id="${firstId}"] [data-action="forceDecryptShardItem"]`);
+          if (btn) btn.click();
+        } else if ((key === 'r' || key === 'R') && this._selectedShardIds.size > 0) {
+          event.preventDefault();
+          const firstId = [...this._selectedShardIds][0];
+          const btn = this.element?.querySelector(`[data-item-id="${firstId}"] [data-action="relockShardItem"]`);
+          if (btn) btn.click();
+        }
+        break;
+    }
   }
 
   /**
