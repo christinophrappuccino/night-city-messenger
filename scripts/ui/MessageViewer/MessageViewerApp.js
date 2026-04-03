@@ -2658,7 +2658,8 @@ export class MessageViewerApp extends BaseApplication {
       return;
     }
 
-    const displayName = msg.from.split('@')[0] || 'Unknown';
+    const displayName = (msg.fromActorId ? game.actors?.get(msg.fromActorId)?.name : null)
+      || msg.fromName || msg.from.split('@')[0] || 'Unknown';
 
     try {
       // Try the contact repository's add method
@@ -3971,22 +3972,26 @@ export class MessageViewerApp extends BaseApplication {
    */
   _enrichMessageDisplay(msg, currentNetworkName) {
     // ── Sender display name ──
+    // Priority: contact name → actor name → stored name → email handle fallback
     const contact = this._findContact(msg.from);
-    let fromDisplay = contact?.name || msg.from?.split('@')[0] || 'Unknown';
-    const fromPortrait = contact?.portrait || null;
+    const fromActor = msg.fromActorId ? game.actors?.get(msg.fromActorId) : null;
+    let fromDisplay = contact?.name || fromActor?.name || msg.fromName || msg.from?.split('@')[0] || 'Unknown';
+    const fromPortrait = contact?.portrait || fromActor?.img || null;
 
     // ── Burned sender detection ──
     const burnCheck = game.nightcity?.emailService?.isBurnedEmail?.(msg.from) ?? { burned: false };
     const isBurnedSender = burnCheck.burned;
     if (isBurnedSender && !contact?.name) {
-      fromDisplay = msg.from?.split('@')[0] || 'Unknown';
+      fromDisplay = fromActor?.name || msg.fromName || msg.from?.split('@')[0] || 'Unknown';
     }
 
     const fromInitial = (fromDisplay[0] || '?').toUpperCase();
 
     // ── Recipient display name ──
+    // Priority: contact name → actor name → stored name → email handle fallback
     const toContact = this._findContact(msg.to);
-    const toDisplay = toContact?.name || msg.to?.split('@')[0] || 'Unknown';
+    const toActor = msg.toActorId ? game.actors?.get(msg.toActorId) : null;
+    const toDisplay = toContact?.name || toActor?.name || msg.toName || msg.to?.split('@')[0] || 'Unknown';
 
     // ── Priority badge variant for tag-badge partial ──
     const priorityVariant = getPriorityBadgeVariant(msg.priority || 'normal');

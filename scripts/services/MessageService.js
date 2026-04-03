@@ -151,6 +151,15 @@ export class MessageService {
         }
       }
 
+      // ── Preserve proper-cased display names ──
+      // Stored alongside the lowercased email so names survive actor deletion
+      if (!data.fromName) {
+        data.fromName = fromActor?.name || fromContact?.name || null;
+      }
+      if (!data.toName) {
+        data.toName = toActor?.name || toContact?.name || null;
+      }
+
       // Generate IDs
       const messageId = foundry.utils.randomID();
       data.messageId = messageId;
