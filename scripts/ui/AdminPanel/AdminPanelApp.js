@@ -159,6 +159,8 @@ export class AdminPanelApp extends BaseApplication {
   _spamCreatorData = { fromName: '', fromEmail: '', category: 'corpo', subject: '', body: '', networkFilter: '' };
   /** @type {boolean} Auto-spam section expanded */
   _spamAutoExpanded = false;
+  /** @type {number} Spam template list scroll position */
+  _spamListScroll = 0;
 
   // ═══════════════════════════════════════════════════════════
   //  Service Accessors
@@ -6545,10 +6547,25 @@ export class AdminPanelApp extends BaseApplication {
   }
 
   /**
+   * Save spam template list scroll position before render.
+   * @private
+   */
+  _saveSpamListScroll() {
+    const listEl = this.element?.querySelector('.ncm-spam-lib__list');
+    if (listEl) this._spamListScroll = listEl.scrollTop;
+  }
+
+  /**
    * Wire change listeners for spam tab controls.
    * @private
    */
   _setupSpamControls() {
+    // Restore spam library list scroll position
+    const listEl = this.element?.querySelector('.ncm-spam-lib__list');
+    if (listEl && this._spamListScroll) {
+      listEl.scrollTop = this._spamListScroll;
+    }
+
     // Auto-spam volume selects (data-action on <select> fires on click, not change)
     const volSelects = this.element?.querySelectorAll('.ncm-spam-auto-row__vol-select') ?? [];
     for (const sel of volSelects) {
@@ -6601,6 +6618,7 @@ export class AdminPanelApp extends BaseApplication {
     } else {
       for (const a of actors) this._spamRecipients.add(a.id);
     }
+    this._saveSpamListScroll();
     this.render(true);
   }
 
@@ -6612,12 +6630,14 @@ export class AdminPanelApp extends BaseApplication {
     } else {
       this._spamRecipients.add(actorId);
     }
+    this._saveSpamListScroll();
     this.render(true);
   }
 
   static _onSpamCountUp(event, target) {
     if (this._spamBlastCount < 10) {
       this._spamBlastCount++;
+      this._saveSpamListScroll();
       this.render(true);
     }
   }
@@ -6625,6 +6645,7 @@ export class AdminPanelApp extends BaseApplication {
   static _onSpamCountDown(event, target) {
     if (this._spamBlastCount > 1) {
       this._spamBlastCount--;
+      this._saveSpamListScroll();
       this.render(true);
     }
   }
@@ -6635,6 +6656,7 @@ export class AdminPanelApp extends BaseApplication {
       ui.notifications.warn('Select at least one recipient.');
       return;
     }
+    this._saveSpamListScroll();
     const result = await this.spamService?.blast(recipients, this._spamBlastCount, this._spamCategoryFilter);
     if (result?.sent > 0) {
       ui.notifications.info(`Blasted ${result.sent} spam message(s).`);
@@ -6654,6 +6676,7 @@ export class AdminPanelApp extends BaseApplication {
     const templateId = target.closest('[data-template-id]')?.dataset.templateId;
     if (!templateId) return;
     this._spamSelectedId = this._spamSelectedId === templateId ? null : templateId;
+    this._saveSpamListScroll();
     this.render(true);
   }
 
@@ -6665,6 +6688,7 @@ export class AdminPanelApp extends BaseApplication {
       ui.notifications.warn('Select at least one recipient.');
       return;
     }
+    this._saveSpamListScroll();
     const result = await this.spamService?.sendTemplate(templateId, recipients);
     if (result?.sent > 0) {
       ui.notifications.info(`Sent spam to ${result.sent} recipient(s).`);
