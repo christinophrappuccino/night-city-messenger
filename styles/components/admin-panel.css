@@ -251,7 +251,7 @@
   display: flex;
   border-bottom: 1px solid var(--ncm-border, #2a2a45);
   background: var(--ncm-bg-deep, #0a0a0f);
-  padding: 0 4px;
+  padding: 4px 4px 0;
   flex-shrink: 0;
 }
 

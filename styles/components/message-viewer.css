@@ -228,6 +228,7 @@
   background: var(--ncm-bg-deep);
   border-bottom: 1px solid var(--ncm-border);
   height: 28px;
+  margin-bottom: 4px;
 }
 .ncm-app .ncm-viewer__pills-track {
   display: flex; align-items: center; gap: 3px;
