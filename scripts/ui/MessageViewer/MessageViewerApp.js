@@ -3982,9 +3982,10 @@ export class MessageViewerApp extends BaseApplication {
     let fromPortrait = contact?.portrait || fromActor?.img || null;
 
     // ── Encrypted sender detection ──
-    // If the sender's contact is ICE-protected and viewer is not GM,
-    // redact identity. The real data stays in message flags for GM inspection.
-    const isSenderEncrypted = !!(contact?.encrypted) && !game.user.isGM;
+    // If the sender's contact is ICE-protected in this actor's contact list,
+    // redact identity. The real data stays in message flags and journals
+    // for GM inspection via the admin panel or journal sidebar.
+    const isSenderEncrypted = !!(contact?.encrypted);
     if (isSenderEncrypted) {
       fromDisplay = '████████';
       fromPortrait = null;
