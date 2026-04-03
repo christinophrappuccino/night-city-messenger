@@ -378,7 +378,7 @@ export class CharacterSelectApp extends BaseApplication {
     const el = this.element;
     if (el) {
       el.classList.add('ncm-fade-out');
-      await this._delay(250);
+      await this._delay(200);
     }
     await this.close();
   }
