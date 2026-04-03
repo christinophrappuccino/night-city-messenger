@@ -187,11 +187,11 @@ export class SettingsManager {
 
     game.settings.register(MODULE_ID, 'emailDomains', {
       name: 'NCM.Settings.EmailDomains.Name',
-      hint: 'Domain configuration per network (managed via Admin Panel).',
+      hint: 'List of available email domains (managed via Admin Panel).',
       scope: 'world',
       config: false,
-      type: Object,
-      default: {},
+      type: Array,
+      default: [],
     });
 
     game.settings.register(MODULE_ID, 'emailSetupRequired', {

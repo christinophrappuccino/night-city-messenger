@@ -6675,59 +6675,40 @@ export class AdminPanelApp extends BaseApplication {
 
   /**
    * Open the email domain configuration dialog.
-   * Lets GMs assign domain names to each network for the email setup flow.
+   * Simple flat list — GMs add whatever domains they want.
    */
   static async _onManageDomains(event, target) {
     const MODULE_ID_LOCAL = 'cyberpunkred-messenger';
-    const allNetworks = game.nightcity?.networkService?.getAllNetworks?.() ?? [];
-    let domainConfig = {};
+    let domainList = [];
     try {
-      domainConfig = foundry.utils.deepClone(game.settings.get(MODULE_ID_LOCAL, 'emailDomains') ?? {});
+      const raw = game.settings.get(MODULE_ID_LOCAL, 'emailDomains');
+      domainList = Array.isArray(raw) ? [...raw] : [];
     } catch { /* empty */ }
 
     const defaultDomain = game.settings.get(MODULE_ID_LOCAL, 'emailDefaultDomain') || 'nightcity.net';
 
-    // Build rows for each network
-    let rowsHTML = '';
-    for (const net of allNetworks) {
-      const cfg = domainConfig[net.id] || {};
-      const domain = cfg.domain || '';
-      const locked = cfg.locked || false;
-      const color = net.theme?.color || '#00D4E6';
-      const icon = net.theme?.icon || 'fa-wifi';
-
-      rowsHTML += `
-        <div class="ncm-domain-row" data-net-id="${net.id}">
-          <div class="ncm-domain-row__net">
-            <i class="fas ${icon}" style="color:${color}; width:16px; text-align:center;"></i>
-            <span class="ncm-domain-row__name" style="color:${color};">${net.name}</span>
-          </div>
-          <div class="ncm-domain-row__field">
-            <input type="text" class="ncm-domain-row__input" data-field="domain"
-                   value="${domain}" placeholder="${net.name.toLowerCase().replace(/\s+/g, '')}.net" />
-          </div>
-          <label class="ncm-domain-row__lock" title="Lock — players cannot change away from this domain">
-            <input type="checkbox" data-field="locked" ${locked ? 'checked' : ''} />
-            <i class="fas fa-lock"></i>
-          </label>
-          <button type="button" class="ncm-domain-row__clear" title="Clear domain" data-clear="${net.id}">
-            <i class="fas fa-xmark"></i>
-          </button>
+    // Helper to build a single domain row
+    const _buildRow = (domain = '') => `
+      <div class="ncm-domain-row">
+        <i class="fas fa-at ncm-domain-row__icon"></i>
+        <div class="ncm-domain-row__field">
+          <input type="text" class="ncm-domain-row__input" data-field="domain"
+                 value="${domain}" placeholder="example.net" />
         </div>
-      `;
-    }
-
-    if (allNetworks.length === 0) {
-      rowsHTML = `<div style="text-align:center; color:#8888a0; font-size:11px; padding:20px;">
-        No networks configured. Create networks first in Network Management.
+        <button type="button" class="ncm-domain-row__clear" title="Remove domain">
+          <i class="fas fa-xmark"></i>
+        </button>
       </div>`;
-    }
+
+    const rowsHTML = domainList.length
+      ? domainList.map(d => _buildRow(d)).join('')
+      : '';
 
     const dialogContent = `
       <div class="ncm-domain-dialog">
         <div class="ncm-domain-dialog__header">
           <div class="ncm-domain-dialog__title">Email Domains</div>
-          <div class="ncm-domain-dialog__hint">Assign a domain to each network. Players pick from these during email setup.</div>
+          <div class="ncm-domain-dialog__hint">Add domains players can pick during email setup.</div>
         </div>
 
         <div class="ncm-domain-dialog__default">
@@ -6741,13 +6722,14 @@ export class AdminPanelApp extends BaseApplication {
 
         <div class="ncm-domain-dialog__divider"></div>
 
-        <div class="ncm-domain-dialog__list-header">
-          <span>Network</span>
-          <span>Domain</span>
-          <span></span>
+        <div class="ncm-domain-dialog__list-label">Additional Domains</div>
+        <div class="ncm-domain-dialog__list" id="ncm-domain-list">
+          ${rowsHTML}
         </div>
 
-        ${rowsHTML}
+        <button type="button" class="ncm-domain-dialog__add" id="ncm-add-domain">
+          <i class="fas fa-plus"></i> Add Domain
+        </button>
 
         <div class="ncm-domain-dialog__divider"></div>
 
@@ -6768,26 +6750,21 @@ export class AdminPanelApp extends BaseApplication {
           icon: '<i class="fas fa-save"></i>',
           label: 'Save',
           callback: async (html) => {
-            const newConfig = {};
-
-            html.find('.ncm-domain-row').each((_, row) => {
-              const netId = row.dataset.netId;
-              const domain = row.querySelector('[data-field="domain"]')?.value?.trim();
-              const locked = row.querySelector('[data-field="locked"]')?.checked ?? false;
-              if (domain) {
-                newConfig[netId] = { domain, locked };
-              }
+            const domains = [];
+            html.find('.ncm-domain-row [data-field="domain"]').each((_, input) => {
+              const v = input.value?.trim();
+              if (v) domains.push(v);
             });
 
             const newDefault = html.find('#ncm-default-domain').val()?.trim() || 'nightcity.net';
             const allowCustom = html.find('#ncm-allow-custom').is(':checked');
 
-            await game.settings.set(MODULE_ID_LOCAL, 'emailDomains', newConfig);
+            await game.settings.set(MODULE_ID_LOCAL, 'emailDomains', domains);
             await game.settings.set(MODULE_ID_LOCAL, 'emailDefaultDomain', newDefault);
             await game.settings.set(MODULE_ID_LOCAL, 'emailAllowCustomDomains', allowCustom);
 
-            const count = Object.keys(newConfig).length;
-            ui.notifications.info(`NCM | Saved ${count} domain configuration${count !== 1 ? 's' : ''}.`);
+            const total = domains.length + 1; // +1 for default
+            ui.notifications.info(`NCM | Saved ${total} domain${total !== 1 ? 's' : ''}.`);
           },
         },
         cancel: {
@@ -6797,17 +6774,28 @@ export class AdminPanelApp extends BaseApplication {
       },
       default: 'save',
       render: (html) => {
-        // Clear buttons
-        html.find('[data-clear]').on('click', (e) => {
-          const netId = e.currentTarget.dataset.clear;
-          const row = html.find(`.ncm-domain-row[data-net-id="${netId}"]`);
-          row.find('[data-field="domain"]').val('');
-          row.find('[data-field="locked"]').prop('checked', false);
+        const list = html.find('#ncm-domain-list')[0];
+
+        // Add domain button
+        html.find('#ncm-add-domain').on('click', () => {
+          const temp = document.createElement('div');
+          temp.innerHTML = _buildRow().trim();
+          const row = temp.firstElementChild;
+          list.appendChild(row);
+          // Wire remove
+          row.querySelector('.ncm-domain-row__clear')?.addEventListener('click', () => row.remove());
+          // Focus the new input
+          row.querySelector('.ncm-domain-row__input')?.focus();
+        });
+
+        // Wire existing remove buttons
+        html.find('.ncm-domain-row__clear').on('click', function () {
+          this.closest('.ncm-domain-row')?.remove();
         });
       },
     }, {
       classes: ['ncm-pick-dialog'],
-      width: 520,
+      width: 460,
       height: 'auto',
     });
 

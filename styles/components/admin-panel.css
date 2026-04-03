@@ -1048,28 +1048,28 @@
   margin: 10px 0;
 }
 
-/* Network domain list */
-.ncm-domain-dialog__list-header {
-  display: flex;
-  align-items: center;
-  padding: 4px 10px;
+/* Domain list label */
+.ncm-domain-dialog__list-label {
   font-family: 'Share Tech Mono', monospace;
   font-size: 8px;
   color: var(--ncm-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  gap: 8px;
+  padding: 0 10px 6px;
 }
-.ncm-domain-dialog__list-header span:first-child { width: 140px; }
-.ncm-domain-dialog__list-header span:nth-child(2) { flex: 1; }
-.ncm-domain-dialog__list-header span:last-child { width: 32px; text-align: center; }
+
+/* Domain list container */
+.ncm-domain-dialog__list {
+  max-height: 240px;
+  overflow-y: auto;
+}
 
 /* Domain row */
 .ncm-domain-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 10px;
+  padding: 5px 10px;
   border-bottom: 1px solid rgba(42, 42, 69, 0.5);
   transition: background 0.15s;
 }
@@ -1079,33 +1079,19 @@
 .ncm-domain-row:last-child {
   border-bottom: none;
 }
-.ncm-domain-row__net {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  width: 140px;
+.ncm-domain-row__icon {
+  font-size: 10px;
+  color: var(--ncm-secondary);
+  opacity: 0.4;
   flex-shrink: 0;
-}
-.ncm-domain-row__name {
-  font-family: 'Rajdhani', sans-serif;
-  font-size: 12px;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  width: 14px;
+  text-align: center;
 }
 .ncm-domain-row__field {
   display: flex;
   align-items: center;
   flex: 1;
   min-width: 0;
-}
-.ncm-domain-row__at {
-  font-family: 'Share Tech Mono', monospace;
-  font-size: 12px;
-  color: var(--ncm-text-muted);
-  margin-right: 2px;
-  flex-shrink: 0;
 }
 .ncm-app .ncm-domain-row__input,
 .ncm-pick-dialog .ncm-domain-row__input {
@@ -1132,42 +1118,20 @@
   opacity: 0.4;
 }
 
-/* Lock checkbox */
-.ncm-domain-row__lock {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-.ncm-domain-row__lock input {
-  display: none;
-}
-.ncm-domain-row__lock i {
-  font-size: 11px;
-  color: var(--ncm-text-muted);
-  opacity: 0.3;
-  transition: all 0.15s;
-}
-.ncm-domain-row__lock input:checked + i {
-  color: var(--ncm-accent);
-  opacity: 1;
-}
-
 /* Cyan icon variant for tool card */
 .ncm-tool-card__icon--cyan {
   color: var(--ncm-secondary) !important;
 }
 
-/* Domain row clear button */
-.ncm-domain-row__clear {
+/* Domain row remove button — Foundry override at 0,2,1 */
+.ncm-pick-dialog button.ncm-domain-row__clear {
   width: 24px;
   height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: none;
+  background-image: none;
   border: 1px solid transparent;
   border-radius: 2px;
   color: var(--ncm-text-muted);
@@ -1175,8 +1139,6 @@
   transition: all 0.15s;
   flex-shrink: 0;
   font-size: 10px;
-  /* Foundry button overrides */
-  background-image: none;
   appearance: none;
   box-shadow: none;
   min-height: 0;
@@ -1184,10 +1146,40 @@
   margin: 0;
   line-height: 1;
 }
-.ncm-domain-row__clear:hover {
+.ncm-pick-dialog button.ncm-domain-row__clear:hover {
   color: var(--ncm-primary);
   border-color: rgba(246, 82, 97, 0.3);
-  background: rgba(246, 82, 97, 0.06);
+  background-color: rgba(246, 82, 97, 0.06);
+  background-image: none;
+}
+
+/* Add domain button — Foundry override at 0,2,1 */
+.ncm-pick-dialog button.ncm-domain-dialog__add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 0;
+  margin: 6px 0 0;
+  background: none;
+  background-image: none;
+  border: 1px dashed var(--ncm-border);
+  border-radius: 2px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  color: var(--ncm-text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+  appearance: none;
+  box-shadow: none;
+  min-height: 0;
+  line-height: 1.2;
+}
+.ncm-pick-dialog button.ncm-domain-dialog__add:hover {
+  color: var(--ncm-secondary);
+  border-color: var(--ncm-secondary);
+  background-color: rgba(25, 243, 247, 0.03);
   background-image: none;
 }
 

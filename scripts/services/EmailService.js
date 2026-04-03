@@ -93,43 +93,51 @@ export class EmailService {
   // ═══════════════════════════════════════════════════════════
 
   /**
-   * Get available domain suggestions from configured networks.
+   * Get available domain suggestions from configured list.
    * @returns {Array<{ domain: string, networkName: string, networkId: string, icon: string, color: string, locked: boolean }>}
    */
   getAvailableDomains() {
     const domains = [];
 
     try {
-      const domainConfig = game.settings.get(MODULE_ID, 'emailDomains') ?? {};
+      const raw = game.settings.get(MODULE_ID, 'emailDomains');
+      const domainList = Array.isArray(raw) ? raw : [];
 
-      // Get all networks (not just available — GM configures domains globally)
-      const allNetworks = this.networkService?.getAllNetworks?.() ?? [];
+      // Default domain always first
+      const fallback = this._getDefaultDomain();
+      domains.push({
+        domain: fallback,
+        networkName: 'Default',
+        networkId: '',
+        icon: 'fa-at',
+        color: '#00D4E6',
+        locked: false,
+      });
 
-      for (const net of allNetworks) {
-        const cfg = domainConfig[net.id];
-        if (!cfg?.domain) continue;
-
+      // Additional configured domains
+      for (const d of domainList) {
+        if (!d || d === fallback) continue;
         domains.push({
-          domain: cfg.domain,
-          networkName: net.name,
-          networkId: net.id,
-          icon: net.theme?.icon ?? 'fa-wifi',
-          color: net.theme?.color ?? '#00D4E6',
-          locked: cfg.locked ?? false,
+          domain: d,
+          networkName: '',
+          networkId: '',
+          icon: 'fa-at',
+          color: '#00D4E6',
+          locked: false,
         });
       }
     } catch (e) {
       log.warn('EmailService: Failed to load domain config', e);
     }
 
-    // If no domains configured, add fallback
+    // If nothing at all, add fallback
     if (domains.length === 0) {
       const fallback = this._getDefaultDomain();
       domains.push({
         domain: fallback,
         networkName: 'Default',
         networkId: '',
-        icon: 'fa-wifi',
+        icon: 'fa-at',
         color: '#00D4E6',
         locked: false,
       });
