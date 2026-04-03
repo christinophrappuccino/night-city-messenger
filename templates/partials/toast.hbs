@@ -1,46 +1,40 @@
 {{!--
-  Toast Notification — Cyberpunk-styled notification popup
+  Toast Notification v2 — Cyberpunk-styled notification popup
   @file templates/partials/toast.hbs
   @module cyberpunkred-messenger
-  @description Renders a single toast notification with accent bar, icon circle,
-    title, detail text, optional action button, and progress bar for auto-dismiss.
-    Matches ncm-contacts-mockup-v2.html toast spec.
+  @description Renders a single toast notification with clip-path corner, accent glow bar,
+    icon with filled background, title/separator/detail, optional action button,
+    dismiss button, and progress bar. Hex strips and signal bars injected by JS post-render.
 
-  Toast types:
-    - info        — Cyan accent, info-circle icon
-    - success     — Green accent, check icon
-    - warning     — Amber accent, exclamation icon
-    - error       — Red accent, exclamation-triangle icon
-    - contact-acquired — Cyan accent, user-plus icon + download indicator
-    - contact-burned   — Red accent, triangle-exclamation icon + fire indicator
-    - message     — Cyan accent, envelope icon (existing)
+  Toast type families:
+    Core:    info, success, warning, error, danger
+    Message: message, msg-sent, msg-scheduled, msg-decrypted
+    Contact: contact-acquired, contact-burned
+    Network: net-switch, net-connect, net-disconnect, net-auth, net-auth-fail, net-lockout, net-queue
+    Shard:   shard-decrypt, shard-ice, shard-login, shard-login-fail, shard-key, shard-key-fail,
+             shard-eddies, shard-trace, shard-bricked, shard-expired
 
   @param {string} id            — Unique toast ID
   @param {string} type          — Toast type key
-  @param {string} title         — Header text (Rajdhani 11px 700 uppercase)
-  @param {string} [detail]      — Body text (mono 9px muted)
+  @param {string} title         — Header text
+  @param {string} [detail]      — Body text
   @param {string} [titleIcon]   — Optional icon class before title text
   @param {string} icon          — Icon class for the left circle
-  @param {string} [accentColor] — CSS color for accent bar + icon
-  @param {string} [actionLabel] — Optional action button label (e.g. "VIEW")
+  @param {string} [accentColor] — CSS override for accent bar + icon
+  @param {string} [actionLabel] — Optional action button label
   @param {string} [actionId]    — Data attribute for action routing
   @param {number} [duration]    — Auto-dismiss ms (0 = no auto-dismiss)
-
-  @example
-    {{> "modules/cyberpunkred-messenger/templates/partials/toast.hbs"
-        id="abc123" type="contact-acquired"
-        icon="fas fa-user-plus" title="New Contact Acquired"
-        detail="Rogue Amendiares — shared by V via CITINET"
-        actionLabel="VIEW" actionId="view-contact" duration=5000 }}
 --}}
 
 <div class="ncm-toast ncm-toast--{{type}}" data-toast-id="{{id}}">
 
-  {{!-- Left accent bar is via CSS ::before --}}
+  {{!-- Accent bar with glow bleed --}}
+  <div class="ncm-toast__accent"
+       {{#if accentColor}}style="background: {{accentColor}};"{{/if}}></div>
 
   {{!-- Icon circle --}}
   <div class="ncm-toast__icon"
-       {{#if accentColor}}style="color: {{accentColor}}; border-color: {{accentColor}}33;"{{/if}}>
+       {{#if accentColor}}style="color: {{accentColor}}; border-color: {{accentColor}}33; background: {{accentColor}}0f;"{{/if}}>
     <i class="{{icon}}"></i>
   </div>
 
@@ -50,6 +44,8 @@
          {{#if accentColor}}style="color: {{accentColor}};"{{/if}}>
       {{#if titleIcon}}<i class="{{titleIcon}}"></i> {{/if}}{{title}}
     </div>
+    <div class="ncm-toast__separator"
+         {{#if accentColor}}style="background: linear-gradient(90deg, {{accentColor}}33, transparent 70%);"{{/if}}></div>
     {{#if detail}}
       <div class="ncm-toast__detail">{{detail}}</div>
     {{/if}}
@@ -75,4 +71,5 @@
            data-duration="{{duration}}"></div>
     </div>
   {{/if}}
+
 </div>
