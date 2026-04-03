@@ -727,6 +727,22 @@ export class ContactManagerApp extends BaseApplication {
             this.render();
           }
           break;
+        case 's': case 'S':
+          if (this.selectedContactId) {
+            e.preventDefault();
+            this._shareSelectedContact();
+          }
+          break;
+        case 'Escape':
+          e.preventDefault();
+          if (this.editingContactId) {
+            this.editingContactId = null;
+            this.isAdding = false;
+          } else if (this.selectedContactId) {
+            this.selectedContactId = null;
+          }
+          this.render();
+          break;
         case 'ArrowDown':
           e.preventDefault();
           this._navigateList(1);
@@ -1943,6 +1959,18 @@ export class ContactManagerApp extends BaseApplication {
         to: contact.email,
       });
     }
+  }
+
+  /**
+   * Share the currently selected contact via ContactShareDialog.
+   */
+  async _shareSelectedContact() {
+    if (!this.selectedContactId) return;
+    const contact = this._contacts.find(c => c.id === this.selectedContactId);
+    if (!contact) return;
+
+    const { ContactShareDialog } = await import('./ContactShareDialog.js');
+    new ContactShareDialog({ senderActorId: this.actorId, contact }).render(true);
   }
 
   // ═══════════════════════════════════════════════════════════
