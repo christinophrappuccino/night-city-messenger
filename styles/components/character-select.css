@@ -58,7 +58,7 @@
   transition: border-color 0.3s, background 0.3s;
 }
 .ncm-boot-splash__icon i {
-  font-size: 20px;
+  font-size: calc(20px * var(--ncm-text-scale, 1));
   color: var(--ncm-secondary);
   opacity: 0.8;
   transition: color 0.3s, opacity 0.3s;
@@ -74,7 +74,7 @@
 
 .ncm-boot-splash__title {
   font-family: var(--ncm-font-title);
-  font-size: 16px;
+  font-size: calc(16px * var(--ncm-text-scale, 1));
   font-weight: 700;
   letter-spacing: 0.2em;
   color: var(--ncm-text-primary);
@@ -83,7 +83,7 @@
 }
 .ncm-boot-splash__subtitle {
   font-family: var(--ncm-font-mono);
-  font-size: 9px;
+  font-size: calc(9px * var(--ncm-text-scale, 1));
   color: var(--ncm-text-muted);
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -138,7 +138,7 @@
 }
 .ncm-boot-splash__bar-label {
   font-family: var(--ncm-font-mono);
-  font-size: 9px;
+  font-size: calc(9px * var(--ncm-text-scale, 1));
   color: var(--ncm-text-muted);
   letter-spacing: 0.04em;
   transition: color 0.2s;
@@ -146,7 +146,7 @@
 .ncm-boot-splash__bar-label.done { color: var(--ncm-success); }
 .ncm-boot-splash__bar-pct {
   font-family: var(--ncm-font-mono);
-  font-size: 9px;
+  font-size: calc(9px * var(--ncm-text-scale, 1));
   color: var(--ncm-secondary);
   letter-spacing: 0.06em;
   transition: color 0.2s;
@@ -208,7 +208,7 @@
 }
 .ncm-cs__roster-title {
   font-family: var(--ncm-font-title);
-  font-size: 10px;
+  font-size: calc(10px * var(--ncm-text-scale, 1));
   font-weight: 600;
   letter-spacing: 0.18em;
   color: var(--ncm-secondary);
@@ -217,7 +217,7 @@
 }
 .ncm-cs__roster-sub {
   font-family: var(--ncm-font-mono);
-  font-size: 9px;
+  font-size: calc(9px * var(--ncm-text-scale, 1));
   color: var(--ncm-text-muted);
   letter-spacing: 0.04em;
 }
@@ -232,7 +232,7 @@
   right: 8px;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 9px;
+  font-size: calc(9px * var(--ncm-text-scale, 1));
   color: var(--ncm-text-muted);
   pointer-events: none;
 }
@@ -243,7 +243,7 @@
   border-radius: 2px;
   padding: 5px 26px 5px 8px;
   font-family: var(--ncm-font-mono);
-  font-size: 10px;
+  font-size: calc(10px * var(--ncm-text-scale, 1));
   color: var(--ncm-text-primary);
   outline: none;
   transition: border-color 0.15s;
@@ -274,7 +274,7 @@
 /* Section divider */
 .ncm-cs__divider {
   font-family: var(--ncm-font-mono);
-  font-size: 8px;
+  font-size: calc(8px * var(--ncm-text-scale, 1));
   color: var(--ncm-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.1em;
@@ -289,7 +289,7 @@
   height: 1px;
   background: var(--ncm-border);
 }
-.ncm-cs__divider i { font-size: 8px; }
+.ncm-cs__divider i { font-size: calc(8px * var(--ncm-text-scale, 1)); }
 .ncm-cs__divider--gm i { color: var(--ncm-primary); }
 
 /* Character entry */
@@ -345,7 +345,7 @@
 }
 .ncm-cs__entry-portrait .initial {
   font-family: var(--ncm-font-title);
-  font-size: 15px;
+  font-size: calc(15px * var(--ncm-text-scale, 1));
   font-weight: 700;
 }
 .ncm-cs__entry-portrait.cyan  .initial { color: var(--ncm-secondary); }
@@ -360,7 +360,7 @@
 .ncm-cs__entry-info { flex: 1; min-width: 0; }
 .ncm-cs__entry-name {
   font-family: var(--ncm-font-display);
-  font-size: 13px;
+  font-size: calc(13px * var(--ncm-text-scale, 1));
   font-weight: 600;
   color: var(--ncm-text-primary);
   line-height: 1.2;
@@ -370,7 +370,7 @@
 }
 .ncm-cs__entry-role {
   font-family: var(--ncm-font-mono);
-  font-size: 8px;
+  font-size: calc(8px * var(--ncm-text-scale, 1));
   color: var(--ncm-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -379,7 +379,7 @@
 
 .ncm-cs__entry-unread {
   font-family: var(--ncm-font-mono);
-  font-size: 9px;
+  font-size: calc(9px * var(--ncm-text-scale, 1));
   color: var(--ncm-bg-deep);
   background: var(--ncm-accent);
   min-width: 18px;
@@ -404,13 +404,13 @@
 }
 .ncm-cs__entry.admin .ncm-cs__entry-name {
   color: var(--ncm-primary);
-  font-size: 12px;
+  font-size: calc(12px * var(--ncm-text-scale, 1));
 }
 .ncm-cs__entry.admin .ncm-cs__entry-portrait {
   background: rgba(246, 82, 97, 0.05);
 }
 .ncm-cs__entry.admin .ncm-cs__entry-portrait i {
-  font-size: 14px;
+  font-size: calc(14px * var(--ncm-text-scale, 1));
   color: var(--ncm-primary);
 }
 
@@ -495,7 +495,7 @@
 }
 .ncm-cs__portrait-initial {
   font-family: var(--ncm-font-title);
-  font-size: 64px;
+  font-size: calc(64px * var(--ncm-text-scale, 1));
   font-weight: 800;
   color: var(--ncm-secondary);
   opacity: 0.15;
@@ -557,7 +557,7 @@
   justify-content: center;
 }
 .ncm-cs__admin-icon > i {
-  font-size: 40px;
+  font-size: calc(40px * var(--ncm-text-scale, 1));
   color: var(--ncm-primary);
   z-index: 2;
   text-shadow: 0 0 20px rgba(246, 82, 97, 0.4);
@@ -597,7 +597,7 @@
 /* Character info */
 .ncm-cs__char-name {
   font-family: var(--ncm-font-display);
-  font-size: 28px;
+  font-size: calc(28px * var(--ncm-text-scale, 1));
   font-weight: 700;
   color: var(--ncm-text-primary);
   line-height: 1.1;
@@ -606,7 +606,7 @@
 }
 .ncm-cs__char-role {
   font-family: var(--ncm-font-title);
-  font-size: 10px;
+  font-size: calc(10px * var(--ncm-text-scale, 1));
   font-weight: 500;
   color: var(--ncm-secondary);
   text-transform: uppercase;
@@ -633,7 +633,7 @@
 }
 .ncm-cs__stat-value {
   font-family: var(--ncm-font-mono);
-  font-size: 14px;
+  font-size: calc(14px * var(--ncm-text-scale, 1));
   color: var(--ncm-text-primary);
   font-weight: 600;
 }
@@ -643,7 +643,7 @@
 .ncm-cs__stat-value--red   { color: var(--ncm-primary); }
 .ncm-cs__stat-label {
   font-family: var(--ncm-font-mono);
-  font-size: 7px;
+  font-size: calc(7px * var(--ncm-text-scale, 1));
   color: var(--ncm-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.1em;
@@ -661,13 +661,13 @@
   border-radius: 2px;
 }
 .ncm-cs__email-row i {
-  font-size: 10px;
+  font-size: calc(10px * var(--ncm-text-scale, 1));
   color: var(--ncm-secondary);
   opacity: 0.5;
 }
 .ncm-cs__email-address {
   font-family: var(--ncm-font-mono);
-  font-size: 11px;
+  font-size: calc(11px * var(--ncm-text-scale, 1));
   color: var(--ncm-secondary);
   letter-spacing: 0.03em;
 }
@@ -683,7 +683,7 @@
 .ncm-cs__email-row--none .ncm-cs__email-address {
   color: var(--ncm-warning);
   opacity: 0.7;
-  font-size: 10px;
+  font-size: calc(10px * var(--ncm-text-scale, 1));
 }
 
 /* Network info */
@@ -693,7 +693,7 @@
   align-items: center;
   gap: 8px;
   font-family: var(--ncm-font-mono);
-  font-size: 9px;
+  font-size: calc(9px * var(--ncm-text-scale, 1));
   color: var(--ncm-text-muted);
 }
 .ncm-cs__net-dot {
@@ -744,7 +744,7 @@
 }
 .ncm-cs__bottom-left {
   font-family: var(--ncm-font-mono);
-  font-size: 9px;
+  font-size: calc(9px * var(--ncm-text-scale, 1));
   color: var(--ncm-text-muted);
   display: flex;
   align-items: center;
@@ -757,7 +757,7 @@
 }
 .ncm-cs__bottom-net-name {
   font-family: var(--ncm-font-mono);
-  font-size: 9px;
+  font-size: calc(9px * var(--ncm-text-scale, 1));
   color: var(--ncm-secondary);
   letter-spacing: 0.06em;
 }
@@ -779,7 +779,7 @@
 }
 .ncm-cs__bottom-signal-pct {
   font-family: var(--ncm-font-mono);
-  font-size: 8px;
+  font-size: calc(8px * var(--ncm-text-scale, 1));
   color: var(--ncm-text-muted);
   min-width: 24px;
 }
@@ -807,7 +807,7 @@
   gap: 8px;
   padding: 8px 22px;
   font-family: var(--ncm-font-title);
-  font-size: 11px;
+  font-size: calc(11px * var(--ncm-text-scale, 1));
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.12em;
@@ -847,7 +847,7 @@
   0%   { left: -40px; }
   100% { left: calc(100% + 40px); }
 }
-.ncm-cs__connect-btn i { font-size: 10px; }
+.ncm-cs__connect-btn i { font-size: calc(10px * var(--ncm-text-scale, 1)); }
 /* Shimmer */
 .ncm-cs__connect-btn::before {
   content: '';
@@ -913,13 +913,13 @@
 
 .ncm-cs__connecting-name {
   font-family: var(--ncm-font-display);
-  font-size: 16px;
+  font-size: calc(16px * var(--ncm-text-scale, 1));
   font-weight: 600;
   color: var(--ncm-text-primary);
 }
 .ncm-cs__connecting-email {
   font-family: var(--ncm-font-mono);
-  font-size: 10px;
+  font-size: calc(10px * var(--ncm-text-scale, 1));
   color: var(--ncm-secondary);
   opacity: 0.7;
   margin-top: -14px;
@@ -953,7 +953,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
+  font-size: calc(18px * var(--ncm-text-scale, 1));
   color: var(--ncm-secondary);
 }
 @keyframes ncm-cs-spin { to { transform: rotate(360deg); } }
@@ -970,12 +970,12 @@
   align-items: center;
   gap: 8px;
   font-family: var(--ncm-font-mono);
-  font-size: 10px;
+  font-size: calc(10px * var(--ncm-text-scale, 1));
   color: var(--ncm-text-muted);
   opacity: 0.3;
   transition: color 0.2s, opacity 0.2s;
 }
-.ncm-cs__con-step i { width: 14px; text-align: center; font-size: 9px; }
+.ncm-cs__con-step i { width: 14px; text-align: center; font-size: calc(9px * var(--ncm-text-scale, 1)); }
 .ncm-cs__con-step.done {
   color: var(--ncm-success);
   opacity: 1;
@@ -1021,7 +1021,7 @@
   box-shadow: 0 0 30px rgba(0, 255, 65, 0.12);
 }
 .ncm-cs__success-check i {
-  font-size: 28px;
+  font-size: calc(28px * var(--ncm-text-scale, 1));
   color: var(--ncm-success);
 }
 .ncm-cs__success-check::after {
@@ -1038,20 +1038,20 @@
 }
 .ncm-cs__success-name {
   font-family: var(--ncm-font-display);
-  font-size: 22px;
+  font-size: calc(22px * var(--ncm-text-scale, 1));
   font-weight: 600;
   color: var(--ncm-text-primary);
 }
 .ncm-cs__success-label {
   font-family: var(--ncm-font-mono);
-  font-size: 9px;
+  font-size: calc(9px * var(--ncm-text-scale, 1));
   color: var(--ncm-success);
   text-transform: uppercase;
   letter-spacing: 0.2em;
 }
 .ncm-cs__success-hint {
   font-family: var(--ncm-font-mono);
-  font-size: 9px;
+  font-size: calc(9px * var(--ncm-text-scale, 1));
   color: var(--ncm-text-muted);
   margin-top: 12px;
   animation: ncm-cs-pulse 2s ease-in-out infinite;

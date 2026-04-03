@@ -118,6 +118,12 @@
       </select>
     </div>
     {{/each}}
+    <div class="ncm-slider-row" style="margin-top: 8px;">
+      <label>Text Size</label>
+      <input type="range" name="textScale" min="80" max="120" step="5" value="{{textScale}}"
+             class="ncm-slider" />
+      <span class="ncm-slider-value ncm-scale-value">{{textScale}}%</span>
+    </div>
   </section>
 
   {{!-- Sound --}}

@@ -74,7 +74,7 @@
   background-image: none !important;
   border-color: var(--ncm-secondary) !important;
   padding: 5px 18px !important;
-  font-size: 12px !important;
+  font-size: calc(12px * var(--ncm-text-scale, 1)) !important;
   font-weight: 700 !important;
 }
 .ncm-composer button.ncm-composer .ncm-composer__btn--send:hover {
@@ -86,7 +86,7 @@
   background: rgba(247,201,72,0.08) !important;
   border-color: rgba(247,201,72,0.3) !important;
   padding: 5px 18px !important;
-  font-size: 12px !important;
+  font-size: calc(12px * var(--ncm-text-scale, 1)) !important;
   font-weight: 700 !important;
 }
 .ncm-composer button.ncm-composer .ncm-composer__btn--queue {
@@ -94,7 +94,7 @@
   background: rgba(255,0,51,0.06) !important;
   border-color: rgba(255,0,51,0.25) !important;
   padding: 5px 14px !important;
-  font-size: 11px !important;
+  font-size: calc(11px * var(--ncm-text-scale, 1)) !important;
   font-weight: 700 !important;
 }
 .ncm-composer button.ncm-composer .ncm-composer__btn--draft {
@@ -102,7 +102,7 @@
   background: none !important;
   border-color: var(--ncm-border) !important;
   padding: 5px 14px !important;
-  font-size: 11px !important;
+  font-size: calc(11px * var(--ncm-text-scale, 1)) !important;
   font-weight: 700 !important;
 }
 .ncm-composer button.ncm-composer .ncm-composer__btn--draft:hover {
@@ -166,7 +166,7 @@
   object-fit: cover; border-radius: 50%;
 }
 .ncm-composer__avatar-initials {
-  font-size: 10px; font-weight: 700; color: var(--ncm-secondary);
+  font-size: calc(10px * var(--ncm-text-scale, 1)); font-weight: 700; color: var(--ncm-secondary);
 }
 .ncm-composer__avatar--gm {
   border-color: rgba(247, 201, 72, 0.3);
@@ -180,17 +180,17 @@
   min-width: 0;
 }
 .ncm-composer__id-name {
-  font-size: 11px; font-weight: 700; color: var(--ncm-text-primary);
+  font-size: calc(11px * var(--ncm-text-scale, 1)); font-weight: 700; color: var(--ncm-text-primary);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   line-height: 1.1;
 }
 .ncm-composer__id-email {
   font-family: var(--ncm-font-mono);
-  font-size: 8px; color: var(--ncm-text-muted); line-height: 1.1;
+  font-size: calc(8px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); line-height: 1.1;
 }
 .ncm-composer__gm-tag {
   font-family: var(--ncm-font-title);
-  font-size: 7px; font-weight: 600; color: var(--ncm-accent);
+  font-size: calc(7px * var(--ncm-text-scale, 1)); font-weight: 600; color: var(--ncm-accent);
   background: rgba(247,201,72,0.08);
   border: 1px solid rgba(247,201,72,0.2);
   border-radius: 2px; padding: 0 3px;
@@ -198,7 +198,7 @@
   vertical-align: middle;
 }
 .ncm-composer__id-caret {
-  font-size: 8px; color: var(--ncm-text-muted); margin-left: 2px;
+  font-size: calc(8px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); margin-left: 2px;
 }
 
 .ncm-composer__header-divider {
@@ -226,7 +226,7 @@
 
 .ncm-composer__net-name {
   font-family: var(--ncm-font-mono);
-  font-size: 8px; color: var(--ncm-secondary);
+  font-size: calc(8px * var(--ncm-text-scale, 1)); color: var(--ncm-secondary);
   text-transform: uppercase; letter-spacing: 0.04em;
 }
 
@@ -243,7 +243,7 @@
 .ncm-composer__net-bar:nth-child(4) { height: 9px; }
 
 .ncm-composer__fx-tag {
-  font-size: 8px; font-weight: 700;
+  font-size: calc(8px * var(--ncm-text-scale, 1)); font-weight: 700;
   text-transform: uppercase; letter-spacing: 0.04em;
   padding: 1px 4px; border-radius: 2px;
 }
@@ -257,12 +257,12 @@
   align-items: center; padding: 1px 6px; flex-shrink: 0;
 }
 .ncm-composer__time-label {
-  font-size: 7px; font-weight: 700; color: var(--ncm-text-muted);
+  font-size: calc(7px * var(--ncm-text-scale, 1)); font-weight: 700; color: var(--ncm-text-muted);
   text-transform: uppercase; letter-spacing: 0.06em; line-height: 1;
 }
 .ncm-composer__time-val {
   font-family: var(--ncm-font-mono);
-  font-size: 9px; color: var(--ncm-secondary); line-height: 1.2;
+  font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-secondary); line-height: 1.2;
   white-space: nowrap;
 }
 
@@ -270,12 +270,12 @@
 .ncm-composer__mode {
   margin-left: auto;
   font-family: var(--ncm-font-title);
-  font-size: 8px; font-weight: 600;
+  font-size: calc(8px * var(--ncm-text-scale, 1)); font-weight: 600;
   text-transform: uppercase; letter-spacing: 0.08em;
   padding: 2px 8px; border-radius: 2px;
   flex-shrink: 0;
 }
-.ncm-composer__mode i { font-size: 8px; margin-right: 3px; }
+.ncm-composer__mode i { font-size: calc(8px * var(--ncm-text-scale, 1)); margin-right: 3px; }
 .ncm-composer__mode--compose, .ncm-composer__mode--new {
   color: var(--ncm-secondary); background: rgba(25,243,247,0.05); border: 1px solid rgba(25,243,247,0.12);
 }
@@ -294,7 +294,7 @@
   width: 22px; height: 22px;
   display: flex; align-items: center; justify-content: center;
   border: 1px solid transparent; border-radius: 3px;
-  background: none; color: var(--ncm-text-muted); font-size: 10px;
+  background: none; color: var(--ncm-text-muted); font-size: calc(10px * var(--ncm-text-scale, 1));
   cursor: pointer; transition: all 0.15s; flex-shrink: 0;
 }
 .ncm-composer__close:hover { color: var(--ncm-danger); border-color: rgba(255,0,51,0.2); }
@@ -323,14 +323,14 @@
 .ncm-composer__sendas-header {
   padding: 8px 14px;
   font-family: var(--ncm-font-title);
-  font-size: 9px; font-weight: 600;
+  font-size: calc(9px * var(--ncm-text-scale, 1)); font-weight: 600;
   color: var(--ncm-accent); text-transform: uppercase;
   letter-spacing: 0.08em;
   border-bottom: 1px solid var(--ncm-bg-base);
   display: flex; align-items: center; gap: 6px;
   background: rgba(247,201,72,0.02);
 }
-.ncm-composer__sendas-header i { font-size: 10px; opacity: 0.6; }
+.ncm-composer__sendas-header i { font-size: calc(10px * var(--ncm-text-scale, 1)); opacity: 0.6; }
 .ncm-composer__sendas-search {
   padding: 8px 14px;
   border-bottom: 1px solid var(--ncm-bg-base);
@@ -340,7 +340,7 @@
   width: 100%;
   background: var(--ncm-bg-deep) !important; border: 1px solid var(--ncm-border) !important;
   border-radius: 4px !important; padding: 7px 10px !important;
-  font-family: var(--ncm-font-display) !important; font-size: 12px !important;
+  font-family: var(--ncm-font-display) !important; font-size: calc(12px * var(--ncm-text-scale, 1)) !important;
   color: var(--ncm-text-primary) !important; outline: none !important;
   box-shadow: none !important; height: auto !important;
 }
@@ -358,7 +358,7 @@
 .ncm-composer__alert {
   display: flex; align-items: center;
   gap: 8px; padding: 5px 14px;
-  font-size: 10px; font-weight: 600;
+  font-size: calc(10px * var(--ncm-text-scale, 1)); font-weight: 600;
   border-bottom: 1px solid;
 }
 .ncm-composer__alert--danger {
@@ -367,11 +367,11 @@
 .ncm-composer__alert--warn {
   background: rgba(168,85,247,0.03); border-color: rgba(168,85,247,0.08); color: var(--ncm-purple);
 }
-.ncm-composer__alert i { font-size: 9px; flex-shrink: 0; }
+.ncm-composer__alert i { font-size: calc(9px * var(--ncm-text-scale, 1)); flex-shrink: 0; }
 .ncm-composer__alert-text { flex: 1; }
 .ncm-composer .ncm-composer__alert-action {
   font-family: var(--ncm-font-display) !important;
-  font-size: 9px !important; font-weight: 700 !important;
+  font-size: calc(9px * var(--ncm-text-scale, 1)) !important; font-weight: 700 !important;
   text-transform: uppercase !important; letter-spacing: 0.06em !important;
   padding: 2px 8px !important; border-radius: 2px !important;
   cursor: pointer !important; background: none !important;
@@ -402,7 +402,7 @@
 
 .ncm-composer__context-label {
   display: flex; align-items: center; gap: 5px;
-  font-size: 10px; font-weight: 700;
+  font-size: calc(10px * var(--ncm-text-scale, 1)); font-weight: 700;
   text-transform: uppercase; letter-spacing: 0.06em;
   margin-bottom: 10px; padding-bottom: 6px;
   border-bottom: 1px solid var(--ncm-bg-base);
@@ -420,7 +420,7 @@
   border-radius: 50%;
   background: var(--ncm-bg-base); border: 1.5px solid var(--ncm-border);
   display: flex; align-items: center; justify-content: center;
-  font-size: 12px; font-weight: 700; color: var(--ncm-secondary);
+  font-size: calc(12px * var(--ncm-text-scale, 1)); font-weight: 700; color: var(--ncm-secondary);
   flex-shrink: 0; overflow: hidden;
 }
 .ncm-composer__msg-avatar img {
@@ -429,22 +429,22 @@
 }
 .ncm-composer__msg-meta { flex: 1; min-width: 0; }
 .ncm-composer__msg-sender {
-  font-size: 13px; font-weight: 700; color: var(--ncm-text-primary); line-height: 1.2;
+  font-size: calc(13px * var(--ncm-text-scale, 1)); font-weight: 700; color: var(--ncm-text-primary); line-height: 1.2;
 }
 .ncm-composer__msg-detail-row {
   display: flex; align-items: center; gap: 6px; margin-top: 2px;
 }
 .ncm-composer__msg-email {
   font-family: var(--ncm-font-mono);
-  font-size: 9px; color: var(--ncm-text-muted);
+  font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted);
 }
 .ncm-composer__msg-time {
   font-family: var(--ncm-font-mono);
-  font-size: 9px; color: var(--ncm-text-muted);
+  font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted);
 }
 .ncm-composer__msg-net-tag {
   font-family: var(--ncm-font-mono);
-  font-size: 8px; padding: 0 5px;
+  font-size: calc(8px * var(--ncm-text-scale, 1)); padding: 0 5px;
   border-radius: 8px;
   border: 1px solid rgba(25,243,247,0.15);
   color: var(--ncm-secondary);
@@ -452,12 +452,12 @@
 }
 .ncm-composer__msg-subject {
   font-family: var(--ncm-font-title);
-  font-size: 10px; font-weight: 600;
+  font-size: calc(10px * var(--ncm-text-scale, 1)); font-weight: 600;
   color: var(--ncm-text-muted); margin-bottom: 6px;
   letter-spacing: 0.02em;
 }
 .ncm-composer__msg-body {
-  font-size: 12px; color: var(--ncm-text-muted);
+  font-size: calc(12px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted);
   line-height: 1.5;
   max-height: 80px; overflow: hidden;
   position: relative;
@@ -474,28 +474,28 @@
 
 .ncm-composer__msg-expand {
   display: flex; align-items: center; gap: 4px;
-  font-size: 9px; font-weight: 600; color: var(--ncm-text-muted);
+  font-size: calc(9px * var(--ncm-text-scale, 1)); font-weight: 600; color: var(--ncm-text-muted);
   cursor: pointer; margin-top: 6px; transition: color 0.12s;
 }
 .ncm-composer__msg-expand:hover { color: var(--ncm-secondary); }
-.ncm-composer__msg-expand i { font-size: 7px; transition: transform 0.15s; }
+.ncm-composer__msg-expand i { font-size: calc(7px * var(--ncm-text-scale, 1)); transition: transform 0.15s; }
 
 .ncm-composer__msg-enc-badge {
   display: inline-flex; align-items: center; gap: 3px;
   font-family: var(--ncm-font-mono);
-  font-size: 8px; color: rgba(0,255,65,0.4); margin-top: 6px;
+  font-size: calc(8px * var(--ncm-text-scale, 1)); color: rgba(0,255,65,0.4); margin-top: 6px;
 }
 .ncm-composer__msg-attachments {
   display: flex; gap: 4px; margin-top: 8px; flex-wrap: wrap;
 }
 .ncm-composer__msg-attach {
   display: inline-flex; align-items: center; gap: 3px;
-  font-size: 9px; color: var(--ncm-text-muted);
+  font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted);
   padding: 2px 6px;
   background: rgba(25,243,247,0.02);
   border: 1px solid var(--ncm-bg-surface); border-radius: 3px;
 }
-.ncm-composer__msg-attach i { font-size: 8px; color: var(--ncm-secondary); }
+.ncm-composer__msg-attach i { font-size: calc(8px * var(--ncm-text-scale, 1)); color: var(--ncm-secondary); }
 .ncm-composer__msg-attach--eddies i { color: var(--ncm-accent); }
 
 /* Reply/Forward divider */
@@ -512,11 +512,11 @@
 }
 .ncm-composer__reply-divider-label {
   font-family: var(--ncm-font-title);
-  font-size: 8px; font-weight: 600;
+  font-size: calc(8px * var(--ncm-text-scale, 1)); font-weight: 600;
   text-transform: uppercase; letter-spacing: 0.1em;
   flex-shrink: 0;
 }
-.ncm-composer__reply-divider-label i { font-size: 8px; margin-right: 3px; }
+.ncm-composer__reply-divider-label i { font-size: calc(8px * var(--ncm-text-scale, 1)); margin-right: 3px; }
 .ncm-composer__reply-divider-label--reply { color: var(--ncm-secondary); }
 .ncm-composer__reply-divider-label--forward { color: var(--ncm-accent); }
 
@@ -541,7 +541,7 @@
 
 .ncm-composer__field-label {
   font-family: var(--ncm-font-title);
-  font-size: 8px; font-weight: 600; color: var(--ncm-text-muted);
+  font-size: calc(8px * var(--ncm-text-scale, 1)); font-weight: 600; color: var(--ncm-text-muted);
   text-transform: uppercase; letter-spacing: 0.08em;
   width: 44px; flex-shrink: 0;
   padding: 0 6px 0 0;
@@ -561,7 +561,7 @@
   background: rgba(25,243,247,0.03);
   border: 1px solid rgba(25,243,247,0.1);
   border-radius: 14px;
-  font-size: 11px; font-weight: 600; color: var(--ncm-text-secondary);
+  font-size: calc(11px * var(--ncm-text-scale, 1)); font-weight: 600; color: var(--ncm-text-secondary);
   white-space: nowrap;
 }
 .ncm-composer__chip--mismatch {
@@ -582,17 +582,17 @@
   width: 20px; height: 20px; border-radius: 50%;
   background: var(--ncm-bg-base);
   display: flex; align-items: center; justify-content: center;
-  font-size: 8px; font-weight: 700; color: var(--ncm-secondary);
+  font-size: calc(8px * var(--ncm-text-scale, 1)); font-weight: 700; color: var(--ncm-secondary);
   flex-shrink: 0;
 }
 .ncm-composer__chip-remove {
-  font-size: 8px; color: var(--ncm-text-muted);
+  font-size: calc(8px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted);
   cursor: pointer; margin-left: 2px;
   transition: color 0.1s;
 }
 .ncm-composer__chip-remove:hover { color: var(--ncm-danger); }
 .ncm-composer__chip-warn {
-  font-size: 8px; color: var(--ncm-accent);
+  font-size: calc(8px * var(--ncm-text-scale, 1)); color: var(--ncm-accent);
 }
 
 .ncm-composer__field-input {
@@ -602,17 +602,17 @@
   outline: none !important;
   box-shadow: none !important;
   font-family: var(--ncm-font-display);
-  font-size: 11px; font-weight: 400; color: var(--ncm-text-primary);
+  font-size: calc(11px * var(--ncm-text-scale, 1)); font-weight: 400; color: var(--ncm-text-primary);
   padding: 5px 0;
   height: auto !important;
   line-height: 1.3;
 }
-.ncm-composer__field-input::placeholder { color: #444460; font-weight: 400; font-size: 10px; font-style: italic; }
+.ncm-composer__field-input::placeholder { color: #444460; font-weight: 400; font-size: calc(10px * var(--ncm-text-scale, 1)); font-style: italic; }
 .ncm-composer__field-input--full { flex: 1; width: 100%; }
 
 .ncm-composer .ncm-composer__field-action {
   font-family: var(--ncm-font-display) !important;
-  font-size: 10px !important; font-weight: 700 !important;
+  font-size: calc(10px * var(--ncm-text-scale, 1)) !important; font-weight: 700 !important;
   color: var(--ncm-text-muted) !important;
   background: rgba(102,102,128,0.04) !important; border: 1px solid var(--ncm-border) !important;
   border-radius: 3px !important; padding: 3px 10px !important;
@@ -626,7 +626,7 @@
 }
 
 .ncm-composer__field-error {
-  font-size: 9px; color: var(--ncm-danger); margin-left: 8px; flex-shrink: 0;
+  font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-danger); margin-left: 8px; flex-shrink: 0;
 }
 .ncm-composer__field-error i { margin-right: 2px; }
 
@@ -696,7 +696,7 @@
   border: 1.5px solid var(--ncm-border);
   display: flex; align-items: center; justify-content: center;
   font-family: var(--ncm-font-display);
-  font-size: 11px; font-weight: 700;
+  font-size: calc(11px * var(--ncm-text-scale, 1)); font-weight: 700;
   flex-shrink: 0;
   transition: border-color 0.1s;
 }
@@ -709,7 +709,7 @@
 }
 .ncm-autocomplete__name {
   font-family: var(--ncm-font-display);
-  font-size: 13px; font-weight: 600; color: var(--ncm-text-primary);
+  font-size: calc(13px * var(--ncm-text-scale, 1)); font-weight: 600; color: var(--ncm-text-primary);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   line-height: 1.2;
 }
@@ -718,20 +718,20 @@
 }
 .ncm-autocomplete__email {
   font-family: var(--ncm-font-mono);
-  font-size: 9px; color: var(--ncm-text-muted);
+  font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   line-height: 1.2;
 }
 .ncm-autocomplete__sub {
   font-family: var(--ncm-font-display);
-  font-size: 9px; color: var(--ncm-text-muted);
+  font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted);
   line-height: 1.2; margin-top: 1px;
 }
 
 /* Unreachable badge */
 .ncm-autocomplete__unreachable {
   font-family: var(--ncm-font-mono);
-  font-size: 8px; color: var(--ncm-primary);
+  font-size: calc(8px * var(--ncm-text-scale, 1)); color: var(--ncm-primary);
   display: flex; align-items: center; gap: 3px;
   flex-shrink: 0;
   padding: 2px 7px;
@@ -765,7 +765,7 @@
   border: 1.5px solid var(--ncm-border);
   display: flex; align-items: center; justify-content: center;
   font-family: var(--ncm-font-display);
-  font-size: 11px; font-weight: 700;
+  font-size: calc(11px * var(--ncm-text-scale, 1)); font-weight: 700;
   flex-shrink: 0;
   transition: border-color 0.1s;
 }
@@ -783,21 +783,21 @@
 }
 .ncm-sendas-item__name {
   font-family: var(--ncm-font-display);
-  font-size: 13px; font-weight: 600; color: var(--ncm-text-primary);
+  font-size: calc(13px * var(--ncm-text-scale, 1)); font-weight: 600; color: var(--ncm-text-primary);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   line-height: 1.2;
 }
 .ncm-sendas-item--active .ncm-sendas-item__name { color: var(--ncm-accent); }
 .ncm-sendas-item__email {
   font-family: var(--ncm-font-mono);
-  font-size: 9px; color: var(--ncm-text-muted);
+  font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   line-height: 1.2;
 }
 
 .ncm-sendas-item__type {
   font-family: var(--ncm-font-title);
-  font-size: 7px; font-weight: 600;
+  font-size: calc(7px * var(--ncm-text-scale, 1)); font-weight: 600;
   color: var(--ncm-text-muted); text-transform: uppercase;
   letter-spacing: 0.06em;
   padding: 2px 7px;
@@ -827,14 +827,14 @@
 
 .ncm-composer__opt-label {
   font-family: var(--ncm-font-title);
-  font-size: 8px; font-weight: 600; color: var(--ncm-text-muted);
+  font-size: calc(8px * var(--ncm-text-scale, 1)); font-weight: 600; color: var(--ncm-text-muted);
   text-transform: uppercase; letter-spacing: 0.06em;
   margin-right: 2px;
 }
 
 .ncm-composer .ncm-composer__opt-pill {
   font-family: var(--ncm-font-display) !important;
-  font-size: 10px !important; font-weight: 600 !important; color: var(--ncm-text-muted) !important;
+  font-size: calc(10px * var(--ncm-text-scale, 1)) !important; font-weight: 600 !important; color: var(--ncm-text-muted) !important;
   background: transparent !important; border: 1px solid var(--ncm-border) !important;
   border-radius: 3px !important; padding: 2px 8px !important;
   cursor: pointer !important; transition: all 0.1s !important;
@@ -867,20 +867,20 @@
 }
 .ncm-composer .ncm-composer__enc-opt {
   font-family: var(--ncm-font-display) !important;
-  font-size: 10px !important; font-weight: 600 !important;
+  font-size: calc(10px * var(--ncm-text-scale, 1)) !important; font-weight: 600 !important;
   padding: 2px 8px !important; cursor: pointer !important;
   background: none !important; border: none !important;
   color: #7777a0 !important;
   display: inline-flex !important; align-items: center !important; gap: 3px !important;
   transition: all 0.1s !important; line-height: 1.2 !important;
 }
-.ncm-composer .ncm-composer__enc-opt i { font-size: 8px !important; }
+.ncm-composer .ncm-composer__enc-opt i { font-size: calc(8px * var(--ncm-text-scale, 1)) !important; }
 .ncm-composer .ncm-composer__enc-opt--open-active { color: var(--ncm-text-muted) !important; background: rgba(102,102,128,0.05) !important; }
 .ncm-composer .ncm-composer__enc-opt--ice-active { color: var(--ncm-success) !important; background: rgba(0,255,65,0.04) !important; }
 
 .ncm-composer__enc-dv {
   font-family: var(--ncm-font-mono);
-  font-size: 9px; color: var(--ncm-success);
+  font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-success);
   display: flex; align-items: center; gap: 3px;
   margin-left: 4px;
 }
@@ -895,7 +895,7 @@
   border-radius: 2px !important;
   color: var(--ncm-success) !important;
   font-family: var(--ncm-font-mono) !important;
-  font-size: 10px !important;
+  font-size: calc(10px * var(--ncm-text-scale, 1)) !important;
   text-align: center !important;
   padding: 2px 3px !important;
   outline: none !important;
@@ -911,7 +911,7 @@
 }
 .ncm-composer__enc-type {
   font-family: var(--ncm-font-mono);
-  font-size: 9px; color: var(--ncm-success);
+  font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-success);
   cursor: pointer; padding: 2px 6px;
   border: 1px solid rgba(0,255,65,0.12);
   border-radius: 3px; margin-left: 3px;
@@ -933,16 +933,16 @@
   gap: 4px; padding: 4px 14px;
 }
 .ncm-composer__ice-badge {
-  font-family: var(--ncm-font-title); font-size: 8px;
+  font-family: var(--ncm-font-title); font-size: calc(8px * var(--ncm-text-scale, 1));
   color: var(--ncm-primary); letter-spacing: 0.12em; text-transform: uppercase;
   flex-shrink: 0;
 }
-.ncm-composer__ice-badge i { font-size: 8px; margin-right: 3px; }
+.ncm-composer__ice-badge i { font-size: calc(8px * var(--ncm-text-scale, 1)); margin-right: 3px; }
 .ncm-composer__ice-sep {
   width: 1px; height: 12px; background: rgba(255,68,85,0.15); flex-shrink: 0;
 }
 .ncm-composer__ice-lbl {
-  font-family: var(--ncm-font-mono); font-size: 9px;
+  font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1));
   color: var(--ncm-text-secondary); text-transform: uppercase; letter-spacing: 0.04em; flex-shrink: 0;
 }
 
@@ -952,7 +952,7 @@
 .ncm-composer .ncm-composer__ice-pill {
   display: inline-flex !important; align-items: center !important; gap: 3px !important;
   padding: 2px 7px !important; border-radius: 3px !important;
-  font-family: var(--ncm-font-mono) !important; font-size: 9px !important;
+  font-family: var(--ncm-font-mono) !important; font-size: calc(9px * var(--ncm-text-scale, 1)) !important;
   cursor: pointer !important; border: 1px solid rgba(85,85,112,0.15) !important;
   background: transparent !important; color: var(--ncm-text-muted) !important;
   height: auto !important; min-height: 0 !important; width: auto !important;
@@ -960,7 +960,7 @@
   appearance: none !important; box-shadow: none !important; outline: none !important;
   transition: all 0.12s !important;
 }
-.ncm-composer .ncm-composer__ice-pill i { font-size: 7px !important; margin: 0 !important; padding: 0 !important; }
+.ncm-composer .ncm-composer__ice-pill i { font-size: calc(7px * var(--ncm-text-scale, 1)) !important; margin: 0 !important; padding: 0 !important; }
 .ncm-composer .ncm-composer__ice-pill:hover { color: var(--ncm-text-secondary) !important; border-color: rgba(85,85,112,0.3) !important; }
 .ncm-composer .ncm-composer__ice-pill--red {
   color: var(--ncm-primary) !important; border-color: rgba(255,68,85,0.3) !important;
@@ -999,14 +999,14 @@
   width: 22px; height: 22px; border-radius: 2px;
   border: 1px solid rgba(255,68,85,0.12); background: rgba(255,68,85,0.03);
   display: inline-flex; align-items: center; justify-content: center;
-  color: rgba(255,68,85,0.35); font-size: 10px;
+  color: rgba(255,68,85,0.35); font-size: calc(10px * var(--ncm-text-scale, 1));
 }
 .ncm-composer__ice-actor-name {
-  font-family: var(--ncm-font-display); font-size: 11px;
+  font-family: var(--ncm-font-display); font-size: calc(11px * var(--ncm-text-scale, 1));
   color: #d0d0dc; font-weight: 600;
 }
 .ncm-composer__ice-actor-atk {
-  font-family: var(--ncm-font-mono); font-size: 8px;
+  font-family: var(--ncm-font-mono); font-size: calc(8px * var(--ncm-text-scale, 1));
   color: var(--ncm-primary); margin-left: auto;
 }
 .ncm-composer .ncm-composer__ice-actor--sel {
@@ -1015,7 +1015,7 @@
 }
 .ncm-composer .ncm-composer__ice-actor--sel .ncm-composer__ice-actor-name { color: var(--ncm-primary); }
 .ncm-composer__ice-no-actors {
-  font-family: var(--ncm-font-mono); font-size: 9px;
+  font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1));
   color: var(--ncm-text-muted); font-style: italic;
 }
 .ncm-composer__ice-no-actors i { margin-right: 4px; color: #ffbb33; }
@@ -1023,7 +1023,7 @@
 /* Feature toggles */
 .ncm-composer .ncm-composer__toggle {
   font-family: var(--ncm-font-display) !important;
-  font-size: 10px !important; font-weight: 600 !important;
+  font-size: calc(10px * var(--ncm-text-scale, 1)) !important; font-weight: 600 !important;
   color: var(--ncm-text-muted) !important;
   background: none !important; border: 1px solid var(--ncm-border) !important;
   border-radius: 3px !important; padding: 2px 8px !important;
@@ -1032,7 +1032,7 @@
   transition: all 0.1s !important; flex-shrink: 0 !important;
   line-height: 1.2 !important;
 }
-.ncm-composer .ncm-composer__toggle i { font-size: 8px !important; }
+.ncm-composer .ncm-composer__toggle i { font-size: calc(8px * var(--ncm-text-scale, 1)) !important; }
 .ncm-composer .ncm-composer__toggle:hover { color: var(--ncm-text-muted) !important; border-color: var(--ncm-border) !important; }
 .ncm-composer .ncm-composer__toggle--on-gold { color: var(--ncm-accent) !important; border-color: rgba(247,201,72,0.2) !important; background: rgba(247,201,72,0.03) !important; }
 .ncm-composer .ncm-composer__toggle--on-red { color: var(--ncm-danger) !important; border-color: rgba(255,0,51,0.2) !important; background: rgba(255,0,51,0.03) !important; }
@@ -1041,14 +1041,14 @@
 .ncm-composer__strip {
   display: flex; align-items: center;
   gap: 5px; padding: 4px 14px;
-  font-size: 10px;
+  font-size: calc(10px * var(--ncm-text-scale, 1));
   border-bottom: 1px solid var(--ncm-bg-deep);
 }
-.ncm-composer__strip i { font-size: 9px; }
+.ncm-composer__strip i { font-size: calc(9px * var(--ncm-text-scale, 1)); }
 .ncm-composer__strip-label { font-weight: 700; margin-right: 2px; }
 .ncm-composer__strip-close {
   margin-left: auto; color: var(--ncm-text-muted);
-  cursor: pointer; font-size: 9px;
+  cursor: pointer; font-size: calc(9px * var(--ncm-text-scale, 1));
   transition: color 0.1s;
 }
 .ncm-composer__strip-close:hover { color: var(--ncm-danger); }
@@ -1057,7 +1057,7 @@
 
 .ncm-composer .ncm-composer__destruct-pill {
   font-family: var(--ncm-font-display) !important;
-  font-size: 9px !important; font-weight: 600 !important;
+  font-size: calc(9px * var(--ncm-text-scale, 1)) !important; font-weight: 600 !important;
   padding: 1px 5px !important; border: 1px solid rgba(255,0,51,0.12) !important;
   border-radius: 2px !important; background: none !important;
   color: #aa6666 !important; cursor: pointer !important;
@@ -1103,7 +1103,7 @@
   border: 1px solid transparent !important;
   border-radius: 2px !important;
   color: var(--ncm-text-muted) !important;
-  font-size: 10px !important;
+  font-size: calc(10px * var(--ncm-text-scale, 1)) !important;
   cursor: pointer !important;
   transition: all 0.08s !important;
   flex-shrink: 0 !important;
@@ -1132,7 +1132,7 @@
 
 .ncm-composer button.ncm-composer__tool--more {
   margin-left: auto !important;
-  font-size: 12px !important;
+  font-size: calc(12px * var(--ncm-text-scale, 1)) !important;
   letter-spacing: 2px !important;
   color: var(--ncm-text-muted) !important;
   width: auto !important;
@@ -1153,7 +1153,7 @@
 .ncm-composer__overflow-item {
   display: flex; align-items: center;
   gap: 8px; padding: 5px 12px;
-  font-size: 11px; color: var(--ncm-text-muted);
+  font-size: calc(11px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted);
   cursor: pointer; transition: all 0.1s;
 }
 .ncm-composer__overflow-item:hover {
@@ -1163,7 +1163,7 @@
   color: var(--ncm-secondary);
 }
 .ncm-composer__overflow-item--active i { color: var(--ncm-secondary); }
-.ncm-composer__overflow-item i { width: 12px; text-align: center; font-size: 9px; }
+.ncm-composer__overflow-item i { width: 12px; text-align: center; font-size: calc(9px * var(--ncm-text-scale, 1)); }
 .ncm-composer__overflow-sep {
   height: 1px; background: var(--ncm-bg-surface); margin: 3px 8px;
 }
@@ -1176,7 +1176,7 @@
   overflow-y: auto;
   padding: 10px 14px;
   font-family: var(--ncm-font-display);
-  font-size: 13px; font-weight: 400 !important; color: var(--ncm-text-secondary);
+  font-size: calc(13px * var(--ncm-text-scale, 1)); font-weight: 400 !important; color: var(--ncm-text-secondary);
   line-height: 1.5; outline: none;
   scrollbar-width: thin;
   scrollbar-color: var(--ncm-bg-surface) transparent;
@@ -1249,7 +1249,7 @@
 .ncm-composer__editor .ncm-encrypted-text-block::before {
   content: attr(data-label);
   font-family: var(--ncm-font-mono);
-  font-size: 8px; color: rgba(0,255,65,0.3);
+  font-size: calc(8px * var(--ncm-text-scale, 1)); color: rgba(0,255,65,0.3);
   position: absolute; top: 2px; right: 6px;
   letter-spacing: 0.06em;
 }
@@ -1278,12 +1278,12 @@
 .ncm-composer__char-count {
   position: absolute; bottom: 4px; right: 10px;
   font-family: var(--ncm-font-mono);
-  font-size: 8px; color: var(--ncm-text-muted);
+  font-size: calc(8px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted);
 }
 .ncm-composer__ice-badge {
   position: absolute; bottom: 4px; left: 10px;
   font-family: var(--ncm-font-mono);
-  font-size: 8px; color: rgba(0,255,65,0.3);
+  font-size: calc(8px * var(--ncm-text-scale, 1)); color: rgba(0,255,65,0.3);
   display: flex; align-items: center; gap: 2px;
 }
 
@@ -1301,16 +1301,16 @@
 
 .ncm-composer__attach {
   display: inline-flex; align-items: center;
-  gap: 3px; font-size: 10px; color: var(--ncm-text-muted);
+  gap: 3px; font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted);
   padding: 2px 6px;
   border: 1px solid var(--ncm-bg-surface); border-radius: 3px;
 }
-.ncm-composer__attach i { font-size: 8px; color: var(--ncm-secondary); }
+.ncm-composer__attach i { font-size: calc(8px * var(--ncm-text-scale, 1)); color: var(--ncm-secondary); }
 .ncm-composer__attach--eddies i { color: var(--ncm-accent); }
 .ncm-composer__attach-amount { color: var(--ncm-accent); font-weight: 700; }
-.ncm-composer__attach-size { font-size: 8px; color: var(--ncm-text-muted); }
+.ncm-composer__attach-size { font-size: calc(8px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); }
 .ncm-composer__attach-remove {
-  font-size: 8px; color: var(--ncm-text-muted);
+  font-size: calc(8px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted);
   cursor: pointer; margin-left: 2px;
 }
 .ncm-composer__attach-remove:hover { color: var(--ncm-danger); }
@@ -1330,7 +1330,7 @@
 
 .ncm-composer .ncm-composer__btn {
   font-family: var(--ncm-font-display) !important;
-  font-size: 11px !important; font-weight: 700 !important;
+  font-size: calc(11px * var(--ncm-text-scale, 1)) !important; font-weight: 700 !important;
   padding: 4px 14px !important;
   border-radius: 3px !important;
   cursor: pointer !important;
@@ -1379,18 +1379,18 @@
 
 .ncm-composer__autosave {
   font-family: var(--ncm-font-mono);
-  font-size: 8px; color: var(--ncm-text-muted);
+  font-size: calc(8px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted);
   display: flex; align-items: center; gap: 2px;
 }
-.ncm-composer__autosave i { color: rgba(0,255,65,0.3); font-size: 8px; }
+.ncm-composer__autosave i { color: rgba(0,255,65,0.3); font-size: calc(8px * var(--ncm-text-scale, 1)); }
 
 .ncm-composer__shortcuts { display: flex; gap: 6px; }
 .ncm-composer__shortcut {
-  font-size: 9px; color: var(--ncm-text-muted);
+  font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted);
 }
 .ncm-composer__shortcut kbd {
   font-family: var(--ncm-font-mono);
-  font-size: 8px; background: var(--ncm-bg-deep);
+  font-size: calc(8px * var(--ncm-text-scale, 1)); background: var(--ncm-bg-deep);
   border: 1px solid var(--ncm-bg-surface); border-radius: 2px;
   padding: 0 2px; color: var(--ncm-text-muted);
 }
@@ -1433,7 +1433,7 @@
   animation: ncm-send-ring-expand 1.2s ease-out infinite;
 }
 .ncm-composer__send-ring i {
-  font-size: 20px; color: var(--ncm-secondary);
+  font-size: calc(20px * var(--ncm-text-scale, 1)); color: var(--ncm-secondary);
   animation: ncm-send-icon-pulse 1.2s ease-in-out infinite;
 }
 
@@ -1454,13 +1454,13 @@
 
 .ncm-composer__send-status {
   font-family: var(--ncm-font-mono);
-  font-size: 10px; color: var(--ncm-secondary);
+  font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--ncm-secondary);
   letter-spacing: 0.06em; text-transform: uppercase;
 }
 
 .ncm-composer__send-route {
   display: flex; align-items: center; gap: 6px;
-  font-family: var(--ncm-font-mono); font-size: 9px;
+  font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1));
 }
 /* All route children start dim */
 .ncm-composer__send-route-label {
@@ -1519,7 +1519,7 @@
 
 .ncm-composer__send-stream {
   font-family: var(--ncm-font-mono);
-  font-size: 8px; color: #444460;
+  font-size: calc(8px * var(--ncm-text-scale, 1)); color: #444460;
   text-align: center; line-height: 1.6;
   max-width: 240px;
 }
@@ -1533,17 +1533,17 @@
   animation: ncm-send-success-pop 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards;
   transform: scale(0);
 }
-.ncm-composer__send-success-icon i { font-size: 22px; color: var(--ncm-secondary); }
+.ncm-composer__send-success-icon i { font-size: calc(22px * var(--ncm-text-scale, 1)); color: var(--ncm-secondary); }
 .ncm-composer__send-success-text {
   font-family: var(--ncm-font-title);
-  font-size: 11px; font-weight: 600;
+  font-size: calc(11px * var(--ncm-text-scale, 1)); font-weight: 600;
   color: var(--ncm-secondary); text-transform: uppercase;
   letter-spacing: 0.12em;
   opacity: 0; animation: ncm-send-text-fade 0.3s 0.3s ease forwards;
 }
 .ncm-composer__send-success-detail {
   font-family: var(--ncm-font-mono);
-  font-size: 9px; color: var(--ncm-text-muted);
+  font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted);
   opacity: 0; animation: ncm-send-text-fade 0.3s 0.5s ease forwards;
 }
 
@@ -1554,15 +1554,15 @@
   border: 2px solid rgba(255,0,51,0.3);
   display: flex; align-items: center; justify-content: center;
 }
-.ncm-composer__send-fail-icon i { font-size: 22px; color: var(--ncm-danger); }
+.ncm-composer__send-fail-icon i { font-size: calc(22px * var(--ncm-text-scale, 1)); color: var(--ncm-danger); }
 .ncm-composer__send-fail-text {
   font-family: var(--ncm-font-mono);
-  font-size: 10px; color: var(--ncm-danger);
+  font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--ncm-danger);
   text-transform: uppercase; letter-spacing: 0.06em;
 }
 .ncm-composer__send-fail-detail {
   font-family: var(--ncm-font-mono);
-  font-size: 8px; color: #774444;
+  font-size: calc(8px * var(--ncm-text-scale, 1)); color: #774444;
   text-align: center; line-height: 1.6; max-width: 240px;
 }
 .ncm-composer__send-fail-actions {

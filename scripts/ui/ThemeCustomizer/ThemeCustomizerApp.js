@@ -131,6 +131,7 @@ export class ThemeCustomizerApp extends BaseApplication {
       scanlines: prefs.scanlines !== false,
       neonGlow: prefs.neonGlow !== false,
       glitchIntensity: Math.round((prefs.glitchIntensity ?? 0.5) * 100),
+      textScale: prefs.textScale ?? 100,
       soundEnabled: prefs.soundEnabled !== false,
       soundVolume: Math.round((prefs.soundVolume ?? 0.5) * 100),
       isDirty: this._isDirty,
@@ -296,6 +297,19 @@ export class ThemeCustomizerApp extends BaseApplication {
         this._workingPrefs.glitchIntensity = parseInt(e.target.value) / 100;
         this._isDirty = true;
         this.themeService?.applyTheme(this._workingPrefs);
+      });
+    }
+
+    // Wire text scale slider
+    const scaleSlider = this.element.querySelector('[name="textScale"]');
+    if (scaleSlider) {
+      scaleSlider.addEventListener('input', (e) => {
+        this._workingPrefs.textScale = parseInt(e.target.value);
+        this._isDirty = true;
+        this.themeService?.applyTheme(this._workingPrefs);
+        // Update the displayed value
+        const label = this.element.querySelector('.ncm-scale-value');
+        if (label) label.textContent = `${e.target.value}%`;
       });
     }
 

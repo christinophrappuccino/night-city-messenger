@@ -82,6 +82,10 @@ export class ThemeService {
     // Glitch intensity
     root.style.setProperty('--ncm-glitch-intensity', String(prefs.glitchIntensity ?? 0.5));
 
+    // Text scale (80–120, stored as percentage, applied as multiplier)
+    const textScale = (prefs.textScale ?? preset.textScale ?? 100) / 100;
+    root.style.setProperty('--ncm-text-scale', String(textScale));
+
     // Wallpaper
     if (prefs.wallpaper) {
       root.style.setProperty('--ncm-wallpaper', `url('${prefs.wallpaper}')`);
