@@ -3979,7 +3979,16 @@ export class MessageViewerApp extends BaseApplication {
     const contact = this._findContact(msg.from);
     const fromActor = msg.fromActorId ? game.actors?.get(msg.fromActorId) : null;
     let fromDisplay = contact?.name || fromActor?.name || msg.fromName || msg.from?.split('@')[0] || 'Unknown';
-    const fromPortrait = contact?.portrait || fromActor?.img || null;
+    let fromPortrait = contact?.portrait || fromActor?.img || null;
+
+    // ── Encrypted sender detection ──
+    // If the sender's contact is ICE-protected and viewer is not GM,
+    // redact identity. The real data stays in message flags for GM inspection.
+    const isSenderEncrypted = !!(contact?.encrypted) && !game.user.isGM;
+    if (isSenderEncrypted) {
+      fromDisplay = '████████';
+      fromPortrait = null;
+    }
 
     // ── Burned sender detection ──
     const burnCheck = game.nightcity?.emailService?.isBurnedEmail?.(msg.from) ?? { burned: false };
@@ -3988,7 +3997,7 @@ export class MessageViewerApp extends BaseApplication {
       fromDisplay = fromActor?.name || msg.fromName || msg.from?.split('@')[0] || 'Unknown';
     }
 
-    const fromInitial = (fromDisplay[0] || '?').toUpperCase();
+    const fromInitial = isSenderEncrypted ? '?' : (fromDisplay[0] || '?').toUpperCase();
 
     // ── Recipient display name ──
     // Priority: contact name → actor name → stored name → email handle fallback
@@ -4022,7 +4031,10 @@ export class MessageViewerApp extends BaseApplication {
     // ══════════════════════════════════════════════════════
 
     // §2.9 — Color-coded avatar (role colors from GM Admin Panel)
-    const avatarColor = getAvatarColor(fromDisplay, contact, this._customRoles);
+    // Encrypted senders get neutral muted color to avoid identity leaks via color
+    const avatarColor = isSenderEncrypted
+      ? '#555570'
+      : getAvatarColor(fromDisplay, contact, this._customRoles);
 
     // §2.10 — Network theme class
     const networkThemeClass = getNetworkThemeClass(msg.network);
@@ -4094,6 +4106,7 @@ export class MessageViewerApp extends BaseApplication {
       fromInitial,
       fromPortrait,
       isBurnedSender,
+      isSenderEncrypted,
       toDisplay,
       priorityVariant,
       priorityIcon,
