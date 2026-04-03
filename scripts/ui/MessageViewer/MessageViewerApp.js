@@ -132,7 +132,7 @@ export class MessageViewerApp extends BaseApplication {
   static DEFAULT_OPTIONS = {
     id: 'ncm-message-viewer',
     classes: ['ncm-app', 'ncm-message-viewer-window'],
-    position: { width: 820, height: 600 },
+    position: { width: 880, height: 600 },
     window: {
       title: 'Night City Messenger',
       icon: 'fas fa-satellite-dish',
@@ -182,6 +182,9 @@ export class MessageViewerApp extends BaseApplication {
 
   /** @type {number} Sidebar width in pixels */
   sidebarWidth = DEFAULT_SIDEBAR_WIDTH;
+
+  /** @type {boolean} Whether the message list panel is collapsed */
+  _listCollapsed = false;
 
   /** @type {Set<string>} IDs of bulk-selected messages */
   bulkSelected = new Set();
@@ -718,6 +721,7 @@ export class MessageViewerApp extends BaseApplication {
       // Layout
       density: this.density,
       sidebarWidth: this.sidebarWidth,
+      listCollapsed: this._listCollapsed,
 
       // Bulk Actions
       showBulkActions: this.bulkSelected.size > 0,
@@ -795,13 +799,27 @@ export class MessageViewerApp extends BaseApplication {
     // Sidebar resize
     const divider = html.querySelector('.ncm-viewer__divider');
     if (divider && !divider._ncmBound) {
-      divider.addEventListener('mousedown', (event) => this._onDividerDrag(event));
-      divider.addEventListener('dblclick', () => {
-        this.sidebarWidth = DIVIDER_RESET_WIDTH;
-        this._savePreferences();
-        this.render();
+      divider.addEventListener('mousedown', (event) => {
+        // Don't start drag if list is collapsed or if clicking the toggle button
+        if (this._listCollapsed || event.target.closest('.ncm-viewer__collapse-toggle')) return;
+        this._onDividerDrag(event);
+      });
+      divider.addEventListener('dblclick', (event) => {
+        if (event.target.closest('.ncm-viewer__collapse-toggle')) return;
+        if (this._listCollapsed) {
+          this._toggleListPanel();
+        } else {
+          this.sidebarWidth = DIVIDER_RESET_WIDTH;
+          this._savePreferences();
+          this.render();
+        }
       });
       divider._ncmBound = true;
+    }
+
+    // Apply collapsed state from instance property (survives re-render)
+    if (this._listCollapsed) {
+      html.querySelector('.ncm-viewer__split')?.classList.add('ncm-viewer__split--list-collapsed');
     }
 
     // ── Real-time clock — tick TIME display every second ──
@@ -1421,6 +1439,9 @@ export class MessageViewerApp extends BaseApplication {
       }
       case 'open-admin':
         game.nightcity?.openAdmin?.();
+        break;
+      case 'toggle-list-panel':
+        this._toggleListPanel();
         break;
 
       // ── v3.2: Character Switcher ──
@@ -3631,6 +3652,22 @@ export class MessageViewerApp extends BaseApplication {
   // ═══════════════════════════════════════════════════════════
   //  Sidebar Resize
   // ═══════════════════════════════════════════════════════════
+
+  /**
+   * Toggle the message list panel collapsed/expanded.
+   * Direct DOM manipulation for instant feedback — no re-render needed.
+   */
+  _toggleListPanel() {
+    this._listCollapsed = !this._listCollapsed;
+    const split = this.element?.querySelector('.ncm-viewer__split');
+    if (!split) return;
+
+    if (this._listCollapsed) {
+      split.classList.add('ncm-viewer__split--list-collapsed');
+    } else {
+      split.classList.remove('ncm-viewer__split--list-collapsed');
+    }
+  }
 
   _onDividerDrag(event) {
     event.preventDefault();

@@ -91,22 +91,22 @@
     {{!-- Action Buttons --}}
     <div class="ncm-viewer__header-actions">
       <button class="ncm-btn ncm-btn--secondary ncm-btn--sm" data-action="open-contacts"
-              data-ncm-tooltip="Open contacts">
+              data-ncm-tooltip="Open contacts" data-ncm-tooltip-pos="bottom">
         <i class="fas fa-address-book"></i> <span>Contacts</span>
       </button>
       <button class="ncm-btn ncm-btn--primary ncm-btn--sm" data-action="compose-new"
               {{#if isDeadZone}}disabled{{/if}}
-              data-ncm-tooltip="Compose new message">
+              data-ncm-tooltip="Compose new message" data-ncm-tooltip-pos="bottom">
         <i class="fas fa-pen-to-square"></i> <span>Compose</span>
       </button>
       {{#if isGM}}
         <button class="ncm-btn ncm-btn--gm ncm-btn--icon-only ncm-btn--sm" data-action="open-admin"
-                data-ncm-tooltip="GM Admin Panel">
+                data-ncm-tooltip="GM Admin Panel" data-ncm-tooltip-pos="bottom">
           <i class="fas fa-shield-halved"></i>
         </button>
       {{/if}}
       <button class="ncm-btn ncm-btn--ghost ncm-btn--icon-only ncm-btn--sm" data-action="open-settings"
-              data-ncm-tooltip="Settings &amp; Theme">
+              data-ncm-tooltip="Settings &amp; Theme" data-ncm-tooltip-pos="bottom">
         <i class="fas fa-gear"></i>
       </button>
     </div>
@@ -480,6 +480,11 @@
 
       {{!-- Panel Divider --}}
       <div class="ncm-viewer__divider">
+        <button class="ncm-viewer__collapse-toggle" data-action="toggle-list-panel"
+                data-ncm-tooltip="{{#if listCollapsed}}Show message list{{else}}Hide message list{{/if}}"
+                data-ncm-tooltip-pos="bottom">
+          <i class="fas fa-chevron-left"></i>
+        </button>
         <div class="ncm-viewer__divider-grip"><span></span><span></span><span></span></div>
       </div>
 

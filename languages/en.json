@@ -12,6 +12,10 @@
       "RequireContactVerificationHint": "When enabled, players can only message contacts whose email matches the master contact directory or a registered actor. Disable for a more casual experience."
     },
 
+    "ContactManager": {
+      "Title": "Contacts"
+    },
+
     "Contacts": {
       "Verified": "VERIFIED",
       "Unverified": "UNVERIFIED",

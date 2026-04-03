@@ -477,11 +477,63 @@
   width: 4px; background: var(--ncm-bg-deep); cursor: col-resize;
   display: flex; align-items: center; justify-content: center; flex-shrink: 0;
   border-left: 1px solid var(--ncm-border); border-right: 1px solid var(--ncm-border);
-  transition: background 0.15s;
+  transition: background 0.15s; position: relative;
 }
 .ncm-app .ncm-viewer__divider:hover { background: rgba(0,212,230,0.08); }
 .ncm-app .ncm-viewer__divider-grip { display: flex; flex-direction: column; gap: 3px; }
 .ncm-app .ncm-viewer__divider-grip span { width: 2px; height: 2px; border-radius: 50%; background: var(--ncm-text-dim); }
+
+/* Collapse Toggle Button */
+.ncm-app .ncm-viewer__collapse-toggle {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ncm-bg-elevated, #252540);
+  border: 1px solid var(--ncm-border);
+  border-radius: 50%;
+  color: var(--ncm-text-muted);
+  font-size: 7px;
+  cursor: pointer;
+  z-index: 5;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  /* Foundry button overrides */
+  background-image: none;
+  appearance: none;
+  box-shadow: none;
+  min-height: 0;
+  line-height: 1;
+  padding: 0;
+  margin: 0;
+}
+
+.ncm-app .ncm-viewer__collapse-toggle:hover {
+  color: var(--ncm-secondary);
+  border-color: rgba(0, 212, 230, 0.3);
+  background: var(--ncm-bg-surface);
+}
+
+/* ── Collapsed state ── */
+.ncm-app .ncm-viewer__split--list-collapsed .ncm-viewer__list-panel {
+  width: 0 !important;
+  min-width: 0;
+  overflow: hidden;
+  border-right: none;
+  padding: 0;
+}
+
+.ncm-app .ncm-viewer__split--list-collapsed .ncm-viewer__collapse-toggle i {
+  transform: rotate(180deg);
+}
+
+.ncm-app .ncm-viewer__split--list-collapsed .ncm-viewer__divider {
+  cursor: default;
+}
 
 
 /* ═══════════════════════════════════════════════════════════
