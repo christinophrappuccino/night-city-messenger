@@ -503,6 +503,7 @@ export const DEFAULTS = Object.freeze({
   PLAYER_THEME: {
     preset: 'classic',
     colors: { primary: null, secondary: null, accent: null, bgDeep: null, bgBase: null, bgSurface: null, bgElevated: null, textPrimary: null, textSecondary: null },
+    fonts: { display: 'rajdhani', mono: 'sharetechmono', title: 'orbitron' },
     scanlines: true, glitchIntensity: 0.5, animationLevel: 'full', neonGlow: true,
     messageDensity: 'normal', sidebarWidth: 300, defaultSort: 'newest', showAvatars: true, wallpaper: null,
     soundEnabled: true, soundVolume: 0.5, ambientEnabled: false,
@@ -666,4 +667,33 @@ export const COLOR_VAR_MAP = Object.freeze({
   primary: '--ncm-primary', secondary: '--ncm-secondary', accent: '--ncm-accent',
   bgDeep: '--ncm-bg-deep', bgBase: '--ncm-bg-base', bgSurface: '--ncm-bg-surface',
   bgElevated: '--ncm-bg-elevated', textPrimary: '--ncm-text-primary', textSecondary: '--ncm-text-secondary',
+});
+
+/**
+ * Available font options for the Theme Customizer.
+ * Each entry: { key, label, family (CSS value), google (Google Fonts param) }
+ * `google: null` means font is bundled / system-available, no CDN load needed.
+ */
+export const FONT_OPTIONS = Object.freeze({
+  display: [
+    { key: 'rajdhani', label: 'Rajdhani', family: "'Rajdhani', sans-serif", google: null },
+    { key: 'exo2', label: 'Exo 2', family: "'Exo 2', sans-serif", google: 'Exo+2:wght@400;500;600;700' },
+    { key: 'play', label: 'Play', family: "'Play', sans-serif", google: 'Play:wght@400;700' },
+    { key: 'jost', label: 'Jost', family: "'Jost', sans-serif", google: 'Jost:wght@400;500;600;700' },
+    { key: 'barlow', label: 'Barlow', family: "'Barlow', sans-serif", google: 'Barlow:wght@400;500;600;700' },
+    { key: 'oxanium', label: 'Oxanium', family: "'Oxanium', sans-serif", google: 'Oxanium:wght@400;500;600;700' },
+  ],
+  mono: [
+    { key: 'sharetechmono', label: 'Share Tech Mono', family: "'Share Tech Mono', monospace", google: null },
+    { key: 'firacode', label: 'Fira Code', family: "'Fira Code', monospace", google: 'Fira+Code:wght@400;500;600;700' },
+    { key: 'jetbrains', label: 'JetBrains Mono', family: "'JetBrains Mono', monospace", google: 'JetBrains+Mono:wght@400;500;600;700' },
+    { key: 'sourcecodepro', label: 'Source Code Pro', family: "'Source Code Pro', monospace", google: 'Source+Code+Pro:wght@400;500;600;700' },
+  ],
+  title: [
+    { key: 'orbitron', label: 'Orbitron', family: "'Orbitron', sans-serif", google: null },
+    { key: 'audiowide', label: 'Audiowide', family: "'Audiowide', sans-serif", google: 'Audiowide' },
+    { key: 'electrolize', label: 'Electrolize', family: "'Electrolize', sans-serif", google: 'Electrolize' },
+    { key: 'michroma', label: 'Michroma', family: "'Michroma', sans-serif", google: 'Michroma' },
+    { key: 'quantico', label: 'Quantico', family: "'Quantico', sans-serif", google: 'Quantico:wght@400;700' },
+  ],
 });

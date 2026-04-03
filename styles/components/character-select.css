@@ -59,7 +59,7 @@
 }
 .ncm-boot-splash__icon i {
   font-size: 20px;
-  color: #19f3f7;
+  color: var(--ncm-secondary);
   opacity: 0.8;
   transition: color 0.3s, opacity 0.3s;
 }
@@ -68,30 +68,30 @@
   background: rgba(0, 255, 65, 0.02);
 }
 .ncm-boot-splash__icon.done i {
-  color: #00ff41;
+  color: var(--ncm-success);
   opacity: 1;
 }
 
 .ncm-boot-splash__title {
-  font-family: 'Orbitron', sans-serif;
+  font-family: var(--ncm-font-title);
   font-size: 16px;
   font-weight: 700;
   letter-spacing: 0.2em;
-  color: #e0e0e8;
+  color: var(--ncm-text-primary);
   text-transform: uppercase;
   margin-bottom: 4px;
 }
 .ncm-boot-splash__subtitle {
-  font-family: 'Share Tech Mono', monospace;
+  font-family: var(--ncm-font-mono);
   font-size: 9px;
-  color: #555570;
+  color: var(--ncm-text-muted);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   margin-bottom: 28px;
   transition: color 0.3s;
 }
 .ncm-boot-splash__subtitle.done {
-  color: #00ff41;
+  color: var(--ncm-success);
 }
 
 .ncm-boot-splash__bar-wrap {
@@ -103,7 +103,7 @@
 .ncm-boot-splash__bar-track {
   width: 100%;
   height: 4px;
-  background: #1a1a2e;
+  background: var(--ncm-bg-surface);
   border-radius: 2px;
   overflow: hidden;
   position: relative;
@@ -112,12 +112,12 @@
   height: 100%;
   width: 0%;
   border-radius: 2px;
-  background: linear-gradient(90deg, #19f3f7, rgba(25, 243, 247, 0.6));
+  background: linear-gradient(90deg, var(--ncm-secondary), rgba(25, 243, 247, 0.6));
   box-shadow: 0 0 10px rgba(25, 243, 247, 0.3);
   transition: width 0.15s linear;
 }
 .ncm-boot-splash__bar-fill.done {
-  background: #00ff41;
+  background: var(--ncm-success);
   box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
 }
 /* Shimmer sweep */
@@ -137,21 +137,21 @@
   align-items: center;
 }
 .ncm-boot-splash__bar-label {
-  font-family: 'Share Tech Mono', monospace;
+  font-family: var(--ncm-font-mono);
   font-size: 9px;
-  color: #555570;
+  color: var(--ncm-text-muted);
   letter-spacing: 0.04em;
   transition: color 0.2s;
 }
-.ncm-boot-splash__bar-label.done { color: #00ff41; }
+.ncm-boot-splash__bar-label.done { color: var(--ncm-success); }
 .ncm-boot-splash__bar-pct {
-  font-family: 'Share Tech Mono', monospace;
+  font-family: var(--ncm-font-mono);
   font-size: 9px;
-  color: #19f3f7;
+  color: var(--ncm-secondary);
   letter-spacing: 0.06em;
   transition: color 0.2s;
 }
-.ncm-boot-splash__bar-pct.done { color: #00ff41; }
+.ncm-boot-splash__bar-pct.done { color: var(--ncm-success); }
 
 
 /* ─── Window sizing ─────────────────────────────────────── */
@@ -207,7 +207,7 @@
   border-bottom: 1px solid var(--ncm-border);
 }
 .ncm-cs__roster-title {
-  font-family: 'Orbitron', sans-serif;
+  font-family: var(--ncm-font-title);
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.18em;
@@ -216,7 +216,7 @@
   margin-bottom: 2px;
 }
 .ncm-cs__roster-sub {
-  font-family: 'Share Tech Mono', monospace;
+  font-family: var(--ncm-font-mono);
   font-size: 9px;
   color: var(--ncm-text-muted);
   letter-spacing: 0.04em;
@@ -242,7 +242,7 @@
   border: 1px solid var(--ncm-border);
   border-radius: 2px;
   padding: 5px 26px 5px 8px;
-  font-family: 'Share Tech Mono', monospace;
+  font-family: var(--ncm-font-mono);
   font-size: 10px;
   color: var(--ncm-text-primary);
   outline: none;
@@ -273,7 +273,7 @@
 
 /* Section divider */
 .ncm-cs__divider {
-  font-family: 'Share Tech Mono', monospace;
+  font-family: var(--ncm-font-mono);
   font-size: 8px;
   color: var(--ncm-text-muted);
   text-transform: uppercase;
@@ -344,7 +344,7 @@
   display: block;
 }
 .ncm-cs__entry-portrait .initial {
-  font-family: 'Orbitron', sans-serif;
+  font-family: var(--ncm-font-title);
   font-size: 15px;
   font-weight: 700;
 }
@@ -359,7 +359,7 @@
 
 .ncm-cs__entry-info { flex: 1; min-width: 0; }
 .ncm-cs__entry-name {
-  font-family: 'Rajdhani', sans-serif;
+  font-family: var(--ncm-font-display);
   font-size: 13px;
   font-weight: 600;
   color: var(--ncm-text-primary);
@@ -369,7 +369,7 @@
   text-overflow: ellipsis;
 }
 .ncm-cs__entry-role {
-  font-family: 'Share Tech Mono', monospace;
+  font-family: var(--ncm-font-mono);
   font-size: 8px;
   color: var(--ncm-text-muted);
   text-transform: uppercase;
@@ -378,7 +378,7 @@
 }
 
 .ncm-cs__entry-unread {
-  font-family: 'Share Tech Mono', monospace;
+  font-family: var(--ncm-font-mono);
   font-size: 9px;
   color: var(--ncm-bg-deep);
   background: var(--ncm-accent);
@@ -494,7 +494,7 @@
   display: block;
 }
 .ncm-cs__portrait-initial {
-  font-family: 'Orbitron', sans-serif;
+  font-family: var(--ncm-font-title);
   font-size: 64px;
   font-weight: 800;
   color: var(--ncm-secondary);
@@ -596,7 +596,7 @@
 
 /* Character info */
 .ncm-cs__char-name {
-  font-family: 'Rajdhani', sans-serif;
+  font-family: var(--ncm-font-display);
   font-size: 28px;
   font-weight: 700;
   color: var(--ncm-text-primary);
@@ -605,7 +605,7 @@
   letter-spacing: 0.02em;
 }
 .ncm-cs__char-role {
-  font-family: 'Orbitron', sans-serif;
+  font-family: var(--ncm-font-title);
   font-size: 10px;
   font-weight: 500;
   color: var(--ncm-secondary);
@@ -632,7 +632,7 @@
   background: var(--ncm-bg-base);
 }
 .ncm-cs__stat-value {
-  font-family: 'Share Tech Mono', monospace;
+  font-family: var(--ncm-font-mono);
   font-size: 14px;
   color: var(--ncm-text-primary);
   font-weight: 600;
@@ -642,7 +642,7 @@
 .ncm-cs__stat-value--green { color: var(--ncm-success); }
 .ncm-cs__stat-value--red   { color: var(--ncm-primary); }
 .ncm-cs__stat-label {
-  font-family: 'Share Tech Mono', monospace;
+  font-family: var(--ncm-font-mono);
   font-size: 7px;
   color: var(--ncm-text-muted);
   text-transform: uppercase;
@@ -666,7 +666,7 @@
   opacity: 0.5;
 }
 .ncm-cs__email-address {
-  font-family: 'Share Tech Mono', monospace;
+  font-family: var(--ncm-font-mono);
   font-size: 11px;
   color: var(--ncm-secondary);
   letter-spacing: 0.03em;
@@ -692,7 +692,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-family: 'Share Tech Mono', monospace;
+  font-family: var(--ncm-font-mono);
   font-size: 9px;
   color: var(--ncm-text-muted);
 }
@@ -743,7 +743,7 @@
   flex-shrink: 0;
 }
 .ncm-cs__bottom-left {
-  font-family: 'Share Tech Mono', monospace;
+  font-family: var(--ncm-font-mono);
   font-size: 9px;
   color: var(--ncm-text-muted);
   display: flex;
@@ -756,7 +756,7 @@
   gap: 6px;
 }
 .ncm-cs__bottom-net-name {
-  font-family: 'Share Tech Mono', monospace;
+  font-family: var(--ncm-font-mono);
   font-size: 9px;
   color: var(--ncm-secondary);
   letter-spacing: 0.06em;
@@ -778,7 +778,7 @@
   transition: width 0.3s ease;
 }
 .ncm-cs__bottom-signal-pct {
-  font-family: 'Share Tech Mono', monospace;
+  font-family: var(--ncm-font-mono);
   font-size: 8px;
   color: var(--ncm-text-muted);
   min-width: 24px;
@@ -806,7 +806,7 @@
   align-items: center;
   gap: 8px;
   padding: 8px 22px;
-  font-family: 'Orbitron', sans-serif;
+  font-family: var(--ncm-font-title);
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
@@ -912,13 +912,13 @@
 }
 
 .ncm-cs__connecting-name {
-  font-family: 'Rajdhani', sans-serif;
+  font-family: var(--ncm-font-display);
   font-size: 16px;
   font-weight: 600;
   color: var(--ncm-text-primary);
 }
 .ncm-cs__connecting-email {
-  font-family: 'Share Tech Mono', monospace;
+  font-family: var(--ncm-font-mono);
   font-size: 10px;
   color: var(--ncm-secondary);
   opacity: 0.7;
@@ -969,7 +969,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-family: 'Share Tech Mono', monospace;
+  font-family: var(--ncm-font-mono);
   font-size: 10px;
   color: var(--ncm-text-muted);
   opacity: 0.3;
@@ -1037,20 +1037,20 @@
   100% { opacity: 0; transform: scale(1.4); }
 }
 .ncm-cs__success-name {
-  font-family: 'Rajdhani', sans-serif;
+  font-family: var(--ncm-font-display);
   font-size: 22px;
   font-weight: 600;
   color: var(--ncm-text-primary);
 }
 .ncm-cs__success-label {
-  font-family: 'Share Tech Mono', monospace;
+  font-family: var(--ncm-font-mono);
   font-size: 9px;
   color: var(--ncm-success);
   text-transform: uppercase;
   letter-spacing: 0.2em;
 }
 .ncm-cs__success-hint {
-  font-family: 'Share Tech Mono', monospace;
+  font-family: var(--ncm-font-mono);
   font-size: 9px;
   color: var(--ncm-text-muted);
   margin-top: 12px;

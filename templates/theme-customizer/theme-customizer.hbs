@@ -104,6 +104,22 @@
     </div>
   </section>
 
+  {{!-- Fonts --}}
+  <section class="ncm-theme-section">
+    <h3 class="ncm-theme-section-title">Fonts</h3>
+    {{#each fontSelectors}}
+    <div class="ncm-font-row">
+      <label class="ncm-font-row__label">{{this.label}}</label>
+      <select class="ncm-font-row__select" data-font-slot="{{this.slot}}">
+        {{#each this.options}}
+        <option value="{{this.key}}" {{#if this.selected}}selected{{/if}}
+                style="font-family: {{this.family}};">{{this.label}}</option>
+        {{/each}}
+      </select>
+    </div>
+    {{/each}}
+  </section>
+
   {{!-- Sound --}}
   <section class="ncm-theme-section">
     <h3 class="ncm-theme-section-title">Sound</h3>

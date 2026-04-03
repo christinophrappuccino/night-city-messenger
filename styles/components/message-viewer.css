@@ -551,7 +551,7 @@
 .ncm-app .ncm-viewer__msg-burned-tag {
   display: inline-flex; align-items: center; gap: 3px;
   padding: 1px 5px; border-radius: 1px; flex-shrink: 0;
-  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-family: var(--ncm-font-mono);
   font-size: 7px; font-weight: 700; text-transform: uppercase;
   background: rgba(255,0,51,0.1); color: var(--ncm-danger, #ff0033);
   border: 1px solid rgba(255,0,51,0.15);

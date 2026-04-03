@@ -6,7 +6,7 @@
  *              Loaded during ready phase, applies stored preferences immediately.
  */
 
-import { MODULE_ID, THEME_PRESETS, COLOR_VAR_MAP, DEFAULTS } from '../utils/constants.js';
+import { MODULE_ID, THEME_PRESETS, COLOR_VAR_MAP, FONT_OPTIONS, DEFAULTS } from '../utils/constants.js';
 import { log } from '../utils/helpers.js';
 
 export class ThemeService {
@@ -17,6 +17,8 @@ export class ThemeService {
   constructor(settingsManager, eventBus) {
     this._settings = settingsManager;
     this._eventBus = eventBus;
+    /** @type {Set<string>} Tracks which Google Font families have been injected */
+    this._loadedFonts = new Set();
   }
 
   /**
@@ -57,6 +59,9 @@ export class ThemeService {
     root.style.setProperty('--ncm-glow-secondary', `0 0 10px ${secondary}66`);
     root.style.setProperty('--ncm-glow-accent', `0 0 10px ${accent}4d`);
 
+    // Apply fonts
+    this._applyFonts(prefs.fonts || DEFAULTS.PLAYER_THEME.fonts, root);
+
     // Effect classes on body
     document.body.classList.toggle('ncm-scanlines', prefs.scanlines !== false);
     document.body.classList.toggle('ncm-neon-glow', prefs.neonGlow !== false);
@@ -75,6 +80,53 @@ export class ThemeService {
     }
 
     log.debug(`Theme applied: ${prefs.preset || 'custom'}`);
+  }
+
+  /**
+   * Apply font selections to CSS variables and load Google Fonts if needed.
+   * @param {object} fonts - { display, mono, title } keys from FONT_OPTIONS
+   * @param {HTMLElement} root - document.documentElement
+   * @private
+   */
+  _applyFonts(fonts, root) {
+    const slots = [
+      { key: 'display', cssVar: '--ncm-font-display', alsoSet: ['--ncm-font-body'] },
+      { key: 'mono', cssVar: '--ncm-font-mono', alsoSet: [] },
+      { key: 'title', cssVar: '--ncm-font-title', alsoSet: ['--ncm-font-ui'] },
+    ];
+
+    for (const slot of slots) {
+      const selectedKey = fonts[slot.key];
+      const options = FONT_OPTIONS[slot.key] || [];
+      const entry = options.find(o => o.key === selectedKey) || options[0];
+      if (!entry) continue;
+
+      // Load from Google Fonts if needed
+      if (entry.google) this._loadGoogleFont(entry.google, entry.label);
+
+      // Set CSS variable
+      root.style.setProperty(slot.cssVar, entry.family);
+      for (const alias of slot.alsoSet) {
+        root.style.setProperty(alias, entry.family);
+      }
+    }
+  }
+
+  /**
+   * Inject a Google Fonts stylesheet link if not already loaded.
+   * @param {string} googleParam - Google Fonts URL parameter (e.g. 'Exo+2:wght@400;600')
+   * @param {string} label - Human label for logging
+   * @private
+   */
+  _loadGoogleFont(googleParam, label) {
+    if (this._loadedFonts.has(googleParam)) return;
+    this._loadedFonts.add(googleParam);
+
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = `https://fonts.googleapis.com/css2?family=${googleParam}&display=swap`;
+    document.head.appendChild(link);
+    log.debug(`Loaded Google Font: ${label}`);
   }
 
   /**

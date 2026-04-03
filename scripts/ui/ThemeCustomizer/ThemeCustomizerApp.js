@@ -9,7 +9,7 @@
  *              Extends BaseApplication (ApplicationV2 + HandlebarsApplicationMixin).
  */
 
-import { MODULE_ID, TEMPLATES, THEME_PRESETS, COLOR_VAR_MAP, DEFAULTS } from '../../utils/constants.js';
+import { MODULE_ID, TEMPLATES, THEME_PRESETS, COLOR_VAR_MAP, FONT_OPTIONS, DEFAULTS } from '../../utils/constants.js';
 import { log } from '../../utils/helpers.js';
 import { BaseApplication } from '../BaseApplication.js';
 
@@ -49,6 +49,7 @@ export class ThemeCustomizerApp extends BaseApplication {
       toggleNeonGlow: ThemeCustomizerApp._onToggleNeonGlow,
       setGlitchIntensity: ThemeCustomizerApp._onSetGlitchIntensity,
       setDensity: ThemeCustomizerApp._onSetDensity,
+      setFont: ThemeCustomizerApp._onSetFont,
       resetDefaults: ThemeCustomizerApp._onResetDefaults,
       save: ThemeCustomizerApp._onSave,
       cancel: ThemeCustomizerApp._onCancel,
@@ -68,6 +69,10 @@ export class ThemeCustomizerApp extends BaseApplication {
     // Initialize working copy from current settings
     const current = this.settingsManager?.getTheme() ?? foundry.utils.deepClone(DEFAULTS.PLAYER_THEME);
     this._workingPrefs = foundry.utils.deepClone(current);
+    // Ensure fonts object exists
+    if (!this._workingPrefs.fonts) {
+      this._workingPrefs.fonts = foundry.utils.deepClone(DEFAULTS.PLAYER_THEME.fonts);
+    }
   }
 
   // ─── Data Preparation ───
@@ -110,6 +115,14 @@ export class ThemeCustomizerApp extends BaseApplication {
       { id: 'comfortable', label: 'Comfortable', active: prefs.messageDensity === 'comfortable' },
     ];
 
+    // Font selectors
+    const fonts = prefs.fonts || DEFAULTS.PLAYER_THEME.fonts;
+    const fontSelectors = [
+      { slot: 'display', label: 'Body / Display', options: FONT_OPTIONS.display.map(f => ({ ...f, selected: f.key === fonts.display })) },
+      { slot: 'mono', label: 'Monospace / Data', options: FONT_OPTIONS.mono.map(f => ({ ...f, selected: f.key === fonts.mono })) },
+      { slot: 'title', label: 'Titles / Chrome', options: FONT_OPTIONS.title.map(f => ({ ...f, selected: f.key === fonts.title })) },
+    ];
+
     return {
       presets,
       colorEntries,
@@ -122,6 +135,7 @@ export class ThemeCustomizerApp extends BaseApplication {
       soundVolume: Math.round((prefs.soundVolume ?? 0.5) * 100),
       isDirty: this._isDirty,
       currentPresetLabel: currentPreset.label || prefs.preset,
+      fontSelectors,
       MODULE_ID,
     };
   }
@@ -199,6 +213,12 @@ export class ThemeCustomizerApp extends BaseApplication {
     this._workingPrefs.messageDensity = density;
     this._isDirty = true;
     this.render(true);
+  }
+
+  static _onSetFont(event, target) {
+    // Font selects are wired via addEventListener in _onRender,
+    // but this handler exists for any button-based font selection.
+    // See _onRender for the actual wiring.
   }
 
   static async _onResetDefaults(event, target) {
@@ -280,6 +300,19 @@ export class ThemeCustomizerApp extends BaseApplication {
         this._isDirty = true;
       });
     }
+
+    // Wire font selects
+    this.element.querySelectorAll('[data-font-slot]').forEach(select => {
+      select.addEventListener('change', (e) => {
+        const slot = e.target.dataset.fontSlot;
+        const key = e.target.value;
+        if (!slot || !key) return;
+        if (!this._workingPrefs.fonts) this._workingPrefs.fonts = {};
+        this._workingPrefs.fonts[slot] = key;
+        this._isDirty = true;
+        this.themeService?.applyTheme(this._workingPrefs);
+      });
+    });
   }
 
   // ─── Helpers ───
