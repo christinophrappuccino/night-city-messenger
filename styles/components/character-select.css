@@ -167,18 +167,8 @@
 }
 
 /* ─── App transition animations ─────────────────────────── */
-/* Subtle fade-in for NCM windows — opacity only, no scale to avoid "frantic" feel */
-@keyframes ncm-windowFadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-.ncm-character-select-window,
-.ncm-message-viewer-window,
-.ncm-admin-panel {
-  animation: ncm-windowFadeIn 0.25s ease-out both;
-}
-
-/* Fade-out class applied before closing to transition away */
+/* No entrance animation — clean instant open.
+   Fade-out on close gives a smooth exit without jarring pop. */
 .ncm-app.ncm-fade-out {
   opacity: 0 !important;
   transition: opacity 0.2s ease-in !important;
