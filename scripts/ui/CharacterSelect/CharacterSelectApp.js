@@ -292,6 +292,23 @@ export class CharacterSelectApp extends BaseApplication {
     // Smooth transition: fade out, capture position, close, open next at same spot
     const pos = this._capturePosition();
     await this._fadeOutAndClose();
+
+    // ── Email setup intercept ──
+    // If this character has no email, trigger the setup flow first
+    const emailService = game.nightcity?.emailService;
+    if (actor && emailService && !emailService.hasEmail(actor)) {
+      try {
+        const email = await game.nightcity.openEmailSetup?.(actor);
+        if (!email) {
+          // User cancelled email setup — go back to character select
+          game.nightcity?.showCharacterSelect?.();
+          return;
+        }
+      } catch (err) {
+        log.debug('CharacterSelect: Email setup error', err);
+      }
+    }
+
     game.nightcity?.openInbox?.(actorId);
   }
 
