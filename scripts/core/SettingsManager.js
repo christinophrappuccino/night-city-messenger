@@ -279,6 +279,15 @@ export class SettingsManager {
       default: foundry.utils.deepClone(DEFAULTS.PLAYER_THEME),
     });
 
+    game.settings.register(MODULE_ID, 'customPresets', {
+      name: 'NCM.Settings.CustomPresets.Name',
+      hint: 'User-saved custom theme presets.',
+      scope: 'client',
+      config: false,
+      type: Array,
+      default: [],
+    });
+
     this._registered = true;
     log.info('Settings registered');
   }

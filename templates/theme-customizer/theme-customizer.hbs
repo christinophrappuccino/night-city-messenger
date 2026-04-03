@@ -1,153 +1,198 @@
-{{!-- Theme Customizer — Live Preview Color Picker --}}
+{{!-- Theme Customizer v2 — Tabbed Layout with Mini Preview --}}
 {{!-- @file templates/theme-customizer/theme-customizer.hbs --}}
-{{!-- @module cyberpunkred-messenger --}}
 
-<div class="ncm-theme-customizer">
+<div class="ncm-tc">
 
-  {{!-- Header --}}
-  <div class="ncm-theme-header">
-    <h2 class="ncm-theme-title">
-      <i class="fas fa-palette"></i> TERMINAL THEME
-    </h2>
-    <span class="ncm-theme-current">{{currentPresetLabel}}</span>
+  {{!-- ═══ MINI PREVIEW ═══ --}}
+  <div class="ncm-tc__preview">
+    <div class="ncm-tc__preview-label"><i class="fas fa-eye"></i> Live Preview — {{currentPresetLabel}}</div>
+    <div class="ncm-tc__preview-inbox">
+      <div class="ncm-tc__preview-hdr">
+        <div class="ncm-tc__preview-av">V</div>
+        <div class="ncm-tc__preview-nm">V</div>
+        <div class="ncm-tc__preview-nt">CITINET</div>
+      </div>
+      <div class="ncm-tc__preview-row">
+        <div class="ncm-tc__preview-dot"></div>
+        <div class="ncm-tc__preview-from">Jackie</div>
+        <div class="ncm-tc__preview-subj">Meet at El Coyote — got a gig</div>
+        <div class="ncm-tc__preview-time">14:32</div>
+      </div>
+      <div class="ncm-tc__preview-row">
+        <div class="ncm-tc__preview-dot ncm-tc__preview-dot--read"></div>
+        <div class="ncm-tc__preview-from">Wakako</div>
+        <div class="ncm-tc__preview-subj">New opportunity. Discrete.</div>
+        <div class="ncm-tc__preview-badge">PRIORITY</div>
+        <div class="ncm-tc__preview-time">12:10</div>
+      </div>
+      <div class="ncm-tc__preview-row">
+        <div class="ncm-tc__preview-dot ncm-tc__preview-dot--read"></div>
+        <div class="ncm-tc__preview-from">T-Bug</div>
+        <div class="ncm-tc__preview-subj">Backdoor ready. Ping when close.</div>
+        <div class="ncm-tc__preview-time">09:44</div>
+      </div>
+    </div>
   </div>
 
-  {{!-- Preset Selector --}}
-  <section class="ncm-theme-section">
-    <h3 class="ncm-theme-section-title">Presets</h3>
-    <div class="ncm-preset-grid">
-      {{#each presets}}
-      <button class="ncm-preset-btn {{#if isActive}}ncm-preset-btn--active{{/if}}"
-              data-action="selectPreset" data-preset="{{key}}"
-              title="{{label}}">
-        <div class="ncm-preset-swatch">
-          <span class="ncm-swatch-stripe" style="background: {{primary}};"></span>
-          <span class="ncm-swatch-stripe" style="background: {{secondary}};"></span>
-          <span class="ncm-swatch-bg" style="background: {{bgBase}};"></span>
-        </div>
-        <span class="ncm-preset-label">{{label}}</span>
-      </button>
-      {{/each}}
-    </div>
-  </section>
+  {{!-- ═══ TAB BAR ═══ --}}
+  <div class="ncm-tc__tabs">
+    <button class="ncm-tc__tab ncm-tc__tab--active" data-tc-tab="presets"><i class="fas fa-swatchbook"></i> Presets</button>
+    <button class="ncm-tc__tab" data-tc-tab="colors"><i class="fas fa-droplet"></i> Colors</button>
+    <button class="ncm-tc__tab" data-tc-tab="fonts"><i class="fas fa-font"></i> Fonts</button>
+    <button class="ncm-tc__tab" data-tc-tab="effects"><i class="fas fa-wand-magic-sparkles"></i> Effects</button>
+  </div>
 
-  {{!-- Color Overrides --}}
-  <section class="ncm-theme-section">
-    <h3 class="ncm-theme-section-title">Colors</h3>
-    <div class="ncm-color-grid">
-      {{#each colorEntries}}
-      <div class="ncm-color-entry" data-color-key="{{key}}">
-        <label class="ncm-color-label">{{label}}</label>
-        <div class="ncm-color-input-group">
-          <input type="color" value="{{value}}" class="ncm-color-picker" />
-          <span class="ncm-color-hex">{{value}}</span>
-          {{#if hasOverride}}
-          <span class="ncm-color-override-badge" title="Custom override">*</span>
-          {{/if}}
+  {{!-- ═══ SCROLLABLE BODY ═══ --}}
+  <div class="ncm-tc__body">
+
+    {{!-- ── PRESETS ── --}}
+    <div class="ncm-tc__panel ncm-tc__panel--active" data-tc-panel="presets">
+      <div class="ncm-tc__slabel">Built-in Presets</div>
+      <div class="ncm-tc__preset-grid">
+        {{#each presets}}
+        <div class="ncm-tc__pcard {{#if isActive}}ncm-tc__pcard--active{{/if}}"
+             data-action="selectPreset" data-preset="{{key}}">
+          <div class="ncm-tc__pcard-swatch">
+            <span style="background:{{primary}};"></span>
+            <span style="background:{{secondary}};"></span>
+            <span style="background:{{bgBase}};"></span>
+          </div>
+          <div class="ncm-tc__pcard-name">{{label}}</div>
+        </div>
+        {{/each}}
+      </div>
+
+      <div class="ncm-tc__divider"></div>
+      <div class="ncm-tc__slabel">Custom Presets</div>
+      <div class="ncm-tc__clist">
+        {{#each customPresets}}
+        <div class="ncm-tc__citem" data-custom-index="{{@index}}">
+          <div class="ncm-tc__citem-swatch">
+            <span style="background:{{primary}};"></span>
+            <span style="background:{{secondary}};"></span>
+            <span style="background:{{bgBase}};"></span>
+          </div>
+          <span class="ncm-tc__citem-name">{{name}}</span>
+          <div class="ncm-tc__citem-actions">
+            <button data-action="applyCustomPreset" data-custom-index="{{@index}}" title="Apply"><i class="fas fa-check"></i></button>
+            <button data-action="overwriteCustomPreset" data-custom-index="{{@index}}" title="Overwrite"><i class="fas fa-save"></i></button>
+            <button class="ncm-tc__citem-del" data-action="deleteCustomPreset" data-custom-index="{{@index}}" title="Delete"><i class="fas fa-trash"></i></button>
+          </div>
+        </div>
+        {{/each}}
+        {{#unless customPresets.length}}
+        <div class="ncm-tc__cempty">No custom presets saved yet.</div>
+        {{/unless}}
+      </div>
+      <div class="ncm-tc__pactions">
+        <button class="ncm-tc__paction" data-action="saveAsCustomPreset"><i class="fas fa-plus"></i> Save Current</button>
+        <button class="ncm-tc__paction" data-action="importTheme"><i class="fas fa-file-import"></i> Import</button>
+        <button class="ncm-tc__paction" data-action="exportTheme"><i class="fas fa-file-export"></i> Export</button>
+      </div>
+    </div>
+
+    {{!-- ── COLORS ── --}}
+    <div class="ncm-tc__panel" data-tc-panel="colors">
+      <div class="ncm-tc__slabel">Color Overrides</div>
+      <div class="ncm-tc__color-grid">
+        {{#each colorEntries}}
+        <div class="ncm-tc__color-entry" data-color-key="{{key}}">
+          <div class="ncm-tc__color-swatch"><input type="color" value="{{value}}" /></div>
+          <span class="ncm-tc__color-label">{{label}}</span>
+          <span class="ncm-tc__color-hex">{{value}}</span>
+          {{#if hasOverride}}<div class="ncm-tc__color-dot"></div>{{/if}}
+        </div>
+        {{/each}}
+      </div>
+      <button class="ncm-tc__color-reset" data-action="resetColors"><i class="fas fa-undo"></i> Reset colors to preset defaults</button>
+    </div>
+
+    {{!-- ── FONTS ── --}}
+    <div class="ncm-tc__panel" data-tc-panel="fonts">
+      <div class="ncm-tc__slabel">Font Selection</div>
+      <div class="ncm-tc__font-section">
+        {{#each fontSelectors}}
+        <div class="ncm-tc__font-row">
+          <span class="ncm-tc__font-label">{{this.label}}</span>
+          <select class="ncm-tc__font-select" data-font-slot="{{this.slot}}">
+            {{#each this.options}}
+            <option value="{{this.key}}" {{#if this.selected}}selected{{/if}}>{{this.label}}</option>
+            {{/each}}
+          </select>
+        </div>
+        {{/each}}
+        <div class="ncm-tc__font-preview">
+          <div class="ncm-tc__fprev-title">NIGHT CITY MESSENGER</div>
+          <div class="ncm-tc__fprev-body">Jackie sent you a message about the gig at El Coyote Cojo.</div>
+          <div class="ncm-tc__fprev-mono">14:32 // CITINET // 98% signal</div>
+        </div>
+        <div class="ncm-tc__srow">
+          <span class="ncm-tc__srow-label">Text Size</span>
+          <input type="range" name="textScale" min="80" max="120" step="5" value="{{textScale}}" class="ncm-tc__slider" />
+          <span class="ncm-tc__srow-val ncm-tc__scale-val">{{textScale}}%</span>
         </div>
       </div>
-      {{/each}}
-    </div>
-  </section>
-
-  {{!-- Effects --}}
-  <section class="ncm-theme-section">
-    <h3 class="ncm-theme-section-title">Effects</h3>
-
-    <div class="ncm-toggle-row">
-      <label>CRT Scanlines</label>
-      <button class="ncm-toggle {{#if scanlines}}ncm-toggle--on{{/if}}"
-              data-action="toggleScanlines">
-        {{#if scanlines}}ON{{else}}OFF{{/if}}
-      </button>
     </div>
 
-    <div class="ncm-toggle-row">
-      <label>Neon Glow</label>
-      <button class="ncm-toggle {{#if neonGlow}}ncm-toggle--on{{/if}}"
-              data-action="toggleNeonGlow">
-        {{#if neonGlow}}ON{{else}}OFF{{/if}}
-      </button>
+    {{!-- ── EFFECTS ── --}}
+    <div class="ncm-tc__panel" data-tc-panel="effects">
+      <div class="ncm-tc__slabel">Visual Effects</div>
+      <div class="ncm-tc__fx">
+        <div class="ncm-tc__trow">
+          <div><div class="ncm-tc__trow-label">CRT Scanlines</div><div class="ncm-tc__trow-desc">Horizontal scan lines over NCM windows</div></div>
+          <div class="ncm-tc__switch {{#if scanlines}}ncm-tc__switch--on{{/if}}" data-action="toggleScanlines"></div>
+        </div>
+        <div class="ncm-tc__trow">
+          <div><div class="ncm-tc__trow-label">Neon Glow</div><div class="ncm-tc__trow-desc">Glow effects on primary/secondary elements</div></div>
+          <div class="ncm-tc__switch {{#if neonGlow}}ncm-tc__switch--on{{/if}}" data-action="toggleNeonGlow"></div>
+        </div>
+        <div class="ncm-tc__srow">
+          <div><div class="ncm-tc__trow-label">Glitch Intensity</div><div class="ncm-tc__trow-desc">Random glitch animations</div></div>
+          <input type="range" name="glitchIntensity" min="0" max="100" value="{{glitchIntensity}}" class="ncm-tc__slider" style="flex:1;" />
+          <span class="ncm-tc__srow-val">{{glitchIntensity}}%</span>
+        </div>
+      </div>
+
+      <div class="ncm-tc__slabel">Animation & Density</div>
+      <div class="ncm-tc__fx">
+        <div class="ncm-tc__trow">
+          <div class="ncm-tc__trow-label">Animation Level</div>
+          <div class="ncm-tc__bgroup">
+            {{#each animationLevels}}
+            <button class="ncm-tc__bopt {{#if active}}ncm-tc__bopt--active{{/if}}" data-action="setAnimationLevel" data-level="{{id}}">{{label}}</button>
+            {{/each}}
+          </div>
+        </div>
+        <div class="ncm-tc__trow">
+          <div class="ncm-tc__trow-label">Message Density</div>
+          <div class="ncm-tc__bgroup">
+            {{#each densityOptions}}
+            <button class="ncm-tc__bopt {{#if active}}ncm-tc__bopt--active{{/if}}" data-action="setDensity" data-density="{{id}}">{{label}}</button>
+            {{/each}}
+          </div>
+        </div>
+      </div>
+
+      <div class="ncm-tc__slabel">Sound</div>
+      <div class="ncm-tc__fx">
+        <div class="ncm-tc__srow">
+          <div class="ncm-tc__trow-label">Volume</div>
+          <input type="range" name="soundVolume" min="0" max="100" value="{{soundVolume}}" class="ncm-tc__slider" style="flex:1;" />
+          <span class="ncm-tc__srow-val">{{soundVolume}}%</span>
+        </div>
+      </div>
     </div>
 
-    <div class="ncm-slider-row">
-      <label>Glitch Intensity</label>
-      <input type="range" name="glitchIntensity" min="0" max="100" value="{{glitchIntensity}}"
-             class="ncm-slider" />
-      <span class="ncm-slider-value">{{glitchIntensity}}%</span>
-    </div>
-  </section>
-
-  {{!-- Animation Level --}}
-  <section class="ncm-theme-section">
-    <h3 class="ncm-theme-section-title">Animation Level</h3>
-    <div class="ncm-btn-group">
-      {{#each animationLevels}}
-      <button class="ncm-btn ncm-btn--small {{#if active}}ncm-btn--primary{{else}}ncm-btn--ghost{{/if}}"
-              data-action="setAnimationLevel" data-level="{{id}}">
-        {{label}}
-      </button>
-      {{/each}}
-    </div>
-  </section>
-
-  {{!-- Density --}}
-  <section class="ncm-theme-section">
-    <h3 class="ncm-theme-section-title">Message Density</h3>
-    <div class="ncm-btn-group">
-      {{#each densityOptions}}
-      <button class="ncm-btn ncm-btn--small {{#if active}}ncm-btn--primary{{else}}ncm-btn--ghost{{/if}}"
-              data-action="setDensity" data-density="{{id}}">
-        {{label}}
-      </button>
-      {{/each}}
-    </div>
-  </section>
-
-  {{!-- Fonts --}}
-  <section class="ncm-theme-section">
-    <h3 class="ncm-theme-section-title">Fonts</h3>
-    {{#each fontSelectors}}
-    <div class="ncm-font-row">
-      <label class="ncm-font-row__label">{{this.label}}</label>
-      <select class="ncm-font-row__select" data-font-slot="{{this.slot}}">
-        {{#each this.options}}
-        <option value="{{this.key}}" {{#if this.selected}}selected{{/if}}
-                style="font-family: {{this.family}};">{{this.label}}</option>
-        {{/each}}
-      </select>
-    </div>
-    {{/each}}
-    <div class="ncm-slider-row" style="margin-top: 8px;">
-      <label>Text Size</label>
-      <input type="range" name="textScale" min="80" max="120" step="5" value="{{textScale}}"
-             class="ncm-slider" />
-      <span class="ncm-slider-value ncm-scale-value">{{textScale}}%</span>
-    </div>
-  </section>
-
-  {{!-- Sound --}}
-  <section class="ncm-theme-section">
-    <h3 class="ncm-theme-section-title">Sound</h3>
-    <div class="ncm-slider-row">
-      <label>Volume</label>
-      <input type="range" name="soundVolume" min="0" max="100" value="{{soundVolume}}"
-             class="ncm-slider" />
-      <span class="ncm-slider-value">{{soundVolume}}%</span>
-    </div>
-  </section>
-
-  {{!-- Footer Actions --}}
-  <div class="ncm-theme-footer">
-    <button class="ncm-btn ncm-btn--ghost ncm-btn--small" data-action="resetDefaults">
-      <i class="fas fa-undo"></i> Reset
-    </button>
-    <div class="ncm-theme-footer-right">
-      <button class="ncm-btn ncm-btn--ghost" data-action="cancel">Cancel</button>
-      <button class="ncm-btn ncm-btn--primary {{#unless isDirty}}ncm-btn--disabled{{/unless}}"
-              data-action="save" {{#unless isDirty}}disabled{{/unless}}>
-        <i class="fas fa-save"></i> Save
-      </button>
-    </div>
   </div>
+
+  {{!-- ═══ FOOTER ═══ --}}
+  <div class="ncm-tc__footer">
+    <button class="ncm-tc__fbtn ncm-tc__fbtn--ghost" data-action="resetDefaults"><i class="fas fa-undo"></i> Reset</button>
+    <div class="ncm-tc__fspace"></div>
+    <button class="ncm-tc__fbtn ncm-tc__fbtn--ghost" data-action="cancel">Cancel</button>
+    <button class="ncm-tc__fbtn ncm-tc__fbtn--primary {{#unless isDirty}}ncm-tc__fbtn--disabled{{/unless}}" data-action="save" {{#unless isDirty}}disabled{{/unless}}>
+      <i class="fas fa-save"></i> Save
+    </button>
+  </div>
+
 </div>

@@ -21,6 +21,9 @@ export class ThemeCustomizerApp extends BaseApplication {
   /** @type {boolean} Whether unsaved changes exist */
   _isDirty = false;
 
+  /** @type {string} Currently active tab */
+  _activeTab = 'presets';
+
   // ─── Service Accessors ───
 
   get themeService() { return game.nightcity?.themeService; }
@@ -51,6 +54,13 @@ export class ThemeCustomizerApp extends BaseApplication {
       setDensity: ThemeCustomizerApp._onSetDensity,
       setFont: ThemeCustomizerApp._onSetFont,
       resetDefaults: ThemeCustomizerApp._onResetDefaults,
+      resetColors: ThemeCustomizerApp._onResetColors,
+      saveAsCustomPreset: ThemeCustomizerApp._onSaveAsCustomPreset,
+      applyCustomPreset: ThemeCustomizerApp._onApplyCustomPreset,
+      overwriteCustomPreset: ThemeCustomizerApp._onOverwriteCustomPreset,
+      deleteCustomPreset: ThemeCustomizerApp._onDeleteCustomPreset,
+      importTheme: ThemeCustomizerApp._onImportTheme,
+      exportTheme: ThemeCustomizerApp._onExportTheme,
       save: ThemeCustomizerApp._onSave,
       cancel: ThemeCustomizerApp._onCancel,
     },
@@ -138,6 +148,13 @@ export class ThemeCustomizerApp extends BaseApplication {
       currentPresetLabel: currentPreset.label || prefs.preset,
       fontSelectors,
       MODULE_ID,
+      activeTab: this._activeTab || 'presets',
+      customPresets: this._getCustomPresets().map((cp, i) => ({
+        ...cp,
+        primary: cp.colors?.primary || THEME_PRESETS[cp.preset]?.primary || '#F65261',
+        secondary: cp.colors?.secondary || THEME_PRESETS[cp.preset]?.secondary || '#19f3f7',
+        bgBase: cp.colors?.bgBase || THEME_PRESETS[cp.preset]?.bgBase || '#12121a',
+      })),
     };
   }
 
@@ -164,7 +181,7 @@ export class ThemeCustomizerApp extends BaseApplication {
     this._isDirty = true;
 
     // Live preview
-    this.themeService?.applyTheme(this._workingPrefs);
+    this._applyLive();
     this.render(true);
     this.playSound('click');
   }
@@ -180,7 +197,7 @@ export class ThemeCustomizerApp extends BaseApplication {
     this._isDirty = true;
 
     // Live preview
-    this.themeService?.applyTheme(this._workingPrefs);
+    this._applyLive();
     this.render(true);
   }
 
@@ -189,21 +206,21 @@ export class ThemeCustomizerApp extends BaseApplication {
     if (!level) return;
     this._workingPrefs.animationLevel = level;
     this._isDirty = true;
-    this.themeService?.applyTheme(this._workingPrefs);
+    this._applyLive();
     this.render(true);
   }
 
   static _onToggleScanlines(event, target) {
     this._workingPrefs.scanlines = !this._workingPrefs.scanlines;
     this._isDirty = true;
-    this.themeService?.applyTheme(this._workingPrefs);
+    this._applyLive();
     this.render(true);
   }
 
   static _onToggleNeonGlow(event, target) {
     this._workingPrefs.neonGlow = !this._workingPrefs.neonGlow;
     this._isDirty = true;
-    this.themeService?.applyTheme(this._workingPrefs);
+    this._applyLive();
     this.render(true);
   }
 
@@ -212,7 +229,7 @@ export class ThemeCustomizerApp extends BaseApplication {
     if (!slider) return;
     this._workingPrefs.glitchIntensity = parseInt(slider.value) / 100;
     this._isDirty = true;
-    this.themeService?.applyTheme(this._workingPrefs);
+    this._applyLive();
   }
 
   static _onSetDensity(event, target) {
@@ -238,7 +255,7 @@ export class ThemeCustomizerApp extends BaseApplication {
 
     this._workingPrefs = foundry.utils.deepClone(DEFAULTS.PLAYER_THEME);
     this._isDirty = true;
-    this.themeService?.applyTheme(this._workingPrefs);
+    this._applyLive();
     this.render(true);
     ui.notifications.info('Theme reset to defaults.');
   }
@@ -278,7 +295,20 @@ export class ThemeCustomizerApp extends BaseApplication {
   _onRender(context, options) {
     super._onRender(context, options);
 
-    // Wire color inputs for live preview
+    // ── Tab switching (DOM-based, not data-action) ──
+    this.element.querySelectorAll('[data-tc-tab]').forEach(tab => {
+      tab.addEventListener('click', (e) => {
+        const tabId = e.currentTarget.dataset.tcTab;
+        if (!tabId) return;
+        this._activeTab = tabId;
+        // Toggle active tab
+        this.element.querySelectorAll('[data-tc-tab]').forEach(t => t.classList.toggle('ncm-tc__tab--active', t.dataset.tcTab === tabId));
+        // Toggle active panel
+        this.element.querySelectorAll('[data-tc-panel]').forEach(p => p.classList.toggle('ncm-tc__panel--active', p.dataset.tcPanel === tabId));
+      });
+    });
+
+    // ── Color inputs (live preview) ──
     this.element.querySelectorAll('input[type="color"]').forEach(input => {
       input.addEventListener('input', (e) => {
         const colorKey = e.target.closest('[data-color-key]')?.dataset.colorKey;
@@ -286,34 +316,36 @@ export class ThemeCustomizerApp extends BaseApplication {
         if (!this._workingPrefs.colors) this._workingPrefs.colors = {};
         this._workingPrefs.colors[colorKey] = e.target.value;
         this._isDirty = true;
-        this.themeService?.applyTheme(this._workingPrefs);
+        this._applyLive();
+        // Update hex display
+        const hex = e.target.closest('.ncm-tc__color-entry')?.querySelector('.ncm-tc__color-hex');
+        if (hex) hex.textContent = e.target.value;
       });
     });
 
-    // Wire glitch slider
+    // ── Glitch slider ──
     const glitchSlider = this.element.querySelector('[name="glitchIntensity"]');
     if (glitchSlider) {
       glitchSlider.addEventListener('input', (e) => {
         this._workingPrefs.glitchIntensity = parseInt(e.target.value) / 100;
         this._isDirty = true;
-        this.themeService?.applyTheme(this._workingPrefs);
+        this._applyLive();
       });
     }
 
-    // Wire text scale slider
+    // ── Text scale slider ──
     const scaleSlider = this.element.querySelector('[name="textScale"]');
     if (scaleSlider) {
       scaleSlider.addEventListener('input', (e) => {
         this._workingPrefs.textScale = parseInt(e.target.value);
         this._isDirty = true;
-        this.themeService?.applyTheme(this._workingPrefs);
-        // Update the displayed value
-        const label = this.element.querySelector('.ncm-scale-value');
+        this._applyLive();
+        const label = this.element.querySelector('.ncm-tc__scale-val');
         if (label) label.textContent = `${e.target.value}%`;
       });
     }
 
-    // Wire volume slider
+    // ── Volume slider ──
     const volumeSlider = this.element.querySelector('[name="soundVolume"]');
     if (volumeSlider) {
       volumeSlider.addEventListener('input', (e) => {
@@ -322,7 +354,7 @@ export class ThemeCustomizerApp extends BaseApplication {
       });
     }
 
-    // Wire font selects
+    // ── Font selects ──
     this.element.querySelectorAll('[data-font-slot]').forEach(select => {
       select.addEventListener('change', (e) => {
         const slot = e.target.dataset.fontSlot;
@@ -331,12 +363,162 @@ export class ThemeCustomizerApp extends BaseApplication {
         if (!this._workingPrefs.fonts) this._workingPrefs.fonts = {};
         this._workingPrefs.fonts[slot] = key;
         this._isDirty = true;
-        this.themeService?.applyTheme(this._workingPrefs);
+        this._applyLive();
       });
     });
   }
 
+  /**
+   * Apply theme live and refresh atmosphere on all NCM windows.
+   * @private
+   */
+  _applyLive() {
+    this.themeService?.applyTheme(this._workingPrefs);
+    // Refresh data attributes on all open NCM windows
+    document.querySelectorAll('.ncm-app').forEach(el => {
+      el.dataset.ncmScanlines = String(this._workingPrefs.scanlines !== false);
+      el.dataset.ncmNeon = String(this._workingPrefs.neonGlow !== false);
+      el.dataset.ncmAnimationLevel = this._workingPrefs.animationLevel || 'full';
+    });
+  }
+
   // ─── Helpers ───
+
+  /**
+   * Get custom presets from client settings.
+   * @returns {Array}
+   */
+  _getCustomPresets() {
+    try {
+      return game.settings.get(MODULE_ID, 'customPresets') ?? [];
+    } catch { return []; }
+  }
+
+  /**
+   * Save custom presets to client settings.
+   * @param {Array} presets
+   */
+  async _setCustomPresets(presets) {
+    await game.settings.set(MODULE_ID, 'customPresets', presets);
+  }
+
+  // ─── Custom Preset Actions ───
+
+  static async _onResetColors(event, target) {
+    const preset = THEME_PRESETS[this._workingPrefs.preset] || THEME_PRESETS.classic;
+    this._workingPrefs.colors = {
+      primary: null, secondary: null, accent: null,
+      bgDeep: null, bgBase: null, bgSurface: null,
+      bgElevated: null, textPrimary: null, textSecondary: null,
+    };
+    this._isDirty = true;
+    this._applyLive();
+    this.render(true);
+    ui.notifications.info('Colors reset to preset defaults.');
+  }
+
+  static async _onSaveAsCustomPreset(event, target) {
+    const name = await new Promise(resolve => {
+      new Dialog({
+        title: 'Save Custom Preset',
+        content: `<div style="padding:8px 0;"><label style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#8888a0;text-transform:uppercase;">Preset Name</label><input type="text" id="ncm-preset-name" value="My Custom Theme" style="width:100%;margin-top:4px;padding:6px 8px;background:#0a0a0f;border:1px solid #2a2a45;color:#e0e0e8;font-family:'Rajdhani',sans-serif;font-size:13px;border-radius:2px;" /></div>`,
+        buttons: {
+          save: { icon: '<i class="fas fa-save"></i>', label: 'Save', callback: (html) => resolve(html.find('#ncm-preset-name').val()?.trim()) },
+          cancel: { label: 'Cancel', callback: () => resolve(null) },
+        },
+        default: 'save',
+      }, { classes: ['ncm-pick-dialog'], width: 340 }).render(true);
+    });
+    if (!name) return;
+
+    const presets = this._getCustomPresets();
+    presets.push({ name, ...foundry.utils.deepClone(this._workingPrefs) });
+    await this._setCustomPresets(presets);
+    this.render(true);
+    ui.notifications.info(`Saved custom preset: ${name}`);
+  }
+
+  static async _onApplyCustomPreset(event, target) {
+    const index = parseInt(target.closest('[data-custom-index]')?.dataset.customIndex);
+    const presets = this._getCustomPresets();
+    if (isNaN(index) || !presets[index]) return;
+
+    this._workingPrefs = foundry.utils.deepClone(presets[index]);
+    delete this._workingPrefs.name; // Strip the name field
+    this._isDirty = true;
+    this._applyLive();
+    this.render(true);
+  }
+
+  static async _onOverwriteCustomPreset(event, target) {
+    const index = parseInt(target.closest('[data-custom-index]')?.dataset.customIndex);
+    const presets = this._getCustomPresets();
+    if (isNaN(index) || !presets[index]) return;
+
+    const name = presets[index].name;
+    presets[index] = { name, ...foundry.utils.deepClone(this._workingPrefs) };
+    await this._setCustomPresets(presets);
+    this.render(true);
+    ui.notifications.info(`Overwritten preset: ${name}`);
+  }
+
+  static async _onDeleteCustomPreset(event, target) {
+    const index = parseInt(target.closest('[data-custom-index]')?.dataset.customIndex);
+    const presets = this._getCustomPresets();
+    if (isNaN(index) || !presets[index]) return;
+
+    const name = presets[index].name;
+    const confirmed = await Dialog.confirm({ title: 'Delete Preset', content: `<p>Delete custom preset "${name}"?</p>` });
+    if (!confirmed) return;
+
+    presets.splice(index, 1);
+    await this._setCustomPresets(presets);
+    this.render(true);
+    ui.notifications.info(`Deleted preset: ${name}`);
+  }
+
+  static _onExportTheme(event, target) {
+    const data = JSON.stringify(this._workingPrefs, null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ncm-theme-${(this._workingPrefs.preset || 'custom').replace(/\s+/g, '-')}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    ui.notifications.info('Theme exported.');
+  }
+
+  static _onImportTheme(event, target) {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const imported = JSON.parse(text);
+        if (!imported.preset && !imported.colors) {
+          ui.notifications.warn('Invalid theme file.');
+          return;
+        }
+        this._workingPrefs = foundry.utils.mergeObject(
+          foundry.utils.deepClone(DEFAULTS.PLAYER_THEME),
+          imported,
+          { inplace: false }
+        );
+        this._isDirty = true;
+        this._applyLive();
+        this.render(true);
+        ui.notifications.info('Theme imported successfully.');
+      } catch (err) {
+        console.error(`${MODULE_ID} | Import failed:`, err);
+        ui.notifications.error('Failed to import theme file.');
+      }
+    });
+    input.click();
+  }
 
   /**
    * Convert camelCase color key to readable label.
