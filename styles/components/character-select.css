@@ -654,8 +654,8 @@
 .ncm-cs__bottom-signal-bar.on { background: var(--ncm-secondary); }
 
 /* Jack In button */
-/* Jack In button — needs element+class specificity to beat Foundry */
-button.ncm-cs__connect-btn {
+/* Jack In button — .ncm-app + element+class = specificity 0,2,1 to beat Foundry */
+.ncm-app button.ncm-cs__connect-btn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -668,25 +668,24 @@ button.ncm-cs__connect-btn {
   border: 1px solid rgba(25, 243, 247, 0.3);
   border-radius: 3px;
   background: rgba(25, 243, 247, 0.05);
+  background-image: none;
   color: var(--ncm-secondary);
   cursor: pointer;
   transition: all 0.2s ease;
   position: relative;
   overflow: hidden;
-  /* Foundry button overrides */
-  background-image: none !important;
-  appearance: none !important;
-  box-shadow: none !important;
-  min-height: 0 !important;
-  width: auto !important;
-  line-height: 1.2 !important;
-  margin: 0 !important;
+  appearance: none;
+  box-shadow: none;
+  min-height: 0;
+  width: auto;
+  line-height: 1.2;
+  margin: 0;
 }
-button.ncm-cs__connect-btn:hover {
+.ncm-app button.ncm-cs__connect-btn:hover {
   background: rgba(25, 243, 247, 0.1);
-  background-image: none !important;
+  background-image: none;
   border-color: rgba(25, 243, 247, 0.5);
-  box-shadow: 0 0 20px rgba(25, 243, 247, 0.12), inset 0 0 20px rgba(25, 243, 247, 0.03) !important;
+  box-shadow: 0 0 20px rgba(25, 243, 247, 0.12), inset 0 0 20px rgba(25, 243, 247, 0.03);
 }
 .ncm-cs__connect-btn i { font-size: 10px; }
 /* Shimmer */
@@ -704,26 +703,27 @@ button.ncm-cs__connect-btn:hover {
   50% { left: calc(100% + 40px); }
   100% { left: calc(100% + 40px); }
 }
-.ncm-cs__connect-btn.connecting {
+.ncm-app button.ncm-cs__connect-btn.connecting {
   opacity: 0.3;
   pointer-events: none;
 }
-.ncm-cs__connect-btn.connected {
+.ncm-app button.ncm-cs__connect-btn.connected {
   border-color: rgba(0, 255, 65, 0.3);
   color: var(--ncm-success);
   pointer-events: none;
 }
 /* Admin variant */
-.ncm-cs__connect-btn.admin-btn {
+.ncm-app button.ncm-cs__connect-btn.admin-btn {
   border-color: rgba(246, 82, 97, 0.3);
   color: var(--ncm-primary);
 }
-.ncm-cs__connect-btn.admin-btn:hover {
+.ncm-app button.ncm-cs__connect-btn.admin-btn:hover {
   border-color: rgba(246, 82, 97, 0.5);
   background: rgba(246, 82, 97, 0.08);
+  background-image: none;
   box-shadow: 0 0 20px rgba(246, 82, 97, 0.1);
 }
-.ncm-cs__connect-btn.admin-btn::before {
+.ncm-app button.ncm-cs__connect-btn.admin-btn::before {
   background: linear-gradient(90deg, transparent, rgba(246, 82, 97, 0.06), transparent);
 }
 
