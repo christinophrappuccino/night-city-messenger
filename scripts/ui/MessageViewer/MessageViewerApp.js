@@ -1376,6 +1376,9 @@ export class MessageViewerApp extends BaseApplication {
       case 'close-identity-drawer':
         this._closeIdentityDrawer();
         break;
+      case 're-login':
+        game.nightcity?.reLogin?.();
+        break;
 
       // ── v3.2: Primary Tab Navigation ──
       case 'set-primary-tab': {

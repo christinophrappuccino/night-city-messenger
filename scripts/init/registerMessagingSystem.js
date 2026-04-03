@@ -352,6 +352,9 @@ export function registerMessagingSystem(initializer) {
     /** @type {import('../ui/CharacterSelect/CharacterSelectApp.js').CharacterSelectApp|null} */
     let _characterSelectApp = null;
 
+    /** Session-scoped flag — resets on page refresh, persists within session */
+    let _hasBootedThisSession = false;
+
     /**
      * Play the NCM boot splash — a frameless overlay injected into document.body.
      * Resolves after the animation completes (~2s).
@@ -435,7 +438,13 @@ export function registerMessagingSystem(initializer) {
      * - Otherwise → play boot splash, then open CharacterSelectApp
      */
     ns.openNCM = async () => {
-      // Check for session memory
+      // Play boot splash on first open per page load (resets on refresh)
+      if (!_hasBootedThisSession) {
+        _hasBootedThisSession = true;
+        await _playBootSplash();
+      }
+
+      // Check for session memory — skip character select if we have a valid last character
       const lastId = game.user.getFlag(MODULE_ID, 'lastCharacterId');
       if (lastId) {
         const actor = game.actors.get(lastId);
@@ -446,8 +455,7 @@ export function registerMessagingSystem(initializer) {
         try { await game.user.unsetFlag(MODULE_ID, 'lastCharacterId'); } catch { /* ok */ }
       }
 
-      // Play boot splash, then show character select
-      await _playBootSplash();
+      // No valid session memory — show character select
       try {
         await ns.showCharacterSelect();
       } catch (err) {
