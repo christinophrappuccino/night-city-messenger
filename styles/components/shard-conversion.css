@@ -7,7 +7,7 @@
    ═══════════════════════════════════════════════════════ */
 
 /* ─── Layout ─── */
-.ncm-app .ncm-convert { display: flex !important; flex-direction: column !important; height: 100% !important; overflow: hidden !important; }
+.ncm-app .ncm-convert { display: flex !important; flex-direction: column !important; height: 100% !important; overflow: hidden !important; position: relative !important; }
 .ncm-app .ncm-convert__body { flex: 1 !important; overflow-y: auto !important; padding: 12px 16px !important; }
 .ncm-app .ncm-convert__body::-webkit-scrollbar { width: 4px !important; }
 .ncm-app .ncm-convert__body::-webkit-scrollbar-thumb { background: var(--ncm-border-active, #3a3a5a) !important; border-radius: 2px !important; }

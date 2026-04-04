@@ -152,6 +152,31 @@ export class SocketHandlers {
       socketManager.emit(SOCKET_OPS.SHARD_CONVERT_RESULT, { requestId, success });
     });
 
+    // ─── Player Shard Unconvert Relay ────────────────────
+    socketManager.register(SOCKET_OPS.SHARD_UNCONVERT_REQUEST, async (data) => {
+      if (!game.user.isGM) return;
+
+      const { requestId, itemId, actorId } = data;
+      log.info(`Socket: shard unconvert request — item ${itemId} from actor ${actorId}`);
+
+      let success = false;
+      try {
+        const actor = game.actors.get(actorId);
+        const item = actor?.items?.get(itemId);
+        if (!item) throw new Error('Item not found');
+
+        const service = game.nightcity?.dataShardService;
+        if (!service) throw new Error('DataShardService not available');
+
+        const result = await service.removeDataShard(item);
+        success = result?.success !== false;
+      } catch (err) {
+        log.error('Shard unconvert relay failed:', err);
+      }
+
+      socketManager.emit(SOCKET_OPS.SHARD_UNCONVERT_RESULT, { requestId, success });
+    });
+
     log.info('Socket handlers registered');
   }
 }

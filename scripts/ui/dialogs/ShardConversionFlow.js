@@ -469,7 +469,10 @@ export class ShardConversionFlow extends HandlebarsApplicationMixin(ApplicationV
     if (this._encoding) return;
 
     const formData = this._gatherFormData();
-    if (!formData) return;
+    if (!formData) {
+      console.warn('NCM | ShardConversionFlow: _gatherFormData returned null');
+      return;
+    }
 
     // Validate item selection
     const item = this._item || (formData.itemId ? this._actor?.items?.get(formData.itemId) : null);
@@ -480,50 +483,45 @@ export class ShardConversionFlow extends HandlebarsApplicationMixin(ApplicationV
 
     this._encoding = true;
 
-    // Play encoding animation
-    await this._playEncodingAnimation();
+    try {
+      // Play encoding animation
+      await this._playEncodingAnimation();
 
-    // Build config overrides
-    const config = {};
-    if (formData.shardName) config.shardName = formData.shardName;
+      // Build config overrides
+      const config = {};
+      if (formData.shardName) config.shardName = formData.shardName;
 
-    // Security
-    if (this._tier !== 'basic') {
-      if (formData.requiresLogin) {
-        config.requiresLogin = true;
-        config.loginPassword = formData.loginPassword || '';
-      }
-      if (formData.encrypted) {
-        config.encrypted = true;
-        config.encryptionType = this._selectedICEType;
-        config.encryptionDC = Math.min(formData.encryptionDC || 15, this._ceiling?.maxDV ?? 25);
-      }
-      if (this._tier === 'full') {
-        if (formData.failureMode) config.failureMode = formData.failureMode;
-        if (formData.maxHackAttempts) config.maxHackAttempts = parseInt(formData.maxHackAttempts) || 3;
-        if (formData.requiresKeyItem && this._ceiling?.canKeyItem) {
-          config.requiresKeyItem = true;
-          config.keyItemName = formData.keyItemName || '';
+      // Security
+      if (this._tier !== 'basic') {
+        if (formData.requiresLogin) {
+          config.requiresLogin = true;
+          config.loginPassword = formData.loginPassword || '';
+        }
+        if (formData.encrypted) {
+          config.encrypted = true;
+          config.encryptionType = this._selectedICEType;
+          config.encryptionDC = Math.min(formData.encryptionDC || 15, this._ceiling?.maxDV ?? 25);
+        }
+        if (this._tier === 'full') {
+          if (formData.failureMode) config.failureMode = formData.failureMode;
+          if (formData.maxHackAttempts) config.maxHackAttempts = parseInt(formData.maxHackAttempts) || 3;
+          if (formData.requiresKeyItem && this._ceiling?.canKeyItem) {
+            config.requiresKeyItem = true;
+            config.keyItemName = formData.keyItemName || '';
+          }
         }
       }
-    }
 
-    // Convert the item
-    try {
+      // Convert the item
       const service = this.dataShardService;
       if (!service) throw new Error('DataShardService not available');
 
-      // For player conversion, we need to route through socket if not GM
       if (isGM()) {
         const result = await service.convertToDataShard(item, config);
-        if (!result.success) throw new Error(result.error);
+        if (!result.success) throw new Error(result.error || 'Conversion failed');
       } else {
-        // Player conversion: emit socket request to GM
-        const socketManager = game.nightcity?.socketManager;
-        if (!socketManager) throw new Error('Socket not available');
-
         const success = await this._requestPlayerConversion(item, config);
-        if (!success) throw new Error('Conversion request denied');
+        if (!success) throw new Error('Conversion request denied or timed out');
       }
 
       // Add the initial entry as a journal page
@@ -543,8 +541,9 @@ export class ShardConversionFlow extends HandlebarsApplicationMixin(ApplicationV
     } catch (err) {
       ui.notifications.error(`Failed to create shard: ${err.message}`);
       log.error('Shard conversion failed:', err);
+    } finally {
       this._encoding = false;
-      // Hide encoding overlay
+      // Always hide encoding overlay
       const overlay = this.element?.querySelector('[data-id="encoding-overlay"]');
       if (overlay) overlay.style.display = 'none';
     }

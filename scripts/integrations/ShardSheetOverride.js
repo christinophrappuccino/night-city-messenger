@@ -18,7 +18,7 @@
  *      - "Open Data Shard" / "Configure Shard" / "Remove Shard Data" on shard items
  */
 
-import { MODULE_ID } from '../utils/constants.js';
+import { MODULE_ID, SOCKET_OPS } from '../utils/constants.js';
 import { log, isGM } from '../utils/helpers.js';
 import { ShardConversionFlow } from '../ui/dialogs/ShardConversionFlow.js';
 
@@ -362,7 +362,6 @@ export class ShardSheetOverride {
 
     // ─── Right-click context menu ───
     row.addEventListener('contextmenu', (ev) => {
-      // Only intercept if not already handled by Foundry
       const entries = [
         { label: 'Open Data Shard', icon: 'fas fa-hard-drive', color: '#00D4E6', fn: () => game.nightcity?.openDataShard(item) },
       ];
@@ -376,6 +375,12 @@ export class ShardSheetOverride {
             const sheet = item.sheet;
             if (sheet) { sheet._ncmBypass = true; sheet.render(true); }
           }},
+          { sep: true },
+          { label: 'Remove Shard Data', icon: 'fas fa-rotate-left', color: '#F65261', fn: () => this._confirmUnconvert(item) },
+        );
+      } else if (game.settings.get(MODULE_ID, 'playerShardFloor') !== 'disabled') {
+        // Players can unconvert their own shards if conversion is enabled
+        entries.push(
           { sep: true },
           { label: 'Remove Shard Data', icon: 'fas fa-rotate-left', color: '#F65261', fn: () => this._confirmUnconvert(item) },
         );
@@ -545,21 +550,57 @@ export class ShardSheetOverride {
 
     if (confirmed) {
       try {
-        const result = await dataShardService.removeDataShard(item);
-        if (result?.success !== false) {
-          ui.notifications.info(`Shard data removed from "${item.name}"`);
-          setTimeout(() => {
-            ui.items?.render();
-            for (const sheet of Object.values(ui.windows)) {
-              if (sheet.actor?.items?.has(item.id)) sheet.render(false);
-            }
-          }, 150);
+        let success = false;
+
+        if (isGM()) {
+          const result = await dataShardService.removeDataShard(item);
+          success = result?.success !== false;
+          if (!success) throw new Error(result?.error || 'Failed');
         } else {
-          ui.notifications.error(`Failed: ${result.error}`);
+          // Player: relay through GM via socket
+          success = await this._requestPlayerUnconvert(item);
+          if (!success) throw new Error('Request denied or timed out');
         }
+
+        ui.notifications.info(`Shard data removed from "${item.name}"`);
+        setTimeout(() => {
+          ui.items?.render();
+          for (const sheet of Object.values(ui.windows)) {
+            if (sheet.actor?.items?.has(item.id)) sheet.render(false);
+          }
+        }, 150);
       } catch (err) {
         ui.notifications.error(`Failed to remove shard data: ${err.message}`);
       }
     }
+  }
+
+  /**
+   * Request the GM's client to remove shard data via socket relay.
+   * @param {Item} item
+   * @returns {Promise<boolean>}
+   */
+  _requestPlayerUnconvert(item) {
+    return new Promise((resolve) => {
+      const socketManager = game.nightcity?.socketManager;
+      if (!socketManager) return resolve(false);
+
+      const requestId = foundry.utils.randomID(8);
+      const actorId = item.actor?.id;
+      if (!actorId) return resolve(false);
+
+      socketManager.register(SOCKET_OPS.SHARD_UNCONVERT_RESULT, (data) => {
+        if (data.requestId !== requestId) return;
+        resolve(data.success);
+      });
+
+      socketManager.emit(SOCKET_OPS.SHARD_UNCONVERT_REQUEST, {
+        requestId,
+        itemId: item.id,
+        actorId,
+      });
+
+      setTimeout(() => resolve(false), 10000);
+    });
   }
 }
