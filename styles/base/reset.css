@@ -61,6 +61,11 @@
   color: inherit;
 }
 
+/* Kill Foundry's default button gradient globally */
+.ncm-app > .window-content button {
+  background-image: none;
+}
+
 /* ─── Scrollbar (scoped to content area) ─── */
 .ncm-app > .window-content ::-webkit-scrollbar {
   width: 6px;

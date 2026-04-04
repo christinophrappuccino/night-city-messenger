@@ -160,6 +160,40 @@ export function registerNetworkSystem(initializer) {
   });
 
   // ═══════════════════════════════════════════════════════════
+  //  READY PHASE — Priority 109: Wire SpamService auto-spam triggers
+  // ═══════════════════════════════════════════════════════════
+
+  initializer.register('ready', 109, 'Network ↔ SpamService auto-spam', () => {
+    const eventBus = game.nightcity.eventBus;
+    const spamService = game.nightcity.spamService;
+
+    if (!eventBus || !spamService) {
+      log.debug('Network ↔ SpamService: dependencies not ready');
+      return;
+    }
+
+    // When a player switches networks, the GM's client receives the socket event.
+    // If that network has auto-spam configured, deliver spam to the player's inbox.
+    eventBus.on(EVENTS.NETWORK_CHANGED, async (data) => {
+      if (!isGM()) return; // Only GM triggers auto-spam delivery
+      if (data.source !== 'socket') return; // Only react to remote switch events
+      if (data.isGMAction) return; // Don't auto-spam on GM's own switches
+      if (!data.currentNetworkId || !data.actorId) return;
+
+      try {
+        const result = await spamService.onNetworkConnect(data.currentNetworkId, data.actorId);
+        if (result.sent > 0) {
+          log.info(`Auto-spam: delivered ${result.sent} messages to ${data.actorName || data.actorId} on network ${data.currentNetworkId}`);
+        }
+      } catch (err) {
+        console.warn('NCM | Auto-spam delivery failed:', err);
+      }
+    });
+
+    log.info('Network ↔ SpamService auto-spam wired');
+  });
+
+  // ═══════════════════════════════════════════════════════════
   //  READY PHASE — Priority 112: UI Launch Functions
   //  (Override the stubs from registerUIComponents at 110)
   // ═══════════════════════════════════════════════════════════

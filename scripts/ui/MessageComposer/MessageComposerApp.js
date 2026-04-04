@@ -291,7 +291,26 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       // New compose
       if (options.toActorId) this._addRecipient(options.toActorId, false);
       // Fallback: if actor-based add failed or no actorId, try raw email
-      if (this.recipients.length === 0 && options.to) this._addRawRecipient(options.to);
+      if (this.recipients.length === 0 && options.to) {
+        const email = options.to.trim();
+        if (!this.recipients.find(r => r.email === email)) {
+          const hasName = !!options.toName;
+          const displayName = options.toName || email;
+          this.recipients.push({
+            actorId: null,
+            name: displayName,
+            email,
+            avatarColor: getAvatarColor(displayName),
+            initials: hasName ? getInitials(displayName) : '@',
+            mismatch: false,
+            mismatchTooltip: '',
+            unreachable: false,
+            locked: false,
+            isRaw: !hasName,
+          });
+          if (this._errors.to) delete this._errors.to;
+        }
+      }
       this.subject = options.subject || '';
       this.body = options.body || '';
       this.threadId = options.threadId || null;
