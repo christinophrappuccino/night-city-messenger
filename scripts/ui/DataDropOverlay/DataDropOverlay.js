@@ -149,13 +149,27 @@ export class DataDropOverlay {
 
       const nodes = el.querySelectorAll('.ncm-datadrop__node');
       const conns = el.querySelectorAll('.ncm-datadrop__conn');
+      const connFills = el.querySelectorAll('.ncm-datadrop__conn-fill');
       const phases = el.querySelectorAll('.ncm-datadrop__phase');
+
+      // Ensure conn-fills start at scaleX(0) with no transition
+      // (transition injected per-fill right before activation to prevent batch-fire)
+      for (const fill of connFills) {
+        fill.style.transition = 'none';
+        fill.style.transform = 'scaleX(0)';
+      }
+      void el.offsetHeight; // force reflow to lock initial state
 
       // ── Phase 1: Route dots ──
       setTimeout(() => nodes[0]?.classList.add('ncm-datadrop__node--active'), T.NODE_0_ACTIVE);
 
       setTimeout(() => {
         nodes[0]?.classList.replace('ncm-datadrop__node--active', 'ncm-datadrop__node--done');
+        // Inject transition on first fill, THEN activate
+        if (connFills[0]) {
+          connFills[0].style.transition = 'transform 0.5s ease';
+          void connFills[0].offsetHeight;
+        }
         conns[0]?.classList.add('ncm-datadrop__conn--active');
         nodes[1]?.classList.add('ncm-datadrop__node--active');
         phases[0]?.classList.add('ncm-datadrop__phase--active');
@@ -163,6 +177,11 @@ export class DataDropOverlay {
 
       setTimeout(() => {
         nodes[1]?.classList.replace('ncm-datadrop__node--active', 'ncm-datadrop__node--done');
+        // Inject transition on second fill, THEN activate
+        if (connFills[1]) {
+          connFills[1].style.transition = 'transform 0.5s ease';
+          void connFills[1].offsetHeight;
+        }
         conns[1]?.classList.add('ncm-datadrop__conn--active');
         nodes[2]?.classList.add('ncm-datadrop__node--active');
         phases[0]?.classList.replace('ncm-datadrop__phase--active', 'ncm-datadrop__phase--done');
@@ -228,6 +247,12 @@ export class DataDropOverlay {
       // Pre-activate everything
       el.querySelectorAll('.ncm-datadrop__node').forEach(n => n.classList.add('ncm-datadrop__node--done'));
       el.querySelectorAll('.ncm-datadrop__conn').forEach(c => c.classList.add('ncm-datadrop__conn--active'));
+
+      // Set fills directly (no CSS transition on fills)
+      el.querySelectorAll('.ncm-datadrop__conn-fill').forEach(f => {
+        f.style.transition = 'none';
+        f.style.transform = 'scaleX(1)';
+      });
       el.querySelectorAll('.ncm-datadrop__phase').forEach(p => p.classList.add('ncm-datadrop__phase--done'));
 
       const fill = el.querySelector('.ncm-datadrop__progress-fill');
