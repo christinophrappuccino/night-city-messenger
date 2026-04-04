@@ -232,31 +232,37 @@ export class SettingsManager {
 
     // ─── Data Shard Conversion Settings ───
 
-    game.settings.register(MODULE_ID, 'allowPlayerConversion', {
-      name: 'Allow Player Shard Conversion',
-      hint: 'Whether players can convert their own inventory items into data shards.',
+    game.settings.register(MODULE_ID, 'playerShardFloor', {
+      name: 'Player Shard Creation Floor',
+      hint: 'Minimum tier all players can access. Character skills can unlock higher tiers beyond this floor.',
+      scope: 'world',
+      config: true,
+      type: String,
+      default: 'disabled',
+      choices: {
+        disabled: 'Disabled — GM only',
+        basic: 'Basic — message-only shards',
+        mid: 'Mid — password + standard ICE',
+        full: 'Full — simplified GM config',
+      },
+    });
+
+    game.settings.register(MODULE_ID, 'playerShardSkill', {
+      name: 'Shard Encoding Skill',
+      hint: 'CPR skill that determines tier upgrades beyond the floor. Skill rank thresholds: 0-3 Basic, 4-6 Mid, 7+ Full.',
+      scope: 'world',
+      config: true,
+      type: String,
+      default: 'interface',
+    });
+
+    game.settings.register(MODULE_ID, 'playerBlackICE', {
+      name: 'Allow Player BLACK/RED ICE',
+      hint: 'Whether Full tier players can use BLACK ICE and RED ICE on their shards. Disable to restrict players to standard ICE only.',
       scope: 'world',
       config: true,
       type: Boolean,
-      default: false,
-    });
-
-    game.settings.register(MODULE_ID, 'shardConversionSkill', {
-      name: 'Shard Encoding Skill',
-      hint: 'The CPR skill that determines player conversion tier. Set to "none" to give all players basic access only.',
-      scope: 'world',
-      config: true,
-      type: String,
-      default: 'none',
-    });
-
-    game.settings.register(MODULE_ID, 'shardTierThresholds', {
-      name: 'Skill Tier Thresholds',
-      hint: 'Skill levels for medium and expert tiers (comma-separated, e.g. "5,9").',
-      scope: 'world',
-      config: true,
-      type: String,
-      default: '5,9',
+      default: true,
     });
 
     game.settings.register(MODULE_ID, 'debugMode', {

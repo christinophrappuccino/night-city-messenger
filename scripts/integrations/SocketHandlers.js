@@ -122,6 +122,36 @@ export class SocketHandlers {
       accessLogService._push(data);
     });
 
+    // ─── Player Shard Conversion Relay ─────────────────────
+    // Players can't create JournalEntries directly — the GM's client
+    // receives the request, performs the conversion, and sends back the result.
+    socketManager.register(SOCKET_OPS.SHARD_CONVERT_REQUEST, async (data) => {
+      if (!game.user.isGM) return;
+
+      const { requestId, itemId, actorId, config } = data;
+      log.info(`Socket: shard conversion request — item ${itemId} from actor ${actorId}`);
+
+      let success = false;
+      try {
+        // Find the item on the actor
+        const actor = game.actors.get(actorId);
+        const item = actor?.items?.get(itemId);
+        if (!item) throw new Error('Item not found');
+
+        const service = game.nightcity?.dataShardService;
+        if (!service) throw new Error('DataShardService not available');
+
+        const result = await service.convertToDataShard(item, config || {});
+        success = result.success;
+        if (!result.success) log.warn('Shard conversion failed:', result.error);
+      } catch (err) {
+        log.error('Shard conversion relay failed:', err);
+      }
+
+      // Send result back
+      socketManager.emit(SOCKET_OPS.SHARD_CONVERT_RESULT, { requestId, success });
+    });
+
     log.info('Socket handlers registered');
   }
 }

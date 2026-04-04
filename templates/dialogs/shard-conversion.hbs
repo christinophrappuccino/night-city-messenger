@@ -1,0 +1,261 @@
+{{!--
+  Shard Conversion Flow
+  @file templates/dialogs/shard-conversion.hbs
+  @module cyberpunkred-messenger
+  @description Tier-gated player shard creation wizard.
+--}}
+<div class="ncm-convert">
+  <div class="ncm-convert__body">
+
+    {{!-- ═══ Skill Check (Mid / Full only) ═══ --}}
+    {{#if showSkillCheck}}
+      {{#if rollResult}}
+        <div class="ncm-convert__skillcheck">
+          <div class="ncm-convert__skillcheck-title">Encryption Skill Check — {{skillName}}</div>
+          <div class="ncm-convert__skillcheck-roll">
+            <div class="ncm-convert__skillcheck-dice" style="color:{{rollColor}};">{{rollResult.total}}</div>
+            <div class="ncm-convert__skillcheck-breakdown">
+              {{rollResult.statName}} {{rollResult.statValue}} + {{skillName}} {{rollResult.skillValue}} + <span style="color:var(--ncm-accent);">1d10 ({{rollResult.dieValue}})</span> = <strong style="color:var(--ncm-text-primary);">{{rollResult.total}}</strong><br>
+              {{#if (eq tier "mid")}}
+                Encryption Quality: <strong style="color:{{rollColor}};">DV {{maxDV}} ({{dvLabel}})</strong>
+              {{else}}
+                Ceiling Tier: <strong style="color:{{rollColor}};">{{ceilingLabel}}</strong> ({{rollResult.total}})
+              {{/if}}
+            </div>
+          </div>
+          <div class="ncm-convert__skillcheck-result ncm-convert__skillcheck-result--{{rollTier}}">
+            {{#if (eq tier "mid")}}
+              <i class="fas fa-shield-halved"></i> Encryption Ceiling: DV {{maxDV}}
+            {{else}}
+              <i class="fas fa-star"></i> Max DV {{maxDV}} · {{ceilingSummary}}
+            {{/if}}
+          </div>
+        </div>
+      {{else}}
+        {{!-- Roll prompt --}}
+        <div class="ncm-convert__roll-prompt">
+          <div class="ncm-convert__roll-prompt-text">
+            Roll your encoding skill to determine encryption quality.<br>
+            <span style="opacity:0.6;">{{rollResult.statName}} + {{skillName}} + 1d10</span>
+          </div>
+          <button type="button" class="ncm-convert__btn ncm-convert__btn--roll" data-action="rollSkill">
+            <i class="fas fa-dice-d20"></i> Roll {{skillName}}
+          </button>
+        </div>
+      {{/if}}
+    {{/if}}
+
+    {{!-- ═══ Ceiling Indicator (Full only) ═══ --}}
+    {{#if showCeiling}}
+      <div class="ncm-convert__ceiling">
+        <span class="ncm-convert__ceiling-label">Unlocked:</span>
+        <div class="ncm-convert__ceiling-items">
+          {{#each ceilingItems}}
+            <span class="ncm-convert__ceiling-item ncm-convert__ceiling-item--{{#if this.active}}active{{else}}locked{{/if}}">
+              <i class="fas {{#if this.active}}fa-check{{else}}fa-lock{{/if}}"></i>{{this.label}}
+            </span>
+          {{/each}}
+        </div>
+      </div>
+    {{/if}}
+
+    {{!-- ═══ Item Selection ═══ --}}
+    <div class="ncm-convert__section">
+      <div class="ncm-convert__section-header"><i class="fas fa-box" style="color:var(--ncm-secondary);"></i><span>{{#if (eq tier "full")}}Item & Name{{else}}Select Item{{/if}}</span></div>
+      <div class="ncm-convert__row">
+        <span class="ncm-convert__label">Item</span>
+        {{#if preselectedItem}}
+          <input class="ncm-convert__input" value="{{preselectedItem.name}}" disabled>
+        {{else}}
+          <select class="ncm-convert__select" name="itemId" style="flex:1;">
+            <option value="">— Select from inventory —</option>
+            {{#each inventoryItems}}
+              <option value="{{this.id}}" {{#if this.selected}}selected{{/if}}>{{this.name}}</option>
+            {{/each}}
+          </select>
+        {{/if}}
+      </div>
+      {{#unless preselectedItem}}
+        <div class="ncm-convert__hint">This item will be converted into a data shard. The item itself is preserved — shard data is added as metadata.</div>
+      {{/unless}}
+    </div>
+
+    {{!-- ═══ Shard Name ═══ --}}
+    <div class="ncm-convert__section">
+      <div class="ncm-convert__section-header"><i class="fas fa-tag" style="color:var(--ncm-accent);"></i><span>Shard Info</span></div>
+      <div class="ncm-convert__row">
+        <span class="ncm-convert__label">Shard Name</span>
+        <input class="ncm-convert__input" name="shardName" placeholder="My Data Shard" value="{{shardName}}">
+      </div>
+    </div>
+
+    {{!-- ═══ Password (Mid + Full) ═══ --}}
+    {{#if showPassword}}
+      <div class="ncm-convert__section">
+        <div class="ncm-convert__section-header"><i class="fas fa-terminal" style="color:var(--ncm-success);"></i><span>Password Protection</span></div>
+        <div class="ncm-convert__row">
+          <label class="ncm-convert__check"><input type="checkbox" name="requiresLogin"> Require Password</label>
+        </div>
+        <div class="ncm-convert__row">
+          <span class="ncm-convert__label">Password</span>
+          <input class="ncm-convert__input" name="loginPassword" type="text" placeholder="Set a password">
+        </div>
+        {{#if (eq tier "mid")}}
+          <div class="ncm-convert__hint">Anyone who knows the password can bypass encryption entirely.</div>
+        {{/if}}
+      </div>
+    {{/if}}
+
+    {{!-- ═══ ICE Encryption (Mid + Full) ═══ --}}
+    {{#if showICE}}
+      <div class="ncm-convert__section">
+        <div class="ncm-convert__section-header"><i class="fas fa-shield-halved" style="color:{{#if (eq tier "mid")}}var(--ncm-accent){{else}}var(--ncm-danger){{/if}};"></i><span>Encryption</span></div>
+        <div class="ncm-convert__row">
+          <label class="ncm-convert__check"><input type="checkbox" name="encrypted"> Enable ICE</label>
+        </div>
+        <div class="ncm-convert__row">
+          <span class="ncm-convert__label">ICE Type</span>
+          <div class="ncm-convert__pills">
+            <button type="button" class="ncm-convert__pill active" data-action="selectICEType" data-value="ICE">ICE (Standard)</button>
+            <button type="button" class="ncm-convert__pill {{#unless canBlackICE}}disabled{{/unless}}" data-action="selectICEType" data-value="BLACK_ICE">
+              {{#unless canBlackICE}}<i class="fas fa-lock" style="font-size:7px;"></i>{{/unless}} BLACK ICE
+            </button>
+            <button type="button" class="ncm-convert__pill {{#unless canRedICE}}disabled{{/unless}}" data-action="selectICEType" data-value="RED_ICE">
+              {{#unless canRedICE}}<i class="fas fa-lock" style="font-size:7px;"></i>{{/unless}} RED ICE
+            </button>
+          </div>
+        </div>
+        <div class="ncm-convert__row">
+          <span class="ncm-convert__label">DV</span>
+          <input class="ncm-convert__input ncm-convert__input--short" type="number" name="encryptionDC" value="{{defaultDV}}" min="1" max="{{maxDV}}">
+          <span class="ncm-convert__dv-max">Max: <span class="ncm-convert__dv-max-val">{{maxDV}}</span>{{#if showSkillCheck}} (from skill check){{/if}}</span>
+        </div>
+        {{#if (eq tier "mid")}}
+          <div class="ncm-convert__hint">Standard ICE only at this tier. DV capped by your skill check result.</div>
+        {{/if}}
+      </div>
+    {{/if}}
+
+    {{!-- ═══ Failure Mode (Full only) ═══ --}}
+    {{#if showFailureMode}}
+      <div class="ncm-convert__section">
+        <div class="ncm-convert__section-header"><i class="fas fa-skull" style="color:var(--ncm-primary);"></i><span>Failure Handling</span></div>
+        <div class="ncm-convert__row">
+          <span class="ncm-convert__label">Mode</span>
+          <select class="ncm-convert__select" name="failureMode" style="flex:1;">
+            <option value="nothing">No consequence</option>
+            <option value="lockout">Lockout (timed)</option>
+            <option value="permanent">Permanent lockout</option>
+            {{#if canBlackICE}}
+              <option value="damage">BLACK ICE damage + lockout</option>
+            {{/if}}
+            <option value="destroy">Self-destruct shard</option>
+          </select>
+        </div>
+        <div class="ncm-convert__row">
+          <span class="ncm-convert__label">Max Attempts</span>
+          <input class="ncm-convert__input ncm-convert__input--short" type="number" name="maxHackAttempts" value="3" min="1" max="10">
+        </div>
+      </div>
+    {{/if}}
+
+    {{!-- ═══ Key Item (Full only — can be locked) ═══ --}}
+    {{#if showKeyItem}}
+      <div class="ncm-convert__section {{#unless canKeyItem}}ncm-convert__section--locked{{/unless}}">
+        <div class="ncm-convert__section-header"><i class="fas fa-id-card" style="color:var(--ncm-accent);"></i><span>Key Item Requirement</span></div>
+        <div class="ncm-convert__row">
+          <label class="ncm-convert__check"><input type="checkbox" name="requiresKeyItem"> Require Key Item</label>
+        </div>
+        <div class="ncm-convert__row">
+          <span class="ncm-convert__label">Item Name</span>
+          <input class="ncm-convert__input" name="keyItemName" placeholder="Credchip name">
+        </div>
+      </div>
+    {{/if}}
+
+    {{!-- ═══ Content Entry ═══ --}}
+    <div class="ncm-convert__section">
+      <div class="ncm-convert__section-header"><i class="fas fa-envelope" style="color:var(--ncm-secondary);"></i><span>{{#if (eq tier "full")}}Add Entry{{else}}Add Message{{/if}}</span></div>
+
+      {{!-- Content type pills (Full only) --}}
+      {{#if showContentTypes}}
+        <div class="ncm-convert__pills" style="margin-bottom:8px;">
+          {{#each contentTypes}}
+            <button type="button" class="ncm-convert__pill {{#if this.active}}active{{/if}}" data-action="selectContentType" data-value="{{this.id}}">
+              <i class="{{this.icon}}"></i> {{this.label}}
+            </button>
+          {{/each}}
+        </div>
+      {{/if}}
+
+      <div class="ncm-convert__row">
+        <span class="ncm-convert__label">From</span>
+        <input class="ncm-convert__input" name="entryFrom" value="{{entryFrom}}" placeholder="Your address">
+      </div>
+      <div class="ncm-convert__row">
+        <span class="ncm-convert__label">Subject</span>
+        <input class="ncm-convert__input" name="entrySubject" placeholder="Subject line">
+      </div>
+      <div class="ncm-convert__row ncm-convert__row--col">
+        <span class="ncm-convert__label" style="margin-bottom:4px;">Message</span>
+        <textarea class="ncm-convert__input ncm-convert__input--textarea" name="entryBody" placeholder="Write your message..."></textarea>
+      </div>
+    </div>
+
+    {{!-- ═══ Entry Appearance ═══ --}}
+    <div class="ncm-convert__section">
+      <div class="ncm-convert__section-header"><i class="fas fa-paintbrush" style="color:var(--ncm-accent);"></i><span>Entry Appearance</span></div>
+      <div class="ncm-convert__row">
+        <span class="ncm-convert__label">Icon</span>
+        <select class="ncm-convert__select" name="entryIcon" style="flex:1;">
+          {{#each iconOptions}}
+            <option value="{{this.value}}" {{#if this.selected}}selected{{/if}}>{{this.label}}</option>
+          {{/each}}
+        </select>
+      </div>
+      {{#if showCustomIcon}}
+        <div class="ncm-convert__row">
+          <span class="ncm-convert__label">Or Custom</span>
+          <input class="ncm-convert__input" name="customIcon" placeholder="fas fa-custom-icon">
+        </div>
+      {{/if}}
+      <div class="ncm-convert__row">
+        <span class="ncm-convert__label">Color</span>
+        <div class="ncm-convert__colors">
+          {{#each colorOptions}}
+            <button type="button" class="ncm-convert__color-dot {{#if this.active}}active{{/if}}" data-action="selectColor" data-value="{{this.value}}" style="background:{{this.value}};"></button>
+          {{/each}}
+        </div>
+      </div>
+    </div>
+
+    {{!-- ═══ No-Security Notice (Basic only) ═══ --}}
+    {{#if showNoSecurityNotice}}
+      <div class="ncm-convert__no-security">
+        <div class="ncm-convert__no-security-text">
+          <i class="fas fa-unlock"></i>
+          Basic tier — no encryption. This shard can be read by anyone who has it.<br>
+          <span class="ncm-convert__no-security-sub">Ask your GM to add security if needed.</span>
+        </div>
+      </div>
+    {{/if}}
+
+  </div>
+
+  {{!-- ═══ Footer ═══ --}}
+  <div class="ncm-convert__footer">
+    <button type="button" class="ncm-convert__btn ncm-convert__btn--ghost" data-action="cancel"><i class="fas fa-times"></i> Cancel</button>
+    <button type="button" class="ncm-convert__btn ncm-convert__btn--primary" data-action="createShard" {{#unless canCreate}}disabled{{/unless}}>
+      <i class="fas fa-microchip"></i> Create Shard
+    </button>
+  </div>
+
+  {{!-- ═══ Encoding Animation Overlay ═══ --}}
+  <div class="ncm-convert__encoding" style="display:none;" data-id="encoding-overlay">
+    <i class="fas fa-microchip ncm-convert__encoding-icon"></i>
+    <div class="ncm-convert__encoding-text" data-id="encoding-status">ENCODING DATA...</div>
+    <div class="ncm-convert__encoding-bar"><div class="ncm-convert__encoding-fill" data-id="encoding-fill"></div></div>
+    <div class="ncm-convert__encoding-log" data-id="encoding-log"></div>
+  </div>
+
+</div>

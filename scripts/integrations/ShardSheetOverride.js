@@ -20,6 +20,7 @@
 
 import { MODULE_ID } from '../utils/constants.js';
 import { log, isGM } from '../utils/helpers.js';
+import { ShardConversionFlow } from '../ui/dialogs/ShardConversionFlow.js';
 
 export class ShardSheetOverride {
 
@@ -286,7 +287,7 @@ export class ShardSheetOverride {
       if (!actor?.items) return;
 
       const root = html[0] ?? html;
-      const canConvert = isGM() || game.settings.get(MODULE_ID, 'allowPlayerConversion');
+      const canConvert = isGM() || game.settings.get(MODULE_ID, 'playerShardFloor') !== 'disabled';
 
       for (const item of actor.items) {
         const isShard = item.getFlag(MODULE_ID, 'isDataShard');
@@ -410,7 +411,7 @@ export class ShardSheetOverride {
 
     // ─── Right-click context menu ───
     row.addEventListener('contextmenu', (ev) => {
-      if (!isGM() && !game.settings.get(MODULE_ID, 'allowPlayerConversion')) return;
+      if (!isGM() && game.settings.get(MODULE_ID, 'playerShardFloor') === 'disabled') return;
       const entries = [
         { label: 'Convert to Data Shard', icon: 'fas fa-microchip', color: '#00D4E6', fn: () => this._launchConversionFlow(item, actor) },
       ];
@@ -484,9 +485,8 @@ export class ShardSheetOverride {
 
   /**
    * Launch the shard conversion flow for an item.
-   * For now this uses the existing DataShardService.convertToDataShard
-   * with a confirmation dialog. The full multi-step wizard
-   * (ShardConversionFlow) will replace this once built.
+   * Opens the tier-gated ShardConversionFlow wizard which handles
+   * skill checks, form collection, and conversion.
    *
    * @param {Item} item
    * @param {Actor} actor
@@ -498,35 +498,22 @@ export class ShardSheetOverride {
       return;
     }
 
-    // TODO: Replace with ShardConversionFlow ApplicationV2 (tier-gated wizard)
-    const confirmed = await Dialog.confirm({
-      title: 'Convert to Data Shard',
-      content: `<p>Convert <strong>${item.name}</strong> into a data shard?</p>
-                <p style="font-size: 11px; color: #8888a0;">
-                  This adds shard data to the item's flags. The item itself is preserved.
-                  You can remove shard status later via right-click → Remove Shard Data.
-                </p>`,
-    });
+    // Check if already a shard
+    if (item.getFlag(MODULE_ID, 'isDataShard')) {
+      ui.notifications.warn('This item is already a data shard.');
+      return;
+    }
 
-    if (confirmed) {
-      try {
-        const result = await dataShardService.convertToDataShard(item);
-        if (result.success) {
-          ui.notifications.info(`"${item.name}" converted to data shard`);
-          // Delay refresh so flag changes propagate before DOM rebuild
-          setTimeout(() => {
-            ui.items?.render();
-            for (const sheet of Object.values(ui.windows)) {
-              if (sheet.actor?.items?.has(item.id)) sheet.render(false);
-            }
-          }, 150);
-        } else {
-          ui.notifications.error(`Failed to convert: ${result.error}`);
-        }
-      } catch (err) {
-        ui.notifications.error(`Failed to convert: ${err.message}`);
+    // Check tier availability for players
+    if (!isGM()) {
+      const floor = game.settings.get(MODULE_ID, 'playerShardFloor') || 'disabled';
+      if (floor === 'disabled') {
+        ui.notifications.warn('Shard creation is disabled for players.');
+        return;
       }
     }
+
+    new ShardConversionFlow(item, actor).render(true);
   }
 
   /**

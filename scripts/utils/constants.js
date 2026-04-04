@@ -97,6 +97,8 @@ export const SOCKET_OPS = Object.freeze({
   CONTACT_SHARE_CONFIRM: 'contact:shareConfirm',
   TRACE_COMPLETE:        'network:traceComplete',
   LOG_RELAY:             'log:relay',
+  SHARD_CONVERT_REQUEST: 'shard:convertRequest',
+  SHARD_CONVERT_RESULT:  'shard:convertResult',
 });
 
 // ─── Network Types ───
@@ -500,6 +502,7 @@ export const TEMPLATES = Object.freeze({
   PARTIAL_METADATA_READOUT: `${T}/partials/metadata-readout.hbs`,
   PARTIAL_ENCRYPTED_ATTACHMENT: `${T}/partials/encrypted-attachment.hbs`,
   PARTIAL_ATTACHMENT_CHIP:      `${T}/partials/attachment-chip.hbs`,
+  SHARD_CONVERSION: `${T}/dialogs/shard-conversion.hbs`,
 });
 
 // ─── Default Configs ───
