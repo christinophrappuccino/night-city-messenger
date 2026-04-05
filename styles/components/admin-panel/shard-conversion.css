@@ -1,0 +1,290 @@
+/* ═══════════════════════════════════════════════════════
+   Shard Conversion Flow
+   @file styles/components/shard-conversion.css
+   @module cyberpunkred-messenger
+   @description Player-facing shard creation wizard.
+              Tier-gated: basic / mid / full.
+   ═══════════════════════════════════════════════════════ */
+
+/* ─── Layout ─── */
+.ncm-app .ncm-convert { display: flex !important; flex-direction: column !important; height: 100% !important; overflow: hidden !important; position: relative !important; }
+.ncm-app .ncm-convert__body { flex: 1 !important; overflow-y: auto !important; padding: 12px 16px !important; }
+.ncm-app .ncm-convert__body::-webkit-scrollbar { width: 4px !important; }
+.ncm-app .ncm-convert__body::-webkit-scrollbar-thumb { background: var(--ncm-border-active, #3a3a5a) !important; border-radius: 2px !important; }
+.ncm-app .ncm-convert__footer { display: flex !important; align-items: center !important; justify-content: flex-end !important; gap: 6px !important; padding: 8px 16px !important; background: var(--ncm-bg-base, #12121a) !important; border-top: 1px solid var(--ncm-border, #2a2a45) !important; flex-shrink: 0 !important; }
+
+/* ─── Section Structure ─── */
+.ncm-app .ncm-convert__section { margin-bottom: 14px !important; }
+.ncm-app .ncm-convert__section-header {
+  display: flex !important; align-items: center !important; gap: 6px !important;
+  padding: 5px 0 !important; margin-bottom: 8px !important;
+}
+.ncm-app .ncm-convert__section-header i { font-size: 10px !important; width: 16px !important; text-align: center !important; }
+.ncm-app .ncm-convert__section-header span {
+  font-family: var(--ncm-font-display) !important; font-size: 11px !important; font-weight: 700 !important;
+  text-transform: uppercase !important; letter-spacing: 0.06em !important; color: var(--ncm-text-secondary, #8888a0) !important;
+}
+.ncm-app .ncm-convert__section-header::after { content: '' !important; flex: 1 !important; height: 1px !important; background: var(--ncm-border, #2a2a45) !important; }
+
+/* ─── Form Rows ─── */
+.ncm-app .ncm-convert__row { display: flex !important; align-items: center !important; gap: 8px !important; margin-bottom: 6px !important; }
+.ncm-app .ncm-convert__row--col { flex-direction: column !important; align-items: stretch !important; }
+.ncm-app .ncm-convert__label {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace) !important;
+  font-size: 9px !important; color: var(--ncm-text-muted, #555570) !important;
+  text-transform: uppercase !important; letter-spacing: 0.06em !important;
+  min-width: 80px !important; flex-shrink: 0 !important;
+}
+.ncm-app .ncm-convert__input {
+  background: var(--ncm-bg-surface, #1a1a2e) !important; border: 1px solid var(--ncm-border, #2a2a45) !important;
+  border-radius: 2px !important; padding: 4px 8px !important;
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace) !important; font-size: 10px !important;
+  color: var(--ncm-text-primary, #e0e0e8) !important; outline: none !important;
+  transition: border-color 0.15s !important; flex: 1 !important; min-width: 0 !important;
+  height: auto !important; min-height: 0 !important; background-image: none !important;
+  box-shadow: none !important; appearance: none !important; margin: 0 !important;
+}
+.ncm-app .ncm-convert__input:focus { border-color: var(--ncm-secondary, #19f3f7) !important; }
+.ncm-app .ncm-convert__input--short { max-width: 80px !important; flex: none !important; }
+.ncm-app .ncm-convert__input--textarea {
+  min-height: 70px !important; resize: vertical !important;
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace) !important; line-height: 1.5 !important;
+}
+.ncm-app .ncm-convert__select {
+  background: var(--ncm-bg-surface, #1a1a2e) !important; border: 1px solid var(--ncm-border, #2a2a45) !important;
+  border-radius: 2px !important; padding: 4px 6px !important;
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace) !important; font-size: 10px !important;
+  color: var(--ncm-text-primary, #e0e0e8) !important; outline: none !important; cursor: pointer !important;
+  height: auto !important; min-height: 0 !important; background-image: none !important;
+  box-shadow: none !important; appearance: auto !important; margin: 0 !important;
+}
+.ncm-app .ncm-convert__hint {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace) !important;
+  font-size: 8px !important; color: var(--ncm-text-muted, #555570) !important;
+  margin-top: 2px !important; line-height: 1.5 !important;
+}
+
+/* ─── Checkbox ─── */
+.ncm-app .ncm-convert__check {
+  display: flex !important; align-items: center !important; gap: 6px !important;
+  cursor: pointer !important; font-family: var(--ncm-font-display) !important;
+  font-size: 11px !important; color: var(--ncm-text-secondary, #8888a0) !important;
+}
+.ncm-app .ncm-convert__check input { accent-color: var(--ncm-secondary, #19f3f7) !important; cursor: pointer !important; }
+
+/* ─── Pills ─── */
+.ncm-app .ncm-convert__pills { display: flex !important; gap: 3px !important; flex-wrap: wrap !important; }
+.ncm-app .ncm-convert__pill {
+  display: flex !important; align-items: center !important; gap: 4px !important;
+  padding: 4px 10px !important; background: var(--ncm-bg-surface, #1a1a2e) !important;
+  border: 1px solid var(--ncm-border, #2a2a45) !important; border-radius: 2px !important;
+  cursor: pointer !important; font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace) !important;
+  font-size: 9px !important; color: var(--ncm-text-secondary, #8888a0) !important;
+  transition: all 0.15s !important; text-transform: uppercase !important;
+  letter-spacing: 0.04em !important; height: auto !important; min-height: 0 !important;
+  background-image: none !important; box-shadow: none !important;
+}
+.ncm-app .ncm-convert__pill:hover { border-color: var(--ncm-border-active, #3a3a5a) !important; }
+.ncm-app .ncm-convert__pill.active {
+  border-color: var(--ncm-secondary, #19f3f7) !important; color: var(--ncm-secondary, #19f3f7) !important;
+  background: rgba(25,243,247,0.06) !important;
+}
+.ncm-app .ncm-convert__pill.disabled {
+  opacity: 0.3 !important; cursor: not-allowed !important; border-style: dashed !important;
+  pointer-events: none !important;
+}
+.ncm-app .ncm-convert__pill i { font-size: 9px !important; }
+
+/* ─── Buttons ─── */
+.ncm-app .ncm-convert__btn {
+  display: inline-flex !important; align-items: center !important; gap: 5px !important;
+  padding: 5px 12px !important; font-family: var(--ncm-font-display) !important;
+  font-size: 11px !important; font-weight: 600 !important; text-transform: uppercase !important;
+  letter-spacing: 0.06em !important; border-radius: 2px !important; cursor: pointer !important;
+  transition: all 0.15s !important; border: 1px solid !important;
+  height: auto !important; min-height: 0 !important; background-image: none !important;
+  box-shadow: none !important; appearance: none !important;
+}
+.ncm-app .ncm-convert__btn--primary {
+  background: rgba(246,82,97,0.1) !important; border-color: rgba(246,82,97,0.35) !important;
+  color: var(--ncm-primary, #F65261) !important;
+}
+.ncm-app .ncm-convert__btn--primary:hover { background: rgba(246,82,97,0.2) !important; }
+.ncm-app .ncm-convert__btn--ghost {
+  background: none !important; border-color: var(--ncm-border, #2a2a45) !important;
+  color: var(--ncm-text-muted, #555570) !important;
+}
+.ncm-app .ncm-convert__btn--ghost:hover { border-color: var(--ncm-border-active, #3a3a5a) !important; color: var(--ncm-text-secondary, #8888a0) !important; }
+
+/* ─── Tier Badge ─── */
+.ncm-app .ncm-convert__tier-badge {
+  display: inline-flex !important; align-items: center !important; gap: 4px !important;
+  padding: 2px 8px !important; border-radius: 2px !important;
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace) !important;
+  font-size: 8px !important; text-transform: uppercase !important; letter-spacing: 0.08em !important;
+  border: 1px solid !important;
+}
+.ncm-app .ncm-convert__tier-badge--basic { background: rgba(136,136,160,0.06) !important; color: var(--ncm-text-secondary, #8888a0) !important; border-color: rgba(136,136,160,0.15) !important; }
+.ncm-app .ncm-convert__tier-badge--mid { background: rgba(247,201,72,0.08) !important; color: var(--ncm-accent, #f7c948) !important; border-color: rgba(247,201,72,0.2) !important; }
+.ncm-app .ncm-convert__tier-badge--full { background: rgba(168,85,247,0.08) !important; color: #a855f7 !important; border-color: rgba(168,85,247,0.2) !important; }
+
+/* ─── Skill Check Box ─── */
+.ncm-app .ncm-convert__skillcheck {
+  background: var(--ncm-bg-surface, #1a1a2e) !important; border: 1px solid var(--ncm-border, #2a2a45) !important;
+  border-radius: 2px !important; padding: 12px !important; margin-bottom: 14px !important; text-align: center !important;
+}
+.ncm-app .ncm-convert__skillcheck-title {
+  font-family: var(--ncm-font-title, 'Orbitron', sans-serif) !important; font-size: 10px !important; font-weight: 600 !important;
+  color: var(--ncm-text-muted, #555570) !important; text-transform: uppercase !important;
+  letter-spacing: 0.15em !important; margin-bottom: 8px !important;
+}
+.ncm-app .ncm-convert__skillcheck-roll {
+  display: flex !important; align-items: center !important; justify-content: center !important;
+  gap: 12px !important; margin-bottom: 8px !important;
+}
+.ncm-app .ncm-convert__skillcheck-dice {
+  font-family: var(--ncm-font-title, 'Orbitron', sans-serif) !important;
+  font-size: 28px !important; font-weight: 700 !important; line-height: 1 !important;
+}
+.ncm-app .ncm-convert__skillcheck-breakdown {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace) !important;
+  font-size: 10px !important; color: var(--ncm-text-secondary, #8888a0) !important;
+  text-align: left !important; line-height: 1.6 !important;
+}
+.ncm-app .ncm-convert__skillcheck-result {
+  padding: 6px 12px !important; border-radius: 2px !important;
+  font-family: var(--ncm-font-display) !important; font-size: 12px !important;
+  font-weight: 700 !important; text-transform: uppercase !important;
+  letter-spacing: 0.08em !important; display: inline-block !important;
+}
+.ncm-app .ncm-convert__skillcheck-result--good { background: rgba(0,255,65,0.08) !important; border: 1px solid rgba(0,255,65,0.2) !important; color: var(--ncm-success, #00ff41) !important; }
+.ncm-app .ncm-convert__skillcheck-result--mid { background: rgba(247,201,72,0.08) !important; border: 1px solid rgba(247,201,72,0.2) !important; color: var(--ncm-accent, #f7c948) !important; }
+.ncm-app .ncm-convert__skillcheck-result--low { background: rgba(246,82,97,0.08) !important; border: 1px solid rgba(246,82,97,0.2) !important; color: var(--ncm-primary, #F65261) !important; }
+
+/* ─── Ceiling Indicator (Full tier) ─── */
+.ncm-app .ncm-convert__ceiling {
+  display: flex !important; align-items: center !important; gap: 8px !important;
+  padding: 8px 12px !important; margin-bottom: 12px !important;
+  background: var(--ncm-bg-surface, #1a1a2e) !important; border: 1px solid var(--ncm-border, #2a2a45) !important;
+  border-radius: 2px !important;
+}
+.ncm-app .ncm-convert__ceiling-label {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace) !important;
+  font-size: 9px !important; color: var(--ncm-text-muted, #555570) !important;
+  text-transform: uppercase !important; letter-spacing: 0.06em !important; flex-shrink: 0 !important;
+}
+.ncm-app .ncm-convert__ceiling-items { display: flex !important; gap: 6px !important; flex-wrap: wrap !important; flex: 1 !important; }
+.ncm-app .ncm-convert__ceiling-item {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace) !important;
+  font-size: 9px !important; padding: 2px 6px !important; border-radius: 2px !important; border: 1px solid !important;
+}
+.ncm-app .ncm-convert__ceiling-item--active {
+  background: rgba(25,243,247,0.06) !important; border-color: rgba(25,243,247,0.2) !important;
+  color: var(--ncm-secondary, #19f3f7) !important;
+}
+.ncm-app .ncm-convert__ceiling-item--locked {
+  background: none !important; border-color: var(--ncm-border, #2a2a45) !important;
+  color: var(--ncm-text-muted, #555570) !important; opacity: 0.4 !important; border-style: dashed !important;
+}
+.ncm-app .ncm-convert__ceiling-item i { font-size: 7px !important; margin-right: 3px !important; }
+
+/* ─── Locked Section Overlay ─── */
+.ncm-app .ncm-convert__section--locked { position: relative !important; opacity: 0.35 !important; pointer-events: none !important; }
+.ncm-app .ncm-convert__section--locked::after {
+  content: '\1F512  Locked — higher skill roll required' !important;
+  position: absolute !important; inset: 0 !important;
+  display: flex !important; align-items: center !important; justify-content: center !important;
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace) !important;
+  font-size: 9px !important; color: var(--ncm-text-muted, #555570) !important;
+  text-transform: uppercase !important; letter-spacing: 0.06em !important;
+  background: rgba(10,10,15,0.6) !important;
+}
+
+/* ─── No-Security Notice (Basic tier) ─── */
+.ncm-app .ncm-convert__no-security {
+  padding: 10px 12px !important; background: rgba(136,136,160,0.04) !important;
+  border: 1px dashed var(--ncm-border, #2a2a45) !important; border-radius: 2px !important;
+  margin-top: 4px !important; text-align: center !important;
+}
+.ncm-app .ncm-convert__no-security-text {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace) !important;
+  font-size: 9px !important; color: var(--ncm-text-muted, #555570) !important;
+}
+.ncm-app .ncm-convert__no-security-text i { margin-right: 4px !important; }
+.ncm-app .ncm-convert__no-security-sub { opacity: 0.6 !important; }
+
+/* ─── Color Dots ─── */
+.ncm-app .ncm-convert__colors { display: flex !important; gap: 4px !important; }
+.ncm-app .ncm-convert__color-dot {
+  width: 20px !important; height: 20px !important; border-radius: 2px !important;
+  cursor: pointer !important; border: 2px solid transparent !important;
+  transition: all 0.15s !important; flex-shrink: 0 !important;
+  background-image: none !important; box-shadow: none !important;
+  padding: 0 !important; min-height: 0 !important; min-width: 0 !important;
+  appearance: none !important;
+}
+.ncm-app .ncm-convert__color-dot:hover { transform: scale(1.1) !important; }
+.ncm-app .ncm-convert__color-dot.active { border-color: white !important; box-shadow: 0 0 6px rgba(255,255,255,0.2) !important; }
+
+/* ─── DV Max Indicator ─── */
+.ncm-app .ncm-convert__dv-max {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace) !important;
+  font-size: 9px !important; color: var(--ncm-text-muted, #555570) !important;
+}
+.ncm-app .ncm-convert__dv-max-val { color: var(--ncm-success, #00ff41) !important; }
+
+/* ─── Roll Button (before skill check) ─── */
+.ncm-app .ncm-convert__roll-prompt {
+  text-align: center !important; padding: 16px !important; margin-bottom: 14px !important;
+  background: var(--ncm-bg-surface, #1a1a2e) !important; border: 1px solid var(--ncm-border, #2a2a45) !important;
+  border-radius: 2px !important;
+}
+.ncm-app .ncm-convert__roll-prompt-text {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace) !important;
+  font-size: 10px !important; color: var(--ncm-text-secondary, #8888a0) !important;
+  margin-bottom: 10px !important;
+}
+.ncm-app .ncm-convert__btn--roll {
+  background: rgba(25,243,247,0.08) !important; border-color: rgba(25,243,247,0.3) !important;
+  color: var(--ncm-secondary, #19f3f7) !important;
+}
+.ncm-app .ncm-convert__btn--roll:hover { background: rgba(25,243,247,0.15) !important; }
+
+/* ─── Encoding Animation ─── */
+.ncm-app .ncm-convert__encoding {
+  position: absolute !important; inset: 0 !important; z-index: 50 !important;
+  background: var(--ncm-bg-deep, #0a0a0f) !important;
+  display: flex !important; flex-direction: column !important;
+  align-items: center !important; justify-content: center !important;
+  gap: 16px !important;
+}
+.ncm-app .ncm-convert__encoding-icon {
+  font-size: 32px !important; color: var(--ncm-secondary, #19f3f7) !important;
+  animation: ncm-convert-pulse 1s ease-in-out infinite !important;
+}
+.ncm-app .ncm-convert__encoding-text {
+  font-family: var(--ncm-font-title, 'Orbitron', sans-serif) !important;
+  font-size: 12px !important; font-weight: 600 !important;
+  text-transform: uppercase !important; letter-spacing: 0.15em !important;
+  color: var(--ncm-text-secondary, #8888a0) !important;
+}
+.ncm-app .ncm-convert__encoding-bar {
+  width: 200px !important; height: 3px !important;
+  background: var(--ncm-bg-surface, #1a1a2e) !important; border-radius: 2px !important;
+  overflow: hidden !important;
+}
+.ncm-app .ncm-convert__encoding-fill {
+  height: 100% !important; width: 0% !important;
+  background: var(--ncm-secondary, #19f3f7) !important;
+  transition: width 0.4s ease !important;
+}
+.ncm-app .ncm-convert__encoding-log {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace) !important;
+  font-size: 9px !important; color: var(--ncm-text-muted, #555570) !important;
+  text-align: center !important; line-height: 1.6 !important;
+  min-height: 40px !important;
+}
+@keyframes ncm-convert-pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
