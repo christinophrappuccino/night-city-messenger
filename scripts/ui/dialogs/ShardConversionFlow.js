@@ -9,7 +9,7 @@
  *              Tiers: basic / mid / full (+ GM always = full, no roll)
  */
 
-import { MODULE_ID, TEMPLATES, SOCKET_OPS } from '../../utils/constants.js';
+import { MODULE_ID, TEMPLATES, SOCKET_OPS, CONTENT_TYPES } from '../../utils/constants.js';
 import { log, isGM } from '../../utils/helpers.js';
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
@@ -57,14 +57,14 @@ const COLOR_OPTIONS = [
   '#F65261', '#19f3f7', '#f7c948', '#00ff41', '#a855f7', '#aaaaaa',
 ];
 
-// ── Content type definitions ──
-const CONTENT_TYPES = [
-  { id: 'message',  icon: 'fas fa-envelope',     label: 'Message' },
-  { id: 'eddies',   icon: 'fas fa-coins',        label: 'Eddies' },
-  { id: 'dossier',  icon: 'fas fa-user-secret',  label: 'Dossier' },
-  { id: 'payload',  icon: 'fas fa-bug',          label: 'Payload' },
-  { id: 'avlog',    icon: 'fas fa-microphone',   label: 'AV Log' },
-  { id: 'location', icon: 'fas fa-map-pin',      label: 'Location' },
+// ── Content type definitions (shared with GM composer) ──
+const CONTENT_TYPE_PILLS = [
+  { id: CONTENT_TYPES.MESSAGE,  icon: 'fas fa-envelope',     label: 'Message' },
+  { id: CONTENT_TYPES.EDDIES,   icon: 'fas fa-coins',        label: 'Eddies' },
+  { id: CONTENT_TYPES.DOSSIER,  icon: 'fas fa-user-secret',  label: 'Dossier' },
+  { id: CONTENT_TYPES.PAYLOAD,  icon: 'fas fa-bug',          label: 'Payload' },
+  { id: CONTENT_TYPES.AVLOG,    icon: 'fas fa-microphone',   label: 'AV Log' },
+  { id: CONTENT_TYPES.LOCATION, icon: 'fas fa-map-pin',      label: 'Location' },
 ];
 
 export class ShardConversionFlow extends HandlebarsApplicationMixin(ApplicationV2) {
@@ -127,8 +127,11 @@ export class ShardConversionFlow extends HandlebarsApplicationMixin(ApplicationV
     // ── Form state ──
     this._selectedICEType = 'ICE';
     this._selectedColor = '#19f3f7';
-    this._selectedContentType = 'message';
+    this._selectedContentType = CONTENT_TYPES.MESSAGE;
     this._encoding = false;
+
+    /** @type {Object<string, object>} Saved per-type form data across re-renders */
+    this._typeFormData = {};
 
     // ── Compute tier ──
     this._computeTier();
@@ -280,10 +283,18 @@ export class ShardConversionFlow extends HandlebarsApplicationMixin(ApplicationV
     }));
 
     // ── Content types (Full only) ──
-    const contentTypes = CONTENT_TYPES.map(ct => ({
+    const contentTypes = CONTENT_TYPE_PILLS.map(ct => ({
       ...ct,
       active: ct.id === this._selectedContentType,
     }));
+
+    // ── Per-content-type form state flags ──
+    const isMessage  = this._selectedContentType === CONTENT_TYPES.MESSAGE;
+    const isEddies   = this._selectedContentType === CONTENT_TYPES.EDDIES;
+    const isDossier  = this._selectedContentType === CONTENT_TYPES.DOSSIER;
+    const isPayload  = this._selectedContentType === CONTENT_TYPES.PAYLOAD;
+    const isAvlog    = this._selectedContentType === CONTENT_TYPES.AVLOG;
+    const isLocation = this._selectedContentType === CONTENT_TYPES.LOCATION;
 
     // ── Actor email for "From" field ──
     const emailService = game.nightcity?.emailService;
@@ -348,6 +359,8 @@ export class ShardConversionFlow extends HandlebarsApplicationMixin(ApplicationV
       showContentTypes: tier === 'full',
       contentTypes,
       entryFrom,
+      isMessage, isEddies, isDossier, isPayload, isAvlog, isLocation,
+      typeData: this._typeFormData?.[this._selectedContentType] || {},
 
       // Appearance
       iconOptions,
@@ -449,10 +462,71 @@ export class ShardConversionFlow extends HandlebarsApplicationMixin(ApplicationV
   static _onSelectContentType(event, target) {
     const value = target.dataset.value;
     if (!value) return;
-    target.closest('.ncm-convert__pills')?.querySelectorAll('.ncm-convert__pill').forEach(p => {
-      p.classList.toggle('active', p.dataset.value === value);
-    });
+    if (value === this._selectedContentType) return;
+
+    // Preserve current form data before re-render
+    this._typeFormData = this._typeFormData || {};
+    const currentData = this._gatherTypeFormData(this._selectedContentType);
+    this._typeFormData[this._selectedContentType] = currentData;
+
     this._selectedContentType = value;
+    this.render();
+  }
+
+  /**
+   * Gather form fields specific to the currently rendered content type.
+   * @param {string} type
+   * @returns {object}
+   */
+  _gatherTypeFormData(type) {
+    const el = this.element;
+    if (!el) return {};
+    const v = (name) => el.querySelector(`[name="${name}"]`)?.value ?? '';
+    const c = (name) => el.querySelector(`[name="${name}"]`)?.checked ?? false;
+
+    const out = {};
+    switch (type) {
+      case CONTENT_TYPES.MESSAGE:
+        out.entryFrom = v('entryFrom');
+        out.entrySubject = v('entrySubject');
+        out.entryBody = v('entryBody');
+        break;
+      case CONTENT_TYPES.EDDIES:
+        out.eddiesTitle = v('eddiesTitle');
+        out.eddiesAmount = v('eddiesAmount');
+        out.eddiesNote = v('eddiesNote');
+        break;
+      case CONTENT_TYPES.DOSSIER:
+        out.dossierTargetName = v('dossierTargetName');
+        out.dossierAlias = v('dossierAlias');
+        out.dossierThreat = v('dossierThreat');
+        out.dossierAffiliation = v('dossierAffiliation');
+        out.dossierLastKnown = v('dossierLastKnown');
+        out.dossierClassification = v('dossierClassification');
+        break;
+      case CONTENT_TYPES.PAYLOAD:
+        out.payloadName = v('payloadName');
+        out.payloadType = v('payloadType');
+        out.payloadDescription = v('payloadDescription');
+        out.payloadEffectType = v('payloadEffectType');
+        out.payloadDuration = v('payloadDuration');
+        out.payloadDisguised = c('payloadDisguised');
+        break;
+      case CONTENT_TYPES.AVLOG:
+        out.avlogTitle = v('avlogTitle');
+        out.avlogMediaType = v('avlogMediaType');
+        out.avlogDuration = v('avlogDuration');
+        out.avlogSource = v('avlogSource');
+        out.avlogTranscript = v('avlogTranscript');
+        break;
+      case CONTENT_TYPES.LOCATION:
+        out.locationName = v('locationName');
+        out.locationCoords = v('locationCoords');
+        out.locationDistrict = v('locationDistrict');
+        out.locationDescription = v('locationDescription');
+        break;
+    }
+    return out;
   }
 
   /**
@@ -662,28 +736,135 @@ export class ShardConversionFlow extends HandlebarsApplicationMixin(ApplicationV
     const journal = game.journal.get(journalId);
     if (!journal) return;
 
-    const body = formData.entryBody?.trim();
-    if (!body) return;
-
+    const type = this._selectedContentType;
+    const td = formData.typeData || {};
     const entryIcon = formData.customIcon?.trim() || formData.entryIcon || 'fas fa-envelope';
     const timestamp = game.nightcity?.timeService?.getCurrentTime?.() || new Date().toISOString();
 
+    // ── Build subject + body + contentData per type ──
+    let subject = 'Untitled';
+    let body = '';
+    let contentData = null;
+
+    switch (type) {
+      case CONTENT_TYPES.MESSAGE: {
+        subject = td.entrySubject?.trim() || 'Untitled Message';
+        body = td.entryBody?.trim() || '';
+        if (!body) {
+          log.warn('Message entry has no body — skipping initial entry creation');
+          return;
+        }
+        break;
+      }
+
+      case CONTENT_TYPES.EDDIES: {
+        subject = td.eddiesTitle?.trim() || 'Eddies Dead Drop';
+        const amount = parseInt(td.eddiesAmount) || 0;
+        if (amount <= 0) {
+          log.warn('Eddies entry amount must be > 0 — skipping initial entry creation');
+          return;
+        }
+        contentData = {
+          amount,
+          claimed: false,
+          claimedBy: null,
+          claimedAt: null,
+          note: td.eddiesNote || '',
+          splitEnabled: false,
+        };
+        body = td.eddiesNote || '';
+        break;
+      }
+
+      case CONTENT_TYPES.DOSSIER: {
+        subject = td.dossierTargetName?.trim() || 'Unknown Subject';
+        contentData = {
+          targetName: td.dossierTargetName || 'Unknown',
+          targetAlias: td.dossierAlias || '',
+          targetImage: null,
+          linkedActorId: null,
+          classification: td.dossierClassification || '',
+          sections: [],
+          stats: {
+            threat: td.dossierThreat || '',
+            affiliation: td.dossierAffiliation || '',
+            lastKnownLocation: td.dossierLastKnown || '',
+          },
+        };
+        body = td.dossierClassification || '';
+        break;
+      }
+
+      case CONTENT_TYPES.PAYLOAD: {
+        subject = td.payloadName?.trim() || 'Unknown Program';
+        contentData = {
+          payloadType: td.payloadType || 'custom',
+          name: td.payloadName || 'UNKNOWN.exe',
+          description: td.payloadDescription || '',
+          effect: {
+            type: td.payloadEffectType || 'custom',
+            duration: (parseInt(td.payloadDuration) || 24) * 3600000,
+          },
+          executed: false,
+          executedBy: null,
+          executedAt: null,
+          disguised: !!td.payloadDisguised,
+          disguiseType: 'message',
+        };
+        body = td.payloadDescription || '';
+        break;
+      }
+
+      case CONTENT_TYPES.AVLOG: {
+        subject = td.avlogTitle?.trim() || 'Recording';
+        contentData = {
+          mediaType: td.avlogMediaType || 'audio',
+          duration: td.avlogDuration || '00:00',
+          source: td.avlogSource || '',
+          transcript: td.avlogTranscript ? [{ speaker: '', text: td.avlogTranscript }] : [],
+          corrupted: false,
+          corruptionLevel: 0,
+        };
+        body = td.avlogTranscript || '';
+        break;
+      }
+
+      case CONTENT_TYPES.LOCATION: {
+        subject = td.locationName?.trim() || 'Unknown Location';
+        contentData = {
+          locationName: td.locationName || 'Unknown',
+          locationImage: null,
+          coordinates: td.locationCoords || '',
+          district: td.locationDistrict || '',
+          description: td.locationDescription || '',
+          linkedSceneId: null,
+          pinX: null,
+          pinY: null,
+        };
+        body = td.locationDescription || '';
+        break;
+      }
+    }
+
+    const flags = {
+      [MODULE_ID]: {
+        entryType: type,
+        from: td.entryFrom || formData.entryFrom || '',
+        subject,
+        icon: entryIcon,
+        accentColor: this._selectedColor,
+        timestamp,
+        order: 0,
+      },
+    };
+    if (contentData) flags[MODULE_ID].contentData = contentData;
+
     try {
       await journal.createEmbeddedDocuments('JournalEntryPage', [{
-        name: formData.entrySubject || 'Untitled',
+        name: subject,
         type: 'text',
         text: { content: body },
-        flags: {
-          [MODULE_ID]: {
-            entryType: this._selectedContentType,
-            from: formData.entryFrom || '',
-            subject: formData.entrySubject || '',
-            icon: entryIcon,
-            accentColor: this._selectedColor,
-            timestamp,
-            order: 0,
-          },
-        },
+        flags,
       }]);
     } catch (err) {
       log.warn('Failed to create initial shard entry:', err);
@@ -704,6 +885,15 @@ export class ShardConversionFlow extends HandlebarsApplicationMixin(ApplicationV
     const val = (name) => el.querySelector(`[name="${name}"]`)?.value?.trim() ?? '';
     const checked = (name) => el.querySelector(`[name="${name}"]`)?.checked ?? false;
 
+    // Merge stashed per-type data with whatever's currently visible in the form
+    const currentTypeData = this._gatherTypeFormData(this._selectedContentType);
+    const allTypeData = {
+      ...(this._typeFormData || {}),
+      [this._selectedContentType]: currentTypeData,
+    };
+    // Flatten into single object (current type wins if there are key collisions)
+    const flatTypeData = Object.assign({}, ...Object.values(allTypeData));
+
     return {
       itemId: val('itemId'),
       shardName: val('shardName'),
@@ -716,10 +906,10 @@ export class ShardConversionFlow extends HandlebarsApplicationMixin(ApplicationV
       requiresKeyItem: checked('requiresKeyItem'),
       keyItemName: val('keyItemName'),
       entryFrom: val('entryFrom'),
-      entrySubject: val('entrySubject'),
-      entryBody: el.querySelector('[name="entryBody"]')?.value?.trim() ?? '',
       entryIcon: val('entryIcon'),
       customIcon: val('customIcon'),
+      // Per-type data (combined, current type's values win)
+      typeData: flatTypeData,
     };
   }
 

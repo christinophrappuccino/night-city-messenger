@@ -188,18 +188,162 @@
         </div>
       {{/if}}
 
-      <div class="ncm-convert__row">
-        <span class="ncm-convert__label">From</span>
-        <input class="ncm-convert__input" name="entryFrom" value="{{entryFrom}}" placeholder="Your address">
-      </div>
-      <div class="ncm-convert__row">
-        <span class="ncm-convert__label">Subject</span>
-        <input class="ncm-convert__input" name="entrySubject" placeholder="Subject line">
-      </div>
-      <div class="ncm-convert__row ncm-convert__row--col">
-        <span class="ncm-convert__label" style="margin-bottom:4px;">Message</span>
-        <textarea class="ncm-convert__input ncm-convert__input--textarea" name="entryBody" placeholder="Write your message..."></textarea>
-      </div>
+      {{!-- ── Message ── --}}
+      {{#if isMessage}}
+        <div class="ncm-convert__row">
+          <span class="ncm-convert__label">From</span>
+          <input class="ncm-convert__input" name="entryFrom" value="{{#if typeData.entryFrom}}{{typeData.entryFrom}}{{else}}{{entryFrom}}{{/if}}" placeholder="Your address">
+        </div>
+        <div class="ncm-convert__row">
+          <span class="ncm-convert__label">Subject</span>
+          <input class="ncm-convert__input" name="entrySubject" value="{{typeData.entrySubject}}" placeholder="Subject line">
+        </div>
+        <div class="ncm-convert__row ncm-convert__row--col">
+          <span class="ncm-convert__label" style="margin-bottom:4px;">Message</span>
+          <textarea class="ncm-convert__input ncm-convert__input--textarea" name="entryBody" placeholder="Write your message...">{{typeData.entryBody}}</textarea>
+        </div>
+      {{/if}}
+
+      {{!-- ── Eddies ── --}}
+      {{#if isEddies}}
+        <div class="ncm-convert__row">
+          <span class="ncm-convert__label">Title</span>
+          <input class="ncm-convert__input" name="eddiesTitle" value="{{typeData.eddiesTitle}}" placeholder="e.g. Dead Drop Payment">
+        </div>
+        <div class="ncm-convert__row">
+          <span class="ncm-convert__label">Amount (¥)</span>
+          <input class="ncm-convert__input ncm-convert__input--short" type="number" name="eddiesAmount" value="{{typeData.eddiesAmount}}" min="1" placeholder="500">
+          <span class="ncm-convert__hint" style="margin-top:0;">Eurodollars to transfer when claimed</span>
+        </div>
+        <div class="ncm-convert__row ncm-convert__row--col">
+          <span class="ncm-convert__label" style="margin-bottom:4px;">Note</span>
+          <textarea class="ncm-convert__input ncm-convert__input--textarea" name="eddiesNote" placeholder="Optional message attached to the transfer">{{typeData.eddiesNote}}</textarea>
+        </div>
+      {{/if}}
+
+      {{!-- ── Dossier ── --}}
+      {{#if isDossier}}
+        <div class="ncm-convert__row">
+          <span class="ncm-convert__label">Target Name</span>
+          <input class="ncm-convert__input" name="dossierTargetName" value="{{typeData.dossierTargetName}}" placeholder="Subject's name">
+        </div>
+        <div class="ncm-convert__row">
+          <span class="ncm-convert__label">Alias</span>
+          <input class="ncm-convert__input" name="dossierAlias" value="{{typeData.dossierAlias}}" placeholder="Street name / handle">
+        </div>
+        <div class="ncm-convert__row">
+          <span class="ncm-convert__label">Threat Level</span>
+          <select class="ncm-convert__select" name="dossierThreat" style="flex:1;">
+            <option value="" {{#unless typeData.dossierThreat}}selected{{/unless}}>— Select —</option>
+            <option value="LOW"      {{#if (eq typeData.dossierThreat "LOW")}}selected{{/if}}>Low</option>
+            <option value="MODERATE" {{#if (eq typeData.dossierThreat "MODERATE")}}selected{{/if}}>Moderate</option>
+            <option value="HIGH"     {{#if (eq typeData.dossierThreat "HIGH")}}selected{{/if}}>High</option>
+            <option value="CRITICAL" {{#if (eq typeData.dossierThreat "CRITICAL")}}selected{{/if}}>Critical</option>
+          </select>
+        </div>
+        <div class="ncm-convert__row">
+          <span class="ncm-convert__label">Affiliation</span>
+          <input class="ncm-convert__input" name="dossierAffiliation" value="{{typeData.dossierAffiliation}}" placeholder="Gang, corp, faction...">
+        </div>
+        <div class="ncm-convert__row">
+          <span class="ncm-convert__label">Last Known</span>
+          <input class="ncm-convert__input" name="dossierLastKnown" value="{{typeData.dossierLastKnown}}" placeholder="Last seen location">
+        </div>
+        <div class="ncm-convert__row ncm-convert__row--col">
+          <span class="ncm-convert__label" style="margin-bottom:4px;">Classification / Notes</span>
+          <textarea class="ncm-convert__input ncm-convert__input--textarea" name="dossierClassification" placeholder="Background, intel, observations">{{typeData.dossierClassification}}</textarea>
+        </div>
+      {{/if}}
+
+      {{!-- ── Payload ── --}}
+      {{#if isPayload}}
+        <div class="ncm-convert__row">
+          <span class="ncm-convert__label">Program Name</span>
+          <input class="ncm-convert__input" name="payloadName" value="{{typeData.payloadName}}" placeholder="e.g. KIRI.exe">
+        </div>
+        <div class="ncm-convert__row">
+          <span class="ncm-convert__label">Type</span>
+          <select class="ncm-convert__select" name="payloadType" style="flex:1;">
+            <option value="custom"     {{#if (eq typeData.payloadType "custom")}}selected{{/if}}>Custom</option>
+            <option value="virus"      {{#if (eq typeData.payloadType "virus")}}selected{{/if}}>Virus</option>
+            <option value="worm"       {{#if (eq typeData.payloadType "worm")}}selected{{/if}}>Worm</option>
+            <option value="trojan"     {{#if (eq typeData.payloadType "trojan")}}selected{{/if}}>Trojan</option>
+            <option value="zap"        {{#if (eq typeData.payloadType "zap")}}selected{{/if}}>Zap</option>
+            <option value="ransomware" {{#if (eq typeData.payloadType "ransomware")}}selected{{/if}}>Ransomware</option>
+          </select>
+        </div>
+        <div class="ncm-convert__row">
+          <span class="ncm-convert__label">Effect</span>
+          <select class="ncm-convert__select" name="payloadEffectType" style="flex:1;">
+            <option value="custom"      {{#if (eq typeData.payloadEffectType "custom")}}selected{{/if}}>Custom</option>
+            <option value="damage"      {{#if (eq typeData.payloadEffectType "damage")}}selected{{/if}}>Damage</option>
+            <option value="lockout"     {{#if (eq typeData.payloadEffectType "lockout")}}selected{{/if}}>Lockout</option>
+            <option value="data-leak"   {{#if (eq typeData.payloadEffectType "data-leak")}}selected{{/if}}>Data Leak</option>
+            <option value="surveillance" {{#if (eq typeData.payloadEffectType "surveillance")}}selected{{/if}}>Surveillance</option>
+          </select>
+        </div>
+        <div class="ncm-convert__row">
+          <span class="ncm-convert__label">Duration (h)</span>
+          <input class="ncm-convert__input ncm-convert__input--short" type="number" name="payloadDuration" value="{{#if typeData.payloadDuration}}{{typeData.payloadDuration}}{{else}}24{{/if}}" min="1">
+        </div>
+        <div class="ncm-convert__row">
+          <label class="ncm-convert__check">
+            <input type="checkbox" name="payloadDisguised" {{#if typeData.payloadDisguised}}checked{{/if}}> Disguised as message
+          </label>
+        </div>
+        <div class="ncm-convert__row ncm-convert__row--col">
+          <span class="ncm-convert__label" style="margin-bottom:4px;">Description</span>
+          <textarea class="ncm-convert__input ncm-convert__input--textarea" name="payloadDescription" placeholder="What this program does when executed">{{typeData.payloadDescription}}</textarea>
+        </div>
+      {{/if}}
+
+      {{!-- ── AV Log ── --}}
+      {{#if isAvlog}}
+        <div class="ncm-convert__row">
+          <span class="ncm-convert__label">Title</span>
+          <input class="ncm-convert__input" name="avlogTitle" value="{{typeData.avlogTitle}}" placeholder="Recording title">
+        </div>
+        <div class="ncm-convert__row">
+          <span class="ncm-convert__label">Media Type</span>
+          <select class="ncm-convert__select" name="avlogMediaType" style="flex:1;">
+            <option value="audio" {{#if (eq typeData.avlogMediaType "audio")}}selected{{/if}}>Audio</option>
+            <option value="video" {{#if (eq typeData.avlogMediaType "video")}}selected{{/if}}>Video</option>
+            <option value="braindance" {{#if (eq typeData.avlogMediaType "braindance")}}selected{{/if}}>Braindance</option>
+          </select>
+        </div>
+        <div class="ncm-convert__row">
+          <span class="ncm-convert__label">Duration</span>
+          <input class="ncm-convert__input ncm-convert__input--short" name="avlogDuration" value="{{typeData.avlogDuration}}" placeholder="00:00">
+        </div>
+        <div class="ncm-convert__row">
+          <span class="ncm-convert__label">Source</span>
+          <input class="ncm-convert__input" name="avlogSource" value="{{typeData.avlogSource}}" placeholder="Camera, mic, recovered chip...">
+        </div>
+        <div class="ncm-convert__row ncm-convert__row--col">
+          <span class="ncm-convert__label" style="margin-bottom:4px;">Transcript / Description</span>
+          <textarea class="ncm-convert__input ncm-convert__input--textarea" name="avlogTranscript" placeholder="What's on the recording">{{typeData.avlogTranscript}}</textarea>
+        </div>
+      {{/if}}
+
+      {{!-- ── Location ── --}}
+      {{#if isLocation}}
+        <div class="ncm-convert__row">
+          <span class="ncm-convert__label">Location Name</span>
+          <input class="ncm-convert__input" name="locationName" value="{{typeData.locationName}}" placeholder="Sunset Motel, Room 12">
+        </div>
+        <div class="ncm-convert__row">
+          <span class="ncm-convert__label">Coordinates</span>
+          <input class="ncm-convert__input" name="locationCoords" value="{{typeData.locationCoords}}" placeholder="GPS or grid ref">
+        </div>
+        <div class="ncm-convert__row">
+          <span class="ncm-convert__label">District</span>
+          <input class="ncm-convert__input" name="locationDistrict" value="{{typeData.locationDistrict}}" placeholder="Watson, Heywood, Westbrook...">
+        </div>
+        <div class="ncm-convert__row ncm-convert__row--col">
+          <span class="ncm-convert__label" style="margin-bottom:4px;">Description</span>
+          <textarea class="ncm-convert__input ncm-convert__input--textarea" name="locationDescription" placeholder="What's there, how to find it, what to expect">{{typeData.locationDescription}}</textarea>
+        </div>
+      {{/if}}
     </div>
 
     {{!-- ═══ Entry Appearance ═══ --}}
