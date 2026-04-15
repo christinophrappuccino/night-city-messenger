@@ -287,7 +287,6 @@ export class ShardSheetOverride {
       if (!actor?.items) return;
 
       const root = html[0] ?? html;
-      const canConvert = isGM() || game.settings.get(MODULE_ID, 'playerShardFloor') !== 'disabled';
 
       for (const item of actor.items) {
         const isShard = item.getFlag(MODULE_ID, 'isDataShard');
@@ -297,7 +296,9 @@ export class ShardSheetOverride {
 
         if (isShard) {
           this._applyShardBadge(row, item);
-        } else if (canConvert) {
+        } else {
+          // Always apply convert button + context menu;
+          // internal checks handle the playerShardFloor setting
           this._applyConvertButton(row, item, actor);
         }
       }
@@ -390,38 +391,43 @@ export class ShardSheetOverride {
   }
 
   /**
-   * Add a "Convert to Data Shard" button to the item controls area.
+   * Add a "Convert to Data Shard" button and right-click context menu
+   * to a non-shard item's inventory row.
    * @param {HTMLElement} row
    * @param {Item} item
    * @param {Actor} actor
    */
   _applyConvertButton(row, item, actor) {
-    if (row.querySelector('.ncm-convert-shard-btn')) return;
+    const canConvert = isGM() || game.settings.get(MODULE_ID, 'playerShardFloor') !== 'disabled';
 
-    const controls = row.querySelector('.item-controls, .item-control');
-    if (!controls) return;
+    // ─── Inline convert button (best-effort — CPR may not have .item-controls) ───
+    if (canConvert && !row.querySelector('.ncm-convert-shard-btn')) {
+      const controls = row.querySelector('.item-controls, .item-control');
+      if (controls) {
+        const btn = document.createElement('a');
+        btn.className = 'item-control ncm-convert-shard-btn';
+        btn.title = 'Convert to Data Shard';
+        btn.innerHTML = '<i class="fas fa-microchip"></i>';
+        btn.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          ev.preventDefault();
+          this._launchConversionFlow(item, actor);
+        });
+        controls.prepend(btn);
+      }
+    }
 
-    const btn = document.createElement('a');
-    btn.className = 'item-control ncm-convert-shard-btn';
-    btn.title = 'Convert to Data Shard';
-    btn.innerHTML = '<i class="fas fa-microchip"></i>';
-    btn.addEventListener('click', (ev) => {
-      ev.stopPropagation();
-      ev.preventDefault();
-      this._launchConversionFlow(item, actor);
-    });
-
-    // Insert at the start of controls
-    controls.prepend(btn);
-
-    // ─── Right-click context menu ───
-    row.addEventListener('contextmenu', (ev) => {
-      if (!isGM() && game.settings.get(MODULE_ID, 'playerShardFloor') === 'disabled') return;
-      const entries = [
-        { label: 'Convert to Data Shard', icon: 'fas fa-microchip', color: '#00D4E6', fn: () => this._launchConversionFlow(item, actor) },
-      ];
-      this._showContextMenu(ev, entries);
-    });
+    // ─── Right-click context menu (always attached) ───
+    if (!row._ncmConvertCtx) {
+      row._ncmConvertCtx = true;
+      row.addEventListener('contextmenu', (ev) => {
+        if (!isGM() && game.settings.get(MODULE_ID, 'playerShardFloor') === 'disabled') return;
+        const entries = [
+          { label: 'Convert to Data Shard', icon: 'fas fa-microchip', color: '#00D4E6', fn: () => this._launchConversionFlow(item, actor) },
+        ];
+        this._showContextMenu(ev, entries);
+      });
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════
