@@ -519,16 +519,19 @@ export class ShardConversionFlow extends HandlebarsApplicationMixin(ApplicationV
       const service = this.dataShardService;
       if (!service) throw new Error('DataShardService not available');
 
-      let conversionPromise;
-      if (isGM()) {
-        conversionPromise = service.convertToDataShard(item, config);
-      } else {
-        conversionPromise = this._requestPlayerConversion(item, config);
-      }
+      // Wrap in async function to ensure we always get a Promise back,
+      // even if convertToDataShard throws synchronously
+      const runConversion = async () => {
+        if (isGM()) {
+          return await service.convertToDataShard(item, config);
+        } else {
+          return await this._requestPlayerConversion(item, config);
+        }
+      };
 
       // Race against timeout so we never hang forever
       const result = await Promise.race([
-        conversionPromise,
+        runConversion(),
         new Promise((_, rej) => setTimeout(() => rej(new Error('Conversion timed out after 15s')), 15000)),
       ]);
 
