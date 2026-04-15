@@ -590,7 +590,7 @@ export class ShardConversionFlow extends HandlebarsApplicationMixin(ApplicationV
   _showEncodingOverlay(initialText = 'INITIALIZING...') {
     const overlay = this.element?.querySelector('[data-id="encoding-overlay"]');
     if (!overlay) return;
-    overlay.style.display = 'flex';
+    overlay.classList.add('is-active');
     this._setEncodingStatus(initialText, 5);
   }
 
@@ -605,7 +605,7 @@ export class ShardConversionFlow extends HandlebarsApplicationMixin(ApplicationV
 
   _hideEncodingOverlay() {
     const overlay = this.element?.querySelector('[data-id="encoding-overlay"]');
-    if (overlay) overlay.style.display = 'none';
+    if (overlay) overlay.classList.remove('is-active');
   }
 
   // ═══════════════════════════════════════════════════════════

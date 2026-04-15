@@ -75,7 +75,8 @@
 /* ─── Pills ─── */
 .ncm-app .ncm-convert__pills { display: flex !important; gap: 3px !important; flex-wrap: wrap !important; }
 .ncm-app .ncm-convert__pill {
-  display: flex !important; align-items: center !important; gap: 4px !important;
+  display: inline-flex !important; align-items: center !important; gap: 4px !important;
+  width: auto !important; flex: 0 0 auto !important;
   padding: 4px 10px !important; background: var(--ncm-bg-surface, #1a1a2e) !important;
   border: 1px solid var(--ncm-border, #2a2a45) !important; border-radius: 2px !important;
   cursor: pointer !important; font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace) !important;
@@ -83,6 +84,8 @@
   transition: all 0.15s !important; text-transform: uppercase !important;
   letter-spacing: 0.04em !important; height: auto !important; min-height: 0 !important;
   background-image: none !important; box-shadow: none !important;
+  appearance: none !important; -webkit-appearance: none !important;
+  margin: 0 !important; line-height: 1.2 !important;
 }
 .ncm-app .ncm-convert__pill:hover { border-color: var(--ncm-border-active, #3a3a5a) !important; }
 .ncm-app .ncm-convert__pill.active {
@@ -93,7 +96,7 @@
   opacity: 0.3 !important; cursor: not-allowed !important; border-style: dashed !important;
   pointer-events: none !important;
 }
-.ncm-app .ncm-convert__pill i { font-size: 9px !important; }
+.ncm-app .ncm-convert__pill i { font-size: 9px !important; pointer-events: none !important; }
 
 /* ─── Buttons ─── */
 .ncm-app .ncm-convert__btn {
@@ -216,12 +219,15 @@
 /* ─── Color Dots ─── */
 .ncm-app .ncm-convert__colors { display: flex !important; gap: 4px !important; }
 .ncm-app .ncm-convert__color-dot {
+  display: inline-block !important;
   width: 20px !important; height: 20px !important; border-radius: 2px !important;
   cursor: pointer !important; border: 2px solid transparent !important;
   transition: all 0.15s !important; flex-shrink: 0 !important;
   background-image: none !important; box-shadow: none !important;
   padding: 0 !important; min-height: 0 !important; min-width: 0 !important;
-  appearance: none !important;
+  margin: 0 !important; line-height: 0 !important;
+  appearance: none !important; -webkit-appearance: none !important;
+  font-size: 0 !important;
 }
 .ncm-app .ncm-convert__color-dot:hover { transform: scale(1.1) !important; }
 .ncm-app .ncm-convert__color-dot.active { border-color: white !important; box-shadow: 0 0 6px rgba(255,255,255,0.2) !important; }
@@ -252,14 +258,14 @@
 
 /* ─── Encoding Animation ─── */
 .ncm-app .ncm-convert__encoding {
+  display: none;
   position: absolute !important; inset: 0 !important; z-index: 50 !important;
   background: var(--ncm-bg-deep, #0a0a0f) !important;
   flex-direction: column !important;
   align-items: center !important; justify-content: center !important;
   gap: 16px !important;
 }
-.ncm-app .ncm-convert__encoding[style*="display: flex"],
-.ncm-app .ncm-convert__encoding[style*="display:flex"] {
+.ncm-app .ncm-convert__encoding.is-active {
   display: flex !important;
 }
 .ncm-app .ncm-convert__encoding-icon {
