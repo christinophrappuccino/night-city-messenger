@@ -87,6 +87,8 @@ export class ShardConversionFlow extends HandlebarsApplicationMixin(ApplicationV
       selectICEType:      function (event, target) { return ShardConversionFlow._onSelectICEType.call(this, event, target); },
       selectColor:        function (event, target) { return ShardConversionFlow._onSelectColor.call(this, event, target); },
       selectContentType:  function (event, target) { return ShardConversionFlow._onSelectContentType.call(this, event, target); },
+      searchKeyItem:      function (event, target) { return ShardConversionFlow._onSearchKeyItem.call(this, event, target); },
+      clearKeyItem:       function (event, target) { return ShardConversionFlow._onClearKeyItem.call(this, event, target); },
       cancel:             function (event, target) { return ShardConversionFlow._onCancel.call(this, event, target); },
       createShard:        function (event, target) { return ShardConversionFlow._onCreateShard.call(this, event, target); },
     },
@@ -130,8 +132,14 @@ export class ShardConversionFlow extends HandlebarsApplicationMixin(ApplicationV
     this._selectedContentType = CONTENT_TYPES.MESSAGE;
     this._encoding = false;
 
+    /** @type {{id, name, img}|null} Selected key item from inventory picker */
+    this._selectedKeyItem = null;
+
     /** @type {Object<string, object>} Saved per-type form data across re-renders */
     this._typeFormData = {};
+
+    /** @type {number|null} Saved scroll position to restore across re-renders */
+    this._savedScroll = null;
 
     // ── Compute tier ──
     this._computeTier();
@@ -359,8 +367,14 @@ export class ShardConversionFlow extends HandlebarsApplicationMixin(ApplicationV
       showContentTypes: tier === 'full',
       contentTypes,
       entryFrom,
+      hasEmail: !!entryFrom,
       isMessage, isEddies, isDossier, isPayload, isAvlog, isLocation,
       typeData: this._typeFormData?.[this._selectedContentType] || {},
+      actorWealth: this._actor?.system?.wealth?.value ?? 0,
+
+      // Key item
+      selectedKeyItem: this._selectedKeyItem,
+      actorName: this._actor?.name || 'Unknown',
 
       // Appearance
       iconOptions,
@@ -380,13 +394,58 @@ export class ShardConversionFlow extends HandlebarsApplicationMixin(ApplicationV
   // ═══════════════════════════════════════════════════════════
 
   _onRender(context, options) {
-    // Wire select change listeners (data-action on <select> fires on click, not change)
-    const selects = this.element?.querySelectorAll('select[name]');
-    selects?.forEach(sel => {
-      sel.addEventListener('change', () => {
-        // Nothing to do — values read at submit time
+    // ── Scroll preservation across re-renders ──
+    const body = this.element?.querySelector('.ncm-convert__body');
+    if (body && this._savedScroll != null) {
+      body.scrollTop = this._savedScroll;
+    }
+    if (body) {
+      body.addEventListener('scroll', () => {
+        this._savedScroll = body.scrollTop;
       });
+    }
+
+    // ── Wire security toggle live updates so stages reflect checkbox state ──
+    const secInputs = this.element?.querySelectorAll(
+      '[name="encrypted"], [name="requiresLogin"], [name="requiresKeyItem"]'
+    );
+    secInputs?.forEach(inp => {
+      inp.addEventListener('change', () => this._refreshSecurityStages());
     });
+    this._refreshSecurityStages();
+  }
+
+  /**
+   * Update the security stages display based on currently-checked boxes.
+   * Pure DOM update — no re-render needed.
+   */
+  _refreshSecurityStages() {
+    const el = this.element;
+    if (!el) return;
+    const stages = el.querySelector('[data-id="security-stages"]');
+    if (!stages) return;
+
+    const isChecked = (name) => el.querySelector(`[name="${name}"]`)?.checked ?? false;
+    const hasLogin = isChecked('requiresLogin');
+    const hasKey = isChecked('requiresKeyItem');
+    const hasICE = isChecked('encrypted');
+
+    const items = stages.querySelectorAll('[data-stage]');
+    items.forEach(it => {
+      const stage = it.dataset.stage;
+      let active = false;
+      if (stage === 'login') active = hasLogin;
+      else if (stage === 'key') active = hasKey;
+      else if (stage === 'ice') active = hasICE;
+      it.classList.toggle('is-active', active);
+    });
+
+    // Empty state
+    const empty = stages.querySelector('[data-id="security-empty"]');
+    if (empty) {
+      const anyActive = hasLogin || hasKey || hasICE;
+      empty.style.display = anyActive ? 'none' : '';
+    }
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -530,6 +589,112 @@ export class ShardConversionFlow extends HandlebarsApplicationMixin(ApplicationV
   }
 
   /**
+   * Open inventory picker dialog for selecting a key item.
+   * Searches the actor's own inventory only (not world items).
+   */
+  static async _onSearchKeyItem(event, target) {
+    const actor = this._actor;
+    if (!actor) return;
+
+    const items = (actor.items?.contents ?? []).filter(i => {
+      // Exclude shards themselves
+      if (i.getFlag(MODULE_ID, 'isDataShard')) return false;
+      // Skip skill/role items — they're not real inventory
+      if (['skill', 'role', 'cyberdeckProgram'].includes(i.type)) return false;
+      return true;
+    });
+
+    if (items.length === 0) {
+      ui.notifications.warn('NCM | No items in inventory to use as key item.');
+      return;
+    }
+
+    const itemCards = items.map(item => {
+      const img = item.img && !item.img.includes('mystery-man')
+        ? `<img src="${item.img}" alt="">`
+        : `<i class="fas fa-cube"></i>`;
+      const escapedName = item.name.replace(/"/g, '&quot;').replace(/</g, '&lt;');
+      return `<div class="ncm-ip-item" data-item-id="${item.id}" data-item-name="${item.name.toLowerCase()}">
+        <div class="ncm-ip-item-img">${img}</div>
+        <div style="flex:1;min-width:0">
+          <div class="ncm-ip-item-name">${escapedName}</div>
+          <div class="ncm-ip-item-type">${item.type || 'Item'}</div>
+        </div>
+      </div>`;
+    }).join('');
+
+    const content = `
+      <div class="ncm-ip-search-wrap">
+        <i class="fas fa-magnifying-glass"></i>
+        <input type="text" class="ncm-ip-search" placeholder="Search ${actor.name}'s inventory..." autofocus />
+      </div>
+      <div class="ncm-ip-list">${itemCards}</div>
+    `;
+
+    let selectedItem = null;
+    const dialog = new Dialog({
+      title: 'Select Key Item from Inventory',
+      content,
+      buttons: { cancel: { label: 'Cancel', callback: () => {} } },
+      default: 'cancel',
+      render: (html) => {
+        const jq = html instanceof jQuery ? html : $(html);
+        const listEl = jq.find('.ncm-ip-list')[0] || jq[0]?.querySelector('.ncm-ip-list');
+        const searchEl = jq.find('.ncm-ip-search')[0] || jq[0]?.querySelector('.ncm-ip-search');
+        if (searchEl) {
+          searchEl.addEventListener('input', () => {
+            const query = searchEl.value.toLowerCase().trim();
+            const cards = (listEl || jq[0]).querySelectorAll('.ncm-ip-item');
+            cards.forEach(card => {
+              const name = card.dataset.itemName || '';
+              card.style.display = !query || name.includes(query) ? '' : 'none';
+            });
+          });
+        }
+        if (listEl) {
+          listEl.addEventListener('click', (e) => {
+            const card = e.target.closest('.ncm-ip-item');
+            if (!card) return;
+            selectedItem = actor.items.get(card.dataset.itemId);
+            if (selectedItem) dialog.close();
+          });
+        }
+      },
+    }, {
+      classes: ['dialog', 'ncm-item-picker-dialog'],
+      width: 420, height: 480, resizable: true,
+    });
+
+    await new Promise(resolve => {
+      dialog.close = new Proxy(dialog.close, {
+        apply(t, ta, args) {
+          const r = Reflect.apply(t, ta, args);
+          resolve();
+          return r;
+        }
+      });
+      dialog.render(true);
+    });
+
+    if (!selectedItem) return;
+
+    this._selectedKeyItem = {
+      id: selectedItem.id,
+      name: selectedItem.name,
+      img: selectedItem.img || '',
+    };
+    this.render();
+  }
+
+  /**
+   * Clear the selected key item.
+   */
+  static _onClearKeyItem(event, target) {
+    this._selectedKeyItem = null;
+    this.render();
+  }
+
+  /**
    * Cancel — close the dialog.
    */
   static _onCancel() {
@@ -555,9 +720,21 @@ export class ShardConversionFlow extends HandlebarsApplicationMixin(ApplicationV
       return;
     }
 
+    // ── Pre-conversion validation: Eddies amount vs actor wealth ──
+    if (this._selectedContentType === CONTENT_TYPES.EDDIES) {
+      const amount = parseInt(formData.typeData?.eddiesAmount) || 0;
+      const wealth = this._actor?.system?.wealth?.value ?? 0;
+      if (amount <= 0) {
+        ui.notifications.warn('Eddies amount must be greater than 0.');
+        return;
+      }
+      if (amount > wealth) {
+        ui.notifications.error(`Insufficient funds — you have ${wealth}eb but tried to load ${amount}eb.`);
+        return;
+      }
+    }
+
     this._encoding = true;
-    console.error('NCM | Conversion: starting', { item: item.name, tier: this._tier, isGM: isGM() });
-    ui.notifications.warn('NCM DEBUG: _onCreateShard fired');
 
     // Build config first (synchronous, no risk of hang)
     const config = {};
@@ -575,27 +752,33 @@ export class ShardConversionFlow extends HandlebarsApplicationMixin(ApplicationV
       if (this._tier === 'full') {
         if (formData.failureMode) config.failureMode = formData.failureMode;
         if (formData.maxHackAttempts) config.maxHackAttempts = parseInt(formData.maxHackAttempts) || 3;
-        if (formData.requiresKeyItem && this._ceiling?.canKeyItem) {
+        if (formData.requiresKeyItem && this._ceiling?.canKeyItem && this._selectedKeyItem) {
           config.requiresKeyItem = true;
-          config.keyItemName = formData.keyItemName || '';
+          config.keyItemId = this._selectedKeyItem.id;
+          config.keyItemName = this._selectedKeyItem.name;
+          config.keyItemImg = this._selectedKeyItem.img;
         }
       }
     }
-    console.error('NCM | Conversion: config built', config);
 
     // Show overlay immediately with starting state
     this._showEncodingOverlay('INITIALIZING...');
 
     try {
+      // ─── Step 0: Debit eddies from actor wealth (atomic with shard creation) ───
+      let eddiesAmount = 0;
+      if (this._selectedContentType === CONTENT_TYPES.EDDIES) {
+        eddiesAmount = parseInt(formData.typeData?.eddiesAmount) || 0;
+        this._setEncodingStatus('TRANSFERRING FUNDS...', 15);
+        await this._debitActorWealth(eddiesAmount, item.name);
+      }
+
       // ─── Step 1: Run conversion FIRST (real work) ───
       this._setEncodingStatus('ENCODING DATA...', 25);
-      console.error('NCM | Conversion: calling convertToDataShard');
 
       const service = this.dataShardService;
       if (!service) throw new Error('DataShardService not available');
 
-      // Wrap in async function to ensure we always get a Promise back,
-      // even if convertToDataShard throws synchronously
       const runConversion = async () => {
         if (isGM()) {
           return await service.convertToDataShard(item, config);
@@ -604,13 +787,10 @@ export class ShardConversionFlow extends HandlebarsApplicationMixin(ApplicationV
         }
       };
 
-      // Race against timeout so we never hang forever
       const result = await Promise.race([
         runConversion(),
         new Promise((_, rej) => setTimeout(() => rej(new Error('Conversion timed out after 15s')), 15000)),
       ]);
-
-      console.error('NCM | Conversion: convertToDataShard returned', result);
 
       if (isGM()) {
         if (!result?.success) throw new Error(result?.error || 'Conversion failed');
@@ -620,26 +800,22 @@ export class ShardConversionFlow extends HandlebarsApplicationMixin(ApplicationV
 
       // ─── Step 2: Add initial entry ───
       this._setEncodingStatus('WRITING SHARD METADATA...', 70);
-      console.error('NCM | Conversion: creating initial entry');
       try {
         await Promise.race([
           this._createInitialEntry(item, formData),
           new Promise((_, rej) => setTimeout(() => rej(new Error('Entry creation timed out')), 5000)),
         ]);
       } catch (err) {
-        // Non-fatal — shard exists, just no initial entry
         console.warn('NCM | Conversion: initial entry creation failed (non-fatal)', err);
       }
 
       // ─── Step 3: Done ───
       this._setEncodingStatus('SHARD READY', 100);
-      console.error('NCM | Conversion: complete');
       await this._wait(500);
 
       ui.notifications.info(`"${item.name}" converted to data shard`);
       this.close();
 
-      // Refresh sheets
       setTimeout(() => {
         ui.items?.render();
         for (const sheet of Object.values(ui.windows)) {
@@ -654,6 +830,37 @@ export class ShardConversionFlow extends HandlebarsApplicationMixin(ApplicationV
     } finally {
       this._encoding = false;
       this._hideEncodingOverlay();
+    }
+  }
+
+  /**
+   * Debit eddies from actor wealth, mirroring DataShardService.claimEddies pattern.
+   * @param {number} amount
+   * @param {string} reasonItemName
+   */
+  async _debitActorWealth(amount, reasonItemName) {
+    const actor = this._actor;
+    if (!actor) throw new Error('No actor for wealth debit');
+
+    if (isGM()) {
+      // GM can update directly
+      const wealth = foundry.utils.deepClone(actor.system.wealth);
+      wealth.value -= amount;
+      const transaction = `Decreased by ${amount} to ${wealth.value}`;
+      const reason = `NCM: Loaded ${amount.toLocaleString()}eb into "${reasonItemName}" shard`;
+      wealth.transactions = wealth.transactions || [];
+      wealth.transactions.push([transaction, reason]);
+      await actor.update({ 'system.wealth': wealth });
+    } else {
+      // Player: their actor.update() will go through Foundry's permission system
+      // Player owns their character, so this should succeed without GM relay
+      const wealth = foundry.utils.deepClone(actor.system.wealth);
+      wealth.value -= amount;
+      const transaction = `Decreased by ${amount} to ${wealth.value}`;
+      const reason = `NCM: Loaded ${amount.toLocaleString()}eb into "${reasonItemName}" shard`;
+      wealth.transactions = wealth.transactions || [];
+      wealth.transactions.push([transaction, reason]);
+      await actor.update({ 'system.wealth': wealth });
     }
   }
 
@@ -849,7 +1056,7 @@ export class ShardConversionFlow extends HandlebarsApplicationMixin(ApplicationV
     const flags = {
       [MODULE_ID]: {
         entryType: type,
-        from: td.entryFrom || formData.entryFrom || '',
+        from: formData.entryFrom || '', // Always actor's registered email
         subject,
         icon: entryIcon,
         accentColor: this._selectedColor,

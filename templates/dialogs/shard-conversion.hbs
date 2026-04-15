@@ -89,10 +89,49 @@
       </div>
     </div>
 
+    {{!-- ═══ Security Stages Overview (Mid + Full) ═══ --}}
+    {{#if showICE}}
+      <div class="ncm-convert__section">
+        <div class="ncm-convert__section-header"><i class="fas fa-layer-group" style="color:var(--ncm-secondary);"></i><span>Security Stack</span></div>
+        <div class="ncm-convert__hint" style="margin-bottom:8px;">Hackers must defeat each enabled layer in order. Toggle protections on below to add them to the stack.</div>
+        <div class="ncm-convert__stages" data-id="security-stages">
+          <div class="ncm-convert__stage" data-stage="login">
+            <div class="ncm-convert__stage-icon"><i class="fas fa-terminal"></i></div>
+            <div class="ncm-convert__stage-body">
+              <div class="ncm-convert__stage-title">Password</div>
+              <div class="ncm-convert__stage-desc">Login prompt — bypassed with the password</div>
+            </div>
+          </div>
+          {{#if showKeyItem}}
+            <div class="ncm-convert__stage-arrow"><i class="fas fa-chevron-right"></i></div>
+            <div class="ncm-convert__stage" data-stage="key">
+              <div class="ncm-convert__stage-icon"><i class="fas fa-id-card"></i></div>
+              <div class="ncm-convert__stage-body">
+                <div class="ncm-convert__stage-title">Key Item</div>
+                <div class="ncm-convert__stage-desc">Physical item required to read</div>
+              </div>
+            </div>
+          {{/if}}
+          <div class="ncm-convert__stage-arrow"><i class="fas fa-chevron-right"></i></div>
+          <div class="ncm-convert__stage" data-stage="ice">
+            <div class="ncm-convert__stage-icon"><i class="fas fa-shield-halved"></i></div>
+            <div class="ncm-convert__stage-body">
+              <div class="ncm-convert__stage-title">ICE</div>
+              <div class="ncm-convert__stage-desc">Encryption — broken via skill check</div>
+            </div>
+          </div>
+          <div class="ncm-convert__stages-empty" data-id="security-empty">
+            <i class="fas fa-unlock"></i> No security enabled — anyone with this shard can read it.
+          </div>
+        </div>
+      </div>
+    {{/if}}
+
     {{!-- ═══ Password (Mid + Full) ═══ --}}
     {{#if showPassword}}
       <div class="ncm-convert__section">
         <div class="ncm-convert__section-header"><i class="fas fa-terminal" style="color:var(--ncm-success);"></i><span>Password Protection</span></div>
+        <div class="ncm-convert__hint" style="margin-bottom:6px;">Anyone who knows the password can bypass this layer instantly without rolling.</div>
         <div class="ncm-convert__row">
           <label class="ncm-convert__check"><input type="checkbox" name="requiresLogin"> Require Password</label>
         </div>
@@ -100,8 +139,42 @@
           <span class="ncm-convert__label">Password</span>
           <input class="ncm-convert__input" name="loginPassword" type="text" placeholder="Set a password">
         </div>
-        {{#if (eq tier "mid")}}
-          <div class="ncm-convert__hint">Anyone who knows the password can bypass encryption entirely.</div>
+      </div>
+    {{/if}}
+
+    {{!-- ═══ Key Item (Full only — can be locked behind skill ceiling) ═══ --}}
+    {{#if showKeyItem}}
+      <div class="ncm-convert__section {{#unless canKeyItem}}ncm-convert__section--locked{{/unless}}">
+        <div class="ncm-convert__section-header"><i class="fas fa-id-card" style="color:var(--ncm-accent);"></i><span>Key Item Requirement</span></div>
+        <div class="ncm-convert__hint" style="margin-bottom:6px;">A specific item from your inventory must be present to read the shard. Useful for credchip-style locks.</div>
+        <div class="ncm-convert__row">
+          <label class="ncm-convert__check"><input type="checkbox" name="requiresKeyItem"> Require Key Item</label>
+        </div>
+        {{#if selectedKeyItem}}
+          <div class="ncm-convert__keyitem">
+            <div class="ncm-convert__keyitem-img">
+              {{#if selectedKeyItem.img}}
+                <img src="{{selectedKeyItem.img}}" alt="">
+              {{else}}
+                <i class="fas fa-cube"></i>
+              {{/if}}
+            </div>
+            <div class="ncm-convert__keyitem-info">
+              <div class="ncm-convert__keyitem-name">{{selectedKeyItem.name}}</div>
+              <div class="ncm-convert__keyitem-id">From {{actorName}}'s inventory</div>
+            </div>
+            <button type="button" class="ncm-convert__btn ncm-convert__btn--ghost ncm-convert__btn--sm" data-action="searchKeyItem">
+              <i class="fas fa-rotate"></i> Change
+            </button>
+            <button type="button" class="ncm-convert__btn ncm-convert__btn--ghost ncm-convert__btn--sm" data-action="clearKeyItem">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+        {{else}}
+          <div class="ncm-convert__keyitem-empty" data-action="searchKeyItem">
+            <i class="fas fa-magnifying-glass"></i>
+            <span>Click to select an item from your inventory</span>
+          </div>
         {{/if}}
       </div>
     {{/if}}
@@ -109,7 +182,8 @@
     {{!-- ═══ ICE Encryption (Mid + Full) ═══ --}}
     {{#if showICE}}
       <div class="ncm-convert__section">
-        <div class="ncm-convert__section-header"><i class="fas fa-shield-halved" style="color:{{#if (eq tier "mid")}}var(--ncm-accent){{else}}var(--ncm-danger){{/if}};"></i><span>Encryption</span></div>
+        <div class="ncm-convert__section-header"><i class="fas fa-shield-halved" style="color:{{#if (eq tier "mid")}}var(--ncm-accent){{else}}var(--ncm-danger){{/if}};"></i><span>ICE Encryption</span></div>
+        <div class="ncm-convert__hint" style="margin-bottom:6px;">Encrypts the shard contents. Hackers must beat the DV with a skill check to decrypt. Higher tiers can deploy more dangerous ICE that retaliates against the hacker.</div>
         <div class="ncm-convert__row">
           <label class="ncm-convert__check"><input type="checkbox" name="encrypted"> Enable ICE</label>
         </div>
@@ -125,14 +199,14 @@
             </button>
           </div>
         </div>
+        <div class="ncm-convert__hint" style="margin:4px 0 6px 0;">
+          <strong style="color:var(--ncm-text-secondary);">ICE</strong> blocks access · <strong style="color:var(--ncm-accent);">BLACK ICE</strong> deals damage on failure · <strong style="color:var(--ncm-danger);">RED ICE</strong> can kill the hacker
+        </div>
         <div class="ncm-convert__row">
           <span class="ncm-convert__label">DV</span>
           <input class="ncm-convert__input ncm-convert__input--short" type="number" name="encryptionDC" value="{{defaultDV}}" min="1" max="{{maxDV}}">
           <span class="ncm-convert__dv-max">Max: <span class="ncm-convert__dv-max-val">{{maxDV}}</span>{{#if showSkillCheck}} (from skill check){{/if}}</span>
         </div>
-        {{#if (eq tier "mid")}}
-          <div class="ncm-convert__hint">Standard ICE only at this tier. DV capped by your skill check result.</div>
-        {{/if}}
       </div>
     {{/if}}
 
@@ -140,6 +214,7 @@
     {{#if showFailureMode}}
       <div class="ncm-convert__section">
         <div class="ncm-convert__section-header"><i class="fas fa-skull" style="color:var(--ncm-primary);"></i><span>Failure Handling</span></div>
+        <div class="ncm-convert__hint" style="margin-bottom:6px;">What happens when a hacker fails to decrypt — controls the consequences after max attempts are exhausted.</div>
         <div class="ncm-convert__row">
           <span class="ncm-convert__label">Mode</span>
           <select class="ncm-convert__select" name="failureMode" style="flex:1;">
@@ -155,20 +230,6 @@
         <div class="ncm-convert__row">
           <span class="ncm-convert__label">Max Attempts</span>
           <input class="ncm-convert__input ncm-convert__input--short" type="number" name="maxHackAttempts" value="3" min="1" max="10">
-        </div>
-      </div>
-    {{/if}}
-
-    {{!-- ═══ Key Item (Full only — can be locked) ═══ --}}
-    {{#if showKeyItem}}
-      <div class="ncm-convert__section {{#unless canKeyItem}}ncm-convert__section--locked{{/unless}}">
-        <div class="ncm-convert__section-header"><i class="fas fa-id-card" style="color:var(--ncm-accent);"></i><span>Key Item Requirement</span></div>
-        <div class="ncm-convert__row">
-          <label class="ncm-convert__check"><input type="checkbox" name="requiresKeyItem"> Require Key Item</label>
-        </div>
-        <div class="ncm-convert__row">
-          <span class="ncm-convert__label">Item Name</span>
-          <input class="ncm-convert__input" name="keyItemName" placeholder="Credchip name">
         </div>
       </div>
     {{/if}}
@@ -190,9 +251,10 @@
 
       {{!-- ── Message ── --}}
       {{#if isMessage}}
+        <div class="ncm-convert__hint" style="margin-bottom:6px;">A standard text message. The "From" address is locked to your registered identity to prevent spoofing.</div>
         <div class="ncm-convert__row">
           <span class="ncm-convert__label">From</span>
-          <input class="ncm-convert__input" name="entryFrom" value="{{#if typeData.entryFrom}}{{typeData.entryFrom}}{{else}}{{entryFrom}}{{/if}}" placeholder="Your address">
+          <input class="ncm-convert__input" name="entryFrom" value="{{entryFrom}}" {{#if hasEmail}}readonly{{/if}} placeholder="{{#if hasEmail}}{{entryFrom}}{{else}}No email registered{{/if}}">
         </div>
         <div class="ncm-convert__row">
           <span class="ncm-convert__label">Subject</span>
@@ -206,14 +268,15 @@
 
       {{!-- ── Eddies ── --}}
       {{#if isEddies}}
+        <div class="ncm-convert__hint" style="margin-bottom:6px;">A digital cash transfer. The eddies are <strong>debited from your wealth</strong> when the shard is created and credited to whoever claims it. Your current balance: <strong style="color:var(--ncm-success);">{{actorWealth}}eb</strong>.</div>
         <div class="ncm-convert__row">
           <span class="ncm-convert__label">Title</span>
           <input class="ncm-convert__input" name="eddiesTitle" value="{{typeData.eddiesTitle}}" placeholder="e.g. Dead Drop Payment">
         </div>
         <div class="ncm-convert__row">
           <span class="ncm-convert__label">Amount (¥)</span>
-          <input class="ncm-convert__input ncm-convert__input--short" type="number" name="eddiesAmount" value="{{typeData.eddiesAmount}}" min="1" placeholder="500">
-          <span class="ncm-convert__hint" style="margin-top:0;">Eurodollars to transfer when claimed</span>
+          <input class="ncm-convert__input ncm-convert__input--short" type="number" name="eddiesAmount" value="{{typeData.eddiesAmount}}" min="1" max="{{actorWealth}}" placeholder="500">
+          <span class="ncm-convert__dv-max">Max: <span class="ncm-convert__dv-max-val">{{actorWealth}}eb</span></span>
         </div>
         <div class="ncm-convert__row ncm-convert__row--col">
           <span class="ncm-convert__label" style="margin-bottom:4px;">Note</span>
@@ -223,6 +286,7 @@
 
       {{!-- ── Dossier ── --}}
       {{#if isDossier}}
+        <div class="ncm-convert__hint" style="margin-bottom:6px;">A profile on a person — used for blackmail, contracts, or recon briefs.</div>
         <div class="ncm-convert__row">
           <span class="ncm-convert__label">Target Name</span>
           <input class="ncm-convert__input" name="dossierTargetName" value="{{typeData.dossierTargetName}}" placeholder="Subject's name">
@@ -257,6 +321,7 @@
 
       {{!-- ── Payload ── --}}
       {{#if isPayload}}
+        <div class="ncm-convert__hint" style="margin-bottom:6px;">A program embedded in the shard. Executes its effect when the shard is opened — handle with care.</div>
         <div class="ncm-convert__row">
           <span class="ncm-convert__label">Program Name</span>
           <input class="ncm-convert__input" name="payloadName" value="{{typeData.payloadName}}" placeholder="e.g. KIRI.exe">
@@ -299,6 +364,7 @@
 
       {{!-- ── AV Log ── --}}
       {{#if isAvlog}}
+        <div class="ncm-convert__hint" style="margin-bottom:6px;">Audio, video, or braindance recording stored on the shard. Includes a transcript field for reading.</div>
         <div class="ncm-convert__row">
           <span class="ncm-convert__label">Title</span>
           <input class="ncm-convert__input" name="avlogTitle" value="{{typeData.avlogTitle}}" placeholder="Recording title">
@@ -327,6 +393,7 @@
 
       {{!-- ── Location ── --}}
       {{#if isLocation}}
+        <div class="ncm-convert__hint" style="margin-bottom:6px;">Coordinates and details for a place — useful for safe house lists or rendezvous points.</div>
         <div class="ncm-convert__row">
           <span class="ncm-convert__label">Location Name</span>
           <input class="ncm-convert__input" name="locationName" value="{{typeData.locationName}}" placeholder="Sunset Motel, Room 12">
