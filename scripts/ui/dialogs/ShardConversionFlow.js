@@ -603,7 +603,6 @@ export class ShardConversionFlow extends HandlebarsApplicationMixin(ApplicationV
     const overlay = this.element?.querySelector('[data-id="encoding-overlay"]');
     if (overlay) overlay.style.display = 'none';
   }
-  }
 
   // ═══════════════════════════════════════════════════════════
   //  Player Conversion (Socket Relay)
