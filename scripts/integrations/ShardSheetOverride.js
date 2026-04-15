@@ -53,7 +53,12 @@ export class ShardSheetOverride {
     bind('renderCPRItemSheet', this._onRenderItemSheet.bind(this));
 
     // Actor sheet — badges, click intercepts, context menus on inventory items
+    // CPR uses ApplicationV2 which fires class-specific hooks
     bind('renderActorSheet', this._onRenderActorSheet.bind(this));
+    bind('renderCPRActorSheet', this._onRenderActorSheet.bind(this));
+    bind('renderCPRCharacterActorSheet', this._onRenderActorSheet.bind(this));
+    bind('renderCPRMookActorSheet', this._onRenderActorSheet.bind(this));
+    bind('renderCPRContainerActorSheet', this._onRenderActorSheet.bind(this));
 
     // Items Directory sidebar — try multiple hook names for v12 compat
     bind('renderItemDirectory', dirHandler);

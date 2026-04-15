@@ -482,50 +482,81 @@ export class ShardConversionFlow extends HandlebarsApplicationMixin(ApplicationV
     }
 
     this._encoding = true;
+    console.log('NCM | Conversion: starting', { item: item.name, tier: this._tier, isGM: isGM() });
 
-    try {
-      // Play encoding animation
-      await this._playEncodingAnimation();
-
-      // Build config overrides
-      const config = {};
-      if (formData.shardName) config.shardName = formData.shardName;
-
-      // Security
-      if (this._tier !== 'basic') {
-        if (formData.requiresLogin) {
-          config.requiresLogin = true;
-          config.loginPassword = formData.loginPassword || '';
-        }
-        if (formData.encrypted) {
-          config.encrypted = true;
-          config.encryptionType = this._selectedICEType;
-          config.encryptionDC = Math.min(formData.encryptionDC || 15, this._ceiling?.maxDV ?? 25);
-        }
-        if (this._tier === 'full') {
-          if (formData.failureMode) config.failureMode = formData.failureMode;
-          if (formData.maxHackAttempts) config.maxHackAttempts = parseInt(formData.maxHackAttempts) || 3;
-          if (formData.requiresKeyItem && this._ceiling?.canKeyItem) {
-            config.requiresKeyItem = true;
-            config.keyItemName = formData.keyItemName || '';
-          }
+    // Build config first (synchronous, no risk of hang)
+    const config = {};
+    if (formData.shardName) config.shardName = formData.shardName;
+    if (this._tier !== 'basic') {
+      if (formData.requiresLogin) {
+        config.requiresLogin = true;
+        config.loginPassword = formData.loginPassword || '';
+      }
+      if (formData.encrypted) {
+        config.encrypted = true;
+        config.encryptionType = this._selectedICEType;
+        config.encryptionDC = Math.min(formData.encryptionDC || 15, this._ceiling?.maxDV ?? 25);
+      }
+      if (this._tier === 'full') {
+        if (formData.failureMode) config.failureMode = formData.failureMode;
+        if (formData.maxHackAttempts) config.maxHackAttempts = parseInt(formData.maxHackAttempts) || 3;
+        if (formData.requiresKeyItem && this._ceiling?.canKeyItem) {
+          config.requiresKeyItem = true;
+          config.keyItemName = formData.keyItemName || '';
         }
       }
+    }
+    console.log('NCM | Conversion: config built', config);
 
-      // Convert the item
+    // Show overlay immediately with starting state
+    this._showEncodingOverlay('INITIALIZING...');
+
+    try {
+      // ─── Step 1: Run conversion FIRST (real work) ───
+      this._setEncodingStatus('ENCODING DATA...', 25);
+      console.log('NCM | Conversion: calling convertToDataShard');
+
       const service = this.dataShardService;
       if (!service) throw new Error('DataShardService not available');
 
+      let conversionPromise;
       if (isGM()) {
-        const result = await service.convertToDataShard(item, config);
-        if (!result.success) throw new Error(result.error || 'Conversion failed');
+        conversionPromise = service.convertToDataShard(item, config);
       } else {
-        const success = await this._requestPlayerConversion(item, config);
-        if (!success) throw new Error('Conversion request denied or timed out');
+        conversionPromise = this._requestPlayerConversion(item, config);
       }
 
-      // Add the initial entry as a journal page
-      await this._createInitialEntry(item, formData);
+      // Race against timeout so we never hang forever
+      const result = await Promise.race([
+        conversionPromise,
+        new Promise((_, rej) => setTimeout(() => rej(new Error('Conversion timed out after 15s')), 15000)),
+      ]);
+
+      console.log('NCM | Conversion: convertToDataShard returned', result);
+
+      if (isGM()) {
+        if (!result?.success) throw new Error(result?.error || 'Conversion failed');
+      } else {
+        if (!result) throw new Error('Conversion request denied or timed out');
+      }
+
+      // ─── Step 2: Add initial entry ───
+      this._setEncodingStatus('WRITING SHARD METADATA...', 70);
+      console.log('NCM | Conversion: creating initial entry');
+      try {
+        await Promise.race([
+          this._createInitialEntry(item, formData),
+          new Promise((_, rej) => setTimeout(() => rej(new Error('Entry creation timed out')), 5000)),
+        ]);
+      } catch (err) {
+        // Non-fatal — shard exists, just no initial entry
+        console.warn('NCM | Conversion: initial entry creation failed (non-fatal)', err);
+      }
+
+      // ─── Step 3: Done ───
+      this._setEncodingStatus('SHARD READY', 100);
+      console.log('NCM | Conversion: complete');
+      await this._wait(500);
 
       ui.notifications.info(`"${item.name}" converted to data shard`);
       this.close();
@@ -539,14 +570,39 @@ export class ShardConversionFlow extends HandlebarsApplicationMixin(ApplicationV
       }, 150);
 
     } catch (err) {
+      console.error('NCM | Conversion: FAILED', err);
       ui.notifications.error(`Failed to create shard: ${err.message}`);
       log.error('Shard conversion failed:', err);
     } finally {
       this._encoding = false;
-      // Always hide encoding overlay
-      const overlay = this.element?.querySelector('[data-id="encoding-overlay"]');
-      if (overlay) overlay.style.display = 'none';
+      this._hideEncodingOverlay();
     }
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Encoding Overlay Helpers
+  // ═══════════════════════════════════════════════════════════
+
+  _showEncodingOverlay(initialText = 'INITIALIZING...') {
+    const overlay = this.element?.querySelector('[data-id="encoding-overlay"]');
+    if (!overlay) return;
+    overlay.style.display = 'flex';
+    this._setEncodingStatus(initialText, 5);
+  }
+
+  _setEncodingStatus(text, progressPct) {
+    const overlay = this.element?.querySelector('[data-id="encoding-overlay"]');
+    if (!overlay) return;
+    const status = overlay.querySelector('[data-id="encoding-status"]');
+    const fill = overlay.querySelector('[data-id="encoding-fill"]');
+    if (status) status.textContent = text;
+    if (fill && typeof progressPct === 'number') fill.style.width = `${progressPct}%`;
+  }
+
+  _hideEncodingOverlay() {
+    const overlay = this.element?.querySelector('[data-id="encoding-overlay"]');
+    if (overlay) overlay.style.display = 'none';
+  }
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -607,7 +663,7 @@ export class ShardConversionFlow extends HandlebarsApplicationMixin(ApplicationV
     if (!body) return;
 
     const entryIcon = formData.customIcon?.trim() || formData.entryIcon || 'fas fa-envelope';
-    const timestamp = game.nightcity?.timeService?.getCurrentTimestamp() || new Date().toISOString();
+    const timestamp = game.nightcity?.timeService?.getCurrentTime?.() || new Date().toISOString();
 
     try {
       await journal.createEmbeddedDocuments('JournalEntryPage', [{
@@ -629,40 +685,6 @@ export class ShardConversionFlow extends HandlebarsApplicationMixin(ApplicationV
     } catch (err) {
       log.warn('Failed to create initial shard entry:', err);
     }
-  }
-
-  // ═══════════════════════════════════════════════════════════
-  //  Encoding Animation
-  // ═══════════════════════════════════════════════════════════
-
-  async _playEncodingAnimation() {
-    const overlay = this.element?.querySelector('[data-id="encoding-overlay"]');
-    if (!overlay) return;
-
-    overlay.style.display = 'flex';
-    const status = overlay.querySelector('[data-id="encoding-status"]');
-    const fill = overlay.querySelector('[data-id="encoding-fill"]');
-    const logEl = overlay.querySelector('[data-id="encoding-log"]');
-
-    const steps = [
-      { text: 'INITIALIZING CHIP INTERFACE...', progress: 15, log: 'Chip interface ................ OK' },
-      { text: 'ENCODING DATA...', progress: 40, log: 'Data encoding ................ OK' },
-      { text: 'APPLYING ICE LAYER...', progress: 65, log: 'Security layer ............... OK' },
-      { text: 'WRITING SHARD METADATA...', progress: 85, log: 'Metadata write ............... OK' },
-      { text: 'SHARD READY', progress: 100, log: 'Verification ................. PASS' },
-    ];
-
-    const logLines = [];
-    for (const step of steps) {
-      if (status) status.textContent = step.text;
-      if (fill) fill.style.width = `${step.progress}%`;
-      logLines.push(step.log);
-      if (logEl) logEl.textContent = logLines.join('\n');
-      await this._wait(400 + Math.random() * 300);
-    }
-
-    // Brief pause on "SHARD READY"
-    await this._wait(600);
   }
 
   // ═══════════════════════════════════════════════════════════
