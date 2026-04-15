@@ -83,12 +83,12 @@ export class ShardConversionFlow extends HandlebarsApplicationMixin(ApplicationV
     },
     position: { width: 520, height: 'auto' },
     actions: {
-      rollSkill:          ShardConversionFlow._onRollSkill,
-      selectICEType:      ShardConversionFlow._onSelectICEType,
-      selectColor:        ShardConversionFlow._onSelectColor,
-      selectContentType:  ShardConversionFlow._onSelectContentType,
-      cancel:             ShardConversionFlow._onCancel,
-      createShard:        ShardConversionFlow._onCreateShard,
+      rollSkill:          function (event, target) { return ShardConversionFlow._onRollSkill.call(this, event, target); },
+      selectICEType:      function (event, target) { return ShardConversionFlow._onSelectICEType.call(this, event, target); },
+      selectColor:        function (event, target) { return ShardConversionFlow._onSelectColor.call(this, event, target); },
+      selectContentType:  function (event, target) { return ShardConversionFlow._onSelectContentType.call(this, event, target); },
+      cancel:             function (event, target) { return ShardConversionFlow._onCancel.call(this, event, target); },
+      createShard:        function (event, target) { return ShardConversionFlow._onCreateShard.call(this, event, target); },
     },
   };
 
@@ -482,7 +482,8 @@ export class ShardConversionFlow extends HandlebarsApplicationMixin(ApplicationV
     }
 
     this._encoding = true;
-    console.log('NCM | Conversion: starting', { item: item.name, tier: this._tier, isGM: isGM() });
+    console.error('NCM | Conversion: starting', { item: item.name, tier: this._tier, isGM: isGM() });
+    ui.notifications.warn('NCM DEBUG: _onCreateShard fired');
 
     // Build config first (synchronous, no risk of hang)
     const config = {};
@@ -506,7 +507,7 @@ export class ShardConversionFlow extends HandlebarsApplicationMixin(ApplicationV
         }
       }
     }
-    console.log('NCM | Conversion: config built', config);
+    console.error('NCM | Conversion: config built', config);
 
     // Show overlay immediately with starting state
     this._showEncodingOverlay('INITIALIZING...');
@@ -514,7 +515,7 @@ export class ShardConversionFlow extends HandlebarsApplicationMixin(ApplicationV
     try {
       // ─── Step 1: Run conversion FIRST (real work) ───
       this._setEncodingStatus('ENCODING DATA...', 25);
-      console.log('NCM | Conversion: calling convertToDataShard');
+      console.error('NCM | Conversion: calling convertToDataShard');
 
       const service = this.dataShardService;
       if (!service) throw new Error('DataShardService not available');
@@ -535,7 +536,7 @@ export class ShardConversionFlow extends HandlebarsApplicationMixin(ApplicationV
         new Promise((_, rej) => setTimeout(() => rej(new Error('Conversion timed out after 15s')), 15000)),
       ]);
 
-      console.log('NCM | Conversion: convertToDataShard returned', result);
+      console.error('NCM | Conversion: convertToDataShard returned', result);
 
       if (isGM()) {
         if (!result?.success) throw new Error(result?.error || 'Conversion failed');
@@ -545,7 +546,7 @@ export class ShardConversionFlow extends HandlebarsApplicationMixin(ApplicationV
 
       // ─── Step 2: Add initial entry ───
       this._setEncodingStatus('WRITING SHARD METADATA...', 70);
-      console.log('NCM | Conversion: creating initial entry');
+      console.error('NCM | Conversion: creating initial entry');
       try {
         await Promise.race([
           this._createInitialEntry(item, formData),
@@ -558,7 +559,7 @@ export class ShardConversionFlow extends HandlebarsApplicationMixin(ApplicationV
 
       // ─── Step 3: Done ───
       this._setEncodingStatus('SHARD READY', 100);
-      console.log('NCM | Conversion: complete');
+      console.error('NCM | Conversion: complete');
       await this._wait(500);
 
       ui.notifications.info(`"${item.name}" converted to data shard`);

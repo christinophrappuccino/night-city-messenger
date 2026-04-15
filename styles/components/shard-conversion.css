@@ -254,9 +254,13 @@
 .ncm-app .ncm-convert__encoding {
   position: absolute !important; inset: 0 !important; z-index: 50 !important;
   background: var(--ncm-bg-deep, #0a0a0f) !important;
-  display: flex !important; flex-direction: column !important;
+  flex-direction: column !important;
   align-items: center !important; justify-content: center !important;
   gap: 16px !important;
+}
+.ncm-app .ncm-convert__encoding[style*="display: flex"],
+.ncm-app .ncm-convert__encoding[style*="display:flex"] {
+  display: flex !important;
 }
 .ncm-app .ncm-convert__encoding-icon {
   font-size: 32px !important; color: var(--ncm-secondary, #19f3f7) !important;
