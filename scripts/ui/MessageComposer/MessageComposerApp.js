@@ -550,7 +550,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     });
   }
 
-  close(options) {
+  async close(options = {}) {
     this._stopAutoSave();
     if (this._editorStateHandler) {
       document.removeEventListener('selectionchange', this._editorStateHandler);

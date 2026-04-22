@@ -8,6 +8,7 @@
  */
 
 import { MODULE_ID, EVENTS, TEMPLATES } from '../utils/constants.js';
+import { log } from '../utils/helpers.js';
 
 // ═══════════════════════════════════════════════════════════
 //  Toast Type Definitions
@@ -115,7 +116,7 @@ export class NotificationService {
     this._createToastContainer();
     this._setupEventListeners();
     this._refreshAllUnreadCounts();
-    console.log(`${MODULE_ID} | NotificationService initialized`);
+    log.info('NotificationService initialized');
   }
 
   // ═══════════════════════════════════════════════════════════

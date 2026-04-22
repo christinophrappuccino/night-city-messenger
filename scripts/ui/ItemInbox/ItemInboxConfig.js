@@ -325,7 +325,11 @@ export class ItemInboxConfig extends BaseApplication {
     // ─── Timestamp formatted for trigger display ───
     let metaTimestampFormatted = '';
     if (meta.timestamp) {
-      try { metaTimestampFormatted = formatCyberDate(meta.timestamp); } catch (e) {}
+      try {
+        metaTimestampFormatted = formatCyberDate(meta.timestamp);
+      } catch (err) {
+        log.debug(`ItemInboxConfig: invalid meta.timestamp '${meta.timestamp}' — ${err.message}`);
+      }
     }
 
     // ─── ICE damage dice display ───

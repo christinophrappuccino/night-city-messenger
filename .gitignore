@@ -1,0 +1,8 @@
+# Claude Code per-project settings (local allowlist, not source)
+.claude/
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.swp
+*~

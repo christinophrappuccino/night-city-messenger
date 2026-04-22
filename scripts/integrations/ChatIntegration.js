@@ -7,6 +7,7 @@
  */
 
 import { MODULE_ID } from '../utils/constants.js';
+import { log } from '../utils/helpers.js';
 
 export class ChatIntegration {
 
@@ -52,6 +53,6 @@ export class ChatIntegration {
       }
     });
 
-    console.log(`${MODULE_ID} | ChatIntegration registered`);
+    log.info('ChatIntegration registered');
   }
 }

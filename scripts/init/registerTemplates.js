@@ -99,14 +99,6 @@ export function registerTemplates(initializer) {
       return result;
     });
 
-    // ─── NCM-Prefixed Aliases (backwards compatibility) ───
-
-    Handlebars.registerHelper('ncm-eq', (a, b) => a === b);
-    Handlebars.registerHelper('ncm-neq', (a, b) => a !== b);
-    Handlebars.registerHelper('ncm-gt', (a, b) => a > b);
-    Handlebars.registerHelper('ncm-or', (...args) => { args.pop(); return args.some(Boolean); });
-    Handlebars.registerHelper('ncm-and', (...args) => { args.pop(); return args.every(Boolean); });
-
     // ─── Utility Helpers ───
 
     Handlebars.registerHelper('ncm-date', (timestamp) => formatCyberDate(timestamp));

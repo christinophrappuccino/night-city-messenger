@@ -66,13 +66,7 @@ export const EVENTS = Object.freeze({
 
   SHARD_STATE_CHANGED: 'shard:stateChanged',
   CONTACT_UPDATED: 'contact:updated',
-  INBOX_REFRESH: 'inbox:refresh',
-  MESSAGE_STATUS_CHANGED: 'message:statusChanged',
   SCHEDULE_UPDATED: 'schedule:updated',
-
-  TOAST_SHOW: 'toast:show',
-  TOAST_DISMISS: 'toast:dismiss',
-  TOAST_ACTION: 'toast:action',
 
   UI_VIEWER_OPENED: 'ui:viewerOpened',
   UI_COMPOSER_OPENED: 'ui:composerOpened',
@@ -400,9 +394,10 @@ export const SHARD_PRESETS = Object.freeze({
 
 export const SOUND_PATHS = Object.freeze({
   'open': 'ui/open.ogg', 'close': 'ui/close.ogg', 'click': 'ui/click.ogg',
-  'hover': 'ui/hover.ogg', 'keystroke': 'ui/keystroke.ogg',
+  'hover': 'ui/hover.ogg', 'keystroke': 'ui/keystroke.ogg', 'error': 'ui/error.ogg',
   'receive': 'messages/receive.ogg', 'receive-urgent': 'messages/receive-urgent.ogg',
   'send': 'messages/send.ogg', 'queue-flush': 'messages/queue-flush.ogg',
+  'destruct': 'messages/destruct.ogg',
   'connect': 'network/connect.ogg', 'disconnect': 'network/disconnect.ogg',
   'switch': 'network/switch.ogg', 'dead-zone': 'network/dead-zone.ogg',
   'hack-start': 'security/hack-start.ogg', 'hack-progress': 'security/hack-progress.ogg',

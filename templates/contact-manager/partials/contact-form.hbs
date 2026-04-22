@@ -4,7 +4,7 @@
   @module cyberpunkred-messenger
   @description Unified form used by both player ContactManagerApp and
     GM GMContactManagerApp for creating/editing contacts.
-    GM-only fields (notes, relationships, linked actor, ICE) gated by {{#if isGM}}.
+    GM-only fields (notes, relationships, linked actor, ICE) gated by an isGM check.
 
   Phase 2 changes:
     - Role dropdown uses contact.role (not contact.type)
@@ -368,11 +368,11 @@
                   <option value="informant" {{#if (eq relType 'informant')}}selected{{/if}}>Informant</option>
                 </select>
                 <div class="ncm-rel-form-trust" data-trust="{{trustValue}}" title="Player trust (click to set, leave empty = use party baseline)">
-                  <div class="ncm-rel-form-trust__pip s1 {{#if (ncm-eq trustLevel1 true)}}ncm-rel-form-trust__pip--active{{/if}}" data-pip="1"></div>
-                  <div class="ncm-rel-form-trust__pip s2 {{#if (ncm-eq trustLevel2 true)}}ncm-rel-form-trust__pip--active{{/if}}" data-pip="2"></div>
-                  <div class="ncm-rel-form-trust__pip s3 {{#if (ncm-eq trustLevel3 true)}}ncm-rel-form-trust__pip--active{{/if}}" data-pip="3"></div>
-                  <div class="ncm-rel-form-trust__pip s4 {{#if (ncm-eq trustLevel4 true)}}ncm-rel-form-trust__pip--active{{/if}}" data-pip="4"></div>
-                  <div class="ncm-rel-form-trust__pip s5 {{#if (ncm-eq trustLevel5 true)}}ncm-rel-form-trust__pip--active{{/if}}" data-pip="5"></div>
+                  <div class="ncm-rel-form-trust__pip s1 {{#if (eq trustLevel1 true)}}ncm-rel-form-trust__pip--active{{/if}}" data-pip="1"></div>
+                  <div class="ncm-rel-form-trust__pip s2 {{#if (eq trustLevel2 true)}}ncm-rel-form-trust__pip--active{{/if}}" data-pip="2"></div>
+                  <div class="ncm-rel-form-trust__pip s3 {{#if (eq trustLevel3 true)}}ncm-rel-form-trust__pip--active{{/if}}" data-pip="3"></div>
+                  <div class="ncm-rel-form-trust__pip s4 {{#if (eq trustLevel4 true)}}ncm-rel-form-trust__pip--active{{/if}}" data-pip="4"></div>
+                  <div class="ncm-rel-form-trust__pip s5 {{#if (eq trustLevel5 true)}}ncm-rel-form-trust__pip--active{{/if}}" data-pip="5"></div>
                 </div>
                 <span class="ncm-rel-form-row__trust-label {{#if isOverride}}ncm-rel-form-row__trust-label--override{{/if}}">{{trustDisplay}}</span>
                 <input type="text" class="ncm-rel-form-row__note-input ncm-rel-note-input"

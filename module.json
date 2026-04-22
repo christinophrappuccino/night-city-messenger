@@ -2,12 +2,15 @@
   "id": "cyberpunkred-messenger",
   "title": "Night City Messenger",
   "description": "Immersive cyberpunk messaging, data shards, and network systems for Cyberpunk RED.",
-  "version": "4.1.0",
+  "version": "1.0.0",
   "compatibility": {
     "minimum": "12",
     "verified": "12"
   },
   "authors": [{ "name": "christinophrappuccino" }],
+  "url": "https://github.com/christinophrappuccino/night-city-messenger",
+  "readme": "https://github.com/christinophrappuccino/night-city-messenger#readme",
+  "bugs": "https://github.com/christinophrappuccino/night-city-messenger/issues",
   "relationships": {
     "systems": [{
       "id": "cyberpunk-red-core",

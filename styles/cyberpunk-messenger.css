@@ -21,7 +21,7 @@
 @import 'base/interactions.css';
 
 /* Effects — visual atmosphere layers */
-@import 'effects/scanlines.css';  /* Legacy compat — atmosphere.css is canonical */
+@import 'effects/scanlines.css';
 @import 'effects/glitch.css';
 @import 'effects/neon-glow.css';
 @import 'effects/matrix-rain.css';
