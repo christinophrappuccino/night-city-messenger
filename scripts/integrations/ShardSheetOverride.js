@@ -176,24 +176,23 @@ export class ShardSheetOverride {
 
         if (isShard) {
           // ─── Corner badge on thumbnail ───
+          // Wrap the image in a tightly-bounded positioned span so the badge
+          // anchors to the image with pure CSS (bottom: -2px; right: -2px),
+          // not to the entry row (which can be flex/right-aligned and push
+          // the badge off-screen).
           const thumb = entry.querySelector('img.thumbnail, img');
-          if (thumb) {
-            entry.style.position = 'relative';
-            entry.style.overflow = 'visible';
+          if (thumb && !thumb.parentElement?.classList.contains('ncm-shard-thumb-wrap')) {
+            const wrap = document.createElement('span');
+            wrap.className = 'ncm-shard-thumb-wrap';
+            wrap.style.cssText = 'position:relative; display:inline-block; line-height:0; overflow:visible; vertical-align:middle;';
+            thumb.parentNode.insertBefore(wrap, thumb);
+            wrap.appendChild(thumb);
 
             const tag = document.createElement('div');
             tag.className = 'ncm-shard-img-tag';
             tag.innerHTML = '<i class="fas fa-microchip"></i>';
             tag.title = 'Data Shard';
-            entry.appendChild(tag);
-
-            const positionBadge = () => {
-              const imgRect = thumb.getBoundingClientRect();
-              const entryRect = entry.getBoundingClientRect();
-              tag.style.top = (imgRect.top - entryRect.top + imgRect.height - 12) + 'px';
-              tag.style.left = (imgRect.left - entryRect.left + imgRect.width - 12) + 'px';
-            };
-            requestAnimationFrame(positionBadge);
+            wrap.appendChild(tag);
           }
 
           // ─── Left-click intercept (shard items only) ───
@@ -328,20 +327,22 @@ export class ShardSheetOverride {
     if (row.querySelector('.ncm-shard-img-tag')) return;
 
     // ─── Corner tag on item image ───
-    const imgEl = row.querySelector('.item-image, img, .item-icon');
-    if (imgEl) {
-      // Make the image container positioned so we can overlay
-      const imgContainer = imgEl.closest('.item-image') ?? imgEl.parentElement;
-      if (imgContainer) {
-        imgContainer.style.position = 'relative';
-        imgContainer.style.overflow = 'visible';
-      }
+    // Wrap the image in a tightly-bounded span so the badge anchors to the
+    // image itself, not to the surrounding .item-image container (which
+    // CPR sizes wider than the actual image and would push the badge off
+    // to the right).
+    const imgEl = row.querySelector('img.item-image, .item-image img, img, .item-icon');
+    if (imgEl && imgEl.tagName === 'IMG' && !imgEl.parentElement?.classList.contains('ncm-shard-thumb-wrap')) {
+      const wrap = document.createElement('span');
+      wrap.className = 'ncm-shard-thumb-wrap';
+      imgEl.parentNode.insertBefore(wrap, imgEl);
+      wrap.appendChild(imgEl);
 
       const tag = document.createElement('div');
       tag.className = 'ncm-shard-img-tag';
       tag.innerHTML = '<i class="fas fa-microchip"></i>';
       tag.title = 'Data Shard';
-      (imgContainer ?? imgEl).appendChild(tag);
+      wrap.appendChild(tag);
     }
 
     // ─── Click intercept on item name ───

@@ -110,6 +110,7 @@ These have all bitten the project. Don't relearn them:
 - `render(true)` forces a template re-render; `render(false)` only repositions.
 - `CONTACT_DECRYPTED` and similar EventBus events fire **synchronously** inside their producer methods. Use a guard flag (e.g. `_breachInProgress`) to prevent premature renders that detach animated DOM.
 - `_onRender()` is the only safe post-render DOM manipulation point. Use a `_pendingReveal` flag pattern when you need to defer animation work to the next render.
+- **Static methods aren't on the prototype.** `this.foo()` from inside another static method (where `this` is the bound instance) silently fails when `foo` is also `static` — `this.foo` returns `undefined`. If a method needs to be invoked via `this.x()` from a static context (such as ApplicationV2's static action handlers), it must be an instance method. This bit `ContactsTab._showShareDialog` and was a latent bug for an unknown amount of time.
 
 ## CSS specificity patterns
 
@@ -119,6 +120,9 @@ These have all bitten the project. Don't relearn them:
 - CSS custom properties must be scoped to `:root` (not `.ncm-app`) for ThemeService overrides to apply.
 - Foundry button reset must be element+class at specificity 0,2,1 — kill structural defaults only (height, min-height, appearance, box-shadow, margin, background-image), never visual properties.
 - `overflow: hidden` vs `visible` is a tradeoff — `visible` fixes dropdowns but breaks flex scroll chains. Resolve by ensuring dropdowns open into a non-clipped area.
+- **Foundry's global `.flexrow > *, .flexcol > * { flex: 1 }`** stretches every direct child of a flex row. Anything you inject into a Foundry sheet/sidebar (badges, wrap spans, custom widgets) needs `flex: 0 0 auto !important` or it will fill the row and push sibling content aside. The `.ncm-shard-thumb-wrap` span around inventory data-shard thumbnails is the canonical example.
+- **`display: inline-block` on a flex item can render invisible.** When the wrap also has `line-height: 0` (or other line-box-collapsing styles), the element computes to zero size. Use `display: inline-flex` (with `align-items: center`) instead — it gives the element its own flex context and sizes reliably to its content.
+- **CSS variable typos render as invisible, not error.** `var(--missing-name)` with no fallback resolves to the property's initial value (often `transparent` for backgrounds/borders, blank for colors). If a UI element looks empty/blank, grep `styles/base/variables.css` to confirm the var name. The actual NCM names are `--ncm-primary`, `--ncm-secondary`, `--ncm-accent` — there is **no** `--ncm-color-*` prefix. The blank shard preset's loading bar was invisible for this reason.
 
 ## Conventions
 

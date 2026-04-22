@@ -11,12 +11,15 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* ─── Corner tag on item image ─── */
+/* Anchored to a tightly-bounded .ncm-shard-thumb-wrap span (set in JS).
+   Sits flush at the bottom-right corner of the image — no overhang. */
 .ncm-shard-img-tag {
   position: absolute;
-  bottom: -2px;
-  right: -2px;
+  bottom: 0;
+  right: 0;
   width: 13px;
   height: 13px;
+  box-sizing: border-box;
   background: #0a0a0f;
   border: 1px solid rgba(0, 212, 230, 0.5);
   border-radius: 2px 0;
@@ -28,6 +31,19 @@
   z-index: 1;
   pointer-events: none;
   filter: drop-shadow(0 0 2px rgba(0, 212, 230, 0.3));
+}
+/* Wrap span around the image — keeps the badge anchored to the image,
+   not to the row container (which can be flex/wider than the image).
+   inline-flex (not inline-block) so as a flex item under Foundry's
+   .flexrow it sizes to its content (the image) reliably. The !important
+   on flex neutralizes Foundry's global `.flexrow > *, .flexcol > * {
+   flex: 1; }` which would otherwise stretch this wrap full-width and
+   push the badge + row title to the far right. */
+.ncm-shard-thumb-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto !important;
 }
 
 /* ─── Convert-to-shard button in item controls ─── */

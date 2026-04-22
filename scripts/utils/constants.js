@@ -373,8 +373,8 @@ export const SHARD_PRESETS = Object.freeze({
     label: 'Blank / Custom',
     icon: 'fas fa-microchip',
     theme: {
-      accent: 'var(--ncm-color-primary)', accentSecondary: 'var(--ncm-color-secondary)', headerBg: 'var(--ncm-bg-surface)',
-      iconBg: 'rgba(246,82,97,0.08)', iconColor: 'var(--ncm-color-primary)',
+      accent: 'var(--ncm-primary)', accentSecondary: 'var(--ncm-secondary)', headerBg: 'var(--ncm-bg-surface)',
+      iconBg: 'rgba(246,82,97,0.08)', iconColor: 'var(--ncm-primary)',
       watermarkIcon: 'fas fa-microchip', footerText: 'DATA SHARD',
       colorTemp: 'neutral',
     },
