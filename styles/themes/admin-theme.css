@@ -1,0 +1,155 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+ * NCM Admin Panel — Dedicated Theme Scope
+ * @file styles/themes/admin-theme.css
+ * @module cyberpunkred-messenger
+ * @description The GM Admin Panel gets its OWN palette, independent of the
+ *   player theme. The player theme writes --ncm-* to :root; here we re-define
+ *   the same --ncm-* variables ON the panel root (.ncm-app.ncm-admin-panel),
+ *   which wins for every descendant (custom properties resolve from the nearest
+ *   ancestor) — so the panel is themed in isolation and the player theme at
+ *   :root is untouched. Presets are pure CSS keyed by [data-ncm-admin-theme],
+ *   set in AdminPanelApp._applyAdminTheme(). Default (no/clean-dark attr) is the
+ *   calm dark dashboard. Neon/scanlines are suppressed at the element level
+ *   (data-ncm-neon/scanlines="false") AND the glow vars are neutralised here.
+ *
+ * Goal: clarity, accessibility, cleanliness — a utilitarian GM tool.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ─── CLEAN DARK (default) ─────────────────────────────────────────────── */
+.ncm-app.ncm-admin-panel {
+  /* Surfaces — neutral slate, darkest → lightest */
+  --ncm-bg-deep:      #0e1117;
+  --ncm-bg-base:      #151a23;
+  --ncm-bg-surface:   #1b2230;
+  --ncm-bg-elevated:  #222b3c;
+  --ncm-bg-overlay:   rgba(6, 9, 14, 0.88);
+
+  /* Text — high-contrast, calm */
+  --ncm-text-primary:   #e7ecf3;
+  --ncm-text-secondary: #a7b2c2;
+  --ncm-text-muted:     #6e7b8e;
+  --ncm-text-inverse:   #06121a;
+
+  /* Borders */
+  --ncm-border:        #2b3446;
+  --ncm-border-active: #3a465c;
+  --ncm-border-focus:  #34c5d6;
+
+  /* Palette — desaturated; one restrained cyan accent does the work */
+  --ncm-primary:   #d46a6a;
+  --ncm-secondary: #34c5d6;
+  --ncm-accent:    #d4a24c;
+  --ncm-success:   #4cae8a;
+  --ncm-warning:   #d4a24c;
+  --ncm-danger:    #d46a6a;
+  --ncm-purple:    #9a86c4;
+
+  /* Kill neon glow inside the GM tool (transparent no-op shadow stays valid in
+     any box-shadow/text-shadow list, unlike `none`). */
+  --ncm-glow-primary:   0 0 0 transparent;
+  --ncm-glow-secondary: 0 0 0 transparent;
+  --ncm-glow-accent:    0 0 0 transparent;
+  --ncm-shadow-glow:    0 1px 3px rgba(0, 0, 0, 0.35);
+  --ncm-shadow-neon:    0 1px 3px rgba(0, 0, 0, 0.35);
+  --ncm-shadow-card:    0 2px 6px rgba(0, 0, 0, 0.35);
+
+  /* Clean, legible UI fonts — keep mono only for technical/number values */
+  --ncm-font-title:   'Segoe UI', system-ui, -apple-system, Roboto, 'Helvetica Neue', sans-serif;
+  --ncm-font-ui:      'Segoe UI', system-ui, -apple-system, Roboto, 'Helvetica Neue', sans-serif;
+  --ncm-font-display: 'Segoe UI', system-ui, -apple-system, Roboto, 'Helvetica Neue', sans-serif;
+  --ncm-font-body:    'Segoe UI', system-ui, -apple-system, Roboto, 'Helvetica Neue', sans-serif;
+}
+
+/* ─── CLEAN LIGHT ──────────────────────────────────────────────────────── */
+.ncm-app.ncm-admin-panel[data-ncm-admin-theme="clean-light"] {
+  --ncm-bg-deep:      #e7ecf2;
+  --ncm-bg-base:      #f3f6f9;
+  --ncm-bg-surface:   #ffffff;
+  --ncm-bg-elevated:  #ffffff;
+  --ncm-bg-overlay:   rgba(20, 26, 35, 0.45);
+
+  --ncm-text-primary:   #18212e;
+  --ncm-text-secondary: #46515f;
+  --ncm-text-muted:     #788294;
+  --ncm-text-inverse:   #ffffff;
+
+  --ncm-border:        #d4dbe4;
+  --ncm-border-active: #c0c9d6;
+  --ncm-border-focus:  #0e7c8b;
+
+  --ncm-primary:   #b23b3b;
+  --ncm-secondary: #0e7c8b;
+  --ncm-accent:    #9a6b15;
+  --ncm-success:   #1f8f63;
+  --ncm-warning:   #9a6b15;
+  --ncm-danger:    #b23b3b;
+  --ncm-purple:    #6f5bb0;
+
+  --ncm-shadow-card:    0 1px 3px rgba(20, 26, 35, 0.12);
+  --ncm-shadow-glow:    0 1px 3px rgba(20, 26, 35, 0.12);
+  --ncm-shadow-neon:    0 1px 3px rgba(20, 26, 35, 0.12);
+}
+
+/* ─── HIGH CONTRAST (dark, accessibility-first) ────────────────────────── */
+.ncm-app.ncm-admin-panel[data-ncm-admin-theme="high-contrast"] {
+  --ncm-bg-deep:      #000000;
+  --ncm-bg-base:      #080b10;
+  --ncm-bg-surface:   #11161e;
+  --ncm-bg-elevated:  #1a212b;
+  --ncm-bg-overlay:   rgba(0, 0, 0, 0.9);
+
+  --ncm-text-primary:   #ffffff;
+  --ncm-text-secondary: #d6dce4;
+  --ncm-text-muted:     #9aa6b6;
+  --ncm-text-inverse:   #000000;
+
+  --ncm-border:        #44506a;
+  --ncm-border-active: #5a6a86;
+  --ncm-border-focus:  #57dcee;
+
+  --ncm-primary:   #ff6b6b;
+  --ncm-secondary: #45d6e8;
+  --ncm-accent:    #f0c25a;
+  --ncm-success:   #57d99b;
+  --ncm-warning:   #f0c25a;
+  --ncm-danger:    #ff6b6b;
+  --ncm-purple:    #c0a8ff;
+}
+
+/* High-contrast: strong, always-visible focus rings on interactive controls. */
+.ncm-app.ncm-admin-panel[data-ncm-admin-theme="high-contrast"]
+  :is(button, a, input, select, textarea, [data-action], [tabindex]):focus-visible {
+  outline: 2px solid var(--ncm-border-focus);
+  outline-offset: 1px;
+}
+
+/* ─── Admin Appearance picker (Tools tab) ──────────────────────────────── */
+.ncm-app .ncm-admin-theme-picker {
+  display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;
+}
+.ncm-app button.ncm-admin-theme-opt {
+  display: flex; align-items: center; gap: 10px;
+  flex: 1 1 170px; min-width: 170px;
+  width: auto; height: auto; margin: 0;
+  padding: 10px 12px; cursor: pointer; text-align: left;
+  appearance: none; -webkit-appearance: none; box-shadow: none;
+  background: var(--ncm-bg-surface);
+  border: 1px solid var(--ncm-border);
+  border-radius: var(--ncm-radius-md);
+  transition: border-color var(--ncm-transition-fast, 0.12s);
+}
+.ncm-app button.ncm-admin-theme-opt:hover { border-color: var(--ncm-border-active); }
+.ncm-app button.ncm-admin-theme-opt--active { border-color: var(--ncm-secondary); }
+
+.ncm-app .ncm-admin-theme-opt__swatch {
+  width: 28px; height: 28px; border-radius: 4px; flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+.ncm-app .ncm-admin-theme-opt__swatch--clean-dark    { background: linear-gradient(135deg, #151a23 50%, #34c5d6 50%); }
+.ncm-app .ncm-admin-theme-opt__swatch--clean-light   { background: linear-gradient(135deg, #f3f6f9 50%, #0e7c8b 50%); }
+.ncm-app .ncm-admin-theme-opt__swatch--high-contrast { background: linear-gradient(135deg, #000000 50%, #45d6e8 50%); }
+
+.ncm-app .ncm-admin-theme-opt__text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.ncm-app .ncm-admin-theme-opt__name { font-size: 12.5px; font-weight: 600; color: var(--ncm-text-primary); }
+.ncm-app .ncm-admin-theme-opt__desc { font-size: 10.5px; color: var(--ncm-text-muted); }
+.ncm-app .ncm-admin-theme-opt__check { color: var(--ncm-secondary); font-size: 12px; flex-shrink: 0; }

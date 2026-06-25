@@ -102,6 +102,70 @@ export class SettingsManager {
       },
     });
 
+    game.settings.register(MODULE_ID, 'subjectThreading', {
+      name: 'NCM.Settings.SubjectThreading',
+      hint: 'NCM.Settings.SubjectThreadingHint',
+      scope: 'world',       // GM-controlled, affects how conversations group for everyone
+      config: true,
+      type: Boolean,
+      default: true,
+    });
+
+    game.settings.register(MODULE_ID, 'notifyGmNpcMail', {
+      name: 'GM Alert — Player Mail to NPCs',
+      hint: 'Show the GM a toast notification whenever a player sends a message to an NPC. The NPC Inbox section in Admin → Messages is always available regardless of this setting.',
+      scope: 'world',        // GM-facing; world-scoped so all GMs share it
+      config: true,
+      type: Boolean,
+      default: true,
+    });
+
+    // ─── Unknown-Sender Spam Filtering ───
+    // When a message arrives from someone the player hasn't added as a contact,
+    // it has a configurable chance of landing in Spam instead of the Inbox —
+    // nudging players to check their spam folder and add their contacts.
+
+    game.settings.register(MODULE_ID, 'spamUnknownSenderEnabled', {
+      name: 'Spam Filter — Unknown Senders',
+      hint: 'When ON, messages to players from senders they have NOT added as a contact may be routed to the Spam folder instead of the Inbox (silent — no new-message toast). Encourages players to check spam and save contacts.',
+      scope: 'world',
+      config: true,
+      type: Boolean,
+      default: false,
+    });
+
+    game.settings.register(MODULE_ID, 'spamUnknownSenderChance', {
+      name: 'Spam Filter — Chance (%)',
+      hint: 'Percent chance an eligible message from an un-added sender is routed to Spam. 0 = never, 100 = always.',
+      scope: 'world',
+      config: true,
+      type: Number,
+      range: { min: 0, max: 100, step: 5 },
+      default: 25,
+    });
+
+    game.settings.register(MODULE_ID, 'spamUnknownSenderScope', {
+      name: 'Spam Filter — Sender Scope',
+      hint: 'Which un-added senders are eligible. "Known contacts only" = the sender exists in the Master Directory / is a registered character but the player hasn\'t added them ("a contact exists but isn\'t added"). "Any un-added sender" = also includes completely unknown addresses.',
+      scope: 'world',
+      config: true,
+      type: String,
+      default: 'known',
+      choices: {
+        known: 'Known contacts only',
+        all: 'Any un-added sender',
+      },
+    });
+
+    game.settings.register(MODULE_ID, 'spamUnknownSenderExcludePlayers', {
+      name: 'Spam Filter — Exclude Player Senders',
+      hint: 'When ON, messages from other player characters are never spam-filtered (keeps party comms out of spam). Only NPC / contact senders are eligible.',
+      scope: 'world',
+      config: true,
+      type: Boolean,
+      default: true,
+    });
+
     // ─── Time Provider Settings ───
 
     game.settings.register(MODULE_ID, 'dateFormat', {
@@ -115,6 +179,20 @@ export class SettingsManager {
         YMD: 'YYYY.MM.DD',
         DMY: 'DD.MM.YYYY',
         MDY: 'MM.DD.YYYY',
+      },
+    });
+
+    game.settings.register(MODULE_ID, 'dateMonthStyle', {
+      name: 'Date — Month Style',
+      hint: 'Render the month as a number (03), short name (Mar), or full name (March) across all NCM dates. Composes with the date order above — e.g. with MM.DD.YYYY + Full = "March 18, 2045".',
+      scope: 'world',
+      config: true,
+      type: String,
+      default: 'number',
+      choices: {
+        number: 'Number (03)',
+        short: 'Short name (Mar)',
+        long: 'Full name (March)',
       },
     });
 
@@ -294,6 +372,15 @@ export class SettingsManager {
       default: [],
     });
 
+    game.settings.register(MODULE_ID, 'adminTheme', {
+      name: 'NCM.Settings.AdminTheme.Name',
+      hint: 'Appearance of the GM Admin Panel (separate from the player theme).',
+      scope: 'client',
+      config: false,
+      type: Object,
+      default: foundry.utils.deepClone(DEFAULTS.ADMIN_THEME),
+    });
+
     this._registered = true;
     log.info('Settings registered');
   }
@@ -332,5 +419,23 @@ export class SettingsManager {
     const current = this.getTheme();
     const merged = foundry.utils.mergeObject(current, updates, { inplace: false });
     return this.set('playerTheme', merged);
+  }
+
+  /**
+   * Get GM Admin Panel theme preferences (separate from player theme).
+   * @returns {object}
+   */
+  getAdminTheme() {
+    try { return this.get('adminTheme'); } catch { return foundry.utils.deepClone(DEFAULTS.ADMIN_THEME); }
+  }
+
+  /**
+   * Update the admin theme (merges with existing).
+   * @param {object} updates
+   */
+  async setAdminTheme(updates) {
+    const current = this.getAdminTheme();
+    const merged = foundry.utils.mergeObject(current, updates, { inplace: false });
+    return this.set('adminTheme', merged);
   }
 }

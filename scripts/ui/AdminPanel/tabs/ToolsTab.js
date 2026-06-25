@@ -16,9 +16,32 @@ export class ToolsTab extends BaseTab {
 
   get key() { return 'tools'; }
 
+  /** Admin-panel appearance presets (separate from the player theme). */
+  static ADMIN_PRESETS = [
+    { key: 'clean-dark',    label: 'Clean Dark',    desc: 'Calm slate dashboard' },
+    { key: 'clean-light',   label: 'Clean Light',   desc: 'Bright, max legibility' },
+    { key: 'high-contrast', label: 'High Contrast', desc: 'Accessibility-first' },
+  ];
+
+  prepareContext() {
+    const current = this.settingsManager?.getAdminTheme?.()?.preset || 'clean-dark';
+    return {
+      adminThemePresets: ToolsTab.ADMIN_PRESETS.map(p => ({ ...p, active: p.key === current })),
+    };
+  }
+
   // ═══════════════════════════════════════════════════════════
   //  System Tools
   // ═══════════════════════════════════════════════════════════
+
+  /** Switch the GM Admin Panel's own theme preset and re-render. */
+  async onSetAdminTheme(event, target) {
+    const preset = target?.dataset?.preset;
+    if (!preset) return;
+    await this.settingsManager?.setAdminTheme?.({ preset });
+    log.info(`Admin: appearance set to "${preset}"`);
+    this.render(true);
+  }
 
   onOpenThemeCustomizer(event, target) {
     game.nightcity?.openThemeCustomizer?.();
@@ -584,6 +607,85 @@ export class ToolsTab extends BaseTab {
       );
     } else {
       ui.notifications.info('NCM | Journals are already organized — nothing to do.');
+    }
+  }
+
+  /**
+   * Import / reinstall the NCM macro compendiums into world folders.
+   *
+   * This IS the explicit "reinstall": the compendium packs are canonical and
+   * never auto-write to the world. Each click imports missing macros and
+   * overwrites the body/name/img of macros this module created (flag
+   * `managed: true`). Macros the GM authored or un-managed are never touched.
+   */
+  async onImportMacros(event, target) {
+    const confirmed = await Dialog.confirm({
+      title: 'Import / Reinstall NCM Macros',
+      content: `<p>Import the Night City Messenger macro compendiums into your world:</p>
+        <ul style="margin: 8px 0 8px 16px; font-size: 13px;">
+          <li>Folders <b>NCM — Player Tools</b> and <b>NCM — GM Tools</b></li>
+          <li>Missing macros are created; module-managed macros are reset to the shipped version</li>
+          <li>Your own macros and any you've detached are <b>never</b> overwritten</li>
+        </ul>
+        <p>Player Tools are shared with players (Observer); GM Tools stay GM-only.</p>`,
+    });
+    if (!confirmed) return;
+
+    const specs = [
+      { pack: `${MODULE_ID}.ncm-macros-player`, folder: 'NCM — Player Tools' },
+      { pack: `${MODULE_ID}.ncm-macros-gm`, folder: 'NCM — GM Tools' },
+    ];
+
+    let created = 0;
+    let updated = 0;
+    let skipped = 0;
+
+    try {
+      for (const spec of specs) {
+        const pack = game.packs.get(spec.pack);
+        if (!pack) {
+          ui.notifications.warn(`NCM | Compendium "${spec.pack}" not found — is the module fully loaded?`);
+          continue;
+        }
+
+        let folder = game.folders.find(f => f.type === 'Macro' && f.name === spec.folder);
+        if (!folder) folder = await Folder.create({ name: spec.folder, type: 'Macro' });
+
+        const sources = await pack.getDocuments();
+        for (const src of sources) {
+          const sourceId = src.getFlag(MODULE_ID, 'sourceId') ?? src.id;
+          const existing = game.macros.find(m => m.getFlag(MODULE_ID, 'sourceId') === sourceId);
+
+          const data = {
+            name: src.name,
+            type: 'script',
+            img: src.img,
+            scope: 'global',
+            command: src.command,
+            folder: folder.id,
+            ownership: { default: src.ownership?.default ?? 0 },
+            flags: { [MODULE_ID]: { managed: true, sourceId } },
+          };
+
+          if (!existing) {
+            await Macro.create(data);
+            created++;
+          } else if (existing.getFlag(MODULE_ID, 'managed') === true) {
+            await existing.update(data);
+            updated++;
+          } else {
+            skipped++; // GM detached this one — leave it alone
+          }
+        }
+      }
+
+      log.info(`NCM macros: ${created} created, ${updated} reset, ${skipped} preserved`);
+      ui.notifications.info(
+        `NCM | Macros installed — ${created} new, ${updated} reset to shipped, ${skipped} preserved.`
+      );
+    } catch (error) {
+      console.error(`${MODULE_ID} | Macro import failed:`, error);
+      ui.notifications.error('NCM | Macro import failed. Check console.');
     }
   }
 

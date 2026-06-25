@@ -60,31 +60,31 @@
 /* Color accents per domain */
 .ncm-app .ncm-ov-actions__btn--cyan i { color: var(--ncm-secondary); }
 .ncm-app .ncm-ov-actions__btn--cyan:hover {
-  border-color: rgba(25, 243, 247, 0.4) !important;
+  border-color: color-mix(in srgb, var(--ncm-secondary) 40%, transparent) !important;
   color: var(--ncm-secondary) !important;
 }
 
 .ncm-app .ncm-ov-actions__btn--gold i { color: var(--ncm-accent); }
 .ncm-app .ncm-ov-actions__btn--gold:hover {
-  border-color: rgba(247, 201, 72, 0.4) !important;
+  border-color: color-mix(in srgb, var(--ncm-accent) 40%, transparent) !important;
   color: var(--ncm-accent) !important;
 }
 
 .ncm-app .ncm-ov-actions__btn--red i { color: var(--ncm-primary); }
 .ncm-app .ncm-ov-actions__btn--red:hover {
-  border-color: rgba(246, 82, 97, 0.4) !important;
+  border-color: color-mix(in srgb, var(--ncm-primary) 40%, transparent) !important;
   color: var(--ncm-primary) !important;
 }
 
 .ncm-app .ncm-ov-actions__btn--green i { color: var(--ncm-success); }
 .ncm-app .ncm-ov-actions__btn--green:hover {
-  border-color: rgba(0, 255, 65, 0.4) !important;
+  border-color: color-mix(in srgb, var(--ncm-success) 40%, transparent) !important;
   color: var(--ncm-success) !important;
 }
 
 .ncm-app .ncm-ov-actions__btn--purple i { color: var(--ncm-purple); }
 .ncm-app .ncm-ov-actions__btn--purple:hover {
-  border-color: rgba(168, 85, 247, 0.4) !important;
+  border-color: color-mix(in srgb, var(--ncm-purple) 40%, transparent) !important;
   color: var(--ncm-purple) !important;
 }
 
@@ -277,10 +277,10 @@
   border-radius: 2px;
   flex-shrink: 0;
 }
-.ncm-app .ncm-ov-alert__tag--msg   { background: rgba(25, 243, 247, 0.1); color: var(--ncm-secondary); }
-.ncm-app .ncm-ov-alert__tag--shard { background: rgba(247, 201, 72, 0.1); color: var(--ncm-accent); }
-.ncm-app .ncm-ov-alert__tag--net   { background: rgba(0, 255, 65, 0.1); color: var(--ncm-success); }
-.ncm-app .ncm-ov-alert__tag--sched { background: rgba(246, 82, 97, 0.1); color: var(--ncm-primary); }
+.ncm-app .ncm-ov-alert__tag--msg   { background: color-mix(in srgb, var(--ncm-secondary) 10%, transparent); color: var(--ncm-secondary); }
+.ncm-app .ncm-ov-alert__tag--shard { background: color-mix(in srgb, var(--ncm-accent) 10%, transparent); color: var(--ncm-accent); }
+.ncm-app .ncm-ov-alert__tag--net   { background: color-mix(in srgb, var(--ncm-success) 10%, transparent); color: var(--ncm-success); }
+.ncm-app .ncm-ov-alert__tag--sched { background: color-mix(in srgb, var(--ncm-primary) 10%, transparent); color: var(--ncm-primary); }
 
 .ncm-app button.ncm-ov-alert__action,
 .ncm-app .ncm-ov-alert__action {
@@ -407,23 +407,23 @@
   margin-top: 1px;
 }
 .ncm-app .ncm-ov-feed-item__icon--msg {
-  background: rgba(25, 243, 247, 0.1);
+  background: color-mix(in srgb, var(--ncm-secondary) 10%, transparent);
   color: var(--ncm-secondary);
 }
 .ncm-app .ncm-ov-feed-item__icon--shard {
-  background: rgba(247, 201, 72, 0.1);
+  background: color-mix(in srgb, var(--ncm-accent) 10%, transparent);
   color: var(--ncm-accent);
 }
 .ncm-app .ncm-ov-feed-item__icon--net {
-  background: rgba(0, 255, 65, 0.1);
+  background: color-mix(in srgb, var(--ncm-success) 10%, transparent);
   color: var(--ncm-success);
 }
 .ncm-app .ncm-ov-feed-item__icon--contact {
-  background: rgba(168, 85, 247, 0.1);
+  background: color-mix(in srgb, var(--ncm-purple) 10%, transparent);
   color: var(--ncm-purple);
 }
 .ncm-app .ncm-ov-feed-item__icon--alert {
-  background: rgba(246, 82, 97, 0.1);
+  background: color-mix(in srgb, var(--ncm-primary) 10%, transparent);
   color: var(--ncm-primary);
 }
 
@@ -500,7 +500,7 @@
   align-items: center;
   gap: 8px;
   padding: 7px 10px;
-  border-bottom: 1px solid rgba(42, 42, 69, 0.5);
+  border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 50%, transparent);
   cursor: pointer;
   transition: background 0.15s;
 }
@@ -546,7 +546,7 @@
 .ncm-app .ncm-ov-sched-item__cancel {
   padding: 2px 5px !important;
   background: transparent !important;
-  border: 1px solid rgba(246, 82, 97, 0.25) !important;
+  border: 1px solid color-mix(in srgb, var(--ncm-primary) 25%, transparent) !important;
   border-radius: 2px !important;
   font-size: 8px !important;
   color: var(--ncm-primary) !important;
@@ -565,8 +565,8 @@
 }
 .ncm-app .ncm-ov-sched-item:hover .ncm-ov-sched-item__cancel { opacity: 1 !important; }
 .ncm-app .ncm-ov-sched-item__cancel:hover {
-  background: rgba(246, 82, 97, 0.1) !important;
-  border-color: rgba(246, 82, 97, 0.5) !important;
+  background: color-mix(in srgb, var(--ncm-primary) 10%, transparent) !important;
+  border-color: color-mix(in srgb, var(--ncm-primary) 50%, transparent) !important;
 }
 
 .ncm-app .ncm-ov-sched__empty {
@@ -595,7 +595,7 @@
   align-items: center;
   gap: 8px;
   padding: 6px 10px;
-  border-bottom: 1px solid rgba(42, 42, 69, 0.5);
+  border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 50%, transparent);
 }
 .ncm-app .ncm-ov-conn-item:last-child { border-bottom: none; }
 
@@ -607,11 +607,11 @@
 }
 .ncm-app .ncm-ov-conn-item__dot--gm {
   background: var(--ncm-accent);
-  box-shadow: 0 0 5px rgba(247, 201, 72, 0.3);
+  box-shadow: 0 0 5px color-mix(in srgb, var(--ncm-accent) 30%, transparent);
 }
 .ncm-app .ncm-ov-conn-item__dot--online {
   background: var(--ncm-success);
-  box-shadow: 0 0 5px rgba(0, 255, 65, 0.3);
+  box-shadow: 0 0 5px color-mix(in srgb, var(--ncm-success) 30%, transparent);
 }
 
 .ncm-app .ncm-ov-conn-item__name {
@@ -677,8 +677,8 @@
   background: var(--ncm-bg-elevated);
 }
 
-.ncm-app .ncm-ov-actor-card--player { border-left: 2px solid rgba(25, 243, 247, 0.3); }
-.ncm-app .ncm-ov-actor-card--npc    { border-left: 2px solid rgba(247, 201, 72, 0.3); }
+.ncm-app .ncm-ov-actor-card--player { border-left: 2px solid color-mix(in srgb, var(--ncm-secondary) 30%, transparent); }
+.ncm-app .ncm-ov-actor-card--npc    { border-left: 2px solid color-mix(in srgb, var(--ncm-accent) 30%, transparent); }
 .ncm-app .ncm-ov-actor-card--alert  { border-left-color: var(--ncm-primary) !important; }
 
 .ncm-app .ncm-ov-actor-card__avatar {
@@ -831,7 +831,7 @@
   text-transform: uppercase !important;
   letter-spacing: 0.06em !important;
   background: transparent !important;
-  border: 1px solid rgba(25, 243, 247, 0.2) !important;
+  border: 1px solid color-mix(in srgb, var(--ncm-secondary) 20%, transparent) !important;
   border-radius: 2px !important;
   padding: 2px 7px !important;
   transition: all 0.15s !important;
@@ -847,7 +847,7 @@
   line-height: 1.2 !important;
 }
 .ncm-app .ncm-ov-section__action:hover {
-  background: rgba(25, 243, 247, 0.06) !important;
-  border-color: rgba(25, 243, 247, 0.35) !important;
+  background: color-mix(in srgb, var(--ncm-secondary) 6%, transparent) !important;
+  border-color: color-mix(in srgb, var(--ncm-secondary) 35%, transparent) !important;
   color: var(--ncm-text-primary) !important;
 }

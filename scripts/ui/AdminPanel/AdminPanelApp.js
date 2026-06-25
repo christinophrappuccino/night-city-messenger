@@ -168,6 +168,9 @@ export class AdminPanelApp extends BaseApplication {
       npcPagePrev: AdminPanelApp._onNpcPagePrev,
       npcPageNext: AdminPanelApp._onNpcPageNext,
       openViewInboxDialog: AdminPanelApp._onOpenViewInboxDialog,
+      toggleNpcInbox: AdminPanelApp._onToggleNpcInbox,
+      npcInboxFilter: AdminPanelApp._onNpcInboxFilter,
+      npcInboxReply: AdminPanelApp._onNpcInboxReply,
 
       // Contacts actions
       openGMContacts: AdminPanelApp._onOpenGMContacts,
@@ -182,6 +185,7 @@ export class AdminPanelApp extends BaseApplication {
       importActorsAsContacts: AdminPanelApp._onImportContactsJSON,
       editContactInEditor: AdminPanelApp._onEditContactInEditor,
       createNewContact:    AdminPanelApp._onCreateNewContact,
+      importActorAsNpc:    AdminPanelApp._onImportActorAsNpc,
       pushAllContacts:     AdminPanelApp._onPushAllContacts,
       contactFilter:       AdminPanelApp._onContactFilter,
       contactClearSearch:  AdminPanelApp._onContactClearSearch,
@@ -204,6 +208,9 @@ export class AdminPanelApp extends BaseApplication {
       openNetworkManager: AdminPanelApp._onOpenNetworkManager,
       editNetworkInManager: AdminPanelApp._onEditNetworkInManager,
       toggleSceneDeadZone: AdminPanelApp._onToggleSceneDeadZone,
+      toggleSceneHideImported: AdminPanelApp._onToggleSceneHideImported,
+      scenePagePrev: AdminPanelApp._onScenePagePrev,
+      scenePageNext: AdminPanelApp._onScenePageNext,
       switchNetworkSubView: AdminPanelApp._onSwitchNetworkSubView,
       toggleCardLog: AdminPanelApp._onToggleCardLog,
       deleteLogEntry: AdminPanelApp._onDeleteLogEntry,
@@ -274,8 +281,11 @@ export class AdminPanelApp extends BaseApplication {
       spamDeleteTemplate: AdminPanelApp._onSpamDeleteTemplate,
       spamToggleAutoSection: AdminPanelApp._onSpamToggleAutoSection,
       spamToggleAutoNetwork: AdminPanelApp._onSpamToggleAutoNetwork,
+      spamExportTemplates: AdminPanelApp._onSpamExportTemplates,
+      spamImportTemplates: AdminPanelApp._onSpamImportTemplates,
 
       // Tools actions
+      setAdminTheme: AdminPanelApp._onSetAdminTheme,
       openThemeCustomizer: AdminPanelApp._onOpenThemeCustomizer,
       forceRefreshAll: AdminPanelApp._onForceRefreshAll,
       refreshStats: AdminPanelApp._onRefreshStats,
@@ -285,6 +295,7 @@ export class AdminPanelApp extends BaseApplication {
       openSoundSettings: AdminPanelApp._onOpenSoundSettings,
       manageDomains: AdminPanelApp._onManageDomains,
       reorganizeJournals: AdminPanelApp._onReorganizeJournals,
+      importNCMMacros: AdminPanelApp._onImportNCMMacros,
 
       // Danger zone
       purgeMessages: AdminPanelApp._onPurgeMessages,
@@ -391,6 +402,9 @@ export class AdminPanelApp extends BaseApplication {
 
       // Spam tab
       ...this.tabs.spam.prepareContext(),
+
+      // Tools tab
+      ...this.tabs.tools.prepareContext(),
 
       // Module info
       MODULE_ID,
@@ -561,8 +575,28 @@ export class AdminPanelApp extends BaseApplication {
    * This avoids the timing problem where _onRender fires after DOM
    * replacement (scrollTop already 0 on the new element).
    */
+  /**
+   * Apply the GM Admin Panel's own theme — independent of the player theme.
+   * Sets the preset data-attribute (CSS in admin-theme.css scopes --ncm-*
+   * overrides to this panel) and force-suppresses the diegetic atmosphere
+   * (scanlines/neon) regardless of the player's prefs. This is a GM tool.
+   * @private
+   */
+  _applyAdminTheme() {
+    const el = this.element;
+    if (!el) return;
+    const preset = this.settingsManager?.getAdminTheme?.()?.preset || 'clean-dark';
+    el.dataset.ncmAdminTheme = preset;
+    el.dataset.ncmScanlines = 'false';
+    el.dataset.ncmNeon = 'false';
+  }
+
   _onRender(context, options) {
     super._onRender(context, options);
+
+    // Apply the admin-only theme AFTER super (which runs _applyAtmosphere with
+    // the player prefs) so our overrides win.
+    this._applyAdminTheme();
 
     // Restore scroll position after render
     requestAnimationFrame(() => {
@@ -911,6 +945,9 @@ export class AdminPanelApp extends BaseApplication {
   static _onNpcPagePrev(event, target) { this.tabs.messages.onNpcPagePrev(event, target); }
   static _onNpcPageNext(event, target) { this.tabs.messages.onNpcPageNext(event, target); }
   static _onOpenViewInboxDialog(event, target) { this.tabs.messages.onOpenViewInboxDialog(event, target); }
+  static _onToggleNpcInbox(event, target) { this.tabs.messages.onToggleNpcInbox(event, target); }
+  static _onNpcInboxFilter(event, target) { this.tabs.messages.onNpcInboxFilter(event, target); }
+  static async _onNpcInboxReply(event, target) { return this.tabs.messages.onNpcInboxReply(event, target); }
   static _onOpenComposer(event, target) { this.tabs.messages.onOpenComposer(event, target); }
   static async _onCancelScheduled(event, target) { return this.tabs.messages.onCancelScheduled(event, target); }
   static async _onEditScheduled(event, target) { return this.tabs.messages.onEditScheduled(event, target); }
@@ -947,6 +984,7 @@ export class AdminPanelApp extends BaseApplication {
   static async _onSetContactTrust(event, target) { return this.tabs.contacts.onSetTrust(event, target); }
   static async _onEditContactInEditor(event, target) { return this.tabs.contacts.onEditInEditor(event, target); }
   static async _onCreateNewContact(event, target) { return this.tabs.contacts.onCreateNew(event, target); }
+  static async _onImportActorAsNpc(event, target) { return this.tabs.contacts.onImportActorAsNpc(event, target); }
   static _onPushAllContacts(event, target) { this.tabs.contacts.onPushAll(event, target); }
   static _onContactFilter(event, target) { this.tabs.contacts.onFilter(event, target); }
   static _onContactClearSearch(event, target) { this.tabs.contacts.onClearSearch(event, target); }
@@ -974,6 +1012,9 @@ export class AdminPanelApp extends BaseApplication {
   static async _onDeleteNetwork(event, target) { return this.tabs.networks.onDelete(event, target); }
   static _onToggleNetworkGroup(event, target) { this.tabs.networks.onToggleGroup(event, target); }
   static async _onToggleSceneDeadZone(event, target) { return this.tabs.networks.onToggleSceneDeadZone(event, target); }
+  static _onToggleSceneHideImported(event, target) { this.tabs.networks.onToggleSceneHideImported(event, target); }
+  static _onScenePagePrev(event, target) { this.tabs.networks.onScenePagePrev(event, target); }
+  static _onScenePageNext(event, target) { this.tabs.networks.onScenePageNext(event, target); }
   static _onSwitchNetworkSubView(event, target) { this.tabs.networks.onSwitchSubView(event, target); }
   static _onToggleCardLog(event, target) { this.tabs.networks.onToggleCardLog(event, target); }
   static _onDeleteLogEntry(event, target) { this.tabs.networks.onDeleteLogEntry(event, target); }
@@ -1044,11 +1085,14 @@ export class AdminPanelApp extends BaseApplication {
   static async _onSpamDeleteTemplate(event, target) { return this.tabs.spam.onDeleteTemplate(event, target); }
   static _onSpamToggleAutoSection(event, target) { this.tabs.spam.onToggleAutoSection(event, target); }
   static async _onSpamToggleAutoNetwork(event, target) { return this.tabs.spam.onToggleAutoNetwork(event, target); }
+  static _onSpamExportTemplates(event, target) { this.tabs.spam.onExportTemplates(event, target); }
+  static _onSpamImportTemplates(event, target) { this.tabs.spam.onImportTemplates(event, target); }
 
   // ═══════════════════════════════════════════════════════════
   //  Action Handlers — Tools (delegated to ToolsTab)
   // ═══════════════════════════════════════════════════════════
 
+  static async _onSetAdminTheme(event, target) { return this.tabs.tools.onSetAdminTheme(event, target); }
   static _onOpenThemeCustomizer(event, target) { this.tabs.tools.onOpenThemeCustomizer(event, target); }
   static async _onForceRefreshAll(event, target) { return this.tabs.tools.onForceRefreshAll(event, target); }
   static _onRefreshStats(event, target) { this.tabs.tools.onRefreshStats(event, target); }
@@ -1058,6 +1102,7 @@ export class AdminPanelApp extends BaseApplication {
   static _onOpenSoundSettings(event, target) { this.tabs.tools.onOpenSoundSettings(event, target); }
   static async _onManageDomains(event, target) { return this.tabs.tools.onManageDomains(event, target); }
   static async _onReorganizeJournals(event, target) { return this.tabs.tools.onReorganizeJournals(event, target); }
+  static async _onImportNCMMacros(event, target) { return this.tabs.tools.onImportMacros(event, target); }
   static async _onPurgeMessages(event, target) { return this.tabs.tools.onPurgeMessages(event, target); }
   static async _onResetModule(event, target) { return this.tabs.tools.onResetModule(event, target); }
   static async _onRebuildIndex(event, target) { return this.tabs.tools.onRebuildIndex(event, target); }

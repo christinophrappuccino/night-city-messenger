@@ -1,5 +1,20 @@
     {{#if (eq activeTab 'tools')}}
 
+    <div class="ncm-section-title"><i class="fas fa-display"></i> Admin Appearance</div>
+    <div class="ncm-admin-theme-picker">
+      {{#each adminThemePresets}}
+        <button type="button" class="ncm-admin-theme-opt{{#if this.active}} ncm-admin-theme-opt--active{{/if}}"
+                data-action="setAdminTheme" data-preset="{{this.key}}">
+          <span class="ncm-admin-theme-opt__swatch ncm-admin-theme-opt__swatch--{{this.key}}"></span>
+          <span class="ncm-admin-theme-opt__text">
+            <span class="ncm-admin-theme-opt__name">{{this.label}}</span>
+            <span class="ncm-admin-theme-opt__desc">{{this.desc}}</span>
+          </span>
+          {{#if this.active}}<i class="fas fa-check ncm-admin-theme-opt__check"></i>{{/if}}
+        </button>
+      {{/each}}
+    </div>
+
     <div class="ncm-section-title"><i class="fas fa-cog"></i> System Tools</div>
     <div class="ncm-tools-grid">
       <div class="ncm-tool-card" data-action="openThemeCustomizer">
@@ -41,6 +56,11 @@
         <i class="fas fa-folder-tree ncm-tool-card__icon ncm-tool-card__icon--gold"></i>
         <span class="ncm-tool-card__name">Reorganize Journals</span>
         <span class="ncm-tool-card__desc">Rename &amp; sort into subfolders</span>
+      </div>
+      <div class="ncm-tool-card" data-action="importNCMMacros">
+        <i class="fas fa-wand-magic-sparkles ncm-tool-card__icon ncm-tool-card__icon--cyan"></i>
+        <span class="ncm-tool-card__name">Import / Reinstall Macros</span>
+        <span class="ncm-tool-card__desc">Player &amp; GM macro compendiums</span>
       </div>
     </div>
 

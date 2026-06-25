@@ -428,6 +428,7 @@ export const TEMPLATES = Object.freeze({
   MESSAGE_COMPOSER: `${T}/message-composer/message-composer.hbs`,
   CONTACT_MANAGER: `${T}/contact-manager/contact-manager.hbs`,
   GM_CONTACT_MANAGER: `${T}/gm-contact-manager/gm-contact-manager.hbs`,
+  ACTOR_IMPORT_PICKER: `${T}/gm-contact-manager/actor-import-picker.hbs`,
   ITEM_INBOX: `${T}/item-inbox/item-inbox.hbs`,
   SECURITY_OVERLAY_NETWORK: `${T}/item-inbox/security-overlay-network.hbs`,
   SECURITY_OVERLAY_KEYITEM: `${T}/item-inbox/security-overlay-keyitem.hbs`,
@@ -509,10 +510,15 @@ export const DEFAULTS = Object.freeze({
     preset: 'classic',
     colors: { primary: null, secondary: null, accent: null, bgDeep: null, bgBase: null, bgSurface: null, bgElevated: null, textPrimary: null, textSecondary: null },
     fonts: { display: 'rajdhani', mono: 'sharetechmono', title: 'orbitron' },
-    textScale: 100,
+    textScale: 100, contrast: 100, agentName: 'Agent',
     scanlines: true, glitchIntensity: 0.5, animationLevel: 'full', neonGlow: true,
     messageDensity: 'normal', sidebarWidth: 300, defaultSort: 'newest', showAvatars: true, wallpaper: null,
     soundEnabled: true, soundVolume: 0.5, ambientEnabled: false,
+  },
+  // GM Admin Panel theme — separate from PLAYER_THEME. Clean/utilitarian by
+  // default; presets are pure CSS keyed by [data-ncm-admin-theme].
+  ADMIN_THEME: {
+    preset: 'clean-dark',   // 'clean-dark' | 'clean-light' | 'high-contrast'
   },
   SHARD_CONFIG: {
     // ─── Identity ───
@@ -673,6 +679,30 @@ export const COLOR_VAR_MAP = Object.freeze({
   primary: '--ncm-primary', secondary: '--ncm-secondary', accent: '--ncm-accent',
   bgDeep: '--ncm-bg-deep', bgBase: '--ncm-bg-base', bgSurface: '--ncm-bg-surface',
   bgElevated: '--ncm-bg-elevated', textPrimary: '--ncm-text-primary', textSecondary: '--ncm-text-secondary',
+});
+
+/**
+ * Readability contrast tone-mapping (ThemeService.applyTheme).
+ * Instead of a CSS contrast() filter (which distorts images and drifts
+ * saturation), we spread the lightness of the background/text/border palette
+ * in OKLCH space around `pivot`. Accents (primary/secondary/accent) are
+ * deliberately excluded so the neon identity holds at every contrast level.
+ * `base` is the fallback value when neither player prefs nor the preset define
+ * the color — it mirrors the variables.css default, so textMuted/border (which
+ * no preset defines) still respond to the slider.
+ */
+export const CONTRAST_SPREAD = Object.freeze({
+  pivot: 0.42,
+  vars: Object.freeze([
+    { cssVar: '--ncm-bg-deep',        key: 'bgDeep',        base: '#0a0a0f' },
+    { cssVar: '--ncm-bg-base',        key: 'bgBase',        base: '#12121a' },
+    { cssVar: '--ncm-bg-surface',     key: 'bgSurface',     base: '#1a1a2e' },
+    { cssVar: '--ncm-bg-elevated',    key: 'bgElevated',    base: '#252540' },
+    { cssVar: '--ncm-text-primary',   key: 'textPrimary',   base: '#ededf0' },
+    { cssVar: '--ncm-text-secondary', key: 'textSecondary', base: '#bdbdd0' },
+    { cssVar: '--ncm-text-muted',     key: 'textMuted',     base: '#8e8ea8' },
+    { cssVar: '--ncm-border',         key: 'border',        base: '#2a2a45' },
+  ]),
 });
 
 /**

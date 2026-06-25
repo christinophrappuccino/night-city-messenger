@@ -29,6 +29,7 @@
 /* Themes — preset color overrides */
 @import 'themes/presets.css';
 @import 'themes/shard-presets.css';
+@import 'themes/admin-theme.css';
 
 /* Components — feature-specific UI styles */
 @import 'components/message-viewer.css';
@@ -39,6 +40,7 @@
 @import 'components/contact-manager.css';
 @import 'components/contact-verification.css';
 @import 'components/gm-contact-manager.css';
+@import 'components/actor-import-picker.css';
 @import 'components/role-manager.css';
 @import 'components/contact-share-dialog.css';
 @import 'components/data-drop-overlay.css';

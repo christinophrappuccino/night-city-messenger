@@ -14,8 +14,8 @@
   align-items: center;
   gap: 8px;
   padding: 18px 12px 14px;
-  background: var(--ncm-bg-surface, #1a1a2e);
-  border: 1px solid var(--ncm-border, #2a2a45);
+  background: var(--ncm-bg-surface, var(--ncm-bg-surface));
+  border: 1px solid var(--ncm-border, var(--ncm-border));
   border-radius: 2px;
   cursor: pointer;
   transition: all 0.15s;
@@ -35,17 +35,17 @@
 }
 
 .ncm-app .ncm-tool-card:hover {
-  border-color: var(--ncm-border-active, #3a3a5a);
-  background: var(--ncm-bg-elevated, #252540);
+  border-color: var(--ncm-border-active, var(--ncm-border-active));
+  background: var(--ncm-bg-elevated, var(--ncm-bg-elevated));
 }
 
 .ncm-app .ncm-tool-card:hover::before {
-  background: var(--ncm-secondary, #19f3f7);
+  background: var(--ncm-secondary, var(--ncm-secondary));
 }
 
 .ncm-app .ncm-tool-card__icon {
   font-size: 20px;
-  color: var(--ncm-secondary, #19f3f7);
+  color: var(--ncm-secondary, var(--ncm-secondary));
   transition: transform 0.15s;
 }
 
@@ -54,22 +54,22 @@
 }
 
 .ncm-app .ncm-tool-card__icon--red {
-  color: var(--ncm-primary, #F65261);
+  color: var(--ncm-primary, var(--ncm-primary));
 }
 
 .ncm-app .ncm-tool-card__icon--gold {
-  color: var(--ncm-accent, #f7c948);
+  color: var(--ncm-accent, var(--ncm-accent));
 }
 
 .ncm-app .ncm-tool-card__icon--green {
-  color: var(--ncm-success, #00ff41);
+  color: var(--ncm-success, var(--ncm-success));
 }
 
 .ncm-app .ncm-tool-card__name {
   font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
   font-size: 11px;
   font-weight: 600;
-  color: var(--ncm-text-primary, #e0e0e8);
+  color: var(--ncm-text-primary, var(--ncm-text-primary));
   text-transform: uppercase;
   letter-spacing: 0.04em;
   text-align: center;
@@ -78,7 +78,7 @@
 .ncm-app .ncm-tool-card__desc {
   font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
   font-size: 8px;
-  color: var(--ncm-text-muted, #555570);
+  color: var(--ncm-text-muted, var(--ncm-text-muted));
   text-align: center;
   line-height: 1.4;
 }
@@ -88,23 +88,23 @@
 .ncm-app .ncm-danger-zone {
   margin-top: 8px;
   padding-top: 10px;
-  border-top: 1px solid rgba(255, 0, 51, 0.15);
+  border-top: 1px solid color-mix(in srgb, var(--ncm-danger) 15%, transparent);
 }
 
 .ncm-app .ncm-danger-zone .ncm-section-title {
-  color: var(--ncm-danger, #ff0033);
+  color: var(--ncm-danger, var(--ncm-danger));
 }
 
 .ncm-app .ncm-danger-zone .ncm-section-title i {
-  color: var(--ncm-danger, #ff0033);
+  color: var(--ncm-danger, var(--ncm-danger));
 }
 
 .ncm-app .ncm-danger-zone .ncm-tool-card:hover::before {
-  background: var(--ncm-danger, #ff0033);
+  background: var(--ncm-danger, var(--ncm-danger));
 }
 
 .ncm-app .ncm-danger-zone .ncm-tool-card__icon {
-  color: var(--ncm-danger, #ff0033);
+  color: var(--ncm-danger, var(--ncm-danger));
 }
 
 
@@ -117,10 +117,10 @@
 /* ─── Window frame ─── */
 .dialog.window-app.ncm-time-config-dialog {
   background: #0d0d1a !important;
-  border: 1px solid #2a2a45 !important;
+  border: 1px solid var(--ncm-border) !important;
   border-radius: 2px !important;
-  box-shadow: 0 8px 40px rgba(0,0,0,0.6), 0 0 2px rgba(25,243,247,0.08) !important;
-  color: #eeeef4 !important;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.6), 0 0 2px color-mix(in srgb, var(--ncm-secondary) 8%, transparent) !important;
+  color: var(--ncm-text-primary) !important;
   overflow: hidden !important;
   height: auto !important;
   min-height: 0 !important;
@@ -131,7 +131,7 @@
   content: '' !important;
   position: absolute !important; top: 0 !important; left: 0 !important; right: 0 !important;
   height: 2px !important; z-index: 100 !important;
-  background: linear-gradient(90deg, #F65261, transparent 40%, transparent 60%, #19f3f7) !important;
+  background: linear-gradient(90deg, var(--ncm-primary), transparent 40%, transparent 60%, var(--ncm-secondary)) !important;
   pointer-events: none !important;
 }
 
@@ -139,9 +139,9 @@
 .ncm-time-config-dialog .window-header,
 .ncm-time-config-dialog header.window-header,
 .dialog.ncm-time-config-dialog .window-header {
-  background: #12121a !important;
-  border-bottom: 1px solid #2a2a45 !important;
-  color: #eeeef4 !important;
+  background: var(--ncm-bg-base) !important;
+  border-bottom: 1px solid var(--ncm-border) !important;
+  color: var(--ncm-text-primary) !important;
   padding: 6px 10px !important;
   min-height: 0 !important;
   margin: 0 !important;
@@ -149,12 +149,12 @@
 
 .ncm-time-config-dialog .window-header .window-title,
 .ncm-time-config-dialog .window-title {
-  font-family: 'Rajdhani', sans-serif !important;
+  font-family: var(--ncm-font-display);
   font-size: 13px !important;
   font-weight: 700 !important;
   text-transform: uppercase !important;
   letter-spacing: 0.06em !important;
-  color: #eeeef4 !important;
+  color: var(--ncm-text-primary) !important;
   margin: 0 !important;
   padding: 0 !important;
   line-height: 1.4 !important;
@@ -178,7 +178,7 @@
   background: none !important;
   border: 1px solid transparent !important;
   border-radius: 2px !important;
-  color: #8888a0 !important;
+  color: var(--ncm-text-muted) !important;
   font-size: 0 !important;
   width: 22px !important; height: 22px !important;
   min-width: 0 !important; min-height: 0 !important;
@@ -196,7 +196,7 @@
 .ncm-time-config-dialog header button i,
 .ncm-time-config-dialog header a i {
   font-size: 10px !important;
-  color: #8888a0 !important;
+  color: var(--ncm-text-muted) !important;
   display: block !important;
 }
 
@@ -205,7 +205,7 @@
 .ncm-time-config-dialog .window-header .header-button:hover,
 .ncm-time-config-dialog header button:hover,
 .ncm-time-config-dialog header a:hover {
-  border-color: rgba(246, 82, 97, 0.4) !important;
+  border-color: color-mix(in srgb, var(--ncm-primary) 40%, transparent) !important;
 }
 
 .ncm-time-config-dialog .window-header .close:hover i,
@@ -213,7 +213,7 @@
 .ncm-time-config-dialog .window-header .header-button:hover i,
 .ncm-time-config-dialog header button:hover i,
 .ncm-time-config-dialog header a:hover i {
-  color: #F65261 !important;
+  color: var(--ncm-primary) !important;
 }
 
 /* ─── Content area ─── */
@@ -250,11 +250,11 @@
 .ncm-time-config-dialog input[type="date"],
 .ncm-time-config-dialog input[type="time"],
 .ncm-time-config-dialog input[type="number"] {
-  background: #12121a !important;
-  border: 1px solid #2a2a45 !important;
+  background: var(--ncm-bg-base) !important;
+  border: 1px solid var(--ncm-border) !important;
   border-radius: 2px !important;
-  color: #eeeef4 !important;
-  font-family: 'Share Tech Mono', monospace !important;
+  color: var(--ncm-text-primary) !important;
+  font-family: var(--ncm-font-mono);
   font-size: 12px !important;
   padding: 5px 8px !important;
   margin: 0 !important;
@@ -270,7 +270,7 @@
 }
 
 .ncm-time-config-dialog input:focus {
-  border-color: #19f3f7 !important;
+  border-color: var(--ncm-secondary) !important;
 }
 
 /* Date/time input calendar/clock icons */
@@ -282,11 +282,11 @@
 
 /* ─── Select dropdown ─── */
 .ncm-time-config-dialog select {
-  background: #12121a !important;
-  border: 1px solid #2a2a45 !important;
+  background: var(--ncm-bg-base) !important;
+  border: 1px solid var(--ncm-border) !important;
   border-radius: 2px !important;
-  color: #eeeef4 !important;
-  font-family: 'Rajdhani', sans-serif !important;
+  color: var(--ncm-text-primary) !important;
+  font-family: var(--ncm-font-display);
   font-size: 13px !important;
   font-weight: 600 !important;
   padding: 5px 8px !important;
@@ -302,16 +302,16 @@
 }
 
 .ncm-time-config-dialog select:focus {
-  border-color: #19f3f7 !important;
+  border-color: var(--ncm-secondary) !important;
 }
 
 .ncm-time-config-dialog select option {
-  background: #12121a !important;
-  color: #eeeef4 !important;
+  background: var(--ncm-bg-base) !important;
+  color: var(--ncm-text-primary) !important;
 }
 
 .ncm-time-config-dialog select option:disabled {
-  color: #555570 !important;
+  color: var(--ncm-text-muted) !important;
 }
 
 /* ─── Buttons inside content (anchor, set, advance, re-anchor) ─── */
@@ -320,10 +320,10 @@
   align-items: center !important;
   gap: 5px !important;
   background: transparent !important;
-  border: 1px solid #2a2a45 !important;
+  border: 1px solid var(--ncm-border) !important;
   border-radius: 2px !important;
-  color: #8888a0 !important;
-  font-family: 'Rajdhani', sans-serif !important;
+  color: var(--ncm-text-muted) !important;
+  font-family: var(--ncm-font-display);
   font-size: 11px !important;
   font-weight: 700 !important;
   text-transform: uppercase !important;
@@ -346,8 +346,8 @@
 }
 
 .ncm-time-config-dialog .dialog-content button:hover {
-  border-color: #3a3a5a !important;
-  color: #eeeef4 !important;
+  border-color: var(--ncm-border-active) !important;
+  color: var(--ncm-text-primary) !important;
 }
 
 .ncm-time-config-dialog .dialog-content button i {
@@ -358,25 +358,25 @@
 /* Cyan accent buttons (Set, Anchor) */
 .ncm-time-config-dialog .dialog-content button[id$="-set"],
 .ncm-time-config-dialog .dialog-content button[id$="-dis-set"] {
-  border-color: rgba(25, 243, 247, 0.3) !important;
-  color: #19f3f7 !important;
+  border-color: color-mix(in srgb, var(--ncm-secondary) 30%, transparent) !important;
+  color: var(--ncm-secondary) !important;
 }
 
 .ncm-time-config-dialog .dialog-content button[id$="-set"]:hover,
 .ncm-time-config-dialog .dialog-content button[id$="-dis-set"]:hover {
-  background: rgba(25, 243, 247, 0.06) !important;
-  border-color: rgba(25, 243, 247, 0.5) !important;
+  background: color-mix(in srgb, var(--ncm-secondary) 6%, transparent) !important;
+  border-color: color-mix(in srgb, var(--ncm-secondary) 50%, transparent) !important;
 }
 
 /* Gold accent buttons (Anchor disguised) */
 .ncm-time-config-dialog .dialog-content button[id="ncm-tc-dis-set"] {
-  border-color: rgba(247, 201, 72, 0.3) !important;
-  color: #f7c948 !important;
+  border-color: color-mix(in srgb, var(--ncm-accent) 30%, transparent) !important;
+  color: var(--ncm-accent) !important;
 }
 
 .ncm-time-config-dialog .dialog-content button[id="ncm-tc-dis-set"]:hover {
-  background: rgba(247, 201, 72, 0.06) !important;
-  border-color: rgba(247, 201, 72, 0.5) !important;
+  background: color-mix(in srgb, var(--ncm-accent) 6%, transparent) !important;
+  border-color: color-mix(in srgb, var(--ncm-accent) 50%, transparent) !important;
 }
 
 /* 12h/24h toggle in preview */
@@ -384,13 +384,13 @@
   padding: 2px 8px !important;
   font-size: 9px !important;
   gap: 4px !important;
-  border-color: rgba(25, 243, 247, 0.2) !important;
-  color: #8888a0 !important;
+  border-color: color-mix(in srgb, var(--ncm-secondary) 20%, transparent) !important;
+  color: var(--ncm-text-muted) !important;
 }
 
 .ncm-time-config-dialog .dialog-content button#ncm-tc-12h-toggle:hover {
-  border-color: rgba(25, 243, 247, 0.4) !important;
-  color: #19f3f7 !important;
+  border-color: color-mix(in srgb, var(--ncm-secondary) 40%, transparent) !important;
+  color: var(--ncm-secondary) !important;
 }
 
 .ncm-time-config-dialog .dialog-content button#ncm-tc-12h-toggle i {
@@ -404,16 +404,16 @@
 }
 
 .ncm-time-config-dialog .dialog-content button.ncm-tc-advance:hover {
-  border-color: rgba(25, 243, 247, 0.3) !important;
-  color: #19f3f7 !important;
-  background: rgba(25, 243, 247, 0.04) !important;
+  border-color: color-mix(in srgb, var(--ncm-secondary) 30%, transparent) !important;
+  color: var(--ncm-secondary) !important;
+  background: color-mix(in srgb, var(--ncm-secondary) 4%, transparent) !important;
 }
 
 /* ─── Dialog footer buttons (Apply / Close) ─── */
 .ncm-time-config-dialog .dialog-buttons,
 .ncm-time-config-dialog footer.dialog-buttons {
   background: #0d0d1a !important;
-  border-top: 1px solid #2a2a45 !important;
+  border-top: 1px solid var(--ncm-border) !important;
   padding: 6px 12px !important;
   display: flex !important;
   justify-content: flex-end !important;
@@ -428,10 +428,10 @@
 .ncm-time-config-dialog footer button {
   flex: 0 0 auto !important;
   background: transparent !important;
-  border: 1px solid #2a2a45 !important;
+  border: 1px solid var(--ncm-border) !important;
   border-radius: 2px !important;
-  color: #8888a0 !important;
-  font-family: 'Rajdhani', sans-serif !important;
+  color: var(--ncm-text-muted) !important;
+  font-family: var(--ncm-font-display);
   font-size: 11px !important;
   font-weight: 700 !important;
   text-transform: uppercase !important;
@@ -462,22 +462,22 @@
 .dialog.ncm-time-config-dialog .dialog-buttons button[data-button="apply"],
 .ncm-time-config-dialog .dialog-buttons button[data-button="apply"],
 .ncm-time-config-dialog footer.dialog-buttons button[data-button="apply"] {
-  border-color: rgba(25, 243, 247, 0.3) !important;
-  color: #19f3f7 !important;
-  background: rgba(25, 243, 247, 0.04) !important;
+  border-color: color-mix(in srgb, var(--ncm-secondary) 30%, transparent) !important;
+  color: var(--ncm-secondary) !important;
+  background: color-mix(in srgb, var(--ncm-secondary) 4%, transparent) !important;
 }
 
 .ncm-time-config-dialog .dialog-buttons button[data-button="apply"]:hover,
 .ncm-time-config-dialog footer.dialog-buttons button[data-button="apply"]:hover {
-  background: rgba(25, 243, 247, 0.1) !important;
-  border-color: #19f3f7 !important;
+  background: color-mix(in srgb, var(--ncm-secondary) 10%, transparent) !important;
+  border-color: var(--ncm-secondary) !important;
 }
 
 /* Close button — muted */
 .ncm-time-config-dialog .dialog-buttons button[data-button="close"]:hover,
 .ncm-time-config-dialog footer.dialog-buttons button[data-button="close"]:hover {
-  border-color: #3a3a5a !important;
-  color: #eeeef4 !important;
+  border-color: var(--ncm-border-active) !important;
+  color: var(--ncm-text-primary) !important;
 }
 
 .ncm-time-config-dialog .dialog-buttons button i,
@@ -492,4 +492,4 @@
 .ncm-time-config-dialog .window-content::-webkit-scrollbar-track,
 .ncm-time-config-dialog .dialog-content::-webkit-scrollbar-track { background: transparent !important; }
 .ncm-time-config-dialog .window-content::-webkit-scrollbar-thumb,
-.ncm-time-config-dialog .dialog-content::-webkit-scrollbar-thumb { background: #2a2a45 !important; border-radius: 2px !important; }
+.ncm-time-config-dialog .dialog-content::-webkit-scrollbar-thumb { background: var(--ncm-border) !important; border-radius: 2px !important; }
