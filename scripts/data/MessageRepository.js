@@ -169,6 +169,46 @@ export class MessageRepository {
     }
   }
 
+  /**
+   * Identify whether a journal is an NCM inbox, returning its owner id and kind.
+   * Flag-based (v2) with a legacy name-prefix fallback, so it works on both
+   * human-named (v2) and legacy (`NCM-Inbox-…`) worlds. Returns null for
+   * non-inbox journals and for archived inboxes sitting in the Deleted bin.
+   *
+   * Use this anywhere that scans `game.journal` for inboxes — never key on the
+   * `NCM-Inbox-` name prefix directly (current worlds use human-readable names
+   * like "X — Inbox", so a prefix scan silently matches nothing).
+   *
+   * @param {JournalEntry} journal
+   * @returns {{ isContact: boolean, ownerId: string }|null}
+   */
+  static identifyInbox(journal) {
+    if (!journal) return null;
+
+    // Skip archived inboxes in the Deleted recycle bin (still carry inbox flags).
+    if (journal.folder?.name === DELETED_FOLDER) return null;
+
+    const flags = journal.flags?.[MODULE_ID];
+    if (flags?.type === 'inbox' && flags.actorId) {
+      return { isContact: false, ownerId: flags.actorId };
+    }
+    if (flags?.type === 'contactInbox' && flags.contactId) {
+      return { isContact: true, ownerId: flags.contactId };
+    }
+
+    // Legacy name fallback — check the contact prefix first (it extends the
+    // actor inbox prefix, so the order matters).
+    const name = journal.name || '';
+    if (name.startsWith(LEGACY_CONTACT_PREFIX)) {
+      return { isContact: true, ownerId: name.slice(LEGACY_CONTACT_PREFIX.length) };
+    }
+    if (name.startsWith(LEGACY_INBOX_PREFIX)) {
+      return { isContact: false, ownerId: name.slice(LEGACY_INBOX_PREFIX.length) };
+    }
+
+    return null;
+  }
+
   // ═══════════════════════════════════════════════════════════
   //  Journal Lookup (Flag-based with Legacy Fallback)
   // ═══════════════════════════════════════════════════════════
@@ -392,6 +432,7 @@ export class MessageRepository {
           messageId,
           threadId: messageData.threadId || messageId,
           inReplyTo: messageData.inReplyTo || null,
+          references: Array.isArray(messageData.references) ? messageData.references : [],
 
           from: messageData.from || '',
           fromActorId: messageData.fromActorId || '',
@@ -413,7 +454,7 @@ export class MessageRepository {
           status: {
             read: messageData.status?.read || false,
             saved: false,
-            spam: false,
+            spam: messageData.status?.spam || false,
             encrypted: messageData.status?.encrypted || !!messageData.encryption || false,
             infected: messageData.status?.infected || false,
             deleted: false,
@@ -889,6 +930,7 @@ export class MessageRepository {
       messageId: flags.messageId,
       threadId: flags.threadId,
       inReplyTo: flags.inReplyTo,
+      references: Array.isArray(flags.references) ? flags.references : [],
       from: flags.from,
       fromActorId: flags.fromActorId,
       fromContactId: flags.fromContactId || '',
