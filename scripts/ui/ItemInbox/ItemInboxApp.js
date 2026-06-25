@@ -8,7 +8,7 @@
  */
 
 import { MODULE_ID, EVENTS, TEMPLATES, DEFAULTS, THEME_PRESETS, ENCRYPTION_TYPES, FAILURE_MODES, CONTENT_TYPES, SHARD_PRESETS } from '../../utils/constants.js';
-import { log, isGM, formatCyberDate } from '../../utils/helpers.js';
+import { log, isGM, formatCyberDate, resolveMediaEmbed } from '../../utils/helpers.js';
 import { BaseApplication } from '../BaseApplication.js';
 import { NetworkAuthDialog } from '../NetworkManagement/NetworkAuthDialog.js';
 
@@ -549,11 +549,16 @@ export class ItemInboxApp extends BaseApplication {
       };
     }
 
-    // AV Log enrichment
+    // AV Log enrichment — resolve an embeddable media source if present
     if (enriched.isAvlog && entry.contentData) {
+      const media = resolveMediaEmbed(entry.contentData.mediaUrl, entry.contentData.mediaType);
       enriched.contentData = {
         ...entry.contentData,
-        isVideo: entry.contentData.mediaType === 'video',
+        isVideo: media.isVideo,
+        embedSrc: media.src,
+        hasMedia: media.kind !== 'none',
+        isEmbed: media.kind === 'embed',
+        isNativeMedia: media.kind === 'native',
       };
     }
 
@@ -668,7 +673,9 @@ export class ItemInboxApp extends BaseApplication {
         progressColor: 'accent',
         footerText: 'Loading data...',
         duration: 2500,
-        sound: 'hack-success',
+        // Distinct from the hack-roll climax (hack-success) — this is the
+        // shard actually opening/decrypting.
+        sound: 'shard-decrypt',
       });
     }
 
@@ -741,7 +748,6 @@ export class ItemInboxApp extends BaseApplication {
     if (!messageId) return;
     this.selectedMessageId = messageId;
     this.render();
-    this.soundService?.play('click');
   }
 
   static async _onAttemptBreach(event, target) {
@@ -808,8 +814,11 @@ export class ItemInboxApp extends BaseApplication {
     await new Promise(r => setTimeout(r, 150));
 
     // ─── Perform the hack ───
+    // silent: the animated breach sequence owns the outcome audio at its
+    // climax, so the service shouldn't play it ~6s early (or double it).
     const result = await this.dataShardService.attemptHack(this.item, actor, skillName, {
       luckSpend,
+      silent: true,
     });
 
     // ─── Play the terminal sequence ───
@@ -826,7 +835,6 @@ export class ItemInboxApp extends BaseApplication {
     const skillName = target.dataset.skill;
     if (!skillName) return;
     this._hackingSkill = skillName;
-    this.soundService?.play('click');
     this.render();
   }
 
@@ -1114,7 +1122,7 @@ export class ItemInboxApp extends BaseApplication {
     if (tokenType) tokenType.textContent = selectedItem.type || 'Item';
     if (confirmBtn) { confirmBtn.style.display = 'block'; confirmBtn.classList.add('ncm-sec-animate-in'); }
 
-    this.soundService?.play('click');
+    this.soundService?.playClick();
   }
 
   static _onClearTokenSlot(event, target) {
@@ -1147,8 +1155,10 @@ export class ItemInboxApp extends BaseApplication {
     // Guard against updateItem hook re-render during validation + animation
     this._transitionActive = true;
 
-    // Validate the selected item via DataShardService
-    const result = await this.dataShardService.validateKeyItem(this.item, actor, selectedItem.id);
+    // Validate the selected item via DataShardService.
+    // silent: the UI owns the key sounds here (accept splash / reject shake)
+    // so they sync with the visuals and don't double the service's plays.
+    const result = await this.dataShardService.validateKeyItem(this.item, actor, selectedItem.id, { silent: true });
 
     if (result.success) {
       // ─── Correct item — show success transition ───
@@ -1161,7 +1171,7 @@ export class ItemInboxApp extends BaseApplication {
         progressColor: 'gold',
         footerText: 'Access layer cleared. Proceeding...',
         duration: 2200,
-        sound: 'hack-success',
+        sound: 'key-accepted',
       });
       this._selectedTokenItem = null;
       this._transitionActive = false;
@@ -1818,13 +1828,39 @@ export class ItemInboxApp extends BaseApplication {
 
   static _onToggleIndexStrip(event, target) {
     const strip = this.element?.querySelector('.ncm-shard-index-strip');
-    if (strip) {
-      strip.classList.toggle('ncm-shard-index-strip--collapsed');
-      const icon = strip.querySelector('.ncm-shard-index-toggle i');
-      if (icon) {
-        icon.classList.toggle('fa-chevron-down');
-        icon.classList.toggle('fa-chevron-right');
-      }
+    if (!strip) return;
+
+    // Treat a strip that's collapsed OR mid-close as "closed" so rapid toggles
+    // (clicking open while it's still animating shut) resolve correctly.
+    const isClosed = strip.classList.contains('ncm-shard-index-strip--collapsed')
+      || strip.classList.contains('ncm-shard-index-strip--closing');
+
+    const icon = strip.querySelector('.ncm-shard-index-toggle i');
+    if (icon) {
+      icon.classList.toggle('fa-chevron-down', isClosed);
+      icon.classList.toggle('fa-chevron-right', !isClosed);
+    }
+
+    clearTimeout(this._indexCloseTimer);
+
+    if (isClosed) {
+      // OPEN — uncollapse and retrigger the staggered flow-in (forced reflow
+      // restarts the CSS animation).
+      strip.classList.remove('ncm-shard-index-strip--closing');
+      strip.classList.remove('ncm-shard-index-strip--collapsed');
+      strip.classList.remove('ncm-shard-index-strip--anim');
+      void strip.offsetWidth;
+      strip.classList.add('ncm-shard-index-strip--anim');
+    } else {
+      // CLOSE — play the staggered flow-out, then collapse once it finishes.
+      strip.classList.remove('ncm-shard-index-strip--anim');
+      strip.classList.add('ncm-shard-index-strip--closing');
+      const count = strip.querySelectorAll('.ncm-shard-index-chip').length;
+      const total = 220 + count * 25; // flow-out duration + per-chip stagger
+      this._indexCloseTimer = setTimeout(() => {
+        strip.classList.add('ncm-shard-index-strip--collapsed');
+        strip.classList.remove('ncm-shard-index-strip--closing');
+      }, total);
     }
   }
 
@@ -1962,6 +1998,9 @@ export class ItemInboxApp extends BaseApplication {
     const resultOverlay = el.querySelector('[data-hack-result]');
     if (!terminal) return;
 
+    // Breach begins
+    this.soundService?.play('hack-start');
+
     // Helpers
     const _timers = [];
     const delay = (fn, ms) => new Promise(resolve => {
@@ -1998,6 +2037,7 @@ export class ItemInboxApp extends BaseApplication {
     await delay(() => { addLine('blank', ''); setProgress(10, 'Mapping ICE architecture...'); }, 300);
 
     // Phase 2: Scan
+    this.soundService?.play('hack-progress');
     await delay(() => addLine('prompt', 'Initializing ICE scan...'), 400);
     await delay(() => addLine('data', `0x${Math.random().toString(16).slice(2,6).toUpperCase()} :: scanning port matrix :: vectors loaded`), 500);
     await delay(() => addLine('data', `0x${Math.random().toString(16).slice(2,6).toUpperCase()} :: firewall topology mapped :: layers detected`), 500);
@@ -2018,6 +2058,7 @@ export class ItemInboxApp extends BaseApplication {
     await delay(() => { setProgress(55, 'Injecting exploit...'); setIce(75); }, 300);
 
     // Phase 4: Inject
+    this.soundService?.play('hack-progress');
     await delay(() => addLine('blank', ''), 200);
     await delay(() => addLine('prompt', 'Injecting exploit into layer 1...'), 400);
     await delay(() => addLine('data', `0x${Math.random().toString(16).slice(2,6).toUpperCase()} :: buffer overflow targeting auth handler`), 500);
@@ -2074,16 +2115,19 @@ export class ItemInboxApp extends BaseApplication {
         addLine('blank', '');
         addLine('fail', '██ BREACH FAILED ██ ICE HOLDING ██');
         if (iceStructure) iceStructure.classList.add('ncm-ice-retaliate');
+        this.soundService?.play('hack-fail');
       }, 500);
       if (result.damage) {
         await delay(() => {
           addLine('ice', `⚡ ${iceName} RETALIATION — DAMAGE INCOMING`);
+          this.soundService?.play('black-ice');
         }, 400);
         await delay(() => {
           const formulaStr = result.damageFormula ? ` (${result.damageFormula})` : '';
           addLine('damage', `→ ${iceName} deals ${result.damage} HP damage${formulaStr}`);
         }, 400);
       }
+      if (result.locked) this.soundService?.play('lockout');
     }
 
     // Compute attempts remaining from config

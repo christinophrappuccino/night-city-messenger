@@ -574,6 +574,7 @@ export class ShardConversionFlow extends HandlebarsApplicationMixin(ApplicationV
       case CONTENT_TYPES.AVLOG:
         out.avlogTitle = v('avlogTitle');
         out.avlogMediaType = v('avlogMediaType');
+        out.avlogMediaUrl = v('avlogMediaUrl');
         out.avlogDuration = v('avlogDuration');
         out.avlogSource = v('avlogSource');
         out.avlogTranscript = v('avlogTranscript');
@@ -915,6 +916,7 @@ export class ShardConversionFlow extends HandlebarsApplicationMixin(ApplicationV
     const overlay = this.element?.querySelector('[data-id="encoding-overlay"]');
     if (!overlay) return;
     overlay.classList.add('is-active');
+    game.nightcity?.soundService?.play('shard-compile');
     this._setEncodingStatus(initialText, 5);
   }
 
@@ -1075,6 +1077,7 @@ export class ShardConversionFlow extends HandlebarsApplicationMixin(ApplicationV
         subject = td.avlogTitle?.trim() || 'Recording';
         contentData = {
           mediaType: td.avlogMediaType || 'audio',
+          mediaUrl: td.avlogMediaUrl || '',
           duration: td.avlogDuration || '00:00',
           source: td.avlogSource || '',
           transcript: td.avlogTranscript ? [{ speaker: '', text: td.avlogTranscript }] : [],

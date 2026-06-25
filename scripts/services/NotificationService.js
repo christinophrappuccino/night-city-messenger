@@ -101,6 +101,8 @@ export class NotificationService {
     this._container = null;
     /** @type {Map<string, number>} Unread counts per actor */
     this._unreadCounts = new Map();
+    /** @type {Map<string, number>} messageId → last toast time (dedup) */
+    this._recentMsgToasts = new Map();
   }
 
   // ─── Service Accessors ────────────────────────────────────
@@ -219,23 +221,69 @@ export class NotificationService {
   // ═══════════════════════════════════════════════════════════
 
   showMessageNotification(data) {
+    // Socket delivery and document-sync can both emit MESSAGE_RECEIVED for the
+    // same message — dedup by id so the recipient sees a single toast + sound.
+    if (data.messageId) {
+      const now = Date.now();
+      const last = this._recentMsgToasts.get(data.messageId);
+      if (last && now - last < 4000) return null;
+      this._recentMsgToasts.set(data.messageId, now);
+      for (const [id, t] of this._recentMsgToasts) {
+        if (now - t > 10000) this._recentMsgToasts.delete(id);
+      }
+    }
+
+    const sender = data.fromName
+      || (data.fromActorId && game.actors?.get(data.fromActorId)?.name)
+      || (data.fromContactId && game.nightcity?.masterContactService?.getContact(data.fromContactId)?.name)
+      || data.from
+      || 'Unknown';
+
     const preview = data.preview
       ? `"${data.preview.substring(0, 60)}..."`
       : '';
 
+    const priority = data.priority || 'normal';
+    this.soundService?.play(priority === 'urgent' || priority === 'critical' ? 'receive-urgent' : 'receive');
+
     this.showToastV2({
       type: 'message',
       title: 'New Message',
-      detail: `${data.from || 'Unknown'} — ${data.subject || '(no subject)'}${preview ? ` ${preview}` : ''}`,
+      detail: `${sender} — ${data.subject || '(no subject)'}${preview ? ` ${preview}` : ''}`,
       actionLabel: 'View',
       onAction: () => {
         game.nightcity.openInbox?.(data.toActorId, data.messageId);
       },
-      duration: data.priority === 'critical' ? 0 : (data.priority === 'urgent' ? 8000 : 5000),
-      priority: data.priority || 'normal',
+      duration: priority === 'critical' ? 0 : (priority === 'urgent' ? 8000 : 5000),
+      priority,
     });
 
     this._updateUnreadBadge(data.toActorId);
+  }
+
+  /**
+   * GM-only toast — a player sent a message to an NPC inbox.
+   * Lets the GM know who's getting what and jump straight to that NPC's inbox.
+   * Caller (MessageService._notifyGmOfNpcMail) is responsible for the
+   * player→NPC determination and the settings gate.
+   * @param {object} data — { recipientInboxId, recipientName, senderName, subject, messageId, priority }
+   */
+  showNpcMailNotification(data) {
+    const priority = data.priority || 'normal';
+    this.soundService?.play(priority === 'urgent' || priority === 'critical' ? 'receive-urgent' : 'receive');
+
+    return this.showToastV2({
+      type: 'message',
+      icon: 'fas fa-user-secret',
+      title: 'NPC Mail Received',
+      detail: `${data.recipientName || 'NPC'} ← ${data.senderName || 'A player'} — "${data.subject || '(no subject)'}"`,
+      actionLabel: 'View',
+      onAction: () => {
+        game.nightcity?.openInbox?.(data.recipientInboxId, data.messageId);
+      },
+      duration: priority === 'critical' ? 0 : (priority === 'urgent' ? 8000 : 6000),
+      priority,
+    });
   }
 
   /**
@@ -492,6 +540,7 @@ export class NotificationService {
    * @param {object} data — { itemName }
    */
   showShardTrace(data) {
+    this.soundService?.play('trace-fire');
     return this.showToastV2({
       type: 'shard-trace',
       title: 'Trace Detected',

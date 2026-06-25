@@ -198,7 +198,7 @@ export class ICEService {
         speaker: ChatMessage.getSpeaker({ alias: ice.name }),
       });
 
-      this.soundService?.play('black-ice');
+      if (!opts.silent) this.soundService?.play('black-ice');
 
       // Emit event for UI layers to react
       this.eventBus?.emit(EVENTS.BLACK_ICE_DAMAGE, {

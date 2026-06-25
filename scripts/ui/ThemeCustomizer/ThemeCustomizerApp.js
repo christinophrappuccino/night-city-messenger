@@ -142,6 +142,8 @@ export class ThemeCustomizerApp extends BaseApplication {
       neonGlow: prefs.neonGlow !== false,
       glitchIntensity: Math.round((prefs.glitchIntensity ?? 0.5) * 100),
       textScale: prefs.textScale ?? 100,
+      contrast: prefs.contrast ?? 100,
+      agentName: prefs.agentName ?? 'Agent',
       soundEnabled: prefs.soundEnabled !== false,
       soundVolume: Math.round((prefs.soundVolume ?? 0.5) * 100),
       isDirty: this._isDirty,
@@ -178,12 +180,11 @@ export class ThemeCustomizerApp extends BaseApplication {
       mono: preset.fontMono || 'sharetechmono',
       title: preset.fontTitle || 'orbitron',
     };
-    this._isDirty = true;
+    this._markDirty();
 
     // Live preview
     this._applyLive();
     this.render(true);
-    this.playSound('click');
   }
 
   static _onUpdateColor(event, target) {
@@ -194,7 +195,7 @@ export class ThemeCustomizerApp extends BaseApplication {
     const value = input.value;
     if (!this._workingPrefs.colors) this._workingPrefs.colors = {};
     this._workingPrefs.colors[colorKey] = value;
-    this._isDirty = true;
+    this._markDirty();
 
     // Live preview
     this._applyLive();
@@ -205,21 +206,21 @@ export class ThemeCustomizerApp extends BaseApplication {
     const level = target.closest('[data-level]')?.dataset.level;
     if (!level) return;
     this._workingPrefs.animationLevel = level;
-    this._isDirty = true;
+    this._markDirty();
     this._applyLive();
     this.render(true);
   }
 
   static _onToggleScanlines(event, target) {
     this._workingPrefs.scanlines = !this._workingPrefs.scanlines;
-    this._isDirty = true;
+    this._markDirty();
     this._applyLive();
     this.render(true);
   }
 
   static _onToggleNeonGlow(event, target) {
     this._workingPrefs.neonGlow = !this._workingPrefs.neonGlow;
-    this._isDirty = true;
+    this._markDirty();
     this._applyLive();
     this.render(true);
   }
@@ -228,7 +229,7 @@ export class ThemeCustomizerApp extends BaseApplication {
     const slider = this.element.querySelector('[name="glitchIntensity"]');
     if (!slider) return;
     this._workingPrefs.glitchIntensity = parseInt(slider.value) / 100;
-    this._isDirty = true;
+    this._markDirty();
     this._applyLive();
   }
 
@@ -236,7 +237,7 @@ export class ThemeCustomizerApp extends BaseApplication {
     const density = target.closest('[data-density]')?.dataset.density;
     if (!density) return;
     this._workingPrefs.messageDensity = density;
-    this._isDirty = true;
+    this._markDirty();
     this.render(true);
   }
 
@@ -254,7 +255,7 @@ export class ThemeCustomizerApp extends BaseApplication {
     if (!confirmed) return;
 
     this._workingPrefs = foundry.utils.deepClone(DEFAULTS.PLAYER_THEME);
-    this._isDirty = true;
+    this._markDirty();
     this._applyLive();
     this.render(true);
     ui.notifications.info('Theme reset to defaults.');
@@ -264,8 +265,16 @@ export class ThemeCustomizerApp extends BaseApplication {
     try {
       await this.themeService?.updateTheme(this._workingPrefs);
       this._isDirty = false;
+      // Refresh any open inbox window title to reflect a new agent name.
+      try {
+        for (const app of foundry.applications?.instances?.values?.() ?? []) {
+          if (app?.id === 'ncm-message-viewer' && app.rendered && app.element) {
+            const t = app.element.querySelector('.window-title');
+            if (t && typeof app.title === 'string') t.textContent = app.title;
+          }
+        }
+      } catch { /* non-critical */ }
       ui.notifications.info('Theme saved.');
-      this.playSound('click');
       this.render(true);
     } catch (error) {
       console.error(`${MODULE_ID} | ThemeCustomizerApp._onSave:`, error);
@@ -315,7 +324,7 @@ export class ThemeCustomizerApp extends BaseApplication {
         if (!colorKey) return;
         if (!this._workingPrefs.colors) this._workingPrefs.colors = {};
         this._workingPrefs.colors[colorKey] = e.target.value;
-        this._isDirty = true;
+        this._markDirty();
         this._applyLive();
         // Update hex display
         const hex = e.target.closest('.ncm-tc__color-entry')?.querySelector('.ncm-tc__color-hex');
@@ -328,7 +337,7 @@ export class ThemeCustomizerApp extends BaseApplication {
     if (glitchSlider) {
       glitchSlider.addEventListener('input', (e) => {
         this._workingPrefs.glitchIntensity = parseInt(e.target.value) / 100;
-        this._isDirty = true;
+        this._markDirty();
         this._applyLive();
       });
     }
@@ -338,10 +347,31 @@ export class ThemeCustomizerApp extends BaseApplication {
     if (scaleSlider) {
       scaleSlider.addEventListener('input', (e) => {
         this._workingPrefs.textScale = parseInt(e.target.value);
-        this._isDirty = true;
+        this._markDirty();
         this._applyLive();
         const label = this.element.querySelector('.ncm-tc__scale-val');
         if (label) label.textContent = `${e.target.value}%`;
+      });
+    }
+
+    // ── Contrast slider ──
+    const contrastSlider = this.element.querySelector('[name="contrast"]');
+    if (contrastSlider) {
+      contrastSlider.addEventListener('input', (e) => {
+        this._workingPrefs.contrast = parseInt(e.target.value);
+        this._markDirty();
+        this._applyLive();
+        const label = this.element.querySelector('.ncm-tc__contrast-val');
+        if (label) label.textContent = `${e.target.value}%`;
+      });
+    }
+
+    // ── Agent name input (window title of the inbox) ──
+    const agentInput = this.element.querySelector('[name="agentName"]');
+    if (agentInput) {
+      agentInput.addEventListener('input', (e) => {
+        this._workingPrefs.agentName = e.target.value;
+        this._markDirty();
       });
     }
 
@@ -350,7 +380,7 @@ export class ThemeCustomizerApp extends BaseApplication {
     if (volumeSlider) {
       volumeSlider.addEventListener('input', (e) => {
         this._workingPrefs.soundVolume = parseInt(e.target.value) / 100;
-        this._isDirty = true;
+        this._markDirty();
       });
     }
 
@@ -362,10 +392,26 @@ export class ThemeCustomizerApp extends BaseApplication {
         if (!slot || !key) return;
         if (!this._workingPrefs.fonts) this._workingPrefs.fonts = {};
         this._workingPrefs.fonts[slot] = key;
-        this._isDirty = true;
+        this._markDirty();
         this._applyLive();
       });
     });
+  }
+
+  /**
+   * Mark the working theme dirty (or clean) and immediately reflect it on the
+   * Save button. Live inputs (sliders / color pickers / selects / text) don't
+   * re-render, so the button's disabled state must be toggled in the DOM here —
+   * otherwise it stays disabled and can never be clicked.
+   * @param {boolean} [dirty=true]
+   */
+  _markDirty(dirty = true) {
+    this._isDirty = dirty;
+    const btn = this.element?.querySelector('[data-action="save"]');
+    if (btn) {
+      btn.disabled = !dirty;
+      btn.classList.toggle('ncm-tc__fbtn--disabled', !dirty);
+    }
   }
 
   /**
@@ -411,7 +457,7 @@ export class ThemeCustomizerApp extends BaseApplication {
       bgDeep: null, bgBase: null, bgSurface: null,
       bgElevated: null, textPrimary: null, textSecondary: null,
     };
-    this._isDirty = true;
+    this._markDirty();
     this._applyLive();
     this.render(true);
     ui.notifications.info('Colors reset to preset defaults.');
@@ -445,7 +491,7 @@ export class ThemeCustomizerApp extends BaseApplication {
 
     this._workingPrefs = foundry.utils.deepClone(presets[index]);
     delete this._workingPrefs.name; // Strip the name field
-    this._isDirty = true;
+    this._markDirty();
     this._applyLive();
     this.render(true);
   }
@@ -508,7 +554,7 @@ export class ThemeCustomizerApp extends BaseApplication {
           imported,
           { inplace: false }
         );
-        this._isDirty = true;
+        this._markDirty();
         this._applyLive();
         this.render(true);
         ui.notifications.info('Theme imported successfully.');

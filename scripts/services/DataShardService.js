@@ -26,6 +26,15 @@ export class DataShardService {
   get networkService() { return game.nightcity?.networkService; }
   get soundService() { return game.nightcity?.soundService; }
   get socketManager() { return game.nightcity?.socketManager; }
+  get timeService() { return game.nightcity?.timeService; }
+
+  /** Current time in epoch ms via the configured time provider (real-time / world-time / manual / disguised). */
+  _nowMs() {
+    try {
+      if (this.timeService) return this.timeService.getCurrentTimeMs();
+    } catch { /* fallback */ }
+    return Date.now();
+  }
 
   // ═══════════════════════════════════════════════════════════
   //  PUBLIC API — Shard Conversion
@@ -340,7 +349,7 @@ export class DataShardService {
    * @param {string} selectedItemId - the item ID the player chose from inventory
    * @returns {Promise<{ success: boolean, consumed?: boolean, locked?: boolean, attemptsRemaining?: number, bypassLogin?: boolean, bypassEncryption?: boolean, error?: string }>}
    */
-  async validateKeyItem(shardItem, actor, selectedItemId) {
+  async validateKeyItem(shardItem, actor, selectedItemId, options = {}) {
     if (!actor) return { success: false, error: 'No actor provided' };
 
     const config = this._getConfig(shardItem);
@@ -385,7 +394,7 @@ export class DataShardService {
         bypassLogin: config.keyItemBypassLogin,
         bypassEncryption: config.keyItemBypassEncryption,
       });
-      this.soundService?.play('key-accepted');
+      if (!options.silent) this.soundService?.play('key-accepted');
       this._broadcastStateChange(shardItem.id);
 
       return {
@@ -412,7 +421,7 @@ export class DataShardService {
       attemptsRemaining,
       locked,
     });
-    this.soundService?.play('key-rejected');
+    if (!options.silent) this.soundService?.play('key-rejected');
     this._broadcastStateChange(shardItem.id);
 
     return {
@@ -461,7 +470,7 @@ export class DataShardService {
     const session = this._getActorSession(state, actor.id);
 
     // Check lockout
-    if (session.lockoutUntil && Date.now() < session.lockoutUntil) {
+    if (session.lockoutUntil && this._nowMs() < session.lockoutUntil) {
       return { success: false, locked: true, lockoutUntil: session.lockoutUntil };
     }
 
@@ -489,7 +498,7 @@ export class DataShardService {
     const updates = { loginAttempts: newAttempts };
 
     if (newAttempts >= maxAttempts) {
-      updates.lockoutUntil = Date.now() + (config.lockoutDuration || 3600000);
+      updates.lockoutUntil = this._nowMs() + (config.lockoutDuration || 3600000);
     }
 
     await this._updateActorSession(shardItem, actor.id, updates);
@@ -542,7 +551,7 @@ export class DataShardService {
     const isMessageHack = !!options.messageId;
 
     // Check lockout
-    if (session.lockoutUntil && Date.now() < session.lockoutUntil) {
+    if (session.lockoutUntil && this._nowMs() < session.lockoutUntil) {
       return { success: false, locked: true, lockoutUntil: session.lockoutUntil };
     }
 
@@ -576,13 +585,17 @@ export class DataShardService {
     const iceInfo = isLethal ? this._resolveICE(config) : null;
 
     // ─── Handle Result ───
+    // `options.silent` suppresses the service's outcome sounds so an animated
+    // caller (the UI breach sequence) can own the audio at its climax instead
+    // of the result spoiling ~6s early. Non-animated callers (per-message
+    // decrypt, macro API) leave it off and keep the immediate sounds.
     if (rollResult.success) {
-      const successResult = await this._handleHackSuccess(shardItem, actor, rollResult, isMessageHack, options.messageId);
+      const successResult = await this._handleHackSuccess(shardItem, actor, rollResult, isMessageHack, options.messageId, options.silent);
       successResult.iceInfo = iceInfo;
       successResult.encryptionType = config.encryptionType;
       return successResult;
     } else {
-      const failResult = await this._handleHackFailure(shardItem, actor, rollResult, config, session);
+      const failResult = await this._handleHackFailure(shardItem, actor, rollResult, config, session, options.silent);
       if (!failResult.iceInfo) failResult.iceInfo = iceInfo;
       failResult.encryptionType = config.encryptionType;
       return failResult;
@@ -1175,7 +1188,7 @@ export class DataShardService {
   // ═══════════════════════════════════════════════════════════
 
   /** @private */
-  async _handleHackSuccess(shardItem, actor, rollResult, isMessageHack, messageId) {
+  async _handleHackSuccess(shardItem, actor, rollResult, isMessageHack, messageId, silent = false) {
     if (isMessageHack && messageId) {
       // Decrypt individual message
       await this._decryptMessage(shardItem, messageId);
@@ -1191,7 +1204,7 @@ export class DataShardService {
     this.securityService?.recordSuccess(actor.id, shardItem.id);
 
     this.eventBus?.emit(EVENTS.SHARD_DECRYPTED, { itemId: shardItem.id, actorId: actor.id });
-    this.soundService?.play('hack-success');
+    if (!silent) this.soundService?.play('hack-success');
     this._broadcastStateChange(shardItem.id);
 
     return {
@@ -1202,7 +1215,7 @@ export class DataShardService {
   }
 
   /** @private */
-  async _handleHackFailure(shardItem, actor, rollResult, config, session) {
+  async _handleHackFailure(shardItem, actor, rollResult, config, session, silent = false) {
     const newAttempts = (session.hackAttempts || 0) + 1;
     const updates = { hackAttempts: newAttempts };
 
@@ -1235,9 +1248,9 @@ export class DataShardService {
     switch (config.failureMode) {
       case FAILURE_MODES.LOCKOUT:
         if (newAttempts >= config.maxHackAttempts) {
-          updates.lockoutUntil = Date.now() + (config.lockoutDuration || 3600000);
+          updates.lockoutUntil = this._nowMs() + (config.lockoutDuration || 3600000);
           result.locked = true;
-          this.soundService?.play('lockout');
+          if (!silent) this.soundService?.play('lockout');
         }
         break;
 
@@ -1245,7 +1258,7 @@ export class DataShardService {
         if (newAttempts >= config.maxHackAttempts) {
           updates.lockoutUntil = Number.MAX_SAFE_INTEGER; // Permanent lockout (survives JSON)
           result.locked = true;
-          this.soundService?.play('lockout');
+          if (!silent) this.soundService?.play('lockout');
         }
         break;
 
@@ -1254,7 +1267,7 @@ export class DataShardService {
         if (isLethal) {
           this._currentShardName = shardItem.name;
           this._currentShardId = shardItem.id;
-          const damageResult = await this._applyBlackICEDamage(actor, config);
+          const damageResult = await this._applyBlackICEDamage(actor, config, silent);
           result.damage = damageResult.damage;
           result.damageFormula = damageResult.formula;
           result.diceResults = damageResult.diceResults ?? [];
@@ -1262,7 +1275,7 @@ export class DataShardService {
         }
         // Also lockout after max attempts
         if (newAttempts >= config.maxHackAttempts) {
-          updates.lockoutUntil = Date.now() + (config.lockoutDuration || 3600000);
+          updates.lockoutUntil = this._nowMs() + (config.lockoutDuration || 3600000);
           result.locked = true;
         }
         break;
@@ -1290,7 +1303,7 @@ export class DataShardService {
       roll: rollResult.total,
       dc: rollResult.dc,
     });
-    this.soundService?.play('hack-fail');
+    if (!silent) this.soundService?.play('hack-fail');
 
     return result;
   }
@@ -1314,8 +1327,9 @@ export class DataShardService {
     const session = this._getActorSession(state, actorId);
     const attempts = session.layerHackAttempts?.[layer] ?? 0;
     const lockoutUntil = session.layerLockoutUntil ?? 0;
-    const isLockedOut = lockoutUntil > Date.now();
-    const lockoutRemaining = isLockedOut ? Math.ceil((lockoutUntil - Date.now()) / 1000) : 0;
+    const nowMs = this._nowMs();
+    const isLockedOut = lockoutUntil > nowMs;
+    const lockoutRemaining = isLockedOut ? Math.ceil((lockoutUntil - nowMs) / 1000) : 0;
     return { attempts, max, isLockedOut, lockoutRemaining };
   }
 
@@ -1352,7 +1366,7 @@ export class DataShardService {
     if (newCount >= max) {
       switch (failureMode) {
         case FAILURE_MODES.LOCKOUT:
-          updates.layerLockoutUntil = Date.now() + lockoutDuration;
+          updates.layerLockoutUntil = this._nowMs() + lockoutDuration;
           result.locked = true;
           this.soundService?.play('lockout');
           break;
@@ -1378,7 +1392,7 @@ export class DataShardService {
             result.damage = damageResult.damage;
           }
           if (newCount >= max) {
-            updates.layerLockoutUntil = Date.now() + lockoutDuration;
+            updates.layerLockoutUntil = this._nowMs() + lockoutDuration;
             result.locked = true;
           }
           break;
@@ -1414,7 +1428,7 @@ export class DataShardService {
    * @returns {Promise<{damage: number, iceInfo: object}>}
    * @private
    */
-  async _applyBlackICEDamage(actor, config) {
+  async _applyBlackICEDamage(actor, config, silent = false) {
     const iceService = this.iceService;
     if (!iceService) {
       log.warn('ICEService not available, falling back to basic damage');
@@ -1424,6 +1438,7 @@ export class DataShardService {
     const result = await iceService.applyDamage(actor, config, {
       context: 'shard',
       targetName: this._currentShardName || 'Data Shard',
+      silent,
     });
 
     // Also emit the shard-specific event for ItemInboxApp animation
@@ -1527,6 +1542,7 @@ export class DataShardService {
         },
       });
 
+      this.soundService?.play('shard-expire');
       log.info(`Shard "${shardItem.name}" self-destructed`);
     } catch (err) {
       log.error(`Shard destruction failed: ${err.message}`);

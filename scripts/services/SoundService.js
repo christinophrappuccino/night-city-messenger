@@ -19,6 +19,10 @@ function getAudioHelper() {
 }
 
 export class SoundService {
+
+  /** Base volume multiplier for the UI click — quieter than event sounds. */
+  static CLICK_GAIN = 0.25;
+
   /**
    * @param {SettingsManager} settingsManager
    */
@@ -63,6 +67,108 @@ export class SoundService {
     } catch (error) {
       // Sound files may not exist yet — fail silently
       log.debug(`Sound not available: ${soundId}`);
+    }
+  }
+
+  /**
+   * Play the UI "click" with per-press variation so repeated clicks don't
+   * sound identical/machine-gun. Quieter than event sounds (`CLICK_GAIN`),
+   * with randomized pitch + a little volume jitter via a Web Audio buffer
+   * source. Falls back to the standard player (reduced volume, no pitch
+   * shift) if Web Audio is unavailable.
+   * @returns {Promise<void>}
+   */
+  async playClick() {
+    const prefs = this._settings.getTheme();
+    if (!prefs.soundEnabled) return;
+
+    const userVol = prefs.soundVolume ?? 0.5;
+    const jitter = 0.85 + Math.random() * 0.30;             // 0.85–1.15 volume
+    const gain = SoundService.CLICK_GAIN * jitter;
+    const rate = 0.94 + Math.random() * 0.12;               // 0.94–1.06 pitch
+
+    try {
+      if (await this._playVaried('click', userVol * gain, rate)) return;
+    } catch {
+      // fall through to the standard player
+    }
+    // Fallback keeps the lower volume + jitter, just no pitch shift.
+    this.play('click', { volume: gain });
+  }
+
+  /**
+   * Play a sound through a one-shot Web Audio buffer source so pitch/volume
+   * can be varied per play (AudioHelper.play has no per-play rate control).
+   * @param {string} soundId
+   * @param {number} volume - Final linear gain (already includes user volume)
+   * @param {number} [rate=1] - Playback rate (pitch)
+   * @returns {Promise<boolean>} true if it played, false to signal fallback
+   * @private
+   */
+  async _playVaried(soundId, volume, rate = 1) {
+    const ctx = this._getAudioContext();
+    if (!ctx) return false;
+    if (ctx.state === 'suspended') { try { await ctx.resume(); } catch { /* ignore */ } }
+
+    const buffer = await this._getBuffer(soundId, ctx);
+    if (!buffer) return false;
+
+    const src = ctx.createBufferSource();
+    src.buffer = buffer;
+    src.playbackRate.value = rate;
+    const gain = ctx.createGain();
+    gain.gain.value = Math.max(0, volume);
+    src.connect(gain);
+    gain.connect(ctx.destination);
+    src.start(0);
+    return true;
+  }
+
+  /**
+   * Resolve an AudioContext — prefer a Foundry-managed one (shares its unlock
+   * state), else lazily create our own. Clicks are user gestures so the
+   * context will be allowed to run.
+   * @returns {?AudioContext}
+   * @private
+   */
+  _getAudioContext() {
+    const fctx = game.audio?.getAudioContext?.()
+      ?? game.audio?.context
+      ?? game.audio?.music?.context
+      ?? game.audio?.interface?.context;
+    if (fctx) return fctx;
+    if (this._ownCtx === undefined) {
+      try {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        this._ownCtx = AC ? new AC() : null;
+      } catch { this._ownCtx = null; }
+    }
+    return this._ownCtx;
+  }
+
+  /**
+   * Fetch + decode a sound into a cached AudioBuffer (null cached on failure
+   * so we don't refetch a missing file every click).
+   * @param {string} soundId
+   * @param {AudioContext} ctx
+   * @returns {Promise<?AudioBuffer>}
+   * @private
+   */
+  async _getBuffer(soundId, ctx) {
+    this._uiBuffers ??= {};
+    if (this._uiBuffers[soundId] !== undefined) return this._uiBuffers[soundId];
+
+    const rel = SOUND_PATHS[soundId];
+    if (!rel) return (this._uiBuffers[soundId] = null);
+    try {
+      const resp = await fetch(`modules/${MODULE_ID}/assets/sounds/${rel}`);
+      if (!resp.ok) return (this._uiBuffers[soundId] = null);
+      const arr = await resp.arrayBuffer();
+      const buf = await ctx.decodeAudioData(arr);
+      this._uiBuffers[soundId] = buf;
+      return buf;
+    } catch {
+      return (this._uiBuffers[soundId] = null);
     }
   }
 
