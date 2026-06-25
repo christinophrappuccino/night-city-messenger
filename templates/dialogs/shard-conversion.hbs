@@ -385,6 +385,11 @@
           <span class="ncm-convert__label">Source</span>
           <input class="ncm-convert__input" name="avlogSource" value="{{typeData.avlogSource}}" placeholder="Camera, mic, recovered chip...">
         </div>
+        <div class="ncm-convert__row">
+          <span class="ncm-convert__label">Media Link</span>
+          <input class="ncm-convert__input" name="avlogMediaUrl" value="{{typeData.avlogMediaUrl}}" placeholder="Direct .mp4/.mp3 URL or YouTube/Vimeo link">
+        </div>
+        <div class="ncm-convert__hint" style="margin-bottom:6px;">Optional — plays in the viewer. Paste a direct media URL or a YouTube/Vimeo link.</div>
         <div class="ncm-convert__row ncm-convert__row--col">
           <span class="ncm-convert__label" style="margin-bottom:4px;">Transcript / Description</span>
           <textarea class="ncm-convert__input ncm-convert__input--textarea" name="avlogTranscript" placeholder="What's on the recording">{{typeData.avlogTranscript}}</textarea>

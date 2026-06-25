@@ -90,6 +90,7 @@ export class DataShardComposer extends BaseApplication {
       addTranscriptLine: DataShardComposer._onAddTranscriptLine,
       removeTranscriptLine: DataShardComposer._onRemoveTranscriptLine,
       browseImage: DataShardComposer._onBrowseImage,
+      browseMedia: DataShardComposer._onBrowseMedia,
       addEntryNetworkTag: DataShardComposer._onAddEntryNetworkTag,
       removeEntryNetworkTag: DataShardComposer._onRemoveEntryNetworkTag,
       openTimePicker: DataShardComposer._onOpenTimePicker,
@@ -413,6 +414,7 @@ export class DataShardComposer extends BaseApplication {
         entryData.subject = data.avlogTitle || 'Recording';
         entryData.contentData = {
           mediaType: data.avlogMediaType || 'audio',
+          mediaUrl: data.avlogMediaUrl || '',
           duration: data.avlogDuration || '00:00',
           source: data.avlogSource || '',
           transcript: this._collectTranscriptLines(),
@@ -596,6 +598,23 @@ export class DataShardComposer extends BaseApplication {
     const input = this.element?.querySelector(`[name="${targetInput}"]`);
     new FilePicker({
       type: 'image',
+      current: input?.value || '',
+      callback: (path) => { if (input) input.value = path; },
+    }).render(true);
+  }
+
+  /**
+   * Browse for an audio/video file. Picks the FilePicker file type from the
+   * sibling Media Type select so the dialog shows the right files.
+   */
+  static _onBrowseMedia(event, target) {
+    const targetInput = target.dataset.target;
+    if (!targetInput) return;
+    const input = this.element?.querySelector(`[name="${targetInput}"]`);
+    const mediaType = this.element?.querySelector('[name="avlogMediaType"]')?.value;
+    const pickerType = mediaType === 'audio' ? 'audio' : 'video';
+    new FilePicker({
+      type: pickerType,
       current: input?.value || '',
       callback: (path) => { if (input) input.value = path; },
     }).render(true);

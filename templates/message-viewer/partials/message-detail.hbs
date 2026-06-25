@@ -217,6 +217,74 @@
       {{/if}}
     </div>
 
+  {{else if message.threadExpanded}}
+    {{!-- ═══ CONVERSATION TRANSCRIPT (Option C) ═══ --}}
+    <div class="ncm-viewer__thread">
+      <div class="ncm-viewer__thread-head">
+        <button type="button" class="ncm-viewer__thread-back" data-action="toggle-thread"
+                title="Back to message">
+          <i class="fas fa-arrow-left"></i>
+          <span>Back</span>
+        </button>
+        <div class="ncm-viewer__thread-title">
+          <i class="fas fa-code-branch ncm-viewer__thread-title-icon"></i>
+          <span class="ncm-viewer__thread-title-text">{{message.subject}}</span>
+        </div>
+        <span class="ncm-viewer__thread-count">{{message.threadEntries.length}} msgs</span>
+      </div>
+
+      <div class="ncm-viewer__thread-scroll ncm-scrollbar">
+        <div class="ncm-viewer__thread-rail">
+          {{#each message.threadEntries}}
+            <article class="ncm-viewer__thread-entry
+                {{~#if this.isCurrent}} ncm-viewer__thread-entry--current{{/if}}
+                {{~#if this.isSent}} ncm-viewer__thread-entry--sent{{/if}}"
+                     style="--entry-accent: {{this.avatarColor}}; animation-delay: calc({{@index}} * 55ms);"
+                     data-thread-entry="{{this.messageId}}">
+              <div class="ncm-viewer__thread-dot" style="border-color: {{this.avatarColor}}; color: {{this.avatarColor}};">
+                {{#if this.fromPortrait}}
+                  <img src="{{this.fromPortrait}}" alt="{{this.fromDisplay}}" />
+                {{else}}
+                  {{this.fromInitial}}
+                {{/if}}
+              </div>
+              <div class="ncm-viewer__thread-card">
+                <header class="ncm-viewer__thread-card-head">
+                  <span class="ncm-viewer__thread-card-sender">{{this.fromDisplay}}</span>
+                  {{#if this.isSent}}
+                    <span class="ncm-viewer__thread-card-you">YOU</span>
+                  {{/if}}
+                  {{#if this.isCurrent}}
+                    <span class="ncm-viewer__thread-card-viewing"><i class="fas fa-eye"></i> Viewing</span>
+                  {{/if}}
+                  <span class="ncm-viewer__thread-card-time">{{this.formattedTime}}</span>
+                  {{#unless this.isCurrent}}
+                    <button type="button" class="ncm-viewer__thread-card-open"
+                            data-action="select-message" data-message-id="{{this.messageId}}"
+                            title="Open this message">
+                      <i class="fas fa-up-right-from-square"></i>
+                    </button>
+                  {{/unless}}
+                </header>
+                <div class="ncm-viewer__thread-card-body">
+                  {{#if this.locked}}
+                    <div class="ncm-viewer__thread-locked">
+                      <i class="fas fa-lock"></i>
+                      <span>Locked — sent on {{this.lockedNetworkName}}</span>
+                    </div>
+                  {{else if this.hasBody}}
+                    {{{this.bodyRendered}}}
+                  {{else}}
+                    <p class="ncm-viewer__thread-empty"><em>// No message body //</em></p>
+                  {{/if}}
+                </div>
+              </div>
+            </article>
+          {{/each}}
+        </div>
+      </div>
+    </div>
+
   {{else}}
     {{!-- ═══ NORMAL MESSAGE CONTENT ═══ --}}
 
@@ -315,9 +383,10 @@
             </span>
           {{/if}}
           {{#if message.threadInfo}}
-            <span class="ncm-viewer__detail-thread">
+            <button type="button" class="ncm-viewer__detail-thread"
+                    data-action="toggle-thread" title="View the full conversation">
               <i class="fas fa-code-branch"></i> Thread · {{message.threadInfo.count}}
-            </span>
+            </button>
           {{/if}}
         </div>
         <div class="ncm-viewer__subject-rule"></div>
@@ -366,6 +435,24 @@
         {{{message.bodyRendered}}}
       {{else}}
         <p class="ncm-viewer__detail-body-empty"><em>// No message body //</em></p>
+      {{/if}}
+
+      {{!-- Embedded Media (audio/video) --}}
+      {{#if message.hasMedia}}
+        <div class="ncm-viewer__media">
+          {{#each message.mediaEmbeds}}
+            <div class="ncm-viewer__media-item ncm-viewer__media-item--{{#if this.isVideo}}video{{else}}audio{{/if}}">
+              {{#if this.isEmbed}}
+                <iframe src="{{this.src}}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+              {{else if this.isVideo}}
+                <video src="{{this.src}}" controls preload="metadata"></video>
+              {{else}}
+                <audio src="{{this.src}}" controls preload="metadata"></audio>
+              {{/if}}
+              {{#if this.name}}<div class="ncm-viewer__media-name">{{this.name}}</div>{{/if}}
+            </div>
+          {{/each}}
+        </div>
       {{/if}}
 
       {{!-- Signal Degradation --}}

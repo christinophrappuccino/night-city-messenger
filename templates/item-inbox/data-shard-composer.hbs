@@ -312,6 +312,12 @@
         <input type="text" name="avlogSource" class="ncm-config-input ncm-config-flex" value="{{editContentData.source}}" placeholder="Where/how recorded" />
       </div>
       <div class="ncm-config-row">
+        <label class="ncm-config-label">Media File</label>
+        <input type="text" name="avlogMediaUrl" class="ncm-config-input ncm-config-flex" value="{{editContentData.mediaUrl}}" placeholder="File, direct .mp4/.mp3 URL, or YouTube/Vimeo link" />
+        <button type="button" data-action="browseMedia" data-target="avlogMediaUrl" class="ncm-shard-hdr-btn" title="Browse files"><i class="fas fa-folder-open"></i></button>
+      </div>
+      <div class="ncm-config-hint">Plays in the viewer. Leave blank for a transcript-only log.</div>
+      <div class="ncm-config-row">
         <label class="ncm-config-label">Timestamp</label>
         <div class="ncm-ctp-trigger" data-action="openTimePicker" data-target="timestamp">
           <i class="fas fa-clock ncm-ctp-trigger__icon"></i>

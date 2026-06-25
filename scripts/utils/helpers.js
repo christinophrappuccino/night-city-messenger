@@ -7,6 +7,10 @@
 
 import { MODULE_ID, MODULE_SHORT } from './constants.js';
 
+/** Month names for the written-out date styles (dateMonthStyle setting). */
+const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const MONTHS_LONG  = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
 /**
  * Module-prefixed console logger
  */
@@ -97,11 +101,27 @@ export function formatCyberDate(timestamp, options = {}) {
     dateFmt = game.settings?.get(MODULE_ID, 'dateFormat') || 'YMD';
   } catch { /* settings not registered yet */ }
 
+  // Month style — number (03), short (Mar), or long (March)
+  let monthStyle = 'number';
+  try {
+    monthStyle = game.settings?.get(MODULE_ID, 'dateMonthStyle') || 'number';
+  } catch { /* settings not registered yet */ }
+
   let dateStr;
-  switch (dateFmt) {
-    case 'DMY': dateStr = `${day}.${month}.${year}`; break;
-    case 'MDY': dateStr = `${month}.${day}.${year}`; break;
-    default:    dateStr = `${year}.${month}.${day}`; break;
+  if (monthStyle === 'number') {
+    switch (dateFmt) {
+      case 'DMY': dateStr = `${day}.${month}.${year}`; break;
+      case 'MDY': dateStr = `${month}.${day}.${year}`; break;
+      default:    dateStr = `${year}.${month}.${day}`; break;
+    }
+  } else {
+    const mon = (monthStyle === 'long' ? MONTHS_LONG : MONTHS_SHORT)[d.getUTCMonth()];
+    const dayU = d.getUTCDate();   // unpadded reads better with a written month
+    switch (dateFmt) {
+      case 'DMY': dateStr = `${dayU} ${mon} ${year}`; break;
+      case 'MDY': dateStr = `${mon} ${dayU}, ${year}`; break;
+      default:    dateStr = `${year} ${mon} ${dayU}`; break;
+    }
   }
 
   if (options.dateOnly) return dateStr;
@@ -117,11 +137,13 @@ export function formatCyberDate(timestamp, options = {}) {
     const ampm = hr >= 12 ? 'PM' : 'AM';
     hr = hr % 12 || 12;
     const timeStr = options.seconds ? `${hr}:${min}:${sec} ${ampm}` : `${hr}:${min} ${ampm}`;
+    if (options.timeOnly) return timeStr;
     return `${dateStr} // ${timeStr}`;
   }
 
   const hr = String(d.getUTCHours()).padStart(2, '0');
   const timeStr = options.seconds ? `${hr}:${min}:${sec}` : `${hr}:${min}`;
+  if (options.timeOnly) return timeStr;
   return `${dateStr} // ${timeStr}`;
 }
 
@@ -148,4 +170,123 @@ export function debounce(fn, delay = 300) {
 export function truncate(str, maxLen = 50) {
   if (!str || str.length <= maxLen) return str ?? '';
   return str.substring(0, maxLen - 3) + '...';
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Color tone-mapping (OKLCH) — used by the readability contrast
+   control to spread palette lightness in perceptual space instead
+   of applying a CSS contrast() filter (which distorts images and
+   drifts saturation). Pure functions, no Foundry globals.
+   OKLab matrices from Björn Ottosson (bottosson.github.io/posts/oklab).
+   ───────────────────────────────────────────────────────────── */
+
+function _srgbToLinear(c) { return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); }
+function _linearToSrgb(c) { return c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(c, 1 / 2.4) - 0.055; }
+
+/**
+ * Parse a `#rrggbb` (or `#rgb`) hex string into OKLCH { L, C, H }.
+ * Returns null if the string isn't a hex color.
+ * @param {string} hex
+ * @returns {{L:number,C:number,H:number}|null}
+ */
+export function hexToOklch(hex) {
+  if (typeof hex !== 'string') return null;
+  let h = hex.trim().replace('#', '');
+  if (h.length === 3) h = h.split('').map(c => c + c).join('');
+  if (!/^[0-9a-fA-F]{6}$/.test(h)) return null;
+  let r = _srgbToLinear(parseInt(h.substr(0, 2), 16) / 255);
+  let g = _srgbToLinear(parseInt(h.substr(2, 2), 16) / 255);
+  let b = _srgbToLinear(parseInt(h.substr(4, 2), 16) / 255);
+  const l = 0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b;
+  const m = 0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b;
+  const s = 0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b;
+  const l_ = Math.cbrt(l), m_ = Math.cbrt(m), s_ = Math.cbrt(s);
+  const L = 0.2104542553 * l_ + 0.7936177850 * m_ - 0.0040720468 * s_;
+  const A = 1.9779984951 * l_ - 2.4285922050 * m_ + 0.4505937099 * s_;
+  const B = 0.0259040371 * l_ + 0.7827717662 * m_ - 0.8086757660 * s_;
+  return { L, C: Math.hypot(A, B), H: Math.atan2(B, A) };
+}
+
+/**
+ * Convert OKLCH { L, C, H } back to a `#rrggbb` hex string (clamped to gamut).
+ * @param {{L:number,C:number,H:number}} oklch
+ * @returns {string}
+ */
+export function oklchToHex({ L, C, H }) {
+  const A = C * Math.cos(H), B = C * Math.sin(H);
+  const l_ = L + 0.3963377774 * A + 0.2158037573 * B;
+  const m_ = L - 0.1055613458 * A - 0.0638541728 * B;
+  const s_ = L - 0.0894841775 * A - 1.2914855480 * B;
+  const l = l_ ** 3, m = m_ ** 3, s = s_ ** 3;
+  const r = +4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s;
+  const g = -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s;
+  const b = -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s;
+  const toByte = c => Math.round(Math.max(0, Math.min(1, _linearToSrgb(c))) * 255)
+    .toString(16).padStart(2, '0');
+  return '#' + toByte(r) + toByte(g) + toByte(b);
+}
+
+/**
+ * Spread a color's lightness around a pivot — the core of the readability
+ * contrast control. `factor` > 1 pushes colors away from the pivot (darker
+ * darks, lighter lights); < 1 pulls them toward it. Hue and chroma are
+ * preserved, so neon stays neon. Returns the original string unchanged if it
+ * isn't a parseable hex or if factor is 1.
+ * @param {string} hex - base color (`#rrggbb`)
+ * @param {number} factor - contrast multiplier (e.g. 0.8–1.4)
+ * @param {number} [pivot=0.5] - OKLCH lightness the spread pivots around
+ * @returns {string}
+ */
+export function adjustLightness(hex, factor, pivot = 0.5) {
+  if (factor === 1) return hex;
+  const c = hexToOklch(hex);
+  if (!c) return hex;
+  c.L = Math.max(0, Math.min(1, pivot + (c.L - pivot) * factor));
+  return oklchToHex(c);
+}
+
+// ─── Media Embeds (AV Log) ───
+
+const _MEDIA_VIDEO_EXT = ['mp4', 'webm', 'ogv', 'mov', 'm4v'];
+const _MEDIA_AUDIO_EXT = ['mp3', 'ogg', 'oga', 'wav', 'flac', 'm4a', 'aac'];
+
+/**
+ * Resolve an AV Log media source into a renderable embed descriptor.
+ *
+ * Detects YouTube/Vimeo links (→ iframe embed), otherwise treats the value as
+ * a direct media file/URL (→ native <video>/<audio>). Anything with a scheme
+ * other than http(s) (e.g. `javascript:`, `data:`) is rejected to `none` so a
+ * player-authored shard can't inject a hostile src. `isVideo` is inferred from
+ * the file extension when recognizable, else from `mediaType`.
+ *
+ * @param {string} rawUrl - File path, direct media URL, or YouTube/Vimeo link
+ * @param {string} [mediaType='video'] - 'audio' | 'video' | 'braindance'
+ * @returns {{ kind: 'none'|'native'|'embed', src: string, isVideo: boolean }}
+ */
+export function resolveMediaEmbed(rawUrl, mediaType = 'video') {
+  const url = (rawUrl || '').trim();
+  // Default: braindance/video → video player, audio → audio player
+  let isVideo = mediaType !== 'audio';
+  if (!url) return { kind: 'none', src: '', isVideo };
+
+  // YouTube — watch / youtu.be / embed / shorts
+  const yt = url.match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|live\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+  if (yt) return { kind: 'embed', src: `https://www.youtube.com/embed/${yt[1]}`, isVideo: true };
+
+  // Vimeo — vimeo.com/ID or player.vimeo.com/video/ID
+  const vm = url.match(/vimeo\.com\/(?:video\/)?(\d+)/);
+  if (vm) return { kind: 'embed', src: `https://player.vimeo.com/video/${vm[1]}`, isVideo: true };
+
+  // Reject non-http(s) absolute schemes (javascript:, data:, etc.)
+  const hasScheme = /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(url);
+  if (hasScheme && !/^https?:\/\//i.test(url)) {
+    return { kind: 'none', src: '', isVideo };
+  }
+
+  // Native file/direct URL — infer kind from extension when possible
+  const ext = url.split(/[?#]/)[0].split('.').pop().toLowerCase();
+  if (_MEDIA_VIDEO_EXT.includes(ext)) isVideo = true;
+  else if (_MEDIA_AUDIO_EXT.includes(ext)) isVideo = false;
+
+  return { kind: 'native', src: url, isVideo };
 }

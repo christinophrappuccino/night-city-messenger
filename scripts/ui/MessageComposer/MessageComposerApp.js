@@ -63,6 +63,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       removeRecipient: MessageComposerApp._onRemoveRecipient,
       removeAttachment: MessageComposerApp._onRemoveAttachment,
       attachFile: MessageComposerApp._onAttachFile,
+      attachMedia: MessageComposerApp._onAttachMedia,
       attachShard: MessageComposerApp._onAttachShard,
       attachEddies: MessageComposerApp._onAttachEddies,
       editorCommand: MessageComposerApp._onEditorCommand,
@@ -1319,9 +1320,13 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
 
       // Self-destruct
       if (this.selfDestructEnabled) {
+        const expiresAt = this._computeExpiry();
+        const nowMs = game.nightcity?.timeService?.getCurrentTimeMs?.() ?? Date.now();
         messageData.selfDestruct = {
           mode: this.selfDestructMode,
-          expiresAt: this._computeExpiry(),
+          expiresAt,
+          // Total window — drives the countdown bar baseline in the viewer.
+          duration: expiresAt ? (new Date(expiresAt).getTime() - nowMs) : null,
         };
       }
 
@@ -1363,12 +1368,10 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
         this.soundService?.play?.('send');
         await this._playSendAnimation('success');
 
-        // Credit eddies to recipient(s) on successful send
-        if (this.eddiesAmount > 0 && actorRecipients.length > 0) {
-          for (const r of actorRecipients) {
-            await this._creditEddies(r.actorId, this.eddiesAmount);
-          }
-        }
+        // NOTE: Do NOT credit the recipient here. The eddies travel with the
+        // message (eddies flag) and are credited once when the recipient claims
+        // them in the Message Viewer (_claimEddies). Crediting here too caused a
+        // double transfer / duplicate wealth-ledger entry on the recipient.
 
         // Clear draft
         await this._clearDraft();
@@ -1687,6 +1690,82 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
         this.render(true);
       },
     }).render(true);
+  }
+
+  static async _onAttachMedia(event, target) {
+    // Capture a media source — a direct file/URL or a YouTube/Vimeo link.
+    // Rendered as an inline player in the viewer (see resolveMediaEmbed).
+    const content = `
+      <div class="ncm-media-dialog" style="display:flex;flex-direction:column;gap:8px;font-family:var(--ncm-font-body,sans-serif);">
+        <p style="margin:0;font-size:12px;color:#8888a0;">Paste a direct .mp4/.webm/.mp3/.ogg URL, a YouTube/Vimeo link, or browse for a file.</p>
+        <div style="display:flex;gap:6px;">
+          <input type="text" name="mediaUrl" placeholder="https://… or file path" style="flex:1;min-width:0;" autofocus />
+          <button type="button" data-browse style="flex:0 0 auto;width:auto;"><i class="fas fa-folder-open"></i></button>
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:12px;">
+          Type
+          <select name="mediaType" style="flex:1;">
+            <option value="video">Video</option>
+            <option value="audio">Audio</option>
+          </select>
+          <span style="font-size:11px;color:#8888a0;">(auto-detected for files & links)</span>
+        </label>
+      </div>`;
+
+    let result = null;
+    const dialog = new Dialog({
+      title: 'Embed Media',
+      content,
+      buttons: {
+        attach: {
+          icon: '<i class="fas fa-photo-film"></i>',
+          label: 'Attach',
+          callback: (html) => {
+            const root = html instanceof jQuery ? html[0] : html;
+            const url = root.querySelector('[name="mediaUrl"]')?.value?.trim() || '';
+            const mediaType = root.querySelector('[name="mediaType"]')?.value || 'video';
+            if (url) result = { url, mediaType };
+          },
+        },
+        cancel: { icon: '<i class="fas fa-xmark"></i>', label: 'Cancel' },
+      },
+      default: 'attach',
+      render: (html) => {
+        const root = html instanceof jQuery ? html[0] : html;
+        const input = root.querySelector('[name="mediaUrl"]');
+        const typeSel = root.querySelector('[name="mediaType"]');
+        root.querySelector('[data-browse]')?.addEventListener('click', () => {
+          const pickerType = typeSel?.value === 'audio' ? 'audio' : 'video';
+          new FilePicker({
+            type: pickerType,
+            current: input?.value || '',
+            callback: (path) => { if (input) input.value = path; },
+          }).render(true);
+        });
+      },
+    });
+    dialog.render(true);
+
+    // Wait for the dialog to close, then act on the captured result
+    await new Promise((resolve) => {
+      const origClose = dialog.close.bind(dialog);
+      dialog.close = (...args) => { resolve(); return origClose(...args); };
+    });
+
+    if (!result) return;
+
+    const name = result.url.split(/[?#]/)[0].split('/').pop() || 'Media';
+    this.attachments.push({
+      name,
+      size: '',
+      icon: result.mediaType === 'audio' ? 'fa-music' : 'fa-film',
+      isMedia: true,
+      mediaUrl: result.url,
+      mediaType: result.mediaType,
+      isEddies: false,
+      encrypted: this.encryptionEnabled,
+    });
+    this.render(true);
   }
 
   static _onAttachShard(event, target) {
@@ -2291,7 +2370,7 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
   }
 
   _computeExpiry() {
-    const now = Date.now();
+    const now = game.nightcity?.timeService?.getCurrentTimeMs?.() ?? Date.now();
     switch (this.selfDestructMode) {
       case '1h': return new Date(now + 3600000).toISOString();
       case '6h': return new Date(now + 21600000).toISOString();
