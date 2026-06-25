@@ -501,9 +501,12 @@ export class ShardSheetOverride {
   // ═══════════════════════════════════════════════════════════════
 
   /**
-   * Launch the shard conversion flow for an item.
-   * Opens the tier-gated ShardConversionFlow wizard which handles
-   * skill checks, form collection, and conversion.
+   * Launch shard conversion for an item.
+   *
+   * GMs convert instantly with the default config (mirroring the
+   * Admin → Shards tab "Convert" button) and configure afterward via
+   * the "Configure Shard" context option. Players get the tier-gated
+   * ShardConversionFlow wizard (skill checks, form collection, etc.).
    *
    * @param {Item} item
    * @param {Actor} actor
@@ -521,13 +524,28 @@ export class ShardSheetOverride {
       return;
     }
 
-    // Check tier availability for players
-    if (!isGM()) {
-      const floor = game.settings.get(MODULE_ID, 'playerShardFloor') || 'disabled';
-      if (floor === 'disabled') {
-        ui.notifications.warn('Shard creation is disabled for players.');
-        return;
+    // ─── GM: instant convert with default config (no wizard) ───
+    if (isGM()) {
+      const result = await dataShardService.convertToDataShard(item);
+      if (result?.success) {
+        ui.notifications.info(`"${item.name}" converted to data shard.`);
+        setTimeout(() => {
+          ui.items?.render();
+          for (const sheet of Object.values(ui.windows)) {
+            if (sheet.actor?.items?.has(item.id)) sheet.render(false);
+          }
+        }, 150);
+      } else {
+        ui.notifications.error(`Failed to convert shard: ${result?.error || 'Unknown error'}`);
       }
+      return;
+    }
+
+    // ─── Players: tier-gated wizard ───
+    const floor = game.settings.get(MODULE_ID, 'playerShardFloor') || 'disabled';
+    if (floor === 'disabled') {
+      ui.notifications.warn('Shard creation is disabled for players.');
+      return;
     }
 
     new ShardConversionFlow(item, actor).render(true);

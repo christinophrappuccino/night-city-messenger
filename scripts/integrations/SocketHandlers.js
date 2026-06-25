@@ -128,7 +128,7 @@ export class SocketHandlers {
     socketManager.register(SOCKET_OPS.SHARD_CONVERT_REQUEST, async (data) => {
       if (!game.user.isGM) return;
 
-      const { requestId, itemId, actorId, config } = data;
+      const { requestId, itemId, actorId, config, entryData } = data;
       log.info(`Socket: shard conversion request — item ${itemId} from actor ${actorId}`);
 
       let success = false;
@@ -143,7 +143,14 @@ export class SocketHandlers {
 
         const result = await service.convertToDataShard(item, config || {});
         success = result.success;
-        if (!result.success) log.warn('Shard conversion failed:', result.error);
+        if (!result.success) {
+          log.warn('Shard conversion failed:', result.error);
+        } else if (entryData) {
+          // Player can't write to the GM-owned shard journal — create the
+          // initial entry here on the GM client (non-fatal if it fails).
+          const entryResult = await service.addMessage(item, entryData);
+          if (!entryResult?.success) log.warn('Initial shard entry failed (non-fatal):', entryResult?.error);
+        }
       } catch (err) {
         log.error('Shard conversion relay failed:', err);
       }

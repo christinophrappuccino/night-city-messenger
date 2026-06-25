@@ -761,8 +761,16 @@ export class ShardConversionFlow extends HandlebarsApplicationMixin(ApplicationV
       }
     }
 
+    // Build the initial-entry payload (canonical addMessage shape, or null)
+    const entryData = this._buildInitialEntryData(formData);
+
     // Show overlay immediately with starting state
     this._showEncodingOverlay('INITIALIZING...');
+
+    // Track funds debited up-front so we can refund if a later step throws
+    // (e.g. the GM relay fails or times out) — otherwise the player loses
+    // the eddies with no shard to show for it.
+    let debitedEddies = 0;
 
     try {
       // ─── Step 0: Debit eddies from actor wealth (atomic with shard creation) ───
@@ -771,6 +779,7 @@ export class ShardConversionFlow extends HandlebarsApplicationMixin(ApplicationV
         eddiesAmount = parseInt(formData.typeData?.eddiesAmount) || 0;
         this._setEncodingStatus('TRANSFERRING FUNDS...', 15);
         await this._debitActorWealth(eddiesAmount, item.name);
+        debitedEddies = eddiesAmount;
       }
 
       // ─── Step 1: Run conversion FIRST (real work) ───
@@ -779,11 +788,25 @@ export class ShardConversionFlow extends HandlebarsApplicationMixin(ApplicationV
       const service = this.dataShardService;
       if (!service) throw new Error('DataShardService not available');
 
+      // The conversion AND the initial entry are both GM-only writes (the
+      // shard journal is GM-owned). GMs do both locally; players relay both
+      // through the GM's client in a single socket round-trip.
       const runConversion = async () => {
         if (isGM()) {
-          return await service.convertToDataShard(item, config);
+          const convResult = await service.convertToDataShard(item, config);
+          if (!convResult?.success) return convResult;
+          // ─── Step 2 (GM): add initial entry via the canonical service path ───
+          if (entryData) {
+            this._setEncodingStatus('WRITING SHARD METADATA...', 70);
+            const entryResult = await service.addMessage(item, entryData);
+            if (!entryResult?.success) {
+              log.warn(`Initial shard entry failed (non-fatal): ${entryResult?.error}`);
+            }
+          }
+          return convResult;
         } else {
-          return await this._requestPlayerConversion(item, config);
+          // Player path bundles the entry into the relay; GM creates both.
+          return await this._requestPlayerConversion(item, config, entryData);
         }
       };
 
@@ -796,17 +819,6 @@ export class ShardConversionFlow extends HandlebarsApplicationMixin(ApplicationV
         if (!result?.success) throw new Error(result?.error || 'Conversion failed');
       } else {
         if (!result) throw new Error('Conversion request denied or timed out');
-      }
-
-      // ─── Step 2: Add initial entry ───
-      this._setEncodingStatus('WRITING SHARD METADATA...', 70);
-      try {
-        await Promise.race([
-          this._createInitialEntry(item, formData),
-          new Promise((_, rej) => setTimeout(() => rej(new Error('Entry creation timed out')), 5000)),
-        ]);
-      } catch (err) {
-        console.warn('NCM | Conversion: initial entry creation failed (non-fatal)', err);
       }
 
       // ─── Step 3: Done ───
@@ -827,6 +839,17 @@ export class ShardConversionFlow extends HandlebarsApplicationMixin(ApplicationV
       console.error('NCM | Conversion: FAILED', err);
       ui.notifications.error(`Failed to create shard: ${err.message}`);
       log.error('Shard conversion failed:', err);
+
+      // Refund any eddies debited up-front so failed conversions don't burn funds.
+      if (debitedEddies > 0) {
+        try {
+          await this._refundActorWealth(debitedEddies, item.name);
+          ui.notifications.info(`Refunded ${debitedEddies.toLocaleString()}eb.`);
+        } catch (refundErr) {
+          log.error('Eddies refund failed:', refundErr);
+          ui.notifications.error(`Conversion failed AND the ${debitedEddies.toLocaleString()}eb refund failed — adjust wealth manually.`);
+        }
+      }
     } finally {
       this._encoding = false;
       this._hideEncodingOverlay();
@@ -864,6 +887,26 @@ export class ShardConversionFlow extends HandlebarsApplicationMixin(ApplicationV
     }
   }
 
+  /**
+   * Refund eddies to actor wealth — reverses _debitActorWealth when a
+   * conversion fails after the up-front debit. The player owns their
+   * character, so actor.update() succeeds without a GM relay.
+   * @param {number} amount
+   * @param {string} reasonItemName
+   */
+  async _refundActorWealth(amount, reasonItemName) {
+    const actor = this._actor;
+    if (!actor) throw new Error('No actor for wealth refund');
+
+    const wealth = foundry.utils.deepClone(actor.system.wealth);
+    wealth.value += amount;
+    const transaction = `Increased by ${amount} to ${wealth.value}`;
+    const reason = `NCM: Refunded ${amount.toLocaleString()}eb — "${reasonItemName}" shard conversion failed`;
+    wealth.transactions = wealth.transactions || [];
+    wealth.transactions.push([transaction, reason]);
+    await actor.update({ 'system.wealth': wealth });
+  }
+
   // ═══════════════════════════════════════════════════════════
   //  Encoding Overlay Helpers
   // ═══════════════════════════════════════════════════════════
@@ -895,11 +938,14 @@ export class ShardConversionFlow extends HandlebarsApplicationMixin(ApplicationV
 
   /**
    * Request the GM's client to perform the conversion via socket.
+   * The initial entry rides along so the GM (who owns the shard journal)
+   * creates it in the same round-trip — players can't write to it directly.
    * @param {Item} item
    * @param {object} config
+   * @param {object|null} [entryData] - Canonical addMessage-shaped initial entry
    * @returns {Promise<boolean>}
    */
-  async _requestPlayerConversion(item, config) {
+  async _requestPlayerConversion(item, config, entryData = null) {
     return new Promise((resolve) => {
       const socketManager = game.nightcity?.socketManager;
       if (!socketManager) return resolve(false);
@@ -920,6 +966,7 @@ export class ShardConversionFlow extends HandlebarsApplicationMixin(ApplicationV
         itemId: item.id,
         actorId: this._actor?.id,
         config,
+        entryData,
       });
 
       // Timeout after 10 seconds
@@ -932,20 +979,22 @@ export class ShardConversionFlow extends HandlebarsApplicationMixin(ApplicationV
   // ═══════════════════════════════════════════════════════════
 
   /**
-   * Create the first journal page entry on the shard.
-   * @param {Item} item
+   * Build the initial-entry payload in the canonical `addMessage` shape.
+   * Returns null when there's nothing to add (e.g. an empty message body).
+   *
+   * IMPORTANT: this must produce data for `DataShardService.addMessage`, which
+   * stamps the `type: 'shard-message'` / `messageId` / `contentType` flags the
+   * viewer's reader (`_pageToShardMessage`) requires. Writing a raw journal
+   * page with a different flag shape leaves the entry invisible — and players
+   * can't write to the GM-owned journal at all, so this payload is relayed to
+   * the GM (see `_requestPlayerConversion`).
+   *
    * @param {object} formData
+   * @returns {object|null} { contentType, from, subject, body, timestamp, contentData }
    */
-  async _createInitialEntry(item, formData) {
-    const journalId = item.getFlag(MODULE_ID, 'journalId');
-    if (!journalId) return;
-
-    const journal = game.journal.get(journalId);
-    if (!journal) return;
-
+  _buildInitialEntryData(formData) {
     const type = this._selectedContentType;
     const td = formData.typeData || {};
-    const entryIcon = formData.customIcon?.trim() || formData.entryIcon || 'fas fa-envelope';
     const timestamp = game.nightcity?.timeService?.getCurrentTime?.() || new Date().toISOString();
 
     // ── Build subject + body + contentData per type ──
@@ -959,7 +1008,7 @@ export class ShardConversionFlow extends HandlebarsApplicationMixin(ApplicationV
         body = td.entryBody?.trim() || '';
         if (!body) {
           log.warn('Message entry has no body — skipping initial entry creation');
-          return;
+          return null;
         }
         break;
       }
@@ -969,7 +1018,7 @@ export class ShardConversionFlow extends HandlebarsApplicationMixin(ApplicationV
         const amount = parseInt(td.eddiesAmount) || 0;
         if (amount <= 0) {
           log.warn('Eddies entry amount must be > 0 — skipping initial entry creation');
-          return;
+          return null;
         }
         contentData = {
           amount,
@@ -1053,29 +1102,14 @@ export class ShardConversionFlow extends HandlebarsApplicationMixin(ApplicationV
       }
     }
 
-    const flags = {
-      [MODULE_ID]: {
-        entryType: type,
-        from: formData.entryFrom || '', // Always actor's registered email
-        subject,
-        icon: entryIcon,
-        accentColor: this._selectedColor,
-        timestamp,
-        order: 0,
-      },
+    return {
+      contentType: type,
+      from: formData.entryFrom || '', // Actor's registered email
+      subject,
+      body,
+      timestamp,
+      contentData: contentData ?? {},
     };
-    if (contentData) flags[MODULE_ID].contentData = contentData;
-
-    try {
-      await journal.createEmbeddedDocuments('JournalEntryPage', [{
-        name: subject,
-        type: 'text',
-        text: { content: body },
-        flags,
-      }]);
-    } catch (err) {
-      log.warn('Failed to create initial shard entry:', err);
-    }
   }
 
   // ═══════════════════════════════════════════════════════════
