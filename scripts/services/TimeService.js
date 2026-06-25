@@ -116,6 +116,16 @@ export class TimeService {
     }
   }
 
+  /**
+   * Current game time as epoch milliseconds — convenience for duration math
+   * and countdowns so callers respect the configured time provider instead of
+   * reaching for raw Date.now().
+   * @returns {number}
+   */
+  getCurrentTimeMs() {
+    return new Date(this.getCurrentTime()).getTime();
+  }
+
   // ═══════════════════════════════════════════════════════════
   //  Provider Implementations
   // ═══════════════════════════════════════════════════════════

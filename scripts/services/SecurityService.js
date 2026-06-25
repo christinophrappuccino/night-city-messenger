@@ -79,7 +79,7 @@ export class SecurityService {
     const state = this.getState(actorId, targetId);
     if (!state.lockoutUntil) return false;
 
-    if (Date.now() >= state.lockoutUntil) {
+    if (this._nowMs() >= state.lockoutUntil) {
       // Lockout expired — clear it
       this._clearLockout(actorId, targetId);
       return false;
@@ -98,7 +98,7 @@ export class SecurityService {
     const state = this.getState(actorId, targetId);
     if (!state.lockoutUntil) return 0;
 
-    const remaining = state.lockoutUntil - Date.now();
+    const remaining = state.lockoutUntil - this._nowMs();
     return remaining > 0 ? remaining : 0;
   }
 
@@ -166,8 +166,8 @@ export class SecurityService {
 
     // Check for lockout
     if (state.attempts >= state.maxAttempts) {
-      state.lockoutUntil = Date.now() + state.lockoutDuration;
-      this._startLockoutTimer(actorId, targetId, state.lockoutDuration);
+      state.lockoutUntil = this._nowMs() + state.lockoutDuration;
+      this._startLockoutTimer(actorId, targetId);
 
       this.eventBus.emit(EVENTS.NETWORK_LOCKOUT, {
         actorId,
@@ -271,7 +271,7 @@ export class SecurityService {
    * @returns {SecurityState[]}
    */
   getActiveLockouts() {
-    const now = Date.now();
+    const now = this._nowMs();
     const lockouts = [];
     for (const state of this._states.values()) {
       if (state.lockoutUntil && state.lockoutUntil > now) {
@@ -299,6 +299,15 @@ export class SecurityService {
   // ═══════════════════════════════════════════════════════════
   //  INTERNAL
   // ═══════════════════════════════════════════════════════════
+
+  /** Current time in epoch ms via the configured time provider. @private */
+  _nowMs() {
+    try {
+      const ts = game.nightcity?.timeService;
+      if (ts) return ts.getCurrentTimeMs();
+    } catch { /* fallback */ }
+    return Date.now();
+  }
 
   /** @private */
   _key(actorId, targetId) {
@@ -328,17 +337,36 @@ export class SecurityService {
     this._clearTimer(key);
   }
 
-  /** @private */
-  _startLockoutTimer(actorId, targetId, duration) {
+  /**
+   * Auto-expire a lockout. Polls against game time and reschedules rather than
+   * a single real-time setTimeout, so in world-time / manual modes the lockout
+   * doesn't clear early while the game clock is paused. `lockoutUntil` is the
+   * authoritative game-time deadline (isLockedOut also lazily clears on read).
+   * @private
+   */
+  _startLockoutTimer(actorId, targetId) {
     const key = this._key(actorId, targetId);
     this._clearTimer(key);
 
-    const timerId = setTimeout(() => {
-      this._clearLockout(actorId, targetId);
-      log.debug(`Lockout expired: ${key}`);
-    }, duration);
+    const tick = () => {
+      const state = this._states.get(key);
+      if (!state?.lockoutUntil) { this._timers.delete(key); return; }
 
-    this._timers.set(key, timerId);
+      const remaining = state.lockoutUntil - this._nowMs();
+      if (remaining <= 0) {
+        this._clearLockout(actorId, targetId);
+        log.debug(`Lockout expired: ${key}`);
+        return;
+      }
+
+      // Re-check in real time, capped — so a paused game clock just polls
+      // periodically instead of firing early.
+      this._timers.set(key, setTimeout(tick, Math.min(remaining, 60000)));
+    };
+
+    const state = this._states.get(key);
+    const first = state?.lockoutUntil ? (state.lockoutUntil - this._nowMs()) : 0;
+    this._timers.set(key, setTimeout(tick, Math.max(0, Math.min(first, 60000))));
   }
 
   /** @private */

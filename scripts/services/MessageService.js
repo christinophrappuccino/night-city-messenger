@@ -9,6 +9,7 @@
 
 import { MODULE_ID, EVENTS, SOCKET_OPS } from '../utils/constants.js';
 import { DataValidator } from '../data/DataValidator.js';
+import { log } from '../utils/helpers.js';
 
 export class MessageService {
   constructor() {
@@ -115,12 +116,13 @@ export class MessageService {
         const masterService = game.nightcity?.masterContactService;
         const recipientEmail = data.to || (toActor ? this._contactRepo.getActorEmail(data.toActorId) : toContact?.email);
 
-        const inMasterContacts = masterService?.getAll?.()?.find(mc =>
-          mc.actorId === data.toActorId ||
-          (mc.email && recipientEmail && mc.email.toLowerCase() === recipientEmail.toLowerCase())
-        );
+        // Verified if the recipient is in the master directory OR is a registered
+        // actor (verifyContact checks both — matches the setting hint). The actorId
+        // branch additionally covers master contacts linked by actor without an email.
+        const verified = this._contactRepo.verifyContact(recipientEmail).verified
+          || !!masterService?.getAll?.()?.find(mc => mc.actorId === data.toActorId);
 
-        if (!inMasterContacts) {
+        if (!verified) {
           return {
             success: false,
             error: 'CONTACT NOT FOUND — Recipient not registered in the network directory.',
@@ -164,7 +166,12 @@ export class MessageService {
       const messageId = foundry.utils.randomID();
       data.messageId = messageId;
       if (!data.threadId) {
-        data.threadId = data.inReplyTo ? undefined : messageId;
+        // Prefer the conversation root (first reference), then the direct parent,
+        // else start a new thread rooted at this message. Never leave it undefined —
+        // an undefined threadId would orphan a reply/forward from its conversation.
+        data.threadId = (Array.isArray(data.references) && data.references[0])
+          || data.inReplyTo
+          || messageId;
       }
 
       // ── Network access control stamping ──
@@ -215,6 +222,18 @@ export class MessageService {
         return { success: false, error: 'No recipient inbox target' };
       }
 
+      // Unknown-sender spam filtering — may route this message to the player's
+      // Spam folder instead of the Inbox (and suppress the new-message toast).
+      let spamFiltered = false;
+      try {
+        spamFiltered = await this._shouldSpamFilter(data);
+      } catch (err) {
+        console.warn(`${MODULE_ID} | spam-filter check failed:`, err);
+      }
+      if (spamFiltered) {
+        data.status = { ...(data.status || {}), spam: true };
+      }
+
       // Create message in recipient's inbox
       const result = await this._messageRepo.createMessage(recipientInboxId, data);
       if (!result.success) return result;
@@ -245,13 +264,16 @@ export class MessageService {
         toActorName: game.actors?.get(data.toActorId)?.name ?? data.toContactId ?? 'Unknown',
       });
 
-      // Notify recipient via socket (only for actor-backed recipients — contacts are GM-local)
-      if (data.toActorId) {
+      // Notify recipient via socket (only for actor-backed recipients — contacts are GM-local).
+      // Spam-filtered mail is delivered silently so the player discovers it in Spam.
+      if (data.toActorId && !spamFiltered) {
         this.socketManager.emit(SOCKET_OPS.MESSAGE_NOTIFY, {
           messageId: data.messageId,
           toActorId: data.toActorId,
           fromActorId: data.fromActorId,
+          fromContactId: data.fromContactId,
           from: data.from,
+          fromName: data.fromName,
           subject: data.subject,
           priority: data.priority || 'normal',
           preview: data.body?.substring(0, 100) || '',
@@ -260,6 +282,11 @@ export class MessageService {
 
       // Play send sound
       this.soundService?.play('send');
+
+      // GM awareness: toast when a player messages an NPC. Delivery always runs
+      // on the GM client, so the GM never gets the recipient's socket toast for
+      // NPC-directed mail — this is the only path that surfaces it.
+      this._notifyGmOfNpcMail({ ...data, _recipientInboxId: recipientInboxId });
 
       console.log(`${MODULE_ID} | Message ${data.messageId} delivered to inbox ${recipientInboxId}`);
       return { success: true, messageId: data.messageId };
@@ -296,6 +323,132 @@ export class MessageService {
       console.error(`${MODULE_ID} | MessageService._relayMessage:`, error);
       this._queueMessage(data);
       return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * GM-only: surface a toast when a player sends mail to an NPC.
+   * Runs on the delivering GM client. No-op for NPC→player, NPC→NPC, or
+   * GM-composed mail, and respects the `notifyGmNpcMail` setting.
+   * @param {Object} data — delivered message data (with _recipientInboxId)
+   * @private
+   */
+  _notifyGmOfNpcMail(data) {
+    try {
+      if (!game.user.isGM) return;
+
+      let enabled = true;
+      try { enabled = game.settings.get(MODULE_ID, 'notifyGmNpcMail'); } catch { enabled = true; }
+      if (!enabled) return;
+
+      // Sender must be a player-owned character.
+      const fromActor = data.fromActorId ? game.actors.get(data.fromActorId) : null;
+      if (!fromActor?.hasPlayerOwner) return;
+
+      // Recipient must be an NPC: a non-player actor, or a contact-only inbox.
+      const toActor = data.toActorId ? game.actors.get(data.toActorId) : null;
+      const recipientIsNpc = toActor ? !toActor.hasPlayerOwner : true;
+      if (!recipientIsNpc) return;
+
+      const recipientInboxId = data._recipientInboxId || data.toActorId || data.toContactId;
+      if (!recipientInboxId) return;
+
+      const recipientName = data.toName
+        || toActor?.name
+        || (data.toContactId && game.nightcity?.masterContactService?.getContact(data.toContactId)?.name)
+        || data.to
+        || 'NPC';
+      const senderName = data.fromName || fromActor.name || data.from || 'A player';
+
+      this.notificationService?.showNpcMailNotification({
+        recipientInboxId,
+        recipientName,
+        senderName,
+        subject: data.subject,
+        messageId: data.messageId,
+        priority: data.priority || 'normal',
+      });
+    } catch (error) {
+      console.warn(`${MODULE_ID} | MessageService._notifyGmOfNpcMail:`, error);
+    }
+  }
+
+  /**
+   * Decide whether an inbound message should be routed to the recipient's Spam
+   * folder because it's from a sender they haven't added as a contact.
+   * GM-side (delivery always runs on the GM). Probabilistic + configurable.
+   * @param {Object} data — message data being delivered
+   * @returns {Promise<boolean>}
+   * @private
+   */
+  async _shouldSpamFilter(data) {
+    // `bail` logs the reason (visible with debugMode on) and returns false so a
+    // GM can see exactly why a message did or didn't land in Spam.
+    const bail = (reason) => { log.debug(`SpamFilter: skip — ${reason}`, { from: data.from, to: data.toActorId }); return false; };
+
+    // Master toggle
+    let enabled = false;
+    try { enabled = game.settings.get(MODULE_ID, 'spamUnknownSenderEnabled'); } catch { return bail('settings unavailable'); }
+    if (!enabled) return bail('filter disabled');
+
+    // Only normal inbound mail to a player-owned actor (players check Spam).
+    const toActor = data.toActorId ? game.actors.get(data.toActorId) : null;
+    if (!toActor?.hasPlayerOwner) return bail('recipient is not a player-owned actor');
+    if (data.status?.sent || data.status?.spam) return bail('already sent/spam');
+    if (data.isBroadcast || data.type === 'broadcast') return bail('broadcast');
+
+    // Optionally never filter messages from other player characters (party comms).
+    const fromActor = data.fromActorId ? game.actors.get(data.fromActorId) : null;
+    let excludePlayers = true;
+    try { excludePlayers = game.settings.get(MODULE_ID, 'spamUnknownSenderExcludePlayers'); } catch { /* default */ }
+    if (excludePlayers && fromActor?.hasPlayerOwner) return bail('sender is a player character (excludePlayers on)');
+
+    // If the recipient has already added this sender, never filter.
+    if (await this._isSenderInRecipientContacts(data.toActorId, data)) return bail('sender already in recipient contacts');
+
+    // Scope: 'known' requires the sender to exist as a real contact — a master
+    // directory entry (by id or email) or a registered character ("a contact
+    // exists but isn't added"). 'all' also catches completely unknown addresses.
+    let scope = 'known';
+    try { scope = game.settings.get(MODULE_ID, 'spamUnknownSenderScope') || 'known'; } catch { /* default */ }
+    if (scope === 'known') {
+      const knownSender = !!fromActor
+        || !!data.fromContactId
+        || (!!data.from && !!this._contactRepo?.verifyContact(data.from)?.verified);
+      if (!knownSender) return bail("scope 'known' and sender not in directory (use scope 'all' for unknown addresses)");
+    }
+
+    // Roll the configured chance.
+    let chance = 0;
+    try { chance = Number(game.settings.get(MODULE_ID, 'spamUnknownSenderChance')) || 0; } catch { return bail('chance setting unavailable'); }
+    if (chance <= 0) return bail('chance is 0');
+    const filtered = (Math.random() * 100) < chance;
+    log.debug(`SpamFilter: ${filtered ? 'ROUTE TO SPAM' : 'pass'} (chance ${chance}%)`, { from: data.from, to: data.toActorId });
+    return filtered;
+  }
+
+  /**
+   * Whether the recipient has the sender saved as a contact (by email, linked
+   * actor, or master-contact id).
+   * @param {string} recipientActorId
+   * @param {Object} data — message data (from, fromActorId, fromContactId)
+   * @returns {Promise<boolean>}
+   * @private
+   */
+  async _isSenderInRecipientContacts(recipientActorId, data) {
+    try {
+      const contacts = await this._contactRepo.getContacts(recipientActorId);
+      if (!contacts.length) return false;
+      const email = (data.from || '').toLowerCase().trim();
+      const fromActorId = data.fromActorId || null;
+      const fromContactId = data.fromContactId || null;
+      return contacts.some(c =>
+        (email && c.email?.toLowerCase().trim() === email) ||
+        (fromActorId && (c.actorId === fromActorId || c.linkedActorId === fromActorId)) ||
+        (fromContactId && c.masterContactId === fromContactId)
+      );
+    } catch {
+      return false;
     }
   }
 
@@ -355,6 +508,7 @@ export class MessageService {
       body: replyBody,
       threadId: originalMessage.threadId,
       inReplyTo: originalMessage.messageId,
+      references: this._buildReferences(originalMessage),
       priority: 'normal',
     };
 
@@ -391,8 +545,28 @@ export class MessageService {
         ? originalMessage.subject
         : `FWD: ${originalMessage.subject || '(no subject)'}`,
       body: forwardBody + divider + header + (originalMessage.body || ''),
+      // Keep forwards attached to the conversation they came from. The new
+      // recipient simply sees a single-message thread until they reply.
+      threadId: originalMessage.threadId,
+      inReplyTo: originalMessage.messageId,
+      references: this._buildReferences(originalMessage),
       priority: 'normal',
     };
+  }
+
+  /**
+   * Append the parent message to its ancestor chain (base ids, no "-sent" twin),
+   * de-duplicated. Powers robust thread reconstruction across replies + forwards.
+   * @param {Object} originalMessage
+   * @returns {string[]}
+   */
+  _buildReferences(originalMessage) {
+    const refs = Array.isArray(originalMessage.references)
+      ? originalMessage.references.map(r => String(r).replace(/-sent$/, ''))
+      : [];
+    const parent = String(originalMessage.messageId || '').replace(/-sent$/, '');
+    if (parent && !refs.includes(parent)) refs.push(parent);
+    return refs;
   }
 
   /**
@@ -675,15 +849,13 @@ export class MessageService {
     } else {
       // Search all inboxes for this message (GM tool)
       for (const journal of game.journal) {
-        if (!journal.name?.startsWith('NCM-Inbox-')) continue;
+        const inbox = this._messageRepo.constructor.identifyInbox(journal);
+        if (!inbox) continue;
         const page = journal.pages.find(p =>
           p.flags?.[MODULE_ID]?.messageId === messageId
         );
         if (page) {
-          // Extract owner ID from journal name
-          const ownerMatch = journal.name.match(/NCM-Inbox-(?:Actor-|Contact-)(.+)/);
-          const ownerId = ownerMatch?.[1] || journal.name.replace('NCM-Inbox-', '');
-          await this._messageRepo.updateMessageFlags(ownerId, messageId, {
+          await this._messageRepo.updateMessageFlags(inbox.ownerId, messageId, {
             status: { encrypted: false },
           });
         }
@@ -747,23 +919,75 @@ export class MessageService {
 
     console.log(`${MODULE_ID} | New message notification for ${data.toActorId}`);
 
-    // Show notification
-    this.notificationService?.showMessageNotification(data);
-
-    // Emit event for UI refresh
+    // Toast + receive sound are driven by the MESSAGE_RECEIVED listener
+    // (registerMessagingSystem). Emit once with the full payload so the toast
+    // can show the sender name and subject.
     this.eventBus.emit(EVENTS.MESSAGE_RECEIVED, {
       messageId: data.messageId,
       toActorId: data.toActorId,
       fromActorId: data.fromActorId,
-      priority: data.priority,
+      fromContactId: data.fromContactId,
+      from: data.from,
+      fromName: data.fromName,
+      subject: data.subject,
+      preview: data.preview,
+      priority: data.priority || 'normal',
     });
+  }
 
-    // Play receive sound
-    if (data.priority === 'urgent' || data.priority === 'critical') {
-      this.soundService?.play('receive-urgent');
-    } else {
-      this.soundService?.play('receive');
+  /**
+   * GM-side self-destruct reaper. Scans every inbox and permanently erases
+   * TIMED self-destruct messages whose expiry has passed — even if the
+   * recipient never opened them. `after_read` messages are left alone (those
+   * are consumed only when the recipient reads + leaves them in the viewer).
+   *
+   * Uses the configured time provider (TimeService) for "now", so timed
+   * destruction respects world-time / manual / disguised modes.
+   *
+   * @returns {Promise<number>} Count of messages erased.
+   */
+  async reapSelfDestruct() {
+    if (!game.user.isGM) return 0;
+    const repo = this._messageRepo;
+    if (!repo) return 0;
+
+    const nowMs = this._nowMs();
+    let reaped = 0;
+
+    try {
+      for (const journal of game.journal ?? []) {
+        const inbox = repo.constructor.identifyInbox(journal);
+        if (!inbox) continue;
+
+        const expired = [];
+        for (const page of journal.pages ?? []) {
+          const f = page.flags?.[MODULE_ID];
+          if (!f?.messageId) continue;
+          if (f.status?.sent || f.status?.deleted) continue;
+          const sd = f.selfDestruct;
+          if (!sd?.expiresAt || sd.mode === 'after_read') continue;
+          if (new Date(sd.expiresAt).getTime() <= nowMs) {
+            expired.push({ pageId: page.id, messageId: f.messageId });
+          }
+        }
+
+        if (expired.length) {
+          await journal.deleteEmbeddedDocuments('JournalEntryPage', expired.map(e => e.pageId));
+          reaped += expired.length;
+          for (const e of expired) {
+            this.eventBus?.emit(EVENTS.MESSAGE_DELETED, { messageId: e.messageId, actorId: inbox.ownerId });
+          }
+        }
+      }
+    } catch (error) {
+      console.error(`${MODULE_ID} | MessageService.reapSelfDestruct:`, error);
     }
+
+    if (reaped) {
+      this.notificationService?.refreshBadge?.();
+      console.log(`${MODULE_ID} | Self-destruct reaper erased ${reaped} expired message(s).`);
+    }
+    return reaped;
   }
 
   /**
@@ -828,6 +1052,14 @@ export class MessageService {
       if (this.timeService) return this.timeService.getCurrentTime();
     } catch { /* fallback */ }
     return new Date().toISOString();
+  }
+
+  /** Current time in epoch ms via the configured time provider. */
+  _nowMs() {
+    try {
+      if (this.timeService) return this.timeService.getCurrentTimeMs();
+    } catch { /* fallback */ }
+    return Date.now();
   }
 
   _delay(ms) {

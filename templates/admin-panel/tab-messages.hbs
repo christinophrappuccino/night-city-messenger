@@ -29,6 +29,86 @@
     </div>
 
 
+    {{!-- §1.5 — NPC INBOX (player → NPC triage) --}}
+    <div class="ncm-section-title">
+      <i class="fas fa-user-secret"></i> NPC Inbox
+      {{#if npcInboxTotalUnread}}<span class="ncm-section-title__count ncm-section-title__count--alert">{{npcInboxTotalUnread}} new</span>{{else}}<span class="ncm-section-title__count">// {{npcInboxNpcCount}}</span>{{/if}}
+    </div>
+
+    <div class="ncm-npcinbox-toolbar">
+      <div class="ncm-pill {{#if npcInboxUnreadOnly}}ncm-pill--active{{/if}}" data-action="npcInboxFilter" data-mode="unread"><i class="fas fa-envelope"></i> Unread</div>
+      <div class="ncm-pill {{#unless npcInboxUnreadOnly}}ncm-pill--active{{/unless}}" data-action="npcInboxFilter" data-mode="all"><i class="fas fa-layer-group"></i> All</div>
+      <div class="ncm-npcinbox-toolbar__spacer"></div>
+      <div class="ncm-npcinbox-sortwrap">
+        <i class="fas fa-arrow-down-wide-short"></i>
+        <select class="ncm-npcinbox-sort">
+          <option value="recent" {{#if (eq npcInboxSort 'recent')}}selected{{/if}}>Recent activity</option>
+          <option value="name" {{#if (eq npcInboxSort 'name')}}selected{{/if}}>Name (A–Z)</option>
+        </select>
+      </div>
+    </div>
+
+    {{#if npcInboxGroups.length}}
+    <div class="ncm-npcinbox-list">
+      {{#each npcInboxGroups}}
+      <div class="ncm-npcinbox-card {{#if this.expanded}}ncm-npcinbox-card--expanded{{/if}}" data-npc-id="{{this.npcId}}">
+        <div class="ncm-npcinbox-card__head" data-action="toggleNpcInbox" data-npc-id="{{this.npcId}}">
+          <i class="fas fa-chevron-right ncm-npcinbox-card__chevron"></i>
+          <div class="ncm-npcinbox-card__avatar" style="color:{{this.color}}; border-color:{{this.color}}40; background:{{this.color}}0a;">
+            {{#if this.portrait}}<img src="{{this.portrait}}" alt="{{this.npcName}}">{{else}}{{this.initial}}{{/if}}
+          </div>
+          <div class="ncm-npcinbox-card__info">
+            <span class="ncm-npcinbox-card__name">{{this.npcName}}</span>
+            <span class="ncm-npcinbox-card__meta">
+              <i class="fas fa-user-secret"></i> {{#if this.role}}{{this.role}}{{else}}NPC{{/if}}{{#if this.email}} · {{this.email}}{{/if}}
+            </span>
+          </div>
+          {{#if this.unreadCount}}<span class="ncm-npcinbox-card__badge">{{this.unreadCount}} new</span>{{/if}}
+          <span class="ncm-npcinbox-card__total" title="Total from players">{{this.totalCount}}</span>
+          <span class="ncm-npcinbox-card__time">{{this.latestRel}}</span>
+          <div class="ncm-npcinbox-card__actions">
+            <button class="ncm-admin-action-btn" data-action="openInbox" data-actor-id="{{this.npcId}}" title="Open NPC inbox"><i class="fas fa-envelope-open"></i></button>
+            <button class="ncm-admin-action-btn" data-action="markAllRead" data-actor-id="{{this.npcId}}" title="Mark all read"><i class="fas fa-check-double"></i></button>
+          </div>
+        </div>
+
+        {{#if this.expanded}}
+        <div class="ncm-npcinbox-card__msgs">
+          {{#each this.messages}}
+          <div class="ncm-npcinbox-msg {{#if this.unread}}ncm-npcinbox-msg--unread{{/if}}" data-message-id="{{this.messageId}}" data-inbox-owner="{{this.inboxOwnerId}}">
+            <div class="ncm-npcinbox-msg__main" data-action="openMsgInInbox" data-message-id="{{this.messageId}}" data-inbox-owner="{{this.inboxOwnerId}}">
+              <div class="ncm-npcinbox-msg__topline">
+                <span class="ncm-npcinbox-msg__sender">{{this.senderName}}</span>
+                <span class="ncm-npcinbox-msg__subject">{{this.subject}}</span>
+              </div>
+              <div class="ncm-npcinbox-msg__preview">{{this.bodyPreview}}</div>
+            </div>
+            <span class="ncm-npcinbox-msg__time">
+              <span class="ncm-npcinbox-msg__time-date">{{this.shortDate}}</span>
+              <span class="ncm-npcinbox-msg__time-rel">{{this.relativeTime}}</span>
+            </span>
+            <div class="ncm-npcinbox-msg__actions">
+              <button class="ncm-admin-action-btn" data-action="openMsgInInbox" data-message-id="{{this.messageId}}" data-inbox-owner="{{this.inboxOwnerId}}" title="Open in inbox"><i class="fas fa-external-link"></i></button>
+              <button class="ncm-admin-action-btn" data-action="npcInboxReply" data-message-id="{{this.messageId}}" data-inbox-owner="{{this.inboxOwnerId}}" title="Reply as NPC"><i class="fas fa-reply"></i></button>
+            </div>
+          </div>
+          {{/each}}
+        </div>
+        {{/if}}
+      </div>
+      {{/each}}
+    </div>
+    {{else}}
+    <div class="ncm-admin-empty">
+      {{#if npcInboxHasAny}}
+      <i class="fas fa-circle-check"></i> No unread player mail to NPCs.
+      {{else}}
+      <i class="fas fa-user-secret"></i> No players have messaged any NPCs yet.
+      {{/if}}
+    </div>
+    {{/if}}
+
+
     {{!-- §2 — QUICK COMPOSE --}}
     <div class="ncm-section-title">
       <i class="fas fa-paper-plane"></i> Quick Compose

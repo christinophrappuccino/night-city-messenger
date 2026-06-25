@@ -99,6 +99,9 @@ export class GMContactManagerApp extends BaseApplication {
   /** @type {boolean} Editing an existing contact */
   _isEditing = false;
 
+  /** @type {object|null} Pre-filled field values for the create form (Quick Import) */
+  _createDraft = null;
+
   /** @type {string} Current search query */
   _searchQuery = '';
 
@@ -140,6 +143,46 @@ export class GMContactManagerApp extends BaseApplication {
   get notificationService() { return game.nightcity?.notificationService; }
   get soundService() { return game.nightcity?.soundService; }
   get eventBus() { return game.nightcity?.eventBus; }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Public — Quick Import (open create form pre-filled from actor)
+  // ═══════════════════════════════════════════════════════════
+
+  /**
+   * Open the New-Contact form pre-filled from a Foundry actor.
+   * Maps name, portrait, NCM email flag, and the actor's CPR role → contact
+   * fields, and pre-links the actor. Nothing is persisted until the GM clicks
+   * "Create Contact" — they can review/edit first.
+   * @param {string} actorId
+   */
+  startCreateFromActor(actorId) {
+    const actor = game.actors?.get(actorId);
+    if (!actor) {
+      ui.notifications.warn('NCM | Actor not found.');
+      return;
+    }
+
+    // CPR roles are actor items (type 'role'), not actor.system.role.
+    const roleItem = actor.items?.find(i => i.type === 'role');
+    const roleSlug = (roleItem?.name || '').toLowerCase().trim();
+
+    // Skip Foundry's default mystery-man placeholder portrait.
+    const img = (actor.img && !actor.img.includes('mystery-man')) ? actor.img : '';
+    const email = actor.getFlag(MODULE_ID, 'email') || '';
+
+    this._createDraft = {
+      name: actor.name,
+      portrait: img,
+      email,
+      role: roleSlug || 'npc',
+      actorId: actor.id,
+      tags: [],
+    };
+    this._selectedContactId = null;
+    this._isEditing = false;
+    this._isCreating = true;
+    this.render(true);
+  }
 
   // ═══════════════════════════════════════════════════════════
   //  ApplicationV2 Configuration
@@ -396,6 +439,7 @@ export class GMContactManagerApp extends BaseApplication {
       hasSelection: !!selectedEnriched,
       isCreating: this._isCreating,
       isEditing: this._isEditing,
+      createDraft: this._isCreating ? this._createDraft : null,
       showForm: this._isCreating || this._isEditing,
       showDetail: !!selectedEnriched && !this._isEditing,
 
@@ -863,6 +907,7 @@ export class GMContactManagerApp extends BaseApplication {
         case 'n': case 'N':
           e.preventDefault();
           this._selectedContactId = null;
+          this._createDraft = null;
           this._isCreating = true;
           this._isEditing = false;
           this.render();
@@ -949,6 +994,7 @@ export class GMContactManagerApp extends BaseApplication {
     }
     this._isCreating = false;
     this._isEditing = false;
+    this._createDraft = null;
     this._expandedNotes.clear();
     this.render();
   }
@@ -959,6 +1005,7 @@ export class GMContactManagerApp extends BaseApplication {
 
   static _onCreateContact(event, target) {
     this._selectedContactId = null;
+    this._createDraft = null;
     this._isCreating = true;
     this._isEditing = false;
     this.render();
@@ -1032,6 +1079,7 @@ export class GMContactManagerApp extends BaseApplication {
           this._selectedContactId = result.contact.id;
           this._isCreating = false;
           this._isEditing = false;
+          this._createDraft = null;
           ui.notifications.info(`Contact "${data.name}" created.`);
         }
       } else if (this._selectedContactId) {
@@ -1087,6 +1135,7 @@ export class GMContactManagerApp extends BaseApplication {
   static _onCancelEdit(event, target) {
     this._isCreating = false;
     this._isEditing = false;
+    this._createDraft = null;
     this.render();
   }
 

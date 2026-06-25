@@ -176,9 +176,17 @@ export function registerNetworkSystem(initializer) {
     // If that network has auto-spam configured, deliver spam to the player's inbox.
     eventBus.on(EVENTS.NETWORK_CHANGED, async (data) => {
       if (!isGM()) return; // Only GM triggers auto-spam delivery
+      // Auto-spam only fires when a *player* switches networks: their client
+      // broadcasts a socket NETWORK_STATE_CHANGED carrying their assigned
+      // character's id, which the GM receives here as source:'socket'. A GM's
+      // own switch (isGMAction) or a player without an assigned character
+      // (no actorId) can't drive it — that's the usual "didn't fire" cause.
       if (data.source !== 'socket') return; // Only react to remote switch events
-      if (data.isGMAction) return; // Don't auto-spam on GM's own switches
-      if (!data.currentNetworkId || !data.actorId) return;
+      if (data.isGMAction) { log.debug('Auto-spam: ignoring GM-initiated network switch'); return; }
+      if (!data.currentNetworkId || !data.actorId) {
+        log.debug('Auto-spam: network switch missing network/actor id — the switching player likely has no assigned character', data);
+        return;
+      }
 
       try {
         const result = await spamService.onNetworkConnect(data.currentNetworkId, data.actorId);

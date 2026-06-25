@@ -19,6 +19,9 @@
   font-family: var(--ncm-font-body);
   font-size: 14px;
   line-height: 1.5;
+  /* Theme Customizer readability contrast is handled by ThemeService palette
+     tone-mapping (OKLCH lightness spread of the bg/text/border vars), NOT a
+     CSS filter — a filter distorted images/wallpaper and drifted saturation. */
 }
 
 .ncm-app > .window-content *,

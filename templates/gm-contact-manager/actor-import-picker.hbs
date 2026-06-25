@@ -1,0 +1,57 @@
+{{!--
+  Actor Import Picker — Quick Import Actor as NPC contact
+  @file templates/gm-contact-manager/actor-import-picker.hbs
+  @module cyberpunkred-messenger
+  @description Searchable list of importable world actors. Picking one closes
+    the window and opens the GM Contact Manager's New-Contact form pre-filled
+    and linked to that actor. Player-owned and already-linked actors are hidden.
+
+  @param {Array}  actors   — [{ id, name, img, hasImg, initial, roleLabel, search }]
+  @param {number} total    — count of importable actors
+--}}
+
+<div class="ncm-aip">
+
+  {{!-- Search --}}
+  <div class="ncm-aip__search">
+    <i class="fas fa-search ncm-aip__search-icon"></i>
+    <input type="text" class="ncm-aip__search-input"
+           placeholder="Search actors by name or role..." autocomplete="off" />
+  </div>
+
+  {{!-- List --}}
+  <div class="ncm-aip__list">
+    {{#if actors.length}}
+      {{#each actors}}
+        <button type="button" class="ncm-aip__row" data-action="pickActor"
+                data-actor-id="{{this.id}}" data-search="{{this.search}}">
+          <span class="ncm-aip__avatar">
+            {{#if this.hasImg}}
+              <img src="{{this.img}}" alt="">
+            {{else}}
+              {{this.initial}}
+            {{/if}}
+          </span>
+          <span class="ncm-aip__name">{{this.name}}</span>
+          {{#if this.roleLabel}}
+            <span class="ncm-aip__role">{{this.roleLabel}}</span>
+          {{/if}}
+          <i class="fas fa-chevron-right ncm-aip__chevron"></i>
+        </button>
+      {{/each}}
+    {{else}}
+      <div class="ncm-aip__empty">
+        <i class="fas fa-user-slash"></i>
+        <span class="ncm-aip__empty-text">No importable actors</span>
+        <span class="ncm-aip__empty-sub">All actors are player-owned or already linked to a contact.</span>
+      </div>
+    {{/if}}
+  </div>
+
+  {{!-- Footer --}}
+  <div class="ncm-aip__footer">
+    <span class="ncm-aip__count"><b>{{total}}</b> actor{{#unless (eq total 1)}}s{{/unless}}</span>
+    <span class="ncm-aip__hint">player-owned &amp; already-linked hidden</span>
+  </div>
+
+</div>

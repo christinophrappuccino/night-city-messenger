@@ -40,6 +40,17 @@ export class NetworkManagementApp extends BaseApplication {
   /** @type {string|null} Currently selected scene in Scenes tab */
   _selectedSceneId = null;
 
+  // ─── Scenes tab list controls ───
+  /** @type {string} Scene name search query */
+  _sceneSearch = '';
+  /** @type {number} Current scene-list page (1-indexed) */
+  _scenePage = 1;
+  /** @type {boolean} Transient "Saved ✓" flash after an auto-save */
+  _sceneSavedFlash = false;
+  _sceneSearchHandler = null;
+  /** @type {number} Scenes per page in the sidebar list */
+  static SCENE_PAGE_SIZE = 12;
+
   // ─── Service Accessors ───
 
   get networkService() { return game.nightcity?.networkService; }
@@ -69,10 +80,11 @@ export class NetworkManagementApp extends BaseApplication {
       deleteNetwork: NetworkManagementApp._onDeleteNetwork,
       editNetwork: NetworkManagementApp._onEditNetwork,
       filterLogs: NetworkManagementApp._onFilterLogs,
-      refreshScenes: NetworkManagementApp._onRefreshScenes,
+      selectScene: NetworkManagementApp._onSelectScene,
+      scenePagePrev: NetworkManagementApp._onScenePagePrev,
+      scenePageNext: NetworkManagementApp._onScenePageNext,
       cancelEdit: NetworkManagementApp._onCancelEdit,
       toggleDeadZone: NetworkManagementApp._onToggleDeadZone,
-      saveSceneConfig: NetworkManagementApp._onSaveSceneConfig,
       clearLogs: NetworkManagementApp._onClearLogs,
       exportLogs: NetworkManagementApp._onExportLogs,
       toggleAddLogForm: NetworkManagementApp._onToggleAddLogForm,
@@ -259,31 +271,47 @@ export class NetworkManagementApp extends BaseApplication {
       }
     }
 
-    // ─── Scene list ───
-    const scenes = (game.scenes?.contents ?? []).map(s => ({
-      id: s.id,
-      name: s.name,
-      isViewed: s.id === game.scenes?.viewed?.id,
-      isCurrent: s.id === canvas.scene?.id,
-      deadZone: s.getFlag(MODULE_ID, 'deadZone') ?? false,
-      defaultNetwork: s.getFlag(MODULE_ID, 'defaultNetwork') ?? '',
-      networkAvailability: s.getFlag(MODULE_ID, 'networkAvailability') ?? {},
-    }));
+    // ─── Scene list (enriched) ───
+    const currentSceneId = canvas.scene?.id;
+    const scenes = (game.scenes?.contents ?? []).map(s => {
+      const deadZone = s.getFlag(MODULE_ID, 'deadZone') ?? false;
+      const defaultNetwork = s.getFlag(MODULE_ID, 'defaultNetwork') ?? '';
+      const defaultNet = networks.find(n => n.id === defaultNetwork);
+      const isCurrent = s.id === currentSceneId;
+      return {
+        id: s.id,
+        name: s.name,
+        isViewed: s.id === game.scenes?.viewed?.id,
+        isCurrent,
+        deadZone,
+        defaultNetwork,
+        defaultNetworkName: deadZone
+          ? 'Dead Zone'
+          : (defaultNet?.name ?? 'No default network'),
+        configured: !!deadZone || !!defaultNetwork,
+        statusClass: deadZone ? 'dead' : (isCurrent ? 'live' : 'inactive'),
+        networkAvailability: s.getFlag(MODULE_ID, 'networkAvailability') ?? {},
+      };
+    });
 
-    // Auto-select current scene if nothing selected
-    if (!this._selectedSceneId && scenes.length) {
+    // Auto-select current scene if nothing selected (or selection vanished)
+    if ((!this._selectedSceneId || !scenes.some(s => s.id === this._selectedSceneId)) && scenes.length) {
       const current = scenes.find(s => s.isCurrent);
       this._selectedSceneId = current?.id ?? scenes[0].id;
     }
 
     const selectedScene = scenes.find(s => s.id === this._selectedSceneId) ?? null;
 
-    // Scene summary stats
+    // Scene summary stats (computed from the full list, not the page)
     const sceneSummary = {
       total: scenes.length,
       deadZones: scenes.filter(s => s.deadZone).length,
-      configured: scenes.filter(s => s.defaultNetwork).length,
+      configured: scenes.filter(s => s.configured).length,
     };
+
+    // ─── Filter + sort + paginate for the sidebar list ───
+    const sceneListView = this._buildSceneListView(scenes);
+    for (const row of sceneListView.rows) row.isSelected = row.id === this._selectedSceneId;
 
     // ─── Access log entries ───
     const logFilters = { limit: 100 };
@@ -407,9 +435,13 @@ export class NetworkManagementApp extends BaseApplication {
 
       // Scenes
       scenes,
+      hasScenes: scenes.length > 0,
+      sceneListRows: sceneListView.rows,
+      sceneListControls: sceneListView.controls,
       selectedScene,
       selectedSceneId: this._selectedSceneId,
       sceneSummary,
+      sceneSavedFlash: this._sceneSavedFlash,
       allNetworks: networks,
 
       // Logs
@@ -453,14 +485,37 @@ export class NetworkManagementApp extends BaseApplication {
       });
     }
 
-    // Wire scene selector dropdown
-    const sceneSelect = this.element?.querySelector('.ncm-netmgr__scene-selector');
-    if (sceneSelect) {
-      sceneSelect.addEventListener('change', (e) => {
-        this._selectedSceneId = e.target.value;
-        this.render(true);
-      });
+    // ─── Scenes tab: search input (debounced) ───
+    const sceneSearch = this.element?.querySelector('.ncm-netmgr__scene-search');
+    if (sceneSearch) {
+      if (this._sceneSearch) {
+        sceneSearch.focus();
+        const len = this._sceneSearch.length;
+        sceneSearch.setSelectionRange(len, len);
+      }
+      const handler = this._sceneSearchHandler || (this._sceneSearchHandler =
+        foundry.utils.debounce((e) => {
+          this._sceneSearch = e.target.value;
+          this._scenePage = 1;
+          this._sceneSavedFlash = false;
+          this.render(true);
+        }, 250)
+      );
+      sceneSearch.removeEventListener('input', handler);
+      sceneSearch.addEventListener('input', handler);
     }
+
+    // ─── Scenes tab: default-network select auto-saves on change ───
+    // (data-action on <select> fires on click, not change — wire manually)
+    const defaultSelect = this.element?.querySelector('.ncm-netmgr__scene-default-select');
+    if (defaultSelect) {
+      defaultSelect.addEventListener('change', (e) => this._saveSceneDefaultNetwork(e.target.value));
+    }
+
+    // ─── Scenes tab: availability checkboxes auto-save on change ───
+    this.element?.querySelectorAll('.ncm-netmgr__scene-avail-check')?.forEach(cb => {
+      cb.addEventListener('change', () => this._saveSceneAvailability());
+    });
 
     // Wire sidebar search input
     const searchInput = this.element?.querySelector('.ncm-netmgr__sidebar-search');
@@ -724,10 +779,28 @@ export class NetworkManagementApp extends BaseApplication {
   }
 
   /**
-   * Refresh the scenes tab.
+   * Select a scene from the sidebar list.
    */
-  static _onRefreshScenes() {
-    this.render();
+  static _onSelectScene(event, target) {
+    const sceneId = target.closest('[data-scene-id]')?.dataset.sceneId;
+    if (!sceneId || sceneId === this._selectedSceneId) return;
+    this._selectedSceneId = sceneId;
+    this._sceneSavedFlash = false;
+    this.render(true);
+  }
+
+  static _onScenePagePrev() {
+    if (this._scenePage > 1) {
+      this._scenePage--;
+      this._sceneSavedFlash = false;
+      this.render(true);
+    }
+  }
+
+  static _onScenePageNext() {
+    this._scenePage++;
+    this._sceneSavedFlash = false;
+    this.render(true);
   }
 
   static async _onDeleteNetwork(event, target) {
@@ -1003,33 +1076,47 @@ export class NetworkManagementApp extends BaseApplication {
     const scene = game.scenes.get(sceneId);
     const currentDead = scene?.getFlag(MODULE_ID, 'deadZone') ?? false;
     await this.networkService.toggleDeadZone(sceneId, !currentDead);
-    this.render();
+    await this._flashSavedAndRender();
   }
 
-  static async _onSaveSceneConfig(event, target) {
-    const sceneId = target.closest('[data-scene-id]')?.dataset.sceneId;
+  /**
+   * Auto-save the selected scene's default network (fired on <select> change).
+   * @param {string} value - network id ('' = none)
+   */
+  async _saveSceneDefaultNetwork(value) {
+    const sceneId = this._selectedSceneId;
     if (!sceneId) return;
+    await this.networkService.setSceneDefaultNetwork(sceneId, value || '');
+    await this._flashSavedAndRender();
+  }
 
-    const sceneRow = this.element.querySelector(`[data-scene-id="${sceneId}"]`);
-    if (!sceneRow) return;
-
-    // Read default network
-    const defaultSelect = sceneRow.querySelector('[name="defaultNetwork"]');
-    const defaultNetwork = defaultSelect?.value || '';
-
-    // Read network availability checkboxes
-    const checkboxes = sceneRow.querySelectorAll('[name^="netAvail_"]');
+  /**
+   * Auto-save the selected scene's network availability (fired on checkbox
+   * change). Rebuilds the full availability map from the panel's checkboxes so
+   * the just-toggled box is included.
+   */
+  async _saveSceneAvailability() {
+    const sceneId = this._selectedSceneId;
+    if (!sceneId) return;
+    const panel = this.element?.querySelector('.ncm-netmgr__scene-config');
+    if (!panel) return;
     const availability = {};
-    for (const cb of checkboxes) {
-      const netId = cb.name.replace('netAvail_', '');
-      availability[netId] = cb.checked;
-    }
-
-    await this.networkService.setSceneDefaultNetwork(sceneId, defaultNetwork);
+    panel.querySelectorAll('.ncm-netmgr__scene-avail-check').forEach(cb => {
+      const netId = cb.dataset.networkId;
+      if (netId) availability[netId] = cb.checked;
+    });
     await this.networkService.setSceneNetworkAvailability(sceneId, availability);
+    await this._flashSavedAndRender();
+  }
 
-    ui.notifications.info('NCM | Scene network config saved.');
-    this.render();
+  /**
+   * Show the transient "Saved ✓" flash for one render, then clear the flag so
+   * an unrelated later re-render doesn't replay it. The chip auto-fades via CSS.
+   */
+  async _flashSavedAndRender() {
+    this._sceneSavedFlash = true;
+    await this.render(true);
+    this._sceneSavedFlash = false;
   }
 
   static _onClearLogs() {
@@ -1314,6 +1401,49 @@ export class NetworkManagementApp extends BaseApplication {
       linkMessageId: extra.messageId ?? '',
       linkActorId: extra.actorId ?? e.actorId ?? '',
       linkItemId: extra.itemId ?? '',
+    };
+  }
+
+  /**
+   * Filter (search) + sort (current first, then name) + paginate the scene
+   * list for the Scenes-tab sidebar.
+   * @param {Array} scenes — full enriched list
+   * @returns {{ rows: Array, controls: object }}
+   */
+  _buildSceneListView(scenes) {
+    const PAGE_SIZE = NetworkManagementApp.SCENE_PAGE_SIZE;
+    let list = scenes;
+
+    // Name search
+    const q = this._sceneSearch.toLowerCase().trim();
+    if (q) list = list.filter(s => s.name.toLowerCase().includes(q));
+
+    // Sort: current scene first, then alphabetical
+    list = [...list].sort((a, b) =>
+      (Number(b.isCurrent) - Number(a.isCurrent)) || a.name.localeCompare(b.name)
+    );
+
+    // Paginate (clamp page in case the filter shrank the list)
+    const total = list.length;
+    const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+    const page = Math.min(Math.max(1, this._scenePage), totalPages);
+    this._scenePage = page;
+    const start = (page - 1) * PAGE_SIZE;
+    const rows = list.slice(start, start + PAGE_SIZE);
+
+    return {
+      rows,
+      controls: {
+        search: this._sceneSearch,
+        page,
+        totalPages,
+        total,
+        showPagination: totalPages > 1,
+        hasPrev: page > 1,
+        hasNext: page < totalPages,
+        rangeStart: total ? start + 1 : 0,
+        rangeEnd: Math.min(start + PAGE_SIZE, total),
+      },
     };
   }
 

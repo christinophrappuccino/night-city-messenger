@@ -23,5 +23,21 @@
     "styles/cyberpunk-messenger.css"
   ],
   "languages": [{ "lang": "en", "name": "English", "path": "languages/en.json" }],
+  "packs": [
+    {
+      "name": "ncm-macros-player",
+      "label": "Night City Messenger — Player Tools",
+      "path": "packs/ncm-macros-player.db",
+      "type": "Macro",
+      "ownership": { "PLAYER": "OBSERVER", "ASSISTANT": "OWNER" }
+    },
+    {
+      "name": "ncm-macros-gm",
+      "label": "Night City Messenger — GM Tools",
+      "path": "packs/ncm-macros-gm.db",
+      "type": "Macro",
+      "ownership": { "PLAYER": "NONE", "ASSISTANT": "OWNER" }
+    }
+  ],
   "socket": true
 }

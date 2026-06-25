@@ -1,0 +1,165 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Actor Import Picker — Quick Import Actor as NPC contact
+ * @file styles/components/actor-import-picker.css
+ * @module cyberpunkred-messenger
+ * @description Searchable actor list window launched from the Admin Panel
+ *   Contacts tab. Picking a row opens the GM Contact Manager pre-filled.
+ *
+ *   Foundry's global button/input styles are aggressive — every interactive
+ *   element here is scoped to .ncm-app and uses !important to win.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.ncm-app.ncm-actor-import-picker .window-content { padding: 0 !important; }
+
+.ncm-app .ncm-aip {
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100% !important;
+  background: var(--ncm-bg-base, #0a0a12) !important;
+  color: var(--ncm-text-primary, #e0e0f0) !important;
+}
+
+/* ── Search ── */
+.ncm-app .ncm-aip__search {
+  position: relative !important;
+  flex: 0 0 auto !important;
+  padding: 10px 12px !important;
+  border-bottom: 1px solid var(--ncm-border, rgba(25, 243, 247, 0.15)) !important;
+}
+.ncm-app .ncm-aip__search-icon {
+  position: absolute !important;
+  left: 24px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  font-size: 11px !important;
+  color: var(--ncm-secondary, #19f3f7) !important;
+  opacity: 0.7 !important;
+  pointer-events: none !important;
+}
+.ncm-app input.ncm-aip__search-input {
+  width: 100% !important;
+  height: auto !important;
+  padding: 7px 10px 7px 34px !important;
+  background: var(--ncm-bg-surface, rgba(255, 255, 255, 0.04)) !important;
+  border: 1px solid var(--ncm-border, rgba(25, 243, 247, 0.2)) !important;
+  border-radius: var(--ncm-radius-sm, 4px) !important;
+  color: var(--ncm-text-primary, #e0e0f0) !important;
+  font-family: var(--ncm-font-body, sans-serif) !important;
+  font-size: 12px !important;
+  box-shadow: none !important;
+}
+.ncm-app input.ncm-aip__search-input:focus {
+  outline: none !important;
+  border-color: var(--ncm-border-focus, var(--ncm-secondary, #19f3f7)) !important;
+  box-shadow: 0 0 0 2px rgba(25, 243, 247, 0.12) !important;
+}
+
+/* ── List ── */
+.ncm-app .ncm-aip__list {
+  flex: 1 1 auto !important;
+  overflow-y: auto !important;
+  padding: 6px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
+}
+
+/* Row — full button reset so it never renders as a Foundry default button */
+.ncm-app button.ncm-aip__row {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  width: 100% !important;
+  height: auto !important;
+  margin: 0 !important;
+  padding: 7px 10px !important;
+  background: var(--ncm-bg-surface, rgba(255, 255, 255, 0.03)) !important;
+  border: 1px solid var(--ncm-border, rgba(25, 243, 247, 0.12)) !important;
+  border-radius: var(--ncm-radius-sm, 4px) !important;
+  color: var(--ncm-text-primary, #e0e0f0) !important;
+  text-align: left !important;
+  cursor: pointer !important;
+  box-shadow: none !important;
+  transition: border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease !important;
+}
+.ncm-app button.ncm-aip__row:hover {
+  background: rgba(25, 243, 247, 0.08) !important;
+  border-color: var(--ncm-secondary, #19f3f7) !important;
+  box-shadow: 0 0 8px rgba(25, 243, 247, 0.18) !important;
+}
+
+.ncm-app .ncm-aip__avatar {
+  flex: 0 0 auto !important;
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: var(--ncm-radius-sm, 4px) !important;
+  background: var(--ncm-bg-deep, #06060c) !important;
+  border: 1px solid var(--ncm-border, rgba(25, 243, 247, 0.25)) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: hidden !important;
+  font-family: var(--ncm-font-title, sans-serif) !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  color: var(--ncm-secondary, #19f3f7) !important;
+}
+.ncm-app .ncm-aip__avatar img { width: 100% !important; height: 100% !important; object-fit: cover !important; border: none !important; }
+
+.ncm-app .ncm-aip__name {
+  flex: 1 1 auto !important;
+  font-family: var(--ncm-font-display, sans-serif) !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.ncm-app .ncm-aip__role {
+  flex: 0 0 auto !important;
+  font-family: var(--ncm-font-mono, monospace) !important;
+  font-size: 9px !important;
+  letter-spacing: 0.05em !important;
+  padding: 2px 6px !important;
+  border-radius: var(--ncm-radius-pill, 999px) !important;
+  color: var(--ncm-accent, #f7c948) !important;
+  border: 1px solid rgba(247, 201, 72, 0.35) !important;
+  background: rgba(247, 201, 72, 0.08) !important;
+}
+
+.ncm-app .ncm-aip__chevron { flex: 0 0 auto !important; font-size: 10px !important; color: var(--ncm-text-muted, #6a6a85) !important; }
+
+/* ── Empty state ── */
+.ncm-app .ncm-aip__empty {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 48px 20px !important;
+  text-align: center !important;
+  color: var(--ncm-text-muted, #6a6a85) !important;
+}
+.ncm-app .ncm-aip__empty i { font-size: 28px !important; opacity: 0.5 !important; }
+.ncm-app .ncm-aip__empty-text {
+  font-family: var(--ncm-font-display, sans-serif) !important;
+  font-size: 13px !important; font-weight: 600 !important;
+  color: var(--ncm-text-secondary, #a0a0b8) !important;
+}
+.ncm-app .ncm-aip__empty-sub { font-size: 11px !important; }
+
+/* ── Footer ── */
+.ncm-app .ncm-aip__footer {
+  flex: 0 0 auto !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 8px 12px !important;
+  border-top: 1px solid var(--ncm-border, rgba(25, 243, 247, 0.15)) !important;
+  font-size: 10px !important;
+  color: var(--ncm-text-muted, #6a6a85) !important;
+}
+.ncm-app .ncm-aip__count b { color: var(--ncm-secondary, #19f3f7) !important; }
+.ncm-app .ncm-aip__hint { font-style: italic !important; opacity: 0.8 !important; }

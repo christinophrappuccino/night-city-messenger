@@ -132,4 +132,6 @@
   /* ─── Effects ───────────────────────────────────────────── */
   --ncm-glitch-intensity: 0.5;
   --ncm-text-scale: 1;
+  /* Readability contrast is applied by ThemeService as an OKLCH lightness spread
+     of the bg/text/border palette vars above — no CSS filter / multiplier var. */
 }

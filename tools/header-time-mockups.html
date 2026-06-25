@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>NCM — Inbox Header Time Mockups</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* NCM palette (from styles/base/variables.css) */
+    --ncm-primary:#F65261; --ncm-secondary:#19f3f7; --ncm-accent:#f7c948;
+    --ncm-success:#00ff41; --ncm-danger:#ff0033;
+    --ncm-bg-deep:#0a0a0f; --ncm-bg-base:#12121a; --ncm-bg-surface:#1a1a2e; --ncm-bg-elevated:#252540;
+    --ncm-text-primary:#ededf0; --ncm-text-secondary:#bdbdd0; --ncm-text-muted:#8e8ea8;
+    --ncm-border:#2a2a45; --ncm-border-active:#3a3a5a;
+    --ncm-font-display:'Rajdhani','Segoe UI',sans-serif;
+    --ncm-font-mono:'Share Tech Mono','Courier New',monospace;
+    --ncm-font-title:'Orbitron','Rajdhani',sans-serif;
+
+    /* The theme-accent the time would follow. Switchable below. */
+    --accent: var(--ncm-secondary);
+    --accent-rgb: 25,243,247;
+    /* Location keeps its gold identity */
+    --loc:#F0C55B; --loc-rgb:240,197,91;
+  }
+
+  * { box-sizing:border-box; }
+  body {
+    margin:0; padding:40px 28px 80px; background:#07070b;
+    font-family:var(--ncm-font-display); color:var(--ncm-text-primary);
+    background-image:radial-gradient(circle at 20% -10%, rgba(25,243,247,0.05), transparent 40%),
+                     radial-gradient(circle at 90% 0%, rgba(246,82,97,0.05), transparent 45%);
+  }
+  h1 { font-family:var(--ncm-font-title); font-weight:700; font-size:22px; letter-spacing:0.04em; margin:0 0 4px; }
+  .sub { color:var(--ncm-text-muted); font-size:14px; max-width:760px; line-height:1.5; margin:0 0 24px; }
+
+  .controls { display:flex; align-items:center; gap:10px; margin-bottom:30px; flex-wrap:wrap;
+    background:var(--ncm-bg-surface); border:1px solid var(--ncm-border); border-radius:6px; padding:12px 16px; }
+  .controls span { font-family:var(--ncm-font-title); font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--ncm-text-muted); }
+  .swatch { cursor:pointer; border:1px solid var(--ncm-border); background:var(--ncm-bg-base); color:var(--ncm-text-secondary);
+    font-family:var(--ncm-font-display); font-weight:700; font-size:12px; padding:6px 12px; border-radius:4px; transition:all .15s; }
+  .swatch:hover { border-color:var(--ncm-border-active); }
+  .swatch[data-active="1"] { border-color:var(--accent); color:var(--accent); box-shadow:0 0 10px rgba(var(--accent-rgb),0.2); }
+
+  .card { margin-bottom:26px; }
+  .card__title { display:flex; align-items:baseline; gap:10px; margin:0 0 8px; }
+  .card__title b { font-family:var(--ncm-font-title); font-size:14px; letter-spacing:0.04em; }
+  .card__title .tag { font-size:11px; color:var(--ncm-text-muted); }
+  .card__note { color:var(--ncm-text-muted); font-size:12.5px; margin:8px 2px 0; line-height:1.45; }
+
+  /* ─── Header replica (matches .ncm-viewer__header) ─── */
+  .vhdr {
+    display:flex; align-items:center; gap:12px; padding:8px 16px;
+    background:var(--ncm-bg-deep); border:1px solid var(--ncm-border); border-radius:6px;
+    overflow:hidden;
+  }
+  .identity { display:flex; align-items:center; gap:8px; padding:2px 6px 2px 2px; border-radius:6px; flex-shrink:0; }
+  .avatar { width:36px; height:36px; border-radius:50%; border:2px solid rgba(25,243,247,0.25);
+    display:flex; align-items:center; justify-content:center; font-family:var(--ncm-font-display); font-weight:700;
+    font-size:14px; color:var(--ncm-secondary); background:var(--ncm-bg-surface); flex-shrink:0; }
+  .id-info { display:flex; flex-direction:column; gap:1px; }
+  .id-name { font-weight:700; font-size:14px; line-height:1.2; }
+  .id-email { font-family:var(--ncm-font-mono); font-size:10px; color:var(--ncm-secondary); opacity:0.5; }
+  .chev { font-size:9px; color:var(--ncm-text-muted); opacity:0.4; }
+  .divider { width:1px; height:26px; background:var(--ncm-border); flex-shrink:0; }
+  .spacer { flex:1; }
+
+  /* Network pill (good/cyan state) */
+  .netpill { display:inline-flex; align-items:center; gap:5px; padding:4px 10px 4px 8px; border-radius:4px;
+    border:1px solid rgba(0,212,230,0.3); background:rgba(0,212,230,0.06); color:var(--ncm-secondary); flex-shrink:0; line-height:1; }
+  .netdot { width:7px; height:7px; border-radius:50%; background:var(--ncm-secondary); box-shadow:0 0 6px rgba(0,212,230,0.5);
+    animation:pulse 2s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.5;} }
+  .netname { font-family:var(--ncm-font-display); font-weight:700; font-size:11px; text-transform:uppercase; letter-spacing:0.04em; }
+  .bars { display:flex; align-items:flex-end; gap:1.5px; height:12px; margin:0 2px; }
+  .bar { width:3px; border-radius:1px; background:currentColor; opacity:.8; }
+  .bar:nth-child(1){height:3px;} .bar:nth-child(2){height:6px;} .bar:nth-child(3){height:9px;} .bar:nth-child(4){height:12px; opacity:.15;}
+  .netpct { font-family:var(--ncm-font-mono); font-size:10px; opacity:.8; }
+
+  /* Action buttons */
+  .actions { display:flex; gap:5px; flex-shrink:0; }
+  .btn { display:inline-flex; align-items:center; gap:5px; font-family:var(--ncm-font-display); font-weight:700;
+    font-size:11px; padding:5px 10px; border-radius:4px; border:1px solid var(--ncm-border); cursor:pointer; white-space:nowrap; }
+  .btn--sec { color:var(--ncm-secondary); border-color:rgba(25,243,247,0.3); background:rgba(25,243,247,0.06); }
+  .btn--pri { color:#07070b; border-color:var(--ncm-primary); background:var(--ncm-primary); }
+  .btn--ghost { color:var(--ncm-text-muted); width:28px; justify-content:center; padding:5px 0; }
+  svg.ic { width:1em; height:1em; display:block; }
+
+  /* ════ CURRENT ════ */
+  .hud-cur { display:flex; align-items:center; gap:4px; flex-shrink:0; }
+  .chip-cur { display:inline-flex; flex-direction:column; align-items:flex-start; padding:2px 8px; border-radius:3px; border:1px solid; }
+  .chip-cur .lbl { font-family:var(--ncm-font-title); font-size:5px; font-weight:600; letter-spacing:0.18em; text-transform:uppercase; opacity:0.45; line-height:1; }
+  .chip-cur .val { font-family:var(--ncm-font-mono); font-size:10px; line-height:1.2; }
+  .chip-cur.time { color:#A78BFA; border-color:rgba(167,139,250,0.2); background:rgba(167,139,250,0.05); }
+  .chip-cur.scene{ color:#F0C55B; border-color:rgba(240,197,91,0.2); background:rgba(240,197,91,0.05); }
+
+  /* ════ OPT 1 — Bigger & brighter clock chip ════ */
+  .hud1 { display:flex; align-items:center; gap:6px; flex-shrink:0; }
+  .chip1-time { display:inline-flex; align-items:center; gap:7px; padding:4px 11px; border-radius:4px;
+    color:var(--accent); border:1px solid rgba(var(--accent-rgb),0.45); background:rgba(var(--accent-rgb),0.12); }
+  .chip1-time .ic { width:14px; height:14px; opacity:.85; }
+  .chip1-time .val { font-family:var(--ncm-font-mono); font-size:17px; font-weight:400; line-height:1; letter-spacing:0.02em; }
+  .chip1-loc { display:inline-flex; flex-direction:column; padding:2px 9px; border-radius:4px;
+    color:var(--loc); border:1px solid rgba(var(--loc-rgb),0.2); background:rgba(var(--loc-rgb),0.05); }
+  .chip1-loc .lbl { font-family:var(--ncm-font-title); font-size:7px; font-weight:600; letter-spacing:0.16em; text-transform:uppercase; opacity:.55; line-height:1.3; }
+  .chip1-loc .val { font-family:var(--ncm-font-mono); font-size:11px; line-height:1.2; }
+
+  /* ════ OPT 2 — Neon terminal clock ════ */
+  .hud2 { display:flex; align-items:center; gap:14px; flex-shrink:0; }
+  .neon { display:inline-flex; align-items:center; gap:9px; color:var(--accent); }
+  .neon .ic { width:18px; height:18px; filter:drop-shadow(0 0 4px rgba(var(--accent-rgb),0.7)); }
+  .neon .val { font-family:var(--ncm-font-mono); font-size:22px; font-weight:400; line-height:1; letter-spacing:0.03em;
+    text-shadow:0 0 8px rgba(var(--accent-rgb),0.65), 0 0 18px rgba(var(--accent-rgb),0.35); }
+  .neon .colon { animation:blink 1.1s steps(1) infinite; }
+  @keyframes blink { 0%,55%{opacity:1;} 56%,100%{opacity:.25;} }
+  .tag-loc { display:inline-flex; align-items:center; gap:5px; color:var(--loc); font-family:var(--ncm-font-mono); font-size:11px; opacity:.85; }
+  .tag-loc .ic { width:11px; height:11px; }
+
+  /* ════ OPT 3 — Icon + inline, no labels ════ */
+  .hud3 { display:flex; align-items:center; gap:16px; flex-shrink:0; }
+  .inl-time { display:inline-flex; align-items:center; gap:7px; color:var(--accent);
+    font-family:var(--ncm-font-mono); font-size:15px; line-height:1; }
+  .inl-time .ic { width:14px; height:14px; opacity:.9; }
+  .inl-loc { display:inline-flex; align-items:center; gap:6px; color:var(--loc);
+    font-family:var(--ncm-font-mono); font-size:12px; line-height:1; opacity:.85; }
+  .inl-loc .ic { width:12px; height:12px; }
+
+  /* ════ OPT 4 — Unified HUD strip ════ */
+  .hud4 { display:inline-flex; align-items:stretch; border:1px solid var(--ncm-border); border-radius:5px; overflow:hidden; flex-shrink:0; background:var(--ncm-bg-base); }
+  .seg { display:inline-flex; align-items:center; gap:7px; padding:5px 12px; }
+  .seg-time { color:var(--accent); background:rgba(var(--accent-rgb),0.08); }
+  .seg-time .ic { width:14px; height:14px; }
+  .seg-time .val { font-family:var(--ncm-font-mono); font-size:16px; line-height:1; letter-spacing:0.02em; }
+  .seg-div { width:1px; background:var(--ncm-border); }
+  .seg-loc { color:var(--loc); }
+  .seg-loc .ic { width:12px; height:12px; opacity:.8; }
+  .seg-loc .val { font-family:var(--ncm-font-mono); font-size:11px; line-height:1; }
+</style>
+</head>
+<body>
+  <h1>Night City Messenger — Inbox Header · Time Readout</h1>
+  <p class="sub">Four ways to make the header clock easier to read, shown in the real header layout.
+  The <b>Current</b> version is first for comparison. Use the swatches to preview how each option follows the
+  active theme accent (the time color is theme-aware in every option; location keeps its gold identity).</p>
+
+  <div class="controls">
+    <span>Theme accent:</span>
+    <button class="swatch" data-accent="cyan"  data-active="1" onclick="setAccent('cyan',this)">Cyan</button>
+    <button class="swatch" data-accent="gold"  onclick="setAccent('gold',this)">Gold</button>
+    <button class="swatch" data-accent="crimson" onclick="setAccent('crimson',this)">Crimson</button>
+    <button class="swatch" data-accent="green" onclick="setAccent('green',this)">Green</button>
+  </div>
+
+  <!-- ════════════ CURRENT ════════════ -->
+  <div class="card">
+    <div class="card__title"><b>Current</b><span class="tag">— what's there now</span></div>
+    <div class="vhdr" data-hdr></div>
+    <div class="card__note">Value is 10px mono in a soft purple at ~5% bg; the "TIME" label is 5px / 45% opacity (basically invisible). Same weight as Location, and it sits next to the bright network pill.</div>
+  </div>
+
+  <!-- ════════════ OPTION 1 ════════════ -->
+  <div class="card">
+    <div class="card__title"><b>Option 1 — Bigger &amp; brighter clock</b><span class="tag">smallest change, big win</span></div>
+    <div class="vhdr" data-hdr data-hud="1"></div>
+    <div class="card__note">Enlarged ~17px digits, clock icon replaces the tiny label, high-contrast accent color, solid chip. Time clearly outranks the (smaller) Location chip.</div>
+  </div>
+
+  <!-- ════════════ OPTION 2 ════════════ -->
+  <div class="card">
+    <div class="card__title"><b>Option 2 — Neon terminal clock</b><span class="tag">cyberpunk flourish</span></div>
+    <div class="vhdr" data-hdr data-hud="2"></div>
+    <div class="card__note">Oversized ~22px digits with a neon glow and a softly blinking colon; Location demoted to a quiet inline tag. Most eye-catching, leans into the aesthetic.</div>
+  </div>
+
+  <!-- ════════════ OPTION 3 ════════════ -->
+  <div class="card">
+    <div class="card__title"><b>Option 3 — Icon + inline (no labels)</b><span class="tag">cleanest / compact</span></div>
+    <div class="vhdr" data-hdr data-hud="3"></div>
+    <div class="card__note">Drops the labels and chip boxes entirely: clock icon + ~15px value, pin icon + location. Brighter time for hierarchy. Saves the most header width.</div>
+  </div>
+
+  <!-- ════════════ OPTION 4 ════════════ -->
+  <div class="card">
+    <div class="card__title"><b>Option 4 — Unified HUD strip</b><span class="tag">single status module</span></div>
+    <div class="vhdr" data-hdr data-hud="4"></div>
+    <div class="card__note">Both readouts in one bordered bar — time large/bright on the left, location muted on the right, divider between. Reads as one cohesive widget.</div>
+  </div>
+
+<script>
+  // Inline SVG icons (always render, no CDN needed)
+  const CLOCK = '<svg class="ic" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.4" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 4.4V8l2.6 1.6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>';
+  const PIN   = '<svg class="ic" viewBox="0 0 16 16"><path d="M8 1.6c-2.5 0-4.4 1.9-4.4 4.4 0 3.1 4.4 8 4.4 8s4.4-4.9 4.4-8c0-2.5-1.9-4.4-4.4-4.4z" fill="none" stroke="currentColor" stroke-width="1.3"/><circle cx="8" cy="5.9" r="1.6" fill="currentColor"/></svg>';
+  const TIME = '22:14:07';
+  const LOC  = 'Watson';
+
+  // Shared header pieces (everything except the HUD region)
+  const LEFT = `
+    <div class="identity">
+      <div class="avatar">V</div>
+      <div class="id-info"><span class="id-name">V</span><span class="id-email">v@nightcity.net</span></div>
+      <span class="chev">&#9656;</span>
+    </div>
+    <div class="divider"></div>
+    <div class="netpill">
+      <span class="netdot"></span>
+      <span class="netname">CITINET</span>
+      <span class="bars"><span class="bar"></span><span class="bar"></span><span class="bar"></span><span class="bar"></span></span>
+      <span class="netpct">78%</span>
+    </div>`;
+  const RIGHT = `
+    <div class="spacer"></div>
+    <div class="actions">
+      <button class="btn btn--sec">Contacts</button>
+      <button class="btn btn--pri">Compose</button>
+      <button class="btn btn--ghost">&#9881;</button>
+    </div>`;
+
+  // Time with a wrapped colon (for the blink effect in opt 2)
+  const timeNeon = TIME.replace(/:/g, '<span class="colon">:</span>');
+
+  function hud(kind) {
+    switch (kind) {
+      case '1': return `<div class="hud1">
+        <span class="chip1-time">${CLOCK}<span class="val">${TIME}</span></span>
+        <span class="chip1-loc"><span class="lbl">Location</span><span class="val">${LOC}</span></span></div>`;
+      case '2': return `<div class="hud2">
+        <span class="neon">${CLOCK}<span class="val">${timeNeon}</span></span>
+        <span class="tag-loc">${PIN}${LOC}</span></div>`;
+      case '3': return `<div class="hud3">
+        <span class="inl-time">${CLOCK}<span>${TIME}</span></span>
+        <span class="inl-loc">${PIN}<span>${LOC}</span></span></div>`;
+      case '4': return `<div class="hud4">
+        <span class="seg seg-time">${CLOCK}<span class="val">${TIME}</span></span>
+        <span class="seg-div"></span>
+        <span class="seg seg-loc">${PIN}<span class="val">${LOC}</span></span></div>`;
+      default: return `<div class="hud-cur">
+        <span class="chip-cur time"><span class="lbl">Time</span><span class="val">${TIME}</span></span>
+        <span class="chip-cur scene"><span class="lbl">Location</span><span class="val">${LOC}</span></span></div>`;
+    }
+  }
+
+  document.querySelectorAll('[data-hdr]').forEach(h => {
+    h.innerHTML = LEFT + hud(h.dataset.hud || '') + RIGHT;
+  });
+
+  const ACCENTS = {
+    cyan:    ['#19f3f7','25,243,247'],
+    gold:    ['#f7c948','247,201,72'],
+    crimson: ['#F65261','246,82,97'],
+    green:   ['#00ff41','0,255,65'],
+  };
+  function setAccent(name, btn) {
+    const [hex, rgb] = ACCENTS[name];
+    document.documentElement.style.setProperty('--accent', hex);
+    document.documentElement.style.setProperty('--accent-rgb', rgb);
+    document.querySelectorAll('.swatch').forEach(s => s.removeAttribute('data-active'));
+    btn.setAttribute('data-active','1');
+  }
+</script>
+</body>
+</html>

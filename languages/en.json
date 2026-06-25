@@ -9,7 +9,9 @@
       "MasterContacts": { "Name": "Master Contact List", "Hint": "GM global contact directory" },
       "DebugMode": { "Name": "Debug Mode", "Hint": "Enable verbose console logging" },
       "RequireContactVerification": "Require Contact Verification",
-      "RequireContactVerificationHint": "When enabled, players can only message contacts whose email matches the master contact directory or a registered actor. Disable for a more casual experience."
+      "RequireContactVerificationHint": "When enabled, players can only message contacts whose email matches the master contact directory or a registered actor. Disable for a more casual experience.",
+      "SubjectThreading": "Smart Conversation Grouping",
+      "SubjectThreadingHint": "Group messages into a conversation thread when they share a subject and a participant, in addition to replies and forwards. Catches forwarded and older messages. Disable to thread strictly by reply/forward links."
     },
 
     "ContactManager": {

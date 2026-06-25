@@ -112,7 +112,7 @@
       {{!-- Saved icon --}}
       {{#if status.saved}}
         <i class="fas fa-bookmark ncm-viewer__msg-icon ncm-viewer__msg-icon--saved"
-           data-ncm-tooltip="Saved"></i>
+           data-tooltip="Saved"></i>
       {{/if}}
 
       {{!-- Network pip --}}
@@ -154,7 +154,7 @@
       {{!-- Badge slot --}}
       {{#if threatBadge}}
         <span class="ncm-viewer__msg-badge ncm-viewer__msg-badge--{{threatBadge.variant}}"
-              data-ncm-tooltip="{{threatBadge.label}}">
+              data-tooltip="{{threatBadge.label}}">
           <i class="{{threatBadge.icon}}"></i> {{threatBadge.label}}
         </span>
       {{else if (eq priority "critical")}}

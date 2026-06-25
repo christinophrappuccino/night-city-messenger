@@ -109,6 +109,13 @@
 
     {{!-- ── FONTS ── --}}
     <div class="ncm-tc__panel {{#if (eq activeTab 'fonts')}}ncm-tc__panel--active{{/if}}" data-tc-panel="fonts">
+      <div class="ncm-tc__slabel">Agent Identity</div>
+      <div class="ncm-tc__srow">
+        <span class="ncm-tc__srow-label">Agent Name</span>
+        <input type="text" name="agentName" value="{{agentName}}" maxlength="24" placeholder="Agent" class="ncm-tc__name-input" />
+      </div>
+      <div class="ncm-tc__name-hint">Replaces "Agent" in the inbox title bar (e.g. v.solo // ComLink). Saved per player.</div>
+
       <div class="ncm-tc__slabel">Font Selection</div>
       <div class="ncm-tc__font-section">
         {{#each fontSelectors}}
@@ -130,6 +137,11 @@
           <span class="ncm-tc__srow-label">Text Size</span>
           <input type="range" name="textScale" min="80" max="120" step="5" value="{{textScale}}" class="ncm-tc__slider" />
           <span class="ncm-tc__srow-val ncm-tc__scale-val">{{textScale}}%</span>
+        </div>
+        <div class="ncm-tc__srow">
+          <span class="ncm-tc__srow-label">Contrast</span>
+          <input type="range" name="contrast" min="70" max="140" step="5" value="{{contrast}}" class="ncm-tc__slider" />
+          <span class="ncm-tc__srow-val ncm-tc__contrast-val">{{contrast}}%</span>
         </div>
       </div>
     </div>

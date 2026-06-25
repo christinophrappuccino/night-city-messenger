@@ -50,6 +50,12 @@
   {{!-- ═══ Recipient Selector ═══ --}}
   <div class="ncm-share__body">
     <div class="ncm-share__label">Send to:</div>
+    {{#if restricted}}
+      <div class="ncm-share__hint">
+        <i class="fas fa-circle-info"></i>
+        <span>You can only data drop to people in your current scene or already in your contacts.</span>
+      </div>
+    {{/if}}
 
     {{#if hasRecipients}}
       <div class="ncm-share__recipients">

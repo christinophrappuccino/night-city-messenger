@@ -1987,3 +1987,10 @@
   padding: 3px 5px !important;
   background: var(--ncm-bg-elevated) !important;
 }
+
+/* ─── Burned UI hidden — "burned" retired from current scope ───
+   Reversible: delete this block to restore the burn/restore controls + chip.
+   Logic in GMContactManagerApp / MasterContactService is untouched. */
+.ncm-app .ncm-gm-contacts [data-action="burnContact"],
+.ncm-app .ncm-gm-contacts [data-action="restoreContact"],
+.ncm-app .ncm-gm-contacts .ncm-chip--burned { display: none !important; }

@@ -27,6 +27,7 @@
 
 import { MODULE_ID, EVENTS } from '../utils/constants.js';
 import { log } from '../utils/helpers.js';
+import { MessageRepository } from '../data/MessageRepository.js';
 
 export class DocumentSyncBridge {
 
@@ -270,20 +271,16 @@ export class DocumentSyncBridge {
    * @private
    */
   static _onJournalUpdate(journal, changes, userId) {
-    // Check if this is an NCM inbox journal
-    const isInbox = journal.getFlag(MODULE_ID, 'isInbox')
-                 || journal.name?.startsWith('[NCM]');
-    if (!isInbox) return;
-
-    const actorId = journal.getFlag(MODULE_ID, 'actorId');
-    if (!actorId) return;
+    // Flag-based inbox identity (legacy-name fallback handled in identifyInbox).
+    const inbox = MessageRepository.identifyInbox(journal);
+    if (!inbox) return;
 
     // Skip if we're the one who made the change (avoid double-render)
     if (userId === game.user.id) return;
 
-    log.debug(`SyncBridge: Inbox journal updated for actor ${actorId}`);
+    log.debug(`SyncBridge: Inbox journal updated for ${inbox.ownerId}`);
     this._eventBus.emit(EVENTS.INBOX_REFRESH ?? 'inbox:refresh', {
-      actorId,
+      actorId: inbox.ownerId,
       source: 'document-sync',
       changedBy: userId,
     });
@@ -299,25 +296,44 @@ export class DocumentSyncBridge {
     const journal = page.parent;
     if (!journal) return;
 
-    const isInbox = journal.getFlag(MODULE_ID, 'isInbox')
-                 || journal.name?.startsWith('[NCM]');
-    if (!isInbox) return;
+    const inbox = MessageRepository.identifyInbox(journal);
+    if (!inbox) return;
 
-    const actorId = journal.getFlag(MODULE_ID, 'actorId');
-    if (!actorId) return;
-
-    // Skip if we initiated (GM delivering message handles its own UI)
+    // Skip if we initiated (the delivering GM handles its own UI / toast)
     if (userId === game.user.id) return;
 
     const msgFlags = page.flags?.[MODULE_ID];
     if (!msgFlags?.messageId) return;
 
-    log.debug(`SyncBridge: New message page in inbox for actor ${actorId}`);
+    // Skip the sender's sent copy — only the received message should notify.
+    if (msgFlags.messageId.endsWith('-sent') || msgFlags.status?.sent) return;
+
+    // Spam-routed mail is delivered silently (player discovers it in Spam).
+    if (msgFlags.status?.spam) return;
+
+    // Only the recipient gets the toast/sound. Mirror the socket path's
+    // ownership gate (handleMessageNotification checks actor.isOwner) so a
+    // player never sees toasts for NPC inboxes or another player's mail.
+    const actor = inbox.isContact ? null : game.actors.get(inbox.ownerId);
+    if (!actor?.isOwner) return;
+
+    // Stored flags carry no fromName — resolve a display name so the toast
+    // doesn't render "Unknown" (matches MESSAGE_RECEIVED payload contract).
+    const fromName = (msgFlags.fromActorId && game.actors.get(msgFlags.fromActorId)?.name)
+      || (msgFlags.fromContactId && game.nightcity?.masterContactService?.getContact(msgFlags.fromContactId)?.name)
+      || msgFlags.from
+      || 'Unknown';
+
+    log.debug(`SyncBridge: New message page in inbox for actor ${inbox.ownerId}`);
     this._eventBus.emit(EVENTS.MESSAGE_RECEIVED ?? 'message:received', {
       messageId: msgFlags.messageId,
-      toActorId: actorId,
+      toActorId: inbox.ownerId,
       fromActorId: msgFlags.fromActorId,
+      fromContactId: msgFlags.fromContactId,
+      from: msgFlags.from,
+      fromName,
       subject: msgFlags.subject,
+      preview: (msgFlags.body || '').substring(0, 100),
       priority: msgFlags.priority || 'normal',
       source: 'document-sync',
       changedBy: userId,
@@ -335,9 +351,8 @@ export class DocumentSyncBridge {
     const journal = page.parent;
     if (!journal) return;
 
-    const isInbox = journal.getFlag(MODULE_ID, 'isInbox')
-                 || journal.name?.startsWith('[NCM]');
-    if (!isInbox) return;
+    const inbox = MessageRepository.identifyInbox(journal);
+    if (!inbox) return;
 
     const ncmFlags = changes?.flags?.[MODULE_ID];
     if (!ncmFlags) return;
@@ -345,18 +360,16 @@ export class DocumentSyncBridge {
     // Skip own changes
     if (userId === game.user.id) return;
 
-    const actorId = journal.getFlag(MODULE_ID, 'actorId');
     const messageId = page.flags?.[MODULE_ID]?.messageId;
+    if (!messageId) return;
 
-    if (actorId && messageId) {
-      log.debug(`SyncBridge: Message ${messageId} updated in inbox for ${actorId}`);
-      this._eventBus.emit(EVENTS.MESSAGE_STATUS_CHANGED ?? 'message:statusChanged', {
-        messageId,
-        actorId,
-        source: 'document-sync',
-        changedBy: userId,
-      });
-    }
+    log.debug(`SyncBridge: Message ${messageId} updated in inbox for ${inbox.ownerId}`);
+    this._eventBus.emit(EVENTS.MESSAGE_STATUS_CHANGED ?? 'message:statusChanged', {
+      messageId,
+      actorId: inbox.ownerId,
+      source: 'document-sync',
+      changedBy: userId,
+    });
   }
 
   /**
@@ -369,24 +382,20 @@ export class DocumentSyncBridge {
     const journal = page.parent;
     if (!journal) return;
 
-    const isInbox = journal.getFlag(MODULE_ID, 'isInbox')
-                 || journal.name?.startsWith('[NCM]');
-    if (!isInbox) return;
+    const inbox = MessageRepository.identifyInbox(journal);
+    if (!inbox) return;
 
     if (userId === game.user.id) return;
 
-    const actorId = journal.getFlag(MODULE_ID, 'actorId');
     const messageId = page.flags?.[MODULE_ID]?.messageId;
 
-    if (actorId) {
-      log.debug(`SyncBridge: Message deleted from inbox for ${actorId}`);
-      this._eventBus.emit(EVENTS.MESSAGE_DELETED ?? 'message:deleted', {
-        messageId,
-        actorId,
-        source: 'document-sync',
-        changedBy: userId,
-      });
-    }
+    log.debug(`SyncBridge: Message deleted from inbox for ${inbox.ownerId}`);
+    this._eventBus.emit(EVENTS.MESSAGE_DELETED ?? 'message:deleted', {
+      messageId,
+      actorId: inbox.ownerId,
+      source: 'document-sync',
+      changedBy: userId,
+    });
   }
 
   /**

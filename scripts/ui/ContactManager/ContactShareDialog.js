@@ -118,7 +118,7 @@ export class ContactShareDialog extends BaseApplication {
         ].filter(Boolean).join(' · ');
 
     // ── Eligible recipients ──
-    const allRecipients = this.shareService?.getEligibleRecipients(this.senderActorId) || [];
+    const allRecipients = (await this.shareService?.getEligibleRecipients(this.senderActorId)) || [];
     const recipients = allRecipients.map(r => {
       const rPortrait = r.img && r.img !== 'icons/svg/mystery-man.svg' ? r.img : null;
       return {
@@ -144,6 +144,7 @@ export class ContactShareDialog extends BaseApplication {
       contactMeta,
       recipients,
       hasRecipients,
+      restricted: !game.user.isGM,
       canSend,
       sending: this._sending,
       selectedCount: this.selectedRecipients.size,

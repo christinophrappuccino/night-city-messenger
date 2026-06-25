@@ -19,6 +19,7 @@
 
 import { MODULE_ID, EVENTS } from '../utils/constants.js';
 import { log } from '../utils/helpers.js';
+import { MessageRepository } from '../data/MessageRepository.js';
 
 /** Default max bypass attempts before lockout */
 const DEFAULT_MAX_ATTEMPTS = 3;
@@ -40,6 +41,15 @@ export class MessageAccessService {
   get messageRepo() { return game.nightcity?.messageRepository; }
   get eventBus() { return game.nightcity?.eventBus; }
   get soundService() { return game.nightcity?.soundService; }
+  get timeService() { return game.nightcity?.timeService; }
+
+  /** Current time in epoch ms via the configured time provider (real-time / world-time / manual / disguised). */
+  _nowMs() {
+    try {
+      if (this.timeService) return this.timeService.getCurrentTimeMs();
+    } catch { /* fallback */ }
+    return Date.now();
+  }
 
   // ═══════════════════════════════════════════════════════════
   //  PUBLIC API — Access Checks
@@ -118,7 +128,7 @@ export class MessageAccessService {
 
     // Check lockout
     if (session?.lockoutUntil) {
-      const now = Date.now();
+      const now = this._nowMs();
       const lockoutEnd = new Date(session.lockoutUntil).getTime();
       if (now < lockoutEnd) {
         return {
@@ -425,8 +435,8 @@ export class MessageAccessService {
     const attempts = (session?.hackAttempts ?? 0) + 1;
 
     if (attempts >= DEFAULT_MAX_ATTEMPTS) {
-      // Lockout
-      const lockoutUntil = new Date(Date.now() + DEFAULT_LOCKOUT_DURATION).toISOString();
+      // Lockout (anchored to the configured time provider)
+      const lockoutUntil = new Date(this._nowMs() + DEFAULT_LOCKOUT_DURATION).toISOString();
       await this._updateSession(actorId, messageId, {
         hackAttempts: attempts,
         lockoutUntil,
@@ -610,12 +620,10 @@ export class MessageAccessService {
   _getInboxJournal(actorId) {
     if (!actorId) return null;
 
-    // Search game.journal for the inbox keyed to this actor
-    // MessageRepository creates journals named "NCM-Inbox-{actorId}"
-    // with flags: { [MODULE_ID]: { type: 'inbox', actorId } }
-    return game.journal?.find(j =>
-      j.name === `NCM-Inbox-${actorId}` ||
-      j.getFlag(MODULE_ID, 'actorId') === actorId
-    ) ?? null;
+    // Flag-based identity with legacy-name fallback (handled in identifyInbox).
+    return game.journal?.find(j => {
+      const inbox = MessageRepository.identifyInbox(j);
+      return inbox && !inbox.isContact && inbox.ownerId === actorId;
+    }) ?? null;
   }
 }

@@ -26,6 +26,15 @@ export class ContactBreachService {
   get contactRepo()         { return game.nightcity?.contactRepository; }
   get notificationService() { return game.nightcity?.notificationService; }
   get soundService()        { return game.nightcity?.soundService; }
+  get timeService()         { return game.nightcity?.timeService; }
+
+  /** Current time in epoch ms via the configured time provider. */
+  _nowMs() {
+    try {
+      if (this.timeService) return this.timeService.getCurrentTimeMs();
+    } catch { /* fallback */ }
+    return Date.now();
+  }
 
   // ═══════════════════════════════════════════════════════════
   //  PUBLIC API — Breach Attempt
@@ -63,8 +72,8 @@ export class ContactBreachService {
     if (!contact.encrypted) return { success: false, error: 'Contact is not encrypted' };
 
     // ── Lockout check ──
-    if (contact.breachLockoutUntil && Date.now() < contact.breachLockoutUntil) {
-      const remaining = Math.ceil((contact.breachLockoutUntil - Date.now()) / 60000);
+    if (contact.breachLockoutUntil && this._nowMs() < contact.breachLockoutUntil) {
+      const remaining = Math.ceil((contact.breachLockoutUntil - this._nowMs()) / 60000);
       return { success: false, error: `ICE lockout active — ${remaining} minute${remaining !== 1 ? 's' : ''} remaining.` };
     }
 
@@ -74,7 +83,7 @@ export class ContactBreachService {
     if (currentAttempts >= maxAttempts) {
       // Auto-lockout (10 minutes)
       await this.contactRepo.updateContact(actorId, contactId, {
-        breachLockoutUntil: Date.now() + (10 * 60 * 1000),
+        breachLockoutUntil: this._nowMs() + (10 * 60 * 1000),
         breachAttempts: 0,
       });
       return { success: false, error: 'Maximum breach attempts exceeded. ICE lockout engaged — 10 minutes.' };
@@ -116,7 +125,7 @@ export class ContactBreachService {
 
       // Trigger lockout if max reached
       if (newAttempts >= maxAttempts) {
-        updates.breachLockoutUntil = Date.now() + (10 * 60 * 1000);
+        updates.breachLockoutUntil = this._nowMs() + (10 * 60 * 1000);
         updates.breachAttempts = 0; // Reset for next lockout cycle
       }
       await this.contactRepo.updateContact(actorId, contactId, updates);

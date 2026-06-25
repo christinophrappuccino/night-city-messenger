@@ -91,6 +91,26 @@
   margin-bottom: 8px;
 }
 
+.ncm-share__hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-bottom: 10px;
+  padding: 6px 8px;
+  border-left: 2px solid var(--ncm-secondary, #00d4e6);
+  background: rgba(0, 212, 230, 0.06);
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
+  font-size: 11px;
+  line-height: 1.3;
+  color: var(--ncm-text-muted, #8a8aa0);
+}
+
+.ncm-share__hint i {
+  margin-top: 1px;
+  color: var(--ncm-secondary, #00d4e6);
+  font-size: 10px;
+}
+
 /* ═══════════════════════════════════════════
    RECIPIENT SELECTOR
    ═══════════════════════════════════════════ */

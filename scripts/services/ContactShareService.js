@@ -102,12 +102,17 @@ export class ContactShareService {
   }
 
   /**
-   * Get eligible share recipients — all player-owned actors except the sender.
+   * Get eligible share recipients — player-owned actors except the sender.
+   *
+   * For players, the list is restricted to characters who are present in the
+   * current scene **or** already in the sender's contacts (a Data Drop reaches
+   * someone you're physically near or have a comm channel to). The GM is not
+   * restricted and sees every player-owned actor.
    *
    * @param {string} senderActorId — Exclude this actor
-   * @returns {Array<{actorId: string, name: string, img: string, email: string, ownerName: string}>}
+   * @returns {Promise<Array<{actorId: string, name: string, img: string, email: string, ownerName: string}>>}
    */
-  getEligibleRecipients(senderActorId) {
+  async getEligibleRecipients(senderActorId) {
     const recipients = [];
 
     for (const actor of game.actors) {
@@ -137,8 +142,37 @@ export class ContactShareService {
       });
     }
 
-    // Sort alphabetically by name
-    return recipients.sort((a, b) => a.name.localeCompare(b.name));
+    recipients.sort((a, b) => a.name.localeCompare(b.name));
+
+    // GM bypasses the scene/contacts restriction.
+    if (game.user.isGM) return recipients;
+
+    // Players: keep only recipients in the current scene OR in their contacts.
+    const sceneActorIds = this._getSceneActorIds();
+    const senderContacts = (await this.contactRepo?.getContacts(senderActorId)) || [];
+    const contactEmails = new Set(
+      senderContacts.map(c => (c.email || '').toLowerCase().trim()).filter(Boolean)
+    );
+
+    return recipients.filter(r =>
+      sceneActorIds.has(r.actorId)
+      || contactEmails.has((r.email || '').toLowerCase().trim())
+    );
+  }
+
+  /**
+   * Actor IDs that have a token on the scene the current user is viewing.
+   * @returns {Set<string>}
+   */
+  _getSceneActorIds() {
+    const ids = new Set();
+    const scene = canvas?.scene || game.scenes?.active;
+    if (!scene) return ids;
+    for (const token of scene.tokens) {
+      if (token.actorId) ids.add(token.actorId);
+      if (token.actor?.id) ids.add(token.actor.id);
+    }
+    return ids;
   }
 
   // ═══════════════════════════════════════════════════════════

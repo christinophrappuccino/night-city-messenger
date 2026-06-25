@@ -41,6 +41,19 @@ export class NetworksTab extends BaseTab {
   _collapsedGroups = new Set();
   _searchHandler = null;
 
+  // ─── Scene Signal list controls ───
+  /** @type {'current'|'name'|'signal'|'dead'} */
+  _sceneSort = 'current';
+  /** @type {boolean} Hide compendium-imported scenes with no NCM config */
+  _sceneHideImported = true;
+  /** @type {string} Scene name search query */
+  _sceneSearch = '';
+  /** @type {number} Current scene-list page (1-indexed) */
+  _scenePage = 1;
+  _sceneSearchHandler = null;
+  /** @type {number} Scenes per page */
+  static SCENE_PAGE_SIZE = 8;
+
   get key() { return 'networks'; }
 
   // ═══════════════════════════════════════════════════════════
@@ -62,13 +75,14 @@ export class NetworksTab extends BaseTab {
     }
 
     const connectedPlayers = this._gatherConnectedPlayers(networks);
-    const sceneStrip = this._gatherSceneStrip();
+    const sceneStripFull = this._gatherSceneStrip();
+    const sceneView = this._buildSceneView(sceneStripFull);
 
     const allNetworks = this.networkService?.getAllNetworks?.() ?? [];
     const netStats = {
       total: allNetworks.length,
       active: networks.filter(n => n.enabled).length,
-      deadZones: sceneStrip.filter(s => s.deadZone).length,
+      deadZones: sceneStripFull.filter(s => s.deadZone).length,
       secured: allNetworks.filter(n => n.security?.requiresAuth).length,
       connected: game.users?.filter(u => u.active && !u.isGM)?.length ?? 0,
     };
@@ -89,7 +103,8 @@ export class NetworksTab extends BaseTab {
       connectedPlayers,
       networkGroups: this._buildGroups(this._filter(networks)),
       networkSummary,
-      sceneStrip,
+      sceneStrip: sceneView.scenes,
+      sceneControls: sceneView.controls,
       netStats,
       networkSubView: this._subView,
       networkSearchQuery: this._search,
@@ -165,6 +180,32 @@ export class NetworksTab extends BaseTab {
         this.render();
       });
     });
+
+    // ─── Scene Signal sort dropdown (selects need a manual change listener) ───
+    const sceneSort = this.element?.querySelector('.ncm-scene-ctl__sort');
+    if (sceneSort) {
+      sceneSort.addEventListener('change', (e) => this.onSetSceneSort(e.target.value));
+    }
+
+    // ─── Scene Signal search input — debounced ───
+    const sceneSearch = this.element?.querySelector('.ncm-scene-ctl__search');
+    if (sceneSearch) {
+      if (this._sceneSearch) {
+        sceneSearch.value = this._sceneSearch;
+        sceneSearch.focus();
+        const len = this._sceneSearch.length;
+        sceneSearch.setSelectionRange(len, len);
+      }
+      const handler = this._sceneSearchHandler || (this._sceneSearchHandler =
+        foundry.utils.debounce((e) => {
+          this._sceneSearch = e.target.value;
+          this._scenePage = 1;
+          this.render(true);
+        }, 300)
+      );
+      sceneSearch.removeEventListener('input', handler);
+      sceneSearch.addEventListener('input', handler);
+    }
 
     // ─── Network filter dropdown in full log panel ───
     const netFilter = this.element?.querySelector('.ncm-actlog__net-filter');
@@ -452,6 +493,14 @@ export class NetworksTab extends BaseTab {
       }
 
       const signalTier = deadZone ? 'dead' : (signalPct >= 70 ? 'good' : (signalPct >= 40 ? 'mid' : 'low'));
+
+      // ─── Imported (compendium-derived) vs NCM-configured ───
+      // v12 records origin in _stats.compendiumSource; v11 used flags.core.sourceId.
+      const compendiumSource = s._stats?.compendiumSource || s.getFlag?.('core', 'sourceId') || null;
+      const isImported = !!compendiumSource;
+      const netAvail = s.getFlag(MODULE_ID, 'networkAvailability') ?? {};
+      const hasNcmConfig = !!deadZone || !!defaultNetId || Object.values(netAvail).some(Boolean);
+
       return {
         id: s.id,
         name: s.name,
@@ -460,12 +509,85 @@ export class NetworksTab extends BaseTab {
         defaultNetworkName: networkName,
         signalPct,
         signalTier,
+        isImported,
+        hasNcmConfig,
       };
     }).sort((a, b) => {
       if (a.isCurrent && !b.isCurrent) return -1;
       if (!a.isCurrent && b.isCurrent) return 1;
       return a.name.localeCompare(b.name);
     });
+  }
+
+  /**
+   * Filter (hide-imported) + sort + paginate the scene list for display.
+   * Imported scenes that carry NCM config (jammed / default network / per-scene
+   * availability) are always kept regardless of the hide toggle.
+   * @param {Array} scenes — full enriched list from _gatherSceneStrip()
+   * @returns {{ scenes: Array, controls: object }}
+   */
+  _buildSceneView(scenes) {
+    const PAGE_SIZE = NetworksTab.SCENE_PAGE_SIZE;
+    let list = scenes;
+
+    // Imported-with-no-config are the hideable ones (count from the full list).
+    const importedCount = scenes.filter(s => s.isImported && !s.hasNcmConfig).length;
+    if (this._sceneHideImported) {
+      list = list.filter(s => !(s.isImported && !s.hasNcmConfig));
+    }
+
+    // Name search
+    const q = this._sceneSearch.toLowerCase().trim();
+    if (q) {
+      list = list.filter(s => s.name.toLowerCase().includes(q));
+    }
+
+    // Sort
+    const byName = (a, b) => a.name.localeCompare(b.name);
+    const sorters = {
+      current: (a, b) => (Number(b.isCurrent) - Number(a.isCurrent)) || byName(a, b),
+      name:    byName,
+      signal:  (a, b) => ((b.signalPct ?? 0) - (a.signalPct ?? 0)) || byName(a, b),
+      dead:    (a, b) => (Number(b.deadZone) - Number(a.deadZone)) || byName(a, b),
+    };
+    list = [...list].sort(sorters[this._sceneSort] || sorters.current);
+
+    // Paginate (clamp page in case filter/sort shrank the list)
+    const total = list.length;
+    const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+    const page = Math.min(Math.max(1, this._scenePage), totalPages);
+    this._scenePage = page;
+    const start = (page - 1) * PAGE_SIZE;
+    const pageScenes = list.slice(start, start + PAGE_SIZE);
+
+    const SORT_LABELS = {
+      current: 'Current first',
+      name: 'Name (A–Z)',
+      signal: 'Signal (high→low)',
+      dead: 'Dead zones first',
+    };
+
+    return {
+      scenes: pageScenes,
+      controls: {
+        sort: this._sceneSort,
+        sortOptions: Object.entries(SORT_LABELS).map(([value, label]) => ({
+          value, label, selected: value === this._sceneSort,
+        })),
+        hideImported: this._sceneHideImported,
+        hiddenCount: importedCount,
+        canHide: importedCount > 0,
+        search: this._sceneSearch,
+        page,
+        totalPages,
+        total,
+        showPagination: totalPages > 1,
+        hasPrev: page > 1,
+        hasNext: page < totalPages,
+        rangeStart: total ? start + 1 : 0,
+        rangeEnd: Math.min(start + PAGE_SIZE, total),
+      },
+    };
   }
 
   _gatherConnectedPlayers(networks) {
@@ -808,6 +930,34 @@ export class NetworksTab extends BaseTab {
     if (!scene) return;
     const currentDead = scene.getFlag(MODULE_ID, 'deadZone') ?? false;
     await this.networkService?.toggleDeadZone(sceneId, !currentDead);
+    this.render(true);
+  }
+
+  // ─── Scene Signal list controls ───
+
+  onSetSceneSort(value) {
+    if (!value || value === this._sceneSort) return;
+    this._sceneSort = value;
+    this._scenePage = 1;
+    this.render(true);
+  }
+
+  onToggleSceneHideImported(event, target) {
+    event?.preventDefault?.();
+    this._sceneHideImported = !this._sceneHideImported;
+    this._scenePage = 1;
+    this.render(true);
+  }
+
+  onScenePagePrev(event, target) {
+    if (this._scenePage > 1) {
+      this._scenePage--;
+      this.render(true);
+    }
+  }
+
+  onScenePageNext(event, target) {
+    this._scenePage++;
     this.render(true);
   }
 

@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NCM Contrast: Filter vs Palette Tone-Mapping</title>
+<style>
+  :root {
+    /* Real NCM palette (variables.css) */
+    --ncm-primary:#F65261; --ncm-secondary:#19f3f7; --ncm-accent:#f7c948;
+    --ncm-bg-deep:#0a0a0f; --ncm-bg-base:#12121a; --ncm-bg-surface:#1a1a2e; --ncm-bg-elevated:#252540;
+    --ncm-text-primary:#ededf0; --ncm-text-secondary:#bdbdd0; --ncm-text-muted:#8e8ea8;
+    --ncm-border:#2a2a45;
+  }
+  * { box-sizing:border-box; }
+  body {
+    margin:0; padding:28px; background:#050508; color:#ededf0;
+    font-family:"Rajdhani","Segoe UI",system-ui,sans-serif;
+  }
+  h1 { font-family:"Orbitron",sans-serif; font-size:20px; letter-spacing:1px; margin:0 0 4px; color:#19f3f7; }
+  .sub { color:#8e8ea8; font-size:13px; margin-bottom:20px; max-width:720px; line-height:1.5; }
+  .controls {
+    display:flex; align-items:center; gap:16px; margin-bottom:24px;
+    padding:14px 18px; background:#12121a; border:1px solid #2a2a45; border-radius:10px;
+  }
+  .controls label { font-weight:600; letter-spacing:.5px; }
+  .controls input[type=range] { flex:1; max-width:420px; accent-color:#19f3f7; }
+  #pct { font-family:"Share Tech Mono",monospace; color:#f7c948; min-width:54px; text-align:right; font-size:16px; }
+  .preset-btns { display:flex; gap:8px; }
+  .preset-btns button {
+    font-family:"Share Tech Mono",monospace; font-size:12px; cursor:pointer;
+    background:#1a1a2e; color:#bdbdd0; border:1px solid #2a2a45; border-radius:6px; padding:5px 10px;
+  }
+  .preset-btns button:hover { border-color:#19f3f7; color:#19f3f7; }
+
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  .col h2 { font-family:"Orbitron",sans-serif; font-size:13px; letter-spacing:1px; margin:0 0 4px; }
+  .col .tag { font-size:12px; color:#8e8ea8; margin-bottom:10px; min-height:32px; }
+  .col.filter h2 { color:#F65261; }
+  .col.palette h2 { color:#19f3f7; }
+
+  /* A realistic message-viewer-ish card */
+  .card {
+    border:1px solid var(--c-border); border-radius:12px; overflow:hidden;
+    background:var(--c-bg-base);
+  }
+  .card .hdr {
+    display:flex; align-items:center; gap:12px; padding:12px 14px;
+    background:var(--c-bg-surface); border-bottom:1px solid var(--c-border);
+  }
+  .avatar {
+    width:46px; height:46px; border-radius:50%; flex:0 0 auto;
+    background:
+      radial-gradient(circle at 30% 25%, #ffd27f 0 18%, transparent 19%),
+      radial-gradient(circle at 70% 70%, #ff5e7e 0 30%, transparent 31%),
+      linear-gradient(135deg,#19f3f7,#7b2ff7 60%,#0a0a0f);
+    border:2px solid var(--c-secondary);
+  }
+  .hdr .who { display:flex; flex-direction:column; }
+  .hdr .name { font-family:"Rajdhani",sans-serif; font-weight:700; font-size:17px; color:var(--c-text-primary); }
+  .hdr .email { font-family:"Share Tech Mono",monospace; font-size:11px; color:var(--c-text-muted); }
+  .hdr .pill {
+    margin-left:auto; font-family:"Share Tech Mono",monospace; font-size:10px; letter-spacing:.5px;
+    padding:3px 8px; border-radius:20px; background:transparent;
+    color:var(--c-accent); border:1px solid var(--c-accent);
+  }
+  .body { padding:14px; background:var(--c-bg-base); }
+  .body .subject { font-weight:700; font-size:16px; color:var(--c-text-primary); margin-bottom:8px; }
+  .body p { margin:0 0 10px; font-size:14px; line-height:1.5; color:var(--c-text-secondary); }
+  .body .meta { font-size:12px; color:var(--c-text-muted); }
+  .body .accent-line { color:var(--c-primary); font-weight:600; }
+  .chips { display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
+  .chip {
+    font-size:11px; padding:4px 10px; border-radius:6px;
+    background:var(--c-bg-elevated); color:var(--c-text-secondary); border:1px solid var(--c-border);
+  }
+  .chip.sec { color:var(--c-secondary); border-color:var(--c-secondary); background:transparent; }
+  .chip.pri { color:var(--c-primary); border-color:var(--c-primary); background:transparent; }
+
+  /* swatch strip */
+  .swatches { display:flex; gap:0; margin-top:14px; border:1px solid var(--c-border); border-radius:8px; overflow:hidden; }
+  .swatches .sw { flex:1; height:42px; display:flex; align-items:flex-end; justify-content:center; padding-bottom:3px; }
+  .swatches .sw span { font-family:"Share Tech Mono",monospace; font-size:8px; color:rgba(255,255,255,.55); mix-blend-mode:difference; }
+
+  .note { font-size:12px; color:#8e8ea8; margin-top:8px; line-height:1.5; }
+  .legend { margin-top:22px; font-size:12px; color:#8e8ea8; line-height:1.6; max-width:760px; }
+  .legend b { color:#bdbdd0; }
+  code { font-family:"Share Tech Mono",monospace; color:#f7c948; }
+</style>
+</head>
+<body>
+  <h1>Contrast Slider — Filter vs Palette Tone-Mapping</h1>
+  <div class="sub">
+    Both panels use the same NCM "classic" palette and respond to the same slider.
+    <b>Left</b> = your current approach (<code>filter: contrast()</code> over the whole layer).
+    <b>Right</b> = the proposed approach (spread color lightness in OKLCH space, backgrounds + text only, accents untouched).
+    Watch the <b>avatar</b> and the <b>neon accents</b> as you drag.
+  </div>
+
+  <div class="controls">
+    <label>Contrast</label>
+    <input type="range" id="slider" min="80" max="140" value="100" step="1">
+    <span id="pct">100%</span>
+    <div class="preset-btns">
+      <button data-v="80">80%</button>
+      <button data-v="100">100%</button>
+      <button data-v="120">120%</button>
+      <button data-v="140">140%</button>
+    </div>
+  </div>
+
+  <div class="controls">
+    <label>Pivot</label>
+    <input type="range" id="pivot" min="0.30" max="0.60" value="0.42" step="0.01">
+    <span id="pivotVal">0.42</span>
+    <div class="preset-btns">
+      <button data-p="0.42">0.42 (new)</button>
+      <button data-p="0.50">0.50 (old)</button>
+    </div>
+  </div>
+
+  <div class="grid">
+    <!-- FILTER METHOD -->
+    <div class="col filter">
+      <h2>① Filter method (current)</h2>
+      <div class="tag">CSS <code>filter: contrast()</code> on the panel — affects everything, incl. the avatar image; also drifts saturation.</div>
+      <div id="filterCard"></div>
+      <div class="note">Notice: the avatar photo gets crushed/blown out, and neon edges over-saturate or wash at the extremes. No per-element control.</div>
+    </div>
+
+    <!-- PALETTE METHOD -->
+    <div class="col palette">
+      <h2>② Palette method (proposed)</h2>
+      <div class="tag">Recompute palette: push bg darker / text lighter around a perceptual pivot. Accents fixed. Image untouched.</div>
+      <div id="paletteCard"></div>
+      <div class="note">Notice: the avatar stays clean, neon keeps its hue/saturation, and readability (bg↔text separation) scales smoothly.</div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <b>How the palette method works:</b> for each background &amp; text color, convert hex → OKLCH, then
+    <code>L' = pivot + (L − pivot) × factor</code> (pivot ≈ 0.50, factor = contrast%/100), clamp, convert back.
+    Darker-than-pivot colors get darker, lighter get lighter — same intent as a contrast filter, but done in the palette
+    so it never touches images/wallpaper and never shifts hue or saturation. Accents (<code>primary/secondary/accent</code>)
+    are deliberately excluded so the neon identity holds at every level.
+  </div>
+
+<script>
+// ---------- color math: hex <-> OKLCH ----------
+function hexToRgb(hex){ hex=hex.replace('#',''); return [0,2,4].map(i=>parseInt(hex.substr(i,2),16)/255); }
+function rgbToHex(r){ return '#'+r.map(v=>Math.round(Math.max(0,Math.min(1,v))*255).toString(16).padStart(2,'0')).join(''); }
+function srgbToLinear(c){ return c<=0.04045 ? c/12.92 : Math.pow((c+0.055)/1.055,2.4); }
+function linearToSrgb(c){ return c<=0.0031308 ? 12.92*c : 1.055*Math.pow(c,1/2.4)-0.055; }
+
+function hexToOklch(hex){
+  let [r,g,b]=hexToRgb(hex).map(srgbToLinear);
+  const l=0.4122214708*r+0.5363325363*g+0.0514459929*b;
+  const m=0.2119034982*r+0.6806995451*g+0.1073969566*b;
+  const s=0.0883024619*r+0.2817188376*g+0.6299787005*b;
+  const l_=Math.cbrt(l), m_=Math.cbrt(m), s_=Math.cbrt(s);
+  const L=0.2104542553*l_+0.7936177850*m_-0.0040720468*s_;
+  const A=1.9779984951*l_-2.4285922050*m_+0.4505937099*s_;
+  const B=0.0259040371*l_+0.7827717662*m_-0.8086757660*s_;
+  return { L, C:Math.hypot(A,B), H:Math.atan2(B,A) };
+}
+function oklchToHex({L,C,H}){
+  const A=C*Math.cos(H), B=C*Math.sin(H);
+  const l_=L+0.3963377774*A+0.2158037573*B;
+  const m_=L-0.1055613458*A-0.0638541728*B;
+  const s_=L-0.0894841775*A-1.2914855480*B;
+  const l=l_**3, m=m_**3, s=s_**3;
+  let r=+4.0767416621*l-3.3077115913*m+0.2309699292*s;
+  let g=-1.2684380046*l+2.6097574011*m-0.3413193965*s;
+  let b=-0.0041960863*l-0.7034186147*m+1.7076147010*s;
+  return rgbToHex([r,g,b].map(linearToSrgb));
+}
+function adjustL(hex, factor, pivot){
+  const c=hexToOklch(hex);
+  c.L = Math.max(0, Math.min(1, pivot + (c.L - pivot)*factor));
+  return oklchToHex(c);
+}
+
+// ---------- palette ----------
+const BASE = {
+  primary:'#F65261', secondary:'#19f3f7', accent:'#f7c948',
+  bgDeep:'#0a0a0f', bgBase:'#12121a', bgSurface:'#1a1a2e', bgElevated:'#252540',
+  textPrimary:'#ededf0', textSecondary:'#bdbdd0', textMuted:'#8e8ea8', border:'#2a2a45'
+};
+const SPREAD_KEYS = ['bgDeep','bgBase','bgSurface','bgElevated','textPrimary','textSecondary','textMuted','border'];
+let PIVOT = 0.42;
+
+function cardHTML(){
+  return `
+    <div class="card">
+      <div class="hdr">
+        <div class="avatar"></div>
+        <div class="who">
+          <span class="name">Rogue Amendiares</span>
+          <span class="email">rogue@afterlife.net</span>
+        </div>
+        <span class="pill">PRIORITY</span>
+      </div>
+      <div class="body">
+        <div class="subject">Re: The Konpeki job</div>
+        <p>The deck's clean and the chrome's paid for. <span class="accent-line">Meet me at the Afterlife, back booth.</span></p>
+        <p class="meta">Sent 2 hours ago · encrypted channel</p>
+        <div class="chips">
+          <span class="chip">Inbox</span>
+          <span class="chip sec">Verified</span>
+          <span class="chip pri">Eddies attached</span>
+        </div>
+        <div class="swatches">
+          ${['bgBase','bgSurface','bgElevated','border','textMuted','textSecondary','textPrimary'].map(k=>
+            `<div class="sw" data-k="${k}"><span data-k="${k}"></span></div>`).join('')}
+        </div>
+      </div>
+    </div>`;
+}
+
+function applyVars(el, colors){
+  el.style.setProperty('--c-primary', colors.primary);
+  el.style.setProperty('--c-secondary', colors.secondary);
+  el.style.setProperty('--c-accent', colors.accent);
+  el.style.setProperty('--c-bg-deep', colors.bgDeep);
+  el.style.setProperty('--c-bg-base', colors.bgBase);
+  el.style.setProperty('--c-bg-surface', colors.bgSurface);
+  el.style.setProperty('--c-bg-elevated', colors.bgElevated);
+  el.style.setProperty('--c-border', colors.border);
+  el.style.setProperty('--c-text-primary', colors.textPrimary);
+  el.style.setProperty('--c-text-secondary', colors.textSecondary);
+  el.style.setProperty('--c-text-muted', colors.textMuted);
+  // paint swatches
+  el.querySelectorAll('.sw').forEach(sw=>{
+    const k=sw.dataset.k; const map={bgBase:'bgBase',bgSurface:'bgSurface',bgElevated:'bgElevated',border:'border',textMuted:'textMuted',textSecondary:'textSecondary',textPrimary:'textPrimary'};
+    sw.style.background=colors[map[k]];
+    sw.querySelector('span').textContent=colors[map[k]].replace('#','');
+  });
+}
+
+const filterCard=document.getElementById('filterCard');
+const paletteCard=document.getElementById('paletteCard');
+filterCard.innerHTML=cardHTML();
+paletteCard.innerHTML=cardHTML();
+
+function render(pct){
+  const factor=pct/100;
+  document.getElementById('pct').textContent=pct+'%';
+
+  // FILTER: base colors, contrast filter on the whole card
+  applyVars(filterCard, BASE);
+  filterCard.querySelector('.card').style.filter=`contrast(${factor})`;
+
+  // PALETTE: recompute bg+text from base, accents fixed
+  const adj={...BASE};
+  SPREAD_KEYS.forEach(k=>{ adj[k]=adjustL(BASE[k], factor, PIVOT); });
+  applyVars(paletteCard, adj);
+}
+
+const slider=document.getElementById('slider');
+const pivotSlider=document.getElementById('pivot');
+slider.addEventListener('input', e=>render(+e.target.value));
+pivotSlider.addEventListener('input', e=>{
+  PIVOT=+e.target.value;
+  document.getElementById('pivotVal').textContent=PIVOT.toFixed(2);
+  render(+slider.value);
+});
+document.querySelectorAll('.preset-btns button').forEach(b=>
+  b.addEventListener('click',()=>{
+    if (b.dataset.v!==undefined){ slider.value=b.dataset.v; }
+    if (b.dataset.p!==undefined){ PIVOT=+b.dataset.p; pivotSlider.value=b.dataset.p; document.getElementById('pivotVal').textContent=PIVOT.toFixed(2); }
+    render(+slider.value);
+  }));
+render(120);
+</script>
+</body>
+</html>

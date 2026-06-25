@@ -1270,130 +1270,229 @@
   color: var(--nm-text-muted);
 }
 
-/* Scene Picker */
+/* Scenes tab: summary strip (fixed) + flexible split-panel below */
 
-.ncm-netmgr__scene-picker {
-  padding: 10px 12px;
+.ncm-netmgr__content--scenes {
   display: flex;
   flex-direction: column;
-  gap: 8px;
 }
 
-.ncm-netmgr__scene-picker-row {
+.ncm-netmgr__split--scenes {
+  flex: 1;
+  min-height: 0;
+  height: auto;
+}
+
+/* ─── Left: searchable scene list ─── */
+
+.ncm-netmgr__scene-row {
   display: flex;
   align-items: center;
   gap: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(42, 42, 69, 0.4);
+  transition: background 0.12s;
+  position: relative;
 }
 
-.ncm-netmgr__scene-picker-label {
+.ncm-netmgr__scene-row::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: transparent;
+  transition: background 0.15s;
+}
+
+.ncm-netmgr__scene-row:hover {
+  background: var(--nm-bg-surface);
+}
+
+.ncm-netmgr__scene-row--selected {
+  background: var(--nm-bg-surface);
+}
+
+.ncm-netmgr__scene-row--selected::before {
+  background: var(--nm-secondary);
+}
+
+.ncm-netmgr__scene-row-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--nm-text-muted);
+}
+
+.ncm-netmgr__scene-row-dot--live {
+  background: var(--nm-success);
+  box-shadow: 0 0 6px rgba(0, 255, 65, 0.4);
+}
+
+.ncm-netmgr__scene-row-dot--dead {
+  background: var(--nm-danger);
+  box-shadow: 0 0 6px rgba(255, 0, 51, 0.4);
+}
+
+.ncm-netmgr__scene-row-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.ncm-netmgr__scene-row-name {
   font-family: var(--nm-font-display);
-  font-size: 9px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--nm-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ncm-netmgr__scene-row-sub {
+  font-family: var(--nm-font-mono);
+  font-size: 8px;
   color: var(--nm-text-muted);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.ncm-netmgr__scene-picker-label i {
-  margin-right: 3px;
-  color: var(--nm-secondary);
-}
-
-.ncm-netmgr__scene-selector {
-  flex: 1;
+.ncm-netmgr__scene-row-badge {
   font-family: var(--nm-font-mono);
-  font-size: 11px;
-  color: var(--nm-text-primary);
-  background: var(--nm-bg-deep);
-  border: 1px solid var(--nm-border);
-  padding: 5px 10px;
+  font-size: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 5px;
   border-radius: 2px;
+  flex-shrink: 0;
 }
 
-/* Refresh icon button — compact */
-.ncm-netmgr__scene-refresh {
+.ncm-netmgr__scene-row-badge--active {
+  background: rgba(25, 243, 247, 0.12);
+  color: var(--nm-secondary);
+  border: 1px solid rgba(25, 243, 247, 0.25);
+}
+
+.ncm-netmgr__scene-row-badge--dead {
+  background: rgba(255, 0, 51, 0.12);
+  color: var(--nm-danger);
+  border: 1px solid rgba(255, 0, 51, 0.25);
+  font-size: 7px;
+}
+
+.ncm-netmgr__scene-rows-empty {
+  padding: 18px 12px;
+  font-family: var(--nm-font-mono);
+  font-size: 9px;
+  color: var(--nm-text-muted);
+  text-align: center;
+}
+
+.ncm-netmgr__scene-rows-empty i {
+  margin-right: 4px;
+}
+
+/* ─── Scene list pager ─── */
+
+.ncm-netmgr__scene-pager {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  gap: 8px;
+  padding: 6px 8px;
+  border-top: 1px solid var(--nm-border);
+  flex-shrink: 0;
+}
+
+.ncm-netmgr__scene-pg-btn {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 0;
   border: 1px solid var(--nm-border);
   border-radius: 2px;
   background: transparent;
   color: var(--nm-text-muted);
-  font-size: 10px;
+  font-size: 9px;
   cursor: pointer;
-  flex-shrink: 0;
   transition: all 0.15s;
 }
 
-.ncm-netmgr__scene-refresh:hover {
+.ncm-netmgr__scene-pg-btn:hover:not([disabled]) {
   color: var(--nm-secondary);
   border-color: rgba(25, 243, 247, 0.3);
 }
 
-/* Quick scene chip strip — shows all scenes at a glance */
-
-.ncm-netmgr__scene-chip-strip {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
+.ncm-netmgr__scene-pg-btn[disabled] {
+  opacity: 0.35;
+  cursor: default;
 }
 
-.ncm-netmgr__scene-chip {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 7px;
-  border-radius: 2px;
-  border: 1px solid var(--nm-border);
-  background: var(--nm-bg-surface);
+.ncm-netmgr__scene-pg-info {
   font-family: var(--nm-font-mono);
   font-size: 8px;
   color: var(--nm-text-muted);
+  letter-spacing: 0.04em;
 }
 
-.ncm-netmgr__scene-chip--current {
-  border-color: rgba(25, 243, 247, 0.25);
-  color: var(--nm-secondary);
+/* ─── Right: selected scene config ─── */
+
+.ncm-netmgr__scene-config {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
-.ncm-netmgr__scene-chip--dead {
-  border-color: rgba(255, 0, 51, 0.3);
-  color: var(--nm-danger);
-}
-
-.ncm-netmgr__scene-chip-dot {
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--nm-text-muted);
+.ncm-netmgr__scene-config-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--nm-bg-base);
+  border-bottom: 1px solid var(--nm-border);
   flex-shrink: 0;
 }
 
-.ncm-netmgr__scene-chip--current .ncm-netmgr__scene-chip-dot {
-  background: var(--nm-success);
-  box-shadow: 0 0 4px rgba(0, 255, 65, 0.4);
+.ncm-netmgr__scene-config-spacer {
+  flex: 1;
 }
 
-.ncm-netmgr__scene-chip--dead .ncm-netmgr__scene-chip-dot {
-  background: var(--nm-danger);
-  box-shadow: 0 0 4px rgba(255, 0, 51, 0.4);
-}
-
-.ncm-netmgr__scene-chip-name {
-  white-space: nowrap;
-}
-
-/* Selected Scene Detail */
-
-.ncm-netmgr__scene-detail {
-  margin: 10px 12px;
-  border: 1px solid var(--nm-border);
+/* "Saved ✓" flash — fades out on its own after the auto-save */
+.ncm-netmgr__scene-saved {
+  font-family: var(--nm-font-mono);
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 7px;
   border-radius: 2px;
-  background: var(--nm-bg-surface);
+  background: rgba(0, 255, 65, 0.12);
+  color: var(--nm-success);
+  border: 1px solid rgba(0, 255, 65, 0.25);
+  animation: ncm-netmgr-saved-flash 2.2s ease forwards;
+}
+
+.ncm-netmgr__scene-saved i {
+  margin-right: 3px;
+}
+
+@keyframes ncm-netmgr-saved-flash {
+  0%   { opacity: 0; transform: translateY(-2px); }
+  12%  { opacity: 1; transform: translateY(0); }
+  70%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.ncm-netmgr__field-hint {
+  font-family: var(--nm-font-mono);
+  font-size: 8px;
+  color: var(--nm-text-muted);
+  margin-top: 2px;
 }
 
 .ncm-netmgr__scene-detail-header {
@@ -1562,14 +1661,10 @@
   overflow: hidden; flex-shrink: 0;
 }
 
-/* Scene Detail Footer */
-
-.ncm-netmgr__scene-detail-footer {
-  padding: 8px 12px;
-  border-top: 1px solid var(--nm-border);
-  display: flex;
-  justify-content: flex-end;
-  gap: 6px;
+/* Config body scrolls within the right panel */
+.ncm-netmgr__scene-config .ncm-netmgr__scene-detail-body {
+  flex: 1;
+  overflow-y: auto;
 }
 
 
@@ -1784,60 +1879,6 @@
   padding: 8px 16px !important;
   margin: 0 !important;
   cursor: pointer !important;
-}
-
-/* ── Scene selector dropdown ── */
-.ncm-network-management .ncm-netmgr__scene-selector {
-  font-family: var(--nm-font-mono) !important;
-  font-size: 11px !important;
-  color: var(--nm-text-primary) !important;
-  background: var(--nm-bg-deep) !important;
-  border: 1px solid var(--nm-border) !important;
-  border-radius: 2px !important;
-  padding: 5px 10px !important;
-  height: auto !important;
-  min-height: 0 !important;
-  min-width: 0 !important;
-  line-height: 1.4 !important;
-  cursor: pointer !important;
-  appearance: none !important;
-  -webkit-appearance: none !important;
-  box-shadow: none !important;
-  outline: none !important;
-  flex: 1 !important;
-}
-
-.ncm-network-management .ncm-netmgr__scene-selector:focus {
-  border-color: var(--nm-secondary) !important;
-}
-
-.ncm-network-management .ncm-netmgr__scene-selector option {
-  background: var(--nm-bg-elevated) !important;
-  color: var(--nm-text-primary) !important;
-}
-
-/* ── Scene refresh icon button ── */
-.ncm-network-management .ncm-netmgr__scene-refresh {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  width: 26px !important;
-  height: 26px !important;
-  padding: 0 !important;
-  border: 1px solid var(--nm-border) !important;
-  border-radius: 2px !important;
-  background: transparent !important;
-  color: var(--nm-text-muted) !important;
-  font-size: 10px !important;
-  cursor: pointer !important;
-  appearance: none !important;
-  -webkit-appearance: none !important;
-  box-shadow: none !important;
-  min-width: 0 !important;
-  min-height: 0 !important;
-  outline: none !important;
-  flex-shrink: 0 !important;
-  flex-grow: 0 !important;
 }
 
 /* ── Scene toggle buttons ── */

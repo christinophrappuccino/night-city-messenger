@@ -6,8 +6,8 @@
  *              Loaded during ready phase, applies stored preferences immediately.
  */
 
-import { MODULE_ID, THEME_PRESETS, COLOR_VAR_MAP, FONT_OPTIONS, DEFAULTS } from '../utils/constants.js';
-import { log } from '../utils/helpers.js';
+import { MODULE_ID, THEME_PRESETS, COLOR_VAR_MAP, CONTRAST_SPREAD, FONT_OPTIONS, DEFAULTS } from '../utils/constants.js';
+import { log, adjustLightness } from '../utils/helpers.js';
 
 export class ThemeService {
   /**
@@ -85,6 +85,18 @@ export class ThemeService {
     // Text scale (80–120, stored as percentage, applied as multiplier)
     const textScale = (prefs.textScale ?? preset.textScale ?? 100) / 100;
     root.style.setProperty('--ncm-text-scale', String(textScale));
+
+    // Readability contrast (70–140, stored as percentage, applied as multiplier).
+    // Tone-map the bg/text/border palette in OKLCH lightness space rather than
+    // applying a CSS contrast() filter — this leaves images/wallpaper untouched
+    // and preserves hue/saturation (neon stays neon). Accents are excluded.
+    // Always recomputes from base prefs/preset, so dragging the slider can't
+    // compound. (See CONTRAST_SPREAD in constants.js.)
+    const contrast = (prefs.contrast ?? preset.contrast ?? 100) / 100;
+    for (const { cssVar, key, base } of CONTRAST_SPREAD.vars) {
+      const baseColor = prefs.colors?.[key] || preset[key] || base;
+      root.style.setProperty(cssVar, adjustLightness(baseColor, contrast, CONTRAST_SPREAD.pivot));
+    }
 
     // Wallpaper
     if (prefs.wallpaper) {

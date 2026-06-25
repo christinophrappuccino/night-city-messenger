@@ -19,6 +19,7 @@
 
 import { MODULE_ID } from '../../../utils/constants.js';
 import { log } from '../../../utils/helpers.js';
+import { MessageRepository } from '../../../data/MessageRepository.js';
 import { BaseTab } from '../BaseTab.js';
 
 export class ContactsTab extends BaseTab {
@@ -462,10 +463,14 @@ export class ContactsTab extends BaseTab {
         // Messages in the contact's OWN inbox
         // Contains BOTH received messages AND sent copies (messageId ending in "-sent")
         // The viewer's auto-filter-switch handles navigating to the correct tab
-        const ownJournalName = actorId
-          ? `NCM-Inbox-${actorId}`
-          : `NCM-Inbox-Contact-${contactId}`;
-        const ownInbox = game.journal?.find(j => j.name === ownJournalName);
+        // Resolve by flag-based identity — current worlds use human-readable
+        // journal names, so a legacy `NCM-Inbox-…` name match finds nothing.
+        const wantId = actorId || contactId;
+        const wantContact = !actorId;
+        const ownInbox = game.journal?.find(j => {
+          const inbox = MessageRepository.identifyInbox(j);
+          return inbox && inbox.ownerId === wantId && inbox.isContact === wantContact;
+        });
         if (ownInbox?.pages?.size) {
           for (const page of ownInbox.pages) {
             const flags = page.flags?.['cyberpunkred-messenger'] || {};
@@ -982,6 +987,18 @@ export class ContactsTab extends BaseTab {
       gmApp._isEditing = false;
       gmApp.render(true);
     }
+  }
+
+  /**
+   * Quick Import Actor as NPC — opens a searchable actor picker. Selecting an
+   * actor opens the GM Contact Manager's New-Contact form pre-filled and linked
+   * to that actor (see ActorImportPickerApp / GMContactManagerApp.startCreateFromActor).
+   */
+  async onImportActorAsNpc(event, target) {
+    if (!game.user.isGM) return;
+    const { ActorImportPickerApp } = await import('../../GMContactManager/ActorImportPickerApp.js');
+    new ActorImportPickerApp().render(true);
+    log.info('Admin: Opening Actor Import Picker');
   }
 
   onPushAll(event, target) {

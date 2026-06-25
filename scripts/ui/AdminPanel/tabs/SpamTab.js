@@ -377,6 +377,60 @@ export class SpamTab extends BaseTab {
     this.render(true);
   }
 
+  /** Export all custom spam templates to a downloadable JSON file. */
+  onExportTemplates(event, target) {
+    const spam = this.spamService;
+    if (!spam) return;
+    if (spam.customCount === 0) {
+      ui.notifications.warn('No custom templates to export.');
+      return;
+    }
+
+    const payload = spam.exportTemplates();
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ncm-spam-templates-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    ui.notifications.info(`Exported ${payload.templates.length} custom template(s).`);
+  }
+
+  /** Import custom spam templates from a JSON file (merges, skips duplicates). */
+  onImportTemplates(event, target) {
+    const spam = this.spamService;
+    if (!spam) {
+      ui.notifications.warn('Spam service not available.');
+      return;
+    }
+
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.style.display = 'none';
+    document.body.appendChild(input);
+
+    input.addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) { input.remove(); return; }
+      try {
+        const payload = JSON.parse(await file.text());
+        const { imported, skipped } = await spam.importTemplates(payload);
+        ui.notifications.info(`Imported ${imported} template(s).${skipped ? ` ${skipped} skipped (duplicates/invalid).` : ''}`);
+        this.render(true);
+      } catch (err) {
+        console.error('NCM | Import spam templates failed:', err);
+        ui.notifications.error(err.message || 'Failed to parse JSON file.');
+      } finally {
+        input.remove();
+      }
+    });
+
+    input.click();
+  }
+
   onToggleAutoSection(event, target) {
     this._autoExpanded = !this._autoExpanded;
     this.render(true);

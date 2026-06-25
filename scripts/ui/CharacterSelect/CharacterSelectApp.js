@@ -10,6 +10,7 @@
 import { BaseApplication } from '../BaseApplication.js';
 import { MODULE_ID } from '../../utils/constants.js';
 import { log, isGM } from '../../utils/helpers.js';
+import { MessageRepository } from '../../data/MessageRepository.js';
 
 const CONNECT_STEP_DELAY_MS = 400;
 const SUCCESS_HOLD_MS = 1000;
@@ -158,9 +159,13 @@ export class CharacterSelectApp extends BaseApplication {
   _getCharacterStats(actorId) {
     const stats = { unread: 0, total: 0, shards: 0, drafts: 0 };
     try {
-      // Try both journal naming conventions
-      const journalName = `NCM-Inbox-${actorId}`;
-      const journal = game.journal?.getName(journalName);
+      // Resolve the actor's inbox by flag-based identity (legacy-name fallback
+      // is handled inside identifyInbox) — current worlds use human-readable
+      // journal names, so a `NCM-Inbox-<id>` name lookup finds nothing.
+      const journal = game.journal?.find(j => {
+        const inbox = MessageRepository.identifyInbox(j);
+        return inbox && !inbox.isContact && inbox.ownerId === actorId;
+      });
       if (journal) {
         for (const page of journal.pages) {
           const flags = page.flags?.[MODULE_ID];

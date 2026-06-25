@@ -74,15 +74,16 @@
       </div>
     </div>
 
-    {{!-- Inline HUD readouts — stacked label+value widgets --}}
-    <div class="ncm-viewer__hud-inline">
-      <span class="ncm-viewer__hud-chip ncm-viewer__hud-chip--time">
-        <span class="ncm-viewer__hud-label">Time</span>
-        <span class="ncm-viewer__hud-val ncm-viewer__hud-time-val">{{currentGameTime}}</span>
+    {{!-- Unified HUD readout — time (emphasized) + location as one terminal strip --}}
+    <div class="ncm-viewer__hud-strip">
+      <span class="ncm-viewer__hud-seg ncm-viewer__hud-seg--time">
+        <i class="fas fa-clock ncm-viewer__hud-seg-icon"></i>
+        <span class="ncm-viewer__hud-time-val">{{currentGameTime}}</span>
       </span>
-      <span class="ncm-viewer__hud-chip ncm-viewer__hud-chip--scene">
-        <span class="ncm-viewer__hud-label">Location</span>
-        <span class="ncm-viewer__hud-val">{{currentSceneName}}</span>
+      <span class="ncm-viewer__hud-seg-div"></span>
+      <span class="ncm-viewer__hud-seg ncm-viewer__hud-seg--scene">
+        <i class="fas fa-location-dot ncm-viewer__hud-seg-icon"></i>
+        <span class="ncm-viewer__hud-scene">{{currentSceneName}}</span>
       </span>
     </div>
 
@@ -91,22 +92,22 @@
     {{!-- Action Buttons --}}
     <div class="ncm-viewer__header-actions">
       <button class="ncm-btn ncm-btn--secondary ncm-btn--sm" data-action="open-contacts"
-              data-ncm-tooltip="Open contacts" data-ncm-tooltip-pos="bottom">
+              data-tooltip="Open contacts" data-tooltip-direction="DOWN">
         <i class="fas fa-address-book"></i> <span>Contacts</span>
       </button>
       <button class="ncm-btn ncm-btn--primary ncm-btn--sm" data-action="compose-new"
               {{#if isDeadZone}}disabled{{/if}}
-              data-ncm-tooltip="Compose new message" data-ncm-tooltip-pos="bottom">
+              data-tooltip="Compose new message" data-tooltip-direction="DOWN">
         <i class="fas fa-pen-to-square"></i> <span>Compose</span>
       </button>
       {{#if isGM}}
         <button class="ncm-btn ncm-btn--gm ncm-btn--icon-only ncm-btn--sm" data-action="open-admin"
-                data-ncm-tooltip="GM Admin Panel" data-ncm-tooltip-pos="bottom">
+                data-tooltip="GM Admin Panel" data-tooltip-direction="DOWN">
           <i class="fas fa-shield-halved"></i>
         </button>
       {{/if}}
       <button class="ncm-btn ncm-btn--ghost ncm-btn--icon-only ncm-btn--sm" data-action="open-settings"
-              data-ncm-tooltip="Settings &amp; Theme" data-ncm-tooltip-pos="bottom">
+              data-tooltip="Settings &amp; Theme" data-tooltip-direction="DOWN">
         <i class="fas fa-gear"></i>
       </button>
     </div>
@@ -481,8 +482,8 @@
       {{!-- Panel Divider --}}
       <div class="ncm-viewer__divider">
         <button class="ncm-viewer__collapse-toggle" data-action="toggle-list-panel"
-                data-ncm-tooltip="{{#if listCollapsed}}Show message list{{else}}Hide message list{{/if}}"
-                data-ncm-tooltip-pos="bottom">
+                data-tooltip="{{#if listCollapsed}}Show message list{{else}}Hide message list{{/if}}"
+                data-tooltip-direction="DOWN">
           <i class="fas fa-chevron-left"></i>
         </button>
         <div class="ncm-viewer__divider-grip"><span></span><span></span><span></span></div>
@@ -490,6 +491,10 @@
 
       {{!-- Right: Detail --}}
       <div class="ncm-viewer__detail-panel ncm-scrollbar">
+        {{!-- Back to list — only visible in single-column (narrow) mode --}}
+        <button class="ncm-viewer__mobile-back" data-action="mobile-back">
+          <i class="fas fa-chevron-left"></i> Inbox
+        </button>
         {{#if selectedMessage}}
           {{> "modules/cyberpunkred-messenger/templates/message-viewer/partials/message-detail.hbs"
               message=selectedMessage quickReplies=quickReplies isGM=isGM currentFilter=currentFilter }}

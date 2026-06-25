@@ -17,6 +17,7 @@
 
 import { MODULE_ID } from '../../../utils/constants.js';
 import { log, formatCyberDate } from '../../../utils/helpers.js';
+import { MessageRepository } from '../../../data/MessageRepository.js';
 import { DateRangePicker } from '../../components/DateRangePicker.js';
 import { BaseTab } from '../BaseTab.js';
 
@@ -55,6 +56,15 @@ export class MessagesTab extends BaseTab {
   _searchHandler = null;
   _npcSearchHandler = null;
   _actorDdSearchHandler = null;
+  _npcInboxSortHandler = null;
+
+  // ── NPC Inbox triage section ──
+  /** @type {boolean} Show only unread player→NPC mail (vs all) */
+  _npcInboxUnreadOnly = true;
+  /** @type {string} NPC inbox group sort: 'recent' | 'name' */
+  _npcInboxSort = 'recent';
+  /** @type {Set<string>} Expanded NPC inbox group ids */
+  _npcInboxExpanded = new Set();
 
   get key() { return 'messages'; }
 
@@ -75,6 +85,7 @@ export class MessagesTab extends BaseTab {
       npcSendHasNext: npcSendData.hasNext,
       npcSendSearch: npcSendData.search,
       playerActors,
+      ...this._gatherNpcInbox(),
       ...this._gatherTabContext(stats),
     };
   }
@@ -142,6 +153,18 @@ export class MessagesTab extends BaseTab {
       );
       actorDdSearch.removeEventListener('input', actorDdHandler);
       actorDdSearch.addEventListener('input', actorDdHandler);
+    }
+
+    // ── NPC Inbox sort dropdown (selects don't fire via data-action) ──
+    const npcSortSelect = this.element?.querySelector('.ncm-npcinbox-sort');
+    if (npcSortSelect) {
+      const sortHandler = this._npcInboxSortHandler || (this._npcInboxSortHandler = (e) => {
+        this._npcInboxSort = e.target.value;
+        this.app._saveScroll();
+        this.render(true);
+      });
+      npcSortSelect.removeEventListener('change', sortHandler);
+      npcSortSelect.addEventListener('change', sortHandler);
     }
 
     // ── Scheduled countdown ticking ──
@@ -367,6 +390,156 @@ export class MessagesTab extends BaseTab {
       }));
   }
 
+  /**
+   * NPC Inbox triage — collect player→NPC mail grouped by NPC.
+   * Only messages addressed to an NPC inbox (non-player actor or contact-only),
+   * sent by a player-owned character, excluding sent copies and deleted mail.
+   * @returns {object} Context keys for the NPC Inbox section.
+   */
+  _gatherNpcInbox() {
+    const empty = {
+      npcInboxGroups: [],
+      npcInboxNpcCount: 0,
+      npcInboxTotalUnread: 0,
+      npcInboxHasAny: false,
+      npcInboxUnreadOnly: this._npcInboxUnreadOnly,
+      npcInboxSort: this._npcInboxSort,
+    };
+
+    // Only compute when the Messages tab is active (performance — full journal scan).
+    if (this.app._activeTab !== 'messages') return empty;
+
+    const roleColors = {
+      fixer: '#d4a017', netrunner: '#00e5ff', runner: '#00e5ff',
+      corp: '#4a8ab5', exec: '#6ec1e4', solo: '#e04848',
+      tech: '#2ecc71', medtech: '#1abc9c', media: '#b87aff',
+      nomad: '#d4844a', lawman: '#6b8fa3', rocker: '#e05cb5',
+      ripperdoc: '#e06888', gang: '#cc4444', government: '#5a7fa5', ai: '#ff44cc',
+    };
+
+    const groups = new Map(); // ownerId → group
+    let anyFound = false;
+
+    try {
+      for (const journal of game.journal ?? []) {
+        const inbox = MessageRepository.identifyInbox(journal);
+        if (!inbox) continue;
+        const isContactInbox = inbox.isContact;
+        const ownerId = inbox.ownerId;
+
+        // ── Resolve owner; skip player-owned inboxes ──
+        const ownerActor = isContactInbox ? null : game.actors?.get(ownerId);
+        if (ownerActor?.hasPlayerOwner) continue;
+
+        const contact = isContactInbox
+          ? this.masterContactService?.getContact(ownerId)
+          : null;
+        // Contact-inbox owner that resolves to a player actor — skip.
+        if (contact?.actorId && game.actors?.get(contact.actorId)?.hasPlayerOwner) continue;
+
+        for (const page of journal.pages ?? []) {
+          const flags = page.flags?.['cyberpunkred-messenger'];
+          if (!flags) continue;
+
+          const msgId = flags.messageId || page.id;
+          if (msgId.endsWith('-sent')) continue;        // skip outbox copies
+          if (flags.status?.deleted) continue;           // skip trashed
+
+          // ── Sender must be a player-owned character ──
+          const fromActorId = flags.fromActorId || '';
+          const fromActor = fromActorId ? game.actors?.get(fromActorId) : null;
+          if (!fromActor?.hasPlayerOwner) continue;
+
+          anyFound = true;
+
+          const isRead = flags.status?.read ?? false;
+          const timestamp = flags.timestamp || '';
+          const rawTimestamp = timestamp ? new Date(timestamp).getTime() : 0;
+
+          let bodyPreview = (flags.body || page.text?.content || '').replace(/<[^>]+>/g, '');
+          if (bodyPreview.length > 160) bodyPreview = bodyPreview.slice(0, 160) + '...';
+
+          // ── Lazily create the NPC group ──
+          let group = groups.get(ownerId);
+          if (!group) {
+            const npcName = ownerActor?.name || contact?.name || flags.recipientName || flags.to || 'NPC';
+            const portrait = ownerActor?.img && !ownerActor.img.includes('mystery-man')
+              ? ownerActor.img
+              : (contact?.portrait || null);
+            const roleLower = (contact?.role || '').toLowerCase();
+            group = {
+              npcId: ownerId,
+              npcName,
+              initial: (npcName || '?').charAt(0).toUpperCase(),
+              color: roleColors[roleLower] || '#F65261',
+              portrait,
+              role: contact?.role || '',
+              email: contact?.email || (ownerActor ? ownerActor.getFlag(MODULE_ID, 'email') : '') || '',
+              isContact: isContactInbox,
+              unreadCount: 0,
+              totalCount: 0,
+              latestRaw: 0,
+              messages: [],
+            };
+            groups.set(ownerId, group);
+          }
+
+          group.totalCount++;
+          if (!isRead) group.unreadCount++;
+          if (rawTimestamp > group.latestRaw) group.latestRaw = rawTimestamp;
+
+          group.messages.push({
+            messageId: msgId,
+            inboxOwnerId: ownerId,
+            senderName: fromActor.name || flags.senderName || flags.from || 'Unknown',
+            senderActorId: fromActorId,
+            subject: flags.subject || page.name || '(no subject)',
+            bodyPreview,
+            unread: !isRead,
+            rawTimestamp,
+            relativeTime: this.app._relativeTime(timestamp),
+            shortDate: timestamp ? formatCyberDate(timestamp, { dateOnly: true }) : '',
+          });
+        }
+      }
+    } catch (error) {
+      console.error(`${MODULE_ID} | MessagesTab._gatherNpcInbox:`, error);
+    }
+
+    // ── Apply unread-only filter ──
+    let groupList = [...groups.values()];
+    if (this._npcInboxUnreadOnly) {
+      groupList = groupList
+        .filter(g => g.unreadCount > 0)
+        .map(g => ({ ...g, messages: g.messages.filter(m => m.unread) }));
+    }
+
+    // ── Sort messages newest-first within each group ──
+    for (const g of groupList) {
+      g.messages.sort((a, b) => b.rawTimestamp - a.rawTimestamp);
+      g.latestRel = g.messages[0]?.relativeTime || '';
+      g.expanded = this._npcInboxExpanded.has(g.npcId);
+    }
+
+    // ── Sort groups ──
+    if (this._npcInboxSort === 'name') {
+      groupList.sort((a, b) => a.npcName.localeCompare(b.npcName));
+    } else {
+      groupList.sort((a, b) => b.latestRaw - a.latestRaw);
+    }
+
+    const totalUnread = groupList.reduce((sum, g) => sum + g.unreadCount, 0);
+
+    return {
+      npcInboxGroups: groupList,
+      npcInboxNpcCount: groupList.length,
+      npcInboxTotalUnread: totalUnread,
+      npcInboxHasAny: anyFound,
+      npcInboxUnreadOnly: this._npcInboxUnreadOnly,
+      npcInboxSort: this._npcInboxSort,
+    };
+  }
+
   _gatherInboxDropdownEntries() {
     const entries = [];
     const seenIds = new Set();
@@ -530,13 +703,12 @@ export class MessagesTab extends BaseTab {
     const entries = [];
 
     try {
-      // Scan all NCM inbox journals
+      // Scan all NCM inbox journals (flag-based identity, legacy-name fallback)
       for (const journal of game.journal ?? []) {
-        if (!journal.name?.startsWith('NCM-Inbox-')) continue;
-        const isContactInbox = journal.name.startsWith('NCM-Inbox-Contact-');
-        const ownerId = isContactInbox
-          ? journal.name.replace('NCM-Inbox-Contact-', '')
-          : journal.name.replace('NCM-Inbox-', '');
+        const inbox = MessageRepository.identifyInbox(journal);
+        if (!inbox) continue;
+        const isContactInbox = inbox.isContact;
+        const ownerId = inbox.ownerId;
 
         for (const page of journal.pages ?? []) {
           const flags = page.flags?.['cyberpunkred-messenger'];
@@ -930,17 +1102,86 @@ export class MessagesTab extends BaseTab {
     this.render(true);
   }
 
+  // ── NPC Inbox triage handlers ──
+
+  onToggleNpcInbox(event, target) {
+    const npcId = target.closest('[data-npc-id]')?.dataset.npcId;
+    if (!npcId) return;
+    if (this._npcInboxExpanded.has(npcId)) this._npcInboxExpanded.delete(npcId);
+    else this._npcInboxExpanded.add(npcId);
+    this.app._saveScroll();
+    this.render(true);
+  }
+
+  onNpcInboxFilter(event, target) {
+    const mode = target.dataset.mode || target.closest('[data-mode]')?.dataset.mode || 'unread';
+    this._npcInboxUnreadOnly = (mode === 'unread');
+    this.app._saveScroll();
+    this.render(true);
+  }
+
+  /**
+   * Reply to a player as the NPC whose inbox the message landed in.
+   * Resolves the original message and opens the composer pre-addressed to the
+   * sender, sending as the NPC (actor or contact-only).
+   */
+  async onNpcInboxReply(event, target) {
+    event.preventDefault();
+    event.stopPropagation();
+    const ownerId = target.closest('[data-inbox-owner]')?.dataset.inboxOwner;
+    const messageId = target.closest('[data-message-id]')?.dataset.messageId;
+    if (!ownerId || !messageId) return;
+
+    const original = await this.messageService?.getMessage(ownerId, messageId);
+    if (!original) {
+      ui.notifications.warn('NCM | Message not found.');
+      return;
+    }
+
+    const opts = {
+      mode: 'reply',
+      originalMessage: original,
+      subject: original.subject?.startsWith('RE: ')
+        ? original.subject
+        : `RE: ${original.subject || '(no subject)'}`,
+      threadId: original.threadId,
+      inReplyTo: original.messageId,
+      // Recipient = the player who sent the original
+      toActorId: original.fromActorId || null,
+      toContactId: original.fromContactId || null,
+      to: original.from || null,
+    };
+
+    // Sender = the NPC (actor-backed or contact-only)
+    const actor = game.actors?.get(ownerId);
+    if (actor) {
+      opts.fromActorId = ownerId;
+    } else {
+      const contact = this.masterContactService?.getContact(ownerId);
+      if (contact?.actorId) {
+        opts.fromActorId = contact.actorId;
+      } else if (contact) {
+        opts.fromContact = {
+          id: contact.id,
+          name: contact.name,
+          email: contact.email,
+          portrait: contact.portrait || null,
+        };
+      }
+    }
+
+    game.nightcity?.openComposer?.(opts);
+  }
+
   onOpenViewInboxDialog(event, target) {
     const entries = this._gatherInboxDropdownEntries();
 
     // Count messages per inbox
     const inboxCounts = new Map();
     for (const journal of game.journal ?? []) {
-      if (!journal.name?.startsWith('NCM-Inbox-')) continue;
-      const isContact = journal.name.startsWith('NCM-Inbox-Contact-');
-      const ownerId = isContact
-        ? journal.name.replace('NCM-Inbox-Contact-', '')
-        : journal.name.replace('NCM-Inbox-', '');
+      const inbox = MessageRepository.identifyInbox(journal);
+      if (!inbox) continue;
+      const ownerId = inbox.ownerId;
       let total = 0;
       let unread = 0;
       for (const page of journal.pages ?? []) {
@@ -1254,7 +1495,7 @@ export class MessagesTab extends BaseTab {
     // Find the journal page for this message
     let foundPage = null;
     for (const journal of game.journal ?? []) {
-      if (!journal.name?.startsWith('NCM-Inbox-')) continue;
+      if (!MessageRepository.identifyInbox(journal)) continue;
       for (const page of journal.pages ?? []) {
         const flags = page.flags?.['cyberpunkred-messenger'];
         if (flags?.messageId === messageId) {
@@ -1361,7 +1602,7 @@ export class MessagesTab extends BaseTab {
       }
 
       for (const msg of unread) {
-        await this.messageRepository?.markRead(actorId, msg.messageId || msg.id);
+        await this.messageRepository?.markAsRead(actorId, msg.messageId || msg.id);
       }
       ui.notifications.info(`NCM | Marked ${unread.length} message${unread.length !== 1 ? 's' : ''} as read.`);
       this.render(true);
@@ -1491,7 +1732,7 @@ export class MessagesTab extends BaseTab {
       } else {
         // Fallback: scan all inboxes for this message
         for (const journal of game.journal ?? []) {
-          if (!journal.name?.startsWith('NCM-Inbox-')) continue;
+          if (!MessageRepository.identifyInbox(journal)) continue;
           const page = journal.pages?.find(p => {
             const flags = p.flags?.['cyberpunkred-messenger'];
             return flags?.messageId === messageId;

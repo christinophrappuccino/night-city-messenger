@@ -531,15 +531,13 @@ export function registerMessagingSystem(initializer) {
   initializer.register('ready', 114, 'Messaging event wiring', () => {
     const { eventBus, notificationService, soundService } = game.nightcity;
 
-    // When a message is received, show notification and update badge
+    // When a message is received, show notification and update badge.
+    // The toast + receive sound (with per-message dedup) live in
+    // showMessageNotification so socket + document-sync don't double-fire.
     eventBus.on(EVENTS.MESSAGE_RECEIVED, (data) => {
       if (notificationService) {
         notificationService.showMessageNotification(data);
         notificationService.refreshBadge();
-      }
-      if (soundService) {
-        const soundKey = data.priority === 'critical' ? 'receive-urgent' : 'receive';
-        soundService.play(soundKey);
       }
     });
 
@@ -632,6 +630,33 @@ export function registerMessagingSystem(initializer) {
         log.warn('Failed to flush message queue:', error.message);
       }
     }
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  //  POST-READY PHASE — Priority 24: Self-destruct reaper (GM only)
+  //  Periodically erases TIMED self-destruct messages whose expiry has
+  //  passed, even if the recipient never opened them. after_read messages
+  //  are consumed by the recipient's viewer, not here.
+  // ═══════════════════════════════════════════════════════════════
+
+  initializer.register('postReady', 24, 'Self-destruct reaper', () => {
+    if (!isGM()) return;
+    const { messageService } = game.nightcity;
+    if (!messageService) return;
+
+    // Initial sweep on load (catches anything expired while the GM was away).
+    messageService.reapSelfDestruct().catch(err =>
+      log.warn('Self-destruct reaper (initial) failed:', err?.message ?? err));
+
+    // Recurring sweep. 60s granularity is plenty for self-destruct timing and
+    // catches game-time advances (world-time / manual modes) within a minute.
+    if (messageService._reaperInterval) clearInterval(messageService._reaperInterval);
+    messageService._reaperInterval = setInterval(() => {
+      messageService.reapSelfDestruct().catch(err =>
+        log.warn('Self-destruct reaper failed:', err?.message ?? err));
+    }, 60000);
+
+    log.info('Self-destruct reaper started (60s interval)');
   });
 
   // ═══════════════════════════════════════════════════════════════

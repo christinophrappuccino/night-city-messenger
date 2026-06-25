@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>NCM — Responsive Message Viewer Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ncm-primary:#F65261; --ncm-secondary:#19f3f7; --ncm-accent:#f7c948;
+    --ncm-success:#00ff41; --ncm-danger:#ff0033;
+    --ncm-bg-deep:#0a0a0f; --ncm-bg-base:#12121a; --ncm-bg-surface:#1a1a2e; --ncm-bg-elevated:#252540;
+    --ncm-text-primary:#ededf0; --ncm-text-secondary:#bdbdd0; --ncm-text-muted:#8e8ea8;
+    --ncm-border:#2a2a45; --ncm-border-active:#3a3a5a;
+    --ncm-font-display:'Rajdhani',sans-serif; --ncm-font-mono:'Share Tech Mono',monospace; --ncm-font-title:'Orbitron',sans-serif;
+    --accent:var(--ncm-secondary); --accent-rgb:25,243,247; --loc:#f7c948;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;padding:28px;background:#07070b;color:var(--ncm-text-primary);font-family:var(--ncm-font-display);
+    background-image:radial-gradient(circle at 15% -10%,rgba(25,243,247,0.05),transparent 40%),radial-gradient(circle at 90% 0,rgba(246,82,97,0.05),transparent 45%);}
+  h1{font-family:var(--ncm-font-title);font-size:20px;margin:0 0 4px;}
+  .sub{color:var(--ncm-text-muted);font-size:13.5px;max-width:780px;line-height:1.5;margin:0 0 18px;}
+
+  .controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--ncm-bg-surface);border:1px solid var(--ncm-border);
+    border-radius:6px;padding:10px 14px;margin-bottom:8px;}
+  .controls span.lbl{font-family:var(--ncm-font-title);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ncm-text-muted);}
+  .ctl{cursor:pointer;border:1px solid var(--ncm-border);background:var(--ncm-bg-base);color:var(--ncm-text-secondary);
+    font-family:var(--ncm-font-display);font-weight:700;font-size:12px;padding:6px 12px;border-radius:4px;}
+  .ctl:hover{border-color:var(--ncm-border-active);}
+  .ctl[data-on="1"]{border-color:var(--accent);color:var(--accent);}
+  .readout{margin-left:auto;font-family:var(--ncm-font-mono);font-size:12px;color:var(--accent);}
+  .readout b{color:var(--ncm-text-primary);}
+  .hint{font-family:var(--ncm-font-mono);font-size:11px;color:var(--ncm-text-muted);margin:0 2px 16px;}
+
+  /* Resizable frame — drag bottom-right corner, or use presets */
+  .frame{width:880px;min-width:300px;max-width:1100px;height:560px;resize:horizontal;overflow:hidden;
+    border:1px solid var(--ncm-border);border-radius:6px;}
+
+  /* ════════ VIEWER (container) ════════ */
+  .viewer{container-type:inline-size;width:100%;height:100%;display:flex;flex-direction:column;
+    background:var(--ncm-bg-base);overflow:hidden;}
+
+  /* Header */
+  .vh{display:flex;align-items:center;gap:12px;padding:8px 14px;background:var(--ncm-bg-deep);border-bottom:1px solid var(--ncm-border);flex-shrink:0;}
+  .id{display:flex;align-items:center;gap:8px;flex-shrink:0;min-width:0;}
+  .av{width:34px;height:34px;border-radius:50%;border:2px solid rgba(25,243,247,.25);display:flex;align-items:center;justify-content:center;
+    font-weight:700;font-size:13px;color:var(--ncm-secondary);background:var(--ncm-bg-surface);flex-shrink:0;}
+  .id-info{display:flex;flex-direction:column;gap:1px;min-width:0;}
+  .id-nm{font-weight:700;font-size:14px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .id-em{font-family:var(--ncm-font-mono);font-size:10px;color:var(--ncm-secondary);opacity:.5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .vdiv{width:1px;height:24px;background:var(--ncm-border);flex-shrink:0;}
+  .pill{display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:4px;border:1px solid rgba(0,212,230,.3);
+    background:rgba(0,212,230,.06);color:var(--ncm-secondary);flex-shrink:0;}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--ncm-secondary);box-shadow:0 0 6px rgba(0,212,230,.5);}
+  .pname{font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.04em;}
+  .bars{display:flex;align-items:flex-end;gap:1.5px;height:11px;}
+  .bar{width:3px;border-radius:1px;background:currentColor;opacity:.8;}
+  .bar:nth-child(1){height:3px;}.bar:nth-child(2){height:6px;}.bar:nth-child(3){height:9px;}.bar:nth-child(4){height:11px;opacity:.2;}
+  .pct{font-family:var(--ncm-font-mono);font-size:10px;opacity:.8;}
+  .hud{display:inline-flex;align-items:stretch;border:1px solid var(--ncm-border);border-radius:4px;background:var(--ncm-bg-base);flex-shrink:0;}
+  .seg{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;}
+  .seg-t{color:var(--accent);background:rgba(var(--accent-rgb),.08);}
+  .seg-t .val{font-family:var(--ncm-font-mono);font-size:15px;line-height:1;text-shadow:0 0 5px currentColor;}
+  .seg-d{width:1px;background:var(--ncm-border);}
+  .seg-l{color:var(--loc);}
+  .seg-l .val{font-family:var(--ncm-font-mono);font-size:11px;}
+  .ic{width:1em;height:1em;display:block;}
+  .spacer{flex:1;}
+  .acts{display:flex;gap:5px;flex-shrink:0;}
+  .btn{display:inline-flex;align-items:center;gap:5px;font-family:var(--ncm-font-display);font-weight:700;font-size:11px;
+    padding:5px 9px;border-radius:4px;border:1px solid var(--ncm-border);cursor:pointer;white-space:nowrap;}
+  .btn--sec{color:var(--ncm-secondary);border-color:rgba(25,243,247,.3);background:rgba(25,243,247,.06);}
+  .btn--pri{color:#07070b;border-color:var(--ncm-primary);background:var(--ncm-primary);}
+  .btn--ghost{color:var(--ncm-text-muted);}
+  .btn .ic{width:13px;height:13px;}
+
+  /* Tabs */
+  .tabs{display:flex;align-items:center;gap:2px;padding:0 12px;background:var(--ncm-bg-deep);border-bottom:1px solid var(--ncm-border);flex-shrink:0;}
+  .tab{padding:8px 12px;font-family:var(--ncm-font-title);font-size:11px;letter-spacing:.04em;color:var(--ncm-text-muted);cursor:pointer;
+    border-bottom:2px solid transparent;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;}
+  .tab .ic{width:12px;height:12px;}
+  .tab--on{color:var(--accent);border-bottom-color:var(--accent);}
+
+  /* Toolbar */
+  .tb{display:flex;align-items:center;gap:6px;padding:7px 12px;border-bottom:1px solid var(--ncm-border);flex-shrink:0;}
+  .search{display:flex;align-items:center;gap:6px;border:1px solid var(--ncm-border);border-radius:3px;padding:4px 8px;color:var(--ncm-text-muted);min-width:120px;flex:0 1 200px;}
+  .search input{background:none;border:none;outline:none;color:var(--ncm-text-secondary);font-family:var(--ncm-font-display);font-size:12px;width:100%;}
+  .chips{display:flex;gap:5px;flex-wrap:nowrap;overflow:hidden;}
+  .chip{font-family:var(--ncm-font-display);font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:.04em;
+    padding:4px 9px;border:1px solid var(--ncm-border);border-radius:3px;color:var(--ncm-text-muted);white-space:nowrap;cursor:pointer;}
+  .chip--on{color:var(--accent);border-color:rgba(var(--accent-rgb),.4);background:rgba(var(--accent-rgb),.08);}
+  .ovf{display:none;}  /* overflow "more" button — shown at narrow widths */
+
+  /* Split */
+  .split{flex:1;display:flex;overflow:hidden;min-height:0;}
+  .listp{width:300px;flex-shrink:0;border-right:1px solid var(--ncm-border);background:var(--ncm-bg-deep);display:flex;flex-direction:column;overflow-y:auto;}
+  .row{display:flex;align-items:flex-start;gap:9px;padding:9px 12px;border-bottom:1px solid rgba(42,42,69,.4);cursor:pointer;}
+  .row:hover{background:var(--ncm-bg-surface);}
+  .row--on{background:rgba(var(--accent-rgb),.06);box-shadow:inset 2px 0 0 var(--accent);}
+  .rdot{width:7px;height:7px;border-radius:50%;background:var(--accent);margin-top:4px;flex-shrink:0;}
+  .rdot--read{background:var(--ncm-text-muted);opacity:.4;}
+  .rbody{flex:1;min-width:0;}
+  .rtop{display:flex;justify-content:space-between;gap:8px;}
+  .rfrom{font-weight:700;font-size:12.5px;color:var(--ncm-text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .rtime{font-family:var(--ncm-font-mono);font-size:9px;color:var(--ncm-text-muted);flex-shrink:0;}
+  .rsubj{font-size:12px;color:var(--ncm-text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;}
+  .rprev{font-size:11px;color:var(--ncm-text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;}
+  .detailp{flex:1;display:flex;flex-direction:column;background:var(--ncm-bg-base);overflow:hidden;min-width:0;}
+  .dhead{padding:14px 18px;border-bottom:1px solid var(--ncm-border);display:flex;align-items:center;gap:10px;}
+  .back{display:none;align-items:center;justify-content:center;width:28px;height:28px;border:1px solid var(--ncm-border);border-radius:4px;
+    color:var(--ncm-secondary);cursor:pointer;flex-shrink:0;}
+  .dhead-info{min-width:0;}
+  .dsubj{font-family:var(--ncm-font-display);font-weight:700;font-size:16px;color:var(--ncm-text-primary);}
+  .dmeta{font-family:var(--ncm-font-mono);font-size:11px;color:var(--ncm-secondary);opacity:.7;margin-top:2px;}
+  .dbody{padding:16px 18px;font-size:13.5px;line-height:1.6;color:var(--ncm-text-secondary);overflow-y:auto;}
+  .foot{padding:6px 12px;border-top:1px solid var(--ncm-border);font-family:var(--ncm-font-mono);font-size:10px;color:var(--ncm-text-muted);flex-shrink:0;}
+
+  /* ════════ MEDIUM (≤ 720px container) — condense chrome ════════ */
+  @container (max-width:720px){
+    .btn span{display:none;}                 /* icon-only buttons */
+    .btn{padding:6px 8px;}
+    .seg-l{display:none;}                     /* drop location; keep the clock */
+    .id-info{display:none;}                   /* avatar only */
+    .listp{width:240px;}
+    .chip:nth-child(n+4){display:none;}       /* collapse extra filter pills … */
+    .ovf{display:inline-flex;}               /* … into a "more" button */
+    .dsubj{font-size:15px;}
+  }
+
+  /* ════════ NARROW (≤ 520px container) — single column ════════ */
+  @container (max-width:520px){
+    .vh{flex-wrap:wrap;gap:8px;row-gap:6px;}
+    .hud{order:5;}                            /* HUD drops to a second header line */
+    .spacer{display:none;}
+    .acts{margin-left:auto;}
+    .pname{display:none;}                     /* network pill → dot + % only */
+    .tab span{display:none;}                  /* tabs → icons only */
+    .tab{padding:8px;}
+    /* one pane at a time */
+    .listp{width:100%;border-right:none;}
+    .viewer[data-pane="list"] .detailp{display:none;}
+    .viewer[data-pane="detail"] .listp{display:none;}
+    .viewer[data-pane="detail"] .back{display:inline-flex;}
+    /* denser list rows */
+    .row{padding:7px 12px;}
+    .rprev{display:none;}
+  }
+</style>
+</head>
+<body>
+  <h1>Night City Messenger — Responsive Viewer (Full)</h1>
+  <p class="sub">Drag the <b>bottom-right corner</b> of the frame to resize, or use the presets. Container queries reflow the viewer by its own width
+  (not the screen) — exactly how it'll behave inside a resizable Foundry window. At narrow width it switches to a single column: tap a message to open it, Back to return.</p>
+
+  <div class="controls">
+    <span class="lbl">Width</span>
+    <button class="ctl" data-w="880" data-on="1" onclick="setW(880,this)">Wide 880</button>
+    <button class="ctl" data-w="640" onclick="setW(640,this)">Medium 640</button>
+    <button class="ctl" data-w="430" onclick="setW(430,this)">Narrow 430</button>
+    <span class="lbl" style="margin-left:12px;">Accent</span>
+    <button class="ctl" onclick="setAccent('cyan',this)" data-on="1">Cyan</button>
+    <button class="ctl" onclick="setAccent('gold',this)">Gold</button>
+    <button class="ctl" onclick="setAccent('crimson',this)">Crimson</button>
+    <span class="readout">VIEWER: <b id="wpx">880</b>px · <b id="bp">WIDE</b></span>
+  </div>
+  <p class="hint">↘ grab the resize handle at the frame's bottom-right corner</p>
+
+  <div class="frame" id="frame">
+    <div class="viewer" id="viewer" data-pane="list">
+
+      <!-- Header -->
+      <div class="vh">
+        <div class="id">
+          <div class="av">V</div>
+          <div class="id-info"><span class="id-nm">V</span><span class="id-em">v.solo@nightcity.net</span></div>
+        </div>
+        <div class="vdiv"></div>
+        <div class="pill"><span class="dot"></span><span class="pname">CITINET</span>
+          <span class="bars"><i class="bar"></i><i class="bar"></i><i class="bar"></i><i class="bar"></i></span><span class="pct">78%</span></div>
+        <div class="hud">
+          <span class="seg seg-t"><svg class="ic" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.4" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 4.4V8l2.6 1.6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg><span class="val">22:14</span></span>
+          <span class="seg-d"></span>
+          <span class="seg seg-l"><svg class="ic" viewBox="0 0 16 16"><path d="M8 1.6c-2.5 0-4.4 1.9-4.4 4.4 0 3.1 4.4 8 4.4 8s4.4-4.9 4.4-8c0-2.5-1.9-4.4-4.4-4.4z" fill="none" stroke="currentColor" stroke-width="1.3"/><circle cx="8" cy="5.9" r="1.6" fill="currentColor"/></svg><span class="val">Watson</span></span>
+        </div>
+        <div class="spacer"></div>
+        <div class="acts">
+          <button class="btn btn--sec"><svg class="ic" viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="10" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M2.5 4l5.5 4 5.5-4" fill="none" stroke="currentColor" stroke-width="1.3"/></svg><span>Contacts</span></button>
+          <button class="btn btn--pri"><svg class="ic" viewBox="0 0 16 16"><path d="M11 2.5l2.5 2.5L6 12.5 3 13l.5-3z" fill="none" stroke="currentColor" stroke-width="1.3"/></svg><span>Compose</span></button>
+          <button class="btn btn--ghost"><svg class="ic" viewBox="0 0 16 16"><circle cx="8" cy="8" r="2.2" fill="none" stroke="currentColor" stroke-width="1.3"/><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.3" stroke-dasharray="1.5 2"/></svg></button>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="tabs">
+        <span class="tab tab--on"><svg class="ic" viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="10" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.3"/></svg><span>Inbox</span></span>
+        <span class="tab"><svg class="ic" viewBox="0 0 16 16"><path d="M2 8l12-5-5 12-2-5z" fill="none" stroke="currentColor" stroke-width="1.3"/></svg><span>Sent</span></span>
+        <span class="tab"><svg class="ic" viewBox="0 0 16 16"><path d="M3 5h10v8H3z" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M3 5l5 4 5-4" fill="none" stroke="currentColor" stroke-width="1.3"/></svg><span>Spam</span></span>
+        <span class="tab"><svg class="ic" viewBox="0 0 16 16"><path d="M4 5h8l-1 8H5z" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M6 5V3h4v2" fill="none" stroke="currentColor" stroke-width="1.3"/></svg><span>Trash</span></span>
+      </div>
+
+      <!-- Toolbar -->
+      <div class="tb">
+        <div class="search"><svg class="ic" viewBox="0 0 16 16" style="width:12px;height:12px;"><circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M10.5 10.5l3 3" stroke="currentColor" stroke-width="1.3"/></svg><input placeholder="Search messages…"></div>
+        <div class="chips">
+          <span class="chip chip--on">All</span>
+          <span class="chip">Unread</span>
+          <span class="chip">Priority</span>
+          <span class="chip">Eddies</span>
+          <span class="chip">Encrypted</span>
+        </div>
+        <button class="chip ovf">•••</button>
+      </div>
+
+      <!-- Split -->
+      <div class="split">
+        <div class="listp" id="listp">
+          <div class="row row--on" onclick="openMsg(this,'Jackie Welles','jackie@nightcity.net','Meet at El Coyote — got a gig','Choom, Wakako lined something up. Big money, low heat. Bring the Arasaka tech and meet me at El Coyote Cojo, back booth, 22:00. Don\'t be late.')">
+            <span class="rdot"></span><div class="rbody"><div class="rtop"><span class="rfrom">Jackie Welles</span><span class="rtime">22:14</span></div><div class="rsubj">Meet at El Coyote — got a gig</div><div class="rprev">Choom, Wakako lined something up. Big money…</div></div>
+          </div>
+          <div class="row" onclick="openMsg(this,'Wakako Okada','wakako@nightcity.net','New opportunity. Discrete.','I have a job that requires your particular talents. Discretion is paramount. Details on a secure shard — claim it when you arrive.')">
+            <span class="rdot rdot--read"></span><div class="rbody"><div class="rtop"><span class="rfrom">Wakako Okada</span><span class="rtime">12:10</span></div><div class="rsubj">New opportunity. Discrete.</div><div class="rprev">I have a job that requires your particular…</div></div>
+          </div>
+          <div class="row" onclick="openMsg(this,'T-Bug','tbug@nightcity.net','Backdoor ready. Ping when close.','The ICE is mapped and the backdoor is live. You\'ve got a 90-second window once you\'re in. Ping me when you\'re close and I\'ll drop the daemon.')">
+            <span class="rdot rdot--read"></span><div class="rbody"><div class="rtop"><span class="rfrom">T-Bug</span><span class="rtime">09:44</span></div><div class="rsubj">Backdoor ready. Ping when close.</div><div class="rprev">The ICE is mapped and the backdoor is live…</div></div>
+          </div>
+          <div class="row" onclick="openMsg(this,'NCPD Alert','noreply@ncpd.gov','Curfew notice — Watson District','A district-wide curfew is in effect from 02:00 to 05:00. Maelstrom activity reported near the Totentanz. Avoid the area.')">
+            <span class="rdot rdot--read"></span><div class="rbody"><div class="rtop"><span class="rfrom">NCPD Alert</span><span class="rtime">08:02</span></div><div class="rsubj">Curfew notice — Watson District</div><div class="rprev">A district-wide curfew is in effect…</div></div>
+          </div>
+        </div>
+
+        <div class="detailp" id="detailp">
+          <div class="dhead">
+            <button class="back" onclick="showList()"><svg class="ic" viewBox="0 0 16 16" style="width:14px;height:14px;"><path d="M10 3L5 8l5 5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></button>
+            <div class="dhead-info"><div class="dsubj" id="dsubj">Meet at El Coyote — got a gig</div><div class="dmeta" id="dmeta">Jackie Welles · jackie@nightcity.net</div></div>
+          </div>
+          <div class="dbody" id="dbody">Choom, Wakako lined something up. Big money, low heat. Bring the Arasaka tech and meet me at El Coyote Cojo, back booth, 22:00. Don't be late.</div>
+        </div>
+      </div>
+
+      <div class="foot">4 messages · 1 unread · CITINET // 78% signal</div>
+    </div>
+  </div>
+
+<script>
+  const frame=document.getElementById('frame'), viewer=document.getElementById('viewer');
+  const wpx=document.getElementById('wpx'), bpEl=document.getElementById('bp');
+
+  function setW(w,btn){frame.style.width=w+'px';document.querySelectorAll('.ctl[data-w]').forEach(b=>b.removeAttribute('data-on'));btn.setAttribute('data-on','1');}
+
+  function openMsg(row,from,email,subj,body){
+    document.querySelectorAll('.row').forEach(r=>r.classList.remove('row--on'));
+    row.classList.add('row--on');
+    document.getElementById('dsubj').textContent=subj;
+    document.getElementById('dmeta').textContent=from+' · '+email;
+    document.getElementById('dbody').textContent=body;
+    viewer.dataset.pane='detail';   /* only matters at narrow width */
+  }
+  function showList(){viewer.dataset.pane='list';}
+
+  const ACC={cyan:['#19f3f7','25,243,247'],gold:['#f7c948','247,201,72'],crimson:['#F65261','246,82,97']};
+  function setAccent(n,btn){const[h,r]=ACC[n];document.documentElement.style.setProperty('--accent',h);document.documentElement.style.setProperty('--accent-rgb',r);
+    document.querySelectorAll('.controls .ctl:not([data-w])').forEach(b=>{if(b.textContent.match(/Cyan|Gold|Crimson/))b.removeAttribute('data-on');});btn.setAttribute('data-on','1');}
+
+  const ro=new ResizeObserver(()=>{const w=Math.round(viewer.clientWidth);wpx.textContent=w;
+    bpEl.textContent=w<=520?'NARROW':(w<=720?'MEDIUM':'WIDE');});
+  ro.observe(viewer);
+</script>
+</body>
+</html>

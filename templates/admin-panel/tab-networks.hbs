@@ -236,6 +236,48 @@
       <div class="ncm-war-section__line"></div>
     </div>
 
+    {{!-- Scene list controls — search / sort / hide-imported / pagination --}}
+    <div class="ncm-scene-ctl">
+      <div class="ncm-scene-ctl__search-wrap">
+        <i class="fas fa-search ncm-scene-ctl__search-icon"></i>
+        <input type="text" class="ncm-scene-ctl__search" placeholder="Search scenes..."
+               value="{{sceneControls.search}}" autocomplete="off" />
+      </div>
+      <label class="ncm-scene-ctl__sort-wrap">
+        <span class="ncm-scene-ctl__sort-label">Sort</span>
+        <select class="ncm-scene-ctl__sort">
+          {{#each sceneControls.sortOptions}}
+          <option value="{{this.value}}" {{#if this.selected}}selected{{/if}}>{{this.label}}</option>
+          {{/each}}
+        </select>
+      </label>
+
+      {{#if sceneControls.canHide}}
+      <button class="ncm-scene-ctl__hide {{#if sceneControls.hideImported}}ncm-scene-ctl__hide--on{{/if}}"
+              data-action="toggleSceneHideImported"
+              data-tooltip="Hide compendium-imported scenes that have no NCM network config">
+        <i class="fas {{#if sceneControls.hideImported}}fa-eye-slash{{else}}fa-eye{{/if}}"></i>
+        Hide imported{{#if sceneControls.hiddenCount}} ({{sceneControls.hiddenCount}}){{/if}}
+      </button>
+      {{/if}}
+
+      <div class="ncm-scene-ctl__spacer"></div>
+
+      {{#if sceneControls.showPagination}}
+      <div class="ncm-scene-ctl__pager">
+        <button class="ncm-scene-ctl__pg-btn" data-action="scenePagePrev" {{#unless sceneControls.hasPrev}}disabled{{/unless}}>
+          <i class="fas fa-chevron-left"></i>
+        </button>
+        <span class="ncm-scene-ctl__pg-info">{{sceneControls.rangeStart}}–{{sceneControls.rangeEnd}} of {{sceneControls.total}}</span>
+        <button class="ncm-scene-ctl__pg-btn" data-action="scenePageNext" {{#unless sceneControls.hasNext}}disabled{{/unless}}>
+          <i class="fas fa-chevron-right"></i>
+        </button>
+      </div>
+      {{else}}
+      <span class="ncm-scene-ctl__pg-info">{{sceneControls.total}} scene{{#unless (eq sceneControls.total 1)}}s{{/unless}}</span>
+      {{/if}}
+    </div>
+
     <div class="ncm-scene-list">
       {{#each sceneStrip}}
       <div class="ncm-scene-row {{#if this.isCurrent}}ncm-scene-row--active{{/if}} {{#if this.deadZone}}ncm-scene-row--jammed{{/if}}"
@@ -264,6 +306,11 @@
           <i class="fas fa-ban"></i> Jam
         </button>
         {{/if}}
+      </div>
+      {{else}}
+      <div class="ncm-scene-list__empty">
+        <i class="fas fa-map-location-dot"></i>
+        <span>No scenes match{{#if sceneControls.search}} "{{sceneControls.search}}"{{else if sceneControls.hideImported}} — imported scenes are hidden{{/if}}.</span>
       </div>
       {{/each}}
     </div>
