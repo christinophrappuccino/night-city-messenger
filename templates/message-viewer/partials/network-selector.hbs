@@ -5,14 +5,15 @@
   @description Compact popup for switching networks from the inbox header.
     Mockup reference: ncm-network-dialogs-mockup.html — Section 2.
 
-    Two states:
-      A) Normal — lists available, locked, and unavailable networks
-      B) Dead zone — empty state with queued message count
+    Three states:
+      A) Normal — lists only reachable networks (active / available / locked)
+      B) No networks in range — empty state (scene has none reachable)
+      C) Dead zone — empty state with queued message count
 
     Data contract — supplied by MessageViewerApp._prepareContext():
       isDeadZone           boolean
       selectorNetworks     [{ id, name, type, typeLabel, icon, color,
-                              signalStrength, state: 'active'|'locked'|'unavailable',
+                              signalStrength, state: 'active'|'available'|'locked',
                               requiresAuth, isAuthenticated }]
       currentNetwork       { id, name }
       signalStrength       number (0-100)
@@ -53,7 +54,7 @@
       {{/if}}
     </div>
 
-  {{else}}
+  {{else if selectorNetworks.length}}
     {{!-- ── Network List ── --}}
     <div class="ncm-net-selector__list">
       {{#each selectorNetworks}}
@@ -74,11 +75,7 @@
           <div class="ncm-net-option__info">
             <div class="ncm-net-option__name">{{this.name}}</div>
             <div class="ncm-net-option__type">
-              {{#if (eq this.state 'unavailable')}}
-                Not available in this area
-              {{else}}
-                {{this.typeLabel}} — {{this.signalStrength}}% signal
-              {{/if}}
+              {{this.typeLabel}} — {{this.signalStrength}}% signal
             </div>
           </div>
 
@@ -94,6 +91,13 @@
         </div>
       {{/each}}
     </div>
+  {{else}}
+    {{!-- ── No reachable networks (in range = none; not jammed) ── --}}
+    <div class="ncm-net-selector__deadzone-body">
+      <div class="ncm-net-selector__deadzone-icon"><i class="fas fa-wifi"></i></div>
+      <div class="ncm-net-selector__deadzone-title">No Networks in Range</div>
+      <div class="ncm-net-selector__deadzone-msg">No reachable networks at this location.</div>
+    </div>
   {{/if}}
 
   {{!-- ── Footer: Scene Context ── --}}
@@ -102,7 +106,7 @@
     {{#if isDeadZone}}
       <span class="ncm-net-selector__footer-text--danger">{{currentSceneName}} — DEAD ZONE</span>
     {{else}}
-      {{currentSceneName}} — {{availableCount}} network{{#if (gt availableCount 1)}}s{{/if}} available
+      {{currentSceneName}} — {{availableCount}} network{{#unless (eq availableCount 1)}}s{{/unless}} available
     {{/if}}
   </div>
 

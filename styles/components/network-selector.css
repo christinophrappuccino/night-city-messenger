@@ -167,13 +167,6 @@
   opacity: 0.8;
 }
 
-/* Unavailable network */
-.ncm-app .ncm-net-option--unavailable {
-  opacity: 0.3;
-  pointer-events: none;
-}
-
-
 /* ── Icon Badge ── */
 
 .ncm-app .ncm-net-option__icon {
@@ -188,14 +181,6 @@
   overflow: hidden;
 }
 
-/* Unavailable icon loses color */
-.ncm-app .ncm-net-option--unavailable .ncm-net-option__icon {
-  color: var(--ncm-text-muted, #555570) !important;
-  background: rgba(136, 136, 160, 0.05) !important;
-  border-color: rgba(136, 136, 160, 0.1) !important;
-}
-
-
 /* ── Info ── */
 
 .ncm-app .ncm-net-option__info {
@@ -209,10 +194,6 @@
   font-weight: 700;
   color: var(--ncm-text-primary, #e0e0e8);
   text-transform: uppercase;
-}
-
-.ncm-app .ncm-net-option--unavailable .ncm-net-option__name {
-  color: var(--ncm-text-muted, #555570);
 }
 
 .ncm-app .ncm-net-option__type {

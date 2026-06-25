@@ -38,7 +38,8 @@ import {
   getThreatBadgeData,
 } from '../../utils/designHelpers.js';
 import { EVENTS, SOCKET_OPS } from '../../utils/constants.js';
-import { formatCyberDate } from '../../utils/helpers.js';
+import { getThreadMessages } from '../../utils/threading.js';
+import { formatCyberDate, resolveMediaEmbed } from '../../utils/helpers.js';
 
 const MODULE_ID = 'cyberpunkred-messenger';
 const MESSAGES_PER_PAGE = 25;
@@ -95,7 +96,8 @@ function getPrimaryTab(filter) {
  */
 function computeRelativeTime(isoTimestamp) {
   if (!isoTimestamp) return { relativeTime: '', isRecentMessage: false };
-  const now = Date.now();
+  // Message timestamps are stamped in game time, so compare against game time.
+  const now = game.nightcity?.timeService?.getCurrentTimeMs?.() ?? Date.now();
   const then = new Date(isoTimestamp).getTime();
   const diff = now - then;
   if (diff < 0) return { relativeTime: 'future', isRecentMessage: false };
@@ -148,6 +150,37 @@ export class MessageViewerApp extends BaseApplication {
     },
   };
 
+  /**
+   * Personalized window title — the character's NET handle on their Agent
+   * (the in-fiction device). Falls back to the product brand before a
+   * character is resolved (e.g. transient first frame).
+   * @override
+   */
+  get title() {
+    const actor = this.actorId ? game.actors?.get(this.actorId) : null;
+    if (!actor) return 'Night City Messenger';
+    const email = actor.getFlag(MODULE_ID, 'email') || '';
+    const handle = email ? email.split('@')[0] : actor.name;
+    // Device name is customizable per player in the Theme Customizer.
+    let agentName = 'Agent';
+    try {
+      const n = (game.settings.get(MODULE_ID, 'playerTheme')?.agentName || '').trim();
+      if (n) agentName = n;
+    } catch { /* default */ }
+    return `${handle} // ${agentName}`;
+  }
+
+  /**
+   * Clamp the window to a usable minimum size. The responsive layout degrades to
+   * a single column at narrow widths, but below this it stops being legible.
+   * @override
+   */
+  setPosition(position = {}) {
+    if (typeof position.width === 'number') position.width = Math.max(360, position.width);
+    if (typeof position.height === 'number') position.height = Math.max(400, position.height);
+    return super.setPosition(position);
+  }
+
   // ─────────────── Instance State (per-window, not global) ───────────────
 
   /** @type {string|null} ID of the currently viewing actor */
@@ -155,6 +188,9 @@ export class MessageViewerApp extends BaseApplication {
 
   /** @type {string|null} Currently selected message ID */
   selectedMessageId = null;
+
+  /** @type {boolean} Whether the selected message's full thread transcript is showing */
+  _threadExpanded = false;
 
   /** @type {string} Active category filter */
   currentFilter = 'inbox';
@@ -334,8 +370,11 @@ export class MessageViewerApp extends BaseApplication {
 
   /**
    * Build enriched network list for the selector dropdown.
-   * Each network gets a `state` property: 'active' | 'locked' | 'unavailable'.
-   * Shows ALL known networks so players can see what's unavailable in this scene.
+   * Each network gets a `state` property: 'active' | 'available' | 'locked'.
+   * Shows only networks the character can actually reach — out-of-range and
+   * 0% signal networks are hidden (like real life, you don't see SSIDs you
+   * can't connect to). `locked` (in range, needs auth) stays visible so the
+   * player can still attempt authentication. Dead zones return [].
    * @returns {{ selectorNetworks: object[], availableCount: number }}
    */
   _buildSelectorNetworks() {
@@ -359,8 +398,6 @@ export class MessageViewerApp extends BaseApplication {
       custom: 'Custom Subnet',
     };
 
-    let availableCount = 0;
-
     const selectorNetworks = allNetworks.map(net => {
       const isAvailable = availableIds.has(net.id);
       const isActive = net.id === currentId;
@@ -373,13 +410,10 @@ export class MessageViewerApp extends BaseApplication {
         state = 'unavailable';
       } else if (isActive) {
         state = 'active';
-        availableCount++;
       } else if (requiresAuth && !isAuthenticated && !isGM) {
         state = 'locked';
-        availableCount++;
       } else {
         state = 'available';
-        availableCount++;
       }
 
       return {
@@ -395,13 +429,15 @@ export class MessageViewerApp extends BaseApplication {
         requiresAuth,
         isAuthenticated,
       };
-    });
+    })
+    // Hide out-of-range / 0% signal — only show reachable networks.
+    .filter(net => net.state !== 'unavailable' && net.signalStrength > 0);
 
-    // Sort: active first, then available, then locked, then unavailable
-    const stateOrder = { active: 0, available: 1, locked: 2, unavailable: 3 };
+    // Sort: active first, then available, then locked
+    const stateOrder = { active: 0, available: 1, locked: 2 };
     selectorNetworks.sort((a, b) => (stateOrder[a.state] ?? 9) - (stateOrder[b.state] ?? 9));
 
-    return { selectorNetworks, availableCount };
+    return { selectorNetworks, availableCount: selectorNetworks.length };
   }
 
   _signalToLevel(strength) {
@@ -751,6 +787,16 @@ export class MessageViewerApp extends BaseApplication {
     const html = this.element;
     if (!html) return;
 
+    // Keep the frame title in sync with the active character — the window frame
+    // builds once, but the singleton viewer switches actors, so refresh it here.
+    const titleEl = this.window?.title ?? html.querySelector('.window-title');
+    if (titleEl) titleEl.textContent = this.title;
+
+    // Responsive single-column pane state (only consumed by the narrow container
+    // query): show the detail when a message is open, else the list.
+    const viewerEl = html.querySelector('.ncm-viewer');
+    if (viewerEl) viewerEl.dataset.pane = this.selectedMessageId ? 'detail' : 'list';
+
     // Track current network for change detection
     this._previousNetwork = this._getCurrentNetworkData();
 
@@ -760,6 +806,16 @@ export class MessageViewerApp extends BaseApplication {
       if (listEl) {
         listEl.scrollTop = this._savedScrollTop;
         this._savedScrollTop = null;
+      }
+    }
+
+    // ── Thread transcript — center the message you came from ──
+    if (this._threadExpanded) {
+      const scroller = html.querySelector('.ncm-viewer__thread-scroll');
+      const current = html.querySelector('.ncm-viewer__thread-entry--current');
+      if (scroller && current) {
+        const target = current.offsetTop - (scroller.clientHeight / 2) + (current.clientHeight / 2);
+        scroller.scrollTop = Math.max(0, target);
       }
     }
 
@@ -848,7 +904,7 @@ export class MessageViewerApp extends BaseApplication {
     if (traceEl?.dataset.traceExpires) {
       const expiresAt = traceEl.dataset.traceExpires;
       this._traceTimer = setInterval(async () => {
-        const remaining = new Date(expiresAt).getTime() - Date.now();
+        const remaining = new Date(expiresAt).getTime() - this._nowMs();
         if (remaining <= 0) {
           clearInterval(this._traceTimer);
           this._traceTimer = null;
@@ -1005,15 +1061,38 @@ export class MessageViewerApp extends BaseApplication {
    * Set up self-destruct fill bar width based on remaining time.
    * @param {HTMLElement} html
    */
+  /**
+   * Current time in epoch ms via the configured NCM time provider (real-time,
+   * world-time, manual, disguised, …). Falls back to wall-clock if unavailable.
+   * @returns {number}
+   */
+  _nowMs() {
+    return game.nightcity?.timeService?.getCurrentTimeMs?.() ?? Date.now();
+  }
+
   _setupDestructFill(html) {
+    const msg = this._getSelectedMessage();
+    if (!msg?.selfDestruct || msg.status?.sent) return;
+
+    // GMs never trigger self-destruct — they can audit any inbox without
+    // consuming messages. Timed expiry is handled authoritatively by the
+    // GM-side reaper (MessageService.reapSelfDestruct).
+    if (game.user.isGM) return;
+
+    // Timed self-destruct opened after it already expired (recipient was away):
+    // erase it on open instead of rendering a dead countdown.
+    if (msg.selfDestruct.expiresAt
+        && new Date(msg.selfDestruct.expiresAt).getTime() - this._nowMs() <= 0) {
+      this._playDestructExpiration(msg);
+      return;
+    }
+
     const fillEl = html.querySelector('.ncm-viewer__destruct-bar-fill');
     const timerEl = html.querySelector('.ncm-viewer__destruct-bar-timer');
     const barEl = html.querySelector('.ncm-viewer__destruct-bar');
     const labelEl = html.querySelector('.ncm-viewer__destruct-bar-label');
     if (!fillEl || !timerEl || !barEl) return;
-
-    const msg = this._getSelectedMessage();
-    if (!msg?.selfDestruct?.expiresAt) return;
+    if (!msg.selfDestruct.expiresAt) return;
 
     const expiresAt = new Date(msg.selfDestruct.expiresAt).getTime();
     const totalDuration = msg.selfDestruct.duration || 600000;
@@ -1021,7 +1100,7 @@ export class MessageViewerApp extends BaseApplication {
     let hasExpired = false;
 
     const updateFill = () => {
-      const remaining = expiresAt - Date.now();
+      const remaining = expiresAt - this._nowMs();
 
       if (remaining <= 0 && !hasExpired) {
         hasExpired = true;
@@ -1069,12 +1148,20 @@ export class MessageViewerApp extends BaseApplication {
    * @param {object} msg — The self-destructing message
    */
   async _playDestructExpiration(msg) {
+    // GMs never trigger self-destruct (the reaper handles timed expiry).
+    if (game.user.isGM) return;
+    // Guard against re-entry (re-render can re-invoke _setupDestructFill while
+    // the 3s animation is mid-flight).
+    if (this._destructing) return;
+    this._destructing = true;
+    if (this._destructFillTimer) { clearInterval(this._destructFillTimer); this._destructFillTimer = null; }
+
     const html = this.element;
-    if (!html) return;
+    if (!html) { this._destructing = false; return; }
 
     const detailPanel = html.querySelector('.ncm-viewer__detail-panel');
     const bodyEl = html.querySelector('.ncm-viewer__detail-body');
-    if (!detailPanel) return;
+    if (!detailPanel) { this._destructing = false; return; }
 
     // Add body dissolve
     bodyEl?.classList.add('ncm-viewer__detail-body--destroying');
@@ -1111,15 +1198,40 @@ export class MessageViewerApp extends BaseApplication {
     // Wait for animation, then delete and re-render
     await new Promise(r => setTimeout(r, 3000));
 
-    // Auto-delete the message
+    // Permanently erase — self-destruct means non-recoverable (not just trashed).
     if (msg?.messageId) {
-      await this.messageService?.deleteMessage?.(this.actorId, msg.messageId);
-      ui.notifications.warn('NCM | Self-destruct message expired and deleted.');
+      await this.messageService?.permanentDelete?.(this.actorId, msg.messageId);
+      game.nightcity?.notificationService?.refreshBadge?.();
+      ui.notifications.warn('NCM | Self-destruct message expired and erased.');
     }
 
     this.selectedMessageId = null;
+    this._cachedMessages = null;
     overlay.remove();
+    this._destructing = false;
     this.render();
+  }
+
+  /**
+   * Erase an "after read" self-destruct message once the reader leaves it
+   * (navigates to another message or closes the viewer). No-op for anything
+   * else. Hard delete so it can't be recovered from trash.
+   * @param {string} messageId
+   */
+  async _destroyAfterReadIfNeeded(messageId) {
+    if (!messageId) return;
+    // GMs can read/audit after-read messages without consuming them.
+    if (game.user.isGM) return;
+    const msg = this._cachedMessages?.find(m => m.messageId === messageId);
+    if (!msg) return;
+    if (msg.status?.sent || msg.status?.deleted) return;
+    if (msg.selfDestruct?.mode !== 'after_read') return;
+
+    // Being the message that was open implies it was read (opening ⇒ markAsRead).
+    await this.messageService?.permanentDelete?.(this.actorId, messageId);
+    this._cachedMessages = null;
+    game.nightcity?.notificationService?.refreshBadge?.();
+    ui.notifications.warn('NCM | Self-destruct message erased after reading.');
   }
 
   /**
@@ -1133,7 +1245,7 @@ export class MessageViewerApp extends BaseApplication {
 
     const until = new Date(timerEl.dataset.lockoutUntil).getTime();
     this._lockoutTimer = setInterval(async () => {
-      const remaining = until - Date.now();
+      const remaining = until - this._nowMs();
       if (remaining <= 0) {
         clearInterval(this._lockoutTimer);
         this._lockoutTimer = null;
@@ -1163,6 +1275,12 @@ export class MessageViewerApp extends BaseApplication {
       // ── Navigation ──
       case 'select-message':
         this._selectMessage(messageId);
+        break;
+      case 'mobile-back':
+        // Single-column (narrow) mode — return from the open message to the list.
+        this.selectedMessageId = null;
+        this._threadExpanded = false;
+        this.render();
         break;
       case 'set-filter':
         this._setFilter(target.dataset.filter);
@@ -1687,10 +1805,23 @@ export class MessageViewerApp extends BaseApplication {
         try {
           const repo = this.contactRepository;
           if (repo?.addContact) {
+            const msg = this._getSelectedMessage();
+            // Link the sender's actor / master contact so the portrait resolves
+            // automatically (PortraitService.resolvePortrait: custom → linked actor img).
+            const senderActor = msg?.fromActorId ? game.actors?.get(msg.fromActorId) : null;
+            const masterContact = msg?.fromContactId
+              ? game.nightcity?.masterContactService?.getContact(msg.fromContactId)
+              : null;
+            const portrait = masterContact?.portrait
+              || (senderActor?.img && senderActor.img !== 'icons/svg/mystery-man.svg' ? senderActor.img : '')
+              || '';
+
             const result = await repo.addContact(this.actorId, {
               name: name || email.split('@')[0],
               email,
-              network: this._getSelectedMessage()?.network || 'CITINET',
+              network: msg?.network || 'CITINET',
+              actorId: senderActor?.id || masterContact?.actorId || null,
+              portrait,
               trust: 'neutral',
               notes: 'Added from message viewer',
             });
@@ -2185,6 +2316,13 @@ export class MessageViewerApp extends BaseApplication {
 
   async _selectMessage(messageId) {
     if (!messageId) return;
+    // After-read self-destruct: leaving a previously-opened message erases it.
+    const _prevId = this.selectedMessageId;
+    if (_prevId && _prevId !== messageId) {
+      await this._destroyAfterReadIfNeeded(_prevId);
+    }
+    // Opening any message (including a card inside a thread) returns to the single-message view.
+    this._threadExpanded = false;
     this.selectedMessageId = messageId;
     this.render();
 
@@ -2199,14 +2337,15 @@ export class MessageViewerApp extends BaseApplication {
         const network = this.networkService?.getNetwork?.(msg.network);
         if (network?.effects?.traced) {
           const traceWindow = network.traceWindow ?? 180000; // 3 minutes default
-          const traceExpiresAt = new Date(Date.now() + traceWindow).toISOString();
+          const startedIso = this.timeService?.getCurrentTime?.() ?? new Date().toISOString();
+          const traceExpiresAt = new Date(this._nowMs() + traceWindow).toISOString();
           await this.messageService?.updateMessageFlags?.(this.actorId, messageId, {
-            traceStarted: new Date().toISOString(),
+            traceStarted: startedIso,
             traceExpiresAt,
           });
           // Update local cache so re-render picks it up
           if (msg) {
-            msg.traceStarted = new Date().toISOString();
+            msg.traceStarted = startedIso;
             msg.traceExpiresAt = traceExpiresAt;
           }
           this.render();
@@ -2459,10 +2598,25 @@ export class MessageViewerApp extends BaseApplication {
   async _claimEddies(messageId, amount) {
     if (!messageId || !amount || amount <= 0) return;
 
+    // Re-entrancy guard — a rapid double-click fires before the flag write +
+    // re-render hide the button, which would credit the wealth ledger twice.
+    this._claimingEddies ??= new Set();
+    if (this._claimingEddies.has(messageId)) return;
+
+    // Resolve the specific message the button belongs to (may differ from the
+    // opened message in the thread transcript), falling back to the selected one.
+    const msg = this._cachedMessages?.find(m => m.messageId === messageId)
+      || this._getSelectedMessage();
+
     // Prevent claiming on your own sent messages
-    const msg = this._getSelectedMessage();
     if (msg?.status?.sent) {
       ui.notifications.warn('Cannot claim eddies from your own sent message.');
+      return;
+    }
+
+    // Prevent re-claiming already-claimed eddies (stale button / double-fire)
+    if (msg?.status?.eddiesClaimed) {
+      ui.notifications.warn('These eddies have already been claimed.');
       return;
     }
 
@@ -2471,6 +2625,8 @@ export class MessageViewerApp extends BaseApplication {
       ui.notifications.warn('No character assigned.');
       return;
     }
+
+    this._claimingEddies.add(messageId);
 
     // Show loading state
     const claimEl = this.element?.querySelector(`.ncm-viewer__eddies[data-message-id="${messageId}"]`);
@@ -2509,6 +2665,8 @@ export class MessageViewerApp extends BaseApplication {
     } catch (error) {
       console.error('NCM | Eddies claim failed:', error);
       ui.notifications.error('Failed to claim eddies.');
+    } finally {
+      this._claimingEddies.delete(messageId);
     }
 
     this.render();
@@ -3506,7 +3664,9 @@ export class MessageViewerApp extends BaseApplication {
   }
 
   _toggleThread() {
-    // Toggle thread expansion in detail view — implementation depends on thread UI
+    // Swap the single-message detail pane in/out of the full conversation transcript.
+    this._threadExpanded = !this._threadExpanded;
+    this.soundService?.play?.('click');
     this.render();
   }
 
@@ -3758,11 +3918,17 @@ export class MessageViewerApp extends BaseApplication {
     const contact = this._findContact(msg.from);
     const attachments = msg.attachments || [];
 
+    // Media attachments embed as inline players; everything else stays a
+    // card/encrypted-attachment, so split them out before classifying.
+    const mediaAttachments = attachments.filter(a => a?.isMedia);
+    const nonMediaAttachments = attachments.filter(a => !a?.isMedia);
+    const mediaEmbeds = this._buildMediaEmbeds(mediaAttachments);
+
     // §2.4 — Security verification strip (items array format)
     const security = getSecurityStripData(msg, contact);
 
     // §2.6/2.8 — Classify attachments into encrypted vs regular
-    const classified = classifyAttachments(attachments);
+    const classified = classifyAttachments(nonMediaAttachments);
 
     // ── Quick win: sender contact check for "Add to Contacts" button ──
     const senderIsContact = !!contact;
@@ -3839,8 +4005,8 @@ export class MessageViewerApp extends BaseApplication {
       };
     }
 
-    // Feature 3 — Build attachment card data for thumbnails
-    const attachmentCards = this._buildAttachmentCards(attachments, msg.eddies);
+    // Feature 3 — Build attachment card data for thumbnails (media excluded)
+    const attachmentCards = this._buildAttachmentCards(nonMediaAttachments, msg.eddies);
 
     // Feature 4 — Self-destruct data (not on sent copies — sender doesn't need countdown)
     let selfDestructActive = false;
@@ -3850,7 +4016,7 @@ export class MessageViewerApp extends BaseApplication {
         selfDestructActive = true;
         selfDestructDisplay = 'After close';
       } else if (msg.selfDestruct.expiresAt) {
-        const remaining = new Date(msg.selfDestruct.expiresAt).getTime() - Date.now();
+        const remaining = new Date(msg.selfDestruct.expiresAt).getTime() - this._nowMs();
         if (remaining > 0) {
           selfDestructActive = true;
           const h = Math.floor(remaining / 3600000);
@@ -3878,7 +4044,7 @@ export class MessageViewerApp extends BaseApplication {
     let traceExpiresAt = msg.traceExpiresAt || null;
     const traceCompleted = msg.traceCompleted || false;
     if (msg.traceExpiresAt && !traceCompleted) {
-      const remaining = new Date(msg.traceExpiresAt).getTime() - Date.now();
+      const remaining = new Date(msg.traceExpiresAt).getTime() - this._nowMs();
       if (remaining > 0) {
         traceActive = true;
       }
@@ -3894,11 +4060,16 @@ export class MessageViewerApp extends BaseApplication {
       else if (netId === 'corpnet') networkBodyEffect = 'corpnet';
     }
 
+    const threadInfo = this._getThreadInfo(msg, allMessages);
+    const threadExpanded = !!threadInfo && this._threadExpanded;
+
     return {
       ...msg,
       ...displayData,
       bodyRendered,
-      threadInfo: this._getThreadInfo(msg, allMessages),
+      threadInfo,
+      threadExpanded,
+      threadEntries: threadExpanded ? this._buildThreadEntries(msg, allMessages) : null,
       attachments,
       security,
       encryptedAttachments: classified.encrypted,
@@ -3906,6 +4077,8 @@ export class MessageViewerApp extends BaseApplication {
       eddiesData,
       attachmentCards,
       hasAttachmentCards: attachmentCards.length > 0,
+      mediaEmbeds,
+      hasMedia: mediaEmbeds.length > 0,
       selfDestructActive,
       selfDestructDisplay,
       isSent: !!msg.status?.sent,
@@ -3970,7 +4143,7 @@ export class MessageViewerApp extends BaseApplication {
         if (msg.selfDestruct.mode === 'after_read' && msg.status?.read) {
           selfDestructListDisplay = 'ON READ';
         } else if (msg.selfDestruct.expiresAt) {
-          const remaining = new Date(msg.selfDestruct.expiresAt).getTime() - Date.now();
+          const remaining = new Date(msg.selfDestruct.expiresAt).getTime() - this._nowMs();
           if (remaining > 0) {
             const m = Math.floor(remaining / 60000);
             const s = Math.floor((remaining % 60000) / 1000);
@@ -4247,6 +4420,24 @@ export class MessageViewerApp extends BaseApplication {
   /**
    * Build attachment card data for the thumbnail grid (Feature 3).
    */
+  /**
+   * Resolve media attachments into renderable inline-player descriptors.
+   * @param {Array} mediaAttachments
+   * @returns {Array<{name, isEmbed, isVideo, src}>}
+   */
+  _buildMediaEmbeds(mediaAttachments) {
+    return (mediaAttachments || []).map(a => {
+      const media = resolveMediaEmbed(a.mediaUrl, a.mediaType);
+      if (media.kind === 'none') return null;
+      return {
+        name: a.name || '',
+        isEmbed: media.kind === 'embed',
+        isVideo: media.isVideo,
+        src: media.src,
+      };
+    }).filter(Boolean);
+  }
+
   _buildAttachmentCards(attachments, eddiesAmount) {
     const cards = [];
 
@@ -4289,14 +4480,73 @@ export class MessageViewerApp extends BaseApplication {
     return cards;
   }
 
+  /** Resolver options shared by the badge count and the transcript. */
+  _threadOpts() {
+    let subjectThreading = true;
+    try { subjectThreading = game.settings.get(MODULE_ID, 'subjectThreading') ?? true; } catch { /* setting may not be registered yet */ }
+    return { viewingActorId: this.actorId, subjectThreading };
+  }
+
   _getThreadInfo(msg, allMessages) {
-    if (!msg.threadId) return null;
-    const thread = allMessages.filter(m => m.threadId === msg.threadId && m.messageId !== msg.messageId);
+    const thread = getThreadMessages(allMessages, msg.messageId, this._threadOpts())
+      .filter(m => m.messageId !== msg.messageId);
     if (thread.length === 0) return null;
     return {
       count: thread.length,
       latest: thread.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0],
     };
+  }
+
+  /**
+   * Build the full chronological transcript for a thread (Option C conversation view).
+   * Each entry is independently display-enriched and access-checked so that
+   * encrypted/network-restricted messages stay redacted within the thread,
+   * exactly as they would in the single-message detail pane.
+   */
+  _buildThreadEntries(currentMsg, allMessages) {
+    if (!currentMsg?.messageId) return [];
+    const entries = getThreadMessages(allMessages, currentMsg.messageId, this._threadOpts());
+
+    const viewingActor = this.actorId ? game.actors?.get(this.actorId) : null;
+    const netName = this._getCurrentNetworkData()?.name;
+
+    return entries.map((m) => {
+      const disp = this._enrichMessageDisplay(m, netName);
+
+      // Per-message access control — honour encryption + network locks per entry.
+      const access = this.messageAccessService?.checkAccess(m, viewingActor)
+        ?? { canRead: true, restricted: false };
+      const locked = !access.canRead;
+
+      let bodyRendered = '';
+      if (!locked) {
+        bodyRendered = this._renderMessageBody(m.body, m.messageId);
+        if (m.signalDegradation && !m.signalDegradation.reconstructed && !game.user?.isGM) {
+          bodyRendered = this._applySignalCorruption(bodyRendered, m.signalDegradation.corruptionLevel);
+        }
+      }
+
+      const lockedNetworkName = access.requiredNetworkName
+        || this.networkService?.getNetwork?.(m.network)?.name
+        || m.network || 'a secured network';
+
+      return {
+        messageId: m.messageId,
+        isCurrent: m.messageId === currentMsg.messageId,
+        isSent: !!m.status?.sent,
+        fromDisplay: disp.fromDisplay,
+        fromInitial: disp.fromInitial,
+        fromPortrait: disp.fromPortrait,
+        avatarColor: disp.avatarColor,
+        formattedTime: disp.formattedTime,
+        relativeTime: disp.relativeTime,
+        subject: m.subject || '',
+        locked,
+        lockedNetworkName,
+        bodyRendered,
+        hasBody: !!(m.body && String(m.body).trim()),
+      };
+    });
   }
 
   /**
@@ -4961,6 +5211,10 @@ export class MessageViewerApp extends BaseApplication {
   }
 
   async close(options) {
+    // After-read self-destruct: closing the viewer erases the open message.
+    if (this.selectedMessageId) {
+      await this._destroyAfterReadIfNeeded(this.selectedMessageId);
+    }
     if (this._destructTimer) clearInterval(this._destructTimer);
     if (this._destructFillTimer) clearInterval(this._destructFillTimer);
     if (this._clockInterval) clearInterval(this._clockInterval);
