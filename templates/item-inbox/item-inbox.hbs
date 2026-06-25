@@ -174,14 +174,14 @@
       </div>
       {{#if isBlocked}}
         {{#each indexChips}}
-          <div class="ncm-shard-index-chip ncm-shard-index-chip--muted ncm-shard-index-chip--hidden">
+          <div class="ncm-shard-index-chip ncm-shard-index-chip--muted ncm-shard-index-chip--hidden" style="--ncm-chip-i:{{@index}};">
             <i class="fas fa-lock ncm-shard-index-chip-icon" style="color:#555570;"></i>
             <span class="ncm-shard-index-chip-title">?????</span>
           </div>
         {{/each}}
       {{else}}
         {{#each indexChips}}
-          <div class="ncm-shard-index-chip {{accentClass}} {{#if isActive}}ncm-shard-index-chip--active{{/if}} {{#if isHidden}}ncm-shard-index-chip--hidden{{/if}}"
+          <div class="ncm-shard-index-chip {{accentClass}} {{#if isActive}}ncm-shard-index-chip--active{{/if}} {{#if isHidden}}ncm-shard-index-chip--hidden{{/if}}" style="--ncm-chip-i:{{@index}};"
                data-action="scrollToEntry" data-entry-id="{{id}}">
             <i class="{{iconClass}} ncm-shard-index-chip-icon" style="color:{{iconColor}};"></i>
             <span class="ncm-shard-index-chip-title">{{#if isHidden}}Hidden{{else}}{{title}}{{/if}}</span>
@@ -394,10 +394,26 @@
                 <div class="ncm-entry-body ncm-entry-avlog">
                   <div class="ncm-avlog-meta">
                     <span class="ncm-avlog-media-type"><i class="fas fa-{{#if contentData.isVideo}}video{{else}}headphones{{/if}}"></i> {{contentData.mediaType}}</span>
-                    <span class="ncm-avlog-duration">{{contentData.duration}}</span>
+                    {{#if contentData.duration}}<span class="ncm-avlog-duration">{{contentData.duration}}</span>{{/if}}
                     {{#if contentData.source}}<span class="ncm-avlog-source">{{contentData.source}}</span>{{/if}}
                   </div>
-                  <div class="ncm-avlog-waveform"></div>
+                  {{#if contentData.hasMedia}}
+                    {{#if contentData.isEmbed}}
+                      <div class="ncm-avlog-player ncm-avlog-player--embed">
+                        <iframe src="{{contentData.embedSrc}}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                      </div>
+                    {{else if contentData.isVideo}}
+                      <div class="ncm-avlog-player ncm-avlog-player--video">
+                        <video src="{{contentData.embedSrc}}" controls preload="metadata"></video>
+                      </div>
+                    {{else}}
+                      <div class="ncm-avlog-player ncm-avlog-player--audio">
+                        <audio src="{{contentData.embedSrc}}" controls preload="metadata"></audio>
+                      </div>
+                    {{/if}}
+                  {{else}}
+                    <div class="ncm-avlog-waveform"></div>
+                  {{/if}}
                   {{#each contentData.transcript}}
                     <div class="ncm-avlog-line">
                       <span class="ncm-avlog-speaker">{{speaker}}</span>

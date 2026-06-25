@@ -553,6 +553,33 @@
 .ncm-app .ncm-shard-index-chip--danger { border-left: 2px solid #ff0033; }
 .ncm-app .ncm-shard-index-chip--muted { border-left: 2px solid var(--sp-text-muted, #555570); }
 
+/* Index strip toggle — staggered "flow-in" when expanded (--anim added by JS) */
+@keyframes ncm-index-chip-flow-in {
+  from { opacity: 0; transform: translateY(-6px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.ncm-app .ncm-shard-index-strip--anim .ncm-shard-index-chip {
+  animation: ncm-index-chip-flow-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  animation-delay: calc(var(--ncm-chip-i, 0) * 0.035s + 0.04s);
+}
+
+/* Staggered "flow-out" when collapsing (--closing added by JS; chips stay
+   displayed until the JS timer adds --collapsed → display:none). */
+@keyframes ncm-index-chip-flow-out {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to   { opacity: 0; transform: translateY(-6px) scale(0.96); }
+}
+.ncm-app .ncm-shard-index-strip--closing .ncm-shard-index-chip {
+  animation: ncm-index-chip-flow-out 0.22s cubic-bezier(0.4, 0, 1, 1) forwards;
+  animation-delay: calc(var(--ncm-chip-i, 0) * 0.025s);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ncm-app .ncm-shard-index-strip--anim .ncm-shard-index-chip { animation: none; }
+  /* Collapse instantly rather than lingering visible until the JS timer fires. */
+  .ncm-app .ncm-shard-index-strip--closing .ncm-shard-index-chip { animation: none; display: none; }
+}
+
 
 /* ═══════════════════════════════════════════
    §6  CONTENT AREA
@@ -778,6 +805,31 @@
     rgba(25,243,247,0.08) 50%, rgba(25,243,247,0.12) 75%,
     rgba(25,243,247,0.05) 100%);
   border-radius: 2px;
+}
+
+/* ─── AV Log embedded media player ─── */
+.ncm-app .ncm-avlog-player {
+  margin-bottom: 10px;
+  border: 1px solid rgba(25,243,247,0.18);
+  border-radius: 2px;
+  background: #000;
+  overflow: hidden;
+}
+.ncm-app .ncm-avlog-player--video video,
+.ncm-app .ncm-avlog-player--embed iframe {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 0;
+}
+.ncm-app .ncm-avlog-player--audio {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+.ncm-app .ncm-avlog-player--audio audio {
+  display: block;
+  width: 100%;
 }
 
 .ncm-app .ncm-avlog-line {
