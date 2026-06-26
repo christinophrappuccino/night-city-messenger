@@ -290,3 +290,78 @@ export function resolveMediaEmbed(rawUrl, mediaType = 'video') {
 
   return { kind: 'native', src: url, isVideo };
 }
+
+// ─── Anonymous Send ───────────────────────────────────────────
+// Shared constants + resolver for the GM "Send Anonymously" feature. The real
+// sender is stripped from the recipient-facing copy (truly hidden); these
+// helpers drive the masked display for non-GM readers.
+
+/** Valid avatar mask styles. */
+export const ANON_STYLES = Object.freeze(['filtered', 'scrambled', 'ghost', 'monolith']);
+
+/** Fallback alias when the GM doesn't type one. */
+export const ANON_DEFAULT_ALIAS = 'UNKNOWN';
+
+/** Masked email shown in place of the real address. */
+export const ANON_MASKED_EMAIL = '▓▓▓▓▓@darknet.relay';
+
+/**
+ * Normalize a mask style to a known value (defaults to 'scrambled').
+ * @param {string} style
+ * @returns {string}
+ */
+export function normalizeAnonStyle(style) {
+  return ANON_STYLES.includes(style) ? style : 'scrambled';
+}
+
+/**
+ * Resolve how an anonymous message's sender should be displayed.
+ * Returns null when the message isn't anonymous (caller uses normal resolution).
+ * GMs see through the mask when the real identity is still present on the copy
+ * they're reading (the GM-owned sent copy retains it); the player-facing copy is
+ * scrubbed, so non-GM readers always get the masked view.
+ *
+ * @param {object} message — a message object (from MessageRepository._pageToMessage)
+ * @param {object} [opts]
+ * @param {boolean} [opts.isGM] — defaults to the current user
+ * @returns {null | {reveal: boolean, style: string, alias: string, name?: string, email?: string}}
+ */
+export function resolveAnonSender(message, opts = {}) {
+  const a = message?.anonymous;
+  // role 'recipient' masks the TO side (anon-reply sent copy), not the sender.
+  // `traced` = a recipient successfully traced the sender — unmask for everyone.
+  if (!a?.enabled || a.role === 'recipient' || a.traced) return null;
+  const isGM = opts.isGM ?? !!game.user?.isGM;
+  const style = normalizeAnonStyle(a.style);
+  const alias = a.alias || ANON_DEFAULT_ALIAS;
+
+  // GM can see through only when the real identity rode along on this copy.
+  if (isGM && (message.fromActorId || message.fromContactId)) {
+    return { reveal: true, style, alias };
+  }
+
+  return {
+    reveal: false,
+    style,
+    alias,
+    name: alias,
+    email: a.maskedEmail || ANON_MASKED_EMAIL,
+  };
+}
+
+/**
+ * Resolve the masked-recipient display for an anonymous-reply sent copy (the
+ * replier must not see who the anonymous party really was). Returns null unless
+ * the message's anonymous block has role 'recipient'.
+ * @param {object} message
+ * @returns {null | {style: string, name: string, email: string}}
+ */
+export function resolveAnonRecipient(message) {
+  const a = message?.anonymous;
+  if (!a?.enabled || a.role !== 'recipient') return null;
+  return {
+    style: normalizeAnonStyle(a.style),
+    name: a.alias || ANON_DEFAULT_ALIAS,
+    email: a.maskedEmail || ANON_MASKED_EMAIL,
+  };
+}

@@ -319,7 +319,10 @@ export class DocumentSyncBridge {
 
     // Stored flags carry no fromName — resolve a display name so the toast
     // doesn't render "Unknown" (matches MESSAGE_RECEIVED payload contract).
-    const fromName = (msgFlags.fromActorId && game.actors.get(msgFlags.fromActorId)?.name)
+    // Anonymous mail: the page is already scrubbed of the real sender; show the
+    // alias and carry the `anonymous` block so the toast stays masked.
+    const fromName = (msgFlags.anonymous?.enabled && (msgFlags.anonymous.alias || 'UNKNOWN'))
+      || (msgFlags.fromActorId && game.actors.get(msgFlags.fromActorId)?.name)
       || (msgFlags.fromContactId && game.nightcity?.masterContactService?.getContact(msgFlags.fromContactId)?.name)
       || msgFlags.from
       || 'Unknown';
@@ -335,6 +338,7 @@ export class DocumentSyncBridge {
       subject: msgFlags.subject,
       preview: (msgFlags.body || '').substring(0, 100),
       priority: msgFlags.priority || 'normal',
+      anonymous: msgFlags.anonymous || null,
       source: 'document-sync',
       changedBy: userId,
     });

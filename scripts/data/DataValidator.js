@@ -18,7 +18,9 @@ export class DataValidator {
   static validateMessage(data) {
     const errors = [];
 
-    if (!data.toActorId && !data.toContactId && !data.to) {
+    // Anonymous replies carry no recipient at send time — the GM resolves the
+    // real (hidden) target at delivery. Don't require one here.
+    if (!data.anonReply && !data.toActorId && !data.toContactId && !data.to) {
       errors.push('Recipient is required');
     }
     if (!data.fromActorId && !data.fromContactId && !data.from) {

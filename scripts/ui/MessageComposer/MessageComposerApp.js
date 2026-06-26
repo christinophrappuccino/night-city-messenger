@@ -17,7 +17,7 @@
 
 import { MODULE_ID, EVENTS } from '../../utils/constants.js';
 import { getInitials, getAvatarColor } from '../../utils/designHelpers.js';
-import { formatCyberDate } from '../../utils/helpers.js';
+import { formatCyberDate, normalizeAnonStyle, ANON_DEFAULT_ALIAS, ANON_MASKED_EMAIL } from '../../utils/helpers.js';
 import { CyberTimePicker } from '../components/CyberTimePicker.js';
 
 export class MessageComposerApp extends foundry.applications.api.HandlebarsApplicationMixin(
@@ -53,6 +53,9 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       setIceActor: MessageComposerApp._onSetIceActor,
       toggleSelfDestruct: MessageComposerApp._onToggleSelfDestruct,
       setSelfDestructMode: MessageComposerApp._onSetSelfDestructMode,
+      toggleAnonymous: MessageComposerApp._onToggleAnonymous,
+      setAnonStyle: MessageComposerApp._onSetAnonStyle,
+      toggleAnonReplies: MessageComposerApp._onToggleAnonReplies,
       toggleSchedule: MessageComposerApp._onToggleSchedule,
       toggleSendAs: MessageComposerApp._onToggleSendAs,
       toggleCC: MessageComposerApp._onToggleCC,
@@ -155,6 +158,24 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
   /** @type {boolean} */
   sendAsDropdownOpen = false;
 
+  // Anonymous Send (GM only) — masks the sender; real identity is stored GM-side
+  // only (truly hidden). Defaults seeded from world settings in the constructor.
+  /** @type {boolean} */
+  anonymousEnabled = false;
+  /** @type {string} 'filtered' | 'scrambled' | 'ghost' | 'monolith' */
+  anonStyle = 'scrambled';
+  /** @type {string} Display alias (blank → 'UNKNOWN') */
+  anonAlias = '';
+  /** @type {boolean} Whether the recipient can reply (routes back masked) */
+  anonAllowReplies = true;
+  /** @type {number} Trace difficulty to unmask (GM override of the default DV) */
+  anonTraceDV = 15;
+
+  /** @type {Object|null} Anonymous-reply descriptor when replying to masked mail
+   *   — { parentMessageId, alias, style, maskedEmail }. The real target is hidden;
+   *   the GM resolves it at delivery. */
+  anonReplyTo = null;
+
   // CC
   /** @type {boolean} */
   ccFieldVisible = false;
@@ -221,7 +242,29 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     if (this.mode === 'reply' && this.originalMessage) {
       const reply = this.messageService?.buildReply(this.originalMessage, this.fromActorId, '');
       if (reply) {
-        if (reply.toActorId) {
+        if (reply.anonReply) {
+          // Replying to an anonymous message — the real target is hidden. Show a
+          // locked masked recipient chip; the GM resolves + delivers on send.
+          this.anonReplyTo = reply.anonReply;
+          const alias = reply.anonReply.alias || 'UNKNOWN';
+          this.recipients.push({
+            actorId: null,
+            contactId: null,
+            name: alias,
+            email: reply.anonReply.maskedEmail || '',
+            avatarColor: getAvatarColor(alias),
+            initials: '?',
+            mismatch: false,
+            mismatchTooltip: '',
+            unreachable: false,
+            locked: true,
+            isRaw: false,
+            isAnonTarget: true,
+          });
+          this.subject = reply.subject;
+          this.threadId = reply.threadId;
+          this.inReplyTo = reply.inReplyTo;
+        } else if (reply.toActorId) {
           this._addRecipient(reply.toActorId, true);
         } else if (reply.toContactId || reply.to) {
           // Contact-only or raw email reply — add as a locked raw recipient
@@ -320,6 +363,15 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
 
     // Priority applies to all modes
     if (options.priority) this.priority = options.priority;
+
+    // Seed Anonymous Send defaults from world settings (GM only).
+    if (game.user.isGM) {
+      try {
+        this.anonStyle = game.settings.get(MODULE_ID, 'anonDefaultStyle') || 'scrambled';
+        this.anonAllowReplies = game.settings.get(MODULE_ID, 'anonAllowRepliesDefault') ?? true;
+        this.anonTraceDV = Number(game.settings.get(MODULE_ID, 'anonTraceDV')) || 15;
+      } catch { /* settings not ready — keep field defaults */ }
+    }
 
     // Restore draft if opening fresh compose with no pre-filled data
     this._restoreDraft();
@@ -453,6 +505,19 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
     // Sender initials
     const fromInitials = getInitials(fromName);
 
+    // ── Anonymous Send (GM only) ──
+    const anonFeatureEnabled = isGM && this._isAnonFeatureEnabled();
+    const anonActive = anonFeatureEnabled && this.anonymousEnabled;
+    const anonStyleNorm = normalizeAnonStyle(this.anonStyle);
+    let anonTraceEnabled = true;
+    try { anonTraceEnabled = game.settings.get(MODULE_ID, 'anonTraceEnabled'); } catch { /* default on */ }
+    const anonStyleList = [
+      { id: 'filtered', label: 'Filtered' },
+      { id: 'scrambled', label: 'Scrambled' },
+      { id: 'ghost', label: 'Ghost' },
+      { id: 'monolith', label: 'Monolith' },
+    ].map(s => ({ ...s, active: s.id === anonStyleNorm }));
+
     return {
       MODULE_ID,
       mode: this.mode,
@@ -467,6 +532,19 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       fromImg: fromActor?.img || this.fromContact?.portrait || null,
       fromInitials,
       fromAvatarColor,
+
+      // Anonymous Send
+      anonFeatureEnabled,
+      anonActive,
+      anonymousEnabled: this.anonymousEnabled,
+      anonStyle: anonStyleNorm,
+      anonStyleList,
+      anonAlias: this.anonAlias,
+      anonAliasDisplay: (this.anonAlias || '').trim() || 'UNKNOWN',
+      anonMaskedEmail: ANON_MASKED_EMAIL,
+      anonAllowReplies: this.anonAllowReplies,
+      anonTraceFeatureEnabled: anonTraceEnabled,
+      anonTraceDV: this.anonTraceDV,
       networkName,
       networkThemeColor,
       isDeadZone,
@@ -1294,6 +1372,12 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
         eddies: this.eddiesAmount || 0,
       };
 
+      // Anonymous reply — carry the hidden-target descriptor; the GM resolves the
+      // real recipient at delivery (no toActorId/to is set client-side).
+      if (this.anonReplyTo) {
+        messageData.anonReply = this.anonReplyTo;
+      }
+
       // Encryption
       if (this.encryptionEnabled) {
         messageData.encryption = {
@@ -1327,6 +1411,24 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
           expiresAt,
           // Total window — drives the countdown bar baseline in the viewer.
           duration: expiresAt ? (new Date(expiresAt).getTime() - nowMs) : null,
+        };
+      }
+
+      // Anonymous Send (GM only) — attach the masking block. MessageService
+      // strips the real identity from the recipient-facing copy; the real sender
+      // (fromActorId above) rides along only on the GM-owned sent copy.
+      if (game.user.isGM && this.anonymousEnabled && this._isAnonFeatureEnabled()) {
+        let traceEnabled = true;
+        try { traceEnabled = game.settings.get(MODULE_ID, 'anonTraceEnabled'); } catch { /* default on */ }
+        messageData.anonymous = {
+          enabled: true,
+          style: normalizeAnonStyle(this.anonStyle),
+          alias: (this.anonAlias || '').trim() || ANON_DEFAULT_ALIAS,
+          maskedEmail: ANON_MASKED_EMAIL,
+          allowReplies: !!this.anonAllowReplies,
+          traceable: !!traceEnabled,
+          traceDV: Number(this.anonTraceDV) || 15,
+          traced: false,
         };
       }
 
@@ -1470,6 +1572,40 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
   static _onSetSelfDestructMode(event, target) {
     this.selfDestructMode = target.dataset.mode;
     this.render(true);
+  }
+
+  // ── Anonymous Send (GM only) ──
+
+  static _onToggleAnonymous(event, target) {
+    if (!game.user.isGM) return;
+    // Persist any typed alias/DV before re-render so it survives the toggle.
+    this._syncAnonFields();
+    this.anonymousEnabled = !this.anonymousEnabled;
+    this.render(true);
+  }
+
+  static _onSetAnonStyle(event, target) {
+    if (!game.user.isGM) return;
+    this._syncAnonFields();
+    this.anonStyle = target.dataset.style || 'scrambled';
+    this.render(true);
+  }
+
+  static _onToggleAnonReplies(event, target) {
+    if (!game.user.isGM) return;
+    this._syncAnonFields();
+    this.anonAllowReplies = !this.anonAllowReplies;
+    this.render(true);
+  }
+
+  /** Read the anonymous alias + trace-DV inputs from the DOM into state. */
+  _syncAnonFields() {
+    const el = this.element;
+    if (!el) return;
+    const alias = el.querySelector('[data-id="anon-alias"]');
+    if (alias) this.anonAlias = alias.value;
+    const dv = el.querySelector('[data-id="anon-trace-dv"]');
+    if (dv) this.anonTraceDV = parseInt(dv.value) || this.anonTraceDV;
   }
 
   // ── Schedule (WP-4.5.6) ──
@@ -2173,9 +2309,16 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       // Hidden input stores ISO directly from CyberTimePicker
       this.scheduledTime = schedule.value;
     }
+
+    this._syncAnonFields();
   }
 
   // ─── Helpers ──────────────────────────────────────────────
+
+  /** Whether the Anonymous Send feature is enabled in world settings. */
+  _isAnonFeatureEnabled() {
+    try { return game.settings.get(MODULE_ID, 'anonSendEnabled') !== false; } catch { return true; }
+  }
 
   _getDefaultFromActor() {
     if (game.user.character) return game.user.character.id;

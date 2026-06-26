@@ -9,7 +9,7 @@
 
 import { MODULE_ID, EVENTS, SOCKET_OPS } from '../utils/constants.js';
 import { DataValidator } from '../data/DataValidator.js';
-import { log } from '../utils/helpers.js';
+import { log, ANON_MASKED_EMAIL, ANON_DEFAULT_ALIAS } from '../utils/helpers.js';
 
 export class MessageService {
   constructor() {
@@ -66,68 +66,76 @@ export class MessageService {
 
       // ── Resolve recipient identity ──
       // Try actorId first, then contactId, then email lookup
-      let toActor = data.toActorId ? game.actors.get(data.toActorId) : null;
+      let toActor = null;
       let toContact = null;
-      let recipientInboxId = data.toActorId; // The ID used for inbox storage
 
-      if (!toActor) {
-        // Try resolving via contactId
-        if (data.toContactId) {
-          toContact = game.nightcity?.masterContactService?.getContact(data.toContactId);
-          if (toContact) {
-            // If the contact has a linked actor, use that
-            if (toContact.actorId) {
-              toActor = game.actors.get(toContact.actorId);
-              data.toActorId = toContact.actorId;
-              recipientInboxId = toContact.actorId;
-            } else {
-              recipientInboxId = data.toContactId;
+      // Anonymous reply: the replier doesn't know (and must never learn) the real
+      // recipient — the original sender was masked. Skip recipient resolution AND
+      // the verification gate; the GM resolves the true target at delivery time
+      // (_deliverMessage → _resolveAnonReplyTarget) and masks it on the sent copy.
+      if (!data.anonReply) {
+        toActor = data.toActorId ? game.actors.get(data.toActorId) : null;
+        let recipientInboxId = data.toActorId; // The ID used for inbox storage
+
+        if (!toActor) {
+          // Try resolving via contactId
+          if (data.toContactId) {
+            toContact = game.nightcity?.masterContactService?.getContact(data.toContactId);
+            if (toContact) {
+              // If the contact has a linked actor, use that
+              if (toContact.actorId) {
+                toActor = game.actors.get(toContact.actorId);
+                data.toActorId = toContact.actorId;
+                recipientInboxId = toContact.actorId;
+              } else {
+                recipientInboxId = data.toContactId;
+              }
             }
           }
-        }
-        // Try resolving via email in master contacts
-        if (!toActor && !toContact && data.to) {
-          toContact = game.nightcity?.masterContactService?.getByEmail(data.to);
-          if (toContact) {
-            data.toContactId = toContact.id;
-            if (toContact.actorId) {
-              toActor = game.actors.get(toContact.actorId);
-              data.toActorId = toContact.actorId;
-              recipientInboxId = toContact.actorId;
-            } else {
-              recipientInboxId = toContact.id;
+          // Try resolving via email in master contacts
+          if (!toActor && !toContact && data.to) {
+            toContact = game.nightcity?.masterContactService?.getByEmail(data.to);
+            if (toContact) {
+              data.toContactId = toContact.id;
+              if (toContact.actorId) {
+                toActor = game.actors.get(toContact.actorId);
+                data.toActorId = toContact.actorId;
+                recipientInboxId = toContact.actorId;
+              } else {
+                recipientInboxId = toContact.id;
+              }
             }
+          }
+
+          if (!toActor && !toContact) {
+            return { success: false, error: 'Recipient not found — no matching actor or contact.' };
           }
         }
 
-        if (!toActor && !toContact) {
-          return { success: false, error: 'Recipient not found — no matching actor or contact.' };
-        }
-      }
+        // Store the resolved inbox target for delivery
+        data._recipientInboxId = recipientInboxId;
 
-      // Store the resolved inbox target for delivery
-      data._recipientInboxId = recipientInboxId;
+        // ── Contact Verification Gate (players only) ──
+        // Players can only send to contacts that exist in the GM's Master Contact Directory.
+        const requireVerification = game.settings.get(MODULE_ID, 'requireContactVerification') ?? true;
 
-      // ── Contact Verification Gate (players only) ──
-      // Players can only send to contacts that exist in the GM's Master Contact Directory.
-      const requireVerification = game.settings.get(MODULE_ID, 'requireContactVerification') ?? true;
+        if (!game.user.isGM && requireVerification) {
+          const masterService = game.nightcity?.masterContactService;
+          const recipientEmail = data.to || (toActor ? this._contactRepo.getActorEmail(data.toActorId) : toContact?.email);
 
-      if (!game.user.isGM && requireVerification) {
-        const masterService = game.nightcity?.masterContactService;
-        const recipientEmail = data.to || (toActor ? this._contactRepo.getActorEmail(data.toActorId) : toContact?.email);
+          // Verified if the recipient is in the master directory OR is a registered
+          // actor (verifyContact checks both — matches the setting hint). The actorId
+          // branch additionally covers master contacts linked by actor without an email.
+          const verified = this._contactRepo.verifyContact(recipientEmail).verified
+            || !!masterService?.getAll?.()?.find(mc => mc.actorId === data.toActorId);
 
-        // Verified if the recipient is in the master directory OR is a registered
-        // actor (verifyContact checks both — matches the setting hint). The actorId
-        // branch additionally covers master contacts linked by actor without an email.
-        const verified = this._contactRepo.verifyContact(recipientEmail).verified
-          || !!masterService?.getAll?.()?.find(mc => mc.actorId === data.toActorId);
-
-        if (!verified) {
-          return {
-            success: false,
-            error: 'CONTACT NOT FOUND — Recipient not registered in the network directory.',
-            errorCode: 'NO_CONTACT',
-          };
+          if (!verified) {
+            return {
+              success: false,
+              error: 'CONTACT NOT FOUND — Recipient not registered in the network directory.',
+              errorCode: 'NO_CONTACT',
+            };
+          }
         }
       }
 
@@ -216,6 +224,20 @@ export class MessageService {
    */
   async _deliverMessage(data) {
     try {
+      // Anonymous reply — the player couldn't know the real recipient. Resolve it
+      // GM-side from the original message's GM-owned sent copy (which retains the
+      // real sender), then deliver normally. The sent copy below re-masks it so
+      // the replier's own outbox never reveals who they answered.
+      if (data.anonReply && !data.toActorId && !data.toContactId) {
+        const target = this._resolveAnonReplyTarget(data.anonReply.parentMessageId);
+        if (!target || (!target.fromActorId && !target.fromContactId)) {
+          return { success: false, error: 'Anonymous reply target could not be resolved.' };
+        }
+        if (target.fromActorId) data.toActorId = target.fromActorId;
+        else if (target.fromContactId) data.toContactId = target.fromContactId;
+        if (!data.to && target.from) data.to = target.from;
+      }
+
       // Resolve recipient inbox: actorId, contactId, or pre-resolved _recipientInboxId
       const recipientInboxId = data._recipientInboxId || data.toActorId || data.toContactId;
       if (!recipientInboxId) {
@@ -234,20 +256,28 @@ export class MessageService {
         data.status = { ...(data.status || {}), spam: true };
       }
 
+      // Anonymous Send — the recipient-facing copy must NOT carry the real
+      // identity (truly hidden). Build a masked clone for the recipient inbox and
+      // the recipient toast; the GM-owned sent copy below keeps the real sender.
+      const recipientData = data.anonymous?.enabled ? this._maskAnonForRecipient(data) : data;
+
       // Create message in recipient's inbox
-      const result = await this._messageRepo.createMessage(recipientInboxId, data);
+      const result = await this._messageRepo.createMessage(recipientInboxId, recipientData);
       if (!result.success) return result;
 
       // Create sent copy in sender's outbox
       // Resolve sender inbox: actor or contact
       const senderInboxId = data.fromActorId || data.fromContactId;
       if (senderInboxId) {
-        const sentCopy = {
+        let sentCopy = {
           ...data,
           messageId: `${data.messageId}-sent`,
           status: { sent: true, read: true, eddiesClaimed: true },
         };
         delete sentCopy._recipientInboxId; // Don't persist internal field
+        // Anonymous reply — mask the recipient on the replier's own sent copy so
+        // their outbox can't reveal the anonymous party they answered.
+        if (data.anonReply) sentCopy = this._maskAnonReplyForSender(sentCopy);
         await this._messageRepo.createMessage(senderInboxId, sentCopy);
       }
 
@@ -270,13 +300,16 @@ export class MessageService {
         this.socketManager.emit(SOCKET_OPS.MESSAGE_NOTIFY, {
           messageId: data.messageId,
           toActorId: data.toActorId,
-          fromActorId: data.fromActorId,
-          fromContactId: data.fromContactId,
-          from: data.from,
-          fromName: data.fromName,
+          // Use the masked clone so an online recipient's toast can't reveal the
+          // real sender. The doc-sync toast path reads the already-scrubbed page.
+          fromActorId: recipientData.fromActorId,
+          fromContactId: recipientData.fromContactId,
+          from: recipientData.from,
+          fromName: recipientData.fromName,
           subject: data.subject,
           priority: data.priority || 'normal',
           preview: data.body?.substring(0, 100) || '',
+          anonymous: recipientData.anonymous || null,
         });
       }
 
@@ -293,6 +326,150 @@ export class MessageService {
     } catch (error) {
       console.error(`${MODULE_ID} | MessageService._deliverMessage:`, error);
       return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Build a recipient-facing clone of an anonymous message with the real sender
+   * identity stripped (truly hidden). The masked email + alias come from the
+   * `anonymous` block; the block itself rides along to drive the masked display.
+   * The original `data` (real identity) is used only for the GM-owned sent copy.
+   * @param {Object} data
+   * @returns {Object}
+   * @private
+   */
+  _maskAnonForRecipient(data) {
+    const a = data.anonymous || {};
+    const maskedEmail = a.maskedEmail || ANON_MASKED_EMAIL;
+    return {
+      ...data,
+      from: maskedEmail,
+      fromName: a.alias || ANON_DEFAULT_ALIAS,
+      fromActorId: '',
+      fromContactId: '',
+      anonymous: { ...a, maskedEmail },
+    };
+  }
+
+  /**
+   * Resolve the real sender of an anonymous message from its GM-owned sent copy
+   * (which retains the true identity). GM-side only. Scans journals for the
+   * `<id>-sent` page matching the parent message id.
+   * @param {string} parentMessageId — base id of the original anonymous message
+   * @returns {null | {fromActorId: string, fromContactId: string, from: string}}
+   * @private
+   */
+  _resolveAnonReplyTarget(parentMessageId) {
+    if (!parentMessageId) return null;
+    const base = String(parentMessageId).replace(/-sent$/, '');
+    const wantId = `${base}-sent`;
+    for (const journal of game.journal) {
+      for (const page of journal.pages) {
+        const f = page.flags?.[MODULE_ID];
+        if (f?.messageId === wantId) {
+          return {
+            fromActorId: f.fromActorId || '',
+            fromContactId: f.fromContactId || '',
+            from: f.from || '',
+          };
+        }
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Mask the recipient on the replier's own sent copy of an anonymous reply, so
+   * their outbox never reveals the anonymous party they answered. The `anonymous`
+   * block carries role 'recipient' to drive the masked TO display in the viewer.
+   * @param {Object} data
+   * @returns {Object}
+   * @private
+   */
+  _maskAnonReplyForSender(data) {
+    const r = data.anonReply || {};
+    return {
+      ...data,
+      to: r.maskedEmail || ANON_MASKED_EMAIL,
+      toName: r.alias || ANON_DEFAULT_ALIAS,
+      toActorId: '',
+      toContactId: '',
+      anonymous: {
+        enabled: true,
+        role: 'recipient',
+        style: r.style || 'scrambled',
+        alias: r.alias || ANON_DEFAULT_ALIAS,
+        maskedEmail: r.maskedEmail || ANON_MASKED_EMAIL,
+      },
+    };
+  }
+
+  /**
+   * GM-side: reveal (unmask) an anonymous sender on a recipient's message page
+   * after a successful trace. Resolves the real identity from the GM-owned sent
+   * copy and patches the player-readable page (GM can write any document); the
+   * update syncs back to the player and the mask resolves to the real sender.
+   * @param {string} messageId — recipient's message id
+   * @param {string} inboxActorId — the recipient inbox owner (actor id)
+   * @returns {Promise<{success: boolean, error?: string}>}
+   */
+  async revealAnonSender(messageId, inboxActorId) {
+    if (!game.user.isGM) return { success: false, error: 'GM only' };
+    const real = this._resolveAnonReplyTarget(messageId);
+    if (!real || (!real.fromActorId && !real.fromContactId && !real.from)) {
+      return { success: false, error: 'Could not resolve the real sender (no sent copy found).' };
+    }
+
+    // Read the current anonymous block and rewrite it WHOLE with traced:true —
+    // a nested `anonymous.traced` dot-path update is unreliable for flags (see
+    // CLAUDE.md), and the player-side unmask hinges entirely on `traced` landing.
+    let currentAnon = {};
+    try {
+      const msgs = await this._messageRepo.getMessages(inboxActorId, { filter: 'all', includeDeleted: true });
+      currentAnon = msgs.find(m => m.messageId === messageId)?.anonymous || {};
+    } catch { /* fall back to a minimal block */ }
+
+    const result = await this._messageRepo.updateMessage(inboxActorId, messageId, {
+      fromActorId: real.fromActorId || '',
+      fromContactId: real.fromContactId || '',
+      from: real.from || '',
+      anonymous: { ...currentAnon, enabled: true, traced: true },
+    });
+    if (result.success) {
+      log.info(`Anonymous sender revealed for message ${messageId} (inbox ${inboxActorId}) → actor ${real.fromActorId || real.fromContactId || real.from}`);
+    } else {
+      log.warn(`revealAnonSender: page update failed for ${messageId} in inbox ${inboxActorId}: ${result.error}`);
+    }
+    return result;
+  }
+
+  /**
+   * GM-side socket handler for an anonymous-trace attempt from a player.
+   * On success, reveal the sender; either way, toast the GM with the outcome.
+   * @param {object} data — { messageId, inboxActorId, success, byActorName }
+   */
+  async handleAnonTraceRequest(data) {
+    if (!game.user.isGM) return;
+    if (data?.success) {
+      const result = await this.revealAnonSender(data.messageId, data.inboxActorId);
+      if (result?.success) {
+        this.notificationService?.showToastV2?.({
+          type: 'message', icon: 'fas fa-user-secret', title: 'Anonymous Sender Traced',
+          detail: `${data.byActorName || 'A player'} traced an anonymous message — identity revealed.`,
+          duration: 6000, priority: 'normal',
+        });
+      } else {
+        // The roll succeeded but the GM couldn't reveal — surface it so it isn't
+        // silently swallowed (the most common cause is a missing/renamed sent copy).
+        log.warn(`Anon trace reveal failed: ${result?.error || 'unknown'}`, data);
+        ui.notifications?.warn(`NCM | Trace by ${data.byActorName || 'a player'} succeeded but reveal failed: ${result?.error || 'unknown'}`);
+      }
+    } else {
+      this.notificationService?.showToastV2?.({
+        type: 'message', icon: 'fas fa-user-secret', title: 'Trace Attempt Failed',
+        detail: `${data.byActorName || 'A player'} failed to trace an anonymous sender.`,
+        duration: 6000, priority: 'normal',
+      });
     }
   }
 
@@ -396,6 +573,9 @@ export class MessageService {
     if (!toActor?.hasPlayerOwner) return bail('recipient is not a player-owned actor');
     if (data.status?.sent || data.status?.spam) return bail('already sent/spam');
     if (data.isBroadcast || data.type === 'broadcast') return bail('broadcast');
+    // Anonymous mail is a deliberate GM action — never auto-route it to Spam
+    // (the sender is "unknown" by design, which would otherwise always match).
+    if (data.anonymous?.enabled) return bail('anonymous send (spam-exempt)');
 
     // Optionally never filter messages from other player characters (party comms).
     const fromActor = data.fromActorId ? game.actors.get(data.fromActorId) : null;
@@ -511,6 +691,20 @@ export class MessageService {
       references: this._buildReferences(originalMessage),
       priority: 'normal',
     };
+
+    // Anonymous reply — the original sender was masked. The replier can't know
+    // the real target; carry an anonReply descriptor (no toActorId/to) so the GM
+    // resolves the true recipient at delivery and masks it on the sent copy.
+    const anon = originalMessage.anonymous;
+    if (anon?.enabled && anon.role !== 'recipient' && !anon.traced) {
+      reply.anonReply = {
+        parentMessageId: String(originalMessage.messageId || '').replace(/-sent$/, ''),
+        alias: anon.alias || ANON_DEFAULT_ALIAS,
+        style: anon.style || 'scrambled',
+        maskedEmail: anon.maskedEmail || ANON_MASKED_EMAIL,
+      };
+      return reply;
+    }
 
     // Resolve reply target — actor or contact
     if (originalMessage.fromActorId) {

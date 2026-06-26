@@ -6,7 +6,7 @@
  *              typed getter/setter access. Wraps game.settings.
  */
 
-import { MODULE_ID, DEFAULTS } from '../utils/constants.js';
+import { MODULE_ID, DEFAULTS, SKILL_MAP } from '../utils/constants.js';
 import { log } from '../utils/helpers.js';
 
 export class SettingsManager {
@@ -32,6 +32,10 @@ export class SettingsManager {
   registerAll() {
     if (this._registered) return;
     log.info('Registering settings...');
+
+    // CPR skill choices for skill-picker settings (built from the canonical
+    // SKILL_MAP; keys are proper-case skill names, grouped by stat category).
+    const skillChoices = Object.fromEntries(Object.keys(SKILL_MAP).map(s => [s, s]));
 
     // ─── World Settings (GM only) ───
 
@@ -164,6 +168,73 @@ export class SettingsManager {
       config: true,
       type: Boolean,
       default: true,
+    });
+
+    // ─── Anonymous Send (GM) ───
+    // A GM-only composer option that masks the sender: the recipient sees an
+    // alias + a masked avatar and CANNOT resolve the real identity (the real
+    // sender is stored GM-side only). Optional trace-to-unmask minigame.
+
+    game.settings.register(MODULE_ID, 'anonSendEnabled', {
+      name: 'Anonymous Send — Enable',
+      hint: 'Allow the GM to send messages anonymously from the composer. The recipient sees a masked avatar + alias and cannot resolve who sent it; the GM always sees the true sender (flagged SENT ANON).',
+      scope: 'world',
+      config: true,
+      type: Boolean,
+      default: true,
+    });
+
+    game.settings.register(MODULE_ID, 'anonDefaultStyle', {
+      name: 'Anonymous Send — Default Mask',
+      hint: 'Which avatar mask is pre-selected when the GM toggles Anonymous on. Filtered = their photo dimmed to a shadow; Scrambled = photo buried under static; Ghost = silhouette; Monolith = SEELE-style "SOUND ONLY" slab.',
+      scope: 'world',
+      config: true,
+      type: String,
+      default: 'scrambled',
+      choices: {
+        filtered: 'Filtered (dimmed photo)',
+        scrambled: 'Scrambled (static)',
+        ghost: 'Ghost (silhouette)',
+        monolith: 'Monolith (SOUND ONLY)',
+      },
+    });
+
+    game.settings.register(MODULE_ID, 'anonAllowRepliesDefault', {
+      name: 'Anonymous Send — Allow Replies by Default',
+      hint: 'When ON, anonymous messages can be replied to by default — the reply routes back to the real sender but stays masked to the player. The GM can override per message. When OFF, anonymous mail is one-way (no reply) unless enabled per message.',
+      scope: 'world',
+      config: true,
+      type: Boolean,
+      default: true,
+    });
+
+    game.settings.register(MODULE_ID, 'anonTraceEnabled', {
+      name: 'Anonymous Send — Trace Mechanic',
+      hint: 'Allow recipients to attempt to trace (unmask) an anonymous sender via a skill check. Disable to make anonymity absolute (no in-fiction way to reveal the sender).',
+      scope: 'world',
+      config: true,
+      type: Boolean,
+      default: true,
+    });
+
+    game.settings.register(MODULE_ID, 'anonTraceDV', {
+      name: 'Anonymous Send — Trace Difficulty (DV)',
+      hint: 'Default difficulty value the recipient must beat to trace an anonymous sender. The GM can override per message.',
+      scope: 'world',
+      config: true,
+      type: Number,
+      range: { min: 6, max: 30, step: 1 },
+      default: 15,
+    });
+
+    game.settings.register(MODULE_ID, 'anonTraceSkill', {
+      name: 'Anonymous Send — Trace Skill',
+      hint: 'CPR skill the recipient rolls to trace (unmask) an anonymous sender.',
+      scope: 'world',
+      config: true,
+      type: String,
+      default: 'Interface',
+      choices: skillChoices,
     });
 
     // ─── Time Provider Settings ───
@@ -331,7 +402,8 @@ export class SettingsManager {
       scope: 'world',
       config: true,
       type: String,
-      default: 'interface',
+      default: 'Interface',
+      choices: skillChoices,
     });
 
     game.settings.register(MODULE_ID, 'playerBlackICE', {

@@ -23,6 +23,8 @@
 .ncm-composer button.ncm-composer__enc-opt,
 .ncm-composer button.ncm-composer__toggle,
 .ncm-composer button.ncm-composer__destruct-pill,
+.ncm-composer button.ncm-composer__anon-pill,
+.ncm-composer button.ncm-composer__anon-reply,
 .ncm-composer button.ncm-composer__field-action,
 .ncm-composer button.ncm-composer__alert-action,
 .ncm-composer button.ncm-composer__tool,
@@ -47,6 +49,8 @@
 .ncm-composer button.ncm-composer__enc-opt,
 .ncm-composer button.ncm-composer__toggle,
 .ncm-composer button.ncm-composer__destruct-pill,
+.ncm-composer button.ncm-composer__anon-pill,
+.ncm-composer button.ncm-composer__anon-reply,
 .ncm-composer button.ncm-composer__field-action,
 .ncm-composer button.ncm-composer__alert-action,
 .ncm-composer button.ncm-composer__btn,
@@ -1066,6 +1070,63 @@
 .ncm-composer .ncm-composer__destruct-pill:hover { color: var(--ncm-primary) !important; border-color: rgba(255,0,51,0.25) !important; }
 .ncm-composer .ncm-composer__destruct-pill--active {
   color: var(--ncm-primary) !important; border-color: rgba(255,0,51,0.3) !important; background: rgba(255,0,51,0.04) !important;
+}
+
+/* ── Anonymous Send (GM) ── */
+.ncm-composer .ncm-composer__toggle--on-anon {
+  color: var(--ncm-warning) !important;
+  border-color: color-mix(in srgb, var(--ncm-warning) 35%, transparent) !important;
+  background: color-mix(in srgb, var(--ncm-warning) 8%, transparent) !important;
+}
+/* Host box for the masked avatar — the .ncm-anon-av fills it (inset:0). */
+.ncm-composer__avatar--anon {
+  position: relative;
+  border-color: color-mix(in srgb, var(--ncm-warning) 40%, transparent);
+}
+.ncm-composer__identity--anon { box-shadow: 0 0 12px color-mix(in srgb, var(--ncm-warning) 10%, transparent); }
+.ncm-composer__anon-tag {
+  font-family: var(--ncm-font-title);
+  font-size: calc(7px * var(--ncm-text-scale, 1)); font-weight: 700; letter-spacing: 1px;
+  color: var(--ncm-bg-deep);
+  background: var(--ncm-warning);
+  border-radius: 2px; padding: 0 4px; margin-left: 5px;
+}
+.ncm-composer__strip--anon { background: color-mix(in srgb, var(--ncm-warning) 4%, transparent); color: var(--ncm-warning); }
+.ncm-composer__anon-sublabel { font-size: calc(8px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); letter-spacing: 1px; }
+.ncm-composer .ncm-composer__anon-pill {
+  font-family: var(--ncm-font-display) !important;
+  font-size: calc(9px * var(--ncm-text-scale, 1)) !important; font-weight: 600 !important;
+  padding: 1px 6px !important; border: 1px solid color-mix(in srgb, var(--ncm-warning) 14%, transparent) !important;
+  border-radius: 2px !important; background: none !important;
+  color: var(--ncm-text-secondary) !important; cursor: pointer !important;
+  transition: all 0.1s !important;
+}
+.ncm-composer .ncm-composer__anon-pill:hover { color: var(--ncm-warning) !important; border-color: color-mix(in srgb, var(--ncm-warning) 30%, transparent) !important; }
+.ncm-composer .ncm-composer__anon-pill--active {
+  color: var(--ncm-bg-deep) !important; border-color: var(--ncm-warning) !important; background: var(--ncm-warning) !important;
+}
+.ncm-composer__anon-field { display: inline-flex; align-items: center; gap: 4px; }
+.ncm-composer__anon-field label { font-size: calc(8px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); letter-spacing: 0.5px; }
+.ncm-composer .ncm-composer__anon-field input {
+  background: var(--ncm-bg-deep) !important;
+  border: 1px solid var(--ncm-border) !important; border-radius: 3px !important;
+  color: var(--ncm-text-primary) !important; font-family: var(--ncm-font-mono) !important;
+  font-size: calc(9px * var(--ncm-text-scale, 1)) !important; padding: 2px 6px !important;
+  height: auto !important; min-height: 0 !important; line-height: 1.4 !important;
+  appearance: none !important; box-shadow: none !important; flex: 0 0 auto !important;
+}
+.ncm-composer .ncm-composer__anon-field input[data-id="anon-alias"] { width: 110px !important; }
+.ncm-composer .ncm-composer__anon-field input[data-id="anon-trace-dv"] { width: 46px !important; text-align: center !important; }
+.ncm-composer .ncm-composer__anon-reply {
+  font-family: var(--ncm-font-display) !important;
+  font-size: calc(9px * var(--ncm-text-scale, 1)) !important; font-weight: 600 !important;
+  padding: 1px 7px !important; border: 1px solid var(--ncm-border) !important;
+  border-radius: 2px !important; background: none !important;
+  color: var(--ncm-text-muted) !important; cursor: pointer !important; transition: all 0.1s !important;
+}
+.ncm-composer .ncm-composer__anon-reply--on {
+  color: var(--ncm-warning) !important; border-color: color-mix(in srgb, var(--ncm-warning) 30%, transparent) !important;
+  background: color-mix(in srgb, var(--ncm-warning) 6%, transparent) !important;
 }
 
 /* Schedule trigger — reuses CyberTimePicker trigger styles from cyber-time-picker.css */

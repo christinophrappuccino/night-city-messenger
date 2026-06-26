@@ -23,10 +23,12 @@
   <header class="ncm-composer__header">
 
     {{!-- Identity cluster — GM: clickable with caret; Player: static --}}
-    <div class="ncm-composer__identity {{#if isGM}}ncm-composer__identity--clickable{{/if}}"
+    <div class="ncm-composer__identity {{#if isGM}}ncm-composer__identity--clickable{{/if}} {{#if anonActive}}ncm-composer__identity--anon{{/if}}"
          {{#if isGM}}data-action="toggleSendAs"{{/if}}>
-      <div class="ncm-composer__avatar {{#if isGMSendAs}}ncm-composer__avatar--gm{{/if}}">
-        {{#if fromImg}}
+      <div class="ncm-composer__avatar {{#if isGMSendAs}}ncm-composer__avatar--gm{{/if}} {{#if anonActive}}ncm-composer__avatar--anon{{/if}}">
+        {{#if anonActive}}
+          {{{ncm-anon-avatar anonStyle}}}
+        {{else if fromImg}}
           <img src="{{fromImg}}" alt="{{fromName}}" />
         {{else}}
           <span class="ncm-composer__avatar-initials">{{fromInitials}}</span>
@@ -34,10 +36,14 @@
       </div>
       <div class="ncm-composer__id-info">
         <span class="ncm-composer__id-name">
-          {{fromName}}
-          {{#if isGMSendAs}}<span class="ncm-composer__gm-tag">GM</span>{{/if}}
+          {{#if anonActive}}
+            {{anonAliasDisplay}}<span class="ncm-composer__anon-tag">ANON</span>
+          {{else}}
+            {{fromName}}
+            {{#if isGMSendAs}}<span class="ncm-composer__gm-tag">GM</span>{{/if}}
+          {{/if}}
         </span>
-        <span class="ncm-composer__id-email">{{fromEmail}}</span>
+        <span class="ncm-composer__id-email">{{#if anonActive}}{{anonMaskedEmail}}{{else}}{{fromEmail}}{{/if}}</span>
       </div>
       {{#if isGM}}<i class="fas fa-caret-down ncm-composer__id-caret"></i>{{/if}}
     </div>
@@ -282,6 +288,15 @@
             data-action="toggleSelfDestruct">
       <i class="fas fa-bomb"></i> Destruct
     </button>
+
+    {{!-- Anonymous toggle (GM only, when feature enabled) --}}
+    {{#if anonFeatureEnabled}}
+    <div class="ncm-composer__opt-sep"></div>
+    <button class="ncm-composer__toggle {{#if anonymousEnabled}}ncm-composer__toggle--on-anon{{/if}}"
+            data-action="toggleAnonymous" title="Send anonymously — mask the sender's identity">
+      <i class="fas fa-user-secret"></i> Anon
+    </button>
+    {{/if}}
     {{/if}}
 
     {{!-- Schedule toggle (everyone) --}}
@@ -334,7 +349,36 @@
     <i class="fas fa-xmark ncm-composer__strip-close" data-action="toggleSelfDestruct"></i>
   </div>
   {{/if}}
-  {{/if}} {{!-- /isGM — end of ICE + destruct strips --}}
+
+  {{!-- Anonymous expansion strip — GM only --}}
+  {{#if anonActive}}
+  <div class="ncm-composer__strip ncm-composer__strip--anon">
+    <i class="fas fa-user-secret"></i>
+    <span class="ncm-composer__strip-label">Anonymous:</span>
+    <span class="ncm-composer__anon-sublabel">MASK</span>
+    {{#each anonStyleList}}
+    <button class="ncm-composer__anon-pill {{#if active}}ncm-composer__anon-pill--active{{/if}}"
+            data-action="setAnonStyle" data-style="{{id}}">{{label}}</button>
+    {{/each}}
+    <span class="ncm-composer__anon-field">
+      <label>ALIAS</label>
+      <input type="text" data-id="anon-alias" value="{{anonAlias}}" placeholder="UNKNOWN" maxlength="32" autocomplete="off" />
+    </span>
+    <button class="ncm-composer__anon-reply {{#if anonAllowReplies}}ncm-composer__anon-reply--on{{/if}}"
+            data-action="toggleAnonReplies" title="Allow the recipient to reply (routed back to you, still masked)">
+      <i class="fas {{#if anonAllowReplies}}fa-reply{{else}}fa-reply-slash{{/if}}"></i>
+      {{#if anonAllowReplies}}Replies On{{else}}One-Way{{/if}}
+    </button>
+    {{#if anonTraceFeatureEnabled}}
+    <span class="ncm-composer__anon-field">
+      <label>TRACE&nbsp;DV</label>
+      <input type="number" data-id="anon-trace-dv" value="{{anonTraceDV}}" min="6" max="30" />
+    </span>
+    {{/if}}
+    <i class="fas fa-xmark ncm-composer__strip-close" data-action="toggleAnonymous"></i>
+  </div>
+  {{/if}}
+  {{/if}} {{!-- /isGM — end of ICE + destruct + anon strips --}}
 
   {{!-- Schedule expansion strip — available to everyone --}}
   {{#if scheduleEnabled}}

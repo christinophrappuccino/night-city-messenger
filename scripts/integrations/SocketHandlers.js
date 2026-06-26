@@ -37,6 +37,13 @@ export class SocketHandlers {
       await messageService.handleMessageRelay(data);
     });
 
+    // ─── Anonymous Trace (Player → GM) ────────────────────
+    socketManager.register(SOCKET_OPS.ANON_TRACE_REQUEST, async (data) => {
+      if (!game.user.isGM) return;
+      log.debug('Socket: anon:traceRequest received for', data?.messageId);
+      await messageService.handleAnonTraceRequest(data);
+    });
+
     // ─── Delivery Confirmation (GM → Sender) ──────────────
     socketManager.register(SOCKET_OPS.MESSAGE_DELIVERED, (data) => {
       // All clients check if they sent this message

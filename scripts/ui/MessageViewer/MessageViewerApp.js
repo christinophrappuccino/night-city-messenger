@@ -39,7 +39,7 @@ import {
 } from '../../utils/designHelpers.js';
 import { EVENTS, SOCKET_OPS } from '../../utils/constants.js';
 import { getThreadMessages } from '../../utils/threading.js';
-import { formatCyberDate, resolveMediaEmbed } from '../../utils/helpers.js';
+import { formatCyberDate, resolveMediaEmbed, resolveAnonSender, resolveAnonRecipient } from '../../utils/helpers.js';
 
 const MODULE_ID = 'cyberpunkred-messenger';
 const MESSAGES_PER_PAGE = 25;
@@ -1351,6 +1351,10 @@ export class MessageViewerApp extends BaseApplication {
         break;
       case 'send-reply':
         this._sendCustomReply();
+        break;
+
+      case 'trace-anon':
+        this._traceAnonSender(target.dataset.messageId || this.selectedMessageId);
         break;
 
       // ── Compose ──
@@ -2916,6 +2920,86 @@ export class MessageViewerApp extends BaseApplication {
   }
 
   /**
+   * Trace an anonymous sender — a skill check that, on success, unmasks them.
+   * The reveal is GM-mediated (the recipient's copy holds no real identity): the
+   * GM resolves the true sender from the sent copy and patches this page, which
+   * syncs back and resolves the mask to the real identity.
+   * @param {string} messageId
+   */
+  async _traceAnonSender(messageId) {
+    const msg = this._getSelectedMessage();
+    if (!msg || msg.messageId !== messageId) return;
+    const anon = msg.anonymous;
+    if (!anon?.enabled || anon.traced || !anon.traceable) return;
+
+    // GM tracing the player's scrubbed copy — just force the reveal, no roll.
+    if (game.user.isGM) {
+      const r = await this.messageService?.revealAnonSender?.(messageId, this.actorId);
+      if (r?.success) {
+        this.soundService?.play?.('shard-decrypt');
+        ui.notifications.info('Anonymous sender revealed.');
+        setTimeout(() => this.render(), 200);
+      } else {
+        ui.notifications.warn(`Reveal failed: ${r?.error || 'sender could not be resolved'}`);
+      }
+      return;
+    }
+
+    const actor = game.actors?.get(this.actorId);
+    if (!actor) { ui.notifications.warn('NCM | No character assigned.'); return; }
+
+    const dv = Number(anon.traceDV) || 15;
+    let traceSkill = 'interface';
+    try { traceSkill = game.settings.get(MODULE_ID, 'anonTraceSkill') || 'interface'; } catch { /* default */ }
+
+    const skillSvc = game.nightcity?.skillService;
+    const skills = skillSvc?.getAvailableSkills(actor, [traceSkill]) || [];
+    const availableLuck = skillSvc?.getAvailableLuck(actor) ?? 0;
+
+    const dialogResult = await this._showMessageSkillDialog({
+      title: 'Trace Anonymous Sender',
+      icon: 'fas fa-satellite-dish',
+      color: '#19f3f7',
+      subtitle: `Triangulating the relay — DV ${dv}`,
+      skills,
+      dc: dv,
+      availableLuck,
+      actorName: actor.name,
+      executeLabel: 'Run Trace',
+      executeIcon: 'fas fa-satellite-dish',
+    });
+    if (!dialogResult) return; // Cancelled
+
+    this.soundService?.play?.('trace-fire');
+
+    const rollResult = await skillSvc?.performCheck?.(actor, dialogResult.skill, {
+      dc: dv,
+      luckSpend: dialogResult.luck ?? 0,
+      showChat: true,
+      context: 'Tracing an anonymous sender',
+      flavor: `Trace // DV ${dv}`,
+    });
+
+    const byPayload = {
+      messageId,
+      inboxActorId: this.actorId,
+      byActorName: actor.name,
+      byUserId: game.user.id,
+    };
+
+    if (rollResult?.success) {
+      this.soundService?.play?.('shard-decrypt');
+      ui.notifications.info('Trace successful — unmasking sender...');
+      game.nightcity?.socketManager?.emit(SOCKET_OPS.ANON_TRACE_REQUEST, { ...byPayload, success: true });
+      // The GM patches this page; DocumentSync re-renders with the real identity.
+    } else {
+      this.soundService?.play?.('hack-fail');
+      ui.notifications.warn('Trace failed — the signal scrambled before you could lock on.');
+      game.nightcity?.socketManager?.emit(SOCKET_OPS.ANON_TRACE_REQUEST, { ...byPayload, success: false });
+    }
+  }
+
+  /**
    * Attempt to decrypt an ICE-protected message with a unique cipher-matrix animation.
    * Different from the shard hacking terminal — this is a visual decryption grid
    * with character reveals and a rotating cipher ring.
@@ -4195,6 +4279,19 @@ export class MessageViewerApp extends BaseApplication {
     let fromDisplay = contact?.name || fromActor?.name || msg.fromName || msg.from?.split('@')[0] || 'Unknown';
     let fromPortrait = contact?.portrait || fromActor?.img || null;
 
+    // ── Anonymous sender ──
+    // Non-GM (and GM viewing the scrubbed recipient copy) see the masked alias +
+    // a CSS mask avatar. The GM sees through only when the real identity is still
+    // present on this copy (the GM-owned sent copy), flagged "SENT ANON".
+    const anonView = msg.anonymous?.enabled ? resolveAnonSender(msg) : null;
+    const isAnonMasked = !!(anonView && !anonView.reveal);
+    const isAnonRevealed = !!(anonView && anonView.reveal);
+    const anonStyle = anonView?.style || null;
+    if (isAnonMasked) {
+      fromDisplay = anonView.name;
+      fromPortrait = null;
+    }
+
     // ── Encrypted sender detection ──
     // If the sender's contact is ICE-protected in this actor's contact list,
     // redact identity. The real data stays in message flags and journals
@@ -4218,7 +4315,21 @@ export class MessageViewerApp extends BaseApplication {
     // Priority: contact name → actor name → stored name → email handle fallback
     const toContact = this._findContact(msg.to);
     const toActor = msg.toActorId ? game.actors?.get(msg.toActorId) : null;
-    const toDisplay = toContact?.name || toActor?.name || msg.toName || msg.to?.split('@')[0] || 'Unknown';
+    let toDisplay = toContact?.name || toActor?.name || msg.toName || msg.to?.split('@')[0] || 'Unknown';
+
+    // ── Anonymous-reply sent copy — mask the recipient ──
+    // The replier must never see who the anonymous party they answered really was.
+    const anonRecipient = resolveAnonRecipient(msg);
+    const isAnonToMasked = !!anonRecipient;
+    if (isAnonToMasked) toDisplay = anonRecipient.name;
+
+    // Reply gating: an anonymous message is replyable only if the GM allowed it.
+    const anonRepliesBlocked = isAnonMasked && (msg.anonymous?.allowReplies === false);
+
+    // Trace-to-unmask: offer a trace when the sender is masked, the GM flagged it
+    // traceable, and it hasn't been traced yet. `isAnonTraced` flags a revealed one.
+    const isAnonTraced = !!(msg.anonymous?.enabled && msg.anonymous?.traced && msg.fromActorId);
+    const canTraceAnon = isAnonMasked && !!msg.anonymous?.traceable && !msg.anonymous?.traced;
 
     // ── Priority badge variant for tag-badge partial ──
     const priorityVariant = getPriorityBadgeVariant(msg.priority || 'normal');
@@ -4322,6 +4433,13 @@ export class MessageViewerApp extends BaseApplication {
       fromPortrait,
       isBurnedSender,
       isSenderEncrypted,
+      isAnonMasked,
+      isAnonRevealed,
+      anonStyle,
+      isAnonToMasked,
+      anonRepliesBlocked,
+      isAnonTraced,
+      canTraceAnon,
       toDisplay,
       priorityVariant,
       priorityIcon,
@@ -4537,6 +4655,9 @@ export class MessageViewerApp extends BaseApplication {
         fromDisplay: disp.fromDisplay,
         fromInitial: disp.fromInitial,
         fromPortrait: disp.fromPortrait,
+        isAnonMasked: disp.isAnonMasked,
+        isAnonRevealed: disp.isAnonRevealed,
+        anonStyle: disp.anonStyle,
         avatarColor: disp.avatarColor,
         formattedTime: disp.formattedTime,
         relativeTime: disp.relativeTime,

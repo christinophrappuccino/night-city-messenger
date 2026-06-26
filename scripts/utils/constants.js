@@ -95,6 +95,7 @@ export const SOCKET_OPS = Object.freeze({
   SHARD_CONVERT_RESULT:  'shard:convertResult',
   SHARD_UNCONVERT_REQUEST: 'shard:unconvertRequest',
   SHARD_UNCONVERT_RESULT:  'shard:unconvertResult',
+  ANON_TRACE_REQUEST:      'anon:traceRequest',
 });
 
 // ─── Network Types ───

@@ -225,6 +225,9 @@
   margin: 0 !important;
   border: none !important;
   overflow-y: auto !important;
+  /* Without an explicit overflow-x, `overflow-y: auto` promotes overflow-x to
+     `auto` (CSS spec), so a 1px content overrun shows a horizontal scrollbar. */
+  overflow-x: hidden !important;
   min-height: 0 !important;
   height: auto !important;
 }

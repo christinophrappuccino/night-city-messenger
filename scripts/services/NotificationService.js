@@ -233,11 +233,16 @@ export class NotificationService {
       }
     }
 
-    const sender = data.fromName
-      || (data.fromActorId && game.actors?.get(data.fromActorId)?.name)
-      || (data.fromContactId && game.nightcity?.masterContactService?.getContact(data.fromContactId)?.name)
-      || data.from
-      || 'Unknown';
+    // Anonymous mail — never resolve to the real sender in the toast. The
+    // recipient is non-GM; force the alias. (GMs are the senders and don't get
+    // this toast.) Belt-and-suspenders: the delivered payload is already masked.
+    const sender = (data.anonymous?.enabled && !game.user?.isGM)
+      ? (data.anonymous.alias || 'UNKNOWN')
+      : (data.fromName
+        || (data.fromActorId && game.actors?.get(data.fromActorId)?.name)
+        || (data.fromContactId && game.nightcity?.masterContactService?.getContact(data.fromContactId)?.name)
+        || data.from
+        || 'Unknown');
 
     const preview = data.preview
       ? `"${data.preview.substring(0, 60)}..."`

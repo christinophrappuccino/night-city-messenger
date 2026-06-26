@@ -37,6 +37,7 @@
 @import 'components/message-viewer-hud.css'; 
 @import 'components/message-detail.css'; 
 @import 'components/message-composer.css';
+@import 'components/anon-mask.css';
 @import 'components/contact-manager.css';
 @import 'components/contact-verification.css';
 @import 'components/gm-contact-manager.css';

@@ -38,7 +38,7 @@
   <div class="ncm-tc__tabs">
     <button class="ncm-tc__tab {{#if (eq activeTab 'presets')}}ncm-tc__tab--active{{/if}}" data-tc-tab="presets"><i class="fas fa-swatchbook"></i> Presets</button>
     <button class="ncm-tc__tab {{#if (eq activeTab 'colors')}}ncm-tc__tab--active{{/if}}" data-tc-tab="colors"><i class="fas fa-droplet"></i> Colors</button>
-    <button class="ncm-tc__tab {{#if (eq activeTab 'fonts')}}ncm-tc__tab--active{{/if}}" data-tc-tab="fonts"><i class="fas fa-font"></i> Fonts</button>
+    <button class="ncm-tc__tab {{#if (eq activeTab 'fonts')}}ncm-tc__tab--active{{/if}}" data-tc-tab="fonts"><i class="fas fa-text-height"></i> Text</button>
     <button class="ncm-tc__tab {{#if (eq activeTab 'effects')}}ncm-tc__tab--active{{/if}}" data-tc-tab="effects"><i class="fas fa-wand-magic-sparkles"></i> Effects</button>
   </div>
 
@@ -110,9 +110,11 @@
     {{!-- ── FONTS ── --}}
     <div class="ncm-tc__panel {{#if (eq activeTab 'fonts')}}ncm-tc__panel--active{{/if}}" data-tc-panel="fonts">
       <div class="ncm-tc__slabel">Agent Identity</div>
-      <div class="ncm-tc__srow">
-        <span class="ncm-tc__srow-label">Agent Name</span>
-        <input type="text" name="agentName" value="{{agentName}}" maxlength="24" placeholder="Agent" class="ncm-tc__name-input" />
+      <div class="ncm-tc__font-section">
+        <div class="ncm-tc__srow">
+          <span class="ncm-tc__srow-label">Agent Name</span>
+          <input type="text" name="agentName" value="{{agentName}}" maxlength="24" placeholder="Agent" class="ncm-tc__name-input" />
+        </div>
       </div>
       <div class="ncm-tc__name-hint">Replaces "Agent" in the inbox title bar (e.g. v.solo // ComLink). Saved per player.</div>
 

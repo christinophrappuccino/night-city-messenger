@@ -11,6 +11,7 @@
 import { MODULE_ID } from '../../../utils/constants.js';
 import { log, formatCyberDate } from '../../../utils/helpers.js';
 import { BaseTab } from '../BaseTab.js';
+import { MessageRepository } from '../../../data/MessageRepository.js';
 
 export class ToolsTab extends BaseTab {
 
@@ -694,14 +695,151 @@ export class ToolsTab extends BaseTab {
   // ═══════════════════════════════════════════════════════════
 
   async onPurgeMessages(event, target) {
+    const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+    // ── Gather purge targets: character/contact inboxes + data shards ──
+    const inboxTargets = [];
+    for (const journal of game.journal ?? []) {
+      const info = MessageRepository.identifyInbox(journal);
+      if (!info) continue;
+      const count = journal.pages.filter(p => p.flags?.[MODULE_ID]?.messageId).length;
+      if (count === 0) continue;
+      const name = info.isContact
+        ? (this.masterContactService?.getContact?.(info.ownerId)?.name || journal.name || 'Contact')
+        : (game.actors?.get(info.ownerId)?.name || journal.name || 'Actor');
+      inboxTargets.push({
+        key: `inbox:${journal.id}`,
+        group: info.isContact ? 'Contact Inboxes' : 'Character Inboxes',
+        label: `${name} (${count})`,
+        journalId: journal.id,
+        count,
+      });
+    }
+
+    const shardTargets = [];
+    for (const shard of this._collectDataShards()) {
+      const count = (this.dataShardService?.getShardMessages?.(shard) ?? []).length;
+      if (count === 0) continue;
+      shardTargets.push({
+        key: `shard:${shard.uuid}`,
+        group: 'Data Shards',
+        label: `${shard.name} (${count})`,
+        shardUuid: shard.uuid,
+        count,
+      });
+    }
+
+    const all = [...inboxTargets, ...shardTargets];
+    if (all.length === 0) {
+      ui.notifications.info('NCM | No messages to purge.');
+      return;
+    }
+
+    // ── Build the grouped picker ──
+    const inboxTotal = inboxTargets.reduce((s, t) => s + t.count, 0);
+    const groups = {};
+    for (const t of all) (groups[t.group] ||= []).push(t);
+    let optionsHtml = '<option value="">— Select a target —</option>';
+    if (inboxTargets.length > 0) {
+      optionsHtml += `<option value="all-inboxes">⚠ ALL inboxes — character + contact (${inboxTotal})</option>`;
+    }
+    for (const [group, items] of Object.entries(groups)) {
+      optionsHtml += `<optgroup label="${esc(group)}">`;
+      for (const t of items) optionsHtml += `<option value="${esc(t.key)}">${esc(t.label)}</option>`;
+      optionsHtml += '</optgroup>';
+    }
+
+    const content = `
+      <div class="ncm-purge-dialog">
+        <p>Choose what to purge. The number in parentheses is the message count. This permanently deletes those messages and <strong>cannot be undone</strong>.</p>
+        <select id="ncm-purge-target" name="target" style="width:100%; margin-top:6px;">${optionsHtml}</select>
+      </div>`;
+
+    let selected = null;
+    await new Promise((resolve) => {
+      new Dialog({
+        title: '⚠ Purge Messages',
+        content,
+        buttons: {
+          purge: {
+            icon: '<i class="fas fa-trash"></i>',
+            label: 'Purge…',
+            callback: (html) => { selected = html.find('#ncm-purge-target').val() || null; },
+          },
+          cancel: { icon: '<i class="fas fa-xmark"></i>', label: 'Cancel' },
+        },
+        default: 'cancel',
+        close: () => resolve(),
+      }).render(true);
+    });
+
+    if (!selected) return;
+
+    // Resolve the confirm label + count.
+    let label, count;
+    if (selected === 'all-inboxes') { label = 'ALL inboxes'; count = inboxTotal; }
+    else { const t = all.find(x => x.key === selected); label = t?.label ?? 'target'; count = t?.count ?? 0; }
+
     const confirmed = await Dialog.confirm({
-      title: '⚠ Purge Messages',
-      content: '<p>Select an actor and delete ALL their messages? This cannot be undone.</p>',
+      title: '⚠ Confirm Purge',
+      content: `<p>Permanently delete <strong>${count}</strong> message(s) from <strong>${esc(label)}</strong>?</p><p style="color:#ff0033;"><strong>This cannot be undone.</strong></p>`,
     });
     if (!confirmed) return;
 
-    // TODO: Show actor picker, then purge
-    ui.notifications.info('Purge feature requires actor selection dialog.');
+    // ── Execute ──
+    try {
+      let deleted = 0;
+      if (selected === 'all-inboxes') {
+        for (const t of inboxTargets) deleted += await this._purgeInboxJournal(t.journalId);
+      } else if (selected.startsWith('inbox:')) {
+        deleted += await this._purgeInboxJournal(all.find(x => x.key === selected)?.journalId);
+      } else if (selected.startsWith('shard:')) {
+        deleted += await this._purgeShard(all.find(x => x.key === selected)?.shardUuid);
+      }
+      log.info(`Purged ${deleted} message(s) from ${label}`);
+      ui.notifications.info(`NCM | Purged ${deleted} message(s) from ${label}.`);
+      this.app?.render?.(false);
+    } catch (error) {
+      console.error(`${MODULE_ID} | Purge failed:`, error);
+      ui.notifications.error('NCM | Purge failed. Check console.');
+    }
+  }
+
+  /** Collect every data-shard Item (world + actor-owned). */
+  _collectDataShards() {
+    const shards = [];
+    for (const item of game.items ?? []) {
+      if (item.getFlag(MODULE_ID, 'isDataShard') === true) shards.push(item);
+    }
+    for (const actor of game.actors ?? []) {
+      for (const item of actor.items ?? []) {
+        if (item.getFlag(MODULE_ID, 'isDataShard') === true) shards.push(item);
+      }
+    }
+    return shards;
+  }
+
+  /** Delete every message page in an inbox journal (keeps the empty inbox). */
+  async _purgeInboxJournal(journalId) {
+    const journal = journalId ? game.journal?.get(journalId) : null;
+    if (!journal) return 0;
+    const pageIds = journal.pages.filter(p => p.flags?.[MODULE_ID]?.messageId).map(p => p.id);
+    if (pageIds.length === 0) return 0;
+    await journal.deleteEmbeddedDocuments('JournalEntryPage', pageIds);
+    return pageIds.length;
+  }
+
+  /** Delete every entry from a data shard (keeps the shard item). */
+  async _purgeShard(shardUuid) {
+    const shard = shardUuid ? await fromUuid(shardUuid) : null;
+    if (!shard) return 0;
+    const entries = this.dataShardService?.getShardMessages?.(shard) ?? [];
+    let n = 0;
+    for (const entry of entries) {
+      const r = await this.dataShardService?.removeMessage?.(shard, entry.messageId);
+      if (r?.success) n++;
+    }
+    return n;
   }
 
   async onResetModule(event, target) {

@@ -141,6 +141,26 @@ export function registerTemplates(initializer) {
       return new Handlebars.SafeString(`<i class="fas ${icon}"></i>`);
     });
 
+    // ─── Anonymous Mask Avatar ───
+    // Renders the self-contained masked avatar for an anonymous sender. Pure CSS
+    // layers keyed by data-anon-style (see styles/components/anon-mask.css). Never
+    // uses the real portrait — the recipient never receives it (truly hidden).
+    Handlebars.registerHelper('ncm-anon-avatar', function (style, label) {
+      const s = ['filtered', 'scrambled', 'ghost', 'monolith'].includes(style) ? style : 'scrambled';
+      let inner;
+      if (s === 'ghost') {
+        inner = '<span class="ncm-anon-av__ghost"></span>';
+      } else if (s === 'monolith') {
+        const n = Handlebars.escapeExpression(typeof label === 'string' && label ? label : '07');
+        inner = `<span class="ncm-anon-av__slab"><span class="ncm-anon-av__so">SOUND</span><span class="ncm-anon-av__so">ONLY</span><span class="ncm-anon-av__num">${n}</span></span>`;
+      } else if (s === 'filtered') {
+        inner = '<span class="ncm-anon-av__face"></span><span class="ncm-anon-av__vignette"></span>';
+      } else { // scrambled
+        inner = '<span class="ncm-anon-av__face"></span><span class="ncm-anon-av__noise"></span><span class="ncm-anon-av__tear"></span><span class="ncm-anon-av__rgb-r"></span><span class="ncm-anon-av__rgb-b"></span><span class="ncm-anon-av__vignette"></span>';
+      }
+      return new Handlebars.SafeString(`<span class="ncm-anon-av" data-anon-style="${s}">${inner}</span>`);
+    });
+
     log.info('Handlebars helpers registered');
   });
 }

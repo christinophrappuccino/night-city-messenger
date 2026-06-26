@@ -35,9 +35,11 @@
   {{/unless}}
 
   {{!-- Avatar --}}
-  <div class="ncm-viewer__msg-avatar {{#if isBurnedSender}}ncm-viewer__msg-avatar--burned{{/if}}"
+  <div class="ncm-viewer__msg-avatar {{#if isBurnedSender}}ncm-viewer__msg-avatar--burned{{/if}} {{#if isAnonMasked}}ncm-viewer__avatar--anon{{/if}}"
     style="color: {{avatarColor}}; border-color: {{avatarColor}}">
-    {{#if isBurnedSender}}
+    {{#if isAnonMasked}}
+      {{{ncm-anon-avatar anonStyle}}}
+    {{else if isBurnedSender}}
       <i class="fas fa-user-slash" style="font-size:12px;"></i>
     {{else if fromPortrait}}
       <img src="{{fromPortrait}}" alt="{{fromDisplay}}" />
@@ -76,6 +78,8 @@
     {{!-- Row 1: Sender + Indicators + Net Pip + Stacked Time --}}
     <div class="ncm-viewer__msg-top">
       <span class="ncm-viewer__msg-sender {{#if isBurnedSender}}ncm-viewer__msg-sender--burned{{/if}}">{{fromDisplay}}</span>
+      {{#if isAnonMasked}}<span class="ncm-anon-badge"><i class="fas fa-user-secret"></i> Anon</span>{{/if}}
+      {{#if isAnonRevealed}}<span class="ncm-anon-badge ncm-anon-badge--gm"><i class="fas fa-user-secret"></i> Sent Anon</span>{{/if}}
       {{#if isBurnedSender}}
       <span class="ncm-viewer__msg-burned-tag"><i class="fas fa-fire"></i> Burned</span>
       {{/if}}

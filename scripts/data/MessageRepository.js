@@ -479,6 +479,11 @@ export class MessageRepository {
           attachments: messageData.attachments || [],
           malware: null,
           accessControl: messageData.accessControl || null,
+
+          // Anonymous Send — masks the sender. On the recipient-facing copy the
+          // real identity (from/fromActorId/fromContactId) is already stripped by
+          // MessageService before this runs; this block drives the masked display.
+          anonymous: messageData.anonymous || null,
         }
       };
 
@@ -513,6 +518,10 @@ export class MessageRepository {
    * @returns {string}
    */
   _resolveSenderName(messageData) {
+    // Anonymous — never reveal the real name in the page title.
+    if (messageData.anonymous?.enabled) {
+      return messageData.anonymous.alias || 'UNKNOWN';
+    }
     // Try actor name first
     if (messageData.fromActorId) {
       const actor = game.actors?.get(messageData.fromActorId);
@@ -957,6 +966,7 @@ export class MessageRepository {
       traceStarted: flags.traceStarted || null,
       traceExpiresAt: flags.traceExpiresAt || null,
       traceCompleted: flags.traceCompleted || false,
+      anonymous: flags.anonymous || null,
     };
   }
 
