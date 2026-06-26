@@ -40,13 +40,11 @@
   background: var(--ncm-bg-base, var(--ncm-bg-base));
 }
 
-/* Top accent gradient line */
+/* Top accent line */
 .ncm-app .ncm-contacts-v5::before {
   content: '';
   height: 2px;
-  background: linear-gradient(90deg,
-    var(--ncm-primary, var(--ncm-primary)) 0%, transparent 30%,
-    transparent 70%, var(--ncm-secondary, var(--ncm-secondary)) 100%);
+  background: var(--ncm-secondary, var(--ncm-secondary));
   flex-shrink: 0;
   opacity: 0.6;
 }

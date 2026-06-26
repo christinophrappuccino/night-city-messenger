@@ -34,8 +34,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 6px 12px;
-  background: linear-gradient(135deg, rgba(246, 82, 97, 0.12) 0%, rgba(246, 82, 97, 0.04) 100%);
-  border-bottom: 1px solid rgba(246, 82, 97, 0.2);
+  background: color-mix(in srgb, var(--ncm-primary) 8%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--ncm-primary) 20%, transparent);
   flex-shrink: 0;
 }
 
@@ -1256,11 +1256,14 @@
   background: rgba(25, 243, 247, 0.06);
 }
 
-/* Form dividers */
-.ncm-form-divider {
+/* Form dividers — flat line, not the CPR system's gradient hr */
+.ncm-app hr.ncm-form-divider {
   margin: 10px 0 4px;
+  height: 0;
   border: none;
-  border-top: 1px solid rgba(42, 42, 69, 0.5);
+  border-top: 1px solid var(--ncm-border, rgba(42, 42, 69, 0.5));
+  background: none !important;
+  border-image: none !important;
 }
 
 .ncm-form-divider-label {
@@ -1596,12 +1599,7 @@
   left: 0;
   right: 0;
   height: 2px;
-  background: linear-gradient(90deg,
-    var(--ncm-primary, #F65261),
-    transparent 40%,
-    transparent 60%,
-    var(--ncm-secondary, #19f3f7)
-  );
+  background: var(--ncm-primary, #F65261);
   z-index: 10;
   pointer-events: none;
 }

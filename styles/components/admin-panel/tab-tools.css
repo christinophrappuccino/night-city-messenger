@@ -131,7 +131,7 @@
   content: '' !important;
   position: absolute !important; top: 0 !important; left: 0 !important; right: 0 !important;
   height: 2px !important; z-index: 100 !important;
-  background: linear-gradient(90deg, var(--ncm-primary), transparent 40%, transparent 60%, var(--ncm-secondary)) !important;
+  background: var(--ncm-secondary) !important;
   pointer-events: none !important;
 }
 

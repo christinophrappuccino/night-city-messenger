@@ -123,6 +123,25 @@
   outline-offset: 1px;
 }
 
+/* ─── Window chrome controls follow the admin theme ────────────────────────
+ * Foundry colors the header-control icons near-white by default. That reads
+ * fine on the dark presets but vanishes on clean-light (white-on-white close/
+ * controls). The window-chrome `.header-control { color }` rule doesn't reach
+ * the inner <i>, so force both the button and its icon to the themed colors.
+ * Scoped to the admin panel so the player theme is untouched. */
+.ncm-app.ncm-admin-panel > .window-header .header-control,
+.ncm-app.ncm-admin-panel > .window-header .header-control > i {
+  color: var(--ncm-text-secondary);
+}
+.ncm-app.ncm-admin-panel > .window-header .header-control:hover,
+.ncm-app.ncm-admin-panel > .window-header .header-control:hover > i {
+  color: var(--ncm-text-primary);
+}
+.ncm-app.ncm-admin-panel > .window-header .header-control.close:hover,
+.ncm-app.ncm-admin-panel > .window-header .header-control.close:hover > i {
+  color: var(--ncm-danger);
+}
+
 /* ─── Admin Appearance picker (Tools tab) ──────────────────────────────── */
 .ncm-app .ncm-admin-theme-picker {
   display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;
