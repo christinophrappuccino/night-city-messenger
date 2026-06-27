@@ -535,7 +535,7 @@ export class CreateNetworkDialog extends BaseApplication {
         level: data.security.level,
         requiresAuth: data.security.requiresAuth,
         password: data.security.password?.trim() || '',
-        bypassSkills: data.security.authType === 'skill' ? ['interface'] : [],
+        bypassSkills: data.security.authType === 'skill' ? ['Interface'] : [],
         bypassDC: data.security.bypassDC || 15,
         maxAttempts: 3,
         lockoutDuration: 3600000,

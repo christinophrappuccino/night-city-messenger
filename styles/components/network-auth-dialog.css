@@ -1,13 +1,14 @@
 /**
- * Network Authentication Dialog — WP-3 Redesign
+ * Network Authentication Dialog — Method-Card Redesign
  * @file styles/components/network-auth-dialog.css
  * @module cyberpunkred-messenger
- * @description Styles for NetworkAuthDialog covering 4 states:
- *   password entry, error, skill check bypass, lockout.
- *   Extracted from ncm-network-dialogs-mockup.html.
+ * @description Styles for NetworkAuthDialog. Stacked "method cards"
+ *   (Password / Skill Check / Key Item) shown simultaneously so AND-mode
+ *   exposes every requirement at once. Covers: OR/AND policy banners,
+ *   numbered AND-mode checklist, Black ICE danger, error, lockout.
  *
- *   Scoped under .ncm-network-auth-dialog (ApplicationV2 wrapper class).
- *   Uses ncm-auth__ BEM prefix for all internal elements.
+ *   Scoped under .ncm-network-auth-dialog (ApplicationV2 wrapper class,
+ *   which also carries .ncm-app). ncm-auth__ BEM prefix throughout.
  */
 
 
@@ -29,30 +30,30 @@
   --nad-bg-elevated: var(--ncm-bg-elevated, #252540);
 
   --nad-border: var(--ncm-border, #2a2a45);
-  --nad-border-active: #3a3a5a;
+  --nad-border-active: var(--ncm-border-active, #3a3a5a);
 
-  --nad-text-primary: var(--ncm-text-primary, #e0e0e8);
-  --nad-text-secondary: var(--ncm-text-secondary, #8888a0);
-  --nad-text-muted: #555570;
+  --nad-text-primary: var(--ncm-text-primary, #ededf0);
+  --nad-text-secondary: var(--ncm-text-secondary, #bdbdd0);
+  --nad-text-muted: var(--ncm-text-muted, #8e8ea8);
 
   --nad-font-display: var(--ncm-font-display, 'Rajdhani', sans-serif);
   --nad-font-mono: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  --nad-font-title: 'Orbitron', var(--ncm-font-display, 'Rajdhani', sans-serif);
+  --nad-font-title: var(--ncm-font-title, 'Orbitron', sans-serif);
 }
 
 
 /* ═══════════════════════════════════════════════════════════
-   App Container / Window Overrides
+   Container / window overrides
    ═══════════════════════════════════════════════════════════ */
 
 .ncm-network-auth-dialog {
   background: var(--nad-bg-deep);
   border: 1px solid var(--nad-border);
-  border-radius: 2px;
+  border-radius: 4px;
   overflow: hidden;
 }
 
-/* Top accent bar — gold for password, purple for skill, red for lockout */
+/* Top accent bar — driven by data-auth-state (set in _onRender) */
 .ncm-network-auth-dialog::before {
   content: '';
   position: absolute;
@@ -61,6 +62,11 @@
   background: var(--nad-accent);
   z-index: 10;
 }
+.ncm-network-auth-dialog[data-auth-state="skill"]::before   { background: var(--nad-purple); }
+.ncm-network-auth-dialog[data-auth-state="keyitem"]::before  { background: var(--nad-secondary); }
+.ncm-network-auth-dialog[data-auth-state="lockout"]::before  { background: var(--nad-danger); }
+.ncm-network-auth-dialog[data-auth-state="ice"]::before      { background: var(--nad-danger); }
+.ncm-network-auth-dialog[data-auth-state="password"]::before { background: var(--nad-accent); }
 
 /* Scanline overlay */
 .ncm-network-auth-dialog::after {
@@ -68,10 +74,9 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  z-index: 100;
+  z-index: 1;
   background: repeating-linear-gradient(
-    0deg,
-    transparent, transparent 2px,
+    0deg, transparent, transparent 2px,
     rgba(0, 0, 0, 0.03) 2px, rgba(0, 0, 0, 0.03) 4px
   );
 }
@@ -79,409 +84,494 @@
 .ncm-network-auth-dialog .window-content {
   padding: 0 !important;
   background: var(--nad-bg-deep) !important;
+  /* Cap height so a tall dialog (AND-mode + ICE + 3 methods) never runs
+     off-screen — scroll internally instead (window is non-resizable). */
+  max-height: 82vh;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
 }
-
-
-/* ═══════════════════════════════════════════════════════════
-   Main Dialog Body
-   ═══════════════════════════════════════════════════════════ */
+.ncm-network-auth-dialog .window-content::-webkit-scrollbar { width: 9px; }
+.ncm-network-auth-dialog .window-content::-webkit-scrollbar-track { background: var(--nad-bg-deep); }
+.ncm-network-auth-dialog .window-content::-webkit-scrollbar-thumb {
+  background: var(--nad-border);
+  border-radius: 5px;
+  border: 2px solid var(--nad-bg-deep);
+}
+.ncm-network-auth-dialog .window-content::-webkit-scrollbar-thumb:hover {
+  background: var(--nad-border-active);
+}
 
 .ncm-auth-dialog {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  padding: 16px;
+  padding: 18px;
   font-family: var(--nad-font-display);
   position: relative;
-  z-index: 1;
+  z-index: 2;
 }
 
 
 /* ═══════════════════════════════════════════════════════════
-   Network Identity Block
+   Network identity
    ═══════════════════════════════════════════════════════════ */
 
 .ncm-auth__identity {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding-bottom: 12px;
+  gap: 13px;
+  padding-bottom: 14px;
   border-bottom: 1px solid var(--nad-border);
 }
 
 .ncm-auth__icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 6px;
+  width: 46px;
+  height: 46px;
+  border-radius: 9px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
+  font-size: 21px;
   flex-shrink: 0;
   overflow: hidden;
 }
 
-.ncm-auth__title-group {
-  flex: 1;
-  min-width: 0;
-}
+.ncm-auth__title-group { flex: 1; min-width: 0; }
 
 .ncm-auth__name {
   font-family: var(--nad-font-display);
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 700;
   color: var(--nad-text-primary);
   text-transform: uppercase;
-  line-height: 1.2;
+  line-height: 1.12;
 }
 
 .ncm-auth__meta {
   font-family: var(--nad-font-mono);
-  font-size: 9px;
+  font-size: 11px;
   color: var(--nad-text-muted);
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-top: 1px;
+  gap: 8px;
+  margin-top: 3px;
 }
 
 
-/* ─── Security Tag ─── */
+/* ─── Security tag ─── */
 
 .ncm-auth-dialog .ncm-tag {
   font-family: var(--nad-font-mono);
-  font-size: 7px;
-  padding: 1px 5px;
-  border-radius: 1px;
+  font-size: 9px;
+  padding: 2px 6px;
+  border-radius: 2px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   display: inline-flex;
   align-items: center;
-  gap: 2px;
+  gap: 3px;
+}
+.ncm-auth-dialog .ncm-tag i { font-size: 8px; }
+.ncm-auth-dialog .ncm-tag--green  { background: color-mix(in srgb, var(--nad-success) 8%, transparent);  color: var(--nad-success);   border: 1px solid color-mix(in srgb, var(--nad-success) 18%, transparent); }
+.ncm-auth-dialog .ncm-tag--cyan   { background: color-mix(in srgb, var(--nad-secondary) 8%, transparent); color: var(--nad-secondary); border: 1px solid color-mix(in srgb, var(--nad-secondary) 18%, transparent); }
+.ncm-auth-dialog .ncm-tag--warn   { background: color-mix(in srgb, var(--nad-accent) 12%, transparent);  color: var(--nad-accent);    border: 1px solid color-mix(in srgb, var(--nad-accent) 25%, transparent); }
+.ncm-auth-dialog .ncm-tag--purple { background: color-mix(in srgb, var(--nad-purple) 10%, transparent);  color: var(--nad-purple);    border: 1px solid color-mix(in srgb, var(--nad-purple) 22%, transparent); }
+.ncm-auth-dialog .ncm-tag--danger { background: color-mix(in srgb, var(--nad-danger) 14%, transparent);  color: #ff5577;              border: 1px solid color-mix(in srgb, var(--nad-danger) 30%, transparent); }
+
+
+/* ═══════════════════════════════════════════════════════════
+   Black ICE danger
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-auth__ice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 13px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--nad-danger) 7%, transparent);
+  border: 1px solid color-mix(in srgb, var(--nad-danger) 28%, transparent);
+  animation: ncm-auth-ice-pulse 1.6s ease infinite;
+}
+@keyframes ncm-auth-ice-pulse {
+  0%, 100% { border-color: color-mix(in srgb, var(--nad-danger) 22%, transparent); box-shadow: none; }
+  50%      { border-color: color-mix(in srgb, var(--nad-danger) 55%, transparent); box-shadow: 0 0 12px color-mix(in srgb, var(--nad-danger) 14%, transparent); }
 }
 
-.ncm-auth-dialog .ncm-tag i {
-  font-size: 7px;
+.ncm-auth__ice-portrait,
+.ncm-auth__ice-portrait-img {
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  border-radius: 5px;
+}
+.ncm-auth__ice-portrait {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 21px;
+  background: color-mix(in srgb, var(--nad-danger) 12%, transparent);
+  color: #ff5577;
+  border: 1px solid color-mix(in srgb, var(--nad-danger) 40%, transparent);
+}
+.ncm-auth__ice-portrait-img {
+  object-fit: cover;
+  border: 1px solid color-mix(in srgb, var(--nad-danger) 40%, transparent);
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--nad-danger) 30%, transparent));
 }
 
-.ncm-auth-dialog .ncm-tag--warn {
-  background: rgba(247, 201, 72, 0.1);
-  color: var(--nad-accent);
-  border: 1px solid rgba(247, 201, 72, 0.2);
+.ncm-auth__ice-txt { flex: 1; min-width: 0; }
+
+.ncm-auth__ice-name {
+  font-family: var(--nad-font-title);
+  font-size: 11px;
+  font-weight: 700;
+  color: #ff5577;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
 }
-
-.ncm-auth-dialog .ncm-tag--cyan {
-  background: rgba(25, 243, 247, 0.08);
-  color: var(--nad-secondary);
-  border: 1px solid rgba(25, 243, 247, 0.15);
-}
-
-.ncm-auth-dialog .ncm-tag--purple {
-  background: rgba(168, 85, 247, 0.08);
-  color: var(--nad-purple);
-  border: 1px solid rgba(168, 85, 247, 0.15);
-}
-
-.ncm-auth-dialog .ncm-tag--danger {
-  background: rgba(255, 0, 51, 0.12);
-  color: var(--nad-danger);
-  border: 1px solid rgba(255, 0, 51, 0.2);
-}
-
-.ncm-auth-dialog .ncm-tag--green {
-  background: rgba(0, 255, 65, 0.06);
-  color: var(--nad-success);
-  border: 1px solid rgba(0, 255, 65, 0.12);
-}
-
-
-/* ─── Description ─── */
-
-.ncm-auth__desc {
+.ncm-auth__ice-cls {
   font-family: var(--nad-font-mono);
-  font-size: 9px;
+  font-size: 8px;
+  color: #ff8899;
+  opacity: 0.85;
+  letter-spacing: 0.04em;
+}
+.ncm-auth__ice-sub {
+  font-family: var(--nad-font-mono);
+  font-size: 10px;
+  color: #ff6677;
+  margin-top: 3px;
+}
+.ncm-auth__ice-sub b { color: #ff99aa; }
+
+
+/* ═══════════════════════════════════════════════════════════
+   Policy banner (OR / AND)
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-auth__policy {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 4px;
+  font-family: var(--nad-font-mono);
+  font-size: 11px;
   color: var(--nad-text-secondary);
-  line-height: 1.5;
-  padding: 6px 0;
+}
+.ncm-auth__policy--or  { background: color-mix(in srgb, var(--nad-secondary) 5%, transparent); border: 1px solid color-mix(in srgb, var(--nad-secondary) 14%, transparent); }
+.ncm-auth__policy--and { background: color-mix(in srgb, var(--nad-accent) 6%, transparent);    border: 1px solid color-mix(in srgb, var(--nad-accent) 18%, transparent); }
+.ncm-auth__policy-icon { flex-shrink: 0; font-size: 13px; }
+.ncm-auth__policy--or  .ncm-auth__policy-icon { color: var(--nad-secondary); }
+.ncm-auth__policy--and .ncm-auth__policy-icon { color: var(--nad-accent); }
+.ncm-auth__policy-text b { color: var(--nad-text-primary); }
+.ncm-auth__policy-prog {
+  margin-left: auto;
+  font-weight: 700;
+  color: var(--nad-accent);
+  white-space: nowrap;
 }
 
 
 /* ═══════════════════════════════════════════════════════════
-   Error Message
+   Error banner
    ═══════════════════════════════════════════════════════════ */
 
 .ncm-auth__error {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  border-radius: 2px;
-  background: rgba(255, 0, 51, 0.06);
-  border: 1px solid rgba(255, 0, 51, 0.15);
+  gap: 8px;
+  padding: 9px 11px;
+  border-radius: 4px;
+  font-family: var(--nad-font-mono);
+  font-size: 11px;
+  color: #ff5577;
+  background: color-mix(in srgb, var(--nad-danger) 7%, transparent);
+  border: 1px solid color-mix(in srgb, var(--nad-danger) 22%, transparent);
+  animation: ncm-auth-shake 0.35s ease;
+}
+.ncm-auth__error i { flex-shrink: 0; font-size: 12px; }
+
+
+/* ═══════════════════════════════════════════════════════════
+   OR divider
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-auth__or {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: -3px 0;
+}
+.ncm-auth__or-line { flex: 1; height: 1px; background: var(--nad-border); }
+.ncm-auth__or-text {
   font-family: var(--nad-font-mono);
   font-size: 9px;
-  color: var(--nad-danger);
-  animation: ncm-auth-shake 0.3s ease;
-}
-
-.ncm-auth__error i {
-  flex-shrink: 0;
-  font-size: 10px;
+  color: var(--nad-text-muted);
+  letter-spacing: 0.1em;
 }
 
 
 /* ═══════════════════════════════════════════════════════════
-   Password Mode
+   Method card
    ═══════════════════════════════════════════════════════════ */
 
-.ncm-auth__field-label {
-  font-family: var(--nad-font-mono);
-  font-size: 8px;
+.ncm-auth__method {
+  border: 1px solid var(--nad-border);
+  border-radius: 8px;
+  background: var(--nad-bg-base);
+  overflow: hidden;
+  transition: opacity 0.25s, border-color 0.2s;
+}
+.ncm-auth__method--active { border-color: var(--accent-c, var(--nad-border)); }
+.ncm-auth__method--done   { opacity: 0.65; }
+
+.ncm-auth__mhead {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 12px 13px;
+}
+.ncm-auth__method--done .ncm-auth__mhead { padding: 10px 13px; }
+
+.ncm-auth__mnum {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--nad-font-title);
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--nad-bg-elevated);
   color: var(--nad-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin-bottom: 4px;
+  border: 1px solid var(--nad-border);
+}
+.ncm-auth__method--active .ncm-auth__mnum {
+  background: color-mix(in srgb, var(--accent-c) 14%, transparent);
+  color: var(--accent-c);
+  border-color: color-mix(in srgb, var(--accent-c) 35%, transparent);
+}
+.ncm-auth__method--done .ncm-auth__mnum {
+  background: color-mix(in srgb, var(--nad-success) 14%, transparent);
+  color: var(--nad-success);
+  border-color: color-mix(in srgb, var(--nad-success) 35%, transparent);
 }
 
-.ncm-auth__password-wrap {
+.ncm-auth__micon { font-size: 15px; width: 20px; text-align: center; flex-shrink: 0; }
+.ncm-auth__micon--pw  { color: var(--nad-accent); }
+.ncm-auth__micon--sk  { color: var(--nad-purple); }
+.ncm-auth__micon--key { color: var(--nad-secondary); }
+.ncm-auth__method--done .ncm-auth__micon { color: var(--nad-success) !important; }
+
+.ncm-auth__mlabel { flex: 1; min-width: 0; }
+.ncm-auth__mtitle {
+  font-family: var(--nad-font-display);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--nad-text-primary);
+  text-transform: uppercase;
+  line-height: 1.1;
+}
+.ncm-auth__msub {
+  font-family: var(--nad-font-mono);
+  font-size: 9.5px;
+  color: var(--nad-text-muted);
+  margin-top: 1px;
+}
+
+.ncm-auth__mbody {
+  padding: 0 13px 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+
+/* ─── Status chips ─── */
+
+.ncm-auth__chip {
+  font-family: var(--nad-font-mono);
+  font-size: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 3px 7px;
+  border-radius: 3px;
+  border: 1px solid;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.ncm-auth__chip--req  { color: var(--nad-accent);  background: color-mix(in srgb, var(--nad-accent) 10%, transparent);  border-color: color-mix(in srgb, var(--nad-accent) 28%, transparent); }
+.ncm-auth__chip--done { color: var(--nad-success); background: color-mix(in srgb, var(--nad-success) 10%, transparent); border-color: color-mix(in srgb, var(--nad-success) 28%, transparent); }
+.ncm-auth__chip--dv   { color: var(--nad-purple);  background: color-mix(in srgb, var(--nad-purple) 10%, transparent);  border-color: color-mix(in srgb, var(--nad-purple) 28%, transparent); }
+
+
+/* ─── Password field ─── */
+
+.ncm-auth__pw {
   display: flex;
   align-items: center;
   background: var(--nad-bg-deep);
   border: 1px solid var(--nad-border);
-  border-radius: 2px;
-  padding: 0 10px;
-  height: 36px;
-  gap: 8px;
-  transition: all 0.15s;
+  border-radius: 5px;
+  padding: 0 12px;
+  height: 44px;
+  gap: 9px;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
-
-.ncm-auth__password-wrap:focus-within {
+.ncm-auth__pw:focus-within {
   border-color: var(--nad-secondary);
-  box-shadow: 0 0 0 1px rgba(25, 243, 247, 0.12),
-              inset 0 0 12px rgba(25, 243, 247, 0.03);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--nad-secondary) 14%, transparent);
 }
-
-.ncm-auth__password-wrap--error {
-  border-color: rgba(255, 0, 51, 0.3);
+.ncm-auth__pw--error { border-color: color-mix(in srgb, var(--nad-danger) 35%, transparent); }
+.ncm-auth__pw--error:focus-within {
+  border-color: color-mix(in srgb, var(--nad-danger) 55%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--nad-danger) 14%, transparent);
 }
-
-.ncm-auth__password-wrap--error:focus-within {
-  border-color: rgba(255, 0, 51, 0.5);
-  box-shadow: 0 0 0 1px rgba(255, 0, 51, 0.12),
-              inset 0 0 12px rgba(255, 0, 51, 0.03);
-}
-
-.ncm-auth__password-prefix {
+.ncm-auth__pw-prefix {
   font-family: var(--nad-font-mono);
-  font-size: 10px;
+  font-size: 12px;
   color: var(--nad-text-muted);
   flex-shrink: 0;
   user-select: none;
 }
-
-.ncm-auth__password-prefix--error {
-  color: var(--nad-danger);
-}
-
-.ncm-auth__password-input {
-  all: unset !important;
-  flex: 1 1 auto !important;
-  font-family: var(--nad-font-mono) !important;
-  font-size: 12px !important;
-  color: var(--nad-secondary) !important;
-  -webkit-text-fill-color: var(--nad-secondary) !important;
-  caret-color: var(--nad-secondary) !important;
-  letter-spacing: 0.15em !important;
-  min-width: 0 !important;
-  cursor: text !important;
-  box-sizing: border-box !important;
-}
-
-.ncm-auth__password-input::placeholder {
-  color: var(--nad-text-muted) !important;
-  -webkit-text-fill-color: var(--nad-text-muted) !important;
-  letter-spacing: 0.05em !important;
-  opacity: 1 !important;
-}
-
-.ncm-auth__password-input--error {
-  color: var(--nad-danger) !important;
-  -webkit-text-fill-color: var(--nad-danger) !important;
-  caret-color: var(--nad-danger) !important;
-}
-
-.ncm-auth__password-toggle {
-  all: unset !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  color: var(--nad-text-muted) !important;
-  cursor: pointer !important;
-  font-size: 11px !important;
-  padding: 4px !important;
-  flex-shrink: 0 !important;
-  margin-left: auto !important;
-}
-
-.ncm-auth__password-toggle:hover {
-  color: var(--nad-text-secondary) !important;
-}
+.ncm-auth__pw-prefix--error { color: var(--nad-danger); }
 
 
-/* ═══════════════════════════════════════════════════════════
-   Skill Check Mode
-   ═══════════════════════════════════════════════════════════ */
+/* ─── Skill breakdown grid ─── */
 
-.ncm-auth__skill-panel {
-  background: var(--nad-bg-surface);
+.ncm-auth__bd { display: flex; gap: 7px; }
+.ncm-auth__bd-cell {
+  flex: 1;
+  background: var(--nad-bg-deep);
   border: 1px solid var(--nad-border);
-  border-radius: 2px;
-  padding: 12px;
+  border-radius: 4px;
+  padding: 7px 4px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  align-items: center;
+  gap: 2px;
+}
+.ncm-auth__bd-cell--total { border-color: color-mix(in srgb, var(--nad-secondary) 28%, transparent); }
+.ncm-auth__bd-val {
+  font-family: var(--nad-font-title);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--nad-text-primary);
+}
+.ncm-auth__bd-val--stat  { color: var(--nad-secondary); }
+.ncm-auth__bd-val--skill { color: var(--nad-purple); }
+.ncm-auth__bd-val--dice  { color: var(--nad-accent); }
+.ncm-auth__bd-val--total { color: var(--nad-secondary); }
+.ncm-auth__bd-label {
+  font-family: var(--nad-font-mono);
+  font-size: 8.5px;
+  color: var(--nad-text-muted);
+  text-transform: uppercase;
 }
 
-.ncm-auth__skill-header {
+
+/* ─── Skill rows (overflow-proof: name flexes, ROLL stays fixed) ─── */
+
+.ncm-auth__skrow {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  padding: 9px 10px;
+  background: var(--nad-bg-surface);
+  border: 1px solid var(--nad-border);
+  border-radius: 5px;
+  transition: border-color 0.12s;
 }
+.ncm-auth__skrow:hover { border-color: color-mix(in srgb, var(--nad-purple) 35%, transparent); }
+.ncm-auth__skrow-ico { color: var(--nad-purple); font-size: 13px; width: 16px; text-align: center; flex-shrink: 0; }
+.ncm-auth__skrow-txt { flex: 1; min-width: 0; }
+.ncm-auth__skrow-name {
+  font-family: var(--nad-font-display);
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--nad-text-primary);
+  text-transform: uppercase;
+  line-height: 1.12;
+}
+.ncm-auth__skrow-sub {
+  font-family: var(--nad-font-mono);
+  font-size: 9px;
+  color: var(--nad-text-muted);
+  margin-top: 1px;
+}
+.ncm-auth__skrow-sub--danger { color: #ff7788; }
+.ncm-auth__skrow-sub--danger i { margin-right: 2px; }
 
-.ncm-auth__skill-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: 4px;
-  background: rgba(168, 85, 247, 0.08);
-  border: 1px solid rgba(168, 85, 247, 0.15);
+
+/* ─── Key item drop ─── */
+
+.ncm-auth__keydrop {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px dashed var(--nad-border);
+  border-radius: 6px;
+  background: var(--nad-bg-deep);
+}
+.ncm-auth__keydrop--error {
+  border-color: color-mix(in srgb, var(--nad-danger) 40%, transparent);
+  border-style: solid;
+}
+.ncm-auth__keydrop-row { display: flex; align-items: center; gap: 11px; }
+.ncm-auth__keydrop-img {
+  width: 38px;
+  height: 38px;
+  border-radius: 5px;
+  flex-shrink: 0;
+  object-fit: cover;
+  border: 1px solid var(--nad-border);
+}
+.ncm-auth__keydrop-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 5px;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
-  color: var(--nad-purple);
-  flex-shrink: 0;
-}
-
-.ncm-auth__skill-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.ncm-auth__skill-name {
-  font-family: var(--nad-font-display);
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--nad-text-primary);
-  text-transform: uppercase;
-}
-
-.ncm-auth__skill-formula {
-  font-family: var(--nad-font-mono);
-  font-size: 9px;
-  color: var(--nad-text-muted);
-}
-
-.ncm-auth__dv {
-  font-family: var(--nad-font-title);
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--nad-accent);
-  line-height: 1;
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.ncm-auth__dv-label {
-  font-family: var(--nad-font-mono);
-  font-size: 7px;
-  color: var(--nad-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-
-/* ─── Stat Breakdown Grid ─── */
-
-.ncm-auth__skill-breakdown {
-  display: flex;
-  gap: 8px;
-  padding: 6px 0;
-  font-family: var(--nad-font-mono);
-  font-size: 9px;
-}
-
-.ncm-auth__skill-stat {
-  background: var(--nad-bg-deep);
+  font-size: 18px;
+  background: color-mix(in srgb, var(--nad-secondary) 8%, transparent);
+  color: var(--nad-secondary);
   border: 1px solid var(--nad-border);
-  border-radius: 2px;
-  padding: 4px 8px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  flex: 1;
 }
-
-.ncm-auth__skill-stat--total {
-  border-color: rgba(25, 243, 247, 0.2);
-}
-
-.ncm-auth__skill-stat-val {
-  font-family: var(--nad-font-title);
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--nad-text-primary);
-}
-
-.ncm-auth__skill-stat-val--stat {
-  color: var(--nad-secondary);
-}
-
-.ncm-auth__skill-stat-val--skill {
-  color: var(--nad-purple);
-}
-
-.ncm-auth__skill-stat-val--dice {
-  color: var(--nad-accent);
-}
-
-.ncm-auth__skill-stat-val--total {
-  color: var(--nad-secondary);
-}
-
-.ncm-auth__skill-stat-label {
+.ncm-auth__keydrop-txt { flex: 1; min-width: 0; }
+.ncm-auth__keydrop-hint {
   font-family: var(--nad-font-mono);
-  font-size: 7px;
-  color: var(--nad-text-muted);
+  font-size: 11px;
+  color: var(--nad-text-secondary);
   text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
-
-
-/* ─── Skill Hint Text ─── */
-
-.ncm-auth__skill-hint {
+.ncm-auth__keydrop-sub {
   font-family: var(--nad-font-mono);
-  font-size: 8px;
+  font-size: 9.5px;
   color: var(--nad-text-muted);
-  text-align: center;
+  margin-top: 2px;
 }
-
-.ncm-auth__skill-hint--needed {
-  color: var(--nad-accent);
-}
-
-.ncm-auth__skill-hint--success {
-  color: var(--nad-success);
-}
-
-.ncm-auth__skill-hint--fail {
-  color: var(--nad-danger);
+.ncm-auth__keydrop-error {
+  font-family: var(--nad-font-mono);
+  font-size: 10px;
+  color: #ff5577;
 }
 
 
 /* ═══════════════════════════════════════════════════════════
-   Attempt Pips
+   Attempt pips
    ═══════════════════════════════════════════════════════════ */
 
 .ncm-auth__attempts {
@@ -489,471 +579,98 @@
   align-items: center;
   gap: 8px;
   font-family: var(--nad-font-mono);
-  font-size: 9px;
-}
-
-.ncm-auth__attempts-label {
+  font-size: 10px;
   color: var(--nad-text-muted);
 }
-
-.ncm-auth__attempts-pips {
-  display: flex;
-  gap: 4px;
-}
-
-.ncm-auth__attempts-pips--center {
-  justify-content: center;
-  margin-top: 4px;
-}
-
+.ncm-auth__attempts-label { text-transform: uppercase; letter-spacing: 0.04em; }
+.ncm-auth__pips { display: flex; gap: 5px; }
+.ncm-auth__pips--center { justify-content: center; margin-top: 4px; }
 .ncm-auth__pip {
-  width: 8px;
-  height: 8px;
+  width: 9px;
+  height: 9px;
   border-radius: 2px;
   border: 1px solid var(--nad-border);
   background: var(--nad-bg-elevated);
   transition: all 0.2s;
 }
-
-.ncm-auth__pip--used {
-  border-color: rgba(255, 0, 51, 0.3);
-  background: rgba(255, 0, 51, 0.2);
-}
-
 .ncm-auth__pip--current {
   border-color: var(--nad-secondary);
-  background: rgba(25, 243, 247, 0.1);
+  background: color-mix(in srgb, var(--nad-secondary) 14%, transparent);
   animation: ncm-auth-pulse 1.5s ease infinite;
 }
-
-/* unused = default styling, no modifier needed */
-
-.ncm-auth__attempts-count {
-  font-size: 8px;
-  color: var(--nad-text-muted);
-  margin-left: 4px;
-}
-
-.ncm-auth__attempts-count--error {
-  color: var(--nad-danger);
+.ncm-auth__pip--used {
+  border-color: color-mix(in srgb, var(--nad-danger) 40%, transparent);
+  background: color-mix(in srgb, var(--nad-danger) 22%, transparent);
 }
 
 
 /* ═══════════════════════════════════════════════════════════
-   Mode Switcher
-   ═══════════════════════════════════════════════════════════ */
-
-.ncm-auth__mode-switch {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-family: var(--nad-font-mono);
-  font-size: 8px;
-  color: var(--nad-text-muted);
-  padding-top: 6px;
-  border-top: 1px solid var(--nad-border);
-}
-
-.ncm-auth__mode-switch-icon--skill {
-  font-size: 9px;
-  color: var(--nad-purple);
-}
-
-.ncm-auth__mode-switch-icon--password {
-  font-size: 9px;
-  color: var(--nad-accent);
-}
-
-.ncm-auth__mode-link {
-  color: var(--nad-secondary);
-  cursor: pointer;
-  text-decoration: none;
-  transition: color 0.12s;
-}
-
-.ncm-auth__mode-link:hover {
-  color: var(--nad-text-primary);
-  text-decoration: underline;
-}
-
-
-/* ═══════════════════════════════════════════════════════════
-   Lockout State
-   ═══════════════════════════════════════════════════════════ */
-
-.ncm-auth__lockout {
-  text-align: center;
-  padding: 20px 10px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-}
-
-.ncm-auth__lockout-icon {
-  font-size: 32px;
-  color: var(--nad-danger);
-  opacity: 0.8;
-  animation: ncm-auth-pulse 2s ease infinite;
-}
-
-.ncm-auth__lockout-title {
-  font-family: var(--nad-font-title);
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--nad-danger);
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-}
-
-.ncm-auth__lockout-msg {
-  font-family: var(--nad-font-mono);
-  font-size: 9px;
-  color: var(--nad-text-muted);
-  line-height: 1.5;
-  max-width: 280px;
-}
-
-.ncm-auth__lockout-msg strong {
-  color: var(--nad-text-primary);
-}
-
-.ncm-auth__lockout-timer {
-  font-family: var(--nad-font-title);
-  font-size: 24px;
-  font-weight: 700;
-  color: var(--nad-primary);
-  letter-spacing: 0.1em;
-}
-
-.ncm-auth__lockout-timer-label {
-  font-family: var(--nad-font-mono);
-  font-size: 7px;
-  color: var(--nad-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin-top: -6px;
-}
-
-
-/* ═══════════════════════════════════════════════════════════
-   Footer Actions
+   Footer
    ═══════════════════════════════════════════════════════════ */
 
 .ncm-auth__footer {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding-top: 10px;
+  gap: 10px;
+  padding-top: 13px;
   border-top: 1px solid var(--nad-border);
-  margin-top: 2px;
 }
-
-.ncm-auth__footer-spacer {
-  flex: 1;
-}
-
-
-/* ─── Buttons ─── */
-
-.ncm-auth__btn {
-  padding: 6px 14px;
-  border-radius: 2px;
-  font-family: var(--nad-font-display);
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  transition: all 0.15s;
-  display: inline-flex;
+.ncm-auth__footer--end { justify-content: flex-end; }
+.ncm-auth__footer-right {
+  margin-left: auto;
+  display: flex;
   align-items: center;
-  gap: 5px;
-  line-height: 1;
-}
-
-.ncm-auth__btn--ghost {
-  background: transparent;
-  border: 1px solid var(--nad-border);
-  color: var(--nad-text-secondary);
-}
-
-.ncm-auth__btn--ghost:hover {
-  border-color: var(--nad-border-active);
-  color: var(--nad-text-primary);
-}
-
-.ncm-auth__btn--primary {
-  background: rgba(25, 243, 247, 0.08);
-  border: 1px solid rgba(25, 243, 247, 0.3);
-  color: var(--nad-secondary);
-}
-
-.ncm-auth__btn--primary:hover {
-  background: rgba(25, 243, 247, 0.15);
-  border-color: var(--nad-secondary);
-}
-
-.ncm-auth__btn--purple {
-  background: rgba(168, 85, 247, 0.08);
-  border: 1px solid rgba(168, 85, 247, 0.25);
-  color: var(--nad-purple);
-}
-
-.ncm-auth__btn--purple:hover {
-  background: rgba(168, 85, 247, 0.15);
-  border-color: var(--nad-purple);
-}
-
-.ncm-auth__btn--danger {
-  background: rgba(255, 0, 51, 0.06);
-  border: 1px solid rgba(255, 0, 51, 0.2);
-  color: var(--nad-danger);
-}
-
-.ncm-auth__btn--danger:hover {
-  background: rgba(255, 0, 51, 0.12);
-  border-color: var(--nad-danger);
+  gap: 12px;
 }
 
 
 /* ═══════════════════════════════════════════════════════════
-   Method Sections (simultaneous auth methods layout)
+   Lockout
    ═══════════════════════════════════════════════════════════ */
 
-.ncm-auth__method-section {
-  padding: 10px 0;
-  border-top: 1px solid var(--nad-border);
-  transition: opacity 0.3s ease;
-}
-
-.ncm-auth__method-section:first-of-type {
-  border-top: none;
-  padding-top: 4px;
-}
-
-/* Completed method — collapsed and greyed slightly */
-.ncm-auth__method-section--completed {
-  padding: 6px 0;
-  opacity: 0.7;
-}
-
-.ncm-auth__method-section--completed .ncm-auth__method-header {
-  margin-bottom: 0;
-}
-
-.ncm-auth__method-header {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 8px;
-}
-
-.ncm-auth__method-icon {
-  font-size: 11px;
-  width: 20px;
+.ncm-auth__lockout {
   text-align: center;
-}
-
-.ncm-auth__method-icon--password { color: var(--nad-accent); }
-.ncm-auth__method-icon--skill { color: var(--nad-purple); }
-.ncm-auth__method-icon--keyitem { color: var(--nad-secondary); }
-.ncm-auth__method-icon--done { color: var(--nad-success, #00ff41); }
-
-.ncm-auth__method-label {
-  font-family: var(--nad-font-mono);
-  font-size: 9px;
-  color: var(--nad-text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  flex: 1;
-}
-
-.ncm-auth__method-badge {
-  font-family: var(--nad-font-mono);
-  font-size: 7px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  padding: 1px 6px;
-  border-radius: 2px;
-}
-
-.ncm-auth__method-badge--done {
-  color: var(--nad-success, #00ff41);
-  background: rgba(0, 255, 65, 0.08);
-  border: 1px solid rgba(0, 255, 65, 0.2);
-}
-
-.ncm-auth__method-badge--bypass {
-  color: var(--nad-secondary);
-  background: rgba(25, 243, 247, 0.06);
-  border: 1px solid rgba(25, 243, 247, 0.15);
-  margin-left: 4px;
-}
-
-.ncm-auth__logic-desc {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  background: rgba(25, 243, 247, 0.03);
-  border: 1px solid rgba(25, 243, 247, 0.1);
-  border-radius: 2px;
-  font-family: var(--nad-font-mono);
-  font-size: 9px;
-  color: var(--nad-text-secondary);
-  margin-bottom: 4px;
-}
-
-.ncm-auth__logic-desc i {
-  color: var(--nad-secondary);
-  font-size: 10px;
-  flex-shrink: 0;
-}
-
-.ncm-auth__method-dv {
-  font-family: var(--nad-font-mono);
-  font-size: 9px;
-  font-weight: 700;
-  color: var(--nad-purple);
-  padding: 1px 6px;
-  background: rgba(168, 85, 247, 0.08);
-  border: 1px solid rgba(168, 85, 247, 0.2);
-  border-radius: 2px;
-}
-
-.ncm-auth__method-action {
-  margin-top: 6px;
-  width: 100%;
-  justify-content: center;
-}
-
-.ncm-auth__method-actions {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.ncm-auth__method-actions .ncm-auth__btn {
-  flex: 1;
-  justify-content: center;
-}
-
-
-/* ═══════════════════════════════════════════════════════════
-   Key Item Section
-   ═══════════════════════════════════════════════════════════ */
-
-.ncm-auth__keyitem-section {
-  margin-top: 8px;
-}
-
-.ncm-auth__keyitem-divider {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-.ncm-auth__keyitem-divider-line {
-  flex: 1;
-  height: 1px;
-  background: var(--nad-border);
-}
-
-.ncm-auth__keyitem-divider-text {
-  font-family: var(--nad-font-mono);
-  font-size: 8px;
-  color: var(--nad-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  white-space: nowrap;
-}
-
-.ncm-auth__keyitem-drop {
+  padding: 14px 8px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 12px;
-  border: 1px solid var(--nad-border);
-  border-radius: 4px;
-  background: var(--nad-bg-deep);
+  gap: 11px;
 }
-
-.ncm-auth__keyitem-drop-inner {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-}
-
-.ncm-auth__keyitem-drop-icon {
-  font-size: 22px;
-  color: var(--nad-secondary);
-  opacity: 0.4;
-  flex-shrink: 0;
-}
-
-.ncm-auth__keyitem-drop-img {
-  width: 32px;
-  height: 32px;
-  border-radius: 2px;
-  border: 1px solid var(--nad-border);
-  flex-shrink: 0;
-  object-fit: cover;
-}
-
-.ncm-auth__keyitem-drop-text {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  flex: 1;
-  min-width: 0;
-}
-
-.ncm-auth__keyitem-drop-hint {
-  font-family: var(--nad-font-mono);
-  font-size: 10px;
-  color: var(--nad-text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.ncm-auth__keyitem-drop-sub {
-  font-family: var(--nad-font-mono);
-  font-size: 8px;
-  color: var(--nad-text-muted);
-}
-
-.ncm-auth__keyitem-drop-error {
-  font-family: var(--nad-font-mono);
-  font-size: 9px;
+.ncm-auth__lockout-icon {
+  font-size: 34px;
   color: var(--nad-danger);
+  animation: ncm-auth-pulse 2s ease infinite;
 }
-
-.ncm-auth__keyitem-browse {
-  all: unset !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 4px !important;
-  padding: 3px 10px !important;
-  font-family: var(--nad-font-mono) !important;
-  font-size: 9px !important;
-  color: var(--nad-text-muted) !important;
-  border: 1px solid var(--nad-border) !important;
-  border-radius: 2px !important;
-  cursor: pointer !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.04em !important;
-  transition: all 0.15s !important;
+.ncm-auth__lockout-title {
+  font-family: var(--nad-font-title);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--nad-danger);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
 }
-
-.ncm-auth__keyitem-browse:hover {
-  color: var(--nad-secondary) !important;
-  border-color: rgba(25, 243, 247, 0.3) !important;
-  background: rgba(25, 243, 247, 0.04) !important;
+.ncm-auth__lockout-msg {
+  font-family: var(--nad-font-mono);
+  font-size: 11px;
+  color: var(--nad-text-muted);
+  line-height: 1.55;
+  max-width: 300px;
+}
+.ncm-auth__lockout-msg strong { color: var(--nad-text-primary); }
+.ncm-auth__lockout-timer {
+  font-family: var(--nad-font-title);
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--nad-primary);
+  letter-spacing: 0.08em;
+}
+.ncm-auth__lockout-tlabel {
+  font-family: var(--nad-font-mono);
+  font-size: 9px;
+  color: var(--nad-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-top: -8px;
 }
 
 
@@ -961,135 +678,134 @@
    Animations
    ═══════════════════════════════════════════════════════════ */
 
-@keyframes ncm-auth-blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
-}
-
 @keyframes ncm-auth-pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }
 }
-
 @keyframes ncm-auth-shake {
   0%, 100% { transform: translateX(0); }
-  10%, 50%, 90% { transform: translateX(-2px); }
-  30%, 70% { transform: translateX(2px); }
-}
-
-@keyframes ncm-auth-glitch {
-  0%, 100% { opacity: 1; transform: translate(0); }
-  20% { opacity: 0.8; transform: translate(-1px, 1px); }
-  40% { opacity: 1; transform: translate(1px, -1px); }
-  60% { opacity: 0.9; transform: translate(-1px, 0); }
-  80% { opacity: 1; transform: translate(0, 1px); }
+  20%, 60% { transform: translateX(-3px); }
+  40%, 80% { transform: translateX(3px); }
 }
 
 
 /* ═══════════════════════════════════════════════════════════
-   Accent Bar Overrides by State
-   ═══════════════════════════════════════════════════════════
-
-   The accent bar color can be driven by a data attribute on the
-   outer wrapper set by the JS. Defaults to gold (password mode).
-
-   Usage in NetworkAuthDialog.js _onRender:
-     this.element.dataset.authState = 'password' | 'skill' | 'lockout';
-*/
-
-.ncm-network-auth-dialog[data-auth-state="skill"]::before {
-  background: var(--nad-purple);
-}
-
-.ncm-network-auth-dialog[data-auth-state="lockout"]::before {
-  background: var(--nad-danger);
-}
-
-.ncm-network-auth-dialog[data-auth-state="password"]::before {
-  background: var(--nad-accent);
-}
-
-.ncm-network-auth-dialog[data-auth-state="keyitem"]::before {
-  background: var(--nad-secondary);
-}
-
-
-/* ═══════════════════════════════════════════════════════════
-   Foundry VTT Global Button & Input Overrides
+   Foundry VTT button & input overrides
    Foundry v12 aggressively sets background, border, box-shadow,
-   min-width, min-height, appearance, padding on all button and
-   input elements. These must be overridden with !important.
+   width:100%, min-width/height, appearance, padding on buttons and
+   inputs. Reset structural defaults here, restore look per class.
+
+   IMPORTANT: every selector is scoped to the inner .ncm-auth-dialog
+   content — NOT the bare .ncm-network-auth-dialog root — so the window
+   chrome (.window-header close/control buttons) is left untouched.
+   A blanket `button` reset here breaks the header close icon.
    ═══════════════════════════════════════════════════════════ */
 
-/* ── All buttons inside the auth dialog ── */
-.ncm-network-auth-dialog button,
-.ncm-network-auth-dialog .ncm-auth__btn {
+.ncm-app.ncm-network-auth-dialog .ncm-auth-dialog button {
   appearance: none !important;
   -webkit-appearance: none !important;
   box-shadow: none !important;
   min-width: 0 !important;
   min-height: 0 !important;
+  width: auto !important;
   margin: 0 !important;
   line-height: 1 !important;
+  cursor: pointer !important;
+  font-family: var(--nad-font-display) !important;
 }
 
-.ncm-network-auth-dialog .ncm-auth__btn {
-  padding: 6px 14px !important;
-  border-radius: 2px !important;
-  font-family: var(--nad-font-display) !important;
-  font-size: 11px !important;
+/* ── Generic buttons (.ncm-auth__btn) ── */
+.ncm-app.ncm-network-auth-dialog .ncm-auth-dialog .ncm-auth__btn {
+  padding: 7px 14px !important;
+  height: auto !important;
+  border-radius: 4px !important;
+  font-size: 12px !important;
   font-weight: 600 !important;
-  cursor: pointer !important;
   text-transform: uppercase !important;
   letter-spacing: 0.04em !important;
   display: inline-flex !important;
   align-items: center !important;
-  gap: 5px !important;
-}
-
-.ncm-network-auth-dialog .ncm-auth__btn--ghost {
+  justify-content: center !important;
+  gap: 7px !important;
   background: transparent !important;
   border: 1px solid var(--nad-border) !important;
   color: var(--nad-text-secondary) !important;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
-
-.ncm-network-auth-dialog .ncm-auth__btn--ghost:hover {
-  background: rgba(255, 255, 255, 0.03) !important;
+.ncm-app.ncm-network-auth-dialog .ncm-auth-dialog .ncm-auth__btn--full {
+  width: 100% !important;
+  height: 42px !important;
+  font-size: 13px !important;
+}
+.ncm-app.ncm-network-auth-dialog .ncm-auth-dialog .ncm-auth__btn--cy {
+  background: color-mix(in srgb, var(--nad-secondary) 9%, transparent) !important;
+  border-color: color-mix(in srgb, var(--nad-secondary) 32%, transparent) !important;
+  color: var(--nad-secondary) !important;
+}
+.ncm-app.ncm-network-auth-dialog .ncm-auth-dialog .ncm-auth__btn--cy:hover {
+  background: color-mix(in srgb, var(--nad-secondary) 17%, transparent) !important;
+  border-color: var(--nad-secondary) !important;
+}
+.ncm-app.ncm-network-auth-dialog .ncm-auth-dialog .ncm-auth__btn--ghost {
+  background: transparent !important;
+  border-color: var(--nad-border) !important;
+  color: var(--nad-text-secondary) !important;
+}
+.ncm-app.ncm-network-auth-dialog .ncm-auth-dialog .ncm-auth__btn--ghost:hover {
   border-color: var(--nad-border-active) !important;
   color: var(--nad-text-primary) !important;
 }
 
-.ncm-network-auth-dialog .ncm-auth__btn--primary {
-  background: rgba(25, 243, 247, 0.08) !important;
-  border: 1px solid rgba(25, 243, 247, 0.3) !important;
-  color: var(--nad-secondary) !important;
+/* ── Skill ROLL button ── */
+.ncm-app.ncm-network-auth-dialog .ncm-auth-dialog .ncm-auth__skrow-btn {
+  flex-shrink: 0;
+  height: 32px !important;
+  padding: 0 16px !important;
+  border-radius: 4px !important;
+  font-family: var(--nad-font-display) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  background: color-mix(in srgb, var(--nad-purple) 12%, transparent) !important;
+  border: 1px solid color-mix(in srgb, var(--nad-purple) 32%, transparent) !important;
+  color: #d8b4fe !important;
+  transition: background 0.15s, border-color 0.15s;
 }
-
-.ncm-network-auth-dialog .ncm-auth__btn--primary:hover {
-  background: rgba(25, 243, 247, 0.15) !important;
-  border-color: var(--nad-secondary) !important;
-}
-
-.ncm-network-auth-dialog .ncm-auth__btn--purple {
-  background: rgba(168, 85, 247, 0.08) !important;
-  border: 1px solid rgba(168, 85, 247, 0.25) !important;
-  color: var(--nad-purple) !important;
-}
-
-.ncm-network-auth-dialog .ncm-auth__btn--purple:hover {
-  background: rgba(168, 85, 247, 0.15) !important;
+.ncm-app.ncm-network-auth-dialog .ncm-auth-dialog .ncm-auth__skrow-btn:hover {
+  background: color-mix(in srgb, var(--nad-purple) 20%, transparent) !important;
   border-color: var(--nad-purple) !important;
 }
+.ncm-app.ncm-network-auth-dialog .ncm-auth-dialog .ncm-auth__skrow-btn i { font-size: 11px; }
 
-.ncm-network-auth-dialog .ncm-auth__btn--danger {
-  background: rgba(255, 0, 51, 0.06) !important;
-  border: 1px solid rgba(255, 0, 51, 0.2) !important;
-  color: var(--nad-danger) !important;
+/* ── Key item browse button ── */
+.ncm-app.ncm-network-auth-dialog .ncm-auth-dialog .ncm-auth__keydrop-browse {
+  align-self: flex-start;
+  height: 30px !important;
+  padding: 0 13px !important;
+  border-radius: 4px !important;
+  font-family: var(--nad-font-mono) !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  background: transparent !important;
+  border: 1px solid var(--nad-border) !important;
+  color: var(--nad-text-muted) !important;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
 }
-
-.ncm-network-auth-dialog .ncm-auth__btn--danger:hover {
-  background: rgba(255, 0, 51, 0.12) !important;
-  border-color: var(--nad-danger) !important;
+.ncm-app.ncm-network-auth-dialog .ncm-auth-dialog .ncm-auth__keydrop-browse:hover {
+  color: var(--nad-secondary) !important;
+  border-color: color-mix(in srgb, var(--nad-secondary) 30%, transparent) !important;
+  background: color-mix(in srgb, var(--nad-secondary) 4%, transparent) !important;
 }
 
 /* ── Password input — nuclear Foundry override ── */
@@ -1099,7 +815,7 @@
   all: unset !important;
   flex: 1 1 auto !important;
   font-family: var(--nad-font-mono) !important;
-  font-size: 12px !important;
+  font-size: 14px !important;
   color: var(--nad-secondary) !important;
   -webkit-text-fill-color: var(--nad-secondary) !important;
   caret-color: var(--nad-secondary) !important;
@@ -1108,20 +824,23 @@
   cursor: text !important;
   box-sizing: border-box !important;
 }
-
 .ncm-network-auth-dialog .ncm-auth__password-input::placeholder {
   color: var(--nad-text-muted) !important;
   -webkit-text-fill-color: var(--nad-text-muted) !important;
   letter-spacing: 0.05em !important;
   opacity: 1 !important;
 }
-
+.ncm-network-auth-dialog .ncm-auth__password-input--error {
+  color: var(--nad-danger) !important;
+  -webkit-text-fill-color: var(--nad-danger) !important;
+  caret-color: var(--nad-danger) !important;
+}
 .ncm-network-auth-dialog .ncm-auth__password-input:focus {
   outline: none !important;
   box-shadow: none !important;
 }
 
-/* ── Password toggle eye button — nuclear Foundry override ── */
+/* ── Password toggle eye — nuclear Foundry override ── */
 .ncm-network-auth-dialog .ncm-auth__password-toggle {
   all: unset !important;
   display: flex !important;
@@ -1129,64 +848,11 @@
   justify-content: center !important;
   color: var(--nad-text-muted) !important;
   cursor: pointer !important;
-  font-size: 11px !important;
+  font-size: 13px !important;
   padding: 4px !important;
   flex-shrink: 0 !important;
   margin-left: auto !important;
 }
-
 .ncm-network-auth-dialog .ncm-auth__password-toggle:hover {
-  color: var(--nad-text-primary) !important;
-}
-
-/* ═══════════════════════════════════════════
-   ICE Danger Zone
-   ═══════════════════════════════════════════ */
-
-.ncm-auth__ice-danger {
-  display: flex; align-items: center; gap: 10px;
-  padding: 8px 12px; margin: 0 16px 10px;
-  background: rgba(255, 0, 51, 0.06);
-  border: 1px solid rgba(255, 0, 51, 0.2);
-  border-radius: 3px;
-  animation: ncm-auth-ice-pulse 1.5s ease infinite;
-}
-@keyframes ncm-auth-ice-pulse {
-  0%, 100% { border-color: rgba(255, 0, 51, 0.2); }
-  50% { border-color: rgba(255, 0, 51, 0.5); box-shadow: 0 0 8px rgba(255, 0, 51, 0.1); }
-}
-
-.ncm-auth__ice-portrait {
-  width: 40px; height: 40px;
-  object-fit: contain; border-radius: 3px;
-  border: 1px solid rgba(255, 0, 51, 0.4);
-  flex-shrink: 0;
-  filter: drop-shadow(0 0 6px rgba(255, 0, 51, 0.3));
-}
-
-.ncm-auth__ice-icon {
-  font-size: 18px; color: var(--nad-danger, #ff0033);
-  flex-shrink: 0;
-}
-
-.ncm-auth__ice-text { flex: 1; }
-
-.ncm-auth__ice-label {
-  font-family: 'Orbitron', 'Rajdhani', sans-serif;
-  font-size: 8px; font-weight: 700;
-  color: var(--nad-danger, #ff0033);
-  text-transform: uppercase; letter-spacing: 0.12em;
-}
-
-.ncm-auth__ice-class {
-  font-family: 'Share Tech Mono', monospace;
-  font-size: 7px; color: #ff6666;
-  text-transform: uppercase; letter-spacing: 0.06em;
-  opacity: 0.7; margin-left: 4px;
-}
-
-.ncm-auth__ice-sub {
-  font-family: 'Share Tech Mono', monospace;
-  font-size: 10px; color: #ff4444;
-  margin-top: 1px;
+  color: var(--nad-text-secondary) !important;
 }

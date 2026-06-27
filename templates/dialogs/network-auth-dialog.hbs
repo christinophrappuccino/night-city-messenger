@@ -1,67 +1,49 @@
 {{!--
-  Network Authentication Dialog — WP-3 Redesign
+  Network Authentication Dialog — Method-Card Redesign
   @file templates/dialogs/network-auth-dialog.hbs
   @module cyberpunkred-messenger
   @description Player-facing dialog for authenticating to secured networks.
-    4 states derived from ncm-network-dialogs-mockup.html:
-      • Password entry (fresh)
-      • Password error (shake animation, used pips)
-      • Skill check bypass (INT + skill + d10 breakdown)
-      • Lockout (countdown timer, all pips exhausted)
+
+    Layout = stacked "method cards" (Password / Skill Check / Key Item), all
+    visible at once so AND-mode shows every requirement simultaneously.
+      • OR mode  — policy banner "Complete ANY ONE", cards split by OR dividers.
+      • AND mode — numbered cards (1/2/3) with REQUIRED → PASSED/ACCEPTED chips
+                   and a "Step X of N" progress readout.
+    Plus: Black ICE danger panel, error banner, full lockout takeover.
 
     Data contract — supplied by NetworkAuthDialog._prepareContext():
-      network         { id, name, type, icon, color, securityLevel, description,
-                        typeLabel, securityTagClass }
-      hasPassword      boolean
-      hasSkillBypass   boolean
-      hasBothModes     boolean
-      authMode         'password' | 'skill'
-      isPasswordMode   boolean
-      isSkillMode      boolean
-      bypassSkills     [{ name, dc }]
-      bypassDC         number
-      isLockedOut      boolean
-      lockoutRemaining string  (formatted "58m 42s")
-      remainingAttempts number
-      maxAttempts       number
-      attemptPips      [{ state: 'used'|'current'|'unused' }]
-      errorMessage     string
-      hasError         boolean
-      skillBreakdown   { statName, statValue, skillName, skillValue, total, needed } | null
-      isGM             boolean
-      MODULE_ID        string
+      network          { name, typeLabel, securityLevel, securityTagClass, theme, color }
+      hasPassword / hasSkillBypass / hasKeyItem   booleans
+      isAndMode / showPolicy / progressLabel
+      passwordActive / skillActive / keyItemActive            (AND-mode active card)
+      passwordNum / skillNum / keyItemNum                     (AND-mode display numbers)
+      passwordCompleted / skillCompleted / keyItemCompleted
+      showOrBeforeSkill / showOrBeforeKeyItem                 (OR dividers)
+      bypassSkills [{ name, dc, danger }]   bypassDC   skillBreakdown
+      keyItemName / keyItemTag / presentedItemName / presentedItemImg / keyItemError
+      isLethalICE / iceInfo { name, img, class, formula } / iceDealsDamage
+      isLockedOut / lockoutRemaining / attemptPips [{ state }]
+      hasError / errorMessage / isGM
 --}}
 
 <div class="ncm-auth-dialog">
 
-  {{!-- ═══════════════════════════════════════════════════════
-       LOCKOUT STATE — All attempts exhausted
-       ═══════════════════════════════════════════════════════ --}}
   {{#if isLockedOut}}
-
+    {{!-- ═══════════ LOCKOUT — full takeover ═══════════ --}}
     <div class="ncm-auth__lockout">
       <div class="ncm-auth__lockout-icon"><i class="fas fa-lock"></i></div>
       <div class="ncm-auth__lockout-title">Access Denied</div>
       <div class="ncm-auth__lockout-msg">
-        Too many failed authentication attempts on
-        <strong>{{network.name}}</strong>.
-        Your connection has been flagged and temporarily blocked.
-        This incident has been logged.
+        Too many failed authentication attempts on <strong>{{network.name}}</strong>.
+        Your connection has been flagged and temporarily blocked. This incident has been logged.
       </div>
       <div class="ncm-auth__lockout-timer">{{lockoutRemaining}}</div>
-      <div class="ncm-auth__lockout-timer-label">Lockout Remaining</div>
-
-      {{!-- All pips used --}}
-      <div class="ncm-auth__attempts-pips ncm-auth__attempts-pips--center">
-        {{#each attemptPips}}
-          <div class="ncm-auth__pip ncm-auth__pip--used"></div>
-        {{/each}}
+      <div class="ncm-auth__lockout-tlabel">Lockout Remaining</div>
+      <div class="ncm-auth__pips ncm-auth__pips--center">
+        {{#each attemptPips}}<div class="ncm-auth__pip ncm-auth__pip--used"></div>{{/each}}
       </div>
     </div>
-
-    {{!-- Lockout footer --}}
-    <div class="ncm-auth__footer">
-      <div class="ncm-auth__footer-spacer"></div>
+    <div class="ncm-auth__footer ncm-auth__footer--end">
       <button type="button" class="ncm-auth__btn ncm-auth__btn--ghost" data-action="cancel">
         <i class="fas fa-check"></i> Acknowledged
       </button>
@@ -69,11 +51,7 @@
 
   {{else}}
 
-    {{!-- ═══════════════════════════════════════════════════════
-         ACTIVE AUTH STATE — All configured methods shown simultaneously
-         ═══════════════════════════════════════════════════════ --}}
-
-    {{!-- Network Identity --}}
+    {{!-- ═══════════ Network identity ═══════════ --}}
     <div class="ncm-auth__identity">
       <div class="ncm-auth__icon"
            style="background: {{network.color}}12; color: {{network.color}}; border: 1px solid {{network.color}}26;">
@@ -90,194 +68,221 @@
       </div>
     </div>
 
-    {{!-- Description --}}
-    {{#if network.description}}
-      <div class="ncm-auth__desc">{{network.description}}</div>
-    {{/if}}
-
-    {{!-- Logic Description --}}
-    {{#if logicDescription}}
-      <div class="ncm-auth__logic-desc">
-        <i class="fas fa-info-circle"></i>
-        <span>Requires: {{logicDescription}}</span>
-      </div>
-    {{/if}}
-
-    {{!-- Error Message --}}
-    {{#if hasError}}
-      <div class="ncm-auth__error">
-        <i class="fas fa-circle-xmark"></i>
-        {{errorMessage}}
-      </div>
-    {{/if}}
-
-    {{!-- ─── PASSWORD SECTION ─── --}}
-    {{#if hasPassword}}
-      <div class="ncm-auth__method-section {{#if passwordCompleted}}ncm-auth__method-section--completed{{/if}}">
-        <div class="ncm-auth__method-header">
-          {{#if passwordCompleted}}
-            <i class="fas fa-check-circle ncm-auth__method-icon ncm-auth__method-icon--done"></i>
+    {{!-- ═══════════ Black ICE danger ═══════════ --}}
+    {{#if isLethalICE}}
+      <div class="ncm-auth__ice">
+        {{#if iceInfo.img}}
+          <img src="{{iceInfo.img}}" alt="{{iceInfo.name}}" class="ncm-auth__ice-portrait-img" />
+        {{else}}
+          <div class="ncm-auth__ice-portrait"><i class="fas fa-radiation"></i></div>
+        {{/if}}
+        <div class="ncm-auth__ice-txt">
+          <div class="ncm-auth__ice-name">
+            {{iceInfo.name}}
+            <span class="ncm-auth__ice-cls">· Lethal Countermeasures{{#if iceInfo.class}} · {{iceInfo.class}}{{/if}}</span>
+          </div>
+          {{#if iceDealsDamage}}
+            <div class="ncm-auth__ice-sub">Failed breach deals <b>{{iceInfo.formula}}</b> damage — direct to HP.</div>
           {{else}}
-            <i class="fas fa-key ncm-auth__method-icon ncm-auth__method-icon--password"></i>
+            <div class="ncm-auth__ice-sub">Active countermeasures — a failed breach triggers lockout.</div>
           {{/if}}
-          <span class="ncm-auth__method-label">Password Authentication</span>
+        </div>
+      </div>
+    {{/if}}
+
+    {{!-- ═══════════ Policy banner (OR / AND) ═══════════ --}}
+    {{#if showPolicy}}
+      <div class="ncm-auth__policy ncm-auth__policy--{{#if isAndMode}}and{{else}}or{{/if}}">
+        <i class="fas {{#if isAndMode}}fa-lock{{else}}fa-lock-open{{/if}} ncm-auth__policy-icon"></i>
+        {{#if isAndMode}}
+          <span class="ncm-auth__policy-text">Requires <b>ALL</b> methods</span>
+          <span class="ncm-auth__policy-prog">{{progressLabel}}</span>
+        {{else}}
+          <span class="ncm-auth__policy-text">Complete <b>ANY ONE</b> method to connect</span>
+        {{/if}}
+      </div>
+    {{/if}}
+
+    {{!-- ═══════════ Error banner ═══════════ --}}
+    {{#if hasError}}
+      <div class="ncm-auth__error"><i class="fas fa-circle-xmark"></i> {{errorMessage}}</div>
+    {{/if}}
+
+    {{!-- ═══════════ PASSWORD card ═══════════ --}}
+    {{#if hasPassword}}
+      <div class="ncm-auth__method {{#if passwordCompleted}}ncm-auth__method--done{{else if passwordActive}}ncm-auth__method--active{{/if}}"
+           style="--accent-c: var(--nad-accent);" data-method="password">
+        <div class="ncm-auth__mhead">
+          {{#if isAndMode}}
+            <span class="ncm-auth__mnum">{{#if passwordCompleted}}<i class="fas fa-check"></i>{{else}}{{passwordNum}}{{/if}}</span>
+          {{/if}}
+          <i class="fas fa-key ncm-auth__micon ncm-auth__micon--pw"></i>
+          <div class="ncm-auth__mlabel">
+            <div class="ncm-auth__mtitle">Password</div>
+            <div class="ncm-auth__msub">Network passphrase</div>
+          </div>
           {{#if passwordCompleted}}
-            <span class="ncm-auth__method-badge ncm-auth__method-badge--done">PASSED</span>
+            <span class="ncm-auth__chip ncm-auth__chip--done">Passed</span>
+          {{else if isAndMode}}
+            <span class="ncm-auth__chip ncm-auth__chip--req">Required</span>
           {{/if}}
         </div>
         {{#unless passwordCompleted}}
-          <div class="ncm-auth__password-wrap {{#if hasError}}ncm-auth__password-wrap--error{{/if}}">
-            <span class="ncm-auth__password-prefix {{#if hasError}}ncm-auth__password-prefix--error{{/if}}">pass&gt;</span>
-            <input type="password"
-                   name="password"
-                   class="ncm-auth__password-input {{#if hasError}}ncm-auth__password-input--error{{/if}}"
-                   placeholder="{{#if hasError}}try again...{{else}}enter password...{{/if}}"
-                   autocomplete="off"
-                   spellcheck="false"
-                   autofocus />
-            <button type="button" class="ncm-auth__password-toggle" data-action="togglePasswordVisibility" title="Show password">
-              <i class="fas fa-eye"></i>
+          <div class="ncm-auth__mbody">
+            <div class="ncm-auth__pw {{#if hasError}}ncm-auth__pw--error{{/if}}">
+              <span class="ncm-auth__pw-prefix {{#if hasError}}ncm-auth__pw-prefix--error{{/if}}">pass&gt;</span>
+              <input type="password"
+                     name="password"
+                     class="ncm-auth__password-input {{#if hasError}}ncm-auth__password-input--error{{/if}}"
+                     placeholder="{{#if hasError}}try again...{{else}}enter password...{{/if}}"
+                     autocomplete="off" spellcheck="false" autofocus />
+              <button type="button" class="ncm-auth__password-toggle" data-action="togglePasswordVisibility" title="Show password">
+                <i class="fas fa-eye"></i>
+              </button>
+            </div>
+            <button type="button" class="ncm-auth__btn ncm-auth__btn--full ncm-auth__btn--cy" data-action="submitPassword">
+              <i class="fas fa-key"></i> Authenticate
             </button>
           </div>
-          <button type="button" class="ncm-auth__btn ncm-auth__btn--primary ncm-auth__method-action" data-action="submitPassword">
-            <i class="fas fa-key"></i> Authenticate
-          </button>
         {{/unless}}
       </div>
     {{/if}}
 
-    {{!-- ─── ICE DANGER ZONE ─── --}}
-    {{#if isLethalICE}}
-      <div class="ncm-auth__ice-danger">
-        {{#if iceInfo.img}}
-          <img src="{{iceInfo.img}}" alt="{{iceInfo.name}}" class="ncm-auth__ice-portrait" />
-        {{else}}
-          <div class="ncm-auth__ice-icon"><i class="fas fa-radiation"></i></div>
-        {{/if}}
-        <div class="ncm-auth__ice-text">
-          <div class="ncm-auth__ice-label">{{iceInfo.name}} — Lethal Countermeasures
-            {{#if iceInfo.class}}<span class="ncm-auth__ice-class">{{iceInfo.class}}</span>{{/if}}
-          </div>
-          <div class="ncm-auth__ice-sub">Failed breach deals <strong>{{iceInfo.formula}}</strong> damage.</div>
-        </div>
-      </div>
+    {{#if showOrBeforeSkill}}
+      <div class="ncm-auth__or"><span class="ncm-auth__or-line"></span><span class="ncm-auth__or-text">OR</span><span class="ncm-auth__or-line"></span></div>
     {{/if}}
 
-    {{!-- ─── SKILL CHECK SECTION ─── --}}
+    {{!-- ═══════════ SKILL CHECK card ═══════════ --}}
     {{#if hasSkillBypass}}
-      <div class="ncm-auth__method-section {{#if skillCompleted}}ncm-auth__method-section--completed{{/if}}">
-        <div class="ncm-auth__method-header">
-          {{#if skillCompleted}}
-            <i class="fas fa-check-circle ncm-auth__method-icon ncm-auth__method-icon--done"></i>
-          {{else}}
-            <i class="fas fa-dice-d20 ncm-auth__method-icon ncm-auth__method-icon--skill"></i>
+      <div class="ncm-auth__method {{#if skillCompleted}}ncm-auth__method--done{{else if skillActive}}ncm-auth__method--active{{/if}}"
+           style="--accent-c: var(--nad-purple);" data-method="skill">
+        <div class="ncm-auth__mhead">
+          {{#if isAndMode}}
+            <span class="ncm-auth__mnum">{{#if skillCompleted}}<i class="fas fa-check"></i>{{else}}{{skillNum}}{{/if}}</span>
           {{/if}}
-          <span class="ncm-auth__method-label">Skill Check Bypass</span>
+          <i class="fas fa-dice-d20 ncm-auth__micon ncm-auth__micon--sk"></i>
+          <div class="ncm-auth__mlabel">
+            <div class="ncm-auth__mtitle">Skill Check Bypass</div>
+            <div class="ncm-auth__msub">
+              {{#if skillBreakdown}}{{skillBreakdown.statName}} {{skillBreakdown.statValue}} + Skill {{skillBreakdown.skillValue}} + d10{{else}}Stat + Skill + d10{{/if}} · vs DV {{bypassDC}}
+            </div>
+          </div>
           {{#if skillCompleted}}
-            <span class="ncm-auth__method-badge ncm-auth__method-badge--done">PASSED</span>
+            <span class="ncm-auth__chip ncm-auth__chip--done">Passed</span>
+          {{else if isAndMode}}
+            <span class="ncm-auth__chip ncm-auth__chip--req">Required</span>
           {{else}}
-            <span class="ncm-auth__method-dv">DV {{bypassDC}}</span>
+            <span class="ncm-auth__chip ncm-auth__chip--dv">DV {{bypassDC}}</span>
           {{/if}}
         </div>
-
         {{#unless skillCompleted}}
-          {{!-- Stat Breakdown --}}
-          {{#if skillBreakdown}}
-            <div class="ncm-auth__skill-breakdown">
-              <div class="ncm-auth__skill-stat">
-                <span class="ncm-auth__skill-stat-val ncm-auth__skill-stat-val--stat">{{skillBreakdown.statValue}}</span>
-                <span class="ncm-auth__skill-stat-label">{{skillBreakdown.statName}}</span>
+          <div class="ncm-auth__mbody">
+            {{#if showBreakdownGrid}}
+              <div class="ncm-auth__bd">
+                <div class="ncm-auth__bd-cell">
+                  <span class="ncm-auth__bd-val ncm-auth__bd-val--stat">{{skillBreakdown.statValue}}</span>
+                  <span class="ncm-auth__bd-label">{{skillBreakdown.statName}}</span>
+                </div>
+                <div class="ncm-auth__bd-cell">
+                  <span class="ncm-auth__bd-val ncm-auth__bd-val--skill">{{skillBreakdown.skillValue}}</span>
+                  <span class="ncm-auth__bd-label">Skill</span>
+                </div>
+                <div class="ncm-auth__bd-cell">
+                  <span class="ncm-auth__bd-val ncm-auth__bd-val--dice">?</span>
+                  <span class="ncm-auth__bd-label">d10</span>
+                </div>
+                <div class="ncm-auth__bd-cell ncm-auth__bd-cell--total">
+                  <span class="ncm-auth__bd-val ncm-auth__bd-val--total">{{skillBreakdown.total}}+?</span>
+                  <span class="ncm-auth__bd-label">Total</span>
+                </div>
               </div>
-              <div class="ncm-auth__skill-stat">
-                <span class="ncm-auth__skill-stat-val ncm-auth__skill-stat-val--skill">{{skillBreakdown.skillValue}}</span>
-                <span class="ncm-auth__skill-stat-label">{{skillBreakdown.skillName}}</span>
-              </div>
-              <div class="ncm-auth__skill-stat">
-                <span class="ncm-auth__skill-stat-val ncm-auth__skill-stat-val--dice">?</span>
-                <span class="ncm-auth__skill-stat-label">d10</span>
-              </div>
-              <div class="ncm-auth__skill-stat ncm-auth__skill-stat--total">
-                <span class="ncm-auth__skill-stat-val ncm-auth__skill-stat-val--total">{{skillBreakdown.total}}+?</span>
-                <span class="ncm-auth__skill-stat-label">Total</span>
-              </div>
-            </div>
-          {{/if}}
-
-          <div class="ncm-auth__method-actions">
+            {{/if}}
             {{#each bypassSkills}}
-              <button type="button" class="ncm-auth__btn ncm-auth__btn--purple" data-action="attemptSkillCheck" data-skill="{{name}}">
-                <i class="fas fa-dice-d20"></i> Roll {{name}}
-              </button>
+              <div class="ncm-auth__skrow">
+                <i class="fas fa-dice-d20 ncm-auth__skrow-ico"></i>
+                <div class="ncm-auth__skrow-txt">
+                  <div class="ncm-auth__skrow-name">{{this.name}}</div>
+                  <div class="ncm-auth__skrow-sub">{{this.statName}} {{this.statValue}} + Skill {{this.skillValue}} &rarr; {{this.total}} · vs DV {{this.dc}}</div>
+                  {{#if this.danger}}
+                    <div class="ncm-auth__skrow-sub ncm-auth__skrow-sub--danger"><i class="fas fa-triangle-exclamation"></i> fail = {{this.danger}}</div>
+                  {{/if}}
+                </div>
+                <button type="button" class="ncm-auth__skrow-btn" data-action="attemptSkillCheck" data-skill="{{this.name}}">
+                  <i class="fas fa-dice-d20"></i> Roll
+                </button>
+              </div>
             {{/each}}
           </div>
         {{/unless}}
       </div>
     {{/if}}
 
-    {{!-- ─── KEY ITEM SECTION ─── --}}
+    {{#if showOrBeforeKeyItem}}
+      <div class="ncm-auth__or"><span class="ncm-auth__or-line"></span><span class="ncm-auth__or-text">OR</span><span class="ncm-auth__or-line"></span></div>
+    {{/if}}
+
+    {{!-- ═══════════ KEY ITEM card ═══════════ --}}
     {{#if hasKeyItem}}
-      <div class="ncm-auth__method-section {{#if keyItemCompleted}}ncm-auth__method-section--completed{{/if}}">
-        <div class="ncm-auth__method-header">
-          {{#if keyItemCompleted}}
-            <i class="fas fa-check-circle ncm-auth__method-icon ncm-auth__method-icon--done"></i>
-          {{else}}
-            <i class="fas fa-id-badge ncm-auth__method-icon ncm-auth__method-icon--keyitem"></i>
+      <div class="ncm-auth__method {{#if keyItemCompleted}}ncm-auth__method--done{{else if keyItemActive}}ncm-auth__method--active{{/if}}"
+           style="--accent-c: var(--nad-secondary);" data-method="keyitem">
+        <div class="ncm-auth__mhead">
+          {{#if isAndMode}}
+            <span class="ncm-auth__mnum">{{#if keyItemCompleted}}<i class="fas fa-check"></i>{{else}}{{keyItemNum}}{{/if}}</span>
           {{/if}}
-          <span class="ncm-auth__method-label">Present Credentials</span>
+          <i class="fas fa-id-badge ncm-auth__micon ncm-auth__micon--key"></i>
+          <div class="ncm-auth__mlabel">
+            <div class="ncm-auth__mtitle">Present Credentials</div>
+            <div class="ncm-auth__msub">Requires: {{keyItemName}}{{#if keyItemTag}} (tag: {{keyItemTag}}){{/if}}</div>
+          </div>
           {{#if keyItemCompleted}}
-            <span class="ncm-auth__method-badge ncm-auth__method-badge--done">ACCEPTED</span>
+            <span class="ncm-auth__chip ncm-auth__chip--done">Accepted</span>
+          {{else if isAndMode}}
+            <span class="ncm-auth__chip ncm-auth__chip--req">Required</span>
           {{/if}}
         </div>
-
         {{#unless keyItemCompleted}}
-          <div class="ncm-auth__keyitem-drop">
-            <div class="ncm-auth__keyitem-drop-inner">
-              {{#if presentedItemImg}}
-                <img class="ncm-auth__keyitem-drop-img" src="{{presentedItemImg}}" alt="{{presentedItemName}}" />
-              {{else}}
-                <i class="fas fa-id-badge ncm-auth__keyitem-drop-icon"></i>
-              {{/if}}
-              <div class="ncm-auth__keyitem-drop-text">
-                {{#if keyItemError}}
-                  <span class="ncm-auth__keyitem-drop-error">{{keyItemError}}</span>
+          <div class="ncm-auth__mbody">
+            <div class="ncm-auth__keydrop {{#if keyItemError}}ncm-auth__keydrop--error{{/if}}">
+              <div class="ncm-auth__keydrop-row">
+                {{#if presentedItemImg}}
+                  <img class="ncm-auth__keydrop-img" src="{{presentedItemImg}}" alt="{{presentedItemName}}" />
                 {{else}}
-                  <span class="ncm-auth__keyitem-drop-hint">Select item from inventory</span>
-                  <span class="ncm-auth__keyitem-drop-sub">Requires: {{keyItemName}}{{#if keyItemTag}} (tag: {{keyItemTag}}){{/if}}</span>
+                  <div class="ncm-auth__keydrop-icon"><i class="fas fa-id-badge"></i></div>
                 {{/if}}
+                <div class="ncm-auth__keydrop-txt">
+                  {{#if keyItemError}}
+                    <div class="ncm-auth__keydrop-error">{{keyItemError}}</div>
+                  {{else}}
+                    <div class="ncm-auth__keydrop-hint">Select item from inventory</div>
+                  {{/if}}
+                  <div class="ncm-auth__keydrop-sub">Requires: {{keyItemName}}{{#if keyItemTag}} (tag: {{keyItemTag}}){{/if}}</div>
+                </div>
               </div>
+              <button type="button" class="ncm-auth__keydrop-browse" data-action="browseKeyItem">
+                <i class="fas fa-magnifying-glass"></i> Browse Inventory
+              </button>
             </div>
-            <button type="button" class="ncm-auth__btn ncm-auth__btn--ghost ncm-auth__keyitem-browse" data-action="browseKeyItem">
-              <i class="fas fa-search"></i> Browse Inventory
-            </button>
           </div>
         {{/unless}}
       </div>
     {{/if}}
 
-    {{!-- Attempt Pips --}}
-    <div class="ncm-auth__attempts">
-      <span class="ncm-auth__attempts-label">Attempts remaining:</span>
-      <div class="ncm-auth__attempts-pips">
-        {{#each attemptPips}}
-          <div class="ncm-auth__pip ncm-auth__pip--{{state}}"></div>
-        {{/each}}
-      </div>
-      <span class="ncm-auth__attempts-count {{#if hasError}}ncm-auth__attempts-count--error{{/if}}">
-        {{remainingAttempts}} of {{maxAttempts}}
-      </span>
-    </div>
-
-    {{!-- Footer --}}
+    {{!-- ═══════════ Footer — attempts + actions ═══════════ --}}
     <div class="ncm-auth__footer">
-      <button type="button" class="ncm-auth__btn ncm-auth__btn--ghost" data-action="cancel">
-        Cancel
-      </button>
-      <div class="ncm-auth__footer-spacer"></div>
-      {{#if isGM}}
-        <button type="button" class="ncm-auth__btn ncm-auth__btn--ghost" data-action="gmBypass" title="GM: Bypass authentication">
-          <i class="fas fa-shield-halved"></i> GM Override
-        </button>
-      {{/if}}
+      <button type="button" class="ncm-auth__btn ncm-auth__btn--ghost" data-action="cancel">Cancel</button>
+      <div class="ncm-auth__footer-right">
+        {{#if isGM}}
+          <button type="button" class="ncm-auth__btn ncm-auth__btn--ghost" data-action="gmBypass" title="GM: Bypass authentication">
+            <i class="fas fa-shield-halved"></i> GM Override
+          </button>
+        {{/if}}
+        <div class="ncm-auth__attempts">
+          <span class="ncm-auth__attempts-label">Attempts</span>
+          <div class="ncm-auth__pips">
+            {{#each attemptPips}}<div class="ncm-auth__pip ncm-auth__pip--{{this.state}}"></div>{{/each}}
+          </div>
+        </div>
+      </div>
     </div>
 
   {{/if}}

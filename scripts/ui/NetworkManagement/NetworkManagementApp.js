@@ -9,7 +9,7 @@
  *              Extends BaseApplication (ApplicationV2 + HandlebarsApplicationMixin).
  */
 
-import { MODULE_ID, EVENTS, TEMPLATES, NETWORK_TYPES, SECURITY_LEVELS } from '../../utils/constants.js';
+import { MODULE_ID, EVENTS, TEMPLATES, NETWORK_TYPES, SECURITY_LEVELS, canonicalizeSkillName } from '../../utils/constants.js';
 import { log, isGM } from '../../utils/helpers.js';
 import { BaseApplication } from '../BaseApplication.js';
 import { CreateNetworkDialog } from './CreateNetworkDialog.js';
@@ -684,7 +684,7 @@ export class NetworkManagementApp extends BaseApplication {
         allowPassword: chk('allowPassword'),
         allowSkillCheck: chk('allowSkillCheck'),
         authLogic: sel('authLogic') || 'any',
-        bypassSkills: val('bypassSkills') ? val('bypassSkills').split(',').map(s => s.trim()).filter(Boolean) : [],
+        bypassSkills: val('bypassSkills') ? val('bypassSkills').split(',').map(s => canonicalizeSkillName(s.trim())).filter(Boolean) : [],
         bypassDC: num('bypassDC', 15),
         allowKeyItem: chk('allowKeyItem'),
         keyItemName: val('keyItemName'),

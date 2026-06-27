@@ -46,10 +46,6 @@ export class BaseApplication extends HandlebarsApplicationMixin(ApplicationV2) {
   #uiSoundsWired = false;
   /** @type {?Function} document-level click handler (for cleanup) */
   #uiClickHandler = null;
-  /** @type {?Function} document-level hover handler (for cleanup) */
-  #uiHoverHandler = null;
-  /** @type {?Element} last actionable element hovered (dedup hover sound) */
-  #lastHover = null;
 
   /** Unique owner ID for EventBus cleanup */
   get ownerId() {
@@ -113,14 +109,15 @@ export class BaseApplication extends HandlebarsApplicationMixin(ApplicationV2) {
 
   // ═══════════════════════════════════════════════════════════
   //  Centralized UI sound feedback
-  //  Every NCM window gets consistent click/hover sounds on its
-  //  actionable controls, plus open/close — wired ONCE here so apps
-  //  don't sprinkle play('click') by hand (which drifted inconsistent).
-  //  Domain/event sounds (decrypt, send, hack…) still layer on top.
+  //  Every NCM window gets a consistent click sound on its actionable
+  //  controls, plus open/close — wired ONCE here so apps don't sprinkle
+  //  play('click') by hand (which drifted inconsistent). (Hover SFX was
+  //  intentionally removed.) Domain/event sounds (decrypt, send, hack…)
+  //  still layer on top.
   // ═══════════════════════════════════════════════════════════
 
   /**
-   * Attach delegated click/hover sound listeners for this app's controls.
+   * Attach a delegated click sound listener for this app's controls.
    * Uses document-level capture + a containment guard (the project's blessed
    * pattern — element-level listeners are unreliable in Foundry), and is torn
    * down in close(). Only the app whose element contains the target plays, so
@@ -144,15 +141,8 @@ export class BaseApplication extends HandlebarsApplicationMixin(ApplicationV2) {
       if (!inApp(ev.target)) return;
       if (actionable(ev.target)) this.soundService?.playClick();
     };
-    this.#uiHoverHandler = (ev) => {
-      if (!inApp(ev.target)) { this.#lastHover = null; return; }
-      const el = actionable(ev.target);
-      if (el && el !== this.#lastHover) this.playSound('hover', { volume: 0.2 });
-      this.#lastHover = el;
-    };
 
     document.addEventListener('click', this.#uiClickHandler, true);
-    document.addEventListener('mouseover', this.#uiHoverHandler, true);
   }
 
   /**
@@ -186,8 +176,7 @@ export class BaseApplication extends HandlebarsApplicationMixin(ApplicationV2) {
   async close(options = {}) {
     this.playSound('close');
     if (this.#uiClickHandler) document.removeEventListener('click', this.#uiClickHandler, true);
-    if (this.#uiHoverHandler) document.removeEventListener('mouseover', this.#uiHoverHandler, true);
-    this.#uiClickHandler = this.#uiHoverHandler = this.#lastHover = null;
+    this.#uiClickHandler = null;
     this.#uiSoundsWired = false;
     this._cleanupSubscriptions();
     return super.close(options);

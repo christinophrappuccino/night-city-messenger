@@ -184,6 +184,27 @@ export const SKILL_MAP = Object.freeze({
   'Human Perception':           { stat: 'emp', category: 'EMP' },
 });
 
+// Lookup: normalized skill name → canonical SKILL_MAP key. Lets free-text
+// config ("Electronics/SecurityTech", "basictech") resolve to the proper CPR
+// name on save so stored data matches actor skill Items.
+const _SKILL_CANON = new Map(
+  Object.keys(SKILL_MAP).map(k => [k.toLowerCase().replace(/[\s_/\\&.-]+/g, ''), k])
+);
+
+/**
+ * Canonicalize a typed skill name to its proper CPR display name (with spaces),
+ * matching space/punctuation-insensitively. Returns the trimmed input unchanged
+ * when it isn't a known skill (e.g. "Interface" role ability, custom skills).
+ * @param {string} name
+ * @returns {string}
+ */
+export function canonicalizeSkillName(name) {
+  if (!name) return name;
+  const trimmed = String(name).trim();
+  const key = trimmed.toLowerCase().replace(/[\s_/\\&.-]+/g, '');
+  return _SKILL_CANON.get(key) ?? trimmed;
+}
+
 // ─── Skill Presets ───
 
 export const SKILL_PRESETS = Object.freeze({
@@ -395,7 +416,7 @@ export const SHARD_PRESETS = Object.freeze({
 
 export const SOUND_PATHS = Object.freeze({
   'open': 'ui/open.ogg', 'close': 'ui/close.ogg', 'click': 'ui/click.ogg',
-  'hover': 'ui/hover.ogg', 'keystroke': 'ui/keystroke.ogg', 'error': 'ui/error.ogg',
+  'keystroke': 'ui/keystroke.ogg', 'error': 'ui/error.ogg',
   'receive': 'messages/receive.ogg', 'receive-urgent': 'messages/receive-urgent.ogg',
   'send': 'messages/send.ogg', 'queue-flush': 'messages/queue-flush.ogg',
   'destruct': 'messages/destruct.ogg',

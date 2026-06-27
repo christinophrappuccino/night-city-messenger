@@ -20,7 +20,7 @@
  *              Extends BaseApplication (ApplicationV2 + HandlebarsApplicationMixin).
  */
 
-import { MODULE_ID, EVENTS, TEMPLATES } from '../../utils/constants.js';
+import { MODULE_ID, EVENTS, TEMPLATES, SKILL_MAP } from '../../utils/constants.js';
 import { log } from '../../utils/helpers.js';
 import { BaseApplication } from '../BaseApplication.js';
 import { showItemPicker } from '../../utils/itemPicker.js';
@@ -225,6 +225,40 @@ export class NetworkAuthDialog extends BaseApplication {
       logicDescription = enabledMethods.join(' OR ');
     }
 
+    // --- Black ICE (lethal countermeasures) — lifted up so skill rows can warn ---
+    const isLethalICE = this.iceService?.isLethalICE(network.security) ?? false;
+    const iceInfo = isLethalICE ? this.iceService.resolveICE(network.security) : null;
+    const iceDealsDamage = network.security.failureMode === 'damage';
+    const skillDanger = (isLethalICE && iceDealsDamage && iceInfo?.formula)
+      ? `${iceInfo.formula} to HP`
+      : '';
+
+    // --- Method numbering, progress + active card (method-card redesign) ---
+    const methodOrder = [];
+    if (hasPassword) methodOrder.push('password');
+    if (hasSkillBypass) methodOrder.push('skill');
+    if (hasKeyItem) methodOrder.push('keyitem');
+    const methodsTotal = methodOrder.length;
+    const completionMap = { password: passwordCompleted, skill: skillCompleted, keyitem: keyItemCompleted };
+    const completedCount = methodOrder.filter(m => completionMap[m]).length;
+    const allComplete = methodsTotal > 0 && completedCount >= methodsTotal;
+    // AND-mode progress label + the first not-yet-completed method (the "active" card)
+    const progressLabel = allComplete ? 'Complete' : `Step ${completedCount + 1} of ${methodsTotal}`;
+    const activeMethod = isAndMode ? (methodOrder.find(m => !completionMap[m]) ?? null) : null;
+    // Per-method display numbers (1-based, display order) — surfaced only in AND mode
+    const passwordNum = hasPassword ? methodOrder.indexOf('password') + 1 : 0;
+    const skillNum = hasSkillBypass ? methodOrder.indexOf('skill') + 1 : 0;
+    const keyItemNum = hasKeyItem ? methodOrder.indexOf('keyitem') + 1 : 0;
+    // OR dividers render only in OR mode, between consecutive method cards
+    const showOrBeforeSkill = !isAndMode && hasSkillBypass && hasPassword;
+    const showOrBeforeKeyItem = !isAndMode && hasKeyItem && (hasPassword || hasSkillBypass);
+    // Policy banner is only meaningful when more than one method is offered
+    const showPolicy = methodsTotal > 1;
+
+    // The breakdown grid represents one skill — only accurate (non-confusing)
+    // when there's a single bypass skill; multi-skill networks show per-row values.
+    const showBreakdownGrid = !!skillBreakdown && (network.security.bypassSkills?.length ?? 0) <= 1;
+
     return {
       network: {
         id: network.id,
@@ -246,6 +280,22 @@ export class NetworkAuthDialog extends BaseApplication {
       isAndMode,
       logicDescription,
 
+      // method-card redesign: numbering, progress, active card, OR dividers
+      methodsTotal,
+      completedCount,
+      allComplete,
+      progressLabel,
+      showPolicy,
+      passwordActive: activeMethod === 'password',
+      skillActive: activeMethod === 'skill',
+      keyItemActive: activeMethod === 'keyitem',
+      passwordNum,
+      skillNum,
+      keyItemNum,
+      showOrBeforeSkill,
+      showOrBeforeKeyItem,
+      showBreakdownGrid,
+
       passwordCompleted,
       skillCompleted,
       keyItemCompleted,
@@ -256,10 +306,21 @@ export class NetworkAuthDialog extends BaseApplication {
       presentedItemImg: this._presentedItemImg ?? null,
       keyItemError: this._keyItemError ?? null,
 
-      bypassSkills: (network.security.bypassSkills ?? []).map(skill => ({
-        name: skill,
-        dc: network.security.bypassDC ?? 15,
-      })),
+      bypassSkills: (network.security.bypassSkills ?? []).map(skill => {
+        const bd = this._breakdownForSkill(network, skill);
+        return {
+          // Canonical skill name (matches the actor's Item) for display AND the
+          // data-skill the roll fires with — falls back to the raw config name.
+          name: bd?.skillName ?? skill,
+          dc: network.security.bypassDC ?? 15,
+          danger: skillDanger,
+          // Per-skill resolved values so each row shows the character's own level
+          statName: bd?.statName ?? 'INT',
+          statValue: bd?.statValue ?? 0,
+          skillValue: bd?.skillValue ?? 0,
+          total: bd?.total ?? 0,
+        };
+      }),
       bypassDC: network.security.bypassDC ?? 15,
 
       isLockedOut,
@@ -274,11 +335,10 @@ export class NetworkAuthDialog extends BaseApplication {
       errorMessage: this._errorMessage,
       hasError: !!this._errorMessage,
 
-      // ICE info
-      isLethalICE: this.iceService?.isLethalICE(network.security) ?? false,
-      iceInfo: this.iceService?.isLethalICE(network.security)
-        ? this.iceService.resolveICE(network.security)
-        : null,
+      // ICE info (computed above so skill rows can carry the HP-damage warning)
+      isLethalICE,
+      iceInfo,
+      iceDealsDamage,
       networkEncryptionType: network.security.encryptionType || 'ICE',
       networkFailureMode: network.security.failureMode || 'lockout',
 
@@ -301,6 +361,9 @@ export class NetworkAuthDialog extends BaseApplication {
     // Set auth state attribute for CSS accent bar color
     if (context.isLockedOut) {
       this.element.dataset.authState = 'lockout';
+    } else if (context.isLethalICE) {
+      // Lethal ICE present — red bar reads the danger at a glance
+      this.element.dataset.authState = 'ice';
     } else if (context.hasKeyItem && !context.hasPassword && !context.hasSkillBypass) {
       this.element.dataset.authState = 'keyitem';
     } else if (context.hasSkillBypass && !context.hasPassword) {
@@ -441,27 +504,33 @@ export class NetworkAuthDialog extends BaseApplication {
     }
 
     const dc = this.network.security.bypassDC ?? 15;
-    const roll = new Roll('1d10');
-    await roll.evaluate();
 
-    // Resolve stat + skill bonuses (Phase 4 SkillService → manual fallback)
-    const { statBonus, skillBonus } = this._resolveSkillBonuses(actor, skillName);
-    const total = roll.total + skillBonus + statBonus;
-
-    // Critical handling (CPR: 10 = crit success, 1 = crit failure on d10)
-    const isCritSuccess = roll.total === 10;
-    const isCritFailure = roll.total === 1;
-    let critLabel = '';
-    if (isCritSuccess) critLabel = ' — <span style="color:#00ff41;">CRITICAL SUCCESS</span>';
-    if (isCritFailure) critLabel = ' — <span style="color:#ff0033;">CRITICAL FAILURE</span>';
-
-    // Show the roll in chat
-    await roll.toMessage({
-      speaker: ChatMessage.getSpeaker({ actor }),
-      flavor: `<strong>Network Bypass: ${this.network.name}</strong><br>
-               ${skillName} vs DV ${dc}${critLabel}<br>
-               Roll: ${roll.total} + Skill: ${skillBonus} + Stat: ${statBonus} = <strong>${total}</strong>`,
-    });
+    // Roll through SkillService.performCheck — the canonical CPR path (the SAME
+    // one shard hacking / ICE breach use). It resolves stat + skill correctly,
+    // handles crit/fumble + Luck, and posts the skill-check ("network bypass")
+    // chat card. Falls back to a manual d10 only if the service is unavailable.
+    let total;
+    const svc = this.skillService;
+    if (svc?.performCheck) {
+      const rollResult = await svc.performCheck(actor, skillName, {
+        dc,
+        showChat: true,
+        context: `Network Bypass: ${this.network.name || 'Network'}`,
+        flavor: `${this.network.security.encryptionType || 'ICE'} // DV ${dc}`,
+      });
+      total = rollResult.total;
+    } else {
+      const roll = new Roll('1d10');
+      await roll.evaluate();
+      const { statBonus, skillBonus } = this._resolveSkillBonuses(actor, skillName);
+      total = roll.total + skillBonus + statBonus;
+      await roll.toMessage({
+        speaker: ChatMessage.getSpeaker({ actor }),
+        flavor: `<strong>Network Bypass: ${this.network.name}</strong><br>
+                 ${skillName} vs DV ${dc}<br>
+                 Total: <strong>${total}</strong>`,
+      });
+    }
 
     // NetworkService.authenticateSkillCheck handles sound internally
     const authResult = this.networkService.authenticateSkillCheck(this.networkId, total, skillName);
@@ -690,33 +759,83 @@ export class NetworkAuthDialog extends BaseApplication {
    * @returns {object|null} { statName, statValue, skillName, skillValue, total, needed }
    */
   _buildSkillBreakdown(network) {
-    const actor = game.user?.character;
     const primarySkill = network.security.bypassSkills?.[0];
-    if (!actor || !primarySkill) return null;
+    if (!primarySkill) return null;
+    return this._breakdownForSkill(network, primarySkill);
+  }
 
-    // Phase 4: Use SkillService if available
-    if (this.skillService?.getSkillBreakdown) {
+  /**
+   * Canonicalize a configured bypass-skill name to the actor's actual skill
+   * Item name using punctuation/space-insensitive matching. Networks store
+   * names like "Electronics/SecurityTech" / "BasicTech" while CPR skill Items
+   * are "Electronics/Security Tech" / "Basic Tech" — without this the exact
+   * lookup misses and the skill level resolves to 0. Returns the matched Item
+   * name (so display + roll + chat all use the real name), or the raw name
+   * unchanged when nothing matches.
+   * @param {Actor} actor
+   * @param {string} rawName
+   * @returns {string}
+   */
+  _resolveSkillName(actor, rawName) {
+    if (!actor || !rawName) return rawName;
+    const norm = (s) => String(s).toLowerCase().replace(/[\s_/\\&.-]+/g, '');
+    const target = norm(rawName);
+    const match = (actor.items ?? []).find(i =>
+      i.type === 'skill' && norm(i.name) === target
+    );
+    return match ? match.name : rawName;
+  }
+
+  /**
+   * Resolve a stat+skill breakdown for an arbitrary bypass skill so each
+   * skill row can show the character's actual level in *that* skill (not
+   * just the primary). SkillService first, manual CPR lookup as fallback.
+   * @param {object} network
+   * @param {string} skillName
+   * @returns {object|null} { statName, statValue, skillName, skillValue, total, needed }
+   */
+  _breakdownForSkill(network, skillName) {
+    const actor = game.user?.character;
+    if (!actor || !skillName) return null;
+    const dc = network.security.bypassDC ?? 15;
+
+    // Canonicalize to the actor's real skill name (handles missing spaces etc.)
+    skillName = this._resolveSkillName(actor, skillName);
+
+    // SkillService.getSkillData is the canonical CPR resolver — the SAME path
+    // shard hacking uses. It reads the skill Item's level + linked stat and
+    // resolves the stat value from actor.system.stats. (The old code called
+    // getSkillBreakdown/resolveSkillBonuses, which don't exist, so it always
+    // silently fell back to the buggy manual lookup below.)
+    const svc = this.skillService;
+    if (svc?.getSkillData) {
       try {
-        const breakdown = this.skillService.getSkillBreakdown(actor, primarySkill);
-        if (breakdown) {
-          const dc = network.security.bypassDC ?? 15;
-          const total = (breakdown.statValue ?? 0) + (breakdown.skillValue ?? 0);
-          return {
-            statName: breakdown.statName ?? 'INT',
-            statValue: breakdown.statValue ?? 0,
-            skillName: primarySkill,
-            skillValue: breakdown.skillValue ?? 0,
-            total,
-            needed: Math.max(1, dc - total),
-          };
+        const d = svc.getSkillData(actor, skillName);
+        // Diagnostic: when the skill can't be matched on the actor, surface the
+        // requested name vs. the actor's actual skill items (debugMode only).
+        if (!d.found) {
+          const owned = (actor.items ?? []).filter(i => i.type === 'skill').map(i => i.name);
+          log.debug(`Network bypass: skill "${skillName}" not found on ${actor.name}. ` +
+            `Actor skills: ${owned.join(', ') || '(none)'}`);
         }
+        const statValue = d.statValue ?? 0;
+        const skillValue = d.skillLevel ?? 0;
+        const total = statValue + skillValue;
+        return {
+          statName: (d.statName || 'int').toUpperCase(),
+          statValue,
+          skillName,
+          skillValue,
+          total,
+          needed: Math.max(1, dc - total),
+        };
       } catch (err) {
-        log.debug('SkillService.getSkillBreakdown failed, falling back to manual lookup', err);
+        log.debug('SkillService.getSkillData failed, falling back to manual lookup', err);
       }
     }
 
     // Fallback: Manual CPR system lookup
-    return this._manualSkillBreakdown(actor, primarySkill, network);
+    return this._manualSkillBreakdown(actor, skillName, network);
   }
 
   /**
@@ -727,32 +846,37 @@ export class NetworkAuthDialog extends BaseApplication {
    * @returns {object}
    */
   _manualSkillBreakdown(actor, skillName, network) {
-    const statName = 'INT';
-    const statValue = actor.system?.stats?.int?.value ?? 0;
+    const dc = network.security.bypassDC ?? 15;
+    const wanted = (skillName || '').toLowerCase().trim();
 
     let skillValue = 0;
-    const skillKey = skillName.toLowerCase().replace(/\s+/g, '');
+    let statKey = null;
 
-    // Try direct skills object first
-    if (actor.system?.skills?.[skillKey]?.level !== undefined) {
-      skillValue = actor.system.skills[skillKey].level;
-    } else {
-      // CPR: Skills can also be items on the actor
-      try {
-        const skillItem = actor.items?.find(i =>
-          i.type === 'skill' && i.name.toLowerCase() === skillName.toLowerCase()
-        );
-        if (skillItem) {
-          skillValue = skillItem.system?.level ?? 0;
-        }
-      } catch {
-        log.debug(`Could not read skill "${skillName}" from actor — showing base values`);
+    // CPR: skills are embedded Items of type 'skill' (level + linked stat)
+    try {
+      const skillItem = actor.items?.find(i =>
+        i.type === 'skill' && (i.name || '').toLowerCase().trim() === wanted
+      );
+      if (skillItem) {
+        skillValue = skillItem.system?.level ?? skillItem.system?.value ?? 0;
+        if (skillItem.system?.stat) statKey = String(skillItem.system.stat).toLowerCase();
       }
+    } catch (err) {
+      log.debug(`Could not read skill "${skillName}" from actor: ${err?.message}`);
     }
 
+    // Resolve the linked stat via SKILL_MAP when the skill Item wasn't matched,
+    // so the STAT bonus is never silently dropped (the old code only read the
+    // stat inside the `if (skillItem)` branch → 0 when the lookup missed).
+    if (!statKey) {
+      const mapEntry = SKILL_MAP[skillName] ?? SKILL_MAP[(skillName || '').trim()];
+      statKey = (mapEntry?.stat || 'int').toLowerCase();
+    }
+
+    const statBlock = actor.system?.stats?.[statKey];
+    const statValue = (typeof statBlock === 'object' ? statBlock?.value : statBlock) ?? 0;
     const total = statValue + skillValue;
-    const dc = network.security.bypassDC ?? 15;
-    return { statName, statValue, skillName, skillValue, total, needed: Math.max(1, dc - total) };
+    return { statName: statKey.toUpperCase(), statValue, skillName, skillValue, total, needed: Math.max(1, dc - total) };
   }
 
   /**
@@ -763,35 +887,11 @@ export class NetworkAuthDialog extends BaseApplication {
    * @returns {{ statBonus: number, skillBonus: number }}
    */
   _resolveSkillBonuses(actor, skillName) {
-    // Phase 4: Use SkillService if available
-    if (this.skillService?.resolveSkillBonuses) {
-      try {
-        const result = this.skillService.resolveSkillBonuses(actor, skillName);
-        if (result) return result;
-      } catch (err) {
-        log.debug('SkillService.resolveSkillBonuses failed, falling back to manual lookup', err);
-      }
-    }
-
-    // Fallback: Manual CPR lookup
-    let skillBonus = 0;
-    let statBonus = 0;
-    try {
-      const skillItem = actor.items?.find(i =>
-        i.type === 'skill' && i.name.toLowerCase() === skillName.toLowerCase()
-      );
-      if (skillItem) {
-        skillBonus = skillItem.system?.level ?? 0;
-        const statName = skillItem.system?.stat;
-        if (statName && actor.system?.stats?.[statName]) {
-          statBonus = actor.system.stats[statName]?.value ?? 0;
-        }
-      }
-    } catch {
-      log.debug(`Could not read skill "${skillName}" from actor — using raw roll`);
-    }
-
-    return { statBonus, skillBonus };
+    // Use the SAME resolver as the displayed breakdown so the roll total can
+    // never disagree with what the player was shown. Routes through
+    // SkillService.getSkillData first, hardened manual lookup as fallback.
+    const bd = this._breakdownForSkill(this.network, skillName);
+    return { statBonus: bd?.statValue ?? 0, skillBonus: bd?.skillValue ?? 0 };
   }
 
   // ═══════════════════════════════════════════════════════════

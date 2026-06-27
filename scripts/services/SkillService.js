@@ -171,25 +171,41 @@ export class SkillService {
     let skillLevel = 0;
     let statName = 'tech';
     let statValue = 0;
+    let statFromItem = false;
     let _found = false;
 
+    const wanted = this._normSkill(skillName);
+
     try {
-      // CPR system: skills are items with type 'skill'
+      // CPR system: skills are items with type 'skill'. Match space/punctuation
+      // -insensitive so config names like "Electronics/SecurityTech" resolve to
+      // the actor's "Electronics/Security Tech" item.
       const skillItem = actor.items?.find(i =>
-        i.type === 'skill' && i.name.toLowerCase().trim() === skillName.toLowerCase().trim()
+        i.type === 'skill' && this._normSkill(i.name) === wanted
       );
 
       if (skillItem) {
         _found = true;
         skillLevel = skillItem.system?.level ?? skillItem.system?.value ?? 0;
         const linkedStat = skillItem.system?.stat;
-        if (linkedStat) statName = linkedStat.toLowerCase();
+        if (linkedStat) { statName = String(linkedStat).toLowerCase(); statFromItem = true; }
       }
 
-      // Fallback: SKILL_MAP for stat linkage
+      // Role abilities (e.g. Interface from the Netrunner role) are NOT skill
+      // items — resolve their rank from the actor's role item(s).
       if (!_found) {
-        const mapEntry = SKILL_MAP[skillName];
-        if (mapEntry) statName = mapEntry.stat;
+        const role = this._readRoleAbility(actor, skillName);
+        if (role.found) {
+          _found = true;
+          skillLevel = role.rank;
+        }
+      }
+
+      // Fallback: SKILL_MAP for stat linkage when the source didn't supply one
+      // (covers role abilities and skills whose item lacks a linked stat).
+      if (!statFromItem) {
+        const mapEntry = SKILL_MAP[skillName] ?? SKILL_MAP[(skillName ?? '').trim()];
+        if (mapEntry?.stat) statName = mapEntry.stat;
       }
 
       // Read stat value
@@ -202,6 +218,60 @@ export class SkillService {
     }
 
     return { skillLevel, statName, statValue, _found };
+  }
+
+  /**
+   * Normalize a skill/ability name for matching — case + space/punctuation
+   * insensitive, so "Electronics/SecurityTech" === "Electronics/Security Tech".
+   * @private
+   */
+  _normSkill(s) {
+    return String(s || '').toLowerCase().replace(/[\s_/\\&.-]+/g, '');
+  }
+
+  /**
+   * Resolve a role-granted ability rank (e.g. Interface from the Netrunner
+   * role) — these live on the actor's 'role' item, not as 'skill' items.
+   * Tries the main role ability, sub-abilities, the role's own name, then a
+   * small ability→role fallback. Robust across CPR data-model variants.
+   * @private
+   * @returns {{ rank: number, found: boolean }}
+   */
+  _readRoleAbility(actor, abilityName) {
+    const target = this._normSkill(abilityName);
+    const roles = (actor.items ?? []).filter(i => i.type === 'role');
+
+    for (const role of roles) {
+      const sys = role.system ?? {};
+
+      const main = sys.mainRoleAbility;
+      if (main && this._normSkill(main.name) === target) {
+        return { rank: main.rank ?? sys.rank ?? sys.value ?? 0, found: true };
+      }
+
+      const subs = sys.subRoleAbilities ?? sys.abilities ?? sys.roleskills ?? [];
+      if (Array.isArray(subs)) {
+        const hit = subs.find(a => this._normSkill(a?.name) === target);
+        if (hit) return { rank: hit.rank ?? hit.value ?? 0, found: true };
+      }
+
+      if (this._normSkill(role.name) === target) {
+        return { rank: sys.rank ?? sys.value ?? 0, found: true };
+      }
+    }
+
+    // Ability lives on a known role (Interface → Netrunner's main ability)
+    const ROLE_FOR_ABILITY = { interface: 'netrunner' };
+    const roleSlug = ROLE_FOR_ABILITY[target];
+    if (roleSlug) {
+      const role = roles.find(r => this._normSkill(r.name) === roleSlug);
+      if (role) {
+        const sys = role.system ?? {};
+        return { rank: sys.mainRoleAbility?.rank ?? sys.rank ?? sys.value ?? 0, found: true };
+      }
+    }
+
+    return { rank: 0, found: false };
   }
 
   // ═══════════════════════════════════════════════════════════
