@@ -69,10 +69,10 @@
 
 .ncm-app .ncm-net-selector__header-label {
   font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 8px;
+  font-size: 9px;
   color: var(--ncm-text-muted, #555570);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   flex: 1;
 }
 
@@ -129,34 +129,38 @@
 .ncm-app .ncm-net-option {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
+  gap: 11px;
+  padding: 11px 13px;
   cursor: pointer;
-  border-bottom: 1px solid rgba(42, 42, 69, 0.3);
-  transition: all 0.12s;
+  border-bottom: 1px solid rgba(42, 42, 69, 0.4);
+  transition: background 0.12s;
   position: relative;
 }
 
-/* Left accent border */
+/* Left accent border — network color (set via inline --net-c) */
 .ncm-app .ncm-net-option::before {
   content: '';
   position: absolute;
   left: 0; top: 0; bottom: 0;
   width: 3px;
-  background: transparent;
-  transition: background 0.12s;
+  background: var(--net-c, var(--ncm-secondary, #19f3f7));
+  opacity: 0.45;
+  transition: opacity 0.12s, box-shadow 0.12s;
 }
 
 .ncm-app .ncm-net-option:hover {
   background: var(--ncm-bg-surface, #1a1a2e);
 }
 
-/* Active network */
+/* Active network — tinted in the network's own color */
 .ncm-app .ncm-net-option--active {
-  background: var(--ncm-bg-surface, #1a1a2e);
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--net-c, var(--ncm-secondary)) 11%, transparent),
+    transparent 72%);
 }
 .ncm-app .ncm-net-option--active::before {
-  background: var(--ncm-success, #00ff41);
+  opacity: 1;
+  box-shadow: 0 0 8px var(--net-c, var(--ncm-secondary, #19f3f7));
 }
 
 /* Locked network */
@@ -164,19 +168,19 @@
   opacity: 0.6;
 }
 .ncm-app .ncm-net-option--locked:hover {
-  opacity: 0.8;
+  opacity: 0.78;
 }
 
 /* ── Icon Badge ── */
 
 .ncm-app .ncm-net-option__icon {
-  width: 26px;
-  height: 26px;
-  border-radius: 4px;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: 14px;
   flex-shrink: 0;
   overflow: hidden;
 }
@@ -190,37 +194,84 @@
 
 .ncm-app .ncm-net-option__name {
   font-family: var(--ncm-font-display, 'Rajdhani', sans-serif);
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--ncm-text-primary, #e0e0e8);
   text-transform: uppercase;
+  letter-spacing: 0.02em;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .ncm-app .ncm-net-option__type {
   font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 7px;
+  font-size: 9.5px;
   color: var(--ncm-text-muted, #555570);
   text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 1px;
 }
 
 
-/* ── State Badges ── */
+/* ── Right column: status chip + signal bars ── */
 
-.ncm-app .ncm-net-option__badges {
+.ncm-app .ncm-net-option__right {
   display: flex;
-  gap: 4px;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
   flex-shrink: 0;
 }
 
-.ncm-app .ncm-net-option__lock {
-  font-size: 9px;
+.ncm-app .ncm-net-option__chip {
+  font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
+  font-size: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 3px 7px;
+  border-radius: 3px;
+  border: 1px solid;
+  white-space: nowrap;
+}
+.ncm-app .ncm-net-option__chip i { font-size: 7px; margin-right: 1px; }
+
+.ncm-app .ncm-net-option__chip--on {
+  color: var(--ncm-success, #00ff41);
+  border-color: color-mix(in srgb, var(--ncm-success, #00ff41) 40%, transparent);
+  background: color-mix(in srgb, var(--ncm-success, #00ff41) 12%, transparent);
+}
+.ncm-app .ncm-net-option__chip--go {
+  color: var(--ncm-text-secondary, #bdbdd0);
+  border-color: var(--ncm-border, #2a2a45);
+  background: transparent;
+}
+.ncm-app .ncm-net-option__chip--locked {
   color: var(--ncm-accent, #f7c948);
+  border-color: color-mix(in srgb, var(--ncm-accent, #f7c948) 40%, transparent);
+  background: color-mix(in srgb, var(--ncm-accent, #f7c948) 10%, transparent);
 }
 
-.ncm-app .ncm-net-option__check {
-  font-size: 9px;
-  color: var(--ncm-success, #00ff41);
+/* signal bars — tinted in the network color */
+.ncm-app .ncm-net-option__sig {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 11px;
+}
+.ncm-app .ncm-net-option__sig-bar {
+  width: 3px;
+  border-radius: 1px;
+  background: var(--ncm-bg-elevated, #252540);
+}
+.ncm-app .ncm-net-option__sig-bar--on {
+  background: var(--net-c, var(--ncm-secondary, #19f3f7));
+}
+/* Locked rows: mute the active bars so the lock state reads as "no access" */
+.ncm-app .ncm-net-option--locked .ncm-net-option__sig-bar--on {
+  background: var(--ncm-text-muted, #8e8ea8);
 }
 
 
@@ -272,19 +323,19 @@
    ═══════════════════════════════════════════════════════════ */
 
 .ncm-app .ncm-net-selector__footer {
-  padding: 6px 12px;
+  padding: 7px 13px;
   background: var(--ncm-bg-base, #12121a);
   border-top: 1px solid var(--ncm-border, #2a2a45);
   font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace);
-  font-size: 8px;
+  font-size: 9px;
   color: var(--ncm-text-muted, #555570);
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
 }
 
 .ncm-app .ncm-net-selector__footer i {
-  font-size: 7px;
+  font-size: 8px;
 }
 
 .ncm-app .ncm-net-selector__footer--deadzone {

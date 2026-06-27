@@ -61,9 +61,10 @@
         <div class="ncm-net-option ncm-net-option--{{this.state}}"
              data-action="selectNetwork"
              data-network-id="{{this.id}}"
+             style="--net-c: {{this.color}};"
              title="{{this.name}} — {{this.typeLabel}}">
 
-          {{!-- Left color border handled by CSS based on --state class --}}
+          {{!-- Left color accent (network color) handled by CSS via --net-c --}}
 
           {{!-- Icon Badge --}}
           <div class="ncm-net-option__icon"
@@ -75,18 +76,25 @@
           <div class="ncm-net-option__info">
             <div class="ncm-net-option__name">{{this.name}}</div>
             <div class="ncm-net-option__type">
-              {{this.typeLabel}} — {{this.signalStrength}}% signal
+              {{this.typeLabel}} · {{this.signalStrength}}%
             </div>
           </div>
 
-          {{!-- State Badge --}}
-          <div class="ncm-net-option__badges">
+          {{!-- Right column: status chip + signal bars --}}
+          <div class="ncm-net-option__right">
             {{#if (eq this.state 'active')}}
-              <i class="fas fa-check ncm-net-option__check"></i>
+              <span class="ncm-net-option__chip ncm-net-option__chip--on">Connected</span>
+            {{else if (eq this.state 'locked')}}
+              <span class="ncm-net-option__chip ncm-net-option__chip--locked"><i class="fas fa-lock"></i> Locked</span>
+            {{else}}
+              <span class="ncm-net-option__chip ncm-net-option__chip--go">Connect</span>
             {{/if}}
-            {{#if (eq this.state 'locked')}}
-              <i class="fas fa-lock ncm-net-option__lock"></i>
-            {{/if}}
+            <div class="ncm-net-option__sig">
+              <span class="ncm-net-option__sig-bar {{#if (gt this.signalStrength 0)}}ncm-net-option__sig-bar--on{{/if}}" style="height:4px"></span>
+              <span class="ncm-net-option__sig-bar {{#if (gte this.signalStrength 25)}}ncm-net-option__sig-bar--on{{/if}}" style="height:6px"></span>
+              <span class="ncm-net-option__sig-bar {{#if (gte this.signalStrength 50)}}ncm-net-option__sig-bar--on{{/if}}" style="height:8px"></span>
+              <span class="ncm-net-option__sig-bar {{#if (gte this.signalStrength 80)}}ncm-net-option__sig-bar--on{{/if}}" style="height:11px"></span>
+            </div>
           </div>
         </div>
       {{/each}}
