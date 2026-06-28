@@ -373,6 +373,22 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       } catch { /* settings not ready — keep field defaults */ }
     }
 
+    // GM replying within an anonymous thread — pre-tick Anonymous Send and carry the
+    // thread's original masking config (alias/style/replies/traceDV) so the
+    // conversation stays anonymous by default. Left toggleable: the GM can turn it
+    // off for any given reply via the composer toggle.
+    if (game.user.isGM && this.mode === 'reply' && this.originalMessage
+        && this._isAnonFeatureEnabled()) {
+      const cfg = this.messageService?.getThreadAnonConfig(this.originalMessage);
+      if (cfg) {
+        this.anonymousEnabled = true;
+        this.anonStyle = cfg.style;
+        this.anonAlias = cfg.alias;
+        this.anonAllowReplies = cfg.allowReplies;
+        this.anonTraceDV = cfg.traceDV;
+      }
+    }
+
     // Restore draft if opening fresh compose with no pre-filled data
     this._restoreDraft();
   }
@@ -1496,6 +1512,15 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       await this._playSendAnimation('failure', { error: error.message || 'Unexpected transmission error' });
     } finally {
       this._sending = false;
+      // Re-enable the send button on EVERY exit path. Success closes the window so
+      // this is harmless there; on failure/exception the button was disabled at the
+      // top of _onSend (pointer-events:none) and was previously only restored on the
+      // eddies-early-return path — so a single failed send left the button dead to
+      // mouse clicks while Ctrl+Enter (which calls _onSend directly) still worked.
+      if (sendBtn) {
+        sendBtn.disabled = false;
+        sendBtn.classList.remove('ncm-composer__btn--disabled');
+      }
     }
   }
 

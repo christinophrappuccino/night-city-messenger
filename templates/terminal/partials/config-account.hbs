@@ -1,0 +1,41 @@
+{{!-- Account editor (rendered with the `editing` context). --}}
+<div class="ncm-cfg-section">
+  <div class="ncm-cfg-section-header">
+    <i class="fas fa-user-pen ncm-cfg-section-icon" style="color:#19f3f7"></i>
+    <div class="ncm-cfg-section-title">{{#if isNew}}New Account{{else}}Edit Account{{/if}}</div>
+  </div>
+
+  <div class="ncm-cfg-row"><span class="ncm-cfg-label">Display name</span><input type="text" name="acctDisplayName" class="ncm-cfg-input ncm-cfg-flex" value="{{displayName}}"></div>
+  <div class="ncm-cfg-row"><span class="ncm-cfg-label">Username</span><input type="text" name="acctUsername" class="ncm-cfg-input ncm-cfg-flex" value="{{username}}" placeholder="what you type at login"></div>
+  <div class="ncm-cfg-row"><span class="ncm-cfg-label">Email</span><input type="text" name="acctEmail" class="ncm-cfg-input ncm-cfg-flex" value="{{email}}" placeholder="optional — links/creates a contact"></div>
+  <div class="ncm-cfg-row">
+    <label class="ncm-cfg-toggle-label"><input type="checkbox" name="acctIsAdmin" {{#if isAdmin}}checked{{/if}}> Admin</label>
+    <label class="ncm-cfg-toggle-label" style="margin-left:16px"><input type="checkbox" name="acctHidden" {{#if hidden}}checked{{/if}}> Hidden (secret login only)</label>
+  </div>
+
+  <div class="ncm-cfg-divider"></div>
+  <div class="ncm-cfg-section-header"><i class="fas fa-shield-halved ncm-cfg-section-icon" style="color:#ff0033"></i><div class="ncm-cfg-section-title">Security</div><label class="ncm-cfg-toggle-label"><input type="checkbox" name="secRequiresAuth" {{#if requiresAuth}}checked{{/if}}> Require login</label></div>
+  <div class="ncm-cfg-desc">Off = open account (anyone can enter). On = must pass the enabled methods below.</div>
+
+  <div class="ncm-cfg-row"><label class="ncm-cfg-toggle-label"><input type="checkbox" name="secAllowPassword" {{#if allowPassword}}checked{{/if}}> Password</label><input type="text" name="secPassword" class="ncm-cfg-input ncm-cfg-flex" value="{{password}}" placeholder="passphrase"></div>
+  <div class="ncm-cfg-row"><label class="ncm-cfg-toggle-label"><input type="checkbox" name="secAllowSkill" {{#if allowSkillCheck}}checked{{/if}}> Skill</label><input type="text" name="secSkill" class="ncm-cfg-input ncm-cfg-flex" value="{{skill}}" placeholder="Interface"><span class="ncm-cfg-label" style="min-width:0">DV</span><input type="number" name="secDV" class="ncm-cfg-input ncm-cfg-input--short" value="{{bypassDC}}" min="0" max="40"></div>
+  <div class="ncm-cfg-row"><label class="ncm-cfg-toggle-label"><input type="checkbox" name="secAllowKeyItem" {{#if allowKeyItem}}checked{{/if}}> Key item</label><input type="text" name="secKeyItemName" class="ncm-cfg-input ncm-cfg-flex" value="{{keyItemName}}" placeholder="item name in inventory"></div>
+
+  <div class="ncm-cfg-row"><span class="ncm-cfg-label">When 2+ methods</span>
+    <select name="secAuthLogic" class="ncm-cfg-select ncm-cfg-flex">
+      <option value="any" {{#unless (eq authLogic "all")}}selected{{/unless}}>ANY — any one method grants access (OR)</option>
+      <option value="all" {{#if (eq authLogic "all")}}selected{{/if}}>ALL — every enabled method required (AND)</option>
+    </select>
+  </div>
+  <div class="ncm-cfg-row"><span class="ncm-cfg-label">On failure</span>
+    <select name="secFailureMode" class="ncm-cfg-select ncm-cfg-flex">{{#each failureModes}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{value}}</option>{{/each}}</select>
+  </div>
+  <div class="ncm-cfg-hint">damage = Black ICE bites the netrunner on a failed attempt.</div>
+  <div class="ncm-cfg-row"><span class="ncm-cfg-label">Max attempts</span><input type="number" name="secMaxAttempts" class="ncm-cfg-input ncm-cfg-input--short" value="{{maxAttempts}}" min="1" max="10"><span class="ncm-cfg-label" style="min-width:0">Lockout (min)</span><input type="number" name="secLockoutMin" class="ncm-cfg-input ncm-cfg-input--short" value="{{lockoutMin}}" min="0"></div>
+
+  <div class="ncm-cfg-divider"></div>
+  <div class="ncm-cfg-row">
+    <button type="button" class="ncm-cfg-btn-sm" data-action="saveAccount"><i class="fas fa-floppy-disk"></i> Save account</button>
+    <button type="button" class="ncm-cfg-btn-sm" data-action="cancelAccount"><i class="fas fa-xmark"></i> Cancel</button>
+  </div>
+</div>

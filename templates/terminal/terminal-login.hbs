@@ -1,0 +1,31 @@
+{{!-- Terminal login screen — account cards + secret-login bar. Single root. --}}
+<div class="ncm-term__login">
+  <div class="ncm-term__hero">
+    <div class="ncm-term__hero-logo"><i class="{{presetIcon}}"></i></div>
+    <div class="ncm-term__hero-txt">
+      <div class="ncm-term__hero-name">{{terminalName}}</div>
+      <div class="ncm-term__hero-sub">{{banner}}</div>
+    </div>
+    <div class="ncm-term__hero-stat">
+      <span><b>{{accountCount}}</b> accounts</span>
+      {{#if secured}}<span class="is-secured"><i class="fas fa-lock"></i> secured</span>{{/if}}
+      {{#if onlineCount}}<span><b>{{onlineCount}}</b> online</span>{{/if}}
+    </div>
+  </div>
+  <div class="ncm-term__login-body">
+    <div class="ncm-term__prompt">&gt; select an account to log in<span class="ncm-term__cursor"></span></div>
+    <div class="ncm-term__cards">
+      {{#each accounts}}
+        {{> "modules/cyberpunkred-messenger/templates/terminal/partials/account-card.hbs"}}
+      {{/each}}
+      <div class="ncm-term__otherbar" data-action="terminalManualLogin">
+        <div class="ncm-term__otherbar-ic"><i class="fas fa-user-lock"></i></div>
+        <div class="ncm-term__otherbar-tx">Log in with another account</div>
+        <span class="ncm-term__card-go"><i class="fas fa-chevron-right"></i></span>
+      </div>
+    </div>
+  </div>
+  {{#if iceWarning}}
+    <div class="ncm-term__danger"><i class="fas fa-triangle-exclamation"></i> {{iceWarning}}</div>
+  {{/if}}
+</div>

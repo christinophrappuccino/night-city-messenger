@@ -228,6 +228,13 @@ export class MessageViewerApp extends BaseApplication {
   /** @type {Array|null} Cached messages from last load */
   _cachedMessages = null;
 
+  /**
+   * @type {{ fetchMessages: () => Promise<object[]> }|null}
+   * Lazily-built message-source adapter (Terminal Expansion seam).
+   * @see _createMessageSource
+   */
+  _source = null;
+
   /** @type {Array<string>} Message IDs on current page, for keyboard navigation */
   _lastPaginatedIds = [];
 
@@ -1930,10 +1937,13 @@ export class MessageViewerApp extends BaseApplication {
     // Category filter
     switch (this.currentFilter) {
       case 'inbox':
-        result = result.filter(m => !m.status.deleted && !m.status.spam && !m.status.sent);
+        result = result.filter(m => !m.status.deleted && !m.status.spam && !m.status.sent && !m.metadata?.recovered);
         break;
       case 'unread':
-        result = result.filter(m => !m.status.read && !m.status.deleted && !m.status.spam && !m.status.sent);
+        result = result.filter(m => !m.status.read && !m.status.deleted && !m.status.spam && !m.status.sent && !m.metadata?.recovered);
+        break;
+      case 'recovered':
+        result = result.filter(m => m.metadata?.recovered && !m.status.deleted);
         break;
       case 'sent':
         result = result.filter(m => m.status.sent && !m.status.deleted);
@@ -3972,14 +3982,53 @@ export class MessageViewerApp extends BaseApplication {
   //  Data Loading & Enrichment
   // ═══════════════════════════════════════════════════════════
 
+  /**
+   * Message-source adapter (the Terminal Expansion seam).
+   *
+   * Decouples the viewer's message feed from a hard `this.actorId` inbox lookup
+   * so a subclass — `TerminalViewerApp` — can source the same list/detail UI
+   * from a terminal *account* instead. Everything downstream of the fetch
+   * (filter → sort → paginate → enrich) is already source-agnostic, so the only
+   * thing a fork must replace is *where the raw messages come from*.
+   *
+   * The adapter is a plain object implementing:
+   *   - `fetchMessages(): Promise<object[]>` — the raw, pre-filter message list,
+   *     using the standard message flag shape so `_enrichMessageDisplay` and the
+   *     rest of the pipeline work unchanged.
+   *
+   * The default source is the viewing actor's inbox. Subclasses override
+   * {@link _createMessageSource} to return a terminal-account source. The source
+   * is built lazily (on first load) so a subclass constructor has finished
+   * setting its own fields before the factory runs — `super()` runs first, so an
+   * eager build in the constructor would read the fork's fields before they exist.
+   *
+   * @returns {{ fetchMessages: () => Promise<object[]> }}
+   */
+  _createMessageSource() {
+    return {
+      fetchMessages: async () => {
+        if (!this.messageService || !this.actorId) return [];
+        // Fetch ALL messages — the viewer handles filtering via _applyFilters.
+        return await this.messageService.getMessages(this.actorId, {
+          filter: 'all',
+          includeDeleted: true,
+        }) || [];
+      },
+    };
+  }
+
+  /**
+   * Lazily-built message source for this viewer. @see _createMessageSource
+   * @returns {{ fetchMessages: () => Promise<object[]> }}
+   */
+  get messageSource() {
+    if (!this._source) this._source = this._createMessageSource();
+    return this._source;
+  }
+
   async _loadMessages() {
-    if (!this.messageService || !this.actorId) return [];
     try {
-      // Fetch ALL messages — viewer handles filtering via _applyFilters
-      return await this.messageService.getMessages(this.actorId, {
-        filter: 'all',
-        includeDeleted: true,
-      }) || [];
+      return await this.messageSource.fetchMessages() || [];
     } catch (err) {
       console.error(`${MODULE_ID} | Failed to load messages:`, err);
       return [];
@@ -4317,6 +4366,14 @@ export class MessageViewerApp extends BaseApplication {
     const toActor = msg.toActorId ? game.actors?.get(msg.toActorId) : null;
     let toDisplay = toContact?.name || toActor?.name || msg.toName || msg.to?.split('@')[0] || 'Unknown';
 
+    // Recovered/exfiltrated intel — keep the ORIGINAL recipient (e.g. v_arasaka),
+    // never the downloader, in the "to" line.
+    const isRecovered = !!msg.metadata?.recovered;
+    const recoveredFrom = msg.metadata?.recoveredFrom || '';
+    if (isRecovered && msg.metadata?.recoveredTo) {
+      toDisplay = String(msg.metadata.recoveredTo).split('@')[0];
+    }
+
     // ── Anonymous-reply sent copy — mask the recipient ──
     // The replier must never see who the anonymous party they answered really was.
     const anonRecipient = resolveAnonRecipient(msg);
@@ -4441,6 +4498,8 @@ export class MessageViewerApp extends BaseApplication {
       isAnonTraced,
       canTraceAnon,
       toDisplay,
+      isRecovered,
+      recoveredFrom,
       priorityVariant,
       priorityIcon,
       networkLabel,
@@ -4778,11 +4837,16 @@ export class MessageViewerApp extends BaseApplication {
       saved: 0,
       spam: 0,
       trash: 0,
+      recovered: 0,
     };
 
     for (const m of messages) {
       if (m.status.deleted) {
         counts.trash++;
+        continue;
+      }
+      if (m.metadata?.recovered) {
+        counts.recovered++;
         continue;
       }
       if (m.status.spam) {

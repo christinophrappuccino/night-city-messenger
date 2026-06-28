@@ -1,0 +1,43 @@
+{{!-- Network gate (Layer 0) — shard-style network cards. Single root.
+      Context: requiredNetwork, networks[] {id,name,type,signal,color,icon,state,statusLabel,weak},
+      spoof {skill,dv}, isGM --}}
+<div class="ncm-term__gate">
+  <div class="ncm-term__gate-ic"><i class="fas fa-tower-broadcast"></i></div>
+  <h3>NETWORK REQUIRED</h3>
+  <p>This terminal is only reachable from inside its subnet. Connect to an authorized network, then log in.</p>
+  <div class="ncm-term__reqbox">
+    <i class="fas fa-network-wired"></i> requires: <b>{{requiredNetwork}}</b>
+    {{#if requiredSecured}}<span class="is-lock"><i class="fas fa-lock"></i> secured</span>{{/if}}
+  </div>
+
+  {{#if networks.length}}
+    <div class="ncm-term__netgrid-label"><i class="fas fa-satellite-dish"></i> NETWORKS IN RANGE</div>
+    <div class="ncm-term__netgrid">
+      {{#each networks}}
+        <div class="ncm-term__netcard{{#if isRequired}} is-required{{/if}}" style="--nc:{{color}}"
+             data-action="terminalSwitchNetwork" data-network-id="{{id}}">
+          <div class="ncm-term__netcard-ic"><i class="{{icon}}"></i></div>
+          <div class="ncm-term__netcard-body">
+            <div class="ncm-term__netcard-nm">{{name}}</div>
+            <div class="ncm-term__netcard-meta">{{typeLabel}} · {{signal}}%{{#if isCurrent}} · current{{/if}}</div>
+          </div>
+          <div class="ncm-term__netcard-right">
+            <span class="ncm-term__nbars{{#if weak}} is-weak{{/if}}"><b></b><b></b><b></b><b></b></span>
+            <span class="ncm-term__nstat ncm-term__nstat--{{statusClass}}">{{{statusLabel}}}</span>
+          </div>
+        </div>
+      {{/each}}
+    </div>
+  {{/if}}
+
+  {{#if spoof}}
+    <span class="ncm-term__spoof" data-action="terminalSpoofNetwork">
+      <i class="fas fa-wifi"></i> Attempt Network Spoof — {{spoof.skill}} DV {{spoof.dv}}
+    </span>
+  {{/if}}
+  {{#if isGM}}
+    <div class="ncm-term__gmrow" data-action="terminalForceUnlock">
+      <i class="fas fa-unlock-keyhole"></i> GM: <b>Bypass all security</b>
+    </div>
+  {{/if}}
+</div>

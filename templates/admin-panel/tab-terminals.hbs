@@ -1,0 +1,64 @@
+{{#if (eq activeTab 'terminals')}}
+
+  <div class="ncm-shard-summary-strip">
+    <div class="ncm-shard-stat"><div class="ncm-shard-stat__value ncm-shard-stat__value--cyan">{{terminalSummary.total}}</div><div class="ncm-shard-stat__label">Terminals</div></div>
+    <div class="ncm-shard-stat"><div class="ncm-shard-stat__value">{{terminalSummary.accounts}}</div><div class="ncm-shard-stat__label">Accounts</div></div>
+    <div class="ncm-shard-stat"><div class="ncm-shard-stat__value ncm-shard-stat__value--green">{{terminalSummary.logins}}</div><div class="ncm-shard-stat__label">Active Logins</div></div>
+    <div class="ncm-shard-stat"><div class="ncm-shard-stat__value ncm-shard-stat__value--red">{{terminalSummary.locked}}</div><div class="ncm-shard-stat__label">Locked</div></div>
+  </div>
+
+  <div class="ncm-term-admin-toolbar">
+    <input type="text" class="ncm-term-admin-search" data-terminal-search placeholder="Search terminals…" value="{{terminalSearch}}">
+    <button type="button" class="ncm-action-btn" data-action="terminalImport"><i class="fas fa-file-import"></i> Import Item → Terminal</button>
+  </div>
+
+  {{#if terminals.length}}
+    <div class="ncm-term-admin-grid">
+      {{#each terminals}}
+        <div class="ncm-term-admin-card{{#if locked}} is-locked{{/if}}" data-item-id="{{id}}">
+          <div class="ncm-term-admin-card__head">
+            <img class="ncm-term-admin-card__img" src="{{img}}" alt="">
+            <div class="ncm-term-admin-card__id">
+              <div class="ncm-term-admin-card__name">{{name}}
+                {{#if gmBypassed}}<span class="ncm-term-admin-tag ncm-term-admin-tag--bypass">UNLOCKED</span>
+                {{else if locked}}<span class="ncm-term-admin-tag ncm-term-admin-tag--locked"><i class="fas fa-lock"></i> LOCKED</span>{{/if}}
+              </div>
+              <div class="ncm-term-admin-card__meta">
+                {{#if owner}}{{owner}}{{/if}}{{#if org}} · {{org}}{{/if}} · <span class="ncm-term-admin-card__scope">{{scope}}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="ncm-term-admin-card__stats">
+            <span><i class="fas fa-users"></i> {{accountCount}} account{{#unless (eq accountCount 1)}}s{{/unless}}</span>
+            {{#if networkBinding}}<span><i class="fas fa-network-wired"></i> {{networkBinding}}</span>{{/if}}
+            {{#if loginCount}}<span class="ncm-term-admin-card__online"><i class="fas fa-circle"></i> {{loginCount}} online</span>{{/if}}
+          </div>
+
+          {{#if logins.length}}
+            <div class="ncm-term-admin-card__logins">
+              {{#each logins}}<span class="ncm-term-admin-login"><i class="fas fa-user"></i> {{actor}} → {{account}}</span>{{/each}}
+            </div>
+          {{/if}}
+
+          <div class="ncm-term-admin-card__acts">
+            <button type="button" class="ncm-action-btn" data-action="terminalOpen" data-item-id="{{id}}"><i class="fas fa-terminal"></i> Open</button>
+            <button type="button" class="ncm-action-btn" data-action="terminalConfigureAdmin" data-item-id="{{id}}"><i class="fas fa-sliders"></i> Configure</button>
+            {{#if gmBypassed}}
+              <button type="button" class="ncm-action-btn" data-action="terminalRelock" data-item-id="{{id}}"><i class="fas fa-lock"></i> Relock</button>
+            {{else}}
+              <button type="button" class="ncm-action-btn" data-action="terminalForceUnlockAdmin" data-item-id="{{id}}"><i class="fas fa-unlock-keyhole"></i> Force-unlock</button>
+            {{/if}}
+            <button type="button" class="ncm-action-btn ncm-action-btn--danger" data-action="terminalRemove" data-item-id="{{id}}"><i class="fas fa-rotate-left"></i> Remove</button>
+          </div>
+        </div>
+      {{/each}}
+    </div>
+  {{else}}
+    <div class="ncm-term-admin-empty">
+      <i class="fas fa-terminal"></i>
+      <p>{{#if terminalCount}}No terminals match your search.{{else}}No terminals yet. Right-click an item → <strong>Convert to Terminal</strong>, or use <strong>Import Item → Terminal</strong> above.{{/if}}</p>
+    </div>
+  {{/if}}
+
+{{/if}}

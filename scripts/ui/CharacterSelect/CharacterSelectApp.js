@@ -153,6 +153,15 @@ export class CharacterSelectApp extends BaseApplication {
       });
     }
 
+    // Most unread first — matches the unread badge shown on each roster row, so the
+    // visible ordering lines up with the visible counts. Ties break by total message
+    // count (desc), then name (asc) for a stable order.
+    characters.sort((a, b) =>
+      (b.unreadCount - a.unreadCount)
+      || (b.totalMessages - a.totalMessages)
+      || a.name.localeCompare(b.name)
+    );
+
     return characters;
   }
 

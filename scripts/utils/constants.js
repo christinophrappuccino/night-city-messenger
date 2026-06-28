@@ -65,6 +65,15 @@ export const EVENTS = Object.freeze({
   SHARD_PRESET_APPLIED: 'shard:presetApplied',
 
   SHARD_STATE_CHANGED: 'shard:stateChanged',
+
+  // ─── Terminal Expansion (sibling of Data Shard) ───
+  TERMINAL_CREATED: 'terminal:created',
+  TERMINAL_LOGIN_SUCCESS: 'terminal:loginSuccess',
+  TERMINAL_LOGIN_FAILURE: 'terminal:loginFailure',
+  TERMINAL_RELOCKED: 'terminal:relocked',
+  TERMINAL_STATE_CHANGED: 'terminal:stateChanged',
+  TERMINAL_EXFIL: 'terminal:exfil',
+
   CONTACT_UPDATED: 'contact:updated',
   SCHEDULE_UPDATED: 'schedule:updated',
 
@@ -96,6 +105,9 @@ export const SOCKET_OPS = Object.freeze({
   SHARD_UNCONVERT_REQUEST: 'shard:unconvertRequest',
   SHARD_UNCONVERT_RESULT:  'shard:unconvertResult',
   ANON_TRACE_REQUEST:      'anon:traceRequest',
+  TERMINAL_STATE_CHANGED:  'terminal:stateChanged',
+  TERMINAL_EXFIL_REQUEST:  'terminal:exfilRequest',
+  TERMINAL_EXFIL_RESULT:   'terminal:exfilResult',
 });
 
 // ─── Network Types ───
@@ -412,6 +424,58 @@ export const SHARD_PRESETS = Object.freeze({
   },
 });
 
+// ─── Terminal Presets (Terminal Expansion) ───
+// Parallel to SHARD_PRESETS. Each preset seeds a converted terminal's theme,
+// boot/login choreography, default account-security block, and a couple of
+// quick-fill accounts so an empty item becomes a playable terminal fast.
+// `theme` mirrors THEME_PRESETS shape (applied scoped to .ncm-terminal-viewer).
+// `loginStyle`: 'cards' (account grid) | 'crt' (tty prompt). `security` is the
+// shared SECURITY_BLOCK shape used by networks/shards. `accounts` are partial
+// TERMINAL_ACCOUNT seeds (merged over DEFAULTS.TERMINAL_ACCOUNT on apply).
+export const TERMINAL_PRESETS = Object.freeze({
+  'arasaka-workstation': {
+    label: 'Arasaka Workstation', icon: 'fas fa-building-shield', loginStyle: 'cards',
+    theme: { primary: '#ff0033', secondary: '#19f3f7', accent: '#ffcc00', bgDeep: '#0a0006', bgBase: '#160008', bgSurface: '#22060e', bgElevated: '#2c0a14', textPrimary: '#f4e6ea', textSecondary: '#c79aa6', fontDisplay: 'rajdhani', fontMono: 'sharetechmono', fontTitle: 'orbitron' },
+    security: { requiresAuth: true, allowPassword: true, allowSkillCheck: false, authLogic: 'any', bypassSkills: ['Interface'], bypassDC: 18, encryptionType: 'BLACK_ICE', failureMode: 'damage', maxAttempts: 3, lockoutDuration: 3600000 },
+    boot: { enabled: true, title: 'ARASAKA NET', subtitle: 'Secure Workstation // Access Level: Restricted', banner: 'ARASAKA NET · WORKSTATION 7F-12', animationStyle: 'holographic-snap', speed: 'normal', logLines: ['ARASAKA-NET handshake ........ VERIFIED', 'Credential gateway .......... ONLINE', 'BLACK_ICE countermeasure .... ARMED', 'Mounting user volumes ....... OK'] },
+    accounts: [
+      { username: 'v_arasaka', displayName: 'Veronica A.', isAdmin: false, security: { requiresAuth: true, allowPassword: true } },
+      { username: 'root', displayName: 'sysadmin', isAdmin: true, security: { requiresAuth: true, allowPassword: true, allowSkillCheck: true, authLogic: 'all', bypassSkills: ['Cryptography'], bypassDC: 20 } },
+    ],
+  },
+  'netwatch-unit': {
+    label: 'NetWatch Field Unit', icon: 'fas fa-satellite-dish', loginStyle: 'cards',
+    theme: { primary: '#4aa3ff', secondary: '#b9d8ff', accent: '#9ad0ff', bgDeep: '#04070f', bgBase: '#070d18', bgSurface: '#0b1726', bgElevated: '#102236', textPrimary: '#e6eefc', textSecondary: '#90a8c8', fontDisplay: 'exo2', fontMono: 'ibmplexmono', fontTitle: 'orbitron' },
+    security: { requiresAuth: true, allowPassword: true, allowSkillCheck: true, authLogic: 'all', bypassSkills: ['Cryptography'], bypassDC: 20, encryptionType: 'BLACK_ICE', failureMode: 'lockout', maxAttempts: 3, lockoutDuration: 3600000 },
+    boot: { enabled: true, title: 'NETWATCH', subtitle: 'Field Intelligence Unit // CLASSIFIED', banner: 'NETWATCH FIELD UNIT · TTY0', animationStyle: 'scan-sweep', speed: 'normal', logLines: ['NETWATCH uplink ............. SECURE', 'Clearance check ............. PENDING', 'ICE lattice ................. ACTIVE'] },
+    accounts: [{ username: 'root', displayName: 'field-agent', isAdmin: true, security: { requiresAuth: true, allowPassword: true, allowSkillCheck: true, authLogic: 'all', bypassSkills: ['Cryptography'], bypassDC: 20 } }],
+  },
+  'streetkid-bbs': {
+    label: 'Streetkid BBS', icon: 'fas fa-skull', loginStyle: 'crt',
+    theme: { primary: '#00ff41', secondary: '#19f3f7', accent: '#f7c948', bgDeep: '#040a06', bgBase: '#07120a', bgSurface: '#0c1a0f', bgElevated: '#102414', textPrimary: '#daffe4', textSecondary: '#7fae8d', fontDisplay: 'chakrapetch', fontMono: 'sharetechmono', fontTitle: 'audiowide' },
+    security: { requiresAuth: false, allowPassword: false, allowSkillCheck: true, authLogic: 'any', bypassSkills: ['Interface'], bypassDC: 13, encryptionType: 'ICE', failureMode: 'lockout', maxAttempts: 5, lockoutDuration: 1800000 },
+    boot: { enabled: true, title: 'AFTERLIFE BBS', subtitle: 'no narcs // no cops // no mercy', banner: 'AFTERLIFE BBS · NODE 7', animationStyle: 'glitch-stutter', speed: 'dramatic', logLines: ['Dialing node ................ CARRIER', 'Trackers .................... NONE', 'Welcome back, choom.'] },
+    accounts: [
+      { username: 'guest', displayName: 'guest', isAdmin: false, security: { requiresAuth: false } },
+      { username: 'fixer', displayName: '???', isAdmin: true, hidden: true, security: { requiresAuth: true, allowPassword: true } },
+    ],
+  },
+  'retro-dos': {
+    label: 'Retro-DOS', icon: 'fas fa-terminal', loginStyle: 'crt',
+    theme: { primary: '#ffb000', secondary: '#ffd070', accent: '#ff8a00', bgDeep: '#0a0700', bgBase: '#140d00', bgSurface: '#1c1300', bgElevated: '#261a00', textPrimary: '#ffe6b0', textSecondary: '#b89250', fontDisplay: 'jura', fontMono: 'spacemono', fontTitle: 'michroma' },
+    security: { requiresAuth: true, allowPassword: true, allowSkillCheck: false, authLogic: 'any', bypassSkills: ['Interface'], bypassDC: 15, encryptionType: 'ICE', failureMode: 'lockout', maxAttempts: 3, lockoutDuration: 3600000 },
+    boot: { enabled: true, title: 'NCDOS', subtitle: 'Night City DOS v3.30', banner: 'NCDOS · DRIVE C:', animationStyle: 'instant-dump', speed: 'fast', logLines: ['POST ........................ OK', 'Loading COMMAND.COM ......... DONE', 'C:\\>'] },
+    accounts: [{ username: 'user', displayName: 'user', isAdmin: false, security: { requiresAuth: true, allowPassword: true } }],
+  },
+  'ripperdoc': {
+    label: 'Ripperdoc PC', icon: 'fas fa-staff-snake', loginStyle: 'cards',
+    theme: { primary: '#e8a0ff', secondary: '#ffddaa', accent: '#ff9ecb', bgDeep: '#0c0410', bgBase: '#160a1c', bgSurface: '#200f28', bgElevated: '#2a1634', textPrimary: '#f4e2fb', textSecondary: '#b890c8', fontDisplay: 'rajdhani', fontMono: 'sourcecodepro', fontTitle: 'orbitron' },
+    security: { requiresAuth: true, allowPassword: false, allowSkillCheck: false, allowKeyItem: true, authLogic: 'any', keyItemName: 'Clinic Keycard', bypassSkills: ['Interface'], bypassDC: 14, encryptionType: 'ICE', failureMode: 'lockout', maxAttempts: 3, lockoutDuration: 1800000 },
+    boot: { enabled: true, title: 'RIPPERDOC OS', subtitle: 'Cyberware Clinic // Patient Records', banner: 'CLINIC TERMINAL · FRONT DESK', animationStyle: 'warm-dissolve', speed: 'normal', logLines: ['Clinic uplink ............... OK', 'Patient DB .................. MOUNTED', 'Insurance relay ............. STANDBY'] },
+    accounts: [{ username: 'frontdesk', displayName: 'Front Desk', isAdmin: false, security: { requiresAuth: true, allowKeyItem: true, keyItemName: 'Clinic Keycard' } }],
+  },
+});
+
 // ─── Sound Paths ───
 
 export const SOUND_PATHS = Object.freeze({
@@ -476,6 +540,7 @@ export const TEMPLATES = Object.freeze({
   ADMIN_TAB_CONTACTS: `${T}/admin-panel/tab-contacts.hbs`,
   ADMIN_TAB_NETWORKS: `${T}/admin-panel/tab-networks.hbs`,
   ADMIN_TAB_SHARDS: `${T}/admin-panel/tab-shards.hbs`,
+  ADMIN_TAB_TERMINALS: `${T}/admin-panel/tab-terminals.hbs`,
   ADMIN_TAB_SPAM: `${T}/admin-panel/tab-spam.hbs`,
   ADMIN_TAB_TOOLS: `${T}/admin-panel/tab-tools.hbs`,
   ADMIN_NETWORK_CARD: `${T}/admin-panel/partials/network-card.hbs`,
@@ -523,6 +588,15 @@ export const TEMPLATES = Object.freeze({
   PARTIAL_ENCRYPTED_ATTACHMENT: `${T}/partials/encrypted-attachment.hbs`,
   PARTIAL_ATTACHMENT_CHIP:      `${T}/partials/attachment-chip.hbs`,
   SHARD_CONVERSION: `${T}/dialogs/shard-conversion.hbs`,
+  // ─── Terminal Expansion ───
+  TERMINAL_VIEWER: `${T}/terminal/terminal-viewer.hbs`,
+  TERMINAL_BOOT: `${T}/terminal/terminal-boot.hbs`,
+  TERMINAL_LOGIN: `${T}/terminal/terminal-login.hbs`,
+  TERMINAL_MANUAL_LOGIN: `${T}/terminal/terminal-manual-login.hbs`,
+  TERMINAL_NETWORK_GATE: `${T}/terminal/terminal-network-gate.hbs`,
+  TERMINAL_ACCOUNT_CARD: `${T}/terminal/partials/account-card.hbs`,
+  TERMINAL_CONFIG: `${T}/terminal/terminal-config.hbs`,
+  TERMINAL_CONFIG_ACCOUNT: `${T}/terminal/partials/config-account.hbs`,
 });
 
 // ─── Default Configs ───
@@ -686,6 +760,100 @@ export const DEFAULTS = Object.freeze({
     firstAccessedAt: null,             // For expiration timer start
     accessCount: 0,                    // For on-access expiration mode
   },
+  // ─── Terminal Expansion ───────────────────────────────────────
+  // A Terminal is a converted Item you "log into" (vs. a Data Shard, a file
+  // you crack open). Mirrors the shard three-flag pattern: isTerminal / config
+  // (TERMINAL_CONFIG) / state (TERMINAL_STATE) / journalId. Messages live in one
+  // linked journal, each page tagged with the owning account's id.
+
+  // One login + mailbox on a Terminal. The `security` block is BYTE-FOR-BYTE the
+  // same shape networks and shards use (see NetworkService._buildNetworkObject),
+  // so the method-card auth dialog + SecurityService lockout work unchanged — the
+  // login just keys on targetId = `${terminalId}::${accountId}`.
+  TERMINAL_ACCOUNT: {
+    id: '',                       // stable id
+    username: '',                 // what you type at login (e.g. "v_arasaka")
+    displayName: '',              // shown in the chrome once logged in
+    email: '',                    // optional NCM email → identity resolution / "Add to contacts"
+    // Identity link — an account is a messageable identity. It can link to (or
+    // seed) a GM master contact so it carries a real portrait and stays consistent
+    // across the campaign. Portrait resolves via PortraitService.resolvePortrait
+    // ({ portrait, actorId } → linked master contact → initials fallback).
+    masterContactId: '',          // linked MasterContactService contact id (optional)
+    actorId: '',                  // linked actor id (optional) — drives portrait + identity
+    portrait: '',                 // explicit portrait override (else resolved from contact/actor)
+    isAdmin: false,               // admin sees all accounts (privilege tiers → P2)
+    hidden: false,                // NOT shown on the login card list — reachable only by typing
+                                  // its username via "Log in with another account" (secret login)
+    security: {
+      requiresAuth: false,        // false = open account, no login gate
+      password: '',
+      allowPassword: false,
+      allowSkillCheck: false,
+      authLogic: 'any',           // 'any' = OR (any one method), 'all' = AND (every method)
+      bypassSkills: [],
+      bypassDC: 15,
+      allowKeyItem: false,
+      keyItemName: '',
+      keyItemTag: '',
+      keyItemImg: '',
+      keyItemConsume: false,
+      maxAttempts: 3,
+      lockoutDuration: 3600000,   // 1h lockout after maxAttempts failures
+      encryptionType: 'ICE',
+      failureMode: 'lockout',     // 'nothing' | 'lockout' | 'permanent' | 'damage' | 'destroy'
+      ice: { source: 'default', actorId: null, customName: '', customPortrait: '', customDamage: '' },
+    },
+    theme: null,                  // optional per-account theme override (→ P2)
+  },
+
+  TERMINAL_CONFIG: {
+    terminalName: '',             // display override (empty = use item name)
+    metadata: { owner: 'Unknown', org: '', location: '', classification: '' },
+
+    // Login banner / boot splash — reuses the shard boot idea (banner carries the
+    // "whose machine is this" story alongside the theme).
+    boot: {
+      enabled: true,
+      title: 'TERMINAL',
+      subtitle: 'Establishing secure session...',
+      banner: '',                 // freeform ASCII / login MOTD shown on the login screen
+      logLines: [
+        'Link established ............ OK',
+        'Authenticating .............. STANDBY',
+      ],
+      speed: 'normal',            // 'fast' | 'normal' | 'dramatic'
+    },
+
+    // Per-terminal theme — applied to the .ncm-terminal-viewer element (NOT :root),
+    // so a hacked corp box looks corporate while the player's own client is untouched.
+    theme: { preset: 'classic' },
+
+    // Network gate — reuses the shard network-availability shape. required:false =
+    // reachable from anywhere (no network hack first).
+    network: { required: false, accessMode: 'any', allowedNetworks: [], allowedTypes: [], signalThreshold: 40 },
+
+    accounts: [],                 // [ TERMINAL_ACCOUNT, ... ] — authored by the GM
+    defaultAccountId: '',         // login screen default selection
+
+    allowExfil: true,             // master switch: can players copy messages out? (per-file DRM → P2)
+    apps: ['mail'],               // which apps exist (MVP = mail only; catalog → P2)
+    formFactor: 'desktop',        // 'desktop' (MVP). 'agent' (looted-phone chrome) → Phase 3;
+                                  // field kept so it can light up later without a data migration.
+
+    // Trace timer while logged in (→ P3). duration 0 = off even when enabled.
+    trace: { enabled: false, duration: 0, onComplete: 'alarm' },
+  },
+
+  TERMINAL_STATE: {
+    // Per-actor independent sessions (multiplayer decision #1), keyed by actorId.
+    sessions: {},                 // { [actorId]: { activeAccountId, loggedInAccounts: [], firstAccessedAt } }
+    gmBypassed: false,            // GM force-unlock (mirrors shard forceDecrypt); cleared by relock
+    bootPlayed: false,
+    firstAccessedAt: null,
+    accessCount: 0,
+  },
+
   ACTOR_SESSION: { loggedIn: false, keyItemUsed: false, keyItemAttempts: 0, hackAttempts: 0, lockoutUntil: null, loginAttempts: 0, hackedLayers: [], layerHackAttempts: {}, layerLockoutUntil: null },
   SCENE_NETWORK: { networkAvailability: {}, defaultNetwork: 'CITINET', deadZone: false },
   CORE_NETWORKS: [

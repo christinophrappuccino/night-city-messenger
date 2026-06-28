@@ -1,0 +1,21 @@
+{{!-- Terminal login account card. Context: an account from prepareContext.accounts --}}
+<div class="ncm-term__card{{#if isDefault}} is-default{{/if}}{{#if isAdmin}} is-admin{{/if}}{{#if isSelected}} is-selected{{/if}}"
+     data-action="terminalSelectAccount" data-account-id="{{id}}" data-tooltip="{{tooltip}}">
+  {{#if isDefault}}<span class="ncm-term__card-default">★ DEFAULT</span>{{/if}}
+  <i class="{{wmarkIcon}} ncm-term__card-wmark"></i>
+  <div class="ncm-term__card-head">
+    <span class="ncm-term__avatar">{{#if portrait}}<img src="{{portrait}}" alt="">{{else}}{{initials}}{{/if}}</span>
+    <div class="ncm-term__card-who">
+      <div class="ncm-term__card-nm">{{displayName}}</div>
+      {{#if role}}<div class="ncm-term__card-role">{{role}}</div>{{/if}}
+      <div class="ncm-term__card-un">{{username}}</div>
+    </div>
+  </div>
+  <div class="ncm-term__amethods">
+    {{#each authMethods}}<span class="ncm-term__am ncm-term__am--{{type}}"><i class="{{icon}}"></i> {{label}}</span>{{/each}}
+  </div>
+  <div class="ncm-term__card-foot">
+    <span class="ncm-term__card-last">{{lastLogin}}</span>
+    <span class="ncm-term__card-go">{{#if isOpen}}ENTER{{else}}LOG IN{{/if}} <i class="fas fa-arrow-right-to-bracket"></i></span>
+  </div>
+</div>

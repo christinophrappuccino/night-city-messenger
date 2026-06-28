@@ -1,0 +1,40 @@
+{{!-- Manual / secret login + per-account auth — immersive SECURE SHELL console.
+      Context: shellHost, account? {displayName,username}, prefillUsername?,
+      skillBypass? {skill,dv}, error?, lockout? --}}
+<div class="ncm-term__mwrap">
+  <div class="ncm-term__console" data-auth-state="login">
+    <div class="ncm-term__console-hd">
+      <i class="fas fa-terminal"></i>
+      <span class="ncm-term__console-ttl">{{#if account}}AUTHENTICATE // {{account.username}}{{else}}SECURE SHELL{{/if}}</span>
+      <span class="ncm-term__console-dot"></span>
+    </div>
+    <div class="ncm-term__console-body">
+      <div class="ncm-term__console-pline">{{shellHost}}:~$ {{#if account}}login {{account.username}}{{else}}identify{{/if}}<span class="ncm-term__cursor"></span></div>
+      {{#unless account}}
+      <div class="ncm-term__tfield">
+        <span class="ncm-term__tfield-pf">&gt;</span><span class="ncm-term__tfield-l">USER</span>
+        <input type="text" name="manualUsername" value="{{prefillUsername}}" spellcheck="false" autocomplete="off" placeholder="username">
+      </div>
+      {{/unless}}
+      <div class="ncm-term__tfield">
+        <span class="ncm-term__tfield-pf">&gt;</span><span class="ncm-term__tfield-l">PASSKEY</span>
+        <input type="password" name="manualPassword" autocomplete="off" placeholder="••••••••">
+      </div>
+      {{#if error}}<div class="ncm-term__danger" style="border-radius:8px;margin:4px 0 10px;border:1px solid color-mix(in srgb,var(--ncm-danger) 45%,transparent)"><i class="fas fa-triangle-exclamation"></i> {{error}}</div>{{/if}}
+      {{#unless lockout}}
+        <div class="ncm-term__auth" data-action="terminalManualAuth"><i class="fas fa-right-to-bracket"></i> AUTHENTICATE</div>
+        {{#if skillBypass}}
+          <div class="ncm-term__spoof" style="width:100%;justify-content:center;margin-top:10px" data-action="terminalSkillBypass">
+            <i class="fas fa-dice-d20"></i> Bypass with {{skillBypass.skill}} — DV {{skillBypass.dv}}
+          </div>
+        {{/if}}
+        {{#if keyItemBypass}}
+          <div class="ncm-term__spoof" style="width:100%;justify-content:center;margin-top:10px" data-action="terminalKeyItem">
+            <i class="fas fa-id-card"></i> Present key item — {{keyItemBypass.name}}
+          </div>
+        {{/if}}
+      {{/unless}}
+    </div>
+  </div>
+  <span class="ncm-term__mback" data-action="terminalBackToAccounts"><i class="fas fa-arrow-left"></i> back to accounts</span>
+</div>

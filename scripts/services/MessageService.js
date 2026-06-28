@@ -379,6 +379,54 @@ export class MessageService {
   }
 
   /**
+   * Find the original anonymous masking config for a thread, so a GM reply within
+   * an anonymous conversation can pre-tick Anonymous Send with the same alias/style.
+   * The canonical source is the GM-owned copy of the original anon message, whose
+   * `anonymous` block (role !== 'recipient' — i.e. an anon *sender* copy, not a
+   * replier's masked outbox copy) retains the real masking config. GM-side only.
+   * @param {Object} message — the message being replied to
+   * @returns {null | {style, alias, allowReplies, traceDV, maskedEmail}}
+   */
+  getThreadAnonConfig(message) {
+    if (!message) return null;
+    const baseOf = (id) => String(id || '').replace(/-sent$/, '');
+    const ids = new Set();
+    if (message.messageId) ids.add(baseOf(message.messageId));
+    if (message.inReplyTo) ids.add(baseOf(message.inReplyTo));
+    if (Array.isArray(message.references)) message.references.forEach(r => ids.add(baseOf(r)));
+    const threadId = message.threadId ? baseOf(message.threadId) : null;
+    if (threadId) ids.add(threadId);
+
+    let best = null;
+    for (const journal of game.journal) {
+      for (const page of journal.pages) {
+        const f = page.flags?.[MODULE_ID];
+        const a = f?.anonymous;
+        if (!a?.enabled || a.role === 'recipient') continue;
+        const pageBase = baseOf(f.messageId);
+        const pageThread = f.threadId ? baseOf(f.threadId) : null;
+        if (ids.has(pageBase) || (threadId && pageThread === threadId)) {
+          best = a;
+          // The thread-root original is definitive — stop searching.
+          if (threadId && pageBase === threadId) return this._anonConfigFromBlock(a);
+        }
+      }
+    }
+    return best ? this._anonConfigFromBlock(best) : null;
+  }
+
+  /** Normalize a stored `anonymous` flag block into composer-seedable config. */
+  _anonConfigFromBlock(a) {
+    return {
+      style: a.style || 'scrambled',
+      alias: a.alias || ANON_DEFAULT_ALIAS,
+      allowReplies: a.allowReplies !== false,
+      traceDV: Number(a.traceDV) || 15,
+      maskedEmail: a.maskedEmail || ANON_MASKED_EMAIL,
+    };
+  }
+
+  /**
    * Mask the recipient on the replier's own sent copy of an anonymous reply, so
    * their outbox never reveals the anonymous party they answered. The `anonymous`
    * block carries role 'recipient' to drive the masked TO display in the viewer.

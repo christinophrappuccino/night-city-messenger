@@ -925,6 +925,18 @@
 .ncm-app .ncm-viewer__priority-pill--critical { color: #EF4444; background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.25); }
 .ncm-app .ncm-viewer__priority-pill--threat { color: #A78BFA; background: rgba(167,139,250,0.1); border: 1px solid rgba(167,139,250,0.2); }
 
+/* Recovered/exfiltrated intel chip — distinct cyan "downloaded loot" badge. */
+.ncm-app .ncm-viewer__recovered-chip {
+  display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0;
+  padding: 2px 9px; border-radius: 3px;
+  font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1)); font-weight: 600;
+  letter-spacing: 0.06em; color: var(--ncm-secondary);
+  background: color-mix(in srgb, var(--ncm-secondary) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ncm-secondary) 40%, transparent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--ncm-secondary) 18%, transparent);
+}
+.ncm-app .ncm-viewer__recovered-chip i { font-size: calc(8px * var(--ncm-text-scale, 1)); }
+
 /* Thread pill (inside subject strip) — small, clickable, opens the conversation view */
 .ncm-app button.ncm-viewer__detail-thread {
   display: inline-flex; align-items: center; gap: 4px;
@@ -1636,8 +1648,12 @@
 }
 .ncm-app button.ncm-viewer__mobile-back:hover { background: var(--ncm-bg-surface) !important; }
 
-/* ── MEDIUM ≤720: condense the header chrome ── */
-@container (max-width: 720px) {
+/* ── MEDIUM ≤860: condense the header chrome ──
+   Raised from 720: the full header layout needs ~860px to fit without the flexible
+   parts (identity name/email, scene) collapsing to zero and the fixed parts (avatar,
+   divider, net-dot, action icons) overlapping. Switch to the compact layout before
+   entering that dead band. */
+@container (max-width: 860px) {
   .ncm-app .ncm-viewer__header-actions .ncm-btn span { display: none; }          /* icon-only buttons */
   .ncm-app .ncm-viewer__header-actions .ncm-btn { padding-left: 8px; padding-right: 8px; }
   .ncm-app .ncm-viewer__identity-info { display: none; }                          /* avatar only */

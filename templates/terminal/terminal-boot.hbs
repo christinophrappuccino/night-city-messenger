@@ -1,0 +1,15 @@
+{{!-- Boot splash. The TerminalViewerApp animates this (reusing the shard
+      _playBootSequence engine) then transitions to the next state. Single root.
+      Context: boot {icon, title, subtitle, progressLabel, logLines[]} --}}
+<div class="ncm-term__boot" data-boot-animation="{{boot.animationStyle}}" data-boot-speed="{{boot.speed}}">
+  <div class="ncm-term__boot-icon"><i class="{{boot.icon}}"></i></div>
+  <div class="ncm-term__boot-title">{{boot.title}}</div>
+  <div class="ncm-term__boot-sub">{{boot.subtitle}}</div>
+  <div class="ncm-term__boot-prog">
+    <div class="ncm-term__boot-prog-label">{{boot.progressLabel}}</div>
+    <div class="ncm-term__boot-track"><div class="ncm-term__boot-fill"></div></div>
+  </div>
+  <div class="ncm-term__boot-log">
+    {{#each boot.logLines}}<div>{{{this}}}</div>{{/each}}
+  </div>
+</div>

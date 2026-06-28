@@ -166,6 +166,38 @@ export class SocketHandlers {
       socketManager.emit(SOCKET_OPS.SHARD_CONVERT_RESULT, { requestId, success });
     });
 
+    // ─── Player Terminal Exfil Relay ─────────────────────
+    // Players can't write the GM-owned terminal/inbox/shard journals, so the GM
+    // client performs the copy and the result syncs back to the player.
+    socketManager.register(SOCKET_OPS.TERMINAL_EXFIL_REQUEST, async (data) => {
+      if (!game.user.isGM) return;
+      const { requestId, itemUuid, accountId, messageIds, dest, targetActorId, targetItemId, userId } = data;
+      const svc = game.nightcity?.terminalService;
+      let result = { success: false, count: 0 };
+      try {
+        const item = itemUuid ? fromUuidSync(itemUuid) : null;
+        if (!item || !svc) throw new Error('Terminal/service not found');
+        if (dest === 'shard') {
+          let target = game.items.get(targetItemId);
+          if (!target) { for (const a of game.actors) { target = a.items.get(targetItemId); if (target) break; } }
+          if (!target) throw new Error('Target item not found');
+          result = await svc.exfilToShard(item, accountId, messageIds, target);
+        } else {
+          result = await svc.exfilToInbox(item, accountId, messageIds, targetActorId);
+        }
+      } catch (err) {
+        log.error('Terminal exfil relay failed:', err);
+      }
+      socketManager.emit(SOCKET_OPS.TERMINAL_EXFIL_RESULT, { requestId, userId, success: !!result.success, count: result.count || 0, dest });
+    });
+
+    // Requesting client hears the result → notify the player.
+    socketManager.register(SOCKET_OPS.TERMINAL_EXFIL_RESULT, (data) => {
+      if (data.userId !== game.user.id) return;
+      if (data.success) ui.notifications.info(data.dest === 'shard' ? `Burned ${data.count} message(s) to shard.` : `Downloaded ${data.count} message(s) to your Agent (Recovered).`);
+      else ui.notifications.warn('Download failed — no GM available or the GM rejected it.');
+    });
+
     // ─── Player Shard Unconvert Relay ────────────────────
     socketManager.register(SOCKET_OPS.SHARD_UNCONVERT_REQUEST, async (data) => {
       if (!game.user.isGM) return;

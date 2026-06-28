@@ -391,6 +391,11 @@
               <i class="{{message.threatBadge.icon}}"></i> {{message.threatBadge.label}}
             </span>
           {{/if}}
+          {{#if message.isRecovered}}
+            <span class="ncm-viewer__recovered-chip" title="Recovered from {{message.recoveredFrom}}">
+              <i class="fas fa-cloud-arrow-down"></i> RECOVERED{{#if message.recoveredFrom}} · {{message.recoveredFrom}}{{/if}}
+            </span>
+          {{/if}}
           {{#if message.threadInfo}}
             <button type="button" class="ncm-viewer__detail-thread"
                     data-action="toggle-thread" title="View the full conversation">

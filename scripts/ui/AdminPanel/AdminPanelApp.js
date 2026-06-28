@@ -15,6 +15,7 @@ import { BaseApplication } from '../BaseApplication.js';
 import { ToolsTab } from './tabs/ToolsTab.js';
 import { SpamTab } from './tabs/SpamTab.js';
 import { ShardsTab } from './tabs/ShardsTab.js';
+import { TerminalsTab } from './tabs/TerminalsTab.js';
 import { ContactsTab } from './tabs/ContactsTab.js';
 import { NetworksTab } from './tabs/NetworksTab.js';
 import { MessagesTab } from './tabs/MessagesTab.js';
@@ -104,6 +105,7 @@ export class AdminPanelApp extends BaseApplication {
         networks: new NetworksTab(this),
         overview: new OverviewTab(this),
         shards: new ShardsTab(this),
+        terminals: new TerminalsTab(this),
         spam: new SpamTab(this),
         tools: new ToolsTab(this),
       };
@@ -254,6 +256,14 @@ export class AdminPanelApp extends BaseApplication {
       bulkRelockSelected: AdminPanelApp._onBulkRelockSelected,
       bulkExportSelected: AdminPanelApp._onBulkExportSelected,
       unconvertShard: AdminPanelApp._onUnconvertShard,
+
+      // ── Terminals tab ──
+      terminalImport: AdminPanelApp._onTerminalImport,
+      terminalOpen: AdminPanelApp._onTerminalOpen,
+      terminalConfigureAdmin: AdminPanelApp._onTerminalConfigure,
+      terminalForceUnlockAdmin: AdminPanelApp._onTerminalForceUnlock,
+      terminalRelock: AdminPanelApp._onTerminalRelock,
+      terminalRemove: AdminPanelApp._onTerminalRemove,
       cycleShardSort: AdminPanelApp._onCycleShardSort,
       cycleShardIceFilter: AdminPanelApp._onCycleShardIceFilter,
       cycleShardStatusFilter: AdminPanelApp._onCycleShardStatusFilter,
@@ -399,6 +409,9 @@ export class AdminPanelApp extends BaseApplication {
 
       // Shards tab
       ...shardContext,
+
+      // Terminals tab
+      ...this.tabs.terminals.prepareContext(),
 
       // Spam tab
       ...this.tabs.spam.prepareContext(),
@@ -688,7 +701,7 @@ export class AdminPanelApp extends BaseApplication {
     const tab = this._activeTab;
 
     // ── Tab switching: 1–6 ──
-    const tabMap = { '1': 'overview', '2': 'messages', '3': 'contacts', '4': 'networks', '5': 'shards', '6': 'spam', '7': 'tools' };
+    const tabMap = { '1': 'overview', '2': 'messages', '3': 'contacts', '4': 'networks', '5': 'shards', '6': 'terminals', '7': 'spam', '8': 'tools' };
     if (tabMap[key]) {
       event.preventDefault();
       if (tab !== tabMap[key]) {
@@ -1037,6 +1050,14 @@ export class AdminPanelApp extends BaseApplication {
   // ═══════════════════════════════════════════════════════════
   //  Action Handlers — Data Shards (delegated to ShardsTab)
   // ═══════════════════════════════════════════════════════════
+
+  // ── Terminals tab delegators ──
+  static async _onTerminalImport(event, target) { return this.tabs.terminals.onImport(event, target); }
+  static _onTerminalOpen(event, target) { this.tabs.terminals.onOpen(event, target); }
+  static async _onTerminalConfigure(event, target) { return this.tabs.terminals.onConfigure(event, target); }
+  static async _onTerminalForceUnlock(event, target) { return this.tabs.terminals.onForceUnlock(event, target); }
+  static async _onTerminalRelock(event, target) { return this.tabs.terminals.onRelock(event, target); }
+  static async _onTerminalRemove(event, target) { return this.tabs.terminals.onRemove(event, target); }
 
   static _onOpenShardItem(event, target) { this.tabs.shards.onOpenShardItem(event, target); }
   static async _onForceDecrypt(event, target) { return this.tabs.shards.onForceDecrypt(event, target); }
