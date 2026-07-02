@@ -43,6 +43,7 @@ export class TerminalConfigApp extends BaseApplication {
       relock: TerminalConfigApp._onRelock,
       exportConfig: TerminalConfigApp._onExportConfig,
       importConfig: TerminalConfigApp._onImportConfig,
+      browseBootImage: TerminalConfigApp._onBrowseBootImage,
     },
   }, { inplace: false });
 
@@ -133,6 +134,14 @@ export class TerminalConfigApp extends BaseApplication {
       bootTitle: cfg.boot?.title || '',
       bootSubtitle: cfg.boot?.subtitle || '',
       bootBanner: cfg.boot?.banner || '',
+      bootFaIcon: cfg.boot?.faIcon || '',
+      bootImageUrl: cfg.boot?.imageUrl || '',
+      bootIconModes: ['preset', 'fa', 'image'].map(v => ({
+        value: v,
+        label: { preset: 'Theme preset icon', fa: 'Font Awesome icon', image: 'Custom image / logo' }[v],
+        selected: v === (cfg.boot?.iconMode || (cfg.boot?.faIcon ? 'fa' : 'preset')),
+      })),
+      bootIconMode: cfg.boot?.iconMode || (cfg.boot?.faIcon ? 'fa' : 'preset'),
       bootIcon: TERMINAL_PRESETS[presetKey]?.icon || 'fas fa-server',
       bootAnimation: cfg.boot?.animationStyle || 'standard-fade',
       bootSpeed: cfg.boot?.speed || 'normal',
@@ -169,10 +178,17 @@ export class TerminalConfigApp extends BaseApplication {
     const a = isNew ? foundry.utils.deepClone(DEFAULTS.TERMINAL_ACCOUNT) : (cfg.accounts || []).find(x => x.id === id);
     if (!a) return null;
     const s = a.security || {};
+    const CLS = ['', 'RESTRICTED', 'CONFIDENTIAL', 'SECRET', 'TOP SECRET'];
     return {
       isNew, id: a.id,
       displayName: a.displayName || '', username: a.username || '', email: a.email || '',
       isAdmin: !!a.isAdmin, hidden: !!a.hidden,
+      // Credential / badge fields
+      role: a.role || '', clearance: a.clearance || '', idNumber: a.idNumber || '',
+      location: a.location || '', lastLogin: a.lastLogin || '',
+      classificationOpts: CLS.map(v => ({
+        value: v, label: v || '— inherit terminal —', selected: v === (a.classification || ''),
+      })),
       requiresAuth: !!s.requiresAuth,
       allowPassword: !!(s.allowPassword ?? s.password),
       password: s.password || '',
@@ -199,6 +215,37 @@ export class TerminalConfigApp extends BaseApplication {
     if (!el) return;
     el.querySelectorAll('.ncm-cfg-tab').forEach(t => t.classList.toggle('ncm-cfg-tab--active', t.dataset.tab === this._activeTab));
     el.querySelectorAll('.ncm-cfg-panel').forEach(p => p.classList.toggle('ncm-cfg-panel--active', p.dataset.panel === this._activeTab));
+
+    // ─── Boot icon: live preview + only show the field for the chosen source.
+    //     Manual listeners — selects don't fire reliably via data-action. ───
+    const syncBootIcon = () => {
+      const mode = el.querySelector('[name="bootIconMode"]')?.value || 'preset';
+      el.querySelector('[data-boot-icon-row="fa"]')?.classList.toggle('ncm-cfg-row--hidden', mode !== 'fa');
+      el.querySelector('[data-boot-icon-row="image"]')?.classList.toggle('ncm-cfg-row--hidden', mode !== 'image');
+      const preview = el.querySelector('.ncm-cfg-icon-preview');
+      if (!preview) return;
+      const fa = el.querySelector('[name="bootFaIcon"]')?.value?.trim();
+      const img = el.querySelector('[name="bootImageUrl"]')?.value?.trim();
+      const presetIcon = context.bootIcon || 'fas fa-server';
+      if (mode === 'image' && img) preview.innerHTML = `<img src="${Handlebars.escapeExpression(img)}" alt="">`;
+      else preview.innerHTML = `<i class="${Handlebars.escapeExpression((mode === 'fa' && fa) ? fa : presetIcon)}"></i>`;
+    };
+    el.querySelector('[name="bootIconMode"]')?.addEventListener('change', syncBootIcon);
+    el.querySelector('[name="bootFaIcon"]')?.addEventListener('input', syncBootIcon);
+    el.querySelector('[name="bootImageUrl"]')?.addEventListener('input', syncBootIcon);
+    syncBootIcon();
+  }
+
+  /** FilePicker for the boot logo image. */
+  static _onBrowseBootImage(event, target) {
+    const input = this.element?.querySelector('[name="bootImageUrl"]');
+    new FilePicker({
+      type: 'image',
+      current: input?.value || '',
+      callback: (path) => {
+        if (input) { input.value = path; input.dispatchEvent(new Event('input', { bubbles: true })); }
+      },
+    }).render(true);
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -232,6 +279,7 @@ export class TerminalConfigApp extends BaseApplication {
       boot: {
         enabled: chk('bootEnabled'),
         title: val('bootTitle'), subtitle: val('bootSubtitle'), banner: val('bootBanner'),
+        iconMode: val('bootIconMode', 'preset'), faIcon: val('bootFaIcon'), imageUrl: val('bootImageUrl'),
         animationStyle: val('bootAnimation'), speed: val('bootSpeed'), logLines,
       },
       network: {
@@ -284,6 +332,12 @@ export class TerminalConfigApp extends BaseApplication {
       email: val('acctEmail'),
       isAdmin: chk('acctIsAdmin'),
       hidden: chk('acctHidden'),
+      role: val('acctRole'),
+      clearance: val('acctClearance'),
+      idNumber: val('acctIdNumber'),
+      classification: val('acctClassification'),
+      location: val('acctLocation'),
+      lastLogin: val('acctLastLogin'),
       security: {
         requiresAuth: chk('secRequiresAuth'),
         allowPassword: chk('secAllowPassword'),

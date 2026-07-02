@@ -492,6 +492,12 @@ export class MessageRepository {
           eddies: messageData.eddies || 0,
           selfDestruct: messageData.selfDestruct || null,
 
+          // Typed content (design doc §8c) — when set, the viewer renders this
+          // message via the shared content-body partial (spreadsheet/calendar/
+          // syslog/…) instead of plain body. Null = an ordinary message.
+          contentType: messageData.contentType || null,
+          contentData: messageData.contentData || null,
+
           metadata: {
             networkTrace: messageData.metadata?.networkTrace || null,
             signalStrength: messageData.metadata?.signalStrength || 100,
@@ -991,6 +997,8 @@ export class MessageRepository {
       malware: flags.malware,
       eddies: flags.eddies || 0,
       selfDestruct: flags.selfDestruct || null,
+      contentType: flags.contentType || null,
+      contentData: flags.contentData || null,
       accessControl: flags.accessControl || null,
       decryptedBlocks: flags.decryptedBlocks || [],
       signalDegradation: flags.signalDegradation || null,

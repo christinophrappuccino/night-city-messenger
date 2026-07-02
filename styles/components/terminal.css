@@ -27,6 +27,19 @@
   color: var(--ncm-text-primary);
 }
 
+/* ── Base palette — a self-contained default so an unknown/'classic' preset
+      still renders (TERMINAL_CONFIG defaults to preset 'classic', which has no
+      per-preset rule below). Without this the viewer inherited whatever leaked
+      from :root/the player theme, or nothing — leaving the boot/login icon
+      invisible (the "empty square" bug). Per-preset rules below are attribute
+      selectors (higher specificity), so they still win for known presets. ── */
+.ncm-terminal-viewer {
+  --ncm-primary: #F65261; --ncm-secondary: #19f3f7; --ncm-accent: #f7c948;
+  --ncm-bg-deep: #0a0a0f; --ncm-bg-base: #12121a; --ncm-bg-surface: #1a1a2e; --ncm-bg-elevated: #252540;
+  --ncm-text-primary: #e0e0e8; --ncm-text-secondary: #8888a0; --ncm-text-muted: #555570;
+  --ncm-border: #2a2a45; --ncm-success: #00ff41; --ncm-warning: #f7c948; --ncm-danger: #ff3355;
+}
+
 /* ── Preset palette fallbacks (no-JS) — keep in sync with TERMINAL_PRESETS ── */
 
 .ncm-terminal-viewer[data-terminal-preset="arasaka-workstation"] {
@@ -74,8 +87,34 @@
 .ncm-terminal-app .window-content > .ncm-terminal-viewer { flex: 1 1 auto; }
 
 .ncm-terminal-viewer {
-  --ncm-term-tint: color-mix(in srgb, var(--ncm-primary) 8%, transparent);
-  --ncm-term-hdr: color-mix(in srgb, var(--ncm-primary) 13%, var(--ncm-bg-deep));
+  --ncm-term-tint: color-mix(in srgb, var(--ncm-primary, #F65261) 8%, transparent);
+  --ncm-term-hdr: color-mix(in srgb, var(--ncm-primary, #F65261) 13%, var(--ncm-bg-deep, #0a0a0f));
+  /* Shard --sp-* tokens, mapped to the terminal palette. The original six
+     content types' CSS (item-inbox.css) reads bare --sp-* vars that are
+     otherwise only defined on the shard viewer root — without these, typed
+     content rendered inside the terminal paints with initial (blank) colors.
+     Mapping to --ncm-* here also tints that content to the terminal preset.
+     New Phase-2 types use --ncm-* directly (content-types.css). */
+  --sp-bg-deep: var(--ncm-bg-deep, #0a0a0f);
+  --sp-bg-base: var(--ncm-bg-base, #12121a);
+  --sp-bg-surface: var(--ncm-bg-surface, #1a1a2e);
+  --sp-bg-elevated: var(--ncm-bg-elevated, #252540);
+  --sp-border: var(--ncm-border, #2a2a45);
+  --sp-bar: linear-gradient(90deg, var(--ncm-primary, #F65261), transparent 40%, transparent 60%, var(--ncm-secondary, #19f3f7));
+  --sp-shadow: 0 0 50px rgba(0, 0, 0, 0.5);
+  --sp-accent: var(--ncm-secondary, #19f3f7);
+  --sp-accent-2: var(--ncm-text-secondary, #8888a0);
+  --sp-accent-glow: color-mix(in srgb, var(--ncm-secondary, #19f3f7) 8%, transparent);
+  --sp-text-bright: var(--ncm-text-primary, #e0e0e8);
+  --sp-text-body: var(--ncm-text-secondary, #8888a0);
+  --sp-text-meta: var(--ncm-text-muted, #555570);
+  --sp-text-muted: var(--ncm-text-muted, #555570);
+  --sp-icon-bg: color-mix(in srgb, var(--ncm-secondary, #19f3f7) 6%, transparent);
+  --sp-icon-border: color-mix(in srgb, var(--ncm-secondary, #19f3f7) 20%, transparent);
+  --sp-chip-bg: var(--ncm-bg-surface, #1a1a2e);
+  --sp-chip-text: var(--ncm-text-secondary, #8888a0);
+  --sp-chip-active-bg: color-mix(in srgb, var(--ncm-secondary, #19f3f7) 6%, transparent);
+  --sp-chip-active-text: var(--ncm-secondary, #19f3f7);
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -125,7 +164,9 @@
 .ncm-term__panes { flex: 1; display: grid; grid-template-columns: 250px 1fr; min-height: 0; }
 .ncm-term__side {
   border-right: 1px solid color-mix(in srgb, var(--ncm-primary) 16%, transparent);
-  padding: 12px; overflow: auto; position: relative;
+  /* overflow-x MUST stay hidden: one-axis auto computes the other axis to auto
+     too, and a 1px overrun spawns a phantom horizontal scrollbar (CLAUDE.md). */
+  padding: 12px; overflow-y: auto; overflow-x: hidden; position: relative;
 }
 .ncm-term__acsw {
   position: relative; display: flex; align-items: center; gap: 9px; padding: 9px 11px;
@@ -208,7 +249,7 @@
 .ncm-term__row.is-encrypted .ncm-term__pdot { color: var(--ncm-accent); }
 
 /* ── Message detail ── */
-.ncm-term__detail { padding: 20px 24px; overflow: auto; }
+.ncm-term__detail { padding: 20px 24px; overflow-y: auto; overflow-x: hidden; }
 .ncm-term__subject { font-family: var(--ncm-font-body); font-weight: 700; font-size: 21px; color: var(--ncm-text-primary); margin-bottom: 10px; }
 .ncm-term__subject .ncm-term__cls { color: var(--ncm-primary); text-shadow: 0 0 12px color-mix(in srgb, var(--ncm-primary) 50%, transparent); }
 .ncm-term__sender { display: flex; align-items: center; gap: 11px; margin-bottom: 10px; }
@@ -235,7 +276,7 @@
 .ncm-term__exfil-note { font-family: var(--ncm-font-mono); font-size: 10px; color: var(--ncm-text-muted); }
 
 /* ── LOGIN ── */
-.ncm-term__login { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: auto; }
+.ncm-term__login { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow-y: auto; overflow-x: hidden; }
 .ncm-term__login-body { flex: 1; padding: 18px 22px; }
 .ncm-term__hero {
   display: flex; align-items: center; gap: 16px; padding: 18px 22px; position: relative; overflow: hidden;
@@ -244,10 +285,11 @@
 }
 .ncm-term__hero::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(90deg, transparent 0 6px, color-mix(in srgb, var(--ncm-primary) 4%, transparent) 6px 7px); }
 .ncm-term__hero-logo {
-  width: 54px; height: 54px; border-radius: 13px; display: grid; place-items: center; font-size: 24px; color: var(--ncm-primary); flex: 0 0 auto;
-  background: var(--ncm-term-tint); border: 1px solid color-mix(in srgb, var(--ncm-primary) 55%, transparent);
-  box-shadow: 0 0 24px color-mix(in srgb, var(--ncm-primary) 35%, transparent);
+  width: 54px; height: 54px; border-radius: 13px; display: grid; place-items: center; font-size: 24px; color: var(--ncm-primary, #F65261); flex: 0 0 auto; overflow: hidden;
+  background: var(--ncm-term-tint); border: 1px solid color-mix(in srgb, var(--ncm-primary, #F65261) 55%, transparent);
+  box-shadow: 0 0 24px color-mix(in srgb, var(--ncm-primary, #F65261) 35%, transparent);
 }
+.ncm-term__hero-logo img { width: 100%; height: 100%; object-fit: cover; border: none; }
 .ncm-term__hero-txt { flex: 1; }
 .ncm-term__hero-name { font-family: var(--ncm-font-title); font-weight: 900; font-size: 21px; letter-spacing: 3px; color: var(--ncm-primary); text-shadow: 0 0 16px color-mix(in srgb, var(--ncm-primary) 55%, transparent); }
 .ncm-term__hero-sub { font-family: var(--ncm-font-mono); font-size: 11px; color: var(--ncm-text-muted); margin-top: 3px; }
@@ -314,7 +356,7 @@
 .ncm-term__mback { font-family: var(--ncm-font-mono); font-size: 12px; color: var(--ncm-text-muted); cursor: pointer; display: inline-flex; align-items: center; gap: 7px; }
 
 /* ── NETWORK GATE (shard-style cards) ── */
-.ncm-term__gate { flex: 1; overflow: auto; padding: 24px 28px; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; }
+.ncm-term__gate { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 24px 28px; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; }
 .ncm-term__gate-ic { width: 70px; height: 70px; border-radius: 50%; display: grid; place-items: center; font-size: 28px; color: var(--ncm-accent); background: color-mix(in srgb, var(--ncm-accent) 8%, transparent); border: 1px solid color-mix(in srgb, var(--ncm-accent) 40%, transparent); box-shadow: 0 0 26px color-mix(in srgb, var(--ncm-accent) 28%, transparent); margin-bottom: 8px; }
 .ncm-term__gate h3 { font-family: var(--ncm-font-title); font-weight: 900; font-size: 22px; letter-spacing: 4px; color: var(--ncm-text-primary); text-shadow: 0 0 16px color-mix(in srgb, var(--ncm-accent) 40%, transparent); }
 .ncm-term__gate p { font-family: var(--ncm-font-body); font-size: 14px; color: var(--ncm-text-secondary); max-width: 460px; }
@@ -345,9 +387,28 @@
 .ncm-term__gmrow b { color: var(--ncm-accent); }
 
 /* ── BOOT splash ── */
-.ncm-term__boot { position: absolute; inset: 0; z-index: 60; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: radial-gradient(100% 100% at 50% 30%, var(--ncm-term-hdr), var(--ncm-bg-deep)); }
-.ncm-term__boot-icon { width: 88px; height: 88px; border-radius: 16px; display: grid; place-items: center; font-size: 34px; color: var(--ncm-primary); background: var(--ncm-term-tint); border: 1px solid color-mix(in srgb, var(--ncm-primary) 50%, transparent); box-shadow: 0 0 36px color-mix(in srgb, var(--ncm-primary) 45%, transparent); }
-.ncm-term__boot-title { font-family: var(--ncm-font-title); font-weight: 900; font-size: 30px; letter-spacing: 7px; color: var(--ncm-primary); text-shadow: 0 0 24px color-mix(in srgb, var(--ncm-primary) 60%, transparent); }
+/* In-flow flex child, NOT absolute: the boot layer is the only thing rendered
+   in the boot state, and an absolute inset-0 box with justify-content:center
+   silently clips the icon + title above the window's overflow:hidden top edge
+   whenever the box ends up shorter than its content (the "loading screen has
+   no icon or text" bug — the bar/log below center stayed visible). `safe
+   center` + internal scroll make a short window degrade gracefully instead. */
+.ncm-term__boot {
+  /* z-index 100 keeps the splash ABOVE the decorative scanline/vignette
+     ::after overlay (z-index 90) — otherwise that overlay could sit over the
+     icon/title. justify-content uses plain `center` with a min-height:0 track
+     (`safe` is dropped: some builds treat `safe center` as invalid → falls
+     back to stretch/normal and mis-lays the column). */
+  position: relative; z-index: 100; flex: 1 1 auto; min-height: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 14px; overflow-y: auto; overflow-x: hidden; padding: 20px 0;
+  background: radial-gradient(100% 100% at 50% 30%, var(--ncm-term-hdr), var(--ncm-bg-deep));
+}
+/* Nothing in the splash should be click-through-dimmed or transparent-colored;
+   force a visible color even if every --ncm-* var is somehow missing. */
+.ncm-term__boot-icon > i, .ncm-term__boot-title { color: var(--ncm-primary, #F65261); }
+.ncm-term__boot-icon { flex: 0 0 auto; width: 88px; height: 88px; border-radius: 16px; display: grid; place-items: center; font-size: 34px; color: var(--ncm-primary, #F65261); background: var(--ncm-term-tint); border: 1px solid color-mix(in srgb, var(--ncm-primary, #F65261) 50%, transparent); box-shadow: 0 0 36px color-mix(in srgb, var(--ncm-primary, #F65261) 45%, transparent); }
+.ncm-term__boot-title { font-family: var(--ncm-font-title); font-weight: 900; font-size: 30px; letter-spacing: 7px; color: var(--ncm-primary, #F65261); text-shadow: 0 0 24px color-mix(in srgb, var(--ncm-primary, #F65261) 60%, transparent); }
 .ncm-term__boot-sub { font-family: var(--ncm-font-body); font-weight: 600; font-size: 14px; letter-spacing: 1px; color: var(--ncm-accent); opacity: .85; }
 .ncm-term__boot-prog { width: min(520px, 80%); margin-top: 6px; }
 .ncm-term__boot-prog-label { font-family: var(--ncm-font-mono); font-size: 12px; color: var(--ncm-text-muted); margin-bottom: 6px; }
@@ -370,40 +431,173 @@
 /* ── ACCESS GRANTED / Welcome transition ──
    Punchy reveal: a hard cyan flash, a glitch/RGB-split wipe-in on the text, an
    avatar ring-pop, then the welcome + session lines slide up. */
-.ncm-term__granted { position: absolute; inset: 0; z-index: 70; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; overflow: hidden;
-  background: radial-gradient(120% 90% at 50% 50%, color-mix(in srgb, var(--ncm-secondary) 8%, transparent), rgba(0,0,0,.55)); }
-/* hard flash + a couple of scanline bands */
-.ncm-term__granted::before { content: ""; position: absolute; inset: 0; pointer-events: none;
-  background: color-mix(in srgb, var(--ncm-secondary) 40%, transparent); opacity: 0; animation: ncm-term-flash .45s ease-out forwards; }
-.ncm-term__granted::after { content: ""; position: absolute; inset: 0; pointer-events: none;
-  background: repeating-linear-gradient(0deg, rgba(0,0,0,.22) 0 2px, transparent 2px 5px); mix-blend-mode: multiply; opacity: .5; }
-@keyframes ncm-term-flash { 0% { opacity: 0; } 10% { opacity: .85; } 100% { opacity: 0; } }
-
-.ncm-term__granted-txt { position: relative; font-family: var(--ncm-font-title); font-weight: 900; font-size: 42px; letter-spacing: 8px; color: var(--ncm-secondary);
-  animation: ncm-term-glitchin .7s cubic-bezier(.2,.8,.2,1) forwards; }
-@keyframes ncm-term-glitchin {
-  0%   { opacity: 0; transform: translateX(-16px) skewX(10deg); clip-path: inset(0 100% 0 0); text-shadow: 4px 0 var(--ncm-primary), -4px 0 var(--ncm-secondary); }
-  18%  { opacity: 1; transform: translateX(8px) skewX(-7deg);  clip-path: inset(0 55% 0 0); text-shadow: -4px 0 var(--ncm-primary), 4px 0 var(--ncm-secondary); }
-  34%  { transform: translateX(-5px) skewX(4deg);              clip-path: inset(0 22% 0 0); }
-  50%  { transform: translateX(3px);                          clip-path: inset(0 0 0 0); text-shadow: 2px 0 var(--ncm-primary), -2px 0 var(--ncm-secondary); }
-  66%  { transform: translateX(-2px); }
-  100% { transform: none; opacity: 1; clip-path: inset(0 0 0 0); text-shadow: 0 0 34px var(--ncm-secondary); }
+/* ── ACCESS GRANTED — the operator's credential badge drops in and is stamped
+      VALIDATED (an official access card being authorized; theme-aware). ── */
+.ncm-term__granted {
+  position: absolute; inset: 0; z-index: 100; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(120% 90% at 50% 40%, color-mix(in srgb, var(--ncm-primary) 7%, var(--ncm-bg-deep)), var(--ncm-bg-deep));
+  animation: ncm-term-gfade .3s ease forwards;
 }
-.ncm-term__granted-welcome { font-family: var(--ncm-font-display); font-weight: 700; font-size: 19px; color: var(--ncm-text-primary); opacity: 0; animation: ncm-term-rise .45s ease .5s forwards; }
-.ncm-term__granted-welcome b { color: var(--ncm-secondary); }
-.ncm-term__granted-role { font-family: var(--ncm-font-mono); font-size: 12px; color: var(--ncm-accent); letter-spacing: .5px; }
-.ncm-term__granted-av { width: 72px; height: 72px; border-radius: 50%; display: grid; place-items: center; overflow: hidden; margin-bottom: 4px;
-  background: color-mix(in srgb, var(--ncm-secondary) 12%, transparent); border: 2px solid var(--ncm-secondary);
-  color: var(--ncm-secondary); font-family: var(--ncm-font-title); font-weight: 700; font-size: 26px;
-  box-shadow: 0 0 26px color-mix(in srgb, var(--ncm-secondary) 45%, transparent); animation: ncm-term-avpop .5s cubic-bezier(.2,.9,.3,1.4) forwards; }
-.ncm-term__granted-av img { width: 100%; height: 100%; object-fit: cover; }
-.ncm-term__granted-sub { font-family: var(--ncm-font-mono); font-size: 11px; color: var(--ncm-text-muted); letter-spacing: 1px; opacity: 0; animation: ncm-term-rise .45s ease .7s forwards; }
-@keyframes ncm-term-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-@keyframes ncm-term-avpop { 0% { opacity: 0; transform: scale(.4); } 70% { opacity: 1; transform: scale(1.12); } 100% { transform: scale(1); } }
-.ncm-term__granted-sweep { position: absolute; left: 0; right: 0; height: 130px; top: -130px; z-index: 1;
-  background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--ncm-secondary) 45%, transparent), transparent);
-  animation: ncm-term-sweep .65s ease-in forwards; }
-@keyframes ncm-term-sweep { to { top: 115%; } }
+@keyframes ncm-term-gfade { from { opacity: 0; } to { opacity: 1; } }
+
+.ncm-term__badge {
+  position: relative; z-index: 2; width: min(380px, 84%); border-radius: 14px; overflow: hidden;
+  background: linear-gradient(135deg, var(--ncm-bg-elevated), var(--ncm-bg-surface));
+  border: 1px solid color-mix(in srgb, var(--ncm-primary) 40%, transparent);
+  box-shadow: 0 26px 60px rgba(0,0,0,.55), 0 0 40px color-mix(in srgb, var(--ncm-primary) 12%, transparent);
+  transform-origin: 50% 0;
+  /* drop in, then (after the scan pass completes) settle to a green "validated"
+     edge-glow — two animations, forwards. */
+  animation: ncm-term-badgedrop .55s cubic-bezier(.2,.85,.3,1.2) forwards,
+             ncm-term-badgevalid .5s ease 1.9s forwards;
+}
+@keyframes ncm-term-badgedrop {
+  0%   { opacity: 0; transform: translateY(-40px) scale(.94) rotate(-2deg); }
+  70%  { opacity: 1; transform: translateY(4px) scale(1.01) rotate(0deg); }
+  100% { transform: none; }
+}
+@keyframes ncm-term-badgevalid {
+  to { border-color: color-mix(in srgb, var(--ncm-success, #00ff41) 55%, transparent);
+       box-shadow: 0 26px 60px rgba(0,0,0,.55), 0 0 34px color-mix(in srgb, var(--ncm-success, #00ff41) 30%, transparent); }
+}
+
+.ncm-term__badge-top {
+  display: flex; align-items: center; justify-content: space-between; padding: 9px 14px;
+  background: color-mix(in srgb, var(--ncm-primary) 8%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--ncm-primary) 22%, transparent);
+}
+.ncm-term__badge-org {
+  font-family: var(--ncm-font-title); font-weight: 900; font-size: 13px; letter-spacing: 2px;
+  color: var(--ncm-primary); text-shadow: 0 0 12px color-mix(in srgb, var(--ncm-primary) 55%, transparent);
+  display: inline-flex; align-items: center; gap: 7px; min-width: 0;
+}
+.ncm-term__badge-org i { font-size: 12px; }
+.ncm-term__badge-cls {
+  flex: 0 0 auto; font-family: var(--ncm-font-mono); font-size: 9px; letter-spacing: 1px; color: var(--ncm-accent);
+  border: 1px solid color-mix(in srgb, var(--ncm-accent) 45%, transparent); padding: 2px 6px; border-radius: 3px;
+}
+
+.ncm-term__badge-body { display: flex; gap: 14px; padding: 16px 14px; }
+.ncm-term__badge-photo {
+  width: 78px; height: 96px; border-radius: 8px; flex: 0 0 auto; overflow: hidden;
+  display: grid; place-items: center;
+  font-family: var(--ncm-font-title); font-weight: 700; font-size: 26px; color: var(--ncm-primary);
+  background: color-mix(in srgb, var(--ncm-primary) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ncm-primary) 40%, transparent);
+}
+.ncm-term__badge-photo img { width: 100%; height: 100%; object-fit: cover; }
+.ncm-term__badge-fields { flex: 1; min-width: 0; }
+.ncm-term__badge-nm { font-family: var(--ncm-font-body); font-weight: 700; font-size: 20px; color: var(--ncm-text-primary); line-height: 1.1; }
+.ncm-term__badge-role { font-family: var(--ncm-font-mono); font-size: 10px; letter-spacing: .5px; color: var(--ncm-accent); text-transform: uppercase; margin: 2px 0 10px; }
+/* Data rows — each "writes in" then self-verifies (checkmark + green tint),
+   staggered by its inline --r index. */
+.ncm-term__badge-row {
+  display: flex; align-items: center; gap: 8px; padding: 3px 8px; border-radius: 5px;
+  font-family: var(--ncm-font-mono); font-size: 10px; letter-spacing: .5px; color: var(--ncm-text-muted);
+  border: 1px solid transparent;
+  animation: ncm-term-rowok .3s ease forwards; animation-delay: calc(.82s + var(--r, 0) * .3s);
+}
+@keyframes ncm-term-rowok {
+  to { background: color-mix(in srgb, var(--ncm-success, #00ff41) 8%, transparent);
+       border-color: color-mix(in srgb, var(--ncm-success, #00ff41) 22%, transparent); }
+}
+.ncm-term__badge-lbl { flex: 0 0 auto; }
+.ncm-term__badge-val {
+  flex: 1; text-align: right; color: var(--ncm-text-secondary); font-weight: 400;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  clip-path: inset(0 100% 0 0);   /* revealed left→right like it's being typed in */
+  animation: ncm-term-write .34s steps(14, end) forwards; animation-delay: calc(.55s + var(--r, 0) * .3s);
+}
+@keyframes ncm-term-write { to { clip-path: inset(0 0 0 0); } }
+.ncm-term__badge-chk {
+  flex: 0 0 auto; font-size: 11px; color: var(--ncm-success, #00ff41);
+  opacity: 0; transform: scale(.3);
+  animation: ncm-term-chk .3s cubic-bezier(.3, 1.5, .5, 1) forwards; animation-delay: calc(.82s + var(--r, 0) * .3s);
+}
+@keyframes ncm-term-chk { to { opacity: 1; transform: scale(1); } }
+
+.ncm-term__badge-last {
+  display: flex; align-items: center; gap: 6px; padding: 8px 14px 4px;
+  font-family: var(--ncm-font-mono); font-size: 9px; letter-spacing: 1px; color: var(--ncm-text-muted);
+}
+.ncm-term__badge-last i { color: color-mix(in srgb, var(--ncm-primary) 70%, var(--ncm-text-muted)); font-size: 9px; }
+
+/* Progress bar (replaces the old magstripe) — fills as the card verifies. */
+.ncm-term__badge-bar {
+  position: relative; height: 18px; margin: 0 14px 4px; border-radius: 5px; overflow: hidden;
+  display: flex; align-items: center;
+  background: color-mix(in srgb, var(--ncm-text-primary) 7%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ncm-success, #00ff41) 20%, transparent);
+}
+.ncm-term__badge-bar-fill {
+  position: absolute; inset: 0 auto 0 0; width: 0; border-radius: 5px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--ncm-primary) 70%, var(--ncm-success, #00ff41)), var(--ncm-success, #00ff41));
+  box-shadow: 0 0 14px color-mix(in srgb, var(--ncm-success, #00ff41) 45%, transparent);
+  animation: ncm-term-barfill 1.35s cubic-bezier(.5, .1, .3, 1) .55s forwards;
+}
+@keyframes ncm-term-barfill { to { width: 100%; } }
+/* moving scan sheen while filling */
+.ncm-term__badge-bar-fill::after {
+  content: ""; position: absolute; inset: 0; border-radius: 5px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.35), transparent);
+  animation: ncm-term-barsheen 1s linear .55s 2;
+}
+@keyframes ncm-term-barsheen { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+/* caption crosses AUTHENTICATING → VERIFIED at ~1.9s (two stacked labels) */
+.ncm-term__badge-bar-lbl {
+  position: relative; z-index: 1; margin: 0 auto; display: grid; place-items: center;
+  font-family: var(--ncm-font-mono); font-size: 8.5px; letter-spacing: 2px; font-weight: 700;
+  text-shadow: 0 1px 3px rgba(0,0,0,.9);
+}
+.ncm-term__badge-bar-v1, .ncm-term__badge-bar-v2 { grid-area: 1 / 1; white-space: nowrap; }
+.ncm-term__badge-bar-v1 { color: var(--ncm-text-primary); animation: ncm-term-lblout .25s ease 1.85s forwards; }
+.ncm-term__badge-bar-v2 { color: #04240f; opacity: 0; animation: ncm-term-lblin .25s ease 1.9s forwards; }
+@keyframes ncm-term-lblout { to { opacity: 0; } }
+@keyframes ncm-term-lblin { to { opacity: 1; } }
+
+/* Security scan pass — a light-bar sweeps down the whole card while it verifies. */
+.ncm-term__badge-scan {
+  position: absolute; left: 0; right: 0; top: 0; height: 3px; z-index: 5; pointer-events: none; opacity: 0;
+  background: linear-gradient(90deg, transparent, var(--ncm-secondary), transparent);
+  box-shadow: 0 0 16px var(--ncm-secondary), 0 0 44px color-mix(in srgb, var(--ncm-secondary) 45%, transparent);
+  animation: ncm-term-scan 1.35s ease-in-out .55s forwards;
+}
+@keyframes ncm-term-scan {
+  0%   { opacity: 0; top: 0; }
+  12%  { opacity: 1; }
+  88%  { opacity: 1; }
+  100% { opacity: 0; top: 100%; }
+}
+
+/* VALIDATED chip that pops in once the scan finishes (top-right, by the name). */
+.ncm-term__badge-chip {
+  position: absolute; top: 46px; right: 14px; z-index: 6;
+  display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 5px;
+  font-family: var(--ncm-font-mono); font-size: 9px; letter-spacing: 1.5px; font-weight: 700;
+  color: var(--ncm-success, #00ff41); background: color-mix(in srgb, var(--ncm-success, #00ff41) 12%, transparent);
+  border: 1px solid var(--ncm-success, #00ff41);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--ncm-success, #00ff41) 45%, transparent);
+  opacity: 0; transform: scale(.8) translateY(-2px);
+  animation: ncm-term-chip .32s cubic-bezier(.3,1.4,.5,1) 1.92s forwards;
+}
+.ncm-term__badge-chip i { font-size: 10px; }
+@keyframes ncm-term-chip { to { opacity: 1; transform: none; } }
+
+.ncm-term__badge-granted {
+  text-align: center; padding: 2px 14px 16px;
+  font-family: var(--ncm-font-mono); font-size: 11px; letter-spacing: 4px; color: var(--ncm-success, #00ff41);
+  opacity: 0; animation: ncm-term-grise .4s ease 2.35s forwards;
+}
+@keyframes ncm-term-grise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .ncm-term__granted, .ncm-term__granted * { animation-duration: .01ms !important; animation-delay: 0s !important; }
+  .ncm-term__badge-val { clip-path: inset(0 0 0 0); }
+  .ncm-term__badge-chk, .ncm-term__badge-bar-v2, .ncm-term__badge-chip { opacity: 1; }
+  .ncm-term__badge-bar-v1, .ncm-term__badge-scan { opacity: 0; }
+  .ncm-term__badge-bar-fill { width: 100%; }
+}
 
 /* Agent (looted phone) form factor → Phase 3. The data model keeps `formFactor`
    for later; the MVP renders desktop only and leans on the responsive reflow
@@ -433,3 +627,134 @@
 
 /* Items-directory terminal badge — recolor the shared shard badge red. */
 .ncm-terminal-img-tag { background: #ff0033 !important; box-shadow: 0 0 8px rgba(255,0,51,.6) !important; }
+
+/* ── Burn-to-Shard target picker dialog ── */
+.ncm-burn-dialog .ncm-burn-hint { font-size: 12px; opacity: .8; margin: 0 0 8px; }
+.ncm-burn-dialog .ncm-burn-search {
+  width: 100%; margin-bottom: 8px; padding: 6px 8px;
+  background: #0a0a0f; color: #ededf0; border: 1px solid #2a2a45; border-radius: 4px;
+}
+.ncm-burn-dialog .ncm-burn-list {
+  max-height: 300px; overflow-y: auto; overflow-x: hidden;
+  border: 1px solid #2a2a45; border-radius: 4px; background: #0d0d14;
+}
+.ncm-burn-dialog .ncm-burn-row {
+  display: flex; align-items: center; gap: 8px; padding: 6px 8px; cursor: pointer;
+  border-bottom: 1px solid rgba(255,255,255,.05);
+}
+.ncm-burn-dialog .ncm-burn-row:hover { background: rgba(25,243,247,.06); }
+.ncm-burn-dialog .ncm-burn-row.is-selected { background: rgba(25,243,247,.12); box-shadow: inset 2px 0 0 #19f3f7; }
+.ncm-burn-dialog .ncm-burn-row img { width: 24px; height: 24px; border: none; border-radius: 3px; object-fit: cover; flex: 0 0 auto; }
+.ncm-burn-dialog .ncm-burn-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.ncm-burn-dialog .ncm-burn-type { font-family: monospace; font-size: 9px; letter-spacing: .5px; text-transform: uppercase; opacity: .55; flex: 0 0 auto; }
+.ncm-burn-dialog .ncm-burn-tag {
+  font-family: monospace; font-size: 8px; letter-spacing: .5px; padding: 1px 5px;
+  border: 1px solid rgba(136,136,160,.4); border-radius: 3px; opacity: .8; flex: 0 0 auto;
+}
+.ncm-burn-dialog .ncm-burn-tag--shard { color: #19f3f7; border-color: rgba(25,243,247,.5); opacity: 1; }
+
+/* ── Boot icon config (source select + live preview) ── */
+.ncm-cfg-row--hidden { display: none !important; }
+.ncm-cfg-icon-preview {
+  flex: 0 0 34px; width: 34px; height: 34px; border-radius: 8px; overflow: hidden;
+  display: grid; place-items: center; font-size: 15px;
+  color: var(--ncm-primary, #F65261);
+  background: color-mix(in srgb, var(--ncm-primary, #F65261) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ncm-primary, #F65261) 40%, transparent);
+}
+.ncm-cfg-icon-preview img { width: 100%; height: 100%; object-fit: cover; border: none; }
+.ncm-term__boot-icon img { width: 100%; height: 100%; object-fit: cover; border: none; border-radius: inherit; }
+
+/* ── Burn dialog: explicit dark palette — Foundry's parchment dialog gives
+      dark text, which vanished on our dark rows ("can't see any text"). ── */
+.ncm-burn-dialog .window-content { background: #0d0d14 !important; color: #c9c9da !important; }
+.ncm-burn-dialog .ncm-burn-hint { color: #9d9db4; opacity: 1; }
+.ncm-burn-dialog .ncm-burn-search { background: #0a0a0f !important; color: #ededf0 !important; border: 1px solid #2a2a45 !important; }
+.ncm-burn-dialog .ncm-burn-search::placeholder { color: #66667e; }
+.ncm-burn-dialog .ncm-burn-name { color: #ededf2; }
+.ncm-burn-dialog .ncm-burn-type { color: #8888a0; opacity: 1; }
+.ncm-burn-dialog .ncm-burn-tag { color: #a8a8c0; }
+.ncm-burn-dialog .ncm-burn-tag--shard { color: #19f3f7; }
+.ncm-burn-dialog .dialog-buttons button {
+  background: #16161f !important; color: #d9d9e6 !important;
+  border: 1px solid #2a2a45 !important; box-shadow: none !important;
+}
+.ncm-burn-dialog .dialog-buttons button:hover { border-color: #19f3f7 !important; color: #19f3f7 !important; }
+
+/* ── Exfil FX overlays: download-to-agent stream / burn-to-shard laser ── */
+.ncm-term__fx {
+  position: absolute; inset: 0; z-index: 80;
+  display: flex; align-items: center; justify-content: center;
+  background: color-mix(in srgb, var(--ncm-bg-deep, #0a0a0f) 82%, black);
+  backdrop-filter: blur(2px); transition: opacity .35s;
+}
+.ncm-term__fx.is-out { opacity: 0; }
+.ncm-term__fx-box { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+.ncm-term__fx-label { font-family: var(--ncm-font-mono); font-size: 12px; letter-spacing: 2px; color: var(--ncm-text-muted); transition: opacity .25s; }
+.ncm-term__fx-label span { color: var(--ncm-text-primary); }
+.ncm-term__fx-track { width: 240px; height: 6px; border-radius: 4px; background: rgba(255,255,255,.08); overflow: hidden; }
+.ncm-term__fx-track i { display: block; height: 100%; width: 0; border-radius: 4px; animation: ncm-fx-fill 1.5s ease-in-out forwards; }
+@keyframes ncm-fx-fill { to { width: 100%; } }
+.ncm-term__fx-done { font-family: var(--ncm-font-mono); font-size: 11px; letter-spacing: 1.5px; opacity: 0; transition: opacity .25s; display: flex; align-items: center; gap: 7px; }
+.ncm-term__fx.is-done .ncm-term__fx-done { opacity: 1; }
+.ncm-term__fx.is-done .ncm-term__fx-label { opacity: .4; }
+
+/* download: terminal node → packet stream → agent node */
+.ncm-term__fx--download .ncm-term__fx-track i { background: var(--ncm-secondary, #19f3f7); box-shadow: 0 0 12px color-mix(in srgb, var(--ncm-secondary, #19f3f7) 60%, transparent); }
+.ncm-term__fx--download .ncm-term__fx-done { color: var(--ncm-secondary, #19f3f7); }
+.ncm-term__fx-nodes { display: flex; align-items: center; gap: 16px; }
+.ncm-term__fx-node {
+  width: 64px; height: 64px; border-radius: 14px; display: grid; place-items: center; font-size: 24px;
+  color: var(--ncm-secondary, #19f3f7);
+  background: color-mix(in srgb, var(--ncm-secondary, #19f3f7) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ncm-secondary, #19f3f7) 40%, transparent);
+}
+.ncm-term__fx-node--dst { animation: ncm-fx-pulse 1s ease-in-out infinite; }
+.ncm-term__fx.is-done .ncm-term__fx-node--dst { animation: none; box-shadow: 0 0 26px color-mix(in srgb, var(--ncm-secondary, #19f3f7) 55%, transparent); }
+@keyframes ncm-fx-pulse { 0%, 100% { box-shadow: 0 0 0 0 transparent; } 50% { box-shadow: 0 0 20px color-mix(in srgb, var(--ncm-secondary, #19f3f7) 50%, transparent); } }
+.ncm-term__fx-stream { position: relative; width: 120px; height: 8px; overflow: hidden; }
+.ncm-term__fx-stream b {
+  position: absolute; left: -18px; top: 2px; width: 16px; height: 4px; border-radius: 2px;
+  background: var(--ncm-secondary, #19f3f7); box-shadow: 0 0 8px color-mix(in srgb, var(--ncm-secondary, #19f3f7) 60%, transparent);
+  animation: ncm-fx-packet .9s linear infinite;
+}
+.ncm-term__fx-stream b:nth-child(2) { animation-delay: .15s; }
+.ncm-term__fx-stream b:nth-child(3) { animation-delay: .3s; }
+.ncm-term__fx-stream b:nth-child(4) { animation-delay: .45s; }
+.ncm-term__fx-stream b:nth-child(5) { animation-delay: .6s; }
+.ncm-term__fx-stream b:nth-child(6) { animation-delay: .75s; }
+@keyframes ncm-fx-packet { to { transform: translateX(156px); } }
+
+/* burn: chip + sweeping laser + embers, amber/red heat palette */
+.ncm-term__fx--burn .ncm-term__fx-track i { background: linear-gradient(90deg, var(--ncm-accent, #f7c948), #ff6a00); box-shadow: 0 0 12px rgba(255, 110, 20, .55); }
+.ncm-term__fx--burn .ncm-term__fx-done { color: var(--ncm-accent, #f7c948); }
+.ncm-term__fx-chip {
+  position: relative; width: 84px; height: 84px; border-radius: 16px; overflow: hidden;
+  display: grid; place-items: center; font-size: 34px;
+  color: var(--ncm-accent, #f7c948); background: rgba(255, 140, 0, .07);
+  border: 1px solid rgba(255, 160, 60, .45);
+}
+.ncm-term__fx.is-done .ncm-term__fx-chip { box-shadow: 0 0 30px rgba(255, 120, 20, .5); }
+.ncm-term__fx-laser {
+  position: absolute; left: 5%; right: 5%; top: 4%; height: 2px;
+  background: linear-gradient(90deg, transparent, #ffd27a, #ff3b1f, #ffd27a, transparent);
+  box-shadow: 0 0 14px #ff6a00, 0 0 30px rgba(255, 80, 0, .55);
+  animation: ncm-fx-laser 1.5s ease-in-out forwards;
+}
+@keyframes ncm-fx-laser { to { top: 92%; } }
+.ncm-term__fx-spark {
+  position: absolute; width: 3px; height: 3px; border-radius: 50%;
+  background: #ffcf7a; box-shadow: 0 0 8px #ff8a00; opacity: 0;
+  animation: ncm-fx-spark .7s ease-out infinite;
+}
+.ncm-term__fx-spark:nth-child(2) { left: 22%; top: 46%; --fx-dx: -10px; animation-delay: .1s; }
+.ncm-term__fx-spark:nth-child(3) { left: 52%; top: 58%; --fx-dx: 8px; animation-delay: .3s; }
+.ncm-term__fx-spark:nth-child(4) { left: 70%; top: 38%; --fx-dx: 12px; animation-delay: .5s; }
+.ncm-term__fx-spark:nth-child(5) { left: 38%; top: 66%; --fx-dx: -7px; animation-delay: .65s; }
+@keyframes ncm-fx-spark { 0% { opacity: 1; transform: translate(0, 0); } 100% { opacity: 0; transform: translate(var(--fx-dx, 8px), -16px); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .ncm-term__fx * { animation: none !important; }
+  .ncm-term__fx-track i { width: 100%; }
+  .ncm-term__fx-laser, .ncm-term__fx-spark { display: none; }
+}

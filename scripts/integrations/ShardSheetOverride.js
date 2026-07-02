@@ -327,8 +327,26 @@ export class ShardSheetOverride {
     const res = await svc.convertToTerminal(item);
     if (!res?.success) return ui.notifications.error(res?.error || 'Conversion failed.');
     ui.notifications.info(`"${item.name}" is now a Terminal.`);
+    // Re-render the directory + any actor sheets so the terminal badge +
+    // left-click intercept appear immediately (mirrors shard convert / remove).
+    // Without this the item looked unchanged until a manual refresh.
+    this._refreshItemViews(item);
     const { TerminalConfigApp } = await import('../ui/Terminal/TerminalConfigApp.js');
     new TerminalConfigApp({ item }).render(true);
+  }
+
+  /**
+   * Rebuild the Items directory + any actor sheets showing this item so a
+   * convert/remove reflects instantly. The entry DOM is recreated fresh, which
+   * clears the `ncmProcessed` guard so the badge/intercept re-decorate.
+   */
+  _refreshItemViews(item) {
+    setTimeout(() => {
+      ui.items?.render();
+      for (const sheet of Object.values(ui.windows)) {
+        if (sheet.actor?.items?.has(item.id)) sheet.render(false);
+      }
+    }, 150);
   }
 
   /**

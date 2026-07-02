@@ -837,6 +837,10 @@ export class TerminalService {
       encryption: data.encryption || null,
       eddies: data.eddies || 0,
       selfDestruct: null,
+      // Typed content (design doc §8c) — null = ordinary message; set =
+      // rendered via the shared content-body partial in the viewer.
+      contentType: data.contentType || null,
+      contentData: data.contentData || null,
       metadata: { ...(data.metadata || {}) },
       attachments: data.attachments || [],
       malware: null,

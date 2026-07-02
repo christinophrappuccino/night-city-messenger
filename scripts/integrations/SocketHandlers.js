@@ -198,6 +198,29 @@ export class SocketHandlers {
       else ui.notifications.warn('Download failed — no GM available or the GM rejected it.');
     });
 
+    // ─── Player Banking Siphon Relay (GM persists the drain / alerts) ──
+    socketManager.register(SOCKET_OPS.BANK_SIPHON_REQUEST, async (data) => {
+      if (!game.user.isGM) return;
+      try {
+        const { handleSiphonRequest } = await import('../ui/content/SiphonFlow.js');
+        await handleSiphonRequest(data);
+      } catch (err) {
+        log.error('Bank siphon relay failed:', err);
+      }
+    });
+
+    // ─── Player Typed-Content Update Relay (eddies claim / credential crack —
+    //     the entry lives in a GM-owned journal, so the GM persists the write) ──
+    socketManager.register(SOCKET_OPS.CONTENT_UPDATE_REQUEST, async (data) => {
+      if (!game.user.isGM) return;
+      try {
+        const { handleContentUpdateRequest } = await import('../ui/content/SiphonFlow.js');
+        await handleContentUpdateRequest(data);
+      } catch (err) {
+        log.error('Content update relay failed:', err);
+      }
+    });
+
     // ─── Player Shard Unconvert Relay ────────────────────
     socketManager.register(SOCKET_OPS.SHARD_UNCONVERT_REQUEST, async (data) => {
       if (!game.user.isGM) return;

@@ -1,7 +1,7 @@
 {{!-- Terminal login screen — account cards + secret-login bar. Single root. --}}
 <div class="ncm-term__login">
   <div class="ncm-term__hero">
-    <div class="ncm-term__hero-logo"><i class="{{presetIcon}}"></i></div>
+    <div class="ncm-term__hero-logo">{{#if logoImage}}<img src="{{logoImage}}" alt="">{{else}}<i class="{{presetIcon}}"></i>{{/if}}</div>
     <div class="ncm-term__hero-txt">
       <div class="ncm-term__hero-name">{{terminalName}}</div>
       <div class="ncm-term__hero-sub">{{banner}}</div>

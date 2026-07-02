@@ -109,6 +109,20 @@
         <div class="ncm-cfg-section-header"><i class="fas fa-power-off ncm-cfg-section-icon" style="color:#00ff41"></i><div class="ncm-cfg-section-title">Boot Sequence</div><label class="ncm-cfg-toggle-label"><input type="checkbox" name="bootEnabled" {{#if bootEnabled}}checked{{/if}}></label></div>
         <div class="ncm-cfg-row"><span class="ncm-cfg-label">Title</span><input type="text" name="bootTitle" class="ncm-cfg-input ncm-cfg-flex" value="{{bootTitle}}"></div>
         <div class="ncm-cfg-row"><span class="ncm-cfg-label">Subtitle</span><input type="text" name="bootSubtitle" class="ncm-cfg-input ncm-cfg-flex" value="{{bootSubtitle}}"></div>
+        <div class="ncm-cfg-row"><span class="ncm-cfg-label">Icon source</span>
+          <select name="bootIconMode" class="ncm-cfg-select ncm-cfg-flex">{{#each bootIconModes}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}</select>
+          <span class="ncm-cfg-icon-preview"></span>
+        </div>
+        <div class="ncm-cfg-row" data-boot-icon-row="fa">
+          <span class="ncm-cfg-label">FA class</span>
+          <input type="text" name="bootFaIcon" class="ncm-cfg-input ncm-cfg-flex" value="{{bootFaIcon}}" placeholder="fas fa-skull, fas fa-building, fas fa-eye…">
+        </div>
+        <div class="ncm-cfg-row" data-boot-icon-row="image">
+          <span class="ncm-cfg-label">Image</span>
+          <input type="text" name="bootImageUrl" class="ncm-cfg-input ncm-cfg-flex" value="{{bootImageUrl}}" placeholder="Corporate logo, gang tag — any image file">
+          <button type="button" data-action="browseBootImage" class="ncm-cfg-btn-icon" data-tooltip="Browse"><i class="fas fa-folder-open"></i></button>
+        </div>
+        <div class="ncm-cfg-hint">The big icon on the boot splash. Preset = the theme's icon · Font Awesome = any FA class · Custom image = your own logo file. The chip next to the dropdown previews it live.</div>
         <div class="ncm-cfg-row"><span class="ncm-cfg-label">Login banner</span><input type="text" name="bootBanner" class="ncm-cfg-input ncm-cfg-flex" value="{{bootBanner}}"></div>
         <div class="ncm-cfg-row"><span class="ncm-cfg-label">Animation</span><select name="bootAnimation" class="ncm-cfg-select ncm-cfg-flex">{{#each animationOptions}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{value}}</option>{{/each}}</select></div>
         <div class="ncm-cfg-row"><span class="ncm-cfg-label">Speed</span><select name="bootSpeed" class="ncm-cfg-select ncm-cfg-flex">{{#each speedOptions}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{value}}</option>{{/each}}</select></div>

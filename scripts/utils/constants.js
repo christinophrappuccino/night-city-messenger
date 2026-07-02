@@ -108,6 +108,12 @@ export const SOCKET_OPS = Object.freeze({
   TERMINAL_STATE_CHANGED:  'terminal:stateChanged',
   TERMINAL_EXFIL_REQUEST:  'terminal:exfilRequest',
   TERMINAL_EXFIL_RESULT:   'terminal:exfilResult',
+  // Banking siphon — player→GM relay. Carries outcome 'success' (persist the
+  // account drain to its GM-owned journal page) or 'fail' (trace + GM alert).
+  BANK_SIPHON_REQUEST:     'bank:siphonRequest',
+  // Generic typed-content write relay (eddies claim / credential crack / any
+  // future contentData mutation) — { messageId, newContentData, gmToast }.
+  CONTENT_UPDATE_REQUEST:  'content:updateRequest',
 });
 
 // ─── Network Types ───
@@ -138,6 +144,9 @@ export const FAILURE_MODES = Object.freeze({ NOTHING: 'nothing', LOCKOUT: 'locko
 export const CONTENT_TYPES = Object.freeze({
   MESSAGE: 'message', EDDIES: 'eddies', DOSSIER: 'dossier',
   PAYLOAD: 'payload', AVLOG: 'avlog', LOCATION: 'location',
+  // Phase 2 — shared content renderers (design doc §8c)
+  SPREADSHEET: 'spreadsheet', CALENDAR: 'calendar', SYSLOG: 'syslog',
+  CREDENTIALS: 'credentials', BANKING: 'banking',
 });
 
 export const NETWORK_ACCESS_MODES = Object.freeze({
@@ -434,7 +443,7 @@ export const SHARD_PRESETS = Object.freeze({
 // TERMINAL_ACCOUNT seeds (merged over DEFAULTS.TERMINAL_ACCOUNT on apply).
 export const TERMINAL_PRESETS = Object.freeze({
   'arasaka-workstation': {
-    label: 'Arasaka Workstation', icon: 'fas fa-building-shield', loginStyle: 'cards',
+    label: 'Arasaka Workstation', icon: 'fas fa-building', loginStyle: 'cards',
     theme: { primary: '#ff0033', secondary: '#19f3f7', accent: '#ffcc00', bgDeep: '#0a0006', bgBase: '#160008', bgSurface: '#22060e', bgElevated: '#2c0a14', textPrimary: '#f4e6ea', textSecondary: '#c79aa6', fontDisplay: 'rajdhani', fontMono: 'sharetechmono', fontTitle: 'orbitron' },
     security: { requiresAuth: true, allowPassword: true, allowSkillCheck: false, authLogic: 'any', bypassSkills: ['Interface'], bypassDC: 18, encryptionType: 'BLACK_ICE', failureMode: 'damage', maxAttempts: 3, lockoutDuration: 3600000 },
     boot: { enabled: true, title: 'ARASAKA NET', subtitle: 'Secure Workstation // Access Level: Restricted', banner: 'ARASAKA NET · WORKSTATION 7F-12', animationStyle: 'holographic-snap', speed: 'normal', logLines: ['ARASAKA-NET handshake ........ VERIFIED', 'Credential gateway .......... ONLINE', 'BLACK_ICE countermeasure .... ARMED', 'Mounting user volumes ....... OK'] },
@@ -585,6 +594,8 @@ export const TEMPLATES = Object.freeze({
   CONTACT_SHARE_DIALOG:  `${T}/contact-share/contact-share-dialog.hbs`,
   DATA_DROP_OVERLAY:     `${T}/data-drop/data-drop-overlay.hbs`,
   PARTIAL_METADATA_READOUT: `${T}/partials/metadata-readout.hbs`,
+  // Shared content-type body renderer (shards + terminals) — design doc §8c.
+  CONTENT_BODY: `${T}/content/content-body.hbs`,
   PARTIAL_ENCRYPTED_ATTACHMENT: `${T}/partials/encrypted-attachment.hbs`,
   PARTIAL_ATTACHMENT_CHIP:      `${T}/partials/attachment-chip.hbs`,
   SHARD_CONVERSION: `${T}/dialogs/shard-conversion.hbs`,
@@ -775,6 +786,13 @@ export const DEFAULTS = Object.freeze({
     username: '',                 // what you type at login (e.g. "v_arasaka")
     displayName: '',              // shown in the chrome once logged in
     email: '',                    // optional NCM email → identity resolution / "Add to contacts"
+    // ── Credential / badge fields (immersion; shown on the ACCESS GRANTED card) ──
+    role: '',                     // job title, e.g. "Executive · Floor 7F"
+    clearance: '',                // clearance level label, e.g. "TIER 3" (blank → ADMIN/STANDARD from isAdmin)
+    idNumber: '',                 // badge ID, e.g. "NC-8841-A" (blank → email/username)
+    classification: '',           // per-account classification override (blank → terminal metadata.classification)
+    location: '',                 // badge location line (blank → terminal metadata.location)
+    lastLogin: '',                // GM flavor "last access" string (blank → FIRST LOGIN)
     // Identity link — an account is a messageable identity. It can link to (or
     // seed) a GM master contact so it carries a real portrait and stays consistent
     // across the campaign. Portrait resolves via PortraitService.resolvePortrait

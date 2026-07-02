@@ -21,12 +21,31 @@
     {{> "modules/cyberpunkred-messenger/templates/terminal/terminal-manual-login.hbs"}}
 
   {{else if (eq state "granted")}}
+    {{!-- ACCESS GRANTED — the operator's access credential drops in and gets
+          stamped VALIDATED (an official keycard being authorized). --}}
     <div class="ncm-term__granted">
-      <div class="ncm-term__granted-sweep"></div>
-      <div class="ncm-term__granted-av">{{#if account.portrait}}<img src="{{account.portrait}}" alt="">{{else}}{{account.initials}}{{/if}}</div>
-      <div class="ncm-term__granted-txt">ACCESS GRANTED</div>
-      <div class="ncm-term__granted-welcome">Welcome, <b>{{account.displayName}}</b>{{#if account.role}} <span class="ncm-term__granted-role">{{account.role}}</span>{{/if}}</div>
-      <div class="ncm-term__granted-sub">session established // {{terminalName}}</div>
+      <div class="ncm-term__badge">
+        <div class="ncm-term__badge-top">
+          <span class="ncm-term__badge-org"><i class="fas fa-id-card"></i> {{badge.org}}</span>
+          <span class="ncm-term__badge-cls">{{badge.classification}}</span>
+        </div>
+        <div class="ncm-term__badge-body">
+          <div class="ncm-term__badge-photo">{{#if account.portrait}}<img src="{{account.portrait}}" alt="">{{else}}{{account.initials}}{{/if}}</div>
+          <div class="ncm-term__badge-fields">
+            <div class="ncm-term__badge-nm">{{account.displayName}}</div>
+            <div class="ncm-term__badge-role">{{account.role}}</div>
+            <div class="ncm-term__badge-row" style="--r:0"><span class="ncm-term__badge-lbl">ID</span><b class="ncm-term__badge-val">{{badge.idLabel}}</b><i class="fas fa-circle-check ncm-term__badge-chk"></i></div>
+            <div class="ncm-term__badge-row" style="--r:1"><span class="ncm-term__badge-lbl">CLEARANCE</span><b class="ncm-term__badge-val">{{badge.clearance}}</b><i class="fas fa-circle-check ncm-term__badge-chk"></i></div>
+            {{#if badge.location}}<div class="ncm-term__badge-row" style="--r:2"><span class="ncm-term__badge-lbl">LOCATION</span><b class="ncm-term__badge-val">{{badge.location}}</b><i class="fas fa-circle-check ncm-term__badge-chk"></i></div>{{/if}}
+            <div class="ncm-term__badge-row" style="--r:{{#if badge.location}}3{{else}}2{{/if}}"><span class="ncm-term__badge-lbl">SESSION</span><b class="ncm-term__badge-val">ENCRYPTED</b><i class="fas fa-circle-check ncm-term__badge-chk"></i></div>
+          </div>
+        </div>
+        <div class="ncm-term__badge-last"><i class="fas fa-clock-rotate-left"></i> LAST ACCESS · {{badge.lastLogin}}</div>
+        <div class="ncm-term__badge-bar"><span class="ncm-term__badge-bar-fill"></span><span class="ncm-term__badge-bar-lbl"><b class="ncm-term__badge-bar-v1">AUTHENTICATING</b><b class="ncm-term__badge-bar-v2">VERIFIED</b></span></div>
+        <div class="ncm-term__badge-scan"></div>
+        <div class="ncm-term__badge-chip"><i class="fas fa-shield-halved"></i> VALIDATED</div>
+        <div class="ncm-term__badge-granted">ACCESS GRANTED</div>
+      </div>
     </div>
 
   {{else}}
@@ -113,7 +132,15 @@
             <span class="ncm-term__mpill ncm-term__mpill--{{selectedMessage.priority}}"><i class="fas {{selectedMessage.priorityIcon}}"></i> {{selectedMessage.priorityLabel}}</span>
             <span class="ncm-term__mpill ncm-term__mpill--net"><i class="fas fa-network-wired"></i> {{selectedMessage.network}}</span>
           </div>
-          <div class="ncm-term__body">{{{selectedMessage.bodyHtml}}}</div>
+          {{#if selectedMessage.isTypedContent}}
+            <div class="ncm-term__body ncm-term__body--typed">
+              {{#with selectedMessage.content}}
+                {{> "modules/cyberpunkred-messenger/templates/content/content-body.hbs"}}
+              {{/with}}
+            </div>
+          {{else}}
+            <div class="ncm-term__body">{{{selectedMessage.bodyHtml}}}</div>
+          {{/if}}
           {{#if allowExfil}}
             <div class="ncm-term__exfil">
               <span class="ncm-term__btn" data-action="terminalExfilInbox" data-message-id="{{selectedMessage.messageId}}"><i class="fas fa-download"></i> To my Agent</span>

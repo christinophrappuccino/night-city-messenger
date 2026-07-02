@@ -1092,12 +1092,15 @@ export class DataShardService {
       wealth.transactions.push([transaction, reason]);
       await actor.update({ 'system.wealth': wealth });
 
-      // Mark as claimed on the journal page
-      await page.update({
-        [`flags.${MODULE_ID}.contentData.claimed`]: true,
-        [`flags.${MODULE_ID}.contentData.claimedBy`]: actor.id,
-        [`flags.${MODULE_ID}.contentData.claimedAt`]: new Date().toISOString(),
-      });
+      // Mark as claimed on the journal page. The shard journal is GM-owned
+      // (players are OBSERVER), so a direct page.update from a player throws —
+      // and the nested contentData.* dot-path write is the unreliable-flag
+      // gotcha anyway. persistContentData writes the whole contentData (GM
+      // direct, player via the CONTENT_UPDATE_REQUEST relay).
+      const { persistContentData } = await import('../ui/content/SiphonFlow.js');
+      await persistContentData(entryId, {
+        ...contentData, claimed: true, claimedBy: actor.id, claimedAt: new Date().toISOString(),
+      }, `NCM | ${actor.name} claimed ${amount.toLocaleString()} eb (${shardItem.name}).`);
 
       this.eventBus?.emit(EVENTS.SHARD_EDDIES_CLAIMED, {
         itemId: shardItem.id, entryId, actorId: actor.id, amount,

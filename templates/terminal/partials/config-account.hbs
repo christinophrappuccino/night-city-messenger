@@ -14,6 +14,18 @@
   </div>
 
   <div class="ncm-cfg-divider"></div>
+  <div class="ncm-cfg-section-header"><i class="fas fa-id-card ncm-cfg-section-icon" style="color:#ffcc00"></i><div class="ncm-cfg-section-title">Credential Badge</div></div>
+  <div class="ncm-cfg-desc">Shown on the ACCESS GRANTED card after this account logs in. Blank fields fall back to the terminal's identity/metadata.</div>
+  <div class="ncm-cfg-row"><span class="ncm-cfg-label">Role / title</span><input type="text" name="acctRole" class="ncm-cfg-input ncm-cfg-flex" value="{{role}}" placeholder="Executive · Floor 7F"></div>
+  <div class="ncm-cfg-row"><span class="ncm-cfg-label">Clearance</span><input type="text" name="acctClearance" class="ncm-cfg-input ncm-cfg-flex" value="{{clearance}}" placeholder="blank → ADMIN / STANDARD"></div>
+  <div class="ncm-cfg-row"><span class="ncm-cfg-label">Badge ID</span><input type="text" name="acctIdNumber" class="ncm-cfg-input ncm-cfg-flex" value="{{idNumber}}" placeholder="NC-8841-A · blank → email/username"></div>
+  <div class="ncm-cfg-row"><span class="ncm-cfg-label">Classification</span>
+    <select name="acctClassification" class="ncm-cfg-select ncm-cfg-flex">{{#each classificationOpts}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}</select>
+  </div>
+  <div class="ncm-cfg-row"><span class="ncm-cfg-label">Location</span><input type="text" name="acctLocation" class="ncm-cfg-input ncm-cfg-flex" value="{{location}}" placeholder="blank → terminal location"></div>
+  <div class="ncm-cfg-row"><span class="ncm-cfg-label">Last access</span><input type="text" name="acctLastLogin" class="ncm-cfg-input ncm-cfg-flex" value="{{lastLogin}}" placeholder="2077.06.11 · 04:12 — blank → FIRST LOGIN"></div>
+
+  <div class="ncm-cfg-divider"></div>
   <div class="ncm-cfg-section-header"><i class="fas fa-shield-halved ncm-cfg-section-icon" style="color:#ff0033"></i><div class="ncm-cfg-section-title">Security</div><label class="ncm-cfg-toggle-label"><input type="checkbox" name="secRequiresAuth" {{#if requiresAuth}}checked{{/if}}> Require login</label></div>
   <div class="ncm-cfg-desc">Off = open account (anyone can enter). On = must pass the enabled methods below.</div>
 

@@ -25,6 +25,8 @@ import { BaseApplication } from '../BaseApplication.js';
 import { MODULE_ID, TERMINAL_PRESETS, SOCKET_OPS } from '../../utils/constants.js';
 import { log, isGM, formatCyberDate } from '../../utils/helpers.js';
 import { getInitials } from '../../utils/designHelpers.js';
+import { enrichContent, toggleSecretReveal, applySyslogFilter } from '../content/ContentRenderers.js';
+import { runSiphon, runEddiesClaim, runCrack } from '../content/SiphonFlow.js';
 
 const PRIORITY_ICONS = { critical: 'fa-triangle-exclamation', urgent: 'fa-circle-exclamation', normal: 'fa-circle-info' };
 
@@ -58,6 +60,11 @@ export class TerminalViewerApp extends BaseApplication {
       terminalAddContact: action('_onAddContact'),
       terminalExfilInbox: action('_onExfilInbox'),
       terminalExfilShard: action('_onExfilShard'),
+      siphonFunds: action('_onSiphonFunds'),
+      claimEddies: action('_onClaimEddies'),
+      crackCred: action('_onCrackCred'),
+      credToggleSecret: action('_onCredToggleSecret'),
+      syslogFilter: action('_onSyslogFilter'),
       terminalPage: action('_onPage'),
       terminalConfigure: action('_onConfigure'),
       terminalNewMessage: action('_onNewMessage'),
@@ -120,12 +127,16 @@ export class TerminalViewerApp extends BaseApplication {
   async _prepareContext() {
     const cfg = this.terminalService?.getConfig(this.item) ?? {};
     const preset = cfg.theme?.preset || cfg.preset || 'arasaka-workstation';
+    const logo = this._resolveBootIcon(cfg, preset);
     const ctx = {
       preset,
       formFactor: cfg.formFactor || 'desktop',
       state: this._state,
       terminalName: this._terminalName(),
-      presetIcon: TERMINAL_PRESETS[preset]?.icon || 'fas fa-server',
+      // Login-hero logo — same 3-source resolution as the boot splash so a
+      // configured custom icon/image shows here too (and never an empty box).
+      presetIcon: logo.icon,
+      logoImage: logo.imageUrl,
       banner: cfg.boot?.banner || this._terminalName(),
     };
 
@@ -138,14 +149,7 @@ export class TerminalViewerApp extends BaseApplication {
     } else if (this._state === 'manual') {
       Object.assign(ctx, this._manualContext());
     } else if (this._state === 'granted') {
-      const acct = this.terminalService?.getAccount(this.item, this._accountId) || {};
-      ctx.account = {
-        displayName: acct.displayName || acct.username || 'user',
-        username: acct.username || '',
-        role: acct.role || (acct.isAdmin ? 'ADMINISTRATOR' : ''),
-        initials: getInitials(acct.displayName || acct.username || '?'),
-        portrait: this._accountPortrait(acct),
-      };
+      Object.assign(ctx, this._grantedContext(cfg));
     } else {
       Object.assign(ctx, await this._mailboxContext(cfg));
     }
@@ -156,17 +160,69 @@ export class TerminalViewerApp extends BaseApplication {
     return this.terminalService?.getConfig(this.item)?.terminalName || this.item?.name || 'Terminal';
   }
 
+  /**
+   * Resolve the terminal's icon from its boot config → { icon, imageUrl }.
+   * Source: 'preset' (theme icon) | 'fa' (custom FA class) | 'image' (logo).
+   * Legacy configs with only faIcon set imply 'fa'. Shared by the boot splash
+   * and the login hero so both show the same (never-empty) icon.
+   */
+  _resolveBootIcon(cfg, preset) {
+    const boot = cfg.boot || {};
+    const mode = boot.iconMode || (boot.faIcon ? 'fa' : 'preset');
+    return {
+      icon: (mode === 'fa' && boot.faIcon) ? boot.faIcon : (TERMINAL_PRESETS[preset]?.icon || 'fas fa-server'),
+      imageUrl: (mode === 'image' && boot.imageUrl) ? boot.imageUrl : null,
+    };
+  }
+
+  /**
+   * The boot splash view-model. Returned OBJECT is assigned to `ctx.boot`
+   * directly (`ctx.boot = this._bootContext(...)`), so it must be the boot
+   * fields themselves — NOT wrapped in `{ boot: … }`. (It previously returned
+   * `{ boot: {…} }`, double-nesting to `ctx.boot.boot`, so the template's
+   * `{{boot.icon}}`/`{{boot.title}}` were undefined → blank icon square + no
+   * text on the boot screen.)
+   */
   _bootContext(cfg, preset) {
     const boot = cfg.boot || {};
+    const logo = this._resolveBootIcon(cfg, preset);
     return {
-      boot: {
-        icon: TERMINAL_PRESETS[preset]?.icon || 'fas fa-server',
-        title: boot.title || this._terminalName(),
-        subtitle: boot.subtitle || '',
-        progressLabel: 'Establishing secure session...',
-        animationStyle: boot.animationStyle || 'standard-fade',
-        speed: boot.speed || 'normal',
-        logLines: Array.isArray(boot.logLines) ? boot.logLines : [],
+      icon: logo.icon,
+      imageUrl: logo.imageUrl,
+      title: boot.title || this._terminalName(),
+      subtitle: boot.subtitle || '',
+      progressLabel: boot.progressLabel || 'Establishing secure session...',
+      animationStyle: boot.animationStyle || 'standard-fade',
+      speed: boot.speed || 'normal',
+      logLines: Array.isArray(boot.logLines) ? boot.logLines : [],
+    };
+  }
+
+  /**
+   * ACCESS GRANTED view-model — the "credential badge" design. Pulls the
+   * operator identity from the logged-in account and the org/classification
+   * from the terminal metadata; derives a clearance label from admin status.
+   */
+  _grantedContext(cfg) {
+    const acct = this.terminalService?.getAccount(this.item, this._accountId) || {};
+    const meta = cfg.metadata || {};
+    const name = acct.displayName || acct.username || 'user';
+    return {
+      account: {
+        displayName: name,
+        username: acct.username || '',
+        role: acct.role || (acct.isAdmin ? 'ADMINISTRATOR' : 'OPERATOR'),
+        initials: getInitials(name),
+        portrait: this._accountPortrait(acct),
+      },
+      badge: {
+        org: meta.org || this._terminalName(),
+        // Per-account classification wins; else the terminal's; else RESTRICTED.
+        classification: (acct.classification || meta.classification || 'RESTRICTED').toUpperCase(),
+        idLabel: acct.idNumber || acct.email || acct.username || '—',
+        clearance: (acct.clearance || (acct.isAdmin ? 'ADMIN' : 'STANDARD')).toUpperCase(),
+        location: acct.location || meta.location || '',
+        lastLogin: acct.lastLogin || 'FIRST LOGIN',
       },
     };
   }
@@ -352,6 +408,26 @@ export class TerminalViewerApp extends BaseApplication {
     const senderName = this._resolveSenderName(msg);
     const contact = this._findContactByEmail(msg.from);
     const priority = msg.priority || 'normal';
+
+    // Typed content (design doc §8c) — a terminal message can be a
+    // spreadsheet/calendar/syslog/… not just plain mail. When contentType is
+    // set, hand the entry to the SHARED content-body partial via the registry;
+    // exfil is read-only here, so actions stay passive (interactive:false).
+    const contentType = msg.contentType || msg.metadata?.contentType || null;
+    const isTypedContent = !!contentType && contentType !== 'message';
+    let content = null;
+    if (isTypedContent) {
+      content = enrichContent({
+        id: msg.messageId,
+        contentType,
+        contentData: msg.contentData || msg.metadata?.contentData || {},
+        subject: msg.subject,
+        from: msg.from,
+        body: msg.body,
+        timestamp: msg.timestamp,
+      }, { isGM: isGM(), interactive: false });
+    }
+
     return {
       messageId: msg.messageId,
       subject: msg.subject || '(no subject)',
@@ -369,6 +445,8 @@ export class TerminalViewerApp extends BaseApplication {
       priorityLabel: priority.toUpperCase(),
       priorityIcon: PRIORITY_ICONS[priority] || PRIORITY_ICONS.normal,
       network: this.networkService?.getNetwork?.(msg.network)?.name || msg.network || 'CITINET',
+      isTypedContent,
+      content,
       bodyHtml: this._sanitizeBody(msg.body || ''),
     };
   }
@@ -377,16 +455,44 @@ export class TerminalViewerApp extends BaseApplication {
   //  Render — boot animation + window title + switcher outside-click
   // ═══════════════════════════════════════════════════════════
 
+  /** @override — capture pane scroll before the re-render tears down the DOM. */
+  async _preRender(context, options) {
+    await super._preRender(context, options);
+    const el = this.element;
+    if (!el) return;
+    this._scrollMemo = {
+      side: el.querySelector('.ncm-term__side')?.scrollTop ?? 0,
+      detail: el.querySelector('.ncm-term__detail')?.scrollTop ?? 0,
+      msgId: this._renderedMsgId ?? null,
+    };
+  }
+
   /** @override */
   _onRender(context, options) {
     super._onRender(context, options);
     // Theme the window by preset (CSS palette fallback; full theming later).
     this.element?.querySelector('.ncm-terminal-viewer')?.setAttribute('data-terminal-preset', context.preset);
     this._syncWindowTitle(context);
+    // Restore pane scroll — every action re-renders, and without this each
+    // click snapped both panes back to the top. The detail pane only restores
+    // when the same message is still open (a new message starts at the top).
+    const memo = this._scrollMemo;
+    if (memo) {
+      const side = this.element?.querySelector('.ncm-term__side');
+      if (side && memo.side) side.scrollTop = memo.side;
+      if (memo.detail && memo.msgId && memo.msgId === this._selectedMessageId) {
+        const det = this.element?.querySelector('.ncm-term__detail');
+        if (det) det.scrollTop = memo.detail;
+      }
+    }
+    this._renderedMsgId = this._selectedMessageId;
     if (this._state === 'boot') this._playBoot();
     if (this._state === 'granted' && !this._grantedPlayed) {
       this._grantedPlayed = true;
-      this._timer(() => { this._grantedPlayed = false; this._enterState('mailbox'); }, 1500);
+      this.soundService?.play?.('login-success');
+      // Hold for the full sequence: fields write-in + verify → bar fills →
+      // VALIDATED stamp (~2.0s) → ACCESS GRANTED (~2.35s) → brief beat.
+      this._timer(() => { this._grantedPlayed = false; this._enterState('mailbox'); }, 3000);
     }
     // Enter-to-submit in the auth console.
     if (this._state === 'manual') {
@@ -620,24 +726,34 @@ export class TerminalViewerApp extends BaseApplication {
     new TerminalConfigApp({ item: this.item }).render(true);
   }
 
-  async _onNewMessage() {
+  /** New message — opens the shared content composer (all content types). */
+  _onNewMessage() {
     if (!isGM() || !this._accountId) return;
-    const data = await this._messageDialog(null);
-    if (!data) return;
-    const { classification, ...rest } = data;
-    await this.terminalService.addAccountMessage(this.item, this._accountId, { ...rest, metadata: classification ? { classification } : {} });
-    this.render(false);
+    import('../ItemInbox/DataShardComposer.js').then(({ DataShardComposer }) => {
+      new DataShardComposer({
+        target: { kind: 'terminal', item: this.item, accountId: this._accountId },
+        onSave: () => this.render(false),
+      }).render(true);
+    });
   }
 
-  async _onEditMessage(event, target) {
+  /** Edit message — loads the entry into the shared content composer. */
+  _onEditMessage(event, target) {
     if (!isGM()) return;
     const id = target?.dataset?.messageId || this._selectedMessageId;
     const raw = (this.terminalService?.getAccountMessages(this.item, this._accountId) || []).find(m => m.messageId === id);
     if (!raw) return;
-    const data = await this._messageDialog(raw);
-    if (!data) return;
-    await this.terminalService.updateAccountMessage(this.item, id, data);
-    this.render(false);
+    const editData = {
+      entryId: id, contentType: raw.contentType || 'message',
+      from: raw.from || '', subject: raw.subject || '', body: raw.body || '',
+      timestamp: raw.timestamp || '', contentData: raw.contentData ?? {},
+    };
+    import('../ItemInbox/DataShardComposer.js').then(({ DataShardComposer }) => {
+      new DataShardComposer({
+        target: { kind: 'terminal', item: this.item, accountId: this._accountId },
+        editData, onSave: () => this.render(false),
+      }).render(true);
+    });
   }
 
   async _onDeleteMessage(event, target) {
@@ -716,16 +832,64 @@ export class TerminalViewerApp extends BaseApplication {
     if (!msg) return;
     const targetId = await this._pickOwnedCharacter();
     if (!targetId) return;
+    const fxDone = this._playExfilFx('download', msg.subject || 'file');
     if (isGM()) {
       const res = await this.terminalService.exfilToInbox(this.item, this._accountId, [msg.messageId], targetId);
       const who = game.actors?.get(targetId)?.name || 'inbox';
+      await fxDone;
       if (res.success) ui.notifications.info(`Copied to ${who}'s Agent (Recovered).`);
       else ui.notifications.warn(res.error || 'Exfil failed.');
     } else {
       // Player can't write the GM-owned inbox journal — relay to the GM.
       this._relayExfil({ dest: 'inbox', messageIds: [msg.messageId], targetActorId: targetId });
+      await fxDone;
       ui.notifications.info('Download requested — check your Recovered folder.');
     }
+  }
+
+  /**
+   * Immersive exfil overlay — 'download' (terminal → Agent packet stream) or
+   * 'burn' (laser-etching the file onto a shard). Purely cosmetic; resolves
+   * when the choreography finishes (~2.2s, instant-ish under reduced motion).
+   */
+  _playExfilFx(kind, label = '') {
+    const host = this.element?.querySelector('.ncm-terminal-viewer');
+    if (!host) return Promise.resolve();
+    host.querySelector('.ncm-term__fx')?.remove();
+    const esc = Handlebars.escapeExpression;
+    const reduced = !!window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+    const isBurn = kind === 'burn';
+    const fx = document.createElement('div');
+    fx.className = `ncm-term__fx ncm-term__fx--${kind}`;
+    fx.innerHTML = isBurn ? `
+      <div class="ncm-term__fx-box">
+        <div class="ncm-term__fx-chip"><i class="fas fa-microchip"></i><span class="ncm-term__fx-laser"></span>
+          <span class="ncm-term__fx-spark"></span><span class="ncm-term__fx-spark"></span><span class="ncm-term__fx-spark"></span><span class="ncm-term__fx-spark"></span></div>
+        <div class="ncm-term__fx-label">BURNING // <span>${esc(label)}</span></div>
+        <div class="ncm-term__fx-track"><i></i></div>
+        <div class="ncm-term__fx-done"><i class="fas fa-circle-check"></i> BURN COMPLETE</div>
+      </div>` : `
+      <div class="ncm-term__fx-box">
+        <div class="ncm-term__fx-nodes">
+          <span class="ncm-term__fx-node"><i class="fas fa-server"></i></span>
+          <span class="ncm-term__fx-stream"><b></b><b></b><b></b><b></b><b></b><b></b></span>
+          <span class="ncm-term__fx-node ncm-term__fx-node--dst"><i class="fas fa-mobile-screen-button"></i></span>
+        </div>
+        <div class="ncm-term__fx-label">DOWNLOADING // <span>${esc(label)}</span></div>
+        <div class="ncm-term__fx-track"><i></i></div>
+        <div class="ncm-term__fx-done"><i class="fas fa-circle-check"></i> SAVED TO RECOVERED</div>
+      </div>`;
+    host.appendChild(fx);
+    this.soundService?.play?.(isBurn ? 'shard-compile' : 'send');
+    const climax = reduced ? 150 : 1500;
+    return new Promise((resolve) => {
+      this._timer(() => {
+        fx.classList.add('is-done');
+        this.soundService?.play?.(isBurn ? 'shard-insert' : 'receive');
+      }, climax);
+      this._timer(() => fx.classList.add('is-out'), climax + 700);
+      this._timer(() => { fx.remove(); resolve(); }, climax + 1100);
+    });
   }
 
   /** Pick which owned character's Agent inbox to download into. */
@@ -750,33 +914,33 @@ export class TerminalViewerApp extends BaseApplication {
     return picked;
   }
 
+  /** CPR item types that can't physically carry a shard (sheet abstractions,
+   *  not objects) — previously the picker listed EVERY actor item, so a CPR
+   *  character's dozens of skill items drowned out (and, past the old 50-item
+   *  cap, entirely hid) the real gear. */
+  static NON_CARRIER_TYPES = ['skill', 'role', 'criticalInjury', 'netarch'];
+
   async _onExfilShard() {
     const msg = this._currentSelectedRaw();
     if (!msg) return;
     // Players pick from their OWN inventory; GMs can also target world items.
-    const candidates = [...(this.actor?.items ?? []), ...(isGM() ? game.items.contents : [])].filter(Boolean);
+    const carrier = (i) => i && !TerminalViewerApp.NON_CARRIER_TYPES.includes(i.type);
+    const owned = [...(this.actor?.items ?? [])].filter(carrier);
+    const world = isGM() ? game.items.contents.filter(carrier) : [];
+    const candidates = [...owned, ...world];
     if (!candidates.length) return ui.notifications.warn('No item to burn onto.');
-    const options = candidates.slice(0, 50).map(i => `<option value="${i.id}">${Handlebars.escapeExpression(i.name)}</option>`).join('');
-    let pickedId = null;
-    await new Promise((resolve) => {
-      new Dialog({
-        title: 'Burn to Data Shard',
-        content: `<p>Pick an item to burn this message onto:</p><select style="width:100%">${options}</select>`,
-        buttons: {
-          burn: { label: 'Burn', callback: (html) => { pickedId = html.find('select').val(); } },
-          cancel: { label: 'Cancel' },
-        },
-        default: 'burn', close: () => resolve(),
-      }).render(true);
-    });
+    const pickedId = await this._pickBurnTarget(owned, world);
     if (!pickedId) return;
     const target = candidates.find(i => i.id === pickedId);
+    const fxDone = this._playExfilFx('burn', target.name);
     if (!isGM()) {
       // Player can't convert/write the GM-owned shard journal — relay to the GM.
       this._relayExfil({ dest: 'shard', messageIds: [msg.messageId], targetItemId: pickedId });
+      await fxDone;
       return ui.notifications.info(`Burn requested for "${target.name}".`);
     }
     const res = await this.terminalService.exfilToShard(this.item, this._accountId, [msg.messageId], target);
+    await fxDone;
     if (res.success) {
       ui.notifications.info(`Burned to "${target.name}".`);
       // Refresh the directory/sheets so a just-converted shard shows its badge now.
@@ -791,6 +955,76 @@ export class TerminalViewerApp extends BaseApplication {
     }
   }
 
+  /**
+   * Burn-target picker: searchable, sorted item list (existing shards first,
+   * then A→Z; GM world items tagged WORLD after the inventory). Resolves the
+   * picked item id or null.
+   */
+  _pickBurnTarget(owned, world) {
+    const esc = (s) => Handlebars.escapeExpression(String(s ?? ''));
+    const sort = (a, b) => {
+      const as = !!a.flags?.[MODULE_ID]?.isDataShard, bs = !!b.flags?.[MODULE_ID]?.isDataShard;
+      if (as !== bs) return as ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    };
+    const rowHtml = (i, source) => {
+      const isShard = !!i.flags?.[MODULE_ID]?.isDataShard;
+      return `<div class="ncm-burn-row${isShard ? ' is-shard' : ''}" data-item-id="${i.id}" data-search="${esc(i.name.toLowerCase())} ${esc(i.type)}">
+        <img src="${esc(i.img || 'icons/svg/item-bag.svg')}" alt="">
+        <span class="ncm-burn-name">${esc(i.name)}</span>
+        ${isShard ? '<span class="ncm-burn-tag ncm-burn-tag--shard"><i class="fas fa-microchip"></i> SHARD</span>' : ''}
+        ${source === 'world' ? '<span class="ncm-burn-tag">WORLD</span>' : ''}
+        <span class="ncm-burn-type">${esc(i.type)}</span>
+      </div>`;
+    };
+    const rows = [
+      ...[...owned].sort(sort).map(i => rowHtml(i, 'own')),
+      ...[...world].sort(sort).map(i => rowHtml(i, 'world')),
+    ].join('');
+    const content = `
+      <div class="ncm-burn-pick">
+        <p class="ncm-burn-hint">Pick the item to burn this file onto. Burning onto an item that isn't a shard converts it.</p>
+        <input type="text" class="ncm-burn-search" placeholder="Search items..." autocomplete="off">
+        <div class="ncm-burn-list">${rows}</div>
+      </div>`;
+
+    let pickedId = null;
+    return new Promise((resolve) => {
+      new Dialog({
+        title: 'Burn to Data Shard',
+        content,
+        render: (html) => {
+          const root = html[0] ?? html;
+          const search = root.querySelector('.ncm-burn-search');
+          const list = root.querySelector('.ncm-burn-list');
+          search?.addEventListener('input', () => {
+            const q = search.value.trim().toLowerCase();
+            list.querySelectorAll('.ncm-burn-row').forEach(r => {
+              r.style.display = !q || r.dataset.search.includes(q) ? '' : 'none';
+            });
+          });
+          list?.addEventListener('click', (e) => {
+            const row = e.target.closest('.ncm-burn-row');
+            if (!row) return;
+            list.querySelectorAll('.ncm-burn-row.is-selected').forEach(r => r.classList.remove('is-selected'));
+            row.classList.add('is-selected');
+            pickedId = row.dataset.itemId;
+          });
+          search?.focus();
+        },
+        buttons: {
+          burn: {
+            icon: '<i class="fas fa-fire"></i>', label: 'Burn',
+            callback: () => { if (!pickedId) ui.notifications.warn('Pick an item first.'); },
+          },
+          cancel: { label: 'Cancel', callback: () => { pickedId = null; } },
+        },
+        default: 'burn',
+        close: () => resolve(pickedId),
+      }, { classes: ['dialog', 'ncm-burn-dialog'], width: 420 }).render(true);
+    });
+  }
+
   /** Send an exfil request to the GM client (player relay). */
   _relayExfil({ dest, messageIds, targetActorId, targetItemId }) {
     game.nightcity?.socketManager?.emit?.(SOCKET_OPS.TERMINAL_EXFIL_REQUEST, {
@@ -801,6 +1035,53 @@ export class TerminalViewerApp extends BaseApplication {
       messageIds, dest, targetActorId, targetItemId,
     });
   }
+
+  /** Banking content — siphon funds (shared flow; see SiphonFlow.js). */
+  async _onSiphonFunds(event, target) {
+    const actor = game.user?.character;
+    if (!actor) { ui.notifications.warn('NCM | No character assigned.'); return; }
+    const id = target?.closest?.('[data-entry-id]')?.dataset.entryId || this._selectedMessageId;
+    const raw = (this.terminalService?.getAccountMessages(this.item, this._accountId) || []).find(m => m.messageId === id);
+    if (!raw || raw.contentType !== 'banking') return;
+    await runSiphon({ actor, raw: raw.contentData, itemUuid: this.item?.uuid, messageId: id });
+    this.render(false);
+  }
+
+  /** Eddies content — claim into a character's wealth (shared flow). */
+  async _onClaimEddies(event, target) {
+    const id = target?.closest?.('[data-entry-id]')?.dataset.entryId || this._selectedMessageId;
+    const raw = (this.terminalService?.getAccountMessages(this.item, this._accountId) || []).find(m => m.messageId === id);
+    if (!raw || raw.contentType !== 'eddies') return;
+    let actor = game.user?.character;
+    if (!actor) {
+      const pickedId = await this._pickOwnedCharacter();
+      actor = pickedId ? game.actors?.get(pickedId) : null;
+    }
+    if (!actor) return;
+    const res = await runEddiesClaim({
+      actor, raw: raw.contentData, messageId: id,
+      sourceLabel: this._terminalName?.() || this.item?.name || 'terminal',
+    });
+    if (res?.success) this.render(false);
+  }
+
+  /** Credentials content — crack a locked entry (shared flow). GM without an
+   *  assigned character force-reveals, mirroring the anon-trace precedent. */
+  async _onCrackCred(event, target) {
+    const id = target?.closest?.('[data-entry-id]')?.dataset.entryId || this._selectedMessageId;
+    const idx = Number(target?.dataset?.credIndex);
+    const raw = (this.terminalService?.getAccountMessages(this.item, this._accountId) || []).find(m => m.messageId === id);
+    if (!raw || raw.contentType !== 'credentials' || Number.isNaN(idx)) return;
+    const actor = game.user?.character;
+    const ok = await runCrack({ actor, raw: raw.contentData, entryIndex: idx, messageId: id, force: isGM() && !actor });
+    if (ok) this.render(false);
+  }
+
+  /** Credentials — show/hide a secret (client-side only). */
+  _onCredToggleSecret(event, target) { toggleSecretReveal(target); }
+
+  /** Syslog — severity filter chips (client-side only). */
+  _onSyslogFilter(event, target) { applySyslogFilter(target); }
 
   // ═══════════════════════════════════════════════════════════
   //  Helpers

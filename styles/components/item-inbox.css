@@ -1673,3 +1673,138 @@
   background: rgba(25, 243, 247, 0.08) !important;
   box-shadow: 0 0 6px rgba(25, 243, 247, 0.15);
 }
+
+/* ── Content Composer: two-pane shell + live preview + repeatable list rows ── */
+.ncm-app .ncm-composer-shell { display: flex; align-items: stretch; height: 100%; }
+.ncm-app .ncm-composer-shell > .ncm-shard-composer { flex: 1; min-width: 0; overflow-y: auto; overflow-x: hidden; }
+.ncm-app .ncm-composer-preview {
+  width: 320px; flex: 0 0 320px; border-left: 1px solid var(--ncm-border);
+  background: var(--ncm-bg-deep); padding: 12px; overflow-y: auto; overflow-x: hidden;
+}
+.ncm-app .ncm-composer-preview-label {
+  font-family: var(--ncm-font-mono); font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase;
+  color: var(--ncm-text-muted); margin-bottom: 10px; display: flex; align-items: center; gap: 6px;
+}
+.ncm-app .ncm-composer-preview-label i { color: var(--ncm-secondary); }
+.ncm-app .ncm-composer-preview-body { font-size: 12px; }
+.ncm-app .ncm-cl-list { display: flex; flex-direction: column; gap: 6px; }
+.ncm-app .ncm-cl-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+/* Forced line break inside a repeatable row (schema `{ brk:true }`) */
+.ncm-app .ncm-cl-brk { flex-basis: 100%; height: 0; }
+.ncm-app .ncm-cl-check {
+  display: inline-flex; align-items: center; gap: 4px; flex: 0 0 auto; white-space: nowrap;
+  font-family: var(--ncm-font-mono); font-size: 9px; color: var(--ncm-text-muted);
+}
+/* Real <button> — needs the full Foundry/CPR override treatment (!important
+   visuals like .ncm-shard-btn) or it renders as the native full-width button. */
+.ncm-app .ncm-cl-add {
+  margin: 7px 0 0 !important; padding: 5px 10px !important;
+  font-family: var(--ncm-font-mono) !important; font-size: 9.5px !important; letter-spacing: .5px !important;
+  color: var(--ncm-secondary) !important;
+  background: color-mix(in srgb, var(--ncm-secondary) 10%, transparent) !important;
+  border: 1px dashed color-mix(in srgb, var(--ncm-secondary) 45%, transparent) !important;
+  border-radius: 4px !important; cursor: pointer !important;
+  appearance: none !important; -webkit-appearance: none !important; box-shadow: none !important;
+  width: auto !important; flex: 0 0 auto !important; align-self: flex-start !important;
+  min-height: 0 !important; height: auto !important; line-height: 1.3 !important;
+  display: inline-flex !important; align-items: center !important;
+}
+.ncm-app .ncm-cl-add:hover { border-color: var(--ncm-secondary) !important; }
+.ncm-app .ncm-cl-add i { margin-right: 5px; }
+
+/* ── Composer per-type intro / walkthrough banner (§12b self-explanatory) ── */
+.ncm-app .ncm-composer-intro {
+  display: flex; gap: 9px; align-items: flex-start; margin-top: 10px;
+  padding: 9px 11px; border-radius: 5px;
+  border: 1px solid color-mix(in srgb, var(--ncm-secondary) 35%, transparent);
+  border-left: 3px solid var(--ncm-secondary);
+  background: color-mix(in srgb, var(--ncm-secondary) 8%, transparent);
+}
+.ncm-app .ncm-composer-intro__icon { color: var(--ncm-secondary); font-size: 13px; margin-top: 1px; flex: 0 0 auto; }
+.ncm-app .ncm-composer-intro__what {
+  font-family: var(--ncm-font-display); font-size: 12.5px; font-weight: 600; color: var(--ncm-text-primary); line-height: 1.35;
+}
+.ncm-app .ncm-composer-intro__how {
+  font-family: var(--ncm-font-body); font-size: 11px; color: var(--ncm-text-secondary); margin-top: 3px; line-height: 1.4;
+}
+.ncm-app .ncm-composer-intro__how b { color: var(--ncm-secondary); font-weight: 600; }
+
+/* ═══ Spreadsheet grid editor (composer) ═══ */
+.ncm-app .ncm-ss-toolbar {
+  display: flex; align-items: center; gap: 5px; flex-wrap: wrap;
+  padding: 6px 8px; margin-bottom: 8px; border-radius: 6px;
+  background: var(--ncm-bg-surface); border: 1px solid var(--ncm-border);
+}
+/* Foundry <button> reset for the toolbar + mini grid buttons. Visuals need
+   !important (Foundry + CPR style buttons aggressively — the shard-btn rule). */
+.ncm-app button.ncm-ss-tb, .ncm-app button.ncm-ss-dot, .ncm-app button.ncm-ss-mini {
+  appearance: none !important; -webkit-appearance: none !important; box-shadow: none !important;
+  min-height: 0 !important; margin: 0 !important;
+  padding: 0 !important; width: auto !important; flex: 0 0 auto !important;
+  line-height: 1 !important; cursor: pointer !important;
+}
+.ncm-app button.ncm-ss-tb {
+  width: 24px !important; height: 22px !important; border-radius: 4px !important; font-size: 10px !important;
+  display: inline-grid !important; place-items: center !important;
+  background: var(--ncm-bg-elevated) !important; border: 1px solid var(--ncm-border) !important;
+  color: var(--ncm-text-secondary) !important;
+}
+.ncm-app button.ncm-ss-tb:hover { color: var(--ncm-secondary) !important; border-color: var(--ncm-secondary) !important; }
+.ncm-app .ncm-ss-tlbl { font-family: var(--ncm-font-mono); font-size: 8px; letter-spacing: 1px; text-transform: uppercase; color: var(--ncm-text-muted); }
+.ncm-app .ncm-ss-tsep { width: 1px; height: 16px; background: var(--ncm-border); margin: 0 2px; }
+.ncm-app .ncm-ss-dots { display: inline-flex; gap: 3px; }
+/* The fill-swatch background comes from ncm-ct-bg--x (content-types.css) —
+   equal specificity + !important, but that file imports LATER so it wins the
+   tie over this default. Don't reorder the @imports. */
+.ncm-app button.ncm-ss-dot {
+  width: 16px !important; height: 16px !important; border-radius: 3px !important; font-size: 8px !important;
+  display: inline-grid !important; place-items: center !important;
+  background: var(--ncm-bg-deep) !important; border: 1px solid var(--ncm-border) !important;
+}
+.ncm-app button.ncm-ss-dot:hover { border-color: var(--ncm-text-secondary) !important; }
+.ncm-app .ncm-ss-reason { flex: 1; min-width: 90px; font-size: 10px !important; padding: 3px 6px !important; }
+
+.ncm-app .ncm-ss-gridwrap { max-height: 300px; overflow-y: auto; overflow-x: auto; border: 1px solid var(--ncm-border); border-radius: 6px; }
+.ncm-app .ncm-ss-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.ncm-app .ncm-ss-table th, .ncm-app .ncm-ss-table td { border: 1px solid var(--ncm-border); padding: 0; }
+.ncm-app .ncm-ss-colh { background: var(--ncm-bg-elevated); padding: 4px !important; min-width: 76px; vertical-align: top; }
+.ncm-app .ncm-ss-collbl {
+  width: 100%; border: none !important; background: transparent !important; box-shadow: none !important;
+  font-family: var(--ncm-font-mono); font-size: 10px; font-weight: 700; letter-spacing: .5px;
+  color: var(--ncm-text-primary); padding: 2px 3px; min-height: 0; height: auto;
+}
+.ncm-app .ncm-ss-colops { display: flex; align-items: center; gap: 3px; margin-top: 3px; }
+.ncm-app .ncm-ss-coltype {
+  flex: 1; min-width: 0; font-family: var(--ncm-font-mono); font-size: 9px !important;
+  padding: 1px 2px !important; min-height: 0 !important; height: auto !important;
+  background-color: var(--ncm-bg-deep) !important; color: var(--ncm-text-muted) !important;
+  border: 1px solid var(--ncm-border) !important;
+}
+.ncm-app button.ncm-ss-mini {
+  width: 16px !important; height: 16px !important; border-radius: 3px !important; font-size: 8px !important;
+  display: inline-grid !important; place-items: center !important;
+  background: transparent !important; border: 1px solid var(--ncm-border) !important;
+  color: var(--ncm-text-muted) !important;
+}
+.ncm-app button.ncm-ss-mini:hover { color: var(--ncm-danger) !important; border-color: var(--ncm-danger) !important; }
+.ncm-app th.ncm-ss-addc, .ncm-app td.ncm-ss-addc { border: none !important; background: transparent; padding: 2px !important; width: 22px; }
+.ncm-app th.ncm-ss-addc button.ncm-ss-mini:hover { color: var(--ncm-success); border-color: var(--ncm-success); }
+.ncm-app .ncm-ss-gut {
+  width: 34px; text-align: center; font-family: var(--ncm-font-mono); font-size: 9px;
+  color: var(--ncm-text-muted); background: var(--ncm-bg-elevated); position: relative; padding: 4px 2px !important;
+}
+.ncm-app td.ncm-ss-gut .ncm-ss-rowdel { position: absolute; right: 1px; top: 50%; transform: translateY(-50%); opacity: 0; }
+.ncm-app .ncm-ss-table tbody tr:hover .ncm-ss-rowdel { opacity: 1; }
+.ncm-app .ncm-ss-cell input {
+  width: 100%; border: none !important; background: transparent !important; box-shadow: none !important;
+  color: inherit; font-family: var(--ncm-font-mono); font-size: 11px;
+  padding: 4px 6px; min-height: 0; height: auto;
+}
+.ncm-app .ncm-ss-cell.is-active { outline: 2px solid var(--ncm-secondary); outline-offset: -2px; }
+.ncm-app .ncm-ss-cell.is-bold input { font-weight: 700; }
+.ncm-app .ncm-ss-cell.is-flag { box-shadow: inset 0 0 0 1px var(--ncm-warning); }
+.ncm-app .ncm-ss-cell.is-flag input { color: var(--ncm-warning); }
+.ncm-app .ncm-ss-cell.is-redact {
+  background: repeating-linear-gradient(45deg, #060608, #060608 4px, #141418 4px, #141418 8px) !important;
+}
+.ncm-app .ncm-ss-cell.is-redact input { color: var(--ncm-text-muted); opacity: .55; }
