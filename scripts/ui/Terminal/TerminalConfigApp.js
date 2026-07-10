@@ -11,8 +11,8 @@
  */
 
 import { BaseApplication } from '../BaseApplication.js';
-import { MODULE_ID, TERMINAL_PRESETS, FONT_OPTIONS, DEFAULTS, SKILL_MAP } from '../../utils/constants.js';
-import { log, isGM, generateId, formatCyberDate } from '../../utils/helpers.js';
+import { MODULE_ID, TERMINAL_PRESETS, FONT_OPTIONS, DEFAULTS, SKILL_MAP, COLOR_VAR_MAP, TERMINAL_LOGIN_STYLES, TERMINAL_ICON_LIBRARY, BOOT_FLAVOR_LINES, BOOT_ANIMATIONS } from '../../utils/constants.js';
+import { log, isGM, generateId, formatCyberDate, buildTerminalThemePrefs } from '../../utils/helpers.js';
 
 /** Clearance presets offered as one-click chips; anything else is "custom". */
 const CLEARANCE_PRESETS = ['STANDARD', 'ADMIN', 'GUEST', 'SYSOP'];
@@ -25,6 +25,28 @@ export class TerminalConfigApp extends BaseApplication {
   _activeTab = 'identity';
   _editingAccountId = null;   // account id | 'new' | null
   _editorLink = null;         // pending identity pick: { masterContactId, actorId } | null (= use stored)
+  /**
+   * Working copy of cfg.theme (ThemeCustomizer's _workingPrefs pattern).
+   * null = untouched (context reads the saved theme). Theme controls mutate
+   * this via manual listeners — no re-render, so edits survive tab switches —
+   * and live-preview onto the in-sheet preview + any open viewer. Save
+   * persists it; closing without saving reverts the previewed viewers.
+   */
+  _themeDraft = null;
+  /**
+   * Staged preset KIT (a TERMINAL_PRESETS key) — set when a preset card is
+   * clicked. The palette rides _themeDraft; the kit overlays the Boot & Login
+   * tab's context (boot fields + login style) so the WHOLE machine previews
+   * the preset, and Save picks it all up from the DOM inputs. Accounts seed
+   * at save when the terminal has none. Cleared on save/close/"palette only".
+   */
+  _presetKit = null;
+  // Accounts tab list controls (search / sort / pagination — 10 per page).
+  _acctSearch = '';
+  _acctSort = 'name';
+  _acctPage = 1;
+  _acctSearchRefocus = false;
+  static ACCT_PAGE_SIZE = 10;
 
   get terminalService() { return game.nightcity?.terminalService; }
   get networkService() { return game.nightcity?.networkService; }
@@ -37,8 +59,17 @@ export class TerminalConfigApp extends BaseApplication {
     actions: {
       switchTab: TerminalConfigApp._onSwitchTab,
       saveConfig: TerminalConfigApp._onSaveConfig,
-      applyPreset: TerminalConfigApp._onApplyPreset,
+      clearPresetKit: TerminalConfigApp._onClearPresetKit,
+      selectTermPreset: TerminalConfigApp._onSelectTermPreset,
+      resetTermColors: TerminalConfigApp._onResetTermColors,
+      saveTermTheme: TerminalConfigApp._onSaveTermTheme,
+      applyTermTheme: TerminalConfigApp._onApplyTermTheme,
+      overwriteTermTheme: TerminalConfigApp._onOverwriteTermTheme,
+      deleteTermTheme: TerminalConfigApp._onDeleteTermTheme,
+      exportTermTheme: TerminalConfigApp._onExportTermTheme,
+      importTermTheme: TerminalConfigApp._onImportTermTheme,
       addAccount: TerminalConfigApp._onAddAccount,
+      acctPage: TerminalConfigApp._onAcctPage,
       editAccount: TerminalConfigApp._onEditAccount,
       cancelAccount: TerminalConfigApp._onCancelAccount,
       saveAccount: TerminalConfigApp._onSaveAccount,
@@ -50,6 +81,15 @@ export class TerminalConfigApp extends BaseApplication {
       exportConfig: TerminalConfigApp._onExportConfig,
       importConfig: TerminalConfigApp._onImportConfig,
       browseBootImage: TerminalConfigApp._onBrowseBootImage,
+      browseWallpaper: TerminalConfigApp._onBrowseWallpaper,
+      generateBootLines: TerminalConfigApp._onGenerateBootLines,
+      browseSsImage: TerminalConfigApp._onBrowseSsImage,
+      saveFullPreset: TerminalConfigApp._onSaveFullPreset,
+      applyFullPreset: TerminalConfigApp._onApplyFullPreset,
+      overwriteFullPreset: TerminalConfigApp._onOverwriteFullPreset,
+      deleteFullPreset: TerminalConfigApp._onDeleteFullPreset,
+      exportFullPreset: TerminalConfigApp._onExportFullPreset,
+      importFullPreset: TerminalConfigApp._onImportFullPreset,
       browseAcctPortrait: TerminalConfigApp._onBrowseAcctPortrait,
       unlinkIdentity: TerminalConfigApp._onUnlinkIdentity,
       generatePassword: TerminalConfigApp._onGeneratePassword,
@@ -73,25 +113,118 @@ export class TerminalConfigApp extends BaseApplication {
   async _prepareContext() {
     const cfg = this.terminalService?.getConfig(this.item) ?? foundry.utils.deepClone(DEFAULTS.TERMINAL_CONFIG);
     const state = this.terminalService?.getState(this.item) ?? {};
-    const presetKey = cfg.theme?.preset || 'arasaka-workstation';
+    // Theme values render from the DRAFT when one exists (unsaved edits
+    // survive tab-switch re-renders), else the saved theme.
+    const theme = this._themeDraft ?? (cfg.theme || {});
+    const presetKey = theme.preset || 'classic';
 
-    const presets = Object.entries(TERMINAL_PRESETS).map(([key, p]) => ({
-      key, label: p.label, icon: p.icon, active: key === presetKey,
-    }));
+    const presets = [
+      // 'classic' has no TERMINAL_PRESETS entry — it's the no-preset brand look.
+      { key: 'classic', label: 'Classic', icon: 'fas fa-terminal', active: presetKey === 'classic', sw1: '#F65261', sw2: '#19f3f7', sw3: '#1a1a2e' },
+      ...Object.entries(TERMINAL_PRESETS).map(([key, p]) => ({
+        key, label: p.label, icon: p.icon, active: key === presetKey,
+        sw1: p.theme?.primary || '#F65261', sw2: p.theme?.secondary || '#19f3f7', sw3: p.theme?.bgSurface || '#1a1a2e',
+      })),
+    ];
 
     const fontSel = (slot, cur) => FONT_OPTIONS.map(f => ({ key: f.key, label: f.label, selected: f.key === cur }));
-    const theme = cfg.theme || {};
-
-    const accounts = (cfg.accounts || []).map(a => ({
-      id: a.id,
-      displayName: a.displayName || a.username || 'Account',
-      username: a.username || '',
-      isAdmin: !!a.isAdmin,
-      hidden: !!a.hidden,
-      isDefault: a.id === cfg.defaultAccountId,
-      linkedContact: a.masterContactId ? (game.nightcity?.masterContactService?.getContact(a.masterContactId)?.name || '') : '',
-      methods: this._accountMethodSummary(a.security || {}),
+    // Effective-value fallbacks: the ACTIVE preset's palette, then the brand
+    // defaults (variables.css). Save persists the draft object — not these
+    // display values — so an untouched theme stays untouched.
+    const tp = TERMINAL_PRESETS[presetKey]?.theme || {};
+    const colorBase = {
+      primary: '#F65261', secondary: '#19f3f7', accent: '#f7c948',
+      bgDeep: '#0a0a0f', bgBase: '#12121a', bgSurface: '#1a1a2e', bgElevated: '#252540',
+      textPrimary: '#ededf0', textSecondary: '#bdbdd0',
+    };
+    const colorLabels = {
+      primary: 'Primary', secondary: 'Secondary', accent: 'Accent',
+      bgDeep: 'Background (Deep)', bgBase: 'Background (Base)', bgSurface: 'Surface',
+      bgElevated: 'Elevated', textPrimary: 'Text (Primary)', textSecondary: 'Text (Secondary)',
+    };
+    const themeColorEntries = Object.keys(COLOR_VAR_MAP).map(key => ({
+      key,
+      label: colorLabels[key] || key,
+      value: theme[key] || tp[key] || colorBase[key],
+      hasOverride: !!theme[key],
     }));
+    const themeFontSelectors = [
+      { slot: 'display', label: 'Body / Display', options: fontSel('display', theme.fontDisplay || tp.fontDisplay || 'rajdhani') },
+      { slot: 'mono', label: 'Monospace', options: fontSel('mono', theme.fontMono || tp.fontMono || 'sharetechmono') },
+      { slot: 'title', label: 'Titles', options: fontSel('title', theme.fontTitle || tp.fontTitle || 'orbitron') },
+    ];
+    // Preset kit overlay (see _presetKit) — boot, login style, MOTD/welcome,
+    // screensaver, and folder names all preview the staged preset; Save then
+    // reads the kit-prefilled inputs from the DOM.
+    const kit = this._presetKit ? TERMINAL_PRESETS[this._presetKit] : null;
+    const bootCfg = kit?.boot ? { ...(cfg.boot || {}), ...kit.boot } : (cfg.boot || {});
+    const loginStyleKey = kit?.loginStyle || cfg.loginStyle || 'cards';
+    const loginCfg = kit?.login ? { ...(cfg.login || {}), ...kit.login } : (cfg.login || {});
+    const ssCfg = kit?.screensaver ? { ...(cfg.screensaver || {}), ...kit.screensaver } : (cfg.screensaver || {});
+    const fnCfg = kit?.folderNames ? { ...(cfg.folderNames || {}), ...kit.folderNames } : (cfg.folderNames || {});
+    const savedThemes = this._getTermThemes().map((entry, i) => ({
+      index: i,
+      name: entry.name,
+      sw1: entry.theme?.primary || TERMINAL_PRESETS[entry.theme?.preset]?.theme?.primary || '#F65261',
+      sw2: entry.theme?.secondary || TERMINAL_PRESETS[entry.theme?.preset]?.theme?.secondary || '#19f3f7',
+      sw3: entry.theme?.bgSurface || TERMINAL_PRESETS[entry.theme?.preset]?.theme?.bgSurface || '#1a1a2e',
+    }));
+
+    // Accounts list view — enriched rows (portrait / role / clearance /
+    // methods / status at a glance) + search / sort / pagination.
+    const allAccounts = (cfg.accounts || []).map(a => {
+      const contact = a.masterContactId ? game.nightcity?.masterContactService?.getContact(a.masterContactId) : null;
+      const requiresAuth = a.security?.requiresAuth !== false && !!a.security?.requiresAuth;
+      const name = a.displayName || a.username || 'Account';
+      return {
+        id: a.id,
+        displayName: name,
+        username: a.username || '',
+        email: a.email || '',
+        role: a.role || (a.isAdmin ? 'ADMINISTRATOR' : ''),
+        clearance: (a.clearance || '').toUpperCase(),
+        portrait: a.portrait || contact?.portrait || '',
+        initials: name.split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase(),
+        isAdmin: !!a.isAdmin,
+        hidden: !!a.hidden,
+        isDefault: a.id === cfg.defaultAccountId,
+        isOpen: !requiresAuth,
+        gated: !!a.network?.restricted,
+        linkedContact: contact?.name || '',
+        methods: this._accountMethodSummary(a.security || {}),
+      };
+    });
+    const q = this._acctSearch.trim().toLowerCase();
+    let filtered = !q ? allAccounts : allAccounts.filter(a =>
+      [a.displayName, a.username, a.email, a.role, a.linkedContact].some(v => v.toLowerCase().includes(q)));
+    const sorters = {
+      name: (a, b) => a.displayName.localeCompare(b.displayName),
+      username: (a, b) => a.username.localeCompare(b.username),
+      admins: (a, b) => (b.isAdmin - a.isAdmin) || a.displayName.localeCompare(b.displayName),
+      open: (a, b) => (b.isOpen - a.isOpen) || a.displayName.localeCompare(b.displayName),
+    };
+    filtered = [...filtered].sort(sorters[this._acctSort] || sorters.name);
+    const acctMaxPage = Math.max(1, Math.ceil(filtered.length / TerminalConfigApp.ACCT_PAGE_SIZE));
+    if (this._acctPage > acctMaxPage) this._acctPage = acctMaxPage;
+    const accounts = filtered.slice((this._acctPage - 1) * TerminalConfigApp.ACCT_PAGE_SIZE, this._acctPage * TerminalConfigApp.ACCT_PAGE_SIZE);
+    const acctSummary = {
+      total: allAccounts.length,
+      admins: allAccounts.filter(a => a.isAdmin).length,
+      open: allAccounts.filter(a => a.isOpen).length,
+      secured: allAccounts.filter(a => !a.isOpen).length,
+      hidden: allAccounts.filter(a => a.hidden).length,
+      gated: allAccounts.filter(a => a.gated).length,
+    };
+    const acctControls = {
+      search: this._acctSearch,
+      filteredCount: filtered.length,
+      isFiltered: !!q,
+      sortOptions: [
+        { value: 'name', label: 'Name' }, { value: 'username', label: 'Username' },
+        { value: 'admins', label: 'Admins first' }, { value: 'open', label: 'Open first' },
+      ].map(o => ({ ...o, selected: o.value === this._acctSort })),
+      pager: acctMaxPage > 1 ? { page: this._acctPage, maxPage: acctMaxPage, hasPrev: this._acctPage > 1, hasNext: this._acctPage < acctMaxPage } : null,
+    };
 
     const editing = this._editingAccountId
       ? this._editorContext(cfg, this._editingAccountId)
@@ -113,7 +246,8 @@ export class TerminalConfigApp extends BaseApplication {
         network: this._activeTab === 'network',
         exfil: this._activeTab === 'exfil',
       },
-      accountCount: accounts.length,
+      accountCount: acctSummary.total,
+      acctSummary, acctControls,
 
       // Identity
       terminalName: cfg.terminalName || '',
@@ -127,38 +261,74 @@ export class TerminalConfigApp extends BaseApplication {
       // Accounts
       accounts, editing,
 
-      // Theme
+      // Theme (draft-aware; see the theme block above)
       presets, presetKey,
-      colPrimary: theme.primary || '#ff0033',
-      colSecondary: theme.secondary || '#19f3f7',
-      colAccent: theme.accent || '#f7c948',
-      colBg: theme.bgDeep || '#0a0006',
-      fontDisplay: fontSel('display', theme.fontDisplay || 'rajdhani'),
-      fontMono: fontSel('mono', theme.fontMono || 'sharetechmono'),
-      fontTitle: fontSel('title', theme.fontTitle || 'orbitron'),
+      themeColorEntries, themeFontSelectors, savedThemes,
+      themeDirty: !!this._themeDraft,
+      previewName: cfg.terminalName || this.item?.name || 'TERMINAL',
       textScale: theme.textScale || 100,
       contrast: theme.contrast || 100,
+      themeWallpaper: theme.wallpaper || '',
+      themeScanlines: theme.scanlines === true,
+      themeFlicker: theme.flicker === true,
+      themeGlitch: theme.glitch ?? 0,
 
-      // Boot
-      bootEnabled: cfg.boot?.enabled !== false,
-      bootTitle: cfg.boot?.title || '',
-      bootSubtitle: cfg.boot?.subtitle || '',
-      bootBanner: cfg.boot?.banner || '',
-      bootFaIcon: cfg.boot?.faIcon || '',
-      bootImageUrl: cfg.boot?.imageUrl || '',
+      // Login screen + screensaver + folder names (Boot & Login / Identity tabs)
+      loginStyles: TERMINAL_LOGIN_STYLES.map(s => ({ ...s, active: loginStyleKey === s.key })),
+      loginStyleKey,
+      presetKitLabel: kit?.label || '',
+      loginMotd: loginCfg.motd || '',
+      loginWelcome: loginCfg.welcomeText || '',
+      ssEnabled: ssCfg.enabled === true,
+      ssIdle: ssCfg.idleSeconds || 120,
+      ssText: ssCfg.text || '',
+      ssIconMode: ssCfg.iconMode || 'boot',
+      ssIconModes: ['boot', 'fa', 'image', 'none'].map(v => ({
+        value: v,
+        label: { boot: 'Boot icon', fa: 'Icon class', image: 'Image', none: 'No logo' }[v],
+        selected: v === (ssCfg.iconMode || 'boot'),
+      })),
+      ssFaIcon: ssCfg.faIcon || '',
+      ssImageUrl: ssCfg.imageUrl || '',
+      ssMotion: ssCfg.motion || 'drift',
+      ssMotions: ['drift', 'bounce', 'static'].map(v => ({ value: v, selected: v === (ssCfg.motion || 'drift') })),
+      // Full terminal preset library (world setting terminalPresetLibrary).
+      fullPresets: this._getFullPresets().map((entry, i) => ({
+        index: i,
+        name: entry.name,
+        styleIcon: TERMINAL_LOGIN_STYLES.find(s => s.key === (entry.config?.loginStyle || 'cards'))?.icon || 'fas fa-id-card',
+        sw1: entry.config?.theme?.primary || '#F65261',
+        sw2: entry.config?.theme?.secondary || '#19f3f7',
+        sw3: entry.config?.theme?.bgSurface || '#1a1a2e',
+      })),
+      folderInbox: fnCfg.inbox || '',
+      folderSaved: fnCfg.saved || '',
+      folderTrash: fnCfg.trash || '',
+      // Boot icon library (visual picker) — active = the currently saved class.
+      iconLibrary: TERMINAL_ICON_LIBRARY.map(i => ({ ...i, active: i.c === (bootCfg.faIcon || '') })),
+
+      // Boot — reads the kit-overlaid bootCfg so a staged preset shows here
+      // immediately (Save then reads these inputs from the DOM).
+      bootEnabled: bootCfg.enabled !== false,
+      bootTitle: bootCfg.title || '',
+      bootSubtitle: bootCfg.subtitle || '',
+      bootBanner: bootCfg.banner || '',
+      bootFaIcon: bootCfg.faIcon || '',
+      bootImageUrl: bootCfg.imageUrl || '',
       bootIconModes: ['preset', 'fa', 'image'].map(v => ({
         value: v,
         label: { preset: 'Theme preset icon', fa: 'Font Awesome icon', image: 'Custom image / logo' }[v],
-        selected: v === (cfg.boot?.iconMode || (cfg.boot?.faIcon ? 'fa' : 'preset')),
+        selected: v === (bootCfg.iconMode || (bootCfg.faIcon ? 'fa' : 'preset')),
       })),
-      bootIconMode: cfg.boot?.iconMode || (cfg.boot?.faIcon ? 'fa' : 'preset'),
+      bootIconMode: bootCfg.iconMode || (bootCfg.faIcon ? 'fa' : 'preset'),
       bootIcon: TERMINAL_PRESETS[presetKey]?.icon || 'fas fa-server',
-      bootAnimation: cfg.boot?.animationStyle || 'standard-fade',
-      bootSpeed: cfg.boot?.speed || 'normal',
-      bootLogLines: cfg.boot?.logLines || [],
-      animationOptions: ['standard-fade', 'holographic-snap', 'scan-sweep', 'warm-dissolve', 'glitch-stutter', 'instant-dump']
-        .map(v => ({ value: v, selected: v === (cfg.boot?.animationStyle || 'standard-fade') })),
-      speedOptions: ['fast', 'normal', 'dramatic'].map(v => ({ value: v, selected: v === (cfg.boot?.speed || 'normal') })),
+      bootAnimation: bootCfg.animationStyle || 'standard-fade',
+      bootSpeed: bootCfg.speed || 'normal',
+      bootLogLines: bootCfg.logLines || [],
+      animationOptions: BOOT_ANIMATIONS.map(a => ({
+        value: a.key, hint: a.hint, selected: a.key === (bootCfg.animationStyle || 'standard-fade'),
+      })),
+      speedOptions: ['fast', 'normal', 'dramatic'].map(v => ({ value: v, selected: v === (bootCfg.speed || 'normal') })),
 
       // Network
       networkRequired: !!cfg.network?.required,
@@ -279,26 +449,420 @@ export class TerminalConfigApp extends BaseApplication {
     el.querySelectorAll('.ncm-cfg-tab').forEach(t => t.classList.toggle('ncm-cfg-tab--active', t.dataset.tab === this._activeTab));
     el.querySelectorAll('.ncm-cfg-panel').forEach(p => p.classList.toggle('ncm-cfg-panel--active', p.dataset.panel === this._activeTab));
 
-    // ─── Boot icon: live preview + only show the field for the chosen source.
-    //     Manual listeners — selects don't fire reliably via data-action. ───
-    const syncBootIcon = () => {
-      const mode = el.querySelector('[name="bootIconMode"]')?.value || 'preset';
-      el.querySelector('[data-boot-icon-row="fa"]')?.classList.toggle('ncm-cfg-row--hidden', mode !== 'fa');
-      el.querySelector('[data-boot-icon-row="image"]')?.classList.toggle('ncm-cfg-row--hidden', mode !== 'image');
-      const preview = el.querySelector('.ncm-cfg-icon-preview');
-      if (!preview) return;
-      const fa = el.querySelector('[name="bootFaIcon"]')?.value?.trim();
-      const img = el.querySelector('[name="bootImageUrl"]')?.value?.trim();
-      const presetIcon = context.bootIcon || 'fas fa-server';
-      if (mode === 'image' && img) preview.innerHTML = `<img src="${Handlebars.escapeExpression(img)}" alt="">`;
-      else preview.innerHTML = `<i class="${Handlebars.escapeExpression((mode === 'fa' && fa) ? fa : presetIcon)}"></i>`;
-    };
-    el.querySelector('[name="bootIconMode"]')?.addEventListener('change', syncBootIcon);
-    el.querySelector('[name="bootFaIcon"]')?.addEventListener('input', syncBootIcon);
-    el.querySelector('[name="bootImageUrl"]')?.addEventListener('input', syncBootIcon);
-    syncBootIcon();
-
+    this._wireBootTab(el, context);
+    this._wireAccountsTab(el);
     this._wireAccountEditor(el);
+    this._wireThemeTab(el);
+    // Paint the in-sheet theme preview (draft or saved) on every render.
+    this._applyThemeLive();
+  }
+
+  /**
+   * Boot & Login tab wiring — live splash preview, icon source segments +
+   * searchable icon grid, animation/speed chips, login-style cards. All
+   * DOM-only (no re-render); chips/segments/cards mirror into hidden inputs
+   * bearing the ORIGINAL field names so _onSave reads one contract.
+   * @private
+   */
+  _wireBootTab(el, context) {
+    const panel = el.querySelector('[data-panel="boot"]');
+    if (!panel) return;
+    const esc = Handlebars.escapeExpression;
+
+    // ── Live splash preview bindings ──
+    const bp = (key) => panel.querySelector(`[data-bp="${key}"]`);
+    const syncBootIcon = () => {
+      const mode = panel.querySelector('[name="bootIconMode"]')?.value || 'preset';
+      panel.querySelector('[data-boot-icon-row="fa"]')?.classList.toggle('ncm-cfg-row--hidden', mode !== 'fa');
+      panel.querySelector('[data-boot-icon-row="image"]')?.classList.toggle('ncm-cfg-row--hidden', mode !== 'image');
+      const fa = panel.querySelector('[name="bootFaIcon"]')?.value?.trim();
+      const img = panel.querySelector('[name="bootImageUrl"]')?.value?.trim();
+      const presetIcon = context.bootIcon || 'fas fa-server';
+      const iconHtml = (mode === 'image' && img)
+        ? `<img src="${esc(img)}" alt="">`
+        : `<i class="${esc((mode === 'fa' && fa) ? fa : presetIcon)}"></i>`;
+      const prev = bp('icon');
+      if (prev) prev.innerHTML = iconHtml;
+    };
+    const bindText = (name, key) => {
+      panel.querySelector(`[name="${name}"]`)?.addEventListener('input', (e) => {
+        const t = bp(key);
+        if (t) t.textContent = e.target.value;
+      });
+    };
+    bindText('bootTitle', 'title');
+    bindText('bootSubtitle', 'subtitle');
+    const syncLog = () => {
+      const t = bp('log');
+      if (t) t.innerHTML = [...panel.querySelectorAll('[name="bootLogLine"]')]
+        .map(i => i.value.trim()).filter(Boolean).map(v => `<div>${esc(v)}</div>`).join('');
+    };
+    panel.querySelectorAll('[name="bootLogLine"]').forEach(i => i.addEventListener('input', syncLog));
+
+    // ── Icon source segments ──
+    panel.querySelectorAll('[data-icon-mode]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const modeInput = panel.querySelector('[name="bootIconMode"]');
+        if (modeInput) modeInput.value = btn.dataset.iconMode;
+        panel.querySelectorAll('[data-icon-mode]').forEach(b => b.classList.toggle('is-on', b === btn));
+        syncBootIcon();
+      });
+    });
+
+    // ── Icon grid: search filter + pick ──
+    panel.querySelector('[data-icon-search]')?.addEventListener('input', (e) => {
+      const q = e.target.value.trim().toLowerCase();
+      panel.querySelectorAll('[data-icon-class]').forEach(cell => {
+        const hit = !q || cell.dataset.iconClass.includes(q) || (cell.dataset.iconK || '').includes(q);
+        cell.style.display = hit ? '' : 'none';
+      });
+    });
+    panel.querySelectorAll('[data-icon-class]').forEach(cell => {
+      cell.addEventListener('click', () => {
+        const input = panel.querySelector('[name="bootFaIcon"]');
+        if (input) input.value = cell.dataset.iconClass;
+        panel.querySelectorAll('[data-icon-class]').forEach(c => c.classList.toggle('is-on', c === cell));
+        syncBootIcon();
+      });
+    });
+    panel.querySelector('[name="bootFaIcon"]')?.addEventListener('input', () => {
+      // Free-typed class: clear the grid highlight unless it matches a cell.
+      const v = panel.querySelector('[name="bootFaIcon"]')?.value?.trim();
+      panel.querySelectorAll('[data-icon-class]').forEach(c => c.classList.toggle('is-on', c.dataset.iconClass === v));
+      syncBootIcon();
+    });
+    panel.querySelector('[name="bootImageUrl"]')?.addEventListener('input', syncBootIcon);
+
+    // ── Animation / speed chips. Picking a boot animation replays it in the
+    //    splash preview (attr swap + forced reflow to restart the CSS). ──
+    const splash = panel.querySelector('.ncm-cfg-bootprev-splash');
+    const replayBootAnim = (anim) => {
+      if (!splash) return;
+      splash.removeAttribute('data-boot-animation');
+      void splash.offsetWidth; // reflow — restart the entrance animation
+      splash.setAttribute('data-boot-animation', anim);
+    };
+    panel.querySelectorAll('[data-chip-group]').forEach(group => {
+      const name = group.dataset.chipGroup;
+      group.querySelectorAll('[data-chip]').forEach(chip => {
+        chip.addEventListener('click', () => {
+          const input = panel.querySelector(`[name="${name}"]`);
+          if (input) input.value = chip.dataset.chip;
+          group.querySelectorAll('[data-chip]').forEach(c => c.classList.toggle('is-on', c === chip));
+          if (name === 'bootAnimation') replayBootAnim(chip.dataset.chip);
+        });
+      });
+    });
+    // Initial preview animation state (no replay — just the attribute), and
+    // the explicit ▶ REPLAY button.
+    splash?.setAttribute('data-boot-animation', panel.querySelector('[name="bootAnimation"]')?.value || 'standard-fade');
+    panel.querySelector('[data-boot-replay]')?.addEventListener('click', () => {
+      replayBootAnim(panel.querySelector('[name="bootAnimation"]')?.value || 'standard-fade');
+    });
+
+    // ── Login style cards + live login preview ──
+    panel.querySelectorAll('[data-login-style]').forEach(card => {
+      card.addEventListener('click', () => {
+        const input = panel.querySelector('[name="loginStyle"]');
+        if (input) input.value = card.dataset.loginStyle;
+        panel.querySelectorAll('[data-login-style]').forEach(c => c.classList.toggle('is-on', c === card));
+        this._syncLoginPreview(panel);
+      });
+    });
+
+    // ── Screensaver: icon-source segments, option rows, live preview ──
+    const syncSsRows = () => {
+      const mode = panel.querySelector('[name="ssIconMode"]')?.value || 'boot';
+      panel.querySelector('[data-ss-row="fa"]')?.classList.toggle('ncm-cfg-row--hidden', mode !== 'fa');
+      panel.querySelector('[data-ss-row="image"]')?.classList.toggle('ncm-cfg-row--hidden', mode !== 'image');
+    };
+    panel.querySelectorAll('[data-ss-mode]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const input = panel.querySelector('[name="ssIconMode"]');
+        if (input) input.value = btn.dataset.ssMode;
+        panel.querySelectorAll('[data-ss-mode]').forEach(b => b.classList.toggle('is-on', b === btn));
+        syncSsRows();
+        this._syncSsPreview(panel);
+      });
+    });
+    ['ssFaIcon', 'ssImageUrl', 'ssText'].forEach(n => {
+      panel.querySelector(`[name="${n}"]`)?.addEventListener('input', () => this._syncSsPreview(panel));
+    });
+    panel.querySelectorAll('[data-chip-group="ssMotion"] [data-chip]').forEach(chip => {
+      chip.addEventListener('click', () => this._syncSsPreview(panel));
+    });
+
+    syncBootIcon();
+    syncSsRows();
+    this._syncLoginPreview(panel);
+    this._syncSsPreview(panel);
+  }
+
+  /**
+   * Mini live preview of the selected login style, built from the terminal's
+   * REAL accounts (first three). Pure DOM — rebuilt on every card click.
+   * @private
+   */
+  _syncLoginPreview(panel) {
+    const host = panel.querySelector('.ncm-cfg-lprev');
+    if (!host) return;
+    const esc = Handlebars.escapeExpression;
+    const style = panel.querySelector('[name="loginStyle"]')?.value || 'cards';
+    const cfg = this.terminalService.getConfig(this.item);
+    const accounts = (cfg.accounts || []).filter(a => !a.hidden).slice(0, 3);
+    if (!accounts.length) accounts.push({ displayName: 'operator', username: 'operator', security: { requiresAuth: true } });
+    const nm = (a) => esc(a.displayName || a.username || 'user');
+    const ini = (a) => esc((a.displayName || a.username || '?').split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase());
+    const locked = (a) => a.security?.requiresAuth !== false;
+    const name = esc(cfg.terminalName || this.item?.name || 'TERMINAL');
+    let html = '';
+    if (style === 'crt') {
+      html = `<div class="ncm-cfg-lprev-crt"><div class="ncm-cfg-lprev-crthd">${name}</div>` +
+        accounts.map(a => `<div>&gt; ${esc(a.username || a.displayName)} <span>${locked(a) ? 'LOCKED' : 'OPEN'}</span></div>`).join('') +
+        `<div class="ncm-cfg-lprev-crtp">login: <b></b></div></div>`;
+    } else if (style === 'roster') {
+      html = `<div class="ncm-cfg-lprev-roster">` + accounts.map(a =>
+        `<div class="ncm-cfg-lprev-rrow"><span class="ncm-cfg-lprev-av">${ini(a)}</span><span class="ncm-cfg-lprev-nm">${nm(a)}</span><span class="ncm-cfg-lprev-st${locked(a) ? '' : ' is-open'}">${locked(a) ? 'LOCKED' : 'ACTIVE'}</span></div>`).join('') + `</div>`;
+    } else if (style === 'lockscreen') {
+      const f = accounts[0];
+      html = `<div class="ncm-cfg-lprev-lock"><span class="ncm-cfg-lprev-bigav">${ini(f)}</span><b>${nm(f)}</b><span class="ncm-cfg-lprev-pass">enter passcode…</span></div>`;
+    } else if (style === 'keypad') {
+      html = `<div class="ncm-cfg-lprev-keypad"><span class="ncm-cfg-lprev-lcd">▪ ▪ ▪ _</span><span class="ncm-cfg-lprev-pad">${[1,2,3,4,5,6,7,8,9,'✕',0,'⏎'].map(k => `<b>${k}</b>`).join('')}</span></div>`;
+    } else if (style === 'portraits') {
+      html = `<div class="ncm-cfg-lprev-ports">` + accounts.map(a =>
+        `<span class="ncm-cfg-lprev-port"><span class="ncm-cfg-lprev-bigav">${ini(a)}</span><i>${nm(a)}</i></span>`).join('') + `</div>`;
+    } else {
+      html = `<div class="ncm-cfg-lprev-cards">` + accounts.map(a =>
+        `<span class="ncm-cfg-lprev-card"><span class="ncm-cfg-lprev-av">${ini(a)}</span><b>${nm(a)}</b><i>${locked(a) ? '⚿ SECURED' : 'OPEN'}</i></span>`).join('') + `</div>`;
+    }
+    host.innerHTML = html;
+  }
+
+  /**
+   * Mini live preview of the idle screensaver (logo + marquee, motion class).
+   * @private
+   */
+  _syncSsPreview(panel) {
+    const host = panel.querySelector('.ncm-cfg-ssprev');
+    if (!host) return;
+    const esc = Handlebars.escapeExpression;
+    const cfg = this.terminalService.getConfig(this.item);
+    const mode = panel.querySelector('[name="ssIconMode"]')?.value || 'boot';
+    const fa = panel.querySelector('[name="ssFaIcon"]')?.value?.trim();
+    const img = panel.querySelector('[name="ssImageUrl"]')?.value?.trim();
+    const text = panel.querySelector('[name="ssText"]')?.value?.trim() || cfg.terminalName || this.item?.name || 'TERMINAL';
+    const motion = panel.querySelector('[name="ssMotion"]')?.value || 'drift';
+    let logo = '';
+    if (mode !== 'none') {
+      if (mode === 'image' && img) logo = `<img src="${esc(img)}" alt="">`;
+      else if (mode === 'fa' && fa) logo = `<i class="${esc(fa)}"></i>`;
+      else {
+        const bootFa = panel.querySelector('[name="bootFaIcon"]')?.value?.trim();
+        const bootImg = panel.querySelector('[name="bootImageUrl"]')?.value?.trim();
+        const bootMode = panel.querySelector('[name="bootIconMode"]')?.value || 'preset';
+        if (bootMode === 'image' && bootImg) logo = `<img src="${esc(bootImg)}" alt="">`;
+        else {
+          // Draft-aware preset key: a staged preset's icon previews before Save.
+          const presetKey = this._themeDraft?.preset || cfg.theme?.preset;
+          logo = `<i class="${esc((bootMode === 'fa' && bootFa) ? bootFa : (TERMINAL_PRESETS[presetKey]?.icon || 'fas fa-server'))}"></i>`;
+        }
+      }
+    }
+    host.dataset.ssMotion = motion;
+    host.innerHTML = `<div class="ncm-cfg-ssprev-inner">${logo ? `<div class="ncm-cfg-ssprev-logo">${logo}</div>` : ''}<div class="ncm-cfg-ssprev-text">${esc(text)}</div></div>`;
+  }
+
+  /** Roll 4 random flavor lines into the boot log list (DOM-only — Save keeps). */
+  static _onGenerateBootLines() {
+    const panel = this.element?.querySelector('[data-panel="boot"]');
+    const list = panel?.querySelector('.ncm-cfg-boot-log-list');
+    if (!list) return;
+    const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+    const esc = Handlebars.escapeExpression;
+    const lines = [];
+    const used = new Set();
+    while (lines.length < 4 && used.size < BOOT_FLAVOR_LINES.templates.length) {
+      const t = pick(BOOT_FLAVOR_LINES.templates);
+      if (used.has(t)) continue;
+      used.add(t);
+      lines.push(`${t.replace('{NET}', pick(BOOT_FLAVOR_LINES.nets))} ${pick(BOOT_FLAVOR_LINES.statuses)}`);
+    }
+    list.innerHTML = lines.map(l =>
+      `<div class="ncm-cfg-boot-log-entry"><input type="text" name="bootLogLine" class="ncm-cfg-input" value="${esc(l)}"><button type="button" class="ncm-cfg-btn-icon ncm-cfg-btn-icon--danger" data-action="removeBootLogLine"><i class="fas fa-times"></i></button></div>`).join('');
+    // Refresh the preview + rebind the new inputs.
+    const t = this.element?.querySelector('[data-bp="log"]');
+    if (t) t.innerHTML = lines.map(l => `<div>${esc(l)}</div>`).join('');
+    list.querySelectorAll('[name="bootLogLine"]').forEach(i => i.addEventListener('input', () => {
+      if (t) t.innerHTML = [...list.querySelectorAll('[name="bootLogLine"]')]
+        .map(x => x.value.trim()).filter(Boolean).map(v => `<div>${esc(v)}</div>`).join('');
+    }));
+  }
+
+  /** FilePicker for the screensaver image (Boot & Login tab). */
+  static _onBrowseSsImage() {
+    const input = this.element?.querySelector('[name="ssImageUrl"]');
+    new FilePicker({
+      type: 'image',
+      current: input?.value || '',
+      callback: (path) => {
+        if (input) { input.value = path; input.dispatchEvent(new Event('input', { bubbles: true })); }
+      },
+    }).render(true);
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Full terminal preset library (world setting terminalPresetLibrary):
+  //  theme + boot + loginStyle + login + screensaver + folderNames +
+  //  metadata + account SEEDS (ids and world-specific links stripped).
+  // ═══════════════════════════════════════════════════════════
+
+  _getFullPresets() {
+    try { return game.settings.get(MODULE_ID, 'terminalPresetLibrary') ?? []; } catch { return []; }
+  }
+
+  async _setFullPresets(presets) {
+    await game.settings.set(MODULE_ID, 'terminalPresetLibrary', presets);
+  }
+
+  /** Snapshot the current terminal as a reusable preset config. @private */
+  _collectFullPreset() {
+    const cfg = this.terminalService.getConfig(this.item);
+    const pick = foundry.utils.deepClone({
+      theme: this._themeDraft ?? cfg.theme ?? { preset: 'classic' },
+      boot: cfg.boot || {},
+      loginStyle: cfg.loginStyle || 'cards',
+      login: cfg.login || {},
+      screensaver: cfg.screensaver || {},
+      folderNames: cfg.folderNames || {},
+      metadata: cfg.metadata || {},
+      soundSet: cfg.soundSet || 'default',
+      accounts: (cfg.accounts || []).map(a => {
+        // Seeds, not copies: fresh ids on apply; world-specific identity
+        // links don't travel (they reference this world's documents).
+        const seed = foundry.utils.deepClone(a);
+        delete seed.id; delete seed.masterContactId; delete seed.actorId;
+        return seed;
+      }),
+    });
+    return pick;
+  }
+
+  static async _onSaveFullPreset() {
+    const name = await new Promise(resolve => {
+      new Dialog({
+        title: 'Save Terminal Preset',
+        content: '<div style="padding:8px 0;"><label style="font-family:\'Share Tech Mono\',monospace;font-size:10px;color:#8888a0;text-transform:uppercase;">Preset Name</label><input type="text" id="ncm-fpreset-name" value="My Terminal" style="width:100%;margin-top:4px;padding:6px 8px;background:#0a0a0f;border:1px solid #2a2a45;color:#e0e0e8;font-family:\'Rajdhani\',sans-serif;font-size:13px;border-radius:2px;" /></div>',
+        buttons: {
+          save: { icon: '<i class="fas fa-save"></i>', label: 'Save', callback: (html) => resolve(html.find('#ncm-fpreset-name').val()?.trim()) },
+          cancel: { label: 'Cancel', callback: () => resolve(null) },
+        },
+        default: 'save',
+      }, { classes: ['ncm-pick-dialog'], width: 340 }).render(true);
+    });
+    if (!name) return;
+    const presets = this._getFullPresets();
+    presets.push({ name, config: this._collectFullPreset() });
+    await this._setFullPresets(presets);
+    this.render(false);
+    ui.notifications.info(`Saved terminal preset: ${name}`);
+  }
+
+  static async _onApplyFullPreset(event, target) {
+    const index = parseInt(target.closest('[data-fpreset-index]')?.dataset.fpresetIndex, 10);
+    const entry = this._getFullPresets()[index];
+    if (!entry?.config) return;
+    const cfg = this.terminalService.getConfig(this.item);
+    const seedCount = (entry.config.accounts || []).length;
+    const confirmed = await Dialog.confirm({
+      title: `Apply Terminal Preset: ${entry.name}`,
+      content: `<p>Overwrites this terminal's <strong>theme, boot, login style, MOTD/welcome, screensaver, and folder names</strong>${(cfg.accounts || []).length ? '' : (seedCount ? ` and seeds <strong>${seedCount} account${seedCount === 1 ? '' : 's'}</strong>` : '')}. Messages and existing accounts are untouched.</p>`,
+    });
+    if (!confirmed) return;
+    const { accounts, ...rest } = foundry.utils.deepClone(entry.config);
+    await this.terminalService.updateConfig(this.item, rest);
+    if (!(cfg.accounts || []).length && Array.isArray(accounts)) {
+      for (const seed of accounts) await this.terminalService.addAccount(this.item, seed);
+    }
+    this._themeDraft = null; // the preset's theme is now the saved theme
+    this._revertThemePreview();
+    this.render(false);
+    ui.notifications.info(`Applied terminal preset: ${entry.name}`);
+  }
+
+  static async _onOverwriteFullPreset(event, target) {
+    const index = parseInt(target.closest('[data-fpreset-index]')?.dataset.fpresetIndex, 10);
+    const presets = this._getFullPresets();
+    if (!presets[index]) return;
+    presets[index] = { name: presets[index].name, config: this._collectFullPreset() };
+    await this._setFullPresets(presets);
+    this.render(false);
+    ui.notifications.info(`Overwrote terminal preset: ${presets[index].name}`);
+  }
+
+  static async _onDeleteFullPreset(event, target) {
+    const index = parseInt(target.closest('[data-fpreset-index]')?.dataset.fpresetIndex, 10);
+    const presets = this._getFullPresets();
+    if (!presets[index]) return;
+    const name = presets[index].name;
+    const confirmed = await Dialog.confirm({ title: 'Delete Terminal Preset', content: `<p>Delete "${name}" from the library?</p>` });
+    if (!confirmed) return;
+    presets.splice(index, 1);
+    await this._setFullPresets(presets);
+    this.render(false);
+    ui.notifications.info(`Deleted terminal preset: ${name}`);
+  }
+
+  static _onExportFullPreset(event, target) {
+    // Export a library entry when clicked from a row; else the current terminal.
+    const index = parseInt(target.closest('[data-fpreset-index]')?.dataset.fpresetIndex, 10);
+    const entry = Number.isInteger(index) ? this._getFullPresets()[index] : null;
+    const name = entry?.name || this.item?.name || 'terminal';
+    const config = entry?.config || this._collectFullPreset();
+    const blob = new Blob([JSON.stringify({ ncmTerminalPreset: 1, name, config }, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ncm-terminal-preset-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    ui.notifications.info(`Exported terminal preset: ${name}`);
+  }
+
+  static _onImportFullPreset() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      try {
+        const parsed = JSON.parse(await file.text());
+        if (!parsed?.ncmTerminalPreset || !parsed.config) return ui.notifications.warn('Not a terminal preset file.');
+        const presets = this._getFullPresets();
+        presets.push({ name: parsed.name || file.name.replace(/\.json$/i, ''), config: parsed.config });
+        await this._setFullPresets(presets);
+        this.render(false);
+        ui.notifications.info(`Imported terminal preset: ${parsed.name} — apply it from the library list.`);
+      } catch (err) {
+        log.error(`Terminal preset import failed: ${err.message}`);
+        ui.notifications.error('Failed to import preset file.');
+      }
+    });
+    input.click();
+  }
+
+  /** FilePicker for the terminal wallpaper (Theme tab — writes the draft). */
+  static _onBrowseWallpaper() {
+    const input = this.element?.querySelector('[data-ttc-wallpaper]');
+    new FilePicker({
+      type: 'image',
+      current: input?.value || '',
+      callback: (path) => {
+        if (input) input.value = path;
+        this._ensureThemeDraft().wallpaper = path;
+        this._applyThemeLive();
+      },
+    }).render(true);
   }
 
   /**
@@ -510,19 +1074,28 @@ export class TerminalConfigApp extends BaseApplication {
     const updates = {
       terminalName: val('terminalName'),
       metadata: { owner: val('owner'), org: val('org'), location: val('location'), classification: val('classification') },
-      theme: {
-        preset: val('themePreset'),
-        primary: val('colPrimary'), secondary: val('colSecondary'), accent: val('colAccent'), bgDeep: val('colBg'),
-        fontDisplay: val('fontDisplay'), fontMono: val('fontMono'), fontTitle: val('fontTitle'),
-        textScale: parseInt(val('textScale', '100'), 10) || 100,
-        contrast: parseInt(val('contrast', '100'), 10) || 100,
-      },
+      // The theme's save contract is the DRAFT object, not form inputs — the
+      // tab's controls are unnamed and mutate _themeDraft via manual listeners
+      // (the ThemeCustomizer pattern). No draft = theme untouched, keep as-is.
+      theme: foundry.utils.deepClone(this._themeDraft ?? this.terminalService.getConfig(this.item)?.theme ?? { preset: 'classic' }),
       boot: {
         enabled: chk('bootEnabled'),
         title: val('bootTitle'), subtitle: val('bootSubtitle'), banner: val('bootBanner'),
         iconMode: val('bootIconMode', 'preset'), faIcon: val('bootFaIcon'), imageUrl: val('bootImageUrl'),
         animationStyle: val('bootAnimation'), speed: val('bootSpeed'), logLines,
       },
+      loginStyle: val('loginStyle', 'cards') || 'cards',
+      login: { motd: val('loginMotd'), welcomeText: val('loginWelcome') },
+      screensaver: {
+        enabled: chk('ssEnabled'),
+        idleSeconds: parseInt(val('ssIdle', '120'), 10) || 120,
+        text: val('ssText'),
+        iconMode: val('ssIconMode', 'boot') || 'boot',
+        faIcon: val('ssFaIcon'),
+        imageUrl: val('ssImageUrl'),
+        motion: val('ssMotion', 'drift') || 'drift',
+      },
+      folderNames: { inbox: val('folderInbox'), saved: val('folderSaved'), trash: val('folderTrash') },
       network: {
         required: chk('networkRequired'),
         accessMode: val('accessMode'),
@@ -541,30 +1114,340 @@ export class TerminalConfigApp extends BaseApplication {
       allowExfil: chk('allowExfil'),
     };
     const res = await this.terminalService.updateConfig(this.item, updates);
-    if (res?.success) ui.notifications.info('Terminal configuration saved.');
-    else ui.notifications.error(res?.error || 'Save failed.');
+    if (res?.success) {
+      // Staged preset kit: the boot/loginStyle values were read from the
+      // (kit-overlaid) DOM inputs above; only the account seeds remain.
+      const kit = this._presetKit ? TERMINAL_PRESETS[this._presetKit] : null;
+      if (kit && !(this.terminalService.getConfig(this.item).accounts || []).length && Array.isArray(kit.accounts)) {
+        for (const seed of kit.accounts) {
+          await this.terminalService.addAccount(this.item, foundry.utils.mergeObject(
+            { security: { ...(kit.security || {}) } }, seed, { inplace: false }));
+        }
+        ui.notifications.info(`Seeded ${kit.accounts.length} account${kit.accounts.length === 1 ? '' : 's'} from: ${kit.label}`);
+      }
+      this._themeDraft = null; // saved — context reads cfg.theme again
+      this._presetKit = null;
+      ui.notifications.info('Terminal configuration saved.');
+    } else ui.notifications.error(res?.error || 'Save failed.');
     this.render(false);
   }
 
-  static async _onApplyPreset(event, target) {
-    const key = target.dataset.preset || this.element.querySelector('[name="themePreset"]')?.value;
-    const preset = TERMINAL_PRESETS[key];
-    if (!preset) return;
-    const cfg = this.terminalService.getConfig(this.item);
-    const updates = {
-      theme: { ...(cfg.theme || {}), ...(preset.theme || {}), preset: key },
-      boot: { ...(cfg.boot || {}), ...(preset.boot || {}) },
-    };
-    // Seed accounts only when none exist yet.
-    await this.terminalService.updateConfig(this.item, updates);
-    if (!(cfg.accounts || []).length && Array.isArray(preset.accounts)) {
-      for (const seed of preset.accounts) {
-        await this.terminalService.addAccount(this.item, foundry.utils.mergeObject(
-          { security: { ...(preset.security || {}) } }, seed, { inplace: false }));
+  /**
+   * "Palette only" — drop the staged preset KIT (boot/login style/accounts),
+   * keeping just the colors+fonts in the theme draft.
+   */
+  static _onClearPresetKit() {
+    this._presetKit = null;
+    this.render(false);
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Theme tab (ThemeCustomizer pattern: draft + live preview)
+  // ═══════════════════════════════════════════════════════════
+
+  /** Lazy-init the working theme copy from the saved config. @private */
+  _ensureThemeDraft() {
+    if (!this._themeDraft) {
+      const cfg = this.terminalService?.getConfig(this.item);
+      this._themeDraft = foundry.utils.deepClone(cfg?.theme || { preset: 'classic' });
+    }
+    return this._themeDraft;
+  }
+
+  /**
+   * Apply the draft (or saved) theme live: to the sheet's own preview blocks
+   * (.ncm-ttc-live) and to any open viewer of this terminal. Saved-state
+   * revert is just a viewer re-render (its _onRender reapplies cfg.theme).
+   * @private
+   */
+  _applyThemeLive() {
+    if (!this.themeService) return;
+    const cfg = this.terminalService?.getConfig(this.item) || {};
+    const t = this._themeDraft ?? cfg.theme ?? {};
+    const prefs = buildTerminalThemePrefs(t, t.preset || 'classic');
+    for (const el of this.element?.querySelectorAll('.ncm-ttc-live') || []) {
+      this.themeService.applyTheme(prefs, el);
+    }
+
+    // Open viewers of this terminal preview the FULL staged state, not just
+    // the palette: the config-preview overlay carries the draft theme plus
+    // the staged kit's boot/loginStyle/login/screensaver/folderNames, and the
+    // viewer renders it as if saved (setConfigPreview). Re-render only on kit
+    // transitions — palette-only updates go through cheap inline vars below,
+    // so color/slider drags never trigger render storms.
+    const kit = this._presetKit ? TERMINAL_PRESETS[this._presetKit] : null;
+    const overlay = (this._themeDraft || kit) ? {
+      ...(this._themeDraft ? { theme: foundry.utils.deepClone(this._themeDraft) } : {}),
+      ...(kit ? foundry.utils.deepClone({
+        boot: { ...(cfg.boot || {}), ...(kit.boot || {}) },
+        loginStyle: kit.loginStyle || cfg.loginStyle || 'cards',
+        login: { ...(cfg.login || {}), ...(kit.login || {}) },
+        screensaver: { ...(cfg.screensaver || {}), ...(kit.screensaver || {}) },
+        folderNames: { ...(cfg.folderNames || {}), ...(kit.folderNames || {}) },
+      }) : {}),
+    } : null;
+    const kitChanged = (this._presetKit || null) !== (this._lastKitPushed ?? null);
+
+    for (const app of foundry.applications?.instances?.values?.() ?? []) {
+      if (app === this || !app.rendered) continue;
+      if (app.item?.id !== this.item?.id || typeof app._applyCustomTheme !== 'function') continue;
+      app.setConfigPreview?.(overlay, { rerender: kitChanged });
+      const viewerEl = app.element?.querySelector('.ncm-terminal-viewer');
+      if (!viewerEl) continue;
+      viewerEl.setAttribute('data-terminal-preset', t.preset || 'classic');
+      this.themeService.applyTheme(prefs, viewerEl);
+      // Per-terminal effects preview on the real viewer (the strip can't show them).
+      viewerEl.setAttribute('data-term-scanlines', String(t.scanlines === true));
+      viewerEl.setAttribute('data-term-flicker', String(t.flicker === true));
+    }
+    this._lastKitPushed = this._presetKit || null;
+  }
+
+  /** Clear the preview overlay on open viewers (re-renders the saved state). @private */
+  _revertThemePreview() {
+    for (const app of foundry.applications?.instances?.values?.() ?? []) {
+      if (app !== this && app.rendered && app.item?.id === this.item?.id &&
+          typeof app._applyCustomTheme === 'function') {
+        app.setConfigPreview?.(null, { rerender: true });
       }
     }
-    ui.notifications.info(`Applied preset: ${preset.label}`);
+    this._lastKitPushed = null;
+  }
+
+  /** @override — closing with unsaved staging reverts previewed viewers. */
+  async close(options = {}) {
+    if (this._themeDraft || this._presetKit) {
+      this._revertThemePreview();
+      this._themeDraft = null;
+      this._presetKit = null;
+    }
+    return super.close(options);
+  }
+
+  /**
+   * Manual listeners for the Theme tab (colors / fonts / sliders — the
+   * ThemeCustomizer wiring: mutate the draft, live-apply, never re-render).
+   * @private
+   */
+  _wireThemeTab(el) {
+    const panel = el.querySelector('[data-panel="theme"]');
+    if (!panel) return;
+
+    panel.querySelectorAll('.ncm-tc__color-entry input[type="color"]').forEach(input => {
+      input.addEventListener('input', (e) => {
+        const key = e.target.closest('[data-color-key]')?.dataset.colorKey;
+        if (!key) return;
+        this._ensureThemeDraft()[key] = e.target.value;
+        const entry = e.target.closest('.ncm-tc__color-entry');
+        const hex = entry?.querySelector('.ncm-tc__color-hex');
+        if (hex) hex.textContent = e.target.value;
+        this._applyThemeLive();
+      });
+    });
+
+    panel.querySelectorAll('select[data-font-slot]').forEach(sel => {
+      sel.addEventListener('change', (e) => {
+        const key = { display: 'fontDisplay', mono: 'fontMono', title: 'fontTitle' }[e.target.dataset.fontSlot];
+        if (!key) return;
+        this._ensureThemeDraft()[key] = e.target.value;
+        this._applyThemeLive();
+      });
+    });
+
+    const wireSlider = (name, key, valClass, fallback = 100) => {
+      panel.querySelector(`input[name="${name}"]`)?.addEventListener('input', (e) => {
+        this._ensureThemeDraft()[key] = parseInt(e.target.value, 10) || fallback;
+        const label = panel.querySelector(`.${valClass}`);
+        if (label) label.textContent = `${e.target.value}%`;
+        this._applyThemeLive();
+      });
+    };
+    wireSlider('ttcTextScale', 'textScale', 'ncm-ttc-scale-val');
+    wireSlider('ttcContrast', 'contrast', 'ncm-ttc-contrast-val');
+    wireSlider('ttcGlitch', 'glitch', 'ncm-ttc-glitch-val', 0);
+
+    // Wallpaper path (typed or via the browseWallpaper FilePicker action).
+    panel.querySelector('[data-ttc-wallpaper]')?.addEventListener('input', (e) => {
+      this._ensureThemeDraft().wallpaper = e.target.value.trim();
+      this._applyThemeLive();
+    });
+
+    // Effect switches (scanlines / flicker) — tc-style knobs, draft-backed.
+    panel.querySelectorAll('[data-ttc-toggle]').forEach(sw => {
+      sw.addEventListener('click', () => {
+        const key = sw.dataset.ttcToggle;
+        const draft = this._ensureThemeDraft();
+        draft[key] = !(draft[key] === true);
+        sw.classList.toggle('ncm-tc__switch--on', draft[key]);
+        this._applyThemeLive();
+      });
+    });
+  }
+
+  /**
+   * Preset card click — stage the FULL preset: palette+fonts into the theme
+   * draft (live-previewed), boot + login style as the staged KIT (overlays
+   * the Boot & Login tab; Save commits everything; accounts seed at save
+   * when the terminal has none). Prior color/font overrides are dropped
+   * first (a preset pick is a clean starting point); 'classic' has no
+   * TERMINAL_PRESETS entry, so it stages pure fallthrough + no kit.
+   */
+  static _onSelectTermPreset(event, target) {
+    const key = target.dataset.preset;
+    const draft = { ...this._ensureThemeDraft() };
+    for (const k of [...Object.keys(COLOR_VAR_MAP), 'fontDisplay', 'fontMono', 'fontTitle']) delete draft[k];
+    this._themeDraft = { ...draft, ...foundry.utils.deepClone(TERMINAL_PRESETS[key]?.theme || {}), preset: key };
+    this._presetKit = TERMINAL_PRESETS[key] ? key : null;
+    this._applyThemeLive();
     this.render(false);
+  }
+
+  /** Drop the per-key color overrides — back to the preset palette. */
+  static _onResetTermColors() {
+    const draft = this._ensureThemeDraft();
+    for (const key of Object.keys(COLOR_VAR_MAP)) delete draft[key];
+    this._applyThemeLive();
+    this.render(false);
+    ui.notifications.info('Colors reset to preset defaults.');
+  }
+
+  // ─── Saved terminal themes (world setting, shared across terminals) ───
+
+  _getTermThemes() {
+    try { return game.settings.get(MODULE_ID, 'terminalThemePresets') ?? []; } catch { return []; }
+  }
+
+  async _setTermThemes(themes) {
+    await game.settings.set(MODULE_ID, 'terminalThemePresets', themes);
+  }
+
+  static async _onSaveTermTheme() {
+    const name = await new Promise(resolve => {
+      new Dialog({
+        title: 'Save Terminal Theme',
+        content: '<div style="padding:8px 0;"><label style="font-family:\'Share Tech Mono\',monospace;font-size:10px;color:#8888a0;text-transform:uppercase;">Theme Name</label><input type="text" id="ncm-tterm-name" value="My Terminal Theme" style="width:100%;margin-top:4px;padding:6px 8px;background:#0a0a0f;border:1px solid #2a2a45;color:#e0e0e8;font-family:\'Rajdhani\',sans-serif;font-size:13px;border-radius:2px;" /></div>',
+        buttons: {
+          save: { icon: '<i class="fas fa-save"></i>', label: 'Save', callback: (html) => resolve(html.find('#ncm-tterm-name').val()?.trim()) },
+          cancel: { label: 'Cancel', callback: () => resolve(null) },
+        },
+        default: 'save',
+      }, { classes: ['ncm-pick-dialog'], width: 340 }).render(true);
+    });
+    if (!name) return;
+    const cfg = this.terminalService.getConfig(this.item);
+    const themes = this._getTermThemes();
+    themes.push({ name, theme: foundry.utils.deepClone(this._themeDraft ?? cfg.theme ?? { preset: 'classic' }) });
+    await this._setTermThemes(themes);
+    this.render(false);
+    ui.notifications.info(`Saved terminal theme: ${name}`);
+  }
+
+  static _onApplyTermTheme(event, target) {
+    const index = parseInt(target.closest('[data-theme-index]')?.dataset.themeIndex, 10);
+    const entry = this._getTermThemes()[index];
+    if (!entry) return;
+    this._themeDraft = foundry.utils.deepClone(entry.theme || {});
+    this._applyThemeLive();
+    this.render(false);
+  }
+
+  static async _onOverwriteTermTheme(event, target) {
+    const index = parseInt(target.closest('[data-theme-index]')?.dataset.themeIndex, 10);
+    const themes = this._getTermThemes();
+    if (!themes[index]) return;
+    const cfg = this.terminalService.getConfig(this.item);
+    themes[index] = { name: themes[index].name, theme: foundry.utils.deepClone(this._themeDraft ?? cfg.theme ?? { preset: 'classic' }) };
+    await this._setTermThemes(themes);
+    this.render(false);
+    ui.notifications.info(`Overwrote theme: ${themes[index].name}`);
+  }
+
+  static async _onDeleteTermTheme(event, target) {
+    const index = parseInt(target.closest('[data-theme-index]')?.dataset.themeIndex, 10);
+    const themes = this._getTermThemes();
+    if (!themes[index]) return;
+    const name = themes[index].name;
+    const confirmed = await Dialog.confirm({ title: 'Delete Theme', content: `<p>Delete saved terminal theme "${name}"?</p>` });
+    if (!confirmed) return;
+    themes.splice(index, 1);
+    await this._setTermThemes(themes);
+    this.render(false);
+    ui.notifications.info(`Deleted theme: ${name}`);
+  }
+
+  static _onExportTermTheme() {
+    const cfg = this.terminalService.getConfig(this.item);
+    const theme = this._themeDraft ?? cfg.theme ?? { preset: 'classic' };
+    const data = JSON.stringify({ ncmTerminalTheme: 1, theme }, null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ncm-terminal-theme-${(theme.preset || 'custom').replace(/\s+/g, '-')}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    ui.notifications.info('Terminal theme exported.');
+  }
+
+  static _onImportTermTheme() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      try {
+        const parsed = JSON.parse(await file.text());
+        // Accept the export envelope or a bare theme object.
+        const theme = parsed.ncmTerminalTheme ? parsed.theme : parsed;
+        const known = ['preset', 'fontDisplay', 'fontMono', 'fontTitle', 'textScale', 'contrast', ...Object.keys(COLOR_VAR_MAP)];
+        if (!theme || typeof theme !== 'object' || !known.some(k => k in theme)) {
+          return ui.notifications.warn('Not a terminal theme file.');
+        }
+        this._themeDraft = { preset: 'classic', ...foundry.utils.deepClone(theme) };
+        this._applyThemeLive();
+        this.render(false);
+        ui.notifications.info('Terminal theme imported — Save to keep it.');
+      } catch (err) {
+        log.error(`Terminal theme import failed: ${err.message}`);
+        ui.notifications.error('Failed to import theme file.');
+      }
+    });
+    input.click();
+  }
+
+  static _onAcctPage(event, target) {
+    const dir = parseInt(target?.dataset?.dir, 10) || 0;
+    this._acctPage = Math.max(1, this._acctPage + dir);
+    this.render(false);
+  }
+
+  /**
+   * Accounts list toolbar — live search (debounced re-render with refocus)
+   * and sort select (manual change listener per the selects gotcha).
+   * @private
+   */
+  _wireAccountsTab(el) {
+    const panel = el.querySelector('[data-panel="accounts"]');
+    if (!panel) return;
+    const search = panel.querySelector('input[name="acctSearch"]');
+    search?.addEventListener('input', (e) => {
+      this._acctSearch = e.target.value;
+      this._acctPage = 1;
+      this._acctSearchRefocus = true;
+      clearTimeout(this._acctSearchTimer);
+      this._acctSearchTimer = setTimeout(() => this.render(false), 250);
+    });
+    if (this._acctSearchRefocus && search) {
+      this._acctSearchRefocus = false;
+      search.focus();
+      search.setSelectionRange(search.value.length, search.value.length);
+    }
+    panel.querySelector('select[name="acctSort"]')?.addEventListener('change', (e) => {
+      this._acctSort = e.target.value;
+      this._acctPage = 1;
+      this.render(false);
+    });
   }
 
   static _onAddAccount() { this._editingAccountId = 'new'; this._editorLink = null; this._activeTab = 'accounts'; this.render(false); }

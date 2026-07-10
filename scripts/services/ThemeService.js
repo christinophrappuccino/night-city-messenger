@@ -38,26 +38,48 @@ export class ThemeService {
   }
 
   /**
-   * Apply a theme to the document
-   * @param {object} prefs - Player theme preferences
+   * Apply a theme's CSS variables to a target element (default: the document
+   * root, i.e. the player theme). Pass another element — e.g. a terminal
+   * viewer's `.ncm-terminal-viewer` — to theme that subtree in isolation:
+   * custom properties resolve from the nearest ancestor, and inline variables
+   * beat any stylesheet rule, so the target's preset CSS still supplies
+   * whatever this call doesn't write.
+   *
+   * `prefs.preset: null` skips the player THEME_PRESETS merge entirely — the
+   * caller has already resolved its own preset (terminals merge
+   * TERMINAL_PRESETS[..].theme into `colors` before calling). Without this,
+   * an element-scoped call would silently inherit the *player* classic
+   * palette as fallback.
+   *
+   * Document-global side effects (body effect classes, animation level,
+   * wallpaper, the 0.5 glitch default) only run when targeting the root.
+   *
+   * @param {object} prefs - Theme preferences ({ preset, colors, fonts, textScale, contrast, ... })
+   * @param {HTMLElement} [targetEl] - Element to write variables onto (default document root)
    */
-  applyTheme(prefs) {
-    const root = document.documentElement;
-    const preset = THEME_PRESETS[prefs.preset] || THEME_PRESETS.classic;
+  applyTheme(prefs, targetEl = document.documentElement) {
+    const root = targetEl;
+    const isRoot = targetEl === document.documentElement;
+    const preset = prefs.preset === null ? {} : (THEME_PRESETS[prefs.preset] || THEME_PRESETS.classic);
 
-    // Apply colors: player overrides on top of preset
+    // Apply colors: player overrides on top of preset. Clear stale inline
+    // values when a key resolves to nothing (e.g. a terminal whose preset
+    // changed) so the stylesheet fallback shows through again.
     for (const [key, cssVar] of Object.entries(COLOR_VAR_MAP)) {
       const value = prefs.colors?.[key] || preset[key];
       if (value) root.style.setProperty(cssVar, value);
+      else root.style.removeProperty(cssVar);
     }
 
-    // Derived variables (glow effects)
-    const primary = prefs.colors?.primary || preset.primary;
-    const secondary = prefs.colors?.secondary || preset.secondary;
-    const accent = prefs.colors?.accent || preset.accent;
-    root.style.setProperty('--ncm-glow-primary', `0 0 10px ${primary}66`);
-    root.style.setProperty('--ncm-glow-secondary', `0 0 10px ${secondary}66`);
-    root.style.setProperty('--ncm-glow-accent', `0 0 10px ${accent}4d`);
+    // Derived variables (glow effects) — only when the source color resolves
+    // (element-scoped calls may leave accents to the target's own CSS).
+    const glow = (cssVar, color, alpha) => {
+      if (color) root.style.setProperty(cssVar, `0 0 10px ${color}${alpha}`);
+      else root.style.removeProperty(cssVar);
+    };
+    glow('--ncm-glow-primary', prefs.colors?.primary || preset.primary, '66');
+    glow('--ncm-glow-secondary', prefs.colors?.secondary || preset.secondary, '66');
+    glow('--ncm-glow-accent', prefs.colors?.accent || preset.accent, '4d');
 
     // Apply fonts: user overrides on top of preset defaults
     const presetFonts = {
@@ -72,15 +94,19 @@ export class ThemeService {
     };
     this._applyFonts(effectiveFonts, root);
 
-    // Effect classes on body
-    document.body.classList.toggle('ncm-scanlines', prefs.scanlines !== false);
-    document.body.classList.toggle('ncm-neon-glow', prefs.neonGlow !== false);
+    if (isRoot) {
+      // Effect classes on body
+      document.body.classList.toggle('ncm-scanlines', prefs.scanlines !== false);
+      document.body.classList.toggle('ncm-neon-glow', prefs.neonGlow !== false);
+      // Animation level as data attribute
+      document.body.dataset.ncmAnimationLevel = prefs.animationLevel || 'full';
+    }
 
-    // Animation level as data attribute
-    document.body.dataset.ncmAnimationLevel = prefs.animationLevel || 'full';
-
-    // Glitch intensity
-    root.style.setProperty('--ncm-glitch-intensity', String(prefs.glitchIntensity ?? 0.5));
+    // Glitch intensity (the 0.5 default is a player-theme convention; an
+    // element-scoped call only writes it when explicitly configured)
+    if (isRoot || prefs.glitchIntensity !== undefined) {
+      root.style.setProperty('--ncm-glitch-intensity', String(prefs.glitchIntensity ?? 0.5));
+    }
 
     // Text scale (80–120, stored as percentage, applied as multiplier)
     const textScale = (prefs.textScale ?? preset.textScale ?? 100) / 100;
@@ -89,23 +115,28 @@ export class ThemeService {
     // Readability contrast (70–140, stored as percentage, applied as multiplier).
     // Tone-map the bg/text/border palette in OKLCH lightness space rather than
     // applying a CSS contrast() filter — this leaves images/wallpaper untouched
-    // and preserves hue/saturation (neon stays neon). Accents are excluded.
-    // Always recomputes from base prefs/preset, so dragging the slider can't
-    // compound. (See CONTRAST_SPREAD in constants.js.)
+    // and preserves hue/chroma (neon stays neon). Accents are excluded.
+    // Always recomputes from base prefs/preset, so dragging can't compound.
+    // (See CONTRAST_SPREAD in constants.js.) A key with no explicit base at
+    // 100% contrast is skipped/cleared instead of written: writing the generic
+    // fallback would stomp the target's own CSS (a terminal preset's
+    // textMuted/border) with brand defaults for no visual gain.
     const contrast = (prefs.contrast ?? preset.contrast ?? 100) / 100;
     for (const { cssVar, key, base } of CONTRAST_SPREAD.vars) {
-      const baseColor = prefs.colors?.[key] || preset[key] || base;
-      root.style.setProperty(cssVar, adjustLightness(baseColor, contrast, CONTRAST_SPREAD.pivot));
+      const explicit = prefs.colors?.[key] || preset[key];
+      if (!explicit && contrast === 1) { root.style.removeProperty(cssVar); continue; }
+      root.style.setProperty(cssVar, adjustLightness(explicit || base, contrast, CONTRAST_SPREAD.pivot));
     }
 
-    // Wallpaper
+    // Wallpaper — always clear when unset so removing a terminal's wallpaper
+    // doesn't leave a stale inline var on the element.
     if (prefs.wallpaper) {
       root.style.setProperty('--ncm-wallpaper', `url('${prefs.wallpaper}')`);
     } else {
       root.style.removeProperty('--ncm-wallpaper');
     }
 
-    log.debug(`Theme applied: ${prefs.preset || 'custom'}`);
+    log.debug(`Theme applied${isRoot ? '' : ' (element-scoped)'}: ${prefs.preset ?? 'custom'}`);
   }
 
   /**

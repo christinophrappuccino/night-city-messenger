@@ -5,7 +5,7 @@
  * @description Shared utility functions used across the module
  */
 
-import { MODULE_ID, MODULE_SHORT } from './constants.js';
+import { MODULE_ID, MODULE_SHORT, TERMINAL_PRESETS, COLOR_VAR_MAP } from './constants.js';
 
 /** Month names for the written-out date styles (dateMonthStyle setting). */
 const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -243,6 +243,42 @@ export function adjustLightness(hex, factor, pivot = 0.5) {
   if (!c) return hex;
   c.L = Math.max(0, Math.min(1, pivot + (c.L - pivot) * factor));
   return oklchToHex(c);
+}
+
+/**
+ * Build the ThemeService.applyTheme prefs object for a TERMINAL theme —
+ * shared by the viewer (renders the saved theme) and the config sheet (live
+ * preview of the draft). Effective value per key = the GM's saved/draft
+ * override, else the TERMINAL_PRESETS palette, else nothing (the key is
+ * omitted so the viewer's preset-attribute CSS / base palette shows through).
+ * `preset: null` stops applyTheme from merging the *player* THEME_PRESETS in.
+ * @param {object} theme - flat terminal theme ({ preset, primary, …, fontDisplay, textScale, contrast })
+ * @param {string} presetKey - active TERMINAL_PRESETS key ('classic' = no entry, pure fallthrough)
+ * @returns {object} prefs for ThemeService.applyTheme
+ */
+export function buildTerminalThemePrefs(theme = {}, presetKey = '') {
+  const tp = TERMINAL_PRESETS[presetKey]?.theme || {};
+  const colors = {};
+  for (const key of Object.keys(COLOR_VAR_MAP)) {
+    const value = theme[key] || tp[key];
+    if (value) colors[key] = value;
+  }
+  return {
+    preset: null,
+    colors,
+    fonts: {
+      display: theme.fontDisplay || tp.fontDisplay || 'rajdhani',
+      mono: theme.fontMono || tp.fontMono || 'sharetechmono',
+      title: theme.fontTitle || tp.fontTitle || 'orbitron',
+    },
+    textScale: theme.textScale ?? 100,
+    contrast: theme.contrast ?? 100,
+    // Per-terminal wallpaper (image behind the mailbox, dimmed by CSS).
+    wallpaper: theme.wallpaper || null,
+    // Terminal glitch stored as 0–100 (slider); applyTheme wants 0–1 and only
+    // writes the var when defined (element-scoped calls skip the 0.5 default).
+    glitchIntensity: theme.glitch !== undefined ? (theme.glitch / 100) : undefined,
+  };
 }
 
 // ─── Media Embeds (AV Log) ───

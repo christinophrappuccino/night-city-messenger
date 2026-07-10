@@ -1,36 +1,218 @@
-{{!-- Terminal login screen — account cards + secret-login bar. Single root. --}}
-<div class="ncm-term__login">
-  <div class="ncm-term__hero">
-    <div class="ncm-term__hero-logo">{{#if logoImage}}<img src="{{logoImage}}" alt="">{{else}}<i class="{{presetIcon}}"></i>{{/if}}</div>
-    <div class="ncm-term__hero-txt">
-      <div class="ncm-term__hero-name">{{terminalName}}</div>
-      <div class="ncm-term__hero-sub">{{banner}}</div>
+{{!-- Terminal login screen — one branch per config.loginStyle (cards / crt /
+     roster / lockscreen / keypad / portraits). Same accounts, security, and
+     auth flow underneath — secured picks route to the SECURE SHELL console
+     (except lockscreen/keypad, whose password entry is inline via
+     terminalInlineAuth). Every style follows the terminal theme palette.
+     Single root. --}}
+<div class="ncm-term__login" data-login-style="{{loginStyle}}">
+
+  {{#if styleCrt}}
+    {{!-- ── CRT PROMPT — full-screen phosphor tty. Selecting a line opens the
+          SECURE SHELL console (itself console-styled, so the fiction holds). --}}
+    <div class="ncm-term__crt">
+      <div class="ncm-term__crt-top">
+        <span class="ncm-term__crt-host">{{shellHost}} · tty0</span>
+        {{#if isGM}}<span class="ncm-term__login-gm" data-action="terminalConfigure" data-tooltip="Configure terminal (GM)"><i class="fas fa-sliders"></i> EDIT</span>{{/if}}
+        {{#if uplink.show}}
+          {{> "modules/cyberpunkred-messenger/templates/terminal/partials/uplink.hbs" uplink align="right"}}
+        {{/if}}
+      </div>
+      <div class="ncm-term__crt-hd">{{terminalName}}</div>
+      {{#if banner}}<div class="ncm-term__crt-sub">{{banner}}</div>{{/if}}
+      {{#if motd}}<div class="ncm-term__crt-motd">{{motd}}</div>{{/if}}
+      <div class="ncm-term__crt-line">SYSTEM READY. {{accountCount}} ACCOUNT{{#unless (eq accountCount 1)}}S{{/unless}} ON RECORD.</div>
+      <div class="ncm-term__crt-list">
+        {{#each accounts}}
+          <div class="ncm-term__crt-acct" data-action="terminalSelectAccount" data-account-id="{{id}}">
+            <span class="ncm-term__crt-user">&gt; {{username}}</span>
+            <span class="ncm-term__crt-st{{#if isOpen}} is-open{{/if}}">{{#if isOpen}}OPEN{{else}}LOCKED{{/if}}</span>
+            {{#if offNet}}<span class="ncm-term__crt-st is-offnet">OFF-NET</span>{{/if}}
+          </div>
+        {{/each}}
+        <div class="ncm-term__crt-acct ncm-term__crt-other" data-action="terminalManualLogin">
+          <span class="ncm-term__crt-user">&gt; other account…</span>
+        </div>
+      </div>
+      <div class="ncm-term__crt-prompt">login: <span class="ncm-term__cursor"></span></div>
+      {{#if iceWarning}}<div class="ncm-term__crt-ice">!! {{iceWarning}}</div>{{/if}}
     </div>
-    <div class="ncm-term__hero-stat{{#if uplink.show}} ncm-term__hero-stat--uplink{{/if}}">
-      <span><b>{{accountCount}}</b> accounts</span>
-      {{#if secured}}<span class="is-secured"><i class="fas fa-lock"></i> secured</span>{{/if}}
-      {{#if onlineCount}}<span><b>{{onlineCount}}</b> online</span>{{/if}}
-      {{!-- Machine uplink — switchable BEFORE login, since network-gated
-            accounts only materialize on the right network. --}}
-      {{#if uplink.show}}
-        {{> "modules/cyberpunkred-messenger/templates/terminal/partials/uplink.hbs" uplink align="right"}}
-      {{/if}}
-    </div>
-  </div>
-  <div class="ncm-term__login-body">
-    <div class="ncm-term__prompt">&gt; select an account to log in<span class="ncm-term__cursor"></span></div>
-    <div class="ncm-term__cards">
-      {{#each accounts}}
-        {{> "modules/cyberpunkred-messenger/templates/terminal/partials/account-card.hbs"}}
-      {{/each}}
-      <div class="ncm-term__otherbar" data-action="terminalManualLogin">
-        <div class="ncm-term__otherbar-ic"><i class="fas fa-user-lock"></i></div>
-        <div class="ncm-term__otherbar-tx">Log in with another account</div>
-        <span class="ncm-term__card-go"><i class="fas fa-chevron-right"></i></span>
+
+  {{else}}
+    {{!-- ── Shared hero (all non-CRT styles) ── --}}
+    <div class="ncm-term__hero">
+      <div class="ncm-term__hero-logo">{{#if logoImage}}<img src="{{logoImage}}" alt="">{{else}}<i class="{{presetIcon}}"></i>{{/if}}</div>
+      <div class="ncm-term__hero-txt">
+        <div class="ncm-term__hero-name">{{terminalName}}</div>
+        <div class="ncm-term__hero-sub">{{banner}}</div>
+      </div>
+      <div class="ncm-term__hero-stat{{#if uplink.show}} ncm-term__hero-stat--uplink{{/if}}">
+        <span><b>{{accountCount}}</b> accounts</span>
+        {{#if secured}}<span class="is-secured"><i class="fas fa-lock"></i> secured</span>{{/if}}
+        {{#if onlineCount}}<span><b>{{onlineCount}}</b> online</span>{{/if}}
+        {{#if isGM}}<span class="ncm-term__login-gm" data-action="terminalConfigure" data-tooltip="Configure terminal (GM)"><i class="fas fa-sliders"></i> EDIT</span>{{/if}}
+        {{!-- Machine uplink — switchable BEFORE login, since network-gated
+              accounts only materialize on the right network. --}}
+        {{#if uplink.show}}
+          {{> "modules/cyberpunkred-messenger/templates/terminal/partials/uplink.hbs" uplink align="right"}}
+        {{/if}}
       </div>
     </div>
-  </div>
-  {{#if iceWarning}}
-    <div class="ncm-term__danger"><i class="fas fa-triangle-exclamation"></i> {{iceWarning}}</div>
+    {{#if motd}}<div class="ncm-term__motd"><i class="fas fa-triangle-exclamation"></i> {{motd}}</div>{{/if}}
+
+    <div class="ncm-term__login-body">
+
+      {{#if styleRoster}}
+        {{!-- ── DUTY ROSTER — sign-in rows with roles and status chips. --}}
+        <div class="ncm-term__prompt">&gt; personnel sign-in<span class="ncm-term__cursor"></span></div>
+        <div class="ncm-term__roster">
+          {{#each accounts}}
+            <div class="ncm-term__rrow" data-action="terminalSelectAccount" data-account-id="{{id}}" data-tooltip="{{tooltip}}">
+              <span class="ncm-term__rrow-av">{{#if portrait}}<img src="{{portrait}}" alt="">{{else}}{{initials}}{{/if}}</span>
+              <span class="ncm-term__rrow-id">
+                <span class="ncm-term__rrow-nm">{{displayName}}{{#if isAdmin}}<i class="fas fa-user-shield ncm-term__rrow-adm"></i>{{/if}}</span>
+                <span class="ncm-term__rrow-role">{{#if role}}{{role}}{{else}}{{username}}{{/if}}</span>
+              </span>
+              {{#if offNet}}<span class="ncm-term__rrow-st is-offnet"><i class="fas fa-wifi"></i> OFF-NET</span>{{/if}}
+              {{#if isOpen}}
+                <span class="ncm-term__rrow-st is-open">ACTIVE</span>
+              {{else}}
+                <span class="ncm-term__rrow-st is-locked"><i class="fas fa-lock"></i> LOCKED</span>
+              {{/if}}
+            </div>
+          {{/each}}
+          <div class="ncm-term__otherbar" data-action="terminalManualLogin">
+            <div class="ncm-term__otherbar-ic"><i class="fas fa-user-lock"></i></div>
+            <div class="ncm-term__otherbar-tx">Sign in with another account</div>
+            <span class="ncm-term__card-go"><i class="fas fa-chevron-right"></i></span>
+          </div>
+        </div>
+
+      {{else if styleLock}}
+        {{!-- ── LOCK SCREEN — one featured account, passcode inline. --}}
+        {{#if focus}}
+          <div class="ncm-term__lock">
+            <div class="ncm-term__lock-av">{{#if focus.portrait}}<img src="{{focus.portrait}}" alt="">{{else}}{{focus.initials}}{{/if}}</div>
+            <div class="ncm-term__lock-nm">{{focus.displayName}}</div>
+            <div class="ncm-term__lock-role">{{#if focus.role}}{{focus.role}}{{else}}{{focus.username}}{{/if}}</div>
+            {{#if focus.isOpen}}
+              <div class="ncm-term__lock-enter" data-action="terminalSelectAccount" data-account-id="{{focus.id}}"><i class="fas fa-right-to-bracket"></i> ENTER</div>
+            {{else if focus.hasPassword}}
+              <div class="ncm-term__lockpass">
+                <input type="password" name="manualPassword" data-account-id="{{focus.id}}" autocomplete="off" placeholder="enter passcode…">
+                <span class="ncm-term__lockpass-go" data-action="terminalInlineAuth" data-account-id="{{focus.id}}"><i class="fas fa-arrow-right"></i></span>
+              </div>
+              <div class="ncm-term__lock-alt" data-action="terminalSelectAccount" data-account-id="{{focus.id}}">other access methods…</div>
+            {{else}}
+              <div class="ncm-term__lock-enter" data-action="terminalSelectAccount" data-account-id="{{focus.id}}"><i class="fas fa-lock"></i> AUTHENTICATE</div>
+            {{/if}}
+            {{#if inlineError}}<div class="ncm-term__lock-err"><i class="fas fa-triangle-exclamation"></i> {{inlineError}}</div>{{/if}}
+          </div>
+          {{#if others.length}}
+            <div class="ncm-term__lock-others">
+              {{#each others}}
+                <span class="ncm-term__lock-mini" data-action="terminalFocusAccount" data-account-id="{{id}}" data-tooltip="{{displayName}}">
+                  {{#if portrait}}<img src="{{portrait}}" alt="">{{else}}{{initials}}{{/if}}
+                </span>
+              {{/each}}
+              <span class="ncm-term__lock-mini ncm-term__lock-mini--other" data-action="terminalManualLogin" data-tooltip="Another account"><i class="fas fa-user-lock"></i></span>
+            </div>
+          {{else}}
+            <div class="ncm-term__lock-others">
+              <span class="ncm-term__lock-mini ncm-term__lock-mini--other" data-action="terminalManualLogin" data-tooltip="Another account"><i class="fas fa-user-lock"></i></span>
+            </div>
+          {{/if}}
+        {{else}}
+          <div class="ncm-term__prompt">&gt; no accounts on this device</div>
+        {{/if}}
+
+      {{else if styleKeypad}}
+        {{!-- ── KEYPAD PANEL — hardware pad + LCD; digits fill a hidden
+              password input, ⏎ submits (terminalInlineAuth). --}}
+        {{#if focus}}
+          {{!-- data-account-id on the wrapper: the pad's ⏎ resolves its target
+               account via closest('[data-account-id]') in _onInlineAuth. --}}
+          <div class="ncm-term__keypad" data-account-id="{{focus.id}}">
+            <input type="password" name="manualPassword" autocomplete="off" class="ncm-term__keypad-hidden" tabindex="-1">
+            <div class="ncm-term__lcd">
+              <div class="ncm-term__lcd-hd">{{terminalName}}</div>
+              <div class="ncm-term__lcd-user">{{focus.displayName}}</div>
+              {{#if focus.isOpen}}
+                <div class="ncm-term__lcd-code">— OPEN —</div>
+              {{else}}
+                <div class="ncm-term__lcd-code">_</div>
+              {{/if}}
+              {{#if inlineError}}<div class="ncm-term__lcd-err">{{inlineError}}</div>{{/if}}
+            </div>
+            <div class="ncm-term__pad">
+              <button type="button" class="ncm-term__pad-key" data-key="1">1</button>
+              <button type="button" class="ncm-term__pad-key" data-key="2">2</button>
+              <button type="button" class="ncm-term__pad-key" data-key="3">3</button>
+              <button type="button" class="ncm-term__pad-key" data-key="4">4</button>
+              <button type="button" class="ncm-term__pad-key" data-key="5">5</button>
+              <button type="button" class="ncm-term__pad-key" data-key="6">6</button>
+              <button type="button" class="ncm-term__pad-key" data-key="7">7</button>
+              <button type="button" class="ncm-term__pad-key" data-key="8">8</button>
+              <button type="button" class="ncm-term__pad-key" data-key="9">9</button>
+              <button type="button" class="ncm-term__pad-key ncm-term__pad-key--fn" data-key="clear"><i class="fas fa-xmark"></i></button>
+              <button type="button" class="ncm-term__pad-key" data-key="0">0</button>
+              {{#if focus.isOpen}}
+                <button type="button" class="ncm-term__pad-key ncm-term__pad-key--go" data-action="terminalSelectAccount" data-account-id="{{focus.id}}"><i class="fas fa-arrow-right-to-bracket"></i></button>
+              {{else}}
+                <button type="button" class="ncm-term__pad-key ncm-term__pad-key--go" data-key="enter"><i class="fas fa-arrow-right-to-bracket"></i></button>
+              {{/if}}
+            </div>
+          </div>
+          <div class="ncm-term__lock-alt" data-action="terminalSelectAccount" data-account-id="{{focus.id}}">other access methods…</div>
+          {{#if others.length}}
+            <div class="ncm-term__lock-others">
+              {{#each others}}
+                <span class="ncm-term__lock-mini" data-action="terminalFocusAccount" data-account-id="{{id}}" data-tooltip="{{displayName}}">
+                  {{#if portrait}}<img src="{{portrait}}" alt="">{{else}}{{initials}}{{/if}}
+                </span>
+              {{/each}}
+            </div>
+          {{/if}}
+        {{else}}
+          <div class="ncm-term__prompt">&gt; no accounts on this device</div>
+        {{/if}}
+
+      {{else if stylePortraits}}
+        {{!-- ── PORTRAIT ROW — consumer-OS shared machine. --}}
+        <div class="ncm-term__portraits">
+          {{#each accounts}}
+            <div class="ncm-term__port" data-action="terminalSelectAccount" data-account-id="{{id}}" data-tooltip="{{tooltip}}">
+              <div class="ncm-term__port-av">{{#if portrait}}<img src="{{portrait}}" alt="">{{else}}{{initials}}{{/if}}
+                {{#unless isOpen}}<span class="ncm-term__port-lock"><i class="fas fa-lock"></i></span>{{/unless}}
+                {{#if offNet}}<span class="ncm-term__port-off">OFF-NET</span>{{/if}}
+              </div>
+              <div class="ncm-term__port-nm">{{displayName}}</div>
+              {{#if role}}<div class="ncm-term__port-role">{{role}}</div>{{/if}}
+            </div>
+          {{/each}}
+          <div class="ncm-term__port ncm-term__port--other" data-action="terminalManualLogin" data-tooltip="Another account">
+            <div class="ncm-term__port-av"><i class="fas fa-user-lock"></i></div>
+            <div class="ncm-term__port-nm">Other…</div>
+          </div>
+        </div>
+
+      {{else}}
+        {{!-- ── BADGE CARDS (default) ── --}}
+        <div class="ncm-term__prompt">&gt; select an account to log in<span class="ncm-term__cursor"></span></div>
+        <div class="ncm-term__cards">
+          {{#each accounts}}
+            {{> "modules/cyberpunkred-messenger/templates/terminal/partials/account-card.hbs"}}
+          {{/each}}
+          <div class="ncm-term__otherbar" data-action="terminalManualLogin">
+            <div class="ncm-term__otherbar-ic"><i class="fas fa-user-lock"></i></div>
+            <div class="ncm-term__otherbar-tx">Log in with another account</div>
+            <span class="ncm-term__card-go"><i class="fas fa-chevron-right"></i></span>
+          </div>
+        </div>
+      {{/if}}
+
+    </div>
+    {{#if iceWarning}}
+      <div class="ncm-term__danger"><i class="fas fa-triangle-exclamation"></i> {{iceWarning}}</div>
+    {{/if}}
   {{/if}}
 </div>

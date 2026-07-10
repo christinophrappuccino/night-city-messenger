@@ -45,6 +45,7 @@
         <div class="ncm-term__badge-scan"></div>
         <div class="ncm-term__badge-chip"><i class="fas fa-shield-halved"></i> VALIDATED</div>
         <div class="ncm-term__badge-granted">ACCESS GRANTED</div>
+        {{#if welcomeText}}<div class="ncm-term__badge-welcome">{{welcomeText}}</div>{{/if}}
       </div>
     </div>
 
@@ -162,6 +163,21 @@
         {{/if}}
       </div>
     </div>
+
+    {{!-- Idle screensaver (config.screensaver) — dim overlay + drifting logo/
+          marquee; _resetScreensaver toggles --on after idleSeconds, any
+          activity inside the window wakes it. --}}
+    {{#if screensaver}}
+      <div class="ncm-term__saver" data-ss-motion="{{screensaver.motion}}">
+        <div class="ncm-term__saver-inner">
+          {{#if screensaver.logo}}
+            <div class="ncm-term__saver-logo">{{#if screensaver.logo.imageUrl}}<img src="{{screensaver.logo.imageUrl}}" alt="">{{else}}<i class="{{screensaver.logo.icon}}"></i>{{/if}}</div>
+          {{/if}}
+          <div class="ncm-term__saver-text">{{screensaver.text}}</div>
+          <div class="ncm-term__saver-hint">— click anywhere to resume —</div>
+        </div>
+      </div>
+    {{/if}}
   {{/if}}
 
   {{!-- ── Machine-uplink join challenge (secured interface) — full-viewer

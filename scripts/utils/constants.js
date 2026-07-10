@@ -445,6 +445,9 @@ export const SHARD_PRESETS = Object.freeze({
 export const TERMINAL_PRESETS = Object.freeze({
   'arasaka-workstation': {
     label: 'Arasaka Workstation', icon: 'fas fa-building', loginStyle: 'cards',
+    login: {motd: 'ARASAKA NETWORK — ALL ACTIVITY IS MONITORED',welcomeText: 'Welcome back, employee. Productivity is loyalty.'},
+    screensaver: {enabled: true,idleSeconds: 180,text: 'ARASAKA',iconMode: 'boot',faIcon: '',imageUrl: '',motion: 'drift'},
+    folderNames: {inbox: 'Correspondence',saved: 'Flagged',trash: 'Shredder'},
     theme: { primary: '#ff0033', secondary: '#19f3f7', accent: '#ffcc00', bgDeep: '#0a0006', bgBase: '#160008', bgSurface: '#22060e', bgElevated: '#2c0a14', textPrimary: '#f4e6ea', textSecondary: '#c79aa6', fontDisplay: 'rajdhani', fontMono: 'sharetechmono', fontTitle: 'orbitron' },
     security: { requiresAuth: true, allowPassword: true, allowSkillCheck: false, authLogic: 'any', bypassSkills: ['Interface'], bypassDC: 18, encryptionType: 'BLACK_ICE', failureMode: 'damage', maxAttempts: 3, lockoutDuration: 3600000 },
     boot: { enabled: true, title: 'ARASAKA NET', subtitle: 'Secure Workstation // Access Level: Restricted', banner: 'ARASAKA NET · WORKSTATION 7F-12', animationStyle: 'holographic-snap', speed: 'normal', logLines: ['ARASAKA-NET handshake ........ VERIFIED', 'Credential gateway .......... ONLINE', 'BLACK_ICE countermeasure .... ARMED', 'Mounting user volumes ....... OK'] },
@@ -455,6 +458,9 @@ export const TERMINAL_PRESETS = Object.freeze({
   },
   'netwatch-unit': {
     label: 'NetWatch Field Unit', icon: 'fas fa-satellite-dish', loginStyle: 'cards',
+    login: {motd: 'CLASSIFIED SYSTEM — NETWATCH EYES ONLY',welcomeText: 'Clearance verified. Watch the Wall.'},
+    screensaver: {enabled: true,idleSeconds: 120,text: 'NETWATCH',iconMode: 'boot',faIcon: '',imageUrl: '',motion: 'static'},
+    folderNames: {inbox: 'Bulletins',saved: 'Casework',trash: 'Purged'},
     theme: { primary: '#4aa3ff', secondary: '#b9d8ff', accent: '#9ad0ff', bgDeep: '#04070f', bgBase: '#070d18', bgSurface: '#0b1726', bgElevated: '#102236', textPrimary: '#e6eefc', textSecondary: '#90a8c8', fontDisplay: 'exo2', fontMono: 'ibmplexmono', fontTitle: 'orbitron' },
     security: { requiresAuth: true, allowPassword: true, allowSkillCheck: true, authLogic: 'all', bypassSkills: ['Cryptography'], bypassDC: 20, encryptionType: 'BLACK_ICE', failureMode: 'lockout', maxAttempts: 3, lockoutDuration: 3600000 },
     boot: { enabled: true, title: 'NETWATCH', subtitle: 'Field Intelligence Unit // CLASSIFIED', banner: 'NETWATCH FIELD UNIT · TTY0', animationStyle: 'scan-sweep', speed: 'normal', logLines: ['NETWATCH uplink ............. SECURE', 'Clearance check ............. PENDING', 'ICE lattice ................. ACTIVE'] },
@@ -462,6 +468,9 @@ export const TERMINAL_PRESETS = Object.freeze({
   },
   'streetkid-bbs': {
     label: 'Streetkid BBS', icon: 'fas fa-skull', loginStyle: 'crt',
+    login: {motd: 'no narcs. no corpos. no exceptions.',welcomeText: 'yo. the board remembers you.'},
+    screensaver: {enabled: true,idleSeconds: 150,text: 'AFTERLIFE BBS',iconMode: 'boot',faIcon: '',imageUrl: '',motion: 'bounce'},
+    folderNames: {inbox: 'Posts',saved: 'Pinned',trash: 'Burned'},
     theme: { primary: '#00ff41', secondary: '#19f3f7', accent: '#f7c948', bgDeep: '#040a06', bgBase: '#07120a', bgSurface: '#0c1a0f', bgElevated: '#102414', textPrimary: '#daffe4', textSecondary: '#7fae8d', fontDisplay: 'chakrapetch', fontMono: 'sharetechmono', fontTitle: 'audiowide' },
     security: { requiresAuth: false, allowPassword: false, allowSkillCheck: true, authLogic: 'any', bypassSkills: ['Interface'], bypassDC: 13, encryptionType: 'ICE', failureMode: 'lockout', maxAttempts: 5, lockoutDuration: 1800000 },
     boot: { enabled: true, title: 'AFTERLIFE BBS', subtitle: 'no narcs // no cops // no mercy', banner: 'AFTERLIFE BBS · NODE 7', animationStyle: 'glitch-stutter', speed: 'dramatic', logLines: ['Dialing node ................ CARRIER', 'Trackers .................... NONE', 'Welcome back, choom.'] },
@@ -472,6 +481,9 @@ export const TERMINAL_PRESETS = Object.freeze({
   },
   'retro-dos': {
     label: 'Retro-DOS', icon: 'fas fa-terminal', loginStyle: 'crt',
+    login: {motd: 'C:\\\\> AUTHORIZED USERS ONLY',welcomeText: 'SESSION OK. HAVE A PRODUCTIVE DAY.'},
+    screensaver: {enabled: true,idleSeconds: 90,text: 'INSERT CREDCHIP',iconMode: 'boot',faIcon: '',imageUrl: '',motion: 'bounce'},
+    folderNames: {inbox: 'Mail',saved: 'Archive',trash: 'Deleted'},
     theme: { primary: '#ffb000', secondary: '#ffd070', accent: '#ff8a00', bgDeep: '#0a0700', bgBase: '#140d00', bgSurface: '#1c1300', bgElevated: '#261a00', textPrimary: '#ffe6b0', textSecondary: '#b89250', fontDisplay: 'jura', fontMono: 'spacemono', fontTitle: 'michroma' },
     security: { requiresAuth: true, allowPassword: true, allowSkillCheck: false, authLogic: 'any', bypassSkills: ['Interface'], bypassDC: 15, encryptionType: 'ICE', failureMode: 'lockout', maxAttempts: 3, lockoutDuration: 3600000 },
     boot: { enabled: true, title: 'NCDOS', subtitle: 'Night City DOS v3.30', banner: 'NCDOS · DRIVE C:', animationStyle: 'instant-dump', speed: 'fast', logLines: ['POST ........................ OK', 'Loading COMMAND.COM ......... DONE', 'C:\\>'] },
@@ -479,11 +491,258 @@ export const TERMINAL_PRESETS = Object.freeze({
   },
   'ripperdoc': {
     label: 'Ripperdoc PC', icon: 'fas fa-staff-snake', loginStyle: 'cards',
+    login: {motd: 'PATIENT CONFIDENTIALITY IN EFFECT',welcomeText: 'Scrub in. Charts are current.'},
+    screensaver: {enabled: true,idleSeconds: 200,text: 'CLINIC — RING BELL',iconMode: 'boot',faIcon: '',imageUrl: '',motion: 'static'},
+    folderNames: {inbox: 'Patients',saved: 'Charts',trash: 'Disposal'},
     theme: { primary: '#e8a0ff', secondary: '#ffddaa', accent: '#ff9ecb', bgDeep: '#0c0410', bgBase: '#160a1c', bgSurface: '#200f28', bgElevated: '#2a1634', textPrimary: '#f4e2fb', textSecondary: '#b890c8', fontDisplay: 'rajdhani', fontMono: 'sourcecodepro', fontTitle: 'orbitron' },
     security: { requiresAuth: true, allowPassword: false, allowSkillCheck: false, allowKeyItem: true, authLogic: 'any', keyItemName: 'Clinic Keycard', bypassSkills: ['Interface'], bypassDC: 14, encryptionType: 'ICE', failureMode: 'lockout', maxAttempts: 3, lockoutDuration: 1800000 },
     boot: { enabled: true, title: 'RIPPERDOC OS', subtitle: 'Cyberware Clinic // Patient Records', banner: 'CLINIC TERMINAL · FRONT DESK', animationStyle: 'warm-dissolve', speed: 'normal', logLines: ['Clinic uplink ............... OK', 'Patient DB .................. MOUNTED', 'Insurance relay ............. STANDBY'] },
     accounts: [{ username: 'frontdesk', displayName: 'Front Desk', isAdmin: false, security: { requiresAuth: true, allowKeyItem: true, keyItemName: 'Clinic Keycard' } }],
   },
+  'trauma-team': {
+    label: 'Trauma Team Platinum', icon: 'fas fa-truck-medical', loginStyle: 'roster',
+    login: {motd: 'SUBSCRIBER DATA — PLATINUM TIER PROTECTED',welcomeText: 'Dispatch link secure. Fly safe.'},
+    screensaver: {enabled: true,idleSeconds: 120,text: 'TRAUMA TEAM',iconMode: 'boot',faIcon: '',imageUrl: '',motion: 'drift'},
+    folderNames: {inbox: 'Dispatches',saved: 'Priority',trash: 'Closed'},
+    theme: { primary: '#ff9e2c', secondary: '#e8f1ff', accent: '#ff3b3b', bgDeep: '#050a12', bgBase: '#0a1220', bgSurface: '#101c30', bgElevated: '#182842', textPrimary: '#f2f6ff', textSecondary: '#9fb4d8', fontDisplay: 'exo2', fontMono: 'ibmplexmono', fontTitle: 'orbitron' },
+    security: { requiresAuth: true, allowPassword: true, allowKeyItem: true, keyItemName: 'TT Platinum Card', authLogic: 'any', failureMode: 'lockout', maxAttempts: 3, lockoutDuration: 1800000 },
+    boot: { enabled: true, title: 'TRAUMA TEAM', subtitle: 'Platinum Response // Dispatch Console', banner: 'TT DISPATCH · AV-4 READY', animationStyle: 'scan-sweep', speed: 'fast', logLines: ['Dispatch uplink ............. LIVE', 'AV-4 telemetry .............. NOMINAL', 'Subscriber database ......... MOUNTED', 'Biomonitor relay ............ ARMED'] },
+    accounts: [
+      { username: 'dispatch', displayName: 'Dispatch Desk', role: 'DISPATCH OPERATOR', security: { requiresAuth: true, allowPassword: true } },
+      { username: 'medlead', displayName: 'Response Lead', isAdmin: true, role: 'PLATINUM TEAM LEAD', security: { requiresAuth: true, allowPassword: true } },
+    ],
+  },
+  'militech-checkpoint': {
+    label: 'Militech Checkpoint', icon: 'fas fa-shield-halved', loginStyle: 'keypad',
+    login: {motd: 'LETHAL FORCE AUTHORIZED BEYOND THIS POINT',welcomeText: 'Checkpoint online. Stay frosty.'},
+    screensaver: {enabled: true,idleSeconds: 90,text: 'MILITECH',iconMode: 'boot',faIcon: '',imageUrl: '',motion: 'static'},
+    folderNames: {inbox: 'Orders',saved: 'Standing',trash: 'Expired'},
+    theme: { primary: '#ffb000', secondary: '#b8c29a', accent: '#ff4d2e', bgDeep: '#0a0c05', bgBase: '#12150a', bgSurface: '#1a1f10', bgElevated: '#252c18', textPrimary: '#eef0e2', textSecondary: '#a8b090', fontDisplay: 'barlowcondensed', fontMono: 'sharetechmono', fontTitle: 'orbitron' },
+    security: { requiresAuth: true, allowPassword: true, authLogic: 'any', failureMode: 'damage', encryptionType: 'BLACK_ICE', maxAttempts: 3, lockoutDuration: 3600000 },
+    boot: { enabled: true, title: 'MILITECH', subtitle: 'Checkpoint Access Control // ZONE 4', banner: 'M-SEC GATE 07 · ARMED', animationStyle: 'holographic-snap', speed: 'fast', logLines: ['Perimeter mesh .............. ARMED', 'Turret handshake ............ OK', 'Access roster ............... SYNCED'] },
+    accounts: [{ username: 'gate07', displayName: 'Gate Console', role: 'CHECKPOINT CONSOLE', security: { requiresAuth: true, allowPassword: true, password: '0451' } }],
+  },
+  'ncpd-precinct': {
+    label: 'NCPD Precinct', icon: 'fas fa-handcuffs', loginStyle: 'roster',
+    login: {motd: 'ALL ACCESS LOGGED — IAD AUDITS WEEKLY',welcomeText: 'Shift logged. Watch your six out there.'},
+    screensaver: {enabled: true,idleSeconds: 150,text: 'NCPD',iconMode: 'boot',faIcon: '',imageUrl: '',motion: 'drift'},
+    folderNames: {inbox: 'Case Files',saved: 'Evidence',trash: 'Purged'},
+    theme: { primary: '#4aa3ff', secondary: '#ffd257', accent: '#ff5f5f', bgDeep: '#05070d', bgBase: '#0a0f1a', bgSurface: '#111a2b', bgElevated: '#1a2740', textPrimary: '#e9eefb', textSecondary: '#94a5c6', fontDisplay: 'rajdhani', fontMono: 'ibmplexmono', fontTitle: 'orbitron' },
+    security: { requiresAuth: true, allowPassword: true, allowSkillCheck: true, bypassSkills: ['Interface'], bypassDC: 17, authLogic: 'any', failureMode: 'lockout', maxAttempts: 4, lockoutDuration: 1800000 },
+    boot: { enabled: true, title: 'NCPD', subtitle: 'Evidence & Records // Precinct Net', banner: 'PRECINCT TERMINAL · ALL ACCESS LOGGED', animationStyle: 'standard-fade', speed: 'normal', logLines: ['Precinct net ................ SECURE', 'Evidence locker index ....... MOUNTED', 'Warrant sync ................ CURRENT', 'Bodycam archive ............. ONLINE'] },
+    accounts: [
+      { username: 'desk_sgt', displayName: 'Desk Sergeant', role: 'DUTY SERGEANT', security: { requiresAuth: true, allowPassword: true } },
+      { username: 'evidence', displayName: 'Evidence Custodian', role: 'CUSTODIAN', security: { requiresAuth: true, allowPassword: true } },
+    ],
+  },
+  'nomad-rig': {
+    label: 'Nomad Rig-OS', icon: 'fas fa-mountain', loginStyle: 'portraits',
+    login: {motd: 'family only. you know the rules.',welcomeText: 'Welcome home. Road is long.'},
+    screensaver: {enabled: true,idleSeconds: 240,text: 'ON THE ROAD',iconMode: 'boot',faIcon: '',imageUrl: '',motion: 'bounce'},
+    folderNames: {inbox: 'Radio',saved: 'Maps',trash: 'Dust'},
+    theme: { primary: '#ff7a3d', secondary: '#7fd4c1', accent: '#ffd257', bgDeep: '#0d0805', bgBase: '#160e08', bgSurface: '#221610', bgElevated: '#2f1f16', textPrimary: '#f4ece2', textSecondary: '#c2a888', fontDisplay: 'rajdhani', fontMono: 'sharetechmono', fontTitle: 'audiowide' },
+    security: { requiresAuth: false },
+    boot: { enabled: true, title: 'RIG-OS', subtitle: 'Clan Convoy Mesh // Badlands', banner: 'FAMILY RIG · SHARED', animationStyle: 'warm-dissolve', speed: 'normal', logLines: ['Convoy mesh ................. LINKED', 'Solar array ................. 82%', 'Water recycler .............. OK', 'Radio uplink ................ SCANNING'] },
+    accounts: [
+      { username: 'driver', displayName: 'Rig Driver', role: 'CONVOY DRIVER', security: { requiresAuth: false } },
+      { username: 'quartermaster', displayName: 'Quartermaster', role: 'SUPPLIES', security: { requiresAuth: true, allowPassword: true } },
+    ],
+  },
+  'bd-lounge': {
+    label: 'Braindance Lounge', icon: 'fas fa-martini-glass', loginStyle: 'lockscreen',
+    login: {motd: 'what happens in the booth stays in the booth',welcomeText: 'Enjoy the ride. Tip your editor.'},
+    screensaver: {enabled: true,idleSeconds: 120,text: 'VELVET ROOM',iconMode: 'boot',faIcon: '',imageUrl: '',motion: 'drift'},
+    folderNames: {inbox: 'Bookings',saved: 'Regulars',trash: 'Burned'},
+    theme: { primary: '#ff5fa2', secondary: '#8de3ff', accent: '#c77bff', bgDeep: '#0d040c', bgBase: '#170a16', bgSurface: '#241224', bgElevated: '#321a32', textPrimary: '#fbeaf6', textSecondary: '#c79ab8', fontDisplay: 'rajdhani', fontMono: 'sharetechmono', fontTitle: 'audiowide' },
+    security: { requiresAuth: true, allowPassword: true, authLogic: 'any', failureMode: 'lockout', maxAttempts: 3, lockoutDuration: 900000 },
+    boot: { enabled: true, title: 'VELVET ROOM', subtitle: 'BD Lounge // Private Booth Console', banner: 'BOOTH 6 · SESSIONS BY APPOINTMENT', animationStyle: 'warm-dissolve', speed: 'dramatic', logLines: ['Booth network ............... UP', 'BD wreath diagnostics ....... PASSED', 'Session ledger .............. LOCKED'] },
+    accounts: [{ username: 'boothhost', displayName: 'Booth Host', role: 'LOUNGE HOST', security: { requiresAuth: true, allowPassword: true } }],
+  },
+  'maelstrom-chopshop': {
+    label: 'Maelstrom Chopshop', icon: 'fas fa-skull-crossbones', loginStyle: 'crt',
+    login: {motd: 'FLESH IS A COSTUME',welcomeText: 'meat verified. get to work.'},
+    screensaver: {enabled: true,idleSeconds: 100,text: 'MAELSTROM',iconMode: 'boot',faIcon: '',imageUrl: '',motion: 'bounce'},
+    folderNames: {inbox: 'Jobs',saved: 'Parts',trash: 'Scrap'},
+    theme: { primary: '#ff2222', secondary: '#8d99ae', accent: '#ff7a2f', bgDeep: '#070404', bgBase: '#0e0707', bgSurface: '#180d0d', bgElevated: '#241313', textPrimary: '#f1e6e6', textSecondary: '#a88c8c', fontDisplay: 'sharetechmono', fontMono: 'vt323', fontTitle: 'orbitron' },
+    security: { requiresAuth: true, allowPassword: true, allowSkillCheck: true, bypassSkills: ['Interface'], bypassDC: 15, authLogic: 'any', failureMode: 'damage', encryptionType: 'BLACK_ICE', maxAttempts: 3, lockoutDuration: 3600000 },
+    boot: { enabled: true, title: 'MEAT-GRID', subtitle: 'chopshop node // no questions', banner: 'DUM DUM SAYS HI', animationStyle: 'glitch-flood', speed: 'fast', logLines: ['rippers online .............. yeah', 'parts inventory ............. dont ask', 'ice ......................... HUNGRY'] },
+    accounts: [{ username: 'wrench', displayName: 'Wrench', role: 'CHOP LEAD', security: { requiresAuth: true, allowPassword: true } }],
+  },
+  'blackwall-relay': {
+    label: 'Blackwall Relay', icon: 'fas fa-infinity', loginStyle: 'crt',
+    login: {motd: 'DO NOT ANSWER. DO NOT ANSWER. DO NOT ANSWER.',welcomeText: 'it sees you now.'},
+    screensaver: {enabled: true,idleSeconds: 60,text: '██████',iconMode: 'boot',faIcon: '',imageUrl: '',motion: 'static'},
+    folderNames: {inbox: 'Signals',saved: 'Kept',trash: 'Devoured'},
+    theme: { primary: '#ff1a1a', secondary: '#6b6b7a', accent: '#ff5252', bgDeep: '#030303', bgBase: '#080607', bgSurface: '#100a0c', bgElevated: '#180f12', textPrimary: '#e8dede', textSecondary: '#8d7a7e', fontDisplay: 'sharetechmono', fontMono: 'sharetechmono', fontTitle: 'orbitron' },
+    security: { requiresAuth: true, allowSkillCheck: true, bypassSkills: ['Interface'], bypassDC: 22, authLogic: 'any', failureMode: 'damage', encryptionType: 'BLACK_ICE', maxAttempts: 2, lockoutDuration: 7200000 },
+    boot: { enabled: true, title: 'RELAY-0', subtitle: '?????? // DO NOT ANSWER', banner: 'SIGNAL ORIGIN: BEYOND', animationStyle: 'crt-power-on', speed: 'dramatic', logLines: ['handshake ................... [no carrier]', 'handshake ................... [no carrier]', 'handshake ................... ACCEPTED', 'something is listening ......'] },
+    accounts: [{ username: 'null', displayName: '▓▓▓▓▓', role: 'UNKNOWN', hidden: false, security: { requiresAuth: true, allowSkillCheck: true, bypassSkills: ['Interface'], bypassDC: 22 } }],
+  },
+});
+
+/**
+ * Boot splash entrance animations (config.boot.animationStyle) — each is a
+ * distinct CSS treatment keyed by `data-boot-animation` on `.ncm-term__boot`
+ * (and mirrored in the config's live preview). Unknown/legacy values render
+ * the standard fade.
+ */
+export const BOOT_ANIMATIONS = Object.freeze([
+  { key: 'standard-fade', label: 'standard fade', hint: 'Quiet corporate fade-in.' },
+  { key: 'holographic-snap', label: 'holographic snap', hint: 'Icon snaps in oversized, settles with a glow pulse.' },
+  { key: 'scan-sweep', label: 'scan sweep', hint: 'A light bar sweeps down, revealing the splash.' },
+  { key: 'warm-dissolve', label: 'warm dissolve', hint: 'Soft blur dissolves into focus.' },
+  { key: 'glitch-flood', label: 'glitch flood', hint: 'RGB-split jitter bursts while the title fights into place.' },
+  { key: 'crt-power-on', label: 'CRT power-on', hint: 'Old tube turn-on: a bright line stretches open.' },
+]);
+
+/**
+ * Login-screen styles (config.loginStyle). Same accounts/security/auth flow
+ * underneath — only the presentation changes; every style follows the
+ * terminal theme palette. 'cards' is the original default.
+ */
+export const TERMINAL_LOGIN_STYLES = Object.freeze([
+  { key: 'cards', label: 'Badge Cards', icon: 'fas fa-id-card', hint: 'Corporate ID-card grid — the classic workstation look.' },
+  { key: 'crt', label: 'CRT Prompt', icon: 'fas fa-terminal', hint: 'Full-screen phosphor tty with a typed login: prompt. BBS / retro-DOS.' },
+  { key: 'roster', label: 'Duty Roster', icon: 'fas fa-list-check', hint: 'Sign-in rows with roles and shift status. Precincts, clinics, NetWatch.' },
+  { key: 'lockscreen', label: 'Lock Screen', icon: 'fas fa-user-lock', hint: 'One big portrait + passcode. Personal rigs and lifted laptops.' },
+  { key: 'keypad', label: 'Keypad Panel', icon: 'fas fa-calculator', hint: 'Hardware keypad + LCD. Door terminals, vaults, maglocks. Numeric codes shine.' },
+  { key: 'portraits', label: 'Portrait Row', icon: 'fas fa-users', hint: 'Big avatars side by side. Shared household / crew machines.' },
+]);
+
+/**
+ * Curated Font Awesome 6 FREE solid icons for the visual boot-icon picker
+ * (config Boot & Login tab). `k` = search keywords. All classes verified
+ * against FA6-free (the arasaka fa-building-shield lesson: an invalid glyph
+ * renders as an EMPTY square, so only ship known-good ones here).
+ */
+export const TERMINAL_ICON_LIBRARY = Object.freeze([
+  { c: 'fas fa-building', k: 'corp office tower company arasaka' },
+  { c: 'fas fa-city', k: 'corp skyline downtown night city' },
+  { c: 'fas fa-landmark', k: 'bank gov government institution' },
+  { c: 'fas fa-terminal', k: 'console dos prompt shell' },
+  { c: 'fas fa-server', k: 'server rack host node' },
+  { c: 'fas fa-database', k: 'data db storage records' },
+  { c: 'fas fa-microchip', k: 'chip cpu hardware tech' },
+  { c: 'fas fa-network-wired', k: 'net lan network wired' },
+  { c: 'fas fa-wifi', k: 'wireless signal net' },
+  { c: 'fas fa-tower-broadcast', k: 'antenna broadcast radio signal' },
+  { c: 'fas fa-satellite-dish', k: 'netwatch dish uplink satellite' },
+  { c: 'fas fa-satellite', k: 'orbit satellite space' },
+  { c: 'fas fa-robot', k: 'ai bot android drone' },
+  { c: 'fas fa-brain', k: 'ai mind neural psycho' },
+  { c: 'fas fa-eye', k: 'surveillance watch spy camera' },
+  { c: 'fas fa-video', k: 'camera cctv surveillance bd' },
+  { c: 'fas fa-skull', k: 'gang death hacker streetkid' },
+  { c: 'fas fa-skull-crossbones', k: 'danger poison pirate death' },
+  { c: 'fas fa-ghost', k: 'netrunner phantom spooky anon' },
+  { c: 'fas fa-mask', k: 'darknet anonymous thief' },
+  { c: 'fas fa-user-secret', k: 'spy agent fixer incognito' },
+  { c: 'fas fa-shield-halved', k: 'security guard defense militech' },
+  { c: 'fas fa-lock', k: 'secure vault locked' },
+  { c: 'fas fa-key', k: 'access key credential' },
+  { c: 'fas fa-fingerprint', k: 'biometric id identity' },
+  { c: 'fas fa-id-card', k: 'badge credential card' },
+  { c: 'fas fa-gun', k: 'weapon arms dealer militech' },
+  { c: 'fas fa-crosshairs', k: 'target sniper merc solo' },
+  { c: 'fas fa-bomb', k: 'demolition explosive' },
+  { c: 'fas fa-radiation', k: 'nuclear hazard hot zone' },
+  { c: 'fas fa-biohazard', k: 'toxic hazard plague lab' },
+  { c: 'fas fa-flask', k: 'lab chemistry science biotechnica' },
+  { c: 'fas fa-dna', k: 'biotech genetics lab' },
+  { c: 'fas fa-syringe', k: 'ripperdoc medical drug clinic' },
+  { c: 'fas fa-staff-snake', k: 'medical ripperdoc clinic asclepius' },
+  { c: 'fas fa-heart-pulse', k: 'medical trauma team health' },
+  { c: 'fas fa-pills', k: 'pharma drugs meds' },
+  { c: 'fas fa-truck-medical', k: 'trauma team ambulance' },
+  { c: 'fas fa-hospital', k: 'clinic hospital medcenter' },
+  { c: 'fas fa-car', k: 'vehicle garage transport' },
+  { c: 'fas fa-motorcycle', k: 'bike nomad vehicle' },
+  { c: 'fas fa-truck', k: 'convoy logistics shipping' },
+  { c: 'fas fa-plane', k: 'av aircraft airport transport' },
+  { c: 'fas fa-ship', k: 'harbor dock cargo smuggle' },
+  { c: 'fas fa-anchor', k: 'dock harbor port' },
+  { c: 'fas fa-gas-pump', k: 'fuel station nomad' },
+  { c: 'fas fa-bolt', k: 'power electric grid energy' },
+  { c: 'fas fa-plug', k: 'power socket electric' },
+  { c: 'fas fa-industry', k: 'factory plant industrial' },
+  { c: 'fas fa-gears', k: 'machine workshop tech mechanic' },
+  { c: 'fas fa-wrench', k: 'repair mechanic garage' },
+  { c: 'fas fa-hammer', k: 'construction tools workshop' },
+  { c: 'fas fa-hard-hat', k: 'construction site worker' },
+  { c: 'fas fa-music', k: 'club chrome rock lizzy' },
+  { c: 'fas fa-guitar', k: 'rockerboy samurai band' },
+  { c: 'fas fa-martini-glass', k: 'bar club afterlife drink' },
+  { c: 'fas fa-champagne-glasses', k: 'club vip party' },
+  { c: 'fas fa-dice', k: 'casino gambling luck' },
+  { c: 'fas fa-coins', k: 'eddies money bank finance' },
+  { c: 'fas fa-money-bill-wave', k: 'cash eddies payment' },
+  { c: 'fas fa-vault', k: 'bank safe vault storage' },
+  { c: 'fas fa-scale-balanced', k: 'law court justice legal' },
+  { c: 'fas fa-gavel', k: 'court judge law' },
+  { c: 'fas fa-handcuffs', k: 'ncpd police arrest' },
+  { c: 'fas fa-building-shield', k: 'precinct police station ncpd', invalid: true },
+  { c: 'fas fa-shield', k: 'precinct police badge ncpd' },
+  { c: 'fas fa-newspaper', k: 'media press news reporter' },
+  { c: 'fas fa-camera', k: 'media photo journalist' },
+  { c: 'fas fa-microphone', k: 'media broadcast radio podcast' },
+  { c: 'fas fa-tv', k: 'media screen broadcast n54' },
+  { c: 'fas fa-globe', k: 'net worldwide global public' },
+  { c: 'fas fa-envelope', k: 'mail message post' },
+  { c: 'fas fa-phone', k: 'call agent comms' },
+  { c: 'fas fa-comments', k: 'chat comms talk' },
+  { c: 'fas fa-book', k: 'library archive records lore' },
+  { c: 'fas fa-box-archive', k: 'archive records storage' },
+  { c: 'fas fa-folder-open', k: 'files documents records' },
+  { c: 'fas fa-file-contract', k: 'contract gig fixer deal' },
+  { c: 'fas fa-clipboard-list', k: 'manifest inventory list' },
+  { c: 'fas fa-warehouse', k: 'storage depot logistics' },
+  { c: 'fas fa-boxes-stacked', k: 'cargo inventory shipment' },
+  { c: 'fas fa-utensils', k: 'restaurant food vendor' },
+  { c: 'fas fa-burger', k: 'food stand vendor street' },
+  { c: 'fas fa-shirt', k: 'fashion clothes shop' },
+  { c: 'fas fa-cart-shopping', k: 'shop market store vendor' },
+  { c: 'fas fa-store', k: 'shop market kiosk' },
+  { c: 'fas fa-hotel', k: 'motel hotel rooms' },
+  { c: 'fas fa-bed', k: 'motel sleep capsule' },
+  { c: 'fas fa-dumbbell', k: 'gym training fitness' },
+  { c: 'fas fa-paw', k: 'animals gang paws pets' },
+  { c: 'fas fa-dragon', k: 'tyger claws gang dragon' },
+  { c: 'fas fa-spider', k: 'net crawler gang web' },
+  { c: 'fas fa-crow', k: 'bird raven watcher' },
+  { c: 'fas fa-cat', k: 'cat pet stray' },
+  { c: 'fas fa-fire', k: 'burn heat valentinos flame' },
+  { c: 'fas fa-snowflake', k: 'cold ice freezer cryo' },
+  { c: 'fas fa-moon', k: 'night lunar dark' },
+  { c: 'fas fa-sun', k: 'day solar light' },
+  { c: 'fas fa-cloud', k: 'weather data cloud' },
+  { c: 'fas fa-mountain', k: 'badlands outside nomad' },
+  { c: 'fas fa-tree', k: 'park nature green' },
+  { c: 'fas fa-chess-knight', k: 'strategy game chess' },
+  { c: 'fas fa-puzzle-piece', k: 'game puzzle piece' },
+  { c: 'fas fa-gamepad', k: 'arcade game console' },
+  { c: 'fas fa-vr-cardboard', k: 'braindance bd vr' },
+  { c: 'fas fa-hand-fist', k: 'gang power fight resist' },
+  { c: 'fas fa-star', k: 'vip favorite rating' },
+  { c: 'fas fa-triangle-exclamation', k: 'warning danger alert' },
+  { c: 'fas fa-circle-radiation', k: 'reactor core power hot' },
+  { c: 'fas fa-atom', k: 'science reactor physics' },
+  { c: 'fas fa-infinity', k: 'blackwall ai beyond' },
+].filter(i => !i.invalid));
+
+/**
+ * Flavor pools for the Boot & Login tab's "generate flavor lines" dice — the
+ * generator picks a template + status at random per line.
+ */
+export const BOOT_FLAVOR_LINES = Object.freeze({
+  templates: Object.freeze([
+    'Handshake with {NET} ......', 'Credential gateway ........', 'ICE lattice ...............',
+    'Mounting user volumes .....', 'Neural link sync ..........', 'Daemon watchdog ...........',
+    'Firmware checksum .........', 'Intrusion countermeasure ..', 'Peripheral bus scan .......',
+    'Memory integrity ..........', 'Uplink negotiation ........', 'Session key exchange ......',
+    'Biometric module ..........', 'Cold storage index ........', 'Subnet heartbeat ..........',
+  ]),
+  statuses: Object.freeze(['OK', 'ONLINE', 'VERIFIED', 'ARMED', 'STANDBY', 'READY', 'SECURE', 'NOMINAL']),
+  nets: Object.freeze(['CITINET', 'CORPNET', 'DARKNET', 'LOCAL-0']),
 });
 
 // ─── Sound Paths ───
@@ -875,6 +1134,27 @@ export const DEFAULTS = Object.freeze({
 
     accounts: [],                 // [ TERMINAL_ACCOUNT, ... ] — authored by the GM
     defaultAccountId: '',         // login screen default selection
+
+    // Login-screen look — one of TERMINAL_LOGIN_STYLES. 'cards' = the original
+    // badge-card grid (default). All styles share the same accounts/security/
+    // auth flow underneath and follow the terminal theme palette.
+    loginStyle: 'cards',
+    // Login-screen flavor: motd = a banner line under the hero ("UNAUTHORIZED
+    // ACCESS WILL BE TRACED"); welcomeText = custom ACCESS GRANTED line
+    // (empty = the default "Welcome, {name}").
+    login: { motd: '', welcomeText: '' },
+    // Idle screensaver — after idleSeconds with no interaction the mailbox dims
+    // to a logo + marquee text; any click/keypress wakes it. iconMode:
+    // 'boot' (follow the boot icon) | 'fa' | 'image' | 'none'; motion:
+    // 'drift' | 'bounce' | 'static'.
+    screensaver: { enabled: false, idleSeconds: 120, text: '', iconMode: 'boot', faIcon: '', imageUrl: '', motion: 'drift' },
+    // Diegetic folder labels (empty = Inbox / Saved / Trash) — e.g. a cop box
+    // reads CASE FILES / EVIDENCE / PURGED.
+    folderNames: { inbox: '', saved: '', trash: '' },
+    // Sound set hook — schema only for now ('default'). Future: per-terminal
+    // boot/login/click sound palettes (corp chime, BBS modem, medical beep).
+    // Resolve sounds through TerminalViewerApp so a set can remap ids later.
+    soundSet: 'default',
 
     allowExfil: true,             // master switch: can players copy messages out? (per-file DRM → P2)
     apps: ['mail'],               // which apps exist (MVP = mail only; catalog → P2)

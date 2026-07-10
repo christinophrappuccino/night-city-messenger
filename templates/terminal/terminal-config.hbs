@@ -22,7 +22,7 @@
     <button type="button" class="ncm-cfg-tab {{#if tabs.identity}}ncm-cfg-tab--active{{/if}}" data-action="switchTab" data-tab="identity"><i class="fas fa-id-badge"></i> Identity</button>
     <button type="button" class="ncm-cfg-tab {{#if tabs.accounts}}ncm-cfg-tab--active{{/if}}" data-action="switchTab" data-tab="accounts"><i class="fas fa-users"></i> Accounts <span class="ncm-cfg-badge {{#if accountCount}}ncm-cfg-badge--on{{/if}}">{{accountCount}}</span></button>
     <button type="button" class="ncm-cfg-tab {{#if tabs.theme}}ncm-cfg-tab--active{{/if}}" data-action="switchTab" data-tab="theme"><i class="fas fa-palette"></i> Theme</button>
-    <button type="button" class="ncm-cfg-tab {{#if tabs.boot}}ncm-cfg-tab--active{{/if}}" data-action="switchTab" data-tab="boot"><i class="fas fa-power-off"></i> Boot</button>
+    <button type="button" class="ncm-cfg-tab {{#if tabs.boot}}ncm-cfg-tab--active{{/if}}" data-action="switchTab" data-tab="boot"><i class="fas fa-power-off"></i> Boot &amp; Login</button>
     <button type="button" class="ncm-cfg-tab {{#if tabs.network}}ncm-cfg-tab--active{{/if}}" data-action="switchTab" data-tab="network"><i class="fas fa-network-wired"></i> Network {{#if networkRequired}}<span class="ncm-cfg-badge ncm-cfg-badge--on">ON</span>{{/if}}</button>
     <button type="button" class="ncm-cfg-tab {{#if tabs.exfil}}ncm-cfg-tab--active{{/if}}" data-action="switchTab" data-tab="exfil"><i class="fas fa-download"></i> Exfil</button>
   </div>
@@ -44,6 +44,13 @@
         <div class="ncm-cfg-row"><span class="ncm-cfg-label">Classification</span><input type="text" name="classification" class="ncm-cfg-input ncm-cfg-flex" value="{{classification}}"></div>
       </div>
       <div class="ncm-cfg-section">
+        <div class="ncm-cfg-section-header"><i class="fas fa-folder-tree ncm-cfg-section-icon" style="color:#00ff41"></i><div class="ncm-cfg-section-title">Mailbox Folder Names <span class="ncm-cfg-hint" style="font-weight:400">— diegetic labels</span></div></div>
+        <div class="ncm-cfg-row"><span class="ncm-cfg-label">Inbox</span><input type="text" name="folderInbox" class="ncm-cfg-input ncm-cfg-flex" value="{{folderInbox}}" placeholder="Inbox — e.g. CASE FILES, PATIENTS"></div>
+        <div class="ncm-cfg-row"><span class="ncm-cfg-label">Saved</span><input type="text" name="folderSaved" class="ncm-cfg-input ncm-cfg-flex" value="{{folderSaved}}" placeholder="Saved — e.g. EVIDENCE, ARCHIVE"></div>
+        <div class="ncm-cfg-row"><span class="ncm-cfg-label">Trash</span><input type="text" name="folderTrash" class="ncm-cfg-input ncm-cfg-flex" value="{{folderTrash}}" placeholder="Trash — e.g. PURGED, DISPOSAL"></div>
+        <div class="ncm-cfg-hint">Blank fields keep the defaults. Shown in the mailbox sidebar and list header.</div>
+      </div>
+      <div class="ncm-cfg-section">
         <div class="ncm-cfg-section-header"><i class="fas fa-microchip ncm-cfg-section-icon" style="color:#ff0033"></i><div class="ncm-cfg-section-title">Linked Item</div></div>
         <div class="ncm-cfg-hint">Item: <strong>{{itemName}}</strong> · Journal: <strong>{{journalName}}</strong>. Messages live in the journal, tagged per account.</div>
       </div>
@@ -56,83 +63,353 @@
       {{else}}
         <div class="ncm-cfg-section">
           <div class="ncm-cfg-section-header"><i class="fas fa-users ncm-cfg-section-icon" style="color:#19f3f7"></i><div class="ncm-cfg-section-title">Accounts</div></div>
+
+          {{!-- Summary strip — who lives on this box, at a glance. --}}
+          <div class="ncm-acctl-summary">
+            <span class="ncm-acctl-stat"><b>{{acctSummary.total}}</b> total</span>
+            <span class="ncm-acctl-stat ncm-acctl-stat--adm"><i class="fas fa-user-shield"></i> <b>{{acctSummary.admins}}</b> admin</span>
+            <span class="ncm-acctl-stat ncm-acctl-stat--open"><i class="fas fa-lock-open"></i> <b>{{acctSummary.open}}</b> open</span>
+            <span class="ncm-acctl-stat ncm-acctl-stat--sec"><i class="fas fa-lock"></i> <b>{{acctSummary.secured}}</b> secured</span>
+            {{#if acctSummary.hidden}}<span class="ncm-acctl-stat"><i class="fas fa-eye-slash"></i> <b>{{acctSummary.hidden}}</b> hidden</span>{{/if}}
+            {{#if acctSummary.gated}}<span class="ncm-acctl-stat ncm-acctl-stat--net"><i class="fas fa-wifi"></i> <b>{{acctSummary.gated}}</b> net-gated</span>{{/if}}
+          </div>
+
+          {{!-- Toolbar — search / sort / add. --}}
+          <div class="ncm-acctl-bar">
+            <div class="ncm-cfg-icon-search" style="margin:0;flex:1"><i class="fas fa-magnifying-glass"></i><input type="text" name="acctSearch" value="{{acctControls.search}}" placeholder="search name, username, email, role…"></div>
+            <select name="acctSort" class="ncm-cfg-select" data-tooltip="Sort">{{#each acctControls.sortOptions}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}</select>
+            <button type="button" class="ncm-cfg-btn-sm" data-action="addAccount"><i class="fas fa-plus"></i> Add</button>
+          </div>
+
           {{#each accounts}}
-            <div class="ncm-term-cfg-acct">
-              <div class="ncm-term-cfg-acct__id">
-                <div class="ncm-term-cfg-acct__nm">{{displayName}}
-                  {{#if isDefault}}<span class="ncm-term-cfg-tag ncm-term-cfg-tag--default">★ default</span>{{/if}}
-                  {{#if isAdmin}}<span class="ncm-term-cfg-tag ncm-term-cfg-tag--admin">admin</span>{{/if}}
-                  {{#if hidden}}<span class="ncm-term-cfg-tag">hidden</span>{{/if}}
-                </div>
-                <div class="ncm-term-cfg-acct__un">{{username}}{{#if linkedContact}} · ◉ {{linkedContact}}{{/if}}</div>
-                <div class="ncm-term-cfg-acct__methods">{{#each methods}}<span class="ncm-term-cfg-m ncm-term-cfg-m--{{cls}}">{{label}}</span>{{/each}}</div>
-              </div>
-              <div class="ncm-term-cfg-acct__acts">
-                <button type="button" class="ncm-cfg-btn-icon" data-action="editAccount" data-account-id="{{id}}"><i class="fas fa-pen"></i></button>
-                <button type="button" class="ncm-cfg-btn-icon ncm-cfg-btn-icon--danger" data-action="removeAccount" data-account-id="{{id}}"><i class="fas fa-trash-can"></i></button>
-              </div>
+            <div class="ncm-acctl-row" data-action="editAccount" data-account-id="{{id}}">
+              <span class="ncm-acctl-av">{{#if portrait}}<img src="{{portrait}}" alt="">{{else}}{{initials}}{{/if}}
+                {{#if isAdmin}}<i class="fas fa-user-shield ncm-acctl-av-adm" data-tooltip="Administrator"></i>{{/if}}
+              </span>
+              <span class="ncm-acctl-id">
+                <span class="ncm-acctl-nm">{{displayName}}
+                  {{#if isDefault}}<b class="ncm-term-cfg-tag ncm-term-cfg-tag--default">★ default</b>{{/if}}
+                  {{#if hidden}}<b class="ncm-term-cfg-tag"><i class="fas fa-eye-slash"></i> hidden</b>{{/if}}
+                  {{#if gated}}<b class="ncm-term-cfg-tag ncm-term-cfg-tag--net"><i class="fas fa-wifi"></i> net-gated</b>{{/if}}
+                </span>
+                <span class="ncm-acctl-sub">{{username}}{{#if email}} · <i class="ncm-acctl-mail">{{email}}</i>{{/if}}{{#if linkedContact}} · ◉ {{linkedContact}}{{/if}}</span>
+                {{#if role}}<span class="ncm-acctl-role">{{role}}</span>{{/if}}
+              </span>
+              <span class="ncm-acctl-right">
+                {{#if clearance}}<b class="ncm-acctl-clr">{{clearance}}</b>{{/if}}
+                <span class="ncm-acctl-methods">{{#each methods}}<b class="ncm-term-cfg-m ncm-term-cfg-m--{{cls}}">{{label}}</b>{{/each}}</span>
+              </span>
+              <span class="ncm-acctl-acts">
+                <button type="button" class="ncm-cfg-btn-icon" data-action="editAccount" data-account-id="{{id}}" data-tooltip="Edit"><i class="fas fa-pen"></i></button>
+                <button type="button" class="ncm-cfg-btn-icon ncm-cfg-btn-icon--danger" data-action="removeAccount" data-account-id="{{id}}" data-tooltip="Remove"><i class="fas fa-trash-can"></i></button>
+              </span>
             </div>
+          {{else}}
+            <div class="ncm-acctl-empty">{{#if acctControls.isFiltered}}No accounts match "{{acctControls.search}}".{{else}}No accounts yet — Add one, or stage a preset (Theme tab) to seed some.{{/if}}</div>
           {{/each}}
-          <button type="button" class="ncm-cfg-btn-sm" style="margin-top:8px" data-action="addAccount"><i class="fas fa-plus"></i> Add account</button>
+
+          {{#if acctControls.pager}}
+            <div class="ncm-acctl-pager">
+              <button type="button" class="ncm-cfg-btn-sm" data-action="acctPage" data-dir="-1" {{#unless acctControls.pager.hasPrev}}disabled{{/unless}}><i class="fas fa-chevron-left"></i></button>
+              <span>{{acctControls.pager.page}} / {{acctControls.pager.maxPage}}{{#if acctControls.isFiltered}} · {{acctControls.filteredCount}} match{{/if}}</span>
+              <button type="button" class="ncm-cfg-btn-sm" data-action="acctPage" data-dir="1" {{#unless acctControls.pager.hasNext}}disabled{{/unless}}><i class="fas fa-chevron-right"></i></button>
+            </div>
+          {{/if}}
         </div>
       {{/if}}
     </div>
 
-    {{!-- THEME --}}
+    {{!-- THEME — mirrors the player ThemeCustomizer: draft state (edits
+         survive tab switches, Save persists, close reverts), live preview,
+         preset cards, per-key color overrides, sliders, saved themes.
+         Reuses the .ncm-tc__ widget classes (theme-customizer.css layout
+         rules are .ncm-app-scoped; its root-scoped button/select rules are
+         co-scoped to .ncm-term-config). Controls here are UNNAMED/data-keyed
+         on purpose — the save contract is _themeDraft, not FormData. --}}
     <div class="ncm-cfg-panel {{#if tabs.theme}}ncm-cfg-panel--active{{/if}}" data-panel="theme">
-      <div class="ncm-cfg-section">
-        <div class="ncm-cfg-section-header"><i class="fas fa-swatchbook ncm-cfg-section-icon" style="color:#a855f7"></i><div class="ncm-cfg-section-title">Preset</div></div>
-        <div class="ncm-cfg-row"><span class="ncm-cfg-label">Preset</span>
-          <select name="themePreset" class="ncm-cfg-select ncm-cfg-flex">{{#each presets}}<option value="{{key}}" {{#if active}}selected{{/if}}>{{label}}</option>{{/each}}</select>
-          <button type="button" class="ncm-cfg-btn-icon" data-action="applyPreset" title="Apply preset (seeds theme, boot & accounts)"><i class="fas fa-download"></i></button>
+
+      <div class="ncm-tc__preview ncm-ttc-live">
+        <div class="ncm-tc__preview-label"><i class="fas fa-eye"></i> Live Preview — this terminal only{{#if themeDirty}} · <span style="color:var(--ncm-accent)">unsaved</span>{{/if}}</div>
+        <div class="ncm-tc__preview-inbox">
+          <div class="ncm-tc__preview-hdr">
+            <div class="ncm-tc__preview-av"><i class="fas fa-server" style="font-size:8px"></i></div>
+            <div class="ncm-tc__preview-nm">{{previewName}}</div>
+            <div class="ncm-tc__preview-nt">UPLINK: CITINET</div>
+          </div>
+          <div class="ncm-tc__preview-row">
+            <div class="ncm-tc__preview-dot"></div>
+            <div class="ncm-tc__preview-from">finance</div>
+            <div class="ncm-tc__preview-subj">Wire authorization — executive token required</div>
+            <div class="ncm-tc__preview-time">04:12</div>
+          </div>
+          <div class="ncm-tc__preview-row">
+            <div class="ncm-tc__preview-dot ncm-tc__preview-dot--read"></div>
+            <div class="ncm-tc__preview-from">sysadmin</div>
+            <div class="ncm-tc__preview-subj">Scheduled maintenance window</div>
+            <div class="ncm-tc__preview-badge">CRITICAL</div>
+            <div class="ncm-tc__preview-time">02:48</div>
+          </div>
+          <div class="ncm-tc__preview-row">
+            <div class="ncm-tc__preview-dot ncm-tc__preview-dot--read"></div>
+            <div class="ncm-tc__preview-from">logistics</div>
+            <div class="ncm-tc__preview-subj">Convoy 4471 cleared customs at NCIA</div>
+            <div class="ncm-tc__preview-time">yesterday</div>
+          </div>
         </div>
-        <div class="ncm-cfg-hint">Apply seeds colors, boot, default security & (if empty) accounts. Tweak below; Save to keep.</div>
       </div>
-      <div class="ncm-cfg-section">
-        <div class="ncm-cfg-section-header"><i class="fas fa-fill-drip ncm-cfg-section-icon" style="color:#ff0033"></i><div class="ncm-cfg-section-title">Palette</div></div>
-        <div class="ncm-cfg-row"><span class="ncm-cfg-label">Primary</span><input type="color" name="colPrimary" value="{{colPrimary}}"></div>
-        <div class="ncm-cfg-row"><span class="ncm-cfg-label">Secondary</span><input type="color" name="colSecondary" value="{{colSecondary}}"></div>
-        <div class="ncm-cfg-row"><span class="ncm-cfg-label">Accent</span><input type="color" name="colAccent" value="{{colAccent}}"></div>
-        <div class="ncm-cfg-row"><span class="ncm-cfg-label">Background</span><input type="color" name="colBg" value="{{colBg}}"></div>
+
+      <div class="ncm-tc__slabel">Built-in Presets</div>
+      <div class="ncm-tc__preset-grid">
+        {{#each presets}}
+        <div class="ncm-tc__pcard {{#if active}}ncm-tc__pcard--active{{/if}}" data-action="selectTermPreset" data-preset="{{key}}">
+          <div class="ncm-tc__pcard-swatch"><span style="background:{{sw1}};"></span><span style="background:{{sw2}};"></span><span style="background:{{sw3}};"></span></div>
+          <div class="ncm-tc__pcard-name">{{label}}</div>
+        </div>
+        {{/each}}
       </div>
-      <div class="ncm-cfg-section">
-        <div class="ncm-cfg-section-header"><i class="fas fa-text-height ncm-cfg-section-icon" style="color:#19f3f7"></i><div class="ncm-cfg-section-title">Fonts</div></div>
-        <div class="ncm-cfg-row"><span class="ncm-cfg-label">Body / Display</span><select name="fontDisplay" class="ncm-cfg-select ncm-cfg-flex">{{#each fontDisplay}}<option value="{{key}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}</select></div>
-        <div class="ncm-cfg-row"><span class="ncm-cfg-label">Monospace</span><select name="fontMono" class="ncm-cfg-select ncm-cfg-flex">{{#each fontMono}}<option value="{{key}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}</select></div>
-        <div class="ncm-cfg-row"><span class="ncm-cfg-label">Titles</span><select name="fontTitle" class="ncm-cfg-select ncm-cfg-flex">{{#each fontTitle}}<option value="{{key}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}</select></div>
-        <div class="ncm-cfg-row"><span class="ncm-cfg-label">Text size</span><input type="number" name="textScale" class="ncm-cfg-input ncm-cfg-input--short" value="{{textScale}}" min="80" max="120" step="5"> %</div>
-        <div class="ncm-cfg-row"><span class="ncm-cfg-label">Contrast</span><input type="number" name="contrast" class="ncm-cfg-input ncm-cfg-input--short" value="{{contrast}}" min="70" max="140" step="5"> %</div>
-        <div class="ncm-cfg-hint">Applies only to this terminal's window — the player's own Agent theme is untouched.</div>
+      {{#if presetKitLabel}}
+        <div class="ncm-cfg-kitbar">
+          <i class="fas fa-boxes-packing"></i>
+          <span><strong>{{presetKitLabel}}</strong> staged — palette, fonts, boot screen, login style, MOTD, screensaver &amp; folder names all update on <strong>Save</strong> (accounts seed too when this terminal has none).</span>
+          <button type="button" class="ncm-tc__paction ncm-cfg-kitbar-btn" data-action="clearPresetKit" data-tooltip="Keep only the colors & fonts from this preset">palette only</button>
+        </div>
+      {{else}}
+        <div class="ncm-cfg-hint" style="margin:0 16px;">A preset card stages the <strong>whole machine</strong> — palette, fonts, boot screen, login style, and (when the terminal has no accounts) seed accounts. Check the Boot &amp; Login tab to see it, then <strong>Save</strong> to commit.</div>
+      {{/if}}
+
+      <div class="ncm-tc__divider"></div>
+      <div class="ncm-tc__slabel">Terminal Preset Library — full setups (theme · boot · login style · screensaver · folders · account seeds)</div>
+      <div class="ncm-tc__clist">
+        {{#each fullPresets}}
+        <div class="ncm-tc__citem" data-fpreset-index="{{index}}">
+          <div class="ncm-tc__citem-swatch"><span style="background:{{sw1}};"></span><span style="background:{{sw2}};"></span><span style="background:{{sw3}};"></span></div>
+          <i class="{{styleIcon}}" style="color:var(--ncm-text-muted);font-size:10px"></i>
+          <span class="ncm-tc__citem-name">{{name}}</span>
+          <div class="ncm-tc__citem-actions">
+            <button type="button" data-action="applyFullPreset" data-tooltip="Apply to this terminal (confirms first)"><i class="fas fa-check"></i></button>
+            <button type="button" data-action="overwriteFullPreset" data-tooltip="Overwrite with this terminal"><i class="fas fa-save"></i></button>
+            <button type="button" data-action="exportFullPreset" data-tooltip="Export JSON"><i class="fas fa-file-export"></i></button>
+            <button type="button" class="ncm-tc__citem-del" data-action="deleteFullPreset" data-tooltip="Delete"><i class="fas fa-trash"></i></button>
+          </div>
+        </div>
+        {{/each}}
+        {{#unless fullPresets.length}}
+        <div class="ncm-tc__cempty">No saved terminal presets — author one terminal fully, then Save it here to stamp out more like it.</div>
+        {{/unless}}
+      </div>
+      <div class="ncm-tc__pactions">
+        <button type="button" class="ncm-tc__paction" data-action="saveFullPreset"><i class="fas fa-plus"></i> Save This Terminal</button>
+        <button type="button" class="ncm-tc__paction" data-action="importFullPreset"><i class="fas fa-file-import"></i> Import</button>
+        <button type="button" class="ncm-tc__paction" data-action="exportFullPreset"><i class="fas fa-file-export"></i> Export Current</button>
+      </div>
+
+      <div class="ncm-tc__divider"></div>
+      <div class="ncm-tc__slabel">Saved Themes — palette &amp; fonts only</div>
+      <div class="ncm-tc__clist">
+        {{#each savedThemes}}
+        <div class="ncm-tc__citem" data-theme-index="{{index}}">
+          <div class="ncm-tc__citem-swatch"><span style="background:{{sw1}};"></span><span style="background:{{sw2}};"></span><span style="background:{{sw3}};"></span></div>
+          <span class="ncm-tc__citem-name">{{name}}</span>
+          <div class="ncm-tc__citem-actions">
+            <button type="button" data-action="applyTermTheme" data-tooltip="Apply"><i class="fas fa-check"></i></button>
+            <button type="button" data-action="overwriteTermTheme" data-tooltip="Overwrite with current"><i class="fas fa-save"></i></button>
+            <button type="button" class="ncm-tc__citem-del" data-action="deleteTermTheme" data-tooltip="Delete"><i class="fas fa-trash"></i></button>
+          </div>
+        </div>
+        {{/each}}
+        {{#unless savedThemes.length}}
+        <div class="ncm-tc__cempty">No saved themes yet — Save Current to reuse a look on other terminals.</div>
+        {{/unless}}
+      </div>
+      <div class="ncm-tc__pactions">
+        <button type="button" class="ncm-tc__paction" data-action="saveTermTheme"><i class="fas fa-plus"></i> Save Current</button>
+        <button type="button" class="ncm-tc__paction" data-action="importTermTheme"><i class="fas fa-file-import"></i> Import</button>
+        <button type="button" class="ncm-tc__paction" data-action="exportTermTheme"><i class="fas fa-file-export"></i> Export</button>
+      </div>
+
+      <div class="ncm-tc__divider"></div>
+      <div class="ncm-tc__slabel">Color Overrides</div>
+      <div class="ncm-tc__color-grid">
+        {{#each themeColorEntries}}
+        <div class="ncm-tc__color-entry" data-color-key="{{key}}">
+          <div class="ncm-tc__color-swatch"><input type="color" value="{{value}}" /></div>
+          <span class="ncm-tc__color-label">{{label}}</span>
+          <span class="ncm-tc__color-hex">{{value}}</span>
+          {{#if hasOverride}}<div class="ncm-tc__color-dot"></div>{{/if}}
+        </div>
+        {{/each}}
+      </div>
+      <button type="button" class="ncm-tc__color-reset" data-action="resetTermColors"><i class="fas fa-undo"></i> Reset colors to preset defaults</button>
+
+      <div class="ncm-tc__slabel">Wallpaper &amp; Effects</div>
+      <div class="ncm-tc__font-section">
+        <div class="ncm-tc__srow">
+          <span class="ncm-tc__srow-label">Wallpaper</span>
+          <input type="text" class="ncm-tc__name-input" data-ttc-wallpaper value="{{themeWallpaper}}" placeholder="image behind the mailbox (blank = none)">
+          <button type="button" class="ncm-tc__paction" style="flex:0 0 auto" data-action="browseWallpaper" data-tooltip="Browse / upload"><i class="fas fa-folder-open"></i></button>
+        </div>
+        <div class="ncm-tc__srow">
+          <span class="ncm-tc__srow-label">Scanlines</span>
+          <div class="ncm-tc__switch{{#if themeScanlines}} ncm-tc__switch--on{{/if}}" data-ttc-toggle="scanlines"></div>
+          <span class="ncm-tc__srow-label" style="min-width:0;margin-left:14px">CRT Flicker</span>
+          <div class="ncm-tc__switch{{#if themeFlicker}} ncm-tc__switch--on{{/if}}" data-ttc-toggle="flicker"></div>
+        </div>
+        <div class="ncm-tc__srow">
+          <span class="ncm-tc__srow-label">Glitch</span>
+          <input type="range" name="ttcGlitch" min="0" max="100" step="5" value="{{themeGlitch}}" class="ncm-tc__slider" />
+          <span class="ncm-tc__srow-val ncm-ttc-glitch-val">{{themeGlitch}}%</span>
+        </div>
+        <div class="ncm-cfg-hint" style="padding:0">Effects preview on an open viewer of this terminal, not in the strip above.</div>
+      </div>
+
+      <div class="ncm-tc__slabel">Text</div>
+      <div class="ncm-tc__font-section">
+        {{#each themeFontSelectors}}
+        <div class="ncm-tc__font-row">
+          <span class="ncm-tc__font-label">{{label}}</span>
+          <select class="ncm-tc__font-select" data-font-slot="{{slot}}">
+            {{#each options}}<option value="{{key}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}
+          </select>
+        </div>
+        {{/each}}
+        <div class="ncm-tc__font-preview ncm-ttc-live">
+          <div class="ncm-tc__fprev-title">{{previewName}}</div>
+          <div class="ncm-tc__fprev-body">Authorization required for the transfer to offshore holding.</div>
+          <div class="ncm-tc__fprev-mono">SESSION 7F-12 // UPLINK: CITINET // 98% signal</div>
+        </div>
+        <div class="ncm-tc__srow">
+          <span class="ncm-tc__srow-label">Text Size</span>
+          <input type="range" name="ttcTextScale" min="80" max="120" step="5" value="{{textScale}}" class="ncm-tc__slider" />
+          <span class="ncm-tc__srow-val ncm-ttc-scale-val">{{textScale}}%</span>
+        </div>
+        <div class="ncm-tc__srow">
+          <span class="ncm-tc__srow-label">Contrast</span>
+          <input type="range" name="ttcContrast" min="70" max="140" step="5" value="{{contrast}}" class="ncm-tc__slider" />
+          <span class="ncm-tc__srow-val ncm-ttc-contrast-val">{{contrast}}%</span>
+        </div>
+        <div class="ncm-cfg-hint" style="padding:0">Applies only to this terminal's window — the player's own Agent theme is untouched.</div>
       </div>
     </div>
 
-    {{!-- BOOT --}}
+    {{!-- BOOT & LOGIN — live splash preview + visual icon picker + login
+         style cards + MOTD/welcome + screensaver. Chips/segments/cards mirror
+         into hidden inputs bearing the ORIGINAL field names (the account-
+         editor save-contract pattern), so _onSave reads one contract. --}}
     <div class="ncm-cfg-panel {{#if tabs.boot}}ncm-cfg-panel--active{{/if}}" data-panel="boot">
+
+      {{#if presetKitLabel}}
+        <div class="ncm-cfg-kitbar" style="margin-top:10px">
+          <i class="fas fa-boxes-packing"></i>
+          <span>Previewing the <strong>{{presetKitLabel}}</strong> kit — these fields update on <strong>Save</strong> (or pick "palette only" on the Theme tab).</span>
+        </div>
+      {{/if}}
+
+      {{!-- ncm-ttc-live: this preview (like the Theme tab strips) receives the
+           STAGED palette via _applyThemeLive — so a staged preset's colors
+           show here, not the brand defaults. --}}
+      <div class="ncm-cfg-bootprev ncm-ttc-live">
+        <div class="ncm-cfg-bootprev-label"><i class="fas fa-eye"></i> LIVE PREVIEW — BOOT SPLASH
+          <button type="button" class="ncm-cfg-bootprev-play" data-boot-replay data-tooltip="Replay the boot animation"><i class="fas fa-play"></i> REPLAY</button>
+        </div>
+        <div class="ncm-cfg-bootprev-splash">
+          <div class="ncm-cfg-bootprev-icon" data-bp="icon"></div>
+          <div class="ncm-cfg-bootprev-title" data-bp="title">{{bootTitle}}</div>
+          <div class="ncm-cfg-bootprev-sub" data-bp="subtitle">{{bootSubtitle}}</div>
+          <div class="ncm-cfg-bootprev-bar"><span></span></div>
+          <div class="ncm-cfg-bootprev-log" data-bp="log">{{#each bootLogLines}}<div>{{this}}</div>{{/each}}</div>
+        </div>
+      </div>
+
       <div class="ncm-cfg-section">
         <div class="ncm-cfg-section-header"><i class="fas fa-power-off ncm-cfg-section-icon" style="color:#00ff41"></i><div class="ncm-cfg-section-title">Boot Sequence</div><label class="ncm-cfg-toggle-label"><input type="checkbox" name="bootEnabled" {{#if bootEnabled}}checked{{/if}}></label></div>
         <div class="ncm-cfg-row"><span class="ncm-cfg-label">Title</span><input type="text" name="bootTitle" class="ncm-cfg-input ncm-cfg-flex" value="{{bootTitle}}"></div>
         <div class="ncm-cfg-row"><span class="ncm-cfg-label">Subtitle</span><input type="text" name="bootSubtitle" class="ncm-cfg-input ncm-cfg-flex" value="{{bootSubtitle}}"></div>
-        <div class="ncm-cfg-row"><span class="ncm-cfg-label">Icon source</span>
-          <select name="bootIconMode" class="ncm-cfg-select ncm-cfg-flex">{{#each bootIconModes}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}</select>
-          <span class="ncm-cfg-icon-preview"></span>
-        </div>
-        <div class="ncm-cfg-row" data-boot-icon-row="fa">
-          <span class="ncm-cfg-label">FA class</span>
-          <input type="text" name="bootFaIcon" class="ncm-cfg-input ncm-cfg-flex" value="{{bootFaIcon}}" placeholder="fas fa-skull, fas fa-building, fas fa-eye…">
-        </div>
-        <div class="ncm-cfg-row" data-boot-icon-row="image">
-          <span class="ncm-cfg-label">Image</span>
-          <input type="text" name="bootImageUrl" class="ncm-cfg-input ncm-cfg-flex" value="{{bootImageUrl}}" placeholder="Corporate logo, gang tag — any image file">
-          <button type="button" data-action="browseBootImage" class="ncm-cfg-btn-icon" data-tooltip="Browse"><i class="fas fa-folder-open"></i></button>
-        </div>
-        <div class="ncm-cfg-hint">The big icon on the boot splash. Preset = the theme's icon · Font Awesome = any FA class · Custom image = your own logo file. The chip next to the dropdown previews it live.</div>
         <div class="ncm-cfg-row"><span class="ncm-cfg-label">Login banner</span><input type="text" name="bootBanner" class="ncm-cfg-input ncm-cfg-flex" value="{{bootBanner}}"></div>
-        <div class="ncm-cfg-row"><span class="ncm-cfg-label">Animation</span><select name="bootAnimation" class="ncm-cfg-select ncm-cfg-flex">{{#each animationOptions}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{value}}</option>{{/each}}</select></div>
-        <div class="ncm-cfg-row"><span class="ncm-cfg-label">Speed</span><select name="bootSpeed" class="ncm-cfg-select ncm-cfg-flex">{{#each speedOptions}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{value}}</option>{{/each}}</select></div>
+      </div>
+
+      <div class="ncm-cfg-section">
+        <div class="ncm-cfg-section-header"><i class="fas fa-icons ncm-cfg-section-icon" style="color:#19f3f7"></i><div class="ncm-cfg-section-title">Boot Icon</div></div>
+        <input type="hidden" name="bootIconMode" value="{{bootIconMode}}">
+        <div class="ncm-cfg-bseg" data-boot-seg>
+          {{#each bootIconModes}}<button type="button" class="ncm-cfg-bseg-btn{{#if selected}} is-on{{/if}}" data-icon-mode="{{value}}">{{label}}</button>{{/each}}
+        </div>
+        <div data-boot-icon-row="fa">
+          <div class="ncm-cfg-icon-search"><i class="fas fa-magnifying-glass"></i><input type="text" data-icon-search placeholder='search icons… ("skull", "medical", "corp")'></div>
+          <div class="ncm-cfg-icon-grid" data-icon-grid>
+            {{#each iconLibrary}}<button type="button" class="ncm-cfg-icon-cell{{#if active}} is-on{{/if}}" data-icon-class="{{c}}" data-icon-k="{{k}}" data-tooltip="{{c}}"><i class="{{c}}"></i></button>{{/each}}
+          </div>
+          <div class="ncm-cfg-row" style="margin-top:6px"><span class="ncm-cfg-label">FA class</span>
+            <input type="text" name="bootFaIcon" class="ncm-cfg-input ncm-cfg-flex" value="{{bootFaIcon}}" placeholder="or paste any Font Awesome class — fas fa-skull-crossbones…">
+          </div>
+        </div>
+        <div data-boot-icon-row="image">
+          <div class="ncm-cfg-row"><span class="ncm-cfg-label">Image</span>
+            <input type="text" name="bootImageUrl" class="ncm-cfg-input ncm-cfg-flex" value="{{bootImageUrl}}" placeholder="Corporate logo, gang tag — any image file">
+            <button type="button" data-action="browseBootImage" class="ncm-cfg-btn-icon" data-tooltip="Browse / upload"><i class="fas fa-folder-open"></i></button>
+          </div>
+          <div class="ncm-cfg-hint">Browse opens Foundry's file picker — upload straight from here. The splash preview above updates live.</div>
+        </div>
+      </div>
+
+      <div class="ncm-cfg-section">
+        <div class="ncm-cfg-section-header"><i class="fas fa-wand-magic-sparkles ncm-cfg-section-icon" style="color:#a855f7"></i><div class="ncm-cfg-section-title">Animation &amp; Log</div></div>
+        <input type="hidden" name="bootAnimation" value="{{bootAnimation}}">
+        <input type="hidden" name="bootSpeed" value="{{bootSpeed}}">
+        <div class="ncm-cfg-row"><span class="ncm-cfg-label">Animation</span>
+          <div class="ncm-cfg-chips" data-chip-group="bootAnimation">{{#each animationOptions}}<button type="button" class="ncm-cfg-chip{{#if selected}} is-on{{/if}}" data-chip="{{value}}" data-tooltip="{{hint}}">{{value}}</button>{{/each}}</div>
+        </div>
+        <div class="ncm-cfg-row"><span class="ncm-cfg-label">Speed</span>
+          <div class="ncm-cfg-chips" data-chip-group="bootSpeed">{{#each speedOptions}}<button type="button" class="ncm-cfg-chip{{#if selected}} is-on{{/if}}" data-chip="{{value}}">{{value}}</button>{{/each}}</div>
+        </div>
         <div class="ncm-cfg-row ncm-cfg-row--col"><span class="ncm-cfg-label" style="margin-bottom:4px">Log Lines</span>
           <div class="ncm-cfg-boot-log-list">{{#each bootLogLines}}<div class="ncm-cfg-boot-log-entry"><input type="text" name="bootLogLine" class="ncm-cfg-input" value="{{this}}"><button type="button" class="ncm-cfg-btn-icon ncm-cfg-btn-icon--danger" data-action="removeBootLogLine"><i class="fas fa-times"></i></button></div>{{/each}}</div>
-          <button type="button" data-action="addBootLogLine" class="ncm-cfg-btn-sm" style="margin-top:4px"><i class="fas fa-plus"></i> Add</button>
+          <div style="display:flex;gap:6px;margin-top:4px">
+            <button type="button" data-action="addBootLogLine" class="ncm-cfg-btn-sm"><i class="fas fa-plus"></i> Add</button>
+            <button type="button" data-action="generateBootLines" class="ncm-cfg-btn-sm" data-tooltip="Roll 4 random flavor lines"><i class="fas fa-dice"></i> Generate flavor lines</button>
+          </div>
         </div>
+      </div>
+
+      <div class="ncm-cfg-section">
+        <div class="ncm-cfg-section-header"><i class="fas fa-right-to-bracket ncm-cfg-section-icon" style="color:#f7c948"></i><div class="ncm-cfg-section-title">Login Screen</div></div>
+        <input type="hidden" name="loginStyle" value="{{loginStyleKey}}">
+        <div class="ncm-cfg-lstyles">
+          {{#each loginStyles}}
+          <button type="button" class="ncm-cfg-lstyle{{#if active}} is-on{{/if}}" data-login-style="{{key}}" data-tooltip="{{hint}}">
+            <i class="{{icon}}"></i><span>{{label}}</span>
+          </button>
+          {{/each}}
+        </div>
+        <div class="ncm-cfg-hint">How the login screen presents accounts — same security underneath, different machine personality. Keypad suits numeric passwords (door codes, vaults).</div>
+        <div class="ncm-cfg-lprev-wrap">
+          <div class="ncm-cfg-bootprev-label" style="margin:8px 0 5px"><i class="fas fa-eye"></i> LOGIN PREVIEW — uses this terminal's accounts</div>
+          <div class="ncm-cfg-lprev ncm-ttc-live"></div>
+        </div>
+        <div class="ncm-cfg-row"><span class="ncm-cfg-label">MOTD line</span><input type="text" name="loginMotd" class="ncm-cfg-input ncm-cfg-flex" value="{{loginMotd}}" placeholder="UNAUTHORIZED ACCESS WILL BE TRACED"></div>
+        <div class="ncm-cfg-row"><span class="ncm-cfg-label">Welcome text</span><input type="text" name="loginWelcome" class="ncm-cfg-input ncm-cfg-flex" value="{{loginWelcome}}" placeholder="Custom ACCESS GRANTED line (blank = default)"></div>
+      </div>
+
+      <div class="ncm-cfg-section">
+        <div class="ncm-cfg-section-header"><i class="fas fa-moon ncm-cfg-section-icon" style="color:#4aa3ff"></i><div class="ncm-cfg-section-title">Idle Screensaver</div><label class="ncm-cfg-toggle-label"><input type="checkbox" name="ssEnabled" {{#if ssEnabled}}checked{{/if}}></label></div>
+        <input type="hidden" name="ssIconMode" value="{{ssIconMode}}">
+        <input type="hidden" name="ssMotion" value="{{ssMotion}}">
+        <div class="ncm-cfg-ssprev ncm-ttc-live" data-ss-motion="{{ssMotion}}"></div>
+        <div class="ncm-cfg-row"><span class="ncm-cfg-label">Idle seconds</span><input type="number" name="ssIdle" class="ncm-cfg-input ncm-cfg-input--short" value="{{ssIdle}}" min="10" max="3600" step="10"></div>
+        <div class="ncm-cfg-row"><span class="ncm-cfg-label">Logo</span>
+          <div class="ncm-cfg-bseg" style="margin:0">
+            {{#each ssIconModes}}<button type="button" class="ncm-cfg-bseg-btn{{#if selected}} is-on{{/if}}" data-ss-mode="{{value}}">{{label}}</button>{{/each}}
+          </div>
+        </div>
+        <div class="ncm-cfg-row" data-ss-row="fa"><span class="ncm-cfg-label">Icon class</span><input type="text" name="ssFaIcon" class="ncm-cfg-input ncm-cfg-flex" value="{{ssFaIcon}}" placeholder="fas fa-skull, fas fa-building…"></div>
+        <div class="ncm-cfg-row" data-ss-row="image"><span class="ncm-cfg-label">Image</span>
+          <input type="text" name="ssImageUrl" class="ncm-cfg-input ncm-cfg-flex" value="{{ssImageUrl}}" placeholder="logo / gang tag image file">
+          <button type="button" data-action="browseSsImage" class="ncm-cfg-btn-icon" data-tooltip="Browse / upload"><i class="fas fa-folder-open"></i></button>
+        </div>
+        <div class="ncm-cfg-row"><span class="ncm-cfg-label">Marquee text</span><input type="text" name="ssText" class="ncm-cfg-input ncm-cfg-flex" value="{{ssText}}" placeholder="Blank = terminal name"></div>
+        <div class="ncm-cfg-row"><span class="ncm-cfg-label">Motion</span>
+          <div class="ncm-cfg-chips" data-chip-group="ssMotion">{{#each ssMotions}}<button type="button" class="ncm-cfg-chip{{#if selected}} is-on{{/if}}" data-chip="{{value}}">{{value}}</button>{{/each}}</div>
+        </div>
+        <div class="ncm-cfg-hint">After the idle time the mailbox dims to the logo + marquee above. Any click or keypress wakes it.</div>
       </div>
     </div>
 

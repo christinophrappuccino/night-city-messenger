@@ -23,7 +23,7 @@
 
 import { BaseApplication } from '../BaseApplication.js';
 import { MODULE_ID, TERMINAL_PRESETS, SOCKET_OPS } from '../../utils/constants.js';
-import { log, isGM, formatCyberDate } from '../../utils/helpers.js';
+import { log, isGM, formatCyberDate, buildTerminalThemePrefs } from '../../utils/helpers.js';
 import { getInitials } from '../../utils/designHelpers.js';
 import { enrichContent, toggleSecretReveal, applySyslogFilter } from '../content/ContentRenderers.js';
 import { runSiphon, runEddiesClaim, runCrack } from '../content/SiphonFlow.js';
@@ -46,6 +46,8 @@ export class TerminalViewerApp extends BaseApplication {
       terminalSelectAccount: action('_onSelectAccount'),
       terminalManualLogin: action('_onManualLogin'),
       terminalManualAuth: action('_onManualAuth'),
+      terminalInlineAuth: action('_onInlineAuth'),
+      terminalFocusAccount: action('_onFocusAccount'),
       terminalSkillBypass: action('_onSkillBypass'),
       terminalKeyItem: action('_onKeyItem'),
       terminalBackToAccounts: action('_onBackToAccounts'),
@@ -107,6 +109,17 @@ export class TerminalViewerApp extends BaseApplication {
   _bootPlayed = false;
   _grantedPlayed = false;
   _timers = [];
+  _focusAccountId = null;     // lockscreen/keypad featured account (null = default)
+  _ssTimer = null;            // screensaver idle timer (real-time by design)
+  _ssActive = false;
+  /**
+   * GM config-preview overlay — pushed by an open TerminalConfigApp while a
+   * theme draft / preset kit is staged, so THIS viewer previews the unsaved
+   * look (login style, boot, MOTD, screensaver, folders, palette) live.
+   * Top-level keys REPLACE the saved config blocks (see _effectiveConfig).
+   * Cleared by the config on save/close/"palette only".
+   */
+  _cfgPreview = null;
   _uplinkOpen = false;        // machine-uplink dropdown (login hero + mailbox HUD)
   _netAuthTarget = null;      // networkId currently in the join-challenge console
   _netAuthError = '';
@@ -129,6 +142,15 @@ export class TerminalViewerApp extends BaseApplication {
       this._debouncedRender();
     };
     Hooks.on('updateItem', this._onItemUpdate);
+    // Screensaver activity detection — document-level capture with a
+    // containment guard (element-level listeners are unreliable in Foundry);
+    // removed in close().
+    this._onActivity = (ev) => {
+      if (!this.element?.contains?.(ev.target)) return;
+      this._resetScreensaver();
+    };
+    document.addEventListener('pointerdown', this._onActivity, true);
+    document.addEventListener('keydown', this._onActivity, true);
   }
 
   /** @override — "{username} @ {ORG}" once in; "{ORG} — login" otherwise. */
@@ -145,9 +167,31 @@ export class TerminalViewerApp extends BaseApplication {
   //  Context
   // ═══════════════════════════════════════════════════════════
 
+  /**
+   * The saved config with the GM preview overlay (if any) shallow-merged on
+   * top. SHALLOW on purpose: the overlay's `theme` is the config sheet's
+   * whole draft (deleted overrides must fall through to the preset CSS, which
+   * a deep merge would resurrect), and its boot/login/etc. blocks are the
+   * complete staged values.
+   */
+  _effectiveConfig() {
+    const cfg = this.terminalService?.getConfig(this.item) ?? {};
+    return this._cfgPreview ? { ...cfg, ...this._cfgPreview } : cfg;
+  }
+
+  /**
+   * Config-sheet preview channel. `rerender` is the config's call — kit
+   * (markup) transitions re-render; palette-only updates don't (the sheet
+   * applies those as cheap inline vars, so slider drags stay smooth).
+   */
+  setConfigPreview(overlay, { rerender = false } = {}) {
+    this._cfgPreview = overlay;
+    if (rerender && this._state !== 'boot' && this._state !== 'granted') this.render(false);
+  }
+
   /** @override */
   async _prepareContext() {
-    const cfg = this.terminalService?.getConfig(this.item) ?? {};
+    const cfg = this._effectiveConfig();
     const preset = cfg.theme?.preset || cfg.preset || 'arasaka-workstation';
     const logo = this._resolveBootIcon(cfg, preset);
     const ctx = {
@@ -329,6 +373,8 @@ export class TerminalViewerApp extends BaseApplication {
         location: acct.location || meta.location || '',
         lastLogin: acct.lastLogin || 'FIRST LOGIN',
       },
+      // Custom ACCESS GRANTED line (config.login.welcomeText; empty = default).
+      welcomeText: (cfg.login?.welcomeText || '').trim(),
     };
   }
 
@@ -367,12 +413,34 @@ export class TerminalViewerApp extends BaseApplication {
   _loginContext(cfg) {
     const accounts = (this.terminalService?.getAccounts(this.item) || []).map(a => this._cardContext(a, cfg));
     const securedCount = accounts.filter(a => !a.isOpen).length;
+    // Login-screen style (config.loginStyle) — same accounts/auth underneath,
+    // different presentation. lockscreen/keypad feature ONE account (the
+    // switch row refocuses via _focusAccountId); CRT reuses the SECURE SHELL
+    // console for the actual auth, so its screen is just banner + list.
+    const style = cfg.loginStyle || 'cards';
+    const focusId = this._focusAccountId || cfg.defaultAccountId;
+    const focus = accounts.find(a => a.id === focusId) || accounts[0] || null;
     return {
       accounts,
       accountCount: accounts.length,
       secured: securedCount > 0,
       onlineCount: 0,
       iceWarning: this._iceWarning(cfg),
+      loginStyle: style,
+      styleCards: style === 'cards',
+      styleCrt: style === 'crt',
+      styleRoster: style === 'roster',
+      styleLock: style === 'lockscreen',
+      styleKeypad: style === 'keypad',
+      stylePortraits: style === 'portraits',
+      motd: (cfg.login?.motd || '').trim(),
+      focus,
+      others: focus ? accounts.filter(a => a.id !== focus.id) : accounts,
+      inlineError: this._manualError,
+      shellHost: (this._terminalName() || 'terminal').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+      // GM: config gear on the login screen — no need to log in just to
+      // change a preset.
+      isGM: isGM(),
     };
   }
 
@@ -399,6 +467,9 @@ export class TerminalViewerApp extends BaseApplication {
       isAdmin: !!account.isAdmin,
       isDefault: account.id === cfg.defaultAccountId,
       isOpen: !requiresAuth,
+      // lockscreen/keypad: password entry can be inline; other-method-only
+      // accounts route to the SECURE SHELL console instead.
+      hasPassword: requiresAuth && !!(security.allowPassword ?? security.password),
       isSelected: account.id === this._authAccountId,
       lastLogin: '',
       wmarkIcon: account.isAdmin ? 'fas fa-user-gear' : 'fas fa-user',
@@ -484,8 +555,20 @@ export class TerminalViewerApp extends BaseApplication {
       offNet: gm && !this.terminalService.uplinkReaches(this.item, m.networkVisibility),
     }));
 
-    const emptyLabels = { inbox: 'Inbox is empty', saved: 'No saved messages', trash: 'Trash is empty' };
-    const folderLabels = { inbox: 'INBOX', saved: 'SAVED', trash: 'TRASH' };
+    // Diegetic folder labels (config.folderNames — e.g. CASE FILES / EVIDENCE /
+    // PURGED on a cop box). Empty fields fall back to the defaults.
+    const fn = cfg.folderNames || {};
+    const names = {
+      inbox: (fn.inbox || '').trim() || 'Inbox',
+      saved: (fn.saved || '').trim() || 'Saved',
+      trash: (fn.trash || '').trim() || 'Trash',
+    };
+    const emptyLabels = {
+      inbox: `${names.inbox} is empty`,
+      saved: `Nothing in ${names.saved}`,
+      trash: `${names.trash} is empty`,
+    };
+    const folderLabels = { inbox: names.inbox.toUpperCase(), saved: names.saved.toUpperCase(), trash: names.trash.toUpperCase() };
     const selected = list.find(m => m.messageId === this._selectedMessageId);
     // HUD shows the MACHINE's uplink (the pill), never the player's network.
     return {
@@ -500,10 +583,15 @@ export class TerminalViewerApp extends BaseApplication {
       switchAccounts: this._switcherOpen ? this._switcherAccounts() : [],
       switcherOpen: this._switcherOpen,
       folders: [
-        { key: 'inbox', label: 'Inbox', icon: 'fas fa-inbox', count: counts.inbox, active: folder === 'inbox' },
-        { key: 'saved', label: 'Saved', icon: 'fa-regular fa-star', count: counts.saved, active: folder === 'saved' },
-        { key: 'trash', label: 'Trash', icon: 'fas fa-trash-can', count: counts.trash, active: folder === 'trash' },
+        { key: 'inbox', label: names.inbox, icon: 'fas fa-inbox', count: counts.inbox, active: folder === 'inbox' },
+        { key: 'saved', label: names.saved, icon: 'fa-regular fa-star', count: counts.saved, active: folder === 'saved' },
+        { key: 'trash', label: names.trash, icon: 'fas fa-trash-can', count: counts.trash, active: folder === 'trash' },
       ],
+      // Idle screensaver (config.screensaver) — overlay markup lives in the
+      // mailbox state; _resetScreensaver drives the --on class. Logo resolves
+      // per iconMode: 'boot' follows the boot icon, 'fa'/'image' are custom,
+      // 'none' drops it. `motion` picks the drift/bounce/static animation.
+      screensaver: cfg.screensaver?.enabled ? this._screensaverContext(cfg) : null,
       listLabel: `${folderLabels[folder]} · ${list.length} MESSAGE${list.length === 1 ? '' : 'S'}`,
       emptyLabel: emptyLabels[folder],
       messages,
@@ -599,8 +687,17 @@ export class TerminalViewerApp extends BaseApplication {
   /** @override */
   _onRender(context, options) {
     super._onRender(context, options);
-    // Theme the window by preset (CSS palette fallback; full theming later).
-    this.element?.querySelector('.ncm-terminal-viewer')?.setAttribute('data-terminal-preset', context.preset);
+    // Theme the window: preset attribute (CSS palette fallback) + the saved
+    // custom theme applied live as inline variables on the viewer root.
+    const viewerEl = this.element?.querySelector('.ncm-terminal-viewer');
+    viewerEl?.setAttribute('data-terminal-preset', context.preset);
+    this._applyCustomTheme(viewerEl, context.preset);
+    // Per-terminal effects (theme.scanlines/flicker — opt-in, separate from
+    // the player's own atmosphere prefs). Glitch rides --ncm-glitch-intensity
+    // via applyTheme. Overlay-aware, like everything render-visible.
+    const themeCfg = this._effectiveConfig().theme || {};
+    viewerEl?.setAttribute('data-term-scanlines', String(themeCfg.scanlines === true));
+    viewerEl?.setAttribute('data-term-flicker', String(themeCfg.flicker === true));
     this._syncWindowTitle(context);
     // Restore pane scroll — every action re-renders, and without this each
     // click snapped both panes back to the top. The detail pane only restores
@@ -633,6 +730,57 @@ export class TerminalViewerApp extends BaseApplication {
       const pass = this.element?.querySelector('input[name="netAuthPassword"]');
       pass?.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); this._onNetAuth(); } });
     }
+    // Inline password on the lockscreen login style: Enter submits for the
+    // focused account (the input carries data-account-id).
+    if (this._state === 'login') {
+      const inlinePass = this.element?.querySelector('.ncm-term__lockpass input[name="manualPassword"]');
+      inlinePass?.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        this._onInlineAuth(e, inlinePass);
+      });
+      inlinePass?.focus();
+      // Keypad login style: pad keys write into the hidden password input and
+      // echo dots on the LCD; ⏎ submits, ✕ clears. Manual listeners — these
+      // must not re-render per keypress.
+      const pad = this.element?.querySelector('.ncm-term__pad');
+      if (pad) {
+        const input = this.element.querySelector('.ncm-term__keypad input[name="manualPassword"]');
+        const lcd = this.element.querySelector('.ncm-term__lcd-code');
+        const echo = () => { if (lcd) lcd.textContent = input?.value ? '▪ '.repeat(input.value.length).trim() : '_'; };
+        pad.querySelectorAll('[data-key]').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const k = btn.dataset.key;
+            if (!input) return;
+            if (k === 'clear') input.value = '';
+            else if (k === 'enter') return this._onInlineAuth(e, btn);
+            else if (input.value.length < 24) input.value += k;
+            echo();
+          });
+        });
+        echo();
+      }
+    }
+    // Idle screensaver — (re)arm on every render; mailbox only.
+    this._resetScreensaver();
+  }
+
+  /**
+   * Apply the terminal's saved custom theme (colors / fonts / text scale /
+   * contrast from cfg.theme) as inline CSS variables on the viewer root, via
+   * the element-scoped ThemeService.applyTheme. The effective value for each
+   * key = the GM's saved override, else the TERMINAL_PRESETS palette, else
+   * nothing (the preset attribute CSS / base palette shows through — a fresh
+   * terminal stores only { preset } and renders exactly as before). preset:
+   * null stops applyTheme from merging the *player* THEME_PRESETS in.
+   * Re-runs on every render, so a config Save updates an open viewer live
+   * (the constructor's updateItem hook re-renders on the flag write).
+   */
+  _applyCustomTheme(viewerEl, presetKey) {
+    if (!viewerEl || !this.themeService) return;
+    const t = this._effectiveConfig().theme || {};
+    this.themeService.applyTheme(buildTerminalThemePrefs(t, presetKey), viewerEl);
   }
 
   /** Re-skin the AppV2 window title with the colored {user} @ {ORG} treatment. */
@@ -712,6 +860,31 @@ export class TerminalViewerApp extends BaseApplication {
     if (!uname) return null;
     return (this.terminalService.getAccounts(this.item, { includeHidden: true }) || [])
       .find(a => (a.username || '').toLowerCase() === uname) || null;
+  }
+
+  /**
+   * Inline password auth for the lockscreen/keypad login styles — the password
+   * field lives on the login screen itself, so bind the target account from
+   * the control and run the normal manual-auth path (same lockout/ICE rules;
+   * a failure re-renders the login screen with `inlineError`).
+   */
+  async _onInlineAuth(event, target) {
+    const id = target?.dataset?.accountId || target?.closest('[data-account-id]')?.dataset?.accountId;
+    if (id) this._authAccountId = id;
+    return this._onManualAuth();
+  }
+
+  /**
+   * Lockscreen/keypad "switch user" row — refocus the featured account. An
+   * OPEN account logs straight in (no password panel to show).
+   */
+  _onFocusAccount(event, target) {
+    const id = target?.dataset?.accountId;
+    if (!id) return;
+    if (!this.terminalService.requiresAuth(this.item, id, this.actorId)) return this._loginSuccess(id);
+    this._focusAccountId = id;
+    this._manualError = '';
+    this.render(false);
   }
 
   async _onManualAuth() {
@@ -1439,11 +1612,60 @@ export class TerminalViewerApp extends BaseApplication {
 
   _timer(fn, ms) { const t = setTimeout(fn, ms); this._timers.push(t); return t; }
 
+  // ═══════════════════════════════════════════════════════════
+  //  Screensaver (config.screensaver — idle dim + drifting marquee)
+  // ═══════════════════════════════════════════════════════════
+
+  /** Screensaver view-model — see the screensaver key in _mailboxContext. */
+  _screensaverContext(cfg) {
+    const ss = cfg.screensaver || {};
+    let logo = null;
+    if (ss.iconMode !== 'none') {
+      if (ss.iconMode === 'fa' && ss.faIcon?.trim()) logo = { icon: ss.faIcon.trim() };
+      else if (ss.iconMode === 'image' && ss.imageUrl?.trim()) logo = { imageUrl: ss.imageUrl.trim() };
+      else {
+        const boot = this._resolveBootIcon(cfg, cfg.theme?.preset || 'classic');
+        logo = { icon: boot.icon, imageUrl: boot.imageUrl };
+      }
+    }
+    return {
+      text: (ss.text || '').trim() || this._terminalName(),
+      logo,
+      motion: ['drift', 'bounce', 'static'].includes(ss.motion) ? ss.motion : 'drift',
+    };
+  }
+
+  /**
+   * (Re)arm the idle timer. Any activity inside the window (the document-level
+   * capture listener in the constructor) or any re-render lands here; waking
+   * just removes the overlay class. Real-time setTimeout is deliberate —
+   * idle detection is a real-world concern, not game time.
+   */
+  _resetScreensaver() {
+    if (this._ssTimer) { clearTimeout(this._ssTimer); this._ssTimer = null; }
+    if (this._ssActive) {
+      this._ssActive = false;
+      this.element?.querySelector('.ncm-term__saver')?.classList.remove('ncm-term__saver--on');
+    }
+    const cfg = this._effectiveConfig();
+    if (!cfg?.screensaver?.enabled || this._state !== 'mailbox') return;
+    const idleMs = Math.max(10, cfg.screensaver.idleSeconds || 120) * 1000;
+    this._ssTimer = setTimeout(() => {
+      this._ssActive = true;
+      this.element?.querySelector('.ncm-term__saver')?.classList.add('ncm-term__saver--on');
+    }, idleMs);
+    this._timers.push(this._ssTimer);
+  }
+
   /** @override */
   async close(options) {
     this._timers.forEach(clearTimeout);
     this._timers = [];
     Hooks.off('updateItem', this._onItemUpdate);
+    if (this._onActivity) {
+      document.removeEventListener('pointerdown', this._onActivity, true);
+      document.removeEventListener('keydown', this._onActivity, true);
+    }
     return super.close(options);
   }
 }
