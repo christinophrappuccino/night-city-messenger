@@ -107,6 +107,7 @@ export const SOCKET_OPS = Object.freeze({
   ANON_TRACE_REQUEST:      'anon:traceRequest',
   TERMINAL_STATE_CHANGED:  'terminal:stateChanged',
   TERMINAL_EXFIL_REQUEST:  'terminal:exfilRequest',
+  TERMINAL_NET_REQUEST:    'terminal:netRequest',
   TERMINAL_EXFIL_RESULT:   'terminal:exfilResult',
   // Banking siphon — player→GM relay. Carries outcome 'success' (persist the
   // account drain to its GM-owned journal page) or 'fail' (trace + GM alert).
@@ -606,6 +607,7 @@ export const TEMPLATES = Object.freeze({
   TERMINAL_MANUAL_LOGIN: `${T}/terminal/terminal-manual-login.hbs`,
   TERMINAL_NETWORK_GATE: `${T}/terminal/terminal-network-gate.hbs`,
   TERMINAL_ACCOUNT_CARD: `${T}/terminal/partials/account-card.hbs`,
+  TERMINAL_UPLINK: `${T}/terminal/partials/uplink.hbs`,
   TERMINAL_CONFIG: `${T}/terminal/terminal-config.hbs`,
   TERMINAL_CONFIG_ACCOUNT: `${T}/terminal/partials/config-account.hbs`,
 });
@@ -803,6 +805,12 @@ export const DEFAULTS = Object.freeze({
     isAdmin: false,               // admin sees all accounts (privilege tiers → P2)
     hidden: false,                // NOT shown on the login card list — reachable only by typing
                                   // its username via "Log in with another account" (secret login)
+    // Network visibility — checked against the TERMINAL's own uplink (see
+    // TERMINAL_CONFIG.connection), never the player's Agent network. A gated
+    // account VANISHES from the login list (and the secret-login path) until
+    // the machine connects to a matching network. Same shape as shard entry
+    // networkVisibility so the check is shared.
+    network: { restricted: false, allowedNetworks: [], allowedTypes: [] },
     security: {
       requiresAuth: false,        // false = open account, no login gate
       password: '',
@@ -848,8 +856,22 @@ export const DEFAULTS = Object.freeze({
     theme: { preset: 'classic' },
 
     // Network gate — reuses the shard network-availability shape. required:false =
-    // reachable from anywhere (no network hack first).
+    // reachable from anywhere (no network hack first). This is Layer 0 — "you must
+    // be on network X to reach this box at all" — and gates on the PLAYER's network.
     network: { required: false, accessMode: 'any', allowedNetworks: [], allowedTypes: [], signalThreshold: 40 },
+
+    // Machine uplink — the TERMINAL's own connection (Layer 1), independent of the
+    // player's Agent network. Interfaces = what the machine's hardware can reach
+    // (scene availability / dead zones deliberately do NOT apply — a wired box works
+    // in a jam). preAuthorized = the machine is already joined (corp workstation on
+    // CORPNET); otherwise switching runs the network's own security block, and a
+    // success is remembered in TERMINAL_STATE.connection.authenticated.
+    connection: {
+      interfaces: [],             // [ { networkId, preAuthorized: bool } ]
+      defaultNetworkId: null,     // boot-time connection (null = LOCAL ONLY)
+      allowPlayerSwitching: true, // false = pill renders static (GM/story-driven switches only)
+      showSyncHint: true,         // mailbox shows "N objects failed to sync" when content is off-net
+    },
 
     accounts: [],                 // [ TERMINAL_ACCOUNT, ... ] — authored by the GM
     defaultAccountId: '',         // login screen default selection
@@ -870,6 +892,13 @@ export const DEFAULTS = Object.freeze({
     bootPlayed: false,
     firstAccessedAt: null,
     accessCount: 0,
+    // Live machine uplink (Layer 1). World-persisted — it's the MACHINE's state,
+    // shared by everyone at the screen (unlike the player's per-client network).
+    // currentNetworkId: '__DEFAULT__' = follow config.connection.defaultNetworkId
+    // (the sentinel survives whole-state rewrites, unlike an absent key);
+    // null = explicitly disconnected (LOCAL ONLY). authenticated = creds the
+    // machine has "remembered" after a successful secured join.
+    connection: { currentNetworkId: '__DEFAULT__', authenticated: {} },
   },
 
   ACTOR_SESSION: { loggedIn: false, keyItemUsed: false, keyItemAttempts: 0, hackAttempts: 0, lockoutUntil: null, loginAttempts: 0, hackedLayers: [], layerHackAttempts: {}, layerLockoutUntil: null },

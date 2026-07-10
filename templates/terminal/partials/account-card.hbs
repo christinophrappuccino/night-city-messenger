@@ -6,7 +6,7 @@
   <div class="ncm-term__card-head">
     <span class="ncm-term__avatar">{{#if portrait}}<img src="{{portrait}}" alt="">{{else}}{{initials}}{{/if}}</span>
     <div class="ncm-term__card-who">
-      <div class="ncm-term__card-nm">{{displayName}}</div>
+      <div class="ncm-term__card-nm">{{displayName}}{{#if offNet}}<span class="ncm-term__offnet" data-tooltip="Off-network — players can't see this account on the current uplink">OFF-NET</span>{{/if}}</div>
       {{#if role}}<div class="ncm-term__card-role">{{role}}</div>{{/if}}
       <div class="ncm-term__card-un">{{username}}</div>
     </div>

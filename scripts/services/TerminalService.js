@@ -196,7 +196,13 @@ export class TerminalService {
    * @returns {object[]}
    */
   getAccounts(item, { includeHidden = false } = {}) {
-    const accounts = this.getConfig(item).accounts || [];
+    // Network-gated accounts VANISH for players until the machine's uplink
+    // reaches their network (isContentVisible GM-bypasses, so the GM keeps the
+    // full list). This covers the login cards, the switcher, AND the
+    // secret-login username path — a gated account is unreachable, not merely
+    // unlisted.
+    const accounts = (this.getConfig(item).accounts || [])
+      .filter(a => this.isContentVisible(item, a.network));
     if (includeHidden || isGM()) return accounts;
     return accounts.filter(a => !a.hidden);
   }
@@ -359,6 +365,11 @@ export class TerminalService {
       if (updates.priority !== undefined) upd[`${ns}.priority`] = updates.priority;
       if (updates.classification !== undefined) upd[`${ns}.metadata.classification`] = updates.classification;
       if (updates.body !== undefined) { upd[`${ns}.body`] = updates.body; upd['text.content'] = updates.body; }
+      // Status writes go per-leaf (`status.saved`, `status.deleted`, …) — the
+      // reliable dot-path form; a nested object merge is the standing gotcha.
+      if (updates.status && typeof updates.status === 'object') {
+        for (const [k, val] of Object.entries(updates.status)) upd[`${ns}.status.${k}`] = val;
+      }
       await page.update(upd);
       return { success: true };
     } catch (err) {
@@ -426,6 +437,123 @@ export class TerminalService {
     return this.networkService.checkAccess(config.network);
   }
 
+  // ═══════════════════════════════════════════════════════════
+  //  PUBLIC API — Machine Uplink (Layer 1)
+  //
+  //  The terminal's OWN connection, independent of the player's Agent network.
+  //  Interfaces = what the machine's hardware can reach (GM-configured; scene
+  //  availability / dead zones deliberately don't apply — a wired box works in
+  //  a jam). Content marked with networkVisibility gates on THIS connection.
+  // ═══════════════════════════════════════════════════════════
+
+  /**
+   * The terminal's live connection. Resolution: stored state → config default →
+   * null (LOCAL ONLY). A stored network that no longer exists or is no longer an
+   * interface degrades to LOCAL ONLY rather than erroring.
+   * @param {Item} item
+   * @returns {{ networkId: string|null, network: object|null }}
+   */
+  getUplink(item) {
+    const cfg = this.getConfig(item).connection || {};
+    const conn = this.getState(item).connection || {};
+    const interfaceIds = new Set((cfg.interfaces || []).map(i => i.networkId));
+    const resolve = (id) => {
+      if (!id || !interfaceIds.has(id)) return null;
+      return this.networkService?.getNetwork?.(id) || null;
+    };
+    // '__DEFAULT__' (the unset sentinel — survives whole-state rewrites) follows
+    // the config default; null = explicitly disconnected (LOCAL ONLY).
+    const wantedId = conn.currentNetworkId === '__DEFAULT__' ? cfg.defaultNetworkId : conn.currentNetworkId;
+    const network = resolve(wantedId);
+    return { networkId: network ? wantedId : null, network };
+  }
+
+  /**
+   * The machine's interfaces resolved to selector rows: full network object +
+   * uplink state ('active' | 'available' | 'locked'). Deleted networks are
+   * dropped. 'locked' = secured network the machine holds no credential for
+   * (not preAuthorized, not yet joined this campaign).
+   * @param {Item} item
+   * @returns {Array<{ networkId: string, network: object, state: string, preAuthorized: boolean }>}
+   */
+  getUplinkInterfaces(item) {
+    const cfg = this.getConfig(item).connection || {};
+    const { networkId: currentId } = this.getUplink(item);
+    return (cfg.interfaces || [])
+      .map(i => {
+        const network = this.networkService?.getNetwork?.(i.networkId);
+        if (!network) return null;
+        let state = 'available';
+        if (i.networkId === currentId) state = 'active';
+        else if (network.security?.requiresAuth && !this._uplinkAuthorized(item, i)) state = 'locked';
+        return { networkId: i.networkId, network, state, preAuthorized: !!i.preAuthorized };
+      })
+      .filter(Boolean);
+  }
+
+  /** @private Does the machine hold a credential for this interface's network? */
+  _uplinkAuthorized(item, iface) {
+    if (iface.preAuthorized) return true;
+    const auth = this.getState(item).connection?.authenticated || {};
+    return !!auth[iface.networkId];
+  }
+
+  /**
+   * Point the machine's uplink at a network (null = LOCAL ONLY / disconnect).
+   * GM-side write (item flags aren't player-writable on world items) — players
+   * relay via SOCKET_OPS.TERMINAL_NET_REQUEST. `remember` stamps the network
+   * into connection.authenticated (set after a successful secured join, so the
+   * machine keeps the credential).
+   *
+   * Whole-block rewrite of terminalState (the nested-flag dot-path gotcha).
+   * @param {Item} item @param {string|null} networkId @param {{ remember?: boolean }} [opts]
+   * @returns {Promise<{ success: boolean, error?: string }>}
+   */
+  async setUplink(item, networkId, { remember = false } = {}) {
+    if (!isGM()) return { success: false, error: 'GM only (players relay via socket)' };
+    if (networkId) {
+      const iface = (this.getConfig(item).connection?.interfaces || []).find(i => i.networkId === networkId);
+      if (!iface) return { success: false, error: 'Network is not an interface of this terminal' };
+    }
+    try {
+      const state = this.getState(item);
+      const conn = { ...(state.connection || {}), currentNetworkId: networkId || null };
+      if (remember && networkId) conn.authenticated = { ...(conn.authenticated || {}), [networkId]: true };
+      state.connection = conn;
+      await item.update({ [`flags.${MODULE_ID}.terminalState`]: state });
+      this._broadcastStateChange(item.id);
+      log.debug(`Terminal "${item.name}" uplink → ${networkId || 'LOCAL ONLY'}`);
+      return { success: true };
+    } catch (err) {
+      log.error(`Terminal uplink switch failed: ${err.message}`);
+      return { success: false, error: err.message };
+    }
+  }
+
+  /**
+   * Raw networkVisibility check against the machine's uplink — NO GM bypass
+   * (the viewer uses this to badge OFF-NET rows for the GM). Unrestricted
+   * content is always visible; restricted content needs the uplink to match by
+   * network id or type. LOCAL ONLY (null uplink) reaches only unrestricted
+   * content. Mirrors DataShardService.getVisibleEntries semantics.
+   * @param {Item} item @param {object|null} nv - { restricted, allowedNetworks[], allowedTypes[] }
+   * @returns {boolean}
+   */
+  uplinkReaches(item, nv) {
+    if (!nv?.restricted) return true;
+    const { networkId, network } = this.getUplink(item);
+    if (!networkId) return false;
+    if ((nv.allowedNetworks || []).includes(networkId)) return true;
+    if (network?.type && (nv.allowedTypes || []).includes(network.type)) return true;
+    return false;
+  }
+
+  /** networkVisibility check with GM bypass — the enforcement entry point. */
+  isContentVisible(item, nv) {
+    if (isGM()) return true;
+    return this.uplinkReaches(item, nv);
+  }
+
   /**
    * The auth descriptor for an account — the `{ security, name, targetId }`
    * shape the (generalized) NetworkAuthDialog consumes, and the key
@@ -480,6 +608,9 @@ export class TerminalService {
       requiresAuth: this.requiresAuth(item, a.id, actorId),
       lockedOut: this.isAccountLockedOut(item, a.id, actorId),
       attemptsRemaining: this.getRemainingAttempts(item, a.id, actorId),
+      // GM-only annotation: this account is network-gated off the current uplink
+      // (players never receive it — getAccounts already filtered theirs).
+      offNet: !this.uplinkReaches(item, a.network),
     }));
     return {
       networkBlocked: !net.allowed,
@@ -675,6 +806,7 @@ export class TerminalService {
         toActorId: account?.actorId || '',
         toContactId: account?.masterContactId || '',
         body: msg.body || '',           // clean body — the Recovered chip carries provenance
+        contentData: this._exfilContentData(msg),
         status: { read: false },
         metadata: { ...(msg.metadata || {}), recovered: true, recoveredFrom: source, recoveredTo: origTo, recoveredAt: this._nowIso(), recoveredOrigTs: msg.timestamp },
       });
@@ -720,13 +852,18 @@ export class TerminalService {
     let count = 0;
 
     for (const msg of messages.filter(m => ids.has(m.messageId))) {
+      // Typed content (spreadsheet/syslog/banking/…) burns as-is so the copy
+      // renders identically on the shard; the provenance body header stays a
+      // plain-message affordance (typed bodies never render).
+      const contentType = msg.contentType || CONTENT_TYPES.MESSAGE;
+      const isTyped = contentType !== CONTENT_TYPES.MESSAGE;
       const res = await shardSvc.addMessage(targetItem, {
-        contentType: CONTENT_TYPES.MESSAGE,
+        contentType,
         from: msg.from,                  // original sender preserved
         subject: msg.subject,
-        body: this._provenanceHeader(source, msg.timestamp) + (msg.body || ''),
+        body: isTyped ? (msg.body || '') : this._provenanceHeader(source, msg.timestamp) + (msg.body || ''),
         timestamp: msg.timestamp,        // original time preserved
-        contentData: { recoveredFrom: source, recoveredOrigTs: msg.timestamp },
+        contentData: this._exfilContentData(msg, { recoveredFrom: source, recoveredOrigTs: msg.timestamp }),
       });
       if (res?.success) count++;
     }
@@ -765,6 +902,21 @@ export class TerminalService {
   /** SecurityService target key for an account. @private */
   _targetId(item, accountId) {
     return `${item.id}::${accountId}`;
+  }
+
+  /**
+   * contentData for an exfil copy — the original rides along verbatim so the
+   * copy renders identically, but money affordances are neutralized (the
+   * `eddies: 0` no-double-grant rule): a copied EDDIES file reads as claimed,
+   * a copied BANKING file can't be siphoned again.
+   * @private
+   */
+  _exfilContentData(msg, extra = {}) {
+    if (!msg.contentType && !msg.contentData && !Object.keys(extra).length) return null;
+    const cd = { ...(msg.contentData || {}), ...extra };
+    if (msg.contentType === CONTENT_TYPES.EDDIES) cd.claimed = true;
+    if (msg.contentType === CONTENT_TYPES.BANKING) cd.allowSiphon = false;
+    return cd;
   }
 
   /** Display name for the terminal (config override → item name). @private */
@@ -841,6 +993,11 @@ export class TerminalService {
       // rendered via the shared content-body partial in the viewer.
       contentType: data.contentType || null,
       contentData: data.contentData || null,
+      // Per-message network gating vs the TERMINAL's uplink (shard shape).
+      // null = ungated. Exfil copies deliberately never carry it (a downloaded
+      // file is local; MessageRepository.createMessage doesn't persist the key
+      // and exfilToShard doesn't pass it).
+      networkVisibility: data.networkVisibility || null,
       metadata: { ...(data.metadata || {}) },
       attachments: data.attachments || [],
       malware: null,

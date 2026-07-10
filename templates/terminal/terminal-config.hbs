@@ -1,5 +1,8 @@
-{{!-- TerminalConfigApp sheet. Single root. Reuses ncm-cfg-* (shard config) styling. --}}
-<div class="ncm-item-inbox-config ncm-term-config">
+{{!-- TerminalConfigApp sheet. Single root. Reuses ncm-cfg-* (shard config) styling.
+     The root MUST carry .ncm-cfg and the panel wrapper MUST be .ncm-cfg-content —
+     they are the flex-column + scroll pair (window-content is overflow:hidden,
+     so without them the sheet can't scroll and Save is unreachable). --}}
+<div class="ncm-item-inbox-config ncm-term-config ncm-cfg">
 
   <div class="ncm-cfg-topbar">
     <button type="button" class="ncm-cfg-btn-sm" data-action="saveConfig"><i class="fas fa-floppy-disk"></i> Save</button>
@@ -24,7 +27,7 @@
     <button type="button" class="ncm-cfg-tab {{#if tabs.exfil}}ncm-cfg-tab--active{{/if}}" data-action="switchTab" data-tab="exfil"><i class="fas fa-download"></i> Exfil</button>
   </div>
 
-  <div class="ncm-cfg-panels">
+  <div class="ncm-cfg-content">
 
     {{!-- IDENTITY --}}
     <div class="ncm-cfg-panel {{#if tabs.identity}}ncm-cfg-panel--active{{/if}}" data-panel="identity">
@@ -143,6 +146,27 @@
           <div>{{#each allNetworks}}<label style="display:inline-flex;align-items:center;gap:5px;margin:0 12px 6px 0;font-family:var(--ncm-font-mono);font-size:12px"><input type="checkbox" name="netAllowed" value="{{id}}" {{#if checked}}checked{{/if}}> {{name}}</label>{{/each}}</div>
         </div>
         <div class="ncm-cfg-row"><span class="ncm-cfg-label">Signal threshold</span><input type="number" name="signalThreshold" class="ncm-cfg-input ncm-cfg-input--short" value="{{signalThreshold}}" min="0" max="100"> %</div>
+      </div>
+
+      {{!-- MACHINE UPLINK (Layer 1) — the terminal's OWN connection --}}
+      <div class="ncm-cfg-section">
+        <div class="ncm-cfg-section-header"><i class="fas fa-tower-broadcast ncm-cfg-section-icon" style="color:#4a9eff"></i><div class="ncm-cfg-section-title">Machine Uplink</div></div>
+        <div class="ncm-cfg-desc">The terminal's OWN connection — the UPLINK pill in the viewer. Interfaces are the networks this machine's hardware can reach; network-gated accounts and messages only appear while the uplink matches. Independent of the reachability gate above and of the player's Agent network.</div>
+        <div class="ncm-cfg-row ncm-cfg-row--col"><span class="ncm-cfg-label" style="margin-bottom:4px">Interfaces</span>
+          <div>
+            {{#each uplinkInterfaces}}
+              <div style="display:flex;align-items:center;gap:14px;margin:0 0 6px;font-family:var(--ncm-font-mono);font-size:12px">
+                <label style="display:inline-flex;align-items:center;gap:5px;min-width:150px"><input type="checkbox" name="uplinkIface" value="{{id}}" {{#if checked}}checked{{/if}}> {{name}}</label>
+                <label style="display:inline-flex;align-items:center;gap:5px;opacity:.8"><input type="checkbox" name="uplinkPre" value="{{id}}" {{#if preAuthorized}}checked{{/if}}> pre-authorized</label>
+              </div>
+            {{/each}}
+          </div>
+        </div>
+        <div class="ncm-cfg-hint">Pre-authorized = the machine is already joined (switching is instant). Otherwise a secured network challenges the operator with that network's own security — and the machine remembers a successful join.</div>
+        <div class="ncm-cfg-row"><span class="ncm-cfg-label">Default uplink</span><select name="uplinkDefault" class="ncm-cfg-select ncm-cfg-flex">{{#each uplinkDefaults}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}</select></div>
+        <div class="ncm-cfg-hint">The boot-time connection. Must be a ticked interface, or it degrades to Local only.</div>
+        <div class="ncm-cfg-row"><label style="display:inline-flex;align-items:center;gap:6px;font-family:var(--ncm-font-mono);font-size:12px"><input type="checkbox" name="uplinkAllowSwitch" {{#if uplinkAllowSwitch}}checked{{/if}}> Players can switch the uplink</label></div>
+        <div class="ncm-cfg-row"><label style="display:inline-flex;align-items:center;gap:6px;font-family:var(--ncm-font-mono);font-size:12px"><input type="checkbox" name="uplinkSyncHint" {{#if uplinkSyncHint}}checked{{/if}}> Show a "objects failed to sync" hint when content is off-network</label></div>
       </div>
     </div>
 

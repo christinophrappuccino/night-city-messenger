@@ -40,6 +40,8 @@ import {
 import { EVENTS, SOCKET_OPS } from '../../utils/constants.js';
 import { getThreadMessages } from '../../utils/threading.js';
 import { formatCyberDate, resolveMediaEmbed, resolveAnonSender, resolveAnonRecipient } from '../../utils/helpers.js';
+import { enrichContent, toggleSecretReveal, applySyslogFilter } from '../content/ContentRenderers.js';
+import { runSiphon, runEddiesClaim, runCrack } from '../content/SiphonFlow.js';
 
 const MODULE_ID = 'cyberpunkred-messenger';
 const MESSAGES_PER_PAGE = 25;
@@ -1364,6 +1366,23 @@ export class MessageViewerApp extends BaseApplication {
         this._traceAnonSender(target.dataset.messageId || this.selectedMessageId);
         break;
 
+      // ── Typed content (shared registry — recovered files) ──
+      case 'credToggleSecret':
+        toggleSecretReveal(target);
+        break;
+      case 'syslogFilter':
+        applySyslogFilter(target);
+        break;
+      case 'claimEddies':
+        this._claimTypedEddies(target);
+        break;
+      case 'crackCred':
+        this._crackTypedCred(target);
+        break;
+      case 'siphonFunds':
+        this._siphonTypedFunds(target);
+        break;
+
       // ── Compose ──
       case 'compose-new':
       case 'compose-message':
@@ -2604,6 +2623,47 @@ export class MessageViewerApp extends BaseApplication {
       ui.notifications.info(`${result.count} spam message(s) permanently deleted.`);
     }
     this.selectedMessageId = null;
+    this.render();
+  }
+
+  // ── Typed content (shared registry) — actions on recovered files ──
+  // Mirrors TerminalViewerApp: the same claim/crack/siphon flows work on a
+  // typed message wherever it lands (SiphonFlow persists by messageId, so
+  // inbox pages resolve the same as shard/terminal pages).
+
+  /** Raw cached message for a typed-content action button. @private */
+  _typedContentRaw(target) {
+    const id = target?.closest?.('[data-entry-id]')?.dataset.entryId || this.selectedMessageId;
+    return this._cachedMessages?.find(m => m.messageId === id) || null;
+  }
+
+  async _claimTypedEddies(target) {
+    const raw = this._typedContentRaw(target);
+    if (!raw || raw.contentType !== 'eddies') return;
+    const actor = game.actors.get(this.actorId);
+    if (!actor) { ui.notifications.warn('No character assigned.'); return; }
+    const res = await runEddiesClaim({
+      actor, raw: raw.contentData, messageId: raw.messageId,
+      sourceLabel: raw.metadata?.recoveredFrom || 'recovered file',
+    });
+    if (res?.success) this.render();
+  }
+
+  async _crackTypedCred(target) {
+    const raw = this._typedContentRaw(target);
+    const idx = Number(target?.dataset?.credIndex);
+    if (!raw || raw.contentType !== 'credentials' || Number.isNaN(idx)) return;
+    const actor = game.actors.get(this.actorId);
+    const ok = await runCrack({ actor, raw: raw.contentData, entryIndex: idx, messageId: raw.messageId, force: game.user.isGM && !actor });
+    if (ok) this.render();
+  }
+
+  async _siphonTypedFunds(target) {
+    const raw = this._typedContentRaw(target);
+    if (!raw || raw.contentType !== 'banking') return;
+    const actor = game.actors.get(this.actorId);
+    if (!actor) { ui.notifications.warn('No character assigned.'); return; }
+    await runSiphon({ actor, raw: raw.contentData, messageId: raw.messageId });
     this.render();
   }
 
@@ -4196,9 +4256,30 @@ export class MessageViewerApp extends BaseApplication {
     const threadInfo = this._getThreadInfo(msg, allMessages);
     const threadExpanded = !!threadInfo && this._threadExpanded;
 
+    // Typed content (design doc §8c) — recovered/exfiltrated files keep their
+    // contentType, so a spreadsheet downloaded off a terminal renders through
+    // the SHARED content-body partial here too, identical to the source.
+    // Mirrors TerminalViewerApp._detailContext.
+    const contentType = msg.contentType || msg.metadata?.contentType || null;
+    const isTypedContent = !!contentType && contentType !== 'message';
+    let typedContent = null;
+    if (isTypedContent) {
+      typedContent = enrichContent({
+        id: msg.messageId,
+        contentType,
+        contentData: msg.contentData || msg.metadata?.contentData || {},
+        subject: msg.subject,
+        from: msg.from,
+        body: msg.body,
+        timestamp: msg.timestamp,
+      }, { isGM: !!game.user?.isGM, interactive: false });
+    }
+
     return {
       ...msg,
       ...displayData,
+      isTypedContent,
+      content: typedContent,
       bodyRendered,
       threadInfo,
       threadExpanded,

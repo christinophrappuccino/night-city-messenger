@@ -999,6 +999,10 @@ export class MessageRepository {
       selfDestruct: flags.selfDestruct || null,
       contentType: flags.contentType || null,
       contentData: flags.contentData || null,
+      // Terminal per-message network gating (checked against the TERMINAL's own
+      // uplink, not the player's network). null = ungated; normal inbox mail
+      // never sets it.
+      networkVisibility: flags.networkVisibility || null,
       accessControl: flags.accessControl || null,
       decryptedBlocks: flags.decryptedBlocks || [],
       signalDegradation: flags.signalDegradation || null,

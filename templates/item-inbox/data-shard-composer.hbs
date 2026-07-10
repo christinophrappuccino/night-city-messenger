@@ -587,8 +587,8 @@
     </fieldset>
   {{/if}}
 
-  {{!-- ═══ NETWORK VISIBILITY (shard-only — terminal messages live behind the account login) ═══ --}}
-  {{#unless isTerminalTarget}}
+  {{!-- ═══ NETWORK VISIBILITY — shards gate on the reader's network; terminal
+        messages gate on the TERMINAL's own uplink (the machine's connection) ═══ --}}
   <fieldset class="ncm-config-section">
     <legend class="ncm-config-legend"><i class="fas fa-eye-slash"></i> Network Visibility</legend>
     <div class="ncm-config-row">
@@ -606,9 +606,12 @@
         <button type="button" data-action="addEntryNetworkTag" class="ncm-shard-hdr-btn" title="Add network"><i class="fas fa-plus"></i></button>
       </div>
     </div>
-    <div class="ncm-config-hint">When restricted, this entry only appears on selected networks.</div>
+    {{#if isTerminalTarget}}
+      <div class="ncm-config-hint">When restricted, this message only appears while the TERMINAL's uplink is one of these networks — switch the machine's connection to reveal it. (The player's own network doesn't matter.)</div>
+    {{else}}
+      <div class="ncm-config-hint">When restricted, this entry only appears on selected networks.</div>
+    {{/if}}
   </fieldset>
-  {{/unless}}
 
   {{!-- ═══ ACTIONS ═══ --}}
   <div class="ncm-config-actions">

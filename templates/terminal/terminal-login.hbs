@@ -6,10 +6,15 @@
       <div class="ncm-term__hero-name">{{terminalName}}</div>
       <div class="ncm-term__hero-sub">{{banner}}</div>
     </div>
-    <div class="ncm-term__hero-stat">
+    <div class="ncm-term__hero-stat{{#if uplink.show}} ncm-term__hero-stat--uplink{{/if}}">
       <span><b>{{accountCount}}</b> accounts</span>
       {{#if secured}}<span class="is-secured"><i class="fas fa-lock"></i> secured</span>{{/if}}
       {{#if onlineCount}}<span><b>{{onlineCount}}</b> online</span>{{/if}}
+      {{!-- Machine uplink — switchable BEFORE login, since network-gated
+            accounts only materialize on the right network. --}}
+      {{#if uplink.show}}
+        {{> "modules/cyberpunkred-messenger/templates/terminal/partials/uplink.hbs" uplink align="right"}}
+      {{/if}}
     </div>
   </div>
   <div class="ncm-term__login-body">

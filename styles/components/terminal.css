@@ -159,6 +159,123 @@
 .ncm-term__bars b { width: 3px; background: var(--ncm-success); border-radius: 1px; }
 .ncm-term__bars b:nth-child(1){height:4px} .ncm-term__bars b:nth-child(2){height:7px}
 .ncm-term__bars b:nth-child(3){height:9px} .ncm-term__bars b:nth-child(4){height:11px}
+.ncm-term__bars--off b { background: var(--ncm-text-muted); opacity: .4; }
+
+/* ── Machine uplink — pill + dropdown (the TERMINAL's own connection).
+      Hosted in the mailbox HUD and the login hero; the dropdown anchors to the
+      .ncm-term__uplink wrapper. Colors ride --net-c (the network's configured
+      color) so a CorpNet-blue pill reads as "the machine's connection", not
+      the terminal brand. ── */
+.ncm-term__uplink { position: relative; display: inline-flex; }
+.ncm-term__netpill {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 3px 10px; border-radius: 6px; cursor: pointer;
+  font-family: var(--ncm-font-mono); font-size: 11px; letter-spacing: .5px;
+  color: var(--net-c, var(--ncm-primary));
+  border: 1px solid color-mix(in srgb, var(--net-c, var(--ncm-primary)) 35%, transparent);
+  background: color-mix(in srgb, var(--net-c, var(--ncm-primary)) 9%, transparent);
+  white-space: nowrap;
+}
+.ncm-term__netpill:hover { background: color-mix(in srgb, var(--net-c, var(--ncm-primary)) 16%, transparent); }
+.ncm-term__netpill--static { cursor: default; }
+.ncm-term__netpill--static:hover { background: color-mix(in srgb, var(--net-c, var(--ncm-primary)) 9%, transparent); }
+.ncm-term__netpill-dot {
+  width: 7px; height: 7px; border-radius: 50%; flex: 0 0 auto;
+  background: var(--net-c, var(--ncm-primary));
+  box-shadow: 0 0 7px var(--net-c, var(--ncm-primary));
+}
+.ncm-term__netpill--offline { --net-c: var(--ncm-text-muted); }
+.ncm-term__netpill--offline .ncm-term__netpill-dot { box-shadow: none; }
+.ncm-term__netpill-caret { opacity: .6; font-size: 10px; }
+
+.ncm-term__netdrop {
+  position: absolute; z-index: 60; top: calc(100% + 6px); left: 0;
+  width: 330px; border-radius: 10px; overflow: hidden;
+  background: color-mix(in srgb, var(--ncm-bg-surface) 92%, black);
+  border: 1px solid color-mix(in srgb, var(--ncm-primary) 30%, transparent);
+  box-shadow: 0 14px 40px rgba(0,0,0,.65);
+}
+.ncm-term__netdrop--right { left: auto; right: 0; }
+.ncm-term__netdrop-hd {
+  display: flex; align-items: center; gap: 8px; padding: 9px 13px;
+  font-family: var(--ncm-font-title); font-size: 10px; font-weight: 700; letter-spacing: 2px;
+  color: var(--ncm-text-secondary);
+  background: color-mix(in srgb, var(--ncm-primary) 10%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--ncm-primary) 22%, transparent);
+}
+.ncm-term__netdrop-hd i { color: var(--ncm-primary); }
+.ncm-term__netopt {
+  display: flex; align-items: center; gap: 10px; padding: 9px 12px 9px 14px;
+  cursor: pointer; position: relative;
+  border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 60%, transparent);
+}
+.ncm-term__netopt::before {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  background: var(--net-c, var(--ncm-text-muted));
+}
+.ncm-term__netopt:hover { background: color-mix(in srgb, var(--net-c, var(--ncm-primary)) 7%, transparent); }
+.ncm-term__netopt--active { background: color-mix(in srgb, var(--net-c, var(--ncm-primary)) 10%, transparent); }
+.ncm-term__netopt-ic {
+  width: 30px; height: 30px; border-radius: 7px; flex: 0 0 auto;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; color: var(--net-c, var(--ncm-primary));
+  background: color-mix(in srgb, var(--net-c, var(--ncm-primary)) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--net-c, var(--ncm-primary)) 22%, transparent);
+}
+.ncm-term__netopt-info { flex: 1; min-width: 0; }
+.ncm-term__netopt-nm { font-family: var(--ncm-font-display); font-weight: 700; font-size: 13px; color: var(--ncm-text-primary); }
+.ncm-term__netopt-ty { font-family: var(--ncm-font-mono); font-size: 9.5px; color: var(--ncm-text-muted); margin-top: 1px; }
+.ncm-term__netopt-right { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+.ncm-term__netchip { font-family: var(--ncm-font-mono); font-size: 9px; letter-spacing: 1px; padding: 2px 7px; border-radius: 4px; white-space: nowrap; }
+.ncm-term__netchip--on   { color: var(--ncm-success); background: color-mix(in srgb, var(--ncm-success) 12%, transparent); border: 1px solid color-mix(in srgb, var(--ncm-success) 30%, transparent); }
+.ncm-term__netchip--go   { color: var(--ncm-secondary); background: color-mix(in srgb, var(--ncm-secondary) 10%, transparent); border: 1px solid color-mix(in srgb, var(--ncm-secondary) 28%, transparent); }
+.ncm-term__netchip--lock { color: var(--ncm-accent); background: color-mix(in srgb, var(--ncm-accent) 10%, transparent); border: 1px solid color-mix(in srgb, var(--ncm-accent) 30%, transparent); }
+.ncm-term__netopt-sig { display: inline-flex; align-items: flex-end; gap: 2px; height: 11px; }
+.ncm-term__netopt-sig b { width: 3px; border-radius: 1px; background: color-mix(in srgb, var(--net-c, var(--ncm-primary)) 30%, transparent); }
+.ncm-term__netopt-sig b.on { background: var(--net-c, var(--ncm-primary)); }
+.ncm-term__netopt--locked .ncm-term__netopt-sig b.on { background: color-mix(in srgb, var(--net-c, var(--ncm-primary)) 45%, #666); }
+.ncm-term__netopt--local { --net-c: var(--ncm-text-muted); }
+.ncm-term__netopt--local .ncm-term__netopt-nm { color: var(--ncm-text-secondary); }
+.ncm-term__netdrop-ft {
+  padding: 7px 13px; font-family: var(--ncm-font-mono); font-size: 9.5px; color: var(--ncm-text-muted);
+  background: rgba(0,0,0,.25); display: flex; align-items: center; gap: 7px;
+}
+
+/* Login hero hosting the pill: stack the stats over it, right-aligned. */
+.ncm-term__hero-stat--uplink { flex-direction: column; align-items: flex-end; gap: 6px; }
+
+/* Sync hint — "N objects failed to sync" (GM toggle showSyncHint). */
+.ncm-term__synchint {
+  display: flex; align-items: center; gap: 8px; margin: 8px 10px; padding: 6px 10px;
+  border-radius: 6px; font-family: var(--ncm-font-mono); font-size: 10px;
+  color: var(--ncm-warning);
+  background: color-mix(in srgb, var(--ncm-warning) 7%, transparent);
+  border: 1px dashed color-mix(in srgb, var(--ncm-warning) 30%, transparent);
+}
+
+/* GM-only OFF-NET chip (message rows + login cards the players can't see). */
+.ncm-term__offnet {
+  font-family: var(--ncm-font-mono); font-size: 8.5px; letter-spacing: 1px;
+  padding: 1px 6px; border-radius: 4px; margin-left: 6px;
+  vertical-align: middle;
+  color: var(--ncm-secondary);
+  border: 1px solid color-mix(in srgb, var(--ncm-secondary) 40%, transparent);
+  background: color-mix(in srgb, var(--ncm-secondary) 10%, transparent);
+}
+
+/* Join-challenge overlay — the network's own security block in SECURE SHELL
+   dress, floated over the login/mailbox state. */
+.ncm-term__netauth {
+  position: absolute; inset: 0; z-index: 70;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0, 0, 0, .55); backdrop-filter: blur(2px);
+}
+.ncm-term__netauth .ncm-term__console { width: min(420px, calc(100% - 40px)); }
+.ncm-term__netauth-cancel {
+  margin-top: 12px; text-align: center; cursor: pointer;
+  font-family: var(--ncm-font-mono); font-size: 10px; color: var(--ncm-text-muted);
+}
+.ncm-term__netauth-cancel:hover { color: var(--ncm-text-secondary); }
 
 /* ── Mailbox panes ── */
 .ncm-term__panes { flex: 1; display: grid; grid-template-columns: 250px 1fr; min-height: 0; }
@@ -279,7 +396,12 @@
 .ncm-term__login { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow-y: auto; overflow-x: hidden; }
 .ncm-term__login-body { flex: 1; padding: 18px 22px; }
 .ncm-term__hero {
-  display: flex; align-items: center; gap: 16px; padding: 18px 22px; position: relative; overflow: hidden;
+  /* NO overflow:hidden here — the uplink dropdown anchors inside the hero and
+     opens below its bottom edge; a hero clip swallowed it entirely on the
+     login screen. Nothing in the hero actually overflows (the logo clips
+     itself, the ::after scanlines are inset:0). z-index lifts the hero's
+     subtree — dropdown included — above the account cards below. */
+  display: flex; align-items: center; gap: 16px; padding: 18px 22px; position: relative; z-index: 5;
   background: linear-gradient(120deg, color-mix(in srgb, var(--ncm-primary) 14%, transparent), transparent 70%);
   border-bottom: 1px solid color-mix(in srgb, var(--ncm-primary) 22%, transparent);
 }
@@ -611,7 +733,7 @@
 }
 
 /* ── Config sheet extras (reuses ncm-cfg-* from shard-config.css) ── */
-.ncm-term-config .ncm-cfg-topbar { display: flex; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--ncm-border); }
+.ncm-term-config .ncm-cfg-topbar { display: flex; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--ncm-border); flex-shrink: 0; }
 .ncm-term-cfg-acct { display: flex; align-items: flex-start; gap: 10px; padding: 11px 12px; border-radius: 8px; margin-bottom: 8px; background: var(--ncm-bg-surface); border: 1px solid var(--ncm-border); }
 .ncm-term-cfg-acct__id { flex: 1; min-width: 0; }
 .ncm-term-cfg-acct__nm { font-family: var(--ncm-font-body); font-weight: 700; font-size: 14px; color: var(--ncm-text-primary); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -624,6 +746,94 @@
 .ncm-term-cfg-m { font-family: var(--ncm-font-mono); font-size: 10px; padding: 3px 8px; border-radius: 5px; color: var(--ncm-text-secondary); background: color-mix(in srgb, var(--ncm-text-muted) 14%, transparent); }
 .ncm-term-cfg-m--logic { color: var(--ncm-accent); background: color-mix(in srgb, var(--ncm-accent) 12%, transparent); }
 .ncm-term-cfg-m--ice { color: var(--ncm-danger); background: color-mix(in srgb, var(--ncm-danger) 12%, transparent); }
+
+/* ── Account editor UX (mock acct-ux-mocks: A identity picker · B portrait
+      tile · C chips/pills · D time composer · E method cards · F sticky foot).
+      Hex palette matches shard-config.css (the GM config look, not the
+      player-facing terminal theme). ── */
+
+/* A · identity search (flex pattern — icon beside a borderless input) */
+.ncm-app .ncm-acct-idwrap { flex: 1; display: flex; align-items: center; gap: 8px; background: #0a0a12; border: 1px solid #2a2a45; border-radius: 3px; padding: 0 9px; }
+.ncm-app .ncm-acct-idwrap i { color: #55557a; font-size: 11px; flex: 0 0 auto; }
+.ncm-app .ncm-acct-idwrap .ncm-acct-idsearch { flex: 1; background: transparent !important; border: none !important; box-shadow: none !important; outline: none; color: #d0d0d8; font-size: 12px; font-family: var(--ncm-font-mono, 'Share Tech Mono', monospace); padding: 6px 0; min-height: 0; height: auto; }
+.ncm-app .ncm-acct-dd { margin: 4px 0 8px 102px; border: 1px solid #2a2a45; border-radius: 4px; background: #0c0c15; max-height: 240px; overflow-y: auto; overflow-x: hidden; }
+.ncm-app .ncm-acct-dd-row { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-bottom: 1px solid #16161f; cursor: pointer; }
+.ncm-app .ncm-acct-dd-row:last-child { border-bottom: none; }
+.ncm-app .ncm-acct-dd-row:hover { background: rgba(25, 243, 247, .07); }
+.ncm-app .ncm-acct-dd-pic { width: 30px; height: 30px; border-radius: 4px; background: #1a1a2e; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #8a8aa8; flex: 0 0 auto; overflow: hidden; }
+.ncm-app .ncm-acct-dd-pic img { width: 100%; height: 100%; object-fit: cover; display: block; border: none; }
+.ncm-app .ncm-acct-dd-id { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.ncm-app .ncm-acct-dd-nm { font-size: 12.5px; font-weight: 700; color: #dde; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-app .ncm-acct-dd-em { font-size: 10.5px; color: #6fa8ab; font-family: var(--ncm-font-mono, monospace); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-app .ncm-acct-dd-src { font-size: 8.5px; letter-spacing: .1em; padding: 2px 6px; border-radius: 3px; flex: 0 0 auto; font-family: var(--ncm-font-mono, monospace); }
+.ncm-app .ncm-acct-dd-src--contact { background: rgba(25, 243, 247, .13); color: #19f3f7; }
+.ncm-app .ncm-acct-dd-src--actor { background: rgba(247, 201, 72, .13); color: #f7c948; }
+.ncm-app .ncm-acct-dd-empty { padding: 9px 12px; font-size: 11px; color: #6a6a8a; }
+.ncm-app .ncm-acct-idcard { display: flex; gap: 12px; align-items: center; padding: 9px 10px; border: 1px solid rgba(25, 243, 247, .35); background: rgba(25, 243, 247, .05); border-radius: 4px; margin: 6px 0 4px; }
+.ncm-app .ncm-acct-idcard--none { display: none; }
+.ncm-app .ncm-acct-idcard-pic { width: 44px; height: 44px; border-radius: 5px; background: #1a1a2e; display: inline-flex; align-items: center; justify-content: center; font-size: 19px; font-weight: 800; color: #8fd; flex: 0 0 auto; overflow: hidden; }
+.ncm-app .ncm-acct-idcard-pic img { width: 100%; height: 100%; object-fit: cover; display: block; border: none; }
+.ncm-app .ncm-acct-idcard-id { flex: 1; min-width: 0; }
+.ncm-app .ncm-acct-idcard-nm { font-weight: 800; font-size: 13.5px; color: #eef; }
+.ncm-app .ncm-acct-idcard-em { font-family: var(--ncm-font-mono, monospace); font-size: 11px; color: #19f3f7; }
+.ncm-app .ncm-acct-idcard-tag { font-size: 9px; letter-spacing: .08em; padding: 2px 7px; border-radius: 3px; background: rgba(25, 243, 247, .14); color: #19f3f7; margin-left: 6px; font-family: var(--ncm-font-mono, monospace); vertical-align: middle; }
+.ncm-app .ncm-acct-unlink { color: #8a8aa8; font-size: 11px; border: 1px solid #2a2a45; border-radius: 3px; padding: 4px 8px; cursor: pointer; flex: 0 0 auto; }
+.ncm-app .ncm-acct-unlink:hover { color: #ff5261; border-color: rgba(255, 0, 51, .4); }
+
+/* B · portrait tile (the tile IS the FilePicker button) */
+.ncm-app .ncm-acct-por-row { align-items: flex-start; }
+.ncm-app .ncm-acct-portile { width: 64px; height: 64px; border-radius: 6px; border: 1px dashed #3a3a55; background: #0a0a12; display: inline-flex; align-items: center; justify-content: center; color: #55557a; font-size: 22px; cursor: pointer; flex: 0 0 auto; overflow: hidden; transition: border-color .15s; }
+.ncm-app .ncm-acct-portile:hover { border-color: #19f3f7; color: #19f3f7; }
+.ncm-app .ncm-acct-portile img { width: 100%; height: 100%; object-fit: cover; display: block; border: none; }
+.ncm-app .ncm-acct-por-side { flex: 1; min-width: 0; }
+.ncm-app .ncm-acct-por-side .ncm-cfg-input { width: 100%; }
+
+/* [hidden] rows: .ncm-cfg-row's display:flex beats the UA's hidden→none —
+   force it (bit us: the custom-clearance + datetime rows rendered visible). */
+.ncm-app .ncm-acct-editor [hidden] { display: none !important; }
+
+/* C · chips + classification pills */
+.ncm-app .ncm-acct-chip-row { align-items: flex-start; }
+.ncm-app .ncm-acct-chips { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; align-items: center; }
+.ncm-app .ncm-acct-chip { font-size: 10.5px; letter-spacing: .05em; padding: 4px 11px; border-radius: 999px; border: 1px solid #2a2a45; color: #8a8aa8; cursor: pointer; background: #0a0a12; user-select: none; white-space: nowrap; }
+.ncm-app .ncm-acct-chip i { font-size: 9px; margin-right: 3px; }
+.ncm-app .ncm-acct-chip:hover { color: #b9b9cc; border-color: #3a3a55; }
+.ncm-app .ncm-acct-chip--on { border-color: rgba(25, 243, 247, .6); color: #19f3f7; background: rgba(25, 243, 247, .08); box-shadow: 0 0 6px rgba(25, 243, 247, .25); }
+.ncm-app .ncm-acct-chip--custom { border-style: dashed; }
+.ncm-app .ncm-acct-chip--ice { color: #ff5261; border-color: rgba(255, 0, 51, .45); }
+.ncm-app .ncm-acct-chip--ice.ncm-acct-chip--on { color: #ff0033; border-color: rgba(255, 0, 51, .7); background: rgba(255, 0, 51, .09); box-shadow: 0 0 7px rgba(255, 0, 51, .35); }
+.ncm-app .ncm-acct-pill { font-size: 9.5px; font-weight: 800; letter-spacing: .09em; padding: 4px 10px; border-radius: 3px; border: 1px solid #2a2a45; cursor: pointer; opacity: .55; font-family: var(--ncm-font-mono, monospace); user-select: none; white-space: nowrap; }
+.ncm-app .ncm-acct-pill--on { opacity: 1; box-shadow: 0 0 7px currentColor; }
+.ncm-app .ncm-acct-pill--none { color: #8a8aa8; }
+.ncm-app .ncm-acct-pill--rest { color: #f7c948; border-color: rgba(247, 201, 72, .5); background: rgba(247, 201, 72, .07); }
+.ncm-app .ncm-acct-pill--conf { color: #ff9f43; border-color: rgba(255, 159, 67, .5); background: rgba(255, 159, 67, .07); }
+.ncm-app .ncm-acct-pill--sec { color: #ff5261; border-color: rgba(246, 82, 97, .5); background: rgba(246, 82, 97, .07); }
+.ncm-app .ncm-acct-pill--top { color: #ff0033; border-color: rgba(255, 0, 51, .6); background: rgba(255, 0, 51, .09); }
+
+/* E · security method cards + toggle switches */
+.ncm-app .ncm-acct-mcard { border: 1px solid #22223a; border-radius: 4px; margin-bottom: 8px; background: #0b0b14; overflow: hidden; }
+.ncm-app .ncm-acct-mcard--on { border-color: rgba(25, 243, 247, .4); }
+.ncm-app .ncm-acct-mcard-h { display: flex; align-items: center; gap: 10px; padding: 8px 11px; }
+.ncm-app .ncm-acct-mcard-ic { width: 26px; height: 26px; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; background: rgba(25, 243, 247, .08); color: #19f3f7; flex: 0 0 auto; }
+.ncm-app .ncm-acct-mcard-t { flex: 1; min-width: 0; }
+.ncm-app .ncm-acct-mcard-nm { font-size: 12.5px; font-weight: 800; color: #e8e8f0; }
+.ncm-app .ncm-acct-mcard-d { font-size: 10.5px; color: #6a6a8a; }
+.ncm-app .ncm-acct-mcard-b { padding: 0 11px 10px 47px; }
+.ncm-app .ncm-acct-mcard:not(.ncm-acct-mcard--on) .ncm-acct-mcard-b { opacity: .45; }
+.ncm-app .ncm-acct-tgl { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; flex: 0 0 auto; margin-left: auto; }
+.ncm-app .ncm-acct-tgl input { display: none; }
+.ncm-app .ncm-acct-tgl-knob { width: 34px; height: 18px; border-radius: 999px; background: #22223a; position: relative; transition: background .15s; flex: 0 0 auto; }
+.ncm-app .ncm-acct-tgl-knob::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #55557a; transition: left .15s, background .15s; }
+.ncm-app .ncm-acct-tgl input:checked + .ncm-acct-tgl-knob { background: rgba(25, 243, 247, .35); }
+.ncm-app .ncm-acct-tgl input:checked + .ncm-acct-tgl-knob::after { left: 18px; background: #19f3f7; }
+.ncm-app .ncm-acct-tgl-lbl { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: #8a8aa8; }
+
+/* F · sticky footer + dirty dot (sticks to the .ncm-cfg-content scrollport) */
+.ncm-app .ncm-acct-foot { position: sticky; bottom: 0; z-index: 5; display: flex; gap: 8px; align-items: center; margin: 12px -14px -12px; padding: 10px 14px 12px; background: #0e0e16; border-top: 1px solid #1e1e30; box-shadow: 0 -10px 14px -10px rgba(0, 0, 0, .7); }
+.ncm-app .ncm-acct-dirty { display: none; margin-left: auto; font-size: 10px; color: #f7c948; letter-spacing: .04em; align-items: center; }
+.ncm-app .ncm-acct-dirty i { font-size: 6px; margin-right: 4px; }
+.ncm-app .ncm-acct-editor--dirty .ncm-acct-dirty { display: inline-flex; }
+.ncm-app .ncm-acct-editor--dirty .ncm-acct-foot-save { border-color: rgba(0, 255, 65, .55) !important; color: #00ff41 !important; box-shadow: 0 0 8px rgba(0, 255, 65, .25) !important; }
 
 /* Items-directory terminal badge — recolor the shared shard badge red. */
 .ncm-terminal-img-tag { background: #ff0033 !important; box-shadow: 0 0 8px rgba(255,0,51,.6) !important; }

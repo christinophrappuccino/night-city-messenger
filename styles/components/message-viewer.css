@@ -1687,3 +1687,40 @@
   /* Auto density — tighter rows when stacked. */
   .ncm-app .ncm-viewer__msg { padding-top: 7px; padding-bottom: 7px; }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   §24. TYPED CONTENT (recovered files — shared content-body partial)
+   The original six content types' CSS (item-inbox.css) reads bare --sp-*
+   vars otherwise defined only on the shard/terminal viewer roots — without
+   this mapping, a recovered spreadsheet/dossier/… in the Agent inbox paints
+   with initial (blank) colors. Mapped to --ncm-* so it follows the player
+   theme. Same block as terminal.css; new Phase-2 types use --ncm-* directly
+   (content-types.css).
+   ═══════════════════════════════════════════════════════════ */
+.ncm-app .ncm-viewer {
+  --sp-bg-deep: var(--ncm-bg-deep, #0a0a0f);
+  --sp-bg-base: var(--ncm-bg-base, #12121a);
+  --sp-bg-surface: var(--ncm-bg-surface, #1a1a2e);
+  --sp-bg-elevated: var(--ncm-bg-elevated, #252540);
+  --sp-border: var(--ncm-border, #2a2a45);
+  --sp-bar: linear-gradient(90deg, var(--ncm-primary, #F65261), transparent 40%, transparent 60%, var(--ncm-secondary, #19f3f7));
+  --sp-shadow: 0 0 50px rgba(0, 0, 0, 0.5);
+  --sp-accent: var(--ncm-secondary, #19f3f7);
+  --sp-accent-2: var(--ncm-text-secondary, #8888a0);
+  --sp-accent-glow: color-mix(in srgb, var(--ncm-secondary, #19f3f7) 8%, transparent);
+  --sp-text-bright: var(--ncm-text-primary, #e0e0e8);
+  --sp-text-body: var(--ncm-text-secondary, #8888a0);
+  --sp-text-meta: var(--ncm-text-muted, #555570);
+  --sp-text-muted: var(--ncm-text-muted, #555570);
+  --sp-icon-bg: color-mix(in srgb, var(--ncm-secondary, #19f3f7) 6%, transparent);
+  --sp-icon-border: color-mix(in srgb, var(--ncm-secondary, #19f3f7) 20%, transparent);
+  --sp-chip-bg: var(--ncm-bg-surface, #1a1a2e);
+  --sp-chip-text: var(--ncm-text-secondary, #8888a0);
+  --sp-chip-active-bg: color-mix(in srgb, var(--ncm-secondary, #19f3f7) 6%, transparent);
+  --sp-chip-active-text: var(--ncm-secondary, #19f3f7);
+}
+
+/* Wrapper around the shared partial in the detail body */
+.ncm-app .ncm-viewer__typed-content {
+  margin: 4px 0 12px;
+}

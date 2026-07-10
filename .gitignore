@@ -1,6 +1,10 @@
 # Claude Code per-project settings (local allowlist, not source)
 .claude/
 
+# Foundry-generated LevelDB pack migrations (source of truth is the NeDB .db files)
+packs/ncm-macros-gm/
+packs/ncm-macros-player/
+
 # OS / editor noise
 .DS_Store
 Thumbs.db

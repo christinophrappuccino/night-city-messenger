@@ -53,8 +53,12 @@
     <div class="ncm-term__hud">
       <span class="ncm-term__hud-seg"><i class="fas fa-plug-circle-check ncm-term__hud-on"></i> <span class="ncm-term__hud-on">logged in</span></span>
       <span class="ncm-term__hud-sep">·</span>
-      <span class="ncm-term__hud-seg ncm-term__hud-net"><i class="fas fa-network-wired"></i> {{hud.netName}}</span>
-      <span class="ncm-term__hud-seg ncm-term__bars"><b></b><b></b><b></b><b></b></span>
+      {{#if uplink.show}}
+        {{> "modules/cyberpunkred-messenger/templates/terminal/partials/uplink.hbs" uplink}}
+      {{else}}
+        <span class="ncm-term__hud-seg ncm-term__hud-net"><i class="fas fa-network-wired"></i> {{uplink.name}}</span>
+      {{/if}}
+      <span class="ncm-term__hud-seg ncm-term__bars{{#if uplink.offline}} ncm-term__bars--off{{/if}}"><b></b><b></b><b></b><b></b></span>
       {{#if hud.isAdmin}}<span class="ncm-term__hud-sep">·</span><span class="ncm-term__hud-seg ncm-term__hud-admin"><i class="fas fa-user-shield"></i> ADMIN</span>{{/if}}
       <span class="ncm-term__hud-spacer"></span>
       {{#if isGM}}<span class="ncm-term__hud-seg ncm-term__hud-gm" data-action="terminalConfigure" data-tooltip="Configure terminal (GM)"><i class="fas fa-sliders"></i> EDIT</span>{{/if}}
@@ -93,12 +97,15 @@
             {{#if encrypted}}<i class="fas fa-lock ncm-term__pdot"></i>{{else}}<i class="fas fa-circle ncm-term__pdot ncm-term__pdot--{{priority}}"></i>{{/if}}
             <div class="ncm-term__row-meta">
               <div class="ncm-term__row-from">{{from}}</div>
-              <div class="ncm-term__row-subj">{{subject}}</div>
+              <div class="ncm-term__row-subj">{{subject}}{{#if offNet}}<span class="ncm-term__offnet" data-tooltip="Off-network — players can't see this on the current uplink">OFF-NET</span>{{/if}}</div>
             </div>
           </div>
         {{else}}
           <div class="ncm-term__list-empty"><i class="fas fa-inbox"></i> {{emptyLabel}}</div>
         {{/each}}
+        {{#if syncHint}}
+          <div class="ncm-term__synchint"><i class="fas fa-triangle-exclamation"></i> {{syncHint.count}} object{{#unless (eq syncHint.count 1)}}s{{/unless}} failed to sync — uplink required</div>
+        {{/if}}
         {{#if pagination}}
           <div class="ncm-term__pager">
             <button type="button" class="ncm-term__pager-btn" data-action="terminalPage" data-dir="prev" {{#unless pagination.hasPrev}}disabled{{/unless}}><i class="fas fa-chevron-left"></i></button>
@@ -122,8 +129,10 @@
                 <span class="ncm-term__chip" data-action="terminalAddContact" data-message-id="{{selectedMessage.messageId}}"><i class="fas fa-user-plus"></i> Add to contacts</span>
               {{/unless}}
               {{#if isGM}}
+                <span class="ncm-term__gm-edit" data-action="terminalToggleSave" data-message-id="{{selectedMessage.messageId}}" data-tooltip="{{#if selectedMessage.isSaved}}Remove from Saved (GM){{else}}Move to Saved (GM){{/if}}"><i class="{{#if selectedMessage.isSaved}}fas{{else}}fa-regular{{/if}} fa-bookmark"></i></span>
+                <span class="ncm-term__gm-edit" data-action="terminalToggleTrash" data-message-id="{{selectedMessage.messageId}}" data-tooltip="{{#if selectedMessage.isTrashed}}Restore from Trash (GM){{else}}Move to Trash (GM){{/if}}"><i class="fas {{#if selectedMessage.isTrashed}}fa-trash-arrow-up{{else}}fa-box-archive{{/if}}"></i></span>
                 <span class="ncm-term__gm-edit" data-action="terminalEditMessage" data-message-id="{{selectedMessage.messageId}}" data-tooltip="Edit message (GM)"><i class="fas fa-pen"></i></span>
-                <span class="ncm-term__gm-edit ncm-term__gm-edit--danger" data-action="terminalDeleteMessage" data-message-id="{{selectedMessage.messageId}}" data-tooltip="Delete message (GM)"><i class="fas fa-trash-can"></i></span>
+                <span class="ncm-term__gm-edit ncm-term__gm-edit--danger" data-action="terminalDeleteMessage" data-message-id="{{selectedMessage.messageId}}" data-tooltip="Permanently delete (GM)"><i class="fas fa-trash-can"></i></span>
               {{/if}}
             </span>
           </div>
@@ -151,6 +160,47 @@
         {{else}}
           <div class="ncm-term__prompt" style="margin-top:40px;text-align:center">&gt; select a message</div>
         {{/if}}
+      </div>
+    </div>
+  {{/if}}
+
+  {{!-- ── Machine-uplink join challenge (secured interface) — full-viewer
+        overlay over the login or mailbox state; the network's own security
+        block, rolled by the logged-in operator. --}}
+  {{#if netAuth}}
+    <div class="ncm-term__netauth">
+      <div class="ncm-term__console" data-auth-state="login" style="--net-c: {{netAuth.color}};">
+        <div class="ncm-term__console-hd">
+          <i class="fas fa-tower-broadcast"></i>
+          <span class="ncm-term__console-ttl">JOIN NETWORK // {{netAuth.networkName}}</span>
+          <span class="ncm-term__console-dot"></span>
+        </div>
+        <div class="ncm-term__console-body">
+          <div class="ncm-term__console-pline">{{netAuth.shellHost}}:~$ join {{netAuth.joinCmd}}<span class="ncm-term__cursor"></span></div>
+          {{#if netAuth.allowPassword}}
+            <div class="ncm-term__tfield">
+              <span class="ncm-term__tfield-pf">&gt;</span><span class="ncm-term__tfield-l">PASSKEY</span>
+              <input type="password" name="netAuthPassword" autocomplete="off" placeholder="••••••••">
+            </div>
+          {{/if}}
+          {{#if netAuth.error}}<div class="ncm-term__danger" style="border-radius:8px;margin:4px 0 10px;border:1px solid color-mix(in srgb,var(--ncm-danger) 45%,transparent)"><i class="fas fa-triangle-exclamation"></i> {{netAuth.error}}</div>{{/if}}
+          {{#unless netAuth.lockout}}
+            {{#if netAuth.allowPassword}}
+              <div class="ncm-term__auth" data-action="terminalNetAuth"><i class="fas fa-right-to-bracket"></i> AUTHENTICATE</div>
+            {{/if}}
+            {{#if netAuth.skillBypass}}
+              <div class="ncm-term__spoof" style="width:100%;justify-content:center;margin-top:10px" data-action="terminalNetSkillBypass">
+                <i class="fas fa-dice-d20"></i> Bypass with {{netAuth.skillBypass.skill}} — DV {{netAuth.skillBypass.dv}}
+              </div>
+            {{/if}}
+            {{#if netAuth.isGM}}
+              <div class="ncm-term__spoof" style="width:100%;justify-content:center;margin-top:10px" data-action="terminalNetGmJoin">
+                <i class="fas fa-user-shield"></i> GM — join without credentials
+              </div>
+            {{/if}}
+          {{/unless}}
+          <div class="ncm-term__netauth-cancel" data-action="terminalNetCancel"><i class="fas fa-xmark"></i> cancel</div>
+        </div>
       </div>
     </div>
   {{/if}}

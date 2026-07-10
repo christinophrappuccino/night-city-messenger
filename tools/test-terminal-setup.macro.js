@@ -37,6 +37,22 @@
       logLines: ['ARASAKA-NET handshake ........ VERIFIED', 'Credential gateway .......... ONLINE', 'BLACK_ICE countermeasure .... ARMED'],
     },
     allowExfil: true,
+    // Machine uplink (Layer 1) — the terminal's own connection. Boots on
+    // CitiNet (open); DarkNet is open too (free switch — reveals the gated
+    // WHISPER account); CorpNet is the only core net whose OWN security block
+    // has requiresAuth, and it's NOT pre-authorized here, so switching to it
+    // fires the join-challenge console (skill roll DV 15 / GM force-join;
+    // success stamps connection.authenticated — no re-challenge on return).
+    connection: {
+      interfaces: [
+        { networkId: 'CITINET', preAuthorized: false },
+        { networkId: 'CORPNET', preAuthorized: false },
+        { networkId: 'DARKNET', preAuthorized: false },
+      ],
+      defaultNetworkId: 'CITINET',
+      allowPlayerSwitching: true,
+      showSyncHint: true,
+    },
   });
 
   // 3) Accounts (first added = login-screen default). The credential-badge
@@ -60,6 +76,13 @@
     username: 'm_takeda', displayName: 'M. Takeda', hidden: true,
     security: { requiresAuth: true, allowPassword: true, password: 'hidden' },
   });
+  // Network-gated account — VANISHES from the login list until the machine's
+  // uplink is switched to DarkNet (an open interface — free switch).
+  await _api.addTerminalAccount(_item, {
+    username: 'nc_whisper', displayName: 'W H I S P E R', role: 'DEAD DROP',
+    network: { restricted: true, allowedNetworks: ['DARKNET'], allowedTypes: [] },
+    security: { requiresAuth: true, allowPassword: true, password: 'ghost' },
+  });
 
   // 4) Messages into Veronica's mailbox (priority-coded).
   const _acct = _v.accountId;
@@ -75,6 +98,16 @@
     from: 'finance@arasaka.net', subject: 'Wire authorization', priority: 'urgent',
     body: 'Authorization required for the transfer to offshore holding. Reply with your executive token.',
     timestamp: new Date(_now - 6 * _h).toISOString(),
+  });
+  // Network-gated message — only syncs while the machine's uplink is CorpNet
+  // (which requires passing the join challenge first). On CitiNet/DarkNet it
+  // drops out of the list — the "N objects failed to sync" hint appears; the
+  // GM keeps it with an OFF-NET chip.
+  await _api.addTerminalMessage(_item, _acct, {
+    from: 'counterintel@arasaka.net', subject: 'INTERNAL: watchlist sync', priority: 'critical',
+    body: 'Weekly watchlist delta attached. This bulletin is served from ARASAKA-NET infrastructure and does not replicate to public carriers.',
+    networkVisibility: { restricted: true, allowedNetworks: ['CORPNET'], allowedTypes: [] },
+    timestamp: new Date(_now - 3 * _h).toISOString(),
   });
   await _api.addTerminalMessage(_item, _acct, {
     from: 'logistics@arasaka.net', subject: 'Shipment 4471', priority: 'normal',

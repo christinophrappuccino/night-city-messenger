@@ -11,14 +11,20 @@
  */
 
 import { BaseApplication } from '../BaseApplication.js';
-import { MODULE_ID, TERMINAL_PRESETS, FONT_OPTIONS, DEFAULTS } from '../../utils/constants.js';
-import { log, isGM, generateId } from '../../utils/helpers.js';
+import { MODULE_ID, TERMINAL_PRESETS, FONT_OPTIONS, DEFAULTS, SKILL_MAP } from '../../utils/constants.js';
+import { log, isGM, generateId, formatCyberDate } from '../../utils/helpers.js';
+
+/** Clearance presets offered as one-click chips; anything else is "custom". */
+const CLEARANCE_PRESETS = ['STANDARD', 'ADMIN', 'GUEST', 'SYSOP'];
+/** Word pool for the password generator (⚄). */
+const PASS_WORDS = ['chrome', 'samurai', 'arasaka', 'daemon', 'netwatch', 'flatline', 'preem', 'kiroshi', 'militech', 'nomad', 'glitch', 'neon', 'zeroday', 'blackwall', 'edge', 'static'];
 
 export class TerminalConfigApp extends BaseApplication {
 
   item = null;
   _activeTab = 'identity';
   _editingAccountId = null;   // account id | 'new' | null
+  _editorLink = null;         // pending identity pick: { masterContactId, actorId } | null (= use stored)
 
   get terminalService() { return game.nightcity?.terminalService; }
   get networkService() { return game.nightcity?.networkService; }
@@ -44,6 +50,10 @@ export class TerminalConfigApp extends BaseApplication {
       exportConfig: TerminalConfigApp._onExportConfig,
       importConfig: TerminalConfigApp._onImportConfig,
       browseBootImage: TerminalConfigApp._onBrowseBootImage,
+      browseAcctPortrait: TerminalConfigApp._onBrowseAcctPortrait,
+      unlinkIdentity: TerminalConfigApp._onUnlinkIdentity,
+      generatePassword: TerminalConfigApp._onGeneratePassword,
+      pickKeyItem: TerminalConfigApp._onPickKeyItem,
     },
   }, { inplace: false });
 
@@ -157,6 +167,18 @@ export class TerminalConfigApp extends BaseApplication {
       allNetworks,
       signalThreshold: cfg.network?.signalThreshold ?? 40,
 
+      // Machine uplink (Layer 1) — the terminal's OWN connection.
+      uplinkInterfaces: (this.networkService?.getAllNetworks?.() || []).map(n => {
+        const iface = (cfg.connection?.interfaces || []).find(i => i.networkId === n.id);
+        return { id: n.id, name: n.name, checked: !!iface, preAuthorized: !!iface?.preAuthorized };
+      }),
+      uplinkDefaults: [{ value: '', label: 'Local only (offline)', selected: !cfg.connection?.defaultNetworkId }]
+        .concat((this.networkService?.getAllNetworks?.() || []).map(n => ({
+          value: n.id, label: n.name, selected: n.id === cfg.connection?.defaultNetworkId,
+        }))),
+      uplinkAllowSwitch: cfg.connection?.allowPlayerSwitching !== false,
+      uplinkSyncHint: cfg.connection?.showSyncHint !== false,
+
       // Exfil
       allowExfil: cfg.allowExfil !== false,
     };
@@ -178,28 +200,69 @@ export class TerminalConfigApp extends BaseApplication {
     const a = isNew ? foundry.utils.deepClone(DEFAULTS.TERMINAL_ACCOUNT) : (cfg.accounts || []).find(x => x.id === id);
     if (!a) return null;
     const s = a.security || {};
-    const CLS = ['', 'RESTRICTED', 'CONFIDENTIAL', 'SECRET', 'TOP SECRET'];
+
+    // ── Linked identity (A) — a pending pick (unsaved) overrides the stored link ──
+    const link = this._editorLink ?? { masterContactId: a.masterContactId || '', actorId: a.actorId || '' };
+    let linkedName = '', linkedEmail = '', linkedPortrait = null, linkedSource = '';
+    if (link.masterContactId) {
+      const c = game.nightcity?.masterContactService?.getContact(link.masterContactId);
+      if (c) {
+        linkedName = c.name; linkedEmail = c.email || ''; linkedSource = 'CONTACT';
+        linkedPortrait = game.nightcity?.portraitService?.resolvePortrait?.(c) || c.portrait || null;
+      }
+    } else if (link.actorId) {
+      const act = game.actors?.get(link.actorId);
+      if (act) {
+        linkedName = act.name; linkedEmail = act.getFlag(MODULE_ID, 'email') || '';
+        linkedPortrait = act.img || null; linkedSource = 'ACTOR';
+      }
+    }
+
+    // ── Clearance chips (C) ──
+    const clearance = a.clearance || '';
+    const clearanceIsCustom = !!clearance && !CLEARANCE_PRESETS.includes(clearance);
+
+    // ── Skill dropdown (E) — SKILL_MAP keys, keeping a legacy value visible ──
+    const curSkill = (s.bypassSkills || [])[0] || 'Interface';
+    const skills = Object.keys(SKILL_MAP);
+    if (!skills.includes(curSkill)) skills.unshift(curSkill);
+
+    const cls = a.classification || '';
+    const failureMode = s.failureMode || 'lockout';
+
     return {
       isNew, id: a.id,
       displayName: a.displayName || '', username: a.username || '', email: a.email || '',
       isAdmin: !!a.isAdmin, hidden: !!a.hidden,
+      portrait: a.portrait || '',
+      isLinked: !!linkedName,
+      linkedName, linkedEmail, linkedPortrait, linkedSource,
+      linkedInitials: (linkedName[0] || '?').toUpperCase(),
       // Credential / badge fields
-      role: a.role || '', clearance: a.clearance || '', idNumber: a.idNumber || '',
+      role: a.role || '', clearance, idNumber: a.idNumber || '',
       location: a.location || '', lastLogin: a.lastLogin || '',
-      classificationOpts: CLS.map(v => ({
-        value: v, label: v || '— inherit terminal —', selected: v === (a.classification || ''),
-      })),
+      clearanceChips: CLEARANCE_PRESETS.map(v => ({ value: v, on: v === clearance })),
+      clearanceIsCustom,
+      classification: cls,
+      isRestricted: cls === 'RESTRICTED', isConfidential: cls === 'CONFIDENTIAL',
+      isSecret: cls === 'SECRET', isTopSecret: cls === 'TOP SECRET',
       requiresAuth: !!s.requiresAuth,
       allowPassword: !!(s.allowPassword ?? s.password),
       password: s.password || '',
       allowSkillCheck: !!s.allowSkillCheck,
-      skill: (s.bypassSkills || [])[0] || 'Interface',
+      skillOpts: skills.map(v => ({ value: v, selected: v === curSkill })),
       bypassDC: s.bypassDC ?? 15,
       allowKeyItem: !!s.allowKeyItem,
       keyItemName: s.keyItemName || '',
+      // Network visibility — the account only exists on these uplinks.
+      netRestricted: !!a.network?.restricted,
+      netAllowed: (this.networkService?.getAllNetworks?.() || []).map(n => ({
+        id: n.id, name: n.name, checked: (a.network?.allowedNetworks || []).includes(n.id),
+      })),
       authLogic: s.authLogic || 'any',
-      failureMode: s.failureMode || 'lockout',
-      failureModes: ['nothing', 'lockout', 'permanent', 'damage'].map(v => ({ value: v, selected: v === (s.failureMode || 'lockout') })),
+      failureMode,
+      failNothing: failureMode === 'nothing', failLockout: failureMode === 'lockout',
+      failPermanent: failureMode === 'permanent', failDamage: failureMode === 'damage',
       maxAttempts: s.maxAttempts ?? 3,
       lockoutMin: Math.round((s.lockoutDuration ?? 3600000) / 60000),
     };
@@ -234,6 +297,184 @@ export class TerminalConfigApp extends BaseApplication {
     el.querySelector('[name="bootFaIcon"]')?.addEventListener('input', syncBootIcon);
     el.querySelector('[name="bootImageUrl"]')?.addEventListener('input', syncBootIcon);
     syncBootIcon();
+
+    this._wireAccountEditor(el);
+  }
+
+  /**
+   * Manual listeners for the account editor (A–F UX widgets). All state that
+   * chips/pills carry is mirrored into hidden inputs bearing the ORIGINAL
+   * field names, so `_onSaveAccount` reads one contract. No-ops when the
+   * editor isn't open.
+   * @private
+   */
+  _wireAccountEditor(el) {
+    const editor = el.querySelector('.ncm-acct-editor');
+    if (!editor) return;
+    const esc = Handlebars.escapeExpression;
+
+    // ── Dirty tracking (F) ──
+    const markDirty = () => editor.classList.add('ncm-acct-editor--dirty');
+    editor.addEventListener('input', markDirty);
+    editor.addEventListener('change', markDirty);
+    this._markEditorDirty = markDirty;
+
+    // ── Network-gated toggle: show/hide the uplink checkbox row ──
+    const netToggle = el.querySelector('[name="acctNetRestricted"]');
+    netToggle?.addEventListener('change', () => {
+      const row = el.querySelector('[data-acct-net-row]');
+      if (row) row.hidden = !netToggle.checked;
+    });
+
+    // ── B · Portrait tile: live preview ──
+    const syncPortrait = () => {
+      const tile = el.querySelector('.ncm-acct-portile');
+      if (!tile) return;
+      const path = el.querySelector('[name="acctPortrait"]')?.value?.trim();
+      tile.innerHTML = path ? `<img src="${esc(path)}" alt="">` : '<i class="fas fa-user"></i>';
+    };
+    el.querySelector('[name="acctPortrait"]')?.addEventListener('input', syncPortrait);
+
+    // ── A · Identity search dropdown ──
+    const search = el.querySelector('.ncm-acct-idsearch');
+    const dd = el.querySelector('.ncm-acct-dd');
+    if (search && dd) {
+      search.addEventListener('input', () => {
+        const q = search.value.trim().toLowerCase();
+        if (!q) { dd.hidden = true; dd.innerHTML = ''; return; }
+        const hits = this._identityCandidates()
+          .filter(c => c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q))
+          .slice(0, 8);
+        dd.innerHTML = hits.map((c, i) => `
+          <div class="ncm-acct-dd-row" data-idx="${i}">
+            <span class="ncm-acct-dd-pic">${c.portrait ? `<img src="${esc(c.portrait)}" alt="">` : esc((c.name[0] || '?').toUpperCase())}</span>
+            <span class="ncm-acct-dd-id"><span class="ncm-acct-dd-nm">${esc(c.name)}</span><span class="ncm-acct-dd-em">${esc(c.email)}</span></span>
+            <span class="ncm-acct-dd-src ncm-acct-dd-src--${c.kind}">${c.kind === 'contact' ? 'CONTACT' : 'ACTOR'}</span>
+          </div>`).join('')
+          || '<div class="ncm-acct-dd-empty">no matches — save with an email to create a new contact</div>';
+        dd.hidden = false;
+        dd.querySelectorAll('.ncm-acct-dd-row').forEach(r =>
+          r.addEventListener('click', () => this._applyIdentityPick(hits[Number(r.dataset.idx)])));
+      });
+    }
+
+    // ── C · Chip sets writing hidden inputs (clearance / classification / logic / failure) ──
+    el.querySelectorAll('.ncm-acct-chips[data-chipset]').forEach(set => {
+      set.addEventListener('click', (ev) => {
+        const chip = ev.target.closest('[data-value]');
+        if (!chip) return;
+        const input = el.querySelector(`[name="${set.dataset.chipset}"]`);
+        set.querySelectorAll('[data-value]').forEach(c => {
+          const cls = c.classList.contains('ncm-acct-pill') ? 'ncm-acct-pill--on' : 'ncm-acct-chip--on';
+          c.classList.toggle(cls, c === chip);
+        });
+        if (set.dataset.chipset === 'acctClearance') {
+          const isCustom = chip.dataset.value === '__custom';
+          const row = el.querySelector('.ncm-acct-clear-custom-row');
+          if (row) row.hidden = !isCustom;
+          if (input) input.value = isCustom ? (el.querySelector('.ncm-acct-clear-custom')?.value || '') : chip.dataset.value;
+        } else if (input) {
+          input.value = chip.dataset.value;
+        }
+        markDirty();
+      });
+    });
+    el.querySelector('.ncm-acct-clear-custom')?.addEventListener('input', (ev) => {
+      const input = el.querySelector('[name="acctClearance"]');
+      if (input) input.value = ev.target.value;
+    });
+
+    // ── D · Last-access time composer (game clock via timeService) ──
+    const timeWrap = el.querySelector('.ncm-acct-timechips');
+    if (timeWrap) {
+      const lastInput = el.querySelector('[name="acctLastLogin"]');
+      const customRow = el.querySelector('.ncm-acct-time-custom-row');
+      const stamp = (iso) => {
+        if (!lastInput) return;
+        try { lastInput.value = formatCyberDate(iso); } catch { lastInput.value = iso; }
+        markDirty();
+      };
+      timeWrap.addEventListener('click', (ev) => {
+        const chip = ev.target.closest('.ncm-acct-chip');
+        if (!chip) return;
+        timeWrap.querySelectorAll('.ncm-acct-chip').forEach(c => c.classList.toggle('ncm-acct-chip--on', c === chip));
+        if (chip.hasAttribute('data-time-custom')) { if (customRow) customRow.hidden = false; return; }
+        if (customRow) customRow.hidden = true;
+        const off = Number(chip.dataset.timeOffset) || 0;
+        const nowMs = game.nightcity?.timeService?.getCurrentTimeMs?.() ?? Date.now();
+        stamp(new Date(nowMs - off).toISOString());
+      });
+      el.querySelector('.ncm-acct-time-custom')?.addEventListener('change', (ev) => {
+        if (ev.target.value) stamp(new Date(ev.target.value).toISOString());
+      });
+    }
+
+    // ── E · Method-card toggles tint their card ──
+    el.querySelectorAll('.ncm-acct-mcard').forEach(card => {
+      const tgl = card.querySelector('.ncm-acct-tgl input');
+      tgl?.addEventListener('change', () => card.classList.toggle('ncm-acct-mcard--on', tgl.checked));
+    });
+  }
+
+  /** Search pool for the identity picker: master contacts + world actors. @private */
+  _identityCandidates() {
+    const out = [];
+    const svc = game.nightcity;
+    for (const c of svc?.masterContactService?.getAll?.() || []) {
+      out.push({
+        kind: 'contact', id: c.id, name: c.name || '', email: c.email || '',
+        portrait: svc?.portraitService?.resolvePortrait?.(c) || c.portrait || null,
+        actorId: c.actorId || '',
+      });
+    }
+    const linkedActors = new Set(out.map(x => x.actorId).filter(Boolean));
+    for (const a of game.actors || []) {
+      if (linkedActors.has(a.id)) continue; // already reachable via its contact
+      out.push({ kind: 'actor', id: a.id, name: a.name || '', email: a.getFlag(MODULE_ID, 'email') || '', portrait: a.img || null, actorId: a.id });
+    }
+    return out;
+  }
+
+  /** Apply an identity pick: link + autofill name/email/portrait, DOM-only
+   *  (a render would discard the GM's other unsaved edits). @private */
+  _applyIdentityPick(c) {
+    const el = this.element;
+    if (!el || !c) return;
+    this._editorLink = { masterContactId: c.kind === 'contact' ? c.id : '', actorId: c.actorId || '' };
+    const esc = Handlebars.escapeExpression;
+    const fill = (name, v) => {
+      const i = el.querySelector(`[name="${name}"]`);
+      if (i) { i.value = v; i.dispatchEvent(new Event('input', { bubbles: true })); }
+    };
+    fill('acctDisplayName', c.name);
+    if (c.email) fill('acctEmail', c.email);
+    if (c.portrait) fill('acctPortrait', c.portrait);
+    const card = el.querySelector('.ncm-acct-idcard');
+    if (card) {
+      card.classList.remove('ncm-acct-idcard--none');
+      card.querySelector('[data-id-name]').textContent = c.name;
+      card.querySelector('[data-id-email]').textContent = c.email || '';
+      card.querySelector('[data-id-tag]').textContent = `LINKED · ${c.kind === 'contact' ? 'CONTACT' : 'ACTOR'}`;
+      const pic = card.querySelector('.ncm-acct-idcard-pic');
+      if (pic) pic.innerHTML = c.portrait ? `<img src="${esc(c.portrait)}" alt="">` : esc((c.name[0] || '?').toUpperCase());
+    }
+    const search = el.querySelector('.ncm-acct-idsearch');
+    if (search) search.value = '';
+    const dd = el.querySelector('.ncm-acct-dd');
+    if (dd) { dd.hidden = true; dd.innerHTML = ''; }
+    this._markEditorDirty?.();
+  }
+
+  /** FilePicker for the account portrait. */
+  static _onBrowseAcctPortrait() {
+    const input = this.element?.querySelector('[name="acctPortrait"]');
+    new FilePicker({
+      type: 'image',
+      current: input?.value || '',
+      callback: (path) => {
+        if (input) { input.value = path; input.dispatchEvent(new Event('input', { bubbles: true })); }
+      },
+    }).render(true);
   }
 
   /** FilePicker for the boot logo image. */
@@ -288,6 +529,15 @@ export class TerminalConfigApp extends BaseApplication {
         allowedNetworks: [...el.querySelectorAll('[name="netAllowed"]:checked')].map(i => i.value),
         signalThreshold: parseInt(val('signalThreshold', '40'), 10) || 40,
       },
+      connection: {
+        interfaces: [...el.querySelectorAll('[name="uplinkIface"]:checked')].map(i => ({
+          networkId: i.value,
+          preAuthorized: !!el.querySelector(`[name="uplinkPre"][value="${i.value}"]`)?.checked,
+        })),
+        defaultNetworkId: val('uplinkDefault') || null,
+        allowPlayerSwitching: chk('uplinkAllowSwitch'),
+        showSyncHint: chk('uplinkSyncHint'),
+      },
       allowExfil: chk('allowExfil'),
     };
     const res = await this.terminalService.updateConfig(this.item, updates);
@@ -317,9 +567,69 @@ export class TerminalConfigApp extends BaseApplication {
     this.render(false);
   }
 
-  static _onAddAccount() { this._editingAccountId = 'new'; this._activeTab = 'accounts'; this.render(false); }
-  static _onEditAccount(event, target) { this._editingAccountId = target.dataset.accountId; this._activeTab = 'accounts'; this.render(false); }
-  static _onCancelAccount() { this._editingAccountId = null; this.render(false); }
+  static _onAddAccount() { this._editingAccountId = 'new'; this._editorLink = null; this._activeTab = 'accounts'; this.render(false); }
+  static _onEditAccount(event, target) { this._editingAccountId = target.dataset.accountId; this._editorLink = null; this._activeTab = 'accounts'; this.render(false); }
+  static _onCancelAccount() { this._editingAccountId = null; this._editorLink = null; this.render(false); }
+
+  /** Clear the identity link (pending + stored on next save). DOM-only. */
+  static _onUnlinkIdentity() {
+    this._editorLink = { masterContactId: '', actorId: '' };
+    this.element?.querySelector('.ncm-acct-idcard')?.classList.add('ncm-acct-idcard--none');
+    this._markEditorDirty?.();
+  }
+
+  /** Roll a themed passphrase into the password field. */
+  static _onGeneratePassword() {
+    const input = this.element?.querySelector('[name="secPassword"]');
+    if (!input) return;
+    const w = () => PASS_WORDS[Math.floor(Math.random() * PASS_WORDS.length)];
+    const a = w(); let b = w();
+    while (b === a) b = w();
+    input.value = `${a[0].toUpperCase()}${a.slice(1)}-${b}-${Math.floor(Math.random() * 90) + 10}`;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  /** Searchable world-item picker for the key item (burn-picker pattern —
+   *  reuses the .ncm-burn-* dialog styling; sheet-abstraction types filtered). */
+  static _onPickKeyItem() {
+    const esc = Handlebars.escapeExpression;
+    const NON_CARRIER = ['skill', 'role', 'criticalInjury', 'netarch'];
+    const items = (game.items?.contents || [])
+      .filter(i => !NON_CARRIER.includes(i.type))
+      .sort((x, y) => x.name.localeCompare(y.name));
+    const rows = items.map(i => `
+      <div class="ncm-burn-row" data-name="${esc(i.name)}">
+        <img src="${esc(i.img)}" alt="">
+        <span class="ncm-burn-name">${esc(i.name)}</span>
+        <span class="ncm-burn-type">${esc(i.type)}</span>
+      </div>`).join('');
+    const dlg = new Dialog({
+      title: 'Key Item',
+      content: `
+        <div class="ncm-burn-hint">Pick the item a character must carry to open this account (matched by name).</div>
+        <input type="text" class="ncm-burn-search" placeholder="search items…">
+        <div class="ncm-burn-list">${rows || '<div class="ncm-burn-hint" style="padding:8px">no world items — type the name manually</div>'}</div>`,
+      buttons: { cancel: { label: 'Cancel' } },
+      render: (html) => {
+        const root = html[0] ?? html;
+        const list = root.querySelector('.ncm-burn-list');
+        root.querySelector('.ncm-burn-search')?.addEventListener('input', (ev) => {
+          const q = ev.target.value.trim().toLowerCase();
+          list?.querySelectorAll('.ncm-burn-row').forEach(r => {
+            r.style.display = r.dataset.name.toLowerCase().includes(q) ? '' : 'none';
+          });
+        });
+        list?.addEventListener('click', (ev) => {
+          const row = ev.target.closest('.ncm-burn-row');
+          if (!row) return;
+          const input = this.element?.querySelector('[name="secKeyItemName"]');
+          if (input) { input.value = row.dataset.name; input.dispatchEvent(new Event('input', { bubbles: true })); }
+          dlg.close();
+        });
+      },
+    }, { classes: ['ncm-burn-dialog'] });
+    dlg.render(true);
+  }
 
   static async _onSaveAccount() {
     const el = this.element;
@@ -338,6 +648,7 @@ export class TerminalConfigApp extends BaseApplication {
       classification: val('acctClassification'),
       location: val('acctLocation'),
       lastLogin: val('acctLastLogin'),
+      portrait: val('acctPortrait').trim(),
       security: {
         requiresAuth: chk('secRequiresAuth'),
         allowPassword: chk('secAllowPassword'),
@@ -352,12 +663,63 @@ export class TerminalConfigApp extends BaseApplication {
         maxAttempts: parseInt(val('secMaxAttempts', '3'), 10) || 3,
         lockoutDuration: (parseInt(val('secLockoutMin', '60'), 10) || 60) * 60000,
       },
+      // Account network gating vs the machine's uplink — gated accounts VANISH
+      // from the login list until the terminal connects to a matching network.
+      network: {
+        restricted: chk('acctNetRestricted'),
+        allowedNetworks: [...el.querySelectorAll('[name="acctNetAllowed"]:checked')].map(i => i.value),
+        allowedTypes: [],
+      },
     };
     const id = this._editingAccountId;
+
+    // ── Master-contact link-or-create (the email field's promise) ──
+    // Precedence: an explicit picker choice/unlink this session (_editorLink)
+    // → the stored link. Then a non-empty email resolves against the GM master
+    // directory: link the matching contact, else create one — so the account
+    // is a real, portrait-bearing directory identity.
+    const mcs = game.nightcity?.masterContactService;
+    const cfg = this.terminalService.getConfig(this.item);
+    const existing = id === 'new' ? null : (cfg.accounts || []).find(x => x.id === id);
+    const link = this._editorLink ?? { masterContactId: existing?.masterContactId || '', actorId: existing?.actorId || '' };
+    data.masterContactId = link.masterContactId || '';
+    data.actorId = link.actorId || '';
+    const email = (data.email || '').trim();
+    if (email && mcs) {
+      const current = data.masterContactId ? mcs.getContact(data.masterContactId) : null;
+      const sameEmail = current && (current.email || '').toLowerCase().trim() === email.toLowerCase();
+      if (!sameEmail) {
+        const found = mcs.getByEmail(email);
+        if (found) {
+          data.masterContactId = found.id;
+          ui.notifications.info(`Linked to master contact "${found.name}".`);
+        } else {
+          const created = await mcs.addContact({
+            name: data.displayName || data.username || email.split('@')[0],
+            email,
+            portrait: data.portrait || null,
+            role: data.role || '',
+            organization: cfg.metadata?.org || '',
+            location: data.location || cfg.metadata?.location || '',
+            notes: `Terminal account on "${this.item?.name || 'terminal'}".`,
+          });
+          if (created?.success) {
+            data.masterContactId = created.contact.id;
+            ui.notifications.info(`Created master contact "${created.contact.name}".`);
+          }
+        }
+      }
+      // Pull the linked contact's portrait when the account has none.
+      if (!data.portrait) {
+        const linked = mcs.getContact(data.masterContactId);
+        if (linked?.portrait) data.portrait = linked.portrait;
+      }
+    }
+
     let res;
     if (id === 'new') res = await this.terminalService.addAccount(this.item, data);
     else res = await this.terminalService.updateAccount(this.item, id, data);
-    if (res?.success) { this._editingAccountId = null; ui.notifications.info('Account saved.'); }
+    if (res?.success) { this._editingAccountId = null; this._editorLink = null; ui.notifications.info('Account saved.'); }
     else ui.notifications.error(res?.error || 'Account save failed.');
     this.render(false);
   }

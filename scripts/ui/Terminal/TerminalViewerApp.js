@@ -52,6 +52,12 @@ export class TerminalViewerApp extends BaseApplication {
       terminalSwitchNetwork: action('_onSwitchNetwork'),
       terminalSpoofNetwork: action('_onSpoofNetwork'),
       terminalForceUnlock: action('_onForceUnlock'),
+      terminalToggleUplink: action('_onToggleUplink'),
+      terminalSelectUplink: action('_onSelectUplink'),
+      terminalNetAuth: action('_onNetAuth'),
+      terminalNetSkillBypass: action('_onNetSkillBypass'),
+      terminalNetGmJoin: action('_onNetGmJoin'),
+      terminalNetCancel: action('_onNetCancel'),
       terminalToggleSwitcher: action('_onToggleSwitcher'),
       terminalSwitchAccount: action('_onSwitchAccount'),
       terminalLogout: action('_onLogout'),
@@ -70,6 +76,8 @@ export class TerminalViewerApp extends BaseApplication {
       terminalNewMessage: action('_onNewMessage'),
       terminalEditMessage: action('_onEditMessage'),
       terminalDeleteMessage: action('_onDeleteMessage'),
+      terminalToggleSave: action('_onToggleSaveMessage'),
+      terminalToggleTrash: action('_onToggleTrashMessage'),
     },
   };
 
@@ -99,6 +107,9 @@ export class TerminalViewerApp extends BaseApplication {
   _bootPlayed = false;
   _grantedPlayed = false;
   _timers = [];
+  _uplinkOpen = false;        // machine-uplink dropdown (login hero + mailbox HUD)
+  _netAuthTarget = null;      // networkId currently in the join-challenge console
+  _netAuthError = '';
 
   constructor(options = {}) {
     super(options);
@@ -107,6 +118,17 @@ export class TerminalViewerApp extends BaseApplication {
     this.actorId = this.actor?.id ?? null;
     const cfg = this.terminalService?.getConfig(this.item);
     this._state = (cfg?.boot?.enabled) ? 'boot' : this._resolveEntryState();
+    // The machine's uplink is world state on the item — a relayed player switch
+    // or a GM-side edit lands as an item update on every client, so re-render
+    // off the document sync (this is also what refreshes the requesting player
+    // after their socket-relayed switch). Skipped mid-animation states.
+    this._onItemUpdate = (doc, changes) => {
+      if (doc.id !== this.item?.id) return;
+      if (!foundry.utils.hasProperty(changes, `flags.${MODULE_ID}`)) return;
+      if (this._state === 'boot' || this._state === 'granted') return;
+      this._debouncedRender();
+    };
+    Hooks.on('updateItem', this._onItemUpdate);
   }
 
   /** @override — "{username} @ {ORG}" once in; "{ORG} — login" otherwise. */
@@ -140,6 +162,23 @@ export class TerminalViewerApp extends BaseApplication {
       banner: cfg.boot?.banner || this._terminalName(),
     };
 
+    // Session drop: the account being viewed is network-gated and the machine's
+    // uplink no longer reaches it (someone switched networks mid-session) —
+    // back to the login screen, where the account has vanished. Raw
+    // uplinkReaches, NOT isContentVisible: the GM auto-pass would make the
+    // drop untestable from a GM client, and losing the session is machine
+    // behavior, not a content gate (GM bypass stays explicit). The GM lands on
+    // a login list that still shows the account, OFF-NET chipped.
+    if (this._state === 'mailbox' && this._accountId) {
+      const acct = this.terminalService?.getAccount(this.item, this._accountId);
+      if (acct && !this.terminalService.uplinkReaches(this.item, acct.network)) {
+        this._accountId = null;
+        this._selectedMessageId = null;
+        this._state = 'login';
+        ui.notifications?.warn('UPLINK LOST — session dropped.');
+      }
+    }
+
     if (this._state === 'boot') {
       ctx.boot = this._bootContext(cfg, preset);
     } else if (this._state === 'gate') {
@@ -153,7 +192,73 @@ export class TerminalViewerApp extends BaseApplication {
     } else {
       Object.assign(ctx, await this._mailboxContext(cfg));
     }
+
+    // Machine uplink pill + dropdown (login hero + mailbox HUD) and, when a
+    // secured join is in progress, the challenge console overlay.
+    if (this._state === 'login' || this._state === 'mailbox') {
+      ctx.uplink = this._uplinkContext(cfg);
+      if (this._netAuthTarget) ctx.netAuth = this._netAuthContext();
+    }
     return ctx;
+  }
+
+  /**
+   * View-model for the machine-uplink pill + dropdown. The pill shows the
+   * TERMINAL's own connection (never the player's Agent network); the dropdown
+   * lists the machine's configured interfaces plus a LOCAL ONLY disconnect row.
+   */
+  _uplinkContext(cfg) {
+    const conn = cfg.connection || {};
+    const { networkId, network } = this.terminalService?.getUplink(this.item) ?? { networkId: null, network: null };
+    const gm = isGM();
+    const canSwitch = gm || conn.allowPlayerSwitching !== false;
+    const options = (this.terminalService?.getUplinkInterfaces(this.item) || []).map(i => ({
+      id: i.networkId,
+      name: i.network.name,
+      typeLabel: i.network.type || 'Subnet',
+      color: i.network.theme?.color || '#19f3f7',
+      icon: `fas ${i.network.theme?.icon || 'fa-wifi'}`,
+      signal: i.network.signalStrength ?? 70,
+      isActive: i.state === 'active',
+      isLocked: i.state === 'locked',
+    }));
+    return {
+      name: network?.name || 'LOCAL ONLY',
+      color: network?.theme?.color || '',
+      offline: !networkId,
+      open: this._uplinkOpen && canSwitch,
+      canSwitch,
+      options,
+      count: options.length,
+      // Only render the pill at all when the terminal has interfaces configured
+      // (a legacy/unconfigured terminal keeps its old chrome untouched).
+      show: options.length > 0 || !!conn.interfaces?.length,
+    };
+  }
+
+  /** View-model for the secured-join challenge console. */
+  _netAuthContext() {
+    const network = this.networkService?.getNetwork?.(this._netAuthTarget);
+    const sec = network?.security || {};
+    const skill = (sec.bypassSkills || [])[0] || 'Interface';
+    const lockedOut = this.securityService?.isLockedOut?.(this.actorId, this._netTargetId(this._netAuthTarget));
+    return {
+      networkId: this._netAuthTarget,
+      networkName: network?.name || this._netAuthTarget,
+      color: network?.theme?.color || '#19f3f7',
+      shellHost: (this._terminalName() || 'terminal').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+      joinCmd: (network?.name || 'network').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+      allowPassword: (sec.allowPassword ?? !!sec.password) && !!sec.password,
+      skillBypass: (sec.allowSkillCheck ?? true) ? { skill, dv: sec.bypassDC ?? 15 } : null,
+      error: this._netAuthError,
+      lockout: !!lockedOut,
+      isGM: isGM(),
+    };
+  }
+
+  /** SecurityService key for a machine-uplink join (distinct from account keys). */
+  _netTargetId(networkId) {
+    return `${this.item?.id}::net::${networkId}`;
   }
 
   _terminalName() {
@@ -299,6 +404,9 @@ export class TerminalViewerApp extends BaseApplication {
       wmarkIcon: account.isAdmin ? 'fas fa-user-gear' : 'fas fa-user',
       authMethods: methods,
       tooltip: requiresAuth ? 'Requires authentication' : 'Open account',
+      // GM-only: this account is network-gated off the current uplink (players
+      // never receive gated accounts — the service filters them out).
+      offNet: isGM() && !this.terminalService?.uplinkReaches(this.item, account.network),
     };
   }
 
@@ -322,7 +430,12 @@ export class TerminalViewerApp extends BaseApplication {
 
   async _mailboxContext(cfg) {
     const account = this.terminalService?.getAccount(this.item, this._accountId);
-    const all = this.terminalService?.getAccountMessages(this.item, this._accountId) || [];
+    const raw = this.terminalService?.getAccountMessages(this.item, this._accountId) || [];
+
+    // Per-message network gating vs the MACHINE's uplink. Players only see what
+    // the current connection reaches (isContentVisible GM-bypasses, so the GM
+    // list stays complete — gated rows get an OFF-NET chip instead).
+    const all = raw.filter(m => this.terminalService.isContentVisible(this.item, m.networkVisibility));
 
     // Folder filters.
     const inFolder = {
@@ -338,6 +451,16 @@ export class TerminalViewerApp extends BaseApplication {
     const folder = inFolder[this._currentFolder] ? this._currentFolder : 'inbox';
     const list = all.filter(inFolder[folder]);
 
+    // "N objects failed to sync" — GM-toggleable per terminal (showSyncHint).
+    // Counted within the current folder so the number matches what's missing
+    // from the list the player is looking at. GM never needs the hint.
+    let syncHint = null;
+    if (!isGM() && cfg.connection?.showSyncHint !== false) {
+      const hiddenInFolder = raw.filter(m =>
+        !this.terminalService.isContentVisible(this.item, m.networkVisibility) && inFolder[folder](m));
+      if (hiddenInFolder.length) syncHint = { count: hiddenInFolder.length };
+    }
+
     if (this._selectedMessageId && !list.find(m => m.messageId === this._selectedMessageId)) this._selectedMessageId = null;
     if (!this._selectedMessageId && list.length) this._selectedMessageId = list[0].messageId;
 
@@ -349,6 +472,7 @@ export class TerminalViewerApp extends BaseApplication {
     const start = (this._currentPage - 1) * PAGE;
     const pageItems = list.slice(start, start + PAGE);
 
+    const gm = isGM();
     const messages = pageItems.map(m => ({
       messageId: m.messageId,
       from: m.from || 'unknown',
@@ -356,14 +480,17 @@ export class TerminalViewerApp extends BaseApplication {
       priority: m.priority || 'normal',
       encrypted: !!m.status?.encrypted,
       isSelected: m.messageId === this._selectedMessageId,
+      // GM-only marker: gated off the current uplink (players never see the row).
+      offNet: gm && !this.terminalService.uplinkReaches(this.item, m.networkVisibility),
     }));
 
     const emptyLabels = { inbox: 'Inbox is empty', saved: 'No saved messages', trash: 'Trash is empty' };
     const folderLabels = { inbox: 'INBOX', saved: 'SAVED', trash: 'TRASH' };
     const selected = list.find(m => m.messageId === this._selectedMessageId);
-    const netName = this.networkService?.currentNetwork?.name || 'OFFLINE';
+    // HUD shows the MACHINE's uplink (the pill), never the player's network.
     return {
-      hud: { netName, isAdmin: !!account?.isAdmin, trace: null },
+      hud: { isAdmin: !!account?.isAdmin, trace: null },
+      syncHint,
       account: {
         displayName: account?.displayName || account?.username || 'user',
         username: account?.username || '',
@@ -448,6 +575,8 @@ export class TerminalViewerApp extends BaseApplication {
       isTypedContent,
       content,
       bodyHtml: this._sanitizeBody(msg.body || ''),
+      isSaved: !!msg.status?.saved,
+      isTrashed: !!msg.status?.deleted,
     };
   }
 
@@ -499,6 +628,11 @@ export class TerminalViewerApp extends BaseApplication {
       const pass = this.element?.querySelector('input[name="manualPassword"]');
       pass?.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); this._onManualAuth(); } });
     }
+    // Enter-to-submit in the uplink join-challenge console.
+    if (this._netAuthTarget) {
+      const pass = this.element?.querySelector('input[name="netAuthPassword"]');
+      pass?.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); this._onNetAuth(); } });
+    }
   }
 
   /** Re-skin the AppV2 window title with the colored {user} @ {ORG} treatment. */
@@ -546,6 +680,9 @@ export class TerminalViewerApp extends BaseApplication {
   _enterState(state) {
     this._state = state;
     this._switcherOpen = false;
+    this._uplinkOpen = false;
+    this._netAuthTarget = null;
+    this._netAuthError = '';
     this.render(false);
   }
 
@@ -636,6 +773,12 @@ export class TerminalViewerApp extends BaseApplication {
   }
 
   async _loginSuccess(accountId) {
+    // Flip to 'granted' BEFORE the session flag write: the write echoes back
+    // through the updateItem hook on this same client, and with the state
+    // still 'manual'/'login' the hook's boot/granted guard doesn't skip it —
+    // the debounced re-render then rebuilt the badge DOM ~150ms into its
+    // animation, restarting it (the "card slides in twice" bug).
+    this._state = 'granted';
     await this.terminalService.recordLoginSuccess(this.item, accountId, this.actorId);
     this._accountId = accountId;
     this._authAccountId = null;
@@ -675,6 +818,133 @@ export class TerminalViewerApp extends BaseApplication {
     if (!isGM()) return;
     await this.terminalService.forceUnlock(this.item);
     this._enterState(this._resolveEntryState());
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Actions — machine uplink (Layer 1)
+  // ═══════════════════════════════════════════════════════════
+
+  _onToggleUplink() {
+    this._uplinkOpen = !this._uplinkOpen;
+    this.render(false);
+  }
+
+  async _onSelectUplink(event, target) {
+    const raw = target?.dataset?.networkId;
+    this._uplinkOpen = false;
+    if (raw === undefined) return this.render(false);
+    const networkId = raw === 'local' ? null : raw;
+    const current = this.terminalService?.getUplink(this.item)?.networkId ?? null;
+    if (networkId === current) return this.render(false);
+    if (networkId) {
+      const iface = (this.terminalService?.getUplinkInterfaces(this.item) || []).find(i => i.networkId === networkId);
+      if (!iface) return this.render(false);
+      if (iface.state === 'locked') {
+        // Secured network the machine holds no credential for — join challenge.
+        this._netAuthTarget = networkId;
+        this._netAuthError = '';
+        return this.render(false);
+      }
+    }
+    await this._switchUplink(networkId, { authorized: false });
+  }
+
+  /**
+   * Point the machine at a network. GM writes directly; players relay through
+   * the socket (item flags aren't player-writable) — their viewer refreshes
+   * when the flag write syncs back (the updateItem hook in the constructor).
+   */
+  async _switchUplink(networkId, { authorized = false } = {}) {
+    if (isGM()) {
+      const res = await this.terminalService.setUplink(this.item, networkId, { remember: authorized });
+      if (!res?.success) ui.notifications?.warn(res?.error || 'Uplink switch failed.');
+      this.render(false);
+      return;
+    }
+    game.nightcity?.socketManager?.emit?.(SOCKET_OPS.TERMINAL_NET_REQUEST, {
+      itemUuid: this.item?.uuid,
+      networkId,
+      authorized,
+      userId: game.user.id,
+    });
+    this.render(false);
+  }
+
+  _onNetCancel() {
+    this._netAuthTarget = null;
+    this._netAuthError = '';
+    this.render(false);
+  }
+
+  async _onNetAuth() {
+    const networkId = this._netAuthTarget;
+    const network = this.networkService?.getNetwork?.(networkId);
+    if (!network) return this._onNetCancel();
+    if (this.securityService?.isLockedOut?.(this.actorId, this._netTargetId(networkId))) {
+      this._netAuthError = 'Interface locked out. Try again later.';
+      return this.render(false);
+    }
+    const password = this.element?.querySelector('input[name="netAuthPassword"]')?.value ?? '';
+    const expected = network.security?.password ?? '';
+    if (expected && password === expected) return this._netJoinSuccess(networkId);
+    this._failNetAuth(network);
+  }
+
+  async _onNetSkillBypass() {
+    const networkId = this._netAuthTarget;
+    const network = this.networkService?.getNetwork?.(networkId);
+    if (!network) return this._onNetCancel();
+    if (!this.actor) { this._netAuthError = 'No character to roll with.'; return this.render(false); }
+    if (this.securityService?.isLockedOut?.(this.actorId, this._netTargetId(networkId))) {
+      this._netAuthError = 'Interface locked out.';
+      return this.render(false);
+    }
+    const skill = (network.security?.bypassSkills || [])[0] || 'Interface';
+    const dc = network.security?.bypassDC ?? 15;
+    try {
+      const result = await this.skillService.performCheck(this.actor, skill, { dc, flavor: 'Network Join' });
+      if (result?.success) return this._netJoinSuccess(networkId);
+    } catch (err) { log.error(`Uplink skill bypass failed: ${err.message}`); }
+    this._failNetAuth(network);
+  }
+
+  /** GM: join a secured interface without credentials (testing / story fiat). */
+  async _onNetGmJoin() {
+    if (!isGM()) return;
+    const networkId = this._netAuthTarget;
+    this._netAuthTarget = null;
+    this._netAuthError = '';
+    await this._switchUplink(networkId, { authorized: true });
+  }
+
+  async _netJoinSuccess(networkId) {
+    this.securityService?.recordSuccess?.(this.actorId, this._netTargetId(networkId));
+    this._netAuthTarget = null;
+    this._netAuthError = '';
+    this.soundService?.play?.('login-success');
+    // authorized:true — the machine remembers the credential (state.connection.authenticated).
+    await this._switchUplink(networkId, { authorized: true });
+  }
+
+  _failNetAuth(network) {
+    const networkId = this._netAuthTarget;
+    const sec = network?.security || {};
+    const targetId = this._netTargetId(networkId);
+    this.securityService?.initTracking?.(this.actorId, targetId, {
+      maxAttempts: sec.maxAttempts ?? 3,
+      lockoutDuration: sec.lockoutDuration ?? 3600000,
+    });
+    this.securityService?.recordFailedAttempt?.(this.actorId, targetId);
+    this.soundService?.play?.('hack-fail');
+    if (sec.failureMode === 'damage' && this.actor) {
+      try { this.iceService?.applyDamage?.(this.actor, sec); } catch { /* non-fatal */ }
+    }
+    const lockedOut = this.securityService?.isLockedOut?.(this.actorId, targetId);
+    const remaining = this.securityService?.getRemainingAttempts?.(this.actorId, targetId) ?? 0;
+    this._netAuthError = lockedOut
+      ? 'ACCESS DENIED — interface locked out.'
+      : `ACCESS DENIED — ${remaining} attempt${remaining === 1 ? '' : 's'} left.`;
+    this.render(false);
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -754,6 +1024,27 @@ export class TerminalViewerApp extends BaseApplication {
         editData, onSave: () => this.render(false),
       }).render(true);
     });
+  }
+
+  /** GM — toggle a message in/out of the Saved folder (status.saved flag). */
+  async _onToggleSaveMessage(event, target) {
+    if (!isGM()) return;
+    const id = target?.dataset?.messageId || this._selectedMessageId;
+    const raw = (this.terminalService?.getAccountMessages(this.item, this._accountId) || []).find(m => m.messageId === id);
+    if (!raw) return;
+    await this.terminalService.updateAccountMessage(this.item, id, { status: { saved: !raw.status?.saved } });
+    this.render(false);
+  }
+
+  /** GM — move a message to Trash / restore it (status.deleted flag; the
+   *  permanent delete stays a separate confirmed action). */
+  async _onToggleTrashMessage(event, target) {
+    if (!isGM()) return;
+    const id = target?.dataset?.messageId || this._selectedMessageId;
+    const raw = (this.terminalService?.getAccountMessages(this.item, this._accountId) || []).find(m => m.messageId === id);
+    if (!raw) return;
+    await this.terminalService.updateAccountMessage(this.item, id, { status: { deleted: !raw.status?.deleted } });
+    this.render(false);
   }
 
   async _onDeleteMessage(event, target) {
@@ -1152,6 +1443,7 @@ export class TerminalViewerApp extends BaseApplication {
   async close(options) {
     this._timers.forEach(clearTimeout);
     this._timers = [];
+    Hooks.off('updateItem', this._onItemUpdate);
     return super.close(options);
   }
 }
