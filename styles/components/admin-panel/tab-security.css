@@ -1,0 +1,358 @@
+/* ============================================================================
+ * Admin Panel — Security tab (design §7).
+ * Uses ONLY --ncm-* tokens (they resolve to the admin theme inside
+ * .ncm-admin-panel and follow all three presets — clean-dark / clean-light /
+ * high-contrast). No hardcoded color fallbacks (they'd break light/high-contrast).
+ * ========================================================================== */
+
+/* NOTE ON THE PREFIX: this tab is `ncm-sec-admin-*`, NOT `ncm-sec-*`.
+   `ncm-sec-*` is already OWNED by security-overlays.css (the shard/network breach
+   splash), whose `.ncm-app .ncm-sec-card` sets max-width:400px / width:90% /
+   text-align:center / max-height / overflow-y:auto. Both files scope at (0,2,0), so
+   a same-named class here silently inherited every property this file didn't
+   re-declare — that was the "cards are squished to half width and everything is
+   centered" bug, misattributed at the time to a Foundry core cap. Same situation as
+   the terminal viewer owning `ncm-term-*`, which is why its admin tab is
+   `ncm-term-admin-*`. Keep the `-admin-` infix on every class in this file. */
+
+/* Kill CPR/core box- and text-shadows (neon glow) on the tab's cards + text. */
+.ncm-admin-panel .ncm-sec-admin-card,
+.ncm-admin-panel .ncm-sec-admin-stat,
+.ncm-admin-panel .ncm-sec-admin-card *,
+.ncm-admin-panel .ncm-sec-admin-strip * { box-shadow: none !important; text-shadow: none !important; }
+
+/* summary strip */
+.ncm-admin-panel .ncm-sec-admin-strip { display: flex; gap: 10px; margin: 12px 0 14px; flex-wrap: wrap; }
+.ncm-admin-panel .ncm-sec-admin-stat { flex: 1; min-width: 120px; padding: 10px 12px; border-radius: 2px; background: var(--ncm-bg-surface); border: 1px solid var(--ncm-border); }
+.ncm-admin-panel .ncm-sec-admin-stat .n { font-family: var(--ncm-font-mono); font-size: 22px; font-weight: 700; color: var(--ncm-text-primary); }
+.ncm-admin-panel .ncm-sec-admin-stat .l { font-family: var(--ncm-font-display); font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-muted); margin-top: 2px; }
+.ncm-admin-panel .ncm-sec-admin-stat.h .n { color: var(--ncm-warning); }
+.ncm-admin-panel .ncm-sec-admin-stat.p .n { color: var(--ncm-purple); }
+.ncm-admin-panel .ncm-sec-admin-stat.r .n { color: var(--ncm-text-secondary); }
+
+/* card */
+.ncm-admin-panel .ncm-sec-admin-card { background: var(--ncm-bg-surface); border: 1px solid var(--ncm-border); border-radius: 2px; margin-bottom: 14px; overflow: hidden; }
+/* The log header carries title + badge + 4 filter chips + alert select + search +
+   Clear. That does not fit one 820px row, and flex's default is to SHRINK children
+   rather than wrap — which squeezed the title, badge and chips into 2-3 line stacks.
+   So: nothing shrinks (flex:none + nowrap), and the row wraps instead. */
+.ncm-admin-panel .ncm-sec-admin-card__hd { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; padding: 9px 13px; border-bottom: 1px solid var(--ncm-border); background: var(--ncm-bg-base); }
+.ncm-admin-panel .ncm-sec-admin-card__hd > * { flex: none; }
+.ncm-admin-panel .ncm-sec-admin-card__hd i.lead { color: var(--ncm-secondary); }
+.ncm-admin-panel .ncm-sec-admin-card__hd h3 { margin: 0; font-family: var(--ncm-font-display); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--ncm-text-primary); white-space: nowrap; }
+.ncm-admin-panel .ncm-sec-admin-card__hd .grow { flex: 1; }
+.ncm-admin-panel .ncm-sec-admin-card__bd { padding: 12px 13px; }
+.ncm-admin-panel .ncm-sec-admin-card__bd.nopad { padding: 0; }
+.ncm-admin-panel .ncm-sec-admin-card__ft { display: flex; align-items: center; gap: 10px; padding: 8px 13px; border-top: 1px solid var(--ncm-border); background: var(--ncm-bg-base); font-size: 11px; color: var(--ncm-text-muted); }
+.ncm-admin-panel .ncm-sec-admin-card__ft .grow { flex: 1; }
+.ncm-admin-panel .ncm-sec-admin-info { color: var(--ncm-text-muted); font-size: 11px; cursor: help; }
+.ncm-admin-panel .ncm-sec-admin-newbadge { font-family: var(--ncm-font-display); font-size: 9px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--ncm-secondary); background: color-mix(in srgb, var(--ncm-secondary) 14%, transparent); border: 1px solid color-mix(in srgb, var(--ncm-secondary) 45%, transparent); border-radius: 1px; padding: 2px 7px; white-space: nowrap; }
+.ncm-admin-panel .ncm-sec-admin-filterbar { padding: 6px 13px; font-size: 11px; color: var(--ncm-text-secondary); border-bottom: 1px solid var(--ncm-border); background: color-mix(in srgb, var(--ncm-secondary) 6%, transparent); }
+
+/* buttons + inputs (reset Foundry chrome, follow theme) */
+.ncm-admin-panel button.ncm-sec-admin-btn {
+  appearance: none !important; box-shadow: none !important; margin: 0 !important; width: auto !important; min-height: 0 !important; height: auto !important; flex: 0 0 auto !important;
+  display: inline-flex !important; align-items: center; gap: 5px; vertical-align: middle; white-space: nowrap; line-height: 1.2 !important;
+  font-family: var(--ncm-font-display) !important; font-size: 11px !important; font-weight: 700 !important; letter-spacing: .04em !important; text-transform: uppercase !important;
+  color: var(--ncm-text-secondary) !important; background: var(--ncm-bg-elevated) !important;
+  border: 1px solid var(--ncm-border) !important; border-radius: 2px !important; padding: 6px 12px !important; cursor: pointer;
+}
+.ncm-admin-panel button.ncm-sec-admin-btn.sm { padding: 4px 9px !important; font-size: 10px !important; }
+.ncm-admin-panel button.ncm-sec-admin-btn:hover { color: var(--ncm-text-primary) !important; border-color: var(--ncm-secondary) !important; }
+.ncm-admin-panel button.ncm-sec-admin-btn.danger:hover { color: var(--ncm-text-inverse) !important; background: var(--ncm-danger) !important; border-color: var(--ncm-danger) !important; }
+.ncm-admin-panel button.ncm-sec-admin-btn.primary { color: var(--ncm-text-inverse) !important; background: var(--ncm-secondary) !important; border-color: var(--ncm-secondary) !important; }
+.ncm-admin-panel button.ncm-sec-admin-btn:disabled { opacity: .4; cursor: not-allowed; }
+.ncm-admin-panel input.ncm-sec-admin-searchbox {
+  max-width: 104px; font-family: var(--ncm-font-mono); font-size: 12px;
+  color: var(--ncm-text-primary) !important; background: var(--ncm-bg-deep) !important;
+  border: 1px solid var(--ncm-border) !important; border-radius: 2px; padding: 5px 8px;
+}
+.ncm-admin-panel select.ncm-sec-admin-alertsel {
+  width: auto; font-family: var(--ncm-font-mono); font-size: 11px; cursor: pointer;
+  color: var(--ncm-text-secondary) !important; background: var(--ncm-bg-deep) !important;
+  border: 1px solid var(--ncm-border) !important; border-radius: 2px; padding: 4px 8px;
+}
+.ncm-admin-panel .ncm-sec-admin-chips { display: inline-flex; gap: 0; border: 1px solid var(--ncm-border); border-radius: 2px; overflow: hidden; }
+.ncm-admin-panel button.ncm-sec-admin-fchip {
+  appearance: none !important; box-shadow: none !important; margin: 0 !important; width: auto !important; min-height: 0 !important;
+  border: 0 !important; border-radius: 0 !important; background: transparent !important; cursor: pointer;
+  font-family: var(--ncm-font-display); font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; white-space: nowrap;
+  color: var(--ncm-text-muted) !important; padding: 5px 9px !important;
+}
+.ncm-admin-panel button.ncm-sec-admin-fchip + .ncm-sec-admin-fchip { border-left: 1px solid var(--ncm-border) !important; }
+.ncm-admin-panel button.ncm-sec-admin-fchip.on { color: var(--ncm-text-primary) !important; background: color-mix(in srgb, var(--ncm-secondary) 14%, transparent) !important; }
+
+/* table — CPR/core style tables aggressively, so text/bg/borders need !important.
+   margin:0 is load-bearing: Foundry core ships a bare `table { margin: 1rem }`, which
+   shifted the whole table 16px right inside its card and pushed the last column
+   (the ↗ jump link / Purge button) under the card's overflow:hidden edge. */
+.ncm-admin-panel .ncm-sec-admin-table { width: 100%; margin: 0; border-collapse: collapse; font-size: 12px; background: transparent !important; }
+.ncm-admin-panel .ncm-sec-admin-table thead, .ncm-admin-panel .ncm-sec-admin-table tbody, .ncm-admin-panel .ncm-sec-admin-table tr { background: transparent !important; border: 0 !important; }
+.ncm-admin-panel .ncm-sec-admin-table th {
+  text-align: left !important; font-family: var(--ncm-font-mono) !important; font-size: 9.5px !important; font-weight: 700 !important;
+  letter-spacing: .8px; text-transform: uppercase; line-height: 1.3 !important;
+  color: var(--ncm-text-muted) !important; background: var(--ncm-bg-base) !important;
+  padding: 7px 9px !important; border: 0 !important; border-bottom: 1px solid var(--ncm-border) !important;
+}
+.ncm-admin-panel .ncm-sec-admin-table td {
+  padding: 8px 9px !important; border: 0 !important; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 55%, transparent) !important;
+  color: var(--ncm-text-secondary) !important; background: transparent !important; vertical-align: middle;
+  font-family: var(--ncm-font-body); font-size: 12px;
+}
+.ncm-admin-panel .ncm-sec-admin-table tr:last-child td { border-bottom: 0 !important; }
+.ncm-admin-panel .ncm-sec-admin-table tr.is-new td:first-child { box-shadow: inset 3px 0 0 var(--ncm-secondary); }
+.ncm-admin-panel .ncm-sec-admin-table .newdot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--ncm-secondary); margin-right: 6px; }
+.ncm-admin-panel .ncm-sec-admin-table .mono, .ncm-admin-panel .ncm-sec-admin-table .roll, .ncm-admin-panel .ncm-sec-admin-table .ago, .ncm-admin-panel .ncm-sec-admin-table .obj { font-family: var(--ncm-font-mono); }
+.ncm-admin-panel .ncm-sec-admin-table .ago { font-size: 11px; color: var(--ncm-text-muted); white-space: nowrap; }
+.ncm-admin-panel .ncm-sec-admin-table .roll { font-size: 11px; color: var(--ncm-text-muted); }
+.ncm-admin-panel .ncm-sec-admin-table .who { font-weight: 700; color: var(--ncm-text-primary); font-family: var(--ncm-font-display); }
+.ncm-admin-panel .ncm-sec-admin-table .clk { cursor: pointer; border-bottom: 1px dotted transparent; }
+.ncm-admin-panel .ncm-sec-admin-table .clk:hover { border-bottom-color: var(--ncm-text-muted); }
+.ncm-admin-panel .ncm-sec-admin-table .act { display: flex; align-items: center; gap: 7px; }
+.ncm-admin-panel .ncm-sec-admin-table .act .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.ncm-admin-panel .ncm-sec-admin-table .dot.hostile { background: var(--ncm-danger); }
+.ncm-admin-panel .ncm-sec-admin-table .dot.major { background: var(--ncm-warning); }
+.ncm-admin-panel .ncm-sec-admin-table .dot.minor { background: var(--ncm-text-muted); }
+.ncm-admin-panel .ncm-sec-admin-table .x-ok { color: var(--ncm-success); font-weight: 700; }
+.ncm-admin-panel .ncm-sec-admin-table .x-fail { color: var(--ncm-danger); font-weight: 700; }
+/* The NET-action shape this action abstracts (§5's netAction tag) — a technical
+   value, so mono; badge register (9/700 uppercase, 1px radius). */
+.ncm-admin-panel .ncm-sec-admin-table .nverb {
+  flex: none; padding: 1px 5px; border-radius: 1px;
+  font-family: var(--ncm-font-mono); font-size: 9px; font-weight: 700;
+  letter-spacing: .04em; text-transform: uppercase;
+  color: var(--ncm-secondary); border: 1px solid color-mix(in srgb, var(--ncm-secondary) 40%, transparent);
+  background: color-mix(in srgb, var(--ncm-secondary) 8%, transparent);
+}
+.ncm-admin-panel .ncm-sec-admin-table .obj { font-size: 11px; color: var(--ncm-text-secondary); }
+.ncm-admin-panel .ncm-sec-admin-table .noheat { color: var(--ncm-text-muted); font-family: var(--ncm-font-body); font-size: 11px; }
+.ncm-admin-panel .ncm-sec-admin-table .jump { color: var(--ncm-text-muted); cursor: pointer; }
+.ncm-admin-panel .ncm-sec-admin-table .jump:hover { color: var(--ncm-secondary); }
+.ncm-admin-panel .ncm-sec-admin-right { text-align: right; }
+.ncm-admin-panel .ncm-sec-admin-empty { padding: 16px; text-align: center; color: var(--ncm-text-muted); font-size: 12px; }
+
+/* target-kind icons (mapped to theme tokens so they follow presets) */
+.ncm-admin-panel .ncm-sec-admin-card .tk { width: 15px; text-align: center; margin-right: 6px; }
+.ncm-admin-panel .ncm-sec-admin-card .tk.terminal { color: var(--ncm-success); }
+.ncm-admin-panel .ncm-sec-admin-card .tk.network { color: var(--ncm-secondary); }
+.ncm-admin-panel .ncm-sec-admin-card .tk.shard { color: var(--ncm-purple); }
+.ncm-admin-panel .ncm-sec-admin-card .tk.message { color: var(--ncm-primary); }
+.ncm-admin-panel .ncm-sec-admin-card .tk.camera { color: var(--ncm-warning); }
+.ncm-admin-panel .ncm-sec-admin-card .tk.bank { color: var(--ncm-accent); }
+.ncm-admin-panel .ncm-sec-admin-card .tk.contact { color: var(--ncm-secondary); }
+
+/* tier chips */
+.ncm-admin-panel .ncm-sec-admin-card .tier { font-family: var(--ncm-font-display); font-size: 9px; font-weight: 700; letter-spacing: .04em; padding: 1px 6px; border-radius: 1px; text-transform: uppercase; margin-left: 4px; }
+.ncm-admin-panel .ncm-sec-admin-card .tier.cold { color: var(--ncm-text-muted); border: 1px solid var(--ncm-border); }
+.ncm-admin-panel .ncm-sec-admin-card .tier.warm { color: var(--ncm-warning); border: 1px solid color-mix(in srgb, var(--ncm-warning) 50%, transparent); }
+.ncm-admin-panel .ncm-sec-admin-card .tier.hot { color: color-mix(in srgb, var(--ncm-warning) 45%, var(--ncm-danger)); border: 1px solid color-mix(in srgb, var(--ncm-danger) 45%, transparent); }
+.ncm-admin-panel .ncm-sec-admin-card .tier.burned { color: var(--ncm-danger); border: 1px solid color-mix(in srgb, var(--ncm-danger) 55%, transparent); background: color-mix(in srgb, var(--ncm-danger) 10%, transparent); }
+
+/* heat */
+.ncm-admin-panel .ncm-sec-admin-hlegend { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 12px; padding: 8px 10px; background: var(--ncm-bg-base); border: 1px solid var(--ncm-border); border-radius: 2px; font-size: 11px; }
+.ncm-admin-panel .ncm-sec-admin-hlegend span { color: var(--ncm-text-secondary); }
+.ncm-admin-panel .ncm-sec-admin-hlegend span.muted { color: var(--ncm-text-muted); }
+.ncm-admin-panel .ncm-sec-admin-hlegend b { font-family: var(--ncm-font-display); font-size: 9px; font-weight: 700; letter-spacing: .04em; padding: 1px 5px; border-radius: 1px; margin-right: 5px; }
+.ncm-admin-panel .ncm-sec-admin-hlegend .cold b { color: var(--ncm-text-muted); border: 1px solid var(--ncm-border); }
+.ncm-admin-panel .ncm-sec-admin-hlegend .warm b { color: var(--ncm-warning); border: 1px solid color-mix(in srgb, var(--ncm-warning) 50%, transparent); }
+.ncm-admin-panel .ncm-sec-admin-hlegend .hot b { color: color-mix(in srgb, var(--ncm-warning) 45%, var(--ncm-danger)); border: 1px solid color-mix(in srgb, var(--ncm-danger) 45%, transparent); }
+.ncm-admin-panel .ncm-sec-admin-hlegend .burned b { color: var(--ncm-danger); border: 1px solid color-mix(in srgb, var(--ncm-danger) 50%, transparent); }
+.ncm-admin-panel .ncm-sec-admin-heat { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 55%, transparent); }
+.ncm-admin-panel .ncm-sec-admin-heat:last-child { border-bottom: 0; }
+.ncm-admin-panel .ncm-sec-admin-heat .who { width: 110px; font-weight: 700; color: var(--ncm-text-primary); font-family: var(--ncm-font-display); }
+.ncm-admin-panel .ncm-sec-admin-heat .obj { width: 150px; color: var(--ncm-text-secondary); font-family: var(--ncm-font-mono); font-size: 11px; }
+.ncm-admin-panel .ncm-sec-admin-heat .bar { flex: 1; height: 10px; border-radius: 2px; background: var(--ncm-bg-deep); overflow: hidden; position: relative; }
+.ncm-admin-panel .ncm-sec-admin-heat .fill { position: absolute; inset: 0 auto 0 0; border-radius: 2px; }
+.ncm-admin-panel .ncm-sec-admin-heat .fill.cold { background: var(--ncm-text-muted); }
+.ncm-admin-panel .ncm-sec-admin-heat .fill.warm { background: var(--ncm-warning); }
+.ncm-admin-panel .ncm-sec-admin-heat .fill.hot { background: color-mix(in srgb, var(--ncm-warning) 45%, var(--ncm-danger)); }
+.ncm-admin-panel .ncm-sec-admin-heat .fill.burned { background: var(--ncm-danger); }
+.ncm-admin-panel .ncm-sec-admin-heat .bar::after { content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(90deg, transparent 24.5%, color-mix(in srgb, var(--ncm-text-primary) 22%, transparent) 24.5% 25.5%, transparent 25.5% 49.5%, color-mix(in srgb, var(--ncm-text-primary) 22%, transparent) 49.5% 50.5%, transparent 50.5% 79.5%, color-mix(in srgb, var(--ncm-text-primary) 30%, transparent) 79.5% 80.5%, transparent 80.5%); }
+.ncm-admin-panel .ncm-sec-admin-heat .val { width: 96px; text-align: right; font-family: var(--ncm-font-mono); font-size: 11px; color: var(--ncm-text-primary); }
+.ncm-admin-panel .ncm-sec-admin-divider { font-family: var(--ncm-font-display); font-size: 10px; font-weight: 700; letter-spacing: .06em; color: var(--ncm-text-muted); text-transform: uppercase; text-align: center; padding: 10px 0 2px; margin-top: 8px; border-top: 1px solid color-mix(in srgb, var(--ncm-border) 55%, transparent); }
+
+/* trace-countdown rows (share the heat row grid; no bar — remaining time instead) */
+.ncm-admin-panel .ncm-sec-admin-cd .who { display: flex; align-items: center; gap: 6px; }
+.ncm-admin-panel .ncm-sec-admin-cd .cdicon { color: var(--ncm-danger); font-size: 11px; }
+.ncm-admin-panel .ncm-sec-admin-cd .obj .cdsrc { color: var(--ncm-danger); font-weight: 700; }
+.ncm-admin-panel .ncm-sec-admin-cd .cdrem { flex: 1; text-align: right; font-family: var(--ncm-font-mono); font-size: 11px; color: var(--ncm-danger); }
+.ncm-admin-panel .ncm-sec-admin-cd .cdclock { font-size: 10px; color: var(--ncm-text-muted); margin-left: 3px; }
+
+/* plant rows */
+.ncm-admin-panel .ncm-sec-admin-prow { display: flex; align-items: center; gap: 11px; padding: 9px 0; border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 55%, transparent); }
+.ncm-admin-panel .ncm-sec-admin-prow:last-child { border-bottom: 0; }
+.ncm-admin-panel .ncm-sec-admin-prow .ic { width: 30px; height: 30px; border-radius: 2px; display: grid; place-items: center; flex: none; color: var(--ncm-purple); background: color-mix(in srgb, var(--ncm-purple) 14%, transparent); border: 1px solid color-mix(in srgb, var(--ncm-purple) 35%, transparent); }
+.ncm-admin-panel .ncm-sec-admin-prow .ic.exe { color: var(--ncm-danger); background: color-mix(in srgb, var(--ncm-danger) 14%, transparent); border-color: color-mix(in srgb, var(--ncm-danger) 35%, transparent); }
+.ncm-admin-panel .ncm-sec-admin-prow .m { flex: 1; min-width: 0; }
+.ncm-admin-panel .ncm-sec-admin-prow .t { font-weight: 700; color: var(--ncm-text-primary); font-family: var(--ncm-font-mono); font-size: 12px; }
+.ncm-admin-panel .ncm-sec-admin-prow .t .fq { font-family: var(--ncm-font-mono); font-size: 10px; font-weight: 400; color: var(--ncm-text-muted); margin-left: 6px; }
+.ncm-admin-panel .ncm-sec-admin-prow .d { font-size: 11px; color: var(--ncm-text-muted); }
+.ncm-admin-panel .ncm-sec-admin-card .state { font-family: var(--ncm-font-display); font-size: 9px; font-weight: 700; letter-spacing: .04em; padding: 1px 6px; border-radius: 1px; text-transform: uppercase; }
+.ncm-admin-panel .ncm-sec-admin-card .state.armed { color: var(--ncm-warning); border: 1px solid color-mix(in srgb, var(--ncm-warning) 50%, transparent); }
+.ncm-admin-panel .ncm-sec-admin-card .state.fired { color: var(--ncm-danger); border: 1px solid color-mix(in srgb, var(--ncm-danger) 50%, transparent); }
+.ncm-admin-panel .ncm-sec-admin-card .state.defused { color: var(--ncm-text-muted); border: 1px solid var(--ncm-border); }
+
+/* gate form */
+.ncm-admin-panel .ncm-sec-admin-frow { display: flex; align-items: center; gap: 10px; margin-bottom: 11px; }
+.ncm-admin-panel .ncm-sec-admin-frow.top { align-items: flex-start; }
+/* :not(.ncm-sec-admin-check) — the last row's checkbox label is ALSO a direct child
+   of .ncm-sec-admin-frow, so the bare `> label` rule was giving "GM always has
+   access" the 110px fixed width + muted 10px uppercase mono of a field key, which
+   squashed it into three lines. Only field-key labels get the key treatment. */
+.ncm-admin-panel .ncm-sec-admin-frow > label:not(.ncm-sec-admin-check) { width: 110px; flex: none; font-family: var(--ncm-font-display); font-size: 10px; font-weight: 700; color: var(--ncm-text-muted); text-transform: uppercase; letter-spacing: .06em; }
+.ncm-admin-panel .ncm-sec-admin-frow input[type=text], .ncm-admin-panel .ncm-sec-admin-frow input[type=number], .ncm-admin-panel .ncm-sec-admin-frow select {
+  font-family: var(--ncm-font-mono); font-size: 12px; width: auto; min-height: 0; height: auto;
+  color: var(--ncm-text-primary) !important; background: var(--ncm-bg-deep) !important;
+  border: 1px solid var(--ncm-border) !important; border-radius: 2px; padding: 5px 8px;
+}
+.ncm-admin-panel .ncm-sec-admin-frow input[type=text] { flex: 1; }
+.ncm-admin-panel .ncm-sec-admin-frow input[type=number] { max-width: 72px; }
+.ncm-admin-panel .ncm-sec-admin-fhint { font-family: var(--ncm-font-display); font-size: 9px; font-weight: 500; font-style: italic; color: var(--ncm-text-muted); }
+/* This is a sentence, not a field key. It must opt OUT of the module-wide
+   `.ncm-app label` rule (base/typography.css) that makes every label an uppercase
+   600-weight display-font micro-caption — that rendered it "GM ALWAYS HAS ACCESS". */
+.ncm-admin-panel .ncm-sec-admin-check {
+  display: inline-flex; align-items: center; gap: 7px; width: auto;
+  font-family: var(--ncm-font-body); font-size: 12px; font-weight: 400;
+  text-transform: none; letter-spacing: normal; color: var(--ncm-text-secondary); cursor: pointer;
+}
+/* Match the admin panel's OWN checkbox look (`.ncm-ct-row__check`, tab-contacts):
+   a 2px-radius outlined box that fills faintly and shows a CYAN ✓ when checked.
+   The module-global `.ncm-app input[type=checkbox]` (base/interactions.css) instead
+   paints the whole box solid cyan with a dark border-drawn tick — correct for the
+   player UI, but a foreign object in here. Setting --checkbox-size does NOT work:
+   Foundry core declares that var ON the input itself, so a value inherited from the
+   label loses to it — size the box directly.
+   The ::after must neutralise BOTH the module's border-tick geometry AND core's
+   layered FA-glyph rule (`content:"\f14a\f14a"` in the duotone font). */
+.ncm-admin-panel .ncm-sec-admin-check input[type=checkbox] {
+  flex: none; margin: 0; position: relative;
+  width: 15px; height: 15px; border-radius: 2px;
+  border: 1.5px solid var(--ncm-border); background: transparent;
+}
+.ncm-admin-panel .ncm-sec-admin-check input[type=checkbox]:hover { border-color: var(--ncm-secondary); }
+.ncm-admin-panel .ncm-sec-admin-check input[type=checkbox]:checked {
+  background: color-mix(in srgb, var(--ncm-secondary) 15%, transparent);
+  border-color: var(--ncm-secondary);
+}
+.ncm-admin-panel .ncm-sec-admin-check input[type=checkbox]::before { content: none; }
+.ncm-admin-panel .ncm-sec-admin-check input[type=checkbox]:checked::after {
+  content: '✓'; position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  width: auto; height: auto; border: 0; transform: none;
+  font-family: var(--ncm-font-display); font-size: 11px; font-weight: 700; line-height: 1;
+  color: var(--ncm-secondary);
+}
+.ncm-admin-panel .ncm-sec-admin-gate__groups { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+.ncm-admin-panel .ncm-sec-admin-gate__grp { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 7px 9px; background: var(--ncm-bg-base); border: 1px solid var(--ncm-border); border-radius: 2px; }
+.ncm-admin-panel .ncm-sec-admin-gate__chips { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.ncm-admin-panel .ncm-sec-admin-chip { display: inline-flex; align-items: center; gap: 6px; font-family: var(--ncm-font-body); font-size: 11px; font-weight: 600; color: var(--ncm-text-primary); background: color-mix(in srgb, var(--ncm-secondary) 12%, transparent); border: 1px solid color-mix(in srgb, var(--ncm-secondary) 40%, transparent); border-radius: 2px; padding: 2px 9px 2px 3px; }
+.ncm-admin-panel .ncm-sec-admin-chip img { width: 18px; height: 18px; border-radius: 3px; object-fit: cover; border: 1px solid var(--ncm-border); }
+.ncm-admin-panel .ncm-sec-admin-chip i { color: var(--ncm-text-muted); cursor: pointer; font-size: 10px; }
+.ncm-admin-panel .ncm-sec-admin-chip i:hover { color: var(--ncm-danger); }
+/* The gear/role choosers are searchable `.ncm-burn-*` dialogs (SecurityTab._openNamePicker),
+   not <select>s — a native dropdown has no search and no item art, which is unusable
+   once a world has a real item list. That dialog is a shared component owned by
+   terminal.css, so its `.is-taken` modifier lives there too (one component, one file)
+   rather than being reached into from this tab. */
+.ncm-admin-panel .ncm-sec-admin-gate__or { font-family: var(--ncm-font-display); font-size: 9px; font-weight: 700; color: var(--ncm-secondary); letter-spacing: .06em; }
+
+
+/* ═══════════════════════════════════════════════════════════
+ *  Escalate dialog (.ncm-esc-dialog) — a Foundry Dialog, so it's
+ *  body-mounted (NOT inside .ncm-admin-panel); rules are top-level and
+ *  ship hard fallbacks. Styled to the FUI/danger vocabulary instead of
+ *  the raw grey Foundry dialog ("make the escalate dialog actually stylized").
+ * ═══════════════════════════════════════════════════════════ */
+.ncm-esc-dialog .window-content {
+  background: var(--ncm-bg-base, #12121a) !important;
+  color: var(--ncm-text-primary, #ededf2);
+  padding: 0 !important;
+}
+.ncm-esc-dialog .dialog-content { padding: 14px 14px 4px; }
+.ncm-esc { font-family: var(--ncm-font-body, 'Rajdhani', sans-serif); }
+.ncm-esc__lede {
+  font-size: 13px; line-height: 1.5; color: var(--ncm-text-secondary, #b9b9cc);
+  padding: 10px 12px; margin-bottom: 12px; border-radius: 3px;
+  background: color-mix(in srgb, #ff2b3d 7%, transparent);
+  border: 1px solid color-mix(in srgb, #ff2b3d 28%, transparent);
+  border-left: 3px solid #ff4657;
+}
+.ncm-esc__lede b { color: var(--ncm-text-primary, #ededf2); }
+
+.ncm-esc__opt {
+  margin-bottom: 11px; padding: 10px 12px 12px; border-radius: 3px;
+  background: color-mix(in srgb, var(--ncm-text-primary, #ededf2) 3%, transparent);
+  border: 1px solid var(--ncm-border, #2a2a45);
+}
+.ncm-esc__opt-hd {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 9px;
+  font-family: var(--ncm-font-display, 'Rajdhani', sans-serif); font-size: 13px; font-weight: 700;
+  letter-spacing: .04em; color: var(--ncm-text-primary, #ededf2);
+}
+.ncm-esc__opt-hd > i { color: var(--ncm-text-muted, #7a7a92); font-size: 12px; }
+.ncm-esc__opt--lock .ncm-esc__opt-hd > i { color: #ff8a4c; }
+.ncm-esc__opt--cd   .ncm-esc__opt-hd > i { color: #ff4657; }
+.ncm-esc__opt--ice  .ncm-esc__opt-hd > i { color: #ff4657; }
+.ncm-esc__tag {
+  display: grid; place-items: center; width: 19px; height: 19px; flex: none;
+  font-family: var(--ncm-font-mono, monospace); font-size: 11px; font-weight: 700; border-radius: 2px;
+  color: var(--ncm-bg-deep, #0a0a12); background: var(--ncm-text-secondary, #b9b9cc);
+}
+.ncm-esc__warm, .ncm-esc__sub {
+  margin-left: auto; font-family: var(--ncm-font-mono, monospace); font-size: 9px; font-weight: 700;
+  letter-spacing: .08em; padding: 2px 6px; border-radius: 2px; text-transform: uppercase;
+}
+.ncm-esc__warm { color: #ff8a4c; border: 1px solid color-mix(in srgb, #ff8a4c 45%, transparent); background: color-mix(in srgb, #ff8a4c 8%, transparent); }
+.ncm-esc__sub  { color: var(--ncm-text-muted, #7a7a92); border: 1px solid var(--ncm-border, #2a2a45); }
+
+.ncm-esc__row { display: flex; align-items: center; gap: 9px; margin-bottom: 6px; }
+.ncm-esc__row:last-child { margin-bottom: 0; }
+.ncm-esc__row > label {
+  width: 60px; flex: none; font-family: var(--ncm-font-mono, monospace); font-size: 10px;
+  letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-muted, #7a7a92);
+}
+.ncm-esc-dialog .ncm-esc input[type="text"],
+.ncm-esc-dialog .ncm-esc input[type="number"],
+.ncm-esc-dialog .ncm-esc select {
+  height: 28px; border-radius: 2px; padding: 0 8px;
+  background: var(--ncm-bg-deep, #0a0a12) !important;
+  color: var(--ncm-text-primary, #ededf2) !important;
+  border: 1px solid var(--ncm-border, #2a2a45) !important;
+  font-family: var(--ncm-font-body, sans-serif); font-size: 12px;
+}
+.ncm-esc-dialog .ncm-esc input:focus,
+.ncm-esc-dialog .ncm-esc select:focus {
+  border-color: color-mix(in srgb, #ff4657 55%, transparent) !important;
+  box-shadow: 0 0 0 1px color-mix(in srgb, #ff4657 30%, transparent) !important; outline: none;
+}
+.ncm-esc__num { width: 72px !important; flex: none; }
+.ncm-esc__grow { flex: 1; min-width: 0; }
+.ncm-esc__hint { font-size: 11px; color: var(--ncm-text-muted, #7a7a92); }
+.ncm-esc__hint--block { padding: 4px 0; }
+
+.ncm-esc__foot { margin: 12px 0 4px; padding-top: 11px; border-top: 1px solid var(--ncm-border, #2a2a45); }
+.ncm-esc__reason { width: 100% !important; margin-bottom: 9px; }
+.ncm-esc__check {
+  display: flex; align-items: center; gap: 7px; font-size: 12px;
+  color: var(--ncm-text-secondary, #b9b9cc); font-family: var(--ncm-font-body, sans-serif); text-transform: none;
+}
+
+/* dialog buttons — FUI, not grey Foundry */
+.ncm-esc-dialog .dialog-buttons { padding: 10px 12px 12px; gap: 7px; }
+.ncm-esc-dialog .dialog-button {
+  border-radius: 2px !important; line-height: 1.2 !important;
+  font-family: var(--ncm-font-display, sans-serif) !important; font-size: 11px !important; font-weight: 700 !important;
+  letter-spacing: .04em; text-transform: uppercase;
+  color: var(--ncm-text-secondary, #b9b9cc) !important;
+  background: color-mix(in srgb, var(--ncm-text-primary, #ededf2) 6%, transparent) !important;
+  border: 1px solid var(--ncm-border, #2a2a45) !important;
+}
+.ncm-esc-dialog .dialog-button:hover { color: var(--ncm-text-primary, #ededf2) !important; border-color: var(--ncm-text-muted, #7a7a92) !important; box-shadow: none !important; }
+.ncm-esc-dialog .dialog-button.lockout { color: #ff8a4c !important; border-color: color-mix(in srgb, #ff8a4c 50%, transparent) !important; background: color-mix(in srgb, #ff8a4c 9%, transparent) !important; }
+.ncm-esc-dialog .dialog-button.countdown,
+.ncm-esc-dialog .dialog-button.ice { color: #ff4657 !important; border-color: color-mix(in srgb, #ff4657 50%, transparent) !important; background: color-mix(in srgb, #ff4657 9%, transparent) !important; }
+.ncm-esc-dialog .dialog-button.lockout:hover { color: #0a0a12 !important; background: #ff8a4c !important; }
+.ncm-esc-dialog .dialog-button.countdown:hover,
+.ncm-esc-dialog .dialog-button.ice:hover { color: #fff !important; background: #ff4657 !important; }

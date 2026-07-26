@@ -171,17 +171,24 @@ export class SocketHandlers {
     // client performs the copy and the result syncs back to the player.
     socketManager.register(SOCKET_OPS.TERMINAL_EXFIL_REQUEST, async (data) => {
       if (!game.user.isGM) return;
-      const { requestId, itemUuid, accountId, messageIds, dest, targetActorId, targetItemId, userId } = data;
+      const { requestId, itemUuid, accountId, messageIds, dest, targetActorId, targetItemId, forwarder, frameIndex, aim, userId } = data;
       const svc = game.nightcity?.terminalService;
       let result = { success: false, count: 0 };
       try {
         const item = itemUuid ? fromUuidSync(itemUuid) : null;
         if (!item || !svc) throw new Error('Terminal/service not found');
-        if (dest === 'shard') {
+        if (dest === 'saveFrame') {
+          // SAVE FRAME (#37) — capture one feed channel into the player's Agent.
+          result = await svc.exfilSaveFrame(item, accountId, messageIds?.[0], frameIndex, targetActorId, aim || '');
+        } else if (dest === 'shard') {
           let target = game.items.get(targetItemId);
           if (!target) { for (const a of game.actors) { target = a.items.get(targetItemId); if (target) break; } }
           if (!target) throw new Error('Target item not found');
           result = await svc.exfilToShard(item, accountId, messageIds, target);
+        } else if (dest === 'forward') {
+          result = await svc.exfilForward(item, accountId, messageIds, targetActorId, forwarder || {});
+        } else if (dest === 'wipe') {
+          result = await svc.exfilWipe(item, accountId, messageIds);
         } else {
           result = await svc.exfilToInbox(item, accountId, messageIds, targetActorId);
         }
@@ -214,11 +221,42 @@ export class SocketHandlers {
       }
     });
 
+    // ─── Player Terminal Session Relay ─────────────
+    // Login / account-switch / logout write terminalState.sessions on the world
+    // item, which players can't update ("User Player lacks permission to update
+    // Item") — the GM client lands the write. The auth itself already happened
+    // client-side (the shard-relay trust model); this only persists the session.
+    // No RESULT op: the flag write syncs back and the viewer re-renders off its
+    // updateItem hook.
+    socketManager.register(SOCKET_OPS.TERMINAL_SESSION_REQUEST, async (data) => {
+      if (!game.user.isGM) return;
+      const { itemUuid, actorId, updates } = data;
+      const svc = game.nightcity?.terminalService;
+      try {
+        const item = itemUuid ? fromUuidSync(itemUuid) : null;
+        if (!item || !svc) throw new Error('Terminal/service not found');
+        if (!item.getFlag(MODULE_ID, 'isTerminal')) throw new Error('Not a terminal');
+        await svc.applySessionUpdate(item, actorId, updates || {});
+      } catch (err) {
+        log.error('Terminal session relay failed:', err);
+      }
+    });
+
     // Requesting client hears the result → notify the player.
     socketManager.register(SOCKET_OPS.TERMINAL_EXFIL_RESULT, (data) => {
       if (data.userId !== game.user.id) return;
-      if (data.success) ui.notifications.info(data.dest === 'shard' ? `Burned ${data.count} message(s) to shard.` : `Downloaded ${data.count} message(s) to your Agent (Recovered).`);
-      else ui.notifications.warn('Download failed — no GM available or the GM rejected it.');
+      // The exfil folder is GM-renameable (the `exfilFolderName` setting) — read
+      // the label rather than hardcoding it, or the toast and the tab disagree.
+      const folder = game.nightcity?.settingsManager?.getExfilFolderName?.() || 'Exfil';
+      const verb = {
+        shard: `Burned ${data.count} file(s) to a shard.`,
+        forward: `Forwarded ${data.count} file(s).`,
+        wipe: `Wiped ${data.count} file(s) from the terminal.`,
+        saveFrame: `Frame captured — check your ${folder} folder.`,
+        inbox: `Downloaded ${data.count} file(s) to your Agent (${folder}).`,
+      };
+      if (data.success) ui.notifications.info(verb[data.dest] || verb.inbox);
+      else ui.notifications.warn('Exfil failed — no GM available or the GM rejected it.');
     });
 
     // ─── Player Banking Siphon Relay (GM persists the drain / alerts) ──
@@ -241,6 +279,120 @@ export class SocketHandlers {
         await handleContentUpdateRequest(data);
       } catch (err) {
         log.error('Content update relay failed:', err);
+      }
+    });
+
+    // ─── Player Payload Execution Relay (roll ran client-side; GM applies the
+    //     module-native effect + payload state write on the GM-owned host) ──
+    socketManager.register(SOCKET_OPS.PAYLOAD_EFFECT_REQUEST, async (data) => {
+      if (!game.user.isGM) return;
+      try {
+        const flow = await import('../ui/content/SiphonFlow.js');
+        if (data.outcome === 'kill') await flow.applyPayloadKill({ messageId: data.messageId, actorId: data.actorId });
+        else await flow.handlePayloadEffectRequest(data);
+      } catch (err) {
+        log.error('Payload effect relay failed:', err);
+      }
+    });
+
+    // ─── Player Upload/Plant Relay (FORGE roll ran client-side; GM installs the
+    //     resident on the GM-owned terminalState) ──────────
+    socketManager.register(SOCKET_OPS.TERMINAL_RESIDENT_REQUEST, async (data) => {
+      if (!game.user.isGM) return;
+      try {
+        const flow = await import('../ui/content/UploadFlow.js');
+        await flow.handleResidentRequest(data);
+      } catch (err) {
+        log.error('Resident install relay failed:', err);
+      }
+    });
+
+    // ─── Player Trace Relay (a player tripped a trace; GM records the log + heat
+    //     on the GM-owned world settings) ──────────────────
+    socketManager.register(SOCKET_OPS.TRACE_REQUEST, async (data) => {
+      if (!game.user.isGM) return;
+      try {
+        await game.nightcity?.traceService?.handleTraceRequest(data);
+      } catch (err) {
+        log.error('Trace relay failed:', err);
+      }
+    });
+
+    // ─── Netrunning Tier C adjudication (design §5, hackResolution: 'gm') ───
+    // A player's gated action does NOT auto-roll — the GM gets the NetAdjudicator
+    // prompt and calls pass/fail; the verdict rides back to the waiting console.
+    // CANCEL = the player withdrew while the GM was deciding (closes the prompt).
+    socketManager.register(SOCKET_OPS.NET_RESOLVE_REQUEST, async (data) => {
+      if (!game.user.isGM) return;
+      try {
+        const nr = await import('../ui/content/NetResolve.js');
+        await nr.handleNetResolveRequest(data);
+      } catch (err) {
+        log.error('Net adjudication request failed:', err);
+      }
+    });
+
+    socketManager.register(SOCKET_OPS.NET_RESOLVE_RESULT, async (data) => {
+      if (data?.userId !== game.user.id) return;
+      try {
+        const nr = await import('../ui/content/NetResolve.js');
+        nr.handleNetResolveResult(data);
+      } catch (err) {
+        log.error('Net adjudication result failed:', err);
+      }
+    });
+
+    socketManager.register(SOCKET_OPS.NET_RESOLVE_CANCEL, async (data) => {
+      if (!game.user.isGM) return;
+      try {
+        const nr = await import('../ui/content/NetResolve.js');
+        nr.handleNetResolveCancel(data);
+      } catch (err) {
+        log.error('Net adjudication cancel failed:', err);
+      }
+    });
+
+    // GM docked/restored their adjudicator → mirror onto the waiting player's
+    // console (the "GM stepped into the run" sync).
+    socketManager.register(SOCKET_OPS.NET_RESOLVE_STATE, async (data) => {
+      if (data?.userId !== game.user.id) return;
+      try {
+        const nr = await import('../ui/content/NetResolve.js');
+        nr.handleNetResolveState(data);
+      } catch (err) {
+        log.error('Net adjudication state failed:', err);
+      }
+    });
+
+    // ─── Forced Lockout Sync (GM → everyone) ─────────────
+    // SecurityService lockout state is CLIENT-LOCAL — a GM-side escalation
+    // lockout must be mirrored onto every client or the player's own login
+    // checks still read "not locked" and they walk right back in. The receiver
+    // also kicks any live session on the locked target and toasts the operator.
+    socketManager.register(SOCKET_OPS.SECURITY_LOCKOUT, (data) => {
+      try {
+        game.nightcity?.securityService?.receiveForcedLockout?.(data);
+      } catch (err) {
+        log.error('Forced lockout sync failed:', err);
+      }
+    });
+
+    // ─── Targeted Security Toast (GM → specific users) ───
+    // Security drama applied on another client (Black ICE damage from a GM
+    // escalation) pings the operator's own screen — the EventBus toast is
+    // client-local, so without this only the applying client ever saw it.
+    socketManager.register(SOCKET_OPS.SECURITY_NOTIFY, (data) => {
+      if (!Array.isArray(data?.userIds) || !data.userIds.includes(game.user.id)) return;
+      const ns = game.nightcity?.notificationService;
+      try {
+        if (data.kind === 'blackIce') {
+          ns?.showShardBlackICE?.(data.data || {});
+          game.nightcity?.soundService?.play?.('black-ice');
+        } else if (data.toast) {
+          ns?.showToastV2?.(data.toast);
+        }
+      } catch (err) {
+        log.error('Security notify failed:', err);
       }
     });
 

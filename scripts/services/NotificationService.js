@@ -221,6 +221,10 @@ export class NotificationService {
   // ═══════════════════════════════════════════════════════════
 
   showMessageNotification(data) {
+    // ENVELOPE (#37) — a FILE is not mail. It has no sender, so this toast would
+    // announce "New Message — Unknown", which is both wrong and a tell. Files
+    // arrive silently; the mailbox shows them as NEW.
+    if (data.envelope === 'file') return null;
     // Socket delivery and document-sync can both emit MESSAGE_RECEIVED for the
     // same message — dedup by id so the recipient sees a single toast + sound.
     if (data.messageId) {
@@ -421,13 +425,18 @@ export class NotificationService {
 
   /**
    * Show a "Network Lockout" toast.
-   * @param {object} data — { networkId, lockoutMinutes }
+   * Accepts both the direct shape ({ networkId, lockoutMinutes }) and the raw
+   * NETWORK_LOCKOUT event payload ({ targetId, duration }) — the event's
+   * targetId may be a network id, a shard/item id, or a terminal-account key
+   * (`itemId::accountId`), so the label resolves across all three. The old
+   * network-only lookup rendered every terminal/shard lockout as
+   * "Unknown — locked for ? min".
+   * @param {object} data — { networkId?, targetId?, lockoutMinutes?, duration? }
    */
   showNetworkLockout(data) {
-    const networkService = game.nightcity?.networkService;
-    const network = networkService?.getNetwork?.(data.networkId);
-    const name = network?.name || 'Unknown';
-    const mins = data.lockoutMinutes ?? '?';
+    const name = this._lockTargetLabel(data.networkId || data.targetId) || 'Unknown';
+    const mins = data.lockoutMinutes
+      ?? (Number(data.duration) ? Math.max(1, Math.round(Number(data.duration) / 60000)) : '?');
 
     return this.showToastV2({
       type: 'net-lockout',
@@ -436,6 +445,30 @@ export class NotificationService {
       duration: 8000,
       priority: 'urgent',
     });
+  }
+
+  /**
+   * Resolve a SecurityService lockout target key into a human label.
+   * Networks by id; terminals as "Item · Account" (`itemId::accountId` keys);
+   * bare item ids (shards) by item name — world items first, then actor-owned.
+   * @param {string} targetId
+   * @returns {string|null}
+   * @private
+   */
+  _lockTargetLabel(targetId) {
+    if (!targetId) return null;
+    const net = game.nightcity?.networkService?.getNetwork?.(targetId);
+    if (net?.name) return net.name;
+    const [itemId, acctId] = String(targetId).split('::');
+    let item = game.items?.get(itemId) || null;
+    if (!item) { for (const a of (game.actors ?? [])) { item = a.items?.get(itemId); if (item) break; } }
+    if (!item) return null;
+    if (acctId) {
+      const acct = game.nightcity?.terminalService?.getAccount?.(item, acctId);
+      const acctName = acct?.displayName || acct?.username;
+      return acctName ? `${item.name} · ${acctName}` : item.name;
+    }
+    return item.name;
   }
 
   showQueueFlush(data) {
@@ -470,9 +503,13 @@ export class NotificationService {
    * @param {object} data — { itemName, damage, actorName }
    */
   showShardBlackICE(data) {
+    // Title follows the CONTEXT the ICE struck from — it was hardcoded
+    // "— Shard", which read wrong on trace-escalation / network / message hits.
+    const ctxLabels = { shard: ' — Shard', network: ' — Network', message: ' — Message', terminal: ' — Terminal' };
+    const ctx = ctxLabels[data.context] ?? '';
     return this.showToastV2({
       type: 'shard-ice',
-      title: 'BLACK ICE — Shard',
+      title: `BLACK ICE${ctx}`,
       detail: `${data.damage || '?'} damage! "${data.itemName || 'Unknown'}" fights back!`,
       duration: 6000,
       priority: 'critical',
@@ -931,6 +968,11 @@ export class NotificationService {
     });
 
     this.eventBus.on(EVENTS.NETWORK_LOCKOUT, (data) => {
+      // Forced (escalation) lockouts handle their own feedback — the GM gets
+      // the escalation chat card and the player gets ONE consolidated toast via
+      // the SECURITY_LOCKOUT sync. A terminal fans out to one event per account
+      // key, so toasting each would spam "locked" N times.
+      if (data?.forced) return;
       this.showNetworkLockout(data);
     });
 
@@ -943,10 +985,16 @@ export class NotificationService {
     this.eventBus.on(EVENTS.BLACK_ICE_DAMAGE, (data) => {
       const item = game.items?.get(data.itemId);
       const actor = game.actors?.get(data.actorId);
+      // ICEService's event carries targetName/iceInfo, not itemId — the old
+      // item lookup rendered every escalation strike as '"Unknown" fights back'.
+      const name = data.iceInfo?.name
+        || (data.targetName && data.targetName !== 'Unknown' ? data.targetName : null)
+        || item?.name || 'Unknown';
       this.showShardBlackICE({
-        itemName: item?.name || 'Unknown',
+        itemName: name,
         damage: data.damage,
         actorName: actor?.name || 'Unknown',
+        context: data.context,
       });
     });
 

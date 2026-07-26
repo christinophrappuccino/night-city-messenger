@@ -14,8 +14,8 @@
  *              Initialization priority: ready/40
  */
 
-import { MODULE_ID, EVENTS } from '../utils/constants.js';
-import { log } from '../utils/helpers.js';
+import { MODULE_ID, EVENTS, SOCKET_OPS } from '../utils/constants.js';
+import { log, isGM } from '../utils/helpers.js';
 
 export class SecurityService {
 
@@ -181,6 +181,131 @@ export class SecurityService {
     }
 
     return { state: { ...state }, lockedOut: false };
+  }
+
+  /**
+   * Impose a lockout DIRECTLY, bypassing attempt accumulation — the primitive
+   * behind trace-heat escalation (design §6b: warm tier → "lockout of the actor
+   * eligible"). A normal lockout is earned by burning maxAttempts; this one is a
+   * GM (or auto-escalation) decision that this actor is locked out of this target
+   * NOW for `durationMs`. Sets `attempts = maxAttempts` so the login screens'
+   * "N attempts left" reads 0, starts the auto-expiry poll, and emits the same
+   * NETWORK_LOCKOUT event the earned path does (so every gate reacts identically).
+   * @param {string} actorId
+   * @param {string} targetId
+   * @param {object} [o]
+   * @param {number} [o.durationMs=3600000] lockout length
+   * @param {string} [o.reason] audit note (logged only)
+   * @returns {number} the lockout deadline (ms)
+   */
+  forceLockout(actorId, targetId, { durationMs = 3600000, reason = '' } = {}) {
+    const until = this._applyForced(actorId, targetId, durationMs);
+    this.eventBus.emit(EVENTS.NETWORK_LOCKOUT, {
+      actorId, targetId, lockoutUntil: until, duration: durationMs, forced: true,
+    });
+    log.info(`Forced lockout: actor ${actorId} → target ${targetId} for ${durationMs}ms${reason ? ` (${reason})` : ''}`);
+    return until;
+  }
+
+  /**
+   * Escalation entry point — force-lock an actor out of a SET of targets (a
+   * terminal fans out to one key per account) as ONE operation. Lockout state is
+   * CLIENT-LOCAL (an in-memory Map), so applying it here alone would only lock
+   * the GM's client while the player's login checks still read "not locked" —
+   * that was the "I locked them out and they logged right back in" bug. This
+   * applies locally, emits ONE forced NETWORK_LOCKOUT (not N — the N-toast spam),
+   * broadcasts SOCKET_OPS.SECURITY_LOCKOUT so every client mirrors the state,
+   * and kicks any open session on this client too (a GM testing as the actor).
+   * @param {string} actorId
+   * @param {string[]} targets  lockout keys (networkId / shardId / `termId::acctId`)
+   * @param {object} [o] { durationMs, reason, label } — label is the human name
+   *   for the locked thing ("DOCK-TERM-4"), shown in the player's toast.
+   */
+  forceLockoutMany(actorId, targets = [], { durationMs = 3600000, reason = '', label = '' } = {}) {
+    if (!actorId || !targets.length) return;
+    for (const t of targets) this._applyForced(actorId, t, durationMs);
+    this.eventBus.emit(EVENTS.NETWORK_LOCKOUT, {
+      actorId, targetId: targets[0], targets, duration: durationMs, forced: true, label,
+    });
+    game.nightcity?.socketManager?.emit(SOCKET_OPS.SECURITY_LOCKOUT, {
+      actorId, targets, durationMs, reason, label,
+    });
+    this._kickLockedViewers(actorId, targets, label);
+    log.info(`Forced lockout (many): actor ${actorId} → ${targets.length} target(s) for ${durationMs}ms${reason ? ` (${reason})` : ''}`);
+  }
+
+  /**
+   * Socket receiver for SECURITY_LOCKOUT — mirror a GM-forced lockout into THIS
+   * client's local state, kick any live session on the locked target, and (if
+   * this user owns the locked actor) show the in-fiction toast.
+   * @param {object} p { actorId, targets, durationMs, label, reason }
+   */
+  receiveForcedLockout(p = {}) {
+    const { actorId, targets = [], durationMs = 3600000, label = '' } = p;
+    if (!actorId || !targets.length) return;
+    for (const t of targets) this._applyForced(actorId, t, durationMs);
+    this.eventBus.emit(EVENTS.NETWORK_LOCKOUT, {
+      actorId, targetId: targets[0], targets, duration: durationMs, forced: true, label,
+    });
+    this._kickLockedViewers(actorId, targets, label);
+    // The in-fiction ping goes to the operator's player only — the GM initiated
+    // this and already has the escalation chat card.
+    const actor = game.actors?.get(actorId);
+    if (!isGM() && actor?.isOwner) {
+      const mins = Math.max(1, Math.round(durationMs / 60000));
+      try {
+        game.nightcity?.notificationService?.showToastV2?.({
+          type: 'net-lockout', title: 'LOCKED OUT',
+          detail: `${label || 'A secured system'} slammed the door — locked for ${mins} min.`,
+          duration: 8000, priority: 'urgent',
+        });
+        game.nightcity?.soundService?.play?.('lockout');
+      } catch { /* no toast */ }
+    }
+    log.debug(`Forced lockout received: actor ${actorId} → ${targets.length} target(s)`);
+  }
+
+  /** @private Set the forced-lockout state for one key (no events, no wire). */
+  _applyForced(actorId, targetId, durationMs) {
+    const key = this._key(actorId, targetId);
+    let state = this._states.get(key);
+    if (!state) { state = this._defaultState(actorId, targetId); this._states.set(key, state); }
+    state.lockoutDuration = durationMs;
+    state.attempts = Math.max(state.attempts, state.maxAttempts);
+    state.lockoutUntil = this._nowMs() + durationMs;
+    this._startLockoutTimer(actorId, targetId);
+    return state.lockoutUntil;
+  }
+
+  /**
+   * @private Bounce live sessions the lockout just invalidated: a terminal
+   * viewer logged in as the locked actor drops to its login screen ("the system
+   * slammed the door"); an open shard viewer on a locked shard closes. Scans
+   * both app registries (AppV1 ui.windows + AppV2 foundry.applications.instances).
+   */
+  _kickLockedViewers(actorId, targets, label = '') {
+    try {
+      const apps = [
+        ...Object.values(ui.windows ?? {}),
+        ...(foundry.applications?.instances ? [...foundry.applications.instances.values()] : []),
+      ];
+      const seen = new Set();
+      for (const app of apps) {
+        if (!app || seen.has(app)) continue;
+        seen.add(app);
+        const itemId = app.item?.id;
+        if (!itemId) continue;
+        const hit = targets.some(t => t === itemId || String(t).startsWith(`${itemId}::`));
+        if (!hit) continue;
+        const opId = app.actorId || app.actor?.id || null;
+        if (opId && opId !== actorId) continue;
+        if (typeof app.forceLogout === 'function') {
+          app.forceLogout(`CONNECTION TERMINATED — ${label || 'the system'} locked you out.`);
+        } else if (app.element?.classList?.contains('ncm-item-inbox')) {
+          app.close();
+        }
+      }
+    } catch (err) { log.warn(`Lockout viewer kick failed: ${err.message}`); }
   }
 
   /**

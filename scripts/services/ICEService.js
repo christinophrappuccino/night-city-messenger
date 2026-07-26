@@ -19,7 +19,7 @@
  *              Initialization priority: ready/42
  */
 
-import { MODULE_ID, EVENTS, ENCRYPTION_TYPES } from '../utils/constants.js';
+import { MODULE_ID, EVENTS, ENCRYPTION_TYPES, SOCKET_OPS } from '../utils/constants.js';
 import { log } from '../utils/helpers.js';
 
 export class ICEService {
@@ -208,6 +208,22 @@ export class ICEService {
         context,
         targetName,
       });
+
+      // The EventBus toast above is CLIENT-LOCAL — when the damage is applied
+      // on another client (a GM escalation striking a player's actor), the
+      // operator's own screen never saw it. Ping the actor's active players.
+      try {
+        const owners = game.users
+          ?.filter(u => u.active && !u.isGM && u.id !== game.user.id && actor.testUserPermission?.(u, 'OWNER'))
+          .map(u => u.id) ?? [];
+        if (owners.length) {
+          game.nightcity?.socketManager?.emit(SOCKET_OPS.SECURITY_NOTIFY, {
+            userIds: owners,
+            kind: 'blackIce',
+            data: { itemName: ice.name || targetName, damage, actorName: actor.name, context },
+          });
+        }
+      } catch { /* toast relay is best-effort */ }
 
       log.info(`${ice.name} dealt ${damage} damage to ${actor.name} (HP: ${currentHP} → ${newHP}) [${context}: ${targetName}]`);
 
