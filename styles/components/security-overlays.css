@@ -101,7 +101,7 @@
 .ncm-app .ncm-security-overlay,
 .ncm-app .ncm-hack-screen {
   scrollbar-width: thin;
-  scrollbar-color: var(--sp-border, #2a2a45) transparent;
+  scrollbar-color: var(--ncm-scrollbar-thumb, color-mix(in srgb, var(--ncm-secondary, #19f3f7) 38%, transparent)) var(--ncm-scrollbar-track, transparent);
 }
 .ncm-app .ncm-security-overlay ::-webkit-scrollbar,
 .ncm-app .ncm-hack-screen ::-webkit-scrollbar { width: 4px; height: 0; }
@@ -1242,7 +1242,9 @@
   flex-direction: column;
   gap: 3px;
   scrollbar-width: thin;
-  scrollbar-color: rgba(247, 201, 72, 0.3) transparent;
+  /* Deliberate accent bar (not the default cyan) — but keep it THEME-following:
+     it tracks --ncm-accent rather than a hardcoded amber. */
+  scrollbar-color: color-mix(in srgb, var(--ncm-accent, #f7c948) 35%, transparent) transparent;
 }
 .ncm-token-picker-card {
   display: flex;

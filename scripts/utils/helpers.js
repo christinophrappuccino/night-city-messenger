@@ -5,7 +5,7 @@
  * @description Shared utility functions used across the module
  */
 
-import { MODULE_ID, MODULE_SHORT, TERMINAL_PRESETS, COLOR_VAR_MAP } from './constants.js';
+import { MODULE_ID, MODULE_SHORT, TERMINAL_PRESETS, TERMINAL_SOUND_SETS, COLOR_VAR_MAP, DEFAULTS, NET_ACTION_VERBS } from './constants.js';
 
 /** Month names for the written-out date styles (dateMonthStyle setting). */
 const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -273,12 +273,30 @@ export function buildTerminalThemePrefs(theme = {}, presetKey = '') {
     },
     textScale: theme.textScale ?? 100,
     contrast: theme.contrast ?? 100,
-    // Per-terminal wallpaper (image behind the mailbox, dimmed by CSS).
+    // Per-terminal wallpaper (image behind the login + mailbox, dimmed by the
+    // strength slider — --ncm-wallpaper-strength, default 25%).
     wallpaper: theme.wallpaper || null,
+    wallpaperStrength: theme.wallpaperStrength,
     // Terminal glitch stored as 0–100 (slider); applyTheme wants 0–1 and only
     // writes the var when defined (element-scoped calls skip the 0.5 default).
     glitchIntensity: theme.glitch !== undefined ? (theme.glitch / 100) : undefined,
   };
+}
+
+/**
+ * Resolve a terminal sound id through the terminal's sound set
+ * (config.soundSet → TERMINAL_SOUND_SETS). Returns the possibly-remapped id
+ * plus rate/volume shaping for SoundService.playStyled. Unknown set keys and
+ * unmapped ids resolve to the untouched original, so legacy configs and the
+ * 'default' set behave exactly as before.
+ *
+ * @param {string} setKey - A TERMINAL_SOUND_SETS key ('' / unknown = default)
+ * @param {string} soundId - The original SOUND_PATHS id the code plays
+ * @returns {{ id: string, rate: number, volume: number }}
+ */
+export function resolveTerminalSound(setKey, soundId) {
+  const m = TERMINAL_SOUND_SETS[setKey]?.map?.[soundId];
+  return { id: m?.id || soundId, rate: m?.rate ?? 1, volume: m?.volume ?? 1 };
 }
 
 // ─── Media Embeds (AV Log) ───
@@ -400,4 +418,197 @@ export function resolveAnonRecipient(message) {
     name: a.alias || ANON_DEFAULT_ALIAS,
     email: a.maskedEmail || ANON_MASKED_EMAIL,
   };
+}
+
+// ═══════════════════════════════════════════════════════════
+//  OPERATOR — the character a client ACTS AS (terminals / shards)
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * Every actor this user may act as: the ones they OWN (a GM sees none by this
+ * rule, so they fall back to their assigned character — GM content actions
+ * already force/adjudicate when there's no actor).
+ * @returns {Actor[]}
+ */
+export function getOperatorActors() {
+  const actors = (game.actors?.contents ?? []).filter(a => a.isOwner && a.type !== 'blackIce');
+  if (game.user?.isGM) {
+    // A GM "owns" everything — offer only their assigned character (if any),
+    // so the picker doesn't list the whole world.
+    const c = game.user.character;
+    return c ? [c] : [];
+  }
+  return actors;
+}
+
+/**
+ * The character this client is acting as in the terminal / shard viewers —
+ * the actor every roll, siphon, claim, and skill/stat read must use.
+ * Resolution: remembered pick (still owned) → assigned character → the sole
+ * owned actor → null. Reading `game.user.character` directly is the bug that
+ * paid siphoned eddies to the wrong character.
+ * @returns {Actor|null}
+ */
+export function resolveOperator() {
+  try {
+    const id = game.settings?.get(MODULE_ID, 'operatorActorId');
+    if (id) {
+      const a = game.actors?.get(id);
+      if (a?.isOwner) return a;
+    }
+  } catch { /* setting not registered yet */ }
+  const assigned = game.user?.character ?? null;
+  if (assigned) return assigned;
+  const owned = getOperatorActors();
+  return owned.length === 1 ? owned[0] : null;
+}
+
+/**
+ * HOW a gated hack/upload action resolves (design §5's `hackResolution`):
+ * 'auto' (roll it — current behavior) · 'flagged' (roll + a GM card naming the
+ * NET-action shape) · 'gm' (no roll — the table runs the NET, the GM calls it).
+ * Global world setting with a per-terminal override (`terminalConfig
+ * .hackResolution`, 'inherit' = follow the world). Sibling of `canOperate` —
+ * that's WHO can act, this is HOW it resolves.
+ * @param {Item|null} [item] the host terminal, when the action has one
+ * @returns {'auto'|'flagged'|'gm'}
+ */
+export function resolveHackResolution(item = null) {
+  const valid = ['auto', 'flagged', 'gm'];
+  try {
+    const o = item?.getFlag?.(MODULE_ID, 'terminalConfig')?.hackResolution;
+    if (valid.includes(o)) return o;                       // 'inherit'/absent falls through
+  } catch { /* not a flagged item */ }
+  try {
+    const g = game.settings?.get(MODULE_ID, 'hackResolution');
+    if (valid.includes(g)) return g;
+  } catch { /* setting not registered yet */ }
+  return 'auto';
+}
+
+/**
+ * The RED NET-action a module action abstracts (§5's `netAction.verb`), from the
+ * same `action` strings the flows pass to fireTrace/logSuccess. Null when the
+ * action has no netrunning shape (don't invent one).
+ * @param {string} action @returns {string|null}
+ */
+export function netVerbFor(action) {
+  if (!action) return null;
+  return NET_ACTION_VERBS[String(action)] ?? null;
+}
+
+/**
+ * A styled, LEGIBLE chat whisper card — the shared wrapper for every NCM
+ * security whisper (heat changes, trace countdowns, lockouts, escalations).
+ * The bare `<b>NCM trace:</b> …` whispers rendered at Foundry's default chat
+ * size and were flagged as hard to read; this gives them the module's card
+ * look at a readable size (styles: `.ncm-wcard` in styles/chat/chat-cards.css,
+ * hard fallbacks — chat log has no --ncm-* ancestor).
+ * @param {object} o
+ * @param {string} [o.tone]  'info' | 'warn' | 'danger' | 'ok' | 'purple'
+ * @param {string} [o.icon]  FA glyph class ('fa-fire')
+ * @param {string} [o.title] header line (small caps)
+ * @param {string[]} [o.lines] body lines — RAW HTML; escape user text with
+ *   Handlebars.escapeExpression before interpolating.
+ * @returns {string} HTML
+ */
+export function whisperCardHtml({ tone = 'info', icon = 'fa-shield-halved', title = 'NCM', lines = [] } = {}) {
+  const body = lines.filter(Boolean).map(l => `<div class="ncm-wcard__line">${l}</div>`).join('');
+  return `<div class="ncm-wcard ncm-wcard--${tone}">`
+    + `<div class="ncm-wcard__hd"><i class="fas ${icon}"></i><span>${title}</span></div>`
+    + body
+    + `</div>`;
+}
+
+/**
+ * Capability gate — can this actor use the OPERATOR tools (upload / hacking)?
+ * (design §5b). Netrunning isn't for everyone: a GM can require a CPR role, a
+ * skill rank, and/or a piece of gear, combined any-of or all-of, with an explicit
+ * actor allowlist + GM escape. Reads the world `operatorGate` policy; an optional
+ * `override` (a per-terminal gate) merges over it, so a hard box can demand more.
+ * Default policy is 'anyone', so nothing is gated until a GM opts in.
+ *
+ * Reusable by design — today it gates the OPERATOR menu (upload/sweep), but the
+ * same predicate can gate any future action so we never retrofit capability into
+ * each site.
+ * @param {Actor|null} actor
+ * @param {object} [override] per-target gate override merged over the world policy
+ * @returns {{ ok: boolean, reason?: string }}
+ */
+export function canOperate(actor, override = null) {
+  let gate;
+  try { gate = game.settings?.get(MODULE_ID, 'operatorGate') ?? {}; } catch { gate = {}; }
+  gate = { ...DEFAULTS.OPERATOR_GATE, ...gate, ...(override || {}) };
+
+  if (gate.mode !== 'gated') return { ok: true };                 // ungated
+  if (gate.allowGM && game.user?.isGM) return { ok: true };       // GM escape
+  if (!actor) return { ok: false, reason: 'No operator assigned.' };
+  if (Array.isArray(gate.actors) && gate.actors.includes(actor.id)) return { ok: true }; // allowlist
+
+  // Evaluate ONLY the qualifiers the GM actually set (empty = not required).
+  const checks = [];
+  const owned = (actor.items ?? []).map(i => String(i.name).toLowerCase());
+  const nameOf = (x) => (typeof x === 'string' ? x : (x?.name || ''));
+  const carries = (name) => { const w = String(name).toLowerCase(); return w && owned.some(o => o.includes(w)); };
+
+  if (Array.isArray(gate.roles) && gate.roles.length) {
+    const roleItems = (actor.items ?? []).filter(i => i.type === 'role').map(i => String(i.name).toLowerCase());
+    const wants = gate.roles.map(r => String(r).toLowerCase());
+    const hasRole = (w) => roleItems.some(rn => rn.includes(w));
+    const ok = gate.roleLogic === 'all' ? wants.every(hasRole) : wants.some(hasRole);
+    checks.push({ label: gate.roles.join(gate.roleLogic === 'all' ? ' + ' : '/'), ok });
+  }
+  if (gate.skill?.name) {
+    const lvl = game.nightcity?.skillService?.getSkillData?.(actor, gate.skill.name)?.skillLevel ?? 0;
+    checks.push({ label: `${gate.skill.name} ${Number(gate.skill.min) || 0}+`, ok: lvl >= (Number(gate.skill.min) || 0) });
+  }
+  // Gear: OR-of-AND groups — satisfied if a character carries EVERY item in ANY
+  // one group. Legacy flat `items` array is treated as a single group.
+  const groups = (Array.isArray(gate.itemGroups) && gate.itemGroups.length
+    ? gate.itemGroups
+    : (Array.isArray(gate.items) && gate.items.length ? [gate.items] : []))
+    .map(g => (Array.isArray(g) ? g.map(nameOf).filter(Boolean) : [])).filter(g => g.length);
+  if (groups.length) {
+    const ok = groups.some(g => g.every(carries));
+    checks.push({ label: groups.map(g => g.join('+')).join(' or '), ok });
+  }
+
+  if (!checks.length) return { ok: true }; // gated but nothing configured → inert (no accidental lockout)
+  const ok = gate.logic === 'all' ? checks.every(c => c.ok) : checks.some(c => c.ok);
+  if (ok) return { ok: true };
+  const need = checks.map(c => c.label).join(gate.logic === 'all' ? ' + ' : ' or ');
+  return { ok: false, reason: `Operator tools require ${need}.` };
+}
+
+/** Remember the acting character for this client. */
+export async function setOperatorActor(actorId) {
+  try {
+    await game.settings.set(MODULE_ID, 'operatorActorId', actorId || '');
+  } catch (err) {
+    log.warn(`setOperatorActor failed: ${err.message}`);
+  }
+}
+
+/**
+ * Operator switcher — the immersive BIOMETRIC HANDOFF picker (OperatorSelect,
+ * a framework-free FUI modal; host-scoped so it inherits the viewer's preset).
+ * Lazy-imported to keep helpers.js dependency-free at module load.
+ * @param {HTMLElement} [host] the viewer element (theme source)
+ * @returns {Promise<boolean>} true = the operator changed (caller re-renders)
+ */
+export async function openOperatorPicker(host = null) {
+  const owned = getOperatorActors();
+  if (owned.length <= 1) {
+    ui.notifications.info(owned.length
+      ? `NCM | You only control one character (${owned[0].name}).`
+      : 'NCM | You have no characters assigned.');
+    return false;
+  }
+  const current = resolveOperator()?.id || '';
+  const { runOperatorSelect } = await import('../ui/content/OperatorSelect.js');
+  const picked = await runOperatorSelect({ actors: owned, currentId: current, host });
+  if (!picked || picked === current) return false;
+  await setOperatorActor(picked);
+  ui.notifications.info(`NCM | Now operating as ${game.actors.get(picked)?.name}.`);
+  return true;
 }

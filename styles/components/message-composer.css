@@ -314,7 +314,7 @@
   max-height: 260px;
   overflow-y: auto;
   scrollbar-width: thin;
-  scrollbar-color: var(--ncm-bg-surface) transparent;
+  scrollbar-color: var(--ncm-scrollbar-thumb, color-mix(in srgb, var(--ncm-secondary, #19f3f7) 38%, transparent)) var(--ncm-scrollbar-track, transparent);
   position: relative;
 }
 .ncm-composer__sendas-dropdown::before {
@@ -394,7 +394,7 @@
   max-height: 240px;
   overflow-y: auto;
   scrollbar-width: thin;
-  scrollbar-color: var(--ncm-bg-surface) transparent;
+  scrollbar-color: var(--ncm-scrollbar-thumb, color-mix(in srgb, var(--ncm-secondary, #19f3f7) 38%, transparent)) var(--ncm-scrollbar-track, transparent);
 }
 
 .ncm-composer__msg-card {
@@ -645,7 +645,7 @@
   z-index: 10; max-height: 260px;
   overflow-y: auto;
   scrollbar-width: thin;
-  scrollbar-color: var(--ncm-bg-surface) transparent;
+  scrollbar-color: var(--ncm-scrollbar-thumb, color-mix(in srgb, var(--ncm-secondary, #19f3f7) 38%, transparent)) var(--ncm-scrollbar-track, transparent);
   padding: 4px 0;
 }
 /* Top accent line on dropdown */
@@ -1243,7 +1243,7 @@
   font-size: calc(13px * var(--ncm-text-scale, 1)); font-weight: 400 !important; color: var(--ncm-text-secondary);
   line-height: 1.5; outline: none;
   scrollbar-width: thin;
-  scrollbar-color: var(--ncm-bg-surface) transparent;
+  scrollbar-color: var(--ncm-scrollbar-thumb, color-mix(in srgb, var(--ncm-secondary, #19f3f7) 38%, transparent)) var(--ncm-scrollbar-track, transparent);
   /* Ensure Foundry doesn't kill contenteditable */
   -webkit-user-modify: read-write !important;
   user-select: text !important;

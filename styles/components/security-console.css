@@ -1,0 +1,159 @@
+/* ============================================================================
+   Security Console — the immersive content-action modal (SecurityConsole.js).
+   The shared roll → dialog → animation surface for siphon / claim / crack /
+   deploy / exfil. Themed via --ncm-* (inherits the host viewer's preset when
+   appended inside it; brand defaults on document.body). Accent rides
+   data-ct-color (the content-type palette). --ct-c comes from content-types.css.
+   ========================================================================== */
+
+/* LAYER ORDER: the console must sit ABOVE the gallery lightbox (110), because
+   every roll launched from the MONITOR rail — SAVE FRAME, LOOP, CUT, TAKE
+   CONTROL — opens while the lightbox is still on screen. At z-index 100 the
+   console rendered *underneath* it ("save frame appears underneath the gallery
+   pop up"). It's the modal you're interacting with, so it's always topmost. */
+.ncm-seccon-backdrop {
+  position: fixed; inset: 0; z-index: 130;
+  display: flex; align-items: center; justify-content: center;
+  background: color-mix(in srgb, #000 62%, transparent);
+  backdrop-filter: blur(3px);
+  opacity: 0; transition: opacity .18s ease;
+  font-family: var(--ncm-font-body, 'Rajdhani', sans-serif);
+}
+.ncm-seccon-backdrop.is-open { opacity: 1; }
+.ncm-seccon-backdrop.is-closing { opacity: 0; }
+
+.ncm-seccon {
+  position: relative; width: min(440px, 92vw); max-height: 88vh; overflow: hidden auto;
+  background: var(--ncm-bg-surface, #14141f);
+  border: 1px solid color-mix(in srgb, var(--ct-c, var(--ncm-secondary)) 45%, var(--ncm-border, #2a2a45));
+  border-radius: 8px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .6), 0 0 0 1px rgba(0, 0, 0, .4),
+              0 0 34px color-mix(in srgb, var(--ct-c, var(--ncm-secondary)) 18%, transparent);
+  transform: translateY(10px) scale(.98); transition: transform .2s ease;
+  padding: 0 20px 18px;
+}
+.ncm-seccon-backdrop.is-open .ncm-seccon { transform: none; }
+
+.ncm-seccon__bar { position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--ct-c, var(--ncm-secondary)); box-shadow: 0 0 12px var(--ct-c, var(--ncm-secondary)); }
+
+.ncm-seccon__hd { display: flex; align-items: center; gap: 11px; padding: 18px 0 4px; }
+.ncm-seccon__ico {
+  flex: 0 0 34px; width: 34px; height: 34px; border-radius: 7px; display: inline-flex; align-items: center; justify-content: center;
+  font-size: 15px; color: var(--ct-c, var(--ncm-secondary));
+  background: color-mix(in srgb, var(--ct-c, var(--ncm-secondary)) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ct-c, var(--ncm-secondary)) 35%, transparent);
+}
+.ncm-seccon__ttl { font-family: var(--ncm-font-title, 'Orbitron', sans-serif); font-weight: 700; font-size: 15px; letter-spacing: 1px; color: var(--ncm-text-primary, #ededf0); }
+
+.ncm-seccon__intro { font-size: 13px; line-height: 1.5; color: var(--ncm-text-secondary, #bdbdd0); margin: 8px 0 4px; }
+
+.ncm-seccon__amt { margin: 12px 0 6px; }
+.ncm-seccon__amt label { display: block; font-family: var(--ncm-font-mono, monospace); font-size: 9.5px; letter-spacing: 2px; text-transform: uppercase; color: var(--ncm-text-muted, #7a7a90); margin-bottom: 5px; }
+.ncm-seccon__amtrow { display: flex; align-items: stretch; gap: 8px; }
+.ncm-seccon .ncm-seccon__amtrow input {
+  flex: 1; padding: 9px 11px !important; height: auto !important; min-height: 0 !important;
+  background: var(--ncm-bg-deep, #0a0a0f) !important; color: var(--ncm-text-primary, #ededf0) !important;
+  border: 1px solid var(--ncm-border, #2a2a45) !important; border-radius: 5px !important; box-shadow: none !important;
+  font-family: var(--ncm-font-mono, monospace); font-size: 16px; font-weight: 700; letter-spacing: 1px;
+}
+.ncm-seccon .ncm-seccon__amtrow input:focus { border-color: var(--ct-c, var(--ncm-secondary)) !important; outline: none !important; }
+.ncm-seccon__unit { display: inline-flex; align-items: center; padding: 0 12px; font-family: var(--ncm-font-mono, monospace); font-size: 14px; color: var(--ct-c, var(--ncm-secondary)); background: var(--ncm-bg-deep, #0a0a0f); border: 1px solid var(--ncm-border, #2a2a45); border-radius: 5px; }
+.ncm-seccon__amtmax { font-family: var(--ncm-font-mono, monospace); font-size: 9.5px; color: var(--ncm-text-muted, #7a7a90); margin-top: 5px; }
+
+.ncm-seccon__gate {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin: 12px 0 4px; padding: 8px 11px; border-radius: 5px;
+  background: color-mix(in srgb, var(--ct-c, var(--ncm-secondary)) 7%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ct-c, var(--ncm-secondary)) 25%, transparent);
+  font-family: var(--ncm-font-mono, monospace); font-size: 11px; color: var(--ncm-text-secondary, #bdbdd0);
+}
+.ncm-seccon__gate i { color: var(--ct-c, var(--ncm-secondary)); }
+.ncm-seccon__gate b { color: var(--ncm-text-primary, #ededf0); }
+.ncm-seccon__gate-warn { margin-left: auto; font-size: 9px; letter-spacing: 1px; text-transform: uppercase; color: var(--ncm-warning, #f7c948); }
+
+/* Attempt animation — hidden until a gated ATTEMPT; progress sweep then verdict. */
+.ncm-seccon__stage { max-height: 0; opacity: 0; overflow: hidden; transition: max-height .25s ease, opacity .25s ease, margin .25s ease; }
+.ncm-seccon__stage.is-active { max-height: 90px; opacity: 1; margin: 12px 0 2px; }
+.ncm-seccon__track { height: 8px; border-radius: 4px; background: var(--ncm-bg-deep, #0a0a0f); border: 1px solid var(--ncm-border, #2a2a45); overflow: hidden; }
+.ncm-seccon__track i { display: block; width: 0; height: 100%; background: linear-gradient(90deg, var(--ncm-warning, #f7c948), var(--ct-c, var(--ncm-secondary))); }
+.ncm-seccon__stage.is-ok   .ncm-seccon__track i { background: var(--ncm-success, #00ff41); }
+.ncm-seccon__stage.is-fail .ncm-seccon__track i { background: var(--ncm-danger, #ff0033); }
+/* is-warn — the third band: a miss that still LANDS (a sloppy forge). Amber, and
+   deliberately no shake: it's not a rejection, it's a compromised success. */
+.ncm-seccon__stage.is-warn .ncm-seccon__track i { background: var(--ncm-warning, #f7c948); }
+.ncm-seccon__verdict { min-height: 20px; margin-top: 9px; font-family: var(--ncm-font-title, 'Orbitron', sans-serif); font-weight: 700; font-size: 14px; letter-spacing: 2px; text-align: center; opacity: 0; }
+.ncm-seccon__stage.is-ok   .ncm-seccon__verdict { opacity: 1; color: var(--ncm-success, #00ff41); text-shadow: 0 0 12px color-mix(in srgb, var(--ncm-success, #00ff41) 55%, transparent); }
+.ncm-seccon__stage.is-fail .ncm-seccon__verdict { opacity: 1; color: var(--ncm-danger, #ff0033); text-shadow: 0 0 12px color-mix(in srgb, var(--ncm-danger, #ff0033) 55%, transparent); animation: ncm-seccon-shake .4s ease; }
+.ncm-seccon__stage.is-warn .ncm-seccon__verdict { opacity: 1; color: var(--ncm-warning, #f7c948); text-shadow: 0 0 12px color-mix(in srgb, var(--ncm-warning, #f7c948) 55%, transparent); }
+.ncm-seccon__verdict i { margin-right: 6px; }
+
+/* Tier C (hackResolution: 'gm') — AWAITING GM: the bar strobes indeterminate and
+   the verdict line shows the "run it at the table" wait state (cyan, pulsing). */
+.ncm-seccon__stage.is-await .ncm-seccon__track i {
+  width: 40% !important;
+  background: color-mix(in srgb, var(--ncm-secondary, #19f3f7) 70%, transparent);
+  animation: ncm-seccon-await-sweep 1.4s ease-in-out infinite;
+}
+.ncm-seccon__stage.is-await .ncm-seccon__verdict {
+  opacity: 1; color: var(--ncm-secondary, #19f3f7);
+  text-shadow: 0 0 12px color-mix(in srgb, var(--ncm-secondary, #19f3f7) 45%, transparent);
+  font-size: 11px; letter-spacing: 1.4px;
+  animation: ncm-seccon-await-pulse 1.6s ease-in-out infinite;
+}
+@keyframes ncm-seccon-await-sweep { 0% { transform: translateX(-100%); } 100% { transform: translateX(280%); } }
+@keyframes ncm-seccon-await-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
+
+/* Docked while AWAITING GM ("STEP AWAY") — the operator is at the table for
+   this run; the console hides click-through and a corner chip (the shared
+   #ncm-netadj-dock) is the way back. Un-docks itself when the verdict lands. */
+.ncm-seccon-backdrop.is-docked { opacity: 0; visibility: hidden; pointer-events: none; }
+.ncm-seccon__stage.is-active.is-await { max-height: 140px; }
+.ncm-seccon button.ncm-seccon__stepaway {
+  appearance: none !important; -webkit-appearance: none !important;
+  width: auto !important; min-width: 0 !important; min-height: 0 !important; height: auto !important;
+  margin: 10px auto 0 !important; box-shadow: none !important; line-height: 1.2 !important;
+  display: flex !important; align-items: center; gap: 6px; cursor: pointer;
+  font-family: var(--ncm-font-display, sans-serif) !important; font-size: 10px !important; font-weight: 700 !important;
+  letter-spacing: .06em; text-transform: uppercase;
+  padding: 5px 11px !important; border-radius: 2px !important;
+  color: var(--ncm-secondary, #19f3f7) !important;
+  background: color-mix(in srgb, var(--ncm-secondary, #19f3f7) 8%, transparent) !important;
+  border: 1px solid color-mix(in srgb, var(--ncm-secondary, #19f3f7) 40%, transparent) !important;
+  transition: all .15s ease;
+}
+.ncm-seccon button.ncm-seccon__stepaway:hover {
+  color: var(--ncm-text-inverse, #0a0a12) !important;
+  background: var(--ncm-secondary, #19f3f7) !important;
+}
+.ncm-seccon button.ncm-seccon__stepaway i { font-size: 9px; }
+.ncm-seccon__rolled { font-family: var(--ncm-font-mono, monospace); font-size: 10px; font-weight: 400; letter-spacing: 1px; opacity: .8; }
+
+.ncm-seccon__actions { display: flex; gap: 10px; margin-top: 16px; }
+.ncm-app .ncm-seccon__btn, .ncm-seccon__btn {
+  flex: 1; appearance: none; cursor: pointer; height: auto; min-height: 0;
+  padding: 10px 14px !important; border-radius: 6px !important; box-shadow: none !important; background-image: none !important;
+  font-family: var(--ncm-font-mono, monospace) !important; font-size: 12px !important; font-weight: 700 !important; letter-spacing: 1.5px !important; text-transform: uppercase;
+  transition: background .15s ease, box-shadow .15s ease, opacity .15s ease;
+}
+.ncm-seccon__btn i { margin-right: 6px; }
+.ncm-app .ncm-seccon__btn--ghost, .ncm-seccon__btn--ghost {
+  color: var(--ncm-text-secondary, #bdbdd0) !important; background: transparent !important;
+  border: 1px solid var(--ncm-border, #2a2a45) !important;
+}
+.ncm-seccon__btn--ghost:hover { background: color-mix(in srgb, var(--ncm-text-muted, #7a7a90) 12%, transparent) !important; color: var(--ncm-text-primary, #ededf0) !important; }
+.ncm-app .ncm-seccon__btn--go, .ncm-seccon__btn--go {
+  color: var(--ncm-bg-deep, #0a0a0f) !important; background: var(--ct-c, var(--ncm-secondary)) !important;
+  border: 1px solid var(--ct-c, var(--ncm-secondary)) !important;
+}
+.ncm-seccon__btn--go:hover { box-shadow: 0 0 16px color-mix(in srgb, var(--ct-c, var(--ncm-secondary)) 45%, transparent) !important; }
+.ncm-seccon__btn.is-disabled, .ncm-seccon__btn:disabled { opacity: .4; cursor: default; pointer-events: none; }
+
+/* Copyable framing text (core/CPR reset user-select:none). */
+.ncm-seccon, .ncm-seccon * { user-select: text; }
+.ncm-seccon button, .ncm-seccon button * { user-select: none; }
+
+@keyframes ncm-seccon-shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-5px)} 40%{transform:translateX(5px)} 60%{transform:translateX(-3px)} 80%{transform:translateX(3px)} }
+@media (prefers-reduced-motion: reduce) {
+  .ncm-seccon-backdrop, .ncm-seccon, .ncm-seccon__stage, .ncm-seccon__track i { transition: none !important; }
+  .ncm-seccon__verdict, .ncm-seccon__stage.is-await .ncm-seccon__track i { animation: none !important; }
+}

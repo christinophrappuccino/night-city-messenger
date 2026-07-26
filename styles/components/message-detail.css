@@ -292,7 +292,7 @@
   line-height: 1.7;
   color: var(--ncm-text-secondary);
   scrollbar-width: thin;
-  scrollbar-color: var(--ncm-bg-elevated) transparent;
+  scrollbar-color: var(--ncm-scrollbar-thumb, color-mix(in srgb, var(--ncm-secondary, #19f3f7) 38%, transparent)) var(--ncm-scrollbar-track, transparent);
   user-select: text;
   cursor: text;
 }

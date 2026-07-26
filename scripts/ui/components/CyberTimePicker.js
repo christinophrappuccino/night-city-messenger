@@ -20,6 +20,10 @@
 import { MODULE_ID } from '../../utils/constants.js';
 import { formatCyberDate } from '../../utils/helpers.js';
 
+/** Month names for the written month styles (mirrors formatCyberDate's tables). */
+const CTP_MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const CTP_MONTHS_LONG = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
 export class CyberTimePicker {
 
   /**
@@ -43,6 +47,10 @@ export class CyberTimePicker {
     // ─── Read format settings ───
     try { this._use12h = game.settings.get(MODULE_ID, 'timeFormat') === '12h'; } catch { this._use12h = false; }
     try { this._dateFmt = game.settings.get(MODULE_ID, 'dateFormat') || 'YMD'; } catch { this._dateFmt = 'YMD'; }
+    // Month style (number 03 / short Mar / long March) — a written style swaps
+    // the month digit-box for a named <select>, so the picker matches what
+    // formatCyberDate will render everywhere else.
+    try { this._monthStyle = game.settings.get(MODULE_ID, 'dateMonthStyle') || 'number'; } catch { this._monthStyle = 'number'; }
 
     // ─── Initialize from value or game time ───
     let initDate;
@@ -90,24 +98,25 @@ export class CyberTimePicker {
 
   /** Build formatted string matching formatCyberDate() */
   _toFormatted() {
-    // Date portion
+    // Delegate to the REAL formatter — the one source of truth for
+    // dateFormat + dateMonthStyle + timeFormat, so the preview (and the
+    // `formatted` handed to onSet) can never drift from what the rest of
+    // the app renders.
+    try { return formatCyberDate(this._toISO()); } catch { /* settings not registered yet */ }
+    // Fallback: number-style hand-build (pre-settings edge only).
     let dateStr;
     switch (this._dateFmt) {
       case 'DMY': dateStr = `${this._pad(this._day)}.${this._pad(this._month)}.${this._year}`; break;
       case 'MDY': dateStr = `${this._pad(this._month)}.${this._pad(this._day)}.${this._year}`; break;
       default:    dateStr = `${this._year}.${this._pad(this._month)}.${this._pad(this._day)}`; break;
     }
-
-    // Time portion
     let timeStr;
     if (this._use12h) {
-      let hr = this._hour % 12 || 12;
-      const ampm = this._hour >= 12 ? 'PM' : 'AM';
-      timeStr = `${hr}:${this._pad(this._min)} ${ampm}`;
+      const hr = this._hour % 12 || 12;
+      timeStr = `${hr}:${this._pad(this._min)} ${this._hour >= 12 ? 'PM' : 'AM'}`;
     } else {
       timeStr = `${this._pad(this._hour)}:${this._pad(this._min)}`;
     }
-
     return `${dateStr} // ${timeStr}`;
   }
 
@@ -220,6 +229,7 @@ export class CyberTimePicker {
       <div class="ncm-ctp-preset" data-preset="now" style="${S.preset}"><i class="fas fa-bolt" style="${S.presetIcon}"></i> Real Now</div>
       <div class="ncm-ctp-preset" data-preset="plus1h" style="${S.preset}"><i class="fas fa-forward" style="${S.presetIcon}"></i> +1 Hour</div>
       <div class="ncm-ctp-preset" data-preset="plus1d" style="${S.preset}"><i class="fas fa-calendar-plus" style="${S.presetIcon}"></i> +1 Day</div>
+      <div class="ncm-ctp-preset" data-preset="plus1w" style="${S.preset}"><i class="fas fa-calendar-week" style="${S.presetIcon}"></i> +1 Week</div>
     </div>`;
   }
 
@@ -235,10 +245,23 @@ export class CyberTimePicker {
       <input type="text" class="ncm-ctp-inp" data-field="year" style="${S.input} ${S.inputYear}" value="${this._year}" maxlength="4" />
     </div>`;
 
-    const monthField = `<div style="${S.fieldGroup}">
-      <span style="${S.fieldHint}">Month</span>
-      <input type="text" class="ncm-ctp-inp" data-field="month" style="${S.input} ${S.inputMD}" value="${this._pad(this._month)}" maxlength="2" />
-    </div>`;
+    // Month widget follows the dateMonthStyle setting: number = the 2-digit
+    // box; short/long = a named <select> (values stay numeric 1–12 so
+    // _readInputs parses either widget identically).
+    let monthField;
+    if (this._monthStyle === 'short' || this._monthStyle === 'long') {
+      const names = this._monthStyle === 'long' ? CTP_MONTHS_LONG : CTP_MONTHS_SHORT;
+      const opts = names.map((n, i) => `<option value="${i + 1}"${(i + 1) === this._month ? ' selected' : ''}>${n}</option>`).join('');
+      monthField = `<div style="${S.fieldGroup}">
+        <span style="${S.fieldHint}">Month</span>
+        <select class="ncm-ctp-inp" data-field="month" style="${S.input} padding:5px 2px; max-width:${this._monthStyle === 'long' ? '112px' : '72px'};">${opts}</select>
+      </div>`;
+    } else {
+      monthField = `<div style="${S.fieldGroup}">
+        <span style="${S.fieldHint}">Month</span>
+        <input type="text" class="ncm-ctp-inp" data-field="month" style="${S.input} ${S.inputMD}" value="${this._pad(this._month)}" maxlength="2" />
+      </div>`;
+    }
 
     const dayField = `<div style="${S.fieldGroup}">
       <span style="${S.fieldHint}">Day</span>
@@ -327,8 +350,8 @@ export class CyberTimePicker {
   _bindEvents(html) {
     const self = this;
 
-    // ─── Input changes ───
-    html.find('.ncm-ctp-inp').on('input', function() {
+    // ─── Input changes ('change' too — the month <select> needs it) ───
+    html.find('.ncm-ctp-inp').on('input change', function() {
       self._readInputs(html);
       self._updatePreview(html);
     });
@@ -475,7 +498,8 @@ export class CyberTimePicker {
     const minEl = html.find('.ncm-ctp-inp[data-field="min"]');
 
     if (yearEl.length) yearEl.val(this._year);
-    if (monthEl.length) monthEl.val(this._pad(this._month));
+    // The month select's option values are unpadded 1–12; the digit box is padded.
+    if (monthEl.length) monthEl.val(monthEl.is('select') ? String(this._month) : this._pad(this._month));
     if (dayEl.length) dayEl.val(this._pad(this._day));
     if (minEl.length) minEl.val(this._pad(this._min));
 
@@ -550,6 +574,17 @@ export class CyberTimePicker {
       case 'plus1d': {
         const d = new Date(this._toISO());
         d.setUTCDate(d.getUTCDate() + 1);
+        this._year = d.getUTCFullYear();
+        this._month = d.getUTCMonth() + 1;
+        this._day = d.getUTCDate();
+        this._hour = d.getUTCHours();
+        this._min = d.getUTCMinutes();
+        break;
+      }
+
+      case 'plus1w': {
+        const d = new Date(this._toISO());
+        d.setUTCDate(d.getUTCDate() + 7);
         this._year = d.getUTCFullYear();
         this._month = d.getUTCMonth() + 1;
         this._day = d.getUTCDate();

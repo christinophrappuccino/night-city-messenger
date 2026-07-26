@@ -8,11 +8,11 @@
  */
 
 import { MODULE_ID, EVENTS, TEMPLATES, DEFAULTS, THEME_PRESETS, ENCRYPTION_TYPES, FAILURE_MODES, CONTENT_TYPES, SHARD_PRESETS } from '../../utils/constants.js';
-import { log, isGM, formatCyberDate } from '../../utils/helpers.js';
+import { log, isGM, formatCyberDate, resolveOperator, openOperatorPicker } from '../../utils/helpers.js';
 import { BaseApplication } from '../BaseApplication.js';
 import { NetworkAuthDialog } from '../NetworkManagement/NetworkAuthDialog.js';
-import { enrichContent, buildIndexChip, toggleSecretReveal, applySyslogFilter } from '../content/ContentRenderers.js';
-import { runSiphon, runCrack } from '../content/SiphonFlow.js';
+import { enrichContent, buildIndexChip, toggleSecretReveal, applySyslogFilter, openGalleryImage, closeGalleryLightbox, resolveEntrySender, resolveEnvelope } from '../content/ContentRenderers.js';
+import { runSiphon, runCrack, runMalwareDeploy, runContentUnlock, runCamAction, runPayloadExecute, runPayloadKill, runPayloadSniff, runAnalyze, toggleSchematicLock } from '../content/SiphonFlow.js';
 
 export class ItemInboxApp extends BaseApplication {
 
@@ -92,10 +92,20 @@ export class ItemInboxApp extends BaseApplication {
       toggleChipInfo: ItemInboxApp._onToggleChipInfo,
       viewOriginalItem: ItemInboxApp._onViewOriginalItem,
       executePayload: ItemInboxApp._onExecutePayload,
+      payloadKill: ItemInboxApp._onPayloadKill,
+      payloadSniff: ItemInboxApp._onPayloadSniff,
       siphonFunds: ItemInboxApp._onSiphonFunds,
       crackCred: ItemInboxApp._onCrackCred,
+      contentUnlock: ItemInboxApp._onContentUnlock,
+      camAction: ItemInboxApp._onCamAction,
+      analyzeFile: ItemInboxApp._onAnalyzeFile,
+      schemLockToggle: ItemInboxApp._onSchemLockToggle,
+      deployMalware: ItemInboxApp._onDeployMalware,
+      addSenderContact: ItemInboxApp._onAddSenderContact,
+      composeToSender: ItemInboxApp._onComposeToSender,
       credToggleSecret: ItemInboxApp._onCredToggleSecret,
       syslogFilter: ItemInboxApp._onSyslogFilter,
+      galleryView: ItemInboxApp._onGalleryView,
       goToScene: ItemInboxApp._onGoToScene,
       editEntry: ItemInboxApp._onEditEntry,
       switchNetwork: ItemInboxApp._onSwitchNetwork,
@@ -156,7 +166,7 @@ export class ItemInboxApp extends BaseApplication {
 
     const config = this.dataShardService?.getConfig(this.item) ?? DEFAULTS.SHARD_CONFIG;
     const state = this.dataShardService?.getState(this.item) ?? DEFAULTS.SHARD_STATE;
-    const actor = game.user?.character;
+    const actor = resolveOperator();
     const actorId = actor?.id;
     const session = actorId
       ? (this.dataShardService?.getActorSession(this.item, actorId) ?? DEFAULTS.ACTOR_SESSION)
@@ -201,6 +211,17 @@ export class ItemInboxApp extends BaseApplication {
     }
 
     // Enrich entries with display data
+    // Player-contact email cache for the sender chips (async repo read, done
+    // once per render so _enrichEntry stays synchronous).
+    this._playerContactEmails = new Set();
+    const viewerChar = resolveOperator();
+    if (viewerChar && game.nightcity?.contactRepository) {
+      try {
+        ((await game.nightcity.contactRepository.getContacts(viewerChar.id)) || [])
+          .forEach(c => c.email && this._playerContactEmails.add(c.email.toLowerCase()));
+      } catch (err) { log.debug(`Contact cache skipped: ${err.message}`); }
+    }
+
     const enrichedEntries = visibleEntries.map(entry => this._enrichEntry(entry));
 
     // Index strip chips
@@ -499,7 +520,28 @@ export class ItemInboxApp extends BaseApplication {
    * @private
    */
   _enrichEntry(entry) {
-    return enrichContent(entry, { isGM: isGM(), interactive: true });
+    const enriched = enrichContent(entry, { isGM: isGM(), interactive: true });
+    // ENVELOPE (#37) — a FILE entry renders a filesystem header instead of the
+    // sender row: no avatar, no add-to-contacts, no reply (its owner is a NODE,
+    // not an Agent). A burned/exfiltrated file keeps its file envelope.
+    const env = resolveEnvelope(entry);
+    enriched.isFile = env.isFile;
+    enriched.file = env.isFile ? env : null;
+    if (env.isFile) return enriched;
+    // Entry-header sender: From resolved against the GM Master List at read
+    // time (portrait/name), plus add-to-contacts and reply-via-Agent chips
+    // for the viewing player's character.
+    const sender = resolveEntrySender(entry.from);
+    if (sender) {
+      const viewerChar = resolveOperator();
+      const inContacts = !!sender.email && !!this._playerContactEmails?.has(sender.email.toLowerCase());
+      // Send-only system addresses can never be added or replied to.
+      sender.canAdd = !!sender.email && !!viewerChar && !inContacts && !sender.sendOnly;
+      sender.canReply = !!sender.email && !!viewerChar && !sender.sendOnly &&
+        !!game.nightcity?.contactRepository?.verifyContact?.(sender.email)?.verified;
+      enriched.sender = sender;
+    }
+    return enriched;
   }
 
   /** @private */
@@ -673,7 +715,7 @@ export class ItemInboxApp extends BaseApplication {
 
   static async _onAttemptBreach(event, target) {
     if (!this.item) return;
-    const actor = game.user?.character;
+    const actor = resolveOperator();
     if (!actor) {
       ui.notifications.warn('NCM | No character assigned. Set your character in User Configuration.');
       return;
@@ -766,7 +808,7 @@ export class ItemInboxApp extends BaseApplication {
    */
   static async _onHackLayer(event, target) {
     if (!this.item) return;
-    const actor = game.user?.character;
+    const actor = resolveOperator();
     if (!actor) {
       ui.notifications.warn('NCM | No character assigned.');
       return;
@@ -948,7 +990,7 @@ export class ItemInboxApp extends BaseApplication {
 
   static async _onSearchInventory(event, target) {
     if (!this.item) return;
-    const actor = game.user?.character;
+    const actor = resolveOperator();
     if (!actor) {
       ui.notifications.warn('NCM | No character assigned.');
       return;
@@ -1058,7 +1100,7 @@ export class ItemInboxApp extends BaseApplication {
 
   static async _onConfirmPresentToken(event, target) {
     if (!this.item || !this._selectedTokenItem) return;
-    const actor = game.user?.character;
+    const actor = resolveOperator();
     if (!actor) return;
 
     const config = this.dataShardService?.getConfig(this.item);
@@ -1171,7 +1213,7 @@ export class ItemInboxApp extends BaseApplication {
 
   static async _onSubmitLogin(event, target) {
     if (!this.item) return;
-    const actor = game.user?.character;
+    const actor = resolveOperator();
     if (!actor) {
       ui.notifications.warn('NCM | No character assigned.');
       return;
@@ -1276,7 +1318,7 @@ export class ItemInboxApp extends BaseApplication {
       ?? target.closest('[data-message-id]')?.dataset.messageId;
     if (!messageId || !this.item) return;
 
-    const actor = game.user?.character;
+    const actor = resolveOperator();
     if (!actor) {
       ui.notifications.warn('NCM | No character assigned.');
       return;
@@ -1672,7 +1714,7 @@ export class ItemInboxApp extends BaseApplication {
 
   static async _onClaimEddies(event, target) {
     if (!this.item) return;
-    const actor = game.user?.character;
+    const actor = resolveOperator();
     if (!actor) {
       ui.notifications.warn('NCM | No character assigned.');
       return;
@@ -1695,11 +1737,14 @@ export class ItemInboxApp extends BaseApplication {
       // ─── Transfer animation ───
       const amount = result.amount ?? 0;
 
-      // Animate the claim button to "processing" state
+      // Show "transferring" feedback on the CLAIM button until the splash lands.
+      // (The eddies card was redesigned to `.ncm-ct-eddies*` — the old
+      // `--processing` style is gone; the spinner label carries the beat, and
+      // the re-render's `.is-fresh` transfer animation finishes it.)
       const btn = target.closest('[data-action="claimEddies"]') || target;
       if (btn) {
-        btn.classList.add('ncm-eddies-claim-btn--processing');
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Transferring...';
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Transferring…';
       }
 
       await new Promise(r => setTimeout(r, 600));
@@ -1729,13 +1774,13 @@ export class ItemInboxApp extends BaseApplication {
   /** Banking content — siphon funds (shared flow; see SiphonFlow.js). */
   static async _onSiphonFunds(event, target) {
     if (!this.item) return;
-    const actor = game.user?.character;
+    const actor = resolveOperator();
     if (!actor) { ui.notifications.warn('NCM | No character assigned.'); return; }
     const entryId = target.closest('[data-entry-id]')?.dataset.entryId;
     if (!entryId) return;
     const entry = (this.dataShardService?.getShardMessages(this.item) || []).find(m => m.id === entryId);
     if (!entry || entry.contentType !== 'banking') return;
-    await runSiphon({ actor, raw: entry.contentData, itemUuid: this.item.uuid, messageId: entryId });
+    await runSiphon({ actor, raw: entry.contentData, itemUuid: this.item.uuid, messageId: entryId, host: this.element });
     this.render(true);
   }
 
@@ -1748,9 +1793,116 @@ export class ItemInboxApp extends BaseApplication {
     if (!entryId || Number.isNaN(idx)) return;
     const entry = (this.dataShardService?.getShardMessages(this.item) || []).find(m => m.id === entryId);
     if (!entry || entry.contentType !== 'credentials') return;
-    const actor = game.user?.character;
-    const ok = await runCrack({ actor, raw: entry.contentData, entryIndex: idx, messageId: entryId, force: isGM() && !actor });
+    const actor = resolveOperator();
+    const ok = await runCrack({ actor, raw: entry.contentData, entryIndex: idx, messageId: entryId, force: isGM() && !actor, host: this.element });
     if (ok) this.render(true);
+  }
+
+  /** Sender chip — add the resolved From to the viewing player's contacts. */
+  static async _onAddSenderContact(event, target) {
+    const entryId = target.closest('[data-entry-id]')?.dataset.entryId;
+    const entry = (this.dataShardService?.getShardMessages(this.item) || []).find(m => m.id === entryId);
+    const sender = resolveEntrySender(entry?.from);
+    const viewerChar = resolveOperator();
+    const repo = game.nightcity?.contactRepository;
+    if (!sender?.email || !viewerChar || !repo) return;
+    try {
+      const existing = (await repo.getContacts(viewerChar.id)) || [];
+      if (existing.some(c => (c.email || '').toLowerCase() === sender.email.toLowerCase())) {
+        ui.notifications.info(`NCM | ${sender.name} is already in your contacts.`);
+        return;
+      }
+      // Carry portrait + linked actor + master-contact id (the PortraitService
+      // contact-creation rule — name+email alone yields initials).
+      await repo.addContact(viewerChar.id, {
+        name: sender.name, email: sender.email,
+        actorId: sender.linkedActorId || null,
+        portrait: sender.portrait || null,
+        masterContactId: sender.contactId || null,
+      });
+      ui.notifications.info(`NCM | Added ${sender.name} to your contacts.`);
+      this.render(true);
+    } catch (err) { log.error(`Add sender to contacts failed: ${err.message}`); }
+  }
+
+  /** Sender chip — compose a message to the resolved From via the Agent. */
+  static _onComposeToSender(event, target) {
+    const entryId = target.closest('[data-entry-id]')?.dataset.entryId;
+    const entry = (this.dataShardService?.getShardMessages(this.item) || []).find(m => m.id === entryId);
+    const sender = resolveEntrySender(entry?.from);
+    if (!sender?.email) return;
+    game.nightcity?.composeMessage?.({ to: sender.email, subject: entry.subject ? `Re: ${entry.subject}` : '' });
+  }
+
+  /** Locked sub-content — decrypt a gallery frame / declassify redactions (shared flow). */
+  static async _onContentUnlock(event, target) {
+    if (!this.item) return;
+    const entryId = target.closest('[data-entry-id]')?.dataset.entryId;
+    const kind = target.dataset.unlockKind;
+    if (!entryId || !kind) return;
+    const entry = (this.dataShardService?.getShardMessages(this.item) || []).find(m => m.id === entryId);
+    if (!entry) return;
+    const actor = resolveOperator();
+    const ok = await runContentUnlock({
+      actor, raw: entry.contentData, kind, index: Number(target.dataset.index ?? -1),
+      messageId: entryId, force: isGM() && (!actor || target.dataset.unlockForce === '1'), host: this.element,
+    });
+    if (ok) this.render(true);
+  }
+
+  /** Camera feed — LOOP / CUT / RESTORE / TAKE CONTROL (shared flow). */
+  static async _onCamAction(event, target) {
+    if (!this.item) return;
+    const entryId = target.closest('[data-entry-id]')?.dataset.entryId;
+    const act = target.dataset.camAct;
+    if (!entryId || !act) return;
+    const entry = (this.dataShardService?.getShardMessages(this.item) || []).find(m => m.id === entryId);
+    if (!entry) return;
+    const ok = await runCamAction({
+      actor: resolveOperator(), raw: entry.contentData, act,
+      index: Number(target.dataset.index ?? -1), messageId: entryId, host: this.element,
+    });
+    // TAKE CONTROL swaps the open monitor's stage in place (ncm-ptz-granted);
+    // the persisted acts close the lightbox before re-rendering so its
+    // document listeners are cleaned.
+    if (ok && act !== 'control') { closeGalleryLightbox(this.element); this.render(true); }
+  }
+
+  /**
+   * ANALYZE — the player-facing file scan (offered on every typed entry so its
+   * presence can't tell them which one is a trojan).
+   */
+  static async _onAnalyzeFile(event, target) {
+    if (!this.item) return;
+    const entryId = target.closest('[data-entry-id]')?.dataset.entryId;
+    const entry = (this.dataShardService?.getShardMessages(this.item) || []).find(m => m.id === entryId);
+    if (!entry) { log.warn(`Shard analyze: entry lookup failed (id=${entryId}).`); return; }
+    const ok = await runAnalyze({
+      actor: resolveOperator(), raw: entry.contentData, contentType: entry.contentType,
+      messageId: entryId, host: this.element,
+    });
+    if (ok) this.render(true);
+  }
+
+  /** Schematic — GM per-point lock toggle from the legend (no roll). */
+  static async _onSchemLockToggle(event, target) {
+    if (!this.item) return;
+    const entryId = target.closest('[data-entry-id]')?.dataset.entryId;
+    const entry = (this.dataShardService?.getShardMessages(this.item) || []).find(m => m.id === entryId);
+    if (!entry) return;
+    const ok = await toggleSchematicLock({ raw: entry.contentData, index: Number(target.dataset.index ?? -1), messageId: entryId });
+    if (ok) this.render(true);
+  }
+
+  /** Malware — DEPLOY (normal = mark deployed + GM adjudicates; honeypot = trace). */
+  static async _onDeployMalware(event, target) {
+    if (!this.item) return;
+    const entryId = target.closest('[data-entry-id]')?.dataset.entryId;
+    const entry = (this.dataShardService?.getShardMessages(this.item) || []).find(m => m.id === entryId);
+    if (!entry || entry.contentType !== 'malware') return;
+    const actor = resolveOperator();
+    const res = await runMalwareDeploy({ actor, raw: entry.contentData, messageId: entryId, sourceLabel: this.item.name, host: this.element });
+    if (res) this.render(true);
   }
 
   /** Credentials — show/hide a secret (client-side only). */
@@ -1758,6 +1910,9 @@ export class ItemInboxApp extends BaseApplication {
 
   /** Syslog — severity filter chips (client-side only). */
   static _onSyslogFilter(event, target) { applySyslogFilter(target); }
+
+  /** Gallery — enlarge a thumbnail (immersive NCM lightbox). */
+  static _onGalleryView(event, target) { openGalleryImage(target, { host: this.element }); }
 
   static _onScrollToEntry(event, target) {
     const entryId = target.closest('[data-entry-id]')?.dataset.entryId;
@@ -1844,49 +1999,36 @@ export class ItemInboxApp extends BaseApplication {
     }
   }
 
+  /** Payload — RUN (utility program: gate roll → module-native effect + macro). */
   static async _onExecutePayload(event, target) {
     if (!this.item) return;
     const entryId = target.closest('[data-entry-id]')?.dataset.entryId;
-    if (!entryId) return;
+    const entry = (this.dataShardService?.getShardMessages(this.item) || []).find(m => m.id === entryId);
+    if (!entry || entry.contentType !== 'payload') return;
+    const actor = resolveOperator();
+    const res = await runPayloadExecute({ actor, raw: entry.contentData, messageId: entryId, sourceLabel: this.item.name, host: this.element, force: isGM() && !actor });
+    if (res) this.render(true);
+  }
 
-    const confirmed = await Dialog.confirm({
-      title: 'Execute Payload',
-      content: '<p style="color:#ff0033;"><strong>WARNING:</strong> Executing this program may have consequences. Proceed?</p>',
-    });
-    if (!confirmed) return;
+  /** Payload — KILL a running timed effect early. */
+  static async _onPayloadKill(event, target) {
+    if (!this.item) return;
+    const entryId = target.closest('[data-entry-id]')?.dataset.entryId;
+    const entry = (this.dataShardService?.getShardMessages(this.item) || []).find(m => m.id === entryId);
+    if (!entry) return;
+    const res = await runPayloadKill({ actor: resolveOperator(), raw: entry.contentData, messageId: entryId, host: this.element });
+    if (res) this.render(true);
+  }
 
-    // Mark payload as executed on the journal page
-    const journal = this.dataShardService?._getLinkedJournal(this.item);
-    if (!journal) return;
-    const page = journal.pages.find(p => p.flags?.[MODULE_ID]?.messageId === entryId);
-    if (!page) return;
-
-    const actor = game.user?.character;
-    await page.update({
-      [`flags.${MODULE_ID}.contentData.executed`]: true,
-      [`flags.${MODULE_ID}.contentData.executedBy`]: actor?.id ?? null,
-      [`flags.${MODULE_ID}.contentData.executedAt`]: new Date().toISOString(),
-    });
-
-    // Chat notification via template
-    const payloadContent = await renderTemplate(
-      `modules/${MODULE_ID}/templates/chat/payload-executed.hbs`,
-      {
-        programName: page.flags?.[MODULE_ID]?.contentData?.name ?? 'Unknown Program',
-        actorName: actor?.name ?? 'Unknown',
-        timestamp: formatCyberDate(new Date().toISOString()),
-        shardName: this.item?.name ?? null,
-        networkDisplay: game.nightcity?.networkService?.getCurrentNetworkName?.() || 'CITINET',
-      }
-    );
-
-    await ChatMessage.create({
-      content: payloadContent,
-      speaker: ChatMessage.getSpeaker({ alias: 'NCM System' }),
-    });
-
-    ui.notifications.warn('NCM | Payload executed.');
-    this.render();
+  /** Payload — SNIFF a suspected disguised file (roll to unmask). */
+  static async _onPayloadSniff(event, target) {
+    if (!this.item) return;
+    const entryId = target.closest('[data-entry-id]')?.dataset.entryId;
+    const entry = (this.dataShardService?.getShardMessages(this.item) || []).find(m => m.id === entryId);
+    if (!entry) return;
+    const actor = resolveOperator();
+    const ok = await runPayloadSniff({ actor, raw: entry.contentData, messageId: entryId, force: isGM(), host: this.element });
+    if (ok) this.render(true);
   }
 
   static _onGoToScene(event, target) {
@@ -1924,6 +2066,9 @@ export class ItemInboxApp extends BaseApplication {
       encryptionDC: flags.encryptionDC,
       contentData: flags.contentData ?? {},
       networkVisibility: flags.networkVisibility ?? {},
+      // Envelope (#37) — a shard holds files too; without this the composer
+      // would reset a FILE entry back to mail on every edit-save.
+      envelope: flags.envelope || 'mail', file: flags.file || null, exfil: flags.exfil || null,
     };
 
     import('./DataShardComposer.js').then(({ DataShardComposer }) => {
@@ -2087,7 +2232,7 @@ export class ItemInboxApp extends BaseApplication {
     // Compute attempts remaining from config
     const session = this.dataShardService?._getActorSession(
       this.dataShardService?._getState(this.item),
-      game.user?.character?.id
+      resolveOperator()?.id
     ) ?? {};
     const attemptsRemaining = Math.max(0, (config.maxHackAttempts || 3) - (session.hackAttempts || 0));
 

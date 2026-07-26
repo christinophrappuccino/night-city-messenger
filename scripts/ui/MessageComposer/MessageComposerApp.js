@@ -928,6 +928,13 @@ export class MessageComposerApp extends foundry.applications.api.HandlebarsAppli
       };
     });
 
+    // Send-only system addresses never appear in a player's recipient search
+    // (the service also hard-blocks the send — this just keeps the UI honest).
+    if (!game.user.isGM) {
+      const mcs = game.nightcity?.masterContactService;
+      results = results.filter(r => !r.email || !mcs?.isSendOnly?.(r.email));
+    }
+
     this._searchResults = results;
     this._selectedResultIndex = results.length > 0 ? 0 : -1;
     this._renderAutocomplete(query);

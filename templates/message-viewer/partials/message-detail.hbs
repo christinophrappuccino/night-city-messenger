@@ -319,6 +319,45 @@
 
     {{!-- Detail Header --}}
     <div class="ncm-viewer__detail-head">
+      {{#if message.isFile}}
+      {{!-- FILE (#37) — a downloaded/captured file has no sender and no
+            recipient, so From/To/avatar are meaningless here. It answers
+            filesystem questions instead: what it is, where it came off, who
+            owned it, how big. --}}
+      <div class="ncm-viewer__detail-head-top">
+        <div class="ncm-viewer__detail-avatar ncm-viewer__detail-avatar--file" data-ct-color="{{message.file.accent}}">
+          <i class="{{message.file.typeIcon}}"></i>
+        </div>
+        <div class="ncm-viewer__detail-info">
+          <div class="ncm-viewer__detail-sender-row">
+            <span class="ncm-viewer__detail-sender-name ncm-viewer__detail-filename">{{message.file.filename}}</span>
+            <span class="ncm-viewer__file-tag" data-ct-color="{{message.file.accent}}">{{message.file.typeLabel}}</span>
+            <span class="ncm-viewer__detail-time">{{message.formattedTime}}</span>
+          </div>
+          <div class="ncm-viewer__detail-to-summary">
+            <span class="ncm-viewer__detail-to-label">source</span>
+            <span class="ncm-viewer__detail-to-val">{{message.fileSource}}</span>
+            <button class="ncm-viewer__detail-expand" data-action="toggle-detail-grid">
+              <i class="fas fa-chevron-down"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="ncm-viewer__detail-grid ncm-viewer__detail-grid--collapsed">
+        <span class="ncm-viewer__detail-grid-label">Source</span>
+        <span class="ncm-viewer__detail-grid-val">{{message.fileSource}}</span>
+        {{#if message.file.owner}}
+          <span class="ncm-viewer__detail-grid-label">Owner</span>
+          <span class="ncm-viewer__detail-grid-val">{{message.file.owner}}</span>
+        {{/if}}
+        {{#if message.file.path}}
+          <span class="ncm-viewer__detail-grid-label">Path</span>
+          <span class="ncm-viewer__detail-grid-val">{{message.file.fullPath}}</span>
+        {{/if}}
+        <span class="ncm-viewer__detail-grid-label">Size</span>
+        <span class="ncm-viewer__detail-grid-val">{{message.file.size}}{{#if message.file.hasCount}} · {{message.file.countValue}} {{message.file.countLabel}}{{/if}}</span>
+      </div>
+      {{else}}
       <div class="ncm-viewer__detail-head-top">
         <div class="ncm-viewer__detail-avatar {{#if message.isAnonMasked}}ncm-viewer__avatar--anon{{/if}}"
              style="color: {{message.avatarColor}}; border-color: {{message.avatarColor}}">
@@ -338,10 +377,12 @@
             {{#if message.isAnonTraced}}<span class="ncm-anon-badge ncm-anon-badge--traced"><i class="fas fa-satellite-dish"></i> Traced</span>{{/if}}
             {{#unless message.isAnonMasked}}
             {{#unless message.senderIsContact}}
+            {{#unless message.senderSendOnly}}
               <button class="ncm-viewer__detail-add-contact" data-action="add-sender-contact"
                       data-email="{{message.from}}" data-name="{{message.fromDisplay}}">
                 <i class="fas fa-user-plus"></i> Add
               </button>
+            {{/unless}}
             {{/unless}}
             {{/unless}}
             <span class="ncm-viewer__detail-time">{{message.formattedTime}}</span>
@@ -369,6 +410,7 @@
              style="font-size: 9px; margin-right: 3px; opacity: 0.6;"></i>{{message.networkLabel}}
         </span>
       </div>
+      {{/if}}
       <div class="ncm-viewer__subject-strip
         {{~#if (eq message.priority 'critical')}} ncm-viewer__subject-strip--critical
         {{~else if (eq message.priority 'urgent')}} ncm-viewer__subject-strip--urgent
@@ -392,8 +434,8 @@
             </span>
           {{/if}}
           {{#if message.isRecovered}}
-            <span class="ncm-viewer__recovered-chip" title="Recovered from {{message.recoveredFrom}}">
-              <i class="fas fa-cloud-arrow-down"></i> RECOVERED{{#if message.recoveredFrom}} · {{message.recoveredFrom}}{{/if}}
+            <span class="ncm-viewer__recovered-chip" title="Pulled off {{message.recoveredFrom}}">
+              <i class="fas fa-cloud-arrow-down"></i> {{exfilFolderNameUpper}}{{#if message.recoveredFrom}} · {{message.recoveredFrom}}{{/if}}
             </span>
           {{/if}}
           {{#if message.threadInfo}}
@@ -597,7 +639,7 @@
         <button class="ncm-btn ncm-btn--danger ncm-btn--sm" data-action="delete-message"><i class="fas fa-trash"></i> Delete</button>
       {{else}}
         {{#if message.anonRepliesBlocked}}
-        <span class="ncm-viewer__detail-anon-noreply" data-tooltip="This anonymous sender can't be replied to."><i class="fas fa-reply-slash"></i> No Reply</span>
+        <span class="ncm-viewer__detail-anon-noreply" data-tooltip="{{#if message.senderSendOnly}}Automated system address — it does not accept replies.{{else}}This anonymous sender can't be replied to.{{/if}}"><i class="fas fa-reply-slash"></i> No Reply</span>
         {{else}}
         <button class="ncm-btn ncm-btn--primary ncm-btn--sm" data-action="reply-message"><i class="fas fa-reply"></i> Reply</button>
         {{/if}}
