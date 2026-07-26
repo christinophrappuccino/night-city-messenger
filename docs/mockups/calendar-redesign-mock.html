@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>NCM — Calendar Redesign Mockup (2026-07-13)</title>
+<style>
+  :root {
+    --p: #F65261; --s: #19f3f7; --a: #f7c948; --ok: #00ff41; --pp: #a855f7; --pink: #ff6ac1; --blue: #5b9bff;
+    --bg0: #0a0a12; --bg1: #12121a; --bg2: #1a1a2e; --bg3: #222236;
+    --t0: #ededf2; --t1: #b9b9cc; --t2: #7a7a92; --br: #2a2a45;
+    --mono: 'Consolas', monospace; --ui: 'Segoe UI', sans-serif;
+  }
+  body { margin: 0; background: #050508; color: var(--t0); font-family: var(--ui); padding: 18px 22px 60px; }
+  h1 { font-size: 15px; letter-spacing: 2px; color: var(--a); font-family: var(--mono); }
+  h2 { font-size: 12px; letter-spacing: 1.5px; color: var(--a); font-family: var(--mono); margin: 26px 0 8px; }
+  .note { font-size: 11.5px; color: var(--t2); max-width: 1000px; line-height: 1.55; margin-bottom: 14px; }
+  .note b { color: var(--t1); }
+  .row { display: flex; gap: 26px; align-items: flex-start; flex-wrap: wrap; }
+  .glyph-note { color: var(--t2); font-size: 10px; font-style: italic; }
+
+  /* ═══ VIEWER (shared frame) ═══ */
+  .vw { width: 440px; background: var(--bg1); border: 1px solid var(--br); border-radius: 8px; padding: 14px; }
+
+  /* header bar: view toggle + legend */
+  .cal-hd { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .cal-views { display: inline-flex; border: 1px solid var(--br); border-radius: 6px; overflow: hidden; }
+  .cal-vbtn { font: 700 9px var(--mono); letter-spacing: 1px; color: var(--t2); background: var(--bg0); padding: 4px 10px; cursor: pointer; border: 0; }
+  .cal-vbtn.on { color: #0a0a12; background: var(--a); }
+  .legend { display: flex; flex-wrap: wrap; gap: 12px; font: 9.5px var(--mono); color: var(--t2); }
+  .leg { display: inline-flex; align-items: center; gap: 5px; }
+  .leg .dot { width: 7px; height: 7px; border-radius: 50%; }
+
+  /* NEXT-EVENT hero strip */
+  .next { display: flex; align-items: center; gap: 12px; border: 1px solid rgba(247,201,72,.45); border-left: 3px solid var(--a); border-radius: 6px; background: linear-gradient(90deg, rgba(247,201,72,.10), transparent 70%); padding: 9px 12px; margin-bottom: 12px; box-shadow: 0 0 18px rgba(247,201,72,.10); }
+  .next-tag { font: 700 8px var(--mono); letter-spacing: 2px; color: var(--a); writing-mode: vertical-rl; transform: rotate(180deg); border-right: 1px solid rgba(247,201,72,.3); padding-right: 2px; }
+  .next-info { flex: 1; min-width: 0; }
+  .next-title { font-weight: 600; font-size: 13.5px; }
+  .next-meta { font: 9.5px var(--mono); color: var(--t2); margin-top: 3px; }
+  .next-count { text-align: right; }
+  .next-count b { display: block; font: 700 16px var(--mono); color: var(--a); }
+  .next-count span { font: 8px var(--mono); letter-spacing: 1.5px; color: var(--t2); }
+
+  /* rail */
+  .rail { position: relative; padding-left: 18px; }
+  .rail::before { content: ""; position: absolute; left: 5px; top: 6px; bottom: 6px; width: 2px; background: var(--br); }
+  .ev { position: relative; margin-bottom: 9px; }
+  .ev .node { position: absolute; left: -16px; top: 15px; width: 11px; height: 11px; border-radius: 50%; background: var(--c, var(--s)); box-shadow: 0 0 9px var(--c, var(--s)); border: 2px solid var(--bg1); }
+  .card { display: flex; gap: 12px; align-items: center; border: 1px solid var(--br); border-left: 3px solid var(--c, var(--s)); border-radius: 5px; padding: 9px 12px; background: rgba(255,255,255,.012); }
+  .ev.soon .card { box-shadow: 0 0 16px color-mix(in srgb, var(--c, var(--s)) 16%, transparent); }
+  .date { width: 46px; flex: 0 0 46px; text-align: center; border-right: 1px solid var(--br); padding-right: 10px; }
+  .date b { display: block; font: 700 20px var(--mono); line-height: 1; color: var(--c, var(--s)); }
+  .date span { display: block; font: 8px var(--mono); letter-spacing: 2px; color: var(--t2); margin-top: 2px; }
+  .info { flex: 1; min-width: 0; }
+  .title { font-weight: 600; font-size: 13.5px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 5px; }
+  .chip { font: 9px var(--mono); border: 1px solid var(--br); border-radius: 3px; padding: 1px 6px; color: var(--t1); }
+  .urg { height: 3px; border-radius: 2px; background: var(--br); margin-top: 7px; overflow: hidden; }
+  .urg i { display: block; height: 100%; background: var(--c, var(--s)); }
+  .when { font: 700 9.5px var(--mono); color: var(--c, var(--s)); align-self: flex-start; white-space: nowrap; }
+  .scene-btn { font: 9px var(--mono); color: var(--s); border: 1px solid rgba(25,243,247,.4); border-radius: 4px; padding: 2px 7px; cursor: pointer; background: rgba(25,243,247,.06); margin-top: 6px; display: inline-block; }
+  .gm-chip { font: 700 8px var(--mono); letter-spacing: 1px; color: var(--a); border: 1px solid rgba(247,201,72,.5); border-radius: 3px; padding: 1px 5px; margin-left: 6px; }
+
+  /* locked event (player fog) */
+  .ev.locked .card { border-style: dashed; border-left-style: solid; background: repeating-linear-gradient(45deg, rgba(255,255,255,.015) 0 8px, transparent 8px 16px); }
+  .ev.locked .node { background: #33333f; box-shadow: none; border-color: var(--t2); }
+  .lock-title { font: 700 11px var(--mono); letter-spacing: 2px; color: var(--t2); }
+  .decrypt { font: 700 9px var(--mono); letter-spacing: 1px; color: var(--a); background: rgba(247,201,72,.08); border: 1px solid rgba(247,201,72,.5); border-radius: 4px; padding: 3px 9px; cursor: pointer; margin-top: 6px; display: inline-block; }
+
+  /* past section */
+  .past-toggle { display: flex; align-items: center; gap: 8px; font: 700 9px var(--mono); letter-spacing: 1.5px; color: var(--t2); cursor: pointer; margin: 10px 0 8px; }
+  .past-toggle::before, .past-toggle::after { content: ""; flex: 1; height: 1px; background: var(--br); }
+  .ev.past { opacity: .45; }
+  .ev.past .when { color: var(--t2); }
+
+  /* ═══ MONTH GRID ═══ */
+  .mo-hd { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .mo-title { font: 700 12px var(--mono); letter-spacing: 2px; color: var(--a); }
+  .mo-nav { display: flex; gap: 4px; }
+  .mo-nav button { font: 10px var(--mono); color: var(--t1); background: var(--bg0); border: 1px solid var(--br); border-radius: 4px; width: 22px; height: 20px; cursor: pointer; }
+  .grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+  .dow { font: 700 8px var(--mono); letter-spacing: 1px; color: var(--t2); text-align: center; padding: 3px 0; }
+  .day { min-height: 44px; border: 1px solid var(--br); border-radius: 4px; background: var(--bg0); padding: 3px 4px; position: relative; }
+  .day.out { opacity: .25; }
+  .day .n { font: 9px var(--mono); color: var(--t2); }
+  .day.today { border-color: var(--a); box-shadow: inset 0 0 8px rgba(247,201,72,.12); }
+  .day.today .n { color: var(--a); font-weight: 700; }
+  .pips { display: flex; flex-direction: column; gap: 2px; margin-top: 3px; }
+  .pip { font: 8px var(--mono); color: var(--t0); border-left: 2px solid var(--c, var(--s)); background: color-mix(in srgb, var(--c, var(--s)) 14%, transparent); border-radius: 2px; padding: 1px 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pip.locked { color: var(--t2); border-left-color: var(--t2); background: rgba(255,255,255,.04); font-style: italic; }
+
+  /* ═══ COMPOSER ═══ */
+  .ed { width: 470px; background: var(--bg1); border: 1px solid var(--br); border-radius: 8px; padding: 14px; }
+  .sec-lbl { font: 700 9px var(--mono); letter-spacing: 1.5px; color: var(--t2); margin: 0 0 6px; }
+
+  /* category manager strip */
+  .cats { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 12px; align-items: center; }
+  .cat { display: inline-flex; align-items: center; gap: 6px; font: 10px var(--mono); color: var(--t0); background: var(--bg0); border: 1px solid var(--br); border-radius: 12px; padding: 3px 9px 3px 4px; }
+  .cat .sw { width: 13px; height: 13px; border-radius: 50%; cursor: pointer; border: 1px solid rgba(255,255,255,.35); }
+  .cat .x { color: var(--t2); cursor: pointer; font-size: 9px; margin-left: 2px; }
+  .cat-new { font: 10px var(--mono); color: var(--t2); background: transparent; border: 1px dashed var(--br); border-radius: 12px; padding: 3px 10px; cursor: pointer; }
+  .sw-pop { display: inline-flex; gap: 4px; background: var(--bg2); border: 1px solid var(--br); border-radius: 6px; padding: 4px 6px; margin-left: 6px; }
+  .sw-pop i { width: 13px; height: 13px; border-radius: 50%; cursor: pointer; display: inline-block; }
+
+  /* event editor card */
+  .ecard { position: relative; border: 1px solid var(--br); border-left: 3px solid var(--c, var(--s)); border-radius: 6px; background: rgba(255,255,255,.015); padding: 9px 10px 9px 12px; margin-bottom: 10px; display: flex; gap: 11px; }
+  .ecard.past { opacity: .55; }
+  .ecard .date { padding-top: 2px; }
+  .ebody { flex: 1; min-width: 0; }
+  .erow { display: flex; gap: 6px; margin-bottom: 6px; }
+  .erow input, .erow select { background: var(--bg0); border: 1px solid var(--br); border-radius: 5px; color: var(--t0); font: 11px var(--ui); padding: 4px 7px; box-sizing: border-box; min-width: 0; }
+  .erow .grow { flex: 1; }
+  .whenchip { display: inline-flex; align-items: center; gap: 6px; font: 10px var(--mono); color: var(--s); background: var(--bg0); border: 1px solid rgba(25,243,247,.4); border-radius: 5px; padding: 4px 9px; cursor: pointer; white-space: nowrap; }
+  .whenchip span { color: var(--t2); }
+  /* per-card category quick-pick */
+  .epick { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; align-items: center; }
+  .epick .lbl { font: 8px var(--mono); letter-spacing: 1px; color: var(--t2); margin-right: 2px; }
+  .pk { font: 9px var(--mono); color: var(--t1); background: var(--bg0); border: 1px solid var(--br); border-radius: 10px; padding: 2px 8px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
+  .pk .dot { width: 6px; height: 6px; border-radius: 50%; }
+  .pk.on { border-color: var(--c, var(--s)); color: var(--c, var(--s)); background: color-mix(in srgb, var(--c, var(--s)) 10%, transparent); }
+  /* footer toggles */
+  .efoot { display: flex; gap: 5px; align-items: center; margin-top: 2px; }
+  .etool { font: 10px var(--mono); color: var(--t2); background: var(--bg0); border: 1px solid var(--br); border-radius: 4px; padding: 3px 7px; cursor: pointer; }
+  .etool.on { color: var(--a); border-color: rgba(247,201,72,.5); }
+  .etool.del { color: var(--p); margin-left: auto; }
+  .lockrow { display: flex; gap: 6px; align-items: center; margin-top: 6px; padding: 6px 8px; border: 1px dashed rgba(247,201,72,.35); border-radius: 5px; background: rgba(247,201,72,.04); }
+  .lockrow label { font: 8px var(--mono); letter-spacing: 1px; color: var(--a); }
+  .lockrow select, .lockrow input { background: var(--bg0); border: 1px solid var(--br); border-radius: 4px; color: var(--t0); font: 10px var(--ui); padding: 3px 5px; }
+  .add-ev { width: 100%; font: 700 10px var(--mono); letter-spacing: 1px; color: var(--s); background: rgba(25,243,247,.05); border: 1px dashed rgba(25,243,247,.4); border-radius: 6px; padding: 7px; cursor: pointer; }
+  .ed-hd { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .defview { display: inline-flex; align-items: center; gap: 6px; font: 9px var(--mono); color: var(--t2); }
+</style>
+</head>
+<body>
+
+<h1>▍NCM — CALENDAR REDESIGN (#34)</h1>
+<p class="note">
+  Scope (locked): <b>unified When picker</b> (one CyberTimePicker sets date+time as full ISO — free-text time box removed; countdown becomes time-aware, rail auto-sorts chronologically; legacy date+time entries still read) ·
+  <b>category chips + explicit colors</b> (typo-proof quick-pick, per-category swatch override; auto-cycle only for untouched categories) ·
+  <b>editor cards mirror the render</b> (day/month block, live category color edge, past dimming) ·
+  <b>NEXT-EVENT strip + past collapse</b> · <b>locked events</b> (player fog + DECRYPT roll, per-event skill/DV beat vault-level) ·
+  <b>per-event scene link</b> (GM Go-to-Scene, schematic precedent) · <b>month-grid view toggle</b> (client-side, authored default view).
+  <span class="glyph-note">Mock uses unicode glyphs — real build uses FA icons per the standing rule.</span>
+</p>
+
+<div class="row">
+
+  <!-- ═══════════ VIEWER — RAIL VIEW ═══════════ -->
+  <div>
+    <h2>VIEWER — TIMELINE VIEW (default)</h2>
+    <div class="vw">
+      <div class="cal-hd">
+        <div class="cal-views">
+          <button class="cal-vbtn on">▤ TIMELINE</button>
+          <button class="cal-vbtn">▦ MONTH</button>
+        </div>
+        <div class="legend">
+          <span class="leg"><span class="dot" style="background:var(--a)"></span>ops</span>
+          <span class="leg"><span class="dot" style="background:var(--s)"></span>social</span>
+          <span class="leg"><span class="dot" style="background:var(--pp)"></span>medical</span>
+        </div>
+      </div>
+
+      <!-- NEXT-EVENT hero strip -->
+      <div class="next">
+        <span class="next-tag">NEXT</span>
+        <div class="next-info">
+          <div class="next-title">Meet Rogue — Afterlife back room</div>
+          <div class="next-meta">JUL 14 · 21:30 · Afterlife, Little China</div>
+        </div>
+        <div class="next-count"><b>in 1d 4h</b><span>COUNTDOWN</span></div>
+      </div>
+
+      <div class="rail">
+        <!-- soon event, time-aware countdown -->
+        <div class="ev soon" style="--c:var(--a)">
+          <span class="node"></span>
+          <div class="card">
+            <div class="date"><b>14</b><span>JUL</span></div>
+            <div class="info">
+              <div class="title">Meet Rogue — Afterlife back room</div>
+              <div class="chips"><span class="chip">◔ 21:30</span><span class="chip">◈ Afterlife</span><span class="chip">◉ Rogue, Weyland</span></div>
+              <div class="urg"><i style="width:82%"></i></div>
+            </div>
+            <span class="when">in 1d 4h</span>
+          </div>
+        </div>
+
+        <!-- event with GM scene link -->
+        <div class="ev" style="--c:var(--s)">
+          <span class="node"></span>
+          <div class="card">
+            <div class="date"><b>16</b><span>JUL</span></div>
+            <div class="info">
+              <div class="title">Chrome party @ Totentanz <span class="gm-chip">SCENE ⟶</span></div>
+              <div class="chips"><span class="chip">◔ 23:00</span><span class="chip">◈ Totentanz, Watson</span></div>
+              <span class="scene-btn">⛶ GO TO SCENE (GM)</span>
+            </div>
+            <span class="when">in 3d 7h</span>
+          </div>
+        </div>
+
+        <!-- LOCKED event — what a PLAYER sees -->
+        <div class="ev locked" style="--c:#33333f">
+          <span class="node"></span>
+          <div class="card">
+            <div class="date"><b>??</b><span>···</span></div>
+            <div class="info">
+              <div class="lock-title">▩ ENCRYPTED ENTRY</div>
+              <div class="chips"><span class="chip">date · location · attendees withheld</span></div>
+              <span class="decrypt">⛨ DECRYPT — Cryptography DV 15</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- past section, collapsed by default -->
+        <div class="past-toggle">▸ SHOW PAST (3)</div>
+        <div class="ev past" style="--c:var(--pp)">
+          <span class="node"></span>
+          <div class="card">
+            <div class="date"><b>08</b><span>JUL</span></div>
+            <div class="info">
+              <div class="title">Ripperdoc follow-up — implant check</div>
+              <div class="chips"><span class="chip">◔ 10:00</span><span class="chip">◈ Vik's clinic</span></div>
+            </div>
+            <span class="when">5d ago</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="note" style="width:440px">
+      <b>NEXT strip</b> = nearest upcoming event (hidden when none, or when it's the locked one a player can't read — then the next readable one is used).
+      <b>Locked event</b>: player sees fog — date block masked (<b>??</b>), title/chips/scene stripped from the DOM (avlog pattern), one DECRYPT roll reveals that event.
+      GM sees the real card + amber LOCKED chip. <b>Past</b> events collapse behind the divider toggle (client-side, like the syslog filter); count in the label.
+      Scene button is GM-only.
+    </p>
+  </div>
+
+  <!-- ═══════════ VIEWER — MONTH VIEW ═══════════ -->
+  <div>
+    <h2>VIEWER — MONTH VIEW (toggle)</h2>
+    <div class="vw">
+      <div class="cal-hd">
+        <div class="cal-views">
+          <button class="cal-vbtn">▤ TIMELINE</button>
+          <button class="cal-vbtn on">▦ MONTH</button>
+        </div>
+        <div class="mo-nav"><button>‹</button><button>›</button></div>
+      </div>
+      <div class="mo-hd"><span class="mo-title">JULY 2077</span></div>
+      <div class="grid">
+        <div class="dow">MO</div><div class="dow">TU</div><div class="dow">WE</div><div class="dow">TH</div><div class="dow">FR</div><div class="dow">SA</div><div class="dow">SU</div>
+        <div class="day out"><span class="n">29</span></div>
+        <div class="day out"><span class="n">30</span></div>
+        <div class="day"><span class="n">1</span></div>
+        <div class="day"><span class="n">2</span></div>
+        <div class="day"><span class="n">3</span></div>
+        <div class="day"><span class="n">4</span></div>
+        <div class="day"><span class="n">5</span></div>
+        <div class="day"><span class="n">6</span></div>
+        <div class="day"><span class="n">7</span></div>
+        <div class="day"><span class="n">8</span><div class="pips"><div class="pip" style="--c:var(--pp)">Ripperdoc follow-up</div></div></div>
+        <div class="day"><span class="n">9</span></div>
+        <div class="day"><span class="n">10</span></div>
+        <div class="day"><span class="n">11</span></div>
+        <div class="day"><span class="n">12</span></div>
+        <div class="day today"><span class="n">13</span></div>
+        <div class="day"><span class="n">14</span><div class="pips"><div class="pip" style="--c:var(--a)">Meet Rogue</div></div></div>
+        <div class="day"><span class="n">15</span></div>
+        <div class="day"><span class="n">16</span><div class="pips"><div class="pip" style="--c:var(--s)">Chrome party</div><div class="pip locked">▩ encrypted</div></div></div>
+        <div class="day"><span class="n">17</span></div>
+        <div class="day"><span class="n">18</span></div>
+        <div class="day"><span class="n">19</span></div>
+        <div class="day"><span class="n">20</span></div>
+        <div class="day"><span class="n">21</span></div>
+        <div class="day"><span class="n">22</span></div>
+        <div class="day"><span class="n">23</span></div>
+        <div class="day"><span class="n">24</span></div>
+        <div class="day"><span class="n">25</span></div>
+        <div class="day"><span class="n">26</span></div>
+        <div class="day"><span class="n">27</span></div>
+        <div class="day"><span class="n">28</span></div>
+        <div class="day"><span class="n">29</span></div>
+        <div class="day"><span class="n">30</span></div>
+        <div class="day"><span class="n">31</span></div>
+        <div class="day out"><span class="n">1</span></div>
+        <div class="day out"><span class="n">2</span></div>
+      </div>
+    </div>
+    <p class="note" style="width:440px">
+      Focus month = month of the next upcoming event (else the latest event, else today). <b>‹ ›</b> steps months client-side (only months with events + current).
+      Event pips carry the category color; clicking a pip jumps back to TIMELINE scrolled to that event. A <b>locked</b> event's date is withheld from players,
+      so its pip does NOT appear on their grid at all — the "▩ encrypted" pip shown on the 16th is the <b>GM'S view</b>. Today gets the gold ring.
+      The toggle + month nav are display-only state (no persistence); the composer picks the <b>default view</b>.
+    </p>
+  </div>
+
+  <!-- ═══════════ COMPOSER ═══════════ -->
+  <div>
+    <h2>COMPOSER — CATEGORY STRIP + EVENT CARDS</h2>
+    <div class="ed">
+      <div class="ed-hd">
+        <div class="sec-lbl">CATEGORIES</div>
+        <span class="defview">DEFAULT VIEW
+          <span class="cal-views"><button class="cal-vbtn on">▤</button><button class="cal-vbtn">▦</button></span>
+        </span>
+      </div>
+      <div class="cats">
+        <span class="cat"><span class="sw" style="background:var(--a)"></span>ops<span class="x">✕</span></span>
+        <span class="cat"><span class="sw" style="background:var(--s)"></span>social<span class="x">✕</span></span>
+        <span class="cat"><span class="sw" style="background:var(--pp)"></span>medical<span class="x">✕</span></span>
+        <button class="cat-new">+ category</button>
+        <span class="sw-pop">
+          <i style="background:var(--ok)"></i><i style="background:var(--a)"></i><i style="background:var(--s)"></i><i style="background:var(--p)"></i><i style="background:#ffb020"></i><i style="background:var(--pp)"></i><i style="background:var(--blue)"></i><i style="background:var(--pink)"></i><i style="background:#7a7a92"></i>
+        </span>
+      </div>
+
+      <div class="sec-lbl">EVENTS — auto-sorted by date</div>
+
+      <!-- event card: mirrors the render -->
+      <div class="ecard" style="--c:var(--a)">
+        <div class="date"><b>14</b><span>JUL</span></div>
+        <div class="ebody">
+          <div class="erow">
+            <span class="whenchip">▦ JUL 14, 2077 · 21:30 <span>▾</span></span>
+            <input class="grow" value="Meet Rogue — Afterlife back room">
+          </div>
+          <div class="epick">
+            <span class="lbl">CAT</span>
+            <span class="pk on" style="--c:var(--a)"><span class="dot" style="background:var(--a)"></span>ops</span>
+            <span class="pk"><span class="dot" style="background:var(--s)"></span>social</span>
+            <span class="pk"><span class="dot" style="background:var(--pp)"></span>medical</span>
+          </div>
+          <div class="erow">
+            <input class="grow" placeholder="where" value="Afterlife, Little China">
+            <input style="width:120px" placeholder="who" value="Rogue, Weyland">
+          </div>
+          <div class="efoot">
+            <button class="etool" title="Lock — players must decrypt">🔒</button>
+            <button class="etool" title="Link a scene">⛶ scene</button>
+            <button class="etool del">✕</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- locked event card, lock row open + scene linked -->
+      <div class="ecard" style="--c:var(--s)">
+        <div class="date"><b>16</b><span>JUL</span></div>
+        <div class="ebody">
+          <div class="erow">
+            <span class="whenchip">▦ JUL 16, 2077 · 23:00 <span>▾</span></span>
+            <input class="grow" value="Chrome party @ Totentanz">
+          </div>
+          <div class="epick">
+            <span class="lbl">CAT</span>
+            <span class="pk"><span class="dot" style="background:var(--a)"></span>ops</span>
+            <span class="pk on" style="--c:var(--s)"><span class="dot" style="background:var(--s)"></span>social</span>
+            <span class="pk"><span class="dot" style="background:var(--pp)"></span>medical</span>
+          </div>
+          <div class="erow">
+            <input class="grow" placeholder="where" value="Totentanz, Watson">
+            <input style="width:120px" placeholder="who">
+          </div>
+          <div class="efoot">
+            <button class="etool on" title="Locked">🔒</button>
+            <button class="etool on" title="Scene linked">⛶ Totentanz — Floor 2</button>
+            <button class="etool del">✕</button>
+          </div>
+          <div class="lockrow">
+            <label>DECRYPT</label>
+            <select><option>Cryptography</option></select>
+            <label>DV</label>
+            <input type="number" value="15" style="width:48px">
+            <label style="color:var(--t2)">☐ fail fires a trace</label>
+          </div>
+        </div>
+      </div>
+
+      <!-- past event dims live -->
+      <div class="ecard past" style="--c:var(--pp)">
+        <div class="date"><b>08</b><span>JUL</span></div>
+        <div class="ebody">
+          <div class="erow">
+            <span class="whenchip">▦ JUL 08, 2077 · 10:00 <span>▾</span></span>
+            <input class="grow" value="Ripperdoc follow-up — implant check">
+          </div>
+          <div class="epick">
+            <span class="lbl">CAT</span>
+            <span class="pk"><span class="dot" style="background:var(--a)"></span>ops</span>
+            <span class="pk"><span class="dot" style="background:var(--s)"></span>social</span>
+            <span class="pk on" style="--c:var(--pp)"><span class="dot" style="background:var(--pp)"></span>medical</span>
+          </div>
+          <div class="erow">
+            <input class="grow" placeholder="where" value="Vik's clinic">
+            <input style="width:120px" placeholder="who" value="Viktor">
+          </div>
+          <div class="efoot">
+            <button class="etool">🔒</button>
+            <button class="etool">⛶ scene</button>
+            <button class="etool del">✕</button>
+          </div>
+        </div>
+      </div>
+
+      <button class="add-ev">+ ADD EVENT</button>
+    </div>
+    <p class="note" style="width:470px">
+      <b>When chip</b> = ONE CyberTimePicker (full ISO date+time, the chat #29b pattern) — the free-text time box is gone; the card's day/month block and
+      the past-dim update live as you pick. Cards <b>auto-sort by date</b> on add/pick (not while typing). <b>Category strip</b> at the top owns the palette:
+      chips are typo-proof quick-picks on each card; the swatch opens the 9-color CT palette (explicit choice; untouched categories keep the auto-cycle);
+      deleting a category clears it from events (they fall back to default cyan). <b>🔒</b> opens the DECRYPT row (skill dropdown from SKILL_MAP + DV + trace-on-fail,
+      the gallery/doc pattern); <b>⛶ scene</b> opens a world-scene picker (schematic precedent) and shows the linked name.
+      <b>note</b> field stays available via a third row when present (legacy) — new cards keep where/who; note merges into the chips as before.
+      <b>Dev-approved additions:</b> cards <b>collapse</b> (chevron → one-line summary: date · title · category dot) and <b>duplicate</b> (clone as "(copy)", the records #28b pattern);
+      <b>CSV import/export</b> buttons (records/spreadsheet precedent — export one row per event, import replaces the list).
+      Save shape: <code style="color:var(--t1)">{ defaultView, categories:{name:color}, events:[{title, when(ISO), location, who, note, category, locked?, unlockSkill?, unlockDV?, traceOnFail?, sceneId?}] }</code> — legacy <code style="color:var(--t1)">time</code> read-only back-compat.
+    </p>
+  </div>
+
+</div>
+</body>
+</html>

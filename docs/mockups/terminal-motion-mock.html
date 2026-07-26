@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>NCM — Terminal motion pass (2026-07-13)</title>
+<style>
+  :root {
+    --p: #F65261; --s: #19f3f7; --a: #f7c948; --ok: #00ff41; --pp: #a855f7;
+    --bg0: #0a0a12; --bg1: #12121a; --bg2: #1a1a2e; --bg3: #222236;
+    --t0: #ededf2; --t1: #b9b9cc; --t2: #7a7a92; --br: #2a2a45;
+    --mono: 'Consolas', monospace; --ui: 'Segoe UI', sans-serif;
+    /* The MessageViewer's motion vocabulary — the terminal inherits it rather
+       than inventing a second feel. */
+    --ease: cubic-bezier(0.22, 1, 0.36, 1);   /* expo-out: fast start, soft land */
+    --fast: .18s; --base: .3s;
+  }
+  body { margin: 0; background: #050508; color: var(--t0); font-family: var(--ui); padding: 18px 22px 60px; }
+  h1 { font-size: 15px; letter-spacing: 2px; color: var(--s); font-family: var(--mono); }
+  h2 { font-size: 12px; letter-spacing: 1.5px; color: var(--a); font-family: var(--mono); margin: 30px 0 6px; }
+  .note { font-size: 11.5px; color: var(--t2); max-width: 1050px; line-height: 1.55; margin-bottom: 12px; }
+  .note b { color: var(--t1); }
+  .row { display: flex; gap: 22px; align-items: flex-start; flex-wrap: wrap; }
+  .hint { font-size: 10.5px; color: var(--t2); line-height: 1.5; max-width: 330px; }
+  .hint b { color: var(--t1); }
+  .hint code { color: var(--s); font-size: 10px; }
+  button.go {
+    font: 700 9px var(--mono); letter-spacing: 1px; color: var(--s); cursor: pointer;
+    background: rgba(25,243,247,.08); border: 1px solid rgba(25,243,247,.45);
+    border-radius: 4px; padding: 5px 11px; margin-bottom: 8px;
+  }
+  button.go:hover { background: rgba(25,243,247,.18); }
+
+  /* ── terminal shell ── */
+  .term { width: 560px; height: 300px; border: 1px solid rgba(246,82,97,.35); border-radius: 8px; overflow: hidden; background: var(--bg1); position: relative; }
+  .panes { display: grid; grid-template-columns: 210px 1fr; height: 100%;
+           transition: grid-template-columns var(--base) var(--ease); }
+  .panes.collapsed { grid-template-columns: 0px 1fr; }
+  .side { border-right: 1px solid rgba(246,82,97,.2); padding: 10px; overflow: hidden;
+          transition: opacity var(--fast) ease; }
+  .panes.collapsed .side { opacity: 0; pointer-events: none; }
+  .slabel { font: 8px var(--mono); letter-spacing: 1.5px; color: var(--t2); margin-bottom: 7px; }
+  .toggle { position: absolute; top: 8px; left: 210px; transform: translateX(-50%); z-index: 5;
+    width: 18px; height: 32px; display: grid; place-items: center; cursor: pointer;
+    background: var(--bg3); border: 1px solid rgba(246,82,97,.4); border-radius: 4px; color: var(--p); font-size: 9px;
+    transition: left var(--base) var(--ease), background var(--fast) ease; }
+  .panes.collapsed ~ .toggle, .term.iscollapsed .toggle { left: 0; transform: none; border-radius: 0 4px 4px 0; }
+  .toggle i { display: block; transition: transform var(--base) var(--ease); }
+  .term.iscollapsed .toggle i { transform: rotate(180deg); }
+
+  /* ── ① message rows: staggered slide-in ── */
+  .rows { display: flex; flex-direction: column; gap: 6px; }
+  .r {
+    padding: 7px 8px; border-radius: 6px; cursor: pointer;
+    background: var(--bg2); border: 1px solid var(--br); border-left: 3px solid var(--t2);
+    transition: transform var(--fast) var(--ease), border-color var(--fast) ease, background var(--fast) ease;
+  }
+  .r.f { border-left-color: var(--ok); }
+  .r.u { border-left-color: var(--a); }
+  .r:hover { transform: translateX(2px); border-color: rgba(246,82,97,.45); }
+  .r.on { background: rgba(246,82,97,.10); border-color: rgba(246,82,97,.5); }
+  .r .l1 { display: flex; gap: 6px; align-items: baseline; }
+  .r .nm { font: 700 11.5px var(--ui); flex: 1; }
+  .r .nm.mono { font-family: var(--mono); font-size: 11px; }
+  .r .t { font: 8.5px var(--mono); color: var(--t2); }
+  .r .l2 { margin-top: 3px; font-size: 10.5px; color: var(--t1); }
+  .r .tag { font: 700 8px var(--mono); letter-spacing: 1px; border: 1px solid; border-radius: 3px; padding: 1px 4px; }
+  .r .pth { margin-top: 2px; font: 9px var(--mono); color: var(--t2); }
+  /* the animation itself */
+  @keyframes rowin { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  .rows.anim .r { animation: rowin var(--base) var(--ease) both; animation-delay: calc(var(--i) * 40ms); }
+
+  /* ── ② detail: slide + fade on select ── */
+  .detail { padding: 12px; overflow: hidden; }
+  @keyframes detin { from { opacity: 0; transform: translateX(14px); } to { opacity: 1; transform: none; } }
+  .detail.anim > * { animation: detin var(--base) var(--ease) both; }
+  .detail.anim > *:nth-child(2) { animation-delay: 50ms; }
+  .fcard { border: 1px solid var(--br); border-radius: 6px; background: var(--bg2); overflow: hidden; margin-bottom: 10px; }
+  .fcard .top { display: flex; align-items: center; gap: 9px; padding: 9px 10px; border-bottom: 1px solid var(--br); background: rgba(0,255,65,.04); }
+  .fcard .ico { width: 30px; height: 30px; border-radius: 6px; display: grid; place-items: center; color: var(--ok); background: rgba(0,255,65,.1); border: 1px solid rgba(0,255,65,.4); }
+  .fcard .nm { font: 700 13px var(--mono); flex: 1; }
+  .fcard .tg { font: 700 8px var(--mono); letter-spacing: 1.2px; color: var(--ok); border: 1px solid rgba(0,255,65,.45); border-radius: 3px; padding: 2px 6px; }
+  .fgrid { display: flex; }
+  .fgrid span { flex: 1; padding: 6px 10px; border-right: 1px solid var(--br); }
+  .fgrid span:last-child { border-right: 0; }
+  .fgrid b { display: block; font: 7.5px var(--mono); letter-spacing: 1.2px; color: var(--t2); text-transform: uppercase; }
+  .fgrid i { display: block; font: 10.5px var(--mono); font-style: normal; color: var(--t1); margin-top: 2px; }
+  .exf { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip { font: 700 9px var(--mono); letter-spacing: .5px; color: var(--p); border: 1px solid rgba(246,82,97,.4);
+    background: rgba(246,82,97,.08); border-radius: 4px; padding: 4px 9px; cursor: pointer;
+    transition: transform var(--fast) var(--ease), background var(--fast) ease, box-shadow var(--fast) ease; }
+  .chip:hover { transform: translateY(-1px); background: rgba(246,82,97,.2); box-shadow: 0 3px 10px rgba(246,82,97,.18); }
+
+  /* ── ③ login: cards collapse into the shell ── */
+  .login { width: 560px; height: 300px; border: 1px solid rgba(246,82,97,.35); border-radius: 8px; background: var(--bg1); position: relative; overflow: hidden; padding: 16px; box-sizing: border-box; }
+  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .card { display: flex; gap: 10px; align-items: center; padding: 10px; border-radius: 8px; cursor: pointer;
+    background: var(--bg2); border: 1px solid var(--br);
+    transition: transform var(--base) var(--ease), opacity var(--base) var(--ease),
+                border-color var(--fast) ease, box-shadow var(--fast) ease; }
+  .card:hover { transform: translateY(-2px); border-color: rgba(246,82,97,.5); box-shadow: 0 6px 18px rgba(0,0,0,.4); }
+  .card .av { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center;
+    font: 700 12px var(--mono); color: var(--p); background: rgba(246,82,97,.12); border: 1px solid var(--p); }
+  .card .who .n { font: 700 13px var(--ui); }
+  .card .who .u { font: 10px var(--mono); color: var(--t2); }
+  .card .lk { margin-left: auto; font-size: 10px; color: var(--a); }
+  /* the collapse: the CHOSEN card lifts + centres, the others fall away */
+  .cards.go .card { opacity: 0; transform: scale(.94) translateY(6px); pointer-events: none; }
+  .cards.go .card.pick { opacity: 1; transform: scale(1.03); border-color: var(--p); box-shadow: 0 0 26px rgba(246,82,97,.3); }
+  .shell { position: absolute; inset: 0; display: grid; place-items: center; opacity: 0; pointer-events: none;
+    background: rgba(10,10,18,.92); transition: opacity var(--base) var(--ease); }
+  .login.go .shell { opacity: 1; }
+  .shellbox { width: 300px; border: 1px solid rgba(246,82,97,.5); border-radius: 8px; background: var(--bg1); padding: 14px;
+    transform: translateY(10px) scale(.97); transition: transform var(--base) var(--ease) 60ms; }
+  .login.go .shellbox { transform: none; }
+  .shellbox .h { font: 700 9px var(--mono); letter-spacing: 2px; color: var(--p); margin-bottom: 8px; }
+  .shellbox .in { width: 100%; box-sizing: border-box; background: var(--bg0); border: 1px solid var(--br); border-radius: 4px; color: var(--t0); font: 12px var(--mono); padding: 6px 8px; }
+
+  /* ── ④ folder switch wipe ── */
+  @keyframes rowout { to { opacity: 0; transform: translateY(-6px); } }
+  .rows.out .r { animation: rowout var(--fast) ease both; animation-delay: calc(var(--i) * 18ms); }
+
+  /* ── ⑤ account switcher dropdown ── */
+  .acsw { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 7px; background: var(--bg2); border: 1px solid var(--br); cursor: pointer; position: relative; margin-bottom: 8px; }
+  .acsw .av { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font: 700 10px var(--mono); color: var(--p); background: rgba(246,82,97,.12); border: 1px solid var(--p); }
+  .acsw .n { flex: 1; font: 700 12px var(--ui); }
+  .acsw .cv { font-size: 9px; color: var(--p); transition: transform var(--base) var(--ease); }
+  .acsw.open .cv { transform: rotate(180deg); }
+  .drop { position: absolute; top: 100%; left: 0; right: 0; margin-top: 4px; z-index: 9;
+    background: var(--bg3); border: 1px solid rgba(246,82,97,.35); border-radius: 7px; overflow: hidden;
+    opacity: 0; transform: translateY(-6px) scaleY(.96); transform-origin: top;
+    pointer-events: none; transition: opacity var(--fast) var(--ease), transform var(--fast) var(--ease); }
+  .acsw.open .drop { opacity: 1; transform: none; pointer-events: auto; }
+  .drop .it { display: flex; gap: 8px; align-items: center; padding: 7px 9px; font-size: 11.5px; }
+  .drop .it:hover { background: rgba(246,82,97,.12); }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+<h1>TERMINAL — MOTION PASS (all live · click things)</h1>
+<div class="note">
+  Everything here reuses the <b>MessageViewer's</b> motion vocabulary so the two apps feel like one product:
+  <b><code>cubic-bezier(.22,1,.36,1)</code></b> (expo-out — fast start, soft landing), <b>0.3s</b> for entrances,
+  <b>0.18s</b> for micro-interactions, and <b>translate + fade</b> (never scale-only, never bounce).
+  Everything is <b>prefers-reduced-motion</b> gated. Nothing here is a new dependency — it's CSS keyframes and
+  transitions plus one <code>--i</code> index var for the stagger, exactly like the shard index-strip chips.
+</div>
+
+<h2>① MESSAGE ROWS — staggered slide-in &nbsp;·&nbsp; ② DETAIL — slide on select</h2>
+<div class="row">
+  <div>
+    <button class="go" onclick="restage()">▶ REPLAY (folder switch)</button><br>
+    <div class="term" id="t1">
+      <div class="panes" id="p1">
+        <div class="side">
+          <div class="acsw" id="acsw" onclick="this.classList.toggle('open')">
+            <span class="av">VA</span><span class="n">Veronica A.<div style="font:9px var(--mono);color:var(--t2)">v_arasaka</div></span>
+            <span class="cv"><i class="fas fa-chevron-down"></i></span>
+            <div class="drop">
+              <div class="it"><span style="color:var(--p)">◉</span> root · <span style="color:var(--t2)">sysadmin</span></div>
+              <div class="it"><span style="color:var(--ok)">○</span> guest · <span style="color:var(--t2)">open</span></div>
+            </div>
+          </div>
+          <div class="slabel">INBOX · 4 OBJECTS</div>
+          <div class="rows anim" id="rows">
+            <div class="r f on" style="--i:0" onclick="pick(this)">
+              <div class="l1"><span class="nm mono">dock-level-b.feed</span><span class="t">LIVE</span></div>
+              <div class="l2"><span class="tag" style="color:var(--ok);border-color:rgba(0,255,65,.45)">CAMERA FEED</span> <span style="color:var(--t2);font:9.5px var(--mono)">streaming</span></div>
+              <div class="pth">/var/spool/cam/</div>
+            </div>
+            <div class="r u" style="--i:1" onclick="pick(this)">
+              <div class="l1"><span class="nm">Hiroko Sato</span><span class="t">07.13</span></div>
+              <div class="l2">Re: the dock shipment</div>
+            </div>
+            <div class="r" style="--i:2" onclick="pick(this)">
+              <div class="l1"><span class="nm mono">q3_disbursements.xls</span><span class="t">06.28</span></div>
+              <div class="l2"><span class="tag" style="color:#4ade80;border-color:rgba(74,222,128,.45)">SPREADSHEET</span> <span style="color:var(--t2);font:9.5px var(--mono)">61 KB</span></div>
+            </div>
+            <div class="r" style="--i:3" onclick="pick(this)">
+              <div class="l1"><span class="nm">system@arasaka</span><span class="t">06.28</span></div>
+              <div class="l2">Scheduled maintenance</div>
+            </div>
+          </div>
+        </div>
+        <div class="detail anim" id="det">
+          <div class="fcard">
+            <div class="top">
+              <span class="ico"><i class="fas fa-tower-broadcast"></i></span>
+              <span class="nm">dock-level-b.feed</span>
+              <span class="tg">CAMERA FEED</span>
+            </div>
+            <div class="fgrid">
+              <span><b>Owner</b><i style="color:var(--a)">SECCAM-B2</i></span>
+              <span><b>Modified</b><i>LIVE</i></span>
+              <span><b>Size</b><i>streaming</i></span>
+              <span><b>Channels</b><i>6</i></span>
+            </div>
+          </div>
+          <div class="exf">
+            <span class="chip"><i class="fas fa-camera"></i> SAVE FRAME</span>
+            <span class="chip"><i class="fas fa-eraser"></i> WIPE</span>
+          </div>
+        </div>
+      </div>
+      <div class="toggle" onclick="collapse()"><i class="fas fa-chevron-left"></i></div>
+    </div>
+  </div>
+  <div class="hint">
+    <b>① Rows stagger in</b> — <code>translateY(8px) + fade</code>, 40 ms apart, on folder switch / account switch /
+    first open. NOT on every re-render (selecting a message must not re-run it, or the list twitches on every click —
+    the animation class is added only when the LIST ITSELF changed).<br><br>
+    <b>② The detail slides</b> — <code>translateX(14px) + fade</code> when you pick a different message, with the
+    exfil rail 50 ms behind the file card. This is the single biggest "feel" win: it makes selection feel like
+    the machine <i>fetched</i> something instead of swapping a div.<br><br>
+    <b>Row hover</b> nudges 2px right; <b>exfil chips</b> lift 1px with a soft shadow. Tiny, but they make the
+    surface feel alive under the cursor.<br><br>
+    <b>Account switcher</b> (click it) — the dropdown scales down from its top edge instead of appearing; the
+    chevron rotates 180°.<br><br>
+    <b>③ Sidebar collapse</b> (click the chevron on the divider) — the grid column animates, so the detail pane
+    <i>grows into</i> the space instead of jumping. The chevron flips.
+  </div>
+</div>
+
+<h2>④ LOGIN — the cards collapse into the SECURE SHELL</h2>
+<div class="row">
+  <div>
+    <button class="go" onclick="loginReset()">▶ REPLAY</button><br>
+    <div class="login" id="lg">
+      <div style="font:700 9px var(--mono);letter-spacing:2px;color:var(--p);margin-bottom:12px">SELECT OPERATOR</div>
+      <div class="cards" id="cards">
+        <div class="card" onclick="pickCard(this)"><span class="av">VA</span><span class="who"><div class="n">Veronica A.</div><div class="u">v_arasaka</div></span><span class="lk"><i class="fas fa-lock"></i></span></div>
+        <div class="card" onclick="pickCard(this)"><span class="av">SY</span><span class="who"><div class="n">sysadmin</div><div class="u">root</div></span><span class="lk"><i class="fas fa-lock"></i></span></div>
+        <div class="card" onclick="pickCard(this)"><span class="av">GU</span><span class="who"><div class="n">guest</div><div class="u">open</div></span><span class="lk" style="color:var(--ok)"><i class="fas fa-lock-open"></i></span></div>
+        <div class="card" onclick="pickCard(this)"><span class="av">MT</span><span class="who"><div class="n">M. Takeda</div><div class="u">hidden</div></span><span class="lk"><i class="fas fa-lock"></i></span></div>
+      </div>
+      <div class="shell">
+        <div class="shellbox">
+          <div class="h"><i class="fas fa-terminal"></i> SECURE SHELL — V_ARASAKA</div>
+          <input class="in" type="password" value="••••" readonly>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="hint">
+    <b>Click a card.</b> The one you picked <b>lifts and holds</b> (scale 1.03 + glow) while the others
+    <b>fall away</b> (fade + 6px down) — then the SECURE SHELL rises into place. Right now the cards vanish and the
+    console just <i>appears</i>; this makes the machine feel like it's <i>responding to your choice</i>.<br><br>
+    Total ~0.36 s. The shell box is 60 ms behind the backdrop so it reads as two beats, not one blob.<br><br>
+    Same treatment works for the <b>roster</b> and <b>portraits</b> login styles for free (they're the same pick →
+    shell transition); <b>crt</b> and <b>keypad</b> already have their own character and can opt out.
+  </div>
+</div>
+
+<div class="note" style="margin-top:26px">
+  <b>What I'd deliberately NOT animate:</b> the boot splash and ACCESS-GRANTED badge already have their own
+  choreography — adding more there would fight them. And no motion on the mailbox list <i>content</i> (row text,
+  chips): things that move while you're reading them are annoying, not premium. The rule is
+  <b>motion on arrival and on state change, never on idle</b>.
+</div>
+
+<script>
+  const rows = document.getElementById('rows');
+  const det  = document.getElementById('det');
+  function restage() {
+    rows.classList.add('out');
+    setTimeout(() => {
+      rows.classList.remove('out', 'anim');
+      void rows.offsetWidth;              // force reflow → the animation re-runs
+      rows.classList.add('anim');
+    }, 200);
+  }
+  function pick(el) {
+    document.querySelectorAll('#rows .r').forEach(r => r.classList.remove('on'));
+    el.classList.add('on');
+    det.classList.remove('anim');
+    void det.offsetWidth;
+    det.classList.add('anim');
+  }
+  function collapse() {
+    document.getElementById('p1').classList.toggle('collapsed');
+    document.getElementById('t1').classList.toggle('iscollapsed');
+  }
+  const lg = document.getElementById('lg');
+  function pickCard(c) {
+    document.querySelectorAll('#cards .card').forEach(x => x.classList.remove('pick'));
+    c.classList.add('pick');
+    document.getElementById('cards').classList.add('go');
+    lg.classList.add('go');
+  }
+  function loginReset() {
+    lg.classList.remove('go');
+    document.getElementById('cards').classList.remove('go');
+    document.querySelectorAll('#cards .card').forEach(x => x.classList.remove('pick'));
+  }
+</script>
+</body>
+</html>

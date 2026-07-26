@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>NCM — Schematic Redesign Mockup (2026-07-12)</title>
+<style>
+  :root {
+    --p: #F65261; --s: #19f3f7; --a: #f7c948; --ok: #00ff41; --pp: #a855f7; --pink: #ff6ac1; --blue:#5b9bff;
+    --bg0: #0a0a12; --bg1: #12121a; --bg2: #1a1a2e; --bg3: #222236;
+    --t0: #ededf2; --t1: #b9b9cc; --t2: #7a7a92; --br: #2a2a45;
+    --mono: 'Consolas', monospace; --ui: 'Segoe UI', sans-serif;
+  }
+  body { margin: 0; background: #050508; color: var(--t0); font-family: var(--ui); padding: 18px 22px 60px; }
+  h1 { font-size: 15px; letter-spacing: 2px; color: var(--s); font-family: var(--mono); }
+  h2 { font-size: 12px; letter-spacing: 1.5px; color: var(--a); font-family: var(--mono); margin: 26px 0 8px; }
+  .note { font-size: 11.5px; color: var(--t2); max-width: 1000px; line-height: 1.55; margin-bottom: 14px; }
+  .note b { color: var(--t1); }
+  .row { display: flex; gap: 26px; align-items: flex-start; flex-wrap: wrap; }
+
+  /* floorplan (shared) */
+  .floor { position: relative; width: 400px; height: 300px; border-radius: 8px; overflow: hidden;
+    background: repeating-linear-gradient(0deg, #0e1a22 0 24px, #0c161d 24px 25px), repeating-linear-gradient(90deg, #0e1a22 0 24px, #0c161d 24px 25px);
+    border: 1px solid var(--br); }
+  .floor .walls { position: absolute; inset: 22px; border: 2px solid #21455a; border-radius: 3px; }
+  .floor .walls::before { content:''; position:absolute; left:40%; top:0; bottom:40%; border-right:2px solid #21455a; }
+  .floor .walls::after { content:''; position:absolute; left:0; right:35%; top:55%; border-top:2px solid #21455a; }
+  /* marker */
+  .mk { position: absolute; transform: translate(-50%,-50%); display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; font-size: 12px; color: #06121a; border: 2px solid rgba(255,255,255,.5); cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,.5); }
+  .mk .lbl { position: absolute; top: 28px; left: 50%; transform: translateX(-50%); white-space: nowrap; font: 8px var(--mono); color: var(--t0); background: rgba(0,0,0,.6); padding: 1px 5px; border-radius: 3px; }
+  .mk.guard { background: var(--p); } .mk.camera { background: var(--a); } .mk.door { background: var(--s); }
+  .mk.objective { background: var(--a); border-color: #fff; } .mk.loot { background: var(--a); }
+  .mk.entry { background: var(--ok); } .mk.exit { background: var(--ok); } .mk.terminal { background: var(--pp); } .mk.hazard { background: var(--p); }
+  .mk.sel { outline: 2px solid #fff; outline-offset: 2px; }
+  .mk.fog { background: #33333f; color: var(--t2); border-style: dashed; border-color: var(--t2); }
+  /* route line */
+  .route { position: absolute; inset: 0; pointer-events: none; }
+  .route line { stroke: var(--s); stroke-width: 2; stroke-dasharray: 5 4; opacity: .8; }
+
+  /* ═══ COMPOSER ═══ */
+  .ed { width: 430px; }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+  .tool { display: inline-flex; align-items: center; gap: 4px; font: 9.5px var(--mono); color: var(--t1); background: var(--bg0); border: 1px solid var(--br); border-radius: 6px; padding: 4px 8px; cursor: pointer; }
+  .tool .dot { width: 14px; height: 14px; border-radius: 50%; display: grid; place-items: center; font-size: 8px; color: #06121a; }
+  .tool.on { border-color: var(--s); color: var(--s); background: rgba(25,243,247,.08); }
+  .tool.route.on { border-color: var(--ok); color: var(--ok); background: rgba(0,255,65,.08); }
+  /* pin popover */
+  .pop { position: absolute; width: 190px; background: var(--bg1); border: 1px solid var(--s); border-radius: 8px; padding: 9px; box-shadow: 0 10px 24px rgba(0,0,0,.6); z-index: 5; }
+  .pop-hd { display: flex; align-items: center; justify-content: space-between; font: 700 10px var(--mono); color: var(--s); margin-bottom: 6px; }
+  .pop input, .pop select { width: 100%; background: var(--bg0); border: 1px solid var(--br); border-radius: 5px; color: var(--t0); font: 11px var(--ui); padding: 4px 6px; margin-bottom: 5px; box-sizing: border-box; }
+  .pop-types { display: flex; flex-wrap: wrap; gap: 3px; margin-bottom: 6px; }
+  .pop-t { width: 20px; height: 20px; border-radius: 5px; display: grid; place-items: center; font-size: 9px; cursor: pointer; border: 1px solid var(--br); }
+  .pop-row { display: flex; gap: 5px; align-items: center; }
+  .pop-btn { flex: 1; text-align: center; font: 9px var(--mono); padding: 4px; border-radius: 5px; cursor: pointer; border: 1px solid var(--br); color: var(--t1); }
+  .pop-btn.del { color: var(--p); border-color: rgba(246,82,97,.4); }
+  .pop-btn.lock { color: var(--a); border-color: rgba(247,201,72,.4); }
+
+  /* ═══ VIEWER ═══ */
+  .vw { width: 430px; }
+  .vw-hd { display: flex; justify-content: space-between; font: 700 11px var(--mono); color: var(--pp); margin-bottom: 8px; }
+  .legend { margin-top: 10px; }
+  .leg-group { margin-bottom: 8px; }
+  .leg-gh { font: 8px var(--mono); letter-spacing: 1.5px; color: var(--t2); text-transform: uppercase; margin-bottom: 3px; }
+  .leg { display: flex; align-items: center; gap: 8px; font: 11px var(--ui); color: var(--t1); padding: 2px 0; }
+  .leg .mi { width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font-size: 9px; color: #06121a; }
+  .leg .scene { margin-left: auto; font: 8px var(--mono); color: var(--pp); border: 1px solid rgba(168,85,247,.4); border-radius: 4px; padding: 1px 6px; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<h1>SCHEMATIC REDESIGN — interactive heist map</h1>
+<div class="note">The floorplan IS the editor. Pick a <b>marker type</b> from the palette, click the plan to drop it, <b>click a pin</b> to edit it (label/note/type/color/scene/lock) in a popover, <b>drag</b> to move it (X/Y update live). A <b>Route</b> tool connects two pins into an infil path. Each marker can link <b>its own scene</b>. A <b>locked/fog</b> marker hides as a “?” until the crew scouts it (roll-to-unlock). The viewer renders typed icons, routes, and a legend grouped by type.</div>
+
+<div class="row">
+  <!-- COMPOSER -->
+  <div class="ed">
+    <div class="note" style="margin:0 0 6px">① Composer — the map is the editor</div>
+    <div class="toolbar">
+      <span class="tool"><i>▚</i> Select</span>
+      <span class="tool on"><span class="dot" style="background:var(--p)">G</span>Guard</span>
+      <span class="tool"><span class="dot" style="background:var(--a)">C</span>Camera</span>
+      <span class="tool"><span class="dot" style="background:var(--s)">D</span>Door</span>
+      <span class="tool"><span class="dot" style="background:var(--a)">◎</span>Objective</span>
+      <span class="tool"><span class="dot" style="background:var(--a)">$</span>Loot</span>
+      <span class="tool"><span class="dot" style="background:var(--ok)">↳</span>Entry</span>
+      <span class="tool"><span class="dot" style="background:var(--pp)">▮</span>Terminal</span>
+      <span class="tool route on"><i>⤳</i> Route</span>
+    </div>
+    <div class="floor">
+      <div class="walls"></div>
+      <svg class="route" viewBox="0 0 400 300"><line x1="60" y1="250" x2="150" y2="150"/><line x1="150" y1="150" x2="300" y2="90"/></svg>
+      <span class="mk entry" style="left:15%;top:83%">↳<span class="lbl">Service door</span></span>
+      <span class="mk guard" style="left:37%;top:50%">G<span class="lbl">Rotates 02:00</span></span>
+      <span class="mk camera" style="left:70%;top:22%">C</span>
+      <span class="mk objective sel" style="left:75%;top:30%">◎</span>
+      <span class="mk fog" style="left:55%;top:70%">?</span>
+      <!-- popover for the selected objective -->
+      <div class="pop" style="left:55%;top:36%">
+        <div class="pop-hd"><span>◎ MARKER</span><span style="cursor:pointer;color:var(--t2)">✕</span></div>
+        <input value="Cold storage — the crates">
+        <input placeholder="note (optional)" value="land here 02:10">
+        <div class="pop-types">
+          <span class="pop-t" style="background:var(--p)">G</span><span class="pop-t" style="background:var(--a)">C</span><span class="pop-t" style="background:var(--s)">D</span><span class="pop-t" style="background:var(--a);outline:2px solid #fff">◎</span><span class="pop-t" style="background:var(--a)">$</span><span class="pop-t" style="background:var(--ok)">↳</span><span class="pop-t" style="background:var(--pp)">▮</span><span class="pop-t" style="background:var(--p)">⚠</span>
+        </div>
+        <select><option>— link a scene —</option><option>Warehouse 7 · Floor 2</option></select>
+        <div class="pop-row"><span class="pop-btn lock">🔒 Lock (DV 13)</span><span class="pop-btn del">✕ Delete</span></div>
+      </div>
+    </div>
+    <div class="note" style="margin-top:8px">Drop with the active type, drag to move, click to edit. <b>Route</b> mode: click two pins to link them. <b>🔒 Lock</b> hides a marker as fog until a scout/hack roll reveals it. No X/Y typing, no row-hunting.</div>
+  </div>
+
+  <!-- VIEWER -->
+  <div class="vw">
+    <div class="note" style="margin:0 0 6px">② Viewer — the heist map</div>
+    <div class="vw-hd"><span>⚙ WAREHOUSE 7 — FLOOR 2</span><span style="color:var(--t2);font-weight:400">BP-2077-114 · 5 marks</span></div>
+    <div class="floor">
+      <div class="walls"></div>
+      <svg class="route" viewBox="0 0 400 300"><line x1="60" y1="250" x2="150" y2="150"/><line x1="150" y1="150" x2="300" y2="90"/></svg>
+      <span class="mk entry" style="left:15%;top:83%">↳<span class="lbl">Service door</span></span>
+      <span class="mk guard" style="left:37%;top:50%">G</span>
+      <span class="mk camera" style="left:70%;top:22%">C</span>
+      <span class="mk objective" style="left:75%;top:30%">◎</span>
+      <span class="mk fog" style="left:55%;top:70%">?</span>
+    </div>
+    <div class="legend">
+      <div class="leg-group"><div class="leg-gh">Entry / Exit</div><div class="leg"><span class="mi entry" style="background:var(--ok)">↳</span> Service door — Tinman has a maglock key <span class="scene">▶ scene</span></div></div>
+      <div class="leg-group"><div class="leg-gh">Security</div>
+        <div class="leg"><span class="mi guard" style="background:var(--p)">G</span> Guard post — two, rotates 02:00</div>
+        <div class="leg"><span class="mi camera" style="background:var(--a)">C</span> Camera — blind spot NE corner</div>
+      </div>
+      <div class="leg-group"><div class="leg-gh">Objective</div><div class="leg"><span class="mi objective" style="background:var(--a)">◎</span> Cold storage — the crates land here 02:10 <span class="scene">▶ scene</span></div></div>
+      <div class="leg-group"><div class="leg-gh">Locked</div><div class="leg"><span class="mi fog" style="background:#33333f;color:var(--t2)">?</span> <i style="color:var(--t2)">Encrypted mark — scout to reveal (DV 13)</i></div></div>
+    </div>
+    <div class="note" style="margin-top:8px">Typed icons, the dashed infil route, a legend grouped by category, per-marker ▶ scene (GM), and a fog “?” for the locked mark.</div>
+  </div>
+</div>
+
+</body>
+</html>

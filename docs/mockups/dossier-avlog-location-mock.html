@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>NCM — Dossier / AV Log / Location redesign (composer + FUI viewer) 2026-07-13</title>
+<style>
+  :root {
+    --p: #F65261; --s: #19f3f7; --a: #f7c948; --ok: #00ff41; --pp: #a855f7;
+    --bg0: #0a0a12; --bg1: #12121a; --bg2: #1a1a2e; --bg3: #222236;
+    --t0: #ededf2; --t1: #b9b9cc; --t2: #7a7a92; --br: #2a2a45;
+    --mono: 'Consolas', monospace; --ui: 'Segoe UI', sans-serif;
+  }
+  body { margin: 0; background: #050508; color: var(--t0); font-family: var(--ui); padding: 18px 22px 60px; }
+  h1 { font-size: 15px; letter-spacing: 2px; color: var(--s); font-family: var(--mono); }
+  h2 { font-size: 12px; letter-spacing: 1.5px; color: var(--a); font-family: var(--mono); margin: 30px 0 8px; }
+  h3 { font-size: 10px; letter-spacing: 1.5px; color: var(--t2); font-family: var(--mono); margin: 0 0 8px; text-transform: uppercase; }
+  .note { font-size: 11.5px; color: var(--t2); max-width: 1050px; line-height: 1.55; margin-bottom: 14px; }
+  .note b { color: var(--t1); }
+  .row { display: flex; gap: 26px; align-items: flex-start; flex-wrap: wrap; }
+  input, textarea, select { font-family: inherit; }
+  .lbl { display: block; font: 8px var(--mono); letter-spacing: 1.2px; color: var(--t2); text-transform: uppercase; margin-bottom: 2px; }
+  .inp { background: var(--bg0); border: 1px solid var(--br); border-radius: 4px; color: var(--t0); font-size: 11.5px; padding: 3px 7px; height: 22px; box-sizing: border-box; }
+  .hint { font-size: 10px; color: var(--t2); line-height: 1.5; margin-top: 6px; }
+  .hint b { color: var(--t1); }
+  .panel { width: 470px; background: var(--bg1); border: 1px solid var(--br); border-radius: 10px; padding: 14px; }
+
+  /* shared FUI bits */
+  .fui { position: relative; }
+  .fui .ck { position: absolute; width: 14px; height: 14px; border: 1.5px solid var(--fc, var(--p)); opacity: .8; }
+  .fui .ck.tl { top: 5px; left: 5px; border-right: 0; border-bottom: 0; }
+  .fui .ck.tr { top: 5px; right: 5px; border-left: 0; border-bottom: 0; }
+  .fui .ck.bl { bottom: 5px; left: 5px; border-right: 0; border-top: 0; }
+  .fui .ck.br { bottom: 5px; right: 5px; border-left: 0; border-top: 0; }
+
+  /* ═════════════ ① DOSSIER VIEWER — FUI target file ═════════════ */
+  .dv { --fc: var(--p); border: 1px solid rgba(246,82,97,.35); border-radius: 8px; overflow: hidden;
+    background: radial-gradient(circle at 80% 0%, rgba(246,82,97,.07), transparent 55%), var(--bg1); }
+  .dv-top { display: flex; align-items: center; gap: 8px; font: 700 9px var(--mono); letter-spacing: 2px; color: var(--p); padding: 8px 12px; border-bottom: 1px solid rgba(246,82,97,.25); background: rgba(246,82,97,.05); }
+  .dv-top .id { color: var(--t2); letter-spacing: 1px; font-weight: 400; }
+  .dv-top .grow { flex: 1; }
+  .dv-top .stamp { border: 1.5px solid var(--p); padding: 1px 8px; transform: rotate(-3deg); }
+  .dv-hd { display: flex; gap: 14px; padding: 14px; }
+  .dv-port { position: relative; width: 104px; height: 122px; flex: 0 0 auto; border: 1px solid rgba(246,82,97,.4); border-radius: 4px; background: #0b0d14; display: grid; place-items: center; overflow: hidden; }
+  .dv-port .sil { font-size: 46px; color: #3a2830; }
+  .dv-port .scan { position: absolute; left: 0; right: 0; top: 34%; height: 2px; background: linear-gradient(90deg, transparent, var(--p), transparent); opacity: .8; box-shadow: 0 0 8px var(--p); }
+  .dv-port.masked .sil { filter: blur(2px); opacity: .5; }
+  .dv-port.masked::before { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(0deg, rgba(246,82,97,.12) 0 2px, transparent 2px 5px); }
+  .dv-port.masked .maskcap { position: absolute; bottom: 22px; left: 0; right: 0; text-align: center; font: 700 8px var(--mono); letter-spacing: 1.5px; color: var(--p); }
+  .dv-port .unmask { position: absolute; bottom: 4px; left: 6px; right: 6px; font: 700 8px var(--mono); letter-spacing: 1px; color: var(--p); background: rgba(246,82,97,.12); border: 1px solid rgba(246,82,97,.5); border-radius: 3px; padding: 2px; cursor: pointer; }
+  .dv-id { flex: 1; }
+  .dv-name { font: 700 18px var(--ui); letter-spacing: .5px; }
+  .dv-alias { font: 11px var(--mono); color: var(--a); margin: 2px 0 8px; }
+  .dv-grid { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; font-size: 11px; }
+  .dv-grid .k { font: 8.5px var(--mono); letter-spacing: 1.2px; color: var(--t2); text-transform: uppercase; align-self: center; }
+  .dv-grid .v { color: var(--t1); }
+  .dv-threat { display: flex; align-items: center; gap: 4px; }
+  .dv-threat b { width: 26px; height: 8px; border-radius: 1px; background: var(--bg3); }
+  .dv-threat b.on { background: var(--p); box-shadow: 0 0 5px rgba(246,82,97,.6); }
+  .dv-threat .cap { font: 700 9px var(--mono); letter-spacing: 1px; color: var(--p); margin-left: 4px; }
+  /* combat profile */
+  .dv-cp { margin: 0 14px 12px; border: 1px solid var(--br); border-radius: 6px; background: var(--bg0); }
+  .dv-cp-hd { display: flex; align-items: center; gap: 8px; font: 700 8.5px var(--mono); letter-spacing: 1.5px; color: var(--s); padding: 6px 10px; border-bottom: 1px solid var(--br); }
+  .dv-cp-hd .src { color: var(--t2); font-weight: 400; letter-spacing: 1px; }
+  .dv-cp-hd .sheet { margin-left: auto; font: 8px var(--mono); color: var(--t2); border: 1px solid var(--br); border-radius: 3px; padding: 1px 6px; cursor: pointer; }
+  .dv-stats { display: flex; flex-wrap: wrap; gap: 5px; padding: 8px 10px; }
+  .dv-stat { text-align: center; min-width: 40px; background: var(--bg1); border: 1px solid var(--br); border-radius: 4px; padding: 3px 5px; }
+  .dv-stat .k { display: block; font: 7.5px var(--mono); letter-spacing: 1px; color: var(--t2); }
+  .dv-stat .v { font: 700 13px var(--mono); color: var(--s); }
+  .dv-cp.enc .dv-stats { filter: blur(0); }
+  .dv-cp.enc .dv-stat .v { color: transparent; text-shadow: 0 0 7px rgba(25,243,247,.8); }
+  .dv-cp.enc .decrypt { margin: 0 10px 8px; font: 700 8.5px var(--mono); letter-spacing: 1px; color: var(--s); background: rgba(25,243,247,.08); border: 1px solid rgba(25,243,247,.4); border-radius: 3px; padding: 3px 10px; cursor: pointer; }
+  /* sections */
+  .dv-secs { padding: 0 14px 14px; display: flex; flex-direction: column; gap: 8px; }
+  .dv-sec { border: 1px solid var(--br); border-left: 3px solid var(--p); border-radius: 4px; background: var(--bg2); padding: 7px 10px; }
+  .dv-sec .h { font: 700 9.5px var(--mono); letter-spacing: 1.5px; color: var(--p); margin-bottom: 4px; }
+  .dv-sec p { margin: 0; font-size: 11.5px; color: var(--t1); line-height: 1.5; }
+  .dv-sec.red p { color: var(--p); font-family: var(--mono); font-size: 10px; letter-spacing: 2px; }
+
+  /* dossier composer additions */
+  .doss-addrow { display: flex; gap: 10px; align-items: flex-end; background: var(--bg2); border: 1px solid var(--br); border-radius: 6px; padding: 8px 10px; margin-top: 8px; }
+  .chk { font-size: 10.5px; color: var(--t1); display: flex; align-items: center; gap: 5px; }
+  .chk input { accent-color: var(--s); }
+
+  /* ═════════════ ② AVLOG VIEWER — karaoke deck ═════════════ */
+  .av { --fc: var(--ok); border: 1px solid rgba(0,255,65,.3); border-radius: 8px; overflow: hidden; background: var(--bg1); }
+  .av-deck { margin: 12px; border: 1px solid var(--br); border-radius: 6px; background: #04070a; padding: 10px 12px; position: relative; }
+  .av-meta { display: flex; align-items: center; gap: 8px; font: 9px var(--mono); letter-spacing: 1px; color: var(--t2); margin-bottom: 8px; }
+  .av-rec { display: inline-flex; align-items: center; gap: 4px; color: var(--p); font-weight: 700; }
+  .av-rec::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--p); box-shadow: 0 0 6px var(--p); }
+  .av-wave { display: flex; align-items: center; gap: 2px; height: 34px; margin: 4px 0; }
+  .av-wave b { width: 3px; border-radius: 1px; background: var(--ok); opacity: .85; }
+  .av-wave b:nth-child(4n) { height: 60%; } .av-wave b:nth-child(4n+1) { height: 30%; }
+  .av-wave b:nth-child(4n+2) { height: 90%; } .av-wave b:nth-child(4n+3) { height: 45%; }
+  .av-wave b.past { opacity: .3; }
+  .av-bar { display: flex; align-items: center; gap: 10px; }
+  .av-play { width: 26px; height: 26px; border-radius: 50%; background: var(--ok); color: #000; display: grid; place-items: center; font-size: 10px; cursor: pointer; }
+  .av-track { flex: 1; height: 4px; border-radius: 2px; background: var(--bg3); position: relative; }
+  .av-track::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 38%; border-radius: 2px; background: var(--ok); box-shadow: 0 0 6px rgba(0,255,65,.5); }
+  .av-time { font: 10px var(--mono); color: var(--ok); }
+  .av-feed { padding: 0 12px 12px; display: flex; flex-direction: column; gap: 3px; }
+  .av-line { display: flex; gap: 8px; padding: 4px 8px; border-radius: 4px; border-left: 2px solid transparent; }
+  .av-line .spk { font: 700 10px var(--mono); letter-spacing: 1px; min-width: 74px; text-align: right; color: var(--s); }
+  .av-line .spk.c2 { color: var(--a); }
+  .av-line .txt { font-size: 11.5px; color: var(--t1); flex: 1; }
+  .av-line.done { opacity: .45; }
+  .av-line.now { background: rgba(0,255,65,.06); border-left-color: var(--ok); }
+  .av-line.now .txt { color: #d8ffe4; text-shadow: 0 0 10px rgba(0,255,65,.25); }
+  .av-line.next { opacity: .25; }
+
+  /* ═════════════ ③ LOCATION VIEWER — intel postcard ═════════════ */
+  .lv { border: 1px solid var(--br); border-radius: 8px; overflow: hidden; background: var(--bg1); }
+  .lv-img { position: relative; height: 150px; background:
+    linear-gradient(180deg, rgba(5,7,12,.1) 30%, rgba(5,7,12,.9) 90%),
+    radial-gradient(circle at 65% 30%, #35547a, #16233b 60%, #0a1220); }
+  .lv-img .grid { position: absolute; inset: 0; background: repeating-linear-gradient(0deg, transparent 0 30px, rgba(25,243,247,.05) 30px 31px), repeating-linear-gradient(90deg, transparent 0 30px, rgba(25,243,247,.05) 30px 31px); }
+  .lv-img .coords { position: absolute; top: 8px; left: 10px; font: 9.5px var(--mono); letter-spacing: 1px; color: var(--s); }
+  .lv-img .heat { position: absolute; top: 8px; right: 10px; font: 700 8px var(--mono); letter-spacing: 1.5px; color: var(--a); border: 1px solid rgba(247,201,72,.5); background: rgba(10,10,18,.7); border-radius: 20px; padding: 2px 8px; }
+  .lv-img .nm { position: absolute; left: 12px; bottom: 26px; font: 700 19px var(--ui); color: #fff; text-shadow: 0 2px 8px rgba(0,0,0,.8); }
+  .lv-img .dist { position: absolute; left: 12px; bottom: 8px; font: 10px var(--mono); letter-spacing: 1px; color: var(--a); }
+  .lv-strip { display: flex; align-items: center; gap: 14px; padding: 9px 12px; border-bottom: 1px solid var(--br); background: var(--bg2); }
+  .lv-ctl .k, .lv-sec .k { display: block; font: 7.5px var(--mono); letter-spacing: 1.2px; color: var(--t2); text-transform: uppercase; }
+  .lv-ctl .v { font: 700 11px var(--ui); color: var(--t0); }
+  .lv-sec { margin-left: auto; text-align: right; }
+  .lv-sec .m { display: inline-flex; gap: 3px; margin-top: 2px; }
+  .lv-sec .m b { width: 20px; height: 7px; border-radius: 1px; background: var(--bg3); }
+  .lv-sec .m b.on { background: var(--p); box-shadow: 0 0 5px rgba(246,82,97,.5); }
+  .lv-sec .cap { font: 700 8.5px var(--mono); letter-spacing: 1px; color: var(--p); margin-left: 5px; }
+  .lv-body { padding: 10px 12px; }
+  .lv-body p { margin: 0 0 8px; font-size: 11.5px; color: var(--t1); line-height: 1.5; }
+  .lv-intel { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; margin-bottom: 8px; }
+  .lv-intel .k { font: 8.5px var(--mono); letter-spacing: 1.2px; color: var(--t2); text-transform: uppercase; align-self: center; }
+  .lv-intel .v { font-size: 11px; color: var(--t1); }
+  .lv-tags { display: flex; gap: 5px; flex-wrap: wrap; }
+  .lv-tags span { font: 9.5px var(--mono); letter-spacing: .5px; color: var(--s); background: rgba(25,243,247,.07); border: 1px solid rgba(25,243,247,.3); border-radius: 20px; padding: 2px 9px; }
+  /* location composer additions */
+  .loc-addgrid { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; align-items: flex-end; }
+  .loc-addgrid > span { display: flex; flex-direction: column; }
+  .segpick { display: flex; gap: 3px; }
+  .segpick b { width: 26px; height: 14px; border-radius: 2px; background: var(--bg0); border: 1px solid var(--br); cursor: pointer; }
+  .segpick b.on { background: var(--p); border-color: var(--p); }
+  .tagedit { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
+  .tagedit span { font: 9.5px var(--mono); color: var(--s); background: rgba(25,243,247,.07); border: 1px solid rgba(25,243,247,.3); border-radius: 20px; padding: 2px 9px; }
+  .tagedit span i { font-style: normal; color: var(--t2); margin-left: 4px; cursor: pointer; }
+  .tagedit input { width: 90px; }
+</style>
+</head>
+<body>
+
+<h1>DOSSIER · AV LOG · LOCATION — round 2 mock (composer + FUI viewer)</h1>
+<div class="note">Updated per notes: dossier goes <b>FUI in both surfaces</b> + linked-actor <b>combat profile</b> + <b>masked identity</b> (roll OR GM reveal); avlog gets <b>karaoke transcript playback</b>; location gains <b>control/security/heat + intel rows + tags</b>. Emoji stand in for FA. Save contracts extend (new optional fields), nothing breaks old entries.</div>
+
+<h2>① DOSSIER — FUI "target file" render (left) + composer additions (right)</h2>
+<div class="note"><b>Viewer:</b> red FUI frame (corner brackets, file-id topbar, live scan sweep on the portrait). <b>Masked identity</b>: portrait renders static+blur + IDENTITY MASKED with a DECRYPT button (roll, optional trace; GM sees the face + gets a force-REVEAL — "Both", as picked). <b>COMBAT PROFILE</b> reads the linked actor's REAL CPR stats at render time (never stored — always current); it can be authored <b>encrypted</b> (values glow-blanked until a roll) or redacted entirely. GM gets an open-sheet chip. Threat renders as the same segmented meter you author.</div>
+<div class="row">
+  <div class="panel">
+    <h3>Viewer — player, face masked, profile encrypted</h3>
+    <div class="dv fui">
+      <span class="ck tl"></span><span class="ck tr"></span><span class="ck bl"></span><span class="ck br"></span>
+      <div class="dv-top">TARGET FILE <span class="id">// NC-DB-4471 · rev 3</span><span class="grow"></span><span class="stamp">SECRET</span></div>
+      <div class="dv-hd">
+        <div class="dv-port masked">
+          <span class="sil">👤</span>
+          <span class="scan"></span>
+          <span class="maskcap">IDENTITY MASKED</span>
+          <button class="unmask">🔓 DECRYPT · DV 15</button>
+        </div>
+        <div class="dv-id">
+          <div class="dv-name">██████ █████</div>
+          <div class="dv-alias">a.k.a. “The Ledger”</div>
+          <div class="dv-grid">
+            <span class="k">Affiliation</span><span class="v">Arasaka Logistics</span>
+            <span class="k">Last known</span><span class="v">Japantown</span>
+            <span class="k">Threat</span>
+            <span class="dv-threat"><b class="on"></b><b class="on"></b><b class="on"></b><b></b><span class="cap">HIGH</span></span>
+          </div>
+        </div>
+      </div>
+      <div class="dv-cp enc">
+        <div class="dv-cp-hd">⚔ COMBAT PROFILE <span class="src">// live read: world actor</span></div>
+        <div class="dv-stats">
+          <span class="dv-stat"><span class="k">BODY</span><span class="v">8</span></span>
+          <span class="dv-stat"><span class="k">REF</span><span class="v">7</span></span>
+          <span class="dv-stat"><span class="k">DEX</span><span class="v">6</span></span>
+          <span class="dv-stat"><span class="k">TECH</span><span class="v">5</span></span>
+          <span class="dv-stat"><span class="k">COOL</span><span class="v">7</span></span>
+          <span class="dv-stat"><span class="k">WILL</span><span class="v">6</span></span>
+          <span class="dv-stat"><span class="k">MOVE</span><span class="v">6</span></span>
+          <span class="dv-stat"><span class="k">EMP</span><span class="v">4</span></span>
+        </div>
+        <button class="decrypt">🔓 DECRYPT PROFILE · DV 13</button>
+      </div>
+      <div class="dv-secs">
+        <div class="dv-sec"><div class="h">BACKGROUND</div><p>Mid-level accountant turned data broker. Moves Arasaka shipping manifests through a dead-drop network in Japantown.</p></div>
+        <div class="dv-sec red"><div class="h">CURRENT OPERATION</div><p>████ REDACTED ████</p></div>
+      </div>
+    </div>
+    <div class="hint">GM sees the real face + name, a <b>REVEAL</b> chip on the mask (force-unmask, payload-sniff pattern), an <b>open-sheet</b> chip on the profile, and the DECLASSIFY button as today.</div>
+  </div>
+  <div class="panel">
+    <h3>Composer — new rows (card editor from round-1 mock unchanged)</h3>
+    <div class="doss-addrow">
+      <span class="chk"><input type="checkbox" checked /> 🎭 Identity masked</span>
+      <span><span class="lbl">Roll skill</span><input class="inp" style="width:130px" value="Interface" /></span>
+      <span><span class="lbl">DV</span><input class="inp" style="width:50px" value="15" /></span>
+      <span class="chk"><input type="checkbox" /> fail = trace</span>
+    </div>
+    <div class="hint" style="margin:4px 0 0">Masks the portrait AND the real name for players until decrypted (alias stays visible). GM force-reveal in the viewer.</div>
+    <div class="doss-addrow">
+      <span class="chk"><input type="checkbox" checked /> ⚔ Combat profile from linked actor</span>
+      <span style="width:120px"><span class="lbl">Visibility</span>
+        <select class="inp" style="width:100%"><option>Encrypted (roll)</option><option>Open</option><option>GM only</option></select>
+      </span>
+      <span><span class="lbl">DV</span><input class="inp" style="width:50px" value="13" /></span>
+    </div>
+    <div class="hint" style="margin:4px 0 0">Stats are read <b>live</b> from the world actor at render — edit the sheet, the dossier updates. No linked actor = row hidden.</div>
+  </div>
+</div>
+
+<h2>② AV LOG — karaoke playback (no real audio needed)</h2>
+<div class="note"><b>Viewer:</b> when the entry has a transcript + duration but <b>no media file</b>, the deck gets a real ▶ — the waveform animates, the timecode ticks, and lines light up one at a time across the duration (weighted by line length): played lines dim, the <b>current line glows</b> with a left marker, upcoming lines sit faint. Pause/restart; reduced-motion = all lines shown. A REC chip + channel readout dress the deck. With a real media file, the normal player renders instead (unchanged). <b>Composer: zero new fields</b> — playback lights up automatically from what you already author (duration + transcript).</div>
+<div class="row">
+  <div class="panel">
+    <h3>Viewer — playback running (1:19 / 3:47)</h3>
+    <div class="av fui">
+      <span class="ck tl"></span><span class="ck tr"></span><span class="ck bl"></span><span class="ck br"></span>
+      <div class="av-deck">
+        <div class="av-meta"><span class="av-rec">PLAYBACK</span><span>CH-04 · wiretap · booth 4</span><span style="flex:1"></span><span>SIG ▓▓▓░</span></div>
+        <div class="av-wave">
+          <b class="past"></b><b class="past"></b><b class="past"></b><b class="past"></b><b class="past"></b><b class="past"></b><b class="past"></b><b class="past"></b><b class="past"></b><b class="past"></b><b class="past"></b><b class="past"></b>
+          <b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b>
+        </div>
+        <div class="av-bar"><span class="av-play">⏸</span><span class="av-track"></span><span class="av-time">01:19 / 03:47</span></div>
+      </div>
+      <div class="av-feed">
+        <div class="av-line done"><span class="spk">OKADA</span><span class="txt">The manifest numbers don't add up. Someone's already skimming.</span></div>
+        <div class="av-line now"><span class="spk c2">UNKNOWN</span><span class="txt">Then we move the meet. Friday. Usual booth.</span></div>
+        <div class="av-line next"><span class="spk">OKADA</span><span class="txt">Fine. Bring the shard this time.</span></div>
+      </div>
+    </div>
+    <div class="hint">Composer stays exactly as round-1 mock (live player + transcript feed). No new fields — ▶ appears when there's a transcript + duration and no media URL.</div>
+  </div>
+</div>
+
+<h2>③ LOCATION — intel postcard (viewer) + composer additions</h2>
+<div class="note"><b>Viewer:</b> the postcard gains an <b>intel strip</b> — CONTROLLED BY + a SECURITY segmented meter (LOW / GUARDED / HIGH / LETHAL) — a <b>HEAT chip</b> on the image, optional <b>practical rows</b> (hours / access / approach / contact), and <b>tag chips</b>. All optional: author nothing extra and the card renders exactly like today. <b>Composer:</b> the postcard editor from round 1, plus a control/security/heat row, the four intel fields, and a tag chip editor (type, Enter adds).</div>
+<div class="row">
+  <div class="panel">
+    <h3>Viewer</h3>
+    <div class="lv">
+      <div class="lv-img">
+        <div class="grid"></div>
+        <span class="coords">N 34.0192° · W 118.4103°</span>
+        <span class="heat">⚠ NCPD HOT ZONE</span>
+        <span class="nm">Kabuki Market — Back Alley</span>
+        <span class="dist">📍 Watson</span>
+      </div>
+      <div class="lv-strip">
+        <span class="lv-ctl"><span class="k">Controlled by</span><span class="v">Tyger Claws</span></span>
+        <span class="lv-sec"><span class="k">Security</span><span class="m"><b class="on"></b><b class="on"></b><b class="on"></b><b></b></span><span class="cap">HIGH</span></span>
+      </div>
+      <div class="lv-body">
+        <p>South entrance. Look for the red neon dragon sign — knock twice, ask for Tiny.</p>
+        <div class="lv-intel">
+          <span class="k">Hours</span><span class="v">22:00 – 05:00</span>
+          <span class="k">Access</span><span class="v">Service door, keypad — code changes weekly</span>
+          <span class="k">Approach</span><span class="v">Come on foot; cars get made by the spotters on the roof</span>
+          <span class="k">Contact</span><span class="v">Tiny (door), owes Rogue a favor</span>
+        </div>
+        <div class="lv-tags"><span>ripperdoc</span><span>camera-heavy</span><span>neutral ground</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="panel">
+    <h3>Composer — new rows (postcard editor from round-1 mock unchanged)</h3>
+    <div class="loc-addgrid">
+      <span style="flex:1;min-width:140px"><span class="lbl">Controlled by</span><input class="inp" style="width:100%" value="Tyger Claws" /></span>
+      <span><span class="lbl">Security — click the meter</span><span class="segpick"><b class="on"></b><b class="on"></b><b class="on"></b><b></b></span></span>
+      <span style="width:150px"><span class="lbl">Heat chip (blank = none)</span><input class="inp" style="width:100%" value="NCPD HOT ZONE" /></span>
+    </div>
+    <div class="loc-addgrid">
+      <span style="width:110px"><span class="lbl">Hours</span><input class="inp" style="width:100%" value="22:00 – 05:00" /></span>
+      <span style="flex:1;min-width:150px"><span class="lbl">Access</span><input class="inp" style="width:100%" value="Service door, keypad…" /></span>
+      <span style="flex:1;min-width:150px"><span class="lbl">Approach</span><input class="inp" style="width:100%" value="Come on foot…" /></span>
+      <span style="width:130px"><span class="lbl">Contact</span><input class="inp" style="width:100%" value="Tiny (door)" /></span>
+    </div>
+    <div class="tagedit">
+      <span class="lbl" style="margin:0">Tags</span>
+      <span>ripperdoc <i>✕</i></span><span>camera-heavy <i>✕</i></span><span>neutral ground <i>✕</i></span>
+      <input class="inp" placeholder="+ tag, Enter" />
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>NCM — Gallery redesign (photo app viewer + composer) 2026-07-13</title>
+<style>
+  :root {
+    --p: #F65261; --s: #19f3f7; --a: #f7c948; --ok: #00ff41; --pp: #a855f7;
+    --bg0: #0a0a12; --bg1: #12121a; --bg2: #1a1a2e; --bg3: #222236;
+    --t0: #ededf2; --t1: #b9b9cc; --t2: #7a7a92; --br: #2a2a45;
+    --mono: 'Consolas', monospace; --ui: 'Segoe UI', sans-serif;
+  }
+  body { margin: 0; background: #050508; color: var(--t0); font-family: var(--ui); padding: 18px 22px 60px; }
+  h1 { font-size: 15px; letter-spacing: 2px; color: var(--s); font-family: var(--mono); }
+  h2 { font-size: 12px; letter-spacing: 1.5px; color: var(--a); font-family: var(--mono); margin: 30px 0 8px; }
+  .note { font-size: 11.5px; color: var(--t2); max-width: 1050px; line-height: 1.55; margin-bottom: 14px; }
+  .note b { color: var(--t1); }
+  .row { display: flex; gap: 26px; align-items: flex-start; flex-wrap: wrap; }
+  input, select { font-family: inherit; }
+  .inp { background: var(--bg0); border: 1px solid var(--br); border-radius: 4px; color: var(--t0); font-size: 11px; padding: 3px 7px; height: 22px; box-sizing: border-box; }
+  .lbl { display: block; font: 8px var(--mono); letter-spacing: 1.2px; color: var(--t2); text-transform: uppercase; margin-bottom: 2px; }
+  .hint { font-size: 10px; color: var(--t2); line-height: 1.5; margin-top: 6px; max-width: 470px; }
+  .hint b { color: var(--t1); }
+
+  /* fake "photos" — gradients so the mock is self-contained */
+  .ph1 { background: radial-gradient(circle at 30% 35%, #4a6a8a, #1d2c40 65%, #0c1420); }
+  .ph2 { background: radial-gradient(circle at 70% 60%, #7a4a3a, #3a2018 60%, #160c08); }
+  .ph3 { background: radial-gradient(circle at 50% 20%, #3a5a4a, #14261c 65%, #08120c); }
+  .ph4 { background: radial-gradient(circle at 60% 70%, #5a4a7a, #241c3a 60%, #0e0a18); }
+  .ph5 { background: radial-gradient(circle at 25% 65%, #6a6a3a, #2c2c14 65%, #121208); }
+
+  /* ═════════════ ① VIEWER — photo / surveillance export app ═════════════ */
+  .gv { width: 560px; border: 1px solid var(--br); border-radius: 8px; overflow: hidden; background: var(--bg1); }
+  /* toolbar: icon+title · source chip · filter chips (clickable, solo like syslog) */
+  .gv-bar { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--br); background: var(--bg2); }
+  .gv-bar .ttl { font: 700 10.5px var(--mono); letter-spacing: 1.2px; color: var(--pp); }
+  .gv-bar .ttl i { margin-right: 5px; }
+  .gv-src { font: 9px var(--mono); letter-spacing: 1px; color: var(--t2); border: 1px solid var(--br); border-radius: 3px; padding: 1px 6px; background: var(--bg0); }
+  .gv-bar .grow { flex: 1; }
+  .gv-f { font: 700 8.5px var(--mono); letter-spacing: 1px; color: var(--t2); border: 1px solid var(--br); border-radius: 20px; padding: 2px 8px; cursor: pointer; background: transparent; }
+  .gv-f.on { color: var(--pp); border-color: var(--pp); background: rgba(168,85,247,.1); }
+  .gv-f.flag { color: var(--a); } .gv-f.lock { color: var(--p); }
+  .gv-cnt { font: 9px var(--mono); color: var(--t2); }
+
+  .gv-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 10px; }
+  .gv-cell { position: relative; margin: 0; border: 1px solid var(--br); border-radius: 6px; overflow: hidden; background: var(--bg0); aspect-ratio: 4/3; cursor: pointer; }
+  .gv-cell:hover { border-color: rgba(168,85,247,.6); }
+  /* hero — the flagged frame spans 2×2: the evidence-board focal point */
+  .gv-cell.hero { grid-column: span 2; grid-row: span 2; aspect-ratio: auto; border-color: rgba(247,201,72,.55); box-shadow: 0 0 14px rgba(247,201,72,.08) inset; }
+  .gv-cell .img { position: absolute; inset: 0; }
+  /* CCTV chrome ON the image: label TL, timestamp BR */
+  .gv-tag { position: absolute; top: 5px; left: 5px; font: 700 8px var(--mono); letter-spacing: 1.2px; color: var(--s); background: rgba(5,5,10,.72); border-radius: 3px; padding: 1px 6px; }
+  .gv-time { position: absolute; bottom: 5px; right: 5px; font: 8.5px var(--mono); letter-spacing: 1px; color: #d8ffe4; background: rgba(5,5,10,.72); border-radius: 3px; padding: 1px 6px; }
+  .gv-flagtag { position: absolute; top: 5px; right: 5px; font: 700 7.5px var(--mono); letter-spacing: 1.2px; color: #0a0a12; background: var(--a); border-radius: 3px; padding: 2px 6px; }
+  /* caption scrim — always visible on the hero, hover-reveal on small cells */
+  .gv-cap { position: absolute; left: 0; right: 0; bottom: 0; padding: 16px 8px 6px; font-size: 10.5px; color: var(--t1);
+    background: linear-gradient(180deg, transparent, rgba(5,5,10,.88) 55%); opacity: 0; transition: opacity .18s; }
+  .gv-cell:hover .gv-cap, .gv-cell.hero .gv-cap { opacity: 1; }
+  .gv-cell.hero .gv-cap { font-size: 11.5px; }
+
+  /* locked frame — scramble field + full-width DECRYPT bottom bar (fixes the squish) */
+  .gv-cell.locked { cursor: default; border: 1px dashed rgba(246,82,97,.5); display: flex; flex-direction: column; }
+  .gv-cell.locked .fld { flex: 1; position: relative; display: grid; place-items: center;
+    background: repeating-linear-gradient(-45deg, transparent 0 6px, rgba(246,82,97,.08) 6px 12px), var(--bg0); }
+  .gv-cell.locked .fld i { font-size: 18px; color: var(--p); }
+  .gv-cell.locked .fld .dv { position: absolute; top: 5px; right: 5px; font: 700 8px var(--mono); letter-spacing: 1px; color: var(--p); border: 1px solid rgba(246,82,97,.5); border-radius: 3px; padding: 1px 5px; background: rgba(5,5,10,.7); }
+  .gv-cell.locked .fld .cap { position: absolute; bottom: 5px; left: 0; right: 0; text-align: center; font: 700 7.5px var(--mono); letter-spacing: 2px; color: rgba(246,82,97,.8); }
+  .gv-unlock { flex: 0 0 auto; width: 100%; border: 0; border-top: 1px solid rgba(246,82,97,.45); background: rgba(246,82,97,.13); color: var(--p);
+    font: 700 9px var(--mono); letter-spacing: 1.5px; padding: 5px 0; cursor: pointer; }
+  .gv-unlock:hover { background: rgba(246,82,97,.25); }
+
+  /* dead frame — animated static */
+  .gv-cell.dead { cursor: default; display: grid; place-items: center; }
+  .gv-cell.dead .static { position: absolute; inset: 0; opacity: .5;
+    background: repeating-linear-gradient(0deg, #16161f 0 1px, #0a0a12 1px 3px), repeating-linear-gradient(90deg, rgba(255,255,255,.03) 0 2px, transparent 2px 4px); }
+  .gv-cell.dead .msg { position: relative; font: 700 8px var(--mono); letter-spacing: 2px; color: var(--t2); display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .gv-cell.dead .msg i { font-size: 15px; }
+
+  /* ═════════════ ② LIGHTBOX — prev/next nav ═════════════ */
+  .lb { position: relative; width: 560px; height: 340px; border: 1px solid rgba(25,243,247,.35); border-radius: 8px; overflow: hidden; background: #04060a; }
+  .lb .img { position: absolute; inset: 24px 54px 40px; border: 1px solid rgba(25,243,247,.25); }
+  .lb .ck { position: absolute; width: 16px; height: 16px; border: 1.5px solid var(--s); opacity: .8; }
+  .lb .ck.tl { top: 8px; left: 8px; border-right: 0; border-bottom: 0; }
+  .lb .ck.tr { top: 8px; right: 8px; border-left: 0; border-bottom: 0; }
+  .lb .ck.bl { bottom: 8px; left: 8px; border-right: 0; border-top: 0; }
+  .lb .ck.br { bottom: 8px; right: 8px; border-left: 0; border-top: 0; }
+  .lb-nav { position: absolute; top: 50%; transform: translateY(-50%); width: 34px; height: 56px; display: grid; place-items: center;
+    background: rgba(10,12,20,.75); border: 1px solid rgba(25,243,247,.35); color: var(--s); font-size: 15px; cursor: pointer; border-radius: 5px; }
+  .lb-nav.prev { left: 10px; } .lb-nav.next { right: 10px; }
+  .lb-nav:hover { background: rgba(25,243,247,.15); }
+  .lb-foot { position: absolute; left: 54px; right: 54px; bottom: 8px; display: flex; align-items: center; gap: 10px; font: 9.5px var(--mono); letter-spacing: 1px; }
+  .lb-foot .tag { color: var(--s); font-weight: 700; }
+  .lb-foot .cap { color: var(--t1); flex: 1; font-family: var(--ui); font-size: 11px; }
+  .lb-foot .idx { color: var(--t2); }
+  .lb-top { position: absolute; top: 8px; left: 54px; right: 54px; display: flex; justify-content: space-between; font: 9px var(--mono); letter-spacing: 1px; color: var(--t2); }
+  .lb-top .t { color: #d8ffe4; }
+
+  /* ═════════════ ③ COMPOSER — contact-sheet editor ═════════════ */
+  .cmp { width: 500px; background: var(--bg1); border: 1px solid var(--br); border-radius: 10px; padding: 14px; }
+  .cmp-top { display: flex; gap: 8px; margin-bottom: 10px; }
+  .cmp-top .f { display: flex; flex-direction: column; }
+  .seg { display: inline-flex; border: 1px solid var(--br); border-radius: 4px; overflow: hidden; height: 22px; }
+  .seg b { font: 700 8.5px var(--mono); letter-spacing: 1px; padding: 4px 9px; color: var(--t2); cursor: pointer; }
+  .seg b.on { color: #0a0a12; background: var(--pp); }
+  .gc-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .gc { position: relative; background: var(--bg2); border: 1px solid var(--br); border-radius: 7px; padding: 5px; display: flex; flex-direction: column; gap: 4px; }
+  .gc.is-flagged { border-color: rgba(247,201,72,.55); }
+  .gc.is-locked { border-color: rgba(246,82,97,.5); }
+  .gc.ghost { border: 1px dashed var(--pp); background: rgba(168,85,247,.05); }
+  .gc-th { position: relative; height: 78px; border-radius: 5px; overflow: hidden; cursor: grab;
+    background: repeating-conic-gradient(#101018 0 25%, #16161f 0 50%) 0 0/14px 14px; }
+  .gc.is-locked .gc-th .img { filter: blur(7px) brightness(.5); }
+  .gc-th .img { position: absolute; inset: 0; }
+  .gc-drag { position: absolute; top: 3px; left: 3px; font: 10px var(--mono); color: rgba(255,255,255,.55); background: rgba(5,5,10,.6); border-radius: 3px; padding: 0 4px; cursor: grab; }
+  .gc-badges { position: absolute; top: 3px; right: 3px; display: flex; gap: 3px; }
+  .gc-badges b { width: 17px; height: 17px; display: grid; place-items: center; font-size: 8px; border: 1px solid var(--br); border-radius: 3px; background: rgba(5,5,10,.7); color: var(--t2); cursor: pointer; }
+  .gc.is-flagged .gc-badges b.f { color: var(--a); border-color: var(--a); }
+  .gc.is-locked .gc-badges b.l { color: var(--p); border-color: var(--p); }
+  .gc-num { position: absolute; bottom: 3px; left: 3px; font: 700 8px var(--mono); color: var(--t2); background: rgba(5,5,10,.6); border-radius: 3px; padding: 0 4px; }
+  .gc-meta { display: flex; gap: 3px; }
+  .gc-meta .inp { flex: 1; min-width: 0; height: 20px; font-size: 10px; padding: 2px 5px; }
+  .gc-meta .inp.time { flex: 0 0 42px; }
+  .gc-meta .inp.dv { flex: 0 0 34px; border-color: rgba(246,82,97,.6); color: var(--p); }
+  .gc-cap { height: 20px; font-size: 10px; padding: 2px 5px; }
+  .gc-url { display: flex; gap: 3px; }
+  .gc-url .inp { flex: 1; min-width: 0; height: 20px; font-size: 9px; padding: 2px 5px; color: var(--t2); }
+  .gc-url b { flex: 0 0 20px; height: 20px; display: grid; place-items: center; border: 1px solid var(--br); border-radius: 3px; font-size: 8.5px; color: var(--t2); cursor: pointer; }
+  .cmp-add { display: flex; gap: 6px; margin-top: 8px; }
+  .cmp-add button { font: 700 9px var(--mono); letter-spacing: 1px; color: var(--s); background: rgba(25,243,247,.07); border: 1px solid rgba(25,243,247,.4); border-radius: 4px; padding: 5px 10px; cursor: pointer; }
+  .cmp-add button.amber { color: var(--a); border-color: rgba(247,201,72,.4); background: rgba(247,201,72,.07); }
+  .lockrow { display: flex; gap: 10px; align-items: flex-end; background: var(--bg2); border: 1px solid var(--br); border-radius: 6px; padding: 8px 10px; margin-top: 10px; }
+  .chk { font-size: 10.5px; color: var(--t1); display: flex; align-items: center; gap: 5px; }
+
+  /* ═════════════ ④ FEED MODE — live camera multiplex ═════════════ */
+  @keyframes rec-blink { 50% { opacity: .25; } }
+  @keyframes cam-sweep { from { top: -8%; } to { top: 108%; } }
+  @keyframes cam-drift { from { transform: scale(1.02); } to { transform: scale(1.11) translate(-1.5%, 1%); } }
+  .fv { width: 560px; border: 1px solid #26304a; border-radius: 8px; overflow: hidden; background: #07090e; }
+  .fv-bar { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-bottom: 1px solid #1d2536; background: #0d1119; font: 700 9.5px var(--mono); letter-spacing: 1.5px; color: var(--ok); }
+  .fv-bar .live { display: inline-flex; align-items: center; gap: 5px; color: var(--p); }
+  .fv-bar .live::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--p); box-shadow: 0 0 7px var(--p); animation: rec-blink 1.2s steps(1) infinite; }
+  .fv-bar .clock { margin-left: auto; color: #d8ffe4; letter-spacing: 2px; }
+  .fv-bar .ch { color: var(--t2); font-weight: 400; letter-spacing: 1px; }
+  .fv-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 8px; }
+  .cam { position: relative; aspect-ratio: 4/3; overflow: hidden; border: 1px solid #1d2536; border-radius: 3px; background: #000; cursor: pointer; }
+  .cam .img { position: absolute; inset: -6%; animation: cam-drift 16s ease-in-out infinite alternate; }
+  .cam .sweep { position: absolute; left: 0; right: 0; height: 22px; top: 30%; pointer-events: none;
+    background: linear-gradient(180deg, transparent, rgba(0,255,65,.06), transparent); animation: cam-sweep 7s linear infinite; }
+  .cam::after { content: ''; position: absolute; inset: 0; pointer-events: none;
+    background: repeating-linear-gradient(0deg, transparent 0 2px, rgba(0,0,0,.14) 2px 3px); }
+  .cam-tag { position: absolute; top: 4px; left: 4px; z-index: 2; font: 700 8px var(--mono); letter-spacing: 1.2px; color: var(--ok); background: rgba(3,5,8,.78); border-radius: 2px; padding: 1px 5px; }
+  .cam-rec { position: absolute; bottom: 4px; right: 4px; z-index: 2; display: inline-flex; align-items: center; gap: 4px; font: 8.5px var(--mono); letter-spacing: 1px; color: #d8ffe4; background: rgba(3,5,8,.78); border-radius: 2px; padding: 1px 5px; }
+  .cam-rec::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--p); animation: rec-blink 1.2s steps(1) infinite; }
+  .cam-sig { position: absolute; top: 4px; right: 4px; z-index: 2; display: inline-flex; align-items: flex-end; gap: 1.5px; background: rgba(3,5,8,.78); border-radius: 2px; padding: 3px 4px; }
+  .cam-sig b { width: 3px; background: var(--ok); }
+  .cam-sig b:nth-child(1) { height: 3px; } .cam-sig b:nth-child(2) { height: 5px; }
+  .cam-sig b:nth-child(3) { height: 7px; } .cam-sig b:nth-child(4) { height: 9px; }
+  .cam-sig.low b { background: #333c50; } .cam-sig.low b:nth-child(-n+2) { background: var(--a); }
+  /* hover action chips */
+  .cam-act { position: absolute; bottom: 4px; left: 4px; z-index: 3; display: flex; gap: 3px; opacity: 0; transition: opacity .15s; }
+  .cam:hover .cam-act { opacity: 1; }
+  .cam-act b { font: 700 7.5px var(--mono); letter-spacing: 1px; color: var(--s); border: 1px solid rgba(25,243,247,.5); background: rgba(3,5,8,.85); border-radius: 2px; padding: 2px 5px; cursor: pointer; }
+  .cam-act b.warn { color: var(--a); border-color: rgba(247,201,72,.5); }
+  /* states */
+  .cam.offline { cursor: default; }
+  .cam.offline .static { position: absolute; inset: 0; opacity: .55;
+    background: repeating-linear-gradient(0deg, #141821 0 1px, #05070b 1px 3px), repeating-linear-gradient(90deg, rgba(255,255,255,.04) 0 2px, transparent 2px 4px); }
+  .cam.offline .msg { position: absolute; inset: 0; display: grid; place-items: center; font: 700 8px var(--mono); letter-spacing: 2px; color: var(--t2); }
+  .cam.enc { cursor: default; border: 1px dashed rgba(246,82,97,.5); display: flex; flex-direction: column; }
+  .cam.enc .fld { flex: 1; position: relative; display: grid; place-items: center;
+    background: repeating-linear-gradient(-45deg, transparent 0 6px, rgba(246,82,97,.08) 6px 12px), #05070b; }
+  .cam.enc .fld i { font-size: 15px; color: var(--p); }
+  .cam.enc .fld .dv { position: absolute; top: 4px; right: 4px; font: 700 7.5px var(--mono); color: var(--p); border: 1px solid rgba(246,82,97,.5); border-radius: 2px; padding: 1px 4px; background: rgba(3,5,8,.7); }
+  .cam.looped { border-color: rgba(247,201,72,.6); }
+  .cam.looped .img { animation: none; filter: saturate(.7); }
+  .cam-loop { position: absolute; top: 4px; right: 4px; z-index: 2; font: 700 7.5px var(--mono); letter-spacing: 1px; color: #0a0a12; background: var(--a); border-radius: 2px; padding: 2px 5px; animation: rec-blink 2s steps(1) infinite; }
+
+  /* ═════════════ ⑤ MONITOR VIEW — single-cam takeover ═════════════ */
+  .mv { position: relative; width: 560px; height: 330px; border: 1px solid rgba(0,255,65,.3); border-radius: 8px; overflow: hidden; background: #04070a; }
+  .mv .img { position: absolute; inset: 26px 12px 44px; border: 1px solid rgba(0,255,65,.2); overflow: hidden; }
+  .mv .img > div { position: absolute; inset: -6%; animation: cam-drift 16s ease-in-out infinite alternate; }
+  .mv-top { position: absolute; top: 7px; left: 12px; right: 12px; display: flex; align-items: center; gap: 10px; font: 700 9px var(--mono); letter-spacing: 1.5px; color: var(--ok); }
+  .mv-top .rec { display: inline-flex; align-items: center; gap: 4px; color: var(--p); }
+  .mv-top .rec::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--p); animation: rec-blink 1.2s steps(1) infinite; }
+  .mv-top .clock { margin-left: auto; color: #d8ffe4; letter-spacing: 2px; }
+  .mv-foot { position: absolute; left: 12px; right: 12px; bottom: 8px; display: flex; align-items: center; gap: 6px; }
+  .mv-foot .chnav { font: 700 9px var(--mono); color: var(--ok); border: 1px solid rgba(0,255,65,.4); background: rgba(0,255,65,.06); border-radius: 3px; padding: 3px 8px; cursor: pointer; }
+  .mv-foot .idx { font: 9px var(--mono); color: var(--t2); letter-spacing: 1px; }
+  .mv-foot .grow { flex: 1; }
+  .mv-foot .act { font: 700 8.5px var(--mono); letter-spacing: 1px; border-radius: 3px; padding: 3px 9px; cursor: pointer; }
+  .mv-foot .loop { color: var(--a); border: 1px solid rgba(247,201,72,.5); background: rgba(247,201,72,.08); }
+  .mv-foot .cut { color: var(--p); border: 1px solid rgba(246,82,97,.5); background: rgba(246,82,97,.08); }
+  .mv-foot .gm { color: var(--s); border: 1px dashed rgba(25,243,247,.5); background: transparent; }
+
+  /* ═════════════ ⑥ PTZ — pan around a huge image like a camera head ═════════════ */
+  .ptz { position: relative; width: 560px; height: 330px; border: 1px solid rgba(0,255,65,.3); border-radius: 8px; overflow: hidden; background: #04070a; }
+  .ptz-vp { position: absolute; inset: 26px 12px 44px; border: 1px solid rgba(0,255,65,.2); overflow: hidden; }
+  /* the "10,000px image" — a big gradient field with landmarks so panning is obvious */
+  .ptz-img { position: absolute; left: 0; top: 0; width: 1680px; height: 990px; transform-origin: 0 0; transition: transform .4s ease; will-change: transform;
+    background:
+      repeating-linear-gradient(0deg, transparent 0 118px, rgba(25,243,247,.05) 118px 120px),
+      repeating-linear-gradient(90deg, transparent 0 118px, rgba(25,243,247,.05) 118px 120px),
+      radial-gradient(circle at 18% 22%, #4a6a8a, transparent 30%),
+      radial-gradient(circle at 78% 30%, #7a4a3a, transparent 26%),
+      radial-gradient(circle at 40% 75%, #3a5a4a, transparent 32%),
+      radial-gradient(circle at 85% 80%, #5a4a7a, transparent 28%),
+      linear-gradient(160deg, #16223a, #0a1220 60%, #060a12); }
+  .ptz-lm { position: absolute; font: 700 9px var(--mono); letter-spacing: 1px; color: var(--a); border: 1px dashed rgba(247,201,72,.6); border-radius: 3px; padding: 3px 8px; background: rgba(5,5,10,.55); }
+  .ptz-lm.c { color: var(--s); border-color: rgba(25,243,247,.6); }
+  /* HUD chrome over the viewport */
+  .ptz-top { position: absolute; top: 7px; left: 12px; right: 12px; display: flex; align-items: center; gap: 10px; font: 700 9px var(--mono); letter-spacing: 1.5px; color: var(--ok); z-index: 3; }
+  .ptz-top .rec { display: inline-flex; align-items: center; gap: 4px; color: var(--p); }
+  .ptz-top .rec::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--p); animation: rec-blink 1.2s steps(1) infinite; }
+  .ptz-top .pt { margin-left: auto; color: #d8ffe4; letter-spacing: 1px; }
+  .ptz-cross { position: absolute; left: 50%; top: 44%; transform: translate(-50%, -50%); z-index: 2; color: rgba(0,255,65,.5); font-size: 16px; pointer-events: none; }
+  /* D-pad + zoom rail */
+  .ptz-pad { position: absolute; right: 10px; bottom: 42px; z-index: 4; display: grid; grid-template-columns: repeat(3, 24px); grid-auto-rows: 24px; gap: 2px; }
+  .ptz-pad b { display: grid; place-items: center; font-size: 9px; color: var(--ok); background: rgba(5,8,12,.85); border: 1px solid rgba(0,255,65,.4); border-radius: 3px; cursor: pointer; user-select: none; }
+  .ptz-pad b:hover { background: rgba(0,255,65,.14); }
+  .ptz-pad b.blank { visibility: hidden; }
+  .ptz-zoom { position: absolute; left: 10px; bottom: 42px; z-index: 4; display: flex; flex-direction: column; gap: 2px; }
+  .ptz-zoom b { width: 24px; height: 24px; display: grid; place-items: center; font: 700 11px var(--mono); color: var(--ok); background: rgba(5,8,12,.85); border: 1px solid rgba(0,255,65,.4); border-radius: 3px; cursor: pointer; user-select: none; }
+  .ptz-zoom b:hover { background: rgba(0,255,65,.14); }
+  /* minimap — where the viewport sits inside the full frame */
+  .ptz-map { position: absolute; right: 10px; top: 30px; z-index: 4; width: 84px; height: 50px; border: 1px solid rgba(0,255,65,.45); background: rgba(5,8,12,.8); border-radius: 2px; }
+  .ptz-map i { position: absolute; border: 1px solid var(--a); background: rgba(247,201,72,.15); transition: all .4s ease; }
+  .ptz-foot { position: absolute; left: 12px; right: 12px; bottom: 8px; display: flex; align-items: center; gap: 6px; z-index: 3; }
+  .ptz-foot .act { font: 700 8.5px var(--mono); letter-spacing: 1px; border-radius: 3px; padding: 3px 9px; cursor: pointer; }
+  .ptz-foot .patrol { color: var(--ok); border: 1px solid rgba(0,255,65,.45); background: rgba(0,255,65,.07); }
+  .ptz-foot .patrol.on { color: #0a0a12; background: var(--ok); }
+  .ptz-foot .home { color: var(--s); border: 1px solid rgba(25,243,247,.45); background: rgba(25,243,247,.07); }
+  .ptz-foot .hijack { color: var(--a); border: 1px solid rgba(247,201,72,.5); background: rgba(247,201,72,.08); margin-left: auto; }
+</style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+<h1>GALLERY REDESIGN — photo app viewer · lightbox nav · contact-sheet composer</h1>
+<div class="note">
+  Shape unchanged (<b>zero migration</b>) — everything below derives from the existing
+  <b>images[] + flagged/locked/corrupted</b>. Changes: <b>①</b> the viewer becomes a surveillance-export app —
+  toolbar with <b>clickable filter chips</b> (solo FLAGGED / ENCRYPTED, the syslog-filter precedent), the flagged frame
+  becomes a <b>2×2 hero</b> (evidence-board focal point), label/time move <b>onto the image</b> as CCTV chrome,
+  captions live in a hover scrim (always-on for the hero), and the locked tile gets a <b>full-width DECRYPT bar</b>
+  (fixes the squished button — it owns the tile's bottom edge instead of floating squeezed in the middle).
+  <b>②</b> the lightbox gains <b>‹ › navigation + a counter</b> (arrow keys too; locked/dead frames are skipped) so a
+  12-frame dump doesn't mean 12 open/close round-trips. <b>③</b> the composer becomes a <b>contact sheet</b>:
+  drag-to-reorder (⋮⋮ handle, order = display order), click a thumb to enlarge, an <b>IMPORT FOLDER</b> button
+  (FilePicker.browse pulls every image in a directory — the CCTV-dump workflow), auto frame numbers, and the DV box
+  only when locked (kept).
+</div>
+
+<h2>① VIEWER — the player's photo app</h2>
+<div class="row">
+<div class="gv">
+  <div class="gv-bar">
+    <span class="ttl"><i class="fas fa-images"></i> LOADING DOCK — CAM EXPORT</span>
+    <span class="gv-src">SECCAM-B2</span>
+    <span class="grow"></span>
+    <button class="gv-f on">ALL</button>
+    <button class="gv-f flag"><i class="fas fa-flag"></i> 1</button>
+    <button class="gv-f lock"><i class="fas fa-lock"></i> 1</button>
+    <span class="gv-cnt">6 FRAMES</span>
+  </div>
+  <div class="gv-grid">
+    <figure class="gv-cell hero">
+      <div class="img ph1"></div>
+      <span class="gv-tag">IMG_001</span>
+      <span class="gv-flagtag"><i class="fas fa-flag"></i> FLAGGED</span>
+      <span class="gv-time">04:12:07</span>
+      <div class="gv-cap">White van, plates match the Maelstrom convoy — driver unbadged.</div>
+    </figure>
+    <figure class="gv-cell">
+      <div class="img ph2"></div>
+      <span class="gv-tag">IMG_002</span>
+      <span class="gv-time">04:12:31</span>
+      <div class="gv-cap">Second angle, cargo door.</div>
+    </figure>
+    <figure class="gv-cell locked">
+      <div class="fld">
+        <i class="fas fa-lock"></i>
+        <span class="dv">DV 17</span>
+        <span class="cap">ENCRYPTED</span>
+      </div>
+      <button class="gv-unlock"><i class="fas fa-unlock-keyhole"></i> DECRYPT</button>
+    </figure>
+    <figure class="gv-cell">
+      <div class="img ph3"></div>
+      <span class="gv-tag">IMG_004</span>
+      <span class="gv-time">04:13:02</span>
+    </figure>
+    <figure class="gv-cell dead">
+      <div class="static"></div>
+      <span class="msg"><i class="fas fa-video-slash"></i> NO SIGNAL</span>
+    </figure>
+    <figure class="gv-cell">
+      <div class="img ph4"></div>
+      <span class="gv-tag">IMG_006</span>
+      <span class="gv-time">04:14:44</span>
+    </figure>
+  </div>
+</div>
+<div>
+  <div class="hint" style="max-width:340px">
+    <b>Hero rule:</b> the FIRST flagged image spans 2×2 (other flagged frames keep the amber tag only) — no new
+    authored field, flag = focal point. With no flagged frame the grid is uniform, exactly like today.<br><br>
+    <b>Filter chips</b> only render when the count &gt; 0; clicking solos that set (click again = ALL).
+    Display-only, document-delegated like the record search / calendar acts — works in all three viewers +
+    the composer preview with zero per-app wiring.<br><br>
+    <b>Locked tile:</b> the DV badge sits on the field, the DECRYPT bar owns the full bottom edge — no more
+    squished pill floating mid-tile. Same contentUnlock action.<br><br>
+    <b>Strip layout</b> keeps working — same cells, one scrolling row, hero collapses to a wider (not taller) cell.
+  </div>
+</div>
+</div>
+
+<h2>② LIGHTBOX — gallery navigation</h2>
+<div class="row">
+<div class="lb">
+  <span class="ck tl"></span><span class="ck tr"></span><span class="ck bl"></span><span class="ck br"></span>
+  <div class="img ph1"></div>
+  <div class="lb-top"><span class="t">LOADING DOCK — CAM EXPORT</span><span>SECCAM-B2</span></div>
+  <button class="lb-nav prev"><i class="fas fa-chevron-left"></i></button>
+  <button class="lb-nav next"><i class="fas fa-chevron-right"></i></button>
+  <div class="lb-foot">
+    <span class="tag">IMG_001</span>
+    <span class="cap">White van, plates match the Maelstrom convoy — driver unbadged.</span>
+    <span class="idx">1 / 6</span>
+  </div>
+</div>
+<div class="hint" style="max-width:340px">
+  <b>‹ › arrows + counter + arrow-key nav</b> through the gallery's viewable frames (locked and NO-SIGNAL frames are
+  skipped — nothing leaks). One open, browse the whole dump. Everything else about the lightbox is unchanged
+  (zoom, GM SHOW PLAYERS, scan sweep). Galleries pass their frame list into <b>openGalleryImage</b>;
+  single-image callers (schematic, document figures, chat photos) get no arrows — unchanged.
+</div>
+</div>
+
+<h2>③ COMPOSER — contact sheet</h2>
+<div class="row">
+<div class="cmp">
+  <div class="cmp-top">
+    <span class="f" style="flex:1"><label class="lbl">Title</label><input class="inp" style="width:100%" value="cam-04 export — loading dock"></span>
+    <span class="f"><label class="lbl">Source</label><input class="inp" style="width:100px" value="SECCAM-B2"></span>
+    <span class="f"><label class="lbl">Layout</label><span class="seg"><b class="on">GRID</b><b>STRIP</b></span></span>
+  </div>
+  <div class="gc-grid">
+    <div class="gc is-flagged">
+      <div class="gc-th"><div class="img ph1"></div>
+        <span class="gc-drag">⋮⋮</span>
+        <span class="gc-badges"><b class="f"><i class="fas fa-flag"></i></b><b><i class="fas fa-skull"></i></b><b class="l"><i class="fas fa-lock"></i></b></span>
+        <span class="gc-num">#1</span>
+      </div>
+      <div class="gc-meta"><input class="inp" value="IMG_001"><input class="inp time" value="04:12"></div>
+      <input class="inp gc-cap" value="White van, plates match…">
+    </div>
+    <div class="gc">
+      <div class="gc-th"><div class="img ph2"></div>
+        <span class="gc-drag">⋮⋮</span>
+        <span class="gc-badges"><b><i class="fas fa-flag"></i></b><b><i class="fas fa-skull"></i></b><b><i class="fas fa-lock"></i></b></span>
+        <span class="gc-num">#2</span>
+      </div>
+      <div class="gc-meta"><input class="inp" value="IMG_002"><input class="inp time" value="04:12"></div>
+      <input class="inp gc-cap" placeholder="caption (optional)">
+    </div>
+    <div class="gc is-locked">
+      <div class="gc-th"><div class="img ph4"></div>
+        <span class="gc-drag">⋮⋮</span>
+        <span class="gc-badges"><b><i class="fas fa-flag"></i></b><b><i class="fas fa-skull"></i></b><b class="l"><i class="fas fa-lock"></i></b></span>
+        <span class="gc-num">#3</span>
+      </div>
+      <div class="gc-meta"><input class="inp" value="IMG_003"><input class="inp time" value="04:13"><input class="inp dv" value="17" title="Per-frame DV"></div>
+      <input class="inp gc-cap" placeholder="caption (optional)">
+    </div>
+    <div class="gc ghost">
+      <div class="gc-th" style="display:grid;place-items:center;color:var(--pp);font:700 9px var(--mono);letter-spacing:1px">DROP HERE</div>
+      <div class="gc-meta"><input class="inp" disabled><input class="inp time" disabled></div>
+      <input class="inp gc-cap" disabled>
+    </div>
+  </div>
+  <div class="cmp-add">
+    <button><i class="fas fa-plus"></i> ADD IMAGE</button>
+    <button class="amber"><i class="fas fa-folder-tree"></i> IMPORT FOLDER…</button>
+  </div>
+  <div class="lockrow">
+    <span class="f"><label class="lbl">Lock roll skill</label><select class="inp" style="width:150px"><option>Electronics/Security Tech</option></select></span>
+    <span class="f"><label class="lbl">DV</label><input class="inp" style="width:48px" value="15"></span>
+    <label class="chk"><input type="checkbox"> fail fires a trace</label>
+  </div>
+  <div class="hint">
+    URL row hidden by default — the thumb IS the FilePicker (click empty area = browse; the tiny path row shows on
+    hover / when the image is missing). <b>⋮⋮ drag reorders</b>; frame numbers relabel live (blank labels follow —
+    IMG_001…). <b>IMPORT FOLDER</b> lists a directory via FilePicker.browse and appends every image file,
+    auto-numbered — the ten-frame CCTV dump in two clicks.
+  </div>
+</div>
+</div>
+
+<h2>④ FEED MODE — the same gallery, running as a live camera multiplex</h2>
+<div class="note">
+  A <b>mode switch on the gallery type</b> (STILLS ↔ LIVE FEED), not a new content type — same images[], same composer,
+  same lock/dead flags; the mode just re-skins semantics: image = <b>camera channel</b>, label = CAM ID, dead =
+  OFFLINE, locked = ENCRYPTED CHANNEL. The header clock and every cam timestamp <b>tick live off timeService</b>
+  (the calendar-ticker precedent — same 1s interval + updateWorldTime hook, so Simple Calendar drives the wall).
+  Stills get a slow <b>drift-zoom + scan sweep + scanline film</b> so a static image reads as live footage
+  (reduced-motion collapses all of it).
+</div>
+<div class="row">
+<div class="fv">
+  <div class="fv-bar">
+    <span><i class="fas fa-tower-broadcast"></i> SECURITY MULTIPLEX — DOCK LEVEL B</span>
+    <span class="live">LIVE</span>
+    <span class="ch">6 CH</span>
+    <span class="clock">04:12:07</span>
+  </div>
+  <div class="fv-grid">
+    <div class="cam">
+      <div class="img ph1"></div><div class="sweep"></div>
+      <span class="cam-tag">CAM_01</span>
+      <span class="cam-sig"><b></b><b></b><b></b><b></b></span>
+      <span class="cam-rec">04:12:07</span>
+      <span class="cam-act"><b><i class="fas fa-expand"></i></b><b class="warn"><i class="fas fa-rotate"></i> LOOP</b></span>
+    </div>
+    <div class="cam">
+      <div class="img ph2"></div><div class="sweep" style="animation-delay:-3s"></div>
+      <span class="cam-tag">CAM_02</span>
+      <span class="cam-sig low"><b></b><b></b><b></b><b></b></span>
+      <span class="cam-rec">04:12:07</span>
+      <span class="cam-act"><b><i class="fas fa-expand"></i></b><b class="warn"><i class="fas fa-rotate"></i> LOOP</b></span>
+    </div>
+    <div class="cam looped">
+      <div class="img ph3"></div>
+      <span class="cam-tag">CAM_03</span>
+      <span class="cam-loop"><i class="fas fa-rotate"></i> LOOPED</span>
+      <span class="cam-rec">04:03:55</span>
+    </div>
+    <div class="cam enc">
+      <div class="fld"><i class="fas fa-lock"></i><span class="dv">DV 17</span></div>
+      <button class="gv-unlock" style="font-size:8px; padding:4px 0"><i class="fas fa-unlock-keyhole"></i> DECRYPT CHANNEL</button>
+    </div>
+    <div class="cam offline">
+      <div class="static"></div>
+      <span class="cam-tag">CAM_05</span>
+      <span class="msg">/// SIGNAL LOST ///</span>
+    </div>
+    <div class="cam">
+      <div class="img ph5"></div><div class="sweep" style="animation-delay:-5s"></div>
+      <span class="cam-tag">CAM_06</span>
+      <span class="cam-sig"><b></b><b></b><b></b><b></b></span>
+      <span class="cam-rec">04:12:07</span>
+      <span class="cam-act"><b><i class="fas fa-expand"></i></b><b class="warn"><i class="fas fa-rotate"></i> LOOP</b></span>
+    </div>
+  </div>
+</div>
+<div class="hint" style="max-width:340px">
+  <b>Per-cam states:</b> ONLINE (drift + sweep + ticking clock) · OFFLINE (static, authored dead OR cut by a player)
+  · ENCRYPTED (contentUnlock, unchanged) · <b>LOOPED</b> (amber, frozen frame, stale timestamp — the heist tell).<br><br>
+  <b>LOOP is the marquee mechanic:</b> a player rolls Electronics/Security Tech vs the cam's DV (SecurityConsole,
+  the crack/siphon pattern) — success freezes the channel and persists <b>looped:true</b> (persistContentData, GM
+  relay); a miss can fire the trace (traceOnFail). The GM sees the LOOPED tell instantly at the table; fiction =
+  guards watch old footage.<br><br>
+  <b>CUT FEED</b> = the harder roll (higher DV) — kills the channel to SIGNAL LOST. GM gets force-toggles per cam
+  (the schemLockToggle precedent).<br><br>
+  Per-cam optional <b>sceneId</b> → GM "go to scene" chip in the monitor view (calendar/schematic precedent) —
+  cameras ARE locations.
+</div>
+</div>
+
+<h2>⑤ MONITOR VIEW — click a channel: full-screen single cam</h2>
+<div class="row">
+<div class="mv">
+  <div class="img"><div class="ph1"></div></div>
+  <div class="mv-top">
+    <span class="rec">REC</span>
+    <span>CAM_01 — LOADING DOCK EAST</span>
+    <span class="clock">04:12:07</span>
+  </div>
+  <div class="mv-foot">
+    <button class="chnav"><i class="fas fa-chevron-left"></i></button>
+    <button class="chnav"><i class="fas fa-chevron-right"></i></button>
+    <span class="idx">CH 1 / 6</span>
+    <span class="grow"></span>
+    <button class="act loop"><i class="fas fa-rotate"></i> LOOP · DV 17</button>
+    <button class="act cut"><i class="fas fa-scissors"></i> CUT FEED · DV 21</button>
+    <button class="act gm"><i class="fas fa-map"></i> GO TO SCENE</button>
+  </div>
+</div>
+<div class="hint" style="max-width:340px">
+  The lightbox's feed-mode skin — same ‹ › channel nav as ② (locked/offline channels skipped), plus the action rail:
+  LOOP / CUT with their DVs shown (immersive tooltips, no rules-speak beyond DV — the standing rule), GM-only
+  GO TO SCENE. The drift-zoom keeps running full-screen so it feels like a live monitor, not a photo.
+</div>
+</div>
+
+<h2>⑥ PTZ CAM — steer the viewport around one huge image &nbsp;<span style="color:var(--ok)">← THIS ONE IS LIVE, CLICK THE PAD</span></h2>
+<div class="note">
+  Per-cam <b>ptz: true</b> — the channel's image is much bigger than the frame and the viewport is a crop you
+  <b>drive with the D-pad / arrow keys / drag</b> (a translate+clamp on the oversized image — display-only state, no
+  persistence, cheap). <b>+/−</b> zooms between crop levels, the <b>minimap</b> shows where the viewport sits inside the
+  full frame, <b>PATROL</b> auto-sweeps the head back and forth when nobody's driving (the idle "someone's watching"
+  loop — any input takes over), <b>⌂</b> recenters. The GM authors ONE big establishing image (a mall floor, a dock
+  yard, a city block render) and hides details in the corners — players find them by <b>looking around</b>. Optional
+  gate: viewing is free but <b>TAKE CONTROL</b> needs the roll (DV) — until then you watch the patrol sweep.
+</div>
+<div class="row">
+<div class="ptz" id="ptz">
+  <div class="ptz-vp" id="ptzvp">
+    <div class="ptz-img" id="ptzimg">
+      <span class="ptz-lm" style="left:210px; top:180px">LOADING BAY 3</span>
+      <span class="ptz-lm c" style="left:1260px; top:250px">SERVICE DOOR — KEYPAD</span>
+      <span class="ptz-lm" style="left:590px; top:700px">WHITE VAN · PLATES MATCH</span>
+      <span class="ptz-lm c" style="left:1380px; top:800px">GUARD POST B</span>
+      <span class="ptz-lm" style="left:120px; top:870px">FENCE GAP?</span>
+    </div>
+  </div>
+  <div class="ptz-top">
+    <span class="rec">REC</span>
+    <span>CAM_07 — YARD OVERWATCH · PTZ</span>
+    <span class="pt" id="ptzread">PAN +00° TILT +00° · 1.0×</span>
+  </div>
+  <i class="fas fa-plus ptz-cross"></i>
+  <div class="ptz-map"><i id="ptzmapbox"></i></div>
+  <div class="ptz-zoom">
+    <b data-z="1">+</b>
+    <b data-z="-1">−</b>
+  </div>
+  <div class="ptz-pad">
+    <b class="blank"></b><b data-dx="0" data-dy="-1"><i class="fas fa-chevron-up"></i></b><b class="blank"></b>
+    <b data-dx="-1" data-dy="0"><i class="fas fa-chevron-left"></i></b><b id="ptzhome">⌂</b><b data-dx="1" data-dy="0"><i class="fas fa-chevron-right"></i></b>
+    <b class="blank"></b><b data-dx="0" data-dy="1"><i class="fas fa-chevron-down"></i></b><b class="blank"></b>
+  </div>
+  <div class="ptz-foot">
+    <button class="act patrol" id="ptzpatrol"><i class="fas fa-arrows-left-right"></i> PATROL</button>
+    <button class="act home" id="ptzhome2">⌂ CENTER</button>
+    <button class="act hijack"><i class="fas fa-satellite-dish"></i> TAKE CONTROL · DV 17</button>
+  </div>
+</div>
+<div class="hint" style="max-width:340px">
+  <b>Try it:</b> arrows pan (the minimap box tracks you), +/− zooms, PATROL sweeps on its own until you touch the pad.<br><br>
+  <b>Real implementation:</b> the enricher flags `ptz` when authored (or auto when the image's natural size ≫ the
+  frame); the renderer wraps the img in a clipped viewport and a data-delegated pad drives
+  translate/scale with clamping — same document-delegated pattern as the calendar acts, works in the grid cell
+  AND the monitor view (bigger frame, keyboard arrows there). PATROL is a rAF oscillation, reduced-motion = static
+  center crop. <b>TAKE CONTROL</b> is optional per-cam (`controlDV`) — SecurityConsole roll, and a fail can trace,
+  like everything else.<br><br>
+  Composer side: a PTZ toggle on the frame card + optional control DV; the authored image is just… a big image.
+</div>
+</div>
+
+<script>
+(function () {
+  const vp = document.getElementById('ptzvp'), img = document.getElementById('ptzimg');
+  const mapbox = document.getElementById('ptzmapbox'), read = document.getElementById('ptzread');
+  const IW = 1680, IH = 990;
+  let x, y, z = 1, patrol = true, dir = 1, raf;
+  const vw = () => vp.clientWidth, vh = () => vp.clientHeight;
+  const clamp = () => {
+    x = Math.min(0, Math.max(vw() - IW * z, x));
+    y = Math.min(0, Math.max(vh() - IH * z, y));
+  };
+  const apply = (instant) => {
+    clamp();
+    img.style.transition = instant ? 'none' : '';
+    img.style.transform = `translate(${x}px, ${y}px) scale(${z})`;
+    mapbox.style.left = (-x / (IW * z) * 100) + '%';
+    mapbox.style.top = (-y / (IH * z) * 100) + '%';
+    mapbox.style.width = (vw() / (IW * z) * 100) + '%';
+    mapbox.style.height = (vh() / (IH * z) * 100) + '%';
+    const pan = Math.round((-x - (IW * z - vw()) / 2) / (IW * z) * -90);
+    const tilt = Math.round((-y - (IH * z - vh()) / 2) / (IH * z) * -60);
+    read.textContent = `PAN ${pan >= 0 ? '+' : ''}${String(pan).padStart(2, '0')}° TILT ${tilt >= 0 ? '+' : ''}${String(tilt).padStart(2, '0')}° · ${z.toFixed(1)}×`;
+  };
+  const center = () => { x = (vw() - IW * z) / 2; y = (vh() - IH * z) / 2; apply(); };
+  const stopPatrol = () => { patrol = false; document.getElementById('ptzpatrol').classList.remove('on'); };
+  document.querySelectorAll('.ptz-pad b[data-dx]').forEach(b => b.addEventListener('click', () => {
+    stopPatrol(); x -= b.dataset.dx * 110; y -= b.dataset.dy * 110; apply();
+  }));
+  document.querySelectorAll('.ptz-zoom b').forEach(b => b.addEventListener('click', () => {
+    stopPatrol();
+    const cx = (vw() / 2 - x) / z, cy = (vh() / 2 - y) / z;
+    z = Math.min(2.5, Math.max(0.6, z + Number(b.dataset.z) * 0.25));
+    x = vw() / 2 - cx * z; y = vh() / 2 - cy * z; apply();
+  }));
+  const home = () => { stopPatrol(); z = 1; center(); };
+  document.getElementById('ptzhome').addEventListener('click', home);
+  document.getElementById('ptzhome2').addEventListener('click', home);
+  document.getElementById('ptzpatrol').addEventListener('click', function () {
+    patrol = !patrol; this.classList.toggle('on', patrol);
+  });
+  const tick = () => {
+    if (patrol) {
+      x -= dir * 0.6;
+      const min = vw() - IW * z;
+      if (x <= min) { x = min; dir = -1; }
+      if (x >= 0) { x = 0; dir = 1; }
+      apply(true);
+    }
+    raf = requestAnimationFrame(tick);
+  };
+  z = 1; center(); document.getElementById('ptzpatrol').classList.add('on'); tick();
+})();
+</script>
+
+</body>
+</html>

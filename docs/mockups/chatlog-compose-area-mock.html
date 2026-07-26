@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>NCM — Chat Compose Area Cleanup (2026-07-12)</title>
+<style>
+  :root {
+    --s: #19f3f7; --a: #f7c948; --ok: #00ff41; --p: #F65261;
+    --bg0: #0a0a12; --bg1: #12121a; --bg2: #1a1a2e; --bg3: #222236;
+    --t0: #ededf2; --t1: #b9b9cc; --t2: #7a7a92; --br: #2a2a45;
+    --mono: 'Consolas', monospace; --ui: 'Segoe UI', sans-serif;
+  }
+  body { margin: 0; background: #050508; color: var(--t0); font-family: var(--ui); padding: 20px; }
+  h1 { font-size: 14px; letter-spacing: 2px; color: var(--s); font-family: var(--mono); }
+  h2 { font-size: 11px; letter-spacing: 1.5px; color: var(--a); font-family: var(--mono); margin: 22px 0 8px; }
+  .note { font-size: 11.5px; color: var(--t2); max-width: 720px; line-height: 1.55; margin-bottom: 12px; }
+  .note b { color: var(--t1); }
+  .wrap { width: 480px; }
+
+  /* the chat editor shell */
+  .chatedit { border: 1px solid var(--br); border-radius: 9px; overflow: hidden; background: var(--bg1); }
+  .feed { min-height: 74px; max-height: 150px; overflow-y: auto; padding: 10px; background: var(--bg0); display: flex; flex-direction: column; gap: 6px; }
+  .fmsg { display: flex; gap: 6px; align-items: center; }
+  .fmsg.me { flex-direction: row-reverse; }
+  .fb { padding: 4px 9px; border-radius: 9px; font-size: 12px; background: var(--bg2); border: 1px solid var(--br); }
+  .fmsg.me .fb { background: rgba(25,243,247,.1); border-color: rgba(25,243,247,.35); }
+  .ff { font: 700 8px var(--mono); text-transform: uppercase; letter-spacing: 1px; }
+
+  /* ── the compose zone (redesigned) ── */
+  .compose { border-top: 1px solid var(--br); background: var(--bg1); padding: 9px 10px; display: flex; flex-direction: column; gap: 8px; }
+
+  /* toolbar: type segmented + When picker */
+  .toolbar { display: flex; align-items: center; gap: 8px; }
+  .seg { display: inline-flex; background: var(--bg0); border: 1px solid var(--br); border-radius: 8px; overflow: hidden; }
+  .seg button { border: 0; background: transparent; color: var(--t2); font: 10px var(--mono); padding: 5px 11px; cursor: pointer; border-right: 1px solid var(--br); }
+  .seg button:last-child { border-right: 0; }
+  .seg button.on { color: var(--bg0); background: var(--s); font-weight: 700; }
+  .seg button i { margin-right: 4px; }
+  .spring { flex: 1; }
+  .when { display: inline-flex; align-items: center; gap: 7px; font: 10.5px var(--mono); color: var(--a); background: var(--bg0); border: 1px solid var(--br); border-radius: 8px; padding: 6px 10px; cursor: pointer; }
+  .when i.cal { color: var(--a); } .when .cx { color: var(--t2); font-size: 9px; }
+  .when .caret { color: var(--t2); font-size: 9px; }
+
+  /* sender chips */
+  .senderrow { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .slabel { font: 8px var(--mono); letter-spacing: 1px; color: var(--t2); text-transform: uppercase; }
+  .chip { display: inline-flex; align-items: center; gap: 5px; font: 10px var(--mono); color: var(--t1); background: var(--bg0); border: 1px solid var(--br); border-radius: 20px; padding: 3px 10px; cursor: pointer; }
+  .chip.on { color: var(--s); border-color: var(--s); background: rgba(25,243,247,.08); }
+  .chip .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; opacity: .7; }
+  .chip .star { font-size: 8px; color: var(--t2); opacity: .5; }
+  .chip.owner .star { color: var(--a); opacity: 1; }
+  .chip.new { border-style: dashed; color: var(--t2); }
+
+  /* input row */
+  .inrow { display: flex; align-items: center; gap: 7px; }
+  .emoji { background: var(--bg0); border: 1px solid var(--br); border-radius: 8px; color: var(--t1); font-size: 15px; padding: 5px 9px; cursor: pointer; }
+  .msgin { flex: 1; background: var(--bg0); border: 1px solid var(--br); border-radius: 8px; color: var(--t0); font: 13px var(--ui); padding: 8px 11px; }
+  .msgin::placeholder { color: #55556b; }
+  .send { background: var(--s); color: var(--bg0); border: 0; border-radius: 8px; font: 700 11px var(--mono); padding: 8px 16px; cursor: pointer; }
+  /* photo attach chip (photo mode) */
+  .attach { display: inline-flex; align-items: center; gap: 6px; font: 10px var(--mono); color: var(--t1); background: var(--bg0); border: 1px solid var(--br); border-radius: 8px; padding: 5px 9px; cursor: pointer; }
+  .attach.set { color: var(--s); border-color: rgba(25,243,247,.4); }
+  .attach i { opacity: .8; }
+  /* system preset select */
+  .sysel { background: var(--bg0); border: 1px solid var(--br); border-radius: 8px; color: var(--t1); font: 11px var(--mono); padding: 7px 9px; }
+
+  .cap { font: 9px var(--mono); color: var(--t2); margin: 4px 0 2px; }
+</style>
+</head>
+<body>
+
+<h1>CHAT COMPOSE AREA — cleanup</h1>
+<div class="note">
+  Three tidy rows instead of a scattered bar. <b>Time + date are now ONE control</b> — a single <b>When</b> picker (date <i>and</i> time in one dialog; it sticks). Sender is <b>chip-only</b> (no stray text box) — "+ new" reveals an inline input. The input row is just <b>emoji · message · Send</b>, with photo/system swapping only that row's middle control.
+</div>
+
+<div class="wrap">
+  <div class="cap">TEXT mode</div>
+  <div class="chatedit">
+    <div class="feed">
+      <div class="fmsg"><span class="ff" style="color:#ff6ac1">Rogue</span><span class="fb">you in for the job?</span></div>
+      <div class="fmsg me"><span class="ff" style="color:var(--s)">V</span><span class="fb">depends who's fencing</span></div>
+    </div>
+    <div class="compose">
+      <div class="toolbar">
+        <div class="seg"><button class="on"><i>💬</i>Text</button><button><i>🖼</i>Photo</button><button><i>⚙</i>System</button></div>
+        <span class="spring"></span>
+        <span class="when"><i class="cal">📅</i> Jun 1, 2045 <span class="cx">·</span> 21:04 <span class="caret">▾</span></span>
+      </div>
+      <div class="senderrow">
+        <span class="slabel">Sender</span>
+        <span class="chip owner on"><span class="dot"></span>V <span class="star">★</span></span>
+        <span class="chip"><span class="dot" style="color:#ff6ac1"></span>Rogue <span class="star">☆</span></span>
+        <span class="chip"><span class="dot" style="color:var(--a)"></span>Wraith <span class="star">☆</span></span>
+        <span class="chip new">＋ new</span>
+      </div>
+      <div class="inrow">
+        <button class="emoji">😊</button>
+        <input class="msgin" placeholder="type like you're texting… Enter sends">
+        <button class="send">Send ➤</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="cap">PHOTO mode — message input becomes the caption, an Attach chip holds the image</div>
+  <div class="chatedit">
+    <div class="compose">
+      <div class="toolbar">
+        <div class="seg"><button><i>💬</i>Text</button><button class="on"><i>🖼</i>Photo</button><button><i>⚙</i>System</button></div>
+        <span class="spring"></span>
+        <span class="when"><i class="cal">📅</i> Jun 1, 2045 <span class="cx">·</span> 21:05 <span class="caret">▾</span></span>
+      </div>
+      <div class="senderrow">
+        <span class="slabel">Sender</span>
+        <span class="chip"><span class="dot"></span>V <span class="star">★</span></span>
+        <span class="chip on"><span class="dot" style="color:var(--a)"></span>Wraith <span class="star">☆</span></span>
+        <span class="chip new">＋ new</span>
+      </div>
+      <div class="inrow">
+        <button class="emoji">😊</button>
+        <span class="attach set"><i>🖼</i> floor2.jpg</span>
+        <input class="msgin" placeholder="caption (optional)">
+        <button class="send">Send ➤</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="cap">SYSTEM mode — sender row hides; a preset dropdown + notice text</div>
+  <div class="chatedit">
+    <div class="compose">
+      <div class="toolbar">
+        <div class="seg"><button><i>💬</i>Text</button><button><i>🖼</i>Photo</button><button class="on"><i>⚙</i>System</button></div>
+        <span class="spring"></span>
+        <span class="when"><i class="cal">📅</i> Jun 1, 2045 <span class="cx">·</span> 22:10 <span class="caret">▾</span></span>
+      </div>
+      <div class="inrow">
+        <select class="sysel"><option>Added to group</option><option>Missed call</option><option>Left</option><option>Custom…</option></select>
+        <input class="msgin" placeholder="notice text — e.g. Rogue added Wraith to the group">
+        <button class="send">Send ➤</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

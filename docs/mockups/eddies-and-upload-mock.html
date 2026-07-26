@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>NCM — Eddies redesign + UPLOAD/FORGE concept (2026-07-13)</title>
+<style>
+  :root {
+    --p: #F65261; --s: #19f3f7; --a: #f7c948; --ok: #00ff41; --pp: #a855f7;
+    --bg0: #0a0a12; --bg1: #12121a; --bg2: #1a1a2e; --bg3: #222236;
+    --t0: #ededf2; --t1: #b9b9cc; --t2: #7a7a92; --br: #2a2a45;
+    --mono: 'Consolas', monospace; --ui: 'Segoe UI', sans-serif;
+    --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  body { margin: 0; background: #050508; color: var(--t0); font-family: var(--ui); padding: 18px 22px 60px; }
+  h1 { font-size: 15px; letter-spacing: 2px; color: var(--s); font-family: var(--mono); }
+  h2 { font-size: 12px; letter-spacing: 1.5px; color: var(--a); font-family: var(--mono); margin: 30px 0 6px; }
+  h3 { font-size: 10px; letter-spacing: 1.5px; color: var(--t2); font-family: var(--mono); margin: 0 0 8px; text-transform: uppercase; }
+  .note { font-size: 11.5px; color: var(--t2); max-width: 1060px; line-height: 1.6; margin-bottom: 12px; }
+  .note b { color: var(--t1); }
+  .row { display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap; }
+  .hint { font-size: 10.5px; color: var(--t2); line-height: 1.55; max-width: 340px; }
+  .hint b { color: var(--t1); }
+  .hint code { color: var(--s); font-size: 10px; }
+  button.go { font: 700 9px var(--mono); letter-spacing: 1px; color: var(--a); cursor: pointer;
+    background: rgba(247,201,72,.08); border: 1px solid rgba(247,201,72,.45); border-radius: 4px; padding: 5px 11px; margin-bottom: 8px; }
+  button.go:hover { background: rgba(247,201,72,.2); }
+
+  /* ═══════════ ① EDDIES — before ═══════════ */
+  .old { width: 300px; text-align: center; padding: 20px 12px; border: 1px solid var(--br); border-radius: 8px; background: var(--bg1); }
+  .old .amt { font: 700 34px var(--mono); color: var(--a); letter-spacing: 1px; }
+  .old .u { font: 10px var(--mono); letter-spacing: 3px; color: var(--t2); text-transform: uppercase; margin-top: 2px; }
+  .old .n { font-size: 12px; color: var(--t1); font-style: italic; margin: 10px 0; }
+  .old .btn { display: inline-flex; align-items: center; gap: 6px; font: 700 11px var(--mono); color: var(--a);
+    border: 1px solid rgba(247,201,72,.5); background: rgba(247,201,72,.08); border-radius: 5px; padding: 8px 16px; cursor: pointer; }
+
+  /* ═══════════ ① EDDIES — after: a cred transfer ═══════════ */
+  .cred { position: relative; width: 340px; border: 1px solid rgba(247,201,72,.4); border-radius: 10px; overflow: hidden;
+    background: radial-gradient(circle at 85% 0%, rgba(247,201,72,.10), transparent 55%), var(--bg1); }
+  .cred .ck { position: absolute; width: 15px; height: 15px; border: 1.5px solid var(--a); opacity: .75; }
+  .cred .ck.tl { top: 7px; left: 7px; border-right: 0; border-bottom: 0; }
+  .cred .ck.tr { top: 7px; right: 7px; border-left: 0; border-bottom: 0; }
+  .cred .ck.bl { bottom: 7px; left: 7px; border-right: 0; border-top: 0; }
+  .cred .ck.br { bottom: 7px; right: 7px; border-left: 0; border-top: 0; }
+  .cred-top { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-bottom: 1px solid rgba(247,201,72,.2);
+    font: 700 9px var(--mono); letter-spacing: 2px; color: var(--a); }
+  .cred-top .grow { flex: 1; }
+  .cred-top .id { color: var(--t2); font-weight: 400; letter-spacing: 1px; }
+  .cred-body { padding: 16px 14px 12px; text-align: center; position: relative; }
+  /* the eb chip */
+  .chip { width: 34px; height: 26px; margin: 0 auto 8px; border-radius: 4px; position: relative;
+    background: linear-gradient(135deg, #f7c948, #a8842c); box-shadow: 0 0 14px rgba(247,201,72,.4); }
+  .chip::before, .chip::after { content: ''; position: absolute; left: 5px; right: 5px; height: 1.5px; background: rgba(0,0,0,.35); }
+  .chip::before { top: 9px; } .chip::after { top: 15px; }
+  .cred-amt { font: 700 30px var(--mono); color: var(--a); letter-spacing: 1px; text-shadow: 0 0 18px rgba(247,201,72,.25); }
+  .cred-amt .eb { font-size: 15px; color: var(--t2); margin-left: 4px; }
+  .cred-src { font: 10px var(--mono); letter-spacing: 1px; color: var(--t2); margin-top: 4px; }
+  .cred-src b { color: var(--t1); }
+  .cred-note { font: 12px var(--ui); font-style: italic; color: var(--t1); margin: 8px 14px 0;
+    padding-top: 8px; border-top: 1px dashed var(--br); }
+  .cred-foot { padding: 10px 14px 14px; }
+  button.claim { width: 100%; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+    font: 700 11px var(--mono); letter-spacing: 1.5px; color: #0a0a12; cursor: pointer;
+    background: linear-gradient(180deg, #f7c948, #d8a82c); border: none; border-radius: 6px; padding: 10px;
+    box-shadow: 0 3px 12px rgba(247,201,72,.25); transition: transform var(--ease) .18s, box-shadow .18s; }
+  button.claim:hover { transform: translateY(-1px); box-shadow: 0 5px 18px rgba(247,201,72,.4); }
+  /* transfer beam overlay */
+  .beam { position: absolute; inset: 0; pointer-events: none; opacity: 0; }
+  .beam::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--a), transparent); box-shadow: 0 0 12px var(--a);
+    animation: beamsweep 1s var(--ease); }
+  @keyframes beamsweep { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+  .cred.transferring .beam { opacity: 1; }
+  .cred.transferring .cred-amt { animation: drain 1.1s var(--ease) both; }
+  @keyframes drain { to { opacity: .25; transform: scale(.9); } }
+  /* claimed state */
+  .cred.done { border-color: rgba(0,255,65,.45); }
+  .cred.done .cred-amt { color: var(--ok); text-shadow: 0 0 18px rgba(0,255,65,.3); }
+  .cred.done .chip { background: linear-gradient(135deg, #00ff41, #0a8a2c); box-shadow: 0 0 14px rgba(0,255,65,.4); }
+  .claimed-tag { display: none; align-items: center; justify-content: center; gap: 7px; padding: 10px;
+    font: 700 10px var(--mono); letter-spacing: 1.5px; color: var(--ok);
+    border: 1px solid rgba(0,255,65,.4); background: rgba(0,255,65,.08); border-radius: 6px; }
+  .cred.done .claim { display: none; }
+  .cred.done .claimed-tag { display: flex; }
+  /* deposit ticker that rises on claim */
+  .deposit { position: absolute; left: 0; right: 0; bottom: 54px; text-align: center; opacity: 0;
+    font: 700 12px var(--mono); letter-spacing: 1px; color: var(--ok); }
+  .cred.done .deposit { animation: rise 0.5s var(--ease) both; }
+  @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+  /* ═══════════ ② UPLOAD concept ═══════════ */
+  .panel { width: 480px; border: 1px solid var(--br); border-radius: 10px; background: var(--bg1); padding: 14px; }
+  .push { display: flex; align-items: center; gap: 14px; margin: 6px 0 14px; font: 700 10px var(--mono); letter-spacing: 1px; }
+  .push .box { flex: 1; text-align: center; padding: 10px; border: 1px solid var(--br); border-radius: 7px; color: var(--t2); }
+  .push .box.me { color: var(--s); border-color: rgba(25,243,247,.4); }
+  .push .box.them { color: var(--p); border-color: rgba(246,82,97,.4); }
+  .push .arr { color: var(--a); font-size: 16px; }
+  /* upload picker */
+  .up-hd { font: 700 9px var(--mono); letter-spacing: 1.5px; color: var(--a); margin: 12px 0 8px; display: flex; align-items: center; gap: 7px; }
+  .up-item { display: flex; align-items: center; gap: 10px; padding: 9px 11px; margin-bottom: 6px; border-radius: 7px;
+    background: var(--bg2); border: 1px solid var(--br); cursor: pointer; transition: transform var(--ease) .18s, border-color .18s; }
+  .up-item:hover { transform: translateX(2px); border-color: rgba(247,201,72,.45); }
+  .up-item .ico { width: 30px; height: 30px; border-radius: 7px; display: grid; place-items: center; font-size: 13px; }
+  .up-item .ico.plant { color: var(--pp); background: rgba(168,85,247,.12); border: 1px solid rgba(168,85,247,.4); }
+  .up-item .ico.exe { color: var(--p); background: rgba(246,82,97,.12); border: 1px solid rgba(246,82,97,.4); }
+  .up-item .nm { flex: 1; }
+  .up-item .nm .t { font: 700 12px var(--mono); }
+  .up-item .nm .d { font-size: 10.5px; color: var(--t2); margin-top: 1px; }
+  .up-item .dv { font: 8px var(--mono); letter-spacing: 1px; color: var(--a); border: 1px solid rgba(247,201,72,.4); border-radius: 3px; padding: 2px 6px; }
+  .fam { display: inline-block; font: 700 7px var(--mono); letter-spacing: 1px; border-radius: 2px; padding: 1px 5px; margin-left: 6px; }
+  .fam.plant { color: var(--pp); border: 1px solid rgba(168,85,247,.5); }
+  .fam.exe { color: var(--p); border: 1px solid rgba(246,82,97,.5); }
+</style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+<h1>① EDDIES — a cred transfer, not a flat card &nbsp;·&nbsp; ② UPLOAD / FORGE — sowing the seeds</h1>
+
+<h2>① EDDIES DROP — before vs after (click CLAIM to feel it)</h2>
+<div class="row">
+  <div>
+    <h3>before — the current card</h3>
+    <div class="old">
+      <div class="amt">2,500</div>
+      <div class="u">eurodollars</div>
+      <div class="n">"For the Watson job. Don't spend it all at Lizzie's."</div>
+      <div class="btn"><i class="fas fa-download"></i> Claim Eddies</div>
+    </div>
+  </div>
+  <div>
+    <h3>after — a physical cred transfer</h3>
+    <button class="go" onclick="resetCred()">▶ RESET</button>
+    <div class="cred" id="cred">
+      <span class="ck tl"></span><span class="ck tr"></span><span class="ck bl"></span><span class="ck br"></span>
+      <div class="cred-top"><i class="fas fa-sack-dollar"></i> CRED TRANSFER <span class="grow"></span><span class="id">EB-DROP-7742</span></div>
+      <div class="cred-body">
+        <div class="beam"></div>
+        <div class="chip"></div>
+        <div class="cred-amt" id="amt">2,500<span class="eb">eb</span></div>
+        <div class="cred-src">from <b>Regina Jones</b> · encrypted drop</div>
+        <div class="cred-note">"For the Watson job. Don't spend it all at Lizzie's."</div>
+        <div class="deposit">✓ +2,500 eb → V's ledger</div>
+      </div>
+      <div class="cred-foot">
+        <button class="claim" onclick="doClaim()"><i class="fas fa-fingerprint"></i> CLAIM — AUTHORIZE TRANSFER</button>
+        <div class="claimed-tag"><i class="fas fa-check-double"></i> CLAIMED · +2,500 eb</div>
+      </div>
+    </div>
+  </div>
+  <div class="hint">
+    <b>Same data, same claim logic</b> — only the presentation and the moment change. Cyberpunk RED money lives on
+    <b>cred sticks</b>, so it reads as a physical transfer chip (gold FUI, corner brackets — the SecurityConsole
+    / BankHeist visual family it currently ignores).<br><br>
+    <b>The claim ANIMATES</b> (click it): a transfer beam sweeps, the amount drains on the chip, a
+    <b>"+2,500 → your ledger"</b> ticker rises, the chip flips green. Reuses the BankHeist's <code>animateCount</code>
+    rAF ticker that already exists — so the number can literally <i>count into</i> your wealth. Reduced-motion =
+    instant green.<br><br>
+    <b>The gated variant</b> (a claim that needs a roll) already routes through the SecurityConsole; this just gives the
+    ungated confirm a real payoff instead of a toast.<br><br>
+    Optional per-drop flavor the data already supports: a <b>SOURCE</b> line (the From) and the note as a signed memo.
+  </div>
+</div>
+
+<h2>② UPLOAD / FORGE — the missing direction (concept · not built)</h2>
+<div class="note">
+  Today every content action flows <b>terminal → player</b>: siphon, exfil, claim, save-frame. You <i>take</i> things.
+  <b>Upload is the inverse — player → terminal — and it's the whole netrunner fantasy: get in, leave something behind.</b>
+  The big realization: <b>almost all of it already exists.</b> The composer authors 18 content types; payloads already
+  carry module-native <b>effects</b> (icebreaker / jammer / scanner…); shards already carry typed entries as a go-bag;
+  the SecurityConsole already runs skill-gated actions with trace-on-fail. Upload is mostly <b>composition</b>, not new
+  systems — the new parts are "carry it" + "push it onto a machine you're in" + a skill check to do it cleanly.
+</div>
+<div class="row">
+  <div class="panel">
+    <div class="push">
+      <div class="box me"><i class="fas fa-sd-card"></i><br>YOUR SHARD</div>
+      <div class="arr"><i class="fas fa-arrow-right-long"></i></div>
+      <div class="box"><i class="fas fa-terminal"></i><br>the terminal<br>you're in</div>
+      <div class="arr"><i class="fas fa-arrow-right-long"></i></div>
+      <div class="box them"><i class="fas fa-user-secret"></i><br>whoever logs<br>in next</div>
+    </div>
+    <div class="up-hd"><i class="fas fa-upload"></i> UPLOAD FROM SHARD — pick a payload &nbsp;·&nbsp; <span style="color:var(--t2);font-weight:400">Interface vs the box's security</span></div>
+
+    <div class="up-item">
+      <span class="ico plant"><i class="fas fa-comments"></i></span>
+      <div class="nm"><div class="t">affair.chat <span class="fam plant">PLANT</span></div><div class="d">forged chat log — "wife" + a fixer, timestamped last week</div></div>
+      <span class="dv">FORGE DV 15</span>
+    </div>
+    <div class="up-item">
+      <span class="ico plant"><i class="fas fa-images"></i></span>
+      <div class="nm"><div class="t">evidence.img <span class="fam plant">PLANT</span></div><div class="d">doctored gallery — planted "proof" for the next login to find</div></div>
+      <span class="dv">FORGE DV 17</span>
+    </div>
+    <div class="up-item">
+      <span class="ico exe"><i class="fas fa-biohazard"></i></span>
+      <div class="nm"><div class="t">watchdog-mute.exe <span class="fam exe">EXECUTE</span></div><div class="d">wipes the access log on upload — cover your tracks</div></div>
+      <span class="dv">RUN DV 18</span>
+    </div>
+    <div class="up-item">
+      <span class="ico exe"><i class="fas fa-door-open"></i></span>
+      <div class="nm"><div class="t">backdoor.exe <span class="fam exe">EXECUTE</span></div><div class="d">forges a hidden account you can log into later</div></div>
+      <span class="dv">RUN DV 20</span>
+    </div>
+    <div class="up-item">
+      <span class="ico exe"><i class="fas fa-spider"></i></span>
+      <div class="nm"><div class="t">BLACKWIDOW.ice <span class="fam exe">EXECUTE</span></div><div class="d">leaves Black ICE — bites the corpo's netrunner if they probe it</div></div>
+      <span class="dv">RUN DV 22</span>
+    </div>
+  </div>
+  <div class="hint">
+    <b>Two families, straight from your two examples:</b><br><br>
+    <b>PLANT (social / forgery)</b> — the payload is <i>content</i>: a forged chatlog, a doctored gallery, a fake bank
+    statement, a fabricated dossier. Upload it and it becomes a <b>real entry the next person to log in finds.</b> The
+    "wife cheating" / blackmail case. This is almost <i>free</i> — the authoring pipeline already makes all 18 types;
+    the new bit is a <b>FORGE check</b> (a botched forgery leaves tells a sharp GM/player can catch).<br><br>
+    <b>EXECUTE (offensive)</b> — the payload is a program that <i>does</i> something on upload: wipe a log, jam the
+    uplink, unlock/forge an account, or lie in wait as a trap. This is the <b>payload effect engine, pointed at a
+    host you don't own</b> — malware and payload are converging (utility program vs hostile program, same machinery).
+    A "malware creator" = the composer's malware form + an authored-effects menu (like payload already has).<br><br>
+    <b>My recommended path:</b> <b>Phase 1 = PLANT</b> (cheapest, delivers the blackmail fantasy immediately — carry a
+    content entry, upload it, forge check). <b>Phase 2 = EXECUTE</b> (malware gets authored effects + becomes
+    uploadable). <b>Phase 3 = a real creator</b> UI. Do you want me to spec Phase 1 in detail, or mock the upload
+    flow further first?
+  </div>
+</div>
+
+<script>
+  const cred = document.getElementById('cred');
+  function doClaim() {
+    if (cred.classList.contains('done')) return;
+    cred.classList.add('transferring');
+    // number ticking down (stand-in for BankHeist animateCount)
+    let v = 2500; const amt = document.getElementById('amt');
+    const iv = setInterval(() => {
+      v = Math.max(0, v - 180);
+      amt.innerHTML = v.toLocaleString() + '<span class="eb">eb</span>';
+      if (v <= 0) clearInterval(iv);
+    }, 70);
+    setTimeout(() => {
+      cred.classList.remove('transferring');
+      cred.classList.add('done');
+      amt.innerHTML = '2,500<span class="eb">eb</span>';
+    }, 1150);
+  }
+  function resetCred() { cred.classList.remove('done', 'transferring');
+    document.getElementById('amt').innerHTML = '2,500<span class="eb">eb</span>'; }
+</script>
+</body>
+</html>

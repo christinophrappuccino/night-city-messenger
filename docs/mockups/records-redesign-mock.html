@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>NCM — Records Redesign Mockup (2026-07-12)</title>
+<style>
+  :root {
+    --p: #F65261; --s: #19f3f7; --a: #f7c948; --ok: #00ff41; --pp: #a855f7; --pink: #ff6ac1;
+    --bg0: #0a0a12; --bg1: #12121a; --bg2: #1a1a2e; --bg3: #222236;
+    --t0: #ededf2; --t1: #b9b9cc; --t2: #7a7a92; --br: #2a2a45;
+    --mono: 'Consolas', monospace; --ui: 'Segoe UI', sans-serif;
+  }
+  body { margin: 0; background: #050508; color: var(--t0); font-family: var(--ui); padding: 18px 22px 60px; }
+  h1 { font-size: 15px; letter-spacing: 2px; color: var(--s); font-family: var(--mono); }
+  h2 { font-size: 12px; letter-spacing: 1.5px; color: var(--a); font-family: var(--mono); margin: 30px 0 8px; }
+  .note { font-size: 11.5px; color: var(--t2); max-width: 1000px; line-height: 1.55; margin-bottom: 14px; }
+  .note b { color: var(--t1); }
+  .cols { display: flex; gap: 26px; align-items: flex-start; flex-wrap: wrap; }
+  .panel { width: 470px; }
+  .plabel { font: 9.5px var(--mono); letter-spacing: 2px; color: var(--t2); margin: 0 0 8px 2px; text-transform: uppercase; }
+
+  /* chips / pills */
+  .pill { display: inline-flex; align-items: center; gap: 4px; padding: 1px 8px; border-radius: 4px; font: 700 9px var(--mono); letter-spacing: 1px; }
+  .pill--wanted { color: var(--p); border: 1px solid rgba(246,82,97,.5); background: rgba(246,82,97,.08); }
+  .pill--active { color: var(--ok); border: 1px solid rgba(0,255,65,.4); }
+  .pill--flag { color: var(--a); border: 1px solid rgba(247,201,72,.45); }
+
+  /* ═════ EDITOR (composer card builder) ═════ */
+  .ed { background: var(--bg1); border: 1px solid var(--br); border-radius: 9px; padding: 12px; }
+  .kindbar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  .kind { font: 9.5px var(--mono); letter-spacing: .5px; color: var(--t1); background: var(--bg0); border: 1px solid var(--br); border-radius: 20px; padding: 4px 11px; cursor: pointer; }
+  .kind.on { color: var(--bg0); background: var(--s); border-color: var(--s); font-weight: 700; }
+  .kind:hover:not(.on) { border-color: var(--s); color: var(--s); }
+
+  .reccard { background: var(--bg0); border: 1px solid var(--br); border-radius: 8px; padding: 11px; position: relative; }
+  .reccard.is-flagged { border-color: rgba(246,82,97,.5); box-shadow: inset 3px 0 0 var(--p); }
+  .rc-head { display: flex; gap: 10px; align-items: flex-start; }
+  .rc-portrait { width: 46px; height: 46px; border-radius: 8px; flex-shrink: 0; display: grid; place-items: center; background: linear-gradient(145deg, rgba(25,243,247,.18), rgba(25,243,247,.04)); border: 1px solid rgba(25,243,247,.4); color: var(--s); font: 700 15px var(--mono); cursor: pointer; position: relative; overflow: hidden; }
+  .rc-portrait img { width: 100%; height: 100%; object-fit: cover; }
+  .rc-portrait .cam { position: absolute; bottom: 2px; right: 2px; font-size: 8px; color: var(--t2); background: rgba(0,0,0,.6); border-radius: 3px; padding: 1px 3px; }
+  .rc-id { flex: 1; min-width: 0; }
+  .rc-namerow { display: flex; gap: 6px; align-items: center; }
+  .rc-name { flex: 1; background: transparent; border: 0; border-bottom: 1px solid var(--br); color: var(--t0); font: 700 14px var(--ui); padding: 3px 2px; }
+  .rc-name::placeholder { color: #55556b; }
+  .rc-status { background: var(--bg2); border: 1px solid var(--br); border-radius: 4px; color: var(--p); font: 700 9px var(--mono); letter-spacing: 1px; padding: 3px 8px; cursor: pointer; }
+  .rc-flag { background: transparent; border: 1px solid var(--br); border-radius: 4px; color: var(--t2); padding: 3px 7px; cursor: pointer; font-size: 10px; }
+  .rc-flag.on { color: var(--p); border-color: var(--p); }
+
+  /* typed field rows */
+  .rc-fields { margin: 10px 0 0; display: flex; flex-direction: column; gap: 5px; }
+  .fld { display: flex; align-items: center; gap: 8px; background: var(--bg1); border: 1px solid var(--br); border-radius: 6px; padding: 5px 8px; }
+  .fld-ic { width: 20px; text-align: center; color: var(--s); font-size: 11px; flex-shrink: 0; }
+  .fld-ic.warn { color: var(--a); } .fld-ic.p { color: var(--p); } .fld-ic.pink { color: var(--pink); }
+  .fld-in { flex: 1; background: transparent; border: 0; color: var(--t0); font: 12px var(--ui); padding: 2px; min-width: 0; }
+  .fld-in::placeholder { color: #55556b; }
+  .fld-lbl { font: 8.5px var(--mono); letter-spacing: 1px; color: var(--t2); text-transform: uppercase; flex-shrink: 0; width: 62px; }
+  .fld-rm { color: var(--t2); font-size: 10px; cursor: pointer; opacity: 0; }
+  .fld:hover .fld-rm { opacity: 1; }
+  .fld-date { display: flex; align-items: center; gap: 6px; flex: 1; color: var(--a); font: 12px var(--mono); cursor: pointer; }
+  .fld-pips { display: inline-flex; gap: 3px; align-items: flex-end; }
+  .fld-pips b { width: 8px; border-radius: 1px; background: var(--bg3); cursor: pointer; }
+  .fld-pips b:nth-child(1){height:6px} .fld-pips b:nth-child(2){height:9px} .fld-pips b:nth-child(3){height:12px} .fld-pips b:nth-child(4){height:15px}
+  .fld-pips.t3 b:nth-child(-n+3) { background: var(--a); }
+
+  /* add-field palette */
+  .palette { margin-top: 9px; display: flex; gap: 5px; flex-wrap: wrap; }
+  .addf { font: 9.5px var(--mono); color: var(--t1); background: var(--bg1); border: 1px dashed var(--br); border-radius: 5px; padding: 3px 8px; cursor: pointer; }
+  .addf:hover { border-color: var(--s); color: var(--s); border-style: solid; }
+  .addf i { margin-right: 3px; opacity: .8; }
+  .addrec { margin-top: 12px; width: 100%; font: 700 10px var(--mono); letter-spacing: 1px; color: var(--s); background: rgba(25,243,247,.08); border: 1px solid rgba(25,243,247,.4); border-radius: 6px; padding: 8px; cursor: pointer; }
+
+  /* ═════ VIEWER render ═════ */
+  .db { background: var(--bg1); border: 1px solid var(--br); border-radius: 9px; overflow: hidden; }
+  .db-hd { display: flex; justify-content: space-between; align-items: center; padding: 9px 12px; border-bottom: 1px solid var(--br); font: 700 10px var(--mono); letter-spacing: 1px; color: var(--s); }
+  .db-hd em { color: var(--t2); font-style: normal; font-weight: 400; }
+  .db-search { display: flex; align-items: center; gap: 8px; padding: 7px 12px; border-bottom: 1px solid var(--br); color: var(--t2); font: 11px var(--mono); }
+  .db-rec { display: flex; gap: 11px; padding: 11px 12px; border-bottom: 1px solid var(--br); position: relative; }
+  .db-rec.is-flagged { background: rgba(246,82,97,.05); box-shadow: inset 3px 0 0 var(--p); }
+  .db-ava { width: 44px; height: 44px; border-radius: 8px; flex-shrink: 0; display: grid; place-items: center; background: rgba(25,243,247,.1); border: 1px solid rgba(25,243,247,.35); color: var(--s); font: 700 15px var(--mono); overflow: hidden; }
+  .db-ava img { width: 100%; height: 100%; object-fit: cover; }
+  .db-main { flex: 1; min-width: 0; }
+  .db-name { font: 700 14px var(--ui); color: var(--t0); display: flex; align-items: center; gap: 8px; }
+  .db-idn { font: 9.5px var(--mono); color: var(--t2); }
+  .db-flag { font: 700 8px var(--mono); color: var(--p); border: 1px solid rgba(246,82,97,.5); border-radius: 3px; padding: 1px 5px; letter-spacing: 1px; }
+  .db-fields { margin-top: 6px; display: grid; grid-template-columns: 1fr 1fr; gap: 3px 14px; }
+  .db-f { display: flex; align-items: center; gap: 7px; font: 11px var(--mono); color: var(--t1); }
+  .db-f i { width: 13px; text-align: center; color: var(--s); font-size: 10px; }
+  .db-f i.warn { color: var(--a); } .db-f i.p { color: var(--p); } .db-f i.pink { color: var(--pink); }
+  .db-f.full { grid-column: 1 / -1; }
+  .db-threat { display: inline-flex; gap: 2px; align-items: flex-end; margin-left: 2px; }
+  .db-threat b { width: 4px; background: var(--a); border-radius: 1px; }
+  .db-threat b:nth-child(1){height:5px} .db-threat b:nth-child(2){height:8px} .db-threat b:nth-child(3){height:11px} .db-threat b:nth-child(4){height:14px;background:var(--bg3)}
+</style>
+</head>
+<body>
+
+<h1>RECORDS REDESIGN — typed-field dossiers + card builder</h1>
+<div class="note">
+  A record = a <b>subject</b> (portrait / name / status / flag) + a flexible set of <b>typed fields</b> you add from a palette. A <b>DB-kind quick-start</b> (Personnel / Criminal / Medical / Vehicle / Contacts / Employee) seeds the right field chips, then you can add/remove any field on any record. Old records auto-migrate (role/org/address become fields). Dates open the <b>CyberTimePicker</b>; threat is a clickable 1–4 meter; address can link a scene (like LOCATION). The viewer stays a searchable database — every field renders with its own icon.
+</div>
+
+<div class="cols">
+  <!-- ══════ EDITOR ══════ -->
+  <div class="panel">
+    <div class="plabel">① The card builder (composer)</div>
+    <div class="ed">
+      <div class="kindbar">
+        <span class="kind on">Criminal / BOLO</span>
+        <span class="kind">Personnel</span>
+        <span class="kind">Employee</span>
+        <span class="kind">Medical</span>
+        <span class="kind">Vehicle</span>
+        <span class="kind">Contacts</span>
+      </div>
+
+      <div class="reccard is-flagged">
+        <div class="rc-head">
+          <div class="rc-portrait">MW<span class="cam">📷</span></div>
+          <div class="rc-id">
+            <div class="rc-namerow">
+              <input class="rc-name" value="Morgan Wills" placeholder="subject name">
+              <button class="rc-status">WANTED ↻</button>
+              <button class="rc-flag on" title="Red-tag">⚑</button>
+            </div>
+            <div class="rc-fields">
+              <div class="fld"><span class="fld-ic p">📞</span><span class="fld-lbl">Agent #</span><input class="fld-in" value="+1 555-0148"><span class="fld-rm">✕</span></div>
+              <div class="fld"><span class="fld-ic">🆔</span><span class="fld-lbl">ID</span><input class="fld-in" value="NC-88213"><span class="fld-rm">✕</span></div>
+              <div class="fld"><span class="fld-ic warn">📅</span><span class="fld-lbl">Last seen</span><span class="fld-date">📅 2045-06-01 ▾</span><span class="fld-rm">✕</span></div>
+              <div class="fld"><span class="fld-ic">📍</span><span class="fld-lbl">Address</span><input class="fld-in" value="Watson · Kabuki, 4th"><span class="fld-rm">✕</span></div>
+              <div class="fld"><span class="fld-ic warn">⚠</span><span class="fld-lbl">Threat</span><span class="fld-pips t3"><b></b><b></b><b></b><b></b></span><span class="fld-rm">✕</span></div>
+              <div class="fld"><span class="fld-ic">🏷</span><span class="fld-lbl">Alias</span><input class="fld-in" value="'Ghost'"><span class="fld-rm">✕</span></div>
+            </div>
+            <div class="palette">
+              <span class="addf"><i>📞</i>Phone</span>
+              <span class="addf"><i>📅</i>Date</span>
+              <span class="addf"><i>📍</i>Address</span>
+              <span class="addf"><i>🏷</i>Alias</span>
+              <span class="addf"><i>🆔</i>ID</span>
+              <span class="addf"><i>⚠</i>Threat</span>
+              <span class="addf"><i>🔧</i>Cyberware</span>
+              <span class="addf"><i>🩸</i>Medical</span>
+              <span class="addf"><i>📝</i>Note</span>
+              <span class="addf"><i>＋</i>Custom</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <button class="addrec">＋ ADD SUBJECT</button>
+    </div>
+    <div class="note" style="margin-top:10px">Each subject is a case-file card. The <b>+field chips</b> reveal typed inputs inline; a chip you don't need, you never see. Pick a <b>DB kind</b> and new cards start with that kind's fields pre-added. Status ↻ cycles common values; ⚑ red-tags the subject worth finding.</div>
+  </div>
+
+  <!-- ══════ VIEWER ══════ -->
+  <div class="panel">
+    <div class="plabel">② How it reads (viewer)</div>
+    <div class="db">
+      <div class="db-hd"><span>🗄 NCPD BOLO REGISTRY <em>// criminal</em></span><span style="color:var(--t2);font-weight:400">⚑ 1 · 3 records</span></div>
+      <div class="db-search">🔍 Query records…</div>
+
+      <div class="db-rec is-flagged">
+        <div class="db-ava">MW</div>
+        <div class="db-main">
+          <div class="db-name">Morgan Wills <span class="db-idn">NC-88213</span> <span class="db-flag">⚑ FLAGGED</span></div>
+          <div class="db-fields">
+            <div class="db-f"><i class="p">📞</i> +1 555-0148</div>
+            <div class="db-f"><i class="warn">📅</i> last seen 2045-06-01</div>
+            <div class="db-f"><i>🏷</i> 'Ghost'</div>
+            <div class="db-f"><i class="warn">⚠</i> threat <span class="db-threat"><b></b><b></b><b></b><b></b></span></div>
+            <div class="db-f full"><i>📍</i> Watson · Kabuki, 4th St</div>
+          </div>
+        </div>
+        <span class="pill pill--wanted">WANTED</span>
+      </div>
+
+      <div class="db-rec">
+        <div class="db-ava">JK</div>
+        <div class="db-main">
+          <div class="db-name">Jax Kane <span class="db-idn">#0002</span></div>
+          <div class="db-fields">
+            <div class="db-f"><i class="p">📞</i> +1 555-2201</div>
+            <div class="db-f"><i>🏷</i> 'Wrench'</div>
+            <div class="db-f full"><i>📝</i> Runs guns out of a Watson chop-shop.</div>
+          </div>
+        </div>
+        <span class="pill pill--active">ACTIVE</span>
+      </div>
+
+      <div class="db-rec">
+        <div class="db-ava">VC</div>
+        <div class="db-main">
+          <div class="db-name">Dr. Vera Cruz <span class="db-idn">TT-4471</span></div>
+          <div class="db-fields">
+            <div class="db-f"><i class="pink">🩸</i> O− · no allergies</div>
+            <div class="db-f"><i>🔧</i> Kerenzikov, Mk.3</div>
+            <div class="db-f"><i class="warn">📅</i> intake 2045-05-28</div>
+            <div class="db-f"><i class="p">📞</i> +1 555-9930</div>
+          </div>
+        </div>
+        <span class="pill pill--flag">STABLE</span>
+      </div>
+    </div>
+    <div class="note" style="margin-top:10px">Same searchable DB, now every record shows only the fields it has — a wanted criminal (phone/last-seen/threat/alias/address), a contact (phone/handle/note), a patient (blood/cyberware/intake). Icons + a threat meter make it scannable. Search still matches across all field values.</div>
+  </div>
+</div>
+
+</body>
+</html>

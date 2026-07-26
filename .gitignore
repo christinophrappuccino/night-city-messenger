@@ -10,3 +10,6 @@ packs/ncm-macros-player/
 Thumbs.db
 *.swp
 *~
+
+# Reference PDFs (copyrighted rulebooks — kept locally for research, NEVER redistributed)
+docs/*.pdf

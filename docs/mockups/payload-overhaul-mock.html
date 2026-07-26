@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>NCM — Payload Overhaul Mockup (2026-07-12)</title>
+<style>
+  :root {
+    --p: #F65261; --s: #19f3f7; --a: #f7c948; --ok: #00ff41; --pp: #b96bff;
+    --bg0: #0a0a12; --bg1: #12121a; --bg2: #1a1a2e; --bg3: #222236;
+    --t0: #ededf2; --t1: #b9b9cc; --t2: #7a7a92; --br: #2a2a45;
+    --mono: 'Consolas', monospace; --ui: 'Segoe UI', sans-serif;
+  }
+  body { margin: 0; background: #050508; color: var(--t0); font-family: var(--ui); padding: 18px 22px 60px; }
+  h1 { font-size: 15px; letter-spacing: 2px; color: var(--s); font-family: var(--mono); }
+  h2 { font-size: 12px; letter-spacing: 1.5px; color: var(--a); font-family: var(--mono); margin: 34px 0 6px; }
+  .note { font-size: 11.5px; color: var(--t2); max-width: 980px; line-height: 1.55; margin-bottom: 14px; }
+  .note b { color: var(--t1); }
+  .states { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+  .state { width: 330px; }
+  .slabel { font: 9.5px var(--mono); letter-spacing: 2px; color: var(--t2); margin: 0 0 6px 2px; text-transform: uppercase; }
+
+  /* ═══ shared card chrome (all directions) ═══ */
+  .card { background: var(--bg1); border: 1px solid var(--br); border-radius: 9px; overflow: hidden; }
+  .pill { display: inline-block; padding: 1px 8px; border-radius: 4px; font: 700 9px var(--mono); letter-spacing: 1.2px; }
+  .pill--fx { color: var(--pp); border: 1px solid rgba(185,107,255,.45); background: rgba(185,107,255,.08); }
+  .pill--gate { color: var(--a); border: 1px solid rgba(247,201,72,.4); }
+  .pill--gm { color: var(--p); border: 1px solid rgba(246,82,97,.45); background: rgba(246,82,97,.07); }
+  .pill--ok { color: var(--ok); border: 1px solid rgba(0,255,65,.4); }
+  .runbtn { display: inline-flex; align-items: center; gap: 7px; font: 700 10.5px var(--mono); letter-spacing: 1.5px; color: #0a0a12; background: var(--pp); border: 0; border-radius: 6px; padding: 8px 16px; cursor: pointer; box-shadow: 0 0 14px rgba(185,107,255,.35); }
+  .runbtn--ghost { background: transparent; color: var(--pp); border: 1px solid rgba(185,107,255,.5); box-shadow: none; }
+
+  /* ═══ DIRECTION A — LIVE RUN ═══ */
+  .a-head { display: flex; gap: 11px; padding: 12px 13px 10px; align-items: center; }
+  .a-ico { width: 44px; height: 44px; border-radius: 9px; display: grid; place-items: center; font: 20px var(--mono); color: var(--pp); background: rgba(185,107,255,.09); border: 1px solid rgba(185,107,255,.4); flex-shrink: 0; }
+  .a-name { font: 700 14px var(--mono); letter-spacing: .5px; }
+  .a-meta { font: 10px var(--mono); color: var(--t2); margin-top: 3px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .a-desc { padding: 0 13px 10px; font: 11.5px var(--ui); color: var(--t1); line-height: 1.45; }
+  .a-foot { padding: 10px 13px; border-top: 1px solid var(--br); background: var(--bg0); display: flex; align-items: center; gap: 8px; }
+  .a-gate { font: 9.5px var(--mono); color: var(--a); margin-left: auto; }
+  /* console */
+  .a-con { background: #05070a; border-top: 1px solid rgba(185,107,255,.35); padding: 10px 12px 12px; font: 10.5px var(--mono); position: relative; }
+  .a-con::before { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(0deg, transparent 0 2px, rgba(255,255,255,.014) 2px 4px); pointer-events: none; }
+  .a-line { color: var(--t1); padding: 1.5px 0; white-space: nowrap; overflow: hidden; }
+  .a-line b { color: var(--s); font-weight: 400; }
+  .a-line .okk { color: var(--ok); } .a-line .wrn { color: var(--a); }
+  .run .a-line { animation: typein .18s both steps(24); }
+  .run .a-line:nth-child(1){animation-delay:.1s} .run .a-line:nth-child(2){animation-delay:.55s}
+  .run .a-line:nth-child(3){animation-delay:1.05s} .run .a-line:nth-child(4){animation-delay:1.6s}
+  .run .a-line:nth-child(5){animation-delay:2.15s}
+  @keyframes typein { from { max-width: 0; opacity: 0 } to { max-width: 100%; opacity: 1 } }
+  .a-track { height: 4px; background: var(--bg3); border-radius: 3px; margin-top: 9px; overflow: hidden; }
+  .a-track i { display: block; height: 100%; background: linear-gradient(90deg, var(--pp), var(--s)); border-radius: 3px; }
+  .run .a-track i { width: 0; animation: fill 2.6s .2s forwards; }
+  @keyframes fill { to { width: 100% } }
+  .a-verdict { margin-top: 9px; font: 700 10px var(--mono); letter-spacing: 2px; color: var(--ok); display: flex; gap: 7px; align-items: center; }
+  .run .a-verdict { opacity: 0; animation: pop .3s 2.9s forwards; }
+  @keyframes pop { from { opacity: 0; transform: scale(.9) } to { opacity: 1; transform: none } }
+  .a-active { padding: 9px 13px; border-top: 1px solid rgba(0,255,65,.3); background: rgba(0,255,65,.05); display: flex; align-items: center; gap: 9px; font: 10px var(--mono); color: var(--ok); }
+  .a-cd { margin-left: auto; color: var(--t1); }
+  .a-cdbar { height: 3px; background: var(--bg3); border-radius: 2px; margin: 0 13px 11px; overflow: hidden; }
+  .a-cdbar i { display: block; height: 100%; width: 62%; background: var(--ok); }
+
+  /* ═══ DIRECTION B — INSTALLER / MANIFEST ═══ */
+  .b-top { display: flex; gap: 12px; padding: 13px; }
+  .b-tile { width: 58px; height: 58px; border-radius: 12px; display: grid; place-items: center; font: 26px var(--mono); color: var(--pp); background: linear-gradient(145deg, rgba(185,107,255,.16), rgba(185,107,255,.04)); border: 1px solid rgba(185,107,255,.45); flex-shrink: 0; }
+  .b-name { font: 700 14.5px var(--mono); }
+  .b-pub { font: 10px var(--mono); color: var(--t2); margin: 2px 0 6px; }
+  .b-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--br); border-top: 1px solid var(--br); }
+  .b-cell { background: var(--bg0); padding: 7px 12px; }
+  .b-k { font: 8.5px var(--mono); letter-spacing: 1.5px; color: var(--t2); text-transform: uppercase; }
+  .b-v { font: 11px var(--mono); color: var(--t1); margin-top: 2px; }
+  .b-req { padding: 9px 13px; border-top: 1px solid var(--br); }
+  .b-req .b-k { margin-bottom: 5px; }
+  .b-reqrow { display: flex; gap: 7px; align-items: center; font: 10.5px var(--mono); color: var(--t1); padding: 2px 0; }
+  .b-reqrow .st { margin-left: auto; font-size: 9px; letter-spacing: 1px; }
+  .st.met { color: var(--ok); } .st.unmet { color: var(--p); }
+  .b-foot { padding: 11px 13px; border-top: 1px solid var(--br); background: var(--bg0); display: flex; align-items: center; gap: 9px; }
+  .b-stage { padding: 12px 13px; border-top: 1px solid var(--br); background: var(--bg0); }
+  .b-stagecap { font: 10px var(--mono); color: var(--s); letter-spacing: 1.5px; display: flex; justify-content: space-between; }
+  .b-track { height: 7px; background: var(--bg3); border-radius: 4px; margin-top: 8px; overflow: hidden; position: relative; }
+  .b-track i { display: block; height: 100%; width: 68%; background: linear-gradient(90deg, var(--pp), var(--s)); border-radius: 4px; }
+  .b-track i::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,.35), transparent); width: 40px; animation: sheen 1.2s linear infinite; }
+  @keyframes sheen { from { transform: translateX(-40px) } to { transform: translateX(340px) } }
+  .b-steps { display: flex; gap: 5px; margin-top: 9px; }
+  .b-step { flex: 1; text-align: center; font: 8.5px var(--mono); letter-spacing: 1px; color: var(--t2); padding-top: 5px; border-top: 2px solid var(--bg3); }
+  .b-step.done { color: var(--ok); border-color: var(--ok); }
+  .b-step.now { color: var(--s); border-color: var(--s); }
+  .b-ribbon { padding: 8px 13px; background: rgba(0,255,65,.07); border-top: 1px solid rgba(0,255,65,.35); font: 700 10px var(--mono); letter-spacing: 2px; color: var(--ok); display: flex; align-items: center; gap: 8px; }
+
+  /* ═══ DIRECTION C — PROCESS DECK ═══ */
+  .c-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; }
+  .c-led { width: 9px; height: 9px; border-radius: 50%; background: var(--t2); flex-shrink: 0; }
+  .c-led.on { background: var(--ok); box-shadow: 0 0 8px var(--ok); animation: blink 1.6s infinite; }
+  .c-led.dead { background: var(--p); }
+  @keyframes blink { 50% { opacity: .45 } }
+  .c-name { font: 700 12.5px var(--mono); }
+  .c-pid { font: 9px var(--mono); color: var(--t2); }
+  .c-body { padding: 0 12px 11px; }
+  .c-meters { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 4px; }
+  .c-m { background: var(--bg0); border: 1px solid var(--br); border-radius: 6px; padding: 6px 8px; }
+  .c-mk { font: 8px var(--mono); letter-spacing: 1.5px; color: var(--t2); }
+  .c-mv { font: 700 12px var(--mono); color: var(--s); margin-top: 2px; }
+  .c-mv.g { color: var(--ok); } .c-mv.pp { color: var(--pp); }
+  .c-fx { margin-top: 9px; background: rgba(185,107,255,.06); border: 1px solid rgba(185,107,255,.3); border-radius: 6px; padding: 7px 10px; font: 10px var(--mono); color: var(--t1); display: flex; gap: 8px; align-items: center; }
+  .c-fx b { color: var(--pp); letter-spacing: 1px; }
+  .c-cd { margin-top: 8px; }
+  .c-cdk { display: flex; justify-content: space-between; font: 9px var(--mono); color: var(--t2); margin-bottom: 4px; }
+  .c-cdbar { height: 5px; background: var(--bg3); border-radius: 3px; overflow: hidden; }
+  .c-cdbar i { display: block; height: 100%; width: 41%; background: linear-gradient(90deg, var(--ok), var(--a)); }
+  .c-foot { padding: 9px 12px; border-top: 1px solid var(--br); background: var(--bg0); display: flex; gap: 8px; align-items: center; }
+  .c-kill { font: 700 9px var(--mono); letter-spacing: 1px; color: var(--p); background: none; border: 1px solid rgba(246,82,97,.4); border-radius: 5px; padding: 5px 10px; cursor: pointer; margin-left: auto; }
+
+  /* ═══ disguise + config strips ═══ */
+  .dg-wrap { display: flex; gap: 16px; flex-wrap: wrap; }
+  .dg-note { width: 330px; background: #f4ecc8; color: #3a3320; border-radius: 4px; padding: 14px 15px; font: 12px var(--ui); position: relative; transform: rotate(-.6deg); box-shadow: 0 8px 20px rgba(0,0,0,.5); }
+  .dg-note::before { content: ''; position: absolute; top: -8px; left: 50%; width: 74px; height: 16px; transform: translateX(-50%) rotate(1.5deg); background: rgba(255,255,255,.35); border: 1px solid rgba(0,0,0,.08); }
+  .dg-tell { position: absolute; right: 8px; bottom: 8px; font: 700 8.5px var(--mono); letter-spacing: 1px; color: var(--p); border: 1px dashed rgba(246,82,97,.6); border-radius: 4px; padding: 2px 6px; background: rgba(255,255,255,.5); }
+  .dg-glitch { animation: dgg 5s infinite; }
+  @keyframes dgg { 0%, 96% { filter: none } 97% { filter: hue-rotate(220deg) saturate(3); transform: rotate(-.6deg) translateX(2px) } 98% { filter: none } }
+  .cfgrow { display: flex; gap: 8px; align-items: center; padding: 6px 0; font: 10.5px var(--mono); color: var(--t1); }
+  .cfgrow .k { width: 130px; color: var(--t2); font-size: 9.5px; letter-spacing: 1px; text-transform: uppercase; }
+  .sel { background: var(--bg0); border: 1px solid var(--br); border-radius: 5px; color: var(--t0); font: 11px var(--mono); padding: 4px 8px; }
+  .cfgcard { width: 480px; background: var(--bg1); border: 1px solid var(--br); border-radius: 9px; padding: 12px 15px; }
+</style>
+</head>
+<body>
+
+<h1>PAYLOAD OVERHAUL — 3 VISUAL DIRECTIONS (pick one, or a hybrid)</h1>
+<div class="note">
+  Scope already locked: PAYLOAD = <b>utility programs</b> (the operator's tools — malware stays the hostile sibling).
+  Executing runs through the <b>SecurityConsole</b> (optional GM gate, fail can trace), then applies the configured effect:
+  <b>module-native</b> (icebreaker / skeleton key / scanner / jammer) · <b>linked Macro</b> · <b>GM adjudication alert</b> — with optional <b>duration</b> (active → auto-expires on the game clock).
+  Disguise gets implemented (bottom of page). The three directions below only differ in <b>how the file renders and what the execute moment looks like</b> — behavior is identical.
+</div>
+
+<!-- ══════════════════ DIRECTION A ══════════════════ -->
+<h2>DIRECTION A — "LIVE RUN" · the card executes into a console</h2>
+<div class="note">Idle file card → RUN expands a phosphor console inside the card; <b>authored output lines</b> (a new composer list — write your program's stdout) type out with a progress sweep, verdict pops, then an ACTIVE strip with the effect countdown. The execution is the theater. Best fit with the WYSIWYG pass: the composer's output editor would be the same live console.</div>
+<div class="states">
+  <div class="state">
+    <div class="slabel">① Idle</div>
+    <div class="card">
+      <div class="a-head">
+        <div class="a-ico">⌬</div>
+        <div>
+          <div class="a-name">BREACH.EXE</div>
+          <div class="a-meta"><span class="pill pill--fx">ICEBREAKER</span> v2.1 · 4.7 MB · single-use</div>
+        </div>
+      </div>
+      <div class="a-desc">Militech-surplus intrusion suite. Chews through file encryption on the host system.</div>
+      <div class="a-foot">
+        <button class="runbtn">▶ RUN</button>
+        <span class="a-gate">⚿ Interface DV 13 · fail = trace</span>
+      </div>
+    </div>
+  </div>
+  <div class="state">
+    <div class="slabel">② Executing (animated)</div>
+    <div class="card run">
+      <div class="a-head">
+        <div class="a-ico">⌬</div>
+        <div>
+          <div class="a-name">BREACH.EXE</div>
+          <div class="a-meta"><span class="pill pill--fx">ICEBREAKER</span> RUNNING…</div>
+        </div>
+      </div>
+      <div class="a-con">
+        <div class="a-line"><b>&gt;</b> init breach.exe --target=LOCAL</div>
+        <div class="a-line">loading cipher tables… <span class="okk">done</span></div>
+        <div class="a-line">scanning host for sealed objects… <span class="okk">3 found</span></div>
+        <div class="a-line"><span class="wrn">bypassing watchdog…</span></div>
+        <div class="a-line">injecting keys… <span class="okk">OK</span></div>
+        <div class="a-track"><i></i></div>
+        <div class="a-verdict">✔ EXECUTION COMPLETE — 3 FILES UNSEALED</div>
+      </div>
+    </div>
+  </div>
+  <div class="state">
+    <div class="slabel">③ Active (timed) / spent</div>
+    <div class="card">
+      <div class="a-head">
+        <div class="a-ico">⌬</div>
+        <div>
+          <div class="a-name">WATCHDOG-MUTE.EXE</div>
+          <div class="a-meta"><span class="pill pill--fx">JAMMER</span> <span class="pill pill--ok">ACTIVE</span></div>
+        </div>
+      </div>
+      <div class="a-active">● RUNNING — uplink suppressed <span class="a-cd">expires 04:12:09</span></div>
+      <div class="a-cdbar"><i></i></div>
+      <div class="a-foot" style="border-top:0; padding-top:2px;">
+        <span class="a-meta" style="color:var(--t2)">Executed by <span style="color:var(--t1)">V</span> · 2 h ago</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ DIRECTION B ══════════════════ -->
+<h2>DIRECTION B — "INSTALLER / MANIFEST" · corp software package</h2>
+<div class="note">A signed software manifest: metadata grid (version / size / signature / license), a <b>requirements list that reads the real world state</b> (uplink up? account admin? — unmet = can't run), staged install bar (UNPACK → INJECT → CLEANUP) through the SecurityConsole, then an ACTIVE ribbon. Feels official and corp; requirements double as GM-authorable prerequisites.</div>
+<div class="states">
+  <div class="state">
+    <div class="slabel">① Idle manifest</div>
+    <div class="card">
+      <div class="b-top">
+        <div class="b-tile">◈</div>
+        <div>
+          <div class="b-name">SKELETON-KEY.PKG</div>
+          <div class="b-pub">signed: NIGHT-CITY-GHOSTWORKS <span style="color:var(--ok)">✔</span></div>
+          <span class="pill pill--fx">SKELETON KEY</span>
+        </div>
+      </div>
+      <div class="b-grid">
+        <div class="b-cell"><div class="b-k">version</div><div class="b-v">3.0.1-rogue</div></div>
+        <div class="b-cell"><div class="b-k">size</div><div class="b-v">11.2 MB</div></div>
+        <div class="b-cell"><div class="b-k">effect</div><div class="b-v" style="color:var(--pp)">clears account lockouts</div></div>
+        <div class="b-cell"><div class="b-k">charges</div><div class="b-v">1</div></div>
+      </div>
+      <div class="b-req">
+        <div class="b-k">requirements</div>
+        <div class="b-reqrow">▸ machine uplink online <span class="st met">MET</span></div>
+        <div class="b-reqrow">▸ security check — Interface DV 15 <span class="st unmet">ROLL ON RUN</span></div>
+      </div>
+      <div class="b-foot"><button class="runbtn">◈ INSTALL &amp; RUN</button></div>
+    </div>
+  </div>
+  <div class="state">
+    <div class="slabel">② Installing (animated)</div>
+    <div class="card">
+      <div class="b-top">
+        <div class="b-tile">◈</div>
+        <div>
+          <div class="b-name">SKELETON-KEY.PKG</div>
+          <div class="b-pub">deploying payload…</div>
+        </div>
+      </div>
+      <div class="b-stage">
+        <div class="b-stagecap"><span>INJECTING…</span><span>68%</span></div>
+        <div class="b-track"><i></i></div>
+        <div class="b-steps">
+          <div class="b-step done">UNPACK</div>
+          <div class="b-step now">INJECT</div>
+          <div class="b-step">CLEANUP</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="state">
+    <div class="slabel">③ Done / active</div>
+    <div class="card">
+      <div class="b-top">
+        <div class="b-tile">◈</div>
+        <div>
+          <div class="b-name">SKELETON-KEY.PKG</div>
+          <div class="b-pub">executed by V · today 22:41</div>
+          <span class="pill pill--fx">SKELETON KEY</span> <span class="pill pill--gm">GM: ran macro "Vault Door"</span>
+        </div>
+      </div>
+      <div class="b-ribbon">✔ DEPLOYED — ROOT LOCKOUT CLEARED</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ DIRECTION C ══════════════════ -->
+<h2>DIRECTION C — "PROCESS DECK" · a daemon you keep running</h2>
+<div class="note">The payload renders like a process in a task manager: status LED, fake PID/CPU/MEM meters (flavor), the effect readout, and — the star — a <b>live uptime + expiry bar</b> for timed effects. RUN spins it up; the GM (or a killswitch roll) can KILL it early. Strongest fit if <b>timed/daemon effects</b> are the heart of the type; idle state is the least flashy of the three.</div>
+<div class="states">
+  <div class="state">
+    <div class="slabel">① Idle process</div>
+    <div class="card">
+      <div class="c-row">
+        <span class="c-led"></span>
+        <div><div class="c-name">ghost_scan.d</div><div class="c-pid">daemon · not running</div></div>
+        <span class="pill pill--fx" style="margin-left:auto">SCANNER</span>
+      </div>
+      <div class="c-body">
+        <div class="c-fx">⌖ <span><b>EFFECT:</b> reveals hidden accounts on this machine</span></div>
+      </div>
+      <div class="c-foot"><button class="runbtn runbtn--ghost">▶ START</button><span class="a-gate">⚿ Interface DV 13</span></div>
+    </div>
+  </div>
+  <div class="state">
+    <div class="slabel">② Running (animated)</div>
+    <div class="card">
+      <div class="c-row">
+        <span class="c-led on"></span>
+        <div><div class="c-name">ghost_scan.d</div><div class="c-pid">PID 2077 · uptime 00:14:37</div></div>
+        <span class="pill pill--ok" style="margin-left:auto">RUNNING</span>
+      </div>
+      <div class="c-body">
+        <div class="c-meters">
+          <div class="c-m"><div class="c-mk">CPU</div><div class="c-mv">37%</div></div>
+          <div class="c-m"><div class="c-mk">MEM</div><div class="c-mv">112M</div></div>
+          <div class="c-m"><div class="c-mk">STEALTH</div><div class="c-mv g">OK</div></div>
+        </div>
+        <div class="c-fx">⌖ <span><b>EFFECT LIVE:</b> 2 hidden accounts revealed</span></div>
+        <div class="c-cd">
+          <div class="c-cdk"><span>EFFECT WINDOW</span><span>expires 06:00:00</span></div>
+          <div class="c-cdbar"><i></i></div>
+        </div>
+      </div>
+      <div class="c-foot"><span class="c-pid">started by V</span><button class="c-kill">■ KILL</button></div>
+    </div>
+  </div>
+  <div class="state">
+    <div class="slabel">③ Expired / killed</div>
+    <div class="card" style="opacity:.75">
+      <div class="c-row">
+        <span class="c-led dead"></span>
+        <div><div class="c-name">ghost_scan.d</div><div class="c-pid">terminated · ran 6 h</div></div>
+        <span class="pill" style="margin-left:auto; color:var(--t2); border:1px solid var(--br)">EXPIRED</span>
+      </div>
+      <div class="c-body"><div class="c-fx" style="border-color:var(--br); color:var(--t2)">⌖ effect ended — hidden accounts re-cloaked</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ SHARED BEHAVIOR (direction-independent) ══════════════════ -->
+<h2>SHARED — DISGUISE (all directions)</h2>
+<div class="note">A disguised payload renders as its <b>cover type</b> (here: a NOTE) for players — occasionally glitching for a split second (the only visual tell, optional). GM always sees the red tag. A player can <b>SNIFF</b> a suspected file (roll vs sniffDV via the SecurityConsole) to unmask it; executing it obviously also reveals it.</div>
+<div class="dg-wrap">
+  <div class="dg-note dg-glitch">
+    <b>Groceries</b><br><br>
+    – synth-eggs<br>– kibble (real!)<br>– NiCola ×6<br><br>
+    don't forget trash day is tuesday
+    <span class="dg-tell">GM: PAYLOAD · disguised</span>
+  </div>
+  <div class="cfgcard">
+    <div class="b-k" style="margin-bottom:6px">COMPOSER — EFFECT CONFIG (③ SECURITY &amp; ACCESS section)</div>
+    <div class="cfgrow"><span class="k">Effect</span><select class="sel"><option>Icebreaker — unseal host files</option><option>Skeleton key — clear lockouts</option><option>Scanner — reveal hidden accounts</option><option>Jammer — suppress uplink</option><option>GM adjudication only</option></select></div>
+    <div class="cfgrow"><span class="k">Also run macro</span><select class="sel"><option>— none —</option><option>Vault Door Opens</option></select></div>
+    <div class="cfgrow"><span class="k">Duration</span><select class="sel"><option>instant</option><option selected>6 hours</option><option>24 hours</option></select><span style="color:var(--t2); font-size:9.5px">→ ACTIVE state + game-clock expiry</span></div>
+    <div class="cfgrow"><span class="k">Run gate</span><span class="pill pill--gate">⚿ roll required</span> <select class="sel"><option>Interface</option></select> <select class="sel"><option>DV 13</option></select> <span class="pill pill--gm">fail = trace</span></div>
+    <div class="cfgrow"><span class="k">Disguise</span><select class="sel"><option>— none —</option><option selected>Note</option><option>Gallery</option><option>Message</option></select> <select class="sel"><option>Sniff DV 15</option></select></div>
+  </div>
+</div>
+
+</body>
+</html>
