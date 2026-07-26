@@ -71,6 +71,31 @@ export class SoundService {
   }
 
   /**
+   * Play a sound with per-play pitch/volume shaping — the public face of the
+   * Web Audio path playClick uses. Terminal sound sets route through this so
+   * a set can re-pitch existing assets into a different machine personality.
+   * rate 1 short-circuits to the standard player (no Web Audio needed); a
+   * failed Web Audio play falls back to the standard player un-pitched.
+   * @param {string} soundId - Key from SOUND_PATHS
+   * @param {object} [options]
+   * @param {number} [options.volume=1] - Relative volume (scaled by the user slider)
+   * @param {number} [options.rate=1] - Playback rate (pitch/speed)
+   * @returns {Promise<void>}
+   */
+  async playStyled(soundId, { volume = 1, rate = 1 } = {}) {
+    if (rate === 1) return this.play(soundId, { volume });
+    const prefs = this._settings.getTheme();
+    if (!prefs.soundEnabled) return;
+    const userVol = prefs.soundVolume ?? 0.5;
+    try {
+      if (await this._playVaried(soundId, userVol * volume, rate)) return;
+    } catch {
+      // fall through to the standard player
+    }
+    this.play(soundId, { volume });
+  }
+
+  /**
    * Play the UI "click" with per-press variation so repeated clicks don't
    * sound identical/machine-gun. Quieter than event sounds (`CLICK_GAIN`),
    * with randomized pitch + a little volume jitter via a Web Audio buffer

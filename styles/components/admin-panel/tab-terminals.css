@@ -1,41 +1,163 @@
 /* ============================================================================
- * Admin Panel — Terminals tab
+ * Admin Panel — Terminals tab (split-panel manager, 2026-07-11 redesign)
  * @file styles/components/admin-panel/tab-terminals.css
- * Uses --ncm-* tokens (resolve to the admin theme inside .ncm-admin-panel).
+ * List left (search / sort / filter / pagination), selected terminal's detail
+ * right. Uses --ncm-* tokens (resolve to the admin theme inside
+ * .ncm-admin-panel — clean slate look, no neon).
  * ========================================================================== */
 
-.ncm-admin-panel .ncm-term-admin-toolbar { display: flex; gap: 10px; align-items: center; margin: 12px 0; }
+/* ── Toolbar ── */
+.ncm-admin-panel .ncm-term-admin-toolbar { display: flex; gap: 8px; align-items: center; margin: 12px 0; flex-wrap: wrap; }
 .ncm-admin-panel .ncm-term-admin-search {
-  flex: 1; padding: 8px 12px; border-radius: 6px; font-family: var(--ncm-font-mono); font-size: 12px;
+  flex: 1 1 200px; min-width: 160px; padding: 8px 12px; border-radius: 2px; font-family: var(--ncm-font-display); font-size: 12px;
   color: var(--ncm-text-primary); background: var(--ncm-bg-deep);
   border: 1px solid var(--ncm-border);
 }
+.ncm-admin-panel select.ncm-term-admin-sort {
+  flex: 0 0 auto; width: auto; padding: 7px 10px; border-radius: 2px;
+  font-family: var(--ncm-font-display); font-size: 11.5px;
+  color: var(--ncm-text-primary); background: var(--ncm-bg-deep);
+  border: 1px solid var(--ncm-border); cursor: pointer;
+}
+.ncm-admin-panel .ncm-term-admin-filters { display: inline-flex; gap: 0; border: 1px solid var(--ncm-border); border-radius: 2px; overflow: hidden; }
+.ncm-admin-panel button.ncm-term-admin-filter {
+  appearance: none !important; box-shadow: none !important; margin: 0 !important;
+  width: auto !important; flex: 0 0 auto !important; min-height: 0 !important;
+  padding: 7px 12px !important; border: 0 !important; border-radius: 0 !important;
+  background: transparent !important; cursor: pointer;
+  font-family: var(--ncm-font-display); font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  color: var(--ncm-text-muted) !important; line-height: 1.2;
+}
+.ncm-admin-panel button.ncm-term-admin-filter + .ncm-term-admin-filter { border-left: 1px solid var(--ncm-border) !important; }
+.ncm-admin-panel button.ncm-term-admin-filter.is-active { color: var(--ncm-text-primary) !important; background: color-mix(in srgb, var(--ncm-secondary) 14%, transparent) !important; }
 
-.ncm-admin-panel .ncm-term-admin-grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px;
+/* ── Split panel ── */
+.ncm-admin-panel .ncm-term-admin-split { display: flex; gap: 12px; align-items: stretch; min-height: 320px; }
+.ncm-admin-panel .ncm-term-admin-list { flex: 0 0 300px; display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.ncm-admin-panel .ncm-term-admin-detail {
+  flex: 1; min-width: 0; border: 1px solid var(--ncm-border); border-radius: 2px;
+  background: var(--ncm-bg-surface); padding: 14px; display: flex; flex-direction: column; gap: 12px;
 }
-.ncm-admin-panel .ncm-term-admin-card {
-  border-radius: 9px; padding: 13px; background: var(--ncm-bg-surface);
-  border: 1px solid var(--ncm-border); display: flex; flex-direction: column; gap: 10px;
+
+/* ── List rows ── */
+.ncm-admin-panel .ncm-term-admin-row {
+  display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-radius: 2px;
+  border: 1px solid var(--ncm-border); background: var(--ncm-bg-surface); cursor: pointer;
+  transition: border-color .12s, background .12s;
 }
-.ncm-admin-panel .ncm-term-admin-card.is-locked { border-color: color-mix(in srgb, var(--ncm-danger) 35%, transparent); }
-.ncm-admin-panel .ncm-term-admin-card__head { display: flex; align-items: center; gap: 11px; }
-.ncm-admin-panel .ncm-term-admin-card__img { width: 38px; height: 38px; border-radius: 7px; object-fit: cover; border: 1px solid var(--ncm-border); flex: 0 0 auto; }
-.ncm-admin-panel .ncm-term-admin-card__id { min-width: 0; flex: 1; }
-.ncm-admin-panel .ncm-term-admin-card__name { font-family: var(--ncm-font-display); font-weight: 700; font-size: 15px; color: var(--ncm-text-primary); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.ncm-admin-panel .ncm-term-admin-card__meta { font-family: var(--ncm-font-mono); font-size: 11px; color: var(--ncm-text-muted); margin-top: 2px; }
-.ncm-admin-panel .ncm-term-admin-card__scope { color: var(--ncm-text-secondary); }
-.ncm-admin-panel .ncm-term-admin-tag { font-family: var(--ncm-font-mono); font-size: 9px; letter-spacing: .5px; padding: 2px 7px; border-radius: 4px; }
+.ncm-admin-panel .ncm-term-admin-row:hover { border-color: color-mix(in srgb, var(--ncm-secondary) 45%, var(--ncm-border)); }
+.ncm-admin-panel .ncm-term-admin-row.is-selected {
+  border-color: var(--ncm-secondary);
+  background: color-mix(in srgb, var(--ncm-secondary) 8%, var(--ncm-bg-surface));
+}
+.ncm-admin-panel .ncm-term-admin-row.is-locked:not(.is-selected) { border-color: color-mix(in srgb, var(--ncm-danger) 30%, var(--ncm-border)); }
+.ncm-admin-panel .ncm-term-admin-row__img { width: 30px; height: 30px; border-radius: 2px; object-fit: cover; border: 1px solid var(--ncm-border); flex: 0 0 30px; }
+.ncm-admin-panel .ncm-term-admin-row__id { flex: 1; min-width: 0; }
+.ncm-admin-panel .ncm-term-admin-row__name { font-family: var(--ncm-font-display); font-weight: 700; font-size: 13px; color: var(--ncm-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ncm-admin-panel .ncm-term-admin-row__meta { font-family: var(--ncm-font-mono); font-size: 9.5px; color: var(--ncm-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+.ncm-admin-panel .ncm-term-admin-row__tags { display: inline-flex; align-items: center; gap: 7px; flex: 0 0 auto; font-family: var(--ncm-font-display); font-weight: 700; font-size: 10px; }
+.ncm-admin-panel .ncm-term-admin-row__accts { color: var(--ncm-text-secondary); }
+.ncm-admin-panel .ncm-term-admin-row__online { color: var(--ncm-success); }
+.ncm-admin-panel .ncm-term-admin-row__online i { font-size: 6px; vertical-align: middle; }
+.ncm-admin-panel .ncm-term-admin-row__lock { color: var(--ncm-danger); }
+.ncm-admin-panel .ncm-term-admin-row__bypass { color: var(--ncm-accent); }
+
+.ncm-admin-panel .ncm-term-admin-pager { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 4px; font-family: var(--ncm-font-mono); font-size: 11px; color: var(--ncm-text-muted); }
+
+/* ── Detail panel ── */
+.ncm-admin-panel .ncm-term-admin-detail__head { display: flex; align-items: center; gap: 12px; }
+.ncm-admin-panel .ncm-term-admin-detail__img { width: 44px; height: 44px; border-radius: 2px; object-fit: cover; border: 1px solid var(--ncm-border); flex: 0 0 44px; }
+.ncm-admin-panel .ncm-term-admin-detail__id { min-width: 0; flex: 1; }
+.ncm-admin-panel .ncm-term-admin-detail__name { font-family: var(--ncm-font-display); font-weight: 700; font-size: 17px; color: var(--ncm-text-primary); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ncm-admin-panel .ncm-term-admin-detail__meta { font-family: var(--ncm-font-mono); font-size: 11px; color: var(--ncm-text-muted); margin-top: 2px; }
+.ncm-admin-panel .ncm-term-admin-detail__cls { color: var(--ncm-warning); letter-spacing: 1px; }
+.ncm-admin-panel .ncm-term-admin-tag { font-family: var(--ncm-font-display); font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding: 2px 7px; border-radius: 1px; }
 .ncm-admin-panel .ncm-term-admin-tag--locked { color: var(--ncm-danger); background: color-mix(in srgb, var(--ncm-danger) 14%, transparent); }
 .ncm-admin-panel .ncm-term-admin-tag--bypass { color: var(--ncm-accent); background: color-mix(in srgb, var(--ncm-accent) 14%, transparent); }
-.ncm-admin-panel .ncm-term-admin-card__stats { display: flex; flex-wrap: wrap; gap: 12px; font-family: var(--ncm-font-mono); font-size: 11px; color: var(--ncm-text-secondary); }
-.ncm-admin-panel .ncm-term-admin-card__stats i { opacity: .7; margin-right: 3px; }
-.ncm-admin-panel .ncm-term-admin-card__online { color: var(--ncm-success); }
-.ncm-admin-panel .ncm-term-admin-card__online i { font-size: 7px; vertical-align: middle; }
-.ncm-admin-panel .ncm-term-admin-card__logins { display: flex; flex-direction: column; gap: 3px; padding: 7px 9px; border-radius: 6px; background: var(--ncm-bg-deep); }
+
+/* Facts — labeled key/value grid (was an icon-chip jumble). */
+.ncm-admin-panel .ncm-term-admin-detail__facts {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+  gap: 8px 14px; padding: 10px 12px; border-radius: 2px;
+  background: var(--ncm-bg-deep);
+}
+.ncm-admin-panel .ncm-term-admin-fact { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ncm-admin-panel .ncm-term-admin-fact__lbl {
+  font-family: var(--ncm-font-display); font-size: 9px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--ncm-text-muted); white-space: nowrap;
+}
+.ncm-admin-panel .ncm-term-admin-fact__lbl i { opacity: .6; margin-right: 4px; width: 11px; text-align: center; }
+.ncm-admin-panel .ncm-term-admin-fact__val {
+  font-family: var(--ncm-font-mono); font-size: 11.5px; color: var(--ncm-text-primary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.ncm-admin-panel .ncm-term-admin-detail__sec { display: flex; flex-direction: column; gap: 6px; }
+.ncm-admin-panel .ncm-term-admin-detail__label { font-family: var(--ncm-font-display); font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-muted); }
+.ncm-admin-panel .ncm-term-admin-detail__accts { display: flex; flex-wrap: wrap; gap: 6px; }
+.ncm-admin-panel .ncm-term-admin-acct {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 2px;
+  border: 1px solid var(--ncm-border); background: var(--ncm-bg-deep);
+  font-family: var(--ncm-font-mono); font-size: 11px; color: var(--ncm-text-primary);
+}
+.ncm-admin-panel .ncm-term-admin-acct i { font-size: 9px; color: var(--ncm-text-muted); }
+.ncm-admin-panel .ncm-term-admin-acct i.fa-lock { color: var(--ncm-danger); }
+.ncm-admin-panel .ncm-term-admin-acct i.fa-unlock { color: var(--ncm-success); }
+.ncm-admin-panel .ncm-term-admin-acct.is-admin { border-color: color-mix(in srgb, var(--ncm-warning) 45%, var(--ncm-border)); }
+.ncm-admin-panel .ncm-term-admin-acct i.fa-crown { color: var(--ncm-warning); }
+
+.ncm-admin-panel .ncm-term-admin-detail__sessions { display: flex; flex-direction: column; gap: 3px; padding: 7px 9px; border-radius: 2px; background: var(--ncm-bg-deep); }
 .ncm-admin-panel .ncm-term-admin-login { font-family: var(--ncm-font-mono); font-size: 11px; color: var(--ncm-text-secondary); }
 .ncm-admin-panel .ncm-term-admin-login i { color: var(--ncm-secondary); margin-right: 5px; }
-.ncm-admin-panel .ncm-term-admin-card__acts { display: flex; flex-wrap: wrap; gap: 6px; }
+.ncm-admin-panel .ncm-term-admin-detail__none { font-family: var(--ncm-font-body); font-size: 12px; color: var(--ncm-text-muted); }
+
+.ncm-admin-panel .ncm-term-admin-detail__acts { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-top: auto; padding-top: 10px; border-top: 1px solid var(--ncm-border); }
+.ncm-admin-panel .ncm-term-admin-detail__acts-sp { flex: 1; }
+
+/* ── Tab buttons — proper text buttons (the shared .ncm-action-btn is a 26px
+     ICON button; labels inside it read as "text pushing against the borders",
+     the dev's exact complaint). ── */
+.ncm-admin-panel button.ncm-term-admin-btn {
+  appearance: none !important; -webkit-appearance: none !important;
+  width: auto !important; flex: 0 0 auto !important; height: auto !important;
+  min-height: 0 !important; min-width: 0 !important; margin: 0 !important;
+  display: inline-flex !important; align-items: center !important; gap: 7px !important;
+  padding: 6px 13px !important; border-radius: 2px !important;
+  background: var(--ncm-bg-deep) !important;
+  border: 1px solid var(--ncm-border) !important;
+  box-shadow: none !important; cursor: pointer;
+  font-family: var(--ncm-font-display) !important; font-size: 11px !important; font-weight: 700 !important; letter-spacing: .04em !important;
+  letter-spacing: .8px !important; text-transform: uppercase !important; line-height: 1.4 !important;
+  color: var(--ncm-text-secondary) !important;
+  transition: color .12s, border-color .12s, background .12s !important;
+}
+.ncm-admin-panel button.ncm-term-admin-btn i { font-size: 10px; opacity: .75; }
+.ncm-admin-panel button.ncm-term-admin-btn:hover {
+  color: var(--ncm-text-primary) !important;
+  border-color: color-mix(in srgb, var(--ncm-secondary) 55%, var(--ncm-border)) !important;
+  background: color-mix(in srgb, var(--ncm-secondary) 8%, var(--ncm-bg-deep)) !important;
+}
+.ncm-admin-panel button.ncm-term-admin-btn--primary {
+  color: var(--ncm-secondary) !important;
+  border-color: color-mix(in srgb, var(--ncm-secondary) 45%, var(--ncm-border)) !important;
+}
+.ncm-admin-panel button.ncm-term-admin-btn--danger:hover {
+  color: var(--ncm-danger) !important;
+  border-color: color-mix(in srgb, var(--ncm-danger) 55%, var(--ncm-border)) !important;
+  background: color-mix(in srgb, var(--ncm-danger) 8%, var(--ncm-bg-deep)) !important;
+}
+.ncm-admin-panel button.ncm-term-admin-btn--icon { padding: 6px 10px !important; }
+.ncm-admin-panel button.ncm-term-admin-btn:disabled { opacity: .35; cursor: default; pointer-events: none; }
+
+/* ── Empty states ── */
 .ncm-admin-panel .ncm-term-admin-empty { text-align: center; padding: 48px 20px; color: var(--ncm-text-muted); display: flex; flex-direction: column; align-items: center; gap: 12px; }
 .ncm-admin-panel .ncm-term-admin-empty i { font-size: 30px; opacity: .4; }
 .ncm-admin-panel .ncm-term-admin-empty p { font-family: var(--ncm-font-body); font-size: 14px; max-width: 420px; }
+.ncm-admin-panel .ncm-term-admin-empty--list { padding: 24px 10px; flex-direction: row; justify-content: center; gap: 8px; font-size: 12px; }
+.ncm-admin-panel .ncm-term-admin-empty--list i { font-size: 14px; }
+
+/* Narrow admin window: stack the panes. */
+@media (max-width: 980px) {
+  .ncm-admin-panel .ncm-term-admin-split { flex-direction: column; }
+  .ncm-admin-panel .ncm-term-admin-list { flex: 0 0 auto; }
+}

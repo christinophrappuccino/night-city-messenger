@@ -8,56 +8,125 @@
   </div>
 
   <div class="ncm-term-admin-toolbar">
-    <input type="text" class="ncm-term-admin-search" data-terminal-search placeholder="Search terminals…" value="{{terminalSearch}}">
-    <button type="button" class="ncm-action-btn" data-action="terminalImport"><i class="fas fa-file-import"></i> Import Item → Terminal</button>
+    <input type="text" class="ncm-term-admin-search" data-terminal-search placeholder="Search name, org, preset, account…" value="{{terminalSearch}}">
+    <select class="ncm-term-admin-sort" data-terminal-sort data-tooltip="Sort the list">
+      {{#each terminalSortOptions}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}
+    </select>
+    <div class="ncm-term-admin-filters">
+      {{#each terminalFilters}}
+        <button type="button" class="ncm-term-admin-filter{{#if active}} is-active{{/if}}" data-action="terminalFilterAdmin" data-filter="{{value}}">{{label}}</button>
+      {{/each}}
+    </div>
+    <button type="button" class="ncm-term-admin-btn" data-action="terminalImport"><i class="fas fa-file-import"></i> Import Item → Terminal</button>
   </div>
 
-  {{#if terminals.length}}
-    <div class="ncm-term-admin-grid">
-      {{#each terminals}}
-        <div class="ncm-term-admin-card{{#if locked}} is-locked{{/if}}" data-item-id="{{id}}">
-          <div class="ncm-term-admin-card__head">
-            <img class="ncm-term-admin-card__img" src="{{img}}" alt="">
-            <div class="ncm-term-admin-card__id">
-              <div class="ncm-term-admin-card__name">{{name}}
+  {{#if terminalCount}}
+    <div class="ncm-term-admin-split">
+
+      {{!-- ── LEFT: terminal list ── --}}
+      <div class="ncm-term-admin-list">
+        {{#each terminals}}
+          <div class="ncm-term-admin-row{{#if isSelected}} is-selected{{/if}}{{#if locked}} is-locked{{/if}}" data-action="terminalSelectAdmin" data-item-id="{{id}}">
+            <img class="ncm-term-admin-row__img" src="{{img}}" alt="">
+            <div class="ncm-term-admin-row__id">
+              <div class="ncm-term-admin-row__name">{{name}}</div>
+              <div class="ncm-term-admin-row__meta">{{preset}}{{#if org}} · {{org}}{{/if}} · {{scope}}</div>
+            </div>
+            <div class="ncm-term-admin-row__tags">
+              <span class="ncm-term-admin-row__accts" data-tooltip="{{accountCount}} accounts"><i class="fas fa-users"></i> {{accountCount}}</span>
+              {{#if loginCount}}<span class="ncm-term-admin-row__online" data-tooltip="{{loginCount}} logged in"><i class="fas fa-circle"></i> {{loginCount}}</span>{{/if}}
+              {{#if gmBypassed}}<span class="ncm-term-admin-row__bypass" data-tooltip="GM force-unlocked"><i class="fas fa-unlock"></i></span>
+              {{else if locked}}<span class="ncm-term-admin-row__lock" data-tooltip="Secured accounts"><i class="fas fa-lock"></i></span>{{/if}}
+            </div>
+          </div>
+        {{else}}
+          <div class="ncm-term-admin-empty ncm-term-admin-empty--list"><i class="fas fa-magnifying-glass"></i> No terminals match.</div>
+        {{/each}}
+        {{#if terminalPagination}}
+          <div class="ncm-term-admin-pager">
+            <button type="button" class="ncm-term-admin-btn ncm-term-admin-btn--icon" data-action="terminalPageAdmin" data-dir="prev" {{#unless terminalPagination.hasPrev}}disabled{{/unless}}><i class="fas fa-chevron-left"></i></button>
+            <span>{{terminalPagination.page}} / {{terminalPagination.maxPage}}</span>
+            <button type="button" class="ncm-term-admin-btn ncm-term-admin-btn--icon" data-action="terminalPageAdmin" data-dir="next" {{#unless terminalPagination.hasNext}}disabled{{/unless}}><i class="fas fa-chevron-right"></i></button>
+          </div>
+        {{/if}}
+      </div>
+
+      {{!-- ── RIGHT: selected terminal detail ── --}}
+      <div class="ncm-term-admin-detail">
+        {{#with terminalSelected}}
+          <div class="ncm-term-admin-detail__head">
+            <img class="ncm-term-admin-detail__img" src="{{img}}" alt="">
+            <div class="ncm-term-admin-detail__id">
+              <div class="ncm-term-admin-detail__name">{{name}}
                 {{#if gmBypassed}}<span class="ncm-term-admin-tag ncm-term-admin-tag--bypass">UNLOCKED</span>
                 {{else if locked}}<span class="ncm-term-admin-tag ncm-term-admin-tag--locked"><i class="fas fa-lock"></i> LOCKED</span>{{/if}}
               </div>
-              <div class="ncm-term-admin-card__meta">
-                {{#if owner}}{{owner}}{{/if}}{{#if org}} · {{org}}{{/if}} · <span class="ncm-term-admin-card__scope">{{scope}}</span>
+              <div class="ncm-term-admin-detail__meta">
+                {{#if owner}}{{owner}} · {{/if}}{{#if org}}{{org}} · {{/if}}{{scope}}
+                {{#if classification}} · <span class="ncm-term-admin-detail__cls">{{classification}}</span>{{/if}}
               </div>
             </div>
           </div>
 
-          <div class="ncm-term-admin-card__stats">
-            <span><i class="fas fa-users"></i> {{accountCount}} account{{#unless (eq accountCount 1)}}s{{/unless}}</span>
-            {{#if networkBinding}}<span><i class="fas fa-network-wired"></i> {{networkBinding}}</span>{{/if}}
-            {{#if loginCount}}<span class="ncm-term-admin-card__online"><i class="fas fa-circle"></i> {{loginCount}} online</span>{{/if}}
+          <div class="ncm-term-admin-detail__facts">
+            <div class="ncm-term-admin-fact"><span class="ncm-term-admin-fact__lbl"><i class="fas fa-network-wired"></i> Uplink</span><span class="ncm-term-admin-fact__val" data-tooltip="The machine's own connection">{{#if uplinkName}}{{uplinkName}}{{else}}LOCAL ONLY{{/if}}</span></div>
+            <div class="ncm-term-admin-fact"><span class="ncm-term-admin-fact__lbl"><i class="fas fa-tower-cell"></i> Reach</span><span class="ncm-term-admin-fact__val" data-tooltip="Network players must be on to see this box">{{#if networkBinding}}{{networkBinding}}{{else}}anywhere{{/if}}</span></div>
+            <div class="ncm-term-admin-fact"><span class="ncm-term-admin-fact__lbl"><i class="fas fa-download"></i> Exfil</span><span class="ncm-term-admin-fact__val">{{#if allowExfil}}enabled{{else}}read-only{{/if}}</span></div>
+            <div class="ncm-term-admin-fact"><span class="ncm-term-admin-fact__lbl"><i class="fas fa-palette"></i> Preset</span><span class="ncm-term-admin-fact__val">{{preset}}</span></div>
+            <div class="ncm-term-admin-fact"><span class="ncm-term-admin-fact__lbl"><i class="fas fa-right-to-bracket"></i> Login</span><span class="ncm-term-admin-fact__val">{{loginStyle}}</span></div>
+            <div class="ncm-term-admin-fact"><span class="ncm-term-admin-fact__lbl"><i class="fas fa-volume-high"></i> Sound</span><span class="ncm-term-admin-fact__val">{{soundSet}}</span></div>
+            {{#if location}}<div class="ncm-term-admin-fact"><span class="ncm-term-admin-fact__lbl"><i class="fas fa-location-dot"></i> Location</span><span class="ncm-term-admin-fact__val">{{location}}</span></div>{{/if}}
           </div>
 
-          {{#if logins.length}}
-            <div class="ncm-term-admin-card__logins">
-              {{#each logins}}<span class="ncm-term-admin-login"><i class="fas fa-user"></i> {{actor}} → {{account}}</span>{{/each}}
+          <div class="ncm-term-admin-detail__sec">
+            <div class="ncm-term-admin-detail__label">Accounts ({{accountCount}}{{#if hiddenCount}} · {{hiddenCount}} hidden{{/if}})</div>
+            <div class="ncm-term-admin-detail__accts">
+              {{#each accounts}}
+                <span class="ncm-term-admin-acct{{#if isAdmin}} is-admin{{/if}}">
+                  {{#if open}}<i class="fas fa-unlock" data-tooltip="Open — no auth"></i>{{else}}<i class="fas fa-lock" data-tooltip="Secured"></i>{{/if}}
+                  {{username}}
+                  {{#if isAdmin}}<i class="fas fa-crown" data-tooltip="Admin"></i>{{/if}}
+                  {{#if hidden}}<i class="fas fa-eye-slash" data-tooltip="Hidden — secret login only"></i>{{/if}}
+                  {{#if netGated}}<i class="fas fa-network-wired" data-tooltip="Network-gated"></i>{{/if}}
+                </span>
+              {{else}}
+                <span class="ncm-term-admin-detail__none">No accounts yet — Configure to add some.</span>
+              {{/each}}
             </div>
-          {{/if}}
-
-          <div class="ncm-term-admin-card__acts">
-            <button type="button" class="ncm-action-btn" data-action="terminalOpen" data-item-id="{{id}}"><i class="fas fa-terminal"></i> Open</button>
-            <button type="button" class="ncm-action-btn" data-action="terminalConfigureAdmin" data-item-id="{{id}}"><i class="fas fa-sliders"></i> Configure</button>
-            {{#if gmBypassed}}
-              <button type="button" class="ncm-action-btn" data-action="terminalRelock" data-item-id="{{id}}"><i class="fas fa-lock"></i> Relock</button>
-            {{else}}
-              <button type="button" class="ncm-action-btn" data-action="terminalForceUnlockAdmin" data-item-id="{{id}}"><i class="fas fa-unlock-keyhole"></i> Force-unlock</button>
-            {{/if}}
-            <button type="button" class="ncm-action-btn ncm-action-btn--danger" data-action="terminalRemove" data-item-id="{{id}}"><i class="fas fa-rotate-left"></i> Remove</button>
           </div>
-        </div>
-      {{/each}}
+
+          <div class="ncm-term-admin-detail__sec">
+            <div class="ncm-term-admin-detail__label">Live Sessions ({{loginCount}})</div>
+            {{#if logins.length}}
+              <div class="ncm-term-admin-detail__sessions">
+                {{#each logins}}<span class="ncm-term-admin-login"><i class="fas fa-user"></i> {{actor}} → {{account}}</span>{{/each}}
+              </div>
+            {{else}}
+              <div class="ncm-term-admin-detail__none">Nobody is logged in.</div>
+            {{/if}}
+          </div>
+
+          <div class="ncm-term-admin-detail__acts">
+            <button type="button" class="ncm-term-admin-btn ncm-term-admin-btn--primary" data-action="terminalOpen" data-item-id="{{id}}"><i class="fas fa-terminal"></i> Open</button>
+            <button type="button" class="ncm-term-admin-btn" data-action="terminalConfigureAdmin" data-item-id="{{id}}"><i class="fas fa-sliders"></i> Configure</button>
+            {{#unless gmBypassed}}
+              <button type="button" class="ncm-term-admin-btn" data-action="terminalForceUnlockAdmin" data-item-id="{{id}}" data-tooltip="Skip every login gate (until Reset)"><i class="fas fa-unlock-keyhole"></i> Force-unlock</button>
+            {{/unless}}
+            <button type="button" class="ncm-term-admin-btn" data-action="terminalRelock" data-item-id="{{id}}" data-tooltip="Log everyone out; clear lockouts, GM bypass, and the uplink back to defaults"><i class="fas fa-rotate-left"></i> Reset</button>
+            <button type="button" class="ncm-term-admin-btn" data-action="terminalExportAdmin" data-item-id="{{id}}" data-tooltip="Download the full config as JSON"><i class="fas fa-file-export"></i> Export</button>
+            <span class="ncm-term-admin-detail__acts-sp"></span>
+            <button type="button" class="ncm-term-admin-btn ncm-term-admin-btn--danger" data-action="terminalRemove" data-item-id="{{id}}" data-tooltip="Revert to a plain item"><i class="fas fa-trash-can"></i> Remove</button>
+          </div>
+        {{else}}
+          <div class="ncm-term-admin-empty"><i class="fas fa-terminal"></i><p>Select a terminal on the left.</p></div>
+        {{/with}}
+      </div>
+
     </div>
   {{else}}
     <div class="ncm-term-admin-empty">
       <i class="fas fa-terminal"></i>
-      <p>{{#if terminalCount}}No terminals match your search.{{else}}No terminals yet. Right-click an item → <strong>Convert to Terminal</strong>, or use <strong>Import Item → Terminal</strong> above.{{/if}}</p>
+      <p>No terminals yet. Right-click an item → <strong>Convert to Terminal</strong>, or use <strong>Import Item → Terminal</strong> above.</p>
     </div>
   {{/if}}
 

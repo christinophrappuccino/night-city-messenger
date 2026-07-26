@@ -115,6 +115,24 @@ export class MessageService {
         // Store the resolved inbox target for delivery
         data._recipientInboxId = recipientInboxId;
 
+        // ── Send-only Gate (players only, ALWAYS on) ──
+        // A master contact flagged `sendOnly` is a one-way system address
+        // (system@localhost, alerts@…): the GM sends FROM it, players can
+        // never send TO it — independent of the verification setting below.
+        if (!game.user.isGM) {
+          const masterService = game.nightcity?.masterContactService;
+          const recipientEmail = data.to || (toActor ? this._contactRepo.getActorEmail(data.toActorId) : toContact?.email);
+          const mc = (recipientEmail ? masterService?.getByEmail?.(recipientEmail) : null)
+            || (data.toActorId ? masterService?.getByActorId?.(data.toActorId) : null);
+          if (mc?.sendOnly) {
+            return {
+              success: false,
+              error: 'TRANSMISSION REFUSED — this address does not accept incoming messages.',
+              errorCode: 'SEND_ONLY',
+            };
+          }
+        }
+
         // ── Contact Verification Gate (players only) ──
         // Players can only send to contacts that exist in the GM's Master Contact Directory.
         const requireVerification = game.settings.get(MODULE_ID, 'requireContactVerification') ?? true;
@@ -279,6 +297,16 @@ export class MessageService {
         // their outbox can't reveal the anonymous party they answered.
         if (data.anonReply) sentCopy = this._maskAnonReplyForSender(sentCopy);
         await this._messageRepo.createMessage(senderInboxId, sentCopy);
+      }
+
+      // Terminal mirror — an account linked to this recipient (by contact,
+      // actor, or email) is that character's inbox on the machine, so the
+      // delivery shows up there too. Uses the recipient-facing clone so
+      // anonymous mail stays masked. Non-fatal: the inbox delivery succeeded.
+      try {
+        await game.nightcity.terminalService?.mirrorDeliveryToAccounts?.(recipientData);
+      } catch (err) {
+        console.warn(`${MODULE_ID} | terminal delivery mirror failed:`, err);
       }
 
       // Emit events
@@ -1054,11 +1082,18 @@ export class MessageService {
       });
       this.soundService?.play('hack-success');
       this.eventBus?.emit(EVENTS.MESSAGE_STATUS_CHANGED, { messageId, actorId });
+      game.nightcity?.traceService?.logSuccess({ actor, action: 'message-decrypt', objectName: flags?.subject || 'encrypted message', targetKind: 'message', targetMessageId: messageId, severity: 'hostile' });
       ui.notifications.info('NCM | Message decrypted.');
       return { success: true, roll: result };
     }
 
     this.soundService?.play('hack-fail');
+
+    // Trace funnel (§6a) — a failed message decrypt (may carry ICE).
+    game.nightcity?.traceService?.fireTrace({
+      actor, action: 'message-decrypt', objectName: flags?.subject || 'encrypted message', targetKind: 'message', targetMessageId: messageId, severity: 'hostile',
+      dv: dc ?? null, margin: (result?.total != null && dc != null) ? result.total - dc : null,
+    });
 
     // BLACK ICE / RED ICE: apply damage on failure
     let iceDamage = null;

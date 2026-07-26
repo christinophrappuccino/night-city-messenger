@@ -434,6 +434,10 @@ export class MessageAccessService {
     const session = this._getSession(actorId, messageId);
     const attempts = (session?.hackAttempts ?? 0) + 1;
 
+    // Trace funnel (§6a) — a failed bypass of a locked/gated message (quiet: it
+    // has its own lockout/login-fail feedback).
+    game.nightcity?.traceService?.fireTrace({ actor: game.actors?.get(actorId), action: 'message-access', objectName: 'a locked message', targetKind: 'message', targetMessageId: messageId, severity: 'major', quiet: true });
+
     if (attempts >= DEFAULT_MAX_ATTEMPTS) {
       // Lockout (anchored to the configured time provider)
       const lockoutUntil = new Date(this._nowMs() + DEFAULT_LOCKOUT_DURATION).toISOString();

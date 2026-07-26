@@ -28,6 +28,7 @@
 import { MODULE_ID, EVENTS, SOCKET_OPS, DEFAULTS, CONTENT_TYPES } from '../utils/constants.js';
 import { log, isGM, generateId, formatCyberDate } from '../utils/helpers.js';
 import { MessageRepository } from '../data/MessageRepository.js';
+import { suggestFilename } from '../ui/content/ContentRenderers.js';
 
 export class TerminalService {
 
@@ -345,6 +346,66 @@ export class TerminalService {
   }
 
   /**
+   * Mirror a delivered Agent message into every terminal account that
+   * represents the recipient — an account linked to a character/contact IS
+   * that identity's inbox on the machine, so mail sent (or replied) to them
+   * shows up on the terminal too, original From/timestamp intact. Called by
+   * MessageService._deliverMessage (always the GM client) with the
+   * recipient-facing payload, so anonymous mail arrives pre-masked. Non-fatal:
+   * the primary inbox delivery has already succeeded.
+   *
+   * Matching (any one): account.masterContactId === data.toContactId ·
+   * account.actorId === data.toActorId · account.email === data.to
+   * (case-insensitive). Reads config accounts directly, not getAccounts —
+   * hidden/net-gated accounts still receive mail (those filters are read-time
+   * player visibility, not ownership).
+   *
+   * The mirror gets its OWN messageId (`<id>-t-<accountId>`): content
+   * mutations resolve pages by messageId across ALL journals
+   * (applySiphonToJournal takes the first hit), so a shared id would let a
+   * claim/siphon land on the inbox copy while the mirror stayed live (or vice
+   * versa). Money never duplicates (the exfil no-double-grant rule): the
+   * mirror carries eddies 0 + neutralized contentData — the recipient's real
+   * inbox copy is the canonical claim surface.
+   *
+   * @param {object} data - delivery payload (recipient-facing clone)
+   * @returns {Promise<{ success: boolean, mirrored: number }>}
+   */
+  async mirrorDeliveryToAccounts(data) {
+    if (!isGM() || !data?.messageId) return { success: true, mirrored: 0 };
+    // Spam-routed mail is delivered silently to the Spam folder — surfacing it
+    // on a terminal would defeat the filter.
+    if (data.status?.spam) return { success: true, mirrored: 0 };
+    const toEmail = (data.to || '').trim().toLowerCase();
+    let mirrored = 0;
+    for (const item of this.collectTerminals()) {
+      const journal = this._getLinkedJournal(item);
+      if (!journal) continue;
+      for (const acct of (this.getConfig(item).accounts || [])) {
+        const match =
+          (data.toContactId && acct.masterContactId && acct.masterContactId === data.toContactId) ||
+          (data.toActorId && acct.actorId && acct.actorId === data.toActorId) ||
+          (toEmail && (acct.email || '').trim().toLowerCase() === toEmail);
+        if (!match) continue;
+        const mirrorId = `${data.messageId}-t-${acct.id}`;
+        // Deterministic id doubles as the redelivery guard.
+        if (journal.pages.contents.some(p => p.flags?.[MODULE_ID]?.messageId === mirrorId)) continue;
+        const res = await this.addAccountMessage(item, acct.id, {
+          ...data,
+          messageId: mirrorId,
+          eddies: 0,
+          contentData: this._exfilContentData(data),
+          folder: '',
+          status: { read: false },
+        });
+        if (res?.success) mirrored++;
+      }
+    }
+    if (mirrored) log.debug(`Delivery ${data.messageId} mirrored to ${mirrored} terminal account(s)`);
+    return { success: true, mirrored };
+  }
+
+  /**
    * Edit an existing message's content. GM only. Sets leaf flags (safe for a
    * page.update merge) + the page text/name.
    * @param {Item} item @param {string} messageId
@@ -361,6 +422,7 @@ export class TerminalService {
       const ns = `flags.${MODULE_ID}`;
       const upd = {};
       if (updates.from !== undefined) upd[`${ns}.from`] = updates.from;
+      if (updates.folder !== undefined) upd[`${ns}.folder`] = updates.folder;
       if (updates.subject !== undefined) { upd[`${ns}.subject`] = updates.subject; upd.name = this._pageName({ from: updates.from ?? page.flags[MODULE_ID].from, subject: updates.subject, timestamp: page.flags[MODULE_ID].timestamp }); }
       if (updates.priority !== undefined) upd[`${ns}.priority`] = updates.priority;
       if (updates.classification !== undefined) upd[`${ns}.metadata.classification`] = updates.classification;
@@ -486,9 +548,34 @@ export class TerminalService {
         let state = 'available';
         if (i.networkId === currentId) state = 'active';
         else if (network.security?.requiresAuth && !this._uplinkAuthorized(item, i)) state = 'locked';
-        return { networkId: i.networkId, network, state, preAuthorized: !!i.preAuthorized };
+        // wired = a physical LAN drop: always full signal (display/fiction only —
+        // uplinks already ignore scene jamming for gating).
+        return { networkId: i.networkId, network, state, preAuthorized: !!i.preAuthorized, wired: !!i.wired };
       })
       .filter(Boolean);
+  }
+
+  /**
+   * The terminal's mailbox folders, resolved and ordered for the sidebar:
+   * Inbox → custom folders → Saved → Trash. System folder NAMES come from
+   * config.folderNames (the preset-compatible contract); config.folders layers
+   * icons, saved/trash visibility, and GM-authored customs on top. Legacy
+   * configs (no `folders` key) resolve to exactly the old three folders.
+   * @param {Item} item
+   * @returns {Array<{ id: string, name: string, icon: string, kind: 'inbox'|'custom'|'saved'|'trash' }>}
+   */
+  getFolders(item) {
+    const cfg = this.getConfig(item);
+    const fn = cfg.folderNames || {};
+    const f = cfg.folders || {};
+    const ic = f.icons || {};
+    const out = [{ id: 'inbox', name: (fn.inbox || '').trim() || 'Inbox', icon: ic.inbox || 'fas fa-inbox', kind: 'inbox' }];
+    for (const c of f.custom || []) {
+      if (c?.id && (c.name || '').trim()) out.push({ id: c.id, name: c.name.trim(), icon: c.icon || 'fas fa-folder', kind: 'custom' });
+    }
+    if (f.savedEnabled !== false) out.push({ id: 'saved', name: (fn.saved || '').trim() || 'Saved', icon: ic.saved || 'fa-regular fa-star', kind: 'saved' });
+    if (f.trashEnabled !== false) out.push({ id: 'trash', name: (fn.trash || '').trim() || 'Trash', icon: ic.trash || 'fas fa-trash-can', kind: 'trash' });
+    return out;
   }
 
   /** @private Does the machine hold a credential for this interface's network? */
@@ -625,6 +712,11 @@ export class TerminalService {
   /** Is this actor currently locked out of the account? @returns {boolean} */
   isAccountLockedOut(item, accountId, actorId) {
     return !!this.securityService?.isLockedOut?.(actorId, this._targetId(item, accountId));
+  }
+
+  /** Remaining lockout time (ms) for this actor on this account. 0 = not locked. */
+  getAccountLockoutRemaining(item, accountId, actorId) {
+    return this.securityService?.getLockoutRemaining?.(actorId, this._targetId(item, accountId)) || 0;
   }
 
   /** Remaining attempts before lockout. @returns {number} */
@@ -819,6 +911,71 @@ export class TerminalService {
   }
 
   /**
+   * SAVE FRAME (#37) — the camera-feed escape hatch. A live stream can't be
+   * copied off the machine (resolveEntryExfil denies agent/shard/forward/sell/
+   * leak on a feed), but you can grab **what it is showing right now**: one
+   * channel's frame becomes a single-image GALLERY in the operator's Recovered
+   * folder, stamped with the cam id and the feed clock.
+   *
+   * The capture is the frame's source image, NOT a pixel-crop of the PTZ view —
+   * cropping would mean rasterizing to a data URI and stuffing hundreds of KB of
+   * base64 into world data on every capture. Instead the PTZ aim (pan/tilt/zoom)
+   * rides along in the caption, so the intel ("I was looking at the loading bay")
+   * survives without bloating the world.
+   *
+   * GM-only write (the inbox journal is GM-owned); players relay via
+   * TERMINAL_EXFIL_REQUEST `dest: 'saveFrame'`.
+   */
+  async exfilSaveFrame(item, accountId, messageId, index, targetActorId, aim = '') {
+    if (!this.getConfig(item).allowExfil) return { success: false, error: 'Exfiltration disabled for this terminal' };
+    if (!isGM()) return { success: false, error: 'GM only' };
+    if (!targetActorId) return { success: false, error: 'No target actor' };
+    const repo = this.messageRepository;
+    if (!repo) return { success: false, error: 'MessageRepository unavailable' };
+
+    const msg = this.getAccountMessages(item, accountId).find(m => m.messageId === messageId);
+    const cd = msg?.contentData || {};
+    const img = (cd.images || [])[Number(index)] || null;
+    if (!img?.url || img.locked || img.corrupted || img.cut) {
+      return { success: false, error: 'That channel has nothing to capture' };
+    }
+
+    const label = img.label || `CAM_${String(Number(index) + 1).padStart(2, '0')}`;
+    // A looped camera is showing OLD footage — the capture must record the time
+    // it is DISPLAYING, not the time you took it. (Loop a cam, save a frame, and
+    // you've captured the loop: that's the correct, cruel outcome.)
+    let stamp = img.loopedTime || '';
+    if (!stamp) {
+      try { stamp = formatCyberDate(this._nowIso(), { timeOnly: true, seconds: true }); } catch { stamp = ''; }
+    }
+    const caption = [img.caption, `${label} @ ${stamp || 'unknown time'}`, aim].filter(Boolean).join(' · ');
+    const terminalName = this._displayName(item);
+    const account = this.getAccount(item, accountId);
+    const source = `${terminalName} · ${account?.username || accountId}`;
+    const fname = `${label.toLowerCase().replace(/[^a-z0-9]+/g, '_')}_${(stamp || '').replace(/[^0-9]/g, '') || 'frame'}.img`;
+
+    const res = await repo.createMessage(targetActorId, {
+      messageId: generateId(),
+      from: cd.source || label,
+      subject: `${label} — frame capture`,
+      body: '',
+      contentType: CONTENT_TYPES.GALLERY,
+      // A single still — never a feed (a captured frame is not a live stream).
+      contentData: { title: `${label} — frame capture`, source: cd.source || '', images: [{ url: img.url, label, caption, time: stamp }] },
+      // The capture is a FILE, not mail — it lands with a file envelope.
+      envelope: 'file',
+      file: { filename: fname, owner: cd.source || label, size: '' },
+      status: { read: false },
+      metadata: { recovered: true, recoveredFrom: source, recoveredTo: account?.email || account?.username || accountId, recoveredAt: this._nowIso(), recoveredOrigTs: msg.timestamp },
+    });
+    if (!res?.success) return { success: false, error: res?.error || 'Capture failed' };
+
+    this.eventBus?.emit(EVENTS.TERMINAL_EXFIL, { itemId: item.id, accountId, dest: 'saveFrame', count: 1 });
+    log.info(`Save frame: ${label} from terminal "${terminalName}" → actor ${targetActorId}`);
+    return { success: true, count: 1, label };
+  }
+
+  /**
    * Exfil selected messages onto a physical Data Shard (the "go-bag"). If the
    * target item isn't already a shard, it's converted first (default config).
    * Each entry keeps its contentType/contentData, so a copied MESSAGE stays a
@@ -870,6 +1027,173 @@ export class TerminalService {
 
     this.eventBus?.emit(EVENTS.TERMINAL_EXFIL, { itemId: item.id, accountId, dest: 'shard', count });
     log.info(`Exfil → shard: ${count} message(s) from terminal "${terminalName}" to item "${targetItem.name}"`);
+    return { success: count > 0, count };
+  }
+
+  /**
+   * Resolve the per-action exfil policy (allow/require/skill/dv per action +
+   * sell price), applying `allowExfil` as the master gate and back-compat
+   * defaults for legacy configs (no `config.exfil` → agent+shard ON/ungated,
+   * the four new actions OFF = today's behavior). Read by the viewer to build
+   * the exfil menu + feed each action's optional security-console gate.
+   * @param {Item} item
+   * @returns {{master:boolean, [action:string]:{allow,require,skill,dv,price?}}}
+   */
+  getExfilPolicy(item) {
+    const cfg = this.getConfig(item) || {};
+    const master = cfg.allowExfil !== false;
+    const base = DEFAULTS.TERMINAL_CONFIG.exfil;
+    const ex = cfg.exfil || {};
+    const out = { master };
+    for (const key of Object.keys(base)) {
+      const d = base[key], c = ex[key] || {};
+      out[key] = {
+        allow: master && (c.allow ?? d.allow),
+        require: !!(c.require ?? d.require),
+        skill: c.skill || d.skill,
+        dv: Number(c.dv ?? d.dv) || 15,
+      };
+      if (key === 'sell') out[key].price = Math.max(0, Number(c.price ?? d.price) || 0);
+    }
+    return out;
+  }
+
+  /**
+   * Resolve the exfil policy FOR ONE ENTRY (#37) — the terminal policy is the
+   * default; the entry's own `exfil` override layers on top per action:
+   *
+   *   entry.exfil = {
+   *     agent: { state: 'inherit'|'allow'|'deny', dv? }, shard: {...}, …,
+   *     denyReason: 'LIVE STREAM',   // shown on the dead chip
+   *     hideDenied: false,           // true = hide the action instead of a chip
+   *   }
+   *
+   * Two hard rules:
+   *  - **The terminal's `allowExfil` master is a CEILING.** Master off = nothing
+   *    leaves, and no entry can widen it. An entry can only narrow, or widen
+   *    within what the master permits.
+   *  - **A live camera feed cannot be copied.** You can't download a stream —
+   *    agent/shard/forward/sell/leak are denied on it regardless of authoring
+   *    (SAVE FRAME is the escape hatch, and WIPE still works: you can always
+   *    pull the plug). This is physics, not policy, so it's enforced here rather
+   *    than left to the GM to remember.
+   *  - **SAVE FRAME only exists on a feed** — it's hidden everywhere else.
+   *
+   * @returns {object} per-action `{ allow, require, skill, dv, denied, denyReason, hidden }`
+   */
+  resolveEntryExfil(item, entry = {}) {
+    const base = this.getExfilPolicy(item);
+    const ov = entry.exfil || {};
+    const isFeed = entry.contentType === CONTENT_TYPES.GALLERY && entry.contentData?.mode === 'feed';
+    // A stream is not a file: it cannot be copied off the machine at all.
+    const STREAM_BLOCKED = ['agent', 'shard', 'forward', 'sell', 'leak'];
+    // MODE (the piece that made overrides feel broken): in 'inherit' mode an
+    // untouched action follows the terminal's Exfil tab. In **'custom'** mode the
+    // entry is the whole story — anything NOT explicitly allowed here is DENIED.
+    // That's the "allow only this one, lock everything else" intent; without it,
+    // setting one action to ALLOW left the rest INHERITing an allow, so ticking
+    // "hide" appeared to do nothing at all.
+    const custom = ov.mode === 'custom';
+    const out = { master: base.master, isFeed, mode: custom ? 'custom' : 'inherit' };
+    for (const key of Object.keys(base)) {
+      if (key === 'master') continue;
+      const b = base[key];
+      const o = ov[key] || {};
+      const state = ['allow', 'deny'].includes(o.state) ? o.state : 'inherit';
+
+      // SAVE FRAME is feed-only.
+      if (key === 'saveFrame' && !isFeed) { out[key] = { ...b, allow: false, hidden: true }; continue; }
+
+      let allow;
+      if (state === 'allow') allow = base.master;
+      else if (state === 'deny') allow = false;
+      else allow = custom ? false : b.allow;   // custom: unspecified = denied
+
+      let denyReason = '';
+      if (isFeed && STREAM_BLOCKED.includes(key)) { allow = false; denyReason = 'LIVE STREAM'; }
+      else if (!allow && (state === 'deny' || custom)) denyReason = ov.denyReason || 'COPY-PROTECTED';
+
+      out[key] = {
+        allow,
+        require: o.require ?? b.require,
+        skill: o.skill || b.skill,
+        dv: Number(o.dv) || b.dv,
+        // `denied` = deliberately blocked (render a dead chip with the reason);
+        // a plain policy-off action just doesn't render at all.
+        denied: !allow && !!denyReason && base.master,
+        denyReason,
+        hidden: !!ov.hideDenied && !allow,
+      };
+      if (key === 'sell') out[key].price = b.price;
+    }
+    // "The override isn't doing anything" is otherwise undiagnosable — say
+    // exactly what was read and what it resolved to (debugMode).
+    if (entry.exfil) {
+      log.debug(`resolveEntryExfil(${entry.messageId}): mode=${out.mode} master=${out.master} feed=${isFeed} → `
+        + Object.keys(base).filter(k => k !== 'master')
+          .map(k => `${k}:${out[k].hidden ? 'hidden' : (out[k].allow ? 'allow' : (out[k].denied ? `denied(${out[k].denyReason})` : 'off'))}`)
+          .join(' '));
+    }
+    return out;
+  }
+
+  /**
+   * Forward selected messages into another recipient's Agent inbox — a normal
+   * delivery framed as "Fwd:" from the forwarder (NOT a Recovered copy). GM
+   * writes the inbox journal; the player path relays (dest 'forward').
+   * @param {Item} item @param {string} accountId @param {string[]} messageIds
+   * @param {string} targetActorId  the recipient
+   * @param {{email?:string, actorId?:string, name?:string}} [forwarder]
+   */
+  async exfilForward(item, accountId, messageIds, targetActorId, forwarder = {}) {
+    if (!this.getConfig(item).allowExfil) return { success: false, count: 0, error: 'Exfiltration disabled for this terminal' };
+    if (!isGM()) return { success: false, count: 0, error: 'GM only (relayed)' };
+    if (!targetActorId) return { success: false, count: 0, error: 'No recipient' };
+    const repo = this.messageRepository;
+    if (!repo) return { success: false, count: 0, error: 'MessageRepository unavailable' };
+
+    const recipient = game.actors?.get(targetActorId);
+    const toLabel = recipient?.getFlag?.(MODULE_ID, 'email') || recipient?.name || targetActorId;
+    const messages = this.getAccountMessages(item, accountId);
+    const ids = new Set(messageIds || []);
+    let count = 0;
+
+    for (const msg of messages.filter(m => ids.has(m.messageId))) {
+      const res = await repo.createMessage(targetActorId, {
+        ...msg,
+        messageId: generateId(), threadId: undefined, eddies: 0,
+        from: forwarder.email || 'forwarded@ncm.net',
+        fromActorId: forwarder.actorId || '', fromContactId: '',
+        to: toLabel, toActorId: targetActorId, toContactId: '',
+        subject: `Fwd: ${msg.subject || '(no subject)'}`,
+        body: msg.body || '',
+        contentData: this._exfilContentData(msg),
+        status: { read: false },
+      });
+      if (res?.success) count++;
+    }
+
+    this.eventBus?.emit(EVENTS.TERMINAL_EXFIL, { itemId: item.id, accountId, dest: 'forward', count });
+    log.info(`Exfil → forward: ${count} message(s) to actor ${targetActorId}`);
+    return { success: count > 0, count };
+  }
+
+  /**
+   * Wipe selected messages off the terminal (cover your tracks). Hard-deletes
+   * the source pages. GM-side (journal owner); the player path relays (dest
+   * 'wipe'). Independent of `allowExfil` deliberately — a delete isn't a copy;
+   * it's still gated by the viewer's per-action policy.
+   * @param {Item} item @param {string} accountId @param {string[]} messageIds
+   */
+  async exfilWipe(item, accountId, messageIds) {
+    if (!isGM()) return { success: false, count: 0, error: 'GM only (relayed)' };
+    let count = 0;
+    for (const id of (messageIds || [])) {
+      const r = await this.removeAccountMessage(item, id);
+      if (r?.success) count++;
+    }
+    this.eventBus?.emit(EVENTS.TERMINAL_EXFIL, { itemId: item.id, accountId, dest: 'wipe', count });
+    log.info(`Exfil → wipe: ${count} message(s) removed from terminal ${item?.id}`);
     return { success: count > 0, count };
   }
 
@@ -941,13 +1265,488 @@ export class TerminalService {
     return journalId ? game.journal.get(journalId) : null;
   }
 
-  /** @private Merge an actor's session blob and write the whole state flag. */
+  /**
+   * GM-side landing point for the player session relay (login / account
+   * switch / logout state writes — players can't update the world item).
+   * @param {Item} item @param {string} actorId @param {object} updates
+   */
+  async applySessionUpdate(item, actorId, updates) {
+    if (!isGM()) return;
+    await this._updateSession(item, actorId, updates);
+  }
+
+  /** @private Merge an actor's session blob and write the whole state flag.
+   *  Players can't update the GM-owned world item — they relay the write via
+   *  SOCKET_OPS.TERMINAL_SESSION_REQUEST (the uplink-switch pattern; no
+   *  RESULT op — the flag write syncs back and the viewer re-renders off its
+   *  updateItem hook). The local viewer proceeds on its own instance state
+   *  (`_accountId`), so the brief sync lag is invisible. */
   async _updateSession(item, actorId, updates) {
     if (!actorId) return;
+    if (!isGM()) {
+      this.socketManager?.emit(SOCKET_OPS.TERMINAL_SESSION_REQUEST, {
+        itemUuid: item.uuid, actorId, updates,
+      });
+      return;
+    }
     const state = this.getState(item);
     if (!state.sessions) state.sessions = {};
     state.sessions[actorId] = { ...this.getSession(item, actorId), ...updates };
     await item.update({ [`flags.${MODULE_ID}.terminalState`]: state });
+    // onLogin resident triggers (design §3a). This GM-side branch is the ONE
+    // chokepoint for ALL session establishment — the GM's own logins AND relayed
+    // player logins both land here — so it's where onLogin residents fire (the
+    // per-client EventBus wouldn't carry a player's login to the GM). Non-blocking
+    // so a GM's fire-proposal Dialog can't stall the session write.
+    if (updates.activeAccountId) {
+      this._checkLoginResidents(item, updates.activeAccountId, actorId)
+        .catch(err => log.warn(`Resident login-check failed: ${err.message}`));
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  RESIDENTS — installed programs that fire on a trigger (§3a)
+  // ═══════════════════════════════════════════════════════════
+  //
+  //  A resident is a program left behind on a terminal that fires LATER, when a
+  //  trigger condition is met (next login, a date, an action). It's the primitive
+  //  behind PLANT (blackmail content the next login finds), keyloggers, backdoor
+  //  accounts, and logic bombs. Firing is GM-owned and GM-GATED: a matched trigger
+  //  PROPOSES to the GM (Fire / Defuse / Later), it never auto-applies. Detection
+  //  is via ANALYZE vs stealthDV (a later slice).
+
+  /** All residents on a terminal (armed/fired/defused). @param {Item} item */
+  getResidents(item) {
+    return this.getState(item).residents || [];
+  }
+
+  /**
+   * Install a resident. GM-side (upload will relay — thread 3). Stamps an id and
+   * `state:'armed'`, merges caller provenance/stealthDV.
+   * @param {Item} item @param {object} resident { effectType, params, trigger, provenance?, stealthDV? }
+   * @returns {Promise<{success:boolean, resident?:object, error?:string}>}
+   */
+  async installResident(item, resident = {}) {
+    if (!isGM()) return { success: false, error: 'GM only (upload relays)' };
+    if (!this.isTerminal(item)) return { success: false, error: 'Not a terminal' };
+    try {
+      const record = {
+        id: `res_${generateId()}`,
+        effectType: resident.effectType || 'adjudicate',
+        params: resident.params || {},
+        trigger: resident.trigger || { kind: 'manual' },
+        provenance: resident.provenance || {},
+        stealthDV: Number(resident.stealthDV) || 0,
+        slotKey: resident.slotKey || '',
+        state: 'armed',
+        firedAt: null,
+        installedAt: new Date().toISOString(),
+      };
+      const state = this.getState(item);
+      const list = [...(state.residents || [])];
+      // One program aimed at one mailbox occupies one SLOT: a re-upload REPLACES
+      // the armed plant already there instead of stacking a duplicate. Without
+      // this, a player who retried a bad forge left N armed copies and the GM's
+      // next login prompt fired every one of them. Only ARMED plants are
+      // replaced — a fired one already landed, so a re-upload is a new file.
+      const slot = record.slotKey ? list.findIndex(r => r.slotKey === record.slotKey && r.state === 'armed') : -1;
+      if (slot >= 0) {
+        log.debug(`Terminal "${item.name}": re-upload replaced armed resident in slot ${record.slotKey}`);
+        list[slot] = record;
+      } else list.push(record);
+      state.residents = list;
+      await item.update({ [`flags.${MODULE_ID}.terminalState`]: state });
+      log.debug(`Terminal "${item.name}": installed resident ${record.effectType} (trigger ${record.trigger.kind})`);
+      return { success: true, resident: record };
+    } catch (err) { log.error(`Install resident failed: ${err.message}`); return { success: false, error: err.message }; }
+  }
+
+  /** Patch a resident by id (GM-side). */
+  async updateResident(item, id, patch = {}) {
+    if (!isGM()) return { success: false };
+    const state = this.getState(item);
+    state.residents = (state.residents || []).map(r => (r.id === id ? { ...r, ...patch } : r));
+    await item.update({ [`flags.${MODULE_ID}.terminalState`]: state });
+    return { success: true };
+  }
+
+  /** Remove a resident by id (GM-side). */
+  async removeResident(item, id) {
+    if (!isGM()) return { success: false };
+    const state = this.getState(item);
+    state.residents = (state.residents || []).filter(r => r.id !== id);
+    await item.update({ [`flags.${MODULE_ID}.terminalState`]: state });
+    return { success: true };
+  }
+
+  /**
+   * Scan onLogin residents when an account becomes active, and propose firing to
+   * the GM. GM-side (called from _updateSession). A resident fires at most once
+   * (armed → fired/defused).
+   * @private
+   */
+  async _checkLoginResidents(item, accountId, actorId) {
+    if (!isGM()) return;
+    const now = this._nowMs();
+    const matches = this.getResidents(item).filter(r =>
+      r.state === 'armed' &&
+      r.trigger?.kind === 'onLogin' &&
+      (!r.trigger.accountId || r.trigger.accountId === accountId) &&
+      (!r.trigger.actorId || r.trigger.actorId === actorId) &&
+      (!r.snoozeUntil || r.snoozeUntil <= now));
+    for (const r of matches) {
+      // Serialize the proposals so two triggers don't stack two Dialogs at once.
+      await this._proposeResidentFire(item, r, { accountId, actorId });
+    }
+  }
+
+  /**
+   * The element of an open viewer for this terminal, if any — the FUI modals are
+   * host-scoped, so appending into it makes the prompt inherit THAT machine's
+   * --ncm-* preset instead of the brand default. Null when nothing is open (the
+   * modal then falls back to document.body).
+   * @private @param {Item} item @returns {HTMLElement|null}
+   */
+  _openViewerElement(item) {
+    try {
+      const w = Object.values(ui.windows).find(v => v?.item?.id === item?.id && v?.element?.classList?.contains('ncm-terminal-app'));
+      return w?.element ?? null;
+    } catch { return null; }
+  }
+
+  /**
+   * GM-gated fire proposal (§3a: a trigger match PROPOSES, never auto-fires —
+   * unless `residentFireMode` says otherwise). Fire / Defuse / Later. GM-side.
+   * @private @returns {Promise<void>}
+   */
+  async _proposeResidentFire(item, resident, { accountId, actorId } = {}) {
+    if (!isGM()) return;
+    // In-memory guard: never stack two prompts for the SAME resident (the reaper
+    // and a login can both match in one tick).
+    this._proposing ??= new Set();
+    if (this._proposing.has(resident.id)) return;
+    this._proposing.add(resident.id);
+    try {
+      const label = this._residentLabel(resident);
+      const who = actorId ? (game.actors?.get(actorId)?.name || 'an operator') : 'the system clock';
+
+      // `residentFireMode` — default 'auto' (fire + tell the GM); a table that
+      // wants the pause-for-the-netrun prompt sets it to 'propose'.
+      let mode = 'auto';
+      try { mode = game.settings.get(MODULE_ID, 'residentFireMode') || 'auto'; } catch { /* not registered */ }
+
+      if (mode === 'manual') {
+        // Never prompt: it stays armed until the GM fires it from Admin → Security.
+        ui.notifications.info(`NCM | "${label}" triggered on ${item.name} — armed and waiting (fire it from Admin → Security).`);
+        return;
+      }
+      if (mode === 'auto') {
+        await this.fireResident(item, resident, { accountId, actorId });
+        return;
+      }
+
+      const choice = await (async () => {
+        const { runResidentConsole } = await import('../ui/content/ResidentConsole.js');
+        return runResidentConsole({
+          label, resident, hostName: item.name, who,
+          mailbox: this.getAccount(item, resident.params?.accountId || accountId)?.displayName || '',
+          // Inherit the machine's own preset when a viewer of it is open.
+          host: this._openViewerElement(item),
+        });
+      })();
+      // The resident may have been fired/defused elsewhere while the prompt sat open.
+      const fresh = this.getResidents(item).find(r => r.id === resident.id);
+      if (!fresh || fresh.state !== 'armed') return;
+      if (choice === 'fire') await this.fireResident(item, resident, { accountId, actorId });
+      else if (choice === 'defuse') {
+        await this.updateResident(item, resident.id, { state: 'defused' });
+        ui.notifications.info(`NCM | Resident "${label}" defused.`);
+      } else {
+        // Later → snooze so a 60s reaper (or a re-login) doesn't re-prompt at once.
+        await this.updateResident(item, resident.id, { snoozeUntil: this._nowMs() + 10 * 60 * 1000 });
+      }
+    } finally {
+      this._proposing.delete(resident.id);
+    }
+  }
+
+  /**
+   * Fire a resident's effect (GM-side). Routes the effect type through the shared
+   * effect engine (`_fireResidentEffect`), marks the resident fired, logs + alerts.
+   * PLANT / keylog / forgeAccount / deployICE / logicBomb are native (thread 6);
+   * an unknown type honestly degrades to a GM-adjudicate alert.
+   * @param {Item} item @param {object} resident @param {object} [ctx] { accountId, actorId }
+   */
+  async fireResident(item, resident, { accountId, actorId } = {}) {
+    if (!isGM()) return { success: false };
+    const label = this._residentLabel(resident);
+    let report = '';
+    try {
+      report = await this._fireResidentEffect(item, resident.effectType, resident.params || {}, {
+        accountId, actorId, resident,
+      });
+    } catch (err) { log.error(`Fire resident failed: ${err.message}`); report = `error: ${err.message}`; }
+
+    await this.updateResident(item, resident.id, { state: 'fired', firedAt: new Date().toISOString() });
+    // Activity feed — a resident firing is a notable event (no heat; the trace was
+    // already paid at upload/arming time).
+    game.nightcity?.traceService?.logSuccess({ actor: game.actors?.get(resident.provenance?.plantedBy), action: `${resident.effectType || 'resident'}-fired`, source: label, hostItem: item, severity: 'hostile' });
+    this._residentGmAlert(`Resident "${label}" fired on ${item.name} — ${report}.`);
+    log.debug(`Resident fired: ${label} on ${item.name} — ${report}`);
+    return { success: true, report };
+  }
+
+  /**
+   * The shared effect engine for triggered residents (design §1, thread 6). Given
+   * an effect type + params, applies it and returns a human report string. Split
+   * out of `fireResident` so `logicBomb` can run an INNER effect through the same
+   * switch without re-marking the outer resident.
+   * @private
+   * @param {Item} item
+   * @param {string} effectType
+   * @param {object} params
+   * @param {object} ctx { accountId?, actorId?, resident? }
+   * @returns {Promise<string>} report
+   */
+  async _fireResidentEffect(item, effectType, params = {}, ctx = {}) {
+    const { accountId, actorId, resident } = ctx;
+    switch (effectType) {
+      case 'plant': {
+        const targetAcct = params.accountId || accountId;
+        if (targetAcct && params.entry) {
+          const res = await this.addAccountMessage(item, targetAcct, foundry.utils.deepClone(params.entry));
+          return res?.success
+            ? `planted "${params.entry.subject || 'a file'}" in ${this.getAccount(item, targetAcct)?.displayName || targetAcct}'s mailbox`
+            : `plant failed: ${res?.error || 'unknown'}`;
+        }
+        return 'plant had no target account or entry';
+      }
+
+      case 'forgeAccount': {
+        // Write a hidden backdoor account and hand the creds to whoever planted it.
+        const runner = game.actors?.get(resident?.provenance?.plantedBy) || (actorId ? game.actors?.get(actorId) : null);
+        const res = await this.forgeBackdoorAccount(item, { actor: runner, params });
+        return res?.success
+          ? `forged backdoor account "${res.username}" (${res.expiresLabel})`
+          : `backdoor forge failed: ${res?.error || 'unknown'}`;
+      }
+
+      case 'keylog': {
+        // The trigger IS the capture: whoever's login fired this resident is the
+        // captured session. Hand the account (+ operator) to the runner as a
+        // usable credential lead (they can type the username at secret-login).
+        const acct = this.getAccount(item, accountId);
+        const who = actorId ? (game.actors?.get(actorId)?.name || 'an operator') : 'someone';
+        const uname = acct?.username || accountId || 'unknown';
+        const runner = game.actors?.get(resident?.provenance?.plantedBy);
+        const capture = `KEYLOG // ${item.name}: ${who} logged into "${uname}"`;
+        this._deliverToRunner(runner, `<b>NCM keylog:</b> ${capture}. Type <b>${uname}</b> at "Log in with another account" to reach that mailbox.`);
+        return `captured login "${uname}" (${who})`;
+      }
+
+      case 'deployICE': {
+        // Bite the intruder whose login fired it. Runner-brought ICE
+        // (params.iceActorId) wins; else the box's own configured ICE; else it
+        // honestly degrades (no ICE to loose).
+        const victim = actorId ? game.actors?.get(actorId) : null;
+        if (!victim) return 'no intruder to bite (ICE stays armed for the next login)';
+        const iceCfg = this._resolveDeployIce(item, params, accountId);
+        if (!iceCfg) return 'no Black ICE available on this box — GM to adjudicate';
+        try {
+          await game.nightcity?.iceService?.applyDamage(victim,
+            { encryptionType: 'BLACK_ICE', ice: iceCfg },
+            { context: 'terminal', targetName: this._residentLabel(resident) });
+          return `Black ICE struck ${victim.name}`;
+        } catch (err) { log.error(`deployICE bite failed: ${err.message}`); return `ICE failed to fire: ${err.message}`; }
+      }
+
+      case 'logicBomb': {
+        // A timed single-effect bomb: run its ONE inner effect through this same
+        // engine. No nesting (an inner logicBomb is refused) — the recursion fence
+        // from the design (decision #6).
+        const inner = params.inner || {};
+        if (!inner.effectType) return 'logic bomb had no payload';
+        if (inner.effectType === 'logicBomb') return 'logic bomb refused to nest another logic bomb';
+        const innerReport = await this._fireResidentEffect(item, inner.effectType, inner.params || {}, ctx);
+        return `logic bomb detonated → ${innerReport}`;
+      }
+
+      default:
+        return `resident effect "${effectType}" — GM to adjudicate`;
+    }
+  }
+
+  /**
+   * Resolve the ICE config for a deployICE resident. Runner-brought
+   * (params.iceActorId) takes precedence; otherwise the box's own ICE from the
+   * logged-into account's security block (or any account that has one). Returns an
+   * ICEService-shaped `{ source, actorId, ... }` or null when the box has none.
+   * @private
+   */
+  _resolveDeployIce(item, params = {}, accountId = null) {
+    if (params.iceActorId) return { source: 'actor', actorId: params.iceActorId };
+    const accts = this.getConfig(item).accounts || [];
+    const scoped = accountId ? accts.find(a => a.id === accountId) : null;
+    const pick = (a) => {
+      const ice = a?.security?.ice;
+      if (!ice) return null;
+      if (ice.source === 'actor' && ice.actorId) return ice;
+      if (ice.source && ice.source !== 'default') return ice; // custom-named ICE
+      return null;
+    };
+    return pick(scoped) || accts.map(pick).find(Boolean) || null;
+  }
+
+  /**
+   * Forge a hidden backdoor account on a terminal (the forgeAccount verb, shared by
+   * the instant deploy path in SiphonFlow and the triggered resident path here).
+   * The account is HIDDEN (reachable only via secret-login by typing its username)
+   * and password-protected, so the creds are a real usable pair. It carries a
+   * `forged` provenance block with a game-time expiry (canon: implanted commands
+   * last ~24h) that `reapForgedAccounts` sweeps. GM-only.
+   * @param {Item} item @param {object} a { actor, params:{ username?, password?, admin?, ttlHours?, displayName? } }
+   * @returns {Promise<{ success:boolean, username?:string, password?:string, expiresLabel?:string, error?:string }>}
+   */
+  async forgeBackdoorAccount(item, { actor = null, params = {} } = {}) {
+    if (!isGM()) return { success: false, error: 'GM only' };
+    if (!this.isTerminal(item)) return { success: false, error: 'Not a terminal' };
+    try {
+      const username = (params.username || `bd_${generateId().slice(0, 5)}`).toLowerCase();
+      const password = params.password || this._genBackdoorPassword();
+      // 0 / negative ttl = permanent-until-found; else a game-time expiry.
+      const ttlHours = params.ttlHours === undefined ? 24 : Number(params.ttlHours);
+      const expiresAt = ttlHours > 0 ? this._nowMs() + ttlHours * 3600000 : null;
+      const account = {
+        username,
+        displayName: params.displayName || 'System Service',
+        isAdmin: !!params.admin,
+        hidden: true,
+        role: 'Service Account',
+        clearance: params.admin ? 'ROOT' : 'SERVICE',
+        security: {
+          allowPassword: true, password,
+          allowSkillCheck: false, allowKeyItem: false,
+          authLogic: 'any', maxAttempts: 3, lockoutDuration: 3600000,
+          failureMode: 'lockout', encryptionType: 'ICE',
+          ice: { source: 'default', actorId: null },
+        },
+        forged: {
+          by: actor?.id || null, byName: actor?.name || 'Unknown',
+          at: new Date(this._nowMs()).toISOString(),
+          expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
+        },
+      };
+      const res = await this.addAccount(item, account);
+      if (!res?.success) return { success: false, error: res?.error || 'add failed' };
+      const expiresLabel = expiresAt ? `expires in ~${ttlHours}h` : 'permanent until found';
+      // Hand the creds to the runner (their Agent) + alert the GM.
+      this._deliverToRunner(actor,
+        `<b>NCM backdoor:</b> account <b>${username}</b> / <b>${password}</b> on ${item.name} (${expiresLabel}). Reach it via "Log in with another account".`);
+      return { success: true, username, password, expiresLabel };
+    } catch (err) { log.error(`forgeBackdoorAccount failed: ${err.message}`); return { success: false, error: err.message }; }
+  }
+
+  /** @private A short, typeable backdoor password (word + digits). */
+  _genBackdoorPassword() {
+    const words = ['ghost', 'raven', 'shard', 'neon', 'wire', 'dusk', 'vault', 'echo', 'kilo', 'onyx'];
+    const w = words[Math.floor((this._nowMs() % words.length))];
+    return `${w}${100 + (this._nowMs() % 900)}`;
+  }
+
+  /**
+   * Deliver a security payoff (keylog capture, backdoor creds) to the runner who
+   * planted it — a whisper to that actor's owning users (+ the GM). Falls back to a
+   * GM-only whisper when the runner has no online owner.
+   * @private @param {Actor|null} runner @param {string} html
+   */
+  _deliverToRunner(runner, html) {
+    try {
+      const gmIds = game.users?.filter(u => u.isGM).map(u => u.id) ?? [];
+      const ownerIds = runner
+        ? (game.users?.filter(u => !u.isGM && runner.testUserPermission?.(u, 'OWNER')).map(u => u.id) ?? [])
+        : [];
+      const whisper = [...new Set([...gmIds, ...ownerIds])];
+      ChatMessage.create({ content: html, whisper: whisper.length ? whisper : gmIds });
+    } catch (err) { log.warn(`Runner delivery failed: ${err.message}`); }
+  }
+
+  /**
+   * GM reaper — remove forged backdoor accounts whose game-time expiry has passed
+   * (canon: implanted commands are temporary). Runs on the resident-reaper cadence.
+   * Honors the time provider, so a paused/rewound clock is respected.
+   */
+  async reapForgedAccounts() {
+    if (!isGM()) return;
+    const now = this._nowMs();
+    for (const item of game.items) {
+      if (!this.isTerminal(item)) continue;
+      const accts = this.getConfig(item).accounts || [];
+      const expired = accts.filter(a => {
+        const at = a?.forged?.expiresAt;
+        return at && Date.parse(at) <= now;
+      });
+      for (const a of expired) {
+        await this.removeAccount(item, a.id);
+        this._residentGmAlert(`Backdoor account "${a.username}" on ${item.name} expired and was closed.`);
+        log.debug(`Forged account "${a.username}" expired on ${item.name}`);
+      }
+    }
+  }
+
+  /** @private Short human label for a resident. */
+  _residentLabel(resident) {
+    const names = { plant: 'planted file', keylog: 'keylogger', forgeAccount: 'backdoor account', logicBomb: 'logic bomb', deployICE: 'Black ICE', adjudicate: 'program' };
+    return resident?.params?.name || names[resident?.effectType] || 'resident program';
+  }
+
+  /** @private GM-only toast + whisper (the durable trace log lands in thread 4). */
+  _residentGmAlert(msg) {
+    try {
+      ui.notifications.info(`NCM | ${msg}`);
+      const gmIds = game.users?.filter(u => u.isGM).map(u => u.id) ?? [];
+      if (gmIds.length) {
+        const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        ChatMessage.create({ content: `<b>NCM resident:</b> ${esc(msg)}`, whisper: gmIds });
+      }
+    } catch (err) { log.warn(`Resident GM alert failed: ${err.message}`); }
+  }
+
+  /** @private Current time via the provider (honors paused/rewound world clock). */
+  _nowMs() { try { return this.timeService?.getCurrentTimeMs?.() ?? Date.now(); } catch { return Date.now(); } }
+
+  /**
+   * GM reaper — fire onDate residents whose scheduled time has passed. Runs on the
+   * payload-reaper cadence (registered in registerTerminalSystem). Times go through
+   * the time provider, so a paused/rewound world clock is honored; each match routes
+   * through the same GM-gated proposal (which snoozes on "Later" so this 60s poll
+   * doesn't re-prompt).
+   */
+  async reapResidents() {
+    if (!isGM()) return;
+    const now = this._nowMs();
+    for (const item of game.items) {
+      if (!this.isTerminal(item)) continue;
+      const due = this.getResidents(item).filter(r =>
+        r.state === 'armed' && r.trigger?.kind === 'onDate' &&
+        Number(r.trigger.atMs) && Number(r.trigger.atMs) <= now &&
+        (!r.snoozeUntil || r.snoozeUntil <= now));
+      for (const r of due) await this._proposeResidentFire(item, r, {});
+    }
+  }
+
+  /**
+   * onAction trigger — a resident armed to fire on a specific action (siphon /
+   * exfil / …). Call this GM-side after such an action lands on a terminal.
+   * @param {Item} item @param {string} action @param {object} [ctx] { actorId }
+   */
+  async checkActionResidents(item, action, { actorId } = {}) {
+    if (!isGM() || !this.isTerminal(item)) return;
+    const now = this._nowMs();
+    const matches = this.getResidents(item).filter(r =>
+      r.state === 'armed' && r.trigger?.kind === 'onAction' && r.trigger.action === action &&
+      (!r.trigger.actorId || r.trigger.actorId === actorId) &&
+      (!r.snoozeUntil || r.snoozeUntil <= now));
+    for (const r of matches) await this._proposeResidentFire(item, r, { actorId });
   }
 
   /**
@@ -974,25 +1773,43 @@ export class TerminalService {
       timestamp: data.timestamp || this._nowIso(),
       readAt: null,
       network: data.network || 'CITINET',
+      // Custom-folder membership ('' / 'inbox' = the Inbox). The system
+      // locations 'saved'/'trash' translate to their status flags instead
+      // (location semantics — the Move-to model). Unknown ids fall back to
+      // the Inbox at read time, so deleting a folder never hides mail.
+      folder: ['inbox', 'saved', 'trash'].includes(data.folder) ? '' : (data.folder || ''),
       status: {
         read: data.status?.read || false,
-        saved: false,
+        // Honor the caller (the composer files straight into Saved/Trash) —
+        // hardcoding these false is the field-by-field gotcha that ate spam.
+        saved: data.status?.saved || data.folder === 'saved' || false,
         spam: false,
         encrypted: !!data.encryption || false,
         infected: false,
-        deleted: false,
+        deleted: data.status?.deleted || data.folder === 'trash' || false,
         sent: false,
         scheduled: false,
-        eddiesClaimed: false,
-        eddiesClaimedAt: null,
+        // AUDIT (2026-07-13): these were hardcoded false/null — the same
+        // field-by-field gotcha. An exfil/mirror copy of an already-claimed
+        // eddies drop must stay claimed, or the money is claimable twice.
+        eddiesClaimed: data.status?.eddiesClaimed || false,
+        eddiesClaimedAt: data.status?.eddiesClaimedAt || null,
       },
       encryption: data.encryption || null,
       eddies: data.eddies || 0,
-      selfDestruct: null,
+      selfDestruct: data.selfDestruct || null,
       // Typed content (design doc §8c) — null = ordinary message; set =
       // rendered via the shared content-body partial in the viewer.
       contentType: data.contentType || null,
       contentData: data.contentData || null,
+      // ENVELOPE (#37) — 'mail' (default) or 'file': a machine artifact with a
+      // filename/path/owner-node instead of a sender. `file` holds only what the
+      // GM AUTHORED; everything else derives at read time (resolveEnvelope).
+      envelope: data.envelope === 'file' ? 'file' : 'mail',
+      file: data.file ? { ...data.file } : null,
+      // Per-entry exfil override (#37) — layered over the terminal's policy by
+      // TerminalService.resolveEntryExfil. null = inherit everything.
+      exfil: data.exfil ? { ...data.exfil } : null,
       // Per-message network gating vs the TERMINAL's uplink (shard shape).
       // null = ungated. Exfil copies deliberately never carry it (a downloaded
       // file is local; MessageRepository.createMessage doesn't persist the key
@@ -1006,8 +1823,15 @@ export class TerminalService {
     };
   }
 
-  /** @private Human-readable page title. */
+  /**
+   * @private Human-readable page title. A FILE names itself off its filename —
+   * a file has no sender, so the mail formatter would title it "Unknown".
+   */
   _pageName(data) {
+    if (data.envelope === 'file') {
+      const name = data.file?.filename || suggestFilename(data.contentType, data.contentData || {}, data.subject);
+      return `[FILE] ${name}`;
+    }
     return MessageRepository.formatPageName(
       data.from || 'Unknown',
       data.subject,

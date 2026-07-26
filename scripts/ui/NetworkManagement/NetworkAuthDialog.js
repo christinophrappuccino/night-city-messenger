@@ -24,14 +24,27 @@ import { MODULE_ID, EVENTS, TEMPLATES, SKILL_MAP } from '../../utils/constants.j
 import { log } from '../../utils/helpers.js';
 import { BaseApplication } from '../BaseApplication.js';
 import { showItemPicker } from '../../utils/itemPicker.js';
+import { NetworkAuthAdapter, TerminalAuthAdapter } from './SecurityAuthAdapters.js';
 
 export class NetworkAuthDialog extends BaseApplication {
 
-  /** @type {string} Network ID being authenticated against */
+  /**
+   * @type {string} SecurityService target key. A network id, or a terminal
+   * `terminalId::accountId`. (Named `networkId` for back-compat — it is the
+   * key SecurityService tracks lockout/attempts under.)
+   */
   networkId = null;
 
-  /** @type {object} Full network object */
+  /** @type {object} Source-shaped object { id, name, type, theme, description, security } */
   network = null;
+
+  /**
+   * @type {import('./SecurityAuthAdapters.js').NetworkAuthAdapter} Source
+   * adapter — abstracts refresh / checkPassword / checkSkill / grant so the
+   * dialog serves networks AND terminal accounts. Defaults to a network
+   * adapter (existing behavior byte-identical).
+   */
+  _adapter = null;
 
   /** @type {Function|null} Resolve callback for the promise returned by show() */
   _resolve = null;
@@ -114,6 +127,7 @@ export class NetworkAuthDialog extends BaseApplication {
 
     return new Promise((resolve) => {
       const dialog = new NetworkAuthDialog();
+      dialog._adapter = new NetworkAuthAdapter(networkId);
       dialog.networkId = networkId;
       dialog.network = network;
       dialog._resolve = resolve;
@@ -126,13 +140,46 @@ export class NetworkAuthDialog extends BaseApplication {
     });
   }
 
+  /**
+   * Show the method-card auth dialog for a TERMINAL account — the same
+   * strict-AND/OR / lockout / ICE UI networks use. Resolves with
+   * { success, method } like {@link show}; the caller (TerminalViewerApp)
+   * runs the actual login on success.
+   * @param {Item} item @param {string} accountId
+   * @returns {Promise<{ success: boolean, method?: string }>}
+   */
+  static async showForAccount(item, accountId) {
+    const adapter = new TerminalAuthAdapter(item, accountId);
+    const source = adapter.refresh();
+    if (!source) {
+      ui.notifications.error('NCM | Unknown account.');
+      return { success: false };
+    }
+
+    return new Promise((resolve) => {
+      const dialog = new NetworkAuthDialog();
+      dialog._adapter = adapter;
+      dialog.networkId = adapter.targetId;   // SecurityService key
+      dialog.network = source;
+      dialog._resolve = resolve;
+
+      const sec = source.security;
+      const hasPassword = sec.allowPassword ?? !!sec.password;
+      const hasSkillBypass = (sec.allowSkillCheck ?? false) && sec.bypassSkills?.length > 0;
+      dialog._authMode = hasPassword ? 'password' : (hasSkillBypass ? 'skill' : 'password');
+
+      dialog.render(true);
+    });
+  }
+
   // ═══════════════════════════════════════════════════════════
   //  Data Preparation
   // ═══════════════════════════════════════════════════════════
 
   async _prepareContext(options) {
-    // Always re-fetch from NetworkService to get latest data (e.g., after GM saves)
-    const freshNetwork = this.networkService?.getNetwork(this.networkId);
+    // Always re-fetch from the source (network / terminal account) to get the
+    // latest data (e.g. after a GM saves the config mid-dialog).
+    const freshNetwork = this._adapter?.refresh();
     if (freshNetwork) this.network = freshNetwork;
     const network = this.network;
     if (!network) return {};
@@ -184,6 +231,7 @@ export class NetworkAuthDialog extends BaseApplication {
       corporate: 'Corporate Subnet',
       government: 'Government Subnet',
       custom: 'Custom Subnet',
+      terminal: 'Terminal Account',
     };
     const networkTypeLabel = typeLabels[network.type] || 'Subnet';
 
@@ -440,14 +488,16 @@ export class NetworkAuthDialog extends BaseApplication {
       });
     }
 
-    // NetworkService.authenticatePassword handles sound internally
-    const result = this.networkService.authenticatePassword(this.networkId, password);
+    // The adapter checks the password (network service or terminal account);
+    // it owns the success/fail sound.
+    const result = this._adapter.checkPassword(password);
 
     if (result.success) {
       if (actorId) this.securityService?.recordSuccess(actorId, this.networkId);
 
       this._errorMessage = '';
       this._completedMethods.add('password');
+      game.nightcity?.traceService?.logSuccess({ actor: actorId ? game.actors?.get(actorId) : null, action: 'net-auth', objectName: this.network?.name || 'Network', targetKind: 'network', targetNetworkId: this.networkId, severity: 'major' });
 
       // Check if all required methods are now complete
       if (this._checkAuthComplete()) return;
@@ -468,6 +518,8 @@ export class NetworkAuthDialog extends BaseApplication {
       } else {
         this._errorMessage = 'ACCESS DENIED — Invalid credentials.';
       }
+      // Trace funnel (§6a) — failed network password auth.
+      game.nightcity?.traceService?.fireTrace({ actor: actorId ? game.actors?.get(actorId) : null, action: 'net-auth', objectName: this.network?.name || 'Network', targetKind: 'network', targetNetworkId: this.networkId, severity: 'major' });
       this.render();
     }
   }
@@ -532,13 +584,14 @@ export class NetworkAuthDialog extends BaseApplication {
       });
     }
 
-    // NetworkService.authenticateSkillCheck handles sound internally
-    const authResult = this.networkService.authenticateSkillCheck(this.networkId, total, skillName);
+    // The adapter checks the roll total vs the bypass DV; it owns the sound.
+    const authResult = this._adapter.checkSkill(total, skillName);
 
     if (authResult.success) {
       this.securityService?.recordSuccess(actor.id, this.networkId);
       this._errorMessage = '';
       this._completedMethods.add('skill');
+      game.nightcity?.traceService?.logSuccess({ actor, action: 'net-hack', objectName: this.network?.name || 'Network', targetKind: 'network', targetNetworkId: this.networkId, dv: dc, margin: (total != null && dc != null) ? total - dc : null, severity: 'major' });
 
       // Check if all required methods are now complete
       if (this._checkAuthComplete()) return;
@@ -569,6 +622,8 @@ export class NetworkAuthDialog extends BaseApplication {
         const remaining = this.securityService?.getRemainingAttempts(actor.id, this.networkId) ?? '?';
         this._errorMessage = `ACCESS DENIED — ${skillName} check failed (${total} vs DV ${dc}). ${remaining} attempt${remaining !== 1 ? 's' : ''} remaining.`;
       }
+      // Trace funnel (§6a) — failed network skill-bypass (carries ICE).
+      game.nightcity?.traceService?.fireTrace({ actor, action: 'net-hack', objectName: this.network?.name || 'Network', targetKind: 'network', targetNetworkId: this.networkId, dv: dc, margin: (total != null && dc != null) ? total - dc : null, severity: 'hostile' });
       this.render();
     }
   }
@@ -597,8 +652,9 @@ export class NetworkAuthDialog extends BaseApplication {
   static _onGMBypass(event, target) {
     if (!game.user?.isGM) return;
 
-    // Grant actual auth so the subsequent network switch succeeds
-    this.networkService?.grantAuth?.(this.networkId);
+    // Grant actual auth so the subsequent switch/login succeeds (network:
+    // marks authenticated; terminal: no-op — resolve drives the login).
+    this._adapter?.grant();
 
     if (this._resolve) {
       this._resolve({ success: true, method: 'gm_bypass' });
@@ -655,7 +711,7 @@ export class NetworkAuthDialog extends BaseApplication {
    * @param {Item} item
    */
   _processKeyItem(item) {
-    const network = this.networkService?.getNetwork?.(this.networkId) ?? this.network;
+    const network = this._adapter?.refresh() ?? this.network;
     const sec = network?.security;
     if (!sec) return;
 
@@ -706,14 +762,14 @@ export class NetworkAuthDialog extends BaseApplication {
    * @returns {boolean} true if auth is complete and dialog was closed
    */
   _checkAuthComplete() {
-    // Re-read from NetworkService to ensure latest saved config
-    const network = this.networkService?.getNetwork?.(this.networkId) ?? this.network;
+    // Re-read from the source to ensure the latest saved config
+    const network = this._adapter?.refresh() ?? this.network;
     const sec = network?.security;
     const authLogic = sec?.authLogic ?? 'any';
 
     if (authLogic === 'any') {
       // Any single method completing is enough
-      this.networkService?._authenticatedNetworks?.add(this.networkId);
+      this._adapter?.grant();
       if (this._resolve) {
         const methods = [...this._completedMethods].join('+');
         this._resolve({ success: true, method: methods });
@@ -734,7 +790,7 @@ export class NetworkAuthDialog extends BaseApplication {
 
     if (passwordDone && skillDone && keyItemDone) {
       // All required methods completed
-      this.networkService?._authenticatedNetworks?.add(this.networkId);
+      this._adapter?.grant();
       if (this._resolve) {
         const methods = [...this._completedMethods].join('+');
         this._resolve({ success: true, method: methods });

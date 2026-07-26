@@ -9,6 +9,7 @@
         {{#if color}}style="--net-c: {{color}};"{{/if}}
         {{#if canSwitch}}data-action="terminalToggleUplink"{{/if}}>
     <span class="ncm-term__netpill-dot"></span>
+    {{#if wired}}<i class="fas fa-network-wired ncm-term__netpill-wired" data-tooltip="Hardline — wired connection"></i>{{/if}}
     UPLINK: {{name}}
     {{#if canSwitch}}<i class="fas fa-caret-{{#if open}}up{{else}}down{{/if}} ncm-term__netpill-caret"></i>{{/if}}
   </span>
@@ -20,10 +21,10 @@
     {{#each options}}
       <div class="ncm-term__netopt{{#if isActive}} ncm-term__netopt--active{{/if}}{{#if isLocked}} ncm-term__netopt--locked{{/if}}"
            data-action="terminalSelectUplink" data-network-id="{{id}}" style="--net-c: {{color}};">
-        <div class="ncm-term__netopt-ic"><i class="{{icon}}"></i></div>
+        <div class="ncm-term__netopt-ic">{{#if wired}}<i class="{{icon}}"></i>{{else}}{{{ncm-net-icon theme}}}{{/if}}</div>
         <div class="ncm-term__netopt-info">
           <div class="ncm-term__netopt-nm">{{name}}</div>
-          <div class="ncm-term__netopt-ty">{{typeLabel}} · {{signal}}%</div>
+          <div class="ncm-term__netopt-ty">{{typeLabel}} · {{sigLabel}}</div>
         </div>
         <div class="ncm-term__netopt-right">
           {{#if isActive}}

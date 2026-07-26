@@ -61,6 +61,7 @@ export class ThemeCustomizerApp extends BaseApplication {
       deleteCustomPreset: ThemeCustomizerApp._onDeleteCustomPreset,
       importTheme: ThemeCustomizerApp._onImportTheme,
       exportTheme: ThemeCustomizerApp._onExportTheme,
+      browseWallpaper: ThemeCustomizerApp._onBrowseWallpaper,
       save: ThemeCustomizerApp._onSave,
       cancel: ThemeCustomizerApp._onCancel,
     },
@@ -143,6 +144,8 @@ export class ThemeCustomizerApp extends BaseApplication {
       glitchIntensity: Math.round((prefs.glitchIntensity ?? 0.5) * 100),
       textScale: prefs.textScale ?? 100,
       contrast: prefs.contrast ?? 100,
+      wallpaper: prefs.wallpaper || '',
+      wallpaperStrength: prefs.wallpaperStrength ?? 25,
       agentName: prefs.agentName ?? 'Agent',
       soundEnabled: prefs.soundEnabled !== false,
       soundVolume: Math.round((prefs.soundVolume ?? 0.5) * 100),
@@ -231,6 +234,21 @@ export class ThemeCustomizerApp extends BaseApplication {
     this._workingPrefs.glitchIntensity = parseInt(slider.value) / 100;
     this._markDirty();
     this._applyLive();
+  }
+
+  /** FilePicker for the inbox wallpaper (Effects panel). */
+  static _onBrowseWallpaper() {
+    const input = this.element?.querySelector('[name="wallpaper"]');
+    new FilePicker({
+      type: 'image',
+      current: input?.value || '',
+      callback: (path) => {
+        if (input) input.value = path;
+        this._workingPrefs.wallpaper = path;
+        this._markDirty();
+        this._applyLive();
+      },
+    }).render(true);
   }
 
   static _onSetDensity(event, target) {
@@ -362,6 +380,26 @@ export class ThemeCustomizerApp extends BaseApplication {
         this._markDirty();
         this._applyLive();
         const label = this.element.querySelector('.ncm-tc__contrast-val');
+        if (label) label.textContent = `${e.target.value}%`;
+      });
+    }
+
+    // ── Wallpaper path + strength (image behind the inbox panes) ──
+    const wallInput = this.element.querySelector('[name="wallpaper"]');
+    if (wallInput) {
+      wallInput.addEventListener('input', (e) => {
+        this._workingPrefs.wallpaper = e.target.value.trim() || null;
+        this._markDirty();
+        this._applyLive();
+      });
+    }
+    const wallSlider = this.element.querySelector('[name="wallpaperStrength"]');
+    if (wallSlider) {
+      wallSlider.addEventListener('input', (e) => {
+        this._workingPrefs.wallpaperStrength = parseInt(e.target.value) || 25;
+        this._markDirty();
+        this._applyLive();
+        const label = this.element.querySelector('.ncm-tc__wall-val');
         if (label) label.textContent = `${e.target.value}%`;
       });
     }

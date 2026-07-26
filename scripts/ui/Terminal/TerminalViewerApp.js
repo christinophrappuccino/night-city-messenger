@@ -14,21 +14,42 @@
  *   The MessageViewer `_createMessageSource()` seam remains the documented hook
  *   for a future shared base.
  *
- *   Auth (MVP): the SECURE SHELL console handles password + skill-bypass through
- *   SecurityService (per-account lockout, keyed `terminalId::accountId`) and
- *   SkillService. The full method-card dialog (key item, AND/OR, ICE panel) lands
- *   with the NetworkAuthDialog→SecurityAuthDialog refactor. Desktop form only
- *   (agent/phone → Phase 3); narrow windows reflow via the CSS container query.
+ *   Auth: selecting a secured account opens the shared method-card dialog
+ *   (`NetworkAuthDialog.showForAccount` via `TerminalAuthAdapter`) — password
+ *   / skill / key-item with strict AND/OR, per-account lockout (SecurityService,
+ *   keyed `terminalId::accountId`), and Black ICE. The lockscreen/keypad inline
+ *   password paths and the secret-login console stay as quick-entry shortcuts.
+ *   Desktop form only (agent/phone → Phase 3); narrow windows reflow via the
+ *   CSS container query.
  */
 
 import { BaseApplication } from '../BaseApplication.js';
 import { MODULE_ID, TERMINAL_PRESETS, SOCKET_OPS } from '../../utils/constants.js';
-import { log, isGM, formatCyberDate, buildTerminalThemePrefs } from '../../utils/helpers.js';
+import { log, isGM, formatCyberDate, buildTerminalThemePrefs, resolveTerminalSound, resolveOperator, openOperatorPicker, getOperatorActors, canOperate } from '../../utils/helpers.js';
 import { getInitials } from '../../utils/designHelpers.js';
-import { enrichContent, toggleSecretReveal, applySyslogFilter } from '../content/ContentRenderers.js';
-import { runSiphon, runEddiesClaim, runCrack } from '../content/SiphonFlow.js';
+import { enrichContent, toggleSecretReveal, applySyslogFilter, openGalleryImage, closeGalleryLightbox, resolveEnvelope, CONTENT_TYPE_INFO, displayContentType } from '../content/ContentRenderers.js';
+import { runSiphon, runEddiesClaim, runCrack, runMalwareDeploy, runContentUnlock, runCamAction, runPayloadExecute, runPayloadKill, runPayloadSniff, runAnalyze, toggleSchematicLock } from '../content/SiphonFlow.js';
+import { runSecurityConsole } from '../content/SecurityConsole.js';
+import { NetworkAuthDialog } from '../NetworkManagement/NetworkAuthDialog.js';
 
 const PRIORITY_ICONS = { critical: 'fa-triangle-exclamation', urgent: 'fa-circle-exclamation', normal: 'fa-circle-info' };
+
+/**
+ * Exfil action presentation — the menu chip + the security-console framing for
+ * each action. `order` drives menu position. Keyed by the action id the policy
+ * (`TerminalService.getExfilPolicy`) uses.
+ */
+const EXFIL_META = {
+  agent:   { order: 1, label: 'To my Agent',    icon: 'fas fa-download',    accent: 'cyan',   title: 'Download to Agent', confirm: 'Download', intro: 'Copy this file to your Agent.', ok: 'DOWNLOAD COMPLETE', fail: 'DOWNLOAD TRACED' },
+  shard:   { order: 2, label: 'Burn to Shard',   icon: 'fas fa-sd-card',     accent: 'gold',   title: 'Burn to Data Shard', confirm: 'Burn', intro: 'Etch this file onto a physical data shard — your go-bag copy.', ok: 'BURN COMPLETE', fail: 'BURN TRACED' },
+  forward: { order: 3, label: 'Forward',         icon: 'fas fa-share',       accent: 'cyan',   title: 'Forward to Contact', confirm: 'Forward', intro: 'Send this file on to one of your contacts as a message.', ok: 'FORWARD SENT', fail: 'FORWARD TRACED' },
+  leak:    { order: 4, label: 'Leak to the Net', icon: 'fas fa-tower-broadcast', accent: 'red', title: 'Leak to the Net', confirm: 'Leak', intro: 'Dump this file to the open Net. Once it’s out, it’s out — and loud.', ok: 'LEAKED', fail: 'LEAK TRACED' },
+  sell:    { order: 5, label: 'Sell to a Fixer', icon: 'fas fa-hand-holding-dollar', accent: 'gold', title: 'Sell to a Fixer', confirm: 'Sell', intro: 'Move this file to a fixer for eddies. They pay for what’s useful.', ok: 'DEAL CLOSED', fail: 'DEAL TRACED' },
+  wipe:    { order: 6, label: 'Wipe Original',   icon: 'fas fa-eraser',      accent: 'red',    title: 'Wipe Original', confirm: 'Wipe', intro: 'Delete this file from the terminal for good. Cover your tracks.', ok: 'FILE WIPED', fail: 'WIPE TRACED' },
+  // SAVE FRAME (#37) — the stream escape hatch. You can't download a live feed;
+  // you CAN take a picture of what it's showing. Feed galleries only.
+  saveFrame: { order: 0, label: 'Save Frame', icon: 'fas fa-camera', accent: 'green', title: 'Save Frame', confirm: 'Capture', intro: 'You can’t copy a live stream — but you can grab what it’s showing right now.', ok: 'FRAME CAPTURED', fail: 'CAPTURE TRACED' },
+};
 
 /** Delegate an AppV2 action to the bound instance method of the same name. */
 function action(method) {
@@ -61,25 +82,39 @@ export class TerminalViewerApp extends BaseApplication {
       terminalNetGmJoin: action('_onNetGmJoin'),
       terminalNetCancel: action('_onNetCancel'),
       terminalToggleSwitcher: action('_onToggleSwitcher'),
+      terminalSwitchOperator: action('_onSwitchOperator'),
+      terminalOperatorTools: action('_onToggleTools'),
+      terminalUpload: action('_onUpload'),
+      terminalSystemSweep: action('_onSystemSweep'),
+      analyzeFile: action('_onAnalyzeFile'),
       terminalSwitchAccount: action('_onSwitchAccount'),
       terminalLogout: action('_onLogout'),
       terminalFolder: action('_onFolder'),
       terminalSelectMessage: action('_onSelectMessage'),
       terminalAddContact: action('_onAddContact'),
-      terminalExfilInbox: action('_onExfilInbox'),
-      terminalExfilShard: action('_onExfilShard'),
+      terminalReplyAgent: action('_onReplyAgent'),
+      terminalExfil: action('_onExfilAction'),
       siphonFunds: action('_onSiphonFunds'),
       claimEddies: action('_onClaimEddies'),
       crackCred: action('_onCrackCred'),
+      contentUnlock: action('_onContentUnlock'),
+      schemLockToggle: action('_onSchemLockToggle'),
+      deployMalware: action('_onDeployMalware'),
+      executePayload: action('_onExecutePayload'),
+      payloadKill: action('_onPayloadKill'),
+      payloadSniff: action('_onPayloadSniff'),
       credToggleSecret: action('_onCredToggleSecret'),
       syslogFilter: action('_onSyslogFilter'),
+      galleryView: action('_onGalleryView'),
+      camAction: action('_onCamAction'),
+      goToScene: action('_onGoToScene'),
+      terminalEnvFilter: action('_onEnvFilter'),
+      terminalToggleSide: action('_onToggleSide'),
       terminalPage: action('_onPage'),
       terminalConfigure: action('_onConfigure'),
       terminalNewMessage: action('_onNewMessage'),
       terminalEditMessage: action('_onEditMessage'),
       terminalDeleteMessage: action('_onDeleteMessage'),
-      terminalToggleSave: action('_onToggleSaveMessage'),
-      terminalToggleTrash: action('_onToggleTrashMessage'),
     },
   };
 
@@ -104,6 +139,7 @@ export class TerminalViewerApp extends BaseApplication {
   _currentFolder = 'inbox';
   _currentPage = 1;
   _switcherOpen = false;
+  _toolsOpen = false;
   _manualError = '';
   _networkSpoofed = false;
   _bootPlayed = false;
@@ -127,7 +163,7 @@ export class TerminalViewerApp extends BaseApplication {
   constructor(options = {}) {
     super(options);
     this.item = options.item;
-    this.actor = options.actor ?? game.user?.character ?? null;
+    this.actor = options.actor ?? resolveOperator() ?? null;
     this.actorId = this.actor?.id ?? null;
     const cfg = this.terminalService?.getConfig(this.item);
     this._state = (cfg?.boot?.enabled) ? 'boot' : this._resolveEntryState();
@@ -142,6 +178,23 @@ export class TerminalViewerApp extends BaseApplication {
       this._debouncedRender();
     };
     Hooks.on('updateItem', this._onItemUpdate);
+    // Mailbox pages live in the linked world journal — page CRUD from any
+    // client (a GM edit, a relayed player write, a delivery mirrored into an
+    // account by MessageService) syncs as document hooks, so re-render off
+    // them too. Without this an open mailbox only refreshed on the next
+    // interaction (the relayed-write lag). _debouncedRender skips while
+    // _animationActive (the exfil FX overlay would otherwise be destroyed by
+    // a wipe's own page deletions mid-animation).
+    this._onPageChange = (page) => {
+      if (!page?.parent || page.parent.id !== this.item?.getFlag?.(MODULE_ID, 'journalId')) return;
+      // Mailbox only — messages render nowhere else, and a re-render during
+      // login/manual would wipe a half-typed password.
+      if (this._state !== 'mailbox') return;
+      this._debouncedRender();
+    };
+    Hooks.on('createJournalEntryPage', this._onPageChange);
+    Hooks.on('updateJournalEntryPage', this._onPageChange);
+    Hooks.on('deleteJournalEntryPage', this._onPageChange);
     // Screensaver activity detection — document-level capture with a
     // containment guard (element-level listeners are unreliable in Foundry);
     // removed in close().
@@ -189,11 +242,35 @@ export class TerminalViewerApp extends BaseApplication {
     if (rerender && this._state !== 'boot' && this._state !== 'granted') this.render(false);
   }
 
+  /**
+   * Play a terminal sound through the terminal's sound set (config.soundSet →
+   * TERMINAL_SOUND_SETS remap + rate/volume shaping). ALL sounds this viewer
+   * plays go through here — never soundService.play(rawId) — so a set can
+   * re-skin the machine's whole audio personality. Overlay-aware, like every
+   * render-visible config read.
+   */
+  _playTermSound(soundId) {
+    const s = resolveTerminalSound(this._effectiveConfig()?.soundSet || 'default', soundId);
+    this.soundService?.playStyled?.(s.id, { rate: s.rate, volume: s.volume });
+  }
+
   /** @override */
   async _prepareContext() {
     const cfg = this._effectiveConfig();
     const preset = cfg.theme?.preset || cfg.preset || 'arasaka-workstation';
     const logo = this._resolveBootIcon(cfg, preset);
+
+    // Player-contact email cache — the sender "Add to contacts" chip keys on
+    // the VIEWING PLAYER's own list (not the master directory: directory
+    // senders are exactly the ones worth adding). Async repo read once per
+    // render; _detailContext stays synchronous.
+    this._playerContactEmails = new Set();
+    if (this.actorId && this.contactRepository) {
+      try {
+        ((await this.contactRepository.getContacts(this.actorId)) || [])
+          .forEach(c => c.email && this._playerContactEmails.add(c.email.toLowerCase()));
+      } catch (err) { log.debug(`Contact cache skipped: ${err.message}`); }
+    }
     const ctx = {
       preset,
       formFactor: cfg.formFactor || 'desktop',
@@ -203,6 +280,7 @@ export class TerminalViewerApp extends BaseApplication {
       // configured custom icon/image shows here too (and never an empty box).
       presetIcon: logo.icon,
       logoImage: logo.imageUrl,
+      logoFree: logo.imageFree,
       banner: cfg.boot?.banner || this._terminalName(),
     };
 
@@ -256,20 +334,37 @@ export class TerminalViewerApp extends BaseApplication {
     const { networkId, network } = this.terminalService?.getUplink(this.item) ?? { networkId: null, network: null };
     const gm = isGM();
     const canSwitch = gm || conn.allowPlayerSwitching !== false;
-    const options = (this.terminalService?.getUplinkInterfaces(this.item) || []).map(i => ({
-      id: i.networkId,
-      name: i.network.name,
-      typeLabel: i.network.type || 'Subnet',
-      color: i.network.theme?.color || '#19f3f7',
-      icon: `fas ${i.network.theme?.icon || 'fa-wifi'}`,
-      signal: i.network.signalStrength ?? 70,
-      isActive: i.state === 'active',
-      isLocked: i.state === 'locked',
-    }));
+    const options = (this.terminalService?.getUplinkInterfaces(this.item) || []).map(i => {
+      // Wired (LAN drop) = always full signal + ethernet icon; wireless reads
+      // the network's configured signalStrength (the same number the Agent
+      // viewer shows), so the bars are honest instead of decorative.
+      const signal = i.wired ? 100 : (i.network.signalStrength ?? 75);
+      return {
+        id: i.networkId,
+        name: i.network.name,
+        typeLabel: i.network.type || 'Subnet',
+        color: i.network.theme?.color || '#19f3f7',
+        icon: i.wired ? 'fas fa-network-wired' : `fas ${i.network.theme?.icon || 'fa-wifi'}`,
+        // Full theme block for the ncm-net-icon helper — a network configured
+        // with a custom image (iconMode 'image') renders it, like every other
+        // network list in the app. Wired keeps its hardline glyph override.
+        theme: i.network.theme || null,
+        signal,
+        sigLabel: i.wired ? 'wired' : `${signal}%`,
+        wired: i.wired,
+        isActive: i.state === 'active',
+        isLocked: i.state === 'locked',
+      };
+    });
+    const active = options.find(o => o.isActive) || null;
     return {
       name: network?.name || 'LOCAL ONLY',
       color: network?.theme?.color || '',
       offline: !networkId,
+      // Current connection quality — drives the HUD signal bars.
+      signal: active?.signal ?? 0,
+      wired: !!active?.wired,
+      sigLabel: active ? active.sigLabel : 'offline',
       open: this._uplinkOpen && canSwitch,
       canSwitch,
       options,
@@ -321,6 +416,9 @@ export class TerminalViewerApp extends BaseApplication {
     return {
       icon: (mode === 'fa' && boot.faIcon) ? boot.faIcon : (TERMINAL_PRESETS[preset]?.icon || 'fas fa-server'),
       imageUrl: (mode === 'image' && boot.imageUrl) ? boot.imageUrl : null,
+      // 'free' = render the logo at natural aspect with no icon-square chrome
+      // (wide corp logos looked crammed inside the 88px box).
+      imageFree: boot.imageFrame === 'free',
     };
   }
 
@@ -338,6 +436,7 @@ export class TerminalViewerApp extends BaseApplication {
     return {
       icon: logo.icon,
       imageUrl: logo.imageUrl,
+      imageFree: logo.imageFree,
       title: boot.title || this._terminalName(),
       subtitle: boot.subtitle || '',
       progressLabel: boot.progressLabel || 'Establishing secure session...',
@@ -395,7 +494,7 @@ export class TerminalViewerApp extends BaseApplication {
       const signal = n.signalStrength ?? 70;
       return {
         id: n.id, name: n.name, typeLabel: n.type || 'Subnet', signal,
-        color: n.theme?.color || '#19f3f7', icon: `fas ${n.theme?.icon || 'fa-wifi'}`,
+        color: n.theme?.color || '#19f3f7', icon: `fas ${n.theme?.icon || 'fa-wifi'}`, theme: n.theme || null,
         isCurrent, isRequired: n.id === required, weak: signal < 50,
         statusClass, statusLabel,
       };
@@ -441,6 +540,20 @@ export class TerminalViewerApp extends BaseApplication {
       // GM: config gear on the login screen — no need to log in just to
       // change a preset.
       isGM: isGM(),
+      // WHO you're about to act as. Same chip as the mailbox HUD, and it belongs
+      // here for the same reason the uplink pill does: the choice matters BEFORE
+      // you log in (a login skill check rolls against the operator's stats), and
+      // finding out you were the wrong character only after logging in is the bug
+      // that paid siphoned eddies to the wrong PC.
+      operator: this._operatorChipContext(),
+    };
+  }
+
+  /** The OPERATOR chip's view-model — shared by the mailbox HUD and the login screen. */
+  _operatorChipContext() {
+    return {
+      name: this.actor?.name || '',
+      canSwitch: getOperatorActors().length > 1,
     };
   }
 
@@ -471,6 +584,10 @@ export class TerminalViewerApp extends BaseApplication {
       // accounts route to the SECURE SHELL console instead.
       hasPassword: requiresAuth && !!(security.allowPassword ?? security.password),
       isSelected: account.id === this._authAccountId,
+      // Escalation/earned lockout — the card reads locked and clicking it is
+      // refused (see _lockGuard). Players never bypass this via an open account
+      // or a remembered session (the requiresAuth gate skipped both).
+      lockedOut: this.actorId ? this.terminalService?.isAccountLockedOut(this.item, account.id, this.actorId) : false,
       lastLogin: '',
       wmarkIcon: account.isAdmin ? 'fas fa-user-gear' : 'fas fa-user',
       authMethods: methods,
@@ -478,6 +595,10 @@ export class TerminalViewerApp extends BaseApplication {
       // GM-only: this account is network-gated off the current uplink (players
       // never receive gated accounts — the service filters them out).
       offNet: isGM() && !this.terminalService?.uplinkReaches(this.item, account.network),
+      // GM-only: hidden (secret-login) account — players never get it in the
+      // list (getAccounts filters), so chip it for the GM instead of looking
+      // like the hiding is broken.
+      hiddenGm: isGM() && !!account.hidden,
     };
   }
 
@@ -508,19 +629,22 @@ export class TerminalViewerApp extends BaseApplication {
     // list stays complete — gated rows get an OFF-NET chip instead).
     const all = raw.filter(m => this.terminalService.isContentVisible(this.item, m.networkVisibility));
 
-    // Folder filters.
+    // Folder filters — modular set from TerminalService.getFolders (Inbox →
+    // customs → Saved → Trash), LOCATION semantics (the Move-to… model): a
+    // message lives in exactly one place — Trash (deleted) > Saved (saved) >
+    // its custom folder (`folder` flag) > the Inbox. Unknown/removed folder
+    // ids fall back to the Inbox so deleting a folder never hides mail.
+    const folderDefs = this.terminalService?.getFolders(this.item) || [];
+    const customIds = new Set(folderDefs.filter(fd => fd.kind === 'custom').map(fd => fd.id));
     const inFolder = {
-      inbox: m => !m.status?.deleted && !m.status?.sent,
+      inbox: m => !m.status?.deleted && !m.status?.saved && !m.status?.sent && !(m.folder && customIds.has(m.folder)),
       saved: m => m.status?.saved && !m.status?.deleted,
       trash: m => !!m.status?.deleted,
     };
-    const counts = {
-      inbox: all.filter(inFolder.inbox).length,
-      saved: all.filter(inFolder.saved).length,
-      trash: all.filter(inFolder.trash).length,
-    };
+    for (const id of customIds) inFolder[id] = m => m.folder === id && !m.status?.deleted && !m.status?.saved && !m.status?.sent;
+    const counts = Object.fromEntries(folderDefs.map(fd => [fd.id, all.filter(inFolder[fd.id]).length]));
     const folder = inFolder[this._currentFolder] ? this._currentFolder : 'inbox';
-    const list = all.filter(inFolder[folder]);
+    let list = all.filter(inFolder[folder]);   // narrowed further by the MAIL/FILES solo below
 
     // "N objects failed to sync" — GM-toggleable per terminal (showSyncHint).
     // Counted within the current folder so the number matches what's missing
@@ -530,6 +654,22 @@ export class TerminalViewerApp extends BaseApplication {
       const hiddenInFolder = raw.filter(m =>
         !this.terminalService.isContentVisible(this.item, m.networkVisibility) && inFolder[folder](m));
       if (hiddenInFolder.length) syncHint = { count: hiddenInFolder.length };
+    }
+
+    // MAIL / FILES solo (#37). Counted BEFORE the solo is applied (the chips
+    // must always show both totals), then applied to the LIST itself rather
+    // than hidden with CSS — hiding rows would leave the pagination counting
+    // things you can't see. It's app state (`_envFilter`), so it survives the
+    // re-render that selecting a message triggers; force-cleared when the
+    // folder isn't mixed, so a stale solo can't empty a folder with no chip
+    // left to undo it.
+    const mailCount = list.filter(m => m.envelope !== 'file').length;
+    const fileCount = list.length - mailCount;
+    const envMixed = !!(mailCount && fileCount);
+    const activeEnvFilter = envMixed ? (this._envFilter || 'all') : 'all';
+    if (activeEnvFilter !== 'all') {
+      const wantFile = activeEnvFilter === 'file';
+      list = list.filter(m => (m.envelope === 'file') === wantFile);
     }
 
     if (this._selectedMessageId && !list.find(m => m.messageId === this._selectedMessageId)) this._selectedMessageId = null;
@@ -544,35 +684,67 @@ export class TerminalViewerApp extends BaseApplication {
     const pageItems = list.slice(start, start + PAGE);
 
     const gm = isGM();
-    const messages = pageItems.map(m => ({
-      messageId: m.messageId,
-      from: m.from || 'unknown',
-      subject: m.subject || '(no subject)',
-      priority: m.priority || 'normal',
-      encrypted: !!m.status?.encrypted,
-      isSelected: m.messageId === this._selectedMessageId,
-      // GM-only marker: gated off the current uplink (players never see the row).
-      offNet: gm && !this.terminalService.uplinkReaches(this.item, m.networkVisibility),
-    }));
+    const messages = pageItems.map(m => {
+      // Typed content shows its file-type tag as the preview line; plain
+      // messages show a stripped-HTML body snippet. `displayContentType`
+      // resolves a disguised payload to its COVER type — reading contentType
+      // straight off the message announced "Payload" in the sidebar and blew
+      // the disguise before the player ever opened it.
+      const ct = displayContentType(m, { isGM: gm });
+      const ctInfo = ct ? CONTENT_TYPE_INFO[ct] : null;
+      const snippet = ct ? '' : String(m.body || '')
+        .replace(/<[^>]*>/g, ' ').replace(/&[a-z#0-9]+;/gi, ' ').replace(/\s+/g, ' ').trim().slice(0, 90);
+      // ENVELOPE (#37) — a FILE row drops the sender line entirely: the
+      // content-type icon replaces the priority dot, the filename replaces the
+      // sender, and "type · size · path" replaces the body preview. A disguised
+      // payload still resolves through displayContentType first, so a file row
+      // can't blow the disguise either.
+      const env = resolveEnvelope({ ...m, contentType: ct });
+      return {
+        messageId: m.messageId,
+        isFile: env.isFile,
+        from: m.from || 'unknown',
+        subject: m.subject || '(no subject)',
+        priority: m.priority || 'normal',
+        encrypted: !!m.status?.encrypted,
+        isSelected: m.messageId === this._selectedMessageId,
+        // A live feed isn't FROM a moment — it's happening.
+        time: env.isStream ? 'LIVE' : (m.timestamp ? formatCyberDate(m.timestamp, { dateOnly: true }) : ''),
+        preview: snippet,
+        // A file row leads with the ENVELOPE's icon/label — a live feed reads as
+        // a CAMERA FEED, not an "Image Gallery" (the mode is its identity).
+        typeLabel: (env.isFile ? env.typeLabel : ctInfo?.label) || null,
+        typeIcon: (env.isFile ? env.typeIcon : ctInfo?.icon) || null,
+        // File-row fields — kept as SEPARATE values (not one pre-joined string)
+        // so the row can render the type as a colored chip and the size/path as
+        // their own muted line: same 3-line skeleton as a mail row, so a mixed
+        // list reads as one list instead of two competing ones.
+        filename: env.filename || '',
+        fileSize: env.isFile && env.size !== '—' ? env.size : '',
+        filePath: env.path || '',
+        fileOwner: env.owner || '',
+        accent: env.accent || (ctInfo ? CONTENT_TYPE_INFO[ct]?.accent : '') || '',
+        // A file has no urgency — it just wasn't there before.
+        isNew: env.isFile && !m.status?.read,
+        // GM-only marker: gated off the current uplink (players never see the row).
+        offNet: gm && !this.terminalService.uplinkReaches(this.item, m.networkVisibility),
+      };
+    });
 
-    // Diegetic folder labels (config.folderNames — e.g. CASE FILES / EVIDENCE /
-    // PURGED on a cop box). Empty fields fall back to the defaults.
-    const fn = cfg.folderNames || {};
-    const names = {
-      inbox: (fn.inbox || '').trim() || 'Inbox',
-      saved: (fn.saved || '').trim() || 'Saved',
-      trash: (fn.trash || '').trim() || 'Trash',
-    };
-    const emptyLabels = {
-      inbox: `${names.inbox} is empty`,
-      saved: `Nothing in ${names.saved}`,
-      trash: `${names.trash} is empty`,
-    };
-    const folderLabels = { inbox: names.inbox.toUpperCase(), saved: names.saved.toUpperCase(), trash: names.trash.toUpperCase() };
+    const folderDef = folderDefs.find(fd => fd.id === folder) || folderDefs[0];
     const selected = list.find(m => m.messageId === this._selectedMessageId);
     // HUD shows the MACHINE's uplink (the pill), never the player's network.
     return {
-      hud: { isAdmin: !!account?.isAdmin, trace: null },
+      hud: {
+        isAdmin: !!account?.isAdmin,
+        trace: null,
+        // WHO the rolls/eddies/skill reads run as (see the HUD chip comment).
+        // Same view-model the login screen's chip uses, so the two can't drift.
+        operator: this._operatorChipContext().name,
+        canSwitchOperator: this._operatorChipContext().canSwitch,
+        // Operator TOOLS menu (upload / hacking) — gated by canOperate.
+        tools: this._operatorToolsContext(),
+      },
       syncHint,
       account: {
         displayName: account?.displayName || account?.username || 'user',
@@ -582,24 +754,61 @@ export class TerminalViewerApp extends BaseApplication {
       },
       switchAccounts: this._switcherOpen ? this._switcherAccounts() : [],
       switcherOpen: this._switcherOpen,
-      folders: [
-        { key: 'inbox', label: names.inbox, icon: 'fas fa-inbox', count: counts.inbox, active: folder === 'inbox' },
-        { key: 'saved', label: names.saved, icon: 'fa-regular fa-star', count: counts.saved, active: folder === 'saved' },
-        { key: 'trash', label: names.trash, icon: 'fas fa-trash-can', count: counts.trash, active: folder === 'trash' },
-      ],
+      folders: folderDefs.map(fd => ({
+        key: fd.id, label: fd.name, icon: fd.icon, count: counts[fd.id] ?? 0, active: folder === fd.id,
+      })),
       // Idle screensaver (config.screensaver) — overlay markup lives in the
       // mailbox state; _resetScreensaver drives the --on class. Logo resolves
       // per iconMode: 'boot' follows the boot icon, 'fa'/'image' are custom,
       // 'none' drops it. `motion` picks the drift/bounce/static animation.
       screensaver: cfg.screensaver?.enabled ? this._screensaverContext(cfg) : null,
-      listLabel: `${folderLabels[folder]} · ${list.length} MESSAGE${list.length === 1 ? '' : 'S'}`,
-      emptyLabel: emptyLabels[folder],
+      // "OBJECTS" once files are in the mix — they aren't messages.
+      listLabel: fileCount
+        ? `${(folderDef?.name || 'Inbox').toUpperCase()} · ${list.length} OBJECT${list.length === 1 ? '' : 'S'}`
+        : `${(folderDef?.name || 'Inbox').toUpperCase()} · ${list.length} MESSAGE${list.length === 1 ? '' : 'S'}`,
+      emptyLabel: `${folderDef?.name || 'This folder'} is empty`,
+      // One mixed list, so the chips only render when there's something to separate.
+      envFilter: envMixed ? { mail: mailCount, file: fileCount } : null,
+      activeEnvFilter,
+      // Mailbox collapsed to a rail → the open file gets the full width.
+      sideCollapsed: !!this._sideCollapsed,
       messages,
       pagination: maxPage > 1 ? { page: this._currentPage, maxPage, hasPrev: this._currentPage > 1, hasNext: this._currentPage < maxPage } : null,
       isGM: isGM(),
       selectedMessage: selected ? this._detailContext(selected) : null,
-      allowExfil: cfg.allowExfil !== false,
+      exfilActions: this._exfilMenu(),
     };
+  }
+
+  /**
+   * Build the exfil menu for the SELECTED entry (#37) — the terminal policy
+   * layered with the entry's own override (`resolveEntryExfil`).
+   *
+   * A **denied** action isn't hidden, it renders as a dead chip with its reason
+   * ("LIVE STREAM") — hiding a button reads as "the UI is broken", while a
+   * stated reason teaches the rule. Authoring can still force a silent hide
+   * (`hideDenied`) for things whose very existence is the secret. An action the
+   * POLICY simply doesn't offer never renders at all (that's not a denial).
+   */
+  _exfilMenu() {
+    const msg = this._currentSelectedRaw();
+    if (!msg) return [];
+    const policy = this.terminalService?.resolveEntryExfil?.(this.item, msg);
+    if (!policy?.master) return [];
+    return Object.keys(EXFIL_META)
+      .filter((k) => {
+        const p = policy[k];
+        if (!p || p.hidden) return false;
+        return p.allow || p.denied; // denied → dead chip; policy-off → absent
+      })
+      .sort((a, b) => EXFIL_META[a].order - EXFIL_META[b].order)
+      .map(k => ({
+        action: k, label: EXFIL_META[k].label, icon: EXFIL_META[k].icon,
+        gated: !!policy[k].require && policy[k].allow,
+        dv: policy[k].dv,
+        denied: !policy[k].allow,
+        denyReason: policy[k].denyReason,
+      }));
   }
 
   static PAGE_SIZE = 12;
@@ -623,6 +832,9 @@ export class TerminalViewerApp extends BaseApplication {
     const senderName = this._resolveSenderName(msg);
     const contact = this._findContactByEmail(msg.from);
     const priority = msg.priority || 'normal';
+    // ENVELOPE (#37) — file entries render a filesystem header instead of a
+    // sender header (everything not authored derives: size, extension, count).
+    const env = resolveEnvelope(msg);
 
     // Typed content (design doc §8c) — a terminal message can be a
     // spreadsheet/calendar/syslog/… not just plain mail. When contentType is
@@ -640,7 +852,13 @@ export class TerminalViewerApp extends BaseApplication {
         from: msg.from,
         body: msg.body,
         timestamp: msg.timestamp,
-      }, { isGM: isGM(), interactive: false });
+        // `interactive` means "this consumer WIRES the content actions" — the
+        // terminal wires all of them (executePayload/payloadKill/payloadSniff/
+        // contentUnlock/deployMalware/claimEddies/siphonFunds/…). It passed
+        // false, which silently hid the payload RUN/KILL buttons, the schematic
+        // SCOUT, and the GM Go-to-Scene chips in every terminal. Only the
+        // composer's read-only live preview passes false.
+      }, { isGM: isGM(), interactive: true });
     }
 
     return {
@@ -653,7 +871,21 @@ export class TerminalViewerApp extends BaseApplication {
         initials: getInitials(senderName),
         portrait: contact ? this.portraitService?.resolvePortrait(contact) : (msg.fromActorId ? this.portraitService?.resolvePortrait({ actorId: msg.fromActorId }) : null),
       },
-      isContact: !!contact,
+      // "Add to contacts" keys on the viewing player's OWN list — a master-
+      // directory sender is exactly the kind worth adding (was `!!contact`,
+      // which hid the chip for every directory identity). Send-only system
+      // addresses can never be added or replied to.
+      isContact: !!(msg.from && this._playerContactEmails?.has(msg.from.toLowerCase())),
+      // ENVELOPE (#37) — a FILE has no sender: no avatar, no ADD, no REPLY.
+      // Its owner is a NODE (SECCAM-B2), not an Agent you can write back to.
+      file: env.isFile ? env : null,
+      isFile: env.isFile,
+      canAddContact: !env.isFile && !!(msg.from && this.actorId &&
+        !this._playerContactEmails?.has(msg.from.toLowerCase()) &&
+        !game.nightcity?.masterContactService?.isSendOnly?.(msg.from)),
+      canReply: !env.isFile && !!(msg.from && resolveOperator() &&
+        this.contactRepository?.verifyContact?.(msg.from)?.verified &&
+        !game.nightcity?.masterContactService?.isSendOnly?.(msg.from)),
       timeAgo: this._relativeTime(msg.timestamp),
       timeAbs: this._absDate(msg.timestamp),
       priority,
@@ -663,8 +895,19 @@ export class TerminalViewerApp extends BaseApplication {
       isTypedContent,
       content,
       bodyHtml: this._sanitizeBody(msg.body || ''),
-      isSaved: !!msg.status?.saved,
-      isTrashed: !!msg.status?.deleted,
+      // GM "Move to…" selector — every folder, current location selected
+      // (location: Trash > Saved > custom folder > Inbox).
+      moveOptions: isGM() ? (() => {
+        const defs = this.terminalService?.getFolders(this.item) || [];
+        const loc = msg.status?.deleted ? 'trash'
+          : msg.status?.saved ? 'saved'
+          : (defs.some(fd => fd.kind === 'custom' && fd.id === msg.folder) ? msg.folder : 'inbox');
+        // Hidden Saved/Trash still appear as move targets for the GM.
+        const all = [...defs];
+        if (!all.some(fd => fd.id === 'saved')) all.push({ id: 'saved', name: 'Saved' });
+        if (!all.some(fd => fd.id === 'trash')) all.push({ id: 'trash', name: 'Trash' });
+        return all.map(fd => ({ id: fd.id, name: fd.name, selected: fd.id === loc }));
+      })() : null,
     };
   }
 
@@ -678,7 +921,8 @@ export class TerminalViewerApp extends BaseApplication {
     const el = this.element;
     if (!el) return;
     this._scrollMemo = {
-      side: el.querySelector('.ncm-term__side')?.scrollTop ?? 0,
+      // The message LIST is the sidebar's scroller now (folders stay pinned).
+      side: el.querySelector('.ncm-term__list')?.scrollTop ?? 0,
       detail: el.querySelector('.ncm-term__detail')?.scrollTop ?? 0,
       msgId: this._renderedMsgId ?? null,
     };
@@ -692,6 +936,12 @@ export class TerminalViewerApp extends BaseApplication {
     const viewerEl = this.element?.querySelector('.ncm-terminal-viewer');
     viewerEl?.setAttribute('data-terminal-preset', context.preset);
     this._applyCustomTheme(viewerEl, context.preset);
+    // ALSO theme the AppV2 frame root: the window header (title spans, header
+    // controls) sits OUTSIDE .ncm-terminal-viewer, so without this its
+    // --ncm-* lookups resolved to :root — i.e. the PLAYER's theme, not the
+    // terminal's. Inline vars on the app root give the chrome the effective
+    // terminal palette (buildTerminalThemePrefs already folds the preset in).
+    if (this.element && this.element !== viewerEl) this._applyCustomTheme(this.element, context.preset);
     // Per-terminal effects (theme.scanlines/flicker — opt-in, separate from
     // the player's own atmosphere prefs). Glitch rides --ncm-glitch-intensity
     // via applyTheme. Overlay-aware, like everything render-visible.
@@ -699,23 +949,42 @@ export class TerminalViewerApp extends BaseApplication {
     viewerEl?.setAttribute('data-term-scanlines', String(themeCfg.scanlines === true));
     viewerEl?.setAttribute('data-term-flicker', String(themeCfg.flicker === true));
     this._syncWindowTitle(context);
+    // SAVE FRAME (#37) — only the terminal knows the exfil policy, so it stamps
+    // the capturable feed thumbs here; the shared lightbox reads the attrs and
+    // renders the button (+ the honest "can't copy a stream" chip). Keeps the
+    // policy out of ContentRenderers, which serves all three viewers.
+    this._stampFrameCapture();
+    // GM "Move to…" folder selector — manual change listener (the standing
+    // gotcha: data-action on a <select> fires on click, not value change).
+    this.element?.querySelectorAll('[data-move-message]').forEach(sel => {
+      sel.addEventListener('change', (e) => this._onMoveMessage(e.target.dataset.moveMessage, e.target.value));
+    });
     // Restore pane scroll — every action re-renders, and without this each
     // click snapped both panes back to the top. The detail pane only restores
     // when the same message is still open (a new message starts at the top).
     const memo = this._scrollMemo;
     if (memo) {
-      const side = this.element?.querySelector('.ncm-term__side');
+      const side = this.element?.querySelector('.ncm-term__list');
       if (side && memo.side) side.scrollTop = memo.side;
       if (memo.detail && memo.msgId && memo.msgId === this._selectedMessageId) {
         const det = this.element?.querySelector('.ncm-term__detail');
         if (det) det.scrollTop = memo.detail;
       }
     }
+    // ─── MOTION (#38) — stamp the entrance animations ───
+    // The terminal re-renders on EVERY click, so an animation tied to "render"
+    // would twitch the list constantly. Each `is-fresh` is applied only when the
+    // thing it describes actually changed:
+    //   · the LIST cascades when its contents change (folder / account / filter
+    //     / page), NOT when you merely select a row within it;
+    //   · the DETAIL slides only when a DIFFERENT message is opened.
+    this._stampMotion(context);
+
     this._renderedMsgId = this._selectedMessageId;
     if (this._state === 'boot') this._playBoot();
     if (this._state === 'granted' && !this._grantedPlayed) {
       this._grantedPlayed = true;
-      this.soundService?.play?.('login-success');
+      this._playTermSound('login-success');
       // Hold for the full sequence: fields write-in + verify → bar fills →
       // VALIDATED stamp (~2.0s) → ACCESS GRANTED (~2.35s) → brief beat.
       this._timer(() => { this._grantedPlayed = false; this._enterState('mailbox'); }, 3000);
@@ -764,6 +1033,69 @@ export class TerminalViewerApp extends BaseApplication {
     }
     // Idle screensaver — (re)arm on every render; mailbox only.
     this._resetScreensaver();
+    // SYSTEM LOCKDOWN takeover — shown after a forced/earned lockout kick, with a
+    // live countdown, so the bounce reads as "the system sealed you out" instead
+    // of an unexplained drop.
+    this._syncLockdown();
+  }
+
+  /**
+   * Inject / update the SYSTEM LOCKDOWN overlay while the operator is locked out.
+   * The AppV2 re-render replaces the element, so this re-injects each render and
+   * (re)starts a 1s countdown ticker; when the lockout expires it clears itself
+   * and re-renders so the login cards become clickable again. GMs never see it
+   * (they aren't the ones getting locked out of their own boxes).
+   */
+  _syncLockdown() {
+    if (this._lockdownTimer) { clearInterval(this._lockdownTimer); this._lockdownTimer = null; }
+    const host = this.element?.querySelector('.ncm-terminal-viewer');
+    host?.querySelector('.ncm-term__lockdown')?.remove();
+    const acct = this._lockdownAccountId;
+    if (!acct || !host || this._state !== 'login' || isGM()) return;
+    let rem = this.terminalService?.getAccountLockoutRemaining(this.item, acct, this.actorId) || 0;
+    if (rem <= 0) { this._lockdownAccountId = null; return; }
+
+    const account = this.terminalService?.getAccount(this.item, acct);
+    const who = Handlebars.escapeExpression(account?.displayName || account?.username || 'this terminal');
+    const fmt = (ms) => {
+      const s = Math.max(0, Math.ceil(ms / 1000));
+      return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+    };
+    const reduced = !!window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+    const el = document.createElement('div');
+    el.className = 'ncm-term__lockdown' + (reduced ? ' is-reduced' : '');
+    el.innerHTML = `
+      <div class="ncm-term__lockdown-scan"></div>
+      <div class="ncm-term__lockdown-box">
+        <div class="ncm-term__lockdown-ico"><i class="fas fa-lock"></i></div>
+        <div class="ncm-term__lockdown-ttl">SYSTEM LOCKDOWN</div>
+        <div class="ncm-term__lockdown-sub">ACCESS SUSPENDED — too many failed attempts</div>
+        <div class="ncm-term__lockdown-acct">${who}</div>
+        <div class="ncm-term__lockdown-clock"><span class="ncm-term__lockdown-time">${fmt(rem)}</span><span class="ncm-term__lockdown-lbl">until reset</span></div>
+        <button type="button" class="ncm-term__lockdown-ack"><i class="fas fa-angle-left"></i> STAND DOWN</button>
+      </div>`;
+    host.appendChild(el);
+    this._playTermSound('lockout');
+    el.querySelector('.ncm-term__lockdown-ack')?.addEventListener('click', () => {
+      // Hide the takeover but keep the account sealed — re-clicking it re-shows
+      // this via _lockGuard. Just returns them to the login list.
+      this._lockdownAccountId = null;
+      if (this._lockdownTimer) { clearInterval(this._lockdownTimer); this._lockdownTimer = null; }
+      el.classList.add('is-out');
+      setTimeout(() => el.remove(), 260);
+    });
+    const timeEl = el.querySelector('.ncm-term__lockdown-time');
+    this._lockdownTimer = setInterval(() => {
+      rem = this.terminalService?.getAccountLockoutRemaining(this.item, acct, this.actorId) || 0;
+      if (rem <= 0) {
+        clearInterval(this._lockdownTimer); this._lockdownTimer = null;
+        this._lockdownAccountId = null;
+        this._playTermSound('shard-decrypt');
+        this.render(false);   // lockout lifted → cards clickable again
+        return;
+      }
+      if (timeEl) timeEl.textContent = fmt(rem);
+    }, 1000);
   }
 
   /**
@@ -801,7 +1133,7 @@ export class TerminalViewerApp extends BaseApplication {
     this._bootPlayed = true;
     const bootEl = this.element?.querySelector('.ncm-term__boot');
     if (!bootEl) { this._afterBoot(); return; }
-    this.soundService?.play?.('shard-boot');
+    this._playTermSound('shard-boot');
     const fill = bootEl.querySelector('.ncm-term__boot-fill');
     requestAnimationFrame(() => { if (fill) fill.style.width = '100%'; });
     bootEl.querySelectorAll('.ncm-term__boot-log div').forEach((d, i) => {
@@ -838,16 +1170,51 @@ export class TerminalViewerApp extends BaseApplication {
   //  Actions — login / auth
   // ═══════════════════════════════════════════════════════════
 
-  _onSelectAccount(event, target) {
+  /**
+   * The authoritative lockout gate for EVERY login entry point. An escalation
+   * (or earned) lockout must hold regardless of how the player tries to get in —
+   * the old `requiresAuth` check let them straight past it two ways: an OPEN
+   * account (no auth) and a session that still "remembered" the login both
+   * returned requiresAuth=false and dropped into `_loginSuccess` with no lockout
+   * check at all ("the player easily can just log back in"). This runs first on
+   * card pick / focus / switch / manual / inline AND as the final gate inside
+   * `_loginSuccess`. Locked → shows the SYSTEM LOCKDOWN takeover with a live
+   * countdown; the account stays sealed until it expires or the GM clears it.
+   * @returns {boolean} true if locked (caller must abort)
+   */
+  _lockGuard(accountId) {
+    if (!accountId || !this.actorId) return false;
+    const rem = this.terminalService?.getAccountLockoutRemaining(this.item, accountId, this.actorId) || 0;
+    if (rem <= 0) return false;
+    this._lockdownAccountId = accountId;
+    if (this._state !== 'login') { this._enterState('login'); } else { this.render(false); }
+    return true;
+  }
+
+  async _onSelectAccount(event, target) {
     const id = target?.dataset?.accountId;
     if (!id) return;
+    if (this._lockGuard(id)) return;
+    // MOTION (#38): the picked card holds while the others fall away, THEN the
+    // flow continues — the machine responds to the choice instead of cutting.
+    await this._playCardPick(target);
     if (!this.terminalService.requiresAuth(this.item, id, this.actorId)) {
-      this._loginSuccess(id);
-    } else {
-      this._authAccountId = id;
-      this._manualError = '';
-      this._enterState('manual');
+      return this._loginSuccess(id);
     }
+    // Secured account → the shared method-card auth dialog (password / skill /
+    // key-item, strict AND/OR, lockout, Black ICE). Lands the login on
+    // success; a cancel just returns to the account list.
+    const result = await NetworkAuthDialog.showForAccount(this.item, id);
+    if (result?.success) this._loginSuccess(id);
+    // Cancelled/failed → put the cards back, or the login screen stays faded out.
+    else this._resetCardPick();
+  }
+
+  /** Undo the pick visual when the auth dialog is cancelled or fails. */
+  _resetCardPick() {
+    this.element?.querySelectorAll('.ncm-term__cards, .ncm-term__roster, .ncm-term__portraits')
+      .forEach(w => w.classList.remove('is-picking'));
+    this.element?.querySelectorAll('.is-picked').forEach(c => c.classList.remove('is-picked'));
   }
 
   _onManualLogin() { this._authAccountId = null; this._manualError = ''; this._enterState('manual'); }
@@ -870,6 +1237,7 @@ export class TerminalViewerApp extends BaseApplication {
    */
   async _onInlineAuth(event, target) {
     const id = target?.dataset?.accountId || target?.closest('[data-account-id]')?.dataset?.accountId;
+    if (id && this._lockGuard(id)) return;
     if (id) this._authAccountId = id;
     return this._onManualAuth();
   }
@@ -881,6 +1249,7 @@ export class TerminalViewerApp extends BaseApplication {
   _onFocusAccount(event, target) {
     const id = target?.dataset?.accountId;
     if (!id) return;
+    if (this._lockGuard(id)) return;
     if (!this.terminalService.requiresAuth(this.item, id, this.actorId)) return this._loginSuccess(id);
     this._focusAccountId = id;
     this._manualError = '';
@@ -934,7 +1303,7 @@ export class TerminalViewerApp extends BaseApplication {
 
   _failAuth(account) {
     const res = this.terminalService.recordLoginFailure(this.item, account.id, this.actorId);
-    this.soundService?.play?.('hack-fail');
+    this._playTermSound('hack-fail');
     // ICE on failure mode === 'damage'
     if (account.security?.failureMode === 'damage' && this.actor) {
       try { this.iceService?.applyDamage?.(this.actor, account.security); } catch { /* non-fatal */ }
@@ -942,10 +1311,15 @@ export class TerminalViewerApp extends BaseApplication {
     this._manualError = res.lockedOut
       ? 'ACCESS DENIED — account locked out.'
       : `ACCESS DENIED — ${res.attemptsRemaining} attempt${res.attemptsRemaining === 1 ? '' : 's'} left.`;
+    // Trace funnel (§6a) — a failed terminal account login.
+    game.nightcity?.traceService?.fireTrace({ actor: this.actor, action: 'terminal-login', hostItem: this.item, objectName: `${this._terminalName()} · ${account?.displayName || account?.username || 'account'}`, severity: 'major' });
     this.render(false);
   }
 
   async _loginSuccess(accountId) {
+    // Final authority — no path reaches the mailbox past an active lockout, even
+    // an open account or a session that still remembers the login.
+    if (this._lockGuard(accountId)) return;
     // Flip to 'granted' BEFORE the session flag write: the write echoes back
     // through the updateItem hook on this same client, and with the state
     // still 'manual'/'login' the hook's boot/granted guard doesn't skip it —
@@ -959,7 +1333,7 @@ export class TerminalViewerApp extends BaseApplication {
     this._selectedMessageId = null;
     this._currentFolder = 'inbox';
     this._currentPage = 1;
-    this.soundService?.play?.('shard-decrypt');
+    this._playTermSound('shard-decrypt');
     // Brief ACCESS GRANTED / Welcome flourish, then into the mailbox.
     this._enterState('granted');
   }
@@ -1094,7 +1468,7 @@ export class TerminalViewerApp extends BaseApplication {
     this.securityService?.recordSuccess?.(this.actorId, this._netTargetId(networkId));
     this._netAuthTarget = null;
     this._netAuthError = '';
-    this.soundService?.play?.('login-success');
+    this._playTermSound('login-success');
     // authorized:true — the machine remembers the credential (state.connection.authenticated).
     await this._switchUplink(networkId, { authorized: true });
   }
@@ -1108,7 +1482,7 @@ export class TerminalViewerApp extends BaseApplication {
       lockoutDuration: sec.lockoutDuration ?? 3600000,
     });
     this.securityService?.recordFailedAttempt?.(this.actorId, targetId);
-    this.soundService?.play?.('hack-fail');
+    this._playTermSound('hack-fail');
     if (sec.failureMode === 'damage' && this.actor) {
       try { this.iceService?.applyDamage?.(this.actor, sec); } catch { /* non-fatal */ }
     }
@@ -1117,6 +1491,8 @@ export class TerminalViewerApp extends BaseApplication {
     this._netAuthError = lockedOut
       ? 'ACCESS DENIED — interface locked out.'
       : `ACCESS DENIED — ${remaining} attempt${remaining === 1 ? '' : 's'} left.`;
+    // Trace funnel (§6a) — a failed terminal network-join auth.
+    game.nightcity?.traceService?.fireTrace({ actor: this.actor, action: 'terminal-net', hostItem: this.item, objectName: network?.name || 'network join', severity: 'major' });
     this.render(false);
   }
 
@@ -1126,10 +1502,121 @@ export class TerminalViewerApp extends BaseApplication {
 
   _onToggleSwitcher() { this._switcherOpen = !this._switcherOpen; this.render(false); }
 
+  // ═══════════════════════════════════════════════════════════
+  //  OPERATOR TOOLS — upload / hacking (design §4, §5b)
+  // ═══════════════════════════════════════════════════════════
+
+  /** Context for the HUD OPERATOR-TOOLS menu. Gated by canOperate. @private */
+  _operatorToolsContext() {
+    const cap = canOperate(this.actor);
+    const noActor = !this.actor;
+    const uploadReason = !cap.ok ? cap.reason : (noActor ? 'No operator assigned — pick a character first.' : '');
+    return {
+      open: !!this._toolsOpen,
+      canOperate: cap.ok && !noActor,
+      reason: uploadReason,
+      items: [
+        { action: 'terminalUpload', icon: 'fas fa-upload', label: 'UPLOAD',
+          desc: 'push a carried program onto this box', disabled: !cap.ok || noActor, reason: uploadReason },
+        { action: 'terminalSystemSweep', icon: 'fas fa-satellite-dish', label: 'SYSTEM SWEEP',
+          desc: 'scan this box for planted programs', disabled: !cap.ok, reason: !cap.ok ? cap.reason : '' },
+      ],
+    };
+  }
+
+  _onToggleTools() { this._toolsOpen = !this._toolsOpen; this.render(false); }
+
+  /** UPLOAD — gather carried programs + visible accounts, run the picker, upload. */
+  async _onUpload() {
+    this._toolsOpen = false;
+    const cap = canOperate(this.actor);
+    if (!cap.ok) { ui.notifications.warn(`NCM | ${cap.reason}`); return this.render(false); }
+    if (!this.actor) { ui.notifications.warn('NCM | No operator assigned to run the upload.'); return this.render(false); }
+    const programs = await this._gatherCarriedPrograms();
+    if (!programs.length) { ui.notifications.info('NCM | You are not carrying anything uploadable.'); return this.render(false); }
+    const accounts = this._uploadTargetAccounts();
+    const { runUploadConsole } = await import('../content/UploadConsole.js');
+    const picked = await runUploadConsole({ programs, accounts, terminalName: this._terminalName(), host: this.element });
+    if (!picked) return this.render(false);
+    const { runUpload } = await import('../content/UploadFlow.js');
+    await runUpload({ actor: this.actor, program: picked.program, targetItem: this.item, accountId: picked.accountId, host: this.element });
+    this.render(false);
+  }
+
+  /** OPERATOR TOOLS → SYSTEM SWEEP. Deep-scan this box for planted residents and
+   *  defuse them. A GM without a character force-reveals; a player rolls. @private */
+  async _onSystemSweep() {
+    this._toolsOpen = false;
+    const cap = canOperate(this.actor);
+    if (!cap.ok) { ui.notifications.warn(`NCM | ${cap.reason}`); return this.render(false); }
+    if (!this.actor && !isGM()) { ui.notifications.warn('NCM | No operator assigned to run the sweep.'); return this.render(false); }
+    const { runSystemSweep } = await import('../content/SystemSweep.js');
+    await runSystemSweep({ item: this.item, actor: this.actor, host: this.element });
+    this.render(false);
+  }
+
+  /** Target mailboxes = player-visible accounts (hidden/net-gated already filtered)
+   *  + the account you're logged into. @private */
+  _uploadTargetAccounts() {
+    const svc = this.terminalService;
+    const seen = new Set(); const out = [];
+    const add = (a) => { if (a && !seen.has(a.id)) { seen.add(a.id); out.push({ id: a.id, label: a.displayName || a.username || a.id, email: a.email || '' }); } };
+    (svc.getAccounts(this.item) || []).forEach(add);
+    if (this._accountId) add(svc.getAccount(this.item, this._accountId));
+    return out;
+  }
+
+  /** Scan the operator's held data shards for entries flagged `uploadable`, mapped
+   *  to program descriptors the UploadConsole/runUpload consume. (Agent-inbox
+   *  source + EXECUTE families are later slices.) @private */
+  async _gatherCarriedPrograms() {
+    const shardSvc = game.nightcity?.dataShardService;
+    const actor = this.actor;
+    if (!shardSvc?.isDataShard || !actor) return [];
+    const out = [];
+    const shards = (actor.items ?? []).filter(i => shardSvc.isDataShard(i));
+    for (const shard of shards) {
+      let entries = [];
+      try { entries = shardSvc.getShardMessages(shard) || []; } catch { entries = []; }
+      for (const e of entries) {
+        const cd = e.contentData || {};
+        if (!cd.uploadable) continue;
+        // A malware/payload entry with an `uploadEffect` verb is an EXECUTE program
+        // (installs a keylog/backdoor/Black-ICE resident); everything else — incl.
+        // a malware file with no verb — uploads as a PLANT of the file itself.
+        const execVerb = (e.contentType === 'malware' || e.contentType === 'payload') ? (cd.uploadEffect || '') : '';
+        const info = CONTENT_TYPE_INFO[e.contentType];
+        const base = {
+          name: e.subject || cd.name || 'file',
+          sourceLabel: `shard: "${shard.name}"`,
+          uploadDV: Number(cd.uploadDV) || 15,
+          uploadSkill: cd.uploadSkill || 'Interface',
+          stealthDV: cd.uploadStealthDV || undefined,
+          traceOnFail: !!cd.uploadTraceOnFail,
+        };
+        if (execVerb) {
+          const params = {};
+          if (execVerb === 'deployICE' && cd.iceActorId) params.iceActorId = cd.iceActorId;
+          out.push({ ...base, effectType: execVerb, family: 'execute', params,
+            description: TerminalViewerApp._EXEC_DESC[execVerb] || 'installs a program' });
+        } else {
+          // The planted copy must NOT carry the upload-config keys forward.
+          const plantCd = { ...cd };
+          for (const k of ['uploadable', 'uploadDV', 'uploadSkill', 'uploadStealthDV', 'uploadTraceOnFail', 'uploadTrigger', 'uploadEffect']) delete plantCd[k];
+          out.push({ ...base, effectType: 'plant', family: 'plant',
+            description: `forged ${(info?.label || e.contentType || 'file').toLowerCase()}`,
+            params: { entry: { contentType: e.contentType, contentData: plantCd, subject: e.subject || '', from: e.from || '' } } });
+        }
+      }
+    }
+    return out;
+  }
+
   _onSwitchAccount(event, target) {
     const id = target?.dataset?.accountId;
     if (!id || id === this._accountId) { this._switcherOpen = false; return this.render(false); }
     this._switcherOpen = false;
+    if (this._lockGuard(id)) return;
     if (!this.terminalService.requiresAuth(this.item, id, this.actorId)) {
       this._loginSuccess(id);
     } else {
@@ -1144,10 +1631,73 @@ export class TerminalViewerApp extends BaseApplication {
     this._enterState('login');
   }
 
+  /**
+   * A forced (escalation) lockout just invalidated this session — slam the
+   * connection shut. Called by SecurityService._kickLockedViewers on every
+   * client that mirrors the lockout, so the operator is bounced to the login
+   * screen (where the per-account lockout state now reads locked) instead of
+   * sitting in a mailbox the system claims to have sealed.
+   * @param {string} [message] shown as the login-screen error line
+   */
+  forceLogout(message = 'CONNECTION TERMINATED — locked out.') {
+    const lockedAcct = this._accountId;
+    try { this.terminalService.logout(this.item, this.actorId); } catch { /* session write is best-effort */ }
+    this._accountId = null;
+    this._authAccountId = null;
+    this._playTermSound('hack-fail');
+    this._manualError = message;
+    // Show the SYSTEM LOCKDOWN takeover with a live countdown (the "animation of
+    // what's happening" — the kick alone read as an unexplained bounce). Keyed on
+    // the account that was active; escalation locks them all for the same window.
+    if (lockedAcct && this.terminalService?.getAccountLockoutRemaining(this.item, lockedAcct, this.actorId) > 0) {
+      this._lockdownAccountId = lockedAcct;
+    }
+    this._enterState('login');
+  }
+
   _onFolder(event, target) {
     this._currentFolder = target?.dataset?.folder || 'inbox';
     this._currentPage = 1;
     this._selectedMessageId = null;
+    // Changing folder clears the MAIL/FILES solo — a folder with no files, still
+    // filtered to FILES, would render an empty list with no chips to undo it.
+    this._envFilter = 'all';
+    this.render(false);
+  }
+
+  /**
+   * Collapse the mailbox sidebar to a rail — a spreadsheet, camera multiplex or
+   * schematic then gets the machine's full width (the MessageViewer's
+   * --list-collapsed precedent). Instance state, so it survives re-renders.
+   */
+  _onToggleSide() {
+    this._sideCollapsed = !this._sideCollapsed;
+    // DOM-ONLY — do NOT re-render (the MessageViewer's _toggleListPanel does the
+    // same). An AppV2 re-render REPLACES the element, so it's born already
+    // collapsed and the CSS transition has nothing to animate FROM: the panel
+    // just snaps. Toggling the class on the live node is what makes it glide.
+    // The template still stamps the class from `_sideCollapsed`, so the state
+    // survives the next real render.
+    const panes = this.element?.querySelector('.ncm-term__panes');
+    panes?.classList.toggle('ncm-term__panes--collapsed', this._sideCollapsed);
+    const btn = this.element?.querySelector('.ncm-term__side-toggle');
+    if (btn) {
+      btn.dataset.tooltip = this._sideCollapsed ? 'Show the mailbox' : 'Hide the mailbox — full-width view';
+      const i = btn.querySelector('i');
+      if (i) i.className = `fas fa-chevron-${this._sideCollapsed ? 'right' : 'left'}`;
+    }
+  }
+
+  /**
+   * MAIL / FILES solo — real app state, so it SURVIVES the re-render that
+   * selecting a message triggers (as a display-only class toggle it reset
+   * itself on the very first click). Clicking the active chip returns to ALL.
+   */
+  _onEnvFilter(event, target) {
+    const f = target?.dataset?.f;
+    const next = (f === 'mail' || f === 'file') ? f : 'all';
+    this._envFilter = (this._envFilter === next && next !== 'all') ? 'all' : next;
+    this._currentPage = 1;
     this.render(false);
   }
 
@@ -1190,6 +1740,10 @@ export class TerminalViewerApp extends BaseApplication {
       entryId: id, contentType: raw.contentType || 'message',
       from: raw.from || '', subject: raw.subject || '', body: raw.body || '',
       timestamp: raw.timestamp || '', contentData: raw.contentData ?? {},
+      // Envelope + per-entry exfil override (#37) — without these the composer
+      // would silently reset a FILE back to mail (and wipe its override) on
+      // every edit-save, since the edit path writes entryData straight to flags.
+      envelope: raw.envelope || 'mail', file: raw.file || null, exfil: raw.exfil || null,
     };
     import('../ItemInbox/DataShardComposer.js').then(({ DataShardComposer }) => {
       new DataShardComposer({
@@ -1199,24 +1753,21 @@ export class TerminalViewerApp extends BaseApplication {
     });
   }
 
-  /** GM — toggle a message in/out of the Saved folder (status.saved flag). */
-  async _onToggleSaveMessage(event, target) {
-    if (!isGM()) return;
-    const id = target?.dataset?.messageId || this._selectedMessageId;
-    const raw = (this.terminalService?.getAccountMessages(this.item, this._accountId) || []).find(m => m.messageId === id);
-    if (!raw) return;
-    await this.terminalService.updateAccountMessage(this.item, id, { status: { saved: !raw.status?.saved } });
-    this.render(false);
-  }
-
-  /** GM — move a message to Trash / restore it (status.deleted flag; the
-   *  permanent delete stays a separate confirmed action). */
-  async _onToggleTrashMessage(event, target) {
-    if (!isGM()) return;
-    const id = target?.dataset?.messageId || this._selectedMessageId;
-    const raw = (this.terminalService?.getAccountMessages(this.item, this._accountId) || []).find(m => m.messageId === id);
-    if (!raw) return;
-    await this.terminalService.updateAccountMessage(this.item, id, { status: { deleted: !raw.status?.deleted } });
+  /**
+   * GM — the "Move to…" selector (replaced the old bookmark/archive toggles;
+   * location semantics: a message lives in exactly one of Trash / Saved /
+   * a custom folder / the Inbox). System locations ride status flags, customs
+   * ride the `folder` flag; the permanent delete stays a separate confirmed
+   * action. Manual `change` listener (selects don't fire via data-action).
+   */
+  async _onMoveMessage(messageId, loc) {
+    if (!isGM() || !messageId) return;
+    const system = loc === 'inbox' || loc === 'saved' || loc === 'trash';
+    const res = await this.terminalService?.updateAccountMessage(this.item, messageId, {
+      folder: system ? '' : loc,
+      status: { saved: loc === 'saved', deleted: loc === 'trash' },
+    });
+    if (!res?.success) ui.notifications.warn(res?.error || 'Move failed.');
     this.render(false);
   }
 
@@ -1280,20 +1831,127 @@ export class TerminalViewerApp extends BaseApplication {
     const msg = this._currentSelectedRaw();
     if (!msg || !this.actorId) return;
     const name = this._resolveSenderName(msg);
-    const contact = this._findContactByEmail(msg.from);
-    const portrait = msg.fromActorId ? this.portraitService?.resolvePortrait({ actorId: msg.fromActorId }) : null;
+    // Master-directory sender → carry its portrait + linked actor + id so the
+    // player contact is a real, portrait-bearing identity (the PortraitService
+    // contact-creation rule).
+    const master = this._findContactByEmail(msg.from);
+    const portrait = master
+      ? this.portraitService?.resolvePortrait(master)
+      : (msg.fromActorId ? this.portraitService?.resolvePortrait({ actorId: msg.fromActorId }) : null);
     try {
+      const existing = (await this.contactRepository?.getContacts(this.actorId)) || [];
+      if (msg.from && existing.some(c => (c.email || '').toLowerCase() === msg.from.toLowerCase())) {
+        ui.notifications.info(`${name} is already in your contacts.`);
+        return;
+      }
       await this.contactRepository?.addContact(this.actorId, {
-        name, email: msg.from || '', actorId: msg.fromActorId || null, portrait: portrait || null,
+        name, email: msg.from || '',
+        actorId: msg.fromActorId || master?.actorId || null,
+        portrait: portrait || null,
+        masterContactId: master?.id || null,
       });
       ui.notifications.info(`Added ${name} to your contacts.`);
       this.render(false);
     } catch (err) { log.error(`Add-contact from terminal failed: ${err.message}`); }
   }
 
-  async _onExfilInbox() {
+  /** Sender chip — compose to this sender from the player's OWN Agent. */
+  _onReplyAgent(event, target) {
+    const msg = this._currentSelectedRaw();
+    if (!msg?.from) return;
+    game.nightcity?.composeMessage?.({ to: msg.from, subject: msg.subject ? `Re: ${msg.subject}` : '' });
+  }
+
+  /**
+   * Exfil dispatcher — every exfil chip routes here. Runs the immersive
+   * security console (styled confirm + the action's OPTIONAL skill gate from
+   * config), then, on pass, performs the action. A gated FAIL fires a trace
+   * and aborts (you were logged before the transfer finished). GM/player split
+   * lives inside each `_doExfil*`.
+   */
+  async _onExfilAction(event, target) {
+    const action = target?.dataset?.exfil;
+    const meta = EXFIL_META[action];
+    if (!meta) return;
     const msg = this._currentSelectedRaw();
     if (!msg) return;
+    // Per-entry policy (#37): the terminal's policy layered with this entry's
+    // override. A denied action renders as a dead chip — clicking it just
+    // restates the reason rather than doing nothing.
+    const policy = this.terminalService?.resolveEntryExfil?.(this.item, msg);
+    const p = policy?.[action];
+    if (!p?.allow) {
+      if (p?.denied) {
+        game.nightcity?.soundService?.play('error');
+        ui.notifications.warn(p.denyReason === 'LIVE STREAM'
+          ? 'NCM | You can’t copy a live stream — capture a frame instead.'
+          : `NCM | ${meta.label} is blocked on this file (${p.denyReason.toLowerCase()}).`);
+      }
+      return;
+    }
+
+    const actor = this.actor || resolveOperator();
+    const gated = !!p.require && !!actor;
+    const res = await runSecurityConsole({
+      title: meta.title, icon: meta.icon, accent: meta.accent, host: this.element,
+      intro: meta.intro, confirmLabel: meta.confirm,
+      gate: gated ? { require: true, skill: p.skill, dv: p.dv, actor, context: `Exfil: ${meta.label}`, flavor: `${meta.title} // DV ${p.dv}`, net: { verb: 'Control', action: 'exfil', hostItem: this.item } } : null,
+      successLabel: meta.ok, failLabel: meta.fail,
+    });
+    if (res.cancelled) return;
+    if (gated && !res.ok) {
+      game.nightcity?.traceService?.fireTrace({ actor, action: 'exfil', source: meta.label, hostItem: this.item, dv: p.dv, margin: (res.total ?? p.dv) - p.dv, severity: 'hostile' });
+      ui.notifications.warn(`NCM | ${meta.label} traced — the attempt was logged (rolled ${res.total ?? '?'} vs DV ${p.dv}).`);
+      return;
+    }
+
+    // Exfil authorized (ungated, or the gate passed) — log it to the activity feed.
+    game.nightcity?.traceService?.logSuccess({ actor, action: 'exfil', source: meta.label, hostItem: this.item, severity: 'hostile' });
+    switch (action) {
+      case 'agent':   return this._doExfilInbox(msg);
+      case 'shard':   return this._doExfilShard(msg);
+      case 'forward': return this._doExfilForward(msg);
+      case 'leak':    return this._doExfilLeak(msg);
+      case 'sell':    return this._doExfilSell(msg, p.price ?? 0);
+      case 'wipe':    return this._doExfilWipe(msg);
+      // The channel comes from the clicked button (the monitor rail carries
+      // data-index); from the detail menu it's the currently-open channel, and
+      // failing that the first capturable one.
+      case 'saveFrame': return this._doSaveFrame(msg, target?.dataset?.index);
+    }
+  }
+
+  /**
+   * SAVE FRAME — capture what a feed channel is showing into the operator's
+   * Agent (Recovered). The PTZ aim rides in the caption (see
+   * TerminalService.exfilSaveFrame for why we don't rasterize the crop).
+   */
+  async _doSaveFrame(msg, rawIndex) {
+    const cd = msg.contentData || {};
+    let index = Number(rawIndex);
+    if (!Number.isInteger(index) || index < 0) {
+      index = (cd.images || []).findIndex(i => i.url && !i.locked && !i.corrupted && !i.cut);
+    }
+    if (index < 0) { ui.notifications.warn('NCM | No channel to capture.'); return; }
+    const targetId = await this._pickOwnedCharacter();
+    if (!targetId) return;
+    // The PTZ readout, if that channel is a steerable head being driven.
+    const aim = this.element?.querySelector('[data-ptz-vp] [data-ptz-read]')?.textContent?.trim() || '';
+    closeGalleryLightbox(this.element);
+    const fxDone = this._playExfilFx('download', 'frame capture');
+    if (isGM()) {
+      const res = await this.terminalService.exfilSaveFrame(this.item, this._accountId, msg.messageId, index, targetId, aim);
+      await fxDone;
+      if (res.success) ui.notifications.info(`NCM | ${res.label} frame saved to ${this._exfilFolder()}.`);
+      else ui.notifications.warn(res.error || 'Capture failed.');
+    } else {
+      this._relayExfil({ dest: 'saveFrame', messageIds: [msg.messageId], targetActorId: targetId, frameIndex: index, aim });
+      await fxDone;
+      ui.notifications.info(`NCM | Frame captured — check your ${this._exfilFolder()} folder.`);
+    }
+  }
+
+  async _doExfilInbox(msg) {
     const targetId = await this._pickOwnedCharacter();
     if (!targetId) return;
     const fxDone = this._playExfilFx('download', msg.subject || 'file');
@@ -1301,14 +1959,23 @@ export class TerminalViewerApp extends BaseApplication {
       const res = await this.terminalService.exfilToInbox(this.item, this._accountId, [msg.messageId], targetId);
       const who = game.actors?.get(targetId)?.name || 'inbox';
       await fxDone;
-      if (res.success) ui.notifications.info(`Copied to ${who}'s Agent (Recovered).`);
+      if (res.success) ui.notifications.info(`Copied to ${who}'s Agent (${this._exfilFolder()}).`);
       else ui.notifications.warn(res.error || 'Exfil failed.');
     } else {
       // Player can't write the GM-owned inbox journal — relay to the GM.
       this._relayExfil({ dest: 'inbox', messageIds: [msg.messageId], targetActorId: targetId });
       await fxDone;
-      ui.notifications.info('Download requested — check your Recovered folder.');
+      ui.notifications.info(`Download requested — check your ${this._exfilFolder()} folder.`);
     }
+  }
+
+  /**
+   * The Agent folder that catches exfiltrated intel. GM-renameable (the
+   * `exfilFolderName` world setting) — every toast, chip and tab reads THIS, so
+   * a table that calls it "Salvage" sees "Salvage" everywhere, not in one place.
+   */
+  _exfilFolder() {
+    return game.nightcity?.settingsManager?.getExfilFolderName?.() || 'Exfil';
   }
 
   /**
@@ -1344,15 +2011,19 @@ export class TerminalViewerApp extends BaseApplication {
         <div class="ncm-term__fx-done"><i class="fas fa-circle-check"></i> SAVED TO RECOVERED</div>
       </div>`;
     host.appendChild(fx);
-    this.soundService?.play?.(isBurn ? 'shard-compile' : 'send');
+    this._playTermSound(isBurn ? 'shard-compile' : 'send');
+    // Suppress debounced re-renders while the overlay plays — a wipe's own
+    // page deletions (and other synced journal writes) fire the page hooks,
+    // and a mid-FX render would destroy this DOM.
+    this._animationActive = true;
     const climax = reduced ? 150 : 1500;
     return new Promise((resolve) => {
       this._timer(() => {
         fx.classList.add('is-done');
-        this.soundService?.play?.(isBurn ? 'shard-insert' : 'receive');
+        this._playTermSound(isBurn ? 'shard-insert' : 'receive');
       }, climax);
       this._timer(() => fx.classList.add('is-out'), climax + 700);
-      this._timer(() => { fx.remove(); resolve(); }, climax + 1100);
+      this._timer(() => { fx.remove(); this._animationActive = false; resolve(); }, climax + 1100);
     });
   }
 
@@ -1384,9 +2055,15 @@ export class TerminalViewerApp extends BaseApplication {
    *  cap, entirely hid) the real gear. */
   static NON_CARRIER_TYPES = ['skill', 'role', 'criticalInjury', 'netarch'];
 
-  async _onExfilShard() {
-    const msg = this._currentSelectedRaw();
-    if (!msg) return;
+  /** Short descriptions for uploadable EXECUTE verbs (OPS → UPLOAD picker). */
+  static _EXEC_DESC = {
+    keylog: 'captures the next login on this box',
+    forgeAccount: 'forges a hidden backdoor account',
+    deployICE: 'arms Black ICE for the next intruder',
+    logicBomb: 'arms a delayed payload',
+  };
+
+  async _doExfilShard(msg) {
     // Players pick from their OWN inventory; GMs can also target world items.
     const carrier = (i) => i && !TerminalViewerApp.NON_CARRIER_TYPES.includes(i.type);
     const owned = [...(this.actor?.items ?? [])].filter(carrier);
@@ -1490,24 +2167,122 @@ export class TerminalViewerApp extends BaseApplication {
   }
 
   /** Send an exfil request to the GM client (player relay). */
-  _relayExfil({ dest, messageIds, targetActorId, targetItemId }) {
+  _relayExfil({ dest, messageIds, targetActorId, targetItemId, forwarder, frameIndex, aim }) {
     game.nightcity?.socketManager?.emit?.(SOCKET_OPS.TERMINAL_EXFIL_REQUEST, {
       requestId: foundry.utils.randomID(),
       userId: game.user.id,
       itemUuid: this.item?.uuid,
       accountId: this._accountId,
-      messageIds, dest, targetActorId, targetItemId,
+      messageIds, dest, targetActorId, targetItemId, forwarder, frameIndex, aim,
     });
+  }
+
+  /** Forward a file on to a chosen contact's Agent inbox (GM direct / relay). */
+  async _doExfilForward(msg) {
+    const targetId = await this._pickMessageableActor('Forward To');
+    if (!targetId) return;
+    const who = game.actors?.get(targetId)?.name || 'contact';
+    const forwarder = { email: this.actor?.getFlag?.(MODULE_ID, 'email') || '', actorId: this.actorId || '' };
+    if (isGM()) {
+      const res = await this.terminalService.exfilForward(this.item, this._accountId, [msg.messageId], targetId, forwarder);
+      if (res.success) ui.notifications.info(`Forwarded to ${who}.`);
+      else ui.notifications.warn(res.error || 'Forward failed.');
+    } else {
+      this._relayExfil({ dest: 'forward', messageIds: [msg.messageId], targetActorId: targetId, forwarder });
+      ui.notifications.info(`Forward requested to ${who}.`);
+    }
+  }
+
+  /** Leak a file to the open Net — a public chat artifact everyone sees. */
+  async _doExfilLeak(msg) {
+    const esc = Handlebars.escapeExpression;
+    const who = this.actor?.name || resolveOperator()?.name || game.user?.name || 'An operator';
+    const subject = msg.subject || '(untitled file)';
+    const preview = (msg.preview || msg.body || '').toString().replace(/<[^>]*>/g, '').slice(0, 160);
+    try {
+      await ChatMessage.create({
+        speaker: { alias: 'NET // LEAK' },
+        content: `<div class="ncm-leak-card"><strong style="color:#ff5252"><i class="fas fa-tower-broadcast"></i> DATA LEAK</strong><div style="margin-top:4px"><em>${esc(subject)}</em> — dumped to the open Net from <b>${esc(this._terminalName())}</b>.</div>${preview ? `<div style="margin-top:4px;opacity:.8;font-size:12px">${esc(preview)}…</div>` : ''}</div>`,
+      });
+    } catch (err) { log.error(`Leak chat failed: ${err.message}`); }
+    this._playTermSound('trace-fire');
+    ui.notifications.info(`Leaked "${subject}" to the Net — it's public now.`);
+  }
+
+  /** Sell a file to a fixer — credits the operator's wealth at the set price. */
+  async _doExfilSell(msg, price) {
+    const actor = this.actor || resolveOperator();
+    if (!actor) { ui.notifications.warn('No character to bank the eddies.'); return; }
+    const amount = Math.max(0, Number(price) || 0);
+    if (amount > 0) await this._creditActorWealth(actor, amount, `NCM: Sold "${msg.subject || 'file'}" to a fixer`);
+    this._playTermSound('eddies-claim');
+    try {
+      const gmIds = ChatMessage.getWhisperRecipients('GM').map(u => u.id);
+      await ChatMessage.create({
+        whisper: gmIds, speaker: { alias: 'FIXER NET' },
+        content: `${Handlebars.escapeExpression(actor.name)} sold <em>${Handlebars.escapeExpression(msg.subject || 'a file')}</em>${amount > 0 ? ` for <b>${amount.toLocaleString()} eb</b>` : ''} from ${Handlebars.escapeExpression(this._terminalName())}.`,
+      });
+    } catch (err) { log.error(`Sell alert failed: ${err.message}`); }
+    ui.notifications.info(amount > 0 ? `Sold for ${amount.toLocaleString()} eb — banked to ${actor.name}.` : 'Sold — the fixer sets the price (GM adjudicates).');
+  }
+
+  /** Wipe a file off the terminal (GM direct / relay). */
+  async _doExfilWipe(msg) {
+    if (isGM()) {
+      const res = await this.terminalService.exfilWipe(this.item, this._accountId, [msg.messageId]);
+      if (res.success) {
+        if (this._selectedMessageId === msg.messageId) this._selectedMessageId = null;
+        this.render(false);
+        ui.notifications.info('File wiped from the terminal.');
+      } else ui.notifications.warn(res.error || 'Wipe failed.');
+    } else {
+      this._relayExfil({ dest: 'wipe', messageIds: [msg.messageId] });
+      if (this._selectedMessageId === msg.messageId) this._selectedMessageId = null;
+      this.render(false);
+      ui.notifications.info('Wipe requested.');
+    }
+  }
+
+  /** Credit an actor's CPR wealth (the eddies-claim ledger pattern). */
+  async _creditActorWealth(actor, amount, reason) {
+    try {
+      const wealth = foundry.utils.deepClone(actor.system.wealth);
+      wealth.value += amount;
+      wealth.transactions = wealth.transactions || [];
+      wealth.transactions.push([`Increased by ${amount} to ${wealth.value}`, reason]);
+      if (actor.isOwner || isGM()) await actor.update({ 'system.wealth': wealth });
+    } catch (err) { log.error(`Wealth credit failed: ${err.message}`); }
+  }
+
+  /** Pick a messageable character (contacts) to forward to. */
+  async _pickMessageableActor(title = 'Send To') {
+    const actors = (game.actors?.contents ?? []).filter(a =>
+      a.type === 'character' && (a.hasPlayerOwner || a.getFlag?.(MODULE_ID, 'email')));
+    if (!actors.length) { ui.notifications.warn('No contacts to send to.'); return null; }
+    const options = actors.map(a => `<option value="${a.id}">${Handlebars.escapeExpression(a.name)}</option>`).join('');
+    let picked = null;
+    await new Promise((resolve) => {
+      new Dialog({
+        title,
+        content: `<p>Forward to which contact?</p><select style="width:100%">${options}</select>`,
+        buttons: {
+          ok: { label: 'Forward', callback: (html) => { picked = html.find('select').val(); } },
+          cancel: { label: 'Cancel' },
+        },
+        default: 'ok', close: () => resolve(),
+      }).render(true);
+    });
+    return picked;
   }
 
   /** Banking content — siphon funds (shared flow; see SiphonFlow.js). */
   async _onSiphonFunds(event, target) {
-    const actor = game.user?.character;
+    const actor = resolveOperator();
     if (!actor) { ui.notifications.warn('NCM | No character assigned.'); return; }
     const id = target?.closest?.('[data-entry-id]')?.dataset.entryId || this._selectedMessageId;
     const raw = (this.terminalService?.getAccountMessages(this.item, this._accountId) || []).find(m => m.messageId === id);
     if (!raw || raw.contentType !== 'banking') return;
-    await runSiphon({ actor, raw: raw.contentData, itemUuid: this.item?.uuid, messageId: id });
+    await runSiphon({ actor, raw: raw.contentData, itemUuid: this.item?.uuid, messageId: id, host: this.element });
     this.render(false);
   }
 
@@ -1516,7 +2291,7 @@ export class TerminalViewerApp extends BaseApplication {
     const id = target?.closest?.('[data-entry-id]')?.dataset.entryId || this._selectedMessageId;
     const raw = (this.terminalService?.getAccountMessages(this.item, this._accountId) || []).find(m => m.messageId === id);
     if (!raw || raw.contentType !== 'eddies') return;
-    let actor = game.user?.character;
+    let actor = resolveOperator();
     if (!actor) {
       const pickedId = await this._pickOwnedCharacter();
       actor = pickedId ? game.actors?.get(pickedId) : null;
@@ -1524,7 +2299,7 @@ export class TerminalViewerApp extends BaseApplication {
     if (!actor) return;
     const res = await runEddiesClaim({
       actor, raw: raw.contentData, messageId: id,
-      sourceLabel: this._terminalName?.() || this.item?.name || 'terminal',
+      sourceLabel: this._terminalName?.() || this.item?.name || 'terminal', host: this.element,
     });
     if (res?.success) this.render(false);
   }
@@ -1536,9 +2311,207 @@ export class TerminalViewerApp extends BaseApplication {
     const idx = Number(target?.dataset?.credIndex);
     const raw = (this.terminalService?.getAccountMessages(this.item, this._accountId) || []).find(m => m.messageId === id);
     if (!raw || raw.contentType !== 'credentials' || Number.isNaN(idx)) return;
-    const actor = game.user?.character;
-    const ok = await runCrack({ actor, raw: raw.contentData, entryIndex: idx, messageId: id, force: isGM() && !actor });
+    const actor = resolveOperator();
+    const ok = await runCrack({ actor, raw: raw.contentData, entryIndex: idx, messageId: id, force: isGM() && !actor, host: this.element });
     if (ok) this.render(false);
+  }
+
+  /** Locked sub-content — decrypt a gallery frame / declassify redactions (shared flow). */
+  async _onContentUnlock(event, target) {
+    const id = target?.closest?.('[data-entry-id]')?.dataset.entryId || this._selectedMessageId;
+    const kind = target?.dataset?.unlockKind;
+    const raw = (this.terminalService?.getAccountMessages(this.item, this._accountId) || []).find(m => m.messageId === id);
+    if (!raw || !kind) return;
+    const actor = resolveOperator();
+    const ok = await runContentUnlock({
+      actor, raw: raw.contentData, kind, index: Number(target?.dataset?.index ?? -1),
+      messageId: id, force: isGM() && (!actor || target?.dataset?.unlockForce === '1'), host: this.element,
+    });
+    if (ok) this.render(false);
+  }
+
+  /**
+   * Switch the OPERATOR — the character every roll / siphon / claim / skill
+   * read in this viewer acts as. Re-resolves `this.actor` (cached in the
+   * constructor) so the change takes effect immediately.
+   */
+  async _onSwitchOperator() {
+    // host = this viewer → the FUI modal inherits this terminal's preset.
+    if (!(await openOperatorPicker(this.element))) return;
+    this.actor = resolveOperator() ?? null;
+    this.actorId = this.actor?.id ?? null;
+    this.render(false);
+  }
+
+  /**
+   * ANALYZE — the player-facing file scan (offered on every typed file so its
+   * presence can't tell them which one is a trojan).
+   */
+  async _onAnalyzeFile(event, target) {
+    const id = target?.closest?.('[data-entry-id]')?.dataset.entryId || this._selectedMessageId;
+    const raw = (this.terminalService?.getAccountMessages(this.item, this._accountId) || []).find(m => m.messageId === id);
+    if (!raw) { log.warn(`Terminal analyze: entry lookup failed (id=${id}).`); return; }
+    const ok = await runAnalyze({
+      actor: this.actor, raw: raw.contentData, contentType: raw.contentType,
+      messageId: id, host: this.element,
+    });
+    if (ok) this.render(false);
+  }
+
+  /** Schematic — GM per-point lock toggle from the legend (no roll). */
+  async _onSchemLockToggle(event, target) {
+    const id = target?.closest?.('[data-entry-id]')?.dataset.entryId || this._selectedMessageId;
+    const raw = (this.terminalService?.getAccountMessages(this.item, this._accountId) || []).find(m => m.messageId === id);
+    if (!raw) return;
+    const ok = await toggleSchematicLock({ raw: raw.contentData, index: Number(target?.dataset?.index ?? -1), messageId: id });
+    if (ok) this.render(false);
+  }
+
+  /** Camera feed — LOOP / CUT / RESTORE / TAKE CONTROL (shared flow). */
+  async _onCamAction(event, target) {
+    const id = target?.closest?.('[data-entry-id]')?.dataset.entryId || this._selectedMessageId;
+    const act = target?.dataset?.camAct;
+    const raw = (this.terminalService?.getAccountMessages(this.item, this._accountId) || []).find(m => m.messageId === id);
+    if (!raw || !act) return;
+    const ok = await runCamAction({
+      actor: resolveOperator(), raw: raw.contentData, act,
+      index: Number(target.dataset.index ?? -1), messageId: id, host: this.element,
+    });
+    // TAKE CONTROL swaps the open monitor's stage in place; the persisted acts
+    // close the lightbox before re-rendering (its document listeners clean up).
+    if (ok && act !== 'control') { closeGalleryLightbox(this.element); this.render(false); }
+  }
+
+  /** GM — jump to a linked scene (calendar events, schematic pins, feed cams). */
+  _onGoToScene(event, target) {
+    const sceneId = target?.closest?.('[data-scene-id]')?.dataset.sceneId;
+    const scene = sceneId ? game.scenes?.get(sceneId) : null;
+    if (!scene) { ui.notifications.warn('NCM | Scene not found.'); return; }
+    scene.view();
+    ui.notifications.info(`NCM | Viewing scene: ${scene.name}`);
+  }
+
+  /** Malware — DEPLOY (normal = mark deployed + GM adjudicates; honeypot = trace). */
+  async _onDeployMalware(event, target) {
+    const id = target?.closest?.('[data-entry-id]')?.dataset.entryId || this._selectedMessageId;
+    const raw = (this.terminalService?.getAccountMessages(this.item, this._accountId) || []).find(m => m.messageId === id);
+    // A silent return here reads as "DEPLOY does nothing" — say why.
+    if (!raw || raw.contentType !== 'malware') {
+      log.warn(`Terminal deploy: entry lookup failed (id=${id}, found=${!!raw}, type=${raw?.contentType}).`);
+      return;
+    }
+    const actor = resolveOperator();
+    const res = await runMalwareDeploy({ actor, raw: raw.contentData, messageId: id, sourceLabel: this._terminalName(), host: this.element });
+    if (res) this.render(false);
+  }
+
+  /** Payload — RUN (utility program: gate roll → module-native effect + macro). */
+  async _onExecutePayload(event, target) {
+    const id = target?.closest?.('[data-entry-id]')?.dataset.entryId || this._selectedMessageId;
+    const raw = (this.terminalService?.getAccountMessages(this.item, this._accountId) || []).find(m => m.messageId === id);
+    if (!raw || raw.contentType !== 'payload') return;
+    const actor = resolveOperator();
+    const res = await runPayloadExecute({ actor, raw: raw.contentData, messageId: id, sourceLabel: this._terminalName(), host: this.element, force: isGM() && !actor });
+    if (res) this.render(false);
+  }
+
+  /** Payload — KILL a running timed effect early. */
+  async _onPayloadKill(event, target) {
+    const id = target?.closest?.('[data-entry-id]')?.dataset.entryId || this._selectedMessageId;
+    const raw = (this.terminalService?.getAccountMessages(this.item, this._accountId) || []).find(m => m.messageId === id);
+    if (!raw) return;
+    const res = await runPayloadKill({ actor: resolveOperator(), raw: raw.contentData, messageId: id, host: this.element });
+    if (res) this.render(false);
+  }
+
+  /** Payload — SNIFF a suspected disguised file (roll to unmask). */
+  async _onPayloadSniff(event, target) {
+    const id = target?.closest?.('[data-entry-id]')?.dataset.entryId || this._selectedMessageId;
+    const raw = (this.terminalService?.getAccountMessages(this.item, this._accountId) || []).find(m => m.messageId === id);
+    if (!raw) return;
+    const actor = resolveOperator();
+    const ok = await runPayloadSniff({ actor, raw: raw.contentData, messageId: id, force: isGM(), host: this.element });
+    if (ok) this.render(false);
+  }
+
+  /**
+   * MOTION (#38) — decide what, if anything, animates on THIS render.
+   *
+   * The whole point is restraint: the terminal re-renders on every click, so
+   * anything keyed to "a render happened" would jitter permanently. We compare
+   * a cheap signature of the LIST against the last one and only cascade when the
+   * list really changed (folder switch, account switch, MAIL/FILES solo, page).
+   * Selecting a row inside the same list must NOT re-cascade it — that was the
+   * whole failure mode this guards against.
+   */
+  _stampMotion(context) {
+    const el = this.element;
+    if (!el || this._state !== 'mailbox') return;
+
+    // Signature of WHAT'S IN the list — deliberately excludes the selection.
+    const sig = [
+      this._accountId, this._currentFolder, this._envFilter || 'all', this._currentPage,
+      (context?.messages || []).map(m => m.messageId).join(','),
+    ].join('|');
+    const listEl = el.querySelector('.ncm-term__list');
+    if (listEl && sig !== this._listSig) {
+      listEl.classList.remove('is-fresh');
+      void listEl.offsetWidth;            // reflow → the animation actually re-runs
+      listEl.classList.add('is-fresh');
+    }
+    this._listSig = sig;
+
+    // The detail slides only when a DIFFERENT message is opened (not when the
+    // same one re-renders because you claimed eddies / decrypted a frame / …).
+    const detailEl = el.querySelector('.ncm-term__detail');
+    if (detailEl && this._selectedMessageId && this._selectedMessageId !== this._renderedMsgId) {
+      detailEl.classList.remove('is-fresh');
+      void detailEl.offsetWidth;
+      detailEl.classList.add('is-fresh');
+    }
+  }
+
+  /**
+   * MOTION (#38) — the login pick: the chosen card holds (lift + glow) while the
+   * others fall away, then the flow continues into the auth dialog / mailbox.
+   * The machine reads as RESPONDING to your choice instead of teleporting.
+   * Resolves immediately under reduced motion (the visual still resolves, it
+   * just doesn't wait).
+   */
+  async _playCardPick(target) {
+    // Works for whichever login style is on screen — cards / roster / portraits
+    // are the same "pick → shell" beat. (crt, lockscreen and keypad have their
+    // own character and deliberately opt out: no wrapper, no animation.)
+    const card = target?.closest?.('.ncm-term__card, .ncm-term__rrow, .ncm-term__port');
+    const wrap = card?.closest?.('.ncm-term__cards, .ncm-term__roster, .ncm-term__portraits');
+    if (!card || !wrap) return;
+    let reduced = false;
+    try { reduced = matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (_) { /* no matchMedia */ }
+    card.classList.add('is-picked');
+    wrap.classList.add('is-picking');
+    if (reduced) return;
+    await new Promise(r => this._timer(r, 260));   // the cards' own transition is .3s
+  }
+
+  /**
+   * Mark the open feed's channels as capturable (or not) for the lightbox:
+   * `data-save-frame` + `data-save-frame-dv` when SAVE FRAME is allowed, and
+   * `data-no-copy` when the stream is (as it always is) uncopyable — so the
+   * monitor can state the rule instead of silently omitting a button.
+   */
+  _stampFrameCapture() {
+    const msg = this._currentSelectedRaw();
+    if (!msg || msg.contentType !== 'gallery' || msg.contentData?.mode !== 'feed') return;
+    const policy = this.terminalService?.resolveEntryExfil?.(this.item, msg);
+    const sf = policy?.saveFrame;
+    const noCopy = !!policy?.master && !!policy?.agent?.denied;
+    for (const btn of this.element?.querySelectorAll('.ncm-ct-cam__view') || []) {
+      if (sf?.allow) {
+        btn.dataset.saveFrame = '1';
+        if (sf.require) btn.dataset.saveFrameDv = String(sf.dv);
+      }
+      if (noCopy) btn.dataset.noCopy = '1';
+    }
   }
 
   /** Credentials — show/hide a secret (client-side only). */
@@ -1546,6 +2519,9 @@ export class TerminalViewerApp extends BaseApplication {
 
   /** Syslog — severity filter chips (client-side only). */
   _onSyslogFilter(event, target) { applySyslogFilter(target); }
+
+  /** Gallery — enlarge a thumbnail (immersive NCM lightbox). */
+  _onGalleryView(event, target) { openGalleryImage(target, { host: this.element }); }
 
   // ═══════════════════════════════════════════════════════════
   //  Helpers
@@ -1661,7 +2637,11 @@ export class TerminalViewerApp extends BaseApplication {
   async close(options) {
     this._timers.forEach(clearTimeout);
     this._timers = [];
+    if (this._lockdownTimer) { clearInterval(this._lockdownTimer); this._lockdownTimer = null; }
     Hooks.off('updateItem', this._onItemUpdate);
+    Hooks.off('createJournalEntryPage', this._onPageChange);
+    Hooks.off('updateJournalEntryPage', this._onPageChange);
+    Hooks.off('deleteJournalEntryPage', this._onPageChange);
     if (this._onActivity) {
       document.removeEventListener('pointerdown', this._onActivity, true);
       document.removeEventListener('keydown', this._onActivity, true);

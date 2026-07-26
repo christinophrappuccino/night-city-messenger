@@ -129,11 +129,35 @@ export class ThemeService {
     }
 
     // Wallpaper — always clear when unset so removing a terminal's wallpaper
-    // doesn't leave a stale inline var on the element.
+    // doesn't leave a stale inline var on the element. Strength (0–100) rides
+    // along as an opacity var — real photos at the old fixed 13% over a dark
+    // bg read as "wallpaper doesn't work", so it's user-tunable (default 25).
+    // The path is ABSOLUTIZED (leading /): a relative url() inside a custom
+    // property can resolve against the stylesheet that *uses* the var (i.e.
+    // /modules/.../styles/components/ → 404) instead of the document base,
+    // depending on where the value was declared — a rooted path is unambiguous.
     if (prefs.wallpaper) {
-      root.style.setProperty('--ncm-wallpaper', `url('${prefs.wallpaper}')`);
-    } else {
+      let wp = String(prefs.wallpaper);
+      if (!/^(?:[a-z][a-z0-9+.-]*:|\/)/i.test(wp)) {
+        // getRoute honors a configured Foundry route prefix; fall back to a
+        // bare leading slash outside Foundry (node sims / headless pages).
+        // typeof-guarded — a bare `foundry?.` on an undeclared identifier
+        // still ReferenceErrors (the ImagePopout lexical-global lesson).
+        const route = (typeof foundry !== 'undefined') ? foundry.utils?.getRoute : null;
+        wp = route ? route(wp) : `/${wp}`;
+      }
+      root.style.setProperty('--ncm-wallpaper', `url('${wp.replace(/'/g, "\\'")}')`);
+      root.style.setProperty('--ncm-wallpaper-strength', String((prefs.wallpaperStrength ?? 25) / 100));
+    } else if (isRoot) {
       root.style.removeProperty('--ncm-wallpaper');
+      root.style.removeProperty('--ncm-wallpaper-strength');
+    } else {
+      // Element-scoped themes (terminals, preview blocks) are self-contained:
+      // write an explicit `none` instead of removing, or the element would
+      // INHERIT the player's :root wallpaper — a corp terminal wearing the
+      // player's Agent wallpaper.
+      root.style.setProperty('--ncm-wallpaper', 'none');
+      root.style.setProperty('--ncm-wallpaper-strength', '0');
     }
 
     log.debug(`Theme applied${isRoot ? '' : ' (element-scoped)'}: ${prefs.preset ?? 'custom'}`);

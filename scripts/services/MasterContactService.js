@@ -74,6 +74,15 @@ export class MasterContactService {
   }
 
   /**
+   * Is this email a send-only system address (players can't message/reply/add)?
+   * @param {string} email
+   * @returns {boolean}
+   */
+  isSendOnly(email) {
+    return !!this.getByEmail(email)?.sendOnly;
+  }
+
+  /**
    * Search contacts by name, email, alias, organization, or tags.
    * @param {string} query
    * @returns {Array<object>}
@@ -186,6 +195,11 @@ export class MasterContactService {
       relationships: data.relationships || {},
       folder: data.folder?.trim() || '',
       burned: !!data.burned,
+      // Send-only system address (system@localhost, no-reply@…): the GM can
+      // SEND from it, but players can never message it, reply to it, or add
+      // it to their contacts. Enforced in MessageService.sendMessage and every
+      // add/reply affordance (viewer, shard/terminal sender chips).
+      sendOnly: !!data.sendOnly,
       encrypted: !!data.encrypted,
       encryptionDV: data.encryptionDV || 15,
       encryptionSkill: data.encryptionSkill?.trim() || 'Interface',
@@ -226,7 +240,7 @@ export class MasterContactService {
     const allowed = [
       'name', 'email', 'alias', 'organization', 'phone', 'location', 'portrait',
       'tags', 'notes', 'actorId', 'type', 'role', 'folder',
-      'trust', 'relationships', 'burned',
+      'trust', 'relationships', 'burned', 'sendOnly',
       'encrypted', 'encryptionDV', 'encryptionSkill', 'blackIce', 'blackIceDamage',
       'iceSource', 'iceCustomName', 'iceCustomPortrait', 'iceActorId', 'maxBreachAttempts',
       'revealTrust',

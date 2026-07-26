@@ -86,6 +86,18 @@
 }
 .ncm-terminal-app .window-content > .ncm-terminal-viewer { flex: 1 1 auto; }
 
+/* Copyable text — core + CPR reset `* { user-select: none }`, so no terminal
+   text (message bodies, subjects, credentials) could be selected. Re-enable on
+   descendants directly (the `container *` pattern); keep click targets — login
+   cards, message rows, buttons, the keypad — non-selectable so a click doesn't
+   start a text selection. */
+.ncm-app .ncm-terminal-viewer, .ncm-app .ncm-terminal-viewer * { user-select: text; }
+.ncm-app .ncm-terminal-viewer button,
+.ncm-app .ncm-terminal-viewer [data-action],
+.ncm-app .ncm-terminal-viewer [data-action] *,
+.ncm-app .ncm-terminal-viewer .ncm-term__pad,
+.ncm-app .ncm-terminal-viewer .ncm-term__pad * { user-select: none; }
+
 .ncm-terminal-viewer {
   --ncm-term-tint: color-mix(in srgb, var(--ncm-primary, #F65261) 8%, transparent);
   --ncm-term-hdr: color-mix(in srgb, var(--ncm-primary, #F65261) 13%, var(--ncm-bg-deep, #0a0a0f));
@@ -132,6 +144,23 @@
 }
 
 /* ── Window-frame chrome (desktop): title "{user} @ {ORG}" pop ── */
+/* Window-frame chrome follows the TERMINAL theme (the viewer's _onRender also
+   writes the palette vars onto the app root, since the header sits outside
+   .ncm-terminal-viewer and would otherwise resolve --ncm-* from :root — the
+   PLAYER's theme). !important beats Foundry's frame styling. */
+.ncm-terminal-app .window-header {
+  background: var(--ncm-bg-deep, #0a0a12) !important;
+  border-bottom: 1px solid color-mix(in srgb, var(--ncm-primary, #F65261) 40%, transparent) !important;
+  color: var(--ncm-text-secondary, #9d9db4) !important;
+}
+/* Foundry colors the inner <i> of header controls directly — force both
+   (the admin-theme window-chrome precedent). */
+.ncm-terminal-app .window-header .header-control,
+.ncm-terminal-app .window-header .header-control > i { color: var(--ncm-text-secondary, #9d9db4) !important; }
+.ncm-terminal-app .window-header .header-control:hover,
+.ncm-terminal-app .window-header .header-control:hover > i { color: var(--ncm-text-primary, #ededf2) !important; }
+.ncm-terminal-app .window-header .header-control[data-action="close"]:hover,
+.ncm-terminal-app .window-header .header-control[data-action="close"]:hover > i { color: var(--ncm-danger, #F65261) !important; }
 .ncm-terminal-app .window-title { font-family: var(--ncm-font-title); }
 .ncm-term__title-org {
   font-weight: 900; font-size: calc(16px * var(--ncm-text-scale, 1)); letter-spacing: 2px; color: var(--ncm-primary);
@@ -155,11 +184,18 @@
 .ncm-term__hud-gm { color: var(--ncm-accent); cursor: pointer; padding: 2px 8px; border-radius: 5px; border: 1px solid color-mix(in srgb, var(--ncm-accent) 35%, transparent); background: color-mix(in srgb, var(--ncm-accent) 10%, transparent); }
 .ncm-term__hud-gm:hover { background: color-mix(in srgb, var(--ncm-accent) 18%, transparent); }
 .ncm-term__hud-sep { opacity: .35; }
+/* HUD signal bars — honest now: `on` bars follow the uplink's signal %
+   (80+=4, 50+=3, 25+=2, >0=1, wired=always 4), matching the app-wide
+   thresholds; unlit bars stay as dim ghosts. */
 .ncm-term__bars { display: inline-flex; align-items: flex-end; gap: 2px; height: 11px; }
-.ncm-term__bars b { width: 3px; background: var(--ncm-success); border-radius: 1px; }
+.ncm-term__bars b { width: 3px; background: color-mix(in srgb, var(--ncm-success) 22%, transparent); border-radius: 1px; }
+.ncm-term__bars b.on { background: var(--ncm-success); }
 .ncm-term__bars b:nth-child(1){height:4px} .ncm-term__bars b:nth-child(2){height:7px}
 .ncm-term__bars b:nth-child(3){height:9px} .ncm-term__bars b:nth-child(4){height:11px}
 .ncm-term__bars--off b { background: var(--ncm-text-muted); opacity: .4; }
+.ncm-term__netpill-wired { font-size: calc(9px * var(--ncm-text-scale, 1)); opacity: .85; }
+/* Wired uplink — the HUD shows a hardline icon INSTEAD of the signal bars. */
+.ncm-term__hud-wired { color: var(--ncm-success); font-size: calc(12px * var(--ncm-text-scale, 1)); }
 
 /* ── Machine uplink — pill + dropdown (the TERMINAL's own connection).
       Hosted in the mailbox HUD and the login hero; the dropdown anchors to the
@@ -222,6 +258,9 @@
   background: color-mix(in srgb, var(--net-c, var(--ncm-primary)) 9%, transparent);
   border: 1px solid color-mix(in srgb, var(--net-c, var(--ncm-primary)) 22%, transparent);
 }
+/* Custom network images (the ncm-net-icon helper) fit the icon squares */
+.ncm-term__netopt-ic .ncm-net-icon-img,
+.ncm-term__netcard-ic .ncm-net-icon-img { border-radius: 6px; padding: 2px; }
 .ncm-term__netopt-info { flex: 1; min-width: 0; }
 .ncm-term__netopt-nm { font-family: var(--ncm-font-display); font-weight: 700; font-size: calc(13px * var(--ncm-text-scale, 1)); color: var(--ncm-text-primary); }
 .ncm-term__netopt-ty { font-family: var(--ncm-font-mono); font-size: calc(9.5px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); margin-top: 1px; }
@@ -262,6 +301,12 @@
   border: 1px solid color-mix(in srgb, var(--ncm-secondary) 40%, transparent);
   background: color-mix(in srgb, var(--ncm-secondary) 10%, transparent);
 }
+/* GM-only HIDDEN chip — secret-login accounts the players never see listed. */
+.ncm-term__offnet--hidden {
+  color: var(--ncm-warning, #f7c948);
+  border-color: color-mix(in srgb, var(--ncm-warning, #f7c948) 40%, transparent);
+  background: color-mix(in srgb, var(--ncm-warning, #f7c948) 8%, transparent);
+}
 
 /* Join-challenge overlay — the network's own security block in SECURE SHELL
    dress, floated over the login/mailbox state. */
@@ -278,13 +323,159 @@
 .ncm-term__netauth-cancel:hover { color: var(--ncm-text-secondary); }
 
 /* ── Mailbox panes ── */
-.ncm-term__panes { flex: 1; display: grid; grid-template-columns: 250px 1fr; min-height: 0; }
+/* ═══════════════════════════════════════════════════════════════════════════
+   MOTION (2026-07-13, #38). The terminal inherits the MessageViewer's motion
+   vocabulary so the two apps feel like ONE product — expo-out easing (fast
+   start, soft landing), 0.3s entrances, 0.18s micro-interactions, translate +
+   fade only (never scale-only, never bounce). All of it is reduced-motion
+   gated at the bottom of this file.
+   RULE: motion on ARRIVAL and on STATE CHANGE, never on idle — and the row
+   stagger must NOT re-run on every render (the terminal re-renders on every
+   click; a stagger tied to render would twitch the list constantly). The
+   `is-fresh` classes are stamped by _onRender ONLY when the thing they
+   describe actually changed.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.ncm-terminal-viewer {
+  --ncm-term-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --ncm-term-fast: .18s;
+  --ncm-term-base: .3s;
+}
+
+/* ① Message rows cascade in (folder switch / account switch / first open). */
+@keyframes ncm-term-rowin { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.ncm-term__list.is-fresh .ncm-term__row {
+  animation: ncm-term-rowin var(--ncm-term-base) var(--ncm-term-ease) both;
+  /* Capped so a full page of rows can't turn the cascade into a wait. */
+  animation-delay: calc(min(var(--ncm-i, 0), 9) * 40ms);
+}
+/* ② The detail pane slides when a DIFFERENT message is opened — selection
+      reads as the machine fetching something, not a div swapping. */
+@keyframes ncm-term-detin { from { opacity: 0; transform: translateX(14px); } to { opacity: 1; transform: none; } }
+.ncm-term__detail.is-fresh { animation: ncm-term-detin var(--ncm-term-base) var(--ncm-term-ease) both; }
+
+/* Micro-interactions: the surface reacts under the cursor. */
+.ncm-term__row {
+  transition: transform var(--ncm-term-fast) var(--ncm-term-ease),
+              border-color var(--ncm-term-fast) ease,
+              background var(--ncm-term-fast) ease;
+}
+.ncm-term__row:hover { transform: translateX(2px); }
+.ncm-term__btn, .ncm-term__chip {
+  transition: transform var(--ncm-term-fast) var(--ncm-term-ease),
+              background var(--ncm-term-fast) ease,
+              box-shadow var(--ncm-term-fast) ease,
+              color var(--ncm-term-fast) ease;
+}
+.ncm-term__btn:hover, .ncm-term__chip:hover { transform: translateY(-1px); }
+.ncm-term__exfil-btn:hover { box-shadow: 0 3px 10px color-mix(in srgb, var(--ncm-primary) 18%, transparent); }
+/* A dead deny-chip must NOT lift — it isn't going to do anything. */
+.ncm-term__exfil-btn.is-denied:hover { transform: none; box-shadow: none; }
+.ncm-term__fold { transition: background var(--ncm-term-fast) ease, color var(--ncm-term-fast) ease; }
+
+/* ③ Account switcher — the dropdown unfolds from its top edge; caret rotates. */
+@keyframes ncm-term-dropin {
+  from { opacity: 0; transform: translateY(-6px) scaleY(.96); }
+  to   { opacity: 1; transform: none; }
+}
+.ncm-term__acdrop { transform-origin: top; animation: ncm-term-dropin var(--ncm-term-fast) var(--ncm-term-ease) both; }
+.ncm-term__acsw-caret { transition: transform var(--ncm-term-base) var(--ncm-term-ease); }
+.ncm-term__acsw.is-open .ncm-term__acsw-caret { transform: rotate(180deg); }
+
+/* ④ Login — the picked card holds while the others fall away, then the shell
+      rises. Stamped by _playCardPick() before the auth dialog opens. */
+.ncm-term__cards { transition: opacity var(--ncm-term-base) var(--ncm-term-ease); }
+.ncm-term__card {
+  transition: transform var(--ncm-term-base) var(--ncm-term-ease),
+              opacity var(--ncm-term-base) var(--ncm-term-ease),
+              border-color var(--ncm-term-fast) ease,
+              box-shadow var(--ncm-term-fast) ease;
+}
+.ncm-term__card:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0, 0, 0, .4); }
+.ncm-term__cards.is-picking .ncm-term__card { opacity: 0; transform: scale(.94) translateY(6px); pointer-events: none; }
+.ncm-term__cards.is-picking .ncm-term__card.is-picked {
+  opacity: 1; transform: scale(1.03);
+  border-color: var(--ncm-primary);
+  box-shadow: 0 0 26px color-mix(in srgb, var(--ncm-primary) 30%, transparent);
+}
+/* Roster + portraits login styles are the same pick → shell beat, for free.
+   (Their pick containers are .ncm-term__roster / .ncm-term__portraits, so they
+   carry `is-picking` too — _playCardPick finds whichever wrapper is present.) */
+.ncm-term__rrow, .ncm-term__port {
+  transition: transform var(--ncm-term-base) var(--ncm-term-ease),
+              opacity var(--ncm-term-base) var(--ncm-term-ease),
+              box-shadow var(--ncm-term-fast) ease;
+}
+.ncm-term__rrow:hover, .ncm-term__port:hover { transform: translateY(-2px); }
+.ncm-term__roster.is-picking .ncm-term__rrow,
+.ncm-term__portraits.is-picking .ncm-term__port { opacity: 0; transform: translateY(6px); pointer-events: none; }
+.ncm-term__roster.is-picking .ncm-term__rrow.is-picked,
+.ncm-term__portraits.is-picking .ncm-term__port.is-picked {
+  opacity: 1; transform: scale(1.03);
+  box-shadow: 0 0 26px color-mix(in srgb, var(--ncm-primary) 30%, transparent);
+}
+
+.ncm-term__panes { position: relative; flex: 1; display: grid; grid-template-columns: 250px 1fr; min-height: 0;
+  transition: grid-template-columns var(--ncm-term-base) var(--ncm-term-ease); }
+
+/* ── Sidebar collapse (the MessageViewer --list-collapsed precedent) ──
+   The mailbox folds away so a spreadsheet / camera multiplex / schematic gets
+   the whole machine. The column goes to 0 and the SIDE is display:none'd —
+   width alone isn't enough, since its children have min-widths and would spill
+   into the detail pane. The toggle floats on the divider so it's reachable in
+   BOTH states (a toggle that collapses with its panel can't bring it back).
+
+   The panes are pinned to EXPLICIT columns. Without this, removing the sidebar
+   from flow made the DETAIL pane the first in-flow child, so grid auto-placement
+   dropped it into column 1 — the column we'd just collapsed to 0 — and the
+   whole terminal rendered as an empty sliver.
+
+   The sidebar stays IN FLOW (min-width:0 + overflow hidden + opacity) rather
+   than display:none, so the column width can ANIMATE — display:none can't
+   transition, and it was also what caused the auto-placement bug above.
+   min-width:0 is what lets a grid item shrink below its content. */
+.ncm-term__side   { grid-column: 1; min-width: 0; transition: opacity var(--ncm-term-fast) ease; }
+.ncm-term__detail { grid-column: 2; }
+.ncm-term__panes--collapsed { grid-template-columns: 0 1fr; }
+.ncm-term__panes--collapsed .ncm-term__side { opacity: 0; pointer-events: none; }
+.ncm-app button.ncm-term__side-toggle {
+  appearance: none !important; -webkit-appearance: none !important;
+  position: absolute; top: 8px; left: 250px; z-index: 6;
+  transform: translateX(-50%);
+  width: 18px !important; height: 34px !important; min-height: 0 !important;
+  display: grid; place-items: center; margin: 0 !important; padding: 0 !important;
+  background: var(--ncm-bg-elevated) !important;
+  border: 1px solid color-mix(in srgb, var(--ncm-primary) 30%, transparent) !important;
+  border-radius: 4px !important; box-shadow: none !important; cursor: pointer;
+  color: var(--ncm-primary) !important;
+  font-size: calc(9px * var(--ncm-text-scale, 1)) !important;
+  transition: left .18s ease, background .15s ease;
+}
+.ncm-app button.ncm-term__side-toggle i { margin: 0 !important; }
+.ncm-app button.ncm-term__side-toggle:hover {
+  background: color-mix(in srgb, var(--ncm-primary) 20%, var(--ncm-bg-elevated)) !important;
+}
+/* Collapsed: the toggle parks on the left edge as the way back in, and the
+   detail pane makes room for it so the file's own header can't sit underneath.
+   NOTE the selector must out-specify the base rule (`.ncm-app button.…` =
+   0,2,1) or `left` never moves and the toggle floats over the content where the
+   divider used to be. */
+.ncm-app .ncm-term__panes--collapsed button.ncm-term__side-toggle {
+  left: 0; transform: none; border-radius: 0 4px 4px 0 !important;
+}
+.ncm-term__panes--collapsed .ncm-term__detail { padding-left: 34px; }
+
 .ncm-term__side {
   border-right: 1px solid color-mix(in srgb, var(--ncm-primary) 16%, transparent);
-  /* overflow-x MUST stay hidden: one-axis auto computes the other axis to auto
-     too, and a 1px overrun spawns a phantom horizontal scrollbar (CLAUDE.md). */
-  padding: 12px; overflow-y: auto; overflow-x: hidden; position: relative;
+  /* Flex column: account switcher + folders + list label are PINNED; only
+     .ncm-term__list scrolls (the scroll memo targets it). overflow hidden on
+     the column itself so the pinned zone can never scroll away. */
+  padding: 12px; overflow: hidden; position: relative;
+  display: flex; flex-direction: column; min-height: 0;
 }
+/* Folder strip — pinned; with many folders it scrolls internally instead of
+   starving the message list (cap ≈ 40% of the sidebar). */
+.ncm-term__folds { flex: 0 1 auto; max-height: 40%; overflow-y: auto; overflow-x: hidden; }
+.ncm-term__list { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; gap: 6px; padding-bottom: 4px; }
 .ncm-term__acsw {
   position: relative; display: flex; align-items: center; gap: 9px; padding: 9px 11px;
   border-radius: 9px; cursor: pointer; margin-bottom: 12px; background: var(--ncm-bg-surface);
@@ -350,35 +541,206 @@
 /* sender-row action cluster (right-aligned) */
 .ncm-term__sender-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
 .ncm-term__sender-actions .ncm-term__chip { margin-left: 0; }
-.ncm-term__gm-edit { width: 28px; height: 28px; border-radius: 6px; display: grid; place-items: center; cursor: pointer; font-size: calc(12px * var(--ncm-text-scale, 1)); color: var(--ncm-accent); background: color-mix(in srgb, var(--ncm-accent) 10%, transparent); border: 1px solid color-mix(in srgb, var(--ncm-accent) 35%, transparent); }
+.ncm-term__gm-edit { width: 24px; height: 24px; border-radius: 4px; display: grid; place-items: center; cursor: pointer; font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--ncm-accent); background: color-mix(in srgb, var(--ncm-accent) 10%, transparent); border: 1px solid color-mix(in srgb, var(--ncm-accent) 35%, transparent); }
 .ncm-term__gm-edit--danger { color: var(--ncm-danger); background: color-mix(in srgb, var(--ncm-danger) 10%, transparent); border-color: color-mix(in srgb, var(--ncm-danger) 35%, transparent); }
+/* GM "Move to…" folder selector (replaced the bookmark/archive toggles). The
+   width/height/appearance resets beat Foundry's full-width select defaults. */
+.ncm-app select.ncm-term__move-select {
+  flex: 0 0 auto; width: auto !important; height: 24px; padding: 0 20px 0 7px;
+  font-family: var(--ncm-font-mono); font-size: calc(9.5px * var(--ncm-text-scale, 1));
+  color: var(--ncm-accent); cursor: pointer;
+  background-color: color-mix(in srgb, var(--ncm-accent) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ncm-accent) 35%, transparent); border-radius: 4px;
+}
+.ncm-app select.ncm-term__move-select option { background: var(--ncm-bg-deep, #0a0a12); color: var(--ncm-text-primary, #ededf2); }
 
-.ncm-term__row { padding: 9px; border-radius: 7px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,.04); display: flex; gap: 9px; align-items: flex-start; }
-.ncm-term__row.is-active { background: var(--ncm-term-tint); }
-.ncm-term__pdot { font-size: calc(8px * var(--ncm-text-scale, 1)); margin-top: 5px; }
+/* Message rows — separated cards: sender + date on line 1, subject, then a
+   one-line preview (body snippet, or the file-type tag for typed content).
+   The left accent edge follows priority; is-active swaps to the primary. */
+.ncm-term__row {
+  padding: 8px 10px; border-radius: 7px; cursor: pointer; flex: 0 0 auto;
+  border: 1px solid color-mix(in srgb, var(--ncm-primary) 10%, transparent);
+  border-left: 3px solid color-mix(in srgb, var(--ncm-text-muted) 35%, transparent);
+  background: color-mix(in srgb, var(--ncm-bg-surface) 55%, transparent);
+}
+.ncm-term__row:hover { border-color: color-mix(in srgb, var(--ncm-primary) 35%, transparent); }
+.ncm-term__row--urgent { border-left-color: var(--ncm-accent); }
+.ncm-term__row--critical { border-left-color: var(--ncm-danger); }
+.ncm-term__row.is-active { background: var(--ncm-term-tint); border-left-color: var(--ncm-primary); border-color: color-mix(in srgb, var(--ncm-primary) 30%, transparent); }
+.ncm-term__pdot { font-size: calc(7px * var(--ncm-text-scale, 1)); flex: 0 0 auto; }
 .ncm-term__pdot--normal { color: var(--ncm-text-muted); }
 .ncm-term__pdot--urgent { color: var(--ncm-accent); }
 .ncm-term__pdot--critical { color: var(--ncm-danger); }
-.ncm-term__row-meta { flex: 1; min-width: 0; }
-.ncm-term__row-from { font-family: var(--ncm-font-mono); font-size: calc(11px * var(--ncm-text-scale, 1)); color: color-mix(in srgb, var(--ncm-secondary) 70%, var(--ncm-text-muted)); }
-.ncm-term__row-subj { font-family: var(--ncm-font-body); font-weight: 700; font-size: calc(14px * var(--ncm-text-scale, 1)); color: var(--ncm-text-primary); margin-top: 1px; }
+/* ONE row hierarchy for mail AND files (#37 revision). Line 1 is the ANCHOR
+   (sender / filename — bold, primary, same size in both), line 2 says what it
+   is, line 3 is muted detail. Before this, mail anchored on a 14px bold SUBJECT
+   while a file anchored on its 11.5px filename, so a mixed list read as two
+   competing lists. */
+.ncm-term__row-l1 { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+.ncm-term__row-from {
+  font-family: var(--ncm-font-body); font-weight: 700; font-size: calc(12.5px * var(--ncm-text-scale, 1));
+  color: var(--ncm-text-primary);
+  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ncm-term__row-time { font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); flex: 0 0 auto; }
+.ncm-term__row-subj {
+  font-family: var(--ncm-font-body); font-weight: 400; font-size: calc(12px * var(--ncm-text-scale, 1));
+  color: var(--ncm-text-secondary); margin-top: 2px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ncm-term__row-prev {
+  font-family: var(--ncm-font-body); font-size: calc(10.5px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted);
+  margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ncm-term__row-prev--path { font-family: var(--ncm-font-mono); font-size: calc(9.5px * var(--ncm-text-scale, 1)); }
+/* Line 2 of a typed/file row — a small type CHIP (+ size), not a shouty
+   uppercase pseudo-preview line. */
+.ncm-term__row-l2 { display: flex; align-items: center; gap: 6px; margin-top: 3px; min-width: 0; }
+.ncm-term__row-tag {
+  flex: 0 0 auto; display: inline-flex; align-items: center; gap: 4px;
+  font-family: var(--ncm-font-mono); font-size: calc(8.5px * var(--ncm-text-scale, 1));
+  font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+  color: var(--ct-c, var(--ncm-secondary));
+  border: 1px solid color-mix(in srgb, var(--ct-c, var(--ncm-secondary)) 40%, transparent);
+  background: color-mix(in srgb, var(--ct-c, var(--ncm-secondary)) 8%, transparent);
+  border-radius: 3px; padding: 1px 5px;
+}
+.ncm-term__row-size { font-family: var(--ncm-font-mono); font-size: calc(9.5px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); }
 .ncm-term__row.is-encrypted .ncm-term__row-subj { color: var(--ncm-text-muted); }
 .ncm-term__row.is-encrypted .ncm-term__pdot { color: var(--ncm-accent); }
 
+/* ── FILE rows (#37) — a machine artifact, not mail: the content-type icon
+      replaces the priority dot, the filename replaces the sender, and
+      "type · size · path" replaces the body preview. --ct-c comes from
+      data-ct-color (content-types.css), so each type keeps its own accent. ── */
+.ncm-term__row--file { border-left-color: color-mix(in srgb, var(--ct-c, var(--ncm-secondary)) 65%, transparent); }
+.ncm-term__ficon {
+  flex: 0 0 auto; width: calc(12px * var(--ncm-text-scale, 1)); text-align: center;
+  font-size: calc(10.5px * var(--ncm-text-scale, 1)); color: var(--ct-c, var(--ncm-secondary));
+  align-self: center;
+}
+/* The filename is the file row's ANCHOR — same size/weight as a mail row's
+   sender, just mono (it's a machine name, not a person's). */
+.ncm-term__row-file {
+  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-family: var(--ncm-font-mono); font-weight: 700; font-size: calc(12px * var(--ncm-text-scale, 1));
+  color: var(--ncm-text-primary); letter-spacing: .2px;
+}
+/* A file has no urgency — it just wasn't there before. */
+.ncm-term__new {
+  flex: 0 0 auto; font-family: var(--ncm-font-mono); font-size: calc(8px * var(--ncm-text-scale, 1));
+  font-weight: 700; letter-spacing: 1px; color: var(--ncm-success);
+  border: 1px solid color-mix(in srgb, var(--ncm-success) 50%, transparent);
+  border-radius: 2px; padding: 0 3px;
+}
+.ncm-term__row--file.is-encrypted .ncm-term__ficon { color: var(--ncm-danger); }
+
+/* ── MAIL / FILES solo chips ([data-env-act], the gallery-chip driver) ── */
+.ncm-term__envchips { display: flex; gap: 4px; padding: 0 2px 6px; }
+.ncm-term__envchips button.ncm-term__envchip {
+  appearance: none !important; -webkit-appearance: none !important;
+  flex: 1 1 0; width: auto !important; height: auto !important; min-height: 0 !important;
+  margin: 0 !important; padding: 3px 0 !important;
+  background: transparent !important; border: 1px solid var(--ncm-border) !important;
+  border-radius: 20px !important; box-shadow: none !important; cursor: pointer; line-height: 1.4;
+  font-family: var(--ncm-font-mono); font-size: calc(8.5px * var(--ncm-text-scale, 1));
+  font-weight: 700; letter-spacing: 1px; color: var(--ncm-text-muted) !important;
+}
+.ncm-term__envchips button.ncm-term__envchip.is-on {
+  color: var(--ncm-secondary) !important; border-color: var(--ncm-secondary) !important;
+  background: color-mix(in srgb, var(--ncm-secondary) 10%, transparent) !important;
+}
+/* The solo filter is APP STATE and narrows the message LIST itself (so
+   pagination stays honest) — no CSS hiding needed. `data-env` stays on the rows
+   for styling/debugging. */
+
+/* ── FILE detail header — filesystem questions, not mail ones ── */
+.ncm-term__file {
+  border: 1px solid var(--ncm-border); border-radius: 6px; overflow: hidden;
+  background: var(--ncm-bg-surface); margin-bottom: 14px;
+}
+.ncm-term__file-top {
+  display: flex; align-items: center; gap: 9px; padding: 9px 11px;
+  border-bottom: 1px solid var(--ncm-border);
+  background: color-mix(in srgb, var(--ct-c, var(--ncm-secondary)) 5%, transparent);
+}
+.ncm-term__file-ico {
+  flex: 0 0 auto; width: 32px; height: 32px; border-radius: 6px; display: grid; place-items: center;
+  font-size: calc(14px * var(--ncm-text-scale, 1)); color: var(--ct-c, var(--ncm-secondary));
+  background: color-mix(in srgb, var(--ct-c, var(--ncm-secondary)) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ct-c, var(--ncm-secondary)) 40%, transparent);
+}
+.ncm-term__file-id { flex: 1; min-width: 0; }
+.ncm-term__file-name {
+  font-family: var(--ncm-font-mono); font-weight: 700; font-size: calc(14px * var(--ncm-text-scale, 1));
+  letter-spacing: .5px; color: var(--ncm-text-primary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ncm-term__file-path {
+  font-family: var(--ncm-font-mono); font-size: calc(9.5px * var(--ncm-text-scale, 1));
+  color: var(--ncm-text-muted); margin-top: 1px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ncm-term__file-tag {
+  flex: 0 0 auto; font-family: var(--ncm-font-mono); font-size: calc(8.5px * var(--ncm-text-scale, 1));
+  font-weight: 700; letter-spacing: 1.2px; color: var(--ct-c, var(--ncm-secondary));
+  border: 1px solid color-mix(in srgb, var(--ct-c, var(--ncm-secondary)) 45%, transparent);
+  border-radius: 3px; padding: 2px 7px; text-transform: uppercase;
+}
+.ncm-term__file-gm { display: inline-flex; align-items: center; gap: 5px; flex: 0 0 auto; }
+.ncm-term__file-grid { display: flex; flex-wrap: wrap; }
+.ncm-term__file-f {
+  flex: 1 1 25%; min-width: 96px; padding: 6px 11px;
+  border-right: 1px solid var(--ncm-border); display: block;
+}
+.ncm-term__file-f:last-child { border-right: 0; }
+.ncm-term__file-f b {
+  display: block; font-family: var(--ncm-font-mono); font-size: calc(7.5px * var(--ncm-text-scale, 1));
+  font-weight: 700; letter-spacing: 1.2px; color: var(--ncm-text-muted); text-transform: uppercase;
+}
+.ncm-term__file-f i {
+  display: block; font-style: normal; margin-top: 2px;
+  font-family: var(--ncm-font-mono); font-size: calc(11px * var(--ncm-text-scale, 1));
+  color: var(--ncm-text-secondary);
+}
+/* The owner is a NODE, not an Agent — colour it like one. */
+.ncm-term__file-f:first-child i { color: var(--ncm-accent); }
+
 /* ── Message detail ── */
-.ncm-term__detail { padding: 20px 24px; overflow-y: auto; overflow-x: hidden; }
+/* The open file IS this pane, so the pane is the ONE scroller and the content
+   fills whatever height the window has (#38b). The typed-content blocks cap
+   themselves at 300–460px by default — right for a SHARD (an entry is one of
+   many in a stacked list), wrong here: maximizing the terminal used to give you
+   a big empty pane with a small scrolling box marooned inside it. Unsetting the
+   caps lets a spreadsheet / log / gallery / ledger / calendar grow into the
+   space. Sticky headers (the spreadsheet's column rows) still pin — they just
+   pin against THIS scrollport instead of their own. */
+.ncm-term__detail {
+  padding: 20px 24px; overflow-y: auto; overflow-x: hidden;
+  --ncm-ct-maxh-table: none;
+  --ncm-ct-maxh-feed: none;
+  --ncm-ct-maxh-ledger: none;
+  --ncm-ct-maxh-rail: none;
+  --ncm-ct-maxh-grid: none;
+  --ncm-ct-maxh-body: none;
+}
 .ncm-term__subject { font-family: var(--ncm-font-body); font-weight: 700; font-size: calc(21px * var(--ncm-text-scale, 1)); color: var(--ncm-text-primary); margin-bottom: 10px; }
 .ncm-term__subject .ncm-term__cls { color: var(--ncm-primary); text-shadow: 0 0 12px color-mix(in srgb, var(--ncm-primary) 50%, transparent); }
-.ncm-term__sender { display: flex; align-items: center; gap: 11px; margin-bottom: 10px; }
-.ncm-term__sender .ncm-term__avatar { width: 40px; height: 40px; font-size: calc(15px * var(--ncm-text-scale, 1)); }
-.ncm-term__sender-nm { font-family: var(--ncm-font-body); font-weight: 700; color: var(--ncm-text-primary); font-size: calc(15px * var(--ncm-text-scale, 1)); }
-.ncm-term__sender-em { font-family: var(--ncm-font-mono); font-size: calc(12px * var(--ncm-text-scale, 1)); color: var(--ncm-secondary); }
+.ncm-term__sender { display: flex; align-items: center; gap: 9px; margin-bottom: 10px; }
+.ncm-term__sender .ncm-term__avatar { width: 32px; height: 32px; font-size: calc(12px * var(--ncm-text-scale, 1)); }
+.ncm-term__sender-nm { font-family: var(--ncm-font-body); font-weight: 700; color: var(--ncm-text-primary); font-size: calc(13.5px * var(--ncm-text-scale, 1)); }
+.ncm-term__sender-em { font-family: var(--ncm-font-mono); font-size: calc(10.5px * var(--ncm-text-scale, 1)); color: var(--ncm-secondary); }
+/* Sender-header chips (Add to contacts · Reply via Agent). Deliberately SMALL:
+   they're secondary affordances next to the identity, not calls to action. */
 .ncm-term__chip {
-  display: inline-flex; align-items: center; gap: 6px; font-family: var(--ncm-font-mono); font-size: calc(11px * var(--ncm-text-scale, 1));
-  padding: 6px 12px; border-radius: 20px; cursor: pointer; margin-left: auto;
-  background: color-mix(in srgb, var(--ncm-secondary) 12%, transparent); color: var(--ncm-secondary);
-  border: 1px solid color-mix(in srgb, var(--ncm-secondary) 40%, transparent);
+  display: inline-flex; align-items: center; gap: 5px; font-family: var(--ncm-font-mono);
+  font-size: calc(9.5px * var(--ncm-text-scale, 1)); font-weight: 700; letter-spacing: .5px;
+  padding: 3px 8px; border-radius: 4px; cursor: pointer; margin-left: auto; white-space: nowrap;
+  background: color-mix(in srgb, var(--ncm-secondary) 10%, transparent); color: var(--ncm-secondary);
+  border: 1px solid color-mix(in srgb, var(--ncm-secondary) 35%, transparent);
 }
+.ncm-term__chip:hover { background: color-mix(in srgb, var(--ncm-secondary) 20%, transparent); }
+.ncm-term__chip i { font-size: calc(9px * var(--ncm-text-scale, 1)); }
 .ncm-term__metabar { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 16px; padding-bottom: 14px; border-bottom: 1px solid rgba(255,255,255,.07); }
 .ncm-term__mpill { display: inline-flex; align-items: center; gap: 6px; font-family: var(--ncm-font-mono); font-size: calc(11px * var(--ncm-text-scale, 1)); padding: 4px 10px; border-radius: 6px; }
 .ncm-term__mpill--time { color: var(--ncm-text-secondary); background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); }
@@ -386,11 +748,66 @@
 .ncm-term__mpill--critical { color: var(--ncm-danger); background: color-mix(in srgb, var(--ncm-danger) 12%, transparent); border: 1px solid color-mix(in srgb, var(--ncm-danger) 45%, transparent); }
 .ncm-term__mpill--urgent { color: var(--ncm-accent); background: color-mix(in srgb, var(--ncm-accent) 12%, transparent); border: 1px solid color-mix(in srgb, var(--ncm-accent) 45%, transparent); }
 .ncm-term__mpill--normal { color: var(--ncm-secondary); background: color-mix(in srgb, var(--ncm-secondary) 10%, transparent); border: 1px solid color-mix(in srgb, var(--ncm-secondary) 35%, transparent); }
+/* The 560px cap is a PROSE MEASURE — long lines of body text are hard to read,
+   so a plain letter stays column-width. But TYPED content is not prose: a
+   spreadsheet, dossier, gallery, ledger or camera wall wants every pixel it can
+   get, and this cap was what pinned them all to 560px in a maximized terminal
+   (#38b — "the spreadsheet/dossier/gallery don't get wider"). `--typed` opts
+   out; the plain-body branch keeps the measure. */
 .ncm-term__body { font-family: var(--ncm-font-body); font-size: calc(15px * var(--ncm-text-scale, 1)); color: var(--ncm-text-secondary); line-height: 1.75; max-width: 560px; }
+.ncm-term__body--typed { max-width: none; }
 .ncm-term__body .ncm-term__cls { color: var(--ncm-primary); font-weight: 700; }
-.ncm-term__exfil { margin-top: 20px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-.ncm-term__btn { display: inline-flex; align-items: center; gap: 8px; font-family: var(--ncm-font-mono); font-size: calc(12px * var(--ncm-text-scale, 1)); padding: 9px 15px; border-radius: 7px; cursor: pointer; background: var(--ncm-term-tint); color: var(--ncm-primary); border: 1px solid color-mix(in srgb, var(--ncm-primary) 45%, transparent); }
-.ncm-term__exfil-note { font-family: var(--ncm-font-mono); font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); }
+/* Exfil rail — a row of compact chips, not a bank of buttons. There can be
+   SEVEN of them (incl. SAVE FRAME + dead deny chips), so they have to stay
+   small or they dominate the whole detail pane. */
+.ncm-term__exfil { margin-top: 14px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.ncm-term__btn {
+  display: inline-flex; align-items: center; gap: 5px; font-family: var(--ncm-font-mono);
+  font-size: calc(9.5px * var(--ncm-text-scale, 1)); font-weight: 700; letter-spacing: .5px;
+  padding: 4px 9px; border-radius: 4px; cursor: pointer; white-space: nowrap;
+  background: color-mix(in srgb, var(--ncm-primary) 8%, transparent); color: var(--ncm-primary);
+  border: 1px solid color-mix(in srgb, var(--ncm-primary) 35%, transparent);
+}
+.ncm-term__btn i { font-size: calc(9px * var(--ncm-text-scale, 1)); }
+.ncm-term__exfil-note { font-family: var(--ncm-font-mono); font-size: calc(9.5px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); }
+/* Gated exfil chips carry a small lock; the whole chip glows amber on hover. */
+.ncm-term__exfil-btn.is-gated { border-color: color-mix(in srgb, var(--ncm-warning) 45%, transparent); }
+.ncm-term__exfil-lock { font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-warning); margin-left: 2px; }
+.ncm-term__exfil-btn:hover { background: color-mix(in srgb, var(--ncm-primary) 16%, transparent); }
+/* DENIED (#37) — dead, dashed, and it SAYS WHY. A missing button reads as a
+   broken UI; a stated reason ("LIVE STREAM") teaches the rule. */
+.ncm-term__exfil-btn.is-denied {
+  cursor: not-allowed; opacity: .75;
+  color: var(--ncm-text-muted);
+  border: 1px dashed color-mix(in srgb, var(--ncm-danger) 40%, transparent);
+  background: color-mix(in srgb, var(--ncm-danger) 5%, transparent);
+}
+.ncm-term__exfil-btn.is-denied:hover { background: color-mix(in srgb, var(--ncm-danger) 10%, transparent); }
+.ncm-term__exfil-why {
+  margin-left: 6px; font-family: var(--ncm-font-mono); font-size: calc(8px * var(--ncm-text-scale, 1));
+  font-weight: 700; letter-spacing: .8px; color: var(--ncm-danger);
+  border: 1px solid color-mix(in srgb, var(--ncm-danger) 50%, transparent);
+  border-radius: 2px; padding: 1px 5px; white-space: nowrap;
+}
+/* SAVE FRAME — the way out of a stream. */
+.ncm-term__exfil-btn.is-frame {
+  color: var(--ncm-success);
+  border-color: color-mix(in srgb, var(--ncm-success) 55%, transparent);
+  background: color-mix(in srgb, var(--ncm-success) 8%, transparent);
+}
+.ncm-term__exfil-btn.is-frame:hover { background: color-mix(in srgb, var(--ncm-success) 18%, transparent); }
+
+/* ── Config Exfil tab — per-action policy rows ── */
+.ncm-cfg-exfil-rows { display: flex; flex-direction: column; gap: 6px; }
+.ncm-cfg-exfil-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 6px 8px; border: 1px solid var(--ncm-border); border-radius: 5px; background: color-mix(in srgb, var(--ncm-bg-deep) 40%, transparent); }
+.ncm-cfg-exfil-on { display: inline-flex; align-items: center; gap: 6px; flex: 0 0 150px; width: 150px; font-family: var(--ncm-font-display); font-size: 12.5px; color: var(--ncm-text-primary); cursor: pointer; }
+.ncm-cfg-exfil-on i { color: var(--ncm-secondary); width: 14px; text-align: center; }
+.ncm-cfg-exfil-on span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ncm-cfg-exfil-req { display: inline-flex; align-items: center; gap: 4px; font-family: var(--ncm-font-mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: 1px; color: var(--ncm-text-muted); cursor: pointer; }
+.ncm-app select.ncm-cfg-exfil-skill { flex: 0 0 128px !important; width: 128px !important; min-width: 0 !important; max-width: 128px !important; font-size: 12px !important; cursor: pointer; }
+.ncm-cfg-exfil-dvl { font-family: var(--ncm-font-mono); font-size: 9px; letter-spacing: 1px; text-transform: uppercase; color: var(--ncm-text-muted); }
+.ncm-app input.ncm-cfg-exfil-dv { flex: 0 0 48px !important; width: 48px !important; min-width: 0 !important; max-width: 48px !important; text-align: center !important; }
+.ncm-app input.ncm-cfg-exfil-price { flex: 0 0 74px !important; width: 74px !important; min-width: 0 !important; max-width: 74px !important; text-align: center !important; }
 
 /* ── LOGIN ── */
 .ncm-term__login { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow-y: auto; overflow-x: hidden; }
@@ -447,6 +864,12 @@
 .ncm-term__card-last { font-family: var(--ncm-font-mono); font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); }
 .ncm-term__card-go { font-family: var(--ncm-font-mono); font-size: calc(11px * var(--ncm-text-scale, 1)); color: var(--ncm-primary); display: inline-flex; align-items: center; gap: 5px; }
 .ncm-term__card-default { position: absolute; top: 0; right: 0; font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-bg-deep); background: var(--ncm-accent); padding: 3px 9px; border-radius: 0 12px 0 9px; letter-spacing: .5px; font-weight: 700; }
+/* Locked-out account card — escalation/earned lockout; clicking re-shows the
+   SYSTEM LOCKDOWN takeover (the card is not a way in). */
+.ncm-term__card.is-lockedout { border-color: color-mix(in srgb, #ff2b3d 45%, transparent) !important; opacity: .82; }
+.ncm-term__card.is-lockedout::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: color-mix(in srgb, #ff2b3d 6%, transparent); border-radius: inherit; }
+.ncm-term__card-locked { position: absolute; top: 0; left: 0; z-index: 2; font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1)); color: #fff; background: color-mix(in srgb, #ff2b3d 78%, black); padding: 3px 9px; border-radius: 12px 0 9px 0; letter-spacing: .5px; font-weight: 700; display: flex; align-items: center; gap: 5px; }
+.ncm-term__card-locked i { font-size: calc(8px * var(--ncm-text-scale, 1)); }
 
 .ncm-term__otherbar { grid-column: 1 / -1; display: flex; align-items: center; gap: 13px; padding: 13px 16px; margin-top: 3px; border-radius: 11px; cursor: pointer; background: color-mix(in srgb, var(--ncm-secondary) 6%, transparent); border: 1px dashed color-mix(in srgb, var(--ncm-secondary) 38%, transparent); color: var(--ncm-secondary); }
 .ncm-term__otherbar-ic { width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; font-size: calc(15px * var(--ncm-text-scale, 1)); background: color-mix(in srgb, var(--ncm-secondary) 12%, transparent); }
@@ -674,15 +1097,19 @@
 }
 .ncm-term__badge-bar-v1, .ncm-term__badge-bar-v2 { grid-area: 1 / 1; white-space: nowrap; }
 .ncm-term__badge-bar-v1 { color: var(--ncm-text-primary); animation: ncm-term-lblout .25s ease 1.85s forwards; }
-.ncm-term__badge-bar-v2 { color: #04240f; opacity: 0; animation: ncm-term-lblin .25s ease 1.9s forwards; }
+.ncm-term__badge-bar-v2 { color: #fff; opacity: 0; animation: ncm-term-lblin .25s ease 1.9s forwards; }
 @keyframes ncm-term-lblout { to { opacity: 0; } }
 @keyframes ncm-term-lblin { to { opacity: 1; } }
 
-/* Security scan pass — a light-bar sweeps down the whole card while it verifies. */
+/* Security scan pass — a light-bar sweeps down the whole card while it verifies.
+   It rides --ncm-PRIMARY (the terminal's identity colour), not --ncm-secondary:
+   the secondary slot stays brand cyan in most presets, so on Arasaka (red
+   primary) the scan swept BLUE across a RED card and read as a foreign element.
+   Primary means the scan always belongs to the machine it's scanning. */
 .ncm-term__badge-scan {
   position: absolute; left: 0; right: 0; top: 0; height: 3px; z-index: 5; pointer-events: none; opacity: 0;
-  background: linear-gradient(90deg, transparent, var(--ncm-secondary), transparent);
-  box-shadow: 0 0 16px var(--ncm-secondary), 0 0 44px color-mix(in srgb, var(--ncm-secondary) 45%, transparent);
+  background: linear-gradient(90deg, transparent, var(--ncm-primary), transparent);
+  box-shadow: 0 0 16px var(--ncm-primary), 0 0 44px color-mix(in srgb, var(--ncm-primary) 45%, transparent);
   animation: ncm-term-scan 1.35s ease-in-out .55s forwards;
 }
 @keyframes ncm-term-scan {
@@ -711,6 +1138,10 @@
   font-family: var(--ncm-font-mono); font-size: calc(11px * var(--ncm-text-scale, 1)); letter-spacing: 4px; color: var(--ncm-success, #00ff41);
   opacity: 0; animation: ncm-term-grise .4s ease 2.35s forwards;
 }
+/* With a welcome line under it, ACCESS GRANTED's 16px bottom padding stacked
+   with the welcome's 8px top margin and left a dead 24px band between the two
+   lines. When a welcome follows, the card's own bottom padding does the work. */
+.ncm-term__badge-granted:has(+ .ncm-term__badge-welcome) { padding-bottom: 0; }
 @keyframes ncm-term-grise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
 @media (prefers-reduced-motion: reduce) {
@@ -719,6 +1150,20 @@
   .ncm-term__badge-chk, .ncm-term__badge-bar-v2, .ncm-term__badge-chip { opacity: 1; }
   .ncm-term__badge-bar-v1, .ncm-term__badge-scan { opacity: 0; }
   .ncm-term__badge-bar-fill { width: 100%; }
+
+  /* MOTION PASS (#38) — every entrance/transition collapses to its END state.
+     The rows/detail must still be VISIBLE (animation-fill both would otherwise
+     leave them at opacity 0 if the animation is cancelled). */
+  .ncm-term__list.is-fresh .ncm-term__row,
+  .ncm-term__detail.is-fresh,
+  .ncm-term__acdrop { animation: none !important; opacity: 1 !important; transform: none !important; }
+  .ncm-term__panes, .ncm-term__side, .ncm-term__row, .ncm-term__btn, .ncm-term__chip,
+  .ncm-term__card, .ncm-term__cards, .ncm-term__side-toggle, .ncm-term__acsw-caret,
+  .ncm-term__rrow, .ncm-term__port { transition: none !important; }
+  .ncm-term__row:hover, .ncm-term__btn:hover, .ncm-term__chip:hover,
+  .ncm-term__card:hover, .ncm-term__rrow:hover, .ncm-term__port:hover { transform: none !important; }
+  /* The login pick still RESOLVES (cards clear, chosen one holds) — it just
+     doesn't animate; _playCardPick skips its wait under reduced motion. */
 }
 
 /* Agent (looted phone) form factor → Phase 3. The data model keeps `formFactor`
@@ -728,6 +1173,10 @@
 /* Responsive: collapse the desktop two-pane to single column when narrow. */
 @container (max-width: 560px) {
   .ncm-term__panes { grid-template-columns: 1fr; }
+  /* Single column: both panes stack in column 1. Without this the explicit
+     `grid-column: 2` on the detail pane would spawn an implicit second column
+     and push it off-screen. */
+  .ncm-term__side, .ncm-term__detail { grid-column: 1; }
   .ncm-term__cards { grid-template-columns: 1fr; }
   .ncm-term__netgrid { grid-template-columns: 1fr; }
 }
@@ -854,6 +1303,11 @@
 }
 .ncm-burn-dialog .ncm-burn-row:hover { background: rgba(25,243,247,.06); }
 .ncm-burn-dialog .ncm-burn-row.is-selected { background: rgba(25,243,247,.12); box-shadow: inset 2px 0 0 #19f3f7; }
+/* .is-taken — the choice is already used (e.g. an item already chipped into the
+   Security tab's operator gate). Shown-but-inert beats hidden: it answers "why
+   isn't X in the list?". Its click is refused by the picker, not just by CSS. */
+.ncm-burn-dialog .ncm-burn-row.is-taken { opacity: .4; cursor: default; }
+.ncm-burn-dialog .ncm-burn-row.is-taken:hover { background: none; }
 .ncm-burn-dialog .ncm-burn-row img { width: 24px; height: 24px; border: none; border-radius: 3px; object-fit: cover; flex: 0 0 auto; }
 .ncm-burn-dialog .ncm-burn-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
 .ncm-burn-dialog .ncm-burn-type { font-family: monospace; font-size: calc(9px * var(--ncm-text-scale, 1)); letter-spacing: .5px; text-transform: uppercase; opacity: .55; flex: 0 0 auto; }
@@ -874,6 +1328,22 @@
 }
 .ncm-cfg-icon-preview img { width: 100%; height: 100%; object-fit: cover; border: none; }
 .ncm-term__boot-icon img { width: 100%; height: 100%; object-fit: cover; border: none; border-radius: inherit; }
+
+/* "No frame" logo mode (boot.imageFrame === 'free') — the custom image renders
+   at natural aspect with no icon-square chrome (wide corp logos looked crammed
+   inside the 88px box). Placed AFTER the framed img rules so it wins. */
+.ncm-term__boot-icon--free {
+  width: auto; height: auto; max-width: min(360px, 72%); max-height: 150px;
+  background: none; border: none; box-shadow: none; border-radius: 0;
+  filter: drop-shadow(0 0 22px color-mix(in srgb, var(--ncm-primary, #F65261) 35%, transparent));
+}
+.ncm-term__boot-icon--free img { width: auto; height: auto; max-width: 100%; max-height: 150px; object-fit: contain; border-radius: 0; }
+.ncm-term__hero-logo--free {
+  width: auto; height: 54px; max-width: 200px;
+  background: none; border: none; box-shadow: none; border-radius: 0;
+  filter: drop-shadow(0 0 14px color-mix(in srgb, var(--ncm-primary, #F65261) 30%, transparent));
+}
+.ncm-term__hero-logo--free img { width: auto; height: 100%; max-width: 100%; object-fit: contain; border-radius: 0; }
 
 /* ── Burn dialog: explicit dark palette — Foundry's parchment dialog gives
       dark text, which vanished on our dark rows ("can't see any text"). ── */
@@ -970,6 +1440,91 @@
 }
 
 /* ═══════════════════════════════════════════════════════════
+ *  SYSTEM LOCKDOWN takeover — shown after an escalation/earned lockout
+ *  kick. Full-viewer red alert with a live countdown; sits ABOVE the login
+ *  screen (z 95, over the scanline overlay at 90). The account stays sealed
+ *  until the clock runs out or the GM clears it.
+ * ═══════════════════════════════════════════════════════════ */
+.ncm-term__lockdown {
+  position: absolute; inset: 0; z-index: 95; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  background: color-mix(in srgb, #1a0406 78%, black);
+  backdrop-filter: blur(3px);
+  animation: ncm-lock-in .3s cubic-bezier(.22,1,.36,1);
+}
+.ncm-term__lockdown.is-out { opacity: 0; transition: opacity .25s; }
+@keyframes ncm-lock-in { from { opacity: 0; } to { opacity: 1; } }
+/* diagonal hazard wash + a sweeping scan bar */
+.ncm-term__lockdown::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .10;
+  background: repeating-linear-gradient(45deg, #ff2b3d 0 22px, transparent 22px 48px);
+}
+.ncm-term__lockdown-scan {
+  position: absolute; left: 0; right: 0; height: 34%; top: -34%; pointer-events: none;
+  background: linear-gradient(180deg, transparent, color-mix(in srgb, #ff2b3d 20%, transparent), transparent);
+  animation: ncm-lock-scan 2.4s linear infinite;
+}
+@keyframes ncm-lock-scan { 0% { top: -34%; } 100% { top: 100%; } }
+.ncm-term__lockdown-box {
+  position: relative; z-index: 2; width: min(360px, 86%); text-align: center;
+  padding: 26px 22px; border-radius: 12px;
+  background: color-mix(in srgb, #12070a 88%, transparent);
+  border: 1px solid color-mix(in srgb, #ff2b3d 45%, transparent);
+  box-shadow: 0 0 40px color-mix(in srgb, #000 60%, transparent), 0 0 4px color-mix(in srgb, #ff2b3d 45%, transparent);
+}
+.ncm-term__lockdown-ico {
+  width: 64px; height: 64px; margin: 0 auto 14px; border-radius: 50%;
+  display: grid; place-items: center; font-size: calc(28px * var(--ncm-text-scale, 1));
+  color: #ff5666; background: color-mix(in srgb, #ff2b3d 12%, transparent);
+  border: 1px solid color-mix(in srgb, #ff2b3d 50%, transparent);
+  animation: ncm-lock-pulse 1.3s ease-in-out infinite;
+}
+@keyframes ncm-lock-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 transparent; }
+  50% { box-shadow: 0 0 22px color-mix(in srgb, #ff2b3d 55%, transparent); }
+}
+.ncm-term__lockdown-ttl {
+  font-family: var(--ncm-font-title, 'Orbitron', sans-serif); font-weight: 800;
+  font-size: calc(20px * var(--ncm-text-scale, 1)); letter-spacing: 3px; color: #ff4657;
+  text-shadow: 0 0 16px color-mix(in srgb, #ff2b3d 55%, transparent);
+}
+.ncm-term__lockdown-sub {
+  font-family: var(--ncm-font-mono, monospace); font-size: calc(10.5px * var(--ncm-text-scale, 1));
+  letter-spacing: 1px; color: color-mix(in srgb, #ff8a95 70%, var(--ncm-text-muted)); margin-top: 6px;
+}
+.ncm-term__lockdown-acct {
+  font-family: var(--ncm-font-display, sans-serif); font-size: calc(13px * var(--ncm-text-scale, 1));
+  font-weight: 700; color: var(--ncm-text-primary); margin-top: 4px;
+}
+.ncm-term__lockdown-clock { margin: 16px 0 6px; display: flex; flex-direction: column; gap: 2px; }
+.ncm-term__lockdown-time {
+  font-family: var(--ncm-font-mono, monospace); font-weight: 700;
+  font-size: calc(38px * var(--ncm-text-scale, 1)); letter-spacing: 3px; color: #ff5666; line-height: 1;
+  text-shadow: 0 0 18px color-mix(in srgb, #ff2b3d 45%, transparent);
+}
+.ncm-term__lockdown-lbl {
+  font-family: var(--ncm-font-mono, monospace); font-size: calc(9px * var(--ncm-text-scale, 1));
+  letter-spacing: 2px; color: var(--ncm-text-muted); text-transform: uppercase;
+}
+.ncm-app .ncm-term__lockdown button.ncm-term__lockdown-ack {
+  appearance: none !important; -webkit-appearance: none !important;
+  width: auto !important; min-height: 0 !important; box-shadow: none !important; margin: 12px auto 0 !important;
+  display: inline-flex !important; align-items: center; gap: 6px; cursor: pointer;
+  font-family: var(--ncm-font-display, sans-serif) !important; font-size: calc(10px * var(--ncm-text-scale, 1)) !important;
+  font-weight: 700 !important; letter-spacing: .06em; text-transform: uppercase;
+  padding: 6px 13px !important; border-radius: 2px !important;
+  color: color-mix(in srgb, #ff8a95 80%, var(--ncm-text-secondary)) !important;
+  background: color-mix(in srgb, #ff2b3d 8%, transparent) !important;
+  border: 1px solid color-mix(in srgb, #ff2b3d 35%, transparent) !important;
+  transition: all .15s ease;
+}
+.ncm-app .ncm-term__lockdown button.ncm-term__lockdown-ack:hover {
+  color: #fff !important; background: color-mix(in srgb, #ff2b3d 55%, transparent) !important;
+}
+.ncm-term__lockdown.is-reduced .ncm-term__lockdown-scan,
+.ncm-term__lockdown.is-reduced .ncm-term__lockdown-ico { animation: none !important; }
+
+/* ═══════════════════════════════════════════════════════════
  *  Login styles (config.loginStyle) — crt / roster / lockscreen /
  *  keypad / portraits. 'cards' keeps the original markup/rules above.
  *  Everything reads --ncm-* so the terminal theme applies.
@@ -1021,6 +1576,7 @@
 .ncm-term__crt-st { font-size: calc(9px * var(--ncm-text-scale, 1)); letter-spacing: 1px; color: var(--ncm-accent); }
 .ncm-term__crt-st.is-open { color: var(--ncm-success); }
 .ncm-term__crt-st.is-offnet { color: var(--ncm-text-muted); }
+.ncm-term__crt-st.is-hidden { color: var(--ncm-warning, #f7c948); opacity: .85; }
 .ncm-term__crt-other { color: var(--ncm-text-muted); margin-top: 4px; }
 .ncm-term__crt-prompt { font-size: calc(12px * var(--ncm-text-scale, 1)); margin: 16px 0 0 2px; }
 .ncm-term__crt-ice { font-size: calc(10px * var(--ncm-text-scale, 1)); color: var(--ncm-danger); margin: 14px 0 0 2px; }
@@ -1057,6 +1613,7 @@
 .ncm-term__rrow-st.is-open { color: var(--ncm-success); background: color-mix(in srgb, var(--ncm-success) 10%, transparent); border: 1px solid color-mix(in srgb, var(--ncm-success) 30%, transparent); }
 .ncm-term__rrow-st.is-locked { color: var(--ncm-accent); background: color-mix(in srgb, var(--ncm-accent) 8%, transparent); border: 1px solid color-mix(in srgb, var(--ncm-accent) 28%, transparent); }
 .ncm-term__rrow-st.is-offnet { color: var(--ncm-text-muted); border: 1px dashed var(--ncm-border); }
+.ncm-term__rrow-st.is-hidden { color: var(--ncm-warning, #f7c948); border: 1px dashed color-mix(in srgb, var(--ncm-warning, #f7c948) 45%, transparent); }
 
 /* ── LOCK SCREEN ── */
 .ncm-term__login[data-login-style="lockscreen"] .ncm-term__login-body {
@@ -1176,26 +1733,50 @@
   position: absolute; left: 0; right: 0; bottom: 0; font-family: var(--ncm-font-mono);
   font-size: 7px; letter-spacing: 1px; color: var(--ncm-text-muted); background: rgba(0,0,0,.75); padding: 2px 0;
 }
+.ncm-term__port-off--hidden { color: var(--ncm-warning, #f7c948); bottom: auto; top: 0; }
 .ncm-term__port-nm { font-family: var(--ncm-font-display); font-weight: 700; font-size: calc(12px * var(--ncm-text-scale, 1)); color: var(--ncm-text-primary); }
 .ncm-term__port-role { font-family: var(--ncm-font-mono); font-size: calc(7.5px * var(--ncm-text-scale, 1)); letter-spacing: 1px; color: var(--ncm-text-muted); text-transform: uppercase; margin-top: 2px; }
 .ncm-term__port--other .ncm-term__port-av { color: var(--ncm-text-muted); font-size: calc(18px * var(--ncm-text-scale, 1)); border-style: dashed; }
 
 /* ── ACCESS GRANTED custom welcome line ── */
 .ncm-term__badge-welcome {
-  text-align: center; margin-top: 8px; font-family: var(--ncm-font-mono);
+  text-align: center; margin-top: 2px; padding: 0 14px 16px; font-family: var(--ncm-font-mono);
   font-size: calc(10.5px * var(--ncm-text-scale, 1)); letter-spacing: 1.5px; color: var(--ncm-text-secondary);
   opacity: 0; animation: ncm-term-fadein .5s ease 2.5s forwards;
 }
 @keyframes ncm-term-fadein { to { opacity: 1; } }
 
-/* ═══ Wallpaper (theme.wallpaper → --ncm-wallpaper) — behind the mailbox ═══ */
-.ncm-term__panes { position: relative; }
-.ncm-term__panes::before {
-  content: ""; position: absolute; inset: 0; pointer-events: none;
+/* ═══ Wallpaper (theme.wallpaper → --ncm-wallpaper).
+   Two intensity tiers, both scaled by the strength slider
+   (--ncm-wallpaper-strength, default .25):
+   - FULL-SCREEN states (login / secure-shell / access-granted / network gate)
+     render it as the base background (~2.6× strength, capped at 1 — at the
+     default that's ~65%, "just be the background" per dev feedback);
+   - the MAILBOX keeps it subtle behind the panes (0.8× strength ≈ 20%). ═══ */
+/* Hosts: position via :where() so this can NEVER override an existing
+   positioning scheme (.ncm-term__granted is position:absolute; inset:0 — a
+   flat `position:relative` here out-ordered it and collapsed the ACCESS
+   GRANTED card to the top of the flow). isolation:isolate makes each host its
+   own stacking context so the z-index:-1 pseudo sits above the host's own
+   background but below ALL its content — no `> *` position/z-index overrides
+   needed (those also flattened the login hero's dropdown z-index). */
+.ncm-term__panes, .ncm-term__login, .ncm-term__gate, .ncm-term__mwrap, .ncm-term__granted { isolation: isolate; }
+:where(.ncm-term__panes, .ncm-term__login, .ncm-term__gate, .ncm-term__mwrap) { position: relative; }
+.ncm-term__panes::before, .ncm-term__login::before, .ncm-term__granted::before, .ncm-term__gate::before, .ncm-term__mwrap::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none; z-index: -1;
   background-image: var(--ncm-wallpaper, none); background-size: cover; background-position: center;
-  opacity: .13;
+  opacity: min(1, calc(var(--ncm-wallpaper-strength, .25) * 2.6));
 }
-.ncm-term__panes > * { position: relative; z-index: 1; }
+.ncm-term__panes::before { opacity: calc(var(--ncm-wallpaper-strength, .25) * 0.8); }
+/* Config Theme-tab preview strip shows the wallpaper too (applyTheme already
+   writes the vars onto every .ncm-ttc-live) — otherwise the strength slider
+   looks dead unless a live viewer happens to be open. */
+.ncm-term-config .ncm-tc__preview.ncm-ttc-live { position: relative; overflow: hidden; isolation: isolate; }
+.ncm-term-config .ncm-tc__preview.ncm-ttc-live::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none; z-index: -1;
+  background-image: var(--ncm-wallpaper, none); background-size: cover; background-position: center;
+  opacity: min(1, calc(var(--ncm-wallpaper-strength, .25) * 2.6));
+}
 
 /* ═══ Per-terminal effects (theme.scanlines / theme.flicker) ═══ */
 .ncm-terminal-viewer[data-term-scanlines="true"] { position: relative; }
@@ -1241,6 +1822,9 @@
   box-shadow: 0 0 16px color-mix(in srgb, var(--ncm-primary, #F65261) 40%, transparent);
 }
 .ncm-cfg-bootprev-icon img { width: 100%; height: 100%; object-fit: cover; border-radius: 9px; }
+/* "No frame" logo preview — mirrors .ncm-term__boot-icon--free. */
+.ncm-cfg-bootprev-icon--free { width: auto; height: auto; max-width: 150px; max-height: 60px; border: none; box-shadow: none; border-radius: 0; }
+.ncm-cfg-bootprev-icon--free img { width: auto; height: auto; max-width: 100%; max-height: 60px; object-fit: contain; border-radius: 0; }
 .ncm-cfg-bootprev-title { font-family: var(--ncm-font-title); font-size: 15px; font-weight: 900; letter-spacing: 4px; color: var(--ncm-primary, #F65261); text-shadow: 0 0 10px color-mix(in srgb, var(--ncm-primary, #F65261) 50%, transparent); }
 .ncm-cfg-bootprev-sub { font-family: var(--ncm-font-mono); font-size: 8.5px; color: var(--ncm-text-muted, #8e8ea8); margin: 2px 0 9px; }
 .ncm-cfg-bootprev-bar { width: 190px; height: 4px; margin: 0 auto 8px; background: var(--ncm-bg-elevated, #252540); border-radius: 2px; overflow: hidden; }
@@ -1521,6 +2105,19 @@
   }
 }
 
+/* ═══ Identity tab — modular folder editor ═══ */
+.ncm-cfg-folder-rows { display: flex; flex-direction: column; gap: 6px; margin: 6px 0 8px; }
+.ncm-cfg-folder-row { display: flex; align-items: center; gap: 8px; }
+.ncm-cfg-folder-row .ncm-cfg-folder-icon { flex: 0 0 150px; max-width: 150px; }
+.ncm-cfg-folder-tag {
+  font-family: var(--ncm-font-mono); font-size: 8.5px; letter-spacing: 1px; flex: 0 0 auto;
+  color: var(--ncm-text-muted); border: 1px dashed var(--ncm-border); border-radius: 4px; padding: 2px 6px;
+}
+.ncm-cfg-folder-show {
+  display: inline-flex; align-items: center; gap: 5px; flex: 0 0 auto;
+  font-family: var(--ncm-font-mono); font-size: 11px; color: var(--ncm-text-secondary); cursor: pointer;
+}
+
 /* ═══ Preset-kit staged notice (Theme tab) ═══ */
 .ncm-cfg-kitbar {
   display: flex; align-items: center; gap: 9px; margin: 2px 16px 6px; padding: 8px 12px;
@@ -1542,6 +2139,29 @@
 }
 .ncm-term__login-gm:hover { background: color-mix(in srgb, var(--ncm-accent, #f7c948) 18%, transparent); }
 .ncm-term__crt-top .ncm-term__login-gm { margin-right: 10px; }
+
+/* OPERATOR chip (login screen) — the twin of the mailbox HUD's .ncm-term__hud-op,
+   shaped like its neighbour .ncm-term__login-gm so the hero stat row reads as one
+   set of chips. Sizes ride --ncm-text-scale like every other terminal font, so the
+   per-terminal Text Size slider still governs it. */
+.ncm-term__login-op {
+  display: inline-flex; align-items: center; gap: 5px; flex: 0 0 auto;
+  font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1)); letter-spacing: 1px;
+  color: var(--ncm-secondary); padding: 3px 9px; border-radius: 5px;
+  border: 1px solid color-mix(in srgb, var(--ncm-secondary) 35%, transparent);
+  background: color-mix(in srgb, var(--ncm-secondary) 8%, transparent);
+}
+.ncm-term__login-op.is-switchable { cursor: pointer; }
+.ncm-term__login-op.is-switchable:hover {
+  color: var(--ncm-text-primary); border-color: var(--ncm-secondary);
+  background: color-mix(in srgb, var(--ncm-secondary) 18%, transparent);
+}
+.ncm-term__login-op--none {
+  color: var(--ncm-danger); border-color: color-mix(in srgb, var(--ncm-danger) 45%, transparent);
+  background: color-mix(in srgb, var(--ncm-danger) 8%, transparent);
+}
+.ncm-term__login-opcv { font-size: calc(7px * var(--ncm-text-scale, 1)); opacity: .7; }
+.ncm-term__crt-top .ncm-term__login-op { margin-right: 10px; }
 
 /* Boot preview REPLAY button */
 .ncm-cfg-bootprev-label { display: flex; align-items: center; gap: 8px; }
@@ -1605,3 +2225,95 @@
 .ncm-acctl-empty { font-family: var(--ncm-font-mono); font-size: 10px; color: var(--ncm-text-muted, #8e8ea8); text-align: center; padding: 18px 0; opacity: .75; }
 .ncm-acctl-pager { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 8px; font-family: var(--ncm-font-mono); font-size: 10px; color: var(--ncm-text-secondary, #bdbdd0); }
 .ncm-term-cfg-tag--net { color: var(--ncm-primary, #F65261); border-color: color-mix(in srgb, var(--ncm-primary, #F65261) 35%, transparent); }
+
+/* OPERATOR chip — WHO the rolls/eddies/skills act as (2026-07-13). */
+.ncm-app .ncm-terminal-viewer .ncm-term__hud-op {
+  color: var(--ncm-secondary);
+  border: 1px solid color-mix(in srgb, var(--ncm-secondary) 35%, transparent);
+  background: color-mix(in srgb, var(--ncm-secondary) 8%, transparent);
+  border-radius: 20px; padding: 1px 9px !important; white-space: nowrap;
+}
+.ncm-app .ncm-terminal-viewer .ncm-term__hud-op.is-switchable { cursor: pointer; }
+.ncm-app .ncm-terminal-viewer .ncm-term__hud-op.is-switchable:hover {
+  color: var(--ncm-text-primary);
+  border-color: var(--ncm-secondary);
+  background: color-mix(in srgb, var(--ncm-secondary) 18%, transparent);
+}
+.ncm-app .ncm-terminal-viewer .ncm-term__hud-opcv { font-size: calc(7px * var(--ncm-text-scale, 1)); opacity: .7; }
+.ncm-app .ncm-terminal-viewer .ncm-term__hud-op--none {
+  color: var(--ncm-danger);
+  border-color: color-mix(in srgb, var(--ncm-danger) 45%, transparent);
+  background: color-mix(in srgb, var(--ncm-danger) 8%, transparent);
+}
+
+/* ── OPERATOR TOOLS chip + dropdown (host-level offensive menu) ── */
+.ncm-app .ncm-terminal-viewer .ncm-term__hud-tools {
+  --ops: #a855f7;
+  position: relative; cursor: pointer;
+  color: var(--ops);
+  border: 1px solid color-mix(in srgb, var(--ops) 40%, transparent);
+  background: color-mix(in srgb, var(--ops) 10%, transparent);
+}
+.ncm-app .ncm-terminal-viewer .ncm-term__hud-tools:hover,
+.ncm-app .ncm-terminal-viewer .ncm-term__hud-tools.is-open {
+  color: var(--ncm-text-primary);
+  border-color: var(--ops);
+  background: color-mix(in srgb, var(--ops) 20%, transparent);
+}
+.ncm-app .ncm-terminal-viewer .ncm-term__hud-tools.is-locked {
+  color: var(--ncm-text-muted); cursor: help;
+  border-color: color-mix(in srgb, var(--ncm-text-muted) 30%, transparent);
+  background: color-mix(in srgb, var(--ncm-text-muted) 8%, transparent);
+}
+.ncm-app .ncm-terminal-viewer .ncm-term__opsmenu {
+  position: absolute; top: calc(100% + 6px); right: 0; z-index: 40; width: 232px;
+  border: 1px solid color-mix(in srgb, var(--ops) 40%, transparent); border-radius: 8px;
+  background: var(--ncm-bg-medium, #12121a);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .6); overflow: hidden;
+  cursor: default; text-align: left;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ncm-app .ncm-terminal-viewer .ncm-term__opsmenu { animation: ncm-term-opsmenu-in .18s cubic-bezier(.22,1,.36,1) both; transform-origin: top right; }
+}
+@keyframes ncm-term-opsmenu-in { from { opacity: 0; transform: translateY(-6px) scaleY(.96); } to { opacity: 1; transform: none; } }
+.ncm-app .ncm-terminal-viewer .ncm-term__opsmenu-hd {
+  padding: 7px 11px; font-family: var(--ncm-font-mono); font-size: calc(8px * var(--ncm-text-scale, 1));
+  font-weight: 700; letter-spacing: 1.5px; color: var(--ops);
+  border-bottom: 1px solid var(--ncm-border); background: color-mix(in srgb, var(--ops) 6%, transparent);
+}
+.ncm-app .ncm-terminal-viewer .ncm-term__opsitem {
+  display: flex; align-items: center; gap: 10px; padding: 9px 11px; cursor: pointer;
+  border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 60%, transparent);
+  transition: background .15s;
+}
+.ncm-app .ncm-terminal-viewer .ncm-term__opsitem:last-child { border-bottom: 0; }
+.ncm-app .ncm-terminal-viewer .ncm-term__opsitem:hover { background: color-mix(in srgb, var(--ops) 10%, transparent); }
+.ncm-app .ncm-terminal-viewer .ncm-term__opsitem.is-disabled { cursor: not-allowed; opacity: .5; }
+.ncm-app .ncm-terminal-viewer .ncm-term__opsitem.is-disabled:hover { background: transparent; }
+.ncm-app .ncm-terminal-viewer .ncm-term__opsico {
+  width: 26px; height: 26px; flex: 0 0 auto; border-radius: 6px; display: grid; place-items: center;
+  font-size: calc(12px * var(--ncm-text-scale, 1)); color: var(--ops);
+  background: color-mix(in srgb, var(--ops) 12%, transparent); border: 1px solid color-mix(in srgb, var(--ops) 35%, transparent);
+}
+.ncm-app .ncm-terminal-viewer .ncm-term__opsnm { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.ncm-app .ncm-terminal-viewer .ncm-term__opst {
+  font-family: var(--ncm-font-mono); font-size: calc(11px * var(--ncm-text-scale, 1)); font-weight: 700; color: var(--ncm-text-primary);
+}
+.ncm-app .ncm-terminal-viewer .ncm-term__opsd { font-size: calc(9.5px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); }
+.ncm-app .ncm-terminal-viewer .ncm-term__opssoon {
+  font-family: var(--ncm-font-mono); font-size: calc(7px * var(--ncm-text-scale, 1)); font-weight: 700; letter-spacing: 1px;
+  color: var(--ncm-text-muted); border: 1px solid var(--ncm-border); border-radius: 2px; padding: 0 4px;
+}
+
+/* ANALYZE — the player-facing file scan (offered on every typed file). */
+.ncm-app .ncm-terminal-viewer .ncm-term__analyze { margin: 8px 0 0; }
+.ncm-app .ncm-terminal-viewer .ncm-term__analyze-btn {
+  color: #a855f7;
+  border: 1px solid color-mix(in srgb, #a855f7 40%, transparent);
+  background: color-mix(in srgb, #a855f7 8%, transparent);
+  cursor: pointer;
+}
+.ncm-app .ncm-terminal-viewer .ncm-term__analyze-btn:hover {
+  background: color-mix(in srgb, #a855f7 20%, transparent);
+  border-color: #a855f7;
+}

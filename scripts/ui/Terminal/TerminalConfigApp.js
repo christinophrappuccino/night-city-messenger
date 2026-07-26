@@ -11,8 +11,8 @@
  */
 
 import { BaseApplication } from '../BaseApplication.js';
-import { MODULE_ID, TERMINAL_PRESETS, FONT_OPTIONS, DEFAULTS, SKILL_MAP, COLOR_VAR_MAP, TERMINAL_LOGIN_STYLES, TERMINAL_ICON_LIBRARY, BOOT_FLAVOR_LINES, BOOT_ANIMATIONS } from '../../utils/constants.js';
-import { log, isGM, generateId, formatCyberDate, buildTerminalThemePrefs } from '../../utils/helpers.js';
+import { MODULE_ID, TERMINAL_PRESETS, FONT_OPTIONS, DEFAULTS, SKILL_MAP, COLOR_VAR_MAP, TERMINAL_LOGIN_STYLES, TERMINAL_ICON_LIBRARY, TERMINAL_FOLDER_ICONS, BOOT_FLAVOR_LINES, BOOT_ANIMATIONS, TERMINAL_SOUND_SETS } from '../../utils/constants.js';
+import { log, isGM, generateId, formatCyberDate, buildTerminalThemePrefs, resolveTerminalSound } from '../../utils/helpers.js';
 
 /** Clearance presets offered as one-click chips; anything else is "custom". */
 const CLEARANCE_PRESETS = ['STANDARD', 'ADMIN', 'GUEST', 'SYSOP'];
@@ -94,6 +94,8 @@ export class TerminalConfigApp extends BaseApplication {
       unlinkIdentity: TerminalConfigApp._onUnlinkIdentity,
       generatePassword: TerminalConfigApp._onGeneratePassword,
       pickKeyItem: TerminalConfigApp._onPickKeyItem,
+      folderAdd: TerminalConfigApp._onFolderAdd,
+      folderRemove: TerminalConfigApp._onFolderRemove,
     },
   }, { inplace: false });
 
@@ -162,6 +164,7 @@ export class TerminalConfigApp extends BaseApplication {
     const loginCfg = kit?.login ? { ...(cfg.login || {}), ...kit.login } : (cfg.login || {});
     const ssCfg = kit?.screensaver ? { ...(cfg.screensaver || {}), ...kit.screensaver } : (cfg.screensaver || {});
     const fnCfg = kit?.folderNames ? { ...(cfg.folderNames || {}), ...kit.folderNames } : (cfg.folderNames || {});
+    const soundSetKey = kit?.soundSet || cfg.soundSet || 'default';
     const savedThemes = this._getTermThemes().map((entry, i) => ({
       index: i,
       name: entry.name,
@@ -269,6 +272,7 @@ export class TerminalConfigApp extends BaseApplication {
       textScale: theme.textScale || 100,
       contrast: theme.contrast || 100,
       themeWallpaper: theme.wallpaper || '',
+      themeWallStrength: theme.wallpaperStrength ?? 25,
       themeScanlines: theme.scanlines === true,
       themeFlicker: theme.flicker === true,
       themeGlitch: theme.glitch ?? 0,
@@ -276,6 +280,10 @@ export class TerminalConfigApp extends BaseApplication {
       // Login screen + screensaver + folder names (Boot & Login / Identity tabs)
       loginStyles: TERMINAL_LOGIN_STYLES.map(s => ({ ...s, active: loginStyleKey === s.key })),
       loginStyleKey,
+      soundSets: Object.entries(TERMINAL_SOUND_SETS).map(([key, s]) => ({
+        key, label: s.label, icon: s.icon, hint: s.hint, active: key === soundSetKey,
+      })),
+      soundSetKey,
       presetKitLabel: kit?.label || '',
       loginMotd: loginCfg.motd || '',
       loginWelcome: loginCfg.welcomeText || '',
@@ -301,9 +309,24 @@ export class TerminalConfigApp extends BaseApplication {
         sw2: entry.config?.theme?.secondary || '#19f3f7',
         sw3: entry.config?.theme?.bgSurface || '#1a1a2e',
       })),
-      folderInbox: fnCfg.inbox || '',
-      folderSaved: fnCfg.saved || '',
-      folderTrash: fnCfg.trash || '',
+      // Modular folder editor (Identity tab). System names ride folderNames
+      // (kit-overlaid, the preset contract); icons/visibility/customs ride
+      // cfg.folders. An icon value outside the curated list stays selectable.
+      folderRows: (() => {
+        const fld = cfg.folders || {};
+        const ic = fld.icons || {};
+        const iconOpts = (sel) => {
+          const opts = TERMINAL_FOLDER_ICONS.map(i => ({ c: i.c, label: i.label, selected: i.c === sel }));
+          if (sel && !opts.some(o => o.selected)) opts.unshift({ c: sel, label: sel, selected: true });
+          return opts;
+        };
+        return [
+          { id: 'inbox', kind: 'inbox', name: fnCfg.inbox || '', placeholder: 'Inbox — e.g. CASE FILES, PATIENTS', icons: iconOpts(ic.inbox || 'fas fa-inbox'), isSystem: true, canHide: false, enabled: true },
+          { id: 'saved', kind: 'saved', name: fnCfg.saved || '', placeholder: 'Saved — e.g. EVIDENCE, ARCHIVE', icons: iconOpts(ic.saved || 'fa-regular fa-star'), isSystem: true, canHide: true, enabled: fld.savedEnabled !== false },
+          { id: 'trash', kind: 'trash', name: fnCfg.trash || '', placeholder: 'Trash — e.g. PURGED, DISPOSAL', icons: iconOpts(ic.trash || 'fas fa-trash-can'), isSystem: true, canHide: true, enabled: fld.trashEnabled !== false },
+          ...(fld.custom || []).map(c => ({ id: c.id, kind: 'custom', name: c.name || '', placeholder: 'Folder name', icons: iconOpts(c.icon || 'fas fa-folder'), isSystem: false })),
+        ];
+      })(),
       // Boot icon library (visual picker) — active = the currently saved class.
       iconLibrary: TERMINAL_ICON_LIBRARY.map(i => ({ ...i, active: i.c === (bootCfg.faIcon || '') })),
 
@@ -315,6 +338,7 @@ export class TerminalConfigApp extends BaseApplication {
       bootBanner: bootCfg.banner || '',
       bootFaIcon: bootCfg.faIcon || '',
       bootImageUrl: bootCfg.imageUrl || '',
+      bootImageFree: bootCfg.imageFrame === 'free',
       bootIconModes: ['preset', 'fa', 'image'].map(v => ({
         value: v,
         label: { preset: 'Theme preset icon', fa: 'Font Awesome icon', image: 'Custom image / logo' }[v],
@@ -336,11 +360,20 @@ export class TerminalConfigApp extends BaseApplication {
       accessModes: ['any', 'whitelist', 'type'].map(v => ({ value: v, selected: v === (cfg.network?.accessMode || 'any') })),
       allNetworks,
       signalThreshold: cfg.network?.signalThreshold ?? 40,
+      scenePinRange: cfg.scenePin?.range ?? 0,
+      // Netrunning resolution override (design §5) — 'inherit' follows the world.
+      hackResolutionModes: ['inherit', 'auto', 'flagged', 'gm'].map(v => ({
+        value: v, selected: v === (cfg.hackResolution || 'inherit'),
+        label: v === 'inherit' ? 'Follow the world setting (default)'
+          : v === 'auto' ? 'Auto-roll — NCM rolls the check itself'
+          : v === 'flagged' ? 'Auto-roll + NET card for the GM'
+          : 'GM adjudicates — the table runs the NET',
+      })),
 
       // Machine uplink (Layer 1) — the terminal's OWN connection.
       uplinkInterfaces: (this.networkService?.getAllNetworks?.() || []).map(n => {
         const iface = (cfg.connection?.interfaces || []).find(i => i.networkId === n.id);
-        return { id: n.id, name: n.name, checked: !!iface, preAuthorized: !!iface?.preAuthorized };
+        return { id: n.id, name: n.name, checked: !!iface, preAuthorized: !!iface?.preAuthorized, wired: !!iface?.wired };
       }),
       uplinkDefaults: [{ value: '', label: 'Local only (offline)', selected: !cfg.connection?.defaultNetworkId }]
         .concat((this.networkService?.getAllNetworks?.() || []).map(n => ({
@@ -349,9 +382,43 @@ export class TerminalConfigApp extends BaseApplication {
       uplinkAllowSwitch: cfg.connection?.allowPlayerSwitching !== false,
       uplinkSyncHint: cfg.connection?.showSyncHint !== false,
 
-      // Exfil
+      // Exfil — master switch + per-action policy rows.
       allowExfil: cfg.allowExfil !== false,
+      exfilRows: this._exfilRows(cfg),
+      exfilSellPrice: (cfg.exfil?.sell?.price ?? DEFAULTS.TERMINAL_CONFIG.exfil.sell.price),
     };
+  }
+
+  /** Per-action exfil config rows (allow / require-roll / skill / DV). */
+  _exfilRows(cfg) {
+    const base = DEFAULTS.TERMINAL_CONFIG.exfil;
+    const ex = cfg.exfil || {};
+    const meta = {
+      agent:   { label: 'To my Agent',   icon: 'fas fa-download' },
+      shard:   { label: 'Burn to Shard',  icon: 'fas fa-sd-card' },
+      forward: { label: 'Forward',        icon: 'fas fa-share' },
+      leak:    { label: 'Leak to the Net', icon: 'fas fa-tower-broadcast' },
+      sell:    { label: 'Sell to a Fixer', icon: 'fas fa-hand-holding-dollar' },
+      wipe:    { label: 'Wipe Original',   icon: 'fas fa-eraser' },
+    };
+    return Object.keys(meta).map(key => {
+      const d = base[key], c = ex[key] || {};
+      const skill = c.skill || d.skill;
+      // Skill dropdown from SKILL_MAP (account-editor pattern) — a legacy /
+      // hand-typed value stays selectable at the top instead of vanishing.
+      const skills = Object.keys(SKILL_MAP);
+      if (skill && !skills.includes(skill)) skills.unshift(skill);
+      return {
+        key, cap: key.charAt(0).toUpperCase() + key.slice(1),
+        label: meta[key].label, icon: meta[key].icon,
+        allow: c.allow ?? d.allow,
+        require: !!(c.require ?? d.require),
+        skill,
+        skillOptions: skills.map(s => ({ name: s, selected: s === skill })),
+        dv: Number(c.dv ?? d.dv) || 15,
+        isSell: key === 'sell',
+      };
+    });
   }
 
   _accountMethodSummary(s) {
@@ -482,7 +549,12 @@ export class TerminalConfigApp extends BaseApplication {
         ? `<img src="${esc(img)}" alt="">`
         : `<i class="${esc((mode === 'fa' && fa) ? fa : presetIcon)}"></i>`;
       const prev = bp('icon');
-      if (prev) prev.innerHTML = iconHtml;
+      if (prev) {
+        prev.innerHTML = iconHtml;
+        // "No frame" preview — mirror the viewer's --free treatment.
+        const free = mode === 'image' && !!panel.querySelector('[name="bootImageFree"]')?.checked;
+        prev.classList.toggle('ncm-cfg-bootprev-icon--free', free);
+      }
     };
     const bindText = (name, key) => {
       panel.querySelector(`[name="${name}"]`)?.addEventListener('input', (e) => {
@@ -532,6 +604,7 @@ export class TerminalConfigApp extends BaseApplication {
       syncBootIcon();
     });
     panel.querySelector('[name="bootImageUrl"]')?.addEventListener('input', syncBootIcon);
+    panel.querySelector('[name="bootImageFree"]')?.addEventListener('change', syncBootIcon);
 
     // ── Animation / speed chips. Picking a boot animation replays it in the
     //    splash preview (attr swap + forced reflow to restart the CSS). ──
@@ -567,6 +640,29 @@ export class TerminalConfigApp extends BaseApplication {
         if (input) input.value = card.dataset.loginStyle;
         panel.querySelectorAll('[data-login-style]').forEach(c => c.classList.toggle('is-on', c === card));
         this._syncLoginPreview(panel);
+      });
+    });
+
+    // ── Sound profile cards + audition. The audition plays a short demo
+    //    (boot → login-success → login-fail) through the clicked card's set,
+    //    so the GM hears a set BEFORE selecting it. Real setTimeout — pure
+    //    UI feedback, not game time. ──
+    panel.querySelectorAll('[data-sound-set]').forEach(card => {
+      card.addEventListener('click', () => {
+        const input = panel.querySelector('[name="soundSet"]');
+        if (input) input.value = card.dataset.soundSet;
+        panel.querySelectorAll('[data-sound-set]').forEach(c => c.classList.toggle('is-on', c === card));
+      });
+    });
+    panel.querySelector('[data-sound-audition]')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const setKey = panel.querySelector('[name="soundSet"]')?.value || 'default';
+      const demo = ['shard-boot', 'login-success', 'login-fail'];
+      demo.forEach((id, i) => {
+        setTimeout(() => {
+          const s = resolveTerminalSound(setKey, id);
+          this.soundService?.playStyled?.(s.id, { rate: s.rate, volume: s.volume });
+        }, i * 900);
       });
     });
 
@@ -734,6 +830,7 @@ export class TerminalConfigApp extends BaseApplication {
       login: cfg.login || {},
       screensaver: cfg.screensaver || {},
       folderNames: cfg.folderNames || {},
+      folders: cfg.folders || {},
       metadata: cfg.metadata || {},
       soundSet: cfg.soundSet || 'default',
       accounts: (cfg.accounts || []).map(a => {
@@ -1082,6 +1179,7 @@ export class TerminalConfigApp extends BaseApplication {
         enabled: chk('bootEnabled'),
         title: val('bootTitle'), subtitle: val('bootSubtitle'), banner: val('bootBanner'),
         iconMode: val('bootIconMode', 'preset'), faIcon: val('bootFaIcon'), imageUrl: val('bootImageUrl'),
+        imageFrame: chk('bootImageFree') ? 'free' : 'framed',
         animationStyle: val('bootAnimation'), speed: val('bootSpeed'), logLines,
       },
       loginStyle: val('loginStyle', 'cards') || 'cards',
@@ -1095,23 +1193,62 @@ export class TerminalConfigApp extends BaseApplication {
         imageUrl: val('ssImageUrl'),
         motion: val('ssMotion', 'drift') || 'drift',
       },
-      folderNames: { inbox: val('folderInbox'), saved: val('folderSaved'), trash: val('folderTrash') },
+      // Folder editor rows → folderNames (system names — the preset-compatible
+      // contract) + folders (icons / saved-trash visibility / custom folders).
+      ...(() => {
+        const rows = [...el.querySelectorAll('[data-folder-row]')];
+        const sys = (kind) => rows.find(r => r.dataset.folderKind === kind);
+        const nameOf = (kind) => sys(kind)?.querySelector('[data-f-name]')?.value?.trim() || '';
+        const iconOf = (kind) => sys(kind)?.querySelector('[data-f-icon]')?.value || '';
+        const onOf = (kind) => {
+          const box = sys(kind)?.querySelector('[data-f-on]');
+          return box ? box.checked : true;
+        };
+        return {
+          folderNames: { inbox: nameOf('inbox'), saved: nameOf('saved'), trash: nameOf('trash') },
+          folders: {
+            icons: { inbox: iconOf('inbox'), saved: iconOf('saved'), trash: iconOf('trash') },
+            savedEnabled: onOf('saved'),
+            trashEnabled: onOf('trash'),
+            custom: rows.filter(r => r.dataset.folderKind === 'custom').map(r => ({
+              id: r.dataset.folderId || `f_${foundry.utils.randomID(8)}`,
+              name: r.querySelector('[data-f-name]')?.value?.trim() || '',
+              icon: r.querySelector('[data-f-icon]')?.value || 'fas fa-folder',
+            })).filter(c => c.name),
+          },
+        };
+      })(),
+      soundSet: val('soundSet', 'default') || 'default',
       network: {
         required: chk('networkRequired'),
         accessMode: val('accessMode'),
         allowedNetworks: [...el.querySelectorAll('[name="netAllowed"]:checked')].map(i => i.value),
         signalThreshold: parseInt(val('signalThreshold', '40'), 10) || 40,
       },
+      scenePin: { range: Math.max(0, parseInt(val('scenePinRange', '0'), 10) || 0) },
+      hackResolution: ['inherit', 'auto', 'flagged', 'gm'].includes(val('hackResolution')) ? val('hackResolution') : 'inherit',
       connection: {
         interfaces: [...el.querySelectorAll('[name="uplinkIface"]:checked')].map(i => ({
           networkId: i.value,
           preAuthorized: !!el.querySelector(`[name="uplinkPre"][value="${i.value}"]`)?.checked,
+          wired: !!el.querySelector(`[name="uplinkWired"][value="${i.value}"]`)?.checked,
         })),
         defaultNetworkId: val('uplinkDefault') || null,
         allowPlayerSwitching: chk('uplinkAllowSwitch'),
         showSyncHint: chk('uplinkSyncHint'),
       },
       allowExfil: chk('allowExfil'),
+      exfil: ['agent', 'shard', 'forward', 'leak', 'sell', 'wipe'].reduce((acc, key) => {
+        const cap = key.charAt(0).toUpperCase() + key.slice(1);
+        acc[key] = {
+          allow: chk(`exfil${cap}Allow`),
+          require: chk(`exfil${cap}Require`),
+          skill: val(`exfil${cap}Skill`, 'Interface') || 'Interface',
+          dv: parseInt(val(`exfil${cap}Dv`, '15'), 10) || 15,
+        };
+        if (key === 'sell') acc[key].price = Math.max(0, parseInt(val('exfilSellPrice', '0'), 10) || 0);
+        return acc;
+      }, {}),
     };
     const res = await this.terminalService.updateConfig(this.item, updates);
     if (res?.success) {
@@ -1139,6 +1276,30 @@ export class TerminalConfigApp extends BaseApplication {
   static _onClearPresetKit() {
     this._presetKit = null;
     this.render(false);
+  }
+
+  /** Add a custom folder row to the Identity tab's folder editor (DOM-only —
+      Save reads the rows; no re-render so other unsaved edits survive). */
+  static _onFolderAdd() {
+    const rows = this.element?.querySelector('[data-folder-rows]');
+    if (!rows) return;
+    const esc = Handlebars.escapeExpression;
+    const opts = TERMINAL_FOLDER_ICONS.map(i =>
+      `<option value="${esc(i.c)}"${i.c === 'fas fa-folder' ? ' selected' : ''}>${esc(i.label)}</option>`).join('');
+    const row = document.createElement('div');
+    row.className = 'ncm-cfg-folder-row';
+    row.setAttribute('data-folder-row', '');
+    row.dataset.folderKind = 'custom';
+    row.dataset.folderId = `f_${foundry.utils.randomID(8)}`;
+    row.innerHTML = `<select class="ncm-cfg-select ncm-cfg-folder-icon" data-f-icon>${opts}</select>`
+      + '<input type="text" class="ncm-cfg-input ncm-cfg-flex" data-f-name value="" placeholder="Folder name">'
+      + '<button type="button" class="ncm-cfg-btn-icon" data-action="folderRemove" data-tooltip="Remove folder (its mail returns to the Inbox)"><i class="fas fa-xmark"></i></button>';
+    rows.appendChild(row);
+    row.querySelector('[data-f-name]')?.focus();
+  }
+
+  static _onFolderRemove(event, target) {
+    target.closest('[data-folder-row]')?.remove();
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -1184,6 +1345,7 @@ export class TerminalConfigApp extends BaseApplication {
         login: { ...(cfg.login || {}), ...(kit.login || {}) },
         screensaver: { ...(cfg.screensaver || {}), ...(kit.screensaver || {}) },
         folderNames: { ...(cfg.folderNames || {}), ...(kit.folderNames || {}) },
+        soundSet: kit.soundSet || cfg.soundSet || 'default',
       }) : {}),
     } : null;
     const kitChanged = (this._presetKit || null) !== (this._lastKitPushed ?? null);
@@ -1196,6 +1358,9 @@ export class TerminalConfigApp extends BaseApplication {
       if (!viewerEl) continue;
       viewerEl.setAttribute('data-terminal-preset', t.preset || 'classic');
       this.themeService.applyTheme(prefs, viewerEl);
+      // The window header (title/controls) lives outside the viewer element —
+      // theme the app frame root too so the chrome previews along.
+      if (app.element && app.element !== viewerEl) this.themeService.applyTheme(prefs, app.element);
       // Per-terminal effects preview on the real viewer (the strip can't show them).
       viewerEl.setAttribute('data-term-scanlines', String(t.scanlines === true));
       viewerEl.setAttribute('data-term-flicker', String(t.flicker === true));
@@ -1265,6 +1430,7 @@ export class TerminalConfigApp extends BaseApplication {
     wireSlider('ttcTextScale', 'textScale', 'ncm-ttc-scale-val');
     wireSlider('ttcContrast', 'contrast', 'ncm-ttc-contrast-val');
     wireSlider('ttcGlitch', 'glitch', 'ncm-ttc-glitch-val', 0);
+    wireSlider('ttcWallStrength', 'wallpaperStrength', 'ncm-ttc-wall-val', 25);
 
     // Wallpaper path (typed or via the browseWallpaper FilePicker action).
     panel.querySelector('[data-ttc-wallpaper]')?.addEventListener('input', (e) => {
@@ -1584,6 +1750,10 @@ export class TerminalConfigApp extends BaseApplication {
             role: data.role || '',
             organization: cfg.metadata?.org || '',
             location: data.location || cfg.metadata?.location || '',
+            // A terminal-account address is a machine login, not a person's
+            // agent — send-only by default (players can't message/reply/add).
+            // Untick "Send-only" in the Master List to open it up.
+            sendOnly: true,
             notes: `Terminal account on "${this.item?.name || 'terminal'}".`,
           });
           if (created?.success) {
