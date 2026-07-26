@@ -397,6 +397,7 @@ export class GMContactManagerApp extends BaseApplication {
 
         // Build inline-styled chips (role, org, location, tags)
         selectedEnriched.chips = this._buildChips(selectedContact, allRoles);
+        selectedEnriched.sendOnly = !!selectedContact.sendOnly;
 
         // Per-player relationships for detail view
         selectedEnriched.playerRelationships = this._buildPlayerRelationships(
@@ -1038,6 +1039,7 @@ export class GMContactManagerApp extends BaseApplication {
       role: (_val('role') === '__manage_roles__' ? '' : _val('role')) || '',
       location: _val('location'),
       trust: parseInt(_val('trust'), 10) || 0,
+      sendOnly: _val('sendOnly') === 'true',
       encrypted: _val('encrypted') === 'true',
       encryptionDV: parseInt(_val('encryptionDV'), 10) || 15,
       blackIce: _val('blackIce') === 'true',

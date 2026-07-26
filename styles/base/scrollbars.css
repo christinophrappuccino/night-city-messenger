@@ -1,0 +1,52 @@
+/**
+ * scrollbars.css — themed scrollbars for every NCM surface.
+ *
+ * WHY THIS FILE EXISTS (two Foundry traps, both documented in CLAUDE.md):
+ *
+ * 1. Foundry core ships `* { scrollbar-width: thin; scrollbar-color: var(--color-scrollbar)
+ *    var(--color-scrollbar-track) }`. `scrollbar-color` IS an inherited property, but a
+ *    DIRECTLY-MATCHED declaration always beats an inherited value — so core's `*` rule
+ *    re-asserts its grey/blue bar on every descendant and NCM's `.ncm-app { scrollbar-color }`
+ *    never reached anything inside the window. (Exactly the `user-select: none` trap.)
+ *    Fix: match descendants directly — `.ncm-app *`.
+ *
+ * 2. In Chromium, specifying `scrollbar-color` DISABLES `::-webkit-scrollbar-*` styling for
+ *    that element. Since core sets it on `*`, every `::-webkit-scrollbar` rule in the module
+ *    (26 files' worth) was dead. Don't add more of them — style scrollbars with the STANDARD
+ *    properties here, or via the tokens below.
+ *
+ * THEMING: the colors resolve from `--ncm-*` at each element, and custom properties resolve
+ * from the nearest ancestor — so a terminal (which redefines `--ncm-*` on its own root per
+ * preset) and the Admin Panel (which redefines them on the panel root) automatically get
+ * scrollbars in THEIR palette, with no per-surface rules.
+ *
+ * PER-SURFACE OVERRIDE: set `--ncm-scrollbar-thumb` / `--ncm-scrollbar-track` on any scroll
+ * container (or an ancestor) — e.g. a red thumb for a danger pane. To HIDE a scrollbar, use
+ * `scrollbar-width: none` with a selector of specificity ≥ 0,2,0 (see `.ncm-app .ncm-tabs`).
+ *
+ * Imported EARLY (right after base/components.css) so component stylesheets can still
+ * override per-surface; it only needs to out-specify core's `*`.
+ */
+
+.ncm-app,
+.ncm-app *,
+/* Standalone dialogs whose root is NOT .ncm-app */
+.ncm-burn-dialog, .ncm-burn-dialog *,
+.ncm-hack-dialog, .ncm-hack-dialog *,
+.ncm-pick-dialog, .ncm-pick-dialog *,
+.ncm-item-picker-dialog, .ncm-item-picker-dialog *,
+.ncm-token-picker-dialog, .ncm-token-picker-dialog *,
+.ncm-time-config-dialog, .ncm-time-config-dialog *,
+/* Framework-free modals that can mount on document.body (no host viewer) */
+.ncm-seccon, .ncm-seccon *,
+.ncm-opsel, .ncm-opsel *,
+.ncm-imgv, .ncm-imgv * {
+  scrollbar-width: thin;
+  scrollbar-color:
+    var(--ncm-scrollbar-thumb, color-mix(in srgb, var(--ncm-secondary, #19f3f7) 38%, transparent))
+    var(--ncm-scrollbar-track, color-mix(in srgb, var(--ncm-bg-deep, #0a0a12) 85%, transparent));
+}
+
+/* Legacy `::-webkit-scrollbar` rules elsewhere in the module are inert (see note 2) and are
+   left in place only to avoid a 26-file churn — they cost nothing. New scroll panes need NO
+   scrollbar CSS at all: they inherit the themed bar above. */

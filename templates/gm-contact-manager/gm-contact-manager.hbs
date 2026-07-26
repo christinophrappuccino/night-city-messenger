@@ -265,6 +265,12 @@
                     <i class="fas fa-fire"></i> BURNED
                   </span>
                 {{/if}}
+                {{#if selectedContact.sendOnly}}
+                  <span class="ncm-chip ncm-chip--sendonly" style="color:#f7c948;border-color:rgba(247,201,72,0.4);background:rgba(247,201,72,0.08);"
+                        data-tooltip="System address — players can't message, reply to, or add it">
+                    <i class="fas fa-tower-broadcast"></i> SEND-ONLY
+                  </span>
+                {{/if}}
               </div>
 
               {{#if selectedContact.actorId}}

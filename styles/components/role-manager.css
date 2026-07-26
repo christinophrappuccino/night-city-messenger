@@ -326,7 +326,7 @@
 .ncm-role-list,
 .ncm-role-form__icon-grid {
   scrollbar-width: thin;
-  scrollbar-color: var(--ncm-border, #2a2a45) transparent;
+  scrollbar-color: var(--ncm-scrollbar-thumb, color-mix(in srgb, var(--ncm-secondary, #19f3f7) 38%, transparent)) var(--ncm-scrollbar-track, transparent);
 }
 
 /* ═══════════════════════════════════════════

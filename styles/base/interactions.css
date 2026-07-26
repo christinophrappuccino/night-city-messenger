@@ -387,7 +387,7 @@
 /* Firefox: can't auto-hide, but keep thin */
 .ncm-app .ncm-scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: var(--ncm-bg-elevated) transparent;
+  scrollbar-color: var(--ncm-scrollbar-thumb, color-mix(in srgb, var(--ncm-secondary, #19f3f7) 38%, transparent)) var(--ncm-scrollbar-track, transparent);
 }
 
 

@@ -170,7 +170,7 @@
   overflow-y: auto !important;
   flex: 1 !important;
   scrollbar-width: thin !important;
-  scrollbar-color: var(--ncm-border, #2a2a45) transparent !important;
+  scrollbar-color: var(--ncm-scrollbar-thumb, color-mix(in srgb, var(--ncm-secondary, #19f3f7) 38%, transparent)) var(--ncm-scrollbar-track, transparent) !important;
 }
 
 /* Entries — alternating row backgrounds for scanability */

@@ -215,6 +215,21 @@
       </div>
     </div>
 
+    {{!-- ── Message routing (send-only system addresses) ── --}}
+    <div class="ncm-form-row">
+      <div class="ncm-form-group">
+        <label class="ncm-form-label">
+          <i class="fas fa-tower-broadcast" style="color: var(--ncm-accent, #f7c948); font-size: 8px;"></i>
+          Message Routing
+        </label>
+        <select name="sendOnly" class="ncm-form-select">
+          <option value="false" {{#unless contact.sendOnly}}selected{{/unless}}>Two-way — players can message, reply &amp; add to contacts</option>
+          <option value="true" {{#if contact.sendOnly}}selected{{/if}}>Send-only — system address (players can't message, reply, or add)</option>
+        </select>
+        <div class="ncm-form-desc">Send-only = a broadcast/system address (system@localhost, alerts@…). You send FROM it; players get a "transmission refused" if they try to message it, and every reply/add-to-contacts affordance is hidden.</div>
+      </div>
+    </div>
+
     {{!-- ── ICE Details (only visible when encrypted) ── --}}
     <div class="ncm-form-row ncm-form-row--ice-details" {{#unless contact.encrypted}}style="display:none;"{{/unless}}>
       <div class="ncm-form-group">

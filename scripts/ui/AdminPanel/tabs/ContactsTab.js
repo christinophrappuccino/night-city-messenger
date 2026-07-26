@@ -31,6 +31,7 @@ export class ContactsTab extends BaseTab {
   _search = '';
   _sort = 'name';
   _filter = 'all';
+  _groupBy = null; // lazy-init from the client setting `contactsGroupBy`
   _expandedId = null;
   _selectedIds = new Set();
   _collapsedGroups = new Set();
@@ -67,11 +68,22 @@ export class ContactsTab extends BaseTab {
       searchInput.addEventListener('input', handler);
     }
 
-    // Sort select — new v6 class
-    const sortSelect = this.element?.querySelector('.ncm-ct-search__sort');
+    // Sort select — new v6 class (exclude the group-by select, which shares
+    // the styling class)
+    const sortSelect = this.element?.querySelector('.ncm-ct-search__sort:not(.ncm-ct-search__group)');
     if (sortSelect) {
       sortSelect.addEventListener('change', (e) => {
         this._sort = e.target.value;
+        this.render(true);
+      });
+    }
+
+    // Group-by select — persists per client (`contactsGroupBy`)
+    const groupSelect = this.element?.querySelector('.ncm-ct-search__group');
+    if (groupSelect) {
+      groupSelect.addEventListener('change', (e) => {
+        this._groupBy = e.target.value;
+        try { game.settings.set('cyberpunkred-messenger', 'contactsGroupBy', this._groupBy); } catch { /* client pref only */ }
         this.render(true);
       });
     }
@@ -378,6 +390,7 @@ export class ContactsTab extends BaseTab {
           { value: 5, active: trust >= 5 },
         ],
         burned: c.burned ?? false,
+        sendOnly: c.sendOnly ?? false,
         encrypted: c.encrypted ?? false,
         encryptionDV: c.encryptionDV,
         encryptionSkill: c.encryptionSkill || 'Interface',
@@ -432,7 +445,7 @@ export class ContactsTab extends BaseTab {
           { value: 3, active: true }, { value: 4, active: true },
           { value: 5, active: true },
         ],
-        burned: false, encrypted: false, encryptionDV: null, encryptionSkill: '',
+        burned: false, sendOnly: false, encrypted: false, encryptionDV: null, encryptionSkill: '',
         actorId: pa.actorId, actorName: pa.actorName,
         playerOwnerName: pa.playerName, isPlayerOwned: true,
         portrait: actor.img || null, hasPortrait: !!actor.img && actor.img !== 'icons/svg/mystery-man.svg',
@@ -574,37 +587,75 @@ export class ContactsTab extends BaseTab {
         filtered.sort((a, b) => (a.organization || 'zzz').localeCompare(b.organization || 'zzz') || a.name.localeCompare(b.name)); break;
     }
 
-    // ── Build groups ──
-    const groupOrder = ['Player Characters', 'Fixers', 'Corp Contacts', 'Runners', 'Street Contacts'];
+    // ── Build groups — GROUP-BY selector (dev-picked 2026-07-11): role
+    // (default — one group per role, custom roles first-class) / organization
+    // / trust / none (flat). Player Characters stays pinned first in every
+    // mode. Choice persists per client (`contactsGroupBy`).
+    if (this._groupBy === null) {
+      try { this._groupBy = game.settings.get('cyberpunkred-messenger', 'contactsGroupBy') || 'role'; }
+      catch { this._groupBy = 'role'; }
+    }
+    const mode = this._groupBy;
+    const rolePlural = {
+      Fixer: 'Fixers', Runner: 'Runners', Corp: 'Corp Contacts', Exec: 'Execs',
+      Solo: 'Solos', Tech: 'Techs', Medtech: 'Medtechs', Ripperdoc: 'Ripperdocs',
+      Media: 'Media', Nomad: 'Nomads', Lawman: 'Lawmen', Rocker: 'Rockers',
+      Gang: 'Gangs', Civilian: 'Civilians', Gov: 'Government', 'A.I.': 'A.I.',
+    };
+    const roleGroupFor = (c) => {
+      // roleBadge (chip label) when the role is recognized; otherwise the RAW
+      // role text, title-cased — a free-typed role like "legend" still gets
+      // its own "Legends" group instead of vanishing into a catch-all.
+      const raw = c.roleBadge || String(c.role || '').trim();
+      if (!raw) return 'Unsorted';
+      const label = raw.charAt(0).toUpperCase() + raw.slice(1);
+      return rolePlural[label] ?? (label.endsWith('s') ? label : `${label}s`);
+    };
+    const groupNameFor = (c) => {
+      if (c.isPlayerOwned) return 'Player Characters';
+      switch (mode) {
+        case 'org': return (c.organization || '').trim() || 'No Organization';
+        case 'trust': return trustLabels[c.trust] ?? 'Unknown';
+        case 'none': return 'All Contacts';
+        default: return roleGroupFor(c);
+      }
+    };
     const groupMap = {};
     for (const c of filtered) {
-      let groupName = 'Street Contacts';
-      if (c.isPlayerOwned) groupName = 'Player Characters';
-      else if (c.roleBadge === 'Fixer') groupName = 'Fixers';
-      else if (c.roleBadge === 'Corp' || c.roleBadge === 'Exec') groupName = 'Corp Contacts';
-      else if (c.roleBadge === 'Runner') groupName = 'Runners';
-
+      const groupName = groupNameFor(c);
       if (!groupMap[groupName]) groupMap[groupName] = [];
       groupMap[groupName].push(c);
     }
-    const groups = [];
-    for (const name of groupOrder) {
-      if (groupMap[name]?.length) {
-        const key = name.toLowerCase().replace(/\s+/g, '-');
-        groups.push({
-          key,
-          name,
-          contacts: groupMap[name],
-          collapsed: this._collapsedGroups.has(key),
-        });
-      }
+    // Group order per mode (PCs always first).
+    let orderedNames;
+    if (mode === 'org') {
+      const orgs = Object.keys(groupMap)
+        .filter(n => n !== 'Player Characters' && n !== 'No Organization')
+        .sort((a, b) => a.localeCompare(b));
+      orderedNames = ['Player Characters', ...orgs, 'No Organization'];
+    } else if (mode === 'trust') {
+      orderedNames = ['Player Characters', 'Implicitly Trusted', 'Trusted', 'Neutral', 'Cautious', 'Suspicious', 'Unknown'];
+    } else if (mode === 'none') {
+      orderedNames = ['Player Characters', 'All Contacts'];
+    } else {
+      // role: built-ins in roleChipMap order, custom/unknown alpha, Unsorted last.
+      const canonical = ['Player Characters',
+        ...[...new Set(Object.values(roleChipMap).map(r => rolePlural[r.label] ?? (r.label.endsWith('s') ? r.label : `${r.label}s`)))]];
+      const rest = Object.keys(groupMap)
+        .filter(n => !canonical.includes(n) && n !== 'Unsorted')
+        .sort((a, b) => a.localeCompare(b));
+      orderedNames = [...canonical, ...rest, 'Unsorted'];
     }
-    // Remaining groups not in groupOrder
-    for (const [name, contacts] of Object.entries(groupMap)) {
-      if (!groupOrder.includes(name) && contacts.length) {
-        const key = name.toLowerCase().replace(/\s+/g, '-');
-        groups.push({ key, name, contacts, collapsed: this._collapsedGroups.has(key) });
-      }
+    const groups = [];
+    for (const name of orderedNames) {
+      if (!groupMap[name]?.length) continue;
+      const key = name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      groups.push({
+        key,
+        name,
+        contacts: groupMap[name],
+        collapsed: this._collapsedGroups.has(key),
+      });
     }
 
     // ── Send As chips (up to 5 most recently updated NPC contacts) ──
@@ -638,6 +689,7 @@ export class ContactsTab extends BaseTab {
       overflowOpen: this._overflowOpen,
       contactSearch: this._search,
       contactSort: this._sort,
+      contactGroupBy: this._groupBy,
       contactFilter: this._filter,
     };
   }

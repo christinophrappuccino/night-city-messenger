@@ -735,6 +735,11 @@
     color: var(--ncm-text-muted) !important; border-color: var(--ncm-border) !important;
     background: transparent !important;
   }
+.ncm-app .ncm-ct-badge--sendonly {
+    color: var(--ncm-accent) !important;
+    border-color: color-mix(in srgb, var(--ncm-accent) 35%, transparent) !important;
+    background: color-mix(in srgb, var(--ncm-accent) 7%, transparent) !important;
+  }
 
   /* Always-visible send button */
 .ncm-app .ncm-ct-row__send {

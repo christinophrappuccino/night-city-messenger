@@ -1148,6 +1148,22 @@
   opacity: 1;
 }
 
+/* Form field descriptions (Message Routing, ICE config, …) — the shared
+   .ncm-form-desc is only styled in the PLAYER contact-manager scopes, so it
+   rendered unstyled (full-size) in this window. Match the form-hint register. */
+.ncm-app.ncm-gm-contact-manager .ncm-form-desc {
+  font-family: var(--ncm-font-display);
+  font-size: 9px;
+  font-weight: 500;
+  color: var(--ncm-text-muted, #555570);
+  line-height: 1.55;
+  margin: 3px 0 6px;
+  opacity: 0.85;
+}
+.ncm-app.ncm-gm-contact-manager .ncm-form-desc strong {
+  color: var(--ncm-text-secondary, #8888a0);
+}
+
 .ncm-form-input,
 .ncm-form-select,
 .ncm-form-textarea {
@@ -1585,7 +1601,7 @@
 .ncm-gm-list-scroll,
 .ncm-gm-split__detail {
   scrollbar-width: thin;
-  scrollbar-color: var(--ncm-border, #2a2a45) transparent;
+  scrollbar-color: var(--ncm-scrollbar-thumb, color-mix(in srgb, var(--ncm-secondary, #19f3f7) 38%, transparent)) var(--ncm-scrollbar-track, transparent);
 }
 
 /* ═══════════════════════════════════════════
