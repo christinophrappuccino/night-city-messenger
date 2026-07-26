@@ -27,7 +27,7 @@ import { BaseApplication } from '../BaseApplication.js';
 import { MODULE_ID, TERMINAL_PRESETS, SOCKET_OPS } from '../../utils/constants.js';
 import { log, isGM, formatCyberDate, buildTerminalThemePrefs, resolveTerminalSound, resolveOperator, openOperatorPicker, getOperatorActors, canOperate } from '../../utils/helpers.js';
 import { getInitials } from '../../utils/designHelpers.js';
-import { enrichContent, toggleSecretReveal, applySyslogFilter, openGalleryImage, closeGalleryLightbox, resolveEnvelope, CONTENT_TYPE_INFO, displayContentType } from '../content/ContentRenderers.js';
+import { enrichContent, toggleSecretReveal, applySyslogFilter, openGalleryImage, closeGalleryLightbox, resolveEnvelope, CONTENT_TYPE_INFO, displayContentType, programEffectInfo } from '../content/ContentRenderers.js';
 import { runSiphon, runEddiesClaim, runCrack, runMalwareDeploy, runContentUnlock, runCamAction, runPayloadExecute, runPayloadKill, runPayloadSniff, runAnalyze, toggleSchematicLock } from '../content/SiphonFlow.js';
 import { runSecurityConsole } from '../content/SecurityConsole.js';
 import { NetworkAuthDialog } from '../NetworkManagement/NetworkAuthDialog.js';
@@ -1598,7 +1598,7 @@ export class TerminalViewerApp extends BaseApplication {
           const params = {};
           if (execVerb === 'deployICE' && cd.iceActorId) params.iceActorId = cd.iceActorId;
           out.push({ ...base, effectType: execVerb, family: 'execute', params,
-            description: TerminalViewerApp._EXEC_DESC[execVerb] || 'installs a program' });
+            description: programEffectInfo(execVerb).blurb || 'installs a program' });
         } else {
           // The planted copy must NOT carry the upload-config keys forward.
           const plantCd = { ...cd };
@@ -2054,14 +2054,6 @@ export class TerminalViewerApp extends BaseApplication {
    *  character's dozens of skill items drowned out (and, past the old 50-item
    *  cap, entirely hid) the real gear. */
   static NON_CARRIER_TYPES = ['skill', 'role', 'criticalInjury', 'netarch'];
-
-  /** Short descriptions for uploadable EXECUTE verbs (OPS → UPLOAD picker). */
-  static _EXEC_DESC = {
-    keylog: 'captures the next login on this box',
-    forgeAccount: 'forges a hidden backdoor account',
-    deployICE: 'arms Black ICE for the next intruder',
-    logicBomb: 'arms a delayed payload',
-  };
 
   async _doExfilShard(msg) {
     // Players pick from their OWN inventory; GMs can also target world items.

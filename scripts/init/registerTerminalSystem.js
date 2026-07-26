@@ -90,8 +90,11 @@ export function registerTerminalSystem(initializer) {
 
   // ─── Resident action triggers — Priority 68 (ready) ───
   // onAction residents that fire when the operator exfiltrates. All 7 exfil
-  // variants emit EVENTS.TERMINAL_EXFIL GM-side, so ONE listener covers them.
-  // (Siphon and other actions can add checkActionResidents calls later.)
+  // variants emit EVENTS.TERMINAL_EXFIL GM-side, so ONE listener covers them —
+  // including UNGATED exfils, which never reach the trace funnel. Every OTHER
+  // action (siphon/crack/decrypt/deploy/execute/upload…) is picked up centrally
+  // by TraceService._fireResidentTriggers, which is why it skips 'exfil': this
+  // listener already owns it, and running both would propose twice.
   initializer.register('ready', 68, 'Resident action triggers', async () => {
     if (!isGM()) return;
     try {

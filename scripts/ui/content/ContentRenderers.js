@@ -265,21 +265,82 @@ function _parseClock(str) {
 }
 
 /**
- * PAYLOAD effect catalog — a utility program's effect type drives its label,
- * icon, one-line blurb, and which module-native routine `runPayloadExecute`
- * applies. `adjudicate` is the always-works fallback (mark run + alert the GM).
- * Unknown/legacy effect types resolve to `adjudicate`.
+ * PROGRAM EFFECT CATALOG — the ONE source of truth for what a program can DO.
+ *
+ * Every effect a payload executes, a malware deploys, or a resident fires lives
+ * here. Before this existed the catalog was duplicated across five places that
+ * disagreed — the payload metadata map, a second hardcoded option list in the
+ * composer, the upload verb list, `_EXEC_DESC` in the terminal viewer, and the
+ * appliers themselves — and **seven of the eleven verbs had no label anywhere**,
+ * which is why malware could not be authored with an ability at all.
+ *
+ * Per entry:
+ *   label/icon/blurb — how it presents in any picker or manifest
+ *   modes    — where it can run: 'instant' (executed/deployed on the spot, applied
+ *              by SiphonFlow._applyNativeEffect) and/or 'triggered' (left behind as
+ *              a resident, applied by TerminalService._fireResidentEffect). The two
+ *              appliers are the authority; this mirrors them, so a verb must not
+ *              claim a mode its applier has no case for.
+ *   host     — 'terminal' if it only means something on a machine, else 'any'
+ *   group    — picker grouping only
+ *   params   — the fields the applier reads out of `effect.params`, so an
+ *              authoring UI can render them instead of leaving them unauthorable
+ *
+ * `adjudicate` is the always-works fallback (mark it run, alert the GM) and is the
+ * `default:` branch of both appliers; unknown/legacy types resolve to it.
  */
-export const PAYLOAD_EFFECTS = Object.freeze({
-  icebreaker:  { label: 'Icebreaker',   icon: 'fas fa-unlock-keyhole',   blurb: 'unseals encrypted files on the host system' },
-  skeletonKey: { label: 'Skeleton Key', icon: 'fas fa-key',              blurb: 'clears account & network lockouts on the host' },
-  scanner:     { label: 'Scanner',      icon: 'fas fa-satellite-dish',   blurb: 'reveals hidden accounts & off-net files' },
-  jammer:      { label: 'Jammer',       icon: 'fas fa-tower-broadcast',  blurb: 'suppresses the machine uplink (LOCAL ONLY)' },
-  adjudicate:  { label: 'Program',      icon: 'fas fa-bolt',             blurb: 'runs a custom routine (GM adjudicates the effect)' },
+export const PROGRAM_EFFECTS = Object.freeze({
+  // ── Utility: the operator runs it on a host they've reached ──
+  icebreaker:  { label: 'Icebreaker',   icon: 'fas fa-unlock-keyhole',   blurb: 'unseals encrypted files on the host system',      modes: ['instant'],              host: 'any',      group: 'Utility' },
+  skeletonKey: { label: 'Skeleton Key', icon: 'fas fa-key',              blurb: 'clears account & network lockouts on the host',   modes: ['instant'],              host: 'any',      group: 'Utility' },
+  scanner:     { label: 'Scanner',      icon: 'fas fa-satellite-dish',   blurb: 'reveals hidden accounts & off-net files',         modes: ['instant'],              host: 'any',      group: 'Utility' },
+  jammer:      { label: 'Jammer',       icon: 'fas fa-tower-broadcast',  blurb: 'suppresses the machine uplink (LOCAL ONLY)',      modes: ['instant'],              host: 'terminal', group: 'Utility' },
+
+  // ── Sabotage: it changes the host's files ──
+  wipe:        { label: 'Wipe',         icon: 'fas fa-eraser',           blurb: 'purges chosen files to the GM recycle bin',       modes: ['instant'],              host: 'any',      group: 'Sabotage',
+    params: [{ f: 'messageIds', type: 'files', label: 'Files to wipe', hint: 'Nothing selected = no-op. The program never wipes itself.' }] },
+  corrupt:     { label: 'Corrupt',      icon: 'fas fa-file-circle-xmark', blurb: 'redacts chosen files, reversible by DECLASSIFY', modes: ['instant'],              host: 'any',      group: 'Sabotage',
+    params: [{ f: 'messageIds', type: 'files', label: 'Files to corrupt', hint: 'Only documents and dossiers can be redacted; other types are skipped.' },
+             { f: 'declassifyDV', type: 'number', label: 'Restore DV', def: 15, hint: 'What it takes to undo the damage.' }] },
+
+  // ── Persistence: it stays behind and fires on a trigger ──
+  plant:        { label: 'Plant a file', icon: 'fas fa-file-arrow-up',   blurb: 'leaves a forged file for whoever looks next',     modes: ['triggered'],            host: 'terminal', group: 'Persistence' },
+  keylog:       { label: 'Keylogger',    icon: 'fas fa-keyboard',        blurb: 'captures the next login on this box',             modes: ['triggered'],            host: 'terminal', group: 'Persistence' },
+  forgeAccount: { label: 'Backdoor',     icon: 'fas fa-door-open',       blurb: 'forges a hidden account you can come back to',    modes: ['instant', 'triggered'], host: 'terminal', group: 'Persistence',
+    params: [{ f: 'username', type: 'text', label: 'Username', hint: 'Blank = generated.' },
+             { f: 'password', type: 'text', label: 'Password', hint: 'Blank = generated. Whispered to whoever planted it.' },
+             { f: 'admin', type: 'checkbox', label: 'Admin rights' },
+             { f: 'ttlHours', type: 'number', label: 'Lasts (hrs)', def: 24, hint: '0 = permanent. Otherwise it closes itself on the game clock.' }] },
+  deployICE:    { label: 'Deploy ICE',   icon: 'fas fa-skull',           blurb: 'arms Black ICE for the next intruder',            modes: ['triggered'],            host: 'terminal', group: 'Persistence',
+    params: [{ f: 'iceActorId', type: 'ice', label: 'Black ICE', hint: "Blank = use the box's own ICE, if it has any." }] },
+  logicBomb:    { label: 'Logic bomb',   icon: 'fas fa-bomb',            blurb: 'holds another effect until its trigger fires',    modes: ['triggered'],            host: 'terminal', group: 'Persistence',
+    params: [{ f: 'inner', type: 'effect', label: 'Effect to hold', hint: 'Any triggered effect except another logic bomb.' }] },
+
+  // ── Fallback ──
+  adjudicate:   { label: 'Program',      icon: 'fas fa-bolt',            blurb: 'runs a custom routine (GM adjudicates the effect)', modes: ['instant', 'triggered'], host: 'any',    group: 'Custom' },
 });
-export function payloadEffectInfo(type) {
-  return PAYLOAD_EFFECTS[type] || PAYLOAD_EFFECTS.adjudicate;
+
+/** Metadata for one effect key; unknown/legacy → `adjudicate`. */
+export function programEffectInfo(type) {
+  return PROGRAM_EFFECTS[type] || PROGRAM_EFFECTS.adjudicate;
 }
+
+/**
+ * The catalog filtered for a picker.
+ * @param {object} [o]
+ * @param {'instant'|'triggered'} [o.mode] only effects whose applier supports it
+ * @param {'terminal'|'shard'|'any'} [o.host] drop terminal-only verbs off a shard
+ * @param {string[]} [o.exclude] keys to omit (logicBomb excludes itself)
+ * @returns {Array<{key:string, label:string, icon:string, blurb:string, group:string, params:Array}>}
+ */
+export function programEffectOptions({ mode, host, exclude = [] } = {}) {
+  return Object.entries(PROGRAM_EFFECTS)
+    .filter(([key, e]) => !exclude.includes(key)
+      && (!mode || e.modes.includes(mode))
+      && (!host || host === 'any' || e.host === 'any' || e.host === host))
+    .map(([key, e]) => ({ key, ...e, params: e.params || [] }));
+}
+
 
 /**
  * Build a minimal cover-type contentData for a disguised payload — the payload's
@@ -615,7 +676,7 @@ const ENRICHERS = {
   //     scanReport? }
   // Runtime states: idle → (executing, UI-only) → active (timed) | done.
   [CONTENT_TYPES.PAYLOAD]: (cd, entry, ctx = {}) => {
-    const fx = payloadEffectInfo(cd.effect?.type);
+    const fx = programEffectInfo(cd.effect?.type);
     const duration = Number(cd.effect?.duration) || 0;
     // Live countdown for a timed, still-running effect.
     let expired = false, remainingMs = 0, expiresLabel = '';
@@ -640,7 +701,12 @@ const ENRICHERS = {
       program: cd.program || cd.payloadType || '',   // legacy `payloadType` → program label
       effectType: cd.effect?.type || 'adjudicate',
       effectLabel: fx.label, effectIcon: fx.icon, effectBlurb: fx.blurb,
-      isNative: cd.effect?.type && cd.effect.type !== 'adjudicate' && !!PAYLOAD_EFFECTS[cd.effect.type],
+      // "native" = the INSTANT applier really has a case for it. Keyed on `modes`,
+      // not mere presence in the catalog: the catalog also holds triggered-only
+      // verbs (plant/keylog/deployICE/logicBomb) that a payload executing on the
+      // spot would fall through to adjudicate.
+      isNative: !!cd.effect?.type && cd.effect.type !== 'adjudicate'
+        && !!PROGRAM_EFFECTS[cd.effect.type]?.modes?.includes('instant'),
       timed: duration > 0,
       durationLabel: duration > 0 ? _durationLabel(duration) : '',
       charges: cd.charges != null ? Number(cd.charges) : null,

@@ -15,7 +15,7 @@ import { log, isGM, formatCyberDate, resolveMediaEmbed } from '../../utils/helpe
 import { BaseApplication } from '../BaseApplication.js';
 import { CyberTimePicker } from '../components/CyberTimePicker.js';
 import { enrichContent, openGalleryImage, CT_COLORS, RECORD_FIELD_KINDS, RECORD_DB_KINDS, SCHEM_MARKERS, schemMarkerInfo,
-  FILE_DEFAULT_TYPES, suggestFilename, deriveFileSize } from '../content/ContentRenderers.js';
+  FILE_DEFAULT_TYPES, suggestFilename, deriveFileSize, programEffectOptions } from '../content/ContentRenderers.js';
 import { BUILTIN_EXAMPLES, getEntryTemplates, saveEntryTemplate, deleteEntryTemplate, exportEntryTemplates, importEntryTemplates } from '../content/EntryTemplates.js';
 
 /** Content type pill definitions */
@@ -461,11 +461,15 @@ export class DataShardComposer extends BaseApplication {
       // VERB (keylog/backdoor/Black-ICE) instead of planting the file. Only these
       // types offer it; everything else uploads as a PLANT of the file itself.
       isExecuteProgram: type === CONTENT_TYPES.MALWARE || type === CONTENT_TYPES.PAYLOAD,
+      // From the ONE catalog: an uploaded program leaves a resident behind, so only
+      // 'triggered' verbs qualify. `plant` is excluded because planting the file
+      // itself IS the blank default. `logicBomb` is excluded until there's a way to
+      // author its inner effect — offered now it would upload and then no-op
+      // ("logic bomb had no payload"), which is worse than not offering it.
       uploadEffectOptions: [
         { value: '', label: '— plant this file (default) —' },
-        { value: 'keylog', label: 'Keylogger — capture the next login' },
-        { value: 'forgeAccount', label: 'Backdoor — forge a hidden account' },
-        { value: 'deployICE', label: 'Black ICE — bite the next intruder' },
+        ...programEffectOptions({ mode: 'triggered', host: 'terminal', exclude: ['plant', 'adjudicate', 'logicBomb'] })
+          .map(e => ({ value: e.key, label: `${e.label} — ${e.blurb}` })),
       ].map(o => ({ ...o, selected: (this.editData?.contentData?.uploadEffect || '') === o.value })),
 
       // Dossier sections (for edit pre-fill)
@@ -4373,13 +4377,6 @@ export class DataShardComposer extends BaseApplication {
   _plContext(cd) {
     const fx = cd.effect || {};
     const effType = fx.type || 'adjudicate';
-    const EFFECTS = [
-      ['icebreaker', 'Icebreaker — unseal host files'],
-      ['skeletonKey', 'Skeleton Key — clear lockouts'],
-      ['scanner', 'Scanner — reveal hidden accounts/files'],
-      ['jammer', 'Jammer — suppress the uplink'],
-      ['adjudicate', 'Program — GM adjudicates the effect'],
-    ];
     const DISGUISES = [
       ['note', 'Note'], ['message', 'Message'], ['eddies', 'Eddies Dead Drop'], ['dossier', 'Dossier'],
     ];
@@ -4388,7 +4385,10 @@ export class DataShardComposer extends BaseApplication {
       name: cd.name || '', program: cd.program || cd.payloadType || '', version: cd.version || '',
       sizeLabel: cd.sizeLabel || '', publisher: cd.publisher || '', signed: !!cd.signed,
       charges: cd.charges != null ? cd.charges : 1, description: cd.description || '',
-      effectOptions: EFFECTS.map(([v, l]) => ({ value: v, label: l, selected: v === effType })),
+      // From the ONE catalog (ContentRenderers.PROGRAM_EFFECTS) — a payload runs on
+      // the spot, so only 'instant' verbs are offered.
+      effectOptions: programEffectOptions({ mode: 'instant' })
+        .map(e => ({ value: e.key, label: `${e.label} — ${e.blurb}`, selected: e.key === effType })),
       durationHrs: dur > 0 ? Math.round(dur / 3600000) : 0,
       // Linked world macros (GM authoring).
       macroOptions: (game.macros?.contents || []).map(m => ({ id: m.id, name: m.name, selected: fx.macroId === m.id }))

@@ -1750,6 +1750,26 @@ export class TerminalService {
   }
 
   /**
+   * onHeat trigger — a resident armed to fire once the operator's heat on THIS
+   * box reaches a threshold ("when they're running hot enough to be desperate").
+   * Driven from the trace funnel, which is where heat actually moves, so it is
+   * checked after both a tripped defense and a clean action.
+   * @param {Item} item @param {number} heat current decayed heat for this operator
+   * @param {object} [ctx] { actorId }
+   */
+  async checkHeatResidents(item, heat, { actorId } = {}) {
+    if (!isGM() || !this.isTerminal(item)) return;
+    const now = this._nowMs();
+    const level = Number(heat) || 0;
+    const matches = this.getResidents(item).filter(r =>
+      r.state === 'armed' && r.trigger?.kind === 'onHeat' &&
+      level >= (Number(r.trigger.atLeast) || 0) &&
+      (!r.trigger.actorId || r.trigger.actorId === actorId) &&
+      (!r.snoozeUntil || r.snoozeUntil <= now));
+    for (const r of matches) await this._proposeResidentFire(item, r, { actorId });
+  }
+
+  /**
    * Build the stored message-flag block for a terminal page. Matches the shape
    * MessageRepository._pageToMessage reads, plus the `accountId` scope tag.
    * @private

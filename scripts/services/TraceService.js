@@ -134,12 +134,49 @@ export class TraceService {
 
       // Successes are logged with NO heat gained (design: heat is only for tripped
       // defenses). Only failures heat + alert the GM.
+      const objId = p.objectId || `label:${String(p.objectName || 'unknown').toLowerCase()}`;
+      const who = p.actorId || 'unknown';
+      let heat = this.getHeat(objId, who);
       if (isFail) {
-        const objId = p.objectId || `label:${String(p.objectName || 'unknown').toLowerCase()}`;
-        const heat = await this.bumpHeat(objId, p.actorId || 'unknown', heatDelta);
+        heat = await this.bumpHeat(objId, who, heatDelta);
         this._gmAlert(p, heat);
       }
+      await this._fireResidentTriggers(p, heat);
     } catch (err) { log.error(`recordTrace failed: ${err.message}`); }
+  }
+
+  /**
+   * Resident triggers ride the trace funnel.
+   *
+   * Every gated content action already reports here carrying an `action` tag and
+   * its host item, so this ONE hook reaches siphon / crack / decrypt / camera /
+   * deploy / execute / exfil / upload. The alternative was a
+   * `checkActionResidents()` call at each site — only exfil ever got one, which
+   * is why `onAction` and `onHeat` residents were installable but unreachable.
+   *
+   * - `onAction` fires only when the action SUCCEEDED: the thing actually
+   *   happened. A failed attempt is the trace's business, not the bomb's.
+   * - `onHeat` is checked either way, because heat is what moved.
+   *
+   * Resolved through the `game.nightcity` namespace rather than an import so the
+   * trace spine stays independent of the terminal service.
+   * @private
+   */
+  async _fireResidentTriggers(p, heat) {
+    if (p.targetKind !== 'terminal' || !p.objectId) return;
+    const svc = game.nightcity?.terminalService;
+    const item = game.items?.get(p.objectId);
+    if (!svc || !item) return;
+    try {
+      // 'exfil' is deliberately NOT handled here: it has its own EVENTS.TERMINAL_EXFIL
+      // listener (registerTerminalSystem, ready/68) which also catches UNGATED
+      // exfils that never reach this funnel. Running both would propose the same
+      // resident twice.
+      if (p.outcome === 'success' && p.action !== 'exfil') {
+        await svc.checkActionResidents?.(item, p.action, { actorId: p.actorId });
+      }
+      await svc.checkHeatResidents?.(item, heat, { actorId: p.actorId });
+    } catch (err) { log.warn(`Resident trigger check failed: ${err.message}`); }
   }
 
   /** GM-side socket handler body for TRACE_REQUEST (player relay). */
