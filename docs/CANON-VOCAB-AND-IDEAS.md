@@ -145,6 +145,52 @@ From the DLC's "Agents in Your Game" section:
 
 ## 7 · Concrete follow-ups (if the dev wants any)
 
+> **STATUS 2026-07-26 — the dev picked the flavor pass (#2); it is APPLIED, under a rule that
+> narrows this whole document.**
+>
+> ### ⚑ THE PLACEMENT RULE (dev's call — read before adopting anything below)
+> **In-world vocabulary goes on PLAYER-FACING IMMERSIVE surfaces only. GM/authoring and
+> config UI use plain, normal language.** A GM building an entry should not have to decode
+> fiction to use a form. So the app-name table in §4 is *not* a licence to rewrite composer
+> intros — the first cut of this pass did exactly that ("a BabelChat scrape", "a parked BangMe!
+> transfer", "a live WatchBox camera wall" in the composer's per-type intros, plus SAAI in the
+> Theme Customizer hint and canon ICE names in a config hint) and **all of it was reverted**.
+> Setting words earn their place where the *player* is inside the fiction: a breach console, an
+> action console, a rendered artifact.
+>
+> **What landed (3 items):** **Breacher** — the shard hack sequence's console banner + status chip
+> (the two most-seen strings in a breach; deliberately not sprayed wider, since NCM's existing
+> "breach" wording is already canon-adjacent and the module models no Breacher *item*) ·
+> **AltLink** — the exfil "To my Agent" console intro · **BabelChat** — the chatlog "Chat app"
+> placeholder **and** the enricher's blank-field fallback, which was `NC-MSG`. That last one is the
+> instructive case: a placeholder supplying **in-world content** is legitimate (the authored value
+> is what the player reads), but placeholder and fallback must match or the field promises a name
+> the render contradicts.
+>
+> **Adopted in principle, not yet placed — no player-facing home exists:** **SAAI** (§2's top
+> recommendation; the Theme Customizer's Agent Name is a *config* field, so it was reverted),
+> **ZPost**, **BangMe!**, **WatchBox**, and the **Black ICE name suggestions** (§5 — a config-hint
+> list is GM UI; if these should surface anywhere it's as seeded actor names, not helper text).
+>
+> **Two findings from the same pass.** (1) **`languages/en.json` was 104 keys of which 84 were dead
+> and 9 were requested-but-absent — and 3 of those were rendering the raw key text as a setting
+> label in the GM's Module Settings menu**, because Foundry auto-localizes a setting's `name`/`hint`.
+> Fixed separately: all settings now use literal strings, en.json is down to the 6 keys Foundry
+> actually resolves, and `node tools/audit-i18n.cjs` guards both directions. Copy is hardcoded in
+> JS/HBS — that is where you edit it. (2) The **"no Black ICE actors" empty state exists in FIVE
+> different wordings** (composer, shard config, create-network, contact form, network-management)
+> plus a sixth in the Escalate dialog's `<option>` — worth unifying if it's ever touched, and a
+> reason not to put a suggestion list in just one of them.
+>
+> **Deliberately NOT done — "the SAAI detected the intrusion" as the shared trace copy.** It
+> would misattribute: `showShardTrace` is the ONE toast for every trace source (shard, terminal,
+> network, camera), and a SAAI is specifically *an Agent's* assistant — a data shard and a corp
+> workstation don't have one. Naming it there would be wrong 3 times out of 4. Doing this properly
+> means threading a `context` through the trace payload the way `showShardBlackICE` already reads
+> `data.context` (Shard/Network/Message/Terminal) and picking the flavor per source — a plumbing
+> change, not a copy edit, so it's left as a follow-up. **Demon** (§5) is the right word for a
+> *box's* automated defender if that gets built.
+
 1. **Fold the *concepts* into `THREAD6-MALWARE-MODEL.md`:** left-behind implants map to the verbs; make them **temporary (GM-set duration)** as the answer to "forgeAccount time-limited?"; a **REBOOT** counterplay; add a **`track`** (location/comms surveillance) verb. All with our own numbers. *(pure doc edit — I can do this now if you want.)*
 2. **Flavor pass (cheap):** reflavor trace copy → "the SAAI detected the intrusion"; name the breach tool **Breacher**; seed **BabelChat/ZPost/WatchBox/BangMe!** in composer/intro copy; offer **Black ICE names** as picker suggestions. All name/flavor, no lifted text.
 3. **SAAI nudge feature** (new backlog item) — the "I have a bad feeling" diegetic hints. Needs its own small design pass; mock-first if it gets any UI.

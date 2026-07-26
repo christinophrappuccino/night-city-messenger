@@ -1249,7 +1249,7 @@ const ENRICHERS = {
     const participants = Object.values(people);
     return {
       ...cd, messages, participants,
-      app: cd.app || 'NC-MSG',
+      app: cd.app || 'BabelChat',
       channel: cd.channel || '',
       msgCount: messages.filter(m => !m.isSystem).length,
     };
