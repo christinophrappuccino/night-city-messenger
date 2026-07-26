@@ -40,8 +40,8 @@ export class SettingsManager {
     // ─── World Settings (GM only) ───
 
     game.settings.register(MODULE_ID, 'customNetworks', {
-      name: 'NCM.Settings.CustomNetworks.Name',
-      hint: 'NCM.Settings.CustomNetworks.Hint',
+      name: 'Custom Networks',
+      hint: 'GM-defined custom networks',
       scope: 'world',
       config: false,
       type: Array,
@@ -49,7 +49,7 @@ export class SettingsManager {
     });
 
     game.settings.register(MODULE_ID, 'coreNetworkOverrides', {
-      name: 'NCM.Settings.CoreNetworkOverrides.Name',
+      name: 'Core Network Overrides',
       hint: 'GM overrides for core network settings (security, effects, theme).',
       scope: 'world',
       config: false,
@@ -58,8 +58,8 @@ export class SettingsManager {
     });
 
     game.settings.register(MODULE_ID, 'scheduledMessages', {
-      name: 'NCM.Settings.ScheduledMessages.Name',
-      hint: 'NCM.Settings.ScheduledMessages.Hint',
+      name: 'Scheduled Messages',
+      hint: 'Messages awaiting delivery',
       scope: 'world',
       config: false,
       type: Array,
@@ -67,7 +67,7 @@ export class SettingsManager {
     });
 
     game.settings.register(MODULE_ID, 'networkAccessLog', {
-      name: 'NCM.Settings.NetworkAccessLog.Name',
+      name: 'Network Access Log',
       hint: 'Persistent network access log entries.',
       scope: 'world',
       config: false,
@@ -76,8 +76,8 @@ export class SettingsManager {
     });
 
     game.settings.register(MODULE_ID, 'masterContacts', {
-      name: 'NCM.Settings.MasterContacts.Name',
-      hint: 'NCM.Settings.MasterContacts.Hint',
+      name: 'Master Contact List',
+      hint: 'GM global contact directory',
       scope: 'world',
       config: false,
       type: Array,
@@ -85,7 +85,7 @@ export class SettingsManager {
     });
 
     game.settings.register(MODULE_ID, 'customRoles', {
-      name: 'NCM.Settings.CustomRoles.Name',
+      name: 'Custom Contact Roles',
       hint: 'GM-defined custom contact roles with custom icons and colors.',
       scope: 'world',
       config: false,
@@ -94,8 +94,8 @@ export class SettingsManager {
     });
 
     game.settings.register(MODULE_ID, 'requireContactVerification', {
-      name: 'NCM.Settings.RequireContactVerification',
-      hint: 'NCM.Settings.RequireContactVerificationHint',
+      name: 'Require Contact Verification',
+      hint: 'When enabled, players can only message contacts whose email matches the master contact directory or a registered actor. Disable for a more casual experience.',
       scope: 'world',       // GM-controlled, affects all players
       config: true,          // Visible in module settings
       type: Boolean,
@@ -107,8 +107,8 @@ export class SettingsManager {
     });
 
     game.settings.register(MODULE_ID, 'subjectThreading', {
-      name: 'NCM.Settings.SubjectThreading',
-      hint: 'NCM.Settings.SubjectThreadingHint',
+      name: 'Smart Conversation Grouping',
+      hint: 'Group messages into a conversation thread when they share a subject and a participant, in addition to replies and forwards. Catches forwarded and older messages. Disable to thread strictly by reply/forward links.',
       scope: 'world',       // GM-controlled, affects how conversations group for everyone
       config: true,
       type: Boolean,
@@ -256,7 +256,7 @@ export class SettingsManager {
     // ─── Time Provider Settings ───
 
     game.settings.register(MODULE_ID, 'dateFormat', {
-      name: 'NCM.Settings.DateFormat.Name',
+      name: 'Date Format',
       hint: 'How dates are displayed across all NCM windows.',
       scope: 'world',
       config: true,
@@ -284,7 +284,7 @@ export class SettingsManager {
     });
 
     game.settings.register(MODULE_ID, 'timeFormat', {
-      name: 'NCM.Settings.TimeFormat.Name',
+      name: 'Time Format',
       hint: 'Display times in 24-hour (22:00) or 12-hour (10:00 PM) format across all NCM windows.',
       scope: 'world',
       config: true,
@@ -297,7 +297,7 @@ export class SettingsManager {
     });
 
     game.settings.register(MODULE_ID, 'timeProvider', {
-      name: 'NCM.Settings.TimeProvider.Name',
+      name: 'Time Source',
       hint: 'How NCM determines in-game time. Auto-detect picks the best available module. Disguised runs real-time but displays a fictional date.',
       scope: 'world',
       config: true,
@@ -351,7 +351,7 @@ export class SettingsManager {
     // ─── Email Identity Settings ───
 
     game.settings.register(MODULE_ID, 'emailDomains', {
-      name: 'NCM.Settings.EmailDomains.Name',
+      name: 'Email Domains',
       hint: 'List of available email domains (managed via Admin Panel).',
       scope: 'world',
       config: false,
@@ -432,8 +432,8 @@ export class SettingsManager {
     });
 
     game.settings.register(MODULE_ID, 'debugMode', {
-      name: 'NCM.Settings.DebugMode.Name',
-      hint: 'NCM.Settings.DebugMode.Hint',
+      name: 'Debug Mode',
+      hint: 'Enable verbose console logging',
       scope: 'world',
       config: true,
       type: Boolean,
@@ -443,8 +443,8 @@ export class SettingsManager {
     // ─── Client Settings (per-player) ───
 
     game.settings.register(MODULE_ID, 'playerTheme', {
-      name: 'NCM.Settings.PlayerTheme.Name',
-      hint: 'NCM.Settings.PlayerTheme.Hint',
+      name: 'Terminal Theme',
+      hint: "Customize your terminal's appearance",
       scope: 'client',
       config: false,
       type: Object,
@@ -465,7 +465,7 @@ export class SettingsManager {
     });
 
     game.settings.register(MODULE_ID, 'customPresets', {
-      name: 'NCM.Settings.CustomPresets.Name',
+      name: 'Custom Theme Presets',
       hint: 'User-saved custom theme presets.',
       scope: 'client',
       config: false,
@@ -519,7 +519,7 @@ export class SettingsManager {
     });
 
     game.settings.register(MODULE_ID, 'adminTheme', {
-      name: 'NCM.Settings.AdminTheme.Name',
+      name: 'Admin Panel Theme',
       hint: 'Appearance of the GM Admin Panel (separate from the player theme).',
       scope: 'client',
       config: false,
