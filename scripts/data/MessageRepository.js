@@ -20,6 +20,7 @@ const ROOT_FOLDER   = 'Night City Messenger';
 const INBOX_FOLDER  = 'Inboxes';
 const NPC_FOLDER    = 'NPC Mail';
 const SHARD_FOLDER  = 'Data Shards';
+const TERMINAL_FOLDER = 'Terminals';
 const DELETED_FOLDER = 'Deleted';
 
 // ── Legacy name patterns (for migration detection) ──
@@ -110,6 +111,9 @@ export class MessageRepository {
 
   /** Get or create the Data Shards subfolder. (Public — used by DataShardService) */
   async getShardFolder() { return this._getOrCreateSubfolder(SHARD_FOLDER); }
+
+  /** Get or create the Terminals subfolder. (Public — used by TerminalService) */
+  async getTerminalFolder() { return this._getOrCreateSubfolder(TERMINAL_FOLDER); }
 
   /** Get or create the Deleted subfolder. */
   async getDeletedFolder() { return this._getOrCreateSubfolder(DELETED_FOLDER); }
@@ -206,6 +210,26 @@ export class MessageRepository {
       return { isContact: false, ownerId: name.slice(LEGACY_INBOX_PREFIX.length) };
     }
 
+    return null;
+  }
+
+  /**
+   * Identify whether a journal is a Terminal's linked message journal, returning
+   * the owning item id. Flag-based, mirroring {@link identifyInbox} — never key
+   * on a name prefix. A terminal journal is NOT an inbox (its pages are tagged by
+   * `accountId`, not owned by one actor/contact), so it's a separate helper:
+   * `identifyInbox` returns null for it.
+   *
+   * @param {JournalEntry} journal
+   * @returns {{ itemId: string }|null}
+   */
+  static identifyTerminal(journal) {
+    if (!journal) return null;
+    if (journal.folder?.name === DELETED_FOLDER) return null;
+    const flags = journal.flags?.[MODULE_ID];
+    if (flags?.type === 'terminal' && flags.linkedItemId) {
+      return { itemId: flags.linkedItemId };
+    }
     return null;
   }
 
@@ -468,12 +492,25 @@ export class MessageRepository {
           eddies: messageData.eddies || 0,
           selfDestruct: messageData.selfDestruct || null,
 
+          // Typed content (design doc §8c) — when set, the viewer renders this
+          // message via the shared content-body partial (spreadsheet/calendar/
+          // syslog/…) instead of plain body. Null = an ordinary message.
+          contentType: messageData.contentType || null,
+          contentData: messageData.contentData || null,
+
           metadata: {
             networkTrace: messageData.metadata?.networkTrace || null,
             signalStrength: messageData.metadata?.signalStrength || 100,
             routingPath: messageData.metadata?.routingPath || [],
             scheduledDelivery: messageData.metadata?.scheduledDelivery || null,
             deliveredAt: messageData.metadata?.deliveredAt || null,
+            // Recovered/exfiltrated intel (e.g. downloaded from a Terminal). Must
+            // be read explicitly here — the metadata block is built field-by-field,
+            // so unknown keys are dropped (the spam-status lesson).
+            recovered: messageData.metadata?.recovered || false,
+            recoveredFrom: messageData.metadata?.recoveredFrom || null,
+            recoveredTo: messageData.metadata?.recoveredTo || null,
+            recoveredOrigTs: messageData.metadata?.recoveredOrigTs || null,
           },
 
           attachments: messageData.attachments || [],
@@ -960,6 +997,12 @@ export class MessageRepository {
       malware: flags.malware,
       eddies: flags.eddies || 0,
       selfDestruct: flags.selfDestruct || null,
+      contentType: flags.contentType || null,
+      contentData: flags.contentData || null,
+      // Terminal per-message network gating (checked against the TERMINAL's own
+      // uplink, not the player's network). null = ungated; normal inbox mail
+      // never sets it.
+      networkVisibility: flags.networkVisibility || null,
       accessControl: flags.accessControl || null,
       decryptedBlocks: flags.decryptedBlocks || [],
       signalDegradation: flags.signalDegradation || null,

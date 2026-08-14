@@ -1,0 +1,176 @@
+{{!-- Account editor (rendered with the `editing` context).
+     UX redesign (dev-approved mock acct-ux-mocks): A identity picker ·
+     B portrait tile · C clearance chips + classification pills · D last-access
+     time composer · E security method cards · F sticky Save footer.
+     Field NAMES are the save contract (_onSaveAccount reads them) — chips and
+     pills write into hidden inputs carrying the same names the old widgets had. --}}
+<div class="ncm-cfg-section ncm-acct-editor">
+  <div class="ncm-cfg-section-header">
+    <i class="fas fa-user-pen ncm-cfg-section-icon" style="color:#19f3f7"></i>
+    <div class="ncm-cfg-section-title">{{#if isNew}}New Account{{else}}Edit Account{{/if}}</div>
+  </div>
+
+  {{!-- ── A · Link Identity ── --}}
+  <div class="ncm-cfg-row"><span class="ncm-cfg-label">Link identity</span>
+    <div class="ncm-acct-idwrap">
+      <i class="fas fa-magnifying-glass"></i>
+      <input type="text" class="ncm-acct-idsearch" placeholder="search contacts &amp; actors — or leave blank for a fresh identity" autocomplete="off">
+    </div>
+  </div>
+  <div class="ncm-acct-dd" hidden></div>
+  <div class="ncm-acct-idcard{{#unless isLinked}} ncm-acct-idcard--none{{/unless}}">
+    <span class="ncm-acct-idcard-pic">{{#if linkedPortrait}}<img src="{{linkedPortrait}}" alt="">{{else}}{{linkedInitials}}{{/if}}</span>
+    <div class="ncm-acct-idcard-id">
+      <div class="ncm-acct-idcard-nm"><span data-id-name>{{linkedName}}</span> <span class="ncm-acct-idcard-tag" data-id-tag>LINKED · {{linkedSource}}</span></div>
+      <div class="ncm-acct-idcard-em" data-id-email>{{linkedEmail}}</div>
+    </div>
+    <span class="ncm-acct-unlink" data-action="unlinkIdentity"><i class="fas fa-xmark"></i> unlink</span>
+  </div>
+  <div class="ncm-cfg-hint">Picking one autofills name / email / portrait and links the account. Fields stay editable after linking; an email matching the directory re-links on save.</div>
+
+  {{!-- ── B · Portrait tile ── --}}
+  <div class="ncm-cfg-row ncm-acct-por-row"><span class="ncm-cfg-label">Portrait</span>
+    <span class="ncm-acct-portile" data-action="browseAcctPortrait" data-tooltip="Browse for an image">
+      {{#if portrait}}<img src="{{portrait}}" alt="">{{else}}<i class="fas fa-user"></i>{{/if}}
+    </span>
+    <div class="ncm-acct-por-side">
+      <input type="text" name="acctPortrait" class="ncm-cfg-input" value="{{portrait}}" placeholder="blank → linked contact / actor / initials">
+      <div class="ncm-cfg-hint" style="margin:3px 0 0">click the tile to browse</div>
+    </div>
+  </div>
+
+  <div class="ncm-cfg-row"><span class="ncm-cfg-label">Display name</span><input type="text" name="acctDisplayName" class="ncm-cfg-input ncm-cfg-flex" value="{{displayName}}"></div>
+  <div class="ncm-cfg-row"><span class="ncm-cfg-label">Username</span><input type="text" name="acctUsername" class="ncm-cfg-input ncm-cfg-flex" value="{{username}}" placeholder="what you type at login"></div>
+  <div class="ncm-cfg-row"><span class="ncm-cfg-label">Email</span><input type="text" name="acctEmail" class="ncm-cfg-input ncm-cfg-flex" value="{{email}}" placeholder="optional — links/creates a master contact on save"></div>
+  <div class="ncm-cfg-row">
+    <label class="ncm-cfg-toggle-label"><input type="checkbox" name="acctIsAdmin" {{#if isAdmin}}checked{{/if}}> Admin</label>
+    <label class="ncm-cfg-toggle-label" style="margin-left:16px"><input type="checkbox" name="acctHidden" {{#if hidden}}checked{{/if}}> Hidden (secret login only)</label>
+    <label class="ncm-cfg-toggle-label" style="margin-left:16px"><input type="checkbox" name="acctNetRestricted" {{#if netRestricted}}checked{{/if}}> Network-gated</label>
+  </div>
+  <div class="ncm-cfg-row ncm-cfg-row--col" data-acct-net-row {{#unless netRestricted}}hidden{{/unless}}>
+    <span class="ncm-cfg-label" style="margin-bottom:4px">Visible on uplinks</span>
+    <div>
+      {{#each netAllowed}}
+        <label style="display:inline-flex;align-items:center;gap:5px;margin:0 12px 6px 0;font-family:var(--ncm-font-mono);font-size:12px"><input type="checkbox" name="acctNetAllowed" value="{{id}}" {{#if checked}}checked{{/if}}> {{name}}</label>
+      {{/each}}
+    </div>
+    <div class="ncm-cfg-hint">The account VANISHES from the login screen (and the secret-login path) unless the terminal's uplink is one of these networks. Switching the uplink mid-session drops the operator back to login.</div>
+  </div>
+
+  <div class="ncm-cfg-divider"></div>
+  {{!-- ── C/D · Credential badge ── --}}
+  <div class="ncm-cfg-section-header"><i class="fas fa-id-card ncm-cfg-section-icon" style="color:#ffcc00"></i><div class="ncm-cfg-section-title">Credential Badge</div></div>
+  <div class="ncm-cfg-desc">Shown on the ACCESS GRANTED card after this account logs in. Blank fields fall back to the terminal's identity/metadata.</div>
+
+  <div class="ncm-cfg-row ncm-acct-chip-row"><span class="ncm-cfg-label">Clearance</span>
+    <input type="hidden" name="acctClearance" value="{{clearance}}">
+    <div class="ncm-acct-chips" data-chipset="acctClearance">
+      <span class="ncm-acct-chip{{#unless clearance}} ncm-acct-chip--on{{/unless}}" data-value="">AUTO</span>
+      {{#each clearanceChips}}<span class="ncm-acct-chip{{#if on}} ncm-acct-chip--on{{/if}}" data-value="{{value}}">{{value}}</span>{{/each}}
+      <span class="ncm-acct-chip ncm-acct-chip--custom{{#if clearanceIsCustom}} ncm-acct-chip--on{{/if}}" data-value="__custom">+ custom…</span>
+    </div>
+  </div>
+  <div class="ncm-cfg-row ncm-acct-clear-custom-row"{{#unless clearanceIsCustom}} hidden{{/unless}}><span class="ncm-cfg-label"></span>
+    <input type="text" class="ncm-cfg-input ncm-cfg-flex ncm-acct-clear-custom" value="{{#if clearanceIsCustom}}{{clearance}}{{/if}}" placeholder="custom clearance, e.g. LEVEL-9">
+  </div>
+  <div class="ncm-cfg-hint">AUTO derives from the Admin toggle (ADMIN / STANDARD).</div>
+
+  <div class="ncm-cfg-row ncm-acct-chip-row"><span class="ncm-cfg-label">Classification</span>
+    <input type="hidden" name="acctClassification" value="{{classification}}">
+    <div class="ncm-acct-chips" data-chipset="acctClassification">
+      <span class="ncm-acct-pill ncm-acct-pill--none{{#unless classification}} ncm-acct-pill--on{{/unless}}" data-value="">— INHERIT</span>
+      <span class="ncm-acct-pill ncm-acct-pill--rest{{#if isRestricted}} ncm-acct-pill--on{{/if}}" data-value="RESTRICTED">RESTRICTED</span>
+      <span class="ncm-acct-pill ncm-acct-pill--conf{{#if isConfidential}} ncm-acct-pill--on{{/if}}" data-value="CONFIDENTIAL">CONFIDENTIAL</span>
+      <span class="ncm-acct-pill ncm-acct-pill--sec{{#if isSecret}} ncm-acct-pill--on{{/if}}" data-value="SECRET">SECRET</span>
+      <span class="ncm-acct-pill ncm-acct-pill--top{{#if isTopSecret}} ncm-acct-pill--on{{/if}}" data-value="TOP SECRET">TOP SECRET</span>
+    </div>
+  </div>
+
+  <div class="ncm-cfg-row ncm-acct-chip-row"><span class="ncm-cfg-label">Last access</span>
+    <div class="ncm-acct-chips ncm-acct-timechips">
+      <span class="ncm-acct-chip" data-time-offset="0"><i class="fa-regular fa-clock"></i> now</span>
+      <span class="ncm-acct-chip" data-time-offset="3600000">-1 h</span>
+      <span class="ncm-acct-chip" data-time-offset="86400000">yesterday</span>
+      <span class="ncm-acct-chip" data-time-offset="604800000">last week</span>
+      <span class="ncm-acct-chip ncm-acct-chip--custom" data-time-custom><i class="fa-regular fa-calendar-days"></i> pick…</span>
+    </div>
+  </div>
+  <div class="ncm-cfg-row ncm-acct-time-custom-row" hidden><span class="ncm-cfg-label"></span>
+    <input type="datetime-local" class="ncm-cfg-input ncm-acct-time-custom">
+  </div>
+  <div class="ncm-cfg-row"><span class="ncm-cfg-label"></span>
+    <input type="text" name="acctLastLogin" class="ncm-cfg-input ncm-cfg-flex ncm-acct-lastlogin" value="{{lastLogin}}" placeholder="blank → FIRST LOGIN">
+  </div>
+  <div class="ncm-cfg-hint">Chips stamp the game clock (world date format). Free text works too — it's badge flavor, not a timer.</div>
+
+  <div class="ncm-cfg-row"><span class="ncm-cfg-label">Badge ID</span><input type="text" name="acctIdNumber" class="ncm-cfg-input" style="max-width:170px" value="{{idNumber}}" placeholder="NC-8841-A"><span class="ncm-cfg-label" style="min-width:0">Role</span><input type="text" name="acctRole" class="ncm-cfg-input ncm-cfg-flex" value="{{role}}" placeholder="Executive · Floor 7F"></div>
+  <div class="ncm-cfg-row"><span class="ncm-cfg-label">Location</span><input type="text" name="acctLocation" class="ncm-cfg-input ncm-cfg-flex" value="{{location}}" placeholder="blank → terminal location"></div>
+
+  <div class="ncm-cfg-divider"></div>
+  {{!-- ── E · Security method cards ── --}}
+  <div class="ncm-cfg-section-header"><i class="fas fa-shield-halved ncm-cfg-section-icon" style="color:#ff0033"></i><div class="ncm-cfg-section-title">Security</div>
+    <label class="ncm-acct-tgl" data-tooltip="Off = open account (anyone can enter)"><input type="checkbox" name="secRequiresAuth" {{#if requiresAuth}}checked{{/if}}><span class="ncm-acct-tgl-knob"></span><span class="ncm-acct-tgl-lbl">Require login</span></label>
+  </div>
+
+  <div class="ncm-acct-mcard{{#if allowPassword}} ncm-acct-mcard--on{{/if}}">
+    <div class="ncm-acct-mcard-h">
+      <span class="ncm-acct-mcard-ic"><i class="fas fa-key"></i></span>
+      <div class="ncm-acct-mcard-t"><div class="ncm-acct-mcard-nm">Password</div><div class="ncm-acct-mcard-d">a passphrase the player types at the prompt</div></div>
+      <label class="ncm-acct-tgl"><input type="checkbox" name="secAllowPassword" {{#if allowPassword}}checked{{/if}}><span class="ncm-acct-tgl-knob"></span></label>
+    </div>
+    <div class="ncm-acct-mcard-b">
+      <div class="ncm-cfg-row" style="margin:0"><input type="text" name="secPassword" class="ncm-cfg-input ncm-cfg-flex" value="{{password}}" placeholder="passphrase"><button type="button" class="ncm-cfg-btn-sm" data-action="generatePassword" data-tooltip="Roll a fresh passphrase"><i class="fas fa-dice"></i> generate</button></div>
+    </div>
+  </div>
+
+  <div class="ncm-acct-mcard{{#if allowSkillCheck}} ncm-acct-mcard--on{{/if}}">
+    <div class="ncm-acct-mcard-h">
+      <span class="ncm-acct-mcard-ic"><i class="fas fa-dice-d20"></i></span>
+      <div class="ncm-acct-mcard-t"><div class="ncm-acct-mcard-nm">Skill check</div><div class="ncm-acct-mcard-d">bypass with a CPR roll vs DV — the netrunner hacks in</div></div>
+      <label class="ncm-acct-tgl"><input type="checkbox" name="secAllowSkill" {{#if allowSkillCheck}}checked{{/if}}><span class="ncm-acct-tgl-knob"></span></label>
+    </div>
+    <div class="ncm-acct-mcard-b">
+      <div class="ncm-cfg-row" style="margin:0">
+        <select name="secSkill" class="ncm-cfg-select ncm-cfg-flex">{{#each skillOpts}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{value}}</option>{{/each}}</select>
+        <span class="ncm-cfg-label" style="min-width:0">DV</span><input type="number" name="secDV" class="ncm-cfg-input ncm-cfg-input--short" value="{{bypassDC}}" min="0" max="40">
+      </div>
+    </div>
+  </div>
+
+  <div class="ncm-acct-mcard{{#if allowKeyItem}} ncm-acct-mcard--on{{/if}}">
+    <div class="ncm-acct-mcard-h">
+      <span class="ncm-acct-mcard-ic"><i class="fas fa-id-badge"></i></span>
+      <div class="ncm-acct-mcard-t"><div class="ncm-acct-mcard-nm">Key item</div><div class="ncm-acct-mcard-d">requires a specific item in the character's inventory</div></div>
+      <label class="ncm-acct-tgl"><input type="checkbox" name="secAllowKeyItem" {{#if allowKeyItem}}checked{{/if}}><span class="ncm-acct-tgl-knob"></span></label>
+    </div>
+    <div class="ncm-acct-mcard-b">
+      <div class="ncm-cfg-row" style="margin:0"><input type="text" name="secKeyItemName" class="ncm-cfg-input ncm-cfg-flex" value="{{keyItemName}}" placeholder="item name (matched in inventory)"><button type="button" class="ncm-cfg-btn-sm" data-action="pickKeyItem"><i class="fas fa-folder-open"></i> browse items…</button></div>
+    </div>
+  </div>
+
+  <div class="ncm-cfg-row ncm-acct-chip-row" style="margin-top:9px"><span class="ncm-cfg-label">When 2+ methods</span>
+    <input type="hidden" name="secAuthLogic" value="{{authLogic}}">
+    <div class="ncm-acct-chips" data-chipset="secAuthLogic">
+      <span class="ncm-acct-chip{{#unless (eq authLogic "all")}} ncm-acct-chip--on{{/unless}}" data-value="any">ANY — one grants (OR)</span>
+      <span class="ncm-acct-chip{{#if (eq authLogic "all")}} ncm-acct-chip--on{{/if}}" data-value="all">ALL — every one (AND)</span>
+    </div>
+  </div>
+  <div class="ncm-cfg-row ncm-acct-chip-row"><span class="ncm-cfg-label">On failure</span>
+    <input type="hidden" name="secFailureMode" value="{{failureMode}}">
+    <div class="ncm-acct-chips" data-chipset="secFailureMode">
+      <span class="ncm-acct-chip{{#if failNothing}} ncm-acct-chip--on{{/if}}" data-value="nothing">nothing</span>
+      <span class="ncm-acct-chip{{#if failLockout}} ncm-acct-chip--on{{/if}}" data-value="lockout">lockout</span>
+      <span class="ncm-acct-chip{{#if failPermanent}} ncm-acct-chip--on{{/if}}" data-value="permanent">permanent</span>
+      <span class="ncm-acct-chip ncm-acct-chip--ice{{#if failDamage}} ncm-acct-chip--on{{/if}}" data-value="damage"><i class="fas fa-skull"></i> BLACK ICE</span>
+    </div>
+  </div>
+  <div class="ncm-cfg-hint">BLACK ICE bites the netrunner on a failed attempt.</div>
+  <div class="ncm-cfg-row"><span class="ncm-cfg-label">Max attempts</span><input type="number" name="secMaxAttempts" class="ncm-cfg-input ncm-cfg-input--short" value="{{maxAttempts}}" min="1" max="10"><span class="ncm-cfg-label" style="min-width:0">Lockout (min)</span><input type="number" name="secLockoutMin" class="ncm-cfg-input ncm-cfg-input--short" value="{{lockoutMin}}" min="0"></div>
+
+  {{!-- ── F · Sticky footer ── --}}
+  <div class="ncm-acct-foot">
+    <button type="button" class="ncm-cfg-btn-sm ncm-acct-foot-save" data-action="saveAccount"><i class="fas fa-floppy-disk"></i> Save account</button>
+    <button type="button" class="ncm-cfg-btn-sm" data-action="cancelAccount"><i class="fas fa-xmark"></i> Cancel</button>
+    <span class="ncm-acct-dirty"><i class="fas fa-circle"></i> unsaved changes</span>
+  </div>
+</div>

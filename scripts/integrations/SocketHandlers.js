@@ -166,6 +166,84 @@ export class SocketHandlers {
       socketManager.emit(SOCKET_OPS.SHARD_CONVERT_RESULT, { requestId, success });
     });
 
+    // ─── Player Terminal Exfil Relay ─────────────────────
+    // Players can't write the GM-owned terminal/inbox/shard journals, so the GM
+    // client performs the copy and the result syncs back to the player.
+    socketManager.register(SOCKET_OPS.TERMINAL_EXFIL_REQUEST, async (data) => {
+      if (!game.user.isGM) return;
+      const { requestId, itemUuid, accountId, messageIds, dest, targetActorId, targetItemId, userId } = data;
+      const svc = game.nightcity?.terminalService;
+      let result = { success: false, count: 0 };
+      try {
+        const item = itemUuid ? fromUuidSync(itemUuid) : null;
+        if (!item || !svc) throw new Error('Terminal/service not found');
+        if (dest === 'shard') {
+          let target = game.items.get(targetItemId);
+          if (!target) { for (const a of game.actors) { target = a.items.get(targetItemId); if (target) break; } }
+          if (!target) throw new Error('Target item not found');
+          result = await svc.exfilToShard(item, accountId, messageIds, target);
+        } else {
+          result = await svc.exfilToInbox(item, accountId, messageIds, targetActorId);
+        }
+      } catch (err) {
+        log.error('Terminal exfil relay failed:', err);
+      }
+      socketManager.emit(SOCKET_OPS.TERMINAL_EXFIL_RESULT, { requestId, userId, success: !!result.success, count: result.count || 0, dest });
+    });
+
+    // ─── Player Terminal Uplink Switch Relay ─────────────
+    // The machine's uplink lives in item flags (terminalState.connection), which
+    // players can't write on world items — the GM client performs the switch.
+    // `authorized: true` = the player just passed the network's join challenge
+    // client-side (the shard-relay trust model), so the machine remembers the
+    // credential. No RESULT op: the flag write itself syncs to every client and
+    // the viewer re-renders off the updateItem hook.
+    socketManager.register(SOCKET_OPS.TERMINAL_NET_REQUEST, async (data) => {
+      if (!game.user.isGM) return;
+      const { itemUuid, networkId, authorized } = data;
+      const svc = game.nightcity?.terminalService;
+      try {
+        const item = itemUuid ? fromUuidSync(itemUuid) : null;
+        if (!item || !svc) throw new Error('Terminal/service not found');
+        const cfg = svc.getConfig(item).connection || {};
+        if (!cfg.allowPlayerSwitching) throw new Error('Player switching disabled for this terminal');
+        const result = await svc.setUplink(item, networkId || null, { remember: !!authorized });
+        if (!result.success) log.warn('Uplink switch relay rejected:', result.error);
+      } catch (err) {
+        log.error('Terminal uplink relay failed:', err);
+      }
+    });
+
+    // Requesting client hears the result → notify the player.
+    socketManager.register(SOCKET_OPS.TERMINAL_EXFIL_RESULT, (data) => {
+      if (data.userId !== game.user.id) return;
+      if (data.success) ui.notifications.info(data.dest === 'shard' ? `Burned ${data.count} message(s) to shard.` : `Downloaded ${data.count} message(s) to your Agent (Recovered).`);
+      else ui.notifications.warn('Download failed — no GM available or the GM rejected it.');
+    });
+
+    // ─── Player Banking Siphon Relay (GM persists the drain / alerts) ──
+    socketManager.register(SOCKET_OPS.BANK_SIPHON_REQUEST, async (data) => {
+      if (!game.user.isGM) return;
+      try {
+        const { handleSiphonRequest } = await import('../ui/content/SiphonFlow.js');
+        await handleSiphonRequest(data);
+      } catch (err) {
+        log.error('Bank siphon relay failed:', err);
+      }
+    });
+
+    // ─── Player Typed-Content Update Relay (eddies claim / credential crack —
+    //     the entry lives in a GM-owned journal, so the GM persists the write) ──
+    socketManager.register(SOCKET_OPS.CONTENT_UPDATE_REQUEST, async (data) => {
+      if (!game.user.isGM) return;
+      try {
+        const { handleContentUpdateRequest } = await import('../ui/content/SiphonFlow.js');
+        await handleContentUpdateRequest(data);
+      } catch (err) {
+        log.error('Content update relay failed:', err);
+      }
+    });
+
     // ─── Player Shard Unconvert Relay ────────────────────
     socketManager.register(SOCKET_OPS.SHARD_UNCONVERT_REQUEST, async (data) => {
       if (!game.user.isGM) return;

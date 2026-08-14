@@ -12,7 +12,7 @@
  *              Per-message encryption support.
  */
 
-import { MODULE_ID, EVENTS, SOCKET_OPS, DEFAULTS, ENCRYPTION_TYPES, FAILURE_MODES, CONTENT_TYPES, NETWORK_ACCESS_MODES, CONNECTION_MODES, SHARD_PRESETS } from '../utils/constants.js';
+import { MODULE_ID, EVENTS, SOCKET_OPS, DEFAULTS, ENCRYPTION_TYPES, FAILURE_MODES, CONTENT_TYPES, SHARD_PRESETS } from '../utils/constants.js';
 import { log, isGM, generateId } from '../utils/helpers.js';
 
 export class DataShardService {
@@ -1092,12 +1092,15 @@ export class DataShardService {
       wealth.transactions.push([transaction, reason]);
       await actor.update({ 'system.wealth': wealth });
 
-      // Mark as claimed on the journal page
-      await page.update({
-        [`flags.${MODULE_ID}.contentData.claimed`]: true,
-        [`flags.${MODULE_ID}.contentData.claimedBy`]: actor.id,
-        [`flags.${MODULE_ID}.contentData.claimedAt`]: new Date().toISOString(),
-      });
+      // Mark as claimed on the journal page. The shard journal is GM-owned
+      // (players are OBSERVER), so a direct page.update from a player throws —
+      // and the nested contentData.* dot-path write is the unreliable-flag
+      // gotcha anyway. persistContentData writes the whole contentData (GM
+      // direct, player via the CONTENT_UPDATE_REQUEST relay).
+      const { persistContentData } = await import('../ui/content/SiphonFlow.js');
+      await persistContentData(entryId, {
+        ...contentData, claimed: true, claimedBy: actor.id, claimedAt: new Date().toISOString(),
+      }, `NCM | ${actor.name} claimed ${amount.toLocaleString()} eb (${shardItem.name}).`);
 
       this.eventBus?.emit(EVENTS.SHARD_EDDIES_CLAIMED, {
         itemId: shardItem.id, entryId, actorId: actor.id, amount,
@@ -1689,83 +1692,19 @@ export class DataShardService {
    * @private
    */
   _checkNetworkAccess(config) {
-    const netConfig = config.network ?? {};
-    const currentNetworkId = this.networkService?.currentNetworkId ?? null;
-    const currentNetworkType = this.networkService?.currentNetwork?.type ?? null;
-
-    // Legacy flat field support: if no network object, fall back to old requiresNetwork/requiredNetwork
+    // Legacy flat-field support: if no network object, fall back to the old
+    // requiresNetwork/requiredNetwork pair. (Shard-specific back-compat — kept
+    // here, not in the shared NetworkService.checkAccess contract.)
     if (!config.network?.required && config.requiresNetwork) {
       const onNetwork = this.networkService?.isOnNetwork(config.requiredNetwork) ?? false;
-      if (!onNetwork) {
-        return {
-          allowed: false,
-          reason: `Requires network: ${config.requiredNetwork}`,
-          requiredNetwork: config.requiredNetwork,
-        };
-      }
-      return { allowed: true };
+      return onNetwork
+        ? { allowed: true }
+        : { allowed: false, reason: `Requires network: ${config.requiredNetwork}`, requiredNetwork: config.requiredNetwork };
     }
 
-    // No network connected at all
-    if (!currentNetworkId) {
-      return {
-        allowed: false,
-        reason: 'No network connection',
-      };
-    }
-
-    // Check access mode
-    const mode = netConfig.accessMode ?? 'any';
-    let accessGranted = false;
-
-    switch (mode) {
-      case NETWORK_ACCESS_MODES.ANY:
-        accessGranted = true;
-        break;
-
-      case NETWORK_ACCESS_MODES.WHITELIST:
-        accessGranted = (netConfig.allowedNetworks ?? []).includes(currentNetworkId);
-        break;
-
-      case NETWORK_ACCESS_MODES.TYPE:
-        accessGranted = (netConfig.allowedTypes ?? []).includes(currentNetworkType);
-        break;
-
-      case NETWORK_ACCESS_MODES.BOTH:
-        accessGranted = (netConfig.allowedNetworks ?? []).includes(currentNetworkId)
-          || (netConfig.allowedTypes ?? []).includes(currentNetworkType);
-        break;
-
-      default:
-        accessGranted = true;
-    }
-
-    if (!accessGranted) {
-      const requirements = [];
-      if (netConfig.allowedTypes?.length) requirements.push(`Type: ${netConfig.allowedTypes.join(', ')}`);
-      if (netConfig.allowedNetworks?.length) requirements.push(`Networks: ${netConfig.allowedNetworks.join(', ')}`);
-      return {
-        allowed: false,
-        reason: `Network access restricted — ${requirements.join(' or ')}`,
-        requiredNetwork: netConfig.allowedNetworks?.[0] ?? null,
-      };
-    }
-
-    // Tethered connection: check signal threshold
-    if (netConfig.connectionMode === CONNECTION_MODES.TETHERED) {
-      const signal = this.networkService?.signalStrength ?? 100;
-      const threshold = netConfig.signalThreshold ?? 40;
-
-      if (signal < threshold) {
-        return {
-          allowed: false,
-          reason: `Signal too weak (${signal}% < ${threshold}% required)`,
-          signalInfo: { signal, threshold },
-        };
-      }
-    }
-
-    return { allowed: true };
+    // Shared contract — one source of truth for network access (shards + terminals).
+    if (!this.networkService) return { allowed: false, reason: 'No network connection' };
+    return this.networkService.checkAccess(config.network ?? {});
   }
 
   // ═══════════════════════════════════════════════════════════

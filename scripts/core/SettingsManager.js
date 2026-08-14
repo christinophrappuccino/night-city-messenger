@@ -444,6 +444,24 @@ export class SettingsManager {
       default: [],
     });
 
+    game.settings.register(MODULE_ID, 'terminalPresetLibrary', {
+      name: 'Terminal Preset Library',
+      hint: 'GM-saved FULL terminal presets ([{ name, config }] — theme, boot, login style, screensaver, folders, account seeds).',
+      scope: 'world',
+      config: false,
+      type: Array,
+      default: [],
+    });
+
+    game.settings.register(MODULE_ID, 'terminalThemePresets', {
+      name: 'Terminal Theme Presets',
+      hint: 'GM-saved terminal themes ([{ name, theme }]) — world-scoped so one look can be reused across terminals.',
+      scope: 'world',
+      config: false,
+      type: Array,
+      default: [],
+    });
+
     game.settings.register(MODULE_ID, 'adminTheme', {
       name: 'NCM.Settings.AdminTheme.Name',
       hint: 'Appearance of the GM Admin Panel (separate from the player theme).',

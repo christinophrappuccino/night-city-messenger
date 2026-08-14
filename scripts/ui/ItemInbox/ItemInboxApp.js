@@ -8,19 +8,11 @@
  */
 
 import { MODULE_ID, EVENTS, TEMPLATES, DEFAULTS, THEME_PRESETS, ENCRYPTION_TYPES, FAILURE_MODES, CONTENT_TYPES, SHARD_PRESETS } from '../../utils/constants.js';
-import { log, isGM, formatCyberDate, resolveMediaEmbed } from '../../utils/helpers.js';
+import { log, isGM, formatCyberDate } from '../../utils/helpers.js';
 import { BaseApplication } from '../BaseApplication.js';
 import { NetworkAuthDialog } from '../NetworkManagement/NetworkAuthDialog.js';
-
-/** Map content types to display info */
-const CONTENT_TYPE_INFO = {
-  [CONTENT_TYPES.MESSAGE]:  { label: 'Message',           icon: 'fas fa-envelope',         accent: 'cyan',   indexIcon: 'fas fa-envelope' },
-  [CONTENT_TYPES.EDDIES]:   { label: 'Eddies Dead Drop',  icon: 'fas fa-sack-dollar',      accent: 'gold',   indexIcon: 'fas fa-sack-dollar' },
-  [CONTENT_TYPES.DOSSIER]:  { label: 'Dossier',           icon: 'fas fa-id-badge',         accent: 'red',    indexIcon: 'fas fa-id-badge' },
-  [CONTENT_TYPES.PAYLOAD]:  { label: 'Payload',           icon: 'fas fa-virus',            accent: 'purple', indexIcon: 'fas fa-virus' },
-  [CONTENT_TYPES.AVLOG]:    { label: 'Audio/Video Log',   icon: 'fas fa-headphones',       accent: 'green',  indexIcon: 'fas fa-headphones' },
-  [CONTENT_TYPES.LOCATION]: { label: 'Location',          icon: 'fas fa-map-marker-alt',   accent: 'green',  indexIcon: 'fas fa-map-marker-alt' },
-};
+import { enrichContent, buildIndexChip, toggleSecretReveal, applySyslogFilter } from '../content/ContentRenderers.js';
+import { runSiphon, runCrack } from '../content/SiphonFlow.js';
 
 export class ItemInboxApp extends BaseApplication {
 
@@ -100,6 +92,10 @@ export class ItemInboxApp extends BaseApplication {
       toggleChipInfo: ItemInboxApp._onToggleChipInfo,
       viewOriginalItem: ItemInboxApp._onViewOriginalItem,
       executePayload: ItemInboxApp._onExecutePayload,
+      siphonFunds: ItemInboxApp._onSiphonFunds,
+      crackCred: ItemInboxApp._onCrackCred,
+      credToggleSecret: ItemInboxApp._onCredToggleSecret,
+      syslogFilter: ItemInboxApp._onSyslogFilter,
       goToScene: ItemInboxApp._onGoToScene,
       editEntry: ItemInboxApp._onEditEntry,
       switchNetwork: ItemInboxApp._onSwitchNetwork,
@@ -496,94 +492,19 @@ export class ItemInboxApp extends BaseApplication {
 
   // ─── Entry Enrichment Helpers ───
 
-  /** @private */
+  /**
+   * Enrich a shard entry for rendering via the shared content-body partial.
+   * Delegates to the cross-viewer ContentRenderers registry so shard + terminal
+   * stay in lock-step. Shard entries are interactive (claim/execute/goToScene).
+   * @private
+   */
   _enrichEntry(entry) {
-    const typeInfo = CONTENT_TYPE_INFO[entry.contentType] ?? CONTENT_TYPE_INFO[CONTENT_TYPES.MESSAGE];
-    const enriched = {
-      ...entry,
-      formattedDate: entry.timestamp ? formatCyberDate(entry.timestamp) : 'UNKNOWN',
-      contentTypeLabel: typeInfo.label,
-      entryIcon: typeInfo.icon,
-      accentColor: typeInfo.accent,
-      isMessage: entry.contentType === CONTENT_TYPES.MESSAGE || !entry.contentType,
-      isEddies: entry.contentType === CONTENT_TYPES.EDDIES,
-      isDossier: entry.contentType === CONTENT_TYPES.DOSSIER,
-      isPayload: entry.contentType === CONTENT_TYPES.PAYLOAD,
-      isAvlog: entry.contentType === CONTENT_TYPES.AVLOG,
-      isLocation: entry.contentType === CONTENT_TYPES.LOCATION,
-      isLocked: false,
-    };
-
-    // Per-message encryption
-    if (entry.encrypted && !entry.decrypted) {
-      enriched.isLocked = true;
-    }
-
-    // Eddies enrichment
-    if (enriched.isEddies && entry.contentData) {
-      enriched.contentData = {
-        ...entry.contentData,
-        amountFormatted: (entry.contentData.amount ?? 0).toLocaleString(),
-        claimedByName: entry.contentData.claimedBy
-          ? (game.actors?.get(entry.contentData.claimedBy)?.name ?? 'Unknown')
-          : '',
-      };
-    }
-
-    // Dossier enrichment
-    if (enriched.isDossier && entry.contentData) {
-      const cd = entry.contentData;
-      enriched.contentData = {
-        ...cd,
-        hasSections: cd.sections?.length > 0,
-        threatIsHigh: cd.stats?.threat?.toUpperCase() === 'HIGH',
-        linkedActorImg: cd.linkedActorId ? game.actors?.get(cd.linkedActorId)?.img : null,
-      };
-    }
-
-    // Payload enrichment
-    if (enriched.isPayload && entry.contentData?.executedBy) {
-      enriched.contentData = {
-        ...entry.contentData,
-        executedByName: game.actors?.get(entry.contentData.executedBy)?.name ?? 'Unknown',
-      };
-    }
-
-    // AV Log enrichment — resolve an embeddable media source if present
-    if (enriched.isAvlog && entry.contentData) {
-      const media = resolveMediaEmbed(entry.contentData.mediaUrl, entry.contentData.mediaType);
-      enriched.contentData = {
-        ...entry.contentData,
-        isVideo: media.isVideo,
-        embedSrc: media.src,
-        hasMedia: media.kind !== 'none',
-        isEmbed: media.kind === 'embed',
-        isNativeMedia: media.kind === 'native',
-      };
-    }
-
-    return enriched;
+    return enrichContent(entry, { isGM: isGM(), interactive: true });
   }
 
   /** @private */
   _buildIndexChips(visibleEntries, hiddenCount, selectedId) {
-    const ACCENT_HEX = {
-      red: '#F65261', cyan: '#19f3f7', gold: '#f7c948',
-      green: '#00ff41', purple: '#a855f7', danger: '#ff0033', muted: '#888888',
-    };
-
-    const chips = visibleEntries.map(entry => {
-      const typeInfo = CONTENT_TYPE_INFO[entry.contentType] ?? CONTENT_TYPE_INFO[CONTENT_TYPES.MESSAGE];
-      return {
-        id: entry.id,
-        title: entry.subject || 'Data Fragment',
-        iconClass: typeInfo.indexIcon,
-        iconColor: ACCENT_HEX[typeInfo.accent] || '#19f3f7',
-        accentClass: `ncm-shard-index-chip--${typeInfo.accent || 'cyan'}`,
-        isActive: entry.id === selectedId,
-        isHidden: false,
-      };
-    });
+    const chips = visibleEntries.map(entry => buildIndexChip(entry, { selectedId }));
 
     // Add hidden placeholder chips
     for (let i = 0; i < hiddenCount; i++) {
@@ -1804,6 +1725,39 @@ export class ItemInboxApp extends BaseApplication {
     this._transitionActive = false;
     this.render(true);
   }
+
+  /** Banking content — siphon funds (shared flow; see SiphonFlow.js). */
+  static async _onSiphonFunds(event, target) {
+    if (!this.item) return;
+    const actor = game.user?.character;
+    if (!actor) { ui.notifications.warn('NCM | No character assigned.'); return; }
+    const entryId = target.closest('[data-entry-id]')?.dataset.entryId;
+    if (!entryId) return;
+    const entry = (this.dataShardService?.getShardMessages(this.item) || []).find(m => m.id === entryId);
+    if (!entry || entry.contentType !== 'banking') return;
+    await runSiphon({ actor, raw: entry.contentData, itemUuid: this.item.uuid, messageId: entryId });
+    this.render(true);
+  }
+
+  /** Credentials content — crack a locked entry (shared flow; see SiphonFlow.js).
+   *  GM without an assigned character force-reveals (anon-trace precedent). */
+  static async _onCrackCred(event, target) {
+    if (!this.item) return;
+    const entryId = target.closest('[data-entry-id]')?.dataset.entryId;
+    const idx = Number(target.dataset.credIndex);
+    if (!entryId || Number.isNaN(idx)) return;
+    const entry = (this.dataShardService?.getShardMessages(this.item) || []).find(m => m.id === entryId);
+    if (!entry || entry.contentType !== 'credentials') return;
+    const actor = game.user?.character;
+    const ok = await runCrack({ actor, raw: entry.contentData, entryIndex: idx, messageId: entryId, force: isGM() && !actor });
+    if (ok) this.render(true);
+  }
+
+  /** Credentials — show/hide a secret (client-side only). */
+  static _onCredToggleSecret(event, target) { toggleSecretReveal(target); }
+
+  /** Syslog — severity filter chips (client-side only). */
+  static _onSyslogFilter(event, target) { applySyslogFilter(target); }
 
   static _onScrollToEntry(event, target) {
     const entryId = target.closest('[data-entry-id]')?.dataset.entryId;

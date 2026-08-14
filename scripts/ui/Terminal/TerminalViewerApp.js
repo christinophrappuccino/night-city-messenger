@@ -1,0 +1,1671 @@
+/**
+ * TerminalViewerApp
+ * @file scripts/ui/Terminal/TerminalViewerApp.js
+ * @module cyberpunkred-messenger
+ * @description The player-facing Terminal window — a converted item you "log
+ *   into". Drives a state machine (boot → network gate → login → manual auth →
+ *   mailbox), sources its message feed from the active account via
+ *   TerminalService.getAccountMessages (the source-adapter seam), and reuses the
+ *   shared security/network plumbing.
+ *
+ *   Extends BaseApplication directly (not MessageViewerApp): the terminal uses a
+ *   bespoke template (ncm-term__ classes) and its own state machine, so forking
+ *   the 5,000-line viewer's render/action path would couple more than it reuses.
+ *   The MessageViewer `_createMessageSource()` seam remains the documented hook
+ *   for a future shared base.
+ *
+ *   Auth (MVP): the SECURE SHELL console handles password + skill-bypass through
+ *   SecurityService (per-account lockout, keyed `terminalId::accountId`) and
+ *   SkillService. The full method-card dialog (key item, AND/OR, ICE panel) lands
+ *   with the NetworkAuthDialog→SecurityAuthDialog refactor. Desktop form only
+ *   (agent/phone → Phase 3); narrow windows reflow via the CSS container query.
+ */
+
+import { BaseApplication } from '../BaseApplication.js';
+import { MODULE_ID, TERMINAL_PRESETS, SOCKET_OPS } from '../../utils/constants.js';
+import { log, isGM, formatCyberDate, buildTerminalThemePrefs } from '../../utils/helpers.js';
+import { getInitials } from '../../utils/designHelpers.js';
+import { enrichContent, toggleSecretReveal, applySyslogFilter } from '../content/ContentRenderers.js';
+import { runSiphon, runEddiesClaim, runCrack } from '../content/SiphonFlow.js';
+
+const PRIORITY_ICONS = { critical: 'fa-triangle-exclamation', urgent: 'fa-circle-exclamation', normal: 'fa-circle-info' };
+
+/** Delegate an AppV2 action to the bound instance method of the same name. */
+function action(method) {
+  return function (event, target) { return this[method]?.(event, target); };
+}
+
+export class TerminalViewerApp extends BaseApplication {
+
+  static DEFAULT_OPTIONS = {
+    id: 'ncm-terminal-viewer',
+    classes: ['ncm-app', 'ncm-terminal-app'],
+    position: { width: 900, height: 600 },
+    window: { title: 'Terminal', icon: 'fas fa-terminal', resizable: true, minimizable: true },
+    actions: {
+      terminalSelectAccount: action('_onSelectAccount'),
+      terminalManualLogin: action('_onManualLogin'),
+      terminalManualAuth: action('_onManualAuth'),
+      terminalInlineAuth: action('_onInlineAuth'),
+      terminalFocusAccount: action('_onFocusAccount'),
+      terminalSkillBypass: action('_onSkillBypass'),
+      terminalKeyItem: action('_onKeyItem'),
+      terminalBackToAccounts: action('_onBackToAccounts'),
+      terminalSwitchNetwork: action('_onSwitchNetwork'),
+      terminalSpoofNetwork: action('_onSpoofNetwork'),
+      terminalForceUnlock: action('_onForceUnlock'),
+      terminalToggleUplink: action('_onToggleUplink'),
+      terminalSelectUplink: action('_onSelectUplink'),
+      terminalNetAuth: action('_onNetAuth'),
+      terminalNetSkillBypass: action('_onNetSkillBypass'),
+      terminalNetGmJoin: action('_onNetGmJoin'),
+      terminalNetCancel: action('_onNetCancel'),
+      terminalToggleSwitcher: action('_onToggleSwitcher'),
+      terminalSwitchAccount: action('_onSwitchAccount'),
+      terminalLogout: action('_onLogout'),
+      terminalFolder: action('_onFolder'),
+      terminalSelectMessage: action('_onSelectMessage'),
+      terminalAddContact: action('_onAddContact'),
+      terminalExfilInbox: action('_onExfilInbox'),
+      terminalExfilShard: action('_onExfilShard'),
+      siphonFunds: action('_onSiphonFunds'),
+      claimEddies: action('_onClaimEddies'),
+      crackCred: action('_onCrackCred'),
+      credToggleSecret: action('_onCredToggleSecret'),
+      syslogFilter: action('_onSyslogFilter'),
+      terminalPage: action('_onPage'),
+      terminalConfigure: action('_onConfigure'),
+      terminalNewMessage: action('_onNewMessage'),
+      terminalEditMessage: action('_onEditMessage'),
+      terminalDeleteMessage: action('_onDeleteMessage'),
+      terminalToggleSave: action('_onToggleSaveMessage'),
+      terminalToggleTrash: action('_onToggleTrashMessage'),
+    },
+  };
+
+  static PARTS = { main: { template: `modules/${MODULE_ID}/templates/terminal/terminal-viewer.hbs` } };
+
+  // ─── Service accessors ───
+  get terminalService() { return game.nightcity?.terminalService; }
+  get networkService() { return game.nightcity?.networkService; }
+  get skillService() { return game.nightcity?.skillService; }
+  get securityService() { return game.nightcity?.securityService; }
+  get iceService() { return game.nightcity?.iceService; }
+  get portraitService() { return game.nightcity?.portraitService; }
+  get masterContactService() { return game.nightcity?.masterContactService; }
+  get contactRepository() { return game.nightcity?.contactRepository; }
+
+  // ─── Instance state ───
+  /** @type {string} boot | gate | login | manual | mailbox */
+  _state = 'login';
+  _accountId = null;          // active (logged-in) account
+  _authAccountId = null;      // account currently being authenticated (manual state)
+  _selectedMessageId = null;
+  _currentFolder = 'inbox';
+  _currentPage = 1;
+  _switcherOpen = false;
+  _manualError = '';
+  _networkSpoofed = false;
+  _bootPlayed = false;
+  _grantedPlayed = false;
+  _timers = [];
+  _focusAccountId = null;     // lockscreen/keypad featured account (null = default)
+  _ssTimer = null;            // screensaver idle timer (real-time by design)
+  _ssActive = false;
+  /**
+   * GM config-preview overlay — pushed by an open TerminalConfigApp while a
+   * theme draft / preset kit is staged, so THIS viewer previews the unsaved
+   * look (login style, boot, MOTD, screensaver, folders, palette) live.
+   * Top-level keys REPLACE the saved config blocks (see _effectiveConfig).
+   * Cleared by the config on save/close/"palette only".
+   */
+  _cfgPreview = null;
+  _uplinkOpen = false;        // machine-uplink dropdown (login hero + mailbox HUD)
+  _netAuthTarget = null;      // networkId currently in the join-challenge console
+  _netAuthError = '';
+
+  constructor(options = {}) {
+    super(options);
+    this.item = options.item;
+    this.actor = options.actor ?? game.user?.character ?? null;
+    this.actorId = this.actor?.id ?? null;
+    const cfg = this.terminalService?.getConfig(this.item);
+    this._state = (cfg?.boot?.enabled) ? 'boot' : this._resolveEntryState();
+    // The machine's uplink is world state on the item — a relayed player switch
+    // or a GM-side edit lands as an item update on every client, so re-render
+    // off the document sync (this is also what refreshes the requesting player
+    // after their socket-relayed switch). Skipped mid-animation states.
+    this._onItemUpdate = (doc, changes) => {
+      if (doc.id !== this.item?.id) return;
+      if (!foundry.utils.hasProperty(changes, `flags.${MODULE_ID}`)) return;
+      if (this._state === 'boot' || this._state === 'granted') return;
+      this._debouncedRender();
+    };
+    Hooks.on('updateItem', this._onItemUpdate);
+    // Screensaver activity detection — document-level capture with a
+    // containment guard (element-level listeners are unreliable in Foundry);
+    // removed in close().
+    this._onActivity = (ev) => {
+      if (!this.element?.contains?.(ev.target)) return;
+      this._resetScreensaver();
+    };
+    document.addEventListener('pointerdown', this._onActivity, true);
+    document.addEventListener('keydown', this._onActivity, true);
+  }
+
+  /** @override — "{username} @ {ORG}" once in; "{ORG} — login" otherwise. */
+  get title() {
+    const name = this._terminalName();
+    if (this._state === 'mailbox' && this._accountId) {
+      const acct = this.terminalService?.getAccount(this.item, this._accountId);
+      return `${acct?.username || 'user'} @ ${name}`;
+    }
+    return `${name} — login`;
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Context
+  // ═══════════════════════════════════════════════════════════
+
+  /**
+   * The saved config with the GM preview overlay (if any) shallow-merged on
+   * top. SHALLOW on purpose: the overlay's `theme` is the config sheet's
+   * whole draft (deleted overrides must fall through to the preset CSS, which
+   * a deep merge would resurrect), and its boot/login/etc. blocks are the
+   * complete staged values.
+   */
+  _effectiveConfig() {
+    const cfg = this.terminalService?.getConfig(this.item) ?? {};
+    return this._cfgPreview ? { ...cfg, ...this._cfgPreview } : cfg;
+  }
+
+  /**
+   * Config-sheet preview channel. `rerender` is the config's call — kit
+   * (markup) transitions re-render; palette-only updates don't (the sheet
+   * applies those as cheap inline vars, so slider drags stay smooth).
+   */
+  setConfigPreview(overlay, { rerender = false } = {}) {
+    this._cfgPreview = overlay;
+    if (rerender && this._state !== 'boot' && this._state !== 'granted') this.render(false);
+  }
+
+  /** @override */
+  async _prepareContext() {
+    const cfg = this._effectiveConfig();
+    const preset = cfg.theme?.preset || cfg.preset || 'arasaka-workstation';
+    const logo = this._resolveBootIcon(cfg, preset);
+    const ctx = {
+      preset,
+      formFactor: cfg.formFactor || 'desktop',
+      state: this._state,
+      terminalName: this._terminalName(),
+      // Login-hero logo — same 3-source resolution as the boot splash so a
+      // configured custom icon/image shows here too (and never an empty box).
+      presetIcon: logo.icon,
+      logoImage: logo.imageUrl,
+      banner: cfg.boot?.banner || this._terminalName(),
+    };
+
+    // Session drop: the account being viewed is network-gated and the machine's
+    // uplink no longer reaches it (someone switched networks mid-session) —
+    // back to the login screen, where the account has vanished. Raw
+    // uplinkReaches, NOT isContentVisible: the GM auto-pass would make the
+    // drop untestable from a GM client, and losing the session is machine
+    // behavior, not a content gate (GM bypass stays explicit). The GM lands on
+    // a login list that still shows the account, OFF-NET chipped.
+    if (this._state === 'mailbox' && this._accountId) {
+      const acct = this.terminalService?.getAccount(this.item, this._accountId);
+      if (acct && !this.terminalService.uplinkReaches(this.item, acct.network)) {
+        this._accountId = null;
+        this._selectedMessageId = null;
+        this._state = 'login';
+        ui.notifications?.warn('UPLINK LOST — session dropped.');
+      }
+    }
+
+    if (this._state === 'boot') {
+      ctx.boot = this._bootContext(cfg, preset);
+    } else if (this._state === 'gate') {
+      Object.assign(ctx, this._gateContext(cfg));
+    } else if (this._state === 'login') {
+      Object.assign(ctx, this._loginContext(cfg));
+    } else if (this._state === 'manual') {
+      Object.assign(ctx, this._manualContext());
+    } else if (this._state === 'granted') {
+      Object.assign(ctx, this._grantedContext(cfg));
+    } else {
+      Object.assign(ctx, await this._mailboxContext(cfg));
+    }
+
+    // Machine uplink pill + dropdown (login hero + mailbox HUD) and, when a
+    // secured join is in progress, the challenge console overlay.
+    if (this._state === 'login' || this._state === 'mailbox') {
+      ctx.uplink = this._uplinkContext(cfg);
+      if (this._netAuthTarget) ctx.netAuth = this._netAuthContext();
+    }
+    return ctx;
+  }
+
+  /**
+   * View-model for the machine-uplink pill + dropdown. The pill shows the
+   * TERMINAL's own connection (never the player's Agent network); the dropdown
+   * lists the machine's configured interfaces plus a LOCAL ONLY disconnect row.
+   */
+  _uplinkContext(cfg) {
+    const conn = cfg.connection || {};
+    const { networkId, network } = this.terminalService?.getUplink(this.item) ?? { networkId: null, network: null };
+    const gm = isGM();
+    const canSwitch = gm || conn.allowPlayerSwitching !== false;
+    const options = (this.terminalService?.getUplinkInterfaces(this.item) || []).map(i => ({
+      id: i.networkId,
+      name: i.network.name,
+      typeLabel: i.network.type || 'Subnet',
+      color: i.network.theme?.color || '#19f3f7',
+      icon: `fas ${i.network.theme?.icon || 'fa-wifi'}`,
+      signal: i.network.signalStrength ?? 70,
+      isActive: i.state === 'active',
+      isLocked: i.state === 'locked',
+    }));
+    return {
+      name: network?.name || 'LOCAL ONLY',
+      color: network?.theme?.color || '',
+      offline: !networkId,
+      open: this._uplinkOpen && canSwitch,
+      canSwitch,
+      options,
+      count: options.length,
+      // Only render the pill at all when the terminal has interfaces configured
+      // (a legacy/unconfigured terminal keeps its old chrome untouched).
+      show: options.length > 0 || !!conn.interfaces?.length,
+    };
+  }
+
+  /** View-model for the secured-join challenge console. */
+  _netAuthContext() {
+    const network = this.networkService?.getNetwork?.(this._netAuthTarget);
+    const sec = network?.security || {};
+    const skill = (sec.bypassSkills || [])[0] || 'Interface';
+    const lockedOut = this.securityService?.isLockedOut?.(this.actorId, this._netTargetId(this._netAuthTarget));
+    return {
+      networkId: this._netAuthTarget,
+      networkName: network?.name || this._netAuthTarget,
+      color: network?.theme?.color || '#19f3f7',
+      shellHost: (this._terminalName() || 'terminal').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+      joinCmd: (network?.name || 'network').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+      allowPassword: (sec.allowPassword ?? !!sec.password) && !!sec.password,
+      skillBypass: (sec.allowSkillCheck ?? true) ? { skill, dv: sec.bypassDC ?? 15 } : null,
+      error: this._netAuthError,
+      lockout: !!lockedOut,
+      isGM: isGM(),
+    };
+  }
+
+  /** SecurityService key for a machine-uplink join (distinct from account keys). */
+  _netTargetId(networkId) {
+    return `${this.item?.id}::net::${networkId}`;
+  }
+
+  _terminalName() {
+    return this.terminalService?.getConfig(this.item)?.terminalName || this.item?.name || 'Terminal';
+  }
+
+  /**
+   * Resolve the terminal's icon from its boot config → { icon, imageUrl }.
+   * Source: 'preset' (theme icon) | 'fa' (custom FA class) | 'image' (logo).
+   * Legacy configs with only faIcon set imply 'fa'. Shared by the boot splash
+   * and the login hero so both show the same (never-empty) icon.
+   */
+  _resolveBootIcon(cfg, preset) {
+    const boot = cfg.boot || {};
+    const mode = boot.iconMode || (boot.faIcon ? 'fa' : 'preset');
+    return {
+      icon: (mode === 'fa' && boot.faIcon) ? boot.faIcon : (TERMINAL_PRESETS[preset]?.icon || 'fas fa-server'),
+      imageUrl: (mode === 'image' && boot.imageUrl) ? boot.imageUrl : null,
+    };
+  }
+
+  /**
+   * The boot splash view-model. Returned OBJECT is assigned to `ctx.boot`
+   * directly (`ctx.boot = this._bootContext(...)`), so it must be the boot
+   * fields themselves — NOT wrapped in `{ boot: … }`. (It previously returned
+   * `{ boot: {…} }`, double-nesting to `ctx.boot.boot`, so the template's
+   * `{{boot.icon}}`/`{{boot.title}}` were undefined → blank icon square + no
+   * text on the boot screen.)
+   */
+  _bootContext(cfg, preset) {
+    const boot = cfg.boot || {};
+    const logo = this._resolveBootIcon(cfg, preset);
+    return {
+      icon: logo.icon,
+      imageUrl: logo.imageUrl,
+      title: boot.title || this._terminalName(),
+      subtitle: boot.subtitle || '',
+      progressLabel: boot.progressLabel || 'Establishing secure session...',
+      animationStyle: boot.animationStyle || 'standard-fade',
+      speed: boot.speed || 'normal',
+      logLines: Array.isArray(boot.logLines) ? boot.logLines : [],
+    };
+  }
+
+  /**
+   * ACCESS GRANTED view-model — the "credential badge" design. Pulls the
+   * operator identity from the logged-in account and the org/classification
+   * from the terminal metadata; derives a clearance label from admin status.
+   */
+  _grantedContext(cfg) {
+    const acct = this.terminalService?.getAccount(this.item, this._accountId) || {};
+    const meta = cfg.metadata || {};
+    const name = acct.displayName || acct.username || 'user';
+    return {
+      account: {
+        displayName: name,
+        username: acct.username || '',
+        role: acct.role || (acct.isAdmin ? 'ADMINISTRATOR' : 'OPERATOR'),
+        initials: getInitials(name),
+        portrait: this._accountPortrait(acct),
+      },
+      badge: {
+        org: meta.org || this._terminalName(),
+        // Per-account classification wins; else the terminal's; else RESTRICTED.
+        classification: (acct.classification || meta.classification || 'RESTRICTED').toUpperCase(),
+        idLabel: acct.idNumber || acct.email || acct.username || '—',
+        clearance: (acct.clearance || (acct.isAdmin ? 'ADMIN' : 'STANDARD')).toUpperCase(),
+        location: acct.location || meta.location || '',
+        lastLogin: acct.lastLogin || 'FIRST LOGIN',
+      },
+      // Custom ACCESS GRANTED line (config.login.welcomeText; empty = default).
+      welcomeText: (cfg.login?.welcomeText || '').trim(),
+    };
+  }
+
+  _gateContext(cfg) {
+    const net = cfg.network || {};
+    const required = (net.allowedNetworks || [])[0] || '';
+    const reqName = this.networkService?.getNetwork?.(required)?.name || required || 'an authorized network';
+    const currentId = this.networkService?.currentNetworkId;
+    const allowedSet = new Set(net.allowedNetworks || []);
+    const networks = (this.networkService?.getAvailableNetworks?.() || []).map(n => {
+      const isCurrent = n.id === currentId;
+      const isAllowed = allowedSet.size === 0 || allowedSet.has(n.id) || (net.allowedTypes || []).includes(n.type);
+      const requiresAuth = n.security?.requiresAuth && !this.networkService?.isAuthenticated?.(n.id);
+      let statusClass = 'deny', statusLabel = 'DENIED';
+      if (isCurrent) { statusClass = 'conn'; statusLabel = 'CONNECTED'; }
+      else if (isAllowed && requiresAuth) { statusClass = 'sec'; statusLabel = '<i class="fas fa-lock"></i> SECURED'; }
+      else if (isAllowed) { statusClass = 'valid'; statusLabel = '<i class="fas fa-check"></i> VALID'; }
+      const signal = n.signalStrength ?? 70;
+      return {
+        id: n.id, name: n.name, typeLabel: n.type || 'Subnet', signal,
+        color: n.theme?.color || '#19f3f7', icon: `fas ${n.theme?.icon || 'fa-wifi'}`,
+        isCurrent, isRequired: n.id === required, weak: signal < 50,
+        statusClass, statusLabel,
+      };
+    });
+    const skill = (cfg.network?.bypassSkills || [])[0];
+    return {
+      requiredNetwork: reqName,
+      requiredSecured: true,
+      networks,
+      spoof: skill ? { skill, dv: cfg.network?.bypassDV ?? cfg.network?.signalThreshold ?? 18 } : null,
+      isGM: isGM(),
+    };
+  }
+
+  _loginContext(cfg) {
+    const accounts = (this.terminalService?.getAccounts(this.item) || []).map(a => this._cardContext(a, cfg));
+    const securedCount = accounts.filter(a => !a.isOpen).length;
+    // Login-screen style (config.loginStyle) — same accounts/auth underneath,
+    // different presentation. lockscreen/keypad feature ONE account (the
+    // switch row refocuses via _focusAccountId); CRT reuses the SECURE SHELL
+    // console for the actual auth, so its screen is just banner + list.
+    const style = cfg.loginStyle || 'cards';
+    const focusId = this._focusAccountId || cfg.defaultAccountId;
+    const focus = accounts.find(a => a.id === focusId) || accounts[0] || null;
+    return {
+      accounts,
+      accountCount: accounts.length,
+      secured: securedCount > 0,
+      onlineCount: 0,
+      iceWarning: this._iceWarning(cfg),
+      loginStyle: style,
+      styleCards: style === 'cards',
+      styleCrt: style === 'crt',
+      styleRoster: style === 'roster',
+      styleLock: style === 'lockscreen',
+      styleKeypad: style === 'keypad',
+      stylePortraits: style === 'portraits',
+      motd: (cfg.login?.motd || '').trim(),
+      focus,
+      others: focus ? accounts.filter(a => a.id !== focus.id) : accounts,
+      inlineError: this._manualError,
+      shellHost: (this._terminalName() || 'terminal').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+      // GM: config gear on the login screen — no need to log in just to
+      // change a preset.
+      isGM: isGM(),
+    };
+  }
+
+  _cardContext(account, cfg) {
+    const security = account.security || {};
+    // Truthful display: show the account's real security even for the GM (GM
+    // bypasses on click via force-unlock, but the cards shouldn't all read "open").
+    const requiresAuth = !!security.requiresAuth && !this.terminalService?.getState(this.item)?.gmBypassed;
+    const methods = [];
+    if (!requiresAuth) methods.push({ type: 'open', icon: 'fas fa-lock-open', label: 'Open — no login' });
+    else {
+      if (security.allowPassword ?? security.password) methods.push({ type: 'lock', icon: 'fas fa-lock', label: 'Password' });
+      if (security.allowSkillCheck) methods.push({ type: 'skill', icon: 'fas fa-dice-d20', label: 'Skill' });
+      if (security.allowKeyItem) methods.push({ type: 'lock', icon: 'fas fa-id-card', label: 'Key' });
+      if (!methods.length) methods.push({ type: 'lock', icon: 'fas fa-lock', label: 'Secured' });
+    }
+    return {
+      id: account.id,
+      displayName: account.displayName || account.username || 'Account',
+      username: account.username || '',
+      role: account.role || (account.isAdmin ? 'ADMINISTRATOR' : ''),
+      portrait: this._accountPortrait(account),
+      initials: getInitials(account.displayName || account.username || '?'),
+      isAdmin: !!account.isAdmin,
+      isDefault: account.id === cfg.defaultAccountId,
+      isOpen: !requiresAuth,
+      // lockscreen/keypad: password entry can be inline; other-method-only
+      // accounts route to the SECURE SHELL console instead.
+      hasPassword: requiresAuth && !!(security.allowPassword ?? security.password),
+      isSelected: account.id === this._authAccountId,
+      lastLogin: '',
+      wmarkIcon: account.isAdmin ? 'fas fa-user-gear' : 'fas fa-user',
+      authMethods: methods,
+      tooltip: requiresAuth ? 'Requires authentication' : 'Open account',
+      // GM-only: this account is network-gated off the current uplink (players
+      // never receive gated accounts — the service filters them out).
+      offNet: isGM() && !this.terminalService?.uplinkReaches(this.item, account.network),
+    };
+  }
+
+  _manualContext() {
+    const account = this._authAccountId ? this.terminalService?.getAccount(this.item, this._authAccountId) : null;
+    const security = account?.security || {};
+    const skill = (security.bypassSkills || [])[0];
+    const lockout = account && this.actorId
+      ? this.terminalService?.isAccountLockedOut(this.item, account.id, this.actorId)
+      : false;
+    return {
+      shellHost: (this._terminalName() || 'terminal').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+      account: account ? { username: account.username, displayName: account.displayName } : null,
+      prefillUsername: '',
+      skillBypass: (account && security.allowSkillCheck && skill) ? { skill, dv: security.bypassDC ?? 15 } : null,
+      keyItemBypass: (account && security.allowKeyItem && security.keyItemName) ? { name: security.keyItemName } : null,
+      error: this._manualError,
+      lockout,
+    };
+  }
+
+  async _mailboxContext(cfg) {
+    const account = this.terminalService?.getAccount(this.item, this._accountId);
+    const raw = this.terminalService?.getAccountMessages(this.item, this._accountId) || [];
+
+    // Per-message network gating vs the MACHINE's uplink. Players only see what
+    // the current connection reaches (isContentVisible GM-bypasses, so the GM
+    // list stays complete — gated rows get an OFF-NET chip instead).
+    const all = raw.filter(m => this.terminalService.isContentVisible(this.item, m.networkVisibility));
+
+    // Folder filters.
+    const inFolder = {
+      inbox: m => !m.status?.deleted && !m.status?.sent,
+      saved: m => m.status?.saved && !m.status?.deleted,
+      trash: m => !!m.status?.deleted,
+    };
+    const counts = {
+      inbox: all.filter(inFolder.inbox).length,
+      saved: all.filter(inFolder.saved).length,
+      trash: all.filter(inFolder.trash).length,
+    };
+    const folder = inFolder[this._currentFolder] ? this._currentFolder : 'inbox';
+    const list = all.filter(inFolder[folder]);
+
+    // "N objects failed to sync" — GM-toggleable per terminal (showSyncHint).
+    // Counted within the current folder so the number matches what's missing
+    // from the list the player is looking at. GM never needs the hint.
+    let syncHint = null;
+    if (!isGM() && cfg.connection?.showSyncHint !== false) {
+      const hiddenInFolder = raw.filter(m =>
+        !this.terminalService.isContentVisible(this.item, m.networkVisibility) && inFolder[folder](m));
+      if (hiddenInFolder.length) syncHint = { count: hiddenInFolder.length };
+    }
+
+    if (this._selectedMessageId && !list.find(m => m.messageId === this._selectedMessageId)) this._selectedMessageId = null;
+    if (!this._selectedMessageId && list.length) this._selectedMessageId = list[0].messageId;
+
+    // Pagination.
+    const PAGE = TerminalViewerApp.PAGE_SIZE;
+    const maxPage = Math.max(1, Math.ceil(list.length / PAGE));
+    if (this._currentPage > maxPage) this._currentPage = maxPage;
+    if (this._currentPage < 1) this._currentPage = 1;
+    const start = (this._currentPage - 1) * PAGE;
+    const pageItems = list.slice(start, start + PAGE);
+
+    const gm = isGM();
+    const messages = pageItems.map(m => ({
+      messageId: m.messageId,
+      from: m.from || 'unknown',
+      subject: m.subject || '(no subject)',
+      priority: m.priority || 'normal',
+      encrypted: !!m.status?.encrypted,
+      isSelected: m.messageId === this._selectedMessageId,
+      // GM-only marker: gated off the current uplink (players never see the row).
+      offNet: gm && !this.terminalService.uplinkReaches(this.item, m.networkVisibility),
+    }));
+
+    // Diegetic folder labels (config.folderNames — e.g. CASE FILES / EVIDENCE /
+    // PURGED on a cop box). Empty fields fall back to the defaults.
+    const fn = cfg.folderNames || {};
+    const names = {
+      inbox: (fn.inbox || '').trim() || 'Inbox',
+      saved: (fn.saved || '').trim() || 'Saved',
+      trash: (fn.trash || '').trim() || 'Trash',
+    };
+    const emptyLabels = {
+      inbox: `${names.inbox} is empty`,
+      saved: `Nothing in ${names.saved}`,
+      trash: `${names.trash} is empty`,
+    };
+    const folderLabels = { inbox: names.inbox.toUpperCase(), saved: names.saved.toUpperCase(), trash: names.trash.toUpperCase() };
+    const selected = list.find(m => m.messageId === this._selectedMessageId);
+    // HUD shows the MACHINE's uplink (the pill), never the player's network.
+    return {
+      hud: { isAdmin: !!account?.isAdmin, trace: null },
+      syncHint,
+      account: {
+        displayName: account?.displayName || account?.username || 'user',
+        username: account?.username || '',
+        initials: getInitials(account?.displayName || account?.username || '?'),
+        portrait: this._accountPortrait(account || {}),
+      },
+      switchAccounts: this._switcherOpen ? this._switcherAccounts() : [],
+      switcherOpen: this._switcherOpen,
+      folders: [
+        { key: 'inbox', label: names.inbox, icon: 'fas fa-inbox', count: counts.inbox, active: folder === 'inbox' },
+        { key: 'saved', label: names.saved, icon: 'fa-regular fa-star', count: counts.saved, active: folder === 'saved' },
+        { key: 'trash', label: names.trash, icon: 'fas fa-trash-can', count: counts.trash, active: folder === 'trash' },
+      ],
+      // Idle screensaver (config.screensaver) — overlay markup lives in the
+      // mailbox state; _resetScreensaver drives the --on class. Logo resolves
+      // per iconMode: 'boot' follows the boot icon, 'fa'/'image' are custom,
+      // 'none' drops it. `motion` picks the drift/bounce/static animation.
+      screensaver: cfg.screensaver?.enabled ? this._screensaverContext(cfg) : null,
+      listLabel: `${folderLabels[folder]} · ${list.length} MESSAGE${list.length === 1 ? '' : 'S'}`,
+      emptyLabel: emptyLabels[folder],
+      messages,
+      pagination: maxPage > 1 ? { page: this._currentPage, maxPage, hasPrev: this._currentPage > 1, hasNext: this._currentPage < maxPage } : null,
+      isGM: isGM(),
+      selectedMessage: selected ? this._detailContext(selected) : null,
+      allowExfil: cfg.allowExfil !== false,
+    };
+  }
+
+  static PAGE_SIZE = 12;
+
+  _switcherAccounts() {
+    return (this.terminalService?.getAccounts(this.item) || []).map(a => {
+      const isCurrent = a.id === this._accountId;
+      const gmBypassed = this.terminalService?.getState(this.item)?.gmBypassed;
+      const open = !a.security?.requiresAuth || gmBypassed;
+      let statusLabel = 'current';
+      if (!isCurrent) statusLabel = open ? 'open' : '<i class="fas fa-lock"></i> re-auth';
+      return {
+        id: a.id, displayName: a.displayName || a.username,
+        initials: getInitials(a.displayName || a.username || '?'),
+        portrait: this._accountPortrait(a), isCurrent, isOpen: open && !isCurrent, statusLabel,
+      };
+    });
+  }
+
+  _detailContext(msg) {
+    const senderName = this._resolveSenderName(msg);
+    const contact = this._findContactByEmail(msg.from);
+    const priority = msg.priority || 'normal';
+
+    // Typed content (design doc §8c) — a terminal message can be a
+    // spreadsheet/calendar/syslog/… not just plain mail. When contentType is
+    // set, hand the entry to the SHARED content-body partial via the registry;
+    // exfil is read-only here, so actions stay passive (interactive:false).
+    const contentType = msg.contentType || msg.metadata?.contentType || null;
+    const isTypedContent = !!contentType && contentType !== 'message';
+    let content = null;
+    if (isTypedContent) {
+      content = enrichContent({
+        id: msg.messageId,
+        contentType,
+        contentData: msg.contentData || msg.metadata?.contentData || {},
+        subject: msg.subject,
+        from: msg.from,
+        body: msg.body,
+        timestamp: msg.timestamp,
+      }, { isGM: isGM(), interactive: false });
+    }
+
+    return {
+      messageId: msg.messageId,
+      subject: msg.subject || '(no subject)',
+      classification: msg.metadata?.classification || '',
+      sender: {
+        name: senderName,
+        email: msg.from || '',
+        initials: getInitials(senderName),
+        portrait: contact ? this.portraitService?.resolvePortrait(contact) : (msg.fromActorId ? this.portraitService?.resolvePortrait({ actorId: msg.fromActorId }) : null),
+      },
+      isContact: !!contact,
+      timeAgo: this._relativeTime(msg.timestamp),
+      timeAbs: this._absDate(msg.timestamp),
+      priority,
+      priorityLabel: priority.toUpperCase(),
+      priorityIcon: PRIORITY_ICONS[priority] || PRIORITY_ICONS.normal,
+      network: this.networkService?.getNetwork?.(msg.network)?.name || msg.network || 'CITINET',
+      isTypedContent,
+      content,
+      bodyHtml: this._sanitizeBody(msg.body || ''),
+      isSaved: !!msg.status?.saved,
+      isTrashed: !!msg.status?.deleted,
+    };
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Render — boot animation + window title + switcher outside-click
+  // ═══════════════════════════════════════════════════════════
+
+  /** @override — capture pane scroll before the re-render tears down the DOM. */
+  async _preRender(context, options) {
+    await super._preRender(context, options);
+    const el = this.element;
+    if (!el) return;
+    this._scrollMemo = {
+      side: el.querySelector('.ncm-term__side')?.scrollTop ?? 0,
+      detail: el.querySelector('.ncm-term__detail')?.scrollTop ?? 0,
+      msgId: this._renderedMsgId ?? null,
+    };
+  }
+
+  /** @override */
+  _onRender(context, options) {
+    super._onRender(context, options);
+    // Theme the window: preset attribute (CSS palette fallback) + the saved
+    // custom theme applied live as inline variables on the viewer root.
+    const viewerEl = this.element?.querySelector('.ncm-terminal-viewer');
+    viewerEl?.setAttribute('data-terminal-preset', context.preset);
+    this._applyCustomTheme(viewerEl, context.preset);
+    // Per-terminal effects (theme.scanlines/flicker — opt-in, separate from
+    // the player's own atmosphere prefs). Glitch rides --ncm-glitch-intensity
+    // via applyTheme. Overlay-aware, like everything render-visible.
+    const themeCfg = this._effectiveConfig().theme || {};
+    viewerEl?.setAttribute('data-term-scanlines', String(themeCfg.scanlines === true));
+    viewerEl?.setAttribute('data-term-flicker', String(themeCfg.flicker === true));
+    this._syncWindowTitle(context);
+    // Restore pane scroll — every action re-renders, and without this each
+    // click snapped both panes back to the top. The detail pane only restores
+    // when the same message is still open (a new message starts at the top).
+    const memo = this._scrollMemo;
+    if (memo) {
+      const side = this.element?.querySelector('.ncm-term__side');
+      if (side && memo.side) side.scrollTop = memo.side;
+      if (memo.detail && memo.msgId && memo.msgId === this._selectedMessageId) {
+        const det = this.element?.querySelector('.ncm-term__detail');
+        if (det) det.scrollTop = memo.detail;
+      }
+    }
+    this._renderedMsgId = this._selectedMessageId;
+    if (this._state === 'boot') this._playBoot();
+    if (this._state === 'granted' && !this._grantedPlayed) {
+      this._grantedPlayed = true;
+      this.soundService?.play?.('login-success');
+      // Hold for the full sequence: fields write-in + verify → bar fills →
+      // VALIDATED stamp (~2.0s) → ACCESS GRANTED (~2.35s) → brief beat.
+      this._timer(() => { this._grantedPlayed = false; this._enterState('mailbox'); }, 3000);
+    }
+    // Enter-to-submit in the auth console.
+    if (this._state === 'manual') {
+      const pass = this.element?.querySelector('input[name="manualPassword"]');
+      pass?.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); this._onManualAuth(); } });
+    }
+    // Enter-to-submit in the uplink join-challenge console.
+    if (this._netAuthTarget) {
+      const pass = this.element?.querySelector('input[name="netAuthPassword"]');
+      pass?.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); this._onNetAuth(); } });
+    }
+    // Inline password on the lockscreen login style: Enter submits for the
+    // focused account (the input carries data-account-id).
+    if (this._state === 'login') {
+      const inlinePass = this.element?.querySelector('.ncm-term__lockpass input[name="manualPassword"]');
+      inlinePass?.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        this._onInlineAuth(e, inlinePass);
+      });
+      inlinePass?.focus();
+      // Keypad login style: pad keys write into the hidden password input and
+      // echo dots on the LCD; ⏎ submits, ✕ clears. Manual listeners — these
+      // must not re-render per keypress.
+      const pad = this.element?.querySelector('.ncm-term__pad');
+      if (pad) {
+        const input = this.element.querySelector('.ncm-term__keypad input[name="manualPassword"]');
+        const lcd = this.element.querySelector('.ncm-term__lcd-code');
+        const echo = () => { if (lcd) lcd.textContent = input?.value ? '▪ '.repeat(input.value.length).trim() : '_'; };
+        pad.querySelectorAll('[data-key]').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const k = btn.dataset.key;
+            if (!input) return;
+            if (k === 'clear') input.value = '';
+            else if (k === 'enter') return this._onInlineAuth(e, btn);
+            else if (input.value.length < 24) input.value += k;
+            echo();
+          });
+        });
+        echo();
+      }
+    }
+    // Idle screensaver — (re)arm on every render; mailbox only.
+    this._resetScreensaver();
+  }
+
+  /**
+   * Apply the terminal's saved custom theme (colors / fonts / text scale /
+   * contrast from cfg.theme) as inline CSS variables on the viewer root, via
+   * the element-scoped ThemeService.applyTheme. The effective value for each
+   * key = the GM's saved override, else the TERMINAL_PRESETS palette, else
+   * nothing (the preset attribute CSS / base palette shows through — a fresh
+   * terminal stores only { preset } and renders exactly as before). preset:
+   * null stops applyTheme from merging the *player* THEME_PRESETS in.
+   * Re-runs on every render, so a config Save updates an open viewer live
+   * (the constructor's updateItem hook re-renders on the flag write).
+   */
+  _applyCustomTheme(viewerEl, presetKey) {
+    if (!viewerEl || !this.themeService) return;
+    const t = this._effectiveConfig().theme || {};
+    this.themeService.applyTheme(buildTerminalThemePrefs(t, presetKey), viewerEl);
+  }
+
+  /** Re-skin the AppV2 window title with the colored {user} @ {ORG} treatment. */
+  _syncWindowTitle(context) {
+    const el = this.element?.querySelector('.window-title');
+    if (!el) return;
+    const name = this._terminalName();
+    if (this._state === 'mailbox' && this._accountId) {
+      const acct = this.terminalService?.getAccount(this.item, this._accountId);
+      el.innerHTML = `<span class="ncm-term__title-user">${Handlebars.escapeExpression(acct?.username || 'user')}</span><span class="ncm-term__title-at">@</span><span class="ncm-term__title-org">${Handlebars.escapeExpression(name)}</span>`;
+    } else {
+      el.innerHTML = `<span class="ncm-term__title-org">${Handlebars.escapeExpression(name)}</span><span class="ncm-term__title-at"> — login</span>`;
+    }
+  }
+
+  _playBoot() {
+    if (this._bootPlayed) return;
+    this._bootPlayed = true;
+    const bootEl = this.element?.querySelector('.ncm-term__boot');
+    if (!bootEl) { this._afterBoot(); return; }
+    this.soundService?.play?.('shard-boot');
+    const fill = bootEl.querySelector('.ncm-term__boot-fill');
+    requestAnimationFrame(() => { if (fill) fill.style.width = '100%'; });
+    bootEl.querySelectorAll('.ncm-term__boot-log div').forEach((d, i) => {
+      this._timer(() => { d.style.opacity = '1'; }, 400 + i * 240);
+    });
+    this._timer(() => {
+      bootEl.style.transition = 'opacity .4s'; bootEl.style.opacity = '0';
+      this._timer(() => this._afterBoot(), 420);
+    }, 2100);
+  }
+
+  _afterBoot() { this._enterState(this._resolveEntryState()); }
+
+  // ═══════════════════════════════════════════════════════════
+  //  State machine
+  // ═══════════════════════════════════════════════════════════
+
+  _resolveEntryState() {
+    const net = this.terminalService?.checkNetworkAccess(this.item) ?? { allowed: true };
+    if (!net.allowed && !this._networkSpoofed) return 'gate';
+    return 'login';
+  }
+
+  _enterState(state) {
+    this._state = state;
+    this._switcherOpen = false;
+    this._uplinkOpen = false;
+    this._netAuthTarget = null;
+    this._netAuthError = '';
+    this.render(false);
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Actions — login / auth
+  // ═══════════════════════════════════════════════════════════
+
+  _onSelectAccount(event, target) {
+    const id = target?.dataset?.accountId;
+    if (!id) return;
+    if (!this.terminalService.requiresAuth(this.item, id, this.actorId)) {
+      this._loginSuccess(id);
+    } else {
+      this._authAccountId = id;
+      this._manualError = '';
+      this._enterState('manual');
+    }
+  }
+
+  _onManualLogin() { this._authAccountId = null; this._manualError = ''; this._enterState('manual'); }
+  _onBackToAccounts() { this._authAccountId = null; this._manualError = ''; this._enterState('login'); }
+
+  /** Resolve the account being authed: bound (card) or typed username (secret). */
+  _resolveAuthAccount() {
+    if (this._authAccountId) return this.terminalService.getAccount(this.item, this._authAccountId);
+    const uname = this.element?.querySelector('input[name="manualUsername"]')?.value?.trim().toLowerCase();
+    if (!uname) return null;
+    return (this.terminalService.getAccounts(this.item, { includeHidden: true }) || [])
+      .find(a => (a.username || '').toLowerCase() === uname) || null;
+  }
+
+  /**
+   * Inline password auth for the lockscreen/keypad login styles — the password
+   * field lives on the login screen itself, so bind the target account from
+   * the control and run the normal manual-auth path (same lockout/ICE rules;
+   * a failure re-renders the login screen with `inlineError`).
+   */
+  async _onInlineAuth(event, target) {
+    const id = target?.dataset?.accountId || target?.closest('[data-account-id]')?.dataset?.accountId;
+    if (id) this._authAccountId = id;
+    return this._onManualAuth();
+  }
+
+  /**
+   * Lockscreen/keypad "switch user" row — refocus the featured account. An
+   * OPEN account logs straight in (no password panel to show).
+   */
+  _onFocusAccount(event, target) {
+    const id = target?.dataset?.accountId;
+    if (!id) return;
+    if (!this.terminalService.requiresAuth(this.item, id, this.actorId)) return this._loginSuccess(id);
+    this._focusAccountId = id;
+    this._manualError = '';
+    this.render(false);
+  }
+
+  async _onManualAuth() {
+    const account = this._resolveAuthAccount();
+    if (!account) { this._manualError = 'No such account.'; return this.render(false); }
+    if (this.terminalService.isAccountLockedOut(this.item, account.id, this.actorId)) {
+      this._manualError = 'Account locked out. Try again later.'; return this.render(false);
+    }
+    const password = this.element?.querySelector('input[name="manualPassword"]')?.value ?? '';
+    const expected = account.security?.password ?? '';
+    if (account.security?.allowPassword && expected && password === expected) {
+      return this._loginSuccess(account.id);
+    }
+    this._failAuth(account);
+  }
+
+  async _onSkillBypass() {
+    const account = this._resolveAuthAccount();
+    if (!account || !this.actor) { this._manualError = 'No character to roll with.'; return this.render(false); }
+    if (this.terminalService.isAccountLockedOut(this.item, account.id, this.actorId)) {
+      this._manualError = 'Account locked out.'; return this.render(false);
+    }
+    const skill = (account.security?.bypassSkills || [])[0];
+    const dc = account.security?.bypassDC ?? 15;
+    try {
+      const result = await this.skillService.performCheck(this.actor, skill, { dc, flavor: 'Terminal Bypass' });
+      if (result?.success) return this._loginSuccess(account.id);
+    } catch (err) { log.error(`Terminal skill bypass failed: ${err.message}`); }
+    this._failAuth(account);
+  }
+
+  async _onKeyItem() {
+    const account = this._resolveAuthAccount();
+    if (!account) { this._manualError = 'No such account.'; return this.render(false); }
+    if (this.terminalService.isAccountLockedOut(this.item, account.id, this.actorId)) {
+      this._manualError = 'Account locked out.'; return this.render(false);
+    }
+    if (!this.actor) { this._manualError = 'No character — no inventory to check.'; return this.render(false); }
+    const want = (account.security?.keyItemName || '').trim().toLowerCase();
+    const tag = account.security?.keyItemTag || '';
+    const has = this.actor.items?.find(i =>
+      (tag && i.getFlag(MODULE_ID, 'keyTag') === tag) ||
+      (want && (i.name || '').trim().toLowerCase() === want));
+    if (has) return this._loginSuccess(account.id);
+    this._failAuth(account);
+  }
+
+  _failAuth(account) {
+    const res = this.terminalService.recordLoginFailure(this.item, account.id, this.actorId);
+    this.soundService?.play?.('hack-fail');
+    // ICE on failure mode === 'damage'
+    if (account.security?.failureMode === 'damage' && this.actor) {
+      try { this.iceService?.applyDamage?.(this.actor, account.security); } catch { /* non-fatal */ }
+    }
+    this._manualError = res.lockedOut
+      ? 'ACCESS DENIED — account locked out.'
+      : `ACCESS DENIED — ${res.attemptsRemaining} attempt${res.attemptsRemaining === 1 ? '' : 's'} left.`;
+    this.render(false);
+  }
+
+  async _loginSuccess(accountId) {
+    // Flip to 'granted' BEFORE the session flag write: the write echoes back
+    // through the updateItem hook on this same client, and with the state
+    // still 'manual'/'login' the hook's boot/granted guard doesn't skip it —
+    // the debounced re-render then rebuilt the badge DOM ~150ms into its
+    // animation, restarting it (the "card slides in twice" bug).
+    this._state = 'granted';
+    await this.terminalService.recordLoginSuccess(this.item, accountId, this.actorId);
+    this._accountId = accountId;
+    this._authAccountId = null;
+    this._manualError = '';
+    this._selectedMessageId = null;
+    this._currentFolder = 'inbox';
+    this._currentPage = 1;
+    this.soundService?.play?.('shard-decrypt');
+    // Brief ACCESS GRANTED / Welcome flourish, then into the mailbox.
+    this._enterState('granted');
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Actions — network gate
+  // ═══════════════════════════════════════════════════════════
+
+  async _onSwitchNetwork(event, target) {
+    const id = target?.dataset?.networkId;
+    if (!id) return;
+    await this.networkService?.switchNetwork?.(id);
+    this._enterState(this._resolveEntryState());
+  }
+
+  async _onSpoofNetwork() {
+    if (!this.actor) return ui.notifications.warn('No character to roll with.');
+    const cfg = this.terminalService.getConfig(this.item);
+    const skill = (cfg.network?.bypassSkills || [])[0] || 'Interface';
+    const dc = cfg.network?.bypassDV ?? 18;
+    try {
+      const result = await this.skillService.performCheck(this.actor, skill, { dc, flavor: 'Network Spoof' });
+      if (result?.success) { this._networkSpoofed = true; this._enterState('login'); return; }
+      ui.notifications.warn('Network spoof failed.');
+    } catch (err) { log.error(`Network spoof failed: ${err.message}`); }
+  }
+
+  async _onForceUnlock() {
+    if (!isGM()) return;
+    await this.terminalService.forceUnlock(this.item);
+    this._enterState(this._resolveEntryState());
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Actions — machine uplink (Layer 1)
+  // ═══════════════════════════════════════════════════════════
+
+  _onToggleUplink() {
+    this._uplinkOpen = !this._uplinkOpen;
+    this.render(false);
+  }
+
+  async _onSelectUplink(event, target) {
+    const raw = target?.dataset?.networkId;
+    this._uplinkOpen = false;
+    if (raw === undefined) return this.render(false);
+    const networkId = raw === 'local' ? null : raw;
+    const current = this.terminalService?.getUplink(this.item)?.networkId ?? null;
+    if (networkId === current) return this.render(false);
+    if (networkId) {
+      const iface = (this.terminalService?.getUplinkInterfaces(this.item) || []).find(i => i.networkId === networkId);
+      if (!iface) return this.render(false);
+      if (iface.state === 'locked') {
+        // Secured network the machine holds no credential for — join challenge.
+        this._netAuthTarget = networkId;
+        this._netAuthError = '';
+        return this.render(false);
+      }
+    }
+    await this._switchUplink(networkId, { authorized: false });
+  }
+
+  /**
+   * Point the machine at a network. GM writes directly; players relay through
+   * the socket (item flags aren't player-writable) — their viewer refreshes
+   * when the flag write syncs back (the updateItem hook in the constructor).
+   */
+  async _switchUplink(networkId, { authorized = false } = {}) {
+    if (isGM()) {
+      const res = await this.terminalService.setUplink(this.item, networkId, { remember: authorized });
+      if (!res?.success) ui.notifications?.warn(res?.error || 'Uplink switch failed.');
+      this.render(false);
+      return;
+    }
+    game.nightcity?.socketManager?.emit?.(SOCKET_OPS.TERMINAL_NET_REQUEST, {
+      itemUuid: this.item?.uuid,
+      networkId,
+      authorized,
+      userId: game.user.id,
+    });
+    this.render(false);
+  }
+
+  _onNetCancel() {
+    this._netAuthTarget = null;
+    this._netAuthError = '';
+    this.render(false);
+  }
+
+  async _onNetAuth() {
+    const networkId = this._netAuthTarget;
+    const network = this.networkService?.getNetwork?.(networkId);
+    if (!network) return this._onNetCancel();
+    if (this.securityService?.isLockedOut?.(this.actorId, this._netTargetId(networkId))) {
+      this._netAuthError = 'Interface locked out. Try again later.';
+      return this.render(false);
+    }
+    const password = this.element?.querySelector('input[name="netAuthPassword"]')?.value ?? '';
+    const expected = network.security?.password ?? '';
+    if (expected && password === expected) return this._netJoinSuccess(networkId);
+    this._failNetAuth(network);
+  }
+
+  async _onNetSkillBypass() {
+    const networkId = this._netAuthTarget;
+    const network = this.networkService?.getNetwork?.(networkId);
+    if (!network) return this._onNetCancel();
+    if (!this.actor) { this._netAuthError = 'No character to roll with.'; return this.render(false); }
+    if (this.securityService?.isLockedOut?.(this.actorId, this._netTargetId(networkId))) {
+      this._netAuthError = 'Interface locked out.';
+      return this.render(false);
+    }
+    const skill = (network.security?.bypassSkills || [])[0] || 'Interface';
+    const dc = network.security?.bypassDC ?? 15;
+    try {
+      const result = await this.skillService.performCheck(this.actor, skill, { dc, flavor: 'Network Join' });
+      if (result?.success) return this._netJoinSuccess(networkId);
+    } catch (err) { log.error(`Uplink skill bypass failed: ${err.message}`); }
+    this._failNetAuth(network);
+  }
+
+  /** GM: join a secured interface without credentials (testing / story fiat). */
+  async _onNetGmJoin() {
+    if (!isGM()) return;
+    const networkId = this._netAuthTarget;
+    this._netAuthTarget = null;
+    this._netAuthError = '';
+    await this._switchUplink(networkId, { authorized: true });
+  }
+
+  async _netJoinSuccess(networkId) {
+    this.securityService?.recordSuccess?.(this.actorId, this._netTargetId(networkId));
+    this._netAuthTarget = null;
+    this._netAuthError = '';
+    this.soundService?.play?.('login-success');
+    // authorized:true — the machine remembers the credential (state.connection.authenticated).
+    await this._switchUplink(networkId, { authorized: true });
+  }
+
+  _failNetAuth(network) {
+    const networkId = this._netAuthTarget;
+    const sec = network?.security || {};
+    const targetId = this._netTargetId(networkId);
+    this.securityService?.initTracking?.(this.actorId, targetId, {
+      maxAttempts: sec.maxAttempts ?? 3,
+      lockoutDuration: sec.lockoutDuration ?? 3600000,
+    });
+    this.securityService?.recordFailedAttempt?.(this.actorId, targetId);
+    this.soundService?.play?.('hack-fail');
+    if (sec.failureMode === 'damage' && this.actor) {
+      try { this.iceService?.applyDamage?.(this.actor, sec); } catch { /* non-fatal */ }
+    }
+    const lockedOut = this.securityService?.isLockedOut?.(this.actorId, targetId);
+    const remaining = this.securityService?.getRemainingAttempts?.(this.actorId, targetId) ?? 0;
+    this._netAuthError = lockedOut
+      ? 'ACCESS DENIED — interface locked out.'
+      : `ACCESS DENIED — ${remaining} attempt${remaining === 1 ? '' : 's'} left.`;
+    this.render(false);
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Actions — mailbox
+  // ═══════════════════════════════════════════════════════════
+
+  _onToggleSwitcher() { this._switcherOpen = !this._switcherOpen; this.render(false); }
+
+  _onSwitchAccount(event, target) {
+    const id = target?.dataset?.accountId;
+    if (!id || id === this._accountId) { this._switcherOpen = false; return this.render(false); }
+    this._switcherOpen = false;
+    if (!this.terminalService.requiresAuth(this.item, id, this.actorId)) {
+      this._loginSuccess(id);
+    } else {
+      this._authAccountId = id; this._manualError = ''; this._enterState('manual');
+    }
+  }
+
+  async _onLogout() {
+    await this.terminalService.logout(this.item, this.actorId);
+    this._accountId = null;
+    this._switcherOpen = false;
+    this._enterState('login');
+  }
+
+  _onFolder(event, target) {
+    this._currentFolder = target?.dataset?.folder || 'inbox';
+    this._currentPage = 1;
+    this._selectedMessageId = null;
+    this.render(false);
+  }
+
+  _onPage(event, target) {
+    const dir = target?.dataset?.dir;
+    this._currentPage += (dir === 'next' ? 1 : -1);
+    this.render(false);
+  }
+
+  _onSelectMessage(event, target) {
+    this._selectedMessageId = target?.dataset?.messageId || null;
+    this.render(false);
+  }
+
+  // ─── GM authoring (in-viewer) ───
+
+  async _onConfigure() {
+    const { TerminalConfigApp } = await import('./TerminalConfigApp.js');
+    new TerminalConfigApp({ item: this.item }).render(true);
+  }
+
+  /** New message — opens the shared content composer (all content types). */
+  _onNewMessage() {
+    if (!isGM() || !this._accountId) return;
+    import('../ItemInbox/DataShardComposer.js').then(({ DataShardComposer }) => {
+      new DataShardComposer({
+        target: { kind: 'terminal', item: this.item, accountId: this._accountId },
+        onSave: () => this.render(false),
+      }).render(true);
+    });
+  }
+
+  /** Edit message — loads the entry into the shared content composer. */
+  _onEditMessage(event, target) {
+    if (!isGM()) return;
+    const id = target?.dataset?.messageId || this._selectedMessageId;
+    const raw = (this.terminalService?.getAccountMessages(this.item, this._accountId) || []).find(m => m.messageId === id);
+    if (!raw) return;
+    const editData = {
+      entryId: id, contentType: raw.contentType || 'message',
+      from: raw.from || '', subject: raw.subject || '', body: raw.body || '',
+      timestamp: raw.timestamp || '', contentData: raw.contentData ?? {},
+    };
+    import('../ItemInbox/DataShardComposer.js').then(({ DataShardComposer }) => {
+      new DataShardComposer({
+        target: { kind: 'terminal', item: this.item, accountId: this._accountId },
+        editData, onSave: () => this.render(false),
+      }).render(true);
+    });
+  }
+
+  /** GM — toggle a message in/out of the Saved folder (status.saved flag). */
+  async _onToggleSaveMessage(event, target) {
+    if (!isGM()) return;
+    const id = target?.dataset?.messageId || this._selectedMessageId;
+    const raw = (this.terminalService?.getAccountMessages(this.item, this._accountId) || []).find(m => m.messageId === id);
+    if (!raw) return;
+    await this.terminalService.updateAccountMessage(this.item, id, { status: { saved: !raw.status?.saved } });
+    this.render(false);
+  }
+
+  /** GM — move a message to Trash / restore it (status.deleted flag; the
+   *  permanent delete stays a separate confirmed action). */
+  async _onToggleTrashMessage(event, target) {
+    if (!isGM()) return;
+    const id = target?.dataset?.messageId || this._selectedMessageId;
+    const raw = (this.terminalService?.getAccountMessages(this.item, this._accountId) || []).find(m => m.messageId === id);
+    if (!raw) return;
+    await this.terminalService.updateAccountMessage(this.item, id, { status: { deleted: !raw.status?.deleted } });
+    this.render(false);
+  }
+
+  async _onDeleteMessage(event, target) {
+    if (!isGM()) return;
+    const id = target?.dataset?.messageId || this._selectedMessageId;
+    const ok = await Dialog.confirm({ title: 'Delete Message', content: '<p>Permanently delete this message from the terminal?</p>' });
+    if (!ok) return;
+    await this.terminalService.removeAccountMessage(this.item, id);
+    if (this._selectedMessageId === id) this._selectedMessageId = null;
+    this.render(false);
+  }
+
+  /** Shared GM compose/edit dialog. Returns message data or null. */
+  async _messageDialog(msg) {
+    const esc = (s) => Handlebars.escapeExpression(s ?? '');
+    const prio = msg?.priority || 'normal';
+    const content = `
+      <div style="display:flex;flex-direction:column;gap:8px;font-family:var(--ncm-font-body,sans-serif)">
+        <label>From <input type="text" name="from" value="${esc(msg?.from)}" placeholder="sender@domain"></label>
+        <label>Subject <input type="text" name="subject" value="${esc(msg?.subject)}"></label>
+        <label>Classification <input type="text" name="classification" value="${esc(msg?.metadata?.classification)}" placeholder="optional, e.g. CONFIDENTIAL"></label>
+        <label>Priority
+          <select name="priority">
+            <option value="normal" ${prio === 'normal' ? 'selected' : ''}>Normal</option>
+            <option value="urgent" ${prio === 'urgent' ? 'selected' : ''}>Urgent</option>
+            <option value="critical" ${prio === 'critical' ? 'selected' : ''}>Critical</option>
+          </select>
+        </label>
+        <label>Body <textarea name="body" rows="6">${esc(msg?.body)}</textarea></label>
+      </div>`;
+    let result = null;
+    await new Promise((resolve) => {
+      new Dialog({
+        title: msg ? 'Edit Message' : 'New Message',
+        content,
+        buttons: {
+          save: { label: msg ? 'Save' : 'Add', callback: (html) => {
+            result = {
+              from: html.find('[name="from"]').val(),
+              subject: html.find('[name="subject"]').val(),
+              classification: html.find('[name="classification"]').val(),
+              priority: html.find('[name="priority"]').val(),
+              body: html.find('[name="body"]').val(),
+            };
+          } },
+          cancel: { label: 'Cancel' },
+        },
+        default: 'save',
+        close: () => resolve(),
+      }).render(true);
+    });
+    return result;
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Actions — exfil / contacts
+  // ═══════════════════════════════════════════════════════════
+
+  async _onAddContact(event, target) {
+    const msg = this._currentSelectedRaw();
+    if (!msg || !this.actorId) return;
+    const name = this._resolveSenderName(msg);
+    const contact = this._findContactByEmail(msg.from);
+    const portrait = msg.fromActorId ? this.portraitService?.resolvePortrait({ actorId: msg.fromActorId }) : null;
+    try {
+      await this.contactRepository?.addContact(this.actorId, {
+        name, email: msg.from || '', actorId: msg.fromActorId || null, portrait: portrait || null,
+      });
+      ui.notifications.info(`Added ${name} to your contacts.`);
+      this.render(false);
+    } catch (err) { log.error(`Add-contact from terminal failed: ${err.message}`); }
+  }
+
+  async _onExfilInbox() {
+    const msg = this._currentSelectedRaw();
+    if (!msg) return;
+    const targetId = await this._pickOwnedCharacter();
+    if (!targetId) return;
+    const fxDone = this._playExfilFx('download', msg.subject || 'file');
+    if (isGM()) {
+      const res = await this.terminalService.exfilToInbox(this.item, this._accountId, [msg.messageId], targetId);
+      const who = game.actors?.get(targetId)?.name || 'inbox';
+      await fxDone;
+      if (res.success) ui.notifications.info(`Copied to ${who}'s Agent (Recovered).`);
+      else ui.notifications.warn(res.error || 'Exfil failed.');
+    } else {
+      // Player can't write the GM-owned inbox journal — relay to the GM.
+      this._relayExfil({ dest: 'inbox', messageIds: [msg.messageId], targetActorId: targetId });
+      await fxDone;
+      ui.notifications.info('Download requested — check your Recovered folder.');
+    }
+  }
+
+  /**
+   * Immersive exfil overlay — 'download' (terminal → Agent packet stream) or
+   * 'burn' (laser-etching the file onto a shard). Purely cosmetic; resolves
+   * when the choreography finishes (~2.2s, instant-ish under reduced motion).
+   */
+  _playExfilFx(kind, label = '') {
+    const host = this.element?.querySelector('.ncm-terminal-viewer');
+    if (!host) return Promise.resolve();
+    host.querySelector('.ncm-term__fx')?.remove();
+    const esc = Handlebars.escapeExpression;
+    const reduced = !!window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+    const isBurn = kind === 'burn';
+    const fx = document.createElement('div');
+    fx.className = `ncm-term__fx ncm-term__fx--${kind}`;
+    fx.innerHTML = isBurn ? `
+      <div class="ncm-term__fx-box">
+        <div class="ncm-term__fx-chip"><i class="fas fa-microchip"></i><span class="ncm-term__fx-laser"></span>
+          <span class="ncm-term__fx-spark"></span><span class="ncm-term__fx-spark"></span><span class="ncm-term__fx-spark"></span><span class="ncm-term__fx-spark"></span></div>
+        <div class="ncm-term__fx-label">BURNING // <span>${esc(label)}</span></div>
+        <div class="ncm-term__fx-track"><i></i></div>
+        <div class="ncm-term__fx-done"><i class="fas fa-circle-check"></i> BURN COMPLETE</div>
+      </div>` : `
+      <div class="ncm-term__fx-box">
+        <div class="ncm-term__fx-nodes">
+          <span class="ncm-term__fx-node"><i class="fas fa-server"></i></span>
+          <span class="ncm-term__fx-stream"><b></b><b></b><b></b><b></b><b></b><b></b></span>
+          <span class="ncm-term__fx-node ncm-term__fx-node--dst"><i class="fas fa-mobile-screen-button"></i></span>
+        </div>
+        <div class="ncm-term__fx-label">DOWNLOADING // <span>${esc(label)}</span></div>
+        <div class="ncm-term__fx-track"><i></i></div>
+        <div class="ncm-term__fx-done"><i class="fas fa-circle-check"></i> SAVED TO RECOVERED</div>
+      </div>`;
+    host.appendChild(fx);
+    this.soundService?.play?.(isBurn ? 'shard-compile' : 'send');
+    const climax = reduced ? 150 : 1500;
+    return new Promise((resolve) => {
+      this._timer(() => {
+        fx.classList.add('is-done');
+        this.soundService?.play?.(isBurn ? 'shard-insert' : 'receive');
+      }, climax);
+      this._timer(() => fx.classList.add('is-out'), climax + 700);
+      this._timer(() => { fx.remove(); resolve(); }, climax + 1100);
+    });
+  }
+
+  /** Pick which owned character's Agent inbox to download into. */
+  async _pickOwnedCharacter() {
+    const owned = (game.actors?.contents ?? []).filter(a =>
+      a.type === 'character' && (a.isOwner || a.hasPlayerOwner));
+    if (!owned.length) { ui.notifications.warn('No owned character to download into.'); return null; }
+    if (owned.length === 1) return owned[0].id;
+    const options = owned.map(a => `<option value="${a.id}">${Handlebars.escapeExpression(a.name)}</option>`).join('');
+    let picked = null;
+    await new Promise((resolve) => {
+      new Dialog({
+        title: 'Download to Agent',
+        content: `<p>Send to which character's inbox?</p><select style="width:100%">${options}</select>`,
+        buttons: {
+          ok: { label: 'Download', callback: (html) => { picked = html.find('select').val(); } },
+          cancel: { label: 'Cancel' },
+        },
+        default: 'ok', close: () => resolve(),
+      }).render(true);
+    });
+    return picked;
+  }
+
+  /** CPR item types that can't physically carry a shard (sheet abstractions,
+   *  not objects) — previously the picker listed EVERY actor item, so a CPR
+   *  character's dozens of skill items drowned out (and, past the old 50-item
+   *  cap, entirely hid) the real gear. */
+  static NON_CARRIER_TYPES = ['skill', 'role', 'criticalInjury', 'netarch'];
+
+  async _onExfilShard() {
+    const msg = this._currentSelectedRaw();
+    if (!msg) return;
+    // Players pick from their OWN inventory; GMs can also target world items.
+    const carrier = (i) => i && !TerminalViewerApp.NON_CARRIER_TYPES.includes(i.type);
+    const owned = [...(this.actor?.items ?? [])].filter(carrier);
+    const world = isGM() ? game.items.contents.filter(carrier) : [];
+    const candidates = [...owned, ...world];
+    if (!candidates.length) return ui.notifications.warn('No item to burn onto.');
+    const pickedId = await this._pickBurnTarget(owned, world);
+    if (!pickedId) return;
+    const target = candidates.find(i => i.id === pickedId);
+    const fxDone = this._playExfilFx('burn', target.name);
+    if (!isGM()) {
+      // Player can't convert/write the GM-owned shard journal — relay to the GM.
+      this._relayExfil({ dest: 'shard', messageIds: [msg.messageId], targetItemId: pickedId });
+      await fxDone;
+      return ui.notifications.info(`Burn requested for "${target.name}".`);
+    }
+    const res = await this.terminalService.exfilToShard(this.item, this._accountId, [msg.messageId], target);
+    await fxDone;
+    if (res.success) {
+      ui.notifications.info(`Burned to "${target.name}".`);
+      // Refresh the directory/sheets so a just-converted shard shows its badge now.
+      setTimeout(() => {
+        ui.items?.render();
+        for (const sheet of Object.values(ui.windows)) {
+          if (sheet.actor?.items?.has(target.id)) sheet.render(false);
+        }
+      }, 150);
+    } else {
+      ui.notifications.warn(res.error || 'Burn failed.');
+    }
+  }
+
+  /**
+   * Burn-target picker: searchable, sorted item list (existing shards first,
+   * then A→Z; GM world items tagged WORLD after the inventory). Resolves the
+   * picked item id or null.
+   */
+  _pickBurnTarget(owned, world) {
+    const esc = (s) => Handlebars.escapeExpression(String(s ?? ''));
+    const sort = (a, b) => {
+      const as = !!a.flags?.[MODULE_ID]?.isDataShard, bs = !!b.flags?.[MODULE_ID]?.isDataShard;
+      if (as !== bs) return as ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    };
+    const rowHtml = (i, source) => {
+      const isShard = !!i.flags?.[MODULE_ID]?.isDataShard;
+      return `<div class="ncm-burn-row${isShard ? ' is-shard' : ''}" data-item-id="${i.id}" data-search="${esc(i.name.toLowerCase())} ${esc(i.type)}">
+        <img src="${esc(i.img || 'icons/svg/item-bag.svg')}" alt="">
+        <span class="ncm-burn-name">${esc(i.name)}</span>
+        ${isShard ? '<span class="ncm-burn-tag ncm-burn-tag--shard"><i class="fas fa-microchip"></i> SHARD</span>' : ''}
+        ${source === 'world' ? '<span class="ncm-burn-tag">WORLD</span>' : ''}
+        <span class="ncm-burn-type">${esc(i.type)}</span>
+      </div>`;
+    };
+    const rows = [
+      ...[...owned].sort(sort).map(i => rowHtml(i, 'own')),
+      ...[...world].sort(sort).map(i => rowHtml(i, 'world')),
+    ].join('');
+    const content = `
+      <div class="ncm-burn-pick">
+        <p class="ncm-burn-hint">Pick the item to burn this file onto. Burning onto an item that isn't a shard converts it.</p>
+        <input type="text" class="ncm-burn-search" placeholder="Search items..." autocomplete="off">
+        <div class="ncm-burn-list">${rows}</div>
+      </div>`;
+
+    let pickedId = null;
+    return new Promise((resolve) => {
+      new Dialog({
+        title: 'Burn to Data Shard',
+        content,
+        render: (html) => {
+          const root = html[0] ?? html;
+          const search = root.querySelector('.ncm-burn-search');
+          const list = root.querySelector('.ncm-burn-list');
+          search?.addEventListener('input', () => {
+            const q = search.value.trim().toLowerCase();
+            list.querySelectorAll('.ncm-burn-row').forEach(r => {
+              r.style.display = !q || r.dataset.search.includes(q) ? '' : 'none';
+            });
+          });
+          list?.addEventListener('click', (e) => {
+            const row = e.target.closest('.ncm-burn-row');
+            if (!row) return;
+            list.querySelectorAll('.ncm-burn-row.is-selected').forEach(r => r.classList.remove('is-selected'));
+            row.classList.add('is-selected');
+            pickedId = row.dataset.itemId;
+          });
+          search?.focus();
+        },
+        buttons: {
+          burn: {
+            icon: '<i class="fas fa-fire"></i>', label: 'Burn',
+            callback: () => { if (!pickedId) ui.notifications.warn('Pick an item first.'); },
+          },
+          cancel: { label: 'Cancel', callback: () => { pickedId = null; } },
+        },
+        default: 'burn',
+        close: () => resolve(pickedId),
+      }, { classes: ['dialog', 'ncm-burn-dialog'], width: 420 }).render(true);
+    });
+  }
+
+  /** Send an exfil request to the GM client (player relay). */
+  _relayExfil({ dest, messageIds, targetActorId, targetItemId }) {
+    game.nightcity?.socketManager?.emit?.(SOCKET_OPS.TERMINAL_EXFIL_REQUEST, {
+      requestId: foundry.utils.randomID(),
+      userId: game.user.id,
+      itemUuid: this.item?.uuid,
+      accountId: this._accountId,
+      messageIds, dest, targetActorId, targetItemId,
+    });
+  }
+
+  /** Banking content — siphon funds (shared flow; see SiphonFlow.js). */
+  async _onSiphonFunds(event, target) {
+    const actor = game.user?.character;
+    if (!actor) { ui.notifications.warn('NCM | No character assigned.'); return; }
+    const id = target?.closest?.('[data-entry-id]')?.dataset.entryId || this._selectedMessageId;
+    const raw = (this.terminalService?.getAccountMessages(this.item, this._accountId) || []).find(m => m.messageId === id);
+    if (!raw || raw.contentType !== 'banking') return;
+    await runSiphon({ actor, raw: raw.contentData, itemUuid: this.item?.uuid, messageId: id });
+    this.render(false);
+  }
+
+  /** Eddies content — claim into a character's wealth (shared flow). */
+  async _onClaimEddies(event, target) {
+    const id = target?.closest?.('[data-entry-id]')?.dataset.entryId || this._selectedMessageId;
+    const raw = (this.terminalService?.getAccountMessages(this.item, this._accountId) || []).find(m => m.messageId === id);
+    if (!raw || raw.contentType !== 'eddies') return;
+    let actor = game.user?.character;
+    if (!actor) {
+      const pickedId = await this._pickOwnedCharacter();
+      actor = pickedId ? game.actors?.get(pickedId) : null;
+    }
+    if (!actor) return;
+    const res = await runEddiesClaim({
+      actor, raw: raw.contentData, messageId: id,
+      sourceLabel: this._terminalName?.() || this.item?.name || 'terminal',
+    });
+    if (res?.success) this.render(false);
+  }
+
+  /** Credentials content — crack a locked entry (shared flow). GM without an
+   *  assigned character force-reveals, mirroring the anon-trace precedent. */
+  async _onCrackCred(event, target) {
+    const id = target?.closest?.('[data-entry-id]')?.dataset.entryId || this._selectedMessageId;
+    const idx = Number(target?.dataset?.credIndex);
+    const raw = (this.terminalService?.getAccountMessages(this.item, this._accountId) || []).find(m => m.messageId === id);
+    if (!raw || raw.contentType !== 'credentials' || Number.isNaN(idx)) return;
+    const actor = game.user?.character;
+    const ok = await runCrack({ actor, raw: raw.contentData, entryIndex: idx, messageId: id, force: isGM() && !actor });
+    if (ok) this.render(false);
+  }
+
+  /** Credentials — show/hide a secret (client-side only). */
+  _onCredToggleSecret(event, target) { toggleSecretReveal(target); }
+
+  /** Syslog — severity filter chips (client-side only). */
+  _onSyslogFilter(event, target) { applySyslogFilter(target); }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Helpers
+  // ═══════════════════════════════════════════════════════════
+
+  _currentSelectedRaw() {
+    return (this.terminalService?.getAccountMessages(this.item, this._accountId) || [])
+      .find(m => m.messageId === this._selectedMessageId) || null;
+  }
+
+  _accountPortrait(account) {
+    if (!account) return null;
+    if (account.masterContactId) {
+      const c = this.masterContactService?.getContact(account.masterContactId);
+      if (c) { const p = this.portraitService?.resolvePortrait(c); if (p) return p; }
+    }
+    return this.portraitService?.resolvePortrait({ portrait: account.portrait, actorId: account.actorId }) || null;
+  }
+
+  _resolveSenderName(msg) {
+    if (msg.fromActorId) { const a = game.actors?.get(msg.fromActorId); if (a) return a.name; }
+    if (msg.fromContactId) { const c = this.masterContactService?.getContact(msg.fromContactId); if (c) return c.name; }
+    const contact = this._findContactByEmail(msg.from);
+    if (contact) return contact.name;
+    return msg.from || 'Unknown';
+  }
+
+  _findContactByEmail(email) {
+    if (!email) return null;
+    return this.masterContactService?.getByEmail?.(email) || null;
+  }
+
+  _iceWarning(cfg) {
+    const armed = (this.terminalService?.getAccounts(this.item) || [])
+      .some(a => a.security?.failureMode === 'damage');
+    if (!armed) return '';
+    const max = Math.min(...(this.terminalService.getAccounts(this.item).map(a => a.security?.maxAttempts ?? 3)));
+    return `BLACK ICE armed · ${max} failed attempts triggers lockout`;
+  }
+
+  /** Absolute in-world date+time for a message, via the configured date format. */
+  _absDate(iso) {
+    if (!iso) return '';
+    try { return formatCyberDate(iso); } catch { return ''; }
+  }
+
+  _relativeTime(iso) {
+    if (!iso) return '';
+    const now = game.nightcity?.timeService?.getCurrentTimeMs?.() ?? Date.now();
+    const diff = now - new Date(iso).getTime();
+    if (diff < 0) return 'scheduled';
+    const m = 60000, h = 3600000, d = 86400000;
+    if (diff < m) return 'just now';
+    if (diff < h) return `${Math.floor(diff / m)}m ago`;
+    if (diff < d) return `${Math.floor(diff / h)}h ago`;
+    return `${Math.floor(diff / d)} day${Math.floor(diff / d) === 1 ? '' : 's'} ago`;
+  }
+
+  /** Minimal body sanitizer — strip tags, preserve text. Terminal MVP = plain. */
+  _sanitizeBody(body) {
+    const text = String(body).replace(/<[^>]*>/g, '');
+    return Handlebars.escapeExpression(text).replace(/\n/g, '<br>');
+  }
+
+  _timer(fn, ms) { const t = setTimeout(fn, ms); this._timers.push(t); return t; }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Screensaver (config.screensaver — idle dim + drifting marquee)
+  // ═══════════════════════════════════════════════════════════
+
+  /** Screensaver view-model — see the screensaver key in _mailboxContext. */
+  _screensaverContext(cfg) {
+    const ss = cfg.screensaver || {};
+    let logo = null;
+    if (ss.iconMode !== 'none') {
+      if (ss.iconMode === 'fa' && ss.faIcon?.trim()) logo = { icon: ss.faIcon.trim() };
+      else if (ss.iconMode === 'image' && ss.imageUrl?.trim()) logo = { imageUrl: ss.imageUrl.trim() };
+      else {
+        const boot = this._resolveBootIcon(cfg, cfg.theme?.preset || 'classic');
+        logo = { icon: boot.icon, imageUrl: boot.imageUrl };
+      }
+    }
+    return {
+      text: (ss.text || '').trim() || this._terminalName(),
+      logo,
+      motion: ['drift', 'bounce', 'static'].includes(ss.motion) ? ss.motion : 'drift',
+    };
+  }
+
+  /**
+   * (Re)arm the idle timer. Any activity inside the window (the document-level
+   * capture listener in the constructor) or any re-render lands here; waking
+   * just removes the overlay class. Real-time setTimeout is deliberate —
+   * idle detection is a real-world concern, not game time.
+   */
+  _resetScreensaver() {
+    if (this._ssTimer) { clearTimeout(this._ssTimer); this._ssTimer = null; }
+    if (this._ssActive) {
+      this._ssActive = false;
+      this.element?.querySelector('.ncm-term__saver')?.classList.remove('ncm-term__saver--on');
+    }
+    const cfg = this._effectiveConfig();
+    if (!cfg?.screensaver?.enabled || this._state !== 'mailbox') return;
+    const idleMs = Math.max(10, cfg.screensaver.idleSeconds || 120) * 1000;
+    this._ssTimer = setTimeout(() => {
+      this._ssActive = true;
+      this.element?.querySelector('.ncm-term__saver')?.classList.add('ncm-term__saver--on');
+    }, idleMs);
+    this._timers.push(this._ssTimer);
+  }
+
+  /** @override */
+  async close(options) {
+    this._timers.forEach(clearTimeout);
+    this._timers = [];
+    Hooks.off('updateItem', this._onItemUpdate);
+    if (this._onActivity) {
+      document.removeEventListener('pointerdown', this._onActivity, true);
+      document.removeEventListener('keydown', this._onActivity, true);
+    }
+    return super.close(options);
+  }
+}

@@ -1,0 +1,61 @@
+{{!-- Machine-uplink pill + dropdown — the TERMINAL's own connection (Layer 1),
+      never the player's Agent network. Invoked with the `uplink` view-model as
+      context ({{> ... uplink align="right"}}); `align` shifts the dropdown
+      anchor for right-edge hosts (the login hero). Gated accounts/messages
+      reveal or vanish as this connection changes. --}}
+{{#if show}}
+<span class="ncm-term__uplink">
+  <span class="ncm-term__netpill{{#if offline}} ncm-term__netpill--offline{{/if}}{{#unless canSwitch}} ncm-term__netpill--static{{/unless}}"
+        {{#if color}}style="--net-c: {{color}};"{{/if}}
+        {{#if canSwitch}}data-action="terminalToggleUplink"{{/if}}>
+    <span class="ncm-term__netpill-dot"></span>
+    UPLINK: {{name}}
+    {{#if canSwitch}}<i class="fas fa-caret-{{#if open}}up{{else}}down{{/if}} ncm-term__netpill-caret"></i>{{/if}}
+  </span>
+
+  {{#if open}}
+  <div class="ncm-term__netdrop{{#if (eq align "right")}} ncm-term__netdrop--right{{/if}}">
+    <div class="ncm-term__netdrop-hd"><i class="fas fa-tower-broadcast"></i> MACHINE UPLINK</div>
+
+    {{#each options}}
+      <div class="ncm-term__netopt{{#if isActive}} ncm-term__netopt--active{{/if}}{{#if isLocked}} ncm-term__netopt--locked{{/if}}"
+           data-action="terminalSelectUplink" data-network-id="{{id}}" style="--net-c: {{color}};">
+        <div class="ncm-term__netopt-ic"><i class="{{icon}}"></i></div>
+        <div class="ncm-term__netopt-info">
+          <div class="ncm-term__netopt-nm">{{name}}</div>
+          <div class="ncm-term__netopt-ty">{{typeLabel}} · {{signal}}%</div>
+        </div>
+        <div class="ncm-term__netopt-right">
+          {{#if isActive}}
+            <span class="ncm-term__netchip ncm-term__netchip--on">CONNECTED</span>
+          {{else if isLocked}}
+            <span class="ncm-term__netchip ncm-term__netchip--lock"><i class="fas fa-lock"></i> SECURED</span>
+          {{else}}
+            <span class="ncm-term__netchip ncm-term__netchip--go">CONNECT</span>
+          {{/if}}
+          <span class="ncm-term__netopt-sig">
+            <b class="{{#if (gt signal 0)}}on{{/if}}" style="height:4px"></b>
+            <b class="{{#if (gte signal 25)}}on{{/if}}" style="height:6px"></b>
+            <b class="{{#if (gte signal 50)}}on{{/if}}" style="height:8px"></b>
+            <b class="{{#if (gte signal 80)}}on{{/if}}" style="height:11px"></b>
+          </span>
+        </div>
+      </div>
+    {{/each}}
+
+    <div class="ncm-term__netopt ncm-term__netopt--local" data-action="terminalSelectUplink" data-network-id="local">
+      <div class="ncm-term__netopt-ic"><i class="fas fa-eject"></i></div>
+      <div class="ncm-term__netopt-info">
+        <div class="ncm-term__netopt-nm">Local only</div>
+        <div class="ncm-term__netopt-ty">Disconnect — on-device files only</div>
+      </div>
+      {{#if offline}}
+        <div class="ncm-term__netopt-right"><span class="ncm-term__netchip ncm-term__netchip--on">CONNECTED</span></div>
+      {{/if}}
+    </div>
+
+    <div class="ncm-term__netdrop-ft"><i class="fas fa-server"></i> {{count}} interface{{#unless (eq count 1)}}s{{/unless}} · hardline uplink</div>
+  </div>
+  {{/if}}
+</span>
+{{/if}}

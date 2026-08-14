@@ -46,6 +46,8 @@
 @import 'components/contact-share-dialog.css';
 @import 'components/data-drop-overlay.css';
 @import 'components/item-inbox.css';
+@import 'components/content-types.css';
+@import 'components/terminal.css';
 @import 'components/shard-sheet-badge.css';
 @import 'components/shard-config.css';
 @import 'components/shard-conversion.css';

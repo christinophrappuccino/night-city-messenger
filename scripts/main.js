@@ -15,6 +15,7 @@ import { registerUIComponents } from './init/registerUIComponents.js';
 import { registerMessagingSystem } from './init/registerMessagingSystem.js';
 import { registerNetworkSystem } from './init/registerNetworkSystem.js';
 import { registerDataShardSystem } from './init/registerDataShardSystem.js';
+import { registerTerminalSystem } from './init/registerTerminalSystem.js';
 import { registerIntegrations } from './init/registerIntegrations.js';
 import { registerGMTools } from './init/registerGMTools.js';
 import { registerReadyServices } from './init/registerReadyServices.js';
@@ -29,6 +30,7 @@ registerUIComponents(initializer);
 registerMessagingSystem(initializer);      // Phase 2: Messaging
 registerNetworkSystem(initializer);
 registerDataShardSystem(initializer);
+registerTerminalSystem(initializer);
 registerIntegrations(initializer);
 registerReadyServices(initializer);
 registerGMTools(initializer);  

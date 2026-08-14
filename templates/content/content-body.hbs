@@ -1,0 +1,376 @@
+{{!-- ════════════════════════════════════════════════════════════════════
+      Shared content-type body renderer (design doc §8c).
+      Context = an entry enriched by ContentRenderers.enrichContent():
+        is<Type> flags · processed contentData · isGM · interactive.
+      Consumed by BOTH the shard viewer (item-inbox.hbs) and the terminal
+      viewer (terminal-viewer.hbs). The caller owns the corrupted/encrypted
+      overlays and the entry header; this partial renders ONLY the decrypted
+      content body. Interactive affordances (claim/execute/goToScene) are
+      gated on `interactive` so read-only consumers stay passive.
+     ════════════════════════════════════════════════════════════════════ --}}
+
+{{!-- MESSAGE --}}
+{{#if isMessage}}
+  <div class="ncm-entry-body">
+    <div class="ncm-entry-from">From: <span>{{from}}</span></div>
+    <div class="ncm-entry-text">{{{body}}}</div>
+  </div>
+
+{{!-- EDDIES --}}
+{{else if isEddies}}
+  <div class="ncm-entry-eddies-card">
+    <div class="ncm-eddies-amount {{#if contentData.claimed}}ncm-eddies-claimed{{/if}}">
+      {{contentData.amountFormatted}}
+    </div>
+    <div class="ncm-eddies-unit">eurodollars</div>
+    {{#if contentData.note}}
+      <div class="ncm-eddies-note">"{{contentData.note}}"</div>
+    {{/if}}
+    {{#if contentData.claimed}}
+      <div class="ncm-eddies-claim-btn ncm-eddies-claim-btn--claimed">
+        <i class="fas fa-check"></i> Claimed by {{contentData.claimedByName}}
+      </div>
+    {{else}}
+      {{!-- Not gated on `interactive` — like siphon, claiming works wherever
+            the money is found (shard AND terminal). --}}
+      <button type="button" data-action="claimEddies" data-entry-id="{{id}}"
+              class="ncm-eddies-claim-btn">
+        <i class="fas fa-download"></i> Claim Eddies
+      </button>
+    {{/if}}
+  </div>
+
+{{!-- DOSSIER --}}
+{{else if isDossier}}
+  <div class="ncm-entry-dossier">
+    <div class="ncm-dossier-portrait">
+      {{#if contentData.targetImage}}
+        <img src="{{contentData.targetImage}}" alt="{{contentData.targetName}}">
+      {{else if contentData.linkedActorImg}}
+        <img src="{{contentData.linkedActorImg}}" alt="{{contentData.targetName}}">
+      {{else}}
+        <i class="fas fa-user"></i>
+      {{/if}}
+      {{#if contentData.classification}}
+        <div class="ncm-dossier-classification">{{contentData.classification}}</div>
+      {{/if}}
+    </div>
+    <div class="ncm-dossier-info">
+      <div class="ncm-dossier-stat-grid">
+        {{#if contentData.targetAlias}}
+          <span class="ncm-dossier-stat-label">Alias</span>
+          <span class="ncm-dossier-stat-value">{{contentData.targetAlias}}</span>
+        {{/if}}
+        {{#if contentData.stats.affiliation}}
+          <span class="ncm-dossier-stat-label">Affiliation</span>
+          <span class="ncm-dossier-stat-value">{{contentData.stats.affiliation}}</span>
+        {{/if}}
+        {{#if contentData.stats.threat}}
+          <span class="ncm-dossier-stat-label">Threat</span>
+          <span class="ncm-dossier-stat-value {{#if contentData.threatIsHigh}}ncm-threat-high{{/if}}">{{contentData.stats.threat}}</span>
+        {{/if}}
+        {{#if contentData.stats.lastKnownLocation}}
+          <span class="ncm-dossier-stat-label">Last Known</span>
+          <span class="ncm-dossier-stat-value">{{contentData.stats.lastKnownLocation}}</span>
+        {{/if}}
+      </div>
+      {{#if contentData.hasSections}}
+        <div class="ncm-dossier-sections-body">
+          {{#each contentData.sections}}
+            <div class="ncm-dossier-section {{#if redacted}}ncm-dossier-section--redacted{{/if}}">
+              <div class="ncm-dossier-section-heading">{{heading}}</div>
+              {{#if redacted}}
+                <p class="ncm-dossier-redacted-text">████ REDACTED ████</p>
+              {{else}}
+                <p>{{body}}</p>
+              {{/if}}
+            </div>
+          {{/each}}
+        </div>
+      {{/if}}
+    </div>
+  </div>
+
+{{!-- PAYLOAD --}}
+{{else if isPayload}}
+  <div class="ncm-entry-body ncm-entry-payload">
+    <div class="ncm-payload-name"><i class="fas fa-virus"></i> {{contentData.name}}</div>
+    <p>{{contentData.description}}</p>
+    {{#if contentData.executed}}
+      <div class="ncm-payload-status ncm-payload-status--executed">
+        <i class="fas fa-check-circle"></i> Executed by {{contentData.executedByName}}
+      </div>
+    {{else if interactive}}
+      <button type="button" data-action="executePayload" data-entry-id="{{id}}"
+              class="ncm-shard-btn ncm-shard-btn--danger">
+        <i class="fas fa-bolt"></i> Execute
+      </button>
+    {{/if}}
+  </div>
+
+{{!-- AV LOG --}}
+{{else if isAvlog}}
+  <div class="ncm-entry-body ncm-entry-avlog">
+    <div class="ncm-avlog-meta">
+      <span class="ncm-avlog-media-type"><i class="fas fa-{{#if contentData.isVideo}}video{{else}}headphones{{/if}}"></i> {{contentData.mediaType}}</span>
+      {{#if contentData.duration}}<span class="ncm-avlog-duration">{{contentData.duration}}</span>{{/if}}
+      {{#if contentData.source}}<span class="ncm-avlog-source">{{contentData.source}}</span>{{/if}}
+    </div>
+    {{#if contentData.hasMedia}}
+      {{#if contentData.isEmbed}}
+        <div class="ncm-avlog-player ncm-avlog-player--embed">
+          <iframe src="{{contentData.embedSrc}}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+        </div>
+      {{else if contentData.isVideo}}
+        <div class="ncm-avlog-player ncm-avlog-player--video">
+          <video src="{{contentData.embedSrc}}" controls preload="metadata"></video>
+        </div>
+      {{else}}
+        <div class="ncm-avlog-player ncm-avlog-player--audio">
+          <audio src="{{contentData.embedSrc}}" controls preload="metadata"></audio>
+        </div>
+      {{/if}}
+    {{else}}
+      <div class="ncm-avlog-waveform"></div>
+    {{/if}}
+    {{#each contentData.transcript}}
+      <div class="ncm-avlog-line">
+        <span class="ncm-avlog-speaker">{{speaker}}</span>
+        <span class="ncm-avlog-text">{{text}}</span>
+      </div>
+    {{/each}}
+  </div>
+
+{{!-- LOCATION --}}
+{{else if isLocation}}
+  <div class="ncm-entry-body ncm-entry-location">
+    {{#if contentData.locationImage}}
+      <div class="ncm-location-image">
+        <img src="{{contentData.locationImage}}" alt="{{contentData.locationName}}" />
+      </div>
+    {{/if}}
+    <div class="ncm-location-coords">{{contentData.coordinates}}</div>
+    <div class="ncm-location-name">{{contentData.locationName}}</div>
+    {{#if contentData.district}}
+      <div class="ncm-location-district"><i class="fas fa-map-marker-alt"></i> {{contentData.district}}</div>
+    {{/if}}
+    <p>{{contentData.description}}</p>
+    {{#if contentData.linkedSceneId}}
+      {{#if interactive}}{{#if isGM}}
+        <button type="button" data-action="goToScene" data-scene-id="{{contentData.linkedSceneId}}"
+                class="ncm-shard-btn ncm-shard-btn--secondary">
+          <i class="fas fa-map"></i> Go to Scene
+        </button>
+      {{/if}}{{/if}}
+    {{/if}}
+  </div>
+
+{{!-- SPREADSHEET — looks like a spreadsheet app: cell-ref bar, A/B/C column
+      letters + row numbers, frozen header, per-cell formatting, status pills,
+      Σ totals. --}}
+{{else if isSpreadsheet}}
+  <div class="ncm-entry-body ncm-ct-spread">
+    <div class="ncm-ct-spread__bar">
+      {{#if contentData.hasSelection}}
+        <span class="ncm-ct-spread__ref">{{contentData.selRef}}</span>
+        <span class="ncm-ct-spread__eq">=</span>
+        <span class="ncm-ct-spread__cellval">{{contentData.selVal}}</span>
+      {{else}}
+        <span class="ncm-ct-spread__ref">{{contentData.format}}</span>
+      {{/if}}
+      {{#if contentData.selReason}}<span class="ncm-ct-spread__reason"><i class="fas fa-flag"></i> {{contentData.selReason}}</span>{{/if}}
+      <span class="ncm-ct-spread__grow"></span>
+      {{#if contentData.flaggedCount}}<span class="ncm-ct-chip ncm-ct-chip--flag"><i class="fas fa-triangle-exclamation"></i> {{contentData.flaggedCount}}</span>{{/if}}
+      {{#if contentData.redactedCount}}<span class="ncm-ct-chip ncm-ct-chip--red"><i class="fas fa-eye-slash"></i> {{contentData.redactedCount}}</span>{{/if}}
+      <span class="ncm-ct-chip ncm-ct-chip--dim">{{contentData.rowCount}}R×{{contentData.colCount}}C</span>
+    </div>
+    <div class="ncm-ct-spread__wrap">
+      <table class="ncm-ct-spread__table">
+        <thead>
+          <tr><td class="ncm-ct-gut"></td>{{#each contentData.colLetters}}<th class="ncm-ct-collh">{{this}}</th>{{/each}}</tr>
+          <tr class="ncm-ct-spread__head"><td class="ncm-ct-gut">1</td>{{#each contentData.columns}}<td>{{label}}</td>{{/each}}</tr>
+        </thead>
+        <tbody>
+          {{#each contentData.rows}}
+            <tr>
+              <td class="ncm-ct-gut">{{add @index 2}}</td>
+              {{#each cells}}
+                {{#if redacted}}
+                  <td class="ncm-ct-cell--redacted" data-tooltip="REDACTED"><i class="fas fa-lock"></i></td>
+                {{else if flagged}}
+                  <td class="ncm-ct-cell--flag{{#if num}} ncm-ct-cell--num{{/if}}{{#if selected}} is-selected{{/if}}"{{#if reason}} data-tooltip="{{reason}}"{{/if}}>{{#if bold}}<b>{{value}}</b>{{else}}{{value}}{{/if}}</td>
+                {{else if isStatus}}
+                  <td><span class="ncm-ct-pill" data-ct-color="{{pillColor}}">{{value}}</span></td>
+                {{else}}
+                  <td class="{{#if num}}ncm-ct-cell--num {{/if}}{{colorClass}} {{bgClass}}{{#if selected}} is-selected{{/if}}">{{#if bold}}<b>{{value}}</b>{{else}}{{value}}{{/if}}</td>
+                {{/if}}
+              {{/each}}
+            </tr>
+          {{/each}}
+          {{#if contentData.hasTotals}}
+            <tr class="ncm-ct-spread__sum">
+              <td class="ncm-ct-gut">Σ</td>
+              {{#each contentData.totalRow}}
+                <td class="{{#if isTotal}}ncm-ct-cell--num{{/if}}">{{#if isTotal}}{{total}}{{else}}{{label}}{{/if}}</td>
+              {{/each}}
+            </tr>
+          {{/if}}
+        </tbody>
+      </table>
+    </div>
+    {{#if contentData.note}}<div class="ncm-ct-spread__note">{{contentData.note}}</div>{{/if}}
+  </div>
+
+{{!-- CALENDAR — scheduler: legend, timeline rail, colored date chips, colored
+      meta chips, urgency bar. --}}
+{{else if isCalendar}}
+  <div class="ncm-entry-body ncm-ct-cal">
+    {{#if contentData.hasLegend}}
+      <div class="ncm-ct-cal__legend">
+        {{#each contentData.legend}}<span class="ncm-ct-cal__leg" data-ct-color="{{color}}"><span class="ncm-ct-dot"></span>{{name}}</span>{{/each}}
+      </div>
+    {{/if}}
+    <div class="ncm-ct-cal__rail">
+      {{#each contentData.events}}
+        <div class="ncm-ct-cal__ev{{#if soon}} is-soon{{/if}}{{#if past}} is-past{{/if}}" data-ct-color="{{color}}" style="--ncm-ct-i:{{@index}}">
+          <span class="ncm-ct-cal__node"></span>
+          <div class="ncm-ct-cal__card">
+            <div class="ncm-ct-cal__date"><span class="ncm-ct-cal__day">{{day}}</span><span class="ncm-ct-cal__mon">{{month}}</span></div>
+            <div class="ncm-ct-cal__info">
+              <div class="ncm-ct-cal__title">{{title}}</div>
+              {{#if chips.length}}
+                <div class="ncm-ct-cal__chips">
+                  {{#each chips}}<span class="ncm-ct-cal__chip" data-ct-color="{{color}}"><i class="{{icon}}"></i> {{text}}</span>{{/each}}
+                </div>
+              {{/if}}
+              {{#if soon}}<div class="ncm-ct-cal__urg"><i style="width:{{urgency}}%"></i></div>{{/if}}
+            </div>
+            <span class="ncm-ct-cal__when">{{timeLabel}}</span>
+          </div>
+        </div>
+      {{else}}
+        <div class="ncm-ct-empty"><i class="fas fa-calendar-xmark"></i> No events</div>
+      {{/each}}
+    </div>
+  </div>
+
+{{!-- SYSLOG — console: filter legend with counts, line-number gutter, severity
+      badges with icons, scanlines, blinking prompt. --}}
+{{else if isSyslog}}
+  <div class="ncm-entry-body ncm-ct-log">
+    <div class="ncm-ct-log__head">
+      <span><i class="fas fa-terminal"></i> {{#if contentData.host}}{{contentData.host}}{{/if}}{{#if contentData.path}} :: {{contentData.path}}{{/if}}</span>
+      <span>{{#if contentData.tz}}{{contentData.tz}}{{else}}UTC{{/if}}</span>
+    </div>
+    {{#if contentData.showFilter}}
+      <div class="ncm-ct-log__filter">
+        <span class="ncm-ct-log__fp is-on" data-action="syslogFilter" data-sev="all">ALL {{contentData.lineCount}}</span>
+        {{#each contentData.legend}}<span class="ncm-ct-log__fp ncm-ct-log__fp--{{key}}" data-action="syslogFilter" data-sev="{{key}}"><i class="{{icon}}"></i> {{count}}</span>{{/each}}
+      </div>
+    {{/if}}
+    <div class="ncm-ct-log__feed{{#if contentData.scanlines}} has-scan{{/if}}">
+      {{#each contentData.lines}}
+        <div class="ncm-ct-log__line ncm-ct-log__line--{{sevClass}}{{#if mark}} is-mark{{/if}}" style="--ncm-ct-i:{{@index}}">
+          {{#if ../contentData.showLineNumbers}}<span class="ncm-ct-log__no">{{add @index 1}}</span>{{/if}}
+          <span class="ncm-ct-log__ts">{{ts}}</span>
+          <span class="ncm-ct-log__badge ncm-ct-log__badge--{{sevClass}}"><i class="{{sevIcon}}"></i> {{sevLabel}}</span>
+          {{#if actor}}<span class="ncm-ct-log__actor">{{actor}}</span>{{/if}}
+          <span class="ncm-ct-log__msg">{{#if mark}}<i class="fas fa-flag"></i> {{/if}}{{msg}}</span>
+        </div>
+      {{else}}
+        <div class="ncm-ct-empty"><i class="fas fa-terminal"></i> Log empty</div>
+      {{/each}}
+      {{#if contentData.showPrompt}}<div class="ncm-ct-log__prompt">{{contentData.prompt}}<span class="ncm-ct-log__cursor"></span></div>{{/if}}
+    </div>
+  </div>
+
+{{!-- CREDENTIALS — password vault: bold host/user/key, reveal eye, strength
+      meter, REUSED pivot badge, "crack" button on locked keys. --}}
+{{else if isCredentials}}
+  <div class="ncm-entry-body ncm-ct-creds">
+    <div class="ncm-ct-creds__hd"><i class="fas fa-key"></i> {{contentData.count}} credentials{{#if contentData.lockedCount}} · {{contentData.lockedCount}} locked{{/if}}</div>
+    {{#each contentData.entries}}
+      <div class="ncm-ct-creds__row{{#if locked}} is-locked{{/if}}{{#if reused}} is-reused{{/if}}" style="--ncm-ct-i:{{@index}}">
+        <div class="ncm-ct-creds__host">
+          <i class="fas fa-server"></i> <span>{{host}}</span>
+          {{#if reused}}<span class="ncm-ct-creds__reused" data-tooltip="The same key shows up on another host — it might open that one too."><i class="fas fa-triangle-exclamation"></i> REUSED ×{{reused}}</span>{{/if}}
+        </div>
+        <div class="ncm-ct-creds__pair"><span class="ncm-ct-creds__lbl">user</span><code class="ncm-ct-creds__user">{{user}}</code></div>
+        <div class="ncm-ct-creds__pair"><span class="ncm-ct-creds__lbl">key</span>
+          {{#if locked}}
+            <button type="button" class="ncm-ct-creds__crack" data-action="crackCred"
+                    data-entry-id="{{../id}}" data-cred-index="{{@index}}"
+                    data-tooltip="Break the encryption to expose this login."><i class="fas fa-unlock-keyhole"></i> CRACK TO REVEAL</button>
+          {{else}}
+            <code class="ncm-ct-creds__secret"><span class="ncm-ct-creds__mask">{{dots}}</span><span class="ncm-ct-creds__plain">{{secret}}</span></code>
+            <i class="fas fa-eye ncm-ct-creds__eye" data-action="credToggleSecret" data-tooltip="Show the key"></i>
+            {{#if strengthClass}}<span class="ncm-ct-creds__str {{strengthClass}}"><i></i><i></i><i></i><i></i></span>{{/if}}
+          {{/if}}
+        </div>
+        {{#if note}}<div class="ncm-ct-creds__note">{{note}}</div>{{/if}}
+      </div>
+    {{else}}
+      <div class="ncm-ct-empty"><i class="fas fa-key"></i> No credentials</div>
+    {{/each}}
+  </div>
+
+{{!-- BANKING — finance app: owner + balance hero (+ cleared/held split,
+      sparkline), running-balance ledger with color-coded category icons. --}}
+{{else if isBanking}}
+  <div class="ncm-entry-body ncm-ct-bank">
+    {{#if contentData.hasBankId}}
+      <div class="ncm-ct-bank__letterhead">
+        <span class="ncm-ct-bank__logo">{{#if contentData.bankLogo}}<img src="{{contentData.bankLogo}}" alt="">{{else}}<i class="fas fa-building-columns"></i>{{/if}}</span>
+        <div class="ncm-ct-bank__brand">
+          <div class="ncm-ct-bank__bankname">{{contentData.bankName}}</div>
+          {{#if contentData.bankTagline}}<div class="ncm-ct-bank__tagline">{{contentData.bankTagline}}</div>{{/if}}
+        </div>
+        <div class="ncm-ct-bank__bankmeta">
+          {{#if contentData.bankLocation}}<span><i class="fas fa-location-dot"></i> {{contentData.bankLocation}}</span>{{/if}}
+          {{#if contentData.bankCode}}<span class="ncm-ct-bank__code">{{contentData.bankCode}}</span>{{/if}}
+        </div>
+      </div>
+    {{/if}}
+    <div class="ncm-ct-bank__hero">
+      <div class="ncm-ct-bank__acct">
+        {{#if contentData.owner}}<div class="ncm-ct-bank__owner"><i class="fas fa-user-tie"></i> {{contentData.owner}}{{#if contentData.accountType}}<span class="ncm-ct-bank__type">{{contentData.accountType}}</span>{{/if}}</div>{{/if}}
+        <div class="ncm-ct-bank__lbl">Balance</div>
+        <div class="ncm-ct-bank__balrow"><span class="ncm-ct-bank__bal">{{contentData.balanceFormatted}}</span><span class="ncm-ct-bank__cur">{{contentData.currency}}</span></div>
+        {{#if contentData.accountNumber}}<div class="ncm-ct-bank__num">{{contentData.accountNumber}}</div>{{/if}}
+        {{#if contentData.hasSplit}}<div class="ncm-ct-bank__split">{{#if contentData.clearedFormatted}}cleared {{contentData.clearedFormatted}}{{/if}}{{#if contentData.heldFormatted}} · <b>held {{contentData.heldFormatted}}</b>{{/if}}</div>{{/if}}
+      </div>
+      <svg class="ncm-ct-bank__spark" width="150" height="38" viewBox="0 0 150 38" preserveAspectRatio="none">
+        <polyline points="0,28 25,24 50,26 75,13 100,17 125,7 150,10" fill="none" stroke="var(--ncm-success)" stroke-width="2" class="ncm-ct-bank__sparkline"/>
+        <polygon points="0,38 0,28 25,24 50,26 75,13 100,17 125,7 150,10 150,38" fill="color-mix(in srgb, var(--ncm-success) 12%, transparent)"/>
+      </svg>
+    </div>
+    {{#if contentData.allowSiphon}}
+      <div class="ncm-ct-bank__actions">
+        <button type="button" class="ncm-ct-bank__siphon" data-action="siphonFunds" data-entry-id="{{id}}" data-tooltip="Quietly move eddies into your account. If the trace catches you, the owner knows."><i class="fas fa-hand-holding-dollar"></i> SIPHON FUNDS</button>
+        {{#if contentData.siphonDV}}<span class="ncm-ct-bank__siphon-dv">security DV {{contentData.siphonDV}}</span>{{/if}}
+      </div>
+    {{else if contentData.siphoned}}
+      <div class="ncm-ct-bank__actions"><span class="ncm-ct-bank__drained"><i class="fas fa-circle-check"></i> ACCOUNT DRAINED</span></div>
+    {{/if}}
+    <div class="ncm-ct-bank__lh"><span class="ncm-ct-bank__lh-a">amount</span><span class="ncm-ct-bank__lh-b">balance</span></div>
+    <div class="ncm-ct-bank__ledger">
+      {{#each contentData.transactions}}
+        <div class="ncm-ct-bank__txn">
+          <span class="ncm-ct-bank__ic" data-ct-color="{{iconColor}}"><i class="{{icon}}"></i></span>
+          <span class="ncm-ct-bank__de"><b>{{desc}}{{#if pending}}<span class="ncm-ct-bank__pend">PENDING</span>{{/if}}</b><span>{{date}}{{#if category}} · {{category}}{{/if}}</span></span>
+          <span class="ncm-ct-bank__amt ncm-ct-bank__amt--{{#if credit}}credit{{else}}debit{{/if}}">{{sign}}{{amountFormatted}}</span>
+          <span class="ncm-ct-bank__run">{{runningFormatted}}</span>
+        </div>
+      {{else}}
+        <div class="ncm-ct-empty"><i class="fas fa-building-columns"></i> No transactions</div>
+      {{/each}}
+    </div>
+  </div>
+
+{{!-- FALLBACK --}}
+{{else}}
+  <div class="ncm-entry-body">
+    <div class="ncm-entry-from">From: <span>{{from}}</span></div>
+    <div class="ncm-entry-text">{{{body}}}</div>
+  </div>
+{{/if}}

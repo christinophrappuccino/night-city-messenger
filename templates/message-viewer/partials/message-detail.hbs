@@ -391,6 +391,11 @@
               <i class="{{message.threatBadge.icon}}"></i> {{message.threatBadge.label}}
             </span>
           {{/if}}
+          {{#if message.isRecovered}}
+            <span class="ncm-viewer__recovered-chip" title="Recovered from {{message.recoveredFrom}}">
+              <i class="fas fa-cloud-arrow-down"></i> RECOVERED{{#if message.recoveredFrom}} · {{message.recoveredFrom}}{{/if}}
+            </span>
+          {{/if}}
           {{#if message.threadInfo}}
             <button type="button" class="ncm-viewer__detail-thread"
                     data-action="toggle-thread" title="View the full conversation">
@@ -440,7 +445,15 @@
     {{!-- Message Body --}}
     <div class="ncm-viewer__detail-body ncm-scrollbar
       {{~#if message.networkBodyEffect}} ncm-viewer__detail-body--{{message.networkBodyEffect}}{{/if~}}">
-      {{#if message.bodyRendered}}
+      {{#if message.isTypedContent}}
+        {{!-- Typed content (recovered spreadsheet/syslog/banking/…) renders
+              through the shared registry partial, identical to shard/terminal --}}
+        <div class="ncm-viewer__typed-content">
+          {{#with message.content}}
+            {{> "modules/cyberpunkred-messenger/templates/content/content-body.hbs"}}
+          {{/with}}
+        </div>
+      {{else if message.bodyRendered}}
         {{{message.bodyRendered}}}
       {{else}}
         <p class="ncm-viewer__detail-body-empty"><em>// No message body //</em></p>

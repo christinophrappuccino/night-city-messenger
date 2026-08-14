@@ -925,6 +925,18 @@
 .ncm-app .ncm-viewer__priority-pill--critical { color: #EF4444; background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.25); }
 .ncm-app .ncm-viewer__priority-pill--threat { color: #A78BFA; background: rgba(167,139,250,0.1); border: 1px solid rgba(167,139,250,0.2); }
 
+/* Recovered/exfiltrated intel chip — distinct cyan "downloaded loot" badge. */
+.ncm-app .ncm-viewer__recovered-chip {
+  display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0;
+  padding: 2px 9px; border-radius: 3px;
+  font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1)); font-weight: 600;
+  letter-spacing: 0.06em; color: var(--ncm-secondary);
+  background: color-mix(in srgb, var(--ncm-secondary) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ncm-secondary) 40%, transparent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--ncm-secondary) 18%, transparent);
+}
+.ncm-app .ncm-viewer__recovered-chip i { font-size: calc(8px * var(--ncm-text-scale, 1)); }
+
 /* Thread pill (inside subject strip) — small, clickable, opens the conversation view */
 .ncm-app button.ncm-viewer__detail-thread {
   display: inline-flex; align-items: center; gap: 4px;
@@ -1636,8 +1648,12 @@
 }
 .ncm-app button.ncm-viewer__mobile-back:hover { background: var(--ncm-bg-surface) !important; }
 
-/* ── MEDIUM ≤720: condense the header chrome ── */
-@container (max-width: 720px) {
+/* ── MEDIUM ≤860: condense the header chrome ──
+   Raised from 720: the full header layout needs ~860px to fit without the flexible
+   parts (identity name/email, scene) collapsing to zero and the fixed parts (avatar,
+   divider, net-dot, action icons) overlapping. Switch to the compact layout before
+   entering that dead band. */
+@container (max-width: 860px) {
   .ncm-app .ncm-viewer__header-actions .ncm-btn span { display: none; }          /* icon-only buttons */
   .ncm-app .ncm-viewer__header-actions .ncm-btn { padding-left: 8px; padding-right: 8px; }
   .ncm-app .ncm-viewer__identity-info { display: none; }                          /* avatar only */
@@ -1670,4 +1686,41 @@
 
   /* Auto density — tighter rows when stacked. */
   .ncm-app .ncm-viewer__msg { padding-top: 7px; padding-bottom: 7px; }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   §24. TYPED CONTENT (recovered files — shared content-body partial)
+   The original six content types' CSS (item-inbox.css) reads bare --sp-*
+   vars otherwise defined only on the shard/terminal viewer roots — without
+   this mapping, a recovered spreadsheet/dossier/… in the Agent inbox paints
+   with initial (blank) colors. Mapped to --ncm-* so it follows the player
+   theme. Same block as terminal.css; new Phase-2 types use --ncm-* directly
+   (content-types.css).
+   ═══════════════════════════════════════════════════════════ */
+.ncm-app .ncm-viewer {
+  --sp-bg-deep: var(--ncm-bg-deep, #0a0a0f);
+  --sp-bg-base: var(--ncm-bg-base, #12121a);
+  --sp-bg-surface: var(--ncm-bg-surface, #1a1a2e);
+  --sp-bg-elevated: var(--ncm-bg-elevated, #252540);
+  --sp-border: var(--ncm-border, #2a2a45);
+  --sp-bar: linear-gradient(90deg, var(--ncm-primary, #F65261), transparent 40%, transparent 60%, var(--ncm-secondary, #19f3f7));
+  --sp-shadow: 0 0 50px rgba(0, 0, 0, 0.5);
+  --sp-accent: var(--ncm-secondary, #19f3f7);
+  --sp-accent-2: var(--ncm-text-secondary, #8888a0);
+  --sp-accent-glow: color-mix(in srgb, var(--ncm-secondary, #19f3f7) 8%, transparent);
+  --sp-text-bright: var(--ncm-text-primary, #e0e0e8);
+  --sp-text-body: var(--ncm-text-secondary, #8888a0);
+  --sp-text-meta: var(--ncm-text-muted, #555570);
+  --sp-text-muted: var(--ncm-text-muted, #555570);
+  --sp-icon-bg: color-mix(in srgb, var(--ncm-secondary, #19f3f7) 6%, transparent);
+  --sp-icon-border: color-mix(in srgb, var(--ncm-secondary, #19f3f7) 20%, transparent);
+  --sp-chip-bg: var(--ncm-bg-surface, #1a1a2e);
+  --sp-chip-text: var(--ncm-text-secondary, #8888a0);
+  --sp-chip-active-bg: color-mix(in srgb, var(--ncm-secondary, #19f3f7) 6%, transparent);
+  --sp-chip-active-text: var(--ncm-secondary, #19f3f7);
+}
+
+/* Wrapper around the shared partial in the detail body */
+.ncm-app .ncm-viewer__typed-content {
+  margin: 4px 0 12px;
 }

@@ -1,0 +1,223 @@
+{{!-- TerminalViewerApp root. Single root element (ApplicationV2 requirement).
+      State machine: boot | gate | login | manual | mailbox. The app sets
+      data-terminal-state and animates transitions. Narrow windows reflow to a
+      single column via the container query in terminal.css. (Agent/phone form
+      factor → Phase 3.) --}}
+<div class="ncm-terminal-viewer ncm-app"
+     data-terminal-preset="{{preset}}"
+     data-form-factor="{{formFactor}}"
+     data-terminal-state="{{state}}">
+
+  {{#if (eq state "boot")}}
+    {{> "modules/cyberpunkred-messenger/templates/terminal/terminal-boot.hbs"}}
+
+  {{else if (eq state "gate")}}
+    {{> "modules/cyberpunkred-messenger/templates/terminal/terminal-network-gate.hbs"}}
+
+  {{else if (eq state "login")}}
+    {{> "modules/cyberpunkred-messenger/templates/terminal/terminal-login.hbs"}}
+
+  {{else if (eq state "manual")}}
+    {{> "modules/cyberpunkred-messenger/templates/terminal/terminal-manual-login.hbs"}}
+
+  {{else if (eq state "granted")}}
+    {{!-- ACCESS GRANTED — the operator's access credential drops in and gets
+          stamped VALIDATED (an official keycard being authorized). --}}
+    <div class="ncm-term__granted">
+      <div class="ncm-term__badge">
+        <div class="ncm-term__badge-top">
+          <span class="ncm-term__badge-org"><i class="fas fa-id-card"></i> {{badge.org}}</span>
+          <span class="ncm-term__badge-cls">{{badge.classification}}</span>
+        </div>
+        <div class="ncm-term__badge-body">
+          <div class="ncm-term__badge-photo">{{#if account.portrait}}<img src="{{account.portrait}}" alt="">{{else}}{{account.initials}}{{/if}}</div>
+          <div class="ncm-term__badge-fields">
+            <div class="ncm-term__badge-nm">{{account.displayName}}</div>
+            <div class="ncm-term__badge-role">{{account.role}}</div>
+            <div class="ncm-term__badge-row" style="--r:0"><span class="ncm-term__badge-lbl">ID</span><b class="ncm-term__badge-val">{{badge.idLabel}}</b><i class="fas fa-circle-check ncm-term__badge-chk"></i></div>
+            <div class="ncm-term__badge-row" style="--r:1"><span class="ncm-term__badge-lbl">CLEARANCE</span><b class="ncm-term__badge-val">{{badge.clearance}}</b><i class="fas fa-circle-check ncm-term__badge-chk"></i></div>
+            {{#if badge.location}}<div class="ncm-term__badge-row" style="--r:2"><span class="ncm-term__badge-lbl">LOCATION</span><b class="ncm-term__badge-val">{{badge.location}}</b><i class="fas fa-circle-check ncm-term__badge-chk"></i></div>{{/if}}
+            <div class="ncm-term__badge-row" style="--r:{{#if badge.location}}3{{else}}2{{/if}}"><span class="ncm-term__badge-lbl">SESSION</span><b class="ncm-term__badge-val">ENCRYPTED</b><i class="fas fa-circle-check ncm-term__badge-chk"></i></div>
+          </div>
+        </div>
+        <div class="ncm-term__badge-last"><i class="fas fa-clock-rotate-left"></i> LAST ACCESS · {{badge.lastLogin}}</div>
+        <div class="ncm-term__badge-bar"><span class="ncm-term__badge-bar-fill"></span><span class="ncm-term__badge-bar-lbl"><b class="ncm-term__badge-bar-v1">AUTHENTICATING</b><b class="ncm-term__badge-bar-v2">VERIFIED</b></span></div>
+        <div class="ncm-term__badge-scan"></div>
+        <div class="ncm-term__badge-chip"><i class="fas fa-shield-halved"></i> VALIDATED</div>
+        <div class="ncm-term__badge-granted">ACCESS GRANTED</div>
+        {{#if welcomeText}}<div class="ncm-term__badge-welcome">{{welcomeText}}</div>{{/if}}
+      </div>
+    </div>
+
+  {{else}}
+    {{!-- ── MAILBOX ── --}}
+    <div class="ncm-term__hud">
+      <span class="ncm-term__hud-seg"><i class="fas fa-plug-circle-check ncm-term__hud-on"></i> <span class="ncm-term__hud-on">logged in</span></span>
+      <span class="ncm-term__hud-sep">·</span>
+      {{#if uplink.show}}
+        {{> "modules/cyberpunkred-messenger/templates/terminal/partials/uplink.hbs" uplink}}
+      {{else}}
+        <span class="ncm-term__hud-seg ncm-term__hud-net"><i class="fas fa-network-wired"></i> {{uplink.name}}</span>
+      {{/if}}
+      <span class="ncm-term__hud-seg ncm-term__bars{{#if uplink.offline}} ncm-term__bars--off{{/if}}"><b></b><b></b><b></b><b></b></span>
+      {{#if hud.isAdmin}}<span class="ncm-term__hud-sep">·</span><span class="ncm-term__hud-seg ncm-term__hud-admin"><i class="fas fa-user-shield"></i> ADMIN</span>{{/if}}
+      <span class="ncm-term__hud-spacer"></span>
+      {{#if isGM}}<span class="ncm-term__hud-seg ncm-term__hud-gm" data-action="terminalConfigure" data-tooltip="Configure terminal (GM)"><i class="fas fa-sliders"></i> EDIT</span>{{/if}}
+      {{#if hud.trace}}<span class="ncm-term__hud-seg ncm-term__hud-trace"><i class="fa-regular fa-clock"></i> TRACE {{hud.trace}}</span>{{/if}}
+    </div>
+
+    <div class="ncm-term__panes">
+      <div class="ncm-term__side">
+        <div class="ncm-term__acsw" data-action="terminalToggleSwitcher">
+          <span class="ncm-term__avatar">{{#if account.portrait}}<img src="{{account.portrait}}" alt="">{{else}}{{account.initials}}{{/if}}</span>
+          <span class="ncm-term__acsw-nm">{{account.displayName}}<small>{{account.username}}</small></span>
+          <span class="ncm-term__acsw-caret"><i class="fas fa-chevron-down"></i></span>
+          {{#if switcherOpen}}
+            <div class="ncm-term__acdrop">
+              <div class="ncm-term__acdrop-hd">SWITCH ACCOUNT</div>
+              {{#each switchAccounts}}
+                <div class="ncm-term__acdrop-it{{#if isCurrent}} is-current{{/if}}" data-action="terminalSwitchAccount" data-account-id="{{id}}">
+                  <span class="ncm-term__avatar">{{#if portrait}}<img src="{{portrait}}" alt="">{{else}}{{initials}}{{/if}}</span>
+                  <span class="ncm-term__acdrop-nm">{{displayName}}</span>
+                  <span class="ncm-term__acdrop-lk{{#if isOpen}} is-open{{/if}}">{{{statusLabel}}}</span>
+                </div>
+              {{/each}}
+              <div class="ncm-term__acdrop-ft" data-action="terminalLogout"><i class="fas fa-right-from-bracket"></i> Log out → login screen</div>
+            </div>
+          {{/if}}
+        </div>
+        {{#each folders}}
+          <div class="ncm-term__fold{{#if active}} is-active{{/if}}" data-action="terminalFolder" data-folder="{{key}}">
+            <i class="{{icon}}"></i> {{label}} <span class="ncm-term__fold-ct">{{count}}</span>
+          </div>
+        {{/each}}
+        <div class="ncm-term__lsep"></div>
+        <div class="ncm-term__slabel">{{listLabel}}</div>
+        {{#each messages}}
+          <div class="ncm-term__row{{#if isSelected}} is-active{{/if}}{{#if encrypted}} is-encrypted{{/if}}" data-action="terminalSelectMessage" data-message-id="{{messageId}}">
+            {{#if encrypted}}<i class="fas fa-lock ncm-term__pdot"></i>{{else}}<i class="fas fa-circle ncm-term__pdot ncm-term__pdot--{{priority}}"></i>{{/if}}
+            <div class="ncm-term__row-meta">
+              <div class="ncm-term__row-from">{{from}}</div>
+              <div class="ncm-term__row-subj">{{subject}}{{#if offNet}}<span class="ncm-term__offnet" data-tooltip="Off-network — players can't see this on the current uplink">OFF-NET</span>{{/if}}</div>
+            </div>
+          </div>
+        {{else}}
+          <div class="ncm-term__list-empty"><i class="fas fa-inbox"></i> {{emptyLabel}}</div>
+        {{/each}}
+        {{#if syncHint}}
+          <div class="ncm-term__synchint"><i class="fas fa-triangle-exclamation"></i> {{syncHint.count}} object{{#unless (eq syncHint.count 1)}}s{{/unless}} failed to sync — uplink required</div>
+        {{/if}}
+        {{#if pagination}}
+          <div class="ncm-term__pager">
+            <button type="button" class="ncm-term__pager-btn" data-action="terminalPage" data-dir="prev" {{#unless pagination.hasPrev}}disabled{{/unless}}><i class="fas fa-chevron-left"></i></button>
+            <span class="ncm-term__pager-lbl">{{pagination.page}} / {{pagination.maxPage}}</span>
+            <button type="button" class="ncm-term__pager-btn" data-action="terminalPage" data-dir="next" {{#unless pagination.hasNext}}disabled{{/unless}}><i class="fas fa-chevron-right"></i></button>
+          </div>
+        {{/if}}
+        {{#if isGM}}
+          <button type="button" class="ncm-term__gm-add" data-action="terminalNewMessage"><i class="fas fa-plus"></i> New message (GM)</button>
+        {{/if}}
+      </div>
+
+      <div class="ncm-term__detail">
+        {{#if selectedMessage}}
+          <div class="ncm-term__subject">{{selectedMessage.subject}}{{#if selectedMessage.classification}} — <span class="ncm-term__cls">{{selectedMessage.classification}}</span>{{/if}}</div>
+          <div class="ncm-term__sender">
+            <span class="ncm-term__avatar">{{#if selectedMessage.sender.portrait}}<img src="{{selectedMessage.sender.portrait}}" alt="">{{else}}{{selectedMessage.sender.initials}}{{/if}}</span>
+            <div><div class="ncm-term__sender-nm">{{selectedMessage.sender.name}}</div><div class="ncm-term__sender-em">{{selectedMessage.sender.email}}</div></div>
+            <span class="ncm-term__sender-actions">
+              {{#unless selectedMessage.isContact}}
+                <span class="ncm-term__chip" data-action="terminalAddContact" data-message-id="{{selectedMessage.messageId}}"><i class="fas fa-user-plus"></i> Add to contacts</span>
+              {{/unless}}
+              {{#if isGM}}
+                <span class="ncm-term__gm-edit" data-action="terminalToggleSave" data-message-id="{{selectedMessage.messageId}}" data-tooltip="{{#if selectedMessage.isSaved}}Remove from Saved (GM){{else}}Move to Saved (GM){{/if}}"><i class="{{#if selectedMessage.isSaved}}fas{{else}}fa-regular{{/if}} fa-bookmark"></i></span>
+                <span class="ncm-term__gm-edit" data-action="terminalToggleTrash" data-message-id="{{selectedMessage.messageId}}" data-tooltip="{{#if selectedMessage.isTrashed}}Restore from Trash (GM){{else}}Move to Trash (GM){{/if}}"><i class="fas {{#if selectedMessage.isTrashed}}fa-trash-arrow-up{{else}}fa-box-archive{{/if}}"></i></span>
+                <span class="ncm-term__gm-edit" data-action="terminalEditMessage" data-message-id="{{selectedMessage.messageId}}" data-tooltip="Edit message (GM)"><i class="fas fa-pen"></i></span>
+                <span class="ncm-term__gm-edit ncm-term__gm-edit--danger" data-action="terminalDeleteMessage" data-message-id="{{selectedMessage.messageId}}" data-tooltip="Permanently delete (GM)"><i class="fas fa-trash-can"></i></span>
+              {{/if}}
+            </span>
+          </div>
+          <div class="ncm-term__metabar">
+            <span class="ncm-term__mpill ncm-term__mpill--time" data-tooltip="{{selectedMessage.timeAgo}}"><i class="fa-regular fa-clock"></i> {{selectedMessage.timeAbs}}</span>
+            <span class="ncm-term__mpill ncm-term__mpill--{{selectedMessage.priority}}"><i class="fas {{selectedMessage.priorityIcon}}"></i> {{selectedMessage.priorityLabel}}</span>
+            <span class="ncm-term__mpill ncm-term__mpill--net"><i class="fas fa-network-wired"></i> {{selectedMessage.network}}</span>
+          </div>
+          {{#if selectedMessage.isTypedContent}}
+            <div class="ncm-term__body ncm-term__body--typed">
+              {{#with selectedMessage.content}}
+                {{> "modules/cyberpunkred-messenger/templates/content/content-body.hbs"}}
+              {{/with}}
+            </div>
+          {{else}}
+            <div class="ncm-term__body">{{{selectedMessage.bodyHtml}}}</div>
+          {{/if}}
+          {{#if allowExfil}}
+            <div class="ncm-term__exfil">
+              <span class="ncm-term__btn" data-action="terminalExfilInbox" data-message-id="{{selectedMessage.messageId}}"><i class="fas fa-download"></i> To my Agent</span>
+              <span class="ncm-term__btn" data-action="terminalExfilShard" data-message-id="{{selectedMessage.messageId}}"><i class="fas fa-sd-card"></i> Burn to Shard</span>
+              <span class="ncm-term__exfil-note">— allowed by terminal policy</span>
+            </div>
+          {{/if}}
+        {{else}}
+          <div class="ncm-term__prompt" style="margin-top:40px;text-align:center">&gt; select a message</div>
+        {{/if}}
+      </div>
+    </div>
+
+    {{!-- Idle screensaver (config.screensaver) — dim overlay + drifting logo/
+          marquee; _resetScreensaver toggles --on after idleSeconds, any
+          activity inside the window wakes it. --}}
+    {{#if screensaver}}
+      <div class="ncm-term__saver" data-ss-motion="{{screensaver.motion}}">
+        <div class="ncm-term__saver-inner">
+          {{#if screensaver.logo}}
+            <div class="ncm-term__saver-logo">{{#if screensaver.logo.imageUrl}}<img src="{{screensaver.logo.imageUrl}}" alt="">{{else}}<i class="{{screensaver.logo.icon}}"></i>{{/if}}</div>
+          {{/if}}
+          <div class="ncm-term__saver-text">{{screensaver.text}}</div>
+          <div class="ncm-term__saver-hint">— click anywhere to resume —</div>
+        </div>
+      </div>
+    {{/if}}
+  {{/if}}
+
+  {{!-- ── Machine-uplink join challenge (secured interface) — full-viewer
+        overlay over the login or mailbox state; the network's own security
+        block, rolled by the logged-in operator. --}}
+  {{#if netAuth}}
+    <div class="ncm-term__netauth">
+      <div class="ncm-term__console" data-auth-state="login" style="--net-c: {{netAuth.color}};">
+        <div class="ncm-term__console-hd">
+          <i class="fas fa-tower-broadcast"></i>
+          <span class="ncm-term__console-ttl">JOIN NETWORK // {{netAuth.networkName}}</span>
+          <span class="ncm-term__console-dot"></span>
+        </div>
+        <div class="ncm-term__console-body">
+          <div class="ncm-term__console-pline">{{netAuth.shellHost}}:~$ join {{netAuth.joinCmd}}<span class="ncm-term__cursor"></span></div>
+          {{#if netAuth.allowPassword}}
+            <div class="ncm-term__tfield">
+              <span class="ncm-term__tfield-pf">&gt;</span><span class="ncm-term__tfield-l">PASSKEY</span>
+              <input type="password" name="netAuthPassword" autocomplete="off" placeholder="••••••••">
+            </div>
+          {{/if}}
+          {{#if netAuth.error}}<div class="ncm-term__danger" style="border-radius:8px;margin:4px 0 10px;border:1px solid color-mix(in srgb,var(--ncm-danger) 45%,transparent)"><i class="fas fa-triangle-exclamation"></i> {{netAuth.error}}</div>{{/if}}
+          {{#unless netAuth.lockout}}
+            {{#if netAuth.allowPassword}}
+              <div class="ncm-term__auth" data-action="terminalNetAuth"><i class="fas fa-right-to-bracket"></i> AUTHENTICATE</div>
+            {{/if}}
+            {{#if netAuth.skillBypass}}
+              <div class="ncm-term__spoof" style="width:100%;justify-content:center;margin-top:10px" data-action="terminalNetSkillBypass">
+                <i class="fas fa-dice-d20"></i> Bypass with {{netAuth.skillBypass.skill}} — DV {{netAuth.skillBypass.dv}}
+              </div>
+            {{/if}}
+            {{#if netAuth.isGM}}
+              <div class="ncm-term__spoof" style="width:100%;justify-content:center;margin-top:10px" data-action="terminalNetGmJoin">
+                <i class="fas fa-user-shield"></i> GM — join without credentials
+              </div>
+            {{/if}}
+          {{/unless}}
+          <div class="ncm-term__netauth-cancel" data-action="terminalNetCancel"><i class="fas fa-xmark"></i> cancel</div>
+        </div>
+      </div>
+    </div>
+  {{/if}}
+</div>

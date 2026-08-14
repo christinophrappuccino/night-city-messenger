@@ -40,6 +40,8 @@ import {
 import { EVENTS, SOCKET_OPS } from '../../utils/constants.js';
 import { getThreadMessages } from '../../utils/threading.js';
 import { formatCyberDate, resolveMediaEmbed, resolveAnonSender, resolveAnonRecipient } from '../../utils/helpers.js';
+import { enrichContent, toggleSecretReveal, applySyslogFilter } from '../content/ContentRenderers.js';
+import { runSiphon, runEddiesClaim, runCrack } from '../content/SiphonFlow.js';
 
 const MODULE_ID = 'cyberpunkred-messenger';
 const MESSAGES_PER_PAGE = 25;
@@ -227,6 +229,13 @@ export class MessageViewerApp extends BaseApplication {
 
   /** @type {Array|null} Cached messages from last load */
   _cachedMessages = null;
+
+  /**
+   * @type {{ fetchMessages: () => Promise<object[]> }|null}
+   * Lazily-built message-source adapter (Terminal Expansion seam).
+   * @see _createMessageSource
+   */
+  _source = null;
 
   /** @type {Array<string>} Message IDs on current page, for keyboard navigation */
   _lastPaginatedIds = [];
@@ -1357,6 +1366,23 @@ export class MessageViewerApp extends BaseApplication {
         this._traceAnonSender(target.dataset.messageId || this.selectedMessageId);
         break;
 
+      // ── Typed content (shared registry — recovered files) ──
+      case 'credToggleSecret':
+        toggleSecretReveal(target);
+        break;
+      case 'syslogFilter':
+        applySyslogFilter(target);
+        break;
+      case 'claimEddies':
+        this._claimTypedEddies(target);
+        break;
+      case 'crackCred':
+        this._crackTypedCred(target);
+        break;
+      case 'siphonFunds':
+        this._siphonTypedFunds(target);
+        break;
+
       // ── Compose ──
       case 'compose-new':
       case 'compose-message':
@@ -1930,10 +1956,13 @@ export class MessageViewerApp extends BaseApplication {
     // Category filter
     switch (this.currentFilter) {
       case 'inbox':
-        result = result.filter(m => !m.status.deleted && !m.status.spam && !m.status.sent);
+        result = result.filter(m => !m.status.deleted && !m.status.spam && !m.status.sent && !m.metadata?.recovered);
         break;
       case 'unread':
-        result = result.filter(m => !m.status.read && !m.status.deleted && !m.status.spam && !m.status.sent);
+        result = result.filter(m => !m.status.read && !m.status.deleted && !m.status.spam && !m.status.sent && !m.metadata?.recovered);
+        break;
+      case 'recovered':
+        result = result.filter(m => m.metadata?.recovered && !m.status.deleted);
         break;
       case 'sent':
         result = result.filter(m => m.status.sent && !m.status.deleted);
@@ -2594,6 +2623,47 @@ export class MessageViewerApp extends BaseApplication {
       ui.notifications.info(`${result.count} spam message(s) permanently deleted.`);
     }
     this.selectedMessageId = null;
+    this.render();
+  }
+
+  // ── Typed content (shared registry) — actions on recovered files ──
+  // Mirrors TerminalViewerApp: the same claim/crack/siphon flows work on a
+  // typed message wherever it lands (SiphonFlow persists by messageId, so
+  // inbox pages resolve the same as shard/terminal pages).
+
+  /** Raw cached message for a typed-content action button. @private */
+  _typedContentRaw(target) {
+    const id = target?.closest?.('[data-entry-id]')?.dataset.entryId || this.selectedMessageId;
+    return this._cachedMessages?.find(m => m.messageId === id) || null;
+  }
+
+  async _claimTypedEddies(target) {
+    const raw = this._typedContentRaw(target);
+    if (!raw || raw.contentType !== 'eddies') return;
+    const actor = game.actors.get(this.actorId);
+    if (!actor) { ui.notifications.warn('No character assigned.'); return; }
+    const res = await runEddiesClaim({
+      actor, raw: raw.contentData, messageId: raw.messageId,
+      sourceLabel: raw.metadata?.recoveredFrom || 'recovered file',
+    });
+    if (res?.success) this.render();
+  }
+
+  async _crackTypedCred(target) {
+    const raw = this._typedContentRaw(target);
+    const idx = Number(target?.dataset?.credIndex);
+    if (!raw || raw.contentType !== 'credentials' || Number.isNaN(idx)) return;
+    const actor = game.actors.get(this.actorId);
+    const ok = await runCrack({ actor, raw: raw.contentData, entryIndex: idx, messageId: raw.messageId, force: game.user.isGM && !actor });
+    if (ok) this.render();
+  }
+
+  async _siphonTypedFunds(target) {
+    const raw = this._typedContentRaw(target);
+    if (!raw || raw.contentType !== 'banking') return;
+    const actor = game.actors.get(this.actorId);
+    if (!actor) { ui.notifications.warn('No character assigned.'); return; }
+    await runSiphon({ actor, raw: raw.contentData, messageId: raw.messageId });
     this.render();
   }
 
@@ -3972,14 +4042,53 @@ export class MessageViewerApp extends BaseApplication {
   //  Data Loading & Enrichment
   // ═══════════════════════════════════════════════════════════
 
+  /**
+   * Message-source adapter (the Terminal Expansion seam).
+   *
+   * Decouples the viewer's message feed from a hard `this.actorId` inbox lookup
+   * so a subclass — `TerminalViewerApp` — can source the same list/detail UI
+   * from a terminal *account* instead. Everything downstream of the fetch
+   * (filter → sort → paginate → enrich) is already source-agnostic, so the only
+   * thing a fork must replace is *where the raw messages come from*.
+   *
+   * The adapter is a plain object implementing:
+   *   - `fetchMessages(): Promise<object[]>` — the raw, pre-filter message list,
+   *     using the standard message flag shape so `_enrichMessageDisplay` and the
+   *     rest of the pipeline work unchanged.
+   *
+   * The default source is the viewing actor's inbox. Subclasses override
+   * {@link _createMessageSource} to return a terminal-account source. The source
+   * is built lazily (on first load) so a subclass constructor has finished
+   * setting its own fields before the factory runs — `super()` runs first, so an
+   * eager build in the constructor would read the fork's fields before they exist.
+   *
+   * @returns {{ fetchMessages: () => Promise<object[]> }}
+   */
+  _createMessageSource() {
+    return {
+      fetchMessages: async () => {
+        if (!this.messageService || !this.actorId) return [];
+        // Fetch ALL messages — the viewer handles filtering via _applyFilters.
+        return await this.messageService.getMessages(this.actorId, {
+          filter: 'all',
+          includeDeleted: true,
+        }) || [];
+      },
+    };
+  }
+
+  /**
+   * Lazily-built message source for this viewer. @see _createMessageSource
+   * @returns {{ fetchMessages: () => Promise<object[]> }}
+   */
+  get messageSource() {
+    if (!this._source) this._source = this._createMessageSource();
+    return this._source;
+  }
+
   async _loadMessages() {
-    if (!this.messageService || !this.actorId) return [];
     try {
-      // Fetch ALL messages — viewer handles filtering via _applyFilters
-      return await this.messageService.getMessages(this.actorId, {
-        filter: 'all',
-        includeDeleted: true,
-      }) || [];
+      return await this.messageSource.fetchMessages() || [];
     } catch (err) {
       console.error(`${MODULE_ID} | Failed to load messages:`, err);
       return [];
@@ -4147,9 +4256,30 @@ export class MessageViewerApp extends BaseApplication {
     const threadInfo = this._getThreadInfo(msg, allMessages);
     const threadExpanded = !!threadInfo && this._threadExpanded;
 
+    // Typed content (design doc §8c) — recovered/exfiltrated files keep their
+    // contentType, so a spreadsheet downloaded off a terminal renders through
+    // the SHARED content-body partial here too, identical to the source.
+    // Mirrors TerminalViewerApp._detailContext.
+    const contentType = msg.contentType || msg.metadata?.contentType || null;
+    const isTypedContent = !!contentType && contentType !== 'message';
+    let typedContent = null;
+    if (isTypedContent) {
+      typedContent = enrichContent({
+        id: msg.messageId,
+        contentType,
+        contentData: msg.contentData || msg.metadata?.contentData || {},
+        subject: msg.subject,
+        from: msg.from,
+        body: msg.body,
+        timestamp: msg.timestamp,
+      }, { isGM: !!game.user?.isGM, interactive: false });
+    }
+
     return {
       ...msg,
       ...displayData,
+      isTypedContent,
+      content: typedContent,
       bodyRendered,
       threadInfo,
       threadExpanded,
@@ -4317,6 +4447,14 @@ export class MessageViewerApp extends BaseApplication {
     const toActor = msg.toActorId ? game.actors?.get(msg.toActorId) : null;
     let toDisplay = toContact?.name || toActor?.name || msg.toName || msg.to?.split('@')[0] || 'Unknown';
 
+    // Recovered/exfiltrated intel — keep the ORIGINAL recipient (e.g. v_arasaka),
+    // never the downloader, in the "to" line.
+    const isRecovered = !!msg.metadata?.recovered;
+    const recoveredFrom = msg.metadata?.recoveredFrom || '';
+    if (isRecovered && msg.metadata?.recoveredTo) {
+      toDisplay = String(msg.metadata.recoveredTo).split('@')[0];
+    }
+
     // ── Anonymous-reply sent copy — mask the recipient ──
     // The replier must never see who the anonymous party they answered really was.
     const anonRecipient = resolveAnonRecipient(msg);
@@ -4441,6 +4579,8 @@ export class MessageViewerApp extends BaseApplication {
       isAnonTraced,
       canTraceAnon,
       toDisplay,
+      isRecovered,
+      recoveredFrom,
       priorityVariant,
       priorityIcon,
       networkLabel,
@@ -4778,11 +4918,16 @@ export class MessageViewerApp extends BaseApplication {
       saved: 0,
       spam: 0,
       trash: 0,
+      recovered: 0,
     };
 
     for (const m of messages) {
       if (m.status.deleted) {
         counts.trash++;
+        continue;
+      }
+      if (m.metadata?.recovered) {
+        counts.recovered++;
         continue;
       }
       if (m.status.spam) {

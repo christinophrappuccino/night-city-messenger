@@ -166,6 +166,7 @@ export class ShardSheetOverride {
 
       for (const item of (game.items ?? [])) {
         const isShard = item.getFlag(MODULE_ID, 'isDataShard');
+        const isTerminal = !!item.getFlag(MODULE_ID, 'isTerminal');
 
         const entry = root.querySelector(`[data-document-id="${item.id}"]`)
           ?? root.querySelector(`[data-entry-id="${item.id}"]`)
@@ -201,6 +202,32 @@ export class ShardSheetOverride {
             ev.stopImmediatePropagation();
             ev.preventDefault();
             game.nightcity?.openDataShard(item);
+          };
+          for (const sel of ['.document-name a', '.document-name', '.entry-name a', '.entry-name', 'h4 a', 'h4']) {
+            const el = entry.querySelector(sel);
+            if (el) { el.addEventListener('click', interceptClick, { capture: true }); break; }
+          }
+          if (thumb) thumb.addEventListener('click', interceptClick, { capture: true });
+        } else if (isTerminal) {
+          // Terminal badge + left-click → open the terminal.
+          const thumb = entry.querySelector('img.thumbnail, img');
+          if (thumb && !thumb.parentElement?.classList.contains('ncm-shard-thumb-wrap')) {
+            const wrap = document.createElement('span');
+            wrap.className = 'ncm-shard-thumb-wrap';
+            wrap.style.cssText = 'position:relative; display:inline-block; line-height:0; overflow:visible; vertical-align:middle;';
+            thumb.parentNode.insertBefore(wrap, thumb);
+            wrap.appendChild(thumb);
+            const tag = document.createElement('div');
+            tag.className = 'ncm-shard-img-tag ncm-terminal-img-tag';
+            tag.innerHTML = '<i class="fas fa-terminal"></i>';
+            tag.title = 'Terminal';
+            wrap.appendChild(tag);
+          }
+          const interceptClick = (ev) => {
+            if (ev.button !== 0 || ev.ctrlKey || ev.metaKey) return;
+            ev.stopImmediatePropagation();
+            ev.preventDefault();
+            game.nightcity?.openTerminal(item);
           };
           for (const sel of ['.document-name a', '.document-name', '.entry-name a', '.entry-name', 'h4 a', 'h4']) {
             const el = entry.querySelector(sel);
@@ -254,7 +281,22 @@ export class ShardSheetOverride {
     sep.style.cssText = 'height:1px;background:#555;margin:3px 0;';
     ol.appendChild(sep);
 
-    if (isShard) {
+    const isTerminal = !!item.getFlag(MODULE_ID, 'isTerminal');
+
+    if (isTerminal) {
+      addOption('Open Terminal', 'fas fa-terminal', '#ff3355', () => game.nightcity?.openTerminal(item));
+      if (isGM()) {
+        addOption('Configure Terminal', 'fas fa-sliders', '#ff3355', async () => {
+          const { TerminalConfigApp } = await import('../ui/Terminal/TerminalConfigApp.js');
+          new TerminalConfigApp({ item }).render(true);
+        });
+        addOption('View Original Item', 'fas fa-file-alt', '#f7c948', () => {
+          const sheet = item.sheet;
+          if (sheet) { sheet._ncmBypass = true; sheet.render(true); }
+        });
+        addOption('Remove Terminal Data', 'fas fa-rotate-left', '#F65261', () => this._confirmRemoveTerminal(item));
+      }
+    } else if (isShard) {
       addOption('Open Data Shard', 'fas fa-hard-drive', '#00D4E6', () => game.nightcity?.openDataShard(item));
       if (isGM()) {
         addOption('Configure Shard', 'fas fa-sliders', '#00D4E6', async () => {
@@ -269,7 +311,64 @@ export class ShardSheetOverride {
       }
     } else if (isGM()) {
       addOption('Convert to Data Shard', 'fas fa-microchip', '#00D4E6', () => this._launchConversionFlow(item));
+      addOption('Convert to Terminal', 'fas fa-terminal', '#ff3355', () => this._convertToTerminal(item));
     }
+  }
+
+  /**
+   * GM instant-convert an item to a Terminal (default config), then open the
+   * config sheet to author it — mirrors the shard instant-convert affordance.
+   * @param {Item} item
+   */
+  async _convertToTerminal(item) {
+    const svc = game.nightcity?.terminalService;
+    if (!svc) return;
+    if (item.getFlag(MODULE_ID, 'isTerminal')) return ui.notifications.warn('Already a terminal.');
+    const res = await svc.convertToTerminal(item);
+    if (!res?.success) return ui.notifications.error(res?.error || 'Conversion failed.');
+    ui.notifications.info(`"${item.name}" is now a Terminal.`);
+    // Re-render the directory + any actor sheets so the terminal badge +
+    // left-click intercept appear immediately (mirrors shard convert / remove).
+    // Without this the item looked unchanged until a manual refresh.
+    this._refreshItemViews(item);
+    const { TerminalConfigApp } = await import('../ui/Terminal/TerminalConfigApp.js');
+    new TerminalConfigApp({ item }).render(true);
+  }
+
+  /**
+   * Rebuild the Items directory + any actor sheets showing this item so a
+   * convert/remove reflects instantly. The entry DOM is recreated fresh, which
+   * clears the `ncmProcessed` guard so the badge/intercept re-decorate.
+   */
+  _refreshItemViews(item) {
+    setTimeout(() => {
+      ui.items?.render();
+      for (const sheet of Object.values(ui.windows)) {
+        if (sheet.actor?.items?.has(item.id)) sheet.render(false);
+      }
+    }, 150);
+  }
+
+  /**
+   * GM remove Terminal status (with optional journal delete).
+   * @param {Item} item
+   */
+  async _confirmRemoveTerminal(item) {
+    const ok = await Dialog.confirm({
+      title: 'Remove Terminal Data',
+      content: '<p>Revert this item to a plain item? Accounts/config are lost. The message journal is kept unless you also delete it.</p>',
+    });
+    if (!ok) return;
+    await game.nightcity?.terminalService?.removeTerminal(item);
+    ui.notifications.info('Terminal data removed.');
+    // Re-render the directory + any actor sheets so the terminal badge/intercept
+    // are dropped (the entry DOM is rebuilt fresh, clearing ncmProcessed).
+    setTimeout(() => {
+      ui.items?.render();
+      for (const sheet of Object.values(ui.windows)) {
+        if (sheet.actor?.items?.has(item.id)) sheet.render(false);
+      }
+    }, 150);
   }
 
   // ═══════════════════════════════════════════════════════════════

@@ -10,6 +10,7 @@
 --}}
 
 {{#if hasItem}}
+<div class="ncm-composer-shell">
 <form class="ncm-shard-composer" autocomplete="off">
 
   {{!-- ═══ CONTENT TYPE SELECTOR ═══ --}}
@@ -23,6 +24,15 @@
         </div>
       {{/each}}
     </div>
+    {{#if typeIntro}}
+      <div class="ncm-composer-intro">
+        <i class="fas fa-circle-info ncm-composer-intro__icon"></i>
+        <div class="ncm-composer-intro__text">
+          <div class="ncm-composer-intro__what">{{typeIntro.what}}</div>
+          <div class="ncm-composer-intro__how"><b>How:</b> {{typeIntro.how}}</div>
+        </div>
+      </div>
+    {{/if}}
   </fieldset>
 
   {{!-- ═══ ENTRY IDENTITY (icon + accent color) ═══ --}}
@@ -395,6 +405,173 @@
     </fieldset>
   {{/if}}
 
+  {{#if isBanking}}
+    <fieldset class="ncm-config-section">
+      <legend class="ncm-config-legend"><i class="fas fa-building-columns"></i> Bank (lore)</legend>
+      <div class="ncm-config-row"><label class="ncm-config-label">Bank Name</label><input type="text" name="bankName" class="ncm-config-input ncm-config-flex" value="{{bank.bankName}}" placeholder="Night City Trust" /></div>
+      <div class="ncm-config-row"><label class="ncm-config-label">Logo</label><input type="text" name="bankLogo" class="ncm-config-input ncm-config-flex" value="{{bank.bankLogo}}" placeholder="Path to logo image (optional)" /><button type="button" data-action="browseImage" data-target="bankLogo" class="ncm-shard-hdr-btn" title="Browse"><i class="fas fa-folder-open"></i></button></div>
+      <div class="ncm-config-row"><label class="ncm-config-label">Location</label><input type="text" name="bankLocation" class="ncm-config-input ncm-config-flex" value="{{bank.bankLocation}}" placeholder="City Center · Corpo Plaza" /></div>
+      <div class="ncm-config-row"><label class="ncm-config-label">Code</label><input type="text" name="bankCode" class="ncm-config-input ncm-config-flex" value="{{bank.bankCode}}" placeholder="SWIFT / routing (optional)" /></div>
+      <div class="ncm-config-row"><label class="ncm-config-label">Tagline</label><input type="text" name="bankTagline" class="ncm-config-input ncm-config-flex" value="{{bank.bankTagline}}" placeholder="Your eddies. Our silence." /></div>
+    </fieldset>
+    <fieldset class="ncm-config-section">
+      <legend class="ncm-config-legend"><i class="fas fa-id-card"></i> Account</legend>
+      <div class="ncm-config-row"><label class="ncm-config-label">Owner</label><input type="text" name="bankOwner" class="ncm-config-input ncm-config-flex" value="{{bank.owner}}" placeholder="V. Arasaka" /></div>
+      <div class="ncm-config-row"><label class="ncm-config-label">Account</label><input type="text" name="bankAccountName" class="ncm-config-input ncm-config-flex" value="{{bank.accountName}}" placeholder="Arasaka Holdings — Ops" /></div>
+      <div class="ncm-config-row"><label class="ncm-config-label">Number</label><input type="text" name="bankAccountNumber" class="ncm-config-input ncm-config-flex" value="{{bank.accountNumber}}" placeholder="NC-8841-A-0007" /></div>
+      <div class="ncm-config-row"><label class="ncm-config-label">Type</label><input type="text" name="bankAccountType" class="ncm-config-input" value="{{bank.accountType}}" placeholder="checking" style="max-width:130px" /><label class="ncm-config-label" style="margin-left:8px;width:auto;">Currency</label><input type="text" name="bankCurrency" class="ncm-config-input" list="ncm-cur-list" value="{{bank.currency}}" style="max-width:80px" /><datalist id="ncm-cur-list"><option value="€$"></option><option value="$"></option><option value="¥"></option><option value="£"></option><option value="€"></option><option value="₿"></option><option value="credits"></option></datalist></div>
+      <div class="ncm-config-row"><label class="ncm-config-label">Balance</label><input type="number" name="bankBalance" class="ncm-config-input" value="{{bank.balance}}" style="max-width:120px" /><label class="ncm-config-label" style="margin-left:8px;width:auto;">Cleared</label><input type="number" name="bankCleared" class="ncm-config-input" value="{{bank.cleared}}" style="max-width:110px" /><label class="ncm-config-label" style="margin-left:8px;width:auto;">Held</label><input type="number" name="bankHeld" class="ncm-config-input" value="{{bank.held}}" style="max-width:100px" /></div>
+      <div class="ncm-config-row">
+        <label class="ncm-config-label">Timestamp</label>
+        <div class="ncm-ctp-trigger" data-action="openTimePicker" data-target="timestamp">
+          <i class="fas fa-clock ncm-ctp-trigger__icon"></i>
+          <span class="ncm-ctp-trigger__value">{{#if editTimestampFormatted}}{{editTimestampFormatted}}{{else}}{{defaultTimestampFormatted}}{{/if}}</span>
+          <i class="fas fa-chevron-down ncm-ctp-trigger__chevron"></i>
+        </div>
+        <input type="hidden" name="timestamp" value="{{#if editTimestamp}}{{editTimestamp}}{{else}}{{defaultTimestamp}}{{/if}}" />
+      </div>
+    </fieldset>
+    <fieldset class="ncm-config-section">
+      <legend class="ncm-config-legend"><i class="fas fa-list"></i> Transactions</legend>
+      <div class="ncm-cl-list" data-list="bankTxns"></div>
+      <button type="button" data-action="addListRow" data-list="bankTxns" class="ncm-cl-add"><i class="fas fa-plus"></i> Add transaction</button>
+      <div class="ncm-config-hint">Newest first. Category sets the colored icon (transfer / services / wire / payroll / flagged / deposit…). Running balance auto-computes.</div>
+    </fieldset>
+    <fieldset class="ncm-config-section">
+      <legend class="ncm-config-legend"><i class="fas fa-hand-holding-dollar"></i> Siphon</legend>
+      <div class="ncm-config-row"><label class="ncm-config-check"><input type="checkbox" name="bankAllowSiphon" {{#if bank.allowSiphon}}checked{{/if}} /> Allow players to siphon funds</label></div>
+      <div class="ncm-config-row"><label class="ncm-config-label">Skill</label><input type="text" name="bankSiphonSkill" class="ncm-config-input" value="{{bank.siphonSkill}}" placeholder="Interface" style="max-width:150px" /><label class="ncm-config-label" style="margin-left:8px;width:auto;">DV</label><input type="number" name="bankSiphonDV" class="ncm-config-input ncm-config-short" value="{{bank.siphonDV}}" /></div>
+      <div class="ncm-config-row"><label class="ncm-config-label">Amount</label><select name="bankSiphonMode" class="ncm-config-input ncm-config-select" data-edit-select="bankSiphonMode" style="max-width:130px"><option value="cap">cap</option><option value="full">full balance</option><option value="percent">percent</option></select><label class="ncm-config-label" style="margin-left:8px;width:auto;">Cap</label><input type="number" name="bankSiphonCap" class="ncm-config-input" value="{{bank.siphonCap}}" style="max-width:100px" /><label class="ncm-config-label" style="margin-left:8px;width:auto;">%</label><input type="number" name="bankSiphonPercent" class="ncm-config-input ncm-config-short" value="{{bank.siphonPercent}}" /></div>
+      <div class="ncm-config-hint">On a failed roll: trace + GM alert. cap = take up to Cap · percent = up to % of balance · full = whole balance.</div>
+    </fieldset>
+  {{/if}}
+
+  {{!-- ─── CALENDAR ─── --}}
+  {{#if isCalendar}}
+    <fieldset class="ncm-config-section">
+      <legend class="ncm-config-legend"><i class="fas fa-calendar-days"></i> Schedule</legend>
+      <div class="ncm-config-row"><label class="ncm-config-label">Title</label><input type="text" name="calTitle" class="ncm-config-input ncm-config-flex" value="{{editSubject}}" placeholder="Ops Schedule — June" /></div>
+      <div class="ncm-cl-list" data-list="calEvents"></div>
+      <button type="button" data-action="addListRow" data-list="calEvents" class="ncm-cl-add"><i class="fas fa-plus"></i> Add event</button>
+      <div class="ncm-config-hint">Line 1: date · title · time. Line 2: place · people · category. Events sharing a category share a legend color — colors assign themselves at save.</div>
+      <div class="ncm-config-row">
+        <label class="ncm-config-label">Timestamp</label>
+        <div class="ncm-ctp-trigger" data-action="openTimePicker" data-target="timestamp">
+          <i class="fas fa-clock ncm-ctp-trigger__icon"></i>
+          <span class="ncm-ctp-trigger__value">{{#if editTimestampFormatted}}{{editTimestampFormatted}}{{else}}{{defaultTimestampFormatted}}{{/if}}</span>
+          <i class="fas fa-chevron-down ncm-ctp-trigger__chevron"></i>
+        </div>
+        <input type="hidden" name="timestamp" value="{{#if editTimestamp}}{{editTimestamp}}{{else}}{{defaultTimestamp}}{{/if}}" />
+      </div>
+    </fieldset>
+  {{/if}}
+
+  {{!-- ─── SYSTEM LOG ─── --}}
+  {{#if isSyslog}}
+    <fieldset class="ncm-config-section">
+      <legend class="ncm-config-legend"><i class="fas fa-terminal"></i> Console</legend>
+      <div class="ncm-config-row"><label class="ncm-config-label">Title</label><input type="text" name="syslogTitle" class="ncm-config-input ncm-config-flex" value="{{editSubject}}" placeholder="Blank = auto from host" /></div>
+      <div class="ncm-config-row"><label class="ncm-config-label">Host</label><input type="text" name="syslogHost" class="ncm-config-input" value="{{syslog.host}}" placeholder="arasaka-db-04" style="max-width:170px" /><label class="ncm-config-label" style="margin-left:8px;width:auto;">Path</label><input type="text" name="syslogPath" class="ncm-config-input ncm-config-flex" value="{{syslog.path}}" placeholder="/var/log/access.log" /></div>
+      <div class="ncm-config-row"><label class="ncm-config-label">Prompt</label><input type="text" name="syslogPrompt" class="ncm-config-input ncm-config-flex" value="{{syslog.prompt}}" placeholder="Blank = auto (root@host:~#)" /></div>
+      <div class="ncm-config-row">
+        <label class="ncm-config-check"><input type="checkbox" name="syslogShowLineNumbers" {{#if syslog.showLineNumbers}}checked{{/if}} /> Line numbers</label>
+        <label class="ncm-config-check"><input type="checkbox" name="syslogShowFilter" {{#if syslog.showFilter}}checked{{/if}} /> Filter bar</label>
+        <label class="ncm-config-check"><input type="checkbox" name="syslogScanlines" {{#if syslog.scanlines}}checked{{/if}} /> Scanlines</label>
+        <label class="ncm-config-check"><input type="checkbox" name="syslogShowPrompt" {{#if syslog.showPrompt}}checked{{/if}} /> Prompt line</label>
+      </div>
+    </fieldset>
+    <fieldset class="ncm-config-section">
+      <legend class="ncm-config-legend"><i class="fas fa-list"></i> Log Lines</legend>
+      <div class="ncm-cl-list" data-list="syslogLines"></div>
+      <button type="button" data-action="addListRow" data-list="syslogLines" class="ncm-cl-add"><i class="fas fa-plus"></i> Add line</button>
+      <div class="ncm-config-hint">Severity colors the line (info / ok / warn / err / debug). Tick “mark” to spotlight the key line in a callout.</div>
+      <div class="ncm-config-row">
+        <label class="ncm-config-label">Timestamp</label>
+        <div class="ncm-ctp-trigger" data-action="openTimePicker" data-target="timestamp">
+          <i class="fas fa-clock ncm-ctp-trigger__icon"></i>
+          <span class="ncm-ctp-trigger__value">{{#if editTimestampFormatted}}{{editTimestampFormatted}}{{else}}{{defaultTimestampFormatted}}{{/if}}</span>
+          <i class="fas fa-chevron-down ncm-ctp-trigger__chevron"></i>
+        </div>
+        <input type="hidden" name="timestamp" value="{{#if editTimestamp}}{{editTimestamp}}{{else}}{{defaultTimestamp}}{{/if}}" />
+      </div>
+    </fieldset>
+  {{/if}}
+
+  {{!-- ─── CREDENTIALS ─── --}}
+  {{#if isCredentials}}
+    <fieldset class="ncm-config-section">
+      <legend class="ncm-config-legend"><i class="fas fa-key"></i> Credential Vault</legend>
+      <div class="ncm-config-row"><label class="ncm-config-label">Title</label><input type="text" name="credTitle" class="ncm-config-input ncm-config-flex" value="{{editSubject}}" placeholder="Harvested logins — Biotechnica" /></div>
+      <div class="ncm-config-row"><label class="ncm-config-check"><input type="checkbox" name="credAutoReuse" {{#if creds.autoReuse}}checked{{/if}} /> Auto-flag reused passwords</label></div>
+      <div class="ncm-cl-list" data-list="credEntries"></div>
+      <button type="button" data-action="addListRow" data-list="credEntries" class="ncm-cl-add"><i class="fas fa-plus"></i> Add credential</button>
+      <div class="ncm-config-hint">Line 1: host · username · password. Line 2: note · strength (1–4 draws the meter) · locked (masked until cracked in the viewer). The same password on two hosts auto-flags REUSED — the pivot signal.</div>
+      <div class="ncm-config-row">
+        <label class="ncm-config-label">Timestamp</label>
+        <div class="ncm-ctp-trigger" data-action="openTimePicker" data-target="timestamp">
+          <i class="fas fa-clock ncm-ctp-trigger__icon"></i>
+          <span class="ncm-ctp-trigger__value">{{#if editTimestampFormatted}}{{editTimestampFormatted}}{{else}}{{defaultTimestampFormatted}}{{/if}}</span>
+          <i class="fas fa-chevron-down ncm-ctp-trigger__chevron"></i>
+        </div>
+        <input type="hidden" name="timestamp" value="{{#if editTimestamp}}{{editTimestamp}}{{else}}{{defaultTimestamp}}{{/if}}" />
+      </div>
+    </fieldset>
+  {{/if}}
+
+  {{!-- ─── SPREADSHEET (grid editor: click a cell, format it) ─── --}}
+  {{#if isSpreadsheet}}
+    <fieldset class="ncm-config-section">
+      <legend class="ncm-config-legend"><i class="fas fa-table-cells"></i> Spreadsheet</legend>
+      <div class="ncm-config-row"><label class="ncm-config-label">Title</label><input type="text" name="ssTitle" class="ncm-config-input ncm-config-flex" value="{{editSubject}}" placeholder="Q3 Off-Book Disbursements" /></div>
+      <div class="ncm-config-row"><label class="ncm-config-label">File name</label><input type="text" name="ssFormat" class="ncm-config-input ncm-config-flex" value="{{ss.format}}" placeholder="disbursements.csv (shown in the toolbar)" /></div>
+
+      <div class="ncm-config-row" style="gap:10px;">
+        <button type="button" data-action="ssImportCsv" class="ncm-shard-btn ncm-shard-btn--secondary" style="padding:3px 10px;"><i class="fas fa-file-import"></i> Import CSV</button>
+        <label class="ncm-config-check"><input type="checkbox" name="ssCsvHeader" checked /> first row = column labels</label>
+      </div>
+      <div class="ncm-config-hint">Loads a .csv / .tsv (delimiter auto-detected) into the grid, replacing what's there. Column types are auto-guessed (number / currency / status) — adjust them in the headers, then format cells as usual.</div>
+
+      <div class="ncm-ss-toolbar">
+        <button type="button" data-action="ssFormat" data-fmt="bold" class="ncm-ss-tb" data-tooltip="Bold"><i class="fas fa-bold"></i></button>
+        <span class="ncm-ss-tsep"></span>
+        <span class="ncm-ss-tlbl">text</span>
+        <span class="ncm-ss-dots">
+          {{#each ssColors}}<button type="button" data-action="ssColor" data-kind="color" data-c="{{this}}" class="ncm-ss-dot ncm-ct-c--{{this}}" data-tooltip="{{this}}"><i class="fas fa-font"></i></button>{{/each}}
+          <button type="button" data-action="ssColor" data-kind="color" data-c="" class="ncm-ss-dot" data-tooltip="no color"><i class="fas fa-ban"></i></button>
+        </span>
+        <span class="ncm-ss-tsep"></span>
+        <span class="ncm-ss-tlbl">fill</span>
+        <span class="ncm-ss-dots">
+          {{#each ssColors}}<button type="button" data-action="ssColor" data-kind="bg" data-c="{{this}}" class="ncm-ss-dot ncm-ct-bg--{{this}}" data-tooltip="{{this}}"></button>{{/each}}
+          <button type="button" data-action="ssColor" data-kind="bg" data-c="" class="ncm-ss-dot" data-tooltip="no fill"><i class="fas fa-ban"></i></button>
+        </span>
+        <span class="ncm-ss-tsep"></span>
+        <button type="button" data-action="ssFormat" data-fmt="flag" class="ncm-ss-tb" data-tooltip="Flag cell (⚠)"><i class="fas fa-flag"></i></button>
+        <input type="text" class="ncm-ss-reason ncm-config-input" placeholder="flag reason (tooltip on the cell)" />
+        <button type="button" data-action="ssFormat" data-fmt="redact" class="ncm-ss-tb" data-tooltip="Redact cell (blacked out)"><i class="fas fa-eye-slash"></i></button>
+        <button type="button" data-action="ssFormat" data-fmt="clear" class="ncm-ss-tb" data-tooltip="Clear formatting"><i class="fas fa-eraser"></i></button>
+      </div>
+
+      <div class="ncm-ss-gridwrap" data-ss></div>
+      <button type="button" data-action="ssAddRow" class="ncm-cl-add"><i class="fas fa-plus"></i> Add row</button>
+
+      <div class="ncm-config-row" style="margin-top:6px;">
+        <label class="ncm-config-check"><input type="checkbox" name="ssTotals" {{#if ss.totals}}checked{{/if}} /> Σ total the number/currency columns</label>
+      </div>
+      <div class="ncm-config-row"><label class="ncm-config-label">Note</label><input type="text" name="ssNote" class="ncm-config-input ncm-config-flex" value="{{ss.note}}" placeholder="Footnote under the table (optional)" /></div>
+      <div class="ncm-config-hint">Click a cell, then use the toolbar: bold · text color · fill · flag (amber ⚠, with tooltip reason) · redact (blacked out). Column type drives alignment — number/currency right-align and can Σ total; status renders value pills (CLEARED / HELD / DENIED…). The viewer’s cell-reference bar spotlights the first flagged cell.</div>
+      <div class="ncm-config-row">
+        <label class="ncm-config-label">Timestamp</label>
+        <div class="ncm-ctp-trigger" data-action="openTimePicker" data-target="timestamp">
+          <i class="fas fa-clock ncm-ctp-trigger__icon"></i>
+          <span class="ncm-ctp-trigger__value">{{#if editTimestampFormatted}}{{editTimestampFormatted}}{{else}}{{defaultTimestampFormatted}}{{/if}}</span>
+          <i class="fas fa-chevron-down ncm-ctp-trigger__chevron"></i>
+        </div>
+        <input type="hidden" name="timestamp" value="{{#if editTimestamp}}{{editTimestamp}}{{else}}{{defaultTimestamp}}{{/if}}" />
+      </div>
+    </fieldset>
+  {{/if}}
+
   {{!-- ═══ PER-ENTRY ENCRYPTION ═══ --}}
   {{#if isPerMessageEncryption}}
     <fieldset class="ncm-config-section">
@@ -410,7 +587,8 @@
     </fieldset>
   {{/if}}
 
-  {{!-- ═══ NETWORK VISIBILITY ═══ --}}
+  {{!-- ═══ NETWORK VISIBILITY — shards gate on the reader's network; terminal
+        messages gate on the TERMINAL's own uplink (the machine's connection) ═══ --}}
   <fieldset class="ncm-config-section">
     <legend class="ncm-config-legend"><i class="fas fa-eye-slash"></i> Network Visibility</legend>
     <div class="ncm-config-row">
@@ -428,7 +606,11 @@
         <button type="button" data-action="addEntryNetworkTag" class="ncm-shard-hdr-btn" title="Add network"><i class="fas fa-plus"></i></button>
       </div>
     </div>
-    <div class="ncm-config-hint">When restricted, this entry only appears on selected networks.</div>
+    {{#if isTerminalTarget}}
+      <div class="ncm-config-hint">When restricted, this message only appears while the TERMINAL's uplink is one of these networks — switch the machine's connection to reveal it. (The player's own network doesn't matter.)</div>
+    {{else}}
+      <div class="ncm-config-hint">When restricted, this entry only appears on selected networks.</div>
+    {{/if}}
   </fieldset>
 
   {{!-- ═══ ACTIONS ═══ --}}
@@ -441,6 +623,11 @@
     {{/if}}
   </div>
 </form>
+  <aside class="ncm-composer-preview">
+    <div class="ncm-composer-preview-label"><i class="fas fa-eye"></i> Live preview</div>
+    <div class="ncm-composer-preview-body"></div>
+  </aside>
+</div>
 {{else}}
   <p style="padding:20px;text-align:center;color:var(--ncm-text-muted);">No shard selected.</p>
 {{/if}}

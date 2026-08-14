@@ -12,7 +12,7 @@
  *              Initialization priority: ready/30
  */
 
-import { MODULE_ID, EVENTS, SOCKET_OPS, DEFAULTS, NETWORKS, NETWORK_TYPES, SECURITY_LEVELS } from '../utils/constants.js';
+import { MODULE_ID, EVENTS, SOCKET_OPS, DEFAULTS, NETWORKS, NETWORK_TYPES, SECURITY_LEVELS, NETWORK_ACCESS_MODES, CONNECTION_MODES } from '../utils/constants.js';
 import { log, isGM, generateId } from '../utils/helpers.js';
 
 export class NetworkService {
@@ -238,6 +238,70 @@ export class NetworkService {
   isAuthenticated(networkId) {
     if (isGM()) return true;
     return this._authenticatedNetworks.has(networkId);
+  }
+
+  /**
+   * Evaluate a network-access config block against the CURRENT connection.
+   * The shared "am I on an allowed network with enough signal?" contract used by
+   * both Data Shards and Terminals — each caller owns the `required` decision and
+   * any GM bypass; this only answers the access question itself (no GM bypass
+   * here, so shard behavior is unchanged by the extraction).
+   *
+   * @param {object} netConfig - { accessMode, allowedNetworks[], allowedTypes[], connectionMode, signalThreshold }
+   * @returns {{ allowed: boolean, reason?: string, requiredNetwork?: string|null, signalInfo?: {signal:number, threshold:number} }}
+   */
+  checkAccess(netConfig = {}) {
+    const currentNetworkId = this.currentNetworkId;
+    const currentNetworkType = this.currentNetwork?.type ?? null;
+
+    // No network connected at all.
+    if (!currentNetworkId) {
+      return { allowed: false, reason: 'No network connection' };
+    }
+
+    const mode = netConfig.accessMode ?? NETWORK_ACCESS_MODES.ANY;
+    let accessGranted;
+    switch (mode) {
+      case NETWORK_ACCESS_MODES.WHITELIST:
+        accessGranted = (netConfig.allowedNetworks ?? []).includes(currentNetworkId);
+        break;
+      case NETWORK_ACCESS_MODES.TYPE:
+        accessGranted = (netConfig.allowedTypes ?? []).includes(currentNetworkType);
+        break;
+      case NETWORK_ACCESS_MODES.BOTH:
+        accessGranted = (netConfig.allowedNetworks ?? []).includes(currentNetworkId)
+          || (netConfig.allowedTypes ?? []).includes(currentNetworkType);
+        break;
+      case NETWORK_ACCESS_MODES.ANY:
+      default:
+        accessGranted = true;
+    }
+
+    if (!accessGranted) {
+      const requirements = [];
+      if (netConfig.allowedTypes?.length) requirements.push(`Type: ${netConfig.allowedTypes.join(', ')}`);
+      if (netConfig.allowedNetworks?.length) requirements.push(`Networks: ${netConfig.allowedNetworks.join(', ')}`);
+      return {
+        allowed: false,
+        reason: `Network access restricted — ${requirements.join(' or ')}`,
+        requiredNetwork: netConfig.allowedNetworks?.[0] ?? null,
+      };
+    }
+
+    // Tethered connection — also enforce a minimum signal.
+    if (netConfig.connectionMode === CONNECTION_MODES.TETHERED) {
+      const signal = this.signalStrength ?? 100;
+      const threshold = netConfig.signalThreshold ?? 40;
+      if (signal < threshold) {
+        return {
+          allowed: false,
+          reason: `Signal too weak (${signal}% < ${threshold}% required)`,
+          signalInfo: { signal, threshold },
+        };
+      }
+    }
+
+    return { allowed: true };
   }
 
   // ═══════════════════════════════════════════════════════════
