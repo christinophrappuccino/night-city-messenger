@@ -179,10 +179,14 @@
         <i class="fas fa-ban"></i> Spam
         {{#if counts.spam}}<span class="ncm-pill__badge">{{counts.spam}}</span>{{/if}}
       </span>
+      {{!-- Everything pulled off a terminal lands here — downloaded mail, burned
+            intel, captured camera frames. The label is GM-renameable
+            (exfilFolderName); the FILTER key stays 'recovered' so no stored
+            data changes. --}}
       {{#if counts.recovered}}
       <span class="ncm-pill {{#if (eq currentFilter 'recovered')}}ncm-pill--active{{/if}}"
             data-action="set-filter" data-filter="recovered">
-        <i class="fas fa-download"></i> Recovered
+        <i class="fas fa-download"></i> {{exfilFolderName}}
         <span class="ncm-pill__badge">{{counts.recovered}}</span>
       </span>
       {{/if}}
@@ -345,14 +349,20 @@
         {{!-- Refinement Bar --}}
         <div class="ncm-viewer__refine-bar">
           <div class="ncm-viewer__refine-controls">
+            {{!-- With a range set, the RANGE *is* the label — the word "Dates"
+                  is redundant next to a calendar icon, and keeping it crammed
+                  four things (icon + "Dates" + range + ×) into one small pill in
+                  a narrow bar. Active: icon · range · clear-button. --}}
             <span class="ncm-viewer__date-filter {{#if hasDateRange}}ncm-viewer__date-filter--active{{/if}}"
-                  data-action="open-date-picker">
-              <i class="fas fa-calendar-days"></i> Dates
+                  data-action="open-date-picker"
+                  {{#if hasDateRange}}data-tooltip="Change the date range"{{/if}}>
+              <i class="fas fa-calendar-days"></i>
               {{#if hasDateRange}}
                 <span class="ncm-viewer__date-range">{{dateRangeLabel}}</span>
-                <span class="ncm-viewer__date-clear" data-action="clear-date-range">&times;</span>
+                <button type="button" class="ncm-viewer__date-clear" data-action="clear-date-range"
+                        data-tooltip="Clear the date range"><i class="fas fa-xmark"></i></button>
               {{else}}
-                <i class="fas fa-caret-down"></i>
+                Dates <i class="fas fa-caret-down"></i>
               {{/if}}
             </span>
             <span class="ncm-viewer__sort-btn" data-action="toggle-sort-dropdown">
@@ -460,8 +470,24 @@
           </div>
         {{/if}}
 
+        {{!-- MAIL / FILES solo chips (#37). A real data-action backed by app
+              state (activeEnvFilter) — NOT the display-only gallery driver: the
+              viewer re-renders on every click, so a visual-only filter reset
+              itself the moment you opened an item. Only rendered when the view
+              holds BOTH kinds (in practice, the exfil folder). --}}
+        {{#if envFilter}}
+          <div class="ncm-viewer__envchips">
+            <button type="button" class="ncm-viewer__envchip {{#if (eq activeEnvFilter 'all')}}is-on{{/if}}"
+                    data-action="set-env-filter" data-f="all">ALL</button>
+            <button type="button" class="ncm-viewer__envchip {{#if (eq activeEnvFilter 'mail')}}is-on{{/if}}"
+                    data-action="set-env-filter" data-f="mail" data-tooltip="Show only mail"><i class="fas fa-envelope"></i> {{envFilter.mail}}</button>
+            <button type="button" class="ncm-viewer__envchip {{#if (eq activeEnvFilter 'file')}}is-on{{/if}}"
+                    data-action="set-env-filter" data-f="file" data-tooltip="Show only files pulled off a terminal"><i class="fas fa-folder"></i> {{envFilter.file}}</button>
+          </div>
+        {{/if}}
+
         {{!-- Message List --}}
-        <div class="ncm-viewer__msg-list ncm-scrollbar">
+        <div class="ncm-viewer__msg-list ncm-scrollbar" data-env-filter="{{activeEnvFilter}}">
           {{#if messages.length}}
             {{#each messages}}
               {{> "modules/cyberpunkred-messenger/templates/message-viewer/partials/message-list-item.hbs" }}

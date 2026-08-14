@@ -309,19 +309,36 @@
 .ncm-app .ncm-viewer__date-filter i,
 .ncm-app .ncm-viewer__sort-btn i { font-size: calc(8px * var(--ncm-text-scale, 1)); }
 
-/* Dates — active state (gold tint when date range set) */
+/* Dates — active state (gold tint when a range is set). The range REPLACES the
+   word "Dates" (the calendar icon already says it), so the pill holds two
+   things instead of four and the dates get room to breathe. It also never
+   shrinks or wraps mid-range. */
 .ncm-app .ncm-viewer__date-filter--active {
-  color: var(--ncm-accent); border-color: rgba(240,197,91,0.3);
-  background: rgba(240,197,91,0.06);
+  color: var(--ncm-accent); border-color: rgba(240,197,91,0.35);
+  background: rgba(240,197,91,0.08);
+  flex: 0 0 auto; gap: 6px; padding: 3px 3px 3px 8px; white-space: nowrap;
 }
 .ncm-app .ncm-viewer__date-range {
-  font-family: var(--ncm-font-mono); font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-accent);
+  font-family: var(--ncm-font-mono); font-size: calc(10px * var(--ncm-text-scale, 1));
+  letter-spacing: .3px; color: var(--ncm-accent); white-space: nowrap;
 }
-.ncm-app .ncm-viewer__date-clear {
-  font-size: calc(9px * var(--ncm-text-scale, 1)); color: var(--ncm-text-dim); margin-left: 2px;
-  cursor: pointer; transition: color 0.15s;
+/* The clear is a real button with its own hit area, divided off the range. */
+.ncm-app button.ncm-viewer__date-clear {
+  appearance: none !important; -webkit-appearance: none !important;
+  display: grid; place-items: center; flex: 0 0 auto;
+  width: 16px !important; height: 16px !important; min-height: 0 !important;
+  margin: 0 !important; padding: 0 !important;
+  border: none !important; border-left: 1px solid rgba(240,197,91,0.25) !important;
+  border-radius: 0 2px 2px 0 !important; box-shadow: none !important;
+  background: transparent !important; cursor: pointer;
+  color: var(--ncm-text-muted) !important;
+  font-size: calc(9px * var(--ncm-text-scale, 1)) !important;
 }
-.ncm-app .ncm-viewer__date-filter--active:hover .ncm-viewer__date-clear { color: var(--ncm-primary); }
+.ncm-app button.ncm-viewer__date-clear i { margin: 0 !important; font-size: inherit !important; }
+.ncm-app button.ncm-viewer__date-clear:hover {
+  color: var(--ncm-danger) !important;
+  background: color-mix(in srgb, var(--ncm-danger) 14%, transparent) !important;
+}
 
 /* ── Filter trigger — dashed border, solid+cyan when active ── */
 .ncm-app .ncm-viewer__filter-trigger {
@@ -486,6 +503,19 @@
 .ncm-app .ncm-viewer__msg-list { flex: 1; overflow-y: auto; overflow-x: hidden; }
 .ncm-app .ncm-viewer__detail-panel { flex: 1; display: flex; flex-direction: column; background: var(--ncm-bg-base); overflow: hidden; }
 
+/* Player wallpaper (Theme Customizer → Effects; --ncm-wallpaper[-strength]
+   set on :root by ThemeService.applyTheme) — behind both viewer panes. The
+   terminal-wallpaper pattern: isolation + a z-index:-1 pseudo paints above the
+   panel's own opaque background but below all content, no child overrides.
+   Terminals stay isolated (element-scoped applyTheme writes an explicit
+   `none` when the terminal has no wallpaper of its own). */
+.ncm-app .ncm-viewer__list-panel, .ncm-app .ncm-viewer__detail-panel { position: relative; isolation: isolate; }
+.ncm-app .ncm-viewer__list-panel::before, .ncm-app .ncm-viewer__detail-panel::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none; z-index: -1;
+  background-image: var(--ncm-wallpaper, none); background-size: cover; background-position: center;
+  opacity: var(--ncm-wallpaper-strength, .25);
+}
+
 /* Panel Divider */
 .ncm-app .ncm-viewer__divider {
   width: 4px; background: var(--ncm-bg-deep); cursor: col-resize;
@@ -532,14 +562,25 @@
   background: var(--ncm-bg-surface);
 }
 
-/* ── Collapsed state ── */
+/* ── Collapsed state ──
+   The width TRANSITIONS (it used to snap). This works only because
+   _toggleListPanel toggles the class on the LIVE node instead of re-rendering —
+   an AppV2 re-render replaces the element, so it'd be born collapsed with
+   nothing to animate from. Same reason the terminal's collapse is DOM-only. */
+.ncm-app .ncm-viewer__list-panel {
+  transition: width .3s cubic-bezier(0.22, 1, 0.36, 1),
+              padding .3s cubic-bezier(0.22, 1, 0.36, 1),
+              opacity .18s ease;
+}
 .ncm-app .ncm-viewer__split--list-collapsed .ncm-viewer__list-panel {
   width: 0 !important;
   min-width: 0;
   overflow: hidden;
   border-right: none;
   padding: 0;
+  opacity: 0;
 }
+.ncm-app .ncm-viewer__collapse-toggle i { transition: transform .3s cubic-bezier(0.22, 1, 0.36, 1); }
 
 .ncm-app .ncm-viewer__split--list-collapsed .ncm-viewer__collapse-toggle i {
   transform: rotate(180deg);
@@ -553,12 +594,29 @@
 /* ═══════════════════════════════════════════════════════════
    §9  MESSAGE LIST ITEMS
    ═══════════════════════════════════════════════════════════ */
+/* ═══ MOTION (#38) — the same vocabulary the terminal inherits: expo-out,
+   0.3s entrances, 0.18s micro-interactions, translate + fade. `is-fresh` is
+   stamped by _stampMotion ONLY when the list/detail actually changed — this app
+   re-renders on every click, and a cascade tied to "render" would twitch the
+   list every time you opened a message. ═══ */
+@keyframes ncm-viewer-rowin { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.ncm-app .ncm-viewer__msg-list.is-fresh .ncm-viewer__msg {
+  animation: ncm-viewer-rowin .3s cubic-bezier(0.22, 1, 0.36, 1) both;
+  /* Capped, or a 25-row page turns the cascade into a wait. */
+  animation-delay: calc(min(var(--ncm-i, 0), 9) * 40ms);
+}
+@keyframes ncm-viewer-detin { from { opacity: 0; transform: translateX(14px); } to { opacity: 1; transform: none; } }
+.ncm-app .ncm-viewer__detail-panel.is-fresh {
+  animation: ncm-viewer-detin .3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 .ncm-app .ncm-viewer__msg {
   display: flex; align-items: flex-start; gap: 10px;
   padding: 10px 14px; border-bottom: 1px solid rgba(42,42,69,0.5);
-  cursor: pointer; transition: background 0.12s; position: relative;
+  cursor: pointer; position: relative;
+  transition: background .18s ease, transform .18s cubic-bezier(0.22, 1, 0.36, 1);
 }
-.ncm-app .ncm-viewer__msg:hover { background: var(--ncm-bg-surface); }
+.ncm-app .ncm-viewer__msg:hover { background: var(--ncm-bg-surface); transform: translateX(2px); }
 .ncm-app .ncm-viewer__msg--selected { background: rgba(0,212,230,0.06); border-left: 3px solid var(--ncm-secondary); padding-left: 11px; }
 .ncm-app .ncm-viewer__msg--unread::before {
   content: ''; position: absolute; left: 5px; top: 50%; transform: translateY(-50%);
@@ -1121,7 +1179,35 @@
 @media (prefers-reduced-motion: reduce) {
   .ncm-app .ncm-viewer__thread,
   .ncm-app .ncm-viewer__thread-entry { animation: none !important; }
+
+  /* MOTION PASS (#38) — every entrance collapses to its END state (not to
+     opacity 0, which `both` fill would otherwise leave behind). */
+  .ncm-app .ncm-viewer__msg-list.is-fresh .ncm-viewer__msg,
+  .ncm-app .ncm-viewer__detail-panel.is-fresh {
+    animation: none !important; opacity: 1 !important; transform: none !important;
+  }
+  .ncm-app .ncm-viewer__msg,
+  .ncm-app .ncm-viewer__list-panel,
+  .ncm-app .ncm-viewer__collapse-toggle i,
+  .ncm-app .ncm-viewer__date-filter,
+  .ncm-app .ncm-viewer__sort-btn,
+  .ncm-app .ncm-viewer__envchip { transition: none !important; }
+  .ncm-app .ncm-viewer__msg:hover,
+  .ncm-app .ncm-viewer__date-filter:hover,
+  .ncm-app .ncm-viewer__sort-btn:hover { transform: none !important; }
 }
+
+/* Refine-bar micro-interactions — the controls answer the cursor. */
+.ncm-app .ncm-viewer__date-filter,
+.ncm-app .ncm-viewer__sort-btn,
+.ncm-app .ncm-viewer__filter-trigger,
+.ncm-app .ncm-viewer__envchip {
+  transition: color .18s ease, border-color .18s ease, background .18s ease,
+              transform .18s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.ncm-app .ncm-viewer__date-filter:hover,
+.ncm-app .ncm-viewer__sort-btn:hover,
+.ncm-app .ncm-viewer__filter-trigger:hover { transform: translateY(-1px); }
 
 /* Detail Action Bar */
 .ncm-app .ncm-viewer__detail-actions {
@@ -1309,7 +1395,8 @@
   display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden;
 }
 .ncm-app .ncm-viewer--drawer-open .ncm-viewer__drawer { transform: translateX(0); }
-.ncm-app .ncm-viewer__drawer-accent { height: 2px; flex-shrink: 0; opacity: 0.6; background: linear-gradient(90deg, var(--ncm-secondary), var(--ncm-primary)); }
+/* Flat line, not a gradient (the standing flat-accent preference). */
+.ncm-app .ncm-viewer__drawer-accent { height: 2px; flex-shrink: 0; opacity: 0.6; background: var(--ncm-primary); }
 
 .ncm-app .ncm-viewer__drawer-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px 8px; border-bottom: 1px solid var(--ncm-border); flex-shrink: 0; }
 .ncm-app .ncm-viewer__drawer-title { font-family: var(--ncm-font-title); font-size: calc(10px * var(--ncm-text-scale, 1)); font-weight: 600; color: var(--ncm-secondary); text-transform: uppercase; letter-spacing: 0.12em; }
@@ -1723,4 +1810,76 @@
 /* Wrapper around the shared partial in the detail body */
 .ncm-app .ncm-viewer__typed-content {
   margin: 4px 0 12px;
+}
+
+/* ── MAIL / FILES solo chips (#37). The filter is APP STATE and it narrows the
+      MESSAGE LIST itself (so pagination stays honest) — CSS only styles the
+      chips. A display-only toggle reset itself on the very first click, because
+      opening a message re-renders the whole app. ── */
+.ncm-app .ncm-viewer__envchips {
+  display: flex; gap: 5px; padding: 6px 10px 0;
+}
+.ncm-app button.ncm-viewer__envchip {
+  appearance: none !important; -webkit-appearance: none !important;
+  flex: 1 1 0; width: auto !important; height: auto !important; min-height: 0 !important;
+  margin: 0 !important; padding: 3px 0 !important;
+  background: transparent !important; border: 1px solid var(--ncm-border) !important;
+  border-radius: 20px !important; box-shadow: none !important; cursor: pointer; line-height: 1.4;
+  font-family: var(--ncm-font-mono); font-size: 8.5px; font-weight: 700; letter-spacing: 1px;
+  color: var(--ncm-text-muted) !important;
+}
+.ncm-app button.ncm-viewer__envchip.is-on {
+  color: var(--ncm-secondary) !important; border-color: var(--ncm-secondary) !important;
+  background: color-mix(in srgb, var(--ncm-secondary) 10%, transparent) !important;
+}
+
+/* ── FILE list rows (#37) — the row must agree with the detail pane it opens:
+      content-type tile instead of an avatar, filename instead of a sender,
+      "type · size" instead of a subject, path instead of a body preview.
+      Same 3-line skeleton as a mail row, so a mixed Recovered folder reads as
+      ONE list. ── */
+.ncm-app .ncm-viewer__msg-avatar--file {
+  display: grid; place-items: center; font-size: 13px;
+  color: var(--ct-c, var(--ncm-secondary));
+  border-color: color-mix(in srgb, var(--ct-c, var(--ncm-secondary)) 55%, transparent) !important;
+  background: color-mix(in srgb, var(--ct-c, var(--ncm-secondary)) 10%, transparent);
+}
+.ncm-app .ncm-viewer__msg-filename {
+  font-family: var(--ncm-font-mono) !important; letter-spacing: .2px;
+}
+.ncm-app .ncm-viewer__msg-tag {
+  flex: 0 0 auto; display: inline-flex; align-items: center;
+  font-family: var(--ncm-font-mono); font-size: 8.5px; font-weight: 700;
+  letter-spacing: 1px; text-transform: uppercase;
+  color: var(--ct-c, var(--ncm-secondary));
+  border: 1px solid color-mix(in srgb, var(--ct-c, var(--ncm-secondary)) 40%, transparent);
+  background: color-mix(in srgb, var(--ct-c, var(--ncm-secondary)) 8%, transparent);
+  border-radius: 3px; padding: 1px 5px;
+}
+.ncm-app .ncm-viewer__msg-size {
+  font-family: var(--ncm-font-mono); font-size: 9.5px; color: var(--ncm-text-muted); margin-left: 6px;
+}
+.ncm-app .ncm-viewer__msg-preview--path {
+  font-family: var(--ncm-font-mono); font-size: 9.5px;
+}
+
+/* ── FILE detail header (#37) — a recovered/captured FILE has no sender and no
+      recipient, so the From/To identity block is replaced: the avatar becomes
+      the content-type tile, the sender name becomes the filename, and "to X"
+      becomes "source: <terminal · account>". The expandable grid swaps
+      From/To/Net for Source/Owner/Path/Size. ── */
+.ncm-app .ncm-viewer__detail-avatar--file {
+  display: grid; place-items: center; font-size: 15px;
+  color: var(--ct-c, var(--ncm-secondary));
+  border-color: color-mix(in srgb, var(--ct-c, var(--ncm-secondary)) 55%, transparent) !important;
+  background: color-mix(in srgb, var(--ct-c, var(--ncm-secondary)) 10%, transparent);
+}
+.ncm-app .ncm-viewer__detail-filename {
+  font-family: var(--ncm-font-mono) !important; letter-spacing: .3px;
+}
+.ncm-app .ncm-viewer__file-tag {
+  font-family: var(--ncm-font-mono); font-size: 8px; font-weight: 700; letter-spacing: 1.2px;
+  text-transform: uppercase; color: var(--ct-c, var(--ncm-secondary));
+  border: 1px solid color-mix(in srgb, var(--ct-c, var(--ncm-secondary)) 45%, transparent);
+  border-radius: 3px; padding: 2px 6px; white-space: nowrap;
 }

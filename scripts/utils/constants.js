@@ -108,6 +108,10 @@ export const SOCKET_OPS = Object.freeze({
   TERMINAL_STATE_CHANGED:  'terminal:stateChanged',
   TERMINAL_EXFIL_REQUEST:  'terminal:exfilRequest',
   TERMINAL_NET_REQUEST:    'terminal:netRequest',
+  // Player→GM relay for terminal session-state writes (login / account switch /
+  // logout) — players can't update the GM-owned world item. No RESULT op: the
+  // flag write syncs back and the viewer re-renders off its updateItem hook.
+  TERMINAL_SESSION_REQUEST: 'terminal:sessionRequest',
   TERMINAL_EXFIL_RESULT:   'terminal:exfilResult',
   // Banking siphon — player→GM relay. Carries outcome 'success' (persist the
   // account drain to its GM-owned journal page) or 'fail' (trace + GM alert).
@@ -115,6 +119,72 @@ export const SOCKET_OPS = Object.freeze({
   // Generic typed-content write relay (eddies claim / credential crack / any
   // future contentData mutation) — { messageId, newContentData, gmToast }.
   CONTENT_UPDATE_REQUEST:  'content:updateRequest',
+  // Payload execution relay (player→GM) — the roll runs client-side, but the
+  // module-native effect (unseal host files / clear lockouts / scan / jam) +
+  // the payload state write are GM-owned. Carries { messageId, actorId,
+  // outcome:'success'|'fail'|'kill' }.
+  PAYLOAD_EFFECT_REQUEST:  'payload:effectRequest',
+  // Player→GM relay for UPLOAD/PLANT — a player rolls the FORGE check client-side
+  // then relays the resulting resident for the GM to install on the GM-owned
+  // terminal (residents live in terminalState). Carries { itemUuid, resident }.
+  TERMINAL_RESIDENT_REQUEST: 'terminal:residentRequest',
+  // Player→GM relay for a trace event — the log + heat are GM-owned world
+  // settings, so a player who trips a trace relays the record to the GM.
+  TRACE_REQUEST: 'trace:request',
+  // Netrunning Tier C (design §5, `hackResolution: 'gm'`) — the action does NOT
+  // auto-roll; the player asks the GM to adjudicate pass/fail at the table.
+  // REQUEST { requestId, userId, payload } → the GM's NetAdjudicator prompt →
+  // RESULT { requestId, userId, choiceId|cancelled }. CANCEL lets the waiting
+  // player withdraw (closes the GM prompt, nothing resolves).
+  NET_RESOLVE_REQUEST: 'net:resolveRequest',
+  NET_RESOLVE_RESULT:  'net:resolveResult',
+  NET_RESOLVE_CANCEL:  'net:resolveCancel',
+  // GM→player: the GM docked/restored their adjudicator ("RUN THE NET"). The
+  // waiting player's console mirrors it — docks to a NETRUN-IN-PROGRESS chip
+  // when the GM steps into the run, restores when the GM comes back to call it —
+  // so the two screens stay in sync instead of the player guessing. Carries
+  // { requestId, userId, minimized }.
+  NET_RESOLVE_STATE:   'net:resolveState',
+  // GM→everyone: a forced (escalation) lockout. SecurityService state is
+  // CLIENT-LOCAL — a GM-side forceLockout alone never reaches the player's
+  // client, which let a locked-out player just log back in. Carries
+  // { actorId, targets[], durationMs, label, reason }; every client applies it
+  // locally, and the client whose user owns the actor toasts + kicks any open
+  // terminal/shard session on the locked target.
+  SECURITY_LOCKOUT: 'security:forceLockout',
+  // GM→specific users: a targeted security toast (e.g. "BLACK ICE fights back")
+  // for events applied on another client. { userIds[], kind, data } — the
+  // receiving client renders via NotificationService.
+  SECURITY_NOTIFY: 'security:notify',
+});
+
+// ─── Netrunning binding (design §5) ───
+
+/** hackResolution tiers — HOW a gated hack/upload action resolves. */
+export const HACK_RESOLUTION_MODES = Object.freeze({
+  AUTO: 'auto',       // roll it (current behavior) — an abstraction of netrunning
+  FLAGGED: 'flagged', // roll it, but announce the NET-action shape on a GM card
+  GM: 'gm',           // don't roll — the table runs the NET, the GM calls pass/fail
+});
+
+/**
+ * The RED NET-action each module action is an abstraction OF (§5's `netAction`
+ * vocabulary). Keys are the `action` strings the flows already pass to
+ * fireTrace/logSuccess (plus resident effectTypes), so TraceService can derive
+ * the verb centrally with zero call-site churn. Unknown actions → no verb.
+ */
+export const NET_ACTION_VERBS = Object.freeze({
+  // manipulation / forgery / system control
+  upload: 'Control', plant: 'Control', siphon: 'Control', camera: 'Control',
+  jammer: 'Control', exfil: 'Control', claim: 'Control',
+  // breaking security
+  crack: 'Backdoor', unlock: 'Backdoor', declassify: 'Backdoor', decrypt: 'Backdoor',
+  forgeAccount: 'Backdoor', skeletonKey: 'Backdoor', icebreaker: 'Backdoor', 'net-join': 'Backdoor',
+  // reading / identifying
+  analyze: 'Eye-Dee', scanner: 'Eye-Dee', keylog: 'Scanner',
+  // destructive payloads
+  malware: 'Virus', deploy: 'Virus', wipe: 'Virus', logicBomb: 'Virus',
+  deployICE: 'Black ICE',
 });
 
 // ─── Network Types ───
@@ -148,6 +218,10 @@ export const CONTENT_TYPES = Object.freeze({
   // Phase 2 — shared content renderers (design doc §8c)
   SPREADSHEET: 'spreadsheet', CALENDAR: 'calendar', SYSLOG: 'syslog',
   CREDENTIALS: 'credentials', BANKING: 'banking',
+  // Phase 2 wave 3 — §8c continued
+  GALLERY: 'gallery', DOCUMENT: 'document', CHATLOG: 'chatlog',
+  // Phase 2 wave 4 — §8c catalog complete (AUDIO/VIDEO ride AVLOG)
+  RECORD: 'record', SCHEMATIC: 'schematic', NOTE: 'note', MALWARE: 'malware',
 });
 
 export const NETWORK_ACCESS_MODES = Object.freeze({
@@ -444,7 +518,7 @@ export const SHARD_PRESETS = Object.freeze({
 // TERMINAL_ACCOUNT seeds (merged over DEFAULTS.TERMINAL_ACCOUNT on apply).
 export const TERMINAL_PRESETS = Object.freeze({
   'arasaka-workstation': {
-    label: 'Arasaka Workstation', icon: 'fas fa-building', loginStyle: 'cards',
+    label: 'Arasaka Workstation', icon: 'fas fa-building', loginStyle: 'cards', soundSet: 'corp-chime',
     login: {motd: 'ARASAKA NETWORK — ALL ACTIVITY IS MONITORED',welcomeText: 'Welcome back, employee. Productivity is loyalty.'},
     screensaver: {enabled: true,idleSeconds: 180,text: 'ARASAKA',iconMode: 'boot',faIcon: '',imageUrl: '',motion: 'drift'},
     folderNames: {inbox: 'Correspondence',saved: 'Flagged',trash: 'Shredder'},
@@ -457,7 +531,7 @@ export const TERMINAL_PRESETS = Object.freeze({
     ],
   },
   'netwatch-unit': {
-    label: 'NetWatch Field Unit', icon: 'fas fa-satellite-dish', loginStyle: 'cards',
+    label: 'NetWatch Field Unit', icon: 'fas fa-satellite-dish', loginStyle: 'cards', soundSet: 'mil-hardline',
     login: {motd: 'CLASSIFIED SYSTEM — NETWATCH EYES ONLY',welcomeText: 'Clearance verified. Watch the Wall.'},
     screensaver: {enabled: true,idleSeconds: 120,text: 'NETWATCH',iconMode: 'boot',faIcon: '',imageUrl: '',motion: 'static'},
     folderNames: {inbox: 'Bulletins',saved: 'Casework',trash: 'Purged'},
@@ -467,7 +541,7 @@ export const TERMINAL_PRESETS = Object.freeze({
     accounts: [{ username: 'root', displayName: 'field-agent', isAdmin: true, security: { requiresAuth: true, allowPassword: true, allowSkillCheck: true, authLogic: 'all', bypassSkills: ['Cryptography'], bypassDC: 20 } }],
   },
   'streetkid-bbs': {
-    label: 'Streetkid BBS', icon: 'fas fa-skull', loginStyle: 'crt',
+    label: 'Streetkid BBS', icon: 'fas fa-skull', loginStyle: 'crt', soundSet: 'street-bbs',
     login: {motd: 'no narcs. no corpos. no exceptions.',welcomeText: 'yo. the board remembers you.'},
     screensaver: {enabled: true,idleSeconds: 150,text: 'AFTERLIFE BBS',iconMode: 'boot',faIcon: '',imageUrl: '',motion: 'bounce'},
     folderNames: {inbox: 'Posts',saved: 'Pinned',trash: 'Burned'},
@@ -480,7 +554,7 @@ export const TERMINAL_PRESETS = Object.freeze({
     ],
   },
   'retro-dos': {
-    label: 'Retro-DOS', icon: 'fas fa-terminal', loginStyle: 'crt',
+    label: 'Retro-DOS', icon: 'fas fa-terminal', loginStyle: 'crt', soundSet: 'street-bbs',
     login: {motd: 'C:\\\\> AUTHORIZED USERS ONLY',welcomeText: 'SESSION OK. HAVE A PRODUCTIVE DAY.'},
     screensaver: {enabled: true,idleSeconds: 90,text: 'INSERT CREDCHIP',iconMode: 'boot',faIcon: '',imageUrl: '',motion: 'bounce'},
     folderNames: {inbox: 'Mail',saved: 'Archive',trash: 'Deleted'},
@@ -490,7 +564,7 @@ export const TERMINAL_PRESETS = Object.freeze({
     accounts: [{ username: 'user', displayName: 'user', isAdmin: false, security: { requiresAuth: true, allowPassword: true } }],
   },
   'ripperdoc': {
-    label: 'Ripperdoc PC', icon: 'fas fa-staff-snake', loginStyle: 'cards',
+    label: 'Ripperdoc PC', icon: 'fas fa-staff-snake', loginStyle: 'cards', soundSet: 'med-soft',
     login: {motd: 'PATIENT CONFIDENTIALITY IN EFFECT',welcomeText: 'Scrub in. Charts are current.'},
     screensaver: {enabled: true,idleSeconds: 200,text: 'CLINIC — RING BELL',iconMode: 'boot',faIcon: '',imageUrl: '',motion: 'static'},
     folderNames: {inbox: 'Patients',saved: 'Charts',trash: 'Disposal'},
@@ -500,7 +574,7 @@ export const TERMINAL_PRESETS = Object.freeze({
     accounts: [{ username: 'frontdesk', displayName: 'Front Desk', isAdmin: false, security: { requiresAuth: true, allowKeyItem: true, keyItemName: 'Clinic Keycard' } }],
   },
   'trauma-team': {
-    label: 'Trauma Team Platinum', icon: 'fas fa-truck-medical', loginStyle: 'roster',
+    label: 'Trauma Team Platinum', icon: 'fas fa-truck-medical', loginStyle: 'roster', soundSet: 'med-soft',
     login: {motd: 'SUBSCRIBER DATA — PLATINUM TIER PROTECTED',welcomeText: 'Dispatch link secure. Fly safe.'},
     screensaver: {enabled: true,idleSeconds: 120,text: 'TRAUMA TEAM',iconMode: 'boot',faIcon: '',imageUrl: '',motion: 'drift'},
     folderNames: {inbox: 'Dispatches',saved: 'Priority',trash: 'Closed'},
@@ -513,7 +587,7 @@ export const TERMINAL_PRESETS = Object.freeze({
     ],
   },
   'militech-checkpoint': {
-    label: 'Militech Checkpoint', icon: 'fas fa-shield-halved', loginStyle: 'keypad',
+    label: 'Militech Checkpoint', icon: 'fas fa-shield-halved', loginStyle: 'keypad', soundSet: 'mil-hardline',
     login: {motd: 'LETHAL FORCE AUTHORIZED BEYOND THIS POINT',welcomeText: 'Checkpoint online. Stay frosty.'},
     screensaver: {enabled: true,idleSeconds: 90,text: 'MILITECH',iconMode: 'boot',faIcon: '',imageUrl: '',motion: 'static'},
     folderNames: {inbox: 'Orders',saved: 'Standing',trash: 'Expired'},
@@ -523,7 +597,7 @@ export const TERMINAL_PRESETS = Object.freeze({
     accounts: [{ username: 'gate07', displayName: 'Gate Console', role: 'CHECKPOINT CONSOLE', security: { requiresAuth: true, allowPassword: true, password: '0451' } }],
   },
   'ncpd-precinct': {
-    label: 'NCPD Precinct', icon: 'fas fa-handcuffs', loginStyle: 'roster',
+    label: 'NCPD Precinct', icon: 'fas fa-handcuffs', loginStyle: 'roster', soundSet: 'mil-hardline',
     login: {motd: 'ALL ACCESS LOGGED — IAD AUDITS WEEKLY',welcomeText: 'Shift logged. Watch your six out there.'},
     screensaver: {enabled: true,idleSeconds: 150,text: 'NCPD',iconMode: 'boot',faIcon: '',imageUrl: '',motion: 'drift'},
     folderNames: {inbox: 'Case Files',saved: 'Evidence',trash: 'Purged'},
@@ -536,7 +610,7 @@ export const TERMINAL_PRESETS = Object.freeze({
     ],
   },
   'nomad-rig': {
-    label: 'Nomad Rig-OS', icon: 'fas fa-mountain', loginStyle: 'portraits',
+    label: 'Nomad Rig-OS', icon: 'fas fa-mountain', loginStyle: 'portraits', soundSet: 'street-bbs',
     login: {motd: 'family only. you know the rules.',welcomeText: 'Welcome home. Road is long.'},
     screensaver: {enabled: true,idleSeconds: 240,text: 'ON THE ROAD',iconMode: 'boot',faIcon: '',imageUrl: '',motion: 'bounce'},
     folderNames: {inbox: 'Radio',saved: 'Maps',trash: 'Dust'},
@@ -549,7 +623,7 @@ export const TERMINAL_PRESETS = Object.freeze({
     ],
   },
   'bd-lounge': {
-    label: 'Braindance Lounge', icon: 'fas fa-martini-glass', loginStyle: 'lockscreen',
+    label: 'Braindance Lounge', icon: 'fas fa-martini-glass', loginStyle: 'lockscreen', soundSet: 'ghost-wall',
     login: {motd: 'what happens in the booth stays in the booth',welcomeText: 'Enjoy the ride. Tip your editor.'},
     screensaver: {enabled: true,idleSeconds: 120,text: 'VELVET ROOM',iconMode: 'boot',faIcon: '',imageUrl: '',motion: 'drift'},
     folderNames: {inbox: 'Bookings',saved: 'Regulars',trash: 'Burned'},
@@ -559,7 +633,7 @@ export const TERMINAL_PRESETS = Object.freeze({
     accounts: [{ username: 'boothhost', displayName: 'Booth Host', role: 'LOUNGE HOST', security: { requiresAuth: true, allowPassword: true } }],
   },
   'maelstrom-chopshop': {
-    label: 'Maelstrom Chopshop', icon: 'fas fa-skull-crossbones', loginStyle: 'crt',
+    label: 'Maelstrom Chopshop', icon: 'fas fa-skull-crossbones', loginStyle: 'crt', soundSet: 'street-bbs',
     login: {motd: 'FLESH IS A COSTUME',welcomeText: 'meat verified. get to work.'},
     screensaver: {enabled: true,idleSeconds: 100,text: 'MAELSTROM',iconMode: 'boot',faIcon: '',imageUrl: '',motion: 'bounce'},
     folderNames: {inbox: 'Jobs',saved: 'Parts',trash: 'Scrap'},
@@ -569,7 +643,7 @@ export const TERMINAL_PRESETS = Object.freeze({
     accounts: [{ username: 'wrench', displayName: 'Wrench', role: 'CHOP LEAD', security: { requiresAuth: true, allowPassword: true } }],
   },
   'blackwall-relay': {
-    label: 'Blackwall Relay', icon: 'fas fa-infinity', loginStyle: 'crt',
+    label: 'Blackwall Relay', icon: 'fas fa-infinity', loginStyle: 'crt', soundSet: 'ghost-wall',
     login: {motd: 'DO NOT ANSWER. DO NOT ANSWER. DO NOT ANSWER.',welcomeText: 'it sees you now.'},
     screensaver: {enabled: true,idleSeconds: 60,text: '██████',iconMode: 'boot',faIcon: '',imageUrl: '',motion: 'static'},
     folderNames: {inbox: 'Signals',saved: 'Kept',trash: 'Devoured'},
@@ -577,6 +651,105 @@ export const TERMINAL_PRESETS = Object.freeze({
     security: { requiresAuth: true, allowSkillCheck: true, bypassSkills: ['Interface'], bypassDC: 22, authLogic: 'any', failureMode: 'damage', encryptionType: 'BLACK_ICE', maxAttempts: 2, lockoutDuration: 7200000 },
     boot: { enabled: true, title: 'RELAY-0', subtitle: '?????? // DO NOT ANSWER', banner: 'SIGNAL ORIGIN: BEYOND', animationStyle: 'crt-power-on', speed: 'dramatic', logLines: ['handshake ................... [no carrier]', 'handshake ................... [no carrier]', 'handshake ................... ACCEPTED', 'something is listening ......'] },
     accounts: [{ username: 'null', displayName: '▓▓▓▓▓', role: 'UNKNOWN', hidden: false, security: { requiresAuth: true, allowSkillCheck: true, bypassSkills: ['Interface'], bypassDC: 22 } }],
+  },
+});
+
+/**
+ * Terminal sound sets (config.soundSet) — per-terminal sound palettes built
+ * by remapping the terminal's sound ids onto existing SOUND_PATHS assets with
+ * playback-rate + volume shaping (the playClick Web Audio precedent), so a
+ * corp box chimes politely while a chopshop CRT growls — no new audio files.
+ *
+ * `map` is keyed by the ORIGINAL sound id the code plays; each entry may
+ * remap the id and/or shape it: { id?, rate?, volume? }. Ids absent from the
+ * map play unchanged, so 'default' is the empty map. Resolution goes through
+ * resolveTerminalSound (helpers.js) → SoundService.playStyled. Icons must be
+ * valid FA6-free classes (the arasaka fa-building-shield lesson).
+ */
+export const TERMINAL_SOUND_SETS = Object.freeze({
+  'default': {
+    label: 'Standard', icon: 'fas fa-volume-high',
+    hint: 'The stock NCM terminal sounds, unshaped.',
+    map: {},
+  },
+  'corp-chime': {
+    label: 'Corp Chime', icon: 'fas fa-bell-concierge',
+    hint: 'Polite office chimes — soft, clean, slightly high-pitched.',
+    map: {
+      'shard-boot':    { id: 'connect', rate: 1.12, volume: 0.75 },
+      'login-success': { id: 'key-accepted', rate: 1.15, volume: 0.85 },
+      'login-fail':    { id: 'key-rejected', rate: 1.1, volume: 0.75 },
+      'hack-success':  { id: 'key-accepted', rate: 1.0, volume: 0.85 },
+      'hack-fail':     { id: 'key-rejected', rate: 0.95, volume: 0.8 },
+      'send':          { rate: 1.12, volume: 0.85 },
+      'receive':       { rate: 1.12, volume: 0.85 },
+      'shard-compile': { rate: 1.1, volume: 0.8 },
+      'shard-insert':  { rate: 1.15, volume: 0.85 },
+      'shard-decrypt': { rate: 1.15, volume: 0.8 },
+    },
+  },
+  'street-bbs': {
+    label: 'Street BBS', icon: 'fas fa-tower-cell',
+    hint: 'Grungy back-alley board — slow, chuggy, modem-adjacent.',
+    map: {
+      'shard-boot':    { id: 'shard-compile', rate: 0.8 },
+      'login-success': { id: 'connect', rate: 0.82 },
+      'login-fail':    { id: 'dead-zone', rate: 1.05, volume: 0.9 },
+      'hack-success':  { rate: 0.85 },
+      'hack-fail':     { rate: 0.85 },
+      'send':          { rate: 0.85 },
+      'receive':       { rate: 0.8 },
+      'shard-compile': { rate: 0.85 },
+      'shard-insert':  { rate: 0.85 },
+      'shard-decrypt': { rate: 0.85 },
+    },
+  },
+  'med-soft': {
+    label: 'MedTech Soft', icon: 'fas fa-heart-pulse',
+    hint: 'Quiet clinical monitor tones — high, gentle, unobtrusive.',
+    map: {
+      'shard-boot':    { id: 'open', rate: 1.25, volume: 0.6 },
+      'login-success': { id: 'key-accepted', rate: 1.35, volume: 0.55 },
+      'login-fail':    { id: 'key-rejected', rate: 1.3, volume: 0.6 },
+      'hack-success':  { id: 'key-accepted', rate: 1.2, volume: 0.55 },
+      'hack-fail':     { id: 'key-rejected', rate: 1.15, volume: 0.65 },
+      'send':          { rate: 1.25, volume: 0.6 },
+      'receive':       { rate: 1.25, volume: 0.6 },
+      'shard-compile': { rate: 1.2, volume: 0.6 },
+      'shard-insert':  { rate: 1.3, volume: 0.6 },
+      'shard-decrypt': { rate: 1.25, volume: 0.6 },
+    },
+  },
+  'mil-hardline': {
+    label: 'Military Hardline', icon: 'fas fa-shield-halved',
+    hint: 'Hard checkpoint tones — deep, loud, hostile on failure.',
+    map: {
+      'shard-boot':    { rate: 0.85 },
+      'login-success': { id: 'hack-success', rate: 0.9 },
+      'login-fail':    { id: 'lockout', rate: 1.15, volume: 0.9 },
+      'hack-fail':     { id: 'lockout', rate: 1.1, volume: 0.9 },
+      'send':          { rate: 0.9 },
+      'receive':       { rate: 0.9 },
+      'shard-compile': { rate: 0.9 },
+      'shard-insert':  { rate: 0.9 },
+      'shard-decrypt': { rate: 0.95 },
+    },
+  },
+  'ghost-wall': {
+    label: 'Ghost Signal', icon: 'fas fa-ghost',
+    hint: 'Slowed, hollow, half-heard — haunted iron and Blackwall relays.',
+    map: {
+      'shard-boot':    { rate: 0.62, volume: 0.7 },
+      'login-success': { id: 'shard-decrypt', rate: 0.7, volume: 0.7 },
+      'login-fail':    { id: 'hack-fail', rate: 0.6, volume: 0.7 },
+      'hack-success':  { rate: 0.65, volume: 0.7 },
+      'hack-fail':     { rate: 0.6, volume: 0.7 },
+      'send':          { rate: 0.65, volume: 0.7 },
+      'receive':       { rate: 0.6, volume: 0.7 },
+      'shard-compile': { rate: 0.65, volume: 0.7 },
+      'shard-insert':  { rate: 0.6, volume: 0.7 },
+      'shard-decrypt': { rate: 0.65, volume: 0.7 },
+    },
   },
 });
 
@@ -600,6 +773,34 @@ export const BOOT_ANIMATIONS = Object.freeze([
  * underneath — only the presentation changes; every style follows the
  * terminal theme palette. 'cards' is the original default.
  */
+/**
+ * Curated FA6-FREE icons for the mailbox folder editor (Identity tab). Small
+ * on purpose — folder chips are tiny; every class verified free-solid/regular
+ * (an invalid class renders an EMPTY square — the arasaka lesson).
+ */
+export const TERMINAL_FOLDER_ICONS = Object.freeze([
+  { c: 'fas fa-inbox', label: 'Inbox' },
+  { c: 'fas fa-folder', label: 'Folder' },
+  { c: 'fas fa-folder-open', label: 'Folder (open)' },
+  { c: 'fa-regular fa-star', label: 'Star' },
+  { c: 'fas fa-trash-can', label: 'Trash' },
+  { c: 'fas fa-briefcase', label: 'Case files' },
+  { c: 'fas fa-magnifying-glass', label: 'Evidence' },
+  { c: 'fas fa-box-archive', label: 'Archive' },
+  { c: 'fas fa-database', label: 'Records' },
+  { c: 'fas fa-envelope', label: 'Mail' },
+  { c: 'fas fa-flag', label: 'Flagged' },
+  { c: 'fas fa-shield-halved', label: 'Security' },
+  { c: 'fas fa-skull', label: 'Black ops' },
+  { c: 'fas fa-heart-pulse', label: 'Medical' },
+  { c: 'fas fa-file-lines', label: 'Documents' },
+  { c: 'fas fa-lock', label: 'Classified' },
+  { c: 'fas fa-bug', label: 'Malware' },
+  { c: 'fas fa-photo-film', label: 'Media' },
+  { c: 'fas fa-sack-dollar', label: 'Finance' },
+  { c: 'fas fa-users', label: 'Personnel' },
+]);
+
 export const TERMINAL_LOGIN_STYLES = Object.freeze([
   { key: 'cards', label: 'Badge Cards', icon: 'fas fa-id-card', hint: 'Corporate ID-card grid — the classic workstation look.' },
   { key: 'crt', label: 'CRT Prompt', icon: 'fas fa-terminal', hint: 'Full-screen phosphor tty with a typed login: prompt. BBS / retro-DOS.' },
@@ -760,7 +961,7 @@ export const SOUND_PATHS = Object.freeze({
   'black-ice': 'security/black-ice.ogg', 'lockout': 'security/lockout.ogg',
   'login-success': 'security/login-success.ogg', 'login-fail': 'security/login-fail.ogg',
   'key-accepted': 'security/key-accepted.ogg', 'key-rejected': 'security/key-rejected.ogg',
-  'shard-insert': 'shard/insert.ogg', 'shard-decrypt': 'shard/decrypt.ogg',
+  'shard-insert': 'shard/insert.ogg', 'shard-decrypt': 'security/shard-decrypt.ogg',
   'shard-relock': 'shard/relock.ogg', 'shard-boot': 'shard/boot.ogg',
   'shard-compile': 'shard/compile.ogg', 'shard-brick': 'shard/brick.ogg',
   'shard-expire': 'shard/expire.ogg', 'eddies-claim': 'shard/eddies-claim.ogg',
@@ -810,6 +1011,7 @@ export const TEMPLATES = Object.freeze({
   ADMIN_TAB_NETWORKS: `${T}/admin-panel/tab-networks.hbs`,
   ADMIN_TAB_SHARDS: `${T}/admin-panel/tab-shards.hbs`,
   ADMIN_TAB_TERMINALS: `${T}/admin-panel/tab-terminals.hbs`,
+  ADMIN_TAB_SECURITY: `${T}/admin-panel/tab-security.hbs`,
   ADMIN_TAB_SPAM: `${T}/admin-panel/tab-spam.hbs`,
   ADMIN_TAB_TOOLS: `${T}/admin-panel/tab-tools.hbs`,
   ADMIN_NETWORK_CARD: `${T}/admin-panel/partials/network-card.hbs`,
@@ -867,6 +1069,7 @@ export const TEMPLATES = Object.freeze({
   TERMINAL_NETWORK_GATE: `${T}/terminal/terminal-network-gate.hbs`,
   TERMINAL_ACCOUNT_CARD: `${T}/terminal/partials/account-card.hbs`,
   TERMINAL_UPLINK: `${T}/terminal/partials/uplink.hbs`,
+  TERMINAL_OPERATOR_CHIP: `${T}/terminal/partials/operator-chip.hbs`,
   TERMINAL_CONFIG: `${T}/terminal/terminal-config.hbs`,
   TERMINAL_CONFIG_ACCOUNT: `${T}/terminal/partials/config-account.hbs`,
 });
@@ -880,7 +1083,9 @@ export const DEFAULTS = Object.freeze({
     fonts: { display: 'rajdhani', mono: 'sharetechmono', title: 'orbitron' },
     textScale: 100, contrast: 100, agentName: 'Agent',
     scanlines: true, glitchIntensity: 0.5, animationLevel: 'full', neonGlow: true,
-    messageDensity: 'normal', sidebarWidth: 300, defaultSort: 'newest', showAvatars: true, wallpaper: null,
+    // wallpaper = image behind the MessageViewer panes (Theme Customizer →
+    // Effects); strength 0–100 drives --ncm-wallpaper-strength (default 25).
+    messageDensity: 'normal', sidebarWidth: 300, defaultSort: 'newest', showAvatars: true, wallpaper: null, wallpaperStrength: 25,
     soundEnabled: true, soundVolume: 0.5, ambientEnabled: false,
   },
   // GM Admin Panel theme — separate from PLAYER_THEME. Clean/utilitarian by
@@ -1119,6 +1324,17 @@ export const DEFAULTS = Object.freeze({
     // be on network X to reach this box at all" — and gates on the PLAYER's network.
     network: { required: false, accessMode: 'any', allowedNetworks: [], allowedTypes: [], signalThreshold: 40 },
 
+    // Scene access pin — drag the terminal item onto a scene to place a
+    // clickable map-note access point (TerminalScenePins). range = grid squares
+    // a player's token must be within to log in FROM THE PIN (0 = no limit;
+    // GMs bypass; opening from the item itself is deliberately ungated).
+    scenePin: { range: 0 },
+
+    // HOW gated hack/upload actions on THIS box resolve (design §5) — 'inherit'
+    // follows the world `hackResolution` setting; 'auto' | 'flagged' | 'gm'
+    // override it for the odd box (a Blackwall relay the table always runs live).
+    hackResolution: 'inherit',
+
     // Machine uplink — the TERMINAL's own connection (Layer 1), independent of the
     // player's Agent network. Interfaces = what the machine's hardware can reach
     // (scene availability / dead zones deliberately do NOT apply — a wired box works
@@ -1149,14 +1365,41 @@ export const DEFAULTS = Object.freeze({
     // 'drift' | 'bounce' | 'static'.
     screensaver: { enabled: false, idleSeconds: 120, text: '', iconMode: 'boot', faIcon: '', imageUrl: '', motion: 'drift' },
     // Diegetic folder labels (empty = Inbox / Saved / Trash) — e.g. a cop box
-    // reads CASE FILES / EVIDENCE / PURGED.
+    // reads CASE FILES / EVIDENCE / PURGED. System folder NAMES deliberately
+    // stay here (presets/preset-library carry folderNames) — `folders` below
+    // only layers icons/visibility/customs on top.
     folderNames: { inbox: '', saved: '', trash: '' },
-    // Sound set hook — schema only for now ('default'). Future: per-terminal
-    // boot/login/click sound palettes (corp chime, BBS modem, medical beep).
-    // Resolve sounds through TerminalViewerApp so a set can remap ids later.
+    // Modular folder set (Identity tab editor → viewer sidebar): per-folder
+    // icons, saved/trash visibility toggles, and GM-authored CUSTOM folders
+    // ([{ id, name, icon }]). A message joins a custom folder via its `folder`
+    // flag (composer Entry Header); messages whose folder no longer exists
+    // fall back to the Inbox. Resolved by TerminalService.getFolders.
+    folders: { icons: {}, savedEnabled: true, trashEnabled: true, custom: [] },
+    // Per-terminal sound palette — a TERMINAL_SOUND_SETS key. Sets remap the
+    // terminal's sound ids onto other SOUND_PATHS entries with rate/volume
+    // shaping (no new audio assets). All terminal-played sounds resolve
+    // through resolveTerminalSound (helpers.js) — never play a raw id.
     soundSet: 'default',
 
-    allowExfil: true,             // master switch: can players copy messages out? (per-file DRM → P2)
+    allowExfil: true,             // master switch: can players copy messages out at all?
+    // Per-action exfil policy. Each action: allow (shown), require (needs a
+    // security roll — optional-per-action, default OFF so existing terminals
+    // are unchanged), skill/dv for that roll (fail → trace). `sell.price` is a
+    // flat fixer payout. When `exfil` is absent (legacy configs) the resolver
+    // (TerminalService.getExfilPolicy) defaults agent+shard ON/ungated, the
+    // four new actions OFF — i.e. today's behavior. All still gated by allowExfil.
+    exfil: {
+      agent:   { allow: true,  require: false, skill: 'Interface', dv: 15 },
+      shard:   { allow: true,  require: false, skill: 'Interface', dv: 15 },
+      leak:    { allow: false, require: false, skill: 'Interface', dv: 15 },
+      sell:    { allow: false, require: false, skill: 'Trading',   dv: 15, price: 500 },
+      forward: { allow: false, require: false, skill: 'Interface', dv: 15 },
+      wipe:    { allow: false, require: false, skill: 'Interface', dv: 15 },
+      // SAVE FRAME (#37) — the camera-feed escape hatch: a live stream can't be
+      // copied, but a single FRAME can. Only ever offered on a feed gallery
+      // (resolveEntryExfil hides it everywhere else), so defaulting it ON is safe.
+      saveFrame: { allow: true, require: false, skill: 'Electronics/Security Tech', dv: 13 },
+    },
     apps: ['mail'],               // which apps exist (MVP = mail only; catalog → P2)
     formFactor: 'desktop',        // 'desktop' (MVP). 'agent' (looted-phone chrome) → Phase 3;
                                   // field kept so it can light up later without a data migration.
@@ -1179,10 +1422,33 @@ export const DEFAULTS = Object.freeze({
     // null = explicitly disconnected (LOCAL ONLY). authenticated = creds the
     // machine has "remembered" after a successful secured join.
     connection: { currentNetworkId: '__DEFAULT__', authenticated: {} },
+    // Installed programs that fire on a trigger (design §3a — the resident
+    // lifecycle behind PLANT / keylog / backdoor / logic-bomb). Each:
+    //   { id, effectType, params, trigger:{kind,accountId?,actorId?,atMs?,action?,threshold?},
+    //     provenance:{plantedBy,plantedAt,forgeQuality,sourceLabel}, stealthDV,
+    //     state:'armed'|'fired'|'defused', firedAt, installedAt }
+    residents: [],
   },
 
   ACTOR_SESSION: { loggedIn: false, keyItemUsed: false, keyItemAttempts: 0, hackAttempts: 0, lockoutUntil: null, loginAttempts: 0, hackedLayers: [], layerHackAttempts: {}, layerLockoutUntil: null },
   SCENE_NETWORK: { networkAvailability: {}, defaultNetwork: 'CITINET', deadZone: false },
+
+  // Operator capability gate (design §5b) — WHO can use the OPERATOR tools
+  // (upload / hacking). Netrunning isn't for everyone. `mode:'anyone'` (default)
+  // = ungated, so nothing changes until a GM turns it on. When `'gated'`, only
+  // the qualifiers the GM actually sets are evaluated (empty = not required),
+  // combined by `logic`. allowGM/actors are always-pass escapes.
+  OPERATOR_GATE: {
+    mode: 'anyone',                    // 'anyone' | 'gated'
+    logic: 'any',                      // combine the role/skill/gear checks: 'any' | 'all'
+    roles: [],                         // allowed CPR role names (substring match), e.g. ['Netrunner']
+    roleLogic: 'any',                  // 'any' of the listed roles | 'all'
+    skill: { name: '', min: 0 },       // required skill + min rank (name '' = not required)
+    itemGroups: [],                    // OR-of-AND gear groups: [['Cyberdeck','Interface Plug'],['Militech Falcon']]
+                                       //   = (Cyberdeck AND Interface Plug) OR (Militech Falcon). Each item = {name,img?} or a name string.
+    actors: [],                        // explicit actor-id allowlist (always pass)
+    allowGM: true,                     // the GM user always operates
+  },
   CORE_NETWORKS: [
     { id: 'CITINET', name: 'CitiNet', type: 'PUBLIC', isCore: true, availability: { global: true, scenes: [] }, signalStrength: 75, reliability: 90, security: { level: 'LOW', requiresAuth: false }, effects: { messageDelay: 0, traced: false, anonymity: false, canRoute: true, restrictedAccess: false, allowedRecipientNetworks: [] }, theme: { color: '#19f3f7', icon: 'fa-wifi', glitchIntensity: 0.1 }, description: 'Night City public network' },
     { id: 'CORPNET', name: 'CorpNet', type: 'CORPORATE', isCore: true, availability: { global: false, scenes: [] }, signalStrength: 95, reliability: 99, security: { level: 'HIGH', requiresAuth: true }, effects: { messageDelay: 0, traced: true, anonymity: false, canRoute: true, restrictedAccess: true, allowedRecipientNetworks: ['CORPNET', 'CITINET'] }, theme: { color: '#4488ff', icon: 'fa-building', glitchIntensity: 0 }, description: 'Corporate communications' },

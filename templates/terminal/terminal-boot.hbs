@@ -2,7 +2,7 @@
       _playBootSequence engine) then transitions to the next state. Single root.
       Context: boot {icon, title, subtitle, progressLabel, logLines[]} --}}
 <div class="ncm-term__boot" data-boot-animation="{{boot.animationStyle}}" data-boot-speed="{{boot.speed}}">
-  <div class="ncm-term__boot-icon">{{#if boot.imageUrl}}<img src="{{boot.imageUrl}}" alt="">{{else}}<i class="{{boot.icon}}"></i>{{/if}}</div>
+  <div class="ncm-term__boot-icon{{#if boot.imageFree}} ncm-term__boot-icon--free{{/if}}">{{#if boot.imageUrl}}<img src="{{boot.imageUrl}}" alt="">{{else}}<i class="{{boot.icon}}"></i>{{/if}}</div>
   <div class="ncm-term__boot-title">{{boot.title}}</div>
   <div class="ncm-term__boot-sub">{{boot.subtitle}}</div>
   <div class="ncm-term__boot-prog">

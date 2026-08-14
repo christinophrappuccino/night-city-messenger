@@ -1,0 +1,24 @@
+{{!--
+  OPERATOR chip — WHO you are acting as on this machine.
+
+  The twin of the mailbox HUD's chip (terminal-viewer.hbs), rendered on the LOGIN
+  screen for the same reason the uplink pill is: the choice matters BEFORE you log
+  in. A login skill check rolls against the operator's stats, and every roll, eddies
+  claim and skill read afterwards uses this character — discovering you were the
+  wrong PC only after logging in is what paid siphoned eddies to the wrong actor.
+
+  Context: an `operator` block -> { name, canSwitch } (TerminalViewerApp._operatorChipContext).
+  Invoke as: {{> ".../partials/operator-chip.hbs" operator}}
+--}}
+{{#if name}}
+  <span class="ncm-term__login-op{{#if canSwitch}} is-switchable{{/if}}"
+        {{#if canSwitch}}data-action="terminalSwitchOperator"{{/if}}
+        data-tooltip="Operating as {{name}} — the login check and everything after it uses this character.{{#if canSwitch}} Click to switch.{{/if}}">
+    <i class="fas fa-user-gear"></i> {{name}}{{#if canSwitch}} <i class="fas fa-chevron-down ncm-term__login-opcv"></i>{{/if}}
+  </span>
+{{else}}
+  <span class="ncm-term__login-op ncm-term__login-op--none"
+        data-tooltip="No character assigned — skill-check logins, eddies claims and rolls can't run.">
+    <i class="fas fa-user-slash"></i> NO OPERATOR
+  </span>
+{{/if}}

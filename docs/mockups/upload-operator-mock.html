@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>NCM — UPLOAD via OPERATOR menu (2026-07-14)</title>
+<style>
+  :root {
+    --p: #F65261; --s: #19f3f7; --a: #f7c948; --ok: #00ff41; --pp: #a855f7;
+    --bg0: #0a0a12; --bg1: #12121a; --bg2: #1a1a2e; --bg3: #222236;
+    --t0: #ededf2; --t1: #b9b9cc; --t2: #7a7a92; --br: #2a2a45;
+    --mono: 'Consolas', monospace; --ui: 'Segoe UI', sans-serif;
+    --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  body { margin: 0; background: #050508; color: var(--t0); font-family: var(--ui); padding: 18px 22px 60px; }
+  h1 { font-size: 15px; letter-spacing: 2px; color: var(--s); font-family: var(--mono); }
+  h2 { font-size: 12px; letter-spacing: 1.5px; color: var(--a); font-family: var(--mono); margin: 26px 0 6px; }
+  .note { font-size: 11.5px; color: var(--t2); max-width: 1080px; line-height: 1.6; margin-bottom: 14px; }
+  .note b { color: var(--t1); } .note code { color: var(--s); font-size: 10.5px; }
+  .row { display: flex; gap: 26px; align-items: flex-start; flex-wrap: wrap; }
+  .hint { font-size: 10.5px; color: var(--t2); line-height: 1.55; max-width: 330px; }
+  .hint b { color: var(--t1); } .hint code { color: var(--s); font-size: 10px; }
+  .hint .k { color: var(--pp); } .hint .x { color: var(--p); }
+
+  /* ── terminal HUD strip with OPERATOR menu ── */
+  .term { width: 560px; border: 1px solid var(--br); border-radius: 10px; background: var(--bg1); overflow: hidden; }
+  .hud { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-bottom: 1px solid var(--br);
+    font: 700 9px var(--mono); letter-spacing: 1.5px; background: var(--bg0); }
+  .hud .brand { color: var(--s); } .hud .grow { flex: 1; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 9px; border-radius: 5px; cursor: pointer;
+    border: 1px solid var(--br); background: var(--bg2); color: var(--t1); font: 700 9px var(--mono); letter-spacing: 1px; }
+  .chip.op { color: var(--pp); border-color: rgba(168,85,247,.45); background: rgba(168,85,247,.08); }
+  .chip.op.on { box-shadow: 0 0 0 1px rgba(168,85,247,.5); }
+  .chip i { font-size: 10px; }
+  .hudbody { display: flex; min-height: 150px; }
+  .side { width: 180px; border-right: 1px solid var(--br); padding: 8px; }
+  .mrow { display: flex; gap: 7px; align-items: center; padding: 7px 8px; border-radius: 6px; margin-bottom: 5px;
+    border: 1px solid var(--br); background: var(--bg2); font: 11px var(--mono); color: var(--t1); }
+  .mrow i { color: var(--t2); font-size: 11px; } .mrow .dot { color: var(--p); }
+  .detail { flex: 1; padding: 14px; color: var(--t2); font-size: 11px; line-height: 1.6; }
+
+  /* ── OPERATOR dropdown ── */
+  .opwrap { position: relative; }
+  .opmenu { position: absolute; top: 30px; right: 0; width: 232px; z-index: 5;
+    border: 1px solid rgba(168,85,247,.4); border-radius: 8px; background: var(--bg1);
+    box-shadow: 0 10px 30px rgba(0,0,0,.6); overflow: hidden; }
+  .opmenu-hd { padding: 8px 11px; font: 700 8px var(--mono); letter-spacing: 1.5px; color: var(--pp);
+    border-bottom: 1px solid var(--br); background: rgba(168,85,247,.06); }
+  .opitem { display: flex; align-items: center; gap: 10px; padding: 10px 11px; cursor: pointer; border-bottom: 1px solid var(--bg3); }
+  .opitem:hover { background: var(--bg2); }
+  .opitem .ico { width: 26px; height: 26px; border-radius: 6px; display: grid; place-items: center; font-size: 12px;
+    color: var(--pp); background: rgba(168,85,247,.12); border: 1px solid rgba(168,85,247,.35); }
+  .opitem.soon { opacity: .5; }
+  .opitem .nm { flex: 1; } .opitem .t { font: 700 11px var(--mono); color: var(--t0); }
+  .opitem .d { font-size: 9.5px; color: var(--t2); margin-top: 1px; }
+  .opitem .badge { font: 700 7px var(--mono); letter-spacing: 1px; color: var(--t2); border: 1px solid var(--br); border-radius: 3px; padding: 1px 5px; }
+
+  /* ── UPLOAD picker modal ── */
+  .panel { width: 500px; border: 1px solid rgba(168,85,247,.4); border-radius: 10px; overflow: hidden;
+    background: radial-gradient(circle at 80% -10%, rgba(168,85,247,.08), transparent 55%), var(--bg1); position: relative; }
+  .ck { position: absolute; width: 14px; height: 14px; border: 1.5px solid var(--pp); opacity: .7; }
+  .ck.tl { top: 7px; left: 7px; border-right: 0; border-bottom: 0; } .ck.tr { top: 7px; right: 7px; border-left: 0; border-bottom: 0; }
+  .ck.bl { bottom: 7px; left: 7px; border-right: 0; border-top: 0; } .ck.br { bottom: 7px; right: 7px; border-left: 0; border-top: 0; }
+  .p-top { display: flex; align-items: center; gap: 8px; padding: 11px 13px; border-bottom: 1px solid rgba(168,85,247,.2);
+    font: 700 10px var(--mono); letter-spacing: 2px; color: var(--pp); }
+  .p-top .grow { flex: 1; } .p-top .id { color: var(--t2); font-weight: 400; letter-spacing: 1px; font-size: 8px; }
+  .p-body { padding: 13px; }
+  .lbl { font: 700 8px var(--mono); letter-spacing: 1.5px; color: var(--t2); margin: 2px 0 7px; text-transform: uppercase; }
+  .src { display: flex; gap: 7px; margin-bottom: 13px; }
+  .src .s { flex: 1; text-align: center; padding: 7px; border-radius: 6px; border: 1px solid var(--br); background: var(--bg2);
+    font: 700 9px var(--mono); letter-spacing: .5px; color: var(--t2); cursor: pointer; }
+  .src .s.on { color: var(--s); border-color: rgba(25,243,247,.5); background: rgba(25,243,247,.07); }
+  .src .s small { display: block; font-weight: 400; font-size: 8px; color: var(--t2); margin-top: 2px; }
+
+  .item { display: flex; align-items: center; gap: 11px; padding: 9px 11px; margin-bottom: 6px; border-radius: 7px;
+    background: var(--bg2); border: 1px solid var(--br); cursor: pointer; transition: transform var(--ease) .16s, border-color .16s; }
+  .item:hover { transform: translateX(2px); }
+  .item.sel { border-color: rgba(168,85,247,.6); box-shadow: inset 3px 0 0 var(--pp); }
+  .item .ico { width: 30px; height: 30px; border-radius: 7px; display: grid; place-items: center; font-size: 13px; flex: none; }
+  .ico.plant { color: var(--pp); background: rgba(168,85,247,.12); border: 1px solid rgba(168,85,247,.4); }
+  .ico.exe { color: var(--p); background: rgba(246,82,97,.12); border: 1px solid rgba(246,82,97,.4); }
+  .item .nm { flex: 1; } .item .t { font: 700 12px var(--mono); color: var(--t0); }
+  .item .d { font-size: 10px; color: var(--t2); margin-top: 1px; }
+  .fam { display: inline-block; font: 700 7px var(--mono); letter-spacing: 1px; border-radius: 2px; padding: 1px 5px; margin-left: 6px; vertical-align: middle; }
+  .fam.plant { color: var(--pp); border: 1px solid rgba(168,85,247,.5); } .fam.exe { color: var(--p); border: 1px solid rgba(246,82,97,.5); }
+  .dv { font: 8px var(--mono); letter-spacing: 1px; color: var(--a); border: 1px solid rgba(247,201,72,.4); border-radius: 3px; padding: 2px 6px; flex: none; }
+
+  .target { display: flex; align-items: center; gap: 9px; margin: 13px 0 4px; padding: 9px 11px; border-radius: 7px;
+    background: var(--bg0); border: 1px dashed var(--br); }
+  .target .lbl2 { font: 700 8px var(--mono); letter-spacing: 1px; color: var(--t2); }
+  .target select { flex: 1; background: var(--bg2); color: var(--t0); border: 1px solid var(--br); border-radius: 5px;
+    padding: 5px 8px; font: 11px var(--mono); }
+  .p-foot { display: flex; gap: 9px; padding: 12px 13px; border-top: 1px solid var(--br); }
+  .btn { flex: 1; text-align: center; padding: 10px; border-radius: 6px; cursor: pointer; font: 700 11px var(--mono); letter-spacing: 1.5px; }
+  .btn.go { color: #0a0a12; background: linear-gradient(180deg, #b06cf0, #8a3fd0); border: none; box-shadow: 0 3px 12px rgba(168,85,247,.3); }
+  .btn.cancel { color: var(--t2); background: var(--bg2); border: 1px solid var(--br); flex: 0 0 90px; }
+</style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+<h1>UPLOAD — via the OPERATOR menu &nbsp;·&nbsp; go-bag = GM-flagged uploadable programs</h1>
+<div class="note">
+  Decisions locked: <b>UPLOAD lives in a host-level OPERATOR menu</b> (the offensive toolkit — UPLOAD now, SYSTEM SWEEP
+  the resident-detector later), and the picker lists <b>only entries the GM flagged <code>uploadable</code></b> on a shard
+  the player is carrying or in their Agent. The FORGE roll itself reuses the existing <b>SecurityConsole</b> — no new modal.
+  Backend is built + sim'd (<code>UploadFlow.runUpload</code>, 15/15); this mock is the picker that feeds it.
+</div>
+
+<h2>① the OPERATOR menu (host-level, top-right of the terminal HUD)</h2>
+<div class="row">
+  <div class="term">
+    <div class="hud">
+      <span class="brand"><i class="fas fa-terminal"></i> NETWATCH-UNIT</span>
+      <span class="grow"></span>
+      <span class="chip"><i class="fas fa-user"></i> V</span>
+      <span class="chip"><i class="fas fa-wifi"></i> CitiNet</span>
+      <span class="opwrap">
+        <span class="chip op on"><i class="fas fa-user-secret"></i> OPERATOR <i class="fas fa-caret-down"></i></span>
+        <div class="opmenu">
+          <div class="opmenu-hd">OPERATOR TOOLS</div>
+          <div class="opitem">
+            <span class="ico"><i class="fas fa-upload"></i></span>
+            <span class="nm"><div class="t">UPLOAD</div><div class="d">push a carried program onto this box</div></span>
+          </div>
+          <div class="opitem soon">
+            <span class="ico"><i class="fas fa-radar"></i></span>
+            <span class="nm"><div class="t">SYSTEM SWEEP</div><div class="d">scan for planted / resident programs</div></span>
+            <span class="badge">SOON</span>
+          </div>
+        </div>
+      </span>
+    </div>
+    <div class="hudbody">
+      <div class="side">
+        <div class="mrow"><i class="fas fa-inbox"></i> inbox</div>
+        <div class="mrow"><span class="dot">●</span> QUARANTINE…</div>
+        <div class="mrow"><i class="fas fa-comments"></i> affair.chat</div>
+      </div>
+      <div class="detail">The OPERATOR chip is always here (host-level), so UPLOAD doesn't depend on which message is selected — it acts on the machine, not the mail.</div>
+    </div>
+  </div>
+  <div class="hint">
+    <b>Why a menu, not the exfil rail:</b> exfil acts on the <b>selected message</b> (⬇ this file → my Agent); upload acts on
+    the <b>whole box</b> (push something new onto it). Different scope → its own home. The menu also gives
+    <span class="k">SYSTEM SWEEP</span> (the resident detector) a place to live when it lands.<br><br>
+    The chip only shows for a logged-in operator (v1 = you must be in). GM always sees it.
+  </div>
+</div>
+
+<h2>② the UPLOAD picker (opens from the menu)</h2>
+<div class="row">
+  <div class="panel">
+    <span class="ck tl"></span><span class="ck tr"></span><span class="ck bl"></span><span class="ck br"></span>
+    <div class="p-top"><i class="fas fa-upload"></i> UPLOAD <span class="grow"></span><span class="id">→ NETWATCH-UNIT</span></div>
+    <div class="p-body">
+      <div class="lbl">Source — where you're carrying it</div>
+      <div class="src">
+        <div class="s on"><i class="fas fa-sd-card"></i> SHARD<small>"Ghostworks dead-drop"</small></div>
+        <div class="s"><i class="fas fa-mobile-screen"></i> MY AGENT<small>2 uploadable</small></div>
+      </div>
+
+      <div class="lbl">Carried programs — only GM-flagged <code style="color:var(--s)">uploadable</code> appear</div>
+      <div class="item sel">
+        <span class="ico plant"><i class="fas fa-comments"></i></span>
+        <span class="nm"><div class="t">affair.chat <span class="fam plant">PLANT</span></div><div class="d">forged chat log — fires on the target's next login</div></span>
+        <span class="dv">FORGE DV 15</span>
+      </div>
+      <div class="item">
+        <span class="ico plant"><i class="fas fa-images"></i></span>
+        <span class="nm"><div class="t">evidence.img <span class="fam plant">PLANT</span></div><div class="d">doctored gallery — planted "proof"</div></span>
+        <span class="dv">FORGE DV 17</span>
+      </div>
+      <div class="item">
+        <span class="ico exe"><i class="fas fa-door-open"></i></span>
+        <span class="nm"><div class="t">backdoor.exe <span class="fam exe">EXECUTE</span></div><div class="d">forges a hidden account for later <span style="color:var(--t2)">(thread 6)</span></div></span>
+        <span class="dv">RUN DV 20</span>
+      </div>
+
+      <div class="target">
+        <span class="lbl2"><i class="fas fa-crosshairs" style="color:var(--pp)"></i> LAND IN</span>
+        <select>
+          <option>admin@netwatch  — fires on admin's next login</option>
+          <option>j.silverhand@netwatch</option>
+          <option>(any login)</option>
+        </select>
+      </div>
+    </div>
+    <div class="p-foot">
+      <div class="btn cancel">CANCEL</div>
+      <div class="btn go"><i class="fas fa-fingerprint"></i> FORGE &amp; UPLOAD</div>
+    </div>
+  </div>
+  <div class="hint">
+    <b>Pick program → pick target account → FORGE &amp; UPLOAD</b> opens the SecurityConsole for the roll (Interface vs the
+    program's DV). You already have that modal — this picker just gathers the inputs.<br><br>
+    <b>The roll margin sets the outcome</b> (already built): a clean hit forges a convincing file (high
+    <code>forgeQuality</code>, hard to <span class="k">ANALYZE</span>); a miss still lands but sloppy (low quality, a sharp
+    eye catches <span class="x">FORGED</span>) and can trip a trace. Committing always installs — the roll decides
+    <i>how cleanly</i>.<br><br>
+    <b>Then it's a resident:</b> the plant sits armed until <code>admin@netwatch</code> logs in, the GM gets the
+    <b>Fire / Defuse / Later</b> prompt, and on Fire the forged chat appears in that mailbox. All wired.<br><br>
+    <b>Open bits to confirm:</b> the <code>uploadable</code> flag + its authoring (a checkbox in the composer's
+    security section?), and whether EXECUTE programs (backdoor/wipe) show here now or wait for thread 6.
+  </div>
+</div>
+
+</body>
+</html>

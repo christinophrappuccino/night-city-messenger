@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>NCM — File envelope · per-entry exfil · SAVE FRAME (2026-07-13)</title>
+<style>
+  :root {
+    --p: #F65261; --s: #19f3f7; --a: #f7c948; --ok: #00ff41; --pp: #a855f7;
+    --bg0: #0a0a12; --bg1: #12121a; --bg2: #1a1a2e; --bg3: #222236;
+    --t0: #ededf2; --t1: #b9b9cc; --t2: #7a7a92; --br: #2a2a45;
+    --mono: 'Consolas', monospace; --ui: 'Segoe UI', sans-serif;
+  }
+  body { margin: 0; background: #050508; color: var(--t0); font-family: var(--ui); padding: 18px 22px 60px; }
+  h1 { font-size: 15px; letter-spacing: 2px; color: var(--s); font-family: var(--mono); }
+  h2 { font-size: 12px; letter-spacing: 1.5px; color: var(--a); font-family: var(--mono); margin: 32px 0 8px; }
+  h3 { font-size: 9.5px; letter-spacing: 1.5px; color: var(--t2); font-family: var(--mono); margin: 0 0 6px; text-transform: uppercase; }
+  .note { font-size: 11.5px; color: var(--t2); max-width: 1080px; line-height: 1.55; margin-bottom: 14px; }
+  .note b { color: var(--t1); }
+  .row { display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap; }
+  .hint { font-size: 10px; color: var(--t2); line-height: 1.5; margin-top: 6px; max-width: 330px; }
+  .hint b { color: var(--t1); }
+  input, select { font-family: inherit; }
+  .inp { background: var(--bg0); border: 1px solid var(--br); border-radius: 4px; color: var(--t0); font-size: 11px; padding: 3px 7px; height: 22px; box-sizing: border-box; }
+  .lbl { display: block; font: 8px var(--mono); letter-spacing: 1.2px; color: var(--t2); text-transform: uppercase; margin-bottom: 2px; }
+  .seg { display: inline-flex; border: 1px solid var(--br); border-radius: 4px; overflow: hidden; height: 22px; }
+  .seg b { font: 700 8.5px var(--mono); letter-spacing: 1px; padding: 5px 10px; color: var(--t2); cursor: pointer; }
+  .seg b.on { color: #0a0a12; background: var(--pp); }
+
+  /* ═══ ① SIDEBAR — mixed mail + files ═══ */
+  .side { width: 262px; background: var(--bg1); border: 1px solid var(--br); border-radius: 8px; padding: 8px; }
+  .side-chips { display: flex; gap: 4px; margin-bottom: 8px; }
+  .side-chips b { flex: 1; text-align: center; font: 700 8px var(--mono); letter-spacing: 1px; color: var(--t2); border: 1px solid var(--br); border-radius: 20px; padding: 3px 0; cursor: pointer; }
+  .side-chips b.on { color: var(--s); border-color: var(--s); background: rgba(25,243,247,.1); }
+  .side-lab { font: 8px var(--mono); letter-spacing: 1.5px; color: var(--t2); margin: 8px 2px 5px; }
+  .trow { display: flex; gap: 7px; padding: 7px 8px; margin-bottom: 6px; background: var(--bg2); border: 1px solid var(--br); border-left: 3px solid var(--br); border-radius: 5px; cursor: pointer; }
+  .trow.is-active { border-color: var(--s); border-left-color: var(--s); background: rgba(25,243,247,.06); }
+  .trow.urgent { border-left-color: var(--a); }
+  .trow .ico { flex: 0 0 auto; width: 16px; text-align: center; font-size: 11px; margin-top: 1px; }
+  .trow .bd { flex: 1; min-width: 0; }
+  .trow .l1 { display: flex; align-items: baseline; gap: 6px; }
+  .trow .from { font: 700 10.5px var(--ui); color: var(--t0); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .trow .fname { font: 700 10.5px var(--mono); color: var(--t0); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .trow .when { font: 8.5px var(--mono); color: var(--t2); }
+  .trow .subj { font-size: 11px; color: var(--t1); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .trow .meta { font: 8.5px var(--mono); color: var(--t2); margin-top: 3px; display: flex; gap: 6px; align-items: center; }
+  .trow .tag { font: 700 7.5px var(--mono); letter-spacing: 1px; border-radius: 2px; padding: 1px 4px; }
+  .trow .prev { font-size: 10px; color: var(--t2); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--t2); display: inline-block; }
+  .dot.urgent { background: var(--a); }
+  .new { font: 700 7px var(--mono); letter-spacing: 1px; color: var(--ok); border: 1px solid rgba(0,255,65,.5); border-radius: 2px; padding: 0 3px; }
+  .c-feed { color: var(--ok); } .c-mail { color: var(--s); } .c-doc { color: var(--a); }
+  .c-mal { color: var(--p); } .c-log { color: var(--pp); } .c-ss { color: #4ade80; }
+  .lock { color: var(--p); }
+
+  /* ═══ ② ENTRY HEADERS ═══ */
+  .panel { width: 520px; background: var(--bg1); border: 1px solid var(--br); border-radius: 8px; padding: 12px; }
+  /* mail header (today) */
+  .mh { display: flex; gap: 10px; align-items: center; padding: 9px 10px; background: var(--bg2); border: 1px solid var(--br); border-radius: 6px; }
+  .mh .av { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg,#2b3f5c,#16233b); display: grid; place-items: center; font: 700 11px var(--mono); color: var(--s); flex: 0 0 auto; }
+  .mh .id { flex: 1; min-width: 0; }
+  .mh .nm { font: 700 12.5px var(--ui); }
+  .mh .em { font: 9.5px var(--mono); color: var(--t2); }
+  .mh .chips { display: flex; gap: 4px; }
+  .mh .chip { font: 700 8px var(--mono); letter-spacing: 1px; color: var(--s); border: 1px solid rgba(25,243,247,.45); border-radius: 3px; padding: 2px 7px; cursor: pointer; }
+  .mh .when { font: 9px var(--mono); color: var(--t2); }
+  /* file header (new) */
+  .fh { border: 1px solid var(--br); border-radius: 6px; background: var(--bg2); overflow: hidden; }
+  .fh-top { display: flex; align-items: center; gap: 9px; padding: 9px 10px; border-bottom: 1px solid var(--br); background: rgba(0,255,65,.04); }
+  .fh-ico { width: 32px; height: 32px; border-radius: 6px; display: grid; place-items: center; font-size: 14px; flex: 0 0 auto;
+    color: var(--ok); background: rgba(0,255,65,.1); border: 1px solid rgba(0,255,65,.4); }
+  .fh-id { flex: 1; min-width: 0; }
+  .fh-name { font: 700 13px var(--mono); letter-spacing: .5px; color: var(--t0); }
+  .fh-path { font: 9px var(--mono); color: var(--t2); margin-top: 1px; }
+  .fh-typetag { font: 700 8px var(--mono); letter-spacing: 1.2px; color: var(--ok); border: 1px solid rgba(0,255,65,.45); border-radius: 3px; padding: 2px 7px; }
+  .fh-grid { display: flex; flex-wrap: wrap; gap: 0; }
+  .fh-f { flex: 1 1 25%; min-width: 96px; padding: 6px 10px; border-right: 1px solid var(--br); }
+  .fh-f:last-child { border-right: 0; }
+  .fh-f .k { font: 7.5px var(--mono); letter-spacing: 1.2px; color: var(--t2); text-transform: uppercase; }
+  .fh-f .v { font: 10.5px var(--mono); color: var(--t1); margin-top: 2px; }
+  .fh-f .v.node { color: var(--a); }
+
+  /* ═══ ③ EXFIL MENU ═══ */
+  .exf { width: 300px; background: var(--bg1); border: 1px solid var(--br); border-radius: 8px; padding: 10px; }
+  .exf-hd { font: 700 9px var(--mono); letter-spacing: 1.5px; color: var(--s); margin-bottom: 8px; }
+  .exf-row { display: flex; align-items: center; gap: 8px; padding: 7px 9px; margin-bottom: 5px; background: var(--bg2); border: 1px solid var(--br); border-radius: 5px; cursor: pointer; }
+  .exf-row i { width: 14px; text-align: center; color: var(--s); font-size: 11px; }
+  .exf-row .nm { flex: 1; font: 700 10px var(--mono); letter-spacing: .5px; color: var(--t0); }
+  .exf-row .dv { font: 8px var(--mono); color: var(--a); border: 1px solid rgba(247,201,72,.45); border-radius: 2px; padding: 1px 5px; }
+  .exf-row.deny { cursor: not-allowed; background: rgba(246,82,97,.05); border-color: rgba(246,82,97,.35); border-style: dashed; }
+  .exf-row.deny i, .exf-row.deny .nm { color: var(--t2); }
+  .exf-row.deny .why { font: 700 7.5px var(--mono); letter-spacing: .8px; color: var(--p); border: 1px solid rgba(246,82,97,.5); border-radius: 2px; padding: 2px 5px; white-space: nowrap; }
+  .exf-row.frame { border-color: rgba(0,255,65,.5); background: rgba(0,255,65,.06); }
+  .exf-row.frame i, .exf-row.frame .nm { color: var(--ok); }
+
+  /* ═══ ④ COMPOSER ═══ */
+  .cmp { width: 500px; background: var(--bg1); border: 1px solid var(--br); border-radius: 10px; padding: 12px; }
+  .sec { border: 1px solid var(--br); border-radius: 7px; margin-bottom: 8px; overflow: hidden; }
+  .sec-hd { display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: var(--bg2); font: 700 9px var(--mono); letter-spacing: 1.2px; color: var(--t1); cursor: pointer; }
+  .sec-hd .n { width: 15px; height: 15px; border-radius: 3px; display: grid; place-items: center; font-size: 8px; background: var(--bg3); color: var(--t2); }
+  .sec-hd .sp { flex: 1; }
+  .sec-hd .cchip { font: 8px var(--mono); color: var(--t2); border: 1px solid var(--br); border-radius: 2px; padding: 1px 5px; }
+  .sec-bd { padding: 10px; }
+  .fg { display: flex; flex-wrap: wrap; gap: 8px; }
+  .f { display: flex; flex-direction: column; }
+  .stat { font: 9px var(--mono); color: var(--s); margin-top: 5px; display: flex; align-items: center; gap: 5px; }
+  .stat.node { color: var(--a); }
+  /* exfil override grid */
+  .ovr { border: 1px solid var(--br); border-radius: 6px; overflow: hidden; margin-top: 8px; }
+  .ovr-hd { display: flex; align-items: center; gap: 8px; padding: 6px 9px; background: var(--bg2); font: 700 8.5px var(--mono); letter-spacing: 1px; color: var(--t1); }
+  .ovr-hd .sp { flex: 1; }
+  .ovr-r { display: flex; align-items: center; gap: 8px; padding: 5px 9px; border-top: 1px solid var(--br); }
+  .ovr-r i { width: 13px; text-align: center; color: var(--t2); font-size: 10px; }
+  .ovr-r .nm { flex: 1; font: 9.5px var(--mono); color: var(--t1); }
+  .tri { display: inline-flex; border: 1px solid var(--br); border-radius: 3px; overflow: hidden; }
+  .tri b { font: 700 7.5px var(--mono); letter-spacing: .5px; padding: 3px 6px; color: var(--t2); cursor: pointer; }
+  .tri b.on { background: var(--bg3); color: var(--t0); }
+  .tri b.on.allow { background: rgba(0,255,65,.18); color: var(--ok); }
+  .tri b.on.deny { background: rgba(246,82,97,.18); color: var(--p); }
+  .ovr-r .dvbox { width: 38px; }
+
+  /* ═══ ⑤ SAVE FRAME ═══ */
+  .mon { position: relative; width: 560px; height: 320px; border: 1px solid rgba(0,255,65,.3); border-radius: 8px; overflow: hidden; background: #04070a; }
+  .mon .img { position: absolute; inset: 26px 12px 44px; overflow: hidden; border: 1px solid rgba(0,255,65,.2);
+    background: radial-gradient(circle at 60% 40%, #35547a, #16233b 60%, #0a1220); }
+  .mon-top { position: absolute; top: 7px; left: 12px; right: 12px; display: flex; align-items: center; gap: 10px; font: 700 9px var(--mono); letter-spacing: 1.5px; color: var(--ok); }
+  .mon-top .rec { display: inline-flex; align-items: center; gap: 4px; color: var(--p); }
+  .mon-top .rec::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--p); }
+  .mon-top .clock { margin-left: auto; color: #d8ffe4; letter-spacing: 2px; }
+  .mon-foot { position: absolute; left: 12px; right: 12px; bottom: 8px; display: flex; align-items: center; gap: 6px; }
+  .mon-foot .idx { font: 9px var(--mono); color: var(--t2); }
+  .mon-foot .sp { flex: 1; }
+  .mon-foot .act { font: 700 8.5px var(--mono); letter-spacing: 1px; border-radius: 3px; padding: 4px 9px; cursor: pointer; }
+  .mon-foot .save { color: var(--ok); border: 1px solid var(--ok); background: rgba(0,255,65,.12); }
+  .mon-foot .loop { color: var(--a); border: 1px solid rgba(247,201,72,.5); background: rgba(247,201,72,.08); }
+  .mon-foot .nocopy { color: var(--p); border: 1px dashed rgba(246,82,97,.55); background: rgba(246,82,97,.06); cursor: not-allowed; }
+  .shutter { position: absolute; inset: 26px 12px 44px; border: 2px solid var(--ok); box-shadow: 0 0 24px rgba(0,255,65,.5) inset; opacity: .85; }
+  .shutter .cap { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); font: 700 11px var(--mono); letter-spacing: 3px; color: var(--ok); text-shadow: 0 0 12px rgba(0,255,65,.7); }
+</style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+<h1>FILE ENVELOPE · PER-ENTRY EXFIL · SAVE FRAME</h1>
+<div class="note">
+  The keystone: an entry gets an <b>envelope</b> — <b>MAIL</b> (today: from / subject / received) or <b>FILE</b>
+  (filename / path / modified / size / owner-node). A camera feed is not mail and should stop pretending to be.
+  <b>Default stays MAIL</b>, so every existing entry is untouched; the composer just pre-picks FILE for the types that
+  are obviously files (feed gallery, payload, malware, schematic, syslog…). File mode also <b>suppresses</b> reply /
+  add-to-contacts / threading / the "New message from Unknown" toast, and never auto-creates a master contact from a
+  system node like <b>SECCAM-B2</b>. Size + extension <b>auto-derive</b> from the content (12 frames → 14.2 MB, .feed) —
+  the GM types a name, not a spec sheet.
+</div>
+
+<h2>① TERMINAL SIDEBAR — one mixed list, type icons</h2>
+<div class="row">
+<div class="side">
+  <div class="side-chips"><b class="on">ALL</b><b>MAIL</b><b>FILES</b></div>
+  <div class="side-lab">INBOX — 6 OBJECTS</div>
+
+  <div class="trow urgent">
+    <span class="ico c-mail"><i class="fas fa-envelope"></i></span>
+    <div class="bd">
+      <div class="l1"><span class="from">Hiroko Sato</span><span class="when">07.13</span></div>
+      <div class="subj">Re: the dock shipment — do NOT sign</div>
+      <div class="prev">If Militech's people are on the manifest, walk away…</div>
+    </div>
+  </div>
+
+  <div class="trow is-active">
+    <span class="ico c-feed"><i class="fas fa-tower-broadcast"></i></span>
+    <div class="bd">
+      <div class="l1"><span class="fname">dock-level-b.feed</span><span class="when">LIVE</span></div>
+      <div class="meta"><span class="tag" style="color:var(--ok);border:1px solid rgba(0,255,65,.45)">CAMERA FEED</span> 6 ch · streaming</div>
+      <div class="prev">SECCAM-B2 · /var/spool/cam/</div>
+    </div>
+  </div>
+
+  <div class="trow">
+    <span class="ico c-ss"><i class="fas fa-table"></i></span>
+    <div class="bd">
+      <div class="l1"><span class="fname">payroll_q3.xls</span><span class="when">06.28</span></div>
+      <div class="meta"><span class="tag" style="color:#4ade80;border:1px solid rgba(74,222,128,.45)">SPREADSHEET</span> 84 KB <span class="new">NEW</span></div>
+      <div class="prev">/home/kowalski/docs/</div>
+    </div>
+  </div>
+
+  <div class="trow">
+    <span class="ico c-mail"><i class="fas fa-envelope"></i></span>
+    <div class="bd">
+      <div class="l1"><span class="from">system@arasaka.local</span><span class="when">06.28</span></div>
+      <div class="subj">Scheduled maintenance window</div>
+      <div class="prev">Node B2 will be offline 0200–0400…</div>
+    </div>
+  </div>
+
+  <div class="trow">
+    <span class="ico c-mal"><i class="fas fa-biohazard"></i></span>
+    <div class="bd">
+      <div class="l1"><span class="fname">watchdog-mute.exe</span><span class="when">06.19</span></div>
+      <div class="meta"><span class="tag" style="color:var(--p);border:1px solid rgba(246,82,97,.45)">MALWARE</span> 1.1 MB</div>
+      <div class="prev">/tmp/ · owner: root</div>
+    </div>
+  </div>
+
+  <div class="trow">
+    <span class="ico lock"><i class="fas fa-lock"></i></span>
+    <div class="bd">
+      <div class="l1"><span class="fname">seele-archive.dat</span><span class="when">05.02</span></div>
+      <div class="meta"><span class="tag" style="color:var(--p);border:1px solid rgba(246,82,97,.45)">ENCRYPTED</span> 402 MB</div>
+      <div class="prev">/root/.vault/</div>
+    </div>
+  </div>
+</div>
+<div class="hint">
+  <b>Mixed list, type icon leads.</b> A MAIL row is unchanged (priority dot → sender → subject → body preview).
+  A FILE row swaps the priority dot for the <b>content-type icon</b> (colored by <code>CONTENT_TYPE_INFO</code>),
+  the sender line for the <b>filename in mono</b>, and the body preview for <b>type · size · path</b>. Unread files
+  show <b>NEW</b> instead of a priority dot — a file has no urgency, it just wasn't there before.<br><br>
+  The <b>ALL / MAIL / FILES</b> chips are the same display-only filter pattern as the gallery chips (document-delegated,
+  zero per-app wiring). They only render when the mailbox actually holds both kinds.<br><br>
+  A live feed's "date" reads <b>LIVE</b>, not a timestamp — it isn't from a moment, it's happening.
+</div>
+</div>
+
+<h2>② ENTRY HEADER — mail (unchanged) vs file (new)</h2>
+<div class="row">
+<div class="panel">
+  <h3>MAIL envelope — exactly as today</h3>
+  <div class="mh">
+    <span class="av">HS</span>
+    <div class="id">
+      <div class="nm">Hiroko Sato</div>
+      <div class="em">h.sato@arasaka.co.jp</div>
+    </div>
+    <div class="chips">
+      <span class="chip"><i class="fas fa-user-plus"></i> ADD</span>
+      <span class="chip"><i class="fas fa-reply"></i> REPLY</span>
+    </div>
+    <span class="when">07.13 // 22:14</span>
+  </div>
+
+  <h3 style="margin-top:16px">FILE envelope — a machine artifact</h3>
+  <div class="fh">
+    <div class="fh-top">
+      <span class="fh-ico"><i class="fas fa-tower-broadcast"></i></span>
+      <div class="fh-id">
+        <div class="fh-name">dock-level-b.feed</div>
+        <div class="fh-path">/var/spool/cam/dock-level-b.feed</div>
+      </div>
+      <span class="fh-typetag">CAMERA FEED</span>
+    </div>
+    <div class="fh-grid">
+      <div class="fh-f"><div class="k">Owner</div><div class="v node">SECCAM-B2</div></div>
+      <div class="fh-f"><div class="k">Modified</div><div class="v">LIVE</div></div>
+      <div class="fh-f"><div class="k">Size</div><div class="v">stream</div></div>
+      <div class="fh-f"><div class="k">Channels</div><div class="v">6</div></div>
+    </div>
+  </div>
+
+  <div class="fh" style="margin-top:10px">
+    <div class="fh-top" style="background:rgba(74,222,128,.04)">
+      <span class="fh-ico" style="color:#4ade80;background:rgba(74,222,128,.1);border-color:rgba(74,222,128,.4)"><i class="fas fa-table"></i></span>
+      <div class="fh-id">
+        <div class="fh-name">payroll_q3.xls</div>
+        <div class="fh-path">/home/kowalski/docs/payroll_q3.xls</div>
+      </div>
+      <span class="fh-typetag" style="color:#4ade80;border-color:rgba(74,222,128,.45)">SPREADSHEET</span>
+    </div>
+    <div class="fh-grid">
+      <div class="fh-f"><div class="k">Owner</div><div class="v node">kowalski</div></div>
+      <div class="fh-f"><div class="k">Modified</div><div class="v">2045.06.28</div></div>
+      <div class="fh-f"><div class="k">Size</div><div class="v">84 KB</div></div>
+      <div class="fh-f"><div class="k">Rows</div><div class="v">142</div></div>
+    </div>
+  </div>
+</div>
+<div class="hint">
+  <b>No avatar, no ADD, no REPLY, no "(no subject)".</b> The header answers the questions you'd actually ask a
+  filesystem: what is it, where does it live, who owns it, when did it change, how big.<br><br>
+  <b>Owner is a NODE, not an Agent</b> (amber, mono). This is the field that must <i>not</i> run
+  <code>_syncFromToMasterList</code> — <b>SECCAM-B2</b> is a camera, not a person, and auto-creating a master contact
+  for it would pollute the directory.<br><br>
+  The <b>4th cell is type-aware</b> (channels / rows / frames / lines / entries) — free texture from data we already
+  have.<br><br>
+  <b>Files never thread.</b> The resolver's subject+counterparty fallback would happily merge two unrelated
+  <code>dock-cam.feed</code> files; file entries are excluded from threading outright.
+</div>
+</div>
+
+<h2>③ EXFIL MENU — the deny chip ("physics, not a broken button")</h2>
+<div class="row">
+<div class="exf">
+  <div class="exf-hd"><i class="fas fa-download"></i> EXFILTRATE — dock-level-b.feed</div>
+  <div class="exf-row deny">
+    <i class="fas fa-mobile-screen"></i><span class="nm">TO MY AGENT</span>
+    <span class="why">LIVE STREAM</span>
+  </div>
+  <div class="exf-row deny">
+    <i class="fas fa-sd-card"></i><span class="nm">BURN TO SHARD</span>
+    <span class="why">LIVE STREAM</span>
+  </div>
+  <div class="exf-row frame">
+    <i class="fas fa-camera"></i><span class="nm">SAVE FRAME</span>
+    <span class="dv">DV 13</span>
+  </div>
+  <div class="exf-row"><i class="fas fa-share"></i><span class="nm">FORWARD</span><span class="dv">DV 15</span></div>
+  <div class="exf-row"><i class="fas fa-bullhorn"></i><span class="nm">LEAK</span></div>
+  <div class="exf-row"><i class="fas fa-eraser"></i><span class="nm">WIPE</span><span class="dv">DV 18</span></div>
+</div>
+<div class="hint">
+  <b>You cannot download a stream.</b> Rather than hide the buttons (which reads as "the UI is broken"), the denied
+  actions render <b>dashed and dead with a reason chip</b> — <b>LIVE STREAM</b>. The player learns the rule.
+  Hiding stays available per-entry (<b>silent deny</b>) for things whose very existence is the secret.<br><br>
+  <b>SAVE FRAME</b> is the escape hatch and the whole point: you can't take the feed, but you can take a <i>picture</i>
+  of it. It lands in your Agent's Recovered folder as a one-image gallery — evidence you can carry.<br><br>
+  Denied reasons are authored strings: <b>LIVE STREAM</b> · <b>COPY-PROTECTED</b> · <b>DRM</b> · <b>TOO LARGE</b> ·
+  or free text.
+</div>
+</div>
+
+<h2>④ COMPOSER — ② DELIVERY becomes envelope-aware · ③ gains the exfil override</h2>
+<div class="row">
+<div class="cmp">
+  <div class="sec">
+    <div class="sec-hd"><span class="n">2</span> DELIVERY <span class="sp"></span><span class="cchip">SECCAM-B2 · /var/spool/cam · 14.2 MB</span><i class="fas fa-chevron-down"></i></div>
+    <div class="sec-bd">
+      <div class="fg" style="margin-bottom:9px">
+        <span class="f"><label class="lbl">Show as</label>
+          <span class="seg"><b>MESSAGE</b><b class="on">FILE</b></span>
+        </span>
+        <span class="f" style="flex:1"><label class="lbl">Filename</label><input class="inp" style="width:100%" value="dock-level-b.feed"></span>
+      </div>
+      <div class="fg">
+        <span class="f" style="flex:1"><label class="lbl">Path (optional)</label><input class="inp" style="width:100%" value="/var/spool/cam/"></span>
+        <span class="f"><label class="lbl">Owner / node</label><input class="inp" style="width:120px" value="SECCAM-B2"></span>
+      </div>
+      <div class="stat node"><i class="fas fa-server"></i> System node — stays as typed, no contact created.</div>
+      <div class="fg" style="margin-top:9px">
+        <span class="f"><label class="lbl">Modified</label><input class="inp" style="width:130px" value="— LIVE —"></span>
+        <span class="f"><label class="lbl">Size</label><input class="inp" style="width:90px" value="auto (14.2 MB)"></span>
+        <span class="f"><label class="lbl">Folder</label><select class="inp" style="width:110px"><option>Inbox</option></select></span>
+      </div>
+      <div class="hint" style="max-width:none">In <b>MESSAGE</b> mode this section is the From / Received / Folder row you have today (with the master-list status chip). Switching to <b>FILE</b> swaps in filename / path / owner-node / modified / size — and turns off reply, add-to-contacts, threading and the delivery toast.</div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-hd"><span class="n">3</span> SECURITY &amp; ACCESS <span class="sp"></span><span class="cchip">exfil: 4 of 6</span><i class="fas fa-chevron-down"></i></div>
+    <div class="sec-bd">
+      <div class="ovr">
+        <div class="ovr-hd"><i class="fas fa-download"></i> EXFIL — THIS ENTRY <span class="sp"></span>
+          <span class="seg" style="height:19px"><b class="on" style="padding:3px 7px">INHERIT</b><b style="padding:3px 7px">CUSTOM</b></span>
+        </div>
+        <div class="ovr-r">
+          <i class="fas fa-mobile-screen"></i><span class="nm">To my Agent</span>
+          <span class="tri"><b>INH</b><b>ALLOW</b><b class="on deny">DENY</b></span>
+          <input class="inp dvbox" placeholder="DV" disabled>
+        </div>
+        <div class="ovr-r">
+          <i class="fas fa-sd-card"></i><span class="nm">Burn to shard</span>
+          <span class="tri"><b>INH</b><b>ALLOW</b><b class="on deny">DENY</b></span>
+          <input class="inp dvbox" placeholder="DV" disabled>
+        </div>
+        <div class="ovr-r">
+          <i class="fas fa-camera"></i><span class="nm">Save frame <span style="color:var(--t2)">(feed only)</span></span>
+          <span class="tri"><b>INH</b><b class="on allow">ALLOW</b><b>DENY</b></span>
+          <input class="inp dvbox" value="13">
+        </div>
+        <div class="ovr-r">
+          <i class="fas fa-share"></i><span class="nm">Forward</span>
+          <span class="tri"><b class="on">INH</b><b>ALLOW</b><b>DENY</b></span>
+          <input class="inp dvbox" placeholder="15" disabled>
+        </div>
+        <div class="ovr-r">
+          <i class="fas fa-bullhorn"></i><span class="nm">Leak</span>
+          <span class="tri"><b class="on">INH</b><b>ALLOW</b><b>DENY</b></span>
+          <input class="inp dvbox" placeholder="—" disabled>
+        </div>
+        <div class="ovr-r">
+          <i class="fas fa-eraser"></i><span class="nm">Wipe</span>
+          <span class="tri"><b class="on">INH</b><b>ALLOW</b><b>DENY</b></span>
+          <input class="inp dvbox" placeholder="18" disabled>
+        </div>
+      </div>
+      <div class="fg" style="margin-top:9px">
+        <span class="f" style="flex:1"><label class="lbl">Denied reason (shown to players)</label><input class="inp" style="width:100%" value="LIVE STREAM"></span>
+        <span class="f" style="justify-content:flex-end"><label style="font-size:10.5px;color:var(--t1);display:flex;gap:5px;align-items:center"><input type="checkbox"> hide instead</label></span>
+      </div>
+      <div class="hint" style="max-width:none">Per-action <b>INHERIT / ALLOW / DENY</b> layered over the terminal's Exfil tab. The terminal's master switch is a <b>hard ceiling</b> — master off means nothing leaves, no entry can widen it. A feed pre-fills DENY on Agent/Shard + ALLOW on Save frame; one click to change.</div>
+    </div>
+  </div>
+</div>
+<div class="hint">
+  Exfil override lives in <b>③ SECURITY &amp; ACCESS</b>, not Delivery — it's an access policy, not envelope metadata.
+  The collapsed section chips summarize it (<b>exfil: 4 of 6</b>) so you can see it without opening.<br><br>
+  <b>Sensible per-type defaults, not hardcoded rules:</b> picking FEED pre-selects the deny pair; picking MESSAGE
+  leaves everything INHERIT. The GM can always override — nothing is locked by type.
+</div>
+</div>
+
+<h2>⑤ SAVE FRAME — you can't take the stream, but you can take a picture of it</h2>
+<div class="row">
+<div class="mon">
+  <div class="img"></div>
+  <div class="shutter"><span class="cap">FRAME CAPTURED</span></div>
+  <div class="mon-top"><span class="rec">REC</span><span>CAM_01 — LOADING DOCK EAST</span><span class="clock">04:12:07</span></div>
+  <div class="mon-foot">
+    <span class="idx">CH 1 / 6</span>
+    <span class="sp"></span>
+    <button class="act nocopy"><i class="fas fa-ban"></i> CAN'T COPY A STREAM</button>
+    <button class="act loop"><i class="fas fa-rotate"></i> LOOP · DV 17</button>
+    <button class="act save"><i class="fas fa-camera"></i> SAVE FRAME · DV 13</button>
+  </div>
+</div>
+<div class="hint">
+  In the monitor / PTZ view, <b>SAVE FRAME</b> grabs the current channel (and, on a PTZ cam, <b>the current crop</b> —
+  what you're actually pointed at) and writes it to your Agent's <b>Recovered</b> folder as a one-image gallery,
+  stamped with the cam id + the feed clock. Shutter flash + <code>shard-compile</code> → <code>receive</code>.<br><br>
+  It's a normal exfil action, so it inherits the whole machinery: optional roll (DV), trace-on-fail, the
+  <b>no-GM-online guard</b> (the write relays), and the per-entry override that can switch it off entirely.<br><br>
+  This is what turns "you can't download the feed" from a wall into a heist beat.
+</div>
+</div>
+
+</body>
+</html>

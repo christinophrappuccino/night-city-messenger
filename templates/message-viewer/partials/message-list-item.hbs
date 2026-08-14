@@ -26,7 +26,9 @@
   {{~#if hasSelfDestruct}} ncm-viewer__msg--destruct{{/if~}}"
      data-message-id="{{messageId}}"
      data-priority="{{priority}}"
+     data-env="{{#if isFile}}file{{else}}mail{{/if}}"
      data-action="select-message"
+     style="--ncm-i: {{@index}}"
      {{~#if netStripeColor}} style="border-right: 3px solid {{netStripeColor}}"{{/if~}}>
 
   {{!-- Unread dot --}}
@@ -34,7 +36,13 @@
     <div class="ncm-viewer__msg-unread-dot"></div>
   {{/unless}}
 
-  {{!-- Avatar --}}
+  {{!-- Avatar. A FILE (#37) has no sender, so the content-type tile stands in —
+        the row must agree with the detail pane it opens. --}}
+  {{#if isFile}}
+  <div class="ncm-viewer__msg-avatar ncm-viewer__msg-avatar--file" data-ct-color="{{file.accent}}">
+    <i class="{{file.typeIcon}}"></i>
+  </div>
+  {{else}}
   <div class="ncm-viewer__msg-avatar {{#if isBurnedSender}}ncm-viewer__msg-avatar--burned{{/if}} {{#if isAnonMasked}}ncm-viewer__avatar--anon{{/if}}"
     style="color: {{avatarColor}}; border-color: {{avatarColor}}">
     {{#if isAnonMasked}}
@@ -71,13 +79,18 @@
       </span>
     {{/if}}
   </div>
+  {{/if}}
 
   {{!-- Content --}}
   <div class="ncm-viewer__msg-content">
 
     {{!-- Row 1: Sender + Indicators + Net Pip + Stacked Time --}}
     <div class="ncm-viewer__msg-top">
+      {{#if isFile}}
+        <span class="ncm-viewer__msg-sender ncm-viewer__msg-filename">{{file.filename}}</span>
+      {{else}}
       <span class="ncm-viewer__msg-sender {{#if isBurnedSender}}ncm-viewer__msg-sender--burned{{/if}}">{{fromDisplay}}</span>
+      {{/if}}
       {{#if isAnonMasked}}<span class="ncm-anon-badge"><i class="fas fa-user-secret"></i> Anon</span>{{/if}}
       {{#if isAnonRevealed}}<span class="ncm-anon-badge ncm-anon-badge--gm"><i class="fas fa-user-secret"></i> Sent Anon</span>{{/if}}
       {{#if isBurnedSender}}
@@ -143,8 +156,13 @@
       </span>
     </div>
 
-    {{!-- Row 2: Subject + Badge --}}
+    {{!-- Row 2: Subject + Badge. A FILE says WHAT IT IS (type chip + size)
+          instead of a subject — the same line-2 rule as the terminal sidebar. --}}
     <div class="ncm-viewer__msg-subject">
+      {{#if isFile}}
+        <span class="ncm-viewer__msg-tag" data-ct-color="{{file.accent}}">{{file.typeLabel}}</span>
+        {{#if file.size}}<span class="ncm-viewer__msg-size">{{file.size}}</span>{{/if}}
+      {{else}}
       <span class="ncm-viewer__msg-subject-text">
         {{~#if isNetworkLocked~}}
           [ACCESS RESTRICTED]
@@ -154,6 +172,7 @@
           {{subject}}
         {{~/if~}}
       </span>
+      {{/if}}
 
       {{!-- Badge slot --}}
       {{#if threatBadge}}
@@ -172,7 +191,7 @@
       {{/if}}
     </div>
 
-    {{!-- Row 3: Preview --}}
+    {{!-- Row 3: Preview — a file's muted detail line is where it lives. --}}
     {{#if isNetworkLocked}}
       <div class="ncm-viewer__msg-preview ncm-viewer__msg-preview--locked">
         <i class="fas fa-lock"></i> REQUIRES {{lockedNetworkName}} ACCESS
@@ -181,6 +200,8 @@
       <div class="ncm-viewer__msg-preview ncm-viewer__msg-preview--encrypted">
         █▓░ 4F 7A C3 █▓░ B2 1D ░▓█ 9E ░█▓ A7 ░▓
       </div>
+    {{else if isFile}}
+      {{#if file.path}}<div class="ncm-viewer__msg-preview ncm-viewer__msg-preview--path">{{file.fullPath}}</div>{{/if}}
     {{else if bodyPreview}}
       <div class="ncm-viewer__msg-preview">{{bodyPreview}}</div>
     {{/if}}

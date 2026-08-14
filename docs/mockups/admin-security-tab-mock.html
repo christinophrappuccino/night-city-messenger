@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>NCM — Admin ▸ Security tab (rev 2)</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  :root {
+    --bg0:#0e1116; --bg1:#151a21; --bg2:#1c232d; --bg3:#232c38;
+    --t0:#e6e9ee; --t1:#a9b2bd; --t2:#6b7480; --br:#2a323d;
+    --acc:#4aa3c7; --ok:#4bbf73; --warn:#e0a030; --hot:#e07a3a; --bad:#d95757; --pp:#a855f7;
+    --ui:'Segoe UI',system-ui,sans-serif; --mono:'Consolas','SF Mono',monospace;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg0); color:var(--t0); font-family:var(--ui); font-size:13px; }
+  .wrap { max-width:1000px; margin:0 auto; padding:16px 20px 60px; }
+  .note { font-size:11px; color:var(--t2); max-width:1000px; line-height:1.6; margin:0 0 14px; }
+  .note b { color:var(--t1); }
+  .tabbar { display:flex; gap:2px; border-bottom:1px solid var(--br); margin-bottom:14px; }
+  .tabbar span { padding:8px 14px; font-size:12px; color:var(--t2); border-bottom:2px solid transparent; }
+  .tabbar span.on { color:var(--t0); border-bottom-color:var(--acc); }
+  .tabbar i { margin-right:6px; }
+  .info { color:var(--t2); font-size:11px; cursor:help; margin-left:4px; }
+
+  .strip { display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap; }
+  .stat { flex:1; min-width:120px; background:var(--bg1); border:1px solid var(--br); border-radius:8px; padding:10px 12px; }
+  .stat .n { font:700 22px var(--mono); } .stat .l { font-size:10px; letter-spacing:1px; text-transform:uppercase; color:var(--t2); margin-top:2px; }
+  .stat.h .n { color:var(--hot); } .stat.p .n { color:var(--pp); } .stat.r .n { color:var(--t1); }
+
+  .card { background:var(--bg1); border:1px solid var(--br); border-radius:8px; margin-bottom:14px; overflow:hidden; }
+  .card__hd { display:flex; align-items:center; gap:9px; padding:10px 13px; border-bottom:1px solid var(--br); background:var(--bg2); }
+  .card__hd i.lead { color:var(--acc); }
+  .card__hd h3 { margin:0; font-size:13px; font-weight:600; }
+  .card__hd .sp { flex:1; }
+  .card__bd { padding:12px 13px; }
+  .card__ft { display:flex; align-items:center; gap:10px; padding:8px 13px; border-top:1px solid var(--br); background:var(--bg2); font-size:11px; color:var(--t2); }
+  .card__ft .sp { flex:1; }
+  .btn { font:600 11px var(--ui); color:var(--t1); background:var(--bg3); border:1px solid var(--br); border-radius:5px; padding:5px 11px; cursor:pointer; }
+  .btn:hover { color:var(--t0); border-color:var(--acc); }
+  .btn.danger:hover { color:#fff; background:var(--bad); border-color:var(--bad); }
+  .btn.sm { padding:3px 8px; font-size:10px; }
+  .btn.pg { padding:3px 9px; }
+  input[type=text],input[type=number],select { background:var(--bg2); color:var(--t0); border:1px solid var(--br); border-radius:5px; padding:5px 8px; font:12px var(--ui); }
+
+  .chips { display:flex; gap:5px; }
+  .fchip { font:600 10px var(--ui); color:var(--t2); background:var(--bg2); border:1px solid var(--br); border-radius:20px; padding:3px 11px; cursor:pointer; }
+  .fchip.on { color:var(--t0); border-color:var(--acc); background:color-mix(in srgb,var(--acc) 14%,transparent); }
+
+  table { width:100%; border-collapse:collapse; font-size:12px; }
+  th { text-align:left; font:600 10px var(--ui); letter-spacing:.8px; text-transform:uppercase; color:var(--t2); padding:6px 8px; border-bottom:1px solid var(--br); }
+  td { padding:8px 8px; border-bottom:1px solid color-mix(in srgb,var(--br) 55%,transparent); }
+  tr:last-child td { border-bottom:0; }
+  .mono { font-family:var(--mono); }
+  .who { font-weight:600; }
+  .act { display:flex; align-items:center; gap:8px; }
+  .act .dot { width:8px; height:8px; border-radius:50%; flex:none; }
+  .dot.hostile { background:var(--bad); } .dot.major { background:var(--warn); } .dot.minor { background:var(--t2); }
+  .obj { color:var(--t1); font-family:var(--mono); font-size:11px; }
+  .tk { width:15px; text-align:center; margin-right:6px; }
+  .tk.terminal{color:var(--ok);} .tk.network{color:var(--acc);} .tk.shard{color:var(--pp);}
+  .tk.message{color:#7a9ee0;} .tk.camera{color:var(--hot);} .tk.bank{color:var(--warn);} .tk.contact{color:#48c0a0;}
+  /* item-image tile + gear groups */
+  .itemimg { width:18px; height:18px; border-radius:3px; background:var(--bg3); display:inline-grid; place-items:center; font-size:9px; color:var(--t2); overflow:hidden; }
+  .itemimg img { width:100%; height:100%; object-fit:cover; }
+  .grp { display:flex; align-items:center; gap:7px; flex-wrap:wrap; padding:7px 9px; background:var(--bg2); border:1px solid var(--br); border-radius:6px; }
+  .grp__lbl { font:600 9px var(--ui); letter-spacing:.5px; text-transform:uppercase; color:var(--t2); }
+  .grp-or { font:700 9px var(--mono); color:var(--acc); letter-spacing:1px; margin:5px 0 5px 8px; }
+  .roll { color:var(--t2); font-family:var(--mono); font-size:11px; }
+  .ago { color:var(--t2); font-size:11px; white-space:nowrap; }
+  .newbadge { font:700 9px var(--mono); color:var(--acc); background:color-mix(in srgb,var(--acc) 14%,transparent); border:1px solid color-mix(in srgb,var(--acc) 45%,transparent); border-radius:20px; padding:2px 8px; }
+  tr.is-new td:first-child { box-shadow:inset 3px 0 0 var(--acc); }
+  .newdot { display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--acc); margin-right:6px; vertical-align:middle; }
+  .clk { cursor:pointer; border-bottom:1px dotted transparent; }
+  .clk:hover { border-bottom-color:var(--t2); color:var(--t0); }
+  .jump { color:var(--t2); cursor:pointer; } .jump:hover { color:var(--acc); }
+  .tier { font:700 9px var(--mono); padding:1px 6px; border-radius:3px; }
+  .tier.cold { color:var(--t2); border:1px solid var(--br); }
+  .tier.warm { color:var(--warn); border:1px solid color-mix(in srgb,var(--warn) 50%,transparent); }
+  .tier.hot { color:var(--hot); border:1px solid color-mix(in srgb,var(--hot) 50%,transparent); }
+  .tier.burned { color:var(--bad); border:1px solid color-mix(in srgb,var(--bad) 50%,transparent); background:color-mix(in srgb,var(--bad) 10%,transparent); }
+
+  /* heat legend + rows */
+  .hlegend { display:flex; flex-wrap:wrap; gap:14px; margin:2px 0 12px; padding:8px 10px; background:var(--bg2); border:1px solid var(--br); border-radius:6px; font-size:11px; }
+  .hlegend b { font-family:var(--mono); font-size:9px; padding:1px 5px; border-radius:3px; margin-right:5px; }
+  .hlegend .cold b{color:var(--t2);border:1px solid var(--br);} .hlegend .warm b{color:var(--warn);border:1px solid color-mix(in srgb,var(--warn) 50%,transparent);}
+  .hlegend .hot b{color:var(--hot);border:1px solid color-mix(in srgb,var(--hot) 50%,transparent);} .hlegend .burned b{color:var(--bad);border:1px solid color-mix(in srgb,var(--bad) 50%,transparent);}
+  .hlegend span { color:var(--t1); }
+  .heat { display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid color-mix(in srgb,var(--br) 55%,transparent); }
+  .heat:last-child { border-bottom:0; }
+  .heat__who { width:110px; font-weight:600; }
+  .heat__obj { width:150px; color:var(--t1); font-family:var(--mono); font-size:11px; }
+  .heat__bar { flex:1; height:10px; border-radius:5px; background:var(--bg3); overflow:hidden; position:relative; }
+  .heat__fill { position:absolute; inset:0 auto 0 0; border-radius:5px; }
+  /* escalation threshold ticks at 25/50/80 */
+  .heat__bar::after { content:''; position:absolute; inset:0; pointer-events:none;
+    background:linear-gradient(90deg, transparent 24.5%, color-mix(in srgb,var(--t0) 22%,transparent) 24.5% 25.5%, transparent 25.5% 49.5%, color-mix(in srgb,var(--t0) 22%,transparent) 49.5% 50.5%, transparent 50.5% 79.5%, color-mix(in srgb,var(--t0) 30%,transparent) 79.5% 80.5%, transparent 80.5%); }
+  .heat__val { width:100px; text-align:right; font-family:var(--mono); font-size:11px; }
+
+  .prow { display:flex; align-items:center; gap:11px; padding:9px 0; border-bottom:1px solid color-mix(in srgb,var(--br) 55%,transparent); }
+  .prow:last-child { border-bottom:0; }
+  .prow__ic { width:30px; height:30px; border-radius:6px; display:grid; place-items:center; flex:none; background:color-mix(in srgb,var(--pp) 14%,transparent); color:var(--pp); border:1px solid color-mix(in srgb,var(--pp) 35%,transparent); }
+  .prow__m { flex:1; min-width:0; } .prow__t { font-weight:600; } .prow__t .fq { font-family:var(--mono); font-size:10px; color:var(--t2); margin-left:6px; }
+  .prow__d { font-size:11px; color:var(--t2); }
+  .state { font:700 9px var(--mono); padding:1px 6px; border-radius:3px; }
+  .state.armed { color:var(--warn); border:1px solid color-mix(in srgb,var(--warn) 50%,transparent); }
+  .state.fired { color:var(--bad); border:1px solid color-mix(in srgb,var(--bad) 50%,transparent); }
+  .divider { font:600 10px var(--ui); letter-spacing:.5px; color:var(--t2); text-transform:uppercase; padding:8px 0 4px; cursor:pointer; }
+
+  .form-row { display:flex; align-items:flex-start; gap:10px; margin-bottom:11px; }
+  .form-row > label.k { width:110px; font-size:11px; color:var(--t2); text-transform:uppercase; letter-spacing:.5px; padding-top:6px; }
+  .seg { display:inline-flex; border:1px solid var(--br); border-radius:5px; overflow:hidden; }
+  .seg button { background:var(--bg2); color:var(--t2); border:0; padding:4px 11px; font:600 10px var(--ui); cursor:pointer; }
+  .seg button.on { background:var(--acc); color:#06121a; }
+  .selwrap { flex:1; display:flex; flex-direction:column; gap:6px; }
+  .selrow { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .tag { display:inline-flex; align-items:center; gap:6px; font:600 11px var(--ui); background:color-mix(in srgb,var(--acc) 12%,transparent); color:var(--t0); border:1px solid color-mix(in srgb,var(--acc) 40%,transparent); border-radius:16px; padding:3px 9px; }
+  .tag i { color:var(--t2); cursor:pointer; font-size:10px; }
+  .miniseg { display:inline-flex; border:1px solid var(--br); border-radius:4px; overflow:hidden; margin-left:2px; }
+  .miniseg button { background:var(--bg2); color:var(--t2); border:0; padding:2px 8px; font:600 9px var(--ui); cursor:pointer; }
+  .miniseg button.on { background:var(--bg3); color:var(--t0); }
+  .hint { font-size:11px; color:var(--t2); line-height:1.5; }
+  /* heat adjust popover */
+  .hadj { margin:4px 0 10px 128px; padding:11px 12px; background:var(--bg2); border:1px solid color-mix(in srgb,var(--acc) 55%,transparent); border-radius:7px; }
+  .hadj__hd { font:600 11px var(--ui); color:var(--t0); margin-bottom:9px; } .hadj__hd i { color:var(--acc); margin-right:5px; }
+  .hadj__row { display:flex; align-items:center; gap:10px; margin-bottom:9px; }
+  .hadj input[type=range] { flex:1; accent-color:var(--acc); } .hadj input[type=text] { flex:1; }
+  .hadj__ft { display:flex; align-items:center; gap:12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="note">Rev 2 of <b>Admin ▸ Security</b>. Changes from your notes: <b>plain-language</b> log actions + panel ⓘ tooltips + a heat legend that spells out what each tier triggers · <b>scale</b> handling (filters, pagination, collapse, hottest-first) · <b>Role &amp; Gear as chip multi-selects</b> with any-of/all-of. Admin clean-dark; numbers mono.</div>
+
+  <div class="tabbar">
+    <span><i class="fas fa-gauge"></i>Overview</span><span><i class="fas fa-address-book"></i>Contacts</span>
+    <span><i class="fas fa-envelope"></i>Messages</span><span><i class="fas fa-network-wired"></i>Networks</span>
+    <span><i class="fas fa-terminal"></i>Terminals</span><span class="on"><i class="fas fa-shield-halved"></i>Security</span><span><i class="fas fa-wrench"></i>Tools</span>
+  </div>
+
+  <div class="strip">
+    <div class="stat"><div class="n">37</div><div class="l">Traces (24h)</div></div>
+    <div class="stat h"><div class="n">2</div><div class="l">Systems running hot</div></div>
+    <div class="stat p"><div class="n">3</div><div class="l">Planted files</div></div>
+    <div class="stat r"><div class="n">5</div><div class="l">In recycle bin</div></div>
+  </div>
+
+  <!-- TRACE LOG -->
+  <div class="card">
+    <div class="card__hd"><i class="fas fa-list-check lead"></i><h3>Activity Log</h3>
+      <span class="info" title="Every time a player fails a hack, forge, or auth check anywhere in the game, it's recorded here — who did it, to what, and how serious. Rows since you last opened this tab are marked NEW.">ⓘ</span>
+      <span class="newbadge" title="3 events since you last checked (14:32)">3 new</span>
+      <span class="sp"></span>
+      <div class="chips"><span class="fchip on">All</span><span class="fchip">Serious</span><span class="fchip">Break-ins</span><span class="fchip">Fumbles</span></div>
+      <select style="max-width:130px" title="How loudly to be pinged when a trace fires — the log always records regardless"><option>Alert: serious</option><option>Alert: every</option><option>Alert: off (log only)</option></select>
+      <input type="text" placeholder="search…" style="max-width:130px;"><button class="btn danger sm">Clear</button></div>
+    <div class="card__bd" style="padding:0;">
+      <table>
+        <thead><tr><th>When</th><th>Operator</th><th>What they did</th><th>Target</th><th>Roll</th><th>Heat now</th><th></th></tr></thead>
+        <tbody>
+          <tr class="is-new"><td class="ago"><span class="newdot"></span>2m ago</td><td class="who clk">V</td><td><span class="act"><span class="dot hostile" title="Break-in (+35 heat)"></span>Botched an upload</span></td><td class="obj clk"><i class="fas fa-terminal tk terminal" title="Terminal"></i>ARASAKA-WS</td><td class="roll">9 vs 20</td><td class="mono">72 <span class="tier hot">HOT</span></td><td><i class="fas fa-arrow-up-right-from-square jump" title="Open ARASAKA-WS"></i></td></tr>
+          <tr class="is-new"><td class="ago"><span class="newdot"></span>14m ago</td><td class="who clk">V</td><td><span class="act"><span class="dot hostile"></span>Siphoned an account</span></td><td class="obj clk"><i class="fas fa-building-columns tk bank" title="Bank account"></i>Militech ••7</td><td class="roll">11 vs 15</td><td class="mono">37 <span class="tier warm">WARM</span></td><td><i class="fas fa-arrow-up-right-from-square jump"></i></td></tr>
+          <tr class="is-new"><td class="ago"><span class="newdot"></span>28m ago</td><td class="who clk">Rache</td><td><span class="act"><span class="dot major" title="Break-in attempt (+20 heat)"></span>Cracked a camera feed</span></td><td class="obj clk"><i class="fas fa-video tk camera" title="Camera feed"></i>dock-cam.feed</td><td class="roll">12 vs 14</td><td class="mono">20 <span class="tier cold">COLD</span></td><td><i class="fas fa-arrow-up-right-from-square jump"></i></td></tr>
+          <tr><td class="ago">1h ago</td><td class="who clk">V</td><td><span class="act"><span class="dot hostile"></span>Traced exfiltrating data</span></td><td class="obj clk"><i class="fas fa-terminal tk terminal" title="Terminal"></i>NETWATCH-UNIT</td><td class="roll">13 vs 18</td><td class="mono">55 <span class="tier hot">HOT</span></td><td><i class="fas fa-arrow-up-right-from-square jump"></i></td></tr>
+          <tr><td class="ago">1h ago</td><td class="who clk">Rache</td><td><span class="act"><span class="dot minor" title="Fumble (+10 heat)"></span>Fumbled a shard password</span></td><td class="obj clk"><i class="fas fa-sd-card tk shard" title="Data shard"></i>redacted.shard</td><td class="roll">—</td><td class="mono">10 <span class="tier cold">COLD</span></td><td><i class="fas fa-arrow-up-right-from-square jump"></i></td></tr>
+          <tr><td class="ago">2h ago</td><td class="who clk">Rache</td><td><span class="act"><span class="dot hostile"></span>Failed a network bypass</span></td><td class="obj clk"><i class="fas fa-tower-broadcast tk network" title="Network"></i>CitiNet node 4</td><td class="roll">8 vs 17</td><td class="mono">35 <span class="tier warm">WARM</span></td><td><i class="fas fa-arrow-up-right-from-square jump"></i></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card__ft"><i class="fas fa-circle-info"></i> Click an <b style="color:var(--t1)">operator</b> or <b style="color:var(--t1)">target</b> to filter the tab to them · <b style="color:var(--t1)">↗</b> jumps straight to the exact object — a terminal, network config, data shard, or the specific message.<span class="sp"></span><span>1–15 of 37</span><button class="btn pg sm">‹ Newer</button><button class="btn pg sm">Older ›</button></div>
+  </div>
+
+  <!-- HEAT -->
+  <div class="card">
+    <div class="card__hd"><i class="fas fa-fire lead"></i><h3>Heat</h3>
+      <span class="info" title="How 'hot' each operator is running on each system. Rises when they trip a defense; cools over game time. The higher it climbs, the harder the system pushes back.">ⓘ</span>
+      <span class="sp"></span><div class="seg"><button class="on">By target</button><button>By operator</button></div><button class="btn sm">Clear all</button></div>
+    <div class="card__bd">
+      <div class="hlegend">
+        <span class="cold"><b>COLD</b>just logged</span><span class="warm"><b>WARM</b>lockout may trigger</span>
+        <span class="hot"><b>HOT</b>ICE may strike</span><span class="burned"><b>BURNED</b>“the corp found you” countdown</span>
+        <span style="color:var(--t2)">— ticks on each bar mark 25 / 50 / 80. GM confirms every escalation.</span>
+      </div>
+      <div class="heat"><span class="heat__who">V</span><span class="heat__obj clk"><i class="fas fa-terminal tk terminal"></i>ARASAKA-WS</span><span class="heat__bar"><span class="heat__fill" style="width:72%;background:var(--hot)"></span></span><span class="heat__val">72 <span class="tier hot">HOT</span></span><button class="btn sm">Adjust</button><button class="btn sm">Clear</button></div>
+      <div class="hadj">
+        <div class="hadj__hd"><i class="fas fa-sliders"></i>Set heat — V on ARASAKA-WS</div>
+        <div class="hadj__row"><input type="range" min="0" max="100" value="80"><input type="number" value="80" style="width:58px"><span class="tier burned">BURNED</span></div>
+        <div class="hadj__row"><input type="text" placeholder="reason (optional) — e.g. “Arasaka security flagged the breach”"></div>
+        <div class="hadj__ft"><label style="font-size:11px;color:var(--t1)"><input type="checkbox"> also tell the player <span style="color:var(--t2)">(posts the reason to them as an in-fiction cue)</span></label><span class="sp"></span><button class="btn sm">Cancel</button><button class="btn sm" style="border-color:var(--acc);color:var(--t0)">Apply → post to chat</button></div>
+      </div>
+      <div class="heat"><span class="heat__who">V</span><span class="heat__obj clk"><i class="fas fa-terminal tk terminal"></i>NETWATCH-UNIT</span><span class="heat__bar"><span class="heat__fill" style="width:55%;background:var(--hot)"></span></span><span class="heat__val">55 <span class="tier hot">HOT</span></span><button class="btn sm">Adjust</button><button class="btn sm">Clear</button></div>
+      <div class="heat"><span class="heat__who">V</span><span class="heat__obj clk"><i class="fas fa-building-columns tk bank"></i>Militech ••7</span><span class="heat__bar"><span class="heat__fill" style="width:37%;background:var(--warn)"></span></span><span class="heat__val">37 <span class="tier warm">WARM</span></span><button class="btn sm">Adjust</button><button class="btn sm">Clear</button></div>
+      <div class="heat"><span class="heat__who">Rache</span><span class="heat__obj clk"><i class="fas fa-tower-broadcast tk network"></i>CitiNet node 4</span><span class="heat__bar"><span class="heat__fill" style="width:35%;background:var(--warn)"></span></span><span class="heat__val">35 <span class="tier warm">WARM</span></span><button class="btn sm">Adjust</button><button class="btn sm">Clear</button></div>
+      <div class="divider">▸ 6 systems cooling (under 25) — show</div>
+    </div>
+  </div>
+
+  <!-- PLANT / INFECTION AUDIT -->
+  <div class="card">
+    <div class="card__hd"><i class="fas fa-syringe lead"></i><h3>Planted &amp; Resident</h3>
+      <span class="info" title="Forged files and programs players have planted on machines, waiting to fire. GM-only — you see who planted what, how convincing it is, and can fire or defuse it.">ⓘ</span></div>
+    <div class="card__bd">
+      <div class="divider" style="cursor:default;color:var(--warn)">● Armed (2)</div>
+      <div class="prow">
+        <span class="prow__ic"><i class="fas fa-comments"></i></span>
+        <div class="prow__m"><div class="prow__t">affair.chat <span class="fq">forgery 74% convincing · scan DV 15</span></div>
+          <div class="prow__d">on <b>ARASAKA-WS</b> ▸ admin@arasaka · planted by <b>V</b> · fires when admin next logs in</div></div>
+        <span class="state armed">ARMED</span><button class="btn sm">Fire now</button><button class="btn sm">Defuse</button>
+      </div>
+      <div class="prow">
+        <span class="prow__ic" style="background:color-mix(in srgb,var(--bad) 14%,transparent);color:var(--bad);border-color:color-mix(in srgb,var(--bad) 35%,transparent)"><i class="fas fa-key"></i></span>
+        <div class="prow__m"><div class="prow__t">backdoor account <span class="fq">forgery 88% convincing</span></div>
+          <div class="prow__d">on <b>ARASAKA-WS</b> · planted by <b>Rache</b> · fires on <span class="mono">2077-11-16</span></div></div>
+        <span class="state armed">ARMED</span><button class="btn sm">Fire now</button><button class="btn sm">Defuse</button>
+      </div>
+      <div class="divider">▸ 1 already fired — show</div>
+    </div>
+  </div>
+
+  <!-- RECYCLE BIN -->
+  <div class="card">
+    <div class="card__hd"><i class="fas fa-trash-can-arrow-up lead"></i><h3>Recycle Bin</h3>
+      <span class="info" title="Files a player 'wiped' off a machine. They're gone for the owner but recoverable here — restore them to where they were, or purge for good.">ⓘ</span>
+      <span class="sp"></span><button class="btn danger sm">Empty bin</button></div>
+    <div class="card__bd" style="padding:0;">
+      <table>
+        <thead><tr><th>File</th><th>Taken from</th><th>Wiped by</th><th>When</th><th></th></tr></thead>
+        <tbody>
+          <tr><td>access.log</td><td class="obj">NETWATCH-UNIT ▸ root</td><td class="who">V</td><td class="ago">1h ago</td><td style="text-align:right"><button class="btn sm">Restore</button> <button class="btn danger sm">Purge</button></td></tr>
+          <tr><td>door-cam 03:00–04:00</td><td class="obj">ARASAKA-WS ▸ security</td><td class="who">Rache</td><td class="ago">3h ago</td><td style="text-align:right"><button class="btn sm">Restore</button> <button class="btn danger sm">Purge</button></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card__ft"><span>5 items · showing 2</span><span class="sp"></span><button class="btn pg sm">‹</button><button class="btn pg sm">›</button></div>
+  </div>
+
+  <!-- OPERATOR ACCESS (gate) -->
+  <div class="card">
+    <div class="card__hd"><i class="fas fa-user-shield lead"></i><h3>Operator Access</h3>
+      <span class="info" title="Controls WHO can use the hacking tools (upload, etc.). Netrunning isn't for everyone — require a role, a skill, or gear. Off by default (anyone).">ⓘ</span></div>
+    <div class="card__bd">
+      <div class="form-row"><label class="k">Access</label>
+        <div class="selwrap"><span class="selrow"><span class="seg"><button>Anyone</button><button class="on">Only who qualifies</button></span></span>
+        <span class="hint">Anyone = ungated (default). Below sets who qualifies.</span></div></div>
+      <div class="form-row"><label class="k">Must have</label>
+        <div class="selwrap"><span class="selrow"><span class="seg"><button class="on">Any of these</button><button>All of these</button></span>
+          <span class="hint" style="margin:0 0 0 4px">any one requirement passes, vs must meet all</span></span></div></div>
+
+      <div class="form-row"><label class="k">Role</label>
+        <div class="selwrap"><span class="selrow">
+          <span class="tag"><span class="itemimg"><i class="fas fa-user-secret"></i></span>Netrunner <i class="fas fa-xmark"></i></span>
+          <select style="max-width:140px"><option>+ add role…</option><option>Netrunner</option><option>Tech</option><option>Fixer</option></select>
+          <span class="miniseg"><button class="on">any</button><button>all</button></span>
+        </span></div></div>
+
+      <div class="form-row"><label class="k">Skill</label>
+        <div class="selwrap"><span class="selrow">
+          <select style="max-width:150px"><option>Interface</option><option>Cryptography</option></select>
+          <span class="k" style="width:auto;padding:0">min rank</span><input type="number" value="4" style="width:56px">
+        </span></div></div>
+
+      <div class="form-row"><label class="k">Gear / items</label>
+        <div class="selwrap">
+          <div class="grp"><span class="grp__lbl">all of</span>
+            <span class="tag"><span class="itemimg"><i class="fas fa-microchip"></i></span>Cyberdeck <i class="fas fa-xmark"></i></span>
+            <span class="tag"><span class="itemimg"><i class="fas fa-plug"></i></span>Interface Plug <i class="fas fa-xmark"></i></span>
+            <select style="max-width:120px"><option>+ add item…</option></select></div>
+          <div class="grp-or">— OR —</div>
+          <div class="grp"><span class="grp__lbl">all of</span>
+            <span class="tag"><span class="itemimg"><i class="fas fa-satellite-dish"></i></span>Militech Falcon Deck <i class="fas fa-xmark"></i></span>
+            <select style="max-width:120px"><option>+ add item…</option></select></div>
+          <div style="margin-top:2px"><button class="btn sm"><i class="fas fa-plus"></i> add an OR option</button></div>
+          <span class="hint">Satisfied if a character carries <b>every</b> item in <b>any one</b> group — e.g. (Cyberdeck + Interface Plug) <b>or</b> (Militech Falcon Deck). Pictures come from the actual gear items.</span>
+        </div></div>
+
+      <div class="form-row"><label class="k">Always allow</label>
+        <div class="selwrap"><span class="selrow"><select style="max-width:170px"><option>+ pick a character…</option></select>
+          <label style="font-size:11px;color:var(--t1)"><input type="checkbox" checked> GM always has access</label></span></div></div>
+
+      <div class="form-row"><label class="k"></label><div class="selwrap"><span class="hint"><i class="fas fa-circle-info"></i> A character who doesn't qualify sees the terminal's <b>OPS</b> button greyed out, with the reason on hover (“Requires Netrunner or Interface 4+”).</span></div></div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

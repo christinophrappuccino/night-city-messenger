@@ -290,6 +290,9 @@ export class ShardSheetOverride {
           const { TerminalConfigApp } = await import('../ui/Terminal/TerminalConfigApp.js');
           new TerminalConfigApp({ item }).render(true);
         });
+        addOption('Place on Current Scene', 'fas fa-map-pin', '#f7c948', () => {
+          game.nightcity?.terminalScenePins?.placeAtViewCenter(item);
+        });
         addOption('View Original Item', 'fas fa-file-alt', '#f7c948', () => {
           const sheet = item.sheet;
           if (sheet) { sheet._ncmBypass = true; sheet.render(true); }

@@ -498,6 +498,15 @@ export class MessageRepository {
           contentType: messageData.contentType || null,
           contentData: messageData.contentData || null,
 
+          // ENVELOPE (#37) — 'file' means this entry is a machine artifact, not
+          // mail: filename/path/owner-node instead of a sender, and no reply /
+          // add-contact / threading / toast. An exfiltrated file KEEPS its file
+          // envelope when it lands in the Agent's Recovered folder — a
+          // downloaded camera still isn't an email. Must be read explicitly:
+          // this block is built field-by-field (the spam-status lesson).
+          envelope: messageData.envelope === 'file' ? 'file' : 'mail',
+          file: messageData.file ? { ...messageData.file } : null,
+
           metadata: {
             networkTrace: messageData.metadata?.networkTrace || null,
             signalStrength: messageData.metadata?.signalStrength || 100,
@@ -524,16 +533,19 @@ export class MessageRepository {
         }
       };
 
-      // Human-readable page name
+      // Human-readable page name. A FILE names itself off its filename — it has
+      // no sender, so the mail formatter would title it "Unknown".
       const displayFrom = isSent
         ? (messageData.to || 'Unknown')
         : fromName;
-      const pageName = MessageRepository.formatPageName(
-        displayFrom,
-        messageData.subject,
-        timestamp,
-        isSent
-      );
+      const pageName = messageData.envelope === 'file'
+        ? `[FILE] ${messageData.file?.filename || messageData.subject || 'file'}`
+        : MessageRepository.formatPageName(
+          displayFrom,
+          messageData.subject,
+          timestamp,
+          isSent
+        );
 
       const page = await journal.createEmbeddedDocuments('JournalEntryPage', [{
         name: pageName,
@@ -999,10 +1011,21 @@ export class MessageRepository {
       selfDestruct: flags.selfDestruct || null,
       contentType: flags.contentType || null,
       contentData: flags.contentData || null,
+      // ENVELOPE (#37) — 'mail' (default, so every legacy entry is unchanged)
+      // or 'file'. `file` holds only the AUTHORED fields; the rest derives at
+      // read time via resolveEnvelope (size, extension, type-aware count).
+      envelope: flags.envelope === 'file' ? 'file' : 'mail',
+      file: flags.file || null,
+      // Per-entry exfil override (#37) — layered over the terminal policy by
+      // TerminalService.resolveEntryExfil. null = inherit.
+      exfil: flags.exfil || null,
       // Terminal per-message network gating (checked against the TERMINAL's own
       // uplink, not the player's network). null = ungated; normal inbox mail
       // never sets it.
       networkVisibility: flags.networkVisibility || null,
+      // Terminal custom-folder membership ('' / 'inbox' = Inbox; unknown ids
+      // fall back to Inbox at read time). Normal inbox mail never sets it.
+      folder: flags.folder || '',
       accessControl: flags.accessControl || null,
       decryptedBlocks: flags.decryptedBlocks || [],
       signalDegradation: flags.signalDegradation || null,

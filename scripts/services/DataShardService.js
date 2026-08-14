@@ -411,6 +411,9 @@ export class DataShardService {
     const updates = { keyItemAttempts: newAttempts };
     await this._updateActorSession(shardItem, actor.id, updates);
 
+    // Trace funnel (§6a) — wrong key item, a minor quiet log entry.
+    game.nightcity?.traceService?.fireTrace({ actor, action: 'shard-keyitem', hostItem: shardItem, severity: 'minor', quiet: true });
+
     const attemptsRemaining = Math.max(0, maxAttempts - newAttempts);
     const locked = newAttempts >= maxAttempts;
 
@@ -496,6 +499,9 @@ export class DataShardService {
     const newAttempts = (session.loginAttempts || 0) + 1;
     const maxAttempts = config.maxLoginAttempts || 3;
     const updates = { loginAttempts: newAttempts };
+
+    // Trace funnel (§6a) — a fumbled credential is a minor, quiet log entry.
+    game.nightcity?.traceService?.fireTrace({ actor, action: 'shard-login', hostItem: shardItem, severity: 'minor', quiet: true });
 
     if (newAttempts >= maxAttempts) {
       updates.lockoutUntil = this._nowMs() + (config.lockoutDuration || 3600000);
@@ -763,6 +769,12 @@ export class DataShardService {
               allowedNetworks: [],
               allowedTypes: [],
             },
+            // ENVELOPE (#37) — a shard holds FILES as readily as a terminal
+            // does (and a burned file must keep its file envelope). Built
+            // field-by-field here too, so it must be read explicitly.
+            envelope: messageData.envelope === 'file' ? 'file' : 'mail',
+            file: messageData.file ? { ...messageData.file } : null,
+            exfil: messageData.exfil ? { ...messageData.exfil } : null,
           },
         },
       }]);
@@ -1099,7 +1111,9 @@ export class DataShardService {
       // direct, player via the CONTENT_UPDATE_REQUEST relay).
       const { persistContentData } = await import('../ui/content/SiphonFlow.js');
       await persistContentData(entryId, {
-        ...contentData, claimed: true, claimedBy: actor.id, claimedAt: new Date().toISOString(),
+        // claimedRealMs = real time, drives the one-shot claim animation (the
+        // enricher's justClaimed window compares against Date.now()).
+        ...contentData, claimed: true, claimedBy: actor.id, claimedAt: new Date().toISOString(), claimedRealMs: Date.now(),
       }, `NCM | ${actor.name} claimed ${amount.toLocaleString()} eb (${shardItem.name}).`);
 
       this.eventBus?.emit(EVENTS.SHARD_EDDIES_CLAIMED, {
@@ -1210,6 +1224,13 @@ export class DataShardService {
     if (!silent) this.soundService?.play('hack-success');
     this._broadcastStateChange(shardItem.id);
 
+    // Activity feed — a successful shard breach (no heat).
+    game.nightcity?.traceService?.logSuccess({
+      actor, action: 'shard-hack', hostItem: shardItem, severity: 'hostile',
+      dv: rollResult?.dc ?? null,
+      margin: (rollResult?.total != null && rollResult?.dc != null) ? rollResult.total - rollResult.dc : null,
+    });
+
     return {
       success: true,
       roll: rollResult,
@@ -1221,6 +1242,14 @@ export class DataShardService {
   async _handleHackFailure(shardItem, actor, rollResult, config, session, silent = false) {
     const newAttempts = (session.hackAttempts || 0) + 1;
     const updates = { hackAttempts: newAttempts };
+
+    // Trace funnel (§6a) — a failed shard breach. `quiet: silent` respects the
+    // animated-UI-owns-the-climax contract; the log + heat always record.
+    game.nightcity?.traceService?.fireTrace({
+      actor, action: 'shard-hack', hostItem: shardItem, severity: 'hostile', quiet: silent,
+      dv: rollResult?.dc ?? null,
+      margin: (rollResult?.total != null && rollResult?.dc != null) ? rollResult.total - rollResult.dc : null,
+    });
 
     // Degrade integrity if enabled (fire-and-forget, non-blocking)
     if (config.integrity?.enabled) {
@@ -1358,6 +1387,12 @@ export class DataShardService {
     const updates = {
       layerHackAttempts: { ...prevAttempts, [layer]: newCount },
     };
+
+    // Trace funnel (§6a) — a failed hack of a security layer.
+    game.nightcity?.traceService?.fireTrace({
+      actor: game.actors?.get(actorId), action: 'shard-layer', hostItem: item,
+      objectName: `${item?.name || 'shard'} · ${layer}`, severity: 'hostile', quiet: true,
+    });
 
     const result = { locked: false, destroyed: false, damage: 0 };
 
@@ -1638,6 +1673,10 @@ export class DataShardService {
       corrupted: flags.corrupted ?? false,
       contentData: flags.contentData ?? {},
       networkVisibility: flags.networkVisibility ?? { restricted: false, allowedNetworks: [], allowedTypes: [] },
+      // ENVELOPE (#37) — 'mail' default keeps every legacy shard entry identical.
+      envelope: flags.envelope === 'file' ? 'file' : 'mail',
+      file: flags.file || null,
+      exfil: flags.exfil || null,
     };
   }
 

@@ -87,9 +87,15 @@ export function resolveThreads(messages, opts = {}) {
   });
 
   // ── Signals 1-3: explicit links ──
+  // FILES never thread (#37). A file is not a message — it has no sender and no
+  // conversation, and signal 4 (subject + shared counterparty) would happily
+  // merge two unrelated `dock-cam.feed` files from the same node into one
+  // "conversation". Skipped here, so each file stays its own singleton group.
+  const isFile = (m) => m?.envelope === 'file';
   const firstWithThread = new Map();
   for (let i = 0; i < n; i++) {
     const m = messages[i];
+    if (isFile(m)) continue;
 
     if (m.threadId) {
       const t = baseId(m.threadId);
@@ -115,6 +121,7 @@ export function resolveThreads(messages, opts = {}) {
   if (subjectThreading) {
     const bySubject = new Map();
     for (let i = 0; i < n; i++) {
+      if (isFile(messages[i])) continue; // files never thread (#37)
       const key = normalizeSubject(messages[i].subject);
       if (!key) continue;
       if (!bySubject.has(key)) bySubject.set(key, []);

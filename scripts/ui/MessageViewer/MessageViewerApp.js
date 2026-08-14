@@ -40,8 +40,8 @@ import {
 import { EVENTS, SOCKET_OPS } from '../../utils/constants.js';
 import { getThreadMessages } from '../../utils/threading.js';
 import { formatCyberDate, resolveMediaEmbed, resolveAnonSender, resolveAnonRecipient } from '../../utils/helpers.js';
-import { enrichContent, toggleSecretReveal, applySyslogFilter } from '../content/ContentRenderers.js';
-import { runSiphon, runEddiesClaim, runCrack } from '../content/SiphonFlow.js';
+import { enrichContent, toggleSecretReveal, applySyslogFilter, openGalleryImage, closeGalleryLightbox, resolveEnvelope } from '../content/ContentRenderers.js';
+import { runSiphon, runEddiesClaim, runCrack, runMalwareDeploy, runContentUnlock, runCamAction, runPayloadExecute, runPayloadKill, runPayloadSniff, toggleSchematicLock } from '../content/SiphonFlow.js';
 
 const MODULE_ID = 'cyberpunkred-messenger';
 const MESSAGES_PER_PAGE = 25;
@@ -510,7 +510,19 @@ export class MessageViewerApp extends BaseApplication {
 
     // ── Messages: load → filter → sort → paginate → enrich ──
     const allMessages = await this._loadMessages();
-    const filtered = this._applyFilters(allMessages);
+    const folderMessages = this._applyFilters(allMessages);
+    // MAIL / FILES solo (#37) — counted BEFORE the solo is applied (the chips
+    // always show both totals) and then applied to the LIST, not hidden with
+    // CSS: hiding rows would leave pagination counting things you can't see.
+    const envMailCount = folderMessages.filter(m => m.envelope !== 'file').length;
+    const envFileCount = folderMessages.length - envMailCount;
+    const envMixed = !!(envMailCount && envFileCount);
+    // Force-cleared when the folder isn't mixed, so a stale solo can never
+    // empty a folder that has no chips left to undo it.
+    const activeEnvFilter = envMixed ? (this._envFilter || 'all') : 'all';
+    const filtered = activeEnvFilter === 'all'
+      ? folderMessages
+      : folderMessages.filter(m => (m.envelope === 'file') === (activeEnvFilter === 'file'));
     const sorted = this._applySorting(filtered);
 
     // Cache the full filtered list BEFORE pagination — _setPage uses this for maxPage
@@ -735,8 +747,18 @@ export class MessageViewerApp extends BaseApplication {
       latencyMs,
       currentGameTime: formatCyberDate(this.timeService?.getCurrentTime?.() || new Date().toISOString()),
 
+      // The exfil folder's label — GM-renameable (world setting). The tab AND
+      // the per-message provenance chip both read it, so they can't drift.
+      exfilFolderName: (this.settingsManager?.getExfilFolderName?.() || 'Exfil'),
+      exfilFolderNameUpper: (this.settingsManager?.getExfilFolderName?.() || 'Exfil').toUpperCase(),
+
       // Messages
       messages: enriched,
+      // MAIL / FILES solo chips (#37). Counts come from the WHOLE folder, not
+      // the current page — computing them from the paginated slice would make
+      // the chips lie (and make them vanish on page 2 of a mixed folder).
+      envFilter: envMixed ? { mail: envMailCount, file: envFileCount } : null,
+      activeEnvFilter,
       selectedMessage,
       totalMessages: filtered.length,
       totalPages: Math.max(1, Math.ceil(filtered.length / MESSAGES_PER_PAGE)),
@@ -795,6 +817,12 @@ export class MessageViewerApp extends BaseApplication {
     super._onRender?.(context, options);
     const html = this.element;
     if (!html) return;
+
+    // MOTION (#38) — stamp the entrance animations. Same discipline as the
+    // terminal: this app re-renders on every click, so the row cascade must
+    // only run when the LIST ITSELF changed (folder / filter / sort / search /
+    // page / character), never when you merely select a message inside it.
+    this._stampMotion(context);
 
     // Keep the frame title in sync with the active character — the window frame
     // builds once, but the singleton viewer switches actors, so refresh it here.
@@ -1294,6 +1322,9 @@ export class MessageViewerApp extends BaseApplication {
       case 'set-filter':
         this._setFilter(target.dataset.filter);
         break;
+      case 'set-env-filter':
+        this._setEnvFilter(target.dataset.f);
+        break;
       case 'set-sort':
         this._setSort(target.dataset.sort);
         break;
@@ -1373,11 +1404,38 @@ export class MessageViewerApp extends BaseApplication {
       case 'syslogFilter':
         applySyslogFilter(target);
         break;
+      case 'galleryView':
+        openGalleryImage(target, { host: this.element });
+        break;
       case 'claimEddies':
         this._claimTypedEddies(target);
         break;
       case 'crackCred':
         this._crackTypedCred(target);
+        break;
+      case 'contentUnlock':
+        this._unlockTypedContent(target);
+        break;
+      case 'camAction':
+        this._camTypedAction(target);
+        break;
+      case 'goToScene':
+        this._goToTypedScene(target);
+        break;
+      case 'schemLockToggle':
+        this._toggleTypedSchemLock(target);
+        break;
+      case 'deployMalware':
+        this._deployTypedMalware(target);
+        break;
+      case 'executePayload':
+        this._executeTypedPayload(target);
+        break;
+      case 'payloadKill':
+        this._killTypedPayload(target);
+        break;
+      case 'payloadSniff':
+        this._sniffTypedPayload(target);
         break;
       case 'siphonFunds':
         this._siphonTypedFunds(target);
@@ -2034,6 +2092,23 @@ export class MessageViewerApp extends BaseApplication {
     this.currentPage = 1;
     this.selectedMessageId = null;
     this.bulkSelected.clear();
+    // Changing folder clears the MAIL/FILES solo — otherwise you'd land in a
+    // folder with no files while filtered to FILES and see an empty list with
+    // no chips to undo it (the chips only render on a MIXED folder).
+    this._envFilter = 'all';
+    this.render(true);
+    this.soundService?.play?.('click');
+  }
+
+  /**
+   * MAIL / FILES solo (#37) — real app STATE, not a display-only class toggle.
+   * The viewer re-renders on every click (opening a message, marking read…), so
+   * a purely visual filter reset itself the instant you clicked an item — which
+   * is exactly what it did. Clicking the active chip returns to ALL.
+   */
+  _setEnvFilter(f) {
+    const next = (f === 'mail' || f === 'file') ? f : 'all';
+    this._envFilter = (this._envFilter === next && next !== 'all') ? 'all' : next;
     this.render(true);
     this.soundService?.play?.('click');
   }
@@ -2644,7 +2719,7 @@ export class MessageViewerApp extends BaseApplication {
     if (!actor) { ui.notifications.warn('No character assigned.'); return; }
     const res = await runEddiesClaim({
       actor, raw: raw.contentData, messageId: raw.messageId,
-      sourceLabel: raw.metadata?.recoveredFrom || 'recovered file',
+      sourceLabel: raw.metadata?.recoveredFrom || 'recovered file', host: this.element,
     });
     if (res?.success) this.render();
   }
@@ -2654,8 +2729,53 @@ export class MessageViewerApp extends BaseApplication {
     const idx = Number(target?.dataset?.credIndex);
     if (!raw || raw.contentType !== 'credentials' || Number.isNaN(idx)) return;
     const actor = game.actors.get(this.actorId);
-    const ok = await runCrack({ actor, raw: raw.contentData, entryIndex: idx, messageId: raw.messageId, force: game.user.isGM && !actor });
+    const ok = await runCrack({ actor, raw: raw.contentData, entryIndex: idx, messageId: raw.messageId, force: game.user.isGM && !actor, host: this.element });
     if (ok) this.render();
+  }
+
+  /** Locked sub-content — decrypt a gallery frame / declassify redactions (shared flow). */
+  async _unlockTypedContent(target) {
+    const raw = this._typedContentRaw(target);
+    const kind = target?.dataset?.unlockKind;
+    if (!raw || !kind) return;
+    const actor = game.actors.get(this.actorId);
+    const ok = await runContentUnlock({
+      actor, raw: raw.contentData, kind, index: Number(target?.dataset?.index ?? -1),
+      messageId: raw.messageId, force: game.user.isGM && (!actor || target?.dataset?.unlockForce === '1'), host: this.element,
+    });
+    if (ok) this.render();
+  }
+
+  /** Schematic — GM per-point lock toggle from the legend (no roll). */
+  async _toggleTypedSchemLock(target) {
+    const raw = this._typedContentRaw(target);
+    if (!raw) return;
+    const ok = await toggleSchematicLock({ raw: raw.contentData, index: Number(target?.dataset?.index ?? -1), messageId: raw.messageId });
+    if (ok) this.render();
+  }
+
+  /** Camera feed — LOOP / CUT / RESTORE / TAKE CONTROL (shared flow). */
+  async _camTypedAction(target) {
+    const raw = this._typedContentRaw(target);
+    const act = target?.dataset?.camAct;
+    if (!raw || !act) return;
+    const actor = game.actors.get(this.actorId);
+    const ok = await runCamAction({
+      actor, raw: raw.contentData, act,
+      index: Number(target?.dataset?.index ?? -1), messageId: raw.messageId, host: this.element,
+    });
+    // TAKE CONTROL swaps the open monitor's stage in place; the persisted acts
+    // close the lightbox before re-rendering (its document listeners clean up).
+    if (ok && act !== 'control') { closeGalleryLightbox(this.element); this.render(); }
+  }
+
+  /** GM — jump to a linked scene (calendar events, schematic pins, feed cams). */
+  _goToTypedScene(target) {
+    const sceneId = target?.closest?.('[data-scene-id]')?.dataset.sceneId;
+    const scene = sceneId ? game.scenes?.get(sceneId) : null;
+    if (!scene) { ui.notifications.warn('NCM | Scene not found.'); return; }
+    scene.view();
+    ui.notifications.info(`NCM | Viewing scene: ${scene.name}`);
   }
 
   async _siphonTypedFunds(target) {
@@ -2663,8 +2783,39 @@ export class MessageViewerApp extends BaseApplication {
     if (!raw || raw.contentType !== 'banking') return;
     const actor = game.actors.get(this.actorId);
     if (!actor) { ui.notifications.warn('No character assigned.'); return; }
-    await runSiphon({ actor, raw: raw.contentData, messageId: raw.messageId });
+    await runSiphon({ actor, raw: raw.contentData, messageId: raw.messageId, host: this.element });
     this.render();
+  }
+
+  async _deployTypedMalware(target) {
+    const raw = this._typedContentRaw(target);
+    if (!raw || raw.contentType !== 'malware') return;
+    const actor = game.actors.get(this.actorId);
+    const res = await runMalwareDeploy({ actor, raw: raw.contentData, messageId: raw.messageId, sourceLabel: 'your Agent', host: this.element });
+    if (res) this.render();
+  }
+
+  async _executeTypedPayload(target) {
+    const raw = this._typedContentRaw(target);
+    if (!raw || raw.contentType !== 'payload') return;
+    const actor = game.actors.get(this.actorId);
+    const res = await runPayloadExecute({ actor, raw: raw.contentData, messageId: raw.messageId, sourceLabel: 'your Agent', host: this.element, force: isGM() && !actor });
+    if (res) this.render();
+  }
+
+  async _killTypedPayload(target) {
+    const raw = this._typedContentRaw(target);
+    if (!raw || raw.contentType !== 'payload') return;
+    const res = await runPayloadKill({ actor: game.actors.get(this.actorId), raw: raw.contentData, messageId: raw.messageId, host: this.element });
+    if (res) this.render();
+  }
+
+  async _sniffTypedPayload(target) {
+    const raw = this._typedContentRaw(target);
+    if (!raw || raw.contentType !== 'payload') return;
+    const actor = game.actors.get(this.actorId);
+    const ok = await runPayloadSniff({ actor, raw: raw.contentData, messageId: raw.messageId, force: isGM(), host: this.element });
+    if (ok) this.render();
   }
 
   // ── Feature 1: Eddies Claim ──
@@ -3975,6 +4126,41 @@ export class MessageViewerApp extends BaseApplication {
    * Toggle the message list panel collapsed/expanded.
    * Direct DOM manipulation for instant feedback — no re-render needed.
    */
+  /**
+   * MOTION (#38) — decide what animates on THIS render.
+   *
+   * The viewer re-renders on every click, so an entrance keyed to "a render
+   * happened" would make the list twitch constantly. We compare a signature of
+   * WHAT'S IN the list (deliberately excluding the selection) and only cascade
+   * when it genuinely changed; the detail slides only when a DIFFERENT message
+   * is opened, so re-rendering the same one (claiming eddies, decrypting,
+   * marking read) doesn't re-flicker it.
+   */
+  _stampMotion(context) {
+    const el = this.element;
+    if (!el) return;
+    const sig = [
+      this.actorId, this.currentFilter, this.currentSort, this.currentPage,
+      this._searchQuery || '', this._envFilter || 'all', this.primaryTab,
+      (context?.messages || []).map(m => m.messageId).join(','),
+    ].join('|');
+    const list = el.querySelector('.ncm-viewer__msg-list');
+    if (list && sig !== this._listSig) {
+      list.classList.remove('is-fresh');
+      void list.offsetWidth;                 // reflow → the animation re-runs
+      list.classList.add('is-fresh');
+    }
+    this._listSig = sig;
+
+    const detail = el.querySelector('.ncm-viewer__detail-panel');
+    if (detail && this.selectedMessageId && this.selectedMessageId !== this._renderedMsgId) {
+      detail.classList.remove('is-fresh');
+      void detail.offsetWidth;
+      detail.classList.add('is-fresh');
+    }
+    this._renderedMsgId = this.selectedMessageId;
+  }
+
   _toggleListPanel() {
     this._listCollapsed = !this._listCollapsed;
     const split = this.element?.querySelector('.ncm-viewer__split');
@@ -4125,6 +4311,13 @@ export class MessageViewerApp extends BaseApplication {
 
     // ── Quick win: sender contact check for "Add to Contacts" button ──
     const senderIsContact = !!contact;
+    // Send-only system address (master-directory flag): players can never
+    // add the sender or reply — the composer/service also hard-block it.
+    // A FILE (#37) blocks the same affordances for the same reason: an
+    // exfiltrated camera feed's "sender" is a NODE, not someone to write back to.
+    const fileEnv = resolveEnvelope(msg);
+    const senderSendOnly = fileEnv.isFile || (!game.user.isGM
+      && !!game.nightcity?.masterContactService?.isSendOnly?.(msg.from));
 
     // ── Network/access restriction check via MessageAccessService ──
     const viewingActor = this.actorId ? game.actors?.get(this.actorId) : null;
@@ -4272,7 +4465,10 @@ export class MessageViewerApp extends BaseApplication {
         from: msg.from,
         body: msg.body,
         timestamp: msg.timestamp,
-      }, { isGM: !!game.user?.isGM, interactive: false });
+        // See TerminalViewerApp — `interactive` = "wires the content actions",
+        // which this viewer does (claimEddies/crackCred/contentUnlock/siphon/
+        // deployMalware/executePayload/…). Only the composer preview is false.
+      }, { isGM: !!game.user?.isGM, interactive: true });
     }
 
     return {
@@ -4297,6 +4493,17 @@ export class MessageViewerApp extends BaseApplication {
       selfDestructDisplay,
       isSent: !!msg.status?.sent,
       senderIsContact,
+      senderSendOnly,
+      // ENVELOPE (#37) — a downloaded/captured FILE stays a file here; it never
+      // became mail just because it landed in the Agent's Recovered folder. The
+      // From/To pair is meaningless for it (a camera didn't "send" you anything
+      // and you aren't its "recipient"), so the header answers where it came OFF
+      // instead: the terminal + account it was pulled from, else its owner node.
+      isFile: fileEnv.isFile,
+      file: fileEnv.isFile ? fileEnv : null,
+      fileSource: fileEnv.isFile
+        ? (msg.metadata?.recoveredFrom || fileEnv.owner || msg.from || 'unknown source')
+        : '',
       isNetworkLocked,
       hasNetworkRestriction,
       lockedNetworkName,
@@ -4461,8 +4668,16 @@ export class MessageViewerApp extends BaseApplication {
     const isAnonToMasked = !!anonRecipient;
     if (isAnonToMasked) toDisplay = anonRecipient.name;
 
-    // Reply gating: an anonymous message is replyable only if the GM allowed it.
-    const anonRepliesBlocked = isAnonMasked && (msg.anonymous?.allowReplies === false);
+    // Reply gating: an anonymous message is replyable only if the GM allowed
+    // it. A send-only system sender blocks replies the same way (the template
+    // keys the reply/quick-reply hiding on this one flag; `senderSendOnly`
+    // switches the No-Reply chip copy). Computed HERE (this function), not
+    // borrowed from _getEnrichedMessage — referencing its local from this
+    // scope was a ReferenceError that broke the whole viewer render.
+    const senderSendOnly = (msg.envelope === 'file') || (!game.user.isGM
+      && !!game.nightcity?.masterContactService?.isSendOnly?.(msg.from));
+    const anonRepliesBlocked = (isAnonMasked && (msg.anonymous?.allowReplies === false))
+      || senderSendOnly;
 
     // Trace-to-unmask: offer a trace when the sender is masked, the GM flagged it
     // traceable, and it hasn't been traced yet. `isAnonTraced` flags a revealed one.
@@ -4576,6 +4791,13 @@ export class MessageViewerApp extends BaseApplication {
       anonStyle,
       isAnonToMasked,
       anonRepliesBlocked,
+      senderSendOnly,
+      // ENVELOPE (#37) — the LIST row must agree with the detail pane: a
+      // recovered file reads as a file in both (type icon + filename + type ·
+      // size + path), not as mail from a camera. Without this the Recovered
+      // folder contradicted itself one click later.
+      isFile: msg.envelope === 'file',
+      file: msg.envelope === 'file' ? resolveEnvelope(msg) : null,
       isAnonTraced,
       canTraceAnon,
       toDisplay,

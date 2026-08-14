@@ -44,11 +44,27 @@
         <div class="ncm-cfg-row"><span class="ncm-cfg-label">Classification</span><input type="text" name="classification" class="ncm-cfg-input ncm-cfg-flex" value="{{classification}}"></div>
       </div>
       <div class="ncm-cfg-section">
-        <div class="ncm-cfg-section-header"><i class="fas fa-folder-tree ncm-cfg-section-icon" style="color:#00ff41"></i><div class="ncm-cfg-section-title">Mailbox Folder Names <span class="ncm-cfg-hint" style="font-weight:400">— diegetic labels</span></div></div>
-        <div class="ncm-cfg-row"><span class="ncm-cfg-label">Inbox</span><input type="text" name="folderInbox" class="ncm-cfg-input ncm-cfg-flex" value="{{folderInbox}}" placeholder="Inbox — e.g. CASE FILES, PATIENTS"></div>
-        <div class="ncm-cfg-row"><span class="ncm-cfg-label">Saved</span><input type="text" name="folderSaved" class="ncm-cfg-input ncm-cfg-flex" value="{{folderSaved}}" placeholder="Saved — e.g. EVIDENCE, ARCHIVE"></div>
-        <div class="ncm-cfg-row"><span class="ncm-cfg-label">Trash</span><input type="text" name="folderTrash" class="ncm-cfg-input ncm-cfg-flex" value="{{folderTrash}}" placeholder="Trash — e.g. PURGED, DISPOSAL"></div>
-        <div class="ncm-cfg-hint">Blank fields keep the defaults. Shown in the mailbox sidebar and list header.</div>
+        <div class="ncm-cfg-section-header"><i class="fas fa-folder-tree ncm-cfg-section-icon" style="color:#00ff41"></i><div class="ncm-cfg-section-title">Mailbox Folders <span class="ncm-cfg-hint" style="font-weight:400">— modular</span></div></div>
+        <div class="ncm-cfg-desc">The mailbox sidebar's folder set. Rename the system folders (blank = default), pick icons, hide Saved/Trash, or add custom folders. Custom folders appear in the composer's Entry Header so files can be filed into them; removing one sends its mail back to the Inbox.</div>
+        <div class="ncm-cfg-folder-rows" data-folder-rows>
+          {{#each folderRows}}
+            <div class="ncm-cfg-folder-row" data-folder-row data-folder-kind="{{kind}}" data-folder-id="{{id}}">
+              <select class="ncm-cfg-select ncm-cfg-folder-icon" data-f-icon>{{#each icons}}<option value="{{c}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}</select>
+              <input type="text" class="ncm-cfg-input ncm-cfg-flex" data-f-name value="{{name}}" placeholder="{{placeholder}}">
+              {{#if isSystem}}
+                {{#if canHide}}
+                  <label class="ncm-cfg-folder-show" data-tooltip="Untick to hide this folder from the sidebar"><input type="checkbox" data-f-on {{#if enabled}}checked{{/if}}> show</label>
+                {{else}}
+                  <span class="ncm-cfg-folder-tag">SYSTEM</span>
+                {{/if}}
+              {{else}}
+                <button type="button" class="ncm-cfg-btn-icon" data-action="folderRemove" data-tooltip="Remove folder (its mail returns to the Inbox)"><i class="fas fa-xmark"></i></button>
+              {{/if}}
+            </div>
+          {{/each}}
+        </div>
+        <button type="button" class="ncm-cfg-btn-sm" data-action="folderAdd"><i class="fas fa-plus"></i> Add folder</button>
+        <div class="ncm-cfg-hint">Sidebar order: Inbox → custom folders → Saved → Trash.</div>
       </div>
       <div class="ncm-cfg-section">
         <div class="ncm-cfg-section-header"><i class="fas fa-microchip ncm-cfg-section-icon" style="color:#ff0033"></i><div class="ncm-cfg-section-title">Linked Item</div></div>
@@ -170,7 +186,7 @@
       {{#if presetKitLabel}}
         <div class="ncm-cfg-kitbar">
           <i class="fas fa-boxes-packing"></i>
-          <span><strong>{{presetKitLabel}}</strong> staged — palette, fonts, boot screen, login style, MOTD, screensaver &amp; folder names all update on <strong>Save</strong> (accounts seed too when this terminal has none).</span>
+          <span><strong>{{presetKitLabel}}</strong> staged — palette, fonts, boot screen, login style, MOTD, screensaver, folder names &amp; sound profile all update on <strong>Save</strong> (accounts seed too when this terminal has none).</span>
           <button type="button" class="ncm-tc__paction ncm-cfg-kitbar-btn" data-action="clearPresetKit" data-tooltip="Keep only the colors & fonts from this preset">palette only</button>
         </div>
       {{else}}
@@ -245,8 +261,13 @@
       <div class="ncm-tc__font-section">
         <div class="ncm-tc__srow">
           <span class="ncm-tc__srow-label">Wallpaper</span>
-          <input type="text" class="ncm-tc__name-input" data-ttc-wallpaper value="{{themeWallpaper}}" placeholder="image behind the mailbox (blank = none)">
+          <input type="text" class="ncm-tc__name-input" data-ttc-wallpaper value="{{themeWallpaper}}" placeholder="image behind the login + mailbox (blank = none)">
           <button type="button" class="ncm-tc__paction" style="flex:0 0 auto" data-action="browseWallpaper" data-tooltip="Browse / upload"><i class="fas fa-folder-open"></i></button>
+        </div>
+        <div class="ncm-tc__srow">
+          <span class="ncm-tc__srow-label">Wallpaper strength</span>
+          <input type="range" name="ttcWallStrength" min="5" max="100" step="5" value="{{themeWallStrength}}" class="ncm-tc__slider" />
+          <span class="ncm-tc__srow-val ncm-ttc-wall-val">{{themeWallStrength}}%</span>
         </div>
         <div class="ncm-tc__srow">
           <span class="ncm-tc__srow-label">Scanlines</span>
@@ -347,7 +368,8 @@
             <input type="text" name="bootImageUrl" class="ncm-cfg-input ncm-cfg-flex" value="{{bootImageUrl}}" placeholder="Corporate logo, gang tag — any image file">
             <button type="button" data-action="browseBootImage" class="ncm-cfg-btn-icon" data-tooltip="Browse / upload"><i class="fas fa-folder-open"></i></button>
           </div>
-          <div class="ncm-cfg-hint">Browse opens Foundry's file picker — upload straight from here. The splash preview above updates live.</div>
+          <div class="ncm-cfg-row"><label style="display:inline-flex;align-items:center;gap:6px;font-family:var(--ncm-font-mono);font-size:12px"><input type="checkbox" name="bootImageFree" {{#if bootImageFree}}checked{{/if}}> No frame — show the image at its natural shape (wide logos)</label></div>
+          <div class="ncm-cfg-hint">Browse opens Foundry's file picker — upload straight from here. The splash preview above updates live. Framed = the themed icon square; no frame = just your image.</div>
         </div>
       </div>
 
@@ -390,6 +412,22 @@
       </div>
 
       <div class="ncm-cfg-section">
+        <div class="ncm-cfg-section-header"><i class="fas fa-volume-high ncm-cfg-section-icon" style="color:#c77bff"></i><div class="ncm-cfg-section-title">Sound Profile</div></div>
+        <input type="hidden" name="soundSet" value="{{soundSetKey}}">
+        <div class="ncm-cfg-lstyles">
+          {{#each soundSets}}
+          <button type="button" class="ncm-cfg-lstyle{{#if active}} is-on{{/if}}" data-sound-set="{{key}}" data-tooltip="{{hint}}">
+            <i class="{{icon}}"></i><span>{{label}}</span>
+          </button>
+          {{/each}}
+        </div>
+        <div class="ncm-cfg-row" style="margin-top:6px">
+          <button type="button" class="ncm-cfg-btn-sm" data-sound-audition data-tooltip="Play boot → login → denied through the selected profile"><i class="fas fa-play"></i> Audition selected profile</button>
+        </div>
+        <div class="ncm-cfg-hint">What this machine sounds like — boot, logins, denials, downloads. Same events, different voice: a corp suite chimes, a chopshop CRT growls. Applies on Save.</div>
+      </div>
+
+      <div class="ncm-cfg-section">
         <div class="ncm-cfg-section-header"><i class="fas fa-moon ncm-cfg-section-icon" style="color:#4aa3ff"></i><div class="ncm-cfg-section-title">Idle Screensaver</div><label class="ncm-cfg-toggle-label"><input type="checkbox" name="ssEnabled" {{#if ssEnabled}}checked{{/if}}></label></div>
         <input type="hidden" name="ssIconMode" value="{{ssIconMode}}">
         <input type="hidden" name="ssMotion" value="{{ssMotion}}">
@@ -425,6 +463,25 @@
         <div class="ncm-cfg-row"><span class="ncm-cfg-label">Signal threshold</span><input type="number" name="signalThreshold" class="ncm-cfg-input ncm-cfg-input--short" value="{{signalThreshold}}" min="0" max="100"> %</div>
       </div>
 
+      {{!-- SCENE ACCESS POINT — drag-to-scene pin + proximity gate --}}
+      <div class="ncm-cfg-section">
+        <div class="ncm-cfg-section-header"><i class="fas fa-map-pin ncm-cfg-section-icon" style="color:#f7c948"></i><div class="ncm-cfg-section-title">Scene Access Point</div></div>
+        <div class="ncm-cfg-desc">Drag this terminal from the Items directory onto a scene to place a clickable access point (a map pin wearing the item's art). Players double-click the pin to log in. Right-click the item for "Place on Current Scene".</div>
+        <div class="ncm-cfg-row"><span class="ncm-cfg-label">Access range</span><input type="number" name="scenePinRange" class="ncm-cfg-input ncm-cfg-input--short" value="{{scenePinRange}}" min="0" max="50"> squares</div>
+        <div class="ncm-cfg-hint">0 = no limit. Otherwise a player needs a token within this many grid squares of the pin to log in from the scene (a GM, or opening from the item itself, bypasses). Move or delete placed pins via the Journal Notes layer.</div>
+      </div>
+
+      {{!-- NETRUNNING RESOLUTION — per-box override of the world hackResolution --}}
+      <div class="ncm-cfg-section">
+        <div class="ncm-cfg-section-header"><i class="fas fa-dice-d10 ncm-cfg-section-icon" style="color:#b16dff"></i><div class="ncm-cfg-section-title">Netrunning Resolution</div></div>
+        <div class="ncm-cfg-desc">HOW gated hacks on THIS box resolve — siphon, crack, decrypt, upload, exfil rolls. Override the table-wide setting (Admin → Security) for the odd machine: a Blackwall relay the table always runs live, a trivial kiosk that should just roll.</div>
+        <div class="ncm-cfg-row"><span class="ncm-cfg-label">Resolve</span>
+          <select name="hackResolution" class="ncm-cfg-input">
+            {{#each hackResolutionModes}}<option value="{{this.value}}" {{#if this.selected}}selected{{/if}}>{{this.label}}</option>{{/each}}
+          </select></div>
+        <div class="ncm-cfg-hint">"GM adjudicates" = no auto-roll: the player's console waits while you call pass/fail at the table (you get a verdict prompt).</div>
+      </div>
+
       {{!-- MACHINE UPLINK (Layer 1) — the terminal's OWN connection --}}
       <div class="ncm-cfg-section">
         <div class="ncm-cfg-section-header"><i class="fas fa-tower-broadcast ncm-cfg-section-icon" style="color:#4a9eff"></i><div class="ncm-cfg-section-title">Machine Uplink</div></div>
@@ -435,11 +492,12 @@
               <div style="display:flex;align-items:center;gap:14px;margin:0 0 6px;font-family:var(--ncm-font-mono);font-size:12px">
                 <label style="display:inline-flex;align-items:center;gap:5px;min-width:150px"><input type="checkbox" name="uplinkIface" value="{{id}}" {{#if checked}}checked{{/if}}> {{name}}</label>
                 <label style="display:inline-flex;align-items:center;gap:5px;opacity:.8"><input type="checkbox" name="uplinkPre" value="{{id}}" {{#if preAuthorized}}checked{{/if}}> pre-authorized</label>
+                <label style="display:inline-flex;align-items:center;gap:5px;opacity:.8"><input type="checkbox" name="uplinkWired" value="{{id}}" {{#if wired}}checked{{/if}}> <i class="fas fa-network-wired"></i> wired</label>
               </div>
             {{/each}}
           </div>
         </div>
-        <div class="ncm-cfg-hint">Pre-authorized = the machine is already joined (switching is instant). Otherwise a secured network challenges the operator with that network's own security — and the machine remembers a successful join.</div>
+        <div class="ncm-cfg-hint">Pre-authorized = the machine is already joined (switching is instant). Otherwise a secured network challenges the operator with that network's own security — and the machine remembers a successful join. Wired = a physical LAN drop: the signal bars always read full (hardline flavor — uplinks already ignore scene jamming).</div>
         <div class="ncm-cfg-row"><span class="ncm-cfg-label">Default uplink</span><select name="uplinkDefault" class="ncm-cfg-select ncm-cfg-flex">{{#each uplinkDefaults}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}</select></div>
         <div class="ncm-cfg-hint">The boot-time connection. Must be a ticked interface, or it degrades to Local only.</div>
         <div class="ncm-cfg-row"><label style="display:inline-flex;align-items:center;gap:6px;font-family:var(--ncm-font-mono);font-size:12px"><input type="checkbox" name="uplinkAllowSwitch" {{#if uplinkAllowSwitch}}checked{{/if}}> Players can switch the uplink</label></div>
@@ -451,7 +509,25 @@
     <div class="ncm-cfg-panel {{#if tabs.exfil}}ncm-cfg-panel--active{{/if}}" data-panel="exfil">
       <div class="ncm-cfg-section">
         <div class="ncm-cfg-section-header"><i class="fas fa-download ncm-cfg-section-icon" style="color:#f7c948"></i><div class="ncm-cfg-section-title">Exfiltration</div><label class="ncm-cfg-toggle-label"><input type="checkbox" name="allowExfil" {{#if allowExfil}}checked{{/if}}></label></div>
-        <div class="ncm-cfg-desc">ON — players can copy messages to their Agent inbox or burn them to a data shard. OFF = read-only (no download, no burn).</div>
+        <div class="ncm-cfg-desc">Master switch. OFF = read-only (no exfil at all). ON = the actions ticked below appear in the viewer. Each action can require a security roll — a miss trips a trace.</div>
+      </div>
+
+      <div class="ncm-cfg-section">
+        <div class="ncm-cfg-section-header"><i class="fas fa-list-check ncm-cfg-section-icon" style="color:#19f3f7"></i><div class="ncm-cfg-section-title">Actions</div></div>
+        <div class="ncm-cfg-exfil-rows">
+          {{#each exfilRows}}
+          <div class="ncm-cfg-exfil-row">
+            <label class="ncm-cfg-exfil-on"><input type="checkbox" name="exfil{{cap}}Allow" {{#if allow}}checked{{/if}}> <i class="{{icon}}"></i> <span>{{label}}</span></label>
+            <label class="ncm-cfg-exfil-req"><input type="checkbox" name="exfil{{cap}}Require" {{#if require}}checked{{/if}}> roll</label>
+            <select name="exfil{{cap}}Skill" class="ncm-cfg-input ncm-cfg-exfil-skill" data-tooltip="Skill for the security roll">
+              {{#each skillOptions}}<option value="{{name}}" {{#if selected}}selected{{/if}}>{{name}}</option>{{/each}}
+            </select>
+            <span class="ncm-cfg-exfil-dvl">DV</span><input type="number" name="exfil{{cap}}Dv" class="ncm-cfg-input ncm-cfg-exfil-dv" value="{{dv}}" min="1" max="30">
+            {{#if isSell}}<span class="ncm-cfg-exfil-dvl">price</span><input type="number" name="exfilSellPrice" class="ncm-cfg-input ncm-cfg-exfil-price" value="{{../exfilSellPrice}}" min="0" step="50" data-tooltip="Eddies the fixer pays">{{/if}}
+          </div>
+          {{/each}}
+        </div>
+        <div class="ncm-cfg-hint"><b>To my Agent</b> = download to the player's exfil folder (renameable in Module Settings). <b>Burn to Shard</b> = physical copy. <b>Forward</b> = send to a contact. <b>Leak</b> = public Net dump (chat card). <b>Sell</b> = eddies to the operator. <b>Wipe</b> = delete the original. <b>Save Frame</b> (camera feeds only) = capture what a channel is showing — you can't copy a live stream. Leaving “roll” unticked = the action just needs a confirm.</div>
       </div>
     </div>
 

@@ -59,16 +59,67 @@
       {{else}}
         <span class="ncm-term__hud-seg ncm-term__hud-net"><i class="fas fa-network-wired"></i> {{uplink.name}}</span>
       {{/if}}
-      <span class="ncm-term__hud-seg ncm-term__bars{{#if uplink.offline}} ncm-term__bars--off{{/if}}"><b></b><b></b><b></b><b></b></span>
+      {{#if uplink.wired}}
+        <span class="ncm-term__hud-seg ncm-term__hud-wired" data-tooltip="Hardline — wired connection"><i class="fas fa-network-wired"></i></span>
+      {{else}}
+        <span class="ncm-term__hud-seg ncm-term__bars{{#if uplink.offline}} ncm-term__bars--off{{/if}}" data-tooltip="Uplink signal: {{uplink.sigLabel}}"><b class="{{#if (gt uplink.signal 0)}}on{{/if}}"></b><b class="{{#if (gte uplink.signal 25)}}on{{/if}}"></b><b class="{{#if (gte uplink.signal 50)}}on{{/if}}"></b><b class="{{#if (gte uplink.signal 80)}}on{{/if}}"></b></span>
+      {{/if}}
       {{#if hud.isAdmin}}<span class="ncm-term__hud-sep">·</span><span class="ncm-term__hud-seg ncm-term__hud-admin"><i class="fas fa-user-shield"></i> ADMIN</span>{{/if}}
       <span class="ncm-term__hud-spacer"></span>
+      {{!-- OPERATOR — WHO you're acting as. Every roll, siphon, claim and skill
+            read uses this character; it was invisible before (silently the
+            user's assigned actor), which paid siphoned eddies to the wrong PC. --}}
+      {{#if hud.operator}}
+        <span class="ncm-term__hud-seg ncm-term__hud-op{{#if hud.canSwitchOperator}} is-switchable{{/if}}"
+              {{#if hud.canSwitchOperator}}data-action="terminalSwitchOperator"{{/if}}
+              data-tooltip="Operating as {{hud.operator}} — rolls, eddies and skill checks use this character.{{#if hud.canSwitchOperator}} Click to switch.{{/if}}">
+          <i class="fas fa-user-gear"></i> {{hud.operator}}{{#if hud.canSwitchOperator}} <i class="fas fa-chevron-down ncm-term__hud-opcv"></i>{{/if}}
+        </span>
+      {{else}}
+        <span class="ncm-term__hud-seg ncm-term__hud-op ncm-term__hud-op--none" data-tooltip="No character assigned — rolls, eddies claims and skill checks can't run.">
+          <i class="fas fa-user-slash"></i> NO OPERATOR
+        </span>
+      {{/if}}
+      {{!-- OPERATOR TOOLS — host-level offensive menu (UPLOAD now, SYSTEM SWEEP
+            later). Gated by canOperate: not-capable operators see it locked with
+            the requirement as a tooltip. --}}
+      {{#if hud.tools}}
+        <span class="ncm-term__hud-seg ncm-term__hud-tools{{#if hud.tools.open}} is-open{{/if}}{{#unless hud.tools.canOperate}} is-locked{{/unless}}"
+              data-action="terminalOperatorTools"
+              data-tooltip="{{#if hud.tools.canOperate}}Operator tools — upload, hacking{{else}}{{hud.tools.reason}}{{/if}}">
+          <i class="fas fa-user-secret"></i> OPS <i class="fas fa-chevron-down ncm-term__hud-opcv"></i>
+          {{#if hud.tools.open}}
+            <div class="ncm-term__opsmenu">
+              <div class="ncm-term__opsmenu-hd">OPERATOR TOOLS</div>
+              {{#each hud.tools.items}}
+                <div class="ncm-term__opsitem{{#if this.disabled}} is-disabled{{/if}}{{#if this.soon}} is-soon{{/if}}"
+                     {{#unless this.disabled}}data-action="{{this.action}}"{{/unless}}
+                     {{#if this.reason}}data-tooltip="{{this.reason}}"{{/if}}>
+                  <span class="ncm-term__opsico"><i class="{{this.icon}}"></i></span>
+                  <span class="ncm-term__opsnm">
+                    <span class="ncm-term__opst">{{this.label}}{{#if this.soon}} <span class="ncm-term__opssoon">SOON</span>{{/if}}</span>
+                    <span class="ncm-term__opsd">{{this.desc}}</span>
+                  </span>
+                </div>
+              {{/each}}
+            </div>
+          {{/if}}
+        </span>
+      {{/if}}
       {{#if isGM}}<span class="ncm-term__hud-seg ncm-term__hud-gm" data-action="terminalConfigure" data-tooltip="Configure terminal (GM)"><i class="fas fa-sliders"></i> EDIT</span>{{/if}}
       {{#if hud.trace}}<span class="ncm-term__hud-seg ncm-term__hud-trace"><i class="fa-regular fa-clock"></i> TRACE {{hud.trace}}</span>{{/if}}
     </div>
 
-    <div class="ncm-term__panes">
+    {{!-- Sidebar collapse (the message viewer's --list-collapsed precedent):
+          the mailbox list folds to a thin rail so a spreadsheet / camera feed /
+          schematic gets the full width of the machine. --}}
+    <div class="ncm-term__panes{{#if sideCollapsed}} ncm-term__panes--collapsed{{/if}}">
+      <button type="button" class="ncm-term__side-toggle" data-action="terminalToggleSide"
+              data-tooltip="{{#if sideCollapsed}}Show the mailbox{{else}}Hide the mailbox — full-width view{{/if}}">
+        <i class="fas fa-chevron-{{#if sideCollapsed}}right{{else}}left{{/if}}"></i>
+      </button>
       <div class="ncm-term__side">
-        <div class="ncm-term__acsw" data-action="terminalToggleSwitcher">
+        <div class="ncm-term__acsw{{#if switcherOpen}} is-open{{/if}}" data-action="terminalToggleSwitcher">
           <span class="ncm-term__avatar">{{#if account.portrait}}<img src="{{account.portrait}}" alt="">{{else}}{{account.initials}}{{/if}}</span>
           <span class="ncm-term__acsw-nm">{{account.displayName}}<small>{{account.username}}</small></span>
           <span class="ncm-term__acsw-caret"><i class="fas fa-chevron-down"></i></span>
@@ -86,34 +137,79 @@
             </div>
           {{/if}}
         </div>
-        {{#each folders}}
-          <div class="ncm-term__fold{{#if active}} is-active{{/if}}" data-action="terminalFolder" data-folder="{{key}}">
-            <i class="{{icon}}"></i> {{label}} <span class="ncm-term__fold-ct">{{count}}</span>
-          </div>
-        {{/each}}
-        <div class="ncm-term__lsep"></div>
-        <div class="ncm-term__slabel">{{listLabel}}</div>
-        {{#each messages}}
-          <div class="ncm-term__row{{#if isSelected}} is-active{{/if}}{{#if encrypted}} is-encrypted{{/if}}" data-action="terminalSelectMessage" data-message-id="{{messageId}}">
-            {{#if encrypted}}<i class="fas fa-lock ncm-term__pdot"></i>{{else}}<i class="fas fa-circle ncm-term__pdot ncm-term__pdot--{{priority}}"></i>{{/if}}
-            <div class="ncm-term__row-meta">
-              <div class="ncm-term__row-from">{{from}}</div>
-              <div class="ncm-term__row-subj">{{subject}}{{#if offNet}}<span class="ncm-term__offnet" data-tooltip="Off-network — players can't see this on the current uplink">OFF-NET</span>{{/if}}</div>
+        {{!-- Pinned zone: folders + list label never scroll away; only the
+             message list below scrolls (.ncm-term__list). --}}
+        <div class="ncm-term__folds">
+          {{#each folders}}
+            <div class="ncm-term__fold{{#if active}} is-active{{/if}}" data-action="terminalFolder" data-folder="{{key}}">
+              <i class="{{icon}}"></i> {{label}} <span class="ncm-term__fold-ct">{{count}}</span>
             </div>
+          {{/each}}
+        </div>
+        <div class="ncm-term__lsep"></div>
+        {{!-- MAIL / FILES solo chips — app STATE (activeEnvFilter), not a
+              display-only toggle: the viewer re-renders on every click, so a
+              visual-only filter reset itself the moment you opened a message.
+              Only rendered when the folder holds both kinds. --}}
+        {{#if envFilter}}
+          <div class="ncm-term__envchips">
+            <button type="button" class="ncm-term__envchip {{#if (eq activeEnvFilter 'all')}}is-on{{/if}}" data-action="terminalEnvFilter" data-f="all">ALL</button>
+            <button type="button" class="ncm-term__envchip {{#if (eq activeEnvFilter 'mail')}}is-on{{/if}}" data-action="terminalEnvFilter" data-f="mail" data-tooltip="Show only mail"><i class="fas fa-envelope"></i> {{envFilter.mail}}</button>
+            <button type="button" class="ncm-term__envchip {{#if (eq activeEnvFilter 'file')}}is-on{{/if}}" data-action="terminalEnvFilter" data-f="file" data-tooltip="Show only files"><i class="fas fa-folder"></i> {{envFilter.file}}</button>
           </div>
-        {{else}}
-          <div class="ncm-term__list-empty"><i class="fas fa-inbox"></i> {{emptyLabel}}</div>
-        {{/each}}
-        {{#if syncHint}}
-          <div class="ncm-term__synchint"><i class="fas fa-triangle-exclamation"></i> {{syncHint.count}} object{{#unless (eq syncHint.count 1)}}s{{/unless}} failed to sync — uplink required</div>
         {{/if}}
-        {{#if pagination}}
-          <div class="ncm-term__pager">
-            <button type="button" class="ncm-term__pager-btn" data-action="terminalPage" data-dir="prev" {{#unless pagination.hasPrev}}disabled{{/unless}}><i class="fas fa-chevron-left"></i></button>
-            <span class="ncm-term__pager-lbl">{{pagination.page}} / {{pagination.maxPage}}</span>
-            <button type="button" class="ncm-term__pager-btn" data-action="terminalPage" data-dir="next" {{#unless pagination.hasNext}}disabled{{/unless}}><i class="fas fa-chevron-right"></i></button>
-          </div>
-        {{/if}}
+        <div class="ncm-term__slabel">{{listLabel}}</div>
+        <div class="ncm-term__list" data-env-filter="{{activeEnvFilter}}">
+          {{#each messages}}
+            {{!-- ONE row skeleton for both kinds (#37 revision): line 1 = WHO/WHAT
+                  (sender or filename, the row's anchor) · line 2 = WHAT IT IS
+                  (subject, or a type chip + size) · line 3 = muted detail
+                  (body snippet, or the path). A mixed list then reads as ONE
+                  list instead of two competing ones. --}}
+            {{#if isFile}}
+              <div class="ncm-term__row ncm-term__row--file{{#if isSelected}} is-active{{/if}}{{#if encrypted}} is-encrypted{{/if}}" style="--ncm-i:{{@index}}" data-env="file" data-ct-color="{{accent}}" data-action="terminalSelectMessage" data-message-id="{{messageId}}">
+                <div class="ncm-term__row-l1">
+                  {{#if encrypted}}<i class="fas fa-lock ncm-term__ficon"></i>{{else}}<i class="{{typeIcon}} ncm-term__ficon"></i>{{/if}}
+                  <span class="ncm-term__row-file">{{filename}}</span>
+                  {{#if isNew}}<span class="ncm-term__new">NEW</span>{{/if}}
+                  {{#if time}}<span class="ncm-term__row-time">{{time}}</span>{{/if}}
+                </div>
+                <div class="ncm-term__row-l2">
+                  <span class="ncm-term__row-tag">{{typeLabel}}</span>
+                  {{#if fileSize}}<span class="ncm-term__row-size">{{fileSize}}</span>{{/if}}
+                  {{#if offNet}}<span class="ncm-term__offnet" data-tooltip="Off-network — players can't see this on the current uplink">OFF-NET</span>{{/if}}
+                </div>
+                {{#if filePath}}<div class="ncm-term__row-prev ncm-term__row-prev--path">{{filePath}}</div>{{/if}}
+              </div>
+            {{else}}
+              <div class="ncm-term__row{{#if isSelected}} is-active{{/if}}{{#if encrypted}} is-encrypted{{/if}} ncm-term__row--{{priority}}" style="--ncm-i:{{@index}}" data-env="mail" data-action="terminalSelectMessage" data-message-id="{{messageId}}">
+                <div class="ncm-term__row-l1">
+                  {{#if encrypted}}<i class="fas fa-lock ncm-term__pdot"></i>{{else}}<i class="fas fa-circle ncm-term__pdot ncm-term__pdot--{{priority}}"></i>{{/if}}
+                  <span class="ncm-term__row-from">{{from}}</span>
+                  {{#if time}}<span class="ncm-term__row-time">{{time}}</span>{{/if}}
+                </div>
+                <div class="ncm-term__row-subj">{{subject}}{{#if offNet}}<span class="ncm-term__offnet" data-tooltip="Off-network — players can't see this on the current uplink">OFF-NET</span>{{/if}}</div>
+                {{#if typeLabel}}
+                  <div class="ncm-term__row-l2"><span class="ncm-term__row-tag" data-ct-color="{{accent}}"><i class="{{typeIcon}}"></i> {{typeLabel}}</span></div>
+                {{else if preview}}
+                  <div class="ncm-term__row-prev">{{preview}}</div>
+                {{/if}}
+              </div>
+            {{/if}}
+          {{else}}
+            <div class="ncm-term__list-empty"><i class="fas fa-inbox"></i> {{emptyLabel}}</div>
+          {{/each}}
+          {{#if syncHint}}
+            <div class="ncm-term__synchint"><i class="fas fa-triangle-exclamation"></i> {{syncHint.count}} object{{#unless (eq syncHint.count 1)}}s{{/unless}} failed to sync — uplink required</div>
+          {{/if}}
+          {{#if pagination}}
+            <div class="ncm-term__pager">
+              <button type="button" class="ncm-term__pager-btn" data-action="terminalPage" data-dir="prev" {{#unless pagination.hasPrev}}disabled{{/unless}}><i class="fas fa-chevron-left"></i></button>
+              <span class="ncm-term__pager-lbl">{{pagination.page}} / {{pagination.maxPage}}</span>
+              <button type="button" class="ncm-term__pager-btn" data-action="terminalPage" data-dir="next" {{#unless pagination.hasNext}}disabled{{/unless}}><i class="fas fa-chevron-right"></i></button>
+            </div>
+          {{/if}}
+        </div>
         {{#if isGM}}
           <button type="button" class="ncm-term__gm-add" data-action="terminalNewMessage"><i class="fas fa-plus"></i> New message (GM)</button>
         {{/if}}
@@ -121,27 +217,61 @@
 
       <div class="ncm-term__detail">
         {{#if selectedMessage}}
-          <div class="ncm-term__subject">{{selectedMessage.subject}}{{#if selectedMessage.classification}} — <span class="ncm-term__cls">{{selectedMessage.classification}}</span>{{/if}}</div>
-          <div class="ncm-term__sender">
-            <span class="ncm-term__avatar">{{#if selectedMessage.sender.portrait}}<img src="{{selectedMessage.sender.portrait}}" alt="">{{else}}{{selectedMessage.sender.initials}}{{/if}}</span>
-            <div><div class="ncm-term__sender-nm">{{selectedMessage.sender.name}}</div><div class="ncm-term__sender-em">{{selectedMessage.sender.email}}</div></div>
-            <span class="ncm-term__sender-actions">
-              {{#unless selectedMessage.isContact}}
-                <span class="ncm-term__chip" data-action="terminalAddContact" data-message-id="{{selectedMessage.messageId}}"><i class="fas fa-user-plus"></i> Add to contacts</span>
-              {{/unless}}
-              {{#if isGM}}
-                <span class="ncm-term__gm-edit" data-action="terminalToggleSave" data-message-id="{{selectedMessage.messageId}}" data-tooltip="{{#if selectedMessage.isSaved}}Remove from Saved (GM){{else}}Move to Saved (GM){{/if}}"><i class="{{#if selectedMessage.isSaved}}fas{{else}}fa-regular{{/if}} fa-bookmark"></i></span>
-                <span class="ncm-term__gm-edit" data-action="terminalToggleTrash" data-message-id="{{selectedMessage.messageId}}" data-tooltip="{{#if selectedMessage.isTrashed}}Restore from Trash (GM){{else}}Move to Trash (GM){{/if}}"><i class="fas {{#if selectedMessage.isTrashed}}fa-trash-arrow-up{{else}}fa-box-archive{{/if}}"></i></span>
-                <span class="ncm-term__gm-edit" data-action="terminalEditMessage" data-message-id="{{selectedMessage.messageId}}" data-tooltip="Edit message (GM)"><i class="fas fa-pen"></i></span>
-                <span class="ncm-term__gm-edit ncm-term__gm-edit--danger" data-action="terminalDeleteMessage" data-message-id="{{selectedMessage.messageId}}" data-tooltip="Permanently delete (GM)"><i class="fas fa-trash-can"></i></span>
-              {{/if}}
-            </span>
-          </div>
-          <div class="ncm-term__metabar">
-            <span class="ncm-term__mpill ncm-term__mpill--time" data-tooltip="{{selectedMessage.timeAgo}}"><i class="fa-regular fa-clock"></i> {{selectedMessage.timeAbs}}</span>
-            <span class="ncm-term__mpill ncm-term__mpill--{{selectedMessage.priority}}"><i class="fas {{selectedMessage.priorityIcon}}"></i> {{selectedMessage.priorityLabel}}</span>
-            <span class="ncm-term__mpill ncm-term__mpill--net"><i class="fas fa-network-wired"></i> {{selectedMessage.network}}</span>
-          </div>
+          {{#if selectedMessage.isFile}}
+            {{!-- FILE header — a machine artifact, not mail. No avatar, no ADD,
+                  no REPLY: its owner is a NODE (SECCAM-B2), not an Agent. --}}
+            <div class="ncm-term__file" data-ct-color="{{selectedMessage.file.accent}}">
+              <div class="ncm-term__file-top">
+                <span class="ncm-term__file-ico"><i class="{{selectedMessage.file.typeIcon}}"></i></span>
+                <div class="ncm-term__file-id">
+                  <div class="ncm-term__file-name">{{selectedMessage.file.filename}}</div>
+                  {{#if selectedMessage.file.path}}<div class="ncm-term__file-path">{{selectedMessage.file.fullPath}}</div>{{/if}}
+                </div>
+                <span class="ncm-term__file-tag">{{selectedMessage.file.typeLabel}}</span>
+                {{#if isGM}}
+                  <span class="ncm-term__file-gm">
+                    <select class="ncm-term__move-select" data-move-message="{{selectedMessage.messageId}}" data-tooltip="Move to folder (GM)">
+                      {{#each selectedMessage.moveOptions}}<option value="{{id}}" {{#if selected}}selected{{/if}}>{{name}}</option>{{/each}}
+                    </select>
+                    <span class="ncm-term__gm-edit" data-action="terminalEditMessage" data-message-id="{{selectedMessage.messageId}}" data-tooltip="Edit file (GM)"><i class="fas fa-pen"></i></span>
+                    <span class="ncm-term__gm-edit ncm-term__gm-edit--danger" data-action="terminalDeleteMessage" data-message-id="{{selectedMessage.messageId}}" data-tooltip="Permanently delete (GM)"><i class="fas fa-trash-can"></i></span>
+                  </span>
+                {{/if}}
+              </div>
+              <div class="ncm-term__file-grid">
+                {{#if selectedMessage.file.owner}}<span class="ncm-term__file-f"><b>Owner</b><i>{{selectedMessage.file.owner}}</i></span>{{/if}}
+                <span class="ncm-term__file-f"><b>Modified</b><i>{{selectedMessage.file.modifiedLabel}}</i></span>
+                <span class="ncm-term__file-f"><b>Size</b><i>{{selectedMessage.file.size}}</i></span>
+                {{#if selectedMessage.file.hasCount}}<span class="ncm-term__file-f"><b>{{selectedMessage.file.countLabel}}</b><i>{{selectedMessage.file.countValue}}</i></span>{{/if}}
+              </div>
+            </div>
+          {{else}}
+            <div class="ncm-term__subject">{{selectedMessage.subject}}{{#if selectedMessage.classification}} — <span class="ncm-term__cls">{{selectedMessage.classification}}</span>{{/if}}</div>
+            <div class="ncm-term__sender">
+              <span class="ncm-term__avatar">{{#if selectedMessage.sender.portrait}}<img src="{{selectedMessage.sender.portrait}}" alt="">{{else}}{{selectedMessage.sender.initials}}{{/if}}</span>
+              <div><div class="ncm-term__sender-nm">{{selectedMessage.sender.name}}</div><div class="ncm-term__sender-em">{{selectedMessage.sender.email}}</div></div>
+              <span class="ncm-term__sender-actions">
+                {{#if selectedMessage.canAddContact}}
+                  <span class="ncm-term__chip" data-action="terminalAddContact" data-message-id="{{selectedMessage.messageId}}"><i class="fas fa-user-plus"></i> Add to contacts</span>
+                {{/if}}
+                {{#if selectedMessage.canReply}}
+                  <span class="ncm-term__chip" data-action="terminalReplyAgent" data-message-id="{{selectedMessage.messageId}}" data-tooltip="Message this sender from your own Agent"><i class="fas fa-reply"></i> Reply via Agent</span>
+                {{/if}}
+                {{#if isGM}}
+                  <select class="ncm-term__move-select" data-move-message="{{selectedMessage.messageId}}" data-tooltip="Move to folder (GM)">
+                    {{#each selectedMessage.moveOptions}}<option value="{{id}}" {{#if selected}}selected{{/if}}>{{name}}</option>{{/each}}
+                  </select>
+                  <span class="ncm-term__gm-edit" data-action="terminalEditMessage" data-message-id="{{selectedMessage.messageId}}" data-tooltip="Edit message (GM)"><i class="fas fa-pen"></i></span>
+                  <span class="ncm-term__gm-edit ncm-term__gm-edit--danger" data-action="terminalDeleteMessage" data-message-id="{{selectedMessage.messageId}}" data-tooltip="Permanently delete (GM)"><i class="fas fa-trash-can"></i></span>
+                {{/if}}
+              </span>
+            </div>
+            <div class="ncm-term__metabar">
+              <span class="ncm-term__mpill ncm-term__mpill--time" data-tooltip="{{selectedMessage.timeAgo}}"><i class="fa-regular fa-clock"></i> {{selectedMessage.timeAbs}}</span>
+              <span class="ncm-term__mpill ncm-term__mpill--{{selectedMessage.priority}}"><i class="fas {{selectedMessage.priorityIcon}}"></i> {{selectedMessage.priorityLabel}}</span>
+              <span class="ncm-term__mpill ncm-term__mpill--net"><i class="fas fa-network-wired"></i> {{selectedMessage.network}}</span>
+            </div>
+          {{/if}}
           {{#if selectedMessage.isTypedContent}}
             <div class="ncm-term__body ncm-term__body--typed">
               {{#with selectedMessage.content}}
@@ -151,11 +281,34 @@
           {{else}}
             <div class="ncm-term__body">{{{selectedMessage.bodyHtml}}}</div>
           {{/if}}
-          {{#if allowExfil}}
+          {{!-- ANALYZE — offered on EVERY typed file, never only on suspicious
+                ones (its presence must not be a tell). Rolls vs the file's
+                sniff DV: unmasks a disguised payload, or reports "no
+                anomalies" on a clean file. --}}
+          {{#if selectedMessage.isTypedContent}}
+            <div class="ncm-term__analyze">
+              <span class="ncm-term__btn ncm-term__analyze-btn" data-action="analyzeFile" data-entry-id="{{selectedMessage.messageId}}"
+                    data-tooltip="Pull the file apart — see what it really is. Not every file has something to find.">
+                <i class="fas fa-magnifying-glass"></i> ANALYZE
+              </span>
+            </div>
+          {{/if}}
+          {{#if exfilActions.length}}
+            {{!-- A DENIED action renders dead with its reason ("LIVE STREAM")
+                  rather than vanishing — a missing button reads as a broken UI,
+                  a stated reason teaches the rule. Authoring can still force a
+                  silent hide (hideDenied) for secrets. --}}
             <div class="ncm-term__exfil">
-              <span class="ncm-term__btn" data-action="terminalExfilInbox" data-message-id="{{selectedMessage.messageId}}"><i class="fas fa-download"></i> To my Agent</span>
-              <span class="ncm-term__btn" data-action="terminalExfilShard" data-message-id="{{selectedMessage.messageId}}"><i class="fas fa-sd-card"></i> Burn to Shard</span>
-              <span class="ncm-term__exfil-note">— allowed by terminal policy</span>
+              {{#each exfilActions}}
+                {{#if denied}}
+                  <span class="ncm-term__btn ncm-term__exfil-btn is-denied" data-action="terminalExfil" data-exfil="{{action}}" data-message-id="{{../selectedMessage.messageId}}"
+                        data-tooltip="This file can’t leave the machine{{#if denyReason}} — {{denyReason}}{{/if}}"><i class="{{icon}}"></i> {{label}}
+                    <span class="ncm-term__exfil-why">{{denyReason}}</span>
+                  </span>
+                {{else}}
+                  <span class="ncm-term__btn ncm-term__exfil-btn{{#if gated}} is-gated{{/if}}{{#if (eq action "saveFrame")}} is-frame{{/if}}" data-action="terminalExfil" data-exfil="{{action}}" data-message-id="{{../selectedMessage.messageId}}"{{#if gated}} data-tooltip="Security check — DV {{dv}} (fail trips a trace)"{{/if}}><i class="{{icon}}"></i> {{label}}{{#if gated}} <i class="fas fa-lock ncm-term__exfil-lock"></i>{{/if}}</span>
+                {{/if}}
+              {{/each}}
             </div>
           {{/if}}
         {{else}}

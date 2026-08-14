@@ -11,56 +11,74 @@
 
 {{#if hasItem}}
 <div class="ncm-composer-shell">
-<form class="ncm-shard-composer" autocomplete="off">
+<div class="ncm-cmp-main">
 
-  {{!-- ═══ CONTENT TYPE SELECTOR ═══ --}}
-  <fieldset class="ncm-config-section">
-    <legend class="ncm-config-legend"><i class="fas fa-layer-group"></i> Content Type</legend>
-    <div class="ncm-composer-type-pills">
-      {{#each typePills}}
-        <div class="ncm-composer-type-pill {{#if isActive}}ncm-composer-type-pill--active{{/if}}"
-             data-action="selectContentType" data-type="{{key}}">
-          <i class="{{icon}}"></i> {{label}}
-        </div>
-      {{/each}}
+  {{!-- ═══ PINNED TYPE BAR — icon + name + one-line intro + actions.
+       The 18-pill wall lives in the grouped picker dropdown below. ═══ --}}
+  <div class="ncm-cmp-typebar">
+    <div class="ncm-cmp-typebar__ico"><i class="{{currentType.icon}}"></i></div>
+    <div class="ncm-cmp-typebar__info">
+      <div class="ncm-cmp-typebar__name">{{currentType.label}}</div>
+      <div class="ncm-cmp-typebar__desc">{{typeIntro.what}}{{#if typeIntro.how}} <span class="ncm-cmp-how" data-action="cmpToggleHow">How does it work?</span>{{/if}}</div>
     </div>
-    {{#if typeIntro}}
-      <div class="ncm-composer-intro">
-        <i class="fas fa-circle-info ncm-composer-intro__icon"></i>
-        <div class="ncm-composer-intro__text">
-          <div class="ncm-composer-intro__what">{{typeIntro.what}}</div>
-          <div class="ncm-composer-intro__how"><b>How:</b> {{typeIntro.how}}</div>
-        </div>
-      </div>
+    <button type="button" class="ncm-shard-btn ncm-cmp-tbbtn ncm-cmp-tbbtn--swap" data-action="cmpTogglePicker"><i class="fas fa-right-left"></i> Change type</button>
+    {{#if hasExample}}
+      <button type="button" class="ncm-shard-btn ncm-cmp-tbbtn" data-action="loadExample" data-tooltip="Prefill the form with a worked example of this type — every field editable"><i class="fas fa-wand-magic-sparkles"></i> Example</button>
     {{/if}}
-  </fieldset>
+    <button type="button" class="ncm-shard-btn ncm-cmp-tbbtn" data-action="cmpToggleTpl" data-tooltip="Save / load reusable templates"><i class="fas fa-box-archive"></i> Templates <i class="fas fa-caret-down"></i></button>
+  </div>
+  {{#if typeIntro.how}}
+    <div class="ncm-cmp-howbox" data-cmp-howbox hidden><i class="fas fa-circle-info"></i> {{typeIntro.how}}</div>
+  {{/if}}
 
-  {{!-- ═══ ENTRY IDENTITY (icon + accent color) ═══ --}}
-  <fieldset class="ncm-config-section">
-    <legend class="ncm-config-legend"><i class="fas fa-paintbrush"></i> Entry Identity</legend>
-    <div class="ncm-config-row ncm-config-row--col">
-      <label class="ncm-config-label" style="margin-bottom:4px;">Icon</label>
-      <div class="ncm-icon-grid" data-target="entryIcon">
-        {{#each iconOptions}}
-          <div class="ncm-icon-grid__item {{#if selected}}ncm-icon-grid__item--active{{/if}}"
-               data-action="selectIcon" data-icon="{{value}}" data-target="entryIcon" title="{{label}}">
-            <i class="{{value}}"></i>
+  {{!-- grouped type picker (opens from "Change type") --}}
+  <div class="ncm-cmp-picker" data-cmp-picker hidden>
+    {{#each typeGroups}}
+      <div class="ncm-cmp-picker__group">{{label}}</div>
+      <div class="ncm-composer-type-pills">
+        {{#each pills}}
+          <div class="ncm-composer-type-pill {{#if isActive}}ncm-composer-type-pill--active{{/if}}"
+               data-action="selectContentType" data-type="{{key}}">
+            <i class="{{icon}}"></i> {{label}}
           </div>
         {{/each}}
       </div>
-      <input type="hidden" name="entryIcon" value="" />
+    {{/each}}
+  </div>
+
+  {{!-- templates menu (opens from "Templates") --}}
+  <div class="ncm-cmp-tplmenu" data-cmp-tplmenu hidden>
+    <div class="ncm-composer-tpl-bar">
+      <button type="button" class="ncm-shard-btn ncm-composer-tpl-btn" data-action="tplSave" data-tooltip="Save the current form as a reusable world template"><i class="fas fa-floppy-disk"></i> Save as template</button>
+      <span class="ncm-composer-tpl-sp"></span>
+      <button type="button" class="ncm-shard-btn ncm-composer-tpl-btn ncm-composer-tpl-btn--icon" data-action="tplImport" data-tooltip="Import templates (JSON)"><i class="fas fa-file-import"></i></button>
+      <button type="button" class="ncm-shard-btn ncm-composer-tpl-btn ncm-composer-tpl-btn--icon" data-action="tplExport" data-tooltip="Export all saved templates (JSON)"><i class="fas fa-file-export"></i></button>
     </div>
-    <div class="ncm-config-row">
-      <label class="ncm-config-label">Accent</label>
-      <div class="ncm-composer-color-row">
-        {{#each accentColors}}
-          <div class="ncm-composer-color-dot {{#if isActive}}ncm-composer-color-dot--active{{/if}}"
-               style="background:{{hex}};"
-               data-action="selectAccent" data-accent="{{key}}"></div>
-        {{/each}}
+    {{#if savedTemplates.length}}
+      <div class="ncm-composer-tpl-bar">
+        <select name="tplSelect" class="ncm-config-input ncm-config-select ncm-composer-tpl-select">
+          {{#each savedTemplates}}<option value="{{id}}">{{name}} · {{typeLabel}}</option>{{/each}}
+        </select>
+        <button type="button" class="ncm-shard-btn ncm-composer-tpl-btn" data-action="tplLoad" data-tooltip="Load the selected template into the form"><i class="fas fa-folder-open"></i> Load</button>
+        <button type="button" class="ncm-shard-btn ncm-shard-btn--danger ncm-composer-tpl-btn ncm-composer-tpl-btn--icon" data-action="tplDelete" data-tooltip="Delete the selected template"><i class="fas fa-trash"></i></button>
       </div>
+    {{else}}
+      <div class="ncm-config-hint" style="padding:2px 4px">No saved templates yet — fill the form and hit “Save as template”.</div>
+    {{/if}}
+  </div>
+
+<form class="ncm-shard-composer" autocomplete="off">
+
+  {{!-- ═══ ① CONTENT — the per-type form (the star; open by default) ═══ --}}
+  <section class="ncm-cmp-sec{{#unless secOpen.content}} ncm-cmp-sec--closed{{/unless}}" data-cmp-sec="content">
+    <div class="ncm-cmp-sec__hd" data-action="cmpToggleSec">
+      <span class="ncm-cmp-sec__num">①</span><span class="ncm-cmp-sec__title">Content</span>
+      <span class="ncm-cmp-sec__sum">
+        {{#if isSpreadsheet}}<button type="button" class="ncm-cmp-focus" data-action="cmpFocusMode" data-tooltip="Focus mode — hide the preview and other sections while you work the grid"><i class="fas fa-expand"></i></button>{{/if}}
+        <i class="fas fa-chevron-down ncm-cmp-sec__caret"></i>
+      </span>
     </div>
-  </fieldset>
+    <div class="ncm-cmp-sec__bd">
 
   {{!-- ═══════════════════════════════════════════
        TYPE-SPECIFIC FORM FIELDS
@@ -71,25 +89,38 @@
     <fieldset class="ncm-config-section">
       <legend class="ncm-config-legend"><i class="fas fa-envelope"></i> Message Content</legend>
       <div class="ncm-config-row">
-        <label class="ncm-config-label">From</label>
-        <input type="text" name="from" class="ncm-config-input ncm-config-flex" value="{{editFrom}}" placeholder="sender@corp.net" />
-      </div>
-      <div class="ncm-config-row">
         <label class="ncm-config-label">Subject</label>
         <input type="text" name="subject" class="ncm-config-input ncm-config-flex" value="{{editSubject}}" placeholder="Message subject" />
       </div>
       <div class="ncm-config-row ncm-config-row--col">
         <label class="ncm-config-label" style="margin-bottom:4px;">Body</label>
-        <textarea name="body" class="ncm-config-input ncm-config-textarea" rows="6" placeholder="Message content...">{{editBody}}</textarea>
-      </div>
-      <div class="ncm-config-row">
-        <label class="ncm-config-label">Timestamp</label>
-        <div class="ncm-ctp-trigger" data-action="openTimePicker" data-target="timestamp">
-          <i class="fas fa-clock ncm-ctp-trigger__icon"></i>
-          <span class="ncm-ctp-trigger__value">{{#if editTimestampFormatted}}{{editTimestampFormatted}}{{else}}{{defaultTimestampFormatted}}{{/if}}</span>
-          <i class="fas fa-chevron-down ncm-ctp-trigger__chevron"></i>
+        {{!-- Rich-text editor: a formatting toolbar over a live contenteditable
+             surface; the hidden textarea mirrors its HTML for FormDataExtended
+             (and _collectEntryData reads the surface directly). --}}
+        <div class="ncm-rte" data-rte>
+          <div class="ncm-rte__toolbar">
+            <button type="button" class="ncm-rte__tool" data-action="rteCmd" data-cmd="bold" data-tooltip="Bold (Ctrl+B)"><i class="fas fa-bold"></i></button>
+            <button type="button" class="ncm-rte__tool" data-action="rteCmd" data-cmd="italic" data-tooltip="Italic (Ctrl+I)"><i class="fas fa-italic"></i></button>
+            <button type="button" class="ncm-rte__tool" data-action="rteCmd" data-cmd="underline" data-tooltip="Underline"><i class="fas fa-underline"></i></button>
+            <button type="button" class="ncm-rte__tool" data-action="rteCmd" data-cmd="strikeThrough" data-tooltip="Strikethrough"><i class="fas fa-strikethrough"></i></button>
+            <span class="ncm-rte__sep"></span>
+            <button type="button" class="ncm-rte__tool" data-action="rteCmd" data-cmd="formatBlock" data-val="h3" data-tooltip="Heading"><i class="fas fa-heading"></i></button>
+            <button type="button" class="ncm-rte__tool" data-action="rteCmd" data-cmd="formatBlock" data-val="blockquote" data-tooltip="Quote"><i class="fas fa-quote-right"></i></button>
+            <button type="button" class="ncm-rte__tool" data-action="rteCmd" data-cmd="insertUnorderedList" data-tooltip="Bullet list"><i class="fas fa-list-ul"></i></button>
+            <button type="button" class="ncm-rte__tool" data-action="rteCmd" data-cmd="insertOrderedList" data-tooltip="Numbered list"><i class="fas fa-list-ol"></i></button>
+            <span class="ncm-rte__sep"></span>
+            <button type="button" class="ncm-rte__tool" data-action="rteLink" data-tooltip="Insert link"><i class="fas fa-link"></i></button>
+            <button type="button" class="ncm-rte__tool" data-action="rteColor" data-tooltip="Text color"><i class="fas fa-palette"></i></button>
+            <button type="button" class="ncm-rte__tool" data-action="rteEmoji" data-tooltip="Emoji"><i class="fas fa-face-smile"></i></button>
+            <span class="ncm-rte__sep"></span>
+            <button type="button" class="ncm-rte__tool" data-action="rteCmd" data-cmd="removeFormat" data-tooltip="Clear formatting"><i class="fas fa-eraser"></i></button>
+            <span style="flex:1"></span>
+            <button type="button" class="ncm-rte__tool ncm-rte__tool--raw" data-action="rteRaw" data-tooltip="Edit raw HTML"><i class="fas fa-code"></i></button>
+          </div>
+          <div class="ncm-rte__surface" contenteditable="true" data-rte-surface data-placeholder="Write the message… select text and format it, or drop in emoji.">{{{editBody}}}</div>
+          <textarea name="body" data-rte-sync class="ncm-rte__sync" spellcheck="false" hidden>{{editBody}}</textarea>
+          <div class="ncm-rte__pop" data-rte-pop hidden></div>
         </div>
-        <input type="hidden" name="timestamp" value="{{#if editTimestamp}}{{editTimestamp}}{{else}}{{defaultTimestamp}}{{/if}}" />
       </div>
     </fieldset>
   {{/if}}
@@ -111,297 +142,331 @@
         <textarea name="eddiesNote" class="ncm-config-input ncm-config-textarea" rows="2" placeholder="Half now, half when it's done...">{{editContentData.note}}</textarea>
       </div>
       <div class="ncm-config-hint">Eddies are wired to the CPR wealth ledger when claimed by a player.</div>
-      <div class="ncm-config-row">
-        <label class="ncm-config-label">Timestamp</label>
-        <div class="ncm-ctp-trigger" data-action="openTimePicker" data-target="timestamp">
-          <i class="fas fa-clock ncm-ctp-trigger__icon"></i>
-          <span class="ncm-ctp-trigger__value">{{#if editTimestampFormatted}}{{editTimestampFormatted}}{{else}}{{defaultTimestampFormatted}}{{/if}}</span>
-          <i class="fas fa-chevron-down ncm-ctp-trigger__chevron"></i>
-        </div>
-        <input type="hidden" name="timestamp" value="{{#if editTimestamp}}{{editTimestamp}}{{else}}{{defaultTimestamp}}{{/if}}" />
-      </div>
     </fieldset>
   {{/if}}
 
   {{!-- ─── DOSSIER ─── --}}
   {{#if isDossier}}
+    {{!-- Target-file card editor (redesign 2026-07-13) — the editor IS the
+          artifact: portrait tile = the FilePicker, classification stamps
+          itself live, threat is the clickable meter. --}}
     <fieldset class="ncm-config-section">
-      <legend class="ncm-config-legend"><i class="fas fa-user-secret"></i> Dossier Subject</legend>
-      <div class="ncm-config-row">
-        <label class="ncm-config-label">Target Name</label>
-        <input type="text" name="dossierTargetName" class="ncm-config-input ncm-config-flex" value="{{editContentData.targetName}}" placeholder="Full name" />
-      </div>
-      <div class="ncm-config-row">
-        <label class="ncm-config-label">Alias</label>
-        <input type="text" name="dossierAlias" class="ncm-config-input ncm-config-flex" value="{{editContentData.targetAlias}}" placeholder="Known alias" />
-      </div>
-      <div class="ncm-config-row">
-        <label class="ncm-config-label">Classification</label>
-        <select name="dossierClassification" class="ncm-config-select ncm-config-flex" data-edit-select="dossierClassification">
-          <option value="">Unclassified</option>
-          <option value="CONFIDENTIAL">Confidential</option>
-          <option value="SECRET">Secret</option>
-          <option value="TOP SECRET">Top Secret</option>
-        </select>
-      </div>
-      <div class="ncm-config-row">
-        <label class="ncm-config-label">Link Actor</label>
-        <select name="dossierLinkedActor" class="ncm-config-select ncm-config-flex" data-edit-select="dossierLinkedActor">
-          <option value="">— None (manual data) —</option>
-          {{#each actorOptions}}
-            <option value="{{id}}">{{name}}</option>
-          {{/each}}
-        </select>
-      </div>
-      <div class="ncm-config-hint">Linking an actor auto-pulls their portrait. Leave unlinked for a silhouette.</div>
-      <div class="ncm-config-row">
-        <label class="ncm-config-label">Portrait</label>
-        <input type="text" name="dossierPortrait" class="ncm-config-input ncm-config-flex" value="{{editContentData.targetImage}}" placeholder="Path to custom portrait (overrides actor)" />
-        <button type="button" data-action="browseImage" data-target="dossierPortrait" class="ncm-shard-hdr-btn" title="Browse"><i class="fas fa-folder-open"></i></button>
+      <legend class="ncm-config-legend"><i class="fas fa-id-badge"></i> Target File</legend>
+      <datalist id="ncm-doss-class"><option value="RESTRICTED"></option><option value="CONFIDENTIAL"></option><option value="SECRET"></option><option value="TOP SECRET"></option><option value="EYES ONLY"></option><option value="BLACK"></option></datalist>
+      <div class="ncm-dosscard">
+        <div class="ncm-dosscard__hd">
+          <button type="button" class="ncm-dosscard__port" data-action="dossPortrait" data-doss-port data-tooltip="Pick a portrait image (a linked actor's art fills in automatically)">
+            <i class="fas fa-user"></i>
+            <span class="ncm-dosscard__stamp" data-doss-stamp hidden></span>
+            <span class="ncm-dosscard__cam"><i class="fas fa-camera"></i></span>
+          </button>
+          <input type="hidden" name="dossierPortrait" value="{{doss.portrait}}" />
+          <div class="ncm-dosscard__id">
+            <input type="text" name="dossierTargetName" class="ncm-dosscard__name" value="{{doss.targetName}}" placeholder="Target name" />
+            <div class="ncm-fg" style="margin:0">
+              <span class="ncm-f ncm-f--flex"><label class="ncm-cl-lbl">Alias</label><input type="text" name="dossierAlias" class="ncm-config-input" value="{{doss.alias}}" placeholder="Known alias" /></span>
+              <span class="ncm-f" style="--fw:140px"><label class="ncm-cl-lbl">Classification</label><input type="text" name="dossierClassification" list="ncm-doss-class" class="ncm-config-input" value="{{doss.classification}}" placeholder="SECRET" /></span>
+            </div>
+            <div class="ncm-fg" style="margin:0">
+              <span class="ncm-f ncm-f--flex"><label class="ncm-cl-lbl">Linked actor — powers the portrait + combat profile</label>
+                <select name="dossierLinkedActor" class="ncm-config-input ncm-config-select" data-edit-select="dossierLinkedActor">
+                  <option value="">— none (manual data) —</option>
+                  {{#each actorOptions}}<option value="{{id}}">{{name}}</option>{{/each}}
+                </select></span>
+            </div>
+          </div>
+        </div>
+        <div class="ncm-fg ncm-dosscard__stats">
+          <span class="ncm-f" style="--fw:180px"><label class="ncm-cl-lbl">Threat — click the meter</label>
+            <span class="ncm-dossthreat" data-doss-threat>
+              <input type="hidden" name="dossierThreat" value="{{doss.threat}}" />
+              {{#each doss.threatSegs}}<b data-action="dossThreat" data-level="{{n}}" class="{{#if on}}on{{/if}}"></b>{{/each}}
+              <em data-doss-threat-cap>{{#if doss.threat}}{{doss.threat}}{{else}}—{{/if}}</em>
+            </span>
+          </span>
+          <span class="ncm-f ncm-f--flex"><label class="ncm-cl-lbl">Affiliation</label><input type="text" name="dossierAffiliation" class="ncm-config-input" value="{{doss.affiliation}}" placeholder="Organization" /></span>
+          <span class="ncm-f" style="--fw:140px"><label class="ncm-cl-lbl">Last known</label><input type="text" name="dossierLastKnown" class="ncm-config-input" value="{{doss.lastKnown}}" placeholder="Location" /></span>
+        </div>
       </div>
     </fieldset>
 
+    {{!-- Masked identity — the portrait AND real name hide for players until a roll (or your REVEAL). --}}
     <fieldset class="ncm-config-section">
-      <legend class="ncm-config-legend"><i class="fas fa-chart-bar"></i> Stat Block</legend>
-      <div class="ncm-config-row">
-        <label class="ncm-config-label">Threat</label>
-        <select name="dossierThreat" class="ncm-config-select ncm-config-flex" data-edit-select="dossierThreat">
-          <option value="">Unknown</option>
-          <option value="LOW">Low</option>
-          <option value="MEDIUM">Medium</option>
-          <option value="HIGH">High</option>
-          <option value="EXTREME">Extreme</option>
-        </select>
+      <legend class="ncm-config-legend"><i class="fas fa-mask"></i> Identity Mask</legend>
+      <div class="ncm-fg">
+        <span class="ncm-f ncm-f--check"><label class="ncm-config-check"><input type="checkbox" name="dossierFaceLocked" {{#if doss.face.locked}}checked{{/if}} /> Identity masked</label></span>
+        <span class="ncm-f" style="--fw:170px"><label class="ncm-cl-lbl">Roll skill</label><select name="dossierFaceSkill" class="ncm-config-input ncm-config-select">
+          {{#each doss.face.skills}}<option value="{{name}}" {{#if selected}}selected{{/if}}>{{name}}</option>{{/each}}
+        </select></span>
+        <span class="ncm-f" style="--fw:60px"><label class="ncm-cl-lbl">DV</label><input type="number" name="dossierFaceDV" class="ncm-config-input" value="{{doss.face.dv}}" min="1" max="30" /></span>
+        <span class="ncm-f ncm-f--check"><label class="ncm-config-check"><input type="checkbox" name="dossierFaceTrace" {{#if doss.face.trace}}checked{{/if}} /> fail fires a trace</label></span>
       </div>
-      <div class="ncm-config-row">
-        <label class="ncm-config-label">Affiliation</label>
-        <input type="text" name="dossierAffiliation" class="ncm-config-input ncm-config-flex" value="{{editContentData.stats.affiliation}}" placeholder="Organization" />
+      <div class="ncm-config-hint">Players see a static-masked silhouette and a blanked name (the alias stays visible — so give them one). They DECRYPT with this roll; you always see the face and get a force-REVEAL chip in the viewer.</div>
+    </fieldset>
+
+    {{!-- Combat profile — a LIVE read of the linked actor's sheet. --}}
+    <fieldset class="ncm-config-section">
+      <legend class="ncm-config-legend"><i class="fas fa-crosshairs"></i> Combat Profile <span class="ncm-config-legend-note">— live from the linked actor</span></legend>
+      <div class="ncm-fg">
+        <span class="ncm-f ncm-f--check"><label class="ncm-config-check"><input type="checkbox" name="dossierProfileEnabled" {{#if doss.profile.enabled}}checked{{/if}} /> Show a profile panel</label></span>
+        <span class="ncm-f ncm-f--flex"><label class="ncm-cl-lbl">Panel title</label><input type="text" name="dossierProfileTitle" class="ncm-config-input" value="{{doss.profile.title}}" placeholder="COMBAT PROFILE" /></span>
+        <span class="ncm-f" style="--fw:170px"><label class="ncm-cl-lbl">Visibility</label><select name="dossierProfileVisibility" class="ncm-config-input ncm-config-select">
+          {{#each doss.profile.visOptions}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}
+        </select></span>
+        <span class="ncm-f" style="--fw:170px"><label class="ncm-cl-lbl">Decrypt skill</label><select name="dossierProfileSkill" class="ncm-config-input ncm-config-select">
+          {{#each doss.profile.skills}}<option value="{{name}}" {{#if selected}}selected{{/if}}>{{name}}</option>{{/each}}
+        </select></span>
+        <span class="ncm-f" style="--fw:60px"><label class="ncm-cl-lbl">DV</label><input type="number" name="dossierProfileDV" class="ncm-config-input" value="{{doss.profile.dv}}" min="1" max="30" /></span>
       </div>
-      <div class="ncm-config-row">
-        <label class="ncm-config-label">Last Known</label>
-        <input type="text" name="dossierLastKnown" class="ncm-config-input ncm-config-flex" value="{{editContentData.stats.lastKnownLocation}}" placeholder="Location" />
+      <label class="ncm-cl-lbl" style="margin-top:6px">Stats to show — click to toggle (the badge is the actor's live value)</label>
+      <div class="ncm-dossstats">
+        <input type="hidden" name="dossierProfileStats" value="{{doss.profile.statsCsv}}" />
+        {{#each doss.profile.stats}}<button type="button" data-action="dossStatChip" data-stat="{{k}}" class="ncm-dossstat{{#if on}} is-on{{/if}}">{{label}} <em></em></button>{{/each}}
       </div>
+      <label class="ncm-cl-lbl" style="margin-top:6px">Skills to show</label>
+      <div class="ncm-dossskills">
+        <input type="hidden" name="dossierProfileSkills" value="{{doss.profile.skillsCsv}}" />
+        <span data-doss-skills class="ncm-dossskills__chips"></span>
+        <span class="ncm-dossskills__addwrap">
+          <input type="text" class="ncm-config-input" data-doss-skillinp list="ncm-doss-skilldl" placeholder="+ skill, Enter" />
+          <datalist id="ncm-doss-skilldl" data-doss-skilldl></datalist>
+          <button type="button" data-action="dossSkillAdd" class="ncm-shard-hdr-btn" data-tooltip="Add skill"><i class="fas fa-plus"></i></button>
+        </span>
+      </div>
+      <div class="ncm-config-hint">Values are read from the world actor's sheet <b>at render time</b> — edit the sheet, the dossier updates. Needs a linked actor (the panel hides without one). <b>Encrypted</b> = players see the panel but the numbers glow blank until they beat the roll; <b>GM only</b> = players never see it.</div>
     </fieldset>
 
     <fieldset class="ncm-config-section">
       <legend class="ncm-config-legend"><i class="fas fa-file-lines"></i> Sections</legend>
-      <div class="ncm-dossier-sections-list">
-        {{#if hasDossierSections}}
-          {{#each editDossierSections}}
-            <div class="ncm-dossier-section-entry">
-              <div class="ncm-config-row">
-                <label class="ncm-config-label">Heading</label>
-                <input type="text" name="dossierSectionHeading-{{index}}" class="ncm-config-input ncm-config-flex" value="{{heading}}" placeholder="Section heading" />
-              </div>
-              <div class="ncm-config-row ncm-config-row--col">
-                <textarea name="dossierSectionBody-{{index}}" class="ncm-config-input ncm-config-textarea" rows="3" placeholder="Section content...">{{body}}</textarea>
-              </div>
-              <div class="ncm-config-row">
-                <label class="ncm-config-check"><input type="checkbox" name="dossierSectionRedacted-{{index}}" {{#if redacted}}checked{{/if}} /> Redacted</label>
-                <button type="button" data-action="removeDossierSection" class="ncm-shard-hdr-btn ncm-shard-hdr-btn--danger" title="Remove section"><i class="fas fa-times"></i></button>
-              </div>
-            </div>
-          {{/each}}
-        {{else}}
-          <div class="ncm-dossier-section-entry">
-            <div class="ncm-config-row">
-              <label class="ncm-config-label">Heading</label>
-              <input type="text" name="dossierSectionHeading-0" class="ncm-config-input ncm-config-flex" placeholder="Section heading" />
-            </div>
-            <div class="ncm-config-row ncm-config-row--col">
-              <textarea name="dossierSectionBody-0" class="ncm-config-input ncm-config-textarea" rows="3" placeholder="Section content..."></textarea>
-            </div>
-            <div class="ncm-config-row">
-              <label class="ncm-config-check"><input type="checkbox" name="dossierSectionRedacted-0" /> Redacted</label>
-              <button type="button" data-action="removeDossierSection" class="ncm-shard-hdr-btn ncm-shard-hdr-btn--danger" title="Remove"><i class="fas fa-times"></i></button>
-            </div>
-          </div>
-        {{/if}}
-      </div>
+      {{!-- Paper blocks injected in _onRender (_dossSectionHtml) — write ON the
+            file; the REDACT toggle draws the black bars live. --}}
+      <div class="ncm-dossier-sections-list"></div>
       <button type="button" data-action="addDossierSection" class="ncm-shard-btn ncm-shard-btn--secondary" style="margin-top:4px;padding:3px 10px;">
         <i class="fas fa-plus"></i> Add Section
       </button>
-      <div class="ncm-config-row" style="margin-top:8px;">
-        <label class="ncm-config-label">Timestamp</label>
-        <div class="ncm-ctp-trigger" data-action="openTimePicker" data-target="timestamp">
-          <i class="fas fa-clock ncm-ctp-trigger__icon"></i>
-          <span class="ncm-ctp-trigger__value">{{#if editTimestampFormatted}}{{editTimestampFormatted}}{{else}}{{defaultTimestampFormatted}}{{/if}}</span>
-          <i class="fas fa-chevron-down ncm-ctp-trigger__chevron"></i>
-        </div>
-        <input type="hidden" name="timestamp" value="{{#if editTimestamp}}{{editTimestamp}}{{else}}{{defaultTimestamp}}{{/if}}" />
+      <div class="ncm-fg" style="margin-top:8px;">
+        <span class="ncm-f ncm-f--check"><label class="ncm-config-check"><input type="checkbox" name="dossierDeclassify" {{#if dossierDecl.declassify}}checked{{/if}} /> Players can DECLASSIFY</label></span>
+        <span class="ncm-f" style="--fw:170px"><label class="ncm-cl-lbl">Roll skill</label><select name="dossierDeclassifySkill" class="ncm-config-input ncm-config-select">
+          {{#each dossierDecl.declassifySkills}}<option value="{{name}}" {{#if selected}}selected{{/if}}>{{name}}</option>{{/each}}
+        </select></span>
+        <span class="ncm-f" style="--fw:60px"><label class="ncm-cl-lbl">DV</label><input type="number" name="dossierDeclassifyDV" class="ncm-config-input" value="{{dossierDecl.declassifyDV}}" min="1" max="30" /></span>
+        <span class="ncm-f ncm-f--check"><label class="ncm-config-check"><input type="checkbox" name="dossierDeclassifyTrace" {{#if dossierDecl.declassifyTrace}}checked{{/if}} /> fail fires a trace</label></span>
       </div>
+      <div class="ncm-config-hint">One successful roll reveals ALL redacted sections. Give them body text — that's what gets exposed.</div>
     </fieldset>
   {{/if}}
 
   {{!-- ─── PAYLOAD ─── --}}
   {{#if isPayload}}
+    {{!-- ── MANIFEST: program identity (Direction B) ── --}}
     <fieldset class="ncm-config-section">
-      <legend class="ncm-config-legend"><i class="fas fa-bug"></i> Payload Configuration</legend>
-      <div class="ncm-config-row">
-        <label class="ncm-config-label">Payload Type</label>
-        <select name="payloadType" class="ncm-config-select ncm-config-flex" data-edit-select="payloadType">
-          <option value="tracker">Tracker</option>
-          <option value="malware">Malware</option>
-          <option value="worm">Worm</option>
-          <option value="beneficial">Beneficial Program</option>
-          <option value="custom">Custom</option>
-        </select>
+      <legend class="ncm-config-legend"><i class="fas fa-microchip"></i> Program</legend>
+      <div class="ncm-config-row"><label class="ncm-config-label">Name</label><input type="text" name="payloadName" class="ncm-config-input ncm-config-flex" value="{{pl.name}}" placeholder="BREACH.EXE" /></div>
+      <div class="ncm-fg">
+        <span class="ncm-f" style="--fw:150px"><label class="ncm-cl-lbl">Class label</label><input type="text" name="payloadProgram" class="ncm-config-input" value="{{pl.program}}" placeholder="icebreaker suite" /></span>
+        <span class="ncm-f" style="--fw:96px"><label class="ncm-cl-lbl">Version</label><input type="text" name="payloadVersion" class="ncm-config-input" value="{{pl.version}}" placeholder="2.1" /></span>
+        <span class="ncm-f" style="--fw:90px"><label class="ncm-cl-lbl">Size</label><input type="text" name="payloadSize" class="ncm-config-input" value="{{pl.sizeLabel}}" placeholder="4.7 MB" /></span>
       </div>
-      <div class="ncm-config-row">
-        <label class="ncm-config-label">Program Name</label>
-        <input type="text" name="payloadName" class="ncm-config-input ncm-config-flex" value="{{editContentData.name}}" placeholder="GHOST.exe" />
+      <div class="ncm-fg">
+        <span class="ncm-f ncm-f--flex"><label class="ncm-cl-lbl">Publisher (signed by)</label><input type="text" name="payloadPublisher" class="ncm-config-input" value="{{pl.publisher}}" placeholder="Ghostworks" /></span>
+        <span class="ncm-f ncm-f--check"><label class="ncm-config-check"><input type="checkbox" name="payloadSigned" {{#if pl.signed}}checked{{/if}} /> signed ✓</label></span>
+        <span class="ncm-f" style="--fw:80px"><label class="ncm-cl-lbl">Charges</label><input type="number" name="payloadCharges" class="ncm-config-input" value="{{pl.charges}}" min="1" max="99" /></span>
       </div>
-      <div class="ncm-config-row ncm-config-row--col">
-        <label class="ncm-config-label" style="margin-bottom:4px;">Description</label>
-        <textarea name="payloadDescription" class="ncm-config-input ncm-config-textarea" rows="3" placeholder="What this program does when executed...">{{editContentData.description}}</textarea>
+      <div class="ncm-config-row ncm-config-row--col"><label class="ncm-config-label" style="margin-bottom:4px">Description</label>
+        <textarea name="payloadDescription" class="ncm-config-input" rows="2" placeholder="What the program is / what running it does…" style="resize:vertical">{{pl.description}}</textarea>
       </div>
-      <div class="ncm-config-row">
-        <label class="ncm-config-label">Effect Type</label>
-        <select name="payloadEffectType" class="ncm-config-select ncm-config-flex" data-edit-select="payloadEffectType">
-          <option value="tracker">Tracker — reports location</option>
-          <option value="damage">Damage — deals HP damage</option>
-          <option value="lockout">Lockout — locks agent</option>
-          <option value="message">Message — sends auto message</option>
-          <option value="custom">Custom (flavor only)</option>
-        </select>
-      </div>
-      <div class="ncm-config-row">
-        <label class="ncm-config-label">Duration (hrs)</label>
-        <input type="number" name="payloadDuration" class="ncm-config-input ncm-config-short" value="{{#if editPayloadDurationHrs}}{{editPayloadDurationHrs}}{{else}}24{{/if}}" min="1" />
-      </div>
-      <div class="ncm-config-hint">When executed, the effect triggers. Actual mechanical effects are GM-adjudicated.</div>
     </fieldset>
 
+    {{!-- ── EFFECT: what RUN does ── --}}
+    <fieldset class="ncm-config-section">
+      <legend class="ncm-config-legend"><i class="fas fa-bolt"></i> Effect</legend>
+      <div class="ncm-fg">
+        <span class="ncm-f ncm-f--flex"><label class="ncm-cl-lbl">On execute</label><select name="payloadEffectType" class="ncm-config-input ncm-config-select">
+          {{#each pl.effectOptions}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}
+        </select></span>
+        <span class="ncm-f" style="--fw:110px"><label class="ncm-cl-lbl">Runtime (hrs)</label><input type="number" name="payloadDuration" class="ncm-config-input" value="{{pl.durationHrs}}" min="0" step="0.5" placeholder="0 = instant" /></span>
+      </div>
+      <div class="ncm-config-row">
+        <label class="ncm-config-label">Also run macro</label>
+        {{#if pl.hasMacros}}
+        <select name="payloadMacroId" class="ncm-config-input ncm-config-select ncm-config-flex">
+          <option value="">— none —</option>
+          {{#each pl.macroOptions}}<option value="{{id}}" {{#if selected}}selected{{/if}}>{{name}}</option>{{/each}}
+        </select>
+        {{else}}<span class="ncm-config-hint" style="margin:0;">No world macros to link.</span>{{/if}}
+      </div>
+      <div class="ncm-config-hint">Module-native effects run for real: <b>Icebreaker</b> unseals encrypted files on the host, <b>Skeleton Key</b> clears its lockouts, <b>Scanner</b> reveals hidden accounts/off-net files, <b>Jammer</b> drops the uplink. <b>Program</b> = you adjudicate (you get an alert). A runtime &gt; 0 makes it an active effect that auto-expires on the game clock (Jammer re-connects on expiry). A linked macro runs on a clean execute.</div>
+    </fieldset>
+
+    {{!-- ── RUN LOG: authored console output (WYSIWYG) ── --}}
+    <fieldset class="ncm-config-section">
+      <legend class="ncm-config-legend"><i class="fas fa-terminal"></i> Run Log <span class="ncm-config-legend-note">— the console output RUN types out</span></legend>
+      <div class="ncm-cl-list ncm-slog" data-list="plOutput"></div>
+      <button type="button" data-action="addListRow" data-list="plOutput" class="ncm-cl-add"><i class="fas fa-plus"></i> Add line</button>
+      <div class="ncm-config-hint">Write the program's output — <b>click the severity key</b> to color a line (INFO/OK/WARN/ERR/DEBUG), <b>Enter starts the next</b>. This is the theater that plays when someone runs it. Optional — leave empty for a silent program.</div>
+    </fieldset>
+
+    {{!-- ── REQUIREMENTS (authored prerequisites) ── --}}
+    <fieldset class="ncm-config-section">
+      <legend class="ncm-config-legend"><i class="fas fa-list-check"></i> Requirements <span class="ncm-config-legend-note">— optional prerequisites, verified on run</span></legend>
+      <div class="ncm-cl-list" data-list="plReqs"></div>
+      <button type="button" data-action="addListRow" data-list="plReqs" class="ncm-cl-add"><i class="fas fa-plus"></i> Add requirement</button>
+      <div class="ncm-config-hint">Requirements are the checklist shown ON the program card before anyone runs it — they set the fiction ("needs an uplink", "needs admin") and the enforced ones actually block RUN when unmet. <b>uplink</b> = the machine's uplink must be online (checked for real) · <b>admin</b> = the logged-in account must be an admin (checked for real) · <b>note</b> = flavor only, displayed but never enforced. Leave the list empty and the program always runs.</div>
+    </fieldset>
+
+    {{!-- ── EXECUTE GATE (optional roll) ── --}}
+    <fieldset class="ncm-config-section">
+      <legend class="ncm-config-legend"><i class="fas fa-dice-d20"></i> Execute Gate</legend>
+      <div class="ncm-fg">
+        <span class="ncm-f ncm-f--check"><label class="ncm-config-check"><input type="checkbox" name="payloadExecuteRequire" {{#if pl.executeRequire}}checked{{/if}} /> Running needs a roll</label></span>
+        <span class="ncm-f" style="--fw:170px"><label class="ncm-cl-lbl">Skill</label><select name="payloadExecuteSkill" class="ncm-config-input ncm-config-select">
+          {{#each pl.executeSkills}}<option value="{{name}}" {{#if selected}}selected{{/if}}>{{name}}</option>{{/each}}
+        </select></span>
+        <span class="ncm-f" style="--fw:60px"><label class="ncm-cl-lbl">DV</label><input type="number" name="payloadExecuteDV" class="ncm-config-input" value="{{pl.executeDV}}" min="1" max="30" /></span>
+        <span class="ncm-f ncm-f--check"><label class="ncm-config-check"><input type="checkbox" name="payloadExecuteTrace" {{#if pl.executeTrace}}checked{{/if}} /> fail fires a trace</label></span>
+      </div>
+      <div class="ncm-config-hint">Default off = an immersive confirm. Gated: a miss faults the run (and can fire a trace). The effect only applies on a clean execute.</div>
+    </fieldset>
+
+    {{!-- ── DISGUISE (trojan) ── --}}
     <fieldset class="ncm-config-section">
       <legend class="ncm-config-legend"><i class="fas fa-mask"></i> Disguise</legend>
-      <div class="ncm-config-row">
-        <label class="ncm-config-check"><input type="checkbox" name="payloadDisguised" {{#if editContentData.disguised}}checked{{/if}} /> Disguise as different content type</label>
+      <div class="ncm-fg">
+        <span class="ncm-f ncm-f--check"><label class="ncm-config-check"><input type="checkbox" name="payloadDisguised" {{#if pl.disguised}}checked{{/if}} /> Hide as another file</label></span>
+        <span class="ncm-f" style="--fw:170px"><label class="ncm-cl-lbl">Appears as</label><select name="payloadDisguiseType" class="ncm-config-input ncm-config-select">
+          {{#each pl.disguiseOptions}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}
+        </select></span>
+        <span class="ncm-f" style="--fw:100px"><label class="ncm-cl-lbl">Sniff DV</label><input type="number" name="payloadSniffDV" class="ncm-config-input" value="{{pl.sniffDV}}" min="1" max="30" /></span>
       </div>
-      <div class="ncm-config-row">
-        <label class="ncm-config-label">Appears As</label>
-        <select name="payloadDisguiseType" class="ncm-config-select ncm-config-flex" data-edit-select="payloadDisguiseType">
-          <option value="message">Message</option>
-          <option value="eddies">Eddies Dead Drop</option>
-          <option value="dossier">Dossier</option>
-        </select>
-      </div>
-      <div class="ncm-config-hint">When disguised, the entry renders as the fake type until the player interacts.</div>
-      <div class="ncm-config-row">
-        <label class="ncm-config-label">Timestamp</label>
-        <div class="ncm-ctp-trigger" data-action="openTimePicker" data-target="timestamp">
-          <i class="fas fa-clock ncm-ctp-trigger__icon"></i>
-          <span class="ncm-ctp-trigger__value">{{#if editTimestampFormatted}}{{editTimestampFormatted}}{{else}}{{defaultTimestampFormatted}}{{/if}}</span>
-          <i class="fas fa-chevron-down ncm-ctp-trigger__chevron"></i>
-        </div>
-        <input type="hidden" name="timestamp" value="{{#if editTimestamp}}{{editTimestamp}}{{else}}{{defaultTimestamp}}{{/if}}" />
-      </div>
+      <div class="ncm-config-hint">Players see the cover file (its name + description mapped in) until they <b>run it</b> or <b>analyze it</b> (a Sniff roll vs the DV). You always see the real payload with a red tag.</div>
     </fieldset>
   {{/if}}
 
   {{!-- ─── AV LOG ─── --}}
   {{#if isAvlog}}
+    {{!-- Media deck editor (redesign 2026-07-13) — browse/paste a URL and the
+          REAL player renders below (type auto-detected). No media = the
+          viewer gets ▶ transcript playback. --}}
     <fieldset class="ncm-config-section">
-      <legend class="ncm-config-legend"><i class="fas fa-microphone"></i> Recording Details</legend>
-      <div class="ncm-config-row">
-        <label class="ncm-config-label">Media Type</label>
-        <select name="avlogMediaType" class="ncm-config-select ncm-config-flex" data-edit-select="avlogMediaType">
-          <option value="audio">Audio</option>
-          <option value="video">Video</option>
-        </select>
+      <legend class="ncm-config-legend"><i class="fas fa-headphones"></i> Recording</legend>
+      <input type="hidden" name="avlogMediaType" value="{{av.mediaType}}" />
+      <div class="ncm-avdeck">
+        <div class="ncm-fg" style="margin:0">
+          <span class="ncm-f ncm-f--flex"><label class="ncm-cl-lbl">Media file / URL — blank = transcript-only</label>
+            <span class="ncm-avdeck__urlrow">
+              <input type="text" name="avlogMediaUrl" class="ncm-config-input" value="{{av.mediaUrl}}" placeholder="File, direct .mp4/.mp3 URL, or YouTube/Vimeo link" />
+              <button type="button" data-action="browseMedia" data-target="avlogMediaUrl" class="ncm-shard-hdr-btn" data-tooltip="Browse files"><i class="fas fa-folder-open"></i></button>
+            </span>
+          </span>
+          <span class="ncm-f" style="--fw:80px"><label class="ncm-cl-lbl">Duration</label><input type="text" name="avlogDuration" class="ncm-config-input" value="{{av.duration}}" placeholder="03:47" /></span>
+          <span class="ncm-f" style="--fw:150px"><label class="ncm-cl-lbl">Source</label><input type="text" name="avlogSource" class="ncm-config-input" value="{{av.source}}" placeholder="wiretap · booth 4" /></span>
+        </div>
+        <div class="ncm-avdeck__prev">
+          <span class="ncm-avdeck__pill" data-av-pill></span>
+          <div class="ncm-avdeck__player" data-av-player></div>
+        </div>
       </div>
-      <div class="ncm-config-row">
+      <div class="ncm-config-row" style="margin-top:8px">
         <label class="ncm-config-label">Title</label>
         <input type="text" name="avlogTitle" class="ncm-config-input ncm-config-flex" value="{{editSubject}}" placeholder="Recording title" />
       </div>
-      <div class="ncm-config-row">
-        <label class="ncm-config-label">Duration</label>
-        <input type="text" name="avlogDuration" class="ncm-config-input ncm-config-short" value="{{editContentData.duration}}" placeholder="03:47" />
+      <div class="ncm-fg">
+        <span class="ncm-f ncm-f--check"><label class="ncm-config-check"><input type="checkbox" name="avlogLocked" {{#if avlogUnlock.locked}}checked{{/if}} /> Sealed (roll to unseal)</label></span>
+        <span class="ncm-f" style="--fw:170px"><label class="ncm-cl-lbl">Roll skill</label><select name="avlogUnlockSkill" class="ncm-config-input ncm-config-select">
+          {{#each avlogUnlock.skills}}<option value="{{name}}" {{#if selected}}selected{{/if}}>{{name}}</option>{{/each}}
+        </select></span>
+        <span class="ncm-f" style="--fw:60px"><label class="ncm-cl-lbl">DV</label><input type="number" name="avlogUnlockDV" class="ncm-config-input" value="{{avlogUnlock.dv}}" min="1" max="30" /></span>
+        <span class="ncm-f ncm-f--check"><label class="ncm-config-check"><input type="checkbox" name="avlogUnlockTrace" {{#if avlogUnlock.trace}}checked{{/if}} /> fail fires a trace</label></span>
       </div>
-      <div class="ncm-config-row">
-        <label class="ncm-config-label">Source</label>
-        <input type="text" name="avlogSource" class="ncm-config-input ncm-config-flex" value="{{editContentData.source}}" placeholder="Where/how recorded" />
-      </div>
-      <div class="ncm-config-row">
-        <label class="ncm-config-label">Media File</label>
-        <input type="text" name="avlogMediaUrl" class="ncm-config-input ncm-config-flex" value="{{editContentData.mediaUrl}}" placeholder="File, direct .mp4/.mp3 URL, or YouTube/Vimeo link" />
-        <button type="button" data-action="browseMedia" data-target="avlogMediaUrl" class="ncm-shard-hdr-btn" title="Browse files"><i class="fas fa-folder-open"></i></button>
-      </div>
-      <div class="ncm-config-hint">Plays in the viewer. Leave blank for a transcript-only log.</div>
-      <div class="ncm-config-row">
-        <label class="ncm-config-label">Timestamp</label>
-        <div class="ncm-ctp-trigger" data-action="openTimePicker" data-target="timestamp">
-          <i class="fas fa-clock ncm-ctp-trigger__icon"></i>
-          <span class="ncm-ctp-trigger__value">{{#if editTimestampFormatted}}{{editTimestampFormatted}}{{else}}{{defaultTimestampFormatted}}{{/if}}</span>
-          <i class="fas fa-chevron-down ncm-ctp-trigger__chevron"></i>
-        </div>
-        <input type="hidden" name="timestamp" value="{{#if editTimestamp}}{{editTimestamp}}{{else}}{{defaultTimestamp}}{{/if}}" />
-      </div>
+      <div class="ncm-config-hint">Sealed = player and transcript stay hidden until someone beats the roll. With <b>no media</b> and a Duration set, players get a ▶ that plays the transcript out line by line.</div>
     </fieldset>
 
+    {{!-- Transcript feed editor — speaker chips + Enter adds the next line;
+          click a line to edit it. Lines injected in _onRender (_avLineHtml). --}}
     <fieldset class="ncm-config-section">
       <legend class="ncm-config-legend"><i class="fas fa-closed-captioning"></i> Transcript</legend>
-      <div class="ncm-transcript-list">
-        {{#if hasTranscriptLines}}
-          {{#each editTranscriptLines}}
-            <div class="ncm-transcript-entry">
-              <input type="text" name="transcriptSpeaker-{{index}}" class="ncm-config-input" style="max-width:100px;" value="{{speaker}}" placeholder="SPEAKER" />
-              <input type="text" name="transcriptText-{{index}}" class="ncm-config-input ncm-config-flex" value="{{text}}" placeholder="Dialogue line..." />
-              <button type="button" data-action="removeTranscriptLine" class="ncm-shard-hdr-btn ncm-shard-hdr-btn--danger" title="Remove"><i class="fas fa-times"></i></button>
-            </div>
-          {{/each}}
-        {{else}}
-          <div class="ncm-transcript-entry">
-            <input type="text" name="transcriptSpeaker-0" class="ncm-config-input" style="max-width:100px;" placeholder="SPEAKER" />
-            <input type="text" name="transcriptText-0" class="ncm-config-input ncm-config-flex" placeholder="Dialogue line..." />
-            <button type="button" data-action="removeTranscriptLine" class="ncm-shard-hdr-btn ncm-shard-hdr-btn--danger" title="Remove"><i class="fas fa-times"></i></button>
-          </div>
-        {{/if}}
+      <div class="ncm-avfeed" data-av-feed></div>
+      <div class="ncm-avcompose">
+        <div class="ncm-avcompose__chips" data-av-chips></div>
+        <div class="ncm-avcompose__bar">
+          <input type="text" class="ncm-config-input ncm-avcompose__spk" data-av-spk placeholder="SPEAKER" />
+          <input type="text" class="ncm-config-input ncm-avcompose__txt" data-av-txt placeholder="Next line… (Enter adds it)" />
+          <button type="button" data-action="avAddLine" class="ncm-avcompose__send" data-av-send>ADD ⏎</button>
+        </div>
       </div>
-      <button type="button" data-action="addTranscriptLine" class="ncm-shard-btn ncm-shard-btn--secondary" style="margin-top:4px;padding:3px 10px;">
-        <i class="fas fa-plus"></i> Add Line
-      </button>
+      <div class="ncm-config-hint">Tap a chip to pick the speaker (they collect automatically), type the line, <b>Enter adds the next</b>. Click a line to edit it (ADD becomes UPDATE); hover ✕ removes it. Speakers auto-color like the player view.</div>
     </fieldset>
   {{/if}}
 
   {{!-- ─── LOCATION ─── --}}
   {{#if isLocation}}
+    {{!-- Postcard editor (redesign 2026-07-13) — the card mirrors the player
+          view: image backdrop, name typed on the card, district combobox,
+          coords dice. Scene link = a picker dialog, never a raw ID. --}}
     <fieldset class="ncm-config-section">
-      <legend class="ncm-config-legend"><i class="fas fa-map-pin"></i> Location Details</legend>
-      <div class="ncm-config-row">
-        <label class="ncm-config-label">Location Name</label>
-        <input type="text" name="locationName" class="ncm-config-input ncm-config-flex" value="{{editContentData.locationName}}" placeholder="Kabuki Market, Back Alley" />
-      </div>
-      <div class="ncm-config-row">
-        <label class="ncm-config-label">Image</label>
-        <input type="text" name="locationImage" class="ncm-config-input ncm-config-flex" value="{{editContentData.locationImage}}" placeholder="Path to location image (optional)" />
-        <button type="button" data-action="browseImage" data-target="locationImage" class="ncm-shard-hdr-btn" title="Browse"><i class="fas fa-folder-open"></i></button>
-      </div>
-      <div class="ncm-config-row">
-        <label class="ncm-config-label">Coordinates</label>
-        <input type="text" name="locationCoords" class="ncm-config-input ncm-config-flex" value="{{editContentData.coordinates}}" placeholder="N 33.7490° W 84.3880° (flavor text)" />
-      </div>
-      <div class="ncm-config-row">
-        <label class="ncm-config-label">District</label>
-        <input type="text" name="locationDistrict" class="ncm-config-input ncm-config-flex" value="{{editContentData.district}}" placeholder="Watson, Westbrook, etc." />
-      </div>
-      <div class="ncm-config-row ncm-config-row--col">
-        <label class="ncm-config-label" style="margin-bottom:4px;">Description</label>
-        <textarea name="locationDescription" class="ncm-config-input ncm-config-textarea" rows="3" placeholder="South entrance. Look for the red neon dragon sign.">{{editContentData.description}}</textarea>
-      </div>
-      <div class="ncm-config-row">
-        <label class="ncm-config-label">Link Scene</label>
-        <input type="text" name="locationSceneId" class="ncm-config-input ncm-config-flex" value="{{editContentData.linkedSceneId}}" placeholder="Foundry Scene ID (optional)" />
-      </div>
-      <div class="ncm-config-hint">If a scene is linked, GM sees a "Go to Scene" button in the viewer.</div>
-      <div class="ncm-config-row">
-        <label class="ncm-config-label">Timestamp</label>
-        <div class="ncm-ctp-trigger" data-action="openTimePicker" data-target="timestamp">
-          <i class="fas fa-clock ncm-ctp-trigger__icon"></i>
-          <span class="ncm-ctp-trigger__value">{{#if editTimestampFormatted}}{{editTimestampFormatted}}{{else}}{{defaultTimestampFormatted}}{{/if}}</span>
-          <i class="fas fa-chevron-down ncm-ctp-trigger__chevron"></i>
+      <legend class="ncm-config-legend"><i class="fas fa-map-pin"></i> Postcard</legend>
+      <datalist id="ncm-loc-districts"><option value="Watson"></option><option value="Westbrook"></option><option value="City Center"></option><option value="Heywood"></option><option value="Pacifica"></option><option value="Santo Domingo"></option><option value="Badlands"></option><option value="Combat Zone"></option></datalist>
+      <div class="ncm-locstage" data-loc-stage>
+        <span class="ncm-locstage__grid"></span>
+        <span class="ncm-locstage__shade"></span>
+        <button type="button" data-action="locBrowse" class="ncm-locstage__browse"><i class="fas fa-folder-open"></i> BROWSE IMAGE</button>
+        <input type="hidden" name="locationImage" value="{{loc.image}}" />
+        <span class="ncm-locstage__coords">
+          <input type="text" name="locationCoords" value="{{loc.coords}}" placeholder="N 34.01° · W 118.41°" />
+          <button type="button" data-action="locDice" class="ncm-locstage__dice" data-tooltip="Random coordinates"><i class="fas fa-dice"></i></button>
+        </span>
+        <input type="text" name="locationHeat" class="ncm-locstage__heat" value="{{loc.heat}}" placeholder="HEAT CHIP — blank = none" />
+        <div class="ncm-locstage__foot">
+          <input type="text" name="locationName" class="ncm-locstage__name" value="{{loc.name}}" placeholder="Location name" />
+          <input type="text" name="locationDistrict" class="ncm-locstage__dist" list="ncm-loc-districts" value="{{loc.district}}" placeholder="district" />
         </div>
-        <input type="hidden" name="timestamp" value="{{#if editTimestamp}}{{editTimestamp}}{{else}}{{defaultTimestamp}}{{/if}}" />
       </div>
+      <div class="ncm-config-row ncm-config-row--col" style="margin-top:8px">
+        <label class="ncm-config-label" style="margin-bottom:4px;">Description</label>
+        <textarea name="locationDescription" class="ncm-config-input ncm-config-textarea" rows="3" placeholder="South entrance. Look for the red neon dragon sign.">{{loc.description}}</textarea>
+      </div>
+      <div class="ncm-fg">
+        <span class="ncm-f" style="--fw:220px"><label class="ncm-cl-lbl">Linked scene — GM gets "Go to Scene"</label>
+          <span class="ncm-locscene">
+            <input type="hidden" name="locationSceneId" value="{{loc.sceneId}}" />
+            <button type="button" data-action="locScene" class="ncm-locscene__pick{{#if loc.sceneName}} is-on{{/if}}"><i class="fas fa-map"></i> <span data-loc-scene-lbl>{{#if loc.sceneName}}{{loc.sceneName}}{{else}}pick a scene…{{/if}}</span></button>
+          </span>
+        </span>
+      </div>
+      {{!-- Encrypted pin — the whole card (image/coords/intel) seals until a roll. --}}
+      <div class="ncm-fg">
+        <span class="ncm-f ncm-f--check"><label class="ncm-config-check"><input type="checkbox" name="locationLocked" {{#if loc.lock.locked}}checked{{/if}} /> Encrypted pin (roll to decrypt)</label></span>
+        <span class="ncm-f" style="--fw:170px"><label class="ncm-cl-lbl">Roll skill</label><select name="locationUnlockSkill" class="ncm-config-input ncm-config-select">
+          {{#each loc.lock.skills}}<option value="{{name}}" {{#if selected}}selected{{/if}}>{{name}}</option>{{/each}}
+        </select></span>
+        <span class="ncm-f" style="--fw:60px"><label class="ncm-cl-lbl">DV</label><input type="number" name="locationUnlockDV" class="ncm-config-input" value="{{loc.lock.dv}}" min="1" max="30" /></span>
+        <span class="ncm-f ncm-f--check"><label class="ncm-config-check"><input type="checkbox" name="locationUnlockTrace" {{#if loc.lock.trace}}checked{{/if}} /> fail fires a trace</label></span>
+      </div>
+      <div class="ncm-config-hint">Encrypted = players see the pin's NAME on a static-scrambled card — image, coordinates, and all intel stay hidden until someone beats the roll. The reveal plays a decrypt animation.</div>
+    </fieldset>
+
+    {{!-- Intel adds — everything optional; an unadorned location renders like today. --}}
+    <fieldset class="ncm-config-section">
+      <legend class="ncm-config-legend"><i class="fas fa-shield-halved"></i> Intel <span class="ncm-config-legend-note">— all optional</span></legend>
+      <div class="ncm-fg">
+        <span class="ncm-f ncm-f--flex"><label class="ncm-cl-lbl">Controlled by</label><input type="text" name="locationControl" class="ncm-config-input" value="{{loc.control}}" placeholder="Tyger Claws" /></span>
+        <span class="ncm-f" style="--fw:170px"><label class="ncm-cl-lbl">Security — click the meter</label>
+          <span class="ncm-locsec" data-loc-sec>
+            <input type="hidden" name="locationSecurity" value="{{loc.security}}" />
+            {{#each loc.secSegs}}<b data-action="locSec" data-level="{{n}}" class="{{#if on}}on{{/if}}"></b>{{/each}}
+            <em data-loc-sec-cap>{{#if loc.security}}{{loc.securityLabel}}{{else}}—{{/if}}</em>
+          </span>
+        </span>
+      </div>
+      <div class="ncm-fg">
+        <span class="ncm-f" style="--fw:120px"><label class="ncm-cl-lbl">Hours</label><input type="text" name="locationHours" class="ncm-config-input" value="{{loc.hours}}" placeholder="22:00 – 05:00" /></span>
+        <span class="ncm-f ncm-f--flex"><label class="ncm-cl-lbl">Access</label><input type="text" name="locationAccess" class="ncm-config-input" value="{{loc.access}}" placeholder="Service door, keypad — code changes weekly" /></span>
+      </div>
+      <div class="ncm-fg">
+        <span class="ncm-f ncm-f--flex"><label class="ncm-cl-lbl">Approach</label><input type="text" name="locationApproach" class="ncm-config-input" value="{{loc.approach}}" placeholder="Come on foot; cars get made" /></span>
+        <span class="ncm-f" style="--fw:160px"><label class="ncm-cl-lbl">Contact</label><input type="text" name="locationContact" class="ncm-config-input" value="{{loc.contact}}" placeholder="Tiny (door)" /></span>
+      </div>
+      <div class="ncm-config-hint">The card gains what you fill in: a CONTROLLED-BY strip, a security meter (LOW → LETHAL), a HEAT chip on the image, and practical rows. Leave it all blank for a plain postcard.</div>
     </fieldset>
   {{/if}}
 
@@ -413,56 +478,85 @@
       <div class="ncm-config-row"><label class="ncm-config-label">Location</label><input type="text" name="bankLocation" class="ncm-config-input ncm-config-flex" value="{{bank.bankLocation}}" placeholder="City Center · Corpo Plaza" /></div>
       <div class="ncm-config-row"><label class="ncm-config-label">Code</label><input type="text" name="bankCode" class="ncm-config-input ncm-config-flex" value="{{bank.bankCode}}" placeholder="SWIFT / routing (optional)" /></div>
       <div class="ncm-config-row"><label class="ncm-config-label">Tagline</label><input type="text" name="bankTagline" class="ncm-config-input ncm-config-flex" value="{{bank.bankTagline}}" placeholder="Your eddies. Our silence." /></div>
+      <div class="ncm-config-row"><label class="ncm-config-label">Card color</label><input type="color" name="bankColor" value="{{bank.bankColor}}" class="ncm-bank-color" /><span class="ncm-config-hint" style="margin:0">drives the card gradient in the viewer</span></div>
     </fieldset>
     <fieldset class="ncm-config-section">
       <legend class="ncm-config-legend"><i class="fas fa-id-card"></i> Account</legend>
       <div class="ncm-config-row"><label class="ncm-config-label">Owner</label><input type="text" name="bankOwner" class="ncm-config-input ncm-config-flex" value="{{bank.owner}}" placeholder="V. Arasaka" /></div>
       <div class="ncm-config-row"><label class="ncm-config-label">Account</label><input type="text" name="bankAccountName" class="ncm-config-input ncm-config-flex" value="{{bank.accountName}}" placeholder="Arasaka Holdings — Ops" /></div>
       <div class="ncm-config-row"><label class="ncm-config-label">Number</label><input type="text" name="bankAccountNumber" class="ncm-config-input ncm-config-flex" value="{{bank.accountNumber}}" placeholder="NC-8841-A-0007" /></div>
-      <div class="ncm-config-row"><label class="ncm-config-label">Type</label><input type="text" name="bankAccountType" class="ncm-config-input" value="{{bank.accountType}}" placeholder="checking" style="max-width:130px" /><label class="ncm-config-label" style="margin-left:8px;width:auto;">Currency</label><input type="text" name="bankCurrency" class="ncm-config-input" list="ncm-cur-list" value="{{bank.currency}}" style="max-width:80px" /><datalist id="ncm-cur-list"><option value="€$"></option><option value="$"></option><option value="¥"></option><option value="£"></option><option value="€"></option><option value="₿"></option><option value="credits"></option></datalist></div>
-      <div class="ncm-config-row"><label class="ncm-config-label">Balance</label><input type="number" name="bankBalance" class="ncm-config-input" value="{{bank.balance}}" style="max-width:120px" /><label class="ncm-config-label" style="margin-left:8px;width:auto;">Cleared</label><input type="number" name="bankCleared" class="ncm-config-input" value="{{bank.cleared}}" style="max-width:110px" /><label class="ncm-config-label" style="margin-left:8px;width:auto;">Held</label><input type="number" name="bankHeld" class="ncm-config-input" value="{{bank.held}}" style="max-width:100px" /></div>
-      <div class="ncm-config-row">
-        <label class="ncm-config-label">Timestamp</label>
-        <div class="ncm-ctp-trigger" data-action="openTimePicker" data-target="timestamp">
-          <i class="fas fa-clock ncm-ctp-trigger__icon"></i>
-          <span class="ncm-ctp-trigger__value">{{#if editTimestampFormatted}}{{editTimestampFormatted}}{{else}}{{defaultTimestampFormatted}}{{/if}}</span>
-          <i class="fas fa-chevron-down ncm-ctp-trigger__chevron"></i>
-        </div>
-        <input type="hidden" name="timestamp" value="{{#if editTimestamp}}{{editTimestamp}}{{else}}{{defaultTimestamp}}{{/if}}" />
+      <div class="ncm-fg">
+        <span class="ncm-f" style="--fw:130px"><label class="ncm-cl-lbl">Account type</label><input type="text" name="bankAccountType" class="ncm-config-input" list="ncm-acct-type" value="{{bank.accountType}}" placeholder="checking" /></span>
+        <datalist id="ncm-acct-type"><option value="Checking"></option><option value="Savings"></option><option value="Corporate"></option><option value="Escrow"></option><option value="Slush Fund"></option><option value="Numbered"></option></datalist>
+        <span class="ncm-f" style="--fw:120px"><label class="ncm-cl-lbl">Status</label><select name="bankStatus" class="ncm-config-input ncm-config-select" data-edit-select="bankStatus"><option value="">— none —</option><option value="active">Active</option><option value="frozen">Frozen (no siphon)</option><option value="flagged">Flagged</option><option value="overdrawn">Overdrawn</option><option value="vip">VIP</option></select></span>
+        <span class="ncm-f" style="--fw:80px"><label class="ncm-cl-lbl">Currency</label><input type="text" name="bankCurrency" class="ncm-config-input" list="ncm-cur-list" value="{{bank.currency}}" /></span>
+        <datalist id="ncm-cur-list"><option value="€$"></option><option value="$"></option><option value="¥"></option><option value="£"></option><option value="€"></option><option value="₿"></option><option value="credits"></option></datalist>
+        <span class="ncm-f" style="--fw:130px"><label class="ncm-cl-lbl">Balance</label><span style="display:flex;gap:4px"><input type="number" name="bankBalance" class="ncm-config-input" value="{{bank.balance}}" /><button type="button" data-action="bankSyncBalance" class="ncm-shard-hdr-btn" data-tooltip="Recompute balance from the transactions"><i class="fas fa-rotate"></i></button></span></span>
+        <span class="ncm-f" style="--fw:110px"><label class="ncm-cl-lbl">Cleared</label><input type="number" name="bankCleared" class="ncm-config-input" value="{{bank.cleared}}" /></span>
+        <span class="ncm-f" style="--fw:100px"><label class="ncm-cl-lbl">Held</label><input type="number" name="bankHeld" class="ncm-config-input" value="{{bank.held}}" /></span>
       </div>
     </fieldset>
     <fieldset class="ncm-config-section">
       <legend class="ncm-config-legend"><i class="fas fa-list"></i> Transactions</legend>
-      <div class="ncm-cl-list" data-list="bankTxns"></div>
+      <datalist id="ncm-bankcat"><option value="transfer"></option><option value="deposit"></option><option value="withdrawal"></option><option value="wire"></option><option value="services"></option><option value="payment"></option><option value="payroll"></option><option value="flagged"></option></datalist>
+      <div class="ncm-cl-list ncm-bankledger" data-list="bankTxns"></div>
       <button type="button" data-action="addListRow" data-list="bankTxns" class="ncm-cl-add"><i class="fas fa-plus"></i> Add transaction</button>
-      <div class="ncm-config-hint">Newest first. Category sets the colored icon (transfer / services / wire / payroll / flagged / deposit…). Running balance auto-computes.</div>
+      <div class="ncm-config-hint">Ledger lines, newest first — <b>click ▼/▲ to flip debit/credit</b> (colors the amount like a bank app), ⏳ marks it pending. Category sets the colored icon in the viewer; running balance auto-computes.</div>
     </fieldset>
     <fieldset class="ncm-config-section">
       <legend class="ncm-config-legend"><i class="fas fa-hand-holding-dollar"></i> Siphon</legend>
       <div class="ncm-config-row"><label class="ncm-config-check"><input type="checkbox" name="bankAllowSiphon" {{#if bank.allowSiphon}}checked{{/if}} /> Allow players to siphon funds</label></div>
-      <div class="ncm-config-row"><label class="ncm-config-label">Skill</label><input type="text" name="bankSiphonSkill" class="ncm-config-input" value="{{bank.siphonSkill}}" placeholder="Interface" style="max-width:150px" /><label class="ncm-config-label" style="margin-left:8px;width:auto;">DV</label><input type="number" name="bankSiphonDV" class="ncm-config-input ncm-config-short" value="{{bank.siphonDV}}" /></div>
-      <div class="ncm-config-row"><label class="ncm-config-label">Amount</label><select name="bankSiphonMode" class="ncm-config-input ncm-config-select" data-edit-select="bankSiphonMode" style="max-width:130px"><option value="cap">cap</option><option value="full">full balance</option><option value="percent">percent</option></select><label class="ncm-config-label" style="margin-left:8px;width:auto;">Cap</label><input type="number" name="bankSiphonCap" class="ncm-config-input" value="{{bank.siphonCap}}" style="max-width:100px" /><label class="ncm-config-label" style="margin-left:8px;width:auto;">%</label><input type="number" name="bankSiphonPercent" class="ncm-config-input ncm-config-short" value="{{bank.siphonPercent}}" /></div>
-      <div class="ncm-config-hint">On a failed roll: trace + GM alert. cap = take up to Cap · percent = up to % of balance · full = whole balance.</div>
+      <div class="ncm-fg">
+        <span class="ncm-f" style="--fw:170px"><label class="ncm-cl-lbl">Roll skill</label><select name="bankSiphonSkill" class="ncm-config-input ncm-config-select">{{#each bank.siphonSkills}}<option value="{{name}}" {{#if selected}}selected{{/if}}>{{name}}</option>{{/each}}</select></span>
+        <span class="ncm-f" style="--fw:60px"><label class="ncm-cl-lbl">DV</label><input type="number" name="bankSiphonDV" class="ncm-config-input" value="{{bank.siphonDV}}" /></span>
+        <span class="ncm-f" style="--fw:130px"><label class="ncm-cl-lbl">Amount mode</label><select name="bankSiphonMode" class="ncm-config-input ncm-config-select" data-edit-select="bankSiphonMode"><option value="cap">cap</option><option value="full">full balance</option><option value="percent">percent</option></select></span>
+        <span class="ncm-f" style="--fw:90px"><label class="ncm-cl-lbl">Cap (€$)</label><input type="number" name="bankSiphonCap" class="ncm-config-input" value="{{bank.siphonCap}}" /></span>
+        <span class="ncm-f" style="--fw:60px"><label class="ncm-cl-lbl">%</label><input type="number" name="bankSiphonPercent" class="ncm-config-input" value="{{bank.siphonPercent}}" /></span>
+      </div>
+      {{!-- DV scales with the amount (greed = risk) — the heist shows it live. --}}
+      <div class="ncm-fg">
+        <span class="ncm-f ncm-f--check"><label class="ncm-config-check"><input type="checkbox" name="bankSiphonDVScale" {{#if bank.siphonDVScale}}checked{{/if}} /> DV scales with amount</label></span>
+        <span class="ncm-f" style="--fw:150px"><label class="ncm-cl-lbl">+1 DV per (€$)</label><input type="number" name="bankSiphonDVPer" class="ncm-config-input" value="{{bank.siphonDVPer}}" placeholder="50000" /></span>
+      </div>
+      {{!-- Failure lockout → then freeze the account. --}}
+      <div class="ncm-fg">
+        <span class="ncm-f ncm-f--check"><label class="ncm-config-check"><input type="checkbox" name="bankSiphonLockout" {{#if bank.siphonLockout}}checked{{/if}} /> Lock out on failure</label></span>
+        <span class="ncm-f" style="--fw:110px"><label class="ncm-cl-lbl">Attempts</label><input type="number" name="bankSiphonAttempts" class="ncm-config-input" value="{{bank.siphonMaxAttempts}}" min="1" max="9" /></span>
+        <span class="ncm-f" style="--fw:130px"><label class="ncm-cl-lbl">Lockout (min)</label><input type="number" name="bankSiphonLockMin" class="ncm-config-input" value="{{bank.siphonLockoutMin}}" min="1" /></span>
+      </div>
+      <div class="ncm-config-hint">On a failed roll: trace + GM alert. <b>DV scales</b> = base DV +1 per the eddies set (dragging more in the heist raises the DV live). <b>Lockout</b> = a fail bars retries for the minutes set; after the attempts are burned the account <b>FREEZES</b> (no more siphoning). cap = take up to Cap · percent = up to % · full = whole balance.</div>
     </fieldset>
   {{/if}}
 
-  {{!-- ─── CALENDAR ─── --}}
+  {{!-- ─── CALENDAR (#34 — card builder: category strip · When picker · lock/scene · CSV) ─── --}}
   {{#if isCalendar}}
     <fieldset class="ncm-config-section">
       <legend class="ncm-config-legend"><i class="fas fa-calendar-days"></i> Schedule</legend>
-      <div class="ncm-config-row"><label class="ncm-config-label">Title</label><input type="text" name="calTitle" class="ncm-config-input ncm-config-flex" value="{{editSubject}}" placeholder="Ops Schedule — June" /></div>
-      <div class="ncm-cl-list" data-list="calEvents"></div>
-      <button type="button" data-action="addListRow" data-list="calEvents" class="ncm-cl-add"><i class="fas fa-plus"></i> Add event</button>
-      <div class="ncm-config-hint">Line 1: date · title · time. Line 2: place · people · category. Events sharing a category share a legend color — colors assign themselves at save.</div>
-      <div class="ncm-config-row">
-        <label class="ncm-config-label">Timestamp</label>
-        <div class="ncm-ctp-trigger" data-action="openTimePicker" data-target="timestamp">
-          <i class="fas fa-clock ncm-ctp-trigger__icon"></i>
-          <span class="ncm-ctp-trigger__value">{{#if editTimestampFormatted}}{{editTimestampFormatted}}{{else}}{{defaultTimestampFormatted}}{{/if}}</span>
-          <i class="fas fa-chevron-down ncm-ctp-trigger__chevron"></i>
-        </div>
-        <input type="hidden" name="timestamp" value="{{#if editTimestamp}}{{editTimestamp}}{{else}}{{defaultTimestamp}}{{/if}}" />
+      <div class="ncm-fg">
+        <span class="ncm-f ncm-f--flex"><label class="ncm-cl-lbl">Title</label><input type="text" name="calTitle" class="ncm-config-input" value="{{editSubject}}" placeholder="Ops Schedule — June" /></span>
+        <span class="ncm-f" style="--fw:120px"><label class="ncm-cl-lbl">Default view</label>
+          <span class="ncm-calseg">
+            <input type="hidden" name="calDefaultView" value="{{cal.defaultView}}" />
+            <button type="button" data-action="calDefView" data-view="rail" class="ncm-calseg__btn{{#if cal.isRail}} is-on{{/if}}" data-tooltip="Open on the timeline"><i class="fas fa-list-ul"></i></button>
+            <button type="button" data-action="calDefView" data-view="month" class="ncm-calseg__btn{{#if cal.isMonth}} is-on{{/if}}" data-tooltip="Open on the month grid"><i class="fas fa-table-cells"></i></button>
+          </span>
+        </span>
       </div>
+      <label class="ncm-cl-lbl ncm-calcats-lbl">Categories — the swatch cycles the color; chips file events</label>
+      <div class="ncm-calcats" data-cal-cats>
+        <span data-cal-addwrap>
+          <button type="button" data-action="calCatAdd" class="ncm-calcat-new">+ category</button>
+          <input type="text" data-cal-newcat class="ncm-config-input ncm-calcat-inp" placeholder="name, then Enter" hidden />
+        </span>
+      </div>
+      <div class="ncm-callist" data-cal-list></div>
+      <div class="ncm-calbar">
+        <button type="button" data-action="calAddEvent" class="ncm-cl-add"><i class="fas fa-plus"></i> Add event</button>
+        <span class="ncm-calbar__grow"></span>
+        <button type="button" data-action="calImportCsv" class="ncm-rec-csvbtn" data-tooltip="Import a CSV (replaces the list) — columns: title, when, location, who, note, category, locked, unlockSkill, unlockDV, traceOnFail, sceneId"><i class="fas fa-file-import"></i> Import CSV</button>
+        <button type="button" data-action="calExportCsv" class="ncm-rec-csvbtn" data-tooltip="Export the schedule as CSV — edit in Excel, reimport"><i class="fas fa-file-export"></i> Export CSV</button>
+      </div>
+      <div class="ncm-config-hint">Cards mirror the player view and <b>auto-sort by date</b>. The <b>When</b> chip sets date + time in one picker. The <b>lock</b> hides an event from players until they decrypt it (roll + DV per event); <b>map</b> links a scene (GM gets Go-to-Scene). Collapse finished cards to keep the list tidy.</div>
     </fieldset>
   {{/if}}
 
@@ -471,8 +565,11 @@
     <fieldset class="ncm-config-section">
       <legend class="ncm-config-legend"><i class="fas fa-terminal"></i> Console</legend>
       <div class="ncm-config-row"><label class="ncm-config-label">Title</label><input type="text" name="syslogTitle" class="ncm-config-input ncm-config-flex" value="{{editSubject}}" placeholder="Blank = auto from host" /></div>
-      <div class="ncm-config-row"><label class="ncm-config-label">Host</label><input type="text" name="syslogHost" class="ncm-config-input" value="{{syslog.host}}" placeholder="arasaka-db-04" style="max-width:170px" /><label class="ncm-config-label" style="margin-left:8px;width:auto;">Path</label><input type="text" name="syslogPath" class="ncm-config-input ncm-config-flex" value="{{syslog.path}}" placeholder="/var/log/access.log" /></div>
-      <div class="ncm-config-row"><label class="ncm-config-label">Prompt</label><input type="text" name="syslogPrompt" class="ncm-config-input ncm-config-flex" value="{{syslog.prompt}}" placeholder="Blank = auto (root@host:~#)" /></div>
+      <div class="ncm-fg">
+        <span class="ncm-f" style="--fw:170px"><label class="ncm-cl-lbl">Host machine</label><input type="text" name="syslogHost" class="ncm-config-input" value="{{syslog.host}}" placeholder="arasaka-db-04" /></span>
+        <span class="ncm-f ncm-f--flex"><label class="ncm-cl-lbl">Log file path</label><input type="text" name="syslogPath" class="ncm-config-input" value="{{syslog.path}}" placeholder="/var/log/access.log" /></span>
+        <span class="ncm-f ncm-f--flex"><label class="ncm-cl-lbl">Prompt (blank = auto)</label><input type="text" name="syslogPrompt" class="ncm-config-input" value="{{syslog.prompt}}" placeholder="root@host:~#" /></span>
+      </div>
       <div class="ncm-config-row">
         <label class="ncm-config-check"><input type="checkbox" name="syslogShowLineNumbers" {{#if syslog.showLineNumbers}}checked{{/if}} /> Line numbers</label>
         <label class="ncm-config-check"><input type="checkbox" name="syslogShowFilter" {{#if syslog.showFilter}}checked{{/if}} /> Filter bar</label>
@@ -482,18 +579,9 @@
     </fieldset>
     <fieldset class="ncm-config-section">
       <legend class="ncm-config-legend"><i class="fas fa-list"></i> Log Lines</legend>
-      <div class="ncm-cl-list" data-list="syslogLines"></div>
+      <div class="ncm-cl-list ncm-slog" data-list="syslogLines"></div>
       <button type="button" data-action="addListRow" data-list="syslogLines" class="ncm-cl-add"><i class="fas fa-plus"></i> Add line</button>
-      <div class="ncm-config-hint">Severity colors the line (info / ok / warn / err / debug). Tick “mark” to spotlight the key line in a callout.</div>
-      <div class="ncm-config-row">
-        <label class="ncm-config-label">Timestamp</label>
-        <div class="ncm-ctp-trigger" data-action="openTimePicker" data-target="timestamp">
-          <i class="fas fa-clock ncm-ctp-trigger__icon"></i>
-          <span class="ncm-ctp-trigger__value">{{#if editTimestampFormatted}}{{editTimestampFormatted}}{{else}}{{defaultTimestampFormatted}}{{/if}}</span>
-          <i class="fas fa-chevron-down ncm-ctp-trigger__chevron"></i>
-        </div>
-        <input type="hidden" name="timestamp" value="{{#if editTimestamp}}{{editTimestamp}}{{else}}{{defaultTimestamp}}{{/if}}" />
-      </div>
+      <div class="ncm-config-hint">It's a live console: <b>click the severity key</b> to cycle INFO / OK / WARN / ERR / DEBUG (colors the line), type the message, <b>Enter starts the next line</b>. Hover a line: ★ spotlights it in a callout, ✕ removes it.</div>
     </fieldset>
   {{/if}}
 
@@ -503,18 +591,282 @@
       <legend class="ncm-config-legend"><i class="fas fa-key"></i> Credential Vault</legend>
       <div class="ncm-config-row"><label class="ncm-config-label">Title</label><input type="text" name="credTitle" class="ncm-config-input ncm-config-flex" value="{{editSubject}}" placeholder="Harvested logins — Biotechnica" /></div>
       <div class="ncm-config-row"><label class="ncm-config-check"><input type="checkbox" name="credAutoReuse" {{#if creds.autoReuse}}checked{{/if}} /> Auto-flag reused passwords</label></div>
-      <div class="ncm-cl-list" data-list="credEntries"></div>
+      <div class="ncm-cl-list ncm-credgrid" data-list="credEntries"></div>
       <button type="button" data-action="addListRow" data-list="credEntries" class="ncm-cl-add"><i class="fas fa-plus"></i> Add credential</button>
-      <div class="ncm-config-hint">Line 1: host · username · password. Line 2: note · strength (1–4 draws the meter) · locked (masked until cracked in the viewer). The same password on two hosts auto-flags REUSED — the pivot signal.</div>
-      <div class="ncm-config-row">
-        <label class="ncm-config-label">Timestamp</label>
-        <div class="ncm-ctp-trigger" data-action="openTimePicker" data-target="timestamp">
-          <i class="fas fa-clock ncm-ctp-trigger__icon"></i>
-          <span class="ncm-ctp-trigger__value">{{#if editTimestampFormatted}}{{editTimestampFormatted}}{{else}}{{defaultTimestampFormatted}}{{/if}}</span>
-          <i class="fas fa-chevron-down ncm-ctp-trigger__chevron"></i>
-        </div>
-        <input type="hidden" name="timestamp" value="{{#if editTimestamp}}{{editTimestamp}}{{else}}{{defaultTimestamp}}{{/if}}" />
+      <div class="ncm-config-hint">Each card is one login, like a password manager: 👁 shows/hides the secret, <b>click the pips</b> to set strength (draws the meter), LOCKED masks it until cracked in the viewer. The same password on two hosts auto-flags REUSED — the pivot signal.</div>
+    </fieldset>
+  {{/if}}
+
+  {{!-- ─── GALLERY ─── --}}
+  {{#if isGallery}}
+    <fieldset class="ncm-config-section" data-gal-cfg data-gal-mode="{{#if gal.isFeed}}feed{{else}}stills{{/if}}">
+      <legend class="ncm-config-legend"><i class="fas fa-images"></i> Image Gallery</legend>
+      <div class="ncm-config-row"><label class="ncm-config-label">Title</label><input type="text" name="galTitle" class="ncm-config-input ncm-config-flex" value="{{gal.title}}" placeholder="cam-04 export — loading dock" /></div>
+      <div class="ncm-fg">
+        <span class="ncm-f" style="--fw:170px"><label class="ncm-cl-lbl">Source (optional)</label><input type="text" name="galSource" class="ncm-config-input" value="{{gal.source}}" placeholder="SECCAM-B2" /></span>
+        <span class="ncm-f"><label class="ncm-cl-lbl">Mode</label>
+          <span class="ncm-gal-seg" data-gal-seg="galMode">
+            <button type="button" data-action="galSeg" data-val="" class="{{#unless gal.isFeed}}is-on{{/unless}}" data-tooltip="A photo dump / evidence stills">STILLS</button>
+            <button type="button" data-action="galSeg" data-val="feed" class="{{#if gal.isFeed}}is-on{{/if}}" data-tooltip="A live camera multiplex — ticking clocks, LOOP/CUT, PTZ">LIVE FEED</button>
+          </span>
+          <input type="hidden" name="galMode" value="{{#if gal.isFeed}}feed{{/if}}" />
+        </span>
+        <span class="ncm-f" data-gal-layoutrow><label class="ncm-cl-lbl">Layout</label>
+          <span class="ncm-gal-seg" data-gal-seg="galLayout">
+            <button type="button" data-action="galSeg" data-val="" class="{{#unless gal.isStrip}}is-on{{/unless}}">GRID</button>
+            <button type="button" data-action="galSeg" data-val="strip" class="{{#if gal.isStrip}}is-on{{/if}}" data-tooltip="One row, scrolls sideways">STRIP</button>
+          </span>
+          <input type="hidden" name="galLayout" value="{{#if gal.isStrip}}strip{{/if}}" />
+        </span>
       </div>
+      <div class="ncm-cl-list ncm-galgrid" data-list="galImages"></div>
+      <div class="ncm-galgrid-actions">
+        <button type="button" data-action="addListRow" data-list="galImages" class="ncm-cl-add"><i class="fas fa-plus"></i> Add image</button>
+        <button type="button" data-action="galImportFolder" class="ncm-cl-add ncm-cl-add--amber" data-tooltip="Pick a folder — every image file in it becomes a frame, auto-numbered"><i class="fas fa-folder-tree"></i> Import folder…</button>
+      </div>
+      <div class="ncm-config-hint"><b>Click a thumb</b> to pick its image (or enlarge it once set — the path box appears on hover); <b>drag ⋮⋮ to reorder</b>. Corner toggles: 🚩 flag (the important frame — in STILLS it becomes the big hero) · 💀 dead (NO SIGNAL static) · 🔒 lock (encrypted, shows its DV box) · ✥ PTZ (feed mode: a steerable camera head — use ONE big image and players pan around it). <b>LIVE FEED</b> turns every frame into a camera channel with a ticking clock; the Loop/Cut DV boxes arm the player LOOP and CUT FEED actions (blank = off).</div>
+      <div class="ncm-fg">
+        <span class="ncm-f" style="--fw:170px"><label class="ncm-cl-lbl">Lock roll skill</label><select name="galUnlockSkill" class="ncm-config-input ncm-config-select">
+          {{#each gal.unlockSkills}}<option value="{{name}}" {{#if selected}}selected{{/if}}>{{name}}</option>{{/each}}
+        </select></span>
+        <span class="ncm-f" style="--fw:60px"><label class="ncm-cl-lbl">DV</label><input type="number" name="galUnlockDV" class="ncm-config-input" value="{{gal.unlockDV}}" min="1" max="30" /></span>
+        <span class="ncm-f ncm-f--check"><label class="ncm-config-check"><input type="checkbox" name="galUnlockTrace" {{#if gal.unlockTrace}}checked{{/if}} /> fail fires a trace</label></span>
+        <span class="ncm-f" style="--fw:170px" data-gal-feedrow><label class="ncm-cl-lbl">Cam roll skill (loop/cut/control)</label><select name="galCamSkill" class="ncm-config-input ncm-config-select">
+          {{#each gal.camSkills}}<option value="{{name}}" {{#if selected}}selected{{/if}}>{{name}}</option>{{/each}}
+        </select></span>
+        <span class="ncm-f" style="--fw:190px" data-gal-feedrow><label class="ncm-cl-lbl">Camera clock</label><select name="galClock" class="ncm-config-input ncm-config-select">
+          {{#each gal.clockOptions}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}
+        </select></span>
+      </div>
+      <div class="ncm-config-hint">Rows ticked “lock” render as ENCRYPTED frames — the image (and its caption) stays hidden until a player beats this roll, one frame at a time. A per-row DV overrides this one. In LIVE FEED, "fail fires a trace" also covers botched LOOP / CUT / TAKE CONTROL rolls.</div>
+      <div class="ncm-config-hint" data-gal-feedrow><b>Camera clock</b> — <b>Game time</b> (default) ticks off the module's time provider, so the cameras read the same clock as everything else in NCM (Simple Calendar, world time, disguised dates all move them). <b>Real time</b> keeps them ticking even when the game clock is paused or set manually — use it if your world's clock only advances when you advance it, or the feed will look frozen. <b>Frozen (each camera's own Time)</b> = recovered footage, not a live wall. A <b>looped</b> camera always shows its frozen time, whatever this is set to — that stale clock is the tell.</div>
+    </fieldset>
+  {{/if}}
+
+  {{!-- ─── DOCUMENT ─── --}}
+  {{#if isDocument}}
+    <fieldset class="ncm-config-section">
+      <legend class="ncm-config-legend"><i class="fas fa-file-lines"></i> Document</legend>
+      <div class="ncm-config-row"><label class="ncm-config-label">Title</label><input type="text" name="docTitle" class="ncm-config-input ncm-config-flex" value="{{doc.title}}" placeholder="Re: Warehouse 7 shortfall" /></div>
+      {{!-- Letterhead — one tidy label-over-input grid instead of four
+           mismatched rows ("textboxes all over the place"). --}}
+      {{!-- Doc type + Classification are comboboxes (datalist) — pick a common
+           value in one click or type your own; classification drives the stamp color. --}}
+      <datalist id="ncm-doctypes"><option value="MEMO"></option><option value="REPORT"></option><option value="BRIEF"></option><option value="ORDER"></option><option value="LETTER"></option><option value="DOSSIER"></option><option value="BULLETIN"></option><option value="INVOICE"></option><option value="CONTRACT"></option></datalist>
+      <datalist id="ncm-doc-class"><option value="RESTRICTED"></option><option value="CONFIDENTIAL"></option><option value="SECRET"></option><option value="TOP SECRET"></option><option value="EYES ONLY"></option><option value="BLACK"></option></datalist>
+      <div class="ncm-fg">
+        <span class="ncm-f" style="--fw:150px"><label class="ncm-cl-lbl">Doc type</label><input type="text" name="docType" list="ncm-doctypes" class="ncm-config-input" value="{{doc.docType}}" placeholder="MEMO" /></span>
+        <span class="ncm-f" style="--fw:150px"><label class="ncm-cl-lbl">Classification</label><input type="text" name="docClassification" list="ncm-doc-class" class="ncm-config-input" value="{{doc.classification}}" placeholder="SECRET" /></span>
+        <span class="ncm-f" style="--fw:140px"><label class="ncm-cl-lbl">Author</label><input type="text" name="docAuthor" class="ncm-config-input" value="{{doc.author}}" placeholder="K. Okada" /></span>
+        <span class="ncm-f ncm-f--flex"><label class="ncm-cl-lbl">Org</label><input type="text" name="docOrg" class="ncm-config-input" value="{{doc.org}}" placeholder="Arasaka Logistics" /></span>
+        <span class="ncm-f" style="--fw:150px"><label class="ncm-cl-lbl">Dated</label>
+          <input type="hidden" name="docDate" value="{{doc.date}}" />
+          <div class="ncm-ctp-trigger ncm-doc-datechip" data-action="openTimePicker" data-target="docDate">
+            <i class="fas fa-calendar-day ncm-ctp-trigger__icon"></i>
+            <span class="ncm-ctp-trigger__value{{#unless doc.date}} ncm-ctp-trigger__value--empty{{/unless}}">{{#if doc.dateLabel}}{{doc.dateLabel}}{{else}}Set date{{/if}}</span>
+            <i class="fas fa-chevron-down ncm-ctp-trigger__chevron"></i>
+          </div>
+        </span>
+        <span class="ncm-f" style="--fw:70px"><label class="ncm-cl-lbl">Revision</label><input type="text" name="docRevision" class="ncm-config-input" value="{{doc.revision}}" placeholder="3" /></span>
+        <span class="ncm-f" style="--fw:200px"><label class="ncm-cl-lbl">Watermark (optional)</label><input type="text" name="docWatermark" class="ncm-config-input" value="{{doc.watermark}}" placeholder="ghost text behind the page" /></span>
+        <span class="ncm-f ncm-f--flex"><label class="ncm-cl-lbl">Signed (text)</label><input type="text" name="docSigned" class="ncm-config-input" value="{{doc.signed}}" placeholder="signature line / name" /></span>
+        <span class="ncm-f ncm-f--flex"><label class="ncm-cl-lbl">Signature image (optional)</label>
+          <span class="ncm-cl-imgrow"><img class="ncm-cl-thumb" src="{{doc.signedImage}}"{{#unless doc.signedImage}} style="display:none"{{/unless}}><input type="text" name="docSignedImage" class="ncm-config-input" value="{{doc.signedImage}}" placeholder="a scanned signature"><button type="button" data-action="browseListImage" class="ncm-shard-hdr-btn" title="Browse"><i class="fas fa-folder-open"></i></button></span>
+        </span>
+      </div>
+    </fieldset>
+    <fieldset class="ncm-config-section">
+      <legend class="ncm-config-legend"><i class="fas fa-paragraph"></i> Body</legend>
+      <div class="ncm-docpage">
+        <div class="ncm-cl-list" data-doc-list></div>
+      </div>
+      <div class="ncm-rec-actions">
+        <button type="button" data-action="docAddPara" class="ncm-cl-add"><i class="fas fa-plus"></i> Paragraph</button>
+        <button type="button" data-action="docAddList" class="ncm-cl-add"><i class="fas fa-list-ul"></i> List</button>
+        <button type="button" data-action="docAddFigure" class="ncm-cl-add"><i class="fas fa-image"></i> Figure</button>
+      </div>
+      <div class="ncm-config-hint">You're writing ON the page. Each block is a <b>Paragraph</b> (select text → <i class="fas fa-bold"></i>/<i class="fas fa-italic"></i>; ❝ quote; <i class="fas fa-eye-slash"></i> REDACTS it live), a <b>List</b> (one item per line, ⇄ toggles bulleted/numbered), or a <b>Figure</b> (an image + caption → opens in the lightbox). A heading line starts a section. ✕ removes a block.</div>
+      <div class="ncm-fg">
+        <span class="ncm-f ncm-f--check"><label class="ncm-config-check"><input type="checkbox" name="docDeclassify" {{#if doc.declassify}}checked{{/if}} /> Players can DECLASSIFY</label></span>
+        <span class="ncm-f" style="--fw:170px"><label class="ncm-cl-lbl">Roll skill</label><select name="docDeclassifySkill" class="ncm-config-input ncm-config-select">
+          {{#each doc.declassifySkills}}<option value="{{name}}" {{#if selected}}selected{{/if}}>{{name}}</option>{{/each}}
+        </select></span>
+        <span class="ncm-f" style="--fw:60px"><label class="ncm-cl-lbl">DV</label><input type="number" name="docDeclassifyDV" class="ncm-config-input" value="{{doc.declassifyDV}}" min="1" max="30" /></span>
+        <span class="ncm-f ncm-f--check"><label class="ncm-config-check"><input type="checkbox" name="docDeclassifyTrace" {{#if doc.declassifyTrace}}checked{{/if}} /> fail fires a trace</label></span>
+      </div>
+      <div class="ncm-config-hint">One successful roll lifts ALL redaction bars. Give redacted paragraphs text — that's what gets revealed.</div>
+    </fieldset>
+  {{/if}}
+
+  {{!-- ─── RECORDS / DB ─── --}}
+  {{#if isRecord}}
+    <fieldset class="ncm-config-section">
+      <legend class="ncm-config-legend"><i class="fas fa-database"></i> Database</legend>
+      <div class="ncm-config-row"><label class="ncm-config-label">DB name</label><input type="text" name="recDbName" class="ncm-config-input ncm-config-flex" value="{{rec.dbName}}" placeholder="NCPD BOLO REGISTRY / Clinic Patients" /></div>
+      {{!-- DB-kind quick-starts: pick a kind → new subject cards seed its fields --}}
+      <div class="ncm-config-row" style="align-items:center;gap:8px;flex-wrap:wrap">
+        <label class="ncm-config-label" style="flex:0 0 auto">Kind</label>
+        <input type="hidden" name="recType" value="{{rec.recordType}}" />
+        <span class="ncm-reckinds">
+          {{#each rec.dbKinds}}<button type="button" class="ncm-reckind{{#if selected}} on{{/if}}" data-action="recKind" data-kind="{{key}}">{{label}}</button>{{/each}}
+        </span>
+      </div>
+      <div class="ncm-config-row"><label class="ncm-config-check"><input type="checkbox" name="recSearchable" {{#if rec.searchable}}checked{{/if}} /> Search box (players can query records)</label></div>
+
+      <div class="ncm-recgrid" data-rec-list></div>
+      <div class="ncm-rec-actions">
+        <button type="button" data-action="recAddSubject" class="ncm-cl-add"><i class="fas fa-user-plus"></i> Add subject</button>
+        <span class="ncm-rec-actions__spacer"></span>
+        <button type="button" data-action="recImportCsv" class="ncm-rec-csvbtn" data-tooltip="Import subjects from a CSV (replaces the list)"><i class="fas fa-file-import"></i> Import CSV</button>
+        <button type="button" data-action="recExportCsv" class="ncm-rec-csvbtn" data-tooltip="Export subjects to a CSV (edit in Excel, reimport)"><i class="fas fa-file-export"></i> Export CSV</button>
+      </div>
+      <div class="ncm-config-hint">Each subject is a case-file card: <i class="fas fa-chevron-down"></i> collapses it, <i class="fas fa-clone"></i> duplicates it. Click the <b>portrait tile</b> to set a photo (else initials), the <b>status pill</b> to cycle ACTIVE/WANTED/… (auto-colors in the viewer), and <i class="fas fa-flag"></i> to red-tag the one worth finding. Use the <b>+field chips</b> to add typed fields. Pick a <b>Kind</b> above and new cards start with that kind's fields. <b>CSV</b> columns: <code>name, status, flagged</code> + a column per field (e.g. <code>Phone, Alias, Threat</code>) — unknown headers become custom fields.</div>
+    </fieldset>
+  {{/if}}
+
+  {{!-- ─── SCHEMATIC ─── --}}
+  {{#if isSchematic}}
+    <fieldset class="ncm-config-section">
+      <legend class="ncm-config-legend"><i class="fas fa-compass-drafting"></i> Schematic</legend>
+      <div class="ncm-config-row"><label class="ncm-config-label">Title</label><input type="text" name="schemTitle" class="ncm-config-input ncm-config-flex" value="{{schem.title}}" placeholder="Warehouse 7 — floor 2" /></div>
+      <div class="ncm-config-row"><label class="ncm-config-label">Image</label>
+        <input type="text" name="schemImageUrl" class="ncm-config-input ncm-config-flex" value="{{schem.imageUrl}}" placeholder="floorplan / blueprint image" />
+        <button type="button" data-action="browseImage" data-target="schemImageUrl" class="ncm-shard-hdr-btn" title="Browse / upload"><i class="fas fa-folder-open"></i></button>
+      </div>
+      {{!-- Interactive map editor: pick a marker type, click the plan to drop it,
+           click a pin to edit, drag to move, Route mode links two pins. --}}
+      <div class="ncm-schem-palette" data-schem-palette></div>
+      <div class="ncm-cmp-schemstage" data-schem-stage hidden>
+        <img data-schem-img src="" alt="">
+        <svg class="ncm-schem-routes" data-schem-routes viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+        <div class="ncm-schem-pop" data-schem-pop hidden></div>
+      </div>
+      <div class="ncm-config-hint"><i class="fas fa-hand-pointer"></i> Pick a marker, <b>click the plan</b> to drop it · <b>click a pin</b> to edit it · <b>drag</b> to move · <b>Route</b> mode links two pins into an infil path.</div>
+      <div class="ncm-fg">
+        <span class="ncm-f" style="--fw:170px"><label class="ncm-cl-lbl">Doc ref (optional)</label><input type="text" name="schemDocRef" class="ncm-config-input" value="{{schem.docRef}}" placeholder="BP-2077-114" /></span>
+        <span class="ncm-f ncm-f--flex"><label class="ncm-cl-lbl">Whole-schematic scene (optional)</label><input type="text" name="schemSceneId" class="ncm-config-input" value="{{schem.sceneId}}" placeholder="scene id — a GM “Go to Scene” for the map" /></span>
+      </div>
+    </fieldset>
+  {{/if}}
+
+  {{!-- ─── NOTE ─── --}}
+  {{#if isNote}}
+    <fieldset class="ncm-config-section">
+      <legend class="ncm-config-legend"><i class="fas fa-note-sticky"></i> Sticky Note</legend>
+      <div class="ncm-config-row"><label class="ncm-config-label">Title</label><input type="text" name="noteTitle" class="ncm-config-input ncm-config-flex" value="{{noteData.title}}" placeholder="DON'T FORGET (optional)" /></div>
+      <div class="ncm-config-row"><label class="ncm-config-label">Paper</label>
+        <select name="noteColor" class="ncm-config-input ncm-config-select" data-edit-select="noteColor" style="max-width:120px">
+          <option value="gold">gold</option><option value="cyan">cyan</option><option value="green">green</option><option value="red">red</option><option value="amber">amber</option><option value="purple">purple</option><option value="blue">blue</option><option value="pink">pink</option>
+        </select>
+        <label class="ncm-config-check" style="margin-left:12px"><input type="checkbox" name="notePinned" {{#if noteData.pinned}}checked{{/if}} /> Pinned (shows a thumbtack)</label>
+      </div>
+      {{!-- The editor IS the sticky note — write on the paper itself. --}}
+      <div class="ncm-notepaper" data-paper="{{#if noteData.color}}{{noteData.color}}{{else}}gold{{/if}}">
+        <span class="ncm-notepaper__tape"></span>
+        <textarea name="noteText" rows="6" placeholder="vault code is the boss's dog's birthday&#10;0451? 0452?&#10;ASK RITA">{{noteData.text}}</textarea>
+      </div>
+      <div class="ncm-config-hint">You're writing on the note itself — the paper color follows the select above. Line breaks are kept. Sometimes a scribbled password IS the whole puzzle solution.</div>
+    </fieldset>
+  {{/if}}
+
+  {{!-- ─── MALWARE ─── --}}
+  {{#if isMalware}}
+    <fieldset class="ncm-config-section">
+      <legend class="ncm-config-legend"><i class="fas fa-biohazard"></i> Quarantined Executable</legend>
+      <div class="ncm-config-row"><label class="ncm-config-label">File name</label><input type="text" name="malName" class="ncm-config-input ncm-config-flex" value="{{mal.name}}" placeholder="HELLHOUND.exe" /></div>
+      <div class="ncm-fg">
+        <span class="ncm-f" style="--fw:140px"><label class="ncm-cl-lbl">Payload type</label><select name="malType" class="ncm-config-input ncm-config-select" data-edit-select="malType">
+          <option value="virus">virus</option><option value="worm">worm</option><option value="daemon">daemon</option><option value="logic bomb">logic bomb</option><option value="ransom">ransom</option><option value="rootkit">rootkit</option><option value="custom">custom</option>
+        </select></span>
+        <span class="ncm-f" style="--fw:80px"><label class="ncm-cl-lbl">Threat 1–4</label><select name="malThreat" class="ncm-config-input ncm-config-select" data-edit-select="malThreat">
+          <option value="0">—</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option>
+        </select></span>
+        <span class="ncm-f" style="--fw:90px"><label class="ncm-cl-lbl">File size</label><input type="text" name="malSize" class="ncm-config-input" value="{{mal.sizeLabel}}" placeholder="4.7 MB" /></span>
+      </div>
+      <div class="ncm-config-row ncm-config-row--col"><label class="ncm-config-label" style="margin-bottom:4px">Description</label>
+        <textarea name="malDesc" class="ncm-config-input" rows="3" placeholder="What the scanner THINKS it does…" style="resize:vertical">{{mal.description}}</textarea>
+      </div>
+      <div class="ncm-config-row">
+        <label class="ncm-config-check"><input type="checkbox" name="malDeployable" {{#if mal.deployable}}checked{{/if}} /> Deployable (players get a DEPLOY button)</label>
+        <label class="ncm-config-check"><input type="checkbox" name="malHoneypot" {{#if mal.honeypot}}checked{{/if}} /> Honeypot (decoy — deploying fires a trace)</label>
+      </div>
+      <div class="ncm-fg">
+        <span class="ncm-f ncm-f--check"><label class="ncm-config-check"><input type="checkbox" name="malDeployRequire" {{#if mal.deployRequire}}checked{{/if}} /> Deploy needs a roll</label></span>
+        <span class="ncm-f" style="--fw:170px"><label class="ncm-cl-lbl">Roll skill</label><select name="malDeploySkill" class="ncm-config-input ncm-config-select">
+          {{#each mal.deploySkills}}<option value="{{name}}" {{#if selected}}selected{{/if}}>{{name}}</option>{{/each}}
+        </select></span>
+        <span class="ncm-f" style="--fw:60px"><label class="ncm-cl-lbl">DV</label><input type="number" name="malDeployDV" class="ncm-config-input" value="{{mal.deployDV}}" min="1" max="30" /></span>
+      </div>
+      <div class="ncm-config-row">
+        <label class="ncm-config-label">Black ICE</label>
+        {{#if mal.hasIceActors}}
+        <select name="malIceActorId" class="ncm-config-input ncm-config-select ncm-config-flex">
+          <option value="">— none —</option>
+          {{#each mal.iceOptions}}<option value="{{id}}" {{#if selected}}selected{{/if}}>{{name}}{{#if atkLabel}} · {{atkLabel}}{{/if}}</option>{{/each}}
+        </select>
+        {{else}}
+        <span class="ncm-config-hint" style="margin:0;">No Black ICE actors in this world — create one to arm the executable.</span>
+        {{/if}}
+      </div>
+      <div class="ncm-config-hint">What a deployed program actually does is yours to adjudicate — you get an alert when someone runs it. The honeypot tag is visible only to you; players find out the hard way. A roll gates a clean run (a miss misfires like a honeypot); linked Black ICE bites the operator on any misfire — ATK + 1d10, same as shard security.</div>
+    </fieldset>
+  {{/if}}
+
+  {{!-- ─── CHAT LOG ─── --}}
+  {{#if isChatlog}}
+    <fieldset class="ncm-config-section">
+      <legend class="ncm-config-legend"><i class="fas fa-comments"></i> Chat Log</legend>
+      <div class="ncm-config-row"><label class="ncm-config-label">Title</label><input type="text" name="chatTitle" class="ncm-config-input ncm-config-flex" value="{{editSubject}}" placeholder="Blank = channel name" /></div>
+      <div class="ncm-fg">
+        <span class="ncm-f" style="--fw:130px"><label class="ncm-cl-lbl">Chat app</label><input type="text" name="chatApp" class="ncm-config-input" value="{{chat.app}}" placeholder="NC-MSG" /></span>
+        <span class="ncm-f ncm-f--flex"><label class="ncm-cl-lbl">Channel / conversation</label><input type="text" name="chatChannel" class="ncm-config-input" value="{{chat.channel}}" placeholder="#dorset-crew / DM with Rogue" /></span>
+      </div>
+      {{!-- Owner (set via a sender chip's ★) + sticky When (date + time, one control). --}}
+      <input type="hidden" name="chatMe" value="{{chat.me}}" />
+      <input type="hidden" name="chatWhen" value="" />
+      <datalist id="ncm-chat-senders" data-chat-senders></datalist>
+      {{!-- Texting-app editor: pick a sender chip, type, Enter. Bubbles store
+           their whole state in data-attrs; _collectChat() walks them. --}}
+      <div class="ncm-chatedit">
+        <div class="ncm-chatedit__feed ncm-cl-list" data-list="chatMsgs"></div>
+
+        <div class="ncm-chatedit__compose">
+          {{!-- ① toolbar: type (segmented) + one When picker (date & time) --}}
+          <div class="ncm-chatedit__tbar">
+            <span class="ncm-chat-seg">
+              <button type="button" class="is-on" data-action="chatType" data-t="text"><i class="fas fa-comment"></i> Text</button>
+              <button type="button" data-action="chatType" data-t="photo"><i class="fas fa-image"></i> Photo</button>
+              <button type="button" data-action="chatType" data-t="system"><i class="fas fa-gear"></i> System</button>
+            </span>
+            <span style="flex:1"></span>
+            <div class="ncm-ctp-trigger ncm-chat-whenchip" data-action="openTimePicker" data-target="chatWhen" data-tooltip="Date + time — sticks across messages">
+              <i class="fas fa-clock ncm-ctp-trigger__icon"></i>
+              <span class="ncm-ctp-trigger__value ncm-ctp-trigger__value--empty">Set date &amp; time</span>
+              <i class="fas fa-chevron-down ncm-ctp-trigger__chevron"></i>
+            </div>
+          </div>
+
+          {{!-- ② sender chips (hidden for system) --}}
+          <div class="ncm-chatedit__srow" data-chat-srow>
+            <span class="ncm-cl-lbl">Sender</span>
+            <span class="ncm-chat-chips" data-chat-chips></span>
+            <button type="button" class="ncm-chat-chip ncm-chat-chip--new" data-action="chatNewSender"><i class="fas fa-plus"></i> new</button>
+            <input type="text" data-chat-sender class="ncm-config-input ncm-chat-newin" list="ncm-chat-senders" placeholder="new sender…" hidden />
+          </div>
+
+          {{!-- ③ input row: emoji · (attach|preset) · message · Send --}}
+          <div class="ncm-chatedit__inrow">
+            <button type="button" class="ncm-chat-emojibtn" data-action="chatEmoji" data-tooltip="Emoji"><i class="fas fa-face-smile"></i></button>
+            <button type="button" class="ncm-chat-attach" data-action="chatBrowsePhoto" data-chat-attach hidden><i class="fas fa-image"></i> <span data-chat-attach-label>Attach image</span></button>
+            <input type="hidden" data-chat-image value="" />
+            <select data-chat-syspreset class="ncm-config-input ncm-config-select ncm-chat-sysel" hidden></select>
+            <input type="text" data-chat-text class="ncm-config-input ncm-chat-msgin" placeholder="type like you're texting… Enter sends" />
+            <button type="button" data-action="chatSend" data-chat-send class="ncm-shard-btn ncm-shard-btn--primary"><i class="fas fa-paper-plane"></i> Send</button>
+          </div>
+          <div class="ncm-chat-emojipop" data-chat-emojipop hidden></div>
+        </div>
+      </div>
+      <div class="ncm-config-hint">Pick a <b>Type</b>, tap a <b>sender chip</b> (★ = device owner, bubbles right; <b>+ new</b> adds one), set <b>When</b> (date + time, one picker — it sticks), type, Enter. <i class="fas fa-face-smile"></i> inserts emoji. On a bubble: <i class="fas fa-face-smile"></i> reaction · <i class="fas fa-check-double"></i> Seen · <i class="fas fa-ghost"></i> tombstone · ✕ remove. Same-day messages group; the day changes → a date separator.</div>
     </fieldset>
   {{/if}}
 
@@ -558,10 +910,84 @@
       <div class="ncm-config-row" style="margin-top:6px;">
         <label class="ncm-config-check"><input type="checkbox" name="ssTotals" {{#if ss.totals}}checked{{/if}} /> Σ total the number/currency columns</label>
       </div>
+      <div class="ncm-fg">
+        <span class="ncm-f ncm-f--check"><label class="ncm-config-check"><input type="checkbox" name="ssDeclassify" {{#if ss.declassify}}checked{{/if}} /> Players can DECLASSIFY redacted cells</label></span>
+        <span class="ncm-f" style="--fw:170px"><label class="ncm-cl-lbl">Roll skill</label><select name="ssDeclassifySkill" class="ncm-config-input ncm-config-select">
+          {{#each ss.declassifySkills}}<option value="{{name}}" {{#if selected}}selected{{/if}}>{{name}}</option>{{/each}}
+        </select></span>
+        <span class="ncm-f" style="--fw:60px"><label class="ncm-cl-lbl">DV</label><input type="number" name="ssDeclassifyDV" class="ncm-config-input" value="{{ss.declassifyDV}}" min="1" max="30" /></span>
+        <span class="ncm-f ncm-f--check"><label class="ncm-config-check"><input type="checkbox" name="ssDeclassifyTrace" {{#if ss.declassifyTrace}}checked{{/if}} /> fail fires a trace</label></span>
+      </div>
       <div class="ncm-config-row"><label class="ncm-config-label">Note</label><input type="text" name="ssNote" class="ncm-config-input ncm-config-flex" value="{{ss.note}}" placeholder="Footnote under the table (optional)" /></div>
       <div class="ncm-config-hint">Click a cell, then use the toolbar: bold · text color · fill · flag (amber ⚠, with tooltip reason) · redact (blacked out). Column type drives alignment — number/currency right-align and can Σ total; status renders value pills (CLEARED / HELD / DENIED…). The viewer’s cell-reference bar spotlights the first flagged cell.</div>
+    </fieldset>
+  {{/if}}
+
+    </div>{{!-- /content sec__bd --}}
+  </section>
+
+  {{!-- ═══ ② DELIVERY — who it's from, when, and (terminals) which folder.
+       Collapsed = the summary chips; expand to edit. ═══ --}}
+  <section class="ncm-cmp-sec{{#unless secOpen.delivery}} ncm-cmp-sec--closed{{/unless}}" data-cmp-sec="delivery">
+    <div class="ncm-cmp-sec__hd" data-action="cmpToggleSec">
+      <span class="ncm-cmp-sec__num">②</span><span class="ncm-cmp-sec__title">Delivery</span>
+      <span class="ncm-cmp-sec__sum">
+        <span class="ncm-cmp-chip" data-cmp-chip="from"></span>
+        <span class="ncm-cmp-chip" data-cmp-chip="when"></span>
+        {{#if isTerminalTarget}}<span class="ncm-cmp-chip" data-cmp-chip="folder"></span>{{/if}}
+        <i class="fas fa-chevron-down ncm-cmp-sec__caret"></i>
+      </span>
+    </div>
+    <div class="ncm-cmp-sec__bd" data-env-cfg data-envelope="{{env.envelope}}">
+      {{!-- SHOW AS (#37) — the envelope. MESSAGE = mail (from / received).
+            FILE = a machine artifact (filename / path / owner-node / modified /
+            size), which also switches off reply, add-to-contacts, threading,
+            the delivery toast, and the master-contact auto-create. --}}
+      <div class="ncm-fg">
+        <span class="ncm-f"><label class="ncm-cl-lbl">Show as</label>
+          <span class="ncm-gal-seg" data-env-seg="envelope">
+            <button type="button" data-action="envSeg" data-val="mail" class="{{#unless env.isFile}}is-on{{/unless}}" data-tooltip="Mail — it came from someone">MESSAGE</button>
+            <button type="button" data-action="envSeg" data-val="file" class="{{#if env.isFile}}is-on{{/if}}" data-tooltip="A file on the machine — no sender, no reply">FILE</button>
+          </span>
+          <input type="hidden" name="envelope" value="{{env.envelope}}" />
+        </span>
+        <span class="ncm-f" style="flex:1 1 200px" data-env-only="file"><label class="ncm-cl-lbl">Filename</label>
+          <input type="text" name="fileName" class="ncm-config-input" value="{{env.filename}}" placeholder="{{env.filenameSuggest}}" />
+        </span>
+      </div>
+
+      {{!-- MAIL fields --}}
+      <div data-env-only="mail">
+        <div class="ncm-config-row">
+          <label class="ncm-config-label">From</label>
+          <input type="text" name="from" list="ncm-from-master" class="ncm-config-input ncm-config-flex" value="{{editFrom}}" placeholder="sender@corp.net / SOURCE-NODE" />
+          <datalist id="ncm-from-master">
+            {{#each masterEmails}}<option value="{{email}}">{{name}}</option>{{/each}}
+          </datalist>
+        </div>
+        <div class="ncm-composer-from-status" data-from-status style="display:none"></div>
+      </div>
+
+      {{!-- FILE fields --}}
+      <div data-env-only="file">
+        <div class="ncm-fg">
+          <span class="ncm-f" style="flex:1 1 180px"><label class="ncm-cl-lbl">Path (optional)</label>
+            <input type="text" name="filePath" class="ncm-config-input" value="{{env.path}}" placeholder="/var/spool/cam/" />
+          </span>
+          <span class="ncm-f" style="--fw:150px"><label class="ncm-cl-lbl">Owner / node</label>
+            <input type="text" name="fileOwner" class="ncm-config-input" value="{{env.owner}}" placeholder="SECCAM-B2" />
+          </span>
+          <span class="ncm-f" style="--fw:110px"><label class="ncm-cl-lbl">Size</label>
+            <input type="text" name="fileSize" class="ncm-config-input" value="{{env.size}}" placeholder="{{env.sizeSuggest}}" data-tooltip="Blank = derived from the content" />
+          </span>
+        </div>
+        <div class="ncm-composer-from-status ncm-composer-from-status--node" style="display:flex">
+          <i class="fas fa-server"></i> System node — stays as typed. A file's owner is a machine, not an Agent: no contact is created, and players can't reply to it.
+        </div>
+      </div>
+
       <div class="ncm-config-row">
-        <label class="ncm-config-label">Timestamp</label>
+        <label class="ncm-config-label" data-env-lbl="mail|file">Timestamp|Modified</label>
         <div class="ncm-ctp-trigger" data-action="openTimePicker" data-target="timestamp">
           <i class="fas fa-clock ncm-ctp-trigger__icon"></i>
           <span class="ncm-ctp-trigger__value">{{#if editTimestampFormatted}}{{editTimestampFormatted}}{{else}}{{defaultTimestampFormatted}}{{/if}}</span>
@@ -569,62 +995,150 @@
         </div>
         <input type="hidden" name="timestamp" value="{{#if editTimestamp}}{{editTimestamp}}{{else}}{{defaultTimestamp}}{{/if}}" />
       </div>
-    </fieldset>
-  {{/if}}
-
-  {{!-- ═══ PER-ENTRY ENCRYPTION ═══ --}}
-  {{#if isPerMessageEncryption}}
-    <fieldset class="ncm-config-section">
-      <legend class="ncm-config-legend"><i class="fas fa-lock"></i> Per-Entry Encryption</legend>
-      <div class="ncm-config-row">
-        <label class="ncm-config-check"><input type="checkbox" name="encrypted" {{#if editEncrypted}}checked{{/if}} /> Individually Encrypted</label>
-      </div>
-      <div class="ncm-config-row">
-        <label class="ncm-config-label">DV Override</label>
-        <input type="number" name="encryptionDC" class="ncm-config-input ncm-config-short" value="{{defaultDC}}" min="1" max="30" />
-      </div>
-      <div class="ncm-config-hint">Only applies when shard encryption mode is set to "Per-entry"</div>
-    </fieldset>
-  {{/if}}
-
-  {{!-- ═══ NETWORK VISIBILITY — shards gate on the reader's network; terminal
-        messages gate on the TERMINAL's own uplink (the machine's connection) ═══ --}}
-  <fieldset class="ncm-config-section">
-    <legend class="ncm-config-legend"><i class="fas fa-eye-slash"></i> Network Visibility</legend>
-    <div class="ncm-config-row">
-      <label class="ncm-config-check"><input type="checkbox" name="networkRestricted" {{#if editNetworkRestricted}}checked{{/if}} /> Restrict to specific networks</label>
+      {{#if isTerminalTarget}}
+        <div class="ncm-config-row">
+          <label class="ncm-config-label">Folder</label>
+          <select name="entryFolder" class="ncm-config-input ncm-config-flex">
+            {{#each targetFolders}}<option value="{{id}}" {{#if selected}}selected{{/if}}>{{name}}</option>{{/each}}
+          </select>
+        </div>
+      {{/if}}
+      <div class="ncm-config-hint" data-env-only="mail">Mail carries a sender and a received time. From can be an address, a handle, or a system node.{{#if isTerminalTarget}} Folder files it in the terminal's sidebar (custom folders are added in the terminal config's Identity tab).{{/if}}</div>
+      <div class="ncm-config-hint" data-env-only="file">A <b>file</b> is a machine artifact — it has no sender, so it shows no avatar, no Reply and no Add-to-contacts, and it never threads. Leave <b>Size</b> blank and it's derived from the content (a 12-frame gallery weighs ~14 MB). A live camera feed reads as a <b>stream</b>: no size, no date, and it can't be copied off the machine — players capture a frame instead.</div>
     </div>
-    <div class="ncm-config-row ncm-config-row--col">
-      <div class="ncm-tag-list" id="ncm-entry-network-tags"></div>
-      <div class="ncm-config-row" style="margin-top:4px;">
-        <select class="ncm-config-select ncm-config-flex" id="ncm-add-entry-network-select">
-          <option value="">— Add Network —</option>
-          {{#each networkOptions}}
-            <option value="{{value}}">{{label}}</option>
+  </section>
+
+  {{!-- ═══ ③ SECURITY & ACCESS — per-entry encryption + network gating.
+       (Per-type player-unlock rolls stay with their content above — their
+       semantics differ per type.) ═══ --}}
+  <section class="ncm-cmp-sec{{#unless secOpen.security}} ncm-cmp-sec--closed{{/unless}}" data-cmp-sec="security">
+    <div class="ncm-cmp-sec__hd" data-action="cmpToggleSec">
+      <span class="ncm-cmp-sec__num">③</span><span class="ncm-cmp-sec__title">Security &amp; Access</span>
+      <span class="ncm-cmp-sec__sum">
+        <span class="ncm-cmp-chip" data-cmp-chip="enc"></span>
+        <span class="ncm-cmp-chip" data-cmp-chip="net"></span>
+        <i class="fas fa-chevron-down ncm-cmp-sec__caret"></i>
+      </span>
+    </div>
+    <div class="ncm-cmp-sec__bd">
+      {{#if isPerMessageEncryption}}
+        <div class="ncm-config-row">
+          <label class="ncm-config-check"><input type="checkbox" name="encrypted" {{#if editEncrypted}}checked{{/if}} /> Individually Encrypted</label>
+          <label class="ncm-config-label" style="margin-left:10px;width:auto;">DV</label>
+          <input type="number" name="encryptionDC" class="ncm-config-input ncm-config-short" value="{{defaultDC}}" min="1" max="30" />
+        </div>
+        <div class="ncm-config-hint">Only applies when shard encryption mode is set to "Per-entry"</div>
+      {{/if}}
+      <div class="ncm-config-row">
+        <label class="ncm-config-check"><input type="checkbox" name="networkRestricted" {{#if editNetworkRestricted}}checked{{/if}} /> Restrict to specific networks</label>
+      </div>
+      <div class="ncm-config-row ncm-config-row--col">
+        <div class="ncm-tag-list" id="ncm-entry-network-tags"></div>
+        <div class="ncm-config-row" style="margin-top:4px;">
+          <select class="ncm-config-select ncm-config-flex" id="ncm-add-entry-network-select">
+            <option value="">— Add Network —</option>
+            {{#each networkOptions}}
+              <option value="{{value}}">{{label}}</option>
+            {{/each}}
+          </select>
+          <button type="button" data-action="addEntryNetworkTag" class="ncm-shard-hdr-btn" title="Add network"><i class="fas fa-plus"></i></button>
+        </div>
+      </div>
+      {{#if isTerminalTarget}}
+        <div class="ncm-config-hint">When restricted, this message only appears while the TERMINAL's uplink is one of these networks — switch the machine's connection to reveal it. (The player's own network doesn't matter.)</div>
+      {{else}}
+        <div class="ncm-config-hint">When restricted, this entry only appears on selected networks.</div>
+      {{/if}}
+
+      {{!-- ═══ UPLOADABLE (design §4) — flag this entry as a PROGRAM a runner can
+            PUSH onto a terminal (the player→machine direction). Read by
+            OPS → UPLOAD off a carried shard / the Agent. Cross-type. ═══ --}}
+      <div class="ncm-cmp-upl{{#if editUploadable}} is-on{{/if}}" data-cmp-upl>
+        <div class="ncm-config-row">
+          <label class="ncm-config-check"><input type="checkbox" name="uploadable" data-cmp-upl-toggle {{#if editUploadable}}checked{{/if}} /> <i class="fas fa-upload"></i> Uploadable — a runner can push this onto a terminal</label>
+        </div>
+        {{#if isExecuteProgram}}
+          <div class="ncm-fg" data-cmp-upl-fields>
+            <label class="ncm-f" style="--flex:1;">When pushed, it…
+              <select name="uploadEffect" class="ncm-config-input">
+                {{#each uploadEffectOptions}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}
+              </select>
+            </label>
+          </div>
+        {{/if}}
+        <div class="ncm-fg" data-cmp-upl-fields>
+          <label class="ncm-f" style="--fw:76px;">{{#if isExecuteProgram}}Run DV{{else}}Forge DV{{/if}}<input type="number" name="uploadDV" class="ncm-config-input" value="{{uploadDV}}" min="1" max="30" /></label>
+          <label class="ncm-f" style="--flex:1;">{{#if isExecuteProgram}}Run skill{{else}}Forge skill{{/if}}
+            <select name="uploadSkill" class="ncm-config-input">
+              {{#each uploadSkillOptions}}<option value="{{name}}" {{#if selected}}selected{{/if}}>{{name}}</option>{{/each}}
+            </select>
+          </label>
+          <label class="ncm-f" style="--fw:88px;">Stealth DV<input type="number" name="uploadStealthDV" class="ncm-config-input" value="{{uploadStealthDV}}" min="0" max="30" placeholder="auto" /></label>
+          <label class="ncm-f ncm-f--check"><input type="checkbox" name="uploadTraceOnFail" {{#if editUploadTraceOnFail}}checked{{/if}} /> {{#if isExecuteProgram}}Failed push fires a trace{{else}}Botched forge fires a trace{{/if}}</label>
+        </div>
+        <div class="ncm-config-hint" data-cmp-upl-fields>Carried on a shard (or in an Agent), this becomes a program a runner pushes via <b>OPS → UPLOAD</b>. The push rolls the chosen skill vs the DV; the margin sets quality — a clean push is hard for a SWEEP to catch, a near miss still lands but gets flagged, and a bad miss is refused. Blank Stealth DV = derived from that quality.{{#if isExecuteProgram}} <b>When pushed, it…</b> installs the chosen program (or, left on “plant this file”, drops the file itself into a mailbox); it arms and fires on the target account's next login. Black&nbsp;ICE uses this entry's linked ICE (or the box's own).{{else}} It plants into the target account's mailbox and fires on their next login.{{/if}}</div>
+      </div>
+
+      {{!-- ═══ PER-ENTRY EXFIL OVERRIDE (#37) — layered over the terminal's
+            Exfil tab. Access policy, so it lives here and not in Delivery. The
+            terminal's master switch is a HARD CEILING: master off = nothing
+            leaves, and no entry can widen it. ═══ --}}
+      {{#if isTerminalTarget}}
+        <div class="ncm-exf-ovr" data-exf-ovr data-exf-mode="{{exfil.mode}}">
+          <div class="ncm-exf-ovr__hd">
+            <i class="fas fa-download"></i> EXFIL — THIS ENTRY
+            <span class="ncm-exf-ovr__sp"></span>
+            {{!-- The mode is the thing people get wrong: in FOLLOW TERMINAL an
+                  untouched action stays allowed, so "allow one + hide" looks
+                  like it does nothing. ONLY WHAT I ALLOW denies everything
+                  you don't explicitly turn on. --}}
+            <span class="ncm-gal-seg" data-exf-seg>
+              <button type="button" data-action="exfMode" data-val="inherit" class="{{#unless exfil.isCustom}}is-on{{/unless}}" data-tooltip="Anything you leave on INH follows the terminal's Exfil tab">FOLLOW TERMINAL</button>
+              <button type="button" data-action="exfMode" data-val="custom" class="{{#if exfil.isCustom}}is-on{{/if}}" data-tooltip="Anything you don't explicitly ALLOW is denied on this entry">ONLY WHAT I ALLOW</button>
+            </span>
+            <input type="hidden" name="exfMode" value="{{exfil.mode}}" />
+          </div>
+          <div class="ncm-exf-ovr__mode" data-exf-modenote>{{exfil.modeNote}}</div>
+          {{#each exfil.rows}}
+            <div class="ncm-exf-ovr__r{{#if isFrame}} is-frame{{/if}}" data-exf-row="{{key}}">
+              <i class="{{icon}}"></i>
+              <span class="ncm-exf-ovr__nm">{{label}}{{#if note}} <em>{{note}}</em>{{/if}}</span>
+              <span class="ncm-tri" data-exf-tri="{{key}}">
+                <button type="button" data-action="exfState" data-val="inherit" class="{{#if isInherit}}is-on{{/if}}" data-tooltip="Untouched — follows the terminal's Exfil tab ({{inheritLabel}}), or is DENIED in “only what I allow” mode">INH</button>
+                <button type="button" data-action="exfState" data-val="allow" class="{{#if isAllow}}is-on is-allow{{/if}}">ALLOW</button>
+                <button type="button" data-action="exfState" data-val="deny" class="{{#if isDeny}}is-on is-deny{{/if}}">DENY</button>
+              </span>
+              <input type="hidden" name="exf_{{key}}" value="{{state}}" />
+              <input type="text" name="exfdv_{{key}}" class="ncm-config-input ncm-exf-ovr__dv" value="{{dv}}" placeholder="{{dvPlaceholder}}" data-tooltip="Roll DV for this action (blank = the terminal's DV)" />
+            </div>
           {{/each}}
-        </select>
-        <button type="button" data-action="addEntryNetworkTag" class="ncm-shard-hdr-btn" title="Add network"><i class="fas fa-plus"></i></button>
-      </div>
+          <div class="ncm-exf-ovr__foot">
+            <span class="ncm-f" style="flex:1"><label class="ncm-cl-lbl">Denied reason (players see this)</label>
+              <input type="text" name="exfDenyReason" class="ncm-config-input" value="{{exfil.denyReason}}" placeholder="COPY-PROTECTED" />
+            </span>
+            <label class="ncm-config-check ncm-exf-ovr__hide"><input type="checkbox" name="exfHideDenied" {{#if exfil.hideDenied}}checked{{/if}} /> hide instead of showing the reason</label>
+          </div>
+        </div>
+        <div class="ncm-config-hint">A <b>denied</b> action still shows — dead, with its reason — so the player learns the rule instead of thinking the button is broken. Tick <b>hide instead</b> for things whose very existence is the secret. A <b>live camera feed can never</b> be downloaded, burned, forwarded, sold or leaked no matter what you set here (you can't copy a stream) — <b>Save frame</b> is the way out, and Wipe still works.</div>
+      {{/if}}
     </div>
-    {{#if isTerminalTarget}}
-      <div class="ncm-config-hint">When restricted, this message only appears while the TERMINAL's uplink is one of these networks — switch the machine's connection to reveal it. (The player's own network doesn't matter.)</div>
-    {{else}}
-      <div class="ncm-config-hint">When restricted, this entry only appears on selected networks.</div>
-    {{/if}}
-  </fieldset>
+  </section>
+</form>
 
-  {{!-- ═══ ACTIONS ═══ --}}
-  <div class="ncm-config-actions">
+  {{!-- ═══ PINNED FOOTER — never scroll to find Save again ═══ --}}
+  <div class="ncm-cmp-foot">
     <button type="button" data-action="cancel" class="ncm-shard-btn ncm-shard-btn--secondary"><i class="fas fa-times"></i> Cancel</button>
+    <span class="ncm-cmp-foot__spring"></span>
     {{#if isEditing}}
       <button type="button" data-action="saveEntry" class="ncm-shard-btn ncm-shard-btn--primary"><i class="fas fa-save"></i> Update Entry</button>
     {{else}}
       <button type="button" data-action="saveEntry" class="ncm-shard-btn ncm-shard-btn--primary"><i class="fas fa-plus"></i> Add Entry</button>
     {{/if}}
   </div>
-</form>
+
+</div>{{!-- /ncm-cmp-main --}}
   <aside class="ncm-composer-preview">
-    <div class="ncm-composer-preview-label"><i class="fas fa-eye"></i> Live preview</div>
+    <div class="ncm-composer-preview-label"><i class="fas fa-eye"></i> Live preview — what players see</div>
     <div class="ncm-composer-preview-body"></div>
   </aside>
 </div>

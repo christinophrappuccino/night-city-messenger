@@ -21,6 +21,7 @@ import { NetworkService } from '../services/NetworkService.js';
 import { SecurityService } from '../services/SecurityService.js';
 import { ICEService } from '../services/ICEService.js';
 import { NetworkAccessLogService } from '../services/NetworkAccessLogService.js';
+import { TraceService } from '../services/TraceService.js';
 
 // UI Applications
 import { NetworkManagementApp } from '../ui/NetworkManagement/NetworkManagementApp.js';
@@ -57,6 +58,25 @@ export function registerNetworkSystem(initializer) {
     const securityService = new SecurityService();
     game.nightcity.securityService = securityService;
     log.info('SecurityService initialized');
+  });
+
+  initializer.register('ready', 43, 'TraceService', () => {
+    game.nightcity.traceService = new TraceService();
+    log.info('TraceService initialized');
+    // Countdown reaper — fires "the corp found you" on expiry (GM only, 60s).
+    if (isGM()) {
+      const tick = () => game.nightcity?.traceService?.reapCountdowns?.().catch(err => log.warn(`Trace countdown reap failed: ${err.message}`));
+      tick();
+      setInterval(tick, 60000);
+    }
+    // Player-facing countdown HUD (every client — filters to owned actors).
+    (async () => {
+      try {
+        const { TraceCountdownHud } = await import('../ui/content/TraceCountdownHud.js');
+        game.nightcity.traceCountdownHud = new TraceCountdownHud();
+        game.nightcity.traceCountdownHud.init();
+      } catch (err) { log.warn(`TraceCountdownHud init failed: ${err.message}`); }
+    })();
   });
 
   initializer.register('ready', 42, 'ICEService', () => {

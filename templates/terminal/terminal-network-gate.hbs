@@ -1,5 +1,5 @@
 {{!-- Network gate (Layer 0) — shard-style network cards. Single root.
-      Context: requiredNetwork, networks[] {id,name,type,signal,color,icon,state,statusLabel,weak},
+      Context: requiredNetwork, networks[] {id,name,type,signal,color,icon,theme,state,statusLabel,weak},
       spoof {skill,dv}, isGM --}}
 <div class="ncm-term__gate">
   <div class="ncm-term__gate-ic"><i class="fas fa-tower-broadcast"></i></div>
@@ -16,7 +16,7 @@
       {{#each networks}}
         <div class="ncm-term__netcard{{#if isRequired}} is-required{{/if}}" style="--nc:{{color}}"
              data-action="terminalSwitchNetwork" data-network-id="{{id}}">
-          <div class="ncm-term__netcard-ic"><i class="{{icon}}"></i></div>
+          <div class="ncm-term__netcard-ic">{{{ncm-net-icon theme}}}</div>
           <div class="ncm-term__netcard-body">
             <div class="ncm-term__netcard-nm">{{name}}</div>
             <div class="ncm-term__netcard-meta">{{typeLabel}} · {{signal}}%{{#if isCurrent}} · current{{/if}}</div>

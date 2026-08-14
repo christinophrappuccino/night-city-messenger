@@ -16,152 +16,370 @@
     <div class="ncm-entry-text">{{{body}}}</div>
   </div>
 
-{{!-- EDDIES --}}
+{{!-- EDDIES — a cred transfer (redesign 2026-07-14). A physical eb-chip drop
+      in the SecurityConsole/BankHeist gold-FUI family, with a real transfer
+      moment on claim (beam + chip flips green + a deposit ticker rises, all
+      CSS, reduced-motion-safe). --}}
 {{else if isEddies}}
-  <div class="ncm-entry-eddies-card">
-    <div class="ncm-eddies-amount {{#if contentData.claimed}}ncm-eddies-claimed{{/if}}">
-      {{contentData.amountFormatted}}
+  {{!-- data-eddies-* drive the JS transfer animation (playEddiesTransfer);
+        `is-fresh` (justClaimed) is the trigger, and the animator guards on
+        data-eddies-id so it fires ONCE per claim, not on every re-render. --}}
+  <div class="ncm-ct-eddies{{#if contentData.claimed}} is-claimed{{/if}}{{#if contentData.justClaimed}} is-fresh{{/if}}"
+       data-eddies-id="{{id}}" data-eddies-amount="{{contentData.amount}}">
+    <span class="ncm-ct-eddies__ck ncm-ct-eddies__ck--tl"></span>
+    <span class="ncm-ct-eddies__ck ncm-ct-eddies__ck--tr"></span>
+    <span class="ncm-ct-eddies__ck ncm-ct-eddies__ck--bl"></span>
+    <span class="ncm-ct-eddies__ck ncm-ct-eddies__ck--br"></span>
+    <div class="ncm-ct-eddies__top">
+      <i class="fas fa-sack-dollar"></i> CRED TRANSFER
+      <span class="ncm-ct-eddies__sp"></span>
+      <span class="ncm-ct-eddies__ref">EB-DROP</span>
     </div>
-    <div class="ncm-eddies-unit">eurodollars</div>
-    {{#if contentData.note}}
-      <div class="ncm-eddies-note">"{{contentData.note}}"</div>
-    {{/if}}
-    {{#if contentData.claimed}}
-      <div class="ncm-eddies-claim-btn ncm-eddies-claim-btn--claimed">
-        <i class="fas fa-check"></i> Claimed by {{contentData.claimedByName}}
-      </div>
-    {{else}}
-      {{!-- Not gated on `interactive` — like siphon, claiming works wherever
-            the money is found (shard AND terminal). --}}
-      <button type="button" data-action="claimEddies" data-entry-id="{{id}}"
-              class="ncm-eddies-claim-btn">
-        <i class="fas fa-download"></i> Claim Eddies
-      </button>
-    {{/if}}
+    <div class="ncm-ct-eddies__body">
+      <span class="ncm-ct-eddies__spin" aria-hidden="true"></span>
+      <span class="ncm-ct-eddies__chip" aria-hidden="true"></span>
+      <div class="ncm-ct-eddies__amt" data-eddies-amt>{{contentData.amountFormatted}}<span class="ncm-ct-eddies__eb">eb</span></div>
+      {{#if contentData.source}}<div class="ncm-ct-eddies__src">from <b>{{contentData.source}}</b> · encrypted drop</div>{{/if}}
+      {{#if contentData.note}}<div class="ncm-ct-eddies__note">"{{contentData.note}}"</div>{{/if}}
+      {{#if contentData.claimed}}
+        {{!-- Renders the END state (released, full ledger) so a claimed card is
+              always correct even if the JS animator never runs. On a FRESH
+              claim, playEddiesTransfer resets these to the start (0 / AUTHORIZING)
+              and counts up. --}}
+        <div class="ncm-ct-eddies__status" data-eddies-status>✓ FUNDS RELEASED</div>
+        <div class="ncm-ct-eddies__deposit">+<span data-eddies-dep>{{contentData.amountFormatted}}</span> eb → {{contentData.claimedByName}}'s ledger</div>
+      {{/if}}
+    </div>
+    <div class="ncm-ct-eddies__foot">
+      {{#if contentData.claimed}}
+        <div class="ncm-ct-eddies__done"><i class="fas fa-check-double"></i> CLAIMED · +{{contentData.amountFormatted}} eb</div>
+      {{else}}
+        {{!-- Not gated on `interactive` — like siphon, claiming works wherever
+              the money is found (shard AND terminal). --}}
+        <button type="button" data-action="claimEddies" data-entry-id="{{id}}" class="ncm-ct-eddies__claim">
+          <i class="fas fa-fingerprint"></i> CLAIM — AUTHORIZE TRANSFER
+        </button>
+      {{/if}}
+    </div>
   </div>
 
 {{!-- DOSSIER --}}
 {{else if isDossier}}
-  <div class="ncm-entry-dossier">
-    <div class="ncm-dossier-portrait">
-      {{#if contentData.targetImage}}
-        <img src="{{contentData.targetImage}}" alt="{{contentData.targetName}}">
-      {{else if contentData.linkedActorImg}}
-        <img src="{{contentData.linkedActorImg}}" alt="{{contentData.targetName}}">
-      {{else}}
-        <i class="fas fa-user"></i>
-      {{/if}}
-      {{#if contentData.classification}}
-        <div class="ncm-dossier-classification">{{contentData.classification}}</div>
-      {{/if}}
+  {{!-- FUI "target file" (2026-07-13): corner brackets + file-id topbar +
+        scan-swept portrait. `identityMasked` = the portrait/name never reached
+        this DOM (enricher-stripped); the GM sees the real identity + a
+        force-REVEAL chip. The combat profile is a LIVE read of the linked
+        world actor; encrypted = values enricher-stripped until decrypted. --}}
+  <div class="ncm-entry-body ncm-ct-doss{{#if contentData.identityMasked}} is-masked{{/if}}" data-ct-color="red">
+    <span class="ncm-ct-doss__ck ncm-ct-doss__ck--tl"></span><span class="ncm-ct-doss__ck ncm-ct-doss__ck--tr"></span><span class="ncm-ct-doss__ck ncm-ct-doss__ck--bl"></span><span class="ncm-ct-doss__ck ncm-ct-doss__ck--br"></span>
+    <div class="ncm-ct-doss__top">
+      <span class="ncm-ct-doss__ttl"><i class="fas fa-id-badge"></i> TARGET FILE</span>
+      <span class="ncm-ct-doss__ref">// {{contentData.fileRef}}</span>
+      <span class="ncm-ct-doss__grow"></span>
+      {{#if contentData.classification}}<span class="ncm-ct-doss__stamp">{{contentData.classification}}</span>{{/if}}
     </div>
-    <div class="ncm-dossier-info">
-      <div class="ncm-dossier-stat-grid">
-        {{#if contentData.targetAlias}}
-          <span class="ncm-dossier-stat-label">Alias</span>
-          <span class="ncm-dossier-stat-value">{{contentData.targetAlias}}</span>
-        {{/if}}
-        {{#if contentData.stats.affiliation}}
-          <span class="ncm-dossier-stat-label">Affiliation</span>
-          <span class="ncm-dossier-stat-value">{{contentData.stats.affiliation}}</span>
-        {{/if}}
-        {{#if contentData.stats.threat}}
-          <span class="ncm-dossier-stat-label">Threat</span>
-          <span class="ncm-dossier-stat-value {{#if contentData.threatIsHigh}}ncm-threat-high{{/if}}">{{contentData.stats.threat}}</span>
-        {{/if}}
-        {{#if contentData.stats.lastKnownLocation}}
-          <span class="ncm-dossier-stat-label">Last Known</span>
-          <span class="ncm-dossier-stat-value">{{contentData.stats.lastKnownLocation}}</span>
+    <div class="ncm-ct-doss__hd">
+      <div class="ncm-ct-doss__port{{#if contentData.identityMasked}} is-masked{{/if}}">
+        {{#if contentData.identityMasked}}
+          <i class="fas fa-user-secret ncm-ct-doss__sil"></i>
+          <span class="ncm-ct-doss__scan"></span>
+          <span class="ncm-ct-doss__maskcap">IDENTITY MASKED</span>
+        {{else}}
+          {{#if contentData.targetImage}}
+            <img src="{{contentData.targetImage}}" alt="portrait">
+          {{else if contentData.linkedActorImg}}
+            <img src="{{contentData.linkedActorImg}}" alt="portrait">
+          {{else}}
+            <i class="fas fa-user ncm-ct-doss__sil"></i>
+          {{/if}}
+          <span class="ncm-ct-doss__scan"></span>
         {{/if}}
       </div>
-      {{#if contentData.hasSections}}
-        <div class="ncm-dossier-sections-body">
-          {{#each contentData.sections}}
-            <div class="ncm-dossier-section {{#if redacted}}ncm-dossier-section--redacted{{/if}}">
-              <div class="ncm-dossier-section-heading">{{heading}}</div>
-              {{#if redacted}}
-                <p class="ncm-dossier-redacted-text">████ REDACTED ████</p>
-              {{else}}
-                <p>{{body}}</p>
-              {{/if}}
-            </div>
-          {{/each}}
+      <div class="ncm-ct-doss__id">
+        <div class="ncm-ct-doss__name">{{contentData.displayName}}</div>
+        {{#if contentData.targetAlias}}<div class="ncm-ct-doss__alias">a.k.a. {{contentData.targetAlias}}</div>{{/if}}
+        {{!-- Unmask chip lives HERE, not overlaid on the 96px portrait tile
+              (it cramped + wrapped there). Ungated — the terminal wires
+              contentUnlock even though it passes interactive for other gates. --}}
+        {{#if contentData.identityMasked}}
+          <button type="button" class="ncm-ct-doss__unmask" data-action="contentUnlock" data-unlock-kind="dossier-face" data-entry-id="{{id}}"
+                  data-tooltip="Break the encryption masking this identity">
+            <i class="fas fa-unlock-keyhole"></i> DECRYPT IDENTITY · DV {{contentData.faceUnlockDV}}
+          </button>
+        {{/if}}
+        {{#if contentData.gmMasked}}
+          <div class="ncm-ct-doss__gmrow">
+            <span class="ncm-ct-doss__gmchip" data-tooltip="GM only — players see a masked identity"><i class="fas fa-mask"></i> MASKED FOR PLAYERS</span>
+            <button type="button" class="ncm-ct-doss__reveal" data-action="contentUnlock" data-unlock-kind="dossier-face" data-unlock-force="1" data-entry-id="{{id}}"
+                    data-tooltip="Reveal the identity to players — no roll"><i class="fas fa-eye"></i> REVEAL</button>
+          </div>
+        {{/if}}
+        <div class="ncm-ct-doss__grid">
+          {{#if contentData.stats.affiliation}}
+            <span class="k">Affiliation</span><span class="v">{{contentData.stats.affiliation}}</span>
+          {{/if}}
+          {{#if contentData.stats.lastKnownLocation}}
+            <span class="k">Last known</span><span class="v">{{contentData.stats.lastKnownLocation}}</span>
+          {{/if}}
+          {{#if contentData.threatLevel}}
+            <span class="k">Threat</span>
+            <span class="v ncm-ct-doss__threat">{{#each contentData.threatSegs}}<b{{#if on}} class="on"{{/if}}></b>{{/each}}<em>{{contentData.threatLabel}}</em></span>
+          {{else if contentData.stats.threat}}
+            <span class="k">Threat</span><span class="v">{{contentData.stats.threat}}</span>
+          {{/if}}
         </div>
-      {{/if}}
-    </div>
-  </div>
-
-{{!-- PAYLOAD --}}
-{{else if isPayload}}
-  <div class="ncm-entry-body ncm-entry-payload">
-    <div class="ncm-payload-name"><i class="fas fa-virus"></i> {{contentData.name}}</div>
-    <p>{{contentData.description}}</p>
-    {{#if contentData.executed}}
-      <div class="ncm-payload-status ncm-payload-status--executed">
-        <i class="fas fa-check-circle"></i> Executed by {{contentData.executedByName}}
       </div>
-    {{else if interactive}}
-      <button type="button" data-action="executePayload" data-entry-id="{{id}}"
-              class="ncm-shard-btn ncm-shard-btn--danger">
-        <i class="fas fa-bolt"></i> Execute
+    </div>
+    {{#with contentData.profile}}
+      <div class="ncm-ct-doss__cp{{#if encrypted}} is-enc{{/if}}">
+        <div class="ncm-ct-doss__cp-hd">
+          <i class="fas fa-crosshairs"></i> {{title}}
+          <span class="src">// live read: {{#if encrypted}}[ encrypted ]{{else}}{{actorName}}{{/if}}</span>
+          {{#if gmOnly}}<span class="ncm-ct-doss__gmchip">GM ONLY</span>{{/if}}
+          {{#if playersEncrypted}}<span class="ncm-ct-doss__gmchip" data-tooltip="Players roll to decrypt these values">ENCRYPTED FOR PLAYERS</span>{{/if}}
+          {{#if ../contentData.canOpenSheet}}
+            <button type="button" class="ncm-ct-doss__sheet" data-doss-sheet="{{../contentData.linkedActorId}}" data-tooltip="Open the actor sheet"><i class="fas fa-address-card"></i></button>
+          {{/if}}
+        </div>
+        {{#if hasStats}}
+          <div class="ncm-ct-doss__cp-stats">
+            {{#each stats}}<span class="ncm-ct-doss__stat"><span class="k">{{k}}</span><span class="v">{{vLabel}}</span></span>{{/each}}
+          </div>
+        {{/if}}
+        {{#if hasSkills}}
+          <div class="ncm-ct-doss__cp-skills">
+            {{#each skills}}<span class="ncm-ct-doss__skill"><span class="n">{{name}}</span><span class="v">{{vLabel}}</span></span>{{/each}}
+          </div>
+        {{/if}}
+        {{#if encrypted}}
+          <button type="button" class="ncm-ct-doss__cp-unlock" data-action="contentUnlock" data-unlock-kind="dossier-profile" data-entry-id="{{../id}}"
+                  data-tooltip="Break the profile encryption"><i class="fas fa-unlock-keyhole"></i> DECRYPT PROFILE · DV {{dv}}</button>
+        {{/if}}
+      </div>
+    {{/with}}
+    {{#if contentData.hasSections}}
+      <div class="ncm-ct-doss__secs">
+        {{#each contentData.sections}}
+          <div class="ncm-ct-doss__sec{{#if redacted}} is-redacted{{/if}}{{#if declassified}} is-declassified{{/if}}">
+            <div class="ncm-ct-doss__sec-h">{{heading}}</div>
+            {{#if redacted}}
+              <p class="ncm-ct-doss__redtx">████ REDACTED ████</p>
+            {{else}}
+              <p>{{body}}</p>
+            {{/if}}
+          </div>
+        {{/each}}
+      </div>
+    {{/if}}
+    {{#if contentData.canDeclassify}}
+      <button type="button" class="ncm-ct-declass ncm-ct-doss__declass" data-action="contentUnlock" data-unlock-kind="dossier" data-entry-id="{{id}}"
+              data-tooltip="Strip the classification layer off this dossier — DV {{contentData.declassifyDV}}">
+        <i class="fas fa-stamp"></i> DECLASSIFY
       </button>
     {{/if}}
   </div>
 
-{{!-- AV LOG --}}
-{{else if isAvlog}}
-  <div class="ncm-entry-body ncm-entry-avlog">
-    <div class="ncm-avlog-meta">
-      <span class="ncm-avlog-media-type"><i class="fas fa-{{#if contentData.isVideo}}video{{else}}headphones{{/if}}"></i> {{contentData.mediaType}}</span>
-      {{#if contentData.duration}}<span class="ncm-avlog-duration">{{contentData.duration}}</span>{{/if}}
-      {{#if contentData.source}}<span class="ncm-avlog-source">{{contentData.source}}</span>{{/if}}
+{{!-- PAYLOAD --}}
+{{else if isPayload}}
+  {{#with contentData}}
+  <div class="ncm-entry-body ncm-ct-pl{{#if isActive}} is-active{{/if}}{{#if executed}} is-run{{/if}}" data-ct-color="purple">
+    {{!-- ① MANIFEST HEADER (Direction B) --}}
+    <div class="ncm-ct-pl__hd">
+      <span class="ncm-ct-pl__tile"><i class="{{effectIcon}}"></i></span>
+      <div class="ncm-ct-pl__id">
+        <div class="ncm-ct-pl__name">{{name}}</div>
+        <div class="ncm-ct-pl__pub">
+          {{#if publisher}}signed: {{publisher}} {{#if signed}}<i class="fas fa-circle-check ncm-ct-pl__ok"></i>{{/if}}{{else}}unsigned binary{{/if}}
+        </div>
+      </div>
+      <span class="ncm-ct-pl__badges">
+        <span class="ncm-ct-pill" data-ct-color="purple">{{effectLabel}}</span>
+        {{#if ../isGM}}{{#if disguiseTag}}<span class="ncm-ct-pl__tag" data-tooltip="GM only — players see the disguise">{{disguiseTag}}</span>{{#if ../interactive}}{{#unless sniffed}}<button type="button" class="ncm-ct-pl__reveal" data-action="payloadSniff" data-entry-id="{{../id}}" data-tooltip="Reveal the disguise to players"><i class="fas fa-mask"></i> REVEAL</button>{{/unless}}{{/if}}{{/if}}{{/if}}
+      </span>
     </div>
-    {{#if contentData.hasMedia}}
-      {{#if contentData.isEmbed}}
-        <div class="ncm-avlog-player ncm-avlog-player--embed">
-          <iframe src="{{contentData.embedSrc}}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-        </div>
-      {{else if contentData.isVideo}}
-        <div class="ncm-avlog-player ncm-avlog-player--video">
-          <video src="{{contentData.embedSrc}}" controls preload="metadata"></video>
-        </div>
-      {{else}}
-        <div class="ncm-avlog-player ncm-avlog-player--audio">
-          <audio src="{{contentData.embedSrc}}" controls preload="metadata"></audio>
+
+    {{#if description}}<p class="ncm-ct-pl__desc">{{description}}</p>{{/if}}
+    <div class="ncm-ct-pl__blurb"><i class="{{effectIcon}}"></i> {{effectBlurb}}</div>
+
+    {{!-- metadata grid --}}
+    <div class="ncm-ct-pl__grid">
+      {{#if program}}<div class="ncm-ct-pl__cell"><span class="k">class</span><span class="v">{{program}}</span></div>{{/if}}
+      {{#if version}}<div class="ncm-ct-pl__cell"><span class="k">version</span><span class="v">{{version}}</span></div>{{/if}}
+      {{#if sizeLabel}}<div class="ncm-ct-pl__cell"><span class="k">size</span><span class="v">{{sizeLabel}}</span></div>{{/if}}
+      {{#if timed}}<div class="ncm-ct-pl__cell"><span class="k">runtime</span><span class="v">{{durationLabel}}</span></div>{{/if}}
+      {{#if charges}}<div class="ncm-ct-pl__cell"><span class="k">charges</span><span class="v">{{charges}}</span></div>{{/if}}
+    </div>
+
+    {{!-- requirements checklist (authored prerequisites; verified on run) --}}
+    {{#if hasRequirements}}
+      <div class="ncm-ct-pl__req">
+        <div class="ncm-ct-pl__req-k">requirements</div>
+        {{#each requirements}}<div class="ncm-ct-pl__req-row"><i class="{{icon}}"></i> {{label}}</div>{{/each}}
+      </div>
+    {{/if}}
+
+    {{!-- ② EXECUTING CONSOLE (Direction A) — authored run log, shown once run --}}
+    {{#if executed}}
+      {{#if hasOutput}}
+        <div class="ncm-ct-pl__con">
+          {{#each output}}<div class="ncm-ct-pl__line ncm-ct-pl__line--{{sevClass}}">{{text}}</div>{{/each}}
         </div>
       {{/if}}
-    {{else}}
-      <div class="ncm-avlog-waveform"></div>
+      {{#if scanReport}}<div class="ncm-ct-pl__scan"><i class="fas fa-satellite-dish"></i> {{{scanReport}}}</div>{{/if}}
     {{/if}}
-    {{#each contentData.transcript}}
-      <div class="ncm-avlog-line">
-        <span class="ncm-avlog-speaker">{{speaker}}</span>
-        <span class="ncm-avlog-text">{{text}}</span>
+
+    {{!-- ③ STATE FOOTER — idle RUN / active countdown+KILL / spent --}}
+    {{#if isActive}}
+      <div class="ncm-ct-pl__active">
+        <span class="ncm-ct-pl__led"></span> RUNNING — {{effectLabel}}
+        <span class="ncm-ct-pl__cd">expires in {{expiresLabel}}</span>
+        {{#if ../interactive}}<button type="button" class="ncm-ct-pl__kill" data-action="payloadKill" data-entry-id="{{../id}}" data-tooltip="Terminate the running effect early"><i class="fas fa-stop"></i> KILL</button>{{/if}}
       </div>
-    {{/each}}
+    {{else if executed}}
+      <div class="ncm-ct-pl__done{{#if killed}} is-killed{{/if}}{{#if expired}} is-expired{{/if}}">
+        {{#if killed}}<i class="fas fa-stop"></i> TERMINATED{{else if expired}}<i class="fas fa-hourglass-end"></i> EFFECT ENDED{{else}}<i class="fas fa-circle-check"></i> EXECUTED{{/if}}
+        {{#if executedByName}} · by {{executedByName}}{{/if}}{{#if executedAtLabel}} · {{executedAtLabel}}{{/if}}
+      </div>
+    {{else if ../interactive}}
+      <div class="ncm-ct-pl__foot">
+        <button type="button" class="ncm-ct-pl__run" data-action="executePayload" data-entry-id="{{../id}}"
+                data-tooltip="Run the program on this system">
+          <i class="fas fa-play"></i> RUN
+        </button>
+        {{#if gated}}<span class="ncm-ct-pl__gate"><i class="fas fa-lock"></i> {{executeDV}} · fail = trace</span>{{/if}}
+        {{#if hasMacro}}<span class="ncm-ct-pl__macro" data-tooltip="Runs a linked routine"><i class="fas fa-code"></i> scripted</span>{{/if}}
+      </div>
+    {{/if}}
+  </div>
+  {{/with}}
+
+{{!-- AV LOG --}}
+{{else if isAvlog}}
+  {{!-- Media deck (2026-07-13): a real media URL renders the normal player;
+        no media + transcript + duration = ▶ TRANSCRIPT PLAYBACK (karaoke) —
+        display-only, driven by the [data-av-act] delegated listener in
+        ContentRenderers (per-line start seconds on data-av-t). --}}
+  <div class="ncm-entry-body ncm-ct-av{{#if contentData.canPlayback}} can-play{{/if}}"{{#if contentData.canPlayback}} data-av-dur="{{contentData.durationSec}}"{{/if}} data-ct-color="green">
+    {{#if contentData.locked}}
+      <div class="ncm-avlog-locked">
+        <i class="fas fa-lock"></i><span>RECORDING SEALED</span>
+        <button type="button" class="ncm-ct-gal__unlock" data-action="contentUnlock" data-unlock-kind="avlog" data-entry-id="{{id}}"
+                data-tooltip="Break the encryption sealing this recording — DV {{contentData.unlockDV}}">DECRYPT</button>
+      </div>
+    {{else}}
+      <div class="ncm-ct-av__deck">
+        <div class="ncm-ct-av__meta">
+          {{#if contentData.canPlayback}}<span class="ncm-ct-av__rec">PLAYBACK</span>{{else}}<span class="ncm-ct-av__rec ncm-ct-av__rec--rec">REC</span>{{/if}}
+          <span class="ncm-ct-av__mt"><i class="fas fa-{{#if contentData.isVideo}}video{{else}}headphones{{/if}}"></i> {{contentData.mediaType}}</span>
+          {{#if contentData.source}}<span class="ncm-ct-av__srcx">{{contentData.source}}</span>{{/if}}
+          <span class="ncm-ct-av__grow"></span>
+          {{#if contentData.duration}}<span class="ncm-ct-av__dur">{{contentData.duration}}</span>{{/if}}
+        </div>
+        {{#if contentData.hasMedia}}
+          {{#if contentData.isEmbed}}
+            <div class="ncm-avlog-player ncm-avlog-player--embed">
+              <iframe src="{{contentData.embedSrc}}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+            </div>
+          {{else if contentData.isVideo}}
+            <div class="ncm-avlog-player ncm-avlog-player--video">
+              <video src="{{contentData.embedSrc}}" controls preload="metadata"></video>
+            </div>
+          {{else}}
+            <div class="ncm-avlog-player ncm-avlog-player--audio">
+              <audio src="{{contentData.embedSrc}}" controls preload="metadata"></audio>
+            </div>
+          {{/if}}
+        {{else if contentData.canPlayback}}
+          <div class="ncm-ct-av__wave">{{#each contentData.waveBars}}<b></b>{{/each}}</div>
+          <div class="ncm-ct-av__bar">
+            <button type="button" class="ncm-ct-av__play" data-av-act="toggle" data-tooltip="Play the recording"><i class="fas fa-play"></i></button>
+            <span class="ncm-ct-av__track"><i data-av-fill></i></span>
+            <span class="ncm-ct-av__time" data-av-time>00:00</span><span class="ncm-ct-av__total">/ {{contentData.duration}}</span>
+          </div>
+        {{else}}
+          <div class="ncm-avlog-waveform"></div>
+        {{/if}}
+      </div>
+      {{#if contentData.transcript.length}}
+        <div class="ncm-ct-av__feed">
+          {{#each contentData.transcript}}
+            <div class="ncm-ct-av__line"{{#if ../contentData.canPlayback}} data-av-t="{{start}}"{{/if}}>
+              <span class="ncm-ct-av__spk {{colorClass}}">{{speaker}}</span>
+              <span class="ncm-ct-av__txt">{{text}}</span>
+            </div>
+          {{/each}}
+        </div>
+      {{/if}}
+    {{/if}}
   </div>
 
 {{!-- LOCATION --}}
 {{else if isLocation}}
-  <div class="ncm-entry-body ncm-entry-location">
-    {{#if contentData.locationImage}}
-      <div class="ncm-location-image">
-        <img src="{{contentData.locationImage}}" alt="{{contentData.locationName}}" />
+  {{!-- Intel postcard (2026-07-13): image backdrop with the name/district/
+        coords/HEAT overlaid, an optional control+security strip, and practical
+        intel rows — all optional (a legacy location renders the same card,
+        just unadorned). Image click → the NCM lightbox.
+        `locked` = the whole pin is encrypted (image/coords/intel enricher-
+        stripped, only the name survives) with a DECRYPT roll; a fresh unlock
+        renders `is-revealed` → the FUI resolve animation (scan sweep, coords
+        type-in, staggered intel). --}}
+  <div class="ncm-entry-body ncm-ct-loc{{#if contentData.locked}} is-locked{{/if}}{{#if contentData.justRevealed}} is-revealed{{/if}}" data-ct-color="green">
+    {{#if contentData.locked}}
+      <div class="ncm-ct-loc__img is-empty ncm-ct-loc__img--locked">
+        <span class="ncm-ct-loc__grid"></span>
+        <span class="ncm-ct-loc__static"></span>
+        <span class="ncm-ct-loc__coords ncm-ct-loc__coords--enc">N ▚▚.▚▚▚▚° · W ▚▚▚.▚▚▚▚°</span>
+        <span class="ncm-ct-loc__nm">{{contentData.locationName}}</span>
+        <span class="ncm-ct-loc__lockcap"><i class="fas fa-lock"></i> COORDINATES ENCRYPTED</span>
       </div>
-    {{/if}}
-    <div class="ncm-location-coords">{{contentData.coordinates}}</div>
-    <div class="ncm-location-name">{{contentData.locationName}}</div>
-    {{#if contentData.district}}
-      <div class="ncm-location-district"><i class="fas fa-map-marker-alt"></i> {{contentData.district}}</div>
-    {{/if}}
-    <p>{{contentData.description}}</p>
-    {{#if contentData.linkedSceneId}}
-      {{#if interactive}}{{#if isGM}}
-        <button type="button" data-action="goToScene" data-scene-id="{{contentData.linkedSceneId}}"
-                class="ncm-shard-btn ncm-shard-btn--secondary">
-          <i class="fas fa-map"></i> Go to Scene
+      {{!-- DECRYPT is deliberately NOT interactive-gated (the gallery/avlog
+            precedent) — the terminal viewer passes interactive:false but
+            wires contentUnlock. --}}
+      <div class="ncm-ct-loc__body ncm-ct-loc__body--locked">
+        <p class="ncm-ct-loc__lockmsg">Pin data sealed — image, coordinates, and intel are encrypted.</p>
+        <button type="button" class="ncm-ct-gal__unlock" data-action="contentUnlock" data-unlock-kind="location" data-entry-id="{{id}}"
+                data-tooltip="Break the encryption sealing this pin — DV {{contentData.unlockDV}}">
+          <i class="fas fa-unlock-keyhole"></i> DECRYPT · DV {{contentData.unlockDV}}
         </button>
-      {{/if}}{{/if}}
+      </div>
+    {{else}}
+      <div class="ncm-ct-loc__img{{#unless contentData.locationImage}} is-empty{{/unless}}">
+        {{#if contentData.locationImage}}
+          <img src="{{contentData.locationImage}}" alt="{{contentData.locationName}}" data-action="galleryView" data-src="{{contentData.locationImage}}" data-label="{{contentData.locationName}}" />
+        {{/if}}
+        <span class="ncm-ct-loc__grid"></span>
+        <span class="ncm-ct-loc__scan"></span>
+        {{#if contentData.coordinates}}<span class="ncm-ct-loc__coords">{{contentData.coordinates}}</span>{{/if}}
+        {{#if contentData.heat}}<span class="ncm-ct-loc__heat"><i class="fas fa-triangle-exclamation"></i> {{contentData.heat}}</span>{{/if}}
+        <span class="ncm-ct-loc__nm">{{contentData.locationName}}</span>
+        {{#if contentData.district}}<span class="ncm-ct-loc__dist"><i class="fas fa-map-marker-alt"></i> {{contentData.district}}</span>{{/if}}
+      </div>
+      {{#if contentData.hasStrip}}
+        <div class="ncm-ct-loc__strip">
+          {{#if contentData.controlledBy}}
+            <span class="ncm-ct-loc__ctl"><span class="k">Controlled by</span><span class="v">{{contentData.controlledBy}}</span></span>
+          {{/if}}
+          {{#if contentData.securityLevel}}
+            <span class="ncm-ct-loc__sec"><span class="k">Security</span><span class="m">{{#each contentData.securitySegs}}<b{{#if on}} class="on"{{/if}}></b>{{/each}}<em>{{contentData.securityLabel}}</em></span></span>
+          {{/if}}
+        </div>
+      {{/if}}
+      <div class="ncm-ct-loc__body">
+        {{#if contentData.description}}<p>{{contentData.description}}</p>{{/if}}
+        {{#if contentData.hasIntel}}
+          <div class="ncm-ct-loc__intel">
+            {{#each contentData.intel}}<span class="k">{{k}}</span><span class="v">{{v}}</span>{{/each}}
+          </div>
+        {{/if}}
+        {{#if contentData.linkedSceneId}}
+          {{#if interactive}}{{#if isGM}}
+            <button type="button" data-action="goToScene" data-scene-id="{{contentData.linkedSceneId}}"
+                    class="ncm-shard-btn ncm-shard-btn--secondary">
+              <i class="fas fa-map"></i> Go to Scene
+            </button>
+          {{/if}}{{/if}}
+        {{/if}}
+      </div>
     {{/if}}
   </div>
 
@@ -182,6 +400,12 @@
       <span class="ncm-ct-spread__grow"></span>
       {{#if contentData.flaggedCount}}<span class="ncm-ct-chip ncm-ct-chip--flag"><i class="fas fa-triangle-exclamation"></i> {{contentData.flaggedCount}}</span>{{/if}}
       {{#if contentData.redactedCount}}<span class="ncm-ct-chip ncm-ct-chip--red"><i class="fas fa-eye-slash"></i> {{contentData.redactedCount}}</span>{{/if}}
+      {{#if contentData.canDeclassify}}
+        <button type="button" class="ncm-ct-declass ncm-ct-declass--chip" data-action="contentUnlock" data-unlock-kind="spreadsheet" data-entry-id="{{id}}"
+                data-tooltip="Strip the classification layer off the sealed cells — DV {{contentData.declassifyDV}}">
+          <i class="fas fa-stamp"></i> DECLASSIFY
+        </button>
+      {{/if}}
       <span class="ncm-ct-chip ncm-ct-chip--dim">{{contentData.rowCount}}R×{{contentData.colCount}}C</span>
     </div>
     <div class="ncm-ct-spread__wrap">
@@ -224,32 +448,118 @@
 {{!-- CALENDAR — scheduler: legend, timeline rail, colored date chips, colored
       meta chips, urgency bar. --}}
 {{else if isCalendar}}
-  <div class="ncm-entry-body ncm-ct-cal">
-    {{#if contentData.hasLegend}}
-      <div class="ncm-ct-cal__legend">
-        {{#each contentData.legend}}<span class="ncm-ct-cal__leg" data-ct-color="{{color}}"><span class="ncm-ct-dot"></span>{{name}}</span>{{/each}}
+  <div class="ncm-entry-body ncm-ct-cal" data-cal-view="{{contentData.view}}">
+    <div class="ncm-ct-cal__hd">
+      <div class="ncm-ct-cal__views">
+        <button type="button" class="ncm-ct-cal__vbtn{{#if contentData.isRail}} is-on{{/if}}" data-cal-act="view" data-view="rail" data-tooltip="Timeline view"><i class="fas fa-list-ul"></i> TIMELINE</button>
+        <button type="button" class="ncm-ct-cal__vbtn{{#if contentData.isMonth}} is-on{{/if}}" data-cal-act="view" data-view="month" data-tooltip="Month view"><i class="fas fa-table-cells"></i> MONTH</button>
+      </div>
+      {{#if contentData.hasLegend}}
+        <div class="ncm-ct-cal__legend">
+          {{#each contentData.legend}}<span class="ncm-ct-cal__leg" data-ct-color="{{color}}"><span class="ncm-ct-dot"></span>{{name}}</span>{{/each}}
+        </div>
+      {{/if}}
+      {{#if contentData.hasMonthNav}}
+        <div class="ncm-ct-cal__monav">
+          <button type="button" data-cal-act="nav" data-dir="prev" data-tooltip="Earlier month"><i class="fas fa-chevron-left"></i></button>
+          <button type="button" data-cal-act="nav" data-dir="next" data-tooltip="Later month"><i class="fas fa-chevron-right"></i></button>
+        </div>
+      {{/if}}
+    </div>
+
+    {{#if contentData.nextEvent}}
+      <div class="ncm-ct-cal__next"{{#if contentData.nextEvent.ts}} data-ts="{{contentData.nextEvent.ts}}"{{/if}}>
+        <span class="ncm-ct-cal__next-tag">NEXT</span>
+        <div class="ncm-ct-cal__next-info">
+          <div class="ncm-ct-cal__next-title">{{contentData.nextEvent.title}}</div>
+          <div class="ncm-ct-cal__next-meta">{{contentData.nextEvent.meta}}</div>
+        </div>
+        <div class="ncm-ct-cal__next-count"><b>{{contentData.nextEvent.countdown}}</b><span>COUNTDOWN</span></div>
       </div>
     {{/if}}
+
     <div class="ncm-ct-cal__rail">
-      {{#each contentData.events}}
-        <div class="ncm-ct-cal__ev{{#if soon}} is-soon{{/if}}{{#if past}} is-past{{/if}}" data-ct-color="{{color}}" style="--ncm-ct-i:{{@index}}">
+      {{#each contentData.upcoming}}
+        <div class="ncm-ct-cal__ev{{#if soon}} is-soon{{/if}}{{#if isFog}} is-locked{{/if}}" data-ct-color="{{color}}" data-cal-ev="{{idx}}"{{#if ts}} data-ts="{{ts}}"{{/if}} style="--ncm-ct-i:{{@index}}">
           <span class="ncm-ct-cal__node"></span>
           <div class="ncm-ct-cal__card">
             <div class="ncm-ct-cal__date"><span class="ncm-ct-cal__day">{{day}}</span><span class="ncm-ct-cal__mon">{{month}}</span></div>
             <div class="ncm-ct-cal__info">
-              <div class="ncm-ct-cal__title">{{title}}</div>
-              {{#if chips.length}}
-                <div class="ncm-ct-cal__chips">
-                  {{#each chips}}<span class="ncm-ct-cal__chip" data-ct-color="{{color}}"><i class="{{icon}}"></i> {{text}}</span>{{/each}}
-                </div>
+              {{#if isFog}}
+                <div class="ncm-ct-cal__lockt"><i class="fas fa-lock"></i> ENCRYPTED ENTRY</div>
+                <div class="ncm-ct-cal__chips"><span class="ncm-ct-cal__chip">date · location · attendees withheld</span></div>
+                <button type="button" class="ncm-ct-cal__unlock" data-action="contentUnlock" data-unlock-kind="calendar" data-index="{{idx}}" data-entry-id="{{../id}}"
+                        data-tooltip="Break the encryption sealing this entry — DV {{effDV}}"><i class="fas fa-unlock-keyhole"></i> DECRYPT</button>
+              {{else}}
+                <div class="ncm-ct-cal__title">{{title}}{{#if lockedGm}}<span class="ncm-ct-cal__gmlock"><i class="fas fa-lock"></i> LOCKED</span>{{/if}}</div>
+                {{#if chips.length}}
+                  <div class="ncm-ct-cal__chips">
+                    {{#each chips}}<span class="ncm-ct-cal__chip" data-ct-color="{{color}}"><i class="{{icon}}"></i> {{text}}</span>{{/each}}
+                  </div>
+                {{/if}}
+                <div class="ncm-ct-cal__urg"><i style="width:{{urgency}}%"></i></div>
+                {{#if hasScene}}{{#if ../interactive}}{{#if ../isGM}}
+                  <button type="button" class="ncm-ct-cal__scene" data-action="goToScene" data-scene-id="{{sceneId}}" data-tooltip="Go to this event's scene"><i class="fas fa-map"></i> GO TO SCENE</button>
+                {{/if}}{{/if}}{{/if}}
               {{/if}}
-              {{#if soon}}<div class="ncm-ct-cal__urg"><i style="width:{{urgency}}%"></i></div>{{/if}}
             </div>
             <span class="ncm-ct-cal__when">{{timeLabel}}</span>
           </div>
         </div>
       {{else}}
-        <div class="ncm-ct-empty"><i class="fas fa-calendar-xmark"></i> No events</div>
+        {{#unless contentData.pastCount}}<div class="ncm-ct-empty"><i class="fas fa-calendar-xmark"></i> No events</div>{{/unless}}
+      {{/each}}
+
+      {{#if contentData.pastCount}}
+        <button type="button" class="ncm-ct-cal__pastbtn" data-cal-act="past">
+          <i class="fas fa-chevron-right"></i> <span class="ncm-ct-cal__pastbtn-show">SHOW</span><span class="ncm-ct-cal__pastbtn-hide">HIDE</span>&nbsp;PAST ({{contentData.pastCount}})
+        </button>
+        <div class="ncm-ct-cal__pastwrap">
+          {{#each contentData.pastEvents}}
+            <div class="ncm-ct-cal__ev is-past" data-ct-color="{{color}}" data-cal-ev="{{idx}}"{{#if ts}} data-ts="{{ts}}"{{/if}} style="--ncm-ct-i:{{@index}}">
+              <span class="ncm-ct-cal__node"></span>
+              <div class="ncm-ct-cal__card">
+                <div class="ncm-ct-cal__date"><span class="ncm-ct-cal__day">{{day}}</span><span class="ncm-ct-cal__mon">{{month}}</span></div>
+                <div class="ncm-ct-cal__info">
+                  <div class="ncm-ct-cal__title">{{title}}{{#if lockedGm}}<span class="ncm-ct-cal__gmlock"><i class="fas fa-lock"></i> LOCKED</span>{{/if}}</div>
+                  {{#if chips.length}}
+                    <div class="ncm-ct-cal__chips">
+                      {{#each chips}}<span class="ncm-ct-cal__chip" data-ct-color="{{color}}"><i class="{{icon}}"></i> {{text}}</span>{{/each}}
+                    </div>
+                  {{/if}}
+                  <div class="ncm-ct-cal__urg"><i style="width:0%"></i></div>
+                  {{#if hasScene}}{{#if ../interactive}}{{#if ../isGM}}
+                    <button type="button" class="ncm-ct-cal__scene" data-action="goToScene" data-scene-id="{{sceneId}}" data-tooltip="Go to this event's scene"><i class="fas fa-map"></i> GO TO SCENE</button>
+                  {{/if}}{{/if}}{{/if}}
+                </div>
+                <span class="ncm-ct-cal__when">{{timeLabel}}</span>
+              </div>
+            </div>
+          {{/each}}
+        </div>
+      {{/if}}
+    </div>
+
+    <div class="ncm-ct-cal__months">
+      {{#each contentData.months}}
+        <div class="ncm-ct-cal__month{{#if isFocus}} is-on{{/if}}" data-ym="{{y}}-{{m}}">
+          <div class="ncm-ct-cal__mohd">{{label}}</div>
+          <div class="ncm-ct-cal__grid">
+            <span class="ncm-ct-cal__dow">MO</span><span class="ncm-ct-cal__dow">TU</span><span class="ncm-ct-cal__dow">WE</span><span class="ncm-ct-cal__dow">TH</span><span class="ncm-ct-cal__dow">FR</span><span class="ncm-ct-cal__dow">SA</span><span class="ncm-ct-cal__dow">SU</span>
+            {{#each cells}}
+              <div class="ncm-ct-cal__daycell{{#if out}} is-out{{/if}}{{#if today}} is-today{{/if}}" data-d="{{n}}">
+                <span class="ncm-ct-cal__dayn">{{n}}</span>
+                {{#if pips.length}}
+                  <div class="ncm-ct-cal__pips">
+                    {{#each pips}}
+                      <button type="button" class="ncm-ct-cal__pip{{#if enc}} is-enc{{/if}}" data-cal-act="jump" data-ev-idx="{{idx}}" data-ct-color="{{color}}" data-tooltip="Show on the timeline">{{#if enc}}<i class="fas fa-lock"></i> encrypted{{else}}{{title}}{{/if}}</button>
+                    {{/each}}
+                  </div>
+                {{/if}}
+              </div>
+            {{/each}}
+          </div>
+        </div>
       {{/each}}
     </div>
   </div>
@@ -331,19 +641,21 @@
         </div>
       </div>
     {{/if}}
-    <div class="ncm-ct-bank__hero">
-      <div class="ncm-ct-bank__acct">
-        {{#if contentData.owner}}<div class="ncm-ct-bank__owner"><i class="fas fa-user-tie"></i> {{contentData.owner}}{{#if contentData.accountType}}<span class="ncm-ct-bank__type">{{contentData.accountType}}</span>{{/if}}</div>{{/if}}
-        <div class="ncm-ct-bank__lbl">Balance</div>
-        <div class="ncm-ct-bank__balrow"><span class="ncm-ct-bank__bal">{{contentData.balanceFormatted}}</span><span class="ncm-ct-bank__cur">{{contentData.currency}}</span></div>
-        {{#if contentData.accountNumber}}<div class="ncm-ct-bank__num">{{contentData.accountNumber}}</div>{{/if}}
-        {{#if contentData.hasSplit}}<div class="ncm-ct-bank__split">{{#if contentData.clearedFormatted}}cleared {{contentData.clearedFormatted}}{{/if}}{{#if contentData.heldFormatted}} · <b>held {{contentData.heldFormatted}}</b>{{/if}}</div>{{/if}}
+    {{!-- Bank card hero — a credit-card-style visual (bank color gradient, chip,
+          masked number, owner, balance, status badge). --}}
+    <div class="ncm-ct-bank__card"{{#if contentData.bankColor}} style="--card-c:{{contentData.bankColor}}"{{/if}}>
+      <div class="ncm-ct-bank__card-top">
+        <span class="ncm-ct-bank__card-bank">{{#if contentData.bankLogo}}<img src="{{contentData.bankLogo}}" alt="">{{else}}<i class="fas fa-building-columns"></i>{{/if}} {{#if contentData.bankName}}{{contentData.bankName}}{{else}}ACCOUNT{{/if}}</span>
+        {{#if contentData.hasStatus}}<span class="ncm-ct-bank__card-status" data-ct-color="{{contentData.statusColor}}">{{contentData.statusLabel}}</span>{{/if}}
       </div>
-      <svg class="ncm-ct-bank__spark" width="150" height="38" viewBox="0 0 150 38" preserveAspectRatio="none">
-        <polyline points="0,28 25,24 50,26 75,13 100,17 125,7 150,10" fill="none" stroke="var(--ncm-success)" stroke-width="2" class="ncm-ct-bank__sparkline"/>
-        <polygon points="0,38 0,28 25,24 50,26 75,13 100,17 125,7 150,10 150,38" fill="color-mix(in srgb, var(--ncm-success) 12%, transparent)"/>
-      </svg>
+      <span class="ncm-ct-bank__chip"></span>
+      {{#if contentData.maskedNumber}}<div class="ncm-ct-bank__card-num">{{contentData.maskedNumber}}</div>{{/if}}
+      <div class="ncm-ct-bank__card-bot">
+        <div class="ncm-ct-bank__card-owner"><span class="k">Account Holder</span><span class="v">{{#if contentData.owner}}{{contentData.owner}}{{else}}—{{/if}}{{#if contentData.accountType}} · {{contentData.accountType}}{{/if}}</span></div>
+        <div class="ncm-ct-bank__card-bal"><span class="k">Balance {{contentData.currency}}</span><span class="v">{{contentData.balanceFormatted}}</span></div>
+      </div>
     </div>
+    {{#if contentData.hasSplit}}<div class="ncm-ct-bank__split">{{#if contentData.clearedFormatted}}cleared {{contentData.clearedFormatted}}{{/if}}{{#if contentData.heldFormatted}} · <b>held {{contentData.heldFormatted}}</b>{{/if}}</div>{{/if}}
     {{#if contentData.allowSiphon}}
       <div class="ncm-ct-bank__actions">
         <button type="button" class="ncm-ct-bank__siphon" data-action="siphonFunds" data-entry-id="{{id}}" data-tooltip="Quietly move eddies into your account. If the trace catches you, the owner knows."><i class="fas fa-hand-holding-dollar"></i> SIPHON FUNDS</button>
@@ -365,6 +677,376 @@
         <div class="ncm-ct-empty"><i class="fas fa-building-columns"></i> No transactions</div>
       {{/each}}
     </div>
+  </div>
+
+{{!-- GALLERY — photo app / evidence board (stills), or mode:'feed' = a live
+      camera multiplex. Locked frames never render their src; feed cells carry
+      data-feed-clock (live tick) and the LOOP/CUT chips (camAction). --}}
+{{else if isGallery}}
+  {{#if contentData.isFeed}}
+  <div class="ncm-entry-body ncm-ct-gal ncm-ct-feed" data-gal-box data-entry-id="{{id}}">
+    <div class="ncm-ct-feed__bar">
+      <span class="ncm-ct-feed__ttl"><i class="fas fa-tower-broadcast"></i> {{#if contentData.title}}{{contentData.title}}{{else}}SECURITY MULTIPLEX{{/if}}</span>
+      {{#if contentData.source}}<span class="ncm-ct-gal__src">{{contentData.source}}</span>{{/if}}
+      <span class="ncm-ct-feed__sp"></span>
+      <span class="ncm-ct-feed__live">LIVE</span>
+      <span class="ncm-ct-feed__ch">{{contentData.count}} CH</span>
+      {{#if contentData.clockLive}}<span class="ncm-ct-feed__clock" data-feed-clock="{{contentData.clock}}">{{contentData.feedClock}}</span>{{/if}}
+    </div>
+    <div class="ncm-ct-feed__grid">
+      {{#each contentData.images}}
+        <figure class="ncm-ct-cam{{#if looped}} is-looped{{/if}}{{#if offline}} is-offline{{/if}}{{#if locked}} is-locked{{/if}}" style="--ncm-ct-i:{{@index}}">
+          {{#if locked}}
+            <div class="ncm-ct-cam__fld">
+              <i class="fas fa-lock"></i>
+              <span class="ncm-ct-cam__dv">DV {{effDV}}</span>
+              <span class="ncm-ct-cam__enc">ENCRYPTED</span>
+            </div>
+            <button type="button" class="ncm-ct-gal__unlockbar" data-action="contentUnlock" data-unlock-kind="gallery" data-index="{{idx}}" data-entry-id="{{../id}}"
+                    data-tooltip="Break the encryption sealing this channel — DV {{effDV}}"><i class="fas fa-unlock-keyhole"></i> DECRYPT CHANNEL</button>
+          {{else if offline}}
+            <div class="ncm-ct-cam__static"></div>
+            <span class="ncm-ct-cam__tag">{{label}}</span>
+            <span class="ncm-ct-cam__lost">/// SIGNAL LOST ///</span>
+            {{#if canRestore}}{{#if ../interactive}}
+              <span class="ncm-ct-cam__gmrow"><button type="button" class="ncm-ct-cam__gmchip" data-action="camAction" data-cam-act="restore" data-index="{{idx}}" data-entry-id="{{../id}}"
+                      data-tooltip="GM — bring this channel back online"><i class="fas fa-plug-circle-bolt"></i> RESTORE</button></span>
+            {{/if}}{{/if}}
+          {{else}}
+            <button type="button" class="ncm-ct-cam__view" data-action="galleryView" data-src="{{url}}" data-caption="{{caption}}" data-label="{{label}}"
+                    data-index="{{idx}}" data-feed="1"{{#if liveClock}} data-live="{{../contentData.clock}}"{{/if}}{{#if staticTime}} data-time="{{staticTime}}"{{/if}}{{#if looped}} data-time="{{staleTime}}"{{/if}}
+                    {{#if ptz}}data-ptz="1" data-control-dv="{{controlDV}}"{{/if}} {{#if canLoop}}data-loop-dv="{{loopDV}}"{{/if}} {{#if canCut}}data-cut-dv="{{cutDV}}"{{/if}}
+                    {{#if hasScene}}data-scene-id="{{sceneId}}"{{/if}} data-tooltip="Open this channel">
+              <img src="{{url}}" alt="{{label}}" loading="lazy">
+              {{#unless looped}}<span class="ncm-ct-cam__sweep" aria-hidden="true"></span>{{/unless}}
+            </button>
+            <span class="ncm-ct-cam__tag">{{label}}</span>
+            {{#if looped}}
+              <span class="ncm-ct-cam__loop"><i class="fas fa-rotate"></i> LOOPED</span>
+              {{#if staleTime}}<span class="ncm-ct-cam__rec ncm-ct-cam__rec--stale">{{staleTime}}</span>{{/if}}
+            {{else}}
+              <span class="ncm-ct-cam__sig s{{signal}}" aria-hidden="true"><b></b><b></b><b></b><b></b></span>
+              {{#if liveClock}}<span class="ncm-ct-cam__rec" data-feed-clock="{{../contentData.clock}}">{{../contentData.feedClock}}</span>
+              {{else if staticTime}}<span class="ncm-ct-cam__rec">{{staticTime}}</span>{{/if}}
+            {{/if}}
+            {{#if ptz}}<span class="ncm-ct-cam__ptz" data-tooltip="Steerable camera — open the channel to drive it"><i class="fas fa-arrows-up-down-left-right"></i> PTZ</span>{{/if}}
+            {{#if ../interactive}}
+              <span class="ncm-ct-cam__acts">
+                {{#if canLoop}}<button type="button" class="ncm-ct-cam__act ncm-ct-cam__act--loop" data-action="camAction" data-cam-act="loop" data-index="{{idx}}" data-entry-id="{{../id}}"
+                        data-tooltip="Freeze this camera on old footage — DV {{loopDV}}"><i class="fas fa-rotate"></i> LOOP</button>{{/if}}
+                {{#if canCut}}<button type="button" class="ncm-ct-cam__act ncm-ct-cam__act--cut" data-action="camAction" data-cam-act="cut" data-index="{{idx}}" data-entry-id="{{../id}}"
+                        data-tooltip="Kill this channel — DV {{cutDV}}"><i class="fas fa-scissors"></i> CUT</button>{{/if}}
+                {{#if canRestore}}<button type="button" class="ncm-ct-cam__act ncm-ct-cam__act--gm" data-action="camAction" data-cam-act="restore" data-index="{{idx}}" data-entry-id="{{../id}}"
+                        data-tooltip="GM — restore this channel"><i class="fas fa-rotate-left"></i> RESTORE</button>{{/if}}
+              </span>
+            {{/if}}
+          {{/if}}
+        </figure>
+      {{else}}
+        <div class="ncm-ct-empty"><i class="fas fa-tower-broadcast"></i> No channels</div>
+      {{/each}}
+    </div>
+  </div>
+  {{else}}
+  <div class="ncm-entry-body ncm-ct-gal{{#if contentData.isStrip}} ncm-ct-gal--strip{{/if}}" data-gal-box data-gal-filter="all" data-entry-id="{{id}}">
+    <div class="ncm-ct-gal__hd">
+      <span><i class="fas fa-images"></i> {{#if contentData.title}}{{contentData.title}}{{else}}{{contentData.count}} images{{/if}}</span>
+      <span class="ncm-ct-gal__meta">
+        {{#if contentData.source}}<span class="ncm-ct-gal__src">{{contentData.source}}</span>{{/if}}
+        {{#if contentData.showFilters}}
+          <button type="button" class="ncm-ct-gal__f is-on" data-gal-act="filter" data-f="all">ALL</button>
+          {{#if contentData.flaggedCount}}<button type="button" class="ncm-ct-gal__f ncm-ct-gal__f--flag" data-gal-act="filter" data-f="flagged" data-tooltip="Show flagged frames only"><i class="fas fa-flag"></i> {{contentData.flaggedCount}}</button>{{/if}}
+          {{#if contentData.lockedCount}}<button type="button" class="ncm-ct-gal__f ncm-ct-gal__f--lock" data-gal-act="filter" data-f="locked" data-tooltip="Show encrypted frames only"><i class="fas fa-lock"></i> {{contentData.lockedCount}}</button>{{/if}}
+        {{else}}
+          {{#if contentData.flaggedCount}}<span class="ncm-ct-chip ncm-ct-chip--flag"><i class="fas fa-flag"></i> {{contentData.flaggedCount}}</span>{{/if}}
+        {{/if}}
+        <span class="ncm-ct-chip ncm-ct-chip--dim">{{contentData.count}} FRAMES</span>
+      </span>
+    </div>
+    <div class="ncm-ct-gal__grid">
+      {{#each contentData.images}}
+        <figure class="ncm-ct-gal__cell{{#if isHero}} ncm-ct-gal__cell--hero{{/if}}{{#if flagged}} is-flagged{{/if}}{{#if offline}} is-corrupted{{/if}}{{#if locked}} is-locked{{/if}}" style="--ncm-ct-i:{{@index}}">
+          {{#if locked}}
+            <div class="ncm-ct-gal__thumb ncm-ct-gal__thumb--locked">
+              <i class="fas fa-lock"></i>
+              <span class="ncm-ct-cam__dv">DV {{effDV}}</span>
+              <span>ENCRYPTED</span>
+            </div>
+            <button type="button" class="ncm-ct-gal__unlockbar" data-action="contentUnlock" data-unlock-kind="gallery" data-index="{{idx}}" data-entry-id="{{../id}}"
+                    data-tooltip="Break the encryption sealing this frame — DV {{effDV}}"><i class="fas fa-unlock-keyhole"></i> DECRYPT</button>
+          {{else if hasImage}}
+            <button type="button" class="ncm-ct-gal__thumb" data-action="galleryView" data-src="{{url}}" data-caption="{{caption}}" data-label="{{label}}" data-time="{{time}}" data-index="{{idx}}" data-tooltip="Enlarge">
+              <img src="{{url}}" alt="{{label}}" loading="lazy">
+            </button>
+            <span class="ncm-ct-gal__tag" data-ct-color="{{color}}">{{label}}</span>
+            {{#if time}}<span class="ncm-ct-gal__timechip">{{time}}</span>{{/if}}
+            {{#if flagged}}<span class="ncm-ct-gal__flagtag"><i class="fas fa-flag"></i>{{#if isHero}} FLAGGED{{/if}}</span>{{/if}}
+            {{#if caption}}<span class="ncm-ct-gal__scrim">{{caption}}</span>{{/if}}
+          {{else}}
+            <div class="ncm-ct-gal__thumb ncm-ct-gal__thumb--dead" data-tooltip="Frame unrecoverable">
+              <div class="ncm-ct-cam__static"></div>
+              <span class="ncm-ct-gal__deadmsg"><i class="fas fa-video-slash"></i> NO SIGNAL</span>
+            </div>
+            <span class="ncm-ct-gal__tag" data-ct-color="{{color}}">{{label}}</span>
+          {{/if}}
+        </figure>
+      {{else}}
+        <div class="ncm-ct-empty"><i class="fas fa-images"></i> No images</div>
+      {{/each}}
+    </div>
+  </div>
+  {{/if}}
+
+{{!-- DOCUMENT — memo/report viewer: doc-type tag + classification stamp,
+      letterhead meta, watermark ghost, headings/quotes/redaction bars. --}}
+{{else if isDocument}}
+  <div class="ncm-entry-body ncm-ct-doc"{{#if contentData.watermark}} data-watermark="{{contentData.watermark}}"{{/if}}>
+    <div class="ncm-ct-doc__top">
+      <span class="ncm-ct-doc__type"><i class="fas fa-file-lines"></i> {{contentData.docType}}</span>
+      {{#if contentData.classification}}<span class="ncm-ct-doc__class" data-ct-color="{{contentData.classColor}}">{{contentData.classification}}</span>{{/if}}
+    </div>
+    {{#if contentData.title}}<div class="ncm-ct-doc__title">{{contentData.title}}</div>{{/if}}
+    {{#if contentData.hasMeta}}
+      <div class="ncm-ct-doc__meta">
+        {{#if contentData.author}}<span><i class="fas fa-pen-nib"></i> {{contentData.author}}</span>{{/if}}
+        {{#if contentData.org}}<span><i class="fas fa-building"></i> {{contentData.org}}</span>{{/if}}
+        {{#if contentData.dateLabel}}<span><i class="fa-regular fa-clock"></i> {{contentData.dateLabel}}</span>{{/if}}
+        {{#if contentData.revision}}<span class="ncm-ct-doc__rev">rev {{contentData.revision}}</span>{{/if}}
+      </div>
+    {{/if}}
+    <div class="ncm-ct-doc__body">
+      {{#each contentData.paragraphs}}
+        {{#if heading}}<div class="ncm-ct-doc__h">{{heading}}</div>{{/if}}
+        {{#if isFigure}}
+          {{#if hasImage}}<figure class="ncm-ct-doc__fig"><img src="{{image}}" data-src="{{image}}" data-action="galleryView" data-label="{{caption}}" alt="{{caption}}">{{#if caption}}<figcaption>{{caption}}</figcaption>{{/if}}</figure>{{/if}}
+        {{else if isList}}
+          {{#if hasItems}}{{#if ordered}}<ol class="ncm-ct-doc__list">{{#each items}}<li>{{{this}}}</li>{{/each}}</ol>{{else}}<ul class="ncm-ct-doc__list">{{#each items}}<li>{{{this}}}</li>{{/each}}</ul>{{/if}}{{/if}}
+        {{else if redacted}}
+          <div class="ncm-ct-doc__redact" data-tooltip="REDACTED"><i></i><i></i><i></i></div>
+        {{else if quote}}
+          <blockquote class="ncm-ct-doc__quote{{#if declassified}} is-declassified{{/if}}">{{{text}}}</blockquote>
+        {{else if text}}
+          <p{{#if declassified}} class="is-declassified"{{/if}}>{{{text}}}</p>
+        {{/if}}
+      {{else}}
+        <div class="ncm-ct-empty"><i class="fas fa-file-lines"></i> Empty document</div>
+      {{/each}}
+    </div>
+    {{#if contentData.canDeclassify}}
+      <button type="button" class="ncm-ct-declass" data-action="contentUnlock" data-unlock-kind="document" data-entry-id="{{id}}"
+              data-tooltip="Strip the classification layer off this file — DV {{contentData.declassifyDV}}">
+        <i class="fas fa-stamp"></i> DECLASSIFY
+      </button>
+    {{/if}}
+    {{#if contentData.signedImage}}<div class="ncm-ct-doc__sig ncm-ct-doc__sig--img"><img src="{{contentData.signedImage}}" alt="signature">{{#if contentData.signed}}<span>{{contentData.signed}}</span>{{/if}}</div>
+    {{else if contentData.signed}}<div class="ncm-ct-doc__sig"><i class="fas fa-signature"></i> {{contentData.signed}}</div>{{/if}}
+  </div>
+
+{{!-- CHATLOG — IM transcript: app/channel header, participant chips, colored
+      name labels, me-bubbles right, deleted tombstones. --}}
+{{else if isChatlog}}
+  <div class="ncm-entry-body ncm-ct-chat">
+    <div class="ncm-ct-chat__hd">
+      <span class="ncm-ct-chat__app"><i class="fas fa-comments"></i> {{contentData.app}}</span>
+      {{#if contentData.channel}}<span class="ncm-ct-chat__chan">{{contentData.channel}}</span>{{/if}}
+      <span class="ncm-ct-chat__ppl">
+        {{#each contentData.participants}}<span class="ncm-ct-chat__pp" data-ct-color="{{color}}"><span class="ncm-ct-dot"></span>{{name}}</span>{{/each}}
+      </span>
+    </div>
+    <div class="ncm-ct-chat__feed">
+      {{#each contentData.messages}}
+        {{#if daySep}}<div class="ncm-ct-chat__daysep">{{daySep}}</div>{{/if}}
+        {{#if isSystem}}
+          <div class="ncm-ct-chat__sys"><i class="fas fa-{{sysIcon}}"></i> {{system}}{{#if time}} <span class="ncm-ct-chat__systime">· {{time}}</span>{{/if}}</div>
+        {{else}}
+          <div class="ncm-ct-chat__msg{{#if me}} is-me{{/if}}{{#if deleted}} is-deleted{{/if}}" style="--ncm-ct-i:{{@index}}">
+            {{#if showName}}<span class="ncm-ct-chat__who" data-ct-color="{{color}}">{{from}}</span>{{/if}}
+            {{#if isPhoto}}
+              <div class="ncm-ct-chat__bubble ncm-ct-chat__bubble--photo" data-ct-color="{{color}}">
+                {{#if image}}<img class="ncm-ct-chat__photo" src="{{image}}" data-src="{{image}}" data-action="galleryView" data-label="{{caption}}" data-time="{{time}}" alt="{{caption}}">{{/if}}
+                {{#if caption}}<div class="ncm-ct-chat__cap">{{caption}}</div>{{/if}}
+                {{#if time}}<span class="ncm-ct-chat__time">{{time}}</span>{{/if}}
+              </div>
+            {{else}}
+              <div class="ncm-ct-chat__bubble" data-ct-color="{{color}}">
+                {{#if deleted}}<i class="fas fa-ban"></i> <em>message deleted</em>{{else}}{{text}}{{/if}}
+                {{#if time}}<span class="ncm-ct-chat__time">{{time}}</span>{{/if}}
+              </div>
+            {{/if}}
+            {{#if hasReactions}}
+              <div class="ncm-ct-chat__reacts">{{#each reactions}}<span class="ncm-ct-chat__react">{{emoji}}{{#if many}} {{count}}{{/if}}</span>{{/each}}</div>
+            {{/if}}
+          </div>
+          {{#if seen}}<div class="ncm-ct-chat__seen"><i class="fas fa-check-double"></i> Seen{{#if seenTime}} {{seenTime}}{{/if}}</div>{{/if}}
+        {{/if}}
+      {{else}}
+        <div class="ncm-ct-empty"><i class="fas fa-comments"></i> No messages</div>
+      {{/each}}
+    </div>
+  </div>
+
+{{!-- RECORD / DB — searchable personnel/asset database: search box (display
+      filter), avatar-initial record rows, status pills, flag tags. --}}
+{{else if isRecord}}
+  <div class="ncm-entry-body ncm-ct-db">
+    <div class="ncm-ct-db__hd">
+      <span><i class="fas fa-database"></i> {{contentData.dbName}}{{#if contentData.recordType}} <em>// {{contentData.recordType}}</em>{{/if}}</span>
+      <span class="ncm-ct-db__meta">
+        {{#if contentData.flaggedCount}}<span class="ncm-ct-chip ncm-ct-chip--flag"><i class="fas fa-flag"></i> {{contentData.flaggedCount}}</span>{{/if}}
+        <span class="ncm-ct-chip ncm-ct-chip--dim">{{contentData.count}} records</span>
+      </span>
+    </div>
+    {{#if contentData.searchable}}
+      <div class="ncm-ct-db__search"><i class="fas fa-magnifying-glass"></i><input type="text" data-db-search placeholder="Query records…" spellcheck="false"></div>
+    {{/if}}
+    <div class="ncm-ct-db__list">
+      {{#each contentData.records}}
+        <div class="ncm-ct-db__rec{{#if flagged}} is-flagged{{/if}}" data-search="{{searchText}}" style="--ncm-ct-i:{{@index}}">
+          <span class="ncm-ct-db__ava">{{#if portrait}}<img src="{{portrait}}" alt="">{{else}}{{initials}}{{/if}}</span>
+          <div class="ncm-ct-db__main">
+            <div class="ncm-ct-db__name">{{name}} <span class="ncm-ct-db__id">{{idLabel}}</span>{{#if flagged}}<span class="ncm-ct-db__flag"><i class="fas fa-flag"></i> FLAGGED</span>{{/if}}</div>
+            {{#if fields.length}}
+              <div class="ncm-ct-db__fields">
+                {{#each fields}}
+                  <div class="ncm-ct-db__f{{#if full}} ncm-ct-db__f--full{{/if}}{{#if isNote}} ncm-ct-db__f--note{{/if}}" data-ct-color="{{#if isFlag}}red{{else}}cyan{{/if}}">
+                    <i class="{{icon}}"></i>
+                    {{#if isFlag}}<span class="ncm-ct-db__flagfield">{{label}}</span>
+                    {{else}}<span class="ncm-ct-db__lbl">{{label}}</span>
+                      {{#if isThreat}}<span class="ncm-ct-db__meter {{meterClass}}"><b></b><b></b><b></b><b></b></span>
+                      {{else if isRating}}<span class="ncm-ct-db__stars">{{#each stars}}<i class="fa-star {{#if on}}fas{{else}}far{{/if}}"></i>{{/each}}</span>
+                      {{else if isImage}}<img class="ncm-ct-db__evi" src="{{src}}" data-src="{{src}}" data-action="galleryView" data-label="{{label}}" alt="{{label}}">
+                      {{else if isNote}}<span class="ncm-ct-db__val">{{value}}</span>
+                      {{else if isDate}}<span class="ncm-ct-db__val">{{display}}</span>
+                      {{else if isNumber}}<span class="ncm-ct-db__val">{{display}}</span>
+                      {{else}}<span class="ncm-ct-db__val">{{display}}</span>{{/if}}
+                    {{/if}}
+                  </div>
+                {{/each}}
+              </div>
+            {{/if}}
+          </div>
+          {{#if status}}<span class="ncm-ct-pill" data-ct-color="{{statusColor}}">{{status}}</span>{{/if}}
+        </div>
+      {{else}}
+        <div class="ncm-ct-empty"><i class="fas fa-database"></i> No records</div>
+      {{/each}}
+      <div class="ncm-ct-db__nohit"><i class="fas fa-magnifying-glass"></i> No matching records</div>
+    </div>
+  </div>
+
+{{!-- SCHEMATIC — annotated blueprint: numbered pins over the image (click to
+      enlarge), legend below, optional GM scene link. --}}
+{{else if isSchematic}}
+  <div class="ncm-entry-body ncm-ct-schem">
+    <div class="ncm-ct-schem__hd">
+      <span><i class="fas fa-compass-drafting"></i> {{contentData.title}}</span>
+      <span class="ncm-ct-schem__meta">
+        {{#if contentData.docRef}}<span class="ncm-ct-schem__ref">{{contentData.docRef}}</span>{{/if}}
+        {{#if contentData.pinCount}}<span class="ncm-ct-chip ncm-ct-chip--dim">{{contentData.pinCount}} marks</span>{{/if}}
+      </span>
+    </div>
+    {{#if contentData.hasImage}}
+      <div class="ncm-ct-schem__stage">
+        <button type="button" class="ncm-ct-schem__img" data-action="galleryView" data-src="{{contentData.imageUrl}}" data-caption="{{contentData.title}}" data-label="{{contentData.docRef}}" data-tooltip="Enlarge">
+          <img src="{{contentData.imageUrl}}" alt="{{contentData.title}}">
+        </button>
+        {{#if contentData.hasRoutes}}
+          <svg class="ncm-ct-schem__routes" viewBox="0 0 100 100" preserveAspectRatio="none">
+            {{#each contentData.routes}}<line x1="{{x1}}" y1="{{y1}}" x2="{{x2}}" y2="{{y2}}" data-ct-color="{{color}}"/>{{/each}}
+          </svg>
+        {{/if}}
+        {{#each contentData.annotations}}
+          <span class="ncm-ct-schem__pin{{#if isFog}} ncm-ct-schem__pin--fog{{/if}}" data-ct-color="{{color}}" style="left:{{x}}%;top:{{y}}%" data-tooltip="{{#if isFog}}Encrypted marker — scout to reveal{{else}}{{label}}{{#if note}} — {{note}}{{/if}}{{/if}}"><i class="{{icon}}"></i></span>
+        {{/each}}
+      </div>
+    {{else}}
+      <div class="ncm-ct-schem__stage ncm-ct-schem__stage--empty"><i class="fas fa-compass-drafting"></i><span>NO IMAGE ON FILE</span></div>
+    {{/if}}
+    {{#if contentData.legendGroups.length}}
+      {{!-- Legend card rows (legibility pass 2026-07-13): label + note STACK
+            inside each card instead of running inline in tiny mono. The GM
+            gets a per-point lock TOGGLE (schemLockToggle — flip a marker's
+            fog live at the table, no composer round-trip). --}}
+      <div class="ncm-ct-schem__legend">
+        {{#each contentData.legendGroups}}
+          <div class="ncm-ct-schem__leggroup">
+            <div class="ncm-ct-schem__legh">{{name}}</div>
+            {{#each pins}}
+              <div class="ncm-ct-schem__leg{{#if isFog}} is-fog{{/if}}{{#if locked}} is-locked{{/if}}" data-ct-color="{{color}}">
+                <span class="ncm-ct-schem__legi"><i class="{{icon}}"></i></span>
+                {{#if isFog}}
+                  <span class="ncm-ct-schem__legtx"><i class="ncm-ct-schem__legfog">Encrypted marker — scout to reveal (DV {{effDV}})</i></span>
+                  {{#if ../../interactive}}<button type="button" class="ncm-ct-schem__reveal" data-action="contentUnlock" data-unlock-kind="schematic" data-index="{{idx}}" data-entry-id="{{../../id}}" data-tooltip="Scout this marker — DV {{effDV}}">SCOUT</button>{{/if}}
+                {{else}}
+                  <span class="ncm-ct-schem__legtx">
+                    <b>{{label}}</b>
+                    {{#if note}}<span class="ncm-ct-schem__legnote">{{note}}</span>{{/if}}
+                  </span>
+                  {{#if hasScene}}{{#if ../../interactive}}{{#if ../../isGM}}<button type="button" class="ncm-ct-schem__legscene" data-action="goToScene" data-scene-id="{{sceneId}}" data-tooltip="Go to this marker's scene"><i class="fas fa-map"></i></button>{{/if}}{{/if}}{{/if}}
+                {{/if}}
+                {{#if ../../isGM}}
+                  <button type="button" class="ncm-ct-schem__lock{{#if locked}} is-on{{/if}}" data-action="schemLockToggle" data-index="{{idx}}" data-entry-id="{{../../id}}"
+                          data-tooltip="{{#if locked}}Unlock — players see this marker{{else}}Lock — players see an encrypted '?' until they scout it{{/if}}">
+                    <i class="fas fa-{{#if locked}}lock{{else}}lock-open{{/if}}"></i>
+                  </button>
+                {{/if}}
+              </div>
+            {{/each}}
+          </div>
+        {{/each}}
+      </div>
+    {{/if}}
+    {{#if contentData.linkedSceneId}}
+      {{#if interactive}}{{#if isGM}}
+        <button type="button" data-action="goToScene" data-scene-id="{{contentData.linkedSceneId}}"
+                class="ncm-shard-btn ncm-shard-btn--secondary">
+          <i class="fas fa-map"></i> Go to Scene
+        </button>
+      {{/if}}{{/if}}
+    {{/if}}
+  </div>
+
+{{!-- NOTE — a sticky note: paper color, tape strip, optional pin + title. --}}
+{{else if isNote}}
+  <div class="ncm-entry-body ncm-ct-notew">
+    <div class="ncm-ct-note" data-ct-color="{{contentData.color}}">
+      <span class="ncm-ct-note__tape"></span>
+      {{#if contentData.pinned}}<i class="fas fa-thumbtack ncm-ct-note__pin"></i>{{/if}}
+      {{#if contentData.title}}<div class="ncm-ct-note__title">{{contentData.title}}</div>{{/if}}
+      <div class="ncm-ct-note__text">{{contentData.text}}</div>
+    </div>
+  </div>
+
+{{!-- MALWARE — quarantined executable: biohazard file card, threat meter,
+      DEPLOY affordance; honeypot tag is GM-only. --}}
+{{else if isMalware}}
+  <div class="ncm-entry-body ncm-ct-mal{{#if contentData.deployed}} is-deployed{{/if}}">
+    <div class="ncm-ct-mal__hd">
+      <span><i class="fas fa-biohazard"></i> QUARANTINED EXECUTABLE</span>
+      {{#if isGM}}<span class="ncm-ct-mal__tags">{{#if contentData.honeypot}}<span class="ncm-ct-mal__honey" data-tooltip="GM only: honeypot — deploying trips a trace instead of running">HONEYPOT</span>{{/if}}{{#if contentData.iceName}}<span class="ncm-ct-mal__honey ncm-ct-mal__ice" data-tooltip="GM only: this Black ICE attacks the operator on a misfire"><i class="fas fa-skull"></i> {{contentData.iceName}}</span>{{/if}}</span>{{/if}}
+    </div>
+    <div class="ncm-ct-mal__file">
+      <span class="ncm-ct-mal__icon">{{#if contentData.iceImg}}<img src="{{contentData.iceImg}}" alt="">{{else}}<i class="fas fa-biohazard"></i>{{/if}}</span>
+      <div class="ncm-ct-mal__info">
+        <div class="ncm-ct-mal__name">{{contentData.name}}</div>
+        <div class="ncm-ct-mal__meta">
+          <span class="ncm-ct-pill" data-ct-color="red">{{contentData.typeLabel}}</span>
+          {{#if contentData.sizeLabel}}<span class="ncm-ct-mal__size">{{contentData.sizeLabel}}</span>{{/if}}
+          {{#if contentData.threatClass}}<span class="ncm-ct-mal__thr {{contentData.threatClass}}" data-tooltip="Threat assessment"><i></i><i></i><i></i><i></i></span>{{/if}}
+        </div>
+      </div>
+    </div>
+    {{#if contentData.description}}<p class="ncm-ct-mal__desc">{{contentData.description}}</p>{{/if}}
+    {{#if contentData.canDeploy}}
+      <button type="button" class="ncm-ct-mal__deploy" data-action="deployMalware" data-entry-id="{{id}}"
+              data-tooltip="Run it on this system. No promises about what wakes up.">
+        <i class="fas fa-bolt"></i> DEPLOY
+      </button>
+    {{else if contentData.deployed}}
+      <div class="ncm-ct-mal__done{{#if contentData.tripped}} is-tripped{{/if}}">
+        {{#if contentData.tripped}}<i class="fas fa-triangle-exclamation"></i> EXECUTION LOGGED — TRACE EVENT{{else}}<i class="fas fa-circle-check"></i> DEPLOYED{{#if contentData.deployedByName}} by {{contentData.deployedByName}}{{/if}}{{/if}}
+      </div>
+    {{/if}}
   </div>
 
 {{!-- FALLBACK --}}

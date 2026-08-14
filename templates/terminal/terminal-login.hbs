@@ -13,6 +13,7 @@
       <div class="ncm-term__crt-top">
         <span class="ncm-term__crt-host">{{shellHost}} · tty0</span>
         {{#if isGM}}<span class="ncm-term__login-gm" data-action="terminalConfigure" data-tooltip="Configure terminal (GM)"><i class="fas fa-sliders"></i> EDIT</span>{{/if}}
+        {{> "modules/cyberpunkred-messenger/templates/terminal/partials/operator-chip.hbs" operator}}
         {{#if uplink.show}}
           {{> "modules/cyberpunkred-messenger/templates/terminal/partials/uplink.hbs" uplink align="right"}}
         {{/if}}
@@ -27,6 +28,7 @@
             <span class="ncm-term__crt-user">&gt; {{username}}</span>
             <span class="ncm-term__crt-st{{#if isOpen}} is-open{{/if}}">{{#if isOpen}}OPEN{{else}}LOCKED{{/if}}</span>
             {{#if offNet}}<span class="ncm-term__crt-st is-offnet">OFF-NET</span>{{/if}}
+            {{#if hiddenGm}}<span class="ncm-term__crt-st is-hidden">HIDDEN</span>{{/if}}
           </div>
         {{/each}}
         <div class="ncm-term__crt-acct ncm-term__crt-other" data-action="terminalManualLogin">
@@ -40,7 +42,7 @@
   {{else}}
     {{!-- ── Shared hero (all non-CRT styles) ── --}}
     <div class="ncm-term__hero">
-      <div class="ncm-term__hero-logo">{{#if logoImage}}<img src="{{logoImage}}" alt="">{{else}}<i class="{{presetIcon}}"></i>{{/if}}</div>
+      <div class="ncm-term__hero-logo{{#if logoFree}} ncm-term__hero-logo--free{{/if}}">{{#if logoImage}}<img src="{{logoImage}}" alt="">{{else}}<i class="{{presetIcon}}"></i>{{/if}}</div>
       <div class="ncm-term__hero-txt">
         <div class="ncm-term__hero-name">{{terminalName}}</div>
         <div class="ncm-term__hero-sub">{{banner}}</div>
@@ -50,6 +52,8 @@
         {{#if secured}}<span class="is-secured"><i class="fas fa-lock"></i> secured</span>{{/if}}
         {{#if onlineCount}}<span><b>{{onlineCount}}</b> online</span>{{/if}}
         {{#if isGM}}<span class="ncm-term__login-gm" data-action="terminalConfigure" data-tooltip="Configure terminal (GM)"><i class="fas fa-sliders"></i> EDIT</span>{{/if}}
+        {{!-- Operator — WHO logs in (the login skill check rolls against them). --}}
+        {{> "modules/cyberpunkred-messenger/templates/terminal/partials/operator-chip.hbs" operator}}
         {{!-- Machine uplink — switchable BEFORE login, since network-gated
               accounts only materialize on the right network. --}}
         {{#if uplink.show}}
@@ -73,6 +77,7 @@
                 <span class="ncm-term__rrow-role">{{#if role}}{{role}}{{else}}{{username}}{{/if}}</span>
               </span>
               {{#if offNet}}<span class="ncm-term__rrow-st is-offnet"><i class="fas fa-wifi"></i> OFF-NET</span>{{/if}}
+              {{#if hiddenGm}}<span class="ncm-term__rrow-st is-hidden"><i class="fas fa-eye-slash"></i> HIDDEN</span>{{/if}}
               {{#if isOpen}}
                 <span class="ncm-term__rrow-st is-open">ACTIVE</span>
               {{else}}
@@ -184,6 +189,7 @@
               <div class="ncm-term__port-av">{{#if portrait}}<img src="{{portrait}}" alt="">{{else}}{{initials}}{{/if}}
                 {{#unless isOpen}}<span class="ncm-term__port-lock"><i class="fas fa-lock"></i></span>{{/unless}}
                 {{#if offNet}}<span class="ncm-term__port-off">OFF-NET</span>{{/if}}
+                {{#if hiddenGm}}<span class="ncm-term__port-off ncm-term__port-off--hidden">HIDDEN</span>{{/if}}
               </div>
               <div class="ncm-term__port-nm">{{displayName}}</div>
               {{#if role}}<div class="ncm-term__port-role">{{role}}</div>{{/if}}

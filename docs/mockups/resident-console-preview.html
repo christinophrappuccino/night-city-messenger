@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>NCM — ResidentConsole (real module, real CSS)</title>
+<!--
+  Renders the REAL scripts/ui/content/ResidentConsole.js — it builds its own markup,
+  so importing it is the only way the preview can't drift from what ships.
+
+  FAITHFUL STACK — core -> CPR system -> module. Without these, every core/CPR reset
+  (button width:100%, `* {user-select:none}`, aggressive input styling) is absent and
+  the preview lies. Run chrome with --allow-file-access-from-files.
+    ?host=terminal   render inside a .ncm-terminal-viewer host (inherits its preset)
+-->
+<link rel="stylesheet" href="file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css">
+<link rel="stylesheet" href="file:///C:/Users/cphan/AppData/Local/FoundryVTT/Data/systems/cyberpunk-red-core/main.css">
+<link rel="stylesheet" href="../../styles/cyberpunk-messenger.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  body { margin:0; background:#0a0a12; min-height:100vh; }
+  #host { position:relative; width:100%; height:100vh; }
+  #out { position:fixed; left:8px; bottom:8px; color:#9f9; font:11px monospace; z-index:9999; }
+</style></head>
+<body>
+<!-- .ncm-app + the terminal viewer root: the modal is host-scoped, so it inherits
+     this element's --ncm-* preset exactly as it does in the real app. -->
+<div id="host" class="ncm-app ncm-terminal-viewer" data-terminal-preset="arasaka-workstation"></div>
+<pre id="out"></pre>
+<script type="module">
+// Minimal globals the module touches. ResidentConsole only reads game.actors +
+// the optional sound service, so this stays small.
+globalThis.game = {
+  user: { isGM: true },
+  actors: { get: (id) => ({ id, name: 'V' }) },
+  settings: { get: () => 'propose' },
+  nightcity: { soundService: { play: () => {} } },
+};
+globalThis.ui = { notifications: { info: () => {}, warn: () => {} } };
+
+const { runResidentConsole } = await import('../../scripts/ui/content/ResidentConsole.js');
+const host = document.getElementById('host');
+
+const choice = await runResidentConsole({
+  label: 'planted file',
+  hostName: 'ARASAKA-WS',
+  who: 'V',
+  mailbox: 'kowalski',
+  host,
+  resident: {
+    effectType: 'plant',
+    trigger: { kind: 'onLogin', accountId: 'acct1' },
+    // 30 = a botched forge -> the SLOPPY tell, the most interesting state to eyeball
+    provenance: { forgeQuality: 30, plantedBy: 'actor1' },
+    stealthDV: 9,
+  },
+});
+document.getElementById('out').textContent = 'resolved: ' + choice;
+</script>
+</body></html>

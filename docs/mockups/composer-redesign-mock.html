@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>NCM — Composer Redesign Mockup (2026-07-12)</title>
+<style>
+  :root {
+    --p: #F65261; --s: #19f3f7; --a: #f7c948; --ok: #00ff41;
+    --bg0: #0a0a12; --bg1: #12121a; --bg2: #1a1a2e; --bg3: #222236;
+    --t0: #ededf2; --t1: #b9b9cc; --t2: #7a7a92; --br: #2a2a45;
+    --mono: 'Consolas', monospace; --ui: 'Segoe UI', sans-serif;
+  }
+  body { margin: 0; background: #050508; color: var(--t0); font-family: var(--ui); padding: 18px; }
+  h1 { font-size: 15px; letter-spacing: 2px; color: var(--s); font-family: var(--mono); }
+  h2 { font-size: 12px; letter-spacing: 1.5px; color: var(--a); font-family: var(--mono); margin: 26px 0 8px; }
+  .note { font-size: 11.5px; color: var(--t2); max-width: 900px; line-height: 1.5; }
+
+  /* ═══ The mock window ═══ */
+  .mockwin { width: 960px; height: 640px; background: var(--bg1); border: 1px solid var(--br); border-radius: 8px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,.6); }
+  .titlebar { padding: 6px 12px; background: var(--bg0); border-bottom: 1px solid var(--br); font: 11px var(--mono); color: var(--t1); letter-spacing: 1px; }
+
+  .shell { flex: 1; display: flex; min-height: 0; }
+  .formcol { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+  /* 1 ── pinned type bar */
+  .typebar { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--bg0); border-bottom: 1px solid var(--br); flex-shrink: 0; }
+  .typebar .tico { width: 38px; height: 38px; border-radius: 9px; display: grid; place-items: center; background: rgba(25,243,247,.1); border: 1px solid rgba(25,243,247,.4); color: var(--s); font-size: 16px; }
+  .typebar .tinfo { flex: 1; min-width: 0; }
+  .typebar .tname { font-weight: 700; font-size: 14px; }
+  .typebar .tdesc { font: 10.5px var(--ui); color: var(--t2); }
+  .tbtn { font: 10px var(--mono); letter-spacing: .5px; color: var(--t1); background: var(--bg2); border: 1px solid var(--br); border-radius: 6px; padding: 5px 9px; cursor: pointer; }
+  .tbtn:hover { border-color: var(--s); color: var(--s); }
+  .tbtn.swap { color: var(--s); border-color: rgba(25,243,247,.4); }
+
+  /* content scroller */
+  .scroller { flex: 1; overflow-y: auto; padding: 12px 14px 8px; }
+  .scroller::-webkit-scrollbar { width: 5px; } .scroller::-webkit-scrollbar-thumb { background: var(--br); }
+
+  /* 2 ── sections */
+  .sec { border: 1px solid var(--br); border-radius: 8px; margin-bottom: 10px; background: var(--bg1); overflow: hidden; }
+  .sec-hd { display: flex; align-items: center; gap: 8px; padding: 8px 12px; cursor: pointer; background: var(--bg2); }
+  .sec-hd .shash { font: 10px var(--mono); color: var(--t2); width: 14px; }
+  .sec-hd .stitle { font: 700 11px var(--mono); letter-spacing: 1.5px; color: var(--t0); }
+  .sec-hd .ssum { margin-left: auto; font: 10px var(--mono); color: var(--t2); display: flex; gap: 6px; align-items: center; }
+  .chip { padding: 1px 7px; border-radius: 4px; border: 1px solid var(--br); font: 9px var(--mono); letter-spacing: 1px; }
+  .chip.ok { color: var(--ok); border-color: rgba(0,255,65,.35); }
+  .chip.warn { color: var(--a); border-color: rgba(247,201,72,.4); }
+  .caret { color: var(--t2); font-size: 10px; }
+  .sec-bd { padding: 12px; border-top: 1px solid var(--br); }
+  .sec.closed .sec-bd { display: none; }
+
+  /* content form bits */
+  .frow { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .flabel { width: 92px; font: 10px var(--mono); letter-spacing: 1px; color: var(--t2); text-transform: uppercase; flex-shrink: 0; }
+  .fin { flex: 1; background: var(--bg0); border: 1px solid var(--br); border-radius: 5px; color: var(--t0); font: 12px var(--ui); padding: 6px 9px; }
+  .fin::placeholder { color: #55556b; }
+  .fin.short { flex: 0 0 90px; }
+
+  /* 3 ── labeled list rows */
+  .lhead { display: flex; gap: 6px; padding: 0 34px 4px 26px; }
+  .lhead span { font: 9px var(--mono); letter-spacing: 1px; color: var(--t2); text-transform: uppercase; }
+  .lrow { display: flex; gap: 6px; align-items: center; padding: 5px 6px; border-radius: 6px; margin-bottom: 4px; background: rgba(255,255,255,.02); border: 1px solid transparent; }
+  .lrow:hover { border-color: var(--br); }
+  .lnum { width: 16px; text-align: center; font: 9px var(--mono); color: var(--t2); flex-shrink: 0; }
+  .lrow .fin { padding: 4px 8px; font-size: 11.5px; }
+  .lrow .rm { width: 22px; height: 22px; border-radius: 5px; display: grid; place-items: center; color: var(--t2); cursor: pointer; flex-shrink: 0; font-size: 10px; }
+  .lrow:hover .rm { color: var(--p); background: rgba(246,82,97,.1); }
+  .laddbar { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+  .ladd { flex: 1; text-align: center; font: 10px var(--mono); letter-spacing: 1px; color: var(--s); border: 1px dashed rgba(25,243,247,.35); border-radius: 6px; padding: 6px; cursor: pointer; }
+  .ladd:hover { background: rgba(25,243,247,.06); }
+
+  .hint { font: 10.5px var(--ui); color: var(--t2); margin-top: 6px; font-style: italic; }
+
+  /* 5 ── sticky footer */
+  .foot { display: flex; align-items: center; gap: 8px; padding: 9px 14px; background: var(--bg0); border-top: 1px solid var(--br); flex-shrink: 0; }
+  .foot .status { font: 10px var(--mono); color: var(--t2); }
+  .spring { flex: 1; }
+  .btn { font: 700 11px var(--mono); letter-spacing: 1px; padding: 8px 16px; border-radius: 6px; cursor: pointer; border: 1px solid var(--br); color: var(--t1); background: var(--bg2); }
+  .btn.primary { color: #071; background: var(--ok); border-color: var(--ok); color: #05230d; }
+
+  /* preview */
+  .prev { width: 300px; flex-shrink: 0; border-left: 1px solid var(--br); background: var(--bg0); display: flex; flex-direction: column; }
+  .prev-hd { padding: 8px 12px; font: 10px var(--mono); letter-spacing: 1.5px; color: var(--t2); border-bottom: 1px solid var(--br); display: flex; gap: 6px; align-items: center; }
+  .prev-hd i { color: var(--s); }
+  .prev-bd { flex: 1; padding: 12px; overflow-y: auto; }
+  .bubble { max-width: 82%; background: var(--bg2); border: 1px solid var(--br); border-radius: 9px; padding: 6px 9px; font-size: 11px; margin-bottom: 6px; }
+  .bubble b { display: block; font: 700 9px var(--mono); letter-spacing: 1px; margin-bottom: 2px; }
+  .bubble.me { margin-left: auto; background: rgba(25,243,247,.09); border-color: rgba(25,243,247,.3); }
+
+  /* type-picker dropdown mock */
+  .pickwrap { position: relative; }
+  .picker { position: absolute; top: 44px; left: 10px; width: 560px; background: var(--bg2); border: 1px solid var(--s); border-radius: 10px; padding: 10px; z-index: 5; box-shadow: 0 18px 50px rgba(0,0,0,.7); }
+  .pgroup { font: 9px var(--mono); letter-spacing: 1.5px; color: var(--t2); margin: 8px 2px 5px; }
+  .pgrid { display: flex; flex-wrap: wrap; gap: 5px; }
+  .ppill { display: flex; align-items: center; gap: 6px; font: 10.5px var(--ui); padding: 5px 10px; border-radius: 6px; border: 1px solid var(--br); color: var(--t1); background: var(--bg1); cursor: pointer; }
+  .ppill:hover { border-color: var(--s); color: var(--s); }
+  .fa { font-family: var(--mono); font-style: normal; color: var(--s); font-size: 10px; }
+</style>
+</head>
+<body>
+<h1>NCM COMPOSER — REDESIGN MOCK</h1>
+<p class="note"><b>Thesis:</b> one pinned <b>type bar</b> on top (icon + name + one-line "what is this" + Change-type & template actions), then exactly three numbered sections — <b>① CONTENT</b> (open, the star), <b>② DELIVERY</b> (From/time/folder — one-line summary, opens on click), <b>③ SECURITY &amp; ACCESS</b> (encryption + player unlock rolls + network gating, collapsed with status chips). Save/Cancel pinned at the bottom — no more scrolling past nine fieldsets to find the button. List editors get a <b>column-label header</b> + numbered hover-rows instead of placeholder-guessing. Entry Identity is deleted (it never did anything).</p>
+
+<h2>MAIN VIEW — CHAT LOG example (list-engine type)</h2>
+<div class="mockwin">
+  <div class="titlebar">NEW FILE — RECEPTION-01 // m_takeda</div>
+  <div class="shell">
+    <div class="formcol">
+      <div class="typebar">
+        <div class="tico">💬</div>
+        <div class="tinfo">
+          <div class="tname">Chat Log</div>
+          <div class="tdesc">An IM transcript — bubbles, sender colors, deleted-message tombstones. <u>How does it work?</u></div>
+        </div>
+        <div class="tbtn swap">⇄ CHANGE TYPE</div>
+        <div class="tbtn" title="Load worked example">✨ EXAMPLE</div>
+        <div class="tbtn" title="Templates: save / load / import / export">🗂 TEMPLATES ▾</div>
+      </div>
+
+      <div class="scroller">
+        <!-- ① CONTENT -->
+        <div class="sec">
+          <div class="sec-hd"><span class="shash">①</span><span class="stitle">CONTENT</span><span class="ssum caret">▾</span></div>
+          <div class="sec-bd">
+            <div class="frow"><span class="flabel">App / Channel</span><input class="fin" value="NC-Whisper · #ops-night"><span class="flabel" style="width:auto">Device owner</span><input class="fin short" value="takeda"></div>
+
+            <div class="lhead"><span style="flex:0 0 110px">Sender</span><span style="flex:0 0 76px">Time</span><span style="flex:1">Message</span><span style="flex:0 0 58px">Flags</span></div>
+            <div class="lrow"><span class="lnum">1</span><input class="fin" style="flex:0 0 110px" value="takeda"><input class="fin" style="flex:0 0 76px" value="23:41"><input class="fin" value="Shipment moved up. Tonight."><select class="fin" style="flex:0 0 58px"><option>—</option></select><span class="rm">✕</span></div>
+            <div class="lrow"><span class="lnum">2</span><input class="fin" style="flex:0 0 110px" value="v_arasaka"><input class="fin" style="flex:0 0 76px" value="23:42"><input class="fin" value="Understood. Dock 7?"><select class="fin" style="flex:0 0 58px"><option>—</option></select><span class="rm">✕</span></div>
+            <div class="lrow"><span class="lnum">3</span><input class="fin" style="flex:0 0 110px" value="takeda"><input class="fin" style="flex:0 0 76px" value="23:44"><input class="fin" value="[message deleted]"><select class="fin" style="flex:0 0 58px"><option>del</option></select><span class="rm">✕</span></div>
+            <div class="laddbar"><div class="ladd">+ ADD MESSAGE</div></div>
+            <div class="hint">The "device owner" sender's bubbles sit on the right, like their own phone.</div>
+          </div>
+        </div>
+
+        <!-- ② DELIVERY (collapsed = one-line summary) -->
+        <div class="sec closed">
+          <div class="sec-hd"><span class="shash">②</span><span class="stitle">DELIVERY</span>
+            <span class="ssum"><span class="chip">FROM seccam-b2</span><span class="chip">MAR 12 2077</span><span class="chip">📁 EVIDENCE</span><span class="caret">▸</span></span>
+          </div>
+        </div>
+
+        <!-- ③ SECURITY & ACCESS (collapsed = status chips) -->
+        <div class="sec closed">
+          <div class="sec-hd"><span class="shash">③</span><span class="stitle">SECURITY &amp; ACCESS</span>
+            <span class="ssum"><span class="chip ok">OPEN ACCESS</span><span class="chip">ALL NETWORKS</span><span class="caret">▸</span></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="foot">
+        <span class="status">● unsaved</span>
+        <div class="spring"></div>
+        <div class="btn">CANCEL</div>
+        <div class="btn primary">＋ ADD ENTRY</div>
+      </div>
+    </div>
+
+    <aside class="prev">
+      <div class="prev-hd"><i>◉</i> LIVE PREVIEW — WHAT PLAYERS SEE</div>
+      <div class="prev-bd">
+        <div class="bubble"><b style="color:#a855f7">V_ARASAKA</b>Understood. Dock 7?</div>
+        <div class="bubble me"><b style="color:#19f3f7">TAKEDA</b>Shipment moved up. Tonight.</div>
+        <div class="bubble" style="opacity:.5;border-style:dashed"><b>TAKEDA</b><i>message deleted</i></div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<h2>TYPE PICKER — opens from "CHANGE TYPE" (the 18-pill wall becomes a grouped dropdown)</h2>
+<div class="mockwin" style="height:330px">
+  <div class="titlebar">NEW FILE — type picker open</div>
+  <div class="shell">
+    <div class="formcol pickwrap">
+      <div class="typebar" style="opacity:.5">
+        <div class="tico">💬</div>
+        <div class="tinfo"><div class="tname">Chat Log</div><div class="tdesc">An IM transcript…</div></div>
+        <div class="tbtn swap">⇄ CHANGE TYPE</div>
+      </div>
+      <div class="picker">
+        <div class="pgroup">COMMS &amp; RECORDS</div>
+        <div class="pgrid"><div class="ppill"><i class="fa">✉</i> Message</div><div class="ppill" style="border-color:var(--s);color:var(--s)"><i class="fa">💬</i> Chat Log</div><div class="ppill"><i class="fa">📇</i> Records DB</div><div class="ppill"><i class="fa">📄</i> Document</div><div class="ppill"><i class="fa">📝</i> Note</div></div>
+        <div class="pgroup">DATA &amp; FINANCE</div>
+        <div class="pgrid"><div class="ppill"><i class="fa">▦</i> Spreadsheet</div><div class="ppill"><i class="fa">🏦</i> Banking</div><div class="ppill"><i class="fa">€</i> Eddies</div><div class="ppill"><i class="fa">🗓</i> Calendar</div><div class="ppill"><i class="fa">≣</i> System Log</div><div class="ppill"><i class="fa">🔑</i> Credentials</div></div>
+        <div class="pgroup">MEDIA &amp; INTEL</div>
+        <div class="pgrid"><div class="ppill"><i class="fa">🖼</i> Gallery</div><div class="ppill"><i class="fa">🎙</i> AV Log</div><div class="ppill"><i class="fa">🕵</i> Dossier</div><div class="ppill"><i class="fa">📐</i> Schematic</div><div class="ppill"><i class="fa">📍</i> Location</div></div>
+        <div class="pgroup">HAZARDS</div>
+        <div class="pgrid"><div class="ppill"><i class="fa">☣</i> Malware</div><div class="ppill"><i class="fa">⚙</i> Payload</div></div>
+      </div>
+    </div>
+    <aside class="prev"><div class="prev-hd"><i>◉</i> LIVE PREVIEW</div><div class="prev-bd"></div></aside>
+  </div>
+</div>
+
+<h2>EXPANDED ② DELIVERY and ③ SECURITY (what opening them looks like)</h2>
+<div class="mockwin" style="height:430px">
+  <div class="titlebar">sections expanded</div>
+  <div class="shell">
+    <div class="formcol">
+      <div class="scroller" style="padding-top:12px">
+        <div class="sec">
+          <div class="sec-hd"><span class="shash">②</span><span class="stitle">DELIVERY</span><span class="ssum caret">▾</span></div>
+          <div class="sec-bd">
+            <div class="frow"><span class="flabel">From</span><input class="fin" value="seccam-b2"><span class="chip" style="color:var(--t2)">SYSTEM NODE — stays as typed</span></div>
+            <div class="frow"><span class="flabel">Timestamp</span><input class="fin" value="🕒 Mar 12 2077 · 23:41"><span class="flabel" style="width:auto">Folder</span><select class="fin short"><option>Evidence</option></select></div>
+          </div>
+        </div>
+        <div class="sec">
+          <div class="sec-hd"><span class="shash">③</span><span class="stitle">SECURITY &amp; ACCESS</span><span class="ssum"><span class="chip warn">ENCRYPTED DV 15</span><span class="caret">▾</span></span></div>
+          <div class="sec-bd">
+            <div class="frow"><span class="flabel">Encryption</span><label style="font-size:11.5px"><input type="checkbox" checked> Individually encrypted</label><span class="flabel" style="width:auto">DV</span><input class="fin" style="flex:0 0 56px" value="15"></div>
+            <div class="frow"><span class="flabel">Player unlock</span><label style="font-size:11.5px"><input type="checkbox"> Players can DECLASSIFY</label><select class="fin short"><option>Interface</option></select><input class="fin" style="flex:0 0 56px" value="15"><label style="font-size:11px;color:var(--t2)"><input type="checkbox"> fail = trace</label></div>
+            <div class="frow"><span class="flabel">Networks</span><label style="font-size:11.5px"><input type="checkbox"> Only visible on:</label><span class="chip">CORPNET ✕</span><div class="tbtn">+ add</div></div>
+            <div class="hint">Collapsed, this whole section reads as chips — "OPEN ACCESS" when nothing is enabled.</div>
+          </div>
+        </div>
+      </div>
+      <div class="foot"><span class="status">● unsaved</span><div class="spring"></div><div class="btn">CANCEL</div><div class="btn primary">＋ ADD ENTRY</div></div>
+    </div>
+    <aside class="prev"><div class="prev-hd"><i>◉</i> LIVE PREVIEW</div><div class="prev-bd"></div></aside>
+  </div>
+</div>
+
+<h2>SPREADSHEET — "hard to maneuver" fixes (not mocked pixel-perfect)</h2>
+<p class="note">
+  • <b>Focus mode</b>: a ⛶ button on the CONTENT header hides the preview pane and collapses ②/③ while you work the grid — the table gets the full 940px instead of ~470.<br>
+  • <b>Sticky grid toolbar</b> (format bar stays visible while the table scrolls) and sticky column letters/headers (already in the viewer, added to the editor).<br>
+  • <b>Enter = move down a cell</b>, Tab = across (keyboard data entry like a real sheet).<br>
+  • Row/column count chips + the CSV import button move INTO the grid toolbar so everything table-ish lives in one place.
+</p>
+</body>
+</html>

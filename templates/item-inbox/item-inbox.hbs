@@ -257,9 +257,43 @@
                 </div>
                 <div class="ncm-entry-title-area">
                   <div class="ncm-entry-type-label">{{contentTypeLabel}}</div>
-                  <div class="ncm-entry-title">{{subject}}</div>
+                  {{#if isFile}}
+                    {{!-- FILE (#37) — a machine artifact: filename + path, no
+                          sender row (its owner is a node, not an Agent). --}}
+                    <div class="ncm-entry-title ncm-entry-title--file">{{file.filename}}</div>
+                    <div class="ncm-entry-file">
+                      {{#if file.path}}<span class="ncm-entry-file__path">{{file.fullPath}}</span>{{/if}}
+                      {{#if file.owner}}<span class="ncm-entry-file__f"><b>owner</b> {{file.owner}}</span>{{/if}}
+                      <span class="ncm-entry-file__f"><b>size</b> {{file.size}}</span>
+                      {{#if file.hasCount}}<span class="ncm-entry-file__f"><b>{{file.countLabel}}</b> {{file.countValue}}</span>{{/if}}
+                    </div>
+                  {{else}}
+                    <div class="ncm-entry-title">{{subject}}</div>
+                    {{#if sender}}
+                      <div class="ncm-entry-sender">
+                        <span class="ncm-entry-sender__ava">{{#if sender.portrait}}<img src="{{sender.portrait}}" alt="">{{else}}{{sender.initials}}{{/if}}</span>
+                        <span class="ncm-entry-sender__nm">{{sender.name}}</span>
+                        {{#if sender.isDirectory}}<span class="ncm-entry-sender__em">{{sender.email}}</span>{{/if}}
+                        {{#if sender.canAdd}}
+                          <button type="button" class="ncm-entry-sender__act" data-action="addSenderContact" data-entry-id="{{id}}" data-tooltip="Add {{sender.name}} to my contacts"><i class="fas fa-user-plus"></i></button>
+                        {{/if}}
+                        {{#if sender.canReply}}
+                          <button type="button" class="ncm-entry-sender__act" data-action="composeToSender" data-entry-id="{{id}}" data-tooltip="Message {{sender.name}} from my Agent"><i class="fas fa-reply"></i></button>
+                        {{/if}}
+                      </div>
+                    {{/if}}
+                  {{/if}}
                 </div>
-                <div class="ncm-entry-timestamp">{{formattedDate}}</div>
+                <div class="ncm-entry-timestamp">{{#if isFile}}{{file.modifiedLabel}}{{else}}{{formattedDate}}{{/if}}</div>
+                {{!-- ANALYZE — on every typed file (its presence must not tell
+                      the player which one is a trojan). Rolls vs the file's
+                      sniff DV: unmasks a disguised payload, else "no anomalies". --}}
+                {{#unless isMessage}}
+                  <button type="button" data-action="analyzeFile" data-entry-id="{{id}}"
+                          class="ncm-shard-hdr-btn" data-tooltip="Analyze this file — see what it really is. Not every file has something to find.">
+                    <i class="fas fa-magnifying-glass"></i>
+                  </button>
+                {{/unless}}
                 {{#if ../isGM}}
                   <button type="button" data-action="editEntry" data-entry-id="{{id}}"
                           class="ncm-shard-hdr-btn" title="Edit entry">
