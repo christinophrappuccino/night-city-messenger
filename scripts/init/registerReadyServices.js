@@ -102,6 +102,7 @@ export function registerReadyServices(initializer) {
      * @param {object} [opts] { target?:{kind,item,accountId?,onSave?}, program?, libId? }
      */
     game.nightcity.openMalwareWorkshop = (opts = {}) => {
+      if (!game.user?.isGM) { ui.notifications?.warn('NCM | The Malware Workshop is GM-only.'); return null; }
       const existing = Object.values(ui.windows).find((w) => w.id === 'ncm-malware-workshop');
       if (existing) existing.close({ animate: false });
       const app = new MalwareWorkshopApp(opts);

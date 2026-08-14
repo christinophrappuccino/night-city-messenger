@@ -189,10 +189,15 @@ export async function runUpload({ actor, program, targetItem, accountId = null, 
     return { success: true, outcome, ran: true, report: result };
   }
 
+  // Honor the authored trigger (kind + any detail); default to onLogin. The target
+  // account is folded in so onLogin fires when THAT mailbox is opened.
+  const trigger = p.trigger?.kind ? { ...p.trigger } : { kind: 'onLogin' };
+  if (tgtAcct && !trigger.accountId) trigger.accountId = tgtAcct;
+
   const resident = {
     effectType: p.effectType || 'plant',
     params: { ...(p.params || {}), accountId: tgtAcct, name },
-    trigger: p.trigger || { kind: 'onLogin', ...(tgtAcct ? { accountId: tgtAcct } : {}) },
+    trigger,
     provenance: { plantedBy: actor.id, plantedAt: _nowIso(), forgeQuality, sourceLabel: p.sourceLabel || 'uploaded program' },
     stealthDV: stealthDVFromQuality(forgeQuality, p.stealthDV),
     // Re-uploading the same program at the same mailbox overwrites that plant

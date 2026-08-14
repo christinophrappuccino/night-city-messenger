@@ -1658,6 +1658,7 @@ export class TerminalViewerApp extends BaseApplication {
           const params = {};
           if (execVerb === 'deployICE' && cd.iceActorId) params.iceActorId = cd.iceActorId;
           out.push({ ...base, effectType: execVerb, family: 'execute', params,
+            trigger: cd.uploadTrigger || undefined,   // honor the authored trigger (kind + detail)
             description: programEffectInfo(execVerb).blurb || 'installs a program' });
         } else {
           // The planted copy must NOT carry the upload-config keys forward.

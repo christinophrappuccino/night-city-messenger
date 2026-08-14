@@ -908,18 +908,26 @@ export class DataShardComposer extends BaseApplication {
 
   /** Hand program authoring (payload/malware) off to the Malware Workshop. */
   _redirectToWorkshop() {
-    const item = this._item;
-    const target = item
-      ? { kind: this._isTerminal ? 'terminal' : 'shard', item, accountId: this._target?.accountId ?? null, onSave: this.onSave }
-      : null;
-    const opts = { target, type: this._selectedType === CONTENT_TYPES.MALWARE ? 'malware' : 'payload' };
-    // Editing an existing program entry → load it and replace it on save.
-    if (this.editData?.entryId && this.editData.contentType === this._selectedType) {
-      opts.entry = { contentType: this.editData.contentType, contentData: this.editData.contentData, subject: this.editData.subject };
-      opts.editEntryId = this.editData.entryId;
+    try {
+      const item = this._item;
+      const target = item
+        ? { kind: this._isTerminal ? 'terminal' : 'shard', item, accountId: this._target?.accountId ?? null, onSave: this.onSave }
+        : null;
+      const opts = { target, type: this._selectedType === CONTENT_TYPES.MALWARE ? 'malware' : 'payload' };
+      // Editing an existing program entry → load it and replace it on save.
+      if (this.editData?.entryId && this.editData.contentType === this._selectedType) {
+        opts.entry = { contentType: this.editData.contentType, contentData: this.editData.contentData, subject: this.editData.subject };
+        opts.editEntryId = this.editData.entryId;
+      }
+      game.nightcity.openMalwareWorkshop(opts);
+      this.close();
+    } catch (err) {
+      // If the workshop can't open, fall back to the composer's own fieldset instead
+      // of leaving a blank window (the early-return guard would otherwise stick).
+      log.error(`Workshop redirect failed: ${err.message}`);
+      this._redirecting = false;
+      this.render();
     }
-    game.nightcity.openMalwareWorkshop(opts);
-    this.close();
   }
 
   // (Entry Identity icon/accent handlers removed 2026-07-12 — the fieldset was

@@ -104,6 +104,20 @@ export function defaultProgram(type = 'payload') {
   };
 }
 
+/**
+ * The resident trigger a program installs when uploaded. The KIND is always honored
+ * (onLogin/onDate/onAction/onHeat); onAction/onHeat carry their detail from the
+ * workshop's trigger sub-fields. onDate needs a real timestamp the workshop can't yet
+ * author (free text), so it's left for the reaper to skip until a date picker lands.
+ */
+function buildUploadTrigger(program) {
+  const kind = program.trigger || 'onLogin';
+  const t = { kind };
+  if (kind === 'onAction' && program.params?.__trigAction) t.action = program.params.__trigAction;
+  else if (kind === 'onHeat') t.atLeast = Number(program.params?.__trigHeat) || 50;
+  return t;
+}
+
 /** Per-verb params, pulled from program.params by the catalog's field names. */
 function verbParams(program) {
   const info = abilityInfo(program.verb);
@@ -156,7 +170,7 @@ export function programToEntry(program) {
       uploadTraceOnFail: !!p.decoy,
       ...(Number(p.detectDV) > 0 ? { uploadStealthDV: Number(p.detectDV) } : {}),
       ...(isExec ? { uploadEffect: p.verb } : {}),
-      ...(p.trigger && isExec ? { uploadTrigger: { kind: p.trigger } } : {}),
+      ...(isExec && p.trigger ? { uploadTrigger: buildUploadTrigger(p) } : {}),
     };
     return { ...base, contentType: CONTENT_TYPES.MALWARE, contentData };
   }
