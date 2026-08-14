@@ -1046,10 +1046,10 @@
   background: var(--ncm-text-muted);
 }
 
-.ncm-app {
-  scrollbar-width: thin;
-  scrollbar-color: var(--ncm-bg-elevated) var(--ncm-bg-deep);
-}
+/* Scrollbars now live in base/scrollbars.css — this rule only ever hit the
+   .ncm-app element itself (Foundry's `* { scrollbar-color }` re-asserted its
+   own bar on every descendant, since a directly-matched declaration beats an
+   inherited one). Kept as a pointer; don't re-add scrollbar rules here. */
 
 
 /* ═══════════════════════════════════════════════════════════════════════════

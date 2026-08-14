@@ -40,7 +40,7 @@ const PRIORITY_ICONS = { critical: 'fa-triangle-exclamation', urgent: 'fa-circle
  * (`TerminalService.getExfilPolicy`) uses.
  */
 const EXFIL_META = {
-  agent:   { order: 1, label: 'To my Agent',    icon: 'fas fa-download',    accent: 'cyan',   title: 'Download to Agent', confirm: 'Download', intro: 'Copy this file to your Agent.', ok: 'DOWNLOAD COMPLETE', fail: 'DOWNLOAD TRACED' },
+  agent:   { order: 1, label: 'To my Agent',    icon: 'fas fa-download',    accent: 'cyan',   title: 'Download to Agent', confirm: 'Download', intro: 'AltLink this file across to your Agent.', ok: 'DOWNLOAD COMPLETE', fail: 'DOWNLOAD TRACED' },
   shard:   { order: 2, label: 'Burn to Shard',   icon: 'fas fa-sd-card',     accent: 'gold',   title: 'Burn to Data Shard', confirm: 'Burn', intro: 'Etch this file onto a physical data shard — your go-bag copy.', ok: 'BURN COMPLETE', fail: 'BURN TRACED' },
   forward: { order: 3, label: 'Forward',         icon: 'fas fa-share',       accent: 'cyan',   title: 'Forward to Contact', confirm: 'Forward', intro: 'Send this file on to one of your contacts as a message.', ok: 'FORWARD SENT', fail: 'FORWARD TRACED' },
   leak:    { order: 4, label: 'Leak to the Net', icon: 'fas fa-tower-broadcast', accent: 'red', title: 'Leak to the Net', confirm: 'Leak', intro: 'Dump this file to the open Net. Once it’s out, it’s out — and loud.', ok: 'LEAKED', fail: 'LEAK TRACED' },

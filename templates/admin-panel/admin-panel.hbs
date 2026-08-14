@@ -88,6 +88,10 @@
             data-action="switchTab" data-tab="terminals">
       <i class="fas fa-terminal"></i> Terminals
     </button>
+    <button class="ncm-admin-tab {{#if (eq activeTab 'security')}}ncm-admin-tab--active{{/if}}"
+            data-action="switchTab" data-tab="security">
+      <i class="fas fa-shield-halved"></i> Security
+    </button>
     <button class="ncm-admin-tab {{#if (eq activeTab 'spam')}}ncm-admin-tab--active{{/if}}"
             data-action="switchTab" data-tab="spam">
       <i class="fas fa-envelopes-bulk"></i> Spam
@@ -112,6 +116,8 @@
     {{> "modules/cyberpunkred-messenger/templates/admin-panel/tab-shards.hbs"}}
 
     {{> "modules/cyberpunkred-messenger/templates/admin-panel/tab-terminals.hbs"}}
+
+    {{> "modules/cyberpunkred-messenger/templates/admin-panel/tab-security.hbs"}}
 
     {{> "modules/cyberpunkred-messenger/templates/admin-panel/tab-spam.hbs"}}
 

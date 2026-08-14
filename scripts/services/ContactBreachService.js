@@ -243,6 +243,13 @@ export class ContactBreachService {
     // Sound
     this.soundService?.play('hack-fail');
 
+    // Trace funnel (§6a) — a failed contact-ICE breach.
+    game.nightcity?.traceService?.fireTrace({
+      actor, action: 'contact-breach', objectName: displayName, targetKind: 'contact', targetContactId: contactId, severity: 'hostile',
+      dv: rollResult?.dc ?? null,
+      margin: (rollResult?.total != null && rollResult?.dc != null) ? rollResult.total - rollResult.dc : null,
+    });
+
     // Toast
     this.notificationService?.showToastV2({
       type: 'error',

@@ -1,0 +1,127 @@
+/* ============================================================================
+ * ResidentConsole — the "a planted program just triggered" prompt.
+ * The FUI family: SecurityConsole / BankHeist / OperatorSelect / UploadConsole.
+ * Appended into an open viewer, so every colour resolves from THAT terminal's
+ * --ncm-* preset. Depends on [data-ct-color]{--ct-c} from content-types.css, so
+ * it is @imported after it (same rule as security-console.css).
+ *
+ * Layer order note: 130 = SecurityConsole (topmost, it can open over a lightbox).
+ * This prompt never opens over one, but it IS the thing being interacted with when
+ * it appears, so it sits at the same tier.
+ * ========================================================================== */
+
+.ncm-rescon-backdrop {
+  position: fixed; inset: 0; z-index: 130;
+  display: flex; align-items: center; justify-content: center;
+  background: color-mix(in srgb, #000 72%, transparent);
+  backdrop-filter: blur(2px);
+  opacity: 0; transition: opacity .18s ease;
+}
+.ncm-rescon-backdrop.is-in { opacity: 1; }
+.ncm-rescon-backdrop.is-closing { opacity: 0; }
+
+/* The PANEL must not be the scroller (the standing modal rule): if it scrolls, the
+   pinned top bar and the Fire/Defuse footer scroll out of view — and its own corner
+   brackets (inset -1px, decorative) would count as overflow and paint a scrollbar on
+   a panel whose content already fits. So the panel is a flex column with visible
+   overflow, and the BODY scrolls. */
+.ncm-rescon {
+  position: relative;
+  width: min(560px, 92vw); max-height: 88vh;
+  display: flex; flex-direction: column; overflow: visible;
+  background: var(--ncm-bg-base, #12121a);
+  border: 1px solid color-mix(in srgb, var(--ct-c, var(--ncm-secondary)) 45%, transparent);
+  box-shadow: 0 0 40px color-mix(in srgb, #000 60%, transparent),
+              0 0 2px color-mix(in srgb, var(--ct-c, var(--ncm-secondary)) 60%, transparent);
+  transform: translateY(8px) scale(.99); transition: transform .22s cubic-bezier(.22, 1, .36, 1);
+  /* Player-readable surface: opt back in (core + CPR both ship `* {user-select:none}`). */
+  user-select: text;
+}
+.ncm-rescon, .ncm-rescon * { user-select: text; }
+.ncm-rescon button, .ncm-rescon [data-act] { user-select: none; }
+.ncm-rescon-backdrop.is-in .ncm-rescon { transform: none; }
+
+/* corner brackets — the family's signature */
+.ncm-rescon__br { position: absolute; width: 12px; height: 12px; border: 2px solid var(--ct-c, var(--ncm-secondary)); opacity: .85; }
+.ncm-rescon__br--tl { top: -1px; left: -1px; border-right: 0; border-bottom: 0; }
+.ncm-rescon__br--tr { top: -1px; right: -1px; border-left: 0; border-bottom: 0; }
+.ncm-rescon__br--bl { bottom: -1px; left: -1px; border-right: 0; border-top: 0; }
+.ncm-rescon__br--br { bottom: -1px; right: -1px; border-left: 0; border-top: 0; }
+
+.ncm-rescon__top {
+  flex: 0 0 auto;
+  display: flex; align-items: center; gap: 9px; padding: 10px 14px;
+  border-bottom: 1px solid color-mix(in srgb, var(--ct-c, var(--ncm-secondary)) 30%, transparent);
+  background: color-mix(in srgb, var(--ct-c, var(--ncm-secondary)) 10%, transparent);
+  color: var(--ct-c, var(--ncm-secondary));
+}
+.ncm-rescon__title { font-family: var(--ncm-font-display, sans-serif); font-size: 12px; font-weight: 700; letter-spacing: .1em; }
+.ncm-rescon__host { margin-left: auto; font-family: var(--ncm-font-mono, monospace); font-size: 10px; opacity: .7; }
+
+/* the scroller — flex:1 + min-height:0 so it shrinks inside the capped panel,
+   overflow-x pinned so a 1px overrun can't spawn a phantom horizontal bar */
+.ncm-rescon__body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 14px; }
+.ncm-rescon__lead { font-family: var(--ncm-font-body, sans-serif); font-size: 13px; line-height: 1.6; color: var(--ncm-text-primary, #ededf2); }
+.ncm-rescon__lead b { color: var(--ct-c, var(--ncm-secondary)); }
+
+/* facts grid */
+.ncm-rescon__facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 6px 14px; margin: 12px 0; }
+.ncm-rescon__fact { display: flex; align-items: baseline; gap: 8px; }
+.ncm-rescon__fact .k { font-family: var(--ncm-font-display, sans-serif); font-size: 9px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ncm-text-muted, #7a7a92); flex: 0 0 74px; }
+.ncm-rescon__fact .v { font-family: var(--ncm-font-mono, monospace); font-size: 11px; color: var(--ncm-text-secondary, #b9b9cc); }
+.ncm-rescon__fact .v.is-ok { color: var(--ncm-success, #00ff41); }
+.ncm-rescon__fact .v.is-warn { color: var(--ncm-warning, #f7c948); }
+.ncm-rescon__fact .v.is-fail { color: var(--ncm-danger, #ff0033); }
+
+/* the netrun callout — the reason this prompt exists at all */
+.ncm-rescon__net {
+  padding: 10px 12px; margin-top: 4px;
+  border: 1px solid color-mix(in srgb, var(--ncm-secondary, #19f3f7) 30%, transparent);
+  background: color-mix(in srgb, var(--ncm-secondary, #19f3f7) 7%, transparent);
+}
+.ncm-rescon__net-hd { display: flex; align-items: center; gap: 7px; font-family: var(--ncm-font-display, sans-serif); font-size: 10px; font-weight: 700; letter-spacing: .08em; color: var(--ncm-secondary, #19f3f7); margin-bottom: 6px; }
+.ncm-rescon__net p { margin: 0 0 5px; font-family: var(--ncm-font-body, sans-serif); font-size: 12px; line-height: 1.55; color: var(--ncm-text-secondary, #b9b9cc); }
+.ncm-rescon__net p:last-child { margin-bottom: 0; }
+.ncm-rescon__net-verb { font-family: var(--ncm-font-mono, monospace) !important; font-size: 11px !important; color: var(--ncm-text-muted, #7a7a92) !important; }
+.ncm-rescon__net-verb b { color: var(--ncm-secondary, #19f3f7); }
+.ncm-rescon__net-cfg { font-size: 11px !important; color: var(--ncm-text-muted, #7a7a92) !important; font-style: italic; }
+
+.ncm-rescon__foot {
+  flex: 0 0 auto;
+  display: flex; align-items: center; gap: 8px; padding: 10px 14px;
+  border-top: 1px solid color-mix(in srgb, var(--ncm-border, #2a2a45) 80%, transparent);
+  background: color-mix(in srgb, #000 22%, transparent);
+}
+.ncm-rescon__grow { flex: 1; }
+
+/* Foundry styles buttons aggressively — reset structurally, then paint. */
+.ncm-rescon button.ncm-rescon__btn {
+  appearance: none !important; -webkit-appearance: none !important;
+  width: auto !important; min-width: 0 !important; min-height: 0 !important; height: auto !important;
+  margin: 0 !important; box-shadow: none !important; flex: 0 0 auto !important; line-height: 1.2 !important;
+  display: inline-flex !important; align-items: center; gap: 6px; cursor: pointer;
+  font-family: var(--ncm-font-display, sans-serif) !important; font-size: 11px !important; font-weight: 700 !important;
+  letter-spacing: .04em; text-transform: uppercase;
+  padding: 7px 13px !important; border-radius: 2px !important;
+  color: var(--ncm-text-secondary, #b9b9cc) !important;
+  background: color-mix(in srgb, var(--ncm-text-primary, #ededf2) 6%, transparent) !important;
+  border: 1px solid var(--ncm-border, #2a2a45) !important;
+  transition: all .15s ease;
+}
+.ncm-rescon button.ncm-rescon__btn:hover { color: var(--ncm-text-primary, #ededf2) !important; border-color: var(--ncm-text-muted, #7a7a92) !important; }
+.ncm-rescon button.ncm-rescon__btn--defuse:hover { color: var(--ncm-secondary, #19f3f7) !important; border-color: var(--ncm-secondary, #19f3f7) !important; background: color-mix(in srgb, var(--ncm-secondary, #19f3f7) 12%, transparent) !important; }
+.ncm-rescon button.ncm-rescon__btn--fire {
+  color: var(--ct-c, var(--ncm-danger)) !important;
+  border-color: color-mix(in srgb, var(--ct-c, var(--ncm-danger)) 55%, transparent) !important;
+  background: color-mix(in srgb, var(--ct-c, var(--ncm-danger)) 12%, transparent) !important;
+}
+.ncm-rescon button.ncm-rescon__btn--fire:hover {
+  color: var(--ncm-text-inverse, #0a0a12) !important;
+  background: var(--ct-c, var(--ncm-danger)) !important;
+  border-color: var(--ct-c, var(--ncm-danger)) !important;
+}
+.ncm-rescon button.ncm-rescon__btn i:only-child { margin: 0 !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ncm-rescon-backdrop, .ncm-rescon { transition: none !important; }
+}

@@ -106,6 +106,12 @@
         <option value="recent" {{#if (eq contactSummary.contactSort 'recent')}}selected{{/if}}>Recent</option>
         <option value="org" {{#if (eq contactSummary.contactSort 'org')}}selected{{/if}}>Organization</option>
       </select>
+      <select class="ncm-ct-search__sort ncm-ct-search__group" data-tooltip="How the accordion groups contacts">
+        <option value="role" {{#if (eq contactSummary.contactGroupBy 'role')}}selected{{/if}}>Group: Role</option>
+        <option value="org" {{#if (eq contactSummary.contactGroupBy 'org')}}selected{{/if}}>Group: Organization</option>
+        <option value="trust" {{#if (eq contactSummary.contactGroupBy 'trust')}}selected{{/if}}>Group: Trust</option>
+        <option value="none" {{#if (eq contactSummary.contactGroupBy 'none')}}selected{{/if}}>Group: None</option>
+      </select>
       <span class="ncm-ct-search__count">{{contactSummary.filteredCount}} of {{contactSummary.total}}</span>
     </div>
 
@@ -219,6 +225,9 @@
                   <span class="ncm-ct-badge ncm-ct-badge--ice"><i class="fas fa-lock"></i> ICE DV{{this.encryptionDV}}</span>
                 {{else if this.noInbox}}
                   <span class="ncm-ct-badge ncm-ct-badge--unverified"><i class="fas fa-inbox"></i> No Inbox</span>
+                {{/if}}
+                {{#if this.sendOnly}}
+                  <span class="ncm-ct-badge ncm-ct-badge--sendonly" data-tooltip="System address — players can't message, reply to, or add it"><i class="fas fa-tower-broadcast"></i> Send-only</span>
                 {{/if}}
               </div>
               <div class="ncm-ct-row__line2">

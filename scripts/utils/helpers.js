@@ -48,8 +48,15 @@ export function deepMerge(target, source) {
 }
 
 /**
- * Localize a string key
- * @param {string} key - Dot-notation i18n key (e.g., 'NCM.Messages.Inbox')
+ * Localize a string key.
+ *
+ * NOTE: nothing calls this — NCM is not localized, and copy lives inline in the
+ * JS/templates. `languages/en.json` holds only the handful of keys Foundry
+ * resolves for us (scene controls, the Contacts window title). Kept as the entry
+ * point if real i18n is ever wanted; a key absent from en.json comes back as the
+ * key text itself, so run `node tools/audit-i18n.cjs` if you start using it.
+ *
+ * @param {string} key - Dot-notation i18n key (e.g., 'NCM.SceneControls.OpenInbox')
  * @param {object} [data] - Interpolation data
  * @returns {string}
  */

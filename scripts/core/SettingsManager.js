@@ -40,8 +40,8 @@ export class SettingsManager {
     // ─── World Settings (GM only) ───
 
     game.settings.register(MODULE_ID, 'customNetworks', {
-      name: 'NCM.Settings.CustomNetworks.Name',
-      hint: 'NCM.Settings.CustomNetworks.Hint',
+      name: 'Custom Networks',
+      hint: 'GM-defined custom networks',
       scope: 'world',
       config: false,
       type: Array,
@@ -49,7 +49,7 @@ export class SettingsManager {
     });
 
     game.settings.register(MODULE_ID, 'coreNetworkOverrides', {
-      name: 'NCM.Settings.CoreNetworkOverrides.Name',
+      name: 'Core Network Overrides',
       hint: 'GM overrides for core network settings (security, effects, theme).',
       scope: 'world',
       config: false,
@@ -58,8 +58,8 @@ export class SettingsManager {
     });
 
     game.settings.register(MODULE_ID, 'scheduledMessages', {
-      name: 'NCM.Settings.ScheduledMessages.Name',
-      hint: 'NCM.Settings.ScheduledMessages.Hint',
+      name: 'Scheduled Messages',
+      hint: 'Messages awaiting delivery',
       scope: 'world',
       config: false,
       type: Array,
@@ -67,7 +67,7 @@ export class SettingsManager {
     });
 
     game.settings.register(MODULE_ID, 'networkAccessLog', {
-      name: 'NCM.Settings.NetworkAccessLog.Name',
+      name: 'Network Access Log',
       hint: 'Persistent network access log entries.',
       scope: 'world',
       config: false,
@@ -76,8 +76,8 @@ export class SettingsManager {
     });
 
     game.settings.register(MODULE_ID, 'masterContacts', {
-      name: 'NCM.Settings.MasterContacts.Name',
-      hint: 'NCM.Settings.MasterContacts.Hint',
+      name: 'Master Contact List',
+      hint: 'GM global contact directory',
       scope: 'world',
       config: false,
       type: Array,
@@ -85,7 +85,7 @@ export class SettingsManager {
     });
 
     game.settings.register(MODULE_ID, 'customRoles', {
-      name: 'NCM.Settings.CustomRoles.Name',
+      name: 'Custom Contact Roles',
       hint: 'GM-defined custom contact roles with custom icons and colors.',
       scope: 'world',
       config: false,
@@ -94,8 +94,8 @@ export class SettingsManager {
     });
 
     game.settings.register(MODULE_ID, 'requireContactVerification', {
-      name: 'NCM.Settings.RequireContactVerification',
-      hint: 'NCM.Settings.RequireContactVerificationHint',
+      name: 'Require Contact Verification',
+      hint: 'When enabled, players can only message contacts whose email matches the master contact directory or a registered actor. Disable for a more casual experience.',
       scope: 'world',       // GM-controlled, affects all players
       config: true,          // Visible in module settings
       type: Boolean,
@@ -107,12 +107,28 @@ export class SettingsManager {
     });
 
     game.settings.register(MODULE_ID, 'subjectThreading', {
-      name: 'NCM.Settings.SubjectThreading',
-      hint: 'NCM.Settings.SubjectThreadingHint',
+      name: 'Smart Conversation Grouping',
+      hint: 'Group messages into a conversation thread when they share a subject and a participant, in addition to replies and forwards. Catches forwarded and older messages. Disable to thread strictly by reply/forward links.',
       scope: 'world',       // GM-controlled, affects how conversations group for everyone
       config: true,
       type: Boolean,
       default: true,
+    });
+
+    // The Agent folder that catches everything exfiltrated off a terminal —
+    // downloaded mail, burned intel, captured camera frames. Default **EXFIL**:
+    // the action is "exfiltrate", so the destination shares its vocabulary (the
+    // old "Recovered" was the only word in the flow that didn't, and it implies
+    // something was LOST and found — a live-feed frame capture never was).
+    // Renameable because diegetic labels vary per table, exactly like the
+    // terminals' own folder names.
+    game.settings.register(MODULE_ID, 'exfilFolderName', {
+      name: 'Exfil Folder Name',
+      hint: 'What the Agent calls the folder holding everything pulled off a terminal (downloads, burns, captured camera frames). Blank = "Exfil". Try "Salvage", "Cache", "Recovered", "The Haul"…',
+      scope: 'world',
+      config: true,
+      type: String,
+      default: 'Exfil',
     });
 
     game.settings.register(MODULE_ID, 'notifyGmNpcMail', {
@@ -240,7 +256,7 @@ export class SettingsManager {
     // ─── Time Provider Settings ───
 
     game.settings.register(MODULE_ID, 'dateFormat', {
-      name: 'NCM.Settings.DateFormat.Name',
+      name: 'Date Format',
       hint: 'How dates are displayed across all NCM windows.',
       scope: 'world',
       config: true,
@@ -268,7 +284,7 @@ export class SettingsManager {
     });
 
     game.settings.register(MODULE_ID, 'timeFormat', {
-      name: 'NCM.Settings.TimeFormat.Name',
+      name: 'Time Format',
       hint: 'Display times in 24-hour (22:00) or 12-hour (10:00 PM) format across all NCM windows.',
       scope: 'world',
       config: true,
@@ -281,7 +297,7 @@ export class SettingsManager {
     });
 
     game.settings.register(MODULE_ID, 'timeProvider', {
-      name: 'NCM.Settings.TimeProvider.Name',
+      name: 'Time Source',
       hint: 'How NCM determines in-game time. Auto-detect picks the best available module. Disguised runs real-time but displays a fictional date.',
       scope: 'world',
       config: true,
@@ -335,7 +351,7 @@ export class SettingsManager {
     // ─── Email Identity Settings ───
 
     game.settings.register(MODULE_ID, 'emailDomains', {
-      name: 'NCM.Settings.EmailDomains.Name',
+      name: 'Email Domains',
       hint: 'List of available email domains (managed via Admin Panel).',
       scope: 'world',
       config: false,
@@ -416,8 +432,8 @@ export class SettingsManager {
     });
 
     game.settings.register(MODULE_ID, 'debugMode', {
-      name: 'NCM.Settings.DebugMode.Name',
-      hint: 'NCM.Settings.DebugMode.Hint',
+      name: 'Debug Mode',
+      hint: 'Enable verbose console logging',
       scope: 'world',
       config: true,
       type: Boolean,
@@ -427,16 +443,29 @@ export class SettingsManager {
     // ─── Client Settings (per-player) ───
 
     game.settings.register(MODULE_ID, 'playerTheme', {
-      name: 'NCM.Settings.PlayerTheme.Name',
-      hint: 'NCM.Settings.PlayerTheme.Hint',
+      name: 'Terminal Theme',
+      hint: "Customize your terminal's appearance",
       scope: 'client',
       config: false,
       type: Object,
       default: foundry.utils.deepClone(DEFAULTS.PLAYER_THEME),
     });
 
+    // The character this client is ACTING AS in the terminal / shard viewers
+    // (rolls, siphon/claim target, skill + stat reads). Defaults to the user's
+    // assigned character; the OPERATOR chip switches it. Client-scoped — it's
+    // a per-player view choice, not world state.
+    game.settings.register(MODULE_ID, 'operatorActorId', {
+      name: 'Operator Character',
+      hint: 'The character this client acts as in terminals and data shards.',
+      scope: 'client',
+      config: false,
+      type: String,
+      default: '',
+    });
+
     game.settings.register(MODULE_ID, 'customPresets', {
-      name: 'NCM.Settings.CustomPresets.Name',
+      name: 'Custom Theme Presets',
       hint: 'User-saved custom theme presets.',
       scope: 'client',
       config: false,
@@ -453,6 +482,15 @@ export class SettingsManager {
       default: [],
     });
 
+    game.settings.register(MODULE_ID, 'terminalPinsAutoShow', {
+      name: 'Terminal Pins — Auto-Show Map Notes',
+      hint: 'Terminals dragged onto a scene become clickable map pins. Foundry hides map pins until a client enables "Toggle Display of Map Notes" (off by default); this auto-enables that toggle for everyone at login so terminal pins are always visible. Turn off to leave the core toggle alone.',
+      scope: 'world',
+      config: true,
+      type: Boolean,
+      default: true,
+    });
+
     game.settings.register(MODULE_ID, 'terminalThemePresets', {
       name: 'Terminal Theme Presets',
       hint: 'GM-saved terminal themes ([{ name, theme }]) — world-scoped so one look can be reused across terminals.',
@@ -462,13 +500,138 @@ export class SettingsManager {
       default: [],
     });
 
+    game.settings.register(MODULE_ID, 'contactsGroupBy', {
+      name: 'Contacts Grouping',
+      hint: 'How the Admin Contacts accordion groups contacts (role / org / trust / none). Client-scoped — each GM keeps their own view.',
+      scope: 'client',
+      config: false,
+      type: String,
+      default: 'role',
+    });
+
+    game.settings.register(MODULE_ID, 'entryTemplates', {
+      name: 'Entry Templates',
+      hint: 'GM-saved content-entry templates ([{ id, name, type, entry }]) — reusable typed files for shards/terminals, loadable in the composer.',
+      scope: 'world',
+      config: false,
+      type: Array,
+      default: [],
+    });
+
     game.settings.register(MODULE_ID, 'adminTheme', {
-      name: 'NCM.Settings.AdminTheme.Name',
+      name: 'Admin Panel Theme',
       hint: 'Appearance of the GM Admin Panel (separate from the player theme).',
       scope: 'client',
       config: false,
       type: Object,
       default: foundry.utils.deepClone(DEFAULTS.ADMIN_THEME),
+    });
+
+    game.settings.register(MODULE_ID, 'operatorGate', {
+      name: 'Operator Capability Gate',
+      hint: 'WHO can use the OPERATOR tools (upload / hacking). Default is ungated; a GM can require a role / skill rank / gear so netrunning is limited to capable characters.',
+      scope: 'world',
+      config: false,
+      type: Object,
+      default: foundry.utils.deepClone(DEFAULTS.OPERATOR_GATE),
+    });
+
+    /*
+     * HOW gated hack/upload actions resolve (design §5) — the sibling of
+     * operatorGate (WHO can act). auto: roll it, self-contained (default —
+     * an abstraction of netrunning). flagged: roll it, but post a GM card
+     * naming the NET-action shape so the table can fold it into their run.
+     * gm: don't roll — the netrunner runs the NET at the table and the GM
+     * calls pass/fail (NCM is just the state layer). Edited in Admin →
+     * Security next to Operator Access; per-terminal override in the
+     * terminal config ('inherit' follows this).
+     */
+    game.settings.register(MODULE_ID, 'hackResolution', {
+      name: 'Netrunning Resolution',
+      hint: 'How hack/upload checks resolve: auto-roll, auto-roll + GM NET-action card, or GM-adjudicated at the table.',
+      scope: 'world',
+      config: false,
+      type: String,
+      choices: { auto: 'Auto-roll', flagged: 'Auto-roll + NET card', gm: 'GM adjudicates' },
+      default: 'auto',
+    });
+
+    game.settings.register(MODULE_ID, 'securityLogSeen', {
+      name: 'Security Log Last Seen',
+      hint: 'Client timestamp of the last time this GM opened the Admin Security tab — drives the NEW markers.',
+      scope: 'client',
+      config: false,
+      type: Number,
+      default: 0,
+    });
+
+    game.settings.register(MODULE_ID, 'traceLog', {
+      name: 'Trace Log',
+      hint: 'Durable GM record of every trace event (who tripped what, where, when). Surfaced in the Admin Security tab.',
+      scope: 'world',
+      config: false,
+      type: Array,
+      default: [],
+    });
+
+    game.settings.register(MODULE_ID, 'traceCountdowns', {
+      name: 'Trace Countdowns',
+      hint: 'Active "the corp found you" trace countdowns (GM escalation). Fire on expiry via the time provider.',
+      scope: 'world',
+      config: false,
+      type: Array,
+      default: [],
+    });
+
+    /**
+     * What happens when a planted program's trigger matches (e.g. the target logs
+     * in). The default PROPOSES rather than auto-fires because a plant firing may
+     * be the moment the table wants to actually run the NET — but that intent was
+     * invisible, so the prompt now says so, and a table that doesn't play it that
+     * way can just switch this to Automatic.
+     */
+    game.settings.register(MODULE_ID, 'residentFireMode', {
+      name: 'Planted Programs — When They Fire',
+      hint: 'A planted program (an uploaded forgery) waits for its trigger, e.g. the target\'s next login. '
+        + 'Automatically (default): it fires the moment it triggers and the GM is just told. '
+        + 'Ask me: the GM gets a prompt to fire, defuse, or leave it — the pause where a table can run the netrun before deciding. '
+        + 'Only when I say so: it never prompts; it waits for you to fire it from Admin → Security.',
+      scope: 'world',
+      config: true,
+      type: String,
+      default: 'auto',
+      choices: {
+        auto: 'Automatically, no prompt',
+        propose: 'Ask me (pause for the netrun)',
+        manual: 'Only when I say so (Security tab)',
+      },
+    });
+
+    game.settings.register(MODULE_ID, 'securityAlertLevel', {
+      name: 'Security Alert Level',
+      hint: 'How loudly the GM is pinged when a trace fires: every / serious / off. The log always records regardless.',
+      scope: 'client',
+      config: false,
+      type: String,
+      default: 'serious',
+    });
+
+    game.settings.register(MODULE_ID, 'traceHeat', {
+      name: 'Trace Heat',
+      hint: 'Per-(object × actor) heat accrued from traces ({ [objectId]: { [actorId]: { value, ts } } }); decays over game time.',
+      scope: 'world',
+      config: false,
+      type: Object,
+      default: {},
+    });
+
+    game.settings.register(MODULE_ID, 'recycleBin', {
+      name: 'Recycle Bin',
+      hint: 'GM-only quarantine of entries removed by the malware `wipe` effect ([{ id, ts, hostName, journalId, pageData, wipedBy }]). Restorable / permanently emptiable from the Admin Security tab — a wipe is never a hard delete until the GM empties it.',
+      scope: 'world',
+      config: false,
+      type: Array,
+      default: [],
     });
 
     this._registered = true;
@@ -491,6 +654,16 @@ export class SettingsManager {
    */
   async set(key, value) {
     return game.settings.set(MODULE_ID, key, value);
+  }
+
+  /**
+   * The Agent's exfil-folder label (the tab AND the provenance chip read this,
+   * so they can't drift apart). Blank/unset falls back to "Exfil".
+   * @returns {string}
+   */
+  getExfilFolderName() {
+    const v = String(this.get('exfilFolderName') ?? '').trim();
+    return v || 'Exfil';
   }
 
   /**

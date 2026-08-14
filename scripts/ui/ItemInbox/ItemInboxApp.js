@@ -2131,7 +2131,7 @@ export class ItemInboxApp extends BaseApplication {
     const iceName = ice?.name || encType;
 
     // Phase 1: Init
-    addLine('system', `░░ NCM BREACH PROTOCOL v4.6 ░░`);
+    addLine('system', `░░ BREACHER PROTOCOL v4.6 ░░`);
     await delay(() => addLine('system', `Target: DATA SHARD // Encryption: ${iceName}`), 200);
     await delay(() => { addLine('blank', ''); setProgress(10, 'Mapping ICE architecture...'); }, 300);
 

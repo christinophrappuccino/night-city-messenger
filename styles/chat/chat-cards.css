@@ -237,22 +237,23 @@
 .ncm-cc--fail .ncm-cc__badge      { color: #F65261; }
 .ncm-cc--fail .ncm-cc__header i   { color: #F65261; }
 
-/* Result badge */
+/* Result badge — the SUCCESS/FAILED verdict is the one thing every reader
+   scans for, so it reads at body size, not 8px. */
 .ncm-cc__result-badge {
   margin-left: auto;
   font-family: 'Orbitron', monospace;
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 1.2px;
-  padding: 2px 8px;
+  padding: 3px 10px;
   border-radius: 2px;
   text-transform: uppercase;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
 }
 
-.ncm-cc__result-badge i { font-size: 8px; }
+.ncm-cc__result-badge i { font-size: 10px; }
 .ncm-cc__result-badge--success { background: rgba(52, 211, 153, 0.12); color: #34D399; border: 1px solid rgba(52, 211, 153, 0.25); }
 .ncm-cc__result-badge--fail    { background: rgba(246, 82, 97, 0.12); color: #F65261; border: 1px solid rgba(246, 82, 97, 0.25); }
 
@@ -289,8 +290,8 @@
 
 .ncm-cc__roll-label {
   font-family: 'Orbitron', monospace;
-  font-size: 7px;
-  color: #7a7a95;
+  font-size: 9px;
+  color: #9a9ab2;
   text-transform: uppercase;
   letter-spacing: 1px;
   display: flex;
@@ -300,7 +301,7 @@
   margin-bottom: 3px;
 }
 
-.ncm-cc__roll-label i { font-size: 7px; opacity: 0.6; }
+.ncm-cc__roll-label i { font-size: 8px; opacity: 0.6; }
 
 .ncm-cc__roll-value {
   font-family: 'Share Tech Mono', monospace;
@@ -627,10 +628,10 @@
   border-bottom: 1px solid #2a0a0f;
 }
 
-.ncm-ice-card__header i { font-size: 11px; color: #F65261; width: 14px; text-align: center; }
-.ncm-ice-card__badge { font-family: 'Orbitron', monospace; font-size: 9px; font-weight: 600; letter-spacing: 1px; color: #F65261; text-transform: uppercase; }
-.ncm-ice-card__header-meta { margin-left: auto; font-family: 'Share Tech Mono', monospace; font-size: 10px; color: #7a7a95; display: flex; align-items: center; gap: 3px; }
-.ncm-ice-card__header-meta i { font-size: 9px; opacity: 0.5; }
+.ncm-ice-card__header i { font-size: 12px; color: #F65261; width: 15px; text-align: center; }
+.ncm-ice-card__badge { font-family: 'Orbitron', monospace; font-size: 11px; font-weight: 700; letter-spacing: 1.2px; color: #F65261; text-transform: uppercase; }
+.ncm-ice-card__header-meta { margin-left: auto; font-family: 'Share Tech Mono', monospace; font-size: 11px; color: #9a9ab2; display: flex; align-items: center; gap: 4px; }
+.ncm-ice-card__header-meta i { font-size: 10px; opacity: 0.6; }
 
 /* Encounter zone */
 .ncm-ice-card__encounter {
@@ -654,8 +655,8 @@
 
 /* Portrait */
 .ncm-ice-card__portrait {
-  width: 56px;
-  height: 56px;
+  width: 68px;
+  height: 68px;
   border-radius: 4px;
   border: 2px solid #F65261;
   background: #0a0a14;
@@ -667,18 +668,26 @@
   overflow: hidden;
 }
 
-.ncm-ice-card__portrait i { font-size: 26px; color: #F65261; position: relative; z-index: 1; }
+.ncm-ice-card__portrait i { font-size: 32px; color: #F65261; position: relative; z-index: 1; }
 .ncm-ice-card__portrait img { width: 100%; height: 100%; object-fit: cover; position: relative; z-index: 1; }
 .ncm-ice-card__portrait::after { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at center, rgba(246, 82, 97, 0.15) 0%, transparent 70%); }
+/* scan sweep over the portrait — the "pulling the image in" flourish */
+.ncm-ice-card__portrait::before {
+  content: ''; position: absolute; left: 0; right: 0; height: 30%; z-index: 2;
+  background: linear-gradient(180deg, transparent, rgba(246, 82, 97, 0.22), transparent);
+  animation: ncm-ice-portrait-scan 2.6s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes ncm-ice-portrait-scan { 0% { top: -30%; } 55% { top: 100%; } 100% { top: 100%; } }
 
 /* Identity */
 .ncm-ice-card__identity { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 1px; }
-.ncm-ice-card__name { font-family: 'Orbitron', monospace; font-size: 13px; font-weight: 800; color: #F65261; letter-spacing: 1px; line-height: 1.1; display: flex; align-items: center; gap: 5px; }
-.ncm-ice-card__name i { font-size: 9px; opacity: 0.5; }
-.ncm-ice-card__class { font-family: 'Share Tech Mono', monospace; font-size: 10px; color: #7a7a95; text-transform: uppercase; letter-spacing: 0.5px; }
-.ncm-ice-card__target { font-size: 12px; color: #c8c8dd; margin-top: 3px; display: flex; align-items: center; gap: 5px; }
+.ncm-ice-card__name { font-family: 'Orbitron', monospace; font-size: 15px; font-weight: 800; color: #F65261; letter-spacing: 1.2px; line-height: 1.15; display: flex; align-items: center; gap: 6px; text-shadow: 0 0 10px rgba(246, 82, 97, 0.45); }
+.ncm-ice-card__name i { font-size: 10px; opacity: 0.6; }
+.ncm-ice-card__class { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: #9a9ab2; text-transform: uppercase; letter-spacing: 0.5px; }
+.ncm-ice-card__target { font-size: 13px; color: #d6d6e6; margin-top: 4px; display: flex; align-items: center; gap: 5px; }
 .ncm-ice-card__target strong { color: #f0f0f5; }
-.ncm-ice-card__target i { font-size: 9px; color: #F65261; opacity: 0.6; }
+.ncm-ice-card__target i { font-size: 10px; color: #F65261; opacity: 0.7; }
 
 /* Damage block */
 .ncm-ice-card__damage-block {
@@ -696,16 +705,21 @@
 
 .ncm-ice-card__damage-block::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: #F65261; }
 .ncm-ice-card__dmg-col { display: flex; flex-direction: column; align-items: center; }
-.ncm-ice-card__dmg-number { font-family: 'Orbitron', monospace; font-size: 30px; font-weight: 900; color: #F65261; line-height: 1; letter-spacing: 1px; }
-.ncm-ice-card__dmg-tag { font-family: 'Orbitron', monospace; font-size: 8px; font-weight: 700; color: #F65261; letter-spacing: 2px; opacity: 0.6; }
-.ncm-ice-card__dmg-detail { flex: 1; display: flex; flex-direction: column; gap: 3px; }
-.ncm-ice-card__formula { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: #b8b8d0; }
-.ncm-ice-card__hp-change { font-family: 'Share Tech Mono', monospace; font-size: 10px; color: #7a7a95; display: flex; align-items: center; gap: 4px; }
-.ncm-ice-card__hp-change i { font-size: 9px; color: #F65261; opacity: 0.5; }
+.ncm-ice-card__dmg-number {
+  font-family: 'Orbitron', monospace; font-size: 36px; font-weight: 900; color: #F65261; line-height: 1; letter-spacing: 1px;
+  text-shadow: 0 0 14px rgba(246, 82, 97, 0.55);
+  animation: ncm-ice-dmg-pulse 1.4s ease-in-out infinite;
+}
+@keyframes ncm-ice-dmg-pulse { 0%, 100% { text-shadow: 0 0 14px rgba(246, 82, 97, 0.55); } 50% { text-shadow: 0 0 24px rgba(246, 82, 97, 0.9); } }
+.ncm-ice-card__dmg-tag { font-family: 'Orbitron', monospace; font-size: 9px; font-weight: 700; color: #F65261; letter-spacing: 2px; opacity: 0.75; }
+.ncm-ice-card__dmg-detail { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.ncm-ice-card__formula { font-family: 'Share Tech Mono', monospace; font-size: 12.5px; color: #cfcfe2; }
+.ncm-ice-card__hp-change { font-family: 'Share Tech Mono', monospace; font-size: 11.5px; color: #b0b0c8; display: flex; align-items: center; gap: 5px; }
+.ncm-ice-card__hp-change i { font-size: 10px; color: #F65261; opacity: 0.6; }
 
 /* Dice tray */
 .ncm-ice-card__dice-tray { margin-top: 8px; display: flex; align-items: center; gap: 4px; }
-.ncm-ice-card__dice-tray-label { font-family: 'Orbitron', monospace; font-size: 7px; color: #7a7a95; letter-spacing: 1.2px; margin-right: 2px; }
+.ncm-ice-card__dice-tray-label { font-family: 'Orbitron', monospace; font-size: 9px; color: #9a9ab2; letter-spacing: 1.2px; margin-right: 3px; }
 .ncm-ice-card__die { width: 28px; height: 28px; background: #0a0a14; border: 1px solid rgba(246, 82, 97, 0.35); border-radius: 3px; display: flex; align-items: center; justify-content: center; }
 .ncm-ice-card__die i { font-size: 18px; color: #f07880; }
 
@@ -719,8 +733,8 @@
   border-top: 1px solid #2a0a0f;
 }
 
-.ncm-ice-card__footer-net { font-family: 'Share Tech Mono', monospace; font-size: 9px; color: #606078; display: flex; align-items: center; gap: 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ncm-ice-card__footer-net i { font-size: 8px; opacity: 0.6; }
+.ncm-ice-card__footer-net { font-family: 'Share Tech Mono', monospace; font-size: 10px; color: #8a8aa2; display: flex; align-items: center; gap: 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ncm-ice-card__footer-net i { font-size: 9px; opacity: 0.6; }
 .ncm-ice-card__threat { font-family: 'Orbitron', monospace; font-size: 7px; font-weight: 700; letter-spacing: 1.2px; color: #F65261; padding: 2px 6px; border: 1px solid rgba(246, 82, 97, 0.3); border-radius: 2px; background: rgba(246, 82, 97, 0.08); flex-shrink: 0; }
 
 /* Scanline variants */
@@ -858,3 +872,64 @@
 .ncm-payload-card__footer-net { font-family: 'Share Tech Mono', monospace; font-size: 9px; color: #606078; display: flex; align-items: center; gap: 5px; }
 .ncm-payload-card__footer-net i { font-size: 8px; opacity: 0.6; }
 .ncm-payload-card__exe-badge { font-family: 'Orbitron', monospace; font-size: 7px; font-weight: 700; letter-spacing: 1.2px; color: #b44dff; padding: 2px 6px; border: 1px solid rgba(180, 77, 255, 0.3); border-radius: 2px; background: rgba(180, 77, 255, 0.08); flex-shrink: 0; }
+
+
+/* ═══════════════════════════════════════════════════════════
+   §9  WHISPER CARD (.ncm-wcard) — shared wrapper for NCM security
+       whispers (heat / trace countdowns / lockouts / escalations).
+       Built by whisperCardHtml() in helpers.js. Replaced the bare
+       "<b>NCM trace:</b> …" whispers, which rendered at Foundry's
+       default chat size and were flagged illegible. Chat log has no
+       --ncm-* ancestor → hard fallbacks only.
+   ═══════════════════════════════════════════════════════════ */
+
+.ncm-wcard {
+  background: #13131f;
+  border: 1px solid #2a2a45;
+  border-left: 3px solid #19f3f7;
+  border-radius: 2px;
+  padding: 0 0 8px;
+  overflow: hidden;
+  font-family: 'Rajdhani', sans-serif;
+}
+
+.ncm-wcard__hd {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 10px;
+  margin-bottom: 7px;
+  background: #0c0c16;
+  border-bottom: 1px solid #1e1e32;
+  font-family: 'Orbitron', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: #19f3f7;
+}
+
+.ncm-wcard__hd i { font-size: 12px; width: 15px; text-align: center; }
+
+.ncm-wcard__line {
+  padding: 1px 10px;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: #d6d6e6;
+}
+
+.ncm-wcard__line b, .ncm-wcard__line strong { color: #f0f0f5; }
+.ncm-wcard__line i { color: #b0b0c8; }
+
+/* muted secondary line (details, reasons) */
+.ncm-wcard__line--sub { font-size: 12px; color: #9a9ab2; }
+
+/* tones */
+.ncm-wcard--warn   { border-left-color: #f7c948; }
+.ncm-wcard--warn   .ncm-wcard__hd { color: #f7c948; }
+.ncm-wcard--danger { border-left-color: #ff4a5c; }
+.ncm-wcard--danger .ncm-wcard__hd { color: #ff4a5c; }
+.ncm-wcard--ok     { border-left-color: #34D399; }
+.ncm-wcard--ok     .ncm-wcard__hd { color: #34D399; }
+.ncm-wcard--purple { border-left-color: #b14aff; }
+.ncm-wcard--purple .ncm-wcard__hd { color: #b14aff; }

@@ -16,6 +16,7 @@ import { ToolsTab } from './tabs/ToolsTab.js';
 import { SpamTab } from './tabs/SpamTab.js';
 import { ShardsTab } from './tabs/ShardsTab.js';
 import { TerminalsTab } from './tabs/TerminalsTab.js';
+import { SecurityTab } from './tabs/SecurityTab.js';
 import { ContactsTab } from './tabs/ContactsTab.js';
 import { NetworksTab } from './tabs/NetworksTab.js';
 import { MessagesTab } from './tabs/MessagesTab.js';
@@ -53,6 +54,10 @@ export class AdminPanelApp extends BaseApplication {
     if (this._boundAdminKeydown) {
       document.removeEventListener('keydown', this._boundAdminKeydown);
       this._boundAdminKeydown = null;
+    }
+    if (this._securitySettingHook) {
+      Hooks.off('updateSetting', this._securitySettingHook);
+      this._securitySettingHook = null;
     }
     // Tell every extracted tab to clean up its own intervals/listeners
     if (this._tabs) {
@@ -106,6 +111,7 @@ export class AdminPanelApp extends BaseApplication {
         overview: new OverviewTab(this),
         shards: new ShardsTab(this),
         terminals: new TerminalsTab(this),
+        security: new SecurityTab(this),
         spam: new SpamTab(this),
         tools: new ToolsTab(this),
       };
@@ -264,6 +270,35 @@ export class AdminPanelApp extends BaseApplication {
       terminalForceUnlockAdmin: AdminPanelApp._onTerminalForceUnlock,
       terminalRelock: AdminPanelApp._onTerminalRelock,
       terminalRemove: AdminPanelApp._onTerminalRemove,
+      terminalSelectAdmin: AdminPanelApp._onTerminalSelect,
+      terminalFilterAdmin: AdminPanelApp._onTerminalFilter,
+      terminalPageAdmin: AdminPanelApp._onTerminalPage,
+
+      // ── Security tab ──
+      securityFilter: AdminPanelApp._onSecurityFilter,
+      securityPage: AdminPanelApp._onSecurityPage,
+      securityClearLog: AdminPanelApp._onSecurityClearLog,
+      securityFilterActor: AdminPanelApp._onSecurityFilterActor,
+      securityFilterObject: AdminPanelApp._onSecurityFilterObject,
+      securityClearFilter: AdminPanelApp._onSecurityClearFilter,
+      securityJump: AdminPanelApp._onSecurityJump,
+      securityHeatClear: AdminPanelApp._onSecurityHeatClear,
+      securityHeatClearAll: AdminPanelApp._onSecurityHeatClearAll,
+      securityHeatAdjust: AdminPanelApp._onSecurityHeatAdjust,
+      securityEscalate: AdminPanelApp._onSecurityEscalate,
+      securityCountdownCancel: AdminPanelApp._onSecurityCountdownCancel,
+      securityDefuse: AdminPanelApp._onSecurityDefuse,
+      securityFireResident: AdminPanelApp._onSecurityFireResident,
+      securityRemoveResident: AdminPanelApp._onSecurityRemoveResident,
+      securityRestore: AdminPanelApp._onSecurityRestore,
+      securityPurge: AdminPanelApp._onSecurityPurge,
+      securityEmptyBin: AdminPanelApp._onSecurityEmptyBin,
+      securitySaveGate: AdminPanelApp._onSecuritySaveGate,
+      securityGateAddGroup: AdminPanelApp._onSecurityGateAddGroup,
+      securityGateAddItem: AdminPanelApp._onSecurityGateAddItem,
+      securityGateAddRole: AdminPanelApp._onSecurityGateAddRole,
+      securityGateRemoveItem: AdminPanelApp._onSecurityGateRemoveItem,
+      terminalExportAdmin: AdminPanelApp._onTerminalExport,
       cycleShardSort: AdminPanelApp._onCycleShardSort,
       cycleShardIceFilter: AdminPanelApp._onCycleShardIceFilter,
       cycleShardStatusFilter: AdminPanelApp._onCycleShardStatusFilter,
@@ -412,6 +447,9 @@ export class AdminPanelApp extends BaseApplication {
 
       // Terminals tab
       ...this.tabs.terminals.prepareContext(),
+
+      // Security tab
+      ...this.tabs.security.prepareContext(),
 
       // Spam tab
       ...this.tabs.spam.prepareContext(),
@@ -784,6 +822,21 @@ export class AdminPanelApp extends BaseApplication {
   // ═══════════════════════════════════════════════════════════
 
   _setupEventSubscriptions() {
+    // ── Security tab live refresh ──
+    // The trace log / heat / countdowns / recycle bin are WORLD SETTINGS, not
+    // EventBus events — the `updateSetting` document hook is the one signal
+    // that fires on every client (including the writer) whenever they change.
+    // Debounced render so a burst (log row + heat bump) paints once; only when
+    // the Security tab is actually on screen.
+    this._securitySettingHook = (setting) => {
+      const key = String(setting?.key || '');
+      if (!key.startsWith(`${MODULE_ID}.`)) return;
+      const leaf = key.slice(MODULE_ID.length + 1);
+      if (!['traceLog', 'traceHeat', 'traceCountdowns', 'recycleBin'].includes(leaf)) return;
+      if (this._activeTab === 'security') this._debouncedRender();
+    };
+    Hooks.on('updateSetting', this._securitySettingHook);
+
     // Messages — with overview activity logging
     this.subscribe(EVENTS.MESSAGE_SENT, (data) => {
       const from = data?.fromName || game.actors.get(data?.fromActorId)?.name || 'Unknown';
@@ -1058,6 +1111,35 @@ export class AdminPanelApp extends BaseApplication {
   static async _onTerminalForceUnlock(event, target) { return this.tabs.terminals.onForceUnlock(event, target); }
   static async _onTerminalRelock(event, target) { return this.tabs.terminals.onRelock(event, target); }
   static async _onTerminalRemove(event, target) { return this.tabs.terminals.onRemove(event, target); }
+  static _onTerminalSelect(event, target) { this.tabs.terminals.onSelect(event, target); }
+  static _onTerminalFilter(event, target) { this.tabs.terminals.onFilter(event, target); }
+  static _onTerminalPage(event, target) { this.tabs.terminals.onPage(event, target); }
+  static _onTerminalExport(event, target) { this.tabs.terminals.onExport(event, target); }
+
+  // ── Security tab delegators ──
+  static _onSecurityFilter(event, target) { this.tabs.security.onFilter(event, target); }
+  static _onSecurityPage(event, target) { this.tabs.security.onPage(event, target); }
+  static _onSecurityClearLog(event, target) { this.tabs.security.onClearLog(event, target); }
+  static _onSecurityFilterActor(event, target) { this.tabs.security.onFilterActor(event, target); }
+  static _onSecurityFilterObject(event, target) { this.tabs.security.onFilterObject(event, target); }
+  static _onSecurityClearFilter(event, target) { this.tabs.security.onClearFilter(event, target); }
+  static _onSecurityJump(event, target) { this.tabs.security.onJump(event, target); }
+  static _onSecurityHeatClear(event, target) { this.tabs.security.onHeatClear(event, target); }
+  static _onSecurityHeatClearAll(event, target) { this.tabs.security.onHeatClearAll(event, target); }
+  static _onSecurityHeatAdjust(event, target) { this.tabs.security.onHeatAdjust(event, target); }
+  static _onSecurityEscalate(event, target) { this.tabs.security.onEscalate(event, target); }
+  static _onSecurityCountdownCancel(event, target) { this.tabs.security.onCountdownCancel(event, target); }
+  static _onSecurityDefuse(event, target) { this.tabs.security.onDefuse(event, target); }
+  static _onSecurityFireResident(event, target) { this.tabs.security.onFireResident(event, target); }
+  static _onSecurityRemoveResident(event, target) { this.tabs.security.onRemoveResident(event, target); }
+  static _onSecurityRestore(event, target) { this.tabs.security.onRestore(event, target); }
+  static _onSecurityPurge(event, target) { this.tabs.security.onPurge(event, target); }
+  static _onSecurityEmptyBin(event, target) { this.tabs.security.onEmptyBin(event, target); }
+  static _onSecuritySaveGate(event, target) { this.tabs.security.onSaveGate(event, target); }
+  static _onSecurityGateAddGroup(event, target) { this.tabs.security.onGateAddGroup(event, target); }
+  static _onSecurityGateAddItem(event, target) { this.tabs.security.onGateAddItem(event, target); }
+  static _onSecurityGateAddRole(event, target) { this.tabs.security.onGateAddRole(event, target); }
+  static _onSecurityGateRemoveItem(event, target) { this.tabs.security.onGateRemoveItem(event, target); }
 
   static _onOpenShardItem(event, target) { this.tabs.shards.onOpenShardItem(event, target); }
   static async _onForceDecrypt(event, target) { return this.tabs.shards.onForceDecrypt(event, target); }
