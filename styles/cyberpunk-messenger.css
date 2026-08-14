@@ -56,6 +56,8 @@
 @import 'components/system-sweep.css';
 @import 'components/net-adjudicator.css';
 @import 'components/terminal.css';
+@import 'components/malware-workshop.css';
+@import 'components/program-deck.css';
 @import 'components/shard-sheet-badge.css';
 @import 'components/shard-config.css';
 @import 'components/shard-conversion.css';

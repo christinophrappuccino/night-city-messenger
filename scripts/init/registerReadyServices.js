@@ -94,6 +94,46 @@ export function registerReadyServices(initializer) {
     game.nightcity.socketManager.initialize();
   });
 
+  // ─── Malware Workshop launcher (GM program authoring) ───
+  initializer.register('ready', 113, 'openMalwareWorkshop launch', async () => {
+    const { MalwareWorkshopApp } = await import('../ui/MalwareWorkshop/MalwareWorkshopApp.js');
+    /**
+     * Open the GM Malware Workshop.
+     * @param {object} [opts] { target?:{kind,item,accountId?,onSave?}, program?, libId? }
+     */
+    game.nightcity.openMalwareWorkshop = (opts = {}) => {
+      if (!game.user?.isGM) { ui.notifications?.warn('NCM | The Malware Workshop is GM-only.'); return null; }
+      const existing = Object.values(ui.windows).find((w) => w.id === 'ncm-malware-workshop');
+      if (existing) existing.close({ animate: false });
+      const app = new MalwareWorkshopApp(opts);
+      app.render(true);
+      return app;
+    };
+    // Macro-API alias
+    if (game.nightcity.messenger) game.nightcity.messenger.openMalwareWorkshop = game.nightcity.openMalwareWorkshop;
+  });
+
+  // ─── Program Deck launcher (view a shard's programs — cartridge reader) ───
+  initializer.register('ready', 114, 'openProgramDeck launch', async () => {
+    const { ProgramDeckApp } = await import('../ui/ProgramDeck/ProgramDeckApp.js');
+    game.nightcity.openProgramDeck = (itemOrId) => {
+      const item = (typeof itemOrId === 'string') ? game.items?.get(itemOrId) : itemOrId;
+      if (!item) { ui.notifications?.warn('NCM | No item for the Program Deck.'); return null; }
+      const existing = Object.values(ui.windows).find((w) => w.id === 'ncm-program-deck');
+      if (existing) existing.close({ animate: false });
+      const app = new ProgramDeckApp({ item });
+      app.render(true);
+      return app;
+    };
+    if (game.nightcity.messenger) game.nightcity.messenger.openProgramDeck = game.nightcity.openProgramDeck;
+  });
+
+  // ─── Integration Bridge (public API + hook mirroring for other modules) ───
+  initializer.register('postReady', 95, 'IntegrationBridge', async () => {
+    const { initializeIntegrationBridge } = await import('../integrations/IntegrationBridge.js');
+    await initializeIntegrationBridge();
+  });
+
   // ─── postReady: Final flag ───
   initializer.register('postReady', 100, 'Ready flag', () => {
     game.nightcity.ready = true;

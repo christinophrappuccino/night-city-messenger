@@ -27,7 +27,7 @@ import { BaseApplication } from '../BaseApplication.js';
 import { MODULE_ID, TERMINAL_PRESETS, SOCKET_OPS } from '../../utils/constants.js';
 import { log, isGM, formatCyberDate, buildTerminalThemePrefs, resolveTerminalSound, resolveOperator, openOperatorPicker, getOperatorActors, canOperate } from '../../utils/helpers.js';
 import { getInitials } from '../../utils/designHelpers.js';
-import { enrichContent, toggleSecretReveal, applySyslogFilter, openGalleryImage, closeGalleryLightbox, resolveEnvelope, CONTENT_TYPE_INFO, displayContentType } from '../content/ContentRenderers.js';
+import { enrichContent, toggleSecretReveal, applySyslogFilter, openGalleryImage, closeGalleryLightbox, resolveEnvelope, CONTENT_TYPE_INFO, displayContentType, programEffectInfo } from '../content/ContentRenderers.js';
 import { runSiphon, runEddiesClaim, runCrack, runMalwareDeploy, runContentUnlock, runCamAction, runPayloadExecute, runPayloadKill, runPayloadSniff, runAnalyze, toggleSchematicLock } from '../content/SiphonFlow.js';
 import { runSecurityConsole } from '../content/SecurityConsole.js';
 import { NetworkAuthDialog } from '../NetworkManagement/NetworkAuthDialog.js';
@@ -86,6 +86,7 @@ export class TerminalViewerApp extends BaseApplication {
       terminalOperatorTools: action('_onToggleTools'),
       terminalUpload: action('_onUpload'),
       terminalSystemSweep: action('_onSystemSweep'),
+      terminalProgramInfo: action('_onProgramInfo'),
       analyzeFile: action('_onAnalyzeFile'),
       terminalSwitchAccount: action('_onSwitchAccount'),
       terminalLogout: action('_onLogout'),
@@ -1511,6 +1512,25 @@ export class TerminalViewerApp extends BaseApplication {
     const cap = canOperate(this.actor);
     const noActor = !this.actor;
     const uploadReason = !cap.ok ? cap.reason : (noActor ? 'No operator assigned — pick a character first.' : '');
+    // Active programs installed on this box. A player sees only what THEY planted
+    // (provenance.plantedBy); the GM sees every resident. Confirms "my upload is live".
+    const residents = game.nightcity?.terminalService?.getResidents?.(this.item) || [];
+    const gm = isGM();
+    const active = residents
+      .filter(r => (r.state === 'armed' || r.state === 'fired')
+        && (gm || r.provenance?.plantedBy === this.actor?.id))
+      .map(r => {
+        const info = programEffectInfo(r.effectType);
+        const byId = r.provenance?.plantedBy;
+        return {
+          id: r.id, label: info?.label || r.effectType, icon: info?.icon || 'fas fa-microchip',
+          desc: info?.blurb || 'a planted program',
+          fired: r.state === 'fired', state: r.state === 'fired' ? 'TRIGGERED' : 'ARMED',
+          expanded: this._opsInfoId === r.id,
+          hasFile: !!r.firedMessageId,   // planted a mailbox file → click jumps to it
+          by: gm && byId ? (game.actors?.get(byId)?.name || 'an operator') : '',
+        };
+      });
     return {
       open: !!this._toolsOpen,
       canOperate: cap.ok && !noActor,
@@ -1521,10 +1541,35 @@ export class TerminalViewerApp extends BaseApplication {
         { action: 'terminalSystemSweep', icon: 'fas fa-satellite-dish', label: 'SYSTEM SWEEP',
           desc: 'scan this box for planted programs', disabled: !cap.ok, reason: !cap.ok ? cap.reason : '' },
       ],
+      active,
+      activeCount: active.length,
+      activeMine: !gm,
     };
   }
 
-  _onToggleTools() { this._toolsOpen = !this._toolsOpen; this.render(false); }
+  _onToggleTools() { this._toolsOpen = !this._toolsOpen; this._opsInfoId = null; this.render(false); }
+
+  /** Click an ACTIVE PROGRAM row → jump to the file it planted, else expand it. */
+  _onProgramInfo(event, target) {
+    const rid = target?.dataset?.residentId;
+    const r = (game.nightcity?.terminalService?.getResidents?.(this.item) || []).find(x => x.id === rid);
+    // A fired PLANT created a mailbox file — go to it.
+    if (r?.firedMessageId) {
+      const acct = r.firedAccountId;
+      if (!acct || acct === this._accountId || isGM()) {
+        if (acct && acct !== this._accountId && isGM()) this._accountId = acct;
+        this._selectedMessageId = r.firedMessageId;
+        this._toolsOpen = false; this._opsInfoId = null;
+        this.render(true);
+        return;
+      }
+      ui.notifications.info('NCM | That program planted a file in another account — log into it to view.');
+      return;
+    }
+    // No planted file (armed, or an execute/run program) → expand to show what it does.
+    this._opsInfoId = (this._opsInfoId === rid) ? null : rid;
+    this.render(false);
+  }
 
   /** UPLOAD — gather carried programs + visible accounts, run the picker, upload. */
   async _onUpload() {
@@ -1572,19 +1617,31 @@ export class TerminalViewerApp extends BaseApplication {
   async _gatherCarriedPrograms() {
     const shardSvc = game.nightcity?.dataShardService;
     const actor = this.actor;
-    if (!shardSvc?.isDataShard || !actor) return [];
+    if (!shardSvc?.isDataShard || !actor) {
+      log.debug(`Upload: no ${!actor ? 'operator resolved (set the OPERATOR chip)' : 'shard service'} — nothing to gather.`);
+      return [];
+    }
     const out = [];
     const shards = (actor.items ?? []).filter(i => shardSvc.isDataShard(i));
+    log.debug(`Upload: operator "${actor.name}" carries ${shards.length} data shard(s).`);
     for (const shard of shards) {
       let entries = [];
       try { entries = shardSvc.getShardMessages(shard) || []; } catch { entries = []; }
+      log.debug(`Upload: shard "${shard.name}" — ${entries.length} entr${entries.length === 1 ? 'y' : 'ies'}, ${entries.filter(e => e.contentData?.uploadable).length} uploadable: [${entries.map(e => `${e.contentType}:${e.contentData?.name || e.subject}=${e.contentData?.uploadable ? 'Y' : 'n'}`).join(', ')}]`);
       for (const e of entries) {
         const cd = e.contentData || {};
         if (!cd.uploadable) continue;
         // A malware/payload entry with an `uploadEffect` verb is an EXECUTE program
         // (installs a keylog/backdoor/Black-ICE resident); everything else — incl.
         // a malware file with no verb — uploads as a PLANT of the file itself.
-        const execVerb = (e.contentType === 'malware' || e.contentType === 'payload') ? (cd.uploadEffect || '') : '';
+        const uploadVerb = (e.contentType === 'malware' || e.contentType === 'payload') ? (cd.uploadEffect || '') : '';
+        // RUN verbs are instant utilities that operate on the whole box (scanner reveals
+        // hidden accounts, icebreaker unseals, skeleton-key clears locks, jammer drops the
+        // uplink). Uploading one RUNS it against this terminal now — it doesn't plant.
+        const RUN_VERBS = ['scanner', 'skeletonKey', 'jammer'];
+        const runVerb = RUN_VERBS.includes(uploadVerb) ? uploadVerb
+          : (e.contentType === 'payload' && RUN_VERBS.includes(cd.effect?.type)) ? cd.effect.type : '';
+        const execVerb = runVerb ? '' : uploadVerb;
         const info = CONTENT_TYPE_INFO[e.contentType];
         const base = {
           name: e.subject || cd.name || 'file',
@@ -1594,11 +1651,15 @@ export class TerminalViewerApp extends BaseApplication {
           stealthDV: cd.uploadStealthDV || undefined,
           traceOnFail: !!cd.uploadTraceOnFail,
         };
-        if (execVerb) {
+        if (runVerb) {
+          out.push({ ...base, effectType: runVerb, family: 'run',
+            description: programEffectInfo(runVerb).blurb || 'runs against this box' });
+        } else if (execVerb) {
           const params = {};
           if (execVerb === 'deployICE' && cd.iceActorId) params.iceActorId = cd.iceActorId;
           out.push({ ...base, effectType: execVerb, family: 'execute', params,
-            description: TerminalViewerApp._EXEC_DESC[execVerb] || 'installs a program' });
+            trigger: cd.uploadTrigger || undefined,   // honor the authored trigger (kind + detail)
+            description: programEffectInfo(execVerb).blurb || 'installs a program' });
         } else {
           // The planted copy must NOT carry the upload-config keys forward.
           const plantCd = { ...cd };
@@ -2054,14 +2115,6 @@ export class TerminalViewerApp extends BaseApplication {
    *  character's dozens of skill items drowned out (and, past the old 50-item
    *  cap, entirely hid) the real gear. */
   static NON_CARRIER_TYPES = ['skill', 'role', 'criticalInjury', 'netarch'];
-
-  /** Short descriptions for uploadable EXECUTE verbs (OPS → UPLOAD picker). */
-  static _EXEC_DESC = {
-    keylog: 'captures the next login on this box',
-    forgeAccount: 'forges a hidden backdoor account',
-    deployICE: 'arms Black ICE for the next intruder',
-    logicBomb: 'arms a delayed payload',
-  };
 
   async _doExfilShard(msg) {
     // Players pick from their OWN inventory; GMs can also target world items.

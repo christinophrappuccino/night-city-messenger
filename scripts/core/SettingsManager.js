@@ -518,6 +518,15 @@ export class SettingsManager {
       default: [],
     });
 
+    game.settings.register(MODULE_ID, 'programLibrary', {
+      name: 'Program Library',
+      hint: 'GM-authored programs from the Malware Workshop ([{ id, name, group, icon, program }]) — reusable malware/payload definitions, buildable onto any shard or NPC.',
+      scope: 'world',
+      config: false,
+      type: Array,
+      default: [],
+    });
+
     game.settings.register(MODULE_ID, 'adminTheme', {
       name: 'Admin Panel Theme',
       hint: 'Appearance of the GM Admin Panel (separate from the player theme).',

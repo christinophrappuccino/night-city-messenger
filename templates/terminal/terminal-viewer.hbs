@@ -102,6 +102,21 @@
                   </span>
                 </div>
               {{/each}}
+              {{#if hud.tools.active.length}}
+                <div class="ncm-term__opsmenu-hd ncm-term__opsmenu-hd--active">{{#if hud.tools.activeMine}}YOUR PROGRAMS{{else}}ACTIVE PROGRAMS{{/if}} · {{hud.tools.activeCount}}</div>
+                {{#each hud.tools.active}}
+                  <div class="ncm-term__opsactive{{#if this.fired}} is-fired{{/if}}{{#if this.expanded}} is-open{{/if}}"
+                       data-action="terminalProgramInfo" data-resident-id="{{this.id}}"
+                       data-tooltip="{{#if this.hasFile}}Open the planted file{{else}}{{#unless this.expanded}}What it does{{/unless}}{{/if}}">
+                    <span class="ncm-term__opsico"><i class="{{this.icon}}"></i></span>
+                    <span class="ncm-term__opsnm">
+                      <span class="ncm-term__opst">{{this.label}} <i class="fas {{#if this.hasFile}}fa-arrow-up-right-from-square{{else if this.expanded}}fa-chevron-up{{else}}fa-chevron-down{{/if}} ncm-term__opscv"></i></span>
+                      {{#if this.expanded}}<span class="ncm-term__opsd">{{this.desc}}{{#if this.by}} · planted by {{this.by}}{{/if}}</span>{{/if}}
+                    </span>
+                    <span class="ncm-term__opsstate"><span class="ncm-term__opsdot"></span>{{this.state}}</span>
+                  </div>
+                {{/each}}
+              {{/if}}
             </div>
           {{/if}}
         </span>

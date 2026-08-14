@@ -19,7 +19,7 @@
 import { MODULE_ID, SOCKET_OPS } from '../../utils/constants.js';
 import { log, isGM } from '../../utils/helpers.js';
 import { runSecurityConsole } from './SecurityConsole.js';
-import { canPersistContent } from './SiphonFlow.js';
+import { canPersistContent, _applyNativeEffect } from './SiphonFlow.js';
 
 const DEFAULT_UPLOAD_SKILL = 'Interface';
 const DEFAULT_UPLOAD_DV = 15;
@@ -169,10 +169,35 @@ export async function runUpload({ actor, program, targetItem, accountId = null, 
     return { success: false, outcome, forgeQuality };
   }
 
+  // RUN — an instant utility that operates on the box itself (scanner reveals hidden
+  // accounts, skeleton-key clears locks, jammer drops the uplink). It runs NOW against
+  // this terminal and leaves nothing behind (no resident to sweep).
+  if (p.family === 'run') {
+    let report = '';
+    try { report = await _applyNativeEffect(p.effectType, { hostItem: targetItem, page: null, actor, cd: {} }); }
+    catch (e) { log.warn('Upload run-effect failed', e); }
+    const result = report || `${name} ran, but found nothing.`;
+    try {
+      await ChatMessage.create({
+        whisper: [game.user.id],
+        speaker: { alias: name },
+        content: `<div style="border-left:3px solid #19f3f7;padding:6px 10px;font-size:13px;line-height:1.5;background:rgba(25,243,247,.06);"><b>${name}</b> ran on <b>${targetItem.name}</b><br>${result}</div>`,
+      });
+    } catch (e) { /* whisper is a bonus */ }
+    if (outcome === 'clean') game.nightcity?.traceService?.logSuccess({ actor, action: 'analyze', source: name, hostItem: targetItem, severity: 'minor' });
+    ui.notifications.info(`NCM | ${name} — ${result}`);
+    return { success: true, outcome, ran: true, report: result };
+  }
+
+  // Honor the authored trigger (kind + any detail); default to onLogin. The target
+  // account is folded in so onLogin fires when THAT mailbox is opened.
+  const trigger = p.trigger?.kind ? { ...p.trigger } : { kind: 'onLogin' };
+  if (tgtAcct && !trigger.accountId) trigger.accountId = tgtAcct;
+
   const resident = {
     effectType: p.effectType || 'plant',
     params: { ...(p.params || {}), accountId: tgtAcct, name },
-    trigger: p.trigger || { kind: 'onLogin', ...(tgtAcct ? { accountId: tgtAcct } : {}) },
+    trigger,
     provenance: { plantedBy: actor.id, plantedAt: _nowIso(), forgeQuality, sourceLabel: p.sourceLabel || 'uploaded program' },
     stealthDV: stealthDVFromQuality(forgeQuality, p.stealthDV),
     // Re-uploading the same program at the same mailbox overwrites that plant

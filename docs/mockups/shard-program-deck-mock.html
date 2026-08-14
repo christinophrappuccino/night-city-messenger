@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Shard Program Deck — proposed (mock)</title>
+<!--
+  PROPOSED: a cool interactive way to VIEW the programs loaded on a data shard, from
+  inside the shard itself (the shard viewer, when the shard is in a player's inventory).
+  Dev ask: "a way to view the programs when it's in the inventory / some cool interactive
+  way within the data shard itself."
+
+  CONCEPT — THE CARTRIDGE READER. The shard is a deck; each loaded program is a cartridge
+  seated in a slot. Click a cartridge to PULL it into the inspector (the program rendered
+  as the workshop's synthesis artifact), see what it does + threat + status, and act on it
+  (ANALYZE / DEPLOY). Player-facing, so a DISGUISED program shows as its innocuous COVER
+  cartridge until ANALYZE reveals it — the tension is right there in the rack.
+
+  Reuses the workshop's visual language (family colours, cut-corner chips, the artifact
+  core) so it ports cleanly if approved. Interactive: click cartridges, ANALYZE reveals a
+  disguise, hover glows. ?gm=1 = the GM lens (sees every program's real identity).
+-->
+<link rel="stylesheet" href="file:///C:/Program%20Files/Foundry%20Virtual%20Tabletop/resources/app/public/css/foundry2.css">
+<link rel="stylesheet" href="file:///C:/Users/cphan/AppData/Local/FoundryVTT/Data/systems/cyberpunk-red-core/main.css">
+<link rel="stylesheet" href="../../styles/cyberpunk-messenger.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  body{margin:0;background:#2a2a2a;padding:16px;font-family:sans-serif;}
+  .sw{margin-bottom:9px;font:11px monospace;color:#ccc;}
+  .sw a{color:#9ad;margin-right:8px;text-decoration:none;}
+  .app-frame{width:860px;height:600px;margin:0 auto;overflow:hidden;border-radius:6px;box-shadow:0 10px 40px rgba(0,0,0,.55);}
+  .ncm-pd{position:relative;display:flex;flex-direction:column;height:100%;overflow:hidden;
+    background:radial-gradient(120% 80% at 50% -10%,color-mix(in srgb,var(--fam) 8%,transparent),transparent 60%),var(--ncm-bg-deep,#0a0f14);--fam:var(--ncm-secondary,#19f3f7);}
+
+  /* header — the shard identity + deck status */
+  .ncm-pd-hd{display:flex;align-items:center;gap:12px;padding:12px 15px;border-bottom:1px solid var(--ncm-border,#2a3a47);background:var(--ncm-bg-deep,#0a0f14);}
+  .ncm-pd-hd__ic{width:40px;height:40px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;color:var(--ncm-secondary,#19f3f7);font-size:20px;
+    clip-path:polygon(9px 0,100% 0,100% calc(100% - 9px),calc(100% - 9px) 100%,0 100%,0 9px);
+    background:color-mix(in srgb,var(--ncm-secondary,#19f3f7) 22%,var(--ncm-bg-mid,#141c24));border:1px solid color-mix(in srgb,var(--ncm-secondary,#19f3f7) 45%,transparent);}
+  .ncm-pd-hd__n{font-family:var(--ncm-font-mono,monospace);font-size:15px;color:var(--ncm-text-primary,#e8f4f8);}
+  .ncm-pd-hd__s{font-family:var(--ncm-font-display,sans-serif);font-size:8.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--ncm-text-muted,#7a8b99);margin-top:3px;}
+  .ncm-pd-hd__cap{margin-left:auto;text-align:right;}
+  .ncm-pd-hd__caplbl{font-family:var(--ncm-font-display,sans-serif);font-size:8px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--ncm-text-muted,#7a8b99);}
+  .ncm-pd-hd__slots{display:flex;gap:3px;margin-top:4px;justify-content:flex-end;}
+  .ncm-pd-hd__slots b{width:14px;height:6px;border-radius:1px;background:color-mix(in srgb,var(--ncm-border,#2a3a47) 80%,transparent);}
+  .ncm-pd-hd__slots b.on{background:var(--ncm-secondary,#19f3f7);box-shadow:0 0 6px color-mix(in srgb,var(--ncm-secondary,#19f3f7) 60%,transparent);}
+
+  /* the rack — cartridges seated in slots */
+  .ncm-pd-rack{display:flex;gap:10px;padding:16px 15px;overflow-x:auto;overflow-y:hidden;flex:0 0 auto;
+    background:linear-gradient(180deg,color-mix(in srgb,#000 25%,transparent),transparent);
+    border-bottom:1px solid var(--ncm-border,#2a3a47);}
+  .ncm-pd-cart{flex:0 0 auto;width:96px;cursor:pointer;position:relative;padding-top:8px;transition:transform .18s cubic-bezier(.22,1,.36,1);}
+  .ncm-pd-cart:hover{transform:translateY(-4px);}
+  .ncm-pd-cart.sel{transform:translateY(-9px);}
+  /* the slot the cartridge sits in */
+  .ncm-pd-cart::after{content:'';position:absolute;left:8px;right:8px;bottom:-9px;height:5px;border-radius:2px;background:color-mix(in srgb,var(--lf) 26%,transparent);
+    box-shadow:0 0 8px color-mix(in srgb,var(--lf) 30%,transparent);opacity:0;transition:opacity .18s;}
+  .ncm-pd-cart.sel::after{opacity:1;}
+  .ncm-pd-cart__body{border-radius:3px;padding:11px 9px 10px;text-align:center;position:relative;overflow:hidden;
+    background:linear-gradient(160deg,color-mix(in srgb,var(--lf) 13%,var(--ncm-bg-mid,#141c24)),var(--ncm-bg-deep,#0a0f14));
+    border:1px solid var(--ncm-border,#2a3a47);border-top:2px solid var(--lf);transition:border-color .18s,box-shadow .18s;}
+  .ncm-pd-cart:hover .ncm-pd-cart__body{border-color:color-mix(in srgb,var(--lf) 55%,transparent);}
+  .ncm-pd-cart.sel .ncm-pd-cart__body{border-color:var(--lf);box-shadow:0 0 0 1px var(--lf),0 8px 20px rgba(0,0,0,.4);}
+  .ncm-pd-cart__led{position:absolute;top:7px;right:7px;width:6px;height:6px;border-radius:50%;background:var(--led);box-shadow:0 0 6px var(--led);animation:pdled 1.9s ease-in-out infinite;}
+  @keyframes pdled{0%,100%{opacity:.5}50%{opacity:1}}
+  .ncm-pd-cart__chip{width:44px;height:44px;margin:2px auto 8px;display:flex;align-items:center;justify-content:center;color:var(--lf);font-size:19px;position:relative;
+    clip-path:polygon(9px 0,100% 0,100% calc(100% - 9px),calc(100% - 9px) 100%,0 100%,0 9px);
+    background:color-mix(in srgb,var(--lf) 55%,transparent);filter:drop-shadow(0 0 5px color-mix(in srgb,var(--lf) 28%,transparent));}
+  .ncm-pd-cart__chip::before{content:'';position:absolute;inset:1.5px;clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px);
+    background:linear-gradient(150deg,color-mix(in srgb,var(--lf) 20%,var(--ncm-bg-mid,#141c24)),var(--ncm-bg-deep,#0a0f14));}
+  .ncm-pd-cart__chip i{position:relative;z-index:1;}
+  .ncm-pd-cart__n{font-family:var(--ncm-font-mono,monospace);font-size:10.5px;color:var(--ncm-text-primary,#e8f4f8);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .ncm-pd-cart__t{font-family:var(--ncm-font-display,sans-serif);font-size:7px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--lf);margin-top:3px;}
+  .ncm-pd-cart--empty{opacity:.5;}
+  .ncm-pd-cart--empty .ncm-pd-cart__body{border-style:dashed;border-top-style:dashed;background:none;}
+  .ncm-pd-cart--empty .ncm-pd-cart__chip{background:none;filter:none;border:1px dashed var(--ncm-border,#2a3a47);color:var(--ncm-text-muted,#7a8b99);}
+  .ncm-pd-cart--empty .ncm-pd-cart__chip::before{display:none;}
+
+  /* the inspector — the pulled cartridge, big */
+  .ncm-pd-insp{flex:1;min-height:0;display:flex;gap:0;overflow:hidden;}
+  .ncm-pd-insp__stage{flex:0 0 300px;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;
+    background:radial-gradient(120% 70% at 50% 40%,color-mix(in srgb,var(--fam) 12%,transparent),transparent 66%);border-right:1px solid var(--ncm-border,#2a3a47);}
+  .ncm-pd-core{position:relative;width:132px;height:132px;display:flex;align-items:center;justify-content:center;animation:pdbob 5s ease-in-out infinite;}
+  @keyframes pdbob{0%,100%{transform:translateY(-4px)}50%{transform:translateY(4px)}}
+  .ncm-pd-ring{position:absolute;border-radius:50%;border:1px dashed color-mix(in srgb,var(--fam) 45%,transparent);inset:0;animation:pdspin 16s linear infinite;}
+  .ncm-pd-ring--2{inset:16px;border-style:solid;border-color:color-mix(in srgb,var(--fam) 28%,transparent);animation-duration:10s;animation-direction:reverse;}
+  @keyframes pdspin{to{transform:rotate(360deg)}}
+  .ncm-pd-core__chip{width:76px;height:76px;position:relative;display:flex;align-items:center;justify-content:center;color:var(--fam);font-size:32px;
+    clip-path:polygon(14px 0,100% 0,100% calc(100% - 14px),calc(100% - 14px) 100%,0 100%,0 14px);
+    background:color-mix(in srgb,var(--fam) 75%,transparent);filter:drop-shadow(0 0 24px color-mix(in srgb,var(--fam) 55%,transparent));}
+  .ncm-pd-core__chip::before{content:'';position:absolute;inset:1.6px;clip-path:polygon(13px 0,100% 0,100% calc(100% - 13px),calc(100% - 13px) 100%,0 100%,0 13px);
+    background:linear-gradient(150deg,color-mix(in srgb,var(--fam) 30%,var(--ncm-bg-mid,#141c24)),var(--ncm-bg-deep,#0a0f14));}
+  .ncm-pd-core__chip i{position:relative;z-index:1;}
+  .ncm-pd-stage__n{margin-top:20px;font-family:var(--ncm-font-mono,monospace);font-size:16px;color:var(--ncm-text-primary,#e8f4f8);text-align:center;}
+  .ncm-pd-stage__pass{font-family:var(--ncm-font-body,sans-serif);font-size:10.5px;font-style:italic;color:var(--ncm-text-muted,#7a8b99);margin-top:4px;text-align:center;}
+  .ncm-pd-stage__fam{margin-top:11px;font-family:var(--ncm-font-display,sans-serif);font-size:8px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;padding:4px 9px;border-radius:1px;
+    background:color-mix(in srgb,var(--fam) 18%,transparent);color:var(--fam);border:1px solid color-mix(in srgb,var(--fam) 45%,transparent);}
+
+  .ncm-pd-detail{flex:1;min-width:0;padding:18px 18px;overflow-y:auto;display:flex;flex-direction:column;}
+  .ncm-pd-detail__does{font-family:var(--ncm-font-body,sans-serif);font-size:14px;line-height:1.5;color:var(--ncm-text-primary,#e8f4f8);}
+  .ncm-pd-detail__does b{color:var(--fam);font-weight:700;}
+  .ncm-pd-facts{margin-top:15px;display:flex;flex-direction:column;gap:0;}
+  .ncm-pd-fact{display:flex;gap:11px;align-items:flex-start;padding:9px 0;border-bottom:1px solid color-mix(in srgb,var(--ncm-border,#2a3a47) 50%,transparent);}
+  .ncm-pd-fact__i{flex:0 0 16px;text-align:center;color:var(--fam);font-size:12px;margin-top:1px;}
+  .ncm-pd-fact__k{font-family:var(--ncm-font-display,sans-serif);font-size:8px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:var(--ncm-text-muted,#7a8b99);}
+  .ncm-pd-fact__v{font-family:var(--ncm-font-body,sans-serif);font-size:12px;color:var(--ncm-text-primary,#e8f4f8);margin-top:3px;line-height:1.4;}
+  .ncm-pd-threat{display:inline-flex;gap:3px;align-items:center;}
+  .ncm-pd-threat b{width:12px;height:5px;border-radius:1px;background:color-mix(in srgb,var(--ncm-border,#2a3a47) 85%,transparent);}
+  .ncm-pd-threat b.on{background:var(--fam);}
+  .ncm-pd-actions{margin-top:auto;display:flex;gap:8px;padding-top:16px;}
+  .ncm-pd-btn{font-family:var(--ncm-font-display,sans-serif)!important;font-size:11px!important;font-weight:700!important;letter-spacing:.05em;text-transform:uppercase;
+    padding:8px 16px!important;cursor:pointer;width:auto!important;flex:0 0 auto!important;min-height:0!important;border-radius:2px!important;box-shadow:none!important;
+    background:var(--ncm-bg-mid,#141c24)!important;color:var(--ncm-text-secondary,#9fb3c0)!important;border:1px solid var(--ncm-border,#2a3a47)!important;}
+  .ncm-pd-btn i{margin-right:6px;}
+  .ncm-pd-btn:hover{border-color:var(--fam)!important;color:var(--ncm-text-primary,#e8f4f8)!important;}
+  .ncm-pd-btn--go{background:color-mix(in srgb,var(--fam) 22%,transparent)!important;color:var(--ncm-text-primary,#e8f4f8)!important;border-color:var(--fam)!important;}
+  .ncm-pd-tag{display:inline-flex;align-items:center;gap:5px;font-family:var(--ncm-font-display,sans-serif);font-size:8px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+    padding:3px 8px;border-radius:1px;}
+  .ncm-pd-tag--hidden{background:color-mix(in srgb,var(--ncm-warning,#ffab00) 16%,transparent);color:var(--ncm-warning,#ffab00);border:1px solid color-mix(in srgb,var(--ncm-warning,#ffab00) 45%,transparent);}
+  .ncm-pd-tag--known{background:color-mix(in srgb,var(--ncm-success,#00d97e) 15%,transparent);color:var(--ncm-success,#00d97e);border:1px solid color-mix(in srgb,var(--ncm-success,#00d97e) 45%,transparent);}
+  @media(prefers-reduced-motion:reduce){.ncm-pd-core,.ncm-pd-ring,.ncm-pd-cart__led{animation:none!important;}}
+</style></head>
+<body>
+<div class="sw" id="sw"></div>
+<div class="ncm-app app-frame">
+  <div class="ncm-pd" id="pd"></div>
+</div>
+
+<script>
+const FAM = { Utility:'var(--ncm-secondary,#19f3f7)', Sabotage:'var(--ncm-warning,#ffab00)', Persistence:'var(--ncm-danger,#ff0033)', Custom:'var(--ncm-accent,#f7c948)' };
+const FAMWORD = { Utility:'Utility program', Sabotage:'Sabotage', Persistence:'Persistence', Custom:'Custom routine' };
+const THREAT = ['Harmless','Nuisance','Serious','Severe','Catastrophic'];
+const q = new URLSearchParams(location.search);
+const GM = q.get('gm') === '1';
+
+// programs loaded on the shard. `disguised` ones show their COVER to a player until analyzed.
+const PROGRAMS = [
+  { real:'HELLHOUND', realIcon:'fa-biohazard', fam:'Persistence', blurb:'arms Black ICE for the next intruder', threat:4,
+    disguised:true, cover:'shift-notes.txt', coverIcon:'fa-note-sticky', passes:'a plain note', analyzed:false, detectDV:19, type:'Malware' },
+  { real:'MIRRORME', realIcon:'fa-satellite-dish', fam:'Utility', blurb:'reveals hidden accounts & off-net files', threat:1,
+    disguised:false, analyzed:true, detectDV:15, type:'Payload' },
+  { real:'REDLINE', realIcon:'fa-file-circle-xmark', fam:'Sabotage', blurb:'redacts chosen files, reversible by DECLASSIFY', threat:3,
+    disguised:true, cover:'q3-figures.xlsx', coverIcon:'fa-file-invoice', passes:'a spreadsheet', analyzed:false, detectDV:16, type:'Payload' },
+  { real:'GHOSTKEY', realIcon:'fa-door-open', fam:'Persistence', blurb:'forges a hidden account you can come back to', threat:3,
+    disguised:false, analyzed:true, detectDV:15, type:'Malware' },
+];
+const CAP = 6;
+let sel = 0;
+
+const esc = s => String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+// what the viewer perceives: a disguised, un-analyzed program reads as its cover (unless GM).
+function seen(p){
+  const revealed = GM || !p.disguised || p.analyzed;
+  return revealed
+    ? { name:p.real, icon:p.realIcon, fam:p.fam, blurb:p.blurb, real:true }
+    : { name:p.cover, icon:p.coverIcon, fam:'Utility', blurb:`looks like ${p.passes}. A scan reports nothing.`, real:false };
+}
+
+function cartHTML(p, i){
+  if(!p) return `<div class="ncm-pd-cart ncm-pd-cart--empty" style="--lf:var(--ncm-border)"><div class="ncm-pd-cart__body"><div class="ncm-pd-cart__chip"><i class="fas fa-plus"></i></div><div class="ncm-pd-cart__n" style="color:var(--ncm-text-muted)">empty</div><div class="ncm-pd-cart__t">slot</div></div></div>`;
+  const s = seen(p), lf = FAM[s.fam];
+  const led = s.real ? 'var(--ncm-success,#00d97e)' : 'var(--ncm-warning,#ffab00)';
+  return `<div class="ncm-pd-cart ${i===sel?'sel':''}" style="--lf:${lf};--led:${led}" onclick="pick(${i})">
+    <div class="ncm-pd-cart__body"><span class="ncm-pd-cart__led"></span>
+      <div class="ncm-pd-cart__chip"><i class="fas ${s.icon}"></i></div>
+      <div class="ncm-pd-cart__n">${esc(s.name)}</div>
+      <div class="ncm-pd-cart__t">${s.real ? esc(p.type) : 'Unknown'}</div>
+    </div></div>`;
+}
+
+function render(){
+  const usedSlots = PROGRAMS.length;
+  const rack = [];
+  PROGRAMS.forEach((p,i)=>rack.push(cartHTML(p,i)));
+  for(let i=usedSlots;i<CAP;i++) rack.push(cartHTML(null,i));
+
+  const p = PROGRAMS[sel], s = seen(p), fam = FAM[s.fam];
+  const fact = (icon,k,v)=>`<div class="ncm-pd-fact"><span class="ncm-pd-fact__i"><i class="fas ${icon}"></i></span><span><span class="ncm-pd-fact__k">${k}</span><span class="ncm-pd-fact__v">${v}</span></span></div>`;
+  const statusTag = s.real
+    ? `<span class="ncm-pd-tag ncm-pd-tag--known"><i class="fas fa-check"></i>Identified</span>`
+    : `<span class="ncm-pd-tag ncm-pd-tag--hidden"><i class="fas fa-mask"></i>Unidentified — analyze to reveal</span>`;
+  const threatBars = `<span class="ncm-pd-threat">${[0,1,2,3].map(j=>`<b class="${j<(s.real?p.threat:0)?'on':''}"></b>`).join('')}</span> ${s.real?THREAT[p.threat]:'unknown'}`;
+
+  const detail = s.real ? `
+    <div class="ncm-pd-detail__does">It <b>${esc(p.blurb)}</b>.</div>
+    <div class="ncm-pd-facts">
+      ${fact('fa-shapes','Kind', `${esc(p.type)} · ${esc(FAMWORD[p.fam])}`)}
+      ${fact('fa-triangle-exclamation', 'If found', threatBars)}
+      ${fact(p.disguised?'fa-mask':'fa-eye','Disguise', p.disguised?`Was posing as ${esc(p.passes)} — now identified.`:'None — it is what it is.')}
+      ${fact('fa-database','Status', statusTag)}
+    </div>
+    <div class="ncm-pd-actions">
+      <button class="ncm-pd-btn"><i class="fas fa-magnifying-glass"></i>Analyze</button>
+      <button class="ncm-pd-btn ncm-pd-btn--go"><i class="fas ${p.type==='Malware'?'fa-bolt':'fa-play'}"></i>${p.type==='Malware'?'Deploy':'Execute'}</button>
+      <button class="ncm-pd-btn"><i class="fas fa-upload"></i>Carry to…</button>
+    </div>` : `
+    <div class="ncm-pd-detail__does">${esc(s.blurb)}</div>
+    <div class="ncm-pd-facts">
+      ${fact('fa-file','Reads as', esc(p.passes))}
+      ${fact('fa-triangle-exclamation','Threat', 'unknown')}
+      ${fact('fa-database','Status', statusTag)}
+    </div>
+    <div class="ncm-pd-actions">
+      <button class="ncm-pd-btn ncm-pd-btn--go" onclick="analyze(${sel})"><i class="fas fa-magnifying-glass"></i>Analyze · DV ${p.detectDV}</button>
+    </div>`;
+
+  document.getElementById('pd').style.setProperty('--fam', fam);
+  document.getElementById('pd').innerHTML = `
+    <div class="ncm-pd-hd">
+      <div class="ncm-pd-hd__ic"><i class="fas fa-hard-drive"></i></div>
+      <div><div class="ncm-pd-hd__n">Ghost's Go-Bag</div><div class="ncm-pd-hd__s">Program deck${GM?' · GM lens':''}</div></div>
+      <div class="ncm-pd-hd__cap"><div class="ncm-pd-hd__caplbl">${usedSlots} / ${CAP} slots</div>
+        <div class="ncm-pd-hd__slots">${Array.from({length:CAP},(_,i)=>`<b class="${i<usedSlots?'on':''}"></b>`).join('')}</div></div>
+    </div>
+    <div class="ncm-pd-rack">${rack.join('')}</div>
+    <div class="ncm-pd-insp">
+      <div class="ncm-pd-insp__stage">
+        <div class="ncm-pd-core"><span class="ncm-pd-ring"></span><span class="ncm-pd-ring ncm-pd-ring--2"></span><span class="ncm-pd-core__chip"><i class="fas ${s.icon}"></i></span></div>
+        <div class="ncm-pd-stage__n">${esc(s.name)}</div>
+        <div class="ncm-pd-stage__pass">${s.real ? (p.disguised?'the real thing':'no disguise') : 'passes for '+esc(p.passes)}</div>
+        <div class="ncm-pd-stage__fam">${s.real?esc(FAMWORD[s.fam]):'Unidentified'}</div>
+      </div>
+      <div class="ncm-pd-detail">${detail}</div>
+    </div>`;
+}
+window.pick = i => { if(PROGRAMS[i]){ sel=i; render(); } };
+window.analyze = i => { PROGRAMS[i].analyzed = true; render(); };
+
+document.getElementById('sw').innerHTML = `<b style="color:#8fd">shard program deck</b> — click cartridges; ANALYZE reveals a disguised one. <a href="?">player</a><a href="?gm=1">GM lens</a>`;
+render();
+</script>
+</body></html>
