@@ -1072,6 +1072,8 @@ export const TEMPLATES = Object.freeze({
   TERMINAL_OPERATOR_CHIP: `${T}/terminal/partials/operator-chip.hbs`,
   TERMINAL_CONFIG: `${T}/terminal/terminal-config.hbs`,
   TERMINAL_CONFIG_ACCOUNT: `${T}/terminal/partials/config-account.hbs`,
+  MALWARE_WORKSHOP: `${T}/malware-workshop/malware-workshop.hbs`,
+  PROGRAM_DECK: `${T}/program-deck/program-deck.hbs`,
 });
 
 // ─── Default Configs ───

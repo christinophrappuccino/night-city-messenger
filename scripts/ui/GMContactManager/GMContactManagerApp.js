@@ -47,7 +47,7 @@ const BUILT_IN_ROLES = {
   ai:         { label: 'A.I.',       icon: 'microchip',        color: '#ff44cc' },
 };
 
-const RELATIONSHIP_TYPES = {
+export const RELATIONSHIP_TYPES = {
   ally:       { label: 'ALLY',       icon: 'fa-handshake',            color: '#00ff41' },
   hostile:    { label: 'HOSTILE',    icon: 'fa-skull-crossbones',     color: '#ff0033' },
   rival:      { label: 'RIVAL',     icon: 'fa-bolt',                 color: '#b87aff' },
@@ -59,7 +59,7 @@ const RELATIONSHIP_TYPES = {
   informant:  { label: 'INFORMANT', icon: 'fa-user-secret',          color: '#1abc9c' },
 };
 
-const TRUST_LABELS = {
+export const TRUST_LABELS = {
   0: 'UNKNOWN', 1: 'SUSPICIOUS', 2: 'CAUTIOUS',
   3: 'NEUTRAL', 4: 'TRUSTED', 5: 'IMPLICITLY TRUSTED',
 };

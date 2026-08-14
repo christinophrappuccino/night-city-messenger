@@ -2300,6 +2300,31 @@
   font-family: var(--ncm-font-mono); font-size: calc(11px * var(--ncm-text-scale, 1)); font-weight: 700; color: var(--ncm-text-primary);
 }
 .ncm-app .ncm-terminal-viewer .ncm-term__opsd { font-size: calc(9.5px * var(--ncm-text-scale, 1)); color: var(--ncm-text-muted); }
+
+/* OPERATOR-TOOLS — installed/active programs indicator */
+.ncm-app .ncm-terminal-viewer .ncm-term__opsmenu-hd--active { border-top: 1px solid var(--ncm-border); }
+.ncm-app .ncm-terminal-viewer .ncm-term__opsactive {
+  display: flex; align-items: center; gap: 9px; padding: 6px 11px; cursor: pointer;
+  border-bottom: 1px solid color-mix(in srgb, var(--ncm-border) 55%, transparent);
+}
+.ncm-app .ncm-terminal-viewer .ncm-term__opsactive:hover { background: color-mix(in srgb, var(--ops) 8%, transparent); }
+.ncm-app .ncm-terminal-viewer .ncm-term__opsactive.is-open { background: color-mix(in srgb, var(--ops) 6%, transparent); }
+.ncm-app .ncm-terminal-viewer .ncm-term__opscv { font-size: calc(7px * var(--ncm-text-scale, 1)); opacity: .55; margin-left: 2px; }
+.ncm-app .ncm-terminal-viewer .ncm-term__opsactive:last-child { border-bottom: 0; }
+.ncm-app .ncm-terminal-viewer .ncm-term__opsactive .ncm-term__opsico { color: var(--ncm-success, #00d97e); }
+.ncm-app .ncm-terminal-viewer .ncm-term__opsactive.is-fired .ncm-term__opsico { color: var(--ncm-warning, #ffab00); }
+.ncm-app .ncm-terminal-viewer .ncm-term__opsstate {
+  margin-left: auto; display: inline-flex; align-items: center; gap: 5px;
+  font-family: var(--ncm-font-mono); font-size: calc(8px * var(--ncm-text-scale, 1));
+  font-weight: 700; letter-spacing: 1px; color: var(--ncm-success, #00d97e);
+}
+.ncm-app .ncm-terminal-viewer .ncm-term__opsactive.is-fired .ncm-term__opsstate { color: var(--ncm-warning, #ffab00); }
+.ncm-app .ncm-terminal-viewer .ncm-term__opsdot {
+  width: 6px; height: 6px; border-radius: 50%; background: currentColor;
+  box-shadow: 0 0 6px currentColor; animation: ncmOpsdot 1.8s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) { .ncm-app .ncm-terminal-viewer .ncm-term__opsdot { animation: none; } }
+@keyframes ncmOpsdot { 0%, 100% { opacity: .4 } 50% { opacity: 1 } }
 .ncm-app .ncm-terminal-viewer .ncm-term__opssoon {
   font-family: var(--ncm-font-mono); font-size: calc(7px * var(--ncm-text-scale, 1)); font-weight: 700; letter-spacing: 1px;
   color: var(--ncm-text-muted); border: 1px solid var(--ncm-border); border-radius: 2px; padding: 0 4px;

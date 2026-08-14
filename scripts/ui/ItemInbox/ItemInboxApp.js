@@ -83,6 +83,7 @@ export class ItemInboxApp extends BaseApplication {
       forceDecrypt: ItemInboxApp._onForceDecrypt,
       relockShard: ItemInboxApp._onRelockShard,
       openConfig: ItemInboxApp._onOpenConfig,
+      openDeck: ItemInboxApp._onOpenDeck,
       addEntry: ItemInboxApp._onAddEntry,
       removeEntry: ItemInboxApp._onRemoveEntry,
       decryptMessage: ItemInboxApp._onDecryptMessage,
@@ -1278,6 +1279,11 @@ export class ItemInboxApp extends BaseApplication {
     if (this._lockoutInterval) { clearInterval(this._lockoutInterval); this._lockoutInterval = null; }
     ui.notifications.info('NCM | Shard relocked.');
     this.render(true);
+  }
+
+  /** Open the Program Deck — the cartridge reader for this shard's programs. */
+  static _onOpenDeck() {
+    if (this.item) game.nightcity?.openProgramDeck?.(this.item);
   }
 
   static _onOpenConfig(event, target) {

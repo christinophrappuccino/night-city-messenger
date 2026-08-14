@@ -154,9 +154,14 @@ export function suggestFilename(contentType, cd = {}, subject = '') {
  * copied off the machine at all. You save a FRAME instead.
  */
 export function resolveEnvelope(entry = {}) {
-  const isFile = entry.envelope === 'file';
-  if (!isFile) return { isFile: false };
   const type = entry.contentType || CONTENT_TYPES.MESSAGE;
+  // A program (malware/payload) is a FILE, not mail — it has no sender. Default those
+  // types to the file envelope unless explicitly flagged 'mail', so even legacy program
+  // entries (authored before the workshop set envelope) drop the email header. A
+  // disguised program reaches here as its COVER type, so its cover still renders normally.
+  const isProgram = type === CONTENT_TYPES.MALWARE || type === CONTENT_TYPES.PAYLOAD;
+  const isFile = entry.envelope === 'file' || (isProgram && entry.envelope !== 'mail');
+  if (!isFile) return { isFile: false };
   const cd = entry.contentData || {};
   const f = entry.file || {};
   const info = getContentTypeInfo(type);
@@ -1514,9 +1519,12 @@ export function enrichContent(entry, ctx = {}) {
   // for players — truly innocuous (the real payload data never reaches their
   // DOM). The GM always sees the real payload (with a red disguise tag), so
   // they can audit. Resolved here, before type dispatch, by swapping the entry.
-  if (entry.contentType === CONTENT_TYPES.PAYLOAD) {
+  if (entry.contentType === CONTENT_TYPES.PAYLOAD || entry.contentType === CONTENT_TYPES.MALWARE) {
     const cd = entry.contentData || {};
-    const hideFromViewer = cd.disguised && !cd.sniffed && !cd.executed && !ctx.isGM;
+    // Malware gets the same disguise (workshop-authored): a player sees the cover
+    // until it's revealed (sniffed/executed) or fires (deployed/tripped). GM sees real.
+    const revealed = cd.sniffed || cd.executed || cd.deployed || cd.tripped;
+    const hideFromViewer = cd.disguised && !revealed && !ctx.isGM;
     if (hideFromViewer) {
       const coverType = cd.disguiseType || CONTENT_TYPES.NOTE;
       const cover = enrichContent({
@@ -1538,7 +1546,9 @@ export function enrichContent(entry, ctx = {}) {
     ...entry,
     formattedDate: entry.timestamp ? formatCyberDate(entry.timestamp) : 'UNKNOWN',
     contentTypeLabel: typeInfo.label,
-    entryIcon: typeInfo.icon,
+    // A workshop-authored program carries its own glyph (iconClass, a full FA class);
+    // fall back to the content type's default icon.
+    entryIcon: entry.contentData?.iconClass || typeInfo.icon,
     accentColor: typeInfo.accent,
     isLocked: !!(entry.encrypted && !entry.decrypted),
     isGM: ctx.isGM ?? false,

@@ -587,6 +587,18 @@ export class DataShardComposer extends BaseApplication {
     const el = this.element;
     if (!el) return;
 
+    // ─── Program authoring is consolidated into the Malware Workshop ───
+    // Payload/Malware entries are authored there (nicer UI + program library),
+    // not in the composer's inline fieldsets. Redirect on render (covers both
+    // picking the type here AND opening to edit an existing program entry).
+    if (!this._redirecting
+      && (this._selectedType === CONTENT_TYPES.PAYLOAD || this._selectedType === CONTENT_TYPES.MALWARE)
+      && typeof game.nightcity?.openMalwareWorkshop === 'function') {
+      this._redirecting = true;
+      this._redirectToWorkshop();
+      return;
+    }
+
     // ─── Live preview + summary chips + interactive helpers: re-render on any
     //     input/change (debounced) ───
     const form = el.querySelector('form');
@@ -891,7 +903,23 @@ export class DataShardComposer extends BaseApplication {
     const type = target.dataset.type;
     if (!type) return;
     this._selectedType = type;
-    this.render();
+    this.render();  // _onRender redirects payload/malware to the Malware Workshop
+  }
+
+  /** Hand program authoring (payload/malware) off to the Malware Workshop. */
+  _redirectToWorkshop() {
+    const item = this._item;
+    const target = item
+      ? { kind: this._isTerminal ? 'terminal' : 'shard', item, accountId: this._target?.accountId ?? null, onSave: this.onSave }
+      : null;
+    const opts = { target, type: this._selectedType === CONTENT_TYPES.MALWARE ? 'malware' : 'payload' };
+    // Editing an existing program entry → load it and replace it on save.
+    if (this.editData?.entryId && this.editData.contentType === this._selectedType) {
+      opts.entry = { contentType: this.editData.contentType, contentData: this.editData.contentData, subject: this.editData.subject };
+      opts.editEntryId = this.editData.entryId;
+    }
+    game.nightcity.openMalwareWorkshop(opts);
+    this.close();
   }
 
   // (Entry Identity icon/accent handlers removed 2026-07-12 — the fieldset was

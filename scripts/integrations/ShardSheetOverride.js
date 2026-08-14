@@ -301,11 +301,13 @@ export class ShardSheetOverride {
       }
     } else if (isShard) {
       addOption('Open Data Shard', 'fas fa-hard-drive', '#00D4E6', () => game.nightcity?.openDataShard(item));
+      addOption('Program Deck', 'fas fa-microchip', '#19f3f7', () => game.nightcity?.openProgramDeck?.(item));
       if (isGM()) {
         addOption('Configure Shard', 'fas fa-sliders', '#00D4E6', async () => {
           const { ItemInboxConfig } = await import('../ui/ItemInbox/ItemInboxConfig.js');
           new ItemInboxConfig({ item }).render(true);
         });
+        addOption('Build a Program', 'fas fa-biohazard', '#ff3355', () => game.nightcity?.openMalwareWorkshop?.({ target: { kind: 'shard', item } }));
         addOption('View Original Item', 'fas fa-file-alt', '#f7c948', () => {
           const sheet = item.sheet;
           if (sheet) { sheet._ncmBypass = true; sheet.render(true); }
@@ -315,6 +317,7 @@ export class ShardSheetOverride {
     } else if (isGM()) {
       addOption('Convert to Data Shard', 'fas fa-microchip', '#00D4E6', () => this._launchConversionFlow(item));
       addOption('Convert to Terminal', 'fas fa-terminal', '#ff3355', () => this._convertToTerminal(item));
+      addOption('Malware Workshop', 'fas fa-biohazard', '#ff3355', () => game.nightcity?.openMalwareWorkshop?.());
     }
   }
 

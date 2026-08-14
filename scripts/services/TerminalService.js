@@ -1481,13 +1481,17 @@ export class TerminalService {
     if (!isGM()) return { success: false };
     const label = this._residentLabel(resident);
     let report = '';
+    const out = {};   // captures a planted message's id/account (plant verb) for the OPS "go to" link
     try {
       report = await this._fireResidentEffect(item, resident.effectType, resident.params || {}, {
-        accountId, actorId, resident,
+        accountId, actorId, resident, out,
       });
     } catch (err) { log.error(`Fire resident failed: ${err.message}`); report = `error: ${err.message}`; }
 
-    await this.updateResident(item, resident.id, { state: 'fired', firedAt: new Date().toISOString() });
+    await this.updateResident(item, resident.id, {
+      state: 'fired', firedAt: new Date().toISOString(),
+      ...(out.messageId ? { firedMessageId: out.messageId, firedAccountId: out.accountId } : {}),
+    });
     // Activity feed — a resident firing is a notable event (no heat; the trace was
     // already paid at upload/arming time).
     game.nightcity?.traceService?.logSuccess({ actor: game.actors?.get(resident.provenance?.plantedBy), action: `${resident.effectType || 'resident'}-fired`, source: label, hostItem: item, severity: 'hostile' });
@@ -1515,6 +1519,8 @@ export class TerminalService {
         const targetAcct = params.accountId || accountId;
         if (targetAcct && params.entry) {
           const res = await this.addAccountMessage(item, targetAcct, foundry.utils.deepClone(params.entry));
+          // Record where the planted file landed so the OPS "active programs" row can jump to it.
+          if (ctx.out && res?.messageId) { ctx.out.messageId = res.messageId; ctx.out.accountId = targetAcct; }
           return res?.success
             ? `planted "${params.entry.subject || 'a file'}" in ${this.getAccount(item, targetAcct)?.displayName || targetAcct}'s mailbox`
             : `plant failed: ${res?.error || 'unknown'}`;
